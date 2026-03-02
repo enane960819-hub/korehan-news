@@ -573,17 +573,24 @@ function renderArticlePage() {
 
     + '</article>';
 
-  // 북마크 상태 확인
-  checkBookmarkState(a.id);
-
   // 핵심 단어 추출
   renderArticleVocab(a);
 
   // 댓글 로드
   loadComments(a.id);
 
-  // 댓글 폼 표시 여부
-  updateCommentForm();
+  // 세션 로드 후 북마크/댓글폼 업데이트 (Supabase 세션이 async라 대기)
+  var articleId = a.id;
+  var attempts = 0;
+  function waitAndUpdate() {
+    attempts++;
+    updateCommentForm();
+    checkBookmarkState(articleId);
+    if (!supaUser && attempts < 20) {
+      setTimeout(waitAndUpdate, 300);
+    }
+  }
+  setTimeout(waitAndUpdate, 300);
 }
 
 function formatArticleBody(text) {
