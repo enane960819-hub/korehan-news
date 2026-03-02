@@ -663,6 +663,8 @@ async function loadGrammarGuide() {
         + '</div>';
     }).join('');
 }
+
+function renderArticleVocab(a) {
   var el = document.getElementById('art-vocab-list');
   if (!el) return;
   var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
