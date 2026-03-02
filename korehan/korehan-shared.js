@@ -530,10 +530,21 @@ function renderArticlePage() {
     + '<img src="' + img + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/1200/700\'">'
     + '</div>'
 
-    // 본문
-    + '<div class="art-body">'
+    // 본문 탭
+    + '<div class="art-tabs">'
+    + '<button class="art-tab on" onclick="switchArtTab(\'article\',this)">📰 기사</button>'
+    + '<button class="art-tab" onclick="switchArtTab(\'grammar\',this)">📖 문법 가이드</button>'
+    + '</div>'
+
+    // 기사 탭
+    + '<div id="art-tab-article">'
     + '<div class="art-lead vocab-zone">' + (a.body || '') + '</div>'
-    + (a.full ? '<div class="art-full vocab-zone">' + a.full.replace(/\n/g,'<br>') + '</div>' : '')
+    + (a.full ? '<div class="art-full vocab-zone">' + formatArticleBody(a.full) + '</div>' : '')
+    + '</div>'
+
+    // 문법 탭
+    + '<div id="art-tab-grammar" style="display:none">'
+    + '<div id="grammar-content"><div style="color:#aaa;padding:20px 0;text-align:center">문법 가이드를 불러오는 중...</div></div>'
     + '</div>'
 
     // 단어 학습 박스
@@ -575,7 +586,83 @@ function renderArticlePage() {
   updateCommentForm();
 }
 
-function renderArticleVocab(a) {
+function formatArticleBody(text) {
+  // 빈 줄 기준으로 문단 나누기, 없으면 마침표 기준으로
+  if (!text) return '';
+  var paras = text.split(/\n\n+/);
+  if (paras.length <= 1) {
+    // 마침표+공백 기준으로 문단 나누기
+    paras = text.replace(/([.!?。])\s+/g, '$1\n').split('\n').filter(function(p){ return p.trim(); });
+  }
+  return paras.map(function(p){
+    return '<p style="margin-bottom:18px">' + p.trim().replace(/\n/g,'<br>') + '</p>';
+  }).join('');
+}
+
+function switchArtTab(tab, btn) {
+  document.querySelectorAll('.art-tab').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+  var artEl = document.getElementById('art-tab-article');
+  var gramEl = document.getElementById('art-tab-grammar');
+  if (tab === 'article') {
+    if (artEl) artEl.style.display = 'block';
+    if (gramEl) gramEl.style.display = 'none';
+  } else {
+    if (artEl) artEl.style.display = 'none';
+    if (gramEl) gramEl.style.display = 'block';
+    loadGrammarGuide();
+  }
+}
+
+async function loadGrammarGuide() {
+  var el = document.getElementById('grammar-content');
+  if (!el) return;
+  // 이미 로드됐으면 스킵
+  if (el.dataset.loaded) return;
+  el.dataset.loaded = '1';
+
+  // 현재 기사 제목+본문으로 문법 포인트 추출 (Claude API 없이 정적 가이드)
+  var params = new URLSearchParams(window.location.search);
+  var id = params.get('id');
+  var all = dbLoad();
+  var a = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
+  if (!a) return;
+
+  // 기사 텍스트에서 문법 패턴 감지
+  var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
+  var guides = [];
+
+  var patterns = [
+    { pattern:/었|았/, name:'과거형 ~었/았', level:'초급', exp:'동사에 붙어 "~했다"는 과거를 나타내요.', ex_ko:'경제가 회복됐<strong>어요</strong>.', ex_en:'The economy recovered.' },
+    { pattern:/이다|입니다|이에요|예요/, name:'~이다 (이에요/예요)', level:'초급', exp:'"~이다"는 영어의 "is/are"예요. 받침이 있으면 이에요, 없으면 예요.', ex_ko:'서울<strong>이에요</strong>.', ex_en:'It\'s Seoul.' },
+    { pattern:/을|를/, name:'목적격 조사 을/를', level:'초급', exp:'동사의 목적어에 붙어요. 받침 있으면 "을", 없으면 "를".', ex_ko:'뉴스<strong>를</strong> 봐요.', ex_en:'I watch the news.' },
+    { pattern:/에서/, name:'장소 조사 에서', level:'초급', exp:'"~에서"는 행동이 일어나는 장소를 나타내요.', ex_ko:'서울<strong>에서</strong> 발표했다.', ex_en:'Announced in Seoul.' },
+    { pattern:/위한|위해/, name:'~을 위한/위해', level:'중급', exp:'"~을 위한/위해"는 "for the purpose of ~"예요.', ex_ko:'경제 회복<strong>을 위한</strong> 방안', ex_en:'A plan for economic recovery' },
+    { pattern:/으로|로 인해|로 인한/, name:'원인 조사 ~로 인해', level:'중급', exp:'"~로 인해"는 "due to ~", "because of ~"예요.', ex_ko:'수출 증가<strong>로 인해</strong> 흑자가 됐다.', ex_en:'Due to export growth, it turned a surplus.' },
+    { pattern:/면서|하면서/, name:'동시동작 ~면서', level:'중급', exp:'"~하면서"는 두 행동이 동시에 일어날 때 써요.', ex_ko:'일하<strong>면서</strong> 공부해요.', ex_en:'I study while working.' },
+    { pattern:/것으로|것이다|것을/, name:'명사화 ~는 것', level:'중급', exp:'"~는 것"은 동사를 명사처럼 만들어요.', ex_ko:'결정한 <strong>것으로</strong> 알려졌다.', ex_en:'It is known that a decision was made.' },
+  ];
+
+  patterns.forEach(function(p) {
+    if (p.pattern.test(text)) guides.push(p);
+  });
+
+  // 최소 3개는 보여주기
+  if (guides.length < 3) {
+    guides = patterns.slice(0, 4);
+  }
+
+  el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">이 기사에서 발견된 문법 패턴을 쉽게 설명해드려요 😊</p>'
+    + guides.map(function(g){
+      return '<div class="grammar-point">'
+        + '<div class="grammar-name">' + g.name
+        + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
+        + '</div>'
+        + '<div class="grammar-explanation">' + g.exp + '</div>'
+        + '<div class="grammar-example"><strong>예문</strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
+        + '</div>';
+    }).join('');
+}
   var el = document.getElementById('art-vocab-list');
   if (!el) return;
   var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
