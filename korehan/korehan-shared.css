@@ -767,3 +767,100 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   transition: all 0.2s;
 }
 .dark-toggle:hover { transform: scale(1.1); }
+
+/* ── 기사 페이지 ─────────────────────────────────────────────── */
+.kh-article-wrap { max-width: 780px; padding: 0 0 40px; }
+
+.art-breadcrumb { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--gray); margin:14px 0 20px; }
+.art-breadcrumb a { color:var(--bright); text-decoration:none; }
+.art-breadcrumb a:hover { text-decoration:underline; }
+.art-breadcrumb span { color:#bbb; }
+
+.art-section-badge {
+  display:inline-block; background:var(--bright); color:#fff;
+  font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px;
+  padding:4px 12px; border-radius:999px; margin-bottom:14px;
+}
+
+.art-title {
+  font-family:'Noto Serif KR','Playfair Display',serif;
+  font-size:36px; font-weight:900; line-height:1.2;
+  color:var(--dark); margin:0 0 18px;
+  word-break:keep-all;
+}
+@media(max-width:640px){ .art-title { font-size:26px; } }
+
+.art-meta-row {
+  display:flex; align-items:center; flex-wrap:wrap; gap:10px;
+  font-size:13px; color:var(--gray); margin-bottom:20px;
+  padding-bottom:16px; border-bottom:1px solid var(--border);
+}
+.art-dot { color:#ccc; }
+.art-actions { margin-left:auto; display:flex; gap:8px; }
+
+.kh-share-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:7px 16px; background:#fff; border:1.5px solid var(--border);
+  border-radius:999px; font-size:13px; font-weight:700; color:var(--dark);
+  cursor:pointer; font-family:inherit; transition:all .15s;
+}
+.kh-share-btn:hover { background:var(--light); }
+
+.art-hero-img { margin:0 0 28px; border-radius:16px; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,0.12); }
+.art-hero-img img { width:100%; max-height:500px; object-fit:cover; display:block; }
+
+.art-lead {
+  font-size:19px; font-weight:600; line-height:1.75;
+  color:#1a1a2e; margin-bottom:20px;
+  padding-bottom:20px; border-bottom:2px solid var(--border);
+  font-family:'Noto Serif KR','Playfair Display',serif;
+}
+.art-full {
+  font-size:17px; line-height:1.9; color:#222;
+  font-family:'Noto Sans KR','Source Sans 3',sans-serif;
+  margin-bottom:28px;
+}
+.art-full br { margin-bottom:8px; }
+
+/* 단어 박스 */
+.art-vocab-box {
+  background:linear-gradient(135deg,#f0f4ff,#e8f0ff);
+  border:1px solid rgba(34,85,164,0.15); border-radius:12px;
+  padding:18px 20px; margin:24px 0;
+}
+.art-vocab-title { font-size:13px; font-weight:800; color:var(--accent); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.8px; }
+.art-vocab-list { display:flex; flex-wrap:wrap; gap:8px; }
+.art-vocab-item {
+  background:#fff; border:1px solid rgba(34,85,164,0.15); border-radius:8px;
+  padding:8px 12px; display:flex; flex-direction:column; align-items:center; gap:2px; min-width:90px;
+}
+.art-vocab-ko  { font-family:'Noto Serif KR',serif; font-size:20px; font-weight:900; color:var(--accent); }
+.art-vocab-rom { font-size:10px; font-style:italic; color:var(--gray); }
+.art-vocab-en  { font-size:11px; font-weight:700; color:var(--dark); }
+
+.art-divider { border:none; border-top:2px solid var(--border); margin:32px 0; }
+
+/* 댓글 */
+.art-comments { margin-top:8px; }
+.art-comments-title {
+  font-family:'Noto Serif KR','Playfair Display',serif;
+  font-size:20px; font-weight:900; margin-bottom:18px; color:var(--dark);
+}
+.comment-login-notice {
+  background:var(--light); border-radius:10px; padding:16px 20px;
+  font-size:14px; color:var(--gray); margin-bottom:16px; text-align:center;
+}
+.comment-login-notice a { color:var(--bright); font-weight:700; }
+.comment-form { margin-bottom:20px; }
+.comment-form textarea {
+  width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:10px;
+  font-size:14px; font-family:inherit; resize:vertical; min-height:80px;
+  background:#fff; color:var(--dark); transition:border-color .15s;
+}
+.comment-form textarea:focus { outline:none; border-color:var(--bright); }
+.comment-submit-btn {
+  margin-top:8px; padding:9px 22px; background:var(--bright); color:#fff;
+  border:none; border-radius:999px; font-size:14px; font-weight:700;
+  cursor:pointer; font-family:inherit; transition:background .15s;
+}
+.comment-submit-btn:hover { background:var(--accent); }

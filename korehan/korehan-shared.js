@@ -53,6 +53,7 @@ async function checkSession() {
   sb.auth.onAuthStateChange(function(event, session) {
     supaUser = session ? session.user : null;
     updateAuthUI();
+    updateCommentForm();
   });
 }
 
@@ -74,11 +75,15 @@ function updateAuthUI() {
     }
     if (userAvatar) {
       var avatar = supaUser.user_metadata && supaUser.user_metadata.avatar_url;
-      userAvatar.style.display = 'inline-block';
+      userAvatar.style.display = 'inline-flex';
       userAvatar.innerHTML = avatar
         ? '<img src="' + avatar + '" style="width:28px;height:28px;border-radius:50%;vertical-align:middle">'
         : '<span style="font-size:13px">' + (supaUser.email || '').charAt(0).toUpperCase() + '</span>';
     }
+    // 마이페이지 버튼
+    var mypageBtn = document.getElementById('topbar-mypage-btn');
+    if (mypageBtn) mypageBtn.style.display = 'inline-block';
+
     if (adminBtn) adminBtn.style.display = isAdmin ? 'inline-block' : 'none';
   } else {
     // 비로그인 상태
@@ -88,6 +93,8 @@ function updateAuthUI() {
     }
     if (userAvatar) userAvatar.style.display = 'none';
     if (adminBtn) adminBtn.style.display = 'none';
+    var mypageBtn = document.getElementById('topbar-mypage-btn');
+    if (mypageBtn) mypageBtn.style.display = 'none';
   }
 }
 
@@ -483,25 +490,244 @@ function renderArticlePage() {
 
   if (!a) {
     wrap.innerHTML = '<div style="padding:30px">'
-      + '<div style="margin-bottom:10px"><a href="index.html" style="color:#2255a4">← Back to Home</a></div>'
-      + '<h1>Article not found</h1>'
+      + '<a href="index.html" style="color:#2255a4;text-decoration:none">← Back to Home</a>'
+      + '<h1 style="margin-top:16px">Article not found</h1>'
       + '<p style="color:#666;margin-top:8px">링크가 잘못됐거나 기사가 존재하지 않습니다.</p>'
       + '</div>';
     return;
   }
 
   var img = a.image || ('https://picsum.photos/seed/' + a.id + '/1200/700');
+  var dateStr = a.date ? new Date(a.date).toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'}) : '';
+
   wrap.innerHTML =
-    '<article style="padding:6px 0">'
-    + '<div style="margin:8px 0 16px"><a href="index.html" style="color:#2255a4;text-decoration:none">← Home</a></div>'
-    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
-    + '<span class="category-tag" style="position:static">' + a.section + '</span>'
-    + '<span class="meta">' + relTime(a.date) + '</span>'
+    '<article class="kh-article-wrap">'
+
+    // 브레드크럼
+    + '<nav class="art-breadcrumb">'
+    + '<a href="index.html">Home</a>'
+    + '<span>›</span>'
+    + '<a href="korehan-' + (a.section==='Korea'?'korea':a.section==='사회'?'society':a.section==='국제'?'world':a.section==='문화'?'culture':a.section==='오피니언'?'opinion':'all') + '.html">' + a.section + '</a>'
+    + '</nav>'
+
+    // 카테고리 + 제목
+    + '<div class="art-header">'
+    + '<span class="art-section-badge">' + a.section + '</span>'
+    + '<h1 class="art-title vocab-zone">' + a.title + '</h1>'
+    + '<div class="art-meta-row">'
+    + '<span class="art-date">📅 ' + dateStr + '</span>'
+    + '<span class="art-dot">·</span>'
+    + '<span class="art-readtime">⏱ 약 ' + Math.max(1, Math.ceil((a.full||a.body||'').length / 500)) + '분 읽기</span>'
+    + '<div class="art-actions">'
+    + '<button class="kh-bm-btn" id="art-bm-btn" onclick="toggleBookmark(\'' + a.id + '\',this)">🔖 북마크</button>'
+    + '<button class="kh-share-btn" onclick="shareArticle()">🔗 공유</button>'
     + '</div>'
-    + '<h1 class="vocab-zone" style="margin:0 0 14px;font-family:\'Noto Serif KR\',\'Playfair Display\',serif;font-size:32px;line-height:1.2">' + a.title + '</h1>'
-    + '<img src="' + img + '" alt="" style="width:100%;border-radius:14px;max-height:460px;object-fit:cover;display:block;margin:0 0 22px" onerror="this.src=\'https://picsum.photos/seed/fallback/1200/700\'">'
-    + '<div class="vocab-zone" style="font-size:17px;line-height:1.85;color:#111">' + (a.full || a.body || '').replace(/\n/g,'<br>') + '</div>'
+    + '</div>'
+    + '</div>'
+
+    // 히어로 이미지
+    + '<div class="art-hero-img">'
+    + '<img src="' + img + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/1200/700\'">'
+    + '</div>'
+
+    // 본문
+    + '<div class="art-body">'
+    + '<div class="art-lead vocab-zone">' + (a.body || '') + '</div>'
+    + (a.full ? '<div class="art-full vocab-zone">' + a.full.replace(/\n/g,'<br>') + '</div>' : '')
+    + '</div>'
+
+    // 단어 학습 박스
+    + '<div class="art-vocab-box">'
+    + '<div class="art-vocab-title">📚 이 기사의 핵심 단어</div>'
+    + '<div class="art-vocab-list" id="art-vocab-list"></div>'
+    + '</div>'
+
+    // 구분선
+    + '<hr class="art-divider">'
+
+    // 댓글 섹션
+    + '<section class="art-comments" id="art-comments">'
+    + '<h3 class="art-comments-title">💬 댓글 <span id="comment-count" style="font-size:16px;color:var(--gray)"></span></h3>'
+    + '<div id="comment-form-wrap">'
+    + '<div class="comment-login-notice" id="comment-login-notice" style="display:none">'
+    + '<p>댓글을 달려면 <a href="#" onclick="event.preventDefault();signInWithGoogle()">로그인</a>이 필요합니다.</p>'
+    + '</div>'
+    + '<div class="comment-form" id="comment-form" style="display:none">'
+    + '<textarea id="comment-input" placeholder="댓글을 입력하세요..." rows="3"></textarea>'
+    + '<button class="comment-submit-btn" onclick="submitComment(\'' + a.id + '\')">등록</button>'
+    + '</div>'
+    + '</div>'
+    + '<div id="comments-list"></div>'
+    + '</section>'
+
     + '</article>';
+
+  // 북마크 상태 확인
+  checkBookmarkState(a.id);
+
+  // 핵심 단어 추출
+  renderArticleVocab(a);
+
+  // 댓글 로드
+  loadComments(a.id);
+
+  // 댓글 폼 표시 여부
+  updateCommentForm();
+}
+
+function renderArticleVocab(a) {
+  var el = document.getElementById('art-vocab-list');
+  if (!el) return;
+  var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
+  var found = [];
+  Object.keys(VOCAB).forEach(function(k) {
+    if (text.indexOf(k) !== -1 && found.length < 8) found.push(k);
+  });
+  if (!found.length) { el.closest('.art-vocab-box').style.display = 'none'; return; }
+  el.innerHTML = found.map(function(k) {
+    return '<div class="art-vocab-item">'
+      + '<span class="art-vocab-ko">' + k + '</span>'
+      + '<span class="art-vocab-rom">' + VOCAB[k].rom + '</span>'
+      + '<span class="art-vocab-en">' + VOCAB[k].en + '</span>'
+      + '</div>';
+  }).join('');
+}
+
+function shareArticle() {
+  if (navigator.share) {
+    navigator.share({ title: document.title, url: window.location.href });
+  } else {
+    navigator.clipboard.writeText(window.location.href).then(function() {
+      toast('링크가 복사됐습니다 ✓');
+    });
+  }
+}
+
+// ── 북마크 ────────────────────────────────────────────────────
+async function toggleBookmark(articleId, btn) {
+  if (!supaUser) { signInWithGoogle(); return; }
+  var sb = getSupa();
+  if (!sb) return;
+
+  var isBookmarked = btn.classList.contains('active');
+  if (isBookmarked) {
+    await sb.from('bookmarks').delete().eq('user_id', supaUser.id).eq('article_id', articleId);
+    btn.classList.remove('active');
+    btn.textContent = '🔖 북마크';
+    toast('북마크 해제됨');
+  } else {
+    await sb.from('bookmarks').insert({ user_id: supaUser.id, article_id: articleId });
+    btn.classList.add('active');
+    btn.textContent = '🔖 저장됨';
+    toast('북마크에 저장됐습니다 ✓');
+  }
+}
+
+async function checkBookmarkState(articleId) {
+  var btn = document.getElementById('art-bm-btn');
+  if (!btn || !supaUser) return;
+  var sb = getSupa();
+  if (!sb) return;
+  var { data } = await sb.from('bookmarks').select('id').eq('user_id', supaUser.id).eq('article_id', articleId).maybeSingle();
+  if (data) { btn.classList.add('active'); btn.textContent = '🔖 저장됨'; }
+}
+
+// ── 댓글 ──────────────────────────────────────────────────────
+function updateCommentForm() {
+  var formEl   = document.getElementById('comment-form');
+  var noticeEl = document.getElementById('comment-login-notice');
+  if (!formEl || !noticeEl) return;
+  if (supaUser) {
+    formEl.style.display = 'block';
+    noticeEl.style.display = 'none';
+  } else {
+    formEl.style.display = 'none';
+    noticeEl.style.display = 'block';
+  }
+}
+
+async function loadComments(articleId) {
+  var sb = getSupa();
+  var listEl = document.getElementById('comments-list');
+  var countEl = document.getElementById('comment-count');
+  if (!listEl) return;
+
+  if (!sb) {
+    listEl.innerHTML = '<p style="color:#aaa;font-size:13px;padding:12px 0">댓글을 불러오는 중...</p>';
+    return;
+  }
+
+  var { data, error } = await sb
+    .from('comments')
+    .select('*')
+    .eq('article_id', articleId)
+    .order('created_at', { ascending: true });
+
+  if (error || !data || !data.length) {
+    listEl.innerHTML = '<p style="color:#aaa;font-size:13px;padding:12px 0">첫 번째 댓글을 남겨보세요!</p>';
+    if (countEl) countEl.textContent = '';
+    return;
+  }
+
+  if (countEl) countEl.textContent = '(' + data.length + ')';
+
+  listEl.innerHTML = data.map(function(c) {
+    var isOwn = supaUser && supaUser.id === c.user_id;
+    var avatar = c.avatar_url
+      ? '<img src="' + c.avatar_url + '" class="comment-avatar" onerror="this.style.display=\'none\'">'
+      : '<div class="comment-avatar" style="background:#2255a4;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700">' + (c.user_name||'?').charAt(0) + '</div>';
+    var timeStr = c.created_at ? new Date(c.created_at).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+    return '<div class="comment-row" id="comment-' + c.id + '">'
+      + '<div class="comment-top">'
+      + avatar
+      + '<div class="comment-meta">'
+      + '<span class="comment-name">' + (c.user_name || '익명') + '</span>'
+      + '<span class="comment-date">' + timeStr + '</span>'
+      + '</div>'
+      + (isOwn ? '<button class="comment-del" onclick="deleteComment(\'' + c.id + '\')" title="삭제">✕</button>' : '')
+      + '</div>'
+      + '<div class="comment-body">' + escapeHtml(c.content) + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+async function submitComment(articleId) {
+  if (!supaUser) { signInWithGoogle(); return; }
+  var input = document.getElementById('comment-input');
+  var content = input ? input.value.trim() : '';
+  if (!content) return;
+
+  var sb = getSupa();
+  if (!sb) return;
+
+  var { error } = await sb.from('comments').insert({
+    article_id:  articleId,
+    user_id:     supaUser.id,
+    user_name:   supaUser.user_metadata && supaUser.user_metadata.full_name || supaUser.email,
+    avatar_url:  supaUser.user_metadata && supaUser.user_metadata.avatar_url || null,
+    content:     content,
+  });
+
+  if (error) { toast('댓글 등록 오류: ' + error.message, true); return; }
+  input.value = '';
+  toast('댓글이 등록됐습니다 ✓');
+  loadComments(articleId);
+}
+
+async function deleteComment(commentId) {
+  if (!supaUser) return;
+  if (!confirm('댓글을 삭제할까요?')) return;
+  var sb = getSupa();
+  if (!sb) return;
+  var { error } = await sb.from('comments').delete().eq('id', commentId).eq('user_id', supaUser.id);
+  if (error) { toast('삭제 오류', true); return; }
+  var el = document.getElementById('comment-' + commentId);
+  if (el) el.remove();
+  toast('댓글이 삭제됐습니다');
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── TOOLTIP ───────────────────────────────────────────────────
@@ -597,6 +823,7 @@ function renderHeader() {
     + '<div class="kh-top-right">'
     + '<div class="kh-clock"><span id="date-str"></span><span id="clock"></span></div>'
     + '<span id="topbar-user-avatar" style="display:none;width:28px;height:28px;border-radius:50%;background:#2255a4;color:#fff;align-items:center;justify-content:center;font-weight:700;font-size:13px;overflow:hidden;vertical-align:middle;margin-right:2px"></span>'
+    + '<a href="korehan-mypage.html" id="topbar-mypage-btn" class="auth-btn-ui" style="display:none">👤 마이페이지</a>'
     + '<a href="#" id="topbar-signin-btn" class="auth-btn-ui" onclick="event.preventDefault();signInWithGoogle()">Sign In</a>'
     + '<a href="korehan-admin.html" id="topbar-admin-btn" class="auth-btn-ui" style="display:none;background:rgba(231,76,60,0.25);border-color:rgba(231,76,60,0.5)">⚙ Admin</a>'
     + '</div></div>'
