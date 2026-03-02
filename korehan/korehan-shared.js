@@ -2,6 +2,95 @@
    KoreHan News — Shared JS  (버그 수정 버전)
    ============================================================ */
 
+// ── Supabase ──────────────────────────────────────────────────
+const SUPA_URL = 'https://samghztrdvtxmrmawneu.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs';
+
+// Supabase 클라이언트 (CDN 로드 후 초기화)
+var _supa = null;
+function getSupa() {
+  if (_supa) return _supa;
+  if (window.supabase) {
+    _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+    return _supa;
+  }
+  return null;
+}
+
+// 현재 로그인 유저
+var supaUser = null;
+
+// Google 로그인
+async function signInWithGoogle() {
+  var sb = getSupa();
+  if (!sb) { toast('Supabase 로드 중입니다. 잠시 후 다시 시도해주세요.', true); return; }
+  var { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + '/index.html' }
+  });
+  if (error) toast('로그인 오류: ' + error.message, true);
+}
+
+// 로그아웃
+async function signOut() {
+  var sb = getSupa();
+  if (sb) await sb.auth.signOut();
+  supaUser = null;
+  updateAuthUI();
+  toast('로그아웃되었습니다');
+}
+
+// 세션 확인
+async function checkSession() {
+  var sb = getSupa();
+  if (!sb) return;
+  var { data } = await sb.auth.getSession();
+  if (data && data.session && data.session.user) {
+    supaUser = data.session.user;
+    updateAuthUI();
+  }
+  // 세션 변화 감지
+  sb.auth.onAuthStateChange(function(event, session) {
+    supaUser = session ? session.user : null;
+    updateAuthUI();
+  });
+}
+
+// UI 업데이트
+function updateAuthUI() {
+  var signinBtn  = document.getElementById('topbar-signin-btn');
+  var adminBtn   = document.getElementById('topbar-admin-btn');
+  var userAvatar = document.getElementById('topbar-user-avatar');
+
+  // 관리자 이메일 목록 (본인 Gmail 추가)
+  var ADMIN_EMAILS = ['enane960819@gmail.com'];
+  var isAdmin = supaUser && ADMIN_EMAILS.includes(supaUser.email);
+
+  if (supaUser) {
+    // 로그인 상태
+    if (signinBtn) {
+      signinBtn.textContent = '로그아웃';
+      signinBtn.onclick = function(e){ e.preventDefault(); signOut(); };
+    }
+    if (userAvatar) {
+      var avatar = supaUser.user_metadata && supaUser.user_metadata.avatar_url;
+      userAvatar.style.display = 'inline-block';
+      userAvatar.innerHTML = avatar
+        ? '<img src="' + avatar + '" style="width:28px;height:28px;border-radius:50%;vertical-align:middle">'
+        : '<span style="font-size:13px">' + (supaUser.email || '').charAt(0).toUpperCase() + '</span>';
+    }
+    if (adminBtn) adminBtn.style.display = isAdmin ? 'inline-block' : 'none';
+  } else {
+    // 비로그인 상태
+    if (signinBtn) {
+      signinBtn.textContent = 'Sign In';
+      signinBtn.onclick = function(e){ e.preventDefault(); signInWithGoogle(); };
+    }
+    if (userAvatar) userAvatar.style.display = 'none';
+    if (adminBtn) adminBtn.style.display = 'none';
+  }
+}
+
 const DB_KEY          = 'korehan_db';
 const K_PHRASES       = 'korehan_phrases';
 const K_WORDBANK      = 'korehan_wordbank';
@@ -43,49 +132,7 @@ function getWordBank()  { return lsGet(K_WORDBANK,  DEF_WORDBANK);  }
 function getSentences() { return lsGet(K_SENTENCES, DEF_SENTENCES); }
 function getOpinions()  { return lsGet(K_OPINIONS,  []);            }
 
-// ── 어드민 세션 ───────────────────────────────────────────────
-var supaUser = null;
 
-function signInWithGoogle() {
-  var pwd = prompt('관리자 비밀번호를 입력하세요:');
-  var ADMIN_PASSWORD = lsGet('korehan_admin_pw', 'korehan2026');
-  if (pwd === ADMIN_PASSWORD) {
-    supaUser = { email: 'admin', isAdmin: true };
-    lsSet(K_ADMIN_SESSION, { email:'admin', isAdmin:true, ts: Date.now() });
-    showAdminButton();
-    toast('관리자로 로그인되었습니다 ✓');
-  } else if (pwd !== null) {
-    toast('비밀번호가 틀렸습니다', true);
-  }
-}
-
-function signOut() {
-  supaUser = null;
-  lsSet(K_ADMIN_SESSION, null);
-  hideAdminButton();
-  toast('로그아웃되었습니다');
-}
-
-function checkSession() {
-  var sess = lsGet(K_ADMIN_SESSION, null);
-  if (sess && sess.isAdmin && (Date.now() - sess.ts) < 24 * 3600000) {
-    supaUser = sess;
-    showAdminButton();
-  }
-}
-
-function showAdminButton() {
-  var btn      = document.getElementById('topbar-admin-btn');
-  var signinBtn= document.getElementById('topbar-signin-btn');
-  if (btn) btn.style.display = 'inline-block';
-  if (signinBtn) { signinBtn.textContent = '로그아웃'; signinBtn.onclick = signOut; }
-}
-function hideAdminButton() {
-  var btn      = document.getElementById('topbar-admin-btn');
-  var signinBtn= document.getElementById('topbar-signin-btn');
-  if (btn) btn.style.display = 'none';
-  if (signinBtn) { signinBtn.textContent = 'Sign In'; signinBtn.onclick = signInWithGoogle; }
-}
 
 function toast(msg, isErr) {
   var d = document.createElement('div');
@@ -549,6 +596,7 @@ function renderHeader() {
     + '</a>'
     + '<div class="kh-top-right">'
     + '<div class="kh-clock"><span id="date-str"></span><span id="clock"></span></div>'
+    + '<span id="topbar-user-avatar" style="display:none;width:28px;height:28px;border-radius:50%;background:#2255a4;color:#fff;align-items:center;justify-content:center;font-weight:700;font-size:13px;overflow:hidden;vertical-align:middle;margin-right:2px"></span>'
     + '<a href="#" id="topbar-signin-btn" class="auth-btn-ui" onclick="event.preventDefault();signInWithGoogle()">Sign In</a>'
     + '<a href="korehan-admin.html" id="topbar-admin-btn" class="auth-btn-ui" style="display:none;background:rgba(231,76,60,0.25);border-color:rgba(231,76,60,0.5)">⚙ Admin</a>'
     + '</div></div>'
@@ -665,7 +713,7 @@ function startClock() {
 }
 
 // ── INIT ──────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
   var headerEl  = document.getElementById('kh-header');
   var footerEl  = document.getElementById('kh-footer');
   var sidebarEl = document.getElementById('kh-sidebar');
