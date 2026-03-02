@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Page — KoreHan News</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css">
+<style>
+.mypage-hero {
+  background: linear-gradient(135deg,#0b1626,#1a3a6b);
+  padding: 36px 22px 28px; color:#fff;
+}
+.mypage-hero-inner { max-width:1100px; margin:0 auto; display:flex; align-items:center; gap:18px; }
+.mypage-avatar { width:72px; height:72px; border-radius:50%; border:3px solid rgba(255,255,255,0.3); object-fit:cover; }
+.mypage-avatar-placeholder { width:72px; height:72px; border-radius:50%; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:32px; }
+.mypage-name { font-family:'Noto Serif KR','Playfair Display',serif; font-size:24px; font-weight:900; margin:0 0 4px; }
+.mypage-email { font-size:13px; color:rgba(255,255,255,0.6); margin:0 0 10px; }
+.mypage-signout { font-size:12px; color:rgba(255,255,255,0.5); background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:999px; padding:4px 12px; cursor:pointer; font-family:inherit; }
+.mypage-signout:hover { background:rgba(255,255,255,0.18); color:#fff; }
+
+.mypage-body { max-width:1100px; margin:0 auto; padding:28px 22px 60px; }
+
+/* STATS */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:32px; }
+.stat-card { background:#fff; border:1px solid var(--border); border-radius:12px; padding:20px; text-align:center; box-shadow:var(--shadow); }
+.stat-num { font-family:'Playfair Display',serif; font-size:40px; font-weight:900; color:var(--accent); line-height:1; }
+.stat-fire { font-size:36px; line-height:1; }
+.stat-label { font-size:12px; color:var(--gray); margin-top:6px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; }
+
+/* TABS */
+.my-tabs { display:flex; gap:6px; border-bottom:2px solid var(--border); margin-bottom:24px; }
+.my-tab { padding:9px 20px; border:none; background:none; font-size:14px; font-weight:700; color:var(--gray); cursor:pointer; font-family:inherit; border-bottom:3px solid transparent; margin-bottom:-2px; border-radius:6px 6px 0 0; transition:all .15s; }
+.my-tab:hover { color:var(--bright); }
+.my-tab.on { color:var(--bright); border-bottom-color:var(--bright); background:rgba(34,85,164,0.04); }
+.my-panel { display:none; }
+.my-panel.on { display:block; }
+
+/* QUIZ */
+.quiz-wrap2 { background:#fff; border:1px solid var(--border); border-radius:12px; padding:28px; box-shadow:var(--shadow); max-width:560px; }
+.quiz-q2 { font-family:'Noto Serif KR','Playfair Display',serif; font-size:44px; font-weight:900; text-align:center; color:var(--accent); margin-bottom:8px; }
+.quiz-rom2 { text-align:center; font-size:13px; color:var(--gray); font-style:italic; margin-bottom:20px; }
+.quiz-opts2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.quiz-opt2 { padding:13px; border:2px solid var(--border); border-radius:10px; background:#fff; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; text-align:center; }
+.quiz-opt2:hover { border-color:var(--bright); background:rgba(34,85,164,0.04); }
+.quiz-opt2.correct { background:#d4edda; border-color:#28a745; color:#155724; }
+.quiz-opt2.wrong   { background:#f8d7da; border-color:#dc3545; color:#721c24; }
+.quiz-score2 { text-align:center; font-size:14px; color:var(--gray); margin-bottom:16px; font-weight:600; }
+.quiz-next2 { display:block; margin:18px auto 0; padding:10px 28px; background:var(--bright); color:#fff; border:none; border-radius:999px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
+
+/* SAVED WORDS LIST */
+.saved-word-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); }
+.sw-ko { font-size:20px; font-weight:900; color:var(--accent); }
+.sw-rom { font-size:12px; color:var(--gray); font-style:italic; }
+.sw-en { font-size:14px; font-weight:600; color:var(--dark); }
+.sw-del { background:none; border:none; color:#ccc; cursor:pointer; font-size:16px; padding:4px 8px; border-radius:4px; }
+.sw-del:hover { color:#dc3545; background:#fff0f0; }
+
+/* READ ARTICLES */
+.read-row { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
+.read-tag { font-size:10px; font-weight:800; text-transform:uppercase; padding:2px 8px; border-radius:999px; background:rgba(34,85,164,0.1); color:var(--bright); white-space:nowrap; margin-top:3px; }
+.read-title { font-size:14px; font-weight:700; color:var(--dark); text-decoration:none; }
+.read-title:hover { color:var(--bright); }
+.read-date { font-size:12px; color:var(--gray); margin-top:3px; }
+
+/* EMPTY STATE */
+.empty-state { text-align:center; padding:40px 20px; color:var(--gray); }
+.empty-state .es-icon { font-size:40px; margin-bottom:12px; }
+.empty-state p { font-size:14px; }
+
+/* GOALS */
+.goal-card { background:#fff; border:1px solid var(--border); border-radius:12px; padding:20px 22px; margin-bottom:12px; display:flex; align-items:center; gap:16px; box-shadow:var(--shadow); }
+.goal-icon { font-size:28px; flex-shrink:0; }
+.goal-info { flex:1; }
+.goal-title { font-size:15px; font-weight:700; color:var(--dark); margin-bottom:4px; }
+.goal-bar-wrap { height:8px; background:#eef0f5; border-radius:999px; overflow:hidden; }
+.goal-bar { height:100%; border-radius:999px; background:linear-gradient(90deg,#2255a4,#3d7fd4); transition:width 0.6s ease; }
+.goal-bar.done { background:linear-gradient(90deg,#28a745,#5cb85c); }
+.goal-count { font-size:12px; color:var(--gray); margin-top:4px; font-weight:600; }
+.goal-check { font-size:22px; flex-shrink:0; }
+
+/* LEVEL TEST */
+.level-badge { display:inline-flex; align-items:center; gap:8px; padding:10px 22px; border-radius:999px; font-size:15px; font-weight:900; margin-bottom:20px; }
+.level-badge.beginner    { background:#e8f5e9; color:#2e7d32; }
+.level-badge.intermediate{ background:#fff8e1; color:#f57f17; }
+.level-badge.advanced    { background:#fce4ec; color:#c62828; }
+.lv-q-wrap { background:#fff; border:1px solid var(--border); border-radius:12px; padding:24px; box-shadow:var(--shadow); max-width:540px; }
+.lv-word { font-size:40px; font-weight:900; color:var(--accent); text-align:center; margin-bottom:4px; font-family:'Noto Serif KR',serif; }
+.lv-rom  { text-align:center; font-size:13px; color:var(--gray); font-style:italic; margin-bottom:16px; }
+.lv-opts { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.lv-opt  { padding:12px; border:2px solid var(--border); border-radius:10px; background:#fff; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; text-align:center; }
+.lv-opt:hover  { border-color:var(--bright); background:#f0f4ff; }
+.lv-opt.correct{ background:#d4edda; border-color:#28a745; color:#155724; }
+.lv-opt.wrong  { background:#f8d7da; border-color:#dc3545; color:#721c24; }
+.lv-progress   { font-size:13px; color:var(--gray); margin-bottom:16px; font-weight:600; text-align:center; }
+.lv-result     { text-align:center; padding:32px; }
+.lv-result-badge { font-size:56px; margin-bottom:12px; }
+.lv-result-title { font-size:22px; font-weight:900; color:var(--accent); margin-bottom:8px; }
+.lv-result-desc  { font-size:14px; color:var(--gray); line-height:1.7; max-width:380px; margin:0 auto 20px; }
+</style>
+</head>
+<body>
+<div id="kh-header"></div>
+
+<div class="mypage-hero">
+  <div class="mypage-hero-inner">
+    <div id="mp-avatar-wrap">
+      <div class="mypage-avatar-placeholder">👤</div>
+    </div>
+    <div>
+      <div class="mypage-name" id="mp-name">Loading…</div>
+      <div class="mypage-email" id="mp-email"></div>
+      <button class="mypage-signout" onclick="signOut()">로그아웃</button>
+    </div>
+  </div>
+</div>
+
+<div class="mypage-body">
+
+  <!-- 학습 통계 -->
+  <div class="stats-grid" id="mp-stats">
+    <div class="stat-card"><div class="stat-fire">🔥</div><div class="stat-label">Loading…</div></div>
+  </div>
+
+  <!-- 탭 -->
+  <div class="my-tabs">
+    <button class="my-tab on" onclick="switchMyTab('goals',this)">🎯 오늘 목표</button>
+    <button class="my-tab" onclick="switchMyTab('quiz',this)">📝 단어 퀴즈</button>
+    <button class="my-tab" onclick="switchMyTab('words',this)">🔖 저장한 단어</button>
+    <button class="my-tab" onclick="switchMyTab('articles',this)">📰 읽은 기사</button>
+    <button class="my-tab" onclick="switchMyTab('bookmarks',this)">🔖 북마크</button>
+    <button class="my-tab" onclick="switchMyTab('level',this)">🏆 레벨 테스트</button>
+  </div>
+
+  <!-- 오늘 목표 패널 -->
+  <div class="my-panel on" id="panel-goals">
+    <div id="goals-area"><div style="text-align:center;padding:32px;color:var(--gray)">⏳ 불러오는 중…</div></div>
+  </div>
+
+  <!-- 단어 퀴즈 패널 -->
+  <div class="my-panel" id="panel-quiz">
+    <div id="quiz-area">
+      <div class="empty-state"><div class="es-icon">🔖</div><p>저장한 단어가 없어요.<br><a href="korehan-learn.html" style="color:var(--bright);font-weight:700">학습 페이지</a>에서 단어 카드의 🔖 버튼을 눌러 저장하세요.</p></div>
+    </div>
+  </div>
+
+  <!-- 저장한 단어 패널 -->
+  <div class="my-panel" id="panel-words">
+    <div id="words-list-area">
+      <div class="empty-state"><div class="es-icon">⏳</div><p>불러오는 중…</p></div>
+    </div>
+  </div>
+
+  <!-- 읽은 기사 패널 -->
+  <div class="my-panel" id="panel-articles">
+    <div id="articles-list-area">
+      <div class="empty-state"><div class="es-icon">⏳</div><p>불러오는 중…</p></div>
+    </div>
+  </div>
+
+  <!-- 북마크 패널 -->
+  <div class="my-panel" id="panel-bookmarks">
+    <div id="bookmarks-area"><div style="text-align:center;padding:32px;color:var(--gray)">⏳ 불러오는 중…</div></div>
+  </div>
+
+  <!-- 레벨 테스트 패널 -->
+  <div class="my-panel" id="panel-level">
+    <div id="level-area"><div style="text-align:center;padding:32px;color:var(--gray)">⏳ 불러오는 중…</div></div>
+  </div>
+
+</div>
+
+<div id="kh-footer"></div>
+<script src="korehan-shared.js"></script>
+<script>
+var savedWords    = [];
+var quizWords     = [];
+var quizIdx       = 0;
+var quizScore     = 0;
+var quizTotal     = 0;
+var currentAnswer = '';
+
+// Level test
+var LEVEL_WORDS = {
+  beginner:     ['뉴스','학교','가족','날씨','음식','친구','공부','나라','봄','여름','가을','겨울','서울','한국','정부','사회','문화','스포츠','발표','기록','전국','안정'],
+  intermediate: ['경제','투자','수출','무역','흑자','금리','반도체','부동산','아파트','협상','합의','개발','계획','승인','확정','개통','공연','매진','드라마','양산','공급','계약','결승','진출','열풍','수상','정치','속보','역대','저출생'],
+  advanced:     ['대통령','국회','법안','표결','기준금리','동결','결정','하반기','인하','검토','코스피','교원','파업','한강','유엔','안보리','긴급','회의','결의','나토','방위비','정상','중동','협약','탄소중립','김장','등재','무형문화유산','한반도','평화','위기']
+};
+var LEVEL_META = {
+  beginner:     { label:'🌱 초급 Beginner',    color:'beginner',     desc:'일상적인 기본 단어들을 학습 중이에요. 꾸준히 하면 금방 늘어요!' },
+  intermediate: { label:'📘 중급 Intermediate', color:'intermediate', desc:'사회·경제 관련 단어를 공부하고 있어요. 좋은 실력이에요!' },
+  advanced:     { label:'🔥 고급 Advanced',     color:'advanced',     desc:'정치·외교 전문 어휘까지 알고 있네요. 훌륭해요!' }
+};
+var lvTestWords = [];
+var lvIdx = 0;
+var lvScores = { beginner:0, intermediate:0, advanced:0 };
+var lvAnswer = '';
+
+function switchMyTab(tab, btn) {
+  document.querySelectorAll('.my-tab').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelectorAll('.my-panel').forEach(function(p){ p.classList.remove('on'); });
+  btn.classList.add('on');
+  document.getElementById('panel-' + tab).classList.add('on');
+}
+
+async function initMyPage() {
+  if(!supaUser) {
+    window.location.href = 'korehan-news.html';
+    return;
+  }
+
+  // Profile
+  var name = (supaUser.user_metadata && supaUser.user_metadata.full_name) || supaUser.email.split('@')[0];
+  var pic  = (supaUser.user_metadata && supaUser.user_metadata.avatar_url) || '';
+  document.getElementById('mp-name').textContent  = name;
+  document.getElementById('mp-email').textContent = supaUser.email || '';
+  if(pic) {
+    document.getElementById('mp-avatar-wrap').innerHTML =
+      '<img class="mypage-avatar" src="' + pic + '" alt="">';
+  }
+
+  // Load data in parallel
+  const [words, articles, streak] = await Promise.all([
+    dbGetSavedWords(),
+    getReadArticles(),
+    getStreak(),
+  ]);
+
+  savedWords = words;
+  renderStats(streak, words.length, articles.length);
+  renderGoals();
+  renderQuiz(words);
+  renderBookmarks();
+  renderWordsList(words);
+  renderArticlesList(articles);
+  renderLevelPanel();
+}
+
+async function getReadArticles() {
+  if(!supaUser) return [];
+  var res = await fetch(SUPA_URL + '/rest/v1/read_articles?user_id=eq.' + supaUser.id + '&order=read_at.desc&limit=30', {
+    headers: getSupaHeaders()
+  });
+  return res.ok ? res.json() : [];
+}
+
+async function getStreak() {
+  if(!supaUser) return null;
+  var res = await fetch(SUPA_URL + '/rest/v1/study_streaks?user_id=eq.' + supaUser.id, {
+    headers: getSupaHeaders()
+  });
+  var rows = res.ok ? await res.json() : [];
+  return rows[0] || null;
+}
+
+async function renderBookmarks() {
+  var area = document.getElementById('bookmarks-area');
+  var bms  = await dbGetBookmarks();
+  if(!bms || !bms.length) {
+    area.innerHTML = '<div class="empty-state"><div class="es-icon">🔖</div><p>북마크한 기사가 없어요.<br>기사 페이지에서 🔖 버튼을 눌러 저장하세요.</p></div>';
+    return;
+  }
+  area.innerHTML = '<div style="margin-bottom:12px;font-size:13px;color:var(--gray)">'+bms.length+'개 북마크</div>'
+    + bms.map(function(b){
+        var d = new Date(b.bookmarked_at);
+        var ds = d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0');
+        return '<div class="read-row">'
+          +'<span class="read-tag">'+(b.section||'')+'</span>'
+          +'<div style="flex:1">'
+          +'<a class="read-title" href="korehan-article.html?id='+b.article_id+'">'+(b.title||'')+'</a>'
+          +'<div class="read-date">'+ds+'</div>'
+          +'</div>'
+          +'<button data-id="'+b.article_id+'" onclick="removeBookmark(this.dataset.id,this)" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:16px;padding:4px 8px;border-radius:4px" title="북마크 삭제">✕</button>'
+          +'</div>';
+      }).join('');
+}
+
+async function removeBookmark(articleId, btn) {
+  await dbToggleBookmark(articleId, '', '');
+  btn.closest('.read-row').remove();
+}
+
+async function renderGoals() {
+  var area = document.getElementById('goals-area');
+  var goal = await dbGetTodayGoal();
+  var WORD_TARGET    = 5;
+  var ARTICLE_TARGET = 2;
+
+  function bar(val, max) {
+    var pct = Math.min(100, Math.round((val/max)*100));
+    var done = val >= max;
+    return '<div class="goal-bar-wrap"><div class="goal-bar'+(done?' done':'')+'" style="width:'+pct+'%"></div></div>';
+  }
+
+  area.innerHTML =
+    '<div style="margin-bottom:20px">'
+    +'<div style="font-size:17px;font-weight:900;color:var(--accent);margin-bottom:4px">오늘의 학습 목표 🎯</div>'
+    +'<div style="font-size:13px;color:var(--gray)">'+new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'})+'</div>'
+    +'</div>'
+
+    +'<div class="goal-card">'
+    +'<div class="goal-icon">🔖</div>'
+    +'<div class="goal-info">'
+    +'<div class="goal-title">단어 저장하기</div>'
+    +bar(goal.words_saved||0, WORD_TARGET)
+    +'<div class="goal-count">'+(goal.words_saved||0)+' / '+WORD_TARGET+'개</div>'
+    +'</div>'
+    +'<div class="goal-check">'+(( goal.words_saved||0) >= WORD_TARGET ? '✅' : '○')+'</div>'
+    +'</div>'
+
+    +'<div class="goal-card">'
+    +'<div class="goal-icon">📰</div>'
+    +'<div class="goal-info">'
+    +'<div class="goal-title">기사 읽기</div>'
+    +bar(goal.articles_read||0, ARTICLE_TARGET)
+    +'<div class="goal-count">'+(goal.articles_read||0)+' / '+ARTICLE_TARGET+'개</div>'
+    +'</div>'
+    +'<div class="goal-check">'+((goal.articles_read||0) >= ARTICLE_TARGET ? '✅' : '○')+'</div>'
+    +'</div>'
+
+    +'<div class="goal-card">'
+    +'<div class="goal-icon">📝</div>'
+    +'<div class="goal-info">'
+    +'<div class="goal-title">단어 퀴즈 풀기</div>'
+    +bar(goal.quiz_played ? 1 : 0, 1)
+    +'<div class="goal-count">'+(goal.quiz_played ? '완료!' : '미완료')+'</div>'
+    +'</div>'
+    +'<div class="goal-check">'+(goal.quiz_played ? '✅' : '○')+'</div>'
+    +'</div>'
+
+    +'<div style="margin-top:16px;padding:14px 18px;background:#f0f4ff;border-radius:10px;font-size:13px;color:var(--gray)">'
+    +'💡 <a href="korehan-learn.html" style="color:var(--bright);font-weight:700">학습 페이지</a>에서 단어를 저장하고, '
+    +'<a href="korehan-news.html" style="color:var(--bright);font-weight:700">뉴스</a>를 읽으면 자동으로 기록돼요.'
+    +'</div>';
+}
+
+async function renderLevelPanel() {
+  var area = document.getElementById('level-area');
+  var savedLevel = await dbGetLevel();
+
+  if(savedLevel) {
+    var m = LEVEL_META[savedLevel] || LEVEL_META.beginner;
+    area.innerHTML =
+      '<div style="margin-bottom:20px">'
+      +'<div style="font-size:17px;font-weight:900;color:var(--accent);margin-bottom:4px">내 한국어 레벨</div>'
+      +'</div>'
+      +'<div class="lv-result">'
+      +'<div class="lv-result-badge">🏆</div>'
+      +'<div class="level-badge '+m.color+'">'+m.label+'</div>'
+      +'<div class="lv-result-desc">'+m.desc+'</div>'
+      +'<button class="quiz-next2" onclick="startLevelTest()">다시 테스트하기 🔄</button>'
+      +'</div>';
+  } else {
+    area.innerHTML =
+      '<div style="margin-bottom:20px">'
+      +'<div style="font-size:17px;font-weight:900;color:var(--accent);margin-bottom:4px">레벨 테스트</div>'
+      +'<div style="font-size:13px;color:var(--gray)">15문제로 내 한국어 수준을 확인해보세요</div>'
+      +'</div>'
+      +'<div style="text-align:center;padding:32px">'
+      +'<div style="font-size:48px;margin-bottom:16px">🏆</div>'
+      +'<div style="font-size:15px;color:var(--gray);margin-bottom:20px">초급·중급·고급 단어를 각 5문제씩 풀어서<br>내 레벨을 확인해요</div>'
+      +'<button class="quiz-next2" onclick="startLevelTest()">레벨 테스트 시작 →</button>'
+      +'</div>';
+  }
+}
+
+function startLevelTest() {
+  // 각 레벨에서 5개씩 랜덤 선택
+  function pick(arr, n) {
+    return arr.slice().sort(function(){ return Math.random()-0.5; }).slice(0,n);
+  }
+  var bWords = pick(LEVEL_WORDS.beginner, 5).map(function(w){ return {ko:w,level:'beginner'}; });
+  var iWords = pick(LEVEL_WORDS.intermediate, 5).map(function(w){ return {ko:w,level:'intermediate'}; });
+  var aWords = pick(LEVEL_WORDS.advanced, 5).map(function(w){ return {ko:w,level:'advanced'}; });
+  lvTestWords = bWords.concat(iWords).concat(aWords).sort(function(){ return Math.random()-0.5; });
+  lvIdx = 0;
+  lvScores = { beginner:0, intermediate:0, advanced:0 };
+  showLevelQuestion();
+}
+
+function showLevelQuestion() {
+  var area = document.getElementById('level-area');
+  if(lvIdx >= lvTestWords.length) {
+    finishLevelTest();
+    return;
+  }
+  var w   = lvTestWords[lvIdx];
+  var vo  = (typeof VOCAB !== 'undefined' && VOCAB[w.ko]) || null;
+  if(!vo){ lvIdx++; showLevelQuestion(); return; }
+  lvAnswer = vo.en;
+
+  // Wrong options from other level words
+  var allKeys = Object.values(LEVEL_WORDS).reduce(function(a,b){ return a.concat(b); },[]);
+  var others  = allKeys.filter(function(k){ return k !== w.ko && VOCAB[k]; })
+    .sort(function(){ return Math.random()-0.5; }).slice(0,3)
+    .map(function(k){ return VOCAB[k].en; });
+  var opts = [vo.en].concat(others).sort(function(){ return Math.random()-0.5; });
+
+  area.innerHTML =
+    '<div class="lv-q-wrap">'
+    +'<div class="lv-progress">'+( lvIdx+1)+' / '+lvTestWords.length+'</div>'
+    +'<div class="lv-word">'+w.ko+'</div>'
+    +'<div class="lv-rom">'+vo.rom+'</div>'
+    +'<div class="lv-opts">'
+    +opts.map(function(o){
+        return '<button class="lv-opt" data-en="'+o+'" onclick="checkLevel(this.dataset.en,this)">'+o+'</button>';
+      }).join('')
+    +'</div>'
+    +'<button class="quiz-next2" id="lv-next-btn" style="display:none;margin-top:16px" onclick="nextLevel()">Next →</button>'
+    +'</div>';
+}
+
+function checkLevel(chosen, btn) {
+  document.querySelectorAll('.lv-opt').forEach(function(b){ b.disabled=true; });
+  var w = lvTestWords[lvIdx];
+  if(chosen === lvAnswer) {
+    btn.classList.add('correct');
+    lvScores[w.level]++;
+  } else {
+    btn.classList.add('wrong');
+    document.querySelectorAll('.lv-opt').forEach(function(b){
+      if(b.textContent === lvAnswer) b.classList.add('correct');
+    });
+  }
+  document.getElementById('lv-next-btn').style.display = 'block';
+}
+
+function nextLevel() { lvIdx++; showLevelQuestion(); }
+
+async function finishLevelTest() {
+  // Determine level: highest score wins; tie → lower level
+  var b = lvScores.beginner, im = lvScores.intermediate, ad = lvScores.advanced;
+  var level;
+  if(ad >= im && ad >= b && ad >= 3)       level = 'advanced';
+  else if(im >= b && im >= 2)              level = 'intermediate';
+  else                                     level = 'beginner';
+
+  await dbSaveLevel(level);
+
+  var m   = LEVEL_META[level];
+  var area = document.getElementById('level-area');
+  area.innerHTML =
+    '<div class="lv-result">'
+    +'<div class="lv-result-badge">🎉</div>'
+    +'<div style="font-size:13px;color:var(--gray);margin-bottom:12px">테스트 완료!</div>'
+    +'<div style="margin-bottom:4px;font-size:13px;color:var(--gray)">초급 '+b+'/5 · 중급 '+im+'/5 · 고급 '+ad+'/5</div>'
+    +'<div class="level-badge '+m.color+'" style="margin:12px auto;display:inline-flex">'+m.label+'</div>'
+    +'<div class="lv-result-desc">'+m.desc+'</div>'
+    +'<button class="quiz-next2" onclick="startLevelTest()">다시 테스트하기 🔄</button>'
+    +'</div>';
+
+  // Update stats card
+  var statsEl = document.getElementById('mp-stats');
+  if(statsEl){
+    var badge = statsEl.querySelector('.level-stat-badge');
+    if(!badge){
+      statsEl.innerHTML += '<div class="stat-card"><div class="stat-num" style="font-size:14px;margin-top:4px">'+m.label+'</div><div class="stat-label">내 레벨</div></div>';
+    }
+  }
+}
+
+async function renderStats(streak, wordCount, articleCount) {
+  var s = streak || {};
+  var level = await dbGetLevel();
+  var lm    = level ? (LEVEL_META[level] || LEVEL_META.beginner) : null;
+  var bms   = await dbGetBookmarks();
+  document.getElementById('mp-stats').innerHTML =
+    '<div class="stat-card"><div class="stat-fire">🔥</div><div class="stat-num">' + (s.streak||0) + '</div><div class="stat-label">연속 학습일</div></div>' +
+    '<div class="stat-card"><div class="stat-num">' + (s.longest_streak||0) + '</div><div class="stat-label">최장 연속일</div></div>' +
+    '<div class="stat-card"><div class="stat-num">' + wordCount + '</div><div class="stat-label">저장한 단어</div></div>' +
+    '<div class="stat-card"><div class="stat-num">' + articleCount + '</div><div class="stat-label">읽은 기사</div></div>' +
+    '<div class="stat-card"><div class="stat-num">' + (bms.length||0) + '</div><div class="stat-label">북마크</div></div>' +
+    (lm ? '<div class="stat-card"><div class="stat-num" style="font-size:13px;line-height:1.3;margin-top:4px">'+lm.label+'</div><div class="stat-label">내 레벨</div></div>' : '');
+}
+
+// ── 단어 퀴즈 ──────────────────────────────────────────────────
+function renderQuiz(words) {
+  var area = document.getElementById('quiz-area');
+  if(!words || words.length < 4) {
+    area.innerHTML = '<div class="empty-state"><div class="es-icon">🔖</div>'
+      + '<p>퀴즈를 시작하려면 단어 4개 이상 저장이 필요해요.<br>'
+      + '<a href="korehan-learn.html" style="color:var(--bright);font-weight:700">학습 페이지에서 저장하기 →</a></p></div>';
+    return;
+  }
+  quizWords = words.slice().sort(function(){ return Math.random()-0.5; });
+  quizIdx = 0; quizScore = 0; quizTotal = 0;
+  showQuizQuestion();
+}
+
+function showQuizQuestion() {
+  var area = document.getElementById('quiz-area');
+  if(quizIdx >= quizWords.length) {
+    area.innerHTML = '<div class="quiz-wrap2" style="text-align:center">'
+      + '<div style="font-size:48px;margin-bottom:12px">🎉</div>'
+      + '<div style="font-size:22px;font-weight:900;color:var(--accent);margin-bottom:8px">퀴즈 완료!</div>'
+      + '<div style="font-size:18px;color:var(--dark);margin-bottom:20px">' + quizScore + ' / ' + quizTotal + ' 정답</div>'
+      + '<button class="quiz-next2" onclick="renderQuiz(savedWords)">다시 풀기 🔄</button>'
+      + '</div>';
+    dbSaveQuizResult(quizScore, quizTotal);
+  renderGoals(); // refresh goal progress
+    return;
+  }
+  var w = quizWords[quizIdx];
+  currentAnswer = w.en;
+  // Generate wrong options from other saved words
+  var others = quizWords.filter(function(x){ return x.ko !== w.ko; })
+    .sort(function(){ return Math.random()-0.5; }).slice(0,3).map(function(x){ return x.en; });
+  var opts = [w.en].concat(others).sort(function(){ return Math.random()-0.5; });
+
+  area.innerHTML = '<div class="quiz-wrap2">'
+    + '<div class="quiz-score2">Score: ' + quizScore + ' / ' + quizTotal + ' &nbsp;|&nbsp; ' + (quizIdx+1) + ' / ' + quizWords.length + '</div>'
+    + '<div class="quiz-q2">' + w.ko + '</div>'
+    + '<div class="quiz-rom2">' + (w.rom||'') + '</div>'
+    + '<div class="quiz-opts2">'
+    + opts.map(function(o){
+        return '<button class="quiz-opt2" onclick="checkQuiz(\'' + o.replace(/'/g,"\\'") + '\',this)">' + o + '</button>';
+      }).join('')
+    + '</div>'
+    + '<button class="quiz-next2" id="quiz-next2-btn" style="display:none" onclick="nextQuiz2()">Next →</button>'
+    + '</div>';
+}
+
+function checkQuiz(chosen, btn) {
+  quizTotal++;
+  document.querySelectorAll('.quiz-opt2').forEach(function(b){ b.disabled = true; });
+  if(chosen === currentAnswer) { btn.classList.add('correct'); quizScore++; }
+  else { btn.classList.add('wrong'); document.querySelectorAll('.quiz-opt2').forEach(function(b){ if(b.textContent===currentAnswer) b.classList.add('correct'); }); }
+  document.getElementById('quiz-next2-btn').style.display = 'block';
+}
+
+function nextQuiz2() { quizIdx++; showQuizQuestion(); }
+
+// ── 저장한 단어 목록 ───────────────────────────────────────────
+function renderWordsList(words) {
+  var area = document.getElementById('words-list-area');
+  if(!words || !words.length) {
+    area.innerHTML = '<div class="empty-state"><div class="es-icon">🔖</div><p>저장한 단어가 없어요.</p></div>';
+    return;
+  }
+  area.innerHTML = '<div style="margin-bottom:12px;font-size:13px;color:var(--gray)">'
+    + words.length + '개 저장됨</div>'
+    + words.map(function(w){
+        return '<div class="saved-word-row">'
+          + '<div>'
+          + '<span class="sw-ko">' + w.ko + '</span>'
+          + '<span class="sw-rom"> ' + (w.rom||'') + '</span>'
+          + '</div>'
+          + '<div style="display:flex;align-items:center;gap:12px">'
+          + '<span class="sw-en">' + (w.en||'') + '</span>'
+          + '<button class="sw-del" onclick="removeWord(\'' + w.ko.replace(/'/g,"\\'") + '\',this)" title="삭제">✕</button>'
+          + '</div>'
+          + '</div>';
+      }).join('');
+}
+
+async function removeWord(ko, btn) {
+  await dbRemoveWord(ko);
+  savedWords = savedWords.filter(function(w){ return w.ko !== ko; });
+  btn.closest('.saved-word-row').remove();
+  // Update stats
+  document.querySelector('#mp-stats .stat-card:nth-child(3) .stat-num').textContent = savedWords.length;
+}
+
+// ── 읽은 기사 목록 ─────────────────────────────────────────────
+function renderArticlesList(articles) {
+  var area = document.getElementById('articles-list-area');
+  if(!articles || !articles.length) {
+    area.innerHTML = '<div class="empty-state"><div class="es-icon">📰</div><p>아직 읽은 기사가 없어요.<br><a href="korehan-news.html" style="color:var(--bright);font-weight:700">뉴스 읽으러 가기 →</a></p></div>';
+    return;
+  }
+  area.innerHTML = '<div style="margin-bottom:12px;font-size:13px;color:var(--gray)">' + articles.length + '개 읽음</div>'
+    + articles.map(function(a){
+        var d = new Date(a.read_at);
+        var dateStr = d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0');
+        return '<div class="read-row">'
+          + '<span class="read-tag">' + (a.section||'') + '</span>'
+          + '<div>'
+          + '<a class="read-title" href="korehan-article.html?id=' + a.article_id + '">' + a.title + '</a>'
+          + '<div class="read-date">' + dateStr + '</div>'
+          + '</div>'
+          + '</div>';
+      }).join('');
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  // shared.js DOMContentLoaded fires first via script load order
+  // Wait a tick for supaSession to be loaded
+  setTimeout(initMyPage, 100);
+});
+</script>
+</body>
+</html>

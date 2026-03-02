@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KoreHan News — Learn Korean Through Real News</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css">
+<style>
+.learn-banner {
+  display: grid; grid-template-columns: 1fr 200px; gap: 14px; align-items: center;
+  background: linear-gradient(135deg,#0b1626,#1a3a6b); border-radius: 12px;
+  padding: 20px 24px; color: #fff; box-shadow: 0 10px 36px rgba(13,27,46,0.2);
+  margin: 18px 0 24px; text-decoration: none; transition: box-shadow 0.2s; display: grid;
+}
+.learn-banner:hover { box-shadow: 0 14px 44px rgba(13,27,46,0.32); }
+@media(max-width:640px){ .learn-banner{grid-template-columns:1fr;} .lb-right{display:none;} }
+.lb-badge { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px;
+  padding:3px 10px; border-radius:999px; background:rgba(122,184,245,0.2); color:#7ab8f5;
+  margin-bottom:10px; display:inline-block; }
+.lb-left h2 { font-family:'Noto Serif KR','Playfair Display',serif; font-weight:900; font-size:20px; margin:0 0 8px; line-height:1.3; }
+.lb-left p  { margin:0; font-size:13px; color:rgba(255,255,255,0.7); line-height:1.6; }
+.lb-right { text-align:center; }
+.lb-phrase-ko  { font-family:'Noto Serif KR','Playfair Display',serif; font-weight:900; font-size:30px; color:#fff; }
+.lb-phrase-rom { font-size:12px; color:rgba(255,255,255,0.5); font-style:italic; margin-top:2px; }
+.lb-phrase-en  { font-size:14px; font-weight:700; color:rgba(255,255,255,0.85); margin-top:4px; }
+.lb-cta { margin-top:14px; display:inline-block; padding:8px 18px;
+  background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
+  border-radius:999px; font-size:13px; font-weight:700; color:#fff; }
+</style>
+</head>
+<body>
+<div id="kh-header"></div>
+<div class="container">
+  <div class="hero" id="dyn-hero"></div>
+
+  <a class="learn-banner" href="korehan-learn.html">
+    <div class="lb-left">
+      <div class="lb-badge">✏️ Learn Korean</div>
+      <h2>Simplified Korean news for learners</h2>
+      <p>KoreHan News is written in easy Korean for foreign learners. Hover any underlined word to instantly see its meaning and pronunciation.</p>
+    </div>
+    <div class="lb-right">
+      <div class="lb-phrase-ko" id="banner-phrase-ko">경제 회복</div>
+      <div class="lb-phrase-rom" id="banner-phrase-rom">gyeong-je hoe-bok</div>
+      <div class="lb-phrase-en" id="banner-phrase-en">economic recovery</div>
+      <div class="lb-cta">Study vocabulary →</div>
+    </div>
+  </a>
+
+  <div class="section-title">🔥 Top Stories</div>
+  <div class="card-grid" id="dyn-top-stories"></div>
+
+  <div id="dyn-sections"></div>
+
+  <div class="two-col" style="margin-top:8px">
+    <div>
+      <div class="section-title">📰 Latest News</div>
+      <div class="story-list" id="dyn-latest"></div>
+    </div>
+    <div id="kh-sidebar"></div>
+  </div>
+
+  <div class="section-title">Opinion</div>
+  <div class="opinion-grid" id="dyn-opinions"></div>
+</div>
+<div id="kh-footer"></div>
+<script src="korehan-shared.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var phrases = getPhrases();
+  if (!phrases.length) return;
+  var p = phrases[Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length];
+  var ko  = document.getElementById('banner-phrase-ko');
+  var rom = document.getElementById('banner-phrase-rom');
+  var en  = document.getElementById('banner-phrase-en');
+  if (ko)  ko.textContent  = p.ko;
+  if (rom) rom.textContent = p.rom;
+  if (en)  en.textContent  = p.en;
+});
+</script>
+</body>
+</html>

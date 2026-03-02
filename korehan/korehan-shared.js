@@ -1,0 +1,694 @@
+/* ============================================================
+   KoreHan News — Shared JS  (버그 수정 버전)
+   ============================================================ */
+
+const DB_KEY          = 'korehan_db';
+const K_PHRASES       = 'korehan_phrases';
+const K_WORDBANK      = 'korehan_wordbank';
+const K_SENTENCES     = 'korehan_sentences';
+const K_OPINIONS      = 'korehan_opinions';
+const K_ADMIN_SESSION = 'korehan_admin_session';
+
+const DEF_PHRASES = [
+  {ko:'경제 회복', rom:'gyeong-je hoe-bok', en:'economic recovery'},
+  {ko:'민간투자',  rom:'min-gan tu-ja',     en:'private investment'},
+  {ko:'반도체',    rom:'ban-do-che',        en:'semiconductor'},
+];
+const DEF_WORDBANK = [
+  {ko:'뉴스', rom:'nyu-seu',  en:'news'},
+  {ko:'사회', rom:'sa-hoe',   en:'society'},
+  {ko:'국제', rom:'guk-je',   en:'international'},
+  {ko:'문화', rom:'mun-hwa',  en:'culture'},
+  {ko:'한국', rom:'han-guk',  en:'Korea'},
+  {ko:'학교', rom:'hak-gyo',  en:'school'},
+];
+const DEF_SENTENCES = [
+  {id:'e1', level:'초급', ko:'오늘 날씨가 좋아요.',                              en:'The weather is nice today.'},
+  {id:'e2', level:'초급', ko:'저는 학교에 가요.',                                en:'I go to school.'},
+  {id:'e3', level:'중급', ko:'대통령이 경제 회복 방안을 발표했어요.',             en:'The president announced a plan for economic recovery.'},
+  {id:'e4', level:'고급', ko:'국회에서 민생 안정 법안이 통과됐다.',               en:'A livelihood stability bill passed the National Assembly.'},
+];
+
+// ── localStorage ──────────────────────────────────────────────
+function lsGet(key, def) {
+  try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch(e) { return def; }
+}
+function lsSet(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+}
+
+// ── 공유 데이터 ───────────────────────────────────────────────
+function getPhrases()   { return lsGet(K_PHRASES,   DEF_PHRASES);   }
+function getWordBank()  { return lsGet(K_WORDBANK,  DEF_WORDBANK);  }
+function getSentences() { return lsGet(K_SENTENCES, DEF_SENTENCES); }
+function getOpinions()  { return lsGet(K_OPINIONS,  []);            }
+
+// ── 어드민 세션 ───────────────────────────────────────────────
+var supaUser = null;
+
+function signInWithGoogle() {
+  var pwd = prompt('관리자 비밀번호를 입력하세요:');
+  var ADMIN_PASSWORD = lsGet('korehan_admin_pw', 'korehan2026');
+  if (pwd === ADMIN_PASSWORD) {
+    supaUser = { email: 'admin', isAdmin: true };
+    lsSet(K_ADMIN_SESSION, { email:'admin', isAdmin:true, ts: Date.now() });
+    showAdminButton();
+    toast('관리자로 로그인되었습니다 ✓');
+  } else if (pwd !== null) {
+    toast('비밀번호가 틀렸습니다', true);
+  }
+}
+
+function signOut() {
+  supaUser = null;
+  lsSet(K_ADMIN_SESSION, null);
+  hideAdminButton();
+  toast('로그아웃되었습니다');
+}
+
+function checkSession() {
+  var sess = lsGet(K_ADMIN_SESSION, null);
+  if (sess && sess.isAdmin && (Date.now() - sess.ts) < 24 * 3600000) {
+    supaUser = sess;
+    showAdminButton();
+  }
+}
+
+function showAdminButton() {
+  var btn      = document.getElementById('topbar-admin-btn');
+  var signinBtn= document.getElementById('topbar-signin-btn');
+  if (btn) btn.style.display = 'inline-block';
+  if (signinBtn) { signinBtn.textContent = '로그아웃'; signinBtn.onclick = signOut; }
+}
+function hideAdminButton() {
+  var btn      = document.getElementById('topbar-admin-btn');
+  var signinBtn= document.getElementById('topbar-signin-btn');
+  if (btn) btn.style.display = 'none';
+  if (signinBtn) { signinBtn.textContent = 'Sign In'; signinBtn.onclick = signInWithGoogle; }
+}
+
+function toast(msg, isErr) {
+  var d = document.createElement('div');
+  d.style.cssText = 'position:fixed;bottom:22px;right:22px;z-index:9999;background:'+(isErr?'#cc2200':'#1a3a6b')+';color:#fff;padding:11px 18px;border-radius:4px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,0.25);';
+  d.textContent = msg;
+  document.body.appendChild(d);
+  setTimeout(function(){ d.remove(); }, 3000);
+}
+
+// ── 저장 단어 ─────────────────────────────────────────────────
+var K_SAVED = 'korehan_saved_words';
+function dbSaveWord(ko, rom, en) {
+  var saved = lsGet(K_SAVED, []);
+  if (!saved.find(function(w){ return w.ko === ko; })) { saved.push({ko:ko,rom:rom,en:en}); lsSet(K_SAVED, saved); }
+}
+function dbRemoveWord(ko) {
+  var saved = lsGet(K_SAVED, []).filter(function(w){ return w.ko !== ko; });
+  lsSet(K_SAVED, saved);
+}
+
+function articleUrl(id) {
+  return 'korehan-article.html?id=' + encodeURIComponent(id);
+}
+
+// ── SEED DATA ─────────────────────────────────────────────────
+var SEED_ARTICLES = [
+  { id:'s1',  section:'정치',   status:'published', featured:true,  date:'2026-03-02', image:'https://picsum.photos/seed/news1/600/400',   title:'대통령, 경제 회복 위한 대규모 민간투자 패키지 발표',               body:'정부는 오늘 향후 5년간 100조 원 규모의 민간투자를 유치하는 종합 경제 활성화 방안을 공개했다.' },
+  { id:'s2',  section:'경제',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news2/600/400',   title:'반도체 수출 석 달 연속 증가… 무역수지 흑자 전환',                 body:'반도체를 중심으로 한 수출 호조가 이어지며 무역수지가 3개월 연속 흑자를 기록했다.' },
+  { id:'s3',  section:'국제',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news3/600/400',   title:'유엔 안보리, 중동 사태 긴급 회의 소집 결의',                      body:'유엔 안전보장이사회가 중동 지역의 긴박한 상황에 대응하기 위해 긴급 회의 소집을 결의했다.' },
+  { id:'s4',  section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news4/600/400',   title:'서울시, 한강 변 대규모 주거단지 개발 계획 승인',                  body:'서울시가 마포구 일대 한강 변에 1만 세대 규모의 신규 주거단지 개발 계획을 최종 승인했다.' },
+  { id:'s5',  section:'경제',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news10/600/400',  title:'한국은행, 기준금리 동결 결정… "하반기 인하 검토"',                body:'금통위는 만장일치로 현행 3.5% 금리를 유지하기로 결정하면서 하반기 완화 가능성을 시사했다.' },
+  { id:'s6',  section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news11/600/400',  title:'전국 교원 파업 예고… 교육부와 협상 막판 진통',                   body:'전국교원노조는 처우 개선 요구가 받아들여지지 않을 경우 다음 주 전면 파업에 돌입하겠다고 선언했다.' },
+  { id:'s7',  section:'국제',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news12/600/400',  title:'나토 정상들, 방위비 분담 확대 합의… 한국도 동참 논의',            body:'북대서양조약기구 회원국들이 국방비를 GDP 대비 3%로 높이기로 원칙적 합의했다.' },
+  { id:'s8',  section:'Korea',  status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/korea1/600/400',  title:'BTS 월드투어 서울 공연 전석 매진… 추가 공연 검토 중',             body:'BTS 월드투어 서울 공연 티켓이 판매 시작 수분 만에 전석 매진되면서 소속사가 추가 공연 개최를 검토하고 있다.' },
+  { id:'s9',  section:'Korea',  status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/korea2/600/400',  title:'유네스코, 김장 문화 세계 무형문화유산 등재 확정',                  body:'한국의 전통 김치 담그기 문화인 김장이 유네스코 인류 무형문화유산으로 공식 등재됐다.' },
+  { id:'s10', section:'Korea',  status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/korea3/600/400',  title:'외국인 한국어 능력시험(TOPIK) 지원자 역대 최다 기록',              body:'2026년 TOPIK 시험 지원자 수가 역대 최고치를 기록하며 전 세계적인 한국어 학습 열풍을 실감케 했다.' },
+  { id:'s11', section:'IT과학', status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s1/600/400',      title:'삼성전자, 차세대 AI 반도체 양산 돌입… 엔비디아와 공급 계약',      body:'삼성전자가 차세대 AI 반도체 양산에 돌입하면서 엔비디아와 대규모 공급 계약을 체결했다.' },
+  { id:'s12', section:'정치',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s2/600/400',      title:'여야, 민생 안정 패키지 법안 처리 합의… 이번 주 본회의 통과 예정', body:'여야가 민생 안정 패키지 법안 처리에 합의하면서 이번 주 본회의 통과가 유력해졌다.' },
+  { id:'s13', section:'스포츠', status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s3/600/400',      title:'손흥민, 챔피언스리그 결승 진출… 한국 선수 최초 기록 수립',        body:'손흥민이 챔피언스리그 결승에 진출하며 한국 선수 최초라는 역사적 기록을 세웠다.' },
+  { id:'s14', section:'국제',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s4/600/400',      title:'기후변화 대응 새 국제협약 서명… 한국 탄소중립 2045년 목표 발표',  body:'새로운 국제 기후 협약이 서명되면서 한국은 탄소중립 목표 시점을 2045년으로 앞당겼다.' },
+  { id:'s15', section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s5/600/400',      title:'수도권 광역급행철도 GTX-B 노선 2027년 개통 확정',                 body:'GTX-B 노선이 2027년 개통을 목표로 공사가 마무리 단계에 접어들었다.' },
+  { id:'s16', section:'문화',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/cul1/600/400',    title:'넷플릭스 한국 오리지널 드라마, 전 세계 1위 달성',                 body:'넷플릭스가 제작한 한국 오리지널 드라마가 공개 첫 주 전 세계 92개국에서 1위를 기록했다.' },
+  { id:'s17', section:'경제',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/econ1/600/400',   title:'코스피 2,800선 회복… 외국인 순매수 지속',                        body:'코스피 지수가 외국인 투자자의 순매수에 힘입어 2,800선을 회복하며 강세를 이어갔다.' },
+  { id:'s18', section:'문화',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/sp1/600/400',     title:'황희찬, 프리미어리그 이번 시즌 15호 골… 팀 3연승 견인',           body:'울버햄튼의 황희찬이 번리 전에서 멀티골을 터트리며 팀의 3연승을 이끌었다.' },
+];
+
+// ── DB ────────────────────────────────────────────────────────
+function dbLoad() {
+  var stored = lsGet(DB_KEY, null);
+  if (stored && stored.length > 0) {
+    var ids = new Set(stored.map(function(a){ return a.id; }));
+    var missing = SEED_ARTICLES.filter(function(a){ return !ids.has(a.id); });
+    if (missing.length) { var merged = stored.concat(missing); lsSet(DB_KEY, merged); return merged; }
+    return stored;
+  }
+  lsSet(DB_KEY, SEED_ARTICLES);
+  return SEED_ARTICLES.slice();
+}
+function dbGet(filter) {
+  var all = dbLoad();
+  if (!filter) return all;
+  return all.filter(filter);
+}
+function published(section) {
+  return dbGet(function(a){ return a.status === 'published' && (!section || a.section === section); });
+}
+
+// ── VOCAB ─────────────────────────────────────────────────────
+var VOCAB = {
+  "대통령":{"en":"president","rom":"dae-tong-ryeong"},
+  "경제":{"en":"economy / economic","rom":"gyeong-je"},
+  "회복":{"en":"recovery","rom":"hoe-bok"},
+  "투자":{"en":"investment","rom":"tu-ja"},
+  "민간":{"en":"private sector","rom":"min-gan"},
+  "발표":{"en":"announcement","rom":"bal-pyo"},
+  "국회":{"en":"National Assembly","rom":"guk-hoe"},
+  "법안":{"en":"bill / legislation","rom":"beob-an"},
+  "표결":{"en":"vote","rom":"pyo-gyeol"},
+  "기준금리":{"en":"base interest rate","rom":"gi-jun-geum-ri"},
+  "동결":{"en":"freeze / hold","rom":"dong-gyeol"},
+  "결정":{"en":"decision","rom":"gyeol-jeong"},
+  "하반기":{"en":"second half of year","rom":"ha-ban-gi"},
+  "인하":{"en":"cut / reduction","rom":"in-ha"},
+  "검토":{"en":"review / consideration","rom":"geom-to"},
+  "수출":{"en":"export","rom":"su-chul"},
+  "반도체":{"en":"semiconductor","rom":"ban-do-che"},
+  "무역":{"en":"trade","rom":"mu-yeok"},
+  "흑자":{"en":"surplus","rom":"heuk-ja"},
+  "코스피":{"en":"KOSPI (Korea stock index)","rom":"ko-seu-pi"},
+  "부동산":{"en":"real estate","rom":"bu-dong-san"},
+  "아파트":{"en":"apartment","rom":"a-pa-teu"},
+  "지지율":{"en":"approval rating","rom":"ji-ji-yul"},
+  "정부":{"en":"government","rom":"jeong-bu"},
+  "협상":{"en":"negotiation","rom":"hyeob-sang"},
+  "합의":{"en":"agreement","rom":"hab-eui"},
+  "사회":{"en":"society","rom":"sa-hoe"},
+  "교원":{"en":"teacher / educator","rom":"gyo-won"},
+  "파업":{"en":"strike","rom":"pa-eob"},
+  "예고":{"en":"notice / warning","rom":"ye-go"},
+  "서울":{"en":"Seoul","rom":"seo-ul"},
+  "한강":{"en":"Han River","rom":"han-gang"},
+  "개발":{"en":"development","rom":"gae-bal"},
+  "계획":{"en":"plan","rom":"gye-hoek"},
+  "승인":{"en":"approval","rom":"seung-in"},
+  "개통":{"en":"opening / launch","rom":"gae-tong"},
+  "확정":{"en":"confirmed","rom":"hwak-jeong"},
+  "국제":{"en":"international","rom":"guk-je"},
+  "유엔":{"en":"United Nations","rom":"yu-en"},
+  "안보리":{"en":"Security Council","rom":"an-bo-ri"},
+  "긴급":{"en":"emergency / urgent","rom":"gin-geup"},
+  "회의":{"en":"meeting / conference","rom":"hoe-eui"},
+  "결의":{"en":"resolution","rom":"gyeol-eui"},
+  "나토":{"en":"NATO","rom":"na-to"},
+  "방위비":{"en":"defense spending","rom":"bang-wi-bi"},
+  "정상":{"en":"summit / leader","rom":"jeong-sang"},
+  "중동":{"en":"Middle East","rom":"jung-dong"},
+  "협약":{"en":"treaty / agreement","rom":"hyeob-yak"},
+  "탄소중립":{"en":"carbon neutrality","rom":"tan-so-jung-nip"},
+  "문화":{"en":"culture","rom":"mun-hwa"},
+  "공연":{"en":"performance / show","rom":"gong-yeon"},
+  "매진":{"en":"sold out","rom":"mae-jin"},
+  "드라마":{"en":"drama / TV series","rom":"deu-ra-ma"},
+  "김장":{"en":"kimchi-making tradition","rom":"gim-jang"},
+  "등재":{"en":"registration / listing","rom":"deung-jae"},
+  "무형문화유산":{"en":"intangible cultural heritage","rom":"mu-hyeong-mun-hwa-yu-san"},
+  "양산":{"en":"mass production","rom":"yang-san"},
+  "공급":{"en":"supply","rom":"gong-geup"},
+  "계약":{"en":"contract","rom":"gye-yak"},
+  "손흥민":{"en":"Son Heung-min (footballer)","rom":"son-heung-min"},
+  "챔피언스리그":{"en":"Champions League","rom":"chaem-pi-eon-seu-ri-geu"},
+  "결승":{"en":"final / decisive match","rom":"gyeol-seung"},
+  "진출":{"en":"advancement","rom":"jin-chul"},
+  "기록":{"en":"record","rom":"gi-rok"},
+  "스포츠":{"en":"sports","rom":"seu-po-cheu"},
+  "금리":{"en":"interest rate","rom":"geum-ri"},
+  "한반도":{"en":"Korean Peninsula","rom":"han-ban-do"},
+  "평화":{"en":"peace","rom":"pyeong-hwa"},
+  "저출생":{"en":"low birth rate","rom":"jeo-chul-saeng"},
+  "위기":{"en":"crisis","rom":"wi-gi"},
+  "뉴스":{"en":"news","rom":"nyu-seu"},
+  "한국":{"en":"Korea / Korean","rom":"han-guk"},
+  "속보":{"en":"breaking news","rom":"sok-bo"},
+  "역대":{"en":"all-time / in history","rom":"yeok-dae"},
+  "전국":{"en":"nationwide","rom":"jeon-guk"},
+  "안정":{"en":"stability","rom":"an-jeong"},
+  "열풍":{"en":"craze / boom","rom":"yeol-pung"},
+  "수상":{"en":"award / prize","rom":"su-sang"},
+  "개막":{"en":"opening / premiere","rom":"gae-mak"},
+  "학교":{"en":"school","rom":"hak-gyo"},
+  "가족":{"en":"family","rom":"ga-jok"},
+  "봄":{"en":"spring","rom":"bom"},
+  "여름":{"en":"summer","rom":"yeo-reum"},
+  "가을":{"en":"autumn","rom":"ga-eul"},
+  "겨울":{"en":"winter","rom":"gye-ul"},
+};
+
+// ── HTML 생성 헬퍼 ────────────────────────────────────────────
+function relTime(dateStr) {
+  if (!dateStr) return '';
+  try {
+    var diff = Date.now() - new Date(dateStr + 'T00:00:00').getTime();
+    var h = Math.floor(diff / 3600000);
+    if (h < 1)  return '방금 전';
+    if (h < 24) return h + '시간 전';
+    var d = Math.floor(h / 24);
+    return d + '일 전';
+  } catch(e) { return ''; }
+}
+
+function cardHTML(a, extraTagClass) {
+  var img = a.image || ('https://picsum.photos/seed/' + a.id + '/600/400');
+  var tc  = extraTagClass || '';
+  return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
+    + '<div class="card">'
+    + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/600/400\'">'
+    + '<div class="tag' + (tc ? ' ' + tc : '') + '">' + a.section + '</div>'
+    + '<h3 class="vocab-zone">' + a.title + '</h3>'
+    + '<p class="vocab-zone">' + (a.body || '') + '</p>'
+    + '<div class="meta">' + relTime(a.date) + '</div>'
+    + '</div></a>';
+}
+
+function storyItemHTML(a) {
+  var img = a.image || ('https://picsum.photos/seed/' + a.id + '/300/200');
+  return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
+    + '<div class="story-item">'
+    + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/300/200\'">'
+    + '<div>'
+    + '<h4 class="vocab-zone">' + a.title + '</h4>'
+    + '<div class="meta">' + a.section + ' · ' + relTime(a.date) + '</div>'
+    + '</div></div></a>';
+}
+
+function heroSideItemHTML(a) {
+  var img = a.image || ('https://picsum.photos/seed/' + a.id + '/400/200');
+  return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;display:block;">'
+    + '<div class="hero-side-item">'
+    + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/400/200\'">'
+    + '<h3 class="vocab-zone">' + a.title + '</h3>'
+    + '<p class="meta">' + a.section + ' · ' + relTime(a.date) + '</p>'
+    + '</div></a>';
+}
+
+// ── 페이지 렌더러 ─────────────────────────────────────────────
+
+function renderHomePage() {
+  var all      = published();
+  var featured = all.find(function(a){ return a.featured; }) || all[0];
+  var rest     = all.filter(function(a){ return !featured || a.id !== featured.id; });
+
+  // HERO
+  var heroEl = document.getElementById('dyn-hero');
+  if (heroEl && featured) {
+    var heroSide = rest.slice(0, 4);
+    heroEl.innerHTML =
+      '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;">'
+      + '<div class="hero-main">'
+      + '<img src="' + (featured.image || 'https://picsum.photos/seed/' + featured.id + '/900/500') + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'">'
+      + '<div class="overlay">'
+      + '<span class="category-tag">' + featured.section + '</span>'
+      + '<h1 class="vocab-zone">' + featured.title + '</h1>'
+      + '<p class="sub vocab-zone">' + (featured.body || '') + '</p>'
+      + '</div></div></a>'
+      + '<div class="hero-side">' + heroSide.map(heroSideItemHTML).join('') + '</div>';
+  }
+
+  // TOP STORIES
+  var topEl = document.getElementById('dyn-top-stories');
+  if (topEl) topEl.innerHTML = rest.slice(0, 3).map(function(a){ return cardHTML(a); }).join('');
+
+  // SECTION BLOCKS
+  var sectionsEl = document.getElementById('dyn-sections');
+  if (sectionsEl) {
+    var sections = [
+      { key:'사회', label:'Society · 사회', href:'korehan-society.html' },
+      { key:'국제', label:'World · 국제',   href:'korehan-world.html'   },
+      { key:'문화', label:'Culture · 문화', href:'korehan-culture.html' },
+    ];
+    sectionsEl.innerHTML = sections.map(function(s) {
+      var arts = published(s.key).slice(0, 3);
+      if (!arts.length) return '';
+      return '<div style="margin:24px 0 8px">'
+        + '<div class="section-title" style="display:flex;justify-content:space-between;align-items:center">'
+        + s.label
+        + '<a href="' + s.href + '" style="font-size:13px;font-weight:600;color:#2255a4;text-decoration:none">모두 보기 →</a>'
+        + '</div>'
+        + '<div class="card-grid">' + arts.map(function(a){ return cardHTML(a); }).join('') + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  // LATEST
+  var latestEl = document.getElementById('dyn-latest');
+  if (latestEl) latestEl.innerHTML = rest.slice(3, 8).map(storyItemHTML).join('');
+
+  // OPINIONS
+  var opinionsEl = document.getElementById('dyn-opinions');
+  if (opinionsEl) {
+    var ops = getOpinions();
+    if (ops.length) {
+      opinionsEl.innerHTML = ops.map(function(op){
+        return '<div class="opinion-card">'
+          + '<div class="author-img"><img src="' + (op.img || 'https://picsum.photos/seed/auth/100/100') + '" alt="' + (op.name||'') + '" onerror="this.src=\'https://picsum.photos/seed/auth/100/100\'"></div>'
+          + '<div class="author">' + (op.name||'') + '</div>'
+          + '<div class="author-title">' + (op.title||'') + '</div>'
+          + '<h4 class="vocab-zone">' + (op.headline||'') + '</h4>'
+          + '</div>';
+      }).join('');
+    }
+  }
+}
+
+function renderSectionPage(section) {
+  var articles = published(section);
+  var featured = articles[0];
+  var rest     = articles.slice(1);
+
+  // HERO
+  var heroEl = document.getElementById('dyn-hero');
+  if (heroEl) {
+    if (featured) {
+      heroEl.innerHTML =
+        '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;">'
+        + '<div class="hero-main">'
+        + '<img src="' + (featured.image || 'https://picsum.photos/seed/' + featured.id + '/900/500') + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'">'
+        + '<div class="overlay">'
+        + '<span class="category-tag' + (section === 'Korea' ? ' korea' : '') + '">' + featured.section + '</span>'
+        + '<h1 class="vocab-zone">' + featured.title + '</h1>'
+        + '<p class="sub vocab-zone">' + (featured.body || '') + '</p>'
+        + '</div></div></a>'
+        + '<div class="hero-side">' + rest.slice(0, 4).map(heroSideItemHTML).join('') + '</div>';
+    } else {
+      heroEl.innerHTML = '<div style="padding:40px;color:#999;text-align:center;grid-column:1/-1">아직 이 섹션에 기사가 없습니다.<br><a href="korehan-admin.html" style="color:#2255a4;">Admin CMS</a>에서 추가해 주세요.</div>';
+    }
+  }
+
+  // ARTICLE LIST
+  var listEl = document.getElementById('dyn-article-list');
+  if (listEl) {
+    if (!rest.length) {
+      listEl.innerHTML = '<p style="color:#999;padding:20px 0">기사가 없습니다.</p>';
+    } else {
+      listEl.innerHTML = rest.map(function(a){
+        return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
+          + '<div class="article-row">'
+          + '<img src="' + (a.image || 'https://picsum.photos/seed/' + a.id + '/300/200') + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/300/200\'">'
+          + '<div>'
+          + '<div class="tag' + (section === 'Korea' ? ' korea' : '') + '">' + a.section + '</div>'
+          + '<h3 class="vocab-zone">' + a.title + '</h3>'
+          + '<p class="vocab-zone">' + (a.body || '') + '</p>'
+          + '<div class="meta">' + relTime(a.date) + '</div>'
+          + '</div></div></a>';
+      }).join('');
+    }
+  }
+}
+
+function renderAllPage() {
+  var articles = published();
+  var listEl   = document.getElementById('dyn-article-list');
+  if (!listEl) return;
+
+  if (!articles.length) {
+    listEl.innerHTML = '<div style="padding:40px;color:#999;text-align:center">아직 기사가 없습니다.<br><a href="korehan-admin.html" style="color:#2255a4;">Admin CMS</a>에서 추가해 주세요.</div>';
+    return;
+  }
+  listEl.innerHTML = articles.map(function(a){
+    return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
+      + '<div class="article-row">'
+      + '<img src="' + (a.image || 'https://picsum.photos/seed/' + a.id + '/300/200') + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/300/200\'">'
+      + '<div>'
+      + '<div class="tag">' + a.section + '</div>'
+      + '<h3 class="vocab-zone">' + a.title + '</h3>'
+      + '<p class="vocab-zone">' + (a.body || '') + '</p>'
+      + '<div class="meta">' + relTime(a.date) + '</div>'
+      + '</div></div></a>';
+  }).join('');
+}
+
+function renderArticlePage() {
+  var wrap = document.getElementById('dyn-article');
+  if (!wrap) return;
+
+  var params = new URLSearchParams(window.location.search);
+  var id     = params.get('id');
+  var all    = dbLoad();
+  var a      = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
+
+  if (!a) {
+    wrap.innerHTML = '<div style="padding:30px">'
+      + '<div style="margin-bottom:10px"><a href="index.html" style="color:#2255a4">← Back to Home</a></div>'
+      + '<h1>Article not found</h1>'
+      + '<p style="color:#666;margin-top:8px">링크가 잘못됐거나 기사가 존재하지 않습니다.</p>'
+      + '</div>';
+    return;
+  }
+
+  var img = a.image || ('https://picsum.photos/seed/' + a.id + '/1200/700');
+  wrap.innerHTML =
+    '<article style="padding:6px 0">'
+    + '<div style="margin:8px 0 16px"><a href="index.html" style="color:#2255a4;text-decoration:none">← Home</a></div>'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
+    + '<span class="category-tag" style="position:static">' + a.section + '</span>'
+    + '<span class="meta">' + relTime(a.date) + '</span>'
+    + '</div>'
+    + '<h1 class="vocab-zone" style="margin:0 0 14px;font-family:\'Noto Serif KR\',\'Playfair Display\',serif;font-size:32px;line-height:1.2">' + a.title + '</h1>'
+    + '<img src="' + img + '" alt="" style="width:100%;border-radius:14px;max-height:460px;object-fit:cover;display:block;margin:0 0 22px" onerror="this.src=\'https://picsum.photos/seed/fallback/1200/700\'">'
+    + '<div class="vocab-zone" style="font-size:17px;line-height:1.85;color:#111">' + (a.full || a.body || '').replace(/\n/g,'<br>') + '</div>'
+    + '</article>';
+}
+
+// ── TOOLTIP ───────────────────────────────────────────────────
+function initTooltips() {
+  var tip = document.createElement('div');
+  tip.id = 'kh-tip';
+  Object.assign(tip.style, {
+    position:'fixed', zIndex:'9999', pointerEvents:'none',
+    background:'#0d1b2e', color:'#fff',
+    padding:'8px 12px', borderRadius:'4px',
+    fontFamily:"'Source Sans 3', sans-serif", fontSize:'13px',
+    borderLeft:'3px solid #2255a4',
+    boxShadow:'0 4px 16px rgba(0,0,0,0.35)',
+    maxWidth:'220px', lineHeight:'1.4',
+    opacity:'0', transition:'opacity 0.15s',
+    whiteSpace:'nowrap',
+  });
+  document.body.appendChild(tip);
+
+  document.querySelectorAll('.vocab-zone').forEach(function(el){ wrapVocab(el); });
+
+  document.addEventListener('mouseover', function(e) {
+    var w = e.target.closest ? e.target.closest('.kh-word') : null;
+    if (!w) return;
+    var d = VOCAB[w.dataset.word];
+    if (!d) return;
+    tip.innerHTML = '<span style="font-size:16px;font-weight:700;color:#7ab8f5">' + w.dataset.word + '</span><br>'
+      + '<span style="color:#aabbd0;font-size:11px;font-style:italic">' + d.rom + '</span><br>'
+      + '<strong>' + d.en + '</strong>';
+    tip.style.opacity = '1';
+  });
+  document.addEventListener('mousemove', function(e) {
+    tip.style.left = (e.clientX + 14) + 'px';
+    tip.style.top  = (e.clientY - 10) + 'px';
+  });
+  document.addEventListener('mouseout', function(e) {
+    if (e.target.closest && e.target.closest('.kh-word')) tip.style.opacity = '0';
+  });
+}
+
+function wrapVocab(el) {
+  var keys  = Object.keys(VOCAB).sort(function(a, b){ return b.length - a.length; });
+  var regex = new RegExp('(' + keys.map(function(k){ return k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).join('|') + ')', 'g');
+  var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+    acceptNode: function(n) {
+      if (!n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+      var p = n.parentNode;
+      while (p) { if (p.classList && p.classList.contains('kh-word')) return NodeFilter.FILTER_REJECT; p = p.parentNode; }
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  var nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(function(node) {
+    if (!regex.test(node.nodeValue)) return;
+    regex.lastIndex = 0;
+    var frag = document.createDocumentFragment();
+    var last = 0, m;
+    while ((m = regex.exec(node.nodeValue)) !== null) {
+      if (m.index > last) frag.appendChild(document.createTextNode(node.nodeValue.slice(last, m.index)));
+      var span = document.createElement('span');
+      span.className = 'kh-word';
+      span.dataset.word = m[0];
+      span.textContent = m[0];
+      frag.appendChild(span);
+      last = regex.lastIndex;
+    }
+    if (last < node.nodeValue.length) frag.appendChild(document.createTextNode(node.nodeValue.slice(last)));
+    node.parentNode.replaceChild(frag, node);
+  });
+}
+
+// ── 헤더 / 푸터 / 사이드바 ────────────────────────────────────
+function renderHeader() {
+  var page     = window.location.pathname.split('/').pop() || 'index.html';
+  var pageBase = page.replace(/\.html$/, '');
+  var links = [
+    { href:'index.html',          label:'Home',         cls:'',          base:'index'           },
+    { href:'korehan-korea.html',   label:'🇰🇷 Korea',   cls:'korea-nav', base:'korehan-korea'   },
+    { href:'korehan-society.html', label:'Society',      cls:'',          base:'korehan-society' },
+    { href:'korehan-world.html',   label:'World',        cls:'',          base:'korehan-world'   },
+    { href:'korehan-culture.html', label:'Culture',      cls:'',          base:'korehan-culture' },
+    { href:'korehan-opinion.html', label:'Opinion',      cls:'',          base:'korehan-opinion' },
+    { href:'korehan-learn.html',   label:'✏️ Learn',    cls:'learn-nav', base:'korehan-learn'   },
+    { href:'korehan-all.html',     label:'All News',     cls:'',          base:'korehan-all'     },
+  ];
+  return '<div class="kh-top"><div class="kh-top-inner">'
+    + '<div class="kh-top-row">'
+    + '<a class="kh-brand" href="index.html">'
+    + '<span class="kh-logo-text"><span class="kh-logo-kore">Kore</span><span class="kh-logo-han">Han</span></span>'
+    + '<span class="kh-logo-news">News</span>'
+    + '</a>'
+    + '<div class="kh-top-right">'
+    + '<div class="kh-clock"><span id="date-str"></span><span id="clock"></span></div>'
+    + '<a href="#" id="topbar-signin-btn" class="auth-btn-ui" onclick="event.preventDefault();signInWithGoogle()">Sign In</a>'
+    + '<a href="korehan-admin.html" id="topbar-admin-btn" class="auth-btn-ui" style="display:none;background:rgba(231,76,60,0.25);border-color:rgba(231,76,60,0.5)">⚙ Admin</a>'
+    + '</div></div>'
+    + '<nav class="kh-nav">'
+    + links.map(function(l){
+        var active = (pageBase === l.base || page === l.href) ? 'on' : '';
+        var cls = [l.cls, active].filter(Boolean).join(' ');
+        return '<a href="' + l.href + '"' + (cls ? ' class="' + cls + '"' : '') + '>' + l.label + '</a>';
+      }).join('')
+    + '</nav></div></div>'
+    // Breaking news ticker
+    + '<div class="kh-breaking">'
+    + '<div class="brk-label"><span class="brk-badge">⚡</span>&nbsp;속보</div>'
+    + '<div class="brk-track-wrap"><div class="brk-track">'
+    + '<span class="brk-item">대통령, 100조 원 민간투자 패키지 발표</span><span class="brk-sep">•</span>'
+    + '<span class="brk-item">코스피 2,800선 회복… 외국인 순매수 지속</span><span class="brk-sep">•</span>'
+    + '<span class="brk-item">BTS 월드투어 서울 공연 전석 매진</span><span class="brk-sep">•</span>'
+    + '<span class="brk-item">한국은행 기준금리 동결, 하반기 인하 검토</span><span class="brk-sep">•</span>'
+    + '<span class="brk-item">손흥민, 챔피언스리그 결승 진출 — 한국 최초</span><span class="brk-sep">•</span>'
+    + '<span class="brk-item">대통령, 100조 원 민간투자 패키지 발표</span><span class="brk-sep">•</span>'
+    + '<span class="brk-item">코스피 2,800선 회복… 외국인 순매수 지속</span><span class="brk-sep">•</span>'
+    + '<span class="brk-item">BTS 월드투어 서울 공연 전석 매진</span><span class="brk-sep">•</span>'
+    + '<span class="brk-item">한국은행 기준금리 동결, 하반기 인하 검토</span><span class="brk-sep">•</span>'
+    + '<span class="brk-item">손흥민, 챔피언스리그 결승 진출 — 한국 최초</span>'
+    + '</div></div></div>';
+}
+
+function renderFooter() {
+  return '<footer class="kh-foot"><div class="kh-foot-inner">'
+    + '<h3><span style="color:#3d7fd4">Kore</span><span style="color:#cc2200">Han</span> News</h3>'
+    + '<p>KoreHan News delivers real Korean news — paired with vocabulary tooltips so you learn Korean naturally through stories that matter.</p>'
+    + '<div class="footer-links">'
+    + '<a href="index.html">Home</a>'
+    + '<a href="korehan-korea.html">🇰🇷 Korea</a>'
+    + '<a href="korehan-society.html">Society</a>'
+    + '<a href="korehan-world.html">World</a>'
+    + '<a href="korehan-culture.html">Culture</a>'
+    + '<a href="korehan-opinion.html">Opinion</a>'
+    + '<a href="korehan-learn.html">✏️ Learn Korean</a>'
+    + '<a href="korehan-all.html">All News</a>'
+    + '<a href="korehan-admin.html">⚙ Admin</a>'
+    + '</div>'
+    + '</div>'
+    + '<div class="footer-copy">© 2026 KoreHan News · Learn Korean, Naturally</div>'
+    + '</footer>';
+}
+
+function renderSharedSidebar() {
+  var all = published();
+  var trendingHTML = all.slice(0, 6).map(function(a, i){
+    return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
+      + '<div class="trending-item">'
+      + '<div class="trending-num">' + (i+1) + '</div>'
+      + '<p class="vocab-zone">' + a.title + '</p>'
+      + '</div></a>';
+  }).join('');
+
+  var wbWords = [
+    {ko:'뉴스',  rom:'nyu-seu',  en:'news'},
+    {ko:'사회',  rom:'sa-hoe',   en:'society'},
+    {ko:'국제',  rom:'guk-je',   en:'international'},
+    {ko:'문화',  rom:'mun-hwa',  en:'culture'},
+    {ko:'한국',  rom:'han-guk',  en:'Korea'},
+    {ko:'경제',  rom:'gyeong-je',en:'economy'},
+  ];
+
+  return '<div class="sidebar">'
+    + '<div class="sidebar-box">'
+    + '<div class="box-title">🔥 Most Read</div>'
+    + trendingHTML
+    + '</div>'
+
+    + '<div class="sidebar-box">'
+    + '<div class="box-title">🌤 Korea Weather</div>'
+    + '<div style="font-size:13px;color:var(--gray);line-height:1.9">'
+    + '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>Seoul 서울</span><span>⛅ -3° / 6°C</span></div>'
+    + '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>Busan 부산</span><span>🌤 4° / 12°C</span></div>'
+    + '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>Incheon 인천</span><span>🌬 -4° / 5°C</span></div>'
+    + '<div style="display:flex;justify-content:space-between;padding:4px 0"><span>Jeju 제주</span><span>🌧 8° / 13°C</span></div>'
+    + '</div></div>'
+
+    + '<div class="sidebar-box">'
+    + '<div class="box-title">📚 Word Bank</div>'
+    + wbWords.map(function(w){
+        return '<div style="padding:7px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:baseline">'
+          + '<span><span class="kh-word" data-word="' + w.ko + '" style="font-size:17px;font-weight:700;color:var(--accent)">' + w.ko + '</span>'
+          + ' <span style="color:#889;font-style:italic;font-size:12px">' + w.rom + '</span></span>'
+          + '<span style="font-size:13px;color:var(--gray)">' + w.en + '</span>'
+          + '</div>';
+      }).join('')
+    + '</div>'
+
+    + '<div class="sidebar-box">'
+    + '<a href="korehan-learn.html" style="text-decoration:none;display:block;background:linear-gradient(135deg,#0b1626,#1a3a6b);border-radius:8px;padding:16px;color:#fff;text-align:center">'
+    + '<div style="font-size:20px;margin-bottom:6px">✏️</div>'
+    + '<div style="font-weight:700;font-size:14px;margin-bottom:4px">Learn Korean</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,0.6)">단어 카드 · 퀴즈 · 예문</div>'
+    + '</a></div>'
+    + '</div>';
+}
+
+// ── 시계 ──────────────────────────────────────────────────────
+function startClock() {
+  var days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  function tick() {
+    var now    = new Date();
+    var dateEl = document.getElementById('date-str');
+    var clockEl= document.getElementById('clock');
+    if (dateEl) dateEl.textContent = days[now.getDay()] + ', ' + months[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear() + ' ';
+    if (clockEl) clockEl.textContent = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+  }
+  tick(); setInterval(tick, 1000);
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  var headerEl  = document.getElementById('kh-header');
+  var footerEl  = document.getElementById('kh-footer');
+  var sidebarEl = document.getElementById('kh-sidebar');
+
+  if (headerEl)  headerEl.innerHTML  = renderHeader();
+  if (footerEl)  footerEl.innerHTML  = renderFooter();
+  if (sidebarEl) sidebarEl.innerHTML = renderSharedSidebar();
+
+  checkSession();
+
+  var page     = window.location.pathname.split('/').pop() || 'index.html';
+  var pageBase = page.replace(/\.html$/, '');
+
+  if (!pageBase || pageBase === 'index') {
+    renderHomePage();
+  } else if (pageBase === 'korehan-all')     { renderAllPage(); }
+  else if (pageBase === 'korehan-korea')     { renderSectionPage('Korea'); }
+  else if (pageBase === 'korehan-society')   { renderSectionPage('사회'); }
+  else if (pageBase === 'korehan-world')     { renderSectionPage('국제'); }
+  else if (pageBase === 'korehan-culture')   { renderSectionPage('문화'); }
+  else if (pageBase === 'korehan-opinion')   { renderSectionPage('오피니언'); }
+  else if (pageBase === 'korehan-article')   { renderArticlePage(); }
+
+  startClock();
+  initTooltips();
+});

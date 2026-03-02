@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KoreHan Admin CMS</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--a:#1a3a6b;--b:#2255a4;--li:#e8eef7;--r:#cc2200;--g:#1a7a3a;--dk:#0d1b2e;--gr:#445566;--br:#d4dce8;--w:#fff;--bg:#f4f6fa}
+body{font-family:'Source Sans 3',sans-serif;background:var(--bg);color:var(--dk);font-size:14px}
+a{color:inherit;text-decoration:none}
+
+/* TOP BAR */
+.topbar{background:var(--dk);height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;gap:12px;position:sticky;top:0;z-index:100}
+.tb-logo{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:#5a8fd0}
+.tb-logo b{color:#fff}
+.badge{background:var(--r);color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:2px;margin-left:8px}
+.tb-right{display:flex;gap:12px;align-items:center;font-size:13px}
+.tb-right a{color:#7a9ac0;text-decoration:none}
+.tb-right a:hover{color:#fff}
+.vsb{background:var(--b);color:#fff!important;padding:6px 14px;font-size:12px;font-weight:700;border-radius:3px}
+
+/* LAYOUT */
+.layout{display:flex;min-height:calc(100vh - 52px)}
+
+/* SIDEBAR */
+.sb{width:230px;flex-shrink:0;background:var(--w);border-right:1px solid var(--br);overflow-y:auto}
+.sb-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#99aabb;padding:16px 20px 4px}
+.sb-btn{display:flex;align-items:center;gap:10px;width:100%;padding:9px 20px;font-size:13px;font-weight:600;color:var(--gr);cursor:pointer;border:none;background:none;text-align:left;border-left:3px solid transparent;font-family:inherit;transition:all .15s}
+.sb-btn:hover{background:var(--li);color:var(--a)}
+.sb-btn.on{background:var(--li);color:var(--a);border-left-color:var(--a)}
+.sb-btn .ico{width:20px;text-align:center;font-size:15px}
+.pill{margin-left:auto;background:#e4e8f0;color:var(--gr);font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;min-width:20px;text-align:center}
+
+/* MAIN */
+.main{flex:1;padding:28px 32px;overflow:auto;max-width:100%}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;font-size:13px;font-weight:700;border:none;cursor:pointer;border-radius:3px;font-family:inherit;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btn-b{background:var(--a);color:#fff}
+.btn-g{background:var(--g);color:#fff}
+.btn-r{background:var(--r);color:#fff}
+.btn-gh{background:transparent;color:var(--a);border:1.5px solid var(--a)}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-xs{padding:3px 8px;font-size:11px;border-radius:2px}
+
+/* PAGE HEADER */
+.pg-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px}
+.pg-hd h1{font-family:'Playfair Display',serif;font-size:26px}
+.pg-hd p{font-size:13px;color:var(--gr);margin-top:3px}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.stat{background:var(--w);border:1px solid var(--br);padding:16px 18px}
+.stat-n{font-family:'Playfair Display',serif;font-size:28px;font-weight:900;color:var(--a);line-height:1;margin-bottom:4px}
+.stat-l{font-size:11px;color:var(--gr);text-transform:uppercase;letter-spacing:.8px}
+
+/* INFO BOX */
+.infobox{background:var(--w);border:1px solid var(--br);border-left:4px solid var(--b);padding:14px 18px;margin-bottom:16px;font-size:13px;color:var(--gr);line-height:1.7}
+.infobox h3{font-size:14px;font-weight:700;color:var(--a);margin-bottom:5px}
+
+/* TOOLBAR */
+.toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.srch{flex:1;min-width:180px;display:flex;align-items:center;background:var(--w);border:1.5px solid var(--br);border-radius:3px;padding:0 12px;gap:8px}
+.srch input{flex:1;border:none;outline:none;font-size:13px;padding:8px 0;font-family:inherit;background:transparent}
+.flt{padding:8px 12px;font-size:13px;border:1.5px solid var(--br);border-radius:3px;background:var(--w);font-family:inherit;color:var(--dk);outline:none;cursor:pointer}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;background:var(--w)}
+.tbl th{text-align:left;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--gr);border-bottom:2px solid var(--br);background:var(--li)}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--br);font-size:13px;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:#f8fafd}
+.thumb{width:70px;height:48px;object-fit:cover;border-radius:2px;display:block}
+.art-t{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;line-height:1.3}
+.art-b{font-size:12px;color:var(--gr);margin-top:3px;max-width:340px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cpill{display:inline-block;padding:2px 8px;font-size:11px;font-weight:700;border-radius:2px}
+.c사회{background:#e8eef7;color:#1a3a6b}
+.c국제{background:#f0e8f7;color:#5a1a7a}
+.c문화{background:#f7e8ee;color:#7a1a3a}
+.c스포츠{background:#e8f4f7;color:#1a5a7a}
+.cKorea{background:#fff0ec;color:#cc2200}
+.cIT과학{background:#eef7e8;color:#3a7a1a}
+.c오피니언{background:#fffbe8;color:#7a6400}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px}
+.dpub{background:var(--g)}
+.ddr{background:#aab}
+.row-act{display:flex;gap:6px}
+
+/* EMPTY */
+.empty{text-align:center;padding:56px;color:var(--gr)}
+.empty .big{font-size:48px;margin-bottom:14px}
+
+/* MODAL OVERLAY */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:200}
+.mbox{background:var(--w);border-radius:6px;width:640px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.3)}
+.m-hd{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--br)}
+.m-hd h2{font-family:'Playfair Display',serif;font-size:20px}
+.m-x{background:none;border:none;font-size:22px;cursor:pointer;color:var(--gr);line-height:1}
+.m-bd{padding:22px}
+.m-ft{display:flex;gap:10px;justify-content:flex-end;padding:14px 22px;border-top:1px solid var(--br)}
+
+/* FORM */
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.fg label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gr)}
+.fg input,.fg select,.fg textarea{border:1.5px solid var(--br);border-radius:3px;padding:9px 12px;font-size:14px;font-family:inherit;color:var(--dk);background:var(--w);outline:none;transition:border-color .15s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--b)}
+.fg textarea{resize:vertical;min-height:120px;line-height:1.6}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cntlabel{font-size:11px;color:#99aabb;text-align:right;margin-top:3px}
+.imgprev{max-width:100%;border-radius:4px;margin-top:8px;max-height:180px;object-fit:cover}
+
+/* DELETE CONFIRM */
+.del-ov{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:300}
+.del-box{background:var(--w);border-radius:8px;padding:32px 28px;text-align:center;width:360px;box-shadow:0 24px 64px rgba(0,0,0,0.3)}
+.del-box .dico{font-size:44px;margin-bottom:12px}
+.del-box h3{font-family:'Playfair Display',serif;font-size:20px;margin-bottom:8px}
+.del-box p{font-size:13px;color:var(--gr);margin-bottom:20px;max-width:280px;margin-left:auto;margin-right:auto}
+.del-btns{display:flex;gap:10px;justify-content:center}
+
+/* SETTINGS FORM */
+.sf-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.sf-row.full{grid-template-columns:1fr}
+.sf-card{background:var(--w);border:1px solid var(--br);border-radius:8px;padding:20px;margin-bottom:16px}
+.sf-card h3{font-size:14px;font-weight:700;color:var(--a);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--br)}
+.inp{width:100%;border:1.5px solid var(--br);border-radius:3px;padding:8px 12px;font-size:14px;font-family:inherit;color:var(--dk);outline:none;transition:border-color .15s}
+.inp:focus{border-color:var(--b)}
+.inp-ta{resize:vertical;min-height:80px;line-height:1.6}
+.inp-sm{font-size:13px;padding:6px 10px}
+.inp-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gr);display:block;margin-bottom:5px}
+
+/* ROW EDITOR (for ticker / opinions / etc.) */
+.row-editor{background:var(--bg);border:1px solid var(--br);border-radius:6px;padding:12px;margin-bottom:8px;display:grid;gap:8px}
+.row-del{background:var(--r);color:#fff;border:none;border-radius:3px;padding:4px 10px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:700;float:right}
+
+/* TOASTS */
+#toasts{position:fixed;bottom:22px;right:22px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.t{background:var(--dk);color:#fff;padding:11px 18px;border-radius:4px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,0.25);border-left:4px solid var(--g);min-width:240px;animation:tsin .2s ease}
+.t.err{border-left-color:var(--r)}
+@keyframes tsin{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+.section-sep{height:1px;background:var(--br);margin:6px 0}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:0">
+    <span class="tb-logo">Kore<b>Han</b> News</span>
+    <span class="badge">Admin CMS</span>
+  </div>
+  <div class="tb-right">
+    <a href="korehan-news.html" target="_blank" class="vsb">↗ 사이트 보기</a>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sb">
+    <div class="sb-lbl">기사 관리</div>
+    <button class="sb-btn on" id="sb-all" onclick="goList()"><span class="ico">📰</span>전체 기사<span class="pill" id="p-all">0</span></button>
+    <button class="sb-btn" id="sb-new" onclick="openModal(null)"><span class="ico">✏️</span>새 기사 작성</button>
+    <button class="sb-btn" onclick="goAutoArticle()"><span class="ico">🤖</span>AI 기사 자동생성</button>
+
+    <div class="sb-lbl">섹션별</div>
+    <button class="sb-btn" onclick="goFilter('사회')"> <span class="ico">🏙️</span>사회 Society <span class="pill" id="p-사회">0</span></button>
+    <button class="sb-btn" onclick="goFilter('국제')"> <span class="ico">🌍</span>국제 World   <span class="pill" id="p-국제">0</span></button>
+    <button class="sb-btn" onclick="goFilter('문화')"> <span class="ico">🎭</span>문화 Culture <span class="pill" id="p-문화">0</span></button>
+    <button class="sb-btn" onclick="goFilter('Korea')"><span class="ico">🇰🇷</span>Korea        <span class="pill" id="p-Korea">0</span></button>
+    <button class="sb-btn" onclick="goFilter('스포츠')"><span class="ico">⚽</span>스포츠 Sports<span class="pill" id="p-스포츠">0</span></button>
+    <button class="sb-btn" onclick="goFilter('IT과학')"><span class="ico">💻</span>IT·과학      <span class="pill" id="p-IT과학">0</span></button>
+    <button class="sb-btn" onclick="goFilter('오피니언')"><span class="ico">✍️</span>오피니언     <span class="pill" id="p-오피니언">0</span></button>
+
+    <div class="section-sep"></div>
+    <div class="sb-lbl">사이트 설정</div>
+    <button class="sb-btn" onclick="goSiteSettings()"><span class="ico">⚙️</span>사이트 기본 설정</button>
+    <button class="sb-btn" onclick="goOpinions()">    <span class="ico">✍️</span>오피니언 칼럼니스트</button>
+
+    <div class="section-sep"></div>
+    <div class="sb-lbl">학습 콘텐츠</div>
+    <button class="sb-btn" onclick="goPhrases()"> <span class="ico">💬</span>오늘의 표현</button>
+    <button class="sb-btn" onclick="goWordBank()"><span class="ico">📚</span>단어 플래시 카드</button>
+    <button class="sb-btn" onclick="goSentences()"><span class="ico">💬</span>예문 관리</button>
+    <div class="sb-lbl" style="margin-top:14px">운영 관리</div>
+    <button class="sb-btn" onclick="goUsers()"><span class="ico">👥</span>가입 회원</button>
+    <button class="sb-btn" onclick="goComments()"><span class="ico">💬</span>댓글 관리</button>
+    <button class="sb-btn" onclick="goNewsletter()"><span class="ico">📬</span>뉴스레터</button>
+    <button class="sb-btn" onclick="goStats()"><span class="ico">📊</span>방문자 통계</button>
+
+    <div class="section-sep"></div>
+    <div class="sb-lbl">데이터</div>
+    <button class="sb-btn" onclick="doExport()"><span class="ico">💾</span>내보내기 (JSON)</button>
+    <button class="sb-btn" onclick="document.getElementById('imp').click()"><span class="ico">📂</span>가져오기 (JSON)</button>
+    <button class="sb-btn" onclick="resetAll()" style="color:#cc2200"><span class="ico">🔄</span>전체 초기화</button>
+    <input type="file" id="imp" accept=".json" style="display:none" onchange="doImport(event)">
+  </div>
+
+  <!-- MAIN -->
+  <div class="main" id="main"></div>
+</div>
+
+<!-- ARTICLE MODAL -->
+<div class="ov" id="ov" style="display:none">
+  <div class="mbox">
+    <div class="m-hd"><h2 id="m-ttl">기사</h2><button class="m-x" id="m-x">✕</button></div>
+    <div class="m-bd" id="m-bd"></div>
+    <div class="m-ft">
+      <button class="btn btn-gh" id="m-del-from-modal" style="background:#c33;color:#fff;margin-right:auto;display:none" onclick="deleteFromModal()">🗑 삭제</button>
+      <button class="btn btn-gh" id="m-cancel">취소</button>
+      <button class="btn btn-b" style="background:#555" id="m-draft">임시저장</button>
+      <button class="btn btn-g" id="m-pub">✓ 발행</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div class="del-ov" id="del-ov" style="display:none">
+  <div class="del-box">
+    <div class="dico">🗑️</div>
+    <h3>기사를 삭제할까요?</h3>
+    <p id="del-msg">삭제하면 되돌릴 수 없습니다.</p>
+    <div class="del-btns">
+      <button class="btn btn-gh" id="del-cancel">취소</button>
+      <button class="btn btn-r"  id="del-confirm">삭제</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+'use strict';
+
+// ══ KEYS ══════════════════════════════════════════════════
+const K_DB       = 'korehan_db';
+const K_VIEWS    = 'korehan_views';
+const K_PHRASES  = 'korehan_phrases';
+const K_WORDBANK   = 'korehan_wordbank';
+const K_SENTENCES  = 'korehan_sentences';
+const SUPA_URL_ADMIN = 'https://samghztrdvtxmrmawneu.supabase.co';
+const SUPA_KEY_ADMIN = 'sb_publishable_HGL3s1r-P4PDkjQ9mjPxug_yqlgldyU';
+function supaAdminGet(path){
+  return fetch(SUPA_URL_ADMIN + path, {
+    headers: {
+      'apikey': SUPA_KEY_ADMIN,
+      'Authorization': 'Bearer ' + SUPA_KEY_ADMIN,
+      'Content-Type': 'application/json'
+    }
+  }).then(function(r){ return r.json(); });
+}
+const K_SITECONF = 'korehan_siteconf';
+const K_OPINIONS = 'korehan_opinions';
+
+// ══ HELPERS ════════════════════════════════════════════════
+function ls(k,d){ try{const r=localStorage.getItem(k);if(r!=null)return JSON.parse(r);}catch(e){}return d; }
+function lsSet(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function today(){ return new Date().toISOString().slice(0,10); }
+function fdate(d){ try{return new Date(d+'T00:00:00').toLocaleDateString('ko-KR',{year:'numeric',month:'short',day:'numeric'});}catch(e){return d||'';} }
+function toast(msg,isErr){
+  const el=document.createElement('div');
+  el.className='t'+(isErr?' err':'');
+  el.textContent=msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>el.remove(),3200);
+}
+function setSbOn(id){
+  document.querySelectorAll('.sb-btn').forEach(b=>b.classList.remove('on'));
+  if(id){ const el=document.getElementById(id); if(el) el.classList.add('on'); }
+}
+
+// ══ DEFAULTS ════════════════════════════════════════════════
+const SEED = [
+  { id:'s1',  section:'사회',   status:'published', featured:true,  date:'2026-03-02', image:'https://picsum.photos/seed/news1/600/400',   title:'대통령, 경제 회복 위한 대규모 민간투자 패키지 발표',              body:'정부는 오늘 향후 5년간 100조 원 규모의 민간투자를 유치하는 종합 경제 활성화 방안을 공개했다.' },
+  { id:'s2',  section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news2/600/400',   title:'반도체 수출 석 달 연속 증가… 무역수지 흑자 전환',                body:'반도체를 중심으로 한 수출 호조가 이어지며 무역수지가 3개월 연속 흑자를 기록했다.' },
+  { id:'s3',  section:'국제',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news3/600/400',   title:'유엔 안보리, 중동 사태 긴급 회의 소집 결의',                     body:'유엔 안전보장이사회가 중동 지역의 긴박한 상황에 대응하기 위해 긴급 회의 소집을 결의했다.' },
+  { id:'s4',  section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news4/600/400',   title:'서울시, 한강 변 대규모 주거단지 개발 계획 승인',                 body:'서울시가 마포구 일대 한강 변에 1만 세대 규모의 신규 주거단지 개발 계획을 최종 승인했다.' },
+  { id:'s5',  section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news10/600/400',  title:'한국은행, 기준금리 동결 결정… "하반기 인하 검토"',               body:'금통위는 만장일치로 현행 3.5% 금리를 유지하기로 결정하면서 하반기 완화 가능성을 시사했다.' },
+  { id:'s6',  section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news11/600/400',  title:'전국 교원 파업 예고… 교육부와 협상 막판 진통',                  body:'전국교원노조는 처우 개선 요구가 받아들여지지 않을 경우 다음 주 전면 파업에 돌입하겠다고 선언했다.' },
+  { id:'s7',  section:'국제',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news12/600/400',  title:'나토 정상들, 방위비 분담 확대 합의… 한국도 동참 논의',           body:'북대서양조약기구 회원국들이 국방비를 GDP 대비 3%로 높이기로 원칙적 합의했다.' },
+  { id:'s8',  section:'Korea',  status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/korea1/600/400',  title:'BTS 월드투어 서울 공연 전석 매진… 추가 공연 검토 중',            body:'BTS 월드투어 서울 공연 티켓이 판매 시작 수분 만에 전석 매진되면서 소속사가 추가 공연 개최를 검토하고 있다.' },
+  { id:'s9',  section:'Korea',  status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/korea2/600/400',  title:'유네스코, 김장 문화 세계 무형문화유산 등재 확정',                 body:'한국의 전통 김치 담그기 문화인 김장이 유네스코 인류 무형문화유산으로 공식 등재됐다.' },
+  { id:'s10', section:'Korea',  status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/korea3/600/400',  title:'외국인 한국어 능력시험(TOPIK) 지원자 역대 최다 기록',             body:'2026년 TOPIK 시험 지원자 수가 역대 최고치를 기록하며 전 세계적인 한국어 학습 열풍을 실감케 했다.' },
+  { id:'s11', section:'IT과학', status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s1/600/400',      title:'삼성전자, 차세대 AI 반도체 양산 돌입… 엔비디아와 공급 계약',     body:'삼성전자가 차세대 AI 반도체 양산에 돌입하면서 엔비디아와 대규모 공급 계약을 체결했다.' },
+  { id:'s12', section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s2/600/400',      title:'여야, 민생 안정 패키지 법안 처리 합의… 이번 주 본회의 통과 예정', body:'여야가 민생 안정 패키지 법안 처리에 합의하면서 이번 주 본회의 통과가 유력해졌다.' },
+  { id:'s13', section:'스포츠', status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s3/600/400',      title:'손흥민, 챔피언스리그 결승 진출… 한국 선수 최초 기록 수립',       body:'손흥민이 챔피언스리그 결승에 진출하며 한국 선수 최초라는 역사적 기록을 세웠다.' },
+  { id:'s14', section:'국제',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s4/600/400',      title:'기후변화 대응 새 국제협약 서명… 한국 탄소중립 2045년 목표 발표', body:'새로운 국제 기후 협약이 서명되면서 한국은 탄소중립 목표 시점을 2045년으로 앞당겼다.' },
+  { id:'s15', section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s5/600/400',      title:'수도권 광역급행철도 GTX-B 노선 2027년 개통 확정',                body:'GTX-B 노선이 2027년 개통을 목표로 공사가 마무리 단계에 접어들었다.' },
+  { id:'s16', section:'문화',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/cul1/600/400',    title:'넷플릭스 한국 오리지널 드라마, 전 세계 1위 달성',                body:'넷플릭스가 제작한 한국 오리지널 드라마가 공개 첫 주 전 세계 92개국에서 1위를 기록했다.' },
+  { id:'s17', section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/econ1/600/400',   title:'코스피 2,800선 회복… 외국인 순매수 지속',                       body:'코스피 지수가 외국인 투자자의 순매수에 힘입어 2,800선을 회복하며 강세를 이어갔다.' },
+  { id:'s18', section:'문화',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/sp1/600/400',     title:'황희찬, 프리미어리그 이번 시즌 15호 골… 팀 3연승 견인',          body:'울버햄튼의 황희찬이 번리 전에서 멀티골을 터트리며 팀의 3연승을 이끌었다.' },
+  { id:'s19', section:'사회',   status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/soc1/600/400',    title:'서울 지하철 9호선 급행 배차 간격 단축… 출퇴근 혼잡 해소 기대',   body:'서울시가 9호선 급행열차 배차 간격을 기존 12분에서 8분으로 줄이기로 했다. 출퇴근 시간대 혼잡도가 크게 줄어들 것으로 기대된다.' },
+  { id:'s20', section:'사회',   status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/soc2/600/400',    title:'최저임금위, 내년도 최저임금 심의 본격 시작… 노사 간격 커',        body:'최저임금위원회가 2027년 최저임금 심의를 공식 시작했다. 노동계는 1만 5천 원, 경영계는 동결을 주장하며 큰 간격을 보이고 있다.' },
+  { id:'s21', section:'국제',   status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/int1/600/400',    title:'미국, 對中 반도체 수출 규제 추가 강화… 한국 기업 영향 촉각',      body:'미국 정부가 중국에 대한 첨단 반도체 및 장비 수출 규제를 추가로 강화했다. 삼성전자, SK하이닉스 등 한국 기업들의 대응에 관심이 쏠린다.' },
+  { id:'s22', section:'국제',   status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/int2/600/400',    title:'일본, 독도 영유권 주장 또 반복… 외교부 강력 항의',               body:'일본 외무성이 연례 외교청서에서 독도를 일본 고유 영토라고 재차 주장했다. 우리 외교부는 즉각 주일 대사를 초치해 강력 항의했다.' },
+  { id:'s23', section:'문화',   status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/cul2/600/400',    title:'한국 영화 "새벽의 빛", 칸 영화제 경쟁 부문 초청 확정',           body:'한국 신예 감독 박지수의 장편 데뷔작 "새벽의 빛"이 칸 국제영화제 경쟁 부문에 공식 초청됐다. 한국 영화의 글로벌 위상을 다시 한번 확인시켰다.' },
+  { id:'s24', section:'스포츠', status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/spt2/600/400',    title:'한국 야구 대표팀, 프리미어12 우승 기대감 고조',                  body:'WBC 4강 신화의 주역들이 대거 포함된 한국 야구 대표팀이 다음 달 열리는 프리미어12 준비에 박차를 가하고 있다.' },
+  { id:'s25', section:'IT과학', status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/tech1/600/400',   title:'카카오, 자체 개발 AI 모델 "카나" 공개… 오픈AI에 도전장',         body:'카카오가 자체 개발한 대규모 언어 모델 "카나"를 공개했다. 한국어 이해·생성 능력에서 GPT-4를 능가한다는 내부 테스트 결과를 발표해 주목받고 있다.' },
+  { id:'s26', section:'IT과학', status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/tech2/600/400',   title:'현대차, 자율주행 레벨4 상용 택시 서울 도심 시범 운행 개시',       body:'현대자동차가 서울 강남 일대에서 운전자 없이 달리는 자율주행 레벨4 택시 시범 서비스를 시작했다. 안전 요원은 탑승하지 않는다.' },
+  { id:'s27', section:'Korea',  status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/kor4/600/400',    title:'제주 감귤 수확량 역대 최다… 올해 해외 수출도 사상 최고',          body:'올해 제주 감귤 생산량이 65만 톤으로 역대 최다를 기록했다. 동남아·미주 지역 수출도 크게 늘어 농가 소득 향상에 도움이 될 전망이다.' },
+  { id:'s28', section:'Korea',  status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/kor5/600/400',    title:'경복궁 야간 특별 관람 올해도 매진… 외국인 관광객 급증',           body:'문화재청이 주관하는 경복궁 야간 특별 관람 올봄 티켓이 예매 시작 5분 만에 전부 매진됐다. 방문자의 40%는 외국인 관광객인 것으로 집계됐다.' },
+];
+
+const DEF_SITECONF = {
+  siteName:'KoreHan News',
+  siteTagline:'쉬운 뉴스로 배우는 한국어',
+  footerDesc:'KoreHan News는 한국어를 배우는 외국인을 위한 뉴스 사이트입니다.\n유치원~중학교 수준의 쉬운 한국어로 쓴 뉴스를 제공합니다.\n단어에 마우스를 올리면 영어 뜻과 발음을 확인할 수 있어요.',
+  learnBannerTitle:'유치원~중학교 수준의 쉬운 한국어 뉴스',
+  learnBannerDesc:'KoreHan News는 한국어를 배우는 외국인을 위한 사이트예요. 뉴스 기사를 읽으면서 자연스럽게 한국어를 익힐 수 있어요.',
+};
+const DEF_PHRASES = [
+  {ko:'경제 회복',rom:'gyeong-je hoe-bok',en:'economic recovery'},
+  {ko:'민간투자', rom:'min-gan tu-ja',     en:'private investment'},
+  {ko:'반도체',   rom:'ban-do-che',         en:'semiconductor'},
+];
+const DEF_WORDBANK = [
+  {ko:'뉴스',rom:'nyu-seu',  en:'news'},
+  {ko:'사회',rom:'sa-hoe',   en:'society'},
+  {ko:'국제',rom:'guk-je',   en:'international'},
+  {ko:'문화',rom:'mun-hwa',  en:'culture'},
+  {ko:'한국',rom:'han-guk',  en:'Korea'},
+  {ko:'학교',rom:'hak-gyo',  en:'school'},
+];
+
+const DEF_SENTENCES = [
+  {id:'e1', level:'초급', ko:'오늘 날씨가 좋아요.',                    en:'The weather is nice today.'},
+  {id:'e2', level:'초급', ko:'저는 학교에 가요.',                       en:'I go to school.'},
+  {id:'e3', level:'초급', ko:'친구와 같이 공부해요.',                    en:'I study together with a friend.'},
+  {id:'e4', level:'초급', ko:'우리 가족은 다섯 명이에요.',               en:'My family has five members.'},
+  {id:'e5', level:'중급', ko:'대통령이 경제 회복 방안을 발표했어요.',     en:'The president announced a plan for economic recovery.'},
+  {id:'e6', level:'중급', ko:'반도체 수출이 늘고 있어요.',               en:'Semiconductor exports are increasing.'},
+  {id:'e7', level:'중급', ko:'서울에 새 아파트 단지가 생겼어요.',         en:'A new apartment complex was built in Seoul.'},
+  {id:'e8', level:'중급', ko:'나토 정상들이 방위비 합의를 했어요.',       en:'NATO leaders reached a defense spending agreement.'},
+  {id:'e9', level:'고급', ko:'국회에서 민생 안정 법안이 통과됐다.',       en:'A livelihood stability bill passed the National Assembly.'},
+  {id:'e10',level:'고급', ko:'탄소중립 2045년 목표를 발표했습니다.',      en:'The 2045 carbon neutrality target was announced.'},
+];
+const DEF_OPINIONS = [
+  {name:'김민준',title:'경제 전문 에디터',   img:'https://picsum.photos/seed/auth1/100/100',headline:'금리 인하는 독인가 약인가 — 지금 결정이 중요한 이유'},
+  {name:'이서연',title:'외교안보 칼럼니스트',img:'https://picsum.photos/seed/auth2/100/100',headline:'한반도 평화 프로세스, 지금 재가동해야 할 때'},
+  {name:'박준호',title:'IT 산업 분석가',    img:'https://picsum.photos/seed/auth3/100/100',headline:'AI 거버넌스 없이 기술 패권 경쟁에서 이길 수 없다'},
+  {name:'최유진',title:'사회문화부 기자',    img:'https://picsum.photos/seed/auth4/100/100',headline:'저출생 위기, 숫자가 아닌 삶의 질 문제로 접근해야'},
+];
+
+// ══ DB STATE ════════════════════════════════════════════════
+let DB = [];
+let activeFilter = '';
+let deleteId = null;
+
+function dbLoad(){ return ls(K_DB, null); }
+function dbSave(){ lsSet(K_DB, DB); }
+
+// Init DB
+(function(){
+  const stored = dbLoad();
+  if(stored && stored.length > 0){
+    DB = stored;
+    // Merge any new seed articles not yet in DB
+    const storedIds = new Set(stored.map(a=>a.id));
+    const missing = SEED.filter(a=>!storedIds.has(a.id));
+    if(missing.length){ DB = [...stored, ...missing]; dbSave(); }
+  } else {
+    DB = SEED.map(function(s){ return Object.assign({}, s, {date: s.date||today()}); });
+    dbSave();
+  }
+  goList();
+})();
+
+// ══ COUNTS ══════════════════════════════════════════════════
+function refreshCounts(){
+  document.getElementById('p-all').textContent = DB.length;
+  ['사회','국제','문화','Korea','스포츠','IT과학','오피니언'].forEach(s=>{
+    const el=document.getElementById('p-'+s);
+    if(el) el.textContent=DB.filter(a=>a.section===s).length;
+  });
+}
+
+// ══ ARTICLE LIST ════════════════════════════════════════════
+function goList(){
+  setSbOn('sb-all');
+  activeFilter='';
+  renderList();
+}
+function goFilter(sec){
+  setSbOn(null);
+  activeFilter=sec;
+  renderList();
+}
+
+function renderList(){
+  refreshCounts();
+  const pub   = DB.filter(a=>a.status==='published').length;
+  const draft = DB.filter(a=>a.status==='draft').length;
+  const SECS  = ['사회','국제','문화','Korea','스포츠','IT과학','오피니언'];
+
+  document.getElementById('main').innerHTML=`
+    <div class="pg-hd">
+      <div><h1>전체 기사</h1><p>기사를 추가·수정·삭제하세요</p></div>
+      <button class="btn btn-g" id="btn-new">＋ 새 기사 작성</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-n">${DB.length}</div><div class="stat-l">전체</div></div>
+      <div class="stat"><div class="stat-n">${pub}</div><div class="stat-l">발행됨</div></div>
+      <div class="stat"><div class="stat-n">${draft}</div><div class="stat-l">임시저장</div></div>
+      <div class="stat"><div class="stat-n">${DB.filter(a=>a.featured).length}</div><div class="stat-l">Featured</div></div>
+    </div>
+    <div class="infobox">
+      💡 기사를 클릭해서 수정하거나, <strong>Featured</strong>로 표시하면 메인 히어로에 표시됩니다.
+      Export로 데이터를 저장하고 Import로 불러올 수 있어요.
+    </div>
+    <div class="toolbar">
+      <div class="srch"><span>🔍</span><input id="q" type="text" placeholder="제목 검색…" oninput="renderRows()"></div>
+      <select class="flt" id="fsec" onchange="renderRows()">
+        <option value="">전체 섹션</option>
+        ${SECS.map(s=>`<option value="${s}"${activeFilter===s?' selected':''}>${s}</option>`).join('')}
+      </select>
+      <select class="flt" id="fsta" onchange="renderRows()">
+        <option value="">전체 상태</option>
+        <option value="published">발행됨</option>
+        <option value="draft">임시저장</option>
+      </select>
+    </div>
+    <div id="tbl-wrap"></div>`;
+
+  document.getElementById('btn-new').addEventListener('click',()=>openModal(null));
+  renderRows();
+}
+
+function renderRows(){
+  const q  =(document.getElementById('q')?.value||'').toLowerCase();
+  const sec= document.getElementById('fsec')?.value||'';
+  const sta= document.getElementById('fsta')?.value||'';
+  const rows=DB.filter(a=>{
+    return (!q||a.title.toLowerCase().includes(q)||(a.body||'').toLowerCase().includes(q))
+        && (!sec||a.section===sec)
+        && (!sta||a.status===sta);
+  });
+  const wrap=document.getElementById('tbl-wrap');
+  if(!wrap) return;
+  if(!rows.length){
+    wrap.innerHTML=`<div class="empty"><div class="big">📭</div><strong>기사 없음</strong></div>`;
+    return;
+  }
+  wrap.innerHTML=`
+    <table class="tbl">
+      <thead><tr>
+        <th style="width:74px">이미지</th><th>기사</th><th style="width:88px">섹션</th>
+        <th style="width:90px">상태</th><th style="width:96px">날짜</th><th style="width:160px">액션</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>`;
+  const tbody=document.getElementById('tbody');
+  rows.forEach(a=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><img class="thumb" src="${esc(a.image||'https://picsum.photos/seed/'+a.id+'/200/140')}" onerror="this.src='https://picsum.photos/seed/x/200/140'"></td>
+      <td>
+        <div class="art-t">${esc(a.title)}</div>
+        <div class="art-b">${esc(a.body||'')}</div>
+        ${a.featured?'<span style="font-size:11px;color:#b87800;font-weight:700">⭐ Featured</span>':''}
+      </td>
+      <td><span class="cpill c${esc(a.section)}">${esc(a.section)}</span></td>
+      <td><span class="dot ${a.status==='published'?'dpub':'ddr'}"></span>${a.status==='published'?'발행됨':'임시저장'}</td>
+      <td style="font-size:12px;color:var(--gr)">${fdate(a.date)}</td>
+      <td>
+        <div class="row-act">
+          <button class="btn btn-sm btn-gh edit-btn" data-id="${a.id}">수정</button>
+          <button class="btn btn-sm" style="background:#555;color:#fff" data-id="${a.id}" onclick="togglePub('${a.id}')">${a.status==='published'?'내리기':'발행'}</button>
+          <button class="btn btn-sm btn-r del-btn" data-id="${a.id}">삭제</button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.addEventListener('click',e=>{
+    const eb=e.target.closest('.edit-btn'); if(eb) openModal(eb.dataset.id);
+    const db=e.target.closest('.del-btn');  if(db) openDelete(db.dataset.id);
+  });
+}
+
+function togglePub(id){
+  const idx=DB.findIndex(a=>a.id===id); if(idx===-1) return;
+  DB[idx].status = DB[idx].status==='published'?'draft':'published';
+  dbSave(); renderRows();
+  toast(DB[idx].status==='published'?'✓ 발행됨':'임시저장으로 변경');
+}
+
+// ══ ARTICLE MODAL ════════════════════════════════════════════
+const SECS = ['사회','국제','문화','Korea','스포츠','IT과학','오피니언'];
+
+function openModal(id){
+  const a = id ? DB.find(x=>x.id===id) : null;
+  document.getElementById('m-ttl').textContent = a ? '기사 수정' : '새 기사 작성';
+  document.getElementById('m-bd').innerHTML = formHTML(a);
+  document.getElementById('ov').style.display='flex';
+  document.body.style.overflow='hidden';
+  document.getElementById('f-image').addEventListener('input', livePreview);
+  // 수정 모드일 때만 삭제 버튼 표시
+  const delBtn = document.getElementById('m-del-from-modal');
+  if(delBtn) delBtn.style.display = a ? 'inline-flex' : 'none';
+}
+
+function deleteFromModal(){
+  const eid = document.getElementById('f-id')?.value||'';
+  if(!eid) return;
+  const a = DB.find(x=>x.id===eid);
+  if(!a) return;
+  if(!confirm('「' + a.title + '」 이 기사를 삭제할까요? 되돌릴 수 없어요.')) return;
+  DB = DB.filter(x=>x.id!==eid);
+  dbSave();
+  refreshCounts();
+  closeModal();
+  goList();
+  toast('🗑 기사가 삭제됐어요.');
+}
+function closeModal(){
+  document.getElementById('ov').style.display='none';
+  document.body.style.overflow='';
+}
+function formHTML(a){
+  const v=a||{};
+  return `
+    <div class="fg-row">
+      <div class="fg">
+        <label>섹션 *</label>
+        <select id="f-sec">
+          ${SECS.map(s=>`<option value="${s}"${(v.section||'')==s?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg">
+        <label>날짜</label>
+        <input type="date" id="f-date" value="${esc(v.date||today())}">
+      </div>
+    </div>
+    <div class="fg">
+      <label>제목 (한국어) *</label>
+      <input type="text" id="f-title" value="${esc(v.title||'')}" placeholder="예: 대통령, 경제 회복 위한 발표…" maxlength="120"
+        oninput="document.getElementById('tl').textContent=this.value.length">
+      <div class="cntlabel"><span id="tl">${(v.title||'').length}</span> / 120</div>
+    </div>
+    <div class="fg">
+      <label>본문 (한국어) *</label>
+      <textarea id="f-body" maxlength="2000" placeholder="기사 본문…"
+        oninput="document.getElementById('bl').textContent=this.value.length">${esc(v.body||'')}</textarea>
+      <div class="cntlabel"><span id="bl">${(v.body||'').length}</span> / 2000</div>
+    </div>
+    <div class="fg">
+      <label>이미지 URL <span style="font-weight:400;text-transform:none;letter-spacing:0">(선택)</span></label>
+      <input type="text" id="f-image" value="${esc(v.image||'')}" placeholder="https://…">
+      <img id="f-imgprev" style="${v.image?'':'display:none'};max-width:100%;max-height:160px;border-radius:4px;margin-top:8px;object-fit:cover" src="${esc(v.image||'')}">
+    </div>
+    <div class="fg" style="flex-direction:row;align-items:center;gap:10px">
+      <input type="checkbox" id="f-feat" ${v.featured?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0">
+      <label for="f-feat" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:600;cursor:pointer;color:var(--dk)">⭐ Featured (메인 히어로에 표시)</label>
+    </div>
+    <div class="fg" style="flex-direction:row;align-items:center;gap:10px;background:#fff5f5;border:1.5px solid #f5c6c6;border-radius:8px;padding:10px 14px">
+      <input type="checkbox" id="f-break" ${v.breaking?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0;accent-color:#d00">
+      <label for="f-break" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:700;cursor:pointer;color:#c00">🔴 Breaking News (속보 티커에 표시)</label>
+    </div>
+    <input type="hidden" id="f-id" value="${v.id||''}">`;
+}
+function livePreview(){
+  const url=document.getElementById('f-image')?.value||'';
+  const p=document.getElementById('f-imgprev');
+  if(!p) return;
+  if(url){p.src=url;p.style.display='block';}else{p.style.display='none';}
+}
+function submitForm(status){
+  const title=(document.getElementById('f-title')?.value||'').trim();
+  const body =(document.getElementById('f-body')?.value||'').trim();
+  const sec  = document.getElementById('f-sec')?.value||'사회';
+  const date = document.getElementById('f-date')?.value||today();
+  const image=(document.getElementById('f-image')?.value||'').trim();
+  const feat    = document.getElementById('f-feat')?.checked||false;
+  const breaking = document.getElementById('f-break')?.checked||false;
+  const eid  = document.getElementById('f-id')?.value||'';
+  if(!title){toast('제목을 입력해 주세요',true);return;}
+  if(!body) {toast('본문을 입력해 주세요',true);return;}
+  if(eid){
+    const idx=DB.findIndex(a=>a.id===eid);
+    if(idx!==-1) DB[idx]={...DB[idx],title,body,section:sec,date,image,featured:feat,breaking:breaking,status};
+  } else {
+    DB.unshift({id:uid(),title,body,section:sec,date,image,featured:feat,breaking:breaking,status});
+  }
+  dbSave();
+  // 기사 저장 시 vocab 자동 추출
+  if(status==='published') adminExtractVocab({title,body});
+  closeModal(); goList();
+  toast(status==='published'?'✓ 발행됐어요!':'임시저장 완료');
+}
+
+// ══ VOCAB AUTO-EXTRACT ══════════════════════════════════════
+// 기사 저장 시 본문에서 학습 단어 자동 추출 → word bank에 추가
+const VOCAB_DICT = {
+  '대통령':{'rom':'dae-tong-ryeong','en':'president'},
+  '경제':{'rom':'gyeong-je','en':'economy'},
+  '회복':{'rom':'hoe-bok','en':'recovery'},
+  '투자':{'rom':'tu-ja','en':'investment'},
+  '수출':{'rom':'su-chul','en':'export'},
+  '무역':{'rom':'mu-yeok','en':'trade'},
+  '반도체':{'rom':'ban-do-che','en':'semiconductor'},
+  '문화':{'rom':'mun-hwa','en':'culture'},
+  '사회':{'rom':'sa-hoe','en':'society'},
+  '국제':{'rom':'guk-je','en':'international'},
+  '정부':{'rom':'jeong-bu','en':'government'},
+  '국회':{'rom':'guk-hoe','en':'National Assembly'},
+  '법안':{'rom':'beop-an','en':'bill / legislation'},
+  '정치':{'rom':'jeong-chi','en':'politics'},
+  '안보':{'rom':'an-bo','en':'security'},
+  '협약':{'rom':'hyeo-byak','en':'agreement / treaty'},
+  '탄소':{'rom':'tan-so','en':'carbon'},
+  '기술':{'rom':'gi-sul','en':'technology'},
+  '발표':{'rom':'bal-pyo','en':'announcement'},
+  '합의':{'rom':'ha-bui','en':'agreement'},
+  '드라마':{'rom':'deu-ra-ma','en':'drama / TV series'},
+  '공연':{'rom':'gong-yeon','en':'performance'},
+  '스포츠':{'rom':'seu-po-cheu','en':'sports'},
+  '결승':{'rom':'gyeol-seung','en':'final / championship'},
+  '계약':{'rom':'gye-yak','en':'contract'},
+  '공급':{'rom':'gong-geup','en':'supply'},
+  '금리':{'rom':'geum-ri','en':'interest rate'},
+  '인하':{'rom':'in-ha','en':'reduction / cut'},
+  '코스피':{'rom':'ko-seu-pi','en':'KOSPI (stock index)'},
+  '나토':{'rom':'na-to','en':'NATO'},
+  '유엔':{'rom':'yu-en','en':'United Nations'},
+  '평화':{'rom':'pyeong-hwa','en':'peace'},
+  '학교':{'rom':'hak-gyo','en':'school'},
+  '가족':{'rom':'ga-jok','en':'family'},
+  '날씨':{'rom':'nal-ssi','en':'weather'},
+  '친구':{'rom':'chin-gu','en':'friend'},
+  '뉴스':{'rom':'nyu-seu','en':'news'},
+  '한국':{'rom':'han-guk','en':'Korea'},
+  '서울':{'rom':'seo-ul','en':'Seoul'},
+  '자동차':{'rom':'ja-dong-cha','en':'automobile / car'},
+  '인공지능':{'rom':'in-gong-ji-neung','en':'artificial intelligence'},
+  '환경':{'rom':'hwan-gyeong','en':'environment'},
+  '교육':{'rom':'gyo-yuk','en':'education'},
+  '복지':{'rom':'bok-ji','en':'welfare'},
+  '주택':{'rom':'ju-taek','en':'housing'},
+  '외교':{'rom':'oe-gyo','en':'diplomacy'},
+  '선거':{'rom':'seon-geo','en':'election'},
+  '기후':{'rom':'gi-hu','en':'climate'},
+};
+function adminExtractVocab(article){
+  const text = (article.title||'') + ' ' + (article.body||'');
+  const found = Object.keys(VOCAB_DICT).filter(function(k){ return text.indexOf(k) >= 0; });
+  if(!found.length) return;
+  found.sort(function(){ return Math.random()-0.5; });
+  const picks = found.slice(0, 7);
+  const wb = ls(K_WORDBANK, []);
+  const existing = new Set(wb.map(function(w){ return w.ko; }));
+  const toAdd = picks.filter(function(k){ return !existing.has(k); }).map(function(k){
+    return { ko:k, rom:VOCAB_DICT[k].rom, en:VOCAB_DICT[k].en };
+  });
+  if(!toAdd.length) return;
+  const merged = [...wb, ...toAdd].slice(-60);
+  lsSet(K_WORDBANK, merged);
+}
+
+// ══ DELETE ══════════════════════════════════════════════════
+function openDelete(id){
+  deleteId=id;
+  const a=DB.find(x=>x.id===id);
+  document.getElementById('del-msg').textContent=a?'"'+a.title.slice(0,55)+(a.title.length>55?'…':'')+'"':'삭제하면 되돌릴 수 없습니다.';
+  document.getElementById('del-ov').style.display='flex';
+}
+function closeDelete(){ document.getElementById('del-ov').style.display='none'; deleteId=null; }
+function doDelete(){
+  if(!deleteId) return;
+  DB=DB.filter(a=>a.id!==deleteId); dbSave(); closeDelete(); goList();
+  toast('🗑️ 삭제됐어요');
+}
+
+// ══ SITE SETTINGS ════════════════════════════════════════════
+function goSiteSettings(){
+  setSbOn(null);
+  const c={...DEF_SITECONF,...ls(K_SITECONF,{})};
+  document.getElementById('main').innerHTML=`
+    <div class="pg-hd"><div><h1>⚙️ 사이트 기본 설정</h1><p>사이트 이름, 슬로건, 푸터 설명, 학습 배너 등을 수정하세요</p></div></div>
+    <div class="sf-card">
+      <h3>🏷️ 기본 정보</h3>
+      <div class="sf-row">
+        <div>
+          <label class="inp-label">사이트 이름</label>
+          <input class="inp inp-sm" id="sc-name" value="${esc(c.siteName)}">
+        </div>
+        <div>
+          <label class="inp-label">슬로건 (푸터 하단)</label>
+          <input class="inp inp-sm" id="sc-tagline" value="${esc(c.siteTagline)}">
+        </div>
+      </div>
+      <div>
+        <label class="inp-label">푸터 설명문</label>
+        <textarea class="inp inp-ta" id="sc-footer">${esc(c.footerDesc)}</textarea>
+      </div>
+    </div>
+    <div class="sf-card">
+      <h3>📚 메인 학습 배너 (파란 배너)</h3>
+      <div style="margin-bottom:12px">
+        <label class="inp-label">배너 제목</label>
+        <input class="inp inp-sm" id="sc-lb-title" value="${esc(c.learnBannerTitle)}">
+      </div>
+      <div>
+        <label class="inp-label">배너 설명</label>
+        <textarea class="inp inp-ta" id="sc-lb-desc">${esc(c.learnBannerDesc)}</textarea>
+      </div>
+    </div>
+    <button class="btn btn-g" onclick="saveSiteSettings()">💾 저장</button>
+    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>`;
+}
+function saveSiteSettings(){
+  const c={
+    siteName:      document.getElementById('sc-name')?.value.trim()||DEF_SITECONF.siteName,
+    siteTagline:   document.getElementById('sc-tagline')?.value.trim()||DEF_SITECONF.siteTagline,
+    footerDesc:    document.getElementById('sc-footer')?.value.trim()||DEF_SITECONF.footerDesc,
+    learnBannerTitle: document.getElementById('sc-lb-title')?.value.trim()||DEF_SITECONF.learnBannerTitle,
+    learnBannerDesc:  document.getElementById('sc-lb-desc')?.value.trim()||DEF_SITECONF.learnBannerDesc,
+  };
+  lsSet(K_SITECONF, c);
+  toast('⚙️ 사이트 설정 저장됨!');
+}
+function resetSiteSettings(){ lsSet(K_SITECONF,{}); goSiteSettings(); toast('기본값으로 초기화됐어요'); }
+
+
+// ══ OPINIONS ═════════════════════════════════════════════════
+function goOpinions(){
+  setSbOn(null);
+  const ops=ls(K_OPINIONS, DEF_OPINIONS);
+  document.getElementById('main').innerHTML=`
+    <div class="pg-hd"><div><h1>✍️ 오피니언 칼럼니스트</h1><p>메인 페이지 하단 오피니언 카드를 수정하세요</p></div></div>
+    <div id="ops-list"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-gh" onclick="addOpRow()">+ 칼럼니스트 추가</button>
+      <button class="btn btn-g"  onclick="saveOpinions()">💾 저장</button>
+    </div>`;
+  renderOpRows(ops);
+}
+function renderOpRows(ops){
+  const el=document.getElementById('ops-list'); if(!el) return;
+  el.innerHTML=ops.map((o,i)=>`
+    <div class="sf-card" data-i="${i}" style="position:relative">
+      <button class="row-del" onclick="this.closest('.sf-card').remove()">✕ 삭제</button>
+      <div class="sf-row">
+        <div>
+          <label class="inp-label">이름</label>
+          <input class="inp inp-sm op-name" value="${esc(o.name)}" placeholder="김민준">
+        </div>
+        <div>
+          <label class="inp-label">직책/설명</label>
+          <input class="inp inp-sm op-title" value="${esc(o.title)}" placeholder="경제 전문 에디터">
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label class="inp-label">사진 URL</label>
+        <input class="inp inp-sm op-img" value="${esc(o.img)}" placeholder="https://…">
+      </div>
+      <div>
+        <label class="inp-label">헤드라인</label>
+        <input class="inp op-headline" value="${esc(o.headline)}" placeholder="칼럼 제목…">
+      </div>
+    </div>`).join('');
+}
+function addOpRow(){
+  const el=document.getElementById('ops-list'); if(!el) return;
+  const d=document.createElement('div'); d.className='sf-card'; d.style.position='relative';
+  d.innerHTML=`<button class="row-del" onclick="this.closest('.sf-card').remove()">✕ 삭제</button>
+    <div class="sf-row">
+      <div><label class="inp-label">이름</label><input class="inp inp-sm op-name" placeholder="이름"></div>
+      <div><label class="inp-label">직책</label><input class="inp inp-sm op-title" placeholder="직책"></div>
+    </div>
+    <div style="margin-bottom:12px"><label class="inp-label">사진 URL</label><input class="inp inp-sm op-img" placeholder="https://…"></div>
+    <div><label class="inp-label">헤드라인</label><input class="inp op-headline" placeholder="칼럼 제목…"></div>`;
+  el.appendChild(d);
+}
+function saveOpinions(){
+  const cards=[...document.querySelectorAll('#ops-list .sf-card')];
+  const arr=cards.map(c=>({
+    name: c.querySelector('.op-name')?.value.trim()||'',
+    title:c.querySelector('.op-title')?.value.trim()||'',
+    img:  c.querySelector('.op-img')?.value.trim()||'',
+    headline:c.querySelector('.op-headline')?.value.trim()||'',
+  })).filter(o=>o.name||o.headline);
+  lsSet(K_OPINIONS, arr);
+  toast('✍️ 오피니언 저장됨! ('+arr.length+'명)');
+}
+
+// ══ PHRASES ══════════════════════════════════════════════════
+function goPhrases(){
+  setSbOn(null);
+  const items=ls(K_PHRASES, DEF_PHRASES);
+  document.getElementById('main').innerHTML=`
+    <div class="pg-hd"><div><h1>💬 오늘의 표현</h1><p>메인 배너와 학습 페이지에 표시됩니다. 매일 하나씩 순환됩니다.</p></div></div>
+    <div id="phrases-list"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-gh" onclick="addPhraseRow()">+ 표현 추가</button>
+      <button class="btn btn-g"  onclick="savePhrases()">💾 저장</button>
+    </div>`;
+  renderPhraseRows(items);
+}
+function renderPhraseRows(items){
+  const el=document.getElementById('phrases-list'); if(!el) return;
+  el.innerHTML=items.map(p=>`
+    <div class="row-editor" style="grid-template-columns:1fr 1fr 1fr auto">
+      <div><label class="inp-label">한국어</label><input class="inp inp-sm p-ko" value="${esc(p.ko)}" placeholder="예: 안녕하세요" style="font-weight:700;font-size:16px"></div>
+      <div><label class="inp-label">로마자</label><input class="inp inp-sm p-rom" value="${esc(p.rom)}" placeholder="an-nyeong-ha-se-yo"></div>
+      <div><label class="inp-label">영어 뜻</label><input class="inp inp-sm p-en" value="${esc(p.en)}" placeholder="hello"></div>
+      <button class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>
+    </div>`).join('');
+}
+function addPhraseRow(){
+  const el=document.getElementById('phrases-list'); if(!el) return;
+  const d=document.createElement('div'); d.className='row-editor'; d.style.gridTemplateColumns='1fr 1fr 1fr auto';
+  d.innerHTML=`<div><label class="inp-label">한국어</label><input class="inp inp-sm p-ko" placeholder="한국어" style="font-weight:700;font-size:16px"></div>
+    <div><label class="inp-label">로마자</label><input class="inp inp-sm p-rom" placeholder="romanization"></div>
+    <div><label class="inp-label">영어 뜻</label><input class="inp inp-sm p-en" placeholder="meaning"></div>
+    <button class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>`;
+  el.appendChild(d);
+}
+function savePhrases(){
+  const rows=[...document.querySelectorAll('#phrases-list .row-editor')];
+  const arr=rows.map(r=>({
+    ko: r.querySelector('.p-ko')?.value.trim()||'',
+    rom:r.querySelector('.p-rom')?.value.trim()||'',
+    en: r.querySelector('.p-en')?.value.trim()||'',
+  })).filter(p=>p.ko);
+  lsSet(K_PHRASES, arr);
+  toast('💬 표현 저장됨! ('+arr.length+'개)');
+}
+
+// ══ WORD BANK ════════════════════════════════════════════════
+function goWordBank(){
+  setSbOn(null);
+  const items=ls(K_WORDBANK, DEF_WORDBANK);
+  document.getElementById('main').innerHTML=`
+    <div class="pg-hd"><div><h1>📚 단어 은행</h1><p>사이드바 & 학습 페이지 단어 플래시 카드에 표시됩니다. 여기에 추가한 단어가 카드로 바로 표시돼요.</p></div></div>
+    <div class="infobox">단어, 로마자 발음, 영어 뜻을 입력하세요. 사이드바에는 최대 6개가 표시됩니다.</div>
+    <div id="wb-list"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-gh" onclick="addWbRow()">+ 단어 추가</button>
+      <button class="btn btn-g"  onclick="saveWordBank()">💾 저장</button>
+    </div>`;
+  renderWbRows(items);
+}
+function renderWbRows(items){
+  const el=document.getElementById('wb-list'); if(!el) return;
+  el.innerHTML=items.map(w=>`
+    <div class="row-editor" style="grid-template-columns:1fr 1fr 1fr auto">
+      <div><label class="inp-label">한국어</label><input class="inp inp-sm wb-ko" value="${esc(w.ko)}" placeholder="뉴스" style="font-size:20px;font-weight:900"></div>
+      <div><label class="inp-label">로마자</label><input class="inp inp-sm wb-rom" value="${esc(w.rom)}" placeholder="nyu-seu"></div>
+      <div><label class="inp-label">영어 뜻</label><input class="inp inp-sm wb-en" value="${esc(w.en)}" placeholder="news"></div>
+      <button class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>
+    </div>`).join('');
+}
+function addWbRow(){
+  const el=document.getElementById('wb-list'); if(!el) return;
+  const d=document.createElement('div'); d.className='row-editor'; d.style.gridTemplateColumns='1fr 1fr 1fr auto';
+  d.innerHTML=`<div><label class="inp-label">한국어</label><input class="inp inp-sm wb-ko" placeholder="한국어" style="font-size:20px;font-weight:900"></div>
+    <div><label class="inp-label">로마자</label><input class="inp inp-sm wb-rom" placeholder="romanization"></div>
+    <div><label class="inp-label">영어 뜻</label><input class="inp inp-sm wb-en" placeholder="meaning"></div>
+    <button class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>`;
+  el.appendChild(d);
+}
+function saveWordBank(){
+  const rows=[...document.querySelectorAll('#wb-list .row-editor')];
+  const arr=rows.map(r=>({
+    ko: r.querySelector('.wb-ko')?.value.trim()||'',
+    rom:r.querySelector('.wb-rom')?.value.trim()||'',
+    en: r.querySelector('.wb-en')?.value.trim()||'',
+  })).filter(w=>w.ko);
+  lsSet(K_WORDBANK, arr);
+  toast('📚 단어 은행 저장됨! ('+arr.length+'개)');
+}
+
+// ══ SENTENCES ═══════════════════════════════════════════════
+function goSentences(){
+  setSbOn(null);
+  const items = ls(K_SENTENCES, DEF_SENTENCES);
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>💬 예문 관리</h1><p>학습 페이지 Example Sentences에 표시됩니다.</p></div></div>'
+   +'<div class="infobox">난이도(초급/중급/고급), 한국어 예문, 영어 번역을 입력하세요.</div>'
+   +'<div id="sent-list"></div>'
+   +'<div style="display:flex;gap:8px;margin-top:12px">'
+   +'<button class="btn btn-gh" onclick="addSentRow()">+ 예문 추가</button>'
+   +'<button class="btn btn-g" onclick="saveSentences()">💾 저장</button>'
+   +'<button class="btn btn-r" onclick="resetSentences()">↺ 초기화</button>'
+   +'</div>';
+  renderSentRows(items);
+}
+function resetSentences(){
+  if(confirm('기본 예문으로 초기화할까요?')){ lsSet(K_SENTENCES, DEF_SENTENCES); goSentences(); }
+}
+function renderSentRows(items){
+  const el = document.getElementById('sent-list'); if(!el) return;
+  el.innerHTML = items.map(function(s){
+    const opts = ['초급','중급','고급'].map(function(lv){
+      return '<option value="'+lv+'"'+(s.level===lv?' selected':'')+'>'+lv+'</option>';
+    }).join('');
+    return '<div class="row-editor" style="grid-template-columns:100px 1fr 1fr auto">'
+      +'<div><label class="inp-label">난이도</label>'
+      +'<select class="inp inp-sm sent-level" style="height:38px">'+opts+'</select></div>'
+      +'<div><label class="inp-label">한국어 예문</label>'
+      +'<input class="inp inp-sm sent-ko" value="'+esc(s.ko)+'" placeholder="한국어 문장"></div>'
+      +'<div><label class="inp-label">영어 번역</label>'
+      +'<input class="inp inp-sm sent-en" value="'+esc(s.en)+'" placeholder="English translation"></div>'
+      +'<button class="row-del" style="align-self:flex-end" onclick="this.closest(\'.row-editor\').remove()\">✕</button>'
+      +'</div>';
+  }).join('');
+}
+function addSentRow(){
+  const el = document.getElementById('sent-list'); if(!el) return;
+  const d = document.createElement('div');
+  d.className = 'row-editor';
+  d.style.gridTemplateColumns = '100px 1fr 1fr auto';
+  d.innerHTML = '<div><label class="inp-label">난이도</label>'
+    +'<select class="inp inp-sm sent-level" style="height:38px">'
+    +'<option>초급</option><option>중급</option><option>고급</option>'
+    +'</select></div>'
+    +'<div><label class="inp-label">한국어 예문</label>'
+    +'<input class="inp inp-sm sent-ko" placeholder="한국어 문장"></div>'
+    +'<div><label class="inp-label">영어 번역</label>'
+    +'<input class="inp inp-sm sent-en" placeholder="English translation"></div>'
+    +'<button class="row-del" style="align-self:flex-end" onclick="this.closest(\'.row-editor\').remove()\">✕</button>';
+  el.appendChild(d);
+}
+function saveSentences(){
+  const rows = [...document.querySelectorAll('#sent-list .row-editor')];
+  const arr = rows.map(function(r, i){
+    return {
+      id: 'e'+(i+1),
+      level: r.querySelector('.sent-level') ? r.querySelector('.sent-level').value : '초급',
+      ko:    r.querySelector('.sent-ko')    ? r.querySelector('.sent-ko').value.trim() : '',
+      en:    r.querySelector('.sent-en')    ? r.querySelector('.sent-en').value.trim() : '',
+    };
+  }).filter(function(s){ return s.ko; });
+  lsSet(K_SENTENCES, arr);
+  toast('💬 예문 저장됨! ('+arr.length+'개)');
+}
+
+// ══ AUTO ARTICLE GENERATION ══════════════════════════════════
+const AUTO_SECTIONS = [
+  { key:'사회',  icon:'🏙️', topics:'Korean society, education, housing, labor, welfare, demographics' },
+  { key:'국제',  icon:'🌍', topics:'international affairs, geopolitics, diplomacy, global economy' },
+  { key:'문화',  icon:'🎭', topics:'Korean culture, K-drama, K-pop, movies, sports, arts' },
+  { key:'스포츠',icon:'⚽', topics:'Korean and international sports news, football, baseball, Olympics' },
+  { key:'IT과학',icon:'💻', topics:'technology, AI, semiconductors, startups, science discoveries' },
+];
+
+function goAutoArticle(){
+  setSbOn(null);
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>🤖 AI 기사 자동생성</h1>'
+   +'<p>Claude AI가 각 섹션별 최신 이슈를 쉬운 한국어로 자동 생성합니다.</p></div></div>'
+   +'<div class="infobox">💡 생성된 기사는 <b>임시저장</b> 상태로 저장됩니다. 검토 후 직접 발행하세요.<br>Anthropic API 키가 필요합니다.</div>'
+   +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">'
+   +'<input id="auto-api-key" type="password" placeholder="Anthropic API 키 (sk-ant-...)" '
+   +'style="flex:1;padding:9px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit">'
+   +'<button class="btn btn-g" onclick="loadAutoApiKey()">키 불러오기</button>'
+   +'</div>'
+   +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:20px">'
+   + AUTO_SECTIONS.map(function(s){
+       return '<label style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f8faff;border:1.5px solid var(--bo);border-radius:8px;cursor:pointer;font-weight:600">'
+         +'<input type="checkbox" value="'+s.key+'" checked style="width:16px;height:16px"> '+s.icon+' '+s.key+'</label>';
+     }).join('')
+   +'</div>'
+   +'<button class="btn btn-g" onclick="runAutoGenerate()" style="font-size:15px;padding:12px 32px">🚀 선택 섹션 기사 생성</button>'
+   +'<div id="auto-progress" style="margin-top:20px"></div>';
+
+  // Load saved key
+  loadAutoApiKey();
+}
+
+function loadAutoApiKey(){
+  const saved = localStorage.getItem('kh_anthropic_key') || '';
+  const input = document.getElementById('auto-api-key');
+  if(input && saved) input.value = saved;
+}
+
+async function runAutoGenerate(){
+  const keyInput = document.getElementById('auto-api-key');
+  const apiKey   = keyInput ? keyInput.value.trim() : '';
+  if(!apiKey){ toast('API 키를 입력해 주세요', true); return; }
+  localStorage.setItem('kh_anthropic_key', apiKey);
+
+  const checked = [...document.querySelectorAll('#main input[type=checkbox]:checked')].map(function(c){ return c.value; });
+  if(!checked.length){ toast('섹션을 하나 이상 선택해 주세요', true); return; }
+
+  const progress = document.getElementById('auto-progress');
+  progress.innerHTML = '';
+
+  for(const secKey of checked){
+    const sec = AUTO_SECTIONS.find(function(s){ return s.key === secKey; });
+    if(!sec) continue;
+
+    const rowId = 'prog-'+secKey;
+    progress.innerHTML += '<div id="'+rowId+'" style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:#fff;border:1px solid var(--bo);border-radius:8px;margin-bottom:8px">'
+      +'<span style="font-size:18px">'+sec.icon+'</span>'
+      +'<span style="font-weight:700">'+sec.key+'</span>'
+      +'<span id="'+rowId+'-status" style="color:var(--gr);font-size:13px">⏳ 생성 중…</span>'
+      +'</div>';
+
+    try {
+      const today = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
+      const prompt = '당신은 10년 경력의 한국 신문 기자입니다. '
+        +'오늘(' + today + ')을 기준으로 ' + sec.key + ' 분야(' + sec.topics + ')에서 '
+        +'실제로 화제가 되고 있는 이슈를 바탕으로 신문 기사를 작성해 주세요.\n\n'
+        +'[문체 및 형식]\n'
+        +'- 실제 한국 신문(한겨레, 조선일보 등) 스타일의 기사체로 작성\n'
+        +'- 육하원칙(누가, 언제, 어디서, 무엇을, 왜, 어떻게)을 자연스럽게 포함\n'
+        +'- 리드문(첫 문장)에 핵심 내용 요약, 이후 상세 설명 전개\n'
+        +'- 관계자 인용구 1~2개 포함 (예: ○○ 관계자는 "..."라고 말했다)\n'
+        +'- 단락 구분을 명확히 하고 각 단락은 2~4문장\n\n'
+        +'[어휘 및 문장]\n'
+        +'- 한국어 학습자(중급 수준)가 이해할 수 있는 어휘 사용\n'
+        +'- 너무 어려운 한자어나 전문 용어는 괄호 안에 쉬운 설명 추가\n'
+        +'- 문장 길이: 한 문장에 40~60자 내외\n\n'
+        +'[분량]\n'
+        +'- 제목: 20자 이내\n'
+        +'- 본문: 25~30줄 (줄바꿈 포함), 실제 신문 단신 기사 분량\n\n'
+        +'[주의사항]\n'
+        +'- 실제 존재하는 최근 이슈 기반 (완전 허구 불가)\n'
+        +'- 특정 실존 인물 비방 금지\n'
+        +'- 광고성 내용 금지\n\n'
+        +'응답은 반드시 아래 JSON 형식으로만 출력하세요 (마크다운 코드블록 불필요):\n'
+        +'{"title":"기사 제목","body":"기사 본문 (단락 구분은 \\n\\n, 줄바꿈은 \\n 사용)"}';
+
+      const res = await fetch('https://purple-glitter-be9d.enane960819.workers.dev/', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','x-api-key':apiKey},
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 2000,
+          messages: [{role:'user', content: prompt}]
+        })
+      });
+
+      const data = await res.json();
+      const text = data.content && data.content[0] && data.content[0].text || '';
+      if(!text) throw new Error('빈 응답');
+
+      // Parse JSON response
+      const clean = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
+      const article = JSON.parse(clean);
+
+      if(!article.title || !article.body) throw new Error('형식 오류');
+
+      // Save to DB as draft
+      const newArticle = {
+        id: uid(),
+        section: sec.key,
+        title: article.title,
+        body: article.body,
+        date: today_date(),
+        status: 'draft',
+        featured: false,
+        image: 'https://picsum.photos/seed/' + Math.random().toString(36).slice(2,8) + '/600/400',
+      };
+      DB.unshift(newArticle);
+      dbSave();
+      refreshCounts();
+
+      document.getElementById(rowId+'-status').innerHTML =
+        '<span style="color:#28a745;font-weight:700">✅ 완료 — </span>'
+        +"<a href=\"#\" onclick=\"openModal('"+newArticle.id+"')\" style=\"color:var(--a);font-weight:700\">검토 후 발행하기 →</a>";
+
+    } catch(err) {
+      document.getElementById(rowId+'-status').innerHTML =
+        '<span style="color:#dc3545">❌ 실패: '+err.message+'</span>';
+    }
+  }
+
+  toast('🤖 기사 생성 완료! 임시저장 목록에서 확인하세요.');
+}
+
+function today_date(){
+  return new Date().toISOString().split('T')[0];
+}
+
+// ══ COMMENTS ADMIN ════════════════════════════════════════════
+function goComments() {
+  setSbOn(null);
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>💬 댓글 관리</h1><p>모든 기사의 댓글을 확인하고 답변할 수 있어요.</p></div></div>'
+   +'<div id="comments-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 불러오는 중…</div></div>';
+  loadAllComments();
+}
+
+async function loadAllComments() {
+  var wrap = document.getElementById('comments-admin-wrap');
+  try {
+    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?order=created_at.desc&limit=100', { headers: { 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN } });
+    var rows = res.ok ? await res.json() : [];
+    if(!rows.length) { wrap.innerHTML='<div class="infobox">아직 댓글이 없어요.</div>'; return; }
+
+    wrap.innerHTML = '<div style="font-size:13px;color:var(--gr);margin-bottom:12px">총 '+rows.length+'개 댓글</div>'
+      + rows.map(function(c) {
+          var art = DB.find(function(a){ return a.id===c.article_id; });
+          var artTitle = art ? art.title : c.article_id;
+          var dateStr  = new Date(c.created_at).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+          return '<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:16px 18px;margin-bottom:10px">'
+            +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
+            +'<div style="font-size:12px;color:var(--gr)">'
+            +'<a href="korehan-article.html?id='+c.article_id+'" target="_blank" style="color:var(--a);font-weight:700">'+artTitle+'</a>'
+            +' · '+c.user_name+' · '+dateStr
+            +'</div>'
+            +'<button data-id="'+c.id+'" onclick="adminDeleteComment(this.dataset.id)" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:13px;padding:2px 6px">🗑</button>'
+            +'</div>'
+            +'<div style="font-size:14px;color:#222;margin-bottom:10px">'+c.body+'</div>'
+            +(c.reply
+              ? '<div style="background:#f0f4ff;border-left:3px solid var(--a);padding:8px 12px;border-radius:0 6px 6px 0;font-size:13px;margin-bottom:8px"><b>내 답변:</b> '+c.reply+'</div>'
+              : ''
+            )
+            +'<div style="display:flex;gap:8px;align-items:flex-end">'
+            +'<textarea data-id="'+c.id+'" placeholder="답변 입력…" style="flex:1;padding:8px 12px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;min-height:60px">'+(c.reply||'')+'</textarea>'
+            +'<button data-id="'+c.id+'" onclick="adminReplyComment(this.dataset.id,this)" style="padding:8px 18px;background:var(--a);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">답변 저장</button>'
+            +'</div>'
+            +'</div>';
+        }).join('');
+  } catch(e) {
+    wrap.innerHTML = '<div class="infobox" style="color:#c33">⚠️ 로드 실패: '+e.message+'</div>';
+  }
+}
+
+async function adminReplyComment(id, btn) {
+  var ta = document.querySelector('textarea[data-id="'+id+'"]');
+  if(!ta) return;
+  var reply = ta.value.trim();
+  if(!reply) return;
+  btn.disabled = true; btn.textContent = '저장 중…';
+  await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?id=eq.'+id, {
+    method:'PATCH',
+    headers:{ 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN,'Content-Type':'application/json','Prefer':'return=minimal' },
+    body: JSON.stringify({ reply:reply, replied_at:new Date().toISOString() })
+  });
+  btn.disabled = false; btn.textContent = '답변 저장';
+  toast('✅ 답변이 저장됐어요!');
+}
+
+async function adminDeleteComment(id) {
+  if(!confirm('댓글을 삭제할까요?')) return;
+  await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?id=eq.'+id, {
+    method:'DELETE',
+    headers:{ 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN }
+  });
+  loadAllComments();
+  toast('🗑 삭제됐어요.');
+}
+
+// ══ NEWSLETTER ADMIN ════════════════════════════════════════
+function goNewsletter() {
+  setSbOn(null);
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>📬 뉴스레터 구독자</h1><p>구독자 목록을 확인하고 CSV로 내보낼 수 있어요.</p></div></div>'
+   +'<div id="nl-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 불러오는 중…</div></div>';
+  loadNewsletter();
+}
+
+async function loadNewsletter() {
+  var wrap = document.getElementById('nl-admin-wrap');
+  try {
+    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/newsletter_subs?order=subscribed_at.desc', { headers: { 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN } });
+    var rows = res.ok ? await res.json() : [];
+    if(!rows.length) { wrap.innerHTML='<div class="infobox">아직 구독자가 없어요.</div>'; return; }
+    wrap.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+      +'<span style="font-size:13px;color:var(--gr)">총 '+rows.length+'명 구독 중</span>'
+      +'<button onclick="exportNlCsv()" style="padding:7px 16px;background:var(--a);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📥 CSV 내보내기</button>'
+      +'</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:13px">'
+      +'<thead><tr style="border-bottom:2px solid var(--bo)">'
+      +'<th style="padding:8px 12px;text-align:left;color:var(--gr)">이름</th>'
+      +'<th style="padding:8px 12px;text-align:left;color:var(--gr)">이메일</th>'
+      +'<th style="padding:8px 12px;text-align:left;color:var(--gr)">구독일</th>'
+      +'<th style="padding:8px 12px;text-align:left;color:var(--gr)">상태</th>'
+      +'</tr></thead><tbody>'
+      + rows.map(function(r){
+          return '<tr style="border-bottom:1px solid var(--bo)">'
+            +'<td style="padding:10px 12px">'+(r.name||'-')+'</td>'
+            +'<td style="padding:10px 12px">'+r.email+'</td>'
+            +'<td style="padding:10px 12px;color:var(--gr)">'+new Date(r.subscribed_at).toLocaleDateString('ko-KR')+'</td>'
+            +'<td style="padding:10px 12px"><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:'+(r.active?'#d4edda':'#f8d7da')+';color:'+(r.active?'#155724':'#721c24')+'">'+( r.active?'구독중':'취소됨')+'</span></td>'
+            +'</tr>';
+        }).join('')
+      +'</tbody></table>';
+    window._nlRows = rows;
+  } catch(e) {
+    wrap.innerHTML = '<div class="infobox" style="color:#c33">⚠️ 로드 실패</div>';
+  }
+}
+
+function exportNlCsv() {
+  if(!window._nlRows) return;
+  var csv = '이름,이메일,구독일,상태\n'
+    + window._nlRows.map(function(r){
+        return [r.name||'',r.email,new Date(r.subscribed_at).toLocaleDateString('ko-KR'),r.active?'구독중':'취소됨'].join(',');
+      }).join('\n');
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'korehan_newsletter_'+new Date().toISOString().split('T')[0]+'.csv';
+  a.click();
+}
+
+// ══ VISITOR STATS ════════════════════════════════════════════
+function goStats() {
+  setSbOn(null);
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>📊 방문자 통계</h1><p>최근 30일 기준 페이지뷰와 인기 기사를 확인해요.</p></div></div>'
+   +'<div id="stats-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 불러오는 중…</div></div>';
+  loadStats();
+}
+
+async function loadStats() {
+  var wrap = document.getElementById('stats-admin-wrap');
+  try {
+    var since = new Date(Date.now()-30*86400000).toISOString();
+    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/page_views?viewed_at=gte.'+since+'&order=viewed_at.desc&limit=2000', { headers: { 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN } });
+    var rows = res.ok ? await res.json() : [];
+
+    var totalViews = rows.length;
+    var todayStr   = new Date().toISOString().split('T')[0];
+    var todayViews = rows.filter(function(r){ return r.viewed_at.startsWith(todayStr); }).length;
+
+    // Daily counts (last 14 days)
+    var daily = {};
+    for(var d=13; d>=0; d--) {
+      var dt = new Date(Date.now()-d*86400000).toISOString().split('T')[0];
+      daily[dt] = rows.filter(function(r){ return r.viewed_at.startsWith(dt); }).length;
+    }
+
+    // Top articles
+    var artCounts = {};
+    rows.filter(function(r){ return r.article_id; }).forEach(function(r){
+      artCounts[r.article_id] = (artCounts[r.article_id]||0)+1;
+    });
+    var topArts = Object.entries(artCounts).sort(function(a,b){ return b[1]-a[1]; }).slice(0,10);
+
+    var maxVal = Math.max.apply(null, Object.values(daily).concat([1]));
+
+    wrap.innerHTML =
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:28px">'
+      +'<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:18px;text-align:center">'
+      +'<div style="font-size:32px;font-weight:900;color:var(--a)">'+totalViews+'</div><div style="font-size:12px;color:var(--gr);font-weight:700">30일 총 페이지뷰</div></div>'
+      +'<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:18px;text-align:center">'
+      +'<div style="font-size:32px;font-weight:900;color:var(--a)">'+todayViews+'</div><div style="font-size:12px;color:var(--gr);font-weight:700">오늘 페이지뷰</div></div>'
+      +'<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:18px;text-align:center">'
+      +'<div style="font-size:32px;font-weight:900;color:var(--a)">'+topArts.length+'</div><div style="font-size:12px;color:var(--gr);font-weight:700">조회된 기사 수</div></div>'
+      +'</div>'
+
+      // 바 차트
+      +'<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:20px;margin-bottom:20px">'
+      +'<div style="font-size:14px;font-weight:700;color:var(--dk);margin-bottom:16px">최근 14일 일별 페이지뷰</div>'
+      +'<div style="display:flex;align-items:flex-end;gap:6px;height:100px">'
+      + Object.entries(daily).map(function(e){
+          var h = Math.round((e[1]/maxVal)*90)+4;
+          var isToday = e[0]===todayStr;
+          return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">'
+            +'<div style="font-size:10px;color:var(--gr)">'+e[1]+'</div>'
+            +'<div style="width:100%;height:'+h+'px;background:'+(isToday?'var(--a)':'#c5d5f0')+';border-radius:4px 4px 0 0"></div>'
+            +'<div style="font-size:9px;color:var(--gr)">'+e[0].slice(5)+'</div>'
+            +'</div>';
+        }).join('')
+      +'</div></div>'
+
+      // 인기 기사
+      +'<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:20px">'
+      +'<div style="font-size:14px;font-weight:700;color:var(--dk);margin-bottom:14px">🏆 인기 기사 Top 10</div>'
+      + (topArts.length ? topArts.map(function(e,i){
+          var art = DB.find(function(a){ return a.id===e[0]; });
+          var title = art ? art.title : e[0];
+          return '<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--bo)">'
+            +'<span style="font-size:16px;font-weight:900;color:var(--a);width:24px;text-align:right">'+(i+1)+'</span>'
+            +'<div style="flex:1;font-size:13px;font-weight:600">'+title+'</div>'
+            +'<span style="font-size:13px;font-weight:700;color:var(--gr)">'+e[1]+'회</span>'
+            +'</div>';
+        }).join('') : '<div style="color:var(--gr);font-size:13px">데이터가 없어요.</div>')
+      +'</div>';
+  } catch(e) {
+    wrap.innerHTML = '<div class="infobox" style="color:#c33">⚠️ 로드 실패: '+e.message+'</div>';
+  }
+}
+
+// ══ USERS ════════════════════════════════════════════════════
+function goUsers(){
+  setSbOn(null);
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>👥 가입 회원</h1><p>구글 로그인으로 가입한 회원 목록입니다.</p></div></div>'
+   +'<div id="users-wrap"><div style="padding:24px;color:var(--gray);text-align:center">⏳ 불러오는 중…</div></div>';
+  loadUsers();
+}
+
+async function loadUsers(){
+  try {
+    // saved_words 기준으로 활동한 유저 집계
+    const [words, articles, quizzes, streaks] = await Promise.all([
+      supaAdminGet('/rest/v1/saved_words?select=user_id,ko,created_at&order=created_at.desc'),
+      supaAdminGet('/rest/v1/read_articles?select=user_id,title,section,read_at&order=read_at.desc'),
+      supaAdminGet('/rest/v1/quiz_results?select=user_id,correct,total,played_at&order=played_at.desc'),
+      supaAdminGet('/rest/v1/study_streaks?select=*&order=streak.desc'),
+    ]);
+
+    // Aggregate by user_id
+    const users = {};
+    function getUser(uid){
+      if(!users[uid]) users[uid] = { id:uid, words:0, articles:0, quizzes:0, streak:0, lastSeen:null };
+      return users[uid];
+    }
+    (words||[]).forEach(function(r){ var u=getUser(r.user_id); u.words++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
+    (articles||[]).forEach(function(r){ var u=getUser(r.user_id); u.articles++; if(!u.lastSeen||r.read_at>u.lastSeen) u.lastSeen=r.read_at; });
+    (quizzes||[]).forEach(function(r){ var u=getUser(r.user_id); u.quizzes++; });
+    (streaks||[]).forEach(function(r){ if(users[r.user_id]) users[r.user_id].streak = r.streak; });
+
+    const list = Object.values(users).sort(function(a,b){ return (b.lastSeen||'') > (a.lastSeen||'') ? 1 : -1; });
+
+    const el = document.getElementById('users-wrap');
+    if(!list.length){
+      el.innerHTML = '<div class="infobox">아직 가입한 회원이 없습니다. 로그인한 회원이 활동을 시작하면 여기 표시됩니다.</div>';
+      return;
+    }
+
+    el.innerHTML =
+      '<div style="margin-bottom:12px;font-size:13px;color:var(--gray)">총 '+list.length+'명</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:13px">'
+      +'<thead><tr style="border-bottom:2px solid var(--border);text-align:left">'
+      +'<th style="padding:8px 12px;color:var(--gray);font-weight:700">User ID</th>'
+      +'<th style="padding:8px 12px;color:var(--gray);font-weight:700">저장단어</th>'
+      +'<th style="padding:8px 12px;color:var(--gray);font-weight:700">읽은기사</th>'
+      +'<th style="padding:8px 12px;color:var(--gray);font-weight:700">퀴즈횟수</th>'
+      +'<th style="padding:8px 12px;color:var(--gray);font-weight:700">🔥연속일</th>'
+      +'<th style="padding:8px 12px;color:var(--gray);font-weight:700">마지막 활동</th>'
+      +'</tr></thead><tbody>'
+      + list.map(function(u){
+          var lastSeen = u.lastSeen ? new Date(u.lastSeen).toLocaleDateString('ko-KR') : '-';
+          var shortId = u.id.slice(0,8)+'…';
+          return '<tr style="border-bottom:1px solid var(--border)">'
+            +'<td style="padding:10px 12px;font-family:monospace;font-size:12px;color:var(--gray)" title="'+u.id+'">'+shortId+'</td>'
+            +'<td style="padding:10px 12px;font-weight:700;color:var(--accent)">'+u.words+'</td>'
+            +'<td style="padding:10px 12px">'+u.articles+'</td>'
+            +'<td style="padding:10px 12px">'+u.quizzes+'</td>'
+            +'<td style="padding:10px 12px">'+(u.streak||0)+'</td>'
+            +'<td style="padding:10px 12px;color:var(--gray)">'+lastSeen+'</td>'
+            +'</tr>';
+        }).join('')
+      +'</tbody></table>';
+
+  } catch(err) {
+    document.getElementById('users-wrap').innerHTML =
+      '<div class="infobox" style="color:#c33">⚠️ 데이터 불러오기 실패: '+err.message+'</div>';
+  }
+}
+
+// ══ EXPORT / IMPORT / RESET ══════════════════════════════════
+function doExport(){
+  const data={
+    articles: DB,
+    siteconf: ls(K_SITECONF,{}),
+    opinions: ls(K_OPINIONS,[]),
+    phrases:  ls(K_PHRASES,[]),
+    wordbank:   ls(K_WORDBANK,[]),
+    sentences: ls(K_SENTENCES,[]),
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='korehan-backup.json'; a.click();
+  URL.revokeObjectURL(url);
+  toast('💾 korehan-backup.json 내보내기 완료');
+}
+function doImport(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      // Support both array (old) and object (new) format
+      if(Array.isArray(data)){ DB=data; dbSave(); }
+      else {
+        if(data.articles) { DB=data.articles; dbSave(); }
+        if(data.siteconf) lsSet(K_SITECONF, data.siteconf);
+        if(data.opinions) lsSet(K_OPINIONS, data.opinions);
+        if(data.phrases)  lsSet(K_PHRASES,  data.phrases);
+        if(data.wordbank)   lsSet(K_WORDBANK,   data.wordbank);
+        if(data.sentences) lsSet(K_SENTENCES, data.sentences);
+      }
+      goList(); toast('📂 가져오기 완료! (기사 '+DB.length+'개)');
+    }catch{ toast('가져오기 실패 — JSON 형식 오류', true); }
+  };
+  reader.readAsText(file);
+  e.target.value='';
+}
+function resetAll(){
+  if(!confirm('모든 데이터를 초기화할까요? 되돌릴 수 없습니다.')) return;
+  [K_DB,K_VIEWS,K_PHRASES,K_WORDBANK,K_SITECONF,K_OPINIONS,K_SENTENCES].forEach(k=>localStorage.removeItem(k));
+  DB=SEED.map(s=>({...s,id:uid(),date:today()})); dbSave(); goList();
+  toast('🔄 전체 초기화 완료');
+}
+
+// ══ WIRE STATIC BUTTONS ══════════════════════════════════════
+document.getElementById('m-x').addEventListener('click', closeModal);
+document.getElementById('m-cancel').addEventListener('click', closeModal);
+document.getElementById('m-draft').addEventListener('click', ()=>submitForm('draft'));
+document.getElementById('m-pub').addEventListener('click',   ()=>submitForm('published'));
+document.getElementById('ov').addEventListener('click', e=>{if(e.target===document.getElementById('ov'))closeModal();});
+
+document.getElementById('del-cancel').addEventListener('click', closeDelete);
+document.getElementById('del-confirm').addEventListener('click', doDelete);
+document.getElementById('del-ov').addEventListener('click', e=>{if(e.target===document.getElementById('del-ov'))closeDelete();});
+</script>
+</body>
+</html>

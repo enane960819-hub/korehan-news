@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learn Korean — KoreHan News</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css">
+<style>
+.learn-hero {
+  background: linear-gradient(135deg,#0b1626,#1a3a6b);
+  padding: 44px 22px 36px; text-align:center; color:#fff;
+}
+.learn-hero h1 { font-family:'Playfair Display',serif; font-size:38px; font-weight:900; margin:0 0 10px; }
+.learn-hero p { margin:0; font-size:15px; color:rgba(255,255,255,0.68); line-height:1.6; max-width:560px; margin:0 auto; }
+.learn-hero .badge { display:inline-block; margin-bottom:14px; padding:4px 14px; border-radius:999px; background:rgba(122,184,245,0.2); color:#7ab8f5; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; }
+
+.learn-body { max-width:1100px; margin:0 auto; padding:24px 22px 48px; }
+
+/* PHRASE OF DAY */
+.pod-section {
+  background: var(--white); border:1px solid var(--border); border-radius:12px;
+  padding:22px; box-shadow:var(--shadow); margin-bottom:24px;
+}
+.pod-title { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--gray); margin-bottom:14px; }
+.pod-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; }
+.pod-item {
+  background: linear-gradient(135deg,#f0f4ff,#e8f0ff);
+  border:1px solid rgba(34,85,164,0.12); border-radius:10px; padding:16px;
+  text-align:center;
+}
+.pod-ko  { font-family:'Playfair Display',serif; font-weight:900; font-size:30px; color:var(--accent); }
+.pod-rom { font-size:12px; font-style:italic; color:var(--gray); margin-top:4px; }
+.pod-en  { font-size:14px; font-weight:700; color:var(--dark); margin-top:6px; }
+
+/* FLASHCARDS */
+.learn-section-title {
+  font-family:'Playfair Display',serif; font-size:22px; font-weight:900;
+  margin:28px 0 14px; padding-bottom:8px; border-bottom:2px solid var(--border);
+}
+.learn-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+.tab-btn {
+  padding:7px 16px; border-radius:999px; border:1.5px solid var(--border);
+  background:var(--white); font-size:13px; font-weight:600; cursor:pointer;
+  color:var(--gray); font-family:inherit; transition:all .15s;
+}
+.tab-btn:hover,.tab-btn.on { background:var(--bright); color:#fff; border-color:var(--bright); }
+
+.vocab-card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+.vocab-card {
+  background:var(--white); border:1px solid var(--border); border-radius:10px;
+  padding:18px 12px; text-align:center; box-shadow:var(--shadow);
+  cursor:pointer; transition:all .2s; perspective:600px;
+  min-height:120px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+.vocab-card:hover { box-shadow:0 6px 22px rgba(0,0,0,0.11); transform:translateY(-2px); }
+.vocab-card.flipped { background:var(--dark); }
+.vc-front,.vc-back { width:100%; }
+.vc-back { display:none; }
+.vocab-card.flipped .vc-front { display:none; }
+.vocab-card.flipped .vc-back  { display:block; }
+.vc-ko  { font-family:'Playfair Display',serif; font-weight:900; font-size:28px; color:var(--accent); }
+.vocab-card.flipped .vc-ko { color:#7ab8f5; }
+.vc-rom { font-size:11px; font-style:italic; color:var(--gray); margin-top:3px; }
+.vocab-card.flipped .vc-rom { color:rgba(255,255,255,0.45); }
+.vc-en  { font-size:13px; font-weight:700; color:var(--dark); margin-top:6px; }
+.vocab-card.flipped .vc-en { color:#fff; }
+.vc-hint { font-size:11px; color:rgba(122,184,245,0.6); margin-top:8px; }
+
+/* SENTENCES */
+.sentence-box {
+  background:var(--white); border:1px solid var(--border); border-radius:10px;
+  padding:16px 18px; box-shadow:var(--shadow); margin-bottom:10px;
+}
+.sent-ko { font-size:18px; font-weight:700; color:var(--dark); margin-bottom:6px; }
+.sent-en { font-size:14px; color:var(--gray); }
+.sent-level { display:inline-block; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.8px;
+  padding:2px 8px; border-radius:999px; background:rgba(34,85,164,0.1); color:var(--bright); margin-bottom:8px; }
+
+
+</style>
+</head>
+<body>
+<div id="kh-header"></div>
+
+<div class="learn-hero">
+  <div class="badge">✏️ 한국어 학습 코너</div>
+  <h1>Learn Korean with KoreHan</h1>
+  <p>유치원~중학교 수준의 쉬운 어휘를 공부해요.<br>플래시 카드를 클릭해서 영어 뜻을 확인하고, 퀴즈도 풀어보세요!</p>
+</div>
+
+<div class="learn-body">
+
+  <!-- PHRASE OF DAY -->
+  <div class="pod-section">
+    <div class="pod-title">🌟 Today's Phrases — 오늘의 표현</div>
+    <div class="pod-grid" id="pod-grid"></div>
+  </div>
+
+  <!-- FLASHCARDS -->
+  <div class="learn-section-title">📇 Vocabulary Flashcards — 단어 카드</div>
+  <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">카드를 클릭하면 뜻이 나와요 · Click a card to reveal the meaning</p>
+
+  <div class="learn-tabs" id="vocab-tabs"></div>
+  <div class="vocab-card-grid" id="vocab-grid"></div>
+  <div style="text-align:center;margin-top:18px"><button id="vocab-more-btn" onclick="loadMoreCards()" class="quiz-next" style="display:none">Load more</button></div>
+
+  <!-- EXAMPLE SENTENCES -->
+  <div class="learn-section-title" style="margin-top:36px">💬 Example Sentences — 예문</div>
+  <div id="sentences-list"></div>
+
+
+
+</div>
+
+<div id="kh-footer"></div>
+<script src="korehan-shared.js"></script>
+<script>
+const CATEGORIES = {
+  'All':null,
+  '기초 Basic':['뉴스','학교','가족','집','날씨','음식','엄마','아빠','친구','공부','나라','봄','여름','가을','겨울'],
+  '사회 Society':['사회','정부','국회','법안','정치','대통령','표결'],
+  '경제 Economy':['경제','투자','수출','무역','흑자','금리','기준금리','인하','코스피','반도체','계약','공급'],
+  '국제 World':['국제','유엔','안보리','나토','정상','중동','평화','탄소중립','협약'],
+  '문화 Culture':['문화','드라마','공연','매진','스포츠','손흥민','챔피언스리그','결승'],
+};
+
+
+
+const allVocabKeys = Object.keys(VOCAB);
+
+function init() {
+  // Phrases of the day
+  const phrases = getPhrases();
+  const podGrid = document.getElementById('pod-grid');
+  if (podGrid) podGrid.innerHTML = phrases.map(p=>`
+    <div class="pod-item">
+      <div class="pod-ko vocab-zone">${p.ko}</div>
+      <div class="pod-rom">${p.rom}</div>
+      <div class="pod-en">${p.en}</div>
+    </div>`).join('');
+
+  // Tabs
+  const tabsEl = document.getElementById('vocab-tabs');
+  if (tabsEl) {
+    tabsEl.innerHTML = Object.keys(CATEGORIES).map((cat,i)=>
+      `<button class="tab-btn${i===0?' on':''}" onclick="showCategory('${cat}',this)">${cat}</button>`
+    ).join('');
+  }
+
+  showCategory('All', document.querySelector('.tab-btn'));
+
+  // Sentences — from localStorage (editable in admin)
+  const sentEl = document.getElementById('sentences-list');
+  if(sentEl){
+    const sentences = getSentences ? getSentences() : [];
+    sentEl.innerHTML = sentences.length ? sentences.map(function(s){
+      return '<div class="sentence-box">'
+        +'<div class="sent-level">'+s.level+'</div>'
+        +'<div class="sent-ko vocab-zone">'+s.ko+'</div>'
+        +'<div class="sent-en">'+s.en+'</div>'
+        +'</div>';
+    }).join('') : '<p style="color:#aaa;padding:12px 0">No sentences yet. Add them in Admin → Example Sentences.</p>';
+  }
+
+  initTooltips();
+}
+
+// Cards per page
+const CARDS_PER_PAGE = 20;
+var currentCardList = [];
+var currentCardPage = 0;
+
+function showCategory(cat, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+
+  const wordBank = getWordBank ? getWordBank() : [];
+  const wbKeys = new Set(wordBank.map(w=>w.ko));
+
+  // All word bank words (with or without VOCAB entry)
+  let wbWords;
+  if(cat==='전체' || !CATEGORIES[cat]){
+    wbWords = wordBank.map(w=>({ ko:w.ko, rom:w.rom||'', en:w.en||'' }));
+  } else {
+    wbWords = wordBank
+      .filter(w=>CATEGORIES[cat] && CATEGORIES[cat].includes(w.ko))
+      .map(w=>({ ko:w.ko, rom:w.rom||'', en:w.en||'' }));
+  }
+
+  // VOCAB dictionary words not already in word bank
+  let keys = CATEGORIES[cat] || allVocabKeys;
+  const vocabWords = keys.filter(k=>VOCAB[k] && !wbKeys.has(k))
+    .map(k=>({ ko:k, rom:VOCAB[k].rom, en:VOCAB[k].en }));
+
+  currentCardList = [...wbWords, ...vocabWords];
+  currentCardPage = 0;
+  renderCardPage();
+}
+
+function cardHTML_learn(ko, rom, en){
+  var d = document.createElement('div');
+  d.className = 'vocab-card';
+  d.addEventListener('click', function(e){
+    if(e.target.closest('.vc-save-btn')) return;
+    this.classList.toggle('flipped');
+  });
+  d.innerHTML = '<div class="vc-front">'
+    +'<div class="vc-ko">'+ko+'</div>'
+    +'<div class="vc-rom">'+rom+'</div>'
+    +'<div style="font-size:10px;color:#aac;margin-top:6px">tap to reveal</div>'
+    +'</div>'
+    +'<div class="vc-back">'
+    +'<div class="vc-ko">'+ko+'</div>'
+    +'<div class="vc-rom">'+rom+'</div>'
+    +'<div class="vc-en">'+en+'</div>'
+    +'</div>'
+    +'<button class="vc-save-btn" title="저장" data-ko="'+ko+'" data-rom="'+rom+'" data-en="'+en+'" onclick="toggleSaveWord(this,this.dataset.ko,this.dataset.rom,this.dataset.en)">🔖</button>';
+  return d.outerHTML;
+}
+
+async function toggleSaveWord(btn, ko, rom, en){
+  if(!supaUser){ signInWithGoogle(); return; }
+  const saved = btn.classList.contains('saved');
+  if(saved){
+    await dbRemoveWord(ko);
+    btn.classList.remove('saved');
+    btn.title = '저장';
+  } else {
+    await dbSaveWord(ko, rom, en);
+    btn.classList.add('saved');
+    btn.title = '저장됨';
+  }
+}
+
+function renderCardPage(){
+  const grid = document.getElementById('vocab-grid');
+  const moreBtn = document.getElementById('vocab-more-btn');
+  if(!grid) return;
+
+  const end = (currentCardPage + 1) * CARDS_PER_PAGE;
+  const visible = currentCardList.slice(0, end);
+
+  grid.innerHTML = visible.map(function(w){ return cardHTML_learn(w.ko, w.rom, w.en); }).join('');
+
+  // Show/hide load more button
+  if(moreBtn){
+    if(end < currentCardList.length){
+      moreBtn.style.display = 'block';
+      moreBtn.textContent = 'Load more (' + (currentCardList.length - end) + ' remaining)';
+    } else {
+      moreBtn.style.display = 'none';
+    }
+  }
+}
+
+function loadMoreCards(){
+  currentCardPage++;
+  renderCardPage();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
