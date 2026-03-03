@@ -174,9 +174,45 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js"></script>
 <script>
-var SUPA_URL = 'https://samghztrdvtxmrmawneu.supabase.co';
-var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs';
 var savedWords    = [];
+var quizWords     = [];
+var quizIdx       = 0;
+var quizScore     = 0;
+var quizTotal     = 0;
+var currentAnswer = '';
+
+// Supabase 헬퍼
+function getSupaHeaders() {
+  return {
+    'apikey': SUPA_KEY,
+    'Authorization': 'Bearer ' + SUPA_KEY,
+    'Content-Type': 'application/json'
+  };
+}
+
+async function dbGetSavedWords() {
+  if (!supaUser) return [];
+  var sb = getSupa();
+  if (!sb) return [];
+  var { data } = await sb.from('saved_words').select('*').eq('user_id', supaUser.id);
+  return data || [];
+}
+
+async function dbGetBookmarks() {
+  if (!supaUser) return [];
+  var sb = getSupa();
+  if (!sb) return [];
+  var { data } = await sb.from('bookmarks').select('*').eq('user_id', supaUser.id).order('created_at', { ascending: false });
+  return data || [];
+}
+
+async function dbGetLevel() {
+  if (!supaUser) return null;
+  var sb = getSupa();
+  if (!sb) return null;
+  var { data } = await sb.from('user_levels').select('level').eq('user_id', supaUser.id).maybeSingle();
+  return data ? data.level : null;
+}
 var quizWords     = [];
 var quizIdx       = 0;
 var quizScore     = 0;
@@ -263,14 +299,18 @@ async function renderBookmarks() {
     area.innerHTML = '<div class="empty-state"><div class="es-icon">🔖</div><p>북마크한 기사가 없어요.<br>기사 페이지에서 🔖 버튼을 눌러 저장하세요.</p></div>';
     return;
   }
+  // article_id로 기사 정보 찾기
+  var allArticles = dbLoad();
   area.innerHTML = '<div style="margin-bottom:12px;font-size:13px;color:var(--gray)">'+bms.length+'개 북마크</div>'
     + bms.map(function(b){
-        var d = new Date(b.bookmarked_at);
-        var ds = d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0');
+        var art = allArticles.find(function(a){ return String(a.id) === String(b.article_id); });
+        var title = art ? art.title : '기사 #' + b.article_id;
+        var section = art ? art.section : '';
+        var ds = b.created_at ? new Date(b.created_at).toLocaleDateString('ko-KR') : '';
         return '<div class="read-row">'
-          +'<span class="read-tag">'+(b.section||'')+'</span>'
+          +'<span class="read-tag">'+section+'</span>'
           +'<div style="flex:1">'
-          +'<a class="read-title" href="korehan-article.html?id='+b.article_id+'">'+(b.title||'')+'</a>'
+          +'<a class="read-title" href="korehan-article.html?id='+b.article_id+'">'+title+'</a>'
           +'<div class="read-date">'+ds+'</div>'
           +'</div>'
           +'<button data-id="'+b.article_id+'" onclick="removeBookmark(this.dataset.id,this)" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:16px;padding:4px 8px;border-radius:4px" title="북마크 삭제">✕</button>'
@@ -279,7 +319,10 @@ async function renderBookmarks() {
 }
 
 async function removeBookmark(articleId, btn) {
-  await dbToggleBookmark(articleId, '', '');
+  var sb = getSupa();
+  if (sb && supaUser) {
+    await sb.from('bookmarks').delete().eq('user_id', supaUser.id).eq('article_id', articleId);
+  }
   btn.closest('.read-row').remove();
 }
 

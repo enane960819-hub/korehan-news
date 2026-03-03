@@ -640,14 +640,14 @@ async function loadGrammarGuide() {
   var guides = [];
 
   var patterns = [
-    { pattern:/었|았/, name:'과거형 ~었/았', level:'초급', exp:'동사에 붙어 "~했다"는 과거를 나타내요.', ex_ko:'경제가 회복됐<strong>어요</strong>.', ex_en:'The economy recovered.' },
-    { pattern:/이다|입니다|이에요|예요/, name:'~이다 (이에요/예요)', level:'초급', exp:'"~이다"는 영어의 "is/are"예요. 받침이 있으면 이에요, 없으면 예요.', ex_ko:'서울<strong>이에요</strong>.', ex_en:'It\'s Seoul.' },
-    { pattern:/을|를/, name:'목적격 조사 을/를', level:'초급', exp:'동사의 목적어에 붙어요. 받침 있으면 "을", 없으면 "를".', ex_ko:'뉴스<strong>를</strong> 봐요.', ex_en:'I watch the news.' },
-    { pattern:/에서/, name:'장소 조사 에서', level:'초급', exp:'"~에서"는 행동이 일어나는 장소를 나타내요.', ex_ko:'서울<strong>에서</strong> 발표했다.', ex_en:'Announced in Seoul.' },
-    { pattern:/위한|위해/, name:'~을 위한/위해', level:'중급', exp:'"~을 위한/위해"는 "for the purpose of ~"예요.', ex_ko:'경제 회복<strong>을 위한</strong> 방안', ex_en:'A plan for economic recovery' },
-    { pattern:/으로|로 인해|로 인한/, name:'원인 조사 ~로 인해', level:'중급', exp:'"~로 인해"는 "due to ~", "because of ~"예요.', ex_ko:'수출 증가<strong>로 인해</strong> 흑자가 됐다.', ex_en:'Due to export growth, it turned a surplus.' },
-    { pattern:/면서|하면서/, name:'동시동작 ~면서', level:'중급', exp:'"~하면서"는 두 행동이 동시에 일어날 때 써요.', ex_ko:'일하<strong>면서</strong> 공부해요.', ex_en:'I study while working.' },
-    { pattern:/것으로|것이다|것을/, name:'명사화 ~는 것', level:'중급', exp:'"~는 것"은 동사를 명사처럼 만들어요.', ex_ko:'결정한 <strong>것으로</strong> 알려졌다.', ex_en:'It is known that a decision was made.' },
+    { pattern:/었|았/, name:'Past Tense ~었/았', level:'Beginner', exp:'Added to verbs to express past tense — like "-ed" in English. Use 았 after ㅏ/ㅗ vowels, 었 after everything else.', ex_ko:'경제가 회복됐<strong>어요</strong>.', ex_en:'The economy recovered.' },
+    { pattern:/이다|입니다|이에요|예요/, name:'To Be: ~이에요/예요', level:'Beginner', exp:'The Korean equivalent of "is/are". Use 이에요 after a consonant, 예요 after a vowel.', ex_ko:'서울<strong>이에요</strong>.', ex_en:'It\'s Seoul.' },
+    { pattern:/을|를/, name:'Object Marker 을/를', level:'Beginner', exp:'Marks the object of a verb. Use 을 after a consonant, 를 after a vowel.', ex_ko:'뉴스<strong>를</strong> 봐요.', ex_en:'I watch the news.' },
+    { pattern:/에서/, name:'Location Marker 에서', level:'Beginner', exp:'Shows where an action takes place — like "in" or "at" in English.', ex_ko:'서울<strong>에서</strong> 발표했다.', ex_en:'Announced in Seoul.' },
+    { pattern:/위한|위해/, name:'Purpose: ~을 위해/위한', level:'Intermediate', exp:'Means "for the purpose of" or "in order to". 위해 before verbs, 위한 before nouns.', ex_ko:'경제 회복<strong>을 위한</strong> 방안', ex_en:'A plan for economic recovery' },
+    { pattern:/으로|로 인해|로 인한/, name:'Cause: ~로 인해', level:'Intermediate', exp:'Means "due to" or "because of". Used to explain the cause of a situation.', ex_ko:'수출 증가<strong>로 인해</strong> 흑자가 됐다.', ex_en:'Due to export growth, it turned a surplus.' },
+    { pattern:/면서|하면서/, name:'Simultaneous ~면서', level:'Intermediate', exp:'Means "while doing ~". Connects two actions happening at the same time.', ex_ko:'일하<strong>면서</strong> 공부해요.', ex_en:'I study while working.' },
+    { pattern:/것으로|것이다|것을/, name:'Nominalization ~는 것', level:'Intermediate', exp:'Turns a verb into a noun phrase — like adding "-ing" in English. 것 means "thing/fact".', ex_ko:'결정한 <strong>것으로</strong> 알려졌다.', ex_en:'It is known that a decision was made.' },
   ];
 
   patterns.forEach(function(p) {
