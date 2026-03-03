@@ -462,8 +462,32 @@ function renderAllPage() {
   var listEl   = document.getElementById('dyn-article-list');
   if (!listEl) return;
 
+  // 검색 파라미터 확인
+  var params = new URLSearchParams(window.location.search);
+  var searchQ = params.get('search') || '';
+
+  // 검색 UI 삽입
+  var searchWrap = document.getElementById('dyn-search-bar');
+  if (searchWrap) {
+    searchWrap.innerHTML = '<div class="search-bar-wrap">'
+      + '<input type="text" id="search-bar-input" class="search-bar-input" placeholder="🔍 기사 검색..." value="' + escapeHtml(searchQ) + '" onkeydown="if(event.key===\'Enter\')doSearch(this.value)">'
+      + '<button class="search-bar-btn" onclick="doSearch(document.getElementById(\'search-bar-input\').value)">검색</button>'
+      + (searchQ ? '<button class="search-bar-clear" onclick="window.location.href=\'korehan-all.html\'">✕ 초기화</button>' : '')
+      + '</div>'
+      + (searchQ ? '<div style="font-size:13px;color:var(--gray);margin:8px 0 16px"><strong>"' + escapeHtml(searchQ) + '"</strong> 검색 결과</div>' : '');
+  }
+
+  if (searchQ) {
+    articles = articles.filter(function(a) {
+      var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '') + ' ' + (a.section || '');
+      return text.toLowerCase().indexOf(searchQ.toLowerCase()) !== -1;
+    });
+  }
+
   if (!articles.length) {
-    listEl.innerHTML = '<div style="padding:40px;color:#999;text-align:center">아직 기사가 없습니다.<br><a href="korehan-admin.html" style="color:#2255a4;">Admin CMS</a>에서 추가해 주세요.</div>';
+    listEl.innerHTML = searchQ
+      ? '<div style="padding:40px;color:#999;text-align:center">🔍 "<strong>' + escapeHtml(searchQ) + '</strong>" 검색 결과가 없어요.</div>'
+      : '<div style="padding:40px;color:#999;text-align:center">아직 기사가 없습니다.<br><a href="korehan-admin.html" style="color:#2255a4;">Admin CMS</a>에서 추가해 주세요.</div>';
     return;
   }
   listEl.innerHTML = articles.map(function(a){
@@ -521,6 +545,7 @@ function renderArticlePage() {
     + '<div class="art-actions">'
     + '<button class="kh-bm-btn" id="art-bm-btn" onclick="toggleBookmark(\'' + a.id + '\',this)">🔖 북마크</button>'
     + '<button class="kh-share-btn" onclick="shareArticle()">🔗 공유</button>'
+    + '<button class="kh-trans-btn" id="translate-btn" onclick="toggleTranslate()">🌐 영어로 보기</button>'
     + '</div>'
     + '</div>'
     + '</div>'
@@ -579,14 +604,18 @@ function renderArticlePage() {
   // 댓글 로드
   loadComments(a.id);
 
-  // 세션 로드 후 북마크/댓글폼 업데이트 (Supabase 세션이 async라 대기)
+  // 세션 로드 후 북마크/댓글폼/읽음처리 업데이트
   var articleId = a.id;
+  var articleTitle = a.title;
+  var articleSection = a.section;
   var attempts = 0;
   function waitAndUpdate() {
     attempts++;
     updateCommentForm();
     checkBookmarkState(articleId);
-    if (!supaUser && attempts < 20) {
+    if (supaUser) {
+      markArticleRead(articleId, articleTitle, articleSection);
+    } else if (attempts < 20) {
       setTimeout(waitAndUpdate, 300);
     }
   }
@@ -636,19 +665,12 @@ async function loadGrammarGuide() {
   el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center">✨ AI가 이 기사의 문법을 분석하는 중...</div>';
 
   // 어드민 API 키 가져오기
-  var apiKey = (typeof lsGet === 'function') ? lsGet('kh_admin_key', '') : '';
-  if (!apiKey) {
-    // API 키 없으면 정적 가이드 fallback
-    renderStaticGrammar(el, a);
-    return;
-  }
-
+  var apiKey = 'none'; // Workers에서 인증 없음
   var text = (a.title || '') + '\n\n' + (a.body || '') + '\n\n' + (a.full || '');
   var prompt = 'You are a Korean language teacher. Analyze the following Korean news article and identify 3-4 interesting grammar patterns that appear in it. For each pattern, explain it in simple English for beginner/intermediate learners.\n\n'
     + 'Article:\n' + text.slice(0, 800) + '\n\n'
     + 'Respond ONLY in this exact JSON format (no markdown, no extra text):\n'
     + '{"patterns":[{"name":"grammar name in Korean + romanization","level":"Beginner or Intermediate","exp":"Clear English explanation in 1-2 sentences. Compare to English grammar.","ex_ko":"Short example sentence from or inspired by the article with the grammar point in <strong> tags","ex_en":"English translation of the example"}]}';
-
   try {
     var res = await fetch('https://purple-glitter-be9d.enane960819.workers.dev/', {
       method: 'POST',
@@ -723,6 +745,113 @@ function renderArticleVocab(a) {
       + '<span class="art-vocab-en">' + VOCAB[k].en + '</span>'
       + '</div>';
   }).join('');
+}
+
+// ── 기사 검색 ─────────────────────────────────────────────────
+function doSearch(q) {
+  if (!q || !q.trim()) return;
+  window.location.href = 'korehan-all.html?search=' + encodeURIComponent(q.trim());
+}
+
+function renderSearchResults(q, articles) {
+  var filtered = articles.filter(function(a) {
+    var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.section || '');
+    return text.toLowerCase().indexOf(q.toLowerCase()) !== -1;
+  });
+  return { query: q, results: filtered };
+}
+
+// ── 읽은 기사 저장 ─────────────────────────────────────────────
+async function markArticleRead(articleId, title, section) {
+  var sb = getSupa();
+  if (!sb || !supaUser) return;
+  try {
+    await sb.from('read_articles').upsert({
+      user_id: supaUser.id,
+      article_id: String(articleId),
+      title: title || '',
+      section: section || '',
+      read_at: new Date().toISOString()
+    }, { onConflict: 'user_id,article_id' });
+  } catch(e) {}
+}
+
+// ── 영어 번역 토글 ─────────────────────────────────────────────
+var translateActive = false;
+var translateCache = {};
+
+async function toggleTranslate() {
+  var btn = document.getElementById('translate-btn');
+  var zones = document.querySelectorAll('.vocab-zone');
+  if (!btn || !zones.length) return;
+
+  if (translateActive) {
+    // 원문으로 복원
+    zones.forEach(function(z) {
+      if (z.dataset.original) z.innerHTML = z.dataset.original;
+    });
+    translateActive = false;
+    btn.textContent = '🌐 영어로 보기';
+    btn.classList.remove('active');
+    return;
+  }
+
+  btn.textContent = '⏳ 번역 중...';
+  btn.disabled = true;
+
+  var params = new URLSearchParams(window.location.search);
+  var id = params.get('id');
+  var cacheKey = 'trans_' + id;
+
+  if (translateCache[cacheKey]) {
+    applyTranslation(zones, translateCache[cacheKey]);
+    btn.textContent = '🇰🇷 한국어로 보기';
+    btn.disabled = false;
+    btn.classList.add('active');
+    translateActive = true;
+    return;
+  }
+
+  // 번역할 텍스트 수집
+  var texts = [];
+  zones.forEach(function(z) {
+    if (!z.dataset.original) z.dataset.original = z.innerHTML;
+    texts.push(z.innerText || z.textContent);
+  });
+
+  var prompt = 'Translate each of the following Korean text segments into natural English. Return ONLY a JSON array of translated strings, same order, no extra text:\n'
+    + JSON.stringify(texts.map(function(t){ return t.slice(0, 300); }));
+
+  try {
+    var res = await fetch('https://purple-glitter-be9d.enane960819.workers.dev/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    var data = await res.json();
+    var raw = data.content && data.content[0] && data.content[0].text || '[]';
+    var clean = raw.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
+    var translations = JSON.parse(clean);
+    translateCache[cacheKey] = translations;
+    applyTranslation(zones, translations);
+    translateActive = true;
+    btn.textContent = '🇰🇷 한국어로 보기';
+    btn.classList.add('active');
+  } catch(e) {
+    btn.textContent = '🌐 영어로 보기';
+    toast('번역에 실패했어요.', true);
+  }
+  btn.disabled = false;
+}
+
+function applyTranslation(zones, translations) {
+  zones.forEach(function(z, i) {
+    if (translations[i]) z.innerHTML = '<p>' + translations[i] + '</p>';
+  });
 }
 
 function shareArticle() {
@@ -965,6 +1094,7 @@ function renderHeader() {
         var cls = [l.cls, active].filter(Boolean).join(' ');
         return '<a href="' + l.href + '"' + (cls ? ' class="' + cls + '"' : '') + '>' + l.label + '</a>';
       }).join('')
+    + '<div class="kh-search-wrap"><input type="text" id="kh-search-input" class="kh-search-input" placeholder="🔍 기사 검색..." onkeydown="if(event.key===\'Enter\')doSearch(this.value)"><button class="kh-search-btn" onclick="doSearch(document.getElementById(\'kh-search-input\').value)">검색</button></div>'
     + '</nav></div></div>'
     // Breaking news ticker - DB 기사 기반
     + (function() {

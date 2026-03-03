@@ -866,3 +866,91 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   cursor:pointer; font-family:inherit; transition:background .15s;
 }
 .comment-submit-btn:hover { background:var(--accent); }
+
+/* ── 기사 검색 ─────────────────────────────────────────────── */
+.kh-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 0 8px;
+}
+.kh-search-input {
+  padding: 6px 12px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  font-size: 13px;
+  width: 180px;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.2s;
+}
+.kh-search-input::placeholder { color: rgba(255,255,255,0.5); }
+.kh-search-input:focus { background: rgba(255,255,255,0.18); width: 220px; }
+.kh-search-btn {
+  padding: 6px 14px;
+  background: var(--bright);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.search-bar-wrap {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+.search-bar-input {
+  flex: 1;
+  padding: 10px 16px;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+}
+.search-bar-input:focus { border-color: var(--bright); }
+.search-bar-btn {
+  padding: 10px 20px;
+  background: var(--bright);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.search-bar-clear {
+  padding: 8px 14px;
+  background: none;
+  color: var(--gray);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ── 영어 번역 버튼 ────────────────────────────────────────── */
+.kh-trans-btn {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1.5px solid #2255a4;
+  background: #fff;
+  color: #2255a4;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.kh-trans-btn:hover { background: #2255a4; color: #fff; }
+.kh-trans-btn.active { background: #2255a4; color: #fff; }
