@@ -244,6 +244,14 @@ function renderCardPage(){
 
   grid.innerHTML = visible.map(function(w){ return cardHTML_learn(w.ko, w.rom, w.en); }).join('');
 
+  // 이벤트 위임 - innerHTML 후 클릭 이벤트 다시 붙이기
+  grid.querySelectorAll('.vocab-card').forEach(function(card) {
+    card.addEventListener('click', function(e) {
+      if (e.target.closest('.vc-save-btn')) return;
+      card.classList.toggle('flipped');
+    });
+  });
+
   // Show/hide load more button
   if(moreBtn){
     if(end < currentCardList.length){

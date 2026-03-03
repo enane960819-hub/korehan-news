@@ -538,7 +538,7 @@ function renderArticlePage() {
 
     // 기사 탭
     + '<div id="art-tab-article">'
-    + '<div class="art-lead vocab-zone">' + (a.body || '') + '</div>'
+    + '<div class="art-lead vocab-zone">' + formatArticleBody(a.body || '') + '</div>'
     + (a.full ? '<div class="art-full vocab-zone">' + formatArticleBody(a.full) + '</div>' : '')
     + '</div>'
 
@@ -624,49 +624,85 @@ function switchArtTab(tab, btn) {
 async function loadGrammarGuide() {
   var el = document.getElementById('grammar-content');
   if (!el) return;
-  // 이미 로드됐으면 스킵
   if (el.dataset.loaded) return;
   el.dataset.loaded = '1';
 
-  // 현재 기사 제목+본문으로 문법 포인트 추출 (Claude API 없이 정적 가이드)
   var params = new URLSearchParams(window.location.search);
   var id = params.get('id');
   var all = dbLoad();
   var a = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
-  if (!a) return;
+  if (!a) { el.innerHTML = '<p style="color:#aaa;padding:20px 0;text-align:center">기사를 찾을 수 없어요.</p>'; return; }
 
-  // 기사 텍스트에서 문법 패턴 감지
-  var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
-  var guides = [];
+  el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center">✨ AI가 이 기사의 문법을 분석하는 중...</div>';
 
-  var patterns = [
-    { pattern:/었|았/, name:'Past Tense ~었/았', level:'Beginner', exp:'Added to verbs to express past tense — like "-ed" in English. Use 았 after ㅏ/ㅗ vowels, 었 after everything else.', ex_ko:'경제가 회복됐<strong>어요</strong>.', ex_en:'The economy recovered.' },
-    { pattern:/이다|입니다|이에요|예요/, name:'To Be: ~이에요/예요', level:'Beginner', exp:'The Korean equivalent of "is/are". Use 이에요 after a consonant, 예요 after a vowel.', ex_ko:'서울<strong>이에요</strong>.', ex_en:'It\'s Seoul.' },
-    { pattern:/을|를/, name:'Object Marker 을/를', level:'Beginner', exp:'Marks the object of a verb. Use 을 after a consonant, 를 after a vowel.', ex_ko:'뉴스<strong>를</strong> 봐요.', ex_en:'I watch the news.' },
-    { pattern:/에서/, name:'Location Marker 에서', level:'Beginner', exp:'Shows where an action takes place — like "in" or "at" in English.', ex_ko:'서울<strong>에서</strong> 발표했다.', ex_en:'Announced in Seoul.' },
-    { pattern:/위한|위해/, name:'Purpose: ~을 위해/위한', level:'Intermediate', exp:'Means "for the purpose of" or "in order to". 위해 before verbs, 위한 before nouns.', ex_ko:'경제 회복<strong>을 위한</strong> 방안', ex_en:'A plan for economic recovery' },
-    { pattern:/으로|로 인해|로 인한/, name:'Cause: ~로 인해', level:'Intermediate', exp:'Means "due to" or "because of". Used to explain the cause of a situation.', ex_ko:'수출 증가<strong>로 인해</strong> 흑자가 됐다.', ex_en:'Due to export growth, it turned a surplus.' },
-    { pattern:/면서|하면서/, name:'Simultaneous ~면서', level:'Intermediate', exp:'Means "while doing ~". Connects two actions happening at the same time.', ex_ko:'일하<strong>면서</strong> 공부해요.', ex_en:'I study while working.' },
-    { pattern:/것으로|것이다|것을/, name:'Nominalization ~는 것', level:'Intermediate', exp:'Turns a verb into a noun phrase — like adding "-ing" in English. 것 means "thing/fact".', ex_ko:'결정한 <strong>것으로</strong> 알려졌다.', ex_en:'It is known that a decision was made.' },
-  ];
-
-  patterns.forEach(function(p) {
-    if (p.pattern.test(text)) guides.push(p);
-  });
-
-  // 최소 3개는 보여주기
-  if (guides.length < 3) {
-    guides = patterns.slice(0, 4);
+  // 어드민 API 키 가져오기
+  var apiKey = (typeof lsGet === 'function') ? lsGet('kh_admin_key', '') : '';
+  if (!apiKey) {
+    // API 키 없으면 정적 가이드 fallback
+    renderStaticGrammar(el, a);
+    return;
   }
 
-  el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">이 기사에서 발견된 문법 패턴을 쉽게 설명해드려요 😊</p>'
+  var text = (a.title || '') + '\n\n' + (a.body || '') + '\n\n' + (a.full || '');
+  var prompt = 'You are a Korean language teacher. Analyze the following Korean news article and identify 3-4 interesting grammar patterns that appear in it. For each pattern, explain it in simple English for beginner/intermediate learners.\n\n'
+    + 'Article:\n' + text.slice(0, 800) + '\n\n'
+    + 'Respond ONLY in this exact JSON format (no markdown, no extra text):\n'
+    + '{"patterns":[{"name":"grammar name in Korean + romanization","level":"Beginner or Intermediate","exp":"Clear English explanation in 1-2 sentences. Compare to English grammar.","ex_ko":"Short example sentence from or inspired by the article with the grammar point in <strong> tags","ex_en":"English translation of the example"}]}';
+
+  try {
+    var res = await fetch('https://purple-glitter-be9d.enane960819.workers.dev/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    var data = await res.json();
+    var rawText = data.content && data.content[0] && data.content[0].text || '';
+    var clean = rawText.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
+    var parsed = JSON.parse(clean);
+    var guides = parsed.patterns || [];
+
+    el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">✨ Grammar patterns found in this article:</p>'
+      + guides.map(function(g){
+        return '<div class="grammar-point">'
+          + '<div class="grammar-name">' + g.name
+          + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
+          + '</div>'
+          + '<div class="grammar-explanation">' + g.exp + '</div>'
+          + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
+          + '</div>';
+      }).join('');
+  } catch(e) {
+    renderStaticGrammar(el, a);
+  }
+}
+
+function renderStaticGrammar(el, a) {
+  var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
+  var patterns = [
+    { pattern:/었|았/, name:'~었/았 Past Tense', level:'Beginner', exp:'Added to verb stems to express past tense, like "-ed" in English. Use 았 after ㅏ/ㅗ vowels, 었 everywhere else.', ex_ko:'경제가 회복됐<strong>어요</strong>.', ex_en:'The economy recovered.' },
+    { pattern:/이다|입니다|이에요|예요/, name:'~이에요/예요 "To Be"', level:'Beginner', exp:'Korean equivalent of "is/are". Use 이에요 after a final consonant, 예요 after a vowel.', ex_ko:'서울<strong>이에요</strong>.', ex_en:"It's Seoul." },
+    { pattern:/을|를/, name:'을/를 Object Marker', level:'Beginner', exp:'Attaches to the object of a verb. Use 을 after a consonant, 를 after a vowel.', ex_ko:'뉴스<strong>를</strong> 읽어요.', ex_en:'I read the news.' },
+    { pattern:/에서/, name:'에서 Location Marker', level:'Beginner', exp:'Marks where an action takes place — like "at" or "in" in English.', ex_ko:'서울<strong>에서</strong> 발표했어요.', ex_en:'It was announced in Seoul.' },
+    { pattern:/위한|위해/, name:'~을 위해/위한 "For"', level:'Intermediate', exp:'Means "for the purpose of" or "in order to". 위해 precedes verbs, 위한 precedes nouns.', ex_ko:'경제 회복<strong>을 위한</strong> 방안이에요.', ex_en:"It's a plan for economic recovery." },
+    { pattern:/로 인해|로 인한/, name:'~로 인해 "Due to"', level:'Intermediate', exp:'Means "due to" or "because of" — used to state a cause or reason.', ex_ko:'수출 증가<strong>로 인해</strong> 흑자가 됐어요.', ex_en:'Due to export growth, it turned a surplus.' },
+    { pattern:/면서|하면서/, name:'~면서 "While"', level:'Intermediate', exp:'Connects two simultaneous actions, like "while" in English.', ex_ko:'일하<strong>면서</strong> 공부해요.', ex_en:'I study while working.' },
+    { pattern:/것으로|것이다|것을/, name:'~는 것 Nominalization', level:'Intermediate', exp:'Turns a verb into a noun clause — similar to adding "-ing" in English. 것 means "thing" or "fact".', ex_ko:'결정한 <strong>것으로</strong> 알려졌어요.', ex_en:'It is known that a decision was made.' },
+  ];
+  var guides = patterns.filter(function(p){ return p.pattern.test(text); }).slice(0, 4);
+  if (guides.length < 3) guides = patterns.slice(0, 4);
+
+  el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">Grammar patterns in this article:</p>'
     + guides.map(function(g){
       return '<div class="grammar-point">'
         + '<div class="grammar-name">' + g.name
         + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
         + '</div>'
         + '<div class="grammar-explanation">' + g.exp + '</div>'
-        + '<div class="grammar-example"><strong>예문</strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
+        + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
         + '</div>';
     }).join('');
 }
@@ -930,21 +966,19 @@ function renderHeader() {
         return '<a href="' + l.href + '"' + (cls ? ' class="' + cls + '"' : '') + '>' + l.label + '</a>';
       }).join('')
     + '</nav></div></div>'
-    // Breaking news ticker
-    + '<div class="kh-breaking">'
-    + '<div class="brk-label"><span class="brk-badge">⚡</span>&nbsp;속보</div>'
-    + '<div class="brk-track-wrap"><div class="brk-track">'
-    + '<span class="brk-item">대통령, 100조 원 민간투자 패키지 발표</span><span class="brk-sep">•</span>'
-    + '<span class="brk-item">코스피 2,800선 회복… 외국인 순매수 지속</span><span class="brk-sep">•</span>'
-    + '<span class="brk-item">BTS 월드투어 서울 공연 전석 매진</span><span class="brk-sep">•</span>'
-    + '<span class="brk-item">한국은행 기준금리 동결, 하반기 인하 검토</span><span class="brk-sep">•</span>'
-    + '<span class="brk-item">손흥민, 챔피언스리그 결승 진출 — 한국 최초</span><span class="brk-sep">•</span>'
-    + '<span class="brk-item">대통령, 100조 원 민간투자 패키지 발표</span><span class="brk-sep">•</span>'
-    + '<span class="brk-item">코스피 2,800선 회복… 외국인 순매수 지속</span><span class="brk-sep">•</span>'
-    + '<span class="brk-item">BTS 월드투어 서울 공연 전석 매진</span><span class="brk-sep">•</span>'
-    + '<span class="brk-item">한국은행 기준금리 동결, 하반기 인하 검토</span><span class="brk-sep">•</span>'
-    + '<span class="brk-item">손흥민, 챔피언스리그 결승 진출 — 한국 최초</span>'
-    + '</div></div></div>';
+    // Breaking news ticker - DB 기사 기반
+    + (function() {
+        var articles = dbLoad().filter(function(a){ return a.status === 'published'; });
+        var items = articles.slice(0, 8);
+        // 루프 위해 2번 반복
+        var html = (items.concat(items)).map(function(a){
+          return '<a class="brk-item" href="korehan-article.html?id=' + a.id + '">' + a.title + '</a><span class="brk-sep">•</span>';
+        }).join('');
+        return '<div class="kh-breaking">'
+          + '<div class="brk-label"><span class="brk-badge">⚡</span>&nbsp;속보</div>'
+          + '<div class="brk-track-wrap"><div class="brk-track">' + html + '</div></div>'
+          + '</div>';
+      })()
 }
 
 function renderFooter() {

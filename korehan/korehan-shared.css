@@ -810,17 +810,19 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 .art-hero-img img { width:100%; max-height:500px; object-fit:cover; display:block; }
 
 .art-lead {
-  font-size:19px; font-weight:600; line-height:1.75;
-  color:#1a1a2e; margin-bottom:20px;
-  padding-bottom:20px; border-bottom:2px solid var(--border);
-  font-family:'Noto Serif KR','Playfair Display',serif;
-}
-.art-full {
-  font-size:17px; line-height:1.9; color:#222;
+  font-size:18px; font-weight:500; line-height:2;
+  color:#1a1a2e; margin-bottom:24px;
+  padding-bottom:24px; border-bottom:2px solid var(--border);
   font-family:'Noto Sans KR','Source Sans 3',sans-serif;
-  margin-bottom:28px;
+  letter-spacing:-0.01em;
 }
-.art-full br { margin-bottom:8px; }
+.art-lead p { margin-bottom:20px; }
+.art-full {
+  font-size:17px; line-height:2; color:#2a2a3e;
+  font-family:'Noto Sans KR','Source Sans 3',sans-serif;
+  margin-bottom:28px; letter-spacing:-0.01em;
+}
+.art-full p { margin-bottom:22px; }
 
 /* 단어 박스 */
 .art-vocab-box {
