@@ -426,8 +426,14 @@ let activeFilter = '';
 let deleteId = null;
 
 function getSb() {
-  if (typeof supabase !== 'undefined' && SUPA_URL && SUPA_KEY) {
-    return supabase.createClient(SUPA_URL, SUPA_KEY);
+  if (typeof supabase !== 'undefined' && SUPA_URL_ADMIN && SUPA_KEY_ADMIN) {
+    return supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN, {
+      auth: {
+        detectSessionInUrl: true,
+        persistSession: true,
+        autoRefreshToken: true,
+      }
+    });
   }
   return null;
 }
