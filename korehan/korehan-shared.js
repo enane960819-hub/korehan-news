@@ -2385,8 +2385,7 @@ async function loadSections() {
   // 네비 다시 렌더링
   var hdr = document.getElementById('kh-header');
   if (hdr) {
-    hdr.outerHTML = renderHeader();
-    document.getElementById('kh-header').outerHTML = renderHeader();
+    hdr.innerHTML = renderHeader();
   }
 }
 
