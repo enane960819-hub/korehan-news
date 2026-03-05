@@ -1130,7 +1130,7 @@ function goSiteSettings(){
       <div id="sc-api-status" style="font-size:12px;color:#94a3b8;margin-top:8px"></div>
     </div>
     <button class="btn btn-g" onclick="saveSiteSettings()">💾 저장</button>
-    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>\`;
+    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>`;
 
   // API 키 현재값 로드
   loadApiKeyIntoSettings();
@@ -1148,7 +1148,7 @@ function saveSiteSettings(){
 }
 function resetSiteSettings(){ lsSet(K_SITECONF,{}); goSiteSettings(); toast('기본값으로 초기화됐어요'); }
 
-async async function loadApiKeyIntoSettings() {
+async function loadApiKeyIntoSettings() {
   const statusEl = document.getElementById('sc-api-status');
   const input = document.getElementById('sc-api-key');
   if (!input) return;
@@ -2290,7 +2290,7 @@ function doExport(){
 function doImport(e){
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
-  reader.onload=ev=>{
+  reader.onload=async ev=>{
     try{
       const data=JSON.parse(ev.target.result);
       // Support both array (old) and object (new) format
@@ -2309,7 +2309,7 @@ function doImport(e){
   reader.readAsText(file);
   e.target.value='';
 }
-function resetAll(){
+async function resetAll(){
   if(!confirm('모든 데이터를 초기화할까요? 되돌릴 수 없습니다.')) return;
   [K_DB,K_VIEWS,K_PHRASES,K_WORDBANK,K_SITECONF,K_OPINIONS,K_SENTENCES].forEach(k=>localStorage.removeItem(k));
   const reset = SEED.map(s=>({...s,id:uid(),date:today()}));
