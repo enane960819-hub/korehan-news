@@ -269,19 +269,9 @@ a{color:inherit;text-decoration:none}
     try {
       var keys = Object.keys(localStorage);
       for (var i = 0; i < keys.length; i++) {
-        var k = keys[i];
-        if ((k.startsWith('sb-') && k.includes('-auth-token')) || k === 'korehan-auth') {
-          var raw = localStorage.getItem(k);
-          if (!raw) continue;
-          var val = JSON.parse(raw);
-          var user = (val && val.user) ? val.user : null;
-          if (!user && val && val.access_token) {
-            try {
-              var payload = JSON.parse(atob(val.access_token.split('.')[1]));
-              if (payload.email) return payload.email;
-            } catch(e2) {}
-          }
-          if (user && user.email) return user.email;
+        if (keys[i].startsWith('sb-') && keys[i].includes('-auth-token')) {
+          var val = JSON.parse(localStorage.getItem(keys[i]));
+          if (val && val.user && val.user.email) return val.user.email;
         }
       }
     } catch(e) {}
