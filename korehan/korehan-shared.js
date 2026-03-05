@@ -1730,9 +1730,11 @@ async function loadGrammarGuide() {
   var params = new URLSearchParams(window.location.search);
   var id = params.get('id');
 
-  // 같은 기사면 재로드 방지, 다른 기사면 초기화
-  if (el.dataset.loadedId === String(id)) return;
+  // 같은 기사 + 이미 AI 분석 완료된 경우만 재로드 방지
+  // (로그인 상태 변경 시 재시도 허용 - dataset에 'ai' 표시)
+  if (el.dataset.loadedId === String(id) && el.dataset.source === 'ai') return;
   el.dataset.loadedId = String(id);
+  el.dataset.source = '';
 
   var all = getCachedArticles();
   var a = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
@@ -1767,6 +1769,7 @@ async function loadGrammarGuide() {
     if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.slice(jsonStart, jsonEnd + 1);
     var parsed = JSON.parse(clean);
     var guides = parsed.patterns || [];
+    el.dataset.source = 'ai'; // AI 분석 성공 표시 → 캐시 허용
 
     el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">✨ Grammar patterns found in this article:</p>'
       + guides.map(function(g){
@@ -1780,11 +1783,12 @@ async function loadGrammarGuide() {
       }).join('');
   } catch(e) {
     if (e.message === 'Not signed in') {
+      el.dataset.source = ''; // 로그인 후 재시도 허용
       el.innerHTML = '<div style="text-align:center;padding:28px 16px">'
         + '<div style="font-size:32px;margin-bottom:12px">🔒</div>'
         + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:8px">Sign in to use Grammar Guide</div>'
         + '<div style="font-size:13px;color:#64748b;margin-bottom:20px">AI-powered grammar analysis is available for signed-in users.</div>'
-        + '<button onclick="openAuthModal(\'signin\')" style="padding:10px 28px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
+        + '<button onclick="openAuthModal(&apos;signin&apos;)" style="padding:10px 28px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
         + '</div>';
     } else {
       renderStaticGrammar(el, a);
@@ -2397,10 +2401,12 @@ async function loadSections() {
   } catch(e) {
     _sectionsCache = DEFAULT_SECTIONS;
   }
-  // 네비 다시 렌더링
+  // 네비 다시 렌더링 (섹션 로드 후 헤더 업데이트)
   var hdr = document.getElementById('kh-header');
   if (hdr) {
     hdr.innerHTML = renderHeader();
+    // 헤더 재렌더 후 로그인 상태 즉시 반영
+    updateAuthUI();
   }
 }
 
@@ -2447,7 +2453,8 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (footerEl)  footerEl.innerHTML  = renderFooter();
   if (sidebarEl) sidebarEl.innerHTML = renderSharedSidebar();
 
-  checkSession();
+  // 세션 먼저 확인 후 나머지 로드 (로그인 상태가 헤더 렌더 전에 준비되도록)
+  await checkSession();
 
   var page     = window.location.pathname.split('/').pop() || 'index.html';
   var pageBase = page.replace(/\.html$/, '');
