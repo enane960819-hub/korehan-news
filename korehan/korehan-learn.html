@@ -78,36 +78,90 @@
   padding:2px 8px; border-radius:999px; background:rgba(34,85,164,0.1); color:var(--bright); margin-bottom:8px; }
 
 
+/* ── LISTENING QUIZ ──────────────────────────────────────── */
+.lq-wrap { background:#fff; border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:var(--shadow); margin-bottom:24px; }
+.lq-progress-bar { height:4px; background:var(--border); border-radius:99px; margin-bottom:24px; overflow:hidden; }
+.lq-progress-fill { height:4px; background:linear-gradient(90deg,#2255a4,#3d7fd4); border-radius:99px; transition:width .4s; }
+.lq-speaker-btn { width:100px; height:100px; border-radius:50%; background:#f0f6ff; border:none; font-size:40px; cursor:pointer; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; transition:transform .15s,background .2s; box-shadow:0 4px 16px rgba(34,85,164,.15); }
+.lq-speaker-btn:hover { transform:scale(1.06); background:#e0edff; }
+.lq-speaker-btn.playing { background:#2255a4; animation:lq-pulse 1s ease-in-out infinite; }
+@keyframes lq-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(34,85,164,.4)} 50%{box-shadow:0 0 0 12px rgba(34,85,164,0)} }
+@keyframes lq-slidein { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.lq-question { font-size:17px; font-weight:800; color:#0b1626; text-align:center; margin-bottom:24px; }
+.lq-choices { display:flex; flex-direction:column; gap:10px; }
+.lq-choice { padding:16px 20px; border:2px solid var(--border); border-radius:14px; background:#fff; font-size:15px; font-weight:700; cursor:pointer; text-align:center; font-family:'Noto Sans KR',sans-serif; transition:border-color .15s,background .15s,transform .1s; color:#0b1626; }
+.lq-choice:hover:not(:disabled) { border-color:#2255a4; background:#f0f6ff; transform:translateY(-1px); }
+.lq-choice.correct { border-color:#16a34a; background:#f0fdf4; color:#16a34a; }
+.lq-choice.wrong { border-color:#dc2626; background:#fef2f2; color:#dc2626; }
+.lq-choice:disabled { cursor:default; }
+.lq-explanation { margin-top:16px; padding:16px 18px; background:#fffbeb; border:1.5px solid #fcd34d; border-radius:14px; }
+.lq-exp-title { font-size:14px; font-weight:900; color:#d97706; margin-bottom:6px; }
+.lq-exp-body { font-size:14px; color:#445566; line-height:1.65; }
+.lq-next-btn { width:100%; margin-top:16px; padding:14px; background:#2255a4; color:#fff; border:none; border-radius:14px; font-size:15px; font-weight:900; cursor:pointer; transition:background .2s; }
+.lq-next-btn:hover { background:#1a3a6b; }
+.lq-result { text-align:center; padding:32px 20px; }
+.lq-score-ring { width:120px; height:120px; border-radius:50%; background:linear-gradient(135deg,#2255a4,#3d7fd4); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; color:#fff; flex-direction:column; }
+.lq-mode-btn { padding:10px 22px; border-radius:99px; border:2px solid var(--border); background:#fff; font-size:13px; font-weight:700; cursor:pointer; transition:all .2s; color:var(--accent); }
+.lq-mode-btn.on, .lq-mode-btn:hover { background:var(--bright); color:#fff; border-color:var(--bright); }
+
+
 </style>
 </head>
 <body>
 <div id="kh-header"></div>
 
 <div class="learn-hero">
-  <div class="badge">✏️ 한국어 학습 코너</div>
+  <div class="badge">✏️ Korean Learning Center</div>
   <h1>Learn Korean with KoreHan</h1>
-  <p>유치원~중학교 수준의 쉬운 어휘를 공부해요.<br>플래시 카드를 클릭해서 영어 뜻을 확인하고, 퀴즈도 풀어보세요!</p>
+  <p>Study essential Korean vocabulary.<br>Click flashcards to reveal meanings, then test yourself with quizzes!</p>
 </div>
 
 <div class="learn-body">
 
   <!-- PHRASE OF DAY -->
   <div class="pod-section">
-    <div class="pod-title">🌟 Today's Phrases — 오늘의 표현</div>
+    <div class="pod-title">🌟 Today's Phrases — Today's Phrases</div>
     <div class="pod-grid" id="pod-grid"></div>
   </div>
 
   <!-- FLASHCARDS -->
-  <div class="learn-section-title">📇 Vocabulary Flashcards — 단어 카드</div>
-  <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">카드를 클릭하면 뜻이 나와요 · Click a card to reveal the meaning</p>
+  <div class="learn-section-title">📇 Vocabulary Flashcards — Vocabulary Flashcards</div>
+  <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">Click a card to reveal the meaning the meaning</p>
 
   <div class="learn-tabs" id="vocab-tabs"></div>
   <div class="vocab-card-grid" id="vocab-grid"></div>
   <div style="text-align:center;margin-top:18px"><button id="vocab-more-btn" onclick="loadMoreCards()" class="quiz-next" style="display:none">Load more</button></div>
 
   <!-- EXAMPLE SENTENCES -->
-  <div class="learn-section-title" style="margin-top:36px">💬 Example Sentences — 예문</div>
+  <div class="learn-section-title" style="margin-top:36px">💬 Example Sentences — Example Sentences</div>
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+    <button class="tab-btn on" onclick="filterSentences('All',this)">All</button>
+    <button class="tab-btn" onclick="filterSentences('Beginner',this)">Beginner</button>
+    <button class="tab-btn" onclick="filterSentences('Intermediate',this)">Intermediate</button>
+    <button class="tab-btn" onclick="filterSentences('Advanced',this)">Advanced</button>
+    <button onclick="generateAISentences(this)" style="margin-left:auto;background:linear-gradient(135deg,#0b1626,#1a3a6b);color:#fff;border:none;border-radius:999px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer">✨ Generate from Articles</button>
+  </div>
   <div id="sentences-list"></div>
+
+
+  <!-- LISTENING QUIZ -->
+  <div class="learn-section-title" style="margin-top:40px">🎧 Listening Quiz</div>
+  <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">Listen to Korean sentences and choose what you heard</p>
+
+  <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+    <button class="lq-mode-btn on" onclick="setLQMode('hear',this)">🔊 What did you hear?</button>
+    <button class="lq-mode-btn" onclick="setLQMode('mean',this)">💬 What does it mean?</button>
+    <button onclick="startListeningQuiz()" style="margin-left:auto;background:linear-gradient(135deg,#0b1626,#1a3a6b);color:#fff;border:none;border-radius:999px;padding:7px 18px;font-size:13px;font-weight:700;cursor:pointer">✨ Generate with AI</button>
+  </div>
+
+  <div id="lq-container">
+    <div style="text-align:center;padding:48px 20px;color:var(--gray)">
+      <div style="font-size:48px;margin-bottom:12px">🎧</div>
+      <div style="font-weight:700;font-size:15px;margin-bottom:6px">Ready to practice listening?</div>
+      <div style="font-size:13px;margin-bottom:20px">AI generates questions from Korean vocabulary</div>
+      <button onclick="startListeningQuiz()" style="padding:12px 28px;background:#2255a4;color:#fff;border:none;border-radius:99px;font-size:14px;font-weight:900;cursor:pointer">🎧 Start Listening Quiz</button>
+    </div>
+  </div>
 
 
 
@@ -119,11 +173,11 @@
 <script>
 const CATEGORIES = {
   'All':null,
-  '기초 Basic':['뉴스','학교','가족','집','날씨','음식','엄마','아빠','친구','공부','나라','봄','여름','가을','겨울'],
-  '사회 Society':['사회','정부','국회','법안','정치','대통령','표결'],
-  '경제 Economy':['경제','투자','수출','무역','흑자','금리','기준금리','인하','코스피','반도체','계약','공급'],
-  '국제 World':['국제','유엔','안보리','나토','정상','중동','평화','탄소중립','협약'],
-  '문화 Culture':['문화','드라마','공연','매진','스포츠','손흥민','챔피언스리그','결승'],
+  'Basics':['뉴스','학교','가족','집','날씨','음식','엄마','아빠','친구','공부','나라','봄','여름','가을','겨울'],
+  'Society':['사회','정부','국회','법안','정치','대통령','표결'],
+  'Economy':['경제','투자','수출','무역','흑자','금리','기준금리','인하','코스피','반도체','계약','공급'],
+  'World':['국제','유엔','안보리','나토','정상','중동','평화','탄소중립','협약'],
+  'Culture':['문화','드라마','공연','매진','스포츠','손흥민','챔피언스리그','결승'],
 };
 
 
@@ -151,20 +205,72 @@ function init() {
 
   showCategory('All', document.querySelector('.tab-btn'));
 
-  // Sentences — from localStorage (editable in admin)
-  const sentEl = document.getElementById('sentences-list');
-  if(sentEl){
-    const sentences = getSentences ? getSentences() : [];
-    sentEl.innerHTML = sentences.length ? sentences.map(function(s){
-      return '<div class="sentence-box">'
-        +'<div class="sent-level">'+s.level+'</div>'
-        +'<div class="sent-ko vocab-zone">'+s.ko+'</div>'
-        +'<div class="sent-en">'+s.en+'</div>'
-        +'</div>';
-    }).join('') : '<p style="color:#aaa;padding:12px 0">No sentences yet. Add them in Admin → Example Sentences.</p>';
-  }
+  // Sentences
+  var _allSentences = getSentences ? getSentences() : [];
+  window._allSentences = _allSentences;
+  renderSentences(_allSentences);
 
   initTooltips();
+}
+
+function renderSentences(list) {
+  const sentEl = document.getElementById('sentences-list');
+  if (!sentEl) return;
+  sentEl.innerHTML = list.length ? list.map(function(s){
+    return '<div class="sentence-box">'
+      + '<div class="sent-level">' + s.level + '</div>'
+      + '<div class="sent-ko vocab-zone">' + s.ko + '</div>'
+      + '<div class="sent-en">' + s.en + '</div>'
+      + '</div>';
+  }).join('') : '<p style="color:#aaa;padding:12px 0">No sentences found.</p>';
+  document.querySelectorAll('#sentences-list .vocab-zone').forEach(function(el){ wrapVocab(el); });
+}
+
+function filterSentences(level, btn) {
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+  var list = window._allSentences || [];
+  renderSentences(level === 'All' ? list : list.filter(function(s){ return s.level === level; }));
+}
+
+async function generateAISentences(btn) {
+  var articles = published().slice(0, 6);
+  if (!articles.length) { alert('No articles found to generate from.'); return; }
+  var orig = btn.textContent;
+  btn.textContent = '⏳ Generating...';
+  btn.disabled = true;
+
+  var articleTexts = articles.map(function(a){
+    return (a.title || '') + ': ' + (a.body || '').slice(0, 150);
+  }).join('\n');
+
+  var prompt = 'You are a Korean language teacher. Based on these Korean news article excerpts, create 12 natural example sentences for learners (4 Beginner, 4 Intermediate, 4 Advanced). Each sentence should use vocabulary that appears in the articles.\n\nArticles:\n' + articleTexts + '\n\nRespond ONLY in this exact JSON format (no markdown):\n[{"level":"Beginner","ko":"Korean sentence","en":"English translation"},...]';
+
+  try {
+    var res = await fetch('https://purple-glitter-be9d.enane960819.workers.dev/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    var data = await res.json();
+    var rawText = (data.content && data.content[0] && data.content[0].text) || data.text || '';
+    var clean = rawText.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+    var start = clean.indexOf('['), end = clean.lastIndexOf(']');
+    if (start >= 0 && end > start) clean = clean.slice(start, end + 1);
+    var generated = JSON.parse(clean);
+    window._allSentences = generated.map(function(s, i){ return Object.assign({id: 'ai' + i}, s); });
+    renderSentences(window._allSentences);
+    btn.textContent = '✅ Generated!';
+    setTimeout(function(){ btn.textContent = orig; btn.disabled = false; }, 2000);
+  } catch(e) {
+    btn.textContent = orig;
+    btn.disabled = false;
+    alert('Generation failed. Please try again.');
+  }
 }
 
 // Cards per page
@@ -181,7 +287,7 @@ function showCategory(cat, btn) {
 
   // All word bank words (with or without VOCAB entry)
   let wbWords;
-  if(cat==='전체' || !CATEGORIES[cat]){
+  if(cat==='All' || !CATEGORIES[cat]){
     wbWords = wordBank.map(w=>({ ko:w.ko, rom:w.rom||'', en:w.en||'' }));
   } else {
     wbWords = wordBank
@@ -216,21 +322,22 @@ function cardHTML_learn(ko, rom, en){
     +'<div class="vc-rom">'+rom+'</div>'
     +'<div class="vc-en">'+en+'</div>'
     +'</div>'
-    +'<button class="vc-save-btn" title="저장" data-ko="'+ko+'" data-rom="'+rom+'" data-en="'+en+'" onclick="toggleSaveWord(this,this.dataset.ko,this.dataset.rom,this.dataset.en)">🔖</button>';
+    +'<button class="vc-save-btn" title="Save" data-ko="'+ko+'" data-rom="'+rom+'" data-en="'+en+'" onclick="toggleSaveWord(this,this.dataset.ko,this.dataset.rom,this.dataset.en)">🔖</button>'
+    +'<button class="tts-btn vc-tts-btn" title="발음 듣기" onclick="event.stopPropagation();ttsSpeak(this.dataset.ko,this)" data-ko="'+ko+'">🔊</button>';
   return d.outerHTML;
 }
 
 async function toggleSaveWord(btn, ko, rom, en){
-  if(!supaUser){ signInWithGoogle(); return; }
+  if(!supaUser){ openAuthModal('signin'); return; }
   const saved = btn.classList.contains('saved');
   if(saved){
     await dbRemoveWord(ko);
     btn.classList.remove('saved');
-    btn.title = '저장';
+    btn.title = 'Save';
   } else {
     await dbSaveWord(ko, rom, en);
     btn.classList.add('saved');
-    btn.title = '저장됨';
+    btn.title = 'Save됨';
   }
 }
 
@@ -266,6 +373,193 @@ function renderCardPage(){
 function loadMoreCards(){
   currentCardPage++;
   renderCardPage();
+}
+
+
+// ══ LISTENING QUIZ ══════════════════════════════════════════════
+
+var _lqMode       = 'hear';   // 'hear' | 'mean'
+var _lqQuestions  = [];
+var _lqIdx        = 0;
+var _lqScore      = 0;
+var _lqAnswered   = false;
+var _lqSpeaking   = false;
+
+function setLQMode(mode, btn) {
+  _lqMode = mode;
+  document.querySelectorAll('.lq-mode-btn').forEach(function(b){ b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+}
+
+async function startListeningQuiz() {
+  var container = document.getElementById('lq-container');
+  container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray)">'
+    + '<div style="font-size:32px;margin-bottom:10px;animation:lq-pulse 1s ease-in-out infinite;display:inline-block">✨</div>'
+    + '<div style="font-size:14px;font-weight:700">AI가 문제를 만들고 있어요...</div></div>';
+
+  var apiKey = null; // 더 이상 필요 없음 — 프록시가 처리
+  if (false) { // 하위 호환성 유지용 (실행 안 됨)
+    return;
+  }
+
+  // 단어 소스: saved words → 없으면 기본 단어 사용
+  var words = (typeof savedWords !== 'undefined' && savedWords.length >= 4)
+    ? savedWords.slice(0, 12).map(function(w){ return w.ko + '(' + (w.en||'') + ')'; }).join(', ')
+    : '경제(economy), 대통령(president), 문화(culture), 반도체(semiconductor), 사회(society), 수출(export), 투자(investment), 뉴스(news)';
+
+  var modeInstr = _lqMode === 'hear'
+    ? 'For each question: provide a correct Korean sentence, and 2 wrong Korean sentences that sound similar (similar syllables or grammar patterns). The user will LISTEN and pick the correct one.'
+    : 'For each question: provide a correct Korean sentence, and 2 wrong English meanings. The user will see/hear Korean and pick the correct English meaning.';
+
+  var prompt = 'You are a Korean listening comprehension quiz generator.\n\nWords to use (pick 5): ' + words + '\n\n' + modeInstr + '\n\nReturn ONLY this JSON (no markdown):\n{"questions":[{"sentence":"Korean sentence","correct":"correct answer","wrong1":"wrong option","wrong2":"wrong option","explanation":"Brief grammar explanation in English, 2-3 sentences."}]}\n\nGenerate exactly 5 questions. Make wrong options plausible but clearly wrong.';
+
+  try {
+    var data = await callClaude({
+      feature: 'quiz',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1200,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var raw  = (data.content || []).map(function(c){ return c.text||''; }).join('');
+    var clean = raw.replace(/```json|```/g,'').trim();
+    var parsed = JSON.parse(clean);
+
+    _lqQuestions = parsed.questions.map(function(q) {
+      // choices 섞기
+      var choices = [q.correct, q.wrong1, q.wrong2].sort(function(){ return Math.random()-.5; });
+      return { sentence: q.sentence, correct: q.correct, choices: choices, explanation: q.explanation };
+    });
+    _lqIdx   = 0;
+    _lqScore = 0;
+    renderLQQuestion();
+  } catch(e) {
+    container.innerHTML = '<div style="padding:32px;text-align:center;color:#dc2626">'
+      + '<div style="font-size:36px;margin-bottom:10px">⚠️</div>'
+      + '<div style="font-weight:700;margin-bottom:12px">Generation failed</div>'
+      + '<button onclick="startListeningQuiz()" style="padding:10px 24px;background:#2255a4;color:#fff;border:none;border-radius:99px;font-size:13px;font-weight:700;cursor:pointer">🔄 Try again</button>'
+      + '</div>';
+  }
+}
+
+function renderLQQuestion() {
+  var q         = _lqQuestions[_lqIdx];
+  var total     = _lqQuestions.length;
+  var pct       = Math.round((_lqIdx / total) * 100);
+  var container = document.getElementById('lq-container');
+  _lqAnswered   = false;
+
+  var questionText = _lqMode === 'hear'
+    ? 'What did you hear?'
+    : 'What does this sentence mean?';
+
+  container.innerHTML =
+    '<div class="lq-wrap">'
+
+    // progress
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    + '<span style="font-size:12px;font-weight:700;color:var(--gray)">' + (_lqIdx+1) + ' / ' + total + '</span>'
+    + '<span style="font-size:12px;font-weight:700;color:#2255a4">Score: ' + _lqScore + '</span>'
+    + '</div>'
+    + '<div class="lq-progress-bar"><div class="lq-progress-fill" style="width:' + pct + '%"></div></div>'
+
+    // speaker
+    + '<div style="text-align:center;margin-bottom:20px">'
+    + '<button class="lq-speaker-btn" id="lq-speak-btn" onclick="lqSpeak()">'
+    + '<span style="font-size:40px">🔊</span>'
+    + '</button>'
+    + '<div style="font-size:12px;color:var(--gray);margin-top:8px">Tap to listen again</div>'
+    + '</div>'
+
+    // question
+    + '<div class="lq-question">' + questionText + '</div>'
+
+    // choices
+    + '<div class="lq-choices">'
+    + q.choices.map(function(c, i) {
+        return '<button class="lq-choice" onclick="lqAnswer(this,&quot;' + c.replace(/"/g,'&quot;') + '&quot;)">' + c + '</button>';
+      }).join('')
+    + '</div>'
+
+    + '<div id="lq-feedback"></div>'
+    + '</div>';
+
+  // 자동 재생
+  setTimeout(lqSpeak, 300);
+}
+
+function lqSpeak() {
+  var q   = _lqQuestions[_lqIdx];
+  var btn = document.getElementById('lq-speak-btn');
+  var text = q.sentence;
+
+  if (btn) { btn.classList.add('playing'); }
+  window.speechSynthesis.cancel();
+
+  var utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'ko-KR';
+  utter.rate = 0.82;
+  utter.onend = function() { if(btn) btn.classList.remove('playing'); };
+  window.speechSynthesis.speak(utter);
+}
+
+function lqAnswer(btn, chosen) {
+  if (_lqAnswered) return;
+  _lqAnswered = true;
+  chosen = chosen.replace(/&quot;/g, '"');
+
+  var q       = _lqQuestions[_lqIdx];
+  var correct = chosen === q.correct;
+  if (correct) _lqScore++;
+
+  // 모든 버튼 disable + 색 표시
+  document.querySelectorAll('.lq-choice').forEach(function(b) {
+    b.disabled = true;
+    if (b.textContent.trim() === q.correct) b.classList.add('correct');
+  });
+  if (!correct) btn.classList.add('wrong');
+
+  // Explanation + Next 버튼 (슬라이드업)
+  var fb = document.getElementById('lq-feedback');
+  fb.innerHTML =
+    '<div class="lq-explanation" style="animation:lq-slidein .3s ease">'
+    + '<div class="lq-exp-title">💡 ' + (correct ? 'Correct! 🎉' : 'Not quite') + '</div>'
+    + '<div class="lq-exp-body">' + q.explanation + '</div>'
+    + '</div>'
+    + '<button class="lq-next-btn" onclick="lqNext()">'
+    + (_lqIdx < _lqQuestions.length - 1 ? 'Next →' : 'See Results 🏁')
+    + '</button>';
+}
+
+function lqNext() {
+  _lqIdx++;
+  if (_lqIdx >= _lqQuestions.length) {
+    lqShowResult();
+  } else {
+    renderLQQuestion();
+  }
+}
+
+function lqShowResult() {
+  var total   = _lqQuestions.length;
+  var pct     = Math.round((_lqScore / total) * 100);
+  var emoji   = pct >= 80 ? '🏆' : pct >= 60 ? '👍' : '💪';
+  var msg     = pct >= 80 ? 'Excellent listening!' : pct >= 60 ? 'Good job!' : 'Keep practicing!';
+
+  document.getElementById('lq-container').innerHTML =
+    '<div class="lq-wrap lq-result">'
+    + '<div class="lq-score-ring">'
+    + '<div style="font-size:32px">' + emoji + '</div>'
+    + '<div style="font-size:20px;font-weight:900">' + pct + '%</div>'
+    + '</div>'
+    + '<div style="font-size:20px;font-weight:900;color:#0b1626;margin-bottom:8px">' + msg + '</div>'
+    + '<div style="font-size:14px;color:var(--gray);margin-bottom:28px">' + _lqScore + ' / ' + total + ' correct</div>'
+    + '<div style="display:flex;gap:12px;justify-content:center">'
+    + '<button onclick="startListeningQuiz()" style="padding:12px 24px;background:#2255a4;color:#fff;border:none;border-radius:99px;font-size:14px;font-weight:900;cursor:pointer">🔄 New Quiz</button>'
+    + '</div>'
+    + '</div>';
+
+  // XP 트래킹
+  if (typeof dmTrackQuiz === 'function') dmTrackQuiz();
 }
 
 document.addEventListener('DOMContentLoaded', init);

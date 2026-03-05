@@ -153,7 +153,7 @@ a{color:inherit;text-decoration:none}
     <span class="badge">Admin CMS</span>
   </div>
   <div class="tb-right">
-    <a href="korehan-news.html" target="_blank" class="vsb">↗ 사이트 보기</a>
+    <a href="index.html" target="_blank" class="vsb">↗ View Site</a>
   </div>
 </div>
 
@@ -161,12 +161,12 @@ a{color:inherit;text-decoration:none}
 
   <!-- SIDEBAR -->
   <div class="sb">
-    <div class="sb-lbl">기사 관리</div>
-    <button class="sb-btn on" id="sb-all" onclick="goList()"><span class="ico">📰</span>전체 기사<span class="pill" id="p-all">0</span></button>
-    <button class="sb-btn" id="sb-new" onclick="openModal(null)"><span class="ico">✏️</span>새 기사 작성</button>
-    <button class="sb-btn" onclick="goAutoArticle()"><span class="ico">🤖</span>AI 기사 자동생성</button>
+    <div class="sb-lbl">Articles</div>
+    <button class="sb-btn on" id="sb-all" onclick="goList()"><span class="ico">📰</span>All Articles<span class="pill" id="p-all">0</span></button>
+    <button class="sb-btn" id="sb-new" onclick="openModal(null)"><span class="ico">✏️</span>New Article</button>
+    <button class="sb-btn" onclick="goAutoArticle()"><span class="ico">🤖</span>AI Auto-Generate</button>
 
-    <div class="sb-lbl">섹션별</div>
+    <div class="sb-lbl">By Section</div>
     <button class="sb-btn" onclick="goFilter('사회')"> <span class="ico">🏙️</span>사회 Society <span class="pill" id="p-사회">0</span></button>
     <button class="sb-btn" onclick="goFilter('국제')"> <span class="ico">🌍</span>국제 World   <span class="pill" id="p-국제">0</span></button>
     <button class="sb-btn" onclick="goFilter('문화')"> <span class="ico">🎭</span>문화 Culture <span class="pill" id="p-문화">0</span></button>
@@ -176,7 +176,11 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" onclick="goFilter('오피니언')"><span class="ico">✍️</span>오피니언     <span class="pill" id="p-오피니언">0</span></button>
 
     <div class="section-sep"></div>
-    <div class="sb-lbl">사이트 설정</div>
+    <div class="sb-lbl">Analytics</div>
+    <button class="sb-btn" onclick="goStats()"><span class="ico">📊</span>User Analytics</button>
+    <div class="sb-lbl">Content</div>
+    <button class="sb-btn" onclick="goSections()"><span class="ico">🗂️</span>Manage Sections</button>
+    <div class="sb-lbl">Settings</div>
     <button class="sb-btn" onclick="goSiteSettings()"><span class="ico">⚙️</span>사이트 기본 설정</button>
     <button class="sb-btn" onclick="goOpinions()">    <span class="ico">✍️</span>오피니언 칼럼니스트</button>
 
@@ -190,6 +194,13 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" onclick="goComments()"><span class="ico">💬</span>댓글 관리</button>
     <button class="sb-btn" onclick="goNewsletter()"><span class="ico">📬</span>뉴스레터</button>
     <button class="sb-btn" onclick="goStats()"><span class="ico">📊</span>방문자 통계</button>
+
+    <div class="section-sep"></div>
+    <div class="sb-lbl">🎓 수업 관리</div>
+    <button class="sb-btn" onclick="goClassSlots()"><span class="ico">📅</span>수업 가능 날짜 설정</button>
+    <button class="sb-btn" onclick="goClassBookings()"><span class="ico">📋</span>예약 현황</button>
+    <button class="sb-btn" onclick="goClassCredits()"><span class="ico">🎟️</span>수업권 관리</button>
+    <button class="sb-btn" onclick="goClassCurriculum()"><span class="ico">📈</span>커리큘럼 진행도</button>
 
     <div class="section-sep"></div>
     <div class="sb-lbl">데이터</div>
@@ -206,7 +217,7 @@ a{color:inherit;text-decoration:none}
 <!-- ARTICLE MODAL -->
 <div class="ov" id="ov" style="display:none">
   <div class="mbox">
-    <div class="m-hd"><h2 id="m-ttl">기사</h2><button class="m-x" id="m-x">✕</button></div>
+    <div class="m-hd"><h2 id="m-ttl">Article</h2><button class="m-x" id="m-x">✕</button></div>
     <div class="m-bd" id="m-bd"></div>
     <div class="m-ft">
       <button class="btn btn-gh" id="m-del-from-modal" style="background:#c33;color:#fff;margin-right:auto;display:none" onclick="deleteFromModal()">🗑 삭제</button>
@@ -234,6 +245,69 @@ a{color:inherit;text-decoration:none}
 
 <script>
 'use strict';
+
+// ══ ADMIN AUTH GATE ════════════════════════════════════════
+// 1차: localStorage 토큰 빠른 체크 (페이지 깜빡임 방지)
+// 2차: Supabase SDK 실시간 세션 검증 (조작 방지)
+(function() {
+  var ADMIN_EMAIL = 'enane960819@gmail.com';
+
+  function blockAccess(reason) {
+    document.body.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0b1220;font-family:sans-serif">'
+      + '<div style="text-align:center;color:#fff;padding:40px;max-width:360px">'
+      + '<div style="font-size:56px;margin-bottom:16px">🔒</div>'
+      + '<div style="font-size:20px;font-weight:900;margin-bottom:8px">Admin Access Only</div>'
+      + '<div style="font-size:13px;color:#7a9ac0;margin-bottom:24px">' + (reason||'This page is restricted.') + '</div>'
+      + '<a href="index.html" style="padding:10px 24px;background:#2255a4;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">← Back to Home</a>'
+      + '</div></div>';
+  }
+
+  // 1차: 빠른 localStorage 체크
+  function getStoredEmail() {
+    try {
+      var keys = Object.keys(localStorage);
+      for (var i = 0; i < keys.length; i++) {
+        if (keys[i].startsWith('sb-') && keys[i].includes('-auth-token')) {
+          var val = JSON.parse(localStorage.getItem(keys[i]));
+          if (val && val.user && val.user.email) return val.user.email;
+        }
+      }
+    } catch(e) {}
+    return null;
+  }
+
+  var storedEmail = getStoredEmail();
+  if (!storedEmail || storedEmail !== ADMIN_EMAIL) {
+    document.addEventListener('DOMContentLoaded', function(){ blockAccess('You are not signed in as admin.'); });
+    if (document.readyState !== 'loading') blockAccess('You are not signed in as admin.');
+    return; // 스크립트 나머지 실행 방지
+  }
+
+  // 2차: SDK 세션 실시간 검증 (DOMContentLoaded 후)
+  document.addEventListener('DOMContentLoaded', function() {
+    var sb = window.supabase && window.supabase.createClient(
+      'https://samghztrdvtxmrmawneu.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs'
+    );
+    if (!sb) return;
+    sb.auth.getSession().then(function(r) {
+      var email = r.data && r.data.session && r.data.session.user && r.data.session.user.email;
+      if (!email || email !== ADMIN_EMAIL) {
+        blockAccess('Session invalid or not admin.');
+      }
+    });
+
+    // 세션 변경 감지 (로그아웃 시 즉시 차단)
+    sb.auth.onAuthStateChange(function(event, session) {
+      var email = session && session.user && session.user.email;
+      if (event === 'SIGNED_OUT' || !email || email !== ADMIN_EMAIL) {
+        blockAccess('Signed out.');
+      }
+    });
+  });
+})();
+// ══ END ADMIN AUTH GATE ════════════════════════════════════
 
 // ══ KEYS ══════════════════════════════════════════════════
 const K_DB       = 'korehan_db';
@@ -351,24 +425,55 @@ let DB = [];
 let activeFilter = '';
 let deleteId = null;
 
-function dbLoad(){ return ls(K_DB, null); }
-function dbSave(){ lsSet(K_DB, DB); }
-
-// Init DB
-(function(){
-  const stored = dbLoad();
-  if(stored && stored.length > 0){
-    DB = stored;
-    // Merge any new seed articles not yet in DB
-    const storedIds = new Set(stored.map(a=>a.id));
-    const missing = SEED.filter(a=>!storedIds.has(a.id));
-    if(missing.length){ DB = [...stored, ...missing]; dbSave(); }
-  } else {
-    DB = SEED.map(function(s){ return Object.assign({}, s, {date: s.date||today()}); });
-    dbSave();
+function getSb() {
+  if (typeof supabase !== 'undefined' && SUPA_URL && SUPA_KEY) {
+    return supabase.createClient(SUPA_URL, SUPA_KEY);
   }
-  goList();
-})();
+  return null;
+}
+
+async function dbLoadFromSupabase() {
+  const sb = getSb();
+  if (!sb) { console.warn('Supabase not available'); goList(); return; }
+  try {
+    const res = await sb.from('articles').select('*').order('date', { ascending: false });
+    if (res.error) throw res.error;
+    DB = res.data || [];
+    goList();
+  } catch(e) {
+    toast('DB 로드 오류: ' + e.message, true);
+    goList();
+  }
+}
+
+async function dbSaveArticle(article) {
+  const sb = getSb();
+  if (!sb) return false;
+  try {
+    const res = await sb.from('articles').upsert(article, { onConflict: 'id' });
+    if (res.error) throw res.error;
+    return true;
+  } catch(e) {
+    toast('저장 오류: ' + e.message, true);
+    return false;
+  }
+}
+
+async function dbDeleteArticle(id) {
+  const sb = getSb();
+  if (!sb) return false;
+  try {
+    const res = await sb.from('articles').delete().eq('id', id);
+    if (res.error) throw res.error;
+    return true;
+  } catch(e) {
+    toast('삭제 오류: ' + e.message, true);
+    return false;
+  }
+}
+
+// Init — Supabase에서 기사 로드
+dbLoadFromSupabase();
 
 // ══ COUNTS ══════════════════════════════════════════════════
 function refreshCounts(){
@@ -399,8 +504,8 @@ function renderList(){
 
   document.getElementById('main').innerHTML=`
     <div class="pg-hd">
-      <div><h1>전체 기사</h1><p>기사를 추가·수정·삭제하세요</p></div>
-      <button class="btn btn-g" id="btn-new">＋ 새 기사 작성</button>
+      <div><h1>All Articles</h1><p>기사를 추가·수정·삭제하세요</p></div>
+      <button class="btn btn-g" id="btn-new">＋ New Article</button>
     </div>
     <div class="stats">
       <div class="stat"><div class="stat-n">${DB.length}</div><div class="stat-l">전체</div></div>
@@ -415,7 +520,7 @@ function renderList(){
     <div class="toolbar">
       <div class="srch"><span>🔍</span><input id="q" type="text" placeholder="제목 검색…" oninput="renderRows()"></div>
       <select class="flt" id="fsec" onchange="renderRows()">
-        <option value="">전체 섹션</option>
+        <option value="">All Sections</option>
         ${SECS.map(s=>`<option value="${s}"${activeFilter===s?' selected':''}>${s}</option>`).join('')}
       </select>
       <select class="flt" id="fsta" onchange="renderRows()">
@@ -448,7 +553,7 @@ function renderRows(){
   wrap.innerHTML=`
     <table class="tbl">
       <thead><tr>
-        <th style="width:74px">이미지</th><th>기사</th><th style="width:88px">섹션</th>
+        <th style="width:74px">Image</th><th>Article</th><th style="width:88px">Section</th>
         <th style="width:90px">상태</th><th style="width:96px">날짜</th><th style="width:160px">액션</th>
       </tr></thead>
       <tbody id="tbody"></tbody>
@@ -461,7 +566,10 @@ function renderRows(){
       <td>
         <div class="art-t">${esc(a.title)}</div>
         <div class="art-b">${esc(a.body||'')}</div>
-        ${a.featured?'<span style="font-size:11px;color:#b87800;font-weight:700">⭐ Featured</span>':''}
+        <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
+          ${a.featured?'<span style="font-size:11px;color:#b87800;font-weight:700;background:#fff8e1;padding:1px 7px;border-radius:999px">⭐ Featured</span>':''}
+          ${a.level?`<span style="font-size:11px;font-weight:800;padding:1px 8px;border-radius:999px;background:${a.level==='Beginner'?'#e8f5e9;color:#2e7d32':a.level==='Intermediate'?'#fff8e1;color:#f57f17':'#fce4ec;color:#c62828'}">${a.level}</span>`:''}
+        </div>
       </td>
       <td><span class="cpill c${esc(a.section)}">${esc(a.section)}</span></td>
       <td><span class="dot ${a.status==='published'?'dpub':'ddr'}"></span>${a.status==='published'?'발행됨':'임시저장'}</td>
@@ -481,11 +589,12 @@ function renderRows(){
   });
 }
 
-function togglePub(id){
+async function togglePub(id){
   const idx=DB.findIndex(a=>a.id===id); if(idx===-1) return;
   DB[idx].status = DB[idx].status==='published'?'draft':'published';
-  dbSave(); renderRows();
-  toast(DB[idx].status==='published'?'✓ 발행됨':'임시저장으로 변경');
+  await dbSaveArticle(DB[idx]);
+  renderRows();
+  toast(DB[idx].status==='published' ? '✓ Published!' : 'Moved to draft');
 }
 
 // ══ ARTICLE MODAL ════════════════════════════════════════════
@@ -493,7 +602,7 @@ const SECS = ['사회','국제','문화','Korea','스포츠','IT과학','오피�
 
 function openModal(id){
   const a = id ? DB.find(x=>x.id===id) : null;
-  document.getElementById('m-ttl').textContent = a ? '기사 수정' : '새 기사 작성';
+  document.getElementById('m-ttl').textContent = a ? '기사 수정' : 'New Article';
   document.getElementById('m-bd').innerHTML = formHTML(a);
   document.getElementById('ov').style.display='flex';
   document.body.style.overflow='hidden';
@@ -503,18 +612,19 @@ function openModal(id){
   if(delBtn) delBtn.style.display = a ? 'inline-flex' : 'none';
 }
 
-function deleteFromModal(){
+async function deleteFromModal(){
   const eid = document.getElementById('f-id')?.value||'';
   if(!eid) return;
   const a = DB.find(x=>x.id===eid);
   if(!a) return;
   if(!confirm('「' + a.title + '」 이 기사를 삭제할까요? 되돌릴 수 없어요.')) return;
+  const ok = await dbDeleteArticle(eid);
+  if (!ok) return;
   DB = DB.filter(x=>x.id!==eid);
-  dbSave();
   refreshCounts();
   closeModal();
   goList();
-  toast('🗑 기사가 삭제됐어요.');
+  toast('🗑️ Article deleted');
 }
 function closeModal(){
   document.getElementById('ov').style.display='none';
@@ -525,7 +635,7 @@ function formHTML(a){
   return `
     <div class="fg-row">
       <div class="fg">
-        <label>섹션 *</label>
+        <label>Section *</label>
         <select id="f-sec">
           ${SECS.map(s=>`<option value="${s}"${(v.section||'')==s?' selected':''}>${s}</option>`).join('')}
         </select>
@@ -560,6 +670,15 @@ function formHTML(a){
       <input type="checkbox" id="f-break" ${v.breaking?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0;accent-color:#d00">
       <label for="f-break" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:700;cursor:pointer;color:#c00">🔴 Breaking News (속보 티커에 표시)</label>
     </div>
+    <div class="fg">
+      <label>Difficulty Level</label>
+      <select id="f-level" style="height:38px">
+        <option value="">— 선택 안 함 —</option>
+        <option value="Beginner"  ${(v.level||'')==='Beginner'  ?'selected':''}>🟢 Beginner  (TOPIK 1-2)</option>
+        <option value="Intermediate" ${(v.level||'')==='Intermediate'?'selected':''}>🟡 Intermediate (TOPIK 3-4)</option>
+        <option value="Advanced" ${(v.level||'')==='Advanced' ?'selected':''}>🔴 Advanced  (TOPIK 5-6)</option>
+      </select>
+    </div>
     <input type="hidden" id="f-id" value="${v.id||''}">`;
 }
 function livePreview(){
@@ -568,7 +687,7 @@ function livePreview(){
   if(!p) return;
   if(url){p.src=url;p.style.display='block';}else{p.style.display='none';}
 }
-function submitForm(status){
+async function submitForm(status){
   const title=(document.getElementById('f-title')?.value||'').trim();
   const body =(document.getElementById('f-body')?.value||'').trim();
   const sec  = document.getElementById('f-sec')?.value||'사회';
@@ -576,20 +695,28 @@ function submitForm(status){
   const image=(document.getElementById('f-image')?.value||'').trim();
   const feat    = document.getElementById('f-feat')?.checked||false;
   const breaking = document.getElementById('f-break')?.checked||false;
+  const level   = document.getElementById('f-level')?.value||'';
   const eid  = document.getElementById('f-id')?.value||'';
   if(!title){toast('제목을 입력해 주세요',true);return;}
   if(!body) {toast('본문을 입력해 주세요',true);return;}
-  if(eid){
-    const idx=DB.findIndex(a=>a.id===eid);
-    if(idx!==-1) DB[idx]={...DB[idx],title,body,section:sec,date,image,featured:feat,breaking:breaking,status};
-  } else {
-    DB.unshift({id:uid(),title,body,section:sec,date,image,featured:feat,breaking:breaking,status});
-  }
-  dbSave();
-  // 기사 저장 시 vocab 자동 추출
+
+  const article = {
+    id: eid || uid(),
+    title, body, section: sec, date, image,
+    featured: feat, breaking: breaking, level, status
+  };
+
+  const ok = await dbSaveArticle(article);
+  if (!ok) return;
+
+  // 로컬 캐시 업데이트
+  const idx = DB.findIndex(a => a.id === article.id);
+  if (idx !== -1) DB[idx] = article;
+  else DB.unshift(article);
+
   if(status==='published') adminExtractVocab({title,body});
   closeModal(); goList();
-  toast(status==='published'?'✓ 발행됐어요!':'임시저장 완료');
+  toast(status==='published' ? '✓ Published!' : 'Draft saved');
 }
 
 // ══ VOCAB AUTO-EXTRACT ══════════════════════════════════════
@@ -668,13 +795,244 @@ function openDelete(id){
   document.getElementById('del-ov').style.display='flex';
 }
 function closeDelete(){ document.getElementById('del-ov').style.display='none'; deleteId=null; }
-function doDelete(){
+async function doDelete(){
   if(!deleteId) return;
-  DB=DB.filter(a=>a.id!==deleteId); dbSave(); closeDelete(); goList();
-  toast('🗑️ 삭제됐어요');
+  const ok2 = await dbDeleteArticle(deleteId);
+  if (!ok2) return;
+  DB=DB.filter(a=>a.id!==deleteId); closeDelete(); goList();
+  toast('🗑️ Article deleted');
 }
 
 // ══ SITE SETTINGS ════════════════════════════════════════════
+
+
+async function goSections() {
+  setSbOn(null);
+  var main = document.getElementById('main');
+  main.innerHTML =
+    '<div class="pg-hd"><div><h1>🗂️ Manage Sections</h1><p>Add, edit or remove navigation sections. Changes appear on the site immediately.</p></div></div>'
+    + '<div id="sections-list"><div style="text-align:center;padding:32px;color:#aaa">⏳ Loading...</div></div>'
+    + '<div class="sf-card" style="margin-top:16px">'
+    + '<h3 style="margin-bottom:14px">➕ Add New Section</h3>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
+    + '<div><label class="inp-label">Section Key (unique ID, e.g. K-pop)</label>'
+    + '<input class="inp inp-sm" id="ns-key" placeholder="K-pop"></div>'
+    + '<div><label class="inp-label">Display Label (shown in nav)</label>'
+    + '<input class="inp inp-sm" id="ns-label" placeholder="K-pop"></div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:80px 1fr;gap:12px;margin-bottom:12px">'
+    + '<div><label class="inp-label">Icon</label>'
+    + '<input class="inp inp-sm" id="ns-icon" placeholder="🎤"></div>'
+    + '<div><label class="inp-label">AI Topics hint (for auto-generate)</label>'
+    + '<input class="inp inp-sm" id="ns-topics" placeholder="K-pop, idol groups, music charts..."></div>'
+    + '</div>'
+    + '<button class="btn btn-g" onclick="addSection()">➕ Add Section</button>'
+    + '</div>';
+
+  await refreshSectionsList();
+}
+
+async function refreshSectionsList() {
+  var sb = getSupa ? getSupa() : null;
+  if (!sb) return;
+  var res = await sb.from('sections').select('*').order('sort_order');
+  var sections = res.data || [];
+
+  var html = sections.length === 0
+    ? '<div class="sf-card"><p style="color:#aaa">No sections yet.</p></div>'
+    : '<div class="sf-card"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+      + '<tr style="color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:1px;background:#f8faff">'
+      + '<th style="text-align:left;padding:8px 10px">Icon</th>'
+      + '<th style="text-align:left;padding:8px">Key</th>'
+      + '<th style="text-align:left;padding:8px">Label</th>'
+      + '<th style="text-align:left;padding:8px">Order</th>'
+      + '<th style="text-align:left;padding:8px">Active</th>'
+      + '<th style="text-align:right;padding:8px">Actions</th>'
+      + '</tr>'
+      + sections.map(function(s) {
+          return '<tr style="border-top:1px solid #f0f3f9">'
+            + '<td style="padding:8px 10px;font-size:20px">' + (s.icon||'📰') + '</td>'
+            + '<td style="padding:8px;font-weight:700;color:#2255a4">' + s.key + '</td>'
+            + '<td style="padding:8px">' + s.label + '</td>'
+            + '<td style="padding:8px">'
+            + '<input type="number" value="' + (s.sort_order||99) + '" min="1" max="99" '
+            + 'style="width:52px;padding:4px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px" '
+            + 'onchange="updateSectionOrder('' + s.id + '',this.value)">'
+            + '</td>'
+            + '<td style="padding:8px">'
+            + '<label style="cursor:pointer;display:flex;align-items:center;gap:6px">'
+            + '<input type="checkbox" ' + (s.active?'checked':'') + ' onchange="toggleSection('' + s.id + '',this.checked)">'
+            + (s.active ? '<span style="color:#16a34a;font-weight:700;font-size:12px">Active</span>' : '<span style="color:#94a3b8;font-size:12px">Hidden</span>')
+            + '</label>'
+            + '</td>'
+            + '<td style="padding:8px;text-align:right">'
+            + '<button onclick="editSection('' + s.id + '','' + s.key + '','' + s.label + '','' + (s.icon||'') + '','' + (s.topics||'').replace(/'/g,"\'") + '')" '
+            + 'style="padding:4px 10px;background:#e8eef7;color:#2255a4;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px">Edit</button>'
+            + '<button onclick="deleteSection('' + s.id + '','' + s.key + '')" '
+            + 'style="padding:4px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Delete</button>'
+            + '</td>'
+            + '</tr>';
+        }).join('')
+      + '</table></div>';
+
+  var el = document.getElementById('sections-list');
+  if (el) el.innerHTML = html;
+}
+
+async function addSection() {
+  var key    = (document.getElementById('ns-key')?.value||'').trim();
+  var label  = (document.getElementById('ns-label')?.value||'').trim();
+  var icon   = (document.getElementById('ns-icon')?.value||'📰').trim();
+  var topics = (document.getElementById('ns-topics')?.value||'').trim();
+  if (!key || !label) { toast('Key and Label are required', true); return; }
+
+  var sb = getSupa ? getSupa() : null;
+  if (!sb) return;
+  var res = await sb.from('sections').insert({ key, label, icon, topics, sort_order:99, active:true });
+  if (res.error) { toast('Error: ' + res.error.message, true); return; }
+  toast('✅ Section "' + label + '" added!');
+  document.getElementById('ns-key').value = '';
+  document.getElementById('ns-label').value = '';
+  document.getElementById('ns-icon').value = '';
+  document.getElementById('ns-topics').value = '';
+  await refreshSectionsList();
+}
+
+async function deleteSection(id, key) {
+  if (!confirm('Delete section "' + key + '"? Articles in this section will NOT be deleted.')) return;
+  var sb = getSupa ? getSupa() : null;
+  if (!sb) return;
+  await sb.from('sections').delete().eq('id', id);
+  toast('🗑️ Section deleted');
+  await refreshSectionsList();
+}
+
+async function toggleSection(id, active) {
+  var sb = getSupa ? getSupa() : null;
+  if (!sb) return;
+  await sb.from('sections').update({ active }).eq('id', id);
+  toast(active ? '✅ Section activated' : '🙈 Section hidden');
+  await refreshSectionsList();
+}
+
+async function updateSectionOrder(id, order) {
+  var sb = getSupa ? getSupa() : null;
+  if (!sb) return;
+  await sb.from('sections').update({ sort_order: parseInt(order) }).eq('id', id);
+}
+
+function editSection(id, key, label, icon, topics) {
+  var newLabel  = prompt('Label:', label);  if (newLabel  === null) return;
+  var newIcon   = prompt('Icon:',  icon);   if (newIcon   === null) return;
+  var newTopics = prompt('AI Topics:', topics); if (newTopics === null) return;
+  var sb = getSupa ? getSupa() : null;
+  if (!sb) return;
+  sb.from('sections').update({ label:newLabel, icon:newIcon, topics:newTopics }).eq('id', id)
+    .then(function(){ toast('✅ Updated'); refreshSectionsList(); });
+}
+
+async function goStats() {
+  setSbOn(null);
+  var main = document.getElementById('main');
+  main.innerHTML = '<div class="pg-hd"><div><h1>📊 User Analytics</h1><p>전체 유저 학습 현황을 확인하세요.</p></div></div>'
+    + '<div id="stats-content"><div style="text-align:center;padding:48px;color:#aaa">⏳ Loading data...</div></div>';
+
+  var sb = getSupa ? getSupa() : null;
+  if (!sb) { document.getElementById('stats-content').innerHTML = '<p style="color:red">Supabase connection failed</p>'; return; }
+
+  try {
+    // 병렬로 데이터 로드
+    var [usersRes, missionsRes, viewsRes] = await Promise.all([
+      sb.from('user_stats').select('*').order('xp', { ascending: false }),
+      sb.from('daily_missions').select('*').eq('date', new Date().toISOString().slice(0,10)),
+      sb.from('article_views').select('*').order('view_count', { ascending: false }).limit(10)
+    ]);
+
+    var users    = usersRes.data  || [];
+    var missions = missionsRes.data || [];
+    var views    = viewsRes.data  || [];
+
+    var todayCompleted = missions.filter(function(m){ return m.completed; }).length;
+    var totalTickets   = users.reduce(function(s,u){ return s + (u.writing_tickets||0); }, 0);
+    var totalXP        = users.reduce(function(s,u){ return s + (u.xp||0); }, 0);
+
+    var html =
+      // 요약 카드 4개
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px">'
+      + statCard('👥', 'Total Users', users.length + '명', '#2255a4')
+      + statCard('🎯', 'Today\'s Missions', todayCompleted + '명', '#10b981')
+      + statCard('⚡', 'Total XP', totalXP.toLocaleString(), '#f59e0b')
+      + statCard('✏️', 'Writing Tickets', totalTickets + '개', '#8b5cf6')
+      + '</div>'
+
+      // 인기 기사 TOP 10
+      + '<div class="sf-card" style="margin-bottom:20px">'
+      + '<h3 style="margin-bottom:14px">🔥 Top Articles — ' + Math.min(views.length,10) + '</h3>'
+      + (views.length === 0
+        ? '<p style="color:#aaa;font-size:13px">No data yet</p>'
+        : '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+          + '<tr style="color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:1px">'
+          + '<th style="text-align:left;padding:6px 8px">#</th>'
+          + '<th style="text-align:left;padding:6px 8px">제목</th>'
+          + '<th style="text-align:left;padding:6px 8px">Section</th>'
+          + '<th style="text-align:right;padding:6px 8px">Views</th></tr>'
+          + views.slice(0,10).map(function(v,i){
+              return '<tr style="border-top:1px solid #f0f3f9">'
+                + '<td style="padding:8px;font-weight:900;color:#2255a4">' + (i+1) + '</td>'
+                + '<td style="padding:8px;font-weight:600">' + (v.title||v.article_id) + '</td>'
+                + '<td style="padding:8px;color:#64748b">' + (v.section||'-') + '</td>'
+                + '<td style="padding:8px;text-align:right;font-weight:800">' + v.view_count + '</td>'
+                + '</tr>';
+            }).join('')
+          + '</table>'
+        )
+      + '</div>'
+
+      // 유저별 통계 테이블
+      + '<div class="sf-card">'
+      + '<h3 style="margin-bottom:14px">👤 User Learning Stats</h3>'
+      + (users.length === 0
+        ? '<p style="color:#aaa;font-size:13px">No data yet</p>'
+        : '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:600px">'
+          + '<tr style="color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:1px;background:#f8faff">'
+          + '<th style="text-align:left;padding:8px 10px">유저</th>'
+          + '<th style="text-align:right;padding:8px">XP</th>'
+          + '<th style="text-align:right;padding:8px">Article</th>'
+          + '<th style="text-align:right;padding:8px">단어</th>'
+          + '<th style="text-align:right;padding:8px">퀴즈</th>'
+          + '<th style="text-align:right;padding:8px">미션🔥</th>'
+          + '<th style="text-align:right;padding:8px">첨삭권✏️</th>'
+          + '</tr>'
+          + users.map(function(u){
+              return '<tr style="border-top:1px solid #f0f3f9">'
+                + '<td style="padding:8px 10px"><div style="font-weight:700">' + (u.display_name||'-') + '</div>'
+                + '<div style="font-size:11px;color:#94a3b8">' + (u.email||'') + '</div></td>'
+                + '<td style="padding:8px;text-align:right;font-weight:800;color:#2255a4">' + (u.xp||0).toLocaleString() + '</td>'
+                + '<td style="padding:8px;text-align:right">' + (u.articles_read||0) + '</td>'
+                + '<td style="padding:8px;text-align:right">' + (u.words_saved||0) + '</td>'
+                + '<td style="padding:8px;text-align:right">' + (u.quizzes_done||0) + '</td>'
+                + '<td style="padding:8px;text-align:right;font-weight:800;color:#f59e0b">' + (u.mission_streak||0) + '일</td>'
+                + '<td style="padding:8px;text-align:right;font-weight:800;color:#8b5cf6">' + (u.writing_tickets||0) + '</td>'
+                + '</tr>';
+            }).join('')
+          + '</table></div>'
+        )
+      + '</div>';
+
+    document.getElementById('stats-content').innerHTML = html;
+  } catch(e) {
+    document.getElementById('stats-content').innerHTML = '<p style="color:red;padding:20px">Error: ' + e.message + '</p>';
+  }
+}
+
+function statCard(icon, label, value, color) {
+  return '<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:18px">'
+    + '<div style="font-size:22px;margin-bottom:6px">' + icon + '</div>'
+    + '<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">' + label + '</div>'
+    + '<div style="font-size:26px;font-weight:900;color:' + color + '">' + value + '</div>'
+    + '</div>';
+}
+
 function goSiteSettings(){
   setSbOn(null);
   const c={...DEF_SITECONF,...ls(K_SITECONF,{})};
@@ -708,8 +1066,20 @@ function goSiteSettings(){
         <textarea class="inp inp-ta" id="sc-lb-desc">${esc(c.learnBannerDesc)}</textarea>
       </div>
     </div>
+    <div class="sf-card">
+      <h3>🔑 AI 기능 설정</h3>
+      <p style="font-size:13px;color:#64748b;margin-bottom:12px">번역, 문법 가이드, Fill-in-the-Blank 등 AI 기능에 사용할 Anthropic API 키를 저장하세요. 모든 유저에게 적용됩니다.</p>
+      <div style="display:flex;gap:10px;align-items:center">
+        <input id="sc-api-key" type="password" placeholder="sk-ant-..." class="inp inp-sm" style="flex:1">
+        <button class="btn btn-g" onclick="saveApiKey()">🔑 저장</button>
+      </div>
+      <div id="sc-api-status" style="font-size:12px;color:#94a3b8;margin-top:8px"></div>
+    </div>
     <button class="btn btn-g" onclick="saveSiteSettings()">💾 저장</button>
-    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>`;
+    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>\`;
+
+  // API 키 현재값 로드
+  loadApiKeyIntoSettings();
 }
 function saveSiteSettings(){
   const c={
@@ -723,6 +1093,47 @@ function saveSiteSettings(){
   toast('⚙️ 사이트 설정 저장됨!');
 }
 function resetSiteSettings(){ lsSet(K_SITECONF,{}); goSiteSettings(); toast('기본값으로 초기화됐어요'); }
+
+async function loadApiKeyIntoSettings() {
+  const statusEl = document.getElementById('sc-api-status');
+  const input = document.getElementById('sc-api-key');
+  if (!input) return;
+  try {
+    var sb = getSupa();
+    if (sb) {
+      var res = await sb.from('app_settings').select('value,updated_at').eq('key','anthropic_key').single();
+      if (res.data && res.data.value) {
+        input.value = res.data.value;
+        var d = new Date(res.data.updated_at).toLocaleDateString('ko-KR');
+        if (statusEl) statusEl.textContent = '✅ 저장된 키 있음 (마지막 업데이트: ' + d + ')';
+        return;
+      }
+    }
+  } catch(e) {}
+  // 로컬 캐시
+  var local = localStorage.getItem('kh_anthropic_key') || '';
+  if (local) { input.value = local; if (statusEl) statusEl.textContent = '⚠️ 로컬 캐시만 있음 — 저장 버튼 눌러서 Supabase에 저장하세요'; }
+  else { if (statusEl) statusEl.textContent = '❌ 저장된 키 없음'; }
+}
+
+async function saveApiKey() {
+  const input = document.getElementById('sc-api-key');
+  const statusEl = document.getElementById('sc-api-status');
+  if (!input) return;
+  const key = input.value.trim();
+  if (!key || !key.startsWith('sk-ant-')) { toast('올바른 API 키를 입력해주세요 (sk-ant-...)', true); return; }
+  try {
+    var sb = getSupa();
+    if (!sb) throw new Error('Supabase not ready');
+    var res = await sb.from('app_settings').upsert({ key: 'anthropic_key', value: key, updated_at: new Date().toISOString() });
+    if (res.error) throw res.error;
+    localStorage.setItem('kh_anthropic_key', key);
+    toast('🔑 API 키 저장 완료! 모든 유저에게 적용됩니다.');
+    if (statusEl) statusEl.textContent = '✅ 저장 완료 (' + new Date().toLocaleDateString('ko-KR') + ')';
+  } catch(e) {
+    toast('저장 실패: ' + (e.message || e), true);
+  }
+}
 
 
 // ══ OPINIONS ═════════════════════════════════════════════════
@@ -952,12 +1363,22 @@ function goAutoArticle(){
   setSbOn(null);
   document.getElementById('main').innerHTML =
     '<div class="pg-hd"><div><h1>🤖 AI 기사 자동생성</h1>'
-   +'<p>Claude AI가 각 섹션별 최신 이슈를 쉬운 한국어로 자동 생성합니다.</p></div></div>'
+   +'<p>Claude AI automatically generates Korean news articles for each section.</p></div></div>'
    +'<div class="infobox">💡 생성된 기사는 <b>임시저장</b> 상태로 저장됩니다. 검토 후 직접 발행하세요.<br>Anthropic API 키가 필요합니다.</div>'
    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">'
    +'<input id="auto-api-key" type="password" placeholder="Anthropic API 키 (sk-ant-...)" '
    +'style="flex:1;padding:9px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit">'
    +'<button class="btn btn-g" onclick="loadAutoApiKey()">키 불러오기</button>'
+   +'</div>'
+   +'<div style="display:flex;gap:12px;align-items:center;margin-bottom:18px;flex-wrap:wrap">'
+   +'<div style="display:flex;align-items:center;gap:8px">'
+   +'<label style="font-weight:700;font-size:13px">Difficulty:</label>'
+   +'<select id="auto-difficulty" style="padding:8px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;background:#fff">'
+   +'<option value="Beginner">🟢 Beginner</option>'
+   +'<option value="Intermediate" selected>🟡 Intermediate</option>'
+   +'<option value="Advanced">🔴 Advanced</option>'
+   +'</select></div>'
+   +'<div style="font-size:12px;color:var(--gr)">Beginner: simple vocab · Intermediate: news-level · Advanced: native-level</div>'
    +'</div>'
    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:20px">'
    + AUTO_SECTIONS.map(function(s){
@@ -965,27 +1386,52 @@ function goAutoArticle(){
          +'<input type="checkbox" value="'+s.key+'" checked style="width:16px;height:16px"> '+s.icon+' '+s.key+'</label>';
      }).join('')
    +'</div>'
-   +'<button class="btn btn-g" onclick="runAutoGenerate()" style="font-size:15px;padding:12px 32px">🚀 선택 섹션 기사 생성</button>'
+   +'<button class="btn btn-g" onclick="runAutoGenerate()" style="font-size:15px;padding:12px 32px">🚀 Generate Articles</button>'
    +'<div id="auto-progress" style="margin-top:20px"></div>';
 
   // Load saved key
   loadAutoApiKey();
 }
 
-function loadAutoApiKey(){
-  const saved = localStorage.getItem('kh_anthropic_key') || '';
+async function loadAutoApiKey(){
   const input = document.getElementById('auto-api-key');
-  if(input && saved) input.value = saved;
+  if (!input) return;
+  // 로컬 캐시 먼저
+  const local = localStorage.getItem('kh_anthropic_key') || '';
+  if (local) input.value = local;
+  // Supabase에서 최신값 가져오기
+  try {
+    var sb = getSupa();
+    if (sb) {
+      var res = await sb.from('app_settings').select('value').eq('key','anthropic_key').single();
+      if (res.data && res.data.value) {
+        input.value = res.data.value;
+        localStorage.setItem('kh_anthropic_key', res.data.value);
+      }
+    }
+  } catch(e) {}
 }
 
 async function runAutoGenerate(){
   const keyInput = document.getElementById('auto-api-key');
   const apiKey   = keyInput ? keyInput.value.trim() : '';
   if(!apiKey){ toast('API 키를 입력해 주세요', true); return; }
+  // localStorage + Supabase 둘 다 저장
   localStorage.setItem('kh_anthropic_key', apiKey);
+  try {
+    var sb = getSupa();
+    if (sb) await sb.from('app_settings').upsert({ key: 'anthropic_key', value: apiKey, updated_at: new Date().toISOString() });
+  } catch(e) {}
 
+  const difficulty = document.getElementById('auto-difficulty') ? document.getElementById('auto-difficulty').value : 'Intermediate';
+  const diffMap = {
+    'Beginner': { ko:'초급 (TOPIK 1~2급, 초등학교 수준)', vocab:'아주 쉬운 일상 어휘, 짧은 문장, ~해요/~이에요 체', level:'Beginner' },
+    'Intermediate': { ko:'중급 (TOPIK 3~4급, 중학교 수준)', vocab:'일반 뉴스 어휘, 중간 난이도 문장', level:'Intermediate' },
+    'Advanced': { ko:'고급 (TOPIK 5~6급, 원어민 수준)', vocab:'고급 한자어, 복잡한 문장 구조, 뉴스 문체', level:'Advanced' },
+  };
+  const diffInfo = diffMap[difficulty] || diffMap['Intermediate'];
   const checked = [...document.querySelectorAll('#main input[type=checkbox]:checked')].map(function(c){ return c.value; });
-  if(!checked.length){ toast('섹션을 하나 이상 선택해 주세요', true); return; }
+  if(!checked.length){ toast('Please select at least one section', true); return; }
 
   const progress = document.getElementById('auto-progress');
   progress.innerHTML = '';
@@ -1006,8 +1452,10 @@ async function runAutoGenerate(){
       const prompt = '당신은 외국인 한국어 학습자를 위한 뉴스 기사를 쓰는 편집자입니다. '
         +'오늘(' + today + ')을 기준으로 ' + sec.key + ' 분야(' + sec.topics + ')에서 '
         +'실제로 화제가 되고 있는 이슈를 바탕으로 기사를 작성해 주세요.\n\n'
+        +'[난이도: ' + diffInfo.ko + ']\n'
+        +'[어휘 수준: ' + diffInfo.vocab + ']\n\n'
         +'[독자 대상]\n'
-        +'- 한국어를 공부하는 외국인 (TOPIK 3~4급, 중학교 수준)\n'
+        +'- 한국어를 공부하는 외국인 (' + diffInfo.ko + ')\n'
         +'- 뉴스를 읽으면서 자연스럽게 한국어를 배우고 싶은 성인 학습자\n\n'
         +'[문체 및 형식]\n'
         +'- 짧고 명확한 문장 (한 문장에 20~35자 이내)\n'
@@ -1028,17 +1476,14 @@ async function runAutoGenerate(){
         +'응답은 반드시 아래 JSON 형식으로만 출력하세요 (마크다운 코드블록 불필요):\n'
         +'{"title":"기사 제목","body":"기사 본문 (단락 구분은 \\n\\n 사용)"}';
 
-      const res = await fetch('https://purple-glitter-be9d.enane960819.workers.dev/', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json','x-api-key':apiKey},
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 2000,
-          messages: [{role:'user', content: prompt}]
-        })
+      const res = await callClaude({
+        feature: 'generate',
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        messages: [{role:'user', content: prompt}]
       });
 
-      const data = await res.json();
+      const data = res;
       const text = data.content && data.content[0] && data.content[0].text || '';
       if(!text) throw new Error('빈 응답');
 
@@ -1046,7 +1491,7 @@ async function runAutoGenerate(){
       const clean = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
       const article = JSON.parse(clean);
 
-      if(!article.title || !article.body) throw new Error('형식 오류');
+      if(!article.title || !article.body) throw new Error('Invalid format');
 
       // Save to DB as draft
       const newArticle = {
@@ -1057,10 +1502,11 @@ async function runAutoGenerate(){
         date: today_date(),
         status: 'draft',
         featured: false,
+        level: diffInfo.level,
         image: 'https://picsum.photos/seed/' + Math.random().toString(36).slice(2,8) + '/600/400',
       };
+      await dbSaveArticle(newArticle);
       DB.unshift(newArticle);
-      dbSave();
       refreshCounts();
 
       document.getElementById(rowId+'-status').innerHTML =
@@ -1209,7 +1655,7 @@ function exportNlCsv() {
 function goStats() {
   setSbOn(null);
   document.getElementById('main').innerHTML =
-    '<div class="pg-hd"><div><h1>📊 방문자 통계</h1><p>최근 30일 기준 페이지뷰와 인기 기사를 확인해요.</p></div></div>'
+    '<div class="pg-hd"><div><h1>📊 Visitor Analytics</h1><p>Page views and top articles for the last 30 days.</p></div></div>'
    +'<div id="stats-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 불러오는 중…</div></div>';
   loadStats();
 }
@@ -1268,7 +1714,7 @@ async function loadStats() {
 
       // 인기 기사
       +'<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:20px">'
-      +'<div style="font-size:14px;font-weight:700;color:var(--dk);margin-bottom:14px">🏆 인기 기사 Top 10</div>'
+      +'<div style="font-size:14px;font-weight:700;color:var(--dk);margin-bottom:14px">🏆 Top Articles</div>'
       + (topArts.length ? topArts.map(function(e,i){
           var art = DB.find(function(a){ return a.id===e[0]; });
           var title = art ? art.title : e[0];
@@ -1353,6 +1799,423 @@ async function loadUsers(){
   }
 }
 
+
+// ════════════════════════════════════════════════════════════
+// 🎓 CLASSES MANAGEMENT (Admin)
+// ════════════════════════════════════════════════════════════
+
+var ADMIN_CUR_LESSONS = {
+  beginner:     ['한글 자모 기초','받침 발음','인사 & 자기소개','숫자와 날짜','일상 표현 I','일상 표현 II','간단한 문장 만들기','기초 문법 정리'],
+  intermediate: ['뉴스 어휘 I','뉴스 어휘 II','뉴스 읽기 기초','문장 구조 분석','주제별 어휘 확장','요약하기 연습','말하기 연습 I','말하기 연습 II'],
+  advanced:     ['고급 어휘','TOPIK 읽기','TOPIK 듣기','에세이 쓰기 I','에세이 쓰기 II','토론 & 발표','TOPIK 실전 I','TOPIK 실전 II']
+};
+
+// ── 수업 가능 날짜 설정 ──────────────────────────────────────
+async function goClassSlots() {
+  activeSb('');
+  const sb = getSupa();
+  let slots = [];
+  if (sb) {
+    const { data } = await sb.from('available_slots')
+      .select('*').order('slot_date').order('slot_time');
+    slots = data || [];
+  }
+
+  const slotMap = {};
+  slots.forEach(s => { if (!slotMap[s.slot_date]) slotMap[s.slot_date] = []; slotMap[s.slot_date].push(s); });
+
+  document.getElementById('main').innerHTML = `
+  <div style="padding:28px 32px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+      <h2 style="font-size:20px;font-weight:900">📅 수업 가능 날짜 설정</h2>
+      <button class="btn btn-g" onclick="openSlotModal()">+ 슬롯 추가</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+      ${buildAdminCal(new Date(), slotMap)}
+    </div>
+
+    <div style="background:#fff;border:1px solid var(--br);border-radius:12px;padding:22px">
+      <div style="font-size:14px;font-weight:800;margin-bottom:14px;color:#0b1626">전체 슬롯 목록</div>
+      ${buildSlotList(slots)}
+    </div>
+  </div>`;
+}
+
+function buildAdminCal(base, slotMap) {
+  const months = [new Date(base.getFullYear(), base.getMonth(), 1),
+                  new Date(base.getFullYear(), base.getMonth()+1, 1)];
+  return months.map(m => {
+    const yr = m.getFullYear(), mo = m.getMonth();
+    const dim = new Date(yr, mo+1, 0).getDate();
+    const fd  = m.getDay();
+    const name = m.toLocaleString('ko-KR',{year:'numeric',month:'long'});
+    let h = `<div style="background:#fff;border:1px solid var(--br);border-radius:12px;padding:20px">
+      <div style="font-size:13px;font-weight:800;margin-bottom:12px">${name}</div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center">
+        ${['일','월','화','수','목','금','토'].map(d=>`<div style="font-size:11px;color:#94a3b8;font-weight:700;padding:3px">${d}</div>`).join('')}
+        ${'<div></div>'.repeat(fd)}`;
+    for (let d=1; d<=dim; d++) {
+      const ds = `${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const ds2 = slotMap[ds] || [];
+      const isPast = ds < new Date().toISOString().split('T')[0];
+      const bg = ds2.length ? '#2255a4' : (isPast ? '#f8faff' : '#fff');
+      const col = ds2.length ? '#fff' : (isPast ? '#d0d8e8' : '#0b1626');
+      const bor = ds2.length ? 'none' : '1px solid #e2e8f0';
+      h += `<div style="border-radius:6px;background:${bg};border:${bor};position:relative;overflow:hidden">
+        <button onclick="openSlotModal('${ds}')" style="width:100%;padding:5px 2px;border:none;background:transparent;color:${col};font-size:12px;font-weight:700;cursor:pointer" title="${ds2.length}개 슬롯">
+          ${d}${ds2.length ? `<span style="display:block;font-size:8px;opacity:.8">${ds2.length}개</span>` : ''}
+        </button></div>`;
+    }
+    h += '</div></div>';
+    return h;
+  }).join('');
+}
+
+function buildSlotList(slots) {
+  if (!slots.length) return '<p style="color:#94a3b8;font-size:14px">등록된 슬롯이 없습니다.</p>';
+  const byDate = {};
+  slots.forEach(s => { if (!byDate[s.slot_date]) byDate[s.slot_date] = []; byDate[s.slot_date].push(s); });
+  return Object.entries(byDate).slice(0,14).map(([date, ds]) => {
+    const label = new Date(date+'T12:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
+    return `<div style="margin-bottom:14px">
+      <div style="font-size:12px;font-weight:800;color:#0b1626;margin-bottom:6px">${label}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${ds.map(s => {
+          const tmap = {both:'그룹+개인', solo:'개인', group:'그룹'};
+          return `<div style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;background:${s.is_open?'#f0f6ff':'#f8faff'};border:1.5px solid ${s.is_open?'#2255a4':'#e2e8f0'}">
+            <span style="font-size:13px;font-weight:700;color:#0b1626">${s.slot_time.slice(0,5)}</span>
+            <span style="font-size:11px;color:#64748b">${tmap[s.plan_type]||s.plan_type}</span>
+            <span style="font-size:11px;color:#94a3b8">${s.booked_count}/${s.max_students}</span>
+            <button onclick="toggleAdminSlot(${s.id},${s.is_open})" style="font-size:10px;padding:2px 7px;border:none;border-radius:4px;cursor:pointer;background:${s.is_open?'#fef2f2':'#f0fdf4'};color:${s.is_open?'#cc2200':'#15803d'};font-weight:700">${s.is_open?'닫기':'열기'}</button>
+            <button onclick="deleteAdminSlot(${s.id})" style="font-size:10px;padding:2px 7px;border:none;border-radius:4px;cursor:pointer;background:#fef2f2;color:#cc2200;font-weight:700">삭제</button>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openSlotModal(dateStr) {
+  const id = 'slot-add-modal';
+  const existing = document.getElementById(id);
+  if (existing) existing.remove();
+  const m = document.createElement('div');
+  m.id = id;
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center';
+  m.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:32px;width:400px;max-width:95vw">
+      <h3 style="font-size:17px;font-weight:900;margin-bottom:20px">슬롯 추가</h3>
+      <div style="display:flex;flex-direction:column;gap:13px">
+        <label style="font-size:13px;font-weight:700;color:#445566">날짜
+          <input type="date" id="sl-date" value="${dateStr||''}" style="display:block;width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none">
+        </label>
+        <label style="font-size:13px;font-weight:700;color:#445566">시간
+          <input type="time" id="sl-time" style="display:block;width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none">
+        </label>
+        <label style="font-size:13px;font-weight:700;color:#445566">수업 유형
+          <select id="sl-type" style="display:block;width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none">
+            <option value="both">그룹 + 개인 모두 가능</option>
+            <option value="solo">개인 전용</option>
+            <option value="group">그룹 전용</option>
+          </select>
+        </label>
+        <label style="font-size:13px;font-weight:700;color:#445566">최대 그룹 인원
+          <input type="number" id="sl-max" value="4" min="1" max="8" style="display:block;width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none">
+        </label>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button onclick="document.getElementById('slot-add-modal').remove()" class="btn btn-gh" style="flex:1">취소</button>
+        <button onclick="saveAdminSlot()" class="btn btn-g" style="flex:1">저장</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+}
+
+async function saveAdminSlot() {
+  const sb = getSupa(); if (!sb) return;
+  const date = document.getElementById('sl-date').value;
+  const time = document.getElementById('sl-time').value;
+  const type = document.getElementById('sl-type').value;
+  const max  = parseInt(document.getElementById('sl-max').value) || 4;
+  if (!date || !time) { alert('날짜와 시간을 입력하세요'); return; }
+  const { error } = await sb.from('available_slots').upsert(
+    { slot_date:date, slot_time:time, plan_type:type, max_students:max, is_open:true },
+    { onConflict:'slot_date,slot_time,plan_type' }
+  );
+  if (error) { alert('저장 실패: '+error.message); return; }
+  document.getElementById('slot-add-modal')?.remove();
+  goClassSlots();
+}
+
+async function toggleAdminSlot(id, isOpen) {
+  const sb = getSupa(); if (!sb) return;
+  await sb.from('available_slots').update({ is_open:!isOpen }).eq('id',id);
+  goClassSlots();
+}
+
+async function deleteAdminSlot(id) {
+  if (!confirm('슬롯을 삭제할까요?')) return;
+  const sb = getSupa(); if (!sb) return;
+  await sb.from('available_slots').delete().eq('id',id);
+  goClassSlots();
+}
+
+// ── 예약 현황 ────────────────────────────────────────────────
+async function goClassBookings() {
+  activeSb('');
+  const sb = getSupa();
+  let bookings = [];
+  if (sb) {
+    const { data } = await sb.from('bookings')
+      .select('*, available_slots(slot_date,slot_time,plan_type), profiles(display_name,email)')
+      .order('created_at',{ascending:false});
+    bookings = data || [];
+  }
+  const SC = { pending:'#f59e0b', confirmed:'#16a34a', cancelled:'#94a3b8' };
+  const SK = { pending:'대기중',   confirmed:'✅ 확정', cancelled:'취소됨' };
+  document.getElementById('main').innerHTML = `
+  <div style="padding:28px 32px">
+    <h2 style="font-size:20px;font-weight:900;margin-bottom:20px">📋 예약 현황</h2>
+    ${!bookings.length ? '<p style="color:#94a3b8">예약 내역이 없습니다.</p>' :
+    `<div style="background:#fff;border:1px solid var(--br);border-radius:12px;overflow:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:600px">
+        <thead><tr style="background:#f8faff;border-bottom:2px solid #e2e8f0">
+          <th style="padding:12px 16px;text-align:left;font-weight:800">학생</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:800">수업 일시</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:800">유형</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:800">상태</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:800">메모</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:800">액션</th>
+        </tr></thead>
+        <tbody>
+          ${bookings.map(b => {
+            const u = b.profiles||{}, sl = b.available_slots||{};
+            const ds = sl.slot_date ? new Date(sl.slot_date+'T12:00:00').toLocaleDateString('ko-KR',{month:'short',day:'numeric',weekday:'short'}) : '-';
+            return `<tr style="border-bottom:1px solid #f0f4f8">
+              <td style="padding:11px 16px;font-weight:600">${u.display_name||u.email||b.user_id?.slice(0,8)}</td>
+              <td style="padding:11px 16px;color:#445566">${ds} ${(sl.slot_time||'').slice(0,5)}</td>
+              <td style="padding:11px 16px"><span style="background:${b.plan_type==='solo'?'#eff6ff':'#f0fdf4'};color:${b.plan_type==='solo'?'#2255a4':'#15803d'};padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700">${b.plan_type==='solo'?'개인':'그룹'}</span></td>
+              <td style="padding:11px 16px;font-weight:700;color:${SC[b.status]||'#94a3b8'}">${SK[b.status]||b.status}</td>
+              <td style="padding:11px 16px;color:#94a3b8;font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis">${b.memo||'-'}</td>
+              <td style="padding:11px 16px;display:flex;gap:6px;flex-wrap:wrap">
+                ${b.status==='pending' ? `
+                  <button onclick="adminUpdateBooking(${b.id},'confirmed')" style="padding:4px 10px;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">✓ 확정</button>
+                  <button onclick="adminUpdateBooking(${b.id},'cancelled')" style="padding:4px 10px;background:#fef2f2;color:#cc2200;border:1px solid #fecaca;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">✕ 취소</button>` : ''}
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`}
+  </div>`;
+}
+
+async function adminUpdateBooking(id, status) {
+  const sb = getSupa(); if (!sb) return;
+  await sb.from('bookings').update({ status }).eq('id', id);
+  // 확정 시 수업권 차감
+  if (status === 'confirmed') {
+    const { data: bk } = await sb.from('bookings').select('user_id,plan_type').eq('id',id).single();
+    if (bk) {
+      const { data: cr } = await sb.from('session_credits')
+        .select('id,used').eq('user_id',bk.user_id).eq('plan_type',bk.plan_type)
+        .order('created_at').limit(1).single();
+      if (cr) await sb.from('session_credits').update({ used: cr.used+1 }).eq('id',cr.id);
+    }
+  }
+  goClassBookings();
+}
+
+// ── 수업권 관리 ──────────────────────────────────────────────
+async function goClassCredits() {
+  activeSb('');
+  const sb = getSupa();
+  let credits = [];
+  if (sb) {
+    const { data } = await sb.from('session_credits')
+      .select('*, profiles(display_name,email)').order('created_at',{ascending:false});
+    credits = data || [];
+  }
+  document.getElementById('main').innerHTML = `
+  <div style="padding:28px 32px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2 style="font-size:20px;font-weight:900">🎟️ 수업권 관리</h2>
+      <button class="btn btn-g" onclick="openCreditModal()">+ 수업권 지급</button>
+    </div>
+    ${!credits.length ? '<p style="color:#94a3b8">수업권 내역이 없습니다.</p>' :
+    `<div style="background:#fff;border:1px solid var(--br);border-radius:12px;overflow:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:500px">
+        <thead><tr style="background:#f8faff;border-bottom:2px solid #e2e8f0">
+          <th style="padding:12px 16px;text-align:left;font-weight:800">학생</th>
+          <th style="padding:12px 16px;text-align:center;font-weight:800">유형</th>
+          <th style="padding:12px 16px;text-align:center;font-weight:800">보유</th>
+          <th style="padding:12px 16px;text-align:center;font-weight:800">사용</th>
+          <th style="padding:12px 16px;text-align:center;font-weight:800">잔여</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:800">지급일</th>
+        </tr></thead>
+        <tbody>
+          ${credits.map(c => {
+            const u = c.profiles||{};
+            const rem = c.total - c.used;
+            return `<tr style="border-bottom:1px solid #f0f4f8">
+              <td style="padding:11px 16px;font-weight:600">${u.display_name||u.email||c.user_id?.slice(0,8)}</td>
+              <td style="padding:11px 16px;text-align:center"><span style="background:${c.plan_type==='solo'?'#eff6ff':'#f0fdf4'};color:${c.plan_type==='solo'?'#2255a4':'#15803d'};padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700">${c.plan_type==='solo'?'개인':'그룹'}</span></td>
+              <td style="padding:11px 16px;text-align:center;font-weight:800">${c.total}</td>
+              <td style="padding:11px 16px;text-align:center;color:#94a3b8">${c.used}</td>
+              <td style="padding:11px 16px;text-align:center;font-size:18px;font-weight:900;color:${rem>0?'#16a34a':'#cc2200'}">${rem}</td>
+              <td style="padding:11px 16px;color:#94a3b8;font-size:12px">${new Date(c.created_at).toLocaleDateString('ko-KR')}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`}
+
+    <!-- 지급 모달 -->
+    <div id="credit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:16px;padding:32px;width:400px;max-width:95vw">
+        <h3 style="font-size:17px;font-weight:900;margin-bottom:20px">수업권 지급</h3>
+        <div style="display:flex;flex-direction:column;gap:13px">
+          <label style="font-size:13px;font-weight:700;color:#445566">User ID (Supabase auth.users.id)
+            <input type="text" id="cr-uid" placeholder="xxxxxxxx-xxxx-xxxx-..." style="display:block;width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;font-family:monospace">
+          </label>
+          <label style="font-size:13px;font-weight:700;color:#445566">수업 유형
+            <select id="cr-type" style="display:block;width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none">
+              <option value="solo">개인 수업</option>
+              <option value="group">그룹 수업</option>
+            </select>
+          </label>
+          <label style="font-size:13px;font-weight:700;color:#445566">수량
+            <input type="number" id="cr-qty" value="10" min="1" style="display:block;width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none">
+          </label>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:20px">
+          <button onclick="document.getElementById('credit-modal').style.display='none'" class="btn btn-gh" style="flex:1">취소</button>
+          <button onclick="saveCredit()" class="btn btn-g" style="flex:1">지급</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function openCreditModal() {
+  document.getElementById('credit-modal').style.display = 'flex';
+}
+
+async function saveCredit() {
+  const sb = getSupa(); if (!sb) return;
+  const uid = document.getElementById('cr-uid').value.trim();
+  const type = document.getElementById('cr-type').value;
+  const qty  = parseInt(document.getElementById('cr-qty').value)||0;
+  if (!uid||qty<1) { alert('User ID와 수량을 입력하세요'); return; }
+  const { error } = await sb.from('session_credits').insert({ user_id:uid, plan_type:type, total:qty, used:0 });
+  if (error) { alert('저장 실패: '+error.message); return; }
+  document.getElementById('credit-modal').style.display = 'none';
+  goClassCredits();
+}
+
+// ── 커리큘럼 진행도 ──────────────────────────────────────────
+async function goClassCurriculum() {
+  activeSb('');
+  const sb = getSupa();
+  let users = [], progressAll = [];
+  if (sb) {
+    const { data: p } = await sb.from('profiles').select('id,display_name,email').limit(100);
+    users = p || [];
+    const { data: pr } = await sb.from('curriculum_progress').select('*');
+    progressAll = pr || [];
+  }
+  const progMap = {};
+  progressAll.forEach(p => {
+    if (!progMap[p.user_id]) progMap[p.user_id] = {};
+    progMap[p.user_id][p.lesson_key] = p;
+  });
+  const totalLessons = Object.values(ADMIN_CUR_LESSONS).flat().length;
+
+  document.getElementById('main').innerHTML = `
+  <div style="padding:28px 32px">
+    <h2 style="font-size:20px;font-weight:900;margin-bottom:20px">📈 커리큘럼 진행도</h2>
+    <div style="display:grid;grid-template-columns:200px 1fr;gap:20px;min-height:500px">
+      <div style="background:#fff;border:1px solid var(--br);border-radius:12px;overflow:hidden;align-self:start">
+        <div style="padding:10px 14px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;background:#f8faff;border-bottom:1px solid #e2e8f0">수강생 (${users.length})</div>
+        ${!users.length ? '<p style="padding:14px;color:#94a3b8;font-size:13px">없음</p>' :
+          users.map((u,i) => {
+            const up = progMap[u.id]||{};
+            const done = Object.values(up).filter(p=>p.completed).length;
+            return `<button id="cu-${u.id}" onclick="selectCurrUser('${u.id}')"
+              style="width:100%;text-align:left;padding:10px 14px;border:none;cursor:pointer;border-bottom:1px solid #f0f4f8;transition:background .15s;background:${i===0?'#f0f6ff':'transparent'}"
+              onmouseover="if(!this.classList.contains('on'))this.style.background='#f8faff'" onmouseout="if(!this.classList.contains('on'))this.style.background='transparent'">
+              <div style="font-size:13px;font-weight:700;color:#0b1626;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.display_name||u.email||u.id.slice(0,8)}</div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:2px">${done}/${totalLessons} 완료</div>
+            </button>`;
+          }).join('')}
+      </div>
+      <div id="curr-panel" style="background:#fff;border:1px solid var(--br);border-radius:12px;padding:22px">
+        <p style="color:#94a3b8;font-size:14px">수강생을 선택하세요.</p>
+      </div>
+    </div>
+  </div>`;
+
+  window._adminProgMap = progMap;
+  window._adminUsers   = users;
+  if (users.length) selectCurrUser(users[0].id);
+}
+
+async function selectCurrUser(uid) {
+  document.querySelectorAll('[id^="cu-"]').forEach(b=>{ b.style.background='transparent'; b.classList.remove('on'); });
+  const btn = document.getElementById('cu-'+uid);
+  if (btn) { btn.style.background='#f0f6ff'; btn.classList.add('on'); }
+
+  const prog = (window._adminProgMap||{})[uid]||{};
+  const LC = { beginner:{bg:'#eff6ff',text:'#1d4ed8',bar:'#2255a4'}, intermediate:{bg:'#f0fdf4',text:'#15803d',bar:'#16a34a'}, advanced:{bg:'#fef2f2',text:'#b91c1c',bar:'#cc2200'} };
+  const LL = { beginner:'초급', intermediate:'중급', advanced:'고급' };
+
+  let h = '';
+  for (const [level, lessons] of Object.entries(ADMIN_CUR_LESSONS)) {
+    const lc   = LC[level];
+    const done = lessons.filter((_,i)=>(prog[level+'_'+(i+1)]||{}).completed).length;
+    const pct  = Math.round(done/lessons.length*100);
+    h += `<div style="margin-bottom:24px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="background:${lc.bg};color:${lc.text};font-size:11px;font-weight:800;padding:3px 10px;border-radius:99px;text-transform:uppercase">${LL[level]}</span>
+        <span style="font-size:12px;color:#64748b">${done}/${lessons.length}</span>
+        <div style="flex:1;height:6px;background:#e2e8f0;border-radius:99px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:${lc.bar};border-radius:99px"></div>
+        </div>
+        <span style="font-size:13px;font-weight:800;color:${lc.text}">${pct}%</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px">
+        ${lessons.map((lesson,i) => {
+          const key  = level+'_'+(i+1);
+          const isDone = (prog[key]||{}).completed;
+          return `<div style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:9px;border:1.5px solid ${isDone?lc.bar:'#e2e8f0'};background:${isDone?lc.bg:'#fff'};cursor:pointer" onclick="adminToggleLesson('${uid}','${key}',${isDone})">
+            <span style="font-size:18px;flex-shrink:0">${isDone?'✅':'⬜'}</span>
+            <span style="font-size:13px;font-weight:${isDone?700:400};color:${isDone?lc.text:'#445566'}">${lesson}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+  document.getElementById('curr-panel').innerHTML = h;
+  window._currUid = uid;
+}
+
+async function adminToggleLesson(uid, key, isDone) {
+  const sb = getSupa(); if (!sb) return;
+  const newDone = !isDone;
+  await sb.from('curriculum_progress').upsert(
+    { user_id:uid, lesson_key:key, completed:newDone, completed_at: newDone?new Date().toISOString():null, updated_at:new Date().toISOString() },
+    { onConflict:'user_id,lesson_key' }
+  );
+  if (!window._adminProgMap[uid]) window._adminProgMap[uid]={};
+  window._adminProgMap[uid][key] = { completed:newDone };
+  selectCurrUser(uid);
+}
+
+function activeSb(id) {
+  document.querySelectorAll('.sb-btn').forEach(b=>b.classList.remove('on'));
+}
+
 // ══ EXPORT / IMPORT / RESET ══════════════════════════════════
 function doExport(){
   const data={
@@ -1377,9 +2240,9 @@ function doImport(e){
     try{
       const data=JSON.parse(ev.target.result);
       // Support both array (old) and object (new) format
-      if(Array.isArray(data)){ DB=data; dbSave(); }
+      if(Array.isArray(data)){ for(const a of data){ await dbSaveArticle(a); } DB=data; }
       else {
-        if(data.articles) { DB=data.articles; dbSave(); }
+        if(data.articles) { for(const a of data.articles){ await dbSaveArticle(a); } DB=data.articles; }
         if(data.siteconf) lsSet(K_SITECONF, data.siteconf);
         if(data.opinions) lsSet(K_OPINIONS, data.opinions);
         if(data.phrases)  lsSet(K_PHRASES,  data.phrases);
@@ -1387,7 +2250,7 @@ function doImport(e){
         if(data.sentences) lsSet(K_SENTENCES, data.sentences);
       }
       goList(); toast('📂 가져오기 완료! (기사 '+DB.length+'개)');
-    }catch{ toast('가져오기 실패 — JSON 형식 오류', true); }
+    }catch{ toast('Import failed — invalid JSON', true); }
   };
   reader.readAsText(file);
   e.target.value='';
@@ -1395,7 +2258,9 @@ function doImport(e){
 function resetAll(){
   if(!confirm('모든 데이터를 초기화할까요? 되돌릴 수 없습니다.')) return;
   [K_DB,K_VIEWS,K_PHRASES,K_WORDBANK,K_SITECONF,K_OPINIONS,K_SENTENCES].forEach(k=>localStorage.removeItem(k));
-  DB=SEED.map(s=>({...s,id:uid(),date:today()})); dbSave(); goList();
+  const reset = SEED.map(s=>({...s,id:uid(),date:today()}));
+  for(const a of reset){ await dbSaveArticle(a); }
+  DB=reset; goList();
   toast('🔄 전체 초기화 완료');
 }
 

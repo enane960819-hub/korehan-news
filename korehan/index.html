@@ -7,6 +7,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
+.level-filter-btn {
+  padding: 5px 14px; border-radius: 999px; border: 1.5px solid var(--border);
+  background: #fff; font-size: 12px; font-weight: 700; cursor: pointer;
+  color: var(--gray); transition: all .15s; font-family: inherit;
+}
+.level-filter-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.level-filter-btn:hover:not(.on) { border-color: var(--accent); color: var(--accent); }
 .learn-banner {
   display: grid; grid-template-columns: 1fr 200px; gap: 14px; align-items: center;
   background: linear-gradient(135deg,#0b1626,#1a3a6b); border-radius: 12px;
@@ -48,7 +55,15 @@
     </div>
   </a>
 
-  <div class="section-title">🔥 Top Stories</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px">
+    <div class="section-title" style="margin-bottom:0">🔥 Top Stories</div>
+    <div style="display:flex;gap:6px" id="level-filter-btns">
+      <button class="level-filter-btn on" onclick="filterByLevel('All',this)">All</button>
+      <button class="level-filter-btn" onclick="filterByLevel('Beginner',this)">🟢 Beginner</button>
+      <button class="level-filter-btn" onclick="filterByLevel('Intermediate',this)">🟡 Intermediate</button>
+      <button class="level-filter-btn" onclick="filterByLevel('Advanced',this)">🔴 Advanced</button>
+    </div>
+  </div>
   <div class="card-grid" id="dyn-top-stories"></div>
 
   <div id="dyn-sections"></div>
