@@ -1208,7 +1208,7 @@ function renderArticlePage() {
     + '<h3 class="art-comments-title">💬 Comments <span id="comment-count" style="font-size:16px;color:var(--gray)"></span></h3>'
     + '<div id="comment-form-wrap">'
     + '<div class="comment-login-notice" id="comment-login-notice" style="display:none">'
-    + '<p>Sign in to leave a comment — <a href="#" onclick="event.preventDefault();openAuthModal("signin")">Sign in</a></p>'
+    + '<p>Sign in to leave a comment — <a href="#" onclick="event.preventDefault();openAuthModal('signin')">Sign in</a></p>'
     + '</div>'
     + '<div class="comment-form" id="comment-form" style="display:none">'
     + '<textarea id="comment-input" placeholder="Write a comment..." rows="3"></textarea>'
@@ -1773,7 +1773,16 @@ async function loadGrammarGuide() {
           + '</div>';
       }).join('');
   } catch(e) {
-    renderStaticGrammar(el, a);
+    if (e.message === 'Not signed in') {
+      el.innerHTML = '<div style="text-align:center;padding:28px 16px">'
+        + '<div style="font-size:32px;margin-bottom:12px">🔒</div>'
+        + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:8px">Sign in to use Grammar Guide</div>'
+        + '<div style="font-size:13px;color:#64748b;margin-bottom:20px">AI-powered grammar analysis is available for signed-in users.</div>'
+        + '<button onclick="openAuthModal(\'signin\')" style="padding:10px 28px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
+        + '</div>';
+    } else {
+      renderStaticGrammar(el, a);
+    }
   }
 }
 
@@ -2241,7 +2250,7 @@ function renderHeader() {
     + '<div class="kh-clock"><span id="date-str"></span><span id="clock"></span></div>'
     + '<span id="topbar-user-avatar" style="display:none;width:28px;height:28px;border-radius:50%;background:#2255a4;color:#fff;align-items:center;justify-content:center;font-weight:700;font-size:13px;overflow:hidden;vertical-align:middle;margin-right:2px"></span>'
     + '<a href="korehan-mypage.html" id="topbar-mypage-btn" class="auth-btn-ui" style="display:none">👤 My Page</a>'
-    + '<a href="#" id="topbar-signin-btn" class="auth-btn-ui" onclick="event.preventDefault();openAuthModal("signin")">Sign In</a>'
+    + '<a href="#" id="topbar-signin-btn" class="auth-btn-ui" onclick="event.preventDefault();openAuthModal(\'signin\')">Sign In</a>'
     + '<a href="korehan-admin.html" id="topbar-admin-btn" class="auth-btn-ui" style="display:none;background:rgba(231,76,60,0.25);border-color:rgba(231,76,60,0.5)">⚙ Admin</a>'
     + '</div></div>'
     + '<nav class="kh-nav">'
