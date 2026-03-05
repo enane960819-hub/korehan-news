@@ -11,7 +11,13 @@ var _supa = null;
 function getSupa() {
   if (_supa) return _supa;
   if (window.supabase) {
-    _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+    _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
+      auth: {
+        detectSessionInUrl: true,
+        persistSession: true,
+        autoRefreshToken: true,
+      }
+    });
     return _supa;
   }
   return null;
