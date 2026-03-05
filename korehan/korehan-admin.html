@@ -143,6 +143,7 @@ a{color:inherit;text-decoration:none}
 
 .section-sep{height:1px;background:var(--br);margin:6px 0}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -343,37 +344,6 @@ function toast(msg,isErr){
   document.getElementById('toasts').appendChild(el);
   setTimeout(()=>el.remove(),3200);
 }
-
-
-  // Claude proxy (Cloudflare Worker) to avoid CORS and keep API key off the browser
-  const CLAUDE_PROXY_URL = 'https://plain-silence-0b83.enane960819.workers.dev/';
-
-  async function callClaude(opts) {
-    const prompt =
-      (opts && typeof opts.prompt === 'string' && opts.prompt.trim()) ? opts.prompt.trim()
-      : (opts && Array.isArray(opts.messages))
-        ? opts.messages.map(m => {
-            if (!m) return '';
-            const c = m.content;
-            if (typeof c === 'string') return c;
-            try { return JSON.stringify(c); } catch (e) { return String(c); }
-          }).join('\n\n').trim()
-        : '';
-    if (!prompt) throw new Error('No prompt provided');
-
-    const resp = await fetch(CLAUDE_PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
-    });
-
-    if (!resp.ok) {
-      const t = await resp.text().catch(() => '');
-      throw new Error(`Claude proxy error ${resp.status}: ${t.slice(0, 200)}`);
-    }
-
-    return await resp.json();
-  }
 function setSbOn(id){
   document.querySelectorAll('.sb-btn').forEach(b=>b.classList.remove('on'));
   if(id){ const el=document.getElementById(id); if(el) el.classList.add('on'); }
@@ -1109,7 +1079,7 @@ function goSiteSettings(){
       <div id="sc-api-status" style="font-size:12px;color:#94a3b8;margin-top:8px"></div>
     </div>
     <button class="btn btn-g" onclick="saveSiteSettings()">💾 저장</button>
-    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>\`;
+    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>`;
 
   // API 키 현재값 로드
   loadApiKeyIntoSettings();
@@ -2307,6 +2277,51 @@ document.getElementById('ov').addEventListener('click', e=>{if(e.target===docume
 document.getElementById('del-cancel').addEventListener('click', closeDelete);
 document.getElementById('del-confirm').addEventListener('click', doDelete);
 document.getElementById('del-ov').addEventListener('click', e=>{if(e.target===document.getElementById('del-ov'))closeDelete();});
+
+// ===========================
+// Claude proxy (Cloudflare Worker) integration
+// ===========================
+const CLAUDE_PROXY_URL = "https://plain-silence-0b83.enane960819.workers.dev/";
+
+async function callClaude(prompt, opts={}) {
+  const payload = {
+    prompt,
+    model: opts.model || "claude-3-5-sonnet-latest",
+    max_tokens: opts.max_tokens || 1200,
+    temperature: (opts.temperature ?? 0.6),
+  };
+
+  const resp = await fetch(CLAUDE_PROXY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!resp.ok) {
+    const t = await resp.text().catch(()=>"");
+    throw new Error("Claude proxy error (" + resp.status + "): " + (t || resp.statusText));
+  }
+
+  let data;
+  try {
+    data = await resp.json();
+  } catch (e) {
+    const t = await resp.text().catch(()=>"");
+    data = { _raw: t };
+  }
+
+  // Anthropic /v1/messages shape: { content: [{type:"text", text:"..."}...] }
+  if (data && Array.isArray(data.content)) {
+    return data.content.map(b => (b && (b.text || b.content || "")) ).join("");
+  }
+
+  if (typeof data === "string") return data;
+  if (data && typeof data.text === "string") return data.text;
+  if (data && data._raw) return data._raw;
+
+  return JSON.stringify(data);
+}
+
 </script>
 </body>
 </html>
