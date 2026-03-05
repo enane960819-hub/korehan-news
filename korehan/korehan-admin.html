@@ -852,28 +852,28 @@ async function refreshSectionsList() {
       + '<th style="text-align:right;padding:8px">Actions</th>'
       + '</tr>'
       + sections.map(function(s) {
-          return '<tr style="border-top:1px solid #f0f3f9">'
-            + '<td style="padding:8px 10px;font-size:20px">' + (s.icon||'📰') + '</td>'
-            + '<td style="padding:8px;font-weight:700;color:#2255a4">' + s.key + '</td>'
-            + '<td style="padding:8px">' + s.label + '</td>'
-            + '<td style="padding:8px">'
-            + '<input type="number" value="' + (s.sort_order||99) + '" min="1" max="99" '
-            + 'style="width:52px;padding:4px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px" '
-            + `onchange="updateSectionOrder(${s.id},this.value)">`
-            + '</td>'
-            + '<td style="padding:8px">'
-            + '<label style="cursor:pointer;display:flex;align-items:center;gap:6px">'
-            + `<input type="checkbox" ${s.active?'checked':''} onchange="toggleSection(${s.id},this.checked)">`
-            + (s.active ? '<span style="color:#16a34a;font-weight:700;font-size:12px">Active</span>' : '<span style="color:#94a3b8;font-size:12px">Hidden</span>')
-            + '</label>'
-            + '</td>'
-            + '<td style="padding:8px;text-align:right">'
-            + `<button onclick="editSection(${s.id},'${s.key}','${s.label}','${s.icon||''}','${(s.topics||'').replace(/'/g,"\'")}') " `
-            + 'style="padding:4px 10px;background:#e8eef7;color:#2255a4;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px">Edit</button>'
-            + `<button onclick="deleteSection(${s.id},'${s.key}')" `
-            + 'style="padding:4px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Delete</button>'
-            + '</td>'
-            + '</tr>';
+          return `<tr style="border-top:1px solid #f0f3f9">
+            <td style="padding:8px 10px;font-size:20px">${s.icon||'📰'}</td>
+            <td style="padding:8px;font-weight:700;color:#2255a4">${s.key}</td>
+            <td style="padding:8px">${s.label}</td>
+            <td style="padding:8px">
+              <input type="number" value="${s.sort_order||99}" min="1" max="99"
+                style="width:52px;padding:4px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"
+                onchange="updateSectionOrder(${s.id},this.value)">
+            </td>
+            <td style="padding:8px">
+              <label style="cursor:pointer;display:flex;align-items:center;gap:6px">
+                <input type="checkbox" ${s.active?'checked':''} onchange="toggleSection(${s.id},this.checked)">
+                ${s.active ? '<span style="color:#16a34a;font-weight:700;font-size:12px">Active</span>' : '<span style="color:#94a3b8;font-size:12px">Hidden</span>'}
+              </label>
+            </td>
+            <td style="padding:8px;text-align:right">
+              <button onclick="editSection(${s.id},'${s.key}','${s.label}','${(s.icon||'')}','${(s.topics||'').replace(/'/g,String.fromCharCode(39))}') "
+                style="padding:4px 10px;background:#e8eef7;color:#2255a4;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px">Edit</button>
+              <button onclick="deleteSection(${s.id},'${s.key}')"
+                style="padding:4px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Delete</button>
+            </td>
+          </tr>`;
         }).join('')
       + '</table></div>';
 
