@@ -143,6 +143,8 @@ a{color:inherit;text-decoration:none}
 
 .section-sep{height:1px;background:var(--br);margin:6px 0}
 </style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -343,6 +345,52 @@ function toast(msg,isErr){
   document.getElementById('toasts').appendChild(el);
   setTimeout(()=>el.remove(),3200);
 }
+// Claude 호출 헬퍼
+// ⚠️ 브라우저에서 Anthropic API를 직접 호출하면 CORS/보안 문제로 막힐 수 있습니다.
+// 가능하면 Supabase Edge Function 또는 Cloudflare Worker 프록시를 사용하세요.
+// 설정(JSON) 내 claudeProxyUrl 값을 넣으면 그쪽으로 요청합니다.
+async function callClaude(payload){
+  const cfg = (function(){
+    try { return JSON.parse(localStorage.getItem('korehan_siteconf')||'{}'); } catch(e){ return {}; }
+  })();
+  const proxyUrl = cfg.claudeProxyUrl || cfg.anthropicProxyUrl || '';
+  const apiKey = (function(){
+    // settings 페이지에서 저장한 값(서버 저장 우선, 로컬 캐시 fallback)
+    return localStorage.getItem('kh_anthropic_key') || '';
+  })();
+
+  // 1) 프록시가 있으면 프록시로
+  if (proxyUrl) {
+    const r = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: { 'content-type':'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) {
+      const t = await r.text().catch(()=>String(r.status));
+      throw new Error('Proxy error: ' + r.status + ' ' + t);
+    }
+    return await r.json();
+  }
+
+  // 2) 프록시가 없으면 직접 호출 시도(대부분 CORS로 실패할 수 있음)
+  if (!apiKey) throw new Error('Anthropic API 키가 없습니다. (설정에서 저장하세요)');
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!r.ok) {
+    const t = await r.text().catch(()=>String(r.status));
+    throw new Error('Anthropic API 호출 실패: ' + r.status + ' ' + t + ' (브라우저 CORS일 가능성 높음 — 프록시 권장)');
+  }
+  return await r.json();
+}
+
 function setSbOn(id){
   document.querySelectorAll('.sb-btn').forEach(b=>b.classList.remove('on'));
   if(id){ const el=document.getElementById(id); if(el) el.classList.add('on'); }
@@ -433,6 +481,10 @@ function getSb() {
   }
   return null;
 }
+
+// Alias used by some settings helpers
+function getSupa(){ return getSb(); }
+
 
 async function dbLoadFromSupabase() {
   const sb = getSb();
@@ -1078,7 +1130,7 @@ function goSiteSettings(){
       <div id="sc-api-status" style="font-size:12px;color:#94a3b8;margin-top:8px"></div>
     </div>
     <button class="btn btn-g" onclick="saveSiteSettings()">💾 저장</button>
-    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>`;
+    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>\`;
 
   // API 키 현재값 로드
   loadApiKeyIntoSettings();
@@ -1096,7 +1148,7 @@ function saveSiteSettings(){
 }
 function resetSiteSettings(){ lsSet(K_SITECONF,{}); goSiteSettings(); toast('기본값으로 초기화됐어요'); }
 
-async function loadApiKeyIntoSettings() {
+async async function loadApiKeyIntoSettings() {
   const statusEl = document.getElementById('sc-api-status');
   const input = document.getElementById('sc-api-key');
   if (!input) return;
@@ -2238,7 +2290,7 @@ function doExport(){
 function doImport(e){
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
-  reader.onload=async ev=>{
+  reader.onload=ev=>{
     try{
       const data=JSON.parse(ev.target.result);
       // Support both array (old) and object (new) format
@@ -2257,7 +2309,7 @@ function doImport(e){
   reader.readAsText(file);
   e.target.value='';
 }
-async function resetAll(){
+function resetAll(){
   if(!confirm('모든 데이터를 초기화할까요? 되돌릴 수 없습니다.')) return;
   [K_DB,K_VIEWS,K_PHRASES,K_WORDBANK,K_SITECONF,K_OPINIONS,K_SENTENCES].forEach(k=>localStorage.removeItem(k));
   const reset = SEED.map(s=>({...s,id:uid(),date:today()}));
