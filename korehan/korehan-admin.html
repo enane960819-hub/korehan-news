@@ -426,11 +426,14 @@ let DB = [];
 let activeFilter = '';
 let deleteId = null;
 
+var _sbAdmin = null;
 function getSb() {
+  if (_sbAdmin) return _sbAdmin;
   if (typeof supabase !== 'undefined' && SUPA_URL_ADMIN && SUPA_KEY_ADMIN) {
-    return supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN, {
+    _sbAdmin = supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN, {
       auth: { detectSessionInUrl: true, persistSession: true, autoRefreshToken: true }
     });
+    return _sbAdmin;
   }
   return null;
 }

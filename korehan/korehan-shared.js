@@ -9,8 +9,6 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 // Supabase 클라이언트 (CDN 로드 후 초기화)
 var _supa = null;
 function getSupa() {
-  // window._khSupa로 전역 공유 → 어느 함수에서 호출해도 같은 인스턴스
-  if (window._khSupa) return window._khSupa;
   if (_supa) return _supa;
   if (window.supabase) {
     _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
@@ -18,10 +16,8 @@ function getSupa() {
         detectSessionInUrl: true,
         persistSession: true,
         autoRefreshToken: true,
-        storageKey: 'korehan-auth',
       }
     });
-    window._khSupa = _supa;
     return _supa;
   }
   return null;
@@ -33,74 +29,33 @@ var supaUser = null;
 // ── Claude API 프록시 (키를 서버에서만 관리) ─────────────────
 // Anthropic API를 직접 호출하지 않고 Supabase Edge Function을 통해 호출
 // → API 키가 브라우저에 절대 노출되지 않음
-const CLAUDE_PROXY_URL = SUPA_URL + 'https://plain-silence-0b83.enane960819.workers.dev/';
+const CLAUDE_PROXY_URL = SUPA_URL + '/functions/v1/claude-proxy';
 
 async function callClaude({ feature, model, max_tokens, messages }) {
-  // Unified Claude caller:
-  // - If CLAUDE_PROXY_URL points to our Cloudflare Worker, call it directly (no Supabase auth needed).
-  // - Otherwise, fall back to Supabase Edge Function proxy (requires signed-in session).
-  const url = (typeof CLAUDE_PROXY_URL === 'string' ? CLAUDE_PROXY_URL : '').trim();
-  const prompt = Array.isArray(messages)
-    ? messages.map(m => {
-        const role = (m && m.role) ? String(m.role).toUpperCase() : 'USER';
-        const content = (m && m.content != null) ? (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)) : '';
-        return `${role}: ${content}`;
-      }).join("
-
-")
-    : '';
-
-  if (!url) throw new Error('Claude proxy URL is not set');
-
-  // Cloudflare Worker path
-  if (url.includes('workers.dev')) {
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt,
-        model: model || 'claude-3-5-sonnet-latest',
-        max_tokens: max_tokens || 1200
-      })
-    });
-    if (!resp.ok) {
-      const t = await resp.text().catch(()=>'');
-      throw new Error('Claude proxy failed: ' + resp.status + ' ' + t);
-    }
-    return await resp.json();
-  }
-
-  // Supabase Edge Function proxy path (legacy)
   var sb = getSupa();
   if (!sb) throw new Error('Supabase not initialized');
 
   var { data: { session } } = await sb.auth.getSession();
   if (!session) throw new Error('Not signed in');
 
-  var resp = await fetch(url, {
+  var resp = await fetch(CLAUDE_PROXY_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + session.access_token,
     },
-    body: JSON.stringify({
-      feature,
-      model,
-      max_tokens,
-      messages,
-    }),
+    body: JSON.stringify({ feature, model, max_tokens, messages }),
   });
 
+  if (resp.status === 429) throw new Error('rate_limit');
+  if (resp.status === 401) throw new Error('unauthorized');
   if (!resp.ok) {
-    const t = await resp.text().catch(()=>'');
-    throw new Error('Claude proxy failed: ' + resp.status + ' ' + t);
+    var err = await resp.json().catch(function(){ return {}; });
+    throw new Error(err.error || 'API error ' + resp.status);
   }
-  return await resp.json();
+  return resp.json();
 }
 
-
-// ── 세션 보안 유틸 ───────────────────────────────────────────
-// 세션 만료 감지 → 자동 로그아웃 + 안내
 var _sessionWarningShown = false;
 async function refreshSessionSafely() {
   var sb = getSupa();
