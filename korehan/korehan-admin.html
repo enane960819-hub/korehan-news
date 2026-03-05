@@ -143,7 +143,7 @@ a{color:inherit;text-decoration:none}
 
 .section-sep{height:1px;background:var(--br);margin:6px 0}
 </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -1079,7 +1079,7 @@ function goSiteSettings(){
       <div id="sc-api-status" style="font-size:12px;color:#94a3b8;margin-top:8px"></div>
     </div>
     <button class="btn btn-g" onclick="saveSiteSettings()">💾 저장</button>
-    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>\`;
+    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>`;
 
   // API 키 현재값 로드
   loadApiKeyIntoSettings();
@@ -1481,7 +1481,7 @@ async function runAutoGenerate(){
 
       const res = await callClaude({
         feature: 'generate',
-        model: 'claude-3-5-sonnet-latest',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 2000,
         messages: [{role:'user', content: prompt}]
       });
@@ -2236,7 +2236,7 @@ function doExport(){
   URL.revokeObjectURL(url);
   toast('💾 korehan-backup.json 내보내기 완료');
 }
-function doImport(e){
+async function doImport(e){
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
   reader.onload=async ev=>{
@@ -2260,33 +2260,6 @@ function doImport(e){
 }
 async function resetAll(){
   if(!confirm('모든 데이터를 초기화할까요? 되돌릴 수 없습니다.')) return;
-async function callClaude(opts){
-  // Uses Cloudflare Worker proxy to avoid CORS and to keep API key off the browser.
-  const WORKER_URL = 'https://plain-silence-0b83.enane960819.workers.dev/';
-  const prompt = (opts && opts.messages && opts.messages[0] && opts.messages[0].content) || opts.prompt || '';
-  const payload = {
-    prompt,
-    model: opts.model || 'claude-3-5-sonnet-latest',
-    max_tokens: opts.max_tokens || 1200,
-    temperature: (opts.temperature ?? 0.6),
-  };
-
-  const resp = await fetch(WORKER_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-
-  const raw = await resp.text();
-  let data;
-  try { data = JSON.parse(raw); } catch { data = { error: raw }; }
-
-  if(!resp.ok){
-    const msg = (data && (data.error?.message || data.error)) || ('HTTP ' + resp.status);
-    throw new Error(msg);
-  }
-  return data;
-}
   [K_DB,K_VIEWS,K_PHRASES,K_WORDBANK,K_SITECONF,K_OPINIONS,K_SENTENCES].forEach(k=>localStorage.removeItem(k));
   const reset = SEED.map(s=>({...s,id:uid(),date:today()}));
   for(const a of reset){ await dbSaveArticle(a); }
