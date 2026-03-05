@@ -9,6 +9,8 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 // Supabase 클라이언트 (CDN 로드 후 초기화)
 var _supa = null;
 function getSupa() {
+  // window._khSupa로 전역 공유 → 어느 함수에서 호출해도 같은 인스턴스
+  if (window._khSupa) return window._khSupa;
   if (_supa) return _supa;
   if (window.supabase) {
     _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
@@ -16,8 +18,10 @@ function getSupa() {
         detectSessionInUrl: true,
         persistSession: true,
         autoRefreshToken: true,
+        storageKey: 'korehan-auth',
       }
     });
+    window._khSupa = _supa;
     return _supa;
   }
   return null;
