@@ -1208,7 +1208,7 @@ function renderArticlePage() {
     + '<h3 class="art-comments-title">💬 Comments <span id="comment-count" style="font-size:16px;color:var(--gray)"></span></h3>'
     + '<div id="comment-form-wrap">'
     + '<div class="comment-login-notice" id="comment-login-notice" style="display:none">'
-    + '<p>Sign in to leave a comment — <a href="#" onclick="event.preventDefault();openAuthModal('signin')">Sign in</a></p>'
+    + '<p>Sign in to leave a comment — <a href="#" onclick="event.preventDefault();openAuthModal(&apos;signin&apos;)">Sign in</a></p>'
     + '</div>'
     + '<div class="comment-form" id="comment-form" style="display:none">'
     + '<textarea id="comment-input" placeholder="Write a comment..." rows="3"></textarea>'
