@@ -269,9 +269,19 @@ a{color:inherit;text-decoration:none}
     try {
       var keys = Object.keys(localStorage);
       for (var i = 0; i < keys.length; i++) {
-        if (keys[i].startsWith('sb-') && keys[i].includes('-auth-token')) {
-          var val = JSON.parse(localStorage.getItem(keys[i]));
-          if (val && val.user && val.user.email) return val.user.email;
+        var k = keys[i];
+        if ((k.startsWith('sb-') && k.includes('-auth-token')) || k === 'korehan-auth') {
+          var raw = localStorage.getItem(k);
+          if (!raw) continue;
+          var val = JSON.parse(raw);
+          var user = (val && val.user) ? val.user : null;
+          if (!user && val && val.access_token) {
+            try {
+              var payload = JSON.parse(atob(val.access_token.split('.')[1]));
+              if (payload.email) return payload.email;
+            } catch(e2) {}
+          }
+          if (user && user.email) return user.email;
         }
       }
     } catch(e) {}
@@ -426,43 +436,13 @@ let DB = [];
 let activeFilter = '';
 let deleteId = null;
 
-var _sbAdmin = null;
-// ── Claude API 프록시 (어드민용) ──────────────────────────────
-const ADMIN_CLAUDE_PROXY = SUPA_URL_ADMIN + '/functions/v1/claude-proxy';
-
-async function callClaude({ feature, model, max_tokens, messages }) {
-  var sb = getSb();
-  if (!sb) throw new Error('Supabase not initialized');
-
-  var { data: { session } } = await sb.auth.getSession();
-  if (!session) throw new Error('Not signed in');
-
-  var resp = await fetch(ADMIN_CLAUDE_PROXY, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + session.access_token,
-    },
-    body: JSON.stringify({ feature, model, max_tokens, messages }),
-  });
-
-  if (resp.status === 429) throw new Error('rate_limit');
-  if (resp.status === 401) throw new Error('unauthorized - please sign in');
-  if (!resp.ok) {
-    var err = await resp.json().catch(function(){ return {}; });
-    throw new Error(err.error || 'API error ' + resp.status);
-  }
-  return resp.json();
-}
-
+function getSupa() { return getSb(); }
 
 function getSb() {
-  if (_sbAdmin) return _sbAdmin;
   if (typeof supabase !== 'undefined' && SUPA_URL_ADMIN && SUPA_KEY_ADMIN) {
-    _sbAdmin = supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN, {
+    return supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN, {
       auth: { detectSessionInUrl: true, persistSession: true, autoRefreshToken: true }
     });
-    return _sbAdmin;
   }
   return null;
 }
@@ -841,14 +821,6 @@ async function doDelete(){
 // ══ SITE SETTINGS ════════════════════════════════════════════
 
 
-
-function escJsStr(v) {
-  return String(v ?? '')
-    .replace(/\\/g, '\\\\')
-    .replace(/'/g, "\\'")
-    .replace(/\r?\n/g, ' ');
-}
-
 async function goSections() {
   setSbOn(null);
   var main = document.getElementById('main');
@@ -909,7 +881,7 @@ async function refreshSectionsList() {
               </label>
             </td>
             <td style="padding:8px;text-align:right">
-              <button onclick="editSection(${s.id},'${escJsStr(s.key)}','${escJsStr(s.label)}','${escJsStr(s.icon||'')}','${escJsStr(s.topics||'')}') "
+              <button onclick="editSection(${s.id},'${s.key}','${s.label}','${(s.icon||'')}','${(s.topics||'').replace(/'/g,String.fromCharCode(39))}') "
                 style="padding:4px 10px;background:#e8eef7;color:#2255a4;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px">Edit</button>
               <button onclick="deleteSection(${s.id},'${s.key}')"
                 style="padding:4px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Delete</button>
@@ -1119,7 +1091,7 @@ function goSiteSettings(){
       <div id="sc-api-status" style="font-size:12px;color:#94a3b8;margin-top:8px"></div>
     </div>
     <button class="btn btn-g" onclick="saveSiteSettings()">💾 저장</button>
-    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>`;
+    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>\`;
 
   // API 키 현재값 로드
   loadApiKeyIntoSettings();
@@ -2276,10 +2248,10 @@ function doExport(){
   URL.revokeObjectURL(url);
   toast('💾 korehan-backup.json 내보내기 완료');
 }
-async function doImport(e){
+function doImport(e){
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
-  reader.onload=async ev=>{
+  reader.onload=ev=>{
     try{
       const data=JSON.parse(ev.target.result);
       // Support both array (old) and object (new) format
@@ -2298,7 +2270,7 @@ async function doImport(e){
   reader.readAsText(file);
   e.target.value='';
 }
-async function resetAll(){
+function resetAll(){
   if(!confirm('모든 데이터를 초기화할까요? 되돌릴 수 없습니다.')) return;
   [K_DB,K_VIEWS,K_PHRASES,K_WORDBANK,K_SITECONF,K_OPINIONS,K_SENTENCES].forEach(k=>localStorage.removeItem(k));
   const reset = SEED.map(s=>({...s,id:uid(),date:today()}));
