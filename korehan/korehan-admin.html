@@ -168,13 +168,15 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" onclick="goAutoArticle()"><span class="ico">🤖</span>AI Auto-Generate</button>
 
     <div class="sb-lbl">By Section</div>
-    <button class="sb-btn" onclick="goFilter('사회')"> <span class="ico">🏙️</span>사회 Society <span class="pill" id="p-사회">0</span></button>
-    <button class="sb-btn" onclick="goFilter('국제')"> <span class="ico">🌍</span>국제 World   <span class="pill" id="p-국제">0</span></button>
-    <button class="sb-btn" onclick="goFilter('문화')"> <span class="ico">🎭</span>문화 Culture <span class="pill" id="p-문화">0</span></button>
-    <button class="sb-btn" onclick="goFilter('Korea')"><span class="ico">🇰🇷</span>Korea        <span class="pill" id="p-Korea">0</span></button>
-    <button class="sb-btn" onclick="goFilter('스포츠')"><span class="ico">⚽</span>스포츠 Sports<span class="pill" id="p-스포츠">0</span></button>
-    <button class="sb-btn" onclick="goFilter('IT과학')"><span class="ico">💻</span>IT·과학      <span class="pill" id="p-IT과학">0</span></button>
-    <button class="sb-btn" onclick="goFilter('오피니언')"><span class="ico">✍️</span>오피니언     <span class="pill" id="p-오피니언">0</span></button>
+    <div id="sidebar-sections">
+      <button class="sb-btn" onclick="goFilter('사회')"> <span class="ico">🏙️</span>사회 Society <span class="pill" id="p-사회">0</span></button>
+      <button class="sb-btn" onclick="goFilter('국제')"> <span class="ico">🌍</span>국제 World   <span class="pill" id="p-국제">0</span></button>
+      <button class="sb-btn" onclick="goFilter('문화')"> <span class="ico">🎭</span>문화 Culture <span class="pill" id="p-문화">0</span></button>
+      <button class="sb-btn" onclick="goFilter('Korea')"><span class="ico">🇰🇷</span>Korea        <span class="pill" id="p-Korea">0</span></button>
+      <button class="sb-btn" onclick="goFilter('스포츠')"><span class="ico">⚽</span>스포츠 Sports<span class="pill" id="p-스포츠">0</span></button>
+      <button class="sb-btn" onclick="goFilter('IT과학')"><span class="ico">💻</span>IT·과학      <span class="pill" id="p-IT과학">0</span></button>
+      <button class="sb-btn" onclick="goFilter('오피니언')"><span class="ico">✍️</span>오피니언     <span class="pill" id="p-오피니언">0</span></button>
+    </div>
 
     <div class="section-sep"></div>
     <div class="sb-lbl">Analytics</div>
@@ -426,6 +428,68 @@ let DB = [];
 let activeFilter = '';
 let deleteId = null;
 
+let SIDEBAR_SECTIONS = [
+  { key:'사회', label:'사회 Society', icon:'🏙️', active:true, sort_order:1 },
+  { key:'국제', label:'국제 World', icon:'🌍', active:true, sort_order:2 },
+  { key:'문화', label:'문화 Culture', icon:'🎭', active:true, sort_order:3 },
+  { key:'Korea', label:'Korea', icon:'🇰🇷', active:true, sort_order:4 },
+  { key:'스포츠', label:'스포츠 Sports', icon:'⚽', active:true, sort_order:5 },
+  { key:'IT과학', label:'IT·과학', icon:'💻', active:true, sort_order:6 },
+  { key:'오피니언', label:'오피니언', icon:'✍️', active:true, sort_order:7 }
+];
+
+function escHtml(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function renderSidebarSections(){
+  var wrap = document.getElementById('sidebar-sections');
+  if (!wrap) return;
+  var list = (SIDEBAR_SECTIONS || []).filter(function(s){ return s && s.active !== false && s.key; });
+  if (!list.length) list = [
+    { key:'사회', label:'사회 Society', icon:'🏙️' },
+    { key:'국제', label:'국제 World', icon:'🌍' },
+    { key:'문화', label:'문화 Culture', icon:'🎭' },
+    { key:'Korea', label:'Korea', icon:'🇰🇷' },
+    { key:'스포츠', label:'스포츠 Sports', icon:'⚽' },
+    { key:'IT과학', label:'IT·과학', icon:'💻' },
+    { key:'오피니언', label:'오피니언', icon:'✍️' }
+  ];
+  list.sort(function(a,b){ return (parseInt(a.sort_order)||0) - (parseInt(b.sort_order)||0); });
+  wrap.innerHTML = list.map(function(s){
+    var key = String(s.key || '').replace(/'/g, "\\'");
+    var label = escHtml(s.label || s.key);
+    var icon = escHtml(s.icon || '🗂️');
+    var pillId = 'p-' + (s.key || '');
+    return '<button class="sb-btn" onclick="goFilter(\'' + key + '\')">'
+      + '<span class="ico">' + icon + '</span>'
+      + label
+      + '<span class="pill" id="' + escHtml(pillId) + '">0</span>'
+      + '</button>';
+  }).join('');
+  refreshCounts();
+}
+
+async function loadSidebarSections(){
+  var sb = getSb();
+  if (!sb) { renderSidebarSections(); return; }
+  try {
+    var res = await sb.from('sections').select('key,label,icon,active,sort_order').order('sort_order');
+    if (res.error) throw res.error;
+    if (Array.isArray(res.data) && res.data.length) {
+      SIDEBAR_SECTIONS = res.data;
+    }
+  } catch(e) {
+    console.warn('Sidebar sections load failed:', e.message);
+  }
+  renderSidebarSections();
+}
+
 var _sbAdmin = null;
 // ── Claude API 프록시 (어드민용) ──────────────────────────────
 const ADMIN_CLAUDE_PROXY = SUPA_URL_ADMIN + '/functions/v1/claude-proxy';
@@ -508,14 +572,16 @@ async function dbDeleteArticle(id) {
 }
 
 // Init — Supabase에서 기사 로드
+loadSidebarSections();
 dbLoadFromSupabase();
 
 // ══ COUNTS ══════════════════════════════════════════════════
 function refreshCounts(){
-  document.getElementById('p-all').textContent = DB.length;
-  ['사회','국제','문화','Korea','스포츠','IT과학','오피니언'].forEach(s=>{
-    const el=document.getElementById('p-'+s);
-    if(el) el.textContent=DB.filter(a=>a.section===s).length;
+  var allEl = document.getElementById('p-all');
+  if (allEl) allEl.textContent = DB.length;
+  (SIDEBAR_SECTIONS || []).filter(function(s){ return s && s.active !== false && s.key; }).forEach(function(s){
+    var el = document.getElementById('p-' + s.key);
+    if (el) el.textContent = DB.filter(function(a){ return a.section === s.key; }).length;
   });
 }
 
