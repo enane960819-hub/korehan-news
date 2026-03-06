@@ -143,7 +143,6 @@ a{color:inherit;text-decoration:none}
 
 .section-sep{height:1px;background:var(--br);margin:6px 0}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -269,19 +268,9 @@ a{color:inherit;text-decoration:none}
     try {
       var keys = Object.keys(localStorage);
       for (var i = 0; i < keys.length; i++) {
-        var k = keys[i];
-        if ((k.startsWith('sb-') && k.includes('-auth-token')) || k === 'korehan-auth') {
-          var raw = localStorage.getItem(k);
-          if (!raw) continue;
-          var val = JSON.parse(raw);
-          var user = (val && val.user) ? val.user : null;
-          if (!user && val && val.access_token) {
-            try {
-              var payload = JSON.parse(atob(val.access_token.split('.')[1]));
-              if (payload.email) return payload.email;
-            } catch(e2) {}
-          }
-          if (user && user.email) return user.email;
+        if (keys[i].startsWith('sb-') && keys[i].includes('-auth-token')) {
+          var val = JSON.parse(localStorage.getItem(keys[i]));
+          if (val && val.user && val.user.email) return val.user.email;
         }
       }
     } catch(e) {}
@@ -436,8 +425,6 @@ let DB = [];
 let activeFilter = '';
 let deleteId = null;
 
-function getSupa() { return getSb(); }
-
 function getSb() {
   if (typeof supabase !== 'undefined' && SUPA_URL_ADMIN && SUPA_KEY_ADMIN) {
     return supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN, {
@@ -446,6 +433,8 @@ function getSb() {
   }
   return null;
 }
+function getSupa(){ return getSb(); }
+
 
 async function dbLoadFromSupabase() {
   const sb = getSb();
@@ -1091,7 +1080,7 @@ function goSiteSettings(){
       <div id="sc-api-status" style="font-size:12px;color:#94a3b8;margin-top:8px"></div>
     </div>
     <button class="btn btn-g" onclick="saveSiteSettings()">💾 저장</button>
-    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>\`;
+    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>`;
 
   // API 키 현재값 로드
   loadApiKeyIntoSettings();
