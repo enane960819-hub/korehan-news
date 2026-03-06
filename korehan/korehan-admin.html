@@ -143,6 +143,7 @@ a{color:inherit;text-decoration:none}
 
 .section-sep{height:1px;background:var(--br);margin:6px 0}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -425,11 +426,43 @@ let DB = [];
 let activeFilter = '';
 let deleteId = null;
 
+var _sbAdmin = null;
+// ── Claude API 프록시 (어드민용) ──────────────────────────────
+const ADMIN_CLAUDE_PROXY = SUPA_URL_ADMIN + '/functions/v1/claude-proxy';
+
+async function callClaude({ feature, model, max_tokens, messages }) {
+  var sb = getSb();
+  if (!sb) throw new Error('Supabase not initialized');
+
+  var { data: { session } } = await sb.auth.getSession();
+  if (!session) throw new Error('Not signed in');
+
+  var resp = await fetch(ADMIN_CLAUDE_PROXY, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + session.access_token,
+    },
+    body: JSON.stringify({ feature, model, max_tokens, messages }),
+  });
+
+  if (resp.status === 429) throw new Error('rate_limit');
+  if (resp.status === 401) throw new Error('unauthorized - please sign in');
+  if (!resp.ok) {
+    var err = await resp.json().catch(function(){ return {}; });
+    throw new Error(err.error || 'API error ' + resp.status);
+  }
+  return resp.json();
+}
+
+
 function getSb() {
+  if (_sbAdmin) return _sbAdmin;
   if (typeof supabase !== 'undefined' && SUPA_URL_ADMIN && SUPA_KEY_ADMIN) {
-    return supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN, {
+    _sbAdmin = supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN, {
       auth: { detectSessionInUrl: true, persistSession: true, autoRefreshToken: true }
     });
+    return _sbAdmin;
   }
   return null;
 }
@@ -1078,7 +1111,7 @@ function goSiteSettings(){
       <div id="sc-api-status" style="font-size:12px;color:#94a3b8;margin-top:8px"></div>
     </div>
     <button class="btn btn-g" onclick="saveSiteSettings()">💾 저장</button>
-    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>\`;
+    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>`;
 
   // API 키 현재값 로드
   loadApiKeyIntoSettings();
@@ -2235,7 +2268,7 @@ function doExport(){
   URL.revokeObjectURL(url);
   toast('💾 korehan-backup.json 내보내기 완료');
 }
-function doImport(e){
+async function doImport(e){
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
   reader.onload=async ev=>{
