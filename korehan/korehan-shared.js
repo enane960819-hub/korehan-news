@@ -25,10 +25,6 @@ function getSupa() {
 
 // 현재 로그인 유저
 var supaUser = null;
-var KH_IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-var _khIdleTimer = null;
-var _khIdleBound = false;
-var _khHeroTimer = null;
 
 // ── Claude API 프록시 (키를 서버에서만 관리) ─────────────────
 // Anthropic API를 직접 호출하지 않고 Supabase Edge Function을 통해 호출
@@ -425,102 +421,18 @@ async function signOut() {
 }
 
 // 세션 확인
-
-function _clearIdleLogoutTimer() {
-  if (_khIdleTimer) {
-    clearTimeout(_khIdleTimer);
-    _khIdleTimer = null;
-  }
-}
-
-function _startIdleLogoutTimer() {
-  _clearIdleLogoutTimer();
-  if (!supaUser) return;
-  _khIdleTimer = setTimeout(async function() {
-    try {
-      await signOut();
-      try { toast('Signed out due to inactivity.'); } catch(e) {}
-    } catch (e) {
-      console.warn('idle logout error', e);
-    }
-  }, KH_IDLE_TIMEOUT_MS);
-}
-
-function _bindIdleLogoutEvents() {
-  if (_khIdleBound) return;
-  _khIdleBound = true;
-
-  ['mousemove','mousedown','keydown','scroll','touchstart','click'].forEach(function(evt) {
-    window.addEventListener(evt, function() {
-      if (supaUser) _startIdleLogoutTimer();
-    }, { passive: true });
-  });
-
-  document.addEventListener('visibilitychange', function() {
-    if (!document.hidden && supaUser) _startIdleLogoutTimer();
-  });
-}
-
-function _clearHeroSliderTimer() {
-  if (_khHeroTimer) {
-    clearInterval(_khHeroTimer);
-    _khHeroTimer = null;
-  }
-}
-
-function _renderHeroSlide(heroEl, slides, currentIndex) {
-  if (!heroEl || !slides || !slides.length) return;
-  var current = slides[currentIndex] || slides[0];
-  var sideItems = slides.filter(function(a){ return String(a.id) !== String(current.id); }).slice(0, 4);
-
-  heroEl.innerHTML =
-    '<a href="' + articleUrl(current.id) + '" style="color:inherit;text-decoration:none;">'
-    + '<div class="hero-main">'
-    + '<img src="' + (current.image || 'https://picsum.photos/seed/' + current.id + '/900/500') + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'">'
-    + '<div class="overlay">'
-    + '<span class="category-tag">' + current.section + '</span>'
-    + '<h1 class="vocab-zone">' + current.title + '</h1>'
-    + '<p class="sub vocab-zone">' + (current.body || '') + '</p>'
-    + '</div>'
-    + '<div style="position:absolute;left:18px;bottom:18px;display:flex;gap:6px;z-index:3">'
-    + slides.map(function(_, i){
-        return '<span style="width:8px;height:8px;border-radius:999px;background:' + (i === currentIndex ? '#fff' : 'rgba(255,255,255,0.45)') + ';display:inline-block"></span>';
-      }).join('')
-    + '</div>'
-    + '</div></a>'
-    + '<div class="hero-side">' + sideItems.map(heroSideItemHTML).join('') + '</div>';
-}
-
-function _initHeroSlider(heroEl, slides) {
-  _clearHeroSliderTimer();
-  if (!heroEl || !slides || !slides.length) return;
-  var idx = 0;
-  _renderHeroSlide(heroEl, slides, idx);
-  if (slides.length < 2) return;
-  _khHeroTimer = setInterval(function() {
-    idx = (idx + 1) % slides.length;
-    _renderHeroSlide(heroEl, slides, idx);
-  }, 2000);
-}
-
-
 async function checkSession() {
   var sb = getSupa();
   if (!sb) return;
-  _bindIdleLogoutEvents();
   var { data } = await sb.auth.getSession();
   if (data && data.session && data.session.user) {
     supaUser = data.session.user;
     updateAuthUI();
-    _startIdleLogoutTimer();
-  } else {
-    _clearIdleLogoutTimer();
   }
   // 세션 변화 감지
   sb.auth.onAuthStateChange(function(event, session) {
     if (event === 'SIGNED_OUT') {
       supaUser = null;
-      _clearIdleLogoutTimer();
       // 다른 탭에서 로그아웃 시 현재 페이지도 즉시 반영
       updateAuthUI();
       updateCommentForm();
@@ -530,21 +442,17 @@ async function checkSession() {
       updateAuthUI();
       updateCommentForm();
       renderDailyMission();
-      _startIdleLogoutTimer();
     } else if (event === 'TOKEN_REFRESHED') {
       supaUser = session ? session.user : null;
       updateAuthUI();
-      _startIdleLogoutTimer();
     } else if (event === 'USER_UPDATED') {
       supaUser = session ? session.user : null;
       updateAuthUI();
-      _startIdleLogoutTimer();
     } else {
       supaUser = session ? session.user : null;
       updateAuthUI();
       updateCommentForm();
       renderDailyMission();
-      if (supaUser) _startIdleLogoutTimer(); else _clearIdleLogoutTimer();
     }
   });
 }
@@ -695,8 +603,65 @@ async function loadArticlesFromDB() {
   }
 }
 
+
 function getCachedArticles() {
   return _articlesCache || [];
+}
+
+function _findCachedArticleById(id) {
+  return getCachedArticles().find(function(x){ return String(x.id) === String(id); }) || null;
+}
+
+function _setArticleCacheFields(id, fields) {
+  var arr = getCachedArticles();
+  for (var i = 0; i < arr.length; i++) {
+    if (String(arr[i].id) === String(id)) {
+      for (var k in fields) arr[i][k] = fields[k];
+      break;
+    }
+  }
+}
+
+function _articleCacheKey(id, kind) {
+  return 'kh_ai_cache:' + String(kind) + ':' + String(id);
+}
+
+function _readArticleAiCache(id, kind) {
+  var a = _findCachedArticleById(id);
+  if (a) {
+    if (kind === 'grammar' && a.ai_grammar_guide) return a.ai_grammar_guide;
+    if (kind === 'fill' && a.ai_fill_questions) return a.ai_fill_questions;
+  }
+  try {
+    var raw = localStorage.getItem(_articleCacheKey(id, kind));
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) {
+    return null;
+  }
+}
+
+function _writeArticleAiLocalCache(id, kind, value) {
+  try {
+    localStorage.setItem(_articleCacheKey(id, kind), JSON.stringify(value));
+  } catch(e) {}
+  if (kind === 'grammar') _setArticleCacheFields(id, { ai_grammar_guide: value });
+  if (kind === 'fill') _setArticleCacheFields(id, { ai_fill_questions: value });
+}
+
+async function _persistArticleAiCache(id, kind, value) {
+  _writeArticleAiLocalCache(id, kind, value);
+  var sb = getSupa();
+  if (!sb) return false;
+
+  var patch = {};
+  if (kind === 'grammar') patch.ai_grammar_guide = value;
+  if (kind === 'fill') patch.ai_fill_questions = value;
+
+  try {
+    var res = await sb.from('articles').update(patch).eq('id', id);
+    if (res && !res.error) return true;
+  } catch(e) {}
+  return false;
 }
 
 // ── DB ────────────────────────────────────────────────────────
@@ -1010,6 +975,48 @@ function storyItemHTML(a) {
     + '</div></div></a>';
 }
 
+
+var _khHeroRotateTimer = null;
+
+function _clearHeroRotateTimer() {
+  if (_khHeroRotateTimer) {
+    clearInterval(_khHeroRotateTimer);
+    _khHeroRotateTimer = null;
+  }
+}
+
+function _renderHeroOnlySlide(heroMainEl, slides, index) {
+  if (!heroMainEl || !slides || !slides.length) return;
+  var a = slides[index] || slides[0];
+  heroMainEl.innerHTML =
+    '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
+    + '<div class="hero-main">'
+    + '<img src="' + (a.image || 'https://picsum.photos/seed/' + a.id + '/900/500') + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'">'
+    + '<div class="overlay">'
+    + '<span class="category-tag">' + a.section + '</span>'
+    + '<h1 class="vocab-zone">' + a.title + '</h1>'
+    + '<p class="sub vocab-zone">' + (a.body || '') + '</p>'
+    + '</div>'
+    + '<div style="position:absolute;left:18px;bottom:18px;display:flex;gap:6px;z-index:3">'
+    + slides.map(function(_, i){
+        return '<span style="width:8px;height:8px;border-radius:999px;background:' + (i === index ? '#fff' : 'rgba(255,255,255,.45)') + ';display:inline-block"></span>';
+      }).join('')
+    + '</div>'
+    + '</div></a>';
+}
+
+function _initHeroMainSlider(heroMainEl, slides) {
+  _clearHeroRotateTimer();
+  if (!heroMainEl || !slides || !slides.length) return;
+  var idx = 0;
+  _renderHeroOnlySlide(heroMainEl, slides, idx);
+  if (slides.length < 2) return;
+  _khHeroRotateTimer = setInterval(function() {
+    idx = (idx + 1) % slides.length;
+    _renderHeroOnlySlide(heroMainEl, slides, idx);
+  }, 2000);
+}
+
 function heroSideItemHTML(a) {
   var img = a.image || ('https://picsum.photos/seed/' + a.id + '/400/200');
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;display:block;">'
@@ -1023,18 +1030,24 @@ function heroSideItemHTML(a) {
 // ── 페이지 렌더러 ─────────────────────────────────────────────
 
 function renderHomePage() {
-  var all = published();
-  var featuredArticles = all.filter(function(a){ return a.featured; });
-  var heroSlides = (featuredArticles.length >= 2 ? featuredArticles : all.slice(0, Math.min(5, all.length)));
-  var currentHero = heroSlides[0] || all[0];
-  var rest = all.filter(function(a){ return !currentHero || String(a.id) !== String(currentHero.id); });
+  var all      = published();
+  var featured = all.find(function(a){ return a.featured; }) || all[0];
+  var rest     = all.filter(function(a){ return !featured || a.id !== featured.id; });
 
   // HERO
   var heroEl = document.getElementById('dyn-hero');
-  if (heroEl && heroSlides.length) {
-    _initHeroSlider(heroEl, heroSlides);
-  } else {
-    _clearHeroSliderTimer();
+  if (heroEl && featured) {
+    var heroSide = rest.slice(0, 4);
+    heroEl.innerHTML =
+      '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;">'
+      + '<div class="hero-main">'
+      + '<img src="' + (featured.image || 'https://picsum.photos/seed/' + featured.id + '/900/500') + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'">'
+      + '<div class="overlay">'
+      + '<span class="category-tag">' + featured.section + '</span>'
+      + '<h1 class="vocab-zone">' + featured.title + '</h1>'
+      + '<p class="sub vocab-zone">' + (featured.body || '') + '</p>'
+      + '</div></div></a>'
+      + '<div class="hero-side">' + heroSide.map(heroSideItemHTML).join('') + '</div>';
   }
 
   // TOP STORIES
@@ -1477,7 +1490,6 @@ async function loadFillExercise(container) {
   var params = new URLSearchParams(window.location.search);
   var id = params.get('id');
 
-  // 같은 기사면 이미 로드된 내용 유지 (리로드 방지)
   if (_fillLoaded && _fillArticleId === id) return;
   _fillLoaded = false;
   _fillArticleId = id;
@@ -1485,6 +1497,13 @@ async function loadFillExercise(container) {
   var all = getCachedArticles();
   var a = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
   if (!a) { el.innerHTML = '<p style="color:#aaa;padding:20px">Article not found.</p>'; return; }
+
+  var cachedFill = _readArticleAiCache(id, 'fill');
+  if (cachedFill && cachedFill.questions && cachedFill.questions.length) {
+    _fillLoaded = true;
+    renderFillQuestions(el, cachedFill.questions, a);
+    return;
+  }
 
   el.innerHTML = renderFillLoading();
 
@@ -1505,7 +1524,7 @@ Generate exactly 6 fill-in-the-blank questions from this article. Mix vocabulary
 
 Rules:
 - For Beginner: focus on common vocabulary and basic particles (은/는/이/가/을/를/에서/에)
-- For Intermediate: mix vocabulary with grammar patterns (으로/에게/한테/도/만/부터/까지)  
+- For Intermediate: mix vocabulary with grammar patterns (으로/에게/한테/도/만/부터/까지)
 - For Advanced: focus on advanced grammar endings (-으면서/-는데/-아/어서/-기 때문에/-ㄹ 수록)
 - Each blank should be a single word or short phrase (1-4 syllables)
 - The blank should appear naturally in a sentence from the article
@@ -1534,8 +1553,10 @@ Respond ONLY with this JSON (no markdown, no extra text):
     var raw = (data.content || []).map(function(c){ return c.text || ''; }).join('');
     var clean = raw.replace(/```json|```/g, '').trim();
     var parsed = JSON.parse(clean);
+    var payload = { questions: parsed.questions || [] };
+    await _persistArticleAiCache(id, 'fill', payload);
     _fillLoaded = true;
-    renderFillQuestions(el, parsed.questions, a);
+    renderFillQuestions(el, payload.questions, a);
   } catch(e) {
     el.innerHTML = '<div style="padding:24px;text-align:center;color:#e53e3e">⚠️ AI 생성 실패. 다시 시도해주세요.<br><button onclick="loadFillExercise()" style="margin-top:12px;padding:8px 20px;background:#2255a4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">🔄 Retry</button></div>';
   }
@@ -1813,8 +1834,6 @@ async function loadGrammarGuide() {
   var params = new URLSearchParams(window.location.search);
   var id = params.get('id');
 
-  // 같은 기사 + 이미 AI 분석 완료된 경우만 재로드 방지
-  // (로그인 상태 변경 시 재시도 허용 - dataset에 'ai' 표시)
   if (el.dataset.loadedId === String(id) && el.dataset.source === 'ai') return;
   el.dataset.loadedId = String(id);
   el.dataset.source = '';
@@ -1823,15 +1842,44 @@ async function loadGrammarGuide() {
   var a = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
   if (!a) { el.innerHTML = '<p style="color:#aaa;padding:20px 0;text-align:center">Article not found.</p>'; return; }
 
+  var cachedGrammar = _readArticleAiCache(id, 'grammar');
+  if (cachedGrammar && cachedGrammar.patterns && cachedGrammar.patterns.length) {
+    el.dataset.source = 'ai';
+    el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">✨ Grammar patterns found in this article:</p>'
+      + cachedGrammar.patterns.map(function(g){
+        return '<div class="grammar-point">'
+          + '<div class="grammar-name">' + g.name
+          + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
+          + '</div>'
+          + '<div class="grammar-explanation">' + g.exp + '</div>'
+          + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
+          + '</div>';
+      }).join('');
+    return;
+  }
+
   el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center">✨ Analyzing grammar with AI...</div>';
 
-  var text = (a.title || '') + '\n\n' + (a.body || '') + '\n\n' + (a.full || '');
+  var text = (a.title || '') + '
+
+' + (a.body || '') + '
+
+' + (a.full || '');
   var level = a.level || 'Intermediate';
-  var prompt = 'You are a Korean language teacher. Carefully read this specific Korean news article and identify 3-4 grammar patterns that actually appear in THIS article. Do NOT use generic examples — find patterns from the actual sentences in the article.\n\n'
-    + 'Article level: ' + level + '\n'
-    + 'Article:\n' + text.slice(0, 1200) + '\n\n'
-    + 'For each pattern: quote the exact sentence from the article, highlight the grammar point with <strong> tags, and explain it clearly for a ' + level + ' learner.\n\n'
-    + 'Respond ONLY in this exact JSON format (no markdown, no extra text):\n'
+  var prompt = 'You are a Korean language teacher. Carefully read this specific Korean news article and identify 3-4 grammar patterns that actually appear in THIS article. Do NOT use generic examples — find patterns from the actual sentences in the article.
+
+'
+    + 'Article level: ' + level + '
+'
+    + 'Article:
+' + text.slice(0, 1200) + '
+
+'
+    + 'For each pattern: quote the exact sentence from the article, highlight the grammar point with <strong> tags, and explain it clearly for a ' + level + ' learner.
+
+'
+    + 'Respond ONLY in this exact JSON format (no markdown, no extra text):
+'
     + '{"patterns":[{"name":"grammar name in Korean + romanization","level":"Beginner or Intermediate or Advanced","exp":"Clear English explanation in 1-2 sentences.","ex_ko":"Exact sentence from the article with grammar point in <strong> tags","ex_en":"English translation of that sentence"}]}';
   try {
     var res = await callClaude({
@@ -1846,16 +1894,19 @@ async function loadGrammarGuide() {
     if (data.content && data.content[0] && data.content[0].text) rawText = data.content[0].text;
     else if (data.text) rawText = data.text;
     if (!rawText) throw new Error('empty response');
-    var clean = rawText.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+    var clean = rawText.replace(/^```json
+?/, '').replace(/
+?```$/, '').trim();
     var jsonStart = clean.indexOf('{');
     var jsonEnd = clean.lastIndexOf('}');
     if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.slice(jsonStart, jsonEnd + 1);
     var parsed = JSON.parse(clean);
-    var guides = parsed.patterns || [];
-    el.dataset.source = 'ai'; // AI 분석 성공 표시 → 캐시 허용
+    var payload = { patterns: parsed.patterns || [] };
+    await _persistArticleAiCache(id, 'grammar', payload);
+    el.dataset.source = 'ai';
 
     el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">✨ Grammar patterns found in this article:</p>'
-      + guides.map(function(g){
+      + payload.patterns.map(function(g){
         return '<div class="grammar-point">'
           + '<div class="grammar-name">' + g.name
           + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
@@ -1866,7 +1917,7 @@ async function loadGrammarGuide() {
       }).join('');
   } catch(e) {
     if (e.message === 'Not signed in') {
-      el.dataset.source = ''; // 로그인 후 재시도 허용
+      el.dataset.source = '';
       el.innerHTML = '<div style="text-align:center;padding:28px 16px">'
         + '<div style="font-size:32px;margin-bottom:12px">🔒</div>'
         + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:8px">Sign in to use Grammar Guide</div>'
@@ -2547,18 +2598,17 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   if (!pageBase || pageBase === 'index') {
     renderHomePage();
-  } else if (pageBase === 'korehan-all')     { _clearHeroSliderTimer(); renderAllPage(); }
+  } else if (pageBase === 'korehan-all')     { renderAllPage(); }
   else if (pageBase === 'korehan-section')   {
-    _clearHeroSliderTimer();
     var sKey = (new URLSearchParams(window.location.search)).get('s') || '';
     renderSectionPage(sKey);
   }
-  else if (pageBase === 'korehan-korea')     { _clearHeroSliderTimer(); renderSectionPage('Korea'); }
-  else if (pageBase === 'korehan-society')   { _clearHeroSliderTimer(); renderSectionPage('사회'); }
-  else if (pageBase === 'korehan-world')     { _clearHeroSliderTimer(); renderSectionPage('국제'); }
-  else if (pageBase === 'korehan-culture')   { _clearHeroSliderTimer(); renderSectionPage('문화'); }
-  else if (pageBase === 'korehan-opinion')   { _clearHeroSliderTimer(); renderSectionPage('오피니언'); }
-  else if (pageBase === 'korehan-article')   { _clearHeroSliderTimer(); renderArticlePage(); }
+  else if (pageBase === 'korehan-korea')     { renderSectionPage('Korea'); }
+  else if (pageBase === 'korehan-society')   { renderSectionPage('사회'); }
+  else if (pageBase === 'korehan-world')     { renderSectionPage('국제'); }
+  else if (pageBase === 'korehan-culture')   { renderSectionPage('문화'); }
+  else if (pageBase === 'korehan-opinion')   { renderSectionPage('오피니언'); }
+  else if (pageBase === 'korehan-article')   { renderArticlePage(); }
 
   ttsInit();
   injectDailyMission();
