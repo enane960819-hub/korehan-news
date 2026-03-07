@@ -3361,7 +3361,7 @@ function _menuAdminRow(section) {
     +   '<label style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:#475569"><input id="menu-active-' + section.id + '" type="checkbox" ' + checked + '>Active</label>'
     +   '<div style="display:flex;gap:6px;justify-content:flex-end">'
     +     '<button onclick="saveMenuSectionFromMain(' + section.id + ')" style="padding:9px 12px;border:none;background:#0f766e;color:#fff;border-radius:10px;font-weight:800;cursor:pointer">Save</button>'
-    +     '<button onclick="deleteMenuSectionFromMain(' + section.id + ', ' + JSON.stringify(String(section.label || section.key || 'this section')) + ')" style="padding:9px 12px;border:none;background:#dc2626;color:#fff;border-radius:10px;font-weight:800;cursor:pointer">Delete</button>'
+    +     "<button onclick='deleteMenuSectionFromMain(" + section.id + ", " + JSON.stringify(String(section.label || section.key || 'this section')) + ")' style=\"padding:9px 12px;border:none;background:#dc2626;color:#fff;border-radius:10px;font-weight:800;cursor:pointer\">Delete</button>"
     +   '</div>'
     + '</div>';
 }
