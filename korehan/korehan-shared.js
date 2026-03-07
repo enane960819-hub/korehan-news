@@ -27,6 +27,15 @@ function getSupa() {
 var supaUser = null;
 var ADMIN_EMAILS = ['enane960819@gmail.com'];
 
+function esc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function isAdminUser() {
   return !!(supaUser && supaUser.email && ADMIN_EMAILS.indexOf(String(supaUser.email).toLowerCase()) !== -1);
 }
