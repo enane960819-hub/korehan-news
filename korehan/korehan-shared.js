@@ -404,6 +404,34 @@ async function signOut() {
   setTimeout(function(){ window.location.href = 'index.html'; }, 800);
 }
 
+
+// OAuth callback 처리
+async function handleOAuthCallback() {
+  var sb = getSupa();
+  if (!sb) return;
+
+  try {
+    var url = new URL(window.location.href);
+    var code = url.searchParams.get('code');
+    var oauthError = url.searchParams.get('error_description') || url.searchParams.get('error');
+
+    if (oauthError) {
+      console.error('OAuth callback error:', oauthError);
+      return;
+    }
+
+    if (code) {
+      var result = await sb.auth.exchangeCodeForSession(code);
+      if (result && result.error) throw result.error;
+
+      // URL 정리
+      window.history.replaceState({}, document.title, url.pathname);
+    }
+  } catch (err) {
+    console.error('OAuth session exchange error:', err);
+  }
+}
+
 // 세션 확인
 async function checkSession() {
   var sb = getSupa();
@@ -2488,7 +2516,8 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (footerEl)  footerEl.innerHTML  = renderFooter();
   if (sidebarEl) sidebarEl.innerHTML = renderSharedSidebar();
 
-  // 세션 먼저 확인 후 나머지 로드 (로그인 상태가 헤더 렌더 전에 준비되도록)
+  // OAuth 콜백 먼저 처리 후 세션 확인
+  await handleOAuthCallback();
   await checkSession();
 
   var page     = window.location.pathname.split('/').pop() || 'index.html';
@@ -3348,7 +3377,7 @@ async function signInWithGoogle() {
     var { data, error } = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + '/index.html'
+        redirectTo: window.location.origin + '/'
       }
     });
 
