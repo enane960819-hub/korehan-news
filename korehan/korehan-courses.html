@@ -3,983 +3,253 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Korean Courses — KoreHan</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&family=Noto+Sans+KR:wght@400;500;700;900&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<title>Korean Writing Course — KoreHan News</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
-/* ── COURSES PAGE ─────────────────────────────────────────── */
-
-/* Hero */
+/* ── COURSES PAGE ──────────────────────────────────────────── */
 .course-hero {
-  background: linear-gradient(160deg, #03091a 0%, #0b1f3a 45%, #0f2d1a 100%);
+  background: linear-gradient(150deg, #0b1626 0%, #1a3a6b 60%, #0d2b0d 100%);
+  padding: 72px 24px 64px;
+  text-align: center;
   position: relative;
   overflow: hidden;
-  padding: 72px 22px 60px;
-  text-align: center;
 }
 .course-hero::before {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 70% 60% at 20% 50%, rgba(34,85,164,.18) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 50% at 80% 30%, rgba(20,160,80,.12) 0%, transparent 70%);
+    radial-gradient(ellipse 60% 70% at 15% 50%, rgba(34,85,164,.2) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 50% at 85% 30%, rgba(20,120,60,.15) 0%, transparent 65%);
   pointer-events: none;
 }
+.course-hero-inner { position: relative; max-width: 720px; margin: 0 auto; }
 .hero-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  background: rgba(255,255,255,.07);
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: 999px;
-  padding: 6px 16px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: rgba(255,255,255,.7);
-  margin-bottom: 24px;
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+  border-radius: 999px; padding: 6px 18px;
+  font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
+  color: rgba(255,255,255,.75); margin-bottom: 28px;
 }
-.hero-pill span { width:6px;height:6px;border-radius:50%;background:#4ade80;display:inline-block;animation:blink 2s ease-in-out infinite }
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.hero-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
 .course-hero h1 {
-  font-family: 'DM Serif Display', 'Noto Serif KR', serif;
-  font-size: clamp(36px, 6vw, 62px);
-  font-weight: 400;
-  line-height: 1.1;
-  color: #fff;
-  margin-bottom: 16px;
-  letter-spacing: -.5px;
+  font-family: 'Playfair Display', 'Noto Serif KR', serif;
+  font-size: clamp(32px, 5.5vw, 58px); font-weight: 900;
+  color: #fff; margin: 0 0 20px; line-height: 1.15;
 }
-.course-hero h1 em {
-  font-style: italic;
-  color: #7ab8f5;
-}
+.course-hero h1 em { font-style: italic; color: #7ab8f5; }
 .course-hero p {
-  font-size: 16px;
-  color: rgba(255,255,255,.62);
-  max-width: 520px;
-  margin: 0 auto 32px;
-  line-height: 1.7;
+  font-size: 16px; color: rgba(255,255,255,.7); line-height: 1.7; margin: 0 auto 36px; max-width: 560px;
 }
-.hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-.btn-primary {
-  padding: 14px 28px;
-  background: #2255a4;
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 900;
-  cursor: pointer;
-  text-decoration: none;
-  transition: background .2s, transform .15s;
-  display: inline-block;
+.hero-price-badge {
+  display: inline-flex; flex-direction: column; align-items: center;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.18);
+  border-radius: 20px; padding: 18px 36px; gap: 4px;
 }
-.btn-primary:hover { background: #1a3a6b; transform: translateY(-1px); }
-.btn-outline {
-  padding: 14px 28px;
-  background: transparent;
-  color: #fff;
-  border: 1.5px solid rgba(255,255,255,.3);
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  text-decoration: none;
-  transition: border-color .2s, background .2s;
-  display: inline-block;
-}
-.btn-outline:hover { border-color: rgba(255,255,255,.6); background: rgba(255,255,255,.06); }
+.price-main { font-size: 42px; font-weight: 900; color: #fff; line-height: 1; }
+.price-period { font-size: 13px; color: rgba(255,255,255,.55); font-weight: 600; }
+.price-note { font-size: 12px; color: #4ade80; font-weight: 700; margin-top: 4px; }
 
-/* Stats bar */
-.stats-bar {
-  background: #fff;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 18px 22px;
+/* ── WHAT YOU GET ──────────────────────────────────────────── */
+.course-section { max-width: 900px; margin: 0 auto; padding: 56px 24px; }
+.course-section-title {
+  font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700;
+  color: #0d1b2e; margin: 0 0 8px;
 }
-.stats-bar-inner {
-  max-width: 1000px;
-  margin: 0 auto;
-  display: flex;
-  gap: 0;
-  justify-content: space-around;
-  align-items: center;
-}
-.stat-item { text-align: center; }
-.stat-num  { font-size: 24px; font-weight: 900; color: #0b1626; }
-.stat-lbl  { font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; margin-top: 2px; }
-.stat-div  { width: 1px; height: 36px; background: #e2e8f0; }
+.course-section-sub { font-size: 15px; color: #64748b; margin: 0 0 36px; }
 
-/* Body */
-.course-body {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 52px 22px 80px;
+.features-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;
 }
+.feature-card {
+  background: #fff; border: 1.5px solid #e2e8f0; border-radius: 20px;
+  padding: 28px 24px; transition: border-color .2s, box-shadow .2s;
+}
+.feature-card:hover { border-color: #bcd0f4; box-shadow: 0 8px 32px rgba(34,85,164,.1); }
+.feature-icon { font-size: 32px; margin-bottom: 16px; display: block; }
+.feature-card h3 { font-size: 17px; font-weight: 800; color: #0d1b2e; margin: 0 0 8px; }
+.feature-card p { font-size: 14px; color: #64748b; line-height: 1.65; margin: 0; }
 
-/* Section titles */
-.sec-label {
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  color: #2255a4;
-  margin-bottom: 10px;
+/* ── HOW IT WORKS ──────────────────────────────────────────── */
+.steps { display: flex; flex-direction: column; gap: 0; }
+.step {
+  display: grid; grid-template-columns: 56px 1fr; gap: 20px; align-items: flex-start;
+  padding: 24px 0; border-bottom: 1px solid #f1f5f9;
 }
-.sec-title {
-  font-family: 'DM Serif Display', serif;
-  font-size: 32px;
-  font-weight: 400;
-  color: #0b1626;
-  margin-bottom: 8px;
-  line-height: 1.2;
-}
-.sec-sub {
-  font-size: 15px;
-  color: #64748b;
-  margin-bottom: 36px;
-  line-height: 1.6;
-}
-
-/* ── PRICING CARDS ── */
-.pricing-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  margin-bottom: 60px;
-}
-@media(max-width:700px){ .pricing-grid{grid-template-columns:1fr} }
-
-.price-card {
-  border: 2px solid #e2e8f0;
-  border-radius: 20px;
-  padding: 28px 24px 24px;
-  background: #fff;
-  position: relative;
-  transition: transform .2s, box-shadow .2s;
-}
-.price-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,.1); }
-.price-card.featured {
-  border-color: #2255a4;
-  background: linear-gradient(160deg, #0b1626, #1a3a6b);
-  color: #fff;
-}
-.featured-badge {
-  position: absolute;
-  top: -13px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #f59e0b;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 900;
-  padding: 3px 14px;
-  border-radius: 999px;
-  text-transform: uppercase;
-  letter-spacing: .8px;
-  white-space: nowrap;
-}
-.price-icon { font-size: 32px; margin-bottom: 14px; }
-.price-name {
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  color: #94a3b8;
-  margin-bottom: 6px;
-}
-.price-card.featured .price-name { color: rgba(255,255,255,.55); }
-.price-amount {
-  font-family: 'DM Serif Display', serif;
-  font-size: 48px;
-  font-weight: 400;
-  color: #0b1626;
-  line-height: 1;
-  margin-bottom: 4px;
-}
-.price-card.featured .price-amount { color: #fff; }
-.price-period {
-  font-size: 13px;
-  color: #94a3b8;
-  margin-bottom: 20px;
-}
-.price-card.featured .price-period { color: rgba(255,255,255,.5); }
-.price-divider {
-  height: 1px;
-  background: #e2e8f0;
-  margin-bottom: 18px;
-}
-.price-card.featured .price-divider { background: rgba(255,255,255,.12); }
-.price-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
-.price-features li {
-  font-size: 13px;
-  color: #445566;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  line-height: 1.5;
-}
-.price-card.featured .price-features li { color: rgba(255,255,255,.8); }
-.price-features li::before {
-  content: '✓';
-  font-size: 12px;
-  font-weight: 900;
-  color: #16a34a;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-.price-card.featured .price-features li::before { color: #4ade80; }
-.price-cta {
-  display: block;
-  width: 100%;
-  padding: 13px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 900;
-  text-align: center;
-  cursor: pointer;
-  border: none;
-  transition: all .2s;
-  text-decoration: none;
-}
-.price-cta-outline {
-  background: #f0f6ff;
-  color: #2255a4;
-}
-.price-cta-outline:hover { background: #e0edff; }
-.price-cta-filled {
-  background: #fff;
-  color: #0b1626;
-}
-.price-cta-filled:hover { background: #f0f6ff; }
-.price-note {
-  font-size: 11px;
-  text-align: center;
-  color: #94a3b8;
-  margin-top: 10px;
-}
-.price-card.featured .price-note { color: rgba(255,255,255,.4); }
-
-/* ── CURRICULUM ── */
-.curriculum-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 60px;
-}
-@media(max-width:640px){ .curriculum-grid{grid-template-columns:1fr} }
-
-.curr-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 22px;
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  transition: box-shadow .2s;
-}
-.curr-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.08); }
-.curr-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  flex-shrink: 0;
-}
-.curr-title { font-size: 15px; font-weight: 900; color: #0b1626; margin-bottom: 5px; }
-.curr-desc  { font-size: 13px; color: #64748b; line-height: 1.55; }
-.curr-level {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 800;
-  padding: 2px 8px;
-  border-radius: 99px;
-  text-transform: uppercase;
-  letter-spacing: .6px;
-  margin-top: 8px;
-}
-
-/* ── HOW IT WORKS ── */
-.steps-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 60px;
-  position: relative;
-}
-@media(max-width:640px){ .steps-row{grid-template-columns:repeat(2,1fr)} }
-.steps-row::before {
-  content: '';
-  position: absolute;
-  top: 24px;
-  left: 10%;
-  right: 10%;
-  height: 2px;
-  background: linear-gradient(90deg, #2255a4, #4ade80);
-  opacity: .2;
-}
-.step-card { text-align: center; position: relative; }
+.step:last-child { border-bottom: none; }
 .step-num {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #2255a4, #3d7fd4);
-  color: #fff;
-  font-size: 18px;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 14px;
-  box-shadow: 0 4px 14px rgba(34,85,164,.3);
+  width: 48px; height: 48px; border-radius: 50%;
+  background: #2255a4; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 900; flex-shrink: 0; margin-top: 2px;
 }
-.step-title { font-size: 14px; font-weight: 800; color: #0b1626; margin-bottom: 6px; }
-.step-desc  { font-size: 12px; color: #94a3b8; line-height: 1.5; }
+.step h4 { font-size: 17px; font-weight: 800; color: #0d1b2e; margin: 0 0 6px; }
+.step p { font-size: 14px; color: #64748b; line-height: 1.65; margin: 0; }
 
-/* ── FAQ ── */
-.faq-list { margin-bottom: 60px; }
-.faq-item {
-  border-bottom: 1px solid #e2e8f0;
-  padding: 0;
-  overflow: hidden;
+/* ── SCHEDULE ──────────────────────────────────────────────── */
+.schedule-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;
 }
-.faq-q {
-  width: 100%;
-  text-align: left;
-  background: none;
-  border: none;
-  padding: 20px 4px;
-  font-size: 15px;
-  font-weight: 800;
-  color: #0b1626;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  font-family: 'Noto Sans KR', sans-serif;
-  transition: color .2s;
+.schedule-card {
+  background: #f8faff; border: 1.5px solid #e2e8f0; border-radius: 16px;
+  padding: 20px; text-align: center;
 }
-.faq-q:hover { color: #2255a4; }
-.faq-chevron {
-  font-size: 18px;
-  color: #94a3b8;
-  transition: transform .3s;
-  flex-shrink: 0;
-}
-.faq-item.open .faq-chevron { transform: rotate(45deg); color: #2255a4; }
-.faq-a {
-  font-size: 14px;
-  color: #64748b;
-  line-height: 1.7;
-  padding: 0 4px 20px;
-  display: none;
-}
-.faq-item.open .faq-a { display: block; animation: slidein .25s ease; }
-@keyframes slidein { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+.schedule-week { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #2255a4; margin-bottom: 10px; }
+.schedule-title { font-size: 15px; font-weight: 700; color: #0d1b2e; margin-bottom: 6px; }
+.schedule-desc { font-size: 13px; color: #64748b; line-height: 1.5; }
 
-/* ── FREE TRIAL FORM ── */
-.trial-section {
+/* ── CTA ───────────────────────────────────────────────────── */
+.cta-section {
   background: linear-gradient(135deg, #0b1626, #1a3a6b);
-  border-radius: 24px;
-  padding: 48px 40px;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
+  text-align: center; padding: 64px 24px;
 }
-.trial-section::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 60% 80% at 80% 50%, rgba(20,160,80,.1) 0%, transparent 70%);
+.cta-section h2 {
+  font-family: 'Playfair Display', serif; font-size: clamp(26px, 4vw, 42px);
+  color: #fff; margin: 0 0 16px;
 }
-.trial-section h2 {
-  font-family: 'DM Serif Display', serif;
-  font-size: 32px;
-  color: #fff;
-  margin-bottom: 10px;
-  position: relative;
+.cta-section p { font-size: 16px; color: rgba(255,255,255,.7); margin: 0 0 32px; }
+.cta-btn {
+  display: inline-block; background: #2255a4; color: #fff;
+  font-size: 16px; font-weight: 800; padding: 16px 40px;
+  border-radius: 999px; text-decoration: none; transition: background .2s, transform .15s;
 }
-.trial-section p {
-  color: rgba(255,255,255,.6);
-  font-size: 15px;
-  margin-bottom: 32px;
-  position: relative;
-}
-.trial-form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  max-width: 440px;
-  margin: 0 auto;
-  position: relative;
-}
-.trial-input {
-  padding: 14px 18px;
-  border-radius: 12px;
-  border: 1.5px solid rgba(255,255,255,.15);
-  background: rgba(255,255,255,.08);
-  color: #fff;
-  font-size: 14px;
-  font-family: 'Noto Sans KR', sans-serif;
-  outline: none;
-  transition: border-color .2s, background .2s;
-}
-.trial-input::placeholder { color: rgba(255,255,255,.35); }
-.trial-input:focus { border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.12); }
-.trial-select {
-  padding: 14px 18px;
-  border-radius: 12px;
-  border: 1.5px solid rgba(255,255,255,.15);
-  background: rgba(255,255,255,.08);
-  color: #fff;
-  font-size: 14px;
-  font-family: 'Noto Sans KR', sans-serif;
-  outline: none;
-  cursor: pointer;
-  -webkit-appearance: none;
-}
-.trial-select option { background: #1a3a6b; color: #fff; }
-.trial-submit {
-  padding: 15px;
-  background: #fff;
-  color: #0b1626;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 900;
-  cursor: pointer;
-  transition: background .2s, transform .15s;
-  font-family: 'Noto Sans KR', sans-serif;
-}
-.trial-submit:hover { background: #f0f6ff; transform: translateY(-1px); }
-.trial-note {
-  font-size: 12px;
-  color: rgba(255,255,255,.35);
-  margin-top: 6px;
-}
-.success-msg {
-  background: rgba(74,222,128,.15);
-  border: 1px solid rgba(74,222,128,.3);
-  border-radius: 12px;
-  padding: 20px;
-  color: #4ade80;
-  font-weight: 700;
-  font-size: 15px;
-  display: none;
-}
+.cta-btn:hover { background: #1a3f7a; transform: translateY(-2px); }
+.cta-note { margin-top: 16px; font-size: 13px; color: rgba(255,255,255,.45); }
 
-/* ── Session Pack Selector ─────────────────────────────── */
-.pack-selector { margin: 16px 0 12px; }
-.pack-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; color: #94a3b8; margin-bottom: 8px; }
-.pack-btns { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; margin-bottom: 10px; }
-.pack-btn { padding: 8px 4px; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #fff; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; color: #445566; text-align: center; line-height: 1.4; transition: all .15s; }
-.pack-btn:hover { border-color: #2255a4; background: #f0f6ff; color: #2255a4; }
-.pack-btn.on { border-color: #2255a4; background: #f0f6ff; color: #2255a4; }
-.featured .pack-btn { border-color: rgba(255,255,255,.15); background: rgba(255,255,255,.07); color: rgba(255,255,255,.7); }
-.featured .pack-btn:hover, .featured .pack-btn.on { border-color: rgba(255,255,255,.6); background: rgba(255,255,255,.18); color: #fff; }
-.pack-price { display: block; font-size: 12px; font-weight: 900; margin-top: 2px; }
-.pack-save { font-size: 9px; font-weight: 800; color: #16a34a; background: #f0fdf4; padding: 1px 4px; border-radius: 4px; }
-.featured .pack-save { color: #4ade80; background: rgba(74,222,128,.2); }
-.pack-detail { font-size: 12px; color: #64748b; padding: 8px 10px; background: #f8faff; border-radius: 8px; font-weight: 600; }
-.featured .pack-detail { background: rgba(255,255,255,.08); color: rgba(255,255,255,.6); }
+/* ── DIVIDER ───────────────────────────────────────────────── */
+.section-divider { height: 1px; background: #f1f5f9; margin: 0 24px; }
+
+@media(max-width:600px) {
+  .course-hero { padding: 52px 16px 48px; }
+  .course-section { padding: 40px 16px; }
+}
 </style>
 </head>
 <body>
 <div id="kh-header"></div>
 
-<!-- ── HERO ── -->
+<!-- HERO -->
 <div class="course-hero">
-  <div class="hero-pill"><span></span> Now Enrolling</div>
-  <h1>Learn Korean<br><em>the way it's spoken.</em></h1>
-  <p>Live 1-on-1 and group classes taught through real Korean news stories — so you learn language <em>and</em> culture at once.</p>
-  <div class="hero-btns">
-    <a href="#contact" class="btn-primary">✉️ Get in Touch</a>
-    <a href="#pricing" class="btn-outline">See Pricing ↓</a>
-  </div>
-</div>
-
-<!-- ── STATS ── -->
-<div class="stats-bar">
-  <div class="stats-bar-inner">
-    <div class="stat-item">
-      <div class="stat-num">🇰🇷</div>
-      <div class="stat-lbl">Native Teacher</div>
-    </div>
-    <div class="stat-div"></div>
-    <div class="stat-item">
-      <div class="stat-num">4</div>
-      <div class="stat-lbl">Max Group Size</div>
-    </div>
-    <div class="stat-div"></div>
-    <div class="stat-item">
-      <div class="stat-num">60<span style="font-size:14px;font-weight:400">min</span></div>
-      <div class="stat-lbl">Per Session</div>
-    </div>
-    <div class="stat-div"></div>
-    <div class="stat-item">
-      <div class="stat-num">4</div>
-      <div class="stat-lbl">Skill Levels</div>
-    </div>
-    <div class="stat-div"></div>
-    <div class="stat-item">
-      <div class="stat-num">100%</div>
-      <div class="stat-lbl">News-Based</div>
+  <div class="course-hero-inner">
+    <div class="hero-pill"><span class="hero-dot"></span>Now Enrolling</div>
+    <h1>Write Better Korean.<br><em>Every Single Month.</em></h1>
+    <p>Real feedback on real writing — not grammar drills. Each month you get 4 writing assignments pulled from current Korean news, plus personal corrections from an actual human.</p>
+    <div class="hero-price-badge">
+      <div class="price-main">$29</div>
+      <div class="price-period">per month</div>
+      <div class="price-note">Cancel anytime</div>
     </div>
   </div>
 </div>
 
-<div class="course-body">
-
-  <!-- ── PRICING ── -->
-  <div id="pricing" style="scroll-margin-top:80px;margin-bottom:52px">
-    <div class="sec-label">Pricing</div>
-    <div class="sec-title">Simple, honest pricing.</div>
-    <div class="sec-sub">No hidden fees. Cancel anytime. First session always free.</div>
-
-    <div class="pricing-grid">
-
-      <!-- Group -->
-      <div class="price-card">
-        <div class="price-icon">👥</div>
-        <div class="price-name">Group Class</div>
-        <div class="price-amount">$9</div>
-        <div class="price-period">per hour · max 4 students</div>
-        <div class="price-divider"></div>
-        <ul class="price-features">
-          <li>Online (Zoom) or in-person — your choice</li>
-          <li>Up to 5 students per class</li>
-          <li>Structured around KoreHan news</li>
-          <li>Weekly homework + vocabulary list</li>
-          <li>KoreHan platform access included</li>
-        </ul>
-        <!-- 세션 팩 선택 -->
-        <div class="pack-selector" id="group-packs">
-          <div class="pack-label">Select a session pack:</div>
-          <div class="pack-btns">
-            <button class="pack-btn on" onclick="selectPack('group',1,9,this)">1 session<br><span class="pack-price">$9</span></button>
-            <button class="pack-btn" onclick="selectPack('group',10,81,this)">10 pack<br><span class="pack-price">$81 <span class="pack-save">−10%</span></span></button>
-            <button class="pack-btn" onclick="selectPack('group',20,144,this)">20 pack<br><span class="pack-price">$144 <span class="pack-save">−20%</span></span></button>
-            <button class="pack-btn" onclick="selectPack('group',40,234,this)">40 pack<br><span class="pack-price">$234 <span class="pack-save">−35%</span></span></button>
-          </div>
-          <div class="pack-detail" id="group-detail">1 session · $9 · no expiry</div>
-        </div>
-        <button class="price-cta price-cta-outline" onclick="goCheckout('group',1)" id="group-cta">Buy Now — $9 →</button>
-        <div class="price-note">Sessions never expire · use at your own pace</div>
-      </div>
-
-      <!-- 1-on-1 -->
-      <div class="price-card">
-        <div class="price-icon">🎯</div>
-        <div class="price-name">1-on-1 Private</div>
-        <div class="price-amount">$20</div>
-        <div class="price-period">per hour · fully personalized</div>
-        <div class="price-divider"></div>
-        <ul class="price-features">
-          <li>Online (Zoom) or in-person — your choice</li>
-          <li>Curriculum tailored to your goals</li>
-          <li>Flexible scheduling anytime</li>
-          <li>Speaking, reading & grammar focus</li>
-          <li>Detailed written feedback after each class</li>
-          <li>Priority booking & rescheduling</li>
-        </ul>
-        <!-- 세션 팩 선택 -->
-        <div class="pack-selector" id="solo-packs">
-          <div class="pack-label">Select a session pack:</div>
-          <div class="pack-btns">
-            <button class="pack-btn on" onclick="selectPack('solo',1,20,this)">1 session<br><span class="pack-price">$20</span></button>
-            <button class="pack-btn" onclick="selectPack('solo',10,180,this)">10 pack<br><span class="pack-price">$180 <span class="pack-save">−10%</span></span></button>
-            <button class="pack-btn" onclick="selectPack('solo',20,320,this)">20 pack<br><span class="pack-price">$320 <span class="pack-save">−20%</span></span></button>
-            <button class="pack-btn" onclick="selectPack('solo',40,520,this)">40 pack<br><span class="pack-price">$520 <span class="pack-save">−35%</span></span></button>
-          </div>
-          <div class="pack-detail" id="solo-detail">1 session · $20 · no expiry</div>
-        </div>
-        <button class="price-cta price-cta-outline" onclick="goCheckout('solo',1)" id="solo-cta">Buy Now — $20 →</button>
-        <div class="price-note">Sessions never expire · use at your own pace</div>
-      </div>
-
-      <!-- Writing (featured) -->
-      <div class="price-card featured">
-        <div class="featured-badge">⭐ Most Popular</div>
-        <div class="price-icon">✍️</div>
-        <div class="price-name">Writing + Homework</div>
-        <div class="price-amount">$45</div>
-        <div class="price-period">per month · async only</div>
-        <div class="price-divider"></div>
-        <ul class="price-features">
-          <li>7 writing assignments per month</li>
-          <li>Personal correction & feedback</li>
-          <li>Grammar explanations in English</li>
-          <li>No live sessions needed</li>
-          <li>Perfect for busy schedules</li>
-        </ul>
-        <!-- 기간 선택 -->
-        <div class="pack-selector" id="writing-packs">
-          <div class="pack-label">Select a billing period:</div>
-          <div class="pack-btns">
-            <button class="pack-btn on" onclick="selectWriting(1,45,this)">Monthly<br><span class="pack-price">$45</span></button>
-            <button class="pack-btn" onclick="selectWriting(3,121,this)">3 Months<br><span class="pack-price">$121 <span class="pack-save">−10%</span></span></button>
-            <button class="pack-btn" onclick="selectWriting(6,216,this)">6 Months<br><span class="pack-price">$216 <span class="pack-save">−20%</span></span></button>
-            <button class="pack-btn" onclick="selectWriting(12,351,this)">1 Year<br><span class="pack-price">$351 <span class="pack-save">−35%</span></span></button>
-          </div>
-          <div class="pack-detail" id="writing-detail">$45/month · billed monthly</div>
-        </div>
-        <button class="price-cta price-cta-filled" onclick="goCheckout('writing',1)" id="writing-cta">Get Started — $45 →</button>
-        <div class="price-note">Best for self-paced learners</div>
-      </div>
-
+<!-- WHAT YOU GET -->
+<div class="course-section">
+  <div class="course-section-title">What's included</div>
+  <div class="course-section-sub">Everything you need to actually improve your Korean writing.</div>
+  <div class="features-grid">
+    <div class="feature-card">
+      <span class="feature-icon">✍️</span>
+      <h3>4 Writing Assignments</h3>
+      <p>One per week, based on real Korean news articles. Short-form opinion pieces, summaries, and free writing — all at your level.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📝</span>
+      <h3>Personal Feedback</h3>
+      <p>Every submission gets corrected and annotated by a human teacher. Not AI. You'll see exactly what to fix and why.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📰</span>
+      <h3>News-Based Context</h3>
+      <p>Prompts come directly from KoreHan News articles, so you practice vocabulary and grammar you've already been reading.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🃏</span>
+      <h3>Daily Vocab & Grammar Quiz</h3>
+      <p>Quick daily exercises to reinforce what you've learned. Flashcards, fill-in-the-blank, and grammar pattern drills.</p>
     </div>
   </div>
+</div>
 
+<div class="section-divider"></div>
 
-  <!-- ── BULK DISCOUNT ── -->
-  <div style="margin-bottom:52px">
-    <div class="sec-label">Bundle & Save</div>
-    <div class="sec-title">Commit longer, pay less.</div>
-    <div class="sec-sub">Applies to all plans. Discount calculated on monthly rate.</div>
-
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
-
-      <div style="background:#fff;border:2px solid var(--border);border-radius:18px;padding:26px 22px;text-align:center;transition:transform .2s,box-shadow .2s" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 36px rgba(0,0,0,.1)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-        <div style="font-size:28px;margin-bottom:10px">📅</div>
-        <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:#94a3b8;margin-bottom:6px">3 Months</div>
-        <div style="font-family:'DM Serif Display',serif;font-size:42px;font-weight:400;color:#0b1626;line-height:1">10<span style="font-size:22px">%</span></div>
-        <div style="font-size:13px;color:#94a3b8;margin:4px 0 16px">off monthly rate</div>
-        <div style="font-size:12px;color:#445566;line-height:1.6;margin-bottom:18px">e.g. Writing plan:<br><span style="text-decoration:line-through;color:#94a3b8">$135</span> → <strong style="color:#0b1626">$121.50</strong></div>
-        <a href="#contact" style="display:block;padding:11px;background:#f0f6ff;color:#2255a4;border-radius:10px;font-size:13px;font-weight:900;text-decoration:none">Get 3-Month Plan →</a>
+<!-- HOW IT WORKS -->
+<div class="course-section">
+  <div class="course-section-title">How it works</div>
+  <div class="course-section-sub">Simple. No video lectures. No live sessions. Just writing.</div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div>
+        <h4>You get a writing prompt</h4>
+        <p>Every week a new assignment drops — tied to a real Korean news article. You read the article, then write a short response (5–10 sentences).</p>
       </div>
-
-      <div style="background:linear-gradient(160deg,#0b1626,#1a3a6b);border:2px solid #2255a4;border-radius:18px;padding:26px 22px;text-align:center;position:relative;transform:scale(1.03);box-shadow:0 8px 32px rgba(34,85,164,.25)">
-        <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#f59e0b;color:#fff;font-size:10px;font-weight:900;padding:3px 14px;border-radius:999px;text-transform:uppercase;letter-spacing:.8px;white-space:nowrap">Best Value</div>
-        <div style="font-size:28px;margin-bottom:10px">📆</div>
-        <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.5);margin-bottom:6px">6 Months</div>
-        <div style="font-family:'DM Serif Display',serif;font-size:42px;font-weight:400;color:#fff;line-height:1">20<span style="font-size:22px">%</span></div>
-        <div style="font-size:13px;color:rgba(255,255,255,.5);margin:4px 0 16px">off monthly rate</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.7);line-height:1.6;margin-bottom:18px">e.g. Writing plan:<br><span style="text-decoration:line-through;color:rgba(255,255,255,.4)">$270</span> → <strong style="color:#4ade80">$216</strong></div>
-        <a href="#contact" style="display:block;padding:11px;background:#fff;color:#0b1626;border-radius:10px;font-size:13px;font-weight:900;text-decoration:none">Get 6-Month Plan →</a>
-      </div>
-
-      <div style="background:#fff;border:2px solid var(--border);border-radius:18px;padding:26px 22px;text-align:center;transition:transform .2s,box-shadow .2s" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 36px rgba(0,0,0,.1)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-        <div style="font-size:28px;margin-bottom:10px">🗓️</div>
-        <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:#94a3b8;margin-bottom:6px">1 Year</div>
-        <div style="font-family:'DM Serif Display',serif;font-size:42px;font-weight:400;color:#0b1626;line-height:1">35<span style="font-size:22px">%</span></div>
-        <div style="font-size:13px;color:#94a3b8;margin:4px 0 16px">off monthly rate</div>
-        <div style="font-size:12px;color:#445566;line-height:1.6;margin-bottom:18px">e.g. Writing plan:<br><span style="text-decoration:line-through;color:#94a3b8">$540</span> → <strong style="color:#0b1626">$351</strong></div>
-        <a href="#contact" style="display:block;padding:11px;background:#f0f6ff;color:#2255a4;border-radius:10px;font-size:13px;font-weight:900;text-decoration:none">Get Annual Plan →</a>
-      </div>
-
     </div>
-    <div style="text-align:center;margin-top:14px;font-size:12px;color:#94a3b8">Discounts apply to all plans. Contact us to set up your bundle.</div>
-  </div>
-
-  <!-- ── CURRICULUM ── -->
-  <div style="margin-bottom:52px">
-    <div class="sec-label">Curriculum</div>
-    <div class="sec-title">What you'll learn</div>
-    <div class="sec-sub">All levels taught through real Korean news — so lessons always feel relevant.</div>
-
-    <div class="curriculum-grid">
-      <div class="curr-card">
-        <div class="curr-icon" style="background:#eff6ff">📖</div>
-        <div>
-          <div class="curr-title">Hangul & Foundations</div>
-          <div class="curr-desc">Master the Korean alphabet, basic sentence structure, pronunciation and essential greetings. Start reading simple KoreHan headlines from day one.</div>
-          <div class="curr-level" style="background:#eff6ff;color:#1d4ed8">Beginner</div>
-        </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div>
+        <h4>You submit your writing</h4>
+        <p>Type directly on the site. No emails, no PDFs. Submissions close after 5 days so feedback stays timely.</p>
       </div>
-      <div class="curr-card">
-        <div class="curr-icon" style="background:#f0fdf4">🗞️</div>
-        <div>
-          <div class="curr-title">News Korean</div>
-          <div class="curr-desc">Read intermediate KoreHan articles with full comprehension. Expand vocabulary through context, not memorization. Practice summarizing in Korean.</div>
-          <div class="curr-level" style="background:#f0fdf4;color:#15803d">Intermediate</div>
-        </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div>
+        <h4>You get it back corrected</h4>
+        <p>Within 3 days your writing comes back with line-by-line corrections and a short note on what to focus on next.</p>
       </div>
-      <div class="curr-card">
-        <div class="curr-icon" style="background:#fffbeb">💬</div>
-        <div>
-          <div class="curr-title">Speaking & Conversation</div>
-          <div class="curr-desc">Discuss Korean news topics fluently. Learn formal vs informal registers, TOPIK-style speaking, and how to express opinions naturally.</div>
-          <div class="curr-level" style="background:#fffbeb;color:#b45309">Intermediate+</div>
-        </div>
-      </div>
-      <div class="curr-card" style="opacity:.6;position:relative">
-        <div style="position:absolute;top:14px;right:14px;background:#f1f5f9;color:#94a3b8;font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;text-transform:uppercase;letter-spacing:.8px">🔜 Coming Soon</div>
-        <div class="curr-icon" style="background:#f8faff">🏆</div>
-        <div>
-          <div class="curr-title" style="color:#94a3b8">Advanced & TOPIK Prep</div>
-          <div class="curr-desc">Read advanced political and economic articles, write structured essays, and prepare for TOPIK 5–6. Nuanced grammar and native-speed listening.</div>
-          <div class="curr-level" style="background:#f1f5f9;color:#94a3b8">In Preparation</div>
-        </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div>
+        <h4>You revise (optional)</h4>
+        <p>Rewrite your piece using the feedback. The fastest learners do this every time.</p>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- ── FAQ ── -->
-  <div style="margin-bottom:52px">
-    <div class="sec-label">FAQ</div>
-    <div class="sec-title">Common questions</div>
-    <div class="sec-sub">Everything you need to know before booking.</div>
+<div class="section-divider"></div>
 
-    <div class="faq-list" id="faq-list">
-      <div class="faq-item">
-        <button class="faq-q" onclick="toggleFaq(this)">
-          Do I need any Korean experience to start?
-          <span class="faq-chevron">+</span>
-        </button>
-        <div class="faq-a">Not at all. We have complete beginner classes that start from the Korean alphabet (Hangul). Most students can read basic Korean within 2–3 sessions.</div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" onclick="toggleFaq(this)">
-          How does the group class work exactly?
-          <span class="faq-chevron">+</span>
-        </button>
-        <div class="faq-a">Group classes have a maximum of 5 students and run for 60 minutes via Zoom. Each session is based on a real KoreHan news article — you read, discuss, and do vocabulary exercises together. Groups are matched by level so you're always learning with peers at the same stage.</div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" onclick="toggleFaq(this)">
-          What's included in the Writing + Homework plan?
-          <span class="faq-chevron">+</span>
-        </button>
-        <div class="faq-a">You'll receive 4 writing assignments per week (Korean sentences, short paragraphs, or article summaries depending on level). Each submission gets detailed corrections with grammar explanations in English, returned within 24 hours. No live sessions — fully async, great for busy schedules.</div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" onclick="toggleFaq(this)">
-          Can I switch between plans?
-          <span class="faq-chevron">+</span>
-        </button>
-        <div class="faq-a">Yes, anytime. You can start with group classes and upgrade to 1-on-1 when you want more focus, or add the writing plan alongside your live classes. Just let us know.</div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" onclick="toggleFaq(this)">
-          What platform are sessions on?
-          <span class="faq-chevron">+</span>
-        </button>
-        <div class="faq-a">Sessions are available online (Zoom) or in-person depending on location. Online sessions use Zoom with screen sharing for the KoreHan reading material. In-person sessions are arranged directly — contact us to check availability in your area.</div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" onclick="toggleFaq(this)">
-          How do I pay?
-          <span class="faq-chevron">+</span>
-        </button>
-        <div class="faq-a">After your free trial, we'll send a payment link via email (Stripe). You can pay per session for 1-on-1 classes or monthly for the writing plan. Group classes are billed per session attended.</div>
-      </div>
+<!-- MONTHLY SCHEDULE EXAMPLE -->
+<div class="course-section">
+  <div class="course-section-title">A typical month</div>
+  <div class="course-section-sub">Four assignments, one theme per month.</div>
+  <div class="schedule-grid">
+    <div class="schedule-card">
+      <div class="schedule-week">Week 1</div>
+      <div class="schedule-title">Summarize it</div>
+      <div class="schedule-desc">Write a 5-sentence summary of a news article in your own words.</div>
+    </div>
+    <div class="schedule-card">
+      <div class="schedule-week">Week 2</div>
+      <div class="schedule-title">Your opinion</div>
+      <div class="schedule-desc">Write 7–10 sentences sharing your view on a current Korean topic.</div>
+    </div>
+    <div class="schedule-card">
+      <div class="schedule-week">Week 3</div>
+      <div class="schedule-title">Compare & contrast</div>
+      <div class="schedule-desc">Compare the situation in the article with your own country or experience.</div>
+    </div>
+    <div class="schedule-card">
+      <div class="schedule-week">Week 4</div>
+      <div class="schedule-title">Free writing</div>
+      <div class="schedule-desc">Write about anything related to that month's theme. No constraints.</div>
     </div>
   </div>
+</div>
 
-  <!-- ── CONTACT / INQUIRY ── -->
-  <div id="contact" style="scroll-margin-top:80px">
-    <div class="trial-section">
-      <h2>Ready to start?</h2>
-      <p>Send us a message and we'll get back to you within 24 hours.</p>
+<!-- CTA -->
+<div class="cta-section">
+  <h2>Ready to actually write Korean?</h2>
+  <p>$29/month. 4 assignments. Real feedback. Cancel anytime.</p>
+  <a href="#" class="cta-btn" onclick="alert('Coming soon — enrollment opens shortly!')">Enroll Now → $29/mo</a>
+  <div class="cta-note">Payment coming soon · Questions? hello@korehannews.com</div>
+</div>
 
-      <div class="trial-form" id="trial-form">
-        <input class="trial-input" type="text" placeholder="Your name" id="tf-name">
-        <input class="trial-input" type="email" placeholder="Email address" id="tf-email">
-        <select class="trial-select" id="tf-plan">
-          <option value="" disabled selected>Interested in...</option>
-          <option>👥 Group Class ($9/hr)</option>
-          <option>🎯 1-on-1 Private ($20/hr)</option>
-          <option>✍️ Writing + Homework ($45/mo)</option>
-          <option>🤔 Not sure yet — need advice</option>
-        </select>
-        <select class="trial-select" id="tf-level">
-          <option value="" disabled selected>Your Korean level</option>
-          <option>Complete Beginner (never studied)</option>
-          <option>Beginner (know Hangul basics)</option>
-          <option>Intermediate (can read simple articles)</option>
-          <option>Advanced (fluent reader, refining skills)</option>
-        </select>
-        <select class="trial-select" id="tf-mode">
-          <option value="" disabled selected>Online or in-person?</option>
-          <option>🌐 Online (Zoom)</option>
-          <option>🏫 In-person</option>
-          <option>🔀 Either works for me</option>
-        </select>
-        <input class="trial-input" type="text" placeholder="KakaoTalk ID or preferred contact (optional)" id="tf-contact">
-        <textarea class="trial-input" placeholder="Anything you'd like us to know? (optional)" id="tf-message" rows="3" style="resize:vertical;min-height:80px"></textarea>
-        <button class="trial-submit" onclick="submitInquiry()">✉️ Send Inquiry</button>
-        <div class="trial-note">We'll reply within 24 hours · No commitment required</div>
-      </div>
-
-      <div class="success-msg" id="trial-success">
-        ✅ Message received! We'll be in touch within 24 hours.<br>
-        <span style="font-size:13px;font-weight:400;opacity:.8">Check your email or KakaoTalk.</span>
-      </div>
-    </div>
-  </div>
-
-
+<div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js"></script>
-<script>
-
-
-// ── STRIPE CHECKOUT ─────────────────────────────────────────
-
-// ⚠️ Stripe 대시보드에서 Payment Link 생성 후 아래 URL 교체
-// 각 상품 → Payment Link → URL 복사
-const PAYMENT_LINKS = {
-  group: {
-    1:  'https://buy.stripe.com/REPLACE_GROUP_1',
-    10: 'https://buy.stripe.com/REPLACE_GROUP_10',
-    20: 'https://buy.stripe.com/REPLACE_GROUP_20',
-    40: 'https://buy.stripe.com/REPLACE_GROUP_40',
-  },
-  solo: {
-    1:  'https://buy.stripe.com/REPLACE_SOLO_1',
-    10: 'https://buy.stripe.com/REPLACE_SOLO_10',
-    20: 'https://buy.stripe.com/REPLACE_SOLO_20',
-    40: 'https://buy.stripe.com/REPLACE_SOLO_40',
-  },
-  writing: {
-    1:  'https://buy.stripe.com/REPLACE_WRITING_1M',
-    3:  'https://buy.stripe.com/REPLACE_WRITING_3M',
-    6:  'https://buy.stripe.com/REPLACE_WRITING_6M',
-    12: 'https://buy.stripe.com/REPLACE_WRITING_1Y',
-  }
-};
-
-// 현재 선택된 팩
-var _selectedPack = { group: 1, solo: 1, writing: 1 };
-var _selectedPrice = { group: 9, solo: 20, writing: 45 };
-
-function selectPack(plan, sessions, price, btn) {
-  // 버튼 활성화
-  btn.closest('.pack-btns').querySelectorAll('.pack-btn').forEach(function(b){ b.classList.remove('on'); });
-  btn.classList.add('on');
-
-  _selectedPack[plan]  = sessions;
-  _selectedPrice[plan] = price;
-
-  // 상세 텍스트 업데이트
-  var detail = document.getElementById(plan + '-detail');
-  if (detail) {
-    var perHr = (price / sessions).toFixed(2).replace(/\.00$/, '');
-    if (sessions === 1) {
-      detail.textContent = '1 session · $' + price + ' · no expiry';
-    } else {
-      var saved = (plan === 'group' ? 9 : 20) * sessions - price;
-      detail.textContent = sessions + ' sessions · $' + price + ' total ($' + perHr + '/hr) · save $' + saved;
-    }
-  }
-
-  // CTA 버튼 텍스트 업데이트
-  var cta = document.getElementById(plan + '-cta');
-  if (cta) {
-    var label = sessions === 1
-      ? 'Buy Now — $' + price + ' →'
-      : 'Buy ' + sessions + '-Pack — $' + price + ' →';
-    cta.textContent = label;
-  }
-}
-
-function selectWriting(months, price, btn) {
-  btn.closest('.pack-btns').querySelectorAll('.pack-btn').forEach(function(b){ b.classList.remove('on'); });
-  btn.classList.add('on');
-
-  _selectedPack.writing  = months;
-  _selectedPrice.writing = price;
-
-  var detail = document.getElementById('writing-detail');
-  if (detail) {
-    var perMo = Math.round(price / months);
-    if (months === 1) {
-      detail.textContent = '$45/month · billed monthly';
-    } else {
-      var saved = 45 * months - price;
-      detail.textContent = '$' + perMo + '/month · billed every ' + months + ' months · save $' + saved;
-    }
-  }
-
-  var cta = document.getElementById('writing-cta');
-  if (cta) {
-    cta.textContent = (months === 1 ? 'Get Started' : 'Buy ' + months + '-Month Plan') + ' — $' + price + ' →';
-  }
-}
-
-async function goCheckout(plan, sessionsDefault) {
-  var sessions = _selectedPack[plan] || sessionsDefault;
-  var price    = _selectedPrice[plan];
-  var link     = PAYMENT_LINKS[plan]?.[sessions];
-
-  if (!link || link.includes('REPLACE')) {
-    // Stripe 미설정 시 — inquiry form으로 fallback
-    alert('Online payment coming soon! For now please use the inquiry form below and we will send you a payment link.');
-    document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
-    return;
-  }
-
-  // 로그인된 유저면 이메일 prefill (Stripe가 자동 매칭에 사용)
-  var sb = getSupa();
-  try {
-    var user = sb ? (await sb.auth.getUser()).data.user : null;
-    if (user?.email) {
-      var url = new URL(link);
-      url.searchParams.set('prefilled_email', user.email);
-      window.location.href = url.toString();
-      return;
-    }
-  } catch(e) {}
-
-  window.location.href = link;
-}
-
-// ── FAQ ────────────────────────────────────────────────────
-function toggleFaq(btn) {
-  var item = btn.closest('.faq-item');
-  var isOpen = item.classList.contains('open');
-  document.querySelectorAll('.faq-item.open').forEach(function(el){ el.classList.remove('open'); });
-  if (!isOpen) item.classList.add('open');
-}
-
-// ── TRIAL FORM ─────────────────────────────────────────────
-async function submitInquiry() {
-  var name    = document.getElementById('tf-name').value.trim();
-  var email   = document.getElementById('tf-email').value.trim();
-  var plan    = document.getElementById('tf-plan').value;
-  var level   = document.getElementById('tf-level').value;
-  var mode    = document.getElementById('tf-mode').value;
-  var contact = document.getElementById('tf-contact').value.trim();
-  var message = document.getElementById('tf-message').value.trim();
-
-  if (!name || !email || !plan || !level) {
-    alert('Please fill in your name, email, plan, and level.');
-    return;
-  }
-  if (!email.includes('@')) {
-    alert('Please enter a valid email address.');
-    return;
-  }
-
-  var sb = getSupa();
-  if (sb) {
-    try {
-      await sb.from('trial_requests').insert({
-        name: name,
-        email: email,
-        plan: plan,
-        level: level,
-        contact: contact || null,
-        created_at: new Date().toISOString(),
-        status: mode || null,
-        // message stored in contact field as extra info
-      });
-    } catch(e) { console.warn('inquiry insert:', e); }
-  }
-
-  document.getElementById('trial-form').style.display = 'none';
-  document.getElementById('trial-success').style.display = 'block';
-}
-
-document.addEventListener('DOMContentLoaded', init);
-</script>
 </body>
 </html>

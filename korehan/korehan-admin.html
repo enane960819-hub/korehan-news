@@ -427,35 +427,6 @@ let activeFilter = '';
 let deleteId = null;
 
 var _sbAdmin = null;
-// ── Claude API 프록시 (어드민용) ──────────────────────────────
-const ADMIN_CLAUDE_PROXY = SUPA_URL_ADMIN + '/functions/v1/claude-proxy';
-
-async function callClaude({ feature, model, max_tokens, messages }) {
-  var sb = getSb();
-  if (!sb) throw new Error('Supabase not initialized');
-
-  var { data: { session } } = await sb.auth.getSession();
-  if (!session) throw new Error('Not signed in');
-
-  var resp = await fetch(ADMIN_CLAUDE_PROXY, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + session.access_token,
-    },
-    body: JSON.stringify({ feature, model, max_tokens, messages }),
-  });
-
-  if (resp.status === 429) throw new Error('rate_limit');
-  if (resp.status === 401) throw new Error('unauthorized - please sign in');
-  if (!resp.ok) {
-    var err = await resp.json().catch(function(){ return {}; });
-    throw new Error(err.error || 'API error ' + resp.status);
-  }
-  return resp.json();
-}
-
-
 function getSb() {
   if (_sbAdmin) return _sbAdmin;
   if (typeof supabase !== 'undefined' && SUPA_URL_ADMIN && SUPA_KEY_ADMIN) {
@@ -465,6 +436,29 @@ function getSb() {
     return _sbAdmin;
   }
   return null;
+}
+
+// ── Claude API (어드민용) ─────────────────────────────────────
+const ADMIN_CLAUDE_PROXY = SUPA_URL_ADMIN + '/functions/v1/claude-proxy';
+
+async function callClaude({ feature, model, max_tokens, messages }) {
+  var sb = getSb();
+  if (!sb) throw new Error('Supabase not initialized');
+  var sessionData = await sb.auth.getSession();
+  var session = sessionData.data && sessionData.data.session;
+  var headers = { 'Content-Type': 'application/json' };
+  if (session) headers['Authorization'] = 'Bearer ' + session.access_token;
+  var resp = await fetch(ADMIN_CLAUDE_PROXY, {
+    method: 'POST',
+    headers: headers,
+    body: JSON.stringify({ feature: feature, model: model, max_tokens: max_tokens, messages: messages }),
+  });
+  if (resp.status === 429) throw new Error('rate_limit');
+  if (!resp.ok) {
+    var err = await resp.json().catch(function(){ return {}; });
+    throw new Error(err.error || 'API error ' + resp.status);
+  }
+  return resp.json();
 }
 
 async function dbLoadFromSupabase() {
