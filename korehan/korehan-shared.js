@@ -25,20 +25,10 @@ function getSupa() {
 
 // 현재 로그인 유저
 var supaUser = null;
-var ADMIN_EMAILS = ['enane960819@gmail.com'];
-
-function esc(v) {
-  return String(v == null ? '' : v)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function isAdminUser() {
-  return !!(supaUser && supaUser.email && ADMIN_EMAILS.indexOf(String(supaUser.email).toLowerCase()) !== -1);
-}
+var KH_IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+var _khIdleTimer = null;
+var _khIdleBound = false;
+var _khHeroTimer = null;
 
 // ── Claude API 프록시 (키를 서버에서만 관리) ─────────────────
 // Anthropic API를 직접 호출하지 않고 Supabase Edge Function을 통해 호출
@@ -435,18 +425,102 @@ async function signOut() {
 }
 
 // 세션 확인
+
+function _clearIdleLogoutTimer() {
+  if (_khIdleTimer) {
+    clearTimeout(_khIdleTimer);
+    _khIdleTimer = null;
+  }
+}
+
+function _startIdleLogoutTimer() {
+  _clearIdleLogoutTimer();
+  if (!supaUser) return;
+  _khIdleTimer = setTimeout(async function() {
+    try {
+      await signOut();
+      try { toast('Signed out due to inactivity.'); } catch(e) {}
+    } catch (e) {
+      console.warn('idle logout error', e);
+    }
+  }, KH_IDLE_TIMEOUT_MS);
+}
+
+function _bindIdleLogoutEvents() {
+  if (_khIdleBound) return;
+  _khIdleBound = true;
+
+  ['mousemove','mousedown','keydown','scroll','touchstart','click'].forEach(function(evt) {
+    window.addEventListener(evt, function() {
+      if (supaUser) _startIdleLogoutTimer();
+    }, { passive: true });
+  });
+
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && supaUser) _startIdleLogoutTimer();
+  });
+}
+
+function _clearHeroSliderTimer() {
+  if (_khHeroTimer) {
+    clearInterval(_khHeroTimer);
+    _khHeroTimer = null;
+  }
+}
+
+function _renderHeroSlide(heroEl, slides, currentIndex) {
+  if (!heroEl || !slides || !slides.length) return;
+  var current = slides[currentIndex] || slides[0];
+  var sideItems = slides.filter(function(a){ return String(a.id) !== String(current.id); }).slice(0, 4);
+
+  heroEl.innerHTML =
+    '<a href="' + articleUrl(current.id) + '" style="color:inherit;text-decoration:none;">'
+    + '<div class="hero-main">'
+    + '<img src="' + (current.image || 'https://picsum.photos/seed/' + current.id + '/900/500') + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'">'
+    + '<div class="overlay">'
+    + '<span class="category-tag">' + current.section + '</span>'
+    + '<h1 class="vocab-zone">' + current.title + '</h1>'
+    + '<p class="sub vocab-zone">' + (current.body || '') + '</p>'
+    + '</div>'
+    + '<div style="position:absolute;left:18px;bottom:18px;display:flex;gap:6px;z-index:3">'
+    + slides.map(function(_, i){
+        return '<span style="width:8px;height:8px;border-radius:999px;background:' + (i === currentIndex ? '#fff' : 'rgba(255,255,255,0.45)') + ';display:inline-block"></span>';
+      }).join('')
+    + '</div>'
+    + '</div></a>'
+    + '<div class="hero-side">' + sideItems.map(heroSideItemHTML).join('') + '</div>';
+}
+
+function _initHeroSlider(heroEl, slides) {
+  _clearHeroSliderTimer();
+  if (!heroEl || !slides || !slides.length) return;
+  var idx = 0;
+  _renderHeroSlide(heroEl, slides, idx);
+  if (slides.length < 2) return;
+  _khHeroTimer = setInterval(function() {
+    idx = (idx + 1) % slides.length;
+    _renderHeroSlide(heroEl, slides, idx);
+  }, 2000);
+}
+
+
 async function checkSession() {
   var sb = getSupa();
   if (!sb) return;
+  _bindIdleLogoutEvents();
   var { data } = await sb.auth.getSession();
   if (data && data.session && data.session.user) {
     supaUser = data.session.user;
     updateAuthUI();
+    _startIdleLogoutTimer();
+  } else {
+    _clearIdleLogoutTimer();
   }
   // 세션 변화 감지
   sb.auth.onAuthStateChange(function(event, session) {
     if (event === 'SIGNED_OUT') {
       supaUser = null;
+      _clearIdleLogoutTimer();
       // 다른 탭에서 로그아웃 시 현재 페이지도 즉시 반영
       updateAuthUI();
       updateCommentForm();
@@ -456,17 +530,21 @@ async function checkSession() {
       updateAuthUI();
       updateCommentForm();
       renderDailyMission();
+      _startIdleLogoutTimer();
     } else if (event === 'TOKEN_REFRESHED') {
       supaUser = session ? session.user : null;
       updateAuthUI();
+      _startIdleLogoutTimer();
     } else if (event === 'USER_UPDATED') {
       supaUser = session ? session.user : null;
       updateAuthUI();
+      _startIdleLogoutTimer();
     } else {
       supaUser = session ? session.user : null;
       updateAuthUI();
       updateCommentForm();
       renderDailyMission();
+      if (supaUser) _startIdleLogoutTimer(); else _clearIdleLogoutTimer();
     }
   });
 }
@@ -475,10 +553,11 @@ async function checkSession() {
 function updateAuthUI() {
   var signinBtn  = document.getElementById('topbar-signin-btn');
   var adminBtn   = document.getElementById('topbar-admin-btn');
-  var menuBtn    = document.getElementById('topbar-menu-admin-btn');
   var userAvatar = document.getElementById('topbar-user-avatar');
 
-  var isAdmin = isAdminUser();
+  // 관리자 이메일 목록 (본인 Gmail 추가)
+  var ADMIN_EMAILS = ['enane960819@gmail.com'];
+  var isAdmin = supaUser && ADMIN_EMAILS.includes(supaUser.email);
 
   if (supaUser) {
     // 로그인 상태
@@ -498,8 +577,6 @@ function updateAuthUI() {
     if (mypageBtn) mypageBtn.style.display = 'inline-block';
 
     if (adminBtn) adminBtn.style.display = isAdmin ? 'inline-block' : 'none';
-    if (menuBtn) menuBtn.style.display = isAdmin ? 'inline-block' : 'none';
-    if (isAdmin) ensureMenuAdminUI();
   } else {
     // 비로그인 상태
     if (signinBtn) {
@@ -508,7 +585,6 @@ function updateAuthUI() {
     }
     if (userAvatar) userAvatar.style.display = 'none';
     if (adminBtn) adminBtn.style.display = 'none';
-    if (menuBtn) menuBtn.style.display = 'none';
     var mypageBtn = document.getElementById('topbar-mypage-btn');
     if (mypageBtn) mypageBtn.style.display = 'none';
   }
@@ -947,24 +1023,18 @@ function heroSideItemHTML(a) {
 // ── 페이지 렌더러 ─────────────────────────────────────────────
 
 function renderHomePage() {
-  var all      = published();
-  var featured = all.find(function(a){ return a.featured; }) || all[0];
-  var rest     = all.filter(function(a){ return !featured || a.id !== featured.id; });
+  var all = published();
+  var featuredArticles = all.filter(function(a){ return a.featured; });
+  var heroSlides = (featuredArticles.length >= 2 ? featuredArticles : all.slice(0, Math.min(5, all.length)));
+  var currentHero = heroSlides[0] || all[0];
+  var rest = all.filter(function(a){ return !currentHero || String(a.id) !== String(currentHero.id); });
 
   // HERO
   var heroEl = document.getElementById('dyn-hero');
-  if (heroEl && featured) {
-    var heroSide = rest.slice(0, 4);
-    heroEl.innerHTML =
-      '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;">'
-      + '<div class="hero-main">'
-      + '<img src="' + (featured.image || 'https://picsum.photos/seed/' + featured.id + '/900/500') + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'">'
-      + '<div class="overlay">'
-      + '<span class="category-tag">' + featured.section + '</span>'
-      + '<h1 class="vocab-zone">' + featured.title + '</h1>'
-      + '<p class="sub vocab-zone">' + (featured.body || '') + '</p>'
-      + '</div></div></a>'
-      + '<div class="hero-side">' + heroSide.map(heroSideItemHTML).join('') + '</div>';
+  if (heroEl && heroSlides.length) {
+    _initHeroSlider(heroEl, heroSlides);
+  } else {
+    _clearHeroSliderTimer();
   }
 
   // TOP STORIES
@@ -974,14 +1044,18 @@ function renderHomePage() {
   // SECTION BLOCKS
   var sectionsEl = document.getElementById('dyn-sections');
   if (sectionsEl) {
-    sectionsEl.innerHTML = getSections().map(function(s) {
+    var sections = [
+      { key:'사회', label:'Society', href:'korehan-society.html' },
+      { key:'국제', label:'World',   href:'korehan-world.html'   },
+      { key:'문화', label:'Culture', href:'korehan-culture.html' },
+    ];
+    sectionsEl.innerHTML = sections.map(function(s) {
       var arts = published(s.key).slice(0, 3);
       if (!arts.length) return '';
-      var icon = s.icon ? '<span style="margin-right:6px">' + s.icon + '</span>' : '';
       return '<div style="margin:24px 0 8px">'
         + '<div class="section-title" style="display:flex;justify-content:space-between;align-items:center">'
-        + '<span>' + icon + s.label + '</span>'
-        + '<a href="korehan-section.html?s=' + encodeURIComponent(s.key) + '" style="font-size:13px;font-weight:600;color:#2255a4;text-decoration:none">See all →</a>'
+        + s.label
+        + '<a href="' + s.href + '" style="font-size:13px;font-weight:600;color:#2255a4;text-decoration:none">See all →</a>'
         + '</div>'
         + '<div class="card-grid">' + arts.map(function(a){ return cardHTML(a); }).join('') + '</div>'
         + '</div>';
@@ -2270,7 +2344,6 @@ function renderHeader() {
     + '<span id="topbar-user-avatar" style="display:none;width:28px;height:28px;border-radius:50%;background:#2255a4;color:#fff;align-items:center;justify-content:center;font-weight:700;font-size:13px;overflow:hidden;vertical-align:middle;margin-right:2px"></span>'
     + '<a href="korehan-mypage.html" id="topbar-mypage-btn" class="auth-btn-ui" style="display:none">👤 My Page</a>'
     + '<a href="#" id="topbar-signin-btn" class="auth-btn-ui" onclick="event.preventDefault();openAuthModal(\'signin\')">Sign In</a>'
-    + '<a href="#" id="topbar-menu-admin-btn" class="auth-btn-ui" style="display:none;background:rgba(34,85,164,0.16);border-color:rgba(34,85,164,0.35)" onclick="event.preventDefault();openMenuAdminModal()">✏️ Edit Menu</a>'
     + '<a href="korehan-admin.html" id="topbar-admin-btn" class="auth-btn-ui" style="display:none;background:rgba(231,76,60,0.25);border-color:rgba(231,76,60,0.5)">⚙ Admin</a>'
     + '</div></div>'
     + '<nav class="kh-nav">'
@@ -2474,17 +2547,18 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   if (!pageBase || pageBase === 'index') {
     renderHomePage();
-  } else if (pageBase === 'korehan-all')     { renderAllPage(); }
+  } else if (pageBase === 'korehan-all')     { _clearHeroSliderTimer(); renderAllPage(); }
   else if (pageBase === 'korehan-section')   {
+    _clearHeroSliderTimer();
     var sKey = (new URLSearchParams(window.location.search)).get('s') || '';
     renderSectionPage(sKey);
   }
-  else if (pageBase === 'korehan-korea')     { renderSectionPage('Korea'); }
-  else if (pageBase === 'korehan-society')   { renderSectionPage('사회'); }
-  else if (pageBase === 'korehan-world')     { renderSectionPage('국제'); }
-  else if (pageBase === 'korehan-culture')   { renderSectionPage('문화'); }
-  else if (pageBase === 'korehan-opinion')   { renderSectionPage('오피니언'); }
-  else if (pageBase === 'korehan-article')   { renderArticlePage(); }
+  else if (pageBase === 'korehan-korea')     { _clearHeroSliderTimer(); renderSectionPage('Korea'); }
+  else if (pageBase === 'korehan-society')   { _clearHeroSliderTimer(); renderSectionPage('사회'); }
+  else if (pageBase === 'korehan-world')     { _clearHeroSliderTimer(); renderSectionPage('국제'); }
+  else if (pageBase === 'korehan-culture')   { _clearHeroSliderTimer(); renderSectionPage('문화'); }
+  else if (pageBase === 'korehan-opinion')   { _clearHeroSliderTimer(); renderSectionPage('오피니언'); }
+  else if (pageBase === 'korehan-article')   { _clearHeroSliderTimer(); renderArticlePage(); }
 
   ttsInit();
   injectDailyMission();
@@ -3304,214 +3378,3 @@ function injectDailyMission() {
 // ══ END DAILY MISSION ENGINE ════════════════════════════════════════════════
 
 // ══ END TTS ENGINE ═════════════════════════════════════════════════════════════
-
-
-// ── Main Page Menu Manager (admin only) ─────────────────────────────────────
-function ensureMenuAdminUI() {
-  if (document.getElementById('kh-menu-admin-modal')) return;
-  var modal = document.createElement('div');
-  modal.id = 'kh-menu-admin-modal';
-  modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;align-items:center;justify-content:center;padding:18px';
-  modal.innerHTML = ''
-    + '<div style="background:#fff;width:min(980px,96vw);max-height:90vh;overflow:auto;border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,0.28)">'
-    +   '<div style="display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid #e2e8f0;position:sticky;top:0;background:#fff;z-index:2">'
-    +     '<div><div style="font-size:20px;font-weight:800;color:#133b75">Edit Main Menu</div><div style="font-size:12px;color:#64748b">Add, edit, hide, delete, and reorder sections without leaving the site.</div></div>'
-    +     '<button onclick="closeMenuAdminModal()" style="border:none;background:#f1f5f9;color:#334155;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer">Close</button>'
-    +   '</div>'
-    +   '<div style="padding:18px">'
-    +     '<div style="display:grid;grid-template-columns:1.2fr 1.2fr .8fr 1.4fr .8fr auto;gap:8px;align-items:end;margin-bottom:14px">'
-    +       '<div><label style="display:block;font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Key</label><input id="menu-admin-new-key" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px" placeholder="예: 사회"></div>'
-    +       '<div><label style="display:block;font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Label</label><input id="menu-admin-new-label" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px" placeholder="예: Society"></div>'
-    +       '<div><label style="display:block;font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Icon</label><input id="menu-admin-new-icon" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px" placeholder="📰"></div>'
-    +       '<div><label style="display:block;font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Topics hint</label><input id="menu-admin-new-topics" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px" placeholder="Politics, elections, policy..."></div>'
-    +       '<div><label style="display:block;font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Order</label><input id="menu-admin-new-order" type="number" min="1" value="99" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px"></div>'
-    +       '<button onclick="addMenuSectionFromMain()" style="padding:10px 14px;border:none;background:#2255a4;color:#fff;border-radius:10px;font-weight:800;cursor:pointer">Add</button>'
-    +     '</div>'
-    +     '<div id="menu-admin-main-list"></div>'
-    +   '</div>'
-    + '</div>';
-  modal.addEventListener('click', function(e){
-    if (e.target === modal) closeMenuAdminModal();
-  });
-  document.body.appendChild(modal);
-}
-
-function openMenuAdminModal() {
-  if (!isAdminUser()) return;
-  ensureMenuAdminUI();
-  var modal = document.getElementById('kh-menu-admin-modal');
-  if (modal) modal.style.display = 'flex';
-  refreshMenuAdminList();
-}
-
-function closeMenuAdminModal() {
-  var modal = document.getElementById('kh-menu-admin-modal');
-  if (modal) modal.style.display = 'none';
-}
-
-function _menuAdminRow(section) {
-  var checked = section.active ? 'checked' : '';
-  return ''
-    + '<div style="display:grid;grid-template-columns:1.1fr 1.1fr .7fr 1.4fr .7fr .7fr auto;gap:8px;align-items:center;padding:10px;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:8px;background:#fff">'
-    +   '<input id="menu-key-' + section.id + '" value="' + esc(section.key || '') + '" style="padding:9px;border:1px solid #cbd5e1;border-radius:10px">'
-    +   '<input id="menu-label-' + section.id + '" value="' + esc(section.label || '') + '" style="padding:9px;border:1px solid #cbd5e1;border-radius:10px">'
-    +   '<input id="menu-icon-' + section.id + '" value="' + esc(section.icon || '') + '" style="padding:9px;border:1px solid #cbd5e1;border-radius:10px">'
-    +   '<input id="menu-topics-' + section.id + '" value="' + esc(section.topics || '') + '" style="padding:9px;border:1px solid #cbd5e1;border-radius:10px">'
-    +   '<input id="menu-order-' + section.id + '" type="number" min="1" value="' + esc(String(section.sort_order || 99)) + '" style="padding:9px;border:1px solid #cbd5e1;border-radius:10px">'
-    +   '<label style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:#475569"><input id="menu-active-' + section.id + '" type="checkbox" ' + checked + '>Active</label>'
-    +   '<div style="display:flex;gap:6px;justify-content:flex-end">'
-    +     '<button class="kh-menu-save-btn" data-id="' + section.id + '" style="padding:9px 12px;border:none;background:#0f766e;color:#fff;border-radius:10px;font-weight:800;cursor:pointer">Save</button>'
-    +     '<button class="kh-menu-delete-btn" data-id="' + section.id + '" data-label="' + esc(String(section.label || section.key || 'this section')) + '" style="padding:9px 12px;border:none;background:#dc2626;color:#fff;border-radius:10px;font-weight:800;cursor:pointer">Delete</button>'
-    +   '</div>'
-    + '</div>';
-}
-
-async function refreshMenuAdminList() {
-  var wrap = document.getElementById('menu-admin-main-list');
-  if (!wrap) return;
-  wrap.innerHTML = '<div style="padding:18px;color:#64748b;text-align:center">Loading sections...</div>';
-
-  var sb = getSupa();
-  if (!sb) {
-    wrap.innerHTML = '<div style="padding:18px;color:#dc2626">Supabase is not initialized.</div>';
-    return;
-  }
-
-  var res = await sb.from('sections').select('*').order('sort_order');
-  if (res.error) {
-    wrap.innerHTML = '<div style="padding:18px;color:#dc2626">Failed to load sections: ' + esc(res.error.message || 'Unknown error') + '</div>';
-    return;
-  }
-
-  var rows = res.data || [];
-  if (!rows.length) {
-    wrap.innerHTML = '<div style="padding:18px;color:#64748b;text-align:center;border:1px dashed #cbd5e1;border-radius:12px">No sections yet.</div>';
-    return;
-  }
-
-  wrap.innerHTML = ''
-    + '<div style="display:grid;grid-template-columns:1.1fr 1.1fr .7fr 1.4fr .7fr .7fr auto;gap:8px;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.04em;padding:0 4px 8px">'
-    +   '<div>Key</div><div>Label</div><div>Icon</div><div>Topics</div><div>Order</div><div>Status</div><div style="text-align:right">Actions</div>'
-    + '</div>'
-    + rows.map(_menuAdminRow).join('');
-
-  wrap.querySelectorAll('.kh-menu-save-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      saveMenuSectionFromMain(parseInt(btn.getAttribute('data-id'), 10));
-    });
-  });
-  wrap.querySelectorAll('.kh-menu-delete-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      deleteMenuSectionFromMain(parseInt(btn.getAttribute('data-id'), 10), btn.getAttribute('data-label') || 'this section');
-    });
-  });
-}
-
-async function _rerenderAfterMenuChange() {
-  await loadSections();
-
-  var footerEl = document.getElementById('kh-footer');
-  if (footerEl) footerEl.innerHTML = renderFooter();
-
-  var page = window.location.pathname.split('/').pop() || 'index.html';
-  var pageBase = page.replace(/\.html$/, '');
-  if (!pageBase || pageBase === 'index') {
-    renderHomePage();
-  } else if (pageBase === 'korehan-section') {
-    var sKey = (new URLSearchParams(window.location.search)).get('s') || '';
-    renderSectionPage(sKey);
-  }
-}
-
-async function addMenuSectionFromMain() {
-  var sb = getSupa();
-  if (!sb) return toast('Supabase is not initialized.', true);
-
-  var key    = (document.getElementById('menu-admin-new-key').value || '').trim();
-  var label  = (document.getElementById('menu-admin-new-label').value || '').trim();
-  var icon   = (document.getElementById('menu-admin-new-icon').value || '').trim();
-  var topics = (document.getElementById('menu-admin-new-topics').value || '').trim();
-  var order  = parseInt((document.getElementById('menu-admin-new-order').value || '99'), 10);
-
-  if (!key || !label) {
-    toast('Key and label are required.', true);
-    return;
-  }
-
-  var res = await sb.from('sections').insert({
-    key: key,
-    label: label,
-    icon: icon || '📰',
-    topics: topics,
-    sort_order: isNaN(order) ? 99 : order,
-    active: true
-  });
-
-  if (res.error) {
-    toast('Add failed: ' + res.error.message, true);
-    return;
-  }
-
-  ['menu-admin-new-key','menu-admin-new-label','menu-admin-new-icon','menu-admin-new-topics'].forEach(function(id){
-    var el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  var orderEl = document.getElementById('menu-admin-new-order');
-  if (orderEl) orderEl.value = '99';
-
-  toast('Section added.');
-  await _rerenderAfterMenuChange();
-  await refreshMenuAdminList();
-}
-
-async function saveMenuSectionFromMain(id) {
-  var sb = getSupa();
-  if (!sb) return toast('Supabase is not initialized.', true);
-
-  var key    = (document.getElementById('menu-key-' + id).value || '').trim();
-  var label  = (document.getElementById('menu-label-' + id).value || '').trim();
-  var icon   = (document.getElementById('menu-icon-' + id).value || '').trim();
-  var topics = (document.getElementById('menu-topics-' + id).value || '').trim();
-  var order  = parseInt((document.getElementById('menu-order-' + id).value || '99'), 10);
-  var active = !!document.getElementById('menu-active-' + id).checked;
-
-  if (!key || !label) {
-    toast('Key and label are required.', true);
-    return;
-  }
-
-  var res = await sb.from('sections').update({
-    key: key,
-    label: label,
-    icon: icon,
-    topics: topics,
-    sort_order: isNaN(order) ? 99 : order,
-    active: active
-  }).eq('id', id);
-
-  if (res.error) {
-    toast('Save failed: ' + res.error.message, true);
-    return;
-  }
-
-  toast('Section updated.');
-  await _rerenderAfterMenuChange();
-  await refreshMenuAdminList();
-}
-
-async function deleteMenuSectionFromMain(id, label) {
-  if (!confirm('Delete "' + label + '" from the menu?')) return;
-
-  var sb = getSupa();
-  if (!sb) return toast('Supabase is not initialized.', true);
-
-  var res = await sb.from('sections').delete().eq('id', id);
-  if (res.error) {
-    toast('Delete failed: ' + res.error.message, true);
-    return;
-  }
-
-  toast('Section deleted.');
-  await _rerenderAfterMenuChange();
-  await refreshMenuAdminList();
-}
