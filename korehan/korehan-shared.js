@@ -3332,3 +3332,29 @@ function injectDailyMission() {
 // ══ END DAILY MISSION ENGINE ════════════════════════════════════════════════
 
 // ══ END TTS ENGINE ═════════════════════════════════════════════════════════════
+
+
+// ── Google Sign-In ───────────────────────────────────────────────
+async function signInWithGoogle() {
+  _authClearErrors();
+
+  var sb = getSupa();
+  if (!sb) {
+    _authShowError('Supabase is not initialized.');
+    return;
+  }
+
+  try {
+    var { data, error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + '/index.html'
+      }
+    });
+
+    if (error) throw error;
+  } catch (err) {
+    console.error('Google sign-in error:', err);
+    _authShowError(err.message || 'Google sign-in failed.');
+  }
+}
