@@ -466,6 +466,8 @@ async function checkSession() {
 }
 
 // UI 업데이트
+
+// UI 업데이트
 function updateAuthUI() {
   var signinBtn  = document.getElementById('topbar-signin-btn');
   var adminBtn   = document.getElementById('topbar-admin-btn');
@@ -3357,48 +3359,4 @@ function injectDailyMission() {
 
 // ══ END TTS ENGINE ═════════════════════════════════════════════════════════════
 
-
 // ── Google Sign-In ───────────────────────────────────────────────
-function startGoogleSignIn(event) {
-  if (event) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-  signInWithGoogle();
-}
-
-async function signInWithGoogle() {
-  _authClearErrors();
-
-  var sb = getSupa();
-  if (!sb) {
-    _authShowError('Supabase is not initialized.');
-    return;
-  }
-
-  try {
-    var result = await sb.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin + '/',
-        skipBrowserRedirect: true
-      }
-    });
-
-    var data = result && result.data;
-    var error = result && result.error;
-
-    if (error) throw error;
-    if (data && data.url) {
-      window.location.href = data.url;
-      return;
-    }
-
-    throw new Error('Google OAuth URL was not generated.');
-  } catch (err) {
-    console.error('Google sign-in error:', err);
-    _authShowError(err.message || 'Google sign-in failed.');
-    openAuthModal('signin');
-  }
-}
-
