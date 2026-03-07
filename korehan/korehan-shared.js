@@ -9,8 +9,6 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 // Supabase 클라이언트 (CDN 로드 후 초기화)
 var _supa = null;
 function getSupa() {
-  // window._khSupa로 전역 공유 → 어느 함수에서 호출해도 같은 인스턴스
-  if (window._khSupa) return window._khSupa;
   if (_supa) return _supa;
   if (window.supabase) {
     _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
@@ -18,10 +16,8 @@ function getSupa() {
         detectSessionInUrl: true,
         persistSession: true,
         autoRefreshToken: true,
-        storageKey: 'korehan-auth',
       }
     });
-    window._khSupa = _supa;
     return _supa;
   }
   return null;
@@ -38,15 +34,19 @@ const CLAUDE_PROXY_URL = SUPA_URL + '/functions/v1/claude-proxy';
 async function callClaude({ feature, model, max_tokens, messages }) {
   var sb = getSupa();
   if (!sb) throw new Error('Supabase not initialized');
-  var sessionData = await sb.auth.getSession();
-  var session = sessionData.data && sessionData.data.session;
-  var headers = { 'Content-Type': 'application/json' };
-  if (session) headers['Authorization'] = 'Bearer ' + session.access_token;
+
+  var { data: { session } } = await sb.auth.getSession();
+  if (!session) throw new Error('Not signed in');
+
   var resp = await fetch(CLAUDE_PROXY_URL, {
     method: 'POST',
-    headers: headers,
-    body: JSON.stringify({ feature: feature, model: model, max_tokens: max_tokens, messages: messages }),
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + session.access_token,
+    },
+    body: JSON.stringify({ feature, model, max_tokens, messages }),
   });
+
   if (resp.status === 429) throw new Error('rate_limit');
   if (resp.status === 401) throw new Error('unauthorized');
   if (!resp.ok) {
@@ -56,23 +56,40 @@ async function callClaude({ feature, model, max_tokens, messages }) {
   return resp.json();
 }
 
-
-async function signOut() {
+var _sessionWarningShown = false;
+async function refreshSessionSafely() {
   var sb = getSupa();
-  if (sb) {
-    await sb.auth.signOut({ scope: 'local' });
+  if (!sb) return;
+  var { error } = await sb.auth.refreshSession();
+  if (error) {
+    if (!_sessionWarningShown) {
+      _sessionWarningShown = true;
+      if (typeof toast === 'function') toast('Your session has expired. Please sign in again.', true);
+      setTimeout(function() { sb.auth.signOut(); }, 2000);
+    }
   }
-  Object.keys(localStorage).forEach(function(key) {
-    if (key.startsWith('sb-') || key.includes('supabase')) {
-      localStorage.removeItem(key);
+}
+// 15분마다 세션 자동 갱신
+setInterval(refreshSessionSafely, 15 * 60 * 1000);
+
+// Google 로그인
+async function signInWithGoogle() {
+  var sb = getSupa();
+  if (!sb) { toast('Loading... please try again in a moment.', true); return; }
+  var { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.href,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'select_account'
+      }
     }
   });
-  supaUser = null;
-  updateAuthUI();
-  toast('Signed out successfully');
-  setTimeout(function(){ window.location.href = 'index.html'; }, 800);
+  if (error) toast('Sign-in error: ' + error.message, true);
 }
 
+// ── Auth Modal (이메일/비밀번호 + Google) ─────────────────────
 
 function openAuthModal(defaultTab) {
   // 모달이 없으면 생성
@@ -275,7 +292,7 @@ function _injectAuthModal() {
       </div>
 
       <!-- 구글 로그인 -->
-      <button type="button" onclick="startGoogleSignIn(event)" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:11px;background:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s" onmouseover="this.style.background='#f8faff';this.style.borderColor='#c7d7f0'" onmouseout="this.style.background='#fff';this.style.borderColor='#e2e8f0'">
+      <button onclick="closeAuthModal();signInWithGoogle()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:11px;background:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s" onmouseover="this.style.background='#f8faff';this.style.borderColor='#c7d7f0'" onmouseout="this.style.background='#fff';this.style.borderColor='#e2e8f0'">
         <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         Continue with Google
       </button>
@@ -327,7 +344,7 @@ function _injectAuthModal() {
         <div style="font-size:11px;color:#94a3b8;font-weight:700">or</div>
         <div style="flex:1;height:1px;background:#e2e8f0"></div>
       </div>
-      <button type="button" onclick="startGoogleSignIn(event)" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:11px;background:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s" onmouseover="this.style.background='#f8faff'" onmouseout="this.style.background='#fff'">
+      <button onclick="closeAuthModal();signInWithGoogle()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:11px;background:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s" onmouseover="this.style.background='#f8faff'" onmouseout="this.style.background='#fff'">
         <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         Sign up with Google
       </button>
@@ -401,71 +418,44 @@ async function signOut() {
   supaUser = null;
   updateAuthUI();
   toast('Signed out successfully');
-  setTimeout(function(){ window.location.href = 'index.html'; }, 800);
-}
-
-// 세션 확인
-var _authStateSubscription = null;
-
-async function syncSessionUI() {
-  var sb = getSupa();
-  if (!sb) return;
-
-  try {
-    var result = await sb.auth.getSession();
-    var data = result && result.data;
-    supaUser = (data && data.session && data.session.user) ? data.session.user : null;
-  } catch (err) {
-    console.error('Session sync error:', err);
-    supaUser = null;
-  }
-
-  updateAuthUI();
-  if (typeof updateCommentForm === 'function') updateCommentForm();
-  if (typeof renderDailyMission === 'function') renderDailyMission();
 }
 
 // 세션 확인
 async function checkSession() {
   var sb = getSupa();
   if (!sb) return;
-
-  await syncSessionUI();
-
-  // 중복 등록 방지
-  if (_authStateSubscription) return;
-
-  // 세션 변화 감지
-  var sub = sb.auth.onAuthStateChange(function(event, session) {
-    supaUser = session ? session.user : null;
-
-    if (event === 'SIGNED_IN') {
-      _sessionWarningShown = false;
-    }
-
+  var { data } = await sb.auth.getSession();
+  if (data && data.session && data.session.user) {
+    supaUser = data.session.user;
     updateAuthUI();
-    if (typeof updateCommentForm === 'function') updateCommentForm();
-    if (typeof renderDailyMission === 'function') renderDailyMission();
-  });
-
-  _authStateSubscription = sub && sub.data && sub.data.subscription
-    ? sub.data.subscription
-    : true;
-
-  // 같은 탭에서 OAuth 후 돌아오거나 다른 탭 로그인 후 복귀했을 때 즉시 반영
-  window.addEventListener('focus', syncSessionUI);
-  document.addEventListener('visibilitychange', function() {
-    if (!document.hidden) syncSessionUI();
-  });
-  window.addEventListener('storage', function(e) {
-    if (!e.key) return;
-    if (e.key.indexOf('korehan-auth') !== -1 || e.key.indexOf('sb-') === 0) {
-      syncSessionUI();
+  }
+  // 세션 변화 감지
+  sb.auth.onAuthStateChange(function(event, session) {
+    if (event === 'SIGNED_OUT') {
+      supaUser = null;
+      // 다른 탭에서 로그아웃 시 현재 페이지도 즉시 반영
+      updateAuthUI();
+      updateCommentForm();
+    } else if (event === 'SIGNED_IN') {
+      supaUser = session ? session.user : null;
+      _sessionWarningShown = false; // 재로그인 시 경고 초기화
+      updateAuthUI();
+      updateCommentForm();
+      renderDailyMission();
+    } else if (event === 'TOKEN_REFRESHED') {
+      supaUser = session ? session.user : null;
+      updateAuthUI();
+    } else if (event === 'USER_UPDATED') {
+      supaUser = session ? session.user : null;
+      updateAuthUI();
+    } else {
+      supaUser = session ? session.user : null;
+      updateAuthUI();
+      updateCommentForm();
+      renderDailyMission();
     }
   });
 }
-
-// UI 업데이트
 
 // UI 업데이트
 function updateAuthUI() {
@@ -1743,29 +1733,6 @@ async function loadGrammarGuide() {
   el.dataset.loadedId = String(id);
   el.dataset.source = '';
 
-  // DB 캐시 확인
-  try {
-    var sbG = getSupa();
-    if (sbG) {
-      var gCache = await sbG.from('article_cache').select('data').eq('article_id', id).eq('type', 'grammar').maybeSingle();
-      if (gCache.data && gCache.data.data) {
-        var guides = gCache.data.data;
-        el.dataset.source = 'ai';
-        el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">✨ Grammar patterns found in this article:</p>'
-          + guides.map(function(g){
-            return '<div class="grammar-point">'
-              + '<div class="grammar-name">' + g.name
-              + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
-              + '</div>'
-              + '<div class="grammar-explanation">' + g.exp + '</div>'
-              + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
-              + '</div>';
-          }).join('');
-        return;
-      }
-    }
-  } catch(e) {}
-
   var all = getCachedArticles();
   var a = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
   if (!a) { el.innerHTML = '<p style="color:#aaa;padding:20px 0;text-align:center">Article not found.</p>'; return; }
@@ -1800,13 +1767,6 @@ async function loadGrammarGuide() {
     var parsed = JSON.parse(clean);
     var guides = parsed.patterns || [];
     el.dataset.source = 'ai'; // AI 분석 성공 표시 → 캐시 허용
-    // DB에 저장
-    try {
-      var sbGS = getSupa();
-      if (sbGS && guides.length) {
-        sbGS.from('article_cache').upsert({ article_id: id, type: 'grammar', data: guides }, { onConflict: 'article_id,type' });
-      }
-    } catch(e) {}
 
     el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">✨ Grammar patterns found in this article:</p>'
       + guides.map(function(g){
@@ -1964,23 +1924,6 @@ async function toggleTranslate() {
     return;
   }
 
-  // DB 캐시 확인 (API 호출 전)
-  try {
-    var sb0 = getSupa();
-    if (sb0) {
-      var dbCache = await sb0.from('article_cache').select('data').eq('article_id', id).eq('type', 'translation').maybeSingle();
-      if (dbCache.data && dbCache.data.data) {
-        translateCache[cacheKey] = dbCache.data.data;
-        applyTranslation(zones, translateCache[cacheKey]);
-        btn.textContent = '🇰🇷 Back to Korean';
-        btn.disabled = false;
-        btn.classList.add('active');
-        translateActive = true;
-        return;
-      }
-    }
-  } catch(e) {}
-
   // 번역할 텍스트 수집 - 원본 텍스트만 추출
   var texts = [];
   zones.forEach(function(z) {
@@ -2022,13 +1965,6 @@ async function toggleTranslate() {
 
     translateCache[cacheKey] = translations;
     applyTranslation(zones, translations);
-    // DB에 저장 (다음 유저부터 재사용)
-    try {
-      var sbSave = getSupa();
-      if (sbSave) {
-        sbSave.from('article_cache').upsert({ article_id: id, type: 'translation', data: translations }, { onConflict: 'article_id,type' });
-      }
-    } catch(e) {}
     translateActive = true;
     btn.textContent = '🇰🇷 Back to Korean';
     btn.classList.add('active');
@@ -2522,9 +2458,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // Supabase에서 기사 + 섹션 먼저 로드 후 렌더링
   await Promise.all([loadArticlesFromDB(), loadSections(), loadAppSettings()]);
-
-  // DB 로드 후 헤더 재렌더 (BREAKING 뉴스 + 동적 메뉴 반영)
-  if (headerEl) headerEl.innerHTML = renderHeader();
 
   if (!pageBase || pageBase === 'index') {
     renderHomePage();
@@ -3358,5 +3291,3 @@ function injectDailyMission() {
 // ══ END DAILY MISSION ENGINE ════════════════════════════════════════════════
 
 // ══ END TTS ENGINE ═════════════════════════════════════════════════════════════
-
-// ── Google Sign-In ───────────────────────────────────────────────
