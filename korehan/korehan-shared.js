@@ -3360,8 +3360,8 @@ function _menuAdminRow(section) {
     +   '<input id="menu-order-' + section.id + '" type="number" min="1" value="' + esc(String(section.sort_order || 99)) + '" style="padding:9px;border:1px solid #cbd5e1;border-radius:10px">'
     +   '<label style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:#475569"><input id="menu-active-' + section.id + '" type="checkbox" ' + checked + '>Active</label>'
     +   '<div style="display:flex;gap:6px;justify-content:flex-end">'
-    +     '<button onclick="saveMenuSectionFromMain(' + section.id + ')" style="padding:9px 12px;border:none;background:#0f766e;color:#fff;border-radius:10px;font-weight:800;cursor:pointer">Save</button>'
-    +     "<button onclick='deleteMenuSectionFromMain(" + section.id + ", " + JSON.stringify(String(section.label || section.key || 'this section')) + ")' style=\"padding:9px 12px;border:none;background:#dc2626;color:#fff;border-radius:10px;font-weight:800;cursor:pointer\">Delete</button>"
+    +     '<button class="kh-menu-save-btn" data-id="' + section.id + '" style="padding:9px 12px;border:none;background:#0f766e;color:#fff;border-radius:10px;font-weight:800;cursor:pointer">Save</button>'
+    +     '<button class="kh-menu-delete-btn" data-id="' + section.id + '" data-label="' + esc(String(section.label || section.key || 'this section')) + '" style="padding:9px 12px;border:none;background:#dc2626;color:#fff;border-radius:10px;font-weight:800;cursor:pointer">Delete</button>'
     +   '</div>'
     + '</div>';
 }
@@ -3394,6 +3394,17 @@ async function refreshMenuAdminList() {
     +   '<div>Key</div><div>Label</div><div>Icon</div><div>Topics</div><div>Order</div><div>Status</div><div style="text-align:right">Actions</div>'
     + '</div>'
     + rows.map(_menuAdminRow).join('');
+
+  wrap.querySelectorAll('.kh-menu-save-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      saveMenuSectionFromMain(parseInt(btn.getAttribute('data-id'), 10));
+    });
+  });
+  wrap.querySelectorAll('.kh-menu-delete-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      deleteMenuSectionFromMain(parseInt(btn.getAttribute('data-id'), 10), btn.getAttribute('data-label') || 'this section');
+    });
+  });
 }
 
 async function _rerenderAfterMenuChange() {
