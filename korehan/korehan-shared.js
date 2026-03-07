@@ -955,24 +955,25 @@ function renderHomePage() {
   var topEl = document.getElementById('dyn-top-stories');
   if (topEl) topEl.innerHTML = rest.slice(0, 4).map(function(a){ return cardHTML(a); }).join('');
 
-  // SECTION BLOCKS (어드민 sections 테이블과 자동 연동)
+  // SECTION BLOCKS
   var sectionsEl = document.getElementById('dyn-sections');
   if (sectionsEl) {
-    var sectionBlocks = getSections().map(function(s) {
+    var sections = [
+      { key:'사회', label:'Society', href:'korehan-society.html' },
+      { key:'국제', label:'World',   href:'korehan-world.html'   },
+      { key:'문화', label:'Culture', href:'korehan-culture.html' },
+    ];
+    sectionsEl.innerHTML = sections.map(function(s) {
       var arts = published(s.key).slice(0, 3);
       if (!arts.length) return '';
-
-      var icon = s.icon ? '<span style="margin-right:6px">' + s.icon + '</span>' : '';
       return '<div style="margin:24px 0 8px">'
         + '<div class="section-title" style="display:flex;justify-content:space-between;align-items:center">'
-        + '<span>' + icon + s.label + '</span>'
-        + '<a href="korehan-section.html?s=' + encodeURIComponent(s.key) + '" style="font-size:13px;font-weight:600;color:#2255a4;text-decoration:none">See all →</a>'
+        + s.label
+        + '<a href="' + s.href + '" style="font-size:13px;font-weight:600;color:#2255a4;text-decoration:none">See all →</a>'
         + '</div>'
         + '<div class="card-grid">' + arts.map(function(a){ return cardHTML(a); }).join('') + '</div>'
         + '</div>';
-    }).filter(Boolean).join('');
-
-    sectionsEl.innerHTML = sectionBlocks || '<p style="color:#999;padding:20px 0">No section articles yet.</p>';
+    }).join('');
   }
 
   // LATEST - 최신순 독립 정렬 (featured 기사 포함, Top Stories와 겹쳐도 최신순)
