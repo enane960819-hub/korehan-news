@@ -866,7 +866,7 @@ async function goSections() {
 }
 
 async function refreshSectionsList() {
-  var sb = getSupa ? getSupa() : null;
+  var sb = getSb();
   if (!sb) return;
   var res = await sb.from('sections').select('*').order('sort_order');
   var sections = res.data || [];
@@ -899,9 +899,9 @@ async function refreshSectionsList() {
               </label>
             </td>
             <td style="padding:8px;text-align:right">
-              <button onclick='editSection(${s.id}, ${JSON.stringify(String(s.key||''))}, ${JSON.stringify(String(s.label||''))}, ${JSON.stringify(String(s.icon||''))}, ${JSON.stringify(String(s.topics||''))})'
+              <button onclick='editSection(${s.id}, ${JSON.stringify(String(s.key || ""))}, ${JSON.stringify(String(s.label || ""))}, ${JSON.stringify(String(s.icon || ""))}, ${JSON.stringify(String(s.topics || ""))})'
                 style="padding:4px 10px;background:#e8eef7;color:#2255a4;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px">Edit</button>
-              <button onclick='deleteSection(${s.id}, ${JSON.stringify(String(s.key||''))})'
+              <button onclick='deleteSection(${s.id}, ${JSON.stringify(String(s.key || ""))})'
                 style="padding:4px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Delete</button>
             </td>
           </tr>`;
@@ -919,7 +919,7 @@ async function addSection() {
   var topics = (document.getElementById('ns-topics')?.value||'').trim();
   if (!key || !label) { toast('Key and Label are required', true); return; }
 
-  var sb = getSupa ? getSupa() : null;
+  var sb = getSb();
   if (!sb) return;
   var res = await sb.from('sections').insert({ key, label, icon, topics, sort_order:99, active:true });
   if (res.error) { toast('Error: ' + res.error.message, true); return; }
@@ -933,7 +933,7 @@ async function addSection() {
 
 async function deleteSection(id, key) {
   if (!confirm('Delete section "' + key + '"? Articles in this section will NOT be deleted.')) return;
-  var sb = getSupa ? getSupa() : null;
+  var sb = getSb();
   if (!sb) return;
   await sb.from('sections').delete().eq('id', id);
   toast('🗑️ Section deleted');
@@ -941,7 +941,7 @@ async function deleteSection(id, key) {
 }
 
 async function toggleSection(id, active) {
-  var sb = getSupa ? getSupa() : null;
+  var sb = getSb();
   if (!sb) return;
   await sb.from('sections').update({ active }).eq('id', id);
   toast(active ? '✅ Section activated' : '🙈 Section hidden');
@@ -949,7 +949,7 @@ async function toggleSection(id, active) {
 }
 
 async function updateSectionOrder(id, order) {
-  var sb = getSupa ? getSupa() : null;
+  var sb = getSb();
   if (!sb) return;
   await sb.from('sections').update({ sort_order: parseInt(order) }).eq('id', id);
 }
@@ -958,7 +958,7 @@ function editSection(id, key, label, icon, topics) {
   var newLabel  = prompt('Label:', label);  if (newLabel  === null) return;
   var newIcon   = prompt('Icon:',  icon);   if (newIcon   === null) return;
   var newTopics = prompt('AI Topics:', topics); if (newTopics === null) return;
-  var sb = getSupa ? getSupa() : null;
+  var sb = getSb();
   if (!sb) return;
   sb.from('sections').update({ label:newLabel, icon:newIcon, topics:newTopics }).eq('id', id)
     .then(function(){ toast('✅ Updated'); refreshSectionsList(); });
@@ -970,7 +970,7 @@ async function goStats() {
   main.innerHTML = '<div class="pg-hd"><div><h1>📊 User Analytics</h1><p>전체 유저 학습 현황을 확인하세요.</p></div></div>'
     + '<div id="stats-content"><div style="text-align:center;padding:48px;color:#aaa">⏳ Loading data...</div></div>';
 
-  var sb = getSupa ? getSupa() : null;
+  var sb = getSb();
   if (!sb) { document.getElementById('stats-content').innerHTML = '<p style="color:red">Supabase connection failed</p>'; return; }
 
   try {
@@ -1132,7 +1132,7 @@ async function loadApiKeyIntoSettings() {
   const input = document.getElementById('sc-api-key');
   if (!input) return;
   try {
-    var sb = getSupa();
+    var sb = getSb();
     if (sb) {
       var res = await sb.from('app_settings').select('value,updated_at').eq('key','anthropic_key').single();
       if (res.data && res.data.value) {
@@ -1156,7 +1156,7 @@ async function saveApiKey() {
   const key = input.value.trim();
   if (!key || !key.startsWith('sk-ant-')) { toast('올바른 API 키를 입력해주세요 (sk-ant-...)', true); return; }
   try {
-    var sb = getSupa();
+    var sb = getSb();
     if (!sb) throw new Error('Supabase not ready');
     var res = await sb.from('app_settings').upsert({ key: 'anthropic_key', value: key, updated_at: new Date().toISOString() });
     if (res.error) throw res.error;
@@ -1434,7 +1434,7 @@ async function loadAutoApiKey(){
   if (local) input.value = local;
   // Supabase에서 최신값 가져오기
   try {
-    var sb = getSupa();
+    var sb = getSb();
     if (sb) {
       var res = await sb.from('app_settings').select('value').eq('key','anthropic_key').single();
       if (res.data && res.data.value) {
@@ -1452,7 +1452,7 @@ async function runAutoGenerate(){
   // localStorage + Supabase 둘 다 저장
   localStorage.setItem('kh_anthropic_key', apiKey);
   try {
-    var sb = getSupa();
+    var sb = getSb();
     if (sb) await sb.from('app_settings').upsert({ key: 'anthropic_key', value: apiKey, updated_at: new Date().toISOString() });
   } catch(e) {}
 
@@ -1846,7 +1846,7 @@ var ADMIN_CUR_LESSONS = {
 // ── 수업 가능 날짜 설정 ──────────────────────────────────────
 async function goClassSlots() {
   activeSb('');
-  const sb = getSupa();
+  const sb = getSb();
   let slots = [];
   if (sb) {
     const { data } = await sb.from('available_slots')
@@ -1966,7 +1966,7 @@ function openSlotModal(dateStr) {
 }
 
 async function saveAdminSlot() {
-  const sb = getSupa(); if (!sb) return;
+  const sb = getSb(); if (!sb) return;
   const date = document.getElementById('sl-date').value;
   const time = document.getElementById('sl-time').value;
   const type = document.getElementById('sl-type').value;
@@ -1982,14 +1982,14 @@ async function saveAdminSlot() {
 }
 
 async function toggleAdminSlot(id, isOpen) {
-  const sb = getSupa(); if (!sb) return;
+  const sb = getSb(); if (!sb) return;
   await sb.from('available_slots').update({ is_open:!isOpen }).eq('id',id);
   goClassSlots();
 }
 
 async function deleteAdminSlot(id) {
   if (!confirm('슬롯을 삭제할까요?')) return;
-  const sb = getSupa(); if (!sb) return;
+  const sb = getSb(); if (!sb) return;
   await sb.from('available_slots').delete().eq('id',id);
   goClassSlots();
 }
@@ -1997,7 +1997,7 @@ async function deleteAdminSlot(id) {
 // ── 예약 현황 ────────────────────────────────────────────────
 async function goClassBookings() {
   activeSb('');
-  const sb = getSupa();
+  const sb = getSb();
   let bookings = [];
   if (sb) {
     const { data } = await sb.from('bookings')
@@ -2045,7 +2045,7 @@ async function goClassBookings() {
 }
 
 async function adminUpdateBooking(id, status) {
-  const sb = getSupa(); if (!sb) return;
+  const sb = getSb(); if (!sb) return;
   await sb.from('bookings').update({ status }).eq('id', id);
   // 확정 시 수업권 차감
   if (status === 'confirmed') {
@@ -2063,7 +2063,7 @@ async function adminUpdateBooking(id, status) {
 // ── 수업권 관리 ──────────────────────────────────────────────
 async function goClassCredits() {
   activeSb('');
-  const sb = getSupa();
+  const sb = getSb();
   let credits = [];
   if (sb) {
     const { data } = await sb.from('session_credits')
@@ -2136,7 +2136,7 @@ function openCreditModal() {
 }
 
 async function saveCredit() {
-  const sb = getSupa(); if (!sb) return;
+  const sb = getSb(); if (!sb) return;
   const uid = document.getElementById('cr-uid').value.trim();
   const type = document.getElementById('cr-type').value;
   const qty  = parseInt(document.getElementById('cr-qty').value)||0;
@@ -2150,7 +2150,7 @@ async function saveCredit() {
 // ── 커리큘럼 진행도 ──────────────────────────────────────────
 async function goClassCurriculum() {
   activeSb('');
-  const sb = getSupa();
+  const sb = getSb();
   let users = [], progressAll = [];
   if (sb) {
     const { data: p } = await sb.from('profiles').select('id,display_name,email').limit(100);
@@ -2234,7 +2234,7 @@ async function selectCurrUser(uid) {
 }
 
 async function adminToggleLesson(uid, key, isDone) {
-  const sb = getSupa(); if (!sb) return;
+  const sb = getSb(); if (!sb) return;
   const newDone = !isDone;
   await sb.from('curriculum_progress').upsert(
     { user_id:uid, lesson_key:key, completed:newDone, completed_at: newDone?new Date().toISOString():null, updated_at:new Date().toISOString() },
