@@ -387,7 +387,22 @@ function _authCheckPwStrength(pw) {
 }
 
 // 로그아웃
-
+async function signOut() {
+  var sb = getSupa();
+  if (sb) {
+    await sb.auth.signOut({ scope: 'local' }); // 현재 기기만 로그아웃
+  }
+  // Supabase 세션 localStorage에서 완전 삭제
+  Object.keys(localStorage).forEach(function(key) {
+    if (key.startsWith('sb-') || key.includes('supabase')) {
+      localStorage.removeItem(key);
+    }
+  });
+  supaUser = null;
+  updateAuthUI();
+  toast('Signed out successfully');
+  setTimeout(function(){ window.location.href = 'index.html'; }, 800);
+}
 
 // 세션 확인
 async function checkSession() {
