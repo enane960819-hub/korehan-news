@@ -899,9 +899,9 @@ async function refreshSectionsList() {
               </label>
             </td>
             <td style="padding:8px;text-align:right">
-              <button onclick="editSection(${s.id},'${s.key}','${s.label}','${(s.icon||'')}','${(s.topics||'').replace(/'/g,String.fromCharCode(39))}') "
+              <button onclick='editSection(${s.id}, ${JSON.stringify(String(s.key||''))}, ${JSON.stringify(String(s.label||''))}, ${JSON.stringify(String(s.icon||''))}, ${JSON.stringify(String(s.topics||''))})'
                 style="padding:4px 10px;background:#e8eef7;color:#2255a4;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px">Edit</button>
-              <button onclick="deleteSection(${s.id},'${s.key}')"
+              <button onclick='deleteSection(${s.id}, ${JSON.stringify(String(s.key||''))})'
                 style="padding:4px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Delete</button>
             </td>
           </tr>`;
