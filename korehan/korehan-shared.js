@@ -9,8 +9,6 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 // Supabase 클라이언트 (CDN 로드 후 초기화)
 var _supa = null;
 function getSupa() {
-  // window._khSupa로 전역 공유 → 어느 함수에서 호출해도 같은 인스턴스
-  if (window._khSupa) return window._khSupa;
   if (_supa) return _supa;
   if (window.supabase) {
     _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
@@ -18,10 +16,8 @@ function getSupa() {
         detectSessionInUrl: true,
         persistSession: true,
         autoRefreshToken: true,
-        storageKey: 'korehan-auth',
       }
     });
-    window._khSupa = _supa;
     return _supa;
   }
   return null;
@@ -38,15 +34,19 @@ const CLAUDE_PROXY_URL = SUPA_URL + '/functions/v1/claude-proxy';
 async function callClaude({ feature, model, max_tokens, messages }) {
   var sb = getSupa();
   if (!sb) throw new Error('Supabase not initialized');
-  var sessionData = await sb.auth.getSession();
-  var session = sessionData.data && sessionData.data.session;
-  var headers = { 'Content-Type': 'application/json' };
-  if (session) headers['Authorization'] = 'Bearer ' + session.access_token;
+
+  var { data: { session } } = await sb.auth.getSession();
+  if (!session) throw new Error('Not signed in');
+
   var resp = await fetch(CLAUDE_PROXY_URL, {
     method: 'POST',
-    headers: headers,
-    body: JSON.stringify({ feature: feature, model: model, max_tokens: max_tokens, messages: messages }),
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + session.access_token,
+    },
+    body: JSON.stringify({ feature, model, max_tokens, messages }),
   });
+
   if (resp.status === 429) throw new Error('rate_limit');
   if (resp.status === 401) throw new Error('unauthorized');
   if (!resp.ok) {
@@ -56,23 +56,40 @@ async function callClaude({ feature, model, max_tokens, messages }) {
   return resp.json();
 }
 
-
-async function signOut() {
+var _sessionWarningShown = false;
+async function refreshSessionSafely() {
   var sb = getSupa();
-  if (sb) {
-    await sb.auth.signOut({ scope: 'local' });
+  if (!sb) return;
+  var { error } = await sb.auth.refreshSession();
+  if (error) {
+    if (!_sessionWarningShown) {
+      _sessionWarningShown = true;
+      if (typeof toast === 'function') toast('Your session has expired. Please sign in again.', true);
+      setTimeout(function() { sb.auth.signOut(); }, 2000);
+    }
   }
-  Object.keys(localStorage).forEach(function(key) {
-    if (key.startsWith('sb-') || key.includes('supabase')) {
-      localStorage.removeItem(key);
+}
+// 15분마다 세션 자동 갱신
+setInterval(refreshSessionSafely, 15 * 60 * 1000);
+
+// Google 로그인
+async function signInWithGoogle() {
+  var sb = getSupa();
+  if (!sb) { toast('Loading... please try again in a moment.', true); return; }
+  var { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.href,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'select_account'
+      }
     }
   });
-  supaUser = null;
-  updateAuthUI();
-  toast('Signed out successfully');
-  setTimeout(function(){ window.location.href = 'index.html'; }, 800);
+  if (error) toast('Sign-in error: ' + error.message, true);
 }
 
+// ── Auth Modal (이메일/비밀번호 + Google) ─────────────────────
 
 function openAuthModal(defaultTab) {
   // 모달이 없으면 생성
@@ -401,7 +418,6 @@ async function signOut() {
   supaUser = null;
   updateAuthUI();
   toast('Signed out successfully');
-  setTimeout(function(){ window.location.href = 'index.html'; }, 800);
 }
 
 // 세션 확인
@@ -956,7 +972,7 @@ function renderHomePage() {
         + '</div>';
     }).filter(Boolean).join('');
 
-    sectionsEl.innerHTML = sectionBlocks || '<div style="color:#64748b;padding:10px 0">No section articles yet.</div>';
+    sectionsEl.innerHTML = sectionBlocks || '<p style="color:#999;padding:20px 0">No section articles yet.</p>';
   }
 
   // LATEST - 최신순 독립 정렬 (featured 기사 포함, Top Stories와 겹쳐도 최신순)
@@ -1716,29 +1732,6 @@ async function loadGrammarGuide() {
   el.dataset.loadedId = String(id);
   el.dataset.source = '';
 
-  // DB 캐시 확인
-  try {
-    var sbG = getSupa();
-    if (sbG) {
-      var gCache = await sbG.from('article_cache').select('data').eq('article_id', id).eq('type', 'grammar').maybeSingle();
-      if (gCache.data && gCache.data.data) {
-        var guides = gCache.data.data;
-        el.dataset.source = 'ai';
-        el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">✨ Grammar patterns found in this article:</p>'
-          + guides.map(function(g){
-            return '<div class="grammar-point">'
-              + '<div class="grammar-name">' + g.name
-              + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
-              + '</div>'
-              + '<div class="grammar-explanation">' + g.exp + '</div>'
-              + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
-              + '</div>';
-          }).join('');
-        return;
-      }
-    }
-  } catch(e) {}
-
   var all = getCachedArticles();
   var a = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
   if (!a) { el.innerHTML = '<p style="color:#aaa;padding:20px 0;text-align:center">Article not found.</p>'; return; }
@@ -1773,13 +1766,6 @@ async function loadGrammarGuide() {
     var parsed = JSON.parse(clean);
     var guides = parsed.patterns || [];
     el.dataset.source = 'ai'; // AI 분석 성공 표시 → 캐시 허용
-    // DB에 저장
-    try {
-      var sbGS = getSupa();
-      if (sbGS && guides.length) {
-        sbGS.from('article_cache').upsert({ article_id: id, type: 'grammar', data: guides }, { onConflict: 'article_id,type' });
-      }
-    } catch(e) {}
 
     el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">✨ Grammar patterns found in this article:</p>'
       + guides.map(function(g){
@@ -1937,23 +1923,6 @@ async function toggleTranslate() {
     return;
   }
 
-  // DB 캐시 확인 (API 호출 전)
-  try {
-    var sb0 = getSupa();
-    if (sb0) {
-      var dbCache = await sb0.from('article_cache').select('data').eq('article_id', id).eq('type', 'translation').maybeSingle();
-      if (dbCache.data && dbCache.data.data) {
-        translateCache[cacheKey] = dbCache.data.data;
-        applyTranslation(zones, translateCache[cacheKey]);
-        btn.textContent = '🇰🇷 Back to Korean';
-        btn.disabled = false;
-        btn.classList.add('active');
-        translateActive = true;
-        return;
-      }
-    }
-  } catch(e) {}
-
   // 번역할 텍스트 수집 - 원본 텍스트만 추출
   var texts = [];
   zones.forEach(function(z) {
@@ -1995,13 +1964,6 @@ async function toggleTranslate() {
 
     translateCache[cacheKey] = translations;
     applyTranslation(zones, translations);
-    // DB에 저장 (다음 유저부터 재사용)
-    try {
-      var sbSave = getSupa();
-      if (sbSave) {
-        sbSave.from('article_cache').upsert({ article_id: id, type: 'translation', data: translations }, { onConflict: 'article_id,type' });
-      }
-    } catch(e) {}
     translateActive = true;
     btn.textContent = '🇰🇷 Back to Korean';
     btn.classList.add('active');
@@ -2495,9 +2457,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // Supabase에서 기사 + 섹션 먼저 로드 후 렌더링
   await Promise.all([loadArticlesFromDB(), loadSections(), loadAppSettings()]);
-
-  // DB 로드 후 헤더 재렌더 (BREAKING 뉴스 + 동적 메뉴 반영)
-  if (headerEl) headerEl.innerHTML = renderHeader();
 
   if (!pageBase || pageBase === 'index') {
     renderHomePage();
