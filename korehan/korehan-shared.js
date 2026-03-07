@@ -9,8 +9,6 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 // Supabase 클라이언트 (CDN 로드 후 초기화)
 var _supa = null;
 function getSupa() {
-  // window._khSupa로 전역 공유 → 어느 함수에서 호출해도 같은 인스턴스
-  if (window._khSupa) return window._khSupa;
   if (_supa) return _supa;
   if (window.supabase) {
     _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
@@ -18,10 +16,8 @@ function getSupa() {
         detectSessionInUrl: true,
         persistSession: true,
         autoRefreshToken: true,
-        storageKey: 'korehan-auth',
       }
     });
-    window._khSupa = _supa;
     return _supa;
   }
   return null;
@@ -39,7 +35,6 @@ async function callClaude({ feature, model, max_tokens, messages }) {
   var sb = getSupa();
   if (!sb) throw new Error('Supabase not initialized');
 
-  // 로그인 유저의 JWT 토큰 가져오기 (프록시가 신원 검증에 사용)
   var { data: { session } } = await sb.auth.getSession();
   if (!session) throw new Error('Not signed in');
 
@@ -61,8 +56,6 @@ async function callClaude({ feature, model, max_tokens, messages }) {
   return resp.json();
 }
 
-// ── 세션 보안 유틸 ───────────────────────────────────────────
-// 세션 만료 감지 → 자동 로그아웃 + 안내
 var _sessionWarningShown = false;
 async function refreshSessionSafely() {
   var sb = getSupa();
@@ -413,56 +406,18 @@ function _authCheckPwStrength(pw) {
 // 로그아웃
 async function signOut() {
   var sb = getSupa();
-
-  try {
-    if (sb) {
-      // 가능한 한 전체 세션 정리 시도
-      await sb.auth.signOut({ scope: 'global' });
-    }
-  } catch (e) {
-    try {
-      if (sb) await sb.auth.signOut();
-    } catch (_) {}
+  if (sb) {
+    await sb.auth.signOut({ scope: 'local' }); // 현재 기기만 로그아웃
   }
-
-  // 남아 있는 세션/토큰 강제 정리
-  [localStorage, sessionStorage].forEach(function(store) {
-    try {
-      Object.keys(store).forEach(function(key) {
-        if (
-          key === 'korehan-auth' ||
-          key === 'korehan_admin_session' ||
-          key.indexOf('sb-') === 0 ||
-          key.indexOf('supabase') !== -1 ||
-          key.indexOf('auth-token') !== -1
-        ) {
-          store.removeItem(key);
-        }
-      });
-    } catch (_) {}
-  });
-
-  // OAuth 콜백 파라미터 정리
-  try {
-    var url = new URL(window.location.href);
-    ['code','access_token','refresh_token','expires_at','expires_in','token_type','provider_token','provider_refresh_token'].forEach(function(k){
-      url.searchParams.delete(k);
-    });
-    if (window.location.hash && window.location.hash.indexOf('access_token') !== -1) {
-      window.history.replaceState({}, document.title, url.pathname + (url.search || ''));
+  // Supabase 세션 localStorage에서 완전 삭제
+  Object.keys(localStorage).forEach(function(key) {
+    if (key.startsWith('sb-') || key.includes('supabase')) {
+      localStorage.removeItem(key);
     }
-  } catch (_) {}
-
+  });
   supaUser = null;
   updateAuthUI();
-  if (typeof updateCommentForm === 'function') updateCommentForm();
-
   toast('Signed out successfully');
-
-  setTimeout(function(){
-    var clean = window.location.origin + window.location.pathname;
-    window.location.replace(clean);
-  }, 150);
 }
 
 // 세션 확인
