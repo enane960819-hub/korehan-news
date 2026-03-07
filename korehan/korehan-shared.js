@@ -405,38 +405,62 @@ async function signOut() {
 }
 
 // 세션 확인
+var _authStateSubscription = null;
+
+async function syncSessionUI() {
+  var sb = getSupa();
+  if (!sb) return;
+
+  try {
+    var result = await sb.auth.getSession();
+    var data = result && result.data;
+    supaUser = (data && data.session && data.session.user) ? data.session.user : null;
+  } catch (err) {
+    console.error('Session sync error:', err);
+    supaUser = null;
+  }
+
+  updateAuthUI();
+  if (typeof updateCommentForm === 'function') updateCommentForm();
+  if (typeof renderDailyMission === 'function') renderDailyMission();
+}
+
+// 세션 확인
 async function checkSession() {
   var sb = getSupa();
   if (!sb) return;
-  var { data } = await sb.auth.getSession();
-  if (data && data.session && data.session.user) {
-    supaUser = data.session.user;
-    updateAuthUI();
-  }
+
+  await syncSessionUI();
+
+  // 중복 등록 방지
+  if (_authStateSubscription) return;
+
   // 세션 변화 감지
-  sb.auth.onAuthStateChange(function(event, session) {
-    if (event === 'SIGNED_OUT') {
-      supaUser = null;
-      // 다른 탭에서 로그아웃 시 현재 페이지도 즉시 반영
-      updateAuthUI();
-      updateCommentForm();
-    } else if (event === 'SIGNED_IN') {
-      supaUser = session ? session.user : null;
-      _sessionWarningShown = false; // 재로그인 시 경고 초기화
-      updateAuthUI();
-      updateCommentForm();
-      renderDailyMission();
-    } else if (event === 'TOKEN_REFRESHED') {
-      supaUser = session ? session.user : null;
-      updateAuthUI();
-    } else if (event === 'USER_UPDATED') {
-      supaUser = session ? session.user : null;
-      updateAuthUI();
-    } else {
-      supaUser = session ? session.user : null;
-      updateAuthUI();
-      updateCommentForm();
-      renderDailyMission();
+  var sub = sb.auth.onAuthStateChange(function(event, session) {
+    supaUser = session ? session.user : null;
+
+    if (event === 'SIGNED_IN') {
+      _sessionWarningShown = false;
+    }
+
+    updateAuthUI();
+    if (typeof updateCommentForm === 'function') updateCommentForm();
+    if (typeof renderDailyMission === 'function') renderDailyMission();
+  });
+
+  _authStateSubscription = sub && sub.data && sub.data.subscription
+    ? sub.data.subscription
+    : true;
+
+  // 같은 탭에서 OAuth 후 돌아오거나 다른 탭 로그인 후 복귀했을 때 즉시 반영
+  window.addEventListener('focus', syncSessionUI);
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) syncSessionUI();
+  });
+  window.addEventListener('storage', function(e) {
+    if (!e.key) return;
+    if (e.key.indexOf('korehan-auth') !== -1 || e.key.indexOf('sb-') === 0) {
+      syncSessionUI();
     }
   });
 }
