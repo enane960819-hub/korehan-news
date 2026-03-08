@@ -585,44 +585,17 @@ function articleUrl(id) {
 var _articlesCache = null;
 var _articlesCacheTime = 0;
 var CACHE_TTL = 60000; // 1분
-var _articlesQueryCache = {};
 
-function _articlesCacheKey(opts) {
-  opts = opts || {};
-  return JSON.stringify({
-    id: opts.id || null,
-    section: opts.section || null,
-    status: opts.status || null,
-    limit: opts.limit || null,
-    orderByFeatured: !!opts.orderByFeatured
-  });
-}
-
-async function loadArticlesFromDB(opts) {
-  opts = opts || {};
+async function loadArticlesFromDB() {
   var sb = getSupa();
   if (!sb) return [];
-  var key = _articlesCacheKey(opts);
-  var now = Date.now();
-  if (!opts.force && _articlesQueryCache[key] && (now - _articlesQueryCache[key].time) < CACHE_TTL) {
-    _articlesCache = _articlesQueryCache[key].data || [];
-    _articlesCacheTime = _articlesQueryCache[key].time;
-    return _articlesCache;
-  }
   try {
-    var query = sb.from('articles').select('*');
-    if (opts.id != null) query = query.eq('id', opts.id);
-    if (opts.status) query = query.eq('status', opts.status);
-    if (opts.section) query = query.eq('section', opts.section);
-    if (opts.orderByFeatured) query = query.order('featured', { ascending: false });
-    query = query.order('date', { ascending: false }).order('created_at', { ascending: false });
-    if (opts.limit) query = query.limit(opts.limit);
-
-    var res = await query;
+    var res = await sb.from('articles')
+      .select('*')
+      .order('date', { ascending: false });
     if (res.error) throw res.error;
     _articlesCache = res.data || [];
-    _articlesCacheTime = now;
-    _articlesQueryCache[key] = { data: _articlesCache, time: now };
+    _articlesCacheTime = Date.now();
     return _articlesCache;
   } catch(e) {
     console.warn('articles load error', e);
@@ -2312,9 +2285,13 @@ function renderHeader() {
 }
 
 function renderFooter() {
+  var cfg = getSiteConfig();
+  var siteName = cfg.siteName || DEFAULT_SITE_CONFIG.siteName;
+  var footerDesc = cfg.footerDesc || DEFAULT_SITE_CONFIG.footerDesc;
+  var siteTagline = cfg.siteTagline || DEFAULT_SITE_CONFIG.siteTagline;
   return '<footer class="kh-foot"><div class="kh-foot-inner">'
-    + '<h3><span style="color:#3d7fd4">Kore</span><span style="color:#cc2200">Han</span> News</h3>'
-    + '<p>KoreHan News delivers real Korean news — paired with vocabulary tooltips so you learn Korean naturally through stories that matter.</p>'
+    + '<h3>' + escapeHtml(siteName) + '</h3>'
+    + '<p>' + escapeHtml(footerDesc).replace(/\n/g, '<br>') + '</p>'
     + '<div class="footer-links">'
     + '<a href="index.html">Home</a>'
     + getSections().map(function(s){
@@ -2322,10 +2299,9 @@ function renderFooter() {
       }).join('')
     + '<a href="korehan-learn.html">✏️ Learn Korean</a>'
     + '<a href="korehan-all.html">All News</a>'
-
     + '</div>'
     + '</div>'
-    + '<div class="footer-copy">© 2026 KoreHan News · Learn Korean, Naturally</div>'
+    + '<div class="footer-copy">© 2026 ' + escapeHtml(siteName) + ' · ' + escapeHtml(siteTagline) + '</div>'
     + '</footer>';
 }
 
@@ -2446,6 +2422,30 @@ function sectionLabel(key) {
 
 // ── 앱 설정 (API 키 등 어드민 전역 설정) ──────────────────────────────────
 var _appSettings = {};
+var DEFAULT_SITE_CONFIG = {
+  siteName: 'KoreHan News',
+  siteTagline: 'Learn Korean, Naturally',
+  footerDesc: 'KoreHan News delivers real Korean news — paired with vocabulary tooltips so you learn Korean naturally through stories that matter.',
+  learnBannerTitle: 'Simplified Korean news for learners',
+  learnBannerDesc: 'KoreHan News is written in easy Korean for foreign learners. Hover any underlined word to instantly see its meaning and pronunciation.'
+};
+
+function getSiteConfig() {
+  var raw = _appSettings.site_config || null;
+  if (raw && typeof raw === 'string') {
+    try { raw = JSON.parse(raw); } catch(e) { raw = null; }
+  }
+  if (!raw || typeof raw !== 'object') raw = {};
+  return Object.assign({}, DEFAULT_SITE_CONFIG, raw);
+}
+
+function applySiteConfigToPage() {
+  var cfg = getSiteConfig();
+  var titleEl = document.querySelector('.learn-banner .lb-left h2');
+  var descEl = document.querySelector('.learn-banner .lb-left p');
+  if (titleEl) titleEl.textContent = cfg.learnBannerTitle || DEFAULT_SITE_CONFIG.learnBannerTitle;
+  if (descEl) descEl.textContent = cfg.learnBannerDesc || DEFAULT_SITE_CONFIG.learnBannerDesc;
+}
 
 async function loadAppSettings() {
   var sb = getSupa();
@@ -2476,51 +2476,27 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (headerEl)  headerEl.innerHTML  = renderHeader();
   if (footerEl)  footerEl.innerHTML  = renderFooter();
   if (sidebarEl) sidebarEl.innerHTML = renderSharedSidebar();
+  applySiteConfigToPage();
 
   // 세션 먼저 확인 후 나머지 로드 (로그인 상태가 헤더 렌더 전에 준비되도록)
   await checkSession();
 
   var page     = window.location.pathname.split('/').pop() || 'index.html';
   var pageBase = page.replace(/\.html$/, '');
-  var pageParams = new URLSearchParams(window.location.search);
-  var sectionKey = '';
-  var articleId = '';
-  var articleLoadPromise = Promise.resolve([]);
 
-  if (!pageBase || pageBase === 'index') {
-    articleLoadPromise = loadArticlesFromDB({ status: 'published', limit: 60, orderByFeatured: true });
-  } else if (pageBase === 'korehan-all') {
-    articleLoadPromise = loadArticlesFromDB({ status: 'published', limit: 120, orderByFeatured: true });
-  } else if (pageBase === 'korehan-section') {
-    sectionKey = pageParams.get('s') || '';
-    articleLoadPromise = loadArticlesFromDB({ status: 'published', section: sectionKey, limit: 24, orderByFeatured: true });
-  } else if (pageBase === 'korehan-korea') {
-    sectionKey = 'Korea';
-    articleLoadPromise = loadArticlesFromDB({ status: 'published', section: sectionKey, limit: 24, orderByFeatured: true });
-  } else if (pageBase === 'korehan-society') {
-    sectionKey = '사회';
-    articleLoadPromise = loadArticlesFromDB({ status: 'published', section: sectionKey, limit: 24, orderByFeatured: true });
-  } else if (pageBase === 'korehan-world') {
-    sectionKey = '국제';
-    articleLoadPromise = loadArticlesFromDB({ status: 'published', section: sectionKey, limit: 24, orderByFeatured: true });
-  } else if (pageBase === 'korehan-culture') {
-    sectionKey = '문화';
-    articleLoadPromise = loadArticlesFromDB({ status: 'published', section: sectionKey, limit: 24, orderByFeatured: true });
-  } else if (pageBase === 'korehan-opinion') {
-    sectionKey = '오피니언';
-    articleLoadPromise = loadArticlesFromDB({ status: 'published', section: sectionKey, limit: 24, orderByFeatured: true });
-  } else if (pageBase === 'korehan-article') {
-    articleId = pageParams.get('id') || '';
-    articleLoadPromise = articleId ? loadArticlesFromDB({ id: articleId }) : Promise.resolve([]);
-  }
+  // Supabase에서 기사 + 섹션 먼저 로드 후 렌더링
+  await Promise.all([loadArticlesFromDB(), loadSections(), loadAppSettings()]);
 
-  // Supabase에서 필요한 범위만 로드 후 렌더링
-  await Promise.all([articleLoadPromise, loadSections(), loadAppSettings()]);
+  if (footerEl) footerEl.innerHTML = renderFooter();
+  applySiteConfigToPage();
 
   if (!pageBase || pageBase === 'index') {
     renderHomePage();
   } else if (pageBase === 'korehan-all')     { renderAllPage(); }
-  else if (pageBase === 'korehan-section')   { renderSectionPage(sectionKey); }
+  else if (pageBase === 'korehan-section')   {
+    var sKey = (new URLSearchParams(window.location.search)).get('s') || '';
+    renderSectionPage(sKey);
+  }
   else if (pageBase === 'korehan-korea')     { renderSectionPage('Korea'); }
   else if (pageBase === 'korehan-society')   { renderSectionPage('사회'); }
   else if (pageBase === 'korehan-world')     { renderSectionPage('국제'); }

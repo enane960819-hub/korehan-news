@@ -287,11 +287,10 @@ a{color:inherit;text-decoration:none}
 
   // 2차: SDK 세션 실시간 검증 (DOMContentLoaded 후)
   document.addEventListener('DOMContentLoaded', function() {
-    var sb = window.__khAdminSb || (window.supabase && window.supabase.createClient(
+    var sb = window.supabase && window.supabase.createClient(
       'https://samghztrdvtxmrmawneu.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs'
-    ));
-    window.__khAdminSb = sb;
+    );
     if (!sb) return;
     sb.auth.getSession().then(function(r) {
       var email = r.data && r.data.session && r.data.session.user && r.data.session.user.email;
@@ -459,22 +458,13 @@ async function callClaude({ feature, model, max_tokens, messages }) {
 
 function getSb() {
   if (_sbAdmin) return _sbAdmin;
-  if (window.__khAdminSb) {
-    _sbAdmin = window.__khAdminSb;
-    return _sbAdmin;
-  }
   if (typeof supabase !== 'undefined' && SUPA_URL_ADMIN && SUPA_KEY_ADMIN) {
     _sbAdmin = supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN, {
       auth: { detectSessionInUrl: true, persistSession: true, autoRefreshToken: true }
     });
-    window.__khAdminSb = _sbAdmin;
     return _sbAdmin;
   }
   return null;
-}
-
-function getSupa() {
-  return getSb();
 }
 
 async function dbLoadFromSupabase() {
@@ -1078,9 +1068,30 @@ function statCard(icon, label, value, color) {
     + '</div>';
 }
 
-function goSiteSettings(){
+async function loadSiteSettingsConfig(){
+  var local = ls(K_SITECONF, {});
+  var merged = {...DEF_SITECONF, ...local};
+  try {
+    var sb = getSupa();
+    if (sb) {
+      var res = await sb.from('app_settings').select('value').eq('key','site_config').maybeSingle();
+      var remote = res && res.data ? res.data.value : null;
+      if (remote && typeof remote === 'string') {
+        try { remote = JSON.parse(remote); } catch(_) { remote = null; }
+      }
+      if (remote && typeof remote === 'object') {
+        merged = {...DEF_SITECONF, ...remote};
+        lsSet(K_SITECONF, merged);
+      }
+    }
+  } catch(e) {}
+  return merged;
+}
+
+async function goSiteSettings(){
   setSbOn(null);
-  const c={...DEF_SITECONF,...ls(K_SITECONF,{})};
+  document.getElementById('main').innerHTML='<div class="pg-hd"><div><h1>⚙️ 사이트 기본 설정</h1><p>사이트 이름, 슬로건, 푸터 설명, 학습 배너 등을 수정하세요</p></div></div><div class="sf-card"><p style="color:#64748b">불러오는 중…</p></div>';
+  const c = await loadSiteSettingsConfig();
   document.getElementById('main').innerHTML=`
     <div class="pg-hd"><div><h1>⚙️ 사이트 기본 설정</h1><p>사이트 이름, 슬로건, 푸터 설명, 학습 배너 등을 수정하세요</p></div></div>
     <div class="sf-card">
@@ -1123,10 +1134,9 @@ function goSiteSettings(){
     <button class="btn btn-g" onclick="saveSiteSettings()">💾 저장</button>
     <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>`;
 
-  // API 키 현재값 로드
   loadApiKeyIntoSettings();
 }
-function saveSiteSettings(){
+async function saveSiteSettings(){
   const c={
     siteName:      document.getElementById('sc-name')?.value.trim()||DEF_SITECONF.siteName,
     siteTagline:   document.getElementById('sc-tagline')?.value.trim()||DEF_SITECONF.siteTagline,
@@ -1135,9 +1145,31 @@ function saveSiteSettings(){
     learnBannerDesc:  document.getElementById('sc-lb-desc')?.value.trim()||DEF_SITECONF.learnBannerDesc,
   };
   lsSet(K_SITECONF, c);
-  toast('⚙️ 사이트 설정 저장됨!');
+  try {
+    var sb = getSupa();
+    if (sb) {
+      var res = await sb.from('app_settings').upsert({ key:'site_config', value:c }, { onConflict:'key' });
+      if (res.error) throw res.error;
+    }
+    toast('⚙️ 사이트 설정 저장됨! 메인페이지에 반영됩니다.');
+  } catch(e) {
+    toast('저장 실패: ' + (e.message || e), true);
+  }
 }
-function resetSiteSettings(){ lsSet(K_SITECONF,{}); goSiteSettings(); toast('기본값으로 초기화됐어요'); }
+async function resetSiteSettings(){
+  lsSet(K_SITECONF, DEF_SITECONF);
+  try {
+    var sb = getSupa();
+    if (sb) {
+      var res = await sb.from('app_settings').upsert({ key:'site_config', value:DEF_SITECONF }, { onConflict:'key' });
+      if (res.error) throw res.error;
+    }
+    toast('기본값으로 초기화됐어요');
+  } catch(e) {
+    toast('초기화 저장 실패: ' + (e.message || e), true);
+  }
+  goSiteSettings();
+}
 
 async function loadApiKeyIntoSettings() {
   const statusEl = document.getElementById('sc-api-status');
