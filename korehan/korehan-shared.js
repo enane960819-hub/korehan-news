@@ -26,6 +26,36 @@ function getSupa() {
 // 현재 로그인 유저
 var supaUser = null;
 
+var KH_IDLE_LIMIT_MS = 30 * 60 * 1000;
+var _khIdleTimer = null;
+var _khIdleBound = false;
+
+function startInactivityAutoLogout() {
+  if (_khIdleBound) return;
+  _khIdleBound = true;
+
+  function resetTimer() {
+    if (_khIdleTimer) clearTimeout(_khIdleTimer);
+    _khIdleTimer = setTimeout(async function() {
+      var sb = getSupa();
+      if (!sb) return;
+      try {
+        var sessionRes = await sb.auth.getSession();
+        if (sessionRes && sessionRes.data && sessionRes.data.session) {
+          toast('Signed out after 30 minutes of inactivity.');
+          await sb.auth.signOut();
+          window.location.reload();
+        }
+      } catch(e) {}
+    }, KH_IDLE_LIMIT_MS);
+  }
+
+  ['click','keydown','mousemove','scroll','touchstart'].forEach(function(evt) {
+    window.addEventListener(evt, resetTimer, { passive: true });
+  });
+  resetTimer();
+}
+
 // ── Claude API 프록시 (키를 서버에서만 관리) ─────────────────
 // Anthropic API를 직접 호출하지 않고 Supabase Edge Function을 통해 호출
 // → API 키가 브라우저에 절대 노출되지 않음
@@ -877,6 +907,95 @@ function relTime(dateStr) {
   } catch(e) { return ''; }
 }
 
+function pickHeroSlides(list, maxCount) {
+  return (list || []).slice(0, Math.max(1, maxCount || 4));
+}
+
+function pickFixedHeroSide(list, slideItems, maxCount) {
+  var slideIds = {};
+  (slideItems || []).forEach(function(a){ if (a && a.id != null) slideIds[String(a.id)] = true; });
+  return (list || []).filter(function(a){ return !slideIds[String(a.id)]; }).slice(0, Math.max(1, maxCount || 4));
+}
+
+function buildHeroSliderHTML(slides, sideItems, opts) {
+  opts = opts || {};
+  if (!slides || !slides.length) return '';
+  var dots = slides.length > 1
+    ? '<div class="hero-dots">' + slides.map(function(_, idx){
+        return '<button class="hero-dot' + (idx === 0 ? ' on' : '') + '" type="button" aria-label="Go to slide ' + (idx + 1) + '" data-hero-dot="' + idx + '"></button>';
+      }).join('') + '</div>'
+    : '';
+
+  var slidesHTML = slides.map(function(item, idx){
+    var img = item.image || ('https://picsum.photos/seed/' + item.id + '/900/500');
+    return '<a href="' + articleUrl(item.id) + '" class="hero-slide' + (idx === 0 ? ' on' : '') + '" data-hero-slide="' + idx + '" style="color:inherit;text-decoration:none;">'
+      + '<div class="hero-main">'
+      + '<img src="' + img + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'">'
+      + '<div class="overlay">'
+      + '<span class="category-tag' + (opts.korea ? ' korea' : '') + '">' + (item.section || '') + '</span>'
+      + '<h1 class="vocab-zone">' + (item.title || '') + '</h1>'
+      + '<p class="sub vocab-zone">' + (item.body || '') + '</p>'
+      + dots
+      + '</div></div></a>';
+  }).join('');
+
+  return '<div class="hero-main-stack" data-hero-rotator data-hero-interval="2000">' + slidesHTML + '</div>'
+    + '<div class="hero-side">' + (sideItems || []).map(heroSideItemHTML).join('') + '</div>';
+}
+
+function initHeroRotators(root) {
+  var scope = root || document;
+  var rotators = scope.querySelectorAll('[data-hero-rotator]');
+  rotators.forEach(function(rotator) {
+    if (rotator.dataset.heroReady === '1') return;
+    rotator.dataset.heroReady = '1';
+
+    var slides = Array.prototype.slice.call(rotator.querySelectorAll('[data-hero-slide]'));
+    var dots = Array.prototype.slice.call(rotator.querySelectorAll('[data-hero-dot]'));
+    if (slides.length <= 1) return;
+
+    var idx = 0;
+    function show(nextIdx) {
+      idx = (nextIdx + slides.length) % slides.length;
+      slides.forEach(function(slide, sIdx){ slide.classList.toggle('on', sIdx === idx); });
+      dots.forEach(function(dot, dIdx){ dot.classList.toggle('on', dIdx === idx); });
+    }
+
+    dots.forEach(function(dot, dotIdx){
+      dot.addEventListener('click', function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        show(dotIdx);
+        restart();
+      });
+    });
+
+    var intervalMs = parseInt(rotator.getAttribute('data-hero-interval') || '2000', 10);
+    var timer = null;
+    function start() { timer = setInterval(function(){ show(idx + 1); }, intervalMs); }
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+    function restart() { stop(); start(); }
+
+    rotator.addEventListener('mouseenter', stop);
+    rotator.addEventListener('mouseleave', start);
+    show(0);
+    start();
+  });
+}
+
+function renderRandomExampleBox(article) {
+  if (!article) return '';
+  var pool = getSentences().filter(function(s){ return !article.level || s.level === article.level; });
+  if (!pool.length) pool = getSentences();
+  if (!pool.length) return '';
+  var example = pool[Math.floor(Math.random() * pool.length)];
+  return '<div class="art-example-box">'
+    + '<div class="art-example-head">🎲 New example on refresh</div>'
+    + '<div class="art-example-ko">' + example.ko + '</div>'
+    + '<div class="art-example-en">' + example.en + '</div>'
+    + '</div>';
+}
+
 function cardHTML(a, extraTagClass) {
   var img = a.image || ('https://picsum.photos/seed/' + a.id + '/600/400');
   var tc  = extraTagClass || '';
@@ -931,42 +1050,46 @@ function heroSideItemHTML(a) {
 // ── 페이지 렌더러 ─────────────────────────────────────────────
 
 function renderHomePage() {
-  var all      = published();
+  var all = published();
   var featured = all.find(function(a){ return a.featured; }) || all[0];
-  var rest     = all.filter(function(a){ return !featured || a.id !== featured.id; });
+  var featuredId = featured ? String(featured.id) : null;
+  var rest = all.filter(function(a){ return !featuredId || String(a.id) !== featuredId; });
 
-  // HERO
+  // HERO: main slide rotates, side cards stay fixed
   var heroEl = document.getElementById('dyn-hero');
-  if (heroEl && featured) {
-    var heroSide = rest.slice(0, 4);
-    heroEl.innerHTML =
-      '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;">'
-      + '<div class="hero-main">'
-      + '<img src="' + (featured.image || 'https://picsum.photos/seed/' + featured.id + '/900/500') + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'">'
-      + '<div class="overlay">'
-      + '<span class="category-tag">' + featured.section + '</span>'
-      + '<h1 class="vocab-zone">' + featured.title + '</h1>'
-      + '<p class="sub vocab-zone">' + (featured.body || '') + '</p>'
-      + '</div></div></a>'
-      + '<div class="hero-side">' + heroSide.map(heroSideItemHTML).join('') + '</div>';
+  var heroSlides = pickHeroSlides(featured ? [featured].concat(rest) : all.slice(), 4);
+  var heroIds = {};
+  heroSlides.forEach(function(a){ heroIds[String(a.id)] = true; });
+  if (heroEl && all.length) {
+    var heroSide = pickFixedHeroSide(all, heroSlides, 4);
+    heroEl.innerHTML = buildHeroSliderHTML(heroSlides, heroSide);
+    initHeroRotators(heroEl);
   }
 
-  // TOP STORIES
+  // TOP STORIES (avoid duplicating hero slides)
+  var topStories = rest.filter(function(a){ return !heroIds[String(a.id)]; }).slice(0, 4);
+  if (topStories.length < 4) topStories = rest.slice(0, 4);
   var topEl = document.getElementById('dyn-top-stories');
-  if (topEl) topEl.innerHTML = rest.slice(0, 4).map(function(a){ return cardHTML(a); }).join('');
+  if (topEl) topEl.innerHTML = topStories.map(function(a){ return cardHTML(a); }).join('');
 
-  // SECTION BLOCKS
+  // SECTION BLOCKS - avoid duplicating same article between sections on home
   var sectionsEl = document.getElementById('dyn-sections');
   if (sectionsEl) {
     var sections = [
       { key:'사회', label:'Society', href:'korehan-society.html' },
       { key:'국제', label:'World',   href:'korehan-world.html'   },
-      { key:'문화', label:'Culture', href:'korehan-culture.html' },
+      { key:'문화', label:'Culture', href:'korehan-culture.html' }
     ];
+    var usedIds = {};
     sectionsEl.innerHTML = sections.map(function(s) {
-      var arts = published(s.key).slice(0, 3);
+      var arts = published(s.key).filter(function(a){
+        var id = String(a.id);
+        if (usedIds[id]) return false;
+        usedIds[id] = true;
+        return true;
+      }).slice(0, 3);
       if (!arts.length) return '';
-      return '<div style="margin:24px 0 8px">'
+      return '<div class="home-section-block">'
         + '<div class="section-title" style="display:flex;justify-content:space-between;align-items:center">'
         + s.label
         + '<a href="' + s.href + '" style="font-size:13px;font-weight:600;color:#2255a4;text-decoration:none">See all →</a>'
@@ -976,9 +1099,13 @@ function renderHomePage() {
     }).join('');
   }
 
-  // LATEST - 최신순 독립 정렬 (featured 기사 포함, Top Stories와 겹쳐도 최신순)
+  // LATEST - latest first, excluding hero slides so section feels fresher
   var latestEl = document.getElementById('dyn-latest');
-  if (latestEl) latestEl.innerHTML = all.slice(0, 8).map(storyItemHTML).join('');
+  if (latestEl) {
+    var latestItems = all.filter(function(a){ return !heroIds[String(a.id)]; }).slice(0, 8);
+    if (latestItems.length < 8) latestItems = all.slice(0, 8);
+    latestEl.innerHTML = latestItems.map(storyItemHTML).join('');
+  }
 
   // OPINIONS
   var opinionsEl = document.getElementById('dyn-opinions');
@@ -1010,42 +1137,38 @@ function renderSectionPage(section) {
     if (stEl) stEl.textContent = secInfo.label + ' News';
   }
   var articles = published(section);
-  var featured = articles[0];
-  var rest     = articles.slice(1);
 
-  // HERO
+  // HERO: rotate main stories only, keep side fixed
   var heroEl = document.getElementById('dyn-hero');
+  var heroSlides = pickHeroSlides(articles, 4);
   if (heroEl) {
-    if (featured) {
-      heroEl.innerHTML =
-        '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;">'
-        + '<div class="hero-main">'
-        + '<img src="' + (featured.image || 'https://picsum.photos/seed/' + featured.id + '/900/500') + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'">'
-        + '<div class="overlay">'
-        + '<span class="category-tag' + (section === 'Korea' ? ' korea' : '') + '">' + featured.section + '</span>'
-        + '<h1 class="vocab-zone">' + featured.title + '</h1>'
-        + '<p class="sub vocab-zone">' + (featured.body || '') + '</p>'
-        + '</div></div></a>'
-        + '<div class="hero-side">' + rest.slice(0, 4).map(heroSideItemHTML).join('') + '</div>';
+    if (heroSlides.length) {
+      var heroSide = pickFixedHeroSide(articles, heroSlides, 4);
+      heroEl.innerHTML = buildHeroSliderHTML(heroSlides, heroSide, { korea: section === 'Korea' });
+      initHeroRotators(heroEl);
     } else {
       heroEl.innerHTML = '<div style="padding:40px;color:#999;text-align:center;grid-column:1/-1">No articles in this section yet.</div>';
     }
   }
 
-  // ARTICLE LIST
+  // ARTICLE LIST excludes hero slides to reduce repetition
   var listEl = document.getElementById('dyn-article-list');
   if (listEl) {
-    if (!rest.length) {
+    var heroIds = {};
+    heroSlides.forEach(function(a){ heroIds[String(a.id)] = true; });
+    var listArticles = articles.filter(function(a){ return !heroIds[String(a.id)]; });
+    if (!listArticles.length) listArticles = articles.slice(1);
+    if (!listArticles.length) {
       listEl.innerHTML = '<p style="color:#999;padding:20px 0">No articles found.</p>';
     } else {
       var levelColors = {'Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'};
-      listEl.innerHTML = rest.map(function(a){
+      listEl.innerHTML = listArticles.map(function(a){
         var levelBadge = a.level ? '<span style="font-size:10px;font-weight:800;padding:1px 8px;border-radius:999px;background:' + (levelColors[a.level]||'#f0f0f0;color:#666') + '">' + a.level + '</span>' : '';
         return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
           + '<div class="article-row">'
           + '<img src="' + (a.image || 'https://picsum.photos/seed/' + a.id + '/300/200') + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/300/200\'">'
           + '<div>'
-          + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><div class="tag' + (section === 'Korea' ? ' korea' : '') + '">' + a.section + '</div>' + levelBadge + '</div>'
+          + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><div class="tag">' + a.section + '</div>' + levelBadge + '</div>'
           + '<h3 class="vocab-zone">' + a.title + '</h3>'
           + '<p class="vocab-zone">' + (a.body || '') + '</p>'
           + '<div class="meta">' + relTime(a.date) + '</div>'
@@ -1197,6 +1320,8 @@ function renderArticlePage() {
     + '<div class="art-vocab-title">📚 Key Vocabulary</div>'
     + '<div class="art-vocab-list" id="art-vocab-list"></div>'
     + '</div>'
+
+    + renderRandomExampleBox(a)
 
     // Fill-in-the-Blank 복습 섹션
     + '<div id="fill-wrap" style="margin:32px 0">'
@@ -2452,6 +2577,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // 세션 먼저 확인 후 나머지 로드 (로그인 상태가 헤더 렌더 전에 준비되도록)
   await checkSession();
+  startInactivityAutoLogout();
 
   var page     = window.location.pathname.split('/').pop() || 'index.html';
   var pageBase = page.replace(/\.html$/, '');
