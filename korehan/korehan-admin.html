@@ -1068,11 +1068,27 @@ function statCard(icon, label, value, color) {
     + '</div>';
 }
 
-function goSiteSettings(){
+async function loadSiteSettingsConfig(){
+  var config = Object.assign({}, DEF_SITECONF, ls(K_SITECONF, {}));
+  try {
+    var sb = getSupa();
+    if (sb) {
+      var res = await sb.from('app_settings').select('value').eq('key','site_config').single();
+      if (res.data && res.data.value) {
+        var parsed = typeof res.data.value === 'string' ? JSON.parse(res.data.value) : res.data.value;
+        config = Object.assign({}, DEF_SITECONF, parsed || {});
+        lsSet(K_SITECONF, config);
+      }
+    }
+  } catch(e) {}
+  return config;
+}
+
+async function goSiteSettings(){
   setSbOn(null);
-  const c={...DEF_SITECONF,...ls(K_SITECONF,{})};
+  const c = await loadSiteSettingsConfig();
   document.getElementById('main').innerHTML=`
-    <div class="pg-hd"><div><h1>⚙️ 사이트 기본 설정</h1><p>사이트 이름, 슬로건, 푸터 설명, 학습 배너 등을 수정하세요</p></div></div>
+    <div class="pg-hd"><div><h1>⚙️ 사이트 기본 설정</h1><p>메인페이지에 실제 노출되는 기본 문구와 푸터 문구를 수정합니다.</p></div></div>
     <div class="sf-card">
       <h3>🏷️ 기본 정보</h3>
       <div class="sf-row">
@@ -1113,10 +1129,9 @@ function goSiteSettings(){
     <button class="btn btn-g" onclick="saveSiteSettings()">💾 저장</button>
     <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>`;
 
-  // API 키 현재값 로드
   loadApiKeyIntoSettings();
 }
-function saveSiteSettings(){
+async function saveSiteSettings(){
   const c={
     siteName:      document.getElementById('sc-name')?.value.trim()||DEF_SITECONF.siteName,
     siteTagline:   document.getElementById('sc-tagline')?.value.trim()||DEF_SITECONF.siteTagline,
@@ -1125,9 +1140,27 @@ function saveSiteSettings(){
     learnBannerDesc:  document.getElementById('sc-lb-desc')?.value.trim()||DEF_SITECONF.learnBannerDesc,
   };
   lsSet(K_SITECONF, c);
-  toast('⚙️ 사이트 설정 저장됨!');
+  try {
+    var sb = getSupa();
+    if (!sb) throw new Error('Supabase not ready');
+    var res = await sb.from('app_settings').upsert({ key: 'site_config', value: JSON.stringify(c), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    if (res.error) throw res.error;
+    toast('⚙️ 사이트 설정 저장됨! 메인페이지와 푸터에 바로 반영됩니다.');
+  } catch(e) {
+    toast('사이트 설정 저장 실패: ' + (e.message || e), true);
+  }
 }
-function resetSiteSettings(){ lsSet(K_SITECONF,{}); goSiteSettings(); toast('기본값으로 초기화됐어요'); }
+async function resetSiteSettings(){
+  lsSet(K_SITECONF, DEF_SITECONF);
+  try {
+    var sb = getSupa();
+    if (sb) {
+      await sb.from('app_settings').upsert({ key: 'site_config', value: JSON.stringify(DEF_SITECONF), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    }
+  } catch(e) {}
+  await goSiteSettings();
+  toast('기본값으로 초기화됐어요');
+}
 
 async function loadApiKeyIntoSettings() {
   const statusEl = document.getElementById('sc-api-status');
@@ -1541,6 +1574,7 @@ async function runAutoGenerate(){
         image: 'https://picsum.photos/seed/' + Math.random().toString(36).slice(2,8) + '/600/400',
       };
       await dbSaveArticle(newArticle);
+      adminExtractVocab(newArticle);
       DB.unshift(newArticle);
       refreshCounts();
 
@@ -1554,7 +1588,7 @@ async function runAutoGenerate(){
     }
   }
 
-  toast('🤖 기사 생성 완료! 임시저장 목록에서 확인하세요.');
+  toast('🤖 기사 생성 완료! Draft로 DB 저장됐어요. 검토 후 Publish 하면 사이트에 공개됩니다.');
 }
 
 function today_date(){
