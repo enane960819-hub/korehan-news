@@ -1513,6 +1513,9 @@ async function runAutoGenerate(){
   const progress = document.getElementById('auto-progress');
   progress.innerHTML = '';
 
+  // 중복 방지: 기존 DB 기사 제목 수집
+  const existingTitles = DB.map(function(a){ return (a.title||'').trim(); });
+
   for(const secKey of checked){
     const sec = AUTO_SECTIONS.find(function(s){ return s.key === secKey; });
     if(!sec) continue;
@@ -1551,7 +1554,8 @@ async function runAutoGenerate(){
         +'- 특정 실존 인물 비방 금지\n'
         +'- 너무 유치하게 쓰지 말 것 — 성인 학습자용\n\n'
         +'응답은 반드시 아래 JSON 형식으로만 출력하세요 (마크다운 코드블록 불필요):\n'
-        +'{"title":"기사 제목","body":"기사 본문 (단락 구분은 \\n\\n 사용)"}';
+        +'{"title":"기사 제목","body":"기사 본문 (단락 구분은 \\n\\n 사용)"}\n\n'
+        +(existingTitles.length ? '[이미 있는 기사 제목 — 절대 중복 금지]\n' + existingTitles.map(function(t){return '- '+t;}).join('\n') : '');
 
       // ── 1단계: 기사 본문 생성 ──
       document.getElementById(rowId+'-status').innerHTML = '⏳ 기사 생성 중…';
@@ -1620,7 +1624,7 @@ Respond ONLY with valid JSON. No markdown, no extra text.`;
         const cacheClean = cacheText.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
         const cacheData = JSON.parse(cacheClean);
 
-        const sb = getSupa ? getSupa() : null;
+        const sb = getSb();
         if (sb && cacheData) {
           const cacheRow = {
             article_id: String(articleId),
