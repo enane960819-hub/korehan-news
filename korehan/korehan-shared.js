@@ -1130,11 +1130,20 @@ function renderArticlePage() {
   var a      = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
 
   if (!a) {
-    wrap.innerHTML = '<div style="padding:30px">'
-      + '<a href="index.html" style="color:#2255a4;text-decoration:none">← Back to Home</a>'
-      + '<h1 style="margin-top:16px">Article not found</h1>'
-      + '<p style="color:#666;margin-top:8px">This article does not exist or the link is invalid.</p>'
+    // 캐시 미스 - 로딩 중 표시 후 재시도
+    wrap.innerHTML = '<div style="padding:48px;text-align:center">'
+      + '<div style="font-size:40px;margin-bottom:14px">⏳</div>'
+      + '<div style="font-size:15px;color:#555;font-weight:600">기사를 불러오는 중...</div>'
       + '</div>';
+    loadArticlesFromDB().then(function() {
+      var retry = getCachedArticles().find(function(x){ return String(x.id) === String(id); });
+      if (retry) { renderArticlePage(); return; }
+      wrap.innerHTML = '<div style="padding:30px">'
+        + '<a href="index.html" style="color:#2255a4;text-decoration:none">← Back to Home</a>'
+        + '<h1 style="margin-top:16px">기사를 찾을 수 없어요</h1>'
+        + '<p style="color:#666;margin-top:8px">삭제되었거나 잘못된 링크예요. <a href="index.html" style="color:#2255a4">홈으로 돌아가기</a></p>'
+        + '</div>';
+    });
     return;
   }
 
@@ -1154,7 +1163,7 @@ function renderArticlePage() {
     // 카테고리 + 제목
     + '<div class="art-header">'
     + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-    + '<span class="art-section-badge">' + a.section + '</span>'
+    + '<span class="art-section-badge">' + a.section + '</span>' + diffBadge(a)
     + (a.level ? (function(lv){ var c={'Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'}; return '<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:'+(c[lv]||'#f0f0f0;color:#666')+'">'+lv+'</span>'; })(a.level) : '')
     + '</div>'
     + '<h1 class="art-title vocab-zone">' + a.title + ' ' + ttsBtn(a.title) + '</h1>'
@@ -2508,6 +2517,20 @@ document.addEventListener('DOMContentLoaded', async function() {
   injectDailyMission();
   startClock();
   initTooltips();
+  initDarkMode();
+  renderBreakingTicker();
+  // 기사 페이지: 북마크 상태 + 댓글 + page view
+  if (pageBase === 'korehan-article') {
+    var artId = (new URLSearchParams(window.location.search)).get('id');
+    if(artId) {
+      dbLogPageView('article', artId);
+      dbIsBookmarked(artId).then(function(bm){
+        var btn = document.getElementById('art-bm-btn');
+        if(btn){ btn.classList.toggle('active',bm); btn.textContent = bm ? '🔖 Saved' : '🔖 Bookmark'; }
+      });
+      initArticleComments(artId);
+    }
+  }
 });
 
 // ══ BADGE ENGINE ══════════════════════════════════════════════════════════════
@@ -3322,3 +3345,206 @@ function injectDailyMission() {
 // ══ END DAILY MISSION ENGINE ════════════════════════════════════════════════
 
 // ══ END TTS ENGINE ═════════════════════════════════════════════════════════════
+
+
+/* ══ NEW FEATURES ════════════════════════════════════════════ */
+
+/* ── ARTICLE DIFFICULTY ─────────────────────────────────────── */
+var DIFF_ADVANCED     = ['대통령','국회','법안','표결','기준금리','동결','하반기','인하','코스피','유엔','안보리','긴급','결의','나토','방위비','협약','탄소중립','무형문화유산','한반도'];
+var DIFF_INTERMEDIATE = ['경제','투자','수출','무역','흑자','금리','반도체','부동산','협상','합의','개발','승인','확정','공연','매진','계약','결승','진출','정치','저출생'];
+function getArticleDifficulty(article) {
+  var text = (article.title||'') + ' ' + (article.body||'');
+  var adv  = DIFF_ADVANCED.filter(function(w){ return text.indexOf(w)>=0; }).length;
+  var mid  = DIFF_INTERMEDIATE.filter(function(w){ return text.indexOf(w)>=0; }).length;
+  if(adv >= 3) return 'advanced';
+  if(adv >= 1 || mid >= 3) return 'intermediate';
+  return 'beginner';
+}
+var DIFF_META = {
+  beginner:     { label:'🌱 초급', color:'#2e7d32', bg:'#e8f5e9' },
+  intermediate: { label:'📘 중급', color:'#f57f17', bg:'#fff8e1' },
+  advanced:     { label:'🔥 고급', color:'#c62828', bg:'#fce4ec' }
+};
+function diffBadge(article) {
+  var d = getArticleDifficulty(article);
+  var m = DIFF_META[d];
+  return '<span style="display:inline-block;font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:'+m.bg+';color:'+m.color+';margin-left:6px;vertical-align:middle">'+m.label+'</span>';
+}
+
+/* ── BOOKMARKS ───────────────────────────────────────────────── */
+async function dbToggleBookmark(articleId, title, section) {
+  if(!supaUser) { openAuthModal('signin'); return false; }
+  var sb = getSupa(); if(!sb) return false;
+  var res = await sb.from('bookmarks').select('id').eq('user_id',supaUser.id).eq('article_id',articleId);
+  if(res.data && res.data.length) {
+    await sb.from('bookmarks').delete().eq('user_id',supaUser.id).eq('article_id',articleId);
+    return false;
+  } else {
+    await sb.from('bookmarks').insert({ user_id:supaUser.id, article_id:articleId, title:title, section:section });
+    return true;
+  }
+}
+async function dbGetBookmarks() {
+  if(!supaUser) return [];
+  var sb = getSupa(); if(!sb) return [];
+  var res = await sb.from('bookmarks').select('*').eq('user_id',supaUser.id).order('bookmarked_at',{ascending:false});
+  return res.data || [];
+}
+async function dbIsBookmarked(articleId) {
+  if(!supaUser) return false;
+  var sb = getSupa(); if(!sb) return false;
+  var res = await sb.from('bookmarks').select('id').eq('user_id',supaUser.id).eq('article_id',articleId);
+  return !!(res.data && res.data.length);
+}
+
+/* ── NEWSLETTER ──────────────────────────────────────────────── */
+async function dbSubscribeNewsletter(email, name) {
+  var sb = getSupa(); if(!sb) return false;
+  var res = await sb.from('newsletter_subs').upsert({ email:email, name:name||'' }, { onConflict:'email', ignoreDuplicates:true });
+  return !res.error;
+}
+function showNewsletterModal() {
+  var ov = document.createElement('div');
+  ov.id = 'nl-modal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:9998';
+  ov.innerHTML =
+    '<div style="background:#fff;border-radius:16px;padding:36px 32px;max-width:420px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,0.18)">'
+    +'<div style="font-size:32px;margin-bottom:8px;text-align:center">📬</div>'
+    +'<div style="font-size:20px;font-weight:900;color:#0d1f3c;text-align:center;margin-bottom:6px">주간 뉴스레터 구독</div>'
+    +'<div style="font-size:13px;color:#888;text-align:center;margin-bottom:22px;line-height:1.6">매주 월요일, 쉬운 한국어 뉴스 요약과<br>이번 주 주요 단어를 이메일로 보내드려요.</div>'
+    +'<input id="nl-name" type="text" placeholder="이름 (선택)" style="width:100%;padding:10px 14px;border:1.5px solid #e0e4ed;border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:10px;box-sizing:border-box">'
+    +'<input id="nl-email" type="email" placeholder="이메일 주소 *" style="width:100%;padding:10px 14px;border:1.5px solid #e0e4ed;border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:16px;box-sizing:border-box">'
+    +'<button onclick="submitNewsletter()" style="width:100%;padding:12px;background:#2255a4;color:#fff;border:none;border-radius:999px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">구독하기 →</button>'
+    +'<button onclick="closeNlModal()" style="width:100%;padding:10px;background:none;border:none;color:#888;font-size:13px;cursor:pointer;margin-top:8px;font-family:inherit">닫기</button>'
+    +'<div id="nl-msg" style="text-align:center;font-size:13px;margin-top:10px"></div>'
+    +'</div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', function(e){ if(e.target===ov) closeNlModal(); });
+}
+function closeNlModal(){ var m=document.getElementById('nl-modal'); if(m) m.remove(); }
+async function submitNewsletter() {
+  var email = (document.getElementById('nl-email')||{}).value||'';
+  var name  = (document.getElementById('nl-name')||{}).value||'';
+  var msg   = document.getElementById('nl-msg');
+  email = email.trim();
+  if(!email || !email.includes('@')) { if(msg){msg.style.color='#c33';msg.textContent='올바른 이메일을 입력해주세요.';} return; }
+  var ok = await dbSubscribeNewsletter(email, name.trim());
+  if(ok) {
+    if(msg){msg.style.color='#28a745';msg.textContent='✅ 구독 완료! 매주 월요일에 뵐게요 😊';}
+    setTimeout(closeNlModal, 2000);
+  } else {
+    if(msg){msg.style.color='#c33';msg.textContent='오류가 발생했어요. 다시 시도해주세요.';}
+  }
+}
+
+/* ── PAGE VIEWS ──────────────────────────────────────────────── */
+function dbLogPageView(page, articleId) {
+  var sb = getSupa(); if(!sb) return;
+  sb.from('page_views').insert({ page:page, article_id:articleId||null, referrer:document.referrer||'' }).then(function(){});
+}
+
+/* ── COMMENTS RENDER ─────────────────────────────────────────── */
+async function initArticleComments(articleId) {
+  var wrap = document.querySelector('.kh-article-body') || document.getElementById('dyn-article');
+  if(!wrap) return;
+  var sec = document.getElementById('art-comments-section');
+  if(!sec) {
+    sec = document.createElement('div');
+    sec.id = 'art-comments-section';
+    sec.style.cssText = 'margin-top:40px;border-top:2px solid #e0e4ed;padding-top:28px';
+    wrap.appendChild(sec);
+  }
+  var sb = getSupa();
+  var comments = [];
+  if(sb) {
+    var res = await sb.from('comments').select('*').eq('article_id',articleId).order('created_at',{ascending:true});
+    comments = res.data || [];
+  }
+  var inputHtml = supaUser
+    ? '<div style="margin-top:18px;display:flex;gap:10px;align-items:flex-start">'
+      +'<div style="width:36px;height:36px;border-radius:50%;background:#2255a4;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0">'
+      +(supaUser.user_metadata&&supaUser.user_metadata.avatar_url
+        ? '<img src="'+supaUser.user_metadata.avatar_url+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover">'
+        : (supaUser.email||'?').charAt(0).toUpperCase())
+      +'</div>'
+      +'<div style="flex:1">'
+      +'<textarea id="art-comment-input" placeholder="한국어로 댓글을 남겨보세요 😊" style="width:100%;padding:10px 14px;border:1.5px solid #e0e4ed;border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;min-height:80px;line-height:1.6;box-sizing:border-box"></textarea>'
+      +'<button data-artid="'+articleId+'" onclick="submitArticleComment(this.dataset.artid)" style="margin-top:8px;padding:8px 22px;background:#2255a4;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">댓글 달기</button>'
+      +'</div></div>'
+    : '<div style="margin-top:14px;padding:14px;background:#f8faff;border-radius:10px;font-size:13px;color:#888">'
+    + '<div style="margin-top:14px;padding:14px;background:#f8faff;border-radius:10px;font-size:13px;color:#888">'
+      +'<a href="#" onclick="event.preventDefault();openAuthModal(&quot;signin&quot;)" style="color:#2255a4;font-weight:700">로그인</a> 하면 댓글을 남길 수 있어요.</div>';
+
+  sec.innerHTML = '<div style="font-size:18px;font-weight:900;color:#0d1f3c;margin-bottom:18px">💬 댓글 <span style="font-size:14px;color:#888;font-weight:600">('+comments.length+')</span></div>'
+    + (comments.length ? comments.map(function(c){
+        var own = supaUser && supaUser.id === c.user_id;
+        var dt  = new Date(c.created_at).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+        return '<div style="padding:14px 0;border-bottom:1px solid #e0e4ed">'
+          +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+          +(c.user_avatar ? '<img src="'+c.user_avatar+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover">' : '<div style="width:32px;height:32px;border-radius:50%;background:#2255a4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">'+(c.user_name||'?').charAt(0)+'</div>')
+          +'<span style="font-size:13px;font-weight:700;color:#222">'+(c.user_name||'익명')+'</span>'
+          +'<span style="font-size:11px;color:#aaa">'+dt+'</span>'
+          +(own ? '<button data-id="'+c.id+'" data-artid="'+articleId+'" onclick="deleteArticleComment(this.dataset.id,this.dataset.artid)" style="margin-left:auto;background:none;border:none;color:#ccc;cursor:pointer;font-size:13px">✕</button>' : '')
+          +'</div>'
+          +'<div style="font-size:14px;line-height:1.7;color:#333;padding-left:42px">'+escHtmlComment(c.body)+'</div>'
+          +(c.reply ? '<div style="margin:10px 0 0 42px;padding:10px 14px;background:#f0f4ff;border-left:3px solid #2255a4;border-radius:0 8px 8px 0;font-size:13px;line-height:1.6"><span style="font-weight:700;color:#2255a4">↩ 관리자</span><br>'+escHtmlComment(c.reply)+'</div>' : '')
+          +'</div>';
+      }).join('') : '<div style="color:#aaa;font-size:13px;padding:12px 0">첫 댓글을 남겨보세요!</div>')
+    + inputHtml;
+}
+
+function escHtmlComment(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+async function submitArticleComment(articleId) {
+  var sb = getSupa(); if(!sb||!supaUser) return;
+  var input = document.getElementById('art-comment-input');
+  if(!input||!input.value.trim()) return;
+  var name   = (supaUser.user_metadata&&supaUser.user_metadata.full_name)||supaUser.email.split('@')[0];
+  var avatar = (supaUser.user_metadata&&supaUser.user_metadata.avatar_url)||'';
+  input.disabled = true;
+  var res = await sb.from('comments').insert({ article_id:articleId, user_id:supaUser.id, user_name:name, user_avatar:avatar, body:input.value.trim() });
+  input.disabled = false;
+  if(!res.error) { input.value=''; initArticleComments(articleId); }
+}
+async function deleteArticleComment(commentId, articleId) {
+  if(!confirm('댓글을 삭제할까요?')) return;
+  var sb = getSupa(); if(!sb) return;
+  await sb.from('comments').delete().eq('id',commentId);
+  initArticleComments(articleId);
+}
+
+/* ── DARK MODE ───────────────────────────────────────────────── */
+function initDarkMode() {
+  if(localStorage.getItem('kh_dark')==='1') document.body.classList.add('dark-mode');
+  var btn = document.createElement('button');
+  btn.className = 'dark-toggle';
+  btn.title = '다크/라이트 모드';
+  btn.textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+  btn.onclick = function() {
+    document.body.classList.toggle('dark-mode');
+    var on = document.body.classList.contains('dark-mode');
+    localStorage.setItem('kh_dark', on ? '1' : '0');
+    btn.textContent = on ? '☀️' : '🌙';
+  };
+  document.body.appendChild(btn);
+}
+
+/* ── BREAKING TICKER ─────────────────────────────────────────── */
+function renderBreakingTicker() {
+  var articles = (getCachedArticles()||[]).filter(function(a){ return a.breaking && a.status==='published'; });
+  var topEl = document.querySelector('.kh-top');
+  var existing = document.getElementById('kh-breaking');
+  if(existing) existing.remove();
+  if(!articles.length || !topEl) return;
+  var ticker = document.createElement('div');
+  ticker.id = 'kh-breaking';
+  ticker.style.cssText = 'background:#c0392b;color:#fff;font-size:13px;font-weight:700;overflow:hidden;height:36px;display:flex;align-items:center;width:100%;';
+  var items = articles.map(function(a){
+    return '<a href="korehan-article.html?id='+a.id+'" style="color:#fff;text-decoration:none;margin:0 32px;white-space:nowrap">🔴 '+a.title+'</a>';
+  }).join('');
+  ticker.innerHTML = '<span style="background:#8b0000;padding:0 14px;height:36px;display:flex;align-items:center;flex-shrink:0;letter-spacing:1px;font-size:11px">BREAKING</span>'
+    +'<div style="overflow:hidden;flex:1"><div id="brk-track" style="display:inline-block;animation:brkScroll 20s linear infinite;white-space:nowrap">'+items+items+'</div></div>';
+  topEl.insertBefore(ticker, topEl.firstChild);
+}
+

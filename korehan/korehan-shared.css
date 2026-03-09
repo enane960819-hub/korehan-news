@@ -1193,3 +1193,10 @@ body.dark-mode .kh-footer     { background: #0b1220; }
     padding: 14px 20px; text-align: left;
   }
 }
+
+/* ── BREAKING TICKER ANIMATION ──────────────────────────────── */
+@keyframes brkScroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+#brk-track:hover { animation-play-state: paused; }
