@@ -181,14 +181,13 @@ a{color:inherit;text-decoration:none}
     <div class="sb-lbl">Analytics</div>
     <button class="sb-btn" onclick="goStats()"><span class="ico">📊</span>User Analytics</button>
     <div class="sb-lbl">Content</div>
-    <button class="sb-btn" onclick="goSections()"><span class="ico">🗂️</span>Manage Sections</button>
     <div class="sb-lbl">Settings</div>
-    <button class="sb-btn" onclick="goSiteSettings()"><span class="ico">⚙️</span>사이트 기본 설정</button>
     <button class="sb-btn" onclick="goOpinions()">    <span class="ico">✍️</span>오피니언 칼럼니스트</button>
 
     <div class="section-sep"></div>
     <div class="sb-lbl">학습 콘텐츠</div>
     <button class="sb-btn" onclick="goPhrases()"> <span class="ico">💬</span>오늘의 표현</button>
+    <button class="sb-btn" onclick="goVocabEditor()"><span class="ico">✏️</span>단어 뜻 수정</button>
     <button class="sb-btn" onclick="goWordBank()"><span class="ico">📚</span>단어 플래시 카드</button>
     <button class="sb-btn" onclick="goSentences()"><span class="ico">💬</span>예문 관리</button>
     <div class="sb-lbl" style="margin-top:14px">운영 관리</div>
@@ -1321,6 +1320,114 @@ function savePhrases(){
 }
 
 // ══ WORD BANK ════════════════════════════════════════════════
+// ══ VOCAB 뜻 수정 (hover tooltip 커스텀) ═══════════════════════
+async function goVocabEditor() {
+  setSbOn(null);
+  const main = document.getElementById('main');
+  main.innerHTML = '<div class="pg-hd"><div><h1>✏️ 단어 뜻 수정</h1><p>기사 hover 시 나오는 단어 뜻을 수정하세요. 비워두면 기본 사전 그대로 표시됩니다.</p></div></div>'
+    + '<div class="infobox">수정한 뜻은 모든 기사 페이지에 즉시 반영돼요.</div>'
+    + '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'
+    + '<input id="ve-search" placeholder="단어 검색..." style="flex:1;min-width:180px;padding:9px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:14px" oninput="veFilter()">'
+    + '<button class="btn btn-g" onclick="veAddRow()">+ 단어 추가</button>'
+    + '<button class="btn btn-g" onclick="veSaveAll()" style="background:#2563eb">💾 전체 저장</button>'
+    + '</div>'
+    + '<div id="ve-list"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 불러오는 중…</div></div>';
+
+  // DB에서 overrides 로드
+  let overrides = [];
+  try {
+    const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/vocab_overrides?select=id,word,en,rom&order=word.asc', {
+      headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
+    });
+    if (res.ok) overrides = await res.json();
+  } catch(e) {}
+
+  window._veData = overrides;
+  veRender(overrides);
+}
+
+function veRender(rows) {
+  const list = document.getElementById('ve-list');
+  if (!list) return;
+  if (!rows.length) {
+    list.innerHTML = '<p style="color:var(--gr);padding:12px">아직 수정된 단어가 없어요. + 단어 추가 버튼으로 추가하세요.</p>';
+    return;
+  }
+  list.innerHTML = '<table style="width:100%;border-collapse:collapse">'
+    + '<thead><tr style="background:#f8faff;font-size:13px;color:var(--gr)">'
+    + '<th style="padding:10px;text-align:left;border-bottom:1px solid var(--bo)">단어</th>'
+    + '<th style="padding:10px;text-align:left;border-bottom:1px solid var(--bo)">영어 뜻</th>'
+    + '<th style="padding:10px;text-align:left;border-bottom:1px solid var(--bo)">로마자</th>'
+    + '<th style="padding:10px;border-bottom:1px solid var(--bo)"></th>'
+    + '</tr></thead><tbody>'
+    + rows.map(function(r, i) {
+      return '<tr id="ve-row-' + i + '">'
+        + '<td style="padding:8px"><input class="ve-word" style="width:100%;padding:6px 10px;border:1px solid var(--bo);border-radius:6px;font-size:14px" value="' + (r.word||'') + '" data-idx="' + i + '"></td>'
+        + '<td style="padding:8px"><input class="ve-en" style="width:100%;padding:6px 10px;border:1px solid var(--bo);border-radius:6px;font-size:14px" value="' + (r.en||'') + '" data-idx="' + i + '"></td>'
+        + '<td style="padding:8px"><input class="ve-rom" style="width:100%;padding:6px 10px;border:1px solid var(--bo);border-radius:6px;font-size:14px" value="' + (r.rom||'') + '" data-idx="' + i + '"></td>'
+        + '<td style="padding:8px;text-align:center"><button class="btn" style="padding:5px 12px;background:#fee2e2;color:#991b1b;border:none;border-radius:6px;cursor:pointer;font-size:12px" onclick="veDelete(' + i + ')">삭제</button></td>'
+        + '</tr>';
+    }).join('')
+    + '</tbody></table>';
+}
+
+function veFilter() {
+  const q = (document.getElementById('ve-search').value || '').toLowerCase();
+  const filtered = (window._veData || []).filter(function(r){ return !q || (r.word||'').toLowerCase().includes(q) || (r.en||'').toLowerCase().includes(q); });
+  veRender(filtered);
+}
+
+function veAddRow() {
+  if (!window._veData) window._veData = [];
+  window._veData.push({ id: null, word: '', en: '', rom: '' });
+  veRender(window._veData);
+  const inputs = document.querySelectorAll('.ve-word');
+  if (inputs.length) inputs[inputs.length-1].focus();
+}
+
+function veDelete(idx) {
+  const row = (window._veData||[])[idx];
+  if (!row) return;
+  if (row.id) {
+    fetch(SUPA_URL_ADMIN + '/rest/v1/vocab_overrides?id=eq.' + row.id, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
+    });
+  }
+  window._veData.splice(idx, 1);
+  veRender(window._veData);
+}
+
+async function veSaveAll() {
+  // 현재 입력값 수집
+  const rows = document.querySelectorAll('#ve-list tbody tr');
+  const data = (window._veData || []).map(function(r, i) {
+    const wordEl = document.querySelector('.ve-word[data-idx="' + i + '"]');
+    const enEl   = document.querySelector('.ve-en[data-idx="' + i + '"]');
+    const romEl  = document.querySelector('.ve-rom[data-idx="' + i + '"]');
+    return {
+      id: r.id || undefined,
+      word: wordEl ? wordEl.value.trim() : r.word,
+      en:   enEl   ? enEl.value.trim()   : r.en,
+      rom:  romEl  ? romEl.value.trim()  : r.rom,
+    };
+  }).filter(function(r){ return r.word; });
+
+  try {
+    const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/vocab_overrides?on_conflict=word', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
+        'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify(data.map(function(r){ return { word: r.word, en: r.en, rom: r.rom }; }))
+    });
+    if (res.ok) { toast('✅ 저장됨! 기사 페이지에 즉시 반영돼요.'); goVocabEditor(); }
+    else { const e = await res.text(); toast('저장 실패: ' + e, true); }
+  } catch(e) { toast('오류: ' + e.message, true); }
+}
+
+
 function goWordBank(){
   setSbOn(null);
   const items=ls(K_WORDBANK, DEF_WORDBANK);
@@ -1790,7 +1897,7 @@ async function genCache(articleId) {
 
   try {
     if (st) st.textContent = '(4/4) 퀴즈 중…';
-    const q = await _call('Create 5 fill-in-the-blank questions. Return ONLY: {"questions":[{"sentence":"Korean with _____","sentence_en":"English with _____","blank":"answer","blank_en":"meaning","choices":["correct","w1","w2","w3"]}]}. No other text.', 1200);
+    const q = await _call('Create 15 fill-in-the-blank questions from this article, covering different sentences and vocabulary. Return ONLY: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English with _____","blank":"correct answer word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.', 2500);
     _row.quiz = JSON.stringify(_json(q));
     _ok++;
   } catch(e) { console.warn('quiz failed', e.message); }

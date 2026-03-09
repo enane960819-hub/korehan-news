@@ -582,6 +582,77 @@ function getOpinions()  { return lsGet(K_OPINIONS,  []);            }
 
 
 
+// ── Learn 페이지용: article_cache에서 단어/예문 로드 ──
+async function getArticleCacheVocab() {
+  // article_cache 전체에서 vocab 필드 수집 → 중복 제거 후 반환
+  try {
+    var res = await fetch('https://samghztrdvtxmrmawneu.supabase.co/rest/v1/article_cache?select=vocab&vocab=not.is.null', {
+      headers: { 'apikey': 'sb_publishable_HGL3s1r-P4PDkjQ9mjPxug_yqlgldyU', 'Authorization': 'Bearer sb_publishable_HGL3s1r-P4PDkjQ9mjPxug_yqlgldyU' }
+    });
+    var rows = await res.json();
+    var seen = new Set();
+    var words = [];
+    (rows || []).forEach(function(r) {
+      try {
+        var arr = JSON.parse(r.vocab);
+        if (!Array.isArray(arr)) return;
+        arr.forEach(function(w) {
+          var key = (w.word||'').trim();
+          if (key && !seen.has(key)) { seen.add(key); words.push(w); }
+        });
+      } catch(e) {}
+    });
+    return words;
+  } catch(e) { return []; }
+}
+
+async function getArticleCacheSentences() {
+  // article_cache quiz 필드에서 예문 수집 (sentence + sentence_en)
+  try {
+    var res = await fetch('https://samghztrdvtxmrmawneu.supabase.co/rest/v1/article_cache?select=quiz&quiz=not.is.null', {
+      headers: { 'apikey': 'sb_publishable_HGL3s1r-P4PDkjQ9mjPxug_yqlgldyU', 'Authorization': 'Bearer sb_publishable_HGL3s1r-P4PDkjQ9mjPxug_yqlgldyU' }
+    });
+    var rows = await res.json();
+    var sentences = [];
+    var seen = new Set();
+    (rows || []).forEach(function(r) {
+      try {
+        var q = JSON.parse(r.quiz);
+        var qs = q.questions || q;
+        if (!Array.isArray(qs)) return;
+        qs.forEach(function(item) {
+          var ko = (item.sentence||'').replace('_____', item.blank||'___');
+          var en = (item.sentence_en||'').replace('_____', item.blank_en||'___');
+          if (ko && !seen.has(ko)) { seen.add(ko); sentences.push({ ko: ko, en: en, level: 'Intermediate' }); }
+        });
+      } catch(e) {}
+    });
+    return sentences;
+  } catch(e) { return []; }
+}
+
+// VOCAB hover 뜻 — DB에서 오버라이드 가능 (admin에서 수정 지원)
+var _vocabOverrides = null;
+async function loadVocabOverrides() {
+  if (_vocabOverrides) return _vocabOverrides;
+  try {
+    var res = await fetch('https://samghztrdvtxmrmawneu.supabase.co/rest/v1/vocab_overrides?select=word,en,rom', {
+      headers: { 'apikey': 'sb_publishable_HGL3s1r-P4PDkjQ9mjPxug_yqlgldyU', 'Authorization': 'Bearer sb_publishable_HGL3s1r-P4PDkjQ9mjPxug_yqlgldyU' }
+    });
+    if (!res.ok) { _vocabOverrides = {}; return {}; }
+    var rows = await res.json();
+    _vocabOverrides = {};
+    (rows||[]).forEach(function(r){ if(r.word) _vocabOverrides[r.word] = { en: r.en, rom: r.rom }; });
+    return _vocabOverrides;
+  } catch(e) { _vocabOverrides = {}; return {}; }
+}
+
+function getVocabEntry(word) {
+  // overrides 우선, fallback VOCAB 딕셔너리
+  if (_vocabOverrides && _vocabOverrides[word]) return _vocabOverrides[word];
+  return VOCAB[word] || null;
+}
+
 function toast(msg, isErr) {
   var d = document.createElement('div');
   d.style.cssText = 'position:fixed;bottom:22px;right:22px;z-index:9999;background:'+(isErr?'#cc2200':'#1a3a6b')+';color:#fff;padding:11px 18px;border-radius:4px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,0.25);';
@@ -1436,7 +1507,13 @@ async function loadFillExercise(container) {
   var cachedQuiz = await getCachedAIContent(id, 'quiz');
   if (cachedQuiz && cachedQuiz.questions && cachedQuiz.questions.length) {
     _fillLoaded = true;
-    renderFillQuestions(el, cachedQuiz.questions, a);
+    // 매번 다른 문제 — shuffle 후 3개 선택
+    var allQ = cachedQuiz.questions.slice();
+    for (var i = allQ.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = allQ[i]; allQ[i] = allQ[j]; allQ[j] = tmp;
+    }
+    renderFillQuestions(el, allQ.slice(0, 3), a);
     return;
   }
 
@@ -1996,6 +2073,7 @@ async function toggleTranslate() {
   var cacheKey = 'trans_' + id;
 
   if (translateCache[cacheKey]) {
+    zones.forEach(function(z){ if (!z.dataset.original) z.dataset.original = z.innerHTML; });
     applyTranslation(zones, translateCache[cacheKey]);
     btn.textContent = '🇰🇷 Back to Korean';
     btn.disabled = false;
@@ -2008,6 +2086,7 @@ async function toggleTranslate() {
   var cachedTrans = await getCachedAIContent(id, 'translation');
   if (cachedTrans && cachedTrans.texts && cachedTrans.texts.length) {
     translateCache[cacheKey] = cachedTrans.texts;
+    zones.forEach(function(z){ if (!z.dataset.original) z.dataset.original = z.innerHTML; });
     applyTranslation(zones, cachedTrans.texts);
     btn.textContent = '🇰🇷 Back to Korean';
     btn.disabled = false;
