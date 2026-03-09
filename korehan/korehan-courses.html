@@ -499,7 +499,7 @@
 <div class="course-hero">
   <div class="hero-pill"><span></span> Now Enrolling</div>
   <h1>Learn Korean<br><em>the way it's spoken.</em></h1>
-  <p>Live 1-on-1 and group classes taught through real Korean news stories — so you learn language <em>and</em> culture at once.</p>
+  <p>Improve your Korean writing with personalized homework feedback — based on real Korean news, reviewed by a native teacher.</p>
   <div class="hero-btns">
     <a href="#contact" class="btn-primary">✉️ Get in Touch</a>
     <a href="#pricing" class="btn-outline">See Pricing ↓</a>
@@ -514,19 +514,14 @@
       <div class="stat-lbl">Native Teacher</div>
     </div>
     <div class="stat-div"></div>
-    <div class="stat-item">
-      <div class="stat-num">4</div>
-      <div class="stat-lbl">Max Group Size</div>
-    </div>
-    <div class="stat-div"></div>
-    <div class="stat-item">
+<div class="stat-item">
       <div class="stat-num">60<span style="font-size:14px;font-weight:400">min</span></div>
       <div class="stat-lbl">Per Session</div>
     </div>
     <div class="stat-div"></div>
     <div class="stat-item">
-      <div class="stat-num">4</div>
-      <div class="stat-lbl">Skill Levels</div>
+      <div class="stat-num">✍️</div>
+      <div class="stat-lbl">Writing & Feedback</div>
     </div>
     <div class="stat-div"></div>
     <div class="stat-item">
@@ -544,70 +539,10 @@
     <div class="sec-title">Simple, honest pricing.</div>
     <div class="sec-sub">No hidden fees. Cancel anytime. First session always free.</div>
 
-    <div class="pricing-grid">
+    <div class="pricing-grid" style="display:flex;justify-content:center">
 
-      <!-- Group -->
-      <div class="price-card">
-        <div class="price-icon">👥</div>
-        <div class="price-name">Group Class</div>
-        <div class="price-amount">$9</div>
-        <div class="price-period">per hour · max 4 students</div>
-        <div class="price-divider"></div>
-        <ul class="price-features">
-          <li>Online (Zoom) or in-person — your choice</li>
-          <li>Up to 5 students per class</li>
-          <li>Structured around KoreHan news</li>
-          <li>Weekly homework + vocabulary list</li>
-          <li>KoreHan platform access included</li>
-        </ul>
-        <!-- 세션 팩 선택 -->
-        <div class="pack-selector" id="group-packs">
-          <div class="pack-label">Select a session pack:</div>
-          <div class="pack-btns">
-            <button class="pack-btn on" onclick="selectPack('group',1,9,this)">1 session<br><span class="pack-price">$9</span></button>
-            <button class="pack-btn" onclick="selectPack('group',10,81,this)">10 pack<br><span class="pack-price">$81 <span class="pack-save">−10%</span></span></button>
-            <button class="pack-btn" onclick="selectPack('group',20,144,this)">20 pack<br><span class="pack-price">$144 <span class="pack-save">−20%</span></span></button>
-            <button class="pack-btn" onclick="selectPack('group',40,234,this)">40 pack<br><span class="pack-price">$234 <span class="pack-save">−35%</span></span></button>
-          </div>
-          <div class="pack-detail" id="group-detail">1 session · $9 · no expiry</div>
-        </div>
-        <button class="price-cta price-cta-outline" onclick="goCheckout('group',1)" id="group-cta">Buy Now — $9 →</button>
-        <div class="price-note">Sessions never expire · use at your own pace</div>
-      </div>
-
-      <!-- 1-on-1 -->
-      <div class="price-card">
-        <div class="price-icon">🎯</div>
-        <div class="price-name">1-on-1 Private</div>
-        <div class="price-amount">$20</div>
-        <div class="price-period">per hour · fully personalized</div>
-        <div class="price-divider"></div>
-        <ul class="price-features">
-          <li>Online (Zoom) or in-person — your choice</li>
-          <li>Curriculum tailored to your goals</li>
-          <li>Flexible scheduling anytime</li>
-          <li>Speaking, reading & grammar focus</li>
-          <li>Detailed written feedback after each class</li>
-          <li>Priority booking & rescheduling</li>
-        </ul>
-        <!-- 세션 팩 선택 -->
-        <div class="pack-selector" id="solo-packs">
-          <div class="pack-label">Select a session pack:</div>
-          <div class="pack-btns">
-            <button class="pack-btn on" onclick="selectPack('solo',1,20,this)">1 session<br><span class="pack-price">$20</span></button>
-            <button class="pack-btn" onclick="selectPack('solo',10,180,this)">10 pack<br><span class="pack-price">$180 <span class="pack-save">−10%</span></span></button>
-            <button class="pack-btn" onclick="selectPack('solo',20,320,this)">20 pack<br><span class="pack-price">$320 <span class="pack-save">−20%</span></span></button>
-            <button class="pack-btn" onclick="selectPack('solo',40,520,this)">40 pack<br><span class="pack-price">$520 <span class="pack-save">−35%</span></span></button>
-          </div>
-          <div class="pack-detail" id="solo-detail">1 session · $20 · no expiry</div>
-        </div>
-        <button class="price-cta price-cta-outline" onclick="goCheckout('solo',1)" id="solo-cta">Buy Now — $20 →</button>
-        <div class="price-note">Sessions never expire · use at your own pace</div>
-      </div>
-
-      <!-- Writing (featured) -->
-      <div class="price-card featured">
-        <div class="featured-badge">⭐ Most Popular</div>
+<!-- Writing (featured) -->
+      <div class="price-card" style="max-width:480px;margin:0 auto">
         <div class="price-icon">✍️</div>
         <div class="price-name">Writing + Homework</div>
         <div class="price-amount">$45</div>

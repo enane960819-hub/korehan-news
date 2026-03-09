@@ -285,9 +285,26 @@ var currentAnswer = '';
 
 // Supabase 헬퍼
 function getSupaHeaders() {
+  // 로그인 상태면 유저 JWT 토큰 사용 (RLS 통과), 아니면 anon key
+  var token = SUPA_KEY;
+  try {
+    var raw = localStorage.getItem('sb-samghztrdvtxmrmawneu-auth-token');
+    if (!raw) {
+      // Supabase v2 key format
+      for (var k of Object.keys(localStorage)) {
+        if (k.includes('supabase') && k.includes('auth')) {
+          raw = localStorage.getItem(k); break;
+        }
+      }
+    }
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      if (parsed && parsed.access_token) token = parsed.access_token;
+    }
+  } catch(e) {}
   return {
     'apikey': SUPA_KEY,
-    'Authorization': 'Bearer ' + SUPA_KEY,
+    'Authorization': 'Bearer ' + token,
     'Content-Type': 'application/json'
   };
 }
