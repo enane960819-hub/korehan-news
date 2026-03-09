@@ -1590,55 +1590,93 @@ async function runAutoGenerate(){
       DB.unshift(newArticle);
       refreshCounts();
 
-      // ── 2단계: 번역 + 단어 + 문법 + 퀴즈를 필드별로 따로 생성해서 캐시 저장 ──
-      document.getElementById(rowId+'-status').innerHTML = '🧠 번역/단어/문법/퀴즈 생성 중…';
+      // ── 2단계: 번역/단어/문법/퀴즈를 각각 별도 호출로 캐시 저장 ──
+      // (한 번에 생성하면 토큰 초과로 JSON 잘림 → 4개로 분리)
+      document.getElementById(rowId+'-status').innerHTML = '🧠 캐시 생성 중 (1/4) 번역…';
 
-      // 기사 본문을 user 메시지로 분리 — JSON 오염 방지
-      const articleContext = 'Title: ' + article.title + '\nLevel: ' + diffInfo.level + '\nBody:\n' + article.body;
+      const artBody = article.body || '';
+      const artTitle = article.title || '';
+      const artLevel = diffInfo.level;
+      const cacheRow = { article_id: String(articleId), updated_at: new Date().toISOString() };
+      const sb2 = getSb();
 
-      const cacheInstruction = 'Given the Korean news article above, generate a JSON object with EXACTLY these 4 keys:\n'
-        + '1. "translation": array of strings — translate each paragraph (separated by blank lines) into natural English\n'
-        + '2. "vocab": array of 8-12 objects — {"word":"Korean","reading":"romanization","meaning":"English","example":"Korean sentence","example_en":"English"}\n'
-        + '3. "grammar": {"patterns":[{"name":"KO+romanization","level":"Beginner|Intermediate|Advanced","exp":"explanation","ex_ko":"sentence with <strong>grammar</strong>","ex_en":"translation"}]}\n'
-        + '4. "quiz": {"questions":[{"sentence":"Korean with _____","sentence_en":"English with _____","blank":"answer","blank_en":"meaning","type":"vocab|grammar","choices":["correct","w1","w2","w3"],"hint":"hint"}]}\n'
-        + 'Output ONLY the raw JSON object. No markdown, no backticks, no explanation.';
+      function extractJSON(text) {
+        const s = text.indexOf('{'), e = text.lastIndexOf('}');
+        if (s < 0 || e <= s) { const a = text.indexOf('['), b = text.lastIndexOf(']'); if(a>=0&&b>a) return JSON.parse(text.slice(a,b+1)); throw new Error('no JSON'); }
+        return JSON.parse(text.slice(s, e + 1));
+      }
 
-      try {
-        const cacheRes = await callClaude({
-          feature: 'generate',
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4000,
-          messages: [
-            { role: 'user', content: articleContext },
-            { role: 'assistant', content: 'I have read the article. Now I will generate the requested JSON.' },
-            { role: 'user', content: cacheInstruction }
+      async function cacheCall(userMsg, assistantPrefill, max_tokens) {
+        const r = await callClaude({ feature:'generate', model:'claude-haiku-4-5-20251001', max_tokens,
+          messages:[
+            {role:'user', content: 'Article title: ' + artTitle + '\nLevel: ' + artLevel + '\nBody:\n' + artBody},
+            {role:'assistant', content:'Understood.'},
+            {role:'user', content: userMsg},
+            ...(assistantPrefill ? [{role:'assistant', content: assistantPrefill}] : [])
           ]
         });
-        const cacheText = (cacheRes.content && cacheRes.content[0] && cacheRes.content[0].text) || '';
-        // JSON 추출: 첫 { 부터 마지막 } 까지
-        const jS = cacheText.indexOf('{');
-        const jE = cacheText.lastIndexOf('}');
-        if (jS < 0 || jE <= jS) throw new Error('JSON not found in response');
-        const cacheData = JSON.parse(cacheText.slice(jS, jE + 1));
-
-        const sb = getSb();
-        if (sb && cacheData) {
-          const cacheRow = { article_id: String(articleId), updated_at: new Date().toISOString() };
-          if (cacheData.translation) cacheRow.translation = JSON.stringify({ texts: Array.isArray(cacheData.translation) ? cacheData.translation : [cacheData.translation] });
-          if (cacheData.vocab)       cacheRow.vocab       = JSON.stringify(cacheData.vocab);
-          if (cacheData.grammar)     cacheRow.grammar     = JSON.stringify(cacheData.grammar);
-          if (cacheData.quiz)        cacheRow.quiz        = JSON.stringify(cacheData.quiz);
-          await sb.from('article_cache').upsert(cacheRow, { onConflict: 'article_id' });
-        }
-        document.getElementById(rowId+'-status').innerHTML =
-          '<span style="color:#28a745;font-weight:700">✅ 완료 (캐시 저장됨) — </span>'
-          +"<a href=\"#\" onclick=\"openModal('"+articleId+"')\" style=\"color:var(--a);font-weight:700\">검토 후 발행하기 →</a>";
-      } catch(cacheErr) {
-        console.warn('cache generation failed:', cacheErr);
-        document.getElementById(rowId+'-status').innerHTML =
-          '<span style="color:#28a745;font-weight:700">✅ 완료 (캐시 생성 실패: ' + cacheErr.message + ') — </span>'
-          +"<a href=\"#\" onclick=\"openModal('"+articleId+"')\" style=\"color:var(--a);font-weight:700\">검토 후 발행하기 →</a>";
+        return (r.content && r.content[0] && r.content[0].text) || '';
       }
+
+      let cacheSuccess = 0;
+      try {
+        // 1. 번역
+        const t = await cacheCall(
+          'Translate each paragraph of the article body into natural English. Return ONLY a JSON array of strings, one per paragraph. Example: ["para1","para2"]',
+          '[', 600
+        );
+        try { cacheRow.translation = JSON.stringify({ texts: JSON.parse('[' + t.slice(t.indexOf('[')+1)) }); } catch(e) {
+          try { const arr = extractJSON(t); cacheRow.translation = JSON.stringify({ texts: Array.isArray(arr)?arr:[arr] }); } catch(e2){}
+        }
+        cacheSuccess++;
+        document.getElementById(rowId+'-status').innerHTML = '🧠 캐시 생성 중 (2/4) 단어…';
+      } catch(e) { console.warn('translation cache failed', e); }
+
+      try {
+        // 2. 단어
+        const v = await cacheCall(
+          'List 8-10 key vocabulary words from this article. Return ONLY a JSON array. Each item: {"word":"Korean","reading":"romanization","meaning":"English meaning","example":"Korean example sentence","example_en":"English translation"}',
+          '[{', 1000
+        );
+        try { cacheRow.vocab = JSON.stringify(JSON.parse('[{' + v.slice(v.indexOf('[{')+2))); } catch(e) {
+          try { cacheRow.vocab = JSON.stringify(extractJSON(v)); } catch(e2){}
+        }
+        cacheSuccess++;
+        document.getElementById(rowId+'-status').innerHTML = '🧠 캐시 생성 중 (3/4) 문법…';
+      } catch(e) { console.warn('vocab cache failed', e); }
+
+      try {
+        // 3. 문법
+        const g = await cacheCall(
+          'Find 3-4 grammar patterns in this article. Return ONLY: {"patterns":[{"name":"KO name + romanization","level":"Beginner|Intermediate|Advanced","exp":"English explanation","ex_ko":"sentence from article with <strong>grammar point</strong>","ex_en":"English translation"}]}',
+          '{"patterns":[{', 900
+        );
+        try { cacheRow.grammar = JSON.stringify(extractJSON('{"patterns":[{' + g.slice(g.indexOf('{"patterns":[{')+14))); } catch(e) {
+          try { cacheRow.grammar = JSON.stringify(extractJSON(g)); } catch(e2){}
+        }
+        cacheSuccess++;
+        document.getElementById(rowId+'-status').innerHTML = '🧠 캐시 생성 중 (4/4) 퀴즈…';
+      } catch(e) { console.warn('grammar cache failed', e); }
+
+      try {
+        // 4. 퀴즈
+        const q = await cacheCall(
+          'Create 6 fill-in-the-blank questions from this article. Return ONLY: {"questions":[{"sentence":"Korean with _____","sentence_en":"English with _____","blank":"answer","blank_en":"English meaning","type":"vocab|grammar","choices":["correct","wrong1","wrong2","wrong3"],"hint":"brief hint"}]}',
+          '{"questions":[{', 1200
+        );
+        try { cacheRow.quiz = JSON.stringify(extractJSON('{"questions":[{' + q.slice(q.indexOf('{"questions":[{')+15))); } catch(e) {
+          try { cacheRow.quiz = JSON.stringify(extractJSON(q)); } catch(e2){}
+        }
+        cacheSuccess++;
+      } catch(e) { console.warn('quiz cache failed', e); }
+
+      if (sb2 && cacheSuccess > 0) {
+        try { await sb2.from('article_cache').upsert(cacheRow, { onConflict: 'article_id' }); } catch(e) { console.warn('upsert failed',e); }
+      }
+
+      document.getElementById(rowId+'-status').innerHTML =
+        '<span style="color:#28a745;font-weight:700">✅ 완료 (캐시 ' + cacheSuccess + '/4) — </span>'
+        +"<a href=\"#\" onclick=\"openModal('"+articleId+"')\" style=\"color:var(--a);font-weight:700\">검토 후 발행하기 →</a>";
 
     } catch(err) {
       document.getElementById(rowId+'-status').innerHTML =
