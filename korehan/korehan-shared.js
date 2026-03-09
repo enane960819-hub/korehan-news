@@ -31,6 +31,36 @@ var supaUser = null;
 // → API 키가 브라우저에 절대 노출되지 않음
 const CLAUDE_PROXY_URL = SUPA_URL + '/functions/v1/claude-proxy';
 
+
+// ══ ARTICLE CACHE (AI 비용 절감) ══════════════════════════════════════════════
+// 기사 생성 시 번역/단어/문법/퀴즈를 한 번에 생성해서 DB에 저장
+// 프론트는 항상 캐시 먼저 확인 → 없을 때만 AI 호출
+
+async function getCachedAIContent(articleId, field) {
+  // field: 'translation' | 'vocab' | 'grammar' | 'quiz'
+  var sb = getSupa();
+  if (!sb || !articleId) return null;
+  try {
+    var res = await sb.from('article_cache')
+      .select(field)
+      .eq('article_id', String(articleId))
+      .maybeSingle();
+    if (res.error || !res.data) return null;
+    var val = res.data[field];
+    return val ? JSON.parse(val) : null;
+  } catch(e) { return null; }
+}
+
+async function saveCachedAIContent(articleId, field, value) {
+  var sb = getSupa();
+  if (!sb || !articleId) return;
+  try {
+    var obj = { article_id: String(articleId), updated_at: new Date().toISOString() };
+    obj[field] = JSON.stringify(value);
+    await sb.from('article_cache').upsert(obj, { onConflict: 'article_id' });
+  } catch(e) { console.warn('cache save failed', e); }
+}
+
 async function callClaude({ feature, model, max_tokens, messages }) {
   var sb = getSupa();
   if (!sb) throw new Error('Supabase not initialized');
@@ -1130,19 +1160,11 @@ function renderArticlePage() {
   var a      = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
 
   if (!a) {
-    wrap.innerHTML = '<div style="padding:48px;text-align:center">'
-      + '<div style="font-size:40px;margin-bottom:14px">⏳</div>'
-      + '<div style="font-size:15px;color:#555;font-weight:600">기사를 불러오는 중...</div>'
+    wrap.innerHTML = '<div style="padding:30px">'
+      + '<a href="index.html" style="color:#2255a4;text-decoration:none">← Back to Home</a>'
+      + '<h1 style="margin-top:16px">Article not found</h1>'
+      + '<p style="color:#666;margin-top:8px">This article does not exist or the link is invalid.</p>'
       + '</div>';
-    loadArticlesFromDB().then(function() {
-      var retry = getCachedArticles().find(function(x){ return String(x.id) === String(id); });
-      if (retry) { renderArticlePage(); return; }
-      wrap.innerHTML = '<div style="padding:30px">'
-        + '<a href="index.html" style="color:#2255a4;text-decoration:none">← Back to Home</a>'
-        + '<h1 style="margin-top:16px">기사를 찾을 수 없어요</h1>'
-        + '<p style="color:#666;margin-top:8px">삭제되었거나 잘못된 링크예요. <a href="index.html" style="color:#2255a4">홈으로 돌아가기</a></p>'
-        + '</div>';
-    });
     return;
   }
 
@@ -1410,6 +1432,14 @@ async function loadFillExercise(container) {
 
   el.innerHTML = renderFillLoading();
 
+  // ── DB 캐시 먼저 확인 ──
+  var cachedQuiz = await getCachedAIContent(id, 'quiz');
+  if (cachedQuiz && cachedQuiz.questions && cachedQuiz.questions.length) {
+    _fillLoaded = true;
+    renderFillQuestions(el, cachedQuiz.questions, a);
+    return;
+  }
+
   if (!supaUser) {
     el.innerHTML = renderFillNoKey();
     return;
@@ -1457,6 +1487,8 @@ Respond ONLY with this JSON (no markdown, no extra text):
     var clean = raw.replace(/```json|```/g, '').trim();
     var parsed = JSON.parse(clean);
     _fillLoaded = true;
+    // DB에 저장
+    saveCachedAIContent(id, 'quiz', { questions: parsed.questions });
     renderFillQuestions(el, parsed.questions, a);
   } catch(e) {
     el.innerHTML = '<div style="padding:24px;text-align:center;color:#e53e3e">⚠️ AI 생성 실패. 다시 시도해주세요.<br><button onclick="loadFillExercise()" style="margin-top:12px;padding:8px 20px;background:#2255a4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">🔄 Retry</button></div>';
@@ -1735,8 +1767,6 @@ async function loadGrammarGuide() {
   var params = new URLSearchParams(window.location.search);
   var id = params.get('id');
 
-  // 같은 기사 + 이미 AI 분석 완료된 경우만 재로드 방지
-  // (로그인 상태 변경 시 재시도 허용 - dataset에 'ai' 표시)
   if (el.dataset.loadedId === String(id) && el.dataset.source === 'ai') return;
   el.dataset.loadedId = String(id);
   el.dataset.source = '';
@@ -1744,6 +1774,22 @@ async function loadGrammarGuide() {
   var all = getCachedArticles();
   var a = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
   if (!a) { el.innerHTML = '<p style="color:#aaa;padding:20px 0;text-align:center">Article not found.</p>'; return; }
+
+  el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center">✨ 문법 가이드 불러오는 중...</div>';
+
+  // ── DB 캐시 먼저 확인 ──
+  var cached = await getCachedAIContent(id, 'grammar');
+  if (cached && cached.patterns && cached.patterns.length) {
+    renderGrammarGuideHTML(el, cached.patterns);
+    el.dataset.source = 'ai';
+    return;
+  }
+
+  // 로그인 필요
+  if (!supaUser) {
+    el.innerHTML = '<p style="color:#aaa;padding:20px 0;text-align:center">🔒 <a href="#" onclick="openAuthModal()">로그인</a> 후 이용 가능해요.</p>';
+    return;
+  }
 
   el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center">✨ Analyzing grammar with AI...</div>';
 
@@ -1774,18 +1820,10 @@ async function loadGrammarGuide() {
     if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.slice(jsonStart, jsonEnd + 1);
     var parsed = JSON.parse(clean);
     var guides = parsed.patterns || [];
-    el.dataset.source = 'ai'; // AI 분석 성공 표시 → 캐시 허용
-
-    el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">✨ Grammar patterns found in this article:</p>'
-      + guides.map(function(g){
-        return '<div class="grammar-point">'
-          + '<div class="grammar-name">' + g.name
-          + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
-          + '</div>'
-          + '<div class="grammar-explanation">' + g.exp + '</div>'
-          + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
-          + '</div>';
-      }).join('');
+    el.dataset.source = 'ai';
+    // DB에 저장 (다음 사용자는 AI 호출 없이 바로 읽음)
+    saveCachedAIContent(id, 'grammar', { patterns: guides });
+    renderGrammarGuideHTML(el, guides);
   } catch(e) {
     if (e.message === 'Not signed in') {
       el.dataset.source = ''; // 로그인 후 재시도 허용
@@ -1799,6 +1837,20 @@ async function loadGrammarGuide() {
       renderStaticGrammar(el, a);
     }
   }
+}
+
+
+function renderGrammarGuideHTML(el, guides) {
+  el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">✨ Grammar patterns found in this article:</p>'
+    + guides.map(function(g){
+      return '<div class="grammar-point">'
+        + '<div class="grammar-name">' + g.name
+        + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
+        + '</div>'
+        + '<div class="grammar-explanation">' + g.exp + '</div>'
+        + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
+        + '</div>';
+    }).join('');
 }
 
 function renderStaticGrammar(el, a) {
@@ -1831,20 +1883,40 @@ function renderStaticGrammar(el, a) {
 function renderArticleVocab(a) {
   var el = document.getElementById('art-vocab-list');
   if (!el) return;
-  var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
-  var found = [];
-  Object.keys(VOCAB).forEach(function(k) {
-    if (text.indexOf(k) !== -1 && found.length < 8) found.push(k);
+  var id = a.id;
+  // DB 캐시에서 AI 생성 단어 목록 시도
+  getCachedAIContent(id, 'vocab').then(function(cached) {
+    if (cached && Array.isArray(cached) && cached.length) {
+      el.innerHTML = cached.map(function(w) {
+        return '<div class="art-vocab-item">'
+          + '<span class="art-vocab-ko">' + (w.word||'') + '</span>'
+          + '<span class="art-vocab-rom">' + (w.reading||'') + '</span>'
+          + '<span class="art-vocab-en">' + (w.meaning||'') + '</span>'
+          + ttsBtn(w.word||'')
+          + '</div>';
+      }).join('');
+      return;
+    }
+    // fallback: 기존 VOCAB 딕셔너리
+    var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
+    var found = [];
+    Object.keys(VOCAB).forEach(function(k) {
+      if (text.indexOf(k) !== -1 && found.length < 8) found.push(k);
+    });
+    if (!found.length) {
+      var box = el.closest ? el.closest('.art-vocab-box') : null;
+      if (box) box.style.display = 'none';
+      return;
+    }
+    el.innerHTML = found.map(function(k) {
+      return '<div class="art-vocab-item">'
+        + '<span class="art-vocab-ko">' + k + '</span>'
+        + '<span class="art-vocab-rom">' + VOCAB[k].rom + '</span>'
+        + '<span class="art-vocab-en">' + VOCAB[k].en + '</span>'
+        + ttsBtn(k)
+        + '</div>';
+    }).join('');
   });
-  if (!found.length) { el.closest('.art-vocab-box').style.display = 'none'; return; }
-  el.innerHTML = found.map(function(k) {
-    return '<div class="art-vocab-item">'
-      + '<span class="art-vocab-ko">' + k + '</span>'
-      + '<span class="art-vocab-rom">' + VOCAB[k].rom + '</span>'
-      + '<span class="art-vocab-en">' + VOCAB[k].en + '</span>'
-      + ttsBtn(k)
-      + '</div>';
-  }).join('');
 }
 
 // ── 기사 검색 ─────────────────────────────────────────────────
@@ -1932,6 +2004,18 @@ async function toggleTranslate() {
     return;
   }
 
+  // ── DB 캐시 확인 ──
+  var cachedTrans = await getCachedAIContent(id, 'translation');
+  if (cachedTrans && cachedTrans.texts && cachedTrans.texts.length) {
+    translateCache[cacheKey] = cachedTrans.texts;
+    applyTranslation(zones, cachedTrans.texts);
+    btn.textContent = '🇰🇷 Back to Korean';
+    btn.disabled = false;
+    btn.classList.add('active');
+    translateActive = true;
+    return;
+  }
+
   // 번역할 텍스트 수집 - 원본 텍스트만 추출
   var texts = [];
   zones.forEach(function(z) {
@@ -1972,6 +2056,7 @@ async function toggleTranslate() {
     if (!Array.isArray(translations)) throw new Error('not array');
 
     translateCache[cacheKey] = translations;
+    saveCachedAIContent(id, 'translation', { texts: translations });
     applyTranslation(zones, translations);
     translateActive = true;
     btn.textContent = '🇰🇷 Back to Korean';
@@ -2277,19 +2362,38 @@ function renderHeader() {
       }).join('')
     + '<div class="kh-search-wrap"><input type="text" id="kh-search-input" class="kh-search-input" placeholder="🔍 Search articles..." onkeydown="if(event.key===\'Enter\')doSearch(this.value)"><button class="kh-search-btn" onclick="doSearch(document.getElementById(\'kh-search-input\').value)">Search</button></div>'
     + '</nav></div></div>'
-    // Breaking news ticker - DB 기사 기반
-    + (function() {
-        var articles = getCachedArticles().filter(function(a){ return a.status === 'published'; });
-        var items = articles.slice(0, 8);
-        // 루프 위해 2번 반복
-        var html = (items.concat(items)).map(function(a){
-          return '<a class="brk-item" href="korehan-article.html?id=' + a.id + '">' + a.title + '</a><span class="brk-sep">•</span>';
-        }).join('');
-        return '<div class="kh-breaking">'
-          + '<div class="brk-label"><span class="brk-badge">⚡</span>&nbsp;Breaking</div>'
-          + '<div class="brk-track-wrap"><div class="brk-track">' + html + '</div></div>'
-          + '</div>';
-      })()
+}
+
+
+// ── Breaking News Ticker ─────────────────────────────────────────────────────
+function injectBreakingTicker() {
+  var headerEl = document.getElementById('kh-header');
+  if (!headerEl) return;
+  // 이미 있으면 스킵
+  if (document.getElementById('kh-breaking-ticker')) return;
+
+  var articles = getCachedArticles().filter(function(a) {
+    return a.status === 'published' && a.breaking;
+  });
+  // breaking 기사 없으면 최근 8개 사용
+  if (!articles.length) {
+    articles = getCachedArticles().filter(function(a){ return a.status === 'published'; }).slice(0, 8);
+  }
+  if (!articles.length) return;
+
+  var items = articles.slice(0, 8);
+  var html = (items.concat(items)).map(function(a) {
+    return '<a class="brk-item" href="korehan-article.html?id=' + a.id + '">' + a.title + '</a>'
+         + '<span class="brk-sep">·</span>';
+  }).join('');
+
+  var ticker = document.createElement('div');
+  ticker.id = 'kh-breaking-ticker';
+  ticker.className = 'kh-breaking';
+  ticker.innerHTML = '<div class="brk-label"><span class="brk-badge">⚡</span>&nbsp;Breaking</div>'
+    + '<div class="brk-track-wrap"><div class="brk-track">' + html + '</div></div>';
+
+  headerEl.insertAdjacentElement('afterend', ticker);
 }
 
 function renderFooter() {
@@ -2488,7 +2592,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // 세션 먼저 확인 후 나머지 로드 (로그인 상태가 헤더 렌더 전에 준비되도록)
   await checkSession();
-  if (supaUser) { loadBadgesFromDB(); }
 
   var page     = window.location.pathname.split('/').pop() || 'index.html';
   var pageBase = page.replace(/\.html$/, '');
@@ -2498,6 +2601,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   if (footerEl) footerEl.innerHTML = renderFooter();
   applySiteConfigToPage();
+  injectBreakingTicker();
 
   if (!pageBase || pageBase === 'index') {
     renderHomePage();
@@ -2544,39 +2648,7 @@ function addXP(amt)   {
 }
 
 // ── 헬퍼 ───────────────────────────────────────────────────────────────────
-// 배지 Supabase 저장/로드 (localStorage는 fallback)
-var _badgesCache = null;
-
-async function loadBadgesFromDB() {
-  var sb = getSupa();
-  if (!sb || !supaUser) { _badgesCache = lsGet(K_BADGES, {}); return; }
-  try {
-    var res = await sb.from('user_badges').select('badge_id,earned_at').eq('user_id', supaUser.id);
-    if (res.error) throw res.error;
-    var obj = {};
-    (res.data || []).forEach(function(r){ obj[r.badge_id] = { earnedAt: r.earned_at }; });
-    _badgesCache = obj;
-    lsSet(K_BADGES, obj); // sync to localStorage too
-  } catch(e) {
-    _badgesCache = lsGet(K_BADGES, {});
-  }
-}
-
-function getEarnedBadges() {
-  if (_badgesCache !== null) return _badgesCache;
-  return lsGet(K_BADGES, {});
-}
-
-async function saveBadgeToDB(badgeId) {
-  var sb = getSupa();
-  if (!sb || !supaUser) return;
-  try {
-    await sb.from('user_badges').upsert(
-      { user_id: supaUser.id, badge_id: badgeId, earned_at: new Date().toISOString() },
-      { onConflict: 'user_id,badge_id', ignoreDuplicates: true }
-    );
-  } catch(e) {}
-}
+function getEarnedBadges() { return lsGet(K_BADGES, {}); }
 
 function getTotalArticlesRead() {
   var log = lsGet('kh_read_log', {});
@@ -2816,11 +2888,7 @@ function checkBadges(event, payload) {
 
   if (newBadges.length) {
     lsSet(K_BADGES, earned);
-    _badgesCache = earned;
-    newBadges.forEach(function(b){
-      showBadgeToast(b);
-      saveBadgeToDB(b.id);
-    });
+    newBadges.forEach(function(b){ showBadgeToast(b); });
   }
   return newBadges;
 }
