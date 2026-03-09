@@ -166,6 +166,7 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn on" id="sb-all" onclick="goList()"><span class="ico">📰</span>All Articles<span class="pill" id="p-all">0</span></button>
     <button class="sb-btn" id="sb-new" onclick="openModal(null)"><span class="ico">✏️</span>New Article</button>
     <button class="sb-btn" onclick="goAutoArticle()"><span class="ico">🤖</span>AI Auto-Generate</button>
+    <button class="sb-btn" id="sb-cache" onclick="goAICache()"><span class="ico">🧠</span>AI Cache 관리</button>
 
     <div class="sb-lbl">By Section</div>
     <button class="sb-btn" onclick="goFilter('사회')"> <span class="ico">🏙️</span>사회 Society <span class="pill" id="p-사회">0</span></button>
@@ -1690,6 +1691,145 @@ async function runAutoGenerate(){
 function today_date(){
   return new Date().toISOString().split('T')[0];
 }
+
+// ══ AI CACHE 관리 ════════════════════════════════════════════
+async function goAICache() {
+  setSbOn('sb-cache');
+  const main = document.getElementById('main');
+  main.innerHTML = '<div class="pg-hd"><div><h1>🧠 AI Cache 관리</h1><p>각 기사의 번역·단어·문법·퀴즈 캐시를 확인하고 생성하세요.</p></div></div>'
+    + '<div id="cache-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 불러오는 중…</div></div>';
+
+  // DB에서 article_cache 전체 로드
+  let existingCache = {};
+  try {
+    const cr = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?select=article_id,translation,vocab,grammar,quiz', {
+      headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
+    });
+    const cdata = await cr.json();
+    if (Array.isArray(cdata)) cdata.forEach(function(r){ existingCache[r.article_id] = r; });
+  } catch(e) { console.warn('cache load failed', e); }
+
+  const articles = DB.filter(function(a){ return a.status === 'published'; });
+  const wrap = document.getElementById('cache-wrap');
+
+  if (!articles.length) { wrap.innerHTML = '<p style="padding:24px;color:var(--gr)">발행된 기사가 없어요.</p>'; return; }
+
+  const rows = articles.map(function(a) {
+    const c = existingCache[String(a.id)] || {};
+    const hasT = !!(c.translation), hasV = !!(c.vocab), hasG = !!(c.grammar), hasQ = !!(c.quiz);
+    const allDone = hasT && hasV && hasG && hasQ;
+    const badge = function(ok, label) {
+      return '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-right:4px;background:' + (ok?'#dcfce7':'#fee2e2') + ';color:' + (ok?'#166534':'#991b1b') + '">' + (ok?'✓':'✗') + ' ' + label + '</span>';
+    };
+    return '<div id="cache-row-' + a.id + '" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fff;border:1px solid var(--bo);border-radius:10px;margin-bottom:8px;flex-wrap:wrap">'
+      + '<div style="flex:1;min-width:200px">'
+      +   '<div style="font-weight:700;font-size:14px;margin-bottom:4px">' + (a.title||'(제목없음)') + '</div>'
+      +   '<div style="font-size:12px;color:var(--gr)">' + (a.section||'') + ' · ' + (a.date||'') + ' · <b>' + (a.level||'') + '</b></div>'
+      + '</div>'
+      + '<div style="display:flex;gap:4px;flex-wrap:wrap">' + badge(hasT,'번역') + badge(hasV,'단어') + badge(hasG,'문법') + badge(hasQ,'퀴즈') + '</div>'
+      + (allDone
+        ? '<span style="color:#166534;font-weight:700;font-size:13px">✅ 완료</span>'
+        : '<button class="btn btn-g" style="font-size:13px;padding:7px 16px" onclick="generateCacheForArticle(\"' + a.id + '\")">'
+          + (Object.keys(c).length ? '🔄 재생성' : '🧠 생성') + '</button>')
+      + '<div id="cache-row-' + a.id + '-status" style="width:100%;font-size:12px;color:var(--gr);margin-top:4px;display:none"></div>'
+      + '</div>';
+  }).join('');
+
+  wrap.innerHTML = '<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center">'
+    + '<span style="font-size:13px;color:var(--gr)">발행 기사 <b>' + articles.length + '</b>개 · 캐시 완료 <b>' + Object.values(existingCache).filter(function(c){return c.translation&&c.vocab&&c.grammar&&c.quiz;}).length + '</b>개</span>'
+    + '<button class="btn" style="font-size:12px;padding:6px 14px;background:#f1f5f9;color:#374151;border:1px solid var(--bo)" onclick="goAICache()">🔄 새로고침</button>'
+    + '</div>' + rows;
+}
+
+async function generateCacheForArticle(articleId) {
+  const a = DB.find(function(x){ return String(x.id) === String(articleId); });
+  if (!a) return;
+  const statusEl = document.getElementById('cache-row-' + articleId + '-status');
+  const btn = document.querySelector('#cache-row-' + articleId + ' button');
+  if (btn) btn.disabled = true;
+  if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '⏳ 시작 중…'; }
+
+  const _body  = a.body  || '';
+  const _title = a.title || '';
+  const _level = a.level || 'Intermediate';
+  const _row   = { article_id: String(articleId), updated_at: new Date().toISOString() };
+  let   _ok    = 0;
+
+  async function _call(instruction, max_tok) {
+    const r = await callClaude({
+      feature: 'generate',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: max_tok,
+      messages: [{ role: 'user', content: 'Korean article (level: ' + _level + ')\nTitle: ' + _title + '\n\n' + _body.slice(0, 1200) + '\n\n---\n' + instruction }]
+    });
+    return (r.content && r.content[0] && r.content[0].text) || '';
+  }
+
+  function _json(text) {
+    const ai = text.indexOf('['), bi = text.lastIndexOf(']');
+    const oi = text.indexOf('{'), ei = text.lastIndexOf('}');
+    if (ai >= 0 && bi > ai && (oi < 0 || ai < oi)) return JSON.parse(text.slice(ai, bi+1));
+    if (oi >= 0 && ei > oi) return JSON.parse(text.slice(oi, ei+1));
+    throw new Error('no JSON');
+  }
+
+  try {
+    if (statusEl) statusEl.textContent = '🧠 (1/4) 번역 중…';
+    const t = await _call('Translate each paragraph into English. Return ONLY a JSON array of strings, one per paragraph. No other text.', 800);
+    const ta = _json(t);
+    _row.translation = JSON.stringify({ texts: Array.isArray(ta) ? ta : [ta] });
+    _ok++;
+  } catch(e) { console.warn('translation failed', e.message); }
+
+  try {
+    if (statusEl) statusEl.textContent = '🧠 (2/4) 단어 중…';
+    const v = await _call('List 8 key vocabulary words. Return ONLY a JSON array. Each: {word,reading,meaning}. No other text.', 800);
+    _row.vocab = JSON.stringify(_json(v));
+    _ok++;
+  } catch(e) { console.warn('vocab failed', e.message); }
+
+  try {
+    if (statusEl) statusEl.textContent = '🧠 (3/4) 문법 중…';
+    const g = await _call('Find 3 grammar patterns. Return ONLY: {"patterns":[{"name":"KO+romanization","level":"Beginner|Intermediate|Advanced","exp":"explanation","ex_ko":"sentence","ex_en":"translation"}]}. No other text.', 900);
+    _row.grammar = JSON.stringify(_json(g));
+    _ok++;
+  } catch(e) { console.warn('grammar failed', e.message); }
+
+  try {
+    if (statusEl) statusEl.textContent = '🧠 (4/4) 퀴즈 중…';
+    const q = await _call('Create 5 fill-in-the-blank questions. Return ONLY: {"questions":[{"sentence":"Korean with _____","sentence_en":"English with _____","blank":"answer","blank_en":"meaning","choices":["correct","w1","w2","w3"]}]}. No other text.', 1200);
+    _row.quiz = JSON.stringify(_json(q));
+    _ok++;
+  } catch(e) { console.warn('quiz failed', e.message); }
+
+  if (_ok > 0) {
+    try {
+      const _res = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?on_conflict=article_id', {
+        method: 'POST',
+        headers: {
+          'apikey': SUPA_SERVICE_KEY,
+          'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates,return=minimal'
+        },
+        body: JSON.stringify(_row)
+      });
+      if (!_res.ok) {
+        const errText = await _res.text();
+        console.warn('cache save failed:', _res.status, errText);
+        if (statusEl) statusEl.textContent = '❌ DB 저장 실패: ' + _res.status + ' ' + errText;
+        return;
+      }
+    } catch(e) {
+      if (statusEl) statusEl.textContent = '❌ 네트워크 오류: ' + e.message;
+      return;
+    }
+  }
+
+  if (statusEl) statusEl.textContent = '✅ 완료 (' + _ok + '/4) — 페이지 새로고침하면 상태 업데이트됩니다.';
+  setTimeout(function(){ goAICache(); }, 1500);
+}
+
 
 // ══ COMMENTS ADMIN ════════════════════════════════════════════
 function goComments() {
