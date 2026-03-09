@@ -318,6 +318,7 @@ const K_WORDBANK   = 'korehan_wordbank';
 const K_SENTENCES  = 'korehan_sentences';
 const SUPA_URL_ADMIN = 'https://samghztrdvtxmrmawneu.supabase.co';
 const SUPA_KEY_ADMIN = 'sb_publishable_HGL3s1r-P4PDkjQ9mjPxug_yqlgldyU';
+const SUPA_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjQzNDc1MiwiZXhwIjoyMDg4MDEwNzUyfQ.npCvblrbeRiqwW76_23kYznrRuFHIKCD24JN3da--3c';
 function supaAdminGet(path){
   return fetch(SUPA_URL_ADMIN + path, {
     headers: {
@@ -1654,9 +1655,22 @@ async function runAutoGenerate(){
         _ok++;
       } catch(e) { console.warn('quiz failed', e.message); }
 
-      if (_sb && _ok > 0) {
+      if (_ok > 0) {
         try {
-          await _sb.from('article_cache').upsert(_row, { onConflict: 'article_id' });
+          const _res = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?on_conflict=article_id', {
+            method: 'POST',
+            headers: {
+              'apikey': SUPA_SERVICE_KEY,
+              'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
+              'Content-Type': 'application/json',
+              'Prefer': 'resolution=merge-duplicates,return=minimal'
+            },
+            body: JSON.stringify(_row)
+          });
+          if (!_res.ok) {
+            const _err = await _res.text();
+            console.warn('cache upsert failed:', _res.status, _err);
+          }
         } catch(e) { console.warn('upsert failed', e); }
       }
 
