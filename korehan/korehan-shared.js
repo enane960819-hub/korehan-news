@@ -478,27 +478,31 @@ async function checkSession() {
     supaUser = data.session.user;
   }
 
-  // 세션 변화 감지
+  // 세션 변화 감지 — 모든 이벤트(SIGNED_IN, INITIAL_SESSION 등) 처리
   sb.auth.onAuthStateChange(function(event, session) {
+    var prevUser = supaUser;
+    supaUser = (session && session.user) ? session.user : null;
+
     if (event === 'SIGNED_OUT') {
       supaUser = null;
       updateAuthUI();
       updateCommentForm();
-    } else if (event === 'SIGNED_IN') {
-      supaUser = session ? session.user : null;
+      return;
+    }
+
+    // 로그인 상태 변화 (SIGNED_IN, INITIAL_SESSION, TOKEN_REFRESHED, USER_UPDATED 모두 포함)
+    updateAuthUI();
+
+    // 새로 로그인된 경우에만 추가 처리
+    var justLoggedIn = supaUser && (!prevUser || prevUser.id !== supaUser.id);
+    if (justLoggedIn) {
       _sessionWarningShown = false;
-      updateAuthUI();
       updateCommentForm();
       renderDailyMission();
-      if (supaUser) startInactivityWatcher();
-    } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-      supaUser = session ? session.user : null;
-      updateAuthUI();
-    } else {
-      supaUser = session ? session.user : null;
-      updateAuthUI();
-      updateCommentForm();
-      renderDailyMission();
+      startInactivityWatcher();
+      // 모달 닫기
+      var modal = document.getElementById('kh-auth-modal');
+      if (modal) modal.style.display = 'none';
     }
   });
 }
@@ -2700,14 +2704,19 @@ document.addEventListener('DOMContentLoaded', async function() {
   var footerEl  = document.getElementById('kh-footer');
   var sidebarEl = document.getElementById('kh-sidebar');
 
-  // 섹션/세션 먼저 로드 → 헤더는 그 후 한번만 렌더 (깜빡임 방지)
+  // 1) 헤더/푸터 즉시 렌더 (DEFAULT_SECTIONS) — 빈 화면 방지
+  if (headerEl)  headerEl.innerHTML  = renderHeader();
+  if (footerEl)  footerEl.innerHTML  = renderFooter();
+  if (sidebarEl) sidebarEl.innerHTML = renderSharedSidebar();
+
+  // 2) 세션 + DB 병렬 로드
   await checkSession();
   if (supaUser) startInactivityWatcher();
   await Promise.all([loadArticlesFromDB(), loadSections(), loadAppSettings()]);
 
-  if (headerEl)  headerEl.innerHTML  = renderHeader();
-  if (footerEl)  footerEl.innerHTML  = renderFooter();
-  if (sidebarEl) sidebarEl.innerHTML = renderSharedSidebar();
+  // 3) 실제 섹션 + 로그인 상태로 헤더만 교체
+  if (headerEl) headerEl.innerHTML = renderHeader();
+  updateAuthUI();
   applySiteConfigToPage();
 
   var page     = window.location.pathname.split('/').pop() || 'index.html';
