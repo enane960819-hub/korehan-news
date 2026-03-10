@@ -3334,35 +3334,32 @@ function khInjectSidebar() {
 
   // CSS
   var style = document.createElement('style');
-  style.textContent = `
-    .kh-ham{display:none;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text,#0d1b2e);padding:4px 8px;flex-shrink:0;line-height:1;}
-    .kh-sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1500;}
-    .kh-sb-overlay.on{display:block;}
-    .kh-sidebar{position:fixed;top:0;left:0;bottom:0;width:268px;background:#0b1626;z-index:1600;transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);overflow-y:auto;display:flex;flex-direction:column;}
-    .kh-sidebar.on{transform:translateX(0);}
-    .kh-sb-top{padding:16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-    .kh-sb-brand{display:flex;align-items:baseline;gap:4px;}
-    .kh-sb-brand .sb-kore{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:#7ab8f5;}
-    .kh-sb-brand .sb-han{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:#fff;}
-    .kh-sb-brand .sb-news{font-size:13px;font-weight:600;color:rgba(255,255,255,.5);margin-left:3px;}
-    .kh-sb-x{background:none;border:none;color:rgba(255,255,255,.5);font-size:22px;cursor:pointer;line-height:1;padding:0;}
-    .kh-sb-sec{padding:14px 12px 6px;}
-    .kh-sb-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.4px;color:rgba(255,255,255,.25);padding:0 6px;margin-bottom:4px;}
-    .kh-sb-a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:6px;font-size:13px;font-weight:500;color:rgba(255,255,255,.65);cursor:pointer;border:none;background:none;width:100%;text-align:left;font-family:inherit;transition:all .13s;text-decoration:none;}
-    .kh-sb-a:hover,.kh-sb-a.on{background:rgba(255,255,255,.08);color:#fff;}
-    .kh-sb-ico{font-size:15px;width:20px;text-align:center;flex-shrink:0;}
-    .kh-sb-new{margin-left:auto;background:#e53e3e;color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:2px;flex-shrink:0;}
-    .kh-sb-arrow{margin-left:auto;font-size:11px;color:rgba(255,255,255,.25);transition:transform .18s;flex-shrink:0;}
-    .kh-sb-arrow.on{transform:rotate(90deg);}
-    .kh-sb-sub{display:none;padding-left:10px;}
-    .kh-sb-sub.on{display:block;}
-    .kh-sb-sub-a{display:block;width:100%;padding:7px 10px;font-size:12px;color:rgba(255,255,255,.5);border:none;background:none;text-align:left;font-family:inherit;cursor:pointer;border-radius:5px;transition:all .12s;text-decoration:none;}
-    .kh-sb-sub-a:hover{color:#fff;background:rgba(255,255,255,.05);}
-    @media(max-width:900px){
-      .kh-ham{display:flex !important;align-items:center;}
-      .kh-nav{display:none !important;}
-    }
-  `;
+  style.textContent = [
+    '.kh-ham{display:none;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text,#0d1b2e);padding:4px 8px;flex-shrink:0;line-height:1;}',
+    '.kh-sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1500;}',
+    '.kh-sb-overlay.on{display:block;}',
+    '.kh-sidebar{position:fixed;top:0;left:0;bottom:0;width:268px;background:#0b1626;z-index:1600;transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);overflow-y:auto;display:flex;flex-direction:column;}',
+    '.kh-sidebar.on{transform:translateX(0);}',
+    '.kh-sb-top{padding:16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}',
+    '.kh-sb-brand{display:flex;align-items:baseline;gap:4px;}',
+    ".kh-sb-brand .sb-kore{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:#7ab8f5;}",
+    ".kh-sb-brand .sb-han{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:#fff;}",
+    ".kh-sb-brand .sb-news{font-size:13px;font-weight:600;color:rgba(255,255,255,.5);margin-left:3px;}",
+    '.kh-sb-x{background:none;border:none;color:rgba(255,255,255,.5);font-size:22px;cursor:pointer;line-height:1;padding:0;}',
+    '.kh-sb-sec{padding:14px 12px 6px;}',
+    '.kh-sb-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.4px;color:rgba(255,255,255,.25);padding:0 6px;margin-bottom:4px;}',
+    '.kh-sb-a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:6px;font-size:13px;font-weight:500;color:rgba(255,255,255,.65);cursor:pointer;border:none;background:none;width:100%;text-align:left;font-family:inherit;transition:all .13s;text-decoration:none;}',
+    '.kh-sb-a:hover,.kh-sb-a.on{background:rgba(255,255,255,.08);color:#fff;}',
+    '.kh-sb-ico{font-size:15px;width:20px;text-align:center;flex-shrink:0;}',
+    '.kh-sb-new{margin-left:auto;background:#e53e3e;color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:2px;flex-shrink:0;}',
+    '.kh-sb-arrow{margin-left:auto;font-size:11px;color:rgba(255,255,255,.25);transition:transform .18s;flex-shrink:0;}',
+    '.kh-sb-arrow.on{transform:rotate(90deg);}',
+    '.kh-sb-sub{display:none;padding-left:10px;}',
+    '.kh-sb-sub.on{display:block;}',
+    '.kh-sb-sub-a{display:block;width:100%;padding:7px 10px;font-size:12px;color:rgba(255,255,255,.5);border:none;background:none;text-align:left;font-family:inherit;cursor:pointer;border-radius:5px;transition:all .12s;text-decoration:none;}',
+    '.kh-sb-sub-a:hover{color:#fff;background:rgba(255,255,255,.05);}',
+    '@media(max-width:900px){.kh-ham{display:flex !important;align-items:center;}.kh-nav{display:none !important;}}'
+  ].join('');
   document.head.appendChild(style);
 
   // Overlay
@@ -3388,7 +3385,7 @@ function khInjectSidebar() {
     + '</div>'
     + '<div class="kh-sb-sec">'
       + '<div class="kh-sb-lbl">Read</div>'
-      + '<button class="kh-sb-a" onclick="khSbToggle('sb-news','sb-arr-news')"><span class="kh-sb-ico">&#x1F4F0;</span>News<span class="kh-sb-arrow" id="sb-arr-news">&#x203A;</span></button>'
+      + '<button class="kh-sb-a" onclick=\"khSbToggle(\'sb-news\',\'sb-arr-news\')\"><span class="kh-sb-ico">&#x1F4F0;</span>News<span class="kh-sb-arrow" id="sb-arr-news">&#x203A;</span></button>'
       + '<div class="kh-sb-sub" id="sb-news">'
         + '<a href="korehan-all.html" class="kh-sb-sub-a">All News</a>'
         + '<a href="korehan-section.html?s=society" class="kh-sb-sub-a">&#x1F3DB;&#xFE0F; Society</a>'
@@ -3398,7 +3395,7 @@ function khInjectSidebar() {
         + '<a href="korehan-section.html?s=tech" class="kh-sb-sub-a">&#x1F4BB; Tech</a>'
         + '<a href="korehan-section.html?s=korea" class="kh-sb-sub-a">&#x1F1F0;&#x1F1F7; Korea</a>'
       + '</div>'
-      + '<button class="kh-sb-a" onclick="khSbToggle('sb-conv','sb-arr-conv')"><span class="kh-sb-ico">&#x1F4AC;</span>Conversations<span class="kh-sb-new">New</span><span class="kh-sb-arrow" id="sb-arr-conv" style="margin-left:4px">&#x203A;</span></button>'
+      + '<button class="kh-sb-a" onclick=\"khSbToggle(\'sb-conv\',\'sb-arr-conv\')\"><span class="kh-sb-ico">&#x1F4AC;</span>Conversations<span class="kh-sb-new">New</span><span class="kh-sb-arrow" id="sb-arr-conv" style="margin-left:4px">&#x203A;</span></button>'
       + '<div class="kh-sb-sub" id="sb-conv">'
         + '<a href="korehan-conversations.html" class="kh-sb-sub-a">All</a>'
         + '<a href="korehan-conversations.html?cat=everyday" class="kh-sb-sub-a">Everyday</a>'
@@ -3406,7 +3403,7 @@ function khInjectSidebar() {
         + '<a href="korehan-conversations.html?cat=friends" class="kh-sb-sub-a">Friends</a>'
         + '<a href="korehan-conversations.html?cat=dating" class="kh-sb-sub-a">Dating</a>'
       + '</div>'
-      + '<button class="kh-sb-a" onclick="khSbToggle('sb-stor','sb-arr-stor')"><span class="kh-sb-ico">&#x1F4D6;</span>Stories<span class="kh-sb-new">New</span><span class="kh-sb-arrow" id="sb-arr-stor" style="margin-left:4px">&#x203A;</span></button>'
+      + '<button class="kh-sb-a" onclick=\"khSbToggle(\'sb-stor\',\'sb-arr-stor\')\"><span class="kh-sb-ico">&#x1F4D6;</span>Stories<span class="kh-sb-new">New</span><span class="kh-sb-arrow" id="sb-arr-stor" style="margin-left:4px">&#x203A;</span></button>'
       + '<div class="kh-sb-sub" id="sb-stor">'
         + '<a href="korehan-stories.html" class="kh-sb-sub-a">All</a>'
         + '<a href="korehan-stories.html?mood=fun" class="kh-sb-sub-a">&#x1F602; Fun</a>'
