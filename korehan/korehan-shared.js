@@ -109,7 +109,7 @@ async function signInWithGoogle() {
   var { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.href,
+      redirectTo: window.location.origin + '/index.html',
       queryParams: {
         access_type: 'offline',
         prompt: 'select_account'
@@ -454,28 +454,44 @@ async function signOut() {
 async function checkSession() {
   var sb = getSupa();
   if (!sb) return;
+
+  // OAuth 콜백: URL 해시에 access_token 있으면 먼저 처리
+  if (window.location.hash && window.location.hash.includes('access_token')) {
+    await new Promise(function(resolve) {
+      var unsub = sb.auth.onAuthStateChange(function(event, session) {
+        if (event === 'SIGNED_IN' && session) {
+          supaUser = session.user;
+          _sessionWarningShown = false;
+          // 해시 제거 후 클린 URL로
+          history.replaceState(null, '', window.location.pathname + window.location.search);
+          unsub.data.subscription.unsubscribe();
+          resolve();
+        }
+      });
+      // 5초 타임아웃 fallback
+      setTimeout(resolve, 5000);
+    });
+  }
+
   var { data } = await sb.auth.getSession();
   if (data && data.session && data.session.user) {
     supaUser = data.session.user;
-    updateAuthUI();
   }
+
   // 세션 변화 감지
   sb.auth.onAuthStateChange(function(event, session) {
     if (event === 'SIGNED_OUT') {
       supaUser = null;
-      // 다른 탭에서 로그아웃 시 현재 페이지도 즉시 반영
       updateAuthUI();
       updateCommentForm();
     } else if (event === 'SIGNED_IN') {
       supaUser = session ? session.user : null;
-      _sessionWarningShown = false; // 재로그인 시 경고 초기화
+      _sessionWarningShown = false;
       updateAuthUI();
       updateCommentForm();
       renderDailyMission();
-    } else if (event === 'TOKEN_REFRESHED') {
-      supaUser = session ? session.user : null;
-      updateAuthUI();
-    } else if (event === 'USER_UPDATED') {
+      if (supaUser) startInactivityWatcher();
+    } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
       supaUser = session ? session.user : null;
       updateAuthUI();
     } else {
