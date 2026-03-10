@@ -33,9 +33,9 @@
 .topic-card {
   background:rgba(255,255,255,0.09); border:1px solid rgba(255,255,255,0.14);
   border-radius:10px; padding:14px 18px; display:flex; align-items:center; gap:14px;
-  max-width:680px; cursor:pointer; transition:background .18s;
+  max-width:680px;
 }
-.topic-card:hover { background:rgba(255,255,255,0.15); }
+
 .tc-label { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:#7ab8f5; margin-bottom:4px; }
 .tc-ko   { font-family:'Noto Serif KR',serif; font-size:17px; font-weight:900; color:#fff; }
 .tc-en   { font-size:12px; color:rgba(255,255,255,0.5); margin-top:2px; }
@@ -251,14 +251,13 @@
       <button class="lv-btn lv-a"    onclick="setLevel('Advanced',this)">🔴 Advanced</button>
     </div>
 
-    <div class="topic-card" id="topic-card" onclick="openTopicPicker()">
+    <div class="topic-card" id="topic-card">
       <div style="flex:1;min-width:0">
         <div class="tc-label">✏️ Today's Writing Topic</div>
         <div class="tc-ko" id="hero-topic-ko">Loading…</div>
         <div class="tc-en" id="hero-topic-en"></div>
       </div>
       <div id="hero-topic-done" class="tc-done" style="display:none">✅ Done today</div>
-      <div class="tc-change">change ›</div>
     </div>
   </div>
 </div>
@@ -441,25 +440,6 @@
   </div>
 </div>
 
-<!-- ═══ TOPIC PICKER ══════════════════════════════════════════ -->
-<div class="tp-overlay hidden" id="tp-overlay" onclick="if(event.target===this)closeTopicPicker()">
-  <div class="tp-modal">
-    <div class="tp-head">
-      <h2>Choose a Topic</h2>
-      <button class="tp-close" onclick="closeTopicPicker()">✕</button>
-    </div>
-    <div class="tp-filters" id="tp-filters">
-      <button class="tpill on" onclick="filterTopicPicker('all',this)">All</button>
-      <button class="tpill" onclick="filterTopicPicker('Beginner',this)">🟢 Beginner</button>
-      <button class="tpill" onclick="filterTopicPicker('Intermediate',this)">🟡 Intermediate</button>
-      <button class="tpill" onclick="filterTopicPicker('Advanced',this)">🔴 Advanced</button>
-    </div>
-    <div class="tp-list" id="tp-list">
-      <div class="ai-loading"><div class="spin">⏳</div><div style="margin-top:8px;font-size:13px">Loading topics…</div></div>
-    </div>
-  </div>
-</div>
-
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js"></script>
@@ -516,9 +496,32 @@ function renderPhrase() {
 // LEVEL
 // ═══════════════════════════════════════════════════════════════
 function setLevel(level, btn) {
+  if (_currentLevel === level) return;
   _currentLevel = level;
   document.querySelectorAll('.lv-btn').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
+  // 해당 레벨에서 새 토픽 랜덤 배정
+  if (supaUser) reassignTopicForLevel(level);
+}
+
+async function reassignTopicForLevel(level) {
+  var pool = _allTopics.filter(function(t){ return t.level === level; });
+  if (!pool.length) pool = _allTopics;
+  // 안 한 것 우선
+  var undone = pool.filter(function(t){ return !_doneTopicIds.has(t.id); });
+  if (!undone.length) undone = pool;
+  var picked = undone[Math.floor(Math.random() * undone.length)];
+  _todayTopic = picked;
+  _aiContent = null;
+  renderTopicUI();
+  showAILoading();
+  // DB 업데이트
+  var sb = getSb();
+  var today = new Date().toISOString().slice(0, 10);
+  await sb.from('user_topic_history').upsert({
+    user_id: supaUser.id, topic_id: picked.id, assigned_date: today, completed: false
+  }, { onConflict: 'user_id,assigned_date' });
+  generateAIContent(picked);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -571,11 +574,11 @@ async function assignDailyTopic() {
 
   _doneTopicIds = new Set((doneRows || []).map(function(r){ return r.topic_id; }));
 
-  // 3. 안 한 토픽 중 랜덤
-  var undone = _allTopics.filter(function(t){ return !_doneTopicIds.has(t.id); });
-
-  // 다 했으면 리셋
-  if (!undone.length) undone = _allTopics;
+  // 3. 안 한 토픽 중 랜덤 (현재 레벨 우선, 없으면 전체)
+  var levelPool = _allTopics.filter(function(t){ return t.level === _currentLevel; });
+  if (!levelPool.length) levelPool = _allTopics;
+  var undone = levelPool.filter(function(t){ return !_doneTopicIds.has(t.id); });
+  if (!undone.length) undone = levelPool; // 다 했으면 리셋
   if (!undone.length) { renderTopicUI(); return; }
 
   var picked = undone[Math.floor(Math.random() * undone.length)];
@@ -611,28 +614,35 @@ async function generateAIContent(topic) {
   var cacheKey = 'sr_topic_' + topic.id + '_' + _currentLevel;
   var cached = sessionStorage.getItem(cacheKey);
   if (cached) {
-    try { _aiContent = JSON.parse(cached); renderAIContent(); return; } catch(e) {}
+    try { _aiContent = JSON.parse(cached); renderAIContent(); hideAILoading(); return; } catch(e) {}
   }
 
-  // skeleton already shown — call AI
-  var prompt = 'You are a Korean language teacher. Generate content for a Korean writing practice session.\n\n'
+  showAILoading();
+  // call AI
+  var levelGuide = {
+    Beginner:     'BEGINNER: Use only present tense (~아요/어요), simple vocabulary (1-2 syllable words), basic particles (은/는/이/가/을/를). Vocab should be common everyday words. Grammar patterns: ~이에요/예요, ~아요/어요, ~있어요/없어요. Helper sentences should be very short (5-8 words). Example: 저는 음식을 좋아해요.',
+    Intermediate: 'INTERMEDIATE: Use past tense (~었어요/았어요), conjunctions (~고, ~지만, ~서, ~때문에), modal expressions (~고 싶어요, ~아/어 보다). Vocab should include 2-3 syllable words and topic-specific terms. Grammar patterns: ~았/었어요, ~(으)ㄹ 것 같아요, ~다고 생각해요. Helper sentences 8-12 words. Example: 어릴 때부터 이 음식을 좋아했는데, 지금도 자주 먹어요.',
+    Advanced:     'ADVANCED: Use complex sentence structures, formal/written style (~습니다/ㅂ니다), relative clauses (~는/은/을), nominalizations (~는 것, ~기), advanced connectors (~에도 불구하고, ~(으)ㄹ수록). Vocab should include abstract nouns, advanced topic-specific terminology. Grammar patterns: ~(으)ㄹ수록, ~에 비해, ~는 반면에. Helper sentences 12+ words with complex grammar. Example: 현대 사회에서 스마트폰이 일상생활에 미치는 영향은 매우 크다고 할 수 있다.'
+  };
+
+  var prompt = 'You are a Korean language teacher creating study material strictly calibrated to the student level.\n\n'
     + 'Student level: ' + _currentLevel + '\n'
+    + 'Level requirements: ' + levelGuide[_currentLevel] + '\n'
     + 'Writing topic: ' + topic.topic_ko + ' (' + topic.topic_en + ')\n\n'
+    + 'CRITICAL: ALL vocab, grammar patterns, example sentences, and helper sentences MUST match the ' + _currentLevel + ' level exactly. Do NOT mix in easier or harder content.\n\n'
     + 'Return ONLY this JSON (no markdown, no extra text):\n'
     + '{\n'
     + '  "vocab": [\n'
-    + '    {"ko":"word","rom":"romanization","en":"meaning","level":"Beginner|Intermediate|Advanced"}\n'
-    + '    // 5 words relevant to the topic, mix of levels\n'
+    + '    {"ko":"word","rom":"romanization","en":"meaning","level":"' + _currentLevel + '"}\n'
+    + '    // exactly 5 words, all at ' + _currentLevel + ' level, relevant to the topic\n'
     + '  ],\n'
     + '  "grammar": [\n'
-    + '    {"level":"Beginner","pattern":"~이에요/예요","explanation":"short explanation","example_ko":"example sentence","example_en":"translation"}\n'
-    + '    // exactly 3 items: one Beginner, one Intermediate, one Advanced\n'
-    + '    // patterns must be useful for writing about the topic\n'
+    + '    {"level":"' + _currentLevel + '","pattern":"grammar pattern","explanation":"explanation in English","example_ko":"example using the topic","example_en":"translation"}\n'
+    + '    // exactly 3 grammar patterns, all at ' + _currentLevel + ' level\n'
     + '  ],\n'
     + '  "helpers": [\n'
-    + '    {"ko":"Korean helper sentence","en":"English translation"}\n'
-    + '    // 4 short sentences the student can use as reference/inspiration\n'
-    + '    // should directly relate to the topic\n'
+    + '    {"ko":"Korean sentence at ' + _currentLevel + ' level","en":"English translation"}\n'
+    + '    // exactly 4 helper sentences, all at ' + _currentLevel + ' level, directly about the topic\n'
     + '  ]\n'
     + '}';
 
@@ -650,7 +660,9 @@ async function generateAIContent(topic) {
     _aiContent = JSON.parse(clean);
     sessionStorage.setItem(cacheKey, JSON.stringify(_aiContent));
     renderAIContent();
+    hideAILoading();
   } catch(err) {
+    hideAILoading();
     document.getElementById('vocab-box').innerHTML = '<div style="color:#c33;font-size:12px">⚠️ Could not load. <a href="#" onclick="generateAIContent(_todayTopic)">Retry</a></div>';
   }
 }
@@ -792,68 +804,6 @@ async function submitWriting() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// TOPIC PICKER
-// ═══════════════════════════════════════════════════════════════
-function openTopicPicker() {
-  document.getElementById('tp-overlay').classList.remove('hidden');
-  renderTopicList('all');
-}
-function closeTopicPicker() { document.getElementById('tp-overlay').classList.add('hidden'); }
-
-function filterTopicPicker(level, btn) {
-  document.querySelectorAll('#tp-filters .tpill').forEach(function(b){ b.classList.remove('on'); });
-  if (btn) btn.classList.add('on');
-  renderTopicList(level);
-}
-
-function renderTopicList(level) {
-  var list = level === 'all' ? _allTopics : _allTopics.filter(function(t){ return t.level === level; });
-  var lvColor = { Beginner:'background:#e8f5e9;color:#2e7d32', Intermediate:'background:#fff8e1;color:#f57f17', Advanced:'background:#fce4ec;color:#c62828' };
-  var html = list.map(function(t) {
-    var done = _doneTopicIds.has(t.id);
-    return '<div class="tp-item' + (done?' done':'') + '" onclick="pickTopic(\'' + t.id + '\')">'
-      + '<div class="tp-item-meta">'
-      + '<span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--gray)">' + t.category + '</span>'
-      + '<span style="font-size:10px;font-weight:800;padding:1px 7px;border-radius:999px;' + (lvColor[t.level]||'') + '">' + t.level + '</span>'
-      + (done ? '<span style="font-size:10px;color:#aaa">✓ done</span>' : '')
-      + '</div>'
-      + '<div class="tp-item-ko">' + t.topic_ko + '</div>'
-      + '<div class="tp-item-en">' + t.topic_en + '</div>'
-      + '</div>';
-  }).join('');
-  document.getElementById('tp-list').innerHTML = html || '<div style="padding:24px;text-align:center;color:var(--gray)">No topics found.</div>';
-}
-
-async function pickTopic(topicId) {
-  var topic = _allTopics.find(function(t){ return t.id === topicId; });
-  if (!topic) return;
-  _todayTopic = topic;
-  _aiContent = null;
-  closeTopicPicker();
-  renderTopicUI();
-
-  // clear skeletons
-  document.getElementById('vocab-box').innerHTML = '<div class="skel" style="height:14px;margin-bottom:8px"></div><div class="skel" style="height:14px;margin-bottom:8px"></div><div class="skel" style="height:14px"></div>';
-  document.getElementById('grammar-box').innerHTML = '<div class="skel" style="height:70px;margin-bottom:8px"></div><div class="skel" style="height:70px"></div>';
-  document.getElementById('helper-box').innerHTML = '<div class="skel" style="height:40px;margin-bottom:8px"></div><div class="skel" style="height:40px"></div>';
-  document.getElementById('wcard-chips').innerHTML = '';
-
-  // save to DB if logged in
-  if (supaUser) {
-    var sb = getSb();
-    var today = new Date().toISOString().slice(0, 10);
-    await sb.from('user_topic_history').upsert({
-      user_id: supaUser.id,
-      topic_id: topic.id,
-      assigned_date: today,
-      completed: false
-    }, { onConflict: 'user_id,topic_id', ignoreDuplicates: false });
-  }
-
-  generateAIContent(topic);
-}
-
-// ═══════════════════════════════════════════════════════════════
 // MINI FLASHCARDS (right column)
 // ═══════════════════════════════════════════════════════════════
 function renderFlashcardFilters() {
@@ -992,6 +942,29 @@ function lqNext() {
   }
 }
 
+
+
+// ═══════════════════════════════════════════════════════════════
+// AI LOADING OVERLAY
+// ═══════════════════════════════════════════════════════════════
+function showAILoading() {
+  var existing = document.getElementById('ai-load-overlay');
+  if (existing) return;
+  var el = document.createElement('div');
+  el.id = 'ai-load-overlay';
+  el.style.cssText = 'position:fixed;inset:0;z-index:400;backdrop-filter:blur(6px);background:rgba(13,27,46,0.45);display:flex;align-items:center;justify-content:center;';
+  el.innerHTML = '<div style="text-align:center;color:#fff">'
+    + '<div style="font-size:52px;animation:spin 1s linear infinite;display:inline-block">✨</div>'
+    + '<div style="margin-top:14px;font-size:15px;font-weight:700">잠시만 기다려주세요</div>'
+    + '<div style="margin-top:6px;font-size:12px;color:rgba(255,255,255,0.5)">Generating vocab, grammar & helpers</div>'
+    + '</div>';
+  document.body.appendChild(el);
+}
+
+function hideAILoading() {
+  var el = document.getElementById('ai-load-overlay');
+  if (el) el.remove();
+}
 
 // ═══════════════════════════════════════════════════════════════
 // LOGIN WALL
