@@ -477,6 +477,7 @@ async function checkSession() {
   if (data && data.session && data.session.user) {
     supaUser = data.session.user;
   }
+  window._sessionChecked = true;
 
   // 세션 변화 감지 — 모든 이벤트(SIGNED_IN, INITIAL_SESSION 등) 처리
   sb.auth.onAuthStateChange(function(event, session) {

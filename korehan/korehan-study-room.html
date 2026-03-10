@@ -219,6 +219,20 @@
 /* toast */
 .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#0d1b2e; color:#fff; padding:10px 20px; border-radius:99px; font-size:13px; font-weight:700; z-index:9999; animation:toastIn .3s ease; pointer-events:none; }
 @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(12px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+/* LOGIN WALL */
+.login-wall { position:fixed; inset:0; z-index:500; display:flex; align-items:center; justify-content:center; }
+.login-wall-blur { position:absolute; inset:0; backdrop-filter:blur(8px); background:rgba(13,27,46,0.55); }
+.login-wall-box {
+  position:relative; background:#fff; border-radius:16px; padding:40px 36px;
+  text-align:center; max-width:380px; width:100%;
+  box-shadow:0 32px 80px rgba(0,0,0,0.4);
+}
+.lwb-icon { font-size:48px; margin-bottom:14px; }
+.lwb-title { font-family:'Playfair Display',serif; font-size:24px; font-weight:900; color:var(--dark); margin-bottom:8px; }
+.lwb-sub   { font-size:13px; color:var(--gray); line-height:1.6; margin-bottom:24px; }
+.lwb-btn   { display:block; width:100%; padding:14px; background:linear-gradient(135deg,#0d1b2e,#2255a4); color:#fff; border:none; border-radius:10px; font-size:15px; font-weight:800; cursor:pointer; font-family:inherit; margin-bottom:10px; }
+.lwb-btn2  { display:block; width:100%; padding:12px; background:#fff; color:var(--accent); border:1.5px solid var(--border); border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
 </style>
 </head>
 <body>
@@ -467,9 +481,23 @@ var _fcWords        = [];
 document.addEventListener('DOMContentLoaded', async function() {
   renderPhrase();
   await loadAllTopics();
-  await assignDailyTopic();
   renderFlashcardFilters();
   loadFlashcards('all', document.querySelector('#fc-filters .tpill'));
+
+  // supaUser가 세팅될 때까지 최대 3초 대기 후 토픽 배정
+  var waited = 0;
+  function waitForSession() {
+    // supaUser가 확인됐거나 (null 포함) 3초 지나면 진행
+    // korehan-shared.js의 onAuthStateChange가 supaUser를 세팅함
+    // _sessionChecked 플래그로 확인
+    if (typeof _sessionChecked !== 'undefined' && _sessionChecked || waited >= 30) {
+      assignDailyTopic();
+    } else {
+      waited++;
+      setTimeout(waitForSession, 100);
+    }
+  }
+  waitForSession();
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -511,11 +539,9 @@ async function loadAllTopics() {
 async function assignDailyTopic() {
   var today = new Date().toISOString().slice(0, 10);
 
-  // 로그인 없으면 랜덤 토픽 (히스토리 없음)
+  // 비로그인 → 블러 오버레이
   if (!supaUser) {
-    _todayTopic = _allTopics[Math.floor(Math.random() * _allTopics.length)] || null;
-    renderTopicUI();
-    if (_todayTopic) generateAIContent(_todayTopic);
+    showLoginWall();
     return;
   }
 
@@ -731,6 +757,7 @@ function renderModalContent() {
 // WRITING MODAL
 // ═══════════════════════════════════════════════════════════════
 function openWritingModal() {
+  if (!supaUser) { openAuthModal('signin'); return; }
   document.getElementById('wmodal').classList.remove('hidden');
   if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
   renderModalContent();
@@ -874,6 +901,7 @@ function setLQMode(mode, btn) {
 }
 
 async function startLQ() {
+  if (!supaUser) { openAuthModal('signin'); return; }
   var box = document.getElementById('lq-mini');
   box.innerHTML = '<div class="ai-loading"><div class="spin">✨</div><div style="margin-top:8px;font-size:12px">AI가 문제를 만드는 중…</div></div>';
 
@@ -962,6 +990,33 @@ function lqNext() {
   } else {
     renderLQQ();
   }
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// LOGIN WALL
+// ═══════════════════════════════════════════════════════════════
+function showLoginWall() {
+  // 페이지 내용은 그대로 두고 블러 오버레이만 올림
+  // 샘플 토픽 하나 보여줌 (맛보기)
+  var sample = _allTopics[0] || { topic_ko: '오늘 하루 어땠나요?', topic_en: 'How was your day today?' };
+  document.getElementById('hero-topic-ko').textContent  = sample.topic_ko;
+  document.getElementById('hero-topic-en').textContent  = sample.topic_en;
+  document.getElementById('wcard-topic-ko').textContent = sample.topic_ko;
+
+  var wall = document.createElement('div');
+  wall.className = 'login-wall';
+  wall.id = 'login-wall';
+  wall.innerHTML =
+    '<div class="login-wall-blur"></div>'
+    + '<div class="login-wall-box">'
+    + '<div class="lwb-icon">📖</div>'
+    + '<div class="lwb-title">Study Room</div>'
+    + '<div class="lwb-sub">로그인하면 매일 새 토픽, AI 문법·단어, 작문 피드백까지 모두 이용할 수 있어요.<br><br>Sign in to unlock daily topics, AI vocab & grammar, and personal writing feedback.</div>'
+    + '<button class="lwb-btn" onclick="openAuthModal(&apos;signin&apos;)">🔑 Sign In</button>'
+    + '<button class="lwb-btn2" onclick="openAuthModal(&apos;signup&apos;)">✨ Create Free Account</button>'
+    + '</div>';
+  document.body.appendChild(wall);
 }
 
 // ═══════════════════════════════════════════════════════════════
