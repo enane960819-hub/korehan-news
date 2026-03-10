@@ -492,12 +492,12 @@ var _inactivityTimer = null;
 var INACTIVITY_MS = 30 * 60 * 1000; // 30분
 
 function resetInactivityTimer() {
-  if (!_currentUser) return; // 로그인 안 된 경우 무시
+  if (!supaUser) return; // 로그인 안 된 경우 무시
   clearTimeout(_inactivityTimer);
   _inactivityTimer = setTimeout(async function() {
     var sb = getSupa();
     if (sb) await sb.auth.signOut();
-    _currentUser = null;
+    supaUser = null;
     updateAuthUI();
     alert('30분 동안 활동이 없어 자동 로그아웃 되었습니다.');
     window.location.href = 'index.html';
@@ -2686,7 +2686,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // 섹션/세션 먼저 로드 → 헤더는 그 후 한번만 렌더 (깜빡임 방지)
   await checkSession();
-  if (_currentUser) startInactivityWatcher();
+  if (supaUser) startInactivityWatcher();
   await Promise.all([loadArticlesFromDB(), loadSections(), loadAppSettings()]);
 
   if (headerEl)  headerEl.innerHTML  = renderHeader();
