@@ -487,6 +487,32 @@ async function checkSession() {
   });
 }
 
+// ── 30분 비활동 자동 로그아웃 ─────────────────────────────────────
+var _inactivityTimer = null;
+var INACTIVITY_MS = 30 * 60 * 1000; // 30분
+
+function resetInactivityTimer() {
+  if (!_currentUser) return; // 로그인 안 된 경우 무시
+  clearTimeout(_inactivityTimer);
+  _inactivityTimer = setTimeout(async function() {
+    var sb = getSupa();
+    if (sb) await sb.auth.signOut();
+    _currentUser = null;
+    updateAuthUI();
+    alert('30분 동안 활동이 없어 자동 로그아웃 되었습니다.');
+    window.location.href = 'index.html';
+  }, INACTIVITY_MS);
+}
+
+function startInactivityWatcher() {
+  ['mousemove','keydown','click','scroll','touchstart'].forEach(function(evt) {
+    document.addEventListener(evt, resetInactivityTimer, { passive: true });
+  });
+  resetInactivityTimer();
+}
+// ─────────────────────────────────────────────────────────────────
+
+
 // UI 업데이트
 function updateAuthUI() {
   var signinBtn  = document.getElementById('topbar-signin-btn');
@@ -2592,13 +2618,7 @@ async function loadSections() {
   } catch(e) {
     _sectionsCache = DEFAULT_SECTIONS;
   }
-  // 네비 다시 렌더링 (섹션 로드 후 헤더 업데이트)
-  var hdr = document.getElementById('kh-header');
-  if (hdr) {
-    hdr.innerHTML = renderHeader();
-    // 헤더 재렌더 후 로그인 상태 즉시 반영
-    updateAuthUI();
-  }
+  // 헤더는 DOMContentLoaded에서 loadSections 완료 후 렌더링됨
 }
 
 function getSections() {
@@ -2664,22 +2684,18 @@ document.addEventListener('DOMContentLoaded', async function() {
   var footerEl  = document.getElementById('kh-footer');
   var sidebarEl = document.getElementById('kh-sidebar');
 
+  // 섹션/세션 먼저 로드 → 헤더는 그 후 한번만 렌더 (깜빡임 방지)
+  await checkSession();
+  if (_currentUser) startInactivityWatcher();
+  await Promise.all([loadArticlesFromDB(), loadSections(), loadAppSettings()]);
+
   if (headerEl)  headerEl.innerHTML  = renderHeader();
   if (footerEl)  footerEl.innerHTML  = renderFooter();
   if (sidebarEl) sidebarEl.innerHTML = renderSharedSidebar();
   applySiteConfigToPage();
 
-  // 세션 먼저 확인 후 나머지 로드 (로그인 상태가 헤더 렌더 전에 준비되도록)
-  await checkSession();
-
   var page     = window.location.pathname.split('/').pop() || 'index.html';
   var pageBase = page.replace(/\.html$/, '');
-
-  // Supabase에서 기사 + 섹션 먼저 로드 후 렌더링
-  await Promise.all([loadArticlesFromDB(), loadSections(), loadAppSettings()]);
-
-  if (footerEl) footerEl.innerHTML = renderFooter();
-  applySiteConfigToPage();
   injectBreakingTicker();
 
   if (!pageBase || pageBase === 'index') {

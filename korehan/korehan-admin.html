@@ -2138,62 +2138,75 @@ function goUsers(){
 }
 
 async function loadUsers(){
+  const el = document.getElementById('users-wrap');
   try {
-    // saved_words 기준으로 활동한 유저 집계
+    // auth.users 직접 조회 (service_role 필요)
+    const authRes = await fetch(SUPA_URL_ADMIN + '/auth/v1/admin/users?per_page=500', {
+      headers: {
+        'apikey': SUPA_SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPA_SERVICE_KEY
+      }
+    });
+    if (!authRes.ok) throw new Error('auth.users 조회 실패: ' + authRes.status);
+    const authData = await authRes.json();
+    const authUsers = authData.users || [];
+
+    // 활동 데이터 병렬 조회
     const [words, articles, quizzes, streaks] = await Promise.all([
-      supaAdminGet('/rest/v1/saved_words?select=user_id,ko,created_at&order=created_at.desc'),
-      supaAdminGet('/rest/v1/read_articles?select=user_id,title,section,read_at&order=read_at.desc'),
-      supaAdminGet('/rest/v1/quiz_results?select=user_id,correct,total,played_at&order=played_at.desc'),
-      supaAdminGet('/rest/v1/study_streaks?select=*&order=streak.desc'),
+      supaAdminGet('/rest/v1/saved_words?select=user_id,created_at&order=created_at.desc'),
+      supaAdminGet('/rest/v1/read_articles?select=user_id,read_at&order=read_at.desc'),
+      supaAdminGet('/rest/v1/quiz_results?select=user_id,played_at&order=played_at.desc'),
+      supaAdminGet('/rest/v1/study_streaks?select=user_id,streak&order=streak.desc'),
     ]);
 
-    // Aggregate by user_id
-    const users = {};
-    function getUser(uid){
-      if(!users[uid]) users[uid] = { id:uid, words:0, articles:0, quizzes:0, streak:0, lastSeen:null };
-      return users[uid];
-    }
-    (words||[]).forEach(function(r){ var u=getUser(r.user_id); u.words++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
-    (articles||[]).forEach(function(r){ var u=getUser(r.user_id); u.articles++; if(!u.lastSeen||r.read_at>u.lastSeen) u.lastSeen=r.read_at; });
-    (quizzes||[]).forEach(function(r){ var u=getUser(r.user_id); u.quizzes++; });
-    (streaks||[]).forEach(function(r){ if(users[r.user_id]) users[r.user_id].streak = r.streak; });
+    // 활동 집계
+    const act = {};
+    function getAct(uid){ if(!act[uid]) act[uid]={words:0,articles:0,quizzes:0,streak:0,lastSeen:null}; return act[uid]; }
+    (words||[]).forEach(function(r){ var u=getAct(r.user_id); u.words++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
+    (articles||[]).forEach(function(r){ var u=getAct(r.user_id); u.articles++; if(!u.lastSeen||r.read_at>u.lastSeen) u.lastSeen=r.read_at; });
+    (quizzes||[]).forEach(function(r){ getAct(r.user_id).quizzes++; });
+    (streaks||[]).forEach(function(r){ getAct(r.user_id).streak=r.streak||0; });
 
-    const list = Object.values(users).sort(function(a,b){ return (b.lastSeen||'') > (a.lastSeen||'') ? 1 : -1; });
-
-    const el = document.getElementById('users-wrap');
-    if(!list.length){
-      el.innerHTML = '<div class="infobox">아직 가입한 회원이 없습니다. 로그인한 회원이 활동을 시작하면 여기 표시됩니다.</div>';
+    if (!authUsers.length) {
+      el.innerHTML = '<div class="infobox">가입한 회원이 없습니다.</div>';
       return;
     }
 
+    // auth.users 기준으로 정렬 (최신 가입순)
+    authUsers.sort(function(a,b){ return (b.created_at||'') > (a.created_at||'') ? 1 : -1; });
+
     el.innerHTML =
-      '<div style="margin-bottom:12px;font-size:13px;color:var(--gray)">총 '+list.length+'명</div>'
+      '<div style="margin-bottom:12px;font-size:13px;color:var(--gray)">총 <b>'+authUsers.length+'</b>명 가입</div>'
       +'<table style="width:100%;border-collapse:collapse;font-size:13px">'
-      +'<thead><tr style="border-bottom:2px solid var(--border);text-align:left">'
-      +'<th style="padding:8px 12px;color:var(--gray);font-weight:700">User ID</th>'
-      +'<th style="padding:8px 12px;color:var(--gray);font-weight:700">저장단어</th>'
-      +'<th style="padding:8px 12px;color:var(--gray);font-weight:700">읽은기사</th>'
-      +'<th style="padding:8px 12px;color:var(--gray);font-weight:700">퀴즈횟수</th>'
-      +'<th style="padding:8px 12px;color:var(--gray);font-weight:700">🔥연속일</th>'
-      +'<th style="padding:8px 12px;color:var(--gray);font-weight:700">마지막 활동</th>'
+      +'<thead><tr style="background:#f8faff;border-bottom:2px solid var(--border);text-align:left">'
+      +'<th style="padding:10px 12px">이메일</th>'
+      +'<th style="padding:10px 12px">가입일</th>'
+      +'<th style="padding:10px 12px">마지막 로그인</th>'
+      +'<th style="padding:10px 12px">저장단어</th>'
+      +'<th style="padding:10px 12px">읽은기사</th>'
+      +'<th style="padding:10px 12px">퀴즈</th>'
+      +'<th style="padding:10px 12px">🔥연속</th>'
       +'</tr></thead><tbody>'
-      + list.map(function(u){
-          var lastSeen = u.lastSeen ? new Date(u.lastSeen).toLocaleDateString('ko-KR') : '-';
-          var shortId = u.id.slice(0,8)+'…';
+      + authUsers.map(function(u){
+          var a = act[u.id] || {words:0,articles:0,quizzes:0,streak:0};
+          var email = u.email || u.user_metadata?.email || '(소셜 로그인)';
+          var name  = u.user_metadata?.full_name || u.user_metadata?.name || '';
+          var joined   = u.created_at   ? new Date(u.created_at).toLocaleDateString('ko-KR')   : '-';
+          var lastLogin= u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('ko-KR') : '-';
           return '<tr style="border-bottom:1px solid var(--border)">'
-            +'<td style="padding:10px 12px;font-family:monospace;font-size:12px;color:var(--gray)" title="'+u.id+'">'+shortId+'</td>'
-            +'<td style="padding:10px 12px;font-weight:700;color:var(--accent)">'+u.words+'</td>'
-            +'<td style="padding:10px 12px">'+u.articles+'</td>'
-            +'<td style="padding:10px 12px">'+u.quizzes+'</td>'
-            +'<td style="padding:10px 12px">'+(u.streak||0)+'</td>'
-            +'<td style="padding:10px 12px;color:var(--gray)">'+lastSeen+'</td>'
+            +'<td style="padding:10px 12px"><div style="font-weight:600">'+email+'</div>'+(name?'<div style="font-size:11px;color:var(--gray)">'+name+'</div>':'')+'</td>'
+            +'<td style="padding:10px 12px;color:var(--gray);font-size:12px">'+joined+'</td>'
+            +'<td style="padding:10px 12px;color:var(--gray);font-size:12px">'+lastLogin+'</td>'
+            +'<td style="padding:10px 12px;font-weight:700;color:var(--accent)">'+a.words+'</td>'
+            +'<td style="padding:10px 12px">'+a.articles+'</td>'
+            +'<td style="padding:10px 12px">'+a.quizzes+'</td>'
+            +'<td style="padding:10px 12px">'+(a.streak||0)+'</td>'
             +'</tr>';
         }).join('')
       +'</tbody></table>';
 
   } catch(err) {
-    document.getElementById('users-wrap').innerHTML =
-      '<div class="infobox" style="color:#c33">⚠️ 데이터 불러오기 실패: '+err.message+'</div>';
+    el.innerHTML = '<div class="infobox" style="color:#c33">⚠️ 실패: '+err.message+'</div>';
   }
 }
 
