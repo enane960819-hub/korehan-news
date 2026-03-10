@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conversations — KoreHan News</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#0b1626;--blue:#1a3a6b;--bright:#2255a4;--sky:#7ab8f5;
+  --bg:#f6f8fc;--white:#fff;--border:#e2e8f0;--gray:#64748b;--dark:#0d1b2e;
+  --chat-blue:#2563eb;
+}
+body{font-family:'Source Sans 3',sans-serif;background:var(--bg);color:var(--dark);}
+
+/* PAGE HEADER */
+.page-hd{background:var(--navy);padding:36px 24px 0;}
+.page-hd-inner{max-width:1200px;margin:0 auto;}
+.page-hd h1{font-family:'Playfair Display',serif;font-size:clamp(26px,4vw,40px);font-weight:900;color:#fff;margin-bottom:6px;}
+.page-hd p{font-size:14px;color:rgba(255,255,255,.45);margin-bottom:20px;}
+
+/* FILTER TABS */
+.tabs{display:flex;gap:2px;border-bottom:1px solid rgba(255,255,255,.1);}
+.tab{padding:10px 18px;font-size:13px;font-weight:700;color:rgba(255,255,255,.45);cursor:pointer;border:none;background:none;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap;}
+.tab:hover{color:rgba(255,255,255,.8);}
+.tab.on{color:#fff;border-bottom-color:var(--sky);}
+
+/* LEVEL PILLS */
+.filter-bar{max-width:1200px;margin:0 auto;padding:16px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.lvl-pill{padding:5px 14px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--gray);font-family:inherit;transition:all .12s;}
+.lvl-pill:hover,.lvl-pill.on{background:var(--navy);color:#fff;border-color:var(--navy);}
+.result-count{margin-left:auto;font-size:12px;color:var(--gray);}
+
+/* GRID */
+.conv-page{max-width:1200px;margin:0 auto;padding:0 24px 60px;}
+.conv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+
+/* DIALOG CARD */
+.dcard{
+  background:var(--white);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;cursor:pointer;
+  transition:box-shadow .18s,transform .15s;
+  display:flex;flex-direction:column;
+}
+.dcard:hover{box-shadow:0 8px 28px rgba(13,27,46,.12);transform:translateY(-2px);}
+
+.dc-head{
+  background:linear-gradient(135deg,var(--chat-blue),#1d4ed8);
+  padding:13px 15px;display:flex;align-items:center;gap:10px;
+}
+.dc-head.work{background:linear-gradient(135deg,#0f766e,#0d5c72);}
+.dc-head.fam {background:linear-gradient(135deg,#7c3aed,#5b21b6);}
+.dc-head.date{background:linear-gradient(135deg,#be185d,#9d174d);}
+.dc-avi{
+  width:38px;height:38px;border-radius:50%;
+  background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.3);
+  display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;
+}
+.dc-info{flex:1;min-width:0;}
+.dc-name{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dc-ctx{font-size:11px;color:rgba(255,255,255,.55);margin-top:1px;}
+.dc-badge{flex-shrink:0;font-size:10px;font-weight:700;background:rgba(255,255,255,.15);color:#fff;padding:2px 8px;border-radius:999px;white-space:nowrap;}
+
+.dc-chat{
+  padding:12px 14px;display:flex;flex-direction:column;gap:6px;flex:1;
+  background:linear-gradient(180deg,#eef4ff 0%,#f4f6fb 100%);
+}
+.bub{
+  max-width:82%;padding:7px 11px;border-radius:14px;
+  font-size:13px;line-height:1.5;font-family:'Noto Sans KR',sans-serif;
+}
+.bub.l{background:#fff;color:var(--dark);border-bottom-left-radius:3px;align-self:flex-start;box-shadow:0 1px 4px rgba(0,0,0,.07);}
+.bub.r{background:var(--chat-blue);color:#fff;border-bottom-right-radius:3px;align-self:flex-end;}
+
+.dc-foot{
+  padding:9px 14px;border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--white);
+}
+.dc-vocab{font-size:11px;color:var(--gray);}
+.dc-lvl{font-size:10px;font-weight:800;padding:2px 8px;border-radius:3px;}
+.lvl-b{background:#dcfce7;color:#15803d;}
+.lvl-i{background:#fef9c3;color:#a16207;}
+.lvl-a{background:#fee2e2;color:#b91c1c;}
+.dc-study{
+  font-size:11px;font-weight:700;color:var(--chat-blue);
+  background:none;border:1px solid #bfdbfe;border-radius:3px;
+  padding:3px 10px;cursor:pointer;font-family:inherit;transition:all .12s;
+}
+.dc-study:hover{background:var(--chat-blue);color:#fff;border-color:var(--chat-blue);}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(5,12,24,.72);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px;}
+.modal-overlay.hidden{display:none;}
+.conv-modal{
+  width:100%;max-width:480px;background:var(--white);border-radius:16px;
+  overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.4);
+  animation:mIn .18s ease;display:flex;flex-direction:column;max-height:90vh;
+}
+@keyframes mIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.cm-topbar{
+  background:linear-gradient(135deg,var(--chat-blue),#1d4ed8);
+  padding:14px 16px;display:flex;align-items:center;gap:10px;
+}
+.cm-topbar.work{background:linear-gradient(135deg,#0f766e,#0d5c72);}
+.cm-topbar.fam {background:linear-gradient(135deg,#7c3aed,#5b21b6);}
+.cm-topbar.date{background:linear-gradient(135deg,#be185d,#9d174d);}
+.cm-avi{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.cm-info{flex:1;}
+.cm-name{font-size:14px;font-weight:800;color:#fff;}
+.cm-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;}
+.cm-x{background:none;border:none;color:rgba(255,255,255,.55);font-size:22px;cursor:pointer;line-height:1;padding:0;}
+.cm-chat{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:8px;background:linear-gradient(180deg,#eef4ff,#f4f6fb);}
+.cm-bub{max-width:80%;padding:9px 13px;border-radius:16px;font-size:14px;line-height:1.55;font-family:'Noto Sans KR',sans-serif;}
+.cm-bub.l{background:#fff;color:var(--dark);border-bottom-left-radius:3px;align-self:flex-start;box-shadow:0 1px 5px rgba(0,0,0,.08);}
+.cm-bub.r{background:var(--chat-blue);color:#fff;border-bottom-right-radius:3px;align-self:flex-end;}
+.cm-sender{font-size:10px;font-weight:700;color:var(--gray);margin-bottom:3px;}
+.cm-bub-wrap{display:flex;flex-direction:column;}
+.cm-bub-wrap.r{align-items:flex-end;}
+.cm-foot{border-top:1px solid var(--border);padding:12px 16px;background:var(--white);}
+.cm-vocab-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--gray);margin-bottom:8px;}
+.vlist{display:flex;flex-direction:column;gap:5px;max-height:140px;overflow-y:auto;}
+.vi{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border-radius:6px;}
+.vi-ko{font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:700;color:var(--blue);min-width:64px;}
+.vi-rom{font-size:10px;color:var(--gray);font-style:italic;min-width:80px;}
+.vi-en{font-size:12px;color:var(--dark);flex:1;}
+.vi-save{background:none;border:1px solid var(--border);border-radius:3px;padding:2px 8px;font-size:10px;font-weight:700;color:var(--gray);cursor:pointer;font-family:inherit;flex-shrink:0;transition:all .12s;}
+.vi-save:hover{border-color:var(--bright);color:var(--bright);}
+.vi-save.saved{background:var(--bright);border-color:var(--bright);color:#fff;}
+
+/* RESPONSIVE */
+@media(max-width:900px){.conv-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:560px){.conv-grid{grid-template-columns:1fr;}.tabs{overflow-x:auto;}}
+</style>
+</head>
+<body>
+<div id="kh-header"></div>
+
+<!-- PAGE HEADER -->
+<div class="page-hd">
+  <div class="page-hd-inner">
+    <h1>💬 Conversations</h1>
+    <p>Real Korean text conversations — read, study vocab, and see how Koreans actually talk.</p>
+    <div class="tabs">
+      <button class="tab on" onclick="filterCat('all',this)">All</button>
+      <button class="tab" onclick="filterCat('everyday',this)">Everyday</button>
+      <button class="tab" onclick="filterCat('work',this)">Workplace</button>
+      <button class="tab" onclick="filterCat('friends',this)">Friends</button>
+      <button class="tab" onclick="filterCat('family',this)">Family</button>
+      <button class="tab" onclick="filterCat('dating',this)">Dating</button>
+    </div>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-bar">
+  <button class="lvl-pill on" onclick="filterLvl('all',this)">All Levels</button>
+  <button class="lvl-pill" onclick="filterLvl('b',this)">🟢 Beginner</button>
+  <button class="lvl-pill" onclick="filterLvl('i',this)">🟡 Intermediate</button>
+  <button class="lvl-pill" onclick="filterLvl('a',this)">🔴 Advanced</button>
+  <div class="result-count" id="result-count">12 conversations</div>
+</div>
+
+<!-- GRID -->
+<div class="conv-page">
+  <div class="conv-grid" id="conv-grid">
+
+    <!-- CARD 1 -->
+    <div class="dcard" data-cat="everyday" data-lvl="b" onclick="openModal(0)">
+      <div class="dc-head">
+        <div class="dc-avi">👩</div>
+        <div class="dc-info"><div class="dc-name">Ji-yeon &amp; Soo-jin</div><div class="dc-ctx">Planning dinner together</div></div>
+        <div class="dc-badge">Everyday</div>
+      </div>
+      <div class="dc-chat">
+        <div class="bub l">오늘 저녁에 시간 돼?</div>
+        <div class="bub r">응! 왜? 무슨 일 있어?</div>
+        <div class="bub l">그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ</div>
+      </div>
+      <div class="dc-foot">
+        <span class="dc-vocab">📚 8 words</span>
+        <span class="dc-lvl lvl-b">Beginner</span>
+        <button class="dc-study" onclick="event.stopPropagation();openModal(0)">Study vocab →</button>
+      </div>
+    </div>
+
+    <!-- CARD 2 -->
+    <div class="dcard" data-cat="work" data-lvl="i" onclick="openModal(1)">
+      <div class="dc-head work">
+        <div class="dc-avi">👨‍💼</div>
+        <div class="dc-info"><div class="dc-name">Team Chat</div><div class="dc-ctx">Asking for a deadline extension</div></div>
+        <div class="dc-badge">Workplace</div>
+      </div>
+      <div class="dc-chat">
+        <div class="bub l">보고서 마감이 오늘인데 조금 더 시간이 필요해요.</div>
+        <div class="bub r">얼마나 더 필요해요?</div>
+        <div class="bub l">내일 오전까지 가능할까요?</div>
+      </div>
+      <div class="dc-foot">
+        <span class="dc-vocab">📚 12 words</span>
+        <span class="dc-lvl lvl-i">Intermediate</span>
+        <button class="dc-study" onclick="event.stopPropagation();openModal(1)">Study vocab →</button>
+      </div>
+    </div>
+
+    <!-- CARD 3 -->
+    <div class="dcard" data-cat="dating" data-lvl="i" onclick="openModal(2)">
+      <div class="dc-head date">
+        <div class="dc-avi">👫</div>
+        <div class="dc-info"><div class="dc-name">Couple Chat</div><div class="dc-ctx">Making up after an argument</div></div>
+        <div class="dc-badge">Dating</div>
+      </div>
+      <div class="dc-chat">
+        <div class="bub l">아까 내가 좀 심했던 것 같아. 미안해.</div>
+        <div class="bub r">나도 과민반응했어. 괜찮아.</div>
+        <div class="bub l">오늘 저녁에 우리 같이 밥 먹을까?</div>
+      </div>
+      <div class="dc-foot">
+        <span class="dc-vocab">📚 10 words</span>
+        <span class="dc-lvl lvl-i">Intermediate</span>
+        <button class="dc-study" onclick="event.stopPropagation();openModal(2)">Study vocab →</button>
+      </div>
+    </div>
+
+    <!-- CARD 4 -->
+    <div class="dcard" data-cat="friends" data-lvl="b" onclick="openModal(3)">
+      <div class="dc-head">
+        <div class="dc-avi">🧑‍🤝‍🧑</div>
+        <div class="dc-info"><div class="dc-name">Min-jun &amp; Tae-yang</div><div class="dc-ctx">Weekend plans</div></div>
+        <div class="dc-badge">Friends</div>
+      </div>
+      <div class="dc-chat">
+        <div class="bub l">이번 주말에 뭐 해?</div>
+        <div class="bub r">아직 계획 없어. 왜?</div>
+        <div class="bub l">영화 보러 갈래? 새로 나온 거 재밌대.</div>
+      </div>
+      <div class="dc-foot">
+        <span class="dc-vocab">📚 7 words</span>
+        <span class="dc-lvl lvl-b">Beginner</span>
+        <button class="dc-study" onclick="event.stopPropagation();openModal(3)">Study vocab →</button>
+      </div>
+    </div>
+
+    <!-- CARD 5 -->
+    <div class="dcard" data-cat="family" data-lvl="b" onclick="openModal(4)">
+      <div class="dc-head fam">
+        <div class="dc-avi">👨‍👩‍👧</div>
+        <div class="dc-info"><div class="dc-name">Family Group Chat</div><div class="dc-ctx">Mom asking about dinner</div></div>
+        <div class="dc-badge">Family</div>
+      </div>
+      <div class="dc-chat">
+        <div class="bub l">오늘 저녁 집에서 먹을 거야?</div>
+        <div class="bub r">응, 몇 시에 먹어요?</div>
+        <div class="bub l">6시 반쯤. 좋아하는 거 만들어줄게.</div>
+      </div>
+      <div class="dc-foot">
+        <span class="dc-vocab">📚 9 words</span>
+        <span class="dc-lvl lvl-b">Beginner</span>
+        <button class="dc-study" onclick="event.stopPropagation();openModal(4)">Study vocab →</button>
+      </div>
+    </div>
+
+    <!-- CARD 6 -->
+    <div class="dcard" data-cat="work" data-lvl="a" onclick="openModal(5)">
+      <div class="dc-head work">
+        <div class="dc-avi">💼</div>
+        <div class="dc-info"><div class="dc-name">Interview Prep</div><div class="dc-ctx">Job interview Q&amp;A</div></div>
+        <div class="dc-badge">Workplace</div>
+      </div>
+      <div class="dc-chat">
+        <div class="bub l">지원 동기가 무엇인지 말씀해 주시겠어요?</div>
+        <div class="bub r">저는 귀사의 혁신적인 문화에 매력을 느꼈습니다.</div>
+        <div class="bub l">구체적인 사례를 들어 설명해 주실 수 있나요?</div>
+      </div>
+      <div class="dc-foot">
+        <span class="dc-vocab">📚 15 words</span>
+        <span class="dc-lvl lvl-a">Advanced</span>
+        <button class="dc-study" onclick="event.stopPropagation();openModal(5)">Study vocab →</button>
+      </div>
+    </div>
+
+    <!-- CARD 7 -->
+    <div class="dcard" data-cat="everyday" data-lvl="b" onclick="openModal(6)">
+      <div class="dc-head">
+        <div class="dc-avi">🛒</div>
+        <div class="dc-info"><div class="dc-name">At the Convenience Store</div><div class="dc-ctx">Buying snacks</div></div>
+        <div class="dc-badge">Everyday</div>
+      </div>
+      <div class="dc-chat">
+        <div class="bub l">봉투 필요하세요?</div>
+        <div class="bub r">아니요, 괜찮아요. 카드로 계산할게요.</div>
+        <div class="bub l">영수증 드릴까요?</div>
+      </div>
+      <div class="dc-foot">
+        <span class="dc-vocab">📚 6 words</span>
+        <span class="dc-lvl lvl-b">Beginner</span>
+        <button class="dc-study" onclick="event.stopPropagation();openModal(6)">Study vocab →</button>
+      </div>
+    </div>
+
+    <!-- CARD 8 -->
+    <div class="dcard" data-cat="friends" data-lvl="i" onclick="openModal(7)">
+      <div class="dc-head">
+        <div class="dc-avi">🎤</div>
+        <div class="dc-info"><div class="dc-name">After Norebang</div><div class="dc-ctx">Deciding where to go next</div></div>
+        <div class="dc-badge">Friends</div>
+      </div>
+      <div class="dc-chat">
+        <div class="bub l">노래방 끝났는데 이제 어디 갈까?</div>
+        <div class="bub r">배고프지 않아? 삼겹살 어때?</div>
+        <div class="bub l">좋아! 근처에 24시간 하는 데 있잖아.</div>
+      </div>
+      <div class="dc-foot">
+        <span class="dc-vocab">📚 9 words</span>
+        <span class="dc-lvl lvl-i">Intermediate</span>
+        <button class="dc-study" onclick="event.stopPropagation();openModal(7)">Study vocab →</button>
+      </div>
+    </div>
+
+    <!-- CARD 9 -->
+    <div class="dcard" data-cat="dating" data-lvl="i" onclick="openModal(8)">
+      <div class="dc-head date">
+        <div class="dc-avi">💌</div>
+        <div class="dc-info"><div class="dc-name">First Date Plans</div><div class="dc-ctx">Deciding on a place</div></div>
+        <div class="dc-badge">Dating</div>
+      </div>
+      <div class="dc-chat">
+        <div class="bub l">이번 주말에 같이 뭐 할까요?</div>
+        <div class="bub r">한강 피크닉 어때요? 날씨가 좋을 것 같아요.</div>
+        <div class="bub l">좋아요! 제가 김밥 싸올게요 ㅎㅎ</div>
+      </div>
+      <div class="dc-foot">
+        <span class="dc-vocab">📚 10 words</span>
+        <span class="dc-lvl lvl-i">Intermediate</span>
+        <button class="dc-study" onclick="event.stopPropagation();openModal(8)">Study vocab →</button>
+      </div>
+    </div>
+
+    <!-- CARD 10 -->
+    <div class="dcard" data-cat="family" data-lvl="i" onclick="openModal(9)">
+      <div class="dc-head fam">
+        <div class="dc-avi">🏠</div>
+        <div class="dc-info"><div class="dc-name">With Parents</div><div class="dc-ctx">Coming home late</div></div>
+        <div class="dc-badge">Family</div>
+      </div>
+      <div class="dc-chat">
+        <div class="bub l">오늘 몇 시에 들어와?</div>
+        <div class="bub r">친구들이랑 저녁 먹고 들어갈게요. 좀 늦을 것 같아요.</div>
+        <div class="bub l">밥은 먹었어? 너무 늦지 않게 들어와.</div>
+      </div>
+      <div class="dc-foot">
+        <span class="dc-vocab">📚 11 words</span>
+        <span class="dc-lvl lvl-i">Intermediate</span>
+        <button class="dc-study" onclick="event.stopPropagation();openModal(9)">Study vocab →</button>
+      </div>
+    </div>
+
+    <!-- CARD 11 -->
+    <div class="dcard" data-cat="everyday" data-lvl="i" onclick="openModal(10)">
+      <div class="dc-head">
+        <div class="dc-avi">🏥</div>
+        <div class="dc-info"><div class="dc-name">At the Pharmacy</div><div class="dc-ctx">Getting medicine for a cold</div></div>
+        <div class="dc-badge">Everyday</div>
+      </div>
+      <div class="dc-chat">
+        <div class="bub l">어디가 불편하세요?</div>
+        <div class="bub r">목이 아프고 콧물이 나요. 열도 조금 있어요.</div>
+        <div class="bub l">감기약 드릴게요. 하루에 세 번 식후에 드세요.</div>
+      </div>
+      <div class="dc-foot">
+        <span class="dc-vocab">📚 13 words</span>
+        <span class="dc-lvl lvl-i">Intermediate</span>
+        <button class="dc-study" onclick="event.stopPropagation();openModal(10)">Study vocab →</button>
+      </div>
+    </div>
+
+    <!-- CARD 12 -->
+    <div class="dcard" data-cat="work" data-lvl="i" onclick="openModal(11)">
+      <div class="dc-head work">
+        <div class="dc-avi">📊</div>
+        <div class="dc-info"><div class="dc-name">Before the Meeting</div><div class="dc-ctx">Checking if ready</div></div>
+        <div class="dc-badge">Workplace</div>
+      </div>
+      <div class="dc-chat">
+        <div class="bub l">회의 준비 다 됐어요?</div>
+        <div class="bub r">네, 자료는 다 준비했는데 프린터가 안 돼서요.</div>
+        <div class="bub l">그냥 화면으로 보여줘요. 어차피 다 노트북 있잖아요.</div>
+      </div>
+      <div class="dc-foot">
+        <span class="dc-vocab">📚 11 words</span>
+        <span class="dc-lvl lvl-i">Intermediate</span>
+        <button class="dc-study" onclick="event.stopPropagation();openModal(11)">Study vocab →</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay hidden" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="conv-modal">
+    <div class="cm-topbar" id="cm-topbar">
+      <div class="cm-avi" id="cm-avi">👩</div>
+      <div class="cm-info">
+        <div class="cm-name" id="cm-name">Ji-yeon &amp; Soo-jin</div>
+        <div class="cm-sub" id="cm-sub">Planning dinner together · Beginner</div>
+      </div>
+      <button class="cm-x" onclick="closeModal()">×</button>
+    </div>
+    <div class="cm-chat" id="cm-chat"></div>
+    <div class="cm-foot">
+      <div class="cm-vocab-title">Key Vocabulary</div>
+      <div class="vlist" id="cm-vocab"></div>
+    </div>
+  </div>
+</div>
+
+<div id="kh-footer"></div>
+<script src="korehan-shared.js"></script>
+<script>
+const CONVS = [
+  {
+    avi:'👩', name:'Ji-yeon & Soo-jin', ctx:'Planning dinner together', cat:'everyday', lvl:'b', theme:'',
+    msgs:[
+      {s:'l',who:'Ji-yeon',txt:'오늘 저녁에 시간 돼?'},
+      {s:'r',who:'Soo-jin',txt:'응! 왜? 무슨 일 있어?'},
+      {s:'l',who:'Ji-yeon',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'},
+      {s:'r',who:'Soo-jin',txt:'ㅋㅋ 좋아! 어디서 먹을까?'},
+      {s:'l',who:'Ji-yeon',txt:'학교 앞 국밥집 어때? 요즘 거기 자주 가거든.'},
+      {s:'r',who:'Soo-jin',txt:'오 국밥 좋지. 몇 시에?'},
+      {s:'l',who:'Ji-yeon',txt:'6시 반쯤 괜찮아?'},
+      {s:'r',who:'Soo-jin',txt:'응 완전 좋아 👍'},
+    ],
+    vocab:[
+      {ko:'시간 돼?',rom:'sigan dwae?',en:'Do you have time? / Are you free?'},
+      {ko:'무슨 일',rom:'museun il',en:'What's up / What's the matter'},
+      {ko:'찾는 중',rom:'channeun jung',en:'In the middle of looking for'},
+      {ko:'학교 앞',rom:'hakgyo ap',en:'In front of school'},
+      {ko:'자주',rom:'jaju',en:'Often / Frequently'},
+      {ko:'완전',rom:'wanjeon',en:'Totally / Completely (slang)'},
+    ]
+  },
+  {
+    avi:'👨‍💼', name:'Team Chat', ctx:'Asking for a deadline extension', cat:'work', lvl:'i', theme:'work',
+    msgs:[
+      {s:'l',who:'Min-su',txt:'보고서 마감이 오늘인데 조금 더 시간이 필요해요.'},
+      {s:'r',who:'Team lead',txt:'얼마나 더 필요해요?'},
+      {s:'l',who:'Min-su',txt:'내일 오전까지 가능할까요?'},
+      {s:'r',who:'Team lead',txt:'이유가 뭐예요?'},
+      {s:'l',who:'Min-su',txt:'데이터 분석 부분이 예상보다 복잡하게 나왔어요.'},
+      {s:'r',who:'Team lead',txt:'알겠어요. 내일 점심 전까지 주세요.'},
+      {s:'l',who:'Min-su',txt:'감사합니다. 최대한 빨리 드릴게요.'},
+    ],
+    vocab:[
+      {ko:'마감',rom:'magam',en:'Deadline'},
+      {ko:'가능할까요?',rom:'ganeunghalkkayo?',en:'Would it be possible?'},
+      {ko:'데이터 분석',rom:'deiteo bunsek',en:'Data analysis'},
+      {ko:'예상보다',rom:'yesangboda',en:'More than expected'},
+      {ko:'복잡하다',rom:'bokjaphada',en:'To be complicated'},
+      {ko:'최대한',rom:'choedaehan',en:'As much as possible / To the maximum'},
+    ]
+  },
+  {
+    avi:'👫', name:'Couple Chat', ctx:'Making up after an argument', cat:'dating', lvl:'i', theme:'date',
+    msgs:[
+      {s:'l',who:'Hyun',txt:'아까 내가 좀 심했던 것 같아. 미안해.'},
+      {s:'r',who:'Ji',txt:'나도 과민반응했어. 괜찮아.'},
+      {s:'l',who:'Hyun',txt:'오늘 저녁에 우리 같이 밥 먹을까?'},
+      {s:'r',who:'Ji',txt:'응, 어디 갈까?'},
+      {s:'l',who:'Hyun',txt:'네가 좋아하는 데로 가자. 내가 살게.'},
+      {s:'r',who:'Ji',txt:'ㅎㅎ 그럼 파스타 먹고 싶어.'},
+    ],
+    vocab:[
+      {ko:'심하다',rom:'simhada',en:'To be harsh / extreme / too much'},
+      {ko:'과민반응',rom:'gwamin ban-eung',en:'Overreaction'},
+      {ko:'네가 좋아하는 데',rom:'nega joahaneun de',en:'The place you like'},
+      {ko:'내가 살게',rom:'naega salge',en:'I'll pay / It's on me'},
+    ]
+  },
+  {
+    avi:'🧑‍🤝‍🧑', name:'Min-jun & Tae-yang', ctx:'Weekend plans', cat:'friends', lvl:'b', theme:'',
+    msgs:[
+      {s:'l',who:'Min-jun',txt:'이번 주말에 뭐 해?'},
+      {s:'r',who:'Tae-yang',txt:'아직 계획 없어. 왜?'},
+      {s:'l',who:'Min-jun',txt:'영화 보러 갈래? 새로 나온 거 재밌대.'},
+      {s:'r',who:'Tae-yang',txt:'무슨 영화?'},
+      {s:'l',who:'Min-jun',txt:'액션 영화인데 평점이 되게 높아.'},
+      {s:'r',who:'Tae-yang',txt:'좋아, 몇 시 어때?'},
+      {s:'l',who:'Min-jun',txt:'2시 어때? 그러면 밥도 같이 먹을 수 있어.'},
+    ],
+    vocab:[
+      {ko:'이번 주말',rom:'ibeon jumal',en:'This weekend'},
+      {ko:'새로 나온',rom:'saero naon',en:'Newly released'},
+      {ko:'재밌대',rom:'jaemitdae',en:'They say it's fun (hearsay)'},
+      {ko:'평점',rom:'pyeongjeom',en:'Rating / Score'},
+      {ko:'되게',rom:'doege',en:'Really / Very (colloquial)'},
+    ]
+  },
+  {
+    avi:'👨‍👩‍👧', name:'Family Group Chat', ctx:'Mom asking about dinner', cat:'family', lvl:'b', theme:'fam',
+    msgs:[
+      {s:'l',who:'Mom',txt:'오늘 저녁 집에서 먹을 거야?'},
+      {s:'r',who:'Da-eun',txt:'응, 몇 시에 먹어요?'},
+      {s:'l',who:'Mom',txt:'6시 반쯤. 좋아하는 거 만들어줄게.'},
+      {s:'r',who:'Da-eun',txt:'된장찌개 해주세요!'},
+      {s:'l',who:'Mom',txt:'ㅎㅎ 알겠어. 일찍 들어와.'},
+    ],
+    vocab:[
+      {ko:'집에서 먹다',rom:'jibeseo meokda',en:'To eat at home'},
+      {ko:'~쯤',rom:'~jjeum',en:'Around / About (approximate time)'},
+      {ko:'만들어줄게',rom:'mandeureo julge',en:'I'll make (it) for you'},
+      {ko:'된장찌개',rom:'doenjang jjigae',en:'Fermented soybean paste stew'},
+      {ko:'일찍',rom:'iljjik',en:'Early'},
+    ]
+  },
+  {
+    avi:'💼', name:'Interview Prep', ctx:'Job interview Q&A', cat:'work', lvl:'a', theme:'work',
+    msgs:[
+      {s:'l',who:'Interviewer',txt:'지원 동기가 무엇인지 말씀해 주시겠어요?'},
+      {s:'r',who:'Applicant',txt:'저는 귀사의 혁신적인 문화에 매력을 느꼈습니다.'},
+      {s:'l',who:'Interviewer',txt:'구체적인 사례를 들어 설명해 주실 수 있나요?'},
+      {s:'r',who:'Applicant',txt:'네, 최근 출시하신 AI 서비스가 특히 인상적이었습니다.'},
+      {s:'l',who:'Interviewer',txt:'본인의 강점이 이 직무에 어떻게 기여할 것 같으신가요?'},
+      {s:'r',who:'Applicant',txt:'저는 데이터 기반 의사결정과 팀 협업에 강점이 있습니다.'},
+    ],
+    vocab:[
+      {ko:'지원 동기',rom:'jiwon donggi',en:'Motivation for applying'},
+      {ko:'귀사',rom:'gwisa',en:'Your company (formal/respectful)'},
+      {ko:'혁신적',rom:'hyeoksinjeok',en:'Innovative'},
+      {ko:'구체적인 사례',rom:'guchejeokin sarye',en:'Specific example/case'},
+      {ko:'기여하다',rom:'giyeohada',en:'To contribute'},
+      {ko:'의사결정',rom:'uisagyeoljeong',en:'Decision-making'},
+    ]
+  },
+  {
+    avi:'🛒', name:'At the Convenience Store', ctx:'Buying snacks', cat:'everyday', lvl:'b', theme:'',
+    msgs:[
+      {s:'l',who:'Cashier',txt:'봉투 필요하세요?'},
+      {s:'r',who:'Customer',txt:'아니요, 괜찮아요. 카드로 계산할게요.'},
+      {s:'l',who:'Cashier',txt:'영수증 드릴까요?'},
+      {s:'r',who:'Customer',txt:'아니요, 됐어요.'},
+      {s:'l',who:'Cashier',txt:'3,500원입니다. 감사합니다.'},
+    ],
+    vocab:[
+      {ko:'봉투',rom:'bongtu',en:'(Shopping) bag'},
+      {ko:'카드로 계산',rom:'kadeu-ro gyesan',en:'Pay by card'},
+      {ko:'영수증',rom:'yeongsujeung',en:'Receipt'},
+      {ko:'됐어요',rom:'dwaesseoyo',en:'It's fine / No need (dismissive OK)'},
+    ]
+  },
+  {
+    avi:'🎤', name:'After Norebang', ctx:'Deciding where to go next', cat:'friends', lvl:'i', theme:'',
+    msgs:[
+      {s:'l',who:'Ha-na',txt:'노래방 끝났는데 이제 어디 갈까?'},
+      {s:'r',who:'Joon',txt:'배고프지 않아? 삼겹살 어때?'},
+      {s:'l',who:'Ha-na',txt:'좋아! 근처에 24시간 하는 데 있잖아.'},
+      {s:'r',who:'Joon',txt:'맞아, 거기 진짜 맛있더라.'},
+      {s:'l',who:'Ha-na',txt:'그럼 빨리 가자. 배 너무 고파.'},
+    ],
+    vocab:[
+      {ko:'노래방',rom:'noraebang',en:'Karaoke room / Singing room'},
+      {ko:'삼겹살',rom:'samgyeopsal',en:'Grilled pork belly'},
+      {ko:'근처',rom:'geuncheo',en:'Nearby / In the vicinity'},
+      {ko:'24시간',rom:'isipsa sigan',en:'24 hours / Open 24/7'},
+      {ko:'진짜 맛있더라',rom:'jinjja masitdeora',en:'It was really delicious (recalled experience)'},
+    ]
+  },
+  {
+    avi:'💌', name:'First Date Plans', ctx:'Deciding on a place', cat:'dating', lvl:'i', theme:'date',
+    msgs:[
+      {s:'l',who:'Se-jun',txt:'이번 주말에 같이 뭐 할까요?'},
+      {s:'r',who:'Ye-jin',txt:'한강 피크닉 어때요? 날씨가 좋을 것 같아요.'},
+      {s:'l',who:'Se-jun',txt:'좋아요! 제가 김밥 싸올게요 ㅎㅎ'},
+      {s:'r',who:'Ye-jin',txt:'오 진짜요? 저는 음료 가져올게요.'},
+      {s:'l',who:'Se-jun',txt:'몇 시에 만날까요?'},
+      {s:'r',who:'Ye-jin',txt:'오후 2시 어때요? 한강공원 입구에서요.'},
+    ],
+    vocab:[
+      {ko:'피크닉',rom:'pikeunik',en:'Picnic'},
+      {ko:'날씨가 좋을 것 같다',rom:'nalssiga joheul geot gatda',en:'The weather looks like it'll be nice'},
+      {ko:'싸올게요',rom:'ssaolgeyo',en:'I'll pack and bring (food)'},
+      {ko:'음료',rom:'eumnyo',en:'Drink / Beverage'},
+      {ko:'입구',rom:'ipgu',en:'Entrance'},
+    ]
+  },
+  {
+    avi:'🏠', name:'With Parents', ctx:'Coming home late', cat:'family', lvl:'i', theme:'fam',
+    msgs:[
+      {s:'l',who:'Mom',txt:'오늘 몇 시에 들어와?'},
+      {s:'r',who:'Son',txt:'친구들이랑 저녁 먹고 들어갈게요. 좀 늦을 것 같아요.'},
+      {s:'l',who:'Mom',txt:'밥은 먹었어? 너무 늦지 않게 들어와.'},
+      {s:'r',who:'Son',txt:'네, 먹었어요. 11시 전에 들어갈게요.'},
+      {s:'l',who:'Mom',txt:'알겠어. 조심해서 들어와.'},
+    ],
+    vocab:[
+      {ko:'들어오다/가다',rom:'deureooda/gada',en:'To come/go inside (return home)'},
+      {ko:'늦을 것 같다',rom:'neujeul geot gatda',en:'It seems like it'll be late'},
+      {ko:'너무 늦지 않게',rom:'neomu neutji ange',en:'Not too late'},
+      {ko:'조심하다',rom:'josimhada',en:'To be careful / Take care'},
+    ]
+  },
+  {
+    avi:'🏥', name:'At the Pharmacy', ctx:'Getting medicine for a cold', cat:'everyday', lvl:'i', theme:'',
+    msgs:[
+      {s:'l',who:'Pharmacist',txt:'어디가 불편하세요?'},
+      {s:'r',who:'Customer',txt:'목이 아프고 콧물이 나요. 열도 조금 있어요.'},
+      {s:'l',who:'Pharmacist',txt:'감기약 드릴게요. 하루에 세 번 식후에 드세요.'},
+      {s:'r',who:'Customer',txt:'얼마나 먹어야 나아요?'},
+      {s:'l',who:'Pharmacist',txt:'3일치 드릴게요. 충분히 쉬시는 게 중요해요.'},
+    ],
+    vocab:[
+      {ko:'어디가 불편하세요?',rom:'eodie bulpyeonhaseyo?',en:'Where does it hurt? / What's bothering you?'},
+      {ko:'콧물이 나다',rom:'konmuri nada',en:'To have a runny nose'},
+      {ko:'식후',rom:'sikhu',en:'After a meal'},
+      {ko:'나아요',rom:'naayo',en:'Get better / Recover'},
+      {ko:'충분히',rom:'chungbunhi',en:'Sufficiently / Enough'},
+    ]
+  },
+  {
+    avi:'📊', name:'Before the Meeting', ctx:'Checking if ready', cat:'work', lvl:'i', theme:'work',
+    msgs:[
+      {s:'l',who:'Manager',txt:'회의 준비 다 됐어요?'},
+      {s:'r',who:'Staff',txt:'네, 자료는 다 준비했는데 프린터가 안 돼서요.'},
+      {s:'l',who:'Manager',txt:'그냥 화면으로 보여줘요. 어차피 다 노트북 있잖아요.'},
+      {s:'r',who:'Staff',txt:'아, 그렇게 하면 되겠네요. 감사합니다.'},
+      {s:'l',who:'Manager',txt:'5분 후에 회의실로 오세요.'},
+    ],
+    vocab:[
+      {ko:'준비 다 됐어요?',rom:'junbi da dwaesseoyo?',en:'Are you all ready? / Is everything prepared?'},
+      {ko:'자료',rom:'jaryo',en:'Materials / Documents / Data'},
+      {ko:'어차피',rom:'eochapi',en:'Anyway / Either way'},
+      {ko:'회의실',rom:'hoe-uisil',en:'Meeting room / Conference room'},
+    ]
+  },
+];
+
+let activeCat = 'all', activeLvl = 'all';
+
+function filterCat(cat, btn) {
+  activeCat = cat;
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  applyFilter();
+}
+function filterLvl(lvl, btn) {
+  activeLvl = lvl;
+  document.querySelectorAll('.lvl-pill').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  applyFilter();
+}
+function applyFilter() {
+  const cards = document.querySelectorAll('.dcard');
+  let visible = 0;
+  cards.forEach(card => {
+    const catMatch = activeCat === 'all' || card.dataset.cat === activeCat;
+    const lvlMatch = activeLvl === 'all' || card.dataset.lvl === activeLvl;
+    const show = catMatch && lvlMatch;
+    card.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  document.getElementById('result-count').textContent = visible + ' conversation' + (visible !== 1 ? 's' : '');
+}
+
+function openModal(idx) {
+  const c = CONVS[idx];
+  const topbar = document.getElementById('cm-topbar');
+  topbar.className = 'cm-topbar' + (c.theme ? ' ' + c.theme : '');
+  document.getElementById('cm-avi').textContent = c.avi;
+  document.getElementById('cm-name').textContent = c.name;
+  document.getElementById('cm-sub').textContent = c.ctx + ' · ' + ({b:'Beginner',i:'Intermediate',a:'Advanced'}[c.lvl]);
+  const chat = document.getElementById('cm-chat');
+  chat.innerHTML = c.msgs.map(m => `
+    <div class="cm-bub-wrap ${m.s}">
+      <div class="cm-sender">${m.who}</div>
+      <div class="cm-bub ${m.s}">${m.txt}</div>
+    </div>`).join('');
+  const vlist = document.getElementById('cm-vocab');
+  vlist.innerHTML = c.vocab.map(v => `
+    <div class="vi">
+      <span class="vi-ko">${v.ko}</span>
+      <span class="vi-rom">${v.rom}</span>
+      <span class="vi-en">${v.en}</span>
+      <button class="vi-save" onclick="vSave(this)">+ Save</button>
+    </div>`).join('');
+  document.getElementById('modal').classList.remove('hidden');
+}
+function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+function vSave(btn) { btn.classList.toggle('saved'); btn.textContent = btn.classList.contains('saved') ? '✓ Saved' : '+ Save'; }
+</script>
+</body>
+</html>

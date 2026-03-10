@@ -31,36 +31,6 @@ var supaUser = null;
 // → API 키가 브라우저에 절대 노출되지 않음
 const CLAUDE_PROXY_URL = SUPA_URL + '/functions/v1/claude-proxy';
 
-
-// ══ ARTICLE CACHE (AI 비용 절감) ══════════════════════════════════════════════
-// 기사 생성 시 번역/단어/문법/퀴즈를 한 번에 생성해서 DB에 저장
-// 프론트는 항상 캐시 먼저 확인 → 없을 때만 AI 호출
-
-async function getCachedAIContent(articleId, field) {
-  // field: 'translation' | 'vocab' | 'grammar' | 'quiz'
-  var sb = getSupa();
-  if (!sb || !articleId) return null;
-  try {
-    var res = await sb.from('article_cache')
-      .select(field)
-      .eq('article_id', String(articleId))
-      .maybeSingle();
-    if (res.error || !res.data) return null;
-    var val = res.data[field];
-    return val ? JSON.parse(val) : null;
-  } catch(e) { return null; }
-}
-
-async function saveCachedAIContent(articleId, field, value) {
-  var sb = getSupa();
-  if (!sb || !articleId) return;
-  try {
-    var obj = { article_id: String(articleId), updated_at: new Date().toISOString() };
-    obj[field] = JSON.stringify(value);
-    await sb.from('article_cache').upsert(obj, { onConflict: 'article_id' });
-  } catch(e) { console.warn('cache save failed', e); }
-}
-
 async function callClaude({ feature, model, max_tokens, messages }) {
   var sb = getSupa();
   if (!sb) throw new Error('Supabase not initialized');
@@ -109,7 +79,7 @@ async function signInWithGoogle() {
   var { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.origin + '/index.html',
+      redirectTo: window.location.href,
       queryParams: {
         access_type: 'offline',
         prompt: 'select_account'
@@ -454,85 +424,38 @@ async function signOut() {
 async function checkSession() {
   var sb = getSupa();
   if (!sb) return;
-
-  // OAuth 콜백: URL 해시에 access_token 있으면 먼저 처리
-  if (window.location.hash && window.location.hash.includes('access_token')) {
-    await new Promise(function(resolve) {
-      var unsub = sb.auth.onAuthStateChange(function(event, session) {
-        if (event === 'SIGNED_IN' && session) {
-          supaUser = session.user;
-          _sessionWarningShown = false;
-          // 해시 제거 후 클린 URL로
-          history.replaceState(null, '', window.location.pathname + window.location.search);
-          unsub.data.subscription.unsubscribe();
-          resolve();
-        }
-      });
-      // 5초 타임아웃 fallback
-      setTimeout(resolve, 5000);
-    });
-  }
-
   var { data } = await sb.auth.getSession();
   if (data && data.session && data.session.user) {
     supaUser = data.session.user;
+    updateAuthUI();
   }
-  window._sessionChecked = true;
-
-  // 세션 변화 감지 — 모든 이벤트(SIGNED_IN, INITIAL_SESSION 등) 처리
+  // 세션 변화 감지
   sb.auth.onAuthStateChange(function(event, session) {
-    var prevUser = supaUser;
-    supaUser = (session && session.user) ? session.user : null;
-
     if (event === 'SIGNED_OUT') {
       supaUser = null;
+      // 다른 탭에서 로그아웃 시 현재 페이지도 즉시 반영
       updateAuthUI();
       updateCommentForm();
-      return;
-    }
-
-    // 로그인 상태 변화 (SIGNED_IN, INITIAL_SESSION, TOKEN_REFRESHED, USER_UPDATED 모두 포함)
-    updateAuthUI();
-
-    // 새로 로그인된 경우에만 추가 처리
-    var justLoggedIn = supaUser && (!prevUser || prevUser.id !== supaUser.id);
-    if (justLoggedIn) {
-      _sessionWarningShown = false;
+    } else if (event === 'SIGNED_IN') {
+      supaUser = session ? session.user : null;
+      _sessionWarningShown = false; // 재로그인 시 경고 초기화
+      updateAuthUI();
       updateCommentForm();
       renderDailyMission();
-      startInactivityWatcher();
-      // 모달 닫기
-      var modal = document.getElementById('kh-auth-modal');
-      if (modal) modal.style.display = 'none';
+    } else if (event === 'TOKEN_REFRESHED') {
+      supaUser = session ? session.user : null;
+      updateAuthUI();
+    } else if (event === 'USER_UPDATED') {
+      supaUser = session ? session.user : null;
+      updateAuthUI();
+    } else {
+      supaUser = session ? session.user : null;
+      updateAuthUI();
+      updateCommentForm();
+      renderDailyMission();
     }
   });
 }
-
-// ── 30분 비활동 자동 로그아웃 ─────────────────────────────────────
-var _inactivityTimer = null;
-var INACTIVITY_MS = 30 * 60 * 1000; // 30분
-
-function resetInactivityTimer() {
-  if (!supaUser) return; // 로그인 안 된 경우 무시
-  clearTimeout(_inactivityTimer);
-  _inactivityTimer = setTimeout(async function() {
-    var sb = getSupa();
-    if (sb) await sb.auth.signOut();
-    supaUser = null;
-    updateAuthUI();
-    alert('30분 동안 활동이 없어 자동 로그아웃 되었습니다.');
-    window.location.href = 'index.html';
-  }, INACTIVITY_MS);
-}
-
-function startInactivityWatcher() {
-  ['mousemove','keydown','click','scroll','touchstart'].forEach(function(evt) {
-    document.addEventListener(evt, resetInactivityTimer, { passive: true });
-  });
-  resetInactivityTimer();
-}
-// ─────────────────────────────────────────────────────────────────
-
 
 // UI 업데이트
 function updateAuthUI() {
@@ -628,77 +551,6 @@ function getSentences() { return lsGet(K_SENTENCES, DEF_SENTENCES); }
 function getOpinions()  { return lsGet(K_OPINIONS,  []);            }
 
 
-
-// ── Learn 페이지용: article_cache에서 단어/예문 로드 ──
-async function getArticleCacheVocab() {
-  // article_cache 전체에서 vocab 필드 수집 → 중복 제거 후 반환
-  try {
-    var res = await fetch('https://samghztrdvtxmrmawneu.supabase.co/rest/v1/article_cache?select=vocab&vocab=not.is.null', {
-      headers: { 'apikey': 'sb_publishable_HGL3s1r-P4PDkjQ9mjPxug_yqlgldyU', 'Authorization': 'Bearer sb_publishable_HGL3s1r-P4PDkjQ9mjPxug_yqlgldyU' }
-    });
-    var rows = await res.json();
-    var seen = new Set();
-    var words = [];
-    (rows || []).forEach(function(r) {
-      try {
-        var arr = JSON.parse(r.vocab);
-        if (!Array.isArray(arr)) return;
-        arr.forEach(function(w) {
-          var key = (w.word||'').trim();
-          if (key && !seen.has(key)) { seen.add(key); words.push(w); }
-        });
-      } catch(e) {}
-    });
-    return words;
-  } catch(e) { return []; }
-}
-
-async function getArticleCacheSentences() {
-  // article_cache quiz 필드에서 예문 수집 (sentence + sentence_en)
-  try {
-    var res = await fetch('https://samghztrdvtxmrmawneu.supabase.co/rest/v1/article_cache?select=quiz&quiz=not.is.null', {
-      headers: { 'apikey': 'sb_publishable_HGL3s1r-P4PDkjQ9mjPxug_yqlgldyU', 'Authorization': 'Bearer sb_publishable_HGL3s1r-P4PDkjQ9mjPxug_yqlgldyU' }
-    });
-    var rows = await res.json();
-    var sentences = [];
-    var seen = new Set();
-    (rows || []).forEach(function(r) {
-      try {
-        var q = JSON.parse(r.quiz);
-        var qs = q.questions || q;
-        if (!Array.isArray(qs)) return;
-        qs.forEach(function(item) {
-          var ko = (item.sentence||'').replace('_____', item.blank||'___');
-          var en = (item.sentence_en||'').replace('_____', item.blank_en||'___');
-          if (ko && !seen.has(ko)) { seen.add(ko); sentences.push({ ko: ko, en: en, level: 'Intermediate' }); }
-        });
-      } catch(e) {}
-    });
-    return sentences;
-  } catch(e) { return []; }
-}
-
-// VOCAB hover 뜻 — DB에서 오버라이드 가능 (admin에서 수정 지원)
-var _vocabOverrides = null;
-async function loadVocabOverrides() {
-  if (_vocabOverrides) return _vocabOverrides;
-  try {
-    var res = await fetch('https://samghztrdvtxmrmawneu.supabase.co/rest/v1/vocab_overrides?select=word,en,rom', {
-      headers: { 'apikey': 'sb_publishable_HGL3s1r-P4PDkjQ9mjPxug_yqlgldyU', 'Authorization': 'Bearer sb_publishable_HGL3s1r-P4PDkjQ9mjPxug_yqlgldyU' }
-    });
-    if (!res.ok) { _vocabOverrides = {}; return {}; }
-    var rows = await res.json();
-    _vocabOverrides = {};
-    (rows||[]).forEach(function(r){ if(r.word) _vocabOverrides[r.word] = { en: r.en, rom: r.rom }; });
-    return _vocabOverrides;
-  } catch(e) { _vocabOverrides = {}; return {}; }
-}
-
-function getVocabEntry(word) {
-  // overrides 우선, fallback VOCAB 딕셔너리
-  if (_vocabOverrides && _vocabOverrides[word]) return _vocabOverrides[word];
-  return VOCAB[word] || null;
-}
 
 function toast(msg, isErr) {
   var d = document.createElement('div');
@@ -1550,20 +1402,6 @@ async function loadFillExercise(container) {
 
   el.innerHTML = renderFillLoading();
 
-  // ── DB 캐시 먼저 확인 ──
-  var cachedQuiz = await getCachedAIContent(id, 'quiz');
-  if (cachedQuiz && cachedQuiz.questions && cachedQuiz.questions.length) {
-    _fillLoaded = true;
-    // 매번 다른 문제 — shuffle 후 3개 선택
-    var allQ = cachedQuiz.questions.slice();
-    for (var i = allQ.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var tmp = allQ[i]; allQ[i] = allQ[j]; allQ[j] = tmp;
-    }
-    renderFillQuestions(el, allQ.slice(0, 3), a);
-    return;
-  }
-
   if (!supaUser) {
     el.innerHTML = renderFillNoKey();
     return;
@@ -1611,8 +1449,6 @@ Respond ONLY with this JSON (no markdown, no extra text):
     var clean = raw.replace(/```json|```/g, '').trim();
     var parsed = JSON.parse(clean);
     _fillLoaded = true;
-    // DB에 저장
-    saveCachedAIContent(id, 'quiz', { questions: parsed.questions });
     renderFillQuestions(el, parsed.questions, a);
   } catch(e) {
     el.innerHTML = '<div style="padding:24px;text-align:center;color:#e53e3e">⚠️ AI 생성 실패. 다시 시도해주세요.<br><button onclick="loadFillExercise()" style="margin-top:12px;padding:8px 20px;background:#2255a4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">🔄 Retry</button></div>';
@@ -1891,6 +1727,8 @@ async function loadGrammarGuide() {
   var params = new URLSearchParams(window.location.search);
   var id = params.get('id');
 
+  // 같은 기사 + 이미 AI 분석 완료된 경우만 재로드 방지
+  // (로그인 상태 변경 시 재시도 허용 - dataset에 'ai' 표시)
   if (el.dataset.loadedId === String(id) && el.dataset.source === 'ai') return;
   el.dataset.loadedId = String(id);
   el.dataset.source = '';
@@ -1898,22 +1736,6 @@ async function loadGrammarGuide() {
   var all = getCachedArticles();
   var a = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
   if (!a) { el.innerHTML = '<p style="color:#aaa;padding:20px 0;text-align:center">Article not found.</p>'; return; }
-
-  el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center">✨ 문법 가이드 불러오는 중...</div>';
-
-  // ── DB 캐시 먼저 확인 ──
-  var cached = await getCachedAIContent(id, 'grammar');
-  if (cached && cached.patterns && cached.patterns.length) {
-    renderGrammarGuideHTML(el, cached.patterns);
-    el.dataset.source = 'ai';
-    return;
-  }
-
-  // 로그인 필요
-  if (!supaUser) {
-    el.innerHTML = '<p style="color:#aaa;padding:20px 0;text-align:center">🔒 <a href="#" onclick="openAuthModal()">로그인</a> 후 이용 가능해요.</p>';
-    return;
-  }
 
   el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center">✨ Analyzing grammar with AI...</div>';
 
@@ -1944,10 +1766,18 @@ async function loadGrammarGuide() {
     if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.slice(jsonStart, jsonEnd + 1);
     var parsed = JSON.parse(clean);
     var guides = parsed.patterns || [];
-    el.dataset.source = 'ai';
-    // DB에 저장 (다음 사용자는 AI 호출 없이 바로 읽음)
-    saveCachedAIContent(id, 'grammar', { patterns: guides });
-    renderGrammarGuideHTML(el, guides);
+    el.dataset.source = 'ai'; // AI 분석 성공 표시 → 캐시 허용
+
+    el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">✨ Grammar patterns found in this article:</p>'
+      + guides.map(function(g){
+        return '<div class="grammar-point">'
+          + '<div class="grammar-name">' + g.name
+          + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
+          + '</div>'
+          + '<div class="grammar-explanation">' + g.exp + '</div>'
+          + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
+          + '</div>';
+      }).join('');
   } catch(e) {
     if (e.message === 'Not signed in') {
       el.dataset.source = ''; // 로그인 후 재시도 허용
@@ -1961,20 +1791,6 @@ async function loadGrammarGuide() {
       renderStaticGrammar(el, a);
     }
   }
-}
-
-
-function renderGrammarGuideHTML(el, guides) {
-  el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">✨ Grammar patterns found in this article:</p>'
-    + guides.map(function(g){
-      return '<div class="grammar-point">'
-        + '<div class="grammar-name">' + g.name
-        + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
-        + '</div>'
-        + '<div class="grammar-explanation">' + g.exp + '</div>'
-        + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
-        + '</div>';
-    }).join('');
 }
 
 function renderStaticGrammar(el, a) {
@@ -2007,40 +1823,20 @@ function renderStaticGrammar(el, a) {
 function renderArticleVocab(a) {
   var el = document.getElementById('art-vocab-list');
   if (!el) return;
-  var id = a.id;
-  // DB 캐시에서 AI 생성 단어 목록 시도
-  getCachedAIContent(id, 'vocab').then(function(cached) {
-    if (cached && Array.isArray(cached) && cached.length) {
-      el.innerHTML = cached.map(function(w) {
-        return '<div class="art-vocab-item">'
-          + '<span class="art-vocab-ko">' + (w.word||'') + '</span>'
-          + '<span class="art-vocab-rom">' + (w.reading||'') + '</span>'
-          + '<span class="art-vocab-en">' + (w.meaning||'') + '</span>'
-          + ttsBtn(w.word||'')
-          + '</div>';
-      }).join('');
-      return;
-    }
-    // fallback: 기존 VOCAB 딕셔너리
-    var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
-    var found = [];
-    Object.keys(VOCAB).forEach(function(k) {
-      if (text.indexOf(k) !== -1 && found.length < 8) found.push(k);
-    });
-    if (!found.length) {
-      var box = el.closest ? el.closest('.art-vocab-box') : null;
-      if (box) box.style.display = 'none';
-      return;
-    }
-    el.innerHTML = found.map(function(k) {
-      return '<div class="art-vocab-item">'
-        + '<span class="art-vocab-ko">' + k + '</span>'
-        + '<span class="art-vocab-rom">' + VOCAB[k].rom + '</span>'
-        + '<span class="art-vocab-en">' + VOCAB[k].en + '</span>'
-        + ttsBtn(k)
-        + '</div>';
-    }).join('');
+  var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
+  var found = [];
+  Object.keys(VOCAB).forEach(function(k) {
+    if (text.indexOf(k) !== -1 && found.length < 8) found.push(k);
   });
+  if (!found.length) { el.closest('.art-vocab-box').style.display = 'none'; return; }
+  el.innerHTML = found.map(function(k) {
+    return '<div class="art-vocab-item">'
+      + '<span class="art-vocab-ko">' + k + '</span>'
+      + '<span class="art-vocab-rom">' + VOCAB[k].rom + '</span>'
+      + '<span class="art-vocab-en">' + VOCAB[k].en + '</span>'
+      + ttsBtn(k)
+      + '</div>';
+  }).join('');
 }
 
 // ── 기사 검색 ─────────────────────────────────────────────────
@@ -2120,21 +1916,7 @@ async function toggleTranslate() {
   var cacheKey = 'trans_' + id;
 
   if (translateCache[cacheKey]) {
-    zones.forEach(function(z){ if (!z.dataset.original) z.dataset.original = z.innerHTML; });
     applyTranslation(zones, translateCache[cacheKey]);
-    btn.textContent = '🇰🇷 Back to Korean';
-    btn.disabled = false;
-    btn.classList.add('active');
-    translateActive = true;
-    return;
-  }
-
-  // ── DB 캐시 확인 ──
-  var cachedTrans = await getCachedAIContent(id, 'translation');
-  if (cachedTrans && cachedTrans.texts && cachedTrans.texts.length) {
-    translateCache[cacheKey] = cachedTrans.texts;
-    zones.forEach(function(z){ if (!z.dataset.original) z.dataset.original = z.innerHTML; });
-    applyTranslation(zones, cachedTrans.texts);
     btn.textContent = '🇰🇷 Back to Korean';
     btn.disabled = false;
     btn.classList.add('active');
@@ -2182,7 +1964,6 @@ async function toggleTranslate() {
     if (!Array.isArray(translations)) throw new Error('not array');
 
     translateCache[cacheKey] = translations;
-    saveCachedAIContent(id, 'translation', { texts: translations });
     applyTranslation(zones, translations);
     translateActive = true;
     btn.textContent = '🇰🇷 Back to Korean';
@@ -2455,9 +2236,11 @@ function renderHeader() {
     { href:'index.html',       label:'Home',      cls:'', base:'index'      },
   ];
   var fixedEnd = [
-    { href:'korehan-study-room.html', label:'📖 Study Room', cls:'learn-nav', base:'korehan-study-room' },
-    { href:'korehan-courses.html', label:'🎓 Courses', cls:'courses-nav', base:'korehan-courses' },
-    { href:'korehan-all.html',     label:'All News',   cls:'', base:'korehan-all' },
+    { href:'korehan-conversations.html', label:'💬 Conversations', cls:'', base:'korehan-conversations' },
+    { href:'korehan-stories.html',       label:'📖 Stories',       cls:'', base:'korehan-stories' },
+    { href:'korehan-study-room.html',    label:'📖 Study Room',    cls:'learn-nav', base:'korehan-study-room' },
+    { href:'korehan-courses.html',       label:'🎓 Courses',       cls:'courses-nav', base:'korehan-courses' },
+    { href:'korehan-all.html',           label:'All News',          cls:'', base:'korehan-all' },
   ];
   // 동적 섹션 링크
   var dynLinks = getSections().map(function(s){
@@ -2468,6 +2251,7 @@ function renderHeader() {
   var currentSection = (new URLSearchParams(window.location.search)).get('s') || '';
   return '<div class="kh-top"><div class="kh-top-inner">'
     + '<div class="kh-top-row">'
+    + '<button class="kh-ham" onclick="khSbOpen()" aria-label="Menu">&#9776;</button>'
     + '<a class="kh-brand" href="index.html">'
     + '<span class="kh-logo-text"><span class="kh-logo-kore">Kore</span><span class="kh-logo-han">Han</span></span>'
     + '<span class="kh-logo-news">News</span>'
@@ -2488,38 +2272,19 @@ function renderHeader() {
       }).join('')
     + '<div class="kh-search-wrap"><input type="text" id="kh-search-input" class="kh-search-input" placeholder="🔍 Search articles..." onkeydown="if(event.key===\'Enter\')doSearch(this.value)"><button class="kh-search-btn" onclick="doSearch(document.getElementById(\'kh-search-input\').value)">Search</button></div>'
     + '</nav></div></div>'
-}
-
-
-// ── Breaking News Ticker ─────────────────────────────────────────────────────
-function injectBreakingTicker() {
-  var headerEl = document.getElementById('kh-header');
-  if (!headerEl) return;
-  // 이미 있으면 스킵
-  if (document.getElementById('kh-breaking-ticker')) return;
-
-  var articles = getCachedArticles().filter(function(a) {
-    return a.status === 'published' && a.breaking;
-  });
-  // breaking 기사 없으면 최근 8개 사용
-  if (!articles.length) {
-    articles = getCachedArticles().filter(function(a){ return a.status === 'published'; }).slice(0, 8);
-  }
-  if (!articles.length) return;
-
-  var items = articles.slice(0, 8);
-  var html = (items.concat(items)).map(function(a) {
-    return '<a class="brk-item" href="korehan-article.html?id=' + a.id + '">' + a.title + '</a>'
-         + '<span class="brk-sep">·</span>';
-  }).join('');
-
-  var ticker = document.createElement('div');
-  ticker.id = 'kh-breaking-ticker';
-  ticker.className = 'kh-breaking';
-  ticker.innerHTML = '<div class="brk-label"><span class="brk-badge">⚡</span>&nbsp;Breaking</div>'
-    + '<div class="brk-track-wrap"><div class="brk-track">' + html + '</div></div>';
-
-  headerEl.insertAdjacentElement('afterend', ticker);
+    // Breaking news ticker - DB 기사 기반
+    + (function() {
+        var articles = getCachedArticles().filter(function(a){ return a.status === 'published'; });
+        var items = articles.slice(0, 8);
+        // 루프 위해 2번 반복
+        var html = (items.concat(items)).map(function(a){
+          return '<a class="brk-item" href="korehan-article.html?id=' + a.id + '">' + a.title + '</a><span class="brk-sep">•</span>';
+        }).join('');
+        return '<div class="kh-breaking">'
+          + '<div class="brk-label"><span class="brk-badge">⚡</span>&nbsp;Breaking</div>'
+          + '<div class="brk-track-wrap"><div class="brk-track">' + html + '</div></div>'
+          + '</div>';
+      })()
 }
 
 function renderFooter() {
@@ -2535,7 +2300,7 @@ function renderFooter() {
     + getSections().map(function(s){
         return '<a href="korehan-section.html?s=' + encodeURIComponent(s.key) + '">' + s.label + '</a>';
       }).join('')
-    + '<a href="korehan-study-room.html">📖 Study Room</a>'
+    + '<a href="korehan-learn.html">✏️ Learn Korean</a>'
     + '<a href="korehan-all.html">All News</a>'
     + '</div>'
     + '</div>'
@@ -2590,10 +2355,10 @@ function renderSharedSidebar() {
     + '</div>'
 
     + '<div class="sidebar-box">'
-    + '<a href="korehan-study-room.html" style="text-decoration:none;display:block;background:linear-gradient(135deg,#0b1626,#1a3a6b);border-radius:8px;padding:16px;color:#fff;text-align:center">'
+    + '<a href="korehan-learn.html" style="text-decoration:none;display:block;background:linear-gradient(135deg,#0b1626,#1a3a6b);border-radius:8px;padding:16px;color:#fff;text-align:center">'
     + '<div style="font-size:20px;margin-bottom:6px">✏️</div>'
-    + '<div style="font-weight:700;font-size:14px;margin-bottom:4px">Study Room</div>'
-    + '<div style="font-size:12px;color:rgba(255,255,255,0.6)">Vocab · Grammar · Writing</div>'
+    + '<div style="font-weight:700;font-size:14px;margin-bottom:4px">Learn Korean</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,0.6)">Flashcards · Quiz · Sentences</div>'
     + '</a></div>'
     + '</div>';
 }
@@ -2639,7 +2404,13 @@ async function loadSections() {
   } catch(e) {
     _sectionsCache = DEFAULT_SECTIONS;
   }
-  // 헤더는 DOMContentLoaded에서 loadSections 완료 후 렌더링됨
+  // 네비 다시 렌더링 (섹션 로드 후 헤더 업데이트)
+  var hdr = document.getElementById('kh-header');
+  if (hdr) {
+    hdr.innerHTML = renderHeader();
+    // 헤더 재렌더 후 로그인 상태 즉시 반영
+    updateAuthUI();
+  }
 }
 
 function getSections() {
@@ -2705,24 +2476,22 @@ document.addEventListener('DOMContentLoaded', async function() {
   var footerEl  = document.getElementById('kh-footer');
   var sidebarEl = document.getElementById('kh-sidebar');
 
-  // 1) 헤더/푸터 즉시 렌더 (DEFAULT_SECTIONS) — 빈 화면 방지
   if (headerEl)  headerEl.innerHTML  = renderHeader();
   if (footerEl)  footerEl.innerHTML  = renderFooter();
   if (sidebarEl) sidebarEl.innerHTML = renderSharedSidebar();
-
-  // 2) 세션 + DB 병렬 로드
-  await checkSession();
-  if (supaUser) startInactivityWatcher();
-  await Promise.all([loadArticlesFromDB(), loadSections(), loadAppSettings()]);
-
-  // 3) 실제 섹션 + 로그인 상태로 헤더만 교체
-  if (headerEl) headerEl.innerHTML = renderHeader();
-  updateAuthUI();
   applySiteConfigToPage();
+
+  // 세션 먼저 확인 후 나머지 로드 (로그인 상태가 헤더 렌더 전에 준비되도록)
+  await checkSession();
 
   var page     = window.location.pathname.split('/').pop() || 'index.html';
   var pageBase = page.replace(/\.html$/, '');
-  injectBreakingTicker();
+
+  // Supabase에서 기사 + 섹션 먼저 로드 후 렌더링
+  await Promise.all([loadArticlesFromDB(), loadSections(), loadAppSettings()]);
+
+  if (footerEl) footerEl.innerHTML = renderFooter();
+  applySiteConfigToPage();
 
   if (!pageBase || pageBase === 'index') {
     renderHomePage();
@@ -3556,3 +3325,133 @@ function injectDailyMission() {
 // ══ END DAILY MISSION ENGINE ════════════════════════════════════════════════
 
 // ══ END TTS ENGINE ═════════════════════════════════════════════════════════════
+
+
+// ══ MOBILE SIDEBAR ══════════════════════════════════════════════════════════
+
+function khInjectSidebar() {
+  if (document.getElementById('kh-sidebar')) return;
+
+  // CSS
+  var style = document.createElement('style');
+  style.textContent = `
+    .kh-ham{display:none;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text,#0d1b2e);padding:4px 8px;flex-shrink:0;line-height:1;}
+    .kh-sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1500;}
+    .kh-sb-overlay.on{display:block;}
+    .kh-sidebar{position:fixed;top:0;left:0;bottom:0;width:268px;background:#0b1626;z-index:1600;transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);overflow-y:auto;display:flex;flex-direction:column;}
+    .kh-sidebar.on{transform:translateX(0);}
+    .kh-sb-top{padding:16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+    .kh-sb-brand{display:flex;align-items:baseline;gap:4px;}
+    .kh-sb-brand .sb-kore{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:#7ab8f5;}
+    .kh-sb-brand .sb-han{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:#fff;}
+    .kh-sb-brand .sb-news{font-size:13px;font-weight:600;color:rgba(255,255,255,.5);margin-left:3px;}
+    .kh-sb-x{background:none;border:none;color:rgba(255,255,255,.5);font-size:22px;cursor:pointer;line-height:1;padding:0;}
+    .kh-sb-sec{padding:14px 12px 6px;}
+    .kh-sb-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.4px;color:rgba(255,255,255,.25);padding:0 6px;margin-bottom:4px;}
+    .kh-sb-a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:6px;font-size:13px;font-weight:500;color:rgba(255,255,255,.65);cursor:pointer;border:none;background:none;width:100%;text-align:left;font-family:inherit;transition:all .13s;text-decoration:none;}
+    .kh-sb-a:hover,.kh-sb-a.on{background:rgba(255,255,255,.08);color:#fff;}
+    .kh-sb-ico{font-size:15px;width:20px;text-align:center;flex-shrink:0;}
+    .kh-sb-new{margin-left:auto;background:#e53e3e;color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:2px;flex-shrink:0;}
+    .kh-sb-arrow{margin-left:auto;font-size:11px;color:rgba(255,255,255,.25);transition:transform .18s;flex-shrink:0;}
+    .kh-sb-arrow.on{transform:rotate(90deg);}
+    .kh-sb-sub{display:none;padding-left:10px;}
+    .kh-sb-sub.on{display:block;}
+    .kh-sb-sub-a{display:block;width:100%;padding:7px 10px;font-size:12px;color:rgba(255,255,255,.5);border:none;background:none;text-align:left;font-family:inherit;cursor:pointer;border-radius:5px;transition:all .12s;text-decoration:none;}
+    .kh-sb-sub-a:hover{color:#fff;background:rgba(255,255,255,.05);}
+    @media(max-width:900px){
+      .kh-ham{display:flex !important;align-items:center;}
+      .kh-nav{display:none !important;}
+    }
+  `;
+  document.head.appendChild(style);
+
+  // Overlay
+  var ov = document.createElement('div');
+  ov.id = 'kh-sb-overlay';
+  ov.className = 'kh-sb-overlay';
+  ov.onclick = khSbClose;
+  document.body.appendChild(ov);
+
+  // Sidebar
+  var page = window.location.pathname.split('/').pop() || 'index.html';
+  var sb = document.createElement('nav');
+  sb.id = 'kh-sidebar';
+  sb.className = 'kh-sidebar';
+  sb.innerHTML =
+    '<div class="kh-sb-top">'
+      + '<div class="kh-sb-brand"><span class="sb-kore">Kore</span><span class="sb-han">Han</span><span class="sb-news">News</span></div>'
+      + '<button class="kh-sb-x" onclick="khSbClose()">&#x2715;</button>'
+    + '</div>'
+    + '<div class="kh-sb-sec">'
+      + '<div class="kh-sb-lbl">Navigation</div>'
+      + '<a href="index.html" class="kh-sb-a' + (page==='index.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F3E0;</span>Home</a>'
+    + '</div>'
+    + '<div class="kh-sb-sec">'
+      + '<div class="kh-sb-lbl">Read</div>'
+      + '<button class="kh-sb-a" onclick="khSbToggle('sb-news','sb-arr-news')"><span class="kh-sb-ico">&#x1F4F0;</span>News<span class="kh-sb-arrow" id="sb-arr-news">&#x203A;</span></button>'
+      + '<div class="kh-sb-sub" id="sb-news">'
+        + '<a href="korehan-all.html" class="kh-sb-sub-a">All News</a>'
+        + '<a href="korehan-section.html?s=society" class="kh-sb-sub-a">&#x1F3DB;&#xFE0F; Society</a>'
+        + '<a href="korehan-section.html?s=world" class="kh-sb-sub-a">&#x1F310; World</a>'
+        + '<a href="korehan-section.html?s=culture" class="kh-sb-sub-a">&#x1F3AD; Culture</a>'
+        + '<a href="korehan-section.html?s=kpop" class="kh-sb-sub-a">&#x1F3B5; K-pop</a>'
+        + '<a href="korehan-section.html?s=tech" class="kh-sb-sub-a">&#x1F4BB; Tech</a>'
+        + '<a href="korehan-section.html?s=korea" class="kh-sb-sub-a">&#x1F1F0;&#x1F1F7; Korea</a>'
+      + '</div>'
+      + '<button class="kh-sb-a" onclick="khSbToggle('sb-conv','sb-arr-conv')"><span class="kh-sb-ico">&#x1F4AC;</span>Conversations<span class="kh-sb-new">New</span><span class="kh-sb-arrow" id="sb-arr-conv" style="margin-left:4px">&#x203A;</span></button>'
+      + '<div class="kh-sb-sub" id="sb-conv">'
+        + '<a href="korehan-conversations.html" class="kh-sb-sub-a">All</a>'
+        + '<a href="korehan-conversations.html?cat=everyday" class="kh-sb-sub-a">Everyday</a>'
+        + '<a href="korehan-conversations.html?cat=work" class="kh-sb-sub-a">Workplace</a>'
+        + '<a href="korehan-conversations.html?cat=friends" class="kh-sb-sub-a">Friends</a>'
+        + '<a href="korehan-conversations.html?cat=dating" class="kh-sb-sub-a">Dating</a>'
+      + '</div>'
+      + '<button class="kh-sb-a" onclick="khSbToggle('sb-stor','sb-arr-stor')"><span class="kh-sb-ico">&#x1F4D6;</span>Stories<span class="kh-sb-new">New</span><span class="kh-sb-arrow" id="sb-arr-stor" style="margin-left:4px">&#x203A;</span></button>'
+      + '<div class="kh-sb-sub" id="sb-stor">'
+        + '<a href="korehan-stories.html" class="kh-sb-sub-a">All</a>'
+        + '<a href="korehan-stories.html?mood=fun" class="kh-sb-sub-a">&#x1F602; Fun</a>'
+        + '<a href="korehan-stories.html?mood=touching" class="kh-sb-sub-a">&#x1F979; Touching</a>'
+        + '<a href="korehan-stories.html?mood=scary" class="kh-sb-sub-a">&#x1F631; Scary</a>'
+        + '<a href="korehan-stories.html?mood=shocking" class="kh-sb-sub-a">&#x1F62E; Shocking</a>'
+      + '</div>'
+    + '</div>'
+    + '<div class="kh-sb-sec">'
+      + '<div class="kh-sb-lbl">Learn</div>'
+      + '<a href="korehan-study-room.html" class="kh-sb-a' + (page==='korehan-study-room.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F4D6;</span>Study Room</a>'
+      + '<a href="korehan-courses.html" class="kh-sb-a' + (page==='korehan-courses.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F393;</span>Courses</a>'
+      + '<a href="korehan-mypage.html" class="kh-sb-a' + (page==='korehan-mypage.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F464;</span>My Page</a>'
+    + '</div>';
+  document.body.appendChild(sb);
+}
+
+function khSbOpen() {
+  khInjectSidebar();
+  document.getElementById('kh-sidebar').classList.add('on');
+  document.getElementById('kh-sb-overlay').classList.add('on');
+  document.body.style.overflow = 'hidden';
+}
+function khSbClose() {
+  var sb = document.getElementById('kh-sidebar');
+  var ov = document.getElementById('kh-sb-overlay');
+  if (sb) sb.classList.remove('on');
+  if (ov) ov.classList.remove('on');
+  document.body.style.overflow = '';
+}
+function khSbToggle(subId, arrId) {
+  var s = document.getElementById(subId);
+  var a = document.getElementById(arrId);
+  if (!s) return;
+  var open = s.classList.contains('on');
+  document.querySelectorAll('.kh-sb-sub').forEach(function(x){ x.classList.remove('on'); });
+  document.querySelectorAll('.kh-sb-arrow').forEach(function(x){ x.classList.remove('on'); });
+  if (!open) { s.classList.add('on'); if(a) a.classList.add('on'); }
+}
+
+// 사이드바 초기화 — renderHeader 이후 자동 실행
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    khInjectSidebar();
+  });
+})();
+
+// ══ END MOBILE SIDEBAR ══════════════════════════════════════════════════════

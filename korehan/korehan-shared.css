@@ -1194,9 +1194,21 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   }
 }
 
-/* ── BREAKING TICKER ANIMATION ──────────────────────────────── */
-@keyframes brkScroll {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+/* ── MOBILE HAMBURGER NAV ────────────────────────────────── */
+.kh-ham {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: var(--dark);
+  padding: 4px 8px;
+  flex-shrink: 0;
+  line-height: 1;
+  align-items: center;
 }
-#brk-track:hover { animation-play-state: paused; }
+@media (max-width: 900px) {
+  .kh-ham { display: flex !important; }
+  .kh-nav { display: none !important; }
+  .kh-top-row { gap: 8px; }
+}
