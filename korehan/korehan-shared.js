@@ -2454,7 +2454,7 @@ function renderHeader() {
     { href:'index.html',       label:'Home',      cls:'', base:'index'      },
   ];
   var fixedEnd = [
-    { href:'korehan-learn.html',   label:'✏️ Learn',   cls:'learn-nav', base:'korehan-learn' },
+    { href:'korehan-study-room.html', label:'📖 Study Room', cls:'learn-nav', base:'korehan-study-room' },
     { href:'korehan-courses.html', label:'🎓 Courses', cls:'courses-nav', base:'korehan-courses' },
     { href:'korehan-all.html',     label:'All News',   cls:'', base:'korehan-all' },
   ];
@@ -2534,7 +2534,7 @@ function renderFooter() {
     + getSections().map(function(s){
         return '<a href="korehan-section.html?s=' + encodeURIComponent(s.key) + '">' + s.label + '</a>';
       }).join('')
-    + '<a href="korehan-learn.html">✏️ Learn Korean</a>'
+    + '<a href="korehan-study-room.html">📖 Study Room</a>'
     + '<a href="korehan-all.html">All News</a>'
     + '</div>'
     + '</div>'
@@ -2589,10 +2589,10 @@ function renderSharedSidebar() {
     + '</div>'
 
     + '<div class="sidebar-box">'
-    + '<a href="korehan-learn.html" style="text-decoration:none;display:block;background:linear-gradient(135deg,#0b1626,#1a3a6b);border-radius:8px;padding:16px;color:#fff;text-align:center">'
+    + '<a href="korehan-study-room.html" style="text-decoration:none;display:block;background:linear-gradient(135deg,#0b1626,#1a3a6b);border-radius:8px;padding:16px;color:#fff;text-align:center">'
     + '<div style="font-size:20px;margin-bottom:6px">✏️</div>'
-    + '<div style="font-weight:700;font-size:14px;margin-bottom:4px">Learn Korean</div>'
-    + '<div style="font-size:12px;color:rgba(255,255,255,0.6)">Flashcards · Quiz · Sentences</div>'
+    + '<div style="font-weight:700;font-size:14px;margin-bottom:4px">Study Room</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,0.6)">Vocab · Grammar · Writing</div>'
     + '</a></div>'
     + '</div>';
 }
