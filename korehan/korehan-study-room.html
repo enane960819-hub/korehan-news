@@ -516,7 +516,7 @@ async function reassignTopicForLevel(level) {
   renderTopicUI();
   showAILoading();
   // DB 업데이트
-  var sb = getSb();
+  var sb = getSupa();
   var today = new Date().toISOString().slice(0, 10);
   await sb.from('user_topic_history').upsert({
     user_id: supaUser.id, topic_id: picked.id, assigned_date: today, completed: false
@@ -548,7 +548,7 @@ async function assignDailyTopic() {
     return;
   }
 
-  var sb = getSb();
+  var sb = getSupa();
 
   // 1. 오늘 배정된 토픽 있는지 확인
   var { data: todayRows } = await sb.from('user_topic_history')
@@ -791,7 +791,7 @@ async function submitWriting() {
   if (!text) { showToast('✏️ Write something first!'); return; }
 
   // mark completed
-  var sb = getSb();
+  var sb = getSupa();
   var today = new Date().toISOString().slice(0, 10);
   await sb.from('user_topic_history')
     .update({ completed: true })
