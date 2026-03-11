@@ -375,8 +375,23 @@
         </div>
         <!-- Reading 선택 시 기사 선택 드롭다운 -->
         <div id="wc-reading-select" style="display:none;padding:10px 0 0">
+          <!-- 소스 탭 -->
+          <div style="display:flex;gap:6px;margin-bottom:10px">
+            <button class="wc-src-btn active" onclick="switchReadingSource('article',this)" style="flex:1;padding:6px 4px;border:1px solid rgba(255,255,255,.25);border-radius:8px;background:rgba(255,255,255,.15);color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">📰 기사</button>
+            <button class="wc-src-btn" onclick="switchReadingSource('conv',this)" style="flex:1;padding:6px 4px;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:none;color:rgba(255,255,255,.6);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">💬 대화</button>
+            <button class="wc-src-btn" onclick="switchReadingSource('story',this)" style="flex:1;padding:6px 4px;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:none;color:rgba(255,255,255,.6);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">📖 스토리</button>
+          </div>
+          <!-- 기사 선택 -->
           <select id="wc-article-select" style="width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,.2);border-radius:10px;background:rgba(255,255,255,.1);color:#fff;font-size:13px;font-family:inherit">
             <option value="">기사 선택...</option>
+          </select>
+          <!-- 대화 선택 -->
+          <select id="wc-conv-select" style="display:none;width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,.2);border-radius:10px;background:rgba(255,255,255,.1);color:#fff;font-size:13px;font-family:inherit">
+            <option value="">대화 선택...</option>
+          </select>
+          <!-- 스토리 선택 -->
+          <select id="wc-story-select" style="display:none;width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,.2);border-radius:10px;background:rgba(255,255,255,.1);color:#fff;font-size:13px;font-family:inherit">
+            <option value="">스토리 선택...</option>
           </select>
           <div id="wc-article-preview" style="font-size:12px;color:rgba(255,255,255,.7);margin-top:8px;line-height:1.6;display:none"></div>
         </div>
@@ -1253,6 +1268,7 @@ function setWritingMode(mode) {
   if (mode === 'reading') {
     readingSelect.style.display = 'block';
     modeText.textContent = 'Read & Write';
+    // 기본 소스(article) 로드
     loadArticlesForReading();
   } else {
     readingSelect.style.display = 'none';
@@ -1260,14 +1276,40 @@ function setWritingMode(mode) {
   }
 }
 
+// 현재 읽기 소스 ('article' | 'conv' | 'story')
+var _readingSource = 'article';
+
+function switchReadingSource(src, btn) {
+  _readingSource = src;
+  _selectedArticle = null;
+  document.querySelectorAll('.wc-src-btn').forEach(function(b) {
+    b.style.background = 'none';
+    b.style.borderColor = 'rgba(255,255,255,.15)';
+    b.style.color = 'rgba(255,255,255,.6)';
+  });
+  if (btn) {
+    btn.style.background = 'rgba(255,255,255,.15)';
+    btn.style.borderColor = 'rgba(255,255,255,.25)';
+    btn.style.color = '#fff';
+  }
+  document.getElementById('wc-article-select').style.display = src === 'article' ? 'block' : 'none';
+  document.getElementById('wc-conv-select').style.display    = src === 'conv'    ? 'block' : 'none';
+  document.getElementById('wc-story-select').style.display   = src === 'story'   ? 'block' : 'none';
+  document.getElementById('wc-article-preview').style.display = 'none';
+
+  if (src === 'article') loadArticlesForReading();
+  if (src === 'conv')    loadConvsForReading();
+  if (src === 'story')   loadStoriesForReading();
+}
+
 async function loadArticlesForReading() {
   var sel = document.getElementById('wc-article-select');
-  if (sel.options.length > 1) return;  // 이미 로드됨
+  if (sel.options.length > 1) return;
 
   try {
     var sb = getSupa();
     var { data } = await sb.from('articles')
-      .select('id, title_ko, title, body, section, level')
+      .select('id, title, body, section, level')
       .eq('status', 'published')
       .order('created_at', {ascending: false})
       .limit(20);
@@ -1276,9 +1318,10 @@ async function loadArticlesForReading() {
       data.forEach(function(a) {
         var opt = document.createElement('option');
         opt.value = a.id;
-        opt.textContent = (a.title_ko || a.title || 'Untitled') + ' [' + (a.level || a.section || '') + ']';
-        opt.dataset.body = (a.body || '').replace(/<[^>]*>/g, '').slice(0, 800);
-        opt.dataset.title = a.title_ko || a.title || '';
+        opt.textContent = (a.title || 'Untitled') + ' [' + (a.level || a.section || '') + ']';
+        opt.dataset.body  = (a.body || '').replace(/<[^>]*>/g, '').slice(0, 800);
+        opt.dataset.title = a.title || '';
+        opt.dataset.type  = 'article';
         sel.appendChild(opt);
       });
     } else {
@@ -1287,25 +1330,103 @@ async function loadArticlesForReading() {
       opt.disabled = true;
       sel.appendChild(opt);
     }
-  } catch(e) {
-    console.error('article load error:', e);
-  }
+  } catch(e) { console.error('article load error:', e); }
 
-  sel.addEventListener('change', function() {
-    var opt = sel.options[sel.selectedIndex];
-    var preview = document.getElementById('wc-article-preview');
-    if (opt && opt.dataset.body) {
-      preview.textContent = opt.dataset.body.slice(0, 150) + '…';
-      preview.style.display = 'block';
-      _selectedArticle = {id: opt.value, title: opt.dataset.title, body: opt.dataset.body};
+  sel.addEventListener('change', function() { onReadingSelectChange(sel); });
+}
+
+async function loadConvsForReading() {
+  var sel = document.getElementById('wc-conv-select');
+  if (sel.options.length > 1) return;
+
+  try {
+    var sb = getSupa();
+    var { data } = await sb.from('conversations_data')
+      .select('id, name, ctx, data, lvl')
+      .order('created_at', {ascending: false})
+      .limit(30);
+
+    if (data && data.length) {
+      data.forEach(function(row) {
+        var d = row.data || {};
+        var opt = document.createElement('option');
+        opt.value = row.id;
+        opt.textContent = (d.name || row.name || 'Untitled') + ' [' + (d.lvl || row.lvl || '') + ']';
+        // 대화를 읽기 자료로 — msgs를 텍스트로 변환
+        var msgs = (d.msgs || []).map(function(m) {
+          return (m.who || (m.s==='l'?'A':'B')) + ': ' + m.txt;
+        }).join('\n');
+        var vocab = (d.vocab || []).map(function(v){ return v.ko + ' (' + v.en + ')'; }).join(', ');
+        opt.dataset.body  = msgs + (vocab ? '\n\n[단어] ' + vocab : '');
+        opt.dataset.title = d.name || row.name || '';
+        opt.dataset.type  = 'conv';
+        opt.dataset.ctx   = d.ctx || row.ctx || '';
+        sel.appendChild(opt);
+      });
+    } else {
+      var opt = document.createElement('option');
+      opt.textContent = '대화 없음 (Conversations 추가 필요)';
+      opt.disabled = true;
+      sel.appendChild(opt);
     }
-  });
+  } catch(e) { console.error('conv load error:', e); }
+
+  sel.addEventListener('change', function() { onReadingSelectChange(sel); });
+}
+
+async function loadStoriesForReading() {
+  var sel = document.getElementById('wc-story-select');
+  if (sel.options.length > 1) return;
+
+  try {
+    var sb = getSupa();
+    var { data } = await sb.from('stories_data')
+      .select('id, title, title_en, data, lvl, mood')
+      .order('created_at', {ascending: false})
+      .limit(30);
+
+    if (data && data.length) {
+      data.forEach(function(row) {
+        var d = row.data || {};
+        var opt = document.createElement('option');
+        opt.value = row.id;
+        opt.textContent = (d.title || row.title || 'Untitled') + ' [' + (d.lvl || row.lvl || '') + ']';
+        opt.dataset.body  = (d.body || d.preview || '').replace(/<[^>]*>/g, '').slice(0, 800);
+        opt.dataset.title = d.title || row.title || '';
+        opt.dataset.type  = 'story';
+        sel.appendChild(opt);
+      });
+    } else {
+      var opt = document.createElement('option');
+      opt.textContent = '스토리 없음 (Stories 추가 필요)';
+      opt.disabled = true;
+      sel.appendChild(opt);
+    }
+  } catch(e) { console.error('story load error:', e); }
+
+  sel.addEventListener('change', function() { onReadingSelectChange(sel); });
+}
+
+function onReadingSelectChange(sel) {
+  var opt = sel.options[sel.selectedIndex];
+  var preview = document.getElementById('wc-article-preview');
+  if (opt && opt.dataset.body) {
+    preview.textContent = opt.dataset.body.slice(0, 150) + '…';
+    preview.style.display = 'block';
+    _selectedArticle = {
+      id:    opt.value,
+      title: opt.dataset.title,
+      body:  opt.dataset.body,
+      type:  opt.dataset.type || 'article',
+      ctx:   opt.dataset.ctx || ''
+    };
+  }
 }
 
 function openWritingModalWithMode() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (_writingMode === 'reading' && !_selectedArticle) {
-    alert('기사를 먼저 선택해주세요');
+    alert('자료를 먼저 선택해주세요 (기사 / 대화 / 스토리)');
     return;
   }
   document.getElementById('wmodal').classList.remove('hidden');
@@ -1335,15 +1456,28 @@ function switchModalMode(mode) {
   var placeholder   = document.getElementById('write-area');
 
   if (mode === 'reading' && _selectedArticle) {
-    modeLabel.textContent    = '📰 Reading & Writing';
-    subEl.textContent        = _selectedArticle.title;
+    var srcType   = _selectedArticle.type || 'article';
+    var modeEmoji = srcType === 'conv' ? '💬' : srcType === 'story' ? '📖' : '📰';
+    modeLabel.textContent = modeEmoji + ' Reading & Writing';
+    subEl.textContent     = _selectedArticle.title;
 
-    // 기사 본문 + 쓰기 프롬프트 표시
-    document.getElementById('wm-article-body').textContent = _selectedArticle.body;
-    document.getElementById('wm-reading-prompts').innerHTML =
-      '• 이 기사를 읽고 느낀 점을 2-3문장으로 써보세요<br>'
-      + '• 기사에서 인상적인 부분을 소개해보세요<br>'
-      + '• 이 주제에 대한 여러분의 생각을 쓰세요';
+    // 본문 표시 (대화는 줄바꿈+굵게)
+    var bodyEl = document.getElementById('wm-article-body');
+    if (srcType === 'conv') {
+      bodyEl.innerHTML = _selectedArticle.body
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/\n/g,'<br>')
+        .replace(/(A|B):/g,'<strong>$1:</strong>');
+    } else {
+      bodyEl.textContent = _selectedArticle.body;
+    }
+
+    var prompts = {
+      article: '• 이 기사를 읽고 느낀 점을 2-3문장으로 써보세요<br>• 기사에서 인상적인 부분을 소개해보세요<br>• 이 주제에 대한 여러분의 생각을 쓰세요',
+      conv:    '• 이 대화에서 새로 배운 표현을 사용해 비슷한 대화를 만들어보세요<br>• 대화에 나온 상황을 당신의 경험으로 바꿔 써보세요<br>• 대화에 나온 단어 중 3개를 사용해 짧은 글을 쓰세요',
+      story:   '• 이 스토리를 읽고 줄거리를 간단히 요약해 보세요<br>• 스토리의 주인공에게 하고 싶은 말을 써보세요<br>• 비슷한 경험이 있다면 한국어로 써보세요'
+    };
+    document.getElementById('wm-reading-prompts').innerHTML = prompts[srcType] || prompts.article;
 
     if (readingBlock) readingBlock.style.display = 'block';
     if (contextBlock) contextBlock.style.display = 'none';
