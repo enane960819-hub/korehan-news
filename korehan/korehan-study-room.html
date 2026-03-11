@@ -233,6 +233,57 @@
 .lwb-sub   { font-size:13px; color:var(--gray); line-height:1.6; margin-bottom:24px; }
 .lwb-btn   { display:block; width:100%; padding:14px; background:linear-gradient(135deg,#0d1b2e,#2255a4); color:#fff; border:none; border-radius:10px; font-size:15px; font-weight:800; cursor:pointer; font-family:inherit; margin-bottom:10px; }
 .lwb-btn2  { display:block; width:100%; padding:12px; background:#fff; color:var(--accent); border:1.5px solid var(--border); border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
+
+/* Writing Mode Tabs (card) */
+.wc-mode-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 12px 20px 0;
+}
+.wc-mode-tab {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 10px;
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.7);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+}
+.wc-mode-tab.active {
+  background: rgba(255,255,255,.2);
+  color: #fff;
+  border-color: rgba(255,255,255,.5);
+}
+.wc-mode-tab:hover { background: rgba(255,255,255,.15); color: #fff; }
+
+/* Writing Mode Toggle (modal header) */
+.wm-mode-toggle {
+  display: flex;
+  gap: 6px;
+  margin-left: 16px;
+}
+.wm-mode-btn {
+  padding: 5px 14px;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255,255,255,.6);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+}
+.wm-mode-btn.active {
+  background: rgba(255,255,255,.2);
+  color: #fff;
+  border-color: rgba(255,255,255,.5);
+}
+
 </style>
 </head>
 <body>
@@ -317,9 +368,21 @@
           </div>
           <div class="wc-chips" id="wcard-chips"></div>
         </div>
+        <!-- 쓰기 모드 선택 -->
+        <div class="wc-mode-tabs" id="wc-mode-tabs">
+          <button class="wc-mode-tab active" id="tab-topic" onclick="setWritingMode('topic')">📝 Topic Writing</button>
+          <button class="wc-mode-tab" id="tab-reading" onclick="setWritingMode('reading')">📰 Reading Material</button>
+        </div>
+        <!-- Reading 선택 시 기사 선택 드롭다운 -->
+        <div id="wc-reading-select" style="display:none;padding:10px 0 0">
+          <select id="wc-article-select" style="width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,.2);border-radius:10px;background:rgba(255,255,255,.1);color:#fff;font-size:13px;font-family:inherit">
+            <option value="">기사 선택...</option>
+          </select>
+          <div id="wc-article-preview" style="font-size:12px;color:rgba(255,255,255,.7);margin-top:8px;line-height:1.6;display:none"></div>
+        </div>
         <div class="wc-footer">
-          <div><div class="wcf-text">Open Writing Room</div><div class="wcf-sub">Courses subscribers · feedback within 24h</div></div>
-          <button class="wcf-btn" onclick="event.stopPropagation();openWritingModal()">Start Writing →</button>
+          <div><div class="wcf-text" id="wcf-mode-text">Open Writing Room</div><div class="wcf-sub">Courses subscribers · feedback within 24h</div></div>
+          <button class="wcf-btn" onclick="event.stopPropagation();openWritingModalWithMode()">Start Writing →</button>
         </div>
       </div>
 
@@ -386,8 +449,13 @@
     <div class="wm-header">
       <div class="wmh-topic">
         <div>
-          <div class="wmh-title">✍️ Writing Room</div>
+          <div class="wmh-title" id="wm-mode-label">✍️ Writing Room</div>
           <div class="wmh-sub" id="wm-topic-sub">Today's topic loading…</div>
+        </div>
+        <!-- 모달 내 모드 탭 -->
+        <div class="wm-mode-toggle" id="wm-mode-toggle">
+          <button class="wm-mode-btn active" id="mbtab-topic" onclick="switchModalMode('topic')">📝 Topic</button>
+          <button class="wm-mode-btn" id="mbtab-reading" onclick="switchModalMode('reading')">📰 Reading</button>
         </div>
       </div>
       <button class="wmh-close" onclick="closeWritingModal()">✕</button>
@@ -435,6 +503,15 @@
           Loading…
         </div>
       </div>
+      <!-- Reading Mode: 기사 전문 -->
+      <div id="wm-reading-article" style="display:none">
+        <div class="plabel">📖 Reading Material</div>
+        <div id="wm-article-body" style="font-size:13px;color:#334155;line-height:1.8;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;max-height:300px;overflow-y:auto">
+          기사를 선택해주세요
+        </div>
+        <div class="plabel" style="margin-top:12px">✍️ Writing Prompts</div>
+        <div id="wm-reading-prompts" style="font-size:12px;color:#64748b;background:#f0f6ff;border-radius:8px;padding:10px 12px;line-height:1.8"></div>
+      </div>
     </div>
 
   </div>
@@ -443,7 +520,7 @@
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js"></script>
-<script><script>
+<script>
 // ═══════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════
@@ -482,10 +559,16 @@ document.addEventListener('DOMContentLoaded', async function() {
   // URL 파라미터로 conversations/stories에서 넘어온 경우
   var _urlParams = new URLSearchParams(window.location.search);
   if (_urlParams.get('mode') === 'conv' || _urlParams.get('mode') === 'story') {
+    function safeParseJSON(str, fallback) {
+      if (!str) return fallback;
+      try { return JSON.parse(str); } catch(e) {
+        try { return JSON.parse(decodeURIComponent(str)); } catch(e2) { return fallback; }
+      }
+    }
     _externalPracticeData = {
       title:   _urlParams.get('title') || '',
-      vocab:   JSON.parse(_urlParams.get('vocab')   || '[]'),
-      grammar: JSON.parse(_urlParams.get('grammar') || '[]'),
+      vocab:   safeParseJSON(_urlParams.get('vocab'),   []),
+      grammar: safeParseJSON(_urlParams.get('grammar'), []),
     };
     // 세션 체크 후 모달 열기
     function waitAndOpenModal() {
@@ -1129,6 +1212,134 @@ function updateHighlight() {
   });
 
   ov.innerHTML = escaped;
+}
+
+
+
+// ═══════════════════════════════════════════════════════════
+// WRITING MODE SELECTION (Topic / Reading)
+// ═══════════════════════════════════════════════════════════
+var _writingMode = 'topic';  // 'topic' | 'reading'
+var _selectedArticle = null;
+
+function setWritingMode(mode) {
+  _writingMode = mode;
+  document.getElementById('tab-topic').classList.toggle('active', mode === 'topic');
+  document.getElementById('tab-reading').classList.toggle('active', mode === 'reading');
+  var readingSelect = document.getElementById('wc-reading-select');
+  var modeText = document.getElementById('wcf-mode-text');
+  if (mode === 'reading') {
+    readingSelect.style.display = 'block';
+    modeText.textContent = 'Read & Write';
+    loadArticlesForReading();
+  } else {
+    readingSelect.style.display = 'none';
+    modeText.textContent = 'Open Writing Room';
+  }
+}
+
+async function loadArticlesForReading() {
+  var sel = document.getElementById('wc-article-select');
+  if (sel.options.length > 1) return;  // 이미 로드됨
+
+  try {
+    var sb = getSupa();
+    var { data } = await sb.from('articles')
+      .select('id, title_ko, title, body, section, level')
+      .eq('status', 'published')
+      .order('created_at', {ascending: false})
+      .limit(20);
+
+    if (data && data.length) {
+      data.forEach(function(a) {
+        var opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = (a.title_ko || a.title || 'Untitled') + ' [' + (a.level || a.section || '') + ']';
+        opt.dataset.body = (a.body || '').replace(/<[^>]*>/g, '').slice(0, 800);
+        opt.dataset.title = a.title_ko || a.title || '';
+        sel.appendChild(opt);
+      });
+    } else {
+      var opt = document.createElement('option');
+      opt.textContent = '기사 없음 (published 상태 기사 필요)';
+      opt.disabled = true;
+      sel.appendChild(opt);
+    }
+  } catch(e) {
+    console.error('article load error:', e);
+  }
+
+  sel.addEventListener('change', function() {
+    var opt = sel.options[sel.selectedIndex];
+    var preview = document.getElementById('wc-article-preview');
+    if (opt && opt.dataset.body) {
+      preview.textContent = opt.dataset.body.slice(0, 150) + '…';
+      preview.style.display = 'block';
+      _selectedArticle = {id: opt.value, title: opt.dataset.title, body: opt.dataset.body};
+    }
+  });
+}
+
+function openWritingModalWithMode() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (_writingMode === 'reading' && !_selectedArticle) {
+    alert('기사를 먼저 선택해주세요');
+    return;
+  }
+  document.getElementById('wmodal').classList.remove('hidden');
+  if (_writingMode === 'reading') {
+    switchModalMode('reading');
+  } else {
+    switchModalMode('topic');
+    if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
+    renderModalContent();
+  }
+}
+
+function switchModalMode(mode) {
+  _writingMode = mode;
+  // 탭 활성화
+  var tTopic   = document.getElementById('mbtab-topic');
+  var tReading = document.getElementById('mbtab-reading');
+  if (tTopic)   tTopic.classList.toggle('active', mode === 'topic');
+  if (tReading) tReading.classList.toggle('active', mode === 'reading');
+
+  var subEl         = document.getElementById('wm-topic-sub');
+  var modeLabel     = document.getElementById('wm-mode-label');
+  var readingBlock  = document.getElementById('wm-reading-article');
+  var contextBlock  = document.getElementById('wm-context');
+  var helpersBlock  = document.getElementById('wm-helpers');
+  var leftPanel     = document.querySelector('.wm-left');
+  var placeholder   = document.getElementById('write-area');
+
+  if (mode === 'reading' && _selectedArticle) {
+    modeLabel.textContent    = '📰 Reading & Writing';
+    subEl.textContent        = _selectedArticle.title;
+
+    // 기사 본문 + 쓰기 프롬프트 표시
+    document.getElementById('wm-article-body').textContent = _selectedArticle.body;
+    document.getElementById('wm-reading-prompts').innerHTML =
+      '• 이 기사를 읽고 느낀 점을 2-3문장으로 써보세요<br>'
+      + '• 기사에서 인상적인 부분을 소개해보세요<br>'
+      + '• 이 주제에 대한 여러분의 생각을 쓰세요';
+
+    if (readingBlock) readingBlock.style.display = 'block';
+    if (contextBlock) contextBlock.style.display = 'none';
+    if (helpersBlock) helpersBlock.style.display = 'none';
+    if (leftPanel)    leftPanel.style.display = 'none';
+    if (placeholder)  placeholder.placeholder = '기사를 읽고 생각/감상/요약을 한국어로 써보세요…\n\nTip: 기사 내용에서 단어를 활용해 보세요';
+
+  } else {
+    // Topic 모드
+    modeLabel.textContent = '✍️ Writing Room';
+    if (readingBlock) readingBlock.style.display = 'none';
+    if (contextBlock) contextBlock.style.display = 'block';
+    if (helpersBlock) helpersBlock.style.display = 'block';
+    if (leftPanel)    leftPanel.style.display = '';
+    if (placeholder)  placeholder.placeholder = 'Write in Korean here…\n\nTry to use the vocab and grammar from the left panel.';
+    if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
+    renderModalContent();
+  }
 }
 
 </script>

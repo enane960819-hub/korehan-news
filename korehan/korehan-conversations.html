@@ -425,7 +425,7 @@ function renderCards(catF, lvlF) {
     return (catF === 'all' || c.cat === catF) && (lvlF === 'all' || c.lvl === lvlF);
   });
   if (!list.length) {
-    grid.innerHTML = '<p style="color:#64748b;font-size:14px;grid-column:1/-1;padding:20px 0">No conversations found.</p>';
+    grid.innerHTML = CONVS.length === 0 ? '<div style="grid-column:1/-1;text-align:center;padding:60px 20px"><div style="font-size:40px;margin-bottom:12px">💬</div><div style="font-size:16px;font-weight:700;color:#334155;margin-bottom:8px">아직 대화가 없어요</div><div style="font-size:13px;color:#94a3b8">Admin → Conversations 관리에서 추가하거나 AI Generator로 생성해보세요</div></div>' : '<p style="color:#64748b;font-size:14px;grid-column:1/-1;padding:20px 0">이 카테고리에 해당하는 대화가 없어요</p>';
     return;
   }
   grid.innerHTML = list.map(function(c) {
@@ -545,8 +545,262 @@ function toggleSave(btn) {
 }
 
 var activeCat = 'all', activeLvl = 'all';
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+  // ── DB에서 conversations 로드 ──────────────────────────
+  var grid = document.getElementById('conv-cards-grid');
+  if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;font-size:14px">⏳ 불러오는 중...</div>';
+
+  try {
+    var sb = getSupa();
+    var { data, error } = await sb.from('conversations_data')
+      .select('*')
+      .order('created_at', {ascending: false});
+
+    if (error) throw error;
+
+    if (data && data.length) {
+      // DB 데이터를 CONVS 형식으로 변환
+      CONVS = data.map(function(row) {
+        var d = row.data || {};
+        // data 객체가 있으면 그대로, 없으면 row 자체에서 구성
+        return Object.assign({
+          _id: row.id,
+          name: row.name || '',
+          ctx:  row.ctx  || '',
+          cat:  row.cat  || 'everyday',
+          lvl:  row.lvl  || 'b',
+          avi:  '💬',
+          catLabel: '',
+          msgs: [],
+          vocab: [],
+          grammar: [],
+          mission: []
+        }, d, {_id: row.id});
+      });
+    }
+  } catch(e) {
+    console.warn('DB 로드 실패, 내장 샘플 사용:', e.message);
+    // fallback: 빈 상태 유지 (CONVS = [])
+  }
+
+  // 로드 완료 후 렌더
   renderCards(activeCat, activeLvl);
+
+  // URL ?open=N → 해당 인덱스 자동 오픈
+  var _openIdx = new URLSearchParams(window.location.search).get('open');
+  if (_openIdx !== null && CONVS[parseInt(_openIdx)]) {
+    setTimeout(function(){ openDetail(parseInt(_openIdx)); }, 80);
+  }
+  var pills = document.getElementById('cat-pills');
+  pills.querySelectorAll('.cf-pill:not([data-lvl])').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      pills.querySelectorAll('.cf-pill:not([data-lvl])').forEach(function(b){b.classList.remove('on');});
+      btn.classList.add('on');
+      activeCat = btn.dataset.cat;
+      renderCards(activeCat, activeLvl);
+    });
+  });
+  pills.querySelectorAll('.cf-pill[data-lvl]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      pills.querySelectorAll('.cf-pill[data-lvl]').forEach(function(b){b.classList.remove('on');});
+      btn.classList.add('on');
+      activeLvl = btn.dataset.lvl;
+      renderCards(activeCat, activeLvl);
+    });
+  });
+  var params = new URLSearchParams(window.location.search);
+  var cp = params.get('cat');
+  if (cp) { var t = pills.querySelector('[data-cat="'+cp+'"]'); if(t) t.click(); }
+});
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeDetail(); });
+
+function goToPracticeWriting(c) {
+  var params = new URLSearchParams();
+  params.set('mode', 'conv');
+  params.set('title', c.name + ' — ' + c.ctx);
+  if (c.vocab && c.vocab.length) {
+    params.set('vocab', JSON.stringify(c.vocab.map(function(v){ return {ko:v.ko, rom:v.rom, en:v.en}; })));
+  }
+  if (c.grammar && c.grammar.length) {
+    params.set('grammar', JSON.stringify(c.grammar.map(function(g){ return {point:g.point, ex:g.ex}; })));
+  }
+  location.href = 'korehan-study-room.html?' + params.toString();
+}
+</script>
+</body>
+</html>var CONVS = [];  // DB에서 로드
+
+const LVL_LABEL = {b:'Beginner',i:'Intermediate',a:'Advanced'};
+const LVL_CLS   = {b:'badge-b',i:'badge-i',a:'badge-a'};
+const CAT_PILL  = {everyday:'dp-pill-blue',work:'dp-pill-gray',friends:'dp-pill-green',family:'dp-pill-amber',dating:'dp-pill-pink'};
+
+function renderCards(catF, lvlF) {
+  var grid = document.getElementById('conv-cards-grid');
+  var list = CONVS.filter(function(c) {
+    return (catF === 'all' || c.cat === catF) && (lvlF === 'all' || c.lvl === lvlF);
+  });
+  if (!list.length) {
+    grid.innerHTML = CONVS.length === 0 ? '<div style="grid-column:1/-1;text-align:center;padding:60px 20px"><div style="font-size:40px;margin-bottom:12px">💬</div><div style="font-size:16px;font-weight:700;color:#334155;margin-bottom:8px">아직 대화가 없어요</div><div style="font-size:13px;color:#94a3b8">Admin → Conversations 관리에서 추가하거나 AI Generator로 생성해보세요</div></div>' : '<p style="color:#64748b;font-size:14px;grid-column:1/-1;padding:20px 0">이 카테고리에 해당하는 대화가 없어요</p>';
+    return;
+  }
+  grid.innerHTML = list.map(function(c) {
+    var ri = CONVS.indexOf(c);
+    var prev = c.msgs.slice(0,3).map(function(m){
+      return '<div class="cc2-bub '+m.s+'">'+m.txt+'</div>';
+    }).join('');
+    return '<div class="cc2" onclick="openDetail('+ri+')">'
+      +'<div class="cc2-top">'
+        +'<div class="cc2-avi">'+c.avi+'</div>'
+        +'<div class="cc2-info"><div class="cc2-name">'+c.name+'</div><div class="cc2-ctx">'+c.ctx+'</div></div>'
+        +'<span class="cc2-badge '+LVL_CLS[c.lvl]+'">'+LVL_LABEL[c.lvl]+'</span>'
+      +'</div>'
+      +'<div class="cc2-preview">'+prev+'</div>'
+      +'<div class="cc2-foot">'
+        +'<span class="cc2-vocab-count">📚 '+c.vocab.length+' key words</span>'
+        +'<button class="cc2-open-btn">Study →</button>'
+      +'</div></div>';
+  }).join('');
+}
+
+function openDetail(idx) {
+  var c = CONVS[idx];
+  window._currentConv = c;
+  var now = new Date();
+  var h = now.getHours(), m = now.getMinutes();
+
+  var msgs = c.msgs.map(function(msg, i) {
+    var min = String((m + i) % 60).padStart(2,'0');
+    var hr  = (h % 12) || 12;
+    var ap  = h < 12 ? 'AM' : 'PM';
+    var time = hr + ':' + min + ' ' + ap;
+    var note = msg.note ? '<div class="dp-inline-note">💡 '+msg.note+'</div>' : '';
+    if (msg.s === 'l') {
+      return '<div class="dp-msg-row left">'
+        +'<div class="dp-avatar">'+c.avi+'</div>'
+        +'<div class="dp-bubble-group">'
+          +'<div class="dp-who">'+msg.who+'</div>'
+          +'<div class="dp-bubble">'+msg.txt+'</div>'
+          +'<div class="dp-time">'+time+'</div>'
+          +note
+        +'</div></div>';
+    } else {
+      return '<div class="dp-msg-row right">'
+        +'<div class="dp-bubble-group">'
+          +'<div class="dp-bubble">'+msg.txt+'</div>'
+          +'<div class="dp-time">'+time+'</div>'
+          +note
+        +'</div></div>';
+    }
+  }).join('');
+
+  var vocab = c.vocab.map(function(v) {
+    return '<div class="dp-vocab-item">'
+      +'<span class="dp-vi-ko">'+v.ko+'</span>'
+      +'<span class="dp-vi-rom">'+v.rom+'</span>'
+      +'<span class="dp-vi-en">'+v.en+'</span>'
+      +'<button class="dp-vi-save" onclick="toggleSave(this)">+ Save</button>'
+      +'</div>';
+  }).join('');
+
+  var grammar = (c.grammar||[]).map(function(g) {
+    return '<div class="dp-grammar-item"><strong>'+g.point+'</strong> — '+g.ex+'</div>';
+  }).join('');
+
+  var mission = (c.mission||[]).map(function(m) {
+    return '<div class="dp-grammar-item">🎯 '+m+'</div>';
+  }).join('');
+
+  var keywords = c.vocab.map(function(v) {
+    return '<span class="dp-keyword">'+v.ko+'</span>';
+  }).join('');
+
+  var pills = '<span class="dp-pill dp-pill-blue">'+LVL_LABEL[c.lvl]+'</span>'
+    +'<span class="dp-pill '+(CAT_PILL[c.cat]||'dp-pill-gray')+'">'+c.catLabel+'</span>'
+    +'<span class="dp-pill dp-pill-gray">'+c.topic+'</span>';
+
+  document.getElementById('detail-panel').innerHTML =
+    '<div class="dp-left">'
+      +'<div class="dp-left-head">'
+        +'<button class="detail-close" onclick="closeDetail()">✕</button>'
+        +'<div class="dp-left-eyebrow">Conversation</div>'
+        +'<div class="dp-left-title">'+c.name+'</div>'
+        +'<div class="dp-left-sub">'+c.ctx+'</div>'
+      +'</div>'
+      +'<div class="dp-pills">'+pills+'</div>'
+      +'<div class="dp-chat-area">'
+        +'<div class="dp-date-sep"><span>Today</span></div>'
+        +msgs
+      +'</div>'
+      +'<div class="dp-cta-row">'
+        +'<button class="dp-cta-btn dp-cta-secondary" onclick="closeDetail()">← All Conversations</button>'
+        +'<button class="dp-cta-btn dp-cta-primary" onclick="goToPracticeWriting(window._currentConv)">Practice Writing ✏️</button>'
+      +'</div>'
+    +'</div>'
+    +'<div class="dp-right">'
+      +'<div class="dp-right-head"><div class="dp-right-label">Study Notes</div><div class="dp-right-title">Conversation Breakdown</div></div>'
+      +'<div class="dp-study-sections">'
+        +'<div class="dp-study-card"><div class="dp-study-card-title"><span>📚</span> Key Vocabulary</div><div class="dp-vocab-list">'+vocab+'</div></div>'
+        +(grammar ? '<div class="dp-study-card"><div class="dp-study-card-title"><span>✏️</span> Grammar Points</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
+        +'<div class="dp-study-card"><div class="dp-study-card-title"><span>🔑</span> Quick Keywords</div><div class="dp-keywords">'+keywords+'</div></div>'
+        +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title"><span>🎯</span> Practice Mission</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
+      +'</div>'
+    +'</div>';
+
+  document.getElementById('detail-overlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+function toggleSave(btn) {
+  btn.classList.toggle('saved');
+  btn.textContent = btn.classList.contains('saved') ? '✓ Saved' : '+ Save';
+}
+
+var activeCat = 'all', activeLvl = 'all';
+document.addEventListener('DOMContentLoaded', async function() {
+  // ── DB에서 conversations 로드 ──────────────────────────
+  var grid = document.getElementById('conv-cards-grid');
+  if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;font-size:14px">⏳ 불러오는 중...</div>';
+
+  try {
+    var sb = getSupa();
+    var { data, error } = await sb.from('conversations_data')
+      .select('*')
+      .order('created_at', {ascending: false});
+
+    if (error) throw error;
+
+    if (data && data.length) {
+      // DB 데이터를 CONVS 형식으로 변환
+      CONVS = data.map(function(row) {
+        var d = row.data || {};
+        // data 객체가 있으면 그대로, 없으면 row 자체에서 구성
+        return Object.assign({
+          _id: row.id,
+          name: row.name || '',
+          ctx:  row.ctx  || '',
+          cat:  row.cat  || 'everyday',
+          lvl:  row.lvl  || 'b',
+          avi:  '💬',
+          catLabel: '',
+          msgs: [],
+          vocab: [],
+          grammar: [],
+          mission: []
+        }, d, {_id: row.id});
+      });
+    }
+  } catch(e) {
+    console.warn('DB 로드 실패, 내장 샘플 사용:', e.message);
+    // fallback: 빈 상태 유지 (CONVS = [])
+  }
+
+  // 로드 완료 후 렌더
+  renderCards(activeCat, activeLvl);
+
   // URL ?open=N → 해당 인덱스 자동 오픈
   var _openIdx = new URLSearchParams(window.location.search).get('open');
   if (_openIdx !== null && CONVS[parseInt(_openIdx)]) {

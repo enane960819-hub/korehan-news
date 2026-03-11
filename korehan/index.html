@@ -158,7 +158,34 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+  // DB에서 conversations 로드 시도
+  try {
+    var sb = getSupa();
+    var { data } = await sb.from('conversations_data')
+      .select('id, data, cat, lvl, name, ctx')
+      .order('created_at', {ascending: false})
+      .limit(12);
+    if (data && data.length) {
+      HOME_CONVS = data.map(function(row) {
+        var d = row.data || {};
+        return {
+          _id: row.id,
+          avi:      d.avi      || '💬',
+          name:     d.name     || row.name || '',
+          ctx:      d.ctx      || row.ctx  || '',
+          cat:      d.cat      || row.cat  || 'everyday',
+          lvl:      d.lvl      || row.lvl  || 'b',
+          catLabel: d.catLabel || '',
+          lvlLabel: {b:'Beginner',i:'Intermediate',a:'Advanced'}[d.lvl||row.lvl||'b'] || 'Beginner',
+          msgs:     (d.msgs    || []).slice(0, 3).map(function(m){ return {s:m.s, txt:m.txt}; }),
+        };
+      });
+    }
+  } catch(e) {
+    // fallback: 내장 HOME_CONVS 사용
+    console.warn('conv DB load failed, using sample:', e.message);
+  }
   renderHomeConvs();
   // pill filter already bound above
   // Today's Phrase
