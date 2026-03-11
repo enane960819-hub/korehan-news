@@ -136,284 +136,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js"></script>
 <script>
-const CONVS = [
-  {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',topic:'Making plans',catLabel:'Everyday',
-   msgs:[
-    {s:'l',who:'Ji-yeon',txt:'오늘 저녁에 시간 돼?',note:'"시간 돼?" = Are you free? Super common casual opener'},
-    {s:'r',who:'Soo-jin',txt:'응! 왜? 무슨 일 있어?'},
-    {s:'l',who:'Ji-yeon',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ',note:'"찾는 중" = in the middle of looking for'},
-    {s:'r',who:'Soo-jin',txt:'ㅋㅋ 좋아! 어디서 먹을까?'},
-    {s:'l',who:'Ji-yeon',txt:'학교 앞 국밥집 어때? 요즘 거기 자주 가거든.'},
-    {s:'r',who:'Soo-jin',txt:'오 국밥 좋지. 몇 시에?'},
-    {s:'l',who:'Ji-yeon',txt:'6시 반쯤 괜찮아?',note:'"~쯤" = around / about (approximate time)'},
-    {s:'r',who:'Soo-jin',txt:'응 완전 좋아 👍'},
-   ],
-   vocab:[
-    {ko:'시간 돼?',rom:'sigan dwae?',en:'Do you have time?'},
-    {ko:'무슨 일',rom:'museun il',en:'What\'s up'},
-    {ko:'찾는 중',rom:'channeun jung',en:'In the middle of looking for'},
-    {ko:'~쯤',rom:'~jjeum',en:'Around / About'},
-    {ko:'완전',rom:'wanjeon',en:'Totally (casual)'},
-    {ko:'자주',rom:'jaju',en:'Often'},
-   ],
-   grammar:[
-    {point:'-는 중',ex:'"찾는 중" → currently doing something'},
-    {point:'-쯤',ex:'"6시 반쯤" → approximately 6:30'},
-    {point:'-거든',ex:'"가거든" → explaining a reason casually'},
-   ],
-   mission:['Use "시간 돼?" to ask if a friend is free','Change the restaurant and rewrite','Make the conversation formal with -요 endings'],
-  },
-  {avi:'👨‍💼',name:'Team Chat',ctx:'Asking for a deadline extension',cat:'work',lvl:'i',topic:'Professional communication',catLabel:'Workplace',
-   msgs:[
-    {s:'l',who:'Min-su',txt:'보고서 마감이 오늘인데 조금 더 시간이 필요해요.'},
-    {s:'r',who:'Team lead',txt:'얼마나 더 필요해요?'},
-    {s:'l',who:'Min-su',txt:'내일 오전까지 가능할까요?',note:'"가능할까요?" = polite way to ask if something is possible'},
-    {s:'r',who:'Team lead',txt:'이유가 뭐예요?'},
-    {s:'l',who:'Min-su',txt:'데이터 분석 부분이 예상보다 복잡하게 나왔어요.',note:'"예상보다" = more than expected'},
-    {s:'r',who:'Team lead',txt:'알겠어요. 내일 점심 전까지 주세요.'},
-    {s:'l',who:'Min-su',txt:'감사합니다. 최대한 빨리 드릴게요.'},
-   ],
-   vocab:[
-    {ko:'마감',rom:'magam',en:'Deadline'},
-    {ko:'가능할까요?',rom:'ganeunghalkkayo?',en:'Would it be possible?'},
-    {ko:'예상보다',rom:'yesangboda',en:'More than expected'},
-    {ko:'복잡하다',rom:'bokjaphada',en:'To be complicated'},
-    {ko:'최대한',rom:'choedaehan',en:'As much as possible'},
-    {ko:'드릴게요',rom:'deurilgeyo',en:'I will give (humble)'},
-   ],
-   grammar:[
-    {point:'-은/는데',ex:'"마감이 오늘인데" → sets up contrast'},
-    {point:'-게 나오다',ex:'"복잡하게 나왔어요" → turned out complicated'},
-    {point:'드리다 vs 주다',ex:'"드릴게요" = humble form for superiors'},
-   ],
-   mission:['Ask your boss for a day off using "가능할까요?"','Rewrite with a different excuse','Practice 주다 vs 드리다'],
-  },
-  {avi:'👫',name:'Couple Chat',ctx:'Making up after an argument',cat:'dating',lvl:'i',topic:'Reconciliation',catLabel:'Dating',
-   msgs:[
-    {s:'l',who:'Hyun',txt:'아까 내가 좀 심했던 것 같아. 미안해.',note:'"심하다" = to be harsh · "-던 것 같아" = it seems like I was'},
-    {s:'r',who:'Ji',txt:'나도 과민반응했어. 괜찮아.',note:'"과민반응" = overreaction'},
-    {s:'l',who:'Hyun',txt:'오늘 저녁에 우리 같이 밥 먹을까?'},
-    {s:'r',who:'Ji',txt:'응, 어디 갈까?'},
-    {s:'l',who:'Hyun',txt:'네가 좋아하는 데로 가자. 내가 살게.',note:'"내가 살게" = I\'ll pay'},
-    {s:'r',who:'Ji',txt:'ㅎㅎ 그럼 파스타 먹고 싶어.'},
-   ],
-   vocab:[
-    {ko:'심하다',rom:'simhada',en:'To be harsh'},
-    {ko:'과민반응',rom:'gwamin ban-eung',en:'Overreaction'},
-    {ko:'미안해',rom:'mianhae',en:'I\'m sorry (casual)'},
-    {ko:'내가 살게',rom:'naega salge',en:'I\'ll pay'},
-    {ko:'먹고 싶어',rom:'meokgo sipeo',en:'I want to eat'},
-   ],
-   grammar:[
-    {point:'-던 것 같아',ex:'"심했던 것 같아" → soft admission of past fault'},
-    {point:'-을까?',ex:'"먹을까?" → shall we? Casual suggestion'},
-    {point:'-고 싶어',ex:'"먹고 싶어" → I want to eat'},
-   ],
-   mission:['Apologize using "-던 것 같아"','Suggest a restaurant using "~에 가자"','Make it formal: 미안해 → 죄송해요'],
-  },
-  {avi:'🧑‍🤝‍🧑',name:'Min-jun & Tae-yang',ctx:'Weekend plans',cat:'friends',lvl:'b',topic:'Weekend plans',catLabel:'Friends',
-   msgs:[
-    {s:'l',who:'Min-jun',txt:'이번 주말에 뭐 해?'},
-    {s:'r',who:'Tae-yang',txt:'아직 계획 없어. 왜?'},
-    {s:'l',who:'Min-jun',txt:'영화 보러 갈래? 새로 나온 거 재밌대.',note:'"재밌대" = they say it\'s fun (hearsay)'},
-    {s:'r',who:'Tae-yang',txt:'무슨 영화?'},
-    {s:'l',who:'Min-jun',txt:'액션 영화인데 평점이 되게 높아.',note:'"되게" = really / very (colloquial)'},
-    {s:'r',who:'Tae-yang',txt:'좋아, 몇 시 어때?'},
-    {s:'l',who:'Min-jun',txt:'2시 어때? 그러면 밥도 같이 먹을 수 있어.'},
-   ],
-   vocab:[
-    {ko:'이번 주말',rom:'ibeon jumal',en:'This weekend'},
-    {ko:'새로 나온',rom:'saero naon',en:'Newly released'},
-    {ko:'재밌대',rom:'jaemitdae',en:'They say it\'s fun (hearsay)'},
-    {ko:'평점',rom:'pyeongjeom',en:'Rating'},
-    {ko:'되게',rom:'doege',en:'Really / Very (colloquial)'},
-   ],
-   grammar:[
-    {point:'~대 (hearsay)',ex:'"재밌대" → I heard it\'s fun'},
-    {point:'-러 가다',ex:'"영화 보러 갈래?" → going to do something'},
-    {point:'-을 수 있어',ex:'"먹을 수 있어" → can do'},
-   ],
-   mission:['Use "~대" to share something you heard','Invite a friend to a concert','Use "몇 시 어때?" to set a time'],
-  },
-  {avi:'👨‍👩‍👧',name:'Family Group Chat',ctx:'Mom asking about dinner',cat:'family',lvl:'b',topic:'Family check-ins',catLabel:'Family',
-   msgs:[
-    {s:'l',who:'Mom',txt:'오늘 저녁 집에서 먹을 거야?'},
-    {s:'r',who:'Da-eun',txt:'응, 몇 시에 먹어요?'},
-    {s:'l',who:'Mom',txt:'6시 반쯤. 좋아하는 거 만들어줄게.',note:'"만들어줄게" = I\'ll make it for you'},
-    {s:'r',who:'Da-eun',txt:'된장찌개 해주세요!'},
-    {s:'l',who:'Mom',txt:'ㅎㅎ 알겠어. 일찍 들어와.',note:'"일찍 들어와" = Come home early'},
-   ],
-   vocab:[
-    {ko:'집에서 먹다',rom:'jibeseo meokda',en:'To eat at home'},
-    {ko:'~쯤',rom:'~jjeum',en:'Around / About'},
-    {ko:'만들어줄게',rom:'mandeureo julge',en:'I\'ll make it for you'},
-    {ko:'된장찌개',rom:'doenjang jjigae',en:'Fermented soybean paste stew'},
-    {ko:'일찍',rom:'iljjik',en:'Early'},
-   ],
-   grammar:[
-    {point:'-아/어 줄게',ex:'"만들어줄게" → benefactive: I will do for you'},
-    {point:'-을 거야?',ex:'"먹을 거야?" → casual future question'},
-    {point:'ㅎㅎ',ex:'Warm laughter (lighter than ㅋㅋ)'},
-   ],
-   mission:['Text saying you\'ll be home late using "늦을 것 같아요"','Offer to do something using "만들어줄게"','Compare: 알겠어 vs 알겠습니다'],
-  },
-  {avi:'💼',name:'Job Interview',ctx:'Formal Q&A practice',cat:'work',lvl:'a',topic:'Formal honorifics',catLabel:'Workplace',
-   msgs:[
-    {s:'l',who:'Interviewer',txt:'지원 동기가 무엇인지 말씀해 주시겠어요?',note:'Very formal: "Could you please tell me your motivation?"'},
-    {s:'r',who:'Applicant',txt:'저는 귀사의 혁신적인 문화에 매력을 느꼈습니다.',note:'"귀사" = your company (very respectful)'},
-    {s:'l',who:'Interviewer',txt:'구체적인 사례를 들어 설명해 주실 수 있나요?'},
-    {s:'r',who:'Applicant',txt:'네, 최근 출시하신 AI 서비스가 특히 인상적이었습니다.'},
-    {s:'l',who:'Interviewer',txt:'본인의 강점이 이 직무에 어떻게 기여할 것 같으신가요?'},
-    {s:'r',who:'Applicant',txt:'저는 데이터 기반 의사결정과 팀 협업에 강점이 있습니다.'},
-   ],
-   vocab:[
-    {ko:'지원 동기',rom:'jiwon donggi',en:'Motivation for applying'},
-    {ko:'귀사',rom:'gwisa',en:'Your company (formal)'},
-    {ko:'혁신적',rom:'hyeoksinjeok',en:'Innovative'},
-    {ko:'구체적인 사례',rom:'guchejeokin sarye',en:'Specific example'},
-    {ko:'기여하다',rom:'giyeohada',en:'To contribute'},
-    {ko:'의사결정',rom:'uisagyeoljeong',en:'Decision-making'},
-   ],
-   grammar:[
-    {point:'말씀해 주시겠어요?',ex:'Ultra-polite request form'},
-    {point:'-으신',ex:'"출시하신" → honorific verb ending'},
-    {point:'저 vs 나',ex:'"저" = humble I (formal); "나" = casual I'},
-   ],
-   mission:['Answer "지원 동기" with your own story','Use "귀사" in a sentence','Compare: 말해요 / 말씀해요 / 말씀해 주시겠어요?'],
-  },
-  {avi:'🛒',name:'Convenience Store',ctx:'Quick transaction',cat:'everyday',lvl:'b',topic:'Shopping',catLabel:'Everyday',
-   msgs:[
-    {s:'l',who:'Cashier',txt:'봉투 필요하세요?'},
-    {s:'r',who:'Customer',txt:'아니요, 괜찮아요. 카드로 계산할게요.'},
-    {s:'l',who:'Cashier',txt:'영수증 드릴까요?'},
-    {s:'r',who:'Customer',txt:'아니요, 됐어요.',note:'"됐어요" = No need / It\'s fine'},
-    {s:'l',who:'Cashier',txt:'3,500원입니다. 감사합니다.'},
-   ],
-   vocab:[
-    {ko:'봉투',rom:'bongtu',en:'Shopping bag'},
-    {ko:'카드로 계산',rom:'kadeu-ro gyesan',en:'Pay by card'},
-    {ko:'영수증',rom:'yeongsujeung',en:'Receipt'},
-    {ko:'됐어요',rom:'dwaesseoyo',en:'No need / It\'s fine'},
-    {ko:'~원입니다',rom:'~won imnida',en:'It is ~ won'},
-   ],
-   grammar:[
-    {point:'됐어요',ex:'Literally "it became" → politely declining'},
-    {point:'-로 계산하다',ex:'"카드로" → by means of card'},
-    {point:'드릴까요?',ex:'Humble of "줄까요?" → shall I give you?'},
-   ],
-   mission:['Role-play buying items at a store','Practice declining with "됐어요" in 3 situations','Ask: "봉투 주세요" vs "봉투 있나요?"'],
-  },
-  {avi:'🎤',name:'After Norebang',ctx:'Deciding where to go next',cat:'friends',lvl:'i',topic:'Night out',catLabel:'Friends',
-   msgs:[
-    {s:'l',who:'Ha-na',txt:'노래방 끝났는데 이제 어디 갈까?'},
-    {s:'r',who:'Joon',txt:'배고프지 않아? 삼겹살 어때?'},
-    {s:'l',who:'Ha-na',txt:'좋아! 근처에 24시간 하는 데 있잖아.',note:'"있잖아" = you know / reminds listener of shared knowledge'},
-    {s:'r',who:'Joon',txt:'맞아, 거기 진짜 맛있더라.',note:'"맛있더라" = I recall it was delicious (-더라 = recalled experience)'},
-    {s:'l',who:'Ha-na',txt:'그럼 빨리 가자. 배 너무 고파.'},
-   ],
-   vocab:[
-    {ko:'노래방',rom:'noraebang',en:'Karaoke room'},
-    {ko:'삼겹살',rom:'samgyeopsal',en:'Grilled pork belly'},
-    {ko:'근처',rom:'geuncheo',en:'Nearby'},
-    {ko:'있잖아',rom:'itjana',en:'You know / there is this place'},
-    {ko:'맛있더라',rom:'masitdeora',en:'It was really tasty (recalled)'},
-   ],
-   grammar:[
-    {point:'-잖아',ex:'"있잖아" → asserting shared knowledge'},
-    {point:'-더라',ex:'"맛있더라" → I recall it was (evidential past)'},
-    {point:'배 고파',ex:'Casual spoken form of 배고프다'},
-   ],
-   mission:['Use "있잖아" to bring up a topic','Describe a restaurant using "-더라"','Plan a late-night outing from this chat'],
-  },
-  {avi:'💌',name:'First Date Plans',ctx:'Deciding on a romantic outing',cat:'dating',lvl:'i',topic:'Romantic suggestions',catLabel:'Dating',
-   msgs:[
-    {s:'l',who:'Se-jun',txt:'이번 주말에 같이 뭐 할까요?'},
-    {s:'r',who:'Ye-jin',txt:'한강 피크닉 어때요? 날씨가 좋을 것 같아요.',note:'"~것 같아요" = polite speculation'},
-    {s:'l',who:'Se-jun',txt:'좋아요! 제가 김밥 싸올게요 ㅎㅎ',note:'"싸올게요" = I\'ll pack and bring'},
-    {s:'r',who:'Ye-jin',txt:'오 진짜요? 저는 음료 가져올게요.'},
-    {s:'l',who:'Se-jun',txt:'몇 시에 만날까요?'},
-    {s:'r',who:'Ye-jin',txt:'오후 2시 어때요? 한강공원 입구에서요.'},
-   ],
-   vocab:[
-    {ko:'피크닉',rom:'pikeunik',en:'Picnic'},
-    {ko:'좋을 것 같다',rom:'joheul geot gatda',en:'Seems like it\'ll be nice'},
-    {ko:'싸올게요',rom:'ssaolgeyo',en:'I\'ll pack and bring'},
-    {ko:'음료',rom:'eumnyo',en:'Drink / Beverage'},
-    {ko:'입구',rom:'ipgu',en:'Entrance'},
-   ],
-   grammar:[
-    {point:'-을 것 같아요',ex:'"좋을 것 같아요" → polite speculation'},
-    {point:'-올게요',ex:'"싸올게요" → will do and bring'},
-    {point:'~에서요',ex:'"입구에서요" → location as full sentence in texting'},
-   ],
-   mission:['Suggest a date spot using "~어때요?"','Use "-을 것 같아요" to predict weather','Write offering to bring food'],
-  },
-  {avi:'🏥',name:'At the Pharmacy',ctx:'Getting cold medicine',cat:'everyday',lvl:'i',topic:'Health',catLabel:'Everyday',
-   msgs:[
-    {s:'l',who:'Pharmacist',txt:'어디가 불편하세요?',note:'"어디가 불편하세요?" = Where does it hurt?'},
-    {s:'r',who:'Customer',txt:'목이 아프고 콧물이 나요. 열도 조금 있어요.'},
-    {s:'l',who:'Pharmacist',txt:'감기약 드릴게요. 하루에 세 번 식후에 드세요.',note:'"식후" = after a meal'},
-    {s:'r',who:'Customer',txt:'얼마나 먹어야 나아요?'},
-    {s:'l',who:'Pharmacist',txt:'3일치 드릴게요. 충분히 쉬시는 게 중요해요.'},
-   ],
-   vocab:[
-    {ko:'불편하다',rom:'bulpyeonhada',en:'To be uncomfortable / in pain'},
-    {ko:'콧물이 나다',rom:'konmuri nada',en:'To have a runny nose'},
-    {ko:'식후',rom:'sikhu',en:'After a meal'},
-    {ko:'나아요',rom:'naayo',en:'Get better'},
-    {ko:'충분히',rom:'chungbunhi',en:'Sufficiently'},
-   ],
-   grammar:[
-    {point:'~이 나다',ex:'"콧물이 나요" → idiomatic for body symptoms'},
-    {point:'-아야/어야 나아요',ex:'"먹어야 나아요" → must eat to get better'},
-    {point:'드시다 vs 먹다',ex:'"드세요" = honorific of 먹다'},
-   ],
-   mission:['Describe 3 cold symptoms in Korean','Use "~이 나다" for 5 body symptoms','Practice: "충분히 쉬세요"'],
-  },
-  {avi:'📊',name:'Before the Meeting',ctx:'Quick problem-solving',cat:'work',lvl:'i',topic:'Office',catLabel:'Workplace',
-   msgs:[
-    {s:'l',who:'Manager',txt:'회의 준비 다 됐어요?'},
-    {s:'r',who:'Staff',txt:'네, 자료는 다 준비했는데 프린터가 안 돼서요.',note:'"안 돼서요" = because it\'s not working'},
-    {s:'l',who:'Manager',txt:'그냥 화면으로 보여줘요. 어차피 다 노트북 있잖아요.',note:'"어차피" = anyway / either way'},
-    {s:'r',who:'Staff',txt:'아, 그렇게 하면 되겠네요. 감사합니다.'},
-    {s:'l',who:'Manager',txt:'5분 후에 회의실로 오세요.'},
-   ],
-   vocab:[
-    {ko:'자료',rom:'jaryo',en:'Materials / Documents'},
-    {ko:'어차피',rom:'eochapi',en:'Anyway / Either way'},
-    {ko:'회의실',rom:'hoe-uisil',en:'Meeting room'},
-    {ko:'안 돼서요',rom:'an dwaeseoyo',en:'Because it\'s not working'},
-    {ko:'준비 다 됐어요',rom:'junbi da dwaesseoyo',en:'All ready'},
-   ],
-   grammar:[
-    {point:'-는데 contrast',ex:'"준비했는데" → prepared but…'},
-    {point:'어차피',ex:'Anyway — the point is moot'},
-    {point:'-면 되다',ex:'"하면 되겠네요" → that should work'},
-   ],
-   mission:['Use "어차피" to explain why something doesn\'t matter','Report a problem with the "-는데" pattern','Confirm readiness for a meeting'],
-  },
-  {avi:'🏠',name:'With Parents',ctx:'Coming home late',cat:'family',lvl:'i',topic:'Family rules',catLabel:'Family',
-   msgs:[
-    {s:'l',who:'Mom',txt:'오늘 몇 시에 들어와?'},
-    {s:'r',who:'Son',txt:'친구들이랑 저녁 먹고 들어갈게요. 좀 늦을 것 같아요.',note:'"늦을 것 같아요" = I think I might be late'},
-    {s:'l',who:'Mom',txt:'밥은 먹었어? 너무 늦지 않게 들어와.'},
-    {s:'r',who:'Son',txt:'네, 먹었어요. 11시 전에 들어갈게요.'},
-    {s:'l',who:'Mom',txt:'알겠어. 조심해서 들어와.',note:'"조심해서 들어와" = come home safely'},
-   ],
-   vocab:[
-    {ko:'들어오다/가다',rom:'deureooda/gada',en:'To return home'},
-    {ko:'늦을 것 같다',rom:'neujeul geot gatda',en:'I think I might be late'},
-    {ko:'너무 늦지 않게',rom:'neomu neutji ange',en:'Not too late'},
-    {ko:'조심하다',rom:'josimhada',en:'To be careful'},
-   ],
-   grammar:[
-    {point:'-을 것 같아요',ex:'"늦을 것 같아요" → soft prediction'},
-    {point:'-지 않게',ex:'"늦지 않게" → so as not to be late'},
-    {point:'조심해서 ~',ex:'"조심해서 들어와" → come home carefully'},
-   ],
-   mission:['Text your parent saying you\'ll be home by 10pm','Use "-지 않게" to promise not to do something','Practice: 알겠어 vs 알겠습니다'],
-  },
-];
+var CONVS = [];  // DB에서 로드
 
 const LVL_LABEL = {b:'Beginner',i:'Intermediate',a:'Advanced'};
 const LVL_CLS   = {b:'badge-b',i:'badge-i',a:'badge-a'};
@@ -516,10 +239,7 @@ function openDetail(idx) {
         +'<div class="dp-date-sep"><span>Today</span></div>'
         +msgs
       +'</div>'
-      +'<div class="dp-cta-row">'
-        +'<button class="dp-cta-btn dp-cta-secondary" onclick="closeDetail()">← All Conversations</button>'
-        +'<button class="dp-cta-btn dp-cta-primary" onclick="goToPracticeWriting(window._currentConv)">Practice Writing ✏️</button>'
-      +'</div>'
+      +'<div class="dp-cta-row">'        +'<button class="dp-cta-btn dp-cta-secondary" onclick="closeDetail()">← All Conversations</button>'        +(window._isAdmin ? '<button class="dp-cta-btn" style="background:#f1f5f9;color:#334155" onclick="editCurrentConv()">✏️ 수정</button>'                          + '<button class="dp-cta-btn" style="background:#fee2e2;color:#b91c1c" onclick="deleteCurrentConv()">🗑 삭제</button>' : '')        +'<button class="dp-cta-btn dp-cta-primary" onclick="goToPracticeWriting(window._currentConv)">Practice Writing ✏️</button>'      +'</div>'
     +'</div>'
     +'<div class="dp-right">'
       +'<div class="dp-right-head"><div class="dp-right-label">Study Notes</div><div class="dp-right-title">Conversation Breakdown</div></div>'
@@ -587,8 +307,14 @@ document.addEventListener('DOMContentLoaded', async function() {
   renderCards(activeCat, activeLvl);
 
   // URL ?open=N → 해당 인덱스 자동 오픈
-  var _openIdx = new URLSearchParams(window.location.search).get('open');
-  if (_openIdx !== null && CONVS[parseInt(_openIdx)]) {
+  // ?id=DB_ID 또는 ?open=INDEX 로 특정 대화 자동 오픈
+  var _params = new URLSearchParams(window.location.search);
+  var _openId  = _params.get('id');
+  var _openIdx = _params.get('open');
+  if (_openId) {
+    var _targetIdx = CONVS.findIndex(function(c){ return String(c._id) === String(_openId); });
+    if (_targetIdx >= 0) setTimeout(function(){ openDetail(_targetIdx); }, 80);
+  } else if (_openIdx !== null && CONVS[parseInt(_openIdx)]) {
     setTimeout(function(){ openDetail(parseInt(_openIdx)); }, 80);
   }
   var pills = document.getElementById('cat-pills');
@@ -626,221 +352,152 @@ function goToPracticeWriting(c) {
   }
   location.href = 'korehan-study-room.html?' + params.toString();
 }
-</script>
-</body>
-</html>var CONVS = [];  // DB에서 로드
 
-const LVL_LABEL = {b:'Beginner',i:'Intermediate',a:'Advanced'};
-const LVL_CLS   = {b:'badge-b',i:'badge-i',a:'badge-a'};
-const CAT_PILL  = {everyday:'dp-pill-blue',work:'dp-pill-gray',friends:'dp-pill-green',family:'dp-pill-amber',dating:'dp-pill-pink'};
-
-function renderCards(catF, lvlF) {
-  var grid = document.getElementById('conv-cards-grid');
-  var list = CONVS.filter(function(c) {
-    return (catF === 'all' || c.cat === catF) && (lvlF === 'all' || c.lvl === lvlF);
-  });
-  if (!list.length) {
-    grid.innerHTML = CONVS.length === 0 ? '<div style="grid-column:1/-1;text-align:center;padding:60px 20px"><div style="font-size:40px;margin-bottom:12px">💬</div><div style="font-size:16px;font-weight:700;color:#334155;margin-bottom:8px">아직 대화가 없어요</div><div style="font-size:13px;color:#94a3b8">Admin → Conversations 관리에서 추가하거나 AI Generator로 생성해보세요</div></div>' : '<p style="color:#64748b;font-size:14px;grid-column:1/-1;padding:20px 0">이 카테고리에 해당하는 대화가 없어요</p>';
-    return;
-  }
-  grid.innerHTML = list.map(function(c) {
-    var ri = CONVS.indexOf(c);
-    var prev = c.msgs.slice(0,3).map(function(m){
-      return '<div class="cc2-bub '+m.s+'">'+m.txt+'</div>';
-    }).join('');
-    return '<div class="cc2" onclick="openDetail('+ri+')">'
-      +'<div class="cc2-top">'
-        +'<div class="cc2-avi">'+c.avi+'</div>'
-        +'<div class="cc2-info"><div class="cc2-name">'+c.name+'</div><div class="cc2-ctx">'+c.ctx+'</div></div>'
-        +'<span class="cc2-badge '+LVL_CLS[c.lvl]+'">'+LVL_LABEL[c.lvl]+'</span>'
-      +'</div>'
-      +'<div class="cc2-preview">'+prev+'</div>'
-      +'<div class="cc2-foot">'
-        +'<span class="cc2-vocab-count">📚 '+c.vocab.length+' key words</span>'
-        +'<button class="cc2-open-btn">Study →</button>'
-      +'</div></div>';
-  }).join('');
-}
-
-function openDetail(idx) {
-  var c = CONVS[idx];
-  window._currentConv = c;
-  var now = new Date();
-  var h = now.getHours(), m = now.getMinutes();
-
-  var msgs = c.msgs.map(function(msg, i) {
-    var min = String((m + i) % 60).padStart(2,'0');
-    var hr  = (h % 12) || 12;
-    var ap  = h < 12 ? 'AM' : 'PM';
-    var time = hr + ':' + min + ' ' + ap;
-    var note = msg.note ? '<div class="dp-inline-note">💡 '+msg.note+'</div>' : '';
-    if (msg.s === 'l') {
-      return '<div class="dp-msg-row left">'
-        +'<div class="dp-avatar">'+c.avi+'</div>'
-        +'<div class="dp-bubble-group">'
-          +'<div class="dp-who">'+msg.who+'</div>'
-          +'<div class="dp-bubble">'+msg.txt+'</div>'
-          +'<div class="dp-time">'+time+'</div>'
-          +note
-        +'</div></div>';
-    } else {
-      return '<div class="dp-msg-row right">'
-        +'<div class="dp-bubble-group">'
-          +'<div class="dp-bubble">'+msg.txt+'</div>'
-          +'<div class="dp-time">'+time+'</div>'
-          +note
-        +'</div></div>';
-    }
-  }).join('');
-
-  var vocab = c.vocab.map(function(v) {
-    return '<div class="dp-vocab-item">'
-      +'<span class="dp-vi-ko">'+v.ko+'</span>'
-      +'<span class="dp-vi-rom">'+v.rom+'</span>'
-      +'<span class="dp-vi-en">'+v.en+'</span>'
-      +'<button class="dp-vi-save" onclick="toggleSave(this)">+ Save</button>'
-      +'</div>';
-  }).join('');
-
-  var grammar = (c.grammar||[]).map(function(g) {
-    return '<div class="dp-grammar-item"><strong>'+g.point+'</strong> — '+g.ex+'</div>';
-  }).join('');
-
-  var mission = (c.mission||[]).map(function(m) {
-    return '<div class="dp-grammar-item">🎯 '+m+'</div>';
-  }).join('');
-
-  var keywords = c.vocab.map(function(v) {
-    return '<span class="dp-keyword">'+v.ko+'</span>';
-  }).join('');
-
-  var pills = '<span class="dp-pill dp-pill-blue">'+LVL_LABEL[c.lvl]+'</span>'
-    +'<span class="dp-pill '+(CAT_PILL[c.cat]||'dp-pill-gray')+'">'+c.catLabel+'</span>'
-    +'<span class="dp-pill dp-pill-gray">'+c.topic+'</span>';
-
-  document.getElementById('detail-panel').innerHTML =
-    '<div class="dp-left">'
-      +'<div class="dp-left-head">'
-        +'<button class="detail-close" onclick="closeDetail()">✕</button>'
-        +'<div class="dp-left-eyebrow">Conversation</div>'
-        +'<div class="dp-left-title">'+c.name+'</div>'
-        +'<div class="dp-left-sub">'+c.ctx+'</div>'
-      +'</div>'
-      +'<div class="dp-pills">'+pills+'</div>'
-      +'<div class="dp-chat-area">'
-        +'<div class="dp-date-sep"><span>Today</span></div>'
-        +msgs
-      +'</div>'
-      +'<div class="dp-cta-row">'
-        +'<button class="dp-cta-btn dp-cta-secondary" onclick="closeDetail()">← All Conversations</button>'
-        +'<button class="dp-cta-btn dp-cta-primary" onclick="goToPracticeWriting(window._currentConv)">Practice Writing ✏️</button>'
-      +'</div>'
-    +'</div>'
-    +'<div class="dp-right">'
-      +'<div class="dp-right-head"><div class="dp-right-label">Study Notes</div><div class="dp-right-title">Conversation Breakdown</div></div>'
-      +'<div class="dp-study-sections">'
-        +'<div class="dp-study-card"><div class="dp-study-card-title"><span>📚</span> Key Vocabulary</div><div class="dp-vocab-list">'+vocab+'</div></div>'
-        +(grammar ? '<div class="dp-study-card"><div class="dp-study-card-title"><span>✏️</span> Grammar Points</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
-        +'<div class="dp-study-card"><div class="dp-study-card-title"><span>🔑</span> Quick Keywords</div><div class="dp-keywords">'+keywords+'</div></div>'
-        +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title"><span>🎯</span> Practice Mission</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
-      +'</div>'
-    +'</div>';
-
-  document.getElementById('detail-overlay').classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeDetail() {
-  document.getElementById('detail-overlay').classList.add('hidden');
-  document.body.style.overflow = '';
-}
-function toggleSave(btn) {
-  btn.classList.toggle('saved');
-  btn.textContent = btn.classList.contains('saved') ? '✓ Saved' : '+ Save';
-}
-
-var activeCat = 'all', activeLvl = 'all';
-document.addEventListener('DOMContentLoaded', async function() {
-  // ── DB에서 conversations 로드 ──────────────────────────
-  var grid = document.getElementById('conv-cards-grid');
-  if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;font-size:14px">⏳ 불러오는 중...</div>';
-
+// ── ADMIN INLINE EDIT / DELETE ─────────────────────────────
+// 어드민 세션 체크
+var _isAdmin = false;
+(async function() {
   try {
     var sb = getSupa();
-    var { data, error } = await sb.from('conversations_data')
-      .select('*')
-      .order('created_at', {ascending: false});
+    var { data: { session } } = await sb.auth.getSession();
+    if (session && session.user && session.user.email === 'enane960819@gmail.com') {
+      _isAdmin = true;
+    }
+  } catch(e) {}
+})();
 
+function editCurrentConv() {
+  var c = window._currentConv;
+  if (!c || !c._id) return;
+  // admin 페이지로 이동해서 해당 항목 수정 모달 열기
+  // 또는 인라인 모달
+  openInlineEditModal(c);
+}
+
+async function deleteCurrentConv() {
+  var c = window._currentConv;
+  if (!c || !c._id) { alert('ID 없음 - DB에서 로드된 항목만 삭제 가능'); return; }
+  if (!confirm('"' + c.name + '" 대화를 삭제할까요?')) return;
+  try {
+    var sb = getSupa();
+    var { error } = await sb.from('conversations_data').delete().eq('id', c._id);
+    if (error) throw error;
+    // CONVS 배열에서도 제거
+    var idx = CONVS.findIndex(function(x){ return x._id === c._id; });
+    if (idx >= 0) CONVS.splice(idx, 1);
+    closeDetail();
+    renderCards(activeCat, activeLvl);
+    showConvToast('🗑 삭제됨');
+  } catch(e) {
+    alert('삭제 오류: ' + e.message);
+  }
+}
+
+function openInlineEditModal(c) {
+  var existing = document.getElementById('conv-inline-edit');
+  if (existing) existing.remove();
+
+  var msgsText = (c.msgs || []).map(function(m){
+    return (m.s === 'l' ? 'A' : 'B') + ': ' + m.txt;
+  }).join('\n');
+
+  var overlay = document.createElement('div');
+  overlay.id = 'conv-inline-edit';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto';
+
+  overlay.innerHTML = '<div style="background:#fff;border-radius:18px;width:100%;max-width:700px;padding:26px 28px;max-height:90vh;overflow-y:auto">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    + '<h3 style="font-size:17px;font-weight:800;margin:0">✏️ 대화 수정</h3>'
+    + '<button onclick="closeInlineEdit()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#64748b">✕</button>'
+    + '</div>'
+    + inpField('ie-name', '이름', c.name || '')
+    + inpField('ie-ctx',  '상황', c.ctx  || '')
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">'
+    + inpField('ie-avi',  '이모지', c.avi || '💬')
+    + selField('ie-cat', '카테고리', ['everyday','work','friends','family','dating'], ['Everyday','Workplace','Friends','Family','Dating'], c.cat || 'everyday')
+    + selField('ie-lvl', '레벨', ['b','i','a'], ['Beginner','Intermediate','Advanced'], c.lvl || 'b')
+    + '</div>'
+    + '<label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:14px">💬 대화 내용 (A: 왼쪽 / B: 오른쪽)<textarea id="ie-msgs" rows="6" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical">' + msgsText.replace(/</g,'&lt;') + '</textarea></label>'
+    + '<div id="ie-error" style="background:#fee2e2;border-radius:8px;padding:10px;color:#b91c1c;font-size:13px;display:none;margin-bottom:12px"></div>'
+    + '<div style="display:flex;gap:10px;justify-content:flex-end">'
+    + '<button onclick="closeInlineEdit()" style="background:#f1f5f9;color:#334155;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">취소</button>'
+    + '<button onclick="saveInlineEdit(' + (c._id || 'null') + ')" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 저장</button>'
+    + '</div>'
+    + '</div>';
+
+  document.body.appendChild(overlay);
+}
+
+function inpField(id, label, val) {
+  return '<label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:14px">' + label
+    + '<input id="' + id + '" value="' + String(val).replace(/"/g,'&quot;') + '" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'
+    + '</label>';
+}
+function selField(id, label, vals, labels, cur) {
+  return '<label style="font-size:12px;font-weight:700;color:#374151;display:block">' + label
+    + '<select id="' + id + '" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'
+    + vals.map(function(v,i){ return '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+labels[i]+'</option>'; }).join('')
+    + '</select></label>';
+}
+
+async function saveInlineEdit(rowId) {
+  var errEl = document.getElementById('ie-error');
+  errEl.style.display = 'none';
+  try {
+    var catVal = document.getElementById('ie-cat').value;
+    var catLabelMap = {everyday:'Everyday',work:'Workplace',friends:'Friends',family:'Family',dating:'Dating'};
+    var msgsText = document.getElementById('ie-msgs').value.trim();
+    var msgs = msgsText.split('\n').filter(function(l){ return l.trim(); }).map(function(line){
+      var isB = /^B:/i.test(line.trim());
+      return {s: isB?'r':'l', who: isB?'B':'A', txt: line.replace(/^[AB]:\s*/i,'').trim()};
+    });
+    if (!msgs.length) throw new Error('대화 내용을 입력해주세요');
+
+    var c = window._currentConv;
+    var updatedData = Object.assign({}, c, {
+      name:     document.getElementById('ie-name').value.trim(),
+      ctx:      document.getElementById('ie-ctx').value.trim(),
+      avi:      document.getElementById('ie-avi').value.trim() || '💬',
+      cat:      catVal,
+      lvl:      document.getElementById('ie-lvl').value,
+      catLabel: catLabelMap[catVal] || catVal,
+      msgs:     msgs,
+    });
+
+    var sb = getSupa();
+    var { error } = await sb.from('conversations_data').update({
+      data: updatedData,
+      name: updatedData.name,
+      ctx:  updatedData.ctx,
+      cat:  updatedData.cat,
+      lvl:  updatedData.lvl,
+    }).eq('id', rowId);
     if (error) throw error;
 
-    if (data && data.length) {
-      // DB 데이터를 CONVS 형식으로 변환
-      CONVS = data.map(function(row) {
-        var d = row.data || {};
-        // data 객체가 있으면 그대로, 없으면 row 자체에서 구성
-        return Object.assign({
-          _id: row.id,
-          name: row.name || '',
-          ctx:  row.ctx  || '',
-          cat:  row.cat  || 'everyday',
-          lvl:  row.lvl  || 'b',
-          avi:  '💬',
-          catLabel: '',
-          msgs: [],
-          vocab: [],
-          grammar: [],
-          mission: []
-        }, d, {_id: row.id});
-      });
-    }
+    // 로컬 CONVS 업데이트
+    var idx = CONVS.findIndex(function(x){ return x._id === rowId; });
+    if (idx >= 0) CONVS[idx] = Object.assign({}, updatedData, {_id: rowId});
+    window._currentConv = Object.assign({}, updatedData, {_id: rowId});
+
+    document.getElementById('conv-inline-edit').remove();
+    showConvToast('✅ 저장 완료!');
+    renderCards(activeCat, activeLvl);
   } catch(e) {
-    console.warn('DB 로드 실패, 내장 샘플 사용:', e.message);
-    // fallback: 빈 상태 유지 (CONVS = [])
+    errEl.textContent = e.message || String(e);
+    errEl.style.display = 'block';
   }
-
-  // 로드 완료 후 렌더
-  renderCards(activeCat, activeLvl);
-
-  // URL ?open=N → 해당 인덱스 자동 오픈
-  var _openIdx = new URLSearchParams(window.location.search).get('open');
-  if (_openIdx !== null && CONVS[parseInt(_openIdx)]) {
-    setTimeout(function(){ openDetail(parseInt(_openIdx)); }, 80);
-  }
-  var pills = document.getElementById('cat-pills');
-  pills.querySelectorAll('.cf-pill:not([data-lvl])').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      pills.querySelectorAll('.cf-pill:not([data-lvl])').forEach(function(b){b.classList.remove('on');});
-      btn.classList.add('on');
-      activeCat = btn.dataset.cat;
-      renderCards(activeCat, activeLvl);
-    });
-  });
-  pills.querySelectorAll('.cf-pill[data-lvl]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      pills.querySelectorAll('.cf-pill[data-lvl]').forEach(function(b){b.classList.remove('on');});
-      btn.classList.add('on');
-      activeLvl = btn.dataset.lvl;
-      renderCards(activeCat, activeLvl);
-    });
-  });
-  var params = new URLSearchParams(window.location.search);
-  var cp = params.get('cat');
-  if (cp) { var t = pills.querySelector('[data-cat="'+cp+'"]'); if(t) t.click(); }
-});
-document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeDetail(); });
-
-function goToPracticeWriting(c) {
-  var params = new URLSearchParams();
-  params.set('mode', 'conv');
-  params.set('title', c.name + ' — ' + c.ctx);
-  if (c.vocab && c.vocab.length) {
-    params.set('vocab', JSON.stringify(c.vocab.map(function(v){ return {ko:v.ko, rom:v.rom, en:v.en}; })));
-  }
-  if (c.grammar && c.grammar.length) {
-    params.set('grammar', JSON.stringify(c.grammar.map(function(g){ return {point:g.point, ex:g.ex}; })));
-  }
-  location.href = 'korehan-study-room.html?' + params.toString();
 }
+
+function showConvToast(msg) {
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#0f172a;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:700;z-index:99999;font-family:inherit';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 2500);
+}
+
+
+function closeInlineEdit() { var e = document.getElementById('conv-inline-edit'); if(e) e.remove(); }
 </script>
 </body>
 </html>
