@@ -2392,15 +2392,14 @@ const SUPA_URL_ADMIN2 = 'https://samghztrdvtxmrmawneu.supabase.co';
 const SUPA_KEY_ADMIN2 = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjQzNDc1MiwiZXhwIjoyMDg4MDEwNzUyfQ.npCvblrbeRiqwW76_23kYznrRuFHIKCD24JN3da--3c';
 
 async function callAdminClaude(prompt) {
-  // Admin은 직접 Anthropic API 호출 (서비스롤 환경)
-  // 실제로는 Supabase Edge Function 통해서 호출
-  const sb = getSb();
+  // Admin: service_role key로 Edge Function 직접 호출 (JWT verify bypass)
   const PROXY = SUPA_URL_ADMIN2 + '/functions/v1/claude-proxy';
   const resp = await fetch(PROXY, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + SUPA_KEY_ADMIN2,
+      'x-admin-bypass': '1',
     },
     body: JSON.stringify({
       feature: 'admin-ai-gen',
@@ -2409,7 +2408,10 @@ async function callAdminClaude(prompt) {
       messages: [{ role: 'user', content: prompt }]
     })
   });
-  if (!resp.ok) throw new Error('Claude API ' + resp.status);
+  if (!resp.ok) {
+    const errBody = await resp.json().catch(function(){ return {}; });
+    throw new Error('Claude API ' + resp.status + ': ' + (errBody.error || ''));
+  }
   const data = await resp.json();
   const text = (data.content || []).map(function(b){ return b.text||''; }).join('');
   return text;
@@ -2430,85 +2432,71 @@ async function saveToCache(contentType, contentId, key, value) {
 }
 
 async function autoGenConvAI(convId, convObj) {
+  showToastAdmin('🤖 AI 분석 중…');
   try {
     var msgsText = (convObj.msgs || []).map(function(m){ return (m.who||m.s||'?') + ': ' + m.txt; }).join('\n');
-    var prompt = `다음 한국어 대화를 분석해서 JSON으로만 답해줘. 다른 말 하지 마.
-
-대화:
-${msgsText}
-
-형식:
-{
-  "vocab": [{"ko":"단어","rom":"로마자","en":"영어뜻"}],
-  "grammar": [{"point":"문법 포인트","ex":"예문","en":"설명"}],
-  "mission": [{"task":"연습 미션"}]
-}
-
-vocab 5개, grammar 2개, mission 2개. JSON만 출력.`;
+    var prompt = '다음 한국어 대화를 분석해서 JSON으로만 답해줘. 다른 말 하지 마.\n\n대화:\n'
+      + msgsText
+      + '\n\n형식:\n{"vocab":[{"ko":"단어","rom":"로마자","en":"영어뜻"}],"grammar":[{"point":"문법 포인트","ex":"예문","en":"설명"}],"mission":[{"task":"연습 미션"}]}'
+      + '\n\nvocab 5개, grammar 2개, mission 2개. JSON만 출력.';
 
     var result = await callAdminClaude(prompt);
-    var clean = result.replace(/```json|```/g, '').trim();
+    var clean = result.replace(/```json[\s\S]*?```/g, function(m){ return m.slice(7,-3); }).replace(/```/g,'').trim();
     var parsed = JSON.parse(clean);
 
-    // DB에 직접 업데이트
+    // DB: 현재 row 읽어서 data 컬럼 병합 후 update
     const sb = getSb();
-    var existing = await sb.from('conversations_data').select('data').eq('id', convId).single();
-    if (existing.data) {
-      var updated = Object.assign({}, existing.data.data, {
-        vocab: parsed.vocab || [],
-        grammar: parsed.grammar || [],
-        mission: parsed.mission || []
-      });
-      await sb.from('conversations_data').update({ data: updated }).eq('id', convId);
-    }
+    var res = await sb.from('conversations_data').select('data').eq('id', convId).single();
+    // res.data = row 자체: { data: {...} }
+    var currentData = (res.data && res.data.data) ? res.data.data : (convObj || {});
+    var updated = Object.assign({}, currentData, {
+      vocab:   parsed.vocab   || [],
+      grammar: parsed.grammar || [],
+      mission: parsed.mission || []
+    });
+    var { error: updateErr } = await sb.from('conversations_data').update({ data: updated }).eq('id', convId);
+    if (updateErr) throw updateErr;
 
     // article_cache에도 저장
     await saveToCache('conversation', convId, 'ai_analysis', parsed);
-    showToastAdmin('🤖 AI 분석 완료! vocab ' + (parsed.vocab||[]).length + '개 생성');
+    showToastAdmin('🤖 완료! vocab ' + (parsed.vocab||[]).length + '개 · grammar ' + (parsed.grammar||[]).length + '개 · mission ' + (parsed.mission||[]).length + '개');
+    await loadConvList();
   } catch(e) {
-    console.warn('autoGenConvAI failed:', e);
-    showToastAdmin('⚠️ AI 생성 실패 — vocab을 수동 입력하세요');
+    console.error('autoGenConvAI failed:', e);
+    showToastAdmin('⚠️ AI 생성 실패: ' + (e.message || String(e)));
   }
 }
 
 async function autoGenStoryAI(storyId, storyObj) {
+  showToastAdmin('🤖 스토리 AI 분석 중…');
   try {
     var bodyText = (storyObj.body || '').replace(/<[^>]*>/g, '').slice(0, 1500);
-    var prompt = `다음 한국어 스토리를 분석해서 JSON으로만 답해줘. 다른 말 하지 마.
-
-스토리 제목: ${storyObj.title}
-내용: ${bodyText}
-
-형식:
-{
-  "vocab": [{"ko":"단어","rom":"로마자","en":"영어뜻","note":"간단한 설명"}],
-  "grammar": [{"point":"문법 포인트","ex":"예문","en":"설명"}],
-  "summary_en": "영어 요약 1-2문장",
-  "difficulty_reason": "레벨 선정 이유"
-}
-
-vocab 6개, grammar 3개. JSON만 출력.`;
+    var prompt = '다음 한국어 스토리를 분석해서 JSON으로만 답해줘. 다른 말 하지 마.\n\n스토리 제목: '
+      + storyObj.title + '\n내용: ' + bodyText
+      + '\n\n형식:\n{"vocab":[{"ko":"단어","rom":"로마자","en":"영어뜻","note":"간단한 설명"}],"grammar":[{"point":"문법 포인트","ex":"예문","en":"설명"}],"summary_en":"영어 요약 1-2문장"}'
+      + '\n\nvocab 6개, grammar 3개. JSON만 출력.';
 
     var result = await callAdminClaude(prompt);
-    var clean = result.replace(/```json|```/g, '').trim();
+    var clean = result.replace(/```json[\s\S]*?```/g, function(m){ return m.slice(7,-3); }).replace(/```/g,'').trim();
     var parsed = JSON.parse(clean);
 
     const sb = getSb();
-    var existing = await sb.from('stories_data').select('data').eq('id', storyId).single();
-    if (existing.data) {
-      var updated = Object.assign({}, existing.data.data, {
-        vocab: parsed.vocab || [],
-        grammar: parsed.grammar || [],
-        summary_en: parsed.summary_en || '',
-      });
-      await sb.from('stories_data').update({ data: updated }).eq('id', storyId);
-    }
+    var res = await sb.from('stories_data').select('data').eq('id', storyId).single();
+    var currentData = (res.data && res.data.data) ? res.data.data : (storyObj || {});
+    var updated = Object.assign({}, currentData, {
+      vocab:      parsed.vocab      || [],
+      grammar:    parsed.grammar    || [],
+      summary_en: parsed.summary_en || '',
+    });
+    var { error: updateErr } = await sb.from('stories_data').update({ data: updated }).eq('id', storyId);
+    if (updateErr) throw updateErr;
 
     await saveToCache('story', storyId, 'ai_analysis', parsed);
-    showToastAdmin('🤖 AI 분석 완료! vocab ' + (parsed.vocab||[]).length + '개 생성');
+    showToastAdmin('🤖 완료! vocab ' + (parsed.vocab||[]).length + '개 · grammar ' + (parsed.grammar||[]).length + '개');
+    await loadStoryList();
   } catch(e) {
-    console.warn('autoGenStoryAI failed:', e);
-    showToastAdmin('⚠️ AI 생성 실패 — vocab을 수동 입력하세요');
+    console.error('autoGenStoryAI failed:', e);
+    showToastAdmin('⚠️ AI 생성 실패: ' + (e.message || String(e)));
   }
 }
 
@@ -2847,6 +2835,8 @@ async function loadConvList() {
     var lvlMap = {b:'Beginner', i:'Intermediate', a:'Advanced'};
     var msgCount = (d.msgs || []).length;
     var vocabCount = (d.vocab || []).length;
+    var grammarCount = (d.grammar || []).length;
+    var missionCount = (d.mission || []).length;
     return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;gap:14px">'
       + '<div style="font-size:26px">' + (d.avi || '💬') + '</div>'
       + '<div style="flex:1;min-width:0">'
@@ -2855,9 +2845,10 @@ async function loadConvList() {
       + '<div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">'
       + '<span style="background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px">' + (lvlMap[lvl]||lvl) + '</span>'
       + '<span style="background:#f1f5f9;color:#475569;font-size:11px;padding:2px 8px;border-radius:999px">' + cat + '</span>'
-      + '<span style="background:#f0fdf4;color:#15803d;font-size:11px;padding:2px 8px;border-radius:999px">' + msgCount + ' msgs · ' + vocabCount + ' vocab</span>'
+      + '<span style="background:#f0fdf4;color:#15803d;font-size:11px;padding:2px 8px;border-radius:999px">' + msgCount + ' msgs · ' + vocabCount + ' vocab · ' + grammarCount + ' grammar · ' + missionCount + ' mission</span>'
       + '</div></div>'
-      + '<div style="display:flex;gap:8px;flex-shrink:0">'
+      + '<div style="display:flex;gap:8px;flex-shrink:0;">'
+      + '<button onclick="regenConvAI(' + row.id + ')" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit" title="AI로 vocab/grammar/mission 자동 생성">🤖 AI</button>'
       + '<button onclick="openConvEditModal(' + row.id + ')" style="background:#f1f5f9;color:#334155;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ 수정</button>'
       + '<button onclick="deleteConv(' + row.id + ')" style="background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑 삭제</button>'
       + '</div></div>';

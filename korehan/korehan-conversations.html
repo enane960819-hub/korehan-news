@@ -233,7 +233,7 @@ function openDetail(idx) {
   }).join('');
 
   var mission = (c.mission||[]).map(function(m) {
-    return '<div class="dp-grammar-item">🎯 '+m+'</div>';
+    return '<div class="dp-grammar-item">🎯 '+(m.task||m)+'</div>';
   }).join('');
 
   var keywords = c.vocab.map(function(v) {

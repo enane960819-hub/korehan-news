@@ -2688,13 +2688,13 @@ document.addEventListener('DOMContentLoaded', async function() {
   } else if (pageBase === 'korehan-all')     { renderAllPage(); }
   else if (pageBase === 'korehan-section')   {
     var sKey = (new URLSearchParams(window.location.search)).get('s') || '';
-    renderSectionPage(sKey);
+    await renderSectionPage(sKey);
   }
-  else if (pageBase === 'korehan-korea')     { renderSectionPage('Korea'); }
-  else if (pageBase === 'korehan-society')   { renderSectionPage('사회'); }
-  else if (pageBase === 'korehan-world')     { renderSectionPage('국제'); }
-  else if (pageBase === 'korehan-culture')   { renderSectionPage('문화'); }
-  else if (pageBase === 'korehan-opinion')   { renderSectionPage('오피니언'); }
+  else if (pageBase === 'korehan-korea')     { await renderSectionPage('Korea'); }
+  else if (pageBase === 'korehan-society')   { await renderSectionPage('사회'); }
+  else if (pageBase === 'korehan-world')     { await renderSectionPage('국제'); }
+  else if (pageBase === 'korehan-culture')   { await renderSectionPage('문화'); }
+  else if (pageBase === 'korehan-opinion')   { await renderSectionPage('오피니언'); }
   else if (pageBase === 'korehan-article')   { renderArticlePage(); }
 
   ttsInit();
@@ -3578,12 +3578,12 @@ function khInjectSidebar() {
       + '<button class="kh-sb-a" onclick=\"khSbToggle(\'sb-news\',\'sb-arr-news\')\"><span class="kh-sb-ico">&#x1F4F0;</span>News<span class="kh-sb-arrow" id="sb-arr-news">&#x203A;</span></button>'
       + '<div class="kh-sb-sub" id="sb-news">'
         + '<a href="korehan-all.html" class="kh-sb-sub-a">All News</a>'
-        + '<a href="korehan-section.html?s=society" class="kh-sb-sub-a">&#x1F3DB;&#xFE0F; Society</a>'
-        + '<a href="korehan-section.html?s=world" class="kh-sb-sub-a">&#x1F310; World</a>'
-        + '<a href="korehan-section.html?s=culture" class="kh-sb-sub-a">&#x1F3AD; Culture</a>'
+        + '<a href="korehan-society.html" class="kh-sb-sub-a">&#x1F3DB;&#xFE0F; Society</a>'
+        + '<a href="korehan-world.html" class="kh-sb-sub-a">&#x1F310; World</a>'
+        + '<a href="korehan-culture.html" class="kh-sb-sub-a">&#x1F3AD; Culture</a>'
         + '<a href="korehan-section.html?s=kpop" class="kh-sb-sub-a">&#x1F3B5; K-pop</a>'
         + '<a href="korehan-section.html?s=tech" class="kh-sb-sub-a">&#x1F4BB; Tech</a>'
-        + '<a href="korehan-section.html?s=korea" class="kh-sb-sub-a">&#x1F1F0;&#x1F1F7; Korea</a>'
+        + '<a href="korehan-korea.html" class="kh-sb-sub-a">&#x1F1F0;&#x1F1F7; Korea</a>'
       + '</div>'
       + '<button class="kh-sb-a" onclick=\"khSbToggle(\'sb-conv\',\'sb-arr-conv\')\"><span class="kh-sb-ico">&#x1F4AC;</span>Conversations<span class="kh-sb-new">New</span><span class="kh-sb-arrow" id="sb-arr-conv" style="margin-left:4px">&#x203A;</span></button>'
       + '<div class="kh-sb-sub" id="sb-conv">'
