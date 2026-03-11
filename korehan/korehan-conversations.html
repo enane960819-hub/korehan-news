@@ -386,12 +386,11 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeDeta
 // ── BLANK FILL QUIZ ──────────────────────────────────────────
 function startBlankQuiz() {
   var c = window._currentConv;
-  if (!c || !c.data) return;
-  var msgs = (c.data.msgs || []);
+  if (!c) return;
+  var msgs = (c.msgs || []);
   if (!msgs.length) { alert('대화 내용이 없어요'); return; }
 
-  // 메시지에서 vocab 단어 랜덤으로 빈칸 만들기
-  var vocab = (c.data.vocab || []).filter(function(v){ return v.ko && v.ko.length > 1; });
+  var vocab = (c.vocab || []).filter(function(v){ return v.ko && v.ko.length > 1; });
   if (!vocab.length) { alert('단어 데이터가 없어요'); return; }
 
   var questions = msgs.slice(0, 6).map(function(msg) {
@@ -408,14 +407,14 @@ function startBlankQuiz() {
     });
   }
 
-  showQuizModal('blank', questions, c.data.name || c.name);
+  showQuizModal('blank', questions, c.name || '');
 }
 
 // ── ORDER QUIZ ────────────────────────────────────────────────
 function startOrderQuiz() {
   var c = window._currentConv;
-  if (!c || !c.data) return;
-  var msgs = (c.data.msgs || []).slice(0, 6);
+  if (!c) return;
+  var msgs = (c.msgs || []).slice(0, 6);
   if (msgs.length < 3) { alert('대화가 너무 짧아요'); return; }
 
   var questions = [];
@@ -426,7 +425,7 @@ function startOrderQuiz() {
     if (questions.length >= 3) break;
   }
 
-  showQuizModal('order', questions, c.data.name || c.name);
+  showQuizModal('order', questions, c.name || '');
 }
 
 // ── QUIZ MODAL ────────────────────────────────────────────────

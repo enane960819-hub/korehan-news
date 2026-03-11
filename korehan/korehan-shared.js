@@ -971,28 +971,41 @@ function heroSideItemHTML(a) {
 
 // ── 페이지 렌더러 ─────────────────────────────────────────────
 
+var _heroSlides = [];
+var _heroIdx = 0;
+var _heroTimer = null;
+
 function renderHomePage() {
   var all      = published();
-  var featured = all.find(function(a){ return a.featured; }) || all[0];
-  var rest     = all.filter(function(a){ return !featured || a.id !== featured.id; });
+  // featured 기사 (최대 7개 - featured 먼저, 나머지 최신순)
+  var featured = all.filter(function(a){ return a.featured; });
+  if (!featured.length) featured = all.slice(0, 7);
+  else {
+    var featIds = new Set(featured.map(function(a){ return a.id; }));
+    var extra = all.filter(function(a){ return !featIds.has(a.id); });
+    featured = featured.concat(extra).slice(0, 7);
+  }
+  _heroSlides = featured;
+  _heroIdx = 0;
+
+  var rest = all.filter(function(a){
+    var heroIds = new Set(featured.map(function(f){ return f.id; }));
+    return !heroIds.has(a.id);
+  });
 
   // HERO
   var heroEl = document.getElementById('dyn-hero');
-  if (heroEl && featured) {
-    var heroSide = rest.slice(0, 4);
-    var featImg = featured.image || ('https://picsum.photos/seed/' + featured.id + '/900/500');
-    var featBody = (featured.body || '').replace(/<[^>]*>/g, '').slice(0, 120);
-    heroEl.style.cssText = 'display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;';
-    heroEl.innerHTML =
-      '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;display:block;">'
-      + '<div class="hero-main">'
-      + '<img src="' + featImg + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'">'
-      + '<div class="overlay">'
-      + '<span class="category-tag">' + featured.section + '</span>'
-      + '<h1 class="vocab-zone">' + featured.title + '</h1>'
-      + '<p class="sub vocab-zone">' + featBody + '</p>'
-      + '</div></div></a>'
-      + '<div class="hero-side">' + heroSide.map(heroSideItemHTML).join('') + '</div>';
+  if (heroEl && featured.length) {
+    heroEl.style.cssText = 'display:grid;grid-template-columns:1fr 340px;gap:0;align-items:stretch;border-radius:14px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.15);';
+    renderHeroSlide(heroEl);
+    // 2.5초마다 자동 전환
+    if (_heroTimer) clearInterval(_heroTimer);
+    if (_heroSlides.length > 1) {
+      _heroTimer = setInterval(function(){
+        _heroIdx = (_heroIdx + 1) % _heroSlides.length;
+        renderHeroSlide(heroEl);
+      }, 2500);
+    }
   }
 
   // TOP STORIES
@@ -1020,7 +1033,7 @@ function renderHomePage() {
     }).join('');
   }
 
-  // LATEST - 최신순 독립 정렬 (featured 기사 포함, Top Stories와 겹쳐도 최신순)
+  // LATEST
   var latestEl = document.getElementById('dyn-latest');
   if (latestEl) latestEl.innerHTML = all.slice(0, 8).map(storyItemHTML).join('');
 
@@ -1038,6 +1051,66 @@ function renderHomePage() {
           + '</div>';
       }).join('');
     }
+  }
+}
+
+function renderHeroSlide(heroEl) {
+  if (!heroEl || !_heroSlides.length) return;
+  var featured = _heroSlides[_heroIdx];
+  var sideItems = _heroSlides.filter(function(a, i){ return i !== _heroIdx; }).slice(0, 5);
+
+  var featImg = featured.image || ('https://picsum.photos/seed/' + featured.id + '/900/500');
+  var featBody = (featured.body || '').replace(/<[^>]*>/g, '').slice(0, 130);
+
+  // 슬라이드 인디케이터
+  var dots = _heroSlides.length > 1
+    ? '<div style="display:flex;gap:5px;margin-top:10px">'
+      + _heroSlides.map(function(_, i){
+          return '<div onclick="heroGoTo(' + i + ')" style="width:' + (i===_heroIdx?'20':'6') + 'px;height:6px;border-radius:999px;background:' + (i===_heroIdx?'#fff':'rgba(255,255,255,.4)') + ';cursor:pointer;transition:all .3s"></div>';
+        }).join('')
+      + '</div>'
+    : '';
+
+  heroEl.innerHTML =
+    // 메인 히어로
+    '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;display:block;position:relative;overflow:hidden;min-height:440px;">'
+    + '<img src="' + featImg + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;transition:opacity .5s;">'
+    + '<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(5,15,35,.95) 0%,rgba(5,15,35,.4) 55%,transparent 100%)"></div>'
+    + '<div style="position:absolute;bottom:0;left:0;right:0;padding:28px 24px;">'
+    + '<span class="category-tag" style="margin-bottom:10px;display:inline-block">' + featured.section + '</span>'
+    + '<h1 class="vocab-zone" style="font-family:\'Playfair Display\',serif;font-size:clamp(18px,2.2vw,26px);font-weight:900;color:#fff;line-height:1.3;margin:0 0 8px">' + featured.title + '</h1>'
+    + '<p style="font-size:13px;color:rgba(255,255,255,.7);line-height:1.5;margin:0 0 12px">' + featBody + '</p>'
+    + dots
+    + '</div></a>'
+    // 사이드 패널
+    + '<div style="background:#fff;display:flex;flex-direction:column;border-left:1px solid #e8eef7;">'
+    + '<div style="padding:14px 16px 8px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;border-bottom:1px solid #f1f5f9">Latest Stories</div>'
+    + sideItems.map(function(a, i) {
+        var img = a.image || ('https://picsum.photos/seed/' + a.id + '/400/200');
+        return '<a href="' + articleUrl(a.id) + '" style="text-decoration:none;color:inherit">'
+          + '<div style="display:flex;gap:0;align-items:stretch;border-bottom:1px solid #f1f5f9;transition:background .15s" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
+          + '<img src="' + img + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/200/120\'" style="width:80px;height:72px;object-fit:cover;flex-shrink:0;">'
+          + '<div style="padding:10px 12px;flex:1;min-width:0;">'
+          + '<div style="font-size:9px;font-weight:700;color:#2255a4;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">' + a.section + '</div>'
+          + '<div class="vocab-zone" style="font-size:12px;font-weight:700;color:#0f172a;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + a.title + '</div>'
+          + '<div style="font-size:10px;color:#94a3b8;margin-top:4px">' + relTime(a.date) + '</div>'
+          + '</div></div></a>';
+      }).join('')
+    + '</div>';
+}
+
+function heroGoTo(idx) {
+  _heroIdx = idx;
+  var heroEl = document.getElementById('dyn-hero');
+  if (heroEl) renderHeroSlide(heroEl);
+  // 타이머 리셋
+  if (_heroTimer) { clearInterval(_heroTimer); }
+  if (_heroSlides.length > 1) {
+    _heroTimer = setInterval(function(){
+      _heroIdx = (_heroIdx + 1) % _heroSlides.length;
+      var el = document.getElementById('dyn-hero');
+      if (el) renderHeroSlide(el);
+    }, 2500);
   }
 }
 
