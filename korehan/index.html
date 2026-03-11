@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : 'lvl-b';
       var cat = (a.section || '').toLowerCase();
       return '<div class="nc" data-section="' + cat + '" data-level="' + lvl + '" onclick="location.href=\'korehan-article.html?id=' + a.id + '\'">'
-        + (a.image_url ? '<img class="nc-img" src="' + a.image_url + '" alt="">' : '<div class="nc-img" style="background:#e8eef7;border-radius:3px;aspect-ratio:16/9;margin-bottom:9px"></div>')
+        + (a.image ? '<img class="nc-img" src="' + a.image + '" alt="">' : '<div class="nc-img" style="background:#e8eef7;border-radius:3px;aspect-ratio:16/9;margin-bottom:9px"></div>')
         + '<div class="nc-meta"><span class="nc-cat">' + (a.section || '') + '</span><span class="nc-lvl ' + lvlCls + '">' + lvl + '</span></div>'
         + '<div class="nc-title">' + (a.title_ko || a.title || '') + '</div>'
         + '<div class="nc-foot"><span class="nc-date">' + (a.published_at ? new Date(a.published_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '') + '</span>'

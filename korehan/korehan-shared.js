@@ -2239,6 +2239,14 @@ function wrapVocab(el) {
 
 // ── 헤더 / 푸터 / 사이드바 ────────────────────────────────────
 function renderHeader() {
+  // 폰트가 없으면 동적 주입
+  if (!document.getElementById('kh-font-link')) {
+    var fl = document.createElement('link');
+    fl.id   = 'kh-font-link';
+    fl.rel  = 'stylesheet';
+    fl.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700&family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Source+Sans+3:wght@400;600;700&display=swap';
+    document.head.appendChild(fl);
+  }
   var page = window.location.pathname.split('/').pop() || 'index.html';
   var currentSection = (new URLSearchParams(window.location.search)).get('s') || '';
 

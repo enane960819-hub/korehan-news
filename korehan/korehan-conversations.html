@@ -449,6 +449,7 @@ function renderCards(catF, lvlF) {
 
 function openDetail(idx) {
   var c = CONVS[idx];
+  window._currentConv = c;
   var now = new Date();
   var h = now.getHours(), m = now.getMinutes();
 
@@ -517,7 +518,7 @@ function openDetail(idx) {
       +'</div>'
       +'<div class="dp-cta-row">'
         +'<button class="dp-cta-btn dp-cta-secondary" onclick="closeDetail()">← All Conversations</button>'
-        +'<button class="dp-cta-btn dp-cta-primary" onclick="goToPracticeWriting(c)">Practice Writing ✏️</button>'
+        +'<button class="dp-cta-btn dp-cta-primary" onclick="goToPracticeWriting(window._currentConv)">Practice Writing ✏️</button>'
       +'</div>'
     +'</div>'
     +'<div class="dp-right">'
