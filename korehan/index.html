@@ -4,83 +4,53 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KoreHan News — Learn Korean Through Real News</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css">
-<style>
-.level-filter-btn {
-  padding: 5px 14px; border-radius: 999px; border: 1.5px solid var(--border);
-  background: #fff; font-size: 12px; font-weight: 700; cursor: pointer;
-  color: var(--gray); transition: all .15s; font-family: inherit;
-}
-.level-filter-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
-.level-filter-btn:hover:not(.on) { border-color: var(--accent); color: var(--accent); }
-.learn-banner {
-  display: grid; grid-template-columns: 1fr 200px; gap: 14px; align-items: center;
-  background: linear-gradient(135deg,#0b1626,#1a3a6b); border-radius: 12px;
-  padding: 20px 24px; color: #fff; box-shadow: 0 10px 36px rgba(13,27,46,0.2);
-  margin: 18px 0 24px; text-decoration: none; transition: box-shadow 0.2s; display: grid;
-}
-.learn-banner:hover { box-shadow: 0 14px 44px rgba(13,27,46,0.32); }
-@media(max-width:640px){ .learn-banner{grid-template-columns:1fr;} .lb-right{display:none;} }
-.lb-badge { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px;
-  padding:3px 10px; border-radius:999px; background:rgba(122,184,245,0.2); color:#7ab8f5;
-  margin-bottom:10px; display:inline-block; }
-.lb-left h2 { font-family:'Noto Serif KR','Playfair Display',serif; font-weight:900; font-size:20px; margin:0 0 8px; line-height:1.3; }
-.lb-left p  { margin:0; font-size:13px; color:rgba(255,255,255,0.7); line-height:1.6; }
-.lb-right { text-align:center; }
-.lb-phrase-ko  { font-family:'Noto Serif KR','Playfair Display',serif; font-weight:900; font-size:30px; color:#fff; }
-.lb-phrase-rom { font-size:12px; color:rgba(255,255,255,0.5); font-style:italic; margin-top:2px; }
-.lb-phrase-en  { font-size:14px; font-weight:700; color:rgba(255,255,255,0.85); margin-top:4px; }
-.lb-cta { margin-top:14px; display:inline-block; padding:8px 18px;
-  background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
-  border-radius:999px; font-size:13px; font-weight:700; color:#fff; }
-</style>
 </head>
 <body>
 <div id="kh-header"></div>
+
 <div class="container">
-  <div class="hero" id="dyn-hero"></div>
 
-  <a class="learn-banner" href="korehan-learn.html">
-    <div class="lb-left">
-      <div class="lb-badge">✏️ Learn Korean</div>
-      <h2>Simplified Korean news for learners</h2>
-      <p>KoreHan News is written in easy Korean for foreign learners. Hover any underlined word to instantly see its meaning and pronunciation.</p>
-    </div>
-    <div class="lb-right">
-      <div class="lb-phrase-ko" id="banner-phrase-ko">경제 회복</div>
-      <div class="lb-phrase-rom" id="banner-phrase-rom">gyeong-je hoe-bok</div>
-      <div class="lb-phrase-en" id="banner-phrase-en">economic recovery</div>
-      <div class="lb-cta">Study vocabulary →</div>
-    </div>
-  </a>
+  <!-- HERO -->
+  <div id="dyn-hero"></div>
 
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px">
-    <div class="section-title" style="margin-bottom:0">🔥 Top Stories</div>
-    <div style="display:flex;gap:6px" id="level-filter-btns">
-      <button class="level-filter-btn on" onclick="filterByLevel('All',this)">All</button>
-      <button class="level-filter-btn" onclick="filterByLevel('Beginner',this)">🟢 Beginner</button>
-      <button class="level-filter-btn" onclick="filterByLevel('Intermediate',this)">🟡 Intermediate</button>
-      <button class="level-filter-btn" onclick="filterByLevel('Advanced',this)">🔴 Advanced</button>
+  <!-- TODAY'S PHRASE -->
+  <div class="phrase-bar" id="phrase-bar">
+    <div class="pb-left">
+      <div class="pb-label">✏️ Today's Phrase</div>
+      <div class="pb-ko" id="pb-ko">경제 회복</div>
+      <div class="pb-rom" id="pb-rom">gyeong-je hoe-bok</div>
+      <div class="pb-en" id="pb-en">economic recovery</div>
     </div>
-  </div>
-  <div class="card-grid" id="dyn-top-stories"></div>
-
-  <div id="dyn-sections"></div>
-
-  <div class="two-col" style="margin-top:8px">
-    <div>
-      <div class="section-title">📰 Latest News</div>
-      <div class="story-list" id="dyn-latest"></div>
-    </div>
-    <div id="kh-sidebar"></div>
+    <button class="pb-btn" onclick="location.href='korehan-study-room.html'">Study vocabulary →</button>
   </div>
 
-  <!-- CONVERSATIONS PREVIEW -->
+  <!-- LATEST NEWS -->
+  <div class="sec-hd">
+    <div class="sec-hd-title">Latest News</div>
+    <div class="sec-hd-sub">Updated daily · hover words for definitions</div>
+    <a href="korehan-all.html" class="sec-hd-more">All news →</a>
+  </div>
+  <div class="sec-pills" id="news-pills">
+    <button class="sp on" data-filter="all">All</button>
+    <button class="sp" data-filter="society">Society</button>
+    <button class="sp" data-filter="world">World</button>
+    <button class="sp" data-filter="culture">Culture</button>
+    <button class="sp" data-filter="kpop">K-pop</button>
+    <button class="sp" data-filter="tech">Tech</button>
+    <button class="sp" data-filter="korea">🇰🇷 Korea</button>
+    <button class="sp" data-filter="Beginner">🟢 Beginner</button>
+    <button class="sp" data-filter="Intermediate">🟡 Intermediate</button>
+    <button class="sp" data-filter="Advanced">🔴 Advanced</button>
+  </div>
+  <div class="news-grid" id="dyn-news-grid"></div>
+
+  <!-- CONVERSATIONS -->
   <div class="sec-hd" style="border-bottom-color:#2563eb;">
-    <div class="sec-hd-title">&#x1F4AC; Conversations</div>
+    <div class="sec-hd-title">💬 Conversations</div>
     <div class="sec-hd-sub">Real Korean text conversations</div>
-    <a href="korehan-conversations.html" class="sec-hd-more" style="color:#2563eb;">All conversations &rarr;</a>
+    <a href="korehan-conversations.html" class="sec-hd-more" style="color:#2563eb;">All conversations →</a>
   </div>
   <div class="sec-pills" id="conv-pills">
     <button class="sp on" data-cat="all">All</button>
@@ -93,102 +63,135 @@
   <div class="conv-grid" id="home-conv-grid">
     <div class="conv-card" data-cat="everyday">
       <div class="cc-head">
-        <div class="cc-avi">&#x1F469;</div>
-        <div class="cc-info"><div class="cc-name">Ji-yeon &amp; Soo-jin</div><div class="cc-ctx">Planning dinner with a friend</div></div>
-        <div class="cc-badge">Everyday &middot; Beginner</div>
+        <div class="cc-avi">👩</div>
+        <div class="cc-info"><div class="cc-name">Ji-yeon 지연</div><div class="cc-ctx">Planning dinner with a friend</div></div>
+        <div class="cc-badge">Everyday · Beginner</div>
       </div>
       <div class="cc-chat">
-        <div class="cc-bub l">&#xC624;&#xB298; &#xC800;&#xB141;&#xC5D0; &#xC2DC;&#xAC04; &#xB3FC;?</div>
-        <div class="cc-bub r">&#xC751;! &#xC65C;? &#xBB34;&#xC2A8; &#xC77C; &#xC788;&#xC5B4;?</div>
-        <div class="cc-bub l">&#xADF8;&#xC0E5; &#xAC19;&#xC774; &#xBC25; &#xBA39;&#xC744; &#xC0AC;&#xB78C; &#xCC3E;&#xB294; &#xC911; &#x3135;&#x3135;</div>
+        <div class="cc-bub l">오늘 저녁에 시간 돼?</div>
+        <div class="cc-bub r">응! 왜? 무슨 일 있어?</div>
+        <div class="cc-bub l">그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ</div>
       </div>
-      <div class="cc-foot">
-        <span class="cc-vocab">&#x1F4DA; 8 key words</span>
-        <a href="korehan-conversations.html" class="cc-study">Study vocab &rarr;</a>
-      </div>
+      <div class="cc-foot"><span class="cc-vocab">📚 8 key words</span><a href="korehan-conversations.html" class="cc-study">Study vocab →</a></div>
     </div>
     <div class="conv-card" data-cat="work">
       <div class="cc-head">
-        <div class="cc-avi">&#x1F468;&#x200D;&#x1F4BC;</div>
-        <div class="cc-info"><div class="cc-name">Team Chat &#xD300; &#xCC44;&#xD305;</div><div class="cc-ctx">Asking for a deadline extension</div></div>
-        <div class="cc-badge">Workplace &middot; Intermediate</div>
+        <div class="cc-avi">👨‍💼</div>
+        <div class="cc-info"><div class="cc-name">Team Chat 팀 채팅</div><div class="cc-ctx">Asking for a deadline extension</div></div>
+        <div class="cc-badge">Workplace · Intermediate</div>
       </div>
       <div class="cc-chat">
-        <div class="cc-bub l">&#xBCF4;&#xACE0;&#xC11C; &#xB9C8;&#xAC10;&#xC774; &#xC624;&#xB298;&#xC778;&#xB370; &#xC870;&#xAE08; &#xB354; &#xC2DC;&#xAC04;&#xC774; &#xD544;&#xC694;&#xD574;&#xC694;.</div>
-        <div class="cc-bub r">&#xC5BC;&#xB9C8;&#xB098; &#xB354; &#xD544;&#xC694;&#xD574;&#xC694;?</div>
-        <div class="cc-bub l">&#xB0B4;&#xC77C; &#xC624;&#xC804;&#xAE4C;&#xC9C0; &#xAC00;&#xB2A5;&#xD560;&#xAE4C;&#xC694;?</div>
+        <div class="cc-bub l">보고서 마감이 오늘인데 조금 더 시간이 필요해요.</div>
+        <div class="cc-bub r">얼마나 더 필요해요?</div>
+        <div class="cc-bub l">내일 오전까지 가능할까요?</div>
       </div>
-      <div class="cc-foot">
-        <span class="cc-vocab">&#x1F4DA; 12 key words</span>
-        <a href="korehan-conversations.html" class="cc-study">Study vocab &rarr;</a>
-      </div>
+      <div class="cc-foot"><span class="cc-vocab">📚 12 key words</span><a href="korehan-conversations.html" class="cc-study">Study vocab →</a></div>
     </div>
   </div>
 
-  <!-- STORIES PREVIEW -->
-  <div class="sec-hd" style="border-bottom-color:#7c3aed;margin-top:8px;">
-    <div class="sec-hd-title">&#x1F4D6; Stories</div>
-    <div class="sec-hd-sub">Fun &middot; Touching &middot; Scary &middot; Shocking</div>
-    <a href="korehan-stories.html" class="sec-hd-more" style="color:#7c3aed;">All stories &rarr;</a>
+  <!-- STORIES -->
+  <div class="sec-hd" style="border-bottom-color:#7c3aed;">
+    <div class="sec-hd-title">📖 Stories</div>
+    <div class="sec-hd-sub">Fun · Touching · Scary · Shocking</div>
+    <a href="korehan-stories.html" class="sec-hd-more" style="color:#7c3aed;">All stories →</a>
   </div>
   <div class="story-grid">
     <div class="sc" onclick="location.href='korehan-stories.html?mood=fun'">
-      <div class="sc-cover fun">&#x1F602;<span class="sc-mood fun">Fun</span></div>
-      <div class="sc-body"><div class="sc-title">&#xD3B8;&#xC758;&#xC810; &#xC54C;&#xBC14;&#xC0DD;&#xC758; &#xD669;&#xB2F9;&#xD55C; &#xD558;&#xB8E8;</div><div class="sc-preview">&#xC624;&#xB298; &#xC190;&#xB2D8;&#xC774; &#xB4E4;&#xC5B4;&#xC624;&#xB354;&#xB2C8; &#xAC11;&#xC790;&#xAE30; &ldquo;&#xC5EC;&#xAE30; &#xCEE4;&#xD53C; &#xD30C;&#xB098;&#xC694;?&rdquo; &#xD558;&#xACE0; &#xBB3C;&#xC5B4;&#xBD10;&#xB2E4;...</div></div>
-      <div class="sc-foot"><span class="sc-lvl lvl-b">Beginner</span><span class="sc-time">3 min</span><button class="sc-study">&#x1F4DA;</button></div>
+      <div class="sc-cover fun">😂<span class="sc-mood fun">Fun</span></div>
+      <div class="sc-body"><div class="sc-title">편의점 알바생의 황당한 하루</div><div class="sc-preview">오늘 손님이 들어오더니 갑자기 "여기 커피 파나요?" 하고 물어봤다...</div></div>
+      <div class="sc-foot"><span class="sc-lvl lvl-b">Beginner</span><span class="sc-time">3 min</span><button class="sc-study">📚</button></div>
     </div>
     <div class="sc" onclick="location.href='korehan-stories.html?mood=touching'">
-      <div class="sc-cover touching">&#x1F979;<span class="sc-mood touching">Touching</span></div>
-      <div class="sc-body"><div class="sc-title">&#xD560;&#xBA38;&#xB2C8;&#xC758; &#xB9C8;&#xC9C0;&#xB9C9; &#xC120;&#xBB3C;</div><div class="sc-preview">&#xB3CC;&#xC544;&#xAC00;&#xC2DC;&#xAE30; &#xC804; &#xB0A0;, &#xD560;&#xBA38;&#xB2C8;&#xB294; &#xB0B4; &#xC190;&#xC744; &#xAF3D; &#xC78A;&#xACE0; &#xC791;&#xC740; &#xBD09;&#xD22C;&#xB97C; &#xAC74;&#xB124;&#xC168;&#xB2E4;...</div></div>
-      <div class="sc-foot"><span class="sc-lvl lvl-i">Intermediate</span><span class="sc-time">5 min</span><button class="sc-study">&#x1F4DA;</button></div>
+      <div class="sc-cover touching">🥹<span class="sc-mood touching">Touching</span></div>
+      <div class="sc-body"><div class="sc-title">할머니의 마지막 선물</div><div class="sc-preview">돌아가시기 전 날, 할머니는 내 손을 꼭 잡고 작은 봉투를 건네셨다...</div></div>
+      <div class="sc-foot"><span class="sc-lvl lvl-i">Intermediate</span><span class="sc-time">5 min</span><button class="sc-study">📚</button></div>
     </div>
     <div class="sc" onclick="location.href='korehan-stories.html?mood=scary'">
-      <div class="sc-cover scary">&#x1F631;<span class="sc-mood scary">Scary</span></div>
-      <div class="sc-body"><div class="sc-title">&#xD63C;&#xC790; &#xC0B4;&#xBA74;&#xC11C; &#xACA9;&#xC740; &#xC774;&#xC0C1;&#xD55C; &#xC77C;</div><div class="sc-preview">&#xBD84;&#xBA85;&#xD788; &#xD63C;&#xC790; &#xC0AC;&#xB294;&#xB370;, &#xB9E4;&#xC77C; &#xC544;&#xCE68; &#xB0C9;&#xC7A5;&#xACE0; &#xC18D; &#xC74C;&#xC2DD;&#xC774; &#xC870;&#xAE08;&#xC529; &#xC5C6;&#xC5B4;&#xC9C0;&#xACE0; &#xC788;&#xC5C8;&#xB2E4;...</div></div>
-      <div class="sc-foot"><span class="sc-lvl lvl-i">Intermediate</span><span class="sc-time">4 min</span><button class="sc-study">&#x1F4DA;</button></div>
+      <div class="sc-cover scary">😱<span class="sc-mood scary">Scary</span></div>
+      <div class="sc-body"><div class="sc-title">혼자 살면서 겪은 이상한 일</div><div class="sc-preview">분명히 혼자 사는데, 매일 아침 냉장고 속 음식이 조금씩 없어지고 있었다...</div></div>
+      <div class="sc-foot"><span class="sc-lvl lvl-i">Intermediate</span><span class="sc-time">4 min</span><button class="sc-study">📚</button></div>
     </div>
     <div class="sc" onclick="location.href='korehan-stories.html?mood=shocking'">
-      <div class="sc-cover shocking">&#x1F62E;<span class="sc-mood shocking">Shocking</span></div>
-      <div class="sc-body"><div class="sc-title">10&#xB144; &#xB9CC;&#xC5D0; &#xC54C;&#xAC8C; &#xB41C; &#xC9C4;&#xC2E4;</div><div class="sc-preview">&#xC5B4;&#xB838; &#xB54C; &#xB098;&#xB97C; &#xBC84;&#xB9B0; &#xC904;&#xB9CC; &#xC54C;&#xC558;&#xB358; &#xC544;&#xBC84;&#xC9C0;&#xAC00; &#xC0AC;&#xC2E4; 10&#xB144; &#xB3D9;&#xC548; &#xB9E4;&#xB2EC; &#xD559;&#xBE44;&#xB97C; &#xBCF4;&#xB0B4;&#xACE0; &#xC788;&#xC5C8;&#xB2E4;...</div></div>
-      <div class="sc-foot"><span class="sc-lvl lvl-a">Advanced</span><span class="sc-time">6 min</span><button class="sc-study">&#x1F4DA;</button></div>
+      <div class="sc-cover shocking">😮<span class="sc-mood shocking">Shocking</span></div>
+      <div class="sc-body"><div class="sc-title">10년 만에 알게 된 진실</div><div class="sc-preview">어릴 때 나를 버린 줄만 알았던 아버지가 사실 10년 동안 매달 학비를 보내고 있었다...</div></div>
+      <div class="sc-foot"><span class="sc-lvl lvl-a">Advanced</span><span class="sc-time">6 min</span><button class="sc-study">📚</button></div>
     </div>
   </div>
 
-  <div class="section-title">Opinion</div>
-  <div class="opinion-grid" id="dyn-opinions"></div>
 </div>
+
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Today's Phrase
   var phrases = getPhrases();
-  if (!phrases.length) return;
-  var p = phrases[Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length];
-  var ko  = document.getElementById('banner-phrase-ko');
-  var rom = document.getElementById('banner-phrase-rom');
-  var en  = document.getElementById('banner-phrase-en');
-  if (ko)  ko.textContent  = p.ko;
-  if (rom) rom.textContent = p.rom;
-  if (en)  en.textContent  = p.en;
-});
+  if (phrases && phrases.length) {
+    var p = phrases[Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length];
+    var ko = document.getElementById('pb-ko');
+    var rom = document.getElementById('pb-rom');
+    var en  = document.getElementById('pb-en');
+    if (ko)  ko.textContent  = p.ko;
+    if (rom) rom.textContent = p.rom;
+    if (en)  en.textContent  = p.en;
+  }
 
-// Conversation pills filter (homepage)
-(function() {
-  var pills = document.getElementById('conv-pills');
-  if (!pills) return;
-  pills.querySelectorAll('.sp').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      pills.querySelectorAll('.sp').forEach(function(b){ b.classList.remove('on'); });
-      btn.classList.add('on');
-      var cat = btn.dataset.cat;
-      document.querySelectorAll('#home-conv-grid .conv-card').forEach(function(card) {
-        card.style.display = (cat === 'all' || card.dataset.cat === cat) ? '' : 'none';
+  // News grid (latest 8)
+  function renderNewsGrid() {
+    var arts = getCachedArticles().filter(function(a){ return a.status === 'published'; }).slice(0,8);
+    var grid = document.getElementById('dyn-news-grid');
+    if (!grid) return;
+    if (!arts.length) { grid.innerHTML = '<p style="color:var(--gray);font-size:13px">Loading articles...</p>'; return; }
+    grid.innerHTML = arts.map(function(a) {
+      var lvl = a.level || 'Beginner';
+      var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : 'lvl-b';
+      var cat = (a.section || '').toLowerCase();
+      return '<div class="nc" data-section="' + cat + '" data-level="' + lvl + '" onclick="location.href=\'korehan-article.html?id=' + a.id + '\'">'
+        + (a.image_url ? '<img class="nc-img" src="' + a.image_url + '" alt="">' : '<div class="nc-img" style="background:#e8eef7;border-radius:3px;aspect-ratio:16/9;margin-bottom:9px"></div>')
+        + '<div class="nc-meta"><span class="nc-cat">' + (a.section || '') + '</span><span class="nc-lvl ' + lvlCls + '">' + lvl + '</span></div>'
+        + '<div class="nc-title">' + (a.title_ko || a.title || '') + '</div>'
+        + '<div class="nc-foot"><span class="nc-date">' + (a.published_at ? new Date(a.published_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '') + '</span>'
+        + '<button class="nc-study" onclick="event.stopPropagation();openStudyModal && openStudyModal(\'' + a.id + '\')">📚 Study</button></div>'
+        + '</div>';
+    }).join('');
+  }
+  renderNewsGrid();
+  document.addEventListener('khArticlesLoaded', renderNewsGrid);
+
+  // News pills filter
+  var newsPills = document.getElementById('news-pills');
+  if (newsPills) {
+    newsPills.querySelectorAll('.sp').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        newsPills.querySelectorAll('.sp').forEach(function(b){ b.classList.remove('on'); });
+        btn.classList.add('on');
+        var f = btn.dataset.filter;
+        document.querySelectorAll('#dyn-news-grid .nc').forEach(function(card) {
+          var match = f === 'all'
+            || card.dataset.section === f
+            || card.dataset.level === f;
+          card.style.display = match ? '' : 'none';
+        });
       });
     });
-  });
-})();
+  }
 
+  // Conv pills filter
+  var convPills = document.getElementById('conv-pills');
+  if (convPills) {
+    convPills.querySelectorAll('.sp').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        convPills.querySelectorAll('.sp').forEach(function(b){ b.classList.remove('on'); });
+        btn.classList.add('on');
+        var cat = btn.dataset.cat;
+        document.querySelectorAll('#home-conv-grid .conv-card').forEach(function(card) {
+          card.style.display = (cat === 'all' || card.dataset.cat === cat) ? '' : 'none';
+        });
+      });
+    });
+  }
+});
 </script>
 </body>
 </html>

@@ -4,690 +4,572 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Conversations — KoreHan News</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-:root{
-  --navy:#0b1626;--blue:#1a3a6b;--bright:#2255a4;--sky:#7ab8f5;
-  --bg:#f6f8fc;--white:#fff;--border:#e2e8f0;--gray:#64748b;--dark:#0d1b2e;
-  --chat-blue:#2563eb;
-}
-body{font-family:'Source Sans 3',sans-serif;background:var(--bg);color:var(--dark);}
+.conv-hero{background:linear-gradient(160deg,#1d4ed8 0%,#3b82f6 55%,#60a5fa 100%);padding:36px 0 80px;margin-bottom:-56px;}
+.conv-hero-inner{max-width:1280px;margin:0 auto;padding:0 24px;}
+.conv-hero-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.75);margin-bottom:10px;}
+.conv-hero h1{font-family:'Playfair Display',serif;font-size:38px;font-weight:900;color:#fff;margin:0 0 10px;line-height:1.15;}
+.conv-hero p{font-size:15px;color:rgba(255,255,255,.85);line-height:1.7;max-width:560px;margin:0;}
+.conv-filter-bar{max-width:1280px;margin:0 auto;padding:20px 24px 28px;display:flex;flex-wrap:wrap;gap:8px;position:relative;z-index:2;}
+.cf-pill{padding:8px 18px;border-radius:999px;background:rgba(255,255,255,.18);backdrop-filter:blur(8px);border:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;}
+.cf-pill.on,.cf-pill:hover{background:#fff;color:#1d4ed8;border-color:#fff;}
+.cf-sep{flex-basis:100%;height:0;}
+.conv-page-container{max-width:1280px;margin:0 auto;padding:0 24px 60px;}
+.conv-cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+.cc2{background:#fff;border-radius:24px;box-shadow:0 8px 32px rgba(15,23,42,.07);border:1px solid #e8eef7;overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s;}
+.cc2:hover{transform:translateY(-4px);box-shadow:0 20px 48px rgba(15,23,42,.12);}
+.cc2-top{padding:18px 20px 14px;border-bottom:1px solid #f0f4fa;display:flex;align-items:center;gap:12px;}
+.cc2-avi{width:44px;height:44px;border-radius:14px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;border:2px solid #dbeafe;}
+.cc2-info{flex:1;min-width:0;}
+.cc2-name{font-size:14px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cc2-ctx{font-size:12px;color:#64748b;margin-top:2px;}
+.cc2-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;flex-shrink:0;}
+.badge-b{background:#dcfce7;color:#15803d;}
+.badge-i{background:#fef9c3;color:#92400e;}
+.badge-a{background:#fee2e2;color:#b91c1c;}
+.cc2-preview{padding:14px 20px;background:linear-gradient(180deg,#f8fbff 0%,#f8fafc 100%);display:flex;flex-direction:column;gap:6px;}
+.cc2-bub{max-width:82%;padding:8px 13px;border-radius:18px;font-size:13px;line-height:1.5;font-family:'Noto Sans KR',sans-serif;}
+.cc2-bub.l{background:#fff;color:#0f172a;border:1px solid #e8eef7;border-bottom-left-radius:5px;align-self:flex-start;box-shadow:0 2px 8px rgba(15,23,42,.05);}
+.cc2-bub.r{background:#2563eb;color:#fff;border-bottom-right-radius:5px;align-self:flex-end;}
+.cc2-foot{padding:12px 20px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f0f4fa;background:#fff;}
+.cc2-vocab-count{font-size:12px;color:#64748b;}
+.cc2-open-btn{font-size:12px;font-weight:700;color:#2563eb;background:#eff6ff;border:1px solid #bfdbfe;border-radius:999px;padding:5px 14px;cursor:pointer;font-family:inherit;transition:all .15s;}
+.cc2-open-btn:hover{background:#2563eb;color:#fff;border-color:#2563eb;}
 
-/* PAGE HEADER */
-.page-hd{background:var(--navy);padding:36px 24px 0;}
-.page-hd-inner{max-width:1200px;margin:0 auto;}
-.page-hd h1{font-family:'Playfair Display',serif;font-size:clamp(26px,4vw,40px);font-weight:900;color:#fff;margin-bottom:6px;}
-.page-hd p{font-size:14px;color:rgba(255,255,255,.45);margin-bottom:20px;}
-
-/* FILTER TABS */
-.tabs{display:flex;gap:2px;border-bottom:1px solid rgba(255,255,255,.1);}
-.tab{padding:10px 18px;font-size:13px;font-weight:700;color:rgba(255,255,255,.45);cursor:pointer;border:none;background:none;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap;}
-.tab:hover{color:rgba(255,255,255,.8);}
-.tab.on{color:#fff;border-bottom-color:var(--sky);}
-
-/* LEVEL PILLS */
-.filter-bar{max-width:1200px;margin:0 auto;padding:16px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.lvl-pill{padding:5px 14px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--gray);font-family:inherit;transition:all .12s;}
-.lvl-pill:hover,.lvl-pill.on{background:var(--navy);color:#fff;border-color:var(--navy);}
-.result-count{margin-left:auto;font-size:12px;color:var(--gray);}
-
-/* GRID */
-.conv-page{max-width:1200px;margin:0 auto;padding:0 24px 60px;}
-.conv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
-
-/* DIALOG CARD */
-.dcard{
-  background:var(--white);border:1px solid var(--border);border-radius:12px;
-  overflow:hidden;cursor:pointer;
-  transition:box-shadow .18s,transform .15s;
-  display:flex;flex-direction:column;
-}
-.dcard:hover{box-shadow:0 8px 28px rgba(13,27,46,.12);transform:translateY(-2px);}
-
-.dc-head{
-  background:linear-gradient(135deg,var(--chat-blue),#1d4ed8);
-  padding:13px 15px;display:flex;align-items:center;gap:10px;
-}
-.dc-head.work{background:linear-gradient(135deg,#0f766e,#0d5c72);}
-.dc-head.fam {background:linear-gradient(135deg,#7c3aed,#5b21b6);}
-.dc-head.date{background:linear-gradient(135deg,#be185d,#9d174d);}
-.dc-avi{
-  width:38px;height:38px;border-radius:50%;
-  background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.3);
-  display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;
-}
-.dc-info{flex:1;min-width:0;}
-.dc-name{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.dc-ctx{font-size:11px;color:rgba(255,255,255,.55);margin-top:1px;}
-.dc-badge{flex-shrink:0;font-size:10px;font-weight:700;background:rgba(255,255,255,.15);color:#fff;padding:2px 8px;border-radius:999px;white-space:nowrap;}
-
-.dc-chat{
-  padding:12px 14px;display:flex;flex-direction:column;gap:6px;flex:1;
-  background:linear-gradient(180deg,#eef4ff 0%,#f4f6fb 100%);
-}
-.bub{
-  max-width:82%;padding:7px 11px;border-radius:14px;
-  font-size:13px;line-height:1.5;font-family:'Noto Sans KR',sans-serif;
-}
-.bub.l{background:#fff;color:var(--dark);border-bottom-left-radius:3px;align-self:flex-start;box-shadow:0 1px 4px rgba(0,0,0,.07);}
-.bub.r{background:var(--chat-blue);color:#fff;border-bottom-right-radius:3px;align-self:flex-end;}
-
-.dc-foot{
-  padding:9px 14px;border-top:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-between;
-  background:var(--white);
-}
-.dc-vocab{font-size:11px;color:var(--gray);}
-.dc-lvl{font-size:10px;font-weight:800;padding:2px 8px;border-radius:3px;}
-.lvl-b{background:#dcfce7;color:#15803d;}
-.lvl-i{background:#fef9c3;color:#a16207;}
-.lvl-a{background:#fee2e2;color:#b91c1c;}
-.dc-study{
-  font-size:11px;font-weight:700;color:var(--chat-blue);
-  background:none;border:1px solid #bfdbfe;border-radius:3px;
-  padding:3px 10px;cursor:pointer;font-family:inherit;transition:all .12s;
-}
-.dc-study:hover{background:var(--chat-blue);color:#fff;border-color:var(--chat-blue);}
-
-/* MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(5,12,24,.72);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px;}
-.modal-overlay.hidden{display:none;}
-.conv-modal{
-  width:100%;max-width:480px;background:var(--white);border-radius:16px;
-  overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.4);
-  animation:mIn .18s ease;display:flex;flex-direction:column;max-height:90vh;
-}
-@keyframes mIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.cm-topbar{
-  background:linear-gradient(135deg,var(--chat-blue),#1d4ed8);
-  padding:14px 16px;display:flex;align-items:center;gap:10px;
-}
-.cm-topbar.work{background:linear-gradient(135deg,#0f766e,#0d5c72);}
-.cm-topbar.fam {background:linear-gradient(135deg,#7c3aed,#5b21b6);}
-.cm-topbar.date{background:linear-gradient(135deg,#be185d,#9d174d);}
-.cm-avi{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
-.cm-info{flex:1;}
-.cm-name{font-size:14px;font-weight:800;color:#fff;}
-.cm-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;}
-.cm-x{background:none;border:none;color:rgba(255,255,255,.55);font-size:22px;cursor:pointer;line-height:1;padding:0;}
-.cm-chat{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:8px;background:linear-gradient(180deg,#eef4ff,#f4f6fb);}
-.cm-bub{max-width:80%;padding:9px 13px;border-radius:16px;font-size:14px;line-height:1.55;font-family:'Noto Sans KR',sans-serif;}
-.cm-bub.l{background:#fff;color:var(--dark);border-bottom-left-radius:3px;align-self:flex-start;box-shadow:0 1px 5px rgba(0,0,0,.08);}
-.cm-bub.r{background:var(--chat-blue);color:#fff;border-bottom-right-radius:3px;align-self:flex-end;}
-.cm-sender{font-size:10px;font-weight:700;color:var(--gray);margin-bottom:3px;}
-.cm-bub-wrap{display:flex;flex-direction:column;}
-.cm-bub-wrap.r{align-items:flex-end;}
-.cm-foot{border-top:1px solid var(--border);padding:12px 16px;background:var(--white);}
-.cm-vocab-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--gray);margin-bottom:8px;}
-.vlist{display:flex;flex-direction:column;gap:5px;max-height:140px;overflow-y:auto;}
-.vi{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border-radius:6px;}
-.vi-ko{font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:700;color:var(--blue);min-width:64px;}
-.vi-rom{font-size:10px;color:var(--gray);font-style:italic;min-width:80px;}
-.vi-en{font-size:12px;color:var(--dark);flex:1;}
-.vi-save{background:none;border:1px solid var(--border);border-radius:3px;padding:2px 8px;font-size:10px;font-weight:700;color:var(--gray);cursor:pointer;font-family:inherit;flex-shrink:0;transition:all .12s;}
-.vi-save:hover{border-color:var(--bright);color:var(--bright);}
-.vi-save.saved{background:var(--bright);border-color:var(--bright);color:#fff;}
-
-/* RESPONSIVE */
-@media(max-width:900px){.conv-grid{grid-template-columns:repeat(2,1fr);}}
-@media(max-width:560px){.conv-grid{grid-template-columns:1fr;}.tabs{overflow-x:auto;}}
+/* DETAIL OVERLAY */
+.detail-overlay{position:fixed;inset:0;background:rgba(5,12,24,.6);backdrop-filter:blur(4px);z-index:400;display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto;}
+.detail-overlay.hidden{display:none;}
+.detail-panel{width:100%;max-width:1100px;background:#f8fafc;border-radius:28px;overflow:hidden;box-shadow:0 32px 80px rgba(5,12,24,.3);display:grid;grid-template-columns:1.2fr .85fr;min-height:600px;animation:panelIn .22s cubic-bezier(.22,1,.36,1);}
+@keyframes panelIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+.dp-left{background:#fff;display:flex;flex-direction:column;}
+.dp-left-head{background:linear-gradient(135deg,#1d4ed8 0%,#3b82f6 100%);padding:22px 24px 18px;position:relative;}
+.dp-left-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.7);margin-bottom:6px;}
+.dp-left-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#fff;margin:0 0 4px;}
+.dp-left-sub{font-size:13px;color:rgba(255,255,255,.75);}
+.detail-close{position:absolute;top:18px;right:18px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;font-family:inherit;line-height:1;}
+.detail-close:hover{background:rgba(255,255,255,.28);}
+.dp-pills{display:flex;gap:8px;flex-wrap:wrap;padding:14px 24px 12px;border-bottom:1px solid #f0f4fa;}
+.dp-pill{font-size:12px;font-weight:700;padding:5px 13px;border-radius:999px;}
+.dp-pill-blue{background:#eff6ff;color:#1d4ed8;}
+.dp-pill-gray{background:#f1f5f9;color:#475569;}
+.dp-pill-green{background:#dcfce7;color:#15803d;}
+.dp-pill-pink{background:#fce7f3;color:#be185d;}
+.dp-pill-amber{background:#fef9c3;color:#92400e;}
+.dp-chat-area{flex:1;padding:20px 24px 16px;background:linear-gradient(180deg,#f8fbff 0%,#f8fafc 100%);overflow-y:auto;max-height:420px;}
+.dp-date-sep{text-align:center;margin-bottom:18px;}
+.dp-date-sep span{display:inline-block;padding:6px 14px;border-radius:999px;background:#e2e8f0;color:#64748b;font-size:11px;font-weight:700;}
+.dp-msg-row{display:flex;margin-bottom:12px;align-items:flex-end;gap:10px;}
+.dp-msg-row.left{justify-content:flex-start;}
+.dp-msg-row.right{justify-content:flex-end;}
+.dp-avatar{width:36px;height:36px;border-radius:12px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:2px solid #bfdbfe;}
+.dp-bubble-group{max-width:74%;}
+.dp-who{font-size:11px;font-weight:700;color:#64748b;margin-bottom:5px;}
+.dp-bubble{border-radius:20px;padding:11px 15px;font-size:14px;line-height:1.6;font-family:'Noto Sans KR',sans-serif;}
+.dp-msg-row.left .dp-bubble{background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-bottom-left-radius:6px;box-shadow:0 4px 12px rgba(15,23,42,.06);}
+.dp-msg-row.right .dp-bubble{background:#2563eb;color:#fff;border-bottom-right-radius:6px;}
+.dp-time{font-size:10px;color:#94a3b8;margin-top:4px;padding:0 3px;}
+.dp-msg-row.right .dp-time{text-align:right;}
+.dp-inline-note{margin-top:7px;font-size:12px;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;padding:7px 11px;border-radius:12px;line-height:1.5;}
+.dp-cta-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 24px 20px;background:#fff;border-top:1px solid #f0f4fa;}
+.dp-cta-btn{padding:12px;border-radius:14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;transition:all .15s;}
+.dp-cta-primary{background:#2563eb;color:#fff;}
+.dp-cta-primary:hover{background:#1d4ed8;}
+.dp-cta-secondary{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;}
+.dp-cta-secondary:hover{background:#dbeafe;}
+.dp-right{background:#f8fafc;display:flex;flex-direction:column;border-left:1px solid #e8eef7;overflow-y:auto;}
+.dp-right-head{padding:22px 24px 16px;border-bottom:1px solid #e8eef7;background:#fff;}
+.dp-right-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#2563eb;margin-bottom:6px;}
+.dp-right-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#0f172a;margin:0;}
+.dp-study-sections{padding:18px 20px;display:flex;flex-direction:column;gap:14px;}
+.dp-study-card{background:#fff;border-radius:20px;border:1px solid #e8eef7;padding:18px 20px;box-shadow:0 2px 12px rgba(15,23,42,.04);}
+.dp-study-card-title{font-size:14px;font-weight:800;color:#0f172a;margin:0 0 12px;display:flex;align-items:center;gap:7px;}
+.dp-vocab-list{display:flex;flex-direction:column;gap:8px;}
+.dp-vocab-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;background:#f8fafc;border:1px solid #e8eef7;transition:background .12s;}
+.dp-vocab-item:hover{background:#eff6ff;border-color:#bfdbfe;}
+.dp-vi-ko{font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:700;color:#1d4ed8;min-width:90px;}
+.dp-vi-rom{font-size:11px;color:#94a3b8;font-style:italic;min-width:80px;flex-shrink:0;}
+.dp-vi-en{font-size:12px;color:#334155;flex:1;}
+.dp-vi-save{font-size:10px;font-weight:700;color:#64748b;background:none;border:1px solid #e2e8f0;border-radius:999px;padding:3px 10px;cursor:pointer;font-family:inherit;transition:all .12s;flex-shrink:0;}
+.dp-vi-save:hover{border-color:#2563eb;color:#2563eb;}
+.dp-vi-save.saved{background:#2563eb;border-color:#2563eb;color:#fff;}
+.dp-grammar-list{display:flex;flex-direction:column;gap:9px;}
+.dp-grammar-item{padding:10px 14px;border-radius:12px;background:#f8fafc;border:1px solid #e8eef7;font-size:13px;line-height:1.6;color:#334155;}
+.dp-grammar-item strong{color:#1d4ed8;font-weight:800;}
+.dp-keywords{display:flex;flex-wrap:wrap;gap:7px;}
+.dp-keyword{display:inline-block;padding:7px 13px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#334155;cursor:pointer;transition:all .12s;}
+.dp-keyword:hover{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;}
+@media(max-width:900px){.conv-cards-grid{grid-template-columns:repeat(2,1fr)}.detail-panel{grid-template-columns:1fr}.dp-right{border-left:none;border-top:1px solid #e8eef7}}
+@media(max-width:600px){.conv-cards-grid{grid-template-columns:1fr}.conv-hero h1{font-size:28px}.detail-panel{border-radius:20px}}
 </style>
 </head>
 <body>
 <div id="kh-header"></div>
-
-<!-- PAGE HEADER -->
-<div class="page-hd">
-  <div class="page-hd-inner">
-    <h1>💬 Conversations</h1>
-    <p>Real Korean text conversations — read, study vocab, and see how Koreans actually talk.</p>
-    <div class="tabs">
-      <button class="tab on" onclick="filterCat('all',this)">All</button>
-      <button class="tab" onclick="filterCat('everyday',this)">Everyday</button>
-      <button class="tab" onclick="filterCat('work',this)">Workplace</button>
-      <button class="tab" onclick="filterCat('friends',this)">Friends</button>
-      <button class="tab" onclick="filterCat('family',this)">Family</button>
-      <button class="tab" onclick="filterCat('dating',this)">Dating</button>
-    </div>
+<div class="conv-hero">
+  <div class="conv-hero-inner">
+    <div class="conv-hero-eyebrow">KoreHan News</div>
+    <h1>Real Korean Conversations</h1>
+    <p>Authentic KakaoTalk-style chats covering everyday life, work, friends, family &amp; dating. Click any conversation to study vocabulary and grammar in context.</p>
+  </div>
+  <div class="conv-filter-bar" id="cat-pills">
+    <button class="cf-pill on" data-cat="all">All</button>
+    <button class="cf-pill" data-cat="everyday">Everyday</button>
+    <button class="cf-pill" data-cat="work">Workplace</button>
+    <button class="cf-pill" data-cat="friends">Friends</button>
+    <button class="cf-pill" data-cat="family">Family</button>
+    <button class="cf-pill" data-cat="dating">Dating</button>
+    <div class="cf-sep"></div>
+    <button class="cf-pill on" data-lvl="all">All Levels</button>
+    <button class="cf-pill" data-lvl="b">🟢 Beginner</button>
+    <button class="cf-pill" data-lvl="i">🟡 Intermediate</button>
+    <button class="cf-pill" data-lvl="a">🔴 Advanced</button>
   </div>
 </div>
-
-<!-- FILTER BAR -->
-<div class="filter-bar">
-  <button class="lvl-pill on" onclick="filterLvl('all',this)">All Levels</button>
-  <button class="lvl-pill" onclick="filterLvl('b',this)">🟢 Beginner</button>
-  <button class="lvl-pill" onclick="filterLvl('i',this)">🟡 Intermediate</button>
-  <button class="lvl-pill" onclick="filterLvl('a',this)">🔴 Advanced</button>
-  <div class="result-count" id="result-count">12 conversations</div>
+<div class="conv-page-container">
+  <div class="conv-cards-grid" id="conv-cards-grid"></div>
 </div>
-
-<!-- GRID -->
-<div class="conv-page">
-  <div class="conv-grid" id="conv-grid">
-
-    <!-- CARD 1 -->
-    <div class="dcard" data-cat="everyday" data-lvl="b" onclick="openModal(0)">
-      <div class="dc-head">
-        <div class="dc-avi">👩</div>
-        <div class="dc-info"><div class="dc-name">Ji-yeon &amp; Soo-jin</div><div class="dc-ctx">Planning dinner together</div></div>
-        <div class="dc-badge">Everyday</div>
-      </div>
-      <div class="dc-chat">
-        <div class="bub l">오늘 저녁에 시간 돼?</div>
-        <div class="bub r">응! 왜? 무슨 일 있어?</div>
-        <div class="bub l">그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ</div>
-      </div>
-      <div class="dc-foot">
-        <span class="dc-vocab">📚 8 words</span>
-        <span class="dc-lvl lvl-b">Beginner</span>
-        <button class="dc-study" onclick="event.stopPropagation();openModal(0)">Study vocab →</button>
-      </div>
-    </div>
-
-    <!-- CARD 2 -->
-    <div class="dcard" data-cat="work" data-lvl="i" onclick="openModal(1)">
-      <div class="dc-head work">
-        <div class="dc-avi">👨‍💼</div>
-        <div class="dc-info"><div class="dc-name">Team Chat</div><div class="dc-ctx">Asking for a deadline extension</div></div>
-        <div class="dc-badge">Workplace</div>
-      </div>
-      <div class="dc-chat">
-        <div class="bub l">보고서 마감이 오늘인데 조금 더 시간이 필요해요.</div>
-        <div class="bub r">얼마나 더 필요해요?</div>
-        <div class="bub l">내일 오전까지 가능할까요?</div>
-      </div>
-      <div class="dc-foot">
-        <span class="dc-vocab">📚 12 words</span>
-        <span class="dc-lvl lvl-i">Intermediate</span>
-        <button class="dc-study" onclick="event.stopPropagation();openModal(1)">Study vocab →</button>
-      </div>
-    </div>
-
-    <!-- CARD 3 -->
-    <div class="dcard" data-cat="dating" data-lvl="i" onclick="openModal(2)">
-      <div class="dc-head date">
-        <div class="dc-avi">👫</div>
-        <div class="dc-info"><div class="dc-name">Couple Chat</div><div class="dc-ctx">Making up after an argument</div></div>
-        <div class="dc-badge">Dating</div>
-      </div>
-      <div class="dc-chat">
-        <div class="bub l">아까 내가 좀 심했던 것 같아. 미안해.</div>
-        <div class="bub r">나도 과민반응했어. 괜찮아.</div>
-        <div class="bub l">오늘 저녁에 우리 같이 밥 먹을까?</div>
-      </div>
-      <div class="dc-foot">
-        <span class="dc-vocab">📚 10 words</span>
-        <span class="dc-lvl lvl-i">Intermediate</span>
-        <button class="dc-study" onclick="event.stopPropagation();openModal(2)">Study vocab →</button>
-      </div>
-    </div>
-
-    <!-- CARD 4 -->
-    <div class="dcard" data-cat="friends" data-lvl="b" onclick="openModal(3)">
-      <div class="dc-head">
-        <div class="dc-avi">🧑‍🤝‍🧑</div>
-        <div class="dc-info"><div class="dc-name">Min-jun &amp; Tae-yang</div><div class="dc-ctx">Weekend plans</div></div>
-        <div class="dc-badge">Friends</div>
-      </div>
-      <div class="dc-chat">
-        <div class="bub l">이번 주말에 뭐 해?</div>
-        <div class="bub r">아직 계획 없어. 왜?</div>
-        <div class="bub l">영화 보러 갈래? 새로 나온 거 재밌대.</div>
-      </div>
-      <div class="dc-foot">
-        <span class="dc-vocab">📚 7 words</span>
-        <span class="dc-lvl lvl-b">Beginner</span>
-        <button class="dc-study" onclick="event.stopPropagation();openModal(3)">Study vocab →</button>
-      </div>
-    </div>
-
-    <!-- CARD 5 -->
-    <div class="dcard" data-cat="family" data-lvl="b" onclick="openModal(4)">
-      <div class="dc-head fam">
-        <div class="dc-avi">👨‍👩‍👧</div>
-        <div class="dc-info"><div class="dc-name">Family Group Chat</div><div class="dc-ctx">Mom asking about dinner</div></div>
-        <div class="dc-badge">Family</div>
-      </div>
-      <div class="dc-chat">
-        <div class="bub l">오늘 저녁 집에서 먹을 거야?</div>
-        <div class="bub r">응, 몇 시에 먹어요?</div>
-        <div class="bub l">6시 반쯤. 좋아하는 거 만들어줄게.</div>
-      </div>
-      <div class="dc-foot">
-        <span class="dc-vocab">📚 9 words</span>
-        <span class="dc-lvl lvl-b">Beginner</span>
-        <button class="dc-study" onclick="event.stopPropagation();openModal(4)">Study vocab →</button>
-      </div>
-    </div>
-
-    <!-- CARD 6 -->
-    <div class="dcard" data-cat="work" data-lvl="a" onclick="openModal(5)">
-      <div class="dc-head work">
-        <div class="dc-avi">💼</div>
-        <div class="dc-info"><div class="dc-name">Interview Prep</div><div class="dc-ctx">Job interview Q&amp;A</div></div>
-        <div class="dc-badge">Workplace</div>
-      </div>
-      <div class="dc-chat">
-        <div class="bub l">지원 동기가 무엇인지 말씀해 주시겠어요?</div>
-        <div class="bub r">저는 귀사의 혁신적인 문화에 매력을 느꼈습니다.</div>
-        <div class="bub l">구체적인 사례를 들어 설명해 주실 수 있나요?</div>
-      </div>
-      <div class="dc-foot">
-        <span class="dc-vocab">📚 15 words</span>
-        <span class="dc-lvl lvl-a">Advanced</span>
-        <button class="dc-study" onclick="event.stopPropagation();openModal(5)">Study vocab →</button>
-      </div>
-    </div>
-
-    <!-- CARD 7 -->
-    <div class="dcard" data-cat="everyday" data-lvl="b" onclick="openModal(6)">
-      <div class="dc-head">
-        <div class="dc-avi">🛒</div>
-        <div class="dc-info"><div class="dc-name">At the Convenience Store</div><div class="dc-ctx">Buying snacks</div></div>
-        <div class="dc-badge">Everyday</div>
-      </div>
-      <div class="dc-chat">
-        <div class="bub l">봉투 필요하세요?</div>
-        <div class="bub r">아니요, 괜찮아요. 카드로 계산할게요.</div>
-        <div class="bub l">영수증 드릴까요?</div>
-      </div>
-      <div class="dc-foot">
-        <span class="dc-vocab">📚 6 words</span>
-        <span class="dc-lvl lvl-b">Beginner</span>
-        <button class="dc-study" onclick="event.stopPropagation();openModal(6)">Study vocab →</button>
-      </div>
-    </div>
-
-    <!-- CARD 8 -->
-    <div class="dcard" data-cat="friends" data-lvl="i" onclick="openModal(7)">
-      <div class="dc-head">
-        <div class="dc-avi">🎤</div>
-        <div class="dc-info"><div class="dc-name">After Norebang</div><div class="dc-ctx">Deciding where to go next</div></div>
-        <div class="dc-badge">Friends</div>
-      </div>
-      <div class="dc-chat">
-        <div class="bub l">노래방 끝났는데 이제 어디 갈까?</div>
-        <div class="bub r">배고프지 않아? 삼겹살 어때?</div>
-        <div class="bub l">좋아! 근처에 24시간 하는 데 있잖아.</div>
-      </div>
-      <div class="dc-foot">
-        <span class="dc-vocab">📚 9 words</span>
-        <span class="dc-lvl lvl-i">Intermediate</span>
-        <button class="dc-study" onclick="event.stopPropagation();openModal(7)">Study vocab →</button>
-      </div>
-    </div>
-
-    <!-- CARD 9 -->
-    <div class="dcard" data-cat="dating" data-lvl="i" onclick="openModal(8)">
-      <div class="dc-head date">
-        <div class="dc-avi">💌</div>
-        <div class="dc-info"><div class="dc-name">First Date Plans</div><div class="dc-ctx">Deciding on a place</div></div>
-        <div class="dc-badge">Dating</div>
-      </div>
-      <div class="dc-chat">
-        <div class="bub l">이번 주말에 같이 뭐 할까요?</div>
-        <div class="bub r">한강 피크닉 어때요? 날씨가 좋을 것 같아요.</div>
-        <div class="bub l">좋아요! 제가 김밥 싸올게요 ㅎㅎ</div>
-      </div>
-      <div class="dc-foot">
-        <span class="dc-vocab">📚 10 words</span>
-        <span class="dc-lvl lvl-i">Intermediate</span>
-        <button class="dc-study" onclick="event.stopPropagation();openModal(8)">Study vocab →</button>
-      </div>
-    </div>
-
-    <!-- CARD 10 -->
-    <div class="dcard" data-cat="family" data-lvl="i" onclick="openModal(9)">
-      <div class="dc-head fam">
-        <div class="dc-avi">🏠</div>
-        <div class="dc-info"><div class="dc-name">With Parents</div><div class="dc-ctx">Coming home late</div></div>
-        <div class="dc-badge">Family</div>
-      </div>
-      <div class="dc-chat">
-        <div class="bub l">오늘 몇 시에 들어와?</div>
-        <div class="bub r">친구들이랑 저녁 먹고 들어갈게요. 좀 늦을 것 같아요.</div>
-        <div class="bub l">밥은 먹었어? 너무 늦지 않게 들어와.</div>
-      </div>
-      <div class="dc-foot">
-        <span class="dc-vocab">📚 11 words</span>
-        <span class="dc-lvl lvl-i">Intermediate</span>
-        <button class="dc-study" onclick="event.stopPropagation();openModal(9)">Study vocab →</button>
-      </div>
-    </div>
-
-    <!-- CARD 11 -->
-    <div class="dcard" data-cat="everyday" data-lvl="i" onclick="openModal(10)">
-      <div class="dc-head">
-        <div class="dc-avi">🏥</div>
-        <div class="dc-info"><div class="dc-name">At the Pharmacy</div><div class="dc-ctx">Getting medicine for a cold</div></div>
-        <div class="dc-badge">Everyday</div>
-      </div>
-      <div class="dc-chat">
-        <div class="bub l">어디가 불편하세요?</div>
-        <div class="bub r">목이 아프고 콧물이 나요. 열도 조금 있어요.</div>
-        <div class="bub l">감기약 드릴게요. 하루에 세 번 식후에 드세요.</div>
-      </div>
-      <div class="dc-foot">
-        <span class="dc-vocab">📚 13 words</span>
-        <span class="dc-lvl lvl-i">Intermediate</span>
-        <button class="dc-study" onclick="event.stopPropagation();openModal(10)">Study vocab →</button>
-      </div>
-    </div>
-
-    <!-- CARD 12 -->
-    <div class="dcard" data-cat="work" data-lvl="i" onclick="openModal(11)">
-      <div class="dc-head work">
-        <div class="dc-avi">📊</div>
-        <div class="dc-info"><div class="dc-name">Before the Meeting</div><div class="dc-ctx">Checking if ready</div></div>
-        <div class="dc-badge">Workplace</div>
-      </div>
-      <div class="dc-chat">
-        <div class="bub l">회의 준비 다 됐어요?</div>
-        <div class="bub r">네, 자료는 다 준비했는데 프린터가 안 돼서요.</div>
-        <div class="bub l">그냥 화면으로 보여줘요. 어차피 다 노트북 있잖아요.</div>
-      </div>
-      <div class="dc-foot">
-        <span class="dc-vocab">📚 11 words</span>
-        <span class="dc-lvl lvl-i">Intermediate</span>
-        <button class="dc-study" onclick="event.stopPropagation();openModal(11)">Study vocab →</button>
-      </div>
-    </div>
-
-  </div>
+<div class="detail-overlay hidden" id="detail-overlay" onclick="if(event.target===this)closeDetail()">
+  <div class="detail-panel" id="detail-panel"></div>
 </div>
-
-<!-- MODAL -->
-<div class="modal-overlay hidden" id="modal" onclick="if(event.target===this)closeModal()">
-  <div class="conv-modal">
-    <div class="cm-topbar" id="cm-topbar">
-      <div class="cm-avi" id="cm-avi">👩</div>
-      <div class="cm-info">
-        <div class="cm-name" id="cm-name">Ji-yeon &amp; Soo-jin</div>
-        <div class="cm-sub" id="cm-sub">Planning dinner together · Beginner</div>
-      </div>
-      <button class="cm-x" onclick="closeModal()">×</button>
-    </div>
-    <div class="cm-chat" id="cm-chat"></div>
-    <div class="cm-foot">
-      <div class="cm-vocab-title">Key Vocabulary</div>
-      <div class="vlist" id="cm-vocab"></div>
-    </div>
-  </div>
-</div>
-
 <div id="kh-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js"></script>
 <script>
+
 const CONVS = [
-  {
-    avi:'👩', name:'Ji-yeon & Soo-jin', ctx:'Planning dinner together', cat:'everyday', lvl:'b', theme:'',
-    msgs:[
-      {s:'l',who:'Ji-yeon',txt:'오늘 저녁에 시간 돼?'},
-      {s:'r',who:'Soo-jin',txt:'응! 왜? 무슨 일 있어?'},
-      {s:'l',who:'Ji-yeon',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'},
-      {s:'r',who:'Soo-jin',txt:'ㅋㅋ 좋아! 어디서 먹을까?'},
-      {s:'l',who:'Ji-yeon',txt:'학교 앞 국밥집 어때? 요즘 거기 자주 가거든.'},
-      {s:'r',who:'Soo-jin',txt:'오 국밥 좋지. 몇 시에?'},
-      {s:'l',who:'Ji-yeon',txt:'6시 반쯤 괜찮아?'},
-      {s:'r',who:'Soo-jin',txt:'응 완전 좋아 👍'},
-    ],
-    vocab:[
-      {ko:'시간 돼?',rom:'sigan dwae?',en:'Do you have time? / Are you free?'},
-      {ko:'무슨 일',rom:'museun il',en:'What's up / What's the matter'},
-      {ko:'찾는 중',rom:'channeun jung',en:'In the middle of looking for'},
-      {ko:'학교 앞',rom:'hakgyo ap',en:'In front of school'},
-      {ko:'자주',rom:'jaju',en:'Often / Frequently'},
-      {ko:'완전',rom:'wanjeon',en:'Totally / Completely (slang)'},
-    ]
+  {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',topic:'Making plans',catLabel:'Everyday',
+   msgs:[
+    {s:'l',who:'Ji-yeon',txt:'오늘 저녁에 시간 돼?',note:'"시간 돼?" = Are you free? Super common casual opener'},
+    {s:'r',who:'Soo-jin',txt:'응! 왜? 무슨 일 있어?'},
+    {s:'l',who:'Ji-yeon',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ',note:'"찾는 중" = in the middle of looking for · ㅋㅋ = lol'},
+    {s:'r',who:'Soo-jin',txt:'ㅋㅋ 좋아! 어디서 먹을까?'},
+    {s:'l',who:'Ji-yeon',txt:'학교 앞 국밥집 어때? 요즘 거기 자주 가거든.'},
+    {s:'r',who:'Soo-jin',txt:'오 국밥 좋지. 몇 시에?'},
+    {s:'l',who:'Ji-yeon',txt:'6시 반쯤 괜찮아?',note:'"~쯤" = around / about (approximate time)'},
+    {s:'r',who:'Soo-jin',txt:'응 완전 좋아 👍'},
+   ],
+   vocab:[
+    {ko:'시간 돼?',rom:'sigan dwae?',en:"Do you have time? / Are you free?"},
+    {ko:'무슨 일',rom:'museun il',en:"What's up / What's the matter"},
+    {ko:'찾는 중',rom:'channeun jung',en:'In the middle of looking for'},
+    {ko:'~쯤',rom:'~jjeum',en:'Around / About (approximate time)'},
+    {ko:'완전',rom:'wanjeon',en:'Totally / Completely (casual)'},
+    {ko:'자주',rom:'jaju',en:'Often / Frequently'},
+   ],
+   grammar:[
+    {point:'-는 중',ex:'"찾는 중" → currently doing something (present continuous nuance)'},
+    {point:'-쯤',ex:'"6시 반쯤" → approximately 6:30, softens the time'},
+    {point:'-거든',ex:'"가거든" → explaining a reason casually, "because / you know"'},
+   ],
+   mission:['Use "시간 돼?" to ask a friend if they're free tonight','Change the restaurant to your favorite spot and rewrite','Make the conversation more formal using -요 endings'],
   },
-  {
-    avi:'👨‍💼', name:'Team Chat', ctx:'Asking for a deadline extension', cat:'work', lvl:'i', theme:'work',
-    msgs:[
-      {s:'l',who:'Min-su',txt:'보고서 마감이 오늘인데 조금 더 시간이 필요해요.'},
-      {s:'r',who:'Team lead',txt:'얼마나 더 필요해요?'},
-      {s:'l',who:'Min-su',txt:'내일 오전까지 가능할까요?'},
-      {s:'r',who:'Team lead',txt:'이유가 뭐예요?'},
-      {s:'l',who:'Min-su',txt:'데이터 분석 부분이 예상보다 복잡하게 나왔어요.'},
-      {s:'r',who:'Team lead',txt:'알겠어요. 내일 점심 전까지 주세요.'},
-      {s:'l',who:'Min-su',txt:'감사합니다. 최대한 빨리 드릴게요.'},
-    ],
-    vocab:[
-      {ko:'마감',rom:'magam',en:'Deadline'},
-      {ko:'가능할까요?',rom:'ganeunghalkkayo?',en:'Would it be possible?'},
-      {ko:'데이터 분석',rom:'deiteo bunsek',en:'Data analysis'},
-      {ko:'예상보다',rom:'yesangboda',en:'More than expected'},
-      {ko:'복잡하다',rom:'bokjaphada',en:'To be complicated'},
-      {ko:'최대한',rom:'choedaehan',en:'As much as possible / To the maximum'},
-    ]
+  {avi:'👨‍💼',name:'Team Chat',ctx:'Asking for a deadline extension',cat:'work',lvl:'i',topic:'Professional communication',catLabel:'Workplace',
+   msgs:[
+    {s:'l',who:'Min-su',txt:'보고서 마감이 오늘인데 조금 더 시간이 필요해요.'},
+    {s:'r',who:'Team lead',txt:'얼마나 더 필요해요?'},
+    {s:'l',who:'Min-su',txt:'내일 오전까지 가능할까요?',note:'"가능할까요?" = polite way to ask if something is possible'},
+    {s:'r',who:'Team lead',txt:'이유가 뭐예요?'},
+    {s:'l',who:'Min-su',txt:'데이터 분석 부분이 예상보다 복잡하게 나왔어요.',note:'"예상보다" = more than expected'},
+    {s:'r',who:'Team lead',txt:'알겠어요. 내일 점심 전까지 주세요.'},
+    {s:'l',who:'Min-su',txt:'감사합니다. 최대한 빨리 드릴게요.'},
+   ],
+   vocab:[
+    {ko:'마감',rom:'magam',en:'Deadline'},
+    {ko:'가능할까요?',rom:'ganeunghalkkayo?',en:'Would it be possible?'},
+    {ko:'예상보다',rom:'yesangboda',en:'More than expected'},
+    {ko:'복잡하다',rom:'bokjaphada',en:'To be complicated'},
+    {ko:'최대한',rom:'choedaehan',en:'As much as possible'},
+    {ko:'드릴게요',rom:'deurilgeyo',en:'I will give (humble form)'},
+   ],
+   grammar:[
+    {point:'-은/는데',ex:'"마감이 오늘인데" → sets up contrast: the deadline is today, but…'},
+    {point:'-게 나오다',ex:'"복잡하게 나왔어요" → turned out to be complicated'},
+    {point:'드리다 vs 주다',ex:'"드릴게요" uses the humble form to show respect to superiors'},
+   ],
+   mission:['Ask your boss for a day off using "가능할까요?"','Rewrite Min-su's excuse with a different reason','Practice the difference between 주다 and 드리다'],
   },
-  {
-    avi:'👫', name:'Couple Chat', ctx:'Making up after an argument', cat:'dating', lvl:'i', theme:'date',
-    msgs:[
-      {s:'l',who:'Hyun',txt:'아까 내가 좀 심했던 것 같아. 미안해.'},
-      {s:'r',who:'Ji',txt:'나도 과민반응했어. 괜찮아.'},
-      {s:'l',who:'Hyun',txt:'오늘 저녁에 우리 같이 밥 먹을까?'},
-      {s:'r',who:'Ji',txt:'응, 어디 갈까?'},
-      {s:'l',who:'Hyun',txt:'네가 좋아하는 데로 가자. 내가 살게.'},
-      {s:'r',who:'Ji',txt:'ㅎㅎ 그럼 파스타 먹고 싶어.'},
-    ],
-    vocab:[
-      {ko:'심하다',rom:'simhada',en:'To be harsh / extreme / too much'},
-      {ko:'과민반응',rom:'gwamin ban-eung',en:'Overreaction'},
-      {ko:'네가 좋아하는 데',rom:'nega joahaneun de',en:'The place you like'},
-      {ko:'내가 살게',rom:'naega salge',en:'I'll pay / It's on me'},
-    ]
+  {avi:'👫',name:'Couple Chat',ctx:'Making up after an argument',cat:'dating',lvl:'i',topic:'Reconciliation',catLabel:'Dating',
+   msgs:[
+    {s:'l',who:'Hyun',txt:'아까 내가 좀 심했던 것 같아. 미안해.',note:'"심하다" = to be harsh/too much · "-던 것 같아" = it seems like I was…'},
+    {s:'r',who:'Ji',txt:'나도 과민반응했어. 괜찮아.',note:'"과민반응" = overreaction — often used self-critically'},
+    {s:'l',who:'Hyun',txt:'오늘 저녁에 우리 같이 밥 먹을까?'},
+    {s:'r',who:'Ji',txt:'응, 어디 갈까?'},
+    {s:'l',who:'Hyun',txt:'네가 좋아하는 데로 가자. 내가 살게.',note:'"내가 살게" = I'll pay / It's on me'},
+    {s:'r',who:'Ji',txt:'ㅎㅎ 그럼 파스타 먹고 싶어.'},
+   ],
+   vocab:[
+    {ko:'심하다',rom:'simhada',en:'To be harsh / too much'},
+    {ko:'과민반응',rom:'gwamin ban-eung',en:'Overreaction'},
+    {ko:'미안해',rom:'mianhae',en:"I'm sorry (casual)"},
+    {ko:'내가 살게',rom:'naega salge',en:"I'll pay / It's on me"},
+    {ko:'먹고 싶어',rom:'meokgo sipeo',en:'I want to eat'},
+   ],
+   grammar:[
+    {point:'-던 것 같아',ex:'"심했던 것 같아" → reflecting on past behavior, soft admission of fault'},
+    {point:'-을까?',ex:'"먹을까?" → shall we eat? Casual suggestion between close people'},
+    {point:'-고 싶어',ex:'"먹고 싶어" → I want to eat — expressing desire casually'},
+   ],
+   mission:['Apologize to someone using "-던 것 같아"','Suggest your favorite restaurant using "~에 가자"','Make the conversation more formal (change 미안해 → 죄송해요)'],
   },
-  {
-    avi:'🧑‍🤝‍🧑', name:'Min-jun & Tae-yang', ctx:'Weekend plans', cat:'friends', lvl:'b', theme:'',
-    msgs:[
-      {s:'l',who:'Min-jun',txt:'이번 주말에 뭐 해?'},
-      {s:'r',who:'Tae-yang',txt:'아직 계획 없어. 왜?'},
-      {s:'l',who:'Min-jun',txt:'영화 보러 갈래? 새로 나온 거 재밌대.'},
-      {s:'r',who:'Tae-yang',txt:'무슨 영화?'},
-      {s:'l',who:'Min-jun',txt:'액션 영화인데 평점이 되게 높아.'},
-      {s:'r',who:'Tae-yang',txt:'좋아, 몇 시 어때?'},
-      {s:'l',who:'Min-jun',txt:'2시 어때? 그러면 밥도 같이 먹을 수 있어.'},
-    ],
-    vocab:[
-      {ko:'이번 주말',rom:'ibeon jumal',en:'This weekend'},
-      {ko:'새로 나온',rom:'saero naon',en:'Newly released'},
-      {ko:'재밌대',rom:'jaemitdae',en:'They say it's fun (hearsay)'},
-      {ko:'평점',rom:'pyeongjeom',en:'Rating / Score'},
-      {ko:'되게',rom:'doege',en:'Really / Very (colloquial)'},
-    ]
+  {avi:'🧑‍🤝‍🧑',name:'Min-jun & Tae-yang',ctx:'Weekend plans',cat:'friends',lvl:'b',topic:'Making weekend plans',catLabel:'Friends',
+   msgs:[
+    {s:'l',who:'Min-jun',txt:'이번 주말에 뭐 해?'},
+    {s:'r',who:'Tae-yang',txt:'아직 계획 없어. 왜?'},
+    {s:'l',who:'Min-jun',txt:'영화 보러 갈래? 새로 나온 거 재밌대.',note:'"재밌대" = they say it's fun (hearsay ~대)'},
+    {s:'r',who:'Tae-yang',txt:'무슨 영화?'},
+    {s:'l',who:'Min-jun',txt:'액션 영화인데 평점이 되게 높아.',note:'"되게" = really / very (colloquial)'},
+    {s:'r',who:'Tae-yang',txt:'좋아, 몇 시 어때?'},
+    {s:'l',who:'Min-jun',txt:'2시 어때? 그러면 밥도 같이 먹을 수 있어.'},
+   ],
+   vocab:[
+    {ko:'이번 주말',rom:'ibeon jumal',en:'This weekend'},
+    {ko:'새로 나온',rom:'saero naon',en:'Newly released'},
+    {ko:'재밌대',rom:'jaemitdae',en:"They say it's fun (hearsay)"},
+    {ko:'평점',rom:'pyeongjeom',en:'Rating / Score'},
+    {ko:'되게',rom:'doege',en:'Really / Very (colloquial)'},
+   ],
+   grammar:[
+    {point:'~대 (hearsay)',ex:'"재밌대" → someone told me it's fun. Very common in casual speech'},
+    {point:'-러 가다',ex:'"영화 보러 갈래?" → going somewhere to do something'},
+    {point:'-을 수 있어',ex:'"먹을 수 있어" → can do / it's possible to do'},
+   ],
+   mission:['Use "~대" to share something you heard recently','Invite a friend to a concert instead of a movie','Use "몇 시 어때?" to suggest a meeting time'],
   },
-  {
-    avi:'👨‍👩‍👧', name:'Family Group Chat', ctx:'Mom asking about dinner', cat:'family', lvl:'b', theme:'fam',
-    msgs:[
-      {s:'l',who:'Mom',txt:'오늘 저녁 집에서 먹을 거야?'},
-      {s:'r',who:'Da-eun',txt:'응, 몇 시에 먹어요?'},
-      {s:'l',who:'Mom',txt:'6시 반쯤. 좋아하는 거 만들어줄게.'},
-      {s:'r',who:'Da-eun',txt:'된장찌개 해주세요!'},
-      {s:'l',who:'Mom',txt:'ㅎㅎ 알겠어. 일찍 들어와.'},
-    ],
-    vocab:[
-      {ko:'집에서 먹다',rom:'jibeseo meokda',en:'To eat at home'},
-      {ko:'~쯤',rom:'~jjeum',en:'Around / About (approximate time)'},
-      {ko:'만들어줄게',rom:'mandeureo julge',en:'I'll make (it) for you'},
-      {ko:'된장찌개',rom:'doenjang jjigae',en:'Fermented soybean paste stew'},
-      {ko:'일찍',rom:'iljjik',en:'Early'},
-    ]
+  {avi:'👨‍👩‍👧',name:'Family Group Chat',ctx:'Mom asking about dinner',cat:'family',lvl:'b',topic:'Family check-ins',catLabel:'Family',
+   msgs:[
+    {s:'l',who:'Mom',txt:'오늘 저녁 집에서 먹을 거야?'},
+    {s:'r',who:'Da-eun',txt:'응, 몇 시에 먹어요?'},
+    {s:'l',who:'Mom',txt:'6시 반쯤. 좋아하는 거 만들어줄게.',note:'"만들어줄게" = I'll make it for you'},
+    {s:'r',who:'Da-eun',txt:'된장찌개 해주세요!'},
+    {s:'l',who:'Mom',txt:'ㅎㅎ 알겠어. 일찍 들어와.',note:'"일찍 들어와" = Come home early'},
+   ],
+   vocab:[
+    {ko:'집에서 먹다',rom:'jibeseo meokda',en:'To eat at home'},
+    {ko:'~쯤',rom:'~jjeum',en:'Around / About'},
+    {ko:'만들어줄게',rom:'mandeureo julge',en:"I'll make it for you"},
+    {ko:'된장찌개',rom:'doenjang jjigae',en:'Fermented soybean paste stew'},
+    {ko:'일찍',rom:'iljjik',en:'Early'},
+   ],
+   grammar:[
+    {point:'-아/어 줄게',ex:'"만들어줄게" → I will do something for someone (benefactive)'},
+    {point:'-을 거야?',ex:'"먹을 거야?" → are you going to eat? Casual future question'},
+    {point:'ㅎㅎ vs ㅋㅋ',ex:'ㅎㅎ = warmer, gentler laughter (often from parents/elders) · ㅋㅋ = louder lol'},
+   ],
+   mission:['Text your mom saying you'll be home late using "늦을 것 같아요"','Use "만들어줄게" to offer to do something for family','Compare formality: 알겠어 vs 알겠습니다'],
   },
-  {
-    avi:'💼', name:'Interview Prep', ctx:'Job interview Q&A', cat:'work', lvl:'a', theme:'work',
-    msgs:[
-      {s:'l',who:'Interviewer',txt:'지원 동기가 무엇인지 말씀해 주시겠어요?'},
-      {s:'r',who:'Applicant',txt:'저는 귀사의 혁신적인 문화에 매력을 느꼈습니다.'},
-      {s:'l',who:'Interviewer',txt:'구체적인 사례를 들어 설명해 주실 수 있나요?'},
-      {s:'r',who:'Applicant',txt:'네, 최근 출시하신 AI 서비스가 특히 인상적이었습니다.'},
-      {s:'l',who:'Interviewer',txt:'본인의 강점이 이 직무에 어떻게 기여할 것 같으신가요?'},
-      {s:'r',who:'Applicant',txt:'저는 데이터 기반 의사결정과 팀 협업에 강점이 있습니다.'},
-    ],
-    vocab:[
-      {ko:'지원 동기',rom:'jiwon donggi',en:'Motivation for applying'},
-      {ko:'귀사',rom:'gwisa',en:'Your company (formal/respectful)'},
-      {ko:'혁신적',rom:'hyeoksinjeok',en:'Innovative'},
-      {ko:'구체적인 사례',rom:'guchejeokin sarye',en:'Specific example/case'},
-      {ko:'기여하다',rom:'giyeohada',en:'To contribute'},
-      {ko:'의사결정',rom:'uisagyeoljeong',en:'Decision-making'},
-    ]
+  {avi:'💼',name:'Job Interview',ctx:'Formal Q&A practice',cat:'work',lvl:'a',topic:'Formal honorifics',catLabel:'Workplace',
+   msgs:[
+    {s:'l',who:'Interviewer',txt:'지원 동기가 무엇인지 말씀해 주시겠어요?',note:'Very formal → "Could you please tell me your motivation for applying?"'},
+    {s:'r',who:'Applicant',txt:'저는 귀사의 혁신적인 문화에 매력을 느꼈습니다.',note:'"귀사" = your company (very respectful)'},
+    {s:'l',who:'Interviewer',txt:'구체적인 사례를 들어 설명해 주실 수 있나요?'},
+    {s:'r',who:'Applicant',txt:'네, 최근 출시하신 AI 서비스가 특히 인상적이었습니다.'},
+    {s:'l',who:'Interviewer',txt:'본인의 강점이 이 직무에 어떻게 기여할 것 같으신가요?'},
+    {s:'r',who:'Applicant',txt:'저는 데이터 기반 의사결정과 팀 협업에 강점이 있습니다.'},
+   ],
+   vocab:[
+    {ko:'지원 동기',rom:'jiwon donggi',en:'Motivation for applying'},
+    {ko:'귀사',rom:'gwisa',en:'Your company (formal/respectful)'},
+    {ko:'혁신적',rom:'hyeoksinjeok',en:'Innovative'},
+    {ko:'구체적인 사례',rom:'guchejeokin sarye',en:'Specific example'},
+    {ko:'기여하다',rom:'giyeohada',en:'To contribute'},
+    {ko:'의사결정',rom:'uisagyeoljeong',en:'Decision-making'},
+   ],
+   grammar:[
+    {point:'말씀해 주시겠어요?',ex:'Ultra-polite request — "Would you be so kind as to tell me?"'},
+    {point:'-으신',ex:'"출시하신" → honorific verb ending, showing respect'},
+    {point:'저 vs 나',ex:'"저" = humble "I" for formal settings; "나" is casual'},
+   ],
+   mission:['Practice answering "지원 동기" with your own answer','Use "귀사" in a sentence about a company you admire','Compare: 말해요 / 말씀해요 / 말씀해 주시겠어요?'],
   },
-  {
-    avi:'🛒', name:'At the Convenience Store', ctx:'Buying snacks', cat:'everyday', lvl:'b', theme:'',
-    msgs:[
-      {s:'l',who:'Cashier',txt:'봉투 필요하세요?'},
-      {s:'r',who:'Customer',txt:'아니요, 괜찮아요. 카드로 계산할게요.'},
-      {s:'l',who:'Cashier',txt:'영수증 드릴까요?'},
-      {s:'r',who:'Customer',txt:'아니요, 됐어요.'},
-      {s:'l',who:'Cashier',txt:'3,500원입니다. 감사합니다.'},
-    ],
-    vocab:[
-      {ko:'봉투',rom:'bongtu',en:'(Shopping) bag'},
-      {ko:'카드로 계산',rom:'kadeu-ro gyesan',en:'Pay by card'},
-      {ko:'영수증',rom:'yeongsujeung',en:'Receipt'},
-      {ko:'됐어요',rom:'dwaesseoyo',en:'It's fine / No need (dismissive OK)'},
-    ]
+  {avi:'🛒',name:'Convenience Store',ctx:'Quick transaction',cat:'everyday',lvl:'b',topic:'Shopping & transactions',catLabel:'Everyday',
+   msgs:[
+    {s:'l',who:'Cashier',txt:'봉투 필요하세요?'},
+    {s:'r',who:'Customer',txt:'아니요, 괜찮아요. 카드로 계산할게요.'},
+    {s:'l',who:'Cashier',txt:'영수증 드릴까요?'},
+    {s:'r',who:'Customer',txt:'아니요, 됐어요.',note:'"됐어요" = It's fine / No need (polite refusal)'},
+    {s:'l',who:'Cashier',txt:'3,500원입니다. 감사합니다.'},
+   ],
+   vocab:[
+    {ko:'봉투',rom:'bongtu',en:'(Shopping) bag'},
+    {ko:'카드로 계산',rom:'kadeu-ro gyesan',en:'Pay by card'},
+    {ko:'영수증',rom:'yeongsujeung',en:'Receipt'},
+    {ko:'됐어요',rom:'dwaesseoyo',en:"It's fine / No need (polite refusal)"},
+    {ko:'~원입니다',rom:'~won imnida',en:'It is ~ won (price)'},
+   ],
+   grammar:[
+    {point:'됐어요',ex:'Literally "it became" → politely declining or saying "no need"'},
+    {point:'-로 계산하다',ex:'"카드로" → paying by means of · "현금으로" = by cash'},
+    {point:'드릴까요?',ex:'Humble form of "줄까요?" → shall I give you? (to a customer)'},
+   ],
+   mission:['Role-play buying snacks at a 편의점, ask the total','Practice declining politely with "됐어요" in 3 situations','Ask for a bag: "봉투 주세요" vs "봉투 있나요?"'],
   },
-  {
-    avi:'🎤', name:'After Norebang', ctx:'Deciding where to go next', cat:'friends', lvl:'i', theme:'',
-    msgs:[
-      {s:'l',who:'Ha-na',txt:'노래방 끝났는데 이제 어디 갈까?'},
-      {s:'r',who:'Joon',txt:'배고프지 않아? 삼겹살 어때?'},
-      {s:'l',who:'Ha-na',txt:'좋아! 근처에 24시간 하는 데 있잖아.'},
-      {s:'r',who:'Joon',txt:'맞아, 거기 진짜 맛있더라.'},
-      {s:'l',who:'Ha-na',txt:'그럼 빨리 가자. 배 너무 고파.'},
-    ],
-    vocab:[
-      {ko:'노래방',rom:'noraebang',en:'Karaoke room / Singing room'},
-      {ko:'삼겹살',rom:'samgyeopsal',en:'Grilled pork belly'},
-      {ko:'근처',rom:'geuncheo',en:'Nearby / In the vicinity'},
-      {ko:'24시간',rom:'isipsa sigan',en:'24 hours / Open 24/7'},
-      {ko:'진짜 맛있더라',rom:'jinjja masitdeora',en:'It was really delicious (recalled experience)'},
-    ]
+  {avi:'🎤',name:'After Norebang',ctx:'Deciding where to go next',cat:'friends',lvl:'i',topic:'Night out slang',catLabel:'Friends',
+   msgs:[
+    {s:'l',who:'Ha-na',txt:'노래방 끝났는데 이제 어디 갈까?'},
+    {s:'r',who:'Joon',txt:'배고프지 않아? 삼겹살 어때?'},
+    {s:'l',who:'Ha-na',txt:'좋아! 근처에 24시간 하는 데 있잖아.',note:'"있잖아" = you know / there's this place — shared knowledge'},
+    {s:'r',who:'Joon',txt:'맞아, 거기 진짜 맛있더라.',note:'"맛있더라" = I recall it was really delicious (-더라 = recalled experience)'},
+    {s:'l',who:'Ha-na',txt:'그럼 빨리 가자. 배 너무 고파.'},
+   ],
+   vocab:[
+    {ko:'노래방',rom:'noraebang',en:'Karaoke room'},
+    {ko:'삼겹살',rom:'samgyeopsal',en:'Grilled pork belly'},
+    {ko:'근처',rom:'geuncheo',en:'Nearby'},
+    {ko:'있잖아',rom:'itjana',en:"You know / There's this thing"},
+    {ko:'맛있더라',rom:'masitdeora',en:'It was really tasty (recalled experience)'},
+   ],
+   grammar:[
+    {point:'-잖아',ex:'"있잖아" → asserting something both speakers know; very conversational'},
+    {point:'-더라',ex:'"맛있더라" → I recall / experienced that it was ~ (evidential past)'},
+    {point:'배 고파',ex:'Casual spoken form of 배고프다 · "배가 너무 고파" = I'm so hungry'},
+   ],
+   mission:['Use "있잖아" to bring up a topic in conversation','Describe a restaurant using "-더라"','Plan a late-night outing using words from this chat'],
   },
-  {
-    avi:'💌', name:'First Date Plans', ctx:'Deciding on a place', cat:'dating', lvl:'i', theme:'date',
-    msgs:[
-      {s:'l',who:'Se-jun',txt:'이번 주말에 같이 뭐 할까요?'},
-      {s:'r',who:'Ye-jin',txt:'한강 피크닉 어때요? 날씨가 좋을 것 같아요.'},
-      {s:'l',who:'Se-jun',txt:'좋아요! 제가 김밥 싸올게요 ㅎㅎ'},
-      {s:'r',who:'Ye-jin',txt:'오 진짜요? 저는 음료 가져올게요.'},
-      {s:'l',who:'Se-jun',txt:'몇 시에 만날까요?'},
-      {s:'r',who:'Ye-jin',txt:'오후 2시 어때요? 한강공원 입구에서요.'},
-    ],
-    vocab:[
-      {ko:'피크닉',rom:'pikeunik',en:'Picnic'},
-      {ko:'날씨가 좋을 것 같다',rom:'nalssiga joheul geot gatda',en:'The weather looks like it'll be nice'},
-      {ko:'싸올게요',rom:'ssaolgeyo',en:'I'll pack and bring (food)'},
-      {ko:'음료',rom:'eumnyo',en:'Drink / Beverage'},
-      {ko:'입구',rom:'ipgu',en:'Entrance'},
-    ]
+  {avi:'💌',name:'First Date Plans',ctx:'Deciding on a romantic outing',cat:'dating',lvl:'i',topic:'Romantic suggestions',catLabel:'Dating',
+   msgs:[
+    {s:'l',who:'Se-jun',txt:'이번 주말에 같이 뭐 할까요?'},
+    {s:'r',who:'Ye-jin',txt:'한강 피크닉 어때요? 날씨가 좋을 것 같아요.',note:'"~것 같아요" = it seems like / I think (polite speculation)'},
+    {s:'l',who:'Se-jun',txt:'좋아요! 제가 김밥 싸올게요 ㅎㅎ',note:'"싸올게요" = I'll pack and bring (food)'},
+    {s:'r',who:'Ye-jin',txt:'오 진짜요? 저는 음료 가져올게요.'},
+    {s:'l',who:'Se-jun',txt:'몇 시에 만날까요?'},
+    {s:'r',who:'Ye-jin',txt:'오후 2시 어때요? 한강공원 입구에서요.'},
+   ],
+   vocab:[
+    {ko:'피크닉',rom:'pikeunik',en:'Picnic'},
+    {ko:'좋을 것 같다',rom:'joheul geot gatda',en:"Seems like it'll be nice"},
+    {ko:'싸올게요',rom:'ssaolgeyo',en:"I'll pack and bring"},
+    {ko:'음료',rom:'eumnyo',en:'Drink / Beverage'},
+    {ko:'입구',rom:'ipgu',en:'Entrance'},
+   ],
+   grammar:[
+    {point:'-을 것 같아요',ex:'"좋을 것 같아요" → polite speculation. Softer than direct assertion'},
+    {point:'-올게요',ex:'"싸올게요" → will do and come with it / bring as result of action'},
+    {point:'~에서요 (sentence-final)',ex:'"입구에서요" → location particle used as a full sentence in texting'},
+   ],
+   mission:['Suggest a date spot using "~어때요?"','Use "-을 것 같아요" to predict the weather','Write offering to bring food to a gathering'],
   },
-  {
-    avi:'🏠', name:'With Parents', ctx:'Coming home late', cat:'family', lvl:'i', theme:'fam',
-    msgs:[
-      {s:'l',who:'Mom',txt:'오늘 몇 시에 들어와?'},
-      {s:'r',who:'Son',txt:'친구들이랑 저녁 먹고 들어갈게요. 좀 늦을 것 같아요.'},
-      {s:'l',who:'Mom',txt:'밥은 먹었어? 너무 늦지 않게 들어와.'},
-      {s:'r',who:'Son',txt:'네, 먹었어요. 11시 전에 들어갈게요.'},
-      {s:'l',who:'Mom',txt:'알겠어. 조심해서 들어와.'},
-    ],
-    vocab:[
-      {ko:'들어오다/가다',rom:'deureooda/gada',en:'To come/go inside (return home)'},
-      {ko:'늦을 것 같다',rom:'neujeul geot gatda',en:'It seems like it'll be late'},
-      {ko:'너무 늦지 않게',rom:'neomu neutji ange',en:'Not too late'},
-      {ko:'조심하다',rom:'josimhada',en:'To be careful / Take care'},
-    ]
+  {avi:'🏥',name:'At the Pharmacy',ctx:'Getting cold medicine',cat:'everyday',lvl:'i',topic:'Health vocabulary',catLabel:'Everyday',
+   msgs:[
+    {s:'l',who:'Pharmacist',txt:'어디가 불편하세요?',note:'"어디가 불편하세요?" = Where does it hurt? / What's bothering you?'},
+    {s:'r',who:'Customer',txt:'목이 아프고 콧물이 나요. 열도 조금 있어요.'},
+    {s:'l',who:'Pharmacist',txt:'감기약 드릴게요. 하루에 세 번 식후에 드세요.',note:'"식후" = after a meal'},
+    {s:'r',who:'Customer',txt:'얼마나 먹어야 나아요?'},
+    {s:'l',who:'Pharmacist',txt:'3일치 드릴게요. 충분히 쉬시는 게 중요해요.'},
+   ],
+   vocab:[
+    {ko:'불편하다',rom:'bulpyeonhada',en:'To be uncomfortable / in pain'},
+    {ko:'콧물이 나다',rom:'konmuri nada',en:'To have a runny nose'},
+    {ko:'식후',rom:'sikhu',en:'After a meal'},
+    {ko:'나아요',rom:'naayo',en:'Get better'},
+    {ko:'충분히',rom:'chungbunhi',en:'Sufficiently / Enough'},
+   ],
+   grammar:[
+    {point:'~이 나다',ex:'"콧물이 나요" → idiomatic for body symptoms: 열이 나다=have fever, 땀이 나다=sweat'},
+    {point:'-아야/어야 나아요',ex:'"먹어야 나아요" → have to eat in order to get better'},
+    {point:'드시다 vs 먹다',ex:'"드세요" is the honorific of 먹다 — used respectfully to customers'},
+   ],
+   mission:['Describe 3 cold symptoms using Korean vocabulary','Use "~이 나다" for 5 different body symptoms','Practice: "충분히 쉬세요" — tell someone to rest enough'],
   },
-  {
-    avi:'🏥', name:'At the Pharmacy', ctx:'Getting medicine for a cold', cat:'everyday', lvl:'i', theme:'',
-    msgs:[
-      {s:'l',who:'Pharmacist',txt:'어디가 불편하세요?'},
-      {s:'r',who:'Customer',txt:'목이 아프고 콧물이 나요. 열도 조금 있어요.'},
-      {s:'l',who:'Pharmacist',txt:'감기약 드릴게요. 하루에 세 번 식후에 드세요.'},
-      {s:'r',who:'Customer',txt:'얼마나 먹어야 나아요?'},
-      {s:'l',who:'Pharmacist',txt:'3일치 드릴게요. 충분히 쉬시는 게 중요해요.'},
-    ],
-    vocab:[
-      {ko:'어디가 불편하세요?',rom:'eodie bulpyeonhaseyo?',en:'Where does it hurt? / What's bothering you?'},
-      {ko:'콧물이 나다',rom:'konmuri nada',en:'To have a runny nose'},
-      {ko:'식후',rom:'sikhu',en:'After a meal'},
-      {ko:'나아요',rom:'naayo',en:'Get better / Recover'},
-      {ko:'충분히',rom:'chungbunhi',en:'Sufficiently / Enough'},
-    ]
+  {avi:'📊',name:'Before the Meeting',ctx:'Quick problem-solving',cat:'work',lvl:'i',topic:'Office problem-solving',catLabel:'Workplace',
+   msgs:[
+    {s:'l',who:'Manager',txt:'회의 준비 다 됐어요?'},
+    {s:'r',who:'Staff',txt:'네, 자료는 다 준비했는데 프린터가 안 돼서요.',note:'"안 돼서요" = because it's not working → polite explanation'},
+    {s:'l',who:'Manager',txt:'그냥 화면으로 보여줘요. 어차피 다 노트북 있잖아요.',note:'"어차피" = anyway / either way'},
+    {s:'r',who:'Staff',txt:'아, 그렇게 하면 되겠네요. 감사합니다.'},
+    {s:'l',who:'Manager',txt:'5분 후에 회의실로 오세요.'},
+   ],
+   vocab:[
+    {ko:'자료',rom:'jaryo',en:'Materials / Documents'},
+    {ko:'어차피',rom:'eochapi',en:'Anyway / Either way'},
+    {ko:'회의실',rom:'hoe-uisil',en:'Meeting room'},
+    {ko:'안 돼서요',rom:'an dwaeseoyo',en:"Because it's not working"},
+    {ko:'준비 다 됐어요',rom:'junbi da dwaesseoyo',en:'All ready / Fully prepared'},
+   ],
+   grammar:[
+    {point:'-는데 contrast',ex:'"준비했는데" → "I prepared it, but…" — sets up contrast naturally'},
+    {point:'어차피',ex:'Conjunctive adverb: "anyway" — implies the point is moot either way'},
+    {point:'-면 되다',ex:'"하면 되겠네요" → that should work if we do it this way'},
+   ],
+   mission:['Use "어차피" to explain why something doesn't matter','Report a problem using the "-는데" contrast pattern','Write confirming you're ready for a meeting'],
   },
-  {
-    avi:'📊', name:'Before the Meeting', ctx:'Checking if ready', cat:'work', lvl:'i', theme:'work',
-    msgs:[
-      {s:'l',who:'Manager',txt:'회의 준비 다 됐어요?'},
-      {s:'r',who:'Staff',txt:'네, 자료는 다 준비했는데 프린터가 안 돼서요.'},
-      {s:'l',who:'Manager',txt:'그냥 화면으로 보여줘요. 어차피 다 노트북 있잖아요.'},
-      {s:'r',who:'Staff',txt:'아, 그렇게 하면 되겠네요. 감사합니다.'},
-      {s:'l',who:'Manager',txt:'5분 후에 회의실로 오세요.'},
-    ],
-    vocab:[
-      {ko:'준비 다 됐어요?',rom:'junbi da dwaesseoyo?',en:'Are you all ready? / Is everything prepared?'},
-      {ko:'자료',rom:'jaryo',en:'Materials / Documents / Data'},
-      {ko:'어차피',rom:'eochapi',en:'Anyway / Either way'},
-      {ko:'회의실',rom:'hoe-uisil',en:'Meeting room / Conference room'},
-    ]
+  {avi:'🏠',name:'With Parents',ctx:'Coming home late',cat:'family',lvl:'i',topic:'Family responsibility talk',catLabel:'Family',
+   msgs:[
+    {s:'l',who:'Mom',txt:'오늘 몇 시에 들어와?'},
+    {s:'r',who:'Son',txt:'친구들이랑 저녁 먹고 들어갈게요. 좀 늦을 것 같아요.',note:'"늦을 것 같아요" = I think I might be late'},
+    {s:'l',who:'Mom',txt:'밥은 먹었어? 너무 늦지 않게 들어와.'},
+    {s:'r',who:'Son',txt:'네, 먹었어요. 11시 전에 들어갈게요.'},
+    {s:'l',who:'Mom',txt:'알겠어. 조심해서 들어와.',note:'"조심해서 들어와" = come home safely / carefully'},
+   ],
+   vocab:[
+    {ko:'들어오다/가다',rom:'deureooda/gada',en:'To come/go inside (return home)'},
+    {ko:'늦을 것 같다',rom:'neujeul geot gatda',en:"I think I might be late"},
+    {ko:'너무 늦지 않게',rom:'neomu neutji ange',en:'Not too late'},
+    {ko:'조심하다',rom:'josimhada',en:'To be careful / Take care'},
+   ],
+   grammar:[
+    {point:'-을 것 같아요',ex:'"늦을 것 같아요" → polite soft prediction of a possible outcome'},
+    {point:'-지 않게',ex:'"늦지 않게" → negative purpose: so as not to be late'},
+    {point:'조심해서 ~',ex:'"조심해서 들어와" → come home carefully — common caring farewell'},
+   ],
+   mission:['Text your parent saying you'll be home by 10pm','Use "-지 않게" to promise not to do something','Practice: 알겠어 vs 알겠습니다 — when to use each?'],
   },
 ];
 
-let activeCat = 'all', activeLvl = 'all';
+const LVL_LABEL = {b:'Beginner',i:'Intermediate',a:'Advanced'};
+const LVL_CLS   = {b:'badge-b',i:'badge-i',a:'badge-a'};
+const CAT_PILL  = {everyday:'dp-pill-blue',work:'dp-pill-gray',friends:'dp-pill-green',family:'dp-pill-amber',dating:'dp-pill-pink'};
 
-function filterCat(cat, btn) {
-  activeCat = cat;
-  document.querySelectorAll('.tab').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  applyFilter();
-}
-function filterLvl(lvl, btn) {
-  activeLvl = lvl;
-  document.querySelectorAll('.lvl-pill').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  applyFilter();
-}
-function applyFilter() {
-  const cards = document.querySelectorAll('.dcard');
-  let visible = 0;
-  cards.forEach(card => {
-    const catMatch = activeCat === 'all' || card.dataset.cat === activeCat;
-    const lvlMatch = activeLvl === 'all' || card.dataset.lvl === activeLvl;
-    const show = catMatch && lvlMatch;
-    card.style.display = show ? '' : 'none';
-    if (show) visible++;
+function renderCards(catF, lvlF) {
+  var grid = document.getElementById('conv-cards-grid');
+  var list = CONVS.filter(function(c) {
+    return (catF === 'all' || c.cat === catF) && (lvlF === 'all' || c.lvl === lvlF);
   });
-  document.getElementById('result-count').textContent = visible + ' conversation' + (visible !== 1 ? 's' : '');
+  if (!list.length) {
+    grid.innerHTML = '<p style="color:#64748b;font-size:14px;grid-column:1/-1;padding:20px 0">No conversations found.</p>';
+    return;
+  }
+  grid.innerHTML = list.map(function(c) {
+    var ri = CONVS.indexOf(c);
+    var prev = c.msgs.slice(0,3).map(function(m){
+      return '<div class="cc2-bub '+m.s+'">'+m.txt+'</div>';
+    }).join('');
+    return '<div class="cc2" onclick="openDetail('+ri+')">'
+      +'<div class="cc2-top">'
+        +'<div class="cc2-avi">'+c.avi+'</div>'
+        +'<div class="cc2-info"><div class="cc2-name">'+c.name+'</div><div class="cc2-ctx">'+c.ctx+'</div></div>'
+        +'<span class="cc2-badge '+LVL_CLS[c.lvl]+'">'+LVL_LABEL[c.lvl]+'</span>'
+      +'</div>'
+      +'<div class="cc2-preview">'+prev+'</div>'
+      +'<div class="cc2-foot">'
+        +'<span class="cc2-vocab-count">📚 '+c.vocab.length+' key words</span>'
+        +'<button class="cc2-open-btn">Study →</button>'
+      +'</div></div>';
+  }).join('');
 }
 
-function openModal(idx) {
-  const c = CONVS[idx];
-  const topbar = document.getElementById('cm-topbar');
-  topbar.className = 'cm-topbar' + (c.theme ? ' ' + c.theme : '');
-  document.getElementById('cm-avi').textContent = c.avi;
-  document.getElementById('cm-name').textContent = c.name;
-  document.getElementById('cm-sub').textContent = c.ctx + ' · ' + ({b:'Beginner',i:'Intermediate',a:'Advanced'}[c.lvl]);
-  const chat = document.getElementById('cm-chat');
-  chat.innerHTML = c.msgs.map(m => `
-    <div class="cm-bub-wrap ${m.s}">
-      <div class="cm-sender">${m.who}</div>
-      <div class="cm-bub ${m.s}">${m.txt}</div>
-    </div>`).join('');
-  const vlist = document.getElementById('cm-vocab');
-  vlist.innerHTML = c.vocab.map(v => `
-    <div class="vi">
-      <span class="vi-ko">${v.ko}</span>
-      <span class="vi-rom">${v.rom}</span>
-      <span class="vi-en">${v.en}</span>
-      <button class="vi-save" onclick="vSave(this)">+ Save</button>
-    </div>`).join('');
-  document.getElementById('modal').classList.remove('hidden');
+function openDetail(idx) {
+  var c = CONVS[idx];
+  var now = new Date();
+  var h = now.getHours(), m = now.getMinutes();
+
+  var msgs = c.msgs.map(function(msg, i) {
+    var min = String((m + i) % 60).padStart(2,'0');
+    var hr  = (h % 12) || 12;
+    var ap  = h < 12 ? 'AM' : 'PM';
+    var time = hr + ':' + min + ' ' + ap;
+    var note = msg.note ? '<div class="dp-inline-note">💡 '+msg.note+'</div>' : '';
+    if (msg.s === 'l') {
+      return '<div class="dp-msg-row left">'
+        +'<div class="dp-avatar">'+c.avi+'</div>'
+        +'<div class="dp-bubble-group">'
+          +'<div class="dp-who">'+msg.who+'</div>'
+          +'<div class="dp-bubble">'+msg.txt+'</div>'
+          +'<div class="dp-time">'+time+'</div>'
+          +note
+        +'</div></div>';
+    } else {
+      return '<div class="dp-msg-row right">'
+        +'<div class="dp-bubble-group">'
+          +'<div class="dp-bubble">'+msg.txt+'</div>'
+          +'<div class="dp-time">'+time+'</div>'
+          +note
+        +'</div></div>';
+    }
+  }).join('');
+
+  var vocab = c.vocab.map(function(v) {
+    return '<div class="dp-vocab-item">'
+      +'<span class="dp-vi-ko">'+v.ko+'</span>'
+      +'<span class="dp-vi-rom">'+v.rom+'</span>'
+      +'<span class="dp-vi-en">'+v.en+'</span>'
+      +'<button class="dp-vi-save" onclick="toggleSave(this)">+ Save</button>'
+      +'</div>';
+  }).join('');
+
+  var grammar = (c.grammar||[]).map(function(g) {
+    return '<div class="dp-grammar-item"><strong>'+g.point+'</strong> — '+g.ex+'</div>';
+  }).join('');
+
+  var mission = (c.mission||[]).map(function(m) {
+    return '<div class="dp-grammar-item">🎯 '+m+'</div>';
+  }).join('');
+
+  var keywords = c.vocab.map(function(v) {
+    return '<span class="dp-keyword">'+v.ko+'</span>';
+  }).join('');
+
+  var pills = '<span class="dp-pill dp-pill-blue">'+LVL_LABEL[c.lvl]+'</span>'
+    +'<span class="dp-pill '+(CAT_PILL[c.cat]||'dp-pill-gray')+'">'+c.catLabel+'</span>'
+    +'<span class="dp-pill dp-pill-gray">'+c.topic+'</span>';
+
+  document.getElementById('detail-panel').innerHTML =
+    '<div class="dp-left">'
+      +'<div class="dp-left-head">'
+        +'<button class="detail-close" onclick="closeDetail()">✕</button>'
+        +'<div class="dp-left-eyebrow">Conversation</div>'
+        +'<div class="dp-left-title">'+c.name+'</div>'
+        +'<div class="dp-left-sub">'+c.ctx+'</div>'
+      +'</div>'
+      +'<div class="dp-pills">'+pills+'</div>'
+      +'<div class="dp-chat-area">'
+        +'<div class="dp-date-sep"><span>Today</span></div>'
+        +msgs
+      +'</div>'
+      +'<div class="dp-cta-row">'
+        +'<button class="dp-cta-btn dp-cta-secondary" onclick="closeDetail()">← All Conversations</button>'
+        +'<button class="dp-cta-btn dp-cta-primary" onclick="location.href='korehan-study-room.html'">Practice Writing ✏️</button>'
+      +'</div>'
+    +'</div>'
+    +'<div class="dp-right">'
+      +'<div class="dp-right-head"><div class="dp-right-label">Study Notes</div><div class="dp-right-title">Conversation Breakdown</div></div>'
+      +'<div class="dp-study-sections">'
+        +'<div class="dp-study-card"><div class="dp-study-card-title"><span>📚</span> Key Vocabulary</div><div class="dp-vocab-list">'+vocab+'</div></div>'
+        +(grammar ? '<div class="dp-study-card"><div class="dp-study-card-title"><span>✏️</span> Grammar Points</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
+        +'<div class="dp-study-card"><div class="dp-study-card-title"><span>🔑</span> Quick Keywords</div><div class="dp-keywords">'+keywords+'</div></div>'
+        +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title"><span>🎯</span> Practice Mission</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
+      +'</div>'
+    +'</div>';
+
+  document.getElementById('detail-overlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
 }
-function closeModal() { document.getElementById('modal').classList.add('hidden'); }
-function vSave(btn) { btn.classList.toggle('saved'); btn.textContent = btn.classList.contains('saved') ? '✓ Saved' : '+ Save'; }
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+function toggleSave(btn) {
+  btn.classList.toggle('saved');
+  btn.textContent = btn.classList.contains('saved') ? '✓ Saved' : '+ Save';
+}
+
+var activeCat = 'all', activeLvl = 'all';
+document.addEventListener('DOMContentLoaded', function() {
+  renderCards(activeCat, activeLvl);
+  var pills = document.getElementById('cat-pills');
+  pills.querySelectorAll('.cf-pill:not([data-lvl])').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      pills.querySelectorAll('.cf-pill:not([data-lvl])').forEach(function(b){b.classList.remove('on');});
+      btn.classList.add('on');
+      activeCat = btn.dataset.cat;
+      renderCards(activeCat, activeLvl);
+    });
+  });
+  pills.querySelectorAll('.cf-pill[data-lvl]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      pills.querySelectorAll('.cf-pill[data-lvl]').forEach(function(b){b.classList.remove('on');});
+      btn.classList.add('on');
+      activeLvl = btn.dataset.lvl;
+      renderCards(activeCat, activeLvl);
+    });
+  });
+  var params = new URLSearchParams(window.location.search);
+  var cp = params.get('cat');
+  if (cp) { var t = pills.querySelector('[data-cat="'+cp+'"]'); if(t) t.click(); }
+});
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeDetail(); });
+
 </script>
 </body>
 </html>
