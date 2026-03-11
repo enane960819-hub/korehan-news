@@ -679,6 +679,7 @@ function renderStories(moodF, lvlF) {
 function openStory(id) {
   var s = STORIES.find(function(x){ return x.id === id; });
   if (!s) return;
+  window._currentStory = s;  // 전역 저장
 
   var vocab = (s.vocab||[]).map(function(v) {
     return '<div class="st-vocab-item">'
@@ -722,7 +723,7 @@ function openStory(id) {
       + '</div>'
       + '<div class="st-cta-row">'
         + '<button class="st-cta-btn st-cta-sec" onclick="closeSt()">← All Stories</button>'
-        + '<button class="st-cta-btn st-cta-pri" onclick="goToStoryPractice(s)">Practice Writing ✏️</button>'
+        + '<button class="st-cta-btn st-cta-pri" onclick="goToStoryPractice(window._currentStory)">Practice Writing ✏️</button>'
       + '</div>'
     + '</div>'
     + '<div class="st-right">'

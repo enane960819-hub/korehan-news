@@ -48,6 +48,47 @@
 @media(max-width:1000px){ .sr-grid { grid-template-columns:1fr 1fr; } }
 @media(max-width:640px){  .sr-grid { grid-template-columns:1fr; } }
 
+/* ── MOBILE OVERRIDES ─────────────────────────────────────── */
+@media(max-width:640px){
+  /* study room 전체 배경 유지 */
+  body { background: linear-gradient(140deg,#0d1b2e 0%,#1a3a6b 65%,#2255a4 100%) !important; min-height:100vh; }
+  
+  /* 카드 간격 */
+  .sr-grid { gap: 14px !important; padding: 0 12px !important; }
+  .card { border-radius: 14px; }
+
+  /* 토픽 카드 */
+  #hero-topic-box { border-radius: 14px !important; padding: 18px !important; }
+  #hero-topic-ko  { font-size: 20px !important; }
+
+  /* writing card */
+  .wcard { border-radius: 16px !important; padding: 18px 16px !important; }
+  .wctitle { font-size: 22px !important; line-height: 1.3 !important; }
+  .wcsub   { font-size: 13px !important; }
+  .wc-topic-ko { font-size: 16px !important; }
+  .wc-mode-tabs { gap: 6px; margin-top: 14px; }
+  .wc-mode-tab  { font-size: 12px !important; padding: 8px 10px !important; }
+
+  /* 모달 */
+  #wmodal-overlay { padding: 0; align-items: flex-end; }
+  .wmodal {
+    border-radius: 20px 20px 0 0 !important;
+    height: 95vh !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto auto 1fr auto !important;
+  }
+  .wmodal.reading-mode { grid-template-columns: 1fr !important; }
+  .wm-left   { display: none !important; }
+  .wm-right  { display: none !important; }
+  .wm-center { padding: 14px 16px !important; }
+  .write-area { min-height: 180px !important; font-size: 15px !important; }
+  #wm-source-bar { padding: 8px 14px !important; gap: 8px; }
+  #wm-src-select { font-size: 13px; }
+
+  /* flashcard */
+  .fc-grid { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
+}
+
 /* card */
 .card { background:var(--white); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); overflow:hidden; }
 .chd  { padding:12px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
@@ -138,13 +179,24 @@
   width:100%; max-width:1100px; height:calc(100vh - 28px);
   background:var(--bg); display:grid;
   grid-template-columns:280px 1fr 250px;
-  grid-template-rows:auto 1fr;
+  grid-template-rows:auto auto 1fr;
   border-radius:16px; overflow:hidden;
   box-shadow:0 32px 100px rgba(0,0,0,0.5);
   animation:mIn .2s ease;
 }
 @keyframes mIn { from{opacity:0;transform:scale(.97)} to{opacity:1;transform:none} }
-@media(max-width:900px){ .wmodal{ grid-template-columns:1fr; grid-template-rows:auto auto 1fr auto; } }
+/* Reading 모드: 왼쪽 패널 없이 중앙이 전체 */
+.wmodal.reading-mode { grid-template-columns:1fr 300px; }
+.wmodal.reading-mode .wm-left { display:none !important; }
+.wmodal.reading-mode .wm-center { grid-column:1; }
+.wmodal.reading-mode .wm-right { grid-column:2; }
+#wm-source-bar { grid-column:1/-1; }
+@media(max-width:900px){
+  .wmodal{ grid-template-columns:1fr; grid-template-rows:auto auto 1fr auto; }
+  .wmodal.reading-mode { grid-template-columns:1fr; }
+  .wmodal.reading-mode .wm-right { display:none; }
+  .wmodal.reading-mode .wm-center { grid-column:1; }
+}
 
 .wm-header {
   grid-column:1/-1;
@@ -181,7 +233,7 @@
 .chip.gc:hover { background:#f5e89a; }
 
 /* writing area */
-.write-area { flex:1; min-height:180px; width:100%; border:2px solid var(--border); border-radius:10px; padding:14px; font-size:15px; font-family:'Noto Sans KR',inherit; color:var(--dark); resize:none; outline:none; transition:border-color .15s; line-height:1.75; background:#fff; }
+.write-area { flex:1; min-height:260px; width:100%; border:2px solid var(--border); border-radius:10px; padding:16px; font-size:15px; font-family:'Pretendard Variable','Pretendard','Noto Sans KR',inherit; color:var(--dark); resize:none; outline:none; transition:border-color .15s; line-height:1.75; background:#fff; }
 .write-area:focus { border-color:var(--bright); }
 .submit-btn { padding:13px 0; width:100%; font-size:14px; font-weight:800; background:linear-gradient(135deg,#0d1b2e,#2255a4); color:#fff; border:none; border-radius:10px; cursor:pointer; font-family:inherit; transition:opacity .2s; }
 .submit-btn:hover { opacity:.88; }
@@ -371,30 +423,10 @@
         <!-- 쓰기 모드 선택 -->
         <div class="wc-mode-tabs" id="wc-mode-tabs">
           <button class="wc-mode-tab active" id="tab-topic" onclick="setWritingMode('topic')">📝 Topic Writing</button>
-          <button class="wc-mode-tab" id="tab-reading" onclick="setWritingMode('reading')">📰 Reading Material</button>
+          <button class="wc-mode-tab" id="tab-reading" onclick="setWritingMode('reading')">📖 Reading & Write</button>
         </div>
         <!-- Reading 선택 시 기사 선택 드롭다운 -->
-        <div id="wc-reading-select" style="display:none;padding:10px 0 0">
-          <!-- 소스 탭 -->
-          <div style="display:flex;gap:6px;margin-bottom:10px">
-            <button class="wc-src-btn active" onclick="switchReadingSource('article',this)" style="flex:1;padding:6px 4px;border:1px solid rgba(255,255,255,.25);border-radius:8px;background:rgba(255,255,255,.15);color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">📰 기사</button>
-            <button class="wc-src-btn" onclick="switchReadingSource('conv',this)" style="flex:1;padding:6px 4px;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:none;color:rgba(255,255,255,.6);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">💬 대화</button>
-            <button class="wc-src-btn" onclick="switchReadingSource('story',this)" style="flex:1;padding:6px 4px;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:none;color:rgba(255,255,255,.6);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">📖 스토리</button>
-          </div>
-          <!-- 기사 선택 -->
-          <select id="wc-article-select" style="width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,.2);border-radius:10px;background:rgba(255,255,255,.1);color:#fff;font-size:13px;font-family:inherit">
-            <option value="">기사 선택...</option>
-          </select>
-          <!-- 대화 선택 -->
-          <select id="wc-conv-select" style="display:none;width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,.2);border-radius:10px;background:rgba(255,255,255,.1);color:#fff;font-size:13px;font-family:inherit">
-            <option value="">대화 선택...</option>
-          </select>
-          <!-- 스토리 선택 -->
-          <select id="wc-story-select" style="display:none;width:100%;padding:8px 12px;border:1px solid rgba(255,255,255,.2);border-radius:10px;background:rgba(255,255,255,.1);color:#fff;font-size:13px;font-family:inherit">
-            <option value="">스토리 선택...</option>
-          </select>
-          <div id="wc-article-preview" style="font-size:12px;color:rgba(255,255,255,.7);margin-top:8px;line-height:1.6;display:none"></div>
-        </div>
+        
         <div class="wc-footer">
           <div><div class="wcf-text" id="wcf-mode-text">Open Writing Room</div><div class="wcf-sub">Courses subscribers · feedback within 24h</div></div>
           <button class="wcf-btn" onclick="event.stopPropagation();openWritingModalWithMode()">Start Writing →</button>
@@ -470,10 +502,22 @@
         <!-- 모달 내 모드 탭 -->
         <div class="wm-mode-toggle" id="wm-mode-toggle">
           <button class="wm-mode-btn active" id="mbtab-topic" onclick="switchModalMode('topic')">📝 Topic</button>
-          <button class="wm-mode-btn" id="mbtab-reading" onclick="switchModalMode('reading')">📰 Reading</button>
+          <button class="wm-mode-btn" id="mbtab-reading" onclick="switchModalMode('reading')">📖 Reading</button>
         </div>
       </div>
       <button class="wmh-close" onclick="closeWritingModal()">✕</button>
+    </div>
+
+    <!-- Reading 소스 선택 바 (Reading 모드일 때만 표시) -->
+    <div id="wm-source-bar" style="display:none;grid-column:1/-1;background:#0d1b2e;border-bottom:1px solid rgba(255,255,255,.1);padding:10px 20px;gap:10px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="wm-src-tab active" id="wsrc-article" onclick="switchModalSource('article',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.3);border-radius:20px;background:rgba(255,255,255,.15);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📰 기사</button>
+        <button class="wm-src-tab" id="wsrc-conv" onclick="switchModalSource('conv',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.1);border-radius:20px;background:none;color:rgba(255,255,255,.5);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">💬 대화</button>
+        <button class="wm-src-tab" id="wsrc-story" onclick="switchModalSource('story',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.1);border-radius:20px;background:none;color:rgba(255,255,255,.5);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📖 스토리</button>
+      </div>
+      <select id="wm-src-select" onchange="onModalSourceSelect(this)" style="flex:1;min-width:200px;padding:6px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-family:inherit">
+        <option value="">선택...</option>
+      </select>
     </div>
 
     <!-- LEFT: grammar + vocab chips -->
@@ -1263,16 +1307,13 @@ function setWritingMode(mode) {
   _writingMode = mode;
   document.getElementById('tab-topic').classList.toggle('active', mode === 'topic');
   document.getElementById('tab-reading').classList.toggle('active', mode === 'reading');
-  var readingSelect = document.getElementById('wc-reading-select');
   var modeText = document.getElementById('wcf-mode-text');
   if (mode === 'reading') {
-    readingSelect.style.display = 'block';
-    modeText.textContent = 'Read & Write';
-    // 기본 소스(article) 로드
-    loadArticlesForReading();
+    if (modeText) modeText.textContent = 'Read & Write';
+    // 바로 모달 열기 - 소스 선택은 모달 안에서
+    openWritingModal();
   } else {
-    readingSelect.style.display = 'none';
-    modeText.textContent = 'Open Writing Room';
+    if (modeText) modeText.textContent = 'Open Writing Room';
   }
 }
 
@@ -1441,63 +1482,174 @@ function openWritingModalWithMode() {
 
 function switchModalMode(mode) {
   _writingMode = mode;
-  // 탭 활성화
   var tTopic   = document.getElementById('mbtab-topic');
   var tReading = document.getElementById('mbtab-reading');
   if (tTopic)   tTopic.classList.toggle('active', mode === 'topic');
   if (tReading) tReading.classList.toggle('active', mode === 'reading');
 
-  var subEl         = document.getElementById('wm-topic-sub');
-  var modeLabel     = document.getElementById('wm-mode-label');
-  var readingBlock  = document.getElementById('wm-reading-article');
-  var contextBlock  = document.getElementById('wm-context');
-  var helpersBlock  = document.getElementById('wm-helpers');
-  var leftPanel     = document.querySelector('.wm-left');
-  var placeholder   = document.getElementById('write-area');
+  var sourceBar    = document.getElementById('wm-source-bar');
+  var modeLabel    = document.getElementById('wm-mode-label');
+  var subEl        = document.getElementById('wm-topic-sub');
+  var readingBlock = document.getElementById('wm-reading-article');
+  var contextBlock = document.getElementById('wm-context');
+  var helpersBlock = document.getElementById('wm-helpers');
+  var leftPanel    = document.querySelector('.wm-left');
+  var placeholder  = document.getElementById('write-area');
 
-  if (mode === 'reading' && _selectedArticle) {
-    var srcType   = _selectedArticle.type || 'article';
-    var modeEmoji = srcType === 'conv' ? '💬' : srcType === 'story' ? '📖' : '📰';
-    modeLabel.textContent = modeEmoji + ' Reading & Writing';
-    subEl.textContent     = _selectedArticle.title;
-
-    // 본문 표시 (대화는 줄바꿈+굵게)
-    var bodyEl = document.getElementById('wm-article-body');
-    if (srcType === 'conv') {
-      bodyEl.innerHTML = _selectedArticle.body
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-        .replace(/\n/g,'<br>')
-        .replace(/(A|B):/g,'<strong>$1:</strong>');
-    } else {
-      bodyEl.textContent = _selectedArticle.body;
-    }
-
-    var prompts = {
-      article: '• 이 기사를 읽고 느낀 점을 2-3문장으로 써보세요<br>• 기사에서 인상적인 부분을 소개해보세요<br>• 이 주제에 대한 여러분의 생각을 쓰세요',
-      conv:    '• 이 대화에서 새로 배운 표현을 사용해 비슷한 대화를 만들어보세요<br>• 대화에 나온 상황을 당신의 경험으로 바꿔 써보세요<br>• 대화에 나온 단어 중 3개를 사용해 짧은 글을 쓰세요',
-      story:   '• 이 스토리를 읽고 줄거리를 간단히 요약해 보세요<br>• 스토리의 주인공에게 하고 싶은 말을 써보세요<br>• 비슷한 경험이 있다면 한국어로 써보세요'
-    };
-    document.getElementById('wm-reading-prompts').innerHTML = prompts[srcType] || prompts.article;
-
-    if (readingBlock) readingBlock.style.display = 'block';
+  if (mode === 'reading') {
+    if (sourceBar) { sourceBar.style.display = 'flex'; }
+    var modalEl = document.querySelector('.wmodal');
+    if (modalEl) modalEl.classList.add('reading-mode');
+    if (modeLabel) modeLabel.textContent = '📖 Reading & Writing';
+    // 왼쪽 패널 숨기고 중앙 글쓰기 넓게
+    if (leftPanel)    leftPanel.style.display = 'none';
     if (contextBlock) contextBlock.style.display = 'none';
     if (helpersBlock) helpersBlock.style.display = 'none';
-    if (leftPanel)    leftPanel.style.display = 'none';
-    if (placeholder)  placeholder.placeholder = '기사를 읽고 생각/감상/요약을 한국어로 써보세요…\n\nTip: 기사 내용에서 단어를 활용해 보세요';
-
+    if (placeholder)  placeholder.placeholder = '읽은 내용을 바탕으로 한국어로 써보세요…\n\nTip: 위의 자료에서 단어와 표현을 활용해 보세요';
+    // 소스 선택 안 됐으면 로드 시작
+    if (!_selectedArticle) {
+      switchModalSource('article', document.getElementById('wsrc-article'));
+    } else {
+      // 이미 선택된 소스 표시
+      if (subEl) subEl.textContent = _selectedArticle.title;
+      showSelectedMaterial();
+    }
   } else {
-    // Topic 모드
-    modeLabel.textContent = '✍️ Writing Room';
+    if (sourceBar) { sourceBar.style.display = 'none'; }
+    var modalEl = document.querySelector('.wmodal');
+    if (modalEl) modalEl.classList.remove('reading-mode');
+    if (modeLabel) modeLabel.textContent = '✍️ Writing Room';
     if (readingBlock) readingBlock.style.display = 'none';
     if (contextBlock) contextBlock.style.display = 'block';
     if (helpersBlock) helpersBlock.style.display = 'block';
     if (leftPanel)    leftPanel.style.display = '';
     if (placeholder)  placeholder.placeholder = 'Write in Korean here…\n\nTry to use the vocab and grammar from the left panel.';
+    if (subEl && _todayTopic) subEl.textContent = _todayTopic.topic_ko || '';
     if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
     renderModalContent();
   }
 }
 
-</script>
-</body>
-</html>
+async function switchModalSource(src, btn) {
+  _readingSource = src;
+  _selectedArticle = null;
+  // 탭 스타일
+  document.querySelectorAll('.wm-src-tab').forEach(function(b) {
+    b.style.background = 'none';
+    b.style.borderColor = 'rgba(255,255,255,.1)';
+    b.style.color = 'rgba(255,255,255,.5)';
+  });
+  if (btn) {
+    btn.style.background = 'rgba(255,255,255,.15)';
+    btn.style.borderColor = 'rgba(255,255,255,.3)';
+    btn.style.color = '#fff';
+  }
+  // 선택 드롭다운 초기화
+  var sel = document.getElementById('wm-src-select');
+  sel.innerHTML = '<option value="">로딩 중...</option>';
+
+  if (src === 'article') await loadModalArticles(sel);
+  if (src === 'conv')    await loadModalConvs(sel);
+  if (src === 'story')   await loadModalStories(sel);
+}
+
+async function loadModalArticles(sel) {
+  try {
+    var sb = getSupa();
+    var { data } = await sb.from('articles')
+      .select('id, title, body, section, level')
+      .eq('status', 'published')
+      .order('created_at', {ascending: false})
+      .limit(20);
+    sel.innerHTML = '<option value="">기사 선택...</option>';
+    (data || []).forEach(function(a) {
+      var opt = document.createElement('option');
+      opt.value = JSON.stringify({id:a.id, title:a.title, body:(a.body||'').replace(/<[^>]*>/g,'').slice(0,800), type:'article'});
+      opt.textContent = (a.title||'Untitled') + ' [' + (a.level||a.section||'') + ']';
+      sel.appendChild(opt);
+    });
+    if (!data || !data.length) sel.innerHTML = '<option value="">기사 없음</option>';
+  } catch(e) { sel.innerHTML = '<option value="">로드 실패</option>'; }
+}
+
+async function loadModalConvs(sel) {
+  try {
+    var sb = getSupa();
+    var { data } = await sb.from('conversations_data')
+      .select('id, name, ctx, data, lvl')
+      .order('created_at', {ascending: false})
+      .limit(30);
+    sel.innerHTML = '<option value="">대화 선택...</option>';
+    (data || []).forEach(function(row) {
+      var d = row.data || {};
+      var msgs = (d.msgs||[]).map(function(m){ return (m.who||'')+'\n'+m.txt; }).join('\n');
+      var vocab = (d.vocab||[]).map(function(v){ return v.ko+' ('+v.en+')'; }).join(', ');
+      var body = msgs + (vocab ? '\n\n[단어] '+vocab : '');
+      var opt = document.createElement('option');
+      opt.value = JSON.stringify({id:row.id, title:d.name||row.name||'대화', body:body, type:'conv'});
+      opt.textContent = (d.name||row.name||'대화') + ' [' + (d.lvl||row.lvl||'') + ']';
+      sel.appendChild(opt);
+    });
+    if (!data || !data.length) sel.innerHTML = '<option value="">대화 없음</option>';
+  } catch(e) { sel.innerHTML = '<option value="">로드 실패</option>'; }
+}
+
+async function loadModalStories(sel) {
+  try {
+    var sb = getSupa();
+    var { data } = await sb.from('stories_data')
+      .select('id, title, data, lvl')
+      .order('created_at', {ascending: false})
+      .limit(30);
+    sel.innerHTML = '<option value="">스토리 선택...</option>';
+    (data || []).forEach(function(row) {
+      var d = row.data || {};
+      var body = (d.body||d.preview||'').replace(/<[^>]*>/g,'').slice(0,800);
+      var opt = document.createElement('option');
+      opt.value = JSON.stringify({id:row.id, title:d.title||row.title||'스토리', body:body, type:'story'});
+      opt.textContent = (d.title||row.title||'스토리') + ' [' + (d.lvl||row.lvl||'') + ']';
+      sel.appendChild(opt);
+    });
+    if (!data || !data.length) sel.innerHTML = '<option value="">스토리 없음</option>';
+  } catch(e) { sel.innerHTML = '<option value="">로드 실패</option>'; }
+}
+
+function onModalSourceSelect(sel) {
+  var val = sel.value;
+  if (!val) return;
+  try {
+    _selectedArticle = JSON.parse(val);
+    showSelectedMaterial();
+    var subEl = document.getElementById('wm-topic-sub');
+    if (subEl) subEl.textContent = _selectedArticle.title;
+  } catch(e) {}
+}
+
+function showSelectedMaterial() {
+  if (!_selectedArticle) return;
+  var readingBlock = document.getElementById('wm-reading-article');
+  var bodyEl = document.getElementById('wm-article-body');
+  var promptsEl = document.getElementById('wm-reading-prompts');
+  if (!readingBlock) return;
+
+  readingBlock.style.display = 'block';
+  var srcType = _selectedArticle.type || 'article';
+
+  if (srcType === 'conv') {
+    bodyEl.innerHTML = (_selectedArticle.body||'')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\n/g,'<br>')
+      .replace(/(\S+):/g,'<strong>$1</strong>:');
+  } else {
+    bodyEl.textContent = _selectedArticle.body || '';
+  }
+
+  var prompts = {
+    article: '• 이 기사를 읽고 느낀 점을 2-3문장으로 써보세요<br>• 기사에서 인상적인 부분을 소개해보세요<br>• 이 주제에 대한 여러분의 생각을 쓰세요',
+    conv:    '• 이 대화에서 배운 표현을 사용해 비슷한 대화를 만들어보세요<br>• 대화 상황을 당신의 경험으로 바꿔 써보세요<br>• 대화 속 단어 3개를 사용해 짧은 글을 쓰세요',
+    story:   '• 스토리를 읽고 줄거리를 간단히 요약해 보세요<br>• 주인공에게 하고 싶은 말을 써보세요<br>• 비슷한 경험이 있다면 한국어로 써보세요'
+  };
+  if (promptsEl) promptsEl.innerHTML = prompts[srcType] || prompts.article;
+}
+
+
