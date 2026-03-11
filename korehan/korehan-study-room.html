@@ -608,35 +608,51 @@ function setLevel(level, btn) {
 }
 
 async function reassignTopicForLevel(level) {
+  // 레벨 변경 시: 오늘 해당 레벨로 배정된 이력 있으면 그걸 보여주고
+  // 없으면 새 토픽 배정 (하루 1개 유지)
   var sb = getSupa();
   var today = new Date().toISOString().slice(0, 10);
-  // 오늘 이 레벨 토픽 이미 배정됐는지 확인
-  var { data: existing } = await sb.from('user_topic_history')
-    .select('*, writing_topics(*)')
+
+  // 1. 오늘 배정 이력 전체 로드
+  var { data: todayRows } = await sb.from('user_topic_history')
+    .select('topic_id, assigned_date')
     .eq('user_id', supaUser.id)
-    .eq('assigned_date', today)
-    .eq('writing_topics.level', level)
-    .limit(1);
-  if (existing && existing.length && existing[0].writing_topics) {
-    _todayTopic = existing[0].writing_topics;
+    .eq('assigned_date', today);
+
+  var todayTopicIds = (todayRows || []).map(function(r){ return r.topic_id; });
+
+  // 2. 이 레벨의 오늘 토픽이 이미 있는지
+  var levelTopics = _allTopics.filter(function(t){ return t.level === level; });
+  var alreadyAssigned = levelTopics.find(function(t){ return todayTopicIds.indexOf(t.id) >= 0; });
+
+  if (alreadyAssigned) {
+    // 이미 오늘 배정된 토픽 → 그대로 사용
+    _todayTopic = alreadyAssigned;
     _aiContent = null;
     renderTopicUI();
     generateAIContent(_todayTopic);
     return;
   }
-  // 없으면 새로 배정
-  var pool = _allTopics.filter(function(t){ return t.level === level; });
-  if (!pool.length) pool = _allTopics;
-  var undone = pool.filter(function(t){ return !_doneTopicIds.has(t.id); });
+
+  // 3. 새로 배정 (안 한 토픽 우선)
+  var doneSet = new Set(todayTopicIds);
+  var { data: allDone } = await sb.from('user_topic_history')
+    .select('topic_id').eq('user_id', supaUser.id);
+  (allDone || []).forEach(function(r){ doneSet.add(r.topic_id); });
+
+  var pool = levelTopics.length ? levelTopics : _allTopics;
+  var undone = pool.filter(function(t){ return !doneSet.has(t.id); });
   if (!undone.length) undone = pool;
+  if (!undone.length) { renderTopicUI(); return; }
+
   var picked = undone[Math.floor(Math.random() * undone.length)];
+  await sb.from('user_topic_history').insert({
+    user_id: supaUser.id, topic_id: picked.id, assigned_date: today
+  });
   _todayTopic = picked;
   _aiContent = null;
   renderTopicUI();
   showAILoading();
-  await sb.from('user_topic_history').insert({
-    user_id: supaUser.id, topic_id: picked.id, assigned_date: today
-  });
   generateAIContent(picked);
 }
 
@@ -668,19 +684,25 @@ async function assignDailyTopic() {
 
   // 1. 오늘 배정된 토픽 있는지 확인
   var { data: todayRows } = await sb.from('user_topic_history')
-    .select('*, writing_topics(*)')
+    .select('topic_id, completed')
     .eq('user_id', supaUser.id)
     .eq('assigned_date', today)
     .limit(1);
 
   if (todayRows && todayRows.length) {
-    _todayTopic = todayRows[0].writing_topics;
-    if (todayRows[0].completed) {
-      document.getElementById('hero-topic-done').style.display = 'flex';
+    // topic_id로 writing_topics에서 직접 조회
+    var todayTopicId = todayRows[0].topic_id;
+    var foundTopic = _allTopics.find(function(t){ return t.id === todayTopicId; });
+    if (foundTopic) {
+      _todayTopic = foundTopic;
+      if (todayRows[0].completed) {
+        var doneEl = document.getElementById('hero-topic-done');
+        if (doneEl) doneEl.style.display = 'flex';
+      }
+      renderTopicUI();
+      generateAIContent(_todayTopic);
+      return;
     }
-    renderTopicUI();
-    generateAIContent(_todayTopic);
-    return;
   }
 
   // 2. 유저가 이미 한 토픽 ID 목록
