@@ -1051,6 +1051,11 @@ function renderSectionPage(section) {
   var rest     = articles.slice(1);
 
   // HERO
+  // 디버그: 실제 로드된 기사 섹션 값 확인
+  var allArts = getCachedArticles();
+  var allSections = [...new Set(allArts.map(function(a){ return a.section; }))];
+  console.log('[KH] renderSectionPage:', section, '| aliases:', aliases, '| total articles:', allArts.length, '| sections in DB:', allSections, '| matched:', articles.length);
+
   var heroEl = document.getElementById('dyn-hero');
   if (heroEl) {
     if (featured) {

@@ -3,7 +3,7 @@
    ============================================================ */
 
 :root {
-  color-scheme: light;
+  color-scheme: light only;
   --accent:  #1a3a6b;
   --navy:    #0b1626;
   --blue:    #1a3a6b;
@@ -26,8 +26,9 @@ html {
 }
 body {
   font-family: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  background: var(--bg);
-  color: var(--dark);
+  background: #f0f2f7 !important;
+  background-color: #f0f2f7 !important;
+  color: #0d1b2e !important;
   font-size: 15px;
   line-height: 1.5;
   overflow-x: hidden;
@@ -1498,4 +1499,14 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   font-size: 11px;
   color: #2563eb;
   font-weight: 700;
+}
+
+/* ── 다크모드 강제 차단 ─────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: light only; }
+  body  { background: #f0f2f7 !important; color: #0d1b2e !important; }
+  .kh-header-bar { background: #fff !important; }
+  .card { background: #fff !important; color: #0d1b2e !important; }
+  .hconv-card { background: #fff !important; }
+  input, textarea, select { background: #fff !important; color: #0d1b2e !important; }
 }
