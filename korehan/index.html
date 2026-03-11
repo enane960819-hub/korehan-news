@@ -60,34 +60,7 @@
     <button class="sp" data-cat="family">Family</button>
     <button class="sp" data-cat="dating">Dating</button>
   </div>
-  <div class="conv-grid" id="home-conv-grid">
-    <div class="conv-card" data-cat="everyday">
-      <div class="cc-head">
-        <div class="cc-avi">👩</div>
-        <div class="cc-info"><div class="cc-name">Ji-yeon 지연</div><div class="cc-ctx">Planning dinner with a friend</div></div>
-        <div class="cc-badge">Everyday · Beginner</div>
-      </div>
-      <div class="cc-chat">
-        <div class="cc-bub l">오늘 저녁에 시간 돼?</div>
-        <div class="cc-bub r">응! 왜? 무슨 일 있어?</div>
-        <div class="cc-bub l">그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ</div>
-      </div>
-      <div class="cc-foot"><span class="cc-vocab">📚 8 key words</span><a href="korehan-conversations.html" class="cc-study">Study vocab →</a></div>
-    </div>
-    <div class="conv-card" data-cat="work">
-      <div class="cc-head">
-        <div class="cc-avi">👨‍💼</div>
-        <div class="cc-info"><div class="cc-name">Team Chat 팀 채팅</div><div class="cc-ctx">Asking for a deadline extension</div></div>
-        <div class="cc-badge">Workplace · Intermediate</div>
-      </div>
-      <div class="cc-chat">
-        <div class="cc-bub l">보고서 마감이 오늘인데 조금 더 시간이 필요해요.</div>
-        <div class="cc-bub r">얼마나 더 필요해요?</div>
-        <div class="cc-bub l">내일 오전까지 가능할까요?</div>
-      </div>
-      <div class="cc-foot"><span class="cc-vocab">📚 12 key words</span><a href="korehan-conversations.html" class="cc-study">Study vocab →</a></div>
-    </div>
-  </div>
+  <div class="hc-grid" id="home-conv-grid"></div>
 
   <!-- STORIES -->
   <div class="sec-hd" style="border-bottom-color:#7c3aed;">
@@ -124,7 +97,70 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js"></script>
 <script>
+var HOME_CONVS = [
+  {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},
+  {avi:'👨\u200d💼',name:'Team Chat',ctx:'Asking for a deadline extension',cat:'work',lvl:'i',catLabel:'Workplace',lvlLabel:'Intermediate',msgs:[{s:'l',txt:'보고서 마감이 오늘인데 조금 더 시간이 필요해요.'},{s:'r',txt:'얼마나 더 필요해요?'},{s:'l',txt:'내일 오전까지 가능할까요?'}]},
+  {avi:'👫',name:'Couple Chat',ctx:'Making up after an argument',cat:'dating',lvl:'i',catLabel:'Dating',lvlLabel:'Intermediate',msgs:[{s:'l',txt:'아까 내가 좀 심했던 것 같아. 미안해.'},{s:'r',txt:'나도 과민반응했어. 괜찮아.'},{s:'l',txt:'오늘 저녁에 우리 같이 밥 먹을까?'}]},
+  {avi:'\uD83E\uDDD1\u200d\uD83E\uDD1D\u200d\uD83E\uDDD1',name:'Min-jun & Tae-yang',ctx:'Weekend plans',cat:'friends',lvl:'b',catLabel:'Friends',lvlLabel:'Beginner',msgs:[{s:'l',txt:'이번 주말에 뭐 해?'},{s:'r',txt:'아직 계획 없어. 왜?'},{s:'l',txt:'영화 보러 갈래? 새로 나온 거 재밌대.'}]},
+  {avi:'👨\u200d👩\u200d👧',name:'Family Group Chat',ctx:'Mom asking about dinner',cat:'family',lvl:'b',catLabel:'Family',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁 집에서 먹을 거야?'},{s:'r',txt:'응, 몇 시에 먹어요?'},{s:'l',txt:'6시 반쯤. 좋아하는 거 만들어줄게.'}]},
+  {avi:'💼',name:'Job Interview',ctx:'Formal Q&A practice',cat:'work',lvl:'a',catLabel:'Workplace',lvlLabel:'Advanced',msgs:[{s:'l',txt:'지원 동기가 무엇인지 말씀해 주시겠어요?'},{s:'r',txt:'저는 귀사의 혁신적인 문화에 매력을 느꼈습니다.'},{s:'l',txt:'구체적인 사례를 들어 설명해 주실 수 있나요?'}]},
+  {avi:'🛒',name:'Convenience Store',ctx:'Quick transaction',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'봉투 필요하세요?'},{s:'r',txt:'아니요, 괜찮아요. 카드로 계산할게요.'},{s:'l',txt:'영수증 드릴까요?'}]},
+  {avi:'🎤',name:'After Norebang',ctx:'Deciding where to go next',cat:'friends',lvl:'i',catLabel:'Friends',lvlLabel:'Intermediate',msgs:[{s:'l',txt:'노래방 끝났는데 이제 어디 갈까?'},{s:'r',txt:'배고프지 않아? 삼겹살 어때?'},{s:'l',txt:'좋아! 근처에 24시간 하는 데 있잖아.'}]},
+  {avi:'💌',name:'First Date Plans',ctx:'Deciding on a romantic outing',cat:'dating',lvl:'i',catLabel:'Dating',lvlLabel:'Intermediate',msgs:[{s:'l',txt:'이번 주말에 같이 뭐 할까요?'},{s:'r',txt:'한강 피크닉 어때요? 날씨가 좋을 것 같아요.'},{s:'l',txt:'좋아요! 제가 김밥 싸올게요 ㅎㅎ'}]},
+  {avi:'🏥',name:'At the Pharmacy',ctx:'Getting cold medicine',cat:'everyday',lvl:'i',catLabel:'Everyday',lvlLabel:'Intermediate',msgs:[{s:'l',txt:'어디가 불편하세요?'},{s:'r',txt:'목이 아프고 콧물이 나요. 열도 조금 있어요.'},{s:'l',txt:'감기약 드릴게요. 하루에 세 번 식후에 드세요.'}]},
+  {avi:'📊',name:'Before the Meeting',ctx:'Quick problem-solving',cat:'work',lvl:'i',catLabel:'Workplace',lvlLabel:'Intermediate',msgs:[{s:'l',txt:'회의 준비 다 됐어요?'},{s:'r',txt:'네, 자료는 다 준비했는데 프린터가 안 돼서요.'},{s:'l',txt:'그냥 화면으로 보여줘요. 어차피 다 노트북 있잖아요.'}]},
+  {avi:'🏠',name:'With Parents',ctx:'Coming home late',cat:'family',lvl:'i',catLabel:'Family',lvlLabel:'Intermediate',msgs:[{s:'l',txt:'오늘 몇 시에 들어와?'},{s:'r',txt:'친구들이랑 저녁 먹고 들어갈게요. 좀 늦을 것 같아요.'},{s:'l',txt:'밥은 먹었어? 너무 늦지 않게 들어와.'}]},
+];
+
+var _activeHomeCat = 'all';
+
+function renderHomeConvs() {
+  var grid = document.getElementById('home-conv-grid');
+  if (!grid) return;
+  var list = HOME_CONVS.filter(function(c){ return _activeHomeCat === 'all' || c.cat === _activeHomeCat; });
+  grid.innerHTML = list.map(function(c, localIdx) {
+    var globalIdx = HOME_CONVS.indexOf(c);
+    var catColor = {everyday:'#2563eb',work:'#0891b2',friends:'#7c3aed',family:'#059669',dating:'#db2777'}[c.cat] || '#2563eb';
+    var lvlColor = {b:'#15803d',i:'#b45309',a:'#b91c1c'}[c.lvl] || '#64748b';
+    var bubblesHTML = c.msgs.map(function(m){
+      return '<div class="hcb ' + m.s + '">' + m.txt + '</div>';
+    }).join('');
+    return '<div class="hconv-card" onclick="location.href=\'korehan-conversations.html?open='+globalIdx+'\'">'
+      + '<div class="hconv-head" style="border-left:3px solid '+catColor+';">'
+      + '<div class="hconv-avi">' + c.avi + '</div>'
+      + '<div class="hconv-info">'
+      + '<div class="hconv-name">' + c.name + '</div>'
+      + '<div class="hconv-ctx">' + c.ctx + '</div>'
+      + '</div>'
+      + '</div>'
+      + '<div class="hconv-chat">' + bubblesHTML + '</div>'
+      + '<div class="hconv-foot">'
+      + '<span class="hconv-badge" style="background:'+catColor+'20;color:'+catColor+';">' + c.catLabel + '</span>'
+      + '<span class="hconv-badge" style="background:'+lvlColor+'15;color:'+lvlColor+';">' + c.lvlLabel + '</span>'
+      + '<span class="hconv-arrow">Study →</span>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+// pill filter
 document.addEventListener('DOMContentLoaded', function() {
+  var pills = document.getElementById('conv-pills');
+  if (pills) {
+    pills.querySelectorAll('.sp').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        pills.querySelectorAll('.sp').forEach(function(b){ b.classList.remove('on'); });
+        btn.classList.add('on');
+        _activeHomeCat = btn.dataset.cat;
+        renderHomeConvs();
+      });
+    });
+  }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  renderHomeConvs();
+  // pill filter already bound above
   // Today's Phrase
   var phrases = getPhrases();
   if (phrases && phrases.length) {

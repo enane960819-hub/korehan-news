@@ -948,7 +948,7 @@ function renderHomePage() {
     var heroSide = rest.slice(0, 4);
     var featImg = featured.image || ('https://picsum.photos/seed/' + featured.id + '/900/500');
     var featBody = (featured.body || '').replace(/<[^>]*>/g, '').slice(0, 120);
-    heroEl.style.cssText = 'display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start;';
+    heroEl.style.cssText = 'display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;';
     heroEl.innerHTML =
       '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;display:block;">'
       + '<div class="hero-main">'

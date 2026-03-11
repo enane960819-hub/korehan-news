@@ -547,6 +547,11 @@ function toggleSave(btn) {
 var activeCat = 'all', activeLvl = 'all';
 document.addEventListener('DOMContentLoaded', function() {
   renderCards(activeCat, activeLvl);
+  // URL ?open=N → 해당 인덱스 자동 오픈
+  var _openIdx = new URLSearchParams(window.location.search).get('open');
+  if (_openIdx !== null && CONVS[parseInt(_openIdx)]) {
+    setTimeout(function(){ openDetail(parseInt(_openIdx)); }, 80);
+  }
   var pills = document.getElementById('cat-pills');
   pills.querySelectorAll('.cf-pill:not([data-lvl])').forEach(function(btn) {
     btn.addEventListener('click', function() {
