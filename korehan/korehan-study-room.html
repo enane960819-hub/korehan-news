@@ -443,7 +443,7 @@
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js"></script>
-<script>
+<script><script>
 // ═══════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════
@@ -478,6 +478,26 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
   }
   waitForSession();
+
+  // URL 파라미터로 conversations/stories에서 넘어온 경우
+  var _urlParams = new URLSearchParams(window.location.search);
+  if (_urlParams.get('mode') === 'conv' || _urlParams.get('mode') === 'story') {
+    _externalPracticeData = {
+      title:   _urlParams.get('title') || '',
+      vocab:   JSON.parse(_urlParams.get('vocab')   || '[]'),
+      grammar: JSON.parse(_urlParams.get('grammar') || '[]'),
+    };
+    // 세션 체크 후 모달 열기
+    function waitAndOpenModal() {
+      if (typeof _sessionChecked !== 'undefined' && _sessionChecked || waited >= 30) {
+        if (supaUser) openExternalPracticeModal();
+        else openAuthModal('signin');
+      } else {
+        setTimeout(waitAndOpenModal, 120);
+      }
+    }
+    setTimeout(waitAndOpenModal, 400);
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -505,9 +525,25 @@ function setLevel(level, btn) {
 }
 
 async function reassignTopicForLevel(level) {
+  var sb = getSupa();
+  var today = new Date().toISOString().slice(0, 10);
+  // 오늘 이 레벨 토픽 이미 배정됐는지 확인
+  var { data: existing } = await sb.from('user_topic_history')
+    .select('*, writing_topics(*)')
+    .eq('user_id', supaUser.id)
+    .eq('assigned_date', today)
+    .eq('writing_topics.level', level)
+    .limit(1);
+  if (existing && existing.length && existing[0].writing_topics) {
+    _todayTopic = existing[0].writing_topics;
+    _aiContent = null;
+    renderTopicUI();
+    generateAIContent(_todayTopic);
+    return;
+  }
+  // 없으면 새로 배정
   var pool = _allTopics.filter(function(t){ return t.level === level; });
   if (!pool.length) pool = _allTopics;
-  // 안 한 것 우선
   var undone = pool.filter(function(t){ return !_doneTopicIds.has(t.id); });
   if (!undone.length) undone = pool;
   var picked = undone[Math.floor(Math.random() * undone.length)];
@@ -515,12 +551,9 @@ async function reassignTopicForLevel(level) {
   _aiContent = null;
   renderTopicUI();
   showAILoading();
-  // DB 업데이트
-  var sb = getSupa();
-  var today = new Date().toISOString().slice(0, 10);
-  await sb.from('user_topic_history').upsert({
-    user_id: supaUser.id, topic_id: picked.id, assigned_date: today, completed: false
-  }, { onConflict: 'user_id,assigned_date' });
+  await sb.from('user_topic_history').insert({
+    user_id: supaUser.id, topic_id: picked.id, assigned_date: today
+  });
   generateAIContent(picked);
 }
 
@@ -1003,6 +1036,101 @@ function showToast(msg) {
   setTimeout(function(){ t.style.opacity='0'; t.style.transition='opacity .4s'; }, 1800);
   setTimeout(function(){ t.remove(); }, 2200);
 }
+
+// ═══════════════════════════════════════════════════════════════
+// EXTERNAL PRACTICE (from Conversations / Stories)
+// ═══════════════════════════════════════════════════════════════
+var _externalPracticeData = null;
+var _highlightWords = [];
+
+function openExternalPracticeModal() {
+  if (!_externalPracticeData) return;
+  var d = _externalPracticeData;
+
+  // vocab 키워드 리스트 (highlighting용)
+  _highlightWords = (d.vocab || []).map(function(v){ return v.ko; }).filter(Boolean);
+
+  // writing modal 열기
+  document.getElementById('wmodal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+
+  // modal header에 출처 정보
+  var wmhEl = document.querySelector('.wmh-topic');
+  if (wmhEl) {
+    wmhEl.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:4px">Practice Writing</div>'
+      + '<div style="font-size:16px;font-weight:700;color:var(--dark)">' + (d.title || '') + '</div>';
+  }
+
+  // grammar 패널
+  var gmEl = document.getElementById('wm-grammar');
+  if (gmEl) {
+    gmEl.innerHTML = (d.grammar || []).map(function(g) {
+      return '<div class="mgrb"><div class="mgrname">' + g.point + '</div><div class="mgrexp">' + g.ex + '</div></div>';
+    }).join('') || '<div style="color:#94a3b8;font-size:13px">No grammar notes</div>';
+  }
+
+  // vocab chips
+  var vcEl = document.getElementById('wm-vocab-chips');
+  if (vcEl) {
+    vcEl.innerHTML = (d.vocab || []).map(function(v) {
+      return '<div class="chip" title="' + v.rom + ': ' + v.en + '">' + v.ko + '</div>';
+    }).join('');
+  }
+
+  // grammar chips
+  var gcEl = document.getElementById('wm-grammar-chips');
+  if (gcEl) {
+    gcEl.innerHTML = (d.grammar || []).map(function(g) {
+      return '<div class="chip gc">' + g.point + '</div>';
+    }).join('');
+  }
+
+  // textarea highlight 설정
+  setupHighlight();
+}
+
+function setupHighlight() {
+  var ta = document.getElementById('write-area');
+  if (!ta) return;
+
+  // highlight 오버레이 생성 (textarea 위에 absolute)
+  var wrap = ta.parentElement;
+  if (!document.getElementById('hl-overlay')) {
+    wrap.style.position = 'relative';
+    var ov = document.createElement('div');
+    ov.id = 'hl-overlay';
+    ov.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;padding:14px;font-size:15px;font-family:inherit;line-height:1.75;white-space:pre-wrap;word-wrap:break-word;overflow:hidden;color:transparent;border-radius:10px;';
+    wrap.insertBefore(ov, ta);
+    ta.style.background = 'transparent';
+    ta.style.position = 'relative';
+  }
+
+  ta.addEventListener('input', updateHighlight);
+  ta.addEventListener('scroll', function() {
+    var ov = document.getElementById('hl-overlay');
+    if (ov) ov.scrollTop = ta.scrollTop;
+  });
+}
+
+function updateHighlight() {
+  var ta = document.getElementById('write-area');
+  var ov = document.getElementById('hl-overlay');
+  if (!ta || !ov || !_highlightWords.length) return;
+
+  var text = ta.value;
+  var escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // 각 vocab 단어 초록색 하이라이트
+  _highlightWords.forEach(function(word) {
+    if (!word) return;
+    var esc_word = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    var re = new RegExp(esc_word, 'g');
+    escaped = escaped.replace(re, '<mark style="background:rgba(34,197,94,.28);color:transparent;border-radius:3px">' + word + '</mark>');
+  });
+
+  ov.innerHTML = escaped;
+}
+
 </script>
 </body>
 </html>

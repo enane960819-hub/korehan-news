@@ -722,7 +722,7 @@ function openStory(id) {
       + '</div>'
       + '<div class="st-cta-row">'
         + '<button class="st-cta-btn st-cta-sec" onclick="closeSt()">← All Stories</button>'
-        + '<button class="st-cta-btn st-cta-pri" onclick="location.href=\'korehan-study-room.html\'">Practice Writing ✏️</button>'
+        + '<button class="st-cta-btn st-cta-pri" onclick="goToStoryPractice(s)">Practice Writing ✏️</button>'
       + '</div>'
     + '</div>'
     + '<div class="st-right">'
@@ -786,6 +786,19 @@ document.addEventListener('DOMContentLoaded', function() {
   if (mp) { var t = pills.querySelector('[data-mood="'+mp+'"]'); if(t) t.click(); }
 });
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeSt(); });
+
+function goToStoryPractice(s) {
+  var params = new URLSearchParams();
+  params.set('mode', 'story');
+  params.set('title', s.title + ' — ' + (s.title_en||''));
+  if (s.vocab && s.vocab.length) {
+    params.set('vocab', JSON.stringify(s.vocab.map(function(v){ return {ko:v.ko, rom:v.rom, en:v.en}; })));
+  }
+  if (s.grammar && s.grammar.length) {
+    params.set('grammar', JSON.stringify(s.grammar.map(function(g){ return {point:g.point, ex:g.ex}; })));
+  }
+  location.href = 'korehan-study-room.html?' + params.toString();
+}
 </script>
 </body>
 </html>

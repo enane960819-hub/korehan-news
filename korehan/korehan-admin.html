@@ -1834,7 +1834,7 @@ async function runAutoGenerate(){
       const text = data.content && data.content[0] && data.content[0].text || '';
       if(!text) throw new Error('빈 응답');
 
-      const clean = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
+      const clean = text.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
       const article = JSON.parse(clean);
       if(!article.title || !article.body) throw new Error('Invalid format');
 
@@ -2906,44 +2906,7 @@ async function generateConvs() {
 
   res.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b"><div style="font-size:24px;margin-bottom:8px">⏳</div>AI 생성 중...</div>';
 
-  var prompt = `You are creating Korean language learning content for KoreHan News, a Korean learning platform.
-
-Generate ${count} KakaoTalk-style Korean conversations for the following parameters:
-- Category: ${catMap[cat]}
-- Level: ${lvlMap[lvl]}
-- Topic: ${topic || 'any natural Korean daily life situation'}
-
-Return ONLY a valid JSON array. No markdown, no explanation, no backticks. Just the raw JSON array.
-
-Each conversation object must have:
-{
-  "name": "Character names (Korean + English)",
-  "ctx": "Short context description in English",
-  "cat": "${cat}",
-  "lvl": "${lvl}",
-  "catLabel": "${catMap[cat]}",
-  "topic": "topic label in English",
-  "avi": "single emoji",
-  "msgs": [
-    {"s": "l" or "r", "who": "name", "txt": "Korean text", "note": "optional English grammar/vocab note"}
-  ],
-  "vocab": [
-    {"ko": "Korean word/phrase", "rom": "romanization", "en": "English meaning"}
-  ],
-  "grammar": [
-    {"point": "Grammar point", "ex": "Explanation with example"}
-  ],
-  "mission": ["practice task 1", "practice task 2", "practice task 3"]
-}
-
-Rules:
-- msgs: 6-9 messages, natural Korean texting style, mix of l and r
-- Add note to 2-3 messages explaining nuance/vocabulary
-- vocab: 5-7 items
-- grammar: 2-3 points
-- mission: 3 tasks
-- Level ${lvlMap[lvl]}: ${lvl==='b'?'simple grammar, common words, short sentences':lvl==='i'?'moderate complexity, some formal/casual contrast, compound sentences':'complex grammar, honorifics, advanced expressions'}
-- Make conversations feel authentic and natural, not textbook-like`;
+  var prompt = 'You are creating Korean language learning content for KoreHan News.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","note":"optional"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3 missions. ' + lvlMap[lvl] + ' level Korean.';
 
   try {
     var resp = await callClaude({
@@ -2952,41 +2915,49 @@ Rules:
       max_tokens: 4000,
       messages: [{role:'user', content: prompt}]
     });
-    var text = resp.content.map(b => b.text||'').join('');
-    // strip any possible markdown
-    text = text.replace(/^```json
-?/, '').replace(/```$/, '').trim();
-    var convs = JSON.parse(text);
+    var raw = resp.content.map(function(b){ return b.text||''; }).join('');
+    raw = raw.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    var convs = JSON.parse(raw);
 
-    res.innerHTML = '<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
+    var html = '<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
       + '<span style="font-size:14px;font-weight:700;color:#0f172a">Generated ' + convs.length + ' conversations</span>'
-      + '<button onclick="saveAllConvs()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 Save All to DB</button>'
-      + '</div>'
-      + convs.map(function(c, i) {
-          return '<div class="cv-item" data-idx="' + i + '" style="background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:18px;margin-bottom:12px">'
-            + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
-              + '<span style="font-size:24px">' + c.avi + '</span>'
-              + '<div><div style="font-size:14px;font-weight:700">' + c.name + '</div><div style="font-size:12px;color:#64748b">' + c.ctx + '</div></div>'
-              + '<span style="margin-left:auto;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px">' + lvlMap[c.lvl||lvl] + '</span>'
-            + '</div>'
-            + '<div style="background:#f8fbff;border-radius:10px;padding:12px;margin-bottom:10px">'
-              + c.msgs.map(function(m) {
-                  return '<div style="display:flex;' + (m.s==='r'?'justify-content:flex-end':'') + ';margin-bottom:6px">'
-                    + '<div style="max-width:75%;background:' + (m.s==='r'?'#2563eb':'#fff') + ';color:' + (m.s==='r'?'#fff':'#0f172a') + ';border:' + (m.s==='r'?'none':'1px solid #e2e8f0') + ';border-radius:14px;padding:8px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif">' + m.txt + (m.note?'<div style="font-size:11px;color:' + (m.s==='r'?'rgba(255,255,255,.7)':'#2563eb') + ';margin-top:4px;font-style:italic">💡 ' + m.note + '</div>':'') + '</div>'
-                    + '</div>';
-                }).join('')
-            + '</div>'
-            + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
-              + (c.vocab||[]).map(v => '<span style="background:#f1f5f9;border-radius:8px;padding:4px 10px;font-size:12px"><strong style="color:#1d4ed8">' + v.ko + '</strong> ' + v.en + '</span>').join('')
-            + '</div>'
-          + '</div>';
-        }).join('');
+      + '<button onclick="saveAllConvs()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Save All to DB</button>'
+      + '</div>';
 
+    convs.forEach(function(c, i) {
+      var msgs = (c.msgs||[]).map(function(m) {
+        var bg = m.s === 'r' ? '#2563eb' : '#fff';
+        var col = m.s === 'r' ? '#fff' : '#0f172a';
+        var brd = m.s === 'r' ? 'none' : '1px solid #e2e8f0';
+        var align = m.s === 'r' ? 'justify-content:flex-end' : '';
+        var note = m.note ? '<div style="font-size:11px;opacity:.7;margin-top:3px;font-style:italic">💡 ' + m.note + '</div>' : '';
+        return '<div style="display:flex;' + align + ';margin-bottom:5px">'
+          + '<div style="max-width:75%;background:' + bg + ';color:' + col + ';border:' + brd + ';border-radius:12px;padding:7px 11px;font-size:13px">'
+          + m.txt + note + '</div></div>';
+      }).join('');
+
+      var vocab = (c.vocab||[]).map(function(v) {
+        return '<span style="background:#f1f5f9;border-radius:8px;padding:4px 10px;font-size:12px"><b style="color:#1d4ed8">' + v.ko + '</b> ' + v.en + '</span>';
+      }).join('');
+
+      html += '<div style="background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:16px;margin-bottom:12px">'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+        + '<span style="font-size:22px">' + (c.avi||'💬') + '</span>'
+        + '<div><div style="font-size:13px;font-weight:700">' + c.name + '</div><div style="font-size:12px;color:#64748b">' + c.ctx + '</div></div>'
+        + '<span style="margin-left:auto;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px">' + lvlMap[c.lvl||lvl] + '</span>'
+        + '</div>'
+        + '<div style="background:#f8fbff;border-radius:8px;padding:10px;margin-bottom:8px">' + msgs + '</div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:5px">' + vocab + '</div>'
+        + '</div>';
+    });
+
+    res.innerHTML = html;
     window._generatedConvs = convs;
   } catch(e) {
     res.innerHTML = '<div style="background:#fee2e2;border-radius:10px;padding:14px;color:#b91c1c;font-size:13px">Error: ' + e.message + '</div>';
   }
 }
+
 
 async function saveAllConvs() {
   if (!window._generatedConvs || !window._generatedConvs.length) return;
@@ -3063,48 +3034,14 @@ async function generateStories() {
   var lvl    = document.getElementById('st-lvl').value;
   var count  = document.getElementById('st-count').value;
   var res    = document.getElementById('st-results');
-  var lvlMap = {b:'Beginner', i:'Intermediate', a:'Advanced'};
-  var moodMap = {fun:'Fun 😂', touching:'Touching 🥹', scary:'Scary 😱', shocking:'Shocking 😮'};
+  var lvlMap  = {b:'Beginner', i:'Intermediate', a:'Advanced'};
+  var moodMap = {fun:'Fun', touching:'Touching', scary:'Scary', shocking:'Shocking'};
   var moodEmoji = {fun:'😂', touching:'🥹', scary:'😱', shocking:'😮'};
+  var moodColors = {fun:'#d97706', touching:'#db2777', scary:'#7c3aed', shocking:'#dc2626'};
 
-  res.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b"><div style="font-size:24px;margin-bottom:8px">⏳</div>AI 생성 중...</div>';
+  res.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b">⏳ AI 생성 중...</div>';
 
-  var prompt = `You are creating Korean language learning content for KoreHan News.
-
-Generate ${count} short Korean stories (온라인 커뮤니티 스타일 — like Reddit/DC Inside posts) for:
-- Mood: ${moodMap[mood]}
-- Level: ${lvlMap[lvl]}
-
-Return ONLY a valid JSON array. No markdown, no backticks, just raw JSON.
-
-Each story object:
-{
-  "title": "Korean title (eye-catching, community post style)",
-  "title_en": "English translation of title",
-  "mood": "${mood}",
-  "lvl": "${lvl}",
-  "readTime": "X min",
-  "preview": "First 1-2 sentences of story in Korean (teaser)",
-  "body": "Full story in Korean, 8-15 paragraphs. Written as authentic SNS/community post. Include dialogue where natural. Use line breaks between paragraphs.",
-  "vocab": [
-    {"ko": "word", "rom": "romanization", "en": "meaning"}
-  ],
-  "grammar": [
-    {"point": "Grammar point", "ex": "Example and explanation"}
-  ],
-  "comprehension": [
-    {"q": "Comprehension question in English", "a": "Answer in English"}
-  ]
-}
-
-Rules:
-- Title should feel like a viral Korean community post (낚시성, curiosity-inducing)
-- Body: authentic Korean, NOT textbook. Use Korean internet writing style where appropriate
-- Level ${lvlMap[lvl]}: ${lvl==='b'?'simple sentences, common vocabulary, present/past tense only':lvl==='i'?'moderate complexity, varied sentence structures, common idioms':'complex grammar, sophisticated vocabulary, nuanced expressions'}
-- Mood "${moodMap[mood]}": ${mood==='fun'?'funny/humorous situations, light-hearted':mood==='touching'?'heartwarming, emotional, might make you cry (in a good way)':mood==='scary'?'creepy, unsettling, supernatural or psychological':' unbelievable true-story feeling, jaw-dropping reveals'}
-- vocab: 6-8 items
-- grammar: 2-3 points
-- comprehension: 3 questions`;
+  var prompt = 'Generate ' + count + ' short Korean community-style stories for Korean learners.\nMood: ' + moodMap[mood] + '\nLevel: ' + lvlMap[lvl] + '\n\nReturn ONLY a valid JSON array, no markdown, no backticks.\n\nEach story object:\n{"title":"Korean title","title_en":"English","mood":"' + mood + '","lvl":"' + lvl + '","readTime":"X min","preview":"first 1-2 sentences","body":"full story in Korean with paragraphs","vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}\n\nRules: authentic Korean community post style, body 8-15 paragraphs, 6-8 vocab, 2-3 grammar, 3 comprehension questions.';
 
   try {
     var resp = await callClaude({
@@ -3113,40 +3050,41 @@ Rules:
       max_tokens: 6000,
       messages: [{role:'user', content: prompt}]
     });
-    var text = resp.content.map(b => b.text||'').join('');
-    text = text.replace(/^```json
-?/, '').replace(/```$/, '').trim();
-    var stories = JSON.parse(text);
+    var raw = resp.content.map(function(b){ return b.text||''; }).join('');
+    raw = raw.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    var stories = JSON.parse(raw);
 
-    var moodColors = {fun:'#f59e0b', touching:'#ec4899', scary:'#7c3aed', shocking:'#ef4444'};
-    var moodBg = {fun:'linear-gradient(135deg,#fef9c3,#fde68a)', touching:'linear-gradient(135deg,#fce7f3,#fbcfe8)', scary:'linear-gradient(135deg,#ede9fe,#c4b5fd)', shocking:'linear-gradient(135deg,#fee2e2,#fca5a5)'};
-
-    res.innerHTML = '<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
+    var html = '<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
       + '<span style="font-size:14px;font-weight:700;color:#0f172a">Generated ' + stories.length + ' stories</span>'
-      + '<button onclick="saveAllStories()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 Save All to DB</button>'
-      + '</div>'
-      + stories.map(function(s, i) {
-          return '<div style="background:#fff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:12px">'
-            + '<div style="height:70px;background:' + (moodBg[s.mood]||moodBg.fun) + ';display:flex;align-items:center;justify-content:center;font-size:28px;position:relative">'
-              + moodEmoji[s.mood]
-              + '<span style="position:absolute;top:7px;left:10px;background:' + (moodColors[s.mood]||'#f59e0b') + ';color:#fff;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;padding:2px 8px;border-radius:2px">' + (s.mood||mood).toUpperCase() + '</span>'
-            + '</div>'
-            + '<div style="padding:16px">'
-              + '<div style="font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;margin-bottom:4px">' + s.title + '</div>'
-              + '<div style="font-size:12px;color:#64748b;margin-bottom:10px">' + (s.title_en||'') + ' · ' + (s.readTime||'3 min') + ' · ' + lvlMap[s.lvl||lvl] + '</div>'
-              + '<div style="font-size:13px;color:#334155;line-height:1.6;background:#f8fafc;border-radius:8px;padding:10px;margin-bottom:10px;font-family:'Noto Sans KR',sans-serif;white-space:pre-line">' + (s.body||s.preview||'') + '</div>'
-              + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
-                + (s.vocab||[]).map(v => '<span style="background:#f1f5f9;border-radius:8px;padding:4px 10px;font-size:12px"><strong style="color:#7c3aed">' + v.ko + '</strong> ' + v.en + '</span>').join('')
-              + '</div>'
-            + '</div>'
-          + '</div>';
-        }).join('');
+      + '<button onclick="saveAllStories()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Save All to DB</button>'
+      + '</div>';
 
+    stories.forEach(function(s) {
+      var color = moodColors[s.mood] || '#7c3aed';
+      var vocab = (s.vocab||[]).map(function(v) {
+        return '<span style="background:#f1f5f9;border-radius:8px;padding:4px 10px;font-size:12px"><b style="color:' + color + '">' + v.ko + '</b> ' + v.en + '</span>';
+      }).join('');
+
+      html += '<div style="background:#fff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:12px">'
+        + '<div style="height:50px;background:' + color + ';display:flex;align-items:center;padding:0 16px;gap:10px">'
+        + '<span style="font-size:22px">' + (moodEmoji[s.mood]||'📖') + '</span>'
+        + '<span style="color:#fff;font-size:13px;font-weight:700">' + s.title + '</span>'
+        + '<span style="margin-left:auto;color:rgba(255,255,255,.8);font-size:11px">' + (s.readTime||'') + ' · ' + lvlMap[s.lvl||lvl] + '</span>'
+        + '</div>'
+        + '<div style="padding:14px">'
+        + '<div style="font-size:12px;color:#64748b;font-style:italic;margin-bottom:8px">' + (s.title_en||'') + '</div>'
+        + '<div style="font-size:13px;color:#334155;line-height:1.7;margin-bottom:10px;white-space:pre-line">' + (s.preview||'') + '</div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:5px">' + vocab + '</div>'
+        + '</div></div>';
+    });
+
+    res.innerHTML = html;
     window._generatedStories = stories;
   } catch(e) {
     res.innerHTML = '<div style="background:#fee2e2;border-radius:10px;padding:14px;color:#b91c1c;font-size:13px">Error: ' + e.message + '</div>';
   }
 }
+
 
 async function saveAllStories() {
   if (!window._generatedStories || !window._generatedStories.length) return;

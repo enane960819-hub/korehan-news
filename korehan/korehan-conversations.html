@@ -517,7 +517,7 @@ function openDetail(idx) {
       +'</div>'
       +'<div class="dp-cta-row">'
         +'<button class="dp-cta-btn dp-cta-secondary" onclick="closeDetail()">← All Conversations</button>'
-        +'<button class="dp-cta-btn dp-cta-primary" onclick="location.href=\'korehan-study-room.html\'">Practice Writing ✏️</button>'
+        +'<button class="dp-cta-btn dp-cta-primary" onclick="goToPracticeWriting(c)">Practice Writing ✏️</button>'
       +'</div>'
     +'</div>'
     +'<div class="dp-right">'
@@ -568,6 +568,19 @@ document.addEventListener('DOMContentLoaded', function() {
   if (cp) { var t = pills.querySelector('[data-cat="'+cp+'"]'); if(t) t.click(); }
 });
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeDetail(); });
+
+function goToPracticeWriting(c) {
+  var params = new URLSearchParams();
+  params.set('mode', 'conv');
+  params.set('title', c.name + ' — ' + c.ctx);
+  if (c.vocab && c.vocab.length) {
+    params.set('vocab', JSON.stringify(c.vocab.map(function(v){ return {ko:v.ko, rom:v.rom, en:v.en}; })));
+  }
+  if (c.grammar && c.grammar.length) {
+    params.set('grammar', JSON.stringify(c.grammar.map(function(g){ return {point:g.point, ex:g.ex}; })));
+  }
+  location.href = 'korehan-study-room.html?' + params.toString();
+}
 </script>
 </body>
 </html>
