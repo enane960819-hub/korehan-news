@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Study Room — KoreHan News</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
@@ -604,9 +606,8 @@ document.addEventListener('DOMContentLoaded', async function() {
   var waited = 0;
   function waitForSession() {
     // supaUser가 확인됐거나 (null 포함) 3초 지나면 진행
-    // korehan-shared.js의 onAuthStateChange가 supaUser를 세팅함
-    // _sessionChecked 플래그로 확인
-    if (typeof _sessionChecked !== 'undefined' && _sessionChecked || waited >= 30) {
+    // korehan-shared.js의 checkSession()이 window._sessionChecked를 세팅함
+    if (window._sessionChecked || waited >= 30) {
       assignDailyTopic();
     } else {
       waited++;
@@ -631,7 +632,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     };
     // 세션 체크 후 모달 열기
     function waitAndOpenModal() {
-      if (typeof _sessionChecked !== 'undefined' && _sessionChecked || waited >= 30) {
+      if (window._sessionChecked || waited >= 30) {
         if (supaUser) openExternalPracticeModal();
         else openAuthModal('signin');
       } else {
@@ -723,8 +724,24 @@ async function loadAllTopics() {
     var res = await fetch(SUPA_URL + '/rest/v1/writing_topics?select=*&active=eq.true&order=category.asc', {
       headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
     });
-    _allTopics = await res.json();
-  } catch(e) { _allTopics = []; }
+    var data = await res.json();
+    _allTopics = Array.isArray(data) && data.length ? data : getFallbackTopics();
+  } catch(e) { _allTopics = getFallbackTopics(); }
+}
+
+function getFallbackTopics() {
+  return [
+    {id:1001, topic_ko:'가보고 싶은 나라가 있나요?', topic_en:'Is there a country you want to visit?', category:'travel', level:'beginner',  active:true},
+    {id:1002, topic_ko:'좋아하는 계절은 무엇인가요?', topic_en:'What is your favorite season?',         category:'daily',  level:'beginner',  active:true},
+    {id:1003, topic_ko:'오늘 기분이 어때요?',          topic_en:'How do you feel today?',               category:'daily',  level:'beginner',  active:true},
+    {id:1004, topic_ko:'한국 음식 중 좋아하는 음식은?', topic_en:'What Korean food do you like?',       category:'food',   level:'beginner',  active:true},
+    {id:1005, topic_ko:'주말에 주로 뭐 해요?',          topic_en:'What do you usually do on weekends?', category:'daily',  level:'beginner',  active:true},
+    {id:1006, topic_ko:'한국어를 공부하는 이유는?',     topic_en:'Why are you studying Korean?',        category:'study',  level:'intermediate', active:true},
+    {id:1007, topic_ko:'최근에 본 드라마나 영화는?',    topic_en:'What drama or movie did you watch recently?', category:'culture', level:'intermediate', active:true},
+    {id:1008, topic_ko:'서울에서 꼭 가봐야 할 곳은?',  topic_en:'Where should you visit in Seoul?',    category:'travel', level:'intermediate', active:true},
+    {id:1009, topic_ko:'한국 문화에서 가장 인상적인 점은?', topic_en:'What impresses you most about Korean culture?', category:'culture', level:'advanced', active:true},
+    {id:1010, topic_ko:'글로벌 시대에 언어 공부의 중요성', topic_en:'Importance of language learning in a global era', category:'opinion', level:'advanced', active:true},
+  ];
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -741,55 +758,67 @@ async function assignDailyTopic() {
 
   var sb = getSupa();
 
-  // 1. 오늘 배정된 토픽 있는지 확인
-  var { data: todayRows } = await sb.from('user_topic_history')
-    .select('topic_id, completed')
-    .eq('user_id', supaUser.id)
-    .eq('assigned_date', today)
-    .limit(1);
+  try {
+    // 1. 오늘 배정된 토픽 있는지 확인
+    var { data: todayRows, error: e1 } = await sb.from('user_topic_history')
+      .select('topic_id, completed')
+      .eq('user_id', supaUser.id)
+      .eq('assigned_date', today)
+      .limit(1);
 
-  if (todayRows && todayRows.length) {
-    // topic_id로 writing_topics에서 직접 조회
-    var todayTopicId = todayRows[0].topic_id;
-    var foundTopic = _allTopics.find(function(t){ return t.id === todayTopicId; });
-    if (foundTopic) {
-      _todayTopic = foundTopic;
-      if (todayRows[0].completed) {
-        var doneEl = document.getElementById('hero-topic-done');
-        if (doneEl) doneEl.style.display = 'flex';
+    if (!e1 && todayRows && todayRows.length) {
+      var todayTopicId = todayRows[0].topic_id;
+      var foundTopic = _allTopics.find(function(t){ return t.id === todayTopicId; });
+      if (foundTopic) {
+        _todayTopic = foundTopic;
+        if (todayRows[0].completed) {
+          var doneEl = document.getElementById('hero-topic-done');
+          if (doneEl) doneEl.style.display = 'flex';
+        }
+        renderTopicUI();
+        generateAIContent(_todayTopic);
+        return;
       }
-      renderTopicUI();
-      generateAIContent(_todayTopic);
-      return;
     }
+
+    // 2. 유저가 이미 한 토픽 ID 목록
+    var { data: doneRows } = await sb.from('user_topic_history')
+      .select('topic_id')
+      .eq('user_id', supaUser.id);
+
+    _doneTopicIds = new Set((doneRows || []).map(function(r){ return r.topic_id; }));
+
+    // 3. 안 한 토픽 중 랜덤 (현재 레벨 우선, 없으면 전체)
+    var levelPool = _allTopics.filter(function(t){ return t.level === _currentLevel; });
+    if (!levelPool.length) levelPool = _allTopics;
+    var undone = levelPool.filter(function(t){ return !_doneTopicIds.has(t.id); });
+    if (!undone.length) undone = levelPool;
+    if (!undone.length) { renderTopicUI(); return; }
+
+    var picked = undone[Math.floor(Math.random() * undone.length)];
+
+    // 4. DB에 저장 (실패해도 UI는 표시)
+    try {
+      await sb.from('user_topic_history').insert({
+        user_id:       supaUser.id,
+        topic_id:      picked.id,
+        assigned_date: today
+      });
+    } catch(insertErr) { /* DB 없어도 계속 */ }
+
+    _todayTopic = picked;
+    renderTopicUI();
+    generateAIContent(picked);
+
+  } catch(err) {
+    // user_topic_history 테이블 없거나 오류 → fallback: 랜덤 토픽
+    var levelPool = _allTopics.filter(function(t){ return t.level === _currentLevel; });
+    if (!levelPool.length) levelPool = _allTopics;
+    if (!levelPool.length) return;
+    _todayTopic = levelPool[Math.floor(Math.random() * levelPool.length)];
+    renderTopicUI();
+    generateAIContent(_todayTopic);
   }
-
-  // 2. 유저가 이미 한 토픽 ID 목록
-  var { data: doneRows } = await sb.from('user_topic_history')
-    .select('topic_id')
-    .eq('user_id', supaUser.id);
-
-  _doneTopicIds = new Set((doneRows || []).map(function(r){ return r.topic_id; }));
-
-  // 3. 안 한 토픽 중 랜덤 (현재 레벨 우선, 없으면 전체)
-  var levelPool = _allTopics.filter(function(t){ return t.level === _currentLevel; });
-  if (!levelPool.length) levelPool = _allTopics;
-  var undone = levelPool.filter(function(t){ return !_doneTopicIds.has(t.id); });
-  if (!undone.length) undone = levelPool; // 다 했으면 리셋
-  if (!undone.length) { renderTopicUI(); return; }
-
-  var picked = undone[Math.floor(Math.random() * undone.length)];
-
-  // 4. DB에 저장
-  await sb.from('user_topic_history').insert({
-    user_id:       supaUser.id,
-    topic_id:      picked.id,
-    assigned_date: today
-  });
-
-  _todayTopic = picked;
-  renderTopicUI();
-  generateAIContent(picked);
 }
 
 // ═══════════════════════════════════════════════════════════════

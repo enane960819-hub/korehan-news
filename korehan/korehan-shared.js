@@ -423,12 +423,13 @@ async function signOut() {
 // 세션 확인
 async function checkSession() {
   var sb = getSupa();
-  if (!sb) return;
+  if (!sb) { window._sessionChecked = true; return; }
   var { data } = await sb.auth.getSession();
   if (data && data.session && data.session.user) {
     supaUser = data.session.user;
     updateAuthUI();
   }
+  window._sessionChecked = true;  // ← 반드시 세팅
   // 세션 변화 감지
   sb.auth.onAuthStateChange(function(event, session) {
     if (event === 'SIGNED_OUT') {
@@ -1019,7 +1020,33 @@ function renderSectionPage(section) {
     var stEl = document.querySelector('.section-title');
     if (stEl) stEl.textContent = secInfo.label + ' News';
   }
-  var articles = published(section);
+
+  // 한글 section 키 → 영문 레이블 매핑 (DB에 영문으로 저장된 경우 대비)
+  var SECTION_ALIASES = {
+    '사회': ['사회','Society','society','Social'],
+    '국제': ['국제','World','world','International','international','Global'],
+    '문화': ['문화','Culture','culture','Entertainment'],
+    '정치': ['정치','Politics','politics'],
+    '경제': ['경제','Economy','economy','Business','business'],
+    'Korea': ['Korea','한국','korea','Korean'],
+    '오피니언': ['오피니언','Opinion','opinion','오피니언/칼럼'],
+    'K-pop': ['K-pop','Kpop','케이팝','kpop','k-pop'],
+    '스포츠': ['스포츠','Sports','sports'],
+  };
+  var aliases = SECTION_ALIASES[section] || [section];
+
+  var articles = dbGet(function(a){
+    return a.status === 'published' && aliases.some(function(alias){
+      return (a.section || '') === alias;
+    });
+  }).sort(function(a, b) {
+    var da = a.date || a.created_at || '';
+    var db2 = b.date || b.created_at || '';
+    if (da > db2) return -1;
+    if (da < db2) return 1;
+    return String(b.id).localeCompare(String(a.id));
+  });
+
   var featured = articles[0];
   var rest     = articles.slice(1);
 
