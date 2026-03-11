@@ -630,7 +630,7 @@
           <button class="wc-mode-tab active" id="tab-topic" onclick="setWritingMode('topic')">📝 Topic Writing</button>
           <button class="wc-mode-tab" id="tab-reading" onclick="setWritingMode('reading')">📖 Reading & Write</button>
         </div>
-        <!-- Reading 선택 시 기사 선택 드롭다운 -->
+        <!-- Reading 선택 시 Choose an article 드롭다운 -->
         
         <div class="wc-footer">
           <div><div class="wcf-text" id="wcf-mode-text">Open Writing Room</div><div class="wcf-sub">Courses subscribers · feedback within 24h</div></div>
@@ -835,7 +835,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   // supaUser가 세팅될 때까지 최대 3초 대기 후 토픽 배정
   var waited = 0;
   function waitForSession() {
-    // supaUser가 확인됐거나 (null 포함) 3초 지나면 진행
+    // supaUser가 Check됐거나 (null 포함) 3초 지나면 진행
     // korehan-shared.js의 checkSession()이 window._sessionChecked를 세팅함
     if (window._sessionChecked || waited >= 30) {
       assignDailyTopic();
@@ -989,7 +989,7 @@ async function assignDailyTopic() {
   var sb = getSupa();
 
   try {
-    // 1. 오늘 배정된 토픽 있는지 확인
+    // 1. 오늘 배정된 토픽 있는지 Check
     var { data: todayRows, error: e1 } = await sb.from('user_topic_history')
       .select('topic_id, completed')
       .eq('user_id', supaUser.id)
@@ -1166,7 +1166,7 @@ function renderAIContent() {
       + '<div class="hen">' + h.en + '</div>'
       + '</div>';
   });
-  document.getElementById('helper-box').innerHTML = hhtml || '<div style="color:#aaa;font-size:12px">No helpers loaded.</div>';
+  document.getElementById('helper-box').innerHTML = hhtml || '<div style="color:#aaa;font-size:12px">No helper sentences loaded.</div>';
 
   // MODAL content
   renderModalContent();
@@ -1422,7 +1422,7 @@ function loadFlashcards(cat, btn) {
 
   if (!pool.length && cat !== 'all') {
     document.getElementById('fc-grid').innerHTML =
-      '<div style="font-size:12px;color:#94a3b8;text-align:center;padding:20px">단어 없음 — 관리자에서 AI 생성 후 다시 확인하세요</div>';
+      '<div style="font-size:12px;color:#94a3b8;text-align:center;padding:20px">No vocabulary yet — generate or sync more content in admin first.</div>';
     return;
   }
   if (!pool.length) {
@@ -1454,7 +1454,7 @@ function setLQMode(mode, btn) {
 async function startLQ() {
   if (!supaUser) { openAuthModal('signin'); return; }
   var box = document.getElementById('lq-mini');
-  box.innerHTML = '<div class="ai-loading"><div class="spin">✨</div><div style="margin-top:8px;font-size:12px">AI가 문제를 만드는 중…</div></div>';
+  box.innerHTML = '<div class="ai-loading"><div class="spin">✨</div><div style="margin-top:8px;font-size:12px">AI is preparing your quiz…</div></div>';
 
   // vocab pool: 현재 AI content + conv + stories 통합
   var pool = getAllVocabPool();
@@ -1568,8 +1568,8 @@ function showAILoading() {
   el.style.cssText = 'position:fixed;inset:0;z-index:400;backdrop-filter:blur(6px);background:rgba(13,27,46,0.45);display:flex;align-items:center;justify-content:center;';
   el.innerHTML = '<div style="text-align:center;color:#fff">'
     + '<div style="font-size:52px;animation:spin 1s linear infinite;display:inline-block">✨</div>'
-    + '<div style="margin-top:14px;font-size:15px;font-weight:700">잠시만 기다려주세요</div>'
-    + '<div style="margin-top:6px;font-size:12px;color:rgba(255,255,255,0.5)">Generating vocab, grammar & helpers</div>'
+    + '<div style="margin-top:14px;font-size:15px;font-weight:700">Please wait a moment</div>'
+    + '<div style="margin-top:6px;font-size:12px;color:rgba(255,255,255,0.5)">Generating vocabulary, grammar, and helper sentences</div>'
     + '</div>';
   document.body.appendChild(el);
 }
@@ -1598,7 +1598,7 @@ function showLoginWall() {
     + '<div class="login-wall-box">'
     + '<div class="lwb-icon">📖</div>'
     + '<div class="lwb-title">Study Room</div>'
-    + '<div class="lwb-sub">로그인하면 매일 새 토픽, AI 문법·단어, 작문 피드백까지 모두 이용할 수 있어요.<br><br>Sign in to unlock daily topics, AI vocab & grammar, and personal writing feedback.</div>'
+    + '<div class="lwb-sub">Sign in to unlock daily topics, AI vocabulary and grammar notes, listening practice, and writing feedback.</div>'
     + '<button class="lwb-btn" onclick="openAuthModal(&apos;signin&apos;)">🔑 Sign In</button>'
     + '<button class="lwb-btn2" onclick="openAuthModal(&apos;signup&apos;)">✨ Create Free Account</button>'
     + '</div>';
@@ -1733,7 +1733,7 @@ function setWritingMode(mode) {
   }
 }
 
-// 현재 읽기 소스 ('article' | 'conv' | 'story')
+// 현재 Read 소스 ('article' | 'conv' | 'story')
 var _readingSource = 'article';
 
 function switchReadingSource(src, btn) {
@@ -1783,7 +1783,7 @@ async function loadArticlesForReading() {
       });
     } else {
       var opt = document.createElement('option');
-      opt.textContent = '기사 없음 (published 상태 기사 필요)';
+      opt.textContent = 'No articles available (published 상태 기사 필요)';
       opt.disabled = true;
       sel.appendChild(opt);
     }
@@ -1809,7 +1809,7 @@ async function loadConvsForReading() {
         var opt = document.createElement('option');
         opt.value = row.id;
         opt.textContent = (d.name || row.name || 'Untitled') + ' [' + (d.lvl || row.lvl || '') + ']';
-        // 대화를 읽기 자료로 — msgs를 텍스트로 변환
+        // 대화를 Read 자료로 — msgs를 텍스트로 변환
         var msgs = (d.msgs || []).map(function(m) {
           return (m.who || (m.s==='l'?'A':'B')) + ': ' + m.txt;
         }).join('\n');
@@ -1822,7 +1822,7 @@ async function loadConvsForReading() {
       });
     } else {
       var opt = document.createElement('option');
-      opt.textContent = '대화 없음 (Conversations 추가 필요)';
+      opt.textContent = 'No conversations available (Conversations 추가 필요)';
       opt.disabled = true;
       sel.appendChild(opt);
     }
@@ -1855,7 +1855,7 @@ async function loadStoriesForReading() {
       });
     } else {
       var opt = document.createElement('option');
-      opt.textContent = '스토리 없음 (Stories 추가 필요)';
+      opt.textContent = 'No stories available (Stories 추가 필요)';
       opt.disabled = true;
       sel.appendChild(opt);
     }
@@ -1883,7 +1883,7 @@ function onReadingSelectChange(sel) {
 function openWritingModalWithMode() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (_writingMode === 'reading' && !_selectedArticle) {
-    alert('자료를 먼저 선택해주세요 (기사 / 대화 / 스토리)');
+    alert('Choose a source first (article / conversation / story).');
     return;
   }
   document.getElementById('wmodal').classList.remove('hidden');
@@ -1962,7 +1962,7 @@ async function switchModalSource(src, btn) {
   }
   // 선택 드롭다운 초기화
   var sel = document.getElementById('wm-src-select');
-  sel.innerHTML = '<option value="">로딩 중...</option>';
+  sel.innerHTML = '<option value="">Loading...</option>';
 
   if (src === 'article') await loadModalArticles(sel);
   if (src === 'conv')    await loadModalConvs(sel);
@@ -1977,15 +1977,15 @@ async function loadModalArticles(sel) {
       .eq('status', 'published')
       .order('created_at', {ascending: false})
       .limit(20);
-    sel.innerHTML = '<option value="">기사 선택...</option>';
+    sel.innerHTML = '<option value="">Choose an article...</option>';
     (data || []).forEach(function(a) {
       var opt = document.createElement('option');
       opt.value = JSON.stringify({id:a.id, title:a.title, body:(a.body||'').replace(/<[^>]*>/g,'').slice(0,800), type:'article'});
       opt.textContent = (a.title||'Untitled') + ' [' + (a.level||a.section||'') + ']';
       sel.appendChild(opt);
     });
-    if (!data || !data.length) sel.innerHTML = '<option value="">기사 없음</option>';
-  } catch(e) { sel.innerHTML = '<option value="">로드 실패</option>'; }
+    if (!data || !data.length) sel.innerHTML = '<option value="">No articles available</option>';
+  } catch(e) { sel.innerHTML = '<option value="">Failed to load</option>'; }
 }
 
 async function loadModalConvs(sel) {
@@ -1995,7 +1995,7 @@ async function loadModalConvs(sel) {
       .select('id, name, ctx, data, lvl')
       .order('created_at', {ascending: false})
       .limit(30);
-    sel.innerHTML = '<option value="">대화 선택...</option>';
+    sel.innerHTML = '<option value="">Choose a conversation...</option>';
     (data || []).forEach(function(row) {
       var d = row.data || {};
       var msgs = (d.msgs||[]).map(function(m){ return (m.who||'')+'\n'+m.txt; }).join('\n');
@@ -2006,8 +2006,8 @@ async function loadModalConvs(sel) {
       opt.textContent = (d.name||row.name||'대화') + ' [' + (d.lvl||row.lvl||'') + ']';
       sel.appendChild(opt);
     });
-    if (!data || !data.length) sel.innerHTML = '<option value="">대화 없음</option>';
-  } catch(e) { sel.innerHTML = '<option value="">로드 실패</option>'; }
+    if (!data || !data.length) sel.innerHTML = '<option value="">No conversations available</option>';
+  } catch(e) { sel.innerHTML = '<option value="">Failed to load</option>'; }
 }
 
 async function loadModalStories(sel) {
@@ -2017,7 +2017,7 @@ async function loadModalStories(sel) {
       .select('id, title, data, lvl')
       .order('created_at', {ascending: false})
       .limit(30);
-    sel.innerHTML = '<option value="">스토리 선택...</option>';
+    sel.innerHTML = '<option value="">Choose a story...</option>';
     (data || []).forEach(function(row) {
       var d = row.data || {};
       var body = (d.body||d.preview||'').replace(/<[^>]*>/g,'').slice(0,800);
@@ -2026,8 +2026,8 @@ async function loadModalStories(sel) {
       opt.textContent = (d.title||row.title||'스토리') + ' [' + (d.lvl||row.lvl||'') + ']';
       sel.appendChild(opt);
     });
-    if (!data || !data.length) sel.innerHTML = '<option value="">스토리 없음</option>';
-  } catch(e) { sel.innerHTML = '<option value="">로드 실패</option>'; }
+    if (!data || !data.length) sel.innerHTML = '<option value="">No stories available</option>';
+  } catch(e) { sel.innerHTML = '<option value="">Failed to load</option>'; }
 }
 
 function onModalSourceSelect(sel) {
@@ -2246,7 +2246,7 @@ function getFallbackSentences() {
 function renderBMStep1Loading() {
   document.getElementById('bm-body').innerHTML =
     '<div class="bm-step-label">Step 1 of 4</div>'
-    + '<div class="bm-step-title">문장 읽기</div>'
+    + '<div class="bm-step-title">문장 Read</div>'
     + '<div class="bm-step-desc">AI가 오늘의 이야기를 만들고 있어요 ✨</div>'
     + '<div style="text-align:center;padding:40px 0;font-size:32px;">⏳</div>';
   document.getElementById('bm-footer').innerHTML =
@@ -2257,7 +2257,7 @@ function renderBMStep1() {
   var sents = _bm.sentences;
   var bodyHTML =
     '<div class="bm-step-label">Step 1 of 4</div>'
-    + '<div class="bm-step-title">📖 문장 읽기</div>'
+    + '<div class="bm-step-title">📖 문장 Read</div>'
     + '<div class="bm-step-desc">아래 한국어 문장들을 소리 내어 읽어보세요. 다음 단계에서 순서를 맞춰야 해요!</div>'
     + '<div class="bm-sentences">';
 
@@ -2271,8 +2271,8 @@ function renderBMStep1() {
 
   document.getElementById('bm-body').innerHTML = bodyHTML;
   document.getElementById('bm-footer').innerHTML =
-    '<span style="font-size:13px;color:#94a3b8;flex:1">읽으면서 내용을 기억하세요</span>'
-    + '<button class="bm-btn-next" onclick="goToBMStep2()">순서 맞추기 →</button>';
+    '<span style="font-size:13px;color:#94a3b8;flex:1">Read aloud and remember the flow.</span>'
+    + '<button class="bm-btn-next" onclick="goToBMStep2()">Word order →</button>';
 
   // Highlight each sentence briefly
   sents.forEach(function(_, i) {
@@ -2319,25 +2319,25 @@ function renderBMStep2() {
 
   var bodyHTML =
     '<div class="bm-step-label">Step 2 of 4 · 문장 ' + (idx+1) + ' / ' + total + '</div>'
-    + '<div class="bm-step-title">🔀 어절 순서 맞추기</div>'
-    + '<div class="bm-step-desc">영어 해석을 참고해서 어절을 올바른 순서로 배치하세요.</div>'
+    + '<div class="bm-step-title">🔀 Put the word blocks in order</div>'
+    + '<div class="bm-step-desc">Use the English hint and rebuild the Korean sentence in the natural order.</div>'
 
     // 영어 해석 힌트
     + '<div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#1e3a5f;line-height:1.6">'
-    + '💡 ' + s.en + '</div>'
+    + '💡 English hint: ' + s.en + '</div>'
 
     // 선택된 어절 (답안 영역)
     + '<div style="margin-bottom:16px">'
-    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">내 답안</div>'
+    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Your answer</div>'
     + '<div id="bm-answer-zone" style="min-height:52px;border:2px dashed #bfdbfe;border-radius:14px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#f8fbff;">'
     + (wo.selected.length ? wo.selected.map(function(w, i) {
         return '<button class="bm-word-chip bm-word-selected" onclick="bmDeselectWord(' + idx + ',' + i + ')">' + w + ' ×</button>';
-      }).join('') : '<span style="font-size:12px;color:#cbd5e1">어절을 아래에서 선택하세요</span>')
+      }).join('') : '<span style="font-size:12px;color:#cbd5e1">Choose word blocks below</span>')
     + '</div></div>'
 
-    // 섞인 어절 선택지
+    // 섞인 Available word blocks지
     + '<div>'
-    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">어절 선택</div>'
+    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Available word blocks</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:8px;">'
     + wo.shuffled.map(function(w, i) {
         var used = wo.selected.indexOf(w) !== -1;
@@ -2353,9 +2353,9 @@ function renderBMStep2() {
 
   var allSelected = wo.selected.length === wo.original.length;
   document.getElementById('bm-footer').innerHTML =
-    '<button class="bm-btn-back" onclick="goToBMStep1Back()">← 읽기</button>'
-    + '<button class="bm-btn-back" onclick="bmClearAnswer(' + idx + ')" style="margin-right:auto">🔄 초기화</button>'
-    + '<button class="bm-btn-next" ' + (allSelected ? '' : 'disabled') + ' onclick="checkBMWordOrder()">확인</button>';
+    '<button class="bm-btn-back" onclick="goToBMStep1Back()">← Read</button>'
+    + '<button class="bm-btn-back" onclick="bmClearAnswer(' + idx + ')" style="margin-right:auto">🔄 Reset</button>'
+    + '<button class="bm-btn-next" ' + (allSelected ? '' : 'disabled') + ' onclick="checkBMWordOrder()">Check</button>';
 }
 
 function bmSelectWord(sentIdx, wordPos) {
@@ -2400,13 +2400,13 @@ function checkBMWordOrder() {
   fb.innerHTML =
     '<div class="bm-feedback-emoji">' + (isCorrect ? '🎉' : '🔍') + '</div>'
     + '<div class="bm-feedback-msg" style="color:' + (isCorrect ? '#15803d' : '#dc2626') + '">'
-    + (isCorrect ? '완벽해요!' : '정답: ' + wo.original.join(' ')) + '</div>';
+    + (isCorrect ? 'Perfect!' : '정답: ' + wo.original.join(' ')) + '</div>';
   bodyEl.appendChild(fb);
 
   var isLast = idx + 1 >= _bm.wordOrders.length;
   document.getElementById('bm-footer').innerHTML =
     (isLast
-      ? '<button class="bm-btn-next" onclick="finishBMWordOrders()">빈칸 채우기 →</button>'
+      ? '<button class="bm-btn-next" onclick="finishBMWordOrders()">Fill in the blanks →</button>'
       : '<button class="bm-btn-next" onclick="bmNextWordOrder()">다음 문장 →</button>');
 }
 
@@ -2473,8 +2473,8 @@ function buildBMBlanks() {
 function renderBMStep3() {
   var bodyHTML =
     '<div class="bm-step-label">Step 3 of 4</div>'
-    + '<div class="bm-step-title">✏️ 빈칸 채우기</div>'
-    + '<div class="bm-step-desc">각 문장의 빈칸에 알맞은 단어를 선택하세요.</div>'
+    + '<div class="bm-step-title">✏️ Fill in the blanks</div>'
+    + '<div class="bm-step-desc">Choose the best word for each blank.</div>'
     + '<div class="bm-blank-list" id="bm-blank-list">';
 
   _bm.blanks.forEach(function(b, i) {
@@ -2496,8 +2496,8 @@ function renderBMStep3() {
 
   document.getElementById('bm-body').innerHTML = bodyHTML;
   document.getElementById('bm-footer').innerHTML =
-    '<span style="font-size:13px;color:#94a3b8;flex:1" id="bm-blank-progress">0 / ' + _bm.blanks.filter(function(b){return b.answer;}).length + ' 완료</span>'
-    + '<button class="bm-btn-next" id="bm-blank-next-btn" disabled onclick="goToBMStep4()">작문하기 →</button>';
+    '<span style="font-size:13px;color:#94a3b8;flex:1" id="bm-blank-progress">0 / ' + _bm.blanks.filter(function(b){return b.answer;}).length + ' done</span>'
+    + '<button class="bm-btn-next" id="bm-blank-next-btn" disabled onclick="goToBMStep4()">Go to writing →</button>';
 }
 
 function selectBMChoice(sentIdx, word) {
@@ -2525,7 +2525,6 @@ function selectBMChoice(sentIdx, word) {
       }
       btn.disabled = true;
     });
-    // 오답이면 정답 표시
     if (!b.correct) {
       Array.from(choicesEl.children).forEach(function(btn) {
         if (btn.textContent === b.answer) {
@@ -2535,6 +2534,10 @@ function selectBMChoice(sentIdx, word) {
           btn.style.opacity = '1';
         }
       });
+      var hint = document.createElement('div');
+      hint.style.cssText = 'margin-top:10px;font-size:13px;color:#7f1d1d;line-height:1.6';
+      hint.textContent = getBlankGrammarHint(b.sent, b.answer, word);
+      choicesEl.appendChild(hint);
     }
   }
 
@@ -2542,7 +2545,7 @@ function selectBMChoice(sentIdx, word) {
   var validBlanks = _bm.blanks.filter(function(bb){ return bb.answer; });
   var filledCount = validBlanks.filter(function(bb){ return bb.filled !== null; }).length;
   var prog = document.getElementById('bm-blank-progress');
-  if (prog) prog.textContent = filledCount + ' / ' + validBlanks.length + ' 완료';
+  if (prog) prog.textContent = filledCount + ' / ' + validBlanks.length + ' done';
   if (filledCount >= validBlanks.length) {
     var correctCount = validBlanks.filter(function(bb){ return bb.correct; }).length;
     _bm.score.blank = Math.round(correctCount / validBlanks.length * 100);
@@ -2576,8 +2579,8 @@ function renderBMStep4() {
 
   document.getElementById('bm-body').innerHTML = bodyHTML;
   document.getElementById('bm-footer').innerHTML =
-    '<button class="bm-btn-back" onclick="goToBMStep3Back()">← 빈칸 채우기</button>'
-    + '<button class="bm-btn-next" onclick="finishBeginner()">완료 🎉</button>';
+    '<button class="bm-btn-back" onclick="goToBMStep3Back()">← Fill in the blanks</button>'
+    + '<button class="bm-btn-next" onclick="finishBeginner()">done 🎉</button>';
 }
 
 function goToBMStep3Back() { _bm.step = 3; updateBMHeader(); renderBMStep3(); }
@@ -2598,7 +2601,7 @@ function finishBeginner() {
     + '<div class="bm-result-score">' + totalScore + '점</div>'
     + '<div style="display:flex;gap:16px;justify-content:center;margin:10px 0 16px">'
     + '<div style="text-align:center"><div style="font-size:22px;font-weight:900;color:#2255a4">' + _bm.score.order + '%</div><div style="font-size:11px;color:#94a3b8">순서 맞추기</div></div>'
-    + '<div style="text-align:center"><div style="font-size:22px;font-weight:900;color:#7c3aed">' + _bm.score.blank + '%</div><div style="font-size:11px;color:#94a3b8">빈칸 채우기</div></div>'
+    + '<div style="text-align:center"><div style="font-size:22px;font-weight:900;color:#7c3aed">' + _bm.score.blank + '%</div><div style="font-size:11px;color:#94a3b8">Fill in the blanks</div></div>'
     + '<div style="text-align:center"><div style="font-size:22px;font-weight:900;color:#16a34a">' + charCount + '</div><div style="font-size:11px;color:#94a3b8">글자 수</div></div>'
     + '</div>'
     + '<div class="bm-result-msg">' + msg + '</div>'

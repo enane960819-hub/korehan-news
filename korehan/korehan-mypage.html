@@ -152,7 +152,7 @@
   <!-- Tabs -->
   <div class="my-tabs">
     <button class="my-tab on" onclick="switchMyTab('goals',this)">🎯 Daily Goals</button>
-    <button class="my-tab" onclick="switchMyTab('quiz',this)">📝 Word Quiz</button>
+    <button class="my-tab" onclick="switchMyTab('quiz',this)">📝 Vocabulary Practice</button>
     <button class="my-tab" onclick="switchMyTab('words',this)">🔖 Saved Words</button>
     <button class="my-tab" onclick="switchMyTab('articles',this)">📰 Read Articles</button>
     <button class="my-tab" onclick="switchMyTab('bookmarks',this)">🔖 Bookmarks</button>
@@ -170,19 +170,13 @@
 
   <!-- Word Quiz panel -->
   <div class="my-panel" id="panel-quiz">
-    <!-- 퀴즈 모드 선택 -->
-    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
-      <button class="lq-mode-btn on" id="qmode-flash" onclick="setQuizMode('flash',this)">📝 Flashcard Quiz</button>
-      <button class="lq-mode-btn" id="qmode-listen" onclick="setQuizMode('listen',this)">🎧 Listening Quiz</button>
-      <div id="quiz-listen-type-wrap" style="display:none;gap:6px;margin-left:4px;display:none">
-        <button class="lq-mode-btn on" id="ltype-hear" onclick="setLQType('hear',this)" style="font-size:12px;padding:7px 14px">🔊 What did you hear?</button>
-        <button class="lq-mode-btn" id="ltype-mean" onclick="setLQType('mean',this)" style="font-size:12px;padding:7px 14px">💬 What does it mean?</button>
-        <button class="lq-mode-btn" id="ltype-trans" onclick="setLQType('trans',this)" style="font-size:12px;padding:7px 14px">📝 Pick Translation</button>
-      </div>
+    <div class="quiz-wrap2" style="max-width:680px;text-align:center">
+      <div style="font-size:40px;margin-bottom:10px">📚</div>
+      <div style="font-size:22px;font-weight:900;color:var(--accent);margin-bottom:8px">Vocabulary practice moved</div>
+      <div style="font-size:14px;color:var(--gray);line-height:1.7;margin-bottom:18px">Your word quiz now lives in the Learn page so saved words and article vocabulary stay in one place.</div>
+      <a href="korehan-learn.html" class="quiz-next" style="display:inline-block;text-decoration:none">Open Learn Page →</a>
     </div>
-    <div id="quiz-area">
-      <div class="empty-state"><div class="es-icon">🔖</div><p>No saved words yet.<br><a href="korehan-learn.html" style="color:var(--bright);font-weight:700">Save words</a> to start quizzes!</p></div>
-    </div>
+  </div>
   </div>
 
   <!-- Saved Words panel -->

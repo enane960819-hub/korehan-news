@@ -11,7 +11,7 @@
   background: linear-gradient(135deg,#0b1626,#1a3a6b);
   padding: 44px 22px 36px; text-align:center; color:#fff;
 }
-.learn-hero h1 { font-family:'Playfair Display',serif; font-size:38px; font-weight:900; margin:0 0 10px; }
+.learn-hero h1 { font-family:\'Playfair Display\',serif; font-size:38px; font-weight:900; margin:0 0 10px; }
 .learn-hero p { margin:0; font-size:15px; color:rgba(255,255,255,0.68); line-height:1.6; max-width:560px; margin:0 auto; }
 .learn-hero .badge { display:inline-block; margin-bottom:14px; padding:4px 14px; border-radius:999px; background:rgba(122,184,245,0.2); color:#7ab8f5; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; }
 
@@ -29,13 +29,13 @@
   border:1px solid rgba(34,85,164,0.12); border-radius:10px; padding:16px;
   text-align:center;
 }
-.pod-ko  { font-family:'Playfair Display',serif; font-weight:900; font-size:30px; color:var(--accent); }
+.pod-ko  { font-family:\'Playfair Display\',serif; font-weight:900; font-size:30px; color:var(--accent); }
 .pod-rom { font-size:12px; font-style:italic; color:var(--gray); margin-top:4px; }
 .pod-en  { font-size:14px; font-weight:700; color:var(--dark); margin-top:6px; }
 
 /* FLASHCARDS */
 .learn-section-title {
-  font-family:'Playfair Display',serif; font-size:22px; font-weight:900;
+  font-family:\'Playfair Display\',serif; font-size:22px; font-weight:900;
   margin:28px 0 14px; padding-bottom:8px; border-bottom:2px solid var(--border);
 }
 .learn-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
@@ -59,7 +59,7 @@
 .vc-back { display:none; }
 .vocab-card.flipped .vc-front { display:none; }
 .vocab-card.flipped .vc-back  { display:block; }
-.vc-ko  { font-family:'Playfair Display',serif; font-weight:900; font-size:28px; color:var(--accent); }
+.vc-ko  { font-family:\'Playfair Display\',serif; font-weight:900; font-size:28px; color:var(--accent); }
 .vocab-card.flipped .vc-ko { color:#7ab8f5; }
 .vc-rom { font-size:11px; font-style:italic; color:var(--gray); margin-top:3px; }
 .vocab-card.flipped .vc-rom { color:rgba(255,255,255,0.45); }
@@ -120,20 +120,20 @@
 
   <!-- PHRASE OF DAY -->
   <div class="pod-section">
-    <div class="pod-title">🌟 Today's Phrases — Today's Phrases</div>
+    <div class="pod-title">🌟 Today's Phrases</div>
     <div class="pod-grid" id="pod-grid"></div>
   </div>
 
   <!-- FLASHCARDS -->
-  <div class="learn-section-title">📇 Vocabulary Flashcards — 단어 카드</div>
-  <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">Click a card to reveal the meaning the meaning</p>
+  <div class="learn-section-title">📇 Vocabulary Flashcards</div>
+  <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">Click a card to reveal the meaning</p>
 
   <div class="learn-tabs" id="vocab-tabs"></div>
   <div class="vocab-card-grid" id="vocab-grid"></div>
   <div style="text-align:center;margin-top:18px"><button id="vocab-more-btn" onclick="loadMoreCards()" class="quiz-next" style="display:none">Load more</button></div>
 
   <!-- EXAMPLE SENTENCES -->
-  <div class="learn-section-title" style="margin-top:36px">💬 Example Sentences — 예문</div>
+  <div class="learn-section-title" style="margin-top:36px">💬 Example Sentences</div>
   <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
     <button class="tab-btn on" onclick="filterSentences('All',this)">All</button>
     <button class="tab-btn" onclick="filterSentences('Beginner',this)">Beginner</button>
@@ -143,6 +143,11 @@
   </div>
   <div id="sentences-list"></div>
 
+
+  <!-- WORD QUIZ -->
+  <div class="learn-section-title" style="margin-top:40px">📝 Word Quiz</div>
+  <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">Practice with your saved words and connected article vocabulary.</p>
+  <div id="saved-word-quiz"></div>
 
   <!-- LISTENING QUIZ -->
   <div class="learn-section-title" style="margin-top:40px">🎧 Listening Quiz</div>
@@ -224,6 +229,7 @@ async function init() {
   renderSentences(window._allSentences);
 
   initTooltips();
+  initSavedWordQuiz();
 }
 
 
@@ -298,9 +304,9 @@ function showCategory(cat, btn) {
 
   const wordBank = getWordBank ? getWordBank() : [];
   const cacheVocabList = window._cacheVocabList || [];
-  const cacheKeys = new Set(cacheVocabList.map(w=>w.word||''));
-  const cacheWords = cacheVocabList.map(w=>({ ko:w.word||'', rom:w.reading||'', en:w.meaning||'' }));
+  const cacheWords = cacheVocabList.map(w=>({ ko:w.word||'', rom:w.reading||'', en:w.meaning||'' })).filter(w=>w.ko);
   const wbKeys = new Set(wordBank.map(w=>w.ko));
+  const cacheWordSet = new Set(cacheWords.map(w=>w.ko));
 
   // All word bank words (with or without VOCAB entry)
   let wbWords;
@@ -314,10 +320,16 @@ function showCategory(cat, btn) {
 
   // VOCAB dictionary words not already in word bank
   let keys = CATEGORIES[cat] || allVocabKeys;
-  const vocabWords = keys.filter(k=>VOCAB[k] && !wbKeys.has(k))
+  const vocabWords = keys.filter(k=>VOCAB[k] && !wbKeys.has(k) && !cacheWordSet.has(k))
     .map(k=>({ ko:k, rom:VOCAB[k].rom, en:VOCAB[k].en }));
 
-  currentCardList = [...wbWords, ...vocabWords];
+  let mergedCacheWords = cacheWords;
+  if (cat !== 'All' && CATEGORIES[cat]) {
+    mergedCacheWords = cacheWords.filter(function(w){ return CATEGORIES[cat].includes(w.ko); });
+  }
+
+  currentCardList = [...wbWords, ...mergedCacheWords, ...vocabWords]
+    .filter((w, i, arr) => w.ko && arr.findIndex(x => x.ko === w.ko) === i);
   currentCardPage = 0;
   renderCardPage();
 }
@@ -340,7 +352,7 @@ function cardHTML_learn(ko, rom, en){
     +'<div class="vc-en">'+en+'</div>'
     +'</div>'
     +'<button class="vc-save-btn" title="Save" data-ko="'+ko+'" data-rom="'+rom+'" data-en="'+en+'" onclick="toggleSaveWord(this,this.dataset.ko,this.dataset.rom,this.dataset.en)">🔖</button>'
-    +'<button class="tts-btn vc-tts-btn" title="발음 듣기" onclick="event.stopPropagation();ttsSpeak(this.dataset.ko,this)" data-ko="'+ko+'">🔊</button>';
+    +'<button class="tts-btn vc-tts-btn" title="Listen" onclick="event.stopPropagation();ttsSpeak(this.dataset.ko,this)" data-ko="'+ko+'">🔊</button>';
   return d.outerHTML;
 }
 
@@ -354,7 +366,7 @@ async function toggleSaveWord(btn, ko, rom, en){
   } else {
     await dbSaveWord(ko, rom, en);
     btn.classList.add('saved');
-    btn.title = 'Save됨';
+    btn.title = 'Saved';
   }
 }
 
@@ -577,6 +589,84 @@ function lqShowResult() {
 
   // XP 트래킹
   if (typeof dmTrackQuiz === 'function') dmTrackQuiz();
+}
+
+
+
+var _swQuizWords = [];
+var _swQuizIdx = 0;
+var _swQuizScore = 0;
+
+async function initSavedWordQuiz() {
+  var box = document.getElementById('saved-word-quiz');
+  if (!box) return;
+  box.innerHTML = '<div class="sentence-box" style="text-align:center;color:var(--gray)">Loading your vocabulary…</div>';
+  var saved = [];
+  try {
+    if (typeof dbGetSavedWords === 'function') saved = await dbGetSavedWords();
+  } catch(e) {}
+  if (!saved || !saved.length) {
+    saved = lsGet ? lsGet('korehan_saved_words', []) : [];
+  }
+  var extra = (window._cacheVocabList || []).slice(0, 10).map(function(w){ return { ko:w.word||'', rom:w.reading||'', en:w.meaning||'' }; }).filter(function(w){ return w.ko; });
+  _swQuizWords = [].concat(saved || [], extra).filter(function(w, i, arr){ return w && w.ko && arr.findIndex(function(x){ return x.ko === w.ko; }) === i; }).slice(0, 20);
+  _swQuizIdx = 0;
+  _swQuizScore = 0;
+  if (_swQuizWords.length < 4) {
+    box.innerHTML = '<div class="sentence-box" style="text-align:center">'
+      + '<div style="font-size:34px;margin-bottom:10px">🔖</div>'
+      + '<div style="font-weight:800;margin-bottom:6px">Save a few words first</div>'
+      + '<div style="color:var(--gray);font-size:13px">Save words from articles, conversations, or stories to unlock this quiz.</div>'
+      + '</div>';
+    return;
+  }
+  renderSavedWordQuiz();
+}
+
+function renderSavedWordQuiz() {
+  var box = document.getElementById('saved-word-quiz');
+  if (!box) return;
+  if (_swQuizIdx >= _swQuizWords.length || _swQuizIdx >= 5) {
+    box.innerHTML = '<div class="sentence-box" style="text-align:center;padding:32px 20px">'
+      + '<div class="lq-score-ring"><div style="font-size:34px;font-weight:900">' + _swQuizScore + '</div><div style="font-size:12px;opacity:.9">/ ' + Math.min(5, _swQuizWords.length) + '</div></div>'
+      + '<div style="font-size:18px;font-weight:800;margin-bottom:6px">Quiz complete</div>'
+      + '<div style="color:var(--gray);font-size:13px;margin-bottom:16px">Keep saving words to build a stronger personal vocabulary deck.</div>'
+      + '<button class="quiz-next" onclick="initSavedWordQuiz()">Try again</button>'
+      + '</div>';
+    return;
+  }
+  var current = _swQuizWords[_swQuizIdx];
+  var wrongs = _swQuizWords.filter(function(w){ return w.ko !== current.ko && w.en; }).sort(function(){ return Math.random()-.5; }).slice(0, 3).map(function(w){ return w.en; });
+  var choices = [current.en].concat(wrongs).sort(function(){ return Math.random()-.5; });
+  box.innerHTML = '<div class="sentence-box">'
+    + '<div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:14px;font-size:12px;color:var(--gray)"><span>Question ' + (_swQuizIdx + 1) + ' / ' + Math.min(5, _swQuizWords.length) + '</span><span>Score: ' + _swQuizScore + '</span></div>'
+    + '<div style="font-family:\'Playfair Display\',serif;font-size:36px;font-weight:900;color:var(--accent);text-align:center">' + current.ko + '</div>'
+    + '<div style="text-align:center;color:var(--gray);font-style:italic;margin-top:4px">' + (current.rom || '') + '</div>'
+    + '<div style="text-align:center;color:var(--gray);font-size:13px;margin:12px 0 18px">Choose the best English meaning.</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + choices.map(function(choice){ return '<button class="quiz-opt2" data-choice="' + choice.replace(/"/g,'&quot;') + '" onclick="answerSavedWordQuiz(this,this.dataset.choice)">' + choice + '</button>'; }).join('')
+    + '</div>'
+    + '</div>';
+}
+
+function answerSavedWordQuiz(btn, choice) {
+  var current = _swQuizWords[_swQuizIdx];
+  var ok = choice === current.en;
+  document.querySelectorAll('#saved-word-quiz .quiz-opt2').forEach(function(el){
+    el.disabled = true;
+    if (el.textContent === current.en) el.classList.add('correct');
+  });
+  if (!ok) btn.classList.add('wrong');
+  if (ok) _swQuizScore++;
+  var wrap = document.querySelector('#saved-word-quiz .sentence-box');
+  if (wrap) {
+    wrap.insertAdjacentHTML('beforeend', '<div style="margin-top:14px;text-align:center;color:var(--gray);font-size:13px">' + (ok ? 'Nice work.' : 'Correct answer: ' + current.en) + '</div><div style="text-align:center;margin-top:12px"><button class="quiz-next" onclick="nextSavedWordQuiz()">Next →</button></div>');
+  }
+}
+
+function nextSavedWordQuiz() {
+  _swQuizIdx++;
+  renderSavedWordQuiz();
 }
 
 document.addEventListener('DOMContentLoaded', init);

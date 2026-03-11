@@ -224,7 +224,7 @@ function openDetail(idx) {
       +'<span class="dp-vi-ko">'+v.ko+'</span>'
       +'<span class="dp-vi-rom">'+v.rom+'</span>'
       +'<span class="dp-vi-en">'+v.en+'</span>'
-      +'<button class="dp-vi-save" onclick="toggleSave(this)">+ Save</button>'
+      +'<button class="dp-vi-save" onclick="toggleSave(this,this.dataset.ko,this.dataset.rom,this.dataset.en)" data-ko="'+v.ko+'" data-rom="'+v.rom+'" data-en="'+v.en+'">+ Save</button>'
       +'</div>';
   }).join('');
 
@@ -283,7 +283,7 @@ function renderStudyNotes(c) {
       +'<span class="dp-vi-ko">'+v.ko+'</span>'
       +'<span class="dp-vi-rom">'+v.rom+'</span>'
       +'<span class="dp-vi-en">'+v.en+'</span>'
-      +'<button class="dp-vi-save" onclick="toggleSave(this)">+ Save</button>'
+      +'<button class="dp-vi-save" onclick="toggleSave(this,this.dataset.ko,this.dataset.rom,this.dataset.en)" data-ko="'+v.ko+'" data-rom="'+v.rom+'" data-en="'+v.en+'">+ Save</button>'
       +'</div>';
   }).join('');
   var grammar = (c.grammar||[]).map(function(g) {
@@ -300,11 +300,23 @@ function renderStudyNotes(c) {
 
 function closeDetail() {
   document.getElementById('detail-overlay').classList.add('hidden');
+  var qo = document.getElementById('quiz-overlay'); if (qo) qo.style.display = 'none';
+  var dp = document.getElementById('detail-panel'); if (dp) dp.style.filter = '';
   document.body.style.overflow = '';
 }
-function toggleSave(btn) {
-  btn.classList.toggle('saved');
-  btn.textContent = btn.classList.contains('saved') ? '✓ Saved' : '+ Save';
+async function toggleSave(btn, ko, rom, en) {
+  if (!ko) return;
+  if (!supaUser) { openAuthModal('signin'); return; }
+  var saved = btn.classList.contains('saved');
+  if (saved) {
+    if (typeof dbRemoveWord === 'function') await dbRemoveWord(ko);
+    btn.classList.remove('saved');
+    btn.textContent = '+ Save';
+  } else {
+    if (typeof dbSaveWord === 'function') await dbSaveWord(ko, rom, en);
+    btn.classList.add('saved');
+    btn.textContent = '✓ Saved';
+  }
 }
 
 var activeCat = 'all', activeLvl = 'all';
@@ -391,7 +403,7 @@ function startBlankQuiz() {
   if (!msgs.length) { alert('대화 내용이 없어요'); return; }
 
   var vocab = (c.vocab || []).filter(function(v){ return v.ko && v.ko.length > 1; });
-  if (!vocab.length) { alert('단어 데이터가 없어요'); return; }
+  if (!vocab.length) { alert('No vocabulary data found.'); return; }
 
   var questions = msgs.slice(0, 6).map(function(msg) {
     var text = msg.txt || msg.text || '';
@@ -415,7 +427,7 @@ function startOrderQuiz() {
   var c = window._currentConv;
   if (!c) return;
   var msgs = (c.msgs || []).slice(0, 6);
-  if (msgs.length < 3) { alert('대화가 너무 짧아요'); return; }
+  if (msgs.length < 3) { alert('This conversation is too short for a sequence quiz.'); return; }
 
   var questions = [];
   // 3개씩 슬라이딩 윈도우로 순서 맞추기
@@ -447,10 +459,12 @@ function showQuizModal(mode, questions, title) {
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = 'quiz-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.62);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;';
     document.body.appendChild(overlay);
   }
   overlay.style.display = 'flex';
+  var dp = document.getElementById('detail-panel');
+  if (dp) dp.style.filter = 'blur(10px)';
   renderQuizQuestion();
 }
 
@@ -462,7 +476,7 @@ function renderQuizQuestion() {
   var inner = '<div style="background:#fff;border-radius:24px;max-width:520px;width:100%;box-shadow:0 32px 80px rgba(15,23,42,.25);overflow:hidden;">'
     + '<div style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);padding:18px 22px;display:flex;align-items:center;justify-content:space-between;">'
     + '<div style="color:#fff;">'
-    + '<div style="font-size:11px;font-weight:700;opacity:.8;letter-spacing:.08em;text-transform:uppercase;">' + (_quizMode==='blank'?'빈칸 채우기':'순서 맞추기') + '</div>'
+    + '<div style="font-size:11px;font-weight:700;opacity:.8;letter-spacing:.08em;text-transform:uppercase;">' + (_quizMode==='blank'?'Fill in the blank':'Put in order') + '</div>'
     + '<div style="font-size:15px;font-weight:700;margin-top:2px">' + (_quizCurrent+1) + ' / ' + _quizTotal + '</div>'
     + '</div>'
     + '<button onclick="closeQuiz()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:22px;cursor:pointer;line-height:1;">✕</button>'
@@ -490,7 +504,7 @@ function renderBlankQ(q) {
   return '<div style="padding:24px 22px;">'
     + (q.who ? '<div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px;">💬 ' + q.who + '</div>' : '')
     + '<div style="font-size:16px;line-height:1.8;background:#f8fafc;border-radius:12px;padding:14px 16px;margin-bottom:18px;font-family:\'Noto Sans KR\',sans-serif;">' + displayed + '</div>'
-    + '<div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">( ' + q.en + ' )  ← 힌트</div>'
+    + '<div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">Hint: ' + q.en + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
     + choices.map(function(ch){
         return '<button onclick="checkBlank(\''+ch.replace(/'/g,"\\'")+'\')" style="padding:12px;border-radius:12px;border:2px solid #e2e8f0;background:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif;transition:all .12s;" onmouseover="this.style.borderColor=\'#3b82f6\'" onmouseout="this.style.borderColor=\'#e2e8f0\'">'
@@ -502,7 +516,7 @@ function renderBlankQ(q) {
 function renderOrderQ(q) {
   var shuffled = q.msgs.slice().sort(function(){ return Math.random()-.5; });
   var html = '<div style="padding:24px 22px;">'
-    + '<div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:14px;">대화 순서를 맞춰보세요 👆</div>'
+    + '<div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:14px;">Put the conversation in the correct order 👆</div>'
     + '<div id="order-list" style="display:flex;flex-direction:column;gap:8px;">';
 
   shuffled.forEach(function(msg, i) {
@@ -516,7 +530,7 @@ function renderOrderQ(q) {
   });
 
   html += '</div>'
-    + '<button onclick="checkOrder()" style="width:100%;margin-top:16px;padding:13px;border-radius:14px;background:#2563eb;color:#fff;border:none;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">확인 →</button>'
+    + '<button onclick="checkOrder()" style="width:100%;margin-top:16px;padding:13px;border-radius:14px;background:#2563eb;color:#fff;border:none;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">Check answer →</button>'
     + '</div>';
 
   return html;
@@ -631,6 +645,7 @@ function retryQuiz() {
 function closeQuiz() {
   var overlay = document.getElementById('quiz-overlay');
   if (overlay) overlay.style.display = 'none';
+  var dp = document.getElementById('detail-panel'); if (dp) dp.style.filter = '';
 }
 
 

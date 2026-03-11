@@ -89,6 +89,69 @@ async function enrichFromCache(contentType, item) {
   return item;
 }
 
+
+async function getArticleCacheVocab() {
+  var out = [];
+  var seen = new Set();
+  function pushWord(word) {
+    if (!word) return;
+    var ko = word.word || word.ko || '';
+    if (!ko || seen.has(ko)) return;
+    seen.add(ko);
+    out.push({
+      word: ko,
+      reading: word.reading || word.rom || '',
+      meaning: word.meaning || word.en || '',
+      source: word.source || word.src || 'article'
+    });
+  }
+  try {
+    var arts = getCachedArticles ? getCachedArticles() : [];
+    for (var i = 0; i < arts.length; i++) {
+      var art = arts[i];
+      var cached = await getFromCache('article', art.id, 'ai_analysis');
+      (cached && cached.vocab || []).forEach(function(v){ pushWord(v); });
+      ((art.data && art.data.vocab) || []).forEach(function(v){ pushWord(v); });
+    }
+    var sb = getSupa();
+    if (sb) {
+      var pair = await Promise.all([
+        sb.from('conversations_data').select('data').limit(100),
+        sb.from('stories_data').select('data').limit(100)
+      ]);
+      (pair[0].data || []).forEach(function(row) {
+        ((row.data || {}).vocab || []).forEach(function(v){ pushWord(Object.assign({ source: 'conv' }, v)); });
+      });
+      (pair[1].data || []).forEach(function(row) {
+        ((row.data || {}).vocab || []).forEach(function(v){ pushWord(Object.assign({ source: 'story' }, v)); });
+      });
+    }
+  } catch(e) {}
+  return out;
+}
+
+async function getArticleCacheSentences() {
+  var out = [];
+  try {
+    var arts = (getCachedArticles ? getCachedArticles() : []).filter(function(a){ return a && a.status === 'published'; }).slice(0, 30);
+    for (var i = 0; i < arts.length; i++) {
+      var art = arts[i];
+      var body = String(art.body || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (!body) continue;
+      var parts = body.split(/[\n]+|(?<=[.!?])\s+/).filter(function(s){ return s && s.trim().length > 12; }).slice(0, 2);
+      parts.forEach(function(sentence, idx) {
+        out.push({
+          id: 'art-' + art.id + '-' + idx,
+          level: art.level || 'Intermediate',
+          ko: sentence.trim(),
+          en: art.title || art.section || 'From KoreHan News'
+        });
+      });
+    }
+  } catch(e) {}
+  return out;
+}
+
 var _sessionWarningShown = false;
 async function refreshSessionSafely() {
   var sb = getSupa();
@@ -602,17 +665,63 @@ function toast(msg, isErr) {
 
 // ── 저장 단어 ─────────────────────────────────────────────────
 var K_SAVED = 'korehan_saved_words';
-function dbSaveWord(ko, rom, en) {
+function normalizeSavedWord(row) {
+  if (!row) return null;
+  return {
+    ko: row.ko || row.word_ko || row.word || '',
+    rom: row.rom || row.word_rom || row.reading || '',
+    en: row.en || row.word_en || row.meaning || ''
+  };
+}
+async function dbGetSavedWords() {
+  var localSaved = lsGet(K_SAVED, []);
+  if (!supaUser) return localSaved;
+  var sb = getSupa();
+  if (!sb) return localSaved;
+  try {
+    var res = await sb.from('saved_words').select('*').eq('user_id', supaUser.id).order('created_at', { ascending: false });
+    if (res.data && res.data.length) {
+      var normalized = res.data.map(normalizeSavedWord).filter(function(w){ return w && w.ko; });
+      lsSet(K_SAVED, normalized);
+      return normalized;
+    }
+  } catch(e) {}
+  return localSaved;
+}
+async function dbSaveWord(ko, rom, en) {
   var saved = lsGet(K_SAVED, []);
   if (!saved.find(function(w){ return w.ko === ko; })) {
     saved.push({ko:ko,rom:rom,en:en});
     lsSet(K_SAVED, saved);
-    trackActivityOnWordSave();
+    if (typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
+  }
+  if (!supaUser) return { ok: true, source: 'local' };
+  var sb = getSupa();
+  if (!sb) return { ok: true, source: 'local' };
+  try {
+    await sb.from('saved_words').upsert({
+      user_id: supaUser.id,
+      word_ko: ko,
+      word_rom: rom || '',
+      word_en: en || ''
+    }, { onConflict: 'user_id,word_ko' });
+    return { ok: true, source: 'supabase' };
+  } catch(e) {
+    return { ok: false, source: 'local', error: e };
   }
 }
-function dbRemoveWord(ko) {
+async function dbRemoveWord(ko) {
   var saved = lsGet(K_SAVED, []).filter(function(w){ return w.ko !== ko; });
   lsSet(K_SAVED, saved);
+  if (!supaUser) return { ok: true, source: 'local' };
+  var sb = getSupa();
+  if (!sb) return { ok: true, source: 'local' };
+  try {
+    await sb.from('saved_words').delete().eq('user_id', supaUser.id).or('word_ko.eq.' + ko + ',ko.eq.' + ko);
+    return { ok: true, source: 'supabase' };
+  } catch(e) {
+    return { ok: false, source: 'local', error: e };
+  }
 }
 
 function articleUrl(id) {
@@ -992,19 +1101,19 @@ function renderHomePage() {
     var heroIds = new Set(featured.map(function(f){ return f.id; }));
     return !heroIds.has(a.id);
   });
+  window._heroStaticSide = rest.slice(0, 4);
 
   // HERO
   var heroEl = document.getElementById('dyn-hero');
   if (heroEl && featured.length) {
-    heroEl.style.cssText = 'display:grid;grid-template-columns:1fr 340px;gap:0;align-items:stretch;border-radius:14px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.15);';
+    heroEl.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:0;align-items:stretch;border-radius:18px;overflow:hidden;box-shadow:0 14px 50px rgba(13,27,46,.18);background:#fff;';
     renderHeroSlide(heroEl);
-    // 2.5초마다 자동 전환
     if (_heroTimer) clearInterval(_heroTimer);
     if (_heroSlides.length > 1) {
       _heroTimer = setInterval(function(){
         _heroIdx = (_heroIdx + 1) % _heroSlides.length;
         renderHeroSlide(heroEl);
-      }, 2500);
+      }, 4200);
     }
   }
 
@@ -1057,46 +1166,46 @@ function renderHomePage() {
 function renderHeroSlide(heroEl) {
   if (!heroEl || !_heroSlides.length) return;
   var featured = _heroSlides[_heroIdx];
-  var sideItems = _heroSlides.filter(function(a, i){ return i !== _heroIdx; }).slice(0, 5);
+  var sideItems = (window._heroStaticSide && window._heroStaticSide.length ? window._heroStaticSide : _heroSlides.filter(function(a, i){ return i !== _heroIdx; })).slice(0, 4);
 
   var featImg = featured.image || ('https://picsum.photos/seed/' + featured.id + '/900/500');
-  var featBody = (featured.body || '').replace(/<[^>]*>/g, '').slice(0, 130);
-
-  // 슬라이드 인디케이터
+  var featBody = (featured.body || '').replace(/<[^>]*>/g, '').slice(0, 150);
   var dots = _heroSlides.length > 1
-    ? '<div style="display:flex;gap:5px;margin-top:10px">'
+    ? '<div style="display:flex;gap:7px;margin-top:14px">'
       + _heroSlides.map(function(_, i){
-          return '<div onclick="heroGoTo(' + i + ')" style="width:' + (i===_heroIdx?'20':'6') + 'px;height:6px;border-radius:999px;background:' + (i===_heroIdx?'#fff':'rgba(255,255,255,.4)') + ';cursor:pointer;transition:all .3s"></div>';
+          return '<button aria-label="Go to hero slide ' + (i + 1) + '" onclick="heroGoTo(' + i + ')" style="width:' + (i===_heroIdx?'26':'8') + 'px;height:8px;border-radius:999px;border:none;background:' + (i===_heroIdx?'#fff':'rgba(255,255,255,.35)') + ';cursor:pointer;transition:all .28s"></button>';
         }).join('')
       + '</div>'
     : '';
 
   heroEl.innerHTML =
-    // 메인 히어로
-    '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;display:block;position:relative;overflow:hidden;min-height:440px;">'
-    + '<img src="' + featImg + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;transition:opacity .5s;">'
-    + '<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(5,15,35,.95) 0%,rgba(5,15,35,.4) 55%,transparent 100%)"></div>'
-    + '<div style="position:absolute;bottom:0;left:0;right:0;padding:28px 24px;">'
-    + '<span class="category-tag" style="margin-bottom:10px;display:inline-block">' + featured.section + '</span>'
-    + '<h1 class="vocab-zone" style="font-family:\'Playfair Display\',serif;font-size:clamp(18px,2.2vw,26px);font-weight:900;color:#fff;line-height:1.3;margin:0 0 8px">' + featured.title + '</h1>'
-    + '<p style="font-size:13px;color:rgba(255,255,255,.7);line-height:1.5;margin:0 0 12px">' + featBody + '</p>'
+    '<div style="position:relative;min-height:460px;overflow:hidden;background:#0b1626;animation:khHeroSlideIn .55s cubic-bezier(.22,1,.36,1);">'
+    + '<style>@keyframes khHeroSlideIn{from{opacity:.55;transform:translateX(34px)}to{opacity:1;transform:translateX(0)}}</style>'
+    + '<a href="' + articleUrl(featured.id) + '" style="display:block;position:absolute;inset:0;color:inherit;text-decoration:none">'
+    + '<img src="' + featImg + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">'
+    + '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,15,35,.88) 0%,rgba(5,15,35,.55) 38%,rgba(5,15,35,.16) 100%),linear-gradient(to top,rgba(5,15,35,.92) 0%,rgba(5,15,35,.1) 58%,transparent 100%)"></div>'
+    + '<div style="position:absolute;left:0;right:0;bottom:0;padding:34px 30px 30px;max-width:760px">'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span class="category-tag" style="display:inline-block">' + featured.section + '</span><span style="font-size:12px;color:rgba(255,255,255,.65)">' + relTime(featured.date) + '</span></div>'
+    + '<h1 class="vocab-zone" style="font-family:\'Playfair Display\',serif;font-size:clamp(26px,3vw,42px);font-weight:900;color:#fff;line-height:1.18;margin:0 0 12px">' + featured.title + '</h1>'
+    + '<p style="font-size:14px;color:rgba(255,255,255,.8);line-height:1.7;margin:0;max-width:62ch">' + featBody + '</p>'
     + dots
-    + '</div></a>'
-    // 사이드 패널
-    + '<div style="background:#fff;display:flex;flex-direction:column;border-left:1px solid #e8eef7;">'
-    + '<div style="padding:14px 16px 8px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;border-bottom:1px solid #f1f5f9">Latest Stories</div>'
-    + sideItems.map(function(a, i) {
+    + '</div></a></div>'
+    + '<aside style="background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);display:flex;flex-direction:column;border-left:1px solid #e7eef8;">'
+    + '<div style="padding:18px 18px 12px;border-bottom:1px solid #edf2f7">'
+    + '<div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8">More to explore</div>'
+    + '<div style="font-size:18px;font-weight:900;color:#0f172a;margin-top:4px">Latest picks</div>'
+    + '</div>'
+    + sideItems.map(function(a) {
         var img = a.image || ('https://picsum.photos/seed/' + a.id + '/400/200');
-        return '<a href="' + articleUrl(a.id) + '" style="text-decoration:none;color:inherit">'
-          + '<div style="display:flex;gap:0;align-items:stretch;border-bottom:1px solid #f1f5f9;transition:background .15s" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
-          + '<img src="' + img + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/200/120\'" style="width:80px;height:72px;object-fit:cover;flex-shrink:0;">'
-          + '<div style="padding:10px 12px;flex:1;min-width:0;">'
-          + '<div style="font-size:9px;font-weight:700;color:#2255a4;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">' + a.section + '</div>'
-          + '<div class="vocab-zone" style="font-size:12px;font-weight:700;color:#0f172a;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + a.title + '</div>'
-          + '<div style="font-size:10px;color:#94a3b8;margin-top:4px">' + relTime(a.date) + '</div>'
-          + '</div></div></a>';
+        return '<a href="' + articleUrl(a.id) + '" style="display:flex;gap:12px;padding:14px 16px;text-decoration:none;color:inherit;border-bottom:1px solid #edf2f7;transition:background .15s" onmouseover="this.style.background=\'#f2f7ff\'" onmouseout="this.style.background=\'\'">'
+          + '<img src="' + img + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/200/120\'" style="width:98px;height:78px;object-fit:cover;border-radius:14px;flex-shrink:0;box-shadow:0 6px 18px rgba(15,23,42,.08)">'
+          + '<div style="min-width:0;flex:1">'
+          + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:800;color:#2255a4;letter-spacing:.06em;text-transform:uppercase">' + a.section + '</span><span style="font-size:10px;color:#94a3b8">' + relTime(a.date) + '</span></div>'
+          + '<div class="vocab-zone" style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + a.title + '</div>'
+          + '</div></a>';
       }).join('')
-    + '</div>';
+    + '<div style="padding:16px"><a href="korehan-all.html" style="display:block;text-align:center;padding:11px 14px;border-radius:999px;background:#0f172a;color:#fff;font-size:13px;font-weight:800;text-decoration:none">Browse all news →</a></div>'
+    + '</aside>';
 }
 
 function heroGoTo(idx) {
@@ -1110,7 +1219,7 @@ function heroGoTo(idx) {
       _heroIdx = (_heroIdx + 1) % _heroSlides.length;
       var el = document.getElementById('dyn-hero');
       if (el) renderHeroSlide(el);
-    }, 2500);
+    }, 4200);
   }
 }
 
@@ -3605,8 +3714,8 @@ function khInjectSidebar() {
     '.kh-sidebar.on{transform:translateX(0);}',
     '.kh-sb-top{padding:16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}',
     '.kh-sb-brand{display:flex;align-items:baseline;gap:4px;}',
-    ".kh-sb-brand .sb-kore{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:#7ab8f5;}",
-    ".kh-sb-brand .sb-han{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:#fff;}",
+    ".kh-sb-brand .sb-kore{font-family:\'Playfair Display\',serif;font-size:20px;font-weight:900;color:#7ab8f5;}",
+    ".kh-sb-brand .sb-han{font-family:\'Playfair Display\',serif;font-size:20px;font-weight:900;color:#fff;}",
     ".kh-sb-brand .sb-news{font-size:13px;font-weight:600;color:rgba(255,255,255,.5);margin-left:3px;}",
     '.kh-sb-x{background:none;border:none;color:rgba(255,255,255,.5);font-size:22px;cursor:pointer;line-height:1;padding:0;}',
     '.kh-sb-sec{padding:14px 12px 6px;}',
