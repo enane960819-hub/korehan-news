@@ -496,6 +496,12 @@ function updateAuthUI() {
     var mypageBtn = document.getElementById('topbar-mypage-btn');
     if (mypageBtn) mypageBtn.style.display = 'none';
   }
+  // Join Free 버튼: 비로그인 상태에서만 표시
+  var joinBtn = document.getElementById('topbar-join-btn');
+  if (joinBtn) joinBtn.style.display = supaUser ? 'none' : '';
+  // My Page 버튼: 로그인 상태에서만 표시
+  var mp2 = document.getElementById('topbar-mypage-btn');
+  if (mp2) mp2.style.display = supaUser ? '' : 'none';
 }
 
 const DB_KEY          = 'korehan_db';

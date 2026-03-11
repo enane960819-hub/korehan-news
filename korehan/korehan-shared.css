@@ -4,8 +4,12 @@
 
 :root {
   --accent:  #1a3a6b;
+  --navy:    #0b1626;
+  --blue:    #1a3a6b;
   --bright:  #2255a4;
+  --sky:     #7ab8f5;
   --dark:    #0d1b2e;
+  --text:    #0d1b2e;
   --gray:    #445566;
   --border:  #d4dce8;
   --bg:      #f0f2f7;
@@ -791,9 +795,7 @@ body.dark-mode .lv-q-wrap,
 body.dark-mode .mbox          { background: #141e2e; border-color: #2a3547; }
 body.dark-mode .kh-sidebar    { background: #141e2e; }
 body.dark-mode .kh-sidebar-inner { background: #141e2e; }
-body.dark-mode .kh-nav a      { color: #c8d0e0; }
-body.dark-mode .kh-nav a:hover,
-body.dark-mode .kh-nav a.active { color: #fff; }
+/* dark mode kh-nav removed */
 body.dark-mode input, body.dark-mode textarea, body.dark-mode select {
   background: #1a2535; color: #e8eaf0; border-color: #2a3547;
 }
@@ -1012,38 +1014,18 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 .kh-trans-btn:hover { background: #2255a4; color: #fff; }
 .kh-trans-btn.active { background: #2255a4; color: #fff; }
 
-/* ── 모바일 반응형 헤더 ────────────────────────────────────── */
+/* ── 모바일 반응형 ──────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .kh-top-row { flex-wrap: wrap; gap: 8px; }
-  .kh-top-right { gap: 8px; }
-  .kh-top-right .kh-clock { display: none; }
   .auth-btn-ui { font-size: 12px; padding: 5px 10px; }
-
-  .kh-nav {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    gap: 0;
-    padding: 6px 0;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .kh-nav::-webkit-scrollbar { display: none; }
-  .kh-nav a { font-size: 13px; padding: 5px 10px; white-space: nowrap; }
-
-  .kh-search-wrap { display: none; } /* 모바일에서 헤더 검색창 숨김 */
-
   .search-bar-wrap { flex-wrap: wrap; }
   .search-bar-input { font-size: 14px; }
-
   .kh-article-wrap { padding: 0 0 24px; }
   .art-actions { flex-wrap: wrap; gap: 8px; }
   .kh-trans-btn { font-size: 12px; padding: 6px 12px; }
   .kh-bm-btn   { font-size: 12px; padding: 6px 12px; }
   .kh-share-btn { font-size: 12px; padding: 6px 12px; }
-
   .art-tabs { gap: 4px; }
   .art-tab  { font-size: 13px; padding: 7px 14px; }
-
   .mypage-body { padding: 16px 14px 40px; }
   .stats-grid  { grid-template-columns: repeat(2, 1fr); }
 }
@@ -1195,24 +1177,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   }
 }
 
-/* ── MOBILE HAMBURGER NAV ────────────────────────────────── */
-.kh-ham {
-  display: none;
-  background: none;
-  border: none;
-  font-size: 22px;
-  cursor: pointer;
-  color: var(--dark);
-  padding: 4px 8px;
-  flex-shrink: 0;
-  line-height: 1;
-  align-items: center;
-}
-@media (max-width: 900px) {
-  .kh-ham { display: flex !important; }
-  .kh-nav { display: none !important; }
-  .kh-top-row { gap: 8px; }
-}
+/* old mobile nav css removed */
 
 /* ── SECTION HEADER + PILLS ────────────────────────────── */
 .sec-hd { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid var(--dark); }
