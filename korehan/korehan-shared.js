@@ -945,14 +945,17 @@ function renderHomePage() {
   var heroEl = document.getElementById('dyn-hero');
   if (heroEl && featured) {
     var heroSide = rest.slice(0, 4);
+    var featImg = featured.image || ('https://picsum.photos/seed/' + featured.id + '/900/500');
+    var featBody = (featured.body || '').replace(/<[^>]*>/g, '').slice(0, 120);
+    heroEl.style.cssText = 'display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start;';
     heroEl.innerHTML =
-      '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;">'
+      '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;display:block;">'
       + '<div class="hero-main">'
-      + '<img src="' + (featured.image || 'https://picsum.photos/seed/' + featured.id + '/900/500') + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'">'
+      + '<img src="' + featImg + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'">'
       + '<div class="overlay">'
       + '<span class="category-tag">' + featured.section + '</span>'
       + '<h1 class="vocab-zone">' + featured.title + '</h1>'
-      + '<p class="sub vocab-zone">' + (featured.body || '') + '</p>'
+      + '<p class="sub vocab-zone">' + featBody + '</p>'
       + '</div></div></a>'
       + '<div class="hero-side">' + heroSide.map(heroSideItemHTML).join('') + '</div>';
   }
