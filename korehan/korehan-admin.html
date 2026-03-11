@@ -203,14 +203,8 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" onclick="goStats()"><span class="ico">📊</span>방문자 통계</button>
 
     <div class="section-sep"></div>
-    <div class="sb-lbl">🎓 수업 관리</div>
-    <button class="sb-btn" onclick="goClassSlots()"><span class="ico">📅</span>수업 가능 날짜 설정</button>
-    <button class="sb-btn" onclick="goClassBookings()"><span class="ico">📋</span>예약 현황</button>
-    <button class="sb-btn" onclick="goClassCredits()"><span class="ico">🎟️</span>수업권 관리</button>
-    <button class="sb-btn" onclick="goClassCurriculum()"><span class="ico">📈</span>커리큘럼 진행도</button>
-
-    <div class="section-sep"></div>
-    <div class="sb-lbl">데이터</div>
+    
+<div class="sb-lbl">데이터</div>
     <button class="sb-btn" onclick="doExport()"><span class="ico">💾</span>내보내기 (JSON)</button>
     <button class="sb-btn" onclick="document.getElementById('imp').click()"><span class="ico">📂</span>가져오기 (JSON)</button>
     <button class="sb-btn" onclick="resetAll()" style="color:#cc2200"><span class="ico">🔄</span>전체 초기화</button>
@@ -2310,20 +2304,24 @@ async function loadUsers(){
     const authUsers = authData.users || [];
 
     // 활동 데이터 병렬 조회
-    const [words, articles, quizzes, streaks] = await Promise.all([
+    const [words, articles, quizzes, streaks, writings, comments] = await Promise.all([
       supaAdminGet('/rest/v1/saved_words?select=user_id,created_at&order=created_at.desc'),
       supaAdminGet('/rest/v1/read_articles?select=user_id,read_at&order=read_at.desc'),
       supaAdminGet('/rest/v1/quiz_results?select=user_id,played_at&order=played_at.desc'),
       supaAdminGet('/rest/v1/study_streaks?select=user_id,streak&order=streak.desc'),
+      supaAdminGet('/rest/v1/writing_submissions?select=user_id,created_at&order=created_at.desc').catch(function(){return [];}),
+      supaAdminGet('/rest/v1/comments?select=user_id,created_at&order=created_at.desc').catch(function(){return [];}),
     ]);
 
     // 활동 집계
     const act = {};
-    function getAct(uid){ if(!act[uid]) act[uid]={words:0,articles:0,quizzes:0,streak:0,lastSeen:null}; return act[uid]; }
+    function getAct(uid){ if(!act[uid]) act[uid]={words:0,articles:0,quizzes:0,streak:0,writings:0,comments:0,lastSeen:null}; return act[uid]; }
     (words||[]).forEach(function(r){ var u=getAct(r.user_id); u.words++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
     (articles||[]).forEach(function(r){ var u=getAct(r.user_id); u.articles++; if(!u.lastSeen||r.read_at>u.lastSeen) u.lastSeen=r.read_at; });
     (quizzes||[]).forEach(function(r){ getAct(r.user_id).quizzes++; });
     (streaks||[]).forEach(function(r){ getAct(r.user_id).streak=r.streak||0; });
+    (writings||[]).forEach(function(r){ var u=getAct(r.user_id); u.writings++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
+    (comments||[]).forEach(function(r){ var u=getAct(r.user_id); u.comments++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
 
     if (!authUsers.length) {
       el.innerHTML = '<div class="infobox">가입한 회원이 없습니다.</div>';
@@ -2343,6 +2341,8 @@ async function loadUsers(){
       +'<th style="padding:10px 12px">저장단어</th>'
       +'<th style="padding:10px 12px">읽은기사</th>'
       +'<th style="padding:10px 12px">퀴즈</th>'
+      +'<th style="padding:10px 12px">✍️쓰기</th>'
+      +'<th style="padding:10px 12px">💬댓글</th>'
       +'<th style="padding:10px 12px">🔥연속</th>'
       +'</tr></thead><tbody>'
       + authUsers.map(function(u){
@@ -2358,6 +2358,8 @@ async function loadUsers(){
             +'<td style="padding:10px 12px;font-weight:700;color:var(--accent)">'+a.words+'</td>'
             +'<td style="padding:10px 12px">'+a.articles+'</td>'
             +'<td style="padding:10px 12px">'+a.quizzes+'</td>'
+            +'<td style="padding:10px 12px;font-weight:'+(a.writings?'700':'400')+';color:'+(a.writings?'#7c3aed':'#94a3b8')+'">'+a.writings+'</td>'
+            +'<td style="padding:10px 12px">'+a.comments+'</td>'
             +'<td style="padding:10px 12px">'+(a.streak||0)+'</td>'
             +'</tr>';
         }).join('')
@@ -2380,469 +2382,153 @@ var ADMIN_CUR_LESSONS = {
 };
 
 // ── 수업 가능 날짜 설정 ──────────────────────────────────────
-async function goClassSlots() {
-  activeSb('');
+
+// ════════════════════════════════════════════════════════════
+// 10번: AI 자동생성 — Conv / Story 발행 시 vocab/grammar 자동 생성
+// article_cache 테이블에 캐시 (content_id, content_type, key, value)
+// ════════════════════════════════════════════════════════════
+
+const SUPA_URL_ADMIN2 = 'https://samghztrdvtxmrmawneu.supabase.co';
+const SUPA_KEY_ADMIN2 = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjQzNDc1MiwiZXhwIjoyMDg4MDEwNzUyfQ.npCvblrbeRiqwW76_23kYznrRuFHIKCD24JN3da--3c';
+
+async function callAdminClaude(prompt) {
+  // Admin은 직접 Anthropic API 호출 (서비스롤 환경)
+  // 실제로는 Supabase Edge Function 통해서 호출
   const sb = getSb();
-  let slots = [];
-  if (sb) {
-    const { data } = await sb.from('available_slots')
-      .select('*').order('slot_date').order('slot_time');
-    slots = data || [];
-  }
-
-  const slotMap = {};
-  slots.forEach(s => { if (!slotMap[s.slot_date]) slotMap[s.slot_date] = []; slotMap[s.slot_date].push(s); });
-
-  document.getElementById('main').innerHTML = `
-  <div style="padding:28px 32px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
-      <h2 style="font-size:20px;font-weight:900">📅 수업 가능 날짜 설정</h2>
-      <button class="btn btn-g" onclick="openSlotModal()">+ 슬롯 추가</button>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
-      ${buildAdminCal(new Date(), slotMap)}
-    </div>
-
-    <div style="background:#fff;border:1px solid var(--br);border-radius:12px;padding:22px">
-      <div style="font-size:14px;font-weight:800;margin-bottom:14px;color:#0b1626">전체 슬롯 목록</div>
-      ${buildSlotList(slots)}
-    </div>
-  </div>`;
-}
-
-function buildAdminCal(base, slotMap) {
-  const months = [new Date(base.getFullYear(), base.getMonth(), 1),
-                  new Date(base.getFullYear(), base.getMonth()+1, 1)];
-  return months.map(m => {
-    const yr = m.getFullYear(), mo = m.getMonth();
-    const dim = new Date(yr, mo+1, 0).getDate();
-    const fd  = m.getDay();
-    const name = m.toLocaleString('ko-KR',{year:'numeric',month:'long'});
-    let h = `<div style="background:#fff;border:1px solid var(--br);border-radius:12px;padding:20px">
-      <div style="font-size:13px;font-weight:800;margin-bottom:12px">${name}</div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center">
-        ${['일','월','화','수','목','금','토'].map(d=>`<div style="font-size:11px;color:#94a3b8;font-weight:700;padding:3px">${d}</div>`).join('')}
-        ${'<div></div>'.repeat(fd)}`;
-    for (let d=1; d<=dim; d++) {
-      const ds = `${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const ds2 = slotMap[ds] || [];
-      const isPast = ds < new Date().toISOString().split('T')[0];
-      const bg = ds2.length ? '#2255a4' : (isPast ? '#f8faff' : '#fff');
-      const col = ds2.length ? '#fff' : (isPast ? '#d0d8e8' : '#0b1626');
-      const bor = ds2.length ? 'none' : '1px solid #e2e8f0';
-      h += `<div style="border-radius:6px;background:${bg};border:${bor};position:relative;overflow:hidden">
-        <button onclick="openSlotModal('${ds}')" style="width:100%;padding:5px 2px;border:none;background:transparent;color:${col};font-size:12px;font-weight:700;cursor:pointer" title="${ds2.length}개 슬롯">
-          ${d}${ds2.length ? `<span style="display:block;font-size:8px;opacity:.8">${ds2.length}개</span>` : ''}
-        </button></div>`;
-    }
-    h += '</div></div>';
-    return h;
-  }).join('');
-}
-
-function buildSlotList(slots) {
-  if (!slots.length) return '<p style="color:#94a3b8;font-size:14px">등록된 슬롯이 없습니다.</p>';
-  const byDate = {};
-  slots.forEach(s => { if (!byDate[s.slot_date]) byDate[s.slot_date] = []; byDate[s.slot_date].push(s); });
-  return Object.entries(byDate).slice(0,14).map(([date, ds]) => {
-    const label = new Date(date+'T12:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
-    return `<div style="margin-bottom:14px">
-      <div style="font-size:12px;font-weight:800;color:#0b1626;margin-bottom:6px">${label}</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">
-        ${ds.map(s => {
-          const tmap = {both:'그룹+개인', solo:'개인', group:'그룹'};
-          return `<div style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;background:${s.is_open?'#f0f6ff':'#f8faff'};border:1.5px solid ${s.is_open?'#2255a4':'#e2e8f0'}">
-            <span style="font-size:13px;font-weight:700;color:#0b1626">${s.slot_time.slice(0,5)}</span>
-            <span style="font-size:11px;color:#64748b">${tmap[s.plan_type]||s.plan_type}</span>
-            <span style="font-size:11px;color:#94a3b8">${s.booked_count}/${s.max_students}</span>
-            <button onclick="toggleAdminSlot(${s.id},${s.is_open})" style="font-size:10px;padding:2px 7px;border:none;border-radius:4px;cursor:pointer;background:${s.is_open?'#fef2f2':'#f0fdf4'};color:${s.is_open?'#cc2200':'#15803d'};font-weight:700">${s.is_open?'닫기':'열기'}</button>
-            <button onclick="deleteAdminSlot(${s.id})" style="font-size:10px;padding:2px 7px;border:none;border-radius:4px;cursor:pointer;background:#fef2f2;color:#cc2200;font-weight:700">삭제</button>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function openSlotModal(dateStr) {
-  const id = 'slot-add-modal';
-  const existing = document.getElementById(id);
-  if (existing) existing.remove();
-  const m = document.createElement('div');
-  m.id = id;
-  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center';
-  m.innerHTML = `
-    <div style="background:#fff;border-radius:16px;padding:32px;width:400px;max-width:95vw">
-      <h3 style="font-size:17px;font-weight:900;margin-bottom:20px">슬롯 추가</h3>
-      <div style="display:flex;flex-direction:column;gap:13px">
-        <label style="font-size:13px;font-weight:700;color:#445566">날짜
-          <input type="date" id="sl-date" value="${dateStr||''}" style="display:block;width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none">
-        </label>
-        <label style="font-size:13px;font-weight:700;color:#445566">시간
-          <input type="time" id="sl-time" style="display:block;width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none">
-        </label>
-        <label style="font-size:13px;font-weight:700;color:#445566">수업 유형
-          <select id="sl-type" style="display:block;width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none">
-            <option value="both">그룹 + 개인 모두 가능</option>
-            <option value="solo">개인 전용</option>
-            <option value="group">그룹 전용</option>
-          </select>
-        </label>
-        <label style="font-size:13px;font-weight:700;color:#445566">최대 그룹 인원
-          <input type="number" id="sl-max" value="4" min="1" max="8" style="display:block;width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none">
-        </label>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:20px">
-        <button onclick="document.getElementById('slot-add-modal').remove()" class="btn btn-gh" style="flex:1">취소</button>
-        <button onclick="saveAdminSlot()" class="btn btn-g" style="flex:1">저장</button>
-      </div>
-    </div>`;
-  document.body.appendChild(m);
-}
-
-async function saveAdminSlot() {
-  const sb = getSb(); if (!sb) return;
-  const date = document.getElementById('sl-date').value;
-  const time = document.getElementById('sl-time').value;
-  const type = document.getElementById('sl-type').value;
-  const max  = parseInt(document.getElementById('sl-max').value) || 4;
-  if (!date || !time) { alert('날짜와 시간을 입력하세요'); return; }
-  const { error } = await sb.from('available_slots').upsert(
-    { slot_date:date, slot_time:time, plan_type:type, max_students:max, is_open:true },
-    { onConflict:'slot_date,slot_time,plan_type' }
-  );
-  if (error) { alert('저장 실패: '+error.message); return; }
-  document.getElementById('slot-add-modal')?.remove();
-  goClassSlots();
-}
-
-async function toggleAdminSlot(id, isOpen) {
-  const sb = getSb(); if (!sb) return;
-  await sb.from('available_slots').update({ is_open:!isOpen }).eq('id',id);
-  goClassSlots();
-}
-
-async function deleteAdminSlot(id) {
-  if (!confirm('슬롯을 삭제할까요?')) return;
-  const sb = getSb(); if (!sb) return;
-  await sb.from('available_slots').delete().eq('id',id);
-  goClassSlots();
-}
-
-// ── 예약 현황 ────────────────────────────────────────────────
-async function goClassBookings() {
-  activeSb('');
-  const sb = getSb();
-  let bookings = [];
-  if (sb) {
-    const { data } = await sb.from('bookings')
-      .select('*, available_slots(slot_date,slot_time,plan_type), profiles(display_name,email)')
-      .order('created_at',{ascending:false});
-    bookings = data || [];
-  }
-  const SC = { pending:'#f59e0b', confirmed:'#16a34a', cancelled:'#94a3b8' };
-  const SK = { pending:'대기중',   confirmed:'✅ 확정', cancelled:'취소됨' };
-  document.getElementById('main').innerHTML = `
-  <div style="padding:28px 32px">
-    <h2 style="font-size:20px;font-weight:900;margin-bottom:20px">📋 예약 현황</h2>
-    ${!bookings.length ? '<p style="color:#94a3b8">예약 내역이 없습니다.</p>' :
-    `<div style="background:#fff;border:1px solid var(--br);border-radius:12px;overflow:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:600px">
-        <thead><tr style="background:#f8faff;border-bottom:2px solid #e2e8f0">
-          <th style="padding:12px 16px;text-align:left;font-weight:800">학생</th>
-          <th style="padding:12px 16px;text-align:left;font-weight:800">수업 일시</th>
-          <th style="padding:12px 16px;text-align:left;font-weight:800">유형</th>
-          <th style="padding:12px 16px;text-align:left;font-weight:800">상태</th>
-          <th style="padding:12px 16px;text-align:left;font-weight:800">메모</th>
-          <th style="padding:12px 16px;text-align:left;font-weight:800">액션</th>
-        </tr></thead>
-        <tbody>
-          ${bookings.map(b => {
-            const u = b.profiles||{}, sl = b.available_slots||{};
-            const ds = sl.slot_date ? new Date(sl.slot_date+'T12:00:00').toLocaleDateString('ko-KR',{month:'short',day:'numeric',weekday:'short'}) : '-';
-            return `<tr style="border-bottom:1px solid #f0f4f8">
-              <td style="padding:11px 16px;font-weight:600">${u.display_name||u.email||b.user_id?.slice(0,8)}</td>
-              <td style="padding:11px 16px;color:#445566">${ds} ${(sl.slot_time||'').slice(0,5)}</td>
-              <td style="padding:11px 16px"><span style="background:${b.plan_type==='solo'?'#eff6ff':'#f0fdf4'};color:${b.plan_type==='solo'?'#2255a4':'#15803d'};padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700">${b.plan_type==='solo'?'개인':'그룹'}</span></td>
-              <td style="padding:11px 16px;font-weight:700;color:${SC[b.status]||'#94a3b8'}">${SK[b.status]||b.status}</td>
-              <td style="padding:11px 16px;color:#94a3b8;font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis">${b.memo||'-'}</td>
-              <td style="padding:11px 16px;display:flex;gap:6px;flex-wrap:wrap">
-                ${b.status==='pending' ? `
-                  <button onclick="adminUpdateBooking(${b.id},'confirmed')" style="padding:4px 10px;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">✓ 확정</button>
-                  <button onclick="adminUpdateBooking(${b.id},'cancelled')" style="padding:4px 10px;background:#fef2f2;color:#cc2200;border:1px solid #fecaca;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">✕ 취소</button>` : ''}
-              </td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>`}
-  </div>`;
-}
-
-async function adminUpdateBooking(id, status) {
-  const sb = getSb(); if (!sb) return;
-  await sb.from('bookings').update({ status }).eq('id', id);
-  // 확정 시 수업권 차감
-  if (status === 'confirmed') {
-    const { data: bk } = await sb.from('bookings').select('user_id,plan_type').eq('id',id).single();
-    if (bk) {
-      const { data: cr } = await sb.from('session_credits')
-        .select('id,used').eq('user_id',bk.user_id).eq('plan_type',bk.plan_type)
-        .order('created_at').limit(1).single();
-      if (cr) await sb.from('session_credits').update({ used: cr.used+1 }).eq('id',cr.id);
-    }
-  }
-  goClassBookings();
-}
-
-// ── 수업권 관리 ──────────────────────────────────────────────
-async function goClassCredits() {
-  activeSb('');
-  const sb = getSb();
-  let credits = [];
-  if (sb) {
-    const { data } = await sb.from('session_credits')
-      .select('*, profiles(display_name,email)').order('created_at',{ascending:false});
-    credits = data || [];
-  }
-  document.getElementById('main').innerHTML = `
-  <div style="padding:28px 32px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h2 style="font-size:20px;font-weight:900">🎟️ 수업권 관리</h2>
-      <button class="btn btn-g" onclick="openCreditModal()">+ 수업권 지급</button>
-    </div>
-    ${!credits.length ? '<p style="color:#94a3b8">수업권 내역이 없습니다.</p>' :
-    `<div style="background:#fff;border:1px solid var(--br);border-radius:12px;overflow:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:500px">
-        <thead><tr style="background:#f8faff;border-bottom:2px solid #e2e8f0">
-          <th style="padding:12px 16px;text-align:left;font-weight:800">학생</th>
-          <th style="padding:12px 16px;text-align:center;font-weight:800">유형</th>
-          <th style="padding:12px 16px;text-align:center;font-weight:800">보유</th>
-          <th style="padding:12px 16px;text-align:center;font-weight:800">사용</th>
-          <th style="padding:12px 16px;text-align:center;font-weight:800">잔여</th>
-          <th style="padding:12px 16px;text-align:left;font-weight:800">지급일</th>
-        </tr></thead>
-        <tbody>
-          ${credits.map(c => {
-            const u = c.profiles||{};
-            const rem = c.total - c.used;
-            return `<tr style="border-bottom:1px solid #f0f4f8">
-              <td style="padding:11px 16px;font-weight:600">${u.display_name||u.email||c.user_id?.slice(0,8)}</td>
-              <td style="padding:11px 16px;text-align:center"><span style="background:${c.plan_type==='solo'?'#eff6ff':'#f0fdf4'};color:${c.plan_type==='solo'?'#2255a4':'#15803d'};padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700">${c.plan_type==='solo'?'개인':'그룹'}</span></td>
-              <td style="padding:11px 16px;text-align:center;font-weight:800">${c.total}</td>
-              <td style="padding:11px 16px;text-align:center;color:#94a3b8">${c.used}</td>
-              <td style="padding:11px 16px;text-align:center;font-size:18px;font-weight:900;color:${rem>0?'#16a34a':'#cc2200'}">${rem}</td>
-              <td style="padding:11px 16px;color:#94a3b8;font-size:12px">${new Date(c.created_at).toLocaleDateString('ko-KR')}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>`}
-
-    <!-- 지급 모달 -->
-    <div id="credit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center">
-      <div style="background:#fff;border-radius:16px;padding:32px;width:400px;max-width:95vw">
-        <h3 style="font-size:17px;font-weight:900;margin-bottom:20px">수업권 지급</h3>
-        <div style="display:flex;flex-direction:column;gap:13px">
-          <label style="font-size:13px;font-weight:700;color:#445566">User ID (Supabase auth.users.id)
-            <input type="text" id="cr-uid" placeholder="xxxxxxxx-xxxx-xxxx-..." style="display:block;width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;font-family:monospace">
-          </label>
-          <label style="font-size:13px;font-weight:700;color:#445566">수업 유형
-            <select id="cr-type" style="display:block;width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none">
-              <option value="solo">개인 수업</option>
-              <option value="group">그룹 수업</option>
-            </select>
-          </label>
-          <label style="font-size:13px;font-weight:700;color:#445566">수량
-            <input type="number" id="cr-qty" value="10" min="1" style="display:block;width:100%;margin-top:5px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none">
-          </label>
-        </div>
-        <div style="display:flex;gap:10px;margin-top:20px">
-          <button onclick="document.getElementById('credit-modal').style.display='none'" class="btn btn-gh" style="flex:1">취소</button>
-          <button onclick="saveCredit()" class="btn btn-g" style="flex:1">지급</button>
-        </div>
-      </div>
-    </div>
-  </div>`;
-}
-
-function openCreditModal() {
-  document.getElementById('credit-modal').style.display = 'flex';
-}
-
-async function saveCredit() {
-  const sb = getSb(); if (!sb) return;
-  const uid = document.getElementById('cr-uid').value.trim();
-  const type = document.getElementById('cr-type').value;
-  const qty  = parseInt(document.getElementById('cr-qty').value)||0;
-  if (!uid||qty<1) { alert('User ID와 수량을 입력하세요'); return; }
-  const { error } = await sb.from('session_credits').insert({ user_id:uid, plan_type:type, total:qty, used:0 });
-  if (error) { alert('저장 실패: '+error.message); return; }
-  document.getElementById('credit-modal').style.display = 'none';
-  goClassCredits();
-}
-
-// ── 커리큘럼 진행도 ──────────────────────────────────────────
-async function goClassCurriculum() {
-  activeSb('');
-  const sb = getSb();
-  let users = [], progressAll = [];
-  if (sb) {
-    const { data: p } = await sb.from('profiles').select('id,display_name,email').limit(100);
-    users = p || [];
-    const { data: pr } = await sb.from('curriculum_progress').select('*');
-    progressAll = pr || [];
-  }
-  const progMap = {};
-  progressAll.forEach(p => {
-    if (!progMap[p.user_id]) progMap[p.user_id] = {};
-    progMap[p.user_id][p.lesson_key] = p;
+  const PROXY = SUPA_URL_ADMIN2 + '/functions/v1/claude-proxy';
+  const resp = await fetch(PROXY, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + SUPA_KEY_ADMIN2,
+    },
+    body: JSON.stringify({
+      feature: 'admin-ai-gen',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1200,
+      messages: [{ role: 'user', content: prompt }]
+    })
   });
-  const totalLessons = Object.values(ADMIN_CUR_LESSONS).flat().length;
-
-  document.getElementById('main').innerHTML = `
-  <div style="padding:28px 32px">
-    <h2 style="font-size:20px;font-weight:900;margin-bottom:20px">📈 커리큘럼 진행도</h2>
-    <div style="display:grid;grid-template-columns:200px 1fr;gap:20px;min-height:500px">
-      <div style="background:#fff;border:1px solid var(--br);border-radius:12px;overflow:hidden;align-self:start">
-        <div style="padding:10px 14px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;background:#f8faff;border-bottom:1px solid #e2e8f0">수강생 (${users.length})</div>
-        ${!users.length ? '<p style="padding:14px;color:#94a3b8;font-size:13px">없음</p>' :
-          users.map((u,i) => {
-            const up = progMap[u.id]||{};
-            const done = Object.values(up).filter(p=>p.completed).length;
-            return `<button id="cu-${u.id}" onclick="selectCurrUser('${u.id}')"
-              style="width:100%;text-align:left;padding:10px 14px;border:none;cursor:pointer;border-bottom:1px solid #f0f4f8;transition:background .15s;background:${i===0?'#f0f6ff':'transparent'}"
-              onmouseover="if(!this.classList.contains('on'))this.style.background='#f8faff'" onmouseout="if(!this.classList.contains('on'))this.style.background='transparent'">
-              <div style="font-size:13px;font-weight:700;color:#0b1626;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.display_name||u.email||u.id.slice(0,8)}</div>
-              <div style="font-size:11px;color:#94a3b8;margin-top:2px">${done}/${totalLessons} 완료</div>
-            </button>`;
-          }).join('')}
-      </div>
-      <div id="curr-panel" style="background:#fff;border:1px solid var(--br);border-radius:12px;padding:22px">
-        <p style="color:#94a3b8;font-size:14px">수강생을 선택하세요.</p>
-      </div>
-    </div>
-  </div>`;
-
-  window._adminProgMap = progMap;
-  window._adminUsers   = users;
-  if (users.length) selectCurrUser(users[0].id);
+  if (!resp.ok) throw new Error('Claude API ' + resp.status);
+  const data = await resp.json();
+  const text = (data.content || []).map(function(b){ return b.text||''; }).join('');
+  return text;
 }
 
-async function selectCurrUser(uid) {
-  document.querySelectorAll('[id^="cu-"]').forEach(b=>{ b.style.background='transparent'; b.classList.remove('on'); });
-  const btn = document.getElementById('cu-'+uid);
-  if (btn) { btn.style.background='#f0f6ff'; btn.classList.add('on'); }
+async function saveToCache(contentType, contentId, key, value) {
+  const sb = getSb();
+  if (!sb) return;
+  try {
+    await sb.from('article_cache').upsert({
+      content_type: contentType,
+      content_id: String(contentId),
+      cache_key: key,
+      cache_value: JSON.stringify(value),
+      created_at: new Date().toISOString()
+    }, { onConflict: 'content_type,content_id,cache_key' });
+  } catch(e) { console.warn('cache save fail:', e); }
+}
 
-  const prog = (window._adminProgMap||{})[uid]||{};
-  const LC = { beginner:{bg:'#eff6ff',text:'#1d4ed8',bar:'#2255a4'}, intermediate:{bg:'#f0fdf4',text:'#15803d',bar:'#16a34a'}, advanced:{bg:'#fef2f2',text:'#b91c1c',bar:'#cc2200'} };
-  const LL = { beginner:'초급', intermediate:'중급', advanced:'고급' };
+async function autoGenConvAI(convId, convObj) {
+  try {
+    var msgsText = (convObj.msgs || []).map(function(m){ return (m.who||m.s||'?') + ': ' + m.txt; }).join('\n');
+    var prompt = `다음 한국어 대화를 분석해서 JSON으로만 답해줘. 다른 말 하지 마.
 
-  let h = '';
-  for (const [level, lessons] of Object.entries(ADMIN_CUR_LESSONS)) {
-    const lc   = LC[level];
-    const done = lessons.filter((_,i)=>(prog[level+'_'+(i+1)]||{}).completed).length;
-    const pct  = Math.round(done/lessons.length*100);
-    h += `<div style="margin-bottom:24px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <span style="background:${lc.bg};color:${lc.text};font-size:11px;font-weight:800;padding:3px 10px;border-radius:99px;text-transform:uppercase">${LL[level]}</span>
-        <span style="font-size:12px;color:#64748b">${done}/${lessons.length}</span>
-        <div style="flex:1;height:6px;background:#e2e8f0;border-radius:99px;overflow:hidden">
-          <div style="width:${pct}%;height:100%;background:${lc.bar};border-radius:99px"></div>
-        </div>
-        <span style="font-size:13px;font-weight:800;color:${lc.text}">${pct}%</span>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px">
-        ${lessons.map((lesson,i) => {
-          const key  = level+'_'+(i+1);
-          const isDone = (prog[key]||{}).completed;
-          return `<div style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:9px;border:1.5px solid ${isDone?lc.bar:'#e2e8f0'};background:${isDone?lc.bg:'#fff'};cursor:pointer" onclick="adminToggleLesson('${uid}','${key}',${isDone})">
-            <span style="font-size:18px;flex-shrink:0">${isDone?'✅':'⬜'}</span>
-            <span style="font-size:13px;font-weight:${isDone?700:400};color:${isDone?lc.text:'#445566'}">${lesson}</span>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>`;
+대화:
+${msgsText}
+
+형식:
+{
+  "vocab": [{"ko":"단어","rom":"로마자","en":"영어뜻"}],
+  "grammar": [{"point":"문법 포인트","ex":"예문","en":"설명"}],
+  "mission": [{"task":"연습 미션"}]
+}
+
+vocab 5개, grammar 2개, mission 2개. JSON만 출력.`;
+
+    var result = await callAdminClaude(prompt);
+    var clean = result.replace(/```json|```/g, '').trim();
+    var parsed = JSON.parse(clean);
+
+    // DB에 직접 업데이트
+    const sb = getSb();
+    var existing = await sb.from('conversations_data').select('data').eq('id', convId).single();
+    if (existing.data) {
+      var updated = Object.assign({}, existing.data.data, {
+        vocab: parsed.vocab || [],
+        grammar: parsed.grammar || [],
+        mission: parsed.mission || []
+      });
+      await sb.from('conversations_data').update({ data: updated }).eq('id', convId);
+    }
+
+    // article_cache에도 저장
+    await saveToCache('conversation', convId, 'ai_analysis', parsed);
+    showToastAdmin('🤖 AI 분석 완료! vocab ' + (parsed.vocab||[]).length + '개 생성');
+  } catch(e) {
+    console.warn('autoGenConvAI failed:', e);
+    showToastAdmin('⚠️ AI 생성 실패 — vocab을 수동 입력하세요');
   }
-  document.getElementById('curr-panel').innerHTML = h;
-  window._currUid = uid;
 }
 
-async function adminToggleLesson(uid, key, isDone) {
-  const sb = getSb(); if (!sb) return;
-  const newDone = !isDone;
-  await sb.from('curriculum_progress').upsert(
-    { user_id:uid, lesson_key:key, completed:newDone, completed_at: newDone?new Date().toISOString():null, updated_at:new Date().toISOString() },
-    { onConflict:'user_id,lesson_key' }
-  );
-  if (!window._adminProgMap[uid]) window._adminProgMap[uid]={};
-  window._adminProgMap[uid][key] = { completed:newDone };
-  selectCurrUser(uid);
+async function autoGenStoryAI(storyId, storyObj) {
+  try {
+    var bodyText = (storyObj.body || '').replace(/<[^>]*>/g, '').slice(0, 1500);
+    var prompt = `다음 한국어 스토리를 분석해서 JSON으로만 답해줘. 다른 말 하지 마.
+
+스토리 제목: ${storyObj.title}
+내용: ${bodyText}
+
+형식:
+{
+  "vocab": [{"ko":"단어","rom":"로마자","en":"영어뜻","note":"간단한 설명"}],
+  "grammar": [{"point":"문법 포인트","ex":"예문","en":"설명"}],
+  "summary_en": "영어 요약 1-2문장",
+  "difficulty_reason": "레벨 선정 이유"
 }
 
-function activeSb(id) {
-  document.querySelectorAll('.sb-btn').forEach(b=>b.classList.remove('on'));
+vocab 6개, grammar 3개. JSON만 출력.`;
+
+    var result = await callAdminClaude(prompt);
+    var clean = result.replace(/```json|```/g, '').trim();
+    var parsed = JSON.parse(clean);
+
+    const sb = getSb();
+    var existing = await sb.from('stories_data').select('data').eq('id', storyId).single();
+    if (existing.data) {
+      var updated = Object.assign({}, existing.data.data, {
+        vocab: parsed.vocab || [],
+        grammar: parsed.grammar || [],
+        summary_en: parsed.summary_en || '',
+      });
+      await sb.from('stories_data').update({ data: updated }).eq('id', storyId);
+    }
+
+    await saveToCache('story', storyId, 'ai_analysis', parsed);
+    showToastAdmin('🤖 AI 분석 완료! vocab ' + (parsed.vocab||[]).length + '개 생성');
+  } catch(e) {
+    console.warn('autoGenStoryAI failed:', e);
+    showToastAdmin('⚠️ AI 생성 실패 — vocab을 수동 입력하세요');
+  }
 }
 
-// ══ EXPORT / IMPORT / RESET ══════════════════════════════════
-function doExport(){
-  const data={
-    articles: DB,
-    siteconf: ls(K_SITECONF,{}),
-    opinions: ls(K_OPINIONS,[]),
-    phrases:  ls(K_PHRASES,[]),
-    wordbank:   ls(K_WORDBANK,[]),
-    sentences: ls(K_SENTENCES,[]),
-  };
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download='korehan-backup.json'; a.click();
-  URL.revokeObjectURL(url);
-  toast('💾 korehan-backup.json 내보내기 완료');
-}
-async function doImport(e){
-  const file=e.target.files[0]; if(!file) return;
-  const reader=new FileReader();
-  reader.onload=async ev=>{
-    try{
-      const data=JSON.parse(ev.target.result);
-      // Support both array (old) and object (new) format
-      if(Array.isArray(data)){ for(const a of data){ await dbSaveArticle(a); } DB=data; }
-      else {
-        if(data.articles) { for(const a of data.articles){ await dbSaveArticle(a); } DB=data.articles; }
-        if(data.siteconf) lsSet(K_SITECONF, data.siteconf);
-        if(data.opinions) lsSet(K_OPINIONS, data.opinions);
-        if(data.phrases)  lsSet(K_PHRASES,  data.phrases);
-        if(data.wordbank)   lsSet(K_WORDBANK,   data.wordbank);
-        if(data.sentences) lsSet(K_SENTENCES, data.sentences);
-      }
-      goList(); toast('📂 가져오기 완료! (기사 '+DB.length+'개)');
-    }catch{ toast('Import failed — invalid JSON', true); }
-  };
-  reader.readAsText(file);
-  e.target.value='';
-}
-async function resetAll(){
-  if(!confirm('모든 데이터를 초기화할까요? 되돌릴 수 없습니다.')) return;
-  [K_DB,K_VIEWS,K_PHRASES,K_WORDBANK,K_SITECONF,K_OPINIONS,K_SENTENCES].forEach(k=>localStorage.removeItem(k));
-  const reset = SEED.map(s=>({...s,id:uid(),date:today()}));
-  for(const a of reset){ await dbSaveArticle(a); }
-  DB=reset; goList();
-  toast('🔄 전체 초기화 완료');
+// 수동 AI 재생성 버튼 (conv/story 목록에서 사용)
+async function regenConvAI(convId) {
+  showToastAdmin('🤖 AI 재생성 중…');
+  const sb = getSb();
+  const res = await sb.from('conversations_data').select('*').eq('id', convId).single();
+  if (res.data) await autoGenConvAI(convId, res.data.data);
+  await loadConvList();
 }
 
-// ══ WIRE STATIC BUTTONS ══════════════════════════════════════
-document.getElementById('m-x').addEventListener('click', closeModal);
-document.getElementById('m-cancel').addEventListener('click', closeModal);
-document.getElementById('m-draft').addEventListener('click', ()=>submitForm('draft'));
-document.getElementById('m-pub').addEventListener('click',   ()=>submitForm('published'));
-document.getElementById('ov').addEventListener('click', e=>{if(e.target===document.getElementById('ov'))closeModal();});
+async function regenStoryAI(storyId) {
+  showToastAdmin('🤖 AI 재생성 중…');
+  const sb = getSb();
+  const res = await sb.from('stories_data').select('*').eq('id', storyId).single();
+  if (res.data) await autoGenStoryAI(storyId, res.data.data);
+  await loadStoryList();
+}
 
-document.getElementById('del-cancel').addEventListener('click', closeDelete);
-document.getElementById('del-confirm').addEventListener('click', doDelete);
-document.getElementById('del-ov').addEventListener('click', e=>{if(e.target===document.getElementById('del-ov'))closeDelete();});
 
 
 // ═══════════════════════════════════════════════════════════
@@ -3378,8 +3064,17 @@ async function saveConvEdit(rowId) {
     }
 
     document.getElementById('conv-edit-overlay').remove();
-    showToastAdmin('✅ 저장 완료!');
+    showToastAdmin('✅ 저장 완료! AI 분석 생성 중…');
     await loadConvList();
+
+    // 10번: AI 자동으로 vocab/grammar/mission 생성 후 article_cache에 저장
+    try {
+      var savedRes = await sb.from('conversations_data').select('id').order('created_at', {ascending:false}).limit(1);
+      var savedId = rowId || (savedRes.data && savedRes.data[0] && savedRes.data[0].id);
+      if (savedId && (!convObj.vocab || !convObj.vocab.length)) {
+        autoGenConvAI(savedId, convObj);
+      }
+    } catch(aiErr) { console.warn('AI gen skip:', aiErr); }
 
   } catch(e) {
     ceErr.textContent = e.message || String(e);
@@ -3627,8 +3322,17 @@ async function saveStoryEdit(rowId) {
       if (error) throw error;
     }
     document.getElementById('story-edit-overlay').remove();
-    showToastAdmin('✅ 저장 완료!');
+    showToastAdmin('✅ 저장 완료! AI 분석 생성 중…');
     await loadStoryList();
+
+    // 10번: AI 자동으로 vocab/grammar 생성 후 article_cache에 저장
+    try {
+      var savedRes2 = await sb.from('stories_data').select('id').order('created_at', {ascending:false}).limit(1);
+      var savedId2 = rowId || (savedRes2.data && savedRes2.data[0] && savedRes2.data[0].id);
+      if (savedId2 && (!storyObj.vocab || !storyObj.vocab.length)) {
+        autoGenStoryAI(savedId2, storyObj);
+      }
+    } catch(aiErr2) { console.warn('AI gen skip:', aiErr2); }
   } catch(e) {
     seErr.textContent = e.message || String(e);
     seErr.style.display = 'block';

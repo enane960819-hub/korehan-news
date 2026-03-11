@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Conversations — KoreHan News</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
@@ -173,6 +175,22 @@ function renderCards(catF, lvlF) {
 function openDetail(idx) {
   var c = CONVS[idx];
   window._currentConv = c;
+
+  // 캐시에서 vocab/grammar 보강 (비동기, 완료되면 Study Notes 업데이트)
+  if (typeof enrichFromCache === 'function' && c._id && (!c.vocab || !c.vocab.length)) {
+    enrichFromCache('conversation', Object.assign({}, c, {id: c._id})).then(function(enriched) {
+      // enriched.data에 있는 vocab/grammar를 c에 병합
+      if (enriched && enriched.data) {
+        if (enriched.data.vocab && !c.vocab.length) {
+          c.vocab = enriched.data.vocab;
+          c.grammar = enriched.data.grammar || [];
+          c.mission = enriched.data.mission || [];
+          window._currentConv = c;
+          renderStudyNotes(c);
+        }
+      }
+    }).catch(function(){});
+  }
   var now = new Date();
   var h = now.getHours(), m = now.getMinutes();
 
@@ -239,11 +257,12 @@ function openDetail(idx) {
         +'<div class="dp-date-sep"><span>Today</span></div>'
         +msgs
       +'</div>'
-      +'<div class="dp-cta-row">'        +'<button class="dp-cta-btn dp-cta-secondary" onclick="closeDetail()">← All Conversations</button>'        +(window._isAdmin ? '<button class="dp-cta-btn" style="background:#f1f5f9;color:#334155" onclick="editCurrentConv()">✏️ 수정</button>'                          + '<button class="dp-cta-btn" style="background:#fee2e2;color:#b91c1c" onclick="deleteCurrentConv()">🗑 삭제</button>' : '')        +'<button class="dp-cta-btn dp-cta-primary" onclick="goToPracticeWriting(window._currentConv)">Practice Writing ✏️</button>'      +'</div>'
+      +'<div class="dp-cta-row">'        +'<button class="dp-cta-btn dp-cta-secondary" onclick="closeDetail()">← All Conversations</button>'        +(window._isAdmin ? '<button class="dp-cta-btn" style="background:#f1f5f9;color:#334155" onclick="editCurrentConv()">✏️ 수정</button>'                          + '<button class="dp-cta-btn" style="background:#fee2e2;color:#b91c1c" onclick="deleteCurrentConv()">🗑 삭제</button>' : '')        +'<button class="dp-cta-btn dp-cta-secondary" onclick="startBlankQuiz()">✏️ 빈칸 채우기</button>'
+      +'<button class="dp-cta-btn dp-cta-primary" onclick="startOrderQuiz()">🔀 순서 맞추기</button>'      +'</div>'
     +'</div>'
     +'<div class="dp-right">'
       +'<div class="dp-right-head"><div class="dp-right-label">Study Notes</div><div class="dp-right-title">Conversation Breakdown</div></div>'
-      +'<div class="dp-study-sections">'
+      +'<div class="dp-study-sections" id="dp-study-sections">'
         +'<div class="dp-study-card"><div class="dp-study-card-title"><span>📚</span> Key Vocabulary</div><div class="dp-vocab-list">'+vocab+'</div></div>'
         +(grammar ? '<div class="dp-study-card"><div class="dp-study-card-title"><span>✏️</span> Grammar Points</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
         +'<div class="dp-study-card"><div class="dp-study-card-title"><span>🔑</span> Quick Keywords</div><div class="dp-keywords">'+keywords+'</div></div>'
@@ -253,6 +272,30 @@ function openDetail(idx) {
 
   document.getElementById('detail-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
+}
+
+// 캐시 enrichment 후 Study Notes만 업데이트
+function renderStudyNotes(c) {
+  var el = document.getElementById('dp-study-sections');
+  if (!el) return;
+  var vocab = (c.vocab||[]).map(function(v) {
+    return '<div class="dp-vocab-item">'
+      +'<span class="dp-vi-ko">'+v.ko+'</span>'
+      +'<span class="dp-vi-rom">'+v.rom+'</span>'
+      +'<span class="dp-vi-en">'+v.en+'</span>'
+      +'<button class="dp-vi-save" onclick="toggleSave(this)">+ Save</button>'
+      +'</div>';
+  }).join('');
+  var grammar = (c.grammar||[]).map(function(g) {
+    return '<div class="dp-grammar-item"><strong>'+(g.point||'')+'</strong> — '+(g.ex||g.en||'')+'</div>';
+  }).join('');
+  var keywords = (c.vocab||[]).map(function(v){ return '<span class="dp-keyword">'+v.ko+'</span>'; }).join('');
+  var mission = (c.mission||[]).map(function(m){ return '<div class="dp-grammar-item">🎯 '+(m.task||m)+'</div>'; }).join('');
+  el.innerHTML =
+    '<div class="dp-study-card"><div class="dp-study-card-title"><span>📚</span> Key Vocabulary</div><div class="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">단어 데이터 없음</span>')+'</div></div>'
+    +(grammar ? '<div class="dp-study-card"><div class="dp-study-card-title"><span>✏️</span> Grammar Points</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
+    +'<div class="dp-study-card"><div class="dp-study-card-title"><span>🔑</span> Quick Keywords</div><div class="dp-keywords">'+(keywords||'—')+'</div></div>'
+    +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title"><span>🎯</span> Practice Mission</div><div class="dp-grammar-list">'+mission+'</div></div>' : '');
 }
 
 function closeDetail() {
@@ -340,18 +383,257 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeDetail(); });
 
-function goToPracticeWriting(c) {
-  var params = new URLSearchParams();
-  params.set('mode', 'conv');
-  params.set('title', c.name + ' — ' + c.ctx);
-  if (c.vocab && c.vocab.length) {
-    params.set('vocab', JSON.stringify(c.vocab.map(function(v){ return {ko:v.ko, rom:v.rom, en:v.en}; })));
+// ── BLANK FILL QUIZ ──────────────────────────────────────────
+function startBlankQuiz() {
+  var c = window._currentConv;
+  if (!c || !c.data) return;
+  var msgs = (c.data.msgs || []);
+  if (!msgs.length) { alert('대화 내용이 없어요'); return; }
+
+  // 메시지에서 vocab 단어 랜덤으로 빈칸 만들기
+  var vocab = (c.data.vocab || []).filter(function(v){ return v.ko && v.ko.length > 1; });
+  if (!vocab.length) { alert('단어 데이터가 없어요'); return; }
+
+  var questions = msgs.slice(0, 6).map(function(msg) {
+    var text = msg.txt || msg.text || '';
+    var used = vocab.find(function(v){ return text.includes(v.ko); });
+    if (!used) return null;
+    return { original: text, word: used.ko, en: used.en, who: msg.who||msg.name||'' };
+  }).filter(Boolean).slice(0, 4);
+
+  if (!questions.length) {
+    // 단어가 대화에 없으면 단순 vocab 빈칸
+    questions = vocab.slice(0, 4).map(function(v) {
+      return { original: '이 단어의 뜻은? → ' + v.en, word: v.ko, en: v.en, who: '' };
+    });
   }
-  if (c.grammar && c.grammar.length) {
-    params.set('grammar', JSON.stringify(c.grammar.map(function(g){ return {point:g.point, ex:g.ex}; })));
-  }
-  location.href = 'korehan-study-room.html?' + params.toString();
+
+  showQuizModal('blank', questions, c.data.name || c.name);
 }
+
+// ── ORDER QUIZ ────────────────────────────────────────────────
+function startOrderQuiz() {
+  var c = window._currentConv;
+  if (!c || !c.data) return;
+  var msgs = (c.data.msgs || []).slice(0, 6);
+  if (msgs.length < 3) { alert('대화가 너무 짧아요'); return; }
+
+  var questions = [];
+  // 3개씩 슬라이딩 윈도우로 순서 맞추기
+  for (var i = 0; i + 2 < msgs.length; i++) {
+    var group = msgs.slice(i, i+3);
+    questions.push({ msgs: group });
+    if (questions.length >= 3) break;
+  }
+
+  showQuizModal('order', questions, c.data.name || c.name);
+}
+
+// ── QUIZ MODAL ────────────────────────────────────────────────
+var _quizAnswers = [];
+var _quizScore = 0;
+var _quizTotal = 0;
+var _quizMode = '';
+var _quizQuestions = [];
+var _quizCurrent = 0;
+
+function showQuizModal(mode, questions, title) {
+  _quizMode = mode;
+  _quizQuestions = questions;
+  _quizCurrent = 0;
+  _quizScore = 0;
+  _quizTotal = questions.length;
+
+  var overlay = document.getElementById('quiz-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'quiz-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;';
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion() {
+  var overlay = document.getElementById('quiz-overlay');
+  var q = _quizQuestions[_quizCurrent];
+  var progress = (_quizCurrent / _quizTotal * 100).toFixed(0);
+
+  var inner = '<div style="background:#fff;border-radius:24px;max-width:520px;width:100%;box-shadow:0 32px 80px rgba(15,23,42,.25);overflow:hidden;">'
+    + '<div style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);padding:18px 22px;display:flex;align-items:center;justify-content:space-between;">'
+    + '<div style="color:#fff;">'
+    + '<div style="font-size:11px;font-weight:700;opacity:.8;letter-spacing:.08em;text-transform:uppercase;">' + (_quizMode==='blank'?'빈칸 채우기':'순서 맞추기') + '</div>'
+    + '<div style="font-size:15px;font-weight:700;margin-top:2px">' + (_quizCurrent+1) + ' / ' + _quizTotal + '</div>'
+    + '</div>'
+    + '<button onclick="closeQuiz()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:22px;cursor:pointer;line-height:1;">✕</button>'
+    + '</div>'
+    + '<div style="height:4px;background:#e2e8f0;"><div style="height:4px;background:#3b82f6;width:'+progress+'%;transition:width .3s"></div></div>';
+
+  if (_quizMode === 'blank') {
+    inner += renderBlankQ(q);
+  } else {
+    inner += renderOrderQ(q);
+  }
+
+  inner += '</div>';
+  overlay.innerHTML = inner;
+}
+
+function renderBlankQ(q) {
+  var displayed = q.original.replace(q.word, '<span style="background:#dbeafe;color:#1d4ed8;border-radius:6px;padding:2px 10px;font-weight:700;">＿＿＿</span>');
+  // 보기 만들기: 정답 + 오답 2개
+  var allVocab = (window._currentConv && window._currentConv.data && window._currentConv.data.vocab) || [];
+  var wrongs = allVocab.filter(function(v){ return v.ko !== q.word; }).slice(0,2).map(function(v){ return v.ko; });
+  if (wrongs.length < 2) wrongs = ['아니요','그렇지만'].slice(0, 2-wrongs.length).concat(wrongs);
+  var choices = [q.word].concat(wrongs).sort(function(){ return Math.random()-.5; });
+
+  return '<div style="padding:24px 22px;">'
+    + (q.who ? '<div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px;">💬 ' + q.who + '</div>' : '')
+    + '<div style="font-size:16px;line-height:1.8;background:#f8fafc;border-radius:12px;padding:14px 16px;margin-bottom:18px;font-family:\'Noto Sans KR\',sans-serif;">' + displayed + '</div>'
+    + '<div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">( ' + q.en + ' )  ← 힌트</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+    + choices.map(function(ch){
+        return '<button onclick="checkBlank(\''+ch.replace(/'/g,"\\'")+'\')" style="padding:12px;border-radius:12px;border:2px solid #e2e8f0;background:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif;transition:all .12s;" onmouseover="this.style.borderColor=\'#3b82f6\'" onmouseout="this.style.borderColor=\'#e2e8f0\'">'
+          + ch + '</button>';
+      }).join('')
+    + '</div></div>';
+}
+
+function renderOrderQ(q) {
+  var shuffled = q.msgs.slice().sort(function(){ return Math.random()-.5; });
+  var html = '<div style="padding:24px 22px;">'
+    + '<div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:14px;">대화 순서를 맞춰보세요 👆</div>'
+    + '<div id="order-list" style="display:flex;flex-direction:column;gap:8px;">';
+
+  shuffled.forEach(function(msg, i) {
+    html += '<div class="order-item" data-index="' + i + '" data-txt="' + (msg.txt||msg.text||'').replace(/"/g,'&quot;') + '" '
+      + 'style="background:#fff;border:2px solid #e2e8f0;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:grab;user-select:none;font-family:\'Noto Sans KR\',sans-serif;"'
+      + ' draggable="true" ontouchstart="orderTouch(event,this)" ondragstart="orderDrag(event,this)" ondragover="event.preventDefault()" ondrop="orderDrop(event,this)">'
+      + '<span style="font-size:18px;opacity:.4">⠿</span>'
+      + '<div><div style="font-size:11px;font-weight:700;color:#64748b;">' + (msg.who||msg.name||'') + '</div>'
+      + '<div style="font-size:14px;margin-top:2px;">' + (msg.txt||msg.text||'') + '</div></div>'
+      + '</div>';
+  });
+
+  html += '</div>'
+    + '<button onclick="checkOrder()" style="width:100%;margin-top:16px;padding:13px;border-radius:14px;background:#2563eb;color:#fff;border:none;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">확인 →</button>'
+    + '</div>';
+
+  return html;
+}
+
+var _dragSrc = null;
+function orderDrag(e, el) { _dragSrc = el; e.dataTransfer.effectAllowed = 'move'; }
+function orderDrop(e, el) {
+  e.preventDefault();
+  if (_dragSrc === el) return;
+  var list = document.getElementById('order-list');
+  var items = Array.from(list.children);
+  var srcIdx = items.indexOf(_dragSrc);
+  var tgtIdx = items.indexOf(el);
+  if (srcIdx < tgtIdx) list.insertBefore(_dragSrc, el.nextSibling);
+  else list.insertBefore(_dragSrc, el);
+}
+
+// 터치 드래그 (모바일)
+var _touchEl = null, _touchClone = null;
+function orderTouch(e, el) {
+  _touchEl = el;
+  e.target.style.opacity = '.5';
+  document.addEventListener('touchmove', onTouchMove, {passive:false});
+  document.addEventListener('touchend', onTouchEnd, {once:true});
+}
+function onTouchMove(e) {
+  e.preventDefault();
+  var t = e.touches[0];
+  var list = document.getElementById('order-list');
+  if (!list) return;
+  Array.from(list.children).forEach(function(item) {
+    var r = item.getBoundingClientRect();
+    if (t.clientY > r.top && t.clientY < r.bottom && item !== _touchEl) {
+      var midY = r.top + r.height/2;
+      if (t.clientY < midY) list.insertBefore(_touchEl, item);
+      else list.insertBefore(_touchEl, item.nextSibling);
+    }
+  });
+}
+function onTouchEnd(e) {
+  if (_touchEl) _touchEl.style.opacity = '1';
+  document.removeEventListener('touchmove', onTouchMove);
+}
+
+function checkBlank(choice) {
+  var q = _quizQuestions[_quizCurrent];
+  var correct = choice === q.word;
+  if (correct) _quizScore++;
+  showFeedback(correct, q.word, nextQuizQuestion);
+}
+
+function checkOrder() {
+  var q = _quizQuestions[_quizCurrent];
+  var list = document.getElementById('order-list');
+  if (!list) return;
+  var items = Array.from(list.children);
+  var correct = true;
+  q.msgs.forEach(function(msg, i) {
+    var itemTxt = items[i] && (items[i].dataset.txt || '');
+    if (itemTxt !== (msg.txt || msg.text || '')) correct = false;
+  });
+  if (correct) _quizScore++;
+  showFeedback(correct, null, nextQuizQuestion);
+}
+
+function showFeedback(correct, answer, next) {
+  var overlay = document.getElementById('quiz-overlay');
+  var inner = overlay.querySelector('div');
+  if (!inner) return;
+  var fb = document.createElement('div');
+  fb.style.cssText = 'padding:20px 22px;background:' + (correct?'#f0fdf4':'#fef2f2') + ';border-top:1px solid ' + (correct?'#bbf7d0':'#fecaca') + ';text-align:center;';
+  fb.innerHTML = '<div style="font-size:28px;">' + (correct?'🎉':'😅') + '</div>'
+    + '<div style="font-size:16px;font-weight:700;color:' + (correct?'#15803d':'#b91c1c') + ';margin:6px 0">' + (correct?'정답!':'틀렸어요') + '</div>'
+    + (answer && !correct ? '<div style="font-size:14px;color:#64748b;">정답: <b>' + answer + '</b></div>' : '')
+    + '<button onclick="nextQuizQuestion()" style="margin-top:14px;padding:10px 24px;border-radius:12px;background:#2563eb;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">다음 →</button>';
+
+  // 기존 버튼 비활성화
+  inner.querySelectorAll('button:not([onclick="closeQuiz()"])').forEach(function(b){ b.disabled=true; b.style.opacity='.5'; });
+  inner.appendChild(fb);
+}
+
+function nextQuizQuestion() {
+  _quizCurrent++;
+  if (_quizCurrent >= _quizTotal) {
+    showQuizResult();
+  } else {
+    renderQuizQuestion();
+  }
+}
+
+function showQuizResult() {
+  var overlay = document.getElementById('quiz-overlay');
+  var pct = Math.round(_quizScore / _quizTotal * 100);
+  var emoji = pct >= 80 ? '🏆' : pct >= 60 ? '👍' : '📚';
+  overlay.innerHTML = '<div style="background:#fff;border-radius:24px;max-width:400px;width:100%;padding:40px 32px;text-align:center;box-shadow:0 32px 80px rgba(15,23,42,.25);">'
+    + '<div style="font-size:56px;margin-bottom:12px">' + emoji + '</div>'
+    + '<div style="font-size:24px;font-weight:900;color:#0f172a;margin-bottom:6px">' + _quizScore + ' / ' + _quizTotal + ' 정답</div>'
+    + '<div style="font-size:15px;color:#64748b;margin-bottom:24px">' + (pct>=80?'훌륭해요! 대화를 잘 이해했군요.':pct>=60?'잘 했어요! 조금 더 연습해봐요.':'다시 한번 대화를 읽어보세요 💪') + '</div>'
+    + '<div style="display:flex;gap:10px;justify-content:center;">'
+    + '<button onclick="closeQuiz()" style="padding:12px 20px;border-radius:12px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">닫기</button>'
+    + '<button onclick="retryQuiz()" style="padding:12px 20px;border-radius:12px;background:#2563eb;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">다시 도전</button>'
+    + '</div></div>';
+}
+
+function retryQuiz() {
+  _quizCurrent = 0;
+  _quizScore = 0;
+  renderQuizQuestion();
+}
+
+function closeQuiz() {
+  var overlay = document.getElementById('quiz-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
 
 // ── ADMIN INLINE EDIT / DELETE ─────────────────────────────
 // 어드민 세션 체크

@@ -56,6 +56,39 @@ async function callClaude({ feature, model, max_tokens, messages }) {
   return resp.json();
 }
 
+// ── article_cache — AI 분석 결과 캐시 ────────────────────────
+// conv/story 발행 시 admin에서 AI 생성 → 여기서 조회
+async function getFromCache(contentType, contentId, cacheKey) {
+  try {
+    var sb = getSupa();
+    if (!sb) return null;
+    var res = await sb.from('article_cache')
+      .select('cache_value')
+      .eq('content_type', contentType)
+      .eq('content_id', String(contentId))
+      .eq('cache_key', cacheKey)
+      .maybeSingle();
+    if (res.data && res.data.cache_value) return res.data.cache_value;
+  } catch(e) {}
+  return null;
+}
+
+// Conv/Story 데이터에 캐시 병합 (vocab/grammar 없을 때만)
+async function enrichFromCache(contentType, item) {
+  if (!item || !item.id) return item;
+  var hasVocab = item.data && item.data.vocab && item.data.vocab.length;
+  if (hasVocab) return item; // 이미 있으면 캐시 불필요
+  var cached = await getFromCache(contentType, item.id, 'ai_analysis');
+  if (cached) {
+    if (!item.data) item.data = {};
+    if (cached.vocab && !item.data.vocab) item.data.vocab = cached.vocab;
+    if (cached.grammar && !item.data.grammar) item.data.grammar = cached.grammar;
+    if (cached.mission && !item.data.mission) item.data.mission = cached.mission;
+    if (cached.summary_en && !item.data.summary_en) item.data.summary_en = cached.summary_en;
+  }
+  return item;
+}
+
 var _sessionWarningShown = false;
 async function refreshSessionSafely() {
   var sb = getSupa();
@@ -1008,8 +1041,40 @@ function renderHomePage() {
   }
 }
 
-function renderSectionPage(section) {
-  // 페이지 타이틀/배너 동적 업데이트
+function buildArticleRowHTML(a) {
+  var levelColors = {Beginner:'background:#e8f5e9;color:#2e7d32',Intermediate:'background:#fff8e1;color:#f57f17',Advanced:'background:#fce4ec;color:#c62828'};
+  var lvlStyle = levelColors[a.level] || 'background:#f0f4ff;color:#1a3a6b';
+  var aImg = a.image || ('https://picsum.photos/seed/' + a.id + '/400/220');
+  var fallback = 'https://picsum.photos/seed/' + a.id + 'x/400/220';
+  var aBody = (a.body || '').replace(/<[^>]*>/g, '').slice(0, 90);
+  return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;display:block;margin-bottom:20px;">'
+    + '<div class="article-row">'
+    + '<img src="' + aImg + '" alt="" onerror="this.src=\'' + fallback + '\'" style="width:220px;height:140px;object-fit:cover;border-radius:10px;flex-shrink:0;">'
+    + '<div class="article-info">'
+    + '<span class="category-tag" style="font-size:11px;padding:2px 8px;' + lvlStyle + '">' + (a.level || a.section || '') + '</span>'
+    + '<h2 class="article-title vocab-zone" style="margin:8px 0 6px;font-size:18px;">' + a.title + '</h2>'
+    + '<p class="article-excerpt vocab-zone" style="font-size:14px;color:#64748b;line-height:1.6">' + aBody + '</p>'
+    + '<div style="font-size:12px;color:#94a3b8;margin-top:6px">' + relTime(a.date) + '</div>'
+    + '</div></div></a>';
+}
+
+function buildHeroHTML(featured, rest) {
+  var fallback = 'https://picsum.photos/seed/fallback/900/500';
+  var img = featured.image || ('https://picsum.photos/seed/' + featured.id + '/900/500');
+  var body = (featured.body || '').replace(/<[^>]*>/g, '').slice(0, 120);
+  return '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;">'
+    + '<div class="hero-main">'
+    + '<img src="' + img + '" alt="" onerror="this.src=\'' + fallback + '\'">'
+    + '<div class="overlay">'
+    + '<span class="category-tag">' + (featured.section || '') + '</span>'
+    + '<h1 class="vocab-zone">' + featured.title + '</h1>'
+    + '<p class="sub vocab-zone">' + body + '</p>'
+    + '</div></div></a>'
+    + '<div class="hero-side">' + rest.slice(0, 4).map(heroSideItemHTML).join('') + '</div>';
+}
+
+async function renderSectionPage(section) {
+  // 페이지 타이틀/배너
   var secInfo = getSections().find(function(s){ return s.key === section; });
   if (secInfo) {
     document.title = secInfo.label + ' — KoreHan News';
@@ -1021,7 +1086,12 @@ function renderSectionPage(section) {
     if (stEl) stEl.textContent = secInfo.label + ' News';
   }
 
-  // 한글 section 키 → 영문 레이블 매핑 (DB에 영문으로 저장된 경우 대비)
+  // 로딩 표시
+  var heroEl = document.getElementById('dyn-hero');
+  var listEl = document.getElementById('dyn-article-list');
+  if (heroEl) heroEl.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8;grid-column:1/-1">⏳ 로딩 중…</div>';
+
+  // 1차: 캐시에서 먼저 시도
   var SECTION_ALIASES = {
     '사회': ['사회','Society','society','Social'],
     '국제': ['국제','World','world','International','international','Global'],
@@ -1029,73 +1099,77 @@ function renderSectionPage(section) {
     '정치': ['정치','Politics','politics'],
     '경제': ['경제','Economy','economy','Business','business'],
     'Korea': ['Korea','한국','korea','Korean'],
-    '오피니언': ['오피니언','Opinion','opinion','오피니언/칼럼'],
+    '오피니언': ['오피니언','Opinion','opinion'],
     'K-pop': ['K-pop','Kpop','케이팝','kpop','k-pop'],
     '스포츠': ['스포츠','Sports','sports'],
   };
   var aliases = SECTION_ALIASES[section] || [section];
 
-  var articles = dbGet(function(a){
-    return a.status === 'published' && aliases.some(function(alias){
-      return (a.section || '') === alias;
+  var articles = [];
+
+  // 2차: 직접 Supabase 쿼리 (가장 신뢰할 수 있는 방법)
+  try {
+    var sb = getSupa();
+    if (sb) {
+      // 모든 alias에 대해 OR 쿼리
+      var orFilter = aliases.map(function(a){ return 'section.eq.' + a; }).join(',');
+      var res = await sb.from('articles')
+        .select('*')
+        .eq('status', 'published')
+        .or(orFilter)
+        .order('date', { ascending: false })
+        .limit(50);
+      if (res.data && res.data.length) {
+        articles = res.data;
+        // 캐시에도 병합
+        if (_articlesCache) {
+          var ids = new Set(_articlesCache.map(function(a){ return a.id; }));
+          res.data.forEach(function(a){ if (!ids.has(a.id)) _articlesCache.push(a); });
+        }
+      }
+    }
+  } catch(e) {
+    console.warn('[KH] section direct query failed:', e);
+  }
+
+  // 3차: 캐시 fallback
+  if (!articles.length) {
+    articles = getCachedArticles().filter(function(a){
+      return a.status === 'published' && aliases.some(function(alias){
+        return (a.section || '') === alias;
+      });
+    }).sort(function(a,b){
+      var da = a.date||a.created_at||'', db = b.date||b.created_at||'';
+      return da > db ? -1 : da < db ? 1 : 0;
     });
-  }).sort(function(a, b) {
-    var da = a.date || a.created_at || '';
-    var db2 = b.date || b.created_at || '';
-    if (da > db2) return -1;
-    if (da < db2) return 1;
-    return String(b.id).localeCompare(String(a.id));
-  });
+  }
+
+  console.log('[KH] section:', section, '| aliases:', aliases, '| found:', articles.length);
 
   var featured = articles[0];
   var rest     = articles.slice(1);
 
   // HERO
-  // 디버그: 실제 로드된 기사 섹션 값 확인
-  var allArts = getCachedArticles();
-  var allSections = [...new Set(allArts.map(function(a){ return a.section; }))];
-  console.log('[KH] renderSectionPage:', section, '| aliases:', aliases, '| total articles:', allArts.length, '| sections in DB:', allSections, '| matched:', articles.length);
-
-  var heroEl = document.getElementById('dyn-hero');
   if (heroEl) {
     if (featured) {
-      heroEl.innerHTML =
-        '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;">'
-        + '<div class="hero-main">'
-        + '<img src="' + (featured.image || 'https://picsum.photos/seed/' + featured.id + '/900/500') + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'">'
-        + '<div class="overlay">'
-        + '<span class="category-tag' + (section === 'Korea' ? ' korea' : '') + '">' + featured.section + '</span>'
-        + '<h1 class="vocab-zone">' + featured.title + '</h1>'
-        + '<p class="sub vocab-zone">' + (featured.body || '') + '</p>'
-        + '</div></div></a>'
-        + '<div class="hero-side">' + rest.slice(0, 4).map(heroSideItemHTML).join('') + '</div>';
+      heroEl.style.cssText = 'display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;';
+      heroEl.innerHTML = buildHeroHTML(featured, rest);
     } else {
-      heroEl.innerHTML = '<div style="padding:40px;color:#999;text-align:center;grid-column:1/-1">No articles in this section yet.</div>';
+      heroEl.innerHTML = '<div style="padding:40px;color:#94a3b8;text-align:center;grid-column:1/-1">이 섹션에 아직 기사가 없습니다.</div>';
     }
   }
 
   // ARTICLE LIST
-  var listEl = document.getElementById('dyn-article-list');
   if (listEl) {
     if (!rest.length) {
-      listEl.innerHTML = '<p style="color:#999;padding:20px 0">No articles found.</p>';
+      listEl.innerHTML = '<p style="color:#94a3b8;padding:20px 0">기사를 찾을 수 없습니다.</p>';
     } else {
-      var levelColors = {'Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'};
-      listEl.innerHTML = rest.map(function(a){
-        var levelBadge = a.level ? '<span style="font-size:10px;font-weight:800;padding:1px 8px;border-radius:999px;background:' + (levelColors[a.level]||'#f0f0f0;color:#666') + '">' + a.level + '</span>' : '';
-        return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
-          + '<div class="article-row">'
-          + '<img src="' + (a.image || 'https://picsum.photos/seed/' + a.id + '/300/200') + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/300/200\'">'
-          + '<div>'
-          + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><div class="tag' + (section === 'Korea' ? ' korea' : '') + '">' + a.section + '</div>' + levelBadge + '</div>'
-          + '<h3 class="vocab-zone">' + a.title + '</h3>'
-          + '<p class="vocab-zone">' + (a.body || '') + '</p>'
-          + '<div class="meta">' + relTime(a.date) + '</div>'
-          + '</div></div></a>';
-      }).join('');
+      var levelColors = {Beginner:'#e8f5e9;color:#2e7d32',Intermediate:'#fff8e1;color:#f57f17',Advanced:'#fce4ec;color:#c62828'};
+      listEl.innerHTML = rest.map(buildArticleRowHTML).join('');
     }
   }
 }
+
 
 function renderAllPage() {
   var articles = published();
@@ -2496,12 +2570,28 @@ async function loadSections() {
   } catch(e) {
     _sectionsCache = DEFAULT_SECTIONS;
   }
-  // 네비 다시 렌더링 (섹션 로드 후 헤더 업데이트)
+  // 네비만 업데이트 - 헤더 전체 재렌더 하지 않음 (Sign In 이슈 방지)
+  var topnav = document.querySelector('.kh-topnav');
+  if (topnav) {
+    // 섹션 링크만 교체
+    var secLinks = _sectionsCache.slice(0,6).map(function(s){
+      return '<a class="kh-nav-a" href="korehan-section.html?s='+encodeURIComponent(s.key)+'">'+s.label+'</a>';
+    }).join('');
+    var newsDropdown = topnav.querySelector('.kh-dropdown');
+    if (newsDropdown) newsDropdown.innerHTML = secLinks;
+  }
+  // 헤더 재렌더가 필요한 경우에만 (최초 1회)
   var hdr = document.getElementById('kh-header');
-  if (hdr) {
+  if (hdr && !hdr.dataset.sectionsLoaded) {
     hdr.innerHTML = renderHeader();
-    // 헤더 재렌더 후 로그인 상태 즉시 반영
+    hdr.dataset.sectionsLoaded = '1';
     updateAuthUI();
+    // hamburger 재연결
+    var hamBtn = hdr.querySelector('.kh-ham');
+    if (hamBtn) {
+      hamBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); khSbOpen(); });
+      hamBtn.addEventListener('touchend', function(e){ e.preventDefault(); khSbOpen(); });
+    }
   }
 }
 
