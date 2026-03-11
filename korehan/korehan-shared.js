@@ -2244,7 +2244,15 @@ function renderHeader() {
     var fl = document.createElement('link');
     fl.id   = 'kh-font-link';
     fl.rel  = 'stylesheet';
-    fl.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700&family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Source+Sans+3:wght@400;600;700&display=swap';
+    fl.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&display=swap';
+    // Pretendard (한국어 + 영문 최적화, OFL 라이선스)
+    if (!document.getElementById('kh-pretendard')) {
+      var pf = document.createElement('link');
+      pf.id   = 'kh-pretendard';
+      pf.rel  = 'stylesheet';
+      pf.href = 'https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css';
+      document.head.appendChild(pf);
+    }
     document.head.appendChild(fl);
   }
   var page = window.location.pathname.split('/').pop() || 'index.html';
