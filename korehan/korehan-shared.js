@@ -2229,63 +2229,96 @@ function wrapVocab(el) {
 
 // ── 헤더 / 푸터 / 사이드바 ────────────────────────────────────
 function renderHeader() {
-  var page     = window.location.pathname.split('/').pop() || 'index.html';
-  var pageBase = page.replace(/\.html$/, '');
-  // 고정 링크
-  var fixedStart = [
-    { href:'index.html',       label:'Home',      cls:'', base:'index'      },
-  ];
-  var fixedEnd = [
-    { href:'korehan-conversations.html', label:'💬 Conversations', cls:'', base:'korehan-conversations' },
-    { href:'korehan-stories.html',       label:'📖 Stories',       cls:'', base:'korehan-stories' },
-    { href:'korehan-study-room.html',    label:'📖 Study Room',    cls:'learn-nav', base:'korehan-study-room' },
-    { href:'korehan-courses.html',       label:'🎓 Courses',       cls:'courses-nav', base:'korehan-courses' },
-    { href:'korehan-all.html',           label:'All News',          cls:'', base:'korehan-all' },
-  ];
-  // 동적 섹션 링크
-  var dynLinks = getSections().map(function(s){
-    return { href:'korehan-section.html?s=' + encodeURIComponent(s.key), label: s.label, cls:'', base:'korehan-section', sectionKey: s.key };
-  });
-  var links = fixedStart.concat(dynLinks).concat(fixedEnd);
-  // active 체크: section 페이지면 URL의 s 파라미터로 비교
+  var page = window.location.pathname.split('/').pop() || 'index.html';
   var currentSection = (new URLSearchParams(window.location.search)).get('s') || '';
-  return '<div class="kh-top"><div class="kh-top-inner">'
-    + '<div class="kh-top-row">'
+
+  function isOn(base, sec) {
+    if (sec && currentSection === sec) return true;
+    return page === base || page.replace(/\.html$/,'') === base.replace(/\.html$/,'');
+  }
+
+  // ── Logo bar (white) ─────────────────────────────────────────
+  var logoBar = '<div class="kh-header-bar">'
+    + '<div class="kh-header-inner">'
     + '<button class="kh-ham" onclick="khSbOpen()" aria-label="Menu">&#9776;</button>'
-    + '<a class="kh-brand" href="index.html">'
-    + '<span class="kh-logo-text"><span class="kh-logo-kore">Kore</span><span class="kh-logo-han">Han</span></span>'
+    + '<a class="kh-logo" href="index.html">'
+    + '<span class="kh-logo-korehan">KoreHan</span>'
     + '<span class="kh-logo-news">News</span>'
     + '</a>'
-    + '<div class="kh-top-right">'
-    + '<div class="kh-clock"><span id="date-str"></span><span id="clock"></span></div>'
-    + '<span id="topbar-user-avatar" style="display:none;width:28px;height:28px;border-radius:50%;background:#2255a4;color:#fff;align-items:center;justify-content:center;font-weight:700;font-size:13px;overflow:hidden;vertical-align:middle;margin-right:2px"></span>'
-    + '<a href="korehan-mypage.html" id="topbar-mypage-btn" class="auth-btn-ui" style="display:none">👤 My Page</a>'
-    + '<a href="#" id="topbar-signin-btn" class="auth-btn-ui" onclick="event.preventDefault();openAuthModal(\'signin\')">Sign In</a>'
-    + '<a href="korehan-admin.html" id="topbar-admin-btn" class="auth-btn-ui" style="display:none;background:rgba(231,76,60,0.25);border-color:rgba(231,76,60,0.5)">⚙ Admin</a>'
-    + '</div></div>'
-    + '<nav class="kh-nav">'
-    + links.map(function(l){
-        var active = (pageBase === l.base || page === l.href ||
-          (l.sectionKey && l.sectionKey === currentSection)) ? 'on' : '';
-        var cls = [l.cls, active].filter(Boolean).join(' ');
-        return '<a href="' + l.href + '"' + (cls ? ' class="' + cls + '"' : '') + '>' + l.label + '</a>';
-      }).join('')
-    + '<div class="kh-search-wrap"><input type="text" id="kh-search-input" class="kh-search-input" placeholder="🔍 Search articles..." onkeydown="if(event.key===\'Enter\')doSearch(this.value)"><button class="kh-search-btn" onclick="doSearch(document.getElementById(\'kh-search-input\').value)">Search</button></div>'
-    + '</nav></div></div>'
-    // Breaking news ticker - DB 기사 기반
-    + (function() {
-        var articles = getCachedArticles().filter(function(a){ return a.status === 'published'; });
-        var items = articles.slice(0, 8);
-        // 루프 위해 2번 반복
-        var html = (items.concat(items)).map(function(a){
-          return '<a class="brk-item" href="korehan-article.html?id=' + a.id + '">' + a.title + '</a><span class="brk-sep">•</span>';
-        }).join('');
-        return '<div class="kh-breaking">'
-          + '<div class="brk-label"><span class="brk-badge">⚡</span>&nbsp;Breaking</div>'
-          + '<div class="brk-track-wrap"><div class="brk-track">' + html + '</div></div>'
-          + '</div>';
-      })()
+    + '<div class="kh-hright">'
+    + '<span class="kh-hdate" id="date-str"></span>'
+    + '<div class="kh-hsearch"><input type="text" placeholder="&#x1F50D; Search articles\u2026" onkeydown="if(event.key===\'Enter\')doSearch(this.value)" style="border:none;background:none;outline:none;font-size:13px;color:inherit;font-family:inherit;width:100%;"></div>'
+    + '<span id="topbar-user-avatar" style="display:none;width:28px;height:28px;border-radius:50%;background:#2255a4;color:#fff;align-items:center;justify-content:center;font-weight:700;font-size:13px;overflow:hidden;vertical-align:middle;"></span>'
+    + '<a href="korehan-mypage.html" id="topbar-mypage-btn" class="kh-hbtn kh-hbtn-out" style="display:none">&#128100; My Page</a>'
+    + '<a href="#" id="topbar-signin-btn" class="kh-hbtn kh-hbtn-out" onclick="event.preventDefault();openAuthModal(\'signin\')">Sign In</a>'
+    + '<a href="#" id="topbar-join-btn" class="kh-hbtn kh-hbtn-fill" onclick="event.preventDefault();openAuthModal(\'signup\')">Join Free</a>'
+    + '<a href="korehan-admin.html" id="topbar-admin-btn" class="kh-hbtn kh-hbtn-out" style="display:none;background:rgba(231,76,60,0.15);border-color:rgba(231,76,60,0.4);">&#9881; Admin</a>'
+    + '</div>'
+    + '</div>'
+    + '</div>';
+
+  // ── Top nav (navy, dropdowns) ─────────────────────────────────
+  var sections = getSections();
+  var newsDrop = sections.map(function(s) {
+    return '<a href="korehan-section.html?s=' + encodeURIComponent(s.key) + '" class="tn-drop-item">' + s.label + '</a>';
+  }).join('');
+
+  var topnav = '<div class="kh-topnav">'
+    + '<div class="kh-topnav-inner">'
+    + '<a href="index.html" class="tn-item' + (isOn('index.html') ? ' on' : '') + '">Home</a>'
+    + '<div class="tn-item has-drop' + (page.indexOf('korehan-section') >= 0 ? ' on' : '') + '">'
+    + 'News <span class="tn-arr">&#9660;</span>'
+    + '<div class="tn-drop">'
+    + '<div class="tn-drop-label">Category</div>'
+    + '<a href="korehan-all.html" class="tn-drop-item">All News</a>'
+    + newsDrop
+    + '</div>'
+    + '</div>'
+    + '<div class="tn-item has-drop' + (isOn('korehan-conversations') ? ' on' : '') + '">'
+    + '&#x1F4AC; Conversations <span class="tn-new">New</span><span class="tn-arr" style="margin-left:3px">&#9660;</span>'
+    + '<div class="tn-drop">'
+    + '<div class="tn-drop-label">Category</div>'
+    + '<a href="korehan-conversations.html" class="tn-drop-item">All</a>'
+    + '<a href="korehan-conversations.html?cat=everyday" class="tn-drop-item">Everyday</a>'
+    + '<a href="korehan-conversations.html?cat=work" class="tn-drop-item">Workplace</a>'
+    + '<a href="korehan-conversations.html?cat=friends" class="tn-drop-item">Friends</a>'
+    + '<a href="korehan-conversations.html?cat=family" class="tn-drop-item">Family</a>'
+    + '<a href="korehan-conversations.html?cat=dating" class="tn-drop-item">Dating</a>'
+    + '</div>'
+    + '</div>'
+    + '<div class="tn-item has-drop' + (isOn('korehan-stories') ? ' on' : '') + '">'
+    + '&#x1F4D6; Stories <span class="tn-new">New</span><span class="tn-arr" style="margin-left:3px">&#9660;</span>'
+    + '<div class="tn-drop">'
+    + '<div class="tn-drop-label">Mood</div>'
+    + '<a href="korehan-stories.html" class="tn-drop-item">All Stories</a>'
+    + '<a href="korehan-stories.html?mood=fun" class="tn-drop-item">&#x1F602; Fun</a>'
+    + '<a href="korehan-stories.html?mood=touching" class="tn-drop-item">&#x1F979; Touching</a>'
+    + '<a href="korehan-stories.html?mood=scary" class="tn-drop-item">&#x1F631; Scary</a>'
+    + '<a href="korehan-stories.html?mood=shocking" class="tn-drop-item">&#x1F62E; Shocking</a>'
+    + '</div>'
+    + '</div>'
+    + '<a href="korehan-study-room.html" class="tn-item' + (isOn('korehan-study-room') ? ' on' : '') + '">&#x1F4D6; Study Room</a>'
+    + '<a href="korehan-courses.html" class="tn-item' + (isOn('korehan-courses') ? ' on' : '') + '">&#x1F393; Courses</a>'
+    + '<a href="korehan-all.html" class="tn-item' + (isOn('korehan-all') ? ' on' : '') + '">All News</a>'
+    + '</div>'
+    + '</div>';
+
+  // ── Breaking ticker ───────────────────────────────────────────
+  var ticker = (function() {
+    var arts = getCachedArticles().filter(function(a){ return a.status === 'published'; });
+    if (!arts.length) return '';
+    var html = arts.slice(0,6).map(function(a){
+      return '<span class="brk-item"><span class="brk-sep">&middot;</span><a href="korehan-article.html?id=' + a.id + '" style="color:#fff;text-decoration:none;">' + (a.title_ko || a.title || '') + '</a></span>';
+    }).join('');
+    return '<div class="brk-bar">'
+      + '<div class="brk-label"><span class="brk-badge">&#9889;</span>&nbsp;Breaking</div>'
+      + '<div class="brk-track-wrap"><div class="brk-track">' + html + html + '</div></div>'
+      + '</div>';
+  })();
+
+  return logoBar + topnav + ticker;
 }
+
 
 function renderFooter() {
   var cfg = getSiteConfig();

@@ -76,6 +76,84 @@
     <div id="kh-sidebar"></div>
   </div>
 
+  <!-- CONVERSATIONS PREVIEW -->
+  <div class="sec-hd" style="border-bottom-color:#2563eb;">
+    <div class="sec-hd-title">&#x1F4AC; Conversations</div>
+    <div class="sec-hd-sub">Real Korean text conversations</div>
+    <a href="korehan-conversations.html" class="sec-hd-more" style="color:#2563eb;">All conversations &rarr;</a>
+  </div>
+  <div class="sec-pills" id="conv-pills">
+    <button class="sp on" data-cat="all">All</button>
+    <button class="sp" data-cat="everyday">Everyday</button>
+    <button class="sp" data-cat="work">Workplace</button>
+    <button class="sp" data-cat="friends">Friends</button>
+    <button class="sp" data-cat="family">Family</button>
+    <button class="sp" data-cat="dating">Dating</button>
+  </div>
+  <div class="conv-grid" id="home-conv-grid">
+    <div class="conv-card" data-cat="everyday">
+      <div class="cc-head">
+        <div class="cc-avi">&#x1F469;</div>
+        <div class="cc-info"><div class="cc-name">Ji-yeon &amp; Soo-jin</div><div class="cc-ctx">Planning dinner with a friend</div></div>
+        <div class="cc-badge">Everyday &middot; Beginner</div>
+      </div>
+      <div class="cc-chat">
+        <div class="cc-bub l">&#xC624;&#xB298; &#xC800;&#xB141;&#xC5D0; &#xC2DC;&#xAC04; &#xB3FC;?</div>
+        <div class="cc-bub r">&#xC751;! &#xC65C;? &#xBB34;&#xC2A8; &#xC77C; &#xC788;&#xC5B4;?</div>
+        <div class="cc-bub l">&#xADF8;&#xC0E5; &#xAC19;&#xC774; &#xBC25; &#xBA39;&#xC744; &#xC0AC;&#xB78C; &#xCC3E;&#xB294; &#xC911; &#x3135;&#x3135;</div>
+      </div>
+      <div class="cc-foot">
+        <span class="cc-vocab">&#x1F4DA; 8 key words</span>
+        <a href="korehan-conversations.html" class="cc-study">Study vocab &rarr;</a>
+      </div>
+    </div>
+    <div class="conv-card" data-cat="work">
+      <div class="cc-head">
+        <div class="cc-avi">&#x1F468;&#x200D;&#x1F4BC;</div>
+        <div class="cc-info"><div class="cc-name">Team Chat &#xD300; &#xCC44;&#xD305;</div><div class="cc-ctx">Asking for a deadline extension</div></div>
+        <div class="cc-badge">Workplace &middot; Intermediate</div>
+      </div>
+      <div class="cc-chat">
+        <div class="cc-bub l">&#xBCF4;&#xACE0;&#xC11C; &#xB9C8;&#xAC10;&#xC774; &#xC624;&#xB298;&#xC778;&#xB370; &#xC870;&#xAE08; &#xB354; &#xC2DC;&#xAC04;&#xC774; &#xD544;&#xC694;&#xD574;&#xC694;.</div>
+        <div class="cc-bub r">&#xC5BC;&#xB9C8;&#xB098; &#xB354; &#xD544;&#xC694;&#xD574;&#xC694;?</div>
+        <div class="cc-bub l">&#xB0B4;&#xC77C; &#xC624;&#xC804;&#xAE4C;&#xC9C0; &#xAC00;&#xB2A5;&#xD560;&#xAE4C;&#xC694;?</div>
+      </div>
+      <div class="cc-foot">
+        <span class="cc-vocab">&#x1F4DA; 12 key words</span>
+        <a href="korehan-conversations.html" class="cc-study">Study vocab &rarr;</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- STORIES PREVIEW -->
+  <div class="sec-hd" style="border-bottom-color:#7c3aed;margin-top:8px;">
+    <div class="sec-hd-title">&#x1F4D6; Stories</div>
+    <div class="sec-hd-sub">Fun &middot; Touching &middot; Scary &middot; Shocking</div>
+    <a href="korehan-stories.html" class="sec-hd-more" style="color:#7c3aed;">All stories &rarr;</a>
+  </div>
+  <div class="story-grid">
+    <div class="sc" onclick="location.href='korehan-stories.html?mood=fun'">
+      <div class="sc-cover fun">&#x1F602;<span class="sc-mood fun">Fun</span></div>
+      <div class="sc-body"><div class="sc-title">&#xD3B8;&#xC758;&#xC810; &#xC54C;&#xBC14;&#xC0DD;&#xC758; &#xD669;&#xB2F9;&#xD55C; &#xD558;&#xB8E8;</div><div class="sc-preview">&#xC624;&#xB298; &#xC190;&#xB2D8;&#xC774; &#xB4E4;&#xC5B4;&#xC624;&#xB354;&#xB2C8; &#xAC11;&#xC790;&#xAE30; &ldquo;&#xC5EC;&#xAE30; &#xCEE4;&#xD53C; &#xD30C;&#xB098;&#xC694;?&rdquo; &#xD558;&#xACE0; &#xBB3C;&#xC5B4;&#xBD10;&#xB2E4;...</div></div>
+      <div class="sc-foot"><span class="sc-lvl lvl-b">Beginner</span><span class="sc-time">3 min</span><button class="sc-study">&#x1F4DA;</button></div>
+    </div>
+    <div class="sc" onclick="location.href='korehan-stories.html?mood=touching'">
+      <div class="sc-cover touching">&#x1F979;<span class="sc-mood touching">Touching</span></div>
+      <div class="sc-body"><div class="sc-title">&#xD560;&#xBA38;&#xB2C8;&#xC758; &#xB9C8;&#xC9C0;&#xB9C9; &#xC120;&#xBB3C;</div><div class="sc-preview">&#xB3CC;&#xC544;&#xAC00;&#xC2DC;&#xAE30; &#xC804; &#xB0A0;, &#xD560;&#xBA38;&#xB2C8;&#xB294; &#xB0B4; &#xC190;&#xC744; &#xAF3D; &#xC78A;&#xACE0; &#xC791;&#xC740; &#xBD09;&#xD22C;&#xB97C; &#xAC74;&#xB124;&#xC168;&#xB2E4;...</div></div>
+      <div class="sc-foot"><span class="sc-lvl lvl-i">Intermediate</span><span class="sc-time">5 min</span><button class="sc-study">&#x1F4DA;</button></div>
+    </div>
+    <div class="sc" onclick="location.href='korehan-stories.html?mood=scary'">
+      <div class="sc-cover scary">&#x1F631;<span class="sc-mood scary">Scary</span></div>
+      <div class="sc-body"><div class="sc-title">&#xD63C;&#xC790; &#xC0B4;&#xBA74;&#xC11C; &#xACA9;&#xC740; &#xC774;&#xC0C1;&#xD55C; &#xC77C;</div><div class="sc-preview">&#xBD84;&#xBA85;&#xD788; &#xD63C;&#xC790; &#xC0AC;&#xB294;&#xB370;, &#xB9E4;&#xC77C; &#xC544;&#xCE68; &#xB0C9;&#xC7A5;&#xACE0; &#xC18D; &#xC74C;&#xC2DD;&#xC774; &#xC870;&#xAE08;&#xC529; &#xC5C6;&#xC5B4;&#xC9C0;&#xACE0; &#xC788;&#xC5C8;&#xB2E4;...</div></div>
+      <div class="sc-foot"><span class="sc-lvl lvl-i">Intermediate</span><span class="sc-time">4 min</span><button class="sc-study">&#x1F4DA;</button></div>
+    </div>
+    <div class="sc" onclick="location.href='korehan-stories.html?mood=shocking'">
+      <div class="sc-cover shocking">&#x1F62E;<span class="sc-mood shocking">Shocking</span></div>
+      <div class="sc-body"><div class="sc-title">10&#xB144; &#xB9CC;&#xC5D0; &#xC54C;&#xAC8C; &#xB41C; &#xC9C4;&#xC2E4;</div><div class="sc-preview">&#xC5B4;&#xB838; &#xB54C; &#xB098;&#xB97C; &#xBC84;&#xB9B0; &#xC904;&#xB9CC; &#xC54C;&#xC558;&#xB358; &#xC544;&#xBC84;&#xC9C0;&#xAC00; &#xC0AC;&#xC2E4; 10&#xB144; &#xB3D9;&#xC548; &#xB9E4;&#xB2EC; &#xD559;&#xBE44;&#xB97C; &#xBCF4;&#xB0B4;&#xACE0; &#xC788;&#xC5C8;&#xB2E4;...</div></div>
+      <div class="sc-foot"><span class="sc-lvl lvl-a">Advanced</span><span class="sc-time">6 min</span><button class="sc-study">&#x1F4DA;</button></div>
+    </div>
+  </div>
+
   <div class="section-title">Opinion</div>
   <div class="opinion-grid" id="dyn-opinions"></div>
 </div>
@@ -94,6 +172,23 @@ document.addEventListener('DOMContentLoaded', function() {
   if (rom) rom.textContent = p.rom;
   if (en)  en.textContent  = p.en;
 });
+
+// Conversation pills filter (homepage)
+(function() {
+  var pills = document.getElementById('conv-pills');
+  if (!pills) return;
+  pills.querySelectorAll('.sp').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      pills.querySelectorAll('.sp').forEach(function(b){ b.classList.remove('on'); });
+      btn.classList.add('on');
+      var cat = btn.dataset.cat;
+      document.querySelectorAll('#home-conv-grid .conv-card').forEach(function(card) {
+        card.style.display = (cat === 'all' || card.dataset.cat === cat) ? '' : 'none';
+      });
+    });
+  });
+})();
+
 </script>
 </body>
 </html>
