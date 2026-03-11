@@ -186,8 +186,11 @@ a{color:inherit;text-decoration:none}
 
     <div class="section-sep"></div>
     <div class="sb-lbl">학습 콘텐츠</div>
+    <button class="sb-btn" id="sb-conv" onclick="goConvEditor()"><span class="ico">💬</span>Conversations AI<span class="sb-new-tag">NEW</span></button>
+    <button class="sb-btn" id="sb-stor" onclick="goStoriesEditor()"><span class="ico">📖</span>Stories AI<span class="sb-new-tag">NEW</span></button>
     <button class="sb-btn" onclick="goPhrases()"> <span class="ico">💬</span>오늘의 표현</button>
     <button class="sb-btn" onclick="goVocabEditor()"><span class="ico">✏️</span>단어 뜻 수정</button>
+    <button class="sb-btn" onclick="goTopics()"><span class="ico">📝</span>작문 토픽 관리</button>
     <button class="sb-btn" onclick="goWordBank()"><span class="ico">📚</span>단어 플래시 카드</button>
     <button class="sb-btn" onclick="goSentences()"><span class="ico">💬</span>예문 관리</button>
     <div class="sb-lbl" style="margin-top:14px">운영 관리</div>
@@ -1321,6 +1324,158 @@ function savePhrases(){
 
 // ══ WORD BANK ════════════════════════════════════════════════
 // ══ VOCAB 뜻 수정 (hover tooltip 커스텀) ═══════════════════════
+
+// ═══════════════════════════════════════════════════════
+// 작문 토픽 관리
+// ═══════════════════════════════════════════════════════
+function goTopics() {
+  setSbOn(null);
+  const main = document.getElementById('main');
+  main.innerHTML =
+    '<div class="pg-hd"><div><h1>📝 작문 토픽 관리</h1><p>Writing Practice에 사용되는 토픽을 관리하세요.</p></div>'
+    + '<button onclick="openTopicModal()" class="btn-primary" style="margin-left:auto;white-space:nowrap">+ 토픽 추가</button></div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
+    + '<button class="sf-tag on" onclick="filterTopics(&apos;all&apos;,this)">전체</button>'
+    + '<button class="sf-tag" onclick="filterTopics(&apos;Beginner&apos;,this)">🟢 Beginner</button>'
+    + '<button class="sf-tag" onclick="filterTopics(&apos;Intermediate&apos;,this)">🟡 Intermediate</button>'
+    + '<button class="sf-tag" onclick="filterTopics(&apos;Advanced&apos;,this)">🔴 Advanced</button>'
+    + '</div>'
+    + '<div id="topics-wrap"><div style="padding:24px;color:var(--gray);text-align:center">⏳ 불러오는 중…</div></div>'
+    + '<div id="topic-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">'
+    + '<div style="background:#fff;border-radius:14px;padding:28px;width:100%;max-width:520px;box-shadow:0 24px 80px rgba(0,0,0,0.3)">'
+    + '<h2 style="font-size:18px;margin-bottom:18px" id="topic-modal-title">토픽 추가</h2>'
+    + '<input id="tm-id" type="hidden">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">'
+    + '<div><label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:4px">카테고리</label>'
+    + '<input id="tm-cat" class="sf-input" placeholder="예: 일상, 음식, 여행…" style="width:100%"></div>'
+    + '<div><label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:4px">레벨</label>'
+    + '<select id="tm-level" class="sf-input" style="width:100%"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></div>'
+    + '</div>'
+    + '<label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:4px">토픽 (한국어)</label>'
+    + '<input id="tm-ko" class="sf-input" placeholder="예: 오늘 뭐 먹었어요?" style="width:100%;margin-bottom:10px">'
+    + '<label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:4px">토픽 (영어)</label>'
+    + '<input id="tm-en" class="sf-input" placeholder="예: What did you eat today?" style="width:100%;margin-bottom:18px">'
+    + '<div style="display:flex;gap:10px;justify-content:flex-end">'
+    + '<button onclick="closeTopicModal()" style="padding:9px 20px;border-radius:8px;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-weight:600">취소</button>'
+    + '<button onclick="saveTopic()" class="btn-primary">저장</button>'
+    + '</div></div></div>';
+  window._topicsAll = [];
+  window._topicsFilter = 'all';
+  loadTopics();
+}
+
+async function loadTopics() {
+  try {
+    const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/writing_topics?select=*&order=category.asc,level.asc,created_at.asc', {
+      headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    window._topicsAll = await res.json();
+    renderTopicsTable(window._topicsAll);
+  } catch(e) {
+    document.getElementById('topics-wrap').innerHTML = '<div class="infobox" style="color:#c33">⚠️ ' + e.message + '</div>';
+  }
+}
+
+function filterTopics(level, btn) {
+  window._topicsFilter = level;
+  document.querySelectorAll('.sf-tag').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  const list = level === 'all' ? window._topicsAll : window._topicsAll.filter(t => t.level === level);
+  renderTopicsTable(list);
+}
+
+function renderTopicsTable(list) {
+  const el = document.getElementById('topics-wrap');
+  if (!list.length) { el.innerHTML = '<div class="infobox">토픽이 없습니다.</div>'; return; }
+  const lvBg = { Beginner:'background:#e8f5e9;color:#2e7d32', Intermediate:'background:#fff8e1;color:#f57f17', Advanced:'background:#fce4ec;color:#c62828' };
+  let rows = '';
+  for (let i=0; i<list.length; i++) {
+    const t = list[i];
+    const bg = lvBg[t.level] || 'background:#eee;color:#555';
+    const activeColor = t.active ? '#2e7d32' : '#c33';
+    const activeLabel = t.active ? '활성' : '비활성';
+    const toggleLabel = t.active ? '비활성화' : '활성화';
+    rows += '<tr style="border-bottom:1px solid var(--border)">';
+    rows += '<td style="padding:9px 12px;font-weight:600">' + t.category + '</td>';
+    rows += '<td style="padding:9px 12px"><span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;' + bg + '">' + t.level + '</span></td>';
+    rows += '<td style="padding:9px 12px">' + t.topic_ko + '</td>';
+    rows += '<td style="padding:9px 12px;color:var(--gray);font-size:12px">' + t.topic_en + '</td>';
+    rows += '<td style="padding:9px 12px"><span style="font-size:11px;font-weight:700;color:' + activeColor + '">' + activeLabel + '</span></td>';
+    rows += '<td style="padding:9px 12px;white-space:nowrap">';
+    rows += '<button data-id="' + t.id + '" onclick="editTopicById(this.dataset.id)" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;margin-right:4px">수정</button>';
+    rows += '<button data-id="' + t.id + '" data-active="' + t.active + '" onclick="toggleTopicActive(this.dataset.id,this.dataset.active===\'true\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;margin-right:4px">' + toggleLabel + '</button>';
+    rows += '<button data-id="' + t.id + '" onclick="deleteTopic(this.dataset.id)" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #fdd;background:#fff5f5;color:#c33;cursor:pointer">삭제</button>';
+    rows += '</td></tr>';
+  }
+  el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개</div>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+    + '<thead><tr style="background:#f8faff;border-bottom:2px solid var(--border)">'
+    + '<th style="padding:9px 12px;text-align:left">카테고리</th>'
+    + '<th style="padding:9px 12px;text-align:left">레벨</th>'
+    + '<th style="padding:9px 12px;text-align:left">토픽 (한국어)</th>'
+    + '<th style="padding:9px 12px;text-align:left">토픽 (영어)</th>'
+    + '<th style="padding:9px 12px;text-align:left">상태</th>'
+    + '<th style="padding:9px 12px"></th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+function openTopicModal(topic) {
+  document.getElementById('topic-modal-title').textContent = topic ? '토픽 수정' : '토픽 추가';
+  document.getElementById('tm-id').value = topic ? topic.id : '';
+  document.getElementById('tm-cat').value = topic ? topic.category : '';
+  document.getElementById('tm-ko').value = topic ? topic.topic_ko : '';
+  document.getElementById('tm-en').value = topic ? topic.topic_en : '';
+  document.getElementById('tm-level').value = topic ? topic.level : 'Beginner';
+  document.getElementById('topic-modal').style.display = 'flex';
+}
+function closeTopicModal() { document.getElementById('topic-modal').style.display = 'none'; }
+
+function editTopicById(id) {
+  const t = (window._topicsAll||[]).find(x=>x.id===id);
+  if (t) openTopicModal(t);
+}
+
+async function saveTopic() {
+  const id    = document.getElementById('tm-id').value;
+  const body  = {
+    category: document.getElementById('tm-cat').value.trim(),
+    topic_ko: document.getElementById('tm-ko').value.trim(),
+    topic_en: document.getElementById('tm-en').value.trim(),
+    level:    document.getElementById('tm-level').value,
+  };
+  if (!body.category || !body.topic_ko || !body.topic_en) { toast('모든 항목을 입력하세요.', true); return; }
+  const url = id
+    ? SUPA_URL_ADMIN + '/rest/v1/writing_topics?id=eq.' + id
+    : SUPA_URL_ADMIN + '/rest/v1/writing_topics';
+  const res = await fetch(url, {
+    method: id ? 'PATCH' : 'POST',
+    headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+    body: JSON.stringify(body)
+  });
+  if (res.ok) { toast('✅ 저장됨'); closeTopicModal(); loadTopics(); }
+  else { toast('⚠️ 저장 실패', true); }
+}
+
+async function deleteTopic(id) {
+  if (!confirm('정말 삭제할까요?')) return;
+  const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/writing_topics?id=eq.' + id, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
+  });
+  if (res.ok) { toast('🗑️ 삭제됨'); loadTopics(); }
+  else toast('⚠️ 삭제 실패', true);
+}
+
+async function toggleTopicActive(id, current) {
+  const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/writing_topics?id=eq.' + id, {
+    method: 'PATCH',
+    headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ active: !current })
+  });
+  if (res.ok) loadTopics();
+}
+
 async function goVocabEditor() {
   setSbOn(null);
   const main = document.getElementById('main');
@@ -2685,6 +2840,342 @@ document.getElementById('ov').addEventListener('click', e=>{if(e.target===docume
 document.getElementById('del-cancel').addEventListener('click', closeDelete);
 document.getElementById('del-confirm').addEventListener('click', doDelete);
 document.getElementById('del-ov').addEventListener('click', e=>{if(e.target===document.getElementById('del-ov'))closeDelete();});
+
+
+// ═══════════════════════════════════════════════════════════
+// CONVERSATIONS AI EDITOR
+// ═══════════════════════════════════════════════════════════
+async function goConvEditor() {
+  setSidebarActive('conv');
+  var main = document.getElementById('main');
+  main.innerHTML = `
+    <div style="max-width:900px">
+      <h2 style="font-family:'Playfair Display',serif;font-size:24px;margin:0 0 6px">💬 Conversations AI Generator</h2>
+      <p style="color:#64748b;font-size:13px;margin:0 0 20px">AI로 KakaoTalk 스타일 대화 콘텐츠 생성. 생성 후 저장 버튼으로 conversations_data 테이블에 저장됩니다.</p>
+
+      <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px;margin-bottom:20px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">CATEGORY</label>
+            <select id="cv-cat" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+              <option value="everyday">Everyday</option>
+              <option value="work">Workplace</option>
+              <option value="friends">Friends</option>
+              <option value="family">Family</option>
+              <option value="dating">Dating</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">LEVEL</label>
+            <select id="cv-lvl" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+              <option value="b">Beginner</option>
+              <option value="i">Intermediate</option>
+              <option value="a">Advanced</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">COUNT</label>
+            <select id="cv-count" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+              <option value="3">3개</option>
+              <option value="5">5개</option>
+              <option value="10" selected>10개</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">TOPIC (optional)</label>
+          <input id="cv-topic" placeholder="e.g. 카페, 병원, 여행 계획..." style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+        </div>
+        <button onclick="generateConvs()" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+          🤖 Generate Conversations
+        </button>
+      </div>
+
+      <div id="cv-results"></div>
+    </div>`;
+}
+
+async function generateConvs() {
+  var cat    = document.getElementById('cv-cat').value;
+  var lvl    = document.getElementById('cv-lvl').value;
+  var count  = document.getElementById('cv-count').value;
+  var topic  = document.getElementById('cv-topic').value.trim();
+  var res    = document.getElementById('cv-results');
+  var lvlMap = {b:'Beginner', i:'Intermediate', a:'Advanced'};
+  var catMap = {everyday:'Everyday', work:'Workplace', friends:'Friends', family:'Family', dating:'Dating'};
+
+  res.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b"><div style="font-size:24px;margin-bottom:8px">⏳</div>AI 생성 중...</div>';
+
+  var prompt = `You are creating Korean language learning content for KoreHan News, a Korean learning platform.
+
+Generate ${count} KakaoTalk-style Korean conversations for the following parameters:
+- Category: ${catMap[cat]}
+- Level: ${lvlMap[lvl]}
+- Topic: ${topic || 'any natural Korean daily life situation'}
+
+Return ONLY a valid JSON array. No markdown, no explanation, no backticks. Just the raw JSON array.
+
+Each conversation object must have:
+{
+  "name": "Character names (Korean + English)",
+  "ctx": "Short context description in English",
+  "cat": "${cat}",
+  "lvl": "${lvl}",
+  "catLabel": "${catMap[cat]}",
+  "topic": "topic label in English",
+  "avi": "single emoji",
+  "msgs": [
+    {"s": "l" or "r", "who": "name", "txt": "Korean text", "note": "optional English grammar/vocab note"}
+  ],
+  "vocab": [
+    {"ko": "Korean word/phrase", "rom": "romanization", "en": "English meaning"}
+  ],
+  "grammar": [
+    {"point": "Grammar point", "ex": "Explanation with example"}
+  ],
+  "mission": ["practice task 1", "practice task 2", "practice task 3"]
+}
+
+Rules:
+- msgs: 6-9 messages, natural Korean texting style, mix of l and r
+- Add note to 2-3 messages explaining nuance/vocabulary
+- vocab: 5-7 items
+- grammar: 2-3 points
+- mission: 3 tasks
+- Level ${lvlMap[lvl]}: ${lvl==='b'?'simple grammar, common words, short sentences':lvl==='i'?'moderate complexity, some formal/casual contrast, compound sentences':'complex grammar, honorifics, advanced expressions'}
+- Make conversations feel authentic and natural, not textbook-like`;
+
+  try {
+    var resp = await callClaude({
+      feature: 'conv_gen',
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      messages: [{role:'user', content: prompt}]
+    });
+    var text = resp.content.map(b => b.text||'').join('');
+    // strip any possible markdown
+    text = text.replace(/^```json
+?/, '').replace(/```$/, '').trim();
+    var convs = JSON.parse(text);
+
+    res.innerHTML = '<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
+      + '<span style="font-size:14px;font-weight:700;color:#0f172a">Generated ' + convs.length + ' conversations</span>'
+      + '<button onclick="saveAllConvs()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 Save All to DB</button>'
+      + '</div>'
+      + convs.map(function(c, i) {
+          return '<div class="cv-item" data-idx="' + i + '" style="background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:18px;margin-bottom:12px">'
+            + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+              + '<span style="font-size:24px">' + c.avi + '</span>'
+              + '<div><div style="font-size:14px;font-weight:700">' + c.name + '</div><div style="font-size:12px;color:#64748b">' + c.ctx + '</div></div>'
+              + '<span style="margin-left:auto;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px">' + lvlMap[c.lvl||lvl] + '</span>'
+            + '</div>'
+            + '<div style="background:#f8fbff;border-radius:10px;padding:12px;margin-bottom:10px">'
+              + c.msgs.map(function(m) {
+                  return '<div style="display:flex;' + (m.s==='r'?'justify-content:flex-end':'') + ';margin-bottom:6px">'
+                    + '<div style="max-width:75%;background:' + (m.s==='r'?'#2563eb':'#fff') + ';color:' + (m.s==='r'?'#fff':'#0f172a') + ';border:' + (m.s==='r'?'none':'1px solid #e2e8f0') + ';border-radius:14px;padding:8px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif">' + m.txt + (m.note?'<div style="font-size:11px;color:' + (m.s==='r'?'rgba(255,255,255,.7)':'#2563eb') + ';margin-top:4px;font-style:italic">💡 ' + m.note + '</div>':'') + '</div>'
+                    + '</div>';
+                }).join('')
+            + '</div>'
+            + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
+              + (c.vocab||[]).map(v => '<span style="background:#f1f5f9;border-radius:8px;padding:4px 10px;font-size:12px"><strong style="color:#1d4ed8">' + v.ko + '</strong> ' + v.en + '</span>').join('')
+            + '</div>'
+          + '</div>';
+        }).join('');
+
+    window._generatedConvs = convs;
+  } catch(e) {
+    res.innerHTML = '<div style="background:#fee2e2;border-radius:10px;padding:14px;color:#b91c1c;font-size:13px">Error: ' + e.message + '</div>';
+  }
+}
+
+async function saveAllConvs() {
+  if (!window._generatedConvs || !window._generatedConvs.length) return;
+  var sb = getSupa();
+  if (!sb) return;
+  var rows = window._generatedConvs.map(function(c) {
+    return {
+      data: c,
+      cat: c.cat,
+      lvl: c.lvl,
+      name: c.name,
+      ctx: c.ctx,
+      created_at: new Date().toISOString()
+    };
+  });
+  var {error} = await sb.from('conversations_data').insert(rows);
+  if (error) {
+    alert('Save error: ' + error.message);
+  } else {
+    alert('✅ ' + rows.length + ' conversations saved!');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// STORIES AI EDITOR
+// ═══════════════════════════════════════════════════════════
+async function goStoriesEditor() {
+  setSidebarActive('stor');
+  var main = document.getElementById('main');
+  main.innerHTML = `
+    <div style="max-width:900px">
+      <h2 style="font-family:'Playfair Display',serif;font-size:24px;margin:0 0 6px">📖 Stories AI Generator</h2>
+      <p style="color:#64748b;font-size:13px;margin:0 0 20px">AI로 한국어 단편 이야기 콘텐츠 생성. 생성 후 저장 버튼으로 stories_data 테이블에 저장됩니다.</p>
+
+      <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px;margin-bottom:20px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">MOOD</label>
+            <select id="st-mood" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+              <option value="fun">😂 Fun</option>
+              <option value="touching">🥹 Touching</option>
+              <option value="scary">😱 Scary</option>
+              <option value="shocking">😮 Shocking</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">LEVEL</label>
+            <select id="st-lvl" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+              <option value="b">Beginner</option>
+              <option value="i" selected>Intermediate</option>
+              <option value="a">Advanced</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">COUNT</label>
+            <select id="st-count" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+              <option value="3">3개</option>
+              <option value="5">5개</option>
+              <option value="10" selected>10개</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="generateStories()" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+          🤖 Generate Stories
+        </button>
+      </div>
+
+      <div id="st-results"></div>
+    </div>`;
+}
+
+async function generateStories() {
+  var mood   = document.getElementById('st-mood').value;
+  var lvl    = document.getElementById('st-lvl').value;
+  var count  = document.getElementById('st-count').value;
+  var res    = document.getElementById('st-results');
+  var lvlMap = {b:'Beginner', i:'Intermediate', a:'Advanced'};
+  var moodMap = {fun:'Fun 😂', touching:'Touching 🥹', scary:'Scary 😱', shocking:'Shocking 😮'};
+  var moodEmoji = {fun:'😂', touching:'🥹', scary:'😱', shocking:'😮'};
+
+  res.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b"><div style="font-size:24px;margin-bottom:8px">⏳</div>AI 생성 중...</div>';
+
+  var prompt = `You are creating Korean language learning content for KoreHan News.
+
+Generate ${count} short Korean stories (온라인 커뮤니티 스타일 — like Reddit/DC Inside posts) for:
+- Mood: ${moodMap[mood]}
+- Level: ${lvlMap[lvl]}
+
+Return ONLY a valid JSON array. No markdown, no backticks, just raw JSON.
+
+Each story object:
+{
+  "title": "Korean title (eye-catching, community post style)",
+  "title_en": "English translation of title",
+  "mood": "${mood}",
+  "lvl": "${lvl}",
+  "readTime": "X min",
+  "preview": "First 1-2 sentences of story in Korean (teaser)",
+  "body": "Full story in Korean, 8-15 paragraphs. Written as authentic SNS/community post. Include dialogue where natural. Use line breaks between paragraphs.",
+  "vocab": [
+    {"ko": "word", "rom": "romanization", "en": "meaning"}
+  ],
+  "grammar": [
+    {"point": "Grammar point", "ex": "Example and explanation"}
+  ],
+  "comprehension": [
+    {"q": "Comprehension question in English", "a": "Answer in English"}
+  ]
+}
+
+Rules:
+- Title should feel like a viral Korean community post (낚시성, curiosity-inducing)
+- Body: authentic Korean, NOT textbook. Use Korean internet writing style where appropriate
+- Level ${lvlMap[lvl]}: ${lvl==='b'?'simple sentences, common vocabulary, present/past tense only':lvl==='i'?'moderate complexity, varied sentence structures, common idioms':'complex grammar, sophisticated vocabulary, nuanced expressions'}
+- Mood "${moodMap[mood]}": ${mood==='fun'?'funny/humorous situations, light-hearted':mood==='touching'?'heartwarming, emotional, might make you cry (in a good way)':mood==='scary'?'creepy, unsettling, supernatural or psychological':' unbelievable true-story feeling, jaw-dropping reveals'}
+- vocab: 6-8 items
+- grammar: 2-3 points
+- comprehension: 3 questions`;
+
+  try {
+    var resp = await callClaude({
+      feature: 'story_gen',
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 6000,
+      messages: [{role:'user', content: prompt}]
+    });
+    var text = resp.content.map(b => b.text||'').join('');
+    text = text.replace(/^```json
+?/, '').replace(/```$/, '').trim();
+    var stories = JSON.parse(text);
+
+    var moodColors = {fun:'#f59e0b', touching:'#ec4899', scary:'#7c3aed', shocking:'#ef4444'};
+    var moodBg = {fun:'linear-gradient(135deg,#fef9c3,#fde68a)', touching:'linear-gradient(135deg,#fce7f3,#fbcfe8)', scary:'linear-gradient(135deg,#ede9fe,#c4b5fd)', shocking:'linear-gradient(135deg,#fee2e2,#fca5a5)'};
+
+    res.innerHTML = '<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
+      + '<span style="font-size:14px;font-weight:700;color:#0f172a">Generated ' + stories.length + ' stories</span>'
+      + '<button onclick="saveAllStories()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 Save All to DB</button>'
+      + '</div>'
+      + stories.map(function(s, i) {
+          return '<div style="background:#fff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:12px">'
+            + '<div style="height:70px;background:' + (moodBg[s.mood]||moodBg.fun) + ';display:flex;align-items:center;justify-content:center;font-size:28px;position:relative">'
+              + moodEmoji[s.mood]
+              + '<span style="position:absolute;top:7px;left:10px;background:' + (moodColors[s.mood]||'#f59e0b') + ';color:#fff;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;padding:2px 8px;border-radius:2px">' + (s.mood||mood).toUpperCase() + '</span>'
+            + '</div>'
+            + '<div style="padding:16px">'
+              + '<div style="font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;margin-bottom:4px">' + s.title + '</div>'
+              + '<div style="font-size:12px;color:#64748b;margin-bottom:10px">' + (s.title_en||'') + ' · ' + (s.readTime||'3 min') + ' · ' + lvlMap[s.lvl||lvl] + '</div>'
+              + '<div style="font-size:13px;color:#334155;line-height:1.6;background:#f8fafc;border-radius:8px;padding:10px;margin-bottom:10px;font-family:'Noto Sans KR',sans-serif;white-space:pre-line">' + (s.body||s.preview||'') + '</div>'
+              + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
+                + (s.vocab||[]).map(v => '<span style="background:#f1f5f9;border-radius:8px;padding:4px 10px;font-size:12px"><strong style="color:#7c3aed">' + v.ko + '</strong> ' + v.en + '</span>').join('')
+              + '</div>'
+            + '</div>'
+          + '</div>';
+        }).join('');
+
+    window._generatedStories = stories;
+  } catch(e) {
+    res.innerHTML = '<div style="background:#fee2e2;border-radius:10px;padding:14px;color:#b91c1c;font-size:13px">Error: ' + e.message + '</div>';
+  }
+}
+
+async function saveAllStories() {
+  if (!window._generatedStories || !window._generatedStories.length) return;
+  var sb = getSupa();
+  if (!sb) return;
+  var rows = window._generatedStories.map(function(s) {
+    return {
+      data: s,
+      mood: s.mood,
+      lvl: s.lvl,
+      title: s.title,
+      title_en: s.title_en,
+      preview: s.preview,
+      read_time: s.readTime,
+      created_at: new Date().toISOString()
+    };
+  });
+  var {error} = await sb.from('stories_data').insert(rows);
+  if (error) {
+    alert('Save error: ' + error.message);
+  } else {
+    alert('✅ ' + rows.length + ' stories saved!');
+  }
+}
+
+function setSidebarActive(id) {
+  document.querySelectorAll('.sb-btn').forEach(function(b){ b.classList.remove('on'); });
+}
+
 </script>
 </body>
 </html>
