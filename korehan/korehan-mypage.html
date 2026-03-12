@@ -152,7 +152,6 @@
   <!-- Tabs -->
   <div class="my-tabs">
     <button class="my-tab on" onclick="switchMyTab('goals',this)">🎯 Daily Goals</button>
-    <button class="my-tab" onclick="switchMyTab('quiz',this)">📝 Word Quiz</button>
     <button class="my-tab" onclick="switchMyTab('words',this)">🔖 Saved Words</button>
     <button class="my-tab" onclick="switchMyTab('articles',this)">📰 Read Articles</button>
     <button class="my-tab" onclick="switchMyTab('bookmarks',this)">🔖 Bookmarks</button>
@@ -166,23 +165,6 @@
   <!-- Today's Goals panel -->
   <div class="my-panel on" id="panel-goals">
     <div id="goals-area"><div style="text-align:center;padding:32px;color:var(--gray)">⏳ Loading...…</div></div>
-  </div>
-
-  <!-- Word Quiz panel -->
-  <div class="my-panel" id="panel-quiz">
-    <!-- 퀴즈 모드 선택 -->
-    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
-      <button class="lq-mode-btn on" id="qmode-flash" onclick="setQuizMode('flash',this)">📝 Flashcard Quiz</button>
-      <button class="lq-mode-btn" id="qmode-listen" onclick="setQuizMode('listen',this)">🎧 Listening Quiz</button>
-      <div id="quiz-listen-type-wrap" style="display:none;gap:6px;margin-left:4px;display:none">
-        <button class="lq-mode-btn on" id="ltype-hear" onclick="setLQType('hear',this)" style="font-size:12px;padding:7px 14px">🔊 What did you hear?</button>
-        <button class="lq-mode-btn" id="ltype-mean" onclick="setLQType('mean',this)" style="font-size:12px;padding:7px 14px">💬 What does it mean?</button>
-        <button class="lq-mode-btn" id="ltype-trans" onclick="setLQType('trans',this)" style="font-size:12px;padding:7px 14px">📝 Pick Translation</button>
-      </div>
-    </div>
-    <div id="quiz-area">
-      <div class="empty-state"><div class="es-icon">🔖</div><p>No saved words yet.<br><a href="korehan-learn.html" style="color:var(--bright);font-weight:700">Save words</a> to start quizzes!</p></div>
-    </div>
   </div>
 
   <!-- Saved Words panel -->
@@ -1034,7 +1016,6 @@ async function initMyPage() {
     savedWords = words || [];
     renderStats(streak, savedWords.length, (articles || []).length);
     renderGoals();
-    setQuizMode('flash', document.getElementById('qmode-flash'));
     await renderBookmarks();
     renderWordsList(savedWords);
     renderArticlesList(articles || []);
@@ -1044,7 +1025,6 @@ async function initMyPage() {
     savedWords = getLocalSavedWords();
     renderStats(null, savedWords.length, getLocalReadArticles().length);
     renderGoals();
-    setQuizMode('flash', document.getElementById('qmode-flash'));
     renderWordsList(savedWords);
     renderArticlesList(getLocalReadArticles());
     document.getElementById('bookmarks-area').innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><p>Some My Page data could not be loaded right now.</p></div>';
@@ -1596,6 +1576,8 @@ var _quizMode = 'flash';   // 'flash' | 'listen'
 var _lqType   = 'hear';    // 'hear' | 'mean' | 'trans'
 
 function setQuizMode(mode, btn) {
+  var area = document.getElementById('quiz-area');
+  if (!area) return;
   _quizMode = mode;
   document.querySelectorAll('#panel-quiz .lq-mode-btn[id^="qmode"]').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
@@ -1611,6 +1593,7 @@ function setQuizMode(mode, btn) {
 }
 
 function setLQType(type, btn) {
+  if (!document.getElementById('quiz-area')) return;
   _lqType = type;
   document.querySelectorAll('#panel-quiz .lq-mode-btn[id^="ltype"]').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
@@ -1626,6 +1609,7 @@ var _lqDone   = false;
 
 async function startListeningQuizMP() {
   var area = document.getElementById('quiz-area');
+  if (!area) return;
   area.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray)">'
     + '<div style="font-size:28px;margin-bottom:10px;display:inline-block;animation:lq-pulse 1s infinite">✨</div>'
     + '<div style="font-size:14px;font-weight:700;margin-top:8px">AI가 문제를 만들고 있어요...</div></div>';
@@ -1791,6 +1775,7 @@ function lqResultMP() {
 
 function renderQuiz(words) {
   var area = document.getElementById('quiz-area');
+  if (!area) return;
   if(!words || words.length < 4) {
     area.innerHTML = '<div class="empty-state"><div class="es-icon">🔖</div>'
       + '<p>퀴즈를 시작하려면 단어 4개 이상 저장이 필요해요.<br>'
@@ -1804,6 +1789,7 @@ function renderQuiz(words) {
 
 function showQuizQuestion() {
   var area = document.getElementById('quiz-area');
+  if (!area) return;
   if(quizIdx >= quizWords.length) {
     area.innerHTML = '<div class="quiz-wrap2" style="text-align:center">'
       + '<div style="font-size:48px;margin-bottom:12px">🎉</div>'
