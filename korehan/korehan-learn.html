@@ -50,25 +50,25 @@
 .vc-tts-btn { right:48px; }
 .vc-save-btn.saved { background:#dbeafe; }
 .sentence-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; }
-.sentence-box { background:linear-gradient(180deg,#fff,#fbfcff); border:1px solid var(--border); border-radius:20px; padding:18px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:14px; }
+.sentence-box { background:#fff; border:1px solid #e8eef7; border-radius:24px; padding:20px; box-shadow:0 8px 32px rgba(15,23,42,.07); display:flex; flex-direction:column; gap:14px; }
 .sentence-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.sent-level { display:inline-flex; align-items:center; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.8px; padding:4px 8px; border-radius:999px; background:rgba(34,85,164,.1); color:var(--bright); }
+.sent-level { display:inline-flex; align-items:center; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.8px; padding:4px 10px; border-radius:999px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
 .sent-focus { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; background:#fff8e8; color:#9a6700; border:1px solid #f4df9b; padding:4px 8px; border-radius:999px; }
 .sent-ko { font-size:21px; line-height:1.7; margin:0; }
 .sent-en { font-size:14px; color:var(--gray); line-height:1.6; }
 .sent-actions { display:flex; gap:8px; flex-wrap:wrap; }
-.sent-action { border:none; background:#eff6ff; color:#1a3a6b; border-radius:999px; padding:8px 12px; font-size:12px; font-weight:800; cursor:pointer; }
+.sent-action { border:1px solid #bfdbfe; background:#eff6ff; color:#1d4ed8; border-radius:999px; padding:8px 12px; font-size:12px; font-weight:800; cursor:pointer; }
 .sent-note { background:#f8fbff; border:1px dashed #cfe0f6; border-radius:14px; padding:12px 14px; font-size:13px; color:#446; line-height:1.6; }
 .sent-note b { color:#0d1b2e; }
-.word-quiz-shell { background:linear-gradient(180deg,#fff,#fbfcff); border:1px solid var(--border); border-radius:24px; padding:20px; box-shadow:var(--shadow); }
+.word-quiz-shell { background:#f8fafc; border:1px solid #e8eef7; border-radius:28px; padding:22px; box-shadow:0 8px 32px rgba(15,23,42,.07); }
 .wq-top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }
 .wq-score { font-size:13px; font-weight:800; color:#2255a4; }
-.wq-card { border:1px solid #e5edf8; border-radius:22px; padding:26px; background:#fff; box-shadow:0 10px 28px rgba(13,27,46,.06); }
+.wq-card { border:1px solid #e8eef7; border-radius:24px; padding:28px; background:#fff; box-shadow:0 8px 32px rgba(15,23,42,.07); }
 .wq-ko { font-size:42px; line-height:1.25; margin-bottom:8px; text-align:center; }
 .wq-rom { text-align:center; color:var(--gray); font-size:13px; font-style:italic; margin-bottom:18px; }
 .wq-prompt { text-align:center; font-size:14px; font-weight:700; color:#445566; margin-bottom:18px; }
 .wq-choices { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.wq-choice { padding:14px 16px; border:1.5px solid var(--border); border-radius:16px; background:#fff; cursor:pointer; font-size:14px; font-weight:700; text-align:left; transition:.15s; }
+.wq-choice { padding:14px 16px; border:1.5px solid #e2e8f0; border-radius:16px; background:#fff; cursor:pointer; font-size:14px; font-weight:700; text-align:left; transition:.15s; box-shadow:0 2px 8px rgba(15,23,42,.04); }
 .wq-choice:hover:not(:disabled) { border-color:#2255a4; background:#f4f8ff; }
 .wq-choice.correct { border-color:#16a34a; background:#f0fdf4; color:#166534; }
 .wq-choice.wrong { border-color:#dc2626; background:#fef2f2; color:#b91c1c; }
@@ -146,7 +146,7 @@
 
   <div class="learn-panel">
   <div class="learn-section-title">🧠 Word Quiz</div>
-  <div class="learn-section-sub">A cleaner review mode for saved words, article vocabulary, and flashcard terms.</div>
+  <div class="learn-section-sub">Conversation-style review cards for saved words, article vocabulary, and flashcard terms.</div>
   <div id="word-quiz-box" class="word-quiz-shell"></div>
   </div>
 
