@@ -150,7 +150,7 @@ function renderCards(catF, lvlF) {
     return (catF === 'all' || c.cat === catF) && (lvlF === 'all' || c.lvl === lvlF);
   });
   if (!list.length) {
-    grid.innerHTML = CONVS.length === 0 ? '<div style="grid-column:1/-1;text-align:center;padding:60px 20px"><div style="font-size:40px;margin-bottom:12px">💬</div><div style="font-size:16px;font-weight:700;color:#334155;margin-bottom:8px">No conversations yet</div><div style="font-size:13px;color:#94a3b8">Add one in Admin → Conversations or generate one with AI.</div></div>' : '<p style="color:#64748b;font-size:14px;grid-column:1/-1;padding:20px 0">No conversations match this filter.</p>';
+    grid.innerHTML = CONVS.length === 0 ? '<div style="grid-column:1/-1;text-align:center;padding:60px 20px"><div style="font-size:40px;margin-bottom:12px">💬</div><div style="font-size:16px;font-weight:700;color:#334155;margin-bottom:8px">아직 대화가 없어요</div><div style="font-size:13px;color:#94a3b8">Admin → Conversations 관리에서 추가하거나 AI Generator로 생성해보세요</div></div>' : '<p style="color:#64748b;font-size:14px;grid-column:1/-1;padding:20px 0">이 카테고리에 해당하는 대화가 없어요</p>';
     return;
   }
   grid.innerHTML = list.map(function(c) {
@@ -257,8 +257,8 @@ function openDetail(idx) {
         +'<div class="dp-date-sep"><span>Today</span></div>'
         +msgs
       +'</div>'
-      +'<div class="dp-cta-row">'        +'<button class="dp-cta-btn dp-cta-secondary" onclick="closeDetail()">← All Conversations</button>'        +(window._isAdmin ? '<button class="dp-cta-btn" style="background:#f1f5f9;color:#334155" onclick="editCurrentConv()">✏️ 수정</button>'                          + '<button class="dp-cta-btn" style="background:#fee2e2;color:#b91c1c" onclick="deleteCurrentConv()">🗑 삭제</button>' : '')        +'<button class="dp-cta-btn dp-cta-secondary" onclick="startBlankQuiz()">✏️ Fill in the Blank</button>'
-      +'<button class="dp-cta-btn dp-cta-primary" onclick="startOrderQuiz()">🔀 Word Order Quiz</button>'      +'</div>'
+      +'<div class="dp-cta-row">'        +'<button class="dp-cta-btn dp-cta-secondary" onclick="closeDetail()">← All Conversations</button>'        +(window._isAdmin ? '<button class="dp-cta-btn" style="background:#f1f5f9;color:#334155" onclick="editCurrentConv()">✏️ 수정</button>'                          + '<button class="dp-cta-btn" style="background:#fee2e2;color:#b91c1c" onclick="deleteCurrentConv()">🗑 삭제</button>' : '')        +'<button class="dp-cta-btn dp-cta-secondary" onclick="startBlankQuiz()">✏️ 빈칸 채우기</button>'
+      +'<button class="dp-cta-btn dp-cta-primary" onclick="startOrderQuiz()">🔀 순서 맞추기</button>'      +'</div>'
     +'</div>'
     +'<div class="dp-right">'
       +'<div class="dp-right-head"><div class="dp-right-label">Study Notes</div><div class="dp-right-title">Conversation Breakdown</div></div>'
@@ -311,7 +311,7 @@ var activeCat = 'all', activeLvl = 'all';
 document.addEventListener('DOMContentLoaded', async function() {
   // ── DB에서 conversations 로드 ──────────────────────────
   var grid = document.getElementById('conv-cards-grid');
-  if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;font-size:14px">⏳ Loading conversations...</div>';
+  if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;font-size:14px">⏳ 불러오는 중...</div>';
 
   try {
     var sb = getSupa();
@@ -388,10 +388,10 @@ function startBlankQuiz() {
   var c = window._currentConv;
   if (!c) return;
   var msgs = (c.msgs || []);
-  if (!msgs.length) { alert('No conversation lines available yet.'); return; }
+  if (!msgs.length) { alert('대화 내용이 없어요'); return; }
 
   var vocab = (c.vocab || []).filter(function(v){ return v.ko && v.ko.length > 1; });
-  if (!vocab.length) { alert('No vocabulary data available yet.'); return; }
+  if (!vocab.length) { alert('단어 데이터가 없어요'); return; }
 
   var questions = msgs.slice(0, 6).map(function(msg) {
     var text = msg.txt || msg.text || '';
@@ -410,32 +410,90 @@ function startBlankQuiz() {
   showQuizModal('blank', questions, c.name || '');
 }
 
-// ── ORDER QUIZ ────────────────────────────────────────────────
+// ── WORD ORDER QUIZ ───────────────────────────────────────────
+// 한 문장에서 어절을 섞어 순서 맞추기
 function startOrderQuiz() {
   var c = window._currentConv;
   if (!c) return;
-  var msgs = (c.msgs || []).map(function(msg){ return (msg.txt || msg.text || '').trim(); }).filter(Boolean);
-  if (!msgs.length) { alert('No sentence available for this quiz yet.'); return; }
 
-  var candidates = msgs.filter(function(line) {
-    return line.split(/\s+/).length >= 3;
-  });
-  if (!candidates.length) { alert('No sentence available for this quiz yet.'); return; }
-
-  var questions = candidates.slice(0, 4).map(function(sentence) {
-    var chunks = sentence.split(/\s+/).filter(Boolean);
-    var shuffled = chunks.slice().sort(function(){ return Math.random() - 0.5; });
-    if (JSON.stringify(shuffled) === JSON.stringify(chunks) && chunks.length > 1) {
-      shuffled = chunks.slice(1).concat(chunks[0]);
-    }
+  var msgs = (c.msgs || []).map(function(msg){
     return {
-      sentence: sentence,
-      chunks: chunks,
-      shuffled: shuffled
+      who: msg.who || msg.name || '',
+      text: (msg.txt || msg.text || '').trim()
     };
+  }).filter(function(msg){
+    return /[가-힣]/.test(msg.text) && msg.text.split(/\s+/).length >= 3;
   });
+
+  var questions = [];
+  msgs.forEach(function(msg){
+    if (questions.length >= 4) return;
+    var words = msg.text
+      .replace(/[.?!]/g, '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    if (words.length < 3 || words.length > 7) return;
+
+    questions.push({
+      who: msg.who,
+      original: msg.text,
+      correctOrder: words.slice(),
+      shuffledOrder: shuffleArray(words.slice()),
+      explanation: buildOrderExplanation(words)
+    });
+  });
+
+  if (!questions.length) {
+    alert('Not enough usable Korean sentences for a word order quiz yet.');
+    return;
+  }
 
   showQuizModal('order', questions, c.name || '');
+}
+
+function shuffleArray(arr) {
+  var copy = arr.slice();
+  for (var i = copy.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = copy[i];
+    copy[i] = copy[j];
+    copy[j] = t;
+  }
+  if (copy.join(' ') === arr.join(' ') && copy.length > 1) {
+    var first = copy.shift();
+    copy.push(first);
+  }
+  return copy;
+}
+
+function buildOrderExplanation(words) {
+  var last = words[words.length - 1] || '';
+  var parts = [];
+
+  if (/(다|요|까|네요|입니다|어요|아요|해요|했어요|했다|한다)$/.test(last)) {
+    parts.push('In Korean, the verb or ending usually comes at the end of the sentence.');
+  } else {
+    parts.push('Korean usually places the main predicate near the end of the sentence.');
+  }
+
+  var topic = words.find(function(w){ return /(은|는|이|가)$/.test(w); });
+  if (topic) {
+    parts.push('"' + topic + '" carries a subject/topic marker, so it usually appears before the rest of the sentence.');
+  }
+
+  var obj = words.find(function(w){ return /(을|를)$/.test(w); });
+  if (obj) {
+    parts.push('"' + obj + '" has an object marker, so it normally comes before the verb.');
+  }
+
+  var timePlace = words.find(function(w){ return /(에|에서|까지|부터|에게|한테)$/.test(w); });
+  if (timePlace) {
+    parts.push('Words with particles like "' + timePlace + '" usually stay attached and keep their phrase order.');
+  }
+
+  return parts.slice(0, 3).join(' ');
 }
 
 // ── QUIZ MODAL ────────────────────────────────────────────────
@@ -457,7 +515,7 @@ function showQuizModal(mode, questions, title) {
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = 'quiz-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.7);backdrop-filter:blur(7px);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;';
     document.body.appendChild(overlay);
   }
   overlay.style.display = 'flex';
@@ -469,7 +527,7 @@ function renderQuizQuestion() {
   var q = _quizQuestions[_quizCurrent];
   var progress = (_quizCurrent / _quizTotal * 100).toFixed(0);
 
-  var inner = '<div style="background:#fff;border-radius:24px;max-width:520px;width:100%;box-shadow:0 32px 80px rgba(15,23,42,.25);overflow:hidden;">'
+  var inner = '<div style="background:#fff;border-radius:24px;max-width:560px;width:100%;box-shadow:0 32px 80px rgba(15,23,42,.25);overflow:hidden;">'
     + '<div style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);padding:18px 22px;display:flex;align-items:center;justify-content:space-between;">'
     + '<div style="color:#fff;">'
     + '<div style="font-size:11px;font-weight:700;opacity:.8;letter-spacing:.08em;text-transform:uppercase;">' + (_quizMode==='blank'?'Fill in the Blank':'Word Order Quiz') + '</div>'
@@ -491,7 +549,6 @@ function renderQuizQuestion() {
 
 function renderBlankQ(q) {
   var displayed = q.original.replace(q.word, '<span style="background:#dbeafe;color:#1d4ed8;border-radius:6px;padding:2px 10px;font-weight:700;">＿＿＿</span>');
-  // 보기 만들기: 정답 + 오답 2개
   var allVocab = (window._currentConv && window._currentConv.data && window._currentConv.data.vocab) || [];
   var wrongs = allVocab.filter(function(v){ return v.ko !== q.word; }).slice(0,2).map(function(v){ return v.ko; });
   if (wrongs.length < 2) wrongs = ['아니요','그렇지만'].slice(0, 2-wrongs.length).concat(wrongs);
@@ -500,7 +557,7 @@ function renderBlankQ(q) {
   return '<div style="padding:24px 22px;">'
     + (q.who ? '<div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px;">💬 ' + q.who + '</div>' : '')
     + '<div style="font-size:16px;line-height:1.8;background:#f8fafc;border-radius:12px;padding:14px 16px;margin-bottom:18px;font-family:\'Noto Sans KR\',sans-serif;">' + displayed + '</div>'
-    + '<div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">( ' + q.en + ' )  ← 힌트</div>'
+    + '<div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">Hint: ' + q.en + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
     + choices.map(function(ch){
         return '<button onclick="checkBlank(\''+ch.replace(/'/g,"\\'")+'\')" style="padding:12px;border-radius:12px;border:2px solid #e2e8f0;background:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif;transition:all .12s;" onmouseover="this.style.borderColor=\'#3b82f6\'" onmouseout="this.style.borderColor=\'#e2e8f0\'">'
@@ -510,149 +567,136 @@ function renderBlankQ(q) {
 }
 
 function renderOrderQ(q) {
-  var shuffled = q.msgs.slice().sort(function(){ return Math.random()-.5; });
   var html = '<div style="padding:24px 22px;">'
-    + '<div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:14px;">대화 순서를 맞춰보세요 👆</div>'
-    + '<div id="order-list" style="display:flex;flex-direction:column;gap:8px;">';
+    + (q.who ? '<div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px;">💬 ' + q.who + '</div>' : '')
+    + '<div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:10px;">Arrange the Korean word blocks in the correct order.</div>'
+    + '<div style="font-size:12px;color:#64748b;line-height:1.6;background:#f8fafc;border-radius:12px;padding:12px 14px;margin-bottom:14px;">Tap the blocks in order.</div>'
+    + '<div id="order-selected" style="min-height:54px;border:2px dashed #bfdbfe;background:#eff6ff;border-radius:14px;padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
+    + '<span id="order-selected-placeholder" style="font-size:13px;color:#64748b;">Your answer will appear here.</span>'
+    + '</div>'
+    + '<div id="order-bank" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">';
 
-  shuffled.forEach(function(msg, i) {
-    html += '<div class="order-item" data-index="' + i + '" data-txt="' + (msg.txt||msg.text||'').replace(/"/g,'&quot;') + '" '
-      + 'style="background:#fff;border:2px solid #e2e8f0;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:grab;user-select:none;font-family:\'Noto Sans KR\',sans-serif;"'
-      + ' draggable="true" ontouchstart="orderTouch(event,this)" ondragstart="orderDrag(event,this)" ondragover="event.preventDefault()" ondrop="orderDrop(event,this)">'
-      + '<span style="font-size:18px;opacity:.4">⠿</span>'
-      + '<div><div style="font-size:11px;font-weight:700;color:#64748b;">' + (msg.who||msg.name||'') + '</div>'
-      + '<div style="font-size:14px;margin-top:2px;">' + (msg.txt||msg.text||'') + '</div></div>'
-      + '</div>';
+  q.shuffledOrder.forEach(function(word) {
+    html += '<button type="button" class="order-chip" data-word="' + escapeHtml(word) + '" onclick="pickOrderWord(this)" '
+      + 'style="padding:10px 14px;border-radius:999px;border:2px solid #dbeafe;background:#fff;font-size:16px;font-weight:800;color:#0f172a;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif;transition:all .12s;">'
+      + escapeHtml(word) + '</button>';
   });
 
   html += '</div>'
-    + '<button onclick="checkOrder()" style="width:100%;margin-top:16px;padding:13px;border-radius:14px;background:#2563eb;color:#fff;border:none;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">Check Answer →</button>'
+    + '<div style="display:flex;gap:10px;margin-top:16px;">'
+    + '<button onclick="resetOrder()" style="flex:1;padding:12px;border-radius:12px;background:#eef2ff;color:#1e3a8a;border:none;font-size:14px;font-weight:700;cursor:pointer;">Reset</button>'
+    + '<button onclick="checkOrder()" style="flex:1;padding:12px;border-radius:12px;background:#2563eb;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;">Check Answer</button>'
+    + '</div>'
+    + '<div id="order-feedback" style="display:none;margin-top:14px;"></div>'
     + '</div>';
 
   return html;
 }
 
-var _dragSrc = null;
-function orderDrag(e, el) { _dragSrc = el; e.dataTransfer.effectAllowed = 'move'; }
-function orderDrop(e, el) {
-  e.preventDefault();
-  if (_dragSrc === el) return;
-  var list = document.getElementById('order-list');
-  var items = Array.from(list.children);
-  var srcIdx = items.indexOf(_dragSrc);
-  var tgtIdx = items.indexOf(el);
-  if (srcIdx < tgtIdx) list.insertBefore(_dragSrc, el.nextSibling);
-  else list.insertBefore(_dragSrc, el);
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-// 터치 드래그 (모바일)
-var _touchEl = null, _touchClone = null;
-function orderTouch(e, el) {
-  _touchEl = el;
-  e.target.style.opacity = '.5';
-  document.addEventListener('touchmove', onTouchMove, {passive:false});
-  document.addEventListener('touchend', onTouchEnd, {once:true});
+function pickOrderWord(btn) {
+  if (!btn || btn.disabled) return;
+  var selected = document.getElementById('order-selected');
+  var placeholder = document.getElementById('order-selected-placeholder');
+  if (placeholder) placeholder.remove();
+
+  var word = btn.getAttribute('data-word') || btn.textContent;
+  var chip = document.createElement('button');
+  chip.type = 'button';
+  chip.className = 'order-picked-chip';
+  chip.setAttribute('data-word', word);
+  chip.onclick = function(){ returnOrderWord(this); };
+  chip.style.cssText = 'padding:8px 12px;border-radius:999px;border:none;background:#1d4ed8;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:"Noto Sans KR",sans-serif;';
+  chip.textContent = word;
+  selected.appendChild(chip);
+
+  btn.disabled = true;
+  btn.style.opacity = '.45';
+  btn.style.transform = 'scale(.96)';
 }
-function onTouchMove(e) {
-  e.preventDefault();
-  var t = e.touches[0];
-  var list = document.getElementById('order-list');
-  if (!list) return;
-  Array.from(list.children).forEach(function(item) {
-    var r = item.getBoundingClientRect();
-    if (t.clientY > r.top && t.clientY < r.bottom && item !== _touchEl) {
-      var midY = r.top + r.height/2;
-      if (t.clientY < midY) list.insertBefore(_touchEl, item);
-      else list.insertBefore(_touchEl, item.nextSibling);
-    }
+
+function returnOrderWord(chip) {
+  if (!chip) return;
+  var word = chip.getAttribute('data-word') || chip.textContent;
+  var bank = document.getElementById('order-bank');
+  var btns = Array.from(bank.querySelectorAll('.order-chip'));
+  var original = btns.find(function(btn){
+    return (btn.getAttribute('data-word') || btn.textContent) === word && btn.disabled;
   });
-}
-function onTouchEnd(e) {
-  if (_touchEl) _touchEl.style.opacity = '1';
-  document.removeEventListener('touchmove', onTouchMove);
+  if (original) {
+    original.disabled = false;
+    original.style.opacity = '1';
+    original.style.transform = 'scale(1)';
+  }
+  chip.remove();
+  var selected = document.getElementById('order-selected');
+  if (selected && !selected.querySelector('.order-picked-chip')) {
+    selected.innerHTML = '<span id="order-selected-placeholder" style="font-size:13px;color:#64748b;">Your answer will appear here.</span>';
+  }
 }
 
-function checkBlank(choice) {
-  var q = _quizQuestions[_quizCurrent];
-  var correct = choice === q.word;
-  if (correct) _quizScore++;
-  showFeedback(correct, q.word, nextQuizQuestion);
+function resetOrder() {
+  var bank = document.getElementById('order-bank');
+  if (bank) {
+    bank.querySelectorAll('.order-chip').forEach(function(btn){
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.transform = 'scale(1)';
+    });
+  }
+  var selected = document.getElementById('order-selected');
+  if (selected) {
+    selected.innerHTML = '<span id="order-selected-placeholder" style="font-size:13px;color:#64748b;">Your answer will appear here.</span>';
+  }
+  var feedback = document.getElementById('order-feedback');
+  if (feedback) feedback.style.display = 'none';
 }
 
-function getOrderGrammarHint(q, current) {
-  if (!q) return 'In Korean, the verb normally comes at the very end of the sentence.';
-  var chunks = q.chunks || [];
-  var picked = current || [];
-  var finalChunk = chunks[chunks.length - 1] || '';
-  if (picked.length && picked[picked.length - 1] !== finalChunk) {
-    return 'The ending chunk <b>' + finalChunk + '</b> should come last because Korean verbs and descriptive endings usually close the sentence.';
-  }
-  var particleChunk = chunks.find(function(chunk){ return /(은|는|이|가|을|를|에|에서|에게|한테|으로|와|과)$/.test(chunk); });
-  if (particleChunk && picked.indexOf(particleChunk) !== chunks.indexOf(particleChunk)) {
-    return 'Keep <b>' + particleChunk + '</b> together as one chunk. Its particle shows the noun\'s role, so moving it breaks the grammar flow.';
-  }
-  if (chunks.length >= 3 && picked[0] !== chunks[0]) {
-    return 'Korean usually starts with the topic, subject, or time/context chunk before the object and final action.';
-  }
-  return 'Try reading it from left to right: topic or subject first, then object or detail, and the final verb last.';
+function getCurrentOrderAnswer() {
+  var selected = document.getElementById('order-selected');
+  if (!selected) return [];
+  return Array.from(selected.querySelectorAll('.order-picked-chip')).map(function(chip){
+    return chip.getAttribute('data-word') || chip.textContent || '';
+  });
 }
 
 function checkOrder() {
   var q = _quizQuestions[_quizCurrent];
-  var list = document.getElementById('order-list');
-  if (!list) return;
-  var items = Array.from(list.children);
-  var current = items.map(function(el){ return el.dataset.txt || ''; });
-  var target = (q.chunks || []).slice();
-  var correct = JSON.stringify(current) === JSON.stringify(target);
-  if (correct) _quizScore++;
-  var answer = correct ? null : ('Correct sentence: <b>' + target.join(' ') + '</b><div style="margin-top:8px">' + getOrderGrammarHint(q, current) + '</div>');
-  showFeedback(correct, answer, nextQuizQuestion);
-}
+  var answer = getCurrentOrderAnswer();
+  var correct = (q.correctOrder || []).join(' ');
+  var chosen = answer.join(' ');
 
-function showFeedback(correct, answer, next) {
-  var overlay = document.getElementById('quiz-overlay');
-  var inner = overlay.querySelector('div');
-  if (!inner) return;
-  var fb = document.createElement('div');
-  fb.style.cssText = 'padding:20px 22px;background:' + (correct?'#f0fdf4':'#fef2f2') + ';border-top:1px solid ' + (correct?'#bbf7d0':'#fecaca') + ';text-align:center;';
-  fb.innerHTML = '<div style="font-size:28px;">' + (correct?'🎉':'😅') + '</div>'
-    + '<div style="font-size:16px;font-weight:700;color:' + (correct?'#15803d':'#b91c1c') + ';margin:6px 0">' + (correct?'Correct!':'Not quite yet') + '</div>'
-    + (answer && !correct ? '<div style="font-size:14px;color:#64748b;line-height:1.6;">' + answer + '</div>' : '')
-    + '<button onclick="nextQuizQuestion()" style="margin-top:14px;padding:10px 24px;border-radius:12px;background:#2563eb;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Next →</button>';
+  var feedback = document.getElementById('order-feedback');
+  if (!feedback) return;
 
-  // 기존 버튼 비활성화
-  inner.querySelectorAll('button:not([onclick="closeQuiz()"])').forEach(function(b){ b.disabled=true; b.style.opacity='.5'; });
-  inner.appendChild(fb);
-}
-
-function nextQuizQuestion() {
-  _quizCurrent++;
-  if (_quizCurrent >= _quizTotal) {
-    showQuizResult();
-  } else {
-    renderQuizQuestion();
+  if (!answer.length || answer.length !== q.correctOrder.length) {
+    feedback.style.display = 'block';
+    feedback.innerHTML = '<div style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.6;">Use all of the word blocks before checking your answer.</div>';
+    return;
   }
-}
 
-function showQuizResult() {
-  var overlay = document.getElementById('quiz-overlay');
-  var pct = Math.round(_quizScore / _quizTotal * 100);
-  var emoji = pct >= 80 ? '🏆' : pct >= 60 ? '👍' : '📚';
-  overlay.innerHTML = '<div style="background:#fff;border-radius:24px;max-width:400px;width:100%;padding:40px 32px;text-align:center;box-shadow:0 32px 80px rgba(15,23,42,.25);">'
-    + '<div style="font-size:56px;margin-bottom:12px">' + emoji + '</div>'
-    + '<div style="font-size:24px;font-weight:900;color:#0f172a;margin-bottom:6px">' + _quizScore + ' / ' + _quizTotal + ' correct</div>'
-    + '<div style="font-size:15px;color:#64748b;margin-bottom:24px">' + (pct>=80?'Excellent work — you understood the conversation really well.':pct>=60?'Nice job — a little more practice and you\'ll lock it in.':'Give the conversation one more read and try again 💪') + '</div>'
-    + '<div style="display:flex;gap:10px;justify-content:center;">'
-    + '<button onclick="closeQuiz()" style="padding:12px 20px;border-radius:12px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Close</button>'
-    + '<button onclick="retryQuiz()" style="padding:12px 20px;border-radius:12px;background:#2563eb;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Try Again</button>'
-    + '</div></div>';
-}
+  if (chosen === correct) {
+    _quizScore++;
+    feedback.style.display = 'block';
+    feedback.innerHTML = '<div style="background:#ecfdf5;border:1px solid #86efac;color:#166534;border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.6;"><b>Correct.</b> ' + escapeHtml(correct) + '</div>';
+    setTimeout(nextQuiz, 800);
+    return;
+  }
 
-function retryQuiz() {
-  _quizCurrent = 0;
-  _quizScore = 0;
-  renderQuizQuestion();
+  feedback.style.display = 'block';
+  feedback.innerHTML = '<div style="background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.7;">'
+    + '<div style="font-weight:800;margin-bottom:6px;">Not quite.</div>'
+    + '<div><b>Correct order:</b> ' + escapeHtml(correct) + '</div>'
+    + '<div style="margin-top:6px;"><b>Why:</b> ' + escapeHtml(q.explanation || 'Korean usually places the predicate at the end.') + '</div>'
+    + '</div>';
 }
 
 function closeQuiz() {

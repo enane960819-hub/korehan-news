@@ -292,69 +292,19 @@ function getSupaHeaders() {
 }
 
 async function dbGetSavedWords() {
-  if (!supaUser) return getLocalSavedWords();
+  if (!supaUser) return [];
   var sb = getSupa();
-  if (!sb) return getLocalSavedWords();
-  try {
-    var res = await sb.from('saved_words').select('*').eq('user_id', supaUser.id).order('created_at', { ascending: false });
-    if (res.error) throw res.error;
-    var rows = (res.data || []).map(normalizeSavedWordRow).filter(Boolean);
-    return rows.length ? rows : getLocalSavedWords();
-  } catch(e) {
-    return getLocalSavedWords();
-  }
+  if (!sb) return [];
+  var { data } = await sb.from('saved_words').select('*').eq('user_id', supaUser.id);
+  return data || [];
 }
 
 async function dbGetBookmarks() {
-  if (!supaUser) return getLocalBookmarks();
+  if (!supaUser) return [];
   var sb = getSupa();
-  if (!sb) return getLocalBookmarks();
-  try {
-    var res = await sb.from('bookmarks').select('*').eq('user_id', supaUser.id).order('created_at', { ascending: false });
-    if (res.error) throw res.error;
-    return (res.data || []).length ? (res.data || []) : getLocalBookmarks();
-  } catch(e) {
-    return getLocalBookmarks();
-  }
-}
-
-function normalizeSavedWordRow(row) {
-  if (!row) return null;
-  var ko = row.ko || row.word_ko || row.word || row.term_ko || '';
-  if (!ko) return null;
-  return {
-    id: row.id || null,
-    ko: ko,
-    rom: row.rom || row.word_rom || row.romanization || row.term_rom || '',
-    en: row.en || row.word_en || row.meaning || row.translation_en || row.term_en || '',
-    created_at: row.created_at || null
-  };
-}
-
-function getLocalSavedWords() {
-  try {
-    var rows = JSON.parse(localStorage.getItem('korehan_saved_words') || '[]');
-    return (rows || []).map(normalizeSavedWordRow).filter(Boolean);
-  } catch(e) { return []; }
-}
-
-function getLocalReadArticles() {
-  try {
-    var raw = JSON.parse(localStorage.getItem('kh_read_log') || '{}');
-    var out = [];
-    Object.keys(raw || {}).forEach(function(day) {
-      (raw[day] || []).forEach(function(id) { out.push({ article_id: id, read_at: day + 'T00:00:00' }); });
-    });
-    out.sort(function(a,b){ return String(b.read_at).localeCompare(String(a.read_at)); });
-    return out;
-  } catch(e) { return []; }
-}
-
-function getLocalBookmarks() {
-  try {
-    var rows = JSON.parse(localStorage.getItem('kh_bookmarks') || '[]');
-    return Array.isArray(rows) ? rows : [];
-  } catch(e) { return []; }
+  if (!sb) return [];
+  var { data } = await sb.from('bookmarks').select('*').eq('user_id', supaUser.id).order('created_at', { ascending: false });
+  return data || [];
 }
 
 function editDisplayName(el, currentName) {
@@ -1006,44 +956,28 @@ async function initMyPage() {
   }
 
   // Load data in parallel
-  try {
-    const [words, articles, streak] = await Promise.all([
-      dbGetSavedWords(),
-      getReadArticles(),
-      getStreak(),
-    ]);
+  const [words, articles, streak] = await Promise.all([
+    dbGetSavedWords(),
+    getReadArticles(),
+    getStreak(),
+  ]);
 
-    savedWords = words || [];
-    renderStats(streak, savedWords.length, (articles || []).length);
-    renderGoals();
-    await renderBookmarks();
-    renderWordsList(savedWords);
-    renderArticlesList(articles || []);
-    renderLevelPanel();
-  } catch (e) {
-    console.error('mypage init failed', e);
-    savedWords = getLocalSavedWords();
-    renderStats(null, savedWords.length, getLocalReadArticles().length);
-    renderGoals();
-    renderWordsList(savedWords);
-    renderArticlesList(getLocalReadArticles());
-    document.getElementById('bookmarks-area').innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><p>Some My Page data could not be loaded right now.</p></div>';
-    renderLevelPanel();
-  }
+  savedWords = words;
+  renderStats(streak, words.length, articles.length);
+  renderGoals();
+  setQuizMode('flash', document.getElementById('qmode-flash'));
+  renderBookmarks();
+  renderWordsList(words);
+  renderArticlesList(articles);
+  renderLevelPanel();
 }
 
 async function getReadArticles() {
-  if(!supaUser) return getLocalReadArticles();
-  try {
-    var res = await fetch(SUPA_URL + '/rest/v1/read_articles?user_id=eq.' + supaUser.id + '&order=read_at.desc&limit=30', {
-      headers: getSupaHeaders()
-    });
-    if (!res.ok) return getLocalReadArticles();
-    var rows = await res.json();
-    return (rows && rows.length) ? rows : getLocalReadArticles();
-  } catch(e) {
-    return getLocalReadArticles();
-  }
+  if(!supaUser) return [];
+  var res = await fetch(SUPA_URL + '/rest/v1/read_articles?user_id=eq.' + supaUser.id + '&order=read_at.desc&limit=30', {
+    headers: getSupaHeaders()
+  });
+  return res.ok ? res.json() : [];
 }
 
 async function getStreak() {
@@ -1061,11 +995,12 @@ async function renderBookmarks() {
   var area = document.getElementById('bookmarks-area');
   var bms  = await dbGetBookmarks();
   if(!bms || !bms.length) {
-    area.innerHTML = '<div class="empty-state"><div class="es-icon">🔖</div><p>No bookmarks yet.<br>Click the bookmark icon on any article to save it here.</p></div>';
+    area.innerHTML = '<div class="empty-state"><div class="es-icon">🔖</div><p>No bookmarks yet.<br>Click the 🔖 icon on any article to 🔖 버튼을 눌러 저장하세요.</p></div>';
     return;
   }
-  var allArticles = typeof dbLoad === 'function' ? dbLoad() : [];
-  area.innerHTML = '<div style="margin-bottom:12px;font-size:13px;color:var(--gray)">'+bms.length+' bookmarks</div>'
+  // article_id로 기사 정보 찾기
+  var allArticles = dbLoad();
+  area.innerHTML = '<div style="margin-bottom:12px;font-size:13px;color:var(--gray)">'+bms.length+' bookmark마크</div>'
     + bms.map(function(b){
         var art = allArticles.find(function(a){ return String(a.id) === String(b.article_id); });
         var title = art ? art.title : 'Article #' + b.article_id;
@@ -1077,7 +1012,7 @@ async function renderBookmarks() {
           +'<a class="read-title" href="korehan-article.html?id='+b.article_id+'">'+title+'</a>'
           +'<div class="read-date">'+ds+'</div>'
           +'</div>'
-          +'<button data-id="'+b.article_id+'" onclick="removeBookmark(this.dataset.id,this)" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:16px;padding:4px 8px;border-radius:4px" title="Remove bookmark">✕</button>'
+          +'<button data-id="'+b.article_id+'" onclick="removeBookmark(this.dataset.id,this)" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:16px;padding:4px 8px;border-radius:4px" title="북마크 Remove">✕</button>'
           +'</div>';
       }).join('');
 }
@@ -1560,12 +1495,12 @@ async function renderStats(streak, wordCount, articleCount) {
   var lm    = level ? (LEVEL_META[level] || LEVEL_META.beginner) : null;
   var bms   = await dbGetBookmarks();
   document.getElementById('mp-stats').innerHTML =
-    '<div class="stat-card"><div class="stat-fire">🔥</div><div class="stat-num">' + (s.current_streak || s.streak || 0) + '</div><div class="stat-label">Day Streak</div></div>' +
-    '<div class="stat-card"><div class="stat-num">' + (s.longest_streak || 0) + '</div><div class="stat-label">Longest Streak</div></div>' +
+    '<div class="stat-card"><div class="stat-fire">🔥</div><div class="stat-num">' + (s.streak||0) + '</div><div class="stat-label">Day Streak</div></div>' +
+    '<div class="stat-card"><div class="stat-num">' + (s.longest_streak||0) + '</div><div class="stat-label">최장 streak일</div></div>' +
     '<div class="stat-card"><div class="stat-num">' + wordCount + '</div><div class="stat-label">Saved Words</div></div>' +
     '<div class="stat-card"><div class="stat-num">' + articleCount + '</div><div class="stat-label">Articles Read</div></div>' +
-    '<div class="stat-card"><div class="stat-num">' + (bms.length||0) + '</div><div class="stat-label">Bookmarks</div></div>' +
-    (lm ? '<div class="stat-card"><div class="stat-num" style="font-size:13px;line-height:1.3;margin-top:4px">'+lm.label+'</div><div class="stat-label">Your Level</div></div>' : '');
+    '<div class="stat-card"><div class="stat-num">' + (bms.length||0) + '</div><div class="stat-label">북마크</div></div>' +
+    (lm ? '<div class="stat-card"><div class="stat-num" style="font-size:13px;line-height:1.3;margin-top:4px">'+lm.label+'</div><div class="stat-label">내 Level</div></div>' : '');
 }
 
 // ── 단어 퀴즈 ──────────────────────────────────────────────────
@@ -1576,8 +1511,6 @@ var _quizMode = 'flash';   // 'flash' | 'listen'
 var _lqType   = 'hear';    // 'hear' | 'mean' | 'trans'
 
 function setQuizMode(mode, btn) {
-  var area = document.getElementById('quiz-area');
-  if (!area) return;
   _quizMode = mode;
   document.querySelectorAll('#panel-quiz .lq-mode-btn[id^="qmode"]').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
@@ -1593,7 +1526,6 @@ function setQuizMode(mode, btn) {
 }
 
 function setLQType(type, btn) {
-  if (!document.getElementById('quiz-area')) return;
   _lqType = type;
   document.querySelectorAll('#panel-quiz .lq-mode-btn[id^="ltype"]').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
@@ -1609,7 +1541,6 @@ var _lqDone   = false;
 
 async function startListeningQuizMP() {
   var area = document.getElementById('quiz-area');
-  if (!area) return;
   area.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray)">'
     + '<div style="font-size:28px;margin-bottom:10px;display:inline-block;animation:lq-pulse 1s infinite">✨</div>'
     + '<div style="font-size:14px;font-weight:700;margin-top:8px">AI가 문제를 만들고 있어요...</div></div>';
@@ -1775,7 +1706,6 @@ function lqResultMP() {
 
 function renderQuiz(words) {
   var area = document.getElementById('quiz-area');
-  if (!area) return;
   if(!words || words.length < 4) {
     area.innerHTML = '<div class="empty-state"><div class="es-icon">🔖</div>'
       + '<p>퀴즈를 시작하려면 단어 4개 이상 저장이 필요해요.<br>'
@@ -1789,7 +1719,6 @@ function renderQuiz(words) {
 
 function showQuizQuestion() {
   var area = document.getElementById('quiz-area');
-  if (!area) return;
   if(quizIdx >= quizWords.length) {
     area.innerHTML = '<div class="quiz-wrap2" style="text-align:center">'
       + '<div style="font-size:48px;margin-bottom:12px">🎉</div>'
@@ -1834,40 +1763,25 @@ function nextQuiz2() { quizIdx++; showQuizQuestion(); }
 // ── Saved Words 목록 ───────────────────────────────────────────
 function renderWordsList(words) {
   var area = document.getElementById('words-list-area');
-  words = (words || []).map(normalizeSavedWordRow).filter(Boolean);
-  if(!words.length) {
+  if(!words || !words.length) {
     area.innerHTML = '<div class="empty-state"><div class="es-icon">🔖</div><p>No saved words yet.</p></div>';
     return;
   }
-  area.innerHTML = '<div style="margin-bottom:12px;font-size:13px;color:var(--gray)">' 
+  area.innerHTML = '<div style="margin-bottom:12px;font-size:13px;color:var(--gray)">'
     + words.length + ' saved</div>'
     + words.map(function(w){
-        return '<div class="saved-word-row" '
-          + 'data-ko="' + encodeURIComponent(w.ko || '') + '" '
-          + 'data-rom="' + encodeURIComponent(w.rom || '') + '" '
-          + 'data-en="' + encodeURIComponent(w.en || '') + '" '
-          + 'onclick="openWordModalFromEl(this)" '
-          + 'style="cursor:pointer;transition:background .15s" title="Click for examples">'
+        return '<div class="saved-word-row" onclick="openWordModal(\'' + w.ko.replace(/'/g,"\\'") + '\',\'' + (w.rom||'').replace(/'/g,"\\'") + '\',\'' + (w.en||'').replace(/'/g,"\\'") + '\')" style="cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'#f8faff\'" onmouseleave="this.style.background=\'\'" title="Click for examples">'
           + '<div>'
-          + '<span class="sw-ko">' + (w.ko||'') + '</span>'
+          + '<span class="sw-ko">' + w.ko + '</span>'
           + '<span class="sw-rom"> ' + (w.rom||'') + '</span>'
           + '</div>'
           + '<div style="display:flex;align-items:center;gap:12px">'
           + '<span class="sw-en">' + (w.en||'') + '</span>'
           + '<span style="font-size:11px;color:#c0cfe0;font-weight:600">examples →</span>'
-          + '<button class="sw-del" onclick="event.stopPropagation();removeWord(decodeURIComponent(this.parentNode.parentNode.dataset.ko),this)" title="Remove">✕</button>'
+          + '<button class="sw-del" onclick="event.stopPropagation();removeWord(\'' + w.ko.replace(/'/g,"\\'") + '\',this)" title="Remove">✕</button>'
           + '</div>'
           + '</div>';
       }).join('');
-}
-
-function openWordModalFromEl(el) {
-  if (!el || !el.dataset) return;
-  openWordModal(
-    decodeURIComponent(el.dataset.ko || ''),
-    decodeURIComponent(el.dataset.rom || ''),
-    decodeURIComponent(el.dataset.en || '')
-  );
 }
 
 
@@ -1995,21 +1909,17 @@ async function removeWord(ko, btn) {
 function renderArticlesList(articles) {
   var area = document.getElementById('articles-list-area');
   if(!articles || !articles.length) {
-    area.innerHTML = '<div class="empty-state"><div class="es-icon">📰</div><p>No reading history yet.<br><a href="index.html" style="color:var(--bright);font-weight:700">Start reading →</a></p></div>';
+    area.innerHTML = '<div class="empty-state"><div class="es-icon">📰</div><p>아직 Articles Read가 없어요.<br><a href="index.html" style="color:var(--bright);font-weight:700">Start reading →</a></p></div>';
     return;
   }
-  var allArticles = typeof dbLoad === 'function' ? dbLoad() : [];
-  area.innerHTML = '<div style="margin-bottom:12px;font-size:13px;color:var(--gray)">' + articles.length + ' read</div>'
+  area.innerHTML = '<div style="margin-bottom:12px;font-size:13px;color:var(--gray)">' + articles.length + '개 읽음</div>'
     + articles.map(function(a){
-        var d = new Date(a.read_at || a.created_at || Date.now());
+        var d = new Date(a.read_at);
         var dateStr = d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0');
-        var art = allArticles.find(function(row){ return String(row.id) === String(a.article_id || a.id); }) || {};
-        var title = a.title || art.title || ('Article #' + (a.article_id || a.id || ''));
-        var section = a.section || art.section || '';
         return '<div class="read-row">'
-          + '<span class="read-tag">' + section + '</span>'
+          + '<span class="read-tag">' + (a.section||'') + '</span>'
           + '<div>'
-          + '<a class="read-title" href="korehan-article.html?id=' + (a.article_id || a.id) + '">' + title + '</a>'
+          + '<a class="read-title" href="korehan-article.html?id=' + a.article_id + '">' + a.title + '</a>'
           + '<div class="read-date">' + dateStr + '</div>'
           + '</div>'
           + '</div>';
