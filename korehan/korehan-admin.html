@@ -1,69 +1,3425 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>KoreHan Admin Conversation Editor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KoreHan Admin CMS</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-body{font-family:system-ui;background:#f3f6fb;margin:0}
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center}
-.editor{width:1200px;background:white;border-radius:20px;display:grid;grid-template-columns:1.2fr .8fr;overflow:hidden}
-.left{background:#f8fbff;display:flex;flex-direction:column}
-.header{background:linear-gradient(135deg,#2b57d9,#5b87ff);color:white;padding:20px;font-size:26px;font-weight:800}
-.chat{flex:1;padding:20px;overflow:auto}
-.msg{margin:10px 0;display:flex}
-.msg.right{justify-content:flex-end}
-.bubble{max-width:70%;padding:12px 14px;border-radius:16px;background:white;border:1px solid #e2e8f0}
-.right .bubble{background:#2563eb;color:white;border:none}
-textarea{width:100%;height:160px;border-radius:12px;border:1px solid #dbe4f0;padding:10px}
-.rightPanel{padding:20px}
-button{background:#2563eb;color:white;border:none;padding:10px 18px;border-radius:10px;font-weight:700;cursor:pointer}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--a:#1a3a6b;--b:#2255a4;--li:#e8eef7;--r:#cc2200;--g:#1a7a3a;--dk:#0d1b2e;--gr:#445566;--br:#d4dce8;--w:#fff;--bg:#f4f6fa}
+body{font-family:'Source Sans 3',sans-serif;background:var(--bg);color:var(--dk);font-size:14px}
+a{color:inherit;text-decoration:none}
+
+/* TOP BAR */
+.topbar{background:var(--dk);height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;gap:12px;position:sticky;top:0;z-index:100}
+.tb-logo{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:#5a8fd0}
+.tb-logo b{color:#fff}
+.badge{background:var(--r);color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:2px;margin-left:8px}
+.tb-right{display:flex;gap:12px;align-items:center;font-size:13px}
+.tb-right a{color:#7a9ac0;text-decoration:none}
+.tb-right a:hover{color:#fff}
+.vsb{background:var(--b);color:#fff!important;padding:6px 14px;font-size:12px;font-weight:700;border-radius:3px}
+
+/* LAYOUT */
+.layout{display:flex;min-height:calc(100vh - 52px)}
+
+/* SIDEBAR */
+.sb{width:230px;flex-shrink:0;background:var(--w);border-right:1px solid var(--br);overflow-y:auto}
+.sb-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#99aabb;padding:16px 20px 4px}
+.sb-btn{display:flex;align-items:center;gap:10px;width:100%;padding:9px 20px;font-size:13px;font-weight:600;color:var(--gr);cursor:pointer;border:none;background:none;text-align:left;border-left:3px solid transparent;font-family:inherit;transition:all .15s}
+.sb-btn:hover{background:var(--li);color:var(--a)}
+.sb-btn.on{background:var(--li);color:var(--a);border-left-color:var(--a)}
+.sb-btn .ico{width:20px;text-align:center;font-size:15px}
+.pill{margin-left:auto;background:#e4e8f0;color:var(--gr);font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;min-width:20px;text-align:center}
+
+/* MAIN */
+.main{flex:1;padding:28px 32px;overflow:auto;max-width:100%}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;font-size:13px;font-weight:700;border:none;cursor:pointer;border-radius:3px;font-family:inherit;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btn-b{background:var(--a);color:#fff}
+.btn-g{background:var(--g);color:#fff}
+.btn-r{background:var(--r);color:#fff}
+.btn-gh{background:transparent;color:var(--a);border:1.5px solid var(--a)}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-xs{padding:3px 8px;font-size:11px;border-radius:2px}
+
+/* PAGE HEADER */
+.pg-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px}
+.pg-hd h1{font-family:'Playfair Display',serif;font-size:26px}
+.pg-hd p{font-size:13px;color:var(--gr);margin-top:3px}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.stat{background:var(--w);border:1px solid var(--br);padding:16px 18px}
+.stat-n{font-family:'Playfair Display',serif;font-size:28px;font-weight:900;color:var(--a);line-height:1;margin-bottom:4px}
+.stat-l{font-size:11px;color:var(--gr);text-transform:uppercase;letter-spacing:.8px}
+
+/* INFO BOX */
+.infobox{background:var(--w);border:1px solid var(--br);border-left:4px solid var(--b);padding:14px 18px;margin-bottom:16px;font-size:13px;color:var(--gr);line-height:1.7}
+.infobox h3{font-size:14px;font-weight:700;color:var(--a);margin-bottom:5px}
+
+/* TOOLBAR */
+.toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.srch{flex:1;min-width:180px;display:flex;align-items:center;background:var(--w);border:1.5px solid var(--br);border-radius:3px;padding:0 12px;gap:8px}
+.srch input{flex:1;border:none;outline:none;font-size:13px;padding:8px 0;font-family:inherit;background:transparent}
+.flt{padding:8px 12px;font-size:13px;border:1.5px solid var(--br);border-radius:3px;background:var(--w);font-family:inherit;color:var(--dk);outline:none;cursor:pointer}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;background:var(--w)}
+.tbl th{text-align:left;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--gr);border-bottom:2px solid var(--br);background:var(--li)}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--br);font-size:13px;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:#f8fafd}
+.thumb{width:70px;height:48px;object-fit:cover;border-radius:2px;display:block}
+.art-t{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;line-height:1.3}
+.art-b{font-size:12px;color:var(--gr);margin-top:3px;max-width:340px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cpill{display:inline-block;padding:2px 8px;font-size:11px;font-weight:700;border-radius:2px}
+.c사회{background:#e8eef7;color:#1a3a6b}
+.c국제{background:#f0e8f7;color:#5a1a7a}
+.c문화{background:#f7e8ee;color:#7a1a3a}
+.c스포츠{background:#e8f4f7;color:#1a5a7a}
+.cKorea{background:#fff0ec;color:#cc2200}
+.cIT과학{background:#eef7e8;color:#3a7a1a}
+.c오피니언{background:#fffbe8;color:#7a6400}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px}
+.dpub{background:var(--g)}
+.ddr{background:#aab}
+.row-act{display:flex;gap:6px}
+
+/* EMPTY */
+.empty{text-align:center;padding:56px;color:var(--gr)}
+.empty .big{font-size:48px;margin-bottom:14px}
+
+/* MODAL OVERLAY */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:200}
+.mbox{background:var(--w);border-radius:6px;width:640px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.3)}
+.m-hd{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--br)}
+.m-hd h2{font-family:'Playfair Display',serif;font-size:20px}
+.m-x{background:none;border:none;font-size:22px;cursor:pointer;color:var(--gr);line-height:1}
+.m-bd{padding:22px}
+.m-ft{display:flex;gap:10px;justify-content:flex-end;padding:14px 22px;border-top:1px solid var(--br)}
+
+/* FORM */
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.fg label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gr)}
+.fg input,.fg select,.fg textarea{border:1.5px solid var(--br);border-radius:3px;padding:9px 12px;font-size:14px;font-family:inherit;color:var(--dk);background:var(--w);outline:none;transition:border-color .15s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--b)}
+.fg textarea{resize:vertical;min-height:120px;line-height:1.6}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cntlabel{font-size:11px;color:#99aabb;text-align:right;margin-top:3px}
+.imgprev{max-width:100%;border-radius:4px;margin-top:8px;max-height:180px;object-fit:cover}
+
+/* DELETE CONFIRM */
+.del-ov{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:300}
+.del-box{background:var(--w);border-radius:8px;padding:32px 28px;text-align:center;width:360px;box-shadow:0 24px 64px rgba(0,0,0,0.3)}
+.del-box .dico{font-size:44px;margin-bottom:12px}
+.del-box h3{font-family:'Playfair Display',serif;font-size:20px;margin-bottom:8px}
+.del-box p{font-size:13px;color:var(--gr);margin-bottom:20px;max-width:280px;margin-left:auto;margin-right:auto}
+.del-btns{display:flex;gap:10px;justify-content:center}
+
+/* SETTINGS FORM */
+.sf-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.sf-row.full{grid-template-columns:1fr}
+.sf-card{background:var(--w);border:1px solid var(--br);border-radius:8px;padding:20px;margin-bottom:16px}
+.sf-card h3{font-size:14px;font-weight:700;color:var(--a);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--br)}
+.inp{width:100%;border:1.5px solid var(--br);border-radius:3px;padding:8px 12px;font-size:14px;font-family:inherit;color:var(--dk);outline:none;transition:border-color .15s}
+.inp:focus{border-color:var(--b)}
+.inp-ta{resize:vertical;min-height:80px;line-height:1.6}
+.inp-sm{font-size:13px;padding:6px 10px}
+.inp-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gr);display:block;margin-bottom:5px}
+
+/* ROW EDITOR (for ticker / opinions / etc.) */
+.row-editor{background:var(--bg);border:1px solid var(--br);border-radius:6px;padding:12px;margin-bottom:8px;display:grid;gap:8px}
+.row-del{background:var(--r);color:#fff;border:none;border-radius:3px;padding:4px 10px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:700;float:right}
+
+/* TOASTS */
+#toasts{position:fixed;bottom:22px;right:22px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.t{background:var(--dk);color:#fff;padding:11px 18px;border-radius:4px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,0.25);border-left:4px solid var(--g);min-width:240px;animation:tsin .2s ease}
+.t.err{border-left-color:var(--r)}
+@keyframes tsin{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+.section-sep{height:1px;background:var(--br);margin:6px 0}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-<div class="overlay">
-  <div class="editor">
-    <div class="left">
-      <div class="header">Conversation Editor</div>
-      <div class="chat" id="chat"></div>
-      <div style="padding:20px;border-top:1px solid #e2e8f0">
-        <textarea id="script" oninput="renderChat()">A: 안녕
-B: 응 안녕
-A: 점심 먹었어?
-B: 아직 안 먹었어</textarea>
-      </div>
-    </div>
-    <div class="rightPanel">
-      <h3>AI Controls</h3>
-      <button onclick="alert('AI regenerate here')">AI Update</button>
-      <h3>Vocab JSON</h3>
-      <textarea>[]</textarea>
-      <h3>Grammar JSON</h3>
-      <textarea>[]</textarea>
-      <h3>Mission JSON</h3>
-      <textarea>[]</textarea>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:0">
+    <span class="tb-logo">Kore<b>Han</b> News</span>
+    <span class="badge">Admin CMS</span>
+  </div>
+  <div class="tb-right">
+    <a href="index.html" target="_blank" class="vsb">↗ View Site</a>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sb">
+    <div class="sb-lbl">Articles</div>
+    <button class="sb-btn on" id="sb-all" onclick="goList()"><span class="ico">📰</span>All Articles<span class="pill" id="p-all">0</span></button>
+    <button class="sb-btn" id="sb-new" onclick="openModal(null)"><span class="ico">✏️</span>New Article</button>
+    <button class="sb-btn" onclick="goAutoArticle()"><span class="ico">🤖</span>AI Auto-Generate</button>
+    <button class="sb-btn" id="sb-cache" onclick="goAICache()"><span class="ico">🧠</span>AI Cache 관리</button>
+    <button class="sb-btn" id="sb-img" onclick="goArticleImages()"><span class="ico">🖼</span>기사 이미지 관리</button>
+
+    <div class="sb-lbl">By Section</div>
+    <button class="sb-btn" onclick="goFilter('사회')"> <span class="ico">🏙️</span>사회 Society <span class="pill" id="p-사회">0</span></button>
+    <button class="sb-btn" onclick="goFilter('국제')"> <span class="ico">🌍</span>국제 World   <span class="pill" id="p-국제">0</span></button>
+    <button class="sb-btn" onclick="goFilter('문화')"> <span class="ico">🎭</span>문화 Culture <span class="pill" id="p-문화">0</span></button>
+    <button class="sb-btn" onclick="goFilter('Korea')"><span class="ico">🇰🇷</span>Korea        <span class="pill" id="p-Korea">0</span></button>
+    <button class="sb-btn" onclick="goFilter('스포츠')"><span class="ico">⚽</span>스포츠 Sports<span class="pill" id="p-스포츠">0</span></button>
+    <button class="sb-btn" onclick="goFilter('IT과학')"><span class="ico">💻</span>IT·과학      <span class="pill" id="p-IT과학">0</span></button>
+    <button class="sb-btn" onclick="goFilter('오피니언')"><span class="ico">✍️</span>오피니언     <span class="pill" id="p-오피니언">0</span></button>
+
+    <div class="section-sep"></div>
+    <div class="sb-lbl">Analytics</div>
+    <button class="sb-btn" onclick="goStats()"><span class="ico">📊</span>User Analytics</button>
+    <div class="sb-lbl">Content</div>
+    <div class="sb-lbl">Settings</div>
+    <button class="sb-btn" onclick="goOpinions()">    <span class="ico">✍️</span>오피니언 칼럼니스트</button>
+
+    <div class="section-sep"></div>
+    <div class="sb-lbl">학습 콘텐츠</div>
+    <button class="sb-btn" id="sb-conv" onclick="goConvEditor()"><span class="ico">💬</span>Conversations AI<span class="sb-new-tag">NEW</span></button>
+    <button class="sb-btn" id="sb-conv-mgr" onclick="goConvManager()"><span class="ico">📝</span>Conversations 관리</button>
+    <button class="sb-btn" id="sb-stor" onclick="goStoriesEditor()"><span class="ico">📖</span>Stories AI<span class="sb-new-tag">NEW</span></button>
+    <button class="sb-btn" id="sb-stor-mgr" onclick="goStoriesManager()"><span class="ico">📝</span>Stories 관리</button>
+    <button class="sb-btn" onclick="goPhrases()"> <span class="ico">💬</span>오늘의 표현</button>
+    <button class="sb-btn" onclick="goVocabEditor()"><span class="ico">✏️</span>단어 뜻 수정</button>
+    <button class="sb-btn" onclick="goTopics()"><span class="ico">📝</span>작문 토픽 관리</button>
+    <button class="sb-btn" onclick="goWordBank()"><span class="ico">📚</span>단어 플래시 카드</button>
+    <button class="sb-btn" onclick="goSentences()"><span class="ico">💬</span>예문 관리</button>
+    <div class="sb-lbl" style="margin-top:14px">운영 관리</div>
+    <button class="sb-btn" onclick="goUsers()"><span class="ico">👥</span>가입 회원</button>
+    <button class="sb-btn" onclick="goComments()"><span class="ico">💬</span>댓글 관리</button>
+    <button class="sb-btn" onclick="goNewsletter()"><span class="ico">📬</span>뉴스레터</button>
+    <button class="sb-btn" onclick="goStats()"><span class="ico">📊</span>방문자 통계</button>
+
+    <div class="section-sep"></div>
+    
+<div class="sb-lbl">데이터</div>
+    <button class="sb-btn" onclick="doExport()"><span class="ico">💾</span>내보내기 (JSON)</button>
+    <button class="sb-btn" onclick="document.getElementById('imp').click()"><span class="ico">📂</span>가져오기 (JSON)</button>
+    <button class="sb-btn" onclick="resetAll()" style="color:#cc2200"><span class="ico">🔄</span>전체 초기화</button>
+    <input type="file" id="imp" accept=".json" style="display:none" onchange="doImport(event)">
+  </div>
+
+  <!-- MAIN -->
+  <div class="main" id="main"></div>
+</div>
+
+<!-- ARTICLE MODAL -->
+<div class="ov" id="ov" style="display:none">
+  <div class="mbox">
+    <div class="m-hd"><h2 id="m-ttl">Article</h2><button class="m-x" id="m-x">✕</button></div>
+    <div class="m-bd" id="m-bd"></div>
+    <div class="m-ft">
+      <button class="btn btn-gh" id="m-del-from-modal" style="background:#c33;color:#fff;margin-right:auto;display:none" onclick="deleteFromModal()">🗑 삭제</button>
+      <button class="btn btn-gh" id="m-cancel">취소</button>
+      <button class="btn btn-b" style="background:#555" id="m-draft">임시저장</button>
+      <button class="btn btn-g" id="m-pub">✓ 발행</button>
     </div>
   </div>
 </div>
+
+<!-- DELETE CONFIRM -->
+<div class="del-ov" id="del-ov" style="display:none">
+  <div class="del-box">
+    <div class="dico">🗑️</div>
+    <h3>기사를 삭제할까요?</h3>
+    <p id="del-msg">삭제하면 되돌릴 수 없습니다.</p>
+    <div class="del-btns">
+      <button class="btn btn-gh" id="del-cancel">취소</button>
+      <button class="btn btn-r"  id="del-confirm">삭제</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
 <script>
-function renderChat(){
-  const chat=document.getElementById("chat");
-  chat.innerHTML="";
-  const lines=document.getElementById("script").value.split("\n");
-  lines.forEach(line=>{
-    line=line.trim();
-    if(!line)return;
-    const isB=line.startsWith("B:");
-    const text=line.replace(/^[AB]:/,"").trim();
-    const div=document.createElement("div");
-    div.className="msg "+(isB?"right":"");
-    const bubble=document.createElement("div");
-    bubble.className="bubble";
-    bubble.innerText=text;
-    div.appendChild(bubble);
-    chat.appendChild(div);
+'use strict';
+
+// ══ ADMIN AUTH GATE ════════════════════════════════════════
+// 1차: localStorage 토큰 빠른 체크 (페이지 깜빡임 방지)
+// 2차: Supabase SDK 실시간 세션 검증 (조작 방지)
+(function() {
+  var ADMIN_EMAIL = 'enane960819@gmail.com';
+
+  function blockAccess(reason) {
+    document.body.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0b1220;font-family:sans-serif">'
+      + '<div style="text-align:center;color:#fff;padding:40px;max-width:360px">'
+      + '<div style="font-size:56px;margin-bottom:16px">🔒</div>'
+      + '<div style="font-size:20px;font-weight:900;margin-bottom:8px">Admin Access Only</div>'
+      + '<div style="font-size:13px;color:#7a9ac0;margin-bottom:24px">' + (reason||'This page is restricted.') + '</div>'
+      + '<a href="index.html" style="padding:10px 24px;background:#2255a4;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">← Back to Home</a>'
+      + '</div></div>';
+  }
+
+  // 1차: 빠른 localStorage 체크
+  function getStoredEmail() {
+    try {
+      var keys = Object.keys(localStorage);
+      for (var i = 0; i < keys.length; i++) {
+        if (keys[i].startsWith('sb-') && keys[i].includes('-auth-token')) {
+          var val = JSON.parse(localStorage.getItem(keys[i]));
+          if (val && val.user && val.user.email) return val.user.email;
+        }
+      }
+    } catch(e) {}
+    return null;
+  }
+
+  var storedEmail = getStoredEmail();
+  if (!storedEmail || storedEmail !== ADMIN_EMAIL) {
+    document.addEventListener('DOMContentLoaded', function(){ blockAccess('You are not signed in as admin.'); });
+    if (document.readyState !== 'loading') blockAccess('You are not signed in as admin.');
+    return; // 스크립트 나머지 실행 방지
+  }
+
+  // 2차: SDK 세션 실시간 검증 (DOMContentLoaded 후)
+  document.addEventListener('DOMContentLoaded', function() {
+    var sb = window.supabase && window.supabase.createClient(
+      'https://samghztrdvtxmrmawneu.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs'
+    );
+    if (!sb) return;
+    sb.auth.getSession().then(function(r) {
+      var email = r.data && r.data.session && r.data.session.user && r.data.session.user.email;
+      if (!email || email !== ADMIN_EMAIL) {
+        blockAccess('Session invalid or not admin.');
+      }
+    });
+
+    // 세션 변경 감지 (로그아웃 시 즉시 차단)
+    sb.auth.onAuthStateChange(function(event, session) {
+      var email = session && session.user && session.user.email;
+      if (event === 'SIGNED_OUT' || !email || email !== ADMIN_EMAIL) {
+        blockAccess('Signed out.');
+      }
+    });
+  });
+})();
+// ══ END ADMIN AUTH GATE ════════════════════════════════════
+
+// ══ KEYS ══════════════════════════════════════════════════
+const K_DB       = 'korehan_db';
+const K_VIEWS    = 'korehan_views';
+const K_PHRASES  = 'korehan_phrases';
+const K_WORDBANK   = 'korehan_wordbank';
+const K_SENTENCES  = 'korehan_sentences';
+const SUPA_URL_ADMIN = 'https://samghztrdvtxmrmawneu.supabase.co';
+const SUPA_KEY_ADMIN = 'sb_publishable_HGL3s1r-P4PDkjQ9mjPxug_yqlgldyU';
+const SUPA_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjQzNDc1MiwiZXhwIjoyMDg4MDEwNzUyfQ.npCvblrbeRiqwW76_23kYznrRuFHIKCD24JN3da--3c';
+function supaAdminGet(path){
+  return fetch(SUPA_URL_ADMIN + path, {
+    headers: {
+      'apikey': SUPA_KEY_ADMIN,
+      'Authorization': 'Bearer ' + SUPA_KEY_ADMIN,
+      'Content-Type': 'application/json'
+    }
+  }).then(function(r){ return r.json(); });
+}
+const K_SITECONF = 'korehan_siteconf';
+const K_OPINIONS = 'korehan_opinions';
+
+// ══ HELPERS ════════════════════════════════════════════════
+function ls(k,d){ try{const r=localStorage.getItem(k);if(r!=null)return JSON.parse(r);}catch(e){}return d; }
+function lsSet(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function today(){ return new Date().toISOString().slice(0,10); }
+function fdate(d){ try{return new Date(d+'T00:00:00').toLocaleDateString('ko-KR',{year:'numeric',month:'short',day:'numeric'});}catch(e){return d||'';} }
+function toast(msg,isErr){
+  const el=document.createElement('div');
+  el.className='t'+(isErr?' err':'');
+  el.textContent=msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>el.remove(),3200);
+}
+function setSbOn(id){
+  document.querySelectorAll('.sb-btn').forEach(b=>b.classList.remove('on'));
+  if(id){ const el=document.getElementById(id); if(el) el.classList.add('on'); }
+}
+
+// ══ DEFAULTS ════════════════════════════════════════════════
+const SEED = [
+  { id:'s1',  section:'사회',   status:'published', featured:true,  date:'2026-03-02', image:'https://picsum.photos/seed/news1/600/400',   title:'대통령, 경제 회복 위한 대규모 민간투자 패키지 발표',              body:'정부는 오늘 향후 5년간 100조 원 규모의 민간투자를 유치하는 종합 경제 활성화 방안을 공개했다.' },
+  { id:'s2',  section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news2/600/400',   title:'반도체 수출 석 달 연속 증가… 무역수지 흑자 전환',                body:'반도체를 중심으로 한 수출 호조가 이어지며 무역수지가 3개월 연속 흑자를 기록했다.' },
+  { id:'s3',  section:'국제',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news3/600/400',   title:'유엔 안보리, 중동 사태 긴급 회의 소집 결의',                     body:'유엔 안전보장이사회가 중동 지역의 긴박한 상황에 대응하기 위해 긴급 회의 소집을 결의했다.' },
+  { id:'s4',  section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news4/600/400',   title:'서울시, 한강 변 대규모 주거단지 개발 계획 승인',                 body:'서울시가 마포구 일대 한강 변에 1만 세대 규모의 신규 주거단지 개발 계획을 최종 승인했다.' },
+  { id:'s5',  section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news10/600/400',  title:'한국은행, 기준금리 동결 결정… "하반기 인하 검토"',               body:'금통위는 만장일치로 현행 3.5% 금리를 유지하기로 결정하면서 하반기 완화 가능성을 시사했다.' },
+  { id:'s6',  section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news11/600/400',  title:'전국 교원 파업 예고… 교육부와 협상 막판 진통',                  body:'전국교원노조는 처우 개선 요구가 받아들여지지 않을 경우 다음 주 전면 파업에 돌입하겠다고 선언했다.' },
+  { id:'s7',  section:'국제',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/news12/600/400',  title:'나토 정상들, 방위비 분담 확대 합의… 한국도 동참 논의',           body:'북대서양조약기구 회원국들이 국방비를 GDP 대비 3%로 높이기로 원칙적 합의했다.' },
+  { id:'s8',  section:'Korea',  status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/korea1/600/400',  title:'BTS 월드투어 서울 공연 전석 매진… 추가 공연 검토 중',            body:'BTS 월드투어 서울 공연 티켓이 판매 시작 수분 만에 전석 매진되면서 소속사가 추가 공연 개최를 검토하고 있다.' },
+  { id:'s9',  section:'Korea',  status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/korea2/600/400',  title:'유네스코, 김장 문화 세계 무형문화유산 등재 확정',                 body:'한국의 전통 김치 담그기 문화인 김장이 유네스코 인류 무형문화유산으로 공식 등재됐다.' },
+  { id:'s10', section:'Korea',  status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/korea3/600/400',  title:'외국인 한국어 능력시험(TOPIK) 지원자 역대 최다 기록',             body:'2026년 TOPIK 시험 지원자 수가 역대 최고치를 기록하며 전 세계적인 한국어 학습 열풍을 실감케 했다.' },
+  { id:'s11', section:'IT과학', status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s1/600/400',      title:'삼성전자, 차세대 AI 반도체 양산 돌입… 엔비디아와 공급 계약',     body:'삼성전자가 차세대 AI 반도체 양산에 돌입하면서 엔비디아와 대규모 공급 계약을 체결했다.' },
+  { id:'s12', section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s2/600/400',      title:'여야, 민생 안정 패키지 법안 처리 합의… 이번 주 본회의 통과 예정', body:'여야가 민생 안정 패키지 법안 처리에 합의하면서 이번 주 본회의 통과가 유력해졌다.' },
+  { id:'s13', section:'스포츠', status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s3/600/400',      title:'손흥민, 챔피언스리그 결승 진출… 한국 선수 최초 기록 수립',       body:'손흥민이 챔피언스리그 결승에 진출하며 한국 선수 최초라는 역사적 기록을 세웠다.' },
+  { id:'s14', section:'국제',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s4/600/400',      title:'기후변화 대응 새 국제협약 서명… 한국 탄소중립 2045년 목표 발표', body:'새로운 국제 기후 협약이 서명되면서 한국은 탄소중립 목표 시점을 2045년으로 앞당겼다.' },
+  { id:'s15', section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s5/600/400',      title:'수도권 광역급행철도 GTX-B 노선 2027년 개통 확정',                body:'GTX-B 노선이 2027년 개통을 목표로 공사가 마무리 단계에 접어들었다.' },
+  { id:'s16', section:'문화',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/cul1/600/400',    title:'넷플릭스 한국 오리지널 드라마, 전 세계 1위 달성',                body:'넷플릭스가 제작한 한국 오리지널 드라마가 공개 첫 주 전 세계 92개국에서 1위를 기록했다.' },
+  { id:'s17', section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/econ1/600/400',   title:'코스피 2,800선 회복… 외국인 순매수 지속',                       body:'코스피 지수가 외국인 투자자의 순매수에 힘입어 2,800선을 회복하며 강세를 이어갔다.' },
+  { id:'s18', section:'문화',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/sp1/600/400',     title:'황희찬, 프리미어리그 이번 시즌 15호 골… 팀 3연승 견인',          body:'울버햄튼의 황희찬이 번리 전에서 멀티골을 터트리며 팀의 3연승을 이끌었다.' },
+  { id:'s19', section:'사회',   status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/soc1/600/400',    title:'서울 지하철 9호선 급행 배차 간격 단축… 출퇴근 혼잡 해소 기대',   body:'서울시가 9호선 급행열차 배차 간격을 기존 12분에서 8분으로 줄이기로 했다. 출퇴근 시간대 혼잡도가 크게 줄어들 것으로 기대된다.' },
+  { id:'s20', section:'사회',   status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/soc2/600/400',    title:'최저임금위, 내년도 최저임금 심의 본격 시작… 노사 간격 커',        body:'최저임금위원회가 2027년 최저임금 심의를 공식 시작했다. 노동계는 1만 5천 원, 경영계는 동결을 주장하며 큰 간격을 보이고 있다.' },
+  { id:'s21', section:'국제',   status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/int1/600/400',    title:'미국, 對中 반도체 수출 규제 추가 강화… 한국 기업 영향 촉각',      body:'미국 정부가 중국에 대한 첨단 반도체 및 장비 수출 규제를 추가로 강화했다. 삼성전자, SK하이닉스 등 한국 기업들의 대응에 관심이 쏠린다.' },
+  { id:'s22', section:'국제',   status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/int2/600/400',    title:'일본, 독도 영유권 주장 또 반복… 외교부 강력 항의',               body:'일본 외무성이 연례 외교청서에서 독도를 일본 고유 영토라고 재차 주장했다. 우리 외교부는 즉각 주일 대사를 초치해 강력 항의했다.' },
+  { id:'s23', section:'문화',   status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/cul2/600/400',    title:'한국 영화 "새벽의 빛", 칸 영화제 경쟁 부문 초청 확정',           body:'한국 신예 감독 박지수의 장편 데뷔작 "새벽의 빛"이 칸 국제영화제 경쟁 부문에 공식 초청됐다. 한국 영화의 글로벌 위상을 다시 한번 확인시켰다.' },
+  { id:'s24', section:'스포츠', status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/spt2/600/400',    title:'한국 야구 대표팀, 프리미어12 우승 기대감 고조',                  body:'WBC 4강 신화의 주역들이 대거 포함된 한국 야구 대표팀이 다음 달 열리는 프리미어12 준비에 박차를 가하고 있다.' },
+  { id:'s25', section:'IT과학', status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/tech1/600/400',   title:'카카오, 자체 개발 AI 모델 "카나" 공개… 오픈AI에 도전장',         body:'카카오가 자체 개발한 대규모 언어 모델 "카나"를 공개했다. 한국어 이해·생성 능력에서 GPT-4를 능가한다는 내부 테스트 결과를 발표해 주목받고 있다.' },
+  { id:'s26', section:'IT과학', status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/tech2/600/400',   title:'현대차, 자율주행 레벨4 상용 택시 서울 도심 시범 운행 개시',       body:'현대자동차가 서울 강남 일대에서 운전자 없이 달리는 자율주행 레벨4 택시 시범 서비스를 시작했다. 안전 요원은 탑승하지 않는다.' },
+  { id:'s27', section:'Korea',  status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/kor4/600/400',    title:'제주 감귤 수확량 역대 최다… 올해 해외 수출도 사상 최고',          body:'올해 제주 감귤 생산량이 65만 톤으로 역대 최다를 기록했다. 동남아·미주 지역 수출도 크게 늘어 농가 소득 향상에 도움이 될 전망이다.' },
+  { id:'s28', section:'Korea',  status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/kor5/600/400',    title:'경복궁 야간 특별 관람 올해도 매진… 외국인 관광객 급증',           body:'문화재청이 주관하는 경복궁 야간 특별 관람 올봄 티켓이 예매 시작 5분 만에 전부 매진됐다. 방문자의 40%는 외국인 관광객인 것으로 집계됐다.' },
+];
+
+const DEF_SITECONF = {
+  siteName:'KoreHan News',
+  siteTagline:'쉬운 뉴스로 배우는 한국어',
+  footerDesc:'KoreHan News는 한국어를 배우는 외국인을 위한 뉴스 사이트입니다.\n유치원~중학교 수준의 쉬운 한국어로 쓴 뉴스를 제공합니다.\n단어에 마우스를 올리면 영어 뜻과 발음을 확인할 수 있어요.',
+  learnBannerTitle:'유치원~중학교 수준의 쉬운 한국어 뉴스',
+  learnBannerDesc:'KoreHan News는 한국어를 배우는 외국인을 위한 사이트예요. 뉴스 기사를 읽으면서 자연스럽게 한국어를 익힐 수 있어요.',
+};
+const DEF_PHRASES = [
+  {ko:'경제 회복',rom:'gyeong-je hoe-bok',en:'economic recovery'},
+  {ko:'민간투자', rom:'min-gan tu-ja',     en:'private investment'},
+  {ko:'반도체',   rom:'ban-do-che',         en:'semiconductor'},
+];
+const DEF_WORDBANK = [
+  {ko:'뉴스',rom:'nyu-seu',  en:'news'},
+  {ko:'사회',rom:'sa-hoe',   en:'society'},
+  {ko:'국제',rom:'guk-je',   en:'international'},
+  {ko:'문화',rom:'mun-hwa',  en:'culture'},
+  {ko:'한국',rom:'han-guk',  en:'Korea'},
+  {ko:'학교',rom:'hak-gyo',  en:'school'},
+];
+
+const DEF_SENTENCES = [
+  {id:'e1', level:'초급', ko:'오늘 날씨가 좋아요.',                    en:'The weather is nice today.'},
+  {id:'e2', level:'초급', ko:'저는 학교에 가요.',                       en:'I go to school.'},
+  {id:'e3', level:'초급', ko:'친구와 같이 공부해요.',                    en:'I study together with a friend.'},
+  {id:'e4', level:'초급', ko:'우리 가족은 다섯 명이에요.',               en:'My family has five members.'},
+  {id:'e5', level:'중급', ko:'대통령이 경제 회복 방안을 발표했어요.',     en:'The president announced a plan for economic recovery.'},
+  {id:'e6', level:'중급', ko:'반도체 수출이 늘고 있어요.',               en:'Semiconductor exports are increasing.'},
+  {id:'e7', level:'중급', ko:'서울에 새 아파트 단지가 생겼어요.',         en:'A new apartment complex was built in Seoul.'},
+  {id:'e8', level:'중급', ko:'나토 정상들이 방위비 합의를 했어요.',       en:'NATO leaders reached a defense spending agreement.'},
+  {id:'e9', level:'고급', ko:'국회에서 민생 안정 법안이 통과됐다.',       en:'A livelihood stability bill passed the National Assembly.'},
+  {id:'e10',level:'고급', ko:'탄소중립 2045년 목표를 발표했습니다.',      en:'The 2045 carbon neutrality target was announced.'},
+];
+const DEF_OPINIONS = [
+  {name:'김민준',title:'경제 전문 에디터',   img:'https://picsum.photos/seed/auth1/100/100',headline:'금리 인하는 독인가 약인가 — 지금 결정이 중요한 이유'},
+  {name:'이서연',title:'외교안보 칼럼니스트',img:'https://picsum.photos/seed/auth2/100/100',headline:'한반도 평화 프로세스, 지금 재가동해야 할 때'},
+  {name:'박준호',title:'IT 산업 분석가',    img:'https://picsum.photos/seed/auth3/100/100',headline:'AI 거버넌스 없이 기술 패권 경쟁에서 이길 수 없다'},
+  {name:'최유진',title:'사회문화부 기자',    img:'https://picsum.photos/seed/auth4/100/100',headline:'저출생 위기, 숫자가 아닌 삶의 질 문제로 접근해야'},
+];
+
+// ══ DB STATE ════════════════════════════════════════════════
+let DB = [];
+let activeFilter = '';
+let deleteId = null;
+
+var _sbAdmin = null;
+// ── Claude API 프록시 (어드민용) ──────────────────────────────
+const ADMIN_CLAUDE_PROXY = SUPA_URL_ADMIN + '/functions/v1/claude-proxy';
+
+async function callClaude({ feature, model, max_tokens, messages }) {
+  var sb = getSb();
+  if (!sb) throw new Error('Supabase not initialized');
+
+  var { data: { session } } = await sb.auth.getSession();
+  if (!session) throw new Error('Not signed in');
+
+  var resp = await fetch(ADMIN_CLAUDE_PROXY, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + session.access_token,
+    },
+    body: JSON.stringify({ feature, model, max_tokens, messages }),
+  });
+
+  if (resp.status === 429) throw new Error('rate_limit');
+  if (resp.status === 401) throw new Error('unauthorized - please sign in');
+  if (!resp.ok) {
+    var err = await resp.json().catch(function(){ return {}; });
+    throw new Error(err.error || 'API error ' + resp.status);
+  }
+  return resp.json();
+}
+
+
+function getSb() {
+  if (_sbAdmin) return _sbAdmin;
+  if (typeof supabase !== 'undefined' && SUPA_URL_ADMIN && SUPA_KEY_ADMIN) {
+    _sbAdmin = supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN, {
+      auth: { detectSessionInUrl: true, persistSession: true, autoRefreshToken: true }
+    });
+    return _sbAdmin;
+  }
+  return null;
+}
+
+async function dbLoadFromSupabase() {
+  const sb = getSb();
+  if (!sb) { console.warn('Supabase not available'); goList(); return; }
+  try {
+    const res = await sb.from('articles').select('*').order('date', { ascending: false });
+    if (res.error) throw res.error;
+    DB = res.data || [];
+    goList();
+  } catch(e) {
+    toast('DB 로드 오류: ' + e.message, true);
+    goList();
+  }
+}
+
+async function dbSaveArticle(article) {
+  const sb = getSb();
+  if (!sb) return false;
+  try {
+    const res = await sb.from('articles').upsert(article, { onConflict: 'id' });
+    if (res.error) throw res.error;
+    return true;
+  } catch(e) {
+    toast('저장 오류: ' + e.message, true);
+    return false;
+  }
+}
+
+async function dbDeleteArticle(id) {
+  const sb = getSb();
+  if (!sb) return false;
+  try {
+    const res = await sb.from('articles').delete().eq('id', id);
+    if (res.error) throw res.error;
+    return true;
+  } catch(e) {
+    toast('삭제 오류: ' + e.message, true);
+    return false;
+  }
+}
+
+// Init — Supabase에서 기사 로드
+dbLoadFromSupabase();
+
+// ══ COUNTS ══════════════════════════════════════════════════
+function refreshCounts(){
+  document.getElementById('p-all').textContent = DB.length;
+  ['사회','국제','문화','Korea','스포츠','IT과학','오피니언'].forEach(s=>{
+    const el=document.getElementById('p-'+s);
+    if(el) el.textContent=DB.filter(a=>a.section===s).length;
   });
 }
-renderChat();
+
+// ══ ARTICLE LIST ════════════════════════════════════════════
+function goList(){
+  setSbOn('sb-all');
+  activeFilter='';
+  renderList();
+}
+function goFilter(sec){
+  setSbOn(null);
+  activeFilter=sec;
+  renderList();
+}
+
+function renderList(){
+  refreshCounts();
+  const pub   = DB.filter(a=>a.status==='published').length;
+  const draft = DB.filter(a=>a.status==='draft').length;
+  const SECS  = ['사회','국제','문화','Korea','스포츠','IT과학','오피니언'];
+
+  document.getElementById('main').innerHTML=`
+    <div class="pg-hd">
+      <div><h1>All Articles</h1><p>기사를 추가·수정·삭제하세요</p></div>
+      <button class="btn btn-g" id="btn-new">＋ New Article</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-n">${DB.length}</div><div class="stat-l">전체</div></div>
+      <div class="stat"><div class="stat-n">${pub}</div><div class="stat-l">발행됨</div></div>
+      <div class="stat"><div class="stat-n">${draft}</div><div class="stat-l">임시저장</div></div>
+      <div class="stat"><div class="stat-n">${DB.filter(a=>a.featured).length}</div><div class="stat-l">Featured</div></div>
+    </div>
+    <div class="infobox">
+      💡 기사를 클릭해서 수정하거나, <strong>Featured</strong>로 표시하면 메인 히어로에 표시됩니다.
+      Export로 데이터를 저장하고 Import로 불러올 수 있어요.
+    </div>
+    <div class="toolbar">
+      <div class="srch"><span>🔍</span><input id="q" type="text" placeholder="제목 검색…" oninput="renderRows()"></div>
+      <select class="flt" id="fsec" onchange="renderRows()">
+        <option value="">All Sections</option>
+        ${SECS.map(s=>`<option value="${s}"${activeFilter===s?' selected':''}>${s}</option>`).join('')}
+      </select>
+      <select class="flt" id="fsta" onchange="renderRows()">
+        <option value="">전체 상태</option>
+        <option value="published">발행됨</option>
+        <option value="draft">임시저장</option>
+      </select>
+    </div>
+    <div id="tbl-wrap"></div>`;
+
+  document.getElementById('btn-new').addEventListener('click',()=>openModal(null));
+  renderRows();
+}
+
+function renderRows(){
+  const q  =(document.getElementById('q')?.value||'').toLowerCase();
+  const sec= document.getElementById('fsec')?.value||'';
+  const sta= document.getElementById('fsta')?.value||'';
+  const rows=DB.filter(a=>{
+    return (!q||a.title.toLowerCase().includes(q)||(a.body||'').toLowerCase().includes(q))
+        && (!sec||a.section===sec)
+        && (!sta||a.status===sta);
+  });
+  const wrap=document.getElementById('tbl-wrap');
+  if(!wrap) return;
+  if(!rows.length){
+    wrap.innerHTML=`<div class="empty"><div class="big">📭</div><strong>기사 없음</strong></div>`;
+    return;
+  }
+  wrap.innerHTML=`
+    <table class="tbl">
+      <thead><tr>
+        <th style="width:74px">Image</th><th>Article</th><th style="width:88px">Section</th>
+        <th style="width:90px">상태</th><th style="width:96px">날짜</th><th style="width:160px">액션</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>`;
+  const tbody=document.getElementById('tbody');
+  rows.forEach(a=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><img class="thumb" src="${esc(a.image||'https://picsum.photos/seed/'+a.id+'/200/140')}" onerror="this.src='https://picsum.photos/seed/x/200/140'"></td>
+      <td>
+        <div class="art-t">${esc(a.title)}</div>
+        <div class="art-b">${esc(a.body||'')}</div>
+        <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
+          ${a.featured?'<span style="font-size:11px;color:#b87800;font-weight:700;background:#fff8e1;padding:1px 7px;border-radius:999px">⭐ Featured</span>':''}
+          ${a.level?`<span style="font-size:11px;font-weight:800;padding:1px 8px;border-radius:999px;background:${a.level==='Beginner'?'#e8f5e9;color:#2e7d32':a.level==='Intermediate'?'#fff8e1;color:#f57f17':'#fce4ec;color:#c62828'}">${a.level}</span>`:''}
+        </div>
+      </td>
+      <td><span class="cpill c${esc(a.section)}">${esc(a.section)}</span></td>
+      <td><span class="dot ${a.status==='published'?'dpub':'ddr'}"></span>${a.status==='published'?'발행됨':'임시저장'}</td>
+      <td style="font-size:12px;color:var(--gr)">${fdate(a.date)}</td>
+      <td>
+        <div class="row-act">
+          <button class="btn btn-sm btn-gh edit-btn" data-id="${a.id}">수정</button>
+          <button class="btn btn-sm" style="background:#555;color:#fff" data-id="${a.id}" onclick="togglePub('${a.id}')">${a.status==='published'?'내리기':'발행'}</button>
+          <button class="btn btn-sm btn-r del-btn" data-id="${a.id}">삭제</button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.addEventListener('click',e=>{
+    const eb=e.target.closest('.edit-btn'); if(eb) openModal(eb.dataset.id);
+    const db=e.target.closest('.del-btn');  if(db) openDelete(db.dataset.id);
+  });
+}
+
+async function togglePub(id){
+  const idx=DB.findIndex(a=>a.id===id); if(idx===-1) return;
+  DB[idx].status = DB[idx].status==='published'?'draft':'published';
+  await dbSaveArticle(DB[idx]);
+  renderRows();
+  toast(DB[idx].status==='published' ? '✓ Published!' : 'Moved to draft');
+}
+
+// ══ ARTICLE MODAL ════════════════════════════════════════════
+const SECS = ['사회','국제','문화','Korea','스포츠','IT과학','오피니언'];
+
+function openModal(id){
+  const a = id ? DB.find(x=>x.id===id) : null;
+  document.getElementById('m-ttl').textContent = a ? '기사 수정' : 'New Article';
+  document.getElementById('m-bd').innerHTML = formHTML(a);
+  document.getElementById('ov').style.display='flex';
+  document.body.style.overflow='hidden';
+  document.getElementById('f-image').addEventListener('input', livePreview);
+  // 수정 모드일 때만 삭제 버튼 표시
+  const delBtn = document.getElementById('m-del-from-modal');
+  if(delBtn) delBtn.style.display = a ? 'inline-flex' : 'none';
+}
+
+async function deleteFromModal(){
+  const eid = document.getElementById('f-id')?.value||'';
+  if(!eid) return;
+  const a = DB.find(x=>x.id===eid);
+  if(!a) return;
+  if(!confirm('「' + a.title + '」 이 기사를 삭제할까요? 되돌릴 수 없어요.')) return;
+  const ok = await dbDeleteArticle(eid);
+  if (!ok) return;
+  DB = DB.filter(x=>x.id!==eid);
+  refreshCounts();
+  closeModal();
+  goList();
+  toast('🗑️ Article deleted');
+}
+function closeModal(){
+  document.getElementById('ov').style.display='none';
+  document.body.style.overflow='';
+}
+function formHTML(a){
+  const v=a||{};
+  return `
+    <div class="fg-row">
+      <div class="fg">
+        <label>Section *</label>
+        <select id="f-sec">
+          ${SECS.map(s=>`<option value="${s}"${(v.section||'')==s?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg">
+        <label>날짜</label>
+        <input type="date" id="f-date" value="${esc(v.date||today())}">
+      </div>
+    </div>
+    <div class="fg">
+      <label>제목 (한국어) *</label>
+      <input type="text" id="f-title" value="${esc(v.title||'')}" placeholder="예: 대통령, 경제 회복 위한 발표…" maxlength="120"
+        oninput="document.getElementById('tl').textContent=this.value.length">
+      <div class="cntlabel"><span id="tl">${(v.title||'').length}</span> / 120</div>
+    </div>
+    <div class="fg">
+      <label>본문 (한국어) *</label>
+      <textarea id="f-body" maxlength="2000" placeholder="기사 본문…"
+        oninput="document.getElementById('bl').textContent=this.value.length">${esc(v.body||'')}</textarea>
+      <div class="cntlabel"><span id="bl">${(v.body||'').length}</span> / 2000</div>
+    </div>
+    <div class="fg">
+      <label>이미지 URL <span style="font-weight:400;text-transform:none;letter-spacing:0">(선택)</span></label>
+      <input type="text" id="f-image" value="${esc(v.image||'')}" placeholder="https://…">
+      <img id="f-imgprev" style="${v.image?'':'display:none'};max-width:100%;max-height:160px;border-radius:4px;margin-top:8px;object-fit:cover" src="${esc(v.image||'')}">
+    </div>
+    <div class="fg" style="flex-direction:row;align-items:center;gap:10px">
+      <input type="checkbox" id="f-feat" ${v.featured?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0">
+      <label for="f-feat" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:600;cursor:pointer;color:var(--dk)">⭐ Featured (메인 히어로에 표시)</label>
+    </div>
+    <div class="fg" style="flex-direction:row;align-items:center;gap:10px;background:#fff5f5;border:1.5px solid #f5c6c6;border-radius:8px;padding:10px 14px">
+      <input type="checkbox" id="f-break" ${v.breaking?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0;accent-color:#d00">
+      <label for="f-break" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:700;cursor:pointer;color:#c00">🔴 Breaking News (속보 티커에 표시)</label>
+    </div>
+    <div class="fg">
+      <label>Difficulty Level</label>
+      <select id="f-level" style="height:38px">
+        <option value="">— 선택 안 함 —</option>
+        <option value="Beginner"  ${(v.level||'')==='Beginner'  ?'selected':''}>🟢 Beginner  (TOPIK 1-2)</option>
+        <option value="Intermediate" ${(v.level||'')==='Intermediate'?'selected':''}>🟡 Intermediate (TOPIK 3-4)</option>
+        <option value="Advanced" ${(v.level||'')==='Advanced' ?'selected':''}>🔴 Advanced  (TOPIK 5-6)</option>
+      </select>
+    </div>
+    <input type="hidden" id="f-id" value="${v.id||''}">`;
+}
+function livePreview(){
+  const url=document.getElementById('f-image')?.value||'';
+  const p=document.getElementById('f-imgprev');
+  if(!p) return;
+  if(url){p.src=url;p.style.display='block';}else{p.style.display='none';}
+}
+async function submitForm(status){
+  const title=(document.getElementById('f-title')?.value||'').trim();
+  const body =(document.getElementById('f-body')?.value||'').trim();
+  const sec  = document.getElementById('f-sec')?.value||'사회';
+  const date = document.getElementById('f-date')?.value||today();
+  const image=(document.getElementById('f-image')?.value||'').trim();
+  const feat    = document.getElementById('f-feat')?.checked||false;
+  const breaking = document.getElementById('f-break')?.checked||false;
+  const level   = document.getElementById('f-level')?.value||'';
+  const eid  = document.getElementById('f-id')?.value||'';
+  if(!title){toast('제목을 입력해 주세요',true);return;}
+  if(!body) {toast('본문을 입력해 주세요',true);return;}
+
+  const article = {
+    id: eid || uid(),
+    title, body, section: sec, date, image,
+    featured: feat, breaking: breaking, level, status
+  };
+
+  const ok = await dbSaveArticle(article);
+  if (!ok) return;
+
+  // 로컬 캐시 업데이트
+  const idx = DB.findIndex(a => a.id === article.id);
+  if (idx !== -1) DB[idx] = article;
+  else DB.unshift(article);
+
+  if(status==='published') adminExtractVocab({title,body});
+  closeModal(); goList();
+  toast(status==='published' ? '✓ Published!' : 'Draft saved');
+}
+
+// ══ VOCAB AUTO-EXTRACT ══════════════════════════════════════
+// 기사 저장 시 본문에서 학습 단어 자동 추출 → word bank에 추가
+const VOCAB_DICT = {
+  '대통령':{'rom':'dae-tong-ryeong','en':'president'},
+  '경제':{'rom':'gyeong-je','en':'economy'},
+  '회복':{'rom':'hoe-bok','en':'recovery'},
+  '투자':{'rom':'tu-ja','en':'investment'},
+  '수출':{'rom':'su-chul','en':'export'},
+  '무역':{'rom':'mu-yeok','en':'trade'},
+  '반도체':{'rom':'ban-do-che','en':'semiconductor'},
+  '문화':{'rom':'mun-hwa','en':'culture'},
+  '사회':{'rom':'sa-hoe','en':'society'},
+  '국제':{'rom':'guk-je','en':'international'},
+  '정부':{'rom':'jeong-bu','en':'government'},
+  '국회':{'rom':'guk-hoe','en':'National Assembly'},
+  '법안':{'rom':'beop-an','en':'bill / legislation'},
+  '정치':{'rom':'jeong-chi','en':'politics'},
+  '안보':{'rom':'an-bo','en':'security'},
+  '협약':{'rom':'hyeo-byak','en':'agreement / treaty'},
+  '탄소':{'rom':'tan-so','en':'carbon'},
+  '기술':{'rom':'gi-sul','en':'technology'},
+  '발표':{'rom':'bal-pyo','en':'announcement'},
+  '합의':{'rom':'ha-bui','en':'agreement'},
+  '드라마':{'rom':'deu-ra-ma','en':'drama / TV series'},
+  '공연':{'rom':'gong-yeon','en':'performance'},
+  '스포츠':{'rom':'seu-po-cheu','en':'sports'},
+  '결승':{'rom':'gyeol-seung','en':'final / championship'},
+  '계약':{'rom':'gye-yak','en':'contract'},
+  '공급':{'rom':'gong-geup','en':'supply'},
+  '금리':{'rom':'geum-ri','en':'interest rate'},
+  '인하':{'rom':'in-ha','en':'reduction / cut'},
+  '코스피':{'rom':'ko-seu-pi','en':'KOSPI (stock index)'},
+  '나토':{'rom':'na-to','en':'NATO'},
+  '유엔':{'rom':'yu-en','en':'United Nations'},
+  '평화':{'rom':'pyeong-hwa','en':'peace'},
+  '학교':{'rom':'hak-gyo','en':'school'},
+  '가족':{'rom':'ga-jok','en':'family'},
+  '날씨':{'rom':'nal-ssi','en':'weather'},
+  '친구':{'rom':'chin-gu','en':'friend'},
+  '뉴스':{'rom':'nyu-seu','en':'news'},
+  '한국':{'rom':'han-guk','en':'Korea'},
+  '서울':{'rom':'seo-ul','en':'Seoul'},
+  '자동차':{'rom':'ja-dong-cha','en':'automobile / car'},
+  '인공지능':{'rom':'in-gong-ji-neung','en':'artificial intelligence'},
+  '환경':{'rom':'hwan-gyeong','en':'environment'},
+  '교육':{'rom':'gyo-yuk','en':'education'},
+  '복지':{'rom':'bok-ji','en':'welfare'},
+  '주택':{'rom':'ju-taek','en':'housing'},
+  '외교':{'rom':'oe-gyo','en':'diplomacy'},
+  '선거':{'rom':'seon-geo','en':'election'},
+  '기후':{'rom':'gi-hu','en':'climate'},
+};
+function adminExtractVocab(article){
+  const text = (article.title||'') + ' ' + (article.body||'');
+  const found = Object.keys(VOCAB_DICT).filter(function(k){ return text.indexOf(k) >= 0; });
+  if(!found.length) return;
+  found.sort(function(){ return Math.random()-0.5; });
+  const picks = found.slice(0, 7);
+  const wb = ls(K_WORDBANK, []);
+  const existing = new Set(wb.map(function(w){ return w.ko; }));
+  const toAdd = picks.filter(function(k){ return !existing.has(k); }).map(function(k){
+    return { ko:k, rom:VOCAB_DICT[k].rom, en:VOCAB_DICT[k].en };
+  });
+  if(!toAdd.length) return;
+  const merged = [...wb, ...toAdd].slice(-60);
+  lsSet(K_WORDBANK, merged);
+}
+
+// ══ DELETE ══════════════════════════════════════════════════
+function openDelete(id){
+  deleteId=id;
+  const a=DB.find(x=>x.id===id);
+  document.getElementById('del-msg').textContent=a?'"'+a.title.slice(0,55)+(a.title.length>55?'…':'')+'"':'삭제하면 되돌릴 수 없습니다.';
+  document.getElementById('del-ov').style.display='flex';
+}
+function closeDelete(){ document.getElementById('del-ov').style.display='none'; deleteId=null; }
+async function doDelete(){
+  if(!deleteId) return;
+  const ok2 = await dbDeleteArticle(deleteId);
+  if (!ok2) return;
+  DB=DB.filter(a=>a.id!==deleteId); closeDelete(); goList();
+  toast('🗑️ Article deleted');
+}
+
+// ══ SITE SETTINGS ════════════════════════════════════════════
+
+
+async function goSections() {
+  setSbOn(null);
+  var main = document.getElementById('main');
+  main.innerHTML =
+    '<div class="pg-hd"><div><h1>🗂️ Manage Sections</h1><p>Add, edit or remove navigation sections. Changes appear on the site immediately.</p></div></div>'
+    + '<div id="sections-list"><div style="text-align:center;padding:32px;color:#aaa">⏳ Loading...</div></div>'
+    + '<div class="sf-card" style="margin-top:16px">'
+    + '<h3 style="margin-bottom:14px">➕ Add New Section</h3>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
+    + '<div><label class="inp-label">Section Key (unique ID, e.g. K-pop)</label>'
+    + '<input class="inp inp-sm" id="ns-key" placeholder="K-pop"></div>'
+    + '<div><label class="inp-label">Display Label (shown in nav)</label>'
+    + '<input class="inp inp-sm" id="ns-label" placeholder="K-pop"></div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:80px 1fr;gap:12px;margin-bottom:12px">'
+    + '<div><label class="inp-label">Icon</label>'
+    + '<input class="inp inp-sm" id="ns-icon" placeholder="🎤"></div>'
+    + '<div><label class="inp-label">AI Topics hint (for auto-generate)</label>'
+    + '<input class="inp inp-sm" id="ns-topics" placeholder="K-pop, idol groups, music charts..."></div>'
+    + '</div>'
+    + '<button class="btn btn-g" onclick="addSection()">➕ Add Section</button>'
+    + '</div>';
+
+  await refreshSectionsList();
+}
+
+async function refreshSectionsList() {
+  var sb = getSupa ? getSb() : null;
+  if (!sb) return;
+  var res = await sb.from('sections').select('*').order('sort_order');
+  var sections = res.data || [];
+
+  var html = sections.length === 0
+    ? '<div class="sf-card"><p style="color:#aaa">No sections yet.</p></div>'
+    : '<div class="sf-card"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+      + '<tr style="color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:1px;background:#f8faff">'
+      + '<th style="text-align:left;padding:8px 10px">Icon</th>'
+      + '<th style="text-align:left;padding:8px">Key</th>'
+      + '<th style="text-align:left;padding:8px">Label</th>'
+      + '<th style="text-align:left;padding:8px">Order</th>'
+      + '<th style="text-align:left;padding:8px">Active</th>'
+      + '<th style="text-align:right;padding:8px">Actions</th>'
+      + '</tr>'
+      + sections.map(function(s) {
+          return `<tr style="border-top:1px solid #f0f3f9">
+            <td style="padding:8px 10px;font-size:20px">${s.icon||'📰'}</td>
+            <td style="padding:8px;font-weight:700;color:#2255a4">${s.key}</td>
+            <td style="padding:8px">${s.label}</td>
+            <td style="padding:8px">
+              <input type="number" value="${s.sort_order||99}" min="1" max="99"
+                style="width:52px;padding:4px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"
+                onchange="updateSectionOrder(${s.id},this.value)">
+            </td>
+            <td style="padding:8px">
+              <label style="cursor:pointer;display:flex;align-items:center;gap:6px">
+                <input type="checkbox" ${s.active?'checked':''} onchange="toggleSection(${s.id},this.checked)">
+                ${s.active ? '<span style="color:#16a34a;font-weight:700;font-size:12px">Active</span>' : '<span style="color:#94a3b8;font-size:12px">Hidden</span>'}
+              </label>
+            </td>
+            <td style="padding:8px;text-align:right">
+              <button onclick="editSection(${s.id},'${s.key}','${s.label}','${(s.icon||'')}','${(s.topics||'').replace(/'/g,String.fromCharCode(39))}') "
+                style="padding:4px 10px;background:#e8eef7;color:#2255a4;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px">Edit</button>
+              <button onclick="deleteSection(${s.id},'${s.key}')"
+                style="padding:4px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Delete</button>
+            </td>
+          </tr>`;
+        }).join('')
+      + '</table></div>';
+
+  var el = document.getElementById('sections-list');
+  if (el) el.innerHTML = html;
+}
+
+async function addSection() {
+  var key    = (document.getElementById('ns-key')?.value||'').trim();
+  var label  = (document.getElementById('ns-label')?.value||'').trim();
+  var icon   = (document.getElementById('ns-icon')?.value||'📰').trim();
+  var topics = (document.getElementById('ns-topics')?.value||'').trim();
+  if (!key || !label) { toast('Key and Label are required', true); return; }
+
+  var sb = getSupa ? getSb() : null;
+  if (!sb) return;
+  var res = await sb.from('sections').insert({ key, label, icon, topics, sort_order:99, active:true });
+  if (res.error) { toast('Error: ' + res.error.message, true); return; }
+  toast('✅ Section "' + label + '" added!');
+  document.getElementById('ns-key').value = '';
+  document.getElementById('ns-label').value = '';
+  document.getElementById('ns-icon').value = '';
+  document.getElementById('ns-topics').value = '';
+  await refreshSectionsList();
+}
+
+async function deleteSection(id, key) {
+  if (!confirm('Delete section "' + key + '"? Articles in this section will NOT be deleted.')) return;
+  var sb = getSupa ? getSb() : null;
+  if (!sb) return;
+  await sb.from('sections').delete().eq('id', id);
+  toast('🗑️ Section deleted');
+  await refreshSectionsList();
+}
+
+async function toggleSection(id, active) {
+  var sb = getSupa ? getSb() : null;
+  if (!sb) return;
+  await sb.from('sections').update({ active }).eq('id', id);
+  toast(active ? '✅ Section activated' : '🙈 Section hidden');
+  await refreshSectionsList();
+}
+
+async function updateSectionOrder(id, order) {
+  var sb = getSupa ? getSb() : null;
+  if (!sb) return;
+  await sb.from('sections').update({ sort_order: parseInt(order) }).eq('id', id);
+}
+
+function editSection(id, key, label, icon, topics) {
+  var newLabel  = prompt('Label:', label);  if (newLabel  === null) return;
+  var newIcon   = prompt('Icon:',  icon);   if (newIcon   === null) return;
+  var newTopics = prompt('AI Topics:', topics); if (newTopics === null) return;
+  var sb = getSupa ? getSb() : null;
+  if (!sb) return;
+  sb.from('sections').update({ label:newLabel, icon:newIcon, topics:newTopics }).eq('id', id)
+    .then(function(){ toast('✅ Updated'); refreshSectionsList(); });
+}
+
+async function goStats() {
+  setSbOn(null);
+  var main = document.getElementById('main');
+  main.innerHTML = '<div class="pg-hd"><div><h1>📊 User Analytics</h1><p>전체 유저 학습 현황을 확인하세요.</p></div></div>'
+    + '<div id="stats-content"><div style="text-align:center;padding:48px;color:#aaa">⏳ Loading data...</div></div>';
+
+  var sb = getSupa ? getSb() : null;
+  if (!sb) { document.getElementById('stats-content').innerHTML = '<p style="color:red">Supabase connection failed</p>'; return; }
+
+  try {
+    // 병렬로 데이터 로드
+    var [usersRes, missionsRes, viewsRes] = await Promise.all([
+      sb.from('user_stats').select('*').order('xp', { ascending: false }),
+      sb.from('daily_missions').select('*').eq('date', new Date().toISOString().slice(0,10)),
+      sb.from('article_views').select('*').order('view_count', { ascending: false }).limit(10)
+    ]);
+
+    var users    = usersRes.data  || [];
+    var missions = missionsRes.data || [];
+    var views    = viewsRes.data  || [];
+
+    var todayCompleted = missions.filter(function(m){ return m.completed; }).length;
+    var totalTickets   = users.reduce(function(s,u){ return s + (u.writing_tickets||0); }, 0);
+    var totalXP        = users.reduce(function(s,u){ return s + (u.xp||0); }, 0);
+
+    var html =
+      // 요약 카드 4개
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px">'
+      + statCard('👥', 'Total Users', users.length + '명', '#2255a4')
+      + statCard('🎯', 'Today\'s Missions', todayCompleted + '명', '#10b981')
+      + statCard('⚡', 'Total XP', totalXP.toLocaleString(), '#f59e0b')
+      + statCard('✏️', 'Writing Tickets', totalTickets + '개', '#8b5cf6')
+      + '</div>'
+
+      // 인기 기사 TOP 10
+      + '<div class="sf-card" style="margin-bottom:20px">'
+      + '<h3 style="margin-bottom:14px">🔥 Top Articles — ' + Math.min(views.length,10) + '</h3>'
+      + (views.length === 0
+        ? '<p style="color:#aaa;font-size:13px">No data yet</p>'
+        : '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+          + '<tr style="color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:1px">'
+          + '<th style="text-align:left;padding:6px 8px">#</th>'
+          + '<th style="text-align:left;padding:6px 8px">제목</th>'
+          + '<th style="text-align:left;padding:6px 8px">Section</th>'
+          + '<th style="text-align:right;padding:6px 8px">Views</th></tr>'
+          + views.slice(0,10).map(function(v,i){
+              return '<tr style="border-top:1px solid #f0f3f9">'
+                + '<td style="padding:8px;font-weight:900;color:#2255a4">' + (i+1) + '</td>'
+                + '<td style="padding:8px;font-weight:600">' + (v.title||v.article_id) + '</td>'
+                + '<td style="padding:8px;color:#64748b">' + (v.section||'-') + '</td>'
+                + '<td style="padding:8px;text-align:right;font-weight:800">' + v.view_count + '</td>'
+                + '</tr>';
+            }).join('')
+          + '</table>'
+        )
+      + '</div>'
+
+      // 유저별 통계 테이블
+      + '<div class="sf-card">'
+      + '<h3 style="margin-bottom:14px">👤 User Learning Stats</h3>'
+      + (users.length === 0
+        ? '<p style="color:#aaa;font-size:13px">No data yet</p>'
+        : '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:600px">'
+          + '<tr style="color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:1px;background:#f8faff">'
+          + '<th style="text-align:left;padding:8px 10px">유저</th>'
+          + '<th style="text-align:right;padding:8px">XP</th>'
+          + '<th style="text-align:right;padding:8px">Article</th>'
+          + '<th style="text-align:right;padding:8px">단어</th>'
+          + '<th style="text-align:right;padding:8px">퀴즈</th>'
+          + '<th style="text-align:right;padding:8px">미션🔥</th>'
+          + '<th style="text-align:right;padding:8px">첨삭권✏️</th>'
+          + '</tr>'
+          + users.map(function(u){
+              return '<tr style="border-top:1px solid #f0f3f9">'
+                + '<td style="padding:8px 10px"><div style="font-weight:700">' + (u.display_name||'-') + '</div>'
+                + '<div style="font-size:11px;color:#94a3b8">' + (u.email||'') + '</div></td>'
+                + '<td style="padding:8px;text-align:right;font-weight:800;color:#2255a4">' + (u.xp||0).toLocaleString() + '</td>'
+                + '<td style="padding:8px;text-align:right">' + (u.articles_read||0) + '</td>'
+                + '<td style="padding:8px;text-align:right">' + (u.words_saved||0) + '</td>'
+                + '<td style="padding:8px;text-align:right">' + (u.quizzes_done||0) + '</td>'
+                + '<td style="padding:8px;text-align:right;font-weight:800;color:#f59e0b">' + (u.mission_streak||0) + '일</td>'
+                + '<td style="padding:8px;text-align:right;font-weight:800;color:#8b5cf6">' + (u.writing_tickets||0) + '</td>'
+                + '</tr>';
+            }).join('')
+          + '</table></div>'
+        )
+      + '</div>';
+
+    document.getElementById('stats-content').innerHTML = html;
+  } catch(e) {
+    document.getElementById('stats-content').innerHTML = '<p style="color:red;padding:20px">Error: ' + e.message + '</p>';
+  }
+}
+
+function statCard(icon, label, value, color) {
+  return '<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:18px">'
+    + '<div style="font-size:22px;margin-bottom:6px">' + icon + '</div>'
+    + '<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">' + label + '</div>'
+    + '<div style="font-size:26px;font-weight:900;color:' + color + '">' + value + '</div>'
+    + '</div>';
+}
+
+async function loadSiteSettingsConfig(){
+  var local = ls(K_SITECONF, {});
+  var merged = {...DEF_SITECONF, ...local};
+  try {
+    var sb = getSb();
+    if (sb) {
+      var res = await sb.from('app_settings').select('value').eq('key','site_config').maybeSingle();
+      var remote = res && res.data ? res.data.value : null;
+      if (remote && typeof remote === 'string') {
+        try { remote = JSON.parse(remote); } catch(_) { remote = null; }
+      }
+      if (remote && typeof remote === 'object') {
+        merged = {...DEF_SITECONF, ...remote};
+        lsSet(K_SITECONF, merged);
+      }
+    }
+  } catch(e) {}
+  return merged;
+}
+
+async function goSiteSettings(){
+  setSbOn(null);
+  document.getElementById('main').innerHTML='<div class="pg-hd"><div><h1>⚙️ 사이트 기본 설정</h1><p>사이트 이름, 슬로건, 푸터 설명, 학습 배너 등을 수정하세요</p></div></div><div class="sf-card"><p style="color:#64748b">불러오는 중…</p></div>';
+  const c = await loadSiteSettingsConfig();
+  document.getElementById('main').innerHTML=`
+    <div class="pg-hd"><div><h1>⚙️ 사이트 기본 설정</h1><p>사이트 이름, 슬로건, 푸터 설명, 학습 배너 등을 수정하세요</p></div></div>
+    <div class="sf-card">
+      <h3>🏷️ 기본 정보</h3>
+      <div class="sf-row">
+        <div>
+          <label class="inp-label">사이트 이름</label>
+          <input class="inp inp-sm" id="sc-name" value="${esc(c.siteName)}">
+        </div>
+        <div>
+          <label class="inp-label">슬로건 (푸터 하단)</label>
+          <input class="inp inp-sm" id="sc-tagline" value="${esc(c.siteTagline)}">
+        </div>
+      </div>
+      <div>
+        <label class="inp-label">푸터 설명문</label>
+        <textarea class="inp inp-ta" id="sc-footer">${esc(c.footerDesc)}</textarea>
+      </div>
+    </div>
+    <div class="sf-card">
+      <h3>📚 메인 학습 배너 (파란 배너)</h3>
+      <div style="margin-bottom:12px">
+        <label class="inp-label">배너 제목</label>
+        <input class="inp inp-sm" id="sc-lb-title" value="${esc(c.learnBannerTitle)}">
+      </div>
+      <div>
+        <label class="inp-label">배너 설명</label>
+        <textarea class="inp inp-ta" id="sc-lb-desc">${esc(c.learnBannerDesc)}</textarea>
+      </div>
+    </div>
+    <div class="sf-card">
+      <h3>🔑 AI 기능 설정</h3>
+      <p style="font-size:13px;color:#64748b;margin-bottom:12px">번역, 문법 가이드, Fill-in-the-Blank 등 AI 기능에 사용할 Anthropic API 키를 저장하세요. 모든 유저에게 적용됩니다.</p>
+      <div style="display:flex;gap:10px;align-items:center">
+        <input id="sc-api-key" type="password" placeholder="sk-ant-..." class="inp inp-sm" style="flex:1">
+        <button class="btn btn-g" onclick="saveApiKey()">🔑 저장</button>
+      </div>
+      <div id="sc-api-status" style="font-size:12px;color:#94a3b8;margin-top:8px"></div>
+    </div>
+    <button class="btn btn-g" onclick="saveSiteSettings()">💾 저장</button>
+    <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>`;
+
+  loadApiKeyIntoSettings();
+}
+async function saveSiteSettings(){
+  const c={
+    siteName:      document.getElementById('sc-name')?.value.trim()||DEF_SITECONF.siteName,
+    siteTagline:   document.getElementById('sc-tagline')?.value.trim()||DEF_SITECONF.siteTagline,
+    footerDesc:    document.getElementById('sc-footer')?.value.trim()||DEF_SITECONF.footerDesc,
+    learnBannerTitle: document.getElementById('sc-lb-title')?.value.trim()||DEF_SITECONF.learnBannerTitle,
+    learnBannerDesc:  document.getElementById('sc-lb-desc')?.value.trim()||DEF_SITECONF.learnBannerDesc,
+  };
+  lsSet(K_SITECONF, c);
+  try {
+    var sb = getSb();
+    if (sb) {
+      var res = await sb.from('app_settings').upsert({ key:'site_config', value:c }, { onConflict:'key' });
+      if (res.error) throw res.error;
+    }
+    toast('⚙️ 사이트 설정 저장됨! 메인페이지에 반영됩니다.');
+  } catch(e) {
+    toast('저장 실패: ' + (e.message || e), true);
+  }
+}
+async function resetSiteSettings(){
+  lsSet(K_SITECONF, DEF_SITECONF);
+  try {
+    var sb = getSb();
+    if (sb) {
+      var res = await sb.from('app_settings').upsert({ key:'site_config', value:DEF_SITECONF }, { onConflict:'key' });
+      if (res.error) throw res.error;
+    }
+    toast('기본값으로 초기화됐어요');
+  } catch(e) {
+    toast('초기화 저장 실패: ' + (e.message || e), true);
+  }
+  goSiteSettings();
+}
+
+async function loadApiKeyIntoSettings() {
+  const statusEl = document.getElementById('sc-api-status');
+  const input = document.getElementById('sc-api-key');
+  if (!input) return;
+  try {
+    var sb = getSb();
+    if (sb) {
+      var res = await sb.from('app_settings').select('value,updated_at').eq('key','anthropic_key').single();
+      if (res.data && res.data.value) {
+        input.value = res.data.value;
+        var d = new Date(res.data.updated_at).toLocaleDateString('ko-KR');
+        if (statusEl) statusEl.textContent = '✅ 저장된 키 있음 (마지막 업데이트: ' + d + ')';
+        return;
+      }
+    }
+  } catch(e) {}
+  // 로컬 캐시
+  var local = localStorage.getItem('kh_anthropic_key') || '';
+  if (local) { input.value = local; if (statusEl) statusEl.textContent = '⚠️ 로컬 캐시만 있음 — 저장 버튼 눌러서 Supabase에 저장하세요'; }
+  else { if (statusEl) statusEl.textContent = '❌ 저장된 키 없음'; }
+}
+
+async function saveApiKey() {
+  const input = document.getElementById('sc-api-key');
+  const statusEl = document.getElementById('sc-api-status');
+  if (!input) return;
+  const key = input.value.trim();
+  if (!key || !key.startsWith('sk-ant-')) { toast('올바른 API 키를 입력해주세요 (sk-ant-...)', true); return; }
+  try {
+    var sb = getSb();
+    if (!sb) throw new Error('Supabase not ready');
+    var res = await sb.from('app_settings').upsert({ key: 'anthropic_key', value: key, updated_at: new Date().toISOString() });
+    if (res.error) throw res.error;
+    localStorage.setItem('kh_anthropic_key', key);
+    toast('🔑 API 키 저장 완료! 모든 유저에게 적용됩니다.');
+    if (statusEl) statusEl.textContent = '✅ 저장 완료 (' + new Date().toLocaleDateString('ko-KR') + ')';
+  } catch(e) {
+    toast('저장 실패: ' + (e.message || e), true);
+  }
+}
+
+
+// ══ OPINIONS ═════════════════════════════════════════════════
+function goOpinions(){
+  setSbOn(null);
+  const ops=ls(K_OPINIONS, DEF_OPINIONS);
+  document.getElementById('main').innerHTML=`
+    <div class="pg-hd"><div><h1>✍️ 오피니언 칼럼니스트</h1><p>메인 페이지 하단 오피니언 카드를 수정하세요</p></div></div>
+    <div id="ops-list"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-gh" onclick="addOpRow()">+ 칼럼니스트 추가</button>
+      <button class="btn btn-g"  onclick="saveOpinions()">💾 저장</button>
+    </div>`;
+  renderOpRows(ops);
+}
+function renderOpRows(ops){
+  const el=document.getElementById('ops-list'); if(!el) return;
+  el.innerHTML=ops.map((o,i)=>`
+    <div class="sf-card" data-i="${i}" style="position:relative">
+      <button class="row-del" onclick="this.closest('.sf-card').remove()">✕ 삭제</button>
+      <div class="sf-row">
+        <div>
+          <label class="inp-label">이름</label>
+          <input class="inp inp-sm op-name" value="${esc(o.name)}" placeholder="김민준">
+        </div>
+        <div>
+          <label class="inp-label">직책/설명</label>
+          <input class="inp inp-sm op-title" value="${esc(o.title)}" placeholder="경제 전문 에디터">
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label class="inp-label">사진 URL</label>
+        <input class="inp inp-sm op-img" value="${esc(o.img)}" placeholder="https://…">
+      </div>
+      <div>
+        <label class="inp-label">헤드라인</label>
+        <input class="inp op-headline" value="${esc(o.headline)}" placeholder="칼럼 제목…">
+      </div>
+    </div>`).join('');
+}
+function addOpRow(){
+  const el=document.getElementById('ops-list'); if(!el) return;
+  const d=document.createElement('div'); d.className='sf-card'; d.style.position='relative';
+  d.innerHTML=`<button class="row-del" onclick="this.closest('.sf-card').remove()">✕ 삭제</button>
+    <div class="sf-row">
+      <div><label class="inp-label">이름</label><input class="inp inp-sm op-name" placeholder="이름"></div>
+      <div><label class="inp-label">직책</label><input class="inp inp-sm op-title" placeholder="직책"></div>
+    </div>
+    <div style="margin-bottom:12px"><label class="inp-label">사진 URL</label><input class="inp inp-sm op-img" placeholder="https://…"></div>
+    <div><label class="inp-label">헤드라인</label><input class="inp op-headline" placeholder="칼럼 제목…"></div>`;
+  el.appendChild(d);
+}
+function saveOpinions(){
+  const cards=[...document.querySelectorAll('#ops-list .sf-card')];
+  const arr=cards.map(c=>({
+    name: c.querySelector('.op-name')?.value.trim()||'',
+    title:c.querySelector('.op-title')?.value.trim()||'',
+    img:  c.querySelector('.op-img')?.value.trim()||'',
+    headline:c.querySelector('.op-headline')?.value.trim()||'',
+  })).filter(o=>o.name||o.headline);
+  lsSet(K_OPINIONS, arr);
+  toast('✍️ 오피니언 저장됨! ('+arr.length+'명)');
+}
+
+// ══ PHRASES ══════════════════════════════════════════════════
+function goPhrases(){
+  setSbOn(null);
+  const items=ls(K_PHRASES, DEF_PHRASES);
+  document.getElementById('main').innerHTML=`
+    <div class="pg-hd"><div><h1>💬 오늘의 표현</h1><p>메인 배너와 학습 페이지에 표시됩니다. 매일 하나씩 순환됩니다.</p></div></div>
+    <div id="phrases-list"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-gh" onclick="addPhraseRow()">+ 표현 추가</button>
+      <button class="btn btn-g"  onclick="savePhrases()">💾 저장</button>
+    </div>`;
+  renderPhraseRows(items);
+}
+function renderPhraseRows(items){
+  const el=document.getElementById('phrases-list'); if(!el) return;
+  el.innerHTML=items.map(p=>`
+    <div class="row-editor" style="grid-template-columns:1fr 1fr 1fr auto">
+      <div><label class="inp-label">한국어</label><input class="inp inp-sm p-ko" value="${esc(p.ko)}" placeholder="예: 안녕하세요" style="font-weight:700;font-size:16px"></div>
+      <div><label class="inp-label">로마자</label><input class="inp inp-sm p-rom" value="${esc(p.rom)}" placeholder="an-nyeong-ha-se-yo"></div>
+      <div><label class="inp-label">영어 뜻</label><input class="inp inp-sm p-en" value="${esc(p.en)}" placeholder="hello"></div>
+      <button class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>
+    </div>`).join('');
+}
+function addPhraseRow(){
+  const el=document.getElementById('phrases-list'); if(!el) return;
+  const d=document.createElement('div'); d.className='row-editor'; d.style.gridTemplateColumns='1fr 1fr 1fr auto';
+  d.innerHTML=`<div><label class="inp-label">한국어</label><input class="inp inp-sm p-ko" placeholder="한국어" style="font-weight:700;font-size:16px"></div>
+    <div><label class="inp-label">로마자</label><input class="inp inp-sm p-rom" placeholder="romanization"></div>
+    <div><label class="inp-label">영어 뜻</label><input class="inp inp-sm p-en" placeholder="meaning"></div>
+    <button class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>`;
+  el.appendChild(d);
+}
+function savePhrases(){
+  const rows=[...document.querySelectorAll('#phrases-list .row-editor')];
+  const arr=rows.map(r=>({
+    ko: r.querySelector('.p-ko')?.value.trim()||'',
+    rom:r.querySelector('.p-rom')?.value.trim()||'',
+    en: r.querySelector('.p-en')?.value.trim()||'',
+  })).filter(p=>p.ko);
+  lsSet(K_PHRASES, arr);
+  toast('💬 표현 저장됨! ('+arr.length+'개)');
+}
+
+// ══ WORD BANK ════════════════════════════════════════════════
+// ══ VOCAB 뜻 수정 (hover tooltip 커스텀) ═══════════════════════
+
+// ═══════════════════════════════════════════════════════
+// 작문 토픽 관리
+// ═══════════════════════════════════════════════════════
+function goTopics() {
+  setSbOn(null);
+  const main = document.getElementById('main');
+  main.innerHTML =
+    '<div class="pg-hd"><div><h1>📝 작문 토픽 관리</h1><p>Writing Practice에 사용되는 토픽을 관리하세요.</p></div>'
+    + '<button onclick="openTopicModal()" class="btn-primary" style="margin-left:auto;white-space:nowrap">+ 토픽 추가</button></div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
+    + '<button class="sf-tag on" onclick="filterTopics(&apos;all&apos;,this)">전체</button>'
+    + '<button class="sf-tag" onclick="filterTopics(&apos;Beginner&apos;,this)">🟢 Beginner</button>'
+    + '<button class="sf-tag" onclick="filterTopics(&apos;Intermediate&apos;,this)">🟡 Intermediate</button>'
+    + '<button class="sf-tag" onclick="filterTopics(&apos;Advanced&apos;,this)">🔴 Advanced</button>'
+    + '</div>'
+    + '<div id="topics-wrap"><div style="padding:24px;color:var(--gray);text-align:center">⏳ 불러오는 중…</div></div>'
+    + '<div id="topic-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">'
+    + '<div style="background:#fff;border-radius:14px;padding:28px;width:100%;max-width:520px;box-shadow:0 24px 80px rgba(0,0,0,0.3)">'
+    + '<h2 style="font-size:18px;margin-bottom:18px" id="topic-modal-title">토픽 추가</h2>'
+    + '<input id="tm-id" type="hidden">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">'
+    + '<div><label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:4px">카테고리</label>'
+    + '<input id="tm-cat" class="sf-input" placeholder="예: 일상, 음식, 여행…" style="width:100%"></div>'
+    + '<div><label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:4px">레벨</label>'
+    + '<select id="tm-level" class="sf-input" style="width:100%"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></div>'
+    + '</div>'
+    + '<label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:4px">토픽 (한국어)</label>'
+    + '<input id="tm-ko" class="sf-input" placeholder="예: 오늘 뭐 먹었어요?" style="width:100%;margin-bottom:10px">'
+    + '<label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:4px">토픽 (영어)</label>'
+    + '<input id="tm-en" class="sf-input" placeholder="예: What did you eat today?" style="width:100%;margin-bottom:18px">'
+    + '<div style="display:flex;gap:10px;justify-content:flex-end">'
+    + '<button onclick="closeTopicModal()" style="padding:9px 20px;border-radius:8px;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-weight:600">취소</button>'
+    + '<button onclick="saveTopic()" class="btn-primary">저장</button>'
+    + '</div></div></div>';
+  window._topicsAll = [];
+  window._topicsFilter = 'all';
+  loadTopics();
+}
+
+async function loadTopics() {
+  try {
+    const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/writing_topics?select=*&order=category.asc,level.asc,created_at.asc', {
+      headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    window._topicsAll = await res.json();
+    renderTopicsTable(window._topicsAll);
+  } catch(e) {
+    document.getElementById('topics-wrap').innerHTML = '<div class="infobox" style="color:#c33">⚠️ ' + e.message + '</div>';
+  }
+}
+
+function filterTopics(level, btn) {
+  window._topicsFilter = level;
+  document.querySelectorAll('.sf-tag').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  const list = level === 'all' ? window._topicsAll : window._topicsAll.filter(t => t.level === level);
+  renderTopicsTable(list);
+}
+
+function renderTopicsTable(list) {
+  const el = document.getElementById('topics-wrap');
+  if (!list.length) { el.innerHTML = '<div class="infobox">토픽이 없습니다.</div>'; return; }
+  const lvBg = { Beginner:'background:#e8f5e9;color:#2e7d32', Intermediate:'background:#fff8e1;color:#f57f17', Advanced:'background:#fce4ec;color:#c62828' };
+  let rows = '';
+  for (let i=0; i<list.length; i++) {
+    const t = list[i];
+    const bg = lvBg[t.level] || 'background:#eee;color:#555';
+    const activeColor = t.active ? '#2e7d32' : '#c33';
+    const activeLabel = t.active ? '활성' : '비활성';
+    const toggleLabel = t.active ? '비활성화' : '활성화';
+    rows += '<tr style="border-bottom:1px solid var(--border)">';
+    rows += '<td style="padding:9px 12px;font-weight:600">' + t.category + '</td>';
+    rows += '<td style="padding:9px 12px"><span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;' + bg + '">' + t.level + '</span></td>';
+    rows += '<td style="padding:9px 12px">' + t.topic_ko + '</td>';
+    rows += '<td style="padding:9px 12px;color:var(--gray);font-size:12px">' + t.topic_en + '</td>';
+    rows += '<td style="padding:9px 12px"><span style="font-size:11px;font-weight:700;color:' + activeColor + '">' + activeLabel + '</span></td>';
+    rows += '<td style="padding:9px 12px;white-space:nowrap">';
+    rows += '<button data-id="' + t.id + '" onclick="editTopicById(this.dataset.id)" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;margin-right:4px">수정</button>';
+    rows += '<button data-id="' + t.id + '" data-active="' + t.active + '" onclick="toggleTopicActive(this.dataset.id,this.dataset.active===\'true\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;margin-right:4px">' + toggleLabel + '</button>';
+    rows += '<button data-id="' + t.id + '" onclick="deleteTopic(this.dataset.id)" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #fdd;background:#fff5f5;color:#c33;cursor:pointer">삭제</button>';
+    rows += '</td></tr>';
+  }
+  el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개</div>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+    + '<thead><tr style="background:#f8faff;border-bottom:2px solid var(--border)">'
+    + '<th style="padding:9px 12px;text-align:left">카테고리</th>'
+    + '<th style="padding:9px 12px;text-align:left">레벨</th>'
+    + '<th style="padding:9px 12px;text-align:left">토픽 (한국어)</th>'
+    + '<th style="padding:9px 12px;text-align:left">토픽 (영어)</th>'
+    + '<th style="padding:9px 12px;text-align:left">상태</th>'
+    + '<th style="padding:9px 12px"></th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+function openTopicModal(topic) {
+  document.getElementById('topic-modal-title').textContent = topic ? '토픽 수정' : '토픽 추가';
+  document.getElementById('tm-id').value = topic ? topic.id : '';
+  document.getElementById('tm-cat').value = topic ? topic.category : '';
+  document.getElementById('tm-ko').value = topic ? topic.topic_ko : '';
+  document.getElementById('tm-en').value = topic ? topic.topic_en : '';
+  document.getElementById('tm-level').value = topic ? topic.level : 'Beginner';
+  document.getElementById('topic-modal').style.display = 'flex';
+}
+function closeTopicModal() { document.getElementById('topic-modal').style.display = 'none'; }
+
+function editTopicById(id) {
+  const t = (window._topicsAll||[]).find(x=>x.id===id);
+  if (t) openTopicModal(t);
+}
+
+async function saveTopic() {
+  const id    = document.getElementById('tm-id').value;
+  const body  = {
+    category: document.getElementById('tm-cat').value.trim(),
+    topic_ko: document.getElementById('tm-ko').value.trim(),
+    topic_en: document.getElementById('tm-en').value.trim(),
+    level:    document.getElementById('tm-level').value,
+  };
+  if (!body.category || !body.topic_ko || !body.topic_en) { toast('모든 항목을 입력하세요.', true); return; }
+  const url = id
+    ? SUPA_URL_ADMIN + '/rest/v1/writing_topics?id=eq.' + id
+    : SUPA_URL_ADMIN + '/rest/v1/writing_topics';
+  const res = await fetch(url, {
+    method: id ? 'PATCH' : 'POST',
+    headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+    body: JSON.stringify(body)
+  });
+  if (res.ok) { toast('✅ 저장됨'); closeTopicModal(); loadTopics(); }
+  else { toast('⚠️ 저장 실패', true); }
+}
+
+async function deleteTopic(id) {
+  if (!confirm('정말 삭제할까요?')) return;
+  const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/writing_topics?id=eq.' + id, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
+  });
+  if (res.ok) { toast('🗑️ 삭제됨'); loadTopics(); }
+  else toast('⚠️ 삭제 실패', true);
+}
+
+async function toggleTopicActive(id, current) {
+  const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/writing_topics?id=eq.' + id, {
+    method: 'PATCH',
+    headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ active: !current })
+  });
+  if (res.ok) loadTopics();
+}
+
+async function goVocabEditor() {
+  setSbOn(null);
+  const main = document.getElementById('main');
+  main.innerHTML = '<div class="pg-hd"><div><h1>✏️ 단어 뜻 수정</h1><p>기사 hover 시 나오는 단어 뜻을 수정하세요. 비워두면 기본 사전 그대로 표시됩니다.</p></div></div>'
+    + '<div class="infobox">수정한 뜻은 모든 기사 페이지에 즉시 반영돼요.</div>'
+    + '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'
+    + '<input id="ve-search" placeholder="단어 검색..." style="flex:1;min-width:180px;padding:9px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:14px" oninput="veFilter()">'
+    + '<button class="btn btn-g" onclick="veAddRow()">+ 단어 추가</button>'
+    + '<button class="btn btn-g" onclick="veSaveAll()" style="background:#2563eb">💾 전체 저장</button>'
+    + '</div>'
+    + '<div id="ve-list"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 불러오는 중…</div></div>';
+
+  // DB에서 overrides 로드
+  let overrides = [];
+  try {
+    const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/vocab_overrides?select=id,word,en,rom&order=word.asc', {
+      headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
+    });
+    if (res.ok) overrides = await res.json();
+  } catch(e) {}
+
+  window._veData = overrides;
+  veRender(overrides);
+}
+
+function veRender(rows) {
+  const list = document.getElementById('ve-list');
+  if (!list) return;
+  if (!rows.length) {
+    list.innerHTML = '<p style="color:var(--gr);padding:12px">아직 수정된 단어가 없어요. + 단어 추가 버튼으로 추가하세요.</p>';
+    return;
+  }
+  list.innerHTML = '<table style="width:100%;border-collapse:collapse">'
+    + '<thead><tr style="background:#f8faff;font-size:13px;color:var(--gr)">'
+    + '<th style="padding:10px;text-align:left;border-bottom:1px solid var(--bo)">단어</th>'
+    + '<th style="padding:10px;text-align:left;border-bottom:1px solid var(--bo)">영어 뜻</th>'
+    + '<th style="padding:10px;text-align:left;border-bottom:1px solid var(--bo)">로마자</th>'
+    + '<th style="padding:10px;border-bottom:1px solid var(--bo)"></th>'
+    + '</tr></thead><tbody>'
+    + rows.map(function(r, i) {
+      return '<tr id="ve-row-' + i + '">'
+        + '<td style="padding:8px"><input class="ve-word" style="width:100%;padding:6px 10px;border:1px solid var(--bo);border-radius:6px;font-size:14px" value="' + (r.word||'') + '" data-idx="' + i + '"></td>'
+        + '<td style="padding:8px"><input class="ve-en" style="width:100%;padding:6px 10px;border:1px solid var(--bo);border-radius:6px;font-size:14px" value="' + (r.en||'') + '" data-idx="' + i + '"></td>'
+        + '<td style="padding:8px"><input class="ve-rom" style="width:100%;padding:6px 10px;border:1px solid var(--bo);border-radius:6px;font-size:14px" value="' + (r.rom||'') + '" data-idx="' + i + '"></td>'
+        + '<td style="padding:8px;text-align:center"><button class="btn" style="padding:5px 12px;background:#fee2e2;color:#991b1b;border:none;border-radius:6px;cursor:pointer;font-size:12px" onclick="veDelete(' + i + ')">삭제</button></td>'
+        + '</tr>';
+    }).join('')
+    + '</tbody></table>';
+}
+
+function veFilter() {
+  const q = (document.getElementById('ve-search').value || '').toLowerCase();
+  const filtered = (window._veData || []).filter(function(r){ return !q || (r.word||'').toLowerCase().includes(q) || (r.en||'').toLowerCase().includes(q); });
+  veRender(filtered);
+}
+
+function veAddRow() {
+  if (!window._veData) window._veData = [];
+  window._veData.push({ id: null, word: '', en: '', rom: '' });
+  veRender(window._veData);
+  const inputs = document.querySelectorAll('.ve-word');
+  if (inputs.length) inputs[inputs.length-1].focus();
+}
+
+function veDelete(idx) {
+  const row = (window._veData||[])[idx];
+  if (!row) return;
+  if (row.id) {
+    fetch(SUPA_URL_ADMIN + '/rest/v1/vocab_overrides?id=eq.' + row.id, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
+    });
+  }
+  window._veData.splice(idx, 1);
+  veRender(window._veData);
+}
+
+async function veSaveAll() {
+  // 현재 입력값 수집
+  const rows = document.querySelectorAll('#ve-list tbody tr');
+  const data = (window._veData || []).map(function(r, i) {
+    const wordEl = document.querySelector('.ve-word[data-idx="' + i + '"]');
+    const enEl   = document.querySelector('.ve-en[data-idx="' + i + '"]');
+    const romEl  = document.querySelector('.ve-rom[data-idx="' + i + '"]');
+    return {
+      id: r.id || undefined,
+      word: wordEl ? wordEl.value.trim() : r.word,
+      en:   enEl   ? enEl.value.trim()   : r.en,
+      rom:  romEl  ? romEl.value.trim()  : r.rom,
+    };
+  }).filter(function(r){ return r.word; });
+
+  try {
+    const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/vocab_overrides?on_conflict=word', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
+        'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify(data.map(function(r){ return { word: r.word, en: r.en, rom: r.rom }; }))
+    });
+    if (res.ok) { toast('✅ 저장됨! 기사 페이지에 즉시 반영돼요.'); goVocabEditor(); }
+    else { const e = await res.text(); toast('저장 실패: ' + e, true); }
+  } catch(e) { toast('오류: ' + e.message, true); }
+}
+
+
+function goWordBank(){
+  setSbOn(null);
+  const items=ls(K_WORDBANK, DEF_WORDBANK);
+  document.getElementById('main').innerHTML=`
+    <div class="pg-hd"><div><h1>📚 단어 은행</h1><p>사이드바 & 학습 페이지 단어 플래시 카드에 표시됩니다. 여기에 추가한 단어가 카드로 바로 표시돼요.</p></div></div>
+    <div class="infobox">단어, 로마자 발음, 영어 뜻을 입력하세요. 사이드바에는 최대 6개가 표시됩니다.</div>
+    <div id="wb-list"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-gh" onclick="addWbRow()">+ 단어 추가</button>
+      <button class="btn btn-g"  onclick="saveWordBank()">💾 저장</button>
+    </div>`;
+  renderWbRows(items);
+}
+function renderWbRows(items){
+  const el=document.getElementById('wb-list'); if(!el) return;
+  el.innerHTML=items.map(w=>`
+    <div class="row-editor" style="grid-template-columns:1fr 1fr 1fr auto">
+      <div><label class="inp-label">한국어</label><input class="inp inp-sm wb-ko" value="${esc(w.ko)}" placeholder="뉴스" style="font-size:20px;font-weight:900"></div>
+      <div><label class="inp-label">로마자</label><input class="inp inp-sm wb-rom" value="${esc(w.rom)}" placeholder="nyu-seu"></div>
+      <div><label class="inp-label">영어 뜻</label><input class="inp inp-sm wb-en" value="${esc(w.en)}" placeholder="news"></div>
+      <button class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>
+    </div>`).join('');
+}
+function addWbRow(){
+  const el=document.getElementById('wb-list'); if(!el) return;
+  const d=document.createElement('div'); d.className='row-editor'; d.style.gridTemplateColumns='1fr 1fr 1fr auto';
+  d.innerHTML=`<div><label class="inp-label">한국어</label><input class="inp inp-sm wb-ko" placeholder="한국어" style="font-size:20px;font-weight:900"></div>
+    <div><label class="inp-label">로마자</label><input class="inp inp-sm wb-rom" placeholder="romanization"></div>
+    <div><label class="inp-label">영어 뜻</label><input class="inp inp-sm wb-en" placeholder="meaning"></div>
+    <button class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>`;
+  el.appendChild(d);
+}
+function saveWordBank(){
+  const rows=[...document.querySelectorAll('#wb-list .row-editor')];
+  const arr=rows.map(r=>({
+    ko: r.querySelector('.wb-ko')?.value.trim()||'',
+    rom:r.querySelector('.wb-rom')?.value.trim()||'',
+    en: r.querySelector('.wb-en')?.value.trim()||'',
+  })).filter(w=>w.ko);
+  lsSet(K_WORDBANK, arr);
+  toast('📚 단어 은행 저장됨! ('+arr.length+'개)');
+}
+
+// ══ SENTENCES ═══════════════════════════════════════════════
+function goSentences(){
+  setSbOn(null);
+  const items = ls(K_SENTENCES, DEF_SENTENCES);
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>💬 예문 관리</h1><p>학습 페이지 Example Sentences에 표시됩니다.</p></div></div>'
+   +'<div class="infobox">난이도(초급/중급/고급), 한국어 예문, 영어 번역을 입력하세요.</div>'
+   +'<div id="sent-list"></div>'
+   +'<div style="display:flex;gap:8px;margin-top:12px">'
+   +'<button class="btn btn-gh" onclick="addSentRow()">+ 예문 추가</button>'
+   +'<button class="btn btn-g" onclick="saveSentences()">💾 저장</button>'
+   +'<button class="btn btn-r" onclick="resetSentences()">↺ 초기화</button>'
+   +'</div>';
+  renderSentRows(items);
+}
+function resetSentences(){
+  if(confirm('기본 예문으로 초기화할까요?')){ lsSet(K_SENTENCES, DEF_SENTENCES); goSentences(); }
+}
+function renderSentRows(items){
+  const el = document.getElementById('sent-list'); if(!el) return;
+  el.innerHTML = items.map(function(s){
+    const opts = ['초급','중급','고급'].map(function(lv){
+      return '<option value="'+lv+'"'+(s.level===lv?' selected':'')+'>'+lv+'</option>';
+    }).join('');
+    return '<div class="row-editor" style="grid-template-columns:100px 1fr 1fr auto">'
+      +'<div><label class="inp-label">난이도</label>'
+      +'<select class="inp inp-sm sent-level" style="height:38px">'+opts+'</select></div>'
+      +'<div><label class="inp-label">한국어 예문</label>'
+      +'<input class="inp inp-sm sent-ko" value="'+esc(s.ko)+'" placeholder="한국어 문장"></div>'
+      +'<div><label class="inp-label">영어 번역</label>'
+      +'<input class="inp inp-sm sent-en" value="'+esc(s.en)+'" placeholder="English translation"></div>'
+      +'<button class="row-del" style="align-self:flex-end" onclick="this.closest(\'.row-editor\').remove()\">✕</button>'
+      +'</div>';
+  }).join('');
+}
+function addSentRow(){
+  const el = document.getElementById('sent-list'); if(!el) return;
+  const d = document.createElement('div');
+  d.className = 'row-editor';
+  d.style.gridTemplateColumns = '100px 1fr 1fr auto';
+  d.innerHTML = '<div><label class="inp-label">난이도</label>'
+    +'<select class="inp inp-sm sent-level" style="height:38px">'
+    +'<option>초급</option><option>중급</option><option>고급</option>'
+    +'</select></div>'
+    +'<div><label class="inp-label">한국어 예문</label>'
+    +'<input class="inp inp-sm sent-ko" placeholder="한국어 문장"></div>'
+    +'<div><label class="inp-label">영어 번역</label>'
+    +'<input class="inp inp-sm sent-en" placeholder="English translation"></div>'
+    +'<button class="row-del" style="align-self:flex-end" onclick="this.closest(\'.row-editor\').remove()\">✕</button>';
+  el.appendChild(d);
+}
+function saveSentences(){
+  const rows = [...document.querySelectorAll('#sent-list .row-editor')];
+  const arr = rows.map(function(r, i){
+    return {
+      id: 'e'+(i+1),
+      level: r.querySelector('.sent-level') ? r.querySelector('.sent-level').value : '초급',
+      ko:    r.querySelector('.sent-ko')    ? r.querySelector('.sent-ko').value.trim() : '',
+      en:    r.querySelector('.sent-en')    ? r.querySelector('.sent-en').value.trim() : '',
+    };
+  }).filter(function(s){ return s.ko; });
+  lsSet(K_SENTENCES, arr);
+  toast('💬 예문 저장됨! ('+arr.length+'개)');
+}
+
+// ══ AUTO ARTICLE GENERATION ══════════════════════════════════
+const AUTO_SECTIONS = [
+  { key:'사회',  icon:'🏙️', topics:'Korean society, education, housing, labor, welfare, demographics' },
+  { key:'국제',  icon:'🌍', topics:'international affairs, geopolitics, diplomacy, global economy' },
+  { key:'문화',  icon:'🎭', topics:'Korean culture, K-drama, K-pop, movies, sports, arts' },
+  { key:'스포츠',icon:'⚽', topics:'Korean and international sports news, football, baseball, Olympics' },
+  { key:'IT과학',icon:'💻', topics:'technology, AI, semiconductors, startups, science discoveries' },
+];
+
+function goAutoArticle(){
+  setSbOn(null);
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>🤖 AI 기사 자동생성</h1>'
+   +'<p>Claude AI automatically generates Korean news articles for each section.</p></div></div>'
+   +'<div class="infobox">💡 생성된 기사는 <b>임시저장</b> 상태로 저장됩니다. 검토 후 직접 발행하세요.<br>Anthropic API 키가 필요합니다.</div>'
+   +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">'
+   +'<input id="auto-api-key" type="password" placeholder="Anthropic API 키 (sk-ant-...)" '
+   +'style="flex:1;padding:9px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit">'
+   +'<button class="btn btn-g" onclick="loadAutoApiKey()">키 불러오기</button>'
+   +'</div>'
+   +'<div style="display:flex;gap:12px;align-items:center;margin-bottom:18px;flex-wrap:wrap">'
+   +'<div style="display:flex;align-items:center;gap:8px">'
+   +'<label style="font-weight:700;font-size:13px">Difficulty:</label>'
+   +'<select id="auto-difficulty" style="padding:8px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;background:#fff">'
+   +'<option value="Beginner">🟢 Beginner</option>'
+   +'<option value="Intermediate" selected>🟡 Intermediate</option>'
+   +'<option value="Advanced">🔴 Advanced</option>'
+   +'</select></div>'
+   +'<div style="font-size:12px;color:var(--gr)">Beginner: simple vocab · Intermediate: news-level · Advanced: native-level</div>'
+   +'</div>'
+   +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:20px">'
+   + AUTO_SECTIONS.map(function(s){
+       return '<label style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f8faff;border:1.5px solid var(--bo);border-radius:8px;cursor:pointer;font-weight:600">'
+         +'<input type="checkbox" value="'+s.key+'" checked style="width:16px;height:16px"> '+s.icon+' '+s.key+'</label>';
+     }).join('')
+   +'</div>'
+   +'<button class="btn btn-g" onclick="runAutoGenerate()" style="font-size:15px;padding:12px 32px">🚀 Generate Articles</button>'
+   +'<div id="auto-progress" style="margin-top:20px"></div>';
+
+  // Load saved key
+  loadAutoApiKey();
+}
+
+async function loadAutoApiKey(){
+  const input = document.getElementById('auto-api-key');
+  if (!input) return;
+  // 로컬 캐시 먼저
+  const local = localStorage.getItem('kh_anthropic_key') || '';
+  if (local) input.value = local;
+  // Supabase에서 최신값 가져오기
+  try {
+    var sb = getSb();
+    if (sb) {
+      var res = await sb.from('app_settings').select('value').eq('key','anthropic_key').single();
+      if (res.data && res.data.value) {
+        input.value = res.data.value;
+        localStorage.setItem('kh_anthropic_key', res.data.value);
+      }
+    }
+  } catch(e) {}
+}
+
+async function runAutoGenerate(){
+  const keyInput = document.getElementById('auto-api-key');
+  const apiKey   = keyInput ? keyInput.value.trim() : '';
+  if(!apiKey){ toast('API 키를 입력해 주세요', true); return; }
+  // localStorage + Supabase 둘 다 저장
+  localStorage.setItem('kh_anthropic_key', apiKey);
+  try {
+    var sb = getSb();
+    if (sb) await sb.from('app_settings').upsert({ key: 'anthropic_key', value: apiKey, updated_at: new Date().toISOString() });
+  } catch(e) {}
+
+  const difficulty = document.getElementById('auto-difficulty') ? document.getElementById('auto-difficulty').value : 'Intermediate';
+  const diffMap = {
+    'Beginner': { ko:'초급 (TOPIK 1~2급, 초등학교 수준)', vocab:'아주 쉬운 일상 어휘, 짧은 문장, ~해요/~이에요 체', level:'Beginner' },
+    'Intermediate': { ko:'중급 (TOPIK 3~4급, 중학교 수준)', vocab:'일반 뉴스 어휘, 중간 난이도 문장', level:'Intermediate' },
+    'Advanced': { ko:'고급 (TOPIK 5~6급, 원어민 수준)', vocab:'고급 한자어, 복잡한 문장 구조, 뉴스 문체', level:'Advanced' },
+  };
+  const diffInfo = diffMap[difficulty] || diffMap['Intermediate'];
+  const checked = [...document.querySelectorAll('#main input[type=checkbox]:checked')].map(function(c){ return c.value; });
+  if(!checked.length){ toast('Please select at least one section', true); return; }
+
+  const progress = document.getElementById('auto-progress');
+  progress.innerHTML = '';
+
+  // 중복 방지: 기존 DB 기사 제목 수집
+  const existingTitles = DB.map(function(a){ return (a.title||'').trim(); });
+
+  for(const secKey of checked){
+    const sec = AUTO_SECTIONS.find(function(s){ return s.key === secKey; });
+    if(!sec) continue;
+
+    const rowId = 'prog-'+secKey;
+    progress.innerHTML += '<div id="'+rowId+'" style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:#fff;border:1px solid var(--bo);border-radius:8px;margin-bottom:8px">'
+      +'<span style="font-size:18px">'+sec.icon+'</span>'
+      +'<span style="font-weight:700">'+sec.key+'</span>'
+      +'<span id="'+rowId+'-status" style="color:var(--gr);font-size:13px">⏳ 생성 중…</span>'
+      +'</div>';
+
+    try {
+      const today = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
+      const prompt = '당신은 외국인 한국어 학습자를 위한 뉴스 기사를 쓰는 편집자입니다. '
+        +'오늘(' + today + ')을 기준으로 ' + sec.key + ' 분야(' + sec.topics + ')에서 '
+        +'실제로 화제가 되고 있는 이슈를 바탕으로 기사를 작성해 주세요.\n\n'
+        +'[난이도: ' + diffInfo.ko + ']\n'
+        +'[어휘 수준: ' + diffInfo.vocab + ']\n\n'
+        +'[독자 대상]\n'
+        +'- 한국어를 공부하는 외국인 (' + diffInfo.ko + ')\n'
+        +'- 뉴스를 읽으면서 자연스럽게 한국어를 배우고 싶은 성인 학습자\n\n'
+        +'[문체 및 형식]\n'
+        +'- 짧고 명확한 문장 (한 문장에 20~35자 이내)\n'
+        +'- 문장 끝은 "~했어요", "~입니다", "~예요" 등 정중체 사용\n'
+        +'- 단락마다 한 가지 내용만, 각 단락 2~3문장\n\n'
+        +'[어휘]\n'
+        +'- 초등 고학년~중학교 수준 어휘 사용\n'
+        +'- 어려운 한자어나 전문 용어는 반드시 괄호로 쉬운 뜻 설명\n'
+        +'  예: 기준금리(돈을 빌릴 때 기본이 되는 이자율)\n'
+        +'- 영어 단어는 원어도 함께 표기: 인공지능(AI)\n\n'
+        +'[분량]\n'
+        +'- 제목: 15~25자, 핵심 내용을 쉽게 표현\n'
+        +'- 본문: 4~6개 단락, 각 단락 2~3문장\n\n'
+        +'[주의사항]\n'
+        +'- 실제 최근 이슈 기반 (완전 허구 불가)\n'
+        +'- 특정 실존 인물 비방 금지\n'
+        +'- 너무 유치하게 쓰지 말 것 — 성인 학습자용\n\n'
+        +'응답은 반드시 아래 JSON 형식으로만 출력하세요 (마크다운 코드블록 불필요):\n'
+        +'{"title":"기사 제목","body":"기사 본문 (단락 구분은 \\n\\n 사용)"}\n\n'
+        +(existingTitles.length ? '[이미 있는 기사 제목 — 절대 중복 금지]\n' + existingTitles.map(function(t){return '- '+t;}).join('\n') : '');
+
+      // ── 1단계: 기사 본문 생성 ──
+      document.getElementById(rowId+'-status').innerHTML = '⏳ 기사 생성 중…';
+      const res = await callClaude({
+        feature: 'generate',
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        messages: [{role:'user', content: prompt}]
+      });
+
+      const data = res;
+      const text = data.content && data.content[0] && data.content[0].text || '';
+      if(!text) throw new Error('빈 응답');
+
+      const clean = text.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
+      const article = JSON.parse(clean);
+      if(!article.title || !article.body) throw new Error('Invalid format');
+
+      const articleId = uid();
+      const newArticle = {
+        id: articleId,
+        section: sec.key,
+        title: article.title,
+        body: article.body,
+        date: today_date(),
+        status: 'draft',
+        featured: false,
+        level: diffInfo.level,
+        image: 'https://picsum.photos/seed/' + Math.random().toString(36).slice(2,8) + '/600/400',
+      };
+      await dbSaveArticle(newArticle);
+      DB.unshift(newArticle);
+      refreshCounts();
+
+      // ── 2단계: 캐시 생성 (번역/단어/문법/퀴즈 각각 별도 호출) ──
+      document.getElementById(rowId+'-status').innerHTML = '🧠 캐시 생성 중…';
+
+      const _body  = article.body  || '';
+      const _title = article.title || '';
+      const _level = diffInfo.level;
+      const _sb    = getSb();
+      const _row   = { article_id: String(articleId), updated_at: new Date().toISOString() };
+      let   _ok    = 0;
+
+      // 공통 호출 함수 — prefill 없이 순수 요청
+      async function _call(instruction, max_tok) {
+        const r = await callClaude({
+          feature: 'generate',
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: max_tok,
+          messages: [{
+            role: 'user',
+            content: 'Korean article (level: ' + _level + ')\nTitle: ' + _title + '\n\n' + _body.slice(0, 1200) + '\n\n---\n' + instruction
+          }]
+        });
+        return (r.content && r.content[0] && r.content[0].text) || '';
+      }
+
+      // JSON 안전 추출
+      function _json(text) {
+        // 배열 먼저
+        const ai = text.indexOf('['), bi = text.lastIndexOf(']');
+        const oi = text.indexOf('{'), ei = text.lastIndexOf('}');
+        // 배열이 객체보다 앞에 나오면 배열 우선
+        if (ai >= 0 && bi > ai && (oi < 0 || ai < oi)) return JSON.parse(text.slice(ai, bi+1));
+        if (oi >= 0 && ei > oi) return JSON.parse(text.slice(oi, ei+1));
+        throw new Error('no JSON found');
+      }
+
+      try {
+        document.getElementById(rowId+'-status').innerHTML = '🧠 (1/4) 번역 중…';
+        const t = await _call('Translate each paragraph into English. Return ONLY a JSON array of strings, one string per paragraph. No other text.', 800);
+        const ta = _json(t);
+        _row.translation = JSON.stringify({ texts: Array.isArray(ta) ? ta : [ta] });
+        _ok++;
+      } catch(e) { console.warn('translation failed', e.message); }
+
+      try {
+        document.getElementById(rowId+'-status').innerHTML = '🧠 (2/4) 단어 중…';
+        const v = await _call('List 8 key vocabulary words from the article. Return ONLY a JSON array. Each element must be an object with keys: word (Korean), reading (romanization), meaning (English). No other text.', 800);
+        _row.vocab = JSON.stringify(_json(v));
+        _ok++;
+      } catch(e) { console.warn('vocab failed', e.message); }
+
+      try {
+        document.getElementById(rowId+'-status').innerHTML = '🧠 (3/4) 문법 중…';
+        const g = await _call('Find 3 grammar patterns used in this article. Return ONLY a JSON object: {"patterns":[{"name":"Korean name + romanization","level":"Beginner or Intermediate or Advanced","exp":"1-sentence English explanation","ex_ko":"sentence from article","ex_en":"English translation"}]}. No other text.', 900);
+        _row.grammar = JSON.stringify(_json(g));
+        _ok++;
+      } catch(e) { console.warn('grammar failed', e.message); }
+
+      try {
+        document.getElementById(rowId+'-status').innerHTML = '🧠 (4/4) 퀴즈 중…';
+        const q = await _call('Create 5 fill-in-the-blank questions from this article. Return ONLY a JSON object: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English translation with _____","blank":"correct word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.', 1200);
+        _row.quiz = JSON.stringify(_json(q));
+        _ok++;
+      } catch(e) { console.warn('quiz failed', e.message); }
+
+      if (_ok > 0) {
+        try {
+          const _res = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?on_conflict=article_id', {
+            method: 'POST',
+            headers: {
+              'apikey': SUPA_SERVICE_KEY,
+              'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
+              'Content-Type': 'application/json',
+              'Prefer': 'resolution=merge-duplicates,return=minimal'
+            },
+            body: JSON.stringify(_row)
+          });
+          if (!_res.ok) {
+            const _err = await _res.text();
+            console.warn('cache upsert failed:', _res.status, _err);
+          }
+        } catch(e) { console.warn('upsert failed', e); }
+      }
+
+      document.getElementById(rowId+'-status').innerHTML =
+        '<span style="color:#28a745;font-weight:700">✅ 완료 (캐시 ' + _ok + '/4) — </span>'
+        +"<a href=\"#\" onclick=\"openModal('"+articleId+"')\" style=\"color:var(--a);font-weight:700\">검토 후 발행하기 →</a>";
+
+    } catch(err) {
+      document.getElementById(rowId+'-status').innerHTML =
+        '<span style="color:#dc3545">❌ 실패: '+err.message+'</span>';
+    }
+  }
+
+  toast('🤖 기사 생성 완료! 임시저장 목록에서 확인하세요.');
+}
+
+function today_date(){
+  return new Date().toISOString().split('T')[0];
+}
+
+// ══ AI CACHE 관리 ════════════════════════════════════════════
+async function goAICache() {
+  setSbOn('sb-cache');
+  const main = document.getElementById('main');
+  main.innerHTML = '<div class="pg-hd"><div><h1>🧠 AI Cache 관리</h1><p>각 기사의 번역·단어·문법·퀴즈 캐시를 확인하고 생성하세요.</p></div></div>'
+    + '<div id="cache-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 불러오는 중…</div></div>';
+
+  let existingCache = {};
+  try {
+    const cr = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?select=article_id,translation,vocab,grammar,quiz', {
+      headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
+    });
+    const cd = await cr.json();
+    if (Array.isArray(cd)) cd.forEach(function(r){ existingCache[r.article_id] = r; });
+  } catch(e) { console.warn('cache load failed', e); }
+
+  const articles = DB.filter(function(a){ return a.status === 'published'; });
+  const wrap = document.getElementById('cache-wrap');
+  if (!articles.length) { wrap.innerHTML = '<p style="padding:24px;color:var(--gr)">발행된 기사가 없어요.</p>'; return; }
+
+  const cacheComplete = Object.values(existingCache).filter(function(c){ return c.translation && c.vocab && c.grammar && c.quiz; }).length;
+  let html = '<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center">'
+    + '<span style="font-size:13px;color:var(--gr)">발행 기사 <b>' + articles.length + '</b>개 · 캐시 완료 <b>' + cacheComplete + '</b>개</span>'
+    + '<button class="btn" style="font-size:12px;padding:6px 14px;background:#f1f5f9;color:#374151;border:1px solid var(--bo)" onclick="goAICache()">🔄 새로고침</button>'
+    + '</div>';
+
+  articles.forEach(function(a) {
+    const c = existingCache[String(a.id)] || {};
+    const hasT = !!c.translation, hasV = !!c.vocab, hasG = !!c.grammar, hasQ = !!c.quiz;
+    const allDone = hasT && hasV && hasG && hasQ;
+    function badge(ok, label) {
+      return '<span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-right:4px;background:' + (ok?'#dcfce7':'#fee2e2') + ';color:' + (ok?'#166534':'#991b1b') + '">' + (ok?'✓':'✗') + ' ' + label + '</span>';
+    }
+    html += '<div id="crow-' + a.id + '" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fff;border:1px solid var(--bo);border-radius:10px;margin-bottom:8px;flex-wrap:wrap">'
+      + '<div style="flex:1;min-width:200px"><div style="font-weight:700;font-size:14px;margin-bottom:4px">' + (a.title||'(제목없음)') + '</div>'
+      + '<div style="font-size:12px;color:var(--gr)">' + (a.section||'') + ' · ' + (a.date||'') + ' · ' + (a.level||'') + '</div></div>'
+      + '<div>' + badge(hasT,'번역') + badge(hasV,'단어') + badge(hasG,'문법') + badge(hasQ,'퀴즈') + '</div>'
+      + (allDone ? '<span style="color:#166534;font-weight:700">✅ 완료</span>'
+          : '<button class="btn btn-g" style="font-size:13px;padding:7px 16px" id="cbtn-' + a.id + '" onclick="genCache(\'' + a.id + '\')">🧠 생성</button>')
+      + '<div id="cst-' + a.id + '" style="width:100%;font-size:12px;color:var(--gr);margin-top:4px"></div>'
+      + '</div>';
+  });
+  wrap.innerHTML = html;
+}
+
+async function genCache(articleId) {
+  const a = DB.find(function(x){ return String(x.id) === String(articleId); });
+  if (!a) return;
+  const st  = document.getElementById('cst-' + articleId);
+  const btn = document.getElementById('cbtn-' + articleId);
+  if (btn) btn.disabled = true;
+
+  const _body  = a.body  || '';
+  const _title = a.title || '';
+  const _level = a.level || 'Intermediate';
+  const _row   = { article_id: String(articleId), updated_at: new Date().toISOString() };
+  let _ok = 0;
+
+  async function _call(instr, max_tok) {
+    const r = await callClaude({
+      feature: 'generate', model: 'claude-haiku-4-5-20251001', max_tokens: max_tok,
+      messages: [{ role: 'user', content: 'Korean article (level: ' + _level + ')\nTitle: ' + _title + '\n\n' + _body.slice(0, 1200) + '\n\n---\n' + instr }]
+    });
+    return (r.content && r.content[0] && r.content[0].text) || '';
+  }
+
+  function _json(text) {
+    const ai = text.indexOf('['), bi = text.lastIndexOf(']');
+    const oi = text.indexOf('{'), ei = text.lastIndexOf('}');
+    if (ai >= 0 && bi > ai && (oi < 0 || ai < oi)) return JSON.parse(text.slice(ai, bi+1));
+    if (oi >= 0 && ei > oi) return JSON.parse(text.slice(oi, ei+1));
+    throw new Error('no JSON');
+  }
+
+  try {
+    if (st) st.textContent = '(1/4) 번역 중…';
+    const t = await _call('Translate each paragraph into English. Return ONLY a JSON array of strings, one per paragraph. No other text.', 800);
+    const ta = _json(t);
+    _row.translation = JSON.stringify({ texts: Array.isArray(ta) ? ta : [ta] });
+    _ok++;
+  } catch(e) { console.warn('translation failed', e.message); }
+
+  try {
+    if (st) st.textContent = '(2/4) 단어 중…';
+    const v = await _call('List 8 key vocabulary words. Return ONLY a JSON array. Each: {"word":"Korean","reading":"romanization","meaning":"English"}. No other text.', 800);
+    _row.vocab = JSON.stringify(_json(v));
+    _ok++;
+  } catch(e) { console.warn('vocab failed', e.message); }
+
+  try {
+    if (st) st.textContent = '(3/4) 문법 중…';
+    const g = await _call('Find 3 grammar patterns. Return ONLY: {"patterns":[{"name":"KO+romanization","level":"Beginner|Intermediate|Advanced","exp":"explanation","ex_ko":"sentence","ex_en":"translation"}]}. No other text.', 900);
+    _row.grammar = JSON.stringify(_json(g));
+    _ok++;
+  } catch(e) { console.warn('grammar failed', e.message); }
+
+  try {
+    if (st) st.textContent = '(4/4) 퀴즈 중…';
+    const q = await _call('Create 15 fill-in-the-blank questions from this article, covering different sentences and vocabulary. Return ONLY: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English with _____","blank":"correct answer word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.', 2500);
+    _row.quiz = JSON.stringify(_json(q));
+    _ok++;
+  } catch(e) { console.warn('quiz failed', e.message); }
+
+  if (_ok > 0) {
+    const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?on_conflict=article_id', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
+        'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify(_row)
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      if (st) st.textContent = '❌ DB 저장 실패 ' + res.status + ': ' + errText;
+      console.error('cache save:', res.status, errText);
+      return;
+    }
+  }
+
+  if (st) st.textContent = '✅ 완료 (' + _ok + '/4)';
+  setTimeout(function(){ goAICache(); }, 1000);
+}
+
+
+// ══ COMMENTS ADMIN ════════════════════════════════════════════
+function goComments() {
+  setSbOn(null);
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>💬 댓글 관리</h1><p>모든 기사의 댓글을 확인하고 답변할 수 있어요.</p></div></div>'
+   +'<div id="comments-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 불러오는 중…</div></div>';
+  loadAllComments();
+}
+
+async function loadAllComments() {
+  var wrap = document.getElementById('comments-admin-wrap');
+  try {
+    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?order=created_at.desc&limit=100', { headers: { 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN } });
+    var rows = res.ok ? await res.json() : [];
+    if(!rows.length) { wrap.innerHTML='<div class="infobox">아직 댓글이 없어요.</div>'; return; }
+
+    wrap.innerHTML = '<div style="font-size:13px;color:var(--gr);margin-bottom:12px">총 '+rows.length+'개 댓글</div>'
+      + rows.map(function(c) {
+          var art = DB.find(function(a){ return a.id===c.article_id; });
+          var artTitle = art ? art.title : c.article_id;
+          var dateStr  = new Date(c.created_at).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+          return '<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:16px 18px;margin-bottom:10px">'
+            +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
+            +'<div style="font-size:12px;color:var(--gr)">'
+            +'<a href="korehan-article.html?id='+c.article_id+'" target="_blank" style="color:var(--a);font-weight:700">'+artTitle+'</a>'
+            +' · '+c.user_name+' · '+dateStr
+            +'</div>'
+            +'<button data-id="'+c.id+'" onclick="adminDeleteComment(this.dataset.id)" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:13px;padding:2px 6px">🗑</button>'
+            +'</div>'
+            +'<div style="font-size:14px;color:#222;margin-bottom:10px">'+c.body+'</div>'
+            +(c.reply
+              ? '<div style="background:#f0f4ff;border-left:3px solid var(--a);padding:8px 12px;border-radius:0 6px 6px 0;font-size:13px;margin-bottom:8px"><b>내 답변:</b> '+c.reply+'</div>'
+              : ''
+            )
+            +'<div style="display:flex;gap:8px;align-items:flex-end">'
+            +'<textarea data-id="'+c.id+'" placeholder="답변 입력…" style="flex:1;padding:8px 12px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;min-height:60px">'+(c.reply||'')+'</textarea>'
+            +'<button data-id="'+c.id+'" onclick="adminReplyComment(this.dataset.id,this)" style="padding:8px 18px;background:var(--a);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">답변 저장</button>'
+            +'</div>'
+            +'</div>';
+        }).join('');
+  } catch(e) {
+    wrap.innerHTML = '<div class="infobox" style="color:#c33">⚠️ 로드 실패: '+e.message+'</div>';
+  }
+}
+
+async function adminReplyComment(id, btn) {
+  var ta = document.querySelector('textarea[data-id="'+id+'"]');
+  if(!ta) return;
+  var reply = ta.value.trim();
+  if(!reply) return;
+  btn.disabled = true; btn.textContent = '저장 중…';
+  await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?id=eq.'+id, {
+    method:'PATCH',
+    headers:{ 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN,'Content-Type':'application/json','Prefer':'return=minimal' },
+    body: JSON.stringify({ reply:reply, replied_at:new Date().toISOString() })
+  });
+  btn.disabled = false; btn.textContent = '답변 저장';
+  toast('✅ 답변이 저장됐어요!');
+}
+
+async function adminDeleteComment(id) {
+  if(!confirm('댓글을 삭제할까요?')) return;
+  await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?id=eq.'+id, {
+    method:'DELETE',
+    headers:{ 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN }
+  });
+  loadAllComments();
+  toast('🗑 삭제됐어요.');
+}
+
+// ══ NEWSLETTER ADMIN ════════════════════════════════════════
+function goNewsletter() {
+  setSbOn(null);
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>📬 뉴스레터 구독자</h1><p>구독자 목록을 확인하고 CSV로 내보낼 수 있어요.</p></div></div>'
+   +'<div id="nl-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 불러오는 중…</div></div>';
+  loadNewsletter();
+}
+
+async function loadNewsletter() {
+  var wrap = document.getElementById('nl-admin-wrap');
+  try {
+    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/newsletter_subs?order=subscribed_at.desc', { headers: { 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN } });
+    var rows = res.ok ? await res.json() : [];
+    if(!rows.length) { wrap.innerHTML='<div class="infobox">아직 구독자가 없어요.</div>'; return; }
+    wrap.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+      +'<span style="font-size:13px;color:var(--gr)">총 '+rows.length+'명 구독 중</span>'
+      +'<button onclick="exportNlCsv()" style="padding:7px 16px;background:var(--a);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📥 CSV 내보내기</button>'
+      +'</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:13px">'
+      +'<thead><tr style="border-bottom:2px solid var(--bo)">'
+      +'<th style="padding:8px 12px;text-align:left;color:var(--gr)">이름</th>'
+      +'<th style="padding:8px 12px;text-align:left;color:var(--gr)">이메일</th>'
+      +'<th style="padding:8px 12px;text-align:left;color:var(--gr)">구독일</th>'
+      +'<th style="padding:8px 12px;text-align:left;color:var(--gr)">상태</th>'
+      +'</tr></thead><tbody>'
+      + rows.map(function(r){
+          return '<tr style="border-bottom:1px solid var(--bo)">'
+            +'<td style="padding:10px 12px">'+(r.name||'-')+'</td>'
+            +'<td style="padding:10px 12px">'+r.email+'</td>'
+            +'<td style="padding:10px 12px;color:var(--gr)">'+new Date(r.subscribed_at).toLocaleDateString('ko-KR')+'</td>'
+            +'<td style="padding:10px 12px"><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:'+(r.active?'#d4edda':'#f8d7da')+';color:'+(r.active?'#155724':'#721c24')+'">'+( r.active?'구독중':'취소됨')+'</span></td>'
+            +'</tr>';
+        }).join('')
+      +'</tbody></table>';
+    window._nlRows = rows;
+  } catch(e) {
+    wrap.innerHTML = '<div class="infobox" style="color:#c33">⚠️ 로드 실패</div>';
+  }
+}
+
+function exportNlCsv() {
+  if(!window._nlRows) return;
+  var csv = '이름,이메일,구독일,상태\n'
+    + window._nlRows.map(function(r){
+        return [r.name||'',r.email,new Date(r.subscribed_at).toLocaleDateString('ko-KR'),r.active?'구독중':'취소됨'].join(',');
+      }).join('\n');
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'korehan_newsletter_'+new Date().toISOString().split('T')[0]+'.csv';
+  a.click();
+}
+
+// ══ VISITOR STATS ════════════════════════════════════════════
+function goStats() {
+  setSbOn(null);
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>📊 Visitor Analytics</h1><p>Page views and top articles for the last 30 days.</p></div></div>'
+   +'<div id="stats-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 불러오는 중…</div></div>';
+  loadStats();
+}
+
+async function loadStats() {
+  var wrap = document.getElementById('stats-admin-wrap');
+  try {
+    var since = new Date(Date.now()-30*86400000).toISOString();
+    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/page_views?viewed_at=gte.'+since+'&order=viewed_at.desc&limit=2000', { headers: { 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN } });
+    var rows = res.ok ? await res.json() : [];
+
+    var totalViews = rows.length;
+    var todayStr   = new Date().toISOString().split('T')[0];
+    var todayViews = rows.filter(function(r){ return r.viewed_at.startsWith(todayStr); }).length;
+
+    // Daily counts (last 14 days)
+    var daily = {};
+    for(var d=13; d>=0; d--) {
+      var dt = new Date(Date.now()-d*86400000).toISOString().split('T')[0];
+      daily[dt] = rows.filter(function(r){ return r.viewed_at.startsWith(dt); }).length;
+    }
+
+    // Top articles
+    var artCounts = {};
+    rows.filter(function(r){ return r.article_id; }).forEach(function(r){
+      artCounts[r.article_id] = (artCounts[r.article_id]||0)+1;
+    });
+    var topArts = Object.entries(artCounts).sort(function(a,b){ return b[1]-a[1]; }).slice(0,10);
+
+    var maxVal = Math.max.apply(null, Object.values(daily).concat([1]));
+
+    wrap.innerHTML =
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:28px">'
+      +'<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:18px;text-align:center">'
+      +'<div style="font-size:32px;font-weight:900;color:var(--a)">'+totalViews+'</div><div style="font-size:12px;color:var(--gr);font-weight:700">30일 총 페이지뷰</div></div>'
+      +'<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:18px;text-align:center">'
+      +'<div style="font-size:32px;font-weight:900;color:var(--a)">'+todayViews+'</div><div style="font-size:12px;color:var(--gr);font-weight:700">오늘 페이지뷰</div></div>'
+      +'<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:18px;text-align:center">'
+      +'<div style="font-size:32px;font-weight:900;color:var(--a)">'+topArts.length+'</div><div style="font-size:12px;color:var(--gr);font-weight:700">조회된 기사 수</div></div>'
+      +'</div>'
+
+      // 바 차트
+      +'<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:20px;margin-bottom:20px">'
+      +'<div style="font-size:14px;font-weight:700;color:var(--dk);margin-bottom:16px">최근 14일 일별 페이지뷰</div>'
+      +'<div style="display:flex;align-items:flex-end;gap:6px;height:100px">'
+      + Object.entries(daily).map(function(e){
+          var h = Math.round((e[1]/maxVal)*90)+4;
+          var isToday = e[0]===todayStr;
+          return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">'
+            +'<div style="font-size:10px;color:var(--gr)">'+e[1]+'</div>'
+            +'<div style="width:100%;height:'+h+'px;background:'+(isToday?'var(--a)':'#c5d5f0')+';border-radius:4px 4px 0 0"></div>'
+            +'<div style="font-size:9px;color:var(--gr)">'+e[0].slice(5)+'</div>'
+            +'</div>';
+        }).join('')
+      +'</div></div>'
+
+      // 인기 기사
+      +'<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:20px">'
+      +'<div style="font-size:14px;font-weight:700;color:var(--dk);margin-bottom:14px">🏆 Top Articles</div>'
+      + (topArts.length ? topArts.map(function(e,i){
+          var art = DB.find(function(a){ return a.id===e[0]; });
+          var title = art ? art.title : e[0];
+          return '<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--bo)">'
+            +'<span style="font-size:16px;font-weight:900;color:var(--a);width:24px;text-align:right">'+(i+1)+'</span>'
+            +'<div style="flex:1;font-size:13px;font-weight:600">'+title+'</div>'
+            +'<span style="font-size:13px;font-weight:700;color:var(--gr)">'+e[1]+'회</span>'
+            +'</div>';
+        }).join('') : '<div style="color:var(--gr);font-size:13px">데이터가 없어요.</div>')
+      +'</div>';
+  } catch(e) {
+    wrap.innerHTML = '<div class="infobox" style="color:#c33">⚠️ 로드 실패: '+e.message+'</div>';
+  }
+}
+
+// ══ USERS ════════════════════════════════════════════════════
+function goUsers(){
+  setSbOn(null);
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>👥 가입 회원</h1><p>구글 로그인으로 가입한 회원 목록입니다.</p></div></div>'
+   +'<div id="users-wrap"><div style="padding:24px;color:var(--gray);text-align:center">⏳ 불러오는 중…</div></div>';
+  loadUsers();
+}
+
+async function loadUsers(){
+  const el = document.getElementById('users-wrap');
+  try {
+    // auth.users 직접 조회 (service_role 필요)
+    const authRes = await fetch(SUPA_URL_ADMIN + '/auth/v1/admin/users?per_page=500', {
+      headers: {
+        'apikey': SUPA_SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPA_SERVICE_KEY
+      }
+    });
+    if (!authRes.ok) throw new Error('auth.users 조회 실패: ' + authRes.status);
+    const authData = await authRes.json();
+    const authUsers = authData.users || [];
+
+    // 활동 데이터 병렬 조회
+    const [words, articles, quizzes, streaks, writings, comments] = await Promise.all([
+      supaAdminGet('/rest/v1/saved_words?select=user_id,created_at&order=created_at.desc'),
+      supaAdminGet('/rest/v1/read_articles?select=user_id,read_at&order=read_at.desc'),
+      supaAdminGet('/rest/v1/quiz_results?select=user_id,played_at&order=played_at.desc'),
+      supaAdminGet('/rest/v1/study_streaks?select=user_id,streak&order=streak.desc'),
+      supaAdminGet('/rest/v1/writing_submissions?select=user_id,created_at&order=created_at.desc').catch(function(){return [];}),
+      supaAdminGet('/rest/v1/comments?select=user_id,created_at&order=created_at.desc').catch(function(){return [];}),
+    ]);
+
+    // 활동 집계
+    const act = {};
+    function getAct(uid){ if(!act[uid]) act[uid]={words:0,articles:0,quizzes:0,streak:0,writings:0,comments:0,lastSeen:null}; return act[uid]; }
+    (words||[]).forEach(function(r){ var u=getAct(r.user_id); u.words++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
+    (articles||[]).forEach(function(r){ var u=getAct(r.user_id); u.articles++; if(!u.lastSeen||r.read_at>u.lastSeen) u.lastSeen=r.read_at; });
+    (quizzes||[]).forEach(function(r){ getAct(r.user_id).quizzes++; });
+    (streaks||[]).forEach(function(r){ getAct(r.user_id).streak=r.streak||0; });
+    (writings||[]).forEach(function(r){ var u=getAct(r.user_id); u.writings++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
+    (comments||[]).forEach(function(r){ var u=getAct(r.user_id); u.comments++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
+
+    if (!authUsers.length) {
+      el.innerHTML = '<div class="infobox">가입한 회원이 없습니다.</div>';
+      return;
+    }
+
+    // auth.users 기준으로 정렬 (최신 가입순)
+    authUsers.sort(function(a,b){ return (b.created_at||'') > (a.created_at||'') ? 1 : -1; });
+
+    el.innerHTML =
+      '<div style="margin-bottom:12px;font-size:13px;color:var(--gray)">총 <b>'+authUsers.length+'</b>명 가입</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:13px">'
+      +'<thead><tr style="background:#f8faff;border-bottom:2px solid var(--border);text-align:left">'
+      +'<th style="padding:10px 12px">이메일</th>'
+      +'<th style="padding:10px 12px">가입일</th>'
+      +'<th style="padding:10px 12px">마지막 로그인</th>'
+      +'<th style="padding:10px 12px">저장단어</th>'
+      +'<th style="padding:10px 12px">읽은기사</th>'
+      +'<th style="padding:10px 12px">퀴즈</th>'
+      +'<th style="padding:10px 12px">✍️쓰기</th>'
+      +'<th style="padding:10px 12px">💬댓글</th>'
+      +'<th style="padding:10px 12px">🔥연속</th>'
+      +'</tr></thead><tbody>'
+      + authUsers.map(function(u){
+          var a = act[u.id] || {words:0,articles:0,quizzes:0,streak:0};
+          var email = u.email || u.user_metadata?.email || '(소셜 로그인)';
+          var name  = u.user_metadata?.full_name || u.user_metadata?.name || '';
+          var joined   = u.created_at   ? new Date(u.created_at).toLocaleDateString('ko-KR')   : '-';
+          var lastLogin= u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('ko-KR') : '-';
+          return '<tr style="border-bottom:1px solid var(--border)">'
+            +'<td style="padding:10px 12px"><div style="font-weight:600">'+email+'</div>'+(name?'<div style="font-size:11px;color:var(--gray)">'+name+'</div>':'')+'</td>'
+            +'<td style="padding:10px 12px;color:var(--gray);font-size:12px">'+joined+'</td>'
+            +'<td style="padding:10px 12px;color:var(--gray);font-size:12px">'+lastLogin+'</td>'
+            +'<td style="padding:10px 12px;font-weight:700;color:var(--accent)">'+a.words+'</td>'
+            +'<td style="padding:10px 12px">'+a.articles+'</td>'
+            +'<td style="padding:10px 12px">'+a.quizzes+'</td>'
+            +'<td style="padding:10px 12px;font-weight:'+(a.writings?'700':'400')+';color:'+(a.writings?'#7c3aed':'#94a3b8')+'">'+a.writings+'</td>'
+            +'<td style="padding:10px 12px">'+a.comments+'</td>'
+            +'<td style="padding:10px 12px">'+(a.streak||0)+'</td>'
+            +'</tr>';
+        }).join('')
+      +'</tbody></table>';
+
+  } catch(err) {
+    el.innerHTML = '<div class="infobox" style="color:#c33">⚠️ 실패: '+err.message+'</div>';
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════
+// 🎓 CLASSES MANAGEMENT (Admin)
+// ════════════════════════════════════════════════════════════
+
+var ADMIN_CUR_LESSONS = {
+  beginner:     ['한글 자모 기초','받침 발음','인사 & 자기소개','숫자와 날짜','일상 표현 I','일상 표현 II','간단한 문장 만들기','기초 문법 정리'],
+  intermediate: ['뉴스 어휘 I','뉴스 어휘 II','뉴스 읽기 기초','문장 구조 분석','주제별 어휘 확장','요약하기 연습','말하기 연습 I','말하기 연습 II'],
+  advanced:     ['고급 어휘','TOPIK 읽기','TOPIK 듣기','에세이 쓰기 I','에세이 쓰기 II','토론 & 발표','TOPIK 실전 I','TOPIK 실전 II']
+};
+
+// ── 수업 가능 날짜 설정 ──────────────────────────────────────
+
+// ════════════════════════════════════════════════════════════
+// 10번: AI 자동생성 — Conv / Story 발행 시 vocab/grammar 자동 생성
+// article_cache 테이블에 캐시 (content_id, content_type, key, value)
+// ════════════════════════════════════════════════════════════
+
+const SUPA_URL_ADMIN2 = 'https://samghztrdvtxmrmawneu.supabase.co';
+const SUPA_KEY_ADMIN2 = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjQzNDc1MiwiZXhwIjoyMDg4MDEwNzUyfQ.npCvblrbeRiqwW76_23kYznrRuFHIKCD24JN3da--3c';
+
+async function callAdminClaude(prompt) {
+  var proxies = [
+    SUPA_URL_ADMIN2 + '/functions/v1/claude-proxy',
+    SUPA_URL_ADMIN + '/functions/v1/claude-proxy'
+  ];
+  var lastErr = null;
+
+  for (var i = 0; i < proxies.length; i++) {
+    var resp = await fetch(proxies[i], {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPA_KEY_ADMIN2,
+        'apikey': SUPA_KEY_ADMIN2,
+        'x-admin-bypass': '1'
+      },
+      body: JSON.stringify({
+        feature: 'admin-ai-gen',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2200,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (resp.ok) {
+      var data = await resp.json();
+      return (data.content || []).map(function(b){ return b.text || ''; }).join('');
+    }
+
+    var errBody = await resp.json().catch(function(){ return {}; });
+    lastErr = new Error('Claude API ' + resp.status + ': ' + (errBody.error || ''));
+  }
+
+  throw lastErr || new Error('Claude proxy request failed');
+}
+
+async function saveToCache(contentType, contentId, key, value) {
+  const sb = getSb();
+  if (!sb) return;
+  try {
+    await sb.from('article_cache').upsert({
+      content_type: contentType,
+      content_id: String(contentId),
+      cache_key: key,
+      cache_value: JSON.stringify(value),
+      created_at: new Date().toISOString()
+    }, { onConflict: 'content_type,content_id,cache_key' });
+  } catch(e) { console.warn('cache save fail:', e); }
+}
+
+async function autoGenConvAI(convId, convObj) {
+  showToastAdmin('🤖 AI 분석 중…');
+  try {
+    var msgsText = (convObj.msgs || []).map(function(m){ return (m.who||m.s||'?') + ': ' + m.txt; }).join('\n');
+    var prompt = '다음 한국어 대화를 분석해서 JSON으로만 답해줘. 다른 말 하지 마.\n\n대화:\n'
+      + msgsText
+      + '\n\n형식:\n{"vocab":[{"ko":"단어","rom":"로마자","en":"영어뜻"}],"grammar":[{"point":"문법 포인트","ex":"예문","en":"설명"}],"mission":[{"task":"연습 미션"}]}'
+      + '\n\nvocab 5개, grammar 2개, mission 2개. JSON만 출력.';
+
+    var result = await callAdminClaude(prompt);
+    var clean = result.replace(/```json[\s\S]*?```/g, function(m){ return m.slice(7,-3); }).replace(/```/g,'').trim();
+    var parsed = JSON.parse(clean);
+
+    // DB: 현재 row 읽어서 data 컬럼 병합 후 update
+    const sb = getSb();
+    var res = await sb.from('conversations_data').select('data').eq('id', convId).single();
+    // res.data = row 자체: { data: {...} }
+    var currentData = (res.data && res.data.data) ? res.data.data : (convObj || {});
+    var updated = Object.assign({}, currentData, {
+      vocab:   parsed.vocab   || [],
+      grammar: parsed.grammar || [],
+      mission: parsed.mission || []
+    });
+    var { error: updateErr } = await sb.from('conversations_data').update({ data: updated }).eq('id', convId);
+    if (updateErr) throw updateErr;
+
+    // article_cache에도 저장
+    await saveToCache('conversation', convId, 'ai_analysis', parsed);
+    showToastAdmin('🤖 완료! vocab ' + (parsed.vocab||[]).length + '개 · grammar ' + (parsed.grammar||[]).length + '개 · mission ' + (parsed.mission||[]).length + '개');
+    await loadConvList();
+  } catch(e) {
+    console.error('autoGenConvAI failed:', e);
+    showToastAdmin('⚠️ AI 생성 실패: ' + (e.message || String(e)));
+  }
+}
+
+async function autoGenStoryAI(storyId, storyObj) {
+  showToastAdmin('🤖 스토리 AI 분석 중…');
+  try {
+    var bodyText = (storyObj.body || '').replace(/<[^>]*>/g, '').slice(0, 1500);
+    var prompt = '다음 한국어 스토리를 분석해서 JSON으로만 답해줘. 다른 말 하지 마.\n\n스토리 제목: '
+      + storyObj.title + '\n내용: ' + bodyText
+      + '\n\n형식:\n{"vocab":[{"ko":"단어","rom":"로마자","en":"영어뜻","note":"간단한 설명"}],"grammar":[{"point":"문법 포인트","ex":"예문","en":"설명"}],"summary_en":"영어 요약 1-2문장"}'
+      + '\n\nvocab 6개, grammar 3개. JSON만 출력.';
+
+    var result = await callAdminClaude(prompt);
+    var clean = result.replace(/```json[\s\S]*?```/g, function(m){ return m.slice(7,-3); }).replace(/```/g,'').trim();
+    var parsed = JSON.parse(clean);
+
+    const sb = getSb();
+    var res = await sb.from('stories_data').select('data').eq('id', storyId).single();
+    var currentData = (res.data && res.data.data) ? res.data.data : (storyObj || {});
+    var updated = Object.assign({}, currentData, {
+      vocab:      parsed.vocab      || [],
+      grammar:    parsed.grammar    || [],
+      summary_en: parsed.summary_en || '',
+    });
+    var { error: updateErr } = await sb.from('stories_data').update({ data: updated }).eq('id', storyId);
+    if (updateErr) throw updateErr;
+
+    await saveToCache('story', storyId, 'ai_analysis', parsed);
+    showToastAdmin('🤖 완료! vocab ' + (parsed.vocab||[]).length + '개 · grammar ' + (parsed.grammar||[]).length + '개');
+    await loadStoryList();
+  } catch(e) {
+    console.error('autoGenStoryAI failed:', e);
+    showToastAdmin('⚠️ AI 생성 실패: ' + (e.message || String(e)));
+  }
+}
+
+// 수동 AI 재생성 버튼 (conv/story 목록에서 사용)
+async function regenConvAI(convId) {
+  showToastAdmin('🤖 AI 재생성 중…');
+  const sb = getSb();
+  const res = await sb.from('conversations_data').select('*').eq('id', convId).single();
+  if (res.data) await autoGenConvAI(convId, res.data.data);
+  await loadConvList();
+}
+
+async function regenStoryAI(storyId) {
+  showToastAdmin('🤖 AI 재생성 중…');
+  const sb = getSb();
+  const res = await sb.from('stories_data').select('*').eq('id', storyId).single();
+  if (res.data) await autoGenStoryAI(storyId, res.data.data);
+  await loadStoryList();
+}
+
+
+
+// ═══════════════════════════════════════════════════════════
+// CONVERSATIONS AI EDITOR
+// ═══════════════════════════════════════════════════════════
+async function goConvEditor() {
+  setSidebarActive('conv');
+  var main = document.getElementById('main');
+  main.innerHTML = `
+    <div style="max-width:900px">
+      <h2 style="font-family:'Playfair Display',serif;font-size:24px;margin:0 0 6px">💬 Conversations AI Generator</h2>
+      <p style="color:#64748b;font-size:13px;margin:0 0 20px">AI로 KakaoTalk 스타일 대화 콘텐츠 생성. 생성 후 저장 버튼으로 conversations_data 테이블에 저장됩니다.</p>
+
+      <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px;margin-bottom:20px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">CATEGORY</label>
+            <select id="cv-cat" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+              <option value="everyday">Everyday</option>
+              <option value="work">Workplace</option>
+              <option value="friends">Friends</option>
+              <option value="family">Family</option>
+              <option value="dating">Dating</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">LEVEL</label>
+            <select id="cv-lvl" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+              <option value="b">Beginner</option>
+              <option value="i">Intermediate</option>
+              <option value="a">Advanced</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">COUNT</label>
+            <select id="cv-count" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+              <option value="3">3개</option>
+              <option value="5">5개</option>
+              <option value="10" selected>10개</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">TOPIC (optional)</label>
+          <input id="cv-topic" placeholder="e.g. 카페, 병원, 여행 계획..." style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+        </div>
+        <button onclick="generateConvs()" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+          🤖 Generate Conversations
+        </button>
+      </div>
+
+      <div id="cv-results"></div>
+    </div>`;
+}
+
+async function generateConvs() {
+  var cat    = document.getElementById('cv-cat').value;
+  var lvl    = document.getElementById('cv-lvl').value;
+  var count  = document.getElementById('cv-count').value;
+  var topic  = document.getElementById('cv-topic').value.trim();
+  var res    = document.getElementById('cv-results');
+  var lvlMap = {b:'Beginner', i:'Intermediate', a:'Advanced'};
+  var catMap = {everyday:'Everyday', work:'Workplace', friends:'Friends', family:'Family', dating:'Dating'};
+
+  res.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b"><div style="font-size:24px;margin-bottom:8px">⏳</div>AI 생성 중...</div>';
+
+  var prompt = 'You are creating Korean language learning content for KoreHan News.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","note":"optional"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3 missions. ' + lvlMap[lvl] + ' level Korean.';
+
+  try {
+    var resp = await callClaude({
+      feature: 'conv_gen',
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 8000,
+      messages: [{role:'user', content: prompt}]
+    });
+    var raw = resp.content.map(function(b){ return b.text||''; }).join('');
+    raw = raw.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    var convs = JSON.parse(raw);
+
+    var html = '<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
+      + '<span style="font-size:14px;font-weight:700;color:#0f172a">Generated ' + convs.length + ' conversations</span>'
+      + '<button onclick="saveAllConvs()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Save All to DB</button>'
+      + '</div>';
+
+    convs.forEach(function(c, i) {
+      var msgs = (c.msgs||[]).map(function(m) {
+        var bg = m.s === 'r' ? '#2563eb' : '#fff';
+        var col = m.s === 'r' ? '#fff' : '#0f172a';
+        var brd = m.s === 'r' ? 'none' : '1px solid #e2e8f0';
+        var align = m.s === 'r' ? 'justify-content:flex-end' : '';
+        var note = m.note ? '<div style="font-size:11px;opacity:.7;margin-top:3px;font-style:italic">💡 ' + m.note + '</div>' : '';
+        return '<div style="display:flex;' + align + ';margin-bottom:5px">'
+          + '<div style="max-width:75%;background:' + bg + ';color:' + col + ';border:' + brd + ';border-radius:12px;padding:7px 11px;font-size:13px">'
+          + m.txt + note + '</div></div>';
+      }).join('');
+
+      var vocab = (c.vocab||[]).map(function(v) {
+        return '<span style="background:#f1f5f9;border-radius:8px;padding:4px 10px;font-size:12px"><b style="color:#1d4ed8">' + v.ko + '</b> ' + v.en + '</span>';
+      }).join('');
+
+      html += '<div style="background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:16px;margin-bottom:12px">'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+        + '<span style="font-size:22px">' + (c.avi||'💬') + '</span>'
+        + '<div><div style="font-size:13px;font-weight:700">' + c.name + '</div><div style="font-size:12px;color:#64748b">' + c.ctx + '</div></div>'
+        + '<span style="margin-left:auto;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px">' + lvlMap[c.lvl||lvl] + '</span>'
+        + '</div>'
+        + '<div style="background:#f8fbff;border-radius:8px;padding:10px;margin-bottom:8px">' + msgs + '</div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:5px">' + vocab + '</div>'
+        + '</div>';
+    });
+
+    res.innerHTML = html;
+    window._generatedConvs = convs;
+  } catch(e) {
+    res.innerHTML = '<div style="background:#fee2e2;border-radius:10px;padding:14px;color:#b91c1c;font-size:13px">Error: ' + e.message + '</div>';
+  }
+}
+
+
+async function saveAllConvs() {
+  if (!window._generatedConvs || !window._generatedConvs.length) return;
+  var sb = getSb();
+  if (!sb) return;
+  var rows = window._generatedConvs.map(function(c) {
+    return {
+      data: c,
+      cat: c.cat,
+      lvl: c.lvl,
+      name: c.name,
+      ctx: c.ctx,
+      created_at: new Date().toISOString()
+    };
+  });
+  var {error} = await sb.from('conversations_data').insert(rows);
+  if (error) {
+    alert('Save error: ' + error.message);
+  } else {
+    var msg = '✅ ' + rows.length + '개 대화가 저장/발행되었습니다!\n\nConversations 관리에서 확인하세요.';
+    alert(msg);
+    window._generatedConvs = [];  // 초기화
+    goConvManager();  // 저장 후 관리 화면으로 이동
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// STORIES AI EDITOR
+// ═══════════════════════════════════════════════════════════
+async function goStoriesEditor() {
+  setSidebarActive('stor');
+  var main = document.getElementById('main');
+  main.innerHTML = `
+    <div style="max-width:900px">
+      <h2 style="font-family:'Playfair Display',serif;font-size:24px;margin:0 0 6px">📖 Stories AI Generator</h2>
+      <p style="color:#64748b;font-size:13px;margin:0 0 20px">AI로 한국어 단편 이야기 콘텐츠 생성. 생성 후 저장 버튼으로 stories_data 테이블에 저장됩니다.</p>
+
+      <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px;margin-bottom:20px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">MOOD</label>
+            <select id="st-mood" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+              <option value="fun">😂 Fun</option>
+              <option value="touching">🥹 Touching</option>
+              <option value="scary">😱 Scary</option>
+              <option value="shocking">😮 Shocking</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">LEVEL</label>
+            <select id="st-lvl" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+              <option value="b">Beginner</option>
+              <option value="i" selected>Intermediate</option>
+              <option value="a">Advanced</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">COUNT</label>
+            <select id="st-count" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+              <option value="3">3개</option>
+              <option value="5">5개</option>
+              <option value="10" selected>10개</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="generateStories()" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+          🤖 Generate Stories
+        </button>
+      </div>
+
+      <div id="st-results"></div>
+    </div>`;
+}
+
+async function generateStories() {
+  var mood   = document.getElementById('st-mood').value;
+  var lvl    = document.getElementById('st-lvl').value;
+  var count  = document.getElementById('st-count').value;
+  var res    = document.getElementById('st-results');
+  var lvlMap  = {b:'Beginner', i:'Intermediate', a:'Advanced'};
+  var moodMap = {fun:'Fun', touching:'Touching', scary:'Scary', shocking:'Shocking'};
+  var moodEmoji = {fun:'😂', touching:'🥹', scary:'😱', shocking:'😮'};
+  var moodColors = {fun:'#d97706', touching:'#db2777', scary:'#7c3aed', shocking:'#dc2626'};
+
+  res.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b">⏳ AI 생성 중...</div>';
+
+  var prompt = 'Generate ' + count + ' short Korean community-style stories for Korean learners.\nMood: ' + moodMap[mood] + '\nLevel: ' + lvlMap[lvl] + '\n\nReturn ONLY a valid JSON array, no markdown, no backticks.\n\nEach story object:\n{"title":"Korean title","title_en":"English","mood":"' + mood + '","lvl":"' + lvl + '","readTime":"X min","preview":"first 1-2 sentences","body":"full story in Korean with paragraphs","vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}\n\nRules: authentic Korean community post style, body 8-15 paragraphs, 6-8 vocab, 2-3 grammar, 3 comprehension questions.';
+
+  try {
+    var resp = await callClaude({
+      feature: 'story_gen',
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 8000,
+      messages: [{role:'user', content: prompt}]
+    });
+    var raw = resp.content.map(function(b){ return b.text||''; }).join('');
+    raw = raw.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    var stories = JSON.parse(raw);
+
+    var html = '<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
+      + '<span style="font-size:14px;font-weight:700;color:#0f172a">Generated ' + stories.length + ' stories</span>'
+      + '<button onclick="saveAllStories()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Save All to DB</button>'
+      + '</div>';
+
+    stories.forEach(function(s) {
+      var color = moodColors[s.mood] || '#7c3aed';
+      var vocab = (s.vocab||[]).map(function(v) {
+        return '<span style="background:#f1f5f9;border-radius:8px;padding:4px 10px;font-size:12px"><b style="color:' + color + '">' + v.ko + '</b> ' + v.en + '</span>';
+      }).join('');
+
+      html += '<div style="background:#fff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:12px">'
+        + '<div style="height:50px;background:' + color + ';display:flex;align-items:center;padding:0 16px;gap:10px">'
+        + '<span style="font-size:22px">' + (moodEmoji[s.mood]||'📖') + '</span>'
+        + '<span style="color:#fff;font-size:13px;font-weight:700">' + s.title + '</span>'
+        + '<span style="margin-left:auto;color:rgba(255,255,255,.8);font-size:11px">' + (s.readTime||'') + ' · ' + lvlMap[s.lvl||lvl] + '</span>'
+        + '</div>'
+        + '<div style="padding:14px">'
+        + '<div style="font-size:12px;color:#64748b;font-style:italic;margin-bottom:8px">' + (s.title_en||'') + '</div>'
+        + '<div style="font-size:13px;color:#334155;line-height:1.7;margin-bottom:10px;white-space:pre-line">' + (s.preview||'') + '</div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:5px">' + vocab + '</div>'
+        + '</div></div>';
+    });
+
+    res.innerHTML = html;
+    window._generatedStories = stories;
+  } catch(e) {
+    res.innerHTML = '<div style="background:#fee2e2;border-radius:10px;padding:14px;color:#b91c1c;font-size:13px">Error: ' + e.message + '</div>';
+  }
+}
+
+
+async function saveAllStories() {
+  if (!window._generatedStories || !window._generatedStories.length) return;
+  var sb = getSb();
+  if (!sb) return;
+  var rows = window._generatedStories.map(function(s) {
+    return {
+      data: s,
+      mood: s.mood,
+      lvl: s.lvl,
+      title: s.title,
+      title_en: s.title_en,
+      preview: s.preview,
+      read_time: s.readTime,
+      created_at: new Date().toISOString()
+    };
+  });
+  var {error} = await sb.from('stories_data').insert(rows);
+  if (error) {
+    alert('Save error: ' + error.message);
+  } else {
+    alert('✅ ' + rows.length + '개 스토리가 저장/발행되었습니다!');
+    window._generatedStories = [];
+    goStoriesManager();
+  }
+}
+
+function setSidebarActive(id) {
+  document.querySelectorAll('.sb-btn').forEach(function(b){ b.classList.remove('on'); });
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// CONVERSATION MANAGER (수동 편집/생성/삭제)
+// ═══════════════════════════════════════════════════════════
+async function goConvManager() {
+  setSidebarActive('conv-mgr');
+  var main = document.getElementById('main');
+  main.innerHTML = '<div style="max-width:960px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    + '<div><h2 style="font-size:22px;font-weight:800;margin:0">💬 Conversations 관리</h2>'
+    + '<p style="color:#64748b;font-size:13px;margin:4px 0 0">conversations_data 테이블 — 조회/수정/삭제/추가</p></div>'
+    + '<button onclick="openConvCreateModal()" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">+ 새 대화 추가</button>'
+    + '</div>'
+    + '<div id="conv-mgr-list">⏳ 불러오는 중...</div>'
+    + '</div>';
+  
+  await loadConvList();
+}
+
+async function loadConvList() {
+  var sb = getSb();
+  var { data, error } = await sb.from('conversations_data').select('*').order('created_at', {ascending: false}).limit(100);
+  var el = document.getElementById('conv-mgr-list');
+  if (!el) return;
+  if (error || !data || !data.length) {
+    el.innerHTML = '<div style="background:#f8fafc;border-radius:12px;padding:40px;text-align:center;color:#94a3b8">'
+      + (error ? '오류: ' + error.message : 'conversations_data 테이블에 데이터 없음') + '</div>';
+    return;
+  }
+  
+  var html = data.map(function(row) {
+    var d = row.data || {};
+    var name = d.name || row.name || '(이름 없음)';
+    var ctx  = d.ctx  || '—';
+    var cat  = d.cat  || row.cat  || '—';
+    var lvl  = d.lvl  || row.lvl  || '—';
+    var lvlMap = {b:'Beginner', i:'Intermediate', a:'Advanced'};
+    var msgCount = (d.msgs || []).length;
+    var vocabCount = (d.vocab || []).length;
+    var grammarCount = (d.grammar || []).length;
+    var missionCount = (d.mission || []).length;
+    return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;gap:14px">'
+      + '<div style="font-size:26px">' + (d.avi || '💬') + '</div>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-size:14px;font-weight:700;color:#0f172a">' + name + '</div>'
+      + '<div style="font-size:12px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + ctx + '</div>'
+      + '<div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">'
+      + '<span style="background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px">' + (lvlMap[lvl]||lvl) + '</span>'
+      + '<span style="background:#f1f5f9;color:#475569;font-size:11px;padding:2px 8px;border-radius:999px">' + cat + '</span>'
+      + '<span style="background:#f0fdf4;color:#15803d;font-size:11px;padding:2px 8px;border-radius:999px">' + msgCount + ' msgs · ' + vocabCount + ' vocab · ' + grammarCount + ' grammar · ' + missionCount + ' mission</span>'
+      + '</div></div>'
+      + '<div style="display:flex;gap:8px;flex-shrink:0;">'
+      + '<button onclick="regenConvAI(' + row.id + ')" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit" title="AI로 vocab/grammar/mission 자동 생성">🤖 AI</button>'
+      + '<button onclick="openConvEditModal(' + row.id + ')" style="background:#f1f5f9;color:#334155;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ 수정</button>'
+      + '<button onclick="deleteConv(' + row.id + ')" style="background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑 삭제</button>'
+      + '</div></div>';
+  }).join('');
+  el.innerHTML = html;
+}
+
+function openConvCreateModal() {
+  openConvEditModal(null, null);
+}
+
+async function openConvEditModal(rowId, existingData) {
+  var sb = getSb();
+  var rowData = existingData;
+  if (rowId && !rowData) {
+    var fetched = await sb.from('conversations_data').select('*').eq('id', rowId).single();
+    rowData = fetched.data;
+  }
+  var d = (rowData && rowData.data) ? rowData.data : {};
+  var isNew = !rowId;
+
+  var msgsText = (d.msgs || []).map(function(m){
+    return (m.s === 'l' ? 'A' : 'B') + ': ' + m.txt;
+  }).join('\n');
+
+  var overlay = document.createElement('div');
+  overlay.id = 'conv-edit-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(4px);z-index:9000;display:flex;align-items:center;justify-content:center;padding:18px;overflow-y:auto;';
+
+  overlay.innerHTML =
+    '<div style="background:#f8fbff;border-radius:26px;width:100%;max-width:1280px;box-shadow:0 32px 80px rgba(0,0,0,.28);overflow:hidden;border:1px solid #dbe4f0;">'
+      + '<div style="display:grid;grid-template-columns:1.22fr .88fr;min-height:82vh;">'
+
+      + '<div style="background:#fff;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;min-width:0;">'
+      +   '<div style="padding:20px 22px;background:linear-gradient(135deg,#2550b7 0%,#3a72ea 100%);color:#fff;position:relative;">'
+      +     '<button onclick="closeConvEditOverlay()" style="position:absolute;right:16px;top:16px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:999px;width:34px;height:34px;font-size:18px;cursor:pointer">✕</button>'
+      +     '<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.82;margin-bottom:10px">' + (isNew ? 'New Conversation' : 'Conversation Editor') + '</div>'
+      +     '<div id="ce-preview-name" style="font-family:\'Noto Serif KR\',serif;font-size:34px;font-weight:900;line-height:1.1;letter-spacing:-0.03em;">' + ((d.name || 'New Conversation').replace(/</g,'&lt;')) + '</div>'
+      +     '<div id="ce-preview-ctx" style="font-size:13px;opacity:.88;margin-top:8px;line-height:1.6;">' + ((d.ctx || 'Edit the dialogue below, then run AI Update.').replace(/</g,'&lt;')) + '</div>'
+      +   '</div>'
+
+      +   '<div style="padding:14px 20px 0;background:#fff;">'
+      +     '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+      +       '<span id="ce-preview-level" style="display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:#eaf2ff;color:#1d4ed8;font-size:12px;font-weight:800;">' + ({b:'Beginner',i:'Intermediate',a:'Advanced'}[(d.lvl||'b')] || 'Beginner') + '</span>'
+      +       '<span id="ce-preview-cat" style="display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:#f3f4f6;color:#475569;font-size:12px;font-weight:700;">' + ({everyday:'Everyday',work:'Workplace',friends:'Friends',family:'Family',dating:'Dating'}[(d.cat||'everyday')] || 'Everyday') + '</span>'
+      +     '</div>'
+      +   '</div>'
+
+      +   '<div id="ce-chat-preview" style="flex:1;min-height:420px;overflow:auto;padding:18px 20px 20px;background:#f8fbff;"></div>'
+
+      +   '<div style="padding:16px 20px 20px;border-top:1px solid #e5ecf5;background:#fff;">'
+      +     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+      +       '<label style="font-size:12px;font-weight:800;color:#334155;">💬 Dialogue Script <span style="font-weight:500;color:#94a3b8;">(one line per message: A: / B:)</span></label>'
+      +       '<button id="ai-analyze-btn" onclick="aiAnalyzeConv()" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;">✨ AI Update</button>'
+      +     '</div>'
+      +     '<textarea id="ce-msgs-text" oninput="syncConvPreview()" rows="8" placeholder="A: 오늘 괜찮아?&#10;B: 응, 왜?&#10;A: 그냥 안부 물어보려고." style="width:100%;padding:12px 14px;border:1px solid #dbe4f0;border-radius:14px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical;line-height:1.7;background:#fbfdff;">' + (msgsText.replace(/</g,'&lt;').replace(/>/g,'&gt;')) + '</textarea>'
+      +     '<div style="margin-top:8px;font-size:12px;color:#64748b;line-height:1.6;">Edit the script in the same order users will read it. Click <b>AI Update</b> and vocab, grammar, and missions will regenerate from the edited dialogue.</div>'
+      +   '</div>'
+      + '</div>'
+
+      + '<div style="background:#f8fbff;display:flex;flex-direction:column;min-width:0;">'
+      +   '<div style="padding:22px 22px 18px;border-bottom:1px solid #e2e8f0;background:#fff;">'
+      +     '<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#2255a4;margin-bottom:8px;">Study Notes</div>'
+      +     '<div style="font-family:\'Playfair Display\',serif;font-size:18px;font-weight:900;color:#0f172a;">Conversation Breakdown</div>'
+      +   '</div>'
+
+      +   '<div style="padding:18px 18px 8px;overflow:auto;">'
+      +     '<div style="display:grid;grid-template-columns:1fr 1fr 90px;gap:10px;margin-bottom:16px;">'
+      +       ceField('ce-name', '이름', 'text', d.name || '', '예: Team Chat, Ji-yeon & Soo-jin')
+      +       + ceField('ce-ctx', '상황', 'text', d.ctx || '', '예: Asking for a deadline extension')
+      +       + ceField('ce-avi', '이모지', 'text', d.avi || '💬', '대표 이모지')
+      +     '</div>'
+      +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">'
+      +       ceSelect('ce-cat', '카테고리', ['everyday','work','friends','family','dating'], ['Everyday','Workplace','Friends','Family','Dating'], d.cat || 'everyday')
+      +       + ceSelect('ce-lvl', '레벨', ['b','i','a'], ['Beginner','Intermediate','Advanced'], d.lvl || 'b')
+      +     '</div>'
+
+      +     '<div id="ai-result-area" style="display:block;">'
+      +       '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:14px 14px 12px;margin-bottom:12px;">'
+      +         '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px;">📚 Vocabulary JSON</div>'
+      +         '<textarea id="ce-vocab" rows="8" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:12px;font-size:11px;font-family:monospace;box-sizing:border-box;resize:vertical;background:#fbfdff;">' + JSON.stringify(d.vocab||[], null, 2).replace(/</g,'&lt;') + '</textarea>'
+      +       '</div>'
+      +       '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:14px 14px 12px;margin-bottom:12px;">'
+      +         '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px;">✏️ Grammar JSON</div>'
+      +         '<textarea id="ce-grammar" rows="8" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:12px;font-size:11px;font-family:monospace;box-sizing:border-box;resize:vertical;background:#fbfdff;">' + JSON.stringify(d.grammar||[], null, 2).replace(/</g,'&lt;') + '</textarea>'
+      +       '</div>'
+      +       '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:14px 14px 12px;margin-bottom:12px;">'
+      +         '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px;">🎯 Mission JSON</div>'
+      +         '<textarea id="ce-mission" rows="5" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:12px;font-size:11px;font-family:monospace;box-sizing:border-box;resize:vertical;background:#fbfdff;">' + JSON.stringify(d.mission||[], null, 2).replace(/</g,'&lt;') + '</textarea>'
+      +       '</div>'
+      +     '</div>'
+
+      +     '<div id="ce-error" style="background:#fee2e2;border-radius:12px;padding:12px 14px;color:#b91c1c;font-size:13px;display:none;margin-bottom:12px;"></div>'
+      +   '</div>'
+
+      +   '<div style="display:flex;gap:10px;justify-content:flex-end;padding:16px 18px 18px;border-top:1px solid #e2e8f0;background:#fff;">'
+      +     '<button onclick="closeConvEditOverlay()" style="background:#f1f5f9;color:#334155;border:none;border-radius:12px;padding:11px 24px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">취소</button>'
+      +     '<button onclick="saveConvEdit(' + (rowId||'null') + ')" style="background:#2563eb;color:#fff;border:none;border-radius:12px;padding:11px 24px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">💾 저장</button>'
+      +   '</div>'
+      + '</div>'
+
+      + '</div>'
+    + '</div>';
+
+  document.body.appendChild(overlay);
+  syncConvPreview();
+}
+
+function syncConvPreview() {
+  var nameEl = document.getElementById('ce-name');
+  var ctxEl = document.getElementById('ce-ctx');
+  var lvlEl = document.getElementById('ce-lvl');
+  var catEl = document.getElementById('ce-cat');
+  var msgsEl = document.getElementById('ce-msgs-text');
+
+  var title = document.getElementById('ce-preview-name');
+  var ctx = document.getElementById('ce-preview-ctx');
+  var lvl = document.getElementById('ce-preview-level');
+  var cat = document.getElementById('ce-preview-cat');
+  var chat = document.getElementById('ce-chat-preview');
+
+  if (!chat) return;
+
+  var lvlMap = {b:'Beginner', i:'Intermediate', a:'Advanced'};
+  var catMap = {everyday:'Everyday', work:'Workplace', friends:'Friends', family:'Family', dating:'Dating'};
+
+  if (title) title.textContent = (nameEl && nameEl.value.trim()) || 'New Conversation';
+  if (ctx) ctx.textContent = (ctxEl && ctxEl.value.trim()) || 'Edit the dialogue below, then run AI Update.';
+  if (lvl) lvl.textContent = lvlMap[(lvlEl && lvlEl.value) || 'b'] || 'Beginner';
+  if (cat) cat.textContent = catMap[(catEl && catEl.value) || 'everyday'] || 'Everyday';
+
+  var lines = ((msgsEl && msgsEl.value) || '').split('\n').filter(function(l){ return l.trim(); });
+  if (!lines.length) {
+    chat.innerHTML = '<div style="padding:26px;text-align:center;color:#94a3b8;font-size:13px;">No messages yet. Add A:/B: lines below.</div>';
+    return;
+  }
+
+  var html = '<div style="display:flex;flex-direction:column;gap:14px;">';
+  lines.forEach(function(line){
+    var raw = line.trim();
+    var isB = /^B:/i.test(raw);
+    var txt = raw.replace(/^[AB]:\s*/i, '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    html += '<div style="display:flex;' + (isB ? 'justify-content:flex-end;' : 'justify-content:flex-start;') + '">'
+      + '<div style="max-width:72%;background:' + (isB ? '#2563eb' : '#fff') + ';color:' + (isB ? '#fff' : '#0f172a') + ';border:' + (isB ? 'none' : '1px solid #e2e8f0') + ';border-radius:18px;padding:12px 14px;font-size:15px;line-height:1.6;box-shadow:0 8px 20px rgba(15,23,42,.05);">'
+      + txt + '</div></div>';
+  });
+  html += '</div>';
+  chat.innerHTML = html;
+}
+
+function ceField(id, label, type, val, ph) {
+  return '<label style="font-size:12px;font-weight:700;color:#374151;display:block">' + label
+    + '<input id="' + id + '" type="' + type + '" value="' + (val||'').replace(/"/g,'&quot;') + '" placeholder="' + ph + '" oninput="syncConvPreview()" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'
+    + '</label>';
+}
+function ceSelect(id, label, vals, labels, cur) {
+  return '<label style="font-size:12px;font-weight:700;color:#374151;display:block">' + label
+    + '<select id="' + id + '" onchange="syncConvPreview()" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'
+    + vals.map(function(v,i){ return '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+labels[i]+'</option>'; }).join('')
+    + '</select></label>';
+}
+
+async function aiAnalyzeConv() {
+  var btn = document.getElementById('ai-analyze-btn');
+  var msgsText = document.getElementById('ce-msgs-text').value.trim();
+  if (!msgsText) { alert('대화 내용을 먼저 입력해주세요'); return; }
+
+  var lvl = document.getElementById('ce-lvl').value;
+  var lvlMap = {b:'Beginner',i:'Intermediate',a:'Advanced'};
+
+  btn.disabled = true;
+  btn.textContent = '⏳ 분석 중...';
+
+  var prompt = 'Korean language conversation (level: ' + lvlMap[lvl] + '):\n\n' + msgsText
+    + '\n\nExtract for learners. Return ONLY valid JSON, no markdown:\n'
+    + '{\n  "vocab": [{"ko":"단어","rom":"romanization","en":"meaning"}],\n'
+    + '  "grammar": [{"point":"pattern","ex":"example in English"}],\n'
+    + '  "mission": ["writing task 1","writing task 2","writing task 3"]\n}'
+    + '\n\nVocab: 5-7 key words. Grammar: 2-3 patterns. Mission: 3 writing practice tasks.';
+
+  try {
+    var resp = await callClaude({
+      feature: 'conv_analyze',
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2000,
+      messages: [{role:'user', content: prompt}]
+    });
+    var raw = resp.content.map(function(b){ return b.text||''; }).join('');
+    raw = raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+    var parsed = JSON.parse(raw);
+
+    document.getElementById('ce-vocab').value   = JSON.stringify(parsed.vocab   || [], null, 2);
+    document.getElementById('ce-grammar').value = JSON.stringify(parsed.grammar || [], null, 2);
+    document.getElementById('ce-mission').value = JSON.stringify(parsed.mission || [], null, 2);
+    document.getElementById('ai-result-area').style.display = 'block';
+
+    btn.disabled = false;
+    btn.textContent = '✅ 분석 완료 (재실행)';
+    btn.style.background = '#059669';
+    setTimeout(function(){ btn.textContent = '✨ AI 자동분석'; btn.style.background = '#7c3aed'; }, 3000);
+
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '✨ AI 자동분석';
+    var errEl = document.getElementById('ce-error');
+    errEl.textContent = 'AI 분석 오류: ' + (e.message || String(e));
+    errEl.style.display = 'block';
+  }
+}
+
+
+function makeJsonField(id, label, val) {
+  return '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:10px">' + label
+    + '<textarea id="' + id + '" rows="5" style="display:block;width:100%;margin-top:4px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;font-family:\'Courier New\',monospace;box-sizing:border-box;resize:vertical">'
+    + val.replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    + '</textarea></label>';
+}
+
+async function saveConvEdit(rowId) {
+  var ceErr = document.getElementById('ce-error');
+  ceErr.style.display = 'none';
+
+  var parseField = function(id) {
+    var el = document.getElementById(id);
+    if (!el || !el.value.trim()) return [];
+    try { return JSON.parse(el.value); }
+    catch(e) { throw new Error(id + ' JSON 파싱 오류: ' + e.message); }
+  };
+
+  // A:/B: 텍스트 → msgs JSON
+  var msgsText = document.getElementById('ce-msgs-text').value.trim();
+  var msgs = msgsText.split('\n').filter(function(l){ return l.trim(); }).map(function(line, idx) {
+    var isB = /^B:/i.test(line.trim());
+    var txt = line.replace(/^[AB]:\s*/i, '').trim();
+    return {s: isB ? 'r' : 'l', who: isB ? 'B' : 'A', txt: txt};
+  });
+
+  try {
+    var catVal = document.getElementById('ce-cat').value;
+    var catLabelMap = {everyday:'Everyday', work:'Workplace', friends:'Friends', family:'Family', dating:'Dating'};
+    var convObj = {
+      name:     document.getElementById('ce-name').value.trim(),
+      ctx:      document.getElementById('ce-ctx').value.trim(),
+      cat:      catVal,
+      lvl:      document.getElementById('ce-lvl').value,
+      avi:      document.getElementById('ce-avi').value.trim() || '💬',
+      catLabel: catLabelMap[catVal] || catVal,
+      msgs:     msgs,
+      vocab:    parseField('ce-vocab'),
+      grammar:  parseField('ce-grammar'),
+      mission:  parseField('ce-mission'),
+    };
+
+    if (!convObj.name) throw new Error('이름을 입력해주세요');
+    if (!convObj.msgs.length) throw new Error('대화 내용을 입력해주세요');
+
+    var sb = getSb();
+    var row = {data: convObj, cat: convObj.cat, lvl: convObj.lvl, name: convObj.name, ctx: convObj.ctx};
+
+    if (rowId) {
+      var { error } = await sb.from('conversations_data').update(row).eq('id', rowId);
+      if (error) throw error;
+    } else {
+      var { error } = await sb.from('conversations_data').insert(row);
+      if (error) throw error;
+    }
+
+    document.getElementById('conv-edit-overlay').remove();
+    showToastAdmin('✅ 저장 완료! AI 분석 생성 중…');
+    await loadConvList();
+
+    // 10번: AI 자동으로 vocab/grammar/mission 생성 후 article_cache에 저장
+    try {
+      var savedRes = await sb.from('conversations_data').select('id').order('created_at', {ascending:false}).limit(1);
+      var savedId = rowId || (savedRes.data && savedRes.data[0] && savedRes.data[0].id);
+      if (savedId && (!convObj.vocab || !convObj.vocab.length)) {
+        autoGenConvAI(savedId, convObj);
+      }
+    } catch(aiErr) { console.warn('AI gen skip:', aiErr); }
+
+  } catch(e) {
+    ceErr.textContent = e.message || String(e);
+    ceErr.style.display = 'block';
+  }
+}
+
+async function deleteConv(rowId) {
+  if (!confirm('이 대화를 삭제할까요?')) return;
+  var sb = getSb();
+  var { error } = await sb.from('conversations_data').delete().eq('id', rowId);
+  if (error) { alert('삭제 오류: ' + error.message); return; }
+  showToastAdmin('🗑 삭제됨');
+  await loadConvList();
+}
+
+function showToastAdmin(msg) {
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#0f172a;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:700;z-index:99999;font-family:inherit';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 2500);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ARTICLE IMAGE EDITOR
+// ═══════════════════════════════════════════════════════════
+async function goArticleImages() {
+  setSidebarActive('article-images');
+  var main = document.getElementById('main');
+  main.innerHTML = '<div style="max-width:960px">'
+    + '<h2 style="font-size:22px;font-weight:800;margin:0 0 6px">🖼 기사 이미지 관리</h2>'
+    + '<p style="color:#64748b;font-size:13px;margin:0 0 20px">URL을 입력하거나 Unsplash 검색으로 이미지 변경</p>'
+    + '<div id="img-mgr-list">⏳ 불러오는 중...</div>'
+    + '</div>';
+  
+  await loadArticleImageList();
+}
+
+async function loadArticleImageList() {
+  var el = document.getElementById('img-mgr-list');
+  if (!el) return;
+  var articles = DB.filter(function(a){ return a.status === 'published' || a.status === 'draft'; }).slice(0, 50);
+  
+  if (!articles.length) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">기사 없음</div>';
+    return;
+  }
+  
+  el.innerHTML = articles.map(function(a) {
+    var img = a.image || '';
+    var thumb = img || ('https://picsum.photos/seed/' + a.id + '/120/80');
+    return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:10px;display:flex;gap:14px;align-items:center">'
+      + '<img src="' + thumb + '" style="width:100px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0" onerror="this.src=\'https://picsum.photos/seed/'+a.id+'/120/80\'">'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (a.title_ko || a.title || '') + '</div>'
+      + '<div style="font-size:11px;color:#94a3b8;margin-bottom:8px">' + (a.section || '') + ' · ' + (a.status || '') + '</div>'
+      + '<div style="display:flex;gap:6px;align-items:center">'
+      + '<input id="img-url-' + a.id + '" value="' + img + '" placeholder="이미지 URL 입력..." style="flex:1;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">'
+      + '<button onclick="saveArticleImage(\'' + a.id + '\')" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">저장</button>'
+      + '</div>'
+      + '<div style="margin-top:6px;display:flex;gap:6px">'
+      + '<input id="img-search-' + a.id + '" placeholder="Unsplash 검색어..." style="flex:1;padding:5px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">'
+      + '<button onclick="searchUnsplash(\'' + a.id + '\')" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">🔍 검색</button>'
+      + '</div>'
+      + '<div id="img-results-' + a.id + '" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"></div>'
+      + '</div></div>';
+  }).join('');
+}
+
+async function saveArticleImage(articleId) {
+  var inp = document.getElementById('img-url-' + articleId);
+  if (!inp) return;
+  var url = inp.value.trim();
+  if (!url) return;
+  
+  // DB 업데이트
+  var sb = getSb();
+  var { error } = await sb.from('articles').update({ image: url }).eq('id', articleId);
+  if (error) { alert('저장 오류: ' + error.message); return; }
+  
+  // 로컬 캐시도 업데이트
+  var idx = DB.findIndex(function(a){ return a.id === articleId; });
+  if (idx >= 0) DB[idx].image = url;
+  
+  // 썸네일 즉시 업데이트
+  var imgEl = inp.closest('div[style*="border-radius:12px"]').querySelector('img');
+  if (imgEl) imgEl.src = url;
+  
+  showToastAdmin('✅ 이미지 저장됨');
+}
+
+async function searchUnsplash(articleId) {
+  var inp = document.getElementById('img-search-' + articleId);
+  var res = document.getElementById('img-results-' + articleId);
+  if (!inp || !res) return;
+  var q = inp.value.trim();
+  if (!q) return;
+  
+  res.innerHTML = '<span style="font-size:12px;color:#94a3b8">검색 중...</span>';
+  
+  try {
+    // Unsplash Source API (무료, 랜덤 이미지)
+    var keywords = q.split(' ').slice(0,3).join(',');
+    var urls = [];
+    for (var i = 0; i < 5; i++) {
+      urls.push('https://source.unsplash.com/300x200/?' + encodeURIComponent(keywords) + '&sig=' + (Date.now() + i));
+    }
+    res.innerHTML = urls.map(function(u, i) {
+      return '<img src="' + u + '" style="width:70px;height:50px;object-fit:cover;border-radius:6px;cursor:pointer;border:2px solid transparent" '
+        + 'onclick="selectUnsplashImg(this, \'' + articleId + '\')" '
+        + 'onmouseover="this.style.borderColor=\'#2563eb\'" onmouseout="this.style.borderColor=\'transparent\'">';
+    }).join('');
+  } catch(e) {
+    res.innerHTML = '<span style="font-size:12px;color:#ef4444">오류: ' + e.message + '</span>';
+  }
+}
+
+function selectUnsplashImg(imgEl, articleId) {
+  var urlInp = document.getElementById('img-url-' + articleId);
+  if (urlInp) urlInp.value = imgEl.src;
+  // highlight selected
+  var parent = imgEl.parentElement;
+  parent.querySelectorAll('img').forEach(function(i){ i.style.borderColor = 'transparent'; });
+  imgEl.style.borderColor = '#2563eb';
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// STORIES MANAGER
+// ═══════════════════════════════════════════════════════════
+async function goStoriesManager() {
+  setSidebarActive('stor-mgr');
+  var main = document.getElementById('main');
+  main.innerHTML = '<div style="max-width:960px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    + '<div><h2 style="font-size:22px;font-weight:800;margin:0">📖 Stories 관리</h2>'
+    + '<p style="color:#64748b;font-size:13px;margin:4px 0 0">stories_data 테이블 — 조회/수정/삭제/추가</p></div>'
+    + '<button onclick="openStoryEditModal(null)" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">+ 새 스토리 추가</button>'
+    + '</div>'
+    + '<div id="stor-mgr-list">⏳ 불러오는 중...</div>'
+    + '</div>';
+  await loadStoryList();
+}
+
+async function loadStoryList() {
+  var el = document.getElementById('stor-mgr-list');
+  if (!el) return;
+  var sb = getSb();
+  var { data, error } = await sb.from('stories_data').select('*').order('created_at', {ascending:false}).limit(100);
+  if (error || !data || !data.length) {
+    el.innerHTML = '<div style="background:#f8fafc;border-radius:12px;padding:40px;text-align:center;color:#94a3b8">' + (error ? error.message : '데이터 없음') + '</div>';
+    return;
+  }
+  el.innerHTML = data.map(function(row) {
+    var d = row.data || {};
+    var title = d.title || row.title || '(제목 없음)';
+    var titleEn = d.title_en || row.title_en || '';
+    var mood = d.mood || row.mood || '—';
+    var lvl  = d.lvl  || row.lvl  || '—';
+    var lvlMap = {b:'Beginner', i:'Intermediate', a:'Advanced'};
+    var preview = (d.preview || '').slice(0, 60);
+    return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;gap:14px">'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-size:14px;font-weight:700;color:#0f172a">' + title + (titleEn ? ' <span style="font-weight:400;color:#64748b;font-size:12px">/ ' + titleEn + '</span>' : '') + '</div>'
+      + '<div style="font-size:12px;color:#64748b;margin-top:2px">' + (preview || '(내용 없음)') + '</div>'
+      + '<div style="margin-top:6px;display:flex;gap:6px">'
+      + '<span style="background:#f3e8ff;color:#7c3aed;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px">' + (lvlMap[lvl]||lvl) + '</span>'
+      + '<span style="background:#f0fdf4;color:#15803d;font-size:11px;padding:2px 8px;border-radius:999px">' + mood + '</span>'
+      + '</div></div>'
+      + '<div style="display:flex;gap:8px;flex-shrink:0">'
+      + '<button onclick="openStoryEditModal(' + row.id + ')" style="background:#f1f5f9;color:#334155;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ 수정</button>'
+      + '<button onclick="deleteStory(' + row.id + ')" style="background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑 삭제</button>'
+      + '</div></div>';
+  }).join('');
+}
+
+async function openStoryEditModal(rowId) {
+  var sb = getSb();
+  var d = {};
+  if (rowId) {
+    var { data } = await sb.from('stories_data').select('*').eq('id', rowId).single();
+    d = (data && data.data) ? data.data : {};
+  }
+  var isNew = !rowId;
+
+  var overlay = document.createElement('div');
+  overlay.id = 'story-edit-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
+
+  overlay.innerHTML = '<div style="background:#fff;border-radius:18px;width:100%;max-width:780px;padding:28px 30px;box-shadow:0 24px 60px rgba(0,0,0,.2);">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    + '<h3 style="font-size:18px;font-weight:800;margin:0">' + (isNew ? '✨ 새 스토리 추가' : '✏️ 스토리 수정') + '</h3>'
+    + '<button onclick="closeStoryEditOverlay()" style="background:none;border:none;font-size:20px;cursor:pointer">✕</button>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">'
+    + ceField('se-title',    '제목 (한국어)', 'text', d.title||'', '예: 서울의 봄')
+    + ceField('se-title-en', '제목 (영어)',   'text', d.title_en||'', 'e.g. Spring in Seoul')
+    + ceField('se-read-time','읽기 시간',     'text', d.read_time||'3 min', '예: 3 min')
+    + '<div>'
+    + ceSelect('se-lvl',  '레벨', ['b','i','a'], ['Beginner','Intermediate','Advanced'], d.lvl||'b')
+    + '</div>'
+    + '</div>'
+    + '<div style="margin-bottom:12px">'
+    + ceField('se-mood', '분위기 (mood)', 'text', d.mood||'', '예: Heartwarming, Suspenseful, Funny')
+    + '</div>'
+    + '<div style="margin-bottom:12px">'
+    + '<label style="font-size:12px;font-weight:700;color:#374151;display:block">미리보기 (preview)<textarea id="se-preview" rows="2" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical">' + (d.preview||'').replace(/</g,'&lt;') + '</textarea></label>'
+    + '</div>'
+    + '<div style="margin-bottom:12px">'
+    + '<label style="font-size:12px;font-weight:700;color:#374151;display:block">스토리 본문 (HTML 가능)<textarea id="se-body" rows="10" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;font-family:monospace;box-sizing:border-box;resize:vertical">' + (d.body||'').replace(/</g,'&lt;') + '</textarea></label>'
+    + '</div>'
+    + '<div id="se-error" style="background:#fee2e2;border-radius:8px;padding:10px;color:#b91c1c;font-size:13px;display:none;margin-bottom:12px"></div>'
+    + '<div style="display:flex;gap:10px;justify-content:flex-end">'
+    + '<button onclick="closeStoryEditOverlay()" style="background:#f1f5f9;color:#334155;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">취소</button>'
+    + '<button onclick="saveStoryEdit(' + (rowId||'null') + ')" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">💾 저장</button>'
+    + '</div>'
+    + '</div>';
+
+  document.body.appendChild(overlay);
+}
+
+async function saveStoryEdit(rowId) {
+  var seErr = document.getElementById('se-error');
+  seErr.style.display = 'none';
+  try {
+    var lvlVal = document.getElementById('se-lvl').value;
+    var storyObj = {
+      title:     document.getElementById('se-title').value.trim(),
+      title_en:  document.getElementById('se-title-en').value.trim(),
+      lvl:       lvlVal,
+      mood:      document.getElementById('se-mood').value.trim(),
+      read_time: document.getElementById('se-read-time').value.trim() || '3 min',
+      preview:   document.getElementById('se-preview').value.trim(),
+      body:      document.getElementById('se-body').value.trim(),
+    };
+    if (!storyObj.title) throw new Error('제목을 입력해주세요');
+    var sb = getSb();
+    var row = {data: storyObj, lvl: lvlVal, mood: storyObj.mood, title: storyObj.title, title_en: storyObj.title_en, preview: storyObj.preview, read_time: storyObj.read_time};
+    if (rowId) {
+      var { error } = await sb.from('stories_data').update(row).eq('id', rowId);
+      if (error) throw error;
+    } else {
+      var { error } = await sb.from('stories_data').insert(row);
+      if (error) throw error;
+    }
+    document.getElementById('story-edit-overlay').remove();
+    showToastAdmin('✅ 저장 완료! AI 분석 생성 중…');
+    await loadStoryList();
+
+    // 10번: AI 자동으로 vocab/grammar 생성 후 article_cache에 저장
+    try {
+      var savedRes2 = await sb.from('stories_data').select('id').order('created_at', {ascending:false}).limit(1);
+      var savedId2 = rowId || (savedRes2.data && savedRes2.data[0] && savedRes2.data[0].id);
+      if (savedId2 && (!storyObj.vocab || !storyObj.vocab.length)) {
+        autoGenStoryAI(savedId2, storyObj);
+      }
+    } catch(aiErr2) { console.warn('AI gen skip:', aiErr2); }
+  } catch(e) {
+    seErr.textContent = e.message || String(e);
+    seErr.style.display = 'block';
+  }
+}
+
+async function deleteStory(rowId) {
+  if (!confirm('이 스토리를 삭제할까요?')) return;
+  var sb = getSb();
+  var { error } = await sb.from('stories_data').delete().eq('id', rowId);
+  if (error) { alert('삭제 오류: ' + error.message); return; }
+  showToastAdmin('🗑 삭제됨');
+  await loadStoryList();
+}
+
+
+function closeConvEditOverlay() {
+  var el = document.getElementById('conv-edit-overlay');
+  if (el) el.remove();
+}
+function closeStoryEditOverlay() {
+  var el = document.getElementById('story-edit-overlay');
+  if (el) el.remove();
+}
 </script>
 </body>
 </html>
