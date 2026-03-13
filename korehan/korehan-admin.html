@@ -2586,13 +2586,7 @@ async function generateConvs() {
   var prompt = 'You are creating Korean language learning content for KoreHan News.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","note":"optional"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3 missions. ' + lvlMap[lvl] + ' level Korean.';
 
   try {
-    var resp = await callClaude({
-      feature: 'conv_gen',
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 8000,
-      messages: [{role:'user', content: prompt}]
-    });
-    var raw = resp.content.map(function(b){ return b.text||''; }).join('');
+    var raw = await callAdminClaude(prompt);
     raw = raw.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
     var convs = JSON.parse(raw);
 
@@ -2848,7 +2842,7 @@ async function loadConvList() {
       + '<span style="background:#f0fdf4;color:#15803d;font-size:11px;padding:2px 8px;border-radius:999px">' + msgCount + ' msgs · ' + vocabCount + ' vocab · ' + grammarCount + ' grammar · ' + missionCount + ' mission</span>'
       + '</div></div>'
       + '<div style="display:flex;gap:8px;flex-shrink:0;">'
-      + '<button onclick="regenConvAI(' + row.id + ')" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit" title="AI로 vocab/grammar/mission 자동 생성">🤖 AI</button>'
+      + '<button onclick="regenConvAI(' + row.id + ')" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit" title="현재 대화 내용 기준으로 vocab/grammar/mission 다시 생성">🤖 AI Update</button>'
       + '<button onclick="openConvEditModal(' + row.id + ')" style="background:#f1f5f9;color:#334155;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ 수정</button>'
       + '<button onclick="deleteConv(' + row.id + ')" style="background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑 삭제</button>'
       + '</div></div>';
@@ -2884,7 +2878,7 @@ async function openConvEditModal(rowId, existingData) {
     + '<div style="font-size:28px">' + (isNew ? '✨' : '✏️') + '</div>'
     + '<div>'
     + '<h3 style="font-size:18px;font-weight:800;margin:0;color:#0f172a">' + (isNew ? '새 대화 추가' : '대화 수정') + '</h3>'
-    + '<p style="font-size:12px;color:#94a3b8;margin:2px 0 0">토픽과 대화 내용을 입력하면 AI가 단어/문법을 자동 분석해요</p>'
+    + '<p style="font-size:12px;color:#94a3b8;margin:2px 0 0">대화창에서 직접 수정/추가한 뒤 AI 자동분석을 누르면 vocab · grammar · mission이 현재 내용 기준으로 다시 업데이트됩니다.</p>'
     + '</div>'
     + '<button onclick="closeConvEditOverlay()" style="margin-left:auto;background:#f1f5f9;border:none;border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer;line-height:32px;">✕</button>'
     + '</div>'
@@ -2904,9 +2898,10 @@ async function openConvEditModal(rowId, existingData) {
     + '<div style="margin-bottom:16px">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
     + '<label style="font-size:12px;font-weight:700;color:#374151">💬 대화 내용 <span style="color:#94a3b8;font-weight:400">(A: 왼쪽 / B: 오른쪽, 줄바꿈으로 구분)</span></label>'
-    + '<button id="ai-analyze-btn" onclick="aiAnalyzeConv()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✨ AI 자동분석</button>'
+    + '<button id="ai-analyze-btn" onclick="aiAnalyzeConv()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✨ 현재 대화로 AI 업데이트</button>'
     + '</div>'
     + '<textarea id="ce-msgs-text" rows="7" placeholder="A: 오늘 저녁에 시간 돼?&#10;B: 응! 왜? 무슨 일 있어?&#10;A: 그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ" style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical;line-height:1.6">' + (msgsText.replace(/</g,'&lt;').replace(/>/g,'&gt;')) + '</textarea>'
+    + '<div style="margin-top:8px;font-size:12px;color:#64748b;line-height:1.6">Use one line per message. Edit the conversation here, then click <b>AI Update</b> to regenerate vocab, grammar, and missions from the edited dialog.</div>'
     + '</div>'
 
     // AI 분석 결과 영역
@@ -2968,13 +2963,7 @@ async function aiAnalyzeConv() {
     + '\n\nVocab: 5-7 key words. Grammar: 2-3 patterns. Mission: 3 writing practice tasks.';
 
   try {
-    var resp = await callClaude({
-      feature: 'conv_analyze',
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      messages: [{role:'user', content: prompt}]
-    });
-    var raw = resp.content.map(function(b){ return b.text||''; }).join('');
+    var raw = await callAdminClaude(prompt);
     raw = raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
     var parsed = JSON.parse(raw);
 
@@ -2984,13 +2973,13 @@ async function aiAnalyzeConv() {
     document.getElementById('ai-result-area').style.display = 'block';
 
     btn.disabled = false;
-    btn.textContent = '✅ 분석 완료 (재실행)';
+    btn.textContent = '✅ 업데이트 완료 (다시 실행)';
     btn.style.background = '#059669';
     setTimeout(function(){ btn.textContent = '✨ AI 자동분석'; btn.style.background = '#7c3aed'; }, 3000);
 
   } catch(e) {
     btn.disabled = false;
-    btn.textContent = '✨ AI 자동분석';
+    btn.textContent = '✨ 현재 대화로 AI 업데이트';
     var errEl = document.getElementById('ce-error');
     errEl.textContent = 'AI 분석 오류: ' + (e.message || String(e));
     errEl.style.display = 'block';
@@ -3055,7 +3044,7 @@ async function saveConvEdit(rowId) {
     }
 
     document.getElementById('conv-edit-overlay').remove();
-    showToastAdmin('✅ 저장 완료! AI 분석 생성 중…');
+    showToastAdmin('✅ Saved. You can edit the dialog and run AI Update anytime.');
     await loadConvList();
 
     // 10번: AI 자동으로 vocab/grammar/mission 생성 후 article_cache에 저장
