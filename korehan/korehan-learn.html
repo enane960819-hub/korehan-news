@@ -1,82 +1,805 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KoreHan Learn</title>
-
+<title>Learn Korean — KoreHan News</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css">
 <style>
-body{
-font-family:Arial, sans-serif;
-background:#f4f6fb;
-margin:0;
-padding:40px;
+.learn-hero {
+  background: linear-gradient(135deg,#0b1626,#1a3a6b);
+  padding: 44px 22px 36px; text-align:center; color:#fff;
+}
+.learn-hero h1 { font-family:'Playfair Display',serif; font-size:38px; font-weight:900; margin:0 0 10px; }
+.learn-hero p { margin:0; font-size:15px; color:rgba(255,255,255,0.68); line-height:1.6; max-width:560px; margin:0 auto; }
+.learn-hero .badge { display:inline-block; margin-bottom:14px; padding:4px 14px; border-radius:999px; background:rgba(122,184,245,0.2); color:#7ab8f5; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; }
+
+.learn-body { max-width:1100px; margin:0 auto; padding:24px 22px 48px; }
+
+/* PHRASE OF DAY */
+.pod-section {
+  background: var(--white); border:1px solid var(--border); border-radius:12px;
+  padding:22px; box-shadow:var(--shadow); margin-bottom:24px;
+}
+.pod-title { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--gray); margin-bottom:14px; }
+.pod-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; }
+.pod-item {
+  background: linear-gradient(135deg,#f0f4ff,#e8f0ff);
+  border:1px solid rgba(34,85,164,0.12); border-radius:10px; padding:16px;
+  text-align:center;
+}
+.pod-ko  { font-family:'Noto Serif KR', serif; font-weight:900; font-size:30px; color:var(--accent); letter-spacing:-0.02em; }
+.pod-rom { font-size:12px; font-style:italic; color:var(--gray); margin-top:4px; }
+.pod-en  { font-size:14px; font-weight:700; color:var(--dark); margin-top:6px; }
+
+/* FLASHCARDS */
+.learn-section-title {
+  font-family:'Playfair Display',serif; font-size:22px; font-weight:900;
+  margin:28px 0 14px; padding-bottom:8px; border-bottom:2px solid var(--border);
+}
+.learn-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+.tab-btn {
+  padding:7px 16px; border-radius:999px; border:1.5px solid var(--border);
+  background:var(--white); font-size:13px; font-weight:600; cursor:pointer;
+  color:var(--gray); font-family:inherit; transition:all .15s;
+}
+.tab-btn:hover,.tab-btn.on { background:var(--bright); color:#fff; border-color:var(--bright); }
+
+.vocab-card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+.vocab-card {
+  background:var(--white); border:1px solid var(--border); border-radius:10px;
+  padding:18px 12px; text-align:center; box-shadow:var(--shadow);
+  cursor:pointer; transition:all .2s; perspective:600px;
+  min-height:120px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+.vocab-card:hover { box-shadow:0 6px 22px rgba(0,0,0,0.11); transform:translateY(-2px); }
+.vocab-card.flipped { background:var(--dark); }
+.vc-front,.vc-back { width:100%; }
+.vc-back { display:none; }
+.vocab-card.flipped .vc-front { display:none; }
+.vocab-card.flipped .vc-back  { display:block; }
+.vc-ko  { font-family:'Playfair Display',serif; font-weight:900; font-size:28px; color:var(--accent); }
+.vocab-card.flipped .vc-ko { color:#7ab8f5; }
+.vc-rom { font-size:11px; font-style:italic; color:var(--gray); margin-top:3px; }
+.vocab-card.flipped .vc-rom { color:rgba(255,255,255,0.45); }
+.vc-en  { font-size:13px; font-weight:700; color:var(--dark); margin-top:6px; }
+.vocab-card.flipped .vc-en { color:#fff; }
+.vc-hint { font-size:11px; color:rgba(122,184,245,0.6); margin-top:8px; }
+
+/* SENTENCES */
+.sentence-box {
+  background:var(--white); border:1px solid var(--border); border-radius:10px;
+  padding:16px 18px; box-shadow:var(--shadow); margin-bottom:10px;
+}
+.sent-ko { font-size:18px; font-weight:800; color:var(--dark); margin-bottom:8px; line-height:1.6; letter-spacing:-0.01em; }
+.sent-en { font-size:14px; color:var(--gray); }
+.sent-level { display:inline-block; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.8px;
+  padding:2px 8px; border-radius:999px; background:rgba(34,85,164,0.1); color:var(--bright); margin-bottom:8px; }
+
+
+/* ── LISTENING QUIZ ──────────────────────────────────────── */
+.lq-wrap { background:#fff; border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:var(--shadow); margin-bottom:24px; }
+.lq-progress-bar { height:4px; background:var(--border); border-radius:99px; margin-bottom:24px; overflow:hidden; }
+.lq-progress-fill { height:4px; background:linear-gradient(90deg,#2255a4,#3d7fd4); border-radius:99px; transition:width .4s; }
+.lq-speaker-btn { width:100px; height:100px; border-radius:50%; background:#f0f6ff; border:none; font-size:40px; cursor:pointer; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; transition:transform .15s,background .2s; box-shadow:0 4px 16px rgba(34,85,164,.15); }
+.lq-speaker-btn:hover { transform:scale(1.06); background:#e0edff; }
+.lq-speaker-btn.playing { background:#2255a4; animation:lq-pulse 1s ease-in-out infinite; }
+@keyframes lq-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(34,85,164,.4)} 50%{box-shadow:0 0 0 12px rgba(34,85,164,0)} }
+@keyframes lq-slidein { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.lq-question { font-size:17px; font-weight:800; color:#0b1626; text-align:center; margin-bottom:24px; }
+.lq-choices { display:flex; flex-direction:column; gap:10px; }
+.lq-choice { padding:16px 20px; border:2px solid var(--border); border-radius:14px; background:#fff; font-size:15px; font-weight:700; cursor:pointer; text-align:center; font-family:'Noto Sans KR',sans-serif; transition:border-color .15s,background .15s,transform .1s; color:#0b1626; }
+.lq-choice:hover:not(:disabled) { border-color:#2255a4; background:#f0f6ff; transform:translateY(-1px); }
+.lq-choice.correct { border-color:#16a34a; background:#f0fdf4; color:#16a34a; }
+.lq-choice.wrong { border-color:#dc2626; background:#fef2f2; color:#dc2626; }
+.lq-choice:disabled { cursor:default; }
+.lq-explanation { margin-top:16px; padding:16px 18px; background:#fffbeb; border:1.5px solid #fcd34d; border-radius:14px; }
+.lq-exp-title { font-size:14px; font-weight:900; color:#d97706; margin-bottom:6px; }
+.lq-exp-body { font-size:14px; color:#445566; line-height:1.65; }
+.lq-next-btn { width:100%; margin-top:16px; padding:14px; background:#2255a4; color:#fff; border:none; border-radius:14px; font-size:15px; font-weight:900; cursor:pointer; transition:background .2s; }
+.lq-next-btn:hover { background:#1a3a6b; }
+.lq-result { text-align:center; padding:32px 20px; }
+.lq-score-ring { width:120px; height:120px; border-radius:50%; background:linear-gradient(135deg,#2255a4,#3d7fd4); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; color:#fff; flex-direction:column; }
+.lq-mode-btn { padding:10px 22px; border-radius:99px; border:2px solid var(--border); background:#fff; font-size:13px; font-weight:700; cursor:pointer; transition:all .2s; color:var(--accent); }
+.lq-mode-btn.on, .lq-mode-btn:hover { background:var(--bright); color:#fff; border-color:var(--bright); }
+
+
+
+/* upgraded example sentence tools */
+.sent-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.sent-tool-btn{
+  display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;
+  background:#f3f7ff;border:1px solid #dbe7fb;color:#1f4e98;font-size:11px;font-weight:800;cursor:pointer
+}
+.sent-note{
+  margin-top:12px;padding:12px 13px;border-radius:12px;background:linear-gradient(135deg,#f8fbff,#fff8f6);
+  border:1px solid #e3e9f4;font-size:12px;line-height:1.65;color:#516173
+}
+.sent-note b{color:#0d1b2e}
+.sent-ko.hidden-english + .sent-en{display:none}
+
+/* clean word quiz block */
+.wq-wrap{
+  background:#fff;border:1px solid var(--border);border-radius:18px;padding:24px;box-shadow:var(--shadow);margin-bottom:24px
+}
+.wq-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+.wq-eyebrow{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#2255a4}
+.wq-count{font-size:12px;color:var(--gray);font-weight:700}
+.wq-card{
+  background:linear-gradient(145deg,#0f1b31 0%,#18345c 60%,#2255a4 100%);
+  color:#fff;border-radius:22px;padding:20px 20px 18px;position:relative;overflow:hidden;margin-bottom:14px
+}
+.wq-card:before{content:'';position:absolute;right:-28px;top:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08)}
+.wq-ko{font-family:'Noto Serif KR', serif;font-size:30px;font-weight:900;line-height:1.2;letter-spacing:-0.02em;margin-bottom:6px}
+.wq-rom{font-size:12px;color:rgba(255,255,255,.62);font-style:italic}
+.wq-prompt{font-size:14px;font-weight:800;color:#0d1b2e;margin:16px 0 10px}
+.wq-options{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wq-opt{
+  border:1.5px solid var(--border);background:#fff;border-radius:16px;padding:14px 14px;
+  font-size:14px;font-weight:800;color:#0d1b2e;cursor:pointer;transition:all .16s
+}
+.wq-opt:hover{border-color:#2255a4;background:#f4f8ff;transform:translateY(-1px)}
+.wq-opt.correct{border-color:#16a34a;background:#f0fdf4;color:#15803d}
+.wq-opt.wrong{border-color:#dc2626;background:#fef2f2;color:#b91c1c}
+.wq-feedback{
+  margin-top:14px;padding:14px 15px;border-radius:14px;background:#fff8e8;border:1.5px solid #f6d26b;
+  font-size:13px;line-height:1.7;color:#5f4b10
+}
+.wq-actions{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap}
+.wq-next,.wq-refresh{
+  border:none;border-radius:999px;padding:11px 18px;font-size:13px;font-weight:900;cursor:pointer
+}
+.wq-next{background:#2255a4;color:#fff}
+.wq-refresh{background:#eef4ff;color:#2255a4}
+@media(max-width:640px){
+  .wq-options{grid-template-columns:1fr}
+  .wq-ko{font-size:26px}
 }
 
-.container{
-max-width:800px;
-margin:auto;
-background:white;
-padding:30px;
-border-radius:12px;
-box-shadow:0 10px 30px rgba(0,0,0,.08);
-}
 
-h1{
-color:#1a3a6b;
-margin-top:0;
+.sentence-filter-btn{
+  padding:8px 14px;border-radius:999px;border:1.5px solid var(--border);background:#fff;
+  color:var(--accent);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit
 }
+.sentence-filter-btn.on,.sentence-filter-btn:hover{background:var(--bright);border-color:var(--bright);color:#fff}
 
-.card{
-background:#eef3ff;
-padding:16px;
-border-radius:10px;
-margin-top:20px;
-}
-
-.sentence{
-font-size:18px;
-font-weight:bold;
-}
-
-.translation{
-color:#555;
-margin-top:6px;
-}
-
-button{
-margin-top:15px;
-padding:10px 18px;
-border:none;
-border-radius:8px;
-background:#2a5db4;
-color:white;
-font-weight:bold;
-cursor:pointer;
-}
 </style>
 </head>
-
 <body>
+<div id="kh-header"></div>
 
-<div class="container">
-
-<h1>KoreHan Learn</h1>
-
-<div class="card">
-<div class="sentence">시험이 끝나서 이제 마음이 놓여요.</div>
-<div class="translation">Now that the exam is over, I feel relieved.</div>
-<button>Listen</button>
+<div class="learn-hero">
+  <div class="badge">✏️ Korean Learning Center</div>
+  <h1>Learn Korean with KoreHan</h1>
+  <p>Study essential Korean vocabulary.<br>Click flashcards to reveal meanings, then test yourself with quizzes!</p>
 </div>
 
-<div class="card">
-<div class="sentence">친구가 무사히 도착해서 마음이 놓였어요.</div>
-<div class="translation">I felt relieved after my friend arrived safely.</div>
-<button>Listen</button>
+<div class="learn-body">
+
+  <!-- PHRASE OF DAY -->
+  <div class="pod-section">
+    <div class="pod-title">🌟 Today's Phrase</div>
+    <div class="pod-grid" id="pod-grid"></div>
+  </div>
+
+  <!-- FLASHCARDS -->
+  <div class="learn-section-title">📇 Vocabulary Flashcards — 단어 카드</div>
+  <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">Click a card to reveal the meaning the meaning</p>
+
+  <div class="learn-tabs" id="vocab-tabs"></div>
+  <div class="vocab-card-grid" id="vocab-grid"></div>
+  <div style="text-align:center;margin-top:18px"><button id="vocab-more-btn" onclick="loadMoreCards()" class="quiz-next" style="display:none">Load more</button></div>
+
+  <!-- EXAMPLE SENTENCES -->
+  <div class="learn-section-title" style="margin-top:36px">💬 Example Sentences — 예문</div>
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+    <button class="sentence-filter-btn on" onclick="filterSentences('All',this)">All</button>
+    <button class="sentence-filter-btn" onclick="filterSentences('Beginner',this)">Beginner</button>
+    <button class="sentence-filter-btn" onclick="filterSentences('Intermediate',this)">Intermediate</button>
+    <button class="sentence-filter-btn" onclick="filterSentences('Advanced',this)">Advanced</button>
+    <button onclick="generateAISentences(this)" style="margin-left:auto;background:linear-gradient(135deg,#0b1626,#1a3a6b);color:#fff;border:none;border-radius:999px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer">✨ Generate from Articles</button>
+  </div>
+  <div id="sentences-list"></div>
+
+
+
+<!-- WORD QUIZ -->
+<div class="learn-section-title" style="margin-top:40px">🧠 Word Quiz</div>
+<p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">Review saved and article-based vocabulary in a cleaner quiz format.</p>
+
+<div class="wq-wrap">
+  <div class="wq-head">
+    <div>
+      <div class="wq-eyebrow">Vocabulary Review</div>
+      <div style="font-size:18px;font-weight:900;color:#0b1626;margin-top:4px">Quick meaning check</div>
+    </div>
+    <div class="wq-count" id="wq-count">Question 1</div>
+  </div>
+
+  <div class="wq-card">
+    <div class="wq-ko" id="wq-ko">방문객</div>
+    <div class="wq-rom" id="wq-rom">bangmun-gaek</div>
+  </div>
+
+  <div class="wq-prompt">Choose the correct meaning.</div>
+  <div class="wq-options" id="wq-options"></div>
+  <div id="wq-feedback"></div>
+
+  <div class="wq-actions">
+    <button class="wq-refresh" onclick="regenWordQuiz()">🔄 New set</button>
+    <button class="wq-next" id="wq-next-btn" onclick="nextWordQuiz()" style="display:none">Next question</button>
+  </div>
 </div>
+
+
+  <!-- LISTENING QUIZ -->
+  <div class="learn-section-title" style="margin-top:40px">🎧 Listening Quiz</div>
+  <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">Listen to Korean sentences and choose what you heard</p>
+
+  <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+    <button class="lq-mode-btn on" onclick="setLQMode('hear',this)">🔊 What did you hear?</button>
+    <button class="lq-mode-btn" onclick="setLQMode('mean',this)">💬 What does it mean?</button>
+    <button onclick="startListeningQuiz()" style="margin-left:auto;background:linear-gradient(135deg,#0b1626,#1a3a6b);color:#fff;border:none;border-radius:999px;padding:7px 18px;font-size:13px;font-weight:700;cursor:pointer">✨ Generate with AI</button>
+  </div>
+
+  <div id="lq-container">
+    <div style="text-align:center;padding:48px 20px;color:var(--gray)">
+      <div style="font-size:48px;margin-bottom:12px">🎧</div>
+      <div style="font-weight:700;font-size:15px;margin-bottom:6px">Ready to practice listening?</div>
+      <div style="font-size:13px;margin-bottom:20px">AI generates questions from Korean vocabulary</div>
+      <button onclick="startListeningQuiz()" style="padding:12px 28px;background:#2255a4;color:#fff;border:none;border-radius:99px;font-size:14px;font-weight:900;cursor:pointer">🎧 Start Listening Quiz</button>
+    </div>
+  </div>
+
+
 
 </div>
 
+<div id="kh-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js"></script>
+<script>
+const CATEGORIES = {
+  'All':null,
+  'Basics':['뉴스','학교','가족','집','날씨','음식','엄마','아빠','친구','공부','나라','봄','여름','가을','겨울'],
+  'Society':['사회','정부','국회','법안','정치','대통령','표결'],
+  'Economy':['경제','투자','수출','무역','흑자','금리','기준금리','인하','코스피','반도체','계약','공급'],
+  'World':['국제','유엔','안보리','나토','정상','중동','평화','탄소중립','협약'],
+  'Culture':['문화','드라마','공연','매진','스포츠','손흥민','챔피언스리그','결승'],
+};
+
+
+
+const allVocabKeys = Object.keys(VOCAB);
+
+async function init() {
+  // Phrases
+  const phrases = getPhrases ? getPhrases() : [];
+  const podGrid = document.getElementById('pod-grid');
+  if (podGrid) podGrid.innerHTML = phrases.map(p=>`
+    <div class="pod-item">
+      <div class="pod-ko vocab-zone">${p.ko}</div>
+      <div class="pod-rom">${p.rom}</div>
+      <div class="pod-en">${p.en}</div>
+    </div>`).join('');
+
+  // Tabs
+  const tabsEl = document.getElementById('vocab-tabs');
+  if (tabsEl) {
+    tabsEl.innerHTML = Object.keys(CATEGORIES).map((cat,i)=>
+      `<button class="tab-btn${i===0?' on':''}" onclick="showCategory('${cat}',this)">${cat}</button>`
+    ).join('');
+  }
+
+  // article_cache vocab/sentences 로드
+  let cacheVocab = [], cacheSentences = [];
+  if (typeof getArticleCacheVocab === 'function') {
+    [cacheVocab, cacheSentences] = await Promise.all([
+      getArticleCacheVocab(),
+      getArticleCacheSentences()
+    ]);
+    window._cacheVocabList = cacheVocab;
+  }
+
+  showCategory('All', document.querySelector('.tab-btn'));
+
+  // Sentences — article_cache 우선, fallback localStorage
+  if (cacheSentences.length) {
+    window._allSentences = cacheSentences.slice().sort(() => Math.random() - 0.5).slice(0, 40);
+  } else {
+    window._allSentences = getSentences ? getSentences() : [];
+  }
+  renderSentences(window._allSentences);
+  initWordQuiz();
+
+  initTooltips();
+}
+
+
+
+function renderSentences(list) {
+  const sentEl = document.getElementById('sentences-list');
+  if (!sentEl) return;
+  sentEl.innerHTML = list.length ? list.map(function(s, idx){
+    var note = '';
+    if ((s.level || '') === 'Beginner') note = 'This sentence is good for noticing basic subject + object + verb order.';
+    else if ((s.level || '') === 'Intermediate') note = 'Focus on how connectors and longer noun phrases make the sentence feel more natural.';
+    else note = 'Pay attention to nuance, embedded information, and how the sentence flows as a whole.';
+    return '<div class="sentence-box">'
+      + '<div class="sent-level">' + s.level + '</div>'
+      + '<div class="sent-ko vocab-zone" id="sent-ko-' + idx + '">' + s.ko + '</div>'
+      + '<div class="sent-en" id="sent-en-' + idx + '">' + s.en + '</div>'
+      + '<div class="sent-tools">'
+      +   '<button class="sent-tool-btn" onclick="speakSentence(' + idx + ')">🔊 Listen</button>'
+      +   '<button class="sent-tool-btn" onclick="toggleSentenceEnglish(' + idx + ', this)">🙈 Hide English</button>'
+      +   '<button class="sent-tool-btn" onclick="copySentence(' + idx + ')">📋 Copy</button>'
+      + '</div>'
+      + '<div class="sent-note"><b>Study note:</b> ' + note + '</div>'
+      + '</div>';
+  }).join('') : '<p style="color:#aaa;padding:12px 0">No sentences found.</p>';
+  document.querySelectorAll('#sentences-list .vocab-zone').forEach(function(el){ wrapVocab(el); });
+}
+
+
+function filterSentences(level, btn) {
+  document.querySelectorAll('.sentence-filter-btn').forEach(function(b){ b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+  var list = window._allSentences || [];
+  renderSentences(level === 'All' ? list : list.filter(function(s){ return s.level === level; }));
+}
+
+async function generateAISentences(btn) {
+  var articles = published().slice(0, 6);
+  if (!articles.length) { alert('No articles found to generate from.'); return; }
+  var orig = btn.textContent;
+  btn.textContent = '⏳ Generating...';
+  btn.disabled = true;
+
+  var articleTexts = articles.map(function(a){
+    return (a.title || '') + ': ' + (a.body || '').slice(0, 150);
+  }).join('\n');
+
+  var prompt = 'You are a Korean language teacher. Based on these Korean news article excerpts, create 12 natural example sentences for learners (4 Beginner, 4 Intermediate, 4 Advanced). Each sentence should use vocabulary that appears in the articles.\n\nArticles:\n' + articleTexts + '\n\nRespond ONLY in this exact JSON format (no markdown):\n[{"level":"Beginner","ko":"Korean sentence","en":"English translation"},...]';
+
+  try {
+    var res = await fetch('https://purple-glitter-be9d.enane960819.workers.dev/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    var data = await res.json();
+    var rawText = (data.content && data.content[0] && data.content[0].text) || data.text || '';
+    var clean = rawText.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+    var start = clean.indexOf('['), end = clean.lastIndexOf(']');
+    if (start >= 0 && end > start) clean = clean.slice(start, end + 1);
+    var generated = JSON.parse(clean);
+    window._allSentences = generated.map(function(s, i){ return Object.assign({id: 'ai' + i}, s); });
+    renderSentences(window._allSentences);
+    btn.textContent = '✅ Generated!';
+    setTimeout(function(){ btn.textContent = orig; btn.disabled = false; }, 2000);
+  } catch(e) {
+    btn.textContent = orig;
+    btn.disabled = false;
+    alert('Generation failed. Please try again.');
+  }
+}
+
+// Cards per page
+const CARDS_PER_PAGE = 20;
+var currentCardList = [];
+var currentCardPage = 0;
+
+function showCategory(cat, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+
+  const wordBank = getWordBank ? getWordBank() : [];
+  const cacheVocabList = window._cacheVocabList || [];
+  const cacheKeys = new Set(cacheVocabList.map(w=>w.word||''));
+  const cacheWords = cacheVocabList.map(w=>({ ko:w.word||'', rom:w.reading||'', en:w.meaning||'' }));
+  const wbKeys = new Set(wordBank.map(w=>w.ko));
+
+  // All word bank words (with or without VOCAB entry)
+  let wbWords;
+  if(cat==='All' || !CATEGORIES[cat]){
+    wbWords = wordBank.map(w=>({ ko:w.ko, rom:w.rom||'', en:w.en||'' }));
+  } else {
+    wbWords = wordBank
+      .filter(w=>CATEGORIES[cat] && CATEGORIES[cat].includes(w.ko))
+      .map(w=>({ ko:w.ko, rom:w.rom||'', en:w.en||'' }));
+  }
+
+  // VOCAB dictionary words not already in word bank
+  let keys = CATEGORIES[cat] || allVocabKeys;
+  const vocabWords = keys.filter(k=>VOCAB[k] && !wbKeys.has(k))
+    .map(k=>({ ko:k, rom:VOCAB[k].rom, en:VOCAB[k].en }));
+
+  currentCardList = [...wbWords, ...vocabWords];
+  currentCardPage = 0;
+  renderCardPage();
+}
+
+function cardHTML_learn(ko, rom, en){
+  var d = document.createElement('div');
+  d.className = 'vocab-card';
+  d.addEventListener('click', function(e){
+    if(e.target.closest('.vc-save-btn')) return;
+    this.classList.toggle('flipped');
+  });
+  d.innerHTML = '<div class="vc-front">'
+    +'<div class="vc-ko">'+ko+'</div>'
+    +'<div class="vc-rom">'+rom+'</div>'
+    +'<div style="font-size:10px;color:#aac;margin-top:6px">tap to reveal</div>'
+    +'</div>'
+    +'<div class="vc-back">'
+    +'<div class="vc-ko">'+ko+'</div>'
+    +'<div class="vc-rom">'+rom+'</div>'
+    +'<div class="vc-en">'+en+'</div>'
+    +'</div>'
+    +'<button class="vc-save-btn" title="Save" data-ko="'+ko+'" data-rom="'+rom+'" data-en="'+en+'" onclick="toggleSaveWord(this,this.dataset.ko,this.dataset.rom,this.dataset.en)">🔖</button>'
+    +'<button class="tts-btn vc-tts-btn" title="발음 듣기" onclick="event.stopPropagation();ttsSpeak(this.dataset.ko,this)" data-ko="'+ko+'">🔊</button>';
+  return d.outerHTML;
+}
+
+async function toggleSaveWord(btn, ko, rom, en){
+  if(!supaUser){ openAuthModal('signin'); return; }
+  const saved = btn.classList.contains('saved');
+  if(saved){
+    await dbRemoveWord(ko);
+    btn.classList.remove('saved');
+    btn.title = 'Save';
+  } else {
+    await dbSaveWord(ko, rom, en);
+    btn.classList.add('saved');
+    btn.title = 'Save됨';
+  }
+}
+
+function renderCardPage(){
+  const grid = document.getElementById('vocab-grid');
+  const moreBtn = document.getElementById('vocab-more-btn');
+  if(!grid) return;
+
+  const end = (currentCardPage + 1) * CARDS_PER_PAGE;
+  const visible = currentCardList.slice(0, end);
+
+  grid.innerHTML = visible.map(function(w){ return cardHTML_learn(w.ko, w.rom, w.en); }).join('');
+
+  // 이벤트 위임 - innerHTML 후 클릭 이벤트 다시 붙이기
+  grid.querySelectorAll('.vocab-card').forEach(function(card) {
+    card.addEventListener('click', function(e) {
+      if (e.target.closest('.vc-save-btn')) return;
+      card.classList.toggle('flipped');
+    });
+  });
+
+  // Show/hide load more button
+  if(moreBtn){
+    if(end < currentCardList.length){
+      moreBtn.style.display = 'block';
+      moreBtn.textContent = 'Load more (' + (currentCardList.length - end) + ' remaining)';
+    } else {
+      moreBtn.style.display = 'none';
+    }
+  }
+}
+
+function loadMoreCards(){
+  currentCardPage++;
+  renderCardPage();
+}
+
+
+
+function speakSentence(idx) {
+  var ko = document.getElementById('sent-ko-' + idx);
+  if (!ko || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  var utter = new SpeechSynthesisUtterance(ko.innerText.trim());
+  utter.lang = 'ko-KR';
+  utter.rate = 0.9;
+  window.speechSynthesis.speak(utter);
+}
+
+function toggleSentenceEnglish(idx, btn) {
+  var en = document.getElementById('sent-en-' + idx);
+  if (!en) return;
+  var hidden = en.style.display === 'none';
+  en.style.display = hidden ? '' : 'none';
+  if (btn) btn.textContent = hidden ? '🙈 Hide English' : '👀 Show English';
+}
+
+function copySentence(idx) {
+  var ko = document.getElementById('sent-ko-' + idx);
+  if (!ko || !navigator.clipboard) return;
+  navigator.clipboard.writeText(ko.innerText.trim());
+}
+
+var _wqPool = [];
+var _wqIdx = 0;
+var _wqQuestion = null;
+var _wqAnswered = false;
+
+function buildWordQuizPool() {
+  var pool = [];
+  var seen = new Set();
+  (window._cacheVocabList || []).forEach(function(w){
+    var ko = w.word || '';
+    if (!ko || seen.has(ko)) return;
+    seen.add(ko);
+    pool.push({ ko: ko, rom: w.reading || '', en: w.meaning || '' });
+  });
+  var wordBank = typeof getWordBank === 'function' ? getWordBank() : [];
+  wordBank.forEach(function(w){
+    if (!w.ko || seen.has(w.ko)) return;
+    seen.add(w.ko);
+    pool.push({ ko: w.ko, rom: w.rom || '', en: w.en || '' });
+  });
+  Object.keys(VOCAB || {}).forEach(function(k){
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    pool.push({ ko: k, rom: (VOCAB[k]||{}).rom || '', en: (VOCAB[k]||{}).en || '' });
+  });
+  return pool.filter(function(w){ return w.ko && w.en; });
+}
+
+function shuffleArray(arr) {
+  return arr.slice().sort(function(){ return Math.random() - 0.5; });
+}
+
+function initWordQuiz() {
+  _wqPool = shuffleArray(buildWordQuizPool()).slice(0, 12);
+  _wqIdx = 0;
+  renderWordQuiz();
+}
+
+function regenWordQuiz() {
+  initWordQuiz();
+}
+
+function renderWordQuiz() {
+  var countEl = document.getElementById('wq-count');
+  var koEl = document.getElementById('wq-ko');
+  var romEl = document.getElementById('wq-rom');
+  var optsEl = document.getElementById('wq-options');
+  var fbEl = document.getElementById('wq-feedback');
+  var nextBtn = document.getElementById('wq-next-btn');
+  if (!koEl || !_wqPool.length) return;
+
+  if (_wqIdx >= _wqPool.length) _wqIdx = 0;
+  _wqQuestion = _wqPool[_wqIdx];
+  _wqAnswered = false;
+
+  var wrongs = shuffleArray(_wqPool.filter(function(w){ return w.ko !== _wqQuestion.ko; })).slice(0,3).map(function(w){ return w.en; });
+  var options = shuffleArray([_wqQuestion.en].concat(wrongs));
+
+  countEl.textContent = 'Question ' + (_wqIdx + 1) + ' of ' + _wqPool.length;
+  koEl.textContent = _wqQuestion.ko;
+  romEl.textContent = _wqQuestion.rom || '';
+  fbEl.innerHTML = '';
+  nextBtn.style.display = 'none';
+
+  optsEl.innerHTML = options.map(function(opt){
+    return '<button class="wq-opt" onclick="answerWordQuiz(this, ' + JSON.stringify(opt).replace(/"/g,'&quot;') + ')">' + opt + '</button>';
+  }).join('');
+}
+
+function answerWordQuiz(btn, value) {
+  if (_wqAnswered || !_wqQuestion) return;
+  _wqAnswered = true;
+  var correct = value === _wqQuestion.en;
+  var opts = document.querySelectorAll('#wq-options .wq-opt');
+  opts.forEach(function(el){
+    if (el.textContent === _wqQuestion.en) el.classList.add('correct');
+    if (el === btn && !correct) el.classList.add('wrong');
+    el.disabled = true;
+  });
+  var fbEl = document.getElementById('wq-feedback');
+  fbEl.innerHTML = '<div class="wq-feedback"><b>' + (correct ? 'Nice.' : 'Not quite.') + '</b> '
+    + _wqQuestion.ko + ' means <b>' + _wqQuestion.en + '</b>.'
+    + (_wqQuestion.rom ? ' Reading: <b>' + _wqQuestion.rom + '</b>.' : '')
+    + '</div>';
+  document.getElementById('wq-next-btn').style.display = 'inline-flex';
+}
+
+function nextWordQuiz() {
+  _wqIdx++;
+  renderWordQuiz();
+}
+
+
+// ══ LISTENING QUIZ ══════════════════════════════════════════════
+
+var _lqMode       = 'hear';   // 'hear' | 'mean'
+var _lqQuestions  = [];
+var _lqIdx        = 0;
+var _lqScore      = 0;
+var _lqAnswered   = false;
+var _lqSpeaking   = false;
+
+function setLQMode(mode, btn) {
+  _lqMode = mode;
+  document.querySelectorAll('.lq-mode-btn').forEach(function(b){ b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+}
+
+async function startListeningQuiz() {
+  var container = document.getElementById('lq-container');
+  container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray)">'
+    + '<div style="font-size:32px;margin-bottom:10px;animation:lq-pulse 1s ease-in-out infinite;display:inline-block">✨</div>'
+    + '<div style="font-size:14px;font-weight:700">AI가 문제를 만들고 있어요...</div></div>';
+
+  var apiKey = null; // 더 이상 필요 없음 — 프록시가 처리
+  if (false) { // 하위 호환성 유지용 (실행 안 됨)
+    return;
+  }
+
+  // 단어 소스: saved words → 없으면 기본 단어 사용
+  var words = (typeof savedWords !== 'undefined' && savedWords.length >= 4)
+    ? savedWords.slice(0, 12).map(function(w){ return w.ko + '(' + (w.en||'') + ')'; }).join(', ')
+    : '경제(economy), 대통령(president), 문화(culture), 반도체(semiconductor), 사회(society), 수출(export), 투자(investment), 뉴스(news)';
+
+  var modeInstr = _lqMode === 'hear'
+    ? 'For each question: provide a correct Korean sentence, and 2 wrong Korean sentences that sound similar (similar syllables or grammar patterns). The user will LISTEN and pick the correct one.'
+    : 'For each question: provide a correct Korean sentence, and 2 wrong English meanings. The user will see/hear Korean and pick the correct English meaning.';
+
+  var prompt = 'You are a Korean listening comprehension quiz generator.\n\nWords to use (pick 5): ' + words + '\n\n' + modeInstr + '\n\nReturn ONLY this JSON (no markdown):\n{"questions":[{"sentence":"Korean sentence","correct":"correct answer","wrong1":"wrong option","wrong2":"wrong option","explanation":"Brief grammar explanation in English, 2-3 sentences."}]}\n\nGenerate exactly 5 questions. Make wrong options plausible but clearly wrong.';
+
+  try {
+    var data = await callClaude({
+      feature: 'quiz',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1200,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var raw  = (data.content || []).map(function(c){ return c.text||''; }).join('');
+    var clean = raw.replace(/```json|```/g,'').trim();
+    var parsed = JSON.parse(clean);
+
+    _lqQuestions = parsed.questions.map(function(q) {
+      // choices 섞기
+      var choices = [q.correct, q.wrong1, q.wrong2].sort(function(){ return Math.random()-.5; });
+      return { sentence: q.sentence, correct: q.correct, choices: choices, explanation: q.explanation };
+    });
+    _lqIdx   = 0;
+    _lqScore = 0;
+    renderLQQuestion();
+  } catch(e) {
+    container.innerHTML = '<div style="padding:32px;text-align:center;color:#dc2626">'
+      + '<div style="font-size:36px;margin-bottom:10px">⚠️</div>'
+      + '<div style="font-weight:700;margin-bottom:12px">Generation failed</div>'
+      + '<button onclick="startListeningQuiz()" style="padding:10px 24px;background:#2255a4;color:#fff;border:none;border-radius:99px;font-size:13px;font-weight:700;cursor:pointer">🔄 Try again</button>'
+      + '</div>';
+  }
+}
+
+function renderLQQuestion() {
+  var q         = _lqQuestions[_lqIdx];
+  var total     = _lqQuestions.length;
+  var pct       = Math.round((_lqIdx / total) * 100);
+  var container = document.getElementById('lq-container');
+  _lqAnswered   = false;
+
+  var questionText = _lqMode === 'hear'
+    ? 'What did you hear?'
+    : 'What does this sentence mean?';
+
+  container.innerHTML =
+    '<div class="lq-wrap">'
+
+    // progress
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    + '<span style="font-size:12px;font-weight:700;color:var(--gray)">' + (_lqIdx+1) + ' / ' + total + '</span>'
+    + '<span style="font-size:12px;font-weight:700;color:#2255a4">Score: ' + _lqScore + '</span>'
+    + '</div>'
+    + '<div class="lq-progress-bar"><div class="lq-progress-fill" style="width:' + pct + '%"></div></div>'
+
+    // speaker
+    + '<div style="text-align:center;margin-bottom:20px">'
+    + '<button class="lq-speaker-btn" id="lq-speak-btn" onclick="lqSpeak()">'
+    + '<span style="font-size:40px">🔊</span>'
+    + '</button>'
+    + '<div style="font-size:12px;color:var(--gray);margin-top:8px">Tap to listen again</div>'
+    + '</div>'
+
+    // question
+    + '<div class="lq-question">' + questionText + '</div>'
+
+    // choices
+    + '<div class="lq-choices">'
+    + q.choices.map(function(c, i) {
+        return '<button class="lq-choice" onclick="lqAnswer(this,&quot;' + c.replace(/"/g,'&quot;') + '&quot;)">' + c + '</button>';
+      }).join('')
+    + '</div>'
+
+    + '<div id="lq-feedback"></div>'
+    + '</div>';
+
+  // 자동 재생
+  setTimeout(lqSpeak, 300);
+}
+
+function lqSpeak() {
+  var q   = _lqQuestions[_lqIdx];
+  var btn = document.getElementById('lq-speak-btn');
+  var text = q.sentence;
+
+  if (btn) { btn.classList.add('playing'); }
+  window.speechSynthesis.cancel();
+
+  var utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'ko-KR';
+  utter.rate = 0.82;
+  utter.onend = function() { if(btn) btn.classList.remove('playing'); };
+  window.speechSynthesis.speak(utter);
+}
+
+function lqAnswer(btn, chosen) {
+  if (_lqAnswered) return;
+  _lqAnswered = true;
+  chosen = chosen.replace(/&quot;/g, '"');
+
+  var q       = _lqQuestions[_lqIdx];
+  var correct = chosen === q.correct;
+  if (correct) _lqScore++;
+
+  // 모든 버튼 disable + 색 표시
+  document.querySelectorAll('.lq-choice').forEach(function(b) {
+    b.disabled = true;
+    if (b.textContent.trim() === q.correct) b.classList.add('correct');
+  });
+  if (!correct) btn.classList.add('wrong');
+
+  // Explanation + Next 버튼 (슬라이드업)
+  var fb = document.getElementById('lq-feedback');
+  fb.innerHTML =
+    '<div class="lq-explanation" style="animation:lq-slidein .3s ease">'
+    + '<div class="lq-exp-title">💡 ' + (correct ? 'Correct! 🎉' : 'Not quite') + '</div>'
+    + '<div class="lq-exp-body">' + q.explanation + '</div>'
+    + '</div>'
+    + '<button class="lq-next-btn" onclick="lqNext()">'
+    + (_lqIdx < _lqQuestions.length - 1 ? 'Next →' : 'See Results 🏁')
+    + '</button>';
+}
+
+function lqNext() {
+  _lqIdx++;
+  if (_lqIdx >= _lqQuestions.length) {
+    lqShowResult();
+  } else {
+    renderLQQuestion();
+  }
+}
+
+function lqShowResult() {
+  var total   = _lqQuestions.length;
+  var pct     = Math.round((_lqScore / total) * 100);
+  var emoji   = pct >= 80 ? '🏆' : pct >= 60 ? '👍' : '💪';
+  var msg     = pct >= 80 ? 'Excellent listening!' : pct >= 60 ? 'Good job!' : 'Keep practicing!';
+
+  document.getElementById('lq-container').innerHTML =
+    '<div class="lq-wrap lq-result">'
+    + '<div class="lq-score-ring">'
+    + '<div style="font-size:32px">' + emoji + '</div>'
+    + '<div style="font-size:20px;font-weight:900">' + pct + '%</div>'
+    + '</div>'
+    + '<div style="font-size:20px;font-weight:900;color:#0b1626;margin-bottom:8px">' + msg + '</div>'
+    + '<div style="font-size:14px;color:var(--gray);margin-bottom:28px">' + _lqScore + ' / ' + total + ' correct</div>'
+    + '<div style="display:flex;gap:12px;justify-content:center">'
+    + '<button onclick="startListeningQuiz()" style="padding:12px 24px;background:#2255a4;color:#fff;border:none;border-radius:99px;font-size:14px;font-weight:900;cursor:pointer">🔄 New Quiz</button>'
+    + '</div>'
+    + '</div>';
+
+  // XP 트래킹
+  if (typeof dmTrackQuiz === 'function') dmTrackQuiz();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
 </body>
 </html>

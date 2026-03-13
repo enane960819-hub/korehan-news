@@ -816,27 +816,6 @@ var _todayTopic     = null;   // {id, topic_ko, topic_en, category, level}
 var _aiContent      = null;   // {vocab:[], grammar:[], helpers:[]}
 var _allTopics      = [];     // all from DB
 var _doneTopicIds   = new Set();
-
-function normalizeLevelName(level) {
-  var v = String(level || '').toLowerCase().trim();
-  if (v === 'beginner') return 'Beginner';
-  if (v === 'intermediate') return 'Intermediate';
-  if (v === 'advanced') return 'Advanced';
-  return level || 'Beginner';
-}
-
-function clearAIContentUI() {
-  var ids = ['vocab-box','grammar-box','helper-box','wcard-chips','wm-grammar','wm-vocab-chips','wm-vocab-chips-mobile','wm-grammar-chips','wm-helpers'];
-  ids.forEach(function(id){
-    var el = document.getElementById(id);
-    if (!el) return;
-    if (id === 'wcard-chips') {
-      el.innerHTML = '';
-    } else {
-      el.innerHTML = '<div style="color:#8ea0b8;font-size:12px">Loading…</div>';
-    }
-  });
-}
 var _lqMode         = 'hear';
 var _fcWords        = [];
 var _convVocab      = [];     // conv DB vocab 전체
@@ -904,6 +883,23 @@ function renderPhrase() {
     '<div class="pko">' + p.ko + '</div>'
     + '<div class="prom">' + p.rom + '</div>'
     + '<div class="pen">' + p.en + '</div>';
+}
+
+function normalizeLevelName(level) {
+  var v = String(level || '').toLowerCase().trim();
+  if (v === 'beginner') return 'Beginner';
+  if (v === 'intermediate') return 'Intermediate';
+  if (v === 'advanced') return 'Advanced';
+  return level || 'Beginner';
+}
+
+function clearAIContentUI() {
+  ['vocab-box','grammar-box','helper-box','wcard-chips','wm-grammar','wm-vocab-chips','wm-vocab-chips-mobile','wm-grammar-chips','wm-helpers'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (id === 'wcard-chips') el.innerHTML = '';
+    else el.innerHTML = '<div style="color:#8ea0b8;font-size:12px">Loading…</div>';
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
