@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KoreHan Hover Vocabulary Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0b1626;--blue:#1a3a6b;--bright:#2255a4;--red:#c0392b;
+  --bg:#f4f7fb;--card:#fff;--border:#d8e1ef;--text:#0f172a;--muted:#64748b;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:'Source Sans 3','Noto Sans KR',sans-serif;color:var(--text)}
+.topbar{height:62px;background:var(--navy);display:flex;align-items:center;justify-content:space-between;padding:0 22px;color:#fff}
+.brand{display:flex;align-items:center;gap:7px}
+.brand .k,.brand .h{font-family:'Playfair Display',serif;font-weight:900;font-size:32px;line-height:1}
+.brand .k{color:#6fa8ff}.brand .h{color:#ff826f}.brand .n{font-size:22px;font-weight:800}
+.wrap{max-width:1320px;margin:0 auto;padding:28px 24px 40px}
+.hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap;margin-bottom:18px}
+.hero h1{margin:0;font-size:34px;line-height:1.05}
+.hero p{margin:10px 0 0;color:var(--muted);font-size:15px;line-height:1.7;max-width:760px}
+.grid{display:grid;grid-template-columns:400px 1fr;gap:18px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:22px;box-shadow:0 16px 36px rgba(15,23,42,.06)}
+.cardhd{padding:18px 18px 0}
+.cardhd h2{margin:0;font-size:18px}
+.cardbd{padding:18px}
+label{display:block;font-size:12px;font-weight:800;color:#475569;margin-bottom:6px}
+input,textarea,select{
+  width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;
+  font:inherit;color:var(--text)
+}
+textarea{resize:vertical;min-height:88px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button{
+  border:none;border-radius:12px;padding:11px 16px;font:inherit;font-weight:800;cursor:pointer
+}
+.btn-primary{background:var(--bright);color:#fff}
+.btn-soft{background:#eef4ff;color:var(--bright)}
+.btn-danger{background:#fee2e2;color:#b91c1c}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.search{flex:1}
+.tablewrap{overflow:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:12px 10px;border-bottom:1px solid #e9eef6;text-align:left;font-size:14px;vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#64748b}
+.badge{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800}
+.on{background:#dcfce7;color:#15803d}
+.off{background:#f1f5f9;color:#64748b}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.mini{padding:7px 10px;border-radius:10px;background:#f8fafc;color:#334155;font-size:12px;font-weight:800;border:1px solid #e2e8f0;cursor:pointer}
+.preview{
+  margin-top:14px;padding:16px;border-radius:18px;background:linear-gradient(145deg,#0f1c32 0%,#1a3a6b 55%,#2a5bb0 100%);
+  color:#fff
+}
+.preview .box{margin-top:12px;background:#fff;color:#0f172a;border-radius:16px;padding:14px;line-height:1.8}
+.preview .word{border-bottom:1.5px dashed #7ab8f5;background:rgba(122,184,245,.12);padding:0 2px}
+.notice{margin-top:12px;padding:12px 14px;border-radius:14px;background:#fff8e8;border:1px solid #f4d35e;color:#7c5b11;font-size:13px;line-height:1.65}
+.status{margin-top:12px;font-size:13px;font-weight:700}
+@media(max-width:980px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand"><div class="k">Kore</div><div class="h">Han</div><div class="n">Hover Admin</div></div>
+  <a href="korehan-admin.html" style="color:#fff;text-decoration:none;font-weight:800;background:rgba(255,255,255,.1);padding:9px 14px;border-radius:12px">← Back to Admin</a>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <h1>Hover Vocabulary</h1>
+      <p>Manage the exact Korean words that should show hover meanings. This is manual control: you decide the word, English meaning, reading, note, and whether the tooltip is active.</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="cardhd"><h2>Add / Edit Word</h2></div>
+      <div class="cardbd">
+        <input type="hidden" id="hv-id">
+        <div>
+          <label>Korean word</label>
+          <input id="hv-word" placeholder="예: 감기">
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div>
+            <label>Reading</label>
+            <input id="hv-reading" placeholder="gamgi">
+          </div>
+          <div>
+            <label>Sort order</label>
+            <input id="hv-order" type="number" value="0">
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <label>English meaning</label>
+          <input id="hv-meaning" placeholder="cold (illness)">
+        </div>
+        <div style="margin-top:10px">
+          <label>Note</label>
+          <textarea id="hv-note" placeholder="Optional learning note or clarification"></textarea>
+        </div>
+        <div style="margin-top:10px">
+          <label>Status</label>
+          <select id="hv-active">
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
+
+        <div class="btns">
+          <button class="btn-primary" onclick="saveHoverWord()">Save word</button>
+          <button class="btn-soft" onclick="resetHoverForm()">New entry</button>
+          <button class="btn-danger" id="hv-delete-btn" onclick="deleteHoverWord()" style="display:none">Delete</button>
+        </div>
+
+        <div class="preview">
+          <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.82">Preview</div>
+          <div class="box" id="hv-preview-box">오늘은 <span class="word">감기</span> 때문에 병원에 갔어요.</div>
+        </div>
+
+        <div class="notice">
+          After you save a word here, the hover tooltip renderer can show it across supported pages whenever that exact Korean word appears.
+        </div>
+
+        <div class="status" id="hv-status"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="cardhd"><h2>Saved Words</h2></div>
+      <div class="cardbd">
+        <div class="toolbar">
+          <input class="search" id="hv-search" placeholder="Search Korean word or meaning..." oninput="renderHoverRows()">
+          <button class="btn-soft" onclick="loadHoverWords()">Refresh</button>
+        </div>
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Word</th>
+                <th>Meaning</th>
+                <th>Reading</th>
+                <th>Status</th>
+                <th>Note</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="hv-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPA_URL = 'https://samghztrdvtxmrmawneu.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs';
+const sb = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+});
+
+let hoverRows = [];
+
+function status(msg, bad) {
+  const el = document.getElementById('hv-status');
+  el.textContent = msg || '';
+  el.style.color = bad ? '#b91c1c' : '#0f766e';
+}
+
+function previewHover() {
+  const word = document.getElementById('hv-word').value.trim() || '감기';
+  document.getElementById('hv-preview-box').innerHTML = '오늘은 <span class="word">' + word + '</span> 때문에 병원에 갔어요.';
+}
+['hv-word','hv-meaning','hv-reading','hv-note'].forEach(id => {
+  document.addEventListener('input', function(e){
+    if (e.target && e.target.id === id) previewHover();
+  });
+});
+
+function formValue(id){ return document.getElementById(id).value.trim(); }
+
+function resetHoverForm() {
+  document.getElementById('hv-id').value = '';
+  document.getElementById('hv-word').value = '';
+  document.getElementById('hv-reading').value = '';
+  document.getElementById('hv-order').value = '0';
+  document.getElementById('hv-meaning').value = '';
+  document.getElementById('hv-note').value = '';
+  document.getElementById('hv-active').value = 'true';
+  document.getElementById('hv-delete-btn').style.display = 'none';
+  previewHover();
+  status('');
+}
+
+async function loadHoverWords() {
+  status('Loading...');
+  const { data, error } = await sb
+    .from('hover_vocab_master')
+    .select('*')
+    .order('sort_order', { ascending: true })
+    .order('word_ko', { ascending: true });
+
+  if (error) {
+    status('Failed to load words: ' + error.message, true);
+    return;
+  }
+  hoverRows = data || [];
+  renderHoverRows();
+  status('Loaded ' + hoverRows.length + ' words.');
+}
+
+function renderHoverRows() {
+  const q = document.getElementById('hv-search').value.trim().toLowerCase();
+  const rows = hoverRows.filter(r => {
+    if (!q) return true;
+    return (r.word_ko || '').toLowerCase().includes(q)
+      || (r.meaning_en || '').toLowerCase().includes(q)
+      || (r.reading || '').toLowerCase().includes(q);
+  });
+
+  document.getElementById('hv-rows').innerHTML = rows.map(r => `
+    <tr>
+      <td><b>${r.word_ko || ''}</b></td>
+      <td>${r.meaning_en || ''}</td>
+      <td>${r.reading || ''}</td>
+      <td><span class="badge ${r.is_active ? 'on' : 'off'}">${r.is_active ? 'Active' : 'Inactive'}</span></td>
+      <td>${r.note || ''}</td>
+      <td>
+        <div class="actions">
+          <button class="mini" onclick="editHoverWord('${r.id}')">Edit</button>
+        </div>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" style="color:#94a3b8">No rows found.</td></tr>';
+}
+
+function editHoverWord(id) {
+  const r = hoverRows.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('hv-id').value = r.id || '';
+  document.getElementById('hv-word').value = r.word_ko || '';
+  document.getElementById('hv-reading').value = r.reading || '';
+  document.getElementById('hv-order').value = r.sort_order ?? 0;
+  document.getElementById('hv-meaning').value = r.meaning_en || '';
+  document.getElementById('hv-note').value = r.note || '';
+  document.getElementById('hv-active').value = String(!!r.is_active);
+  document.getElementById('hv-delete-btn').style.display = 'inline-flex';
+  previewHover();
+  status('Editing ' + (r.word_ko || '') + '.');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function saveHoverWord() {
+  const id = formValue('hv-id');
+  const payload = {
+    word_ko: formValue('hv-word'),
+    meaning_en: formValue('hv-meaning'),
+    reading: formValue('hv-reading'),
+    note: formValue('hv-note'),
+    is_active: document.getElementById('hv-active').value === 'true',
+    sort_order: Number(document.getElementById('hv-order').value || 0)
+  };
+
+  if (!payload.word_ko || !payload.meaning_en) {
+    status('Korean word and English meaning are required.', true);
+    return;
+  }
+
+  status('Saving...');
+  let res;
+  if (id) {
+    res = await sb.from('hover_vocab_master').update(payload).eq('id', id);
+  } else {
+    res = await sb.from('hover_vocab_master').insert(payload);
+  }
+
+  if (res.error) {
+    status('Save failed: ' + res.error.message, true);
+    return;
+  }
+
+  status('Saved.');
+  resetHoverForm();
+  loadHoverWords();
+}
+
+async function deleteHoverWord() {
+  const id = formValue('hv-id');
+  if (!id) return;
+  if (!confirm('Delete this hover word?')) return;
+
+  status('Deleting...');
+  const { error } = await sb.from('hover_vocab_master').delete().eq('id', id);
+  if (error) {
+    status('Delete failed: ' + error.message, true);
+    return;
+  }
+  status('Deleted.');
+  resetHoverForm();
+  loadHoverWords();
+}
+
+previewHover();
+loadHoverWords();
+</script>
+</body>
+</html>

@@ -146,6 +146,13 @@ a{color:inherit;text-decoration:none}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+<div style='position:fixed;top:12px;right:20px;z-index:9999'>
+<a href="korehan-admin-hover-vocab.html"
+   style="margin-left:10px;background:#2563eb;color:#fff;padding:8px 14px;border-radius:8px;
+   text-decoration:none;font-weight:700;display:inline-block;">
+   Hover Vocabulary
+</a>
+</div>
 
 <!-- TOP BAR -->
 <div class="topbar">
@@ -2392,39 +2399,29 @@ const SUPA_URL_ADMIN2 = 'https://samghztrdvtxmrmawneu.supabase.co';
 const SUPA_KEY_ADMIN2 = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjQzNDc1MiwiZXhwIjoyMDg4MDEwNzUyfQ.npCvblrbeRiqwW76_23kYznrRuFHIKCD24JN3da--3c';
 
 async function callAdminClaude(prompt) {
-  const proxies = [
-    SUPA_URL_ADMIN2 + '/functions/v1/claude-proxy',
-    SUPA_URL_ADMIN + '/functions/v1/claude-proxy'
-  ];
-  let lastErr = null;
-
-  for (let i = 0; i < proxies.length; i++) {
-    const resp = await fetch(proxies[i], {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + SUPA_KEY_ADMIN2,
-        'apikey': SUPA_KEY_ADMIN2,
-        'x-admin-bypass': '1'
-      },
-      body: JSON.stringify({
-        feature: 'admin-ai-gen',
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2200,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    if (resp.ok) {
-      const data = await resp.json().catch(function(){ return {}; });
-      return (data.content || []).map(function(b){ return b.text || ''; }).join('');
-    }
-
+  // Admin: service_role key로 Edge Function 직접 호출 (JWT verify bypass)
+  const PROXY = SUPA_URL_ADMIN2 + '/functions/v1/claude-proxy';
+  const resp = await fetch(PROXY, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + SUPA_KEY_ADMIN2,
+      'x-admin-bypass': '1',
+    },
+    body: JSON.stringify({
+      feature: 'admin-ai-gen',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1200,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  if (!resp.ok) {
     const errBody = await resp.json().catch(function(){ return {}; });
-    lastErr = new Error('Claude API ' + resp.status + ': ' + (errBody.error || ''));
+    throw new Error('Claude API ' + resp.status + ': ' + (errBody.error || ''));
   }
-
-  throw lastErr || new Error('Claude proxy request failed');
+  const data = await resp.json();
+  const text = (data.content || []).map(function(b){ return b.text||''; }).join('');
+  return text;
 }
 
 async function saveToCache(contentType, contentId, key, value) {
@@ -2596,7 +2593,13 @@ async function generateConvs() {
   var prompt = 'You are creating Korean language learning content for KoreHan News.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","note":"optional"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3 missions. ' + lvlMap[lvl] + ' level Korean.';
 
   try {
-    var raw = await callAdminClaude(prompt);
+    var resp = await callClaude({
+      feature: 'conv_gen',
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 8000,
+      messages: [{role:'user', content: prompt}]
+    });
+    var raw = resp.content.map(function(b){ return b.text||''; }).join('');
     raw = raw.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
     var convs = JSON.parse(raw);
 
@@ -2864,156 +2867,91 @@ function openConvCreateModal() {
   openConvEditModal(null, null);
 }
 
-
 async function openConvEditModal(rowId, existingData) {
   var sb = getSb();
   var rowData = existingData;
   if (rowId && !rowData) {
-    var res = await sb.from('conversations_data').select('*').eq('id', rowId).single();
-    rowData = res.data;
+    var { data } = await sb.from('conversations_data').select('*').eq('id', rowId).single();
+    rowData = data;
   }
   var d = (rowData && rowData.data) ? rowData.data : {};
   var isNew = !rowId;
+
+  // msgs를 읽기 쉬운 텍스트로 변환
   var msgsText = (d.msgs || []).map(function(m){
     return (m.s === 'l' ? 'A' : 'B') + ': ' + m.txt;
   }).join('\n');
 
   var overlay = document.createElement('div');
   overlay.id = 'conv-edit-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.68);backdrop-filter:blur(6px);z-index:9000;display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
 
-  overlay.innerHTML =
-    '<div style="width:100%;max-width:1340px;background:#f8fbff;border-radius:28px;overflow:hidden;box-shadow:0 40px 100px rgba(0,0,0,.3);border:1px solid #d9e4f3;">'
-    + '<div style="display:grid;grid-template-columns:1.22fr .88fr;min-height:82vh;">'
+  overlay.innerHTML = '<div style="background:#fff;border-radius:18px;width:100%;max-width:780px;padding:28px 30px;box-shadow:0 24px 60px rgba(0,0,0,.2);">'
+    + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">'
+    + '<div style="font-size:28px">' + (isNew ? '✨' : '✏️') + '</div>'
+    + '<div>'
+    + '<h3 style="font-size:18px;font-weight:800;margin:0;color:#0f172a">' + (isNew ? '새 대화 추가' : '대화 수정') + '</h3>'
+    + '<p style="font-size:12px;color:#94a3b8;margin:2px 0 0">토픽과 대화 내용을 입력하면 AI가 단어/문법을 자동 분석해요</p>'
+    + '</div>'
+    + '<button onclick="closeConvEditOverlay()" style="margin-left:auto;background:#f1f5f9;border:none;border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer;line-height:32px;">✕</button>'
+    + '</div>'
 
-    // LEFT PANEL
-    +   '<div style="display:flex;flex-direction:column;min-width:0;background:#fff;border-right:1px solid #e2e8f0;">'
-    +     '<div style="padding:22px 24px;background:linear-gradient(135deg,#2452c0 0%,#3f79f0 100%);color:#fff;position:relative;">'
-    +       '<button onclick="closeConvEditOverlay()" style="position:absolute;right:18px;top:18px;width:40px;height:40px;border:none;border-radius:999px;background:rgba(255,255,255,.14);color:#fff;font-size:18px;cursor:pointer;">✕</button>'
-    +       '<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.82;margin-bottom:10px">Conversation Editor</div>'
-    +       '<div id="ce-preview-name" style="font-family:\'Noto Serif KR\',serif;font-size:38px;font-weight:900;line-height:1.08;letter-spacing:-0.03em;">' + ((d.name || 'New Conversation').replace(/</g,'&lt;')) + '</div>'
-    +       '<div id="ce-preview-ctx" style="font-size:13px;opacity:.9;margin-top:10px;line-height:1.7;">' + ((d.ctx || 'Edit the dialogue below and update the study notes with AI.').replace(/</g,'&lt;')) + '</div>'
-    +     '</div>'
+    // 기본 정보
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">'
+    + ceField('ce-name', '이름', 'text', d.name || '', '예: Team Chat, Ji-yeon & Soo-jin')
+    + ceField('ce-ctx',  '상황', 'text', d.ctx  || '', '예: Asking for a deadline extension')
+    + ceField('ce-avi',  '이모지', 'text', d.avi  || '💬', '대표 이모지')
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">'
+    + ceSelect('ce-cat', '카테고리', ['everyday','work','friends','family','dating'], ['Everyday','Workplace','Friends','Family','Dating'], d.cat || 'everyday')
+    + ceSelect('ce-lvl', '레벨',     ['b','i','a'], ['Beginner','Intermediate','Advanced'], d.lvl || 'b')
+    + '</div>'
 
-    +     '<div style="padding:14px 20px 0;background:#fff;">'
-    +       '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-    +         '<span id="ce-preview-level" style="display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:#eaf2ff;color:#1d4ed8;font-size:12px;font-weight:800;">' + ({b:'Beginner',i:'Intermediate',a:'Advanced'}[(d.lvl||'b')] || 'Beginner') + '</span>'
-    +         '<span id="ce-preview-cat" style="display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:12px;font-weight:800;">' + (({everyday:'Everyday',work:'Workplace',friends:'Friends',family:'Family',dating:'Dating'}[d.cat || 'everyday']) || 'Everyday') + '</span>'
-    +       '</div>'
-    +     '</div>'
+    // 대화 내용 입력
+    + '<div style="margin-bottom:16px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+    + '<label style="font-size:12px;font-weight:700;color:#374151">💬 대화 내용 <span style="color:#94a3b8;font-weight:400">(A: 왼쪽 / B: 오른쪽, 줄바꿈으로 구분)</span></label>'
+    + '<button id="ai-analyze-btn" onclick="aiAnalyzeConv()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✨ AI 자동분석</button>'
+    + '</div>'
+    + '<textarea id="ce-msgs-text" rows="7" placeholder="A: 오늘 저녁에 시간 돼?&#10;B: 응! 왜? 무슨 일 있어?&#10;A: 그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ" style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical;line-height:1.6">' + (msgsText.replace(/</g,'&lt;').replace(/>/g,'&gt;')) + '</textarea>'
+    + '</div>'
 
-    +     '<div id="ce-chat-preview" style="flex:1;min-height:440px;overflow:auto;padding:18px 20px 18px;background:#f8fbff;"></div>'
+    // AI 분석 결과 영역
+    + '<div id="ai-result-area" style="display:' + (Object.keys(d).length > 0 ? 'block' : 'none') + '">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">'
+    + '<div>'
+    + '<div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:6px">📚 주요 단어 (vocab JSON)</div>'
+    + '<textarea id="ce-vocab" rows="6" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:10px;font-size:11px;font-family:monospace;box-sizing:border-box;resize:vertical">' + JSON.stringify(d.vocab||[], null, 2).replace(/</g,'&lt;') + '</textarea>'
+    + '</div>'
+    + '<div>'
+    + '<div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:6px">✏️ 문법 포인트 (grammar JSON)</div>'
+    + '<textarea id="ce-grammar" rows="6" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:10px;font-size:11px;font-family:monospace;box-sizing:border-box;resize:vertical">' + JSON.stringify(d.grammar||[], null, 2).replace(/</g,'&lt;') + '</textarea>'
+    + '</div>'
+    + '</div>'
+    + '<div style="margin-bottom:16px">'
+    + '<div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:6px">🎯 미션 (mission JSON)</div>'
+    + '<textarea id="ce-mission" rows="3" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:10px;font-size:11px;font-family:monospace;box-sizing:border-box;resize:vertical">' + JSON.stringify(d.mission||[], null, 2).replace(/</g,'&lt;') + '</textarea>'
+    + '</div>'
+    + '</div>'
 
-    +     '<div style="padding:18px 20px 20px;border-top:1px solid #e5ecf5;background:#fff;">'
-    +       '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">'
-    +         '<div style="font-size:12px;font-weight:800;color:#334155;">💬 Dialogue Script <span style="font-weight:500;color:#94a3b8;">(A = left, B = right)</span></div>'
-    +         '<button id="ai-analyze-btn" onclick="aiAnalyzeConv()" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;">✨ AI Update</button>'
-    +       '</div>'
-    +       '<textarea id="ce-msgs-text" oninput="syncConvPreview()" rows="8" placeholder="A: 오늘 괜찮아?&#10;B: 응, 왜?&#10;A: 그냥 안부 물어보려고." style="width:100%;padding:12px 14px;border:1px solid #dbe4f0;border-radius:14px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical;line-height:1.7;background:#fbfdff;">' + (msgsText.replace(/</g,'&lt;').replace(/>/g,'&gt;')) + '</textarea>'
-    +       '<div style="margin-top:8px;font-size:12px;color:#64748b;line-height:1.6;">Edit the script here. The conversation preview above updates immediately, and AI Update regenerates vocabulary, grammar, and missions from the edited dialogue.</div>'
-    +     '</div>'
-    +   '</div>'
-
-    // RIGHT PANEL
-    +   '<div style="display:flex;flex-direction:column;min-width:0;background:#f8fbff;">'
-    +     '<div style="padding:22px 22px 16px;border-bottom:1px solid #e2e8f0;background:#fff;">'
-    +       '<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#2255a4;margin-bottom:8px;">Study Notes</div>'
-    +       '<div style="font-family:\'Playfair Display\',serif;font-size:18px;font-weight:900;color:#0f172a;">Conversation Breakdown</div>'
-    +     '</div>'
-    +     '<div style="padding:18px;overflow:auto;">'
-    +       '<div style="display:grid;grid-template-columns:1fr 1fr 90px;gap:10px;margin-bottom:14px;">'
-    +         ceField('ce-name', 'Name', 'text', d.name || '', 'e.g. Before the Meeting')
-    +         ceField('ce-ctx', 'Context', 'text', d.ctx || '', 'e.g. Checking if ready')
-    +         ceField('ce-avi', 'Emoji', 'text', d.avi || '💬', 'emoji')
-    +       '</div>'
-    +       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">'
-    +         ceSelect('ce-cat', 'Category', ['everyday','work','friends','family','dating'], ['Everyday','Workplace','Friends','Family','Dating'], d.cat || 'everyday')
-    +         ceSelect('ce-lvl', 'Level', ['b','i','a'], ['Beginner','Intermediate','Advanced'], d.lvl || 'b')
-    +       '</div>'
-    +       '<div id="ai-result-area" style="display:block;">'
-    +         '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:20px;padding:14px 14px 12px;margin-bottom:12px;">'
-    +           '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px">📚 Vocabulary JSON</div>'
-    +           '<textarea id="ce-vocab" rows="8" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:12px;font-size:11px;font-family:monospace;box-sizing:border-box;resize:vertical;background:#fbfdff;">' + JSON.stringify(d.vocab||[], null, 2).replace(/</g,'&lt;') + '</textarea>'
-    +         '</div>'
-    +         '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:20px;padding:14px 14px 12px;margin-bottom:12px;">'
-    +           '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px">✏️ Grammar JSON</div>'
-    +           '<textarea id="ce-grammar" rows="8" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:12px;font-size:11px;font-family:monospace;box-sizing:border-box;resize:vertical;background:#fbfdff;">' + JSON.stringify(d.grammar||[], null, 2).replace(/</g,'&lt;') + '</textarea>'
-    +         '</div>'
-    +         '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:20px;padding:14px 14px 12px;margin-bottom:12px;">'
-    +           '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px">🎯 Mission JSON</div>'
-    +           '<textarea id="ce-mission" rows="5" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:12px;font-size:11px;font-family:monospace;box-sizing:border-box;resize:vertical;background:#fbfdff;">' + JSON.stringify(d.mission||[], null, 2).replace(/</g,'&lt;') + '</textarea>'
-    +         '</div>'
-    +       '</div>'
-    +       '<div id="ce-error" style="background:#fee2e2;border-radius:12px;padding:12px 14px;color:#b91c1c;font-size:13px;display:none;margin-bottom:12px;"></div>'
-    +     '</div>'
-    +     '<div style="display:flex;gap:10px;justify-content:flex-end;padding:16px 18px 18px;border-top:1px solid #e2e8f0;background:#fff;">'
-    +       '<button onclick="closeConvEditOverlay()" style="background:#f1f5f9;color:#334155;border:none;border-radius:12px;padding:11px 24px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">Cancel</button>'
-    +       '<button onclick="saveConvEdit(' + (rowId||'null') + ')" style="background:#2563eb;color:#fff;border:none;border-radius:12px;padding:11px 24px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">💾 Save</button>'
-    +     '</div>'
-    +   '</div>'
-
-    + '</div></div>';
+    + '<div id="ce-error" style="background:#fee2e2;border-radius:8px;padding:10px;color:#b91c1c;font-size:13px;display:none;margin-bottom:12px"></div>'
+    + '<div style="display:flex;gap:10px;justify-content:flex-end">'
+    + '<button onclick="closeConvEditOverlay()" style="background:#f1f5f9;color:#334155;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">취소</button>'
+    + '<button onclick="saveConvEdit(' + (rowId||'null') + ')" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">💾 저장</button>'
+    + '</div>'
+    + '</div>';
 
   document.body.appendChild(overlay);
-  syncConvPreview();
-}
-
-function syncConvPreview() {
-  var nameEl = document.getElementById('ce-name');
-  var ctxEl = document.getElementById('ce-ctx');
-  var lvlEl = document.getElementById('ce-lvl');
-  var catEl = document.getElementById('ce-cat');
-  var msgsEl = document.getElementById('ce-msgs-text');
-
-  var title = document.getElementById('ce-preview-name');
-  var ctx = document.getElementById('ce-preview-ctx');
-  var lvl = document.getElementById('ce-preview-level');
-  var cat = document.getElementById('ce-preview-cat');
-  var chat = document.getElementById('ce-chat-preview');
-
-  if (!chat) return;
-
-  var lvlMap = {b:'Beginner', i:'Intermediate', a:'Advanced'};
-  var catMap = {everyday:'Everyday', work:'Workplace', friends:'Friends', family:'Family', dating:'Dating'};
-
-  if (title) title.textContent = (nameEl && nameEl.value.trim()) || 'New Conversation';
-  if (ctx) ctx.textContent = (ctxEl && ctxEl.value.trim()) || 'Edit the dialogue below and update the study notes with AI.';
-  if (lvl) lvl.textContent = lvlMap[(lvlEl && lvlEl.value) || 'b'] || 'Beginner';
-  if (cat) cat.textContent = catMap[(catEl && catEl.value) || 'everyday'] || 'Everyday';
-
-  var lines = ((msgsEl && msgsEl.value) || '').split('\n').filter(function(l){ return l.trim(); });
-  if (!lines.length) {
-    chat.innerHTML = '<div style="padding:26px;text-align:center;color:#94a3b8;font-size:13px;">No messages yet. Add A:/B: lines below.</div>';
-    return;
-  }
-
-  var html = '<div style="display:flex;flex-direction:column;gap:18px;">';
-  lines.forEach(function(line, idx){
-    var raw = line.trim();
-    var isRight = /^B:/i.test(raw);
-    var txt = raw.replace(/^[AB]:\s*/i, '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    html += '<div style="display:flex;align-items:flex-end;gap:10px;' + (isRight ? 'justify-content:flex-end;' : 'justify-content:flex-start;') + '">'
-      + (!isRight ? '<div style="width:28px;height:28px;border-radius:999px;background:#eaf2ff;border:1px solid #bfd6ff;display:flex;align-items:center;justify-content:center;font-size:14px;">' + ((document.getElementById('ce-avi') && document.getElementById('ce-avi').value.trim()) || '💬') + '</div>' : '')
-      + '<div style="max-width:74%;">'
-      +   '<div style="font-size:11px;color:#94a3b8;font-weight:700;margin:0 0 4px ' + (isRight ? 'text-align:right;' : '') + '">' + (isRight ? 'B' : 'A') + '</div>'
-      +   '<div style="background:' + (isRight ? '#2563eb' : '#fff') + ';color:' + (isRight ? '#fff' : '#0f172a') + ';border:' + (isRight ? 'none' : '1px solid #e2e8f0') + ';border-radius:18px;padding:12px 14px;font-size:15px;line-height:1.65;box-shadow:0 8px 20px rgba(15,23,42,.05);">'
-      +     txt
-      +   '</div>'
-      + '</div>'
-      + '</div>';
-  });
-  html += '</div>';
-  chat.innerHTML = html;
 }
 
 function ceField(id, label, type, val, ph) {
   return '<label style="font-size:12px;font-weight:700;color:#374151;display:block">' + label
-    + '<input id="' + id + '" oninput="syncConvPreview()" type="' + type + '" value="' + (val||'').replace(/"/g,'&quot;') + '" placeholder="' + ph + '" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'
+    + '<input id="' + id + '" type="' + type + '" value="' + (val||'').replace(/"/g,'&quot;') + '" placeholder="' + ph + '" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'
     + '</label>';
 }
 function ceSelect(id, label, vals, labels, cur) {
   return '<label style="font-size:12px;font-weight:700;color:#374151;display:block">' + label
-    + '<select id="' + id + '" onchange="syncConvPreview()" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'
+    + '<select id="' + id + '" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'
     + vals.map(function(v,i){ return '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+labels[i]+'</option>'; }).join('')
     + '</select></label>';
 }
@@ -3021,13 +2959,13 @@ function ceSelect(id, label, vals, labels, cur) {
 async function aiAnalyzeConv() {
   var btn = document.getElementById('ai-analyze-btn');
   var msgsText = document.getElementById('ce-msgs-text').value.trim();
-  if (!msgsText) { alert('Please enter the dialogue first'); return; }
+  if (!msgsText) { alert('대화 내용을 먼저 입력해주세요'); return; }
 
   var lvl = document.getElementById('ce-lvl').value;
   var lvlMap = {b:'Beginner',i:'Intermediate',a:'Advanced'};
 
   btn.disabled = true;
-  btn.textContent = '⏳ Updating...';
+  btn.textContent = '⏳ 분석 중...';
 
   var prompt = 'Korean language conversation (level: ' + lvlMap[lvl] + '):\n\n' + msgsText
     + '\n\nExtract for learners. Return ONLY valid JSON, no markdown:\n'
@@ -3037,7 +2975,13 @@ async function aiAnalyzeConv() {
     + '\n\nVocab: 5-7 key words. Grammar: 2-3 patterns. Mission: 3 writing practice tasks.';
 
   try {
-    var raw = await callAdminClaude(prompt);
+    var resp = await callClaude({
+      feature: 'conv_analyze',
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2000,
+      messages: [{role:'user', content: prompt}]
+    });
+    var raw = resp.content.map(function(b){ return b.text||''; }).join('');
     raw = raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
     var parsed = JSON.parse(raw);
 
@@ -3047,15 +2991,15 @@ async function aiAnalyzeConv() {
     document.getElementById('ai-result-area').style.display = 'block';
 
     btn.disabled = false;
-    btn.textContent = '✅ Updated';
+    btn.textContent = '✅ 분석 완료 (재실행)';
     btn.style.background = '#059669';
-    setTimeout(function(){ btn.textContent = '✨ AI Update'; btn.style.background = '#7c3aed'; }, 3000);
+    setTimeout(function(){ btn.textContent = '✨ AI 자동분석'; btn.style.background = '#7c3aed'; }, 3000);
 
   } catch(e) {
     btn.disabled = false;
-    btn.textContent = '✨ AI Update';
+    btn.textContent = '✨ AI 자동분석';
     var errEl = document.getElementById('ce-error');
-    errEl.textContent = 'AI update error: ' + (e.message || String(e));
+    errEl.textContent = 'AI 분석 오류: ' + (e.message || String(e));
     errEl.style.display = 'block';
   }
 }
