@@ -2883,6 +2883,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   injectDailyMission();
   startClock();
   initTooltips();
+  applyMobileEnhancements();
 });
 
 // ══ BADGE ENGINE ══════════════════════════════════════════════════════════════
@@ -3970,3 +3971,70 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 /* ══ END MOBILE REDESIGN LAYER ═══════════════════════════════════════════════ */
+
+
+// ══ MOBILE REDESIGN HELPERS ════════════════════════════════════════════════
+function isMobileViewport() {
+  return window.innerWidth <= 760;
+}
+
+function injectMobileBottomNav() {
+  var old = document.getElementById('kh-mobile-bottom-nav');
+  if (old) old.remove();
+  if (!isMobileViewport()) return;
+
+  var page = window.location.pathname.split('/').pop() || 'index.html';
+  var items = [
+    { href:'index.html', key:'index.html', icon:'🏠', label:'Home' },
+    { href:'korehan-all.html', key:'korehan-all.html', icon:'📰', label:'News' },
+    { href:'korehan-study-room.html', key:'korehan-study-room.html', icon:'📘', label:'Learn', primary:true },
+    { href:'korehan-conversations.html', key:'korehan-conversations.html', icon:'💬', label:'Chats' },
+    { href:'korehan-mypage.html', key:'korehan-mypage.html', icon:'👤', label:'My' }
+  ];
+  var nav = document.createElement('nav');
+  nav.id = 'kh-mobile-bottom-nav';
+  nav.className = 'kh-mobile-bottom-nav';
+  nav.innerHTML = items.map(function(it) {
+    var on = page === it.key || (it.key === 'index.html' && (!page || page === 'index.html'));
+    return '<a href="' + it.href + '" class="kh-bnav-link' + (on ? ' on' : '') + (it.primary ? ' primary' : '') + '">'
+      + '<span class="kh-bnav-ico">' + it.icon + '</span>'
+      + '<span class="kh-bnav-label">' + it.label + '</span>'
+      + '</a>';
+  }).join('');
+  document.body.appendChild(nav);
+}
+
+function injectMobileQuickStart() {
+  if (!isMobileViewport()) return;
+  if ((window.location.pathname.split('/').pop() || 'index.html') !== 'index.html') return;
+  if (document.getElementById('kh-mobile-quickstart')) return;
+  var hero = document.getElementById('dyn-hero');
+  if (!hero || !hero.parentNode) return;
+
+  var box = document.createElement('section');
+  box.id = 'kh-mobile-quickstart';
+  box.className = 'kh-mobile-quickstart';
+  box.innerHTML =
+    '<div class="kmqs-eyebrow">Quick Start</div>'
+    + '<div class="kmqs-title">Learn Korean through real stories.</div>'
+    + '<div class="kmqs-sub">Pick how you want to study today. Every button below opens a working page.</div>'
+    + '<div class="kmqs-grid">'
+      + '<a class="kmqs-link primary" href="korehan-study-room.html"><strong>Start Learning</strong><span>Vocabulary, grammar, writing, review</span></a>'
+      + '<a class="kmqs-link" href="korehan-all.html"><strong>Browse News</strong><span>Read all simplified Korean news</span></a>'
+      + '<a class="kmqs-link" href="korehan-conversations.html"><strong>Real Chats</strong><span>KakaoTalk-style conversations</span></a>'
+      + '<a class="kmqs-link" href="korehan-mypage.html"><strong>My Progress</strong><span>Saved words, quizzes, streaks</span></a>'
+    + '</div>';
+  hero.insertAdjacentElement('afterend', box);
+}
+
+function applyMobileEnhancements() {
+  document.body.classList.toggle('kh-is-mobile', isMobileViewport());
+  injectMobileBottomNav();
+  injectMobileQuickStart();
+}
+
+window.addEventListener('resize', function() {
+  clearTimeout(window._khMobileResizeTimer);
+  window._khMobileResizeTimer = setTimeout(applyMobileEnhancements, 120);
+});
+// ══ END MOBILE REDESIGN HELPERS ════════════════════════════════════════════
