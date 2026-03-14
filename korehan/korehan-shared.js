@@ -3821,3 +3821,152 @@ function khSbToggle(subId, arrId) {
   })();
 
 // ══ END MOBILE SIDEBAR ══════════════════════════════════════════════════════
+
+
+/* ══ MOBILE REDESIGN LAYER ═══════════════════════════════════════════════════ */
+
+function khCurrentPageName() {
+  return (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
+}
+
+function khInjectMobileRedesign() {
+  if (document.getElementById('kh-mobile-redesign-style')) return;
+  var style = document.createElement('style');
+  style.id = 'kh-mobile-redesign-style';
+  style.textContent = [
+    '@media (max-width: 768px) {',
+    '  :root { --khm-bg:#08101f; --khm-panel:rgba(17,24,39,.88); --khm-panel2:rgba(12,18,31,.96); --khm-border:rgba(255,255,255,.08); --khm-text:#f3f6fb; --khm-muted:#9ca8bb; --khm-blue:#0b4dff; --khm-blue2:#0a39c8; }',
+    '  html, body { background: radial-gradient(circle at top, rgba(15,45,109,0.42), transparent 34%), linear-gradient(180deg, #050c19 0%, #09101d 30%, #070d18 100%) !important; color:var(--khm-text) !important; }',
+    '  body { padding-bottom: 104px; }',
+    '  #kh-header, #kh-footer, .container, .conv-page-container, .learn-body, .mypage-body, .course-hero-inner, .how-inner, .course-section, .pricing-wrap, .conv-hero-inner, .conv-filter-bar { width:min(100%, 430px); margin-left:auto; margin-right:auto; }',
+    '  .container, .conv-page-container, .learn-body, .mypage-body { padding:14px 16px 96px !important; }',
+    '  .kh-header-bar { position:sticky; top:0; z-index:1200; background:rgba(5,12,24,.88) !important; border-bottom:1px solid rgba(255,255,255,.06) !important; backdrop-filter:blur(10px); }',
+    '  .kh-header-inner { max-width:none !important; height:auto !important; min-height:70px; padding:12px 16px !important; gap:12px !important; }',
+    '  .kh-logo-kore, .kh-logo-han { font-size:32px !important; letter-spacing:-.03em !important; }',
+    '  .kh-logo-news { font-size:20px !important; color:#dfe6f8 !important; }',
+    '  .kh-hdate, .kh-hsearch { display:none !important; }',
+    '  .kh-hright { gap:8px !important; }',
+    '  .kh-hbtn { border-radius:14px !important; padding:10px 12px !important; font-size:12px !important; border:1px solid var(--khm-border) !important; background:rgba(255,255,255,.04) !important; color:var(--khm-text) !important; }',
+    '  .kh-hbtn-fill { background:linear-gradient(180deg, var(--khm-blue) 0%, var(--khm-blue2) 100%) !important; box-shadow:0 14px 28px rgba(11,77,255,.24); }',
+    '  #topbar-admin-btn { background:rgba(239,98,88,.18) !important; border-color:rgba(239,98,88,.35) !important; color:#ffd2cd !important; }',
+    '  .page-banner, .learn-hero, .course-hero, .mypage-hero, .conv-hero { background:transparent !important; border:none !important; margin:0 !important; padding:8px 0 0 !important; }',
+    '  .page-banner-inner, .learn-hero, .course-hero-inner, .mypage-hero-inner, .conv-hero-inner { background:linear-gradient(180deg, rgba(10,37,98,.58), rgba(12,18,31,.96)) !important; border:1px solid var(--khm-border) !important; border-radius:28px !important; padding:20px 18px !important; box-shadow:0 20px 40px rgba(0,0,0,.22); }',
+    '  .page-banner h1, .learn-hero h1, .course-hero h1, .mypage-name, .conv-hero h1 { color:#fff !important; font-size:30px !important; line-height:1.05 !important; letter-spacing:-.04em !important; }',
+    '  .page-banner p, .learn-hero p, .course-hero p, .mypage-email, .conv-hero p { color:#d0d8ea !important; }',
+    '  .hero, .two-col, .conv-cards-grid, .pricing-grid, .features-grid, .stats-grid, .goal-grid, .pod-grid, .vocab-card-grid, .steps-grid, .sched-grid, .card-grid, .wm-layout, .compare-table, .story-grid, .news-grid, .hc-grid { grid-template-columns:1fr !important; }',
+    '  #kh-sidebar, .sidebar, .hero-side, .trending-col, .essay-col { display:none !important; }',
+    '  .hero-main-stack { min-height:360px !important; }',
+    '  .hero-main, .hero, #dyn-hero > *, .phrase-bar, .section, .sidebar-box, .hconv-card, .cc2, .story-card, .pod-section, .sentence-box, .stat-card, .goal-card, .quiz-wrap2, .lv-q-wrap, .course-section, .feat-card, .plan-card, .step, .sched-card, .sf-card, .vocab-card, .bm-body, .bm-header, .bm-footer, .bm-step-pills, .wm-card, .conversation-card { background:linear-gradient(180deg, rgba(17,24,39,.88), rgba(12,18,31,.96)) !important; border:1px solid var(--khm-border) !important; border-radius:24px !important; box-shadow:0 12px 28px rgba(0,0,0,.18) !important; color:var(--khm-text) !important; }',
+    '  .phrase-bar, .section, .course-section, .pod-section, .quiz-wrap2, .lv-q-wrap { padding:18px !important; }',
+    '  .quick-start-mobile { margin-top:18px; padding:18px; border-radius:24px; background:linear-gradient(180deg, rgba(10,37,98,.58), rgba(12,18,31,.96)); border:1px solid var(--khm-border); box-shadow:0 10px 28px rgba(0,0,0,.18); }',
+    '  .khm-eyebrow { color:#8db1ff; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.18em; margin-bottom:8px; }',
+    '  .khm-title { margin:0; font-size:28px; line-height:1.05; letter-spacing:-.04em; color:#fff; }',
+    '  .khm-sub { margin:6px 0 0; color:var(--khm-muted); font-size:14px; line-height:1.45; }',
+    '  .khm-cta-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }',
+    '  .khm-btn { border:1px solid var(--khm-border); background:rgba(255,255,255,.04); color:var(--khm-text); border-radius:14px; padding:12px 14px; font-weight:800; font-size:14px; text-decoration:none; display:flex; align-items:center; justify-content:center; }',
+    '  .khm-btn.primary { background:linear-gradient(180deg, var(--khm-blue) 0%, var(--khm-blue2) 100%); box-shadow:0 14px 28px rgba(11,77,255,.24); }',
+    '  .khm-mini { padding:14px; border-radius:18px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); min-width:0; }',
+    '  .khm-mini .label { color:#9fbbff; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; }',
+    '  .khm-mini .value { margin-top:8px; font-weight:800; font-size:15px; line-height:1.25; color:#fff; }',
+    '  .sec-hd, .section-title, .learn-section-title { border-bottom:0 !important; padding-bottom:0 !important; margin:22px 0 12px !important; }',
+    '  .sec-hd-title, .section-title, .learn-section-title, .course-section .sec-title, .box-title, .conv-title, .cc2-name, .story-body h4, .art-t, .pod-ko, .quiz-q2, .lv-word, .goal-title, .plan-price, .plan-name, .dp-left-title, .dp-right-title, .dp-study-card-title { color:#fff !important; }',
+    '  .sec-hd-sub, .section-sub, .box-title + *, .art-b, .story-body p, .sent-en, .goal-count, .stat-label, .vc-hint, .conv-sub, .cc2-ctx, .cc2-vocab-count, .read-date, .sw-rom, .pod-rom, .pod-en, .section-sub, .sec-sub, .plan-per, .plan-original { color:var(--khm-muted) !important; }',
+    '  .sec-hd-more, .sec-more, .cc2-open-btn, .cta-btn, .submit-btn, .quiz-next2 { border-radius:14px !important; }',
+    '  .sec-pills, .learn-tabs, .my-tabs, .conv-filter-bar, .filters, .filter-group { gap:8px !important; overflow-x:auto; flex-wrap:nowrap !important; padding-bottom:4px; scrollbar-width:none; }',
+    '  .sec-pills::-webkit-scrollbar, .learn-tabs::-webkit-scrollbar, .my-tabs::-webkit-scrollbar, .conv-filter-bar::-webkit-scrollbar { display:none; }',
+    '  .sp, .tab-btn, .my-tab, .cf-pill, .chip, .bt-btn, .lq-mode-btn { white-space:nowrap; border-radius:12px !important; background:rgba(255,255,255,.06) !important; border:1px solid rgba(255,255,255,.08) !important; color:#dbe3f5 !important; }',
+    '  .sp.on, .tab-btn.on, .my-tab.on, .cf-pill.on, .chip.active, .bt-btn.active, .lq-mode-btn.on { background:rgba(11,77,255,.22) !important; color:#fff !important; border-color:rgba(11,77,255,.4) !important; }',
+    '  .nc, .news-card { display:grid !important; grid-template-columns:110px 1fr !important; gap:12px !important; padding:10px !important; overflow:hidden; }',
+    '  .nc-img, .news-thumb { width:110px !important; height:88px !important; border-radius:14px !important; margin:0 !important; object-fit:cover !important; }',
+    '  .nc-title, .news-title { color:#fff !important; font-size:18px !important; line-height:1.28 !important; }',
+    '  .nc-meta, .tag-row, .nc-foot, .story-meta, .conv-meta, .hconv-foot, .cc2-foot { color:var(--khm-muted) !important; }',
+    '  .hconv-chat, .cc2-preview, .bubble-wrap { background:transparent !important; }',
+    '  .hcb, .bubble, .cc2-bub { border-radius:16px !important; border:1px solid rgba(255,255,255,.08) !important; }',
+    '  .hcb.r, .bubble.right, .cc2-bub.r { background:linear-gradient(180deg, #114eff, #0a39c8) !important; color:#fff !important; }',
+    '  .hcb.l, .bubble.left, .cc2-bub.l { background:rgba(255,255,255,.03) !important; color:#f1f5ff !important; }',
+    '  .sc-cover, .story-banner { height:120px !important; }',
+    '  .wm-wrap, .wm-shell, .wm-center, .wm-left, .wm-right, .detail-panel, .dp-left, .dp-right { grid-template-columns:1fr !important; display:block !important; }',
+    '  .detail-panel { max-width:100% !important; border-radius:24px !important; }',
+    '  .write-area { min-height:240px !important; }',
+    '  .mypage-hero-inner { flex-direction:column !important; align-items:flex-start !important; }',
+    '  .course-hero, .course-hero-inner { text-align:left !important; }',
+    '  .pricing-grid { gap:14px !important; }',
+    '  .plan-card { padding:24px 20px !important; }',
+    '  .bottom-nav, .kh-mobile-bottom-nav { position:fixed; left:50%; transform:translateX(-50%); bottom:14px; width:min(360px, calc(100vw - 24px)); display:grid; grid-template-columns:1fr 1fr 1.2fr 1fr 1fr; gap:8px; padding:10px; background:rgba(7,12,22,.86); backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,.08); border-radius:24px; box-shadow:0 20px 40px rgba(0,0,0,.28); z-index:1400; }',
+    '  .kh-mobile-bottom-nav a { display:grid; place-items:center; gap:4px; color:#d4dcf1; font-size:12px; text-align:center; min-height:48px; border-radius:16px; text-decoration:none; }',
+    '  .kh-mobile-bottom-nav a.main { background:linear-gradient(180deg, #1352ff 0%, #0a39c8 100%); font-weight:800; box-shadow:0 14px 28px rgba(11,77,255,.28); }',
+    '  .kh-mobile-bottom-nav a.on { background:rgba(255,255,255,.06); color:#fff; }',
+    '  .kh-foot { background:transparent !important; padding-bottom:108px !important; }',
+    '  .kh-foot-inner { border-radius:24px !important; background:linear-gradient(180deg, rgba(17,24,39,.88), rgba(12,18,31,.96)) !important; border:1px solid var(--khm-border) !important; color:#fff !important; }',
+    '  .footer-links a, .footer-copy, .kh-foot p { color:var(--khm-muted) !important; }',
+    '  @media (max-width: 360px) { .khm-cta-grid { grid-template-columns:1fr !important; } .nc, .news-card { grid-template-columns:96px 1fr !important; } .nc-img, .news-thumb { width:96px !important; height:80px !important; } .kh-logo-kore, .kh-logo-han { font-size:28px !important; } .kh-logo-news { font-size:18px !important; } }',
+    '}'
+  ].join('');
+  document.head.appendChild(style);
+}
+
+function khInsertHomeQuickStart() {
+  if (window.innerWidth > 768) return;
+  if (khCurrentPageName() !== 'index.html') return;
+  if (document.getElementById('kh-mobile-quickstart')) return;
+
+  var anchor = document.getElementById('phrase-bar');
+  if (!anchor || !anchor.parentNode) return;
+
+  var html = ''
+    + '<section class="quick-start-mobile" id="kh-mobile-quickstart">'
+    +   '<div class="khm-eyebrow">Start here</div>'
+    +   '<h2 class="khm-title">오늘은 바로 공부 시작</h2>'
+    +   '<p class="khm-sub">메인에서 헤매지 말고 읽기 → 대화 → 스토리 순서로 바로 들어가게 바꾼 모바일 구조.</p>'
+    +   '<div class="khm-cta-grid">'
+    +     '<a class="khm-btn primary" href="korehan-all.html">Today\'s News</a>'
+    +     '<a class="khm-btn" href="korehan-study-room.html">Continue Study</a>'
+    +     '<div class="khm-mini"><div class="label">Today\'s Conversation</div><div class="value">Everyday · quick chat practice</div></div>'
+    +     '<div class="khm-mini"><div class="label">Story Pick</div><div class="value">Short story reading in 3-5 min</div></div>'
+    +   '</div>'
+    + '</section>';
+
+  anchor.insertAdjacentHTML('afterend', html);
+}
+
+function khInjectBottomNav() {
+  var old = document.getElementById('kh-mobile-bottom-nav');
+  if (window.innerWidth > 768) {
+    if (old) old.remove();
+    return;
+  }
+  if (old) return;
+
+  var page = khCurrentPageName();
+  var nav = document.createElement('nav');
+  nav.id = 'kh-mobile-bottom-nav';
+  nav.className = 'kh-mobile-bottom-nav';
+
+  function on(pages) {
+    return pages.indexOf(page) >= 0 ? ' on' : '';
+  }
+
+  nav.innerHTML = ''
+    + '<a href="index.html" class="' + on(['index.html']) + '">🏠<div>Home</div></a>'
+    + '<a href="korehan-all.html" class="' + on(['korehan-all.html','korehan-article.html','korehan-section.html','korehan-society.html','korehan-world.html','korehan-culture.html','korehan-korea.html','korehan-opinion.html','korehan-news.html']) + '">📰<div>News</div></a>'
+    + '<a href="korehan-study-room.html" class="main' + on(['korehan-study-room.html','korehan-learn.html','korehan-courses.html']) + '">▶<div>Start Learning</div></a>'
+    + '<a href="korehan-conversations.html" class="' + on(['korehan-conversations.html','korehan-stories.html']) + '">💬<div>Chats</div></a>'
+    + '<a href="korehan-mypage.html" class="' + on(['korehan-mypage.html']) + '">👤<div>My</div></a>';
+
+  document.body.appendChild(nav);
+}
+
+function khApplyMobileRedesign() {
+  khInjectMobileRedesign();
+  khInsertHomeQuickStart();
+  khInjectBottomNav();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  khApplyMobileRedesign();
+  window.addEventListener('resize', function() {
+    khInjectBottomNav();
+  });
+});
+
+/* ══ END MOBILE REDESIGN LAYER ═══════════════════════════════════════════════ */
