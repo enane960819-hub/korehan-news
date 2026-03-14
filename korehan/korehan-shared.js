@@ -2883,7 +2883,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   injectDailyMission();
   startClock();
   initTooltips();
-  applyMobileEnhancements();
 });
 
 // ══ BADGE ENGINE ══════════════════════════════════════════════════════════════
@@ -3973,68 +3972,170 @@ document.addEventListener('DOMContentLoaded', function() {
 /* ══ END MOBILE REDESIGN LAYER ═══════════════════════════════════════════════ */
 
 
-// ══ MOBILE REDESIGN HELPERS ════════════════════════════════════════════════
-function isMobileViewport() {
-  return window.innerWidth <= 760;
+/* ══ MOBILE FLOW HOTFIX V2 ═══════════════════════════════════════════════════ */
+function khInsertAfter(selector, html) {
+  var el = document.querySelector(selector);
+  if (el && !document.getElementById('kh-flow-start')) el.insertAdjacentHTML('afterend', html);
 }
 
-function injectMobileBottomNav() {
-  var old = document.getElementById('kh-mobile-bottom-nav');
-  if (old) old.remove();
-  if (!isMobileViewport()) return;
-
-  var page = window.location.pathname.split('/').pop() || 'index.html';
-  var items = [
-    { href:'index.html', key:'index.html', icon:'🏠', label:'Home' },
-    { href:'korehan-all.html', key:'korehan-all.html', icon:'📰', label:'News' },
-    { href:'korehan-study-room.html', key:'korehan-study-room.html', icon:'📘', label:'Learn', primary:true },
-    { href:'korehan-conversations.html', key:'korehan-conversations.html', icon:'💬', label:'Chats' },
-    { href:'korehan-mypage.html', key:'korehan-mypage.html', icon:'👤', label:'My' }
-  ];
-  var nav = document.createElement('nav');
-  nav.id = 'kh-mobile-bottom-nav';
-  nav.className = 'kh-mobile-bottom-nav';
-  nav.innerHTML = items.map(function(it) {
-    var on = page === it.key || (it.key === 'index.html' && (!page || page === 'index.html'));
-    return '<a href="' + it.href + '" class="kh-bnav-link' + (on ? ' on' : '') + (it.primary ? ' primary' : '') + '">'
-      + '<span class="kh-bnav-ico">' + it.icon + '</span>'
-      + '<span class="kh-bnav-label">' + it.label + '</span>'
-      + '</a>';
-  }).join('');
-  document.body.appendChild(nav);
+function khEnhanceHomeFlow() {
+  if (window.innerWidth > 768 || khCurrentPageName() !== 'index.html') return;
+  var quick = document.getElementById('kh-mobile-quickstart');
+  if (quick) {
+    quick.innerHTML = ''
+      + '<div class="khm-eyebrow">Start learning fast</div>'
+      + '<h2 class="khm-title">오늘 공부할 곳을 바로 고르기</h2>'
+      + '<p class="khm-sub">뉴스 읽기, 대화 연습, 짧은 스토리까지. 모바일에서는 바로 공부 시작하게 흐름부터 바꿨다.</p>'
+      + '<div class="khm-path-grid">'
+      +   '<a class="khm-path-card primary" href="korehan-all.html"><div class="icon">📰</div><div><strong>Today\'s News</strong><span>쉬운 뉴스부터 바로 읽기</span></div></a>'
+      +   '<a class="khm-path-card" href="korehan-conversations.html"><div class="icon">💬</div><div><strong>Conversation Practice</strong><span>채팅형 한국어 표현 익히기</span></div></a>'
+      +   '<a class="khm-path-card" href="korehan-stories.html"><div class="icon">📖</div><div><strong>Story Reading</strong><span>짧은 스토리로 읽기 훈련</span></div></a>'
+      +   '<a class="khm-path-card" href="korehan-study-room.html"><div class="icon">🎯</div><div><strong>Start Learning</strong><span>오늘의 학습 흐름 한 번에</span></div></a>'
+      + '</div>';
+  }
 }
 
-function injectMobileQuickStart() {
-  if (!isMobileViewport()) return;
-  if ((window.location.pathname.split('/').pop() || 'index.html') !== 'index.html') return;
-  if (document.getElementById('kh-mobile-quickstart')) return;
-  var hero = document.getElementById('dyn-hero');
-  if (!hero || !hero.parentNode) return;
+function khEnhanceArticleMobile() {
+  if (window.innerWidth > 768 || khCurrentPageName() !== 'korehan-article.html') return;
+  if (document.getElementById('kh-article-mobile-rail')) return;
+  var article = document.querySelector('.kh-article-wrap');
+  var header = document.querySelector('.art-header');
+  if (!article || !header) return;
 
-  var box = document.createElement('section');
-  box.id = 'kh-mobile-quickstart';
-  box.className = 'kh-mobile-quickstart';
-  box.innerHTML =
-    '<div class="kmqs-eyebrow">Quick Start</div>'
-    + '<div class="kmqs-title">Learn Korean through real stories.</div>'
-    + '<div class="kmqs-sub">Pick how you want to study today. Every button below opens a working page.</div>'
-    + '<div class="kmqs-grid">'
-      + '<a class="kmqs-link primary" href="korehan-study-room.html"><strong>Start Learning</strong><span>Vocabulary, grammar, writing, review</span></a>'
-      + '<a class="kmqs-link" href="korehan-all.html"><strong>Browse News</strong><span>Read all simplified Korean news</span></a>'
-      + '<a class="kmqs-link" href="korehan-conversations.html"><strong>Real Chats</strong><span>KakaoTalk-style conversations</span></a>'
-      + '<a class="kmqs-link" href="korehan-mypage.html"><strong>My Progress</strong><span>Saved words, quizzes, streaks</span></a>'
-    + '</div>';
-  hero.insertAdjacentElement('afterend', box);
+  header.insertAdjacentHTML('afterend', ''
+    + '<div class="kh-article-mobile-rail" id="kh-article-mobile-rail">'
+    +   '<div class="kh-armeta">'
+    +     '<span>읽기</span><span>문법</span><span>단어</span><span>복습</span>'
+    +   '</div>'
+    +   '<div class="kh-ar-actions">'
+    +     '<button onclick="switchArtTab(\'article\', document.querySelectorAll(\'.art-tab\')[0])">Read</button>'
+    +     '<button onclick="switchArtTab(\'grammar\', document.querySelectorAll(\'.art-tab\')[1])">Grammar</button>'
+    +     '<button onclick="document.getElementById(\'art-vocab-list\').scrollIntoView({behavior:\'smooth\', block:\'start\'})">Vocab</button>'
+    +     '<button onclick="document.getElementById(\'fill-wrap\').scrollIntoView({behavior:\'smooth\', block:\'start\'})">Quiz</button>'
+    +   '</div>'
+    + '</div>');
+
+  if (!document.getElementById('kh-article-mobile-cta')) {
+    document.body.insertAdjacentHTML('beforeend', ''
+      + '<a href="korehan-study-room.html" class="kh-article-mobile-cta" id="kh-article-mobile-cta">Study this article</a>');
+  }
 }
 
-function applyMobileEnhancements() {
-  document.body.classList.toggle('kh-is-mobile', isMobileViewport());
-  injectMobileBottomNav();
-  injectMobileQuickStart();
+function khEnhanceConversationsMobile() {
+  if (window.innerWidth > 768 || khCurrentPageName() !== 'korehan-conversations.html') return;
+  if (!document.getElementById('kh-flow-start')) {
+    khInsertAfter('.conv-hero', ''
+      + '<section class="kh-flow-start quick-start-mobile" id="kh-flow-start">'
+      +   '<div class="khm-eyebrow">Conversation flow</div>'
+      +   '<h2 class="khm-title">읽고 바로 말해보는 대화 연습</h2>'
+      +   '<p class="khm-sub">대화 카드 열기 → 표현 확인 → 역할극 순서로 이어지게 모바일 흐름을 정리했다.</p>'
+      +   '<div class="khm-cta-grid">'
+      +     '<a class="khm-btn primary" href="#">Open a chat</a>'
+      +     '<a class="khm-btn" href="korehan-study-room.html">Go to Study Room</a>'
+      +   '</div>'
+      + '</section>');
+  }
+  var overlay = document.getElementById('detail-overlay');
+  if (overlay && !overlay.dataset.khEnhanced) {
+    overlay.dataset.khEnhanced = '1';
+    var mo = new MutationObserver(function(){
+      if (overlay.classList.contains('hidden')) return;
+      var right = overlay.querySelector('.dp-right-head');
+      if (right && !overlay.querySelector('.kh-conv-mobile-actions')) {
+        right.insertAdjacentHTML('afterend', ''
+          + '<div class="kh-conv-mobile-actions">'
+          +   '<button onclick="document.querySelector(\'.dp-vocab-list\')?.scrollIntoView({behavior:\'smooth\'})">Vocabulary</button>'
+          +   '<button onclick="document.querySelector(\'.dp-grammar-list\')?.scrollIntoView({behavior:\'smooth\'})">Grammar</button>'
+          +   '<button onclick="document.querySelector(\'.dp-keywords\')?.scrollIntoView({behavior:\'smooth\'})">Practice</button>'
+          + '</div>');
+      }
+    });
+    mo.observe(overlay, {attributes:true, childList:true, subtree:true});
+  }
 }
 
-window.addEventListener('resize', function() {
-  clearTimeout(window._khMobileResizeTimer);
-  window._khMobileResizeTimer = setTimeout(applyMobileEnhancements, 120);
+function khEnhanceStoriesMobile() {
+  if (window.innerWidth > 768 || khCurrentPageName() !== 'korehan-stories.html') return;
+  if (!document.getElementById('kh-flow-start')) {
+    khInsertAfter('.page-banner, .stories-hero', ''
+      + '<section class="kh-flow-start quick-start-mobile" id="kh-flow-start">'
+      +   '<div class="khm-eyebrow">Story flow</div>'
+      +   '<h2 class="khm-title">짧게 읽고 바로 복습하는 스토리</h2>'
+      +   '<p class="khm-sub">스토리 읽기 → 단어 확인 → 퀴즈까지 한 손으로 끝나게 맞췄다.</p>'
+      +   '<div class="khm-cta-grid">'
+      +     '<a class="khm-btn primary" href="korehan-stories.html">Story of the day</a>'
+      +     '<a class="khm-btn" href="korehan-study-room.html">Continue learning</a>'
+      +   '</div>'
+      + '</section>');
+  }
+  var overlay = document.getElementById('st-overlay');
+  if (overlay && !overlay.dataset.khEnhanced) {
+    overlay.dataset.khEnhanced = '1';
+    var mo = new MutationObserver(function(){
+      if (overlay.classList.contains('hidden')) return;
+      var head = overlay.querySelector('.st-head-pills');
+      if (head && !overlay.querySelector('.kh-story-mobile-actions')) {
+        head.insertAdjacentHTML('afterend', ''
+          + '<div class="kh-story-mobile-actions">'
+          +   '<button onclick="document.querySelector(\'.st-vocab-list\')?.scrollIntoView({behavior:\'smooth\'})">Vocabulary</button>'
+          +   '<button onclick="document.querySelector(\'.st-grammar-list\')?.scrollIntoView({behavior:\'smooth\'})">Grammar</button>'
+          +   '<button onclick="document.querySelector(\'.st-q-list\')?.scrollIntoView({behavior:\'smooth\'})">Discussion</button>'
+          + '</div>');
+      }
+    });
+    mo.observe(overlay, {attributes:true, childList:true, subtree:true});
+  }
+}
+
+function khEnhanceListPages() {
+  if (window.innerWidth > 768) return;
+  var page = khCurrentPageName();
+  if (page === 'korehan-all.html' && !document.getElementById('kh-flow-start')) {
+    khInsertAfter('.page-banner', ''
+      + '<section class="kh-flow-start quick-start-mobile" id="kh-flow-start">'
+      +   '<div class="khm-eyebrow">News feed</div>'
+      +   '<h2 class="khm-title">뉴스는 짧고 고르기 쉽게</h2>'
+      +   '<p class="khm-sub">카테고리와 레벨 필터는 남기되, 모바일에서는 읽기 선택이 먼저 보이게 정리했다.</p>'
+      + '</section>');
+  }
+}
+
+function khInjectMobileFlowStylesV2() {
+  if (document.getElementById('kh-mobile-flow-style-v2')) return;
+  var s = document.createElement('style');
+  s.id = 'kh-mobile-flow-style-v2';
+  s.textContent = '@media (max-width:768px){'
+    + '.khm-path-grid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:14px}'
+    + '.khm-path-card{display:flex;gap:12px;align-items:center;padding:16px;border-radius:18px;text-decoration:none;color:#fff;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}'
+    + '.khm-path-card.primary{background:linear-gradient(180deg,#1352ff 0%,#0a39c8 100%);box-shadow:0 14px 28px rgba(11,77,255,.24)}'
+    + '.khm-path-card .icon{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,.08);font-size:22px;flex:0 0 44px}'
+    + '.khm-path-card strong{display:block;font-size:15px;line-height:1.2}.khm-path-card span{display:block;font-size:12px;color:#c8d3e8;margin-top:4px}'
+    + '.kh-article-mobile-rail{margin:14px 0 18px;padding:14px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}'
+    + '.kh-armeta{display:flex;gap:8px;flex-wrap:wrap;color:#9fbbff;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}'
+    + '.kh-ar-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}'
+    + '.kh-ar-actions button,.kh-conv-mobile-actions button,.kh-story-mobile-actions button{padding:10px 8px;border:none;border-radius:12px;background:rgba(255,255,255,.06);color:#fff;font-weight:800;font-family:inherit}'
+    + '.kh-article-mobile-cta{position:fixed;left:50%;transform:translateX(-50%);bottom:86px;width:min(360px,calc(100vw - 24px));padding:14px 18px;border-radius:18px;text-align:center;text-decoration:none;color:#fff;background:linear-gradient(180deg,#1352ff 0%,#0a39c8 100%);z-index:1395;box-shadow:0 18px 34px rgba(11,77,255,.28);font-weight:900}'
+    + '.kh-conv-mobile-actions,.kh-story-mobile-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 16px}'
+    + '.art-tabs{display:none !important}'
+    + '.art-header h1,.art-title{font-size:28px !important;line-height:1.08 !important}'
+    + '.art-hero-img img{border-radius:18px !important}'
+    + '.art-lead,.art-full,.st-body-text,.dp-chat-scroll,.dp-left-body{font-size:16px !important;line-height:1.75 !important}'
+    + '.detail-panel,.st-panel,.st-shell{padding-bottom:24px !important}'
+    + '}';
+  document.head.appendChild(s);
+}
+
+function khApplyMobileFlowV2() {
+  khInjectMobileFlowStylesV2();
+  khEnhanceHomeFlow();
+  khEnhanceArticleMobile();
+  khEnhanceConversationsMobile();
+  khEnhanceStoriesMobile();
+  khEnhanceListPages();
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(khApplyMobileFlowV2, 80);
+  setTimeout(khApplyMobileFlowV2, 400);
 });
-// ══ END MOBILE REDESIGN HELPERS ════════════════════════════════════════════
+/* ══ END MOBILE FLOW HOTFIX V2 ═══════════════════════════════════════════════ */
