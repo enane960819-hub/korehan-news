@@ -1468,7 +1468,7 @@ function savePhraseAdminItem(showMsg=true){
 function saveAllPhraseAdminItems(){
   if(!savePhraseAdminItem(false)) return;
   lsSet(K_PHRASES, phraseAdminItems.map(normalizePhraseAdmin).filter(p=>p.ko));
-  toast('✨ Today's Phrase 전체 저장 완료');
+  toast("✨ Today's Phrase 전체 저장 완료");
 }
 function newPhraseAdminItem(){
   savePhraseAdminItem(false);
