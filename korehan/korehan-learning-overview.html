@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learning Hub — KoreHan News</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;500;700;800;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css">
+<style>
+.learning-hub-wrap{max-width:1280px;margin:0 auto;padding:26px 22px 80px}
+.learning-hero{display:grid;grid-template-columns:1.08fr .92fr;gap:18px;margin-bottom:18px}
+.lh-card,.lh-hero-main,.lh-hero-side{background:#fff;border:1px solid #d8e1ef;border-radius:26px;box-shadow:0 16px 36px rgba(15,23,42,.08)}
+.lh-hero-main{padding:30px;background:linear-gradient(135deg,#0b1626 0%,#17345f 58%,#2357a2 100%);color:#fff;position:relative;overflow:hidden}
+.lh-hero-main:after{content:'';position:absolute;right:-50px;bottom:-60px;width:230px;height:230px;background:radial-gradient(circle,rgba(122,184,245,.28),transparent 68%)}
+.lh-eyebrow{display:inline-flex;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.82);margin-bottom:14px}
+.lh-hero-main h1{margin:0 0 10px;font-family:'Playfair Display','Noto Serif KR',serif;font-size:52px;line-height:1.02;letter-spacing:-.03em}
+.lh-hero-main p{margin:0;font-size:17px;line-height:1.7;color:rgba(255,255,255,.84);max-width:640px}
+.lh-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}
+.lh-btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;border-radius:999px;font-size:14px;font-weight:800;text-decoration:none}
+.lh-btn-primary{background:#fff;color:#0b1626}.lh-btn-ghost{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#fff}
+.lh-hero-side{padding:24px}
+.lh-mini-title{font-size:12px;font-weight:900;color:#64748b;letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px}
+.lh-routine{display:grid;gap:12px}.lh-routine-item{display:grid;grid-template-columns:50px 1fr;gap:12px;padding:14px;border:1px solid #d8e1ef;border-radius:18px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}
+.lh-num{width:50px;height:50px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#2563eb;background:#eff6ff}.lh-routine-item h3{margin:0 0 4px;font-size:18px}.lh-routine-item p{margin:0;color:#64748b;font-size:14px;line-height:1.55}
+.lh-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.lh-stat{background:#fff;border:1px solid #d8e1ef;border-radius:22px;padding:22px 20px;box-shadow:0 16px 36px rgba(15,23,42,.08)}.lh-stat-label{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#64748b;margin-bottom:10px}.lh-stat-num{font-family:'Playfair Display',serif;font-size:42px;line-height:1;color:#1a3a6b;margin-bottom:6px}.lh-stat-sub{font-size:14px;color:#64748b}
+.lh-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;margin-bottom:18px}.lh-card{padding:24px}.lh-card-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px}.lh-card-hd h2{margin:0;font-family:'Playfair Display','Noto Serif KR',serif;font-size:34px;line-height:1.05;letter-spacing:-.02em}.lh-card-hd p{margin:6px 0 0;color:#64748b;font-size:15px}.lh-soft-link{padding:9px 13px;border-radius:999px;background:#eef4ff;color:#2563eb;font-size:13px;font-weight:800;white-space:nowrap}
+.lh-grammar-list{display:grid;gap:14px}.lh-grammar-item{border:1px solid #d8e1ef;border-radius:20px;padding:16px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.lh-grammar-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.lh-grammar-title{font-size:19px;font-weight:800;color:#0f172a}.lh-grammar-meta{font-size:13px;color:#64748b}.lh-tag{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:800}.lh-red{background:#fee2e2;color:#b91c1c}.lh-amber{background:#fef3c7;color:#b45309}.lh-green{background:#dcfce7;color:#15803d}.lh-progress{height:10px;border-radius:999px;background:#eef2f8;overflow:hidden;margin-bottom:10px}.lh-fill{height:100%;border-radius:999px}.lh-fill-red{background:linear-gradient(90deg,#ef4444,#f97316)}.lh-fill-amber{background:linear-gradient(90deg,#f59e0b,#fbbf24)}.lh-fill-green{background:linear-gradient(90deg,#22c55e,#4ade80)}.lh-grammar-actions{display:flex;gap:10px;flex-wrap:wrap}.lh-ghost-btn,.lh-solid-btn{padding:10px 14px;border-radius:999px;font-size:13px;font-weight:800}.lh-ghost-btn{background:#f8fbff;border:1px solid #dbe7fb;color:#2563eb}.lh-solid-btn{background:#2563eb;color:#fff}
+.lh-vocab-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.lh-vocab-box{border:1px solid #d8e1ef;border-radius:22px;padding:18px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.lh-vocab-box h3{margin:0 0 6px;font-size:22px}.lh-vocab-box p{margin:0 0 14px;color:#64748b;font-size:14px}.lh-word-list{display:grid;gap:10px}.lh-word-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:16px;background:#f7faff;border:1px solid #e3ecfa}.lh-word-main{display:flex;flex-direction:column}.lh-ko{font-size:17px;font-weight:900;color:#1a3a6b}.lh-sub{font-size:12px;color:#64748b}.lh-level{padding:5px 9px;border-radius:999px;background:#eef4ff;color:#2563eb;font-size:11px;font-weight:800}
+.lh-review-wrap{display:grid;gap:14px}.lh-review-day{border:1px solid #d8e1ef;border-radius:20px;padding:16px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.lh-review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.lh-review-top h3{margin:0;font-size:21px}.lh-review-top p{margin:4px 0 0;color:#64748b;font-size:14px}.lh-timeline{display:grid;gap:10px}.lh-timeline-item{display:grid;grid-template-columns:86px 1fr;gap:12px;align-items:start;padding:10px 0;border-top:1px solid #edf2f7}.lh-timeline-item:first-child{border-top:none;padding-top:0}.lh-time{font-size:12px;font-weight:800;color:#64748b;letter-spacing:.06em;text-transform:uppercase}.lh-timeline-title{font-size:16px;font-weight:800}.lh-timeline-sub{font-size:14px;color:#64748b;margin-top:2px}
+.lh-articles-list{display:grid;gap:12px}.lh-article-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-radius:18px;border:1px solid #d8e1ef;background:#fff}.lh-article-title{font-size:16px;font-weight:800}.lh-article-sub{font-size:13px;color:#64748b;margin-top:3px}.lh-article-tag{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;background:#eef4ff;color:#2563eb}
+.lh-growth-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.lh-chart-box{border:1px solid #d8e1ef;border-radius:22px;padding:18px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.lh-chart-title{font-size:20px;font-weight:800;margin-bottom:10px}.lh-chart-sub{font-size:14px;color:#64748b;margin-bottom:16px}.lh-bars{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;align-items:end;height:220px;padding-top:20px}.lh-bar-col{text-align:center}.lh-bar{width:100%;border-radius:14px 14px 8px 8px;background:linear-gradient(180deg,#7ab8f5,#2563eb);box-shadow:0 8px 18px rgba(37,99,235,.16)}.lh-bar-label{font-size:12px;color:#64748b;margin-top:8px;font-weight:700}.lh-bar-num{font-size:12px;color:#1a3a6b;font-weight:800;margin-top:5px}.lh-streak-list{display:grid;gap:10px}.lh-streak-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:16px;background:#fff;border:1px solid #d8e1ef}.lh-streak-title{font-size:15px;font-weight:800}.lh-streak-val{font-size:14px;color:#64748b;font-weight:800}
+.lh-footer-note{margin-top:18px;padding:18px 20px;border-radius:22px;border:1px dashed #bfd0ea;background:#f7fbff;color:#64748b;font-size:14px;line-height:1.7}
+@media (max-width:1080px){.learning-hero,.lh-grid,.lh-growth-grid,.lh-vocab-grid{grid-template-columns:1fr}.lh-stats{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:700px){.learning-hub-wrap{padding:18px 14px 50px}.lh-hero-main,.lh-hero-side,.lh-card,.lh-stat{border-radius:22px}.lh-hero-main,.lh-hero-side,.lh-card{padding:20px}.lh-hero-main h1{font-size:36px}.lh-stats{grid-template-columns:1fr 1fr;gap:12px}.lh-stat{padding:18px 16px}.lh-stat-num{font-size:34px}.lh-card-hd h2{font-size:28px}.lh-timeline-item{grid-template-columns:1fr}.lh-bars{gap:8px}}
+@media (max-width:520px){.lh-stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="kh-header"></div>
+<div class="learning-hub-wrap">
+  <section class="learning-hero">
+    <div class="lh-hero-main">
+      <div class="lh-eyebrow">Personalized Learning Hub</div>
+      <h1>Your study should tell you what to do next.</h1>
+      <p>This one-page hub shows weak grammar, daily vocabulary, saved reading history, daily review, and growth charts in one place so learners always know what to study next.</p>
+      <div class="lh-actions">
+        <a class="lh-btn lh-btn-primary" href="korehan-study-room.html">Start today’s review</a>
+        <a class="lh-btn lh-btn-ghost" href="korehan-mypage.html">Open my page</a>
+      </div>
+    </div>
+    <aside class="lh-hero-side">
+      <div class="lh-mini-title">Recommended flow today</div>
+      <div class="lh-routine">
+        <div class="lh-routine-item"><div class="lh-num">1</div><div><h3>Review weak grammar</h3><p>Focus on the pattern you miss most often, not random content.</p></div></div>
+        <div class="lh-routine-item"><div class="lh-num">2</div><div><h3>Study 20 words</h3><p>10 general words + 10 words based on your interests.</p></div></div>
+        <div class="lh-routine-item"><div class="lh-num">3</div><div><h3>Revisit today’s reading</h3><p>Everything you studied today should be reviewable in one place.</p></div></div>
+      </div>
+    </aside>
+  </section>
+
+  <section class="lh-stats" id="lh-top-stats">
+    <div class="lh-stat"><div class="lh-stat-label">Today’s Study Time</div><div class="lh-stat-num" id="lh-time">42m</div><div class="lh-stat-sub">Visible progress keeps users engaged</div></div>
+    <div class="lh-stat"><div class="lh-stat-label">Grammar Accuracy</div><div class="lh-stat-num" id="lh-grammar-acc">78%</div><div class="lh-stat-sub">Show exactly what needs review</div></div>
+    <div class="lh-stat"><div class="lh-stat-label">Words Reviewed</div><div class="lh-stat-num" id="lh-words-total">20</div><div class="lh-stat-sub">10 general + 10 interest-based</div></div>
+    <div class="lh-stat"><div class="lh-stat-label">Weekly Streak</div><div class="lh-stat-num" id="lh-streak">6</div><div class="lh-stat-sub">Small wins should stay visible</div></div>
+  </section>
+
+  <section class="lh-grid">
+    <div class="lh-card">
+      <div class="lh-card-hd"><div><h2>Weak grammar patterns</h2><p>Show users what they are actually weak at, then let them go straight into more examples.</p></div><div class="lh-soft-link">More practice</div></div>
+      <div class="lh-grammar-list" id="lh-grammar-list">
+        <div class="lh-grammar-item"><div class="lh-grammar-top"><div><div class="lh-grammar-title">-아/어서 vs -고</div><div class="lh-grammar-meta">Cause / sequence distinction · missed 8 times this week</div></div><div class="lh-tag lh-red">Weak</div></div><div class="lh-progress"><div class="lh-fill lh-fill-red" style="width:34%"></div></div><div class="lh-grammar-actions"><div class="lh-solid-btn">더 연습하기</div><div class="lh-ghost-btn">Example Sentences 24</div><div class="lh-ghost-btn">Mini Quiz</div></div></div>
+        <div class="lh-grammar-item"><div class="lh-grammar-top"><div><div class="lh-grammar-title">-(으)ㄴ 적이 있다</div><div class="lh-grammar-meta">Past experience pattern · missed 5 times this week</div></div><div class="lh-tag lh-amber">Needs review</div></div><div class="lh-progress"><div class="lh-fill lh-fill-amber" style="width:58%"></div></div><div class="lh-grammar-actions"><div class="lh-solid-btn">더 연습하기</div><div class="lh-ghost-btn">Article Examples</div><div class="lh-ghost-btn">Speaking Drill</div></div></div>
+        <div class="lh-grammar-item"><div class="lh-grammar-top"><div><div class="lh-grammar-title">-려고 하다</div><div class="lh-grammar-meta">Intention / about to do · missed 3 times this week</div></div><div class="lh-tag lh-green">Almost there</div></div><div class="lh-progress"><div class="lh-fill lh-fill-green" style="width:82%"></div></div><div class="lh-grammar-actions"><div class="lh-solid-btn">더 연습하기</div><div class="lh-ghost-btn">Review 12 Sentences</div></div></div>
+      </div>
+    </div>
+
+    <div class="lh-card">
+      <div class="lh-card-hd"><div><h2>Saved reading history</h2><p>Articles, conversations, and stories the user already studied should stay reviewable.</p></div><div class="lh-soft-link">Open My Page</div></div>
+      <div class="lh-articles-list" id="lh-reading-list">
+        <div class="lh-article-row"><div><div class="lh-article-title">한국 경제가 조금씩 회복되고 있습니다</div><div class="lh-article-sub">Read today · Grammar reviewed · Quiz completed</div></div><div class="lh-article-tag">Saved</div></div>
+        <div class="lh-article-row"><div><div class="lh-article-title">서울 지하철 이용자가 늘었습니다</div><div class="lh-article-sub">Read yesterday · 3 words bookmarked</div></div><div class="lh-article-tag">Saved</div></div>
+        <div class="lh-article-row"><div><div class="lh-article-title">카페에서 주문하기</div><div class="lh-article-sub">Conversation practice · Roleplay done</div></div><div class="lh-article-tag">Saved</div></div>
+        <div class="lh-article-row"><div><div class="lh-article-title">비 오는 날의 약속</div><div class="lh-article-sub">Story reading · Discussion question answered</div></div><div class="lh-article-tag">Saved</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="lh-card" style="margin-bottom:18px">
+    <div class="lh-card-hd"><div><h2>20 words for today</h2><p>Split daily vocabulary into 10 general words and 10 interest-based words.</p></div><div class="lh-soft-link">Refresh Tomorrow</div></div>
+    <div class="lh-vocab-grid">
+      <div class="lh-vocab-box">
+        <h3>10 random essential words</h3>
+        <p>Useful daily vocabulary users should meet regularly.</p>
+        <div class="lh-word-list" id="lh-random-words"></div>
+      </div>
+      <div class="lh-vocab-box">
+        <h3>10 words from your interests</h3>
+        <p>Based on selected interests like K-pop, travel, daily conversation, or food.</p>
+        <div class="lh-word-list" id="lh-interest-words"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="lh-grid">
+    <div class="lh-card">
+      <div class="lh-card-hd"><div><h2>Daily review</h2><p>Everything studied that day should be easy to revisit in one place.</p></div><div class="lh-soft-link">Review All</div></div>
+      <div class="lh-review-wrap">
+        <div class="lh-review-day">
+          <div class="lh-review-top"><div><h3>Today</h3><p id="lh-review-summary">1 article · 1 conversation · 20 words · 2 weak grammar drills</p></div><div class="lh-tag lh-amber" id="lh-review-tag">Needs 8 min review</div></div>
+          <div class="lh-timeline" id="lh-review-timeline"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lh-card">
+      <div class="lh-card-hd"><div><h2>Daily & weekly growth</h2><p>Users should be able to feel improvement, not guess it.</p></div></div>
+      <div class="lh-growth-grid">
+        <div class="lh-chart-box">
+          <div class="lh-chart-title">Weekly study minutes</div>
+          <div class="lh-chart-sub">A simple graph makes progress feel real.</div>
+          <div class="lh-bars" id="lh-bars"></div>
+        </div>
+        <div class="lh-chart-box">
+          <div class="lh-chart-title">This week’s improvement</div>
+          <div class="lh-chart-sub">Small wins should stay visible and motivating.</div>
+          <div class="lh-streak-list" id="lh-improvements"></div>
+        </div>
+      </div>
+      <div class="lh-footer-note"><strong>Why this matters:</strong> this page turns the site from “content to read” into a real learning product. Instead of only showing articles and quizzes, it tells users what they are weak at, what to review today, what words to study, and how much they are improving over time.</div>
+    </div>
+  </section>
+</div>
+<div id="kh-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js"></script>
+<script>
+(function(){
+  function sampleWords(){
+    return [
+      {ko:'회복',en:'recovery',level:'Intermediate'},
+      {ko:'확인하다',en:'to check',level:'Beginner'},
+      {ko:'이용자',en:'user',level:'Intermediate'},
+      {ko:'설명',en:'explanation',level:'Beginner'},
+      {ko:'실수',en:'mistake',level:'Beginner'},
+      {ko:'관심사',en:'interest',level:'Intermediate'},
+      {ko:'복습',en:'review',level:'Beginner'},
+      {ko:'방향',en:'direction',level:'Intermediate'},
+      {ko:'그래프',en:'graph',level:'Intermediate'},
+      {ko:'성장',en:'growth',level:'Intermediate'}
+    ];
+  }
+  function interestWords(){
+    return [
+      {ko:'공연장',en:'concert hall',level:'Interest'},
+      {ko:'숙소',en:'accommodation',level:'Interest'},
+      {ko:'예약하다',en:'to reserve',level:'Interest'},
+      {ko:'팬미팅',en:'fan meeting',level:'Interest'},
+      {ko:'합정역',en:'Hapjeong Station',level:'Interest'},
+      {ko:'노선',en:'route',level:'Interest'},
+      {ko:'메뉴판',en:'menu board',level:'Interest'},
+      {ko:'환승',en:'transfer',level:'Interest'},
+      {ko:'공항버스',en:'airport bus',level:'Interest'},
+      {ko:'숙박비',en:'lodging cost',level:'Interest'}
+    ];
+  }
+  function wordRowHTML(w){
+    return '<div class="lh-word-row"><div class="lh-word-main"><div class="lh-ko">'+w.ko+'</div><div class="lh-sub">'+w.en+'</div></div><div class="lh-level">'+w.level+'</div></div>';
+  }
+  function renderWords(){
+    var left = document.getElementById('lh-random-words');
+    var right = document.getElementById('lh-interest-words');
+    if (left) left.innerHTML = sampleWords().slice(0,5).map(wordRowHTML).join('');
+    if (right) right.innerHTML = interestWords().slice(0,5).map(wordRowHTML).join('');
+  }
+  function renderBars(stats){
+    var bars = document.getElementById('lh-bars');
+    if (!bars) return;
+    var vals = stats || [18,23,29,26,35,32,42];
+    var max = Math.max.apply(null, vals.concat([42]));
+    var days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    bars.innerHTML = vals.map(function(v,i){
+      return '<div class="lh-bar-col"><div class="lh-bar" style="height:'+Math.max(18, Math.round((v/max)*100))+'%"></div><div class="lh-bar-label">'+days[i]+'</div><div class="lh-bar-num">'+v+'m</div></div>';
+    }).join('');
+  }
+  function renderImprovements(snapshot){
+    var el = document.getElementById('lh-improvements');
+    if (!el) return;
+    var items = [
+      ['Grammar accuracy','+' + Math.max(5, Math.round((snapshot.quizzes||0) * 3)) + '%'],
+      ['Words remembered after 24h','+' + Math.max(4, Math.min(12, snapshot.words||0)) + ' words'],
+      ['Articles completed', String(snapshot.articles || 0) + ' this week'],
+      ['Conversation roleplays', String(Math.max(1, Math.floor((snapshot.quizzes||0)/2))) + ' completed'],
+      ['Longest streak', String(snapshot.streak || 0) + ' days']
+    ];
+    el.innerHTML = items.map(function(it){ return '<div class="lh-streak-item"><div class="lh-streak-title">'+it[0]+'</div><div class="lh-streak-val">'+it[1]+'</div></div>'; }).join('');
+  }
+  function renderTimeline(snapshot){
+    var el = document.getElementById('lh-review-timeline');
+    if (!el) return;
+    var items = [
+      ['09:10 AM','News Article — 한국 경제 회복','Read article, checked translation, reviewed 6 vocabulary items.'],
+      ['09:26 AM','Grammar Drill — ' + (snapshot.weakGrammar || '-아/어서 vs -고'),'Accuracy focus · recommended for extra practice.'],
+      ['09:39 AM','Conversation — 카페에서 주문하기','Finished translate + roleplay practice.'],
+      ['09:50 AM','Daily Vocab Set', (snapshot.words||0) + ' words complete · marked items saved for later review.']
+    ];
+    el.innerHTML = items.map(function(it){ return '<div class="lh-timeline-item"><div class="lh-time">'+it[0]+'</div><div><div class="lh-timeline-title">'+it[1]+'</div><div class="lh-timeline-sub">'+it[2]+'</div></div></div>'; }).join('');
+  }
+  async function hydrate(){
+    renderWords();
+    var snapshot = (window.getHomeLearningSnapshot ? window.getHomeLearningSnapshot() : {streak:6,words:20,articles:5,quizzes:3,weakGrammar:'-아/어서 vs -고'});
+    if (window.fetchUserStatsRow) {
+      var row = await window.fetchUserStatsRow();
+      if (row) {
+        snapshot.articles = Math.max(snapshot.articles||0, row.articles_read||0);
+        snapshot.words = Math.max(snapshot.words||0, Math.min(20, row.words_saved||0));
+        snapshot.quizzes = Math.max(snapshot.quizzes||0, row.quizzes_done||0);
+        snapshot.streak = Math.max(snapshot.streak||0, row.mission_streak||0, row.streak||0);
+      }
+    }
+    var dm = window.dmGet ? window.dmGet() : null;
+    if (dm) {
+      snapshot.words = dm.words || snapshot.words;
+      snapshot.articles = dm.articles || snapshot.articles;
+      snapshot.quizzes = dm.quizzes || snapshot.quizzes;
+    }
+    var timeEl = document.getElementById('lh-time');
+    if (timeEl) timeEl.textContent = (18 + ((snapshot.articles||0)*6) + ((snapshot.quizzes||0)*4)) + 'm';
+    var accEl = document.getElementById('lh-grammar-acc');
+    if (accEl) accEl.textContent = Math.max(52, 88 - ((snapshot.weakCount||8)*3)) + '%';
+    var wordsEl = document.getElementById('lh-words-total');
+    if (wordsEl) wordsEl.textContent = String(Math.max(10, snapshot.words||0));
+    var streakEl = document.getElementById('lh-streak');
+    if (streakEl) streakEl.textContent = String(snapshot.streak || 0);
+    var reviewSummary = document.getElementById('lh-review-summary');
+    if (reviewSummary) reviewSummary.textContent = (snapshot.articles||1) + ' article · 1 conversation · ' + Math.max(10, snapshot.words||0) + ' words · 2 weak grammar drills';
+    renderBars([18,23,29,26,35,32,18 + ((snapshot.articles||0)*6) + ((snapshot.quizzes||0)*4)]);
+    renderImprovements(snapshot);
+    renderTimeline(snapshot);
+  }
+  document.addEventListener('DOMContentLoaded', hydrate);
+})();
+</script>
+</body>
+</html>
