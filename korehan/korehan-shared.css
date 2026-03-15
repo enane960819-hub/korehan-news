@@ -2097,3 +2097,154 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   .hlp-focus{ grid-template-columns:1fr; }
   .pb-actions{ gap:10px; }
 }
+
+
+/* ===== Home phrase + study room tuning (desktop + mobile) ===== */
+.phrase-dashboard{
+  grid-template-columns:minmax(0,1.18fr) minmax(300px,.82fr);
+  gap:14px;
+}
+.home-learning-preview{
+  padding:18px;
+}
+.hlp-top{
+  margin-bottom:10px;
+}
+.hlp-eyebrow{
+  margin-bottom:8px;
+}
+.hlp-title{
+  font-size:24px;
+}
+.hlp-sub{
+  font-size:13px;
+  line-height:1.5;
+  max-width:34ch;
+}
+.hlp-badge{
+  padding:7px 10px;
+  font-size:11px;
+}
+.hlp-stats{
+  margin:12px 0 12px;
+}
+.hlp-stat{
+  padding:10px 12px;
+  border-radius:14px;
+}
+.hlp-stat-value{
+  font-size:22px;
+}
+.hlp-focus{
+  padding:12px 13px;
+  border-radius:16px;
+}
+.hlp-focus-title{
+  font-size:16px;
+}
+.hlp-focus-sub{
+  font-size:12px;
+}
+.hlp-bottom{
+  margin-top:12px;
+}
+.hlp-pill{
+  padding:6px 9px;
+  font-size:11px;
+}
+.hlp-main-btn,.hlp-focus-btn{
+  padding:10px 14px;
+  font-size:12px;
+}
+
+@media (min-width: 981px){
+  .home-learning-preview.study-room-banner-mode{
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    background:linear-gradient(135deg,#ffffff 0%,#f5f9ff 100%);
+  }
+}
+
+@media (max-width: 640px){
+  .pb-mini{display:none;}
+  .pb-actions{margin-top:12px;}
+  .pb-btn{padding:8px 14px;font-size:11px;}
+  .pb-link{font-size:12px;}
+  .home-learning-preview{
+    padding:14px;
+  }
+  .hlp-top{
+    display:block;
+    margin-bottom:8px;
+  }
+  .hlp-eyebrow{
+    margin-bottom:6px;
+    font-size:10px;
+  }
+  .hlp-title{
+    font-size:18px;
+  }
+  .hlp-sub{
+    display:none;
+  }
+  .hlp-badge{
+    display:inline-flex;
+    margin-top:8px;
+    font-size:10px;
+    padding:6px 9px;
+  }
+  .hlp-stats{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+    margin:10px 0;
+  }
+  .hlp-stat{
+    padding:8px 8px;
+    border-radius:12px;
+  }
+  .hlp-stat-label{
+    font-size:9px;
+    margin-bottom:4px;
+  }
+  .hlp-stat-value{
+    font-size:16px;
+  }
+  .hlp-stat-sub{
+    display:none;
+  }
+  .hlp-focus{
+    grid-template-columns:1fr auto;
+    gap:8px;
+    padding:10px 11px;
+    border-radius:14px;
+  }
+  .hlp-focus-label{
+    font-size:9px;
+    margin-bottom:3px;
+  }
+  .hlp-focus-title{
+    font-size:13px;
+    line-height:1.2;
+  }
+  .hlp-focus-sub{
+    display:none;
+  }
+  .hlp-focus-btn{
+    padding:8px 10px;
+    font-size:11px;
+    align-self:center;
+  }
+  .hlp-bottom{
+    margin-top:10px;
+    justify-content:flex-end;
+  }
+  .hlp-pills{
+    display:none;
+  }
+  .hlp-main-btn{
+    width:100%;
+    padding:10px 14px;
+    font-size:12px;
+  }
+}

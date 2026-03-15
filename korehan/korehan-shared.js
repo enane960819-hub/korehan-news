@@ -3924,6 +3924,7 @@ async function fetchUserStatsRow() {
 async function renderHomeLearningPreview() {
   var box = document.getElementById('home-learning-preview');
   if (!box) return;
+  box.classList.add('study-room-banner-mode');
 
   var snap = getHomeLearningSnapshot();
   var statsRow = await fetchUserStatsRow();
@@ -3939,64 +3940,66 @@ async function renderHomeLearningPreview() {
     box.innerHTML = ''
       + '<div class="hlp-top">'
       + '  <div>'
-      + '    <div class="hlp-eyebrow">Guide for New Users</div>'
-      + '    <h3 class="hlp-title">First time here?</h3>'
-      + '    <p class="hlp-sub">A quick guide for new Korean learners. We will show you what to read first, what to review next, and how to build a simple daily routine.</p>'
+      + '    <div class="hlp-eyebrow">Study Room Shortcut</div>'
+      + '    <h3 class="hlp-title">Continue in Study Room</h3>'
+      + '    <p class="hlp-sub">Start with one article, check the key grammar, and finish with a short review in one place.</p>'
       + '  </div>'
       + '  <div class="hlp-badge">Start easy</div>'
       + '</div>'
+      + '<div class="hlp-stats">'
+      + '  <div class="hlp-stat"><div class="hlp-stat-label">Daily words</div><div class="hlp-stat-value">20</div><div class="hlp-stat-sub">10 random + 10 interest</div></div>'
+      + '  <div class="hlp-stat"><div class="hlp-stat-label">Grammar</div><div class="hlp-stat-value">1</div><div class="hlp-stat-sub">weak pattern focus</div></div>'
+      + '  <div class="hlp-stat"><div class="hlp-stat-label">Review</div><div class="hlp-stat-value">1</div><div class="hlp-stat-sub">reading recap</div></div>'
+      + '</div>'
       + '<div class="hlp-focus">'
       + '  <div>'
-      + '    <div class="hlp-focus-label">Recommended order</div>'
+      + '    <div class="hlp-focus-label">Best next step</div>'
       + '    <div class="hlp-focus-title">News → Grammar → Review</div>'
-      + '    <div class="hlp-focus-sub">Read one article, check the key pattern, then do one short review.</div>'
+      + '    <div class="hlp-focus-sub">Exactly where new users should go after reading the home page.</div>'
       + '  </div>'
-      + '  <a class="hlp-focus-btn" href="beginner-guide.html">Start Here</a>'
+      + '  <a class="hlp-focus-btn" href="korehan-study-room.html">Open</a>'
       + '</div>'
       + '<div class="hlp-bottom">'
       + '  <div class="hlp-pills">'
       + '    <span class="hlp-pill">5–10 min routine</span>'
-      + '    <span class="hlp-pill">Beginner friendly</span>'
-      + '    <span class="hlp-pill">Clear next steps</span>'
+      + '    <span class="hlp-pill">Study hub</span>'
       + '  </div>'
-      + '  <a class="hlp-main-btn" href="korehan-learning-overview.html">Preview learning hub →</a>'
+      + '  <a class="hlp-main-btn" href="korehan-study-room.html">Start Reviewing →</a>'
       + '</div>';
     return;
   }
 
   var wordsLeft = Math.max(0, 20 - (snap.words || 0));
-  var articleGoalLeft = Math.max(0, 3 - (snap.articles || 0));
-  var quizGoalLeft = Math.max(0, 3 - (snap.quizzes || 0));
+  var articleGoalLeft = Math.max(0, 1 - Math.min(1, snap.articles || 0));
 
   box.innerHTML = ''
     + '<div class="hlp-top">'
     + '  <div>'
-    + '    <div class="hlp-eyebrow">Your learning preview</div>'
-    + '    <h3 class="hlp-title">See what to review next.</h3>'
-    + '    <p class="hlp-sub">Show progress right on the home page so logged-in users immediately know what is weak, what is left today, and where to continue.</p>'
+    + '    <div class="hlp-eyebrow">Study Room Shortcut</div>'
+    + '    <h3 class="hlp-title">Continue in Study Room</h3>'
+    + '    <p class="hlp-sub">See today's progress at a glance, then jump straight into weak grammar and review.</p>'
     + '  </div>'
     + '  <div class="hlp-badge">🔥 ' + (snap.streak || 0) + ' day streak</div>'
     + '</div>'
     + '<div class="hlp-stats">'
-    + '  <div class="hlp-stat"><div class="hlp-stat-label">Daily words</div><div class="hlp-stat-value">' + (snap.words || 0) + '/20</div><div class="hlp-stat-sub">' + wordsLeft + ' left today</div></div>'
-    + '  <div class="hlp-stat"><div class="hlp-stat-label">Articles</div><div class="hlp-stat-value">' + (snap.articles || 0) + '</div><div class="hlp-stat-sub">' + articleGoalLeft + ' until daily goal</div></div>'
-    + '  <div class="hlp-stat"><div class="hlp-stat-label">Quiz / XP</div><div class="hlp-stat-value">' + (snap.quizzes || 0) + '</div><div class="hlp-stat-sub">' + (snap.xp || 0) + ' total XP</div></div>'
+    + '  <div class="hlp-stat"><div class="hlp-stat-label">Words</div><div class="hlp-stat-value">' + (snap.words || 0) + '/20</div><div class="hlp-stat-sub">' + wordsLeft + ' left today</div></div>'
+    + '  <div class="hlp-stat"><div class="hlp-stat-label">Reading</div><div class="hlp-stat-value">' + (snap.articles || 0) + '</div><div class="hlp-stat-sub">' + articleGoalLeft + ' review waiting</div></div>'
+    + '  <div class="hlp-stat"><div class="hlp-stat-label">XP</div><div class="hlp-stat-value">' + (snap.xp || 0) + '</div><div class="hlp-stat-sub">quiz ' + (snap.quizzes || 0) + ' done</div></div>'
     + '</div>'
     + '<div class="hlp-focus">'
     + '  <div>'
     + '    <div class="hlp-focus-label">Weak grammar focus</div>'
     + '    <div class="hlp-focus-title">' + (snap.weakGrammar || '-아/어서 vs -고') + '</div>'
-    + '    <div class="hlp-focus-sub">Missed ' + (snap.weakCount || 0) + ' times recently · open more example sentences and review drills.</div>'
+    + '    <div class="hlp-focus-sub">Missed ' + (snap.weakCount || 0) + ' times recently · open more examples now.</div>'
     + '  </div>'
     + '  <a class="hlp-focus-btn" href="korehan-learning-overview.html">더 연습하기</a>'
     + '</div>'
     + '<div class="hlp-bottom">'
     + '  <div class="hlp-pills">'
-    + '    <span class="hlp-pill">Review today</span>'
-    + '    <span class="hlp-pill">20 words plan</span>'
-    + '    <span class="hlp-pill">Growth charts</span>'
+    + '    <span class="hlp-pill">Daily review</span>'
+    + '    <span class="hlp-pill">20 words</span>'
     + '  </div>'
-    + '  <a class="hlp-main-btn" href="korehan-learning-overview.html">Open learning hub →</a>'
+    + '  <a class="hlp-main-btn" href="korehan-study-room.html">Start Reviewing →</a>'
     + '</div>';
 }
 
