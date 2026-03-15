@@ -609,9 +609,39 @@ const K_OPINIONS      = 'korehan_opinions';
 const K_ADMIN_SESSION = 'korehan_admin_session';
 
 const DEF_PHRASES = [
-  {ko:'경제 회복', rom:'gyeong-je hoe-bok', en:'economic recovery'},
-  {ko:'민간투자',  rom:'min-gan tu-ja',     en:'private investment'},
-  {ko:'반도체',    rom:'ban-do-che',        en:'semiconductor'},
+  {
+    ko:'경제 회복', rom:'gyeong-je hoe-bok', en:'economic recovery',
+    intro:'A phrase used when the economy starts improving again after a slowdown.',
+    nuance:'Often used in news, politics, and business reports when talking about growth, jobs, prices, or consumer confidence.',
+    examples:[
+      {ko:'정부는 경제 회복을 위해 추가 지원책을 발표했어요.', en:'The government announced extra support measures for economic recovery.'},
+      {ko:'전문가들은 올해 하반기에 경제 회복이 본격화될 것으로 보고 있어요.', en:'Experts believe the economic recovery will pick up in the second half of this year.'},
+      {ko:'소비가 늘어나면서 경제 회복 기대감도 커지고 있어요.', en:'As spending rises, expectations for economic recovery are also growing.'}
+    ],
+    related:['물가 안정','소비 증가','고용 회복']
+  },
+  {
+    ko:'민간투자',  rom:'min-gan tu-ja',     en:'private investment',
+    intro:'Money invested by private companies or individuals rather than the government.',
+    nuance:'Common in economy and policy articles when discussing business expansion, infrastructure, or innovation.',
+    examples:[
+      {ko:'정부는 민간투자를 늘리기 위한 규제 완화를 검토하고 있어요.', en:'The government is reviewing deregulation to increase private investment.'},
+      {ko:'이번 프로젝트는 대규모 민간투자를 바탕으로 추진돼요.', en:'This project is being pushed forward based on large-scale private investment.'},
+      {ko:'전문가들은 민간투자가 살아나야 경기 회복 속도도 빨라질 수 있다고 말해요.', en:'Experts say the recovery can speed up only if private investment picks up.'}
+    ],
+    related:['규제 완화','기업 투자','경기 회복']
+  },
+  {
+    ko:'반도체',    rom:'ban-do-che',        en:'semiconductor',
+    intro:'A core technology product used in phones, computers, cars, and many modern devices.',
+    nuance:'One of the most common words in Korean tech and export news.',
+    examples:[
+      {ko:'한국의 반도체 수출이 지난달보다 증가했어요.', en:'Korea’s semiconductor exports increased compared to last month.'},
+      {ko:'반도체 산업은 한국 경제에서 중요한 역할을 해요.', en:'The semiconductor industry plays an important role in the Korean economy.'},
+      {ko:'새 반도체 공장 건설로 일자리도 늘어날 전망이에요.', en:'Jobs are also expected to increase with the construction of a new semiconductor factory.'}
+    ],
+    related:['수출','공장 건설','첨단 산업']
+  },
 ];
 const DEF_WORDBANK = [
   {ko:'뉴스', rom:'nyu-seu',  en:'news'},
@@ -647,8 +677,32 @@ function lsSet(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
 }
 
+function normalizePhrase(row) {
+  row = row || {};
+  var examples = Array.isArray(row.examples) ? row.examples : [];
+  if (!examples.length && row.example_ko) examples = [{ ko: row.example_ko || '', en: row.example_en || '' }];
+  return {
+    ko: row.ko || '',
+    rom: row.rom || '',
+    en: row.en || '',
+    intro: row.intro || row.desc || row.description || '',
+    nuance: row.nuance || row.note || '',
+    examples: examples.slice(0, 6).map(function(ex){ return { ko: ex.ko || '', en: ex.en || '' }; }).filter(function(ex){ return ex.ko; }),
+    related: Array.isArray(row.related) ? row.related.filter(Boolean).slice(0, 8) : []
+  };
+}
+function getPhrases()   { return lsGet(K_PHRASES,   DEF_PHRASES).map(normalizePhrase); }
+function getTodaysPhraseIndex() {
+  var phrases = getPhrases();
+  if (!phrases.length) return 0;
+  return Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length;
+}
+function getTodaysPhrase() {
+  var phrases = getPhrases();
+  return phrases[getTodaysPhraseIndex()] || normalizePhrase({});
+}
+
 // ── 공유 데이터 ───────────────────────────────────────────────
-function getPhrases()   { return lsGet(K_PHRASES,   DEF_PHRASES);   }
 function getWordBank()  { return lsGet(K_WORDBANK,  DEF_WORDBANK);  }
 function getSentences() { return lsGet(K_SENTENCES, DEF_SENTENCES); }
 function getOpinions()  { return lsGet(K_OPINIONS,  []);            }
@@ -2066,7 +2120,7 @@ async function loadGrammarGuide() {
     var guides = parsed.patterns || [];
     el.dataset.source = 'ai'; // AI 분석 성공 표시 → 캐시 허용
 
-    el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">✨ Grammar patterns found in this article:</p>'
+    el.innerHTML = '<p class="grammar-intro">✨ Grammar patterns found in this article:</p>'
       + guides.map(function(g){
         return '<div class="grammar-point">'
           + '<div class="grammar-name">' + g.name
@@ -2106,7 +2160,7 @@ function renderStaticGrammar(el, a) {
   var guides = patterns.filter(function(p){ return p.pattern.test(text); }).slice(0, 4);
   if (guides.length < 3) guides = patterns.slice(0, 4);
 
-  el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">Grammar patterns in this article:</p>'
+  el.innerHTML = '<p class="grammar-intro">Grammar patterns in this article:</p>'
     + guides.map(function(g){
       return '<div class="grammar-point">'
         + '<div class="grammar-name">' + g.name
@@ -3822,34 +3876,47 @@ function khSbToggle(subId, arrId) {
 
 // ══ END MOBILE SIDEBAR ══════════════════════════════════════════════════════
 
+/* ===== Mobile redesign patch v3 ===== */
 
 
-/* ===== Safe home banner fix ===== */
 function getHomeLearningSnapshot() {
-  var readLog = lsGet('kh_read_log', {}) || {};
-  var saved = lsGet('kh_saved_words', []) || lsGet('kh_saved', []) || [];
-  var weak = lsGet('kh_weak_grammar', null);
-  var articles = 0;
-  try { articles = Object.keys(readLog).length; } catch (e) { articles = 0; }
-  return {
-    articles: articles,
-    words: Math.min(20, Array.isArray(saved) ? saved.length : 0),
-    quizzes: lsGet('kh_quiz_done_count', 0) || 0,
-    xp: (typeof getXP === 'function' ? getXP() : 0) || 0,
-    streak: (typeof getStudyStreak === 'function' ? getStudyStreak() : 0) || 0,
-    weakGrammar: weak && weak.name ? weak.name : '-아/어서 vs -고',
-    weakCount: weak && weak.missed ? weak.missed : 3
+  var stats = {
+    streak: 0,
+    words: 0,
+    articles: 0,
+    quizzes: 0,
+    xp: 0,
+    weakGrammar: '-아/어서 vs -고',
+    weakCount: 8
   };
+  try {
+    stats.streak = getCurrentStreak ? getCurrentStreak() : 0;
+  } catch(e) {}
+  try {
+    var dm = dmGet ? dmGet() : { words:0, articles:0, quizzes:0 };
+    stats.words = dm.words || 0;
+    stats.articles = dm.articles || 0;
+    stats.quizzes = dm.quizzes || 0;
+  } catch(e) {}
+  try { stats.xp = getXP ? getXP() : 0; } catch(e) {}
+  try {
+    var weak = lsGet('kh_weak_grammar', null);
+    if (weak && weak.name) {
+      stats.weakGrammar = weak.name;
+      stats.weakCount = weak.missed || stats.weakCount;
+    }
+  } catch(e) {}
+  return stats;
 }
 
-async function fetchUserStatsRowForHome() {
+async function fetchUserStatsRow() {
   if (!supaUser) return null;
   try {
     var sb = getSupa();
     if (!sb) return null;
     var res = await sb.from('user_stats').select('*').eq('user_id', supaUser.id).maybeSingle();
-    return res && res.data ? res.data : null;
-  } catch (e) {
+    return res.data || null;
+  } catch(e) {
     return null;
   }
 }
@@ -3858,10 +3925,8 @@ async function renderHomeLearningPreview() {
   var box = document.getElementById('home-learning-preview');
   if (!box) return;
 
-  var compact = window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
   var snap = getHomeLearningSnapshot();
-  var statsRow = await fetchUserStatsRowForHome();
-
+  var statsRow = await fetchUserStatsRow();
   if (statsRow) {
     snap.articles = Math.max(snap.articles || 0, statsRow.articles_read || 0);
     snap.words = Math.max(snap.words || 0, Math.min(20, statsRow.words_saved || 0));
@@ -3871,31 +3936,12 @@ async function renderHomeLearningPreview() {
   }
 
   if (!supaUser) {
-    if (compact) {
-      box.innerHTML = ''
-        + '<div class="hlp-top">'
-        + '  <div>'
-        + '    <div class="hlp-eyebrow">Study Preview</div>'
-        + '    <h3 class="hlp-title">Start in Study Room</h3>'
-        + '  </div>'
-        + '</div>'
-        + '<div class="hlp-focus">'
-        + '  <div>'
-        + '    <div class="hlp-focus-label">Recommended</div>'
-        + '    <div class="hlp-focus-title">News → Grammar → Review</div>'
-        + '    <div class="hlp-focus-sub">One clear place to keep studying.</div>'
-        + '  </div>'
-        + '  <a class="hlp-focus-btn" href="korehan-study-room.html">Open Study Room</a>'
-        + '</div>';
-      return;
-    }
-
     box.innerHTML = ''
       + '<div class="hlp-top">'
       + '  <div>'
-      + '    <div class="hlp-eyebrow">Study Room</div>'
-      + '    <h3 class="hlp-title">Continue in Study Room</h3>'
-      + '    <p class="hlp-sub">Move from reading to real study. Review grammar, daily vocabulary, and today’s reading in one place.</p>'
+      + '    <div class="hlp-eyebrow">Guide for New Users</div>'
+      + '    <h3 class="hlp-title">First time here?</h3>'
+      + '    <p class="hlp-sub">A quick guide for new Korean learners. We will show you what to read first, what to review next, and how to build a simple daily routine.</p>'
       + '  </div>'
       + '  <div class="hlp-badge">Start easy</div>'
       + '</div>'
@@ -3905,75 +3951,331 @@ async function renderHomeLearningPreview() {
       + '    <div class="hlp-focus-title">News → Grammar → Review</div>'
       + '    <div class="hlp-focus-sub">Read one article, check the key pattern, then do one short review.</div>'
       + '  </div>'
-      + '  <a class="hlp-focus-btn" href="korehan-study-room.html">Go to Study Room</a>'
+      + '  <a class="hlp-focus-btn" href="beginner-guide.html">Start Here</a>'
       + '</div>'
       + '<div class="hlp-bottom">'
       + '  <div class="hlp-pills">'
-      + '    <span class="hlp-pill">20 daily words</span>'
-      + '    <span class="hlp-pill">Weak grammar</span>'
-      + '    <span class="hlp-pill">Review today</span>'
+      + '    <span class="hlp-pill">5–10 min routine</span>'
+      + '    <span class="hlp-pill">Beginner friendly</span>'
+      + '    <span class="hlp-pill">Clear next steps</span>'
       + '  </div>'
-      + '  <a class="hlp-main-btn" href="korehan-study-room.html">Start Reviewing →</a>'
+      + '  <a class="hlp-main-btn" href="korehan-learning-overview.html">Preview learning hub →</a>'
       + '</div>';
     return;
   }
 
   var wordsLeft = Math.max(0, 20 - (snap.words || 0));
   var articleGoalLeft = Math.max(0, 3 - (snap.articles || 0));
-
-  if (compact) {
-    box.innerHTML = ''
-      + '<div class="hlp-top">'
-      + '  <div>'
-      + '    <div class="hlp-eyebrow">Study Preview</div>'
-      + '    <h3 class="hlp-title">Continue in Study Room</h3>'
-      + '  </div>'
-      + '</div>'
-      + '<div class="hlp-stats">'
-      + '  <div class="hlp-stat"><div class="hlp-stat-label">Words</div><div class="hlp-stat-value">' + (snap.words || 0) + '/20</div><div class="hlp-stat-sub">' + wordsLeft + ' left</div></div>'
-      + '  <div class="hlp-stat"><div class="hlp-stat-label">Articles</div><div class="hlp-stat-value">' + (snap.articles || 0) + '</div><div class="hlp-stat-sub">' + articleGoalLeft + ' to goal</div></div>'
-      + '</div>'
-      + '<div class="hlp-focus">'
-      + '  <div>'
-      + '    <div class="hlp-focus-label">Weak grammar</div>'
-      + '    <div class="hlp-focus-title">' + (snap.weakGrammar || '-아/어서 vs -고') + '</div>'
-      + '  </div>'
-      + '  <a class="hlp-focus-btn" href="korehan-study-room.html">Continue</a>'
-      + '</div>';
-    return;
-  }
+  var quizGoalLeft = Math.max(0, 3 - (snap.quizzes || 0));
 
   box.innerHTML = ''
     + '<div class="hlp-top">'
     + '  <div>'
-    + '    <div class="hlp-eyebrow">Study Room</div>'
-    + '    <h3 class="hlp-title">Continue in Study Room</h3>'
-    + '    <p class="hlp-sub">See what is weak, what is left today, and what you should review next without leaving the home page.</p>'
+    + '    <div class="hlp-eyebrow">Your learning preview</div>'
+    + '    <h3 class="hlp-title">See what to review next.</h3>'
+    + '    <p class="hlp-sub">Show progress right on the home page so logged-in users immediately know what is weak, what is left today, and where to continue.</p>'
     + '  </div>'
     + '  <div class="hlp-badge">🔥 ' + (snap.streak || 0) + ' day streak</div>'
     + '</div>'
     + '<div class="hlp-stats">'
     + '  <div class="hlp-stat"><div class="hlp-stat-label">Daily words</div><div class="hlp-stat-value">' + (snap.words || 0) + '/20</div><div class="hlp-stat-sub">' + wordsLeft + ' left today</div></div>'
-    + '  <div class="hlp-stat"><div class="hlp-stat-label">Articles</div><div class="hlp-stat-value">' + (snap.articles || 0) + '</div><div class="hlp-stat-sub">' + articleGoalLeft + ' until goal</div></div>'
-    + '  <div class="hlp-stat"><div class="hlp-stat-label">XP</div><div class="hlp-stat-value">' + (snap.xp || 0) + '</div><div class="hlp-stat-sub">' + (snap.quizzes || 0) + ' quizzes done</div></div>'
+    + '  <div class="hlp-stat"><div class="hlp-stat-label">Articles</div><div class="hlp-stat-value">' + (snap.articles || 0) + '</div><div class="hlp-stat-sub">' + articleGoalLeft + ' until daily goal</div></div>'
+    + '  <div class="hlp-stat"><div class="hlp-stat-label">Quiz / XP</div><div class="hlp-stat-value">' + (snap.quizzes || 0) + '</div><div class="hlp-stat-sub">' + (snap.xp || 0) + ' total XP</div></div>'
     + '</div>'
     + '<div class="hlp-focus">'
     + '  <div>'
     + '    <div class="hlp-focus-label">Weak grammar focus</div>'
     + '    <div class="hlp-focus-title">' + (snap.weakGrammar || '-아/어서 vs -고') + '</div>'
-    + '    <div class="hlp-focus-sub">Missed ' + (snap.weakCount || 0) + ' times recently · open more examples and review drills.</div>'
+    + '    <div class="hlp-focus-sub">Missed ' + (snap.weakCount || 0) + ' times recently · open more example sentences and review drills.</div>'
     + '  </div>'
-    + '  <a class="hlp-focus-btn" href="korehan-study-room.html">Go to Study Room</a>'
+    + '  <a class="hlp-focus-btn" href="korehan-learning-overview.html">더 연습하기</a>'
     + '</div>'
     + '<div class="hlp-bottom">'
     + '  <div class="hlp-pills">'
-    + '    <span class="hlp-pill">20 words</span>'
-    + '    <span class="hlp-pill">Weak grammar</span>'
     + '    <span class="hlp-pill">Review today</span>'
+    + '    <span class="hlp-pill">20 words plan</span>'
+    + '    <span class="hlp-pill">Growth charts</span>'
     + '  </div>'
-    + '  <a class="hlp-main-btn" href="korehan-study-room.html">Start Reviewing →</a>'
+    + '  <a class="hlp-main-btn" href="korehan-learning-overview.html">Open learning hub →</a>'
     + '</div>';
 }
 
 window.renderHomeLearningPreview = renderHomeLearningPreview;
 
+function isMobileRedesign() {
+  return window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
+}
+
+function pageName() {
+  return (window.location.pathname.split('/').pop() || 'index.html').replace(/\.html$/,'');
+}
+
+function markMobileBody() {
+  if (!isMobileRedesign()) return;
+  document.body.classList.add('mobile-redesign');
+}
+
+function injectMobileBottomNav() {
+  if (!isMobileRedesign() || document.querySelector('.mobile-bottom-nav')) return;
+  var page = pageName();
+  var nav = document.createElement('nav');
+  nav.className = 'mobile-bottom-nav';
+  var items = [
+    ['index.html','🏠','Home','index'],
+    ['korehan-all.html','📰','News','korehan-all'],
+    ['korehan-study-room.html','📘','Learn','korehan-study-room'],
+    ['korehan-conversations.html','💬','CONVO','korehan-conversations'],
+    ['korehan-mypage.html','👤','My','korehan-mypage']
+  ];
+  nav.innerHTML = items.map(function(it){
+    return '<a href="'+it[0]+'" class="'+(page===it[3]?'on':'')+'"><span class="ico">'+it[1]+'</span><span>'+it[2]+'</span></a>';
+  }).join('');
+  document.body.appendChild(nav);
+}
+
+function mobileCreateCardHTML(label, value, href) {
+  return '<a class="mobile-mini-card" href="'+href+'"><div class="label">'+label+'</div><div class="value">'+value+'</div></a>';
+}
+
+function enhanceHomeMobile() {
+  if (!isMobileRedesign() || pageName() !== 'index') return;
+  var container = document.querySelector('.container');
+  if (!container || document.querySelector('.mobile-quick-start')) return;
+
+  var quick = document.createElement('section');
+  quick.className = 'mobile-quick-start';
+  quick.innerHTML = ''
+    + '<div class="mobile-eyebrow">Start here</div>'
+    + '<h2 class="mobile-quick-title">Pick one thing and start studying now.</h2>'
+    + '<p class="mobile-quick-sub">KoreHan works best when the next step is obvious. Read one article, practice one conversation, or finish one short story.</p>'
+    + '<div class="mobile-cta-grid">'
+    + mobileCreateCardHTML('Today\'s News','Read one article + vocab','korehan-all.html')
+    + mobileCreateCardHTML('Conversation Practice','Chat-style Korean study','korehan-conversations.html')
+    + mobileCreateCardHTML('Story Reading','Short Korean stories','korehan-stories.html')
+    + mobileCreateCardHTML('Study Room','Grammar, writing, review','korehan-study-room.html')
+    + '</div>'
+    + '<div class="mobile-action-row">'
+    + '<a class="mobile-primary-btn" href="korehan-study-room.html">⚡ Start Learning</a>'
+    + '<a class="mobile-secondary-btn" href="korehan-all.html">Browse News</a>'
+    + '</div>';
+
+  var hero = document.getElementById('dyn-hero');
+  if (hero) hero.insertAdjacentElement('beforebegin', quick);
+
+  var newsGrid = document.getElementById('dyn-news-grid');
+  if (newsGrid && !document.querySelector('.mobile-learn-strip')) {
+    var strip = document.createElement('section');
+    strip.className = 'mobile-learn-strip';
+    strip.innerHTML = ''
+      + '<div class="mobile-eyebrow">Learning flow</div>'
+      + '<h3 style="font-size:24px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">News → Practice → Review</h3>'
+      + '<p class="mobile-quick-sub">Open an article, save 3 words, then jump into quiz or writing practice.</p>'
+      + '<div class="mobile-action-row">'
+      + '<a class="mobile-primary-btn" href="korehan-all.html">Read latest news</a>'
+      + '<a class="mobile-secondary-btn" href="korehan-learn.html">Review words</a>'
+      + '</div>';
+    newsGrid.insertAdjacentElement('beforebegin', strip);
+  }
+}
+
+function enhanceArticleMobile() {
+  if (!isMobileRedesign() || pageName() !== 'korehan-article') return;
+  var article = document.querySelector('.kh-article-wrap');
+  if (!article || document.querySelector('.mobile-sticky-study')) return;
+
+  var title = (document.querySelector('.art-title') || {}).textContent || 'This article';
+  var header = article.querySelector('.art-header');
+  if (header && !header.querySelector('.mobile-study-tabs')) {
+    var tabs = document.createElement('div');
+    tabs.className = 'mobile-study-tabs';
+    tabs.innerHTML = ''
+      + '<button class="on" data-target="read">Read</button>'
+      + '<button data-target="grammar">Grammar</button>'
+      + '<button data-target="vocab">Vocab</button>'
+      + '<button data-target="quiz">Quiz</button>';
+    header.insertAdjacentElement('afterend', tabs);
+
+    var readTargets = [document.getElementById('art-tab-article'), document.querySelector('.art-hero-img')].filter(Boolean);
+    var grammarTarget = document.getElementById('art-tab-grammar');
+    var vocabTarget = document.querySelector('.art-vocab-box');
+    var quizTarget = document.getElementById('fill-wrap');
+
+    function showTab(name) {
+      tabs.querySelectorAll('button').forEach(function(btn){ btn.classList.toggle('on', btn.getAttribute('data-target')===name); });
+      readTargets.forEach(function(el){ el.classList.toggle('mobile-hidden', name !== 'read'); });
+      if (grammarTarget) grammarTarget.classList.toggle('mobile-hidden', name !== 'grammar');
+      if (vocabTarget) vocabTarget.classList.toggle('mobile-hidden', name !== 'vocab');
+      if (quizTarget) quizTarget.classList.toggle('mobile-hidden', name !== 'quiz');
+      if (name === 'grammar') loadGrammarGuide();
+    }
+    tabs.addEventListener('click', function(e){
+      var btn = e.target.closest('button[data-target]');
+      if (!btn) return;
+      showTab(btn.getAttribute('data-target'));
+    });
+    showTab('read');
+  }
+
+  var sticky = document.createElement('div');
+  sticky.className = 'mobile-sticky-study';
+  sticky.innerHTML = '<a href="korehan-study-room.html">Study this article →</a>';
+  document.body.appendChild(sticky);
+
+  var lead = article.querySelector('.art-lead');
+  if (lead && !article.querySelector('.mobile-tier-card')) {
+    var card = document.createElement('section');
+    card.className = 'mobile-tier-card';
+    card.innerHTML = ''
+      + '<div class="mobile-eyebrow">Article study</div>'
+      + '<h3 style="font-size:24px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">Read first. Then review grammar and quiz.</h3>'
+      + '<p class="mobile-quick-sub">Keep the reading flow simple on mobile. Open translation only when you need it, save a few words, then jump to review.</p>'
+      + '<div class="mobile-action-row">'
+      + '<a class="mobile-primary-btn" href="javascript:void(0)" onclick="toggleTranslate()">🌐 Toggle translation</a>'
+      + '<a class="mobile-secondary-btn" href="korehan-study-room.html">✏️ Writing practice</a>'
+      + '</div>';
+    article.insertAdjacentElement('afterbegin', card);
+  }
+}
+
+function enhanceConversationsMobile() {
+  if (!isMobileRedesign() || pageName() !== 'korehan-conversations') return;
+  var root = document.querySelector('.conv-page-container') || document.body;
+  if (root && !document.querySelector('.mobile-section-shell[data-mobile="conv"]')) {
+    var shell = document.createElement('section');
+    shell.className = 'mobile-section-shell';
+    shell.setAttribute('data-mobile','conv');
+    shell.innerHTML = ''
+      + '<div class="mobile-eyebrow">Conversation study</div>'
+      + '<h2 class="mobile-quick-title" style="font-size:28px">Study chats the same way you actually text.</h2>'
+      + '<p class="mobile-quick-sub">Open one conversation, read it like KakaoTalk, then check vocabulary, grammar, and roleplay practice.</p>'
+      + '<div class="mobile-action-row">'
+      + '<a class="mobile-primary-btn" href="korehan-conversations.html?cat=everyday">Everyday chats</a>'
+      + '<a class="mobile-secondary-btn" href="korehan-conversations.html?cat=work">Workplace</a>'
+      + '</div>';
+    root.insertAdjacentElement('afterbegin', shell);
+  }
+
+  var observer = new MutationObserver(function(){
+    var panel = document.querySelector('.detail-panel');
+    if (!panel || panel.querySelector('.mobile-tier-card')) return;
+    var leftHead = panel.querySelector('.dp-left-head');
+    if (leftHead) {
+      var box = document.createElement('div');
+      box.className = 'mobile-tier-card';
+      box.style.margin = '14px 24px 0';
+      box.innerHTML = ''
+        + '<div class="mobile-eyebrow">Study flow</div>'
+        + '<h3 style="font-size:22px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">Read → Translate → Practice → Roleplay</h3>'
+        + '<p class="mobile-quick-sub">Keep the conversation UI intact, then use the tools below to turn the chat into active speaking practice.</p>'
+        + '<div class="mobile-action-row">'
+        + '<a class="mobile-primary-btn" href="javascript:void(0)">💬 Roleplay</a>'
+        + '<a class="mobile-secondary-btn" href="korehan-study-room.html">✏️ Practice</a>'
+        + '</div>';
+      leftHead.insertAdjacentElement('afterend', box);
+    }
+    var cta = panel.querySelector('.dp-cta-row');
+    if (cta && !cta.dataset.mobileEnhanced) {
+      cta.dataset.mobileEnhanced = '1';
+      cta.innerHTML = ''
+        + '<button class="dp-cta-btn dp-cta-primary">Translate</button>'
+        + '<button class="dp-cta-btn dp-cta-secondary">Vocabulary</button>'
+        + '<button class="dp-cta-btn dp-cta-secondary">Practice</button>'
+        + '<button class="dp-cta-btn dp-cta-secondary">Roleplay</button>';
+      cta.style.gridTemplateColumns = '1fr 1fr';
+    }
+  });
+  observer.observe(document.body, { childList:true, subtree:true });
+}
+
+function enhanceStoriesMobile() {
+  if (!isMobileRedesign() || pageName() !== 'korehan-stories') return;
+  var root = document.querySelector('.st-container') || document.body;
+  if (root && !document.querySelector('.mobile-section-shell[data-mobile="story"]')) {
+    var shell = document.createElement('section');
+    shell.className = 'mobile-section-shell';
+    shell.setAttribute('data-mobile','story');
+    shell.innerHTML = ''
+      + '<div class="mobile-eyebrow">Story reading</div>'
+      + '<h2 class="mobile-quick-title" style="font-size:28px">Short stories should feel easy to finish on mobile.</h2>'
+      + '<p class="mobile-quick-sub">Pick a mood, read one story, then review the key words and discuss what happened.</p>'
+      + '<div class="mobile-action-row">'
+      + '<a class="mobile-primary-btn" href="korehan-stories.html?mood=fun">😂 Fun stories</a>'
+      + '<a class="mobile-secondary-btn" href="korehan-stories.html?mood=touching">🥹 Touching</a>'
+      + '</div>';
+    root.insertAdjacentElement('afterbegin', shell);
+  }
+
+  var observer = new MutationObserver(function(){
+    var panel = document.querySelector('.st-panel');
+    if (!panel || panel.querySelector('.mobile-tier-card')) return;
+    var head = panel.querySelector('.st-head-info');
+    if (head) {
+      var box = document.createElement('div');
+      box.className = 'mobile-tier-card';
+      box.style.margin = '0 24px 14px';
+      box.innerHTML = ''
+        + '<div class="mobile-eyebrow">Story study</div>'
+        + '<h3 style="font-size:22px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">Read → Vocabulary → Quiz → Discussion</h3>'
+        + '<p class="mobile-quick-sub">Stories work best when the reading screen is calm and the study actions are obvious.</p>'
+        + '<div class="mobile-action-row">'
+        + '<a class="mobile-primary-btn" href="javascript:void(0)">📚 Vocabulary</a>'
+        + '<a class="mobile-secondary-btn" href="korehan-study-room.html">💭 Discussion</a>'
+        + '</div>';
+      head.insertAdjacentElement('afterend', box);
+    }
+    var cta = panel.querySelector('.st-cta-row');
+    if (cta && !cta.dataset.mobileEnhanced) {
+      cta.dataset.mobileEnhanced = '1';
+      cta.innerHTML = ''
+        + '<button class="st-cta-btn st-cta-pri">Vocabulary</button>'
+        + '<button class="st-cta-btn st-cta-sec">Quiz</button>'
+        + '<button class="st-cta-btn st-cta-sec">Discussion</button>'
+        + '<button class="st-cta-btn st-cta-sec">Practice</button>';
+      cta.style.gridTemplateColumns = '1fr 1fr';
+    }
+  });
+  observer.observe(document.body, { childList:true, subtree:true });
+}
+
+function enhanceCollectionPagesMobile() {
+  if (!isMobileRedesign()) return;
+  var p = pageName();
+  if (['korehan-all','korehan-world','korehan-society','korehan-culture','korehan-korea','korehan-section'].indexOf(p) >= 0) {
+    var list = document.getElementById('dyn-article-list');
+    if (list && !document.querySelector('.mobile-section-shell[data-mobile="news"]')) {
+      var shell = document.createElement('section');
+      shell.className = 'mobile-section-shell';
+      shell.setAttribute('data-mobile','news');
+      shell.innerHTML = ''
+        + '<div class="mobile-eyebrow">News study</div>'
+        + '<h2 class="mobile-quick-title" style="font-size:28px">Read one article at your level, not ten at once.</h2>'
+        + '<p class="mobile-quick-sub">The goal on mobile is quick entry: pick a category, open one article, then move into vocab or quiz.</p>'
+        + '<div class="mobile-action-row">'
+        + '<a class="mobile-primary-btn" href="korehan-study-room.html">Start Learning</a>'
+        + '<a class="mobile-secondary-btn" href="korehan-learn.html">Review vocab</a>'
+        + '</div>';
+      list.insertAdjacentElement('beforebegin', shell);
+    }
+  }
+}
+
+function runMobileRedesign() {
+  markMobileBody();
+  if (!isMobileRedesign()) return;
+  injectMobileBottomNav();
+  enhanceHomeMobile();
+  enhanceCollectionPagesMobile();
+  enhanceArticleMobile();
+  enhanceConversationsMobile();
+  enhanceStoriesMobile();
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(runMobileRedesign, 700);
+});
+window.addEventListener('resize', function(){
+  if (isMobileRedesign()) {
+    markMobileBody();
+    injectMobileBottomNav();
+  }
+});
