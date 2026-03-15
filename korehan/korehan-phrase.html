@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Today's Phrase — KoreHan News</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css">
+</head>
+<body>
+<div id="kh-header"></div>
+<div class="phrase-shell">
+  <div id="phrase-root"></div>
+</div>
+<div id="kh-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js"></script>
+<script>
+function renderPhrasePage() {
+  var root = document.getElementById('phrase-root');
+  if (!root) return;
+  var phrases = getPhrases();
+  if (!phrases.length) {
+    root.innerHTML = '<div class="phrase-empty">No phrase found.</div>';
+    return;
+  }
+  var params = new URLSearchParams(location.search);
+  var idx = params.has('i') ? Number(params.get('i')) : getTodaysPhraseIndex();
+  if (!Number.isFinite(idx) || idx < 0 || idx >= phrases.length) idx = getTodaysPhraseIndex();
+  var phrase = phrases[idx] || phrases[0];
+  var examples = (phrase.examples || []).length ? phrase.examples : [{ko: phrase.ko + '을 자주 기사에서 볼 수 있어요.', en: 'You can often see this phrase in articles.'}];
+  var related = (phrase.related || []).map(function(x){ return '<span class="phrase-chip">' + x + '</span>'; }).join('');
+  root.innerHTML = ''
+    + '<section class="phrase-hero-card">'
+    + '<div class="phrase-eyebrow">Today\'s phrase</div>'
+    + '<div class="phrase-ko">' + phrase.ko + '</div>'
+    + '<div class="phrase-rom">' + phrase.rom + '</div>'
+    + '<div class="phrase-en">' + phrase.en + '</div>'
+    + (related ? '<div class="phrase-chip-row">' + related + '</div>' : '')
+    + '<div class="phrase-actions">'
+    + '<a class="phrase-action primary" href="korehan-study-room.html">Start studying</a>'
+    + '<a class="phrase-action" href="korehan-admin-phrases.html?edit=' + idx + '">Edit phrase</a>'
+    + '</div>'
+    + '</section>'
+    + '<div class="phrase-grid">'
+    + '<section class="phrase-card">'
+    + '<h3>What it means</h3>'
+    + '<p>' + (phrase.intro || 'This is a useful Korean phrase for learners who want to understand real Korean content more naturally.') + '</p>'
+    + '</section>'
+    + '<section class="phrase-card">'
+    + '<h3>How it is used</h3>'
+    + '<p>' + (phrase.nuance || 'Use this phrase when you want to sound natural in news-related or real-life Korean contexts.') + '</p>'
+    + '</section>'
+    + '</div>'
+    + '<section class="phrase-card" style="margin-top:18px">'
+    + '<h3>Example sentences</h3>'
+    + examples.map(function(ex){
+        return '<div class="phrase-example">'
+          + '<div class="phrase-example-ko">' + ex.ko + '</div>'
+          + '<div class="phrase-example-en">' + ex.en + '</div>'
+          + '</div>';
+      }).join('')
+    + '</section>'
+    + '<section class="phrase-card" style="margin-top:18px">'
+    + '<h3>Study tip</h3>'
+    + '<div class="phrase-side-note">Try to use <b>' + phrase.ko + '</b> once in a sentence of your own, then say it out loud two or three times. That makes the phrase stick much faster than just memorizing the translation.</div>'
+    + '</section>';
+  document.title = phrase.ko + ' — KoreHan Phrase';
+}
+
+document.addEventListener('DOMContentLoaded', renderPhrasePage);
+</script>
+</body>
+</html>

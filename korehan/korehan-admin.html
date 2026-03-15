@@ -1277,48 +1277,291 @@ function saveOpinions(){
 }
 
 // ══ PHRASES ══════════════════════════════════════════════════
+let phraseAdminItems = [];
+let phraseAdminCurrentIndex = 0;
+
+function normalizePhraseAdmin(row){
+  row = row || {};
+  const examples = Array.isArray(row.examples) ? row.examples : [];
+  return {
+    ko: row.ko || '',
+    rom: row.rom || '',
+    en: row.en || '',
+    intro: row.intro || '',
+    nuance: row.nuance || '',
+    related: Array.isArray(row.related) ? row.related.filter(Boolean) : (typeof row.related === 'string' ? row.related.split(',').map(v=>v.trim()).filter(Boolean) : []),
+    examples: examples.map(ex => ({ ko: (ex && ex.ko) || '', en: (ex && ex.en) || '' })).filter(ex => ex.ko || ex.en)
+  };
+}
+function getPhraseAdminItems(){
+  return ls(K_PHRASES, DEF_PHRASES).map(normalizePhraseAdmin);
+}
+function phraseAdminDefaultItem(){
+  return normalizePhraseAdmin({
+    ko:'경제 회복',
+    rom:'gyeong-je hoe-bok',
+    en:'economic recovery',
+    intro:'Used when talking about the economy getting better again after a difficult period.',
+    nuance:'You will often see this in news headlines, government announcements, and business articles.',
+    related:['경기 반등','성장률','투자'],
+    examples:[
+      {ko:'정부는 경제 회복을 위해 새로운 정책을 발표했어요.', en:'The government announced a new policy for economic recovery.'},
+      {ko:'수출이 늘면서 경제 회복 기대가 커지고 있어요.', en:'As exports increase, expectations for economic recovery are growing.'},
+      {ko:'전문가들은 하반기부터 경제 회복이 가능하다고 봐요.', en:'Experts think economic recovery may be possible from the second half of the year.'}
+    ]
+  });
+}
 function goPhrases(){
   setSbOn(null);
-  const items=ls(K_PHRASES, DEF_PHRASES);
+  phraseAdminItems = getPhraseAdminItems();
+  if(!phraseAdminItems.length) phraseAdminItems = [phraseAdminDefaultItem()];
+  phraseAdminCurrentIndex = 0;
   document.getElementById('main').innerHTML=`
-    <div class="pg-hd"><div><h1>💬 오늘의 표현</h1><p>메인 배너와 학습 페이지에 표시됩니다. 매일 하나씩 순환됩니다.</p></div></div>
-    <div id="phrases-list"></div>
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn btn-gh" onclick="addPhraseRow()">+ 표현 추가</button>
-      <button class="btn btn-g"  onclick="savePhrases()">💾 저장</button>
+    <div class="pg-hd">
+      <div>
+        <h1>✨ Today's Phrase 관리</h1>
+        <p>홈의 Today's Phrase와 phrase 상세 페이지에 반영되는 내용을 여기서 직접 수정하거나 AI로 생성할 수 있습니다.</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-gh" onclick="openPhrasePreview()">↗ Phrase 페이지 열기</button>
+        <button class="btn btn-g" onclick="savePhraseAdminItem()">💾 현재 표현 저장</button>
+      </div>
+    </div>
+
+    <div class="sf-row" style="grid-template-columns:minmax(360px,420px) minmax(0,1fr);align-items:start">
+      <div class="sf-card">
+        <h3>표현 편집</h3>
+        <div class="sf-row">
+          <div>
+            <label class="inp-label">한국어 표현</label>
+            <input class="inp" id="phrase-ko">
+          </div>
+          <div>
+            <label class="inp-label">로마자</label>
+            <input class="inp" id="phrase-rom">
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="inp-label">영어 뜻</label>
+          <input class="inp" id="phrase-en">
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="inp-label">소개 문구</label>
+          <textarea class="inp inp-ta" id="phrase-intro" placeholder="What does this phrase mean? When is it used?"></textarea>
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="inp-label">뉘앙스 / 사용 팁</label>
+          <textarea class="inp inp-ta" id="phrase-nuance" placeholder="Explain nuance, tone, and where learners may see it."></textarea>
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="inp-label">관련 표현 (쉼표로 구분)</label>
+          <input class="inp" id="phrase-related" placeholder="예: 경기 반등, 성장률, 투자">
+        </div>
+        <div class="sf-card" style="background:var(--bg);margin-bottom:0">
+          <h3 style="margin-bottom:10px">예문</h3>
+          <div id="phrase-examples"></div>
+          <button class="btn btn-gh btn-sm" style="margin-top:10px" onclick="addPhraseExampleRow()">+ 예문 추가</button>
+        </div>
+
+        <div style="margin-top:14px">
+          <label class="inp-label">AI 힌트 (선택)</label>
+          <input class="inp" id="phrase-ai-hint" placeholder="예: beginner-friendly, daily conversation, business news">
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+          <button class="btn btn-b" onclick="runPhraseAIGenerate(this)">🤖 AI Generate</button>
+          <button class="btn btn-gh" onclick="newPhraseAdminItem()">+ 새 표현</button>
+          <button class="btn btn-r" onclick="deletePhraseAdminItem()">🗑 삭제</button>
+        </div>
+        <div class="cntlabel" style="text-align:left;margin-top:8px">AI Generate는 현재 표현 또는 힌트를 바탕으로 소개/뉘앙스/예문까지 한 번에 채워줍니다.</div>
+      </div>
+
+      <div class="sf-card">
+        <h3>표현 목록</h3>
+        <div class="toolbar">
+          <div class="srch">
+            <span>🔎</span>
+            <input id="phrase-search" placeholder="Search phrase" oninput="renderPhraseAdminTable()">
+          </div>
+          <button class="btn btn-gh btn-sm" onclick="openTodayPhrasePreview()">오늘 표현 열기</button>
+          <button class="btn btn-g btn-sm" onclick="saveAllPhraseAdminItems()">전체 저장</button>
+        </div>
+        <table class="tbl">
+          <thead>
+            <tr><th>표현</th><th>설명</th><th>예문</th><th></th></tr>
+          </thead>
+          <tbody id="phrase-admin-tbody"></tbody>
+        </table>
+      </div>
     </div>`;
-  renderPhraseRows(items);
+  renderPhraseAdminForm(phraseAdminCurrentIndex);
+  renderPhraseAdminTable();
 }
-function renderPhraseRows(items){
-  const el=document.getElementById('phrases-list'); if(!el) return;
-  el.innerHTML=items.map(p=>`
-    <div class="row-editor" style="grid-template-columns:1fr 1fr 1fr auto">
-      <div><label class="inp-label">한국어</label><input class="inp inp-sm p-ko" value="${esc(p.ko)}" placeholder="예: 안녕하세요" style="font-weight:700;font-size:16px"></div>
-      <div><label class="inp-label">로마자</label><input class="inp inp-sm p-rom" value="${esc(p.rom)}" placeholder="an-nyeong-ha-se-yo"></div>
-      <div><label class="inp-label">영어 뜻</label><input class="inp inp-sm p-en" value="${esc(p.en)}" placeholder="hello"></div>
+function renderPhraseAdminForm(idx){
+  phraseAdminCurrentIndex = Math.max(0, Math.min(idx, phraseAdminItems.length - 1));
+  const p = normalizePhraseAdmin(phraseAdminItems[phraseAdminCurrentIndex] || phraseAdminDefaultItem());
+  document.getElementById('phrase-ko').value = p.ko;
+  document.getElementById('phrase-rom').value = p.rom;
+  document.getElementById('phrase-en').value = p.en;
+  document.getElementById('phrase-intro').value = p.intro;
+  document.getElementById('phrase-nuance').value = p.nuance;
+  document.getElementById('phrase-related').value = (p.related || []).join(', ');
+  renderPhraseExampleRows(p.examples);
+}
+function renderPhraseExampleRows(examples){
+  const box = document.getElementById('phrase-examples');
+  if(!box) return;
+  const rows = (examples && examples.length ? examples : [{ko:'',en:''},{ko:'',en:''},{ko:'',en:''}]);
+  box.innerHTML = rows.map((ex, i)=>`
+    <div class="row-editor" style="grid-template-columns:1fr 1fr auto;margin-bottom:8px">
+      <div>
+        <label class="inp-label">예문 ${i+1} (한국어)</label>
+        <textarea class="inp phrase-ex-ko" style="min-height:72px">${esc(ex.ko || '')}</textarea>
+      </div>
+      <div>
+        <label class="inp-label">예문 ${i+1} (영어)</label>
+        <textarea class="inp phrase-ex-en" style="min-height:72px">${esc(ex.en || '')}</textarea>
+      </div>
       <button class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>
     </div>`).join('');
 }
-function addPhraseRow(){
-  const el=document.getElementById('phrases-list'); if(!el) return;
-  const d=document.createElement('div'); d.className='row-editor'; d.style.gridTemplateColumns='1fr 1fr 1fr auto';
-  d.innerHTML=`<div><label class="inp-label">한국어</label><input class="inp inp-sm p-ko" placeholder="한국어" style="font-weight:700;font-size:16px"></div>
-    <div><label class="inp-label">로마자</label><input class="inp inp-sm p-rom" placeholder="romanization"></div>
-    <div><label class="inp-label">영어 뜻</label><input class="inp inp-sm p-en" placeholder="meaning"></div>
+function addPhraseExampleRow(){
+  const box = document.getElementById('phrase-examples');
+  if(!box) return;
+  const d = document.createElement('div');
+  d.className = 'row-editor';
+  d.style.gridTemplateColumns = '1fr 1fr auto';
+  const n = box.querySelectorAll('.row-editor').length + 1;
+  d.innerHTML = `
+    <div><label class="inp-label">예문 ${n} (한국어)</label><textarea class="inp phrase-ex-ko" style="min-height:72px"></textarea></div>
+    <div><label class="inp-label">예문 ${n} (영어)</label><textarea class="inp phrase-ex-en" style="min-height:72px"></textarea></div>
     <button class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>`;
-  el.appendChild(d);
+  box.appendChild(d);
 }
-function savePhrases(){
-  const rows=[...document.querySelectorAll('#phrases-list .row-editor')];
-  const arr=rows.map(r=>({
-    ko: r.querySelector('.p-ko')?.value.trim()||'',
-    rom:r.querySelector('.p-rom')?.value.trim()||'',
-    en: r.querySelector('.p-en')?.value.trim()||'',
-  })).filter(p=>p.ko);
-  lsSet(K_PHRASES, arr);
-  toast('💬 표현 저장됨! ('+arr.length+'개)');
+function collectPhraseAdminForm(){
+  const examples = [...document.querySelectorAll('#phrase-examples .row-editor')].map(row => ({
+    ko: row.querySelector('.phrase-ex-ko')?.value.trim() || '',
+    en: row.querySelector('.phrase-ex-en')?.value.trim() || ''
+  })).filter(ex => ex.ko || ex.en);
+  return normalizePhraseAdmin({
+    ko: document.getElementById('phrase-ko')?.value.trim() || '',
+    rom: document.getElementById('phrase-rom')?.value.trim() || '',
+    en: document.getElementById('phrase-en')?.value.trim() || '',
+    intro: document.getElementById('phrase-intro')?.value.trim() || '',
+    nuance: document.getElementById('phrase-nuance')?.value.trim() || '',
+    related: (document.getElementById('phrase-related')?.value || '').split(',').map(v=>v.trim()).filter(Boolean),
+    examples
+  });
+}
+function savePhraseAdminItem(showMsg=true){
+  const row = collectPhraseAdminForm();
+  if(!row.ko){
+    alert('한국어 표현은 필수입니다.');
+    return false;
+  }
+  phraseAdminItems[phraseAdminCurrentIndex] = row;
+  lsSet(K_PHRASES, phraseAdminItems);
+  renderPhraseAdminTable();
+  if(showMsg) toast('✨ 오늘의 표현 저장됨');
+  return true;
+}
+function saveAllPhraseAdminItems(){
+  if(!savePhraseAdminItem(false)) return;
+  lsSet(K_PHRASES, phraseAdminItems.map(normalizePhraseAdmin).filter(p=>p.ko));
+  toast('✨ Today's Phrase 전체 저장 완료');
+}
+function newPhraseAdminItem(){
+  savePhraseAdminItem(false);
+  phraseAdminItems.unshift(phraseAdminDefaultItem());
+  phraseAdminCurrentIndex = 0;
+  renderPhraseAdminForm(0);
+  renderPhraseAdminTable();
+}
+function deletePhraseAdminItem(){
+  if(!phraseAdminItems.length) return;
+  if(!confirm('이 표현을 삭제할까요?')) return;
+  phraseAdminItems.splice(phraseAdminCurrentIndex, 1);
+  if(!phraseAdminItems.length) phraseAdminItems = [phraseAdminDefaultItem()];
+  phraseAdminCurrentIndex = Math.max(0, Math.min(phraseAdminCurrentIndex, phraseAdminItems.length - 1));
+  lsSet(K_PHRASES, phraseAdminItems);
+  renderPhraseAdminForm(phraseAdminCurrentIndex);
+  renderPhraseAdminTable();
+  toast('🗑 표현 삭제됨');
+}
+function renderPhraseAdminTable(){
+  const tbody = document.getElementById('phrase-admin-tbody');
+  if(!tbody) return;
+  const q = (document.getElementById('phrase-search')?.value || '').toLowerCase();
+  tbody.innerHTML = phraseAdminItems.map((raw, idx) => {
+    const p = normalizePhraseAdmin(raw);
+    const hay = [p.ko,p.rom,p.en,p.intro,p.nuance,(p.related||[]).join(' ')].join(' ').toLowerCase();
+    if(q && !hay.includes(q)) return '';
+    return `<tr ${idx===phraseAdminCurrentIndex ? 'style="background:#f8fbff"' : ''}>
+      <td>
+        <div class="art-t" style="font-size:18px">${esc(p.ko || '-')}</div>
+        <div class="art-b" style="max-width:none">${esc(p.rom || '')}</div>
+      </td>
+      <td>
+        <div style="font-weight:700;margin-bottom:4px">${esc(p.en || '')}</div>
+        <div class="art-b" style="max-width:none;-webkit-line-clamp:3">${esc((p.intro || p.nuance || '').slice(0,140))}</div>
+      </td>
+      <td>${(p.examples || []).slice(0,2).map(ex => `<div style="font-size:12px;color:var(--gr);margin-bottom:4px">• ${esc(ex.ko || '')}</div>`).join('') || '<span style="color:#99aabb">예문 없음</span>'}</td>
+      <td><button class="btn btn-gh btn-xs" onclick="openPhraseAdminItem(${idx})">Edit</button></td>
+    </tr>`;
+  }).join('');
+}
+function openPhraseAdminItem(idx){
+  savePhraseAdminItem(false);
+  renderPhraseAdminForm(idx);
+  renderPhraseAdminTable();
+}
+function getPhraseAdminTodayIndex(){
+  const items = phraseAdminItems.length ? phraseAdminItems : getPhraseAdminItems();
+  return items.length ? (Math.floor(Date.now() / 86400000) % items.length) : 0;
+}
+function openTodayPhrasePreview(){
+  location.href = 'korehan-phrase.html?i=' + getPhraseAdminTodayIndex();
+}
+function openPhrasePreview(){
+  location.href = 'korehan-phrase.html?i=' + phraseAdminCurrentIndex;
+}
+async function runPhraseAIGenerate(btn){
+  const base = document.getElementById('phrase-ko')?.value.trim() || '경제 회복';
+  const hint = document.getElementById('phrase-ai-hint')?.value.trim() || '';
+  const old = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = 'Generating...';
+  try{
+    if(typeof callClaude !== 'function') throw new Error('AI helper is not available in this admin file.');
+    const prompt = `You are creating Korean-learning content for a phrase detail page.
+Generate polished content for the Korean phrase "${base}".
+Hint: ${hint || 'natural learner-friendly usage, useful for mobile study'}
+Return ONLY valid JSON with this exact shape:
+{"ko":"","rom":"","en":"","intro":"","nuance":"","related":["","",""],"examples":[{"ko":"","en":""},{"ko":"","en":""},{"ko":"","en":""}]}
+Keep intro and nuance concise but useful. Make examples natural Korean for beginner to intermediate learners.`;
+    const res = await callClaude({
+      feature:'generate',
+      model:'claude-haiku-4-5-20251001',
+      max_tokens:900,
+      messages:[{role:'user', content: prompt}]
+    });
+    const raw = (res && res.content && res.content[0] && res.content[0].text) ? res.content[0].text : (res.text || '');
+    const clean = raw.replace(/^```json\s*/,'').replace(/```$/,'').trim();
+    const jsonText = clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1);
+    const data = JSON.parse(jsonText);
+    phraseAdminItems[phraseAdminCurrentIndex] = normalizePhraseAdmin(data);
+    renderPhraseAdminForm(phraseAdminCurrentIndex);
+    renderPhraseAdminTable();
+    toast('🤖 AI 초안 생성 완료');
+  }catch(e){
+    alert('AI 생성 실패: ' + (e.message || e));
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = old;
+  }
 }
 
+// ══ WORD BANK ════════════════════════════════════════════════
 // ══ WORD BANK ════════════════════════════════════════════════
 // ══ VOCAB 뜻 수정 (hover tooltip 커스텀) ═══════════════════════
 

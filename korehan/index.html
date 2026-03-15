@@ -23,7 +23,7 @@
       <div class="pb-rom" id="pb-rom">gyeong-je hoe-bok</div>
       <div class="pb-en" id="pb-en">economic recovery</div>
     </div>
-    <button class="pb-btn" onclick="location.href='korehan-study-room.html'">Study vocabulary →</button>
+    <button class="pb-btn" id="pb-btn">Open phrase →</button>
   </div>
 
   <!-- LATEST NEWS -->
@@ -117,7 +117,7 @@ var _activeHomeCat = 'all';
 function renderHomeConvs() {
   var grid = document.getElementById('home-conv-grid');
   if (!grid) return;
-  var list = HOME_CONVS.filter(function(c){ return _activeHomeCat === 'all' || c.cat === _activeHomeCat; });
+  var list = HOME_CONVS.filter(function(c){ return _activeHomeCat === 'all' || c.cat === _activeHomeCat; }).slice(0,4);
   grid.innerHTML = list.map(function(c, localIdx) {
     var globalIdx = HOME_CONVS.indexOf(c);
     var catColor = {everyday:'#2563eb',work:'#0891b2',friends:'#7c3aed',family:'#059669',dating:'#db2777'}[c.cat] || '#2563eb';
@@ -191,18 +191,24 @@ document.addEventListener('DOMContentLoaded', async function() {
   // Today's Phrase
   var phrases = getPhrases();
   if (phrases && phrases.length) {
-    var p = phrases[Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length];
+    var phraseIndex = Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length;
+    var p = phrases[phraseIndex];
     var ko = document.getElementById('pb-ko');
     var rom = document.getElementById('pb-rom');
     var en  = document.getElementById('pb-en');
     if (ko)  ko.textContent  = p.ko;
     if (rom) rom.textContent = p.rom;
     if (en)  en.textContent  = p.en;
+    var pb = document.getElementById('phrase-bar');
+    var pbBtn = document.getElementById('pb-btn');
+    var phraseHref = 'korehan-phrase.html?i=' + phraseIndex;
+    if (pb) { pb.style.cursor = 'pointer'; pb.onclick = function(e){ if (e.target.closest('.pb-btn')) return; location.href = phraseHref; }; }
+    if (pbBtn) { pbBtn.onclick = function(e){ e.stopPropagation(); location.href = phraseHref; }; }
   }
 
   // News grid (latest 8)
   function renderNewsGrid() {
-    var arts = getCachedArticles().filter(function(a){ return a.status === 'published'; }).slice(0,8);
+    var arts = getCachedArticles().filter(function(a){ return a.status === 'published'; }).slice(0,4);
     var grid = document.getElementById('dyn-news-grid');
     if (!grid) return;
     if (!arts.length) { grid.innerHTML = '<p style="color:var(--gray);font-size:13px">Loading articles...</p>'; return; }
@@ -210,12 +216,16 @@ document.addEventListener('DOMContentLoaded', async function() {
       var lvl = a.level || 'Beginner';
       var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : 'lvl-b';
       var cat = (a.section || '').toLowerCase();
-      return '<div class="nc" data-section="' + cat + '" data-level="' + lvl + '" onclick="location.href=\'korehan-article.html?id=' + a.id + '\'">'
-        + (a.image ? '<img class="nc-img" src="' + a.image + '" alt="">' : '<div class="nc-img" style="background:#e8eef7;border-radius:3px;aspect-ratio:16/9;margin-bottom:9px"></div>')
+      var img = a.image ? '<img class="nc-img" src="' + a.image + '" alt="">' : '<div class="nc-img nc-img-fallback"></div>';
+      return '<div class="nc nc-overlay" data-section="' + cat + '" data-level="' + lvl + '" onclick="location.href=\'korehan-article.html?id=' + a.id + '\'">'
+        + img
+        + '<div class="nc-overlay-grad"></div>'
+        + '<div class="nc-overlay-body">'
         + '<div class="nc-meta"><span class="nc-cat">' + (a.section || '') + '</span><span class="nc-lvl ' + lvlCls + '">' + lvl + '</span></div>'
         + '<div class="nc-title">' + (a.title_ko || a.title || '') + '</div>'
         + '<div class="nc-foot"><span class="nc-date">' + (a.published_at ? new Date(a.published_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '') + '</span>'
         + '<button class="nc-study" onclick="event.stopPropagation();openStudyModal && openStudyModal(\'' + a.id + '\')">📚 Study</button></div>'
+        + '</div>'
         + '</div>';
     }).join('');
   }

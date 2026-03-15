@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phrase Admin — KoreHan</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0b1626;--blue:#1a3a6b;--bright:#2255a4;--bg:#f4f7fb;--card:#fff;--border:#d8e1ef;--text:#0f172a;--muted:#64748b;--danger:#b91c1c}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:'Source Sans 3','Noto Sans KR',sans-serif;color:var(--text)}
+.topbar{height:60px;background:var(--navy);display:flex;align-items:center;justify-content:space-between;padding:0 20px;color:#fff}.topbar a{color:#fff;text-decoration:none;font-weight:700}
+.wrap{max-width:1300px;margin:0 auto;padding:24px}.hero{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:18px}.hero h1{margin:0;font-size:34px}.hero p{margin:8px 0 0;color:var(--muted);line-height:1.7;max-width:760px}
+.grid{display:grid;grid-template-columns:420px 1fr;gap:18px}.card{background:var(--card);border:1px solid var(--border);border-radius:22px;box-shadow:0 16px 36px rgba(15,23,42,.06)}.cardhd{padding:18px 18px 0}.cardbd{padding:18px}
+label{display:block;font-size:12px;font-weight:800;color:#475569;margin-bottom:6px} input,textarea{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;font:inherit;color:var(--text)} textarea{resize:vertical;min-height:90px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px} button{border:none;border-radius:12px;padding:11px 16px;font:inherit;font-weight:800;cursor:pointer}.btn-primary{background:var(--bright);color:#fff}.btn-soft{background:#eef4ff;color:var(--bright)}.btn-danger{background:#fee2e2;color:var(--danger)}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}.toolbar input{flex:1}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:12px 10px;border-bottom:1px solid #e9eef6;text-align:left;font-size:14px;vertical-align:top}th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#64748b}.phrase-ko{font-weight:900;color:var(--blue);font-size:18px}.helper{font-size:12px;color:var(--muted);line-height:1.6;margin-top:8px}.mini{font-size:12px;color:var(--muted)}.example-box{background:#f8fbff;border:1px solid var(--border);border-radius:14px;padding:12px;margin-top:10px}.pill{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800;background:#eef4ff;color:var(--bright);margin-right:6px;margin-bottom:6px}
+@media (max-width: 980px){.grid{grid-template-columns:1fr}.wrap{padding:16px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;gap:12px;align-items:center"><strong>KoreHan Phrase Admin</strong><a href="korehan-admin.html">← Main Admin</a></div>
+  <a href="korehan-phrase.html">Open phrase page ↗</a>
+</div>
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <h1>Today's Phrase 관리</h1>
+      <p>직접 수정하거나 AI로 phrase intro / nuance / 예문까지 한 번에 생성할 수 있게 만들었다. 저장하면 홈의 <b>Today's Phrase</b>와 phrase detail 페이지에 바로 반영된다.</p>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="card">
+      <div class="cardhd"><h2 style="margin:0">Edit phrase</h2></div>
+      <div class="cardbd">
+        <div class="row">
+          <div><label>Korean</label><input id="f-ko"></div>
+          <div><label>Romanization</label><input id="f-rom"></div>
+        </div>
+        <div style="margin-top:10px"><label>English</label><input id="f-en"></div>
+        <div style="margin-top:10px"><label>Intro</label><textarea id="f-intro"></textarea></div>
+        <div style="margin-top:10px"><label>Nuance / Usage note</label><textarea id="f-nuance"></textarea></div>
+        <div style="margin-top:10px"><label>Related words (comma separated)</label><input id="f-related"></div>
+        <div style="margin-top:10px"><label>Example 1 (Korean)</label><textarea id="ex1-ko"></textarea></div>
+        <div style="margin-top:10px"><label>Example 1 (English)</label><textarea id="ex1-en"></textarea></div>
+        <div style="margin-top:10px"><label>Example 2 (Korean)</label><textarea id="ex2-ko"></textarea></div>
+        <div style="margin-top:10px"><label>Example 2 (English)</label><textarea id="ex2-en"></textarea></div>
+        <div style="margin-top:10px"><label>Example 3 (Korean)</label><textarea id="ex3-ko"></textarea></div>
+        <div style="margin-top:10px"><label>Example 3 (English)</label><textarea id="ex3-en"></textarea></div>
+        <div class="btns">
+          <button class="btn-primary" onclick="savePhrase()">Save phrase</button>
+          <button class="btn-soft" onclick="runAIGenerate()">🤖 AI Generate</button>
+          <button class="btn-soft" onclick="newPhrase()">+ New</button>
+          <button class="btn-danger" onclick="deletePhrase()">Delete</button>
+        </div>
+        <div class="helper">AI Generate는 로그인된 상태에서 Claude 프록시를 사용한다. topic이나 usage angle을 간단히 넣고 눌러도 되고, 비워두면 현재 phrase 기준으로 생성한다.</div>
+        <div style="margin-top:12px"><label>AI hint (optional)</label><input id="f-hint" placeholder="e.g. business news, daily conversation, beginner-friendly tone"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="cardhd"><h2 style="margin:0">Phrase list</h2></div>
+      <div class="cardbd">
+        <div class="toolbar">
+          <input id="phrase-search" placeholder="Search phrase" oninput="renderPhraseTable()">
+          <button class="btn-soft" onclick="openToday()">Open today</button>
+        </div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Korean</th><th>English</th><th>Examples</th><th></th></tr></thead>
+          <tbody id="phrase-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js"></script>
+<script>
+var phrases = [];
+var currentIndex = 0;
+function loadPhraseAdmin() {
+  phrases = getPhrases();
+  var params = new URLSearchParams(location.search);
+  currentIndex = Math.max(0, Math.min(phrases.length - 1, Number(params.get('edit')) || 0));
+  if (!phrases.length) { phrases = [normalizePhrase({})]; currentIndex = 0; }
+  fillForm(currentIndex);
+  renderPhraseTable();
+}
+function fillForm(idx) {
+  currentIndex = idx;
+  var p = phrases[idx] || normalizePhrase({});
+  document.getElementById('f-ko').value = p.ko || '';
+  document.getElementById('f-rom').value = p.rom || '';
+  document.getElementById('f-en').value = p.en || '';
+  document.getElementById('f-intro').value = p.intro || '';
+  document.getElementById('f-nuance').value = p.nuance || '';
+  document.getElementById('f-related').value = (p.related || []).join(', ');
+  for (var i=0;i<3;i++) {
+    var ex = (p.examples || [])[i] || {};
+    document.getElementById('ex'+(i+1)+'-ko').value = ex.ko || '';
+    document.getElementById('ex'+(i+1)+'-en').value = ex.en || '';
+  }
+}
+function collectForm() {
+  var examples = [1,2,3].map(function(i){
+    return { ko: document.getElementById('ex'+i+'-ko').value.trim(), en: document.getElementById('ex'+i+'-en').value.trim() };
+  }).filter(function(ex){ return ex.ko; });
+  return normalizePhrase({
+    ko: document.getElementById('f-ko').value.trim(),
+    rom: document.getElementById('f-rom').value.trim(),
+    en: document.getElementById('f-en').value.trim(),
+    intro: document.getElementById('f-intro').value.trim(),
+    nuance: document.getElementById('f-nuance').value.trim(),
+    related: document.getElementById('f-related').value.split(',').map(function(x){ return x.trim(); }).filter(Boolean),
+    examples: examples
+  });
+}
+function savePhrase() {
+  var row = collectForm();
+  if (!row.ko) { alert('Korean phrase is required.'); return; }
+  phrases[currentIndex] = row;
+  lsSet(K_PHRASES, phrases);
+  toast('Phrase saved');
+  renderPhraseTable();
+}
+function newPhrase() {
+  phrases.unshift(normalizePhrase({ko:'새 표현'}));
+  currentIndex = 0;
+  fillForm(0);
+  renderPhraseTable();
+}
+function deletePhrase() {
+  if (!phrases.length) return;
+  if (!confirm('Delete this phrase?')) return;
+  phrases.splice(currentIndex, 1);
+  if (!phrases.length) phrases = [normalizePhrase({})];
+  currentIndex = Math.max(0, Math.min(currentIndex, phrases.length - 1));
+  lsSet(K_PHRASES, phrases);
+  fillForm(currentIndex);
+  renderPhraseTable();
+  toast('Phrase deleted');
+}
+function renderPhraseTable() {
+  var q = (document.getElementById('phrase-search').value || '').toLowerCase();
+  var tbody = document.getElementById('phrase-tbody');
+  tbody.innerHTML = phrases.map(function(p, idx){
+    if (q && [p.ko,p.en,p.rom].join(' ').toLowerCase().indexOf(q) === -1) return '';
+    return '<tr>'
+      + '<td><div class="phrase-ko">' + (p.ko || '-') + '</div><div class="mini">' + (p.rom || '') + '</div></td>'
+      + '<td>' + (p.en || '') + '<div class="mini" style="margin-top:6px">' + (p.intro || '').slice(0,110) + '</div></td>'
+      + '<td>' + (p.examples || []).slice(0,2).map(function(ex){ return '<div class="mini" style="margin-bottom:4px">• ' + ex.ko + '</div>'; }).join('') + '</td>'
+      + '<td><button class="btn-soft" onclick="fillForm(' + idx + ')">Edit</button></td>'
+      + '</tr>';
+  }).join('');
+}
+function openToday() { location.href = 'korehan-phrase.html?i=' + getTodaysPhraseIndex(); }
+async function runAIGenerate() {
+  var seed = document.getElementById('f-ko').value.trim() || '경제 회복';
+  var hint = document.getElementById('f-hint').value.trim();
+  var btn = event.target;
+  var old = btn.textContent;
+  btn.textContent = 'Generating...';
+  btn.disabled = true;
+  var prompt = 'You are creating Korean-learning content for a phrase detail page. Generate polished content for the Korean phrase "' + seed + '".'
+    + '\nHint: ' + (hint || 'natural Korean learner-friendly usage, useful for mobile study')
+    + '\nReturn ONLY valid JSON:'
+    + '{"ko":"","rom":"","en":"","intro":"2-3 sentence explanation in English","nuance":"2-3 sentence usage note in English","related":["","",""],"examples":[{"ko":"","en":""},{"ko":"","en":""},{"ko":"","en":""}]}'
+    + '\nMake examples natural Korean, varied, and suitable for beginner-intermediate learners.';
+  try {
+    var res = await callClaude({ feature:'generate', model:'claude-haiku-4-5-20251001', max_tokens: 900, messages:[{role:'user', content: prompt}] });
+    var raw = (res.content && res.content[0] && res.content[0].text) ? res.content[0].text : (res.text || '');
+    var clean = raw.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+    clean = clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1);
+    var data = JSON.parse(clean);
+    phrases[currentIndex] = normalizePhrase(data);
+    fillForm(currentIndex);
+    renderPhraseTable();
+    toast('AI draft generated');
+  } catch (e) {
+    alert('AI generation failed: ' + e.message);
+  } finally {
+    btn.textContent = old;
+    btn.disabled = false;
+  }
+}
+document.addEventListener('DOMContentLoaded', loadPhraseAdmin);
+</script>
+</body>
+</html>

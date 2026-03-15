@@ -609,9 +609,39 @@ const K_OPINIONS      = 'korehan_opinions';
 const K_ADMIN_SESSION = 'korehan_admin_session';
 
 const DEF_PHRASES = [
-  {ko:'경제 회복', rom:'gyeong-je hoe-bok', en:'economic recovery'},
-  {ko:'민간투자',  rom:'min-gan tu-ja',     en:'private investment'},
-  {ko:'반도체',    rom:'ban-do-che',        en:'semiconductor'},
+  {
+    ko:'경제 회복', rom:'gyeong-je hoe-bok', en:'economic recovery',
+    intro:'A phrase used when the economy starts improving again after a slowdown.',
+    nuance:'Often used in news, politics, and business reports when talking about growth, jobs, prices, or consumer confidence.',
+    examples:[
+      {ko:'정부는 경제 회복을 위해 추가 지원책을 발표했어요.', en:'The government announced extra support measures for economic recovery.'},
+      {ko:'전문가들은 올해 하반기에 경제 회복이 본격화될 것으로 보고 있어요.', en:'Experts believe the economic recovery will pick up in the second half of this year.'},
+      {ko:'소비가 늘어나면서 경제 회복 기대감도 커지고 있어요.', en:'As spending rises, expectations for economic recovery are also growing.'}
+    ],
+    related:['물가 안정','소비 증가','고용 회복']
+  },
+  {
+    ko:'민간투자',  rom:'min-gan tu-ja',     en:'private investment',
+    intro:'Money invested by private companies or individuals rather than the government.',
+    nuance:'Common in economy and policy articles when discussing business expansion, infrastructure, or innovation.',
+    examples:[
+      {ko:'정부는 민간투자를 늘리기 위한 규제 완화를 검토하고 있어요.', en:'The government is reviewing deregulation to increase private investment.'},
+      {ko:'이번 프로젝트는 대규모 민간투자를 바탕으로 추진돼요.', en:'This project is being pushed forward based on large-scale private investment.'},
+      {ko:'전문가들은 민간투자가 살아나야 경기 회복 속도도 빨라질 수 있다고 말해요.', en:'Experts say the recovery can speed up only if private investment picks up.'}
+    ],
+    related:['규제 완화','기업 투자','경기 회복']
+  },
+  {
+    ko:'반도체',    rom:'ban-do-che',        en:'semiconductor',
+    intro:'A core technology product used in phones, computers, cars, and many modern devices.',
+    nuance:'One of the most common words in Korean tech and export news.',
+    examples:[
+      {ko:'한국의 반도체 수출이 지난달보다 증가했어요.', en:'Korea’s semiconductor exports increased compared to last month.'},
+      {ko:'반도체 산업은 한국 경제에서 중요한 역할을 해요.', en:'The semiconductor industry plays an important role in the Korean economy.'},
+      {ko:'새 반도체 공장 건설로 일자리도 늘어날 전망이에요.', en:'Jobs are also expected to increase with the construction of a new semiconductor factory.'}
+    ],
+    related:['수출','공장 건설','첨단 산업']
+  },
 ];
 const DEF_WORDBANK = [
   {ko:'뉴스', rom:'nyu-seu',  en:'news'},
@@ -647,8 +677,32 @@ function lsSet(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
 }
 
+function normalizePhrase(row) {
+  row = row || {};
+  var examples = Array.isArray(row.examples) ? row.examples : [];
+  if (!examples.length && row.example_ko) examples = [{ ko: row.example_ko || '', en: row.example_en || '' }];
+  return {
+    ko: row.ko || '',
+    rom: row.rom || '',
+    en: row.en || '',
+    intro: row.intro || row.desc || row.description || '',
+    nuance: row.nuance || row.note || '',
+    examples: examples.slice(0, 6).map(function(ex){ return { ko: ex.ko || '', en: ex.en || '' }; }).filter(function(ex){ return ex.ko; }),
+    related: Array.isArray(row.related) ? row.related.filter(Boolean).slice(0, 8) : []
+  };
+}
+function getPhrases()   { return lsGet(K_PHRASES,   DEF_PHRASES).map(normalizePhrase); }
+function getTodaysPhraseIndex() {
+  var phrases = getPhrases();
+  if (!phrases.length) return 0;
+  return Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length;
+}
+function getTodaysPhrase() {
+  var phrases = getPhrases();
+  return phrases[getTodaysPhraseIndex()] || normalizePhrase({});
+}
+
 // ── 공유 데이터 ───────────────────────────────────────────────
-function getPhrases()   { return lsGet(K_PHRASES,   DEF_PHRASES);   }
 function getWordBank()  { return lsGet(K_WORDBANK,  DEF_WORDBANK);  }
 function getSentences() { return lsGet(K_SENTENCES, DEF_SENTENCES); }
 function getOpinions()  { return lsGet(K_OPINIONS,  []);            }
@@ -2066,7 +2120,7 @@ async function loadGrammarGuide() {
     var guides = parsed.patterns || [];
     el.dataset.source = 'ai'; // AI 분석 성공 표시 → 캐시 허용
 
-    el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">✨ Grammar patterns found in this article:</p>'
+    el.innerHTML = '<p class="grammar-intro">✨ Grammar patterns found in this article:</p>'
       + guides.map(function(g){
         return '<div class="grammar-point">'
           + '<div class="grammar-name">' + g.name
@@ -2106,7 +2160,7 @@ function renderStaticGrammar(el, a) {
   var guides = patterns.filter(function(p){ return p.pattern.test(text); }).slice(0, 4);
   if (guides.length < 3) guides = patterns.slice(0, 4);
 
-  el.innerHTML = '<p style="font-size:13px;color:var(--gray);margin-bottom:16px">Grammar patterns in this article:</p>'
+  el.innerHTML = '<p class="grammar-intro">Grammar patterns in this article:</p>'
     + guides.map(function(g){
       return '<div class="grammar-point">'
         + '<div class="grammar-name">' + g.name
@@ -3845,7 +3899,7 @@ function injectMobileBottomNav() {
     ['index.html','🏠','Home','index'],
     ['korehan-all.html','📰','News','korehan-all'],
     ['korehan-study-room.html','📘','Learn','korehan-study-room'],
-    ['korehan-conversations.html','💬','Chats','korehan-conversations'],
+    ['korehan-conversations.html','💬','CONVO','korehan-conversations'],
     ['korehan-mypage.html','👤','My','korehan-mypage']
   ];
   nav.innerHTML = items.map(function(it){
