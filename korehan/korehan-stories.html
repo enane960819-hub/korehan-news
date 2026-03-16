@@ -683,6 +683,25 @@ function openStory(id) {
   if (!s) return;
   window._currentStory = s;  // 전역 저장
 
+  // ── 데일리 미션 + 읽기 기록 추적 ──────────────────────
+  if (typeof dmTrackArticle === 'function') dmTrackArticle();
+  if (supaUser && typeof getSupa === 'function') {
+    try {
+      var _sb = getSupa();
+      if (_sb && s.id) {
+        _sb.rpc('log_read_event', {
+          p_user_id:      supaUser.id,
+          p_content_type: 'story',
+          p_content_id:   String(s.id),
+          p_title:        s.title || '',
+          p_level:        s.lvl   || '',
+          p_category:     s.mood  || '',
+          p_completed:    false
+        }).catch(function(){});
+      }
+    } catch(e) {}
+  }
+
   var vocab = (s.vocab||[]).map(function(v) {
     return '<div class="st-vocab-item">'
       + '<span class="st-vi-ko">' + v.ko + '</span>'
@@ -759,6 +778,7 @@ async function toggleStorySave(btn, ko, rom, en) {
     btn.textContent = '+ Save';
   } else {
     if (typeof dbSaveWord === 'function') await dbSaveWord(ko, rom, en);
+    if (typeof dmTrackWord === 'function') dmTrackWord();
     btn.classList.add('saved');
     btn.textContent = '✓ Saved';
   }

@@ -176,6 +176,25 @@ function openDetail(idx) {
   var c = CONVS[idx];
   window._currentConv = c;
 
+  // ── 데일리 미션 + 읽기 기록 추적 ──────────────────────
+  if (typeof dmTrackArticle === 'function') dmTrackArticle();
+  if (supaUser && typeof getSupa === 'function') {
+    try {
+      var _sb = getSupa();
+      if (_sb && c._id) {
+        _sb.rpc('log_read_event', {
+          p_user_id:      supaUser.id,
+          p_content_type: 'conversation',
+          p_content_id:   String(c._id),
+          p_title:        c.name || '',
+          p_level:        c.lvl  || '',
+          p_category:     c.cat  || '',
+          p_completed:    false
+        }).catch(function(){});
+      }
+    } catch(e) {}
+  }
+
   // 캐시에서 vocab/grammar 보강 (비동기, 완료되면 Study Notes 업데이트)
   if (typeof enrichFromCache === 'function' && c._id && (!c.vocab || !c.vocab.length)) {
     enrichFromCache('conversation', Object.assign({}, c, {id: c._id})).then(function(enriched) {
@@ -220,7 +239,7 @@ function openDetail(idx) {
   }).join('');
 
   var vocab = c.vocab.map(function(v) {
-    return '<div class="dp-vocab-item">'
+    return '<div class="dp-vocab-item" data-ko="'+(v.ko||'').replace(/"/g,\'&quot;\')+'" data-rom="'+(v.rom||'').replace(/"/g,\'&quot;\')+'" data-en="'+(v.en||'').replace(/"/g,\'&quot;\')+'">'
       +'<span class="dp-vi-ko">'+v.ko+'</span>'
       +'<span class="dp-vi-rom">'+v.rom+'</span>'
       +'<span class="dp-vi-en">'+v.en+'</span>'
@@ -279,7 +298,7 @@ function renderStudyNotes(c) {
   var el = document.getElementById('dp-study-sections');
   if (!el) return;
   var vocab = (c.vocab||[]).map(function(v) {
-    return '<div class="dp-vocab-item">'
+    return '<div class="dp-vocab-item" data-ko="'+(v.ko||'').replace(/"/g,\'&quot;\')+'" data-rom="'+(v.rom||'').replace(/"/g,\'&quot;\')+'" data-en="'+(v.en||'').replace(/"/g,\'&quot;\')+'">'
       +'<span class="dp-vi-ko">'+v.ko+'</span>'
       +'<span class="dp-vi-rom">'+v.rom+'</span>'
       +'<span class="dp-vi-en">'+v.en+'</span>'
@@ -302,9 +321,33 @@ function closeDetail() {
   document.getElementById('detail-overlay').classList.add('hidden');
   document.body.style.overflow = '';
 }
-function toggleSave(btn) {
-  btn.classList.toggle('saved');
-  btn.textContent = btn.classList.contains('saved') ? '✓ Saved' : '+ Save';
+async function toggleSave(btn) {
+  var isSaved = btn.classList.contains('saved');
+  // 단어 정보는 부모 .dp-vocab-item에서 읽음
+  var item = btn.closest('.dp-vocab-item') || btn.closest('.dp-vocab-item2');
+  var ko  = (item && item.dataset.ko)  || btn.dataset.ko  || '';
+  var rom = (item && item.dataset.rom) || btn.dataset.rom || '';
+  var en  = (item && item.dataset.en)  || btn.dataset.en  || '';
+
+  if (!ko) {
+    // fallback: 이전 방식 — 그냥 UI 토글
+    btn.classList.toggle('saved');
+    btn.textContent = btn.classList.contains('saved') ? '✓ Saved' : '+ Save';
+    return;
+  }
+
+  if (!supaUser) { if (typeof openAuthModal === 'function') openAuthModal('signin'); return; }
+
+  if (isSaved) {
+    if (typeof dbRemoveWord === 'function') await dbRemoveWord(ko);
+    btn.classList.remove('saved');
+    btn.textContent = '+ Save';
+  } else {
+    if (typeof dbSaveWord === 'function') await dbSaveWord(ko, rom, en);
+    if (typeof dmTrackWord === 'function') dmTrackWord();
+    btn.classList.add('saved');
+    btn.textContent = '✓ Saved';
+  }
 }
 
 var activeCat = 'all', activeLvl = 'all';
@@ -612,6 +655,36 @@ function showQuizResult() {
   var overlay = document.getElementById('quiz-overlay');
   var pct = Math.round(_quizScore / _quizTotal * 100);
   var emoji = pct >= 80 ? '🏆' : pct >= 60 ? '👍' : '📚';
+
+  // 데일리 미션 퀴즈 카운트
+  if (typeof dmTrackQuiz === 'function') dmTrackQuiz();
+  // grammar stats 기록 + 완료 처리
+  if (supaUser && typeof getSupa === 'function') {
+    try {
+      var _sb = getSupa();
+      var _conv = window._currentConv;
+      if (_sb && _conv) {
+        _sb.rpc('log_quiz_result', {
+          p_user_id:      supaUser.id,
+          p_quiz_type:    'conv_blank',
+          p_content_type: 'conversation',
+          p_content_id:   String(_conv._id || ''),
+          p_is_correct:   pct >= 60
+        }).catch(function(){});
+        // 퀴즈까지 풀었으면 completed=true
+        _sb.rpc('log_read_event', {
+          p_user_id:      supaUser.id,
+          p_content_type: 'conversation',
+          p_content_id:   String(_conv._id || ''),
+          p_title:        _conv.name || '',
+          p_level:        _conv.lvl  || '',
+          p_category:     _conv.cat  || '',
+          p_completed:    true
+        }).catch(function(){});
+      }
+    } catch(e) {}
+  }
+
   overlay.innerHTML = '<div style="background:#fff;border-radius:24px;max-width:400px;width:100%;padding:40px 32px;text-align:center;box-shadow:0 32px 80px rgba(15,23,42,.25);">'
     + '<div style="font-size:56px;margin-bottom:12px">' + emoji + '</div>'
     + '<div style="font-size:24px;font-weight:900;color:#0f172a;margin-bottom:6px">' + _quizScore + ' / ' + _quizTotal + ' 정답</div>'
@@ -950,6 +1023,34 @@ function closeInlineEdit() { var e = document.getElementById('conv-inline-edit')
     var overlay = document.getElementById('quiz-overlay');
     var pct = Math.round(_quizScore / _quizTotal * 100);
     var emoji = pct >= 80 ? '🏆' : pct >= 60 ? '👍' : '📚';
+
+    // 데일리 미션 퀴즈 카운트
+    if (typeof dmTrackQuiz === 'function') dmTrackQuiz();
+    if (supaUser && typeof getSupa === 'function') {
+      try {
+        var _sb = getSupa();
+        var _s = window._currentStory;
+        if (_sb && _s) {
+          _sb.rpc('log_quiz_result', {
+            p_user_id:      supaUser.id,
+            p_quiz_type:    'story_blank',
+            p_content_type: 'story',
+            p_content_id:   String(_s.id || ''),
+            p_is_correct:   pct >= 60
+          }).catch(function(){});
+          // 퀴즈까지 풀었으면 completed=true
+          _sb.rpc('log_read_event', {
+            p_user_id:      supaUser.id,
+            p_content_type: 'story',
+            p_content_id:   String(_s.id || ''),
+            p_title:        _s.title || '',
+            p_level:        _s.lvl   || '',
+            p_category:     _s.mood  || '',
+            p_completed:    true
+          }).catch(function(){});
+        }
+      } catch(e) {}
+    }
     overlay.innerHTML = '<div style="background:#fff;border-radius:24px;max-width:400px;width:100%;padding:40px 32px;text-align:center;box-shadow:0 32px 80px rgba(15,23,42,.25);">'
       + '<div style="font-size:56px;margin-bottom:12px">' + emoji + '</div>'
       + '<div style="font-size:24px;font-weight:900;color:#0f172a;margin-bottom:6px">' + _quizScore + ' / ' + _quizTotal + ' correct</div>'

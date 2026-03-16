@@ -1620,16 +1620,17 @@ function renderArticlePage() {
 
 
   // 세션 로드 후 북마크/댓글폼/읽음처리 업데이트
-  var articleId = a.id;
-  var articleTitle = a.title;
+  var articleId      = a.id;
+  var articleTitle   = a.title;
   var articleSection = a.section;
+  var articleLevel   = a.level || '';
   var attempts = 0;
   function waitAndUpdate() {
     attempts++;
     updateCommentForm();
     checkBookmarkState(articleId);
     if (supaUser) {
-      markArticleRead(articleId, articleTitle, articleSection);
+      markArticleRead(articleId, articleTitle, articleSection, articleLevel);
     } else if (attempts < 20) {
       setTimeout(waitAndUpdate, 300);
     }
@@ -2228,7 +2229,7 @@ function renderSearchResults(q, articles) {
 }
 
 // ── 읽은 기사 저장 ─────────────────────────────────────────────
-async function markArticleRead(articleId, title, section) {
+async function markArticleRead(articleId, title, section, level) {
   // localStorage에 오늘 읽은 기사 ID 기록 (데일리 테스트용)
   try {
     var todayKey = new Date().toISOString().slice(0,10);
@@ -2263,6 +2264,7 @@ async function markArticleRead(articleId, title, section) {
       p_content_type: 'article',
       p_content_id: String(articleId),
       p_title: title || '',
+      p_level: level || '',
       p_category: section || '',
       p_completed: false
     });
