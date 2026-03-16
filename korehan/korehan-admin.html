@@ -1837,10 +1837,10 @@ async function goWritingSubmissions() {
   main.innerHTML =
     '<div class="pg-hd"><div><h1>✍️ 작문 첨삭 관리</h1><p>유저 작문을 AI 1차 첨삭 후 승인하면 유저에게 피드백이 전달됩니다.</p></div></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">'
-    + '<button class="sf-tag on"  id="wsf-pending"  onclick="loadWritingSubmissions('pending',this)">⏳ 검토 대기</button>'
-    + '<button class="sf-tag"     id="wsf-ai_done"  onclick="loadWritingSubmissions('ai_done',this)">🤖 AI 완료</button>'
-    + '<button class="sf-tag"     id="wsf-approved" onclick="loadWritingSubmissions('approved',this)">✅ 승인됨</button>'
-    + '<button class="sf-tag"     id="wsf-all"      onclick="loadWritingSubmissions('all',this)">전체</button>'
+    + '<button class="sf-tag on"  id="wsf-pending"  onclick="loadWritingSubmissions(&apos;pending&apos;,this)">⏳ 검토 대기</button>'
+    + '<button class="sf-tag"     id="wsf-ai_done"  onclick="loadWritingSubmissions(&apos;ai_done&apos;,this)">🤖 AI 완료</button>'
+    + '<button class="sf-tag"     id="wsf-approved" onclick="loadWritingSubmissions(&apos;approved&apos;,this)">✅ 승인됨</button>'
+    + '<button class="sf-tag"     id="wsf-all"      onclick="loadWritingSubmissions(&apos;all&apos;,this)">전체</button>'
     + '</div>'
     + '<div id="ws-list"><div style="padding:40px;text-align:center;color:#94a3b8">불러오는 중...</div></div>';
   loadWritingSubmissions('pending', document.getElementById('wsf-pending'));

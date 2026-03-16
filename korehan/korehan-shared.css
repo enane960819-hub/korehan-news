@@ -1914,46 +1914,34 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 .phrase-dashboard{
   display:grid;
   grid-template-columns:1fr 1fr;
-  gap:14px;
-  align-items:stretch;
-  background:transparent;
-  border-radius:0;
-  padding:0;
+  grid-template-rows:auto auto;
+  gap:10px;
   margin-top:20px;
   margin-bottom:28px;
 }
 .pb-card{
-  background:linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
+  background:#0b1626;
   border-radius:14px;
-  padding:16px 20px;
-  box-shadow:0 10px 30px rgba(13,27,46,.14);
+  padding:18px 20px;
+  box-shadow:0 8px 24px rgba(11,22,38,.18);
   min-width:0;
+  transition:opacity .15s;
 }
-.pb-mini{
-  margin-top:10px;
-  font-size:13px;
-  color:rgba(255,255,255,.72);
-}
-.pb-actions{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  flex-wrap:wrap;
-  margin-top:14px;
-}
-.pb-link{
-  color:#dbeafe;
-  font-size:13px;
-  font-weight:800;
-  text-decoration:none;
-}
+.pb-card:hover{ opacity:.92; }
+.pd-phrase{ background:#0b1626; }
+.pd-writing{ background:#142236; }
+.pd-hub{ background:#1a2d45; }
+.pd-action{ border-radius:14px; overflow:hidden; }
+.pb-mini{ margin-top:10px; font-size:13px; color:rgba(255,255,255,.72); }
+.pb-actions{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px; }
+.pb-link{ color:#dbeafe; font-size:13px; font-weight:800; text-decoration:none; }
 .pb-link:hover{ color:#fff; }
 .home-learning-preview{
   border-radius:14px;
-  border:1px solid #d8e1ef;
-  padding:14px 16px;
-  background:linear-gradient(180deg,#ffffff 0%,#f7fbff 100%);
-  box-shadow:0 8px 24px rgba(15,23,42,.06);
+  border:1px solid #e2eaf5;
+  padding:16px 18px;
+  background:#fff;
+  box-shadow:0 4px 16px rgba(15,23,42,.06);
   min-width:0;
 }
 .hlp-loading{ color:var(--gray); font-size:14px; }
@@ -2086,9 +2074,11 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   text-decoration:none;
 }
 .hlp-main-btn:hover{ opacity:.92; }
-@media (max-width: 640px){
-  .phrase-dashboard{ grid-template-columns:1fr; gap:10px; margin-top:14px; margin-bottom:20px; }
-  .pb-card,.home-learning-preview{ border-radius:12px; padding:14px; }
+@media (max-width:640px){
+  .phrase-dashboard{ grid-template-columns:1fr; margin-top:14px; margin-bottom:20px; }
+  .pb-card{ border-radius:12px; padding:14px; }
+  .home-learning-preview{ border-radius:12px; }
+  .pd-action{ min-height:90px; }
 }
   .pb-actions{ gap:10px; }
 }

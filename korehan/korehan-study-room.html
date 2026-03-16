@@ -768,7 +768,7 @@
         </div>
         <!-- vocab/grammar validation status -->
         <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
-          <span id="wm-grammar-used-count" style="font-size:11px;font-weight:700;color:#dc2626;"></span>
+          <span id="wm-grammar-used-count" style="font-size:11px;font-weight:700;color:#94a3b8;">📐 Grammar는 참고용 — 첨삭에서 확인해드려요</span>
         </div>
       </div>
 
@@ -779,7 +779,7 @@
       </div>
 
       <button class="submit-btn" onclick="submitWriting()">📩 Submit for Feedback</button>
-      <div class="submit-note">Vocab 2개 이상 · Grammar 1개 이상 사용 필수 · 하루 1건 · Han 24h 피드백</div>
+      <div class="submit-note">Vocab 2개 이상 필수 · 하루 1건 · Han 24h 피드백</div>
     </div>
 
     <!-- RIGHT: helper sentences -->
@@ -1390,19 +1390,15 @@ async function submitWriting() {
   var requiredVocab   = (_aiContent && _aiContent.vocab   || []).map(function(v){ return v.ko; }).filter(Boolean);
   var requiredGrammar = (_aiContent && _aiContent.grammar || []).map(function(g){ return g.point; }).filter(Boolean);
 
-  var usedVocab   = requiredVocab.filter(function(w){ return text.includes(w); });
-  var usedGrammar = requiredGrammar.filter(function(g){
-    // grammar point에서 핵심 패턴 추출 (-아/어서 → 아서|어서)
-    var pattern = g.replace(/^[-–]/, '').replace(/\s*\(.*?\)\s*/g,'').trim();
-    return text.includes(pattern);
-  });
+  var usedVocab = requiredVocab.filter(function(w){ return text.includes(w); });
+  var usedGrammar = []; // grammar 체크 없음 — 첨삭에서 판단
 
-  if (usedVocab.length < 2) {
-    showToast('⚠️ Must-use vocab 중 최소 2개를 작문에 포함해야 합니다. (' + usedVocab.length + '/2)');
+  if (requiredVocab.length === 0) {
+    showToast('⚠️ AI vocab이 아직 로드 중이에요. 잠시 후 다시 시도해주세요.');
     return;
   }
-  if (usedGrammar.length < 1) {
-    showToast('⚠️ Must-use grammar 중 최소 1개를 작문에 포함해야 합니다.');
+  if (usedVocab.length < 2) {
+    showToast('⚠️ Must-use vocab 중 최소 2개를 작문에 포함해야 합니다. (' + usedVocab.length + '/2)');
     return;
   }
 
@@ -2265,31 +2261,7 @@ function onWriteAreaInput() {
     chip.style.fontWeight   = on ? '800' : '';
   });
 
-  // ── grammar 사용 카운트 + 칩 하이라이트 ──
-  var grammarUsedEl = document.getElementById('wm-grammar-used-count');
-  var grammarList = (_aiContent.grammar || []);
-  var usedGrammar = grammarList.filter(function(g){
-    var pattern = (g.point || '').replace(/^[-–]/,'').replace(/\s*\(.*?\)\s*/g,'').trim();
-    return pattern && val.includes(pattern);
-  });
-  if (grammarUsedEl) {
-    if (usedGrammar.length >= 1) {
-      grammarUsedEl.textContent = '✅ ' + usedGrammar.length + ' grammar used';
-      grammarUsedEl.style.color = '#16a34a';
-    } else {
-      grammarUsedEl.textContent = '⚠️ grammar 1개 이상 사용 필요';
-      grammarUsedEl.style.color = '#dc2626';
-    }
-  }
-  document.querySelectorAll('#wm-grammar-chips .chip').forEach(function(chip) {
-    var point = chip.textContent.trim();
-    var pattern = point.replace(/^[-–]/,'').replace(/\s*\(.*?\)\s*/g,'').trim();
-    var on = pattern && val.includes(pattern);
-    chip.style.background   = on ? '#dbeafe' : '';
-    chip.style.borderColor  = on ? '#2563eb' : '';
-    chip.style.color        = on ? '#1d4ed8' : '';
-    chip.style.fontWeight   = on ? '800' : '';
-  });
+  // grammar 체크 없음 — 칩은 참고용 표시만
 
   updateHighlight();
 }

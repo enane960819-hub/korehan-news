@@ -16,55 +16,43 @@
   <div id="dyn-hero"></div>
 
   <!-- TODAY'S PHRASE + LEARNING PREVIEW -->
-  <div class="phrase-bar phrase-dashboard" id="phrase-bar">
+  <div class="phrase-dashboard" id="phrase-bar">
 
-    <!-- 왼쪽 열 -->
-    <div style="display:flex;flex-direction:column;gap:10px;">
-
-      <!-- Today's Phrase — 컴팩트 -->
-      <div class="pb-card" id="pb-phrase-block" style="padding:16px 20px;display:flex;align-items:center;gap:16px;">
-        <div style="flex:1;min-width:0;">
-          <div class="pb-label">✏️ Today's Phrase</div>
-          <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:4px;">
-            <span class="pb-ko" id="pb-ko" style="font-size:18px;">경제 회복</span>
-            <span class="pb-rom" id="pb-rom" style="font-size:11px;">gyeong-je hoe-bok</span>
-          </div>
-          <div class="pb-en" id="pb-en" style="margin-top:2px;">economic recovery</div>
-        </div>
-        <button class="pb-btn" id="pb-btn" style="flex-shrink:0;">Study →</button>
+    <!-- 좌상: Today's Phrase — 전체 클릭 링크 -->
+    <a id="pb-phrase-block" href="#" class="pb-card pd-phrase" style="text-decoration:none;display:block;cursor:pointer;">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:8px;">Today's Phrase</div>
+      <div class="pb-ko" id="pb-ko">경제 회복</div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-top:4px;flex-wrap:wrap;">
+        <span class="pb-rom" id="pb-rom">gyeong-je hoe-bok</span>
       </div>
+      <div class="pb-en" id="pb-en" style="margin-top:4px;">economic recovery</div>
+    </a>
 
-      <!-- Writing Practice — 좌: 텍스트, 우: 전체 높이 버튼 -->
-      <a href="korehan-study-room.html" class="pb-card" style="text-decoration:none;display:flex;align-items:stretch;gap:0;flex:1;padding:0;overflow:hidden;">
-        <div style="flex:1;min-width:0;padding:22px 20px 22px 24px;">
-          <div class="pb-label">✍️ Writing Practice</div>
-          <div style="font-size:19px;font-weight:900;color:#fff;line-height:1.25;margin:8px 0 6px;">한 문장 써보세요.<br>Han이 직접 피드백.</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.6);line-height:1.5;">오늘의 구문으로 자유롭게 작문하고<br>실시간 AI + 개인 피드백을 받으세요.</div>
-        </div>
-        <div style="width:140px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.14);border-left:1.5px solid rgba(255,255,255,.18);font-size:16px;font-weight:900;color:#fff;text-align:center;line-height:1.5;padding:0 12px;">Open<br>Study Room →</div>
-      </a>
+    <!-- 우상: Today's Progress -->
+    <aside class="home-learning-preview pd-progress" id="home-learning-preview" style="padding:16px 18px;">
+      <div class="hlp-loading">Loading...</div>
+    </aside>
 
-    </div>
+    <!-- 좌하: Writing Practice -->
+    <a href="korehan-study-room.html" class="pb-card pd-action pd-writing" style="text-decoration:none;display:flex;align-items:stretch;padding:0;overflow:hidden;">
+      <div style="flex:1;min-width:0;padding:20px 18px 20px 20px;">
+        <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px;">✍ Writing Practice</div>
+        <div style="font-size:18px;font-weight:900;color:#fff;line-height:1.25;margin-bottom:6px;">한 문장 써보세요.<br>Han이 직접 피드백.</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.5;">오늘의 구문으로 작문하고<br>실시간 AI + 개인 피드백.</div>
+      </div>
+      <div style="width:120px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.07);border-left:1px solid rgba(255,255,255,.1);font-size:14px;font-weight:900;color:#fff;text-align:center;line-height:1.6;padding:0 12px;">Open<br>Study<br>Room →</div>
+    </a>
 
-    <!-- 오른쪽 열 -->
-    <div style="display:flex;flex-direction:column;gap:10px;">
+    <!-- 우하: Learning Hub -->
+    <a href="korehan-learning-overview.html" class="pb-card pd-action pd-hub" style="text-decoration:none;display:flex;align-items:stretch;padding:0;overflow:hidden;">
+      <div style="flex:1;min-width:0;padding:20px 18px 20px 20px;">
+        <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px;">📊 Learning Hub</div>
+        <div style="font-size:18px;font-weight:900;color:#fff;line-height:1.25;margin-bottom:6px;">오늘 뭐 공부할지<br>바로 확인해요.</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.5;">취약 문법 · 단어 20개<br>읽기 기록 한 곳에.</div>
+      </div>
+      <div style="width:120px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.07);border-left:1px solid rgba(255,255,255,.1);font-size:14px;font-weight:900;color:#fff;text-align:center;line-height:1.6;padding:0 12px;">Open<br>Hub →</div>
+    </a>
 
-      <!-- Your Learning Preview — 같은 높이 -->
-      <aside class="home-learning-preview" id="home-learning-preview" style="padding:16px 20px;">
-        <div class="hlp-loading">Loading your learning preview...</div>
-      </aside>
-
-      <!-- Learning Hub 바로가기 — 좌: 텍스트, 우: 전체 높이 버튼 -->
-      <a href="korehan-learning-overview.html" class="pb-card" style="text-decoration:none;display:flex;align-items:stretch;gap:0;flex:1;padding:0;overflow:hidden;background:linear-gradient(135deg,#1a3a6b 0%,#2255a4 100%);">
-        <div style="flex:1;min-width:0;padding:22px 20px 22px 24px;">
-          <div class="pb-label">📊 Learning Hub</div>
-          <div style="font-size:19px;font-weight:900;color:#fff;line-height:1.25;margin:8px 0 6px;">오늘 뭐 공부할지<br>바로 확인해요.</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.6);line-height:1.5;">취약 문법, 오늘의 단어 20개,<br>읽기 기록이 한 곳에.</div>
-        </div>
-        <div style="width:140px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.14);border-left:1.5px solid rgba(255,255,255,.18);font-size:16px;font-weight:900;color:#fff;text-align:center;line-height:1.5;padding:0 12px;">Open<br>Hub →</div>
-      </a>
-
-    </div>
   </div>
 
   <!-- LATEST NEWS -->
@@ -243,8 +231,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     var pb = document.getElementById('phrase-bar');
     var pbBtn = document.getElementById('pb-btn');
     var phraseHref = 'korehan-phrase.html?i=' + phraseIndex;
-    if (pb) { pb.onclick = function(e){ if (e.target.closest('.pb-btn') || e.target.closest('a') || e.target.closest('.home-learning-preview')) return; location.href = phraseHref; }; }
-    if (pbBtn) { pbBtn.onclick = function(e){ e.stopPropagation(); location.href = phraseHref; }; }
+    var pbBlock = document.getElementById('pb-phrase-block');
+    if (pbBlock) pbBlock.href = phraseHref;
   }
 
   if (window.renderHomeLearningPreview) {
