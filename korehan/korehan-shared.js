@@ -539,6 +539,8 @@ async function checkSession() {
       updateAuthUI();
       updateCommentForm();
       renderDailyMission();
+      // 다른 페이지(learning-overview 등)에서 로그인 감지용 이벤트
+      window.dispatchEvent(new Event('kh-auth-signed-in'));
     } else if (event === 'TOKEN_REFRESHED') {
       supaUser = session ? session.user : null;
       updateAuthUI();
@@ -2933,7 +2935,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   // 모바일 사이드바 CSS/overlay/nav 주입 (헤더 렌더 직후 실행)
   khInjectSidebar();
   // Attach hamburger click explicitly (fixes mobile inline-onclick issues)
-  var hamBtn = headerEl.querySelector('.kh-ham');
+  var hamBtn = headerEl && headerEl.querySelector('.kh-ham');
   if (hamBtn) {
     hamBtn.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); khSbOpen(); });
     hamBtn.addEventListener('touchend', function(e) { e.preventDefault(); khSbOpen(); });
