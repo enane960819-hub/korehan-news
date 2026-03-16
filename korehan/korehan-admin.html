@@ -456,6 +456,109 @@ async function callClaude({ feature, model, max_tokens, messages }) {
   return resp.json();
 }
 
+// ═══════════════════════════════════════════════════════════
+// VOCAB AUTO-SYNC
+// 콘텐츠 저장 시 본문에서 한국어 단어 추출 → vocabulary_bank upsert
+// 중복은 ON CONFLICT DO NOTHING으로 처리
+// ═══════════════════════════════════════════════════════════
+
+// 한국어 형태소 단위 추출 (공백/문장부호 기준 분리 후 한글만)
+function extractKoreanWords(text) {
+  if (!text) return [];
+  // HTML 태그 제거
+  var clean = text.replace(/<[^>]*>/g, ' ');
+  // 문장부호/특수문자 기준 분리
+  var tokens = clean.split(/[\s\.,!?\(\)\[\]{}<>""''「」『』·…\-:;\/\\|@#%^&*+=~`]+/);
+  var words = [];
+  var seen = new Set();
+  tokens.forEach(function(tok) {
+    tok = tok.trim();
+    // 한글만 포함, 1~10자, 조사 단독 제외
+    if (!tok) return;
+    if (!/[가-힣]/.test(tok)) return;
+    if (tok.length < 1 || tok.length > 10) return;
+    // 단독 조사/어미 제외 (1글자 기능어)
+    var stopList = new Set(['이','가','은','는','을','를','의','에','도','만','과','와','로','으로','에서','에게','한테','부터','까지','처럼','보다','마다','라도','이나','나','야','이야','랑','이랑','고','서','며','면','든','지','다','요','야','죠','네','군','아','어','여','게','세','겠','었','았','겠어','겠어요']);
+    if (tok.length === 1 && stopList.has(tok)) return;
+    if (!seen.has(tok)) {
+      seen.add(tok);
+      words.push(tok);
+    }
+  });
+  return words;
+}
+
+// 레벨 추정: 길이 + 한자어 비율로 간단 추정
+function guessWordLevel(word) {
+  if (word.length <= 2) return 'Beginner';
+  if (word.length <= 3) return 'Intermediate';
+  return 'Advanced';
+}
+
+// interest_tag 추정: 없으면 null (daily가 기본)
+function guessInterestTag(word, contentCategory) {
+  var cat = (contentCategory || '').toLowerCase();
+  if (['kpop','k-pop','케이팝'].some(function(k){ return cat.includes(k); })) return 'kpop';
+  if (['travel','여행'].some(function(k){ return cat.includes(k); })) return 'travel';
+  if (['food','음식','요리'].some(function(k){ return cat.includes(k); })) return 'food';
+  if (['business','경제','비즈니스'].some(function(k){ return cat.includes(k); })) return 'business';
+  if (['tech','it','기술'].some(function(k){ return cat.includes(k); })) return 'tech';
+  if (['sports','스포츠'].some(function(k){ return cat.includes(k); })) return 'sports';
+  if (['drama','드라마'].some(function(k){ return cat.includes(k); })) return 'drama';
+  if (['beauty','뷰티'].some(function(k){ return cat.includes(k); })) return 'beauty';
+  if (['news','뉴스','사회','국제','정치'].some(function(k){ return cat.includes(k); })) return 'news';
+  return 'daily';
+}
+
+// 메인 함수: 텍스트 + 메타 → vocabulary_bank upsert
+async function extractAndSyncVocab(texts, meta) {
+  var sb = getSb();
+  if (!sb) return;
+
+  // 여러 텍스트 합치기
+  var combined = (Array.isArray(texts) ? texts : [texts]).join(' ');
+  var words = extractKoreanWords(combined);
+  if (!words.length) return;
+
+  var category = (meta && meta.section) || (meta && meta.cat) || (meta && meta.mood) || '';
+  var level    = (meta && meta.level) || (meta && meta.lvl) || null;
+
+  // 레벨 정규화
+  var lvlMap = { 'beginner':'Beginner','intermediate':'Intermediate','advanced':'Advanced','b':'Beginner','i':'Intermediate','a':'Advanced' };
+
+  var rows = words.map(function(w) {
+    var lv = (level && lvlMap[level.toLowerCase()]) || guessWordLevel(w);
+    var tag = guessInterestTag(w, category);
+    return {
+      word_key:     w,
+      word_ko:      w,
+      word_rom:     '',
+      word_en:      '',
+      level:        lv,
+      interest_tag: tag,
+      is_active:    true,
+      frequency:    1
+    };
+  });
+
+  // 50개씩 배치 upsert (API 부하 방지)
+  var BATCH = 50;
+  var inserted = 0;
+  for (var i = 0; i < rows.length; i += BATCH) {
+    var batch = rows.slice(i, i + BATCH);
+    try {
+      var res = await sb.from('vocabulary_bank')
+        .upsert(batch, {
+          onConflict: 'word_key',
+          ignoreDuplicates: true  // 이미 있는 단어는 건드리지 않음
+        });
+      if (!res.error) inserted += batch.length;
+    } catch(e) {
+      console.warn('vocab sync batch error:', e);
+    }
+  }
+  console.log('[VocabSync] words extracted:', words.length, '/ batches sent:', Math.ceil(words.length/BATCH));
+}
 
 function getSb() {
   if (_sbAdmin) return _sbAdmin;
@@ -488,6 +591,11 @@ async function dbSaveArticle(article) {
   try {
     const res = await sb.from('articles').upsert(article, { onConflict: 'id' });
     if (res.error) throw res.error;
+    // 단어 자동 추출 및 vocabulary_bank 동기화
+    extractAndSyncVocab(
+      [article.title || '', article.body || '', article.full || ''],
+      { section: article.section, level: article.level }
+    );
     return true;
   } catch(e) {
     toast('저장 오류: ' + e.message, true);
@@ -2909,6 +3017,13 @@ async function saveAllConvs() {
   } else {
     var msg = '✅ ' + rows.length + '개 대화가 저장/발행되었습니다!\n\nConversations 관리에서 확인하세요.';
     alert(msg);
+    // 단어 자동 추출
+    window._generatedConvs.forEach(function(c) {
+      var texts = [(c.name||''), (c.ctx||'')];
+      (c.msgs||[]).forEach(function(m){ texts.push(m.txt||''); });
+      (c.vocab||[]).forEach(function(v){ texts.push(v.word||v.ko||''); });
+      extractAndSyncVocab(texts, { cat: c.cat, level: c.lvl });
+    });
     window._generatedConvs = [];  // 초기화
     goConvManager();  // 저장 후 관리 화면으로 이동
   }
@@ -3040,6 +3155,12 @@ async function saveAllStories() {
     alert('Save error: ' + error.message);
   } else {
     alert('✅ ' + rows.length + '개 스토리가 저장/발행되었습니다!');
+    // 단어 자동 추출
+    window._generatedStories.forEach(function(s) {
+      var texts = [(s.title||''), (s.title_en||''), (s.preview||''), (s.body||'')];
+      (s.vocab||[]).forEach(function(v){ texts.push(v.word||v.ko||''); });
+      extractAndSyncVocab(texts, { mood: s.mood, level: s.lvl });
+    });
     window._generatedStories = [];
     goStoriesManager();
   }
@@ -3373,6 +3494,12 @@ async function saveConvEdit(rowId) {
     showToastAdmin('✅ 저장 완료! AI 분석 생성 중…');
     await loadConvList();
 
+    // 단어 자동 추출
+    var convTexts = [(convObj.name||''), (convObj.ctx||'')];
+    (convObj.msgs||[]).forEach(function(m){ convTexts.push(m.txt||''); });
+    (convObj.vocab||[]).forEach(function(v){ convTexts.push(v.word||v.ko||''); });
+    extractAndSyncVocab(convTexts, { cat: convObj.cat, level: convObj.lvl });
+
     // 10번: AI 자동으로 vocab/grammar/mission 생성 후 article_cache에 저장
     try {
       var savedRes = await sb.from('conversations_data').select('id').order('created_at', {ascending:false}).limit(1);
@@ -3630,6 +3757,11 @@ async function saveStoryEdit(rowId) {
     document.getElementById('story-edit-overlay').remove();
     showToastAdmin('✅ 저장 완료! AI 분석 생성 중…');
     await loadStoryList();
+
+    // 단어 자동 추출
+    var storyTexts = [(storyObj.title||''), (storyObj.title_en||''), (storyObj.preview||''), (storyObj.body||'')];
+    (storyObj.vocab||[]).forEach(function(v){ storyTexts.push(v.word||v.ko||''); });
+    extractAndSyncVocab(storyTexts, { mood: storyObj.mood, level: lvlVal });
 
     // 10번: AI 자동으로 vocab/grammar 생성 후 article_cache에 저장
     try {
