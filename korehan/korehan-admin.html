@@ -1885,8 +1885,7 @@ function renderWritingList(items) {
       + '<span style="font-size:12px;color:#64748b;">User: ' + (ws.user_id||'').slice(0,8) + '…</span>'
       + (ws.topic_ko ? '<span style="font-size:12px;color:#334155;font-weight:600;">📝 ' + ws.topic_ko + '</span>' : '')
       + '</div>'
-      + '<div style="font-size:14px;line-height:1.65;color:#1e293b;font-family:sans-serif;margin-bottom:10px;padding:12px;background:#f8fafc;border-radius:8px;">' + (ws.writing_text||'').replace(/
-/g,'<br>') + '</div>'
+      + '<div style="font-size:14px;line-height:1.65;color:#1e293b;font-family:sans-serif;margin-bottom:10px;padding:12px;background:#f8fafc;border-radius:8px;">' + (ws.writing_text||'').split('\n').join('<br>') + '</div>'
       + '<div style="font-size:11px;color:#94a3b8;margin-bottom:12px;">'
       + '사용 어휘: <b>' + (ws.used_vocab||[]).join(', ') + '</b> &nbsp;|&nbsp; '
       + '사용 문법: <b>' + (ws.used_grammar||[]).join(', ') + '</b>'
