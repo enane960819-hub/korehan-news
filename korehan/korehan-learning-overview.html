@@ -1,245 +1,249 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Learning Hub — KoreHan News</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;500;700;800;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css">
-<style>
-.learning-hub-wrap{max-width:1280px;margin:0 auto;padding:26px 22px 80px}
-.learning-hero{display:grid;grid-template-columns:1.08fr .92fr;gap:18px;margin-bottom:18px}
-.lh-card,.lh-hero-main,.lh-hero-side{background:#fff;border:1px solid #d8e1ef;border-radius:26px;box-shadow:0 16px 36px rgba(15,23,42,.08)}
-.lh-hero-main{padding:30px;background:linear-gradient(135deg,#0b1626 0%,#17345f 58%,#2357a2 100%);color:#fff;position:relative;overflow:hidden}
-.lh-hero-main:after{content:'';position:absolute;right:-50px;bottom:-60px;width:230px;height:230px;background:radial-gradient(circle,rgba(122,184,245,.28),transparent 68%)}
-.lh-eyebrow{display:inline-flex;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.82);margin-bottom:14px}
-.lh-hero-main h1{margin:0 0 10px;font-family:'Playfair Display','Noto Serif KR',serif;font-size:52px;line-height:1.02;letter-spacing:-.03em}
-.lh-hero-main p{margin:0;font-size:17px;line-height:1.7;color:rgba(255,255,255,.84);max-width:640px}
-.lh-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}
-.lh-btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;border-radius:999px;font-size:14px;font-weight:800;text-decoration:none}
-.lh-btn-primary{background:#fff;color:#0b1626}.lh-btn-ghost{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#fff}
-.lh-hero-side{padding:24px}
-.lh-mini-title{font-size:12px;font-weight:900;color:#64748b;letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px}
-.lh-routine{display:grid;gap:12px}.lh-routine-item{display:grid;grid-template-columns:50px 1fr;gap:12px;padding:14px;border:1px solid #d8e1ef;border-radius:18px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}
-.lh-num{width:50px;height:50px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#2563eb;background:#eff6ff}.lh-routine-item h3{margin:0 0 4px;font-size:18px}.lh-routine-item p{margin:0;color:#64748b;font-size:14px;line-height:1.55}
-.lh-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.lh-stat{background:#fff;border:1px solid #d8e1ef;border-radius:22px;padding:22px 20px;box-shadow:0 16px 36px rgba(15,23,42,.08)}.lh-stat-label{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#64748b;margin-bottom:10px}.lh-stat-num{font-family:'Playfair Display',serif;font-size:42px;line-height:1;color:#1a3a6b;margin-bottom:6px}.lh-stat-sub{font-size:14px;color:#64748b}
-.lh-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;margin-bottom:18px}.lh-card{padding:24px}.lh-card-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px}.lh-card-hd h2{margin:0;font-family:'Playfair Display','Noto Serif KR',serif;font-size:34px;line-height:1.05;letter-spacing:-.02em}.lh-card-hd p{margin:6px 0 0;color:#64748b;font-size:15px}.lh-soft-link{padding:9px 13px;border-radius:999px;background:#eef4ff;color:#2563eb;font-size:13px;font-weight:800;white-space:nowrap}
-.lh-grammar-list{display:grid;gap:14px}.lh-grammar-item{border:1px solid #d8e1ef;border-radius:20px;padding:16px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.lh-grammar-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.lh-grammar-title{font-size:19px;font-weight:800;color:#0f172a}.lh-grammar-meta{font-size:13px;color:#64748b}.lh-tag{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:800}.lh-red{background:#fee2e2;color:#b91c1c}.lh-amber{background:#fef3c7;color:#b45309}.lh-green{background:#dcfce7;color:#15803d}.lh-progress{height:10px;border-radius:999px;background:#eef2f8;overflow:hidden;margin-bottom:10px}.lh-fill{height:100%;border-radius:999px}.lh-fill-red{background:linear-gradient(90deg,#ef4444,#f97316)}.lh-fill-amber{background:linear-gradient(90deg,#f59e0b,#fbbf24)}.lh-fill-green{background:linear-gradient(90deg,#22c55e,#4ade80)}.lh-grammar-actions{display:flex;gap:10px;flex-wrap:wrap}.lh-ghost-btn,.lh-solid-btn{padding:10px 14px;border-radius:999px;font-size:13px;font-weight:800}.lh-ghost-btn{background:#f8fbff;border:1px solid #dbe7fb;color:#2563eb}.lh-solid-btn{background:#2563eb;color:#fff}
-.lh-vocab-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.lh-vocab-box{border:1px solid #d8e1ef;border-radius:22px;padding:18px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.lh-vocab-box h3{margin:0 0 6px;font-size:22px}.lh-vocab-box p{margin:0 0 14px;color:#64748b;font-size:14px}.lh-word-list{display:grid;gap:10px}.lh-word-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:16px;background:#f7faff;border:1px solid #e3ecfa}.lh-word-main{display:flex;flex-direction:column}.lh-ko{font-size:17px;font-weight:900;color:#1a3a6b}.lh-sub{font-size:12px;color:#64748b}.lh-level{padding:5px 9px;border-radius:999px;background:#eef4ff;color:#2563eb;font-size:11px;font-weight:800}
-.lh-review-wrap{display:grid;gap:14px}.lh-review-day{border:1px solid #d8e1ef;border-radius:20px;padding:16px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.lh-review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.lh-review-top h3{margin:0;font-size:21px}.lh-review-top p{margin:4px 0 0;color:#64748b;font-size:14px}.lh-timeline{display:grid;gap:10px}.lh-timeline-item{display:grid;grid-template-columns:86px 1fr;gap:12px;align-items:start;padding:10px 0;border-top:1px solid #edf2f7}.lh-timeline-item:first-child{border-top:none;padding-top:0}.lh-time{font-size:12px;font-weight:800;color:#64748b;letter-spacing:.06em;text-transform:uppercase}.lh-timeline-title{font-size:16px;font-weight:800}.lh-timeline-sub{font-size:14px;color:#64748b;margin-top:2px}
-.lh-articles-list{display:grid;gap:12px}.lh-article-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-radius:18px;border:1px solid #d8e1ef;background:#fff}.lh-article-title{font-size:16px;font-weight:800}.lh-article-sub{font-size:13px;color:#64748b;margin-top:3px}.lh-article-tag{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;background:#eef4ff;color:#2563eb}
-.lh-growth-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.lh-chart-box{border:1px solid #d8e1ef;border-radius:22px;padding:18px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.lh-chart-title{font-size:20px;font-weight:800;margin-bottom:10px}.lh-chart-sub{font-size:14px;color:#64748b;margin-bottom:16px}.lh-bars{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;align-items:end;height:220px;padding-top:20px}.lh-bar-col{text-align:center}.lh-bar{width:100%;border-radius:14px 14px 8px 8px;background:linear-gradient(180deg,#7ab8f5,#2563eb);box-shadow:0 8px 18px rgba(37,99,235,.16)}.lh-bar-label{font-size:12px;color:#64748b;margin-top:8px;font-weight:700}.lh-bar-num{font-size:12px;color:#1a3a6b;font-weight:800;margin-top:5px}.lh-streak-list{display:grid;gap:10px}.lh-streak-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:16px;background:#fff;border:1px solid #d8e1ef}.lh-streak-title{font-size:15px;font-weight:800}.lh-streak-val{font-size:14px;color:#64748b;font-weight:800}
-.lh-footer-note{margin-top:18px;padding:18px 20px;border-radius:22px;border:1px dashed #bfd0ea;background:#f7fbff;color:#64748b;font-size:14px;line-height:1.7}
-@media (max-width:1080px){.learning-hero,.lh-grid,.lh-growth-grid,.lh-vocab-grid{grid-template-columns:1fr}.lh-stats{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:700px){.learning-hub-wrap{padding:18px 14px 50px}.lh-hero-main,.lh-hero-side,.lh-card,.lh-stat{border-radius:22px}.lh-hero-main,.lh-hero-side,.lh-card{padding:20px}.lh-hero-main h1{font-size:36px}.lh-stats{grid-template-columns:1fr 1fr;gap:12px}.lh-stat{padding:18px 16px}.lh-stat-num{font-size:34px}.lh-card-hd h2{font-size:28px}.lh-timeline-item{grid-template-columns:1fr}.lh-bars{gap:8px}}
-@media (max-width:520px){.lh-stats{grid-template-columns:1fr}}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KoreHan Learning Hub</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;500;700;800&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--navy:#0b1626;--blue:#1a3a6b;--bright:#2563eb;--bg:#f4f7fb;--card:#fff;--border:#d8e1ef;--text:#0f172a;--muted:#64748b;--shadow:0 16px 36px rgba(15,23,42,.08)}
+    *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#eef4fb 0%,#f7f9fc 38%,#f4f7fb 100%);color:var(--text);font-family:'Source Sans 3','Noto Sans KR',sans-serif}
+    .topbar{background:var(--navy);color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .brand{font-family:'Playfair Display',serif;font-size:28px;font-weight:900}.brand .k{color:#6fa8ff}.brand .h{color:#ff826f}
+    .wrap{max-width:1280px;margin:0 auto;padding:28px 20px 70px}
+    .dev-note{margin:0 0 18px;padding:14px 16px;border-radius:18px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:14px;line-height:1.6}
+    .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;margin-bottom:18px}
+    .hero-main,.hero-side,.card,.stat{background:var(--card);border:1px solid var(--border);border-radius:28px;box-shadow:var(--shadow)}
+    .hero-main{padding:30px;background:linear-gradient(135deg,#0b1626 0%,#17345f 60%,#2357a2 100%);color:#fff}
+    .eyebrow{display:inline-flex;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.82);margin-bottom:14px}
+    h1{margin:0 0 10px;font-family:'Playfair Display','Noto Serif KR',serif;font-size:50px;line-height:1.02}
+    .hero-main p{margin:0;font-size:17px;line-height:1.7;color:rgba(255,255,255,.84)}
+    .hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:999px;font-size:14px;font-weight:800;border:none}
+    .btn-primary{background:#fff;color:#0b1626}.btn-ghost{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#fff}
+    .hero-side{padding:24px}.mini-title{font-size:12px;font-weight:900;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px}
+    .routine{display:grid;gap:12px}.routine-item{display:grid;grid-template-columns:50px 1fr;gap:12px;padding:14px;border:1px solid var(--border);border-radius:18px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}
+    .routine-num{width:50px;height:50px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:var(--bright);background:#eff6ff}
+    .routine-item h3{margin:0 0 4px;font-size:18px}.routine-item p{margin:0;color:var(--muted);font-size:14px;line-height:1.55}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.stat{padding:22px 20px}.stat-label{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+    .stat-num{font-family:'Playfair Display',serif;font-size:42px;line-height:1;color:var(--blue);margin-bottom:6px}.stat-sub{font-size:14px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;margin-bottom:18px}.card{padding:24px}
+    .card-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px}.card-hd h2{margin:0;font-family:'Playfair Display','Noto Serif KR',serif;font-size:34px;line-height:1.05}
+    .card-hd p{margin:6px 0 0;color:var(--muted);font-size:15px}.soft-link{padding:9px 13px;border-radius:999px;background:#eef4ff;color:var(--bright);font-size:13px;font-weight:800;white-space:nowrap}
+    .grammar-list,.review-wrap,.articles-list,.streak-list,.radar-legend,.word-list,.timeline,.bars{display:grid}
+    .grammar-list{gap:14px}.grammar-item{border:1px solid var(--border);border-radius:20px;padding:16px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}
+    .grammar-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.grammar-title{font-size:19px;font-weight:800}.grammar-meta{font-size:13px;color:var(--muted)}
+    .tag{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:800}.tag.red{background:#fee2e2;color:#b91c1c}.tag.amber{background:#fef3c7;color:#b45309}.tag.green{background:#dcfce7;color:#15803d}
+    .progress{height:10px;border-radius:999px;background:#eef2f8;overflow:hidden;margin-bottom:10px}.fill{height:100%;border-radius:999px}.fill.red{background:linear-gradient(90deg,#ef4444,#f97316)}.fill.amber{background:linear-gradient(90deg,#f59e0b,#fbbf24)}.fill.green{background:linear-gradient(90deg,#22c55e,#4ade80)}
+    .grammar-actions{display:flex;gap:10px;flex-wrap:wrap}.ghost-btn,.solid-btn{padding:10px 14px;border-radius:999px;font-size:13px;font-weight:800}.ghost-btn{background:#f8fbff;border:1px solid #dbe7fb;color:var(--bright)}.solid-btn{background:var(--bright);color:#fff}
+    .radar-wrap{display:grid;grid-template-columns:300px 1fr;gap:14px;align-items:center}.radar-svg{width:100%;max-width:300px;display:block;margin:0 auto}.radar-legend{gap:10px}
+    .legend-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:16px;border:1px solid var(--border);background:#fff}.legend-left{display:flex;align-items:center;gap:10px}.dot{width:12px;height:12px;border-radius:50%}.legend-label{font-size:15px;font-weight:700}.legend-score{font-size:14px;color:var(--muted);font-weight:800}
+    .vocab-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.vocab-box{border:1px solid var(--border);border-radius:22px;padding:18px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.vocab-box h3{margin:0 0 6px;font-size:22px}.vocab-box p{margin:0 0 14px;color:var(--muted);font-size:14px}
+    .word-list{gap:10px}.word-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:16px;background:#f7faff;border:1px solid #e3ecfa}.word-main{display:flex;flex-direction:column}.ko{font-size:17px;font-weight:900;color:var(--blue)}.sub{font-size:12px;color:var(--muted)}.level{padding:5px 9px;border-radius:999px;background:#eef4ff;color:var(--bright);font-size:11px;font-weight:800}
+    .review-wrap{gap:14px}.review-day{border:1px solid var(--border);border-radius:20px;padding:16px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.review-top h3{margin:0;font-size:21px}.review-top p{margin:4px 0 0;color:var(--muted);font-size:14px}
+    .timeline{gap:10px}.timeline-item{display:grid;grid-template-columns:86px 1fr;gap:12px;align-items:start;padding:10px 0;border-top:1px solid #edf2f7}.timeline-item:first-child{border-top:none;padding-top:0}.time{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}.timeline-title{font-size:16px;font-weight:800}.timeline-sub{font-size:14px;color:var(--muted);margin-top:2px}
+    .articles-list{gap:12px}.article-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-radius:18px;border:1px solid var(--border);background:#fff}.article-title{font-size:16px;font-weight:800}.article-sub{font-size:13px;color:var(--muted);margin-top:3px}.article-tag{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;background:#eef4ff;color:var(--bright)}
+    .growth-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.chart-box{border:1px solid var(--border);border-radius:22px;padding:18px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.chart-title{font-size:20px;font-weight:800;margin-bottom:10px}.chart-sub{font-size:14px;color:var(--muted);margin-bottom:16px}
+    .bars{grid-template-columns:repeat(7,1fr);gap:12px;align-items:end;height:220px;padding-top:20px}.bar-col{text-align:center}.bar{width:100%;border-radius:14px 14px 8px 8px;background:linear-gradient(180deg,#7ab8f5,#2563eb);box-shadow:0 8px 18px rgba(37,99,235,.16)}.bar-label{font-size:12px;color:var(--muted);margin-top:8px;font-weight:700}.bar-num{font-size:12px;color:var(--blue);font-weight:800;margin-top:5px}
+    .streak-list{gap:10px}.streak-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:16px;background:#fff;border:1px solid var(--border)}.streak-title{font-size:15px;font-weight:800}.streak-val{font-size:14px;color:var(--muted);font-weight:800}
+    .footer-note{margin-top:18px;padding:18px 20px;border-radius:22px;border:1px dashed #bfd0ea;background:#f7fbff;color:var(--muted);font-size:14px;line-height:1.7} code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#f1f5f9;padding:2px 6px;border-radius:6px;color:#0f172a}
+    @media (max-width:1080px){.hero,.grid,.growth-grid,.radar-wrap{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width:700px){.topbar{padding:15px 16px}.brand{font-size:24px}.wrap{padding:18px 14px 50px}h1{font-size:36px}.hero-main,.hero-side,.card,.stat{border-radius:22px}.hero-main,.hero-side,.card{padding:20px}.stats{grid-template-columns:1fr 1fr;gap:12px}.stat{padding:18px 16px}.stat-num{font-size:34px}.card-hd h2{font-size:28px}.vocab-grid,.growth-grid{grid-template-columns:1fr}.timeline-item{grid-template-columns:1fr}.bars{gap:8px}}
+    @media (max-width:520px){.stats{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
-<div id="kh-header"></div>
-<div class="learning-hub-wrap">
-  <section class="learning-hero">
-    <div class="lh-hero-main">
-      <div class="lh-eyebrow">Personalized Learning Hub</div>
-      <h1>Your study should tell you what to do next.</h1>
-      <p>This one-page hub shows weak grammar, daily vocabulary, saved reading history, daily review, and growth charts in one place so learners always know what to study next.</p>
-      <div class="lh-actions">
-        <a class="lh-btn lh-btn-primary" href="korehan-study-room.html">Start today’s review</a>
-        <a class="lh-btn lh-btn-ghost" href="korehan-mypage.html">Open my page</a>
+  <div class="topbar"><div class="brand"><span class="k">Kore</span><span class="h">Han</span> News</div></div>
+  <div class="wrap">
+    <div class="dev-note">This file is wired for the real RPC shape from <code>get_learning_hub_snapshot(7)</code>. Until you connect Supabase, it shows mock data.</div>
+    <section class="hero">
+      <div class="hero-main">
+        <div class="eyebrow">Learning Hub</div>
+        <h1>Your study should tell you what to do next.</h1>
+        <p>Weak grammar, today’s 20 words, saved reading, review queue, and real weekly progress — all in one page.</p>
+        <div class="hero-actions"><button class="btn btn-primary">Start Daily Review</button><button class="btn btn-ghost">See Weekly Progress</button></div>
       </div>
-    </div>
-    <aside class="lh-hero-side">
-      <div class="lh-mini-title">Recommended flow today</div>
-      <div class="lh-routine">
-        <div class="lh-routine-item"><div class="lh-num">1</div><div><h3>Review weak grammar</h3><p>Focus on the pattern you miss most often, not random content.</p></div></div>
-        <div class="lh-routine-item"><div class="lh-num">2</div><div><h3>Study 20 words</h3><p>10 general words + 10 words based on your interests.</p></div></div>
-        <div class="lh-routine-item"><div class="lh-num">3</div><div><h3>Revisit today’s reading</h3><p>Everything you studied today should be reviewable in one place.</p></div></div>
-      </div>
-    </aside>
-  </section>
+      <aside class="hero-side">
+        <div class="mini-title">Recommended flow today</div>
+        <div class="routine">
+          <div class="routine-item"><div class="routine-num">1</div><div><h3>Review weak grammar</h3><p>Focus on the patterns you missed most often this week.</p></div></div>
+          <div class="routine-item"><div class="routine-num">2</div><div><h3>Study 20 words</h3><p>10 random words + 10 words based on your selected interests.</p></div></div>
+          <div class="routine-item"><div class="routine-num">3</div><div><h3>Revisit today’s reading</h3><p>Everything you read is saved and grouped into one review flow.</p></div></div>
+        </div>
+      </aside>
+    </section>
 
-  <section class="lh-stats" id="lh-top-stats">
-    <div class="lh-stat"><div class="lh-stat-label">Today’s Study Time</div><div class="lh-stat-num" id="lh-time">42m</div><div class="lh-stat-sub">Visible progress keeps users engaged</div></div>
-    <div class="lh-stat"><div class="lh-stat-label">Grammar Accuracy</div><div class="lh-stat-num" id="lh-grammar-acc">78%</div><div class="lh-stat-sub">Show exactly what needs review</div></div>
-    <div class="lh-stat"><div class="lh-stat-label">Words Reviewed</div><div class="lh-stat-num" id="lh-words-total">20</div><div class="lh-stat-sub">10 general + 10 interest-based</div></div>
-    <div class="lh-stat"><div class="lh-stat-label">Weekly Streak</div><div class="lh-stat-num" id="lh-streak">6</div><div class="lh-stat-sub">Small wins should stay visible</div></div>
-  </section>
+    <section class="stats">
+      <div class="stat"><div class="stat-label">Today’s XP</div><div class="stat-num" id="stat-xp">0</div><div class="stat-sub">Built from real study events</div></div>
+      <div class="stat"><div class="stat-label">Words Today</div><div class="stat-num" id="stat-words">0</div><div class="stat-sub">Target: 20 every day</div></div>
+      <div class="stat"><div class="stat-label">Articles / Content</div><div class="stat-num" id="stat-articles">0</div><div class="stat-sub">Articles + conversations + stories</div></div>
+      <div class="stat"><div class="stat-label">Study Streak</div><div class="stat-num" id="stat-streak">0</div><div class="stat-sub">Consecutive active study days</div></div>
+    </section>
 
-  <section class="lh-grid">
-    <div class="lh-card">
-      <div class="lh-card-hd"><div><h2>Weak grammar patterns</h2><p>Show users what they are actually weak at, then let them go straight into more examples.</p></div><div class="lh-soft-link">More practice</div></div>
-      <div class="lh-grammar-list" id="lh-grammar-list">
-        <div class="lh-grammar-item"><div class="lh-grammar-top"><div><div class="lh-grammar-title">-아/어서 vs -고</div><div class="lh-grammar-meta">Cause / sequence distinction · missed 8 times this week</div></div><div class="lh-tag lh-red">Weak</div></div><div class="lh-progress"><div class="lh-fill lh-fill-red" style="width:34%"></div></div><div class="lh-grammar-actions"><div class="lh-solid-btn">더 연습하기</div><div class="lh-ghost-btn">Example Sentences 24</div><div class="lh-ghost-btn">Mini Quiz</div></div></div>
-        <div class="lh-grammar-item"><div class="lh-grammar-top"><div><div class="lh-grammar-title">-(으)ㄴ 적이 있다</div><div class="lh-grammar-meta">Past experience pattern · missed 5 times this week</div></div><div class="lh-tag lh-amber">Needs review</div></div><div class="lh-progress"><div class="lh-fill lh-fill-amber" style="width:58%"></div></div><div class="lh-grammar-actions"><div class="lh-solid-btn">더 연습하기</div><div class="lh-ghost-btn">Article Examples</div><div class="lh-ghost-btn">Speaking Drill</div></div></div>
-        <div class="lh-grammar-item"><div class="lh-grammar-top"><div><div class="lh-grammar-title">-려고 하다</div><div class="lh-grammar-meta">Intention / about to do · missed 3 times this week</div></div><div class="lh-tag lh-green">Almost there</div></div><div class="lh-progress"><div class="lh-fill lh-fill-green" style="width:82%"></div></div><div class="lh-grammar-actions"><div class="lh-solid-btn">더 연습하기</div><div class="lh-ghost-btn">Review 12 Sentences</div></div></div>
+    <section class="grid">
+      <div class="card">
+        <div class="card-hd"><div><h2>Weak grammar patterns</h2><p>Show users what they are actually weak at, not just raw scores.</p></div><div class="soft-link">More practice</div></div>
+        <div class="grammar-list" id="weak-grammar-list"></div>
       </div>
-    </div>
-
-    <div class="lh-card">
-      <div class="lh-card-hd"><div><h2>Saved reading history</h2><p>Articles, conversations, and stories the user already studied should stay reviewable.</p></div><div class="lh-soft-link">Open My Page</div></div>
-      <div class="lh-articles-list" id="lh-reading-list">
-        <div class="lh-article-row"><div><div class="lh-article-title">한국 경제가 조금씩 회복되고 있습니다</div><div class="lh-article-sub">Read today · Grammar reviewed · Quiz completed</div></div><div class="lh-article-tag">Saved</div></div>
-        <div class="lh-article-row"><div><div class="lh-article-title">서울 지하철 이용자가 늘었습니다</div><div class="lh-article-sub">Read yesterday · 3 words bookmarked</div></div><div class="lh-article-tag">Saved</div></div>
-        <div class="lh-article-row"><div><div class="lh-article-title">카페에서 주문하기</div><div class="lh-article-sub">Conversation practice · Roleplay done</div></div><div class="lh-article-tag">Saved</div></div>
-        <div class="lh-article-row"><div><div class="lh-article-title">비 오는 날의 약속</div><div class="lh-article-sub">Story reading · Discussion question answered</div></div><div class="lh-article-tag">Saved</div></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="lh-card" style="margin-bottom:18px">
-    <div class="lh-card-hd"><div><h2>20 words for today</h2><p>Split daily vocabulary into 10 general words and 10 interest-based words.</p></div><div class="lh-soft-link">Refresh Tomorrow</div></div>
-    <div class="lh-vocab-grid">
-      <div class="lh-vocab-box">
-        <h3>10 random essential words</h3>
-        <p>Useful daily vocabulary users should meet regularly.</p>
-        <div class="lh-word-list" id="lh-random-words"></div>
-      </div>
-      <div class="lh-vocab-box">
-        <h3>10 words from your interests</h3>
-        <p>Based on selected interests like K-pop, travel, daily conversation, or food.</p>
-        <div class="lh-word-list" id="lh-interest-words"></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="lh-grid">
-    <div class="lh-card">
-      <div class="lh-card-hd"><div><h2>Daily review</h2><p>Everything studied that day should be easy to revisit in one place.</p></div><div class="lh-soft-link">Review All</div></div>
-      <div class="lh-review-wrap">
-        <div class="lh-review-day">
-          <div class="lh-review-top"><div><h3>Today</h3><p id="lh-review-summary">1 article · 1 conversation · 20 words · 2 weak grammar drills</p></div><div class="lh-tag lh-amber" id="lh-review-tag">Needs 8 min review</div></div>
-          <div class="lh-timeline" id="lh-review-timeline"></div>
+      <div class="card">
+        <div class="card-hd"><div><h2>Skill balance</h2><p>Five score axes with speaking separated as activity only.</p></div></div>
+        <div class="radar-wrap">
+          <svg class="radar-svg" viewBox="0 0 300 300">
+            <defs><linearGradient id="polyFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7ab8f5" stop-opacity=".45"/><stop offset="100%" stop-color="#2563eb" stop-opacity=".22"/></linearGradient></defs>
+            <g transform="translate(150,150)">
+              <polygon points="0,-110 105,-35 65,95 -65,95 -105,-35" fill="none" stroke="#d8e1ef"/>
+              <polygon points="0,-78 74,-25 46,67 -46,67 -74,-25" fill="none" stroke="#d8e1ef"/>
+              <polygon points="0,-46 43,-15 27,39 -27,39 -43,-15" fill="none" stroke="#d8e1ef"/>
+              <line x1="0" y1="0" x2="0" y2="-110" stroke="#d8e1ef"/><line x1="0" y1="0" x2="105" y2="-35" stroke="#d8e1ef"/><line x1="0" y1="0" x2="65" y2="95" stroke="#d8e1ef"/><line x1="0" y1="0" x2="-65" y2="95" stroke="#d8e1ef"/><line x1="0" y1="0" x2="-105" y2="-35" stroke="#d8e1ef"/>
+              <polygon id="radar-poly" fill="url(#polyFill)" stroke="#2563eb" stroke-width="3"></polygon>
+              <text x="0" y="-128" text-anchor="middle" font-size="13" font-weight="800" fill="#64748b">Reading</text>
+              <text x="124" y="-40" text-anchor="middle" font-size="13" font-weight="800" fill="#64748b">Grammar</text>
+              <text x="82" y="114" text-anchor="middle" font-size="13" font-weight="800" fill="#64748b">Writing</text>
+              <text x="-82" y="114" text-anchor="middle" font-size="13" font-weight="800" fill="#64748b">Listening</text>
+              <text x="-124" y="-40" text-anchor="middle" font-size="13" font-weight="800" fill="#64748b">Vocab</text>
+            </g>
+          </svg>
+          <div class="radar-legend" id="score-legend"></div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="lh-card">
-      <div class="lh-card-hd"><div><h2>Daily & weekly growth</h2><p>Users should be able to feel improvement, not guess it.</p></div></div>
-      <div class="lh-growth-grid">
-        <div class="lh-chart-box">
-          <div class="lh-chart-title">Weekly study minutes</div>
-          <div class="lh-chart-sub">A simple graph makes progress feel real.</div>
-          <div class="lh-bars" id="lh-bars"></div>
-        </div>
-        <div class="lh-chart-box">
-          <div class="lh-chart-title">This week’s improvement</div>
-          <div class="lh-chart-sub">Small wins should stay visible and motivating.</div>
-          <div class="lh-streak-list" id="lh-improvements"></div>
-        </div>
+    <section class="card" style="margin-bottom:18px">
+      <div class="card-hd"><div><h2>20 words for today</h2><p>10 general words and 10 interest-based words in one place.</p></div><div class="soft-link">Refresh Tomorrow</div></div>
+      <div class="vocab-grid">
+        <div class="vocab-box"><h3>10 random essential words</h3><p>Useful daily vocabulary users should meet regularly.</p><div class="word-list" id="random-words"></div></div>
+        <div class="vocab-box"><h3>10 words from your interests</h3><p>Based on user-selected tags like K-pop, travel, daily conversation.</p><div class="word-list" id="interest-words"></div></div>
       </div>
-      <div class="lh-footer-note"><strong>Why this matters:</strong> this page turns the site from “content to read” into a real learning product. Instead of only showing articles and quizzes, it tells users what they are weak at, what to review today, what words to study, and how much they are improving over time.</div>
-    </div>
-  </section>
-</div>
-<div id="kh-footer"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js"></script>
-<script>
-(function(){
-  function sampleWords(){
-    return [
-      {ko:'회복',en:'recovery',level:'Intermediate'},
-      {ko:'확인하다',en:'to check',level:'Beginner'},
-      {ko:'이용자',en:'user',level:'Intermediate'},
-      {ko:'설명',en:'explanation',level:'Beginner'},
-      {ko:'실수',en:'mistake',level:'Beginner'},
-      {ko:'관심사',en:'interest',level:'Intermediate'},
-      {ko:'복습',en:'review',level:'Beginner'},
-      {ko:'방향',en:'direction',level:'Intermediate'},
-      {ko:'그래프',en:'graph',level:'Intermediate'},
-      {ko:'성장',en:'growth',level:'Intermediate'}
-    ];
-  }
-  function interestWords(){
-    return [
-      {ko:'공연장',en:'concert hall',level:'Interest'},
-      {ko:'숙소',en:'accommodation',level:'Interest'},
-      {ko:'예약하다',en:'to reserve',level:'Interest'},
-      {ko:'팬미팅',en:'fan meeting',level:'Interest'},
-      {ko:'합정역',en:'Hapjeong Station',level:'Interest'},
-      {ko:'노선',en:'route',level:'Interest'},
-      {ko:'메뉴판',en:'menu board',level:'Interest'},
-      {ko:'환승',en:'transfer',level:'Interest'},
-      {ko:'공항버스',en:'airport bus',level:'Interest'},
-      {ko:'숙박비',en:'lodging cost',level:'Interest'}
-    ];
-  }
-  function wordRowHTML(w){
-    return '<div class="lh-word-row"><div class="lh-word-main"><div class="lh-ko">'+w.ko+'</div><div class="lh-sub">'+w.en+'</div></div><div class="lh-level">'+w.level+'</div></div>';
-  }
-  function renderWords(){
-    var left = document.getElementById('lh-random-words');
-    var right = document.getElementById('lh-interest-words');
-    if (left) left.innerHTML = sampleWords().slice(0,5).map(wordRowHTML).join('');
-    if (right) right.innerHTML = interestWords().slice(0,5).map(wordRowHTML).join('');
-  }
-  function renderBars(stats){
-    var bars = document.getElementById('lh-bars');
-    if (!bars) return;
-    var vals = stats || [18,23,29,26,35,32,42];
-    var max = Math.max.apply(null, vals.concat([42]));
-    var days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-    bars.innerHTML = vals.map(function(v,i){
-      return '<div class="lh-bar-col"><div class="lh-bar" style="height:'+Math.max(18, Math.round((v/max)*100))+'%"></div><div class="lh-bar-label">'+days[i]+'</div><div class="lh-bar-num">'+v+'m</div></div>';
-    }).join('');
-  }
-  function renderImprovements(snapshot){
-    var el = document.getElementById('lh-improvements');
-    if (!el) return;
-    var items = [
-      ['Grammar accuracy','+' + Math.max(5, Math.round((snapshot.quizzes||0) * 3)) + '%'],
-      ['Words remembered after 24h','+' + Math.max(4, Math.min(12, snapshot.words||0)) + ' words'],
-      ['Articles completed', String(snapshot.articles || 0) + ' this week'],
-      ['Conversation roleplays', String(Math.max(1, Math.floor((snapshot.quizzes||0)/2))) + ' completed'],
-      ['Longest streak', String(snapshot.streak || 0) + ' days']
-    ];
-    el.innerHTML = items.map(function(it){ return '<div class="lh-streak-item"><div class="lh-streak-title">'+it[0]+'</div><div class="lh-streak-val">'+it[1]+'</div></div>'; }).join('');
-  }
-  function renderTimeline(snapshot){
-    var el = document.getElementById('lh-review-timeline');
-    if (!el) return;
-    var items = [
-      ['09:10 AM','News Article — 한국 경제 회복','Read article, checked translation, reviewed 6 vocabulary items.'],
-      ['09:26 AM','Grammar Drill — ' + (snapshot.weakGrammar || '-아/어서 vs -고'),'Accuracy focus · recommended for extra practice.'],
-      ['09:39 AM','Conversation — 카페에서 주문하기','Finished translate + roleplay practice.'],
-      ['09:50 AM','Daily Vocab Set', (snapshot.words||0) + ' words complete · marked items saved for later review.']
-    ];
-    el.innerHTML = items.map(function(it){ return '<div class="lh-timeline-item"><div class="lh-time">'+it[0]+'</div><div><div class="lh-timeline-title">'+it[1]+'</div><div class="lh-timeline-sub">'+it[2]+'</div></div></div>'; }).join('');
-  }
-  async function hydrate(){
-    renderWords();
-    var snapshot = (window.getHomeLearningSnapshot ? window.getHomeLearningSnapshot() : {streak:6,words:20,articles:5,quizzes:3,weakGrammar:'-아/어서 vs -고'});
-    if (window.fetchUserStatsRow) {
-      var row = await window.fetchUserStatsRow();
-      if (row) {
-        snapshot.articles = Math.max(snapshot.articles||0, row.articles_read||0);
-        snapshot.words = Math.max(snapshot.words||0, Math.min(20, row.words_saved||0));
-        snapshot.quizzes = Math.max(snapshot.quizzes||0, row.quizzes_done||0);
-        snapshot.streak = Math.max(snapshot.streak||0, row.mission_streak||0, row.streak||0);
-      }
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <div class="card-hd"><div><h2>Daily review</h2><p>Everything studied that day should be easy to revisit in one place.</p></div><div class="soft-link">Review All</div></div>
+        <div class="review-wrap"><div class="review-day"><div class="review-top"><div><h3 id="review-title">Today</h3><p id="review-sub">0 items reviewed today</p></div><div class="tag amber">Needs review</div></div><div class="timeline" id="review-queue"></div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div><h2>Saved reading history</h2><p>Articles and posts the user already studied should stay visible.</p></div><div class="soft-link">Open My Page</div></div>
+        <div class="articles-list" id="saved-reading"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-hd"><div><h2>Daily & weekly growth</h2><p>Users should be able to feel improvement, not guess it.</p></div></div>
+      <div class="growth-grid">
+        <div class="chart-box"><div class="chart-title">Weekly study XP</div><div class="chart-sub">A simple graph makes progress feel real.</div><div class="bars" id="weekly-bars"></div></div>
+        <div class="chart-box"><div class="chart-title">This week’s improvement</div><div class="chart-sub">Use simple wins that feel motivating and believable.</div><div class="streak-list" id="weekly-improvements"></div></div>
+      </div>
+      <div class="footer-note" id="speaking-note"><strong>Speaking:</strong> not scored directly yet. Treat it as a separate activity card until you have audio recording, STT, and pronunciation comparison.</div>
+    </section>
+  </div>
+
+  <script>
+    window.__KH_HUB_DATA__ = window.__KH_HUB_DATA__ || {
+      today:{articles_read:2,conversations_read:1,stories_read:0,words_learned:12,words_reviewed:8,grammar_practice_count:3,quizzes_done:6,xp_earned:42},
+      weekly_progress:[
+        {date:'2026-03-10',xp_earned:18,articles_read:1,words_learned:6,quizzes_done:2},
+        {date:'2026-03-11',xp_earned:23,articles_read:1,words_learned:9,quizzes_done:3},
+        {date:'2026-03-12',xp_earned:29,articles_read:2,words_learned:10,quizzes_done:4},
+        {date:'2026-03-13',xp_earned:26,articles_read:1,words_learned:8,quizzes_done:3},
+        {date:'2026-03-14',xp_earned:35,articles_read:2,words_learned:10,quizzes_done:5},
+        {date:'2026-03-15',xp_earned:32,articles_read:1,words_learned:7,quizzes_done:4},
+        {date:'2026-03-16',xp_earned:42,articles_read:2,words_learned:12,quizzes_done:6}
+      ],
+      weak_grammar:[
+        {grammar_point:'-아/어서 vs -고',wrong_count:8,correct_count:4,total_attempts:12},
+        {grammar_point:'-(으)ㄴ 적이 있다',wrong_count:5,correct_count:6,total_attempts:11},
+        {grammar_point:'-려고 하다',wrong_count:3,correct_count:8,total_attempts:11}
+      ],
+      review_queue:[
+        {content_type:'article',title:'한국 경제가 조금씩 회복되고 있습니다',level:'Intermediate',updated_at:'2026-03-16'},
+        {content_type:'conversation',title:'카페에서 주문하기',level:'Beginner',updated_at:'2026-03-16'},
+        {content_type:'story',title:'비 오는 날의 약속',level:'Intermediate',updated_at:'2026-03-15'}
+      ],
+      saved_words_preview:[
+        {word_key:'1',word_ko:'회복',word_rom:'hoebok',word_en:'recovery',mastered:false,review_count:2},
+        {word_key:'2',word_ko:'확인하다',word_rom:'hwaginhada',word_en:'to check',mastered:false,review_count:3},
+        {word_key:'3',word_ko:'공연장',word_rom:'gongyeonjang',word_en:'concert hall',mastered:true,review_count:5},
+        {word_key:'4',word_ko:'숙소',word_rom:'sukso',word_en:'accommodation',mastered:false,review_count:1},
+        {word_key:'5',word_ko:'예약하다',word_rom:'yeyakhada',word_en:'to reserve',mastered:false,review_count:2},
+        {word_key:'6',word_ko:'팬미팅',word_rom:'paenmiting',word_en:'fan meeting',mastered:false,review_count:1}
+      ],
+      scores:{reading:76,vocabulary:78,grammar:60,writing:45,listening:55,speaking_practice:{label:'activity_only',note:'Speaking is not scored directly yet.',roleplays_completed:3,shadowing_sessions:5}},
+      streak:6
+    };
+    const data = window.__KH_HUB_DATA__;
+    const pct = v => Math.max(0, Math.min(100, Number(v || 0)));
+    const text = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
+    function renderTopStats(){
+      const t = data.today || {};
+      text('stat-xp', t.xp_earned || 0);
+      text('stat-words', (t.words_learned || 0) + (t.words_reviewed || 0));
+      text('stat-articles', (t.articles_read || 0) + (t.conversations_read || 0) + (t.stories_read || 0));
+      text('stat-streak', data.streak || 0);
     }
-    var dm = window.dmGet ? window.dmGet() : null;
-    if (dm) {
-      snapshot.words = dm.words || snapshot.words;
-      snapshot.articles = dm.articles || snapshot.articles;
-      snapshot.quizzes = dm.quizzes || snapshot.quizzes;
+    function weaknessTag(w){ if (w >= 7) return ['Weak','red',34]; if (w >= 4) return ['Needs review','amber',58]; return ['Almost there','green',82]; }
+    function renderWeakGrammar(){
+      const box = document.getElementById('weak-grammar-list');
+      box.innerHTML = (data.weak_grammar || []).map(item => {
+        const cfg = weaknessTag(Number(item.wrong_count || 0));
+        return `<div class="grammar-item"><div class="grammar-top"><div><div class="grammar-title">${item.grammar_point}</div><div class="grammar-meta">Missed ${item.wrong_count || 0} times recently · ${item.total_attempts || 0} total attempts</div></div><div class="tag ${cfg[1]}">${cfg[0]}</div></div><div class="progress"><div class="fill ${cfg[1]}" style="width:${cfg[2]}%"></div></div><div class="grammar-actions"><div class="solid-btn">더 연습하기</div><div class="ghost-btn">Example Sentences</div><div class="ghost-btn">Mini Quiz</div></div></div>`;
+      }).join('');
     }
-    var timeEl = document.getElementById('lh-time');
-    if (timeEl) timeEl.textContent = (18 + ((snapshot.articles||0)*6) + ((snapshot.quizzes||0)*4)) + 'm';
-    var accEl = document.getElementById('lh-grammar-acc');
-    if (accEl) accEl.textContent = Math.max(52, 88 - ((snapshot.weakCount||8)*3)) + '%';
-    var wordsEl = document.getElementById('lh-words-total');
-    if (wordsEl) wordsEl.textContent = String(Math.max(10, snapshot.words||0));
-    var streakEl = document.getElementById('lh-streak');
-    if (streakEl) streakEl.textContent = String(snapshot.streak || 0);
-    var reviewSummary = document.getElementById('lh-review-summary');
-    if (reviewSummary) reviewSummary.textContent = (snapshot.articles||1) + ' article · 1 conversation · ' + Math.max(10, snapshot.words||0) + ' words · 2 weak grammar drills';
-    renderBars([18,23,29,26,35,32,18 + ((snapshot.articles||0)*6) + ((snapshot.quizzes||0)*4)]);
-    renderImprovements(snapshot);
-    renderTimeline(snapshot);
-  }
-  document.addEventListener('DOMContentLoaded', hydrate);
-})();
-</script>
+    function polarToXY(cx, cy, radius, angleDeg){ const a=(Math.PI/180)*angleDeg; return {x:cx+radius*Math.cos(a), y:cy+radius*Math.sin(a)}; }
+    function renderScores(){
+      const s = data.scores || {};
+      const vals = [pct(s.reading), pct(s.grammar), pct(s.writing), pct(s.listening), pct(s.vocabulary)];
+      const angles = [-90,-18,54,126,198];
+      const pts = vals.map((v,i)=>{ const p=polarToXY(150,150,110*(v/100),angles[i]); return `${p.x.toFixed(1)},${p.y.toFixed(1)}`; }).join(' ');
+      document.getElementById('radar-poly').setAttribute('points', pts);
+      document.getElementById('score-legend').innerHTML = [
+        ['Reading', s.reading, '#2563eb'],
+        ['Grammar', s.grammar, '#60a5fa'],
+        ['Writing', s.writing, '#8b5cf6'],
+        ['Listening', s.listening, '#ef4444'],
+        ['Vocabulary', s.vocabulary, '#f59e0b']
+      ].map(r => `<div class="legend-item"><div class="legend-left"><span class="dot" style="background:${r[2]}"></span><div class="legend-label">${r[0]}</div></div><div class="legend-score">${pct(r[1])} / 100</div></div>`).join('');
+    }
+    function renderWords(){
+      const words = data.saved_words_preview || [];
+      const random = words.slice(0,3).concat([{word_ko:'이용자',word_en:'user'},{word_ko:'설명',word_en:'explanation'}]);
+      const interest = words.slice(3,6).concat([{word_ko:'합정역',word_en:'Hapjeong Station'},{word_ko:'발권',word_en:'ticketing'}]);
+      const row = (w, type) => `<div class="word-row"><div class="word-main"><div class="ko">${w.word_ko}</div><div class="sub">${w.word_en || ''}</div></div><div class="level">${type}</div></div>`;
+      document.getElementById('random-words').innerHTML = random.map(w => row(w, 'General')).join('');
+      document.getElementById('interest-words').innerHTML = interest.map(w => row(w, 'Interest')).join('');
+    }
+    function renderReview(){
+      const q = data.review_queue || [];
+      text('review-title', `Today — ${new Date().toLocaleDateString()}`);
+      text('review-sub', `${q.length} items waiting in your review flow`);
+      document.getElementById('review-queue').innerHTML = q.map((item, i) => `<div class="timeline-item"><div class="time">${['09:10 AM','09:26 AM','09:39 AM','09:50 AM'][i] || 'Today'}</div><div><div class="timeline-title">${item.content_type[0].toUpperCase() + item.content_type.slice(1)} — ${item.title}</div><div class="timeline-sub">${item.level || 'Learner level'} · saved for review</div></div></div>`).join('');
+    }
+    function renderSavedReading(){
+      const q = data.review_queue || [];
+      document.getElementById('saved-reading').innerHTML = q.map(item => `<div class="article-row"><div><div class="article-title">${item.title}</div><div class="article-sub">${item.content_type} · ${item.level || 'Learner level'} · saved to My Page</div></div><div class="article-tag">Saved</div></div>`).join('');
+    }
+    function renderWeeklyBars(){
+      const weekly = data.weekly_progress || []; const max = Math.max(1, ...weekly.map(d => Number(d.xp_earned || 0)));
+      document.getElementById('weekly-bars').innerHTML = weekly.map(item => {
+        const h = Math.max(16, Math.round((Number(item.xp_earned || 0) / max) * 100));
+        const day = new Date(item.date).toLocaleDateString(undefined, { weekday:'short' });
+        return `<div class="bar-col"><div class="bar" style="height:${h}%"></div><div class="bar-label">${day}</div><div class="bar-num">${item.xp_earned || 0} XP</div></div>`;
+      }).join('');
+    }
+    function renderWeeklyImprovements(){
+      const t = data.today || {}; const s = data.scores || {};
+      document.getElementById('weekly-improvements').innerHTML = `
+        <div class="streak-item"><div class="streak-title">Grammar score</div><div class="streak-val">${pct(s.grammar)} / 100</div></div>
+        <div class="streak-item"><div class="streak-title">Words touched today</div><div class="streak-val">${(t.words_learned || 0) + (t.words_reviewed || 0)}</div></div>
+        <div class="streak-item"><div class="streak-title">Reading completed today</div><div class="streak-val">${(t.articles_read || 0) + (t.conversations_read || 0) + (t.stories_read || 0)}</div></div>
+        <div class="streak-item"><div class="streak-title">Quizzes done today</div><div class="streak-val">${t.quizzes_done || 0}</div></div>
+        <div class="streak-item"><div class="streak-title">Speaking practice</div><div class="streak-val">activity only</div></div>`;
+    }
+    function renderSpeakingNote(){
+      const sp = (data.scores || {}).speaking_practice || {};
+      document.getElementById('speaking-note').innerHTML = `<strong>Speaking:</strong> ${sp.note || 'Speaking is not scored directly yet.'} Roleplays: <strong>${sp.roleplays_completed || 0}</strong> · Shadowing: <strong>${sp.shadowing_sessions || 0}</strong>`;
+    }
+    renderTopStats(); renderWeakGrammar(); renderScores(); renderWords(); renderReview(); renderSavedReading(); renderWeeklyBars(); renderWeeklyImprovements(); renderSpeakingNote();
+  </script>
 </body>
 </html>
