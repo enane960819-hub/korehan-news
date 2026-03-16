@@ -2738,49 +2738,66 @@ function toggleVocabEditMode() {
 
 function _handleVocabSelection(e) {
   if (!window._vocabEditMode || !window._isAdmin) return;
-  // 모달 위에서 선택 시 무시
-  if (e.target.closest('#vocab-edit-modal') || e.target.closest('#vocab-select-popup')) return;
+  if (e.target && e.target.closest && (e.target.closest('#vocab-edit-modal') || e.target.closest('#vocab-select-popup'))) return;
 
   var sel = window.getSelection();
   var text = sel ? sel.toString().trim() : '';
 
-  // 기존 팝업 제거
   var old = document.getElementById('vocab-select-popup');
   if (old) old.remove();
 
-  // 선택된 텍스트 없으면 리턴
   if (!text || text.length < 1 || text.length > 15) return;
-  // 한글 포함 여부 체크
   if (!/[가-힣]/.test(text)) return;
 
-  // 팝업 위치
-  var range = sel.getRangeAt(0);
-  var rect  = range.getBoundingClientRect();
+  // 팝업 위치 — fixed 기준이므로 scrollY 더하면 안 됨
+  var rect = null;
+  try { rect = sel.getRangeAt(0).getBoundingClientRect(); } catch(err) { return; }
+  if (!rect || rect.width === 0) return;
 
   var pop = document.createElement('div');
   pop.id = 'vocab-select-popup';
-  pop.style.cssText = 'position:fixed;z-index:99998;background:#0b1626;color:#fff;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);white-space:nowrap;';
-  pop.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px';
-  pop.style.top  = (rect.top + window.scrollY - 44) + 'px';
-  pop.innerHTML = '+ <span style="color:#7ab8f5">' + text + '</span> 단어 추가';
+  pop.style.cssText = [
+    'position:fixed',
+    'z-index:99998',
+    'background:#0b1626',
+    'color:#fff',
+    'border-radius:8px',
+    'padding:9px 14px',
+    'font-size:13px',
+    'font-weight:700',
+    'cursor:pointer',
+    'box-shadow:0 4px 20px rgba(0,0,0,.5)',
+    'border:1px solid rgba(255,255,255,.15)',
+    'white-space:nowrap',
+    'user-select:none'
+  ].join(';');
+
+  var leftPos = Math.max(8, Math.min(rect.left + rect.width / 2 - 70, window.innerWidth - 200));
+  var topPos  = Math.max(8, rect.top - 48);
+  pop.style.left = leftPos + 'px';
+  pop.style.top  = topPos  + 'px';
+  pop.innerHTML = '+ <span style="color:#7ab8f5;font-weight:900">' + text + '</span> 추가';
+
+  var selCopy = text; // 클로저용 복사
   pop.onclick = function(ev) {
     ev.stopPropagation();
     pop.remove();
-    sel.removeAllRanges();
-    openVocabEditModal(text);
+    if (sel) sel.removeAllRanges();
+    openVocabEditModal(selCopy);
   };
   document.body.appendChild(pop);
 
   // 다른 곳 클릭 시 팝업 닫기
   setTimeout(function() {
-    document.addEventListener('mousedown', function closePop(e2) {
-      if (!e2.target.closest('#vocab-select-popup')) {
+    function closePop(e2) {
+      if (!e2.target.closest || !e2.target.closest('#vocab-select-popup')) {
         var p = document.getElementById('vocab-select-popup');
         if (p) p.remove();
         document.removeEventListener('mousedown', closePop);
       }
-    });
-  }, 10);
+    }
+    document.addEventListener('mousedown', closePop);
+  }, 50);
 }
 
 function openVocabEditModal(word) {
