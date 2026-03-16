@@ -1,20 +1,14 @@
 (function(){
-  var SUPA_URL = (typeof window.SUPA_URL !== 'undefined' && window.SUPA_URL) || 'https://samghztrdvtxmrmawneu.supabase.co';
-  var SUPA_KEY = (typeof window.SUPA_KEY !== 'undefined' && window.SUPA_KEY) || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs';
-  var sb = null;
   var vocabList = [];
   var vocabWords = [];
   var initialized = false;
   var observer = null;
 
+  // shared.js의 getSupa() 재사용 — 이중 클라이언트 방지
   function getSb() {
-    if (sb) return sb;
-    if (window.supabase) {
-      sb = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-      });
-    }
-    return sb;
+    if (typeof window.getSupa === 'function') return window.getSupa();
+    // fallback: shared.js 아직 로드 안 됐을 때 (거의 발생 안함)
+    return null;
   }
 
   function injectStyles() {

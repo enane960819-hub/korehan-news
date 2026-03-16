@@ -1,4 +1,4 @@
-export async function logReadEvent(sb, payload) {
+async function logReadEvent(sb, payload) {
   const { error } = await sb.rpc('log_read_event', {
     p_content_type: payload.contentType,
     p_content_id: payload.contentId,
@@ -14,7 +14,7 @@ export async function logReadEvent(sb, payload) {
   if (error) throw error;
 }
 
-export async function saveWord(sb, payload) {
+async function saveWord(sb, payload) {
   const { error } = await sb.rpc('save_or_update_word', {
     p_word_key: payload.wordKey,
     p_word_ko: payload.wordKo,
@@ -31,7 +31,7 @@ export async function saveWord(sb, payload) {
   if (error) throw error;
 }
 
-export async function logQuizResult(sb, payload) {
+async function logQuizResult(sb, payload) {
   const { error } = await sb.rpc('log_quiz_result', {
     p_skill_type: payload.skillType,
     p_quiz_type: payload.quizType,
@@ -48,13 +48,13 @@ export async function logQuizResult(sb, payload) {
   if (error) throw error;
 }
 
-export async function getLearningHubSnapshot(sb, days = 7) {
+async function getLearningHubSnapshot(sb, days = 7) {
   const { data, error } = await sb.rpc('get_learning_hub_snapshot', { p_days: days });
   if (error) throw error;
   return data;
 }
 
-export async function assignDailyVocab(sb, assignmentDate = null) {
+async function assignDailyVocab(sb, assignmentDate = null) {
   const { data, error } = await sb.rpc('assign_daily_vocab', {
     p_assignment_date: assignmentDate
   });
@@ -62,7 +62,7 @@ export async function assignDailyVocab(sb, assignmentDate = null) {
   return data;
 }
 
-export async function onArticleOpened(sb, article) {
+async function onArticleOpened(sb, article) {
   await logReadEvent(sb, {
     contentType: 'article',
     contentId: String(article.id ?? article.slug),
@@ -76,7 +76,7 @@ export async function onArticleOpened(sb, article) {
   });
 }
 
-export async function onArticleCompleted(sb, article, secondsSpent) {
+async function onArticleCompleted(sb, article, secondsSpent) {
   await logReadEvent(sb, {
     contentType: 'article',
     contentId: String(article.id ?? article.slug),
@@ -90,7 +90,7 @@ export async function onArticleCompleted(sb, article, secondsSpent) {
   });
 }
 
-export async function onWordSavedFromHover(sb, word, context = {}) {
+async function onWordSavedFromHover(sb, word, context = {}) {
   await saveWord(sb, {
     wordKey: word.id ?? word.word_ko,
     wordKo: word.word_ko,
@@ -102,7 +102,7 @@ export async function onWordSavedFromHover(sb, word, context = {}) {
   });
 }
 
-export async function onGrammarQuizAnswered(sb, quiz, isCorrect, userAnswer) {
+async function onGrammarQuizAnswered(sb, quiz, isCorrect, userAnswer) {
   await logQuizResult(sb, {
     skillType: 'grammar',
     quizType: 'grammar_multiple_choice',
@@ -118,7 +118,7 @@ export async function onGrammarQuizAnswered(sb, quiz, isCorrect, userAnswer) {
   });
 }
 
-export async function onVocabReviewAnswered(sb, card, isCorrect) {
+async function onVocabReviewAnswered(sb, card, isCorrect) {
   await saveWord(sb, {
     wordKey: card.wordKey,
     wordKo: card.wordKo,
@@ -136,4 +136,19 @@ export async function onVocabReviewAnswered(sb, card, isCorrect) {
     isCorrect,
     score: isCorrect ? 100 : 0
   });
+}
+
+
+// 전역 노출 (script 태그 방식 호환)
+if (typeof window !== 'undefined') {
+  window.lhLogReadEvent      = logReadEvent;
+  window.lhSaveWord          = saveWord;
+  window.lhLogQuizResult     = logQuizResult;
+  window.lhGetSnapshot       = getLearningHubSnapshot;
+  window.lhAssignDailyVocab  = assignDailyVocab;
+  window.lhOnArticleOpened   = onArticleOpened;
+  window.lhOnArticleCompleted = onArticleCompleted;
+  window.lhOnWordSaved       = onWordSavedFromHover;
+  window.lhOnGrammarQuiz     = onGrammarQuizAnswered;
+  window.lhOnVocabReview     = onVocabReviewAnswered;
 }

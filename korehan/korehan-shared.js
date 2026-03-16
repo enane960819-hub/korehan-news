@@ -771,7 +771,7 @@ async function dbRemoveWord(ko) {
   var sb = getSupa();
   if (!sb) return { ok: true, source: 'local' };
   try {
-    await sb.from('saved_words').delete().eq('user_id', supaUser.id).or('word_ko.eq.' + ko + ',ko.eq.' + ko);
+    await sb.from('saved_words').delete().eq('user_id', supaUser.id).or('word_ko.eq."' + ko.replace(/"/g, '\\"') + '",ko.eq."' + ko.replace(/"/g, '\\"') + '"');
     return { ok: true, source: 'supabase' };
   } catch(e) {
     return { ok: false, source: 'local', error: e };
@@ -1818,10 +1818,10 @@ function renderFillLoading() {
 
 function renderFillNoKey() {
   return '<div style="padding:32px;text-align:center;background:#f8faff;border-radius:16px;margin:16px 0">'
-    + '<div style="font-size:36px;margin-bottom:12px">🔑</div>'
-    + '<div style="font-size:15px;font-weight:800;color:#0b1626;margin-bottom:8px">API Key 필요</div>'
-    + '<div style="font-size:13px;color:#64748b;margin-bottom:20px">Fill-in-the-Blank은 AI 분석이 필요해요.<br>Grammar Guide 탭에서 API 키를 먼저 설정해주세요.</div>'
-    + '<button onclick="switchArtTab(\'grammar\',document.querySelectorAll(\'.art-tab\')[2])" style="padding:10px 24px;background:#2255a4;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Grammar Guide에서 설정 →</button>'
+    + '<div style="font-size:36px;margin-bottom:12px">🔒</div>'
+    + '<div style="font-size:15px;font-weight:800;color:#0b1626;margin-bottom:8px">로그인 필요</div>'
+    + '<div style="font-size:13px;color:#64748b;margin-bottom:20px">Fill-in-the-Blank은 로그인 후 사용할 수 있어요.</div>'
+    + '<button onclick="openAuthModal(\'signin\')" style="padding:10px 24px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
     + '</div>';
 }
 
@@ -2441,7 +2441,7 @@ var COMMENT_MIN_LENGTH  = 2;
 // 기본 스팸 패턴 (URL 도배, 반복 문자)
 function isSpamComment(text) {
   // 동일 문자 10개 이상 반복
-  if (/(.){9,}/.test(text)) return true;
+  if (/(.)(\1){9,}/.test(text)) return true;
   // URL 3개 이상
   if ((text.match(/https?:\/\//g) || []).length >= 3) return true;
   // 전체가 공백/특수문자만
@@ -2921,7 +2921,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   if (!pageBase || pageBase === 'index') {
     renderHomePage();
-  } else if (pageBase === 'korehan-all')     { renderAllPage(); }
+  } else if (pageBase === 'korehan-news')     { renderHomePage(); }
+  else if (pageBase === 'korehan-all')     { renderAllPage(); }
   else if (pageBase === 'korehan-section')   {
     var sKey = (new URLSearchParams(window.location.search)).get('s') || '';
     await renderSectionPage(sKey);
