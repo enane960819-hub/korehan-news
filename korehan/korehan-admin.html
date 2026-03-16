@@ -1923,8 +1923,7 @@ function formatAIFeedback(raw) {
       });
     }
     if (parsed.encouragement)     lines.push('💪 ' + parsed.encouragement);
-    return lines.join('
-');
+    return lines.join('\n');
   } catch(e) { return raw; }
 }
 
@@ -1942,8 +1941,7 @@ function extractAIFeedbackText(raw) {
       });
     }
     if (parsed.encouragement)     parts.push('💪 ' + parsed.encouragement);
-    return parts.join('
-');
+    return parts.join('\n');
   } catch(e) { return raw; }
 }
 
