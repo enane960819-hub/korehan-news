@@ -766,6 +766,10 @@
           <span id="wc" style="font-size:11px;color:var(--gray)">0 chars</span>
           <span id="wm-vocab-used-count" style="font-size:11px;color:#2255a4;font-weight:700"></span>
         </div>
+        <!-- vocab/grammar validation status -->
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <span id="wm-grammar-used-count" style="font-size:11px;font-weight:700;color:#dc2626;"></span>
+        </div>
       </div>
 
       <!-- 모바일 탭 이동 빠른 버튼 -->
@@ -775,7 +779,7 @@
       </div>
 
       <button class="submit-btn" onclick="submitWriting()">📩 Submit for Feedback</button>
-      <div class="submit-note">Han will personally review and reply within 24h · Courses subscribers only</div>
+      <div class="submit-note">Vocab 2개 이상 · Grammar 1개 이상 사용 필수 · 하루 1건 · Han 24h 피드백</div>
     </div>
 
     <!-- RIGHT: helper sentences -->
@@ -871,261 +875,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     setTimeout(waitAndOpenModal, 400);
   }
-
-  // ── learning hub에서 넘어온 경우: focus / tab 처리 ──────────
-  var _focusGrammar = _urlParams.get('focus') || (_urlParams.get('tab') === 'grammar' || _urlParams.get('tab') === 'quiz' ? _urlParams.get('grammar') : '') || '';
-  var _focusTab     = _urlParams.get('tab') || '';
-  if (_focusGrammar) {
-    setTimeout(function() { openGrammarFocusPanel(_focusGrammar, _focusTab); }, 600);
-  }
 });
-
-// ═══════════════════════════════════════════════════════════════
-// GRAMMAR FOCUS PANEL
-// Learning Hub "더 연습하기 / 예문으로 공부 / Mini Quiz" 진입점
-// ═══════════════════════════════════════════════════════════════
-async function openGrammarFocusPanel(grammarPoint, mode) {
-  var existing = document.getElementById('grammar-focus-overlay');
-  if (existing) existing.remove();
-
-  var overlay = document.createElement('div');
-  overlay.id = 'grammar-focus-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.72);backdrop-filter:blur(4px);z-index:800;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto';
-  overlay.innerHTML =
-    '<div id="gfp-inner" style="width:100%;max-width:720px;background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.35);animation:mIn .2s ease">'
-    + '<div style="background:linear-gradient(135deg,#0b1626,#1a3a6b);padding:20px 24px;display:flex;align-items:flex-start;justify-content:space-between">'
-    + '<div><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#7ab8f5;margin-bottom:6px">Grammar Focus</div>'
-    + '<div style="font-size:22px;font-weight:900;color:#fff">' + grammarPoint + '</div></div>'
-    + '<button onclick="document.getElementById(\'grammar-focus-overlay\').remove()" style="background:rgba(255,255,255,.12);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>'
-    + '</div>'
-    + '<div style="display:flex;border-bottom:1px solid #e2e8f0">'
-    + '<button id="gft-examples" onclick="gfpTab(\'examples\')" style="flex:1;padding:12px;border:none;background:transparent;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;color:#2255a4;border-bottom:2.5px solid #2255a4">📖 예문 공부</button>'
-    + '<button id="gft-quiz"     onclick="gfpTab(\'quiz\')"     style="flex:1;padding:12px;border:none;background:transparent;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;color:#94a3b8;border-bottom:2.5px solid transparent">📝 Mini Quiz</button>'
-    + '<button id="gft-practice" onclick="gfpTab(\'practice\')" style="flex:1;padding:12px;border:none;background:transparent;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;color:#94a3b8;border-bottom:2.5px solid transparent">✍️ 직접 작문</button>'
-    + '</div>'
-    + '<div id="gfp-body" style="padding:20px 24px;min-height:320px;max-height:65vh;overflow-y:auto"><div style="text-align:center;padding:40px;color:#94a3b8">로딩 중...</div></div>'
-    + '</div>';
-  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
-  document.body.appendChild(overlay);
-
-  var grammarData = null;
-  try {
-    var sb = getSupa();
-    if (sb) {
-      var res = await sb.from('grammar_bank').select('*').ilike('grammar_point', '%' + grammarPoint + '%').limit(1).maybeSingle();
-      grammarData = res.data;
-    }
-  } catch(e) {}
-
-  window._gfpGrammarPoint = grammarPoint;
-  window._gfpGrammarData  = grammarData;
-
-  window.gfpTab = function(tab) {
-    ['examples','quiz','practice'].forEach(function(t) {
-      var btn = document.getElementById('gft-' + t);
-      if (btn) {
-        btn.style.color = (t === tab) ? '#2255a4' : '#94a3b8';
-        btn.style.borderBottomColor = (t === tab) ? '#2255a4' : 'transparent';
-      }
-    });
-    renderGfpTab(tab, grammarPoint, grammarData);
-  };
-
-  var startTab = (mode === 'quiz') ? 'quiz' : (mode === 'practice') ? 'practice' : 'examples';
-  window.gfpTab(startTab);
-}
-
-function renderGfpTab(tab, grammarPoint, gd) {
-  var body = document.getElementById('gfp-body');
-  if (!body) return;
-
-  if (tab === 'examples') {
-    if (!gd || !gd.explanation) {
-      body.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8">AI로 예문을 생성하는 중...</div>';
-      generateGrammarExamples(grammarPoint, body);
-      return;
-    }
-    var examples = gd.examples || [];
-    body.innerHTML = '<div style="font-size:14px;line-height:1.7;color:#334155;background:#f0f6ff;border-left:3px solid #2255a4;padding:12px 16px;border-radius:0 10px 10px 0;margin-bottom:16px">' + gd.explanation + '</div>'
-      + examples.map(function(ex) {
-          return '<div style="padding:14px;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:10px">'
-            + '<div style="font-size:17px;font-weight:800;color:#0b1626;margin-bottom:6px">' + ex.ko + ' ' + ttsBtn(ex.ko) + '</div>'
-            + '<div style="font-size:13px;color:#64748b">' + ex.en + '</div>'
-            + '</div>';
-        }).join('')
-      + (supaUser
-          ? '<button onclick="generateMoreExamples()" style="width:100%;padding:11px;background:#f0f6ff;border:1.5px solid #bcd0f0;border-radius:10px;font-size:13px;font-weight:800;color:#2255a4;cursor:pointer">🤖 AI로 예문 더 생성</button>'
-          : '');
-
-  } else if (tab === 'quiz') {
-    body.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8">퀴즈 생성 중...</div>';
-    generateGrammarQuiz(grammarPoint, gd, body);
-
-  } else if (tab === 'practice') {
-    body.innerHTML =
-      '<div style="margin-bottom:12px;font-size:14px;color:#334155;line-height:1.7"><strong>' + grammarPoint + '</strong> 패턴을 사용해서 자유롭게 문장을 써보세요.</div>'
-      + '<textarea id="gfp-write" placeholder="여기에 한국어로 써보세요..." style="width:100%;min-height:140px;padding:14px;border:2px solid #e2e8f0;border-radius:12px;font-size:15px;font-family:inherit;resize:vertical;outline:none;line-height:1.7;box-sizing:border-box"></textarea>'
-      + '<button onclick="submitGfpWriting()" style="width:100%;margin-top:10px;padding:12px;background:linear-gradient(135deg,#0b1626,#2255a4);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer">AI 피드백 받기 →</button>'
-      + '<div id="gfp-feedback" style="margin-top:14px"></div>';
-  }
-}
-
-async function generateGrammarExamples(grammarPoint, container) {
-  if (!supaUser) {
-    container.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8">로그인 후 AI 예문 생성을 사용할 수 있어요.</div>';
-    return;
-  }
-  try {
-    var res = await callClaude({
-      feature: 'grammar',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 800,
-      messages: [{ role: 'user', content: 'Korean grammar point: "' + grammarPoint + '"\nGenerate 5 natural example sentences for Korean learners.\nReturn ONLY JSON: {"explanation":"1-2 sentence explanation in English","examples":[{"ko":"Korean sentence","en":"English translation"}]}' }]
-    });
-    var raw = (res.content||[]).map(function(c){ return c.text||''; }).join('');
-    var clean = raw.replace(/```json|```/g,'').trim();
-    clean = clean.slice(clean.indexOf('{'), clean.lastIndexOf('}')+1);
-    var data = JSON.parse(clean);
-    window._gfpGrammarData = data;
-    renderGfpTab('examples', grammarPoint, data);
-  } catch(e) {
-    container.innerHTML = '<div style="padding:20px;color:#cc2200">예문 생성 실패. 다시 시도해주세요.</div>';
-  }
-}
-
-window.generateMoreExamples = function() {
-  var gp = window._gfpGrammarPoint || '';
-  var body = document.getElementById('gfp-body');
-  if (body) body.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8">생성 중...</div>';
-  generateGrammarExamples(gp, document.getElementById('gfp-body'));
-};
-
-async function generateGrammarQuiz(grammarPoint, gd, container) {
-  if (!supaUser) {
-    container.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8">로그인 후 퀴즈를 사용할 수 있어요.</div>';
-    return;
-  }
-  try {
-    var res = await callClaude({
-      feature: 'quiz',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 900,
-      messages: [{ role: 'user', content: 'Create 4 multiple-choice quiz questions for Korean grammar: "' + grammarPoint + '"\nReturn ONLY JSON: {"questions":[{"sentence":"Korean sentence with _____","en":"English with _____","blank":"correct","choices":["correct","wrong1","wrong2","wrong3"],"hint":"brief hint"}]}' }]
-    });
-    var raw = (res.content||[]).map(function(c){ return c.text||''; }).join('');
-    var clean = raw.replace(/```json|```/g,'').trim();
-    clean = clean.slice(clean.indexOf('{'), clean.lastIndexOf('}')+1);
-    var parsed = JSON.parse(clean);
-    renderGrammarQuizHTML(container, parsed.questions, grammarPoint);
-  } catch(e) {
-    container.innerHTML = '<div style="padding:20px;color:#cc2200">퀴즈 생성 실패.<br><button onclick="generateGrammarQuiz(\''+grammarPoint.replace(/'/g,"\\'")+'\',(window._gfpGrammarData||null),document.getElementById(\'gfp-body\'))" style="margin-top:10px;padding:8px 18px;background:#2255a4;color:#fff;border:none;border-radius:8px;cursor:pointer">🔄 다시 시도</button></div>';
-  }
-}
-
-function renderGrammarQuizHTML(container, questions, grammarPoint) {
-  container.innerHTML = questions.map(function(q, i) {
-    var shuffled = q.choices.slice().sort(function(){ return Math.random()-.5; });
-    return '<div id="gq-'+i+'" style="padding:16px;border:2px solid #e2e8f0;border-radius:14px;margin-bottom:12px">'
-      + '<div style="font-size:16px;font-weight:800;color:#0b1626;margin-bottom:4px">' + q.sentence.replace('_____','<span style="border-bottom:3px solid #2255a4;padding:0 8px;color:#2255a4">　　</span>') + '</div>'
-      + '<div style="font-size:12px;color:#94a3b8;margin-bottom:4px;font-style:italic">' + q.en + '</div>'
-      + '<div style="font-size:11px;color:#60a5fa;margin-bottom:12px">💡 ' + (q.hint||'') + '</div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="gq-choices-'+i+'">'
-      + shuffled.map(function(ch) {
-          var safeAns = q.blank.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-          var safeCh  = ch.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-          var safeGp  = grammarPoint.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-          return '<button onclick="gqAnswer(this,'+i+',\''+safeCh+'\',\''+safeAns+'\',\''+safeGp+'\''+')" style="padding:10px;border:2px solid #e2e8f0;border-radius:10px;background:#f8faff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:#0b1626">'+ch+'</button>';
-        }).join('')
-      + '</div>'
-      + '<div id="gqr-'+i+'" style="display:none;margin-top:10px"></div>'
-      + '</div>';
-  }).join('')
-  + '<div id="gq-done" style="display:none;text-align:center;margin-top:8px">'
-  + '<button onclick="gfpTab(\'quiz\')" style="padding:10px 24px;background:#2255a4;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">🔄 New Quiz</button>'
-  + '</div>';
-}
-
-window.gqAnswer = async function(btn, qi, selected, correct, grammarPoint) {
-  var card = document.getElementById('gq-'+qi);
-  var res  = document.getElementById('gqr-'+qi);
-  if (!card || card.dataset.answered) return;
-  card.dataset.answered = '1';
-
-  var isCorrect = (selected === correct);
-  card.style.borderColor = isCorrect ? '#86efac' : '#fca5a5';
-
-  Array.from(card.querySelectorAll('button')).forEach(function(b) {
-    b.disabled = true;
-    if (b.textContent === correct) {
-      b.style.background='#f0fdf4'; b.style.borderColor='#86efac'; b.style.color='#16a34a';
-    } else if (b.textContent === selected && !isCorrect) {
-      b.style.background='#fff5f5'; b.style.borderColor='#fca5a5'; b.style.color='#dc2626';
-    } else {
-      b.style.opacity='.4';
-    }
-  });
-
-  if (res) {
-    res.style.display = 'block';
-    res.innerHTML = isCorrect
-      ? '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;color:#16a34a">✅ 정답! ' + ttsBtn(correct) + '</div>'
-      : '<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;color:#dc2626">❌ 정답: <strong>' + correct + '</strong> ' + ttsBtn(correct) + '</div>';
-  }
-
-  // localStorage grammar stats
-  try {
-    var raw = JSON.parse(localStorage.getItem('kh_quiz_grammar_stats') || '{}');
-    if (!raw[grammarPoint]) raw[grammarPoint] = { correct:0, wrong:0 };
-    isCorrect ? raw[grammarPoint].correct++ : raw[grammarPoint].wrong++;
-    localStorage.setItem('kh_quiz_grammar_stats', JSON.stringify(raw));
-  } catch(e) {}
-
-  // Supabase RPC
-  if (supaUser) {
-    try {
-      var sb = getSupa();
-      if (sb) await sb.rpc('log_quiz_result', {
-        p_user_id: supaUser.id, p_quiz_type: 'grammar_mc',
-        p_grammar_point: grammarPoint, p_is_correct: isCorrect
-      });
-    } catch(e) {}
-  }
-
-  // 전체 완료 체크
-  var allCards = document.querySelectorAll('#gfp-body [id^="gq-"]:not([id="gq-done"])');
-  var allAnswered = Array.from(allCards).every(function(c){ return c.dataset.answered; });
-  if (allAnswered) {
-    var done = document.getElementById('gq-done');
-    if (done) done.style.display = 'block';
-  }
-};
-
-window.submitGfpWriting = async function() {
-  var ta = document.getElementById('gfp-write');
-  var fb = document.getElementById('gfp-feedback');
-  var btn = ta && ta.nextElementSibling;
-  if (!ta || !fb) return;
-  var text = ta.value.trim();
-  if (!text) return;
-  if (!supaUser) { fb.innerHTML = '<div style="color:#cc2200">로그인 후 사용 가능합니다.</div>'; return; }
-  var gp = window._gfpGrammarPoint || '';
-
-  if (btn) { btn.textContent = '분석 중...'; btn.disabled = true; }
-  fb.innerHTML = '<div style="color:#94a3b8">AI가 검토 중...</div>';
-  try {
-    var res = await callClaude({
-      feature: 'grammar',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 600,
-      messages: [{ role: 'user', content: 'Korean grammar feedback.\nGrammar focus: "' + gp + '"\nStudent wrote: "' + text + '"\nBrief feedback in English: (1) Is the grammar correct? (2) One improvement. Max 3 sentences.' }]
-    });
-    var rawText = (res.content||[]).map(function(c){ return c.text||''; }).join('');
-    fb.innerHTML = '<div style="background:#f0f6ff;border:1.5px solid #bcd0f0;border-radius:12px;padding:14px;font-size:14px;line-height:1.7;color:#334155">' + rawText.replace(/\n/g,'<br>') + '</div>';
-  } catch(e) {
-    fb.innerHTML = '<div style="color:#cc2200">피드백 생성 실패.</div>';
-  }
-  if (btn) { btn.textContent = 'AI 피드백 받기 →'; btn.disabled = false; }
-};
 
 // ═══════════════════════════════════════════════════════════════
 // PHRASE
@@ -1613,20 +1363,141 @@ function copyHelper(btn) {
 
 async function submitWriting() {
   if (!supaUser) { openAuthModal('signin'); closeWritingModal(); return; }
-  var text = document.getElementById('write-area').value.trim();
+
+  var text = (document.getElementById('write-area').value || '').trim();
   if (!text) { showToast('✏️ Write something first!'); return; }
 
-  // mark completed
   var sb = getSupa();
-  var today = new Date().toISOString().slice(0, 10);
-  await sb.from('user_topic_history')
-    .update({ completed: true })
-    .eq('user_id', supaUser.id)
-    .eq('assigned_date', today);
+  if (!sb) return;
 
-  document.getElementById('hero-topic-done').style.display = 'flex';
-  showToast('✅ Submitted! Han will review within 24h.');
-  closeWritingModal();
+  // ── KST 기준 오늘 날짜 ──
+  var today = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
+
+  // ── 하루 1건 체크 ──
+  try {
+    var existing = await sb.from('writing_submissions')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', supaUser.id)
+      .eq('submit_date', today);
+    if ((existing.count || 0) > 0) {
+      showToast('✅ 오늘 이미 제출하셨어요. 내일 다시 작성할 수 있어요!', true);
+      closeWritingModal();
+      return;
+    }
+  } catch(e) {}
+
+  // ── vocab/grammar 사용 체크 ──
+  var requiredVocab   = (_aiContent && _aiContent.vocab   || []).map(function(v){ return v.ko; }).filter(Boolean);
+  var requiredGrammar = (_aiContent && _aiContent.grammar || []).map(function(g){ return g.point; }).filter(Boolean);
+
+  var usedVocab   = requiredVocab.filter(function(w){ return text.includes(w); });
+  var usedGrammar = requiredGrammar.filter(function(g){
+    // grammar point에서 핵심 패턴 추출 (-아/어서 → 아서|어서)
+    var pattern = g.replace(/^[-–]/, '').replace(/\s*\(.*?\)\s*/g,'').trim();
+    return text.includes(pattern);
+  });
+
+  if (usedVocab.length < 2) {
+    showToast('⚠️ Must-use vocab 중 최소 2개를 작문에 포함해야 합니다. (' + usedVocab.length + '/2)');
+    return;
+  }
+  if (usedGrammar.length < 1) {
+    showToast('⚠️ Must-use grammar 중 최소 1개를 작문에 포함해야 합니다.');
+    return;
+  }
+
+  // ── 제출 버튼 비활성화 ──
+  var submitBtn = document.querySelector('.submit-btn');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '제출 중...'; }
+
+  try {
+    // ── DB에 저장 ──
+    var insertRes = await sb.from('writing_submissions').insert({
+      user_id:          supaUser.id,
+      submit_date:      today,
+      writing_text:     text,
+      word_count:       text.length,
+      topic_ko:         (_todayTopic && _todayTopic.topic_ko) || '',
+      topic_en:         (_todayTopic && _todayTopic.topic_en) || '',
+      writing_mode:     _writingMode || 'topic',
+      used_vocab:       usedVocab,
+      used_grammar:     usedGrammar,
+      required_vocab:   requiredVocab,
+      required_grammar: requiredGrammar,
+      status:           'pending'
+    });
+
+    if (insertRes.error) throw insertRes.error;
+
+    // ── user_topic_history 완료 처리 ──
+    await sb.from('user_topic_history')
+      .update({ completed: true })
+      .eq('user_id', supaUser.id)
+      .eq('assigned_date', today);
+
+    // ── AI 1차 첨삭 (비동기, 백그라운드) ──
+    var submissionId = insertRes.data && insertRes.data[0] && insertRes.data[0].id;
+    if (submissionId) {
+      triggerAIFeedback(submissionId, text, requiredVocab, requiredGrammar);
+    }
+
+    var doneEl = document.getElementById('hero-topic-done');
+    if (doneEl) doneEl.style.display = 'flex';
+    showToast('✅ 제출 완료! Han이 24시간 내에 피드백을 드려요.');
+    closeWritingModal();
+
+  } catch(e) {
+    if (e && e.code === '23505') {
+      showToast('✅ 오늘 이미 제출하셨어요!', true);
+      closeWritingModal();
+    } else {
+      showToast('❌ 제출 오류: ' + (e.message || e), true);
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '📩 Submit for Feedback'; }
+    }
+  }
+}
+
+// AI 1차 첨삭 — 백그라운드 실행
+async function triggerAIFeedback(submissionId, text, vocab, grammar) {
+  try {
+    var prompt = '당신은 한국어 작문 첨삭 선생님입니다.\n\n'
+      + '학생 작문:\n"""\n' + text + '\n"""\n\n'
+      + '필수 어휘: ' + vocab.join(', ') + '\n'
+      + '필수 문법: ' + grammar.join(', ') + '\n\n'
+      + '다음 형식으로 첨삭해주세요 (JSON):\n'
+      + '{\n'
+      + '  "overall": "전반적인 평가 1-2문장",\n'
+      + '  "corrections": [{"original":"원문","corrected":"수정문","reason":"이유"}],\n'
+      + '  "vocab_feedback": "어휘 사용에 대한 피드백",\n'
+      + '  "grammar_feedback": "문법 사용에 대한 피드백",\n'
+      + '  "encouragement": "격려 한마디"\n'
+      + '}\n'
+      + 'JSON만 반환하세요.';
+
+    var data = await callClaude({
+      feature: 'writing_feedback',
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    var raw = (data.content || []).map(function(c){ return c.text || ''; }).join('');
+    var clean = raw.replace(/```json|```/g,'').trim();
+    var parsed = JSON.parse(clean);
+    var feedbackText = JSON.stringify(parsed, null, 2);
+
+    // DB 업데이트
+    var sb = getSupa();
+    if (sb) {
+      await sb.from('writing_submissions').update({
+        ai_feedback:    feedbackText,
+        ai_feedback_at: new Date().toISOString(),
+        status:         'ai_done'
+      }).eq('id', submissionId);
+    }
+  } catch(e) {
+    console.warn('AI feedback failed:', e);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1978,22 +1849,33 @@ function setupHighlight() {
 function updateHighlight() {
   var ta = document.getElementById('write-area');
   var ov = document.getElementById('hl-overlay');
-  if (!ta || !ov || !_highlightWords.length) return;
+  if (!ta || !ov) return;
 
   var text = ta.value;
   var escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-  // 각 vocab 단어 초록색 하이라이트
-  _highlightWords.forEach(function(word) {
+  // vocab 단어 — 파란색 하이라이트
+  var vocabWords = _aiContent ? (_aiContent.vocab || []).map(function(v){ return v.ko; }).filter(Boolean) : _highlightWords;
+  vocabWords.forEach(function(word) {
     if (!word) return;
-    var esc_word = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    var re = new RegExp(esc_word, 'g');
-    escaped = escaped.replace(re, '<mark style="background:rgba(34,197,94,.28);color:transparent;border-radius:3px">' + word + '</mark>');
+    var ew = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    escaped = escaped.replace(new RegExp(ew, 'g'),
+      '<mark style="background:rgba(37,99,235,.2);color:transparent;border-radius:3px">' + word + '</mark>');
   });
+
+  // grammar 패턴 — 보라색 하이라이트
+  if (_aiContent && _aiContent.grammar) {
+    (_aiContent.grammar || []).forEach(function(g) {
+      var pattern = (g.point || '').replace(/^[-\u2013]/,'').replace(/\s*\(.*?\)\s*/g,'').trim();
+      if (!pattern) return;
+      var ew = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      escaped = escaped.replace(new RegExp(ew, 'g'),
+        '<mark style="background:rgba(124,58,237,.2);color:transparent;border-radius:3px">' + pattern + '</mark>');
+    });
+  }
 
   ov.innerHTML = escaped;
 }
-
 
 
 // ═══════════════════════════════════════════════════════════
@@ -2359,12 +2241,57 @@ function onWriteAreaInput() {
   var wc = document.getElementById('wc');
   if (wc) wc.textContent = val.length + ' chars';
 
-  // vocab 사용 카운트
+  if (!_aiContent) { updateHighlight(); return; }
+
+  // ── vocab 사용 카운트 + 칩 하이라이트 ──
   var usedEl = document.getElementById('wm-vocab-used-count');
-  if (usedEl && _aiContent && _aiContent.vocab) {
-    var used = (_aiContent.vocab || []).filter(function(w){ return val.includes(w.ko); }).length;
-    usedEl.textContent = used > 0 ? '✅ ' + used + ' vocab used' : '';
+  var vocabList = (_aiContent.vocab || []);
+  var usedVocab = vocabList.filter(function(w){ return val.includes(w.ko); });
+  if (usedEl) {
+    if (usedVocab.length >= 2) {
+      usedEl.textContent = '✅ ' + usedVocab.length + '/' + vocabList.length + ' vocab used';
+      usedEl.style.color = '#16a34a';
+    } else {
+      usedEl.textContent = '⚠️ ' + usedVocab.length + '/2 vocab (최소 2개)';
+      usedEl.style.color = '#dc2626';
+    }
   }
+  document.querySelectorAll('#wm-vocab-chips .chip, #wm-vocab-chips-mobile .chip').forEach(function(chip) {
+    var ko = chip.dataset.ko || chip.textContent.replace(/\s*[\(（].*$/,'').trim();
+    var on = val.includes(ko);
+    chip.style.background   = on ? '#dbeafe' : '';
+    chip.style.borderColor  = on ? '#2563eb' : '';
+    chip.style.color        = on ? '#1d4ed8' : '';
+    chip.style.fontWeight   = on ? '800' : '';
+  });
+
+  // ── grammar 사용 카운트 + 칩 하이라이트 ──
+  var grammarUsedEl = document.getElementById('wm-grammar-used-count');
+  var grammarList = (_aiContent.grammar || []);
+  var usedGrammar = grammarList.filter(function(g){
+    var pattern = (g.point || '').replace(/^[-–]/,'').replace(/\s*\(.*?\)\s*/g,'').trim();
+    return pattern && val.includes(pattern);
+  });
+  if (grammarUsedEl) {
+    if (usedGrammar.length >= 1) {
+      grammarUsedEl.textContent = '✅ ' + usedGrammar.length + ' grammar used';
+      grammarUsedEl.style.color = '#16a34a';
+    } else {
+      grammarUsedEl.textContent = '⚠️ grammar 1개 이상 사용 필요';
+      grammarUsedEl.style.color = '#dc2626';
+    }
+  }
+  document.querySelectorAll('#wm-grammar-chips .chip').forEach(function(chip) {
+    var point = chip.textContent.trim();
+    var pattern = point.replace(/^[-–]/,'').replace(/\s*\(.*?\)\s*/g,'').trim();
+    var on = pattern && val.includes(pattern);
+    chip.style.background   = on ? '#dbeafe' : '';
+    chip.style.borderColor  = on ? '#2563eb' : '';
+    chip.style.color        = on ? '#1d4ed8' : '';
+    chip.style.fontWeight   = on ? '800' : '';
+  });
+
+  updateHighlight();
 }
 
 function insertVocabChip(word) {
