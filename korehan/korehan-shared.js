@@ -2718,14 +2718,69 @@ function toggleVocabEditMode() {
   _vocabEditModeActive = window._vocabEditMode;
   var bar = document.getElementById('vocab-admin-bar');
   if (bar) {
-    bar.textContent = window._vocabEditMode ? '✅ 편집 모드 ON — 단어 클릭' : '✏️ 단어 편집 모드';
+    bar.textContent = window._vocabEditMode ? '✅ 편집 모드 ON — 단어 클릭 or 드래그 선택' : '✏️ 단어 편집 모드';
     bar.style.background = window._vocabEditMode ? '#16a34a' : '#0b1626';
   }
-  // 편집 모드 시 kh-word 에 시각적 표시
   document.querySelectorAll('.kh-word').forEach(function(w) {
     w.style.outline = window._vocabEditMode ? '1px dashed #fbbf24' : '';
     w.style.cursor  = window._vocabEditMode ? 'pointer' : '';
   });
+
+  // 드래그 선택 팝업 — 편집 모드 ON 시 등록
+  if (window._vocabEditMode) {
+    document.addEventListener('mouseup', _handleVocabSelection);
+  } else {
+    document.removeEventListener('mouseup', _handleVocabSelection);
+    var pop = document.getElementById('vocab-select-popup');
+    if (pop) pop.remove();
+  }
+}
+
+function _handleVocabSelection(e) {
+  if (!window._vocabEditMode || !window._isAdmin) return;
+  // 모달 위에서 선택 시 무시
+  if (e.target.closest('#vocab-edit-modal') || e.target.closest('#vocab-select-popup')) return;
+
+  var sel = window.getSelection();
+  var text = sel ? sel.toString().trim() : '';
+
+  // 기존 팝업 제거
+  var old = document.getElementById('vocab-select-popup');
+  if (old) old.remove();
+
+  // 선택된 텍스트 없으면 리턴
+  if (!text || text.length < 1 || text.length > 15) return;
+  // 한글 포함 여부 체크
+  if (!/[가-힣]/.test(text)) return;
+
+  // 팝업 위치
+  var range = sel.getRangeAt(0);
+  var rect  = range.getBoundingClientRect();
+
+  var pop = document.createElement('div');
+  pop.id = 'vocab-select-popup';
+  pop.style.cssText = 'position:fixed;z-index:99998;background:#0b1626;color:#fff;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);white-space:nowrap;';
+  pop.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px';
+  pop.style.top  = (rect.top + window.scrollY - 44) + 'px';
+  pop.innerHTML = '+ <span style="color:#7ab8f5">' + text + '</span> 단어 추가';
+  pop.onclick = function(ev) {
+    ev.stopPropagation();
+    pop.remove();
+    sel.removeAllRanges();
+    openVocabEditModal(text);
+  };
+  document.body.appendChild(pop);
+
+  // 다른 곳 클릭 시 팝업 닫기
+  setTimeout(function() {
+    document.addEventListener('mousedown', function closePop(e2) {
+      if (!e2.target.closest('#vocab-select-popup')) {
+        var p = document.getElementById('vocab-select-popup');
+        if (p) p.remove();
+        document.removeEventListener('mousedown', closePop);
+      }
+    });
+  }, 10);
 }
 
 function openVocabEditModal(word) {
@@ -2777,10 +2832,20 @@ function openVocabEditModal(word) {
     try {
       await saveVocabToDB(word, rom, en, false);
       VOCAB[word] = { rom: rom, en: en };
-      // 페이지의 tooltip 즉시 업데이트
+
+      // 기존 .kh-word tooltip 즉시 업데이트
       document.querySelectorAll('.kh-word[data-word="' + word + '"]').forEach(function(s) {
         s.title = en;
       });
+
+      // 새 단어면 본문에 즉시 하이라이트 추가
+      var alreadyWrapped = document.querySelectorAll('.kh-word[data-word="' + word + '"]').length > 0;
+      if (!alreadyWrapped) {
+        document.querySelectorAll('.vocab-zone').forEach(function(zone) {
+          wrapSingleWord(zone, word);
+        });
+      }
+
       modal.remove();
       showToast('✅ ' + word + ' 저장됨');
     } catch(e) {
@@ -2789,6 +2854,45 @@ function openVocabEditModal(word) {
       btn.textContent = '저장'; btn.disabled = false;
     }
   };
+}
+
+function wrapSingleWord(el, word) {
+  var esc = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  var regex = new RegExp('(' + esc + ')', 'g');
+  var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+    acceptNode: function(n) {
+      if (!n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+      var p = n.parentNode;
+      while (p) {
+        if (p.classList && p.classList.contains('kh-word')) return NodeFilter.FILTER_REJECT;
+        p = p.parentNode;
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  var nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(function(node) {
+    if (!regex.test(node.nodeValue)) return;
+    regex.lastIndex = 0;
+    var frag = document.createDocumentFragment();
+    var last = 0, m;
+    while ((m = regex.exec(node.nodeValue)) !== null) {
+      if (m.index > last) frag.appendChild(document.createTextNode(node.nodeValue.slice(last, m.index)));
+      var span = document.createElement('span');
+      span.className = 'kh-word';
+      span.dataset.word = word;
+      if (window._vocabEditMode) {
+        span.style.outline = '1px dashed #fbbf24';
+        span.style.cursor  = 'pointer';
+      }
+      span.textContent = m[1];
+      frag.appendChild(span);
+      last = m.index + m[1].length;
+    }
+    if (last < node.nodeValue.length) frag.appendChild(document.createTextNode(node.nodeValue.slice(last)));
+    node.parentNode.replaceChild(frag, node);
+  });
 }
 
 async function saveVocabToDB(word, rom, en, isDelete) {
