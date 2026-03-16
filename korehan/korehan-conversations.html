@@ -239,7 +239,8 @@ function openDetail(idx) {
   }).join('');
 
   var vocab = c.vocab.map(function(v) {
-    return '<div class="dp-vocab-item" data-ko="'+(v.ko||'').replace(/"/g,\'&quot;\')+'" data-rom="'+(v.rom||'').replace(/"/g,\'&quot;\')+'" data-en="'+(v.en||'').replace(/"/g,\'&quot;\')+'">'
+    var _sk=(v.ko||'').split('"').join('&quot;'),_sr=(v.rom||'').split('"').join('&quot;'),_se=(v.en||'').split('"').join('&quot;');
+    return '<div class="dp-vocab-item" data-ko="'+_sk+'" data-rom="'+_sr+'" data-en="'+_se+'">'
       +'<span class="dp-vi-ko">'+v.ko+'</span>'
       +'<span class="dp-vi-rom">'+v.rom+'</span>'
       +'<span class="dp-vi-en">'+v.en+'</span>'
@@ -301,7 +302,8 @@ function renderStudyNotes(c) {
   var el = document.getElementById('dp-study-sections');
   if (!el) return;
   var vocab = (c.vocab||[]).map(function(v) {
-    return '<div class="dp-vocab-item" data-ko="'+(v.ko||'').replace(/"/g,\'&quot;\')+'" data-rom="'+(v.rom||'').replace(/"/g,\'&quot;\')+'" data-en="'+(v.en||'').replace(/"/g,\'&quot;\')+'">'
+    var _sk=(v.ko||'').split('"').join('&quot;'),_sr=(v.rom||'').split('"').join('&quot;'),_se=(v.en||'').split('"').join('&quot;');
+    return '<div class="dp-vocab-item" data-ko="'+_sk+'" data-rom="'+_sr+'" data-en="'+_se+'">'
       +'<span class="dp-vi-ko">'+v.ko+'</span>'
       +'<span class="dp-vi-rom">'+v.rom+'</span>'
       +'<span class="dp-vi-en">'+v.en+'</span>'
