@@ -2232,7 +2232,7 @@ function renderSearchResults(q, articles) {
 async function markArticleRead(articleId, title, section, level) {
   // localStorage에 오늘 읽은 기사 ID 기록 (데일리 테스트용)
   try {
-    var todayKey = new Date().toISOString().slice(0,10);
+    var todayKey = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
     var readLog = JSON.parse(localStorage.getItem('kh_read_log') || '{}');
     if (!readLog[todayKey]) readLog[todayKey] = [];
     var id = String(articleId);
@@ -3181,7 +3181,7 @@ var BADGE_DEFS = [
 
 // ── 날짜/시간 기반 문화 뱃지 체크 ──────────────────────────────────────────
 function checkCulturalDateBadges() {
-  var now = new Date();
+  var now = new Date(Date.now() + 9*60*60*1000); // KST
   var m = now.getMonth()+1, d = now.getDate(), h = now.getHours();
   if (m===3 && d===1)   lsSet('kh_cult_march1',   true);
   if (m===10 && d===9)  lsSet('kh_cult_hangul',    true);
@@ -3488,9 +3488,9 @@ async function trackActivityOnQuizComplete(pct) {
   }
 
   // 퀴즈 연속 날짜 (데일리 개근)
-  var today = new Date().toISOString().slice(0,10);
+  var today = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10); // KST
   var lastQuizDay = lsGet('kh_last_quiz_day', '');
-  var yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+  var yesterday = new Date(Date.now() + 9*60*60*1000 - 86400000).toISOString().slice(0,10); // KST
   if (lastQuizDay === yesterday) {
     lsSet('kh_quiz_streak_days', lsGet('kh_quiz_streak_days',0) + 1);
   } else if (lastQuizDay !== today) {
@@ -3624,7 +3624,7 @@ async function onDailyMissionComplete() {
     var res = await sb.from('user_stats').select('*').eq('user_id', supaUser.id).maybeSingle();
     var cur = res.data || { mission_streak:0, last_mission_date:'', writing_tickets:0 };
     var today = dmToday();
-    var yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+    var yesterday = new Date(Date.now() + 9*60*60*1000 - 86400000).toISOString().slice(0,10); // KST
 
     // 연속 완료 계산
     var newStreak = (cur.last_mission_date === yesterday) ? (cur.mission_streak||0) + 1 : 1;
@@ -3670,7 +3670,7 @@ async function syncArticleView(articleId, title, section) {
 // ══ END USER STATS SYNC ════════════════════════════════════════════════════════
 
 // ══ DAILY MISSION ENGINE ══════════════════════════════════════════════════════
-function dmToday() { return new Date().toISOString().slice(0,10); }
+function dmToday() { var d = new Date(Date.now() + 9*60*60*1000); return d.toISOString().slice(0,10); }
 
 function dmGet() {
   var key = 'kh_daily_' + dmToday();
