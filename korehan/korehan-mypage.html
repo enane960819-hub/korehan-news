@@ -1026,40 +1026,31 @@ async function removeBookmark(articleId, btn) {
 }
 
 async function dbGetTodayGoal() {
-  // 오늘 날짜 기준으로 읽은 기사 수, 저장 단어 수 계산
-  var today = new Date().toISOString().slice(0, 10);
-  var result = { words_today: 0, articles_today: 0, streak: 0 };
-  if (!supaUser) return result;
-  var sb = getSupa();
-  if (!sb) return result;
-  try {
-    // 오늘 저장한 단어 수
-    var wRes = await sb.from('saved_words')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', supaUser.id)
-      .gte('created_at', today);
-    result.words_today = wRes.count || 0;
-  } catch(e) {}
-  try {
-    // 오늘 읽은 기사 수
-    var aRes = await sb.from('read_articles')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', supaUser.id)
-      .gte('read_at', today);
-    result.articles_today = aRes.count || 0;
-  } catch(e) {}
-  try {
-    // 스트릭
-    var streak = await getStreak();
-    result.streak = streak ? (streak.current_streak || 0) : 0;
-  } catch(e) {}
+  // dmGet() — localStorage 기반 (KST, 당일 미션 카운트)
+  var dm = (typeof dmGet === 'function') ? dmGet() : {};
+  var result = {
+    words_today:    dm.words    || 0,
+    articles_today: dm.articles || 0,
+    streak: 0
+  };
+
+  // streak은 DB에서
+  if (supaUser) {
+    var sb = getSupa();
+    if (sb) {
+      try {
+        var sRes = await sb.from('user_stats').select('mission_streak').eq('user_id', supaUser.id).maybeSingle();
+        if (sRes.data) result.streak = sRes.data.mission_streak || 0;
+      } catch(e) {}
+    }
+  }
   return result;
 }
 
 async function renderGoals() {
   var area = document.getElementById('goals-area');
   var goal = await dbGetTodayGoal();
-  var WORD_TARGET = 5, ARTICLE_TARGET = 3;
+  var WORD_TARGET = 20, ARTICLE_TARGET = 3;
 
   // 오늘 학습 기록 저장
   var todayKey = new Date().toISOString().slice(0,10);

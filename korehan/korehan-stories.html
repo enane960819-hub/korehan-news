@@ -760,6 +760,9 @@ function openStory(id) {
 
   document.getElementById('st-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
+
+  // 저장된 단어 상태 복원
+  if (typeof restoreSaveButtons === 'function') restoreSaveButtons('st-overlay');
 }
 
 function closeSt() {

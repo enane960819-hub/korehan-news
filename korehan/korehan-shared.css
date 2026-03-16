@@ -1913,8 +1913,8 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 /* ===== Home phrase + learning preview ===== */
 .phrase-dashboard{
   display:grid;
-  grid-template-columns:minmax(0,1.03fr) minmax(360px,.97fr);
-  gap:16px;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
   align-items:stretch;
   background:transparent;
   border-radius:0;
@@ -1924,13 +1924,13 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 }
 .pb-card{
   background:linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
-  border-radius:18px;
-  padding:22px 24px;
-  box-shadow:0 16px 40px rgba(13,27,46,.16);
+  border-radius:14px;
+  padding:16px 20px;
+  box-shadow:0 10px 30px rgba(13,27,46,.14);
   min-width:0;
 }
 .pb-mini{
-  margin-top:12px;
+  margin-top:10px;
   font-size:13px;
   color:rgba(255,255,255,.72);
 }
@@ -1939,7 +1939,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   align-items:center;
   gap:12px;
   flex-wrap:wrap;
-  margin-top:16px;
+  margin-top:14px;
 }
 .pb-link{
   color:#dbeafe;
@@ -1949,11 +1949,11 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 }
 .pb-link:hover{ color:#fff; }
 .home-learning-preview{
-  border-radius:18px;
+  border-radius:14px;
   border:1px solid #d8e1ef;
-  padding:22px;
+  padding:14px 16px;
   background:linear-gradient(180deg,#ffffff 0%,#f7fbff 100%);
-  box-shadow:0 16px 40px rgba(15,23,42,.07);
+  box-shadow:0 8px 24px rgba(15,23,42,.06);
   min-width:0;
 }
 .hlp-loading{ color:var(--gray); font-size:14px; }
@@ -2086,15 +2086,10 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   text-decoration:none;
 }
 .hlp-main-btn:hover{ opacity:.92; }
-@media (max-width: 980px){
-  .phrase-dashboard{ grid-template-columns:1fr; }
-}
 @media (max-width: 640px){
-  .phrase-dashboard{ gap:12px; margin-top:14px; margin-bottom:22px; }
-  .pb-card,.home-learning-preview{ border-radius:16px; padding:16px; }
-  .hlp-title{ font-size:24px; }
-  .hlp-stats{ grid-template-columns:1fr; }
-  .hlp-focus{ grid-template-columns:1fr; }
+  .phrase-dashboard{ grid-template-columns:1fr; gap:10px; margin-top:14px; margin-bottom:20px; }
+  .pb-card,.home-learning-preview{ border-radius:12px; padding:14px; }
+}
   .pb-actions{ gap:10px; }
 }
 

@@ -291,6 +291,9 @@ function openDetail(idx) {
 
   document.getElementById('detail-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
+
+  // 저장된 단어 상태 복원 (비동기)
+  restoreSaveButtons('detail-overlay');
 }
 
 // 캐시 enrichment 후 Study Notes만 업데이트

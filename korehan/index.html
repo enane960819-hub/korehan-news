@@ -17,27 +17,58 @@
 
   <!-- TODAY'S PHRASE + LEARNING PREVIEW -->
   <div class="phrase-bar phrase-dashboard" id="phrase-bar">
-    <div class="pb-left pb-card" style="display:grid;grid-template-rows:1fr auto;gap:0;">
-      <!-- Today's Phrase -->
-      <div style="padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.12);">
-        <div class="pb-label">✏️ Today's Phrase</div>
-        <div class="pb-ko" id="pb-ko">경제 회복</div>
-        <div class="pb-rom" id="pb-rom">gyeong-je hoe-bok</div>
-        <div class="pb-en" id="pb-en">economic recovery</div>
-        <div class="pb-actions" style="margin-top:10px;">
-          <button class="pb-btn" id="pb-btn">Study phrase →</button>
+
+    <!-- 왼쪽 열: Today's Phrase (작게) + Writing Practice (크게) -->
+    <div style="display:flex;flex-direction:column;gap:10px;">
+
+      <!-- Today's Phrase — 컴팩트 -->
+      <div class="pb-card" style="padding:14px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:0;">
+          <div class="pb-label">✏️ Today's Phrase</div>
+          <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:4px;">
+            <span class="pb-ko" id="pb-ko" style="font-size:18px;">경제 회복</span>
+            <span class="pb-rom" id="pb-rom" style="font-size:11px;">gyeong-je hoe-bok</span>
+          </div>
+          <div class="pb-en" id="pb-en" style="margin-top:2px;">economic recovery</div>
         </div>
+        <button class="pb-btn" id="pb-btn" style="flex-shrink:0;">Study →</button>
       </div>
-      <!-- Writing shortcut -->
-      <div style="padding-top:14px;">
-        <div class="pb-label">✍️ Writing Practice</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.65);margin:4px 0 10px;line-height:1.5;">오늘의 구문으로 한 문장 써보세요. Han이 직접 피드백합니다.</div>
-        <a href="korehan-study-room.html" class="pb-btn" style="display:inline-block;text-decoration:none;">Open Study Room →</a>
-      </div>
+
+      <!-- Writing Practice — 크게 -->
+      <a href="korehan-study-room.html" class="pb-card" style="text-decoration:none;display:flex;flex-direction:column;justify-content:space-between;flex:1;padding:22px 24px;">
+        <div>
+          <div class="pb-label">✍️ Writing Practice</div>
+          <div style="font-size:21px;font-weight:900;color:#fff;line-height:1.22;margin:10px 0 8px;">한 문장 써보세요.<br>Han이 직접 피드백.</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.62);line-height:1.55;">오늘의 구문으로 자유롭게 작문하고<br>실시간 AI + 개인 피드백을 받으세요.</div>
+        </div>
+        <div style="margin-top:18px;">
+          <span class="pb-btn" style="display:inline-block;">Open Study Room →</span>
+        </div>
+      </a>
+
     </div>
-    <aside class="home-learning-preview" id="home-learning-preview">
-      <div class="hlp-loading">Loading your learning preview...</div>
-    </aside>
+
+    <!-- 오른쪽 열: Your Learning Preview (작게) + Learning Hub 바로가기 (크게) -->
+    <div style="display:flex;flex-direction:column;gap:10px;">
+
+      <!-- Your Learning Preview — 컴팩트 -->
+      <aside class="home-learning-preview" id="home-learning-preview" style="padding:14px 18px;">
+        <div class="hlp-loading">Loading your learning preview...</div>
+      </aside>
+
+      <!-- Learning Hub 바로가기 — 크게 -->
+      <a href="korehan-learning-overview.html" class="pb-card" style="text-decoration:none;display:flex;flex-direction:column;justify-content:space-between;flex:1;padding:22px 24px;background:linear-gradient(135deg,#1a3a6b 0%,#2255a4 100%);">
+        <div>
+          <div class="pb-label">📊 Learning Hub</div>
+          <div style="font-size:21px;font-weight:900;color:#fff;line-height:1.22;margin:10px 0 8px;">오늘 뭐 공부할지<br>바로 확인해요.</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.62);line-height:1.55;">취약 문법, 오늘의 단어 20개,<br>읽기 기록이 한 곳에 모여 있어요.</div>
+        </div>
+        <div style="margin-top:18px;">
+          <span class="pb-btn" style="display:inline-block;">Open Hub →</span>
+        </div>
+      </a>
+
+    </div>
   </div>
 
   <!-- LATEST NEWS -->

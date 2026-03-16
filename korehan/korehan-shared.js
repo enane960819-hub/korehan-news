@@ -780,6 +780,55 @@ async function dbRemoveWord(ko) {
   }
 }
 
+// 저장 버튼 상태 복원 — 컨테이너 내 모든 Save 버튼에 적용
+async function restoreSaveButtons(containerId) {
+  var container = containerId ? document.getElementById(containerId) : document;
+  if (!container) return;
+
+  // localStorage에서 즉시 적용 (빠른 렌더)
+  var saved = lsGet(K_SAVED, []);
+  var savedSet = new Set(saved.map(function(w){ return w.ko || w.word_ko || ''; }).filter(Boolean));
+
+  function applyState(set) {
+    // dp-vocab-item (conversations)
+    container.querySelectorAll('.dp-vocab-item, .dp-vocab-item2').forEach(function(item) {
+      var ko = item.dataset.ko || '';
+      if (!ko) return;
+      var btn = item.querySelector('.dp-vi-save, button');
+      if (!btn) return;
+      if (set.has(ko)) {
+        btn.classList.add('saved');
+        btn.textContent = '✓ Saved';
+      } else {
+        btn.classList.remove('saved');
+        btn.textContent = '+ Save';
+      }
+    });
+    // st-vocab-item (stories)
+    container.querySelectorAll('.st-vocab-item, [data-ko]').forEach(function(item) {
+      var ko = item.dataset.ko || '';
+      if (!ko) return;
+      var btn = item.querySelector('button');
+      if (!btn) return;
+      if (set.has(ko)) {
+        btn.classList.add('saved');
+        btn.textContent = '✓ Saved';
+      }
+    });
+  }
+
+  applyState(savedSet);
+
+  // DB에서 최신 목록으로 한 번 더 업데이트
+  if (supaUser) {
+    try {
+      var fresh = await dbGetSavedWords();
+      var freshSet = new Set(fresh.map(function(w){ return w.ko || w.word_ko || ''; }).filter(Boolean));
+      applyState(freshSet);
+    } catch(e) {}
+  }
+}
+
 function articleUrl(id) {
   return 'korehan-article.html?id=' + encodeURIComponent(id);
 }
@@ -3965,32 +4014,15 @@ async function renderHomeLearningPreview() {
   var box = document.getElementById('home-learning-preview');
   if (!box) return;
 
-  // 비로그인
+  // 비로그인 — 컴팩트
   if (!supaUser) {
-    box.innerHTML = ''
-      + '<div class="hlp-top">'
-      + '  <div>'
-      + '    <div class="hlp-eyebrow">Guide for New Users</div>'
-      + '    <h3 class="hlp-title">First time here?</h3>'
-      + '    <p class="hlp-sub">Read one article, check the key grammar, do one short quiz. That\'s the whole routine.</p>'
-      + '  </div>'
-      + '  <div class="hlp-badge">Start easy</div>'
+    box.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">'
+      + '<div style="font-size:13px;font-weight:800;color:var(--dark)">처음 오셨나요?</div>'
+      + '<div style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;background:#eef4ff;color:var(--bright)">Start easy</div>'
       + '</div>'
-      + '<div class="hlp-focus">'
-      + '  <div>'
-      + '    <div class="hlp-focus-label">Recommended order</div>'
-      + '    <div class="hlp-focus-title">News → Grammar → Review</div>'
-      + '    <div class="hlp-focus-sub">Read one article, check the key pattern, then do one short review.</div>'
-      + '  </div>'
-      + '  <a class="hlp-focus-btn" href="beginner-guide.html">Start Here</a>'
-      + '</div>'
-      + '<div class="hlp-bottom">'
-      + '  <div class="hlp-pills">'
-      + '    <span class="hlp-pill">5–10 min routine</span>'
-      + '    <span class="hlp-pill">Beginner friendly</span>'
-      + '    <span class="hlp-pill">Clear next steps</span>'
-      + '  </div>'
-      + '</div>';
+      + '<div style="font-size:13px;color:var(--gray);line-height:1.55;margin-bottom:12px;">기사 읽기 → 문법 확인 → 퀴즈. 하루 5분으로 시작하세요.</div>'
+      + '<a href="beginner-guide.html" style="display:inline-block;padding:8px 16px;background:var(--bright);color:#fff;border-radius:6px;font-size:12px;font-weight:800;text-decoration:none;">시작하기 →</a>';
     return;
   }
 
@@ -4047,33 +4079,33 @@ async function renderHomeLearningPreview() {
   var hasWeak = weakCount > 0;
   var weakQ = encodeURIComponent(weakGrammar);
 
-  box.innerHTML = ''
-    + '<div class="hlp-top">'
-    + '  <div>'
-    + '    <div class="hlp-eyebrow">Your learning preview</div>'
-    + '    <h3 class="hlp-title">오늘 뭐 공부할지 바로 알 수 있어요.</h3>'
-    + '  </div>'
-    + '  <div class="hlp-badge">🔥 ' + streak + ' day streak</div>'
+  box.innerHTML =
+    // streak 배지 + stats 한 줄
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">'
+    + '<div style="font-size:12px;font-weight:800;color:var(--dark)">Today\'s Progress</div>'
+    + '<div style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:#fff3e0;color:#c85000;">🔥 ' + streak + ' day streak</div>'
     + '</div>'
-    + '<div class="hlp-stats">'
-    + '  <div class="hlp-stat"><div class="hlp-stat-label">Today words</div><div class="hlp-stat-value">' + (dm.words||0) + '/20</div><div class="hlp-stat-sub">' + wordsLeft + ' left</div></div>'
-    + '  <div class="hlp-stat"><div class="hlp-stat-label">Articles</div><div class="hlp-stat-value">' + (dm.articles||0) + '/3</div><div class="hlp-stat-sub">' + artGoalLeft + ' to go</div></div>'
-    + '  <div class="hlp-stat"><div class="hlp-stat-label">XP</div><div class="hlp-stat-value">' + xp + '</div><div class="hlp-stat-sub">total</div></div>'
+    + '<div style="display:flex;gap:6px;margin-bottom:12px;">'
+    + '<div style="flex:1;background:#f7faff;border-radius:8px;padding:8px 10px;text-align:center;">'
+    +   '<div style="font-size:16px;font-weight:900;color:var(--accent);">' + (dm.words||0) + '<span style="font-size:10px;color:var(--gray)">/20</span></div>'
+    +   '<div style="font-size:10px;color:var(--gray);font-weight:700;">Words</div>'
     + '</div>'
-    + '<div class="hlp-focus">'
-    + '  <div>'
-    + '    <div class="hlp-focus-label">' + (hasWeak ? '⚠️ Weak grammar focus' : '✅ Grammar') + '</div>'
-    + '    <div class="hlp-focus-title">' + weakGrammar + '</div>'
-    + '    <div class="hlp-focus-sub">' + (hasWeak ? '틀린 횟수 ' + weakCount + '회 · 예문으로 연습해보세요.' : '아직 퀴즈 기록이 없어요. 기사 하단 Fill-in-Blank를 풀어보세요.') + '</div>'
-    + '  </div>'
-    + '  <a class="hlp-focus-btn" href="korehan-study-room.html?focus=' + weakQ + '">더 연습하기</a>'
+    + '<div style="flex:1;background:#f7faff;border-radius:8px;padding:8px 10px;text-align:center;">'
+    +   '<div style="font-size:16px;font-weight:900;color:var(--accent);">' + (dm.articles||0) + '<span style="font-size:10px;color:var(--gray)">/3</span></div>'
+    +   '<div style="font-size:10px;color:var(--gray);font-weight:700;">Articles</div>'
     + '</div>'
-    + '<div class="hlp-bottom">'
-    + '  <div class="hlp-pills">'
-    + '    <span class="hlp-pill">Daily mission</span>'
-    + '    <span class="hlp-pill">Weak grammar</span>'
-    + '    <span class="hlp-pill">Word goals</span>'
-    + '  </div>'
+    + '<div style="flex:1;background:#f7faff;border-radius:8px;padding:8px 10px;text-align:center;">'
+    +   '<div style="font-size:16px;font-weight:900;color:var(--accent);">' + xp + '</div>'
+    +   '<div style="font-size:10px;color:var(--gray);font-weight:700;">XP</div>'
+    + '</div>'
+    + '</div>'
+    // weak grammar
+    + '<div style="background:#fff8e1;border-radius:8px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+    + '<div style="min-width:0;">'
+    +   '<div style="font-size:10px;font-weight:800;color:' + (hasWeak?'#c85000':'#15803d') + ';margin-bottom:2px;">' + (hasWeak?'⚠️ Weak Grammar':'✅ Grammar') + '</div>'
+    +   '<div style="font-size:13px;font-weight:800;color:#0b1626;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + weakGrammar + '</div>'
+    + '</div>'
+    + '<a href="korehan-study-room.html?focus=' + weakQ + '" style="flex-shrink:0;font-size:11px;font-weight:800;padding:5px 11px;background:var(--bright);color:#fff;border-radius:5px;text-decoration:none;white-space:nowrap;">연습 →</a>'
     + '</div>';
 }
 

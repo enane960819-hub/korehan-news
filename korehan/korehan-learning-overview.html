@@ -179,31 +179,31 @@
   }
 
   function renderWeakGrammar(data) {
-    const box = document.getElementById('weak-grammar-list');
-    const items = data.weak_grammar || [];
+    var box = document.getElementById('weak-grammar-list');
+    var items = data.weak_grammar || [];
     if (!items.length) {
-      box.innerHTML = '<div style="padding:20px;text-align:center;color:#94a3b8">퀴즈를 풀면 여기에 취약 문법이 표시됩니다.</div>';
+      box.innerHTML = '<div style="padding:16px;text-align:center;color:#94a3b8;font-size:13px;">퀴즈를 풀면 취약 문법이 표시됩니다.</div>';
       return;
     }
-    box.innerHTML = items.map(item => {
-      const total = (item.wrong_count||0) + (item.correct_count||0);
-      const cfg   = weakTag(item.wrong_count||0, total);
-      const q     = encodeURIComponent(item.grammar_point);
-      return `<div class="grammar-item">
-        <div class="grammar-top">
-          <div>
-            <div class="grammar-title">${item.grammar_point}</div>
-            <div class="grammar-meta">틀린 횟수 ${item.wrong_count||0}회 · 정답률 ${cfg[2]}% (${total}회 시도)</div>
-          </div>
-          <div class="tag ${cfg[0]==='Weak'?'red':cfg[0]==='Needs review'?'amber':'green'}">${cfg[0]}</div>
-        </div>
-        <div class="progress"><div class="fill ${cfg[0]==='Weak'?'red':cfg[0]==='Needs review'?'amber':'green'}" style="width:${cfg[2]}%"></div></div>
-        <div class="grammar-actions">
-          <a class="solid-btn" href="korehan-study-room.html?focus=${q}">더 연습하기</a>
-          <a class="ghost-btn" href="korehan-study-room.html?tab=grammar&grammar=${q}">예문으로 공부</a>
-          <a class="ghost-btn" href="korehan-study-room.html?tab=quiz&grammar=${q}">Mini Quiz</a>
-        </div>
-      </div>`;
+    box.innerHTML = items.map(function(item) {
+      var total = (item.wrong_count||0) + (item.correct_count||0);
+      var cfg   = weakTag(item.wrong_count||0, total);
+      var q     = encodeURIComponent(item.grammar_point);
+      var tagColor = cfg[0]==='Weak'?'red':cfg[0]==='Needs review'?'amber':'green';
+      return '<div class="grammar-item" style="padding:12px 14px;">'
+        + '<div class="grammar-top" style="margin-bottom:6px;">'
+        +   '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">'
+        +     '<div class="grammar-title" style="font-size:16px;">' + item.grammar_point + '</div>'
+        +     '<span style="font-size:11px;color:#94a3b8;white-space:nowrap;">틀림 ' + (item.wrong_count||0) + '회 · ' + cfg[2] + '%</span>'
+        +   '</div>'
+        +   '<div class="tag ' + tagColor + '" style="flex-shrink:0;">' + cfg[0] + '</div>'
+        + '</div>'
+        + '<div class="progress" style="margin-bottom:10px;"><div class="fill ' + tagColor + '" style="width:' + cfg[2] + '%"></div></div>'
+        + '<div class="grammar-actions" style="gap:6px;">'
+        +   '<a class="solid-btn" style="padding:7px 12px;font-size:12px;" href="korehan-study-room.html?focus=' + q + '">연습 →</a>'
+        +   '<a class="ghost-btn" style="padding:7px 12px;font-size:12px;" href="korehan-study-room.html?tab=quiz&grammar=' + q + '">Mini Quiz</a>'
+        + '</div>'
+        + '</div>';
     }).join('');
   }
 
