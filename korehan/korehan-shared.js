@@ -4151,37 +4151,18 @@ function enhanceHomeMobile() {
   var container = document.querySelector('.container');
   if (!container || document.querySelector('.mobile-quick-start')) return;
 
-  var quick = document.createElement('section');
-  quick.className = 'mobile-quick-start';
-  quick.innerHTML = ''
-    + '<div class="mobile-eyebrow">Start here</div>'
-    + '<h2 class="mobile-quick-title">Pick one thing and start studying now.</h2>'
-    + '<p class="mobile-quick-sub">KoreHan works best when the next step is obvious. Read one article, practice one conversation, or finish one short story.</p>'
-    + '<div class="mobile-cta-grid">'
-    + mobileCreateCardHTML('Today\'s News','Read one article + vocab','korehan-all.html')
-    + mobileCreateCardHTML('Conversation Practice','Chat-style Korean study','korehan-conversations.html')
-    + mobileCreateCardHTML('Story Reading','Short Korean stories','korehan-stories.html')
-    + mobileCreateCardHTML('Study Room','Grammar, writing, review','korehan-study-room.html')
-    + '</div>'
-    + '<div class="mobile-action-row">'
-    + '<a class="mobile-primary-btn" href="korehan-study-room.html">⚡ Start Learning</a>'
-    + '<a class="mobile-secondary-btn" href="korehan-all.html">Browse News</a>'
-    + '</div>';
-
-  var hero = document.getElementById('dyn-hero');
-  if (hero) hero.insertAdjacentElement('beforebegin', quick);
-
+  // Quick-start 섹션 제거 — phrase-dashboard에 이미 Writing/Hub 바로가기 있음
+  // learn-strip만 최소화해서 유지
   var newsGrid = document.getElementById('dyn-news-grid');
   if (newsGrid && !document.querySelector('.mobile-learn-strip')) {
     var strip = document.createElement('section');
     strip.className = 'mobile-learn-strip';
     strip.innerHTML = ''
-      + '<div class="mobile-eyebrow">Learning flow</div>'
-      + '<h3 style="font-size:24px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">News → Practice → Review</h3>'
-      + '<p class="mobile-quick-sub">Open an article, save 3 words, then jump into quiz or writing practice.</p>'
-      + '<div class="mobile-action-row">'
-      + '<a class="mobile-primary-btn" href="korehan-all.html">Read latest news</a>'
-      + '<a class="mobile-secondary-btn" href="korehan-learn.html">Review words</a>'
+      + '<div class="mobile-eyebrow">바로가기</div>'
+      + '<div class="mobile-cta-grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px;">'
+      + mobileCreateCardHTML('Conversations','Chat-style Korean','korehan-conversations.html')
+      + mobileCreateCardHTML('Stories','Short stories','korehan-stories.html')
+      + mobileCreateCardHTML('My Page','Progress & words','korehan-mypage.html')
       + '</div>';
     newsGrid.insertAdjacentElement('beforebegin', strip);
   }

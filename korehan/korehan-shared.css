@@ -2075,12 +2075,22 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 }
 .hlp-main-btn:hover{ opacity:.92; }
 @media (max-width:640px){
-  .phrase-dashboard{ grid-template-columns:1fr; margin-top:14px; margin-bottom:20px; }
-  .pb-card{ border-radius:12px; padding:14px; }
-  .home-learning-preview{ border-radius:12px; }
-  .pd-action{ min-height:90px; }
-}
-  .pb-actions{ gap:10px; }
+  /* phrase-dashboard: 모바일 1열 */
+  .phrase-dashboard{ grid-template-columns:1fr; margin-top:12px; margin-bottom:16px; gap:8px; }
+  .pb-card{ border-radius:12px; padding:14px 16px; }
+  .home-learning-preview{ border-radius:12px; padding:14px 16px; }
+  .pd-action{ min-height:auto; }
+
+  /* Today's Phrase 모바일 — 글자 크게 */
+  .pb-ko{ font-size:24px !important; }
+  .pb-rom{ font-size:12px !important; }
+  .pb-en{ font-size:13px !important; }
+
+  /* Action 카드 버튼 패널 축소 */
+  .pd-action > div:last-child{ width:90px !important; font-size:13px !important; }
+
+  /* Learning Preview 모바일 컴팩트 */
+  .home-learning-preview{ font-size:13px; }
 }
 
 
