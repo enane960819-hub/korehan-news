@@ -15,9 +15,6 @@
     *{box-sizing:border-box}
     body{margin:0;background:linear-gradient(180deg,#eef4fb 0%,#f7f9fc 38%,#f4f7fb 100%);color:var(--text);font-family:'Source Sans 3','Noto Sans KR',sans-serif}
     a{text-decoration:none;color:inherit}
-    .topbar{background:var(--navy);color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
-    .brand{font-family:'Playfair Display',serif;font-size:28px;font-weight:900}
-    .brand .k{color:#6fa8ff}.brand .h{color:#ff826f}
     .wrap{max-width:1280px;margin:0 auto;padding:28px 20px 70px}
     .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;margin-bottom:18px}
     .hero-main,.hero-side,.card,.stat{background:var(--card);border:1px solid var(--border);border-radius:28px;box-shadow:var(--shadow)}
@@ -63,7 +60,7 @@
     .streak-list{gap:10px}.streak-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:16px;background:#fff;border:1px solid var(--border)}.streak-title{font-size:15px;font-weight:800}.streak-val{font-size:14px;color:var(--muted);font-weight:800}
     .footer-note{margin-top:18px;padding:18px 20px;border-radius:22px;border:1px dashed #bfd0ea;background:#f7fbff;color:var(--muted);font-size:14px;line-height:1.7}
     @media (max-width:1080px){.hero,.grid,.growth-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
-    @media (max-width:700px){.topbar{padding:15px 16px}.brand{font-size:24px}.wrap{padding:18px 14px 50px}h1{font-size:36px}.hero-main,.hero-side,.card,.stat{border-radius:22px}.hero-main,.hero-side,.card{padding:20px}.stats{grid-template-columns:1fr 1fr;gap:12px}.stat{padding:18px 16px}.stat-num{font-size:34px}.card-hd h2{font-size:28px}.vocab-grid,.growth-grid{grid-template-columns:1fr}.timeline-item{grid-template-columns:1fr}.bars{gap:8px}}
+    @media (max-width:700px){.wrap{padding:18px 14px 50px}h1{font-size:36px}.hero-main,.hero-side,.card,.stat{border-radius:22px}.hero-main,.hero-side,.card{padding:20px}.stats{grid-template-columns:1fr 1fr;gap:12px}.stat{padding:18px 16px}.stat-num{font-size:34px}.card-hd h2{font-size:28px}.vocab-grid,.growth-grid{grid-template-columns:1fr}.timeline-item{grid-template-columns:1fr}.bars{gap:8px}}
     @media (max-width:520px){.stats{grid-template-columns:1fr}}
   </style>
 </head>
@@ -222,18 +219,73 @@
       </div>`).join('');
   }
 
+  // 단어 행 HTML
+  function wordRowHTML(w) {
+    var tag = w.interest_tag && w.interest_tag !== 'daily' ? w.interest_tag : null;
+    var badge = tag
+      ? '<div class="level" style="background:#f3e8ff;color:#7c3aed">' + tag + '</div>'
+      : '<div class="level">' + (w.level||'General') + '</div>';
+    return '<div class="word-row">'
+      + '<div class="word-main">'
+      + '<div class="ko">' + (w.word_ko||'') + '</div>'
+      + '<div class="sub">' + (w.word_rom ? w.word_rom + ' · ' : '') + (w.word_en||'') + '</div>'
+      + '</div>' + badge + '</div>';
+  }
+
   function renderWords(dailyVocab) {
-    const row = w => `<div class="word-row">
-      <div class="word-main">
-        <div class="ko">${w.word_ko}</div>
-        <div class="sub">${w.word_rom ? w.word_rom + ' · ' : ''}${w.word_en||''}</div>
-      </div>
-      <div class="level" style="background:${w.interest_tag?'#f3e8ff;color:#7c3aed':'#eef4ff;color:#2563eb'}">${w.interest_tag ? w.interest_tag : w.level||'General'}</div>
-    </div>`;
-    const general  = dailyVocab.filter(w => !w.interest_tag || w.interest_tag === 'daily').slice(0,10);
-    const interest = dailyVocab.filter(w =>  w.interest_tag && w.interest_tag !== 'daily').slice(0,10);
-    document.getElementById('random-words').innerHTML   = general.length  ? general.map(row).join('')  : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">단어 배정 중...</div>';
-    document.getElementById('interest-words').innerHTML = interest.length ? interest.map(row).join('') : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">관심사를 설정하면 관련 단어가 표시됩니다. <a href="korehan-mypage.html" style="color:#7c3aed">설정하기 →</a></div>';
+    var general  = (dailyVocab||[]).filter(function(w){ return !w.interest_tag || w.interest_tag === 'daily'; }).slice(0,10);
+    var interest = (dailyVocab||[]).filter(function(w){ return w.interest_tag && w.interest_tag !== 'daily'; }).slice(0,10);
+    var genEl = document.getElementById('random-words');
+    var intEl = document.getElementById('interest-words');
+    if (genEl) genEl.innerHTML = general.length
+      ? general.map(wordRowHTML).join('')
+      : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">단어 배정 중...</div>';
+    if (intEl) intEl.innerHTML = interest.length
+      ? interest.map(wordRowHTML).join('')
+      : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">관심사를 선택하고 저장하면 관련 단어가 표시됩니다.</div>';
+  }
+
+  // RPC 없을 때 vocabulary_bank 직접 쿼리
+  async function loadWordsDirectly(selectedTags) {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb) { loadWordsFallback(selectedTags); return; }
+    try {
+      // 일반 단어: interest_tag = 'daily' OR interest_tag is null
+      var genRes = await sb.from('vocabulary_bank')
+        .select('word_ko, word_rom, word_en, level, interest_tag')
+        .eq('is_active', true)
+        .or('interest_tag.eq.daily,interest_tag.is.null')
+        .limit(50);
+      var genPool = (genRes.data || []).sort(function(){ return Math.random()-.5; }).slice(0,10);
+
+      // 관심사 단어
+      var intPool = [];
+      if (selectedTags && selectedTags.length) {
+        var intRes = await sb.from('vocabulary_bank')
+          .select('word_ko, word_rom, word_en, level, interest_tag')
+          .eq('is_active', true)
+          .in('interest_tag', selectedTags)
+          .limit(80);
+        intPool = (intRes.data || []).sort(function(){ return Math.random()-.5; }).slice(0,10);
+      }
+
+      renderWords(genPool.concat(intPool));
+    } catch(e) {
+      console.warn('loadWordsDirectly error:', e.message);
+      loadWordsFallback(selectedTags);
+    }
+  }
+
+  // 완전 fallback: VOCAB 객체에서 랜덤
+  function loadWordsFallback(selectedTags) {
+    try {
+      var vocab = typeof VOCAB !== 'undefined' ? VOCAB : {};
+      var keys = Object.keys(vocab).sort(function(){ return Math.random()-.5; });
+      var words = keys.slice(0,10).map(function(k){
+        return { word_ko: k, word_rom: vocab[k].rom, word_en: vocab[k].en, interest_tag: 'daily' };
+      });
+      renderWords(words);
+    } catch(e) {}
   }
 
   function renderReview(data) {
@@ -301,40 +353,66 @@
 
   async function loadAndRenderInterests() {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
-    if (!sb || !supaUser) return;
+    if (!supaUser) return;
 
+    // localStorage에서 먼저 표시 (빠른 렌더링)
     var saved = [];
-    try {
-      var { data } = await sb.from('user_interests').select('tags').eq('user_id', supaUser.id).maybeSingle();
-      saved = (data && data.tags) || [];
-    } catch(e) {}
+    try { saved = JSON.parse(localStorage.getItem('kh_user_interests') || '[]'); } catch(e) {}
 
+    // DB에서 최신 태그 로드
+    if (sb) {
+      try {
+        var res = await sb.from('user_interests').select('tags').eq('user_id', supaUser.id).maybeSingle();
+        if (res.data && res.data.tags) {
+          saved = res.data.tags;
+          localStorage.setItem('kh_user_interests', JSON.stringify(saved));
+        }
+      } catch(e) {}
+    }
+
+    // 태그 버튼 렌더
     var box = document.getElementById('interest-selector');
     if (!box) return;
     box.innerHTML = INTEREST_TAGS.map(function(t) {
-      return '<button class="interest-btn' + (saved.includes(t.tag)?' on':'') + '" data-tag="' + t.tag + '">' + t.label + '</button>';
-    }).join('') + '<button id="save-interests-btn" style="margin-left:8px;padding:8px 18px;background:#7c3aed;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">저장</button>';
+      return '<button class="interest-btn' + (saved.indexOf(t.tag) !== -1 ? ' on' : '') + '" data-tag="' + t.tag + '">' + t.label + '</button>';
+    }).join('') + '<button id="save-interests-btn" style="margin-top:8px;padding:8px 18px;background:#7c3aed;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">저장</button>';
 
+    // 태그 토글
     box.querySelectorAll('.interest-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() { btn.classList.toggle('on'); });
+      btn.addEventListener('click', function() {
+        btn.classList.toggle('on');
+        // 클릭 즉시 미리보기 단어 업데이트
+        var currentTags = Array.from(box.querySelectorAll('.interest-btn.on')).map(function(b){ return b.dataset.tag; });
+        loadWordsDirectly(currentTags);
+      });
     });
 
+    // 저장 버튼
     var saveBtn = document.getElementById('save-interests-btn');
     if (saveBtn) {
       saveBtn.addEventListener('click', async function() {
-        var selected = Array.from(box.querySelectorAll('.interest-btn.on')).map(function(b) { return b.dataset.tag; });
-        try {
-          await sb.from('user_interests').upsert(
-            { user_id: supaUser.id, tags: selected, updated_at: new Date().toISOString() },
-            { onConflict: 'user_id' }
-          );
-          if (typeof toast === 'function') toast('관심사 저장 완료 ✓');
-        } catch(e) {
-          if (typeof toast === 'function') toast('저장 실패: ' + e.message, true);
+        var selected = Array.from(box.querySelectorAll('.interest-btn.on')).map(function(b){ return b.dataset.tag; });
+        // localStorage 즉시 저장
+        localStorage.setItem('kh_user_interests', JSON.stringify(selected));
+        // DB 저장
+        if (sb && supaUser) {
+          try {
+            await sb.from('user_interests').upsert(
+              { user_id: supaUser.id, tags: selected, updated_at: new Date().toISOString() },
+              { onConflict: 'user_id' }
+            );
+            if (typeof toast === 'function') toast('관심사 저장 완료 ✓');
+          } catch(e) {
+            if (typeof toast === 'function') toast('저장 실패: ' + e.message, true);
+          }
         }
-        loadHub();
+        // 단어 바로 갱신
+        loadWordsDirectly(selected);
       });
     }
+
+    // 현재 저장된 태그로 단어 로드
+    loadWordsDirectly(saved);
   }
 
   // ── main load ───────────────────────────────────────────────
@@ -383,18 +461,24 @@
       const speakEl = document.getElementById('speaking-note');
       if (speakEl) speakEl.innerHTML = '<strong>Speaking:</strong> Not scored yet — treat as practice activity until audio recording + STT are added.';
 
-      // 오늘의 단어 배정
-      const { data: vocab } = await sb.rpc('assign_daily_vocab', { p_user_id: supaUser.id, p_date: new Date().toISOString().slice(0,10) });
-      renderWords(vocab || []);
+      // 오늘의 단어 배정 (RPC 성공 시)
+      try {
+        const { data: vocab } = await sb.rpc('assign_daily_vocab', { p_user_id: supaUser.id, p_date: new Date().toISOString().slice(0,10) });
+        if (vocab && vocab.length) { renderWords(vocab); }
+        else { loadAndRenderInterests(); } // 배정 단어 없으면 직접 쿼리
+      } catch(ve) {
+        loadAndRenderInterests(); // vocab RPC 실패 → 직접 쿼리
+      }
 
     } catch(e) {
-      console.warn('hub load error', e);
-      // RPC 미설치 fallback — localStorage 기반
+      console.warn('hub snapshot error:', e.message || e);
+      // snapshot RPC 실패 → 통계는 fallback, 단어는 직접 쿼리
       loadHubFallback();
+      loadAndRenderInterests();
     }
 
-    // interests 설정 UI
-    loadAndRenderInterests();
+    // interests UI는 항상 렌더 (단어 로드와 분리)
+    // (단어는 위에서 이미 loadAndRenderInterests 또는 renderWords로 처리됨)
   }
 
   // fallback: RPC 없을 때 localStorage에서 가능한 것만 표시
