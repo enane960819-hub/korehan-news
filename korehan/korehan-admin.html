@@ -1850,11 +1850,9 @@ async function loadWritingSubmissions(filter, btn) {
   _wsFilter = filter;
   document.querySelectorAll('.sf-tag[id^="wsf-"]').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
-
   var sb = getSb(); if (!sb) return;
   var list = document.getElementById('ws-list');
   list.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8">불러오는 중...</div>';
-
   try {
     var q = sb.from('writing_submissions').select('*').order('submitted_at', { ascending: false }).limit(100);
     if (filter !== 'all') q = q.eq('status', filter);
@@ -1873,37 +1871,62 @@ function renderWritingList(items) {
     list.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8">항목이 없습니다.</div>';
     return;
   }
+  var statusColor = { pending:'#f59e0b', ai_done:'#2563eb', approved:'#16a34a', rejected:'#dc2626' };
+  var statusLabel = { pending:'⏳ 대기', ai_done:'🤖 AI완료', approved:'✅ 승인', rejected:'❌ 거절' };
+
   list.innerHTML = items.map(function(ws) {
-    var statusColor = { pending:'#f59e0b', ai_done:'#2563eb', approved:'#16a34a', rejected:'#dc2626' }[ws.status] || '#64748b';
-    var statusLabel = { pending:'⏳ 대기', ai_done:'🤖 AI완료', approved:'✅ 승인', rejected:'❌ 거절' }[ws.status] || ws.status;
+    var sc = statusColor[ws.status] || '#64748b';
+    var sl = statusLabel[ws.status] || ws.status;
     var date = ws.submit_date || (ws.submitted_at||'').slice(0,10);
-    var preview = (ws.writing_text||'').slice(0,80) + ((ws.writing_text||'').length > 80 ? '…' : '');
-    return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;margin-bottom:10px;">'
-      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">'
-      + '<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:' + statusColor + '20;color:' + statusColor + ';">' + statusLabel + '</span>'
-      + '<span style="font-size:12px;color:#64748b;">' + date + '</span>'
-      + '<span style="font-size:12px;color:#64748b;">User: ' + (ws.user_id||'').slice(0,8) + '…</span>'
-      + (ws.topic_ko ? '<span style="font-size:12px;color:#334155;font-weight:600;">📝 ' + ws.topic_ko + '</span>' : '')
-      + '</div>'
-      + '<div style="font-size:14px;line-height:1.65;color:#1e293b;font-family:sans-serif;margin-bottom:10px;padding:12px;background:#f8fafc;border-radius:8px;">' + (ws.writing_text||'').split('\n').join('<br>') + '</div>'
-      + '<div style="font-size:11px;color:#94a3b8;margin-bottom:12px;">'
-      + '사용 어휘: <b>' + (ws.used_vocab||[]).join(', ') + '</b> &nbsp;|&nbsp; '
-      + '사용 문법: <b>' + (ws.used_grammar||[]).join(', ') + '</b>'
-      + '</div>'
-      + (ws.ai_feedback ? '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px;margin-bottom:12px;">'
-        + '<div style="font-size:11px;font-weight:800;color:#0369a1;margin-bottom:6px;">🤖 AI 1차 첨삭</div>'
-        + '<pre style="font-size:12px;color:#1e293b;white-space:pre-wrap;font-family:sans-serif;margin:0;">' + formatAIFeedback(ws.ai_feedback) + '</pre>'
-        + '</div>' : '<div style="font-size:12px;color:#94a3b8;margin-bottom:12px;">AI 첨삭 생성 중...</div>')
-      + '<div style="margin-bottom:8px;">'
-      + '<label style="font-size:12px;font-weight:700;color:#334155;display:block;margin-bottom:4px;">✏️ 최종 피드백 (유저에게 전달)</label>'
-      + '<textarea id="ws-final-' + ws.id + '" rows="4" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:sans-serif;resize:vertical;box-sizing:border-box;">' + (ws.final_feedback || extractAIFeedbackText(ws.ai_feedback)) + '</textarea>'
-      + '</div>'
-      + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-      + '<button onclick="approveWriting(' + ws.id + ')" style="padding:8px 18px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">✅ 승인 & 전달</button>'
-      + '<button onclick="rejectWriting(' + ws.id + ')" style="padding:8px 18px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">❌ 거절</button>'
-      + (ws.status !== 'ai_done' && ws.status === 'pending' ? '<button onclick="retriggerAI(' + ws.id + ')" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">🤖 AI 첨삭 요청</button>' : '')
-      + '</div>'
-      + '</div>';
+    var bodyText = (ws.writing_text||'').split('\n').join('<br>');
+    var aiFeedback = ws.ai_feedback ? formatAIFeedback(ws.ai_feedback) : '';
+    var finalVal  = ws.final_feedback || extractAIFeedbackText(ws.ai_feedback) || '';
+
+    var html = '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;margin-bottom:10px;">';
+
+    // 헤더
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">';
+    html += '<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:' + sc + '20;color:' + sc + ';">' + sl + '</span>';
+    html += '<span style="font-size:12px;color:#64748b;">' + date + '</span>';
+    html += '<span style="font-size:12px;color:#64748b;">User: ' + (ws.user_id||'').slice(0,8) + '…</span>';
+    if (ws.topic_ko) html += '<span style="font-size:12px;color:#334155;font-weight:600;">📝 ' + ws.topic_ko + '</span>';
+    html += '</div>';
+
+    // 작문 본문
+    html += '<div style="font-size:14px;line-height:1.65;color:#1e293b;margin-bottom:10px;padding:12px;background:#f8fafc;border-radius:8px;">' + bodyText + '</div>';
+
+    // 사용 vocab/grammar
+    html += '<div style="font-size:11px;color:#94a3b8;margin-bottom:12px;">';
+    html += '사용 어휘: <b>' + (ws.used_vocab||[]).join(', ') + '</b> &nbsp;|&nbsp; ';
+    html += '사용 문법: <b>' + (ws.used_grammar||[]).join(', ') + '</b>';
+    html += '</div>';
+
+    // AI 첨삭
+    if (ws.ai_feedback) {
+      html += '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px;margin-bottom:12px;">';
+      html += '<div style="font-size:11px;font-weight:800;color:#0369a1;margin-bottom:6px;">🤖 AI 1차 첨삭</div>';
+      html += '<pre style="font-size:12px;color:#1e293b;white-space:pre-wrap;margin:0;">' + aiFeedback + '</pre>';
+      html += '</div>';
+    } else {
+      html += '<div style="font-size:12px;color:#94a3b8;margin-bottom:12px;">AI 첨삭 생성 중...</div>';
+    }
+
+    // 최종 피드백 textarea
+    html += '<div style="margin-bottom:8px;">';
+    html += '<label style="font-size:12px;font-weight:700;color:#334155;display:block;margin-bottom:4px;">✏️ 최종 피드백 (유저에게 전달)</label>';
+    html += '<textarea id="ws-final-' + ws.id + '" rows="4" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;box-sizing:border-box;">' + finalVal + '</textarea>';
+    html += '</div>';
+
+    // 버튼
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+    html += '<button onclick="approveWriting(' + ws.id + ')" style="padding:8px 18px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">✅ 승인 & 전달</button>';
+    html += '<button onclick="rejectWriting(' + ws.id + ')" style="padding:8px 18px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">❌ 거절</button>';
+    if (ws.status === 'pending') {
+      html += '<button onclick="retriggerAI(' + ws.id + ')" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🤖 AI 첨삭 요청</button>';
+    }
+    html += '</div>';
+    html += '</div>';
+    return html;
   }).join('');
 }
 
@@ -1912,9 +1935,9 @@ function formatAIFeedback(raw) {
   try {
     var parsed = JSON.parse(raw);
     var lines = [];
-    if (parsed.overall)           lines.push('📋 총평: ' + parsed.overall);
-    if (parsed.vocab_feedback)    lines.push('📚 어휘: ' + parsed.vocab_feedback);
-    if (parsed.grammar_feedback)  lines.push('📐 문법: ' + parsed.grammar_feedback);
+    if (parsed.overall)          lines.push('📋 총평: ' + parsed.overall);
+    if (parsed.vocab_feedback)   lines.push('📚 어휘: ' + parsed.vocab_feedback);
+    if (parsed.grammar_feedback) lines.push('📐 문법: ' + parsed.grammar_feedback);
     if (parsed.corrections && parsed.corrections.length) {
       lines.push('🔧 수정 제안:');
       parsed.corrections.forEach(function(c) {
@@ -1922,7 +1945,7 @@ function formatAIFeedback(raw) {
         lines.push('  수정: ' + c.corrected + ' (' + c.reason + ')');
       });
     }
-    if (parsed.encouragement)     lines.push('💪 ' + parsed.encouragement);
+    if (parsed.encouragement) lines.push('💪 ' + parsed.encouragement);
     return lines.join('\n');
   } catch(e) { return raw; }
 }
@@ -1932,15 +1955,15 @@ function extractAIFeedbackText(raw) {
   try {
     var parsed = JSON.parse(raw);
     var parts = [];
-    if (parsed.overall)           parts.push('📋 ' + parsed.overall);
-    if (parsed.vocab_feedback)    parts.push('📚 어휘: ' + parsed.vocab_feedback);
-    if (parsed.grammar_feedback)  parts.push('📐 문법: ' + parsed.grammar_feedback);
+    if (parsed.overall)          parts.push('📋 ' + parsed.overall);
+    if (parsed.vocab_feedback)   parts.push('📚 어휘: ' + parsed.vocab_feedback);
+    if (parsed.grammar_feedback) parts.push('📐 문법: ' + parsed.grammar_feedback);
     if (parsed.corrections && parsed.corrections.length) {
-      parsed.corrections.forEach(function(c){
+      parsed.corrections.forEach(function(c) {
         parts.push('🔧 ' + c.original + ' → ' + c.corrected + ' (' + c.reason + ')');
       });
     }
-    if (parsed.encouragement)     parts.push('💪 ' + parsed.encouragement);
+    if (parsed.encouragement) parts.push('💪 ' + parsed.encouragement);
     return parts.join('\n');
   } catch(e) { return raw; }
 }
@@ -1983,33 +2006,22 @@ async function retriggerAI(id) {
   showToastAdmin('🤖 AI 첨삭 요청 중...');
   var sb = getSb(); if (!sb) return;
   try {
-    var prompt = '당신은 한국어 작문 첨삭 선생님입니다.
-
-'
-      + '학생 작문:
-"""
-' + ws.writing_text + '
-"""
-
-'
-      + '필수 어휘: ' + (ws.required_vocab||[]).join(', ') + '
-'
-      + '필수 문법: ' + (ws.required_grammar||[]).join(', ') + '
-
-'
-      + '다음 JSON 형식으로만 응답하세요:
-'
+    var promptText = '당신은 한국어 작문 첨삭 선생님입니다.\n\n'
+      + '학생 작문:\n"""\n' + ws.writing_text + '\n"""\n\n'
+      + '필수 어휘: ' + (ws.required_vocab||[]).join(', ') + '\n'
+      + '필수 문법: ' + (ws.required_grammar||[]).join(', ') + '\n\n'
+      + '다음 JSON 형식으로만 응답하세요:\n'
       + '{"overall":"전반 평가","corrections":[{"original":"원문","corrected":"수정","reason":"이유"}],"vocab_feedback":"어휘 피드백","grammar_feedback":"문법 피드백","encouragement":"격려"}';
 
     var data = await callClaude({
       feature: 'writing_feedback',
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1000,
-      messages: [{ role: 'user', content: prompt }]
+      messages: [{ role: 'user', content: promptText }]
     });
     var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('');
     var clean = raw.replace(/```json|```/g,'').trim();
-    JSON.parse(clean); // validate
+    JSON.parse(clean);
     await sb.from('writing_submissions').update({
       ai_feedback:    clean,
       ai_feedback_at: new Date().toISOString(),
@@ -2019,7 +2031,6 @@ async function retriggerAI(id) {
     loadWritingSubmissions(_wsFilter);
   } catch(e) { showToastAdmin('AI 오류: ' + e.message, true); }
 }
-
 
 
 function goWordBank(){
