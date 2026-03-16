@@ -246,54 +246,93 @@
       : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">관심사를 선택하고 저장하면 관련 단어가 표시됩니다.</div>';
   }
 
-  // RPC 없을 때 vocabulary_bank 직접 쿼리
+  // 오늘 날짜 캐시 키 (KST)
+  function vocabCacheKey(type) {
+    var today = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
+    return 'kh_vocab_' + type + '_' + today;
+  }
+
   async function loadWordsDirectly(selectedTags) {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
-    if (!sb) { loadWordsFallback(selectedTags); return; }
 
-    var genPool = [];
-    var intPool = [];
-
-    // ── 일반 단어: daily 태그 먼저, 없으면 전체에서 랜덤 ──
+    // ── 캐시 확인 (오늘 날짜 기준) ──
+    var genCached  = null;
+    var intCached  = null;
+    var cacheTagKey = (selectedTags || []).slice().sort().join(',');
     try {
-      var r1 = await sb.from('vocabulary_bank')
-        .select('word_ko, word_rom, word_en, level, interest_tag')
-        .eq('is_active', true)
-        .eq('interest_tag', 'daily')
-        .limit(60);
-      genPool = (r1.data || []).sort(function(){ return Math.random()-.5; }).slice(0,10);
+      var gc = localStorage.getItem(vocabCacheKey('gen'));
+      if (gc) genCached = JSON.parse(gc);
+      var ic = localStorage.getItem(vocabCacheKey('int_' + cacheTagKey));
+      if (ic) intCached = JSON.parse(ic);
+    } catch(e) {}
 
-      // daily 단어가 10개 미만이면 나머지를 전체에서 보충
-      if (genPool.length < 10) {
-        var r2 = await sb.from('vocabulary_bank')
-          .select('word_ko, word_rom, word_en, level, interest_tag')
-          .eq('is_active', true)
-          .limit(100);
-        var allWords = (r2.data || []).sort(function(){ return Math.random()-.5; });
-        // 이미 뽑힌 단어 제외
-        var existingKo = new Set(genPool.map(function(w){ return w.word_ko; }));
-        var extra = allWords.filter(function(w){ return !existingKo.has(w.word_ko); });
-        genPool = genPool.concat(extra).slice(0,10);
-      }
-    } catch(e) {
-      console.warn('vocab general query error:', e.message);
+    // 둘 다 캐시 있으면 바로 렌더
+    if (genCached && genCached.length && (!selectedTags || !selectedTags.length || (intCached && intCached.length))) {
+      renderWords(genCached.concat(intCached || []));
+      return;
     }
 
-    // ── 관심사 단어: 태그별로 쿼리 ──
-    if (selectedTags && selectedTags.length) {
+    if (!sb) { loadWordsFallback(selectedTags); return; }
+
+    var genPool = genCached || [];
+    var intPool = intCached || [];
+
+    // ── 일반 단어: 캐시 없을 때만 DB 쿼리 ──
+    if (!genPool.length) {
+      try {
+        // daily 태그 우선
+        var r1 = await sb.from('vocabulary_bank')
+          .select('word_ko, word_rom, word_en, level, interest_tag')
+          .eq('is_active', true)
+          .eq('interest_tag', 'daily')
+          .limit(80);
+        genPool = (r1.data || []);
+
+        // daily 부족하면 전체에서 보충
+        if (genPool.length < 10) {
+          var r2 = await sb.from('vocabulary_bank')
+            .select('word_ko, word_rom, word_en, level, interest_tag')
+            .eq('is_active', true)
+            .limit(150);
+          var allW = r2.data || [];
+          var existKo = new Set(genPool.map(function(w){ return w.word_ko; }));
+          genPool = genPool.concat(allW.filter(function(w){ return !existKo.has(w.word_ko); }));
+        }
+
+        // 셔플 후 10개 고정
+        genPool = genPool.sort(function(){ return Math.random()-.5; }).slice(0,10);
+
+        // 오늘 날짜 캐시 저장
+        try { localStorage.setItem(vocabCacheKey('gen'), JSON.stringify(genPool)); } catch(e) {}
+      } catch(e) {
+        console.warn('vocab general query error:', e.message);
+      }
+    }
+
+    // ── 관심사 단어: 정확히 태그 매칭 ──
+    if (!intPool.length && selectedTags && selectedTags.length) {
       try {
         var r3 = await sb.from('vocabulary_bank')
           .select('word_ko, word_rom, word_en, level, interest_tag')
           .eq('is_active', true)
           .in('interest_tag', selectedTags)
-          .limit(80);
-        intPool = (r3.data || []).sort(function(){ return Math.random()-.5; }).slice(0,10);
+          .limit(100);
+
+        if (r3.data && r3.data.length) {
+          intPool = r3.data.sort(function(){ return Math.random()-.5; }).slice(0,10);
+          // 일반 단어와 중복 제거
+          var genKo = new Set(genPool.map(function(w){ return w.word_ko; }));
+          intPool = intPool.filter(function(w){ return !genKo.has(w.word_ko); }).slice(0,10);
+          try { localStorage.setItem(vocabCacheKey('int_' + cacheTagKey), JSON.stringify(intPool)); } catch(e) {}
+        } else {
+          // 해당 태그 단어 없음 - 콘솔에 알림
+          console.warn('[vocab] no words found for tags:', selectedTags, '- vocabulary_bank에 해당 태그 단어를 추가하세요');
+        }
       } catch(e) {
         console.warn('vocab interest query error:', e.message);
       }
     }
 
-    // 둘 다 비었으면 fallback
     if (!genPool.length && !intPool.length) {
       loadWordsFallback(selectedTags);
       return;
@@ -302,28 +341,27 @@
     renderWords(genPool.concat(intPool));
   }
 
-  // 완전 fallback: VOCAB 객체에서 랜덤 (vocabulary_bank 없을 때)
+  // 완전 fallback: VOCAB 객체에서 (vocabulary_bank 비었을 때)
   function loadWordsFallback(selectedTags) {
     try {
       var vocab = typeof VOCAB !== 'undefined' ? VOCAB : {};
       var keys = Object.keys(vocab);
-      if (!keys.length) {
-        renderWords([]);
-        return;
-      }
-      var shuffled = keys.sort(function(){ return Math.random()-.5; });
-      var words = shuffled.slice(0,10).map(function(k){
+      if (!keys.length) { renderWords([]); return; }
+      // 오늘 날짜 시드로 매일 같은 단어 (새로고침해도 안 바뀜)
+      var today = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
+      var seed = parseInt(today.replace(/-/g,''), 10);
+      var sorted = keys.slice().sort(function(a,b){
+        return ((seed * a.charCodeAt(0)) % 997) - ((seed * b.charCodeAt(0)) % 997);
+      });
+      var genWords = sorted.slice(0,10).map(function(k){
         return { word_ko: k, word_rom: vocab[k].rom, word_en: vocab[k].en, interest_tag: 'daily' };
       });
-      // 관심사 단어는 VOCAB에서 태그 없이 추가 10개
-      var intWords = shuffled.slice(10,20).map(function(k){
+      var intWords = sorted.slice(10,20).map(function(k){
         return { word_ko: k, word_rom: vocab[k].rom, word_en: vocab[k].en,
                  interest_tag: selectedTags && selectedTags[0] ? selectedTags[0] : 'general' };
       });
-      renderWords(words.concat(intWords));
-    } catch(e) {
-      console.warn('loadWordsFallback error:', e);
-    }
+      renderWords(genWords.concat(intWords));
+    } catch(e) { console.warn('loadWordsFallback error:', e); }
   }
 
   function renderReview(data) {
@@ -432,6 +470,13 @@
         var selected = Array.from(box.querySelectorAll('.interest-btn.on')).map(function(b){ return b.dataset.tag; });
         // localStorage 즉시 저장
         localStorage.setItem('kh_user_interests', JSON.stringify(selected));
+        // 관심사 변경 시 오늘 캐시 무효화 (새 태그로 다시 쿼리)
+        try {
+          var today = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
+          Object.keys(localStorage).forEach(function(k){
+            if (k.startsWith('kh_vocab_int_') && k.endsWith(today)) localStorage.removeItem(k);
+          });
+        } catch(e) {}
         // DB 저장
         if (sb && supaUser) {
           try {

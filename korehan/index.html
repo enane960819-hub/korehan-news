@@ -17,15 +17,22 @@
 
   <!-- TODAY'S PHRASE + LEARNING PREVIEW -->
   <div class="phrase-bar phrase-dashboard" id="phrase-bar">
-    <div class="pb-left pb-card">
-      <div class="pb-label">✏️ Today's Phrase</div>
-      <div class="pb-ko" id="pb-ko">경제 회복</div>
-      <div class="pb-rom" id="pb-rom">gyeong-je hoe-bok</div>
-      <div class="pb-en" id="pb-en">economic recovery</div>
-      <div class="pb-mini">One phrase, one example, one quick review.</div>
-      <div class="pb-actions">
-        <button class="pb-btn" id="pb-btn">Open phrase →</button>
-        <a class="pb-link" href="korehan-learning-overview.html">View learning hub →</a>
+    <div class="pb-left pb-card" style="display:grid;grid-template-rows:1fr auto;gap:0;">
+      <!-- Today's Phrase -->
+      <div style="padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.12);">
+        <div class="pb-label">✏️ Today's Phrase</div>
+        <div class="pb-ko" id="pb-ko">경제 회복</div>
+        <div class="pb-rom" id="pb-rom">gyeong-je hoe-bok</div>
+        <div class="pb-en" id="pb-en">economic recovery</div>
+        <div class="pb-actions" style="margin-top:10px;">
+          <button class="pb-btn" id="pb-btn">Study phrase →</button>
+        </div>
+      </div>
+      <!-- Writing shortcut -->
+      <div style="padding-top:14px;">
+        <div class="pb-label">✍️ Writing Practice</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.65);margin:4px 0 10px;line-height:1.5;">오늘의 구문으로 한 문장 써보세요. Han이 직접 피드백합니다.</div>
+        <a href="korehan-study-room.html" class="pb-btn" style="display:inline-block;text-decoration:none;">Open Study Room →</a>
       </div>
     </div>
     <aside class="home-learning-preview" id="home-learning-preview">
@@ -209,7 +216,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     var pb = document.getElementById('phrase-bar');
     var pbBtn = document.getElementById('pb-btn');
     var phraseHref = 'korehan-phrase.html?i=' + phraseIndex;
-    if (pb) { pb.onclick = function(e){ if (e.target.closest('.pb-btn') || e.target.closest('.pb-link') || e.target.closest('.home-learning-preview')) return; location.href = phraseHref; }; }
+    if (pb) { pb.onclick = function(e){ if (e.target.closest('.pb-btn') || e.target.closest('a') || e.target.closest('.home-learning-preview')) return; location.href = phraseHref; }; }
     if (pbBtn) { pbBtn.onclick = function(e){ e.stopPropagation(); location.href = phraseHref; }; }
   }
 

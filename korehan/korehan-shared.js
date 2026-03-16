@@ -1788,6 +1788,7 @@ Respond ONLY with this JSON (no markdown, no extra text):
     "blank": "correct answer",
     "blank_en": "English meaning of correct answer",
     "type": "vocab OR grammar",
+    "grammar_point": "Korean grammar point name if type=grammar, e.g. '-아/어서' or '은/는 topic marker', else null",
     "choices": ["correct","wrong1","wrong2","wrong3"],
     "hint": "brief hint in English (e.g. 'object marker' or 'means economy')"
   }
@@ -1967,22 +1968,24 @@ function checkFillAnswer(qIdx, selected, isTyped) {
   _fillState[qIdx].correct  = isCorrect;
 
   // grammar point 기록 (localStorage + Supabase)
-  if (q.type === 'grammar' && q.hint) {
-    try {
-      var gStats = JSON.parse(localStorage.getItem('kh_quiz_grammar_stats') || '{}');
-      var gKey = q.hint;
-      if (!gStats[gKey]) gStats[gKey] = { correct:0, wrong:0 };
-      isCorrect ? gStats[gKey].correct++ : gStats[gKey].wrong++;
-      localStorage.setItem('kh_quiz_grammar_stats', JSON.stringify(gStats));
-    } catch(e) {}
-    if (supaUser) {
+  if (q.type === 'grammar') {
+    var gKey = q.grammar_point || q.hint || '';
+    if (gKey) {
       try {
-        var _sb = getSupa();
-        if (_sb) _sb.rpc('log_quiz_result', {
-          p_user_id: supaUser.id, p_quiz_type: 'fill_blank',
-          p_grammar_point: q.hint, p_is_correct: isCorrect
-        });
+        var gStats = JSON.parse(localStorage.getItem('kh_quiz_grammar_stats') || '{}');
+        if (!gStats[gKey]) gStats[gKey] = { correct:0, wrong:0 };
+        isCorrect ? gStats[gKey].correct++ : gStats[gKey].wrong++;
+        localStorage.setItem('kh_quiz_grammar_stats', JSON.stringify(gStats));
       } catch(e) {}
+      if (supaUser) {
+        try {
+          var _sb = getSupa();
+          if (_sb) _sb.rpc('log_quiz_result', {
+            p_user_id: supaUser.id, p_quiz_type: 'fill_blank',
+            p_grammar_point: gKey, p_is_correct: isCorrect
+          });
+        } catch(e) {}
+      }
     }
   }
 
@@ -3962,23 +3965,14 @@ async function renderHomeLearningPreview() {
   var box = document.getElementById('home-learning-preview');
   if (!box) return;
 
-  var snap = getHomeLearningSnapshot();
-  var statsRow = await fetchUserStatsRow();
-  if (statsRow) {
-    snap.articles = Math.max(snap.articles || 0, statsRow.articles_read || 0);
-    snap.words = Math.max(snap.words || 0, Math.min(20, statsRow.words_saved || 0));
-    snap.quizzes = Math.max(snap.quizzes || 0, statsRow.quizzes_done || 0);
-    snap.xp = Math.max(snap.xp || 0, statsRow.xp || 0);
-    snap.streak = Math.max(snap.streak || 0, statsRow.mission_streak || 0, statsRow.streak || 0);
-  }
-
+  // 비로그인
   if (!supaUser) {
     box.innerHTML = ''
       + '<div class="hlp-top">'
       + '  <div>'
       + '    <div class="hlp-eyebrow">Guide for New Users</div>'
       + '    <h3 class="hlp-title">First time here?</h3>'
-      + '    <p class="hlp-sub">A quick guide for new Korean learners. We will show you what to read first, what to review next, and how to build a simple daily routine.</p>'
+      + '    <p class="hlp-sub">Read one article, check the key grammar, do one short quiz. That\'s the whole routine.</p>'
       + '  </div>'
       + '  <div class="hlp-badge">Start easy</div>'
       + '</div>'
@@ -3996,44 +3990,90 @@ async function renderHomeLearningPreview() {
       + '    <span class="hlp-pill">Beginner friendly</span>'
       + '    <span class="hlp-pill">Clear next steps</span>'
       + '  </div>'
-      + '  <a class="hlp-main-btn" href="korehan-learning-overview.html">Preview learning hub →</a>'
       + '</div>';
     return;
   }
 
-  var wordsLeft = Math.max(0, 20 - (snap.words || 0));
-  var articleGoalLeft = Math.max(0, 3 - (snap.articles || 0));
-  var quizGoalLeft = Math.max(0, 3 - (snap.quizzes || 0));
+  // localStorage 기반 즉시 표시 (빠른 렌더)
+  var dm = dmGet ? dmGet() : {};
+  var xp = getXP ? getXP() : 0;
+  var streak = getCurrentStreak ? getCurrentStreak() : 0;
+
+  // weak grammar — localStorage 우선, DB에서 보강
+  var weakGrammar = '-아/어서 vs -고';
+  var weakCount = 0;
+  try {
+    var gStats = JSON.parse(localStorage.getItem('kh_quiz_grammar_stats') || '{}');
+    var gEntries = Object.keys(gStats).map(function(k){
+      return { name: k, wrong: gStats[k].wrong || 0, correct: gStats[k].correct || 0 };
+    }).filter(function(g){ return g.wrong > 0; })
+      .sort(function(a,b){ return b.wrong - a.wrong; });
+    if (gEntries.length) {
+      weakGrammar = gEntries[0].name;
+      weakCount   = gEntries[0].wrong;
+    }
+  } catch(e) {}
+
+  // DB에서 최신 데이터 비동기로 보강
+  var sb = getSupa();
+  if (sb && supaUser) {
+    try {
+      // user_stats
+      var statsRes = await sb.from('user_stats').select('xp,mission_streak,streak,articles_read,words_saved,quizzes_done').eq('user_id', supaUser.id).maybeSingle();
+      if (statsRes.data) {
+        xp     = Math.max(xp,     statsRes.data.xp             || 0);
+        streak = Math.max(streak, statsRes.data.mission_streak || statsRes.data.streak || 0);
+        dm.articles = Math.max(dm.articles || 0, statsRes.data.articles_read || 0);
+        dm.words    = Math.max(dm.words    || 0, Math.min(20, statsRes.data.words_saved || 0));
+        dm.quizzes  = Math.max(dm.quizzes  || 0, statsRes.data.quizzes_done  || 0);
+      }
+      // weak grammar from DB
+      var wgRes = await sb.from('user_grammar_stats')
+        .select('grammar_point,wrong_count')
+        .eq('user_id', supaUser.id)
+        .gt('wrong_count', 0)
+        .order('wrong_count', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (wgRes.data) {
+        weakGrammar = wgRes.data.grammar_point;
+        weakCount   = wgRes.data.wrong_count;
+      }
+    } catch(e) {}
+  }
+
+  var wordsLeft   = Math.max(0, 20 - (dm.words    || 0));
+  var artGoalLeft = Math.max(0, 3  - (dm.articles || 0));
+  var hasWeak = weakCount > 0;
+  var weakQ = encodeURIComponent(weakGrammar);
 
   box.innerHTML = ''
     + '<div class="hlp-top">'
     + '  <div>'
     + '    <div class="hlp-eyebrow">Your learning preview</div>'
-    + '    <h3 class="hlp-title">See what to review next.</h3>'
-    + '    <p class="hlp-sub">Show progress right on the home page so logged-in users immediately know what is weak, what is left today, and where to continue.</p>'
+    + '    <h3 class="hlp-title">오늘 뭐 공부할지 바로 알 수 있어요.</h3>'
     + '  </div>'
-    + '  <div class="hlp-badge">🔥 ' + (snap.streak || 0) + ' day streak</div>'
+    + '  <div class="hlp-badge">🔥 ' + streak + ' day streak</div>'
     + '</div>'
     + '<div class="hlp-stats">'
-    + '  <div class="hlp-stat"><div class="hlp-stat-label">Daily words</div><div class="hlp-stat-value">' + (snap.words || 0) + '/20</div><div class="hlp-stat-sub">' + wordsLeft + ' left today</div></div>'
-    + '  <div class="hlp-stat"><div class="hlp-stat-label">Articles</div><div class="hlp-stat-value">' + (snap.articles || 0) + '</div><div class="hlp-stat-sub">' + articleGoalLeft + ' until daily goal</div></div>'
-    + '  <div class="hlp-stat"><div class="hlp-stat-label">Quiz / XP</div><div class="hlp-stat-value">' + (snap.quizzes || 0) + '</div><div class="hlp-stat-sub">' + (snap.xp || 0) + ' total XP</div></div>'
+    + '  <div class="hlp-stat"><div class="hlp-stat-label">Today words</div><div class="hlp-stat-value">' + (dm.words||0) + '/20</div><div class="hlp-stat-sub">' + wordsLeft + ' left</div></div>'
+    + '  <div class="hlp-stat"><div class="hlp-stat-label">Articles</div><div class="hlp-stat-value">' + (dm.articles||0) + '/3</div><div class="hlp-stat-sub">' + artGoalLeft + ' to go</div></div>'
+    + '  <div class="hlp-stat"><div class="hlp-stat-label">XP</div><div class="hlp-stat-value">' + xp + '</div><div class="hlp-stat-sub">total</div></div>'
     + '</div>'
     + '<div class="hlp-focus">'
     + '  <div>'
-    + '    <div class="hlp-focus-label">Weak grammar focus</div>'
-    + '    <div class="hlp-focus-title">' + (snap.weakGrammar || '-아/어서 vs -고') + '</div>'
-    + '    <div class="hlp-focus-sub">Missed ' + (snap.weakCount || 0) + ' times recently · open more example sentences and review drills.</div>'
+    + '    <div class="hlp-focus-label">' + (hasWeak ? '⚠️ Weak grammar focus' : '✅ Grammar') + '</div>'
+    + '    <div class="hlp-focus-title">' + weakGrammar + '</div>'
+    + '    <div class="hlp-focus-sub">' + (hasWeak ? '틀린 횟수 ' + weakCount + '회 · 예문으로 연습해보세요.' : '아직 퀴즈 기록이 없어요. 기사 하단 Fill-in-Blank를 풀어보세요.') + '</div>'
     + '  </div>'
-    + '  <a class="hlp-focus-btn" href="korehan-learning-overview.html">더 연습하기</a>'
+    + '  <a class="hlp-focus-btn" href="korehan-study-room.html?focus=' + weakQ + '">더 연습하기</a>'
     + '</div>'
     + '<div class="hlp-bottom">'
     + '  <div class="hlp-pills">'
-    + '    <span class="hlp-pill">Review today</span>'
-    + '    <span class="hlp-pill">20 words plan</span>'
-    + '    <span class="hlp-pill">Growth charts</span>'
+    + '    <span class="hlp-pill">Daily mission</span>'
+    + '    <span class="hlp-pill">Weak grammar</span>'
+    + '    <span class="hlp-pill">Word goals</span>'
     + '  </div>'
-    + '  <a class="hlp-main-btn" href="korehan-learning-overview.html">Open learning hub →</a>'
     + '</div>';
 }
 
