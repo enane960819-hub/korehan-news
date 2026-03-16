@@ -1963,6 +1963,26 @@ function checkFillAnswer(qIdx, selected, isTyped) {
   _fillState[qIdx].selected = selected;
   _fillState[qIdx].correct  = isCorrect;
 
+  // grammar point 기록 (localStorage + Supabase)
+  if (q.type === 'grammar' && q.hint) {
+    try {
+      var gStats = JSON.parse(localStorage.getItem('kh_quiz_grammar_stats') || '{}');
+      var gKey = q.hint;
+      if (!gStats[gKey]) gStats[gKey] = { correct:0, wrong:0 };
+      isCorrect ? gStats[gKey].correct++ : gStats[gKey].wrong++;
+      localStorage.setItem('kh_quiz_grammar_stats', JSON.stringify(gStats));
+    } catch(e) {}
+    if (supaUser) {
+      try {
+        var _sb = getSupa();
+        if (_sb) _sb.rpc('log_quiz_result', {
+          p_user_id: supaUser.id, p_quiz_type: 'fill_blank',
+          p_grammar_point: q.hint, p_is_correct: isCorrect
+        });
+      } catch(e) {}
+    }
+  }
+
   // 빈칸에 정답 표시
   var blankEl = document.getElementById('fill-blank-' + qIdx);
   if (blankEl) {
@@ -2225,6 +2245,7 @@ async function markArticleRead(articleId, title, section) {
   var sb = getSupa();
   if (!sb || !supaUser) return;
   try {
+    // 기존 read_articles 테이블
     await sb.from('read_articles').upsert({
       user_id: supaUser.id,
       article_id: String(articleId),
@@ -2233,6 +2254,17 @@ async function markArticleRead(articleId, title, section) {
       read_at: new Date().toISOString()
     }, { onConflict: 'user_id,article_id' });
   } catch(e) {}
+  // learning hub read_history 테이블 (RPC)
+  try {
+    await sb.rpc('log_read_event', {
+      p_user_id: supaUser.id,
+      p_content_type: 'article',
+      p_content_id: String(articleId),
+      p_title: title || '',
+      p_category: section || '',
+      p_completed: false
+    });
+  } catch(e) {} // RPC 미설치 시 조용히 무시
 }
 
 // ── 영어 번역 토글 ─────────────────────────────────────────────

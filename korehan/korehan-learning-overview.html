@@ -112,7 +112,7 @@
       <div class="card-hd"><div><h2>20 words for today</h2><p>10 general words and 10 interest-based words in one place.</p></div><a class="soft-link" href="korehan-study-room.html">Open Study Room</a></div>
       <div class="vocab-grid">
         <div class="vocab-box"><h3>10 random essential words</h3><p>Useful daily vocabulary users should meet regularly.</p><div class="word-list" id="random-words"></div></div>
-        <div class="vocab-box"><h3>10 words from your interests</h3><p>Based on user-selected tags like K-pop, travel, daily conversation.</p><div class="word-list" id="interest-words"></div></div>
+        <div class="vocab-box"><h3>10 words from your interests</h3><p>관심 태그를 선택하면 해당 분야 단어만 배정됩니다.</p><div id="interest-selector"></div><div class="word-list" id="interest-words"></div></div>
       </div>
     </section>
 
@@ -137,129 +137,301 @@
     </section>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="korehan-shared.js"></script>
   <script>
-    window.__KH_HUB_DATA__ = window.__KH_HUB_DATA__ || {
-      today:{articles_read:2,conversations_read:1,stories_read:0,words_learned:12,words_reviewed:8,grammar_practice_count:3,quizzes_done:6,xp_earned:42},
-      weekly_progress:[
-        {date:'2026-03-10',xp_earned:18,articles_read:1,words_learned:6,quizzes_done:2},
-        {date:'2026-03-11',xp_earned:23,articles_read:1,words_learned:9,quizzes_done:3},
-        {date:'2026-03-12',xp_earned:29,articles_read:2,words_learned:10,quizzes_done:4},
-        {date:'2026-03-13',xp_earned:26,articles_read:1,words_learned:8,quizzes_done:3},
-        {date:'2026-03-14',xp_earned:35,articles_read:2,words_learned:10,quizzes_done:5},
-        {date:'2026-03-15',xp_earned:32,articles_read:1,words_learned:7,quizzes_done:4},
-        {date:'2026-03-16',xp_earned:42,articles_read:2,words_learned:12,quizzes_done:6}
-      ],
-      weak_grammar:[
-        {grammar_point:'-아/어서 vs -고',wrong_count:8,correct_count:4,total_attempts:12},
-        {grammar_point:'-(으)ㄴ 적이 있다',wrong_count:5,correct_count:6,total_attempts:11},
-        {grammar_point:'-려고 하다',wrong_count:3,correct_count:8,total_attempts:11}
-      ],
-      review_queue:[
-        {content_type:'article',title:'한국 경제가 조금씩 회복되고 있습니다',level:'Intermediate',updated_at:'2026-03-16'},
-        {content_type:'conversation',title:'카페에서 주문하기',level:'Beginner',updated_at:'2026-03-16'},
-        {content_type:'story',title:'비 오는 날의 약속',level:'Intermediate',updated_at:'2026-03-15'}
-      ],
-      saved_words_preview:[
-        {word_key:'1',word_ko:'회복',word_en:'recovery'},
-        {word_key:'2',word_ko:'확인하다',word_en:'to check'},
-        {word_key:'3',word_ko:'공연장',word_en:'concert hall'},
-        {word_key:'4',word_ko:'숙소',word_en:'accommodation'},
-        {word_key:'5',word_ko:'예약하다',word_en:'to reserve'},
-        {word_key:'6',word_ko:'팬미팅',word_en:'fan meeting'}
-      ],
-      scores:{reading:76,vocabulary:78,grammar:60,writing:45,listening:55,speaking_practice:{note:'Speaking is not scored directly yet. Treat it as practice activity until audio recording + STT are added.',roleplays_completed:3,shadowing_sessions:5}},
-      streak:6
-    };
-    const data = window.__KH_HUB_DATA__;
-    const pct = v => Math.max(0, Math.min(100, Number(v || 0)));
-    const text = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  // ── helpers ────────────────────────────────────────────────
+  const pct = v => Math.max(0, Math.min(100, Number(v || 0)));
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  function contentHref(type, id) {
+    if (type === 'article')      return 'korehan-article.html?id=' + (id || '');
+    if (type === 'conversation') return 'korehan-conversations.html?open=' + (id || '');
+    return 'korehan-stories.html?open=' + (id || '');
+  }
 
-    function renderTopStats(){
-      const t = data.today || {};
-      text('stat-xp', t.xp_earned || 0);
-      text('stat-words', (t.words_learned || 0) + (t.words_reviewed || 0));
-      text('stat-articles', (t.articles_read || 0) + (t.conversations_read || 0) + (t.stories_read || 0));
-      text('stat-streak', data.streak || 0);
+  // ── skill score 설명 ────────────────────────────────────────
+  // 근거: DB에서 실제 행동 데이터를 집계
+  const SKILL_META = [
+    { key:'reading',    label:'Reading',    color:'#2563eb',
+      note:'지난 30일 읽은 기사/대화/스토리 수 기반. 50개 = 100점.' },
+    { key:'grammar',    label:'Grammar',    color:'#60a5fa',
+      note:'fill-in-blank + grammar quiz 정답률 (최근 30일, 5문제 이상 시 반영).' },
+    { key:'vocabulary', label:'Vocabulary', color:'#f59e0b',
+      note:'저장 단어 수 기반. 200개 = 100점.' },
+    { key:'writing',    label:'Writing',    color:'#8b5cf6',
+      note:'작문 제출 횟수 기반. 꾸준히 쓸수록 올라감.' },
+    { key:'listening',  label:'Listening',  color:'#ef4444',
+      note:'Vocab flashcard 정답률 (최근 30일).' },
+  ];
+
+  // ── render functions ────────────────────────────────────────
+  function renderTopStats(data) {
+    const t = data.today || {};
+    setText('stat-xp',       t.xp_earned || 0);
+    setText('stat-words',    t.words_learned || 0);
+    setText('stat-articles', (t.articles_read||0) + (t.conversations_read||0) + (t.stories_read||0));
+    setText('stat-streak',   data.streak || 0);
+  }
+
+  function weakTag(wrong, total) {
+    const acc = total > 0 ? Math.round((total - wrong) / total * 100) : 0;
+    if (acc < 50)  return ['Weak',        'red',   acc];
+    if (acc < 75)  return ['Needs review','amber',  acc];
+    return               ['Almost there','green',  acc];
+  }
+
+  function renderWeakGrammar(data) {
+    const box = document.getElementById('weak-grammar-list');
+    const items = data.weak_grammar || [];
+    if (!items.length) {
+      box.innerHTML = '<div style="padding:20px;text-align:center;color:#94a3b8">퀴즈를 풀면 여기에 취약 문법이 표시됩니다.</div>';
+      return;
     }
-    function weaknessTag(w){ if (w >= 7) return ['Weak','red',34]; if (w >= 4) return ['Needs review','amber',58]; return ['Almost there','green',82]; }
-    function grammarLink(g, type){
-      const q = encodeURIComponent(g);
-      if (type === 'practice') return `korehan-study-room.html?focus=${q}`;
-      if (type === 'examples') return `korehan-study-room.html?tab=examples&grammar=${q}`;
-      return `korehan-study-room.html?tab=quiz&grammar=${q}`;
-    }
-    function renderWeakGrammar(){
-      const box = document.getElementById('weak-grammar-list');
-      box.innerHTML = (data.weak_grammar || []).map(item => {
-        const cfg = weaknessTag(Number(item.wrong_count || 0));
-        return `<div class="grammar-item"><div class="grammar-top"><div><div class="grammar-title">${item.grammar_point}</div><div class="grammar-meta">Missed ${item.wrong_count || 0} times recently · ${item.total_attempts || 0} total attempts</div></div><div class="tag ${cfg[1]}">${cfg[0]}</div></div><div class="progress"><div class="fill ${cfg[1]}" style="width:${cfg[2]}%"></div></div><div class="grammar-actions"><a class="solid-btn" href="${grammarLink(item.grammar_point,'practice')}">더 연습하기</a><a class="ghost-btn" href="${grammarLink(item.grammar_point,'examples')}">Example Sentences</a><a class="ghost-btn" href="${grammarLink(item.grammar_point,'quiz')}">Mini Quiz</a></div></div>`;
-      }).join('');
-    }
-    function renderSkills(){
-      const s = data.scores || {};
-      const rows = [
-        ['Reading', s.reading, '#2563eb', 'Reading volume + completion'],
-        ['Grammar', s.grammar, '#60a5fa', 'Quiz accuracy + weak pattern recovery'],
-        ['Writing', s.writing, '#8b5cf6', 'Writing attempts + corrections'],
-        ['Listening', s.listening, '#ef4444', 'Listening quiz accuracy'],
-        ['Vocabulary', s.vocabulary, '#f59e0b', 'Saved words + review performance']
-      ];
-      document.getElementById('skills-list').innerHTML = rows.map(r => `
-        <div class="skill-row">
-          <div class="skill-top">
-            <div class="skill-name">${r[0]}</div>
-            <div class="skill-score">${pct(r[1])} / 100</div>
+    box.innerHTML = items.map(item => {
+      const total = (item.wrong_count||0) + (item.correct_count||0);
+      const cfg   = weakTag(item.wrong_count||0, total);
+      const q     = encodeURIComponent(item.grammar_point);
+      return `<div class="grammar-item">
+        <div class="grammar-top">
+          <div>
+            <div class="grammar-title">${item.grammar_point}</div>
+            <div class="grammar-meta">틀린 횟수 ${item.wrong_count||0}회 · 정답률 ${cfg[2]}% (${total}회 시도)</div>
           </div>
-          <div class="skill-track"><div class="skill-bar" style="width:${pct(r[1])}%;background:${r[2]}"></div></div>
-          <div class="skill-note">${r[3]}</div>
+          <div class="tag ${cfg[0]==='Weak'?'red':cfg[0]==='Needs review'?'amber':'green'}">${cfg[0]}</div>
         </div>
-      `).join('');
+        <div class="progress"><div class="fill ${cfg[0]==='Weak'?'red':cfg[0]==='Needs review'?'amber':'green'}" style="width:${cfg[2]}%"></div></div>
+        <div class="grammar-actions">
+          <a class="solid-btn" href="korehan-study-room.html?focus=${q}">더 연습하기</a>
+          <a class="ghost-btn" href="korehan-study-room.html?tab=grammar&grammar=${q}">예문으로 공부</a>
+          <a class="ghost-btn" href="korehan-study-room.html?tab=quiz&grammar=${q}">Mini Quiz</a>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderSkills(data) {
+    const s = data.scores || {};
+    document.getElementById('skills-list').innerHTML = SKILL_META.map(r => `
+      <div class="skill-row">
+        <div class="skill-top">
+          <div class="skill-name">${r.label}</div>
+          <div class="skill-score">${pct(s[r.key])} / 100</div>
+        </div>
+        <div class="skill-track"><div class="skill-bar" style="width:${pct(s[r.key])}%;background:${r.color}"></div></div>
+        <div class="skill-note">${r.note}</div>
+      </div>`).join('');
+  }
+
+  function renderWords(dailyVocab) {
+    const row = w => `<div class="word-row">
+      <div class="word-main">
+        <div class="ko">${w.word_ko}</div>
+        <div class="sub">${w.word_rom ? w.word_rom + ' · ' : ''}${w.word_en||''}</div>
+      </div>
+      <div class="level" style="background:${w.interest_tag?'#f3e8ff;color:#7c3aed':'#eef4ff;color:#2563eb'}">${w.interest_tag ? w.interest_tag : w.level||'General'}</div>
+    </div>`;
+    const general  = dailyVocab.filter(w => !w.interest_tag || w.interest_tag === 'daily').slice(0,10);
+    const interest = dailyVocab.filter(w =>  w.interest_tag && w.interest_tag !== 'daily').slice(0,10);
+    document.getElementById('random-words').innerHTML   = general.length  ? general.map(row).join('')  : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">단어 배정 중...</div>';
+    document.getElementById('interest-words').innerHTML = interest.length ? interest.map(row).join('') : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">관심사를 설정하면 관련 단어가 표시됩니다. <a href="korehan-mypage.html" style="color:#7c3aed">설정하기 →</a></div>';
+  }
+
+  function renderReview(data) {
+    const q = data.review_queue || [];
+    setText('review-title', '오늘 — ' + new Date().toLocaleDateString('ko-KR'));
+    setText('review-sub',   q.length + '개 항목이 복습 대기 중');
+    document.getElementById('review-queue').innerHTML = q.length
+      ? q.map(item => `<a class="timeline-item" href="${contentHref(item.content_type, item.content_id)}">
+          <div class="time">${new Date(item.read_at||Date.now()).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</div>
+          <div>
+            <div class="timeline-title">${{'article':'기사','conversation':'대화','story':'스토리'}[item.content_type]||item.content_type} — ${item.title||'(제목 없음)'}</div>
+            <div class="timeline-sub">${item.level||''} · 복습 대기</div>
+          </div>
+        </a>`).join('')
+      : '<div style="color:#94a3b8;padding:16px 0;text-align:center">오늘 읽은 기사가 없습니다.</div>';
+  }
+
+  function renderSavedReading(data) {
+    const hist = data.read_history || [];
+    document.getElementById('saved-reading').innerHTML = hist.length
+      ? hist.map(item => `<a class="article-row" href="${contentHref(item.content_type, item.content_id)}">
+          <div>
+            <div class="article-title">${item.title||'(제목 없음)'}</div>
+            <div class="article-sub">${item.content_type} · ${item.level||''} · ${new Date(item.read_at||Date.now()).toLocaleDateString('ko-KR')}</div>
+          </div>
+          <div class="article-tag">${item.completed?'완료':'열기'}</div>
+        </a>`).join('')
+      : '<div style="color:#94a3b8;padding:16px 0;text-align:center">읽기 기록이 없습니다.</div>';
+  }
+
+  function renderWeeklyBars(data) {
+    const weekly = data.weekly_progress || [];
+    const max = Math.max(1, ...weekly.map(d => Number(d.xp_earned||0)));
+    document.getElementById('weekly-bars').innerHTML = weekly.map(item => {
+      const h = Math.max(10, Math.round((Number(item.xp_earned||0) / max) * 100));
+      const day = new Date(item.date+'T12:00:00').toLocaleDateString('en-US', {weekday:'short'});
+      return `<div class="bar-col"><div class="bar" style="height:${h}%"></div><div class="bar-label">${day}</div><div class="bar-num">${item.xp_earned||0} XP</div></div>`;
+    }).join('');
+  }
+
+  function renderWeeklyImprovements(data) {
+    const t = data.today || {};
+    const s = data.scores || {};
+    document.getElementById('weekly-improvements').innerHTML = `
+      <div class="streak-item"><div class="streak-title">Grammar score</div><div class="streak-val">${pct(s.grammar)} / 100</div></div>
+      <div class="streak-item"><div class="streak-title">Words reviewed today</div><div class="streak-val">${t.words_learned||0}</div></div>
+      <div class="streak-item"><div class="streak-title">Content read today</div><div class="streak-val">${(t.articles_read||0)+(t.conversations_read||0)+(t.stories_read||0)}</div></div>
+      <div class="streak-item"><div class="streak-title">Quizzes done today</div><div class="streak-val">${t.quizzes_done||0}</div></div>
+      <div class="streak-item"><div class="streak-title">Speaking</div><div class="streak-val">practice only</div></div>`;
+  }
+
+  // ── interests 설정 UI ────────────────────────────────────────
+  const INTEREST_TAGS = [
+    {tag:'kpop',     label:'🎤 K-pop'},
+    {tag:'travel',   label:'✈️ Travel'},
+    {tag:'food',     label:'🍜 Food'},
+    {tag:'business', label:'💼 Business'},
+    {tag:'daily',    label:'💬 Daily life'},
+    {tag:'news',     label:'📰 News'},
+    {tag:'sports',   label:'⚽ Sports'},
+    {tag:'tech',     label:'💻 Tech'},
+    {tag:'drama',    label:'🎬 Drama'},
+    {tag:'beauty',   label:'💄 Beauty'},
+  ];
+
+  async function loadAndRenderInterests() {
+    const sb = getSupa();
+    if (!sb || !supaUser) return;
+    const { data } = await sb.from('user_interests').select('tags').eq('user_id', supaUser.id).maybeSingle();
+    const saved = (data && data.tags) || [];
+
+    const box = document.getElementById('interest-selector');
+    if (!box) return;
+    box.innerHTML = INTEREST_TAGS.map(t =>
+      `<button class="interest-btn${saved.includes(t.tag)?' on':''}" data-tag="${t.tag}">${t.label}</button>`
+    ).join('') + '<button id="save-interests-btn" style="margin-left:auto;padding:8px 18px;background:#7c3aed;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">저장</button>';
+
+    box.querySelectorAll('.interest-btn').forEach(btn => {
+      btn.addEventListener('click', () => btn.classList.toggle('on'));
+    });
+    document.getElementById('save-interests-btn').addEventListener('click', async () => {
+      const selected = [...box.querySelectorAll('.interest-btn.on')].map(b => b.dataset.tag);
+      await sb.from('user_interests').upsert({ user_id: supaUser.id, tags: selected, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      if (typeof toast === 'function') toast('관심사 저장 완료 ✓');
+      // 단어 재로드
+      loadHub();
+    });
+  }
+
+  // ── main load ───────────────────────────────────────────────
+  async function loadHub() {
+    const sb = getSupa();
+
+    // 로그인 안 된 경우 → 안내
+    if (!supaUser) {
+      document.querySelectorAll('#weak-grammar-list,#skills-list,#random-words,#interest-words,#review-queue,#saved-reading').forEach(el => {
+        if (el) el.innerHTML = '<div style="padding:16px;color:#94a3b8;font-size:13px">로그인 후 데이터가 표시됩니다.</div>';
+      });
+      return;
     }
-    function renderWords(){
-      const words = data.saved_words_preview || [];
-      const random = words.slice(0,3).concat([{word_ko:'이용자',word_en:'user'},{word_ko:'설명',word_en:'explanation'}]);
-      const interest = words.slice(3,6).concat([{word_ko:'합정역',word_en:'Hapjeong Station'},{word_ko:'발권',word_en:'ticketing'}]);
-      const row = (w, type) => `<div class="word-row"><div class="word-main"><div class="ko">${w.word_ko}</div><div class="sub">${w.word_en || ''}</div></div><div class="level">${type}</div></div>`;
-      document.getElementById('random-words').innerHTML = random.map(w => row(w, 'General')).join('');
-      document.getElementById('interest-words').innerHTML = interest.map(w => row(w, 'Interest')).join('');
+
+    // skeleton
+    setText('stat-xp','…'); setText('stat-words','…'); setText('stat-articles','…'); setText('stat-streak','…');
+
+    try {
+      // snapshot RPC
+      const { data: snap, error } = await sb.rpc('get_learning_hub_snapshot', { p_user_id: supaUser.id, p_days: 7 });
+      if (error) throw error;
+
+      renderTopStats(snap);
+      renderWeakGrammar(snap);
+      renderSkills(snap);
+      renderReview(snap);
+      renderSavedReading(snap);
+      renderWeeklyBars(snap);
+      renderWeeklyImprovements(snap);
+
+      // 스피킹 노트
+      const speakEl = document.getElementById('speaking-note');
+      if (speakEl) speakEl.innerHTML = '<strong>Speaking:</strong> Not scored yet — treat as practice activity until audio recording + STT are added.';
+
+      // 오늘의 단어 배정
+      const { data: vocab } = await sb.rpc('assign_daily_vocab', { p_user_id: supaUser.id, p_date: new Date().toISOString().slice(0,10) });
+      renderWords(vocab || []);
+
+    } catch(e) {
+      console.warn('hub load error', e);
+      // RPC 미설치 fallback — localStorage 기반
+      loadHubFallback();
     }
-    function contentHref(type){
-      if (type === 'article') return 'korehan-all.html';
-      if (type === 'conversation') return 'korehan-conversations.html';
-      return 'korehan-stories.html';
+
+    // interests 설정 UI
+    loadAndRenderInterests();
+  }
+
+  // fallback: RPC 없을 때 localStorage에서 가능한 것만 표시
+  function loadHubFallback() {
+    const streak = typeof getCurrentStreak === 'function' ? getCurrentStreak() : 0;
+    const xp     = typeof getXP === 'function' ? getXP() : 0;
+    setText('stat-xp', xp);
+    setText('stat-streak', streak);
+
+    // weak grammar from localStorage
+    const weak = [];
+    try {
+      const raw = localStorage.getItem('kh_quiz_grammar_stats');
+      if (raw) {
+        const obj = JSON.parse(raw);
+        Object.keys(obj).forEach(k => {
+          const v = obj[k];
+          if (v.wrong > 0) weak.push({ grammar_point: k, wrong_count: v.wrong, correct_count: v.correct, total_attempts: v.wrong + v.correct });
+        });
+        weak.sort((a,b) => b.wrong_count - a.wrong_count);
+      }
+    } catch(e) {}
+    renderWeakGrammar({ weak_grammar: weak });
+
+    // skill scores fallback
+    renderSkills({ scores: { reading:0, vocabulary: Math.min(100, (localStorage.getItem(K_SAVED) ? JSON.parse(localStorage.getItem(K_SAVED)||'[]').length / 2 : 0)), grammar:0, writing:0, listening:0 } });
+
+    // read history fallback
+    try {
+      const log = JSON.parse(localStorage.getItem('kh_read_log') || '{}');
+      let total = 0;
+      Object.values(log).forEach(arr => total += arr.length);
+      setText('stat-articles', total);
+    } catch(e) {}
+
+    // 단어 fallback: VOCAB object에서 랜덤 10개
+    try {
+      const keys = Object.keys(VOCAB || {});
+      const shuffled = keys.sort(() => Math.random() - .5).slice(0,10);
+      const words = shuffled.map(k => ({ word_ko: k, word_rom: VOCAB[k].rom, word_en: VOCAB[k].en }));
+      renderWords(words);
+    } catch(e) {}
+  }
+
+  // ── init ────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', function() {
+    // shared.js의 checkSession이 supaUser를 세팅할 때까지 잠깐 대기
+    var attempts = 0;
+    function tryLoad() {
+      attempts++;
+      if (typeof supaUser !== 'undefined' && (supaUser || window._sessionChecked || attempts > 20)) {
+        loadHub();
+      } else {
+        setTimeout(tryLoad, 150);
+      }
     }
-    function renderReview(){
-      const q = data.review_queue || [];
-      text('review-title', `Today — ${new Date().toLocaleDateString()}`);
-      text('review-sub', `${q.length} items waiting in your review flow`);
-      document.getElementById('review-queue').innerHTML = q.map((item, i) => `<a class="timeline-item" href="${contentHref(item.content_type)}"><div class="time">${['09:10 AM','09:26 AM','09:39 AM','09:50 AM'][i] || 'Today'}</div><div><div class="timeline-title">${item.content_type[0].toUpperCase() + item.content_type.slice(1)} — ${item.title}</div><div class="timeline-sub">${item.level || 'Learner level'} · saved for review</div></div></a>`).join('');
-    }
-    function renderSavedReading(){
-      const q = data.review_queue || [];
-      document.getElementById('saved-reading').innerHTML = q.map(item => `<a class="article-row" href="${contentHref(item.content_type)}"><div><div class="article-title">${item.title}</div><div class="article-sub">${item.content_type} · ${item.level || 'Learner level'} · saved to My Page</div></div><div class="article-tag">Open</div></a>`).join('');
-    }
-    function renderWeeklyBars(){
-      const weekly = data.weekly_progress || []; const max = Math.max(1, ...weekly.map(d => Number(d.xp_earned || 0)));
-      document.getElementById('weekly-bars').innerHTML = weekly.map(item => {
-        const h = Math.max(16, Math.round((Number(item.xp_earned || 0) / max) * 100));
-        const day = new Date(item.date).toLocaleDateString(undefined, { weekday:'short' });
-        return `<div class="bar-col"><div class="bar" style="height:${h}%"></div><div class="bar-label">${day}</div><div class="bar-num">${item.xp_earned || 0} XP</div></div>`;
-      }).join('');
-    }
-    function renderWeeklyImprovements(){
-      const t = data.today || {}; const s = data.scores || {};
-      document.getElementById('weekly-improvements').innerHTML = `
-        <div class="streak-item"><div class="streak-title">Grammar score</div><div class="streak-val">${pct(s.grammar)} / 100</div></div>
-        <div class="streak-item"><div class="streak-title">Words touched today</div><div class="streak-val">${(t.words_learned || 0) + (t.words_reviewed || 0)}</div></div>
-        <div class="streak-item"><div class="streak-title">Reading completed today</div><div class="streak-val">${(t.articles_read || 0) + (t.conversations_read || 0) + (t.stories_read || 0)}</div></div>
-        <div class="streak-item"><div class="streak-title">Quizzes done today</div><div class="streak-val">${t.quizzes_done || 0}</div></div>
-        <div class="streak-item"><div class="streak-title">Speaking practice</div><div class="streak-val">activity only</div></div>`;
-    }
-    function renderSpeakingNote(){
-      const sp = (data.scores || {}).speaking_practice || {};
-      document.getElementById('speaking-note').innerHTML = `<strong>Speaking:</strong> ${sp.note || ''} Roleplays: <strong>${sp.roleplays_completed || 0}</strong> · Shadowing: <strong>${sp.shadowing_sessions || 0}</strong>`;
-    }
-    renderTopStats(); renderWeakGrammar(); renderSkills(); renderWords(); renderReview(); renderSavedReading(); renderWeeklyBars(); renderWeeklyImprovements(); renderSpeakingNote();
+    tryLoad();
+  });
   </script>
+
+  <style>
+  /* interests selector */
+  #interest-selector { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .interest-btn { padding:7px 14px; border-radius:999px; border:1.5px solid #d8e1ef; background:#fff; color:#64748b; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; transition:all .15s; }
+  .interest-btn.on { background:#7c3aed; color:#fff; border-color:#7c3aed; }
+  </style>
 </body>
 </html>
