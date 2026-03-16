@@ -3,15 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KoreHan Learning Hub</title>
+  <title>KoreHan Learning Overview</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;500;700;800&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    :root{--navy:#0b1626;--blue:#1a3a6b;--bright:#2563eb;--bg:#f4f7fb;--card:#fff;--border:#d8e1ef;--text:#0f172a;--muted:#64748b;--shadow:0 16px 36px rgba(15,23,42,.08)}
-    *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#eef4fb 0%,#f7f9fc 38%,#f4f7fb 100%);color:var(--text);font-family:'Source Sans 3','Noto Sans KR',sans-serif}
+    :root{
+      --navy:#0b1626; --blue:#1a3a6b; --bright:#2563eb; --sky:#7ab8f5;
+      --bg:#f4f7fb; --card:#fff; --border:#d8e1ef; --text:#0f172a; --muted:#64748b;
+      --green:#16a34a; --amber:#f59e0b; --red:#ef4444; --purple:#7c3aed;
+      --shadow:0 16px 36px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#eef4fb 0%,#f7f9fc 38%,#f4f7fb 100%);color:var(--text);font-family:'Source Sans 3','Noto Sans KR',sans-serif}
+    a{text-decoration:none;color:inherit}
     .topbar{background:var(--navy);color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
-    .brand{font-family:'Playfair Display',serif;font-size:28px;font-weight:900}.brand .k{color:#6fa8ff}.brand .h{color:#ff826f}
+    .brand{font-family:'Playfair Display',serif;font-size:28px;font-weight:900}
+    .brand .k{color:#6fa8ff}.brand .h{color:#ff826f}
     .wrap{max-width:1280px;margin:0 auto;padding:28px 20px 70px}
-    .dev-note{margin:0 0 18px;padding:14px 16px;border-radius:18px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:14px;line-height:1.6}
     .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;margin-bottom:18px}
     .hero-main,.hero-side,.card,.stat{background:var(--card);border:1px solid var(--border);border-radius:28px;box-shadow:var(--shadow)}
     .hero-main{padding:30px;background:linear-gradient(135deg,#0b1626 0%,#17345f 60%,#2357a2 100%);color:#fff}
@@ -19,25 +26,33 @@
     h1{margin:0 0 10px;font-family:'Playfair Display','Noto Serif KR',serif;font-size:50px;line-height:1.02}
     .hero-main p{margin:0;font-size:17px;line-height:1.7;color:rgba(255,255,255,.84)}
     .hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}
-    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:999px;font-size:14px;font-weight:800;border:none}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:999px;font-size:14px;font-weight:800;border:none;cursor:pointer}
     .btn-primary{background:#fff;color:#0b1626}.btn-ghost{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#fff}
     .hero-side{padding:24px}.mini-title{font-size:12px;font-weight:900;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px}
     .routine{display:grid;gap:12px}.routine-item{display:grid;grid-template-columns:50px 1fr;gap:12px;padding:14px;border:1px solid var(--border);border-radius:18px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}
     .routine-num{width:50px;height:50px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:var(--bright);background:#eff6ff}
     .routine-item h3{margin:0 0 4px;font-size:18px}.routine-item p{margin:0;color:var(--muted);font-size:14px;line-height:1.55}
-    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.stat{padding:22px 20px}.stat-label{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.stat{padding:22px 20px}
+    .stat-label{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
     .stat-num{font-family:'Playfair Display',serif;font-size:42px;line-height:1;color:var(--blue);margin-bottom:6px}.stat-sub{font-size:14px;color:var(--muted)}
     .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;margin-bottom:18px}.card{padding:24px}
     .card-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px}.card-hd h2{margin:0;font-family:'Playfair Display','Noto Serif KR',serif;font-size:34px;line-height:1.05}
     .card-hd p{margin:6px 0 0;color:var(--muted);font-size:15px}.soft-link{padding:9px 13px;border-radius:999px;background:#eef4ff;color:var(--bright);font-size:13px;font-weight:800;white-space:nowrap}
-    .grammar-list,.review-wrap,.articles-list,.streak-list,.radar-legend,.word-list,.timeline,.bars{display:grid}
+    .grammar-list,.review-wrap,.articles-list,.streak-list,.word-list,.timeline,.bars,.skills{display:grid}
     .grammar-list{gap:14px}.grammar-item{border:1px solid var(--border);border-radius:20px;padding:16px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}
     .grammar-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.grammar-title{font-size:19px;font-weight:800}.grammar-meta{font-size:13px;color:var(--muted)}
     .tag{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:800}.tag.red{background:#fee2e2;color:#b91c1c}.tag.amber{background:#fef3c7;color:#b45309}.tag.green{background:#dcfce7;color:#15803d}
     .progress{height:10px;border-radius:999px;background:#eef2f8;overflow:hidden;margin-bottom:10px}.fill{height:100%;border-radius:999px}.fill.red{background:linear-gradient(90deg,#ef4444,#f97316)}.fill.amber{background:linear-gradient(90deg,#f59e0b,#fbbf24)}.fill.green{background:linear-gradient(90deg,#22c55e,#4ade80)}
-    .grammar-actions{display:flex;gap:10px;flex-wrap:wrap}.ghost-btn,.solid-btn{padding:10px 14px;border-radius:999px;font-size:13px;font-weight:800}.ghost-btn{background:#f8fbff;border:1px solid #dbe7fb;color:var(--bright)}.solid-btn{background:var(--bright);color:#fff}
-    .radar-wrap{display:grid;grid-template-columns:300px 1fr;gap:14px;align-items:center}.radar-svg{width:100%;max-width:300px;display:block;margin:0 auto}.radar-legend{gap:10px}
-    .legend-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:16px;border:1px solid var(--border);background:#fff}.legend-left{display:flex;align-items:center;gap:10px}.dot{width:12px;height:12px;border-radius:50%}.legend-label{font-size:15px;font-weight:700}.legend-score{font-size:14px;color:var(--muted);font-weight:800}
+    .grammar-actions{display:flex;gap:10px;flex-wrap:wrap}.ghost-btn,.solid-btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:999px;font-size:13px;font-weight:800}
+    .ghost-btn{background:#f8fbff;border:1px solid #dbe7fb;color:var(--bright)}.solid-btn{background:var(--bright);color:#fff}
+    .skills{gap:14px}
+    .skill-row{padding:14px 16px;border:1px solid var(--border);border-radius:18px;background:#fff}
+    .skill-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+    .skill-name{font-size:17px;font-weight:800}
+    .skill-score{font-size:14px;font-weight:800;color:var(--muted)}
+    .skill-track{height:14px;border-radius:999px;background:#eef2f8;overflow:hidden}
+    .skill-bar{height:100%;border-radius:999px}
+    .skill-note{margin-top:8px;font-size:13px;color:var(--muted)}
     .vocab-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.vocab-box{border:1px solid var(--border);border-radius:22px;padding:18px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.vocab-box h3{margin:0 0 6px;font-size:22px}.vocab-box p{margin:0 0 14px;color:var(--muted);font-size:14px}
     .word-list{gap:10px}.word-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:16px;background:#f7faff;border:1px solid #e3ecfa}.word-main{display:flex;flex-direction:column}.ko{font-size:17px;font-weight:900;color:var(--blue)}.sub{font-size:12px;color:var(--muted)}.level{padding:5px 9px;border-radius:999px;background:#eef4ff;color:var(--bright);font-size:11px;font-weight:800}
     .review-wrap{gap:14px}.review-day{border:1px solid var(--border);border-radius:20px;padding:16px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.review-top h3{margin:0;font-size:21px}.review-top p{margin:4px 0 0;color:var(--muted);font-size:14px}
@@ -46,8 +61,8 @@
     .growth-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.chart-box{border:1px solid var(--border);border-radius:22px;padding:18px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.chart-title{font-size:20px;font-weight:800;margin-bottom:10px}.chart-sub{font-size:14px;color:var(--muted);margin-bottom:16px}
     .bars{grid-template-columns:repeat(7,1fr);gap:12px;align-items:end;height:220px;padding-top:20px}.bar-col{text-align:center}.bar{width:100%;border-radius:14px 14px 8px 8px;background:linear-gradient(180deg,#7ab8f5,#2563eb);box-shadow:0 8px 18px rgba(37,99,235,.16)}.bar-label{font-size:12px;color:var(--muted);margin-top:8px;font-weight:700}.bar-num{font-size:12px;color:var(--blue);font-weight:800;margin-top:5px}
     .streak-list{gap:10px}.streak-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:16px;background:#fff;border:1px solid var(--border)}.streak-title{font-size:15px;font-weight:800}.streak-val{font-size:14px;color:var(--muted);font-weight:800}
-    .footer-note{margin-top:18px;padding:18px 20px;border-radius:22px;border:1px dashed #bfd0ea;background:#f7fbff;color:var(--muted);font-size:14px;line-height:1.7} code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#f1f5f9;padding:2px 6px;border-radius:6px;color:#0f172a}
-    @media (max-width:1080px){.hero,.grid,.growth-grid,.radar-wrap{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+    .footer-note{margin-top:18px;padding:18px 20px;border-radius:22px;border:1px dashed #bfd0ea;background:#f7fbff;color:var(--muted);font-size:14px;line-height:1.7}
+    @media (max-width:1080px){.hero,.grid,.growth-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
     @media (max-width:700px){.topbar{padding:15px 16px}.brand{font-size:24px}.wrap{padding:18px 14px 50px}h1{font-size:36px}.hero-main,.hero-side,.card,.stat{border-radius:22px}.hero-main,.hero-side,.card{padding:20px}.stats{grid-template-columns:1fr 1fr;gap:12px}.stat{padding:18px 16px}.stat-num{font-size:34px}.card-hd h2{font-size:28px}.vocab-grid,.growth-grid{grid-template-columns:1fr}.timeline-item{grid-template-columns:1fr}.bars{gap:8px}}
     @media (max-width:520px){.stats{grid-template-columns:1fr}}
   </style>
@@ -55,13 +70,15 @@
 <body>
   <div class="topbar"><div class="brand"><span class="k">Kore</span><span class="h">Han</span> News</div></div>
   <div class="wrap">
-    <div class="dev-note">This file is wired for the real RPC shape from <code>get_learning_hub_snapshot(7)</code>. Until you connect Supabase, it shows mock data.</div>
     <section class="hero">
       <div class="hero-main">
         <div class="eyebrow">Learning Hub</div>
         <h1>Your study should tell you what to do next.</h1>
         <p>Weak grammar, today’s 20 words, saved reading, review queue, and real weekly progress — all in one page.</p>
-        <div class="hero-actions"><button class="btn btn-primary">Start Daily Review</button><button class="btn btn-ghost">See Weekly Progress</button></div>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="korehan-study-room.html">Start Daily Review</a>
+          <a class="btn btn-ghost" href="#weekly-progress">See Weekly Progress</a>
+        </div>
       </div>
       <aside class="hero-side">
         <div class="mini-title">Recommended flow today</div>
@@ -82,34 +99,17 @@
 
     <section class="grid">
       <div class="card">
-        <div class="card-hd"><div><h2>Weak grammar patterns</h2><p>Show users what they are actually weak at, not just raw scores.</p></div><div class="soft-link">More practice</div></div>
+        <div class="card-hd"><div><h2>Weak grammar patterns</h2><p>Show users what they are actually weak at, not just raw scores.</p></div><a class="soft-link" href="korehan-study-room.html">More practice</a></div>
         <div class="grammar-list" id="weak-grammar-list"></div>
       </div>
       <div class="card">
-        <div class="card-hd"><div><h2>Skill balance</h2><p>Five score axes with speaking separated as activity only.</p></div></div>
-        <div class="radar-wrap">
-          <svg class="radar-svg" viewBox="0 0 300 300">
-            <defs><linearGradient id="polyFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7ab8f5" stop-opacity=".45"/><stop offset="100%" stop-color="#2563eb" stop-opacity=".22"/></linearGradient></defs>
-            <g transform="translate(150,150)">
-              <polygon points="0,-110 105,-35 65,95 -65,95 -105,-35" fill="none" stroke="#d8e1ef"/>
-              <polygon points="0,-78 74,-25 46,67 -46,67 -74,-25" fill="none" stroke="#d8e1ef"/>
-              <polygon points="0,-46 43,-15 27,39 -27,39 -43,-15" fill="none" stroke="#d8e1ef"/>
-              <line x1="0" y1="0" x2="0" y2="-110" stroke="#d8e1ef"/><line x1="0" y1="0" x2="105" y2="-35" stroke="#d8e1ef"/><line x1="0" y1="0" x2="65" y2="95" stroke="#d8e1ef"/><line x1="0" y1="0" x2="-65" y2="95" stroke="#d8e1ef"/><line x1="0" y1="0" x2="-105" y2="-35" stroke="#d8e1ef"/>
-              <polygon id="radar-poly" fill="url(#polyFill)" stroke="#2563eb" stroke-width="3"></polygon>
-              <text x="0" y="-128" text-anchor="middle" font-size="13" font-weight="800" fill="#64748b">Reading</text>
-              <text x="124" y="-40" text-anchor="middle" font-size="13" font-weight="800" fill="#64748b">Grammar</text>
-              <text x="82" y="114" text-anchor="middle" font-size="13" font-weight="800" fill="#64748b">Writing</text>
-              <text x="-82" y="114" text-anchor="middle" font-size="13" font-weight="800" fill="#64748b">Listening</text>
-              <text x="-124" y="-40" text-anchor="middle" font-size="13" font-weight="800" fill="#64748b">Vocab</text>
-            </g>
-          </svg>
-          <div class="radar-legend" id="score-legend"></div>
-        </div>
+        <div class="card-hd"><div><h2>Skill balance</h2><p>Five real score axes. Speaking is shown separately as practice activity.</p></div></div>
+        <div class="skills" id="skills-list"></div>
       </div>
     </section>
 
     <section class="card" style="margin-bottom:18px">
-      <div class="card-hd"><div><h2>20 words for today</h2><p>10 general words and 10 interest-based words in one place.</p></div><div class="soft-link">Refresh Tomorrow</div></div>
+      <div class="card-hd"><div><h2>20 words for today</h2><p>10 general words and 10 interest-based words in one place.</p></div><a class="soft-link" href="korehan-study-room.html">Open Study Room</a></div>
       <div class="vocab-grid">
         <div class="vocab-box"><h3>10 random essential words</h3><p>Useful daily vocabulary users should meet regularly.</p><div class="word-list" id="random-words"></div></div>
         <div class="vocab-box"><h3>10 words from your interests</h3><p>Based on user-selected tags like K-pop, travel, daily conversation.</p><div class="word-list" id="interest-words"></div></div>
@@ -118,22 +118,22 @@
 
     <section class="grid">
       <div class="card">
-        <div class="card-hd"><div><h2>Daily review</h2><p>Everything studied that day should be easy to revisit in one place.</p></div><div class="soft-link">Review All</div></div>
+        <div class="card-hd"><div><h2>Daily review</h2><p>Everything studied that day should be easy to revisit in one place.</p></div><a class="soft-link" href="korehan-study-room.html">Review All</a></div>
         <div class="review-wrap"><div class="review-day"><div class="review-top"><div><h3 id="review-title">Today</h3><p id="review-sub">0 items reviewed today</p></div><div class="tag amber">Needs review</div></div><div class="timeline" id="review-queue"></div></div></div>
       </div>
       <div class="card">
-        <div class="card-hd"><div><h2>Saved reading history</h2><p>Articles and posts the user already studied should stay visible.</p></div><div class="soft-link">Open My Page</div></div>
+        <div class="card-hd"><div><h2>Saved reading history</h2><p>Articles and posts the user already studied should stay visible.</p></div><a class="soft-link" href="korehan-mypage.html">Open My Page</a></div>
         <div class="articles-list" id="saved-reading"></div>
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" id="weekly-progress">
       <div class="card-hd"><div><h2>Daily & weekly growth</h2><p>Users should be able to feel improvement, not guess it.</p></div></div>
       <div class="growth-grid">
         <div class="chart-box"><div class="chart-title">Weekly study XP</div><div class="chart-sub">A simple graph makes progress feel real.</div><div class="bars" id="weekly-bars"></div></div>
-        <div class="chart-box"><div class="chart-title">This week’s improvement</div><div class="chart-sub">Use simple wins that feel motivating and believable.</div><div class="streak-list" id="weekly-improvements"></div></div>
+        <div class="chart-box"><div class="chart-title">This week’s improvement</div><div class="chart-sub">Simple wins that feel motivating and believable.</div><div class="streak-list" id="weekly-improvements"></div></div>
       </div>
-      <div class="footer-note" id="speaking-note"><strong>Speaking:</strong> not scored directly yet. Treat it as a separate activity card until you have audio recording, STT, and pronunciation comparison.</div>
+      <div class="footer-note" id="speaking-note"></div>
     </section>
   </div>
 
@@ -160,14 +160,14 @@
         {content_type:'story',title:'비 오는 날의 약속',level:'Intermediate',updated_at:'2026-03-15'}
       ],
       saved_words_preview:[
-        {word_key:'1',word_ko:'회복',word_rom:'hoebok',word_en:'recovery',mastered:false,review_count:2},
-        {word_key:'2',word_ko:'확인하다',word_rom:'hwaginhada',word_en:'to check',mastered:false,review_count:3},
-        {word_key:'3',word_ko:'공연장',word_rom:'gongyeonjang',word_en:'concert hall',mastered:true,review_count:5},
-        {word_key:'4',word_ko:'숙소',word_rom:'sukso',word_en:'accommodation',mastered:false,review_count:1},
-        {word_key:'5',word_ko:'예약하다',word_rom:'yeyakhada',word_en:'to reserve',mastered:false,review_count:2},
-        {word_key:'6',word_ko:'팬미팅',word_rom:'paenmiting',word_en:'fan meeting',mastered:false,review_count:1}
+        {word_key:'1',word_ko:'회복',word_en:'recovery'},
+        {word_key:'2',word_ko:'확인하다',word_en:'to check'},
+        {word_key:'3',word_ko:'공연장',word_en:'concert hall'},
+        {word_key:'4',word_ko:'숙소',word_en:'accommodation'},
+        {word_key:'5',word_ko:'예약하다',word_en:'to reserve'},
+        {word_key:'6',word_ko:'팬미팅',word_en:'fan meeting'}
       ],
-      scores:{reading:76,vocabulary:78,grammar:60,writing:45,listening:55,speaking_practice:{label:'activity_only',note:'Speaking is not scored directly yet.',roleplays_completed:3,shadowing_sessions:5}},
+      scores:{reading:76,vocabulary:78,grammar:60,writing:45,listening:55,speaking_practice:{note:'Speaking is not scored directly yet. Treat it as practice activity until audio recording + STT are added.',roleplays_completed:3,shadowing_sessions:5}},
       streak:6
     };
     const data = window.__KH_HUB_DATA__;
@@ -182,27 +182,38 @@
       text('stat-streak', data.streak || 0);
     }
     function weaknessTag(w){ if (w >= 7) return ['Weak','red',34]; if (w >= 4) return ['Needs review','amber',58]; return ['Almost there','green',82]; }
+    function grammarLink(g, type){
+      const q = encodeURIComponent(g);
+      if (type === 'practice') return `korehan-study-room.html?focus=${q}`;
+      if (type === 'examples') return `korehan-study-room.html?tab=examples&grammar=${q}`;
+      return `korehan-study-room.html?tab=quiz&grammar=${q}`;
+    }
     function renderWeakGrammar(){
       const box = document.getElementById('weak-grammar-list');
       box.innerHTML = (data.weak_grammar || []).map(item => {
         const cfg = weaknessTag(Number(item.wrong_count || 0));
-        return `<div class="grammar-item"><div class="grammar-top"><div><div class="grammar-title">${item.grammar_point}</div><div class="grammar-meta">Missed ${item.wrong_count || 0} times recently · ${item.total_attempts || 0} total attempts</div></div><div class="tag ${cfg[1]}">${cfg[0]}</div></div><div class="progress"><div class="fill ${cfg[1]}" style="width:${cfg[2]}%"></div></div><div class="grammar-actions"><div class="solid-btn">더 연습하기</div><div class="ghost-btn">Example Sentences</div><div class="ghost-btn">Mini Quiz</div></div></div>`;
+        return `<div class="grammar-item"><div class="grammar-top"><div><div class="grammar-title">${item.grammar_point}</div><div class="grammar-meta">Missed ${item.wrong_count || 0} times recently · ${item.total_attempts || 0} total attempts</div></div><div class="tag ${cfg[1]}">${cfg[0]}</div></div><div class="progress"><div class="fill ${cfg[1]}" style="width:${cfg[2]}%"></div></div><div class="grammar-actions"><a class="solid-btn" href="${grammarLink(item.grammar_point,'practice')}">더 연습하기</a><a class="ghost-btn" href="${grammarLink(item.grammar_point,'examples')}">Example Sentences</a><a class="ghost-btn" href="${grammarLink(item.grammar_point,'quiz')}">Mini Quiz</a></div></div>`;
       }).join('');
     }
-    function polarToXY(cx, cy, radius, angleDeg){ const a=(Math.PI/180)*angleDeg; return {x:cx+radius*Math.cos(a), y:cy+radius*Math.sin(a)}; }
-    function renderScores(){
+    function renderSkills(){
       const s = data.scores || {};
-      const vals = [pct(s.reading), pct(s.grammar), pct(s.writing), pct(s.listening), pct(s.vocabulary)];
-      const angles = [-90,-18,54,126,198];
-      const pts = vals.map((v,i)=>{ const p=polarToXY(150,150,110*(v/100),angles[i]); return `${p.x.toFixed(1)},${p.y.toFixed(1)}`; }).join(' ');
-      document.getElementById('radar-poly').setAttribute('points', pts);
-      document.getElementById('score-legend').innerHTML = [
-        ['Reading', s.reading, '#2563eb'],
-        ['Grammar', s.grammar, '#60a5fa'],
-        ['Writing', s.writing, '#8b5cf6'],
-        ['Listening', s.listening, '#ef4444'],
-        ['Vocabulary', s.vocabulary, '#f59e0b']
-      ].map(r => `<div class="legend-item"><div class="legend-left"><span class="dot" style="background:${r[2]}"></span><div class="legend-label">${r[0]}</div></div><div class="legend-score">${pct(r[1])} / 100</div></div>`).join('');
+      const rows = [
+        ['Reading', s.reading, '#2563eb', 'Reading volume + completion'],
+        ['Grammar', s.grammar, '#60a5fa', 'Quiz accuracy + weak pattern recovery'],
+        ['Writing', s.writing, '#8b5cf6', 'Writing attempts + corrections'],
+        ['Listening', s.listening, '#ef4444', 'Listening quiz accuracy'],
+        ['Vocabulary', s.vocabulary, '#f59e0b', 'Saved words + review performance']
+      ];
+      document.getElementById('skills-list').innerHTML = rows.map(r => `
+        <div class="skill-row">
+          <div class="skill-top">
+            <div class="skill-name">${r[0]}</div>
+            <div class="skill-score">${pct(r[1])} / 100</div>
+          </div>
+          <div class="skill-track"><div class="skill-bar" style="width:${pct(r[1])}%;background:${r[2]}"></div></div>
+          <div class="skill-note">${r[3]}</div>
+        </div>
+      `).join('');
     }
     function renderWords(){
       const words = data.saved_words_preview || [];
@@ -212,15 +223,20 @@
       document.getElementById('random-words').innerHTML = random.map(w => row(w, 'General')).join('');
       document.getElementById('interest-words').innerHTML = interest.map(w => row(w, 'Interest')).join('');
     }
+    function contentHref(type){
+      if (type === 'article') return 'korehan-all.html';
+      if (type === 'conversation') return 'korehan-conversations.html';
+      return 'korehan-stories.html';
+    }
     function renderReview(){
       const q = data.review_queue || [];
       text('review-title', `Today — ${new Date().toLocaleDateString()}`);
       text('review-sub', `${q.length} items waiting in your review flow`);
-      document.getElementById('review-queue').innerHTML = q.map((item, i) => `<div class="timeline-item"><div class="time">${['09:10 AM','09:26 AM','09:39 AM','09:50 AM'][i] || 'Today'}</div><div><div class="timeline-title">${item.content_type[0].toUpperCase() + item.content_type.slice(1)} — ${item.title}</div><div class="timeline-sub">${item.level || 'Learner level'} · saved for review</div></div></div>`).join('');
+      document.getElementById('review-queue').innerHTML = q.map((item, i) => `<a class="timeline-item" href="${contentHref(item.content_type)}"><div class="time">${['09:10 AM','09:26 AM','09:39 AM','09:50 AM'][i] || 'Today'}</div><div><div class="timeline-title">${item.content_type[0].toUpperCase() + item.content_type.slice(1)} — ${item.title}</div><div class="timeline-sub">${item.level || 'Learner level'} · saved for review</div></div></a>`).join('');
     }
     function renderSavedReading(){
       const q = data.review_queue || [];
-      document.getElementById('saved-reading').innerHTML = q.map(item => `<div class="article-row"><div><div class="article-title">${item.title}</div><div class="article-sub">${item.content_type} · ${item.level || 'Learner level'} · saved to My Page</div></div><div class="article-tag">Saved</div></div>`).join('');
+      document.getElementById('saved-reading').innerHTML = q.map(item => `<a class="article-row" href="${contentHref(item.content_type)}"><div><div class="article-title">${item.title}</div><div class="article-sub">${item.content_type} · ${item.level || 'Learner level'} · saved to My Page</div></div><div class="article-tag">Open</div></a>`).join('');
     }
     function renderWeeklyBars(){
       const weekly = data.weekly_progress || []; const max = Math.max(1, ...weekly.map(d => Number(d.xp_earned || 0)));
@@ -241,9 +257,9 @@
     }
     function renderSpeakingNote(){
       const sp = (data.scores || {}).speaking_practice || {};
-      document.getElementById('speaking-note').innerHTML = `<strong>Speaking:</strong> ${sp.note || 'Speaking is not scored directly yet.'} Roleplays: <strong>${sp.roleplays_completed || 0}</strong> · Shadowing: <strong>${sp.shadowing_sessions || 0}</strong>`;
+      document.getElementById('speaking-note').innerHTML = `<strong>Speaking:</strong> ${sp.note || ''} Roleplays: <strong>${sp.roleplays_completed || 0}</strong> · Shadowing: <strong>${sp.shadowing_sessions || 0}</strong>`;
     }
-    renderTopStats(); renderWeakGrammar(); renderScores(); renderWords(); renderReview(); renderSavedReading(); renderWeeklyBars(); renderWeeklyImprovements(); renderSpeakingNote();
+    renderTopStats(); renderWeakGrammar(); renderSkills(); renderWords(); renderReview(); renderSavedReading(); renderWeeklyBars(); renderWeeklyImprovements(); renderSpeakingNote();
   </script>
 </body>
 </html>
