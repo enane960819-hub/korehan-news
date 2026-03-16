@@ -1108,11 +1108,32 @@ function renderTopicUI() {
 async function generateAIContent(topic) {
   if (!topic) return;
   clearAIContentUI();
-  // cache key
   var cacheKey = 'sr_topic_' + topic.id + '_' + _currentLevel;
+
+  // 1. sessionStorage (즉시)
   var cached = sessionStorage.getItem(cacheKey);
   if (cached) {
     try { _aiContent = JSON.parse(cached); renderAIContent(); hideAILoading(); return; } catch(e) {}
+  }
+
+  // 2. Supabase DB 캐시 (탭 닫아도 유지)
+  if (supaUser && typeof getSupa === 'function') {
+    try {
+      var sb = getSupa();
+      if (sb) {
+        var cres = await sb.from('article_cache')
+          .select('cache_value')
+          .eq('content_type', 'writing_topic')
+          .eq('content_id', String(topic.id))
+          .eq('cache_key', _currentLevel)
+          .maybeSingle();
+        if (cres.data && cres.data.cache_value && cres.data.cache_value.vocab) {
+          _aiContent = cres.data.cache_value;
+          sessionStorage.setItem(cacheKey, JSON.stringify(_aiContent));
+          renderAIContent(); hideAILoading(); return;
+        }
+      }
+    } catch(e) {}
   }
 
   showAILoading();
@@ -1157,6 +1178,22 @@ async function generateAIContent(topic) {
     if (s >= 0 && e > s) clean = clean.slice(s, e + 1);
     _aiContent = JSON.parse(clean);
     sessionStorage.setItem(cacheKey, JSON.stringify(_aiContent));
+
+    // DB에도 저장 (영구 캐시)
+    if (supaUser && typeof getSupa === 'function') {
+      try {
+        var sb2 = getSupa();
+        if (sb2) {
+          sb2.from('article_cache').upsert({
+            content_type: 'writing_topic',
+            content_id:   String(topic.id),
+            cache_key:    _currentLevel,
+            cache_value:  _aiContent
+          }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(){});
+        }
+      } catch(e) {}
+    }
+
     renderAIContent();
     hideAILoading();
   } catch(err) {

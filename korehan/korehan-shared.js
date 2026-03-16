@@ -565,6 +565,7 @@ function updateAuthUI() {
   // 관리자 이메일 목록 (본인 Gmail 추가)
   var ADMIN_EMAILS = ['enane960819@gmail.com'];
   var isAdmin = supaUser && ADMIN_EMAILS.includes(supaUser.email);
+  window._isAdmin = isAdmin; // 다른 파일에서 참조용
 
   if (supaUser) {
     // 로그인 상태
@@ -1785,9 +1786,6 @@ function startFillExercise() {
 
 // ══ FILL-IN-THE-BLANK ENGINE ══════════════════════════════════════════════════
 
-var _fillLoaded = false;
-var _fillArticleId = null;
-
 async function loadFillExercise(container) {
   var el = container || document.getElementById('fill-exercise-area') || document.getElementById('fill-content');
   if (!el) return;
@@ -1795,7 +1793,6 @@ async function loadFillExercise(container) {
   var params = new URLSearchParams(window.location.search);
   var id = params.get('id');
 
-  // 같은 기사면 이미 로드된 내용 유지 (리로드 방지)
   if (_fillLoaded && _fillArticleId === id) return;
   _fillLoaded = false;
   _fillArticleId = id;
@@ -1810,6 +1807,17 @@ async function loadFillExercise(container) {
     el.innerHTML = renderFillNoKey();
     return;
   }
+
+  // ── DB 캐시 확인 ──────────────────────────────────────────
+  var cacheKey = 'fill_' + (a.level || 'intermediate').toLowerCase();
+  try {
+    var cached = await getFromCache('article', a.id, cacheKey);
+    if (cached && cached.questions && cached.questions.length) {
+      _fillLoaded = true;
+      renderFillQuestions(el, cached.questions, a);
+      return;
+    }
+  } catch(e) {}
 
   var level = a.level || 'Intermediate';
   var text = (a.body || '') + (a.full ? ' ' + a.full : '');
@@ -1855,6 +1863,19 @@ Respond ONLY with this JSON (no markdown, no extra text):
     var parsed = JSON.parse(clean);
     _fillLoaded = true;
     renderFillQuestions(el, parsed.questions, a);
+
+    // ── DB에 캐시 저장 ────────────────────────────────────
+    try {
+      var sb = getSupa();
+      if (sb && parsed.questions) {
+        sb.from('article_cache').upsert({
+          content_type: 'article',
+          content_id:   String(a.id),
+          cache_key:    cacheKey,
+          cache_value:  { questions: parsed.questions }
+        }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(){});
+      }
+    } catch(e) {}
   } catch(e) {
     el.innerHTML = '<div style="padding:24px;text-align:center;color:#e53e3e">⚠️ AI 생성 실패. 다시 시도해주세요.<br><button onclick="loadFillExercise()" style="margin-top:12px;padding:8px 20px;background:#2255a4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">🔄 Retry</button></div>';
   }
@@ -2154,14 +2175,25 @@ async function loadGrammarGuide() {
   var params = new URLSearchParams(window.location.search);
   var id = params.get('id');
 
-  // 같은 기사 + 이미 AI 분석 완료된 경우만 재로드 방지
-  // (로그인 상태 변경 시 재시도 허용 - dataset에 'ai' 표시)
   if (el.dataset.loadedId === String(id) && el.dataset.source === 'ai') return;
   el.dataset.loadedId = String(id);
   el.dataset.source = '';
 
   var all = getCachedArticles();
   var a = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
+  if (!a) { el.innerHTML = '<p style="color:#aaa;padding:20px 0;text-align:center">Article not found.</p>'; return; }
+
+  el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center">✨ Analyzing grammar...</div>';
+
+  // ── DB 캐시 확인 ──────────────────────────────────────────
+  try {
+    var cached = await getFromCache('article', a.id, 'grammar_guide');
+    if (cached && cached.patterns && cached.patterns.length) {
+      el.dataset.source = 'ai';
+      renderGrammarGuideHTML(el, cached.patterns);
+      return;
+    }
+  } catch(e) {}
   if (!a) { el.innerHTML = '<p style="color:#aaa;padding:20px 0;text-align:center">Article not found.</p>'; return; }
 
   el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center">✨ Analyzing grammar with AI...</div>';
@@ -2193,18 +2225,22 @@ async function loadGrammarGuide() {
     if (jsonStart >= 0 && jsonEnd > jsonStart) clean = clean.slice(jsonStart, jsonEnd + 1);
     var parsed = JSON.parse(clean);
     var guides = parsed.patterns || [];
-    el.dataset.source = 'ai'; // AI 분석 성공 표시 → 캐시 허용
+    el.dataset.source = 'ai';
 
-    el.innerHTML = '<p class="grammar-intro">✨ Grammar patterns found in this article:</p>'
-      + guides.map(function(g){
-        return '<div class="grammar-point">'
-          + '<div class="grammar-name">' + g.name
-          + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
-          + '</div>'
-          + '<div class="grammar-explanation">' + g.exp + '</div>'
-          + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
-          + '</div>';
-      }).join('');
+    renderGrammarGuideHTML(el, guides);
+
+    // ── DB에 캐시 저장 ────────────────────────────────────
+    try {
+      var sb = getSupa();
+      if (sb && guides.length) {
+        sb.from('article_cache').upsert({
+          content_type: 'article',
+          content_id:   String(a.id),
+          cache_key:    'grammar_guide',
+          cache_value:  { patterns: guides }
+        }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(){});
+      }
+    } catch(e) {}
   } catch(e) {
     if (e.message === 'Not signed in') {
       el.dataset.source = ''; // 로그인 후 재시도 허용
@@ -2218,6 +2254,19 @@ async function loadGrammarGuide() {
       renderStaticGrammar(el, a);
     }
   }
+}
+
+function renderGrammarGuideHTML(el, guides) {
+  el.innerHTML = '<p class="grammar-intro">✨ Grammar patterns found in this article:</p>'
+    + guides.map(function(g){
+      return '<div class="grammar-point">'
+        + '<div class="grammar-name">' + g.name
+        + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
+        + '</div>'
+        + '<div class="grammar-explanation">' + g.exp + '</div>'
+        + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
+        + '</div>';
+    }).join('');
 }
 
 function renderStaticGrammar(el, a) {
@@ -2616,12 +2665,30 @@ function initTooltips() {
 
   document.querySelectorAll('.vocab-zone').forEach(function(el){ wrapVocab(el); });
 
+  // 어드민 전용 편집 버튼 표시 (로그인 체크 후)
+  if (window._isAdmin) {
+    var adminBar = document.createElement('div');
+    adminBar.id = 'vocab-admin-bar';
+    adminBar.style.cssText = 'position:fixed;bottom:70px;right:16px;z-index:8000;background:#0b1626;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);';
+    adminBar.textContent = '✏️ 단어 편집 모드';
+    adminBar.onclick = function() { toggleVocabEditMode(); };
+    document.body.appendChild(adminBar);
+  }
+
   document.addEventListener('mouseover', function(e) {
     var w = e.target.closest ? e.target.closest('.kh-word') : null;
     if (!w) return;
-    var d = VOCAB[w.dataset.word];
+    var word = w.dataset.word;
+    var d = VOCAB[word];
+    if (window._vocabEditMode && window._isAdmin) {
+      tip.innerHTML = '<span style="font-size:13px;color:#fbbf24;font-weight:700">✏️ 클릭하여 편집</span><br>'
+        + '<span style="color:#7ab8f5;font-weight:700">' + word + '</span>'
+        + (d ? '<br><span style="color:#94a3b8;font-size:11px">' + d.en + '</span>' : '<br><span style="color:#f87171;font-size:11px">뜻 없음</span>');
+      tip.style.opacity = '1';
+      return;
+    }
     if (!d) return;
-    tip.innerHTML = '<span style="font-size:16px;font-weight:700;color:#7ab8f5">' + w.dataset.word + '</span><br>'
+    tip.innerHTML = '<span style="font-size:16px;font-weight:700;color:#7ab8f5">' + word + '</span><br>'
       + '<span style="color:#aabbd0;font-size:11px;font-style:italic">' + d.rom + '</span><br>'
       + '<strong>' + d.en + '</strong>';
     tip.style.opacity = '1';
@@ -2633,6 +2700,111 @@ function initTooltips() {
   document.addEventListener('mouseout', function(e) {
     if (e.target.closest && e.target.closest('.kh-word')) tip.style.opacity = '0';
   });
+
+  // 어드민 편집 모드 클릭 처리
+  document.addEventListener('click', function(e) {
+    if (!window._vocabEditMode || !window._isAdmin) return;
+    var w = e.target.closest ? e.target.closest('.kh-word') : null;
+    if (!w) return;
+    e.preventDefault(); e.stopPropagation();
+    tip.style.opacity = '0';
+    openVocabEditModal(w.dataset.word);
+  });
+}
+
+var _vocabEditModeActive = false;
+function toggleVocabEditMode() {
+  window._vocabEditMode = !window._vocabEditMode;
+  _vocabEditModeActive = window._vocabEditMode;
+  var bar = document.getElementById('vocab-admin-bar');
+  if (bar) {
+    bar.textContent = window._vocabEditMode ? '✅ 편집 모드 ON — 단어 클릭' : '✏️ 단어 편집 모드';
+    bar.style.background = window._vocabEditMode ? '#16a34a' : '#0b1626';
+  }
+  // 편집 모드 시 kh-word 에 시각적 표시
+  document.querySelectorAll('.kh-word').forEach(function(w) {
+    w.style.outline = window._vocabEditMode ? '1px dashed #fbbf24' : '';
+    w.style.cursor  = window._vocabEditMode ? 'pointer' : '';
+  });
+}
+
+function openVocabEditModal(word) {
+  var existing = VOCAB[word] || { rom: '', en: '' };
+  var modal = document.createElement('div');
+  modal.id = 'vocab-edit-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML =
+    '<div style="background:#fff;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.3);">'
+    + '<div style="font-size:16px;font-weight:900;color:#0f172a;margin-bottom:16px;">✏️ 단어 수정: <span style="color:#2255a4">' + word + '</span></div>'
+    + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">발음 (romanization)</label>'
+    + '<input id="ve-rom" value="' + existing.rom + '" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;">'
+    + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">영어 뜻</label>'
+    + '<input id="ve-en" value="' + existing.en + '" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:6px;box-sizing:border-box;">'
+    + '<div id="ve-err" style="font-size:12px;color:#e53e3e;margin-bottom:12px;display:none;"></div>'
+    + '<div style="display:flex;gap:8px;margin-top:16px;">'
+    + '<button id="ve-save" style="flex:1;padding:10px;background:#2255a4;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:800;cursor:pointer;">저장</button>'
+    + (existing.en ? '<button id="ve-del" style="padding:10px 16px;background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">삭제</button>' : '')
+    + '<button id="ve-cancel" style="padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">취소</button>'
+    + '</div></div>';
+
+  document.body.appendChild(modal);
+
+  modal.querySelector('#ve-cancel').onclick = function() { modal.remove(); };
+  modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
+
+  var delBtn = modal.querySelector('#ve-del');
+  if (delBtn) {
+    delBtn.onclick = async function() {
+      if (!confirm(word + ' 단어를 삭제할까요?')) return;
+      await saveVocabToDB(word, null, null, true);
+      delete VOCAB[word];
+      // 해당 단어 span 제거
+      document.querySelectorAll('.kh-word[data-word="' + word + '"]').forEach(function(s) {
+        s.replaceWith(document.createTextNode(s.textContent));
+      });
+      modal.remove();
+      showToast('🗑 ' + word + ' 삭제됨');
+    };
+  }
+
+  modal.querySelector('#ve-save').onclick = async function() {
+    var rom = modal.querySelector('#ve-rom').value.trim();
+    var en  = modal.querySelector('#ve-en').value.trim();
+    var err = modal.querySelector('#ve-err');
+    if (!en) { err.textContent = '영어 뜻을 입력해주세요.'; err.style.display='block'; return; }
+    var btn = modal.querySelector('#ve-save');
+    btn.textContent = '저장 중...'; btn.disabled = true;
+    try {
+      await saveVocabToDB(word, rom, en, false);
+      VOCAB[word] = { rom: rom, en: en };
+      // 페이지의 tooltip 즉시 업데이트
+      document.querySelectorAll('.kh-word[data-word="' + word + '"]').forEach(function(s) {
+        s.title = en;
+      });
+      modal.remove();
+      showToast('✅ ' + word + ' 저장됨');
+    } catch(e) {
+      err.textContent = '저장 실패: ' + e.message;
+      err.style.display = 'block';
+      btn.textContent = '저장'; btn.disabled = false;
+    }
+  };
+}
+
+async function saveVocabToDB(word, rom, en, isDelete) {
+  var sb = getSupa();
+  if (!sb) throw new Error('Supabase 연결 없음');
+  if (isDelete) {
+    var res = await sb.from('vocabulary_bank').delete().eq('word_key', word);
+    if (res.error) throw res.error;
+  } else {
+    var res = await sb.from('vocabulary_bank').upsert({
+      word_key: word, word_ko: word,
+      word_rom: rom || '', word_en: en || '',
+      is_active: true
+    }, { onConflict: 'word_key' });
+    if (res.error) throw res.error;
+  }
 }
 
 function wrapVocab(el) {
