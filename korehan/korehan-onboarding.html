@@ -125,7 +125,13 @@ body{background:var(--navy);color:#fff;display:flex;flex-direction:column;align-
   </div>
 
   <!-- 스텝 컨테이너 -->
-  <div id="ob-content"></div>
+  <div id="ob-content">
+    <div style="text-align:center;padding:40px 0;color:rgba(255,255,255,.4);font-size:14px">
+      <div style="font-size:28px;margin-bottom:12px;animation:spin 1s linear infinite;display:inline-block">⏳</div><br>
+      불러오는 중...
+    </div>
+  </div>
+  <style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
 </div>
 
 <script>
@@ -134,18 +140,60 @@ body{background:var(--navy);color:#fff;display:flex;flex-direction:column;align-
 // ══════════════════════════════════════════════
 var SUPA_URL = 'https://samghztrdvtxmrmawneu.supabase.co';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI0MzYyODMsImV4cCI6MjA0ODAxMjI4M30.hPRBpCPHDMQFsIQdEFRJJoqSLJbFdnpjKS5fBLOTFSs';
-var _sb = window.supabase ? window.supabase.createClient(SUPA_URL, SUPA_KEY) : null;
+var _sb = null;
 var _user = null;
 
-// 유저 확인
+function getSb() {
+  if (!_sb) {
+    if (window.supabase) _sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+  }
+  return _sb;
+}
+
+// 유저 확인 — Supabase 로드 대기 후 실행
 async function initUser() {
-  if (!_sb) return;
-  var { data } = await _sb.auth.getUser();
-  _user = data && data.user ? data.user : null;
-  if (!_user) { window.location.href = 'index.html'; return; }
-  // 이미 온보딩 완료했으면 스킵
-  var res = await _sb.from('user_stats').select('onboarded').eq('user_id', _user.id).maybeSingle();
-  if (res.data && res.data.onboarded) { window.location.href = 'index.html'; return; }
+  // Supabase SDK 로드 대기 (최대 3초)
+  var waited = 0;
+  while (!window.supabase && waited < 30) {
+    await new Promise(function(r){ setTimeout(r, 100); });
+    waited++;
+  }
+
+  var sb = getSb();
+  if (!sb) {
+    // Supabase 로드 실패해도 온보딩 표시
+    startOnboarding();
+    return;
+  }
+
+  try {
+    var { data } = await sb.auth.getUser();
+    _user = data && data.user ? data.user : null;
+  } catch(e) {
+    _user = null;
+  }
+
+  if (!_user) {
+    // 비로그인 → 온보딩 그냥 보여줌 (완료 시 저장 생략)
+    startOnboarding();
+    return;
+  }
+
+  // 이미 온보딩 완료했으면 index로
+  try {
+    var res = await sb.from('user_stats')
+      .select('onboarded')
+      .eq('user_id', _user.id)
+      .maybeSingle();
+    // res.data가 null이면 신규 유저 → 온보딩 진행
+    if (res.data && res.data.onboarded === true) {
+      window.location.href = 'index.html';
+      return;
+    }
+  } catch(e) {
+    // DB 오류여도 온보딩 표시
+  }
+
   startOnboarding();
 }
 
@@ -574,8 +622,9 @@ async function finishOnboarding() {
   var btn = document.getElementById('finish-btn');
   btn.textContent = '저장 중...'; btn.disabled = true;
 
-  if (_user && _sb) {
-    await _sb.rpc('complete_onboarding', {
+  var sb2 = getSb();
+  if (_user && sb2) {
+    await sb2.rpc('complete_onboarding', {
       p_user_id:       _user.id,
       p_goal_type:     state.goal,
       p_daily_minutes: state.minutes,
@@ -590,8 +639,9 @@ async function finishOnboarding() {
 }
 
 async function skipOnboarding() {
-  if (_user && _sb) {
-    await _sb.from('user_stats').upsert(
+  var sb3 = getSb();
+  if (_user && sb3) {
+    await sb3.from('user_stats').upsert(
       { user_id: _user.id, onboarded: true, onboarded_at: new Date().toISOString() },
       { onConflict: 'user_id' }
     );
