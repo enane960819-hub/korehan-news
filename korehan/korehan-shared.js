@@ -1139,7 +1139,7 @@ function relTime(dateStr) {
 function cardHTML(a, extraTagClass) {
   var img = a.image || ('https://picsum.photos/seed/' + a.id + '/600/400');
   var tc  = extraTagClass || '';
-  var levelColors = { 'Beginner':'#e8f5e9;color:#2e7d32', 'Intermediate':'#fff8e1;color:#f57f17', 'Advanced':'#fce4ec;color:#c62828' };
+  var levelColors = { 'Starter':'#f3e8ff;color:#6b21a8', 'Beginner':'#e8f5e9;color:#2e7d32', 'Intermediate':'#fff8e1;color:#f57f17', 'Advanced':'#fce4ec;color:#c62828' };
   var levelBadge = a.level ? '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + (levelColors[a.level] || '#f0f0f0;color:#666') + '">' + a.level + '</span>' : '';
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
     + '<div class="card">'
@@ -1333,7 +1333,7 @@ function heroGoTo(idx) {
 }
 
 function buildArticleRowHTML(a) {
-  var levelColors = {Beginner:'background:#e8f5e9;color:#2e7d32',Intermediate:'background:#fff8e1;color:#f57f17',Advanced:'background:#fce4ec;color:#c62828'};
+  var levelColors = {Starter:'background:#f3e8ff;color:#6b21a8',Beginner:'background:#e8f5e9;color:#2e7d32',Intermediate:'background:#fff8e1;color:#f57f17',Advanced:'background:#fce4ec;color:#c62828'};
   var lvlStyle = levelColors[a.level] || 'background:#f0f4ff;color:#1a3a6b';
   var aImg = a.image || ('https://picsum.photos/seed/' + a.id + '/400/220');
   var fallback = 'https://picsum.photos/seed/' + a.id + 'x/400/220';
@@ -1455,7 +1455,7 @@ async function renderSectionPage(section) {
     if (!rest.length) {
       listEl.innerHTML = '<p style="color:#94a3b8;padding:20px 0">기사를 찾을 수 없습니다.</p>';
     } else {
-      var levelColors = {Beginner:'#e8f5e9;color:#2e7d32',Intermediate:'#fff8e1;color:#f57f17',Advanced:'#fce4ec;color:#c62828'};
+      var levelColors = {Starter:'#f3e8ff;color:#6b21a8',Beginner:'#e8f5e9;color:#2e7d32',Intermediate:'#fff8e1;color:#f57f17',Advanced:'#fce4ec;color:#c62828'};
       listEl.innerHTML = rest.map(buildArticleRowHTML).join('');
     }
   }
@@ -1481,6 +1481,7 @@ function renderAllPage() {
       + (searchQ ? '<div style="font-size:13px;color:var(--gray);margin:8px 0 16px"><strong>"' + escapeHtml(searchQ) + '"</strong>  search results</div>' : '')
       + '<div style="display:flex;gap:6px;margin:12px 0 16px;flex-wrap:wrap" id="all-level-filter">'
       + '<button class="level-filter-btn on" onclick="filterAllLevel(\'All\',this)">All</button>'
+      + '<button class="level-filter-btn" onclick="filterAllLevel(\'Starter\',this)">⚪ Starter</button>'
       + '<button class="level-filter-btn" onclick="filterAllLevel(\'Beginner\',this)">🟢 Beginner</button>'
       + '<button class="level-filter-btn" onclick="filterAllLevel(\'Intermediate\',this)">🟡 Intermediate</button>'
       + '<button class="level-filter-btn" onclick="filterAllLevel(\'Advanced\',this)">🔴 Advanced</button>'
@@ -1504,7 +1505,7 @@ function renderAllList(listEl, articles) {
     listEl.innerHTML = '<div style="padding:40px;color:#999;text-align:center">No articles found.</div>';
     return;
   }
-  var levelColors = {'Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'};
+  var levelColors = {'Starter':'#f3e8ff;color:#6b21a8','Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'};
   listEl.innerHTML = articles.map(function(a){
     var levelBadge = a.level ? '<span style="font-size:10px;font-weight:800;padding:1px 8px;border-radius:999px;background:' + (levelColors[a.level]||'#f0f0f0;color:#666') + '">' + a.level + '</span>' : '';
     return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
@@ -1643,7 +1644,7 @@ function renderArticlePage() {
           + '<div class="art-related-title">📰 Related Articles</div>'
           + '<div class="art-related-grid">'
           + related.map(function(r){
-              var levelColors = {'Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'};
+              var levelColors = {'Starter':'#f3e8ff;color:#6b21a8','Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'};
               return '<a href="' + articleUrl(r.id) + '" class="art-related-card">'
                 + '<img src="' + (r.image || 'https://picsum.photos/seed/'+r.id+'/300/200') + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/300/200\'">'
                 + '<div class="art-related-info">'
@@ -1732,7 +1733,7 @@ function initFillTeaser(article) {
   var teaser = document.getElementById('fill-teaser');
   if (!teaser) return;
 
-  var level = article.level || 'Intermediate';
+  var level = article.level || 'Beginner';
   var levelColor = level === 'Beginner' ? '#2e7d32' : level === 'Advanced' ? '#c62828' : '#d97706';
   var levelBg    = level === 'Beginner' ? '#e8f5e9' : level === 'Advanced' ? '#fce4ec' : '#fff8e1';
 
@@ -1833,6 +1834,7 @@ Article text: "${text.slice(0, 1200)}"
 Generate exactly 6 fill-in-the-blank questions from this article. Mix vocabulary gaps (important nouns/verbs) and grammar gaps (particles, verb endings, connectives).
 
 Rules:
+- For Starter: only basic nouns and verbs the student just learned (가족, 숫자, 색깔), ~이에요/예요 endings only, no particles
 - For Beginner: focus on common vocabulary and basic particles (은/는/이/가/을/를/에서/에)
 - For Intermediate: mix vocabulary with grammar patterns (으로/에게/한테/도/만/부터/까지)  
 - For Advanced: focus on advanced grammar endings (-으면서/-는데/-아/어서/-기 때문에/-ㄹ 수록)
@@ -1911,7 +1913,7 @@ function renderFillQuestions(container, questions, article) {
   _fillState = {};
   questions.forEach(function(_, i){ _fillState[i] = { selected: null, correct: null, mode: 'choice' }; });
 
-  var level = article.level || 'Intermediate';
+  var level = article.level || 'Beginner';
   var levelColor = level === 'Beginner' ? '#2e7d32' : level === 'Advanced' ? '#c62828' : '#f57f17';
 
   var html = '<div style="padding:4px 0">'

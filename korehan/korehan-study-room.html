@@ -27,6 +27,7 @@
 .lv-btn { padding:8px 20px; border-radius:999px; border:1.5px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.65); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; transition:all .18s; }
 .lv-btn:hover { background:rgba(255,255,255,0.14); color:#fff; }
 .lv-btn.on { color:#fff; border-color:transparent; }
+.lv-btn.lv-s.on { background:#6b21a8; }
 .lv-btn.lv-b.on { background:#2e7d32; }
 .lv-btn.lv-i.on { background:#e65c00; }
 .lv-btn.lv-a.on { background:#c62828; }
@@ -561,6 +562,7 @@
     <p>Pick your level, write in Korean — vocab, grammar & feedback, all in one place.</p>
 
     <div class="lv-row">
+      <button class="lv-btn lv-s"    onclick="setLevel('Starter',this)">⚪ Starter</button>
       <button class="lv-btn lv-b on" onclick="setLevel('Beginner',this)">🟢 Beginner</button>
       <button class="lv-btn lv-i"    onclick="setLevel('Intermediate',this)">🟡 Intermediate</button>
       <button class="lv-btn lv-a"    onclick="setLevel('Advanced',this)">🔴 Advanced</button>
@@ -906,6 +908,7 @@ function renderPhrase() {
 
 function normalizeLevelName(level) {
   var v = String(level || '').toLowerCase().trim();
+  if (v === 'starter') return 'Starter';
   if (v === 'beginner') return 'Beginner';
   if (v === 'intermediate') return 'Intermediate';
   if (v === 'advanced') return 'Advanced';
@@ -1145,6 +1148,7 @@ async function generateAIContent(topic) {
   showAILoading();
   // call AI
   var levelGuide = {
+    Starter:      'STARTER: Ultra-basic level — student just learned Hangul. Use ONLY 1-syllable or extremely common 2-syllable words (엄마, 아빠, 밥, 물, 집, 학교, 나, 너). Grammar ONLY: ~이에요/예요, ~있어요/없어요. NO particles except 은/는. Sentences max 4 words. Helper sentences must be 3-5 words only. Vocab: body parts, food, family, colors, numbers. Example: 저는 학생이에요.',
     Beginner:     'BEGINNER: Use only present tense (~아요/어요), simple vocabulary (1-2 syllable words), basic particles (은/는/이/가/을/를). Vocab should be common everyday words. Grammar patterns: ~이에요/예요, ~아요/어요, ~있어요/없어요. Helper sentences should be very short (5-8 words). Example: 저는 음식을 좋아해요.',
     Intermediate: 'INTERMEDIATE: Use past tense (~었어요/았어요), conjunctions (~고, ~지만, ~서, ~때문에), modal expressions (~고 싶어요, ~아/어 보다). Vocab should include 2-3 syllable words and topic-specific terms. Grammar patterns: ~았/었어요, ~(으)ㄹ 것 같아요, ~다고 생각해요. Helper sentences 8-12 words. Example: 어릴 때부터 이 음식을 좋아했는데, 지금도 자주 먹어요.',
     Advanced:     'ADVANCED: Use complex sentence structures, formal/written style (~습니다/ㅂ니다), relative clauses (~는/은/을), nominalizations (~는 것, ~기), advanced connectors (~에도 불구하고, ~(으)ㄹ수록). Vocab should include abstract nouns, advanced topic-specific terminology. Grammar patterns: ~(으)ㄹ수록, ~에 비해, ~는 반면에. Helper sentences 12+ words with complex grammar. Example: 현대 사회에서 스마트폰이 일상생활에 미치는 영향은 매우 크다고 할 수 있다.'
