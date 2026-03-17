@@ -9,12 +9,12 @@
 <style>
 :root{--navy:#0b1626;--blue:#1a3a6b;--bright:#2255a4;--sky:#7ab8f5;--bg:#f0f2f7;--white:#fff;--border:#d4dce8;--gray:#445566;--dark:#0d1b2e}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:'Source Sans 3','Noto Sans KR',sans-serif}
+html,body{height:100%;font-family:inherit,'Noto Sans KR',sans-serif}
 body{background:var(--navy);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px}
 
 /* ── 레이아웃 ── */
 .ob-wrap{width:100%;max-width:520px}
-.ob-logo{font-family:'Noto Serif KR',serif;font-size:20px;font-weight:900;color:#fff;text-align:center;margin-bottom:32px;letter-spacing:-.02em}
+.ob-logo{font-family:serif;font-size:20px;font-weight:900;color:#fff;text-align:center;margin-bottom:32px;letter-spacing:-.02em}
 .ob-logo span{color:var(--sky)}
 
 /* ── 진행 바 ── */
@@ -29,7 +29,7 @@ body{background:var(--navy);color:#fff;display:flex;flex-direction:column;align-
 /* ── 카드 ── */
 .ob-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px 24px}
 .ob-eyebrow{font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--sky);margin-bottom:8px}
-.ob-title{font-family:'Noto Serif KR',serif;font-size:22px;font-weight:900;line-height:1.25;margin-bottom:6px}
+.ob-title{font-family:serif;font-size:22px;font-weight:900;line-height:1.25;margin-bottom:6px}
 .ob-desc{font-size:13px;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:22px}
 
 /* ── 선택 버튼들 ── */
@@ -49,7 +49,7 @@ body{background:var(--navy);color:#fff;display:flex;flex-direction:column;align-
 .ob-time-btn{padding:16px 8px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;cursor:pointer;font-family:inherit;color:#fff;text-align:center;transition:all .15s}
 .ob-time-btn:hover{background:rgba(255,255,255,.09)}
 .ob-time-btn.selected{background:rgba(34,85,164,.3);border-color:var(--bright)}
-.ob-time-num{font-size:24px;font-weight:900;display:block;font-family:'Noto Serif KR',serif}
+.ob-time-num{font-size:24px;font-weight:900;display:block;font-family:serif}
 .ob-time-label{font-size:11px;color:rgba(255,255,255,.5);display:block;margin-top:3px}
 .ob-time-sub{font-size:10px;color:rgba(255,255,255,.35);display:block;margin-top:2px}
 
@@ -65,7 +65,7 @@ body{background:var(--navy);color:#fff;display:flex;flex-direction:column;align-
 .badge-adv{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.25)}
 
 .test-q{font-size:16px;font-weight:700;line-height:1.6;margin-bottom:16px;color:#fff}
-.test-ko{font-family:'Noto Serif KR',serif;font-size:20px;font-weight:900;color:var(--sky);display:block;margin-bottom:6px}
+.test-ko{font-family:serif;font-size:20px;font-weight:900;color:var(--sky);display:block;margin-bottom:6px}
 .test-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .test-opt{padding:11px 12px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;color:#fff;text-align:center;transition:all .15s}
 .test-opt:hover:not(:disabled){background:rgba(255,255,255,.1)}
@@ -80,7 +80,7 @@ body{background:var(--navy);color:#fff;display:flex;flex-direction:column;align-
 
 /* ── 결과 ── */
 .result-score{text-align:center;padding:20px 0}
-.result-num{font-family:'Noto Serif KR',serif;font-size:64px;font-weight:900;line-height:1;color:#fff}
+.result-num{font-family:serif;font-size:64px;font-weight:900;line-height:1;color:#fff}
 .result-denom{font-size:20px;color:rgba(255,255,255,.4)}
 .result-level{font-size:22px;font-weight:900;margin:10px 0 4px;color:var(--sky)}
 .result-desc{font-size:13px;color:rgba(255,255,255,.55);line-height:1.6}
@@ -537,7 +537,7 @@ function showTestResult() {
     '<div class="ob-card">'
     + '<div class="ob-eyebrow">레벨 테스트 결과</div>'
     + '<div style="text-align:center;padding:16px 0 20px">'
-    + '<div style="font-family:'Noto Serif KR',serif;font-size:56px;font-weight:900;line-height:1">' + correct + '<span style="font-size:20px;color:rgba(255,255,255,.35)"> / 15</span></div>'
+    + '<div style="font-family:serif;font-size:56px;font-weight:900;line-height:1">' + correct + '<span style="font-size:20px;color:rgba(255,255,255,.35)"> / 15</span></div>'
     + '<div style="margin-top:10px;font-size:13px;color:rgba(255,255,255,.5)">추천 레벨</div>'
     + '<div style="font-size:22px;font-weight:900;color:' + recData.color + ';margin:4px 0">' + recData.ko + ' · ' + recommended + '</div>'
     + '<div style="font-size:13px;color:rgba(255,255,255,.45);line-height:1.5">' + recData.desc + '</div>'
