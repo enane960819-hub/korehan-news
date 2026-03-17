@@ -3379,8 +3379,27 @@ document.addEventListener('DOMContentLoaded', async function() {
   ttsInit();
   injectDailyMission();
   startClock();
-  initTooltips();
+  loadVocabFromDB().then(function(){ initTooltips(); });
 });
+
+// ── vocabulary_bank DB → VOCAB 병합 ───────────────────────
+// 하드코딩 VOCAB에 DB 단어를 덮어쓰기 (DB 우선)
+async function loadVocabFromDB() {
+  try {
+    var sb = getSupa(); if (!sb) { initTooltips(); return; }
+    var res = await sb.from('vocabulary_bank')
+      .select('word_ko,word_rom,word_en')
+      .eq('is_active', true)
+      .limit(2000);
+    if (res.data && res.data.length) {
+      res.data.forEach(function(row) {
+        if (row.word_ko && row.word_en) {
+          VOCAB[row.word_ko] = { rom: row.word_rom || '', en: row.word_en };
+        }
+      });
+    }
+  } catch(e) {}
+}
 
 // ══ BADGE ENGINE ══════════════════════════════════════════════════════════════
 // 뱃지 정의 + 체크 + 알림 시스템
