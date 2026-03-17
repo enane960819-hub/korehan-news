@@ -526,27 +526,37 @@ async function checkSession() {
   var sb = getSupa();
   if (!sb) { window._sessionChecked = true; return; }
 
-  // OAuth redirect hash fragment 처리 (#access_token=... 가 URL에 있을 때)
-  if (window.location.hash && window.location.hash.includes('access_token')) {
-    try {
-      // Supabase가 hash를 읽어서 세션 설정하도록 잠깐 대기
-      await new Promise(function(r){ setTimeout(r, 300); });
-      // hash 제거 (URL 깔끔하게)
+  // OAuth 콜백 처리 — ?code= 파라미터 (PKCE) 또는 #access_token (implicit)
+  var hasCode = window.location.search.includes('code=');
+  var hasHash = window.location.hash && window.location.hash.includes('access_token');
+
+  if (hasCode || hasHash) {
+    // Supabase가 code를 exchange해서 세션 설정할 시간 대기
+    await new Promise(function(r){ setTimeout(r, 800); });
+    // URL 정리
+    if (hasCode) {
+      window.history.replaceState(null, '', window.location.pathname);
+    } else {
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
-    } catch(e) {}
+    }
   }
 
   var { data } = await sb.auth.getSession();
   if (data && data.session && data.session.user) {
     supaUser = data.session.user;
     updateAuthUI();
+    renderDailyMission();
+    window.dispatchEvent(new Event('kh-auth-signed-in'));
+    if (!window.location.pathname.includes('onboarding')) {
+      checkOnboardingStatus();
+    }
   }
   window._sessionChecked = true;
+
   // 세션 변화 감지
   sb.auth.onAuthStateChange(function(event, session) {
     if (event === 'SIGNED_OUT') {
       supaUser = null;
-      // 다른 탭에서 로그아웃 시 현재 페이지도 즉시 반영
       updateAuthUI();
       updateCommentForm();
     } else if (event === 'SIGNED_IN') {
@@ -556,7 +566,6 @@ async function checkSession() {
       updateCommentForm();
       renderDailyMission();
       window.dispatchEvent(new Event('kh-auth-signed-in'));
-      // 온보딩 체크 — onboarding 페이지 자체에서는 실행 안 함
       if (!window.location.pathname.includes('onboarding')) {
         checkOnboardingStatus();
       }
