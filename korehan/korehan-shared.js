@@ -4755,7 +4755,7 @@ function enhanceConversationsMobile() {
         + '<h3 style="font-size:22px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">Read → Translate → Practice → Roleplay</h3>'
         + '<p class="mobile-quick-sub">Keep the conversation UI intact, then use the tools below to turn the chat into active speaking practice.</p>'
         + '<div class="mobile-action-row">'
-        + '<a class="mobile-primary-btn" href="javascript:void(0)">💬 Roleplay</a>'
+        + '<a class="mobile-primary-btn" href="javascript:void(0)" onclick="if(typeof startRolePlay===\'function\')startRolePlay()">💬 Roleplay</a>'
         + '<a class="mobile-secondary-btn" href="korehan-study-room.html">✏️ Practice</a>'
         + '</div>';
       leftHead.insertAdjacentElement('afterend', box);
