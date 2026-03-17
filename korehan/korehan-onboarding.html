@@ -467,42 +467,75 @@ function showTestResult() {
   var intCorrect = state.testAnswers.slice(5,10).filter(Boolean).length;
   var advCorrect = state.testAnswers.slice(10,15).filter(Boolean).length;
 
-  // 레벨 판별
-  var level;
-  if (advCorrect >= 3)     level = 'Advanced';
-  else if (intCorrect >= 3) level = 'Intermediate';
-  else                      level = 'Beginner';
-  state.level = level;
+  // 추천 레벨 (강제 아님)
+  var recommended;
+  if (advCorrect >= 3)      recommended = 'Advanced';
+  else if (intCorrect >= 3) recommended = 'Intermediate';
+  else                      recommended = 'Beginner';
 
-  var levelDesc = {
-    Beginner:     '기초를 다지는 단계예요. 쉬운 기사와 필수 어휘부터 시작해요.',
-    Intermediate: '일상 한국어는 이해하는 수준이에요. 뉴스 읽기에 딱 맞아요.',
-    Advanced:     '복잡한 문법도 이해하는 고급 단계예요. 시사 뉴스를 원어로 읽어봐요.',
-  }[level];
+  // 기본 선택은 추천 레벨
+  state.level = recommended;
 
-  var levelBadgeClass = { Beginner:'badge-beg', Intermediate:'badge-int', Advanced:'badge-adv' }[level];
-  var levelKo = { Beginner:'초급', Intermediate:'중급', Advanced:'고급' }[level];
+  var levelData = {
+    Starter:      { ko:'입문', badge:'badge-sta', color:'#a78bfa', desc:'한글 자모를 막 배운 단계예요.' },
+    Beginner:     { ko:'초급', badge:'badge-beg', color:'#4ade80', desc:'기본 조사와 시제를 이해하는 단계예요.' },
+    Intermediate: { ko:'중급', badge:'badge-int', color:'#fbbf24', desc:'연결어미와 뉴스를 어느 정도 읽는 단계예요.' },
+    Advanced:     { ko:'고급', badge:'badge-adv', color:'#f87171', desc:'복잡한 문법과 시사 어휘를 이해하는 단계예요.' },
+  };
+
+  var recData = levelData[recommended];
 
   document.getElementById('ob-content').innerHTML =
     '<div class="ob-card">'
     + '<div class="ob-eyebrow">레벨 테스트 결과</div>'
-    + '<div class="result-score">'
-    + '<div class="result-num">' + correct + '<span class="result-denom"> / 15</span></div>'
-    + '<div class="result-level">' + levelKo + ' · ' + level + '</div>'
-    + '<div class="result-desc">' + levelDesc + '</div>'
+    + '<div style="text-align:center;padding:16px 0 20px">'
+    + '<div style="font-family:'Noto Serif KR',serif;font-size:56px;font-weight:900;line-height:1">' + correct + '<span style="font-size:20px;color:rgba(255,255,255,.35)"> / 15</span></div>'
+    + '<div style="margin-top:10px;font-size:13px;color:rgba(255,255,255,.5)">추천 레벨</div>'
+    + '<div style="font-size:22px;font-weight:900;color:' + recData.color + ';margin:4px 0">' + recData.ko + ' · ' + recommended + '</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.45);line-height:1.5">' + recData.desc + '</div>'
     + '</div>'
-    + '<div class="result-breakdown">'
-    + '<div class="rb-item rb-beg"><div class="rb-n">' + begCorrect + '/5</div><div class="rb-l">초급</div></div>'
-    + '<div class="rb-item rb-int"><div class="rb-n">' + intCorrect + '/5</div><div class="rb-l">중급</div></div>'
-    + '<div class="rb-item rb-adv"><div class="rb-n">' + advCorrect + '/5</div><div class="rb-l">고급</div></div>'
+
+    + '<div style="font-size:12px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">시작 레벨 직접 선택</div>'
+
+    + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">'
+    + Object.keys(levelData).map(function(key) {
+        var d = levelData[key];
+        var isRec = key === recommended;
+        var isSelected = key === state.level;
+        return '<button class="ob-opt' + (isSelected ? ' selected' : '') + '" data-level="' + key + '" onclick="selectLevel('' + key + '')">'
+          + '<span class="ob-opt-icon" style="font-size:16px">' + { Starter:'🌱', Beginner:'📗', Intermediate:'📘', Advanced:'📕' }[key] + '</span>'
+          + '<span class="ob-opt-text">'
+          + '<span class="ob-opt-label">' + d.ko + ' <span style="font-size:11px;font-weight:600;opacity:.6">(' + key + ')</span>'
+          + (isRec ? ' <span style="font-size:10px;background:rgba(122,184,245,.2);color:#7ab8f5;padding:1px 7px;border-radius:999px;vertical-align:middle;font-weight:700">추천</span>' : '')
+          + '</span>'
+          + '<span class="ob-opt-sub">' + d.desc + '</span>'
+          + '</span>'
+          + '<span class="ob-opt-check"><svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1,5 4,8 9,2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'
+          + '</button>';
+      }).join('')
     + '</div>'
-    + '<div class="ob-btn-row" style="margin-top:20px">'
-    + '<button class="ob-btn ob-btn-secondary" onclick="retakeTest()">다시 테스트</button>'
+
+    + '<div style="background:rgba(255,255,255,.04);border-radius:10px;padding:10px 14px;margin-bottom:18px;display:flex;gap:10px;justify-content:center">'
+    + '<div style="text-align:center"><div style="font-size:16px;font-weight:900;color:#4ade80">' + begCorrect + '<span style="font-size:11px;color:rgba(255,255,255,.35)">/5</span></div><div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px">초급</div></div>'
+    + '<div style="width:1px;background:rgba(255,255,255,.1)"></div>'
+    + '<div style="text-align:center"><div style="font-size:16px;font-weight:900;color:#fbbf24">' + intCorrect + '<span style="font-size:11px;color:rgba(255,255,255,.35)">/5</span></div><div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px">중급</div></div>'
+    + '<div style="width:1px;background:rgba(255,255,255,.1)"></div>'
+    + '<div style="text-align:center"><div style="font-size:16px;font-weight:900;color:#f87171">' + advCorrect + '<span style="font-size:11px;color:rgba(255,255,255,.35)">/5</span></div><div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px">고급</div></div>'
+    + '</div>'
+
+    + '<div style="display:flex;gap:10px">'
+    + '<button class="ob-btn ob-btn-secondary" onclick="retakeTest()" style="flex:0 0 auto;padding:13px 16px">다시 테스트</button>'
     + '<button class="ob-btn ob-btn-primary" onclick="goStep4()">이 레벨로 시작 →</button>'
     + '</div>'
     + '</div>';
 }
 
+function selectLevel(key) {
+  state.level = key;
+  document.querySelectorAll('.ob-opt[data-level]').forEach(function(b){
+    b.classList.toggle('selected', b.dataset.level === key);
+  });
+}
 function retakeTest() {
   renderStep3();
 }
@@ -517,7 +550,7 @@ function goStep4() {
 // ══════════════════════════════════════════════
 function renderStep4() {
   updateProgress(4);
-  var levelKo  = { Beginner:'초급', Intermediate:'중급', Advanced:'고급' }[state.level];
+  var levelKo  = { Starter:'입문', Beginner:'초급', Intermediate:'중급', Advanced:'고급' }[state.level];
   var goalKo   = { travel:'여행', kpop:'K-pop·드라마', business:'비즈니스', immigration:'이민·거주', fun:'재미로' }[state.goal] || '';
   var minLabel = state.minutes + '분';
 
@@ -552,7 +585,8 @@ async function finishOnboarding() {
   }
 
   // 레벨에 맞는 기사로 이동
-  window.location.href = 'korehan-all.html?level=' + state.level;
+  var dest = state.level === 'Starter' ? 'korehan-all.html?level=Beginner' : 'korehan-all.html?level=' + state.level;
+    window.location.href = dest;
 }
 
 async function skipOnboarding() {
