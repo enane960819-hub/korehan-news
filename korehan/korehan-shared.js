@@ -107,9 +107,25 @@ async function getArticleCacheVocab() {
   }
   try {
     var arts = getCachedArticles ? getCachedArticles() : [];
+    // Batch load all article cache entries in one query instead of N+1
+    var artIds = arts.map(function(a){ return String(a.id); });
+    var batchCacheMap = {};
+    if (artIds.length > 0) {
+      var sb0 = getSupa();
+      if (sb0) {
+        var batchRes = await sb0.from('article_cache')
+          .select('content_id,cache_value')
+          .eq('content_type', 'article')
+          .eq('cache_key', 'ai_analysis')
+          .in('content_id', artIds);
+        if (batchRes.data) {
+          batchRes.data.forEach(function(row){ batchCacheMap[row.content_id] = row.cache_value; });
+        }
+      }
+    }
     for (var i = 0; i < arts.length; i++) {
       var art = arts[i];
-      var cached = await getFromCache('article', art.id, 'ai_analysis');
+      var cached = batchCacheMap[String(art.id)] || null;
       (cached && cached.vocab || []).forEach(function(v){ pushWord(v); });
       ((art.data && art.data.vocab) || []).forEach(function(v){ pushWord(v); });
     }
@@ -1904,7 +1920,7 @@ Respond ONLY with this JSON (no markdown, no extra text):
           content_id:   String(a.id),
           cache_key:    cacheKey,
           cache_value:  { questions: parsed.questions }
-        }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(){});
+        }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(e){ console.warn('fill cache save failed', e); });
       }
     } catch(e) {}
   } catch(e) {
@@ -2225,7 +2241,6 @@ async function loadGrammarGuide() {
       return;
     }
   } catch(e) {}
-  if (!a) { el.innerHTML = '<p style="color:#aaa;padding:20px 0;text-align:center">Article not found.</p>'; return; }
 
   el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center">✨ Analyzing grammar with AI...</div>';
 
@@ -2269,7 +2284,7 @@ async function loadGrammarGuide() {
           content_id:   String(a.id),
           cache_key:    'grammar_guide',
           cache_value:  { patterns: guides }
-        }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(){});
+        }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(e){ console.warn('grammar cache save failed', e); });
       }
     } catch(e) {}
   } catch(e) {
@@ -2584,13 +2599,13 @@ async function loadComments(articleId) {
     var isOwn = supaUser && supaUser.id === c.user_id;
     var avatar = c.avatar_url
       ? '<img src="' + c.avatar_url + '" class="comment-avatar" onerror="this.style.display=\'none\'">'
-      : '<div class="comment-avatar" style="background:#2255a4;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700">' + (c.user_name||'?').charAt(0) + '</div>';
+      : '<div class="comment-avatar" style="background:#2255a4;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700">' + escapeHtml((c.user_name||'?').charAt(0)) + '</div>';
     var timeStr = c.created_at ? new Date(c.created_at).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
     return '<div class="comment-row" id="comment-' + c.id + '">'
       + '<div class="comment-top">'
       + avatar
       + '<div class="comment-meta">'
-      + '<span class="comment-name">' + (c.user_name || 'Anonymous') + '</span>'
+      + '<span class="comment-name">' + escapeHtml(c.user_name || 'Anonymous') + '</span>'
       + '<span class="comment-date">' + timeStr + '</span>'
       + '</div>'
       + (isOwn ? '<button class="comment-del" onclick="deleteComment(\'' + c.id + '\')" title="Delete">✕</button>' : '')
@@ -2724,9 +2739,14 @@ function initTooltips() {
       + '<strong>' + d.en + '</strong>';
     tip.style.opacity = '1';
   });
+  var _tipMoveRaf = null;
   document.addEventListener('mousemove', function(e) {
-    tip.style.left = (e.clientX + 14) + 'px';
-    tip.style.top  = (e.clientY - 10) + 'px';
+    if (_tipMoveRaf) return;
+    _tipMoveRaf = requestAnimationFrame(function() {
+      tip.style.left = (e.clientX + 14) + 'px';
+      tip.style.top  = (e.clientY - 10) + 'px';
+      _tipMoveRaf = null;
+    });
   });
   document.addEventListener('mouseout', function(e) {
     if (e.target.closest && e.target.closest('.kh-word')) tip.style.opacity = '0';
@@ -2743,10 +2763,8 @@ function initTooltips() {
   });
 }
 
-var _vocabEditModeActive = false;
 function toggleVocabEditMode() {
   window._vocabEditMode = !window._vocabEditMode;
-  _vocabEditModeActive = window._vocabEditMode;
   var bar = document.getElementById('vocab-admin-bar');
   if (bar) {
     bar.textContent = window._vocabEditMode ? '✅ 편집 모드 ON — 단어 클릭 or 드래그 선택' : '✏️ 단어 편집 모드';
@@ -3458,7 +3476,7 @@ async function loadVocabFromDB() {
         }
       });
     }
-  } catch(e) {}
+  } catch(e) { console.warn('loadVocabFromDB failed', e); }
 }
 
 // ══ BADGE ENGINE ══════════════════════════════════════════════════════════════
