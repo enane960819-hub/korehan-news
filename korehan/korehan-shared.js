@@ -525,12 +525,23 @@ async function signOut() {
 async function checkSession() {
   var sb = getSupa();
   if (!sb) { window._sessionChecked = true; return; }
+
+  // OAuth redirect hash fragment 처리 (#access_token=... 가 URL에 있을 때)
+  if (window.location.hash && window.location.hash.includes('access_token')) {
+    try {
+      // Supabase가 hash를 읽어서 세션 설정하도록 잠깐 대기
+      await new Promise(function(r){ setTimeout(r, 300); });
+      // hash 제거 (URL 깔끔하게)
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    } catch(e) {}
+  }
+
   var { data } = await sb.auth.getSession();
   if (data && data.session && data.session.user) {
     supaUser = data.session.user;
     updateAuthUI();
   }
-  window._sessionChecked = true;  // ← 반드시 세팅
+  window._sessionChecked = true;
   // 세션 변화 감지
   sb.auth.onAuthStateChange(function(event, session) {
     if (event === 'SIGNED_OUT') {
@@ -3403,16 +3414,24 @@ async function checkOnboardingStatus() {
   try {
     var sb = getSupa(); if (!sb) return;
     var res = await sb.from('user_stats')
-      .select('onboarded')
+      .select('onboarded, created_at')
       .eq('user_id', supaUser.id)
       .maybeSingle();
-    // 레코드 없거나 onboarded=false 면 온보딩으로
-    if (!res.data || !res.data.onboarded) {
-      // 살짝 딜레이 후 이동 (로그인 모달 닫힐 시간)
+
+    // 기존 유저 (user_stats 레코드 있음) → onboarded 값 무관하게 통과
+    if (res.data) return;
+
+    // 레코드 자체가 없는 경우 → 가입 시각으로 신규 여부 판단
+    // 가입 후 10분 이내면 신규 유저로 간주
+    var createdAt = supaUser.created_at ? new Date(supaUser.created_at) : null;
+    var isNew = createdAt && (Date.now() - createdAt.getTime() < 10 * 60 * 1000);
+
+    if (isNew) {
       setTimeout(function() {
         window.location.href = 'korehan-onboarding.html';
       }, 600);
     }
+    // 기존 유저인데 user_stats 없으면 그냥 통과 (기존 데이터 유지)
   } catch(e) {}
 }
 
