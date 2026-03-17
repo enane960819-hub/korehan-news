@@ -1489,6 +1489,9 @@ async function submitWriting() {
       triggerAIFeedback(submissionId, text, requiredVocab, requiredGrammar);
     }
 
+    // XP 적립
+    if (typeof awardXP === 'function') awardXP('writing_submit', { topic_ko: _todayTopic && _todayTopic.topic_ko });
+
     var doneEl = document.getElementById('hero-topic-done');
     if (doneEl) doneEl.style.display = 'flex';
     showToast('✅ 제출 완료! Han이 24시간 내에 피드백을 드려요.');

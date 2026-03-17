@@ -2912,6 +2912,67 @@ function wrapSingleWord(el, word) {
   });
 }
 
+// ── XP 적립 ────────────────────────────────────────────────
+var _xpConfig = null;
+
+async function loadXPConfig() {
+  if (_xpConfig) return _xpConfig;
+  try {
+    var sb = getSupa(); if (!sb) return null;
+    var res = await sb.from('xp_config').select('action_key,xp_amount,is_active').eq('is_active', true);
+    if (res.data) {
+      _xpConfig = {};
+      res.data.forEach(function(c){ _xpConfig[c.action_key] = c.xp_amount; });
+    }
+  } catch(e) {}
+  return _xpConfig;
+}
+
+async function awardXP(actionKey, meta) {
+  if (!supaUser) return null;
+  try {
+    var sb = getSupa(); if (!sb) return null;
+    var res = await sb.rpc('award_xp', {
+      p_user_id: supaUser.id,
+      p_action:  actionKey,
+      p_meta:    meta || {}
+    });
+    if (res.data && res.data.ok) {
+      // 레벨업이면 토스트 표시
+      if (res.data.leveled_up) {
+        showToast('🎉 레벨 업! Lv.' + res.data.level + ' ' + res.data.level_name);
+      }
+      // XP 획득 토스트 (미니)
+      showXPToast(res.data.xp_gained);
+      return res.data;
+    }
+  } catch(e) {}
+  return null;
+}
+
+var _xpToastTimer = null;
+var _xpToastTotal = 0;
+function showXPToast(xp) {
+  _xpToastTotal += xp;
+  clearTimeout(_xpToastTimer);
+  var el = document.getElementById('xp-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'xp-toast';
+    el.style.cssText = 'position:fixed;bottom:80px;right:16px;background:#0b1626;color:#7ab8f5;'
+      + 'padding:8px 14px;border-radius:999px;font-size:13px;font-weight:800;'
+      + 'border:1px solid rgba(122,184,245,.25);z-index:9999;'
+      + 'transition:opacity .3s;pointer-events:none;font-family:inherit';
+    document.body.appendChild(el);
+  }
+  el.textContent = '+' + _xpToastTotal + ' XP ⭐';
+  el.style.opacity = '1';
+  _xpToastTimer = setTimeout(function(){
+    el.style.opacity = '0';
+    setTimeout(function(){ _xpToastTotal = 0; }, 300);
+  }, 1800);
+}
+
 async function saveVocabToDB(word, rom, en, isDelete) {
   var sb = getSupa();
   if (!sb) throw new Error('Supabase 연결 없음');
@@ -4033,6 +4094,8 @@ async function dmTrackArticle() {
   var d = dmGet(); d.articles = (d.articles||0) + 1; dmSet(d);
   await syncDailyMission('articles');
   await syncUserStats({ articles_read: true });
+  awardXP('article_read', { source: 'article' });
+  checkDailyMissionComplete();
 }
 
 async function dmTrackWord() {
@@ -4040,6 +4103,8 @@ async function dmTrackWord() {
   var d = dmGet(); d.words = (d.words||0) + 1; dmSet(d);
   await syncDailyMission('words');
   await syncUserStats({ words_saved: true });
+  awardXP('word_save', {});
+  checkDailyMissionComplete();
 }
 
 async function dmTrackQuiz() {
@@ -4047,6 +4112,8 @@ async function dmTrackQuiz() {
   var d = dmGet(); d.quizzes = (d.quizzes||0) + 1; dmSet(d);
   await syncDailyMission('quizzes');
   await syncUserStats({ quizzes_done: true });
+  awardXP('conv_quiz_complete', {});
+  checkDailyMissionComplete();
 }
 
 async function dmTrackFill() {
@@ -4054,6 +4121,19 @@ async function dmTrackFill() {
   var d = dmGet(); d.fill = Math.min((d.fill||0) + 1, 1); dmSet(d);
   await syncDailyMission('fill');
   await syncUserStats({ fill_done: true });
+  awardXP('fill_complete', {});
+  checkDailyMissionComplete();
+}
+
+var _dailyMissionBonusGiven = false;
+async function checkDailyMissionComplete() {
+  if (_dailyMissionBonusGiven) return;
+  var d = dmGet();
+  if ((d.articles||0) >= 3 && (d.words||0) >= 20 && (d.quizzes||0) >= 3 && (d.fill||0) >= 1) {
+    _dailyMissionBonusGiven = true;
+    var res = await awardXP('daily_mission_complete', {});
+    if (res && res.ok) showToast('🎯 일일 미션 완료! +50 XP 보너스');
+  }
 }
 
 var _dmCollapsed = localStorage.getItem('kh_dm_collapsed') === '1';

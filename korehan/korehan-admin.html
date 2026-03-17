@@ -199,6 +199,8 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" onclick="goSentences()"><span class="ico">💬</span>예문 관리</button>
     <div class="sb-lbl" style="margin-top:14px">운영 관리</div>
     <button class="sb-btn" onclick="goUsers()"><span class="ico">👥</span>가입 회원</button>
+    <button class="sb-btn" id="sb-xp-users" onclick="goXPUsers()"><span class="ico">⭐</span>XP 현황</button>
+    <button class="sb-btn" id="sb-xp-config" onclick="goXPConfig()"><span class="ico">⚙️</span>XP 설정</button>
     <button class="sb-btn" onclick="goComments()"><span class="ico">💬</span>댓글 관리</button>
     <button class="sb-btn" onclick="goNewsletter()"><span class="ico">📬</span>뉴스레터</button>
     <button class="sb-btn" onclick="goStats()"><span class="ico">📊</span>방문자 통계</button>
@@ -2030,6 +2032,238 @@ async function retriggerAI(id) {
     showToastAdmin('✅ AI 첨삭 완료!');
     loadWritingSubmissions(_wsFilter);
   } catch(e) { showToastAdmin('AI 오류: ' + e.message, true); }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// XP 시스템 — 어드민
+// ═══════════════════════════════════════════════════════════
+
+var _xpConfigData = [];
+var _xpUsersData  = [];
+var _xpUserPage   = 0;
+
+// ── XP 설정 관리 ───────────────────────────────────────────
+async function goXPConfig() {
+  setSbOn('sb-xp-config');
+  var main = document.getElementById('main');
+  main.innerHTML =
+    '<div class="pg-hd"><div><h1>⚙️ XP 설정</h1><p>액션별 XP를 조절하면 모든 유저에게 즉시 적용됩니다.</p></div></div>'
+    + '<div id="xp-config-list"><div style="padding:40px;text-align:center;color:#94a3b8">불러오는 중...</div></div>';
+  loadXPConfig();
+}
+
+async function loadXPConfig() {
+  var sb = getSb(); if (!sb) return;
+  var res = await sb.from('xp_config').select('*').order('category').order('action_key');
+  if (res.error) { document.getElementById('xp-config-list').innerHTML = '<div style="color:#e53e3e;padding:20px">오류: ' + res.error.message + '</div>'; return; }
+  _xpConfigData = res.data || [];
+  renderXPConfig();
+}
+
+function renderXPConfig() {
+  var categories = { reading:'📰 읽기', vocab:'📚 어휘', quiz:'🎯 퀴즈', writing:'✍️ 작문', srs:'🔄 SRS 복습', streak:'🔥 스트릭' };
+  var grouped = {};
+  _xpConfigData.forEach(function(c) {
+    if (!grouped[c.category]) grouped[c.category] = [];
+    grouped[c.category].push(c);
+  });
+
+  var html = Object.keys(categories).map(function(cat) {
+    var items = grouped[cat] || [];
+    if (!items.length) return '';
+    return '<div style="margin-bottom:24px">'
+      + '<div style="font-size:13px;font-weight:800;color:#334155;margin-bottom:8px">' + categories[cat] + '</div>'
+      + '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">'
+      + items.map(function(item, idx) {
+          return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;'
+            + (idx < items.length-1 ? 'border-bottom:1px solid #f1f5f9' : '') + '">'
+            + '<div style="flex:1">'
+            + '<div style="font-size:13px;font-weight:700;color:#0f172a">' + item.action_label + '</div>'
+            + '<div style="font-size:11px;color:#94a3b8;margin-top:1px">' + item.action_key + '</div>'
+            + '</div>'
+            + '<div style="display:flex;align-items:center;gap:8px">'
+            + '<input type="number" id="xp-' + item.action_key + '" value="' + item.xp_amount + '" min="0" max="9999" '
+            + 'style="width:72px;padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-weight:800;text-align:center;font-family:inherit">'
+            + '<span style="font-size:12px;color:#94a3b8">XP</span>'
+            + '<label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#64748b;cursor:pointer">'
+            + '<input type="checkbox" id="xpa-' + item.action_key + '" ' + (item.is_active ? 'checked' : '') + '> 활성</label>'
+            + '</div></div>';
+        }).join('')
+      + '</div></div>';
+  }).join('');
+
+  html += '<button onclick="saveXPConfig()" style="padding:12px 32px;background:#2255a4;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:8px">💾 전체 저장</button>'
+    + '<div id="xp-save-msg" style="margin-top:10px;font-size:13px;display:none"></div>';
+
+  document.getElementById('xp-config-list').innerHTML = html;
+}
+
+async function saveXPConfig() {
+  var sb = getSb(); if (!sb) return;
+  var btn = document.querySelector('[onclick="saveXPConfig()"]');
+  var msg = document.getElementById('xp-save-msg');
+  btn.textContent = '저장 중...'; btn.disabled = true;
+
+  var updates = _xpConfigData.map(function(item) {
+    var inp = document.getElementById('xp-' + item.action_key);
+    var chk = document.getElementById('xpa-' + item.action_key);
+    return {
+      action_key:   item.action_key,
+      action_label: item.action_label,
+      xp_amount:    inp ? parseInt(inp.value) || 0 : item.xp_amount,
+      category:     item.category,
+      is_active:    chk ? chk.checked : item.is_active,
+      updated_at:   new Date().toISOString()
+    };
+  });
+
+  var res = await sb.from('xp_config').upsert(updates, { onConflict: 'action_key' });
+  if (res.error) {
+    msg.style.display = 'block'; msg.style.color = '#e53e3e';
+    msg.textContent = '저장 실패: ' + res.error.message;
+  } else {
+    msg.style.display = 'block'; msg.style.color = '#16a34a';
+    msg.textContent = '✅ 저장 완료 — 즉시 적용됩니다.';
+    loadXPConfig();
+  }
+  btn.textContent = '💾 전체 저장'; btn.disabled = false;
+}
+
+// ── XP 유저 현황 ───────────────────────────────────────────
+async function goXPUsers() {
+  setSbOn('sb-xp-users');
+  var main = document.getElementById('main');
+  main.innerHTML =
+    '<div class="pg-hd"><div><h1>⭐ XP 유저 현황</h1><p>전체 유저 XP 적립 현황 및 레벨 분포.</p></div></div>'
+    + '<div id="xp-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px"></div>'
+    + '<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">'
+    + '<input type="text" id="xp-search" placeholder="이메일 검색..." oninput="filterXPUsers()" '
+    + 'style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;width:220px">'
+    + '<select id="xp-level-filter" onchange="filterXPUsers()" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit">'
+    + '<option value="">전체 레벨</option>'
+    + ['입문자','초학자','학생','수련생','독학자','탐구자','학자','통달자','달인','마스터'].map(function(n,i){
+        return '<option value="' + (i+1) + '">Lv.' + (i+1) + ' ' + n + '</option>';
+      }).join('')
+    + '</select>'
+    + '<button onclick="exportXPCSV()" style="padding:8px 16px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📥 CSV 내보내기</button>'
+    + '</div>'
+    + '<div id="xp-users-table"><div style="padding:40px;text-align:center;color:#94a3b8">불러오는 중...</div></div>';
+  loadXPUsers();
+}
+
+async function loadXPUsers() {
+  var sb = getSb(); if (!sb) return;
+  var res = await sb.rpc('get_users_xp_overview', { p_limit: 200, p_offset: 0 });
+  if (res.error) {
+    document.getElementById('xp-users-table').innerHTML = '<div style="color:#e53e3e;padding:20px">오류: ' + res.error.message + '</div>';
+    return;
+  }
+  _xpUsersData = res.data || [];
+  renderXPSummary(_xpUsersData);
+  renderXPUsersTable(_xpUsersData);
+}
+
+function renderXPSummary(data) {
+  var total    = data.length;
+  var active   = data.filter(function(u){ return u.total_xp > 0; }).length;
+  var avgXP    = total ? Math.round(data.reduce(function(s,u){ return s + u.total_xp; }, 0) / total) : 0;
+  var maxLevel = data.reduce(function(max, u){ return Math.max(max, u.level||1); }, 1);
+  var el = document.getElementById('xp-summary');
+  var cards = [
+    { n: total,   l: '전체 유저' },
+    { n: active,  l: 'XP 보유 유저' },
+    { n: avgXP,   l: '평균 XP' },
+    { n: 'Lv.'+maxLevel, l: '최고 레벨' }
+  ];
+  el.innerHTML = cards.map(function(c){
+    return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px">'
+      + '<div style="font-size:22px;font-weight:900;color:#0f172a;font-family:\'Playfair Display\',serif">' + c.n + '</div>'
+      + '<div style="font-size:11px;color:#94a3b8;font-weight:700;margin-top:2px">' + c.l + '</div></div>';
+  }).join('');
+}
+
+function filterXPUsers() {
+  var q    = (document.getElementById('xp-search').value || '').toLowerCase();
+  var lvl  = document.getElementById('xp-level-filter').value;
+  var filtered = _xpUsersData.filter(function(u){
+    var emailMatch = !q || (u.email||'').toLowerCase().includes(q);
+    var levelMatch = !lvl || String(u.level) === lvl;
+    return emailMatch && levelMatch;
+  });
+  renderXPUsersTable(filtered);
+}
+
+function renderXPUsersTable(data) {
+  var el = document.getElementById('xp-users-table');
+  if (!data.length) { el.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8">데이터 없음</div>'; return; }
+
+  var levelColors = ['','#64748b','#64748b','#2563eb','#2563eb','#0891b2','#7c3aed','#7c3aed','#d97706','#d97706','#dc2626'];
+  var levelBgs    = ['','#f1f5f9','#f1f5f9','#eff6ff','#eff6ff','#e0f2fe','#f5f3ff','#f5f3ff','#fffbeb','#fffbeb','#fef2f2'];
+  var actionLabels = {
+    article_read:'기사읽기', word_save:'단어저장', fill_correct:'빈칸정답',
+    fill_complete:'빈칸완료', grammar_drill_correct:'문법정답',
+    grammar_drill_complete:'문법완료', writing_submit:'작문제출',
+    writing_feedback:'피드백', srs_review:'SRS복습',
+    conv_quiz_complete:'대화퀴즈', daily_mission_complete:'일미션', streak_7:'7일', streak_30:'30일'
+  };
+
+  el.innerHTML = '<div style="overflow-x:auto">'
+    + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+    + '<thead><tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">'
+    + ['#','이메일','레벨','총 XP','보유 XP','주요 활동','최근 활동'].map(function(h){
+        return '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:800;color:#64748b;white-space:nowrap">' + h + '</th>';
+      }).join('')
+    + '</tr></thead><tbody>'
+    + data.map(function(u, idx) {
+        var lvl  = u.level || 1;
+        var lc   = levelColors[lvl] || '#64748b';
+        var lb   = levelBgs[lvl] || '#f1f5f9';
+        var levelNames = ['','입문자','초학자','학생','수련생','독학자','탐구자','학자','통달자','달인','마스터'];
+        var lastAct = u.last_activity ? new Date(u.last_activity).toLocaleDateString('ko-KR') : '-';
+        var topAct  = u.top_action ? (actionLabels[u.top_action] || u.top_action) : '-';
+
+        // XP 분포 미니 바
+        var xpBar = '';
+        if (u.action_counts) {
+          var ac = u.action_counts;
+          var barItems = Object.keys(actionLabels).filter(function(k){ return ac[k]; }).slice(0,5);
+          var maxCnt = Math.max.apply(null, barItems.map(function(k){ return ac[k]||0; }).concat([1]));
+          xpBar = '<div style="display:flex;gap:2px;align-items:flex-end;height:20px;margin-top:4px">'
+            + barItems.map(function(k){
+                var h = Math.max(3, Math.round((ac[k]/maxCnt)*20));
+                return '<div title="' + (actionLabels[k]||k) + ': ' + ac[k] + '회" style="width:6px;height:' + h + 'px;background:#2255a4;border-radius:1px;opacity:.7"></div>';
+              }).join('')
+            + '</div>';
+        }
+
+        return '<tr style="border-bottom:1px solid #f1f5f9;' + (idx%2===0?'background:#fff':'background:#fafafa') + '">'
+          + '<td style="padding:10px 12px;color:#94a3b8;font-weight:700">' + (idx+1) + '</td>'
+          + '<td style="padding:10px 12px;max-width:200px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#0f172a">' + (u.email||'-') + '</div></td>'
+          + '<td style="padding:10px 12px"><span style="background:' + lb + ';color:' + lc + ';padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap">Lv.' + lvl + ' ' + (levelNames[lvl]||'') + '</span></td>'
+          + '<td style="padding:10px 12px;font-weight:900;color:#0f172a;font-family:\'Playfair Display\',serif">' + (u.total_xp||0).toLocaleString() + '</td>'
+          + '<td style="padding:10px 12px;color:#2255a4;font-weight:700">' + (u.xp_available||0).toLocaleString() + '</td>'
+          + '<td style="padding:10px 12px"><div style="color:#334155;font-size:12px">' + topAct + xpBar + '</div></td>'
+          + '<td style="padding:10px 12px;color:#94a3b8;font-size:12px">' + lastAct + '</td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table></div>';
+}
+
+function exportXPCSV() {
+  var rows = [['이메일','레벨','레벨명','총XP','보유XP','최근활동']];
+  _xpUsersData.forEach(function(u){
+    rows.push([
+      u.email||'', u.level||1, u.level_name||'',
+      u.total_xp||0, u.xp_available||0,
+      u.last_activity ? new Date(u.last_activity).toLocaleDateString('ko-KR') : ''
+    ]);
+  });
+  var csv = rows.map(function(r){ return r.join(','); }).join('\n');
+  var a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
+  a.download = 'korehan_xp_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
 }
 
 
