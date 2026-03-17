@@ -103,9 +103,10 @@
   /* 패널들 */
   .wm-left, .wm-right {
     display: none !important;
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: 9999 !important;
+    position: absolute !important;
+    left: 0 !important; right: 0 !important; bottom: 0 !important;
+    top: 0 !important;
+    z-index: 50 !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     background: #fff !important;
@@ -114,6 +115,11 @@
     gap: 12px !important;
   }
   .wm-left.mob-on, .wm-right.mob-on { display: flex !important; }
+  /* wmodal은 relative여야 absolute child 기준점이 됨 */
+  .wmodal { position: relative !important; overflow: hidden !important; }
+  /* 헤더와 탭은 패널 위에 뜨도록 */
+  .wm-header { position: relative !important; z-index: 60 !important; }
+  .wm-mobile-tabs { position: relative !important; z-index: 60 !important; }
 
   .wm-center {
     padding: 12px 14px !important;

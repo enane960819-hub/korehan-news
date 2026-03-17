@@ -4559,11 +4559,8 @@ function enhanceConversationsMobile() {
     var cta = panel.querySelector('.dp-cta-row');
     if (cta && !cta.dataset.mobileEnhanced) {
       cta.dataset.mobileEnhanced = '1';
-      cta.innerHTML = ''
-        + '<button class="dp-cta-btn dp-cta-primary">Translate</button>'
-        + '<button class="dp-cta-btn dp-cta-secondary">Vocabulary</button>'
-        + '<button class="dp-cta-btn dp-cta-secondary">Practice</button>'
-        + '<button class="dp-cta-btn dp-cta-secondary">Roleplay</button>';
+      // 기존 버튼 유지 — 빈칸채우기/순서맞추기는 원래 버튼 그대로
+      // grid를 2열로만 조정
       cta.style.gridTemplateColumns = '1fr 1fr';
     }
   });
