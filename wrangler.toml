@@ -1,0 +1,7 @@
+name = "korehan-news"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+account_id = "6e3e13d3273939d8a6d283501ff3807f"
+
+[assets]
+directory = "./korehan"
