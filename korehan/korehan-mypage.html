@@ -137,7 +137,10 @@
     <div>
       <div class="mypage-name" id="mp-name">Loading…</div>
       <div class="mypage-email" id="mp-email"></div>
-      <button class="mypage-signout" onclick="signOut()">Sign Out</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
+        <button class="mypage-signout" onclick="signOut()">Sign Out</button>
+        <button class="mypage-signout" onclick="confirmDeleteAccount()" style="color:rgba(255,100,100,0.7);border-color:rgba(255,100,100,0.3)">회원탈퇴</button>
+      </div>
     </div>
   </div>
 </div>
@@ -934,6 +937,54 @@ function openWritingRequest(tickets) {
   window.location.href = 'mailto:enane960819@gmail.com?subject=' + subject + '&body=' + body;
 }
 
+async function confirmDeleteAccount() {
+  // 1단계 확인
+  var ok1 = confirm('정말 탈퇴하시겠어요?\n\n저장된 단어, 학습 기록, XP가 모두 삭제되며 복구할 수 없어요.');
+  if (!ok1) return;
+
+  // 2단계 재확인
+  var ok2 = confirm('마지막 확인이에요. 계정과 모든 데이터를 영구 삭제할까요?');
+  if (!ok2) return;
+
+  var sb = getSupa();
+  if (!sb || !supaUser) return;
+
+  try {
+    // 유저 데이터 삭제 (RLS로 본인 데이터만)
+    await Promise.all([
+      sb.from('saved_words').delete().eq('user_id', supaUser.id),
+      sb.from('user_stats').delete().eq('user_id', supaUser.id),
+      sb.from('xp_log').delete().eq('user_id', supaUser.id),
+      sb.from('writing_submissions').delete().eq('user_id', supaUser.id),
+      sb.from('daily_missions').delete().eq('user_id', supaUser.id),
+    ]);
+
+    // Supabase auth 계정 삭제 — Edge Function 필요 (admin API)
+    // 클라이언트에서는 직접 auth.users 삭제 불가
+    // → Edge Function 호출
+    var res = await fetch('https://samghztrdvtxmrmawneu.supabase.co/functions/v1/delete-account', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + ((await sb.auth.getSession()).data.session?.access_token || '')
+      }
+    });
+
+    if (res.ok) {
+      await sb.auth.signOut();
+      alert('탈퇴가 완료됐어요. 이용해주셔서 감사합니다.');
+      window.location.href = 'index.html';
+    } else {
+      // Edge Function 없으면 로그아웃만 처리 + 안내
+      await sb.auth.signOut();
+      alert('데이터는 삭제됐어요. 계정 완전 삭제는 관리자에게 문의해주세요. (enane960819@gmail.com)');
+      window.location.href = 'index.html';
+    }
+  } catch(e) {
+    alert('오류가 발생했어요: ' + e.message);
+  }
+}
+
 async function initMyPage() {
   if(!supaUser) {
     window.location.href = 'index.html';
@@ -956,13 +1007,14 @@ async function initMyPage() {
   }
 
   // Load data in parallel
-  const [words, articles] = await Promise.all([
+  const [words, articles, streak] = await Promise.all([
     dbGetSavedWords(),
     getReadArticles(),
+    getStreak(),
   ]);
 
   savedWords = words;
-  renderStats(words.length, articles.length);
+  renderStats(streak, words.length, articles.length);
   renderGoals();
   setQuizMode('flash', document.getElementById('qmode-flash'));
   renderBookmarks();
@@ -1055,115 +1107,40 @@ async function dbGetTodayGoal() {
   return result;
 }
 
-function renderGoals() {
+async function renderGoals() {
   var area = document.getElementById('goals-area');
-  if (!area) return;
+  var goal = await dbGetTodayGoal();
+  var WORD_TARGET = 5, ARTICLE_TARGET = 3;
 
-  // dmGet() — KST 기반 오늘 미션 카운트 (shared.js)
-  var dm = (typeof dmGet === 'function') ? dmGet() : {};
-  var todayDate = new Date(Date.now() + 9*60*60*1000);
-  var dateStr = todayDate.toLocaleDateString('ko-KR', {month:'long', day:'numeric', weekday:'short'});
-
-  var missions = [
-    { label:'Articles read',   cur: dm.articles||0, goal:3,  color:'#2255a4' },
-    { label:'Words saved',     cur: dm.words||0,    goal:20, color:'#0f766e' },
-    { label:'Quiz completed',  cur: dm.quizzes||0,  goal:3,  color:'#7c3aed' },
-    { label:'Fill-in-blank',   cur: dm.fill||0,     goal:1,  color:'#d97706' }
-  ];
-
-  function pct(v, max) { return Math.min(100, Math.round(v/max*100)); }
-  function done(m) { return m.cur >= m.goal; }
-
-  // 주간 데이터 (localStorage)
+  // 오늘 학습 기록 저장
+  var todayKey = new Date().toISOString().slice(0,10);
   var studyLog = {};
   try { studyLog = JSON.parse(localStorage.getItem('kh_study_log') || '{}'); } catch(e) {}
-  var todayKey = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
-  // 오늘 dm 데이터 저장
-  if (!studyLog[todayKey]) studyLog[todayKey] = {};
-  studyLog[todayKey].articles = dm.articles||0;
-  studyLog[todayKey].words    = dm.words||0;
-  studyLog[todayKey].quizzes  = dm.quizzes||0;
-  studyLog[todayKey].fill     = dm.fill||0;
+  if (!studyLog[todayKey]) studyLog[todayKey] = { articles: 0, words: 0, quiz: 0 };
+  studyLog[todayKey].articles = goal.articles_today || 0;
+  studyLog[todayKey].words    = goal.words_today || 0;
   try { localStorage.setItem('kh_study_log', JSON.stringify(studyLog)); } catch(e) {}
 
-  // 이번주 7일 (월~일)
-  var weekDays = [];
-  for (var i = 6; i >= 0; i--) {
-    var d = new Date(Date.now() + 9*60*60*1000);
-    d.setDate(d.getDate() - i);
-    var k = d.toISOString().slice(0,10);
-    var dayData = studyLog[k] || {};
-    var active = ((dayData.articles||0) + (dayData.words||0) + (dayData.quizzes||0)) > 0;
-    weekDays.push({ key:k, label:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][d.getDay() === 0 ? 6 : d.getDay()-1], active:active, isToday: k===todayKey });
-  }
+  var todayArticles = goal.articles_today || 0;
+  var todayWords    = goal.words_today || 0;
 
-  // streak 계산
-  var streak = 0;
-  var checkD = new Date(Date.now() + 9*60*60*1000);
-  while (true) {
-    var ck = checkD.toISOString().slice(0,10);
-    var cd = studyLog[ck] || {};
-    if ((cd.articles||0) + (cd.words||0) + (cd.quizzes||0) > 0) {
-      streak++;
-      checkD.setDate(checkD.getDate() - 1);
-    } else { break; }
-  }
-
-  var allDone = missions.every(function(m){ return done(m); });
+  function pct(v, max) { return Math.min(100, Math.round(v/max*100)); }
 
   area.innerHTML =
-    // 헤더
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
-    + '<div style="font-size:16px;font-weight:900;color:var(--dark)">Daily Mission</div>'
-    + '<div style="font-size:12px;color:var(--gray)">' + dateStr + '</div>'
-    + '</div>'
+    '<div style="display:flex;gap:12px;align-items:baseline;margin-bottom:20px">'    +'<div style="font-size:17px;font-weight:900;color:var(--accent)">Daily Goals 🎯</div>'    +'<div style="font-size:13px;color:var(--gray)">'+new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',weekday:'short'})+'</div>'    +'</div>'
+    // 목표 카드들
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
+    +'<div class="goal-card" style="flex-direction:column;align-items:flex-start;gap:8px">'    +'<div style="display:flex;align-items:center;gap:8px;width:100%">'    +'<span style="font-size:22px">📰</span>'    +'<div style="flex:1"><div class="goal-title">Articles Read</div>'    +'<div class="goal-count">'+todayArticles+' / '+ARTICLE_TARGET+'</div></div>'    +'<div style="font-size:20px">'+(todayArticles >= ARTICLE_TARGET ? '✅' : '○')+'</div></div>'    +'<div class="goal-bar-wrap" style="width:100%"><div class="goal-bar'+(todayArticles>=ARTICLE_TARGET?' done':'')+'" style="width:'+pct(todayArticles,ARTICLE_TARGET)+'%"></div></div>'    +'</div>'
+    +'<div class="goal-card" style="flex-direction:column;align-items:flex-start;gap:8px">'    +'<div style="display:flex;align-items:center;gap:8px;width:100%">'    +'<span style="font-size:22px">🔖</span>'    +'<div style="flex:1"><div class="goal-title">Words Saved</div>'    +'<div class="goal-count">'+todayWords+' / '+WORD_TARGET+'</div></div>'    +'<div style="font-size:20px">'+(todayWords >= WORD_TARGET ? '✅' : '○')+'</div></div>'    +'<div class="goal-bar-wrap" style="width:100%"><div class="goal-bar'+(todayWords>=WORD_TARGET?' done':'')+'" style="width:'+pct(todayWords,WORD_TARGET)+'%"></div></div>'    +'</div>'    +'</div>'
+    // 데일리 테스트 버튼
+    +'<div style="background:linear-gradient(135deg,#0b1626,#1a3a6b);border-radius:12px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">'    +'<div>'    +'<div style="font-size:15px;font-weight:900;color:#fff;margin-bottom:4px">📝 Daily Review Test</div>'    +'<div style="font-size:12px;color:rgba(255,255,255,0.6)">Quiz based on articles you read today</div>'    +'</div>'    +'<button onclick="startDailyTest()" style="padding:9px 20px;background:#fff;color:#0b1626;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Start →</button>'    +'</div>';
 
-    // C 디자인: streak pill + 7-dot row
-    + '<div style="background:#f8faff;border-radius:12px;padding:14px 16px;margin-bottom:14px;">'
-    +   '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'
-    +     '<div style="background:#fff4ed;border-radius:8px;padding:8px 14px;display:flex;align-items:center;gap:6px;flex-shrink:0;">'
-    +       '<span style="font-size:16px;">🔥</span>'
-    +       '<div><div style="font-size:18px;font-weight:900;color:#c2410c;line-height:1">' + streak + '</div>'
-    +       '<div style="font-size:10px;color:#ea580c;font-weight:700;">day streak</div></div>'
-    +     '</div>'
-    +     '<div style="display:flex;gap:5px;flex:1;">'
-    +     weekDays.map(function(day) {
-            var bg  = day.active  ? '#2255a4' : (day.isToday ? '#dbeafe' : '#e8edf5');
-            var col = day.active  ? '#fff'    : (day.isToday ? '#2255a4' : '#94a3b8');
-            var fw  = (day.active || day.isToday) ? '800' : '400';
-            return '<div style="flex:1;height:30px;border-radius:6px;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:' + fw + ';color:' + col + ';">' + day.label[0] + '</div>';
-          }).join('')
-    +     '</div>'
-    +   '</div>'
-    + '</div>'
-
-    // 미션 progress bars (C 디자인)
-    + '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">'
-    + missions.map(function(m) {
-        var p = pct(m.cur, m.goal);
-        var d = done(m);
-        return '<div>'
-          + '<div style="display:flex;justify-content:space-between;margin-bottom:5px;">'
-          + '<span style="font-size:13px;color:#475569;font-weight:600;">' + m.label + '</span>'
-          + '<span style="font-size:13px;font-weight:900;color:' + (d ? '#16a34a' : '#0f172a') + ';">' + (d ? '✓ ' : '') + m.cur + ' / ' + m.goal + '</span>'
-          + '</div>'
-          + '<div style="height:8px;background:#e8edf5;border-radius:999px;">'
-          + '<div style="height:100%;width:' + p + '%;background:' + (d ? '#22c55e' : m.color) + ';border-radius:999px;transition:width .4s;"></div>'
-          + '</div>'
-          + '</div>';
-      }).join('')
-    + '</div>'
-
-    // 완료 배지
-    + (allDone ? '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 14px;text-align:center;font-size:13px;font-weight:800;color:#15803d;margin-bottom:16px;">🎉 오늘 미션 완료! 내일도 화이팅</div>' : '')
-
-    // Daily Review Test 버튼
-    + '<div style="background:#0b1626;border-radius:12px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">'
-    + '<div><div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:3px;">Daily Review Test</div>'
-    + '<div style="font-size:11px;color:rgba(255,255,255,.55);">오늘 미션 기반 퀴즈</div></div>'
-    + '<button onclick="startDailyTest()" style="padding:8px 18px;background:#fff;color:#0b1626;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer;">Start →</button>'
-    + '</div>';
+  // 학습량 그래프
+  renderStudyChart(area, studyLog);
+  // 스트릭 캘린더
+  renderStreakCalendar(area, studyLog);
 }
+
 function renderStudyChart(container, studyLog) {
   // 최근 14일 데이터
   var days = [];
@@ -1266,9 +1243,8 @@ var dailyScore = 0;
 function startDailyTest() {
   var area = document.getElementById('goals-area');
 
-  // dm 기반 — 오늘 저장한 단어 + 읽은 기사에서 퀴즈 생성
-  var dm = (typeof dmGet === 'function') ? dmGet() : {};
-  var todayKey = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
+  // 오늘 읽은 기사 ID 목록 (localStorage)
+  var todayKey = new Date().toISOString().slice(0,10);
   var readLog = {};
   try { readLog = JSON.parse(localStorage.getItem('kh_read_log') || '{}'); } catch(e) {}
   var todayIds = readLog[todayKey] || [];
@@ -1564,25 +1540,14 @@ async function finishLevelTest() {
   }
 }
 
-async function renderStats(wordCount, articleCount) {
-  var dm    = (typeof dmGet === 'function') ? dmGet() : {};
+async function renderStats(streak, wordCount, articleCount) {
+  var s = streak || {};
   var level = await dbGetLevel();
   var lm    = level ? (LEVEL_META[level] || LEVEL_META.beginner) : null;
   var bms   = await dbGetBookmarks();
-  // streak from localStorage study log
-  var streak = 0;
-  try {
-    var log = JSON.parse(localStorage.getItem('kh_study_log') || '{}');
-    var d = new Date(Date.now() + 9*60*60*1000);
-    while (true) {
-      var k = d.toISOString().slice(0,10);
-      var ld = log[k] || {};
-      if ((ld.articles||0) + (ld.words||0) + (ld.quizzes||0) > 0) { streak++; d.setDate(d.getDate()-1); }
-      else break;
-    }
-  } catch(e) {}
   document.getElementById('mp-stats').innerHTML =
-    '<div class="stat-card"><div class="stat-fire">🔥</div><div class="stat-num">' + streak + '</div><div class="stat-label">Day Streak</div></div>' +
+    '<div class="stat-card"><div class="stat-fire">🔥</div><div class="stat-num">' + (s.streak||0) + '</div><div class="stat-label">Day Streak</div></div>' +
+    '<div class="stat-card"><div class="stat-num">' + (s.longest_streak||0) + '</div><div class="stat-label">최장 streak일</div></div>' +
     '<div class="stat-card"><div class="stat-num">' + wordCount + '</div><div class="stat-label">Saved Words</div></div>' +
     '<div class="stat-card"><div class="stat-num">' + articleCount + '</div><div class="stat-label">Articles Read</div></div>' +
     '<div class="stat-card"><div class="stat-num">' + (bms.length||0) + '</div><div class="stat-label">북마크</div></div>' +
@@ -2013,16 +1978,20 @@ function renderArticlesList(articles) {
 }
 
 document.addEventListener('DOMContentLoaded', function(){
+  // Supabase 세션 로드 대기 후 initMyPage 실행
   var attempts = 0;
   function waitForSession() {
     attempts++;
-    if (window._sessionChecked || attempts >= 40) {
+    if (supaUser) {
       initMyPage();
+    } else if (attempts < 30) {
+      setTimeout(waitForSession, 200);
     } else {
-      setTimeout(waitForSession, 150);
+      // 세션 없음 = 비로그인
+      initMyPage();
     }
   }
-  setTimeout(waitForSession, 200);
+  setTimeout(waitForSession, 300);
 });
 </script>
 </body>

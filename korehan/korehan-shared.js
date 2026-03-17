@@ -310,8 +310,13 @@ async function authSignUp() {
     return;
   }
 
-  // 이메일 확인 필요
-  _authShowOk('✅ Account created! Please check your email to confirm your account.');
+  // Supabase는 중복 이메일도 success 반환 — identities 배열이 비어있으면 기존 계정
+  if (data && data.user && (!data.user.identities || data.user.identities.length === 0)) {
+    _authShowError('이미 가입된 이메일이에요. Sign In으로 로그인해주세요.');
+    return;
+  }
+
+  _authShowOk('✅ 가입 완료! 확인 이메일을 발송했어요. 받은 편지함(스팸함 포함)을 확인해주세요.');
   document.getElementById('kh-signup-form').querySelectorAll('input').forEach(function(i){ i.value=''; });
 }
 
@@ -605,6 +610,7 @@ function updateAuthUI() {
   // My Page 버튼: 로그인 상태에서만 표시
   var mp2 = document.getElementById('topbar-mypage-btn');
   if (mp2) mp2.style.display = supaUser ? '' : 'none';
+  updateSidebarAuth();
 }
 
 const DB_KEY          = 'korehan_db';
@@ -4350,8 +4356,35 @@ function khInjectSidebar() {
       + '<a href="korehan-study-room.html" class="kh-sb-a' + (page==='korehan-study-room.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F4D6;</span>Study Room</a>'
       + '<a href="korehan-courses.html" class="kh-sb-a' + (page==='korehan-courses.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F393;</span>Courses</a>'
       + '<a href="korehan-mypage.html" class="kh-sb-a' + (page==='korehan-mypage.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F464;</span>My Page</a>'
+    + '</div>'
+    + '<div class="kh-sb-sec" id="kh-sb-auth-sec" style="margin-top:auto;padding-top:12px;border-top:1px solid var(--border,#e2e8f0)">'
+      + '<div id="kh-sb-auth-row"></div>'
     + '</div>';
   document.body.appendChild(sb);
+  updateSidebarAuth();
+}
+
+function updateSidebarAuth() {
+  var row = document.getElementById('kh-sb-auth-row');
+  if (!row) return;
+  if (supaUser) {
+    var name = (supaUser.user_metadata && supaUser.user_metadata.full_name) || supaUser.email.split('@')[0];
+    row.innerHTML =
+      '<div style="padding:10px 16px;font-size:13px;color:var(--gray,#445566)">'
+      + '<div style="font-weight:800;color:var(--dark,#0d1b2e);margin-bottom:2px">' + name + '</div>'
+      + '<div style="font-size:11px;opacity:.6">' + supaUser.email + '</div>'
+      + '</div>'
+      + '<a href="korehan-mypage.html" class="kh-sb-a" onclick="khSbClose()">'
+      + '<span class="kh-sb-ico">&#x1F464;</span>My Page</a>'
+      + '<button class="kh-sb-a" onclick="signOut();khSbClose()" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit">'
+      + '<span class="kh-sb-ico">&#x1F6AA;</span>Sign Out</button>';
+  } else {
+    row.innerHTML =
+      '<button class="kh-sb-a" onclick="openAuthModal(\'signin\');khSbClose()" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit">'
+      + '<span class="kh-sb-ico">&#x1F511;</span>Sign In</button>'
+      + '<button class="kh-sb-a" onclick="openAuthModal(\'signup\');khSbClose()" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit;color:var(--bright,#2255a4);font-weight:800">'
+      + '<span class="kh-sb-ico">&#x2728;</span>Join Free</button>';
+  }
 }
 
 function khSbOpen() {
