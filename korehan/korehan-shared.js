@@ -535,12 +535,15 @@ async function checkSession() {
       updateCommentForm();
     } else if (event === 'SIGNED_IN') {
       supaUser = session ? session.user : null;
-      _sessionWarningShown = false; // 재로그인 시 경고 초기화
+      _sessionWarningShown = false;
       updateAuthUI();
       updateCommentForm();
       renderDailyMission();
-      // 다른 페이지(learning-overview 등)에서 로그인 감지용 이벤트
       window.dispatchEvent(new Event('kh-auth-signed-in'));
+      // 온보딩 체크 — onboarding 페이지 자체에서는 실행 안 함
+      if (!window.location.pathname.includes('onboarding')) {
+        checkOnboardingStatus();
+      }
     } else if (event === 'TOKEN_REFRESHED') {
       supaUser = session ? session.user : null;
       updateAuthUI();
@@ -3384,6 +3387,27 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 // ── vocabulary_bank DB → VOCAB 병합 ───────────────────────
 // 하드코딩 VOCAB에 DB 단어를 덮어쓰기 (DB 우선)
+// ── 온보딩 체크 ────────────────────────────────────────────
+var _onboardingChecked = false;
+async function checkOnboardingStatus() {
+  if (_onboardingChecked || !supaUser) return;
+  _onboardingChecked = true;
+  try {
+    var sb = getSupa(); if (!sb) return;
+    var res = await sb.from('user_stats')
+      .select('onboarded')
+      .eq('user_id', supaUser.id)
+      .maybeSingle();
+    // 레코드 없거나 onboarded=false 면 온보딩으로
+    if (!res.data || !res.data.onboarded) {
+      // 살짝 딜레이 후 이동 (로그인 모달 닫힐 시간)
+      setTimeout(function() {
+        window.location.href = 'korehan-onboarding.html';
+      }, 600);
+    }
+  } catch(e) {}
+}
+
 async function loadVocabFromDB() {
   try {
     var sb = getSupa(); if (!sb) { initTooltips(); return; }

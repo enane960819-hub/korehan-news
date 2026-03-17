@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KoreHan News — 시작하기</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{--navy:#0b1626;--blue:#1a3a6b;--bright:#2255a4;--sky:#7ab8f5;--bg:#f0f2f7;--white:#fff;--border:#d4dce8;--gray:#445566;--dark:#0d1b2e}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Source Sans 3','Noto Sans KR',sans-serif}
+body{background:var(--navy);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+
+/* ── 레이아웃 ── */
+.ob-wrap{width:100%;max-width:520px}
+.ob-logo{font-family:'Noto Serif KR',serif;font-size:20px;font-weight:900;color:#fff;text-align:center;margin-bottom:32px;letter-spacing:-.02em}
+.ob-logo span{color:var(--sky)}
+
+/* ── 진행 바 ── */
+.ob-progress{display:flex;align-items:center;gap:0;margin-bottom:32px}
+.ob-step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;transition:all .25s}
+.ob-step-dot.done{background:var(--bright);color:#fff}
+.ob-step-dot.active{background:#fff;color:var(--navy)}
+.ob-step-dot.pending{background:rgba(255,255,255,.12);color:rgba(255,255,255,.35)}
+.ob-step-line{flex:1;height:2px;background:rgba(255,255,255,.12);transition:background .25s}
+.ob-step-line.done{background:var(--bright)}
+
+/* ── 카드 ── */
+.ob-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px 24px}
+.ob-eyebrow{font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--sky);margin-bottom:8px}
+.ob-title{font-family:'Noto Serif KR',serif;font-size:22px;font-weight:900;line-height:1.25;margin-bottom:6px}
+.ob-desc{font-size:13px;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:22px}
+
+/* ── 선택 버튼들 ── */
+.ob-options{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.ob-opt{display:flex;align-items:center;gap:12px;padding:13px 16px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;cursor:pointer;transition:all .15s;text-align:left;font-family:inherit;color:#fff}
+.ob-opt:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.2)}
+.ob-opt.selected{background:rgba(34,85,164,.3);border-color:var(--bright)}
+.ob-opt-icon{font-size:20px;width:32px;text-align:center;flex-shrink:0}
+.ob-opt-text{flex:1}
+.ob-opt-label{font-size:14px;font-weight:700}
+.ob-opt-sub{font-size:12px;color:rgba(255,255,255,.45);margin-top:1px}
+.ob-opt-check{width:18px;height:18px;border-radius:50%;background:var(--bright);display:none;align-items:center;justify-content:center;flex-shrink:0}
+.ob-opt.selected .ob-opt-check{display:flex}
+
+/* ── 시간 옵션 ── */
+.ob-time-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
+.ob-time-btn{padding:16px 8px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;cursor:pointer;font-family:inherit;color:#fff;text-align:center;transition:all .15s}
+.ob-time-btn:hover{background:rgba(255,255,255,.09)}
+.ob-time-btn.selected{background:rgba(34,85,164,.3);border-color:var(--bright)}
+.ob-time-num{font-size:24px;font-weight:900;display:block;font-family:'Noto Serif KR',serif}
+.ob-time-label{font-size:11px;color:rgba(255,255,255,.5);display:block;margin-top:3px}
+.ob-time-sub{font-size:10px;color:rgba(255,255,255,.35);display:block;margin-top:2px}
+
+/* ── 레벨 테스트 ── */
+.test-progress{margin-bottom:14px}
+.test-prog-bar{height:4px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden;margin-bottom:6px}
+.test-prog-fill{height:100%;background:var(--sky);border-radius:999px;transition:width .3s}
+.test-prog-label{font-size:11px;color:rgba(255,255,255,.45);display:flex;justify-content:space-between}
+
+.test-level-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:800;margin-bottom:14px}
+.badge-beg{background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.25)}
+.badge-int{background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.25)}
+.badge-adv{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.25)}
+
+.test-q{font-size:16px;font-weight:700;line-height:1.6;margin-bottom:16px;color:#fff}
+.test-ko{font-family:'Noto Serif KR',serif;font-size:20px;font-weight:900;color:var(--sky);display:block;margin-bottom:6px}
+.test-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.test-opt{padding:11px 12px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;color:#fff;text-align:center;transition:all .15s}
+.test-opt:hover:not(:disabled){background:rgba(255,255,255,.1)}
+.test-opt.correct{background:rgba(34,197,94,.2);border-color:#4ade80;color:#4ade80}
+.test-opt.wrong{background:rgba(239,68,68,.15);border-color:#f87171;color:#f87171}
+.test-opt.reveal{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.3);color:rgba(255,255,255,.5)}
+.test-opt:disabled{cursor:default}
+.test-feedback{margin-top:10px;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.5;display:none}
+.test-feedback.show{display:block}
+.test-feedback.ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#4ade80}
+.test-feedback.no{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#f87171}
+
+/* ── 결과 ── */
+.result-score{text-align:center;padding:20px 0}
+.result-num{font-family:'Noto Serif KR',serif;font-size:64px;font-weight:900;line-height:1;color:#fff}
+.result-denom{font-size:20px;color:rgba(255,255,255,.4)}
+.result-level{font-size:22px;font-weight:900;margin:10px 0 4px;color:var(--sky)}
+.result-desc{font-size:13px;color:rgba(255,255,255,.55);line-height:1.6}
+.result-breakdown{display:flex;gap:6px;justify-content:center;margin-top:14px}
+.rb-item{flex:1;background:rgba(255,255,255,.05);border-radius:8px;padding:8px;text-align:center}
+.rb-n{font-size:18px;font-weight:900}
+.rb-l{font-size:10px;color:rgba(255,255,255,.4);margin-top:2px}
+.rb-beg .rb-n{color:#4ade80}
+.rb-int .rb-n{color:#fbbf24}
+.rb-adv .rb-n{color:#f87171}
+
+/* ── 버튼 ── */
+.ob-btn-row{display:flex;gap:10px;margin-top:20px}
+.ob-btn{flex:1;padding:13px;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s;border:none}
+.ob-btn-primary{background:var(--bright);color:#fff}
+.ob-btn-primary:hover{background:#1a4a8a}
+.ob-btn-primary:disabled{opacity:.4;cursor:default}
+.ob-btn-secondary{background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.12)}
+.ob-btn-secondary:hover{background:rgba(255,255,255,.12)}
+.ob-btn-full{width:100%;padding:14px;border-radius:12px;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;border:none;background:var(--bright);color:#fff}
+.ob-btn-full:hover{background:#1a4a8a}
+.ob-btn-full:disabled{opacity:.4;cursor:default}
+
+.skip-link{text-align:center;margin-top:14px;font-size:12px;color:rgba(255,255,255,.3);cursor:pointer}
+.skip-link:hover{color:rgba(255,255,255,.5)}
+</style>
+</head>
+<body>
+
+<div class="ob-wrap">
+  <div class="ob-logo">Kore<span>Han</span> News</div>
+
+  <!-- 진행 바 -->
+  <div class="ob-progress" id="ob-progress">
+    <div class="ob-step-dot active" id="dot-1">1</div>
+    <div class="ob-step-line" id="line-1"></div>
+    <div class="ob-step-dot pending" id="dot-2">2</div>
+    <div class="ob-step-line" id="line-2"></div>
+    <div class="ob-step-dot pending" id="dot-3">3</div>
+    <div class="ob-step-line" id="line-3"></div>
+    <div class="ob-step-dot pending" id="dot-4">4</div>
+  </div>
+
+  <!-- 스텝 컨테이너 -->
+  <div id="ob-content"></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// SUPABASE
+// ══════════════════════════════════════════════
+var SUPA_URL = 'https://samghztrdvtxmrmawneu.supabase.co';
+var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI0MzYyODMsImV4cCI6MjA0ODAxMjI4M30.hPRBpCPHDMQFsIQdEFRJJoqSLJbFdnpjKS5fBLOTFSs';
+var _sb = window.supabase ? window.supabase.createClient(SUPA_URL, SUPA_KEY) : null;
+var _user = null;
+
+// 유저 확인
+async function initUser() {
+  if (!_sb) return;
+  var { data } = await _sb.auth.getUser();
+  _user = data && data.user ? data.user : null;
+  if (!_user) { window.location.href = 'index.html'; return; }
+  // 이미 온보딩 완료했으면 스킵
+  var res = await _sb.from('user_stats').select('onboarded').eq('user_id', _user.id).maybeSingle();
+  if (res.data && res.data.onboarded) { window.location.href = 'index.html'; return; }
+  startOnboarding();
+}
+
+// ══════════════════════════════════════════════
+// 상태
+// ══════════════════════════════════════════════
+var state = {
+  step: 1,
+  goal: null,        // travel / kpop / business / immigration / fun
+  minutes: 15,
+  level: null,       // Beginner / Intermediate / Advanced
+  testScore: 0,
+  testAnswers: [],   // 각 문제 결과
+};
+
+// ══════════════════════════════════════════════
+// 15개 레벨 테스트 문제 (Beginner 5 / Intermediate 5 / Advanced 5)
+// ══════════════════════════════════════════════
+var TEST_QS = [
+  // ── Beginner (1-5) ───────────────────────────
+  {
+    level:'Beginner', n:1,
+    q:'빈칸에 알맞은 것은?',
+    sentence:'저는 학생___.',
+    choices:['이에요','한테요','에서요','부터요'],
+    answer:0,
+    exp:'"이에요/예요"는 "~입니다"의 반말. 자음 받침 뒤에는 이에요.'
+  },
+  {
+    level:'Beginner', n:2,
+    q:'"I go to school" 을 한국어로 하면?',
+    sentence:'',
+    choices:['학교에 가요','학교를 가요','학교에서 가요','학교가 가요'],
+    answer:0,
+    exp:'"에 가요" = go TO (방향). "에서 가요"는 "go FROM"이에요.'
+  },
+  {
+    level:'Beginner', n:3,
+    q:'밑줄 친 부분의 뜻은?',
+    sentence:'오늘 날씨가 좋아요.',
+    choices:['날씨 = weather','날씨 = today','날씨 = good','날씨 = very'],
+    answer:0,
+    exp:'날씨 = weather. 오늘 = today, 좋아요 = is good.'
+  },
+  {
+    level:'Beginner', n:4,
+    q:'다음 중 과거형은?',
+    sentence:'',
+    choices:['먹었어요','먹어요','먹을 거예요','먹고 있어요'],
+    answer:0,
+    exp:'-었/았어요 = past tense. 먹었어요 = ate/have eaten.'
+  },
+  {
+    level:'Beginner', n:5,
+    q:'"저는 커피를 좋아해요" 에서 "를" 의 역할은?',
+    sentence:'저는 커피를 좋아해요.',
+    choices:['목적어 표시','주어 표시','장소 표시','시간 표시'],
+    answer:0,
+    exp:'을/를 = object marker. 커피를 = coffee (object of 좋아해요).'
+  },
+  // ── Intermediate (6-10) ──────────────────────
+  {
+    level:'Intermediate', n:6,
+    q:'빈칸에 알맞은 연결어는?',
+    sentence:'비가 ___ 우산을 가져왔어요.',
+    choices:['와서','오지만','오면서','오거나'],
+    answer:0,
+    exp:'-아/어서 = because/so. 비가 와서 = because it rained.'
+  },
+  {
+    level:'Intermediate', n:7,
+    q:'"-(으)ㄹ 것 같아요" 의 뜻은?',
+    sentence:'내일 비가 올 것 같아요.',
+    choices:['~인 것 같다 (추측)','~해야 한다 (의무)','~할 수 있다 (가능)','~하고 싶다 (희망)'],
+    answer:0,
+    exp:'-(으)ㄹ 것 같다 = "it seems like~" / "I think~". 추측을 나타내요.'
+  },
+  {
+    level:'Intermediate', n:8,
+    q:'다음 중 자연스러운 문장은?',
+    sentence:'',
+    choices:['친구한테 선물을 줬어요','친구에게서 선물을 줬어요','친구한테서 선물을 줬어요','친구에 선물을 줬어요'],
+    answer:0,
+    exp:'주다(give) → 한테/에게. 받다(receive) → 한테서/에게서. 줬어요 = gave.'
+  },
+  {
+    level:'Intermediate', n:9,
+    q:'"열심히 공부했는데 시험을 못 봤어요" 에서 "는데" 의 역할은?',
+    sentence:'열심히 공부했는데 시험을 못 봤어요.',
+    choices:['대조/배경 제시','이유/원인','순서 나열','조건'],
+    answer:0,
+    exp:'-는데/-은데/-ㄴ데 = contrast or background info. "공부했는데" = "even though I studied".'
+  },
+  {
+    level:'Intermediate', n:10,
+    q:'다음 중 "-(으)면서" 가 바르게 쓰인 문장은?',
+    sentence:'',
+    choices:['음악을 들으면서 공부해요','음악을 들으면서 잤어요','음악이 들으면서 공부해요','음악을 들으면 공부해요'],
+    answer:0,
+    exp:'-면서 = while doing (동시 동작). 주어가 같아야 하고, 같은 시간에 두 동작이 일어나야 해요.'
+  },
+  // ── Advanced (11-15) ─────────────────────────
+  {
+    level:'Advanced', n:11,
+    q:'"경제가 회복될수록 고용률도 높아진다" 에서 "-(으)ㄹ수록" 의 뜻은?',
+    sentence:'경제가 회복될수록 고용률도 높아진다.',
+    choices:['~하면 할수록 (비례)','~하는 동안 (동시)','~하기 때문에 (원인)','~하더라도 (양보)'],
+    answer:0,
+    exp:'-(으)ㄹ수록 = "the more~, the more~". 비례 관계를 나타내요.'
+  },
+  {
+    level:'Advanced', n:12,
+    q:'다음 중 "-에 비해" 가 바르게 쓰인 문장은?',
+    sentence:'',
+    choices:['작년에 비해 물가가 많이 올랐다','작년에 비해 물가를 많이 올랐다','작년이 비해 물가가 많이 올랐다','작년에도 비해 물가가 올랐다'],
+    answer:0,
+    exp:'"N에 비해" = compared to N. 비교 대상 뒤에 "에 비해" 를 붙여요.'
+  },
+  {
+    level:'Advanced', n:13,
+    q:'"정부가 정책을 발표했음에도 불구하고 국민 반응은 냉담했다" 에서 강조하는 것은?',
+    sentence:'정책 발표에도 불구하고 국민 반응은 냉담했다.',
+    choices:['예상과 다른 결과 (양보)','원인과 결과 (인과)','순차적 사건 (시간)','조건과 결과 (가정)'],
+    answer:0,
+    exp:'"-에도 불구하고" = "despite~, in spite of~". 기대와 반대되는 결과를 나타내요.'
+  },
+  {
+    level:'Advanced', n:14,
+    q:'"그 사람이 범인이라는 증거가 없다" — "이라는" 의 역할은?',
+    sentence:'그 사람이 범인이라는 증거가 없다.',
+    choices:['명사절화 (관형절)','과거 회상','불확실한 추측','다른 사람의 말 인용'],
+    answer:0,
+    exp:'"N이라는 + N" = 앞 명사가 뒤 명사를 수식. "범인이라는 증거" = "evidence that [he is] the culprit".'
+  },
+  {
+    level:'Advanced', n:15,
+    q:'다음 중 가장 격식체 (formal)인 문장은?',
+    sentence:'',
+    choices:['예산이 삭감되었습니다','예산이 줄었어요','예산이 줄었어','예산이 줄었거든'],
+    answer:0,
+    exp:'-(으)ㅂ니다/습니다 = 가장 격식체. 뉴스, 발표, 공문서에서 사용해요.'
+  },
+];
+
+// ══════════════════════════════════════════════
+// 진행 바 업데이트
+// ══════════════════════════════════════════════
+function updateProgress(step) {
+  for (var i = 1; i <= 4; i++) {
+    var dot = document.getElementById('dot-' + i);
+    if (i < step)       { dot.className = 'ob-step-dot done'; dot.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'; }
+    else if (i === step) { dot.className = 'ob-step-dot active'; dot.textContent = i; }
+    else                 { dot.className = 'ob-step-dot pending'; dot.textContent = i; }
+    if (i < 4) {
+      var line = document.getElementById('line-' + i);
+      line.className = 'ob-step-line' + (i < step ? ' done' : '');
+    }
+  }
+}
+
+// ══════════════════════════════════════════════
+// STEP 1 — 목표
+// ══════════════════════════════════════════════
+function renderStep1() {
+  updateProgress(1);
+  var goals = [
+    { id:'travel',     icon:'✈️', label:'여행',        sub:'한국 여행 때 쓸 수 있게' },
+    { id:'kpop',       icon:'🎵', label:'K-pop · 드라마', sub:'좋아하는 콘텐츠를 원어로' },
+    { id:'business',   icon:'💼', label:'비즈니스',     sub:'한국어 업무 커뮤니케이션' },
+    { id:'immigration',icon:'🏠', label:'이민 · 거주',  sub:'한국 생활을 위한 실용 한국어' },
+    { id:'fun',        icon:'😊', label:'그냥 재미로',  sub:'취미로 배우는 한국어' },
+  ];
+  document.getElementById('ob-content').innerHTML =
+    '<div class="ob-card">'
+    + '<div class="ob-eyebrow">Step 1 of 4</div>'
+    + '<div class="ob-title">왜 한국어를 배우나요?</div>'
+    + '<div class="ob-desc">학습 목적에 맞는 콘텐츠와 예문을 추천해드릴게요.</div>'
+    + '<div class="ob-options">'
+    + goals.map(function(g) {
+        return '<button class="ob-opt" data-id="' + g.id + '" onclick="selectGoal(\'' + g.id + '\')">'
+          + '<span class="ob-opt-icon">' + g.icon + '</span>'
+          + '<span class="ob-opt-text"><span class="ob-opt-label">' + g.label + '</span><span class="ob-opt-sub">' + g.sub + '</span></span>'
+          + '<span class="ob-opt-check"><svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1,5 4,8 9,2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'
+          + '</button>';
+      }).join('')
+    + '</div>'
+    + '<button class="ob-btn-full" id="step1-next" onclick="goStep2()" disabled>다음 →</button>'
+    + '</div>'
+    + '<div class="skip-link" onclick="skipOnboarding()">건너뛰기</div>';
+}
+
+function selectGoal(id) {
+  state.goal = id;
+  document.querySelectorAll('.ob-opt').forEach(function(b){ b.classList.toggle('selected', b.dataset.id === id); });
+  document.getElementById('step1-next').disabled = false;
+}
+
+function goStep2() {
+  state.step = 2;
+  renderStep2();
+}
+
+// ══════════════════════════════════════════════
+// STEP 2 — 하루 목표 시간
+// ══════════════════════════════════════════════
+function renderStep2() {
+  updateProgress(2);
+  document.getElementById('ob-content').innerHTML =
+    '<div class="ob-card">'
+    + '<div class="ob-eyebrow">Step 2 of 4</div>'
+    + '<div class="ob-title">하루에 얼마나 공부할 수 있어요?</div>'
+    + '<div class="ob-desc">무리하지 않아도 돼요. 꾸준함이 가장 중요해요.</div>'
+    + '<div class="ob-time-grid">'
+    + [
+        { min:5,  label:'5분',  sub:'기사 1개' },
+        { min:15, label:'15분', sub:'기사 + 단어', default:true },
+        { min:30, label:'30분', sub:'풀 세션' },
+      ].map(function(t) {
+        return '<button class="ob-time-btn' + (t.default ? ' selected' : '') + '" data-min="' + t.min + '" onclick="selectTime(' + t.min + ',this)">'
+          + '<span class="ob-time-num">' + t.label + '</span>'
+          + '<span class="ob-time-label">' + t.sub + '</span>'
+          + '</button>';
+      }).join('')
+    + '</div>'
+    + '<div class="ob-btn-row">'
+    + '<button class="ob-btn ob-btn-secondary" onclick="renderStep1()">← 이전</button>'
+    + '<button class="ob-btn ob-btn-primary" onclick="goStep3()">다음 →</button>'
+    + '</div>'
+    + '</div>';
+}
+
+function selectTime(min, btn) {
+  state.minutes = min;
+  document.querySelectorAll('.ob-time-btn').forEach(function(b){ b.classList.toggle('selected', b === btn); });
+}
+
+function goStep3() {
+  state.step = 3;
+  renderStep3();
+}
+
+// ══════════════════════════════════════════════
+// STEP 3 — 레벨 테스트 (15문제)
+// ══════════════════════════════════════════════
+var _testIdx = 0;
+var _testAnswered = false;
+
+function renderStep3() {
+  updateProgress(3);
+  _testIdx = 0;
+  state.testAnswers = [];
+  renderTestQuestion();
+}
+
+function renderTestQuestion() {
+  var q = TEST_QS[_testIdx];
+  _testAnswered = false;
+  var levelBadgeClass = { Beginner:'badge-beg', Intermediate:'badge-int', Advanced:'badge-adv' }[q.level];
+  var levelLabel      = { Beginner:'🟢 초급', Intermediate:'🟡 중급', Advanced:'🔴 고급' }[q.level];
+  var pct = Math.round((_testIdx / 15) * 100);
+
+  document.getElementById('ob-content').innerHTML =
+    '<div class="ob-card">'
+    + '<div class="ob-eyebrow">Step 3 of 4 · 레벨 테스트</div>'
+    + '<div class="test-progress">'
+    + '<div class="test-prog-bar"><div class="test-prog-fill" style="width:' + pct + '%"></div></div>'
+    + '<div class="test-prog-label"><span>문제 ' + (_testIdx+1) + ' / 15</span><span>' + pct + '%</span></div>'
+    + '</div>'
+    + '<div class="test-level-badge ' + levelBadgeClass + '">' + levelLabel + '</div>'
+    + '<div class="test-q">' + q.q
+    + (q.sentence ? '<span class="test-ko">' + q.sentence + '</span>' : '')
+    + '</div>'
+    + '<div class="test-opts">'
+    + q.choices.map(function(c, i) {
+        return '<button class="test-opt" id="topt-' + i + '" onclick="answerTest(' + i + ')">' + c + '</button>';
+      }).join('')
+    + '</div>'
+    + '<div class="test-feedback" id="test-fb"></div>'
+    + '<button class="ob-btn-full" id="test-next-btn" onclick="nextTestQ()" style="margin-top:16px;display:none">'
+    + (_testIdx < 14 ? '다음 문제 →' : '결과 보기 →')
+    + '</button>'
+    + '</div>';
+}
+
+function answerTest(idx) {
+  if (_testAnswered) return;
+  _testAnswered = true;
+  var q = TEST_QS[_testIdx];
+  var correct = idx === q.answer;
+  state.testAnswers.push(correct);
+
+  var opts = document.querySelectorAll('.test-opt');
+  opts.forEach(function(b){ b.disabled = true; });
+  opts[idx].classList.add(correct ? 'correct' : 'wrong');
+  if (!correct) opts[q.answer].classList.add('reveal');
+
+  var fb = document.getElementById('test-fb');
+  fb.className = 'test-feedback show ' + (correct ? 'ok' : 'no');
+  fb.innerHTML = (correct ? '✅ 정답! ' : '❌ 오답. ') + q.exp;
+
+  document.getElementById('test-next-btn').style.display = 'block';
+}
+
+function nextTestQ() {
+  _testIdx++;
+  if (_testIdx >= 15) {
+    showTestResult();
+  } else {
+    renderTestQuestion();
+  }
+}
+
+function showTestResult() {
+  updateProgress(3);
+  var correct = state.testAnswers.filter(Boolean).length;
+  state.testScore = correct;
+
+  var begCorrect = state.testAnswers.slice(0,5).filter(Boolean).length;
+  var intCorrect = state.testAnswers.slice(5,10).filter(Boolean).length;
+  var advCorrect = state.testAnswers.slice(10,15).filter(Boolean).length;
+
+  // 레벨 판별
+  var level;
+  if (advCorrect >= 3)     level = 'Advanced';
+  else if (intCorrect >= 3) level = 'Intermediate';
+  else                      level = 'Beginner';
+  state.level = level;
+
+  var levelDesc = {
+    Beginner:     '기초를 다지는 단계예요. 쉬운 기사와 필수 어휘부터 시작해요.',
+    Intermediate: '일상 한국어는 이해하는 수준이에요. 뉴스 읽기에 딱 맞아요.',
+    Advanced:     '복잡한 문법도 이해하는 고급 단계예요. 시사 뉴스를 원어로 읽어봐요.',
+  }[level];
+
+  var levelBadgeClass = { Beginner:'badge-beg', Intermediate:'badge-int', Advanced:'badge-adv' }[level];
+  var levelKo = { Beginner:'초급', Intermediate:'중급', Advanced:'고급' }[level];
+
+  document.getElementById('ob-content').innerHTML =
+    '<div class="ob-card">'
+    + '<div class="ob-eyebrow">레벨 테스트 결과</div>'
+    + '<div class="result-score">'
+    + '<div class="result-num">' + correct + '<span class="result-denom"> / 15</span></div>'
+    + '<div class="result-level">' + levelKo + ' · ' + level + '</div>'
+    + '<div class="result-desc">' + levelDesc + '</div>'
+    + '</div>'
+    + '<div class="result-breakdown">'
+    + '<div class="rb-item rb-beg"><div class="rb-n">' + begCorrect + '/5</div><div class="rb-l">초급</div></div>'
+    + '<div class="rb-item rb-int"><div class="rb-n">' + intCorrect + '/5</div><div class="rb-l">중급</div></div>'
+    + '<div class="rb-item rb-adv"><div class="rb-n">' + advCorrect + '/5</div><div class="rb-l">고급</div></div>'
+    + '</div>'
+    + '<div class="ob-btn-row" style="margin-top:20px">'
+    + '<button class="ob-btn ob-btn-secondary" onclick="retakeTest()">다시 테스트</button>'
+    + '<button class="ob-btn ob-btn-primary" onclick="goStep4()">이 레벨로 시작 →</button>'
+    + '</div>'
+    + '</div>';
+}
+
+function retakeTest() {
+  renderStep3();
+}
+
+function goStep4() {
+  state.step = 4;
+  renderStep4();
+}
+
+// ══════════════════════════════════════════════
+// STEP 4 — 완료 + 첫 기사 유도
+// ══════════════════════════════════════════════
+function renderStep4() {
+  updateProgress(4);
+  var levelKo  = { Beginner:'초급', Intermediate:'중급', Advanced:'고급' }[state.level];
+  var goalKo   = { travel:'여행', kpop:'K-pop·드라마', business:'비즈니스', immigration:'이민·거주', fun:'재미로' }[state.goal] || '';
+  var minLabel = state.minutes + '분';
+
+  document.getElementById('ob-content').innerHTML =
+    '<div class="ob-card">'
+    + '<div class="ob-eyebrow">Step 4 of 4 · 준비 완료!</div>'
+    + '<div class="ob-title">🎉 설정이 완료됐어요!</div>'
+    + '<div class="ob-desc">이제 KoreHan News를 시작해볼까요?</div>'
+    + '<div style="background:rgba(255,255,255,.05);border-radius:12px;padding:14px 16px;margin-bottom:20px;display:flex;flex-direction:column;gap:8px">'
+    + '<div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,.5);font-size:13px">목표</span><span style="font-weight:700;font-size:13px">' + goalKo + '</span></div>'
+    + '<div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,.5);font-size:13px">레벨</span><span style="font-weight:700;font-size:13px">' + levelKo + ' (' + state.level + ')</span></div>'
+    + '<div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,.5);font-size:13px">데일리 목표</span><span style="font-weight:700;font-size:13px">' + minLabel + '</span></div>'
+    + '<div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,.5);font-size:13px">테스트</span><span style="font-weight:700;font-size:13px">' + state.testScore + '/15 정답</span></div>'
+    + '</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.5);margin-bottom:14px;line-height:1.6">첫 기사를 읽고 나면 단어를 저장하고, 퀴즈를 풀고, 오늘의 데일리 미션을 완료해봐요. <b style="color:#fff">XP도 쌓이기 시작해요!</b></div>'
+    + '<button class="ob-btn-full" id="finish-btn" onclick="finishOnboarding()">첫 기사 읽으러 가기 →</button>'
+    + '</div>';
+}
+
+async function finishOnboarding() {
+  var btn = document.getElementById('finish-btn');
+  btn.textContent = '저장 중...'; btn.disabled = true;
+
+  if (_user && _sb) {
+    await _sb.rpc('complete_onboarding', {
+      p_user_id:       _user.id,
+      p_goal_type:     state.goal,
+      p_daily_minutes: state.minutes,
+      p_level:         state.level,
+      p_test_score:    state.testScore
+    });
+  }
+
+  // 레벨에 맞는 기사로 이동
+  window.location.href = 'korehan-all.html?level=' + state.level;
+}
+
+async function skipOnboarding() {
+  if (_user && _sb) {
+    await _sb.from('user_stats').upsert(
+      { user_id: _user.id, onboarded: true, onboarded_at: new Date().toISOString() },
+      { onConflict: 'user_id' }
+    );
+  }
+  window.location.href = 'index.html';
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+function startOnboarding() {
+  renderStep1();
+}
+
+initUser();
+</script>
+</body>
+</html>
