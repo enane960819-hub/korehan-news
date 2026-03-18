@@ -4549,6 +4549,7 @@ async function onDailyMissionComplete() {
       writing_tickets: newTickets,
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' });
+    lsSet('kh_mission_streak', newStreak); // 캐시 즉시 갱신
 
   } catch(e) { console.warn('onDailyMissionComplete', e); }
 }
@@ -4923,7 +4924,7 @@ async function renderHomeLearningPreview() {
   // localStorage 기반 즉시 표시 (빠른 렌더)
   var dm = dmGet ? dmGet() : {};
   var xp = getXP ? getXP() : 0;
-  var streak = getCurrentStreak ? getCurrentStreak() : 0;
+  var streak = lsGet('kh_mission_streak', 0); // DB에서 캐시된 mission_streak
 
   // weak grammar — localStorage 우선, DB에서 보강
   var weakGrammar = '-아/어서 vs -고';
@@ -4957,6 +4958,7 @@ async function renderHomeLearningPreview() {
       if (statsRes.data) {
         xp     = Math.max(xp,     statsRes.data.xp             || 0);
         streak = Math.max(streak, statsRes.data.mission_streak || statsRes.data.streak || 0);
+        lsSet('kh_mission_streak', streak); // 다음 초기 렌더에서 캐시 사용
       }
       // weak grammar from DB
       var wgRes = await sb.from('user_grammar_stats')
