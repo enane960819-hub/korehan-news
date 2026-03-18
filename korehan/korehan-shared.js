@@ -1266,6 +1266,53 @@ function renderHomePage() {
         renderHeroSlide(heroEl);
       }, 4200);
     }
+    // 스와이프 / 드래그로 슬라이드 이동
+    if (!heroEl._swipeInit) {
+      heroEl._swipeInit = true;
+      var _swipeX = null;
+      var _swipeMoved = false;
+      function heroSwipeGo(dir) {
+        _heroIdx = (_heroIdx + dir + _heroSlides.length) % _heroSlides.length;
+        renderHeroSlide(heroEl);
+        if (_heroTimer) clearInterval(_heroTimer);
+        _heroTimer = setInterval(function(){
+          _heroIdx = (_heroIdx + 1) % _heroSlides.length;
+          var el = document.getElementById('dyn-hero');
+          if (el) renderHeroSlide(el);
+        }, 4200);
+      }
+      heroEl.addEventListener('touchstart', function(e) {
+        _swipeX = e.touches[0].clientX; _swipeMoved = false;
+      }, { passive: true });
+      heroEl.addEventListener('touchmove', function(e) {
+        if (_swipeX !== null && Math.abs(e.touches[0].clientX - _swipeX) > 8) _swipeMoved = true;
+      }, { passive: true });
+      heroEl.addEventListener('touchend', function(e) {
+        if (_swipeX === null) return;
+        var dx = e.changedTouches[0].clientX - _swipeX;
+        _swipeX = null;
+        if (!_swipeMoved || Math.abs(dx) < 40) return;
+        heroSwipeGo(dx < 0 ? 1 : -1);
+      });
+      // 마우스 드래그 (데스크탑)
+      var _mouseX = null;
+      heroEl.addEventListener('mousedown', function(e) { _mouseX = e.clientX; _swipeMoved = false; });
+      heroEl.addEventListener('mousemove', function(e) {
+        if (_mouseX !== null && Math.abs(e.clientX - _mouseX) > 8) _swipeMoved = true;
+      });
+      heroEl.addEventListener('mouseup', function(e) {
+        if (_mouseX === null) return;
+        var dx = e.clientX - _mouseX;
+        _mouseX = null;
+        if (!_swipeMoved || Math.abs(dx) < 60) return;
+        heroSwipeGo(dx < 0 ? 1 : -1);
+      });
+      heroEl.addEventListener('mouseleave', function() { _mouseX = null; });
+      // 드래그 후 링크 이동 방지
+      heroEl.addEventListener('click', function(e) {
+        if (_swipeMoved) { e.preventDefault(); e.stopPropagation(); _swipeMoved = false; }
+      }, true);
+    }
   }
 
   // TOP STORIES

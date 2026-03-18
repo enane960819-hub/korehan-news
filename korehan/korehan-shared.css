@@ -1288,9 +1288,9 @@ body .dark-mode .kh-footer     { background: #0b1220; }
 .phrase-bar { background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%); border-radius: 6px; padding: 18px 24px; margin-top: 20px; margin-bottom: 28px; display: flex; align-items: center; gap: 24px; }
 .pb-left { flex: 1; }
 .pb-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: var(--sky); margin-bottom: 5px; }
-.pb-ko  { font-family: 'Noto Serif KR', serif; font-size: 20px; font-weight: 900; color: #fff; }
-.pb-rom { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 2px; font-style: italic; }
-.pb-en  { font-size: 12px; color: rgba(255,255,255,.65); margin-top: 2px; line-height: 1.5; }
+.pb-ko  { font-family: 'Noto Serif KR', serif; font-size: 34px; font-weight: 900; color: #fff; line-height: 1.15; }
+.pb-rom { font-size: 14px; color: rgba(255,255,255,.5); margin-top: 6px; font-style: italic; }
+.pb-en  { font-size: 16px; color: rgba(255,255,255,.8); margin-top: 6px; line-height: 1.4; font-weight: 600; }
 .pb-btn { flex-shrink: 0; padding: 9px 18px; background: rgba(255,255,255,.1); border: 1.5px solid rgba(255,255,255,.2); color: #fff; border-radius: 5px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; white-space: nowrap; }
 .pb-btn:hover { background: rgba(255,255,255,.18); }
 
