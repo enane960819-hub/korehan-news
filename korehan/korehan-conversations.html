@@ -98,6 +98,14 @@
 .dp-vi-save:hover{border-color:#2563eb;color:#2563eb;}
 .dp-vi-save.saved{background:#2563eb;border-color:#2563eb;color:#fff;}
 .dp-grammar-list{display:flex;flex-direction:column;gap:9px;}
+.tts-bubble{cursor:pointer;position:relative;}
+.tts-bubble:hover{opacity:.88;}
+.tts-bubble:active{transform:scale(.97);}
+.dp-tts-icon{font-size:11px;margin-left:6px;opacity:0;transition:opacity .15s;vertical-align:middle;}
+.tts-bubble:hover .dp-tts-icon{opacity:.7;}
+.tts-bubble.tts-playing .dp-tts-icon{opacity:1;animation:tts-pulse .6s infinite alternate;}
+@keyframes tts-pulse{from{opacity:.4}to{opacity:1}}
+@keyframes rpBubbleIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .dp-grammar-item{padding:10px 14px;border-radius:12px;background:#f8fafc;border:1px solid #e8eef7;font-size:13px;line-height:1.6;color:#334155;}
 .dp-grammar-item strong{color:#1d4ed8;font-weight:800;}
 .dp-keywords{display:flex;flex-wrap:wrap;gap:7px;}
@@ -220,19 +228,21 @@ function openDetail(idx) {
     var ap  = h < 12 ? 'AM' : 'PM';
     var time = hr + ':' + min + ' ' + ap;
     var note = msg.note ? '<div class="dp-inline-note">💡 '+msg.note+'</div>' : '';
+    var txt = msg.txt || '';
+    var safe = txt.replace(/'/g, "\\'").replace(/"/g, '&quot;');
     if (msg.s === 'l') {
       return '<div class="dp-msg-row left">'
         +'<div class="dp-avatar">'+c.avi+'</div>'
         +'<div class="dp-bubble-group">'
           +'<div class="dp-who">'+msg.who+'</div>'
-          +'<div class="dp-bubble">'+msg.txt+'</div>'
+          +'<div class="dp-bubble tts-bubble" onclick="playMsgTTS(\''+safe+'\')" title="클릭해서 듣기">'+txt+'<span class="dp-tts-icon">🔊</span></div>'
           +'<div class="dp-time">'+time+'</div>'
           +note
         +'</div></div>';
     } else {
       return '<div class="dp-msg-row right">'
         +'<div class="dp-bubble-group">'
-          +'<div class="dp-bubble">'+msg.txt+'</div>'
+          +'<div class="dp-bubble tts-bubble" onclick="playMsgTTS(\''+safe+'\')" title="클릭해서 듣기">'+txt+'<span class="dp-tts-icon">🔊</span></div>'
           +'<div class="dp-time">'+time+'</div>'
           +note
         +'</div></div>';
@@ -328,6 +338,30 @@ function renderStudyNotes(c) {
 function closeDetail() {
   document.getElementById('detail-overlay').classList.add('hidden');
   document.body.style.overflow = '';
+}
+
+// ── TTS ──────────────────────────────────────────────────────
+var _ttsAudio = null;
+function playMsgTTS(text) {
+  if (!text) return;
+  // 이미 재생 중이면 멈춤
+  if (_ttsAudio) { _ttsAudio.pause(); _ttsAudio = null; }
+  // 재생 중 버블 표시 초기화
+  document.querySelectorAll('.tts-bubble.tts-playing').forEach(function(el){ el.classList.remove('tts-playing'); });
+  // 클릭된 버블 찾기 (이벤트 target에서 closest)
+  var bubble = event && event.currentTarget;
+  if (bubble) bubble.classList.add('tts-playing');
+  var audio = new Audio('/tts?t=' + encodeURIComponent(text));
+  _ttsAudio = audio;
+  audio.onended = function() {
+    if (bubble) bubble.classList.remove('tts-playing');
+    _ttsAudio = null;
+  };
+  audio.onerror = function() {
+    if (bubble) bubble.classList.remove('tts-playing');
+    _ttsAudio = null;
+  };
+  audio.play().catch(function(){});
 }
 async function toggleSave(btn) {
   var isSaved = btn.classList.contains('saved');
@@ -766,129 +800,154 @@ function beginRolePlay(side) {
   _rpMsgs = (c.msgs || []);
   _rpSide = side;
   _rpStep = 0;
+  _rpScore = 0;
   renderRolePlayStep();
+}
+
+// MC 선택지 생성: 정답 + 다른 대화의 문장 3개 (문맥 이해 필요)
+function rpGenChoices(correctTxt) {
+  var pool = _rpMsgs
+    .map(function(m){ return m.txt || ''; })
+    .filter(function(t){ return t && t !== correctTxt; });
+  // shuffle
+  for (var i = pool.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+  }
+  var choices = [correctTxt].concat(pool.slice(0, 3));
+  // shuffle choices
+  for (var a = choices.length - 1; a > 0; a--) {
+    var b = Math.floor(Math.random() * (a + 1));
+    var tc = choices[a]; choices[a] = choices[b]; choices[b] = tc;
+  }
+  return choices;
 }
 
 function renderRolePlayStep() {
   var overlay = document.getElementById('rp-overlay');
   overlay.style.display = 'flex';
   var c = window._currentConv;
+  var total = _rpMsgs.length;
+  var progress = Math.round((_rpStep / total) * 100);
 
-  // 지금까지 보인 메시지들 (내 차례 전까지)
-  var shownMsgs = '';
+  // 채팅 히스토리 (지금까지 확정된 메시지들)
+  var history = '';
   for (var i = 0; i < _rpStep; i++) {
     var m = _rpMsgs[i];
     var isMe = m.s === _rpSide;
-    var bubbleStyle = isMe
-      ? 'background:#2563eb;color:#fff;margin-left:auto;'
-      : 'background:#f1f5f9;color:#0f172a;margin-right:auto;';
-    shownMsgs += '<div style="max-width:80%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.6;margin-bottom:8px;font-family:\'Noto Sans KR\',sans-serif;' + bubbleStyle + '">'
-      + (m.txt || m.text || '') + '</div>';
+    var bstyle = isMe
+      ? 'background:#7c3aed;color:#fff;margin-left:auto;border-radius:18px 18px 4px 18px;'
+      : 'background:#f1f5f9;color:#0f172a;margin-right:auto;border-radius:18px 18px 18px 4px;';
+    history += '<div style="max-width:78%;padding:10px 14px;font-size:14px;line-height:1.6;margin-bottom:6px;font-family:\'Noto Sans KR\',sans-serif;' + bstyle + '">'
+      + (m.txt || '') + '</div>';
   }
 
-  // 내 차례?
   var currentMsg = _rpMsgs[_rpStep];
-  var isMyTurn = currentMsg && currentMsg.s === _rpSide;
-  var isNpcTurn = currentMsg && currentMsg.s !== _rpSide;
+  var bottomArea = '';
 
-  var inputArea = '';
   if (!currentMsg) {
-    // 대화 끝
-    inputArea = '<div style="text-align:center;padding:20px;">'
-      + '<div style="font-size:36px;margin-bottom:10px;">🎉</div>'
-      + '<div style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:6px;">롤플레이 완료!</div>'
-      + '<div style="font-size:13px;color:#64748b;margin-bottom:18px;">대화를 끝까지 완성했어요</div>'
+    // 완료
+    var pct = total > 0 ? Math.round(_rpScore / Math.ceil(total / 2) * 100) : 0;
+    if (pct > 100) pct = 100;
+    bottomArea = '<div style="text-align:center;padding:16px 0 8px;">'
+      + '<div style="font-size:40px;margin-bottom:8px;">' + (pct >= 80 ? '🏆' : pct >= 50 ? '👍' : '📚') + '</div>'
+      + '<div style="font-size:17px;font-weight:900;color:#0f172a;margin-bottom:4px;">롤플레이 완료!</div>'
+      + '<div style="font-size:13px;color:#7c3aed;font-weight:700;margin-bottom:14px;">내 정답률 ' + pct + '%</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
       + '<button onclick="beginRolePlay(_rpSide)" style="padding:11px;border-radius:12px;border:1px solid #e2e8f0;background:#f8fafc;color:#334155;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">🔄 다시 하기</button>'
-      + '<button onclick="closeRolePlay()" style="padding:11px;border-radius:12px;background:#2563eb;color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">✓ 완료</button>'
+      + '<button onclick="closeRolePlay()" style="padding:11px;border-radius:12px;background:#7c3aed;color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">✓ 완료</button>'
       + '</div></div>';
-  } else if (isNpcTurn) {
-    // 상대방 차례 → 메시지 보여주고 다음 버튼
-    var npcMsg = currentMsg.txt || currentMsg.text || '';
-    shownMsgs += '<div style="max-width:80%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.6;margin-bottom:8px;font-family:\'Noto Sans KR\',sans-serif;background:#f1f5f9;color:#0f172a;margin-right:auto;">'
-      + npcMsg + '</div>';
-    inputArea = '<div style="padding:12px 0 0;">'
-      + '<button onclick="rpNext()" style="width:100%;padding:12px;border-radius:14px;background:#7c3aed;color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">계속 →</button>'
-      + '</div>';
-    _rpStep++; // NPC 메시지는 자동으로 보이고 스텝 증가
-    // Re-render after small delay to show message
-    setTimeout(function() { renderRolePlayStepInner(overlay, c, shownMsgs, inputArea); }, 0);
-    return;
-  } else if (isMyTurn) {
-    // 내 차례 → 입력창
-    var hint = currentMsg.txt || currentMsg.text || '';
-    inputArea = '<div style="padding:12px 0 0;">'
-      + '<div style="font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">내 대사를 입력하세요</div>'
-      + '<textarea id="rp-input" rows="2" placeholder="한국어로 입력..." style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:12px;font-size:14px;font-family:\'Noto Sans KR\',sans-serif;resize:none;box-sizing:border-box;outline:none;transition:border .15s;" onfocus="this.style.borderColor=\'#7c3aed\'" onblur="this.style.borderColor=\'#e2e8f0\'" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();rpSubmit();}"></textarea>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">'
-      + '<button onclick="rpReveal()" style="padding:10px;border-radius:12px;border:1px solid #e2e8f0;background:#f8fafc;color:#64748b;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">💡 정답 보기</button>'
-      + '<button onclick="rpSubmit()" style="padding:10px;border-radius:12px;background:#7c3aed;color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">전송 →</button>'
-      + '</div>'
-      + '<div id="rp-feedback" style="margin-top:10px;"></div>'
-      + '</div>';
+
+  } else if (currentMsg.s !== _rpSide) {
+    // 상대방 차례 → 자동 표시 + TTS + 계속 버튼
+    var npcTxt = currentMsg.txt || '';
+    history += '<div style="max-width:78%;padding:10px 14px;font-size:14px;line-height:1.6;margin-bottom:6px;font-family:\'Noto Sans KR\',sans-serif;background:#f1f5f9;color:#0f172a;margin-right:auto;border-radius:18px 18px 18px 4px;animation:rpBubbleIn .25s ease;">'
+      + npcTxt + '</div>';
+    _rpStep++;
+    // TTS 자동 재생
+    if (npcTxt) {
+      var npcAudio = new Audio('/tts?t=' + encodeURIComponent(npcTxt));
+      npcAudio.play().catch(function(){});
+    }
+    bottomArea = '<button onclick="rpNext()" style="width:100%;padding:12px;border-radius:14px;background:#7c3aed;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:12px;">내 차례 →</button>';
+
+  } else {
+    // 내 차례 → 4지선다
+    var correctTxt = currentMsg.txt || '';
+    var choices = rpGenChoices(correctTxt);
+    var myTurn = Math.ceil(_rpStep / 2) + 1;
+    bottomArea = '<div style="margin-top:10px;">'
+      + '<div style="font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">내 대사를 고르세요 (' + myTurn + '번째 차례)</div>'
+      + '<div style="display:flex;flex-direction:column;gap:8px;">'
+      + choices.map(function(ch, ci) {
+          var safeC = ch.replace(/'/g, "\\'");
+          var safeA = correctTxt.replace(/'/g, "\\'");
+          return '<button onclick="rpChoose(this,\'' + safeC + '\',\'' + safeA + '\')" '
+            + 'style="padding:11px 14px;border-radius:14px;border:2px solid #e2e8f0;background:#fff;font-size:14px;font-family:\'Noto Sans KR\',sans-serif;cursor:pointer;text-align:left;line-height:1.5;transition:all .15s;" '
+            + 'onmouseover="if(!this.dataset.done)this.style.borderColor=\'#7c3aed\'" '
+            + 'onmouseout="if(!this.dataset.done)this.style.borderColor=\'#e2e8f0\'">'
+            + ch + '</button>';
+        }).join('')
+      + '</div></div>';
   }
 
-  renderRolePlayStepInner(overlay, c, shownMsgs, inputArea);
-}
-
-function renderRolePlayStepInner(overlay, c, shownMsgs, inputArea) {
-  var total = _rpMsgs.length;
-  var progress = Math.round((_rpStep / total) * 100);
-  overlay.innerHTML = '<div style="background:#fff;border-radius:24px;max-width:520px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(15,23,42,.25);overflow:hidden;">'
+  overlay.innerHTML = '<div style="background:#fff;border-radius:24px;max-width:520px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(15,23,42,.25);overflow:hidden;">'
     + '<div style="background:linear-gradient(135deg,#7c3aed,#a855f7);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">'
-    + '<div style="color:#fff;"><div style="font-size:11px;font-weight:700;opacity:.8;letter-spacing:.08em;text-transform:uppercase;">🎭 Role Play</div>'
-    + '<div style="font-size:14px;font-weight:700;margin-top:2px;">' + (c.name || '') + '</div></div>'
+    + '<div style="color:#fff;">'
+    + '<div style="font-size:11px;font-weight:700;opacity:.8;letter-spacing:.08em;text-transform:uppercase;">🎭 Role Play</div>'
+    + '<div style="font-size:14px;font-weight:700;margin-top:2px;">' + (c.name || '') + '</div>'
+    + '</div>'
     + '<button onclick="closeRolePlay()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:22px;cursor:pointer;line-height:1;">✕</button>'
     + '</div>'
-    + '<div style="height:4px;background:#e2e8f0;flex-shrink:0;"><div style="height:4px;background:#7c3aed;width:' + progress + '%;transition:width .3s"></div></div>'
-    + '<div style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;">'
-    + shownMsgs
-    + '</div>'
-    + '<div style="padding:0 20px 20px;flex-shrink:0;border-top:1px solid #f0f4fa;">' + inputArea + '</div>'
+    + '<div style="height:4px;background:#e2e8f0;flex-shrink:0;">'
+    + '<div style="height:4px;background:#7c3aed;width:' + progress + '%;transition:width .4s"></div></div>'
+    + '<div id="rp-chat" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;">' + history + '</div>'
+    + '<div style="padding:0 20px 20px;flex-shrink:0;border-top:1px solid #f0f4fa;">' + bottomArea + '</div>'
     + '</div>';
 
-  var inp = document.getElementById('rp-input');
-  if (inp) setTimeout(function(){ inp.focus(); }, 50);
+  // 채팅창 아래로 스크롤
+  var chat = document.getElementById('rp-chat');
+  if (chat) setTimeout(function(){ chat.scrollTop = chat.scrollHeight; }, 50);
+}
+
+function rpChoose(btn, chosen, correct) {
+  // 모든 버튼 비활성화
+  var allBtns = btn.parentElement.querySelectorAll('button');
+  allBtns.forEach(function(b){ b.dataset.done = '1'; b.style.cursor = 'default'; });
+
+  var isCorrect = chosen === correct;
+  if (isCorrect) {
+    _rpScore++;
+    btn.style.background = '#f0fdf4';
+    btn.style.borderColor = '#22c55e';
+    btn.style.color = '#15803d';
+    // TTS 재생
+    var audio = new Audio('/tts?t=' + encodeURIComponent(chosen));
+    audio.play().catch(function(){});
+  } else {
+    btn.style.background = '#fef2f2';
+    btn.style.borderColor = '#f87171';
+    btn.style.color = '#b91c1c';
+    // 정답 표시
+    allBtns.forEach(function(b){
+      if (b.textContent.trim() === correct) {
+        b.style.background = '#f0fdf4';
+        b.style.borderColor = '#22c55e';
+        b.style.color = '#15803d';
+      }
+    });
+    // 정답 TTS 재생
+    var audioC = new Audio('/tts?t=' + encodeURIComponent(correct));
+    audioC.play().catch(function(){});
+  }
+
+  _rpStep++;
+  // 내 답변을 히스토리에 추가하고 다음 NPC 차례로
+  setTimeout(function(){ renderRolePlayStep(); }, isCorrect ? 900 : 1400);
 }
 
 function rpNext() {
   renderRolePlayStep();
-}
-
-function rpSubmit() {
-  var inp = document.getElementById('rp-input');
-  if (!inp) return;
-  var val = (inp.value || '').trim();
-  if (!val) { inp.focus(); return; }
-  // 입력값 보여주고 다음으로
-  var currentMsg = _rpMsgs[_rpStep];
-  var expected = currentMsg ? (currentMsg.txt || currentMsg.text || '') : '';
-  _rpStep++;
-
-  var fb = document.getElementById('rp-feedback');
-  if (fb) {
-    var match = val === expected;
-    fb.innerHTML = '<div style="padding:10px 14px;border-radius:12px;background:' + (match ? '#f0fdf4' : '#fffbeb') + ';border:1px solid ' + (match ? '#bbf7d0' : '#fde68a') + ';font-size:13px;">'
-      + (match ? '✅ 완벽해요!' : '✏️ 참고: <b style="font-family:\'Noto Sans KR\',sans-serif;">' + expected + '</b>')
-      + '</div>'
-      + '<button onclick="rpNext()" style="width:100%;margin-top:8px;padding:10px;border-radius:12px;background:#7c3aed;color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">다음 →</button>';
-    var btns = document.querySelectorAll('#rp-input, #rp-overlay button:not([onclick="closeRolePlay()"])');
-    if (inp) { inp.disabled = true; inp.style.opacity = '.6'; }
-  } else {
-    setTimeout(function(){ renderRolePlayStep(); }, 300);
-  }
-}
-
-function rpReveal() {
-  var currentMsg = _rpMsgs[_rpStep];
-  var expected = currentMsg ? (currentMsg.txt || currentMsg.text || '') : '';
-  var fb = document.getElementById('rp-feedback');
-  if (fb) {
-    fb.innerHTML = '<div style="padding:10px 14px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;font-size:13px;font-family:\'Noto Sans KR\',sans-serif;">'
-      + '💡 ' + expected + '</div>';
-  }
-  var inp = document.getElementById('rp-input');
-  if (inp) { inp.value = expected; inp.focus(); }
 }
 
 function closeRolePlay() {
