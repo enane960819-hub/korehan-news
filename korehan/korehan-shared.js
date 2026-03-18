@@ -4853,7 +4853,7 @@ function runMobileRedesign() {
 }
 
 document.addEventListener('DOMContentLoaded', function(){
-  setTimeout(runMobileRedesign, 700);
+  runMobileRedesign();
 });
 window.addEventListener('resize', function(){
   if (isMobileRedesign()) {
