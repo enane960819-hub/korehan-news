@@ -2807,6 +2807,7 @@ async function goConvEditor() {
           <div>
             <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">COUNT</label>
             <select id="cv-count" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+              <option value="1">1개</option>
               <option value="3">3개</option>
               <option value="5">5개</option>
               <option value="10" selected>10개</option>
@@ -3114,6 +3115,16 @@ function openConvCreateModal() {
   openConvEditModal(null, null);
 }
 
+function _ceEsc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _ceAttr(s){ return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+var _ceAddSide = 'l';
+function toggleCEAddSide() {
+  _ceAddSide = _ceAddSide === 'l' ? 'r' : 'l';
+  var btn = document.getElementById('ce-side-btn');
+  if (btn) { btn.textContent = _ceAddSide === 'l' ? 'A (left)' : 'B (right)'; btn.style.background = _ceAddSide === 'r' ? '#eff6ff' : '#f1f5f9'; }
+}
+
 async function openConvEditModal(rowId, existingData) {
   var sb = getSb();
   var rowData = existingData;
@@ -3124,244 +3135,289 @@ async function openConvEditModal(rowId, existingData) {
   var d = (rowData && rowData.data) ? rowData.data : {};
   var isNew = !rowId;
 
-  var msgsText = (d.msgs || []).map(function(m){
-    return (m.s === 'l' ? 'A' : 'B') + ': ' + m.txt;
-  }).join('\n');
+  window._editMsgs    = (d.msgs    || []).map(function(m){ return Object.assign({}, m); });
+  window._editVocab   = (d.vocab   || []).map(function(v){ return Object.assign({}, v); });
+  window._editGrammar = (d.grammar || []).map(function(g){ return Object.assign({}, g); });
+  window._editMission = (d.mission || []).slice();
+  _ceAddSide = 'l';
 
   var overlay = document.createElement('div');
   overlay.id = 'conv-edit-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(4px);z-index:9000;display:flex;align-items:center;justify-content:center;padding:18px;overflow-y:auto;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(4px);z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding:18px;overflow-y:auto;';
 
   overlay.innerHTML =
-    '<div style="background:#f8fbff;border-radius:26px;width:100%;max-width:1280px;box-shadow:0 32px 80px rgba(0,0,0,.28);overflow:hidden;border:1px solid #dbe4f0;">'
-      + '<div style="display:grid;grid-template-columns:1.22fr .88fr;min-height:82vh;">'
+    '<div style="background:#f8fbff;border-radius:26px;width:100%;max-width:1280px;box-shadow:0 32px 80px rgba(0,0,0,.28);overflow:hidden;border:1px solid #dbe4f0;margin:auto;">'
+    + '<div style="display:grid;grid-template-columns:1.22fr .88fr;min-height:82vh;">'
 
-      + '<div style="background:#fff;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;min-width:0;">'
-      +   '<div style="padding:20px 22px;background:linear-gradient(135deg,#2550b7 0%,#3a72ea 100%);color:#fff;position:relative;">'
-      +     '<button onclick="closeConvEditOverlay()" style="position:absolute;right:16px;top:16px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:999px;width:34px;height:34px;font-size:18px;cursor:pointer">✕</button>'
-      +     '<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.82;margin-bottom:10px">' + (isNew ? 'New Conversation' : 'Conversation Editor') + '</div>'
-      +     '<div id="ce-preview-name" style="font-family:\'Noto Serif KR\',serif;font-size:34px;font-weight:900;line-height:1.1;letter-spacing:-0.03em;">' + ((d.name || 'New Conversation').replace(/</g,'&lt;')) + '</div>'
-      +     '<div id="ce-preview-ctx" style="font-size:13px;opacity:.88;margin-top:8px;line-height:1.6;">' + ((d.ctx || 'Edit the dialogue below, then run AI Update.').replace(/</g,'&lt;')) + '</div>'
-      +   '</div>'
+    // LEFT: bubble editor
+    + '<div style="background:#fff;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;min-width:0;">'
+    +   '<div style="padding:20px 22px;background:linear-gradient(135deg,#2550b7 0%,#3a72ea 100%);color:#fff;position:relative;flex-shrink:0">'
+    +     '<button onclick="closeConvEditOverlay()" style="position:absolute;right:16px;top:16px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:50%;width:34px;height:34px;font-size:18px;cursor:pointer;font-family:inherit">✕</button>'
+    +     '<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:8px">'+(isNew?'New Conversation':'Edit Conversation')+'</div>'
+    +     '<div id="ce-hd-name" style="font-family:\'Noto Serif KR\',serif;font-size:28px;font-weight:900;line-height:1.15">'+_ceEsc(d.name||'New Conversation')+'</div>'
+    +     '<div id="ce-hd-ctx" style="font-size:13px;opacity:.8;margin-top:6px">'+_ceEsc(d.ctx||'')+'</div>'
+    +   '</div>'
+    +   '<div id="ce-chat-area" style="flex:1;overflow-y:auto;padding:14px 16px 8px;display:flex;flex-direction:column;gap:10px;background:#f8fbff;min-height:300px"></div>'
+    +   '<div style="padding:12px 16px;background:#fff;border-top:1px solid #e5ecf5;flex-shrink:0">'
+    +     '<div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Add Message</div>'
+    +     '<div style="display:flex;gap:7px;align-items:flex-end">'
+    +       '<button id="ce-side-btn" onclick="toggleCEAddSide()" style="background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:9px;padding:8px 10px;font-size:11px;font-weight:800;cursor:pointer;color:#334155;white-space:nowrap;font-family:inherit;flex-shrink:0">A (left)</button>'
+    +       '<textarea id="ce-add-txt" placeholder="Korean text..." rows="2" style="flex:1;padding:8px 11px;border:1px solid #e2e8f0;border-radius:9px;font-size:13px;font-family:\'Noto Sans KR\',sans-serif;resize:none;box-sizing:border-box;background:#fbfdff"></textarea>'
+    +       '<button onclick="ceAddMsg()" style="background:#2563eb;color:#fff;border:none;border-radius:9px;padding:8px 13px;font-size:18px;cursor:pointer;font-family:inherit;flex-shrink:0">+</button>'
+    +     '</div>'
+    +   '</div>'
+    + '</div>'
 
-      +   '<div style="padding:14px 20px 0;background:#fff;">'
-      +     '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-      +       '<span id="ce-preview-level" style="display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:#eaf2ff;color:#1d4ed8;font-size:12px;font-weight:800;">' + ({s:'Starter',b:'Beginner',i:'Intermediate',a:'Advanced'}[(d.lvl||'b')] || 'Beginner') + '</span>'
-      +       '<span id="ce-preview-cat" style="display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:#f3f4f6;color:#475569;font-size:12px;font-weight:700;">' + ({everyday:'Everyday',work:'Workplace',friends:'Friends',family:'Family',dating:'Dating'}[(d.cat||'everyday')] || 'Everyday') + '</span>'
-      +     '</div>'
-      +   '</div>'
+    // RIGHT: metadata + study notes
+    + '<div style="background:#f8fbff;display:flex;flex-direction:column;min-width:0;overflow-y:auto;max-height:82vh">'
+    +   '<div style="padding:18px 20px;border-bottom:1px solid #e2e8f0;background:#fff;flex-shrink:0">'
+    +     '<div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#2255a4;margin-bottom:10px">Conversation Info</div>'
+    +     '<div style="display:grid;grid-template-columns:1fr 1fr 70px;gap:8px;margin-bottom:8px">'
+    +       '<input id="ce-name" value="'+_ceAttr(d.name||'')+'" oninput="document.getElementById(\'ce-hd-name\').textContent=this.value" placeholder="이름" style="grid-column:1/3;padding:8px 11px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'
+    +       '<input id="ce-avi" value="'+_ceAttr(d.avi||'💬')+'" style="padding:8px 6px;border:1px solid #e2e8f0;border-radius:8px;font-size:16px;font-family:inherit;box-sizing:border-box;text-align:center">'
+    +     '</div>'
+    +     '<input id="ce-ctx" value="'+_ceAttr(d.ctx||'')+'" oninput="document.getElementById(\'ce-hd-ctx\').textContent=this.value" placeholder="상황 (context)" style="width:100%;padding:8px 11px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;margin-bottom:8px">'
+    +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    +       ceSelect('ce-cat','카테고리',['everyday','work','friends','family','dating'],['Everyday','Workplace','Friends','Family','Dating'],d.cat||'everyday')
+    +       + ceSelect('ce-lvl','레벨',['s','b','i','a'],['Starter','Beginner','Intermediate','Advanced'],d.lvl||'b')
+    +     '</div>'
+    +   '</div>'
 
-      +   '<div id="ce-chat-preview" style="flex:1;min-height:420px;overflow:auto;padding:18px 20px 20px;background:#f8fbff;"></div>'
+    +   '<div style="padding:16px 20px;flex:1;overflow-y:auto">'
+    +     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+    +       '<div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#2255a4">Study Notes</div>'
+    +       '<button id="ai-analyze-btn" onclick="aiAnalyzeConv()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">✨ AI Update</button>'
+    +     '</div>'
 
-      +   '<div style="padding:16px 20px 20px;border-top:1px solid #e5ecf5;background:#fff;">'
-      +     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
-      +       '<label style="font-size:12px;font-weight:800;color:#334155;">💬 Dialogue Script <span style="font-weight:500;color:#94a3b8;">(one line per message: A: / B:)</span></label>'
-      +       '<button id="ai-analyze-btn" onclick="aiAnalyzeConv()" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;">✨ AI Update</button>'
-      +     '</div>'
-      +     '<textarea id="ce-msgs-text" oninput="syncConvPreview()" rows="8" placeholder="A: 오늘 괜찮아?&#10;B: 응, 왜?&#10;A: 그냥 안부 물어보려고." style="width:100%;padding:12px 14px;border:1px solid #dbe4f0;border-radius:14px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical;line-height:1.7;background:#fbfdff;">' + (msgsText.replace(/</g,'&lt;').replace(/>/g,'&gt;')) + '</textarea>'
-      +     '<div style="margin-top:8px;font-size:12px;color:#64748b;line-height:1.6;">Edit the script in the same order users will read it. Click <b>AI Update</b> and vocab, grammar, and missions will regenerate from the edited dialogue.</div>'
-      +   '</div>'
-      + '</div>'
+    +     '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:12px 14px;margin-bottom:10px">'
+    +       '<div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:8px">📚 Vocabulary</div>'
+    +       '<div id="ce-vocab-list" style="display:flex;flex-direction:column;gap:6px"></div>'
+    +       '<button onclick="ceAddVocab()" style="margin-top:6px;background:#f0f7ff;color:#2563eb;border:1.5px dashed #bfdbfe;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;width:100%">+ Add Word</button>'
+    +     '</div>'
 
-      + '<div style="background:#f8fbff;display:flex;flex-direction:column;min-width:0;">'
-      +   '<div style="padding:22px 22px 18px;border-bottom:1px solid #e2e8f0;background:#fff;">'
-      +     '<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#2255a4;margin-bottom:8px;">Study Notes</div>'
-      +     '<div style="font-family:\'Playfair Display\',serif;font-size:18px;font-weight:900;color:#0f172a;">Conversation Breakdown</div>'
-      +   '</div>'
+    +     '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:12px 14px;margin-bottom:10px">'
+    +       '<div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:8px">✏️ Grammar Points</div>'
+    +       '<div id="ce-grammar-list" style="display:flex;flex-direction:column;gap:6px"></div>'
+    +       '<button onclick="ceAddGrammar()" style="margin-top:6px;background:#f0f7ff;color:#2563eb;border:1.5px dashed #bfdbfe;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;width:100%">+ Add Point</button>'
+    +     '</div>'
 
-      +   '<div style="padding:18px 18px 8px;overflow:auto;">'
-      +     '<div style="display:grid;grid-template-columns:1fr 1fr 90px;gap:10px;margin-bottom:16px;">'
-      +       ceField('ce-name', '이름', 'text', d.name || '', '예: Team Chat, Ji-yeon & Soo-jin')
-      +       + ceField('ce-ctx', '상황', 'text', d.ctx || '', '예: Asking for a deadline extension')
-      +       + ceField('ce-avi', '이모지', 'text', d.avi || '💬', '대표 이모지')
-      +     '</div>'
-      +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">'
-      +       ceSelect('ce-cat', '카테고리', ['everyday','work','friends','family','dating'], ['Everyday','Workplace','Friends','Family','Dating'], d.cat || 'everyday')
-      +       + ceSelect('ce-lvl', '레벨', ['s','b','i','a'], ['Starter','Beginner','Intermediate','Advanced'], d.lvl || 'b')
-      +     '</div>'
+    +     '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:12px 14px;margin-bottom:14px">'
+    +       '<div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:8px">🎯 Practice Mission</div>'
+    +       '<div id="ce-mission-list" style="display:flex;flex-direction:column;gap:6px"></div>'
+    +       '<button onclick="ceAddMission()" style="margin-top:6px;background:#f0f7ff;color:#2563eb;border:1.5px dashed #bfdbfe;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;width:100%">+ Add Task</button>'
+    +     '</div>'
 
-      +     '<div id="ai-result-area" style="display:block;">'
-      +       '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:14px 14px 12px;margin-bottom:12px;">'
-      +         '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px;">📚 Vocabulary JSON</div>'
-      +         '<textarea id="ce-vocab" rows="8" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:12px;font-size:11px;font-family:monospace;box-sizing:border-box;resize:vertical;background:#fbfdff;">' + JSON.stringify(d.vocab||[], null, 2).replace(/</g,'&lt;') + '</textarea>'
-      +       '</div>'
-      +       '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:14px 14px 12px;margin-bottom:12px;">'
-      +         '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px;">✏️ Grammar JSON</div>'
-      +         '<textarea id="ce-grammar" rows="8" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:12px;font-size:11px;font-family:monospace;box-sizing:border-box;resize:vertical;background:#fbfdff;">' + JSON.stringify(d.grammar||[], null, 2).replace(/</g,'&lt;') + '</textarea>'
-      +       '</div>'
-      +       '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:14px 14px 12px;margin-bottom:12px;">'
-      +         '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px;">🎯 Mission JSON</div>'
-      +         '<textarea id="ce-mission" rows="5" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:12px;font-size:11px;font-family:monospace;box-sizing:border-box;resize:vertical;background:#fbfdff;">' + JSON.stringify(d.mission||[], null, 2).replace(/</g,'&lt;') + '</textarea>'
-      +       '</div>'
-      +     '</div>'
+    +     '<div id="ce-error" style="background:#fee2e2;border-radius:12px;padding:12px 14px;color:#b91c1c;font-size:13px;display:none;margin-bottom:12px"></div>'
+    +     '<div style="display:flex;gap:8px">'
+    +       '<button onclick="closeConvEditOverlay()" style="flex:1;background:#f1f5f9;color:#334155;border:none;border-radius:12px;padding:11px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">취소</button>'
+    +       '<button onclick="saveConvEdit('+(rowId||'null')+')" style="flex:2;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:11px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">💾 저장</button>'
+    +     '</div>'
+    +   '</div>'
+    + '</div>'
 
-      +     '<div id="ce-error" style="background:#fee2e2;border-radius:12px;padding:12px 14px;color:#b91c1c;font-size:13px;display:none;margin-bottom:12px;"></div>'
-      +   '</div>'
-
-      +   '<div style="display:flex;gap:10px;justify-content:flex-end;padding:16px 18px 18px;border-top:1px solid #e2e8f0;background:#fff;">'
-      +     '<button onclick="closeConvEditOverlay()" style="background:#f1f5f9;color:#334155;border:none;border-radius:12px;padding:11px 24px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">취소</button>'
-      +     '<button onclick="saveConvEdit(' + (rowId||'null') + ')" style="background:#2563eb;color:#fff;border:none;border-radius:12px;padding:11px 24px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">💾 저장</button>'
-      +   '</div>'
-      + '</div>'
-
-      + '</div>'
+    + '</div>'
     + '</div>';
 
   document.body.appendChild(overlay);
-  syncConvPreview();
+  ceRenderBubbles();
+  ceRenderVocab();
+  ceRenderGrammar();
+  ceMission_Render();
 }
 
-function syncConvPreview() {
-  var nameEl = document.getElementById('ce-name');
-  var ctxEl = document.getElementById('ce-ctx');
-  var lvlEl = document.getElementById('ce-lvl');
-  var catEl = document.getElementById('ce-cat');
-  var msgsEl = document.getElementById('ce-msgs-text');
+function ceSelect(id, label, vals, labels, cur) {
+  return '<div><span style="font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:3px">'+label+'</span>'
+    + '<select id="'+id+'" style="display:block;width:100%;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'
+    + vals.map(function(v,i){ return '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+labels[i]+'</option>'; }).join('')
+    + '</select></div>';
+}
 
-  var title = document.getElementById('ce-preview-name');
-  var ctx = document.getElementById('ce-preview-ctx');
-  var lvl = document.getElementById('ce-preview-level');
-  var cat = document.getElementById('ce-preview-cat');
-  var chat = document.getElementById('ce-chat-preview');
-
-  if (!chat) return;
-
-  var lvlMap = {s:'Starter', b:'Beginner', i:'Intermediate', a:'Advanced'};
-  var catMap = {everyday:'Everyday', work:'Workplace', friends:'Friends', family:'Family', dating:'Dating'};
-
-  if (title) title.textContent = (nameEl && nameEl.value.trim()) || 'New Conversation';
-  if (ctx) ctx.textContent = (ctxEl && ctxEl.value.trim()) || 'Edit the dialogue below, then run AI Update.';
-  if (lvl) lvl.textContent = lvlMap[(lvlEl && lvlEl.value) || 'b'] || 'Starter';
-  if (cat) cat.textContent = catMap[(catEl && catEl.value) || 'everyday'] || 'Everyday';
-
-  var lines = ((msgsEl && msgsEl.value) || '').split('\n').filter(function(l){ return l.trim(); });
-  if (!lines.length) {
-    chat.innerHTML = '<div style="padding:26px;text-align:center;color:#94a3b8;font-size:13px;">No messages yet. Add A:/B: lines below.</div>';
+// Bubble rendering
+function ceRenderBubbles() {
+  var area = document.getElementById('ce-chat-area');
+  if (!area) return;
+  if (!window._editMsgs.length) {
+    area.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px">No messages yet. Add below.</div>';
     return;
   }
-
-  var html = '<div style="display:flex;flex-direction:column;gap:14px;">';
-  lines.forEach(function(line){
-    var raw = line.trim();
-    var isB = /^B:/i.test(raw);
-    var txt = raw.replace(/^[AB]:\s*/i, '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    html += '<div style="display:flex;' + (isB ? 'justify-content:flex-end;' : 'justify-content:flex-start;') + '">'
-      + '<div style="max-width:72%;background:' + (isB ? '#2563eb' : '#fff') + ';color:' + (isB ? '#fff' : '#0f172a') + ';border:' + (isB ? 'none' : '1px solid #e2e8f0') + ';border-radius:18px;padding:12px 14px;font-size:15px;line-height:1.6;box-shadow:0 8px 20px rgba(15,23,42,.05);">'
-      + txt + '</div></div>';
-  });
-  html += '</div>';
-  chat.innerHTML = html;
+  area.innerHTML = window._editMsgs.map(function(msg, i) {
+    var isR = msg.s === 'r';
+    var bg = isR ? '#2563eb' : '#fff';
+    var col = isR ? '#fff' : '#0f172a';
+    var brd = isR ? 'none' : '1px solid #e2e8f0';
+    return '<div style="display:flex;'+(isR?'justify-content:flex-end':'')+'">'
+      + '<div style="max-width:78%">'
+      +   '<div style="background:'+bg+';color:'+col+';border:'+brd+';border-radius:16px;padding:10px 14px;font-size:14px;line-height:1.55;font-family:\'Noto Sans KR\',sans-serif">'+_ceEsc(msg.txt)+'</div>'
+      +   '<div style="display:flex;gap:4px;margin-top:4px;justify-content:'+(isR?'flex-end':'flex-start')+'">'
+      +     '<button onclick="ceEditBubble('+i+')" style="background:#f1f5f9;border:none;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;color:#64748b;font-family:inherit">✏️</button>'
+      +     '<button onclick="ceDeleteBubble('+i+')" style="background:#fee2e2;border:none;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;color:#b91c1c;font-family:inherit">🗑</button>'
+      +   '</div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+  area.scrollTop = area.scrollHeight;
 }
 
-function ceField(id, label, type, val, ph) {
-  return '<label style="font-size:12px;font-weight:700;color:#374151;display:block">' + label
-    + '<input id="' + id + '" type="' + type + '" value="' + (val||'').replace(/"/g,'&quot;') + '" placeholder="' + ph + '" oninput="syncConvPreview()" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'
-    + '</label>';
+function ceEditBubble(idx) {
+  var area = document.getElementById('ce-chat-area');
+  var row = area.children[idx];
+  if (!row) return;
+  var msg = window._editMsgs[idx];
+  var isR = msg.s === 'r';
+  var wrap = row.querySelector('div');
+  wrap.innerHTML =
+    '<textarea id="ce-edit-ta" style="width:100%;min-width:180px;padding:9px 12px;border:2px solid #2563eb;border-radius:12px;font-size:14px;font-family:\'Noto Sans KR\',sans-serif;resize:vertical;box-sizing:border-box;background:'+(isR?'#eff6ff':'#fff')+'">'+_ceEsc(msg.txt)+'</textarea>'
+    + '<div style="display:flex;gap:5px;margin-top:5px">'
+    +   '<button onclick="ceConfirmEdit('+idx+')" style="background:#2563eb;color:#fff;border:none;border-radius:7px;padding:5px 14px;font-size:12px;cursor:pointer;font-weight:700;font-family:inherit">✓ OK</button>'
+    +   '<button onclick="ceRenderBubbles()" style="background:#f1f5f9;border:none;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;color:#64748b;font-family:inherit">✕</button>'
+    + '</div>';
+  var ta = document.getElementById('ce-edit-ta');
+  if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
 }
-function ceSelect(id, label, vals, labels, cur) {
-  return '<label style="font-size:12px;font-weight:700;color:#374151;display:block">' + label
-    + '<select id="' + id + '" onchange="syncConvPreview()" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'
-    + vals.map(function(v,i){ return '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+labels[i]+'</option>'; }).join('')
-    + '</select></label>';
+function ceConfirmEdit(idx) {
+  var ta = document.getElementById('ce-edit-ta');
+  if (ta && ta.value.trim()) window._editMsgs[idx].txt = ta.value.trim();
+  ceRenderBubbles();
+}
+function ceDeleteBubble(idx) { window._editMsgs.splice(idx, 1); ceRenderBubbles(); }
+function ceAddMsg() {
+  var ta = document.getElementById('ce-add-txt');
+  var txt = ta && ta.value.trim();
+  if (!txt) return;
+  window._editMsgs.push({s:_ceAddSide, who:_ceAddSide==='r'?'B':'A', txt:txt});
+  ta.value = '';
+  ceRenderBubbles();
 }
 
+// Vocab
+function ceRenderVocab() {
+  var list = document.getElementById('ce-vocab-list');
+  if (!list) return;
+  list.innerHTML = window._editVocab.map(function(v, i) {
+    return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:5px;align-items:center">'
+      + '<input class="cev-ko" value="'+_ceAttr(v.ko||'')+'" placeholder="한국어" style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:7px;font-size:12px;font-family:inherit;box-sizing:border-box">'
+      + '<input class="cev-rom" value="'+_ceAttr(v.rom||'')+'" placeholder="romanization" style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:7px;font-size:12px;font-family:inherit;box-sizing:border-box">'
+      + '<input class="cev-en" value="'+_ceAttr(v.en||'')+'" placeholder="meaning" style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:7px;font-size:12px;font-family:inherit;box-sizing:border-box">'
+      + '<button onclick="ceRemoveVocab('+i+')" style="background:#fee2e2;border:none;border-radius:7px;padding:6px 9px;font-size:12px;cursor:pointer;color:#b91c1c;font-family:inherit">✕</button>'
+      + '</div>';
+  }).join('');
+}
+function ceAddVocab() {
+  window._editVocab.push({ko:'',rom:'',en:''});
+  ceRenderVocab();
+  var rows = document.querySelectorAll('#ce-vocab-list > div');
+  if (rows.length) { var inp = rows[rows.length-1].querySelector('.cev-ko'); if(inp) inp.focus(); }
+}
+function ceRemoveVocab(idx) { window._editVocab.splice(idx, 1); ceRenderVocab(); }
+function ceCollectVocab() {
+  return Array.from(document.querySelectorAll('#ce-vocab-list > div')).map(function(r){
+    return {ko:r.querySelector('.cev-ko').value.trim(),rom:r.querySelector('.cev-rom').value.trim(),en:r.querySelector('.cev-en').value.trim()};
+  }).filter(function(v){ return v.ko; });
+}
+
+// Grammar
+function ceRenderGrammar() {
+  var list = document.getElementById('ce-grammar-list');
+  if (!list) return;
+  list.innerHTML = window._editGrammar.map(function(g, i) {
+    return '<div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:5px;align-items:center">'
+      + '<input class="ceg-pt" value="'+_ceAttr(g.point||'')+'" placeholder="pattern (-아/어서)" style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:7px;font-size:12px;font-family:inherit;box-sizing:border-box">'
+      + '<input class="ceg-ex" value="'+_ceAttr(g.ex||'')+'" placeholder="explanation" style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:7px;font-size:12px;font-family:inherit;box-sizing:border-box">'
+      + '<button onclick="ceRemoveGrammar('+i+')" style="background:#fee2e2;border:none;border-radius:7px;padding:6px 9px;font-size:12px;cursor:pointer;color:#b91c1c;font-family:inherit">✕</button>'
+      + '</div>';
+  }).join('');
+}
+function ceAddGrammar() {
+  window._editGrammar.push({point:'',ex:''});
+  ceRenderGrammar();
+  var rows = document.querySelectorAll('#ce-grammar-list > div');
+  if (rows.length) { var inp = rows[rows.length-1].querySelector('.ceg-pt'); if(inp) inp.focus(); }
+}
+function ceRemoveGrammar(idx) { window._editGrammar.splice(idx, 1); ceRenderGrammar(); }
+function ceCollectGrammar() {
+  return Array.from(document.querySelectorAll('#ce-grammar-list > div')).map(function(r){
+    return {point:r.querySelector('.ceg-pt').value.trim(), ex:r.querySelector('.ceg-ex').value.trim()};
+  }).filter(function(g){ return g.point; });
+}
+
+// Mission
+function ceMission_Render() {
+  var list = document.getElementById('ce-mission-list');
+  if (!list) return;
+  list.innerHTML = window._editMission.map(function(m, i) {
+    var txt = (typeof m === 'string') ? m : (m.task || '');
+    return '<div style="display:grid;grid-template-columns:1fr auto;gap:5px;align-items:center">'
+      + '<input class="cem-txt" value="'+_ceAttr(txt)+'" placeholder="Writing practice task" style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:7px;font-size:12px;font-family:inherit;box-sizing:border-box">'
+      + '<button onclick="ceRemoveMission('+i+')" style="background:#fee2e2;border:none;border-radius:7px;padding:6px 9px;font-size:12px;cursor:pointer;color:#b91c1c;font-family:inherit">✕</button>'
+      + '</div>';
+  }).join('');
+}
+function ceAddMission() {
+  window._editMission.push('');
+  ceMission_Render();
+  var rows = document.querySelectorAll('#ce-mission-list > div');
+  if (rows.length) { var inp = rows[rows.length-1].querySelector('.cem-txt'); if(inp) inp.focus(); }
+}
+function ceRemoveMission(idx) { window._editMission.splice(idx, 1); ceMission_Render(); }
+function ceCollectMission() {
+  return Array.from(document.querySelectorAll('#ce-mission-list .cem-txt')).map(function(inp){ return inp.value.trim(); }).filter(Boolean);
+}
+
+// AI Update — reads from current _editMsgs
 async function aiAnalyzeConv() {
   var btn = document.getElementById('ai-analyze-btn');
-  var msgsText = document.getElementById('ce-msgs-text').value.trim();
-  if (!msgsText) { alert('대화 내용을 먼저 입력해주세요'); return; }
-
+  if (!window._editMsgs || !window._editMsgs.length) { alert('Add messages first'); return; }
+  var msgsText = window._editMsgs.map(function(m){ return (m.s==='l'?'A':'B')+': '+m.txt; }).join('\n');
   var lvl = document.getElementById('ce-lvl').value;
   var lvlMap = {s:'Starter',b:'Beginner',i:'Intermediate',a:'Advanced'};
-
   btn.disabled = true;
   btn.textContent = '⏳ 분석 중...';
-
-  var prompt = 'Korean language conversation (level: ' + lvlMap[lvl] + '):\n\n' + msgsText
-    + '\n\nExtract for learners. Return ONLY valid JSON, no markdown:\n'
-    + '{\n  "vocab": [{"ko":"단어","rom":"romanization","en":"meaning"}],\n'
-    + '  "grammar": [{"point":"pattern","ex":"example in English"}],\n'
-    + '  "mission": ["writing task 1","writing task 2","writing task 3"]\n}'
-    + '\n\nVocab: 5-7 key words. Grammar: 2-3 patterns. Mission: 3 writing practice tasks.';
-
+  var prompt = 'Korean language conversation (level: '+lvlMap[lvl]+'):\n\n'+msgsText
+    +'\n\nExtract for learners. Return ONLY valid JSON, no markdown:\n'
+    +'{"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"mission":["task1","task2","task3"]}'
+    +'\n\nVocab: 5-7 key words. Grammar: 2-3 patterns. Mission: 3 writing practice tasks.';
   try {
-    var resp = await callClaude({
-      feature: 'conv_analyze',
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      messages: [{role:'user', content: prompt}]
-    });
+    var resp = await callClaude({feature:'conv_analyze', model:'claude-sonnet-4-20250514', max_tokens:2000, messages:[{role:'user',content:prompt}]});
     var raw = resp.content.map(function(b){ return b.text||''; }).join('');
     raw = raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
     var parsed = JSON.parse(raw);
-
-    document.getElementById('ce-vocab').value   = JSON.stringify(parsed.vocab   || [], null, 2);
-    document.getElementById('ce-grammar').value = JSON.stringify(parsed.grammar || [], null, 2);
-    document.getElementById('ce-mission').value = JSON.stringify(parsed.mission || [], null, 2);
-    document.getElementById('ai-result-area').style.display = 'block';
-
-    btn.disabled = false;
-    btn.textContent = '✅ 분석 완료 (재실행)';
-    btn.style.background = '#059669';
-    setTimeout(function(){ btn.textContent = '✨ AI 자동분석'; btn.style.background = '#7c3aed'; }, 3000);
-
+    window._editVocab   = parsed.vocab   || [];
+    window._editGrammar = parsed.grammar || [];
+    window._editMission = parsed.mission || [];
+    ceRenderVocab(); ceRenderGrammar(); ceMission_Render();
+    btn.disabled = false; btn.textContent = '✅ 완료 (재실행)'; btn.style.background = '#059669';
+    setTimeout(function(){ btn.textContent = '✨ AI Update'; btn.style.background = '#7c3aed'; }, 3000);
   } catch(e) {
-    btn.disabled = false;
-    btn.textContent = '✨ AI 자동분석';
+    btn.disabled = false; btn.textContent = '✨ AI Update';
     var errEl = document.getElementById('ce-error');
-    errEl.textContent = 'AI 분석 오류: ' + (e.message || String(e));
-    errEl.style.display = 'block';
+    errEl.textContent = 'AI 분석 오류: '+(e.message||String(e)); errEl.style.display = 'block';
   }
-}
-
-
-function makeJsonField(id, label, val) {
-  return '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:10px">' + label
-    + '<textarea id="' + id + '" rows="5" style="display:block;width:100%;margin-top:4px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;font-family:\'Courier New\',monospace;box-sizing:border-box;resize:vertical">'
-    + val.replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    + '</textarea></label>';
 }
 
 async function saveConvEdit(rowId) {
   var ceErr = document.getElementById('ce-error');
   ceErr.style.display = 'none';
-
-  var parseField = function(id) {
-    var el = document.getElementById(id);
-    if (!el || !el.value.trim()) return [];
-    try { return JSON.parse(el.value); }
-    catch(e) { throw new Error(id + ' JSON 파싱 오류: ' + e.message); }
-  };
-
-  // A:/B: 텍스트 → msgs JSON
-  var msgsText = document.getElementById('ce-msgs-text').value.trim();
-  var msgs = msgsText.split('\n').filter(function(l){ return l.trim(); }).map(function(line, idx) {
-    var isB = /^B:/i.test(line.trim());
-    var txt = line.replace(/^[AB]:\s*/i, '').trim();
-    return {s: isB ? 'r' : 'l', who: isB ? 'B' : 'A', txt: txt};
-  });
-
   try {
+    var msgs = window._editMsgs || [];
+    if (!msgs.length) throw new Error('대화 내용을 입력해주세요');
+    var name = document.getElementById('ce-name').value.trim();
+    if (!name) throw new Error('이름을 입력해주세요');
     var catVal = document.getElementById('ce-cat').value;
     var catLabelMap = {everyday:'Everyday', work:'Workplace', friends:'Friends', family:'Family', dating:'Dating'};
     var convObj = {
-      name:     document.getElementById('ce-name').value.trim(),
+      name:     name,
       ctx:      document.getElementById('ce-ctx').value.trim(),
       cat:      catVal,
       lvl:      document.getElementById('ce-lvl').value,
       avi:      document.getElementById('ce-avi').value.trim() || '💬',
       catLabel: catLabelMap[catVal] || catVal,
       msgs:     msgs,
-      vocab:    parseField('ce-vocab'),
-      grammar:  parseField('ce-grammar'),
-      mission:  parseField('ce-mission'),
+      vocab:    ceCollectVocab(),
+      grammar:  ceCollectGrammar(),
+      mission:  ceCollectMission(),
     };
-
-    if (!convObj.name) throw new Error('이름을 입력해주세요');
-    if (!convObj.msgs.length) throw new Error('대화 내용을 입력해주세요');
-
     var sb = getSb();
     var row = {data: convObj, cat: convObj.cat, lvl: convObj.lvl, name: convObj.name, ctx: convObj.ctx};
-
     if (rowId) {
       var { error } = await sb.from('conversations_data').update(row).eq('id', rowId);
       if (error) throw error;
@@ -3369,12 +3425,9 @@ async function saveConvEdit(rowId) {
       var { error } = await sb.from('conversations_data').insert(row);
       if (error) throw error;
     }
-
     document.getElementById('conv-edit-overlay').remove();
-    showToastAdmin('✅ 저장 완료! AI 분석 생성 중…');
+    showToastAdmin('✅ 저장 완료!');
     await loadConvList();
-
-    // 10번: AI 자동으로 vocab/grammar/mission 생성 후 article_cache에 저장
     try {
       var savedRes = await sb.from('conversations_data').select('id').order('created_at', {ascending:false}).limit(1);
       var savedId = rowId || (savedRes.data && savedRes.data[0] && savedRes.data[0].id);
@@ -3382,7 +3435,6 @@ async function saveConvEdit(rowId) {
         autoGenConvAI(savedId, convObj);
       }
     } catch(aiErr) { console.warn('AI gen skip:', aiErr); }
-
   } catch(e) {
     ceErr.textContent = e.message || String(e);
     ceErr.style.display = 'block';
