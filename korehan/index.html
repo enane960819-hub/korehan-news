@@ -184,6 +184,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 document.addEventListener('DOMContentLoaded', async function() {
+  // Load phrases from DB so Today's Phrase is always current
+  loadPhrasesFromDB().catch(function(){});
   // DB에서 conversations 로드 시도
   try {
     var sb = getSupa();

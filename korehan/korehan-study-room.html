@@ -731,6 +731,7 @@
         <div class="wc-mode-tabs" id="wc-mode-tabs">
           <button class="wc-mode-tab active" id="tab-topic" onclick="setWritingMode('topic')">📝 Topic Writing</button>
           <button class="wc-mode-tab" id="tab-reading" onclick="setWritingMode('reading')">📖 Reading & Write</button>
+          <button class="wc-mode-tab" id="tab-phrase" onclick="setWritingMode('phrase')">🌟 Phrase Writing</button>
         </div>
         <!-- Reading 선택 시 기사 선택 드롭다운 -->
         
@@ -987,6 +988,7 @@ var _vocabPoolLoaded = false;
 // INIT
 // ═══════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async function() {
+  loadPhrasesFromDB().catch(function(){});
   renderPhrase();
   await loadAllTopics();
   await loadVocabPool();   // conv+stories vocab 로드
@@ -1034,6 +1036,23 @@ document.addEventListener('DOMContentLoaded', async function() {
     setTimeout(waitAndOpenModal, 400);
   }
 
+  // Phrase Writing mode — from Today's Phrase page
+  if (_urlParams.get('mode') === 'phrase') {
+    var _phraseKoFromUrl = _urlParams.get('ko') || '';
+    function waitAndOpenPhraseModal() {
+      if (window._sessionChecked || waited >= 30) {
+        // highlight the phrase tab
+        setWritingMode('phrase', _phraseKoFromUrl);
+        if (supaUser) {
+          setTimeout(function() { openWritingModal(); }, 500);
+        }
+      } else {
+        setTimeout(waitAndOpenPhraseModal, 120);
+      }
+    }
+    setTimeout(waitAndOpenPhraseModal, 400);
+  }
+
   // Grammar Practice mode — from article Grammar Guide
   if (_urlParams.get('mode') === 'grammar') {
     // URLSearchParams.get() already decodes the value — JSON.parse directly
@@ -1053,11 +1072,58 @@ document.addEventListener('DOMContentLoaded', async function() {
 // ═══════════════════════════════════════════════════════════════
 function renderPhrase() {
   var phrases = typeof getPhrases === 'function' ? getPhrases() : [];
-  var p = phrases[Math.floor(Math.random() * phrases.length)] || { ko:'오늘도 화이팅!', rom:'Oneuldo hwaiting!', en:"You've got this today!" };
+  var p = (typeof getTodaysPhrase === 'function' ? getTodaysPhrase() : null)
+    || phrases[Math.floor(Math.random() * phrases.length)]
+    || { ko:'오늘도 화이팅!', rom:'Oneuldo hwaiting!', en:"You've got this today!" };
   document.getElementById('phrase-box').innerHTML =
     '<div class="pko">' + p.ko + '</div>'
     + '<div class="prom">' + p.rom + '</div>'
     + '<div class="pen">' + p.en + '</div>';
+}
+
+async function generatePhraseAIContent(phrase) {
+  if (!phrase || !phrase.ko) return;
+  // Show loading state in vocab/grammar panels
+  var vocabEl = document.getElementById('wm-vocab-chips');
+  if (vocabEl) vocabEl.innerHTML = '<span style="color:rgba(255,255,255,.4);font-size:12px">Loading…</span>';
+
+  // Use phrase examples as helpers if available, otherwise generate
+  var exampleHelpers = (phrase.examples || []).map(function(ex){
+    return { ko: ex.ko, en: ex.en };
+  });
+
+  try {
+    var prompt = 'Korean learners are practicing the phrase "' + phrase.ko + '" (' + phrase.en + ').\n\n'
+      + 'Generate study support. Return ONLY valid JSON:\n'
+      + '{"vocab":[{"ko":"word","rom":"romanization","en":"meaning"}],'
+      + '"grammar":[{"pattern":"","level":"Intermediate","explanation":"","example_ko":"","example_en":""}],'
+      + '"helpers":[{"ko":"example sentence using the phrase","en":"translation"}]}\n\n'
+      + 'Rules: 5 contextually related vocab words. 2 grammar patterns useful with this phrase. '
+      + '3 helper sentences showing the phrase in real use contexts. Keep it learner-friendly.';
+    var resp = await callClaude({
+      feature: 'generate',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var raw = resp.content.map(function(b){ return b.text||''; }).join('');
+    raw = raw.replace(/^```json\s*/,'').replace(/\s*```$/,'').trim();
+    var parsed = JSON.parse(raw);
+    // Merge phrase examples as additional helpers
+    if (exampleHelpers.length) {
+      parsed.helpers = (parsed.helpers || []).concat(exampleHelpers).slice(0, 5);
+    }
+    _aiContent = parsed;
+    renderModalContent();
+  } catch(e) {
+    // Fallback: use phrase data directly
+    _aiContent = {
+      vocab: (phrase.related || []).map(function(r){ return { ko: r, rom: '', en: '' }; }),
+      grammar: [],
+      helpers: exampleHelpers
+    };
+    renderModalContent();
+  }
 }
 
 function normalizeLevelName(level) {
@@ -1490,8 +1556,12 @@ function openWritingModal() {
   // Intermediate / Advanced → 기존 wmodal
   document.getElementById('wmodal').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
-  if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
-  renderModalContent();
+  if (_writingMode === 'phrase') {
+    switchModalMode('phrase');
+  } else {
+    if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
+    renderModalContent();
+  }
   // 모바일 탭 초기화
   wmMobileInit();
 }
@@ -1583,12 +1653,14 @@ async function submitWriting() {
   // ── KST 기준 오늘 날짜 ──
   var today = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
 
-  // ── 하루 1건 체크 ──
+  // ── 하루 1건 체크 (per mode) ──
+  var currentMode = _writingMode || 'topic';
   try {
     var existing = await sb.from('writing_submissions')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', supaUser.id)
-      .eq('submit_date', today);
+      .eq('submit_date', today)
+      .eq('writing_mode', currentMode);
     if ((existing.count || 0) > 0) {
       showToast('✅ 오늘 이미 제출하셨어요. 내일 다시 작성할 수 있어요!', true);
       closeWritingModal();
@@ -1603,13 +1675,22 @@ async function submitWriting() {
   var usedVocab = requiredVocab.filter(function(w){ return text.includes(w); });
   var usedGrammar = []; // grammar 체크 없음 — 첨삭에서 판단
 
-  if (requiredVocab.length === 0) {
-    showToast('⚠️ AI vocab이 아직 로드 중이에요. 잠시 후 다시 시도해주세요.');
-    return;
-  }
-  if (usedVocab.length < 2) {
-    showToast('⚠️ Must-use vocab 중 최소 2개를 작문에 포함해야 합니다. (' + usedVocab.length + '/2)');
-    return;
+  if (currentMode === 'phrase') {
+    // Phrase mode: must include the target phrase at least once
+    var targetPhrase = window._phraseForWriting && window._phraseForWriting.ko;
+    if (targetPhrase && !text.includes(targetPhrase)) {
+      showToast('⚠️ "' + targetPhrase + '"을 작문에 포함해야 합니다.');
+      return;
+    }
+  } else {
+    if (requiredVocab.length === 0) {
+      showToast('⚠️ AI vocab이 아직 로드 중이에요. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+    if (usedVocab.length < 2) {
+      showToast('⚠️ Must-use vocab 중 최소 2개를 작문에 포함해야 합니다. (' + usedVocab.length + '/2)');
+      return;
+    }
   }
 
   // ── 제출 버튼 비활성화 ──
@@ -2435,17 +2516,33 @@ function updateHighlight() {
 var _writingMode = 'topic';  // 'topic' | 'reading'
 var _selectedArticle = null;
 
-function setWritingMode(mode) {
+function setWritingMode(mode, phraseKoHint) {
   _writingMode = mode;
   document.getElementById('tab-topic').classList.toggle('active', mode === 'topic');
   document.getElementById('tab-reading').classList.toggle('active', mode === 'reading');
+  var tabPhrase = document.getElementById('tab-phrase');
+  if (tabPhrase) tabPhrase.classList.toggle('active', mode === 'phrase');
   var modeText = document.getElementById('wcf-mode-text');
   if (mode === 'reading') {
     if (modeText) modeText.textContent = 'Read & Write';
-    // 바로 모달 열기 - 소스 선택은 모달 안에서
     openWritingModal();
+  } else if (mode === 'phrase') {
+    // Store phrase for use in modal
+    var p = null;
+    if (phraseKoHint) {
+      var allPhrases = getPhrases();
+      p = allPhrases.find(function(x){ return x.ko === phraseKoHint; }) || getTodaysPhrase();
+    } else {
+      p = getTodaysPhrase();
+    }
+    window._phraseForWriting = p;
+    if (modeText) modeText.textContent = 'Phrase Writing';
+    // Update the wcard topic display
+    var topicKoEl = document.getElementById('wcard-topic-ko');
+    if (topicKoEl) topicKoEl.textContent = p.ko + ' (' + p.en + ')';
   } else {
     if (modeText) modeText.textContent = 'Open Writing Room';
+    window._phraseForWriting = null;
   }
 }
 
@@ -2603,8 +2700,12 @@ function openWritingModalWithMode() {
     return;
   }
   document.getElementById('wmodal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  wmMobileInit();
   if (_writingMode === 'reading') {
     switchModalMode('reading');
+  } else if (_writingMode === 'phrase') {
+    switchModalMode('phrase');
   } else {
     switchModalMode('topic');
     if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
@@ -2646,6 +2747,23 @@ function switchModalMode(mode) {
       if (subEl) subEl.textContent = _selectedArticle.title;
       showSelectedMaterial();
     }
+  } else if (mode === 'phrase') {
+    if (sourceBar) { sourceBar.style.display = 'none'; }
+    var modalEl = document.querySelector('.wmodal');
+    if (modalEl) modalEl.classList.remove('reading-mode');
+    if (readingBlock) readingBlock.style.display = 'none';
+    if (contextBlock) contextBlock.style.display = 'block';
+    if (helpersBlock) helpersBlock.style.display = 'block';
+    if (leftPanel)    leftPanel.style.display = '';
+    var p = window._phraseForWriting || getTodaysPhrase();
+    if (modeLabel) modeLabel.textContent = '🌟 Phrase Writing';
+    if (subEl) subEl.textContent = p.ko + ' — ' + p.en;
+    if (placeholder) placeholder.placeholder = 'Write 3+ sentences using "' + p.ko + '" in different contexts.\n\nTip: Try different sentence structures — questions, negatives, past tense…';
+    if (contextBlock) contextBlock.innerHTML = '<strong style="color:#7ab8f5">Today\'s Phrase:</strong> ' + p.ko
+      + '<br><span style="font-size:12px;color:rgba(255,255,255,.65)">' + p.en + '</span>'
+      + (p.intro ? '<br><span style="font-size:11px;color:rgba(255,255,255,.45);margin-top:3px;display:block">' + p.intro.slice(0,100) + '…</span>' : '');
+    if (!_aiContent) generatePhraseAIContent(p);
+    else renderModalContent();
   } else {
     if (sourceBar) { sourceBar.style.display = 'none'; }
     var modalEl = document.querySelector('.wmodal');

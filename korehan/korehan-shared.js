@@ -711,6 +711,7 @@ function updateAuthUI() {
 
 const DB_KEY          = 'korehan_db';
 const K_PHRASES       = 'korehan_phrases';
+var _phrasesFromDB    = null;   // populated by loadPhrasesFromDB()
 const K_WORDBANK      = 'korehan_wordbank';
 const K_SENTENCES     = 'korehan_sentences';
 const K_OPINIONS      = 'korehan_opinions';
@@ -799,7 +800,40 @@ function normalizePhrase(row) {
     related: Array.isArray(row.related) ? row.related.filter(Boolean).slice(0, 8) : []
   };
 }
-function getPhrases()   { return lsGet(K_PHRASES,   DEF_PHRASES).map(normalizePhrase); }
+function getPhrases()   {
+  if (_phrasesFromDB && _phrasesFromDB.length) return _phrasesFromDB;
+  return lsGet(K_PHRASES, DEF_PHRASES).map(normalizePhrase);
+}
+async function loadPhrasesFromDB() {
+  var sb = getSupa();
+  if (!sb) return;
+  try {
+    var res = await sb.from('app_settings').select('value').eq('key','phrases_data').maybeSingle();
+    if (res.data && res.data.value) {
+      var arr = JSON.parse(res.data.value);
+      if (Array.isArray(arr) && arr.length) {
+        _phrasesFromDB = arr.map(normalizePhrase);
+        lsSet(K_PHRASES, arr);
+      }
+    }
+  } catch(e) {}
+}
+async function savePhrasesToDB(phrases) {
+  var sb = getSupa();
+  if (!sb || !supaUser) return false;
+  try {
+    var { error } = await sb.from('app_settings').upsert(
+      { key: 'phrases_data', value: JSON.stringify(phrases) },
+      { onConflict: 'key' }
+    );
+    if (!error) {
+      _phrasesFromDB = phrases.map(normalizePhrase);
+      lsSet(K_PHRASES, phrases);
+      return true;
+    }
+    return false;
+  } catch(e) { return false; }
+}
 function getTodaysPhraseIndex() {
   var phrases = getPhrases();
   if (!phrases.length) return 0;

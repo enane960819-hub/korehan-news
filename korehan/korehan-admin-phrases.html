@@ -114,12 +114,13 @@ function collectForm() {
     examples: examples
   });
 }
-function savePhrase() {
+async function savePhrase() {
   var row = collectForm();
   if (!row.ko) { alert('Korean phrase is required.'); return; }
   phrases[currentIndex] = row;
   lsSet(K_PHRASES, phrases);
-  toast('Phrase saved');
+  var ok = await savePhrasesToDB(phrases);
+  toast(ok ? '✅ Phrase saved to DB' : '⚠️ Saved locally (DB sync failed — check login)');
   renderPhraseTable();
 }
 function newPhrase() {
@@ -128,16 +129,17 @@ function newPhrase() {
   fillForm(0);
   renderPhraseTable();
 }
-function deletePhrase() {
+async function deletePhrase() {
   if (!phrases.length) return;
   if (!confirm('Delete this phrase?')) return;
   phrases.splice(currentIndex, 1);
   if (!phrases.length) phrases = [normalizePhrase({})];
   currentIndex = Math.max(0, Math.min(currentIndex, phrases.length - 1));
   lsSet(K_PHRASES, phrases);
+  await savePhrasesToDB(phrases);
   fillForm(currentIndex);
   renderPhraseTable();
-  toast('Phrase deleted');
+  toast('🗑 Phrase deleted');
 }
 function renderPhraseTable() {
   var q = (document.getElementById('phrase-search').value || '').toLowerCase();
@@ -174,7 +176,9 @@ async function runAIGenerate() {
     phrases[currentIndex] = normalizePhrase(data);
     fillForm(currentIndex);
     renderPhraseTable();
-    toast('AI draft generated');
+    var ok = await savePhrasesToDB(phrases);
+    toast(ok ? '✅ AI generated & saved to DB' : '✅ AI generated (DB sync failed — click Save)');
+    lsSet(K_PHRASES, phrases);
   } catch (e) {
     alert('AI generation failed: ' + e.message);
   } finally {
@@ -182,7 +186,30 @@ async function runAIGenerate() {
     btn.disabled = false;
   }
 }
-document.addEventListener('DOMContentLoaded', loadPhraseAdmin);
+document.addEventListener('DOMContentLoaded', async function() {
+  // Wait for supabase session check
+  await new Promise(function(resolve) {
+    var waited = 0;
+    (function check() {
+      if (window._sessionChecked || waited >= 50) resolve();
+      else { waited++; setTimeout(check, 100); }
+    })();
+  });
+  // Admin-only gate
+  if (!supaUser || supaUser.email !== 'enane960819@gmail.com') {
+    document.querySelector('.wrap').innerHTML =
+      '<div style="padding:80px 40px;text-align:center;font-family:\'Source Sans 3\',sans-serif">'
+      + '<div style="font-size:48px;margin-bottom:16px">🔒</div>'
+      + '<h2 style="font-size:22px;margin:0 0 10px">Admin access required</h2>'
+      + '<p style="color:#64748b;margin-bottom:24px">Sign in as admin to manage phrases.</p>'
+      + '<a href="index.html" style="color:#2255a4;font-weight:700">← Go to site</a>'
+      + '</div>';
+    return;
+  }
+  // Load phrases from DB (overrides localStorage)
+  await loadPhrasesFromDB();
+  loadPhraseAdmin();
+});
 </script>
 </body>
 </html>

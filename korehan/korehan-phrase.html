@@ -38,8 +38,7 @@ function renderPhrasePage() {
     + '<div class="phrase-en">' + phrase.en + '</div>'
     + (related ? '<div class="phrase-chip-row">' + related + '</div>' : '')
     + '<div class="phrase-actions">'
-    + '<a class="phrase-action primary" href="korehan-study-room.html">Start studying</a>'
-    + '<a class="phrase-action" href="korehan-admin-phrases.html?edit=' + idx + '">Edit phrase</a>'
+    + '<a class="phrase-action primary" href="korehan-study-room.html?mode=phrase&ko=' + encodeURIComponent(phrase.ko) + '">Start studying →</a>'
     + '</div>'
     + '</section>'
     + '<div class="phrase-grid">'
@@ -68,7 +67,10 @@ function renderPhrasePage() {
   document.title = phrase.ko + ' — KoreHan Phrase';
 }
 
-document.addEventListener('DOMContentLoaded', renderPhrasePage);
+document.addEventListener('DOMContentLoaded', async function() {
+  await loadPhrasesFromDB();
+  renderPhrasePage();
+});
 </script>
 </body>
 </html>
