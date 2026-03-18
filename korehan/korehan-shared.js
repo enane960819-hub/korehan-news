@@ -4981,7 +4981,7 @@ async function renderHomeLearningPreview() {
   box.innerHTML =
     // streak 배지 + stats 한 줄
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">'
-    + '<div style="font-size:12px;font-weight:800;color:var(--dark)">Today\'s Progress</div>'
+    + '<a href="korehan-learning-overview.html" style="font-size:12px;font-weight:800;color:var(--dark);text-decoration:none;">Today\'s Progress <span style="color:var(--bright);font-size:11px;">→</span></a>'
     + '<div style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:#fff3e0;color:#c85000;">🔥 ' + streak + ' day streak</div>'
     + '</div>'
     + '<div style="display:flex;gap:6px;margin-bottom:12px;">'
@@ -5033,7 +5033,7 @@ function injectMobileBottomNav() {
     ['korehan-all.html','📰','News','korehan-all'],
     ['korehan-study-room.html','📘','Learn','korehan-study-room'],
     ['korehan-conversations.html','💬','CONVO','korehan-conversations'],
-    ['korehan-mypage.html','👤','My','korehan-mypage']
+    ['korehan-learning-overview.html','🎯','Missions','korehan-learning-overview']
   ];
   nav.innerHTML = items.map(function(it){
     return '<a href="'+it[0]+'" class="'+(page===it[3]?'on':'')+'"><span class="ico">'+it[1]+'</span><span>'+it[2]+'</span></a>';
