@@ -68,9 +68,30 @@ async function getFromCache(contentType, contentId, cacheKey) {
       .eq('content_id', String(contentId))
       .eq('cache_key', cacheKey)
       .maybeSingle();
-    if (res.data && res.data.cache_value) return res.data.cache_value;
+    if (res.data && res.data.cache_value) {
+      var val = res.data.cache_value;
+      // column이 text면 JSON string으로 저장됨 → parse
+      if (typeof val === 'string') { try { val = JSON.parse(val); } catch(e) {} }
+      return val;
+    }
   } catch(e) {}
   return null;
+}
+
+// ── DB article_cache 저장 헬퍼 (admin saveToCache와 동일 포맷) ──
+function saveToDbCache(contentType, contentId, key, value) {
+  try {
+    var sb = getSupa();
+    if (!sb) return;
+    sb.from('article_cache').upsert({
+      content_type: contentType,
+      content_id:   String(contentId),
+      cache_key:    key,
+      cache_value:  JSON.stringify(value),
+      created_at:   new Date().toISOString()
+    }, { onConflict: 'content_type,content_id,cache_key' })
+    .then(function(r){ if (r.error) console.warn('cache save error:', r.error); });
+  } catch(e) { console.warn('saveToDbCache failed', e); }
 }
 
 // ── localStorage AI 캐시 (auth 불필요, 브라우저 로컬) ─────────
@@ -2046,17 +2067,7 @@ Respond ONLY with this JSON (no markdown, no extra text):
 
     // ── 캐시 저장: localStorage + DB ─────────────────────
     lcSet(_fillLcKey, { questions: parsed.questions });
-    try {
-      var sb = getSupa();
-      if (sb && parsed.questions) {
-        sb.from('article_cache').upsert({
-          content_type: 'article',
-          content_id:   String(a.id),
-          cache_key:    cacheKey,
-          cache_value:  { questions: parsed.questions }
-        }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(e){});
-      }
-    } catch(e) {}
+    saveToDbCache('article', a.id, cacheKey, { questions: parsed.questions });
   } catch(e) {
     el.innerHTML = '<div style="padding:24px;text-align:center;color:#e53e3e">⚠️ AI 생성 실패. 다시 시도해주세요.<br><button onclick="loadFillExercise()" style="margin-top:12px;padding:8px 20px;background:#2255a4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">🔄 Retry</button></div>';
   }
@@ -2417,17 +2428,7 @@ async function loadGrammarGuide() {
 
     // ── 캐시 저장: localStorage + DB ─────────────────────
     lcSet('grammar_' + a.id, { patterns: guides });
-    try {
-      var sb = getSupa();
-      if (sb && guides.length) {
-        sb.from('article_cache').upsert({
-          content_type: 'article',
-          content_id:   String(a.id),
-          cache_key:    'grammar_guide',
-          cache_value:  { patterns: guides }
-        }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(e){});
-      }
-    } catch(e) {}
+    saveToDbCache('article', a.id, 'grammar_guide', { patterns: guides });
   } catch(e) {
     if (e.message === 'Not signed in') {
       el.dataset.source = ''; // 로그인 후 재시도 허용
@@ -2669,17 +2670,7 @@ async function toggleTranslate() {
     btn.classList.add('active');
 
     // ── DB에 캐시 저장 (다음 방문 시 재사용) ─────────────────
-    try {
-      var sb = getSupa();
-      if (sb && id) {
-        sb.from('article_cache').upsert({
-          content_type: 'article',
-          content_id:   String(id),
-          cache_key:    dbCacheKey,
-          cache_value:  { translations: translations }
-        }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(e){ console.warn('translation cache save failed', e); });
-      }
-    } catch(e) {}
+    if (id) saveToDbCache('article', id, dbCacheKey, { translations: translations });
   } catch(e) {
     console.error('translate error', e);
     btn.textContent = '🌐 Translate';
