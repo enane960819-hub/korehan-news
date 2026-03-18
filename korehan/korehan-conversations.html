@@ -130,7 +130,8 @@
     <button class="cf-pill" data-cat="friends">Friends</button>
     <button class="cf-pill" data-cat="family">Family</button>
     <button class="cf-pill" data-cat="dating">Dating</button>
-    <div class="cf-sep"></div>
+  </div>
+  <div class="conv-filter-bar" id="lvl-pills">
     <button class="cf-pill on" data-lvl="all">All Levels</button>
     <button class="cf-pill" data-lvl="b">🟢 Beginner</button>
     <button class="cf-pill" data-lvl="i">🟡 Intermediate</button>
@@ -446,17 +447,18 @@ document.addEventListener('DOMContentLoaded', async function() {
     setTimeout(function(){ openDetail(parseInt(_openIdx)); }, 80);
   }
   var pills = document.getElementById('cat-pills');
-  pills.querySelectorAll('.cf-pill:not([data-lvl])').forEach(function(btn) {
+  var lvlPills = document.getElementById('lvl-pills') || pills;
+  pills.querySelectorAll('.cf-pill[data-cat]').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      pills.querySelectorAll('.cf-pill:not([data-lvl])').forEach(function(b){b.classList.remove('on');});
+      pills.querySelectorAll('.cf-pill[data-cat]').forEach(function(b){b.classList.remove('on');});
       btn.classList.add('on');
       activeCat = btn.dataset.cat;
       renderCards(activeCat, activeLvl);
     });
   });
-  pills.querySelectorAll('.cf-pill[data-lvl]').forEach(function(btn) {
+  lvlPills.querySelectorAll('.cf-pill[data-lvl]').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      pills.querySelectorAll('.cf-pill[data-lvl]').forEach(function(b){b.classList.remove('on');});
+      lvlPills.querySelectorAll('.cf-pill[data-lvl]').forEach(function(b){b.classList.remove('on');});
       btn.classList.add('on');
       activeLvl = btn.dataset.lvl;
       renderCards(activeCat, activeLvl);
