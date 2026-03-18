@@ -2694,20 +2694,58 @@ function escapeHtml(str) {
 
 // ── TOOLTIP ───────────────────────────────────────────────────
 function initTooltips() {
+  // 데스크탑 hover 툴팁
   var tip = document.createElement('div');
   tip.id = 'kh-tip';
   Object.assign(tip.style, {
-    position:'fixed', zIndex:'9999', pointerEvents:'none',
+    position:'fixed', zIndex:'9999', pointerEvents:'auto',
     background:'#0d1b2e', color:'#fff',
-    padding:'8px 12px', borderRadius:'4px',
+    padding:'8px 12px', borderRadius:'8px',
     fontFamily:"'Source Sans 3', sans-serif", fontSize:'13px',
     borderLeft:'3px solid #2255a4',
     boxShadow:'0 4px 16px rgba(0,0,0,0.35)',
-    maxWidth:'220px', lineHeight:'1.4',
+    maxWidth:'240px', lineHeight:'1.4',
     opacity:'0', transition:'opacity 0.15s',
     whiteSpace:'nowrap',
   });
   document.body.appendChild(tip);
+
+  // 모바일 단어 팝업 (탭 시)
+  var mPop = document.createElement('div');
+  mPop.id = 'kh-word-popup';
+  mPop.style.cssText = 'display:none;position:fixed;left:12px;right:12px;bottom:80px;z-index:10000;'
+    + 'background:#0d1b2e;color:#fff;border-radius:16px;padding:16px 18px;'
+    + 'box-shadow:0 8px 32px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.1);';
+  document.body.appendChild(mPop);
+  document.addEventListener('click', function(e) {
+    if (mPop.style.display !== 'none' && !mPop.contains(e.target) && !(e.target.closest && e.target.closest('.kh-word'))) {
+      mPop.style.display = 'none';
+    }
+  });
+
+  function isSaved(ko) {
+    var saved = lsGet(K_SAVED, []);
+    return saved.some(function(w){ return (w.ko || w.word_ko) === ko; });
+  }
+
+  function buildSaveBtn(ko, rom, en) {
+    var saved = isSaved(ko);
+    var btn = document.createElement('button');
+    btn.style.cssText = 'margin-left:8px;padding:2px 9px;border-radius:999px;border:none;cursor:pointer;font-size:11px;font-weight:800;'
+      + (saved ? 'background:#1e3a5f;color:#7ab8f5;' : 'background:#2255a4;color:#fff;');
+    btn.textContent = saved ? '✓ Saved' : '+ Save';
+    btn.onclick = function(e) {
+      e.stopPropagation();
+      if (isSaved(ko)) return;
+      dbSaveWord(ko, rom, en);
+      dmTrackWord();
+      btn.textContent = '✓ Saved';
+      btn.style.background = '#1e3a5f';
+      btn.style.color = '#7ab8f5';
+      if (typeof toast === 'function') toast('저장됨: ' + ko);
+    };
+    return btn;
+  }
 
   document.querySelectorAll('.vocab-zone').forEach(function(el){ wrapVocab(el); });
 
@@ -2721,7 +2759,10 @@ function initTooltips() {
     document.body.appendChild(adminBar);
   }
 
+  var _isMobile = ('ontouchstart' in window);
+
   document.addEventListener('mouseover', function(e) {
+    if (_isMobile) return;
     var w = e.target.closest ? e.target.closest('.kh-word') : null;
     if (!w) return;
     var word = w.dataset.word;
@@ -2734,22 +2775,80 @@ function initTooltips() {
       return;
     }
     if (!d) return;
-    tip.innerHTML = '<span style="font-size:16px;font-weight:700;color:#7ab8f5">' + word + '</span><br>'
-      + '<span style="color:#aabbd0;font-size:11px;font-style:italic">' + d.rom + '</span><br>'
-      + '<strong>' + d.en + '</strong>';
+    tip.innerHTML = '';
+    var row1 = document.createElement('div');
+    row1.style.cssText = 'display:flex;align-items:center;gap:4px;margin-bottom:2px;';
+    var wordSpan = document.createElement('span');
+    wordSpan.style.cssText = 'font-size:16px;font-weight:700;color:#7ab8f5;';
+    wordSpan.textContent = word;
+    row1.appendChild(wordSpan);
+    row1.appendChild(buildSaveBtn(word, d.rom, d.en));
+    tip.appendChild(row1);
+    var romDiv = document.createElement('div');
+    romDiv.style.cssText = 'color:#aabbd0;font-size:11px;font-style:italic;';
+    romDiv.textContent = d.rom;
+    tip.appendChild(romDiv);
+    var enDiv = document.createElement('strong');
+    enDiv.textContent = d.en;
+    tip.appendChild(enDiv);
     tip.style.opacity = '1';
   });
+
+  tip.addEventListener('mouseleave', function() { tip.style.opacity = '0'; });
+
   var _tipMoveRaf = null;
   document.addEventListener('mousemove', function(e) {
+    if (_isMobile) return;
     if (_tipMoveRaf) return;
     _tipMoveRaf = requestAnimationFrame(function() {
-      tip.style.left = (e.clientX + 14) + 'px';
+      var tw = tip.offsetWidth || 240;
+      var x = e.clientX + 14;
+      if (x + tw > window.innerWidth - 8) x = e.clientX - tw - 8;
+      tip.style.left = x + 'px';
       tip.style.top  = (e.clientY - 10) + 'px';
       _tipMoveRaf = null;
     });
   });
   document.addEventListener('mouseout', function(e) {
-    if (e.target.closest && e.target.closest('.kh-word')) tip.style.opacity = '0';
+    if (_isMobile) return;
+    var w = e.target.closest && e.target.closest('.kh-word');
+    if (!w) return;
+    var to = e.relatedTarget;
+    if (to && (to === tip || tip.contains(to))) return; // 툴팁으로 이동 시 유지
+    tip.style.opacity = '0';
+  });
+
+  // 모바일 탭 처리
+  document.addEventListener('click', function(e) {
+    if (!_isMobile) return;
+    var w = e.target.closest ? e.target.closest('.kh-word') : null;
+    if (!w) return;
+    if (window._vocabEditMode && window._isAdmin) return;
+    e.preventDefault();
+    var word = w.dataset.word;
+    var d = VOCAB[word];
+    if (!d) return;
+    mPop.innerHTML = '';
+    // 헤더 행: 단어 + 저장 버튼
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;';
+    var wSpan = document.createElement('span');
+    wSpan.style.cssText = 'font-size:20px;font-weight:800;color:#7ab8f5;';
+    wSpan.textContent = word;
+    hdr.appendChild(wSpan);
+    var saveBtn = buildSaveBtn(word, d.rom, d.en);
+    saveBtn.style.cssText += 'font-size:13px;padding:5px 14px;';
+    hdr.appendChild(saveBtn);
+    mPop.appendChild(hdr);
+    var rom = document.createElement('div');
+    rom.style.cssText = 'color:#aabbd0;font-size:12px;font-style:italic;margin-bottom:4px;';
+    rom.textContent = d.rom;
+    mPop.appendChild(rom);
+    var en = document.createElement('div');
+    en.style.cssText = 'color:#fff;font-size:16px;font-weight:700;';
+    en.textContent = d.en;
+    mPop.appendChild(en);
+    mPop.style.display = 'block';
   });
 
   // 어드민 편집 모드 클릭 처리
