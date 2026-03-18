@@ -9,36 +9,44 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
-.conv-hero{background:linear-gradient(160deg,#1d4ed8 0%,#3b82f6 55%,#60a5fa 100%);padding:36px 0 80px;margin-bottom:-56px;}
+/* ── CONVERSATIONS PAGE ─────────────────────────── */
+.conv-hero{background:linear-gradient(150deg,#0f172a 0%,#1d4ed8 60%,#3b82f6 100%);padding:44px 0 44px;}
 .conv-hero-inner{max-width:1280px;margin:0 auto;padding:0 24px;}
-.conv-hero-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.75);margin-bottom:10px;}
-.conv-hero h1{font-family:'Playfair Display',serif;font-size:38px;font-weight:900;color:#fff;margin:0 0 10px;line-height:1.15;}
-.conv-hero p{font-size:15px;color:rgba(255,255,255,.85);line-height:1.7;max-width:560px;margin:0;}
-.conv-filter-bar{max-width:1280px;margin:0 auto;padding:20px 24px 28px;display:flex;flex-wrap:wrap;gap:8px;position:relative;z-index:2;}
-.cf-pill{padding:8px 18px;border-radius:999px;background:rgba(255,255,255,.18);backdrop-filter:blur(8px);border:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;}
-.cf-pill.on,.cf-pill:hover{background:#fff;color:#1d4ed8;border-color:#fff;}
-.cf-sep{flex-basis:100%;height:0;}
-.conv-page-container{max-width:1280px;margin:0 auto;padding:0 24px 60px;}
-.conv-cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
-.cc2{background:#fff;border-radius:24px;box-shadow:0 8px 32px rgba(15,23,42,.07);border:1px solid #e8eef7;overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s;}
-.cc2:hover{transform:translateY(-4px);box-shadow:0 20px 48px rgba(15,23,42,.12);}
-.cc2-top{padding:18px 20px 14px;border-bottom:1px solid #f0f4fa;display:flex;align-items:center;gap:12px;}
-.cc2-avi{width:44px;height:44px;border-radius:14px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;border:2px solid #dbeafe;}
+.conv-hero-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.5);margin-bottom:12px;}
+.conv-hero h1{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,44px);font-weight:900;color:#fff;margin:0 0 10px;line-height:1.15;}
+.conv-hero p{font-size:14px;color:rgba(255,255,255,.7);line-height:1.65;max-width:500px;margin:0;}
+
+/* Filter bar — below hero, clean white sticky strip */
+.conv-filter-wrap{background:#fff;border-bottom:1px solid #e8eef7;position:sticky;top:0;z-index:200;}
+.conv-filter-inner{max-width:1280px;margin:0 auto;padding:0 24px;display:flex;flex-direction:column;gap:0;}
+.conv-filter-row{display:flex;align-items:center;gap:8px;padding:10px 0;flex-wrap:wrap;}
+.conv-filter-row + .conv-filter-row{border-top:1px solid #f1f5f9;padding-top:9px;}
+.conv-filter-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-right:4px;white-space:nowrap;}
+.cf-pill{padding:6px 16px;border-radius:999px;background:transparent;border:1.5px solid #e2e8f0;color:#475569;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;}
+.cf-pill.on,.cf-pill:hover{background:#1d4ed8;color:#fff;border-color:#1d4ed8;}
+
+.conv-page-container{max-width:1280px;margin:0 auto;padding:28px 24px 60px;}
+.conv-cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+/* Cards */
+.cc2{background:#fff;border-radius:20px;box-shadow:0 2px 12px rgba(15,23,42,.06);border:1px solid #e8eef7;overflow:hidden;cursor:pointer;transition:box-shadow .18s,transform .18s;}
+.cc2:hover{transform:translateY(-3px);box-shadow:0 12px 36px rgba(15,23,42,.11);}
+.cc2-top{padding:16px 18px 12px;display:flex;align-items:center;gap:11px;}
+.cc2-avi{width:42px;height:42px;border-radius:14px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;border:1.5px solid #dbeafe;}
 .cc2-info{flex:1;min-width:0;}
-.cc2-name{font-size:14px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cc2-ctx{font-size:12px;color:#64748b;margin-top:2px;}
+.cc2-name{font-size:13px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cc2-ctx{font-size:11px;color:#94a3b8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cc2-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;flex-shrink:0;}
 .badge-b{background:#dcfce7;color:#15803d;}
 .badge-i{background:#fef9c3;color:#92400e;}
 .badge-a{background:#fee2e2;color:#b91c1c;}
-.cc2-preview{padding:14px 20px;background:linear-gradient(180deg,#f8fbff 0%,#f8fafc 100%);display:flex;flex-direction:column;gap:6px;}
-.cc2-bub{max-width:82%;padding:8px 13px;border-radius:18px;font-size:13px;line-height:1.5;font-family:'Noto Sans KR',sans-serif;}
-.cc2-bub.l{background:#fff;color:#0f172a;border:1px solid #e8eef7;border-bottom-left-radius:5px;align-self:flex-start;box-shadow:0 2px 8px rgba(15,23,42,.05);}
-.cc2-bub.r{background:#2563eb;color:#fff;border-bottom-right-radius:5px;align-self:flex-end;}
-.cc2-foot{padding:12px 20px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f0f4fa;background:#fff;}
-.cc2-vocab-count{font-size:12px;color:#64748b;}
-.cc2-open-btn{font-size:12px;font-weight:700;color:#2563eb;background:#eff6ff;border:1px solid #bfdbfe;border-radius:999px;padding:5px 14px;cursor:pointer;font-family:inherit;transition:all .15s;}
-.cc2-open-btn:hover{background:#2563eb;color:#fff;border-color:#2563eb;}
+.cc2-preview{padding:12px 18px 14px;background:#f8fafc;display:flex;flex-direction:column;gap:5px;border-top:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;}
+.cc2-bub{max-width:80%;padding:7px 12px;border-radius:16px;font-size:12px;line-height:1.55;font-family:'Noto Sans KR',sans-serif;}
+.cc2-bub.l{background:#fff;color:#0f172a;border:1px solid #e8eef7;border-bottom-left-radius:4px;align-self:flex-start;}
+.cc2-bub.r{background:#2563eb;color:#fff;border-bottom-right-radius:4px;align-self:flex-end;}
+.cc2-foot{padding:11px 18px;display:flex;align-items:center;justify-content:space-between;background:#fff;}
+.cc2-vocab-count{font-size:11px;color:#94a3b8;font-weight:600;}
+.cc2-open-btn{font-size:12px;font-weight:800;color:#2563eb;background:none;border:none;padding:0;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;}
+.cc2-open-btn:hover{color:#1d4ed8;}
 
 /* DETAIL OVERLAY */
 .detail-overlay{position:fixed;inset:0;background:rgba(5,12,24,.6);backdrop-filter:blur(4px);z-index:400;display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto;}
@@ -112,7 +120,7 @@
 .dp-keyword{display:inline-block;padding:7px 13px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#334155;cursor:pointer;transition:all .12s;}
 .dp-keyword:hover{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;}
 @media(max-width:900px){.conv-cards-grid{grid-template-columns:repeat(2,1fr)}.detail-panel{grid-template-columns:1fr}.dp-right{border-left:none;border-top:1px solid #e8eef7}}
-@media(max-width:600px){.conv-cards-grid{grid-template-columns:1fr}.conv-hero h1{font-size:28px}.detail-panel{border-radius:20px}}
+@media(max-width:600px){.conv-cards-grid{grid-template-columns:1fr}.detail-panel{border-radius:20px}.conv-filter-row{gap:6px}.cf-pill{padding:5px 12px;font-size:11px}}
 </style>
 </head>
 <body>
@@ -121,21 +129,27 @@
   <div class="conv-hero-inner">
     <div class="conv-hero-eyebrow">KoreHan News</div>
     <h1>Real Korean Conversations</h1>
-    <p>Authentic KakaoTalk-style chats covering everyday life, work, friends, family &amp; dating. Click any conversation to study vocabulary and grammar in context.</p>
+    <p>Authentic KakaoTalk-style chats. Click any card to study vocabulary, grammar, and practice with quizzes.</p>
   </div>
-  <div class="conv-filter-bar" id="cat-pills">
-    <button class="cf-pill on" data-cat="all">All</button>
-    <button class="cf-pill" data-cat="everyday">Everyday</button>
-    <button class="cf-pill" data-cat="work">Workplace</button>
-    <button class="cf-pill" data-cat="friends">Friends</button>
-    <button class="cf-pill" data-cat="family">Family</button>
-    <button class="cf-pill" data-cat="dating">Dating</button>
-  </div>
-  <div class="conv-filter-bar" id="lvl-pills">
-    <button class="cf-pill on" data-lvl="all">All Levels</button>
-    <button class="cf-pill" data-lvl="b">🟢 Beginner</button>
-    <button class="cf-pill" data-lvl="i">🟡 Intermediate</button>
-    <button class="cf-pill" data-lvl="a">🔴 Advanced</button>
+</div>
+<div class="conv-filter-wrap">
+  <div class="conv-filter-inner">
+    <div class="conv-filter-row" id="cat-pills">
+      <span class="conv-filter-label">Topic</span>
+      <button class="cf-pill on" data-cat="all">All</button>
+      <button class="cf-pill" data-cat="everyday">Everyday</button>
+      <button class="cf-pill" data-cat="work">Workplace</button>
+      <button class="cf-pill" data-cat="friends">Friends</button>
+      <button class="cf-pill" data-cat="family">Family</button>
+      <button class="cf-pill" data-cat="dating">Dating</button>
+    </div>
+    <div class="conv-filter-row" id="lvl-pills">
+      <span class="conv-filter-label">Level</span>
+      <button class="cf-pill on" data-lvl="all">All</button>
+      <button class="cf-pill" data-lvl="b">🟢 Beginner</button>
+      <button class="cf-pill" data-lvl="i">🟡 Intermediate</button>
+      <button class="cf-pill" data-lvl="a">🔴 Advanced</button>
+    </div>
   </div>
 </div>
 <div class="conv-page-container">
@@ -160,7 +174,7 @@ function renderCards(catF, lvlF) {
     return (catF === 'all' || c.cat === catF) && (lvlF === 'all' || c.lvl === lvlF);
   });
   if (!list.length) {
-    grid.innerHTML = CONVS.length === 0 ? '<div style="grid-column:1/-1;text-align:center;padding:60px 20px"><div style="font-size:40px;margin-bottom:12px">💬</div><div style="font-size:16px;font-weight:700;color:#334155;margin-bottom:8px">아직 대화가 없어요</div><div style="font-size:13px;color:#94a3b8">Admin → Conversations 관리에서 추가하거나 AI Generator로 생성해보세요</div></div>' : '<p style="color:#64748b;font-size:14px;grid-column:1/-1;padding:20px 0">이 카테고리에 해당하는 대화가 없어요</p>';
+    grid.innerHTML = CONVS.length === 0 ? '<div style="grid-column:1/-1;text-align:center;padding:60px 20px"><div style="font-size:40px;margin-bottom:12px">💬</div><div style="font-size:16px;font-weight:700;color:#334155;margin-bottom:8px">No conversations yet</div><div style="font-size:13px;color:#94a3b8">Add some via Admin → Conversations or use the AI Generator</div></div>' : '<p style="color:#64748b;font-size:14px;grid-column:1/-1;padding:20px 0">No conversations match this filter</p>';
     return;
   }
   grid.innerHTML = list.map(function(c) {
@@ -176,8 +190,8 @@ function renderCards(catF, lvlF) {
       +'</div>'
       +'<div class="cc2-preview">'+prev+'</div>'
       +'<div class="cc2-foot">'
-        +'<span class="cc2-vocab-count">📚 '+c.vocab.length+' key words</span>'
-        +'<button class="cc2-open-btn">Study →</button>'
+        +'<span class="cc2-vocab-count">'+c.vocab.length+' words</span>'
+        +'<button class="cc2-open-btn">Study <span>→</span></button>'
       +'</div></div>';
   }).join('');
 }
@@ -236,14 +250,14 @@ function openDetail(idx) {
         +'<div class="dp-avatar">'+c.avi+'</div>'
         +'<div class="dp-bubble-group">'
           +'<div class="dp-who">'+msg.who+'</div>'
-          +'<div class="dp-bubble tts-bubble" onclick="playMsgTTS(\''+safe+'\')" title="클릭해서 듣기">'+txt+'<span class="dp-tts-icon">🔊</span></div>'
+          +'<div class="dp-bubble tts-bubble" onclick="playMsgTTS(\''+safe+'\')" title="Click to listen">'+txt+'<span class="dp-tts-icon">🔊</span></div>'
           +'<div class="dp-time">'+time+'</div>'
           +note
         +'</div></div>';
     } else {
       return '<div class="dp-msg-row right">'
         +'<div class="dp-bubble-group">'
-          +'<div class="dp-bubble tts-bubble" onclick="playMsgTTS(\''+safe+'\')" title="클릭해서 듣기">'+txt+'<span class="dp-tts-icon">🔊</span></div>'
+          +'<div class="dp-bubble tts-bubble" onclick="playMsgTTS(\''+safe+'\')" title="Click to listen">'+txt+'<span class="dp-tts-icon">🔊</span></div>'
           +'<div class="dp-time">'+time+'</div>'
           +note
         +'</div></div>';
@@ -289,7 +303,7 @@ function openDetail(idx) {
         +'<div class="dp-date-sep"><span>Today</span></div>'
         +msgs
       +'</div>'
-      +'<div class="dp-cta-row">'        +'<button class="dp-cta-btn dp-cta-secondary" onclick="closeDetail()">← All</button>'        +(window._isAdmin ? '<button class="dp-cta-btn" style="background:#f1f5f9;color:#334155" onclick="editCurrentConv()">✏️ 수정</button>'                          + '<button class="dp-cta-btn" style="background:#fee2e2;color:#b91c1c" onclick="deleteCurrentConv()">🗑 삭제</button>' : '')        +'<button class="dp-cta-btn dp-cta-secondary" onclick="startBlankQuiz()">✏️ Blank Fill</button>'
+      +'<div class="dp-cta-row">'        +'<button class="dp-cta-btn dp-cta-secondary" onclick="closeDetail()">← All</button>'        +(window._isAdmin ? '<button class="dp-cta-btn" style="background:#f1f5f9;color:#334155" onclick="editCurrentConv()">✏️ Edit</button>'                          + '<button class="dp-cta-btn" style="background:#fee2e2;color:#b91c1c" onclick="deleteCurrentConv()">🗑 Delete</button>' : '')        +'<button class="dp-cta-btn dp-cta-secondary" onclick="startBlankQuiz()">✏️ Blank Fill</button>'
       +'<button class="dp-cta-btn dp-cta-secondary" onclick="startOrderQuiz()">🔀 Word Order</button>'
       +'<button class="dp-cta-btn dp-cta-primary" onclick="startRolePlay()">🎭 Role Play</button>'
       +'</div>'
@@ -475,10 +489,10 @@ function startBlankQuiz() {
   var c = window._currentConv;
   if (!c) return;
   var msgs = (c.msgs || []);
-  if (!msgs.length) { alert('대화 내용이 없어요'); return; }
+  if (!msgs.length) { alert('No messages found'); return; }
 
   var vocab = (c.vocab || []).filter(function(v){ return v.ko && v.ko.length > 1; });
-  if (!vocab.length) { alert('단어 데이터가 없어요'); return; }
+  if (!vocab.length) { alert('No vocabulary data found'); return; }
 
   var questions = msgs.slice(0, 6).map(function(msg) {
     var text = msg.txt || msg.text || '';
@@ -490,7 +504,7 @@ function startBlankQuiz() {
   if (!questions.length) {
     // 단어가 대화에 없으면 단순 vocab 빈칸
     questions = vocab.slice(0, 4).map(function(v) {
-      return { original: '이 단어의 뜻은? → ' + v.en, word: v.ko, en: v.en, who: '' };
+      return { original: 'What does this mean? → ' + v.en, word: v.ko, en: v.en, who: '' };
     });
   }
 
@@ -502,7 +516,7 @@ function startOrderQuiz() {
   var c = window._currentConv;
   if (!c) return;
   var msgs = (c.msgs || []).slice(0, 6);
-  if (msgs.length < 3) { alert('대화가 너무 짧아요'); return; }
+  if (msgs.length < 3) { alert('Conversation is too short for this quiz'); return; }
 
   var questions = [];
   // 3개씩 슬라이딩 윈도우로 순서 맞추기
@@ -757,7 +771,7 @@ function startRolePlay() {
   var c = window._currentConv;
   if (!c) return;
   var msgs = (c.msgs || []);
-  if (msgs.length < 2) { alert('대화 내용이 너무 짧아요'); return; }
+  if (msgs.length < 2) { alert('Conversation is too short for role play'); return; }
 
   // 어떤 역할 할지 선택 모달
   var overlay = document.getElementById('rp-overlay');
@@ -777,23 +791,23 @@ function startRolePlay() {
   overlay.innerHTML = '<div style="background:#fff;border-radius:24px;max-width:440px;width:100%;box-shadow:0 32px 80px rgba(15,23,42,.25);overflow:hidden;">'
     + '<div style="background:linear-gradient(135deg,#7c3aed,#a855f7);padding:20px 24px;">'
     + '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.75);margin-bottom:6px;">Role Play</div>'
-    + '<div style="font-size:20px;font-weight:900;color:#fff;">' + (c.name || '대화 롤플레이') + '</div>'
-    + '<div style="font-size:13px;color:rgba(255,255,255,.8);margin-top:4px;">누구 역할을 연기할까요?</div>'
+    + '<div style="font-size:20px;font-weight:900;color:#fff;">' + (c.name || 'Role Play') + '</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.8);margin-top:4px;">Choose a character to play</div>'
     + '</div>'
     + '<div style="padding:24px;">'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">'
     + '<button onclick="beginRolePlay(\'l\')" style="padding:20px 12px;border-radius:18px;border:2px solid #e2e8f0;background:#f8fafc;cursor:pointer;font-family:inherit;transition:all .15s;" onmouseover="this.style.borderColor=\'#7c3aed\';this.style.background=\'#faf5ff\'" onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.background=\'#f8fafc\'">'
     + '<div style="font-size:28px;margin-bottom:8px;">💬</div>'
     + '<div style="font-size:15px;font-weight:800;color:#0f172a;">' + nameA + '</div>'
-    + '<div style="font-size:11px;color:#94a3b8;margin-top:3px;">왼쪽 캐릭터</div>'
+    + '<div style="font-size:11px;color:#94a3b8;margin-top:3px;">Left character</div>'
     + '</button>'
     + '<button onclick="beginRolePlay(\'r\')" style="padding:20px 12px;border-radius:18px;border:2px solid #e2e8f0;background:#f8fafc;cursor:pointer;font-family:inherit;transition:all .15s;" onmouseover="this.style.borderColor=\'#7c3aed\';this.style.background=\'#faf5ff\'" onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.background=\'#f8fafc\'">'
     + '<div style="font-size:28px;margin-bottom:8px;">🙋</div>'
     + '<div style="font-size:15px;font-weight:800;color:#0f172a;">' + nameB + '</div>'
-    + '<div style="font-size:11px;color:#94a3b8;margin-top:3px;">오른쪽 캐릭터</div>'
+    + '<div style="font-size:11px;color:#94a3b8;margin-top:3px;">Right character</div>'
     + '</button>'
     + '</div>'
-    + '<button onclick="closeRolePlay()" style="width:100%;padding:12px;border-radius:14px;border:1px solid #e2e8f0;background:#f8fafc;color:#64748b;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">취소</button>'
+    + '<button onclick="closeRolePlay()" style="width:100%;padding:12px;border-radius:14px;border:1px solid #e2e8f0;background:#f8fafc;color:#64748b;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Cancel</button>'
     + '</div></div>';
 }
 
@@ -981,8 +995,8 @@ function editCurrentConv() {
 
 async function deleteCurrentConv() {
   var c = window._currentConv;
-  if (!c || !c._id) { alert('ID 없음 - DB에서 로드된 항목만 삭제 가능'); return; }
-  if (!confirm('"' + c.name + '" 대화를 삭제할까요?')) return;
+  if (!c || !c._id) { alert('No ID — only DB-loaded items can be deleted'); return; }
+  if (!confirm('Delete "' + c.name + '"?')) return;
   try {
     var sb = getSupa();
     var { error } = await sb.from('conversations_data').delete().eq('id', c._id);
@@ -992,9 +1006,9 @@ async function deleteCurrentConv() {
     if (idx >= 0) CONVS.splice(idx, 1);
     closeDetail();
     renderCards(activeCat, activeLvl);
-    showConvToast('🗑 삭제됨');
+    showConvToast('🗑 Deleted');
   } catch(e) {
-    alert('삭제 오류: ' + e.message);
+    alert('Delete error: ' + e.message);
   }
 }
 
@@ -1012,14 +1026,14 @@ function openInlineEditModal(c) {
 
   overlay.innerHTML = '<div style="background:#fff;border-radius:18px;width:100%;max-width:700px;padding:26px 28px;max-height:90vh;overflow-y:auto">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
-    + '<h3 style="font-size:17px;font-weight:800;margin:0">✏️ 대화 수정</h3>'
+    + '<h3 style="font-size:17px;font-weight:800;margin:0">✏️ Edit Conversation</h3>'
     + '<button onclick="closeInlineEdit()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#64748b">✕</button>'
     + '</div>'
     + inpField('ie-name', '이름', c.name || '')
     + inpField('ie-ctx',  '상황', c.ctx  || '')
     + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">'
     + inpField('ie-avi',  '이모지', c.avi || '💬')
-    + selField('ie-cat', '카테고리', ['everyday','work','friends','family','dating'], ['Everyday','Workplace','Friends','Family','Dating'], c.cat || 'everyday')
+    + selField('ie-cat', 'Category', ['everyday','work','friends','family','dating'], ['Everyday','Workplace','Friends','Family','Dating'], c.cat || 'everyday')
     + selField('ie-lvl', '레벨', ['b','i','a'], ['Beginner','Intermediate','Advanced'], c.lvl || 'b')
     + '</div>'
     + '<label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:14px">💬 대화 내용 (A: 왼쪽 / B: 오른쪽)<textarea id="ie-msgs" rows="6" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical">' + msgsText.replace(/</g,'&lt;') + '</textarea></label>'
