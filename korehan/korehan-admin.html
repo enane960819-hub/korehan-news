@@ -197,6 +197,7 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" onclick="goWordBank()"><span class="ico">📚</span>단어 플래시 카드</button>
     <button class="sb-btn" onclick="goSentences()"><span class="ico">💬</span>예문 관리</button>
     <div class="sb-lbl" style="margin-top:14px">운영 관리</div>
+    <button class="sb-btn" id="sb-writing-review" onclick="goWritingReview()"><span class="ico">✏️</span>작문 첨삭 관리</button>
     <button class="sb-btn" onclick="goUsers()"><span class="ico">👥</span>가입 회원</button>
     <button class="sb-btn" onclick="goComments()"><span class="ico">💬</span>댓글 관리</button>
     <button class="sb-btn" onclick="goNewsletter()"><span class="ico">📬</span>뉴스레터</button>
@@ -3715,6 +3716,258 @@ function closeConvEditOverlay() {
 function closeStoryEditOverlay() {
   var el = document.getElementById('story-edit-overlay');
   if (el) el.remove();
+}
+
+// ═══════════════════════════════════════════════════════
+// 작문 첨삭 관리 — Writing Feedback Review
+// ═══════════════════════════════════════════════════════
+var _wrFilter = 'pending'; // 'pending' | 'ai_done' | 'approved' | 'all'
+var _wrUserMap = {}; // user_id → email
+
+function goWritingReview() {
+  setSbOn('sb-writing-review');
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>✏️ 작문 첨삭 관리</h1><p>학생 작문과 AI 1차 피드백을 검토하고 최종 확정합니다.</p></div></div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">'
+    + ['ai_done','pending','approved','all'].map(function(f){
+        var labels = { ai_done:'🤖 AI 검토 완료', pending:'⏳ 대기 중', approved:'✅ 확정됨', all:'전체' };
+        var active = _wrFilter === f ? 'background:#1a3a6b;color:#fff;' : 'background:#f1f5f9;color:#334155;';
+        return '<button onclick="setWrFilter(\''+f+'\')" style="'+active+'border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">'+labels[f]+'</button>';
+      }).join('')
+    + '</div>'
+    + '<div id="wr-list"><div style="text-align:center;color:#94a3b8;padding:40px;">불러오는 중…</div></div>';
+  loadWritingReview();
+}
+
+function setWrFilter(f) {
+  _wrFilter = f;
+  goWritingReview();
+}
+
+async function loadWritingReview() {
+  var el = document.getElementById('wr-list');
+  if (!el) return;
+  try {
+    // Load submissions
+    var statusFilter = _wrFilter === 'all' ? '' : '&status=eq.' + _wrFilter;
+    var subRes = await fetch(
+      SUPA_URL_ADMIN + '/rest/v1/writing_submissions?select=*&order=submitted_at.desc&limit=100' + statusFilter,
+      { headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY } }
+    );
+    if (!subRes.ok) throw new Error('submissions 로드 실패: ' + subRes.status);
+    var subs = await subRes.json();
+
+    if (!subs || !subs.length) {
+      el.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px;">제출된 작문이 없어요.</div>';
+      return;
+    }
+
+    // Load user emails for unique user_ids
+    var uids = [...new Set(subs.map(function(s){ return s.user_id; }))];
+    if (uids.length && Object.keys(_wrUserMap).length < uids.length) {
+      try {
+        var authRes = await fetch(SUPA_URL_ADMIN + '/auth/v1/admin/users?per_page=500', {
+          headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
+        });
+        if (authRes.ok) {
+          var authData = await authRes.json();
+          (authData.users || []).forEach(function(u){ _wrUserMap[u.id] = u.email || u.id; });
+        }
+      } catch(e) {}
+    }
+
+    var statusBg    = { pending:'#fef9c3', ai_done:'#eff6ff', approved:'#dcfce7', rejected:'#fee2e2' };
+    var statusColor = { pending:'#854d0e', ai_done:'#1d4ed8', approved:'#15803d', rejected:'#b91c1c' };
+    var statusLabel = { pending:'⏳ 대기', ai_done:'🤖 AI 완료', approved:'✅ 확정', rejected:'❌ 반려' };
+    var modeLabel   = { topic:'Topic Writing', reading:'Reading & Write', phrase:'Phrase Writing' };
+
+    el.innerHTML = subs.map(function(s) {
+      var email = _wrUserMap[s.user_id] || s.user_id.slice(0,8) + '…';
+      var sl = statusLabel[s.status] || s.status;
+      var sb2 = statusBg[s.status] || '#f8f9fb';
+      var sc  = statusColor[s.status] || '#64748b';
+      var preview = (s.writing_text || '').slice(0, 80) + ((s.writing_text||'').length > 80 ? '…' : '');
+      var ml = modeLabel[s.writing_mode] || s.writing_mode || 'Writing';
+      var hasAI = !!s.ai_feedback;
+      return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 18px;margin-bottom:10px;">'
+        + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">'
+        + '<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:'+sb2+';color:'+sc+';">'+sl+'</span>'
+        + '<span style="font-size:12px;font-weight:700;color:#334155;">'+email+'</span>'
+        + '<span style="font-size:11px;color:#94a3b8;">'+( s.submit_date||'')+'</span>'
+        + (s.topic_ko ? '<span style="font-size:11px;color:#475569;">📝 '+s.topic_ko+'</span>' : '')
+        + '<span style="font-size:11px;background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:6px;">'+ml+'</span>'
+        + '</div>'
+        + '<div style="font-size:13px;color:#475569;line-height:1.5;margin-bottom:10px;">'+preview+'</div>'
+        + '<div style="display:flex;gap:8px;">'
+        + (s.status !== 'approved' && s.status !== 'rejected'
+            ? '<button onclick="openWritingReview(\''+s.id+'\')" style="background:#1a3a6b;color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">'+(hasAI ? '✏️ 첨삭 확정하기' : '📋 내용 보기')+'</button>'
+            : '<button onclick="openWritingReview(\''+s.id+'\')" style="background:#f1f5f9;color:#334155;border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">📋 상세 보기</button>')
+        + '</div>'
+        + '</div>';
+    }).join('');
+
+    // Store subs in window for modal access
+    window._wrSubs = {};
+    subs.forEach(function(s){ window._wrSubs[s.id] = s; });
+
+  } catch(e) {
+    if (el) el.innerHTML = '<div style="color:#e53e3e;padding:20px;">오류: ' + e.message + '</div>';
+  }
+}
+
+function openWritingReview(id) {
+  var s = window._wrSubs && window._wrSubs[id];
+  if (!s) return;
+
+  var email = _wrUserMap[s.user_id] || s.user_id.slice(0,8) + '…';
+  var modeLabel = { topic:'Topic Writing', reading:'Reading & Write', phrase:'Phrase Writing' };
+  var ml = modeLabel[s.writing_mode] || s.writing_mode || 'Writing';
+
+  // Parse AI feedback JSON
+  var ai = null;
+  if (s.ai_feedback) {
+    try { ai = JSON.parse(s.ai_feedback); } catch(e) {}
+  }
+
+  // Pre-fill textarea with formatted AI feedback
+  var prefill = '';
+  if (ai) {
+    if (ai.overall) prefill += '📝 전체 평가\n' + ai.overall + '\n\n';
+    if (ai.corrections && ai.corrections.length) {
+      prefill += '✏️ 교정 사항\n';
+      ai.corrections.forEach(function(c, i) {
+        prefill += (i+1) + '. ' + (c.original || '') + '\n   → ' + (c.corrected || '') + '\n   이유: ' + (c.reason || '') + '\n\n';
+      });
+    }
+    if (ai.vocab_feedback) prefill += '📚 어휘 피드백\n' + ai.vocab_feedback + '\n\n';
+    if (ai.grammar_feedback) prefill += '📐 문법 피드백\n' + ai.grammar_feedback + '\n\n';
+    if (ai.encouragement) prefill += '💪 응원\n' + ai.encouragement;
+    prefill = prefill.trim();
+  } else if (s.final_feedback) {
+    prefill = s.final_feedback;
+  }
+
+  var corrHtml = '';
+  if (ai && ai.corrections && ai.corrections.length) {
+    corrHtml = ai.corrections.map(function(c){
+      return '<div style="background:#fffbeb;border:1px solid #fed7aa;border-radius:8px;padding:10px 12px;margin-bottom:8px;">'
+        + '<div style="font-size:12px;color:#92400e;margin-bottom:4px;"><s>'+_wrEsc(c.original||'')+'</s></div>'
+        + '<div style="font-size:13px;font-weight:700;color:#1a3a6b;margin-bottom:4px;">→ '+_wrEsc(c.corrected||'')+'</div>'
+        + '<div style="font-size:12px;color:#64748b;">'+_wrEsc(c.reason||'')+'</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  var isReadOnly = s.status === 'approved' || s.status === 'rejected';
+
+  var overlay = document.createElement('div');
+  overlay.id = 'wr-review-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  overlay.onclick = function(e){ if (e.target === overlay) overlay.remove(); };
+
+  overlay.innerHTML =
+    '<div style="background:#fff;border-radius:16px;width:100%;max-width:900px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,.25);">'
+    // Header
+    + '<div style="padding:16px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">'
+    + '<div>'
+    + '<div style="font-size:16px;font-weight:900;color:#0f172a;">✏️ 작문 첨삭 검토</div>'
+    + '<div style="font-size:12px;color:#94a3b8;margin-top:2px;">'+email+' · '+( s.submit_date||'')+' · '+ml+'</div>'
+    + '</div>'
+    + '<button onclick="document.getElementById(\'wr-review-overlay\').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#94a3b8;line-height:1;">✕</button>'
+    + '</div>'
+    // Body — two columns
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;overflow:hidden;flex:1;min-height:0;">'
+    // LEFT: student writing
+    + '<div style="padding:20px;overflow-y:auto;border-right:1px solid #f1f5f9;">'
+    + '<div style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;">학생 작문</div>'
+    + (s.topic_ko ? '<div style="background:#f0f4ff;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#334155;"><strong>주제:</strong> '+_wrEsc(s.topic_ko)+'</div>' : '')
+    + '<div style="font-size:14px;color:#1e293b;line-height:1.8;white-space:pre-wrap;background:#f8fafc;border-radius:10px;padding:14px;">'+_wrEsc(s.writing_text||'')+'</div>'
+    + (ai && ai.overall ? '<div style="margin-top:14px;"><div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;margin-bottom:6px;">AI 전체 평가</div><div style="font-size:13px;color:#475569;line-height:1.6;background:#f0f9ff;border-radius:8px;padding:10px 12px;">'+_wrEsc(ai.overall)+'</div></div>' : '')
+    + (corrHtml ? '<div style="margin-top:14px;"><div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;margin-bottom:6px;">AI 교정 사항</div>'+corrHtml+'</div>' : '')
+    + '</div>'
+    // RIGHT: feedback editor
+    + '<div style="padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">'
+    + '<div style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.05em;text-transform:uppercase;">최종 피드백 작성</div>'
+    + (ai && (ai.vocab_feedback || ai.grammar_feedback)
+      ? '<div style="font-size:12px;color:#475569;background:#fafbfc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;line-height:1.6;">'
+        + (ai.vocab_feedback ? '<div style="margin-bottom:6px;"><strong>어휘:</strong> '+_wrEsc(ai.vocab_feedback)+'</div>' : '')
+        + (ai.grammar_feedback ? '<div><strong>문법:</strong> '+_wrEsc(ai.grammar_feedback)+'</div>' : '')
+        + '</div>'
+      : '')
+    + '<textarea id="wr-final-text" style="flex:1;min-height:260px;border:1.5px solid #e2e8f0;border-radius:10px;padding:12px;font-size:13px;font-family:inherit;line-height:1.7;color:#1e293b;resize:vertical;outline:none;" placeholder="학생에게 보낼 최종 피드백을 작성하세요…" '+(isReadOnly?'readonly':'')+'>'+_wrEsc(prefill)+'</textarea>'
+    + (ai && ai.encouragement && !isReadOnly
+      ? '<div style="font-size:12px;color:#64748b;background:#f0fdf4;border-radius:8px;padding:8px 12px;">💪 AI 응원: '+_wrEsc(ai.encouragement)+'</div>'
+      : '')
+    + (!isReadOnly
+      ? '<div style="display:flex;gap:8px;">'
+        + '<button onclick="confirmWritingFeedback(\''+id+'\')" style="flex:1;background:#15803d;color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">✅ 확정 & 전송</button>'
+        + '<button onclick="rejectWritingSubmission(\''+id+'\')" style="background:#f1f5f9;color:#64748b;border:none;border-radius:10px;padding:11px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">반려</button>'
+        + '</div>'
+      : '<div style="font-size:13px;color:#94a3b8;text-align:center;padding:8px;">'+( s.status==='approved'?'✅ 이미 확정됨':'❌ 반려됨')+'</div>')
+    + '</div>'
+    + '</div>'
+    + '</div>';
+
+  document.body.appendChild(overlay);
+}
+
+function _wrEsc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function confirmWritingFeedback(id) {
+  var ta = document.getElementById('wr-final-text');
+  var feedback = (ta && ta.value || '').trim();
+  if (!feedback) { toast('피드백 내용을 입력하세요.', true); return; }
+
+  var btn = document.querySelector('#wr-review-overlay button[onclick*="confirmWriting"]');
+  if (btn) { btn.disabled = true; btn.textContent = '저장 중…'; }
+
+  try {
+    var res = await fetch(SUPA_URL_ADMIN + '/rest/v1/writing_submissions?id=eq.' + id, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPA_SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        final_feedback: feedback,
+        status: 'approved',
+        reviewed_at: new Date().toISOString()
+      })
+    });
+    if (!res.ok) throw new Error('PATCH failed: ' + res.status);
+    toast('✅ 피드백이 학생에게 전송되었습니다.');
+    document.getElementById('wr-review-overlay').remove();
+    loadWritingReview();
+  } catch(e) {
+    toast('오류: ' + e.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = '✅ 확정 & 전송'; }
+  }
+}
+
+async function rejectWritingSubmission(id) {
+  if (!confirm('이 작문을 반려하시겠어요?')) return;
+  try {
+    var res = await fetch(SUPA_URL_ADMIN + '/rest/v1/writing_submissions?id=eq.' + id, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPA_SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ status: 'rejected', reviewed_at: new Date().toISOString() })
+    });
+    if (!res.ok) throw new Error('PATCH failed: ' + res.status);
+    toast('반려 처리되었습니다.');
+    document.getElementById('wr-review-overlay').remove();
+    loadWritingReview();
+  } catch(e) {
+    toast('오류: ' + e.message, true);
+  }
 }
 </script>
 </body>
