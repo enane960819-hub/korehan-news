@@ -2404,12 +2404,15 @@ async function loadGrammarGuide() {
 function renderGrammarGuideHTML(el, guides) {
   el.innerHTML = '<p class="grammar-intro">✨ Grammar patterns found in this article:</p>'
     + guides.map(function(g){
+      var gParam = encodeURIComponent(JSON.stringify({name:g.name,level:g.level,exp:g.exp,ex_ko:g.ex_ko,ex_en:g.ex_en}));
+      var studyUrl = 'korehan-study-room.html?mode=grammar&g=' + gParam;
       return '<div class="grammar-point">'
         + '<div class="grammar-name">' + g.name
         + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
         + '</div>'
         + '<div class="grammar-explanation">' + g.exp + '</div>'
         + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
+        + '<a href="' + studyUrl + '" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:8px 16px;background:linear-gradient(135deg,#2255a4,#1a3a6b);color:#fff;border-radius:999px;font-size:12px;font-weight:700;text-decoration:none;transition:opacity .15s" onmouseover="this.style.opacity=\'0.85\'" onmouseout="this.style.opacity=\'1\'">📚 Study this grammar →</a>'
         + '</div>';
     }).join('');
 }
@@ -2431,12 +2434,15 @@ function renderStaticGrammar(el, a) {
 
   el.innerHTML = '<p class="grammar-intro">Grammar patterns in this article:</p>'
     + guides.map(function(g){
+      var gParam = encodeURIComponent(JSON.stringify({name:g.name,level:g.level,exp:g.exp,ex_ko:g.ex_ko,ex_en:g.ex_en}));
+      var studyUrl = 'korehan-study-room.html?mode=grammar&g=' + gParam;
       return '<div class="grammar-point">'
         + '<div class="grammar-name">' + g.name
         + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
         + '</div>'
         + '<div class="grammar-explanation">' + g.exp + '</div>'
         + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
+        + '<a href="' + studyUrl + '" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:8px 16px;background:linear-gradient(135deg,#2255a4,#1a3a6b);color:#fff;border-radius:999px;font-size:12px;font-weight:700;text-decoration:none;transition:opacity .15s" onmouseover="this.style.opacity=\'0.85\'" onmouseout="this.style.opacity=\'1\'">📚 Study this grammar →</a>'
         + '</div>';
     }).join('');
 }

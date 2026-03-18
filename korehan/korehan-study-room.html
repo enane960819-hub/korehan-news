@@ -549,6 +549,92 @@
   .bm-sent-ko { font-size: 16px; }
   .bm-step-title { font-size: 18px; }
 }
+
+/* ═══ GRAMMAR PRACTICE MODAL ═══════════════════════════════════ */
+.gp-overlay {
+  position: fixed; inset: 0; background: rgba(10,18,40,0.78);
+  z-index: 9999; display: flex; align-items: center; justify-content: center;
+  padding: 16px; backdrop-filter: blur(4px);
+}
+.gp-overlay.hidden { display: none; }
+.gp-modal {
+  background: #fff; border-radius: 20px; width: 100%; max-width: 680px;
+  max-height: 92dvh; display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.35);
+}
+.gp-header {
+  background: linear-gradient(140deg, #0d1b2e, #1a3a6b);
+  padding: 20px 24px 16px; flex-shrink: 0;
+}
+.gp-badge { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #7ab8f5; margin-bottom: 6px; }
+.gp-name { font-family: 'Noto Serif KR', 'Playfair Display', serif; font-size: 22px; font-weight: 900; color: #fff; margin-bottom: 4px; }
+.gp-level-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.gp-level-badge.beginner    { background: rgba(46,125,50,0.3);  color: #81c784; }
+.gp-level-badge.intermediate{ background: rgba(230,92,0,0.3);   color: #ffb74d; }
+.gp-level-badge.advanced    { background: rgba(198,40,40,0.3);  color: #ef9a9a; }
+.gp-level-badge.starter     { background: rgba(100,100,200,0.3);color: #a5b4fc; }
+.gp-close {
+  position: absolute; top: 16px; right: 20px;
+  background: rgba(255,255,255,0.12); border: none; color: #fff;
+  width: 32px; height: 32px; border-radius: 50%; font-size: 15px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.gp-tabs {
+  display: flex; background: #f8fafc; border-bottom: 2px solid #e2e8f0;
+  flex-shrink: 0;
+}
+.gp-tab {
+  flex: 1; padding: 12px 8px; border: none; background: none;
+  font-size: 13px; font-weight: 700; color: #64748b; cursor: pointer;
+  font-family: inherit; border-bottom: 3px solid transparent; margin-bottom: -2px;
+  transition: all .15s;
+}
+.gp-tab.on { color: #2255a4; border-bottom-color: #2255a4; }
+.gp-body { flex: 1; overflow-y: auto; padding: 24px; }
+.gp-section { display: none; }
+.gp-section.on { display: block; }
+
+/* Learn tab */
+.gp-explanation { font-size: 15px; color: #334155; line-height: 1.7; margin-bottom: 18px; background: #f0f4ff; border-radius: 10px; padding: 14px 16px; border-left: 4px solid #2255a4; }
+.gp-ex-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
+.gp-ex-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 6px; }
+.gp-ex-ko { font-family: 'Noto Serif KR', serif; font-size: 18px; font-weight: 700; color: #0d1b2e; margin-bottom: 4px; }
+.gp-ex-en { font-size: 13px; color: #64748b; }
+.gp-ex-ko strong { color: #2255a4; text-decoration: underline; text-decoration-color: rgba(34,85,164,0.4); }
+
+/* Quiz tab */
+.gp-q-card { background: #fff; border: 2px solid #e2e8f0; border-radius: 14px; padding: 18px; margin-bottom: 14px; }
+.gp-q-num { font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.gp-q-text { font-size: 15px; font-weight: 700; color: #0d1b2e; margin-bottom: 14px; line-height: 1.6; }
+.gp-opts { display: grid; gap: 8px; }
+.gp-opt {
+  padding: 11px 14px; border: 2px solid #e2e8f0; border-radius: 10px;
+  background: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: all .15s; text-align: left;
+  color: #334155;
+}
+.gp-opt:hover:not(:disabled) { border-color: #2255a4; background: #f0f4ff; }
+.gp-opt.correct { background: #dcfce7; border-color: #16a34a; color: #15803d; }
+.gp-opt.wrong   { background: #fee2e2; border-color: #dc2626; color: #991b1b; }
+.gp-q-exp { font-size: 13px; color: #475569; background: #f8fafc; border-radius: 8px; padding: 10px 12px; margin-top: 10px; display: none; line-height: 1.6; }
+.gp-quiz-score { text-align: center; padding: 28px 0 8px; }
+.gp-quiz-score-num { font-size: 48px; font-weight: 900; color: #2255a4; font-family: 'Playfair Display', serif; }
+.gp-quiz-score-label { font-size: 14px; color: #64748b; margin-top: 4px; }
+
+/* Write tab */
+.gp-write-prompt { font-size: 14px; color: #334155; line-height: 1.7; background: #fef9c3; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; border-left: 4px solid #eab308; }
+.gp-write-area { width: 100%; min-height: 120px; padding: 14px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 15px; font-family: 'Noto Sans KR', inherit; line-height: 1.7; resize: vertical; box-sizing: border-box; transition: border-color .15s; }
+.gp-write-area:focus { border-color: #2255a4; outline: none; }
+.gp-write-hint { font-size: 12px; color: #94a3b8; margin-top: 8px; margin-bottom: 16px; }
+.gp-submit-btn { display: block; width: 100%; padding: 13px; background: linear-gradient(135deg, #2255a4, #1a3a6b); color: #fff; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.gp-feedback-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 14px 16px; margin-top: 14px; font-size: 14px; color: #0369a1; line-height: 1.7; display: none; }
+
+@media (max-width: 640px) {
+  .gp-overlay { padding: 0; align-items: flex-end; }
+  .gp-modal { border-radius: 20px 20px 0 0; max-height: 97dvh; }
+  .gp-name { font-size: 18px; }
+  .gp-body { padding: 16px; }
+}
 </style>
 </head>
 <body>
@@ -824,6 +910,61 @@
   </div>
 </div>
 
+<!-- ═══ GRAMMAR PRACTICE MODAL ═══════════════════════════════════ -->
+<div class="gp-overlay hidden" id="gp-overlay" onclick="if(event.target===this)closeGPModal()">
+  <div class="gp-modal" style="position:relative">
+    <div class="gp-header" style="position:relative">
+      <div class="gp-badge">📚 Grammar Practice</div>
+      <div class="gp-name" id="gp-name">—</div>
+      <span class="gp-level-badge" id="gp-level-badge"></span>
+      <button class="gp-close" onclick="closeGPModal()">✕</button>
+    </div>
+
+    <div class="gp-tabs">
+      <button class="gp-tab on" id="gptab-learn"  onclick="switchGPTab('learn',this)">📖 Learn</button>
+      <button class="gp-tab"    id="gptab-quiz"   onclick="switchGPTab('quiz',this)">❓ Quiz</button>
+      <button class="gp-tab"    id="gptab-write"  onclick="switchGPTab('write',this)">✏️ Write</button>
+    </div>
+
+    <div class="gp-body">
+
+      <!-- LEARN -->
+      <div class="gp-section on" id="gps-learn">
+        <div class="gp-explanation" id="gp-explanation"></div>
+        <div id="gp-examples">
+          <!-- article example + AI examples injected here -->
+        </div>
+        <div id="gp-more-loading" style="text-align:center;padding:16px;color:#94a3b8;font-size:13px;display:none">
+          ✨ Loading more examples…
+        </div>
+      </div>
+
+      <!-- QUIZ -->
+      <div class="gp-section" id="gps-quiz">
+        <div id="gp-quiz-loading" style="text-align:center;padding:24px;color:#94a3b8;font-size:13px">
+          ✨ Generating quiz…
+        </div>
+        <div id="gp-quiz-questions" style="display:none"></div>
+        <div class="gp-quiz-score" id="gp-quiz-result" style="display:none">
+          <div class="gp-quiz-score-num" id="gp-quiz-score-num"></div>
+          <div class="gp-quiz-score-label" id="gp-quiz-score-label"></div>
+          <button onclick="loadGPQuiz()" style="margin-top:16px;padding:10px 28px;background:linear-gradient(135deg,#2255a4,#1a3a6b);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">🔄 New Quiz</button>
+        </div>
+      </div>
+
+      <!-- WRITE -->
+      <div class="gp-section" id="gps-write">
+        <div class="gp-write-prompt" id="gp-write-prompt"></div>
+        <textarea class="gp-write-area" id="gp-write-area" placeholder="Write your sentence in Korean here…"></textarea>
+        <div class="gp-write-hint">Try to use the grammar pattern in your sentence. You'll get instant AI feedback!</div>
+        <button class="gp-submit-btn" onclick="submitGPWriting()" id="gp-submit-btn">Get AI Feedback ✨</button>
+        <div class="gp-feedback-box" id="gp-feedback-box"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js"></script>
@@ -891,6 +1032,16 @@ document.addEventListener('DOMContentLoaded', async function() {
       }
     }
     setTimeout(waitAndOpenModal, 400);
+  }
+
+  // Grammar Practice mode — from article Grammar Guide
+  if (_urlParams.get('mode') === 'grammar') {
+    var rawG = _urlParams.get('g') || '';
+    var gpData = null;
+    try { gpData = JSON.parse(decodeURIComponent(rawG)); } catch(e) {}
+    if (gpData && gpData.name) {
+      setTimeout(function() { openGPModal(gpData); }, 350);
+    }
   }
 });
 
@@ -1980,6 +2131,244 @@ function openExternalPracticeModal() {
 
   // textarea highlight 설정
   setupHighlight();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GRAMMAR PRACTICE MODAL
+// ═══════════════════════════════════════════════════════════════
+var _gpData = null;
+var _gpQuizQuestions = [];
+var _gpQuizAnswered = 0;
+var _gpQuizCorrect = 0;
+
+function openGPModal(g) {
+  _gpData = g;
+  _gpQuizQuestions = [];
+  _gpQuizAnswered = 0;
+  _gpQuizCorrect = 0;
+
+  // Populate header
+  document.getElementById('gp-name').textContent = g.name || '';
+  var lvBadge = document.getElementById('gp-level-badge');
+  lvBadge.textContent = g.level || '';
+  lvBadge.className = 'gp-level-badge ' + (g.level || '').toLowerCase();
+
+  // Populate learn tab
+  document.getElementById('gp-explanation').textContent = g.exp || '';
+  var examplesEl = document.getElementById('gp-examples');
+  // Article example (from the Grammar Guide card)
+  var exKo = (g.ex_ko || '').replace(/<strong>/g,'<span style="color:#2255a4;font-weight:900;text-decoration:underline;text-decoration-color:rgba(34,85,164,0.4)">').replace(/<\/strong>/g,'</span>');
+  examplesEl.innerHTML = '<div class="gp-ex-card"><div class="gp-ex-label">📰 From the article</div>'
+    + '<div class="gp-ex-ko">' + exKo + '</div>'
+    + '<div class="gp-ex-en">' + (g.ex_en || '') + '</div></div>'
+    + '<div id="gp-more-examples"></div>';
+
+  // Show modal, reset to learn tab
+  switchGPTab('learn', document.getElementById('gptab-learn'));
+  document.getElementById('gp-overlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+
+  // Reset write tab
+  var ta = document.getElementById('gp-write-area');
+  if (ta) ta.value = '';
+  var fb = document.getElementById('gp-feedback-box');
+  if (fb) { fb.style.display = 'none'; fb.innerHTML = ''; }
+  var sb = document.getElementById('gp-submit-btn');
+  if (sb) { sb.disabled = false; sb.textContent = 'Get AI Feedback ✨'; }
+  var wp = document.getElementById('gp-write-prompt');
+  if (wp) wp.innerHTML = '✏️ Write <strong>2 sentences</strong> in Korean using <strong>' + (g.name || 'this grammar') + '</strong>. Try to express something meaningful!';
+
+  // Load AI examples in background
+  loadGPExamples();
+  // Pre-load quiz in background
+  loadGPQuiz();
+}
+
+function closeGPModal() {
+  document.getElementById('gp-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function switchGPTab(tab, btn) {
+  ['learn','quiz','write'].forEach(function(t) {
+    document.getElementById('gps-' + t).classList.remove('on');
+    document.getElementById('gptab-' + t).classList.remove('on');
+  });
+  document.getElementById('gps-' + tab).classList.add('on');
+  if (btn) btn.classList.add('on');
+}
+
+async function loadGPExamples() {
+  if (!_gpData) return;
+  var moreEl = document.getElementById('gp-more-examples');
+  if (!moreEl) return;
+  moreEl.innerHTML = '<div style="text-align:center;padding:14px;color:#94a3b8;font-size:13px">✨ Loading more examples…</div>';
+
+  var g = _gpData;
+  var prompt = 'You are a Korean language teacher. Generate 3 natural Korean example sentences that clearly demonstrate the grammar pattern: ' + g.name + '\n\n'
+    + 'Grammar explanation: ' + g.exp + '\n\n'
+    + 'Rules:\n- Each sentence must use the grammar pattern prominently\n- Sentences should be natural, everyday Korean\n- Wrap the grammar pattern with <strong> tags in the Korean sentence\n- Vary the topics (e.g., daily life, food, work, nature)\n- Level: ' + (g.level || 'Intermediate') + '\n\n'
+    + 'Respond ONLY in this JSON format (no markdown):\n'
+    + '{"examples":[{"ko":"Korean sentence with <strong>grammar</strong> highlighted","en":"English translation","tip":"Brief note about why/how the grammar is used here"}]}';
+
+  try {
+    var res = await callClaude({ feature:'grammar', model:'claude-haiku-4-5-20251001', max_tokens:800, messages:[{role:'user',content:prompt}] });
+    var rawText = '';
+    if (res.content && res.content[0]) rawText = res.content[0].text || '';
+    else if (res.text) rawText = res.text;
+    var clean = rawText.replace(/```json\n?/,'').replace(/\n?```/,'').trim();
+    var j = clean.indexOf('{'), k = clean.lastIndexOf('}');
+    if (j >= 0 && k > j) clean = clean.slice(j, k+1);
+    var parsed = JSON.parse(clean);
+    var examples = parsed.examples || [];
+    moreEl.innerHTML = examples.map(function(ex, i) {
+      var koHtml = (ex.ko || '').replace(/<strong>/g,'<span style="color:#2255a4;font-weight:900;text-decoration:underline;text-decoration-color:rgba(34,85,164,0.4)">').replace(/<\/strong>/g,'</span>');
+      return '<div class="gp-ex-card">'
+        + '<div class="gp-ex-label">Example ' + (i+1) + '</div>'
+        + '<div class="gp-ex-ko">' + koHtml + '</div>'
+        + '<div class="gp-ex-en">' + (ex.en || '') + '</div>'
+        + (ex.tip ? '<div style="margin-top:8px;font-size:12px;color:#7c3aed;background:#f5f3ff;border-radius:6px;padding:6px 10px">💡 ' + ex.tip + '</div>' : '')
+        + '</div>';
+    }).join('');
+  } catch(e) {
+    moreEl.innerHTML = '<div style="color:#94a3b8;font-size:13px;text-align:center;padding:10px">Could not load more examples.</div>';
+  }
+}
+
+async function loadGPQuiz() {
+  if (!_gpData) return;
+  _gpQuizAnswered = 0;
+  _gpQuizCorrect = 0;
+  _gpQuizQuestions = [];
+
+  var qEl = document.getElementById('gp-quiz-questions');
+  var loadEl = document.getElementById('gp-quiz-loading');
+  var resultEl = document.getElementById('gp-quiz-result');
+  if (loadEl) { loadEl.style.display = 'block'; loadEl.textContent = '✨ Generating quiz…'; }
+  if (qEl) qEl.style.display = 'none';
+  if (resultEl) resultEl.style.display = 'none';
+
+  var g = _gpData;
+  var prompt = 'You are a Korean language teacher. Create 3 multiple-choice quiz questions about the grammar pattern: ' + g.name + '\n\n'
+    + 'Grammar: ' + g.exp + '\n\n'
+    + 'Quiz types (mix them):\n'
+    + '1. "Which sentence correctly uses [grammar]?" — 1 correct, 2 wrong sentences\n'
+    + '2. "Choose the correct form to complete this sentence: ___" — fill in the grammar particle/ending\n'
+    + '3. "What does this sentence mean?" — comprehension check\n\n'
+    + 'Mark the correct answer with "correct":true. Wrong answers should be plausible but clearly incorrect.\n\n'
+    + 'Respond ONLY in this JSON format (no markdown):\n'
+    + '{"questions":[{"q":"question text","a":["option A","option B","option C"],"correct":0,"exp":"brief explanation of why the answer is correct"}]}';
+
+  try {
+    var res = await callClaude({ feature:'grammar', model:'claude-haiku-4-5-20251001', max_tokens:900, messages:[{role:'user',content:prompt}] });
+    var rawText = '';
+    if (res.content && res.content[0]) rawText = res.content[0].text || '';
+    else if (res.text) rawText = res.text;
+    var clean = rawText.replace(/```json\n?/,'').replace(/\n?```/,'').trim();
+    var j = clean.indexOf('{'), k = clean.lastIndexOf('}');
+    if (j >= 0 && k > j) clean = clean.slice(j, k+1);
+    var parsed = JSON.parse(clean);
+    _gpQuizQuestions = parsed.questions || [];
+    if (loadEl) loadEl.style.display = 'none';
+    if (qEl) {
+      qEl.style.display = 'block';
+      renderGPQuizQuestions();
+    }
+  } catch(e) {
+    if (loadEl) { loadEl.style.display = 'block'; loadEl.textContent = 'Could not load quiz. Try again later.'; }
+  }
+}
+
+function renderGPQuizQuestions() {
+  var qEl = document.getElementById('gp-quiz-questions');
+  if (!qEl) return;
+  qEl.innerHTML = _gpQuizQuestions.map(function(q, qi) {
+    var opts = (q.a || []).map(function(opt, oi) {
+      return '<button class="gp-opt" id="gpopt-' + qi + '-' + oi + '" onclick="answerGPQ(' + qi + ',' + oi + ')">' + opt + '</button>';
+    }).join('');
+    return '<div class="gp-q-card" id="gpq-' + qi + '">'
+      + '<div class="gp-q-num">Question ' + (qi+1) + ' of ' + _gpQuizQuestions.length + '</div>'
+      + '<div class="gp-q-text">' + q.q + '</div>'
+      + '<div class="gp-opts">' + opts + '</div>'
+      + '<div class="gp-q-exp" id="gpexp-' + qi + '">💡 ' + (q.exp || '') + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function answerGPQ(qi, oi) {
+  var q = _gpQuizQuestions[qi];
+  if (!q) return;
+  var correct = Number(q.correct);
+  // Disable all options for this question
+  (q.a || []).forEach(function(_, i) {
+    var btn = document.getElementById('gpopt-' + qi + '-' + i);
+    if (btn) {
+      btn.disabled = true;
+      if (i === correct) btn.classList.add('correct');
+      else if (i === oi) btn.classList.add('wrong');
+    }
+  });
+  // Show explanation
+  var expEl = document.getElementById('gpexp-' + qi);
+  if (expEl) expEl.style.display = 'block';
+  _gpQuizAnswered++;
+  if (oi === correct) _gpQuizCorrect++;
+  if (_gpQuizAnswered >= _gpQuizQuestions.length) {
+    setTimeout(showGPQuizResult, 800);
+  }
+}
+
+function showGPQuizResult() {
+  var pct = Math.round((_gpQuizCorrect / _gpQuizQuestions.length) * 100);
+  var emoji = pct === 100 ? '🎉' : pct >= 67 ? '👍' : '📚';
+  var msg = pct === 100 ? 'Perfect! You\'ve mastered this pattern!' : pct >= 67 ? 'Good job! Review the explanations above.' : 'Keep practicing — check the examples in the Learn tab.';
+  var resultEl = document.getElementById('gp-quiz-result');
+  if (!resultEl) return;
+  document.getElementById('gp-quiz-score-num').textContent = emoji + ' ' + _gpQuizCorrect + '/' + _gpQuizQuestions.length;
+  document.getElementById('gp-quiz-score-label').textContent = msg;
+  resultEl.style.display = 'block';
+  resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function submitGPWriting() {
+  var ta = document.getElementById('gp-write-area');
+  var fb = document.getElementById('gp-feedback-box');
+  var btn = document.getElementById('gp-submit-btn');
+  if (!ta || !fb || !btn) return;
+  var text = ta.value.trim();
+  if (!text) { ta.focus(); return; }
+  if (!supaUser) { openAuthModal('signin'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '✨ Analyzing…';
+  fb.style.display = 'none';
+
+  var g = _gpData || {};
+  var prompt = 'You are a Korean language teacher. A student wrote the following Korean sentences to practice the grammar pattern: ' + g.name + '\n\n'
+    + 'Grammar explanation: ' + g.exp + '\n\n'
+    + 'Student\'s writing:\n"' + text + '"\n\n'
+    + 'Please give brief, encouraging feedback (3-4 sentences) in English:\n'
+    + '1. Did they use the grammar pattern correctly?\n'
+    + '2. Point out 1-2 specific things they did well\n'
+    + '3. Suggest one small improvement if needed\n'
+    + '4. If they made a grammatical error with the pattern, show the corrected version\n\n'
+    + 'Be warm, specific, and educational. Format as plain text (no JSON needed).';
+
+  try {
+    var res = await callClaude({ feature:'grammar', model:'claude-haiku-4-5-20251001', max_tokens:400, messages:[{role:'user',content:prompt}] });
+    var rawText = '';
+    if (res.content && res.content[0]) rawText = res.content[0].text || '';
+    else if (res.text) rawText = res.text;
+    fb.innerHTML = '🤖 <strong>AI Feedback:</strong><br><br>' + rawText.replace(/\n/g,'<br>');
+    fb.style.display = 'block';
+    fb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    btn.textContent = '✅ Feedback received';
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Get AI Feedback ✨';
+    fb.innerHTML = '⚠️ Could not get feedback. Please try again.';
+    fb.style.display = 'block';
+  }
 }
 
 function setupHighlight() {
