@@ -600,6 +600,25 @@ async function checkSession() {
   });
 }
 
+function toggleUserMenu(e) {
+  e.stopPropagation();
+  var menu = document.getElementById('topbar-user-menu');
+  if (!menu) return;
+  var open = menu.style.display !== 'none';
+  menu.style.display = open ? 'none' : 'block';
+  if (!open) {
+    // 바깥 클릭 시 닫기
+    var close = function(ev) {
+      if (!menu.contains(ev.target)) {
+        menu.style.display = 'none';
+        document.removeEventListener('click', close);
+      }
+    };
+    setTimeout(function(){ document.addEventListener('click', close); }, 0);
+  }
+}
+window.toggleUserMenu = toggleUserMenu;
+
 // UI 업데이트
 function updateAuthUI() {
   var signinBtn  = document.getElementById('topbar-signin-btn');
@@ -611,41 +630,36 @@ function updateAuthUI() {
   var isAdmin = supaUser && ADMIN_EMAILS.includes(supaUser.email);
   window._isAdmin = isAdmin; // 다른 파일에서 참조용
 
+  var userWrap = document.getElementById('topbar-user-wrap');
+  var userInfo = document.getElementById('topbar-user-info');
+
   if (supaUser) {
-    // 로그인 상태
-    if (signinBtn) {
-      signinBtn.textContent = 'Sign Out';
-      signinBtn.onclick = function(e){ e.preventDefault(); signOut(); };
-    }
+    if (signinBtn) signinBtn.style.display = 'none';
+    if (userWrap) userWrap.style.display = 'flex';
     if (userAvatar) {
       var avatar = supaUser.user_metadata && supaUser.user_metadata.avatar_url;
-      userAvatar.style.display = 'inline-flex';
       userAvatar.innerHTML = avatar
-        ? '<img src="' + avatar + '" style="width:28px;height:28px;border-radius:50%;vertical-align:middle">'
-        : '<span style="font-size:13px">' + (supaUser.email || '').charAt(0).toUpperCase() + '</span>';
+        ? '<img src="' + avatar + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">'
+        : '<span style="font-size:15px;font-weight:800;">' + (supaUser.email || '?').charAt(0).toUpperCase() + '</span>';
     }
-    // 마이페이지 버튼
-    var mypageBtn = document.getElementById('topbar-mypage-btn');
-    if (mypageBtn) mypageBtn.style.display = 'inline-block';
-
-    if (adminBtn) adminBtn.style.display = isAdmin ? 'inline-block' : 'none';
+    if (userInfo) {
+      var displayName = (supaUser.user_metadata && (supaUser.user_metadata.full_name || supaUser.user_metadata.name)) || '';
+      var email = supaUser.email || '';
+      userInfo.innerHTML = (displayName ? '<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:2px;">' + displayName + '</div>' : '')
+        + '<div style="font-size:12px;color:#94a3b8;">' + email + '</div>';
+    }
+    if (adminBtn) adminBtn.style.display = isAdmin ? 'flex' : 'none';
   } else {
-    // 비로그인 상태
     if (signinBtn) {
+      signinBtn.style.display = '';
       signinBtn.textContent = 'Sign In';
-      signinBtn.onclick = function(e){ e.preventDefault(); openAuthModal("signin"); };
+      signinBtn.onclick = function(e){ e.preventDefault(); openAuthModal('signin'); };
     }
-    if (userAvatar) userAvatar.style.display = 'none';
+    if (userWrap) userWrap.style.display = 'none';
     if (adminBtn) adminBtn.style.display = 'none';
-    var mypageBtn = document.getElementById('topbar-mypage-btn');
-    if (mypageBtn) mypageBtn.style.display = 'none';
   }
-  // Join Free 버튼: 비로그인 상태에서만 표시
   var joinBtn = document.getElementById('topbar-join-btn');
   if (joinBtn) joinBtn.style.display = supaUser ? 'none' : '';
-  // My Page 버튼: 로그인 상태에서만 표시
-  var mp2 = document.getElementById('topbar-mypage-btn');
-  if (mp2) mp2.style.display = supaUser ? '' : 'none';
   updateSidebarAuth();
 }
 
@@ -3254,11 +3268,19 @@ function renderHeader() {
     + '<div class="kh-hright">'
     + '<span class="kh-hdate" id="date-str"></span>'
     + '<div class="kh-hsearch"><input type="text" placeholder="&#x1F50D; Search articles\u2026" onkeydown="if(event.key===\'Enter\')doSearch(this.value)" style="border:none;background:none;outline:none;font-size:13px;color:inherit;font-family:inherit;width:100%;"></div>'
-    + '<span id="topbar-user-avatar" style="display:none;width:28px;height:28px;border-radius:50%;background:#2255a4;color:#fff;align-items:center;justify-content:center;font-weight:700;font-size:13px;overflow:hidden;vertical-align:middle;"></span>'
-    + '<a href="korehan-mypage.html" id="topbar-mypage-btn" class="kh-hbtn kh-hbtn-out" style="display:none">&#128100; My Page</a>'
+    + '<div id="topbar-user-wrap" style="display:none;position:relative;">'
+    + '<button id="topbar-user-avatar" style="width:36px;height:36px;border-radius:50%;background:#2255a4;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;overflow:hidden;border:2px solid rgba(255,255,255,.2);cursor:pointer;padding:0;flex-shrink:0;transition:border-color .15s;" onclick="toggleUserMenu(event)"></button>'
+    + '<div id="topbar-user-menu" style="display:none;position:absolute;top:calc(100% + 10px);right:0;min-width:220px;background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(13,27,46,.18);border:1px solid #e7eef8;z-index:9999;overflow:hidden;">'
+    + '<div id="topbar-user-info" style="padding:14px 16px 12px;border-bottom:1px solid #f0f4fa;"></div>'
+    + '<a href="korehan-mypage.html" style="display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:13px;font-weight:700;color:#0f172a;text-decoration:none;transition:background .12s;" onmouseover="this.style.background=\'#f5f8ff\'" onmouseout="this.style.background=\'\'"><span style="font-size:16px;">👤</span> My Page</a>'
+    + '<a href="korehan-mypage.html#saved" style="display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:13px;font-weight:700;color:#0f172a;text-decoration:none;transition:background .12s;" onmouseover="this.style.background=\'#f5f8ff\'" onmouseout="this.style.background=\'\'"><span style="font-size:16px;">🔖</span> Saved Words</a>'
+    + '<a href="korehan-study-room.html" style="display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:13px;font-weight:700;color:#0f172a;text-decoration:none;transition:background .12s;" onmouseover="this.style.background=\'#f5f8ff\'" onmouseout="this.style.background=\'\'"><span style="font-size:16px;">✏️</span> Study Room</a>'
+    + '<a href="korehan-admin.html" id="topbar-admin-btn" style="display:none;align-items:center;gap:10px;padding:11px 16px;font-size:13px;font-weight:700;color:#c0392b;text-decoration:none;transition:background .12s;" onmouseover="this.style.background=\'#fff5f5\'" onmouseout="this.style.background=\'\'"><span style="font-size:16px;">⚙️</span> Admin</a>'
+    + '<div style="border-top:1px solid #f0f4fa;"><button onclick="signOut()" style="display:flex;align-items:center;gap:10px;width:100%;padding:11px 16px;font-size:13px;font-weight:700;color:#64748b;background:none;border:none;cursor:pointer;text-align:left;transition:background .12s;font-family:inherit;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'"><span style="font-size:16px;">🚪</span> Sign Out</button></div>'
+    + '</div>'
+    + '</div>'
     + '<a href="#" id="topbar-signin-btn" class="kh-hbtn kh-hbtn-out" onclick="event.preventDefault();openAuthModal(\'signin\')">Sign In</a>'
     + '<a href="#" id="topbar-join-btn" class="kh-hbtn kh-hbtn-fill" onclick="event.preventDefault();openAuthModal(\'signup\')">Join Free</a>'
-    + '<a href="korehan-admin.html" id="topbar-admin-btn" class="kh-hbtn kh-hbtn-out" style="display:none;background:rgba(231,76,60,0.15);border-color:rgba(231,76,60,0.4);">&#9881; Admin</a>'
     + '</div>'
     + '</div>'
     + '</div>';

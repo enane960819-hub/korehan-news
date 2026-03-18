@@ -1738,9 +1738,9 @@ body .dark-mode .kh-footer     { background: #0b1220; }
   body .kh-hsearch,
   body .kh-hdate,
   body #topbar-signin-btn,
-  body #topbar-join-btn,
-  body #topbar-admin-btn,
-  body #topbar-mypage-btn{display:none !important;}
+  body #topbar-join-btn{display:none !important;}
+  /* 어드민/마이페이지는 드롭다운 메뉴 안에 있으므로 제외 */
+  body #topbar-user-menu #topbar-admin-btn{display:flex !important;}
   body .brk-bar,
   body .kh-topnav,
   body #kh-sidebar,
