@@ -222,6 +222,40 @@
   .detail-panel{border-radius:20px}
   .conv-page-container{padding:20px 16px 60px;}
 }
+
+/* ── Override shared.css mobile dark theme (Mobile redesign patch v3) ─────
+   shared.css @media(max-width:900px) forces dark navy backgrounds/text on
+   body, .cc2, .detail-panel, etc. Conversations page is light-themed only. */
+@media(max-width:900px){
+  body{background:#f0f2f7 !important;color:#0d1b2e !important;}
+  body .conv-cats{background:#fff !important;border-bottom-color:#e8eef7 !important;}
+  body .conv-level-bar{background:#f8fafc !important;border-bottom-color:#e8eef7 !important;}
+  body .conv-page-container{background:transparent !important;padding:20px 16px 72px !important;max-width:100% !important;}
+  body .cc2{background:#fff !important;border-color:#e8eef7 !important;color:#0f172a !important;box-shadow:0 1px 8px rgba(15,23,42,.05) !important;border-radius:22px !important;}
+  body .cc2-name{color:#0f172a !important;}
+  body .cc2-ctx{color:#64748b !important;}
+  body .cc2-bub.l{background:#fff !important;color:#0f172a !important;border-color:#e2e8f0 !important;}
+  body .cc2-bub.r{background:#2563eb !important;color:#fff !important;}
+  body .cc2-vocab-chip{background:#f1f5f9 !important;color:#475569 !important;}
+  body .cc2-cta{background:#0f172a !important;color:#fff !important;}
+  body .cc2:hover .cc2-cta{background:#1d4ed8 !important;}
+  body .cf-pill{background:transparent !important;border-color:#e2e8f0 !important;color:#64748b !important;}
+  body .cf-pill.on{background:#0f172a !important;color:#fff !important;border-color:#0f172a !important;}
+  body .conv-cat-tile{background:none !important;color:#334155 !important;}
+  body .conv-cat-tile.on{background:#f0f7ff !important;}
+  body .cct-label{color:#334155 !important;}
+  body .conv-cat-tile.on .cct-label{color:#1d4ed8 !important;}
+  /* Detail panel */
+  body .detail-panel{border-radius:22px !important;}
+  body .dp-left{background:#fff !important;}
+  body .dp-right{background:#f8fafc !important;}
+  body .dp-left-head,body .dp-right-head{background:unset !important;border-color:#e8eef7 !important;}
+  body .dp-chat-area{background:linear-gradient(180deg,#f8fbff 0%,#f8fafc 100%) !important;max-height:340px !important;}
+  body .dp-msg-row.left .dp-bubble{background:#fff !important;color:#0f172a !important;border-color:#e2e8f0 !important;}
+  body .dp-msg-row.right .dp-bubble{background:#2563eb !important;color:#fff !important;}
+  body .dp-study-card{background:#fff !important;border-color:#e8eef7 !important;color:#0f172a !important;}
+  body .dp-left-title,body .dp-right-title{color:#0f172a !important;}
+}
 </style>
 </head>
 <body>
