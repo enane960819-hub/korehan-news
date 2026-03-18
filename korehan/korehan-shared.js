@@ -73,6 +73,31 @@ async function getFromCache(contentType, contentId, cacheKey) {
   return null;
 }
 
+// ── localStorage AI 캐시 (auth 불필요, 브라우저 로컬) ─────────
+// grammar_guide / fill / translation 등 유저별 생성 결과 캐싱
+var _LC_PREFIX = 'kh_ai_';
+var _LC_MAX_MS = 30 * 24 * 60 * 60 * 1000; // 30일
+
+function lcSet(key, value) {
+  try {
+    localStorage.setItem(_LC_PREFIX + key, JSON.stringify({ v: value, t: Date.now() }));
+  } catch(e) {}
+}
+
+function lcGet(key) {
+  try {
+    var raw = localStorage.getItem(_LC_PREFIX + key);
+    if (!raw) return null;
+    var obj = JSON.parse(raw);
+    if (!obj || !obj.v) return null;
+    if (Date.now() - (obj.t || 0) > _LC_MAX_MS) {
+      localStorage.removeItem(_LC_PREFIX + key);
+      return null;
+    }
+    return obj.v;
+  } catch(e) { return null; }
+}
+
 // Conv/Story 데이터에 캐시 병합 (vocab/grammar 없을 때만)
 async function enrichFromCache(contentType, item) {
   if (!item || !item.id) return item;
@@ -1951,11 +1976,19 @@ async function loadFillExercise(container) {
     return;
   }
 
-  // ── DB 캐시 먼저 확인 (로딩 표시 전) ─────────────────────
+  // ── 캐시 먼저 확인: localStorage → DB ──────────────────────
   var cacheKey = 'fill_' + (a.level || 'intermediate').toLowerCase();
+  var _fillLcKey = 'fill_' + a.id + '_' + (a.level || 'intermediate').toLowerCase();
+  var _fillLcHit = lcGet(_fillLcKey);
+  if (_fillLcHit && _fillLcHit.questions && _fillLcHit.questions.length) {
+    _fillLoaded = true;
+    renderFillQuestions(el, _fillLcHit.questions, a);
+    return;
+  }
   try {
     var cached = await getFromCache('article', a.id, cacheKey);
     if (cached && cached.questions && cached.questions.length) {
+      lcSet(_fillLcKey, cached);
       _fillLoaded = true;
       renderFillQuestions(el, cached.questions, a);
       return;
@@ -2011,7 +2044,8 @@ Respond ONLY with this JSON (no markdown, no extra text):
     _fillLoaded = true;
     renderFillQuestions(el, parsed.questions, a);
 
-    // ── DB에 캐시 저장 ────────────────────────────────────
+    // ── 캐시 저장: localStorage + DB ─────────────────────
+    lcSet(_fillLcKey, { questions: parsed.questions });
     try {
       var sb = getSupa();
       if (sb && parsed.questions) {
@@ -2020,7 +2054,7 @@ Respond ONLY with this JSON (no markdown, no extra text):
           content_id:   String(a.id),
           cache_key:    cacheKey,
           cache_value:  { questions: parsed.questions }
-        }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(e){ console.warn('fill cache save failed', e); });
+        }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(e){});
       }
     } catch(e) {}
   } catch(e) {
@@ -2330,10 +2364,18 @@ async function loadGrammarGuide() {
   var a = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
   if (!a) { el.innerHTML = '<p style="color:#aaa;padding:20px 0;text-align:center">Article not found.</p>'; return; }
 
-  // ── DB 캐시 먼저 확인 (로딩 표시 전) ─────────────────────
+  // ── 캐시 먼저 확인: localStorage → DB ──────────────────────
+  var _lcKey = 'grammar_' + a.id;
+  var _lcHit = lcGet(_lcKey);
+  if (_lcHit && _lcHit.patterns && _lcHit.patterns.length) {
+    el.dataset.source = 'ai';
+    renderGrammarGuideHTML(el, _lcHit.patterns);
+    return;
+  }
   try {
     var cached = await getFromCache('article', a.id, 'grammar_guide');
     if (cached && cached.patterns && cached.patterns.length) {
+      lcSet(_lcKey, cached);
       el.dataset.source = 'ai';
       renderGrammarGuideHTML(el, cached.patterns);
       return;
@@ -2371,10 +2413,10 @@ async function loadGrammarGuide() {
     var parsed = JSON.parse(clean);
     var guides = parsed.patterns || [];
     el.dataset.source = 'ai';
-
     renderGrammarGuideHTML(el, guides);
 
-    // ── DB에 캐시 저장 ────────────────────────────────────
+    // ── 캐시 저장: localStorage + DB ─────────────────────
+    lcSet('grammar_' + a.id, { patterns: guides });
     try {
       var sb = getSupa();
       if (sb && guides.length) {
@@ -2383,7 +2425,7 @@ async function loadGrammarGuide() {
           content_id:   String(a.id),
           cache_key:    'grammar_guide',
           cache_value:  { patterns: guides }
-        }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(e){ console.warn('grammar cache save failed', e); });
+        }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(e){});
       }
     } catch(e) {}
   } catch(e) {
@@ -2555,13 +2597,21 @@ async function toggleTranslate() {
   var id = params.get('id');
   var dbCacheKey = 'translation';
 
-  // ── DB 캐시 먼저 확인 (재생성 방지) ──────────────────────
-  try {
-    var dbCached = await getFromCache('article', id, dbCacheKey);
-    if (dbCached && dbCached.translations && Array.isArray(dbCached.translations)) {
-      translateCache['trans_' + id] = dbCached.translations;
-    }
-  } catch(e) {}
+  // ── 캐시 먼저 확인: localStorage → in-memory → DB ─────────
+  var _transLcKey = 'trans_' + id;
+  var _transLcHit = lcGet(_transLcKey);
+  if (_transLcHit && Array.isArray(_transLcHit)) {
+    translateCache['trans_' + id] = _transLcHit;
+  }
+  if (!translateCache['trans_' + id]) {
+    try {
+      var dbCached = await getFromCache('article', id, dbCacheKey);
+      if (dbCached && dbCached.translations && Array.isArray(dbCached.translations)) {
+        translateCache['trans_' + id] = dbCached.translations;
+        lcSet(_transLcKey, dbCached.translations);
+      }
+    } catch(e) {}
+  }
 
   if (translateCache['trans_' + id]) {
     applyTranslation(zones, translateCache['trans_' + id]);
@@ -2612,6 +2662,7 @@ async function toggleTranslate() {
     if (!Array.isArray(translations)) throw new Error('not array');
 
     translateCache['trans_' + id] = translations;
+    lcSet('trans_' + id, translations);
     applyTranslation(zones, translations);
     translateActive = true;
     btn.textContent = '🇰🇷 Back to Korean';

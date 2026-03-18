@@ -1036,11 +1036,14 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // Grammar Practice mode — from article Grammar Guide
   if (_urlParams.get('mode') === 'grammar') {
+    // URLSearchParams.get() already decodes the value — JSON.parse directly
     var rawG = _urlParams.get('g') || '';
     var gpData = null;
-    try { gpData = JSON.parse(decodeURIComponent(rawG)); } catch(e) {}
+    try { gpData = JSON.parse(rawG); } catch(e) {
+      try { gpData = JSON.parse(decodeURIComponent(rawG)); } catch(e2) {}
+    }
     if (gpData && gpData.name) {
-      setTimeout(function() { openGPModal(gpData); }, 350);
+      setTimeout(function() { openGPModal(gpData); }, 500);
     }
   }
 });
