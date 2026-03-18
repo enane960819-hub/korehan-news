@@ -5,3 +5,9 @@ account_id = "6e3e13d3273939d8a6d283501ff3807f"
 
 [assets]
 directory = "./korehan"
+
+[env.production]
+routes = [
+  { pattern = "korehannews.com/*", zone_name = "korehannews.com" },
+  { pattern = "www.korehannews.com/*", zone_name = "korehannews.com" }
+]
