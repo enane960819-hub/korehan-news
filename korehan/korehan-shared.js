@@ -1375,35 +1375,29 @@ function renderHomePage() {
   }
 }
 
-function renderHeroSlide(heroEl) {
-  if (!heroEl || !_heroSlides.length) return;
-  var featured = _heroSlides[_heroIdx];
-  var sideItems = (window._heroStaticSide && window._heroStaticSide.length ? window._heroStaticSide : _heroSlides.filter(function(a, i){ return i !== _heroIdx; })).slice(0, 4);
-
+function _heroFeaturedHTML(featured) {
   var featImg = featured.image || ('https://picsum.photos/seed/' + featured.id + '/900/500');
   var featBody = (featured.body || '').replace(/<[^>]*>/g, '').slice(0, 150);
   var dots = _heroSlides.length > 1
-    ? '<div style="display:flex;gap:7px;margin-top:14px">'
+    ? '<div style="display:flex;gap:7px;margin-top:18px">'
       + _heroSlides.map(function(_, i){
-          return '<button aria-label="Go to hero slide ' + (i + 1) + '" onclick="heroGoTo(' + i + ')" style="width:' + (i===_heroIdx?'26':'8') + 'px;height:8px;border-radius:999px;border:none;background:' + (i===_heroIdx?'#fff':'rgba(255,255,255,.35)') + ';cursor:pointer;transition:all .28s"></button>';
+          return '<button aria-label="Go to hero slide ' + (i + 1) + '" onclick="heroGoTo(' + i + ')" style="width:' + (i===_heroIdx?'26':'8') + 'px;height:8px;border-radius:999px;border:none;background:' + (i===_heroIdx?'#fff':'rgba(255,255,255,.35)') + ';cursor:pointer;padding:0;transition:all .35s cubic-bezier(.4,0,.2,1)"></button>';
         }).join('')
       + '</div>'
     : '';
-
-  heroEl.innerHTML =
-    '<div style="position:relative;min-height:460px;overflow:hidden;background:#0b1626;animation:khHeroSlideIn .55s cubic-bezier(.22,1,.36,1);">'
-    + '<style>@keyframes khHeroSlideIn{from{opacity:.55;transform:translateX(34px)}to{opacity:1;transform:translateX(0)}}</style>'
-    + '<a href="' + articleUrl(featured.id) + '" style="display:block;position:absolute;inset:0;color:inherit;text-decoration:none">'
-    + '<img src="' + featImg + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">'
+  return '<a href="' + articleUrl(featured.id) + '" style="display:block;position:absolute;inset:0;color:inherit;text-decoration:none">'
+    + '<img src="' + featImg + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;transition:transform .6s cubic-bezier(.25,.46,.45,.94);">'
     + '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,15,35,.88) 0%,rgba(5,15,35,.55) 38%,rgba(5,15,35,.16) 100%),linear-gradient(to top,rgba(5,15,35,.92) 0%,rgba(5,15,35,.1) 58%,transparent 100%)"></div>'
     + '<div style="position:absolute;left:0;right:0;bottom:0;padding:34px 30px 30px;max-width:760px">'
     + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span class="category-tag" style="display:inline-block">' + featured.section + '</span><span style="font-size:12px;color:rgba(255,255,255,.65)">' + relTime(featured.date) + '</span></div>'
     + '<h1 class="vocab-zone" style="font-family:\'Playfair Display\',serif;font-size:clamp(26px,3vw,42px);font-weight:900;color:#fff;line-height:1.18;margin:0 0 12px">' + featured.title + '</h1>'
     + '<p style="font-size:14px;color:rgba(255,255,255,.8);line-height:1.7;margin:0;max-width:62ch">' + featBody + '</p>'
     + dots
-    + '</div></a></div>'
-    + '<aside style="background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);display:flex;flex-direction:column;border-left:1px solid #e7eef8;">'
-    + '<div style="padding:18px 18px 12px;border-bottom:1px solid #edf2f7">'
+    + '</div></a>';
+}
+
+function _heroAsideHTML(sideItems) {
+  return '<div style="padding:18px 18px 12px;border-bottom:1px solid #edf2f7">'
     + '<div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8">More to explore</div>'
     + '<div style="font-size:18px;font-weight:900;color:#0f172a;margin-top:4px">Latest picks</div>'
     + '</div>'
@@ -1416,22 +1410,66 @@ function renderHeroSlide(heroEl) {
           + '<div class="vocab-zone" style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + a.title + '</div>'
           + '</div></a>';
       }).join('')
-    + '<div style="padding:16px"><a href="korehan-all.html" style="display:block;text-align:center;padding:11px 14px;border-radius:999px;background:#0f172a;color:#fff;font-size:13px;font-weight:800;text-decoration:none">Browse all news →</a></div>'
-    + '</aside>';
+    + '<div style="padding:16px"><a href="korehan-all.html" style="display:block;text-align:center;padding:11px 14px;border-radius:999px;background:#0f172a;color:#fff;font-size:13px;font-weight:800;text-decoration:none">Browse all news →</a></div>';
+}
+
+function renderHeroSlide(heroEl, animate) {
+  if (!heroEl || !_heroSlides.length) return;
+  var featured = _heroSlides[_heroIdx];
+  var sideItems = (window._heroStaticSide && window._heroStaticSide.length ? window._heroStaticSide : _heroSlides.filter(function(a, i){ return i !== _heroIdx; })).slice(0, 4);
+
+  var mainEl = heroEl.querySelector('.kh-hero-main');
+
+  if (!mainEl) {
+    // 최초 렌더 — 구조 전체 생성
+    heroEl.innerHTML =
+      '<div class="kh-hero-main" style="position:relative;min-height:460px;overflow:hidden;background:#0b1626;">'
+      + _heroFeaturedHTML(featured)
+      + '</div>'
+      + '<aside class="kh-hero-aside" style="background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);display:flex;flex-direction:column;border-left:1px solid #e7eef8;">'
+      + _heroAsideHTML(sideItems)
+      + '</aside>';
+    // 터치 스와이프 등록
+    _heroAddSwipe(heroEl.querySelector('.kh-hero-main'));
+    return;
+  }
+
+  // 이후 렌더 — crossfade: 메인만 교체
+  mainEl.style.transition = 'opacity .32s ease';
+  mainEl.style.opacity = '0';
+  setTimeout(function() {
+    mainEl.innerHTML = _heroFeaturedHTML(featured);
+    mainEl.style.opacity = '1';
+  }, 300);
+}
+
+function _heroAddSwipe(el) {
+  if (!el) return;
+  var startX = 0, startY = 0;
+  el.addEventListener('touchstart', function(e) {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, {passive: true});
+  el.addEventListener('touchend', function(e) {
+    var dx = e.changedTouches[0].clientX - startX;
+    var dy = e.changedTouches[0].clientY - startY;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+      heroGoTo((_heroIdx + (dx < 0 ? 1 : -1) + _heroSlides.length) % _heroSlides.length);
+    }
+  }, {passive: true});
 }
 
 function heroGoTo(idx) {
   _heroIdx = idx;
   var heroEl = document.getElementById('dyn-hero');
-  if (heroEl) renderHeroSlide(heroEl);
-  // 타이머 리셋
+  if (heroEl) renderHeroSlide(heroEl, true);
   if (_heroTimer) { clearInterval(_heroTimer); }
   if (_heroSlides.length > 1) {
     _heroTimer = setInterval(function(){
       _heroIdx = (_heroIdx + 1) % _heroSlides.length;
       var el = document.getElementById('dyn-hero');
-      if (el) renderHeroSlide(el);
-    }, 4200);
+      if (el) renderHeroSlide(el, true);
+    }, 5000);
   }
 }
 

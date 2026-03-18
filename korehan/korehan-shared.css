@@ -1249,16 +1249,15 @@ body .dark-mode .kh-footer     { background: #0b1220; }
   .kh-topnav { display: none; }
   .conv-grid { grid-template-columns: 1fr; }
   .story-grid { grid-template-columns: repeat(2,1fr); gap: 12px; }
-  /* 헤더 오른쪽 버튼들 overflow 처리 */
-  .kh-hright { overflow: hidden; max-width: calc(100vw - 160px); flex-shrink: 1; }
+  /* 헤더 오른쪽 버튼들 — overflow:visible 유지해야 드롭다운 안 잘림 */
+  .kh-hright { overflow: visible; max-width: calc(100vw - 160px); flex-shrink: 1; }
   #topbar-join-btn, #topbar-mypage-btn { display: none !important; }
 }
 @media (max-width: 560px) {
   .story-grid { grid-template-columns: 1fr; }
   /* 모바일에서 헤더 버튼 전부 숨김 — 사이드바로 대체 */
-  #topbar-signin-btn, #topbar-join-btn,
-  #topbar-mypage-btn, #topbar-admin-btn { display: none !important; }
-  .kh-hright { gap: 6px; }
+  #topbar-signin-btn, #topbar-join-btn { display: none !important; }
+  .kh-hright { gap: 6px; overflow: visible; }
 }
 
 /* ── HERO ───────────────────────────────────────────────── */
@@ -1288,9 +1287,9 @@ body .dark-mode .kh-footer     { background: #0b1220; }
 .phrase-bar { background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%); border-radius: 6px; padding: 18px 24px; margin-top: 20px; margin-bottom: 28px; display: flex; align-items: center; gap: 24px; }
 .pb-left { flex: 1; }
 .pb-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: var(--sky); margin-bottom: 5px; }
-.pb-ko  { font-family: 'Noto Serif KR', serif; font-size: 34px; font-weight: 900; color: #fff; line-height: 1.15; }
-.pb-rom { font-size: 14px; color: rgba(255,255,255,.5); margin-top: 6px; font-style: italic; }
-.pb-en  { font-size: 16px; color: rgba(255,255,255,.8); margin-top: 6px; line-height: 1.4; font-weight: 600; }
+.pb-ko  { font-family: 'Noto Serif KR', serif; font-size: clamp(36px,4.5vw,58px); font-weight: 900; color: #fff; line-height: 1.1; letter-spacing:-.01em; }
+.pb-rom { font-size: clamp(14px,1.6vw,18px); color: rgba(255,255,255,.5); margin-top: 8px; font-style: italic; }
+.pb-en  { font-size: clamp(15px,1.8vw,20px); color: rgba(255,255,255,.85); margin-top: 6px; line-height: 1.4; font-weight: 700; }
 .pb-btn { flex-shrink: 0; padding: 9px 18px; background: rgba(255,255,255,.1); border: 1.5px solid rgba(255,255,255,.2); color: #fff; border-radius: 5px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; white-space: nowrap; }
 .pb-btn:hover { background: rgba(255,255,255,.18); }
 
@@ -1411,8 +1410,9 @@ body .dark-mode .kh-footer     { background: #0b1220; }
 @media (max-width: 640px) {
   .phrase-bar { flex-direction: column; gap: 8px; padding: 12px 14px; }
   .pb-left { width: 100%; }
-  .pb-ko { font-size: 16px; }
-  .pb-rom, .pb-en { font-size: 12px; }
+  .pb-ko { font-size: 30px; }
+  .pb-rom { font-size: 13px; }
+  .pb-en  { font-size: 14px; }
   .pb-right { display: none; }
 }
 
