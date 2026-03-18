@@ -2834,6 +2834,10 @@ async function loadComments(articleId) {
       ? '<img src="' + c.avatar_url + '" class="comment-avatar" onerror="this.style.display=\'none\'">'
       : '<div class="comment-avatar" style="background:#2255a4;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700">' + escapeHtml((c.user_name||'?').charAt(0)) + '</div>';
     var timeStr = c.created_at ? new Date(c.created_at).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+    var bodyHtml = escapeHtml(c.content).replace(/@([\w가-힣]+)/g, '<span class="comment-mention">@$1</span>');
+    var adminReplyHtml = (c.reply)
+      ? '<div class="comment-admin-reply"><span class="comment-admin-badge">Han</span>' + escapeHtml(c.reply) + '</div>'
+      : '';
     return '<div class="comment-row" id="comment-' + c.id + '">'
       + '<div class="comment-top">'
       + avatar
@@ -2841,9 +2845,14 @@ async function loadComments(articleId) {
       + '<span class="comment-name">' + escapeHtml(c.user_name || 'Anonymous') + '</span>'
       + '<span class="comment-date">' + timeStr + '</span>'
       + '</div>'
+      + '<div class="comment-actions">'
+      + '<button class="comment-reply-btn" onclick="replyToComment(\'' + escapeHtml(c.user_name||'') + '\')" title="Reply">↩ Reply</button>'
+      + (isOwn ? '<button class="comment-edit-btn" onclick="editComment(\'' + c.id + '\', this)" title="Edit">Edit</button>' : '')
       + (isOwn ? '<button class="comment-del" onclick="deleteComment(\'' + c.id + '\')" title="Delete">✕</button>' : '')
       + '</div>'
-      + '<div class="comment-body">' + escapeHtml(c.content) + '</div>'
+      + '</div>'
+      + '<div class="comment-body" id="cbody-' + c.id + '">' + bodyHtml + '</div>'
+      + adminReplyHtml
       + '</div>';
   }).join('');
 }
@@ -2919,6 +2928,53 @@ async function deleteComment(commentId) {
   var el = document.getElementById('comment-' + commentId);
   if (el) el.remove();
   toast('Comment deleted');
+}
+
+function replyToComment(userName) {
+  var input = document.getElementById('comment-input');
+  if (!input) return;
+  if (!supaUser) { openAuthModal('signin'); return; }
+  var prefix = '@' + userName + ' ';
+  if (!input.value.startsWith(prefix)) {
+    input.value = prefix + input.value;
+  }
+  input.focus();
+  input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function editComment(commentId, btn) {
+  var bodyEl = document.getElementById('cbody-' + commentId);
+  if (!bodyEl) return;
+  // already editing?
+  if (bodyEl.querySelector('textarea')) return;
+  var currentText = bodyEl.textContent;
+  bodyEl.innerHTML =
+    '<textarea id="cedit-' + commentId + '" style="width:100%;padding:8px;border:1.5px solid #2255a4;border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;min-height:60px;box-sizing:border-box;">' + escapeHtml(currentText) + '</textarea>'
+    + '<div style="display:flex;gap:6px;margin-top:6px;">'
+    + '<button onclick="confirmEditComment(\'' + commentId + '\')" style="padding:5px 14px;background:#2255a4;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Save</button>'
+    + '<button onclick="cancelEditComment(\'' + commentId + '\', \'' + escapeHtml(currentText).replace(/'/g, '&#39;') + '\')" style="padding:5px 14px;background:#f1f5f9;color:#475569;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;">Cancel</button>'
+    + '</div>';
+}
+
+function cancelEditComment(commentId, originalText) {
+  var bodyEl = document.getElementById('cbody-' + commentId);
+  if (!bodyEl) return;
+  var bodyHtml = escapeHtml(originalText).replace(/@([\w가-힣]+)/g, '<span class="comment-mention">@$1</span>');
+  bodyEl.innerHTML = bodyHtml;
+}
+
+async function confirmEditComment(commentId) {
+  var ta = document.getElementById('cedit-' + commentId);
+  if (!ta) return;
+  var newText = ta.value.trim();
+  if (!newText) { toast('Comment cannot be empty', true); return; }
+  if (newText.length > COMMENT_MAX_LENGTH) { toast('Too long', true); return; }
+  var sb = getSupa(); if (!sb) return;
+  var { error } = await sb.from('comments').update({ content: newText }).eq('id', commentId).eq('user_id', supaUser.id);
+  if (error) { toast('Edit failed: ' + error.message, true); return; }
+  var bodyEl = document.getElementById('cbody-' + commentId);
+  if (bodyEl) bodyEl.innerHTML = escapeHtml(newText).replace(/@([\w가-힣]+)/g, '<span class="comment-mention">@$1</span>');
+  toast('Comment updated ✓');
 }
 
 function escapeHtml(str) {

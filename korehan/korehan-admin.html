@@ -77,9 +77,12 @@ a{color:inherit;text-decoration:none}
 .art-t{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;line-height:1.3}
 .art-b{font-size:12px;color:var(--gr);margin-top:3px;max-width:340px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .cpill{display:inline-block;padding:2px 8px;font-size:11px;font-weight:700;border-radius:2px}
+.c정치{background:#f7eeff;color:#5a0080}
+.c경제{background:#e8f5e9;color:#1b5e20}
 .c사회{background:#e8eef7;color:#1a3a6b}
 .c국제{background:#f0e8f7;color:#5a1a7a}
 .c문화{background:#f7e8ee;color:#7a1a3a}
+.cK-pop{background:#fce4ec;color:#880e4f}
 .c스포츠{background:#e8f4f7;color:#1a5a7a}
 .cKorea{background:#fff0ec;color:#cc2200}
 .cIT과학{background:#eef7e8;color:#3a7a1a}
@@ -170,13 +173,17 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" id="sb-img" onclick="goArticleImages()"><span class="ico">🖼</span>기사 이미지 관리</button>
 
     <div class="sb-lbl">By Section</div>
-    <button class="sb-btn" onclick="goFilter('사회')"> <span class="ico">🏙️</span>사회 Society <span class="pill" id="p-사회">0</span></button>
-    <button class="sb-btn" onclick="goFilter('국제')"> <span class="ico">🌍</span>국제 World   <span class="pill" id="p-국제">0</span></button>
-    <button class="sb-btn" onclick="goFilter('문화')"> <span class="ico">🎭</span>문화 Culture <span class="pill" id="p-문화">0</span></button>
-    <button class="sb-btn" onclick="goFilter('Korea')"><span class="ico">🇰🇷</span>Korea        <span class="pill" id="p-Korea">0</span></button>
-    <button class="sb-btn" onclick="goFilter('스포츠')"><span class="ico">⚽</span>스포츠 Sports<span class="pill" id="p-스포츠">0</span></button>
-    <button class="sb-btn" onclick="goFilter('IT과학')"><span class="ico">💻</span>IT·과학      <span class="pill" id="p-IT과학">0</span></button>
-    <button class="sb-btn" onclick="goFilter('오피니언')"><span class="ico">✍️</span>오피니언     <span class="pill" id="p-오피니언">0</span></button>
+    <button class="sb-btn" onclick="goFilter('정치')"> <span class="ico">🏛️</span>정치 Politics <span class="pill" id="p-정치">0</span></button>
+    <button class="sb-btn" onclick="goFilter('경제')"> <span class="ico">📈</span>경제 Economy  <span class="pill" id="p-경제">0</span></button>
+    <button class="sb-btn" onclick="goFilter('사회')"> <span class="ico">🏙️</span>사회 Society  <span class="pill" id="p-사회">0</span></button>
+    <button class="sb-btn" onclick="goFilter('국제')"> <span class="ico">🌍</span>국제 World    <span class="pill" id="p-국제">0</span></button>
+    <button class="sb-btn" onclick="goFilter('문화')"> <span class="ico">🎭</span>문화 Culture  <span class="pill" id="p-문화">0</span></button>
+    <button class="sb-btn" onclick="goFilter('K-pop')"><span class="ico">🎤</span>K-pop         <span class="pill" id="p-K-pop">0</span></button>
+    <button class="sb-btn" onclick="goFilter('스포츠')"><span class="ico">⚽</span>스포츠 Sports <span class="pill" id="p-스포츠">0</span></button>
+    <button class="sb-btn" onclick="goFilter('IT과학')"><span class="ico">💻</span>IT·과학       <span class="pill" id="p-IT과학">0</span></button>
+    <button class="sb-btn" onclick="goFilter('Korea')"><span class="ico">🇰🇷</span>Korea         <span class="pill" id="p-Korea">0</span></button>
+    <button class="sb-btn" onclick="goFilter('오피니언')"><span class="ico">✍️</span>오피니언      <span class="pill" id="p-오피니언">0</span></button>
+    <button class="sb-btn" onclick="goSections()"><span class="ico">⚙️</span>카테고리 관리</button>
 
     <div class="section-sep"></div>
     <div class="sb-lbl">Analytics</div>
@@ -323,8 +330,8 @@ const SUPA_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 function supaAdminGet(path){
   return fetch(SUPA_URL_ADMIN + path, {
     headers: {
-      'apikey': SUPA_KEY_ADMIN,
-      'Authorization': 'Bearer ' + SUPA_KEY_ADMIN,
+      'apikey': SUPA_SERVICE_KEY,
+      'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
       'Content-Type': 'application/json'
     }
   }).then(function(r){ return r.json(); });
@@ -515,7 +522,7 @@ dbLoadFromSupabase();
 // ══ COUNTS ══════════════════════════════════════════════════
 function refreshCounts(){
   document.getElementById('p-all').textContent = DB.length;
-  ['사회','국제','문화','Korea','스포츠','IT과학','오피니언'].forEach(s=>{
+  ['정치','경제','사회','국제','문화','K-pop','스포츠','IT과학','Korea','오피니언'].forEach(s=>{
     const el=document.getElementById('p-'+s);
     if(el) el.textContent=DB.filter(a=>a.section===s).length;
   });
@@ -537,7 +544,7 @@ function renderList(){
   refreshCounts();
   const pub   = DB.filter(a=>a.status==='published').length;
   const draft = DB.filter(a=>a.status==='draft').length;
-  const SECS  = ['사회','국제','문화','Korea','스포츠','IT과학','오피니언'];
+  const SECS  = ['정치','경제','사회','국제','문화','K-pop','스포츠','IT과학','Korea','오피니언'];
 
   document.getElementById('main').innerHTML=`
     <div class="pg-hd">
@@ -635,7 +642,7 @@ async function togglePub(id){
 }
 
 // ══ ARTICLE MODAL ════════════════════════════════════════════
-const SECS = ['사회','국제','문화','Korea','스포츠','IT과학','오피니언'];
+const SECS = ['정치','경제','사회','국제','문화','K-pop','스포츠','IT과학','Korea','오피니언'];
 
 function openModal(id){
   const a = id ? DB.find(x=>x.id===id) : null;
@@ -2333,24 +2340,27 @@ function goComments() {
 async function loadAllComments() {
   var wrap = document.getElementById('comments-admin-wrap');
   try {
-    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?order=created_at.desc&limit=100', { headers: { 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN } });
+    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?order=created_at.desc&limit=200', {
+      headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
+    });
     var rows = res.ok ? await res.json() : [];
-    if(!rows.length) { wrap.innerHTML='<div class="infobox">아직 댓글이 없어요.</div>'; return; }
+    if (!Array.isArray(rows) || !rows.length) { wrap.innerHTML='<div class="infobox">아직 댓글이 없어요.</div>'; return; }
 
     wrap.innerHTML = '<div style="font-size:13px;color:var(--gr);margin-bottom:12px">총 '+rows.length+'개 댓글</div>'
       + rows.map(function(c) {
           var art = DB.find(function(a){ return a.id===c.article_id; });
-          var artTitle = art ? art.title : c.article_id;
-          var dateStr  = new Date(c.created_at).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+          var artTitle = art ? art.title : (c.article_id || '알 수 없는 기사');
+          var dateStr  = c.created_at ? new Date(c.created_at).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+          var body = c.content || c.body || '';  // support both column names
           return '<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:16px 18px;margin-bottom:10px">'
             +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
             +'<div style="font-size:12px;color:var(--gr)">'
             +'<a href="korehan-article.html?id='+c.article_id+'" target="_blank" style="color:var(--a);font-weight:700">'+artTitle+'</a>'
-            +' · '+c.user_name+' · '+dateStr
+            +' · <b>'+( c.user_name||'익명')+'</b> · '+dateStr
             +'</div>'
             +'<button data-id="'+c.id+'" onclick="adminDeleteComment(this.dataset.id)" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:13px;padding:2px 6px">🗑</button>'
             +'</div>'
-            +'<div style="font-size:14px;color:#222;margin-bottom:10px">'+c.body+'</div>'
+            +'<div style="font-size:14px;color:#222;margin-bottom:10px;white-space:pre-wrap">'+body+'</div>'
             +(c.reply
               ? '<div style="background:#f0f4ff;border-left:3px solid var(--a);padding:8px 12px;border-radius:0 6px 6px 0;font-size:13px;margin-bottom:8px"><b>내 답변:</b> '+c.reply+'</div>'
               : ''
@@ -2372,20 +2382,21 @@ async function adminReplyComment(id, btn) {
   var reply = ta.value.trim();
   if(!reply) return;
   btn.disabled = true; btn.textContent = '저장 중…';
-  await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?id=eq.'+id, {
+  var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?id=eq.'+id, {
     method:'PATCH',
-    headers:{ 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN,'Content-Type':'application/json','Prefer':'return=minimal' },
+    headers:{ 'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=minimal' },
     body: JSON.stringify({ reply:reply, replied_at:new Date().toISOString() })
   });
   btn.disabled = false; btn.textContent = '답변 저장';
-  toast('✅ 답변이 저장됐어요!');
+  if (res.ok) toast('✅ 답변이 저장됐어요!');
+  else toast('오류: ' + res.status, true);
 }
 
 async function adminDeleteComment(id) {
   if(!confirm('댓글을 삭제할까요?')) return;
   await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?id=eq.'+id, {
     method:'DELETE',
-    headers:{ 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN }
+    headers:{ 'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY }
   });
   loadAllComments();
   toast('🗑 삭제됐어요.');

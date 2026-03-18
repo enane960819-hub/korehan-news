@@ -783,11 +783,29 @@ h1, h2, h3, h4 { word-break: keep-all; overflow-wrap: break-word; }
   background: #f0f4ff; border-left: 3px solid var(--bright);
   border-radius: 0 8px 8px 0; font-size: 13px; line-height: 1.6; color: #333;
 }
+.comment-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.comment-reply-btn, .comment-edit-btn {
+  background: none; border: none; color: #94a3b8; cursor: pointer;
+  font-size: 12px; font-weight: 600; padding: 3px 7px; border-radius: 4px; font-family: inherit;
+}
+.comment-reply-btn:hover { color: var(--bright); background: #f0f4ff; }
+.comment-edit-btn:hover  { color: #475569; background: #f1f5f9; }
 .comment-del {
   background: none; border: none; color: #ccc; cursor: pointer;
   font-size: 14px; padding: 4px 6px; border-radius: 4px;
 }
 .comment-del:hover { color: #dc3545; background: #fff0f0; }
+.comment-mention { color: var(--bright); font-weight: 700; background: #eff6ff; padding: 1px 4px; border-radius: 4px; }
+.comment-admin-reply {
+  margin: 8px 0 0 44px; padding: 10px 14px;
+  background: #f0f9ff; border-left: 3px solid #0ea5e9;
+  border-radius: 0 8px 8px 0; font-size: 13px; line-height: 1.6; color: #0f172a;
+}
+.comment-admin-badge {
+  display: inline-block; background: #0ea5e9; color: #fff;
+  font-size: 10px; font-weight: 800; padding: 1px 7px; border-radius: 999px;
+  margin-right: 6px; letter-spacing: .03em;
+}
 
 /* ── DARK MODE ───────────────────────────────────────────── */
 body .dark-mode {
