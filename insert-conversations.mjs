@@ -1,9 +1,15 @@
-import { createClient } from '@supabase/supabase-js';
+import { execSync } from 'child_process';
 
-const sb = createClient(
-  'https://samghztrdvtxmrmawneu.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs'
-);
+const SB_URL = 'https://samghztrdvtxmrmawneu.supabase.co/rest/v1/conversations_data';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs';
+
+function insertRow(row) {
+  const body = JSON.stringify(row).replace(/'/g, `'\\''`);
+  const cmd = `curl -s -w "\\n%{http_code}" -X POST '${SB_URL}' -H 'apikey: ${SB_KEY}' -H 'Authorization: Bearer ${SB_KEY}' -H 'Content-Type: application/json' -H 'Prefer: return=minimal' -d '${body}'`;
+  const result = execSync(cmd).toString().trim();
+  const status = parseInt(result.split('\n').pop());
+  return status >= 200 && status < 300;
+}
 
 const CONVS = [
   // ═══════════════════════════════════════════════════════
@@ -528,7 +534,7 @@ const CONVS = [
   },
 ];
 
-async function run() {
+function run() {
   let ok = 0, fail = 0;
   for (const conv of CONVS) {
     const row = {
@@ -538,13 +544,13 @@ async function run() {
       lvl:  conv.lvl,
       data: conv,
     };
-    const { error } = await sb.from('conversations_data').insert(row);
-    if (error) {
-      console.error('❌', conv.name, error.message);
-      fail++;
-    } else {
+    const success = insertRow(row);
+    if (success) {
       console.log('✅', conv.name);
       ok++;
+    } else {
+      console.error('❌', conv.name);
+      fail++;
     }
   }
   console.log(`\n완료: ${ok}개 성공, ${fail}개 실패`);
