@@ -1294,6 +1294,7 @@ function heroSideItemHTML(a) {
 var _heroSlides = [];
 var _heroIdx = 0;
 var _heroTimer = null;
+var _heroDir = 1; // +1 = next(→), -1 = prev(←)
 
 function renderHomePage() {
   var all      = published();
@@ -1322,6 +1323,7 @@ function renderHomePage() {
     if (_heroTimer) clearInterval(_heroTimer);
     if (_heroSlides.length > 1) {
       _heroTimer = setInterval(function(){
+        _heroDir = 1;
         _heroIdx = (_heroIdx + 1) % _heroSlides.length;
         renderHeroSlide(heroEl);
       }, 4200);
@@ -1332,10 +1334,12 @@ function renderHomePage() {
       var _swipeX = null;
       var _swipeMoved = false;
       function heroSwipeGo(dir) {
+        _heroDir = dir;
         _heroIdx = (_heroIdx + dir + _heroSlides.length) % _heroSlides.length;
         renderHeroSlide(heroEl);
         if (_heroTimer) clearInterval(_heroTimer);
         _heroTimer = setInterval(function(){
+          _heroDir = 1;
           _heroIdx = (_heroIdx + 1) % _heroSlides.length;
           var el = document.getElementById('dyn-hero');
           if (el) renderHeroSlide(el);
@@ -1480,13 +1484,37 @@ function renderHeroSlide(heroEl, animate) {
     return;
   }
 
-  // 이후 렌더 — crossfade: 메인만 교체
-  mainEl.style.transition = 'opacity .32s ease';
-  mainEl.style.opacity = '0';
-  setTimeout(function() {
-    mainEl.innerHTML = _heroFeaturedHTML(featured);
-    mainEl.style.opacity = '1';
-  }, 300);
+  // 이후 렌더 — 좌우 슬라이드
+  var enterFrom = _heroDir > 0 ? '100%' : '-100%';
+  var exitTo    = _heroDir > 0 ? '-100%' : '100%';
+
+  // 기존 콘텐츠를 outgoing 래퍼로 이동
+  var outgoing = document.createElement('div');
+  outgoing.style.cssText = 'position:absolute;inset:0;will-change:transform;';
+  while (mainEl.firstChild) { outgoing.appendChild(mainEl.firstChild); }
+
+  // 새 콘텐츠 incoming 래퍼 준비 (화면 바깥에서 시작)
+  var incoming = document.createElement('div');
+  incoming.style.cssText = 'position:absolute;inset:0;will-change:transform;transform:translateX(' + enterFrom + ');';
+  incoming.innerHTML = _heroFeaturedHTML(featured);
+
+  mainEl.appendChild(outgoing);
+  mainEl.appendChild(incoming);
+
+  // 두 프레임 후 트랜지션 시작 (layout 안정 후)
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      var t = 'transform .48s cubic-bezier(.4,0,.2,1)';
+      incoming.style.transition = t;
+      incoming.style.transform  = 'translateX(0)';
+      outgoing.style.transition = t;
+      outgoing.style.transform  = 'translateX(' + exitTo + ')';
+      // 트랜지션 완료 후 DOM 정리
+      setTimeout(function() {
+        if (mainEl.parentNode) mainEl.innerHTML = _heroFeaturedHTML(featured);
+      }, 510);
+    });
+  });
 }
 
 function _heroAddSwipe(el) {
@@ -1500,18 +1528,21 @@ function _heroAddSwipe(el) {
     var dx = e.changedTouches[0].clientX - startX;
     var dy = e.changedTouches[0].clientY - startY;
     if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
-      heroGoTo((_heroIdx + (dx < 0 ? 1 : -1) + _heroSlides.length) % _heroSlides.length);
+      var swipeDir = dx < 0 ? 1 : -1;
+      heroGoTo((_heroIdx + swipeDir + _heroSlides.length) % _heroSlides.length, swipeDir);
     }
   }, {passive: true});
 }
 
-function heroGoTo(idx) {
+function heroGoTo(idx, dir) {
+  _heroDir = (dir !== undefined) ? dir : (idx >= _heroIdx ? 1 : -1);
   _heroIdx = idx;
   var heroEl = document.getElementById('dyn-hero');
   if (heroEl) renderHeroSlide(heroEl, true);
   if (_heroTimer) { clearInterval(_heroTimer); }
   if (_heroSlides.length > 1) {
     _heroTimer = setInterval(function(){
+      _heroDir = 1;
       _heroIdx = (_heroIdx + 1) % _heroSlides.length;
       var el = document.getElementById('dyn-hero');
       if (el) renderHeroSlide(el, true);
@@ -4784,14 +4815,17 @@ async function renderHomeLearningPreview() {
   var box = document.getElementById('home-learning-preview');
   if (!box) return;
 
-  // 비로그인 — 컴팩트
+  // 비로그인 — 컴팩트 (세로 중앙 정렬)
   if (!supaUser) {
+    box.style.display = 'flex';
+    box.style.flexDirection = 'column';
+    box.style.justifyContent = 'center';
     box.innerHTML =
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">'
       + '<div style="font-size:13px;font-weight:800;color:var(--dark)">처음 오셨나요?</div>'
       + '<div style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;background:#eef4ff;color:var(--bright)">Start easy</div>'
       + '</div>'
-      + '<div style="font-size:13px;color:var(--gray);line-height:1.55;margin-bottom:12px;">기사 읽기 → 문법 확인 → 퀴즈. 하루 5분으로 시작하세요.</div>'
+      + '<div style="font-size:13px;color:var(--gray);line-height:1.55;margin-bottom:14px;">기사 읽기 → 문법 확인 → 퀴즈. 하루 5분으로 시작하세요.</div>'
       + '<a href="beginner-guide.html" style="display:inline-block;padding:8px 16px;background:var(--bright);color:#fff;border-radius:6px;font-size:12px;font-weight:800;text-decoration:none;">시작하기 →</a>';
     return;
   }

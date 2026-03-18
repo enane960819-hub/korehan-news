@@ -141,6 +141,16 @@ saveToDbCache('article', articleId, 'grammar_guide', { patterns: [...] });
 
 ---
 
+## Responsive Design — ALWAYS Required
+
+**Every UI change must consider both desktop and mobile.** No exceptions.
+
+- Desktop breakpoint: 980px, mobile: 640px
+- Test mentally at both widths before finalizing any CSS
+- Mobile-first where possible; never break mobile to fix desktop or vice versa
+
+---
+
 ## Key Conventions
 
 **Reading files:** Always read a file before editing it (Edit tool requirement).
