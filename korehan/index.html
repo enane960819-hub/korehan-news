@@ -248,6 +248,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     }).catch(function() {});
   }
 
+  // 로그인 완료 후 Today's Progress 재렌더
+  window.addEventListener('kh-auth-signed-in', function() {
+    if (window.renderHomeLearningPreview) {
+      window.renderHomeLearningPreview().catch(function() {});
+    }
+  }, { once: true });
+
   // News grid (latest 8)
   function renderNewsGrid() {
     var arts = getCachedArticles().filter(function(a){ return a.status === 'published'; }).slice(0,4);

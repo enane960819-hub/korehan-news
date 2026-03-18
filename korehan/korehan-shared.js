@@ -4545,14 +4545,19 @@ async function renderHomeLearningPreview() {
   var sb = getSupa();
   if (sb && supaUser) {
     try {
-      // user_stats
-      var statsRes = await sb.from('user_stats').select('xp,mission_streak,streak,articles_read,words_saved,quizzes_done').eq('user_id', supaUser.id).maybeSingle();
+      // today's daily_missions (오늘 진행도)
+      var today = dmToday ? dmToday() : new Date().toISOString().slice(0,10);
+      var dmRes = await sb.from('daily_missions').select('articles,words,quizzes').eq('user_id', supaUser.id).eq('date', today).maybeSingle();
+      if (dmRes.data) {
+        dm.articles = Math.max(dm.articles || 0, dmRes.data.articles || 0);
+        dm.words    = Math.max(dm.words    || 0, Math.min(20, dmRes.data.words || 0));
+        dm.quizzes  = Math.max(dm.quizzes  || 0, dmRes.data.quizzes || 0);
+      }
+      // user_stats (xp, streak)
+      var statsRes = await sb.from('user_stats').select('xp,mission_streak,streak').eq('user_id', supaUser.id).maybeSingle();
       if (statsRes.data) {
         xp     = Math.max(xp,     statsRes.data.xp             || 0);
         streak = Math.max(streak, statsRes.data.mission_streak || statsRes.data.streak || 0);
-        dm.articles = Math.max(dm.articles || 0, statsRes.data.articles_read || 0);
-        dm.words    = Math.max(dm.words    || 0, Math.min(20, statsRes.data.words_saved || 0));
-        dm.quizzes  = Math.max(dm.quizzes  || 0, statsRes.data.quizzes_done  || 0);
       }
       // weak grammar from DB
       var wgRes = await sb.from('user_grammar_stats')
