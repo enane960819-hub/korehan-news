@@ -1946,14 +1946,12 @@ async function loadFillExercise(container) {
   var a = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
   if (!a) { el.innerHTML = '<p style="color:#aaa;padding:20px">Article not found.</p>'; return; }
 
-  el.innerHTML = renderFillLoading();
-
   if (!supaUser) {
     el.innerHTML = renderFillNoKey();
     return;
   }
 
-  // ── DB 캐시 확인 ──────────────────────────────────────────
+  // ── DB 캐시 먼저 확인 (로딩 표시 전) ─────────────────────
   var cacheKey = 'fill_' + (a.level || 'intermediate').toLowerCase();
   try {
     var cached = await getFromCache('article', a.id, cacheKey);
@@ -1963,6 +1961,9 @@ async function loadFillExercise(container) {
       return;
     }
   } catch(e) {}
+
+  // 캐시 없을 때만 로딩 표시
+  el.innerHTML = renderFillLoading();
 
   var level = a.level || 'Intermediate';
   var text = (a.body || '') + (a.full ? ' ' + a.full : '');
@@ -2329,9 +2330,7 @@ async function loadGrammarGuide() {
   var a = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
   if (!a) { el.innerHTML = '<p style="color:#aaa;padding:20px 0;text-align:center">Article not found.</p>'; return; }
 
-  el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center">✨ Analyzing grammar...</div>';
-
-  // ── DB 캐시 확인 ──────────────────────────────────────────
+  // ── DB 캐시 먼저 확인 (로딩 표시 전) ─────────────────────
   try {
     var cached = await getFromCache('article', a.id, 'grammar_guide');
     if (cached && cached.patterns && cached.patterns.length) {
@@ -2341,6 +2340,7 @@ async function loadGrammarGuide() {
     }
   } catch(e) {}
 
+  // 캐시 없을 때만 AI 분석 시작
   el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center">✨ Analyzing grammar with AI...</div>';
 
   var text = (a.title || '') + '\n\n' + (a.body || '') + '\n\n' + (a.full || '');
@@ -2553,10 +2553,18 @@ async function toggleTranslate() {
 
   var params = new URLSearchParams(window.location.search);
   var id = params.get('id');
-  var cacheKey = 'trans_' + id;
+  var dbCacheKey = 'translation';
 
-  if (translateCache[cacheKey]) {
-    applyTranslation(zones, translateCache[cacheKey]);
+  // ── DB 캐시 먼저 확인 (재생성 방지) ──────────────────────
+  try {
+    var dbCached = await getFromCache('article', id, dbCacheKey);
+    if (dbCached && dbCached.translations && Array.isArray(dbCached.translations)) {
+      translateCache['trans_' + id] = dbCached.translations;
+    }
+  } catch(e) {}
+
+  if (translateCache['trans_' + id]) {
+    applyTranslation(zones, translateCache['trans_' + id]);
     btn.textContent = '🇰🇷 Back to Korean';
     btn.disabled = false;
     btn.classList.add('active');
@@ -2603,11 +2611,24 @@ async function toggleTranslate() {
     var translations = JSON.parse(clean);
     if (!Array.isArray(translations)) throw new Error('not array');
 
-    translateCache[cacheKey] = translations;
+    translateCache['trans_' + id] = translations;
     applyTranslation(zones, translations);
     translateActive = true;
     btn.textContent = '🇰🇷 Back to Korean';
     btn.classList.add('active');
+
+    // ── DB에 캐시 저장 (다음 방문 시 재사용) ─────────────────
+    try {
+      var sb = getSupa();
+      if (sb && id) {
+        sb.from('article_cache').upsert({
+          content_type: 'article',
+          content_id:   String(id),
+          cache_key:    dbCacheKey,
+          cache_value:  { translations: translations }
+        }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(e){ console.warn('translation cache save failed', e); });
+      }
+    } catch(e) {}
   } catch(e) {
     console.error('translate error', e);
     btn.textContent = '🌐 Translate';
