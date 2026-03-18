@@ -4317,10 +4317,9 @@ function injectDailyMission() {
 function khInjectSidebar() {
   if (document.getElementById('kh-mobile-sidebar')) return;
 
-  // CSS
+  // CSS (sidebar-specific only — .kh-ham and mobile media queries are in korehan-shared.css)
   var style = document.createElement('style');
   style.textContent = [
-    '.kh-ham{display:none;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text,#0d1b2e);padding:4px 8px;flex-shrink:0;line-height:1;position:relative;z-index:50;-webkit-tap-highlight-color:transparent;}',
     '.kh-sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1500;}',
     '.kh-sb-overlay.on{display:block;}',
     '.kh-sidebar{position:fixed;top:0;left:0;bottom:0;width:268px;background:#0b1626;z-index:1600;transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);overflow-y:auto;display:flex;flex-direction:column;}',
@@ -4342,8 +4341,7 @@ function khInjectSidebar() {
     '.kh-sb-sub{display:none;padding-left:10px;}',
     '.kh-sb-sub.on{display:block;}',
     '.kh-sb-sub-a{display:block;width:100%;padding:7px 10px;font-size:12px;color:rgba(255,255,255,.5);border:none;background:none;text-align:left;font-family:inherit;cursor:pointer;border-radius:5px;transition:all .12s;text-decoration:none;}',
-    '.kh-sb-sub-a:hover{color:#fff;background:rgba(255,255,255,.05);}',
-    '@media(max-width:900px){.kh-ham{display:flex !important;align-items:center;position:relative;z-index:50;}.kh-topnav{display:none !important;}.kh-nav{display:none !important;}}'
+    '.kh-sb-sub-a:hover{color:#fff;background:rgba(255,255,255,.05);}'
   ].join('');
   document.head.appendChild(style);
 

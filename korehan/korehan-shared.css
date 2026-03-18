@@ -68,6 +68,20 @@ h1, h2, h3, h4 { word-break: keep-all; overflow-wrap: break-word; }
 .kh-hbtn-fill { background: var(--bright); color: #fff; }
 .kh-hbtn-fill:hover { background: var(--blue); }
 
+/* ── HAMBURGER (hidden on desktop, shown on mobile via media query) ── */
+.kh-ham {
+  display: none;
+  background: none; border: none; font-size: 22px; cursor: pointer;
+  color: var(--text, #0d1b2e); padding: 4px 8px; flex-shrink: 0;
+  line-height: 1; position: relative; z-index: 50;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (max-width: 900px) {
+  .kh-ham { display: flex !important; align-items: center; }
+  .kh-topnav { display: none !important; }
+  .kh-nav { display: none !important; }
+}
+
 /* ── TOP NAV (navy, dropdowns) ─────────────────────────── */
 .kh-topnav { background: var(--navy); position: sticky; top: 0; z-index: 100; }
 .kh-topnav-inner {
