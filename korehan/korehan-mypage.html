@@ -139,7 +139,7 @@
       <div class="mypage-email" id="mp-email"></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
         <button class="mypage-signout" onclick="signOut()">Sign Out</button>
-        <button class="mypage-signout" onclick="confirmDeleteAccount()" style="color:rgba(255,100,100,0.7);border-color:rgba(255,100,100,0.3)">회원탈퇴</button>
+        <button class="mypage-signout" onclick="confirmDeleteAccount()" style="color:rgba(255,100,100,0.7);border-color:rgba(255,100,100,0.3)">Delete Account</button>
       </div>
     </div>
   </div>
@@ -152,10 +152,12 @@
     <div class="stat-card"><div class="stat-fire">🔥</div><div class="stat-label">Loading…</div></div>
   </div>
 
+  <!-- Activity section: charts + streak + review test (always visible) -->
+  <div id="mp-activity" style="margin-bottom:28px;"></div>
+
   <!-- Tabs -->
   <div class="my-tabs">
-    <button class="my-tab on" onclick="switchMyTab('goals',this)">🎯 Daily Goals</button>
-    <button class="my-tab" onclick="switchMyTab('words',this)">🔖 Saved Words</button>
+    <button class="my-tab on" onclick="switchMyTab('words',this)">🔖 Saved Words</button>
     <button class="my-tab" onclick="switchMyTab('articles',this)">📰 Read Articles</button>
     <button class="my-tab" onclick="switchMyTab('bookmarks',this)">🔖 Bookmarks</button>
     <button class="my-tab" onclick="switchMyTab('level',this)">🏆 Level Test</button>
@@ -165,13 +167,8 @@
     <button class="my-tab" onclick="switchMyTab('classes',this)">🎓 Classes</button>
   </div>
 
-  <!-- Today's Goals panel -->
-  <div class="my-panel on" id="panel-goals">
-    <div id="goals-area"><div style="text-align:center;padding:32px;color:var(--gray)">⏳ Loading...…</div></div>
-  </div>
-
-  <!-- Saved Words panel -->
-  <div class="my-panel" id="panel-words">
+  <!-- Saved Words panel (now first/default) -->
+  <div class="my-panel on" id="panel-words">
     <div id="words-list-area">
       <div class="empty-state"><div class="es-icon">⏳</div><p>Loading...…</p></div>
     </div>
@@ -1107,12 +1104,12 @@ async function dbGetTodayGoal() {
   return result;
 }
 
-async function renderGoals() {
-  var area = document.getElementById('goals-area');
+async function renderActivity() {
+  var area = document.getElementById('mp-activity');
+  if (!area) return;
   var goal = await dbGetTodayGoal();
-  var WORD_TARGET = 5, ARTICLE_TARGET = 3;
 
-  // 오늘 학습 기록 저장
+  // 학습 기록 로컬 캐시 업데이트
   var todayKey = new Date().toISOString().slice(0,10);
   var studyLog = {};
   try { studyLog = JSON.parse(localStorage.getItem('kh_study_log') || '{}'); } catch(e) {}
@@ -1121,25 +1118,19 @@ async function renderGoals() {
   studyLog[todayKey].words    = goal.words_today || 0;
   try { localStorage.setItem('kh_study_log', JSON.stringify(studyLog)); } catch(e) {}
 
-  var todayArticles = goal.articles_today || 0;
-  var todayWords    = goal.words_today || 0;
-
-  function pct(v, max) { return Math.min(100, Math.round(v/max*100)); }
-
+  // Daily Review Test 배너
   area.innerHTML =
-    '<div style="display:flex;gap:12px;align-items:baseline;margin-bottom:20px">'    +'<div style="font-size:17px;font-weight:900;color:var(--accent)">Daily Goals 🎯</div>'    +'<div style="font-size:13px;color:var(--gray)">'+new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',weekday:'short'})+'</div>'    +'</div>'
-    // 목표 카드들
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
-    +'<div class="goal-card" style="flex-direction:column;align-items:flex-start;gap:8px">'    +'<div style="display:flex;align-items:center;gap:8px;width:100%">'    +'<span style="font-size:22px">📰</span>'    +'<div style="flex:1"><div class="goal-title">Articles Read</div>'    +'<div class="goal-count">'+todayArticles+' / '+ARTICLE_TARGET+'</div></div>'    +'<div style="font-size:20px">'+(todayArticles >= ARTICLE_TARGET ? '✅' : '○')+'</div></div>'    +'<div class="goal-bar-wrap" style="width:100%"><div class="goal-bar'+(todayArticles>=ARTICLE_TARGET?' done':'')+'" style="width:'+pct(todayArticles,ARTICLE_TARGET)+'%"></div></div>'    +'</div>'
-    +'<div class="goal-card" style="flex-direction:column;align-items:flex-start;gap:8px">'    +'<div style="display:flex;align-items:center;gap:8px;width:100%">'    +'<span style="font-size:22px">🔖</span>'    +'<div style="flex:1"><div class="goal-title">Words Saved</div>'    +'<div class="goal-count">'+todayWords+' / '+WORD_TARGET+'</div></div>'    +'<div style="font-size:20px">'+(todayWords >= WORD_TARGET ? '✅' : '○')+'</div></div>'    +'<div class="goal-bar-wrap" style="width:100%"><div class="goal-bar'+(todayWords>=WORD_TARGET?' done':'')+'" style="width:'+pct(todayWords,WORD_TARGET)+'%"></div></div>'    +'</div>'    +'</div>'
-    // 데일리 테스트 버튼
-    +'<div style="background:linear-gradient(135deg,#0b1626,#1a3a6b);border-radius:12px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">'    +'<div>'    +'<div style="font-size:15px;font-weight:900;color:#fff;margin-bottom:4px">📝 Daily Review Test</div>'    +'<div style="font-size:12px;color:rgba(255,255,255,0.6)">Quiz based on articles you read today</div>'    +'</div>'    +'<button onclick="startDailyTest()" style="padding:9px 20px;background:#fff;color:#0b1626;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Start →</button>'    +'</div>';
+    '<div style="background:linear-gradient(135deg,#0b1626,#1a3a6b);border-radius:14px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    +'<div><div style="font-size:15px;font-weight:900;color:#fff;margin-bottom:4px">📝 Daily Review Test</div>'
+    +'<div style="font-size:12px;color:rgba(255,255,255,0.6)">Quiz based on articles you read today</div></div>'
+    +'<button onclick="startDailyTest()" style="padding:9px 20px;background:#fff;color:#0b1626;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0;">Start →</button>'
+    +'</div>';
 
-  // 학습량 그래프
   renderStudyChart(area, studyLog);
-  // 스트릭 캘린더
   renderStreakCalendar(area, studyLog);
 }
+// alias for any existing callers
+function renderGoals() { return renderActivity(); }
 
 function renderStudyChart(container, studyLog) {
   // 최근 14일 데이터
@@ -1406,7 +1397,7 @@ function showDailyResult(area) {
     +'</div>'
     +'<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">'
     +'<button onclick="startDailyTest()" class="quiz-next2" style="background:#f0f4ff;color:var(--accent)">🔄 Retry</button>'
-    +'<button onclick="renderGoals()" class="quiz-next2">← Back to Goals</button>'
+    +'<button onclick="renderActivity()" class="quiz-next2">← Back</button>'
     +'</div>'
     +'</div>';
 }
@@ -1547,11 +1538,11 @@ async function renderStats(streak, wordCount, articleCount) {
   var bms   = await dbGetBookmarks();
   document.getElementById('mp-stats').innerHTML =
     '<div class="stat-card"><div class="stat-fire">🔥</div><div class="stat-num">' + (s.streak||0) + '</div><div class="stat-label">Day Streak</div></div>' +
-    '<div class="stat-card"><div class="stat-num">' + (s.longest_streak||0) + '</div><div class="stat-label">최장 streak일</div></div>' +
+    '<div class="stat-card"><div class="stat-num">' + (s.longest_streak||0) + '</div><div class="stat-label">Best Streak</div></div>' +
     '<div class="stat-card"><div class="stat-num">' + wordCount + '</div><div class="stat-label">Saved Words</div></div>' +
     '<div class="stat-card"><div class="stat-num">' + articleCount + '</div><div class="stat-label">Articles Read</div></div>' +
-    '<div class="stat-card"><div class="stat-num">' + (bms.length||0) + '</div><div class="stat-label">북마크</div></div>' +
-    (lm ? '<div class="stat-card"><div class="stat-num" style="font-size:13px;line-height:1.3;margin-top:4px">'+lm.label+'</div><div class="stat-label">내 Level</div></div>' : '');
+    '<div class="stat-card"><div class="stat-num">' + (bms.length||0) + '</div><div class="stat-label">Bookmarks</div></div>' +
+    (lm ? '<div class="stat-card"><div class="stat-num" style="font-size:13px;line-height:1.3;margin-top:4px">'+lm.label+'</div><div class="stat-label">My Level</div></div>' : '');
 }
 
 // ── 단어 퀴즈 ──────────────────────────────────────────────────

@@ -2853,7 +2853,7 @@ function initTooltips() {
     var adminBar = document.createElement('div');
     adminBar.id = 'vocab-admin-bar';
     adminBar.style.cssText = 'position:fixed;bottom:70px;right:16px;z-index:8000;background:#0b1626;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);';
-    adminBar.textContent = '✏️ 단어 편집 모드';
+    adminBar.textContent = '✏️ Word Edit Mode';
     adminBar.onclick = function() { toggleVocabEditMode(); };
     document.body.appendChild(adminBar);
   }
@@ -2965,7 +2965,7 @@ function toggleVocabEditMode() {
   window._vocabEditMode = !window._vocabEditMode;
   var bar = document.getElementById('vocab-admin-bar');
   if (bar) {
-    bar.textContent = window._vocabEditMode ? '✅ 편집 모드 ON — 단어 클릭 or 드래그 선택' : '✏️ 단어 편집 모드';
+    bar.textContent = window._vocabEditMode ? '✅ Edit Mode ON — click or drag words' : '✏️ Word Edit Mode';
     bar.style.background = window._vocabEditMode ? '#16a34a' : '#0b1626';
   }
   document.querySelectorAll('.kh-word').forEach(function(w) {
