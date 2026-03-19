@@ -71,8 +71,8 @@
     <section class="hero">
       <div class="hero-main">
         <div class="eyebrow">Learning Hub</div>
-        <h1>Your study should tell you what to do next.</h1>
-        <p>Weak grammar, today’s 20 words, saved reading, review queue, and real weekly progress — all in one page.</p>
+        <h1>Know exactly what to study next.</h1>
+        <p>Weak grammar, daily words, reading history, and weekly XP — everything tracked in one place.</p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="korehan-study-room.html">Start Daily Review</a>
           <a class="btn btn-ghost" href="#weekly-progress">See Weekly Progress</a>
@@ -97,39 +97,39 @@
 
     <section class="grid">
       <div class="card">
-        <div class="card-hd"><div><h2>Weak grammar patterns</h2><p>Show users what they are actually weak at, not just raw scores.</p></div><a class="soft-link" href="korehan-study-room.html">More practice</a></div>
+        <div class="card-hd"><div><h2>Weak grammar patterns</h2><p>Patterns you missed most in quizzes — sorted by error rate.</p></div><a class="soft-link" href="korehan-study-room.html">More practice</a></div>
         <div class="grammar-list" id="weak-grammar-list"></div>
       </div>
       <div class="card">
-        <div class="card-hd"><div><h2>Skill balance</h2><p>Five real score axes. Speaking is shown separately as practice activity.</p></div></div>
+        <div class="card-hd"><div><h2>Skill balance</h2><p>Five areas tracked from your real study activity.</p></div></div>
         <div class="skills" id="skills-list"></div>
       </div>
     </section>
 
     <section class="card" style="margin-bottom:18px">
-      <div class="card-hd"><div><h2>20 words for today</h2><p>10 general words and 10 interest-based words in one place.</p></div><a class="soft-link" href="korehan-study-room.html">Open Study Room</a></div>
+      <div class="card-hd"><div><h2>20 words for today</h2><p>10 core daily words + 10 from your chosen interests.</p></div><a class="soft-link" href="korehan-study-room.html">Open Study Room</a></div>
       <div class="vocab-grid">
-        <div class="vocab-box"><h3>10 random essential words</h3><p>Useful daily vocabulary users should meet regularly.</p><div class="word-list" id="random-words"></div></div>
-        <div class="vocab-box"><h3>10 words from your interests</h3><p>관심 태그를 선택하면 해당 분야 단어만 배정됩니다.</p><div id="interest-selector"></div><div class="word-list" id="interest-words"></div></div>
+        <div class="vocab-box"><h3>10 essential daily words</h3><p>Core vocabulary refreshed every day.</p><div class="word-list" id="random-words"></div></div>
+        <div class="vocab-box"><h3>10 words from your interests</h3><p>Select your interest tags to get topic-specific words.</p><div id="interest-selector"></div><div class="word-list" id="interest-words"></div></div>
       </div>
     </section>
 
     <section class="grid">
       <div class="card">
-        <div class="card-hd"><div><h2>Daily review</h2><p>Everything studied that day should be easy to revisit in one place.</p></div><a class="soft-link" href="korehan-study-room.html">Review All</a></div>
+        <div class="card-hd"><div><h2>Daily review</h2><p>Everything you studied today, easy to revisit in one place.</p></div><a class="soft-link" href="korehan-study-room.html">Review All</a></div>
         <div class="review-wrap"><div class="review-day"><div class="review-top"><div><h3 id="review-title">Today</h3><p id="review-sub">0 items reviewed today</p></div><div class="tag amber">Needs review</div></div><div class="timeline" id="review-queue"></div></div></div>
       </div>
       <div class="card">
-        <div class="card-hd"><div><h2>Saved reading history</h2><p>Articles and posts the user already studied should stay visible.</p></div><a class="soft-link" href="korehan-mypage.html">Open My Page</a></div>
+        <div class="card-hd"><div><h2>Saved reading history</h2><p>Your recent articles, conversations, and stories.</p></div><a class="soft-link" href="korehan-mypage.html">Open My Page</a></div>
         <div class="articles-list" id="saved-reading"></div>
       </div>
     </section>
 
     <section class="card" id="weekly-progress">
-      <div class="card-hd"><div><h2>Daily & weekly growth</h2><p>Users should be able to feel improvement, not guess it.</p></div></div>
+      <div class="card-hd"><div><h2>Daily & weekly growth</h2><p>See how your effort adds up day by day.</p></div></div>
       <div class="growth-grid">
-        <div class="chart-box"><div class="chart-title">Weekly study XP</div><div class="chart-sub">A simple graph makes progress feel real.</div><div class="bars" id="weekly-bars"></div></div>
-        <div class="chart-box"><div class="chart-title">This week’s improvement</div><div class="chart-sub">Simple wins that feel motivating and believable.</div><div class="streak-list" id="weekly-improvements"></div></div>
+        <div class="chart-box"><div class="chart-title">Weekly study XP</div><div class="chart-sub">Your daily study output this week.</div><div class="bars" id="weekly-bars"></div></div>
+        <div class="chart-box"><div class="chart-title">This week’s numbers</div><div class="chart-sub">Key stats from your study this week.</div><div class="streak-list" id="weekly-improvements"></div></div>
       </div>
       <div class="footer-note" id="speaking-note"></div>
     </section>
@@ -151,15 +151,15 @@
   // 근거: DB에서 실제 행동 데이터를 집계
   const SKILL_META = [
     { key:'reading',    label:'Reading',    color:'#2563eb',
-      note:'지난 30일 읽은 기사/대화/스토리 수 기반. 50개 = 100점.' },
+      note:'Based on articles, conversations, and stories read in the last 30 days. 50 items = 100.' },
     { key:'grammar',    label:'Grammar',    color:'#60a5fa',
-      note:'fill-in-blank + grammar quiz 정답률 (최근 30일, 5문제 이상 시 반영).' },
+      note:'Fill-in-blank + grammar quiz accuracy over the last 30 days (min. 5 attempts).' },
     { key:'vocabulary', label:'Vocabulary', color:'#f59e0b',
-      note:'저장 단어 수 기반. 200개 = 100점.' },
+      note:'Based on saved word count. 200 words = 100.' },
     { key:'writing',    label:'Writing',    color:'#8b5cf6',
-      note:'작문 제출 횟수 기반. 꾸준히 쓸수록 올라감.' },
+      note:'Based on writing submissions. Grows with consistent practice.' },
     { key:'listening',  label:'Listening',  color:'#ef4444',
-      note:'Vocab flashcard 정답률 (최근 30일).' },
+      note:'Vocab flashcard accuracy over the last 30 days.' },
   ];
 
   // ── render functions ────────────────────────────────────────
@@ -182,7 +182,7 @@
     var box = document.getElementById('weak-grammar-list');
     var items = data.weak_grammar || [];
     if (!items.length) {
-      box.innerHTML = '<div style="padding:16px;text-align:center;color:#94a3b8;font-size:13px;">퀴즈를 풀면 취약 문법이 표시됩니다.</div>';
+      box.innerHTML = '<div style="padding:16px;text-align:center;color:#94a3b8;font-size:13px;">Complete quizzes to see your weak grammar patterns.</div>';
       return;
     }
     box.innerHTML = items.map(function(item) {
@@ -194,13 +194,13 @@
         + '<div class="grammar-top" style="margin-bottom:6px;">'
         +   '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">'
         +     '<div class="grammar-title" style="font-size:16px;">' + item.grammar_point + '</div>'
-        +     '<span style="font-size:11px;color:#94a3b8;white-space:nowrap;">틀림 ' + (item.wrong_count||0) + '회 · ' + cfg[2] + '%</span>'
+        +     '<span style="font-size:11px;color:#94a3b8;white-space:nowrap;">× ' + (item.wrong_count||0) + ' wrong · ' + cfg[2] + '%</span>'
         +   '</div>'
         +   '<div class="tag ' + tagColor + '" style="flex-shrink:0;">' + cfg[0] + '</div>'
         + '</div>'
         + '<div class="progress" style="margin-bottom:10px;"><div class="fill ' + tagColor + '" style="width:' + cfg[2] + '%"></div></div>'
         + '<div class="grammar-actions" style="gap:6px;">'
-        +   '<a class="solid-btn" style="padding:7px 12px;font-size:12px;" href="korehan-study-room.html?focus=' + q + '">연습 →</a>'
+        +   '<a class="solid-btn" style="padding:7px 12px;font-size:12px;" href="korehan-study-room.html?focus=' + q + '">Practice →</a>'
         +   '<a class="ghost-btn" style="padding:7px 12px;font-size:12px;" href="korehan-study-room.html?tab=quiz&grammar=' + q + '">Mini Quiz</a>'
         + '</div>'
         + '</div>';
@@ -240,10 +240,10 @@
     var intEl = document.getElementById('interest-words');
     if (genEl) genEl.innerHTML = general.length
       ? general.map(wordRowHTML).join('')
-      : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">단어 배정 중...</div>';
+      : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">Loading words...</div>';
     if (intEl) intEl.innerHTML = interest.length
       ? interest.map(wordRowHTML).join('')
-      : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">관심사를 선택하고 저장하면 관련 단어가 표시됩니다.</div>';
+      : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">Select and save interests to see topic-specific words.</div>';
   }
 
   // 오늘 날짜 캐시 키 (KST)
@@ -366,17 +366,17 @@
 
   function renderReview(data) {
     const q = data.review_queue || [];
-    setText('review-title', '오늘 — ' + new Date().toLocaleDateString('ko-KR'));
-    setText('review-sub',   q.length + '개 항목이 복습 대기 중');
+    setText('review-title', 'Today — ' + new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}));
+    setText('review-sub',   q.length + ' item' + (q.length !== 1 ? 's' : '') + ' to review');
     document.getElementById('review-queue').innerHTML = q.length
       ? q.map(item => `<a class="timeline-item" href="${contentHref(item.content_type, item.content_id)}">
-          <div class="time">${new Date(item.read_at||Date.now()).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</div>
+          <div class="time">${new Date(item.read_at||Date.now()).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</div>
           <div>
-            <div class="timeline-title">${{'article':'기사','conversation':'대화','story':'스토리'}[item.content_type]||item.content_type} — ${item.title||'(제목 없음)'}</div>
-            <div class="timeline-sub">${item.level||''} · 복습 대기</div>
+            <div class="timeline-title">${{'article':'Article','conversation':'Conversation','story':'Story'}[item.content_type]||item.content_type} — ${item.title||'(No title)'}</div>
+            <div class="timeline-sub">${item.level||''} · Pending review</div>
           </div>
         </a>`).join('')
-      : '<div style="color:#94a3b8;padding:16px 0;text-align:center">오늘 읽은 기사가 없습니다.</div>';
+      : '<div style="color:#94a3b8;padding:16px 0;text-align:center">Nothing read today.</div>';
   }
 
   function renderSavedReading(data) {
@@ -384,12 +384,12 @@
     document.getElementById('saved-reading').innerHTML = hist.length
       ? hist.map(item => `<a class="article-row" href="${contentHref(item.content_type, item.content_id)}">
           <div>
-            <div class="article-title">${item.title||'(제목 없음)'}</div>
-            <div class="article-sub">${item.content_type} · ${item.level||''} · ${new Date(item.read_at||Date.now()).toLocaleDateString('ko-KR')}</div>
+            <div class="article-title">${item.title||'(No title)'}</div>
+            <div class="article-sub">${item.content_type} · ${item.level||''} · ${new Date(item.read_at||Date.now()).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
           </div>
-          <div class="article-tag">${item.completed?'완료':'열기'}</div>
+          <div class="article-tag">${item.completed?'Done':'Open'}</div>
         </a>`).join('')
-      : '<div style="color:#94a3b8;padding:16px 0;text-align:center">읽기 기록이 없습니다.</div>';
+      : '<div style="color:#94a3b8;padding:16px 0;text-align:center">No reading history yet.</div>';
   }
 
   function renderWeeklyBars(data) {
@@ -451,7 +451,7 @@
     if (!box) return;
     box.innerHTML = INTEREST_TAGS.map(function(t) {
       return '<button class="interest-btn' + (saved.indexOf(t.tag) !== -1 ? ' on' : '') + '" data-tag="' + t.tag + '">' + t.label + '</button>';
-    }).join('') + '<button id="save-interests-btn" style="margin-top:8px;padding:8px 18px;background:#7c3aed;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">저장</button>';
+    }).join('') + '<button id="save-interests-btn" style="margin-top:8px;padding:8px 18px;background:#7c3aed;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Save</button>';
 
     // 태그 토글
     box.querySelectorAll('.interest-btn').forEach(function(btn) {
@@ -484,9 +484,9 @@
               { user_id: supaUser.id, tags: selected, updated_at: new Date().toISOString() },
               { onConflict: 'user_id' }
             );
-            if (typeof toast === 'function') toast('관심사 저장 완료 ✓');
+            if (typeof toast === 'function') toast('Interests saved ✓');
           } catch(e) {
-            if (typeof toast === 'function') toast('저장 실패: ' + e.message, true);
+            if (typeof toast === 'function') toast('Save failed: ' + e.message, true);
           }
         }
         // 단어 바로 갱신
@@ -506,8 +506,8 @@
     if (!supaUser) {
       var loginMsg = '<div style="padding:20px;text-align:center">'
         + '<div style="font-size:28px;margin-bottom:10px">🔒</div>'
-        + '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:6px">로그인 후 확인할 수 있어요</div>'
-        + '<div style="font-size:13px;color:#94a3b8;margin-bottom:16px">학습 데이터, 취약 문법, 단어 배정이 모두 계정에 저장됩니다.</div>'
+        + '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:6px">Sign in to view your progress</div>'
+        + '<div style="font-size:13px;color:#94a3b8;margin-bottom:16px">Your learning data, weak grammar, and daily words are all saved to your account.</div>'
         + '<button onclick="openAuthModal(\'signin\')" style="padding:10px 24px;background:#2563eb;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
         + '</div>';
       ['weak-grammar-list','skills-list','random-words','interest-words','review-queue','saved-reading'].forEach(function(id) {
