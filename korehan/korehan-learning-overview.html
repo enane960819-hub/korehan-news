@@ -291,13 +291,13 @@
     var cacheTagKey = (selectedTags || []).slice().sort().join(',');
     try {
       var gc = localStorage.getItem(vocabCacheKey('gen'));
-      if (gc) genCached = JSON.parse(gc);
+      if (gc) { var parsed = JSON.parse(gc); if (parsed && parsed.length >= 5) genCached = parsed; }
       var ic = localStorage.getItem(vocabCacheKey('int_' + cacheTagKey));
       if (ic) intCached = JSON.parse(ic);
     } catch(e) {}
 
-    // 둘 다 캐시 있으면 바로 렌더
-    if (genCached && genCached.length && (!selectedTags || !selectedTags.length || (intCached && intCached.length))) {
+    // 둘 다 캐시 있으면 바로 렌더 (gen 캐시가 5개 미만이면 재fetch — 구버전 is_active 버그 방지)
+    if (genCached && genCached.length >= 5 && (!selectedTags || !selectedTags.length || (intCached && intCached.length))) {
       renderWords(genCached.concat(intCached || []));
       return;
     }
