@@ -415,16 +415,16 @@
 
   // ── interests 설정 UI ────────────────────────────────────────
   const INTEREST_TAGS = [
-    {tag:'kpop',     label:'🎤 K-pop'},
-    {tag:'travel',   label:'✈️ Travel'},
-    {tag:'food',     label:'🍜 Food'},
-    {tag:'business', label:'💼 Business'},
-    {tag:'daily',    label:'💬 Daily life'},
-    {tag:'news',     label:'📰 News'},
-    {tag:'sports',   label:'⚽ Sports'},
-    {tag:'tech',     label:'💻 Tech'},
-    {tag:'drama',    label:'🎬 Drama'},
-    {tag:'beauty',   label:'💄 Beauty'},
+    {tag:'kpop',     label:'K-pop',      icon:'mic'},
+    {tag:'travel',   label:'Travel',     icon:'plane'},
+    {tag:'food',     label:'Food',       icon:'utensils'},
+    {tag:'business', label:'Business',   icon:'briefcase'},
+    {tag:'daily',    label:'Daily life', icon:'message-circle'},
+    {tag:'news',     label:'News',       icon:'newspaper'},
+    {tag:'sports',   label:'Sports',     icon:'dumbbell'},
+    {tag:'tech',     label:'Tech',       icon:'monitor'},
+    {tag:'drama',    label:'Drama',      icon:'clapperboard'},
+    {tag:'beauty',   label:'Beauty',     icon:'sparkles'},
   ];
 
   async function loadAndRenderInterests() {
@@ -450,7 +450,7 @@
     var box = document.getElementById('interest-selector');
     if (!box) return;
     box.innerHTML = INTEREST_TAGS.map(function(t) {
-      return '<button class="interest-btn' + (saved.indexOf(t.tag) !== -1 ? ' on' : '') + '" data-tag="' + t.tag + '">' + t.label + '</button>';
+      return '<button class="interest-btn' + (saved.indexOf(t.tag) !== -1 ? ' on' : '') + '" data-tag="' + t.tag + '">' + (typeof khIcon === 'function' ? khIcon(t.icon, 13) + ' ' : '') + t.label + '</button>';
     }).join('') + '<button id="save-interests-btn" style="margin-top:8px;padding:8px 18px;background:#7c3aed;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Save</button>';
 
     // 태그 토글
@@ -505,7 +505,7 @@
     // 로그인 안 된 경우 → 로그인 유도 UI
     if (!supaUser) {
       var loginMsg = '<div style="padding:20px;text-align:center">'
-        + '<div style="font-size:28px;margin-bottom:10px">🔒</div>'
+        + '<div style="font-size:28px;margin-bottom:10px">' + (typeof khIcon === 'function' ? khIcon('lock', 28) : '') + '</div>'
         + '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:6px">Sign in to view your progress</div>'
         + '<div style="font-size:13px;color:#94a3b8;margin-bottom:16px">Your learning data, weak grammar, and daily words are all saved to your account.</div>'
         + '<button onclick="openAuthModal(\'signin\')" style="padding:10px 24px;background:#2563eb;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'

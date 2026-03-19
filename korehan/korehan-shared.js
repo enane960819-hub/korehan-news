@@ -460,7 +460,7 @@ function _injectAuthModal() {
           <input id="kh-auth-pw" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authSignIn()"
             style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s"
             onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
-          <button onclick="var i=document.getElementById('kh-auth-pw');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;font-size:16px">👁</button>
+          <button onclick="var i=document.getElementById('kh-auth-pw');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;font-size:16px">${khIcon('eye', 16)}</button>
         </div>
       </div>
       <div style="text-align:right;margin-bottom:18px">
@@ -502,7 +502,7 @@ function _injectAuthModal() {
           <input id="kh-auth-pw2" type="password" placeholder="••••••••" oninput="_authCheckPwStrength(this.value)" onkeydown="if(event.key==='Enter')document.getElementById('kh-auth-pw3').focus()"
             style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s"
             onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
-          <button onclick="var i=document.getElementById('kh-auth-pw2');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;font-size:16px">👁</button>
+          <button onclick="var i=document.getElementById('kh-auth-pw2');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;font-size:16px">${khIcon('eye', 16)}</button>
         </div>
         <!-- 비밀번호 강도 표시 -->
         <div id="kh-pw-strength" style="margin-top:6px;display:none">
@@ -1747,7 +1747,7 @@ function renderAllPage() {
   var searchWrap = document.getElementById('dyn-search-bar');
   if (searchWrap) {
     searchWrap.innerHTML = '<div class="search-bar-wrap">'
-      + '<input type="text" id="search-bar-input" class="search-bar-input" placeholder="🔍 Search articles..." value="' + escapeHtml(searchQ) + '" onkeydown="if(event.key===\'Enter\')doSearch(this.value)">'
+      + '<input type="text" id="search-bar-input" class="search-bar-input" placeholder="Search articles..." value="' + escapeHtml(searchQ) + '" onkeydown="if(event.key===\'Enter\')doSearch(this.value)">'
       + '<button class="search-bar-btn" onclick="doSearch(document.getElementById(\'search-bar-input\').value)">Search</button>'
       + (searchQ ? '<button class="search-bar-clear" onclick="window.location.href=\'korehan-all.html\'">✕ Clear</button>' : '')
       + '</div>'
@@ -1840,13 +1840,13 @@ function renderArticlePage() {
     + '</div>'
     + '<h1 class="art-title vocab-zone">' + a.title + ' ' + ttsBtn(a.title) + '</h1>'
     + '<div class="art-meta-row">'
-    + '<span class="art-date">📅 ' + dateStr + '</span>'
+    + '<span class="art-date">' + dateStr + '</span>'
     + '<span class="art-dot">·</span>'
-    + '<span class="art-readtime">⏱ ' + Math.max(1, Math.ceil((a.full||a.body||'').length / 500)) + ' min read</span>'
+    + '<span class="art-readtime">' + khIcon('clock', 12) + ' ' + Math.max(1, Math.ceil((a.full||a.body||'').length / 500)) + ' min read</span>'
     + '<div class="art-actions">'
-    + '<button class="kh-bm-btn" id="art-bm-btn" onclick="toggleBookmark(\'' + a.id + '\',this)">🔖 Bookmark</button>'
-    + '<button class="kh-share-btn" onclick="shareArticle()">🔗 Share</button>'
-    + '<button class="kh-trans-btn" id="translate-btn" onclick="toggleTranslate()">🌐 Translate</button>'
+    + '<button class="kh-bm-btn" id="art-bm-btn" onclick="toggleBookmark(\'' + a.id + '\',this)">' + khIcon('bookmark', 14) + ' Bookmark</button>'
+    + '<button class="kh-share-btn" onclick="shareArticle()">' + khIcon('share-2', 14) + ' Share</button>'
+    + '<button class="kh-trans-btn" id="translate-btn" onclick="toggleTranslate()">' + khIcon('languages', 14) + ' Translate</button>'
     + '</div>'
     + '</div>'
     + '</div>'
@@ -2012,14 +2012,11 @@ function initFillTeaser(article) {
 
   teaser.innerHTML =
     '<div style="background:linear-gradient(135deg,#0b1626 0%,#1a3a6b 100%);border-radius:20px;padding:28px 28px 24px;position:relative;overflow:hidden">'
-    // 배경 데코
-    + '<div style="position:absolute;right:-20px;top:-20px;font-size:100px;opacity:.06;line-height:1">✏️</div>'
-    + '<div style="position:absolute;left:-10px;bottom:-15px;font-size:80px;opacity:.04;line-height:1">📝</div>'
     // 내용
     + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">'
     + '<div style="flex:1;min-width:200px">'
     + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-    + '<span style="font-size:22px">✏️</span>'
+    + khIcon('pencil', 22, 'color:rgba(255,255,255,.5)')
     + '<span style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:2px">복습 연습</span>'
     + '</div>'
     + '<div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:6px;line-height:1.3">Fill-in-the-Blank</div>'
@@ -2155,13 +2152,13 @@ Respond ONLY with this JSON (no markdown, no extra text):
     lcSet(_fillLcKey, { questions: parsed.questions });
     saveToDbCache('article', a.id, cacheKey, { questions: parsed.questions });
   } catch(e) {
-    el.innerHTML = '<div style="padding:24px;text-align:center;color:#e53e3e">⚠️ AI 생성 실패. 다시 시도해주세요.<br><button onclick="loadFillExercise()" style="margin-top:12px;padding:8px 20px;background:#2255a4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">🔄 Retry</button></div>';
+    el.innerHTML = '<div style="padding:24px;text-align:center;color:#e53e3e">' + khIcon('alert-triangle', 14) + ' AI 생성 실패. 다시 시도해주세요.<br><button onclick="loadFillExercise()" style="margin-top:12px;padding:8px 20px;background:#2255a4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">' + khIcon('refresh-cw', 14) + ' Retry</button></div>';
   }
 }
 
 function renderFillLoading() {
   return '<div style="padding:40px;text-align:center">'
-    + '<div style="font-size:32px;margin-bottom:16px;animation:spin 1s linear infinite;display:inline-block">✨</div>'
+    + '<div style="margin-bottom:16px;display:inline-block;animation:spin 1s linear infinite">' + khIcon('loader', 32) + '</div>'
     + '<div style="font-size:15px;font-weight:700;color:#2255a4;margin-bottom:6px">AI가 빈칸 문제를 만들고 있어요...</div>'
     + '<div style="font-size:12px;color:#94a3b8">이 기사에서 핵심 단어와 문법을 분석 중</div>'
     + '</div>'
@@ -2170,7 +2167,7 @@ function renderFillLoading() {
 
 function renderFillNoKey() {
   return '<div style="padding:32px;text-align:center;background:#f8faff;border-radius:16px;margin:16px 0">'
-    + '<div style="font-size:36px;margin-bottom:12px">🔒</div>'
+    + '<div style="margin-bottom:12px;color:#64748b">' + khIcon('lock', 36) + '</div>'
     + '<div style="font-size:15px;font-weight:800;color:#0b1626;margin-bottom:8px">로그인 필요</div>'
     + '<div style="font-size:13px;color:#64748b;margin-bottom:20px">Fill-in-the-Blank은 로그인 후 사용할 수 있어요.</div>'
     + '<button onclick="openAuthModal(\'signin\')" style="padding:10px 24px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
@@ -2193,12 +2190,12 @@ function renderFillQuestions(container, questions, article) {
     // 헤더
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">'
     + '<div>'
-    + '<div style="font-size:17px;font-weight:900;color:#0b1626;margin-bottom:3px">✏️ Fill in the Blank</div>'
+    + '<div style="font-size:17px;font-weight:900;color:#0b1626;margin-bottom:3px">' + khIcon('pencil', 18) + ' Fill in the Blank</div>'
     + '<div style="font-size:12px;color:#94a3b8">이 기사에서 추출한 핵심 표현 ' + questions.length + '문제</div>'
     + '</div>'
     + '<div style="display:flex;gap:8px;align-items:center">'
     + '<span style="font-size:11px;font-weight:800;padding:4px 12px;border-radius:999px;background:#f0f4ff;color:' + levelColor + '">' + level + '</span>'
-    + '<button onclick="resetFill()" style="font-size:11px;font-weight:700;padding:5px 14px;border:2px solid #e2e8f0;border-radius:999px;background:#fff;cursor:pointer;color:#64748b">🔄 Reset</button>'
+    + '<button onclick="resetFill()" style="font-size:11px;font-weight:700;padding:5px 14px;border:2px solid #e2e8f0;border-radius:999px;background:#fff;cursor:pointer;color:#64748b">' + khIcon('rotate-ccw', 12) + ' Reset</button>'
     + '</div>'
     + '</div>'
 
@@ -2216,7 +2213,7 @@ function renderFillQuestions(container, questions, article) {
       // 타입 배지
       + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">'
       + '<span style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:999px;background:' + (q.type==='grammar'?'#f3e8ff;color:#9333ea':'#e8f0fb;color:#2255a4') + '">'
-      + (q.type === 'grammar' ? '📐 Grammar' : '📖 Vocabulary') + '</span>'
+      + (q.type === 'grammar' ? khIcon('pen-line', 11) + ' Grammar' : khIcon('type', 11) + ' Vocabulary') + '</span>'
       + '<span style="font-size:11px;color:#94a3b8;font-weight:600">' + (i+1) + ' / ' + questions.length + '</span>'
       + '</div>'
 
@@ -2229,12 +2226,12 @@ function renderFillQuestions(container, questions, article) {
       + '</div>'
 
       // 힌트
-      + '<div style="font-size:11px;color:#60a5fa;margin-bottom:16px;font-weight:600">💡 ' + q.hint + '</div>'
+      + '<div style="font-size:11px;color:#60a5fa;margin-bottom:16px;font-weight:600;display:flex;align-items:center;gap:4px">' + khIcon('lightbulb', 13) + ' ' + q.hint + '</div>'
 
       // 모드 토글 버튼
       + '<div style="display:flex;gap:6px;margin-bottom:12px">'
-      + '<button onclick="setFillMode(' + i + ',\'choice\')" id="fill-mode-choice-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #2255a4;background:#2255a4;color:#fff;cursor:pointer">🎯 4지선다</button>'
-      + '<button onclick="setFillMode(' + i + ',\'type\')" id="fill-mode-type-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer">⌨️ 직접 입력</button>'
+      + '<button onclick="setFillMode(' + i + ',\'choice\')" id="fill-mode-choice-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #2255a4;background:#2255a4;color:#fff;cursor:pointer">' + khIcon('list', 12) + ' 4지선다</button>'
+      + '<button onclick="setFillMode(' + i + ',\'type\')" id="fill-mode-type-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer">' + khIcon('keyboard', 12) + ' 직접 입력</button>'
       + '</div>'
 
       // 4지선다 영역
@@ -2375,13 +2372,13 @@ function checkFillAnswer(qIdx, selected, isTyped) {
     resultEl.style.display = 'block';
     resultEl.innerHTML = (isCorrect
       ? '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start">'
-        + '<span style="font-size:18px">✅</span>'
+        + '<span style="color:#16a34a">' + khIcon('check-circle', 18) + '</span>'
         + '<div><div style="font-size:13px;font-weight:800;color:#16a34a;margin-bottom:2px">정답!</div>'
         + '<div style="font-size:12px;color:#166534"><strong>' + correct + '</strong> = ' + q.blank_en + '</div></div>'
         + ttsBtn(correct)
         + '</div>'
       : '<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start">'
-        + '<span style="font-size:18px">❌</span>'
+        + '<span style="color:#ef4444">' + khIcon('x-circle', 18) + '</span>'
         + '<div><div style="font-size:13px;font-weight:800;color:#dc2626;margin-bottom:2px">'
         + (isTyped ? '틀렸어요 (입력: ' + selected + ')' : '틀렸어요')
         + '</div>'
@@ -2412,7 +2409,7 @@ async function showFillResult() {
   var correct = Object.values(_fillState).filter(function(s){ return s.correct; }).length;
   var total = _fillQuestions.length;
   var pct = Math.round(correct / total * 100);
-  var emoji = pct >= 80 ? '🎉' : pct >= 60 ? '👍' : '💪';
+  var emoji = pct >= 80 ? khIcon('star', 48, 'color:#f59e0b') : pct >= 60 ? khIcon('thumbs-up', 48, 'color:#22c55e') : khIcon('zap', 48, 'color:#3b82f6');
   var color = pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626';
 
   var finalEl = document.getElementById('fill-final');
@@ -2420,15 +2417,15 @@ async function showFillResult() {
   finalEl.style.display = 'block';
   finalEl.innerHTML =
     '<div style="background:linear-gradient(135deg,#0b1626,#1a3a6b);border-radius:16px;padding:28px;text-align:center;margin-top:8px">'
-    + '<div style="font-size:48px;margin-bottom:10px">' + emoji + '</div>'
+    + '<div style="margin-bottom:10px">' + emoji + '</div>'
     + '<div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:4px">Exercise Complete!</div>'
     + '<div style="font-size:36px;font-weight:900;color:' + color + ';margin:12px 0">' + correct + ' / ' + total + '</div>'
     + '<div style="font-size:13px;color:rgba(255,255,255,.5);margin-bottom:20px">' + pct + '% correct</div>'
     + '<div style="height:6px;background:rgba(255,255,255,.15);border-radius:999px;margin:0 auto 20px;max-width:200px;overflow:hidden">'
     + '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:999px;transition:width .8s"></div>'
     + '</div>'
-    + '<button onclick="resetFill()" style="padding:11px 28px;background:#fff;color:#0b1626;border:none;border-radius:999px;font-size:13px;font-weight:900;cursor:pointer;margin-right:8px">🔄 Try Again</button>'
-    + '<button onclick="switchArtTab(\'article\',document.querySelectorAll(\'.art-tab\')[0])" style="padding:11px 28px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">📰 Back to Article</button>'
+    + '<button onclick="resetFill()" style="padding:11px 28px;background:#fff;color:#0b1626;border:none;border-radius:999px;font-size:13px;font-weight:900;cursor:pointer;margin-right:8px">' + khIcon('rotate-ccw', 14) + ' Try Again</button>'
+    + '<button onclick="switchArtTab(\'article\',document.querySelectorAll(\'.art-tab\')[0])" style="padding:11px 28px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">' + khIcon('newspaper', 14) + ' Back to Article</button>'
     + '</div>';
 
   // 퀴즈 완료 뱃지/XP
@@ -2480,7 +2477,7 @@ async function loadGrammarGuide() {
   } catch(e) {}
 
   // 캐시 없을 때만 AI 분석 시작
-  el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center">✨ Analyzing grammar with AI...</div>';
+  el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center">Analyzing grammar...</div>';
 
   var text = (a.title || '') + '\n\n' + (a.body || '') + '\n\n' + (a.full || '');
   var level = a.level || 'Intermediate';
@@ -2519,7 +2516,7 @@ async function loadGrammarGuide() {
     if (e.message === 'Not signed in') {
       el.dataset.source = ''; // 로그인 후 재시도 허용
       el.innerHTML = '<div style="text-align:center;padding:28px 16px">'
-        + '<div style="font-size:32px;margin-bottom:12px">🔒</div>'
+        + '<div style="margin-bottom:12px;color:#64748b">' + khIcon('lock', 32) + '</div>'
         + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:8px">Sign in to use Grammar Guide</div>'
         + '<div style="font-size:13px;color:#64748b;margin-bottom:20px">AI-powered grammar analysis is available for signed-in users.</div>'
         + '<button onclick="openAuthModal(&apos;signin&apos;)" style="padding:10px 28px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
@@ -2531,7 +2528,7 @@ async function loadGrammarGuide() {
 }
 
 function renderGrammarGuideHTML(el, guides) {
-  el.innerHTML = '<p class="grammar-intro">✨ Grammar patterns found in this article:</p>'
+  el.innerHTML = '<p class="grammar-intro">Grammar patterns found in this article:</p>'
     + guides.map(function(g){
       var gParam = encodeURIComponent(JSON.stringify({name:g.name,level:g.level,exp:g.exp,ex_ko:g.ex_ko,ex_en:g.ex_en}));
       var studyUrl = 'korehan-study-room.html?mode=grammar&g=' + gParam;
@@ -2541,7 +2538,7 @@ function renderGrammarGuideHTML(el, guides) {
         + '</div>'
         + '<div class="grammar-explanation">' + g.exp + '</div>'
         + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
-        + '<a href="' + studyUrl + '" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:8px 16px;background:linear-gradient(135deg,#2255a4,#1a3a6b);color:#fff;border-radius:999px;font-size:12px;font-weight:700;text-decoration:none;transition:opacity .15s" onmouseover="this.style.opacity=\'0.85\'" onmouseout="this.style.opacity=\'1\'">📚 Study this grammar →</a>'
+        + '<a href="' + studyUrl + '" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:8px 16px;background:linear-gradient(135deg,#2255a4,#1a3a6b);color:#fff;border-radius:999px;font-size:12px;font-weight:700;text-decoration:none;transition:opacity .15s" onmouseover="this.style.opacity=\'0.85\'" onmouseout="this.style.opacity=\'1\'">' + khIcon('book-open', 13) + ' Study this grammar →</a>'
         + '</div>';
     }).join('');
 }
@@ -2571,7 +2568,7 @@ function renderStaticGrammar(el, a) {
         + '</div>'
         + '<div class="grammar-explanation">' + g.exp + '</div>'
         + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
-        + '<a href="' + studyUrl + '" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:8px 16px;background:linear-gradient(135deg,#2255a4,#1a3a6b);color:#fff;border-radius:999px;font-size:12px;font-weight:700;text-decoration:none;transition:opacity .15s" onmouseover="this.style.opacity=\'0.85\'" onmouseout="this.style.opacity=\'1\'">📚 Study this grammar →</a>'
+        + '<a href="' + studyUrl + '" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:8px 16px;background:linear-gradient(135deg,#2255a4,#1a3a6b);color:#fff;border-radius:999px;font-size:12px;font-weight:700;text-decoration:none;transition:opacity .15s" onmouseover="this.style.opacity=\'0.85\'" onmouseout="this.style.opacity=\'1\'">' + khIcon('book-open', 13) + ' Study this grammar →</a>'
         + '</div>';
     }).join('');
 }
@@ -2667,7 +2664,7 @@ async function toggleTranslate() {
       if (z.dataset.original) z.innerHTML = z.dataset.original;
     });
     translateActive = false;
-    btn.textContent = '🌐 Translate to English';
+    btn.innerHTML = khIcon('languages', 14) + ' Translate to English';
     btn.classList.remove('active');
     return;
   }
@@ -2702,7 +2699,7 @@ async function toggleTranslate() {
 
   if (translateCache['trans_' + id]) {
     applyTranslation(zones, translateCache['trans_' + id]);
-    btn.textContent = '🇰🇷 Back to Korean';
+    btn.innerHTML = khIcon('flag', 14) + ' Back to Korean';
     btn.disabled = false;
     btn.classList.add('active');
     translateActive = true;
@@ -2752,14 +2749,14 @@ async function toggleTranslate() {
     lcSet('trans_' + id, translations);
     applyTranslation(zones, translations);
     translateActive = true;
-    btn.textContent = '🇰🇷 Back to Korean';
+    btn.innerHTML = khIcon('flag', 14) + ' Back to Korean';
     btn.classList.add('active');
 
     // ── DB에 캐시 저장 (다음 방문 시 재사용) ─────────────────
     if (id) saveToDbCache('article', id, dbCacheKey, { translations: translations });
   } catch(e) {
     console.error('translate error', e);
-    btn.textContent = '🌐 Translate';
+    btn.innerHTML = khIcon('languages', 14) + ' Translate';
     if (typeof toast === 'function') toast('Translation failed — check your connection and try again.', true);
   }
   btn.disabled = false;
@@ -2791,12 +2788,12 @@ async function toggleBookmark(articleId, btn) {
   if (isBookmarked) {
     await sb.from('bookmarks').delete().eq('user_id', supaUser.id).eq('article_id', articleId);
     btn.classList.remove('active');
-    btn.textContent = '🔖 Bookmark';
+    btn.innerHTML = khIcon('bookmark', 14) + ' Bookmark';
     toast('Bookmark removed');
   } else {
     await sb.from('bookmarks').insert({ user_id: supaUser.id, article_id: articleId });
     btn.classList.add('active');
-    btn.textContent = '🔖 Saved';
+    btn.innerHTML = khIcon('bookmark', 14) + ' Saved';
     toast('Bookmarked ✓');
   }
 }
@@ -2807,7 +2804,7 @@ async function checkBookmarkState(articleId) {
   var sb = getSupa();
   if (!sb) return;
   var { data } = await sb.from('bookmarks').select('id').eq('user_id', supaUser.id).eq('article_id', articleId).maybeSingle();
-  if (data) { btn.classList.add('active'); btn.textContent = '🔖 Saved'; }
+  if (data) { btn.classList.add('active'); btn.innerHTML = khIcon('bookmark', 14) + ' Saved'; }
 }
 
 // ── 댓글 ──────────────────────────────────────────────────────
@@ -3064,7 +3061,7 @@ function initTooltips() {
     var adminBar = document.createElement('div');
     adminBar.id = 'vocab-admin-bar';
     adminBar.style.cssText = 'position:fixed;bottom:70px;right:16px;z-index:8000;background:#0b1626;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);';
-    adminBar.textContent = '✏️ Word Edit Mode';
+    adminBar.innerHTML = khIcon('pencil', 14) + ' Word Edit Mode';
     adminBar.onclick = function() { toggleVocabEditMode(); };
     document.body.appendChild(adminBar);
   }
@@ -3078,7 +3075,7 @@ function initTooltips() {
     var word = w.dataset.word;
     var d = VOCAB[word];
     if (window._vocabEditMode && window._isAdmin) {
-      tip.innerHTML = '<span style="font-size:13px;color:#fbbf24;font-weight:700">✏️ 클릭하여 편집</span><br>'
+      tip.innerHTML = '<span style="font-size:13px;color:#fbbf24;font-weight:700;display:inline-flex;align-items:center;gap:4px">' + khIcon('pencil', 13) + ' 클릭하여 편집</span><br>'
         + '<span style="color:#7ab8f5;font-weight:700">' + word + '</span>'
         + (d ? '<br><span style="color:#94a3b8;font-size:11px">' + d.en + '</span>' : '<br><span style="color:#f87171;font-size:11px">뜻 없음</span>');
       tip.style.opacity = '1';
@@ -3176,7 +3173,7 @@ function toggleVocabEditMode() {
   window._vocabEditMode = !window._vocabEditMode;
   var bar = document.getElementById('vocab-admin-bar');
   if (bar) {
-    bar.textContent = window._vocabEditMode ? '✅ Edit Mode ON — click or drag words' : '✏️ Word Edit Mode';
+    bar.innerHTML = window._vocabEditMode ? khIcon('check', 14) + ' Edit Mode ON — click or drag words' : khIcon('pencil', 14) + ' Word Edit Mode';
     bar.style.background = window._vocabEditMode ? '#16a34a' : '#0b1626';
   }
   document.querySelectorAll('.kh-word').forEach(function(w) {
@@ -3265,7 +3262,7 @@ function openVocabEditModal(word) {
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
   modal.innerHTML =
     '<div style="background:#fff;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.3);">'
-    + '<div style="font-size:16px;font-weight:900;color:#0f172a;margin-bottom:16px;">✏️ 단어 수정: <span style="color:#2255a4">' + word + '</span></div>'
+    + '<div style="font-size:16px;font-weight:900;color:#0f172a;margin-bottom:16px;display:flex;align-items:center;gap:6px;">' + khIcon('pencil', 14) + ' 단어 수정: <span style="color:#2255a4">' + word + '</span></div>'
     + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">발음 (romanization)</label>'
     + '<input id="ve-rom" value="' + existing.rom + '" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;">'
     + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">영어 뜻</label>'
@@ -3521,11 +3518,11 @@ function renderHeader() {
     + '<button id="topbar-user-avatar" style="width:36px;height:36px;border-radius:50%;background:#2255a4;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;overflow:hidden;border:2px solid rgba(255,255,255,.2);cursor:pointer;padding:0;flex-shrink:0;transition:border-color .15s;" onclick="toggleUserMenu(event)"></button>'
     + '<div id="topbar-user-menu" style="display:none;position:absolute;top:calc(100% + 10px);right:0;min-width:220px;background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(13,27,46,.18);border:1px solid #e7eef8;z-index:9999;overflow:hidden;">'
     + '<div id="topbar-user-info" style="padding:14px 16px 12px;border-bottom:1px solid #f0f4fa;"></div>'
-    + '<a href="korehan-mypage.html" style="display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:13px;font-weight:700;color:#0f172a;text-decoration:none;transition:background .12s;" onmouseover="this.style.background=\'#f5f8ff\'" onmouseout="this.style.background=\'\'"><span style="font-size:16px;">👤</span> My Page</a>'
-    + '<a href="korehan-mypage.html#saved" style="display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:13px;font-weight:700;color:#0f172a;text-decoration:none;transition:background .12s;" onmouseover="this.style.background=\'#f5f8ff\'" onmouseout="this.style.background=\'\'"><span style="font-size:16px;">🔖</span> Saved Words</a>'
-    + '<a href="korehan-study-room.html" style="display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:13px;font-weight:700;color:#0f172a;text-decoration:none;transition:background .12s;" onmouseover="this.style.background=\'#f5f8ff\'" onmouseout="this.style.background=\'\'"><span style="font-size:16px;">✏️</span> Study Room</a>'
-    + '<a href="korehan-admin.html" id="topbar-admin-btn" style="display:none;align-items:center;gap:10px;padding:11px 16px;font-size:13px;font-weight:700;color:#c0392b;text-decoration:none;transition:background .12s;" onmouseover="this.style.background=\'#fff5f5\'" onmouseout="this.style.background=\'\'"><span style="font-size:16px;">⚙️</span> Admin</a>'
-    + '<div style="border-top:1px solid #f0f4fa;"><button onclick="signOut()" style="display:flex;align-items:center;gap:10px;width:100%;padding:11px 16px;font-size:13px;font-weight:700;color:#64748b;background:none;border:none;cursor:pointer;text-align:left;transition:background .12s;font-family:inherit;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'"><span style="font-size:16px;">🚪</span> Sign Out</button></div>'
+    + '<a href="korehan-mypage.html" style="display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:13px;font-weight:700;color:#0f172a;text-decoration:none;transition:background .12s;" onmouseover="this.style.background=\'#f5f8ff\'" onmouseout="this.style.background=\'\'">' + khIcon('user', 16) + ' My Page</a>'
+    + '<a href="korehan-mypage.html#saved" style="display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:13px;font-weight:700;color:#0f172a;text-decoration:none;transition:background .12s;" onmouseover="this.style.background=\'#f5f8ff\'" onmouseout="this.style.background=\'\'">' + khIcon('bookmark', 16) + ' Saved Words</a>'
+    + '<a href="korehan-study-room.html" style="display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:13px;font-weight:700;color:#0f172a;text-decoration:none;transition:background .12s;" onmouseover="this.style.background=\'#f5f8ff\'" onmouseout="this.style.background=\'\'">' + khIcon('pencil', 16) + ' Study Room</a>'
+    + '<a href="korehan-admin.html" id="topbar-admin-btn" style="display:none;align-items:center;gap:10px;padding:11px 16px;font-size:13px;font-weight:700;color:#c0392b;text-decoration:none;transition:background .12s;" onmouseover="this.style.background=\'#fff5f5\'" onmouseout="this.style.background=\'\'">' + khIcon('settings', 16) + ' Admin</a>'
+    + '<div style="border-top:1px solid #f0f4fa;"><button onclick="signOut()" style="display:flex;align-items:center;gap:10px;width:100%;padding:11px 16px;font-size:13px;font-weight:700;color:#64748b;background:none;border:none;cursor:pointer;text-align:left;transition:background .12s;font-family:inherit;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">' + khIcon('log-out', 16) + ' Sign Out</button></div>'
     + '</div>'
     + '</div>'
     + '<a href="#" id="topbar-signin-btn" class="kh-hbtn kh-hbtn-out" onclick="event.preventDefault();openAuthModal(\'signin\')">Sign In</a>'
@@ -3610,7 +3607,7 @@ function renderFooter() {
     + getSections().map(function(s){
         return '<a href="korehan-section.html?s=' + encodeURIComponent(s.key) + '">' + s.label + '</a>';
       }).join('')
-    + '<a href="korehan-learn.html">✏️ Learn Korean</a>'
+    + '<a href="korehan-learn.html">' + khIcon('book-open', 14) + ' Learn Korean</a>'
     + '<a href="korehan-all.html">All News</a>'
     + '</div>'
     + '</div>'
@@ -3640,12 +3637,12 @@ function renderSharedSidebar() {
 
   return '<div class="sidebar">'
     + '<div class="sidebar-box">'
-    + '<div class="box-title">🔥 Most Read</div>'
+    + '<div class="box-title">' + khIcon('flame', 16) + ' Most Read</div>'
     + trendingHTML
     + '</div>'
 
     + '<div class="sidebar-box">'
-    + '<div class="box-title">🌤 Korea Weather</div>'
+    + '<div class="box-title">' + khIcon('cloud-sun', 14) + ' Korea Weather</div>'
     + '<div style="font-size:13px;color:var(--gray);line-height:1.9">'
     + '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>Seoul 서울</span><span>⛅ -3° / 6°C</span></div>'
     + '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>Busan 부산</span><span>🌤 4° / 12°C</span></div>'
@@ -3654,7 +3651,7 @@ function renderSharedSidebar() {
     + '</div></div>'
 
     + '<div class="sidebar-box">'
-    + '<div class="box-title">📚 Word Bank</div>'
+    + '<div class="box-title">' + khIcon('book-open', 16) + ' Word Bank</div>'
     + wbWords.map(function(w){
         return '<div style="padding:7px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:baseline">'
           + '<span><span class="kh-word" data-word="' + w.ko + '" style="font-size:17px;font-weight:700;color:var(--accent)">' + w.ko + '</span>'
@@ -3666,7 +3663,7 @@ function renderSharedSidebar() {
 
     + '<div class="sidebar-box">'
     + '<a href="korehan-learn.html" style="text-decoration:none;display:block;background:linear-gradient(135deg,#0b1626,#1a3a6b);border-radius:8px;padding:16px;color:#fff;text-align:center">'
-    + '<div style="font-size:20px;margin-bottom:6px">✏️</div>'
+    + '<div style="margin-bottom:6px;color:#64748b">' + khIcon('pencil', 20) + '</div>'
     + '<div style="font-weight:700;font-size:14px;margin-bottom:4px">Learn Korean</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,0.6)">Flashcards · Quiz · Sentences</div>'
     + '</a></div>'
@@ -3693,16 +3690,16 @@ function startClock() {
 var _sectionsCache = null;
 
 var DEFAULT_SECTIONS = [
-  { key:'정치',   label:'Politics',  icon:'🏛️', sort_order:1 },
-  { key:'경제',   label:'Economy',   icon:'📈', sort_order:2 },
-  { key:'사회',   label:'Society',   icon:'🏙️', sort_order:3 },
-  { key:'국제',   label:'World',     icon:'🌍', sort_order:4 },
-  { key:'문화',   label:'Culture',   icon:'🎭', sort_order:5 },
-  { key:'K-pop',  label:'K-pop',     icon:'🎤', sort_order:6 },
-  { key:'스포츠', label:'Sports',    icon:'⚽', sort_order:7 },
-  { key:'IT과학', label:'Tech',      icon:'💻', sort_order:8 },
-  { key:'Korea',  label:'🇰🇷 Korea', icon:'🇰🇷', sort_order:9 },
-  { key:'오피니언',label:'Opinion',  icon:'✍️', sort_order:10 },
+  { key:'정치',   label:'Politics',  icon:'landmark', sort_order:1 },
+  { key:'경제',   label:'Economy',   icon:'trending-up', sort_order:2 },
+  { key:'사회',   label:'Society',   icon:'home', sort_order:3 },
+  { key:'국제',   label:'World',     icon:'globe', sort_order:4 },
+  { key:'문화',   label:'Culture',   icon:'palette', sort_order:5 },
+  { key:'K-pop',  label:'K-pop',     icon:'mic', sort_order:6 },
+  { key:'스포츠', label:'Sports',    icon:'circle-dot', sort_order:7 },
+  { key:'IT과학', label:'Tech',      icon:'monitor', sort_order:8 },
+  { key:'Korea',  label:'Korea',     icon:'flag', sort_order:9 },
+  { key:'오피니언',label:'Opinion',  icon:'pen-line', sort_order:10 },
 ];
 
 async function loadSections() {
@@ -3962,36 +3959,36 @@ function getQuizStreakDays() { return lsGet('kh_quiz_streak_days', 0); }
 var BADGE_DEFS = [
 
   // 🔥 STREAK
-  { id:'streak_3',   cat:'streak',    tier:'bronze',   icon:'🔥', name:'첫 불꽃',       desc:'3일 연속 학습',
+  { id:'streak_3',   cat:'streak',    tier:'bronze',   icon:'flame', name:'첫 불꽃',       desc:'3일 연속 학습',
     check: function(s){ return getCurrentStreak() >= 3; } },
-  { id:'streak_7',   cat:'streak',    tier:'silver',   icon:'🔥', name:'일주일 전사',   desc:'7일 연속 학습',
+  { id:'streak_7',   cat:'streak',    tier:'silver',   icon:'flame', name:'일주일 전사',   desc:'7일 연속 학습',
     check: function(s){ return getCurrentStreak() >= 7; } },
-  { id:'streak_30',  cat:'streak',    tier:'gold',     icon:'🏅', name:'30일의 힘',     desc:'30일 연속 학습',
+  { id:'streak_30',  cat:'streak',    tier:'gold',     icon:'award', name:'30일의 힘',     desc:'30일 연속 학습',
     check: function(s){ return getCurrentStreak() >= 30; } },
-  { id:'streak_50',  cat:'streak',    tier:'gold',     icon:'🌊', name:'50일 달성',     desc:'50일 연속 학습',
+  { id:'streak_50',  cat:'streak',    tier:'gold',     icon:'activity', name:'50일 달성',     desc:'50일 연속 학습',
     check: function(s){ return getCurrentStreak() >= 50; } },
-  { id:'streak_100', cat:'streak',    tier:'diamond',  icon:'💎', name:'100일 챔피언',  desc:'100일 연속 학습',
+  { id:'streak_100', cat:'streak',    tier:'diamond',  icon:'gem', name:'100일 챔피언',  desc:'100일 연속 학습',
     check: function(s){ return getCurrentStreak() >= 100; } },
-  { id:'streak_365', cat:'streak',    tier:'legendary',icon:'👑', name:'365 레전드',    desc:'1년 연속 학습',
+  { id:'streak_365', cat:'streak',    tier:'legendary',icon:'crown', name:'365 레전드',    desc:'1년 연속 학습',
     check: function(s){ return getCurrentStreak() >= 365; } },
 
   // 📰 READING
-  { id:'read_1',     cat:'reading',   tier:'bronze',   icon:'📖', name:'첫 기사',       desc:'기사 첫 번째 읽기',
+  { id:'read_1',     cat:'reading',   tier:'bronze',   icon:'book-open', name:'첫 기사',       desc:'기사 첫 번째 읽기',
     check: function(){ return getTotalArticlesRead() >= 1; } },
-  { id:'read_10',    cat:'reading',   tier:'bronze',   icon:'📰', name:'뉴스 입문',     desc:'기사 10개 읽기',
+  { id:'read_10',    cat:'reading',   tier:'bronze',   icon:'newspaper', name:'뉴스 입문',     desc:'기사 10개 읽기',
     check: function(){ return getTotalArticlesRead() >= 10; } },
-  { id:'read_50',    cat:'reading',   tier:'silver',   icon:'📚', name:'뉴스 탐험가',   desc:'기사 50개 읽기',
+  { id:'read_50',    cat:'reading',   tier:'silver',   icon:'book-open', name:'뉴스 탐험가',   desc:'기사 50개 읽기',
     check: function(){ return getTotalArticlesRead() >= 50; } },
-  { id:'read_100',   cat:'reading',   tier:'gold',     icon:'🗞️', name:'기자 지망생',   desc:'기사 100개 읽기',
+  { id:'read_100',   cat:'reading',   tier:'gold',     icon:'newspaper', name:'기자 지망생',   desc:'기사 100개 읽기',
     check: function(){ return getTotalArticlesRead() >= 100; } },
-  { id:'read_500',   cat:'reading',   tier:'legendary',icon:'📜', name:'한국어 박사',   desc:'기사 500개 읽기',
+  { id:'read_500',   cat:'reading',   tier:'legendary',icon:'scroll', name:'한국어 박사',   desc:'기사 500개 읽기',
     check: function(){ return getTotalArticlesRead() >= 500; } },
-  { id:'read_daily10',cat:'reading',  tier:'gold',     icon:'⚡', name:'하루 10개',     desc:'하루에 기사 10개',
+  { id:'read_daily10',cat:'reading',  tier:'gold',     icon:'zap', name:'하루 10개',     desc:'하루에 기사 10개',
     check: function(){
       var log = lsGet('kh_read_log', {});
       return Object.values(log).some(function(arr){ return arr.length >= 10; });
     } },
-  { id:'read_allsec',cat:'reading',   tier:'diamond',  icon:'🔭', name:'올라운더',      desc:'모든 섹션 읽기',
+  { id:'read_allsec',cat:'reading',   tier:'diamond',  icon:'search', name:'올라운더',      desc:'모든 섹션 읽기',
     check: function(){
       var sc = getSectionReadCounts();
       var secs = ['사회','국제','문화','스포츠','Korea','IT-과학','오피니언','정치','경제'];
@@ -3999,59 +3996,59 @@ var BADGE_DEFS = [
     } },
 
   // 🔖 VOCAB
-  { id:'word_10',    cat:'vocab',     tier:'bronze',   icon:'🌱', name:'씨앗 단어장',   desc:'단어 10개 저장',
+  { id:'word_10',    cat:'vocab',     tier:'bronze',   icon:'sprout', name:'씨앗 단어장',   desc:'단어 10개 저장',
     check: function(){ return lsGet(K_SAVED,[]).length >= 10; } },
-  { id:'word_50',    cat:'vocab',     tier:'silver',   icon:'🌿', name:'단어 새싹',     desc:'단어 50개 저장',
+  { id:'word_50',    cat:'vocab',     tier:'silver',   icon:'leaf', name:'단어 새싹',     desc:'단어 50개 저장',
     check: function(){ return lsGet(K_SAVED,[]).length >= 50; } },
-  { id:'word_100',   cat:'vocab',     tier:'silver',   icon:'🍃', name:'단어 수집가',   desc:'단어 100개 저장',
+  { id:'word_100',   cat:'vocab',     tier:'silver',   icon:'leaf', name:'단어 수집가',   desc:'단어 100개 저장',
     check: function(){ return lsGet(K_SAVED,[]).length >= 100; } },
-  { id:'word_300',   cat:'vocab',     tier:'gold',     icon:'🌳', name:'어휘 나무',     desc:'단어 300개 저장',
+  { id:'word_300',   cat:'vocab',     tier:'gold',     icon:'tree-pine', name:'어휘 나무',     desc:'단어 300개 저장',
     check: function(){ return lsGet(K_SAVED,[]).length >= 300; } },
-  { id:'word_1000',  cat:'vocab',     tier:'diamond',  icon:'💠', name:'TOPIK 단어장',  desc:'단어 1000개 저장',
+  { id:'word_1000',  cat:'vocab',     tier:'diamond',  icon:'gem', name:'TOPIK 단어장',  desc:'단어 1000개 저장',
     check: function(){ return lsGet(K_SAVED,[]).length >= 1000; } },
-  { id:'word_2000',  cat:'vocab',     tier:'legendary',icon:'🧬', name:'어휘 유전자',   desc:'단어 2000개 저장',
+  { id:'word_2000',  cat:'vocab',     tier:'legendary',icon:'dna', name:'어휘 유전자',   desc:'단어 2000개 저장',
     check: function(){ return lsGet(K_SAVED,[]).length >= 2000; } },
 
   // 📝 QUIZ
-  { id:'quiz_first', cat:'quiz',      tier:'bronze',   icon:'🎮', name:'첫 퀴즈',       desc:'퀴즈 첫 도전',
+  { id:'quiz_first', cat:'quiz',      tier:'bronze',   icon:'gamepad-2', name:'첫 퀴즈',       desc:'퀴즈 첫 도전',
     check: function(){ return lsGet('kh_quiz_done_count',0) >= 1; } },
-  { id:'quiz_perfect1',cat:'quiz',    tier:'silver',   icon:'🎯', name:'데일리 퍼펙트', desc:'데일리 테스트 100점',
+  { id:'quiz_perfect1',cat:'quiz',    tier:'silver',   icon:'target', name:'데일리 퍼펙트', desc:'데일리 테스트 100점',
     check: function(){ return getQuizPerfectCount() >= 1; } },
-  { id:'quiz_perfect3',cat:'quiz',    tier:'gold',     icon:'💯', name:'3연속 만점',    desc:'데일리 테스트 100점 3연속',
+  { id:'quiz_perfect3',cat:'quiz',    tier:'gold',     icon:'check-circle-2', name:'3연속 만점',    desc:'데일리 테스트 100점 3연속',
     check: function(){ return lsGet('kh_quiz_perfect_streak',0) >= 3; } },
-  { id:'quiz_14days',cat:'quiz',      tier:'diamond',  icon:'📅', name:'데일리 개근',   desc:'14일 연속 데일리 테스트',
+  { id:'quiz_14days',cat:'quiz',      tier:'diamond',  icon:'calendar', name:'데일리 개근',   desc:'14일 연속 데일리 테스트',
     check: function(){ return getQuizStreakDays() >= 14; } },
 
   // 🌍 SECTIONS (각 섹션 20개)
-  { id:'sec_politics',cat:'sections', tier:'gold', icon:'🏛️', name:'정치 마스터', desc:'정치 기사 20개',
+  { id:'sec_politics',cat:'sections', tier:'gold', icon:'landmark', name:'정치 마스터', desc:'정치 기사 20개',
     check: function(){ return (getSectionReadCounts()['정치']||0) >= 20; } },
-  { id:'sec_economy', cat:'sections', tier:'gold', icon:'💹', name:'경제 마스터', desc:'경제 기사 20개',
+  { id:'sec_economy', cat:'sections', tier:'gold', icon:'trending-up', name:'경제 마스터', desc:'경제 기사 20개',
     check: function(){ return (getSectionReadCounts()['경제']||0) >= 20; } },
-  { id:'sec_society', cat:'sections', tier:'gold', icon:'🏘️', name:'사회 마스터', desc:'사회 기사 20개',
+  { id:'sec_society', cat:'sections', tier:'gold', icon:'home', name:'사회 마스터', desc:'사회 기사 20개',
     check: function(){ return (getSectionReadCounts()['사회']||0) >= 20; } },
-  { id:'sec_world',   cat:'sections', tier:'gold', icon:'🌐', name:'국제 마스터', desc:'국제 기사 20개',
+  { id:'sec_world',   cat:'sections', tier:'gold', icon:'globe', name:'국제 마스터', desc:'국제 기사 20개',
     check: function(){ return (getSectionReadCounts()['국제']||0) >= 20; } },
-  { id:'sec_culture', cat:'sections', tier:'gold', icon:'🎨', name:'문화 마스터', desc:'문화 기사 20개',
+  { id:'sec_culture', cat:'sections', tier:'gold', icon:'palette', name:'문화 마스터', desc:'문화 기사 20개',
     check: function(){ return (getSectionReadCounts()['문화']||0) >= 20; } },
-  { id:'sec_sports',  cat:'sections', tier:'gold', icon:'⚽', name:'스포츠 마스터',desc:'스포츠 기사 20개',
+  { id:'sec_sports',  cat:'sections', tier:'gold', icon:'circle-dot', name:'스포츠 마스터',desc:'스포츠 기사 20개',
     check: function(){ return (getSectionReadCounts()['스포츠']||0) >= 20; } },
-  { id:'sec_korea',   cat:'sections', tier:'gold', icon:'🇰🇷', name:'Korea 마스터',desc:'Korea 기사 20개',
+  { id:'sec_korea',   cat:'sections', tier:'gold', icon:'flag', name:'Korea 마스터',desc:'Korea 기사 20개',
     check: function(){ return (getSectionReadCounts()['Korea']||0) >= 20; } },
-  { id:'sec_it',      cat:'sections', tier:'gold', icon:'💻', name:'IT 마스터',   desc:'IT·과학 기사 20개',
+  { id:'sec_it',      cat:'sections', tier:'gold', icon:'monitor', name:'IT 마스터',   desc:'IT·과학 기사 20개',
     check: function(){ return (getSectionReadCounts()['IT-과학']||0) >= 20; } },
-  { id:'sec_opinion', cat:'sections', tier:'gold', icon:'✍️', name:'오피니언 마스터',desc:'오피니언 기사 10개',
+  { id:'sec_opinion', cat:'sections', tier:'gold', icon:'pen-line', name:'오피니언 마스터',desc:'오피니언 기사 10개',
     check: function(){ return (getSectionReadCounts()['오피니언']||0) >= 10; } },
 
   // 🔢 MILESTONE / XP
-  { id:'xp_500',     cat:'milestone', tier:'bronze',   icon:'⭐', name:'XP 500',     desc:'누적 XP 500',
+  { id:'xp_500',     cat:'milestone', tier:'bronze',   icon:'star', name:'XP 500',     desc:'누적 XP 500',
     check: function(){ return getXP() >= 500; } },
-  { id:'xp_2000',    cat:'milestone', tier:'silver',   icon:'💫', name:'XP 2,000',   desc:'누적 XP 2,000',
+  { id:'xp_2000',    cat:'milestone', tier:'silver',   icon:'sparkles', name:'XP 2,000',   desc:'누적 XP 2,000',
     check: function(){ return getXP() >= 2000; } },
-  { id:'xp_5000',    cat:'milestone', tier:'gold',     icon:'🌠', name:'XP 5,000',   desc:'누적 XP 5,000',
+  { id:'xp_5000',    cat:'milestone', tier:'gold',     icon:'star', name:'XP 5,000',   desc:'누적 XP 5,000',
     check: function(){ return getXP() >= 5000; } },
-  { id:'xp_20000',   cat:'milestone', tier:'diamond',  icon:'🌌', name:'XP 20,000',  desc:'누적 XP 20,000',
+  { id:'xp_20000',   cat:'milestone', tier:'diamond',  icon:'telescope', name:'XP 20,000',  desc:'누적 XP 20,000',
     check: function(){ return getXP() >= 20000; } },
-  { id:'days_90',    cat:'milestone', tier:'gold',     icon:'🎂', name:'3개월 완주',  desc:'가입 후 90일 학습',
+  { id:'days_90',    cat:'milestone', tier:'gold',     icon:'cake', name:'3개월 완주',  desc:'가입 후 90일 학습',
     check: function(){
       var log = lsGet('kh_study_log',{});
       var active = Object.keys(log).filter(function(k){ var d=log[k]; return (d.articles||0)+(d.words||0)+(d.quiz||0)>0; });
@@ -4059,39 +4056,39 @@ var BADGE_DEFS = [
     } },
 
   // ⏰ TIME
-  { id:'time_midnight',cat:'time',    tier:'silver',   icon:'🌙', name:'야행성',       desc:'자정 이후 학습',
+  { id:'time_midnight',cat:'time',    tier:'silver',   icon:'moon', name:'야행성',       desc:'자정 이후 학습',
     check: function(){ return lsGet('kh_badge_midnight', false); } },
-  { id:'time_dawn',    cat:'time',    tier:'gold',     icon:'🌅', name:'새벽 공부왕',  desc:'오전 6시 전 학습',
+  { id:'time_dawn',    cat:'time',    tier:'gold',     icon:'sunrise', name:'새벽 공부왕',  desc:'오전 6시 전 학습',
     check: function(){ return lsGet('kh_badge_dawn', false); } },
-  { id:'time_morning7',cat:'time',    tier:'bronze',   icon:'☀️', name:'모닝 루틴',    desc:'오전 7시 전 학습 7회',
+  { id:'time_morning7',cat:'time',    tier:'bronze',   icon:'sun', name:'모닝 루틴',    desc:'오전 7시 전 학습 7회',
     check: function(){ return lsGet('kh_morning_count',0) >= 7; } },
-  { id:'time_monday',  cat:'time',    tier:'bronze',   icon:'📅', name:'월요병 극복',  desc:'월요일 학습 4주 연속',
+  { id:'time_monday',  cat:'time',    tier:'bronze',   icon:'calendar', name:'월요병 극복',  desc:'월요일 학습 4주 연속',
     check: function(){ return lsGet('kh_monday_streak',0) >= 4; } },
-  { id:'time_friday',  cat:'time',    tier:'silver',   icon:'🌃', name:'불금 학습자',  desc:'금요일 밤 학습 4회',
+  { id:'time_friday',  cat:'time',    tier:'silver',   icon:'moon', name:'불금 학습자',  desc:'금요일 밤 학습 4회',
     check: function(){ return lsGet('kh_friday_night_count',0) >= 4; } },
-  { id:'time_weekend', cat:'time',    tier:'gold',     icon:'🎒', name:'주말 학습왕',  desc:'주말 학습 8주 연속',
+  { id:'time_weekend', cat:'time',    tier:'gold',     icon:'backpack', name:'주말 학습왕',  desc:'주말 학습 8주 연속',
     check: function(){ return lsGet('kh_weekend_streak',0) >= 8; } },
 
   // 🎌 CULTURAL
-  { id:'cult_march1',  cat:'cultural',tier:'gold',     icon:'🌸', name:'삼일절',       desc:'3월 1일 학습',
+  { id:'cult_march1',  cat:'cultural',tier:'gold',     icon:'flower-2', name:'삼일절',       desc:'3월 1일 학습',
     check: function(){ return lsGet('kh_cult_march1', false); } },
-  { id:'cult_hangul',  cat:'cultural',tier:'legendary',icon:'🇰🇷',name:'한글날 수호자',desc:'10월 9일 학습',
+  { id:'cult_hangul',  cat:'cultural',tier:'legendary',icon:'flag',name:'한글날 수호자',desc:'10월 9일 학습',
     check: function(){ return lsGet('kh_cult_hangul', false); } },
-  { id:'cult_newyear', cat:'cultural',tier:'gold',     icon:'🎆', name:'새해 다짐',    desc:'1월 1일 학습',
+  { id:'cult_newyear', cat:'cultural',tier:'gold',     icon:'sparkles', name:'새해 다짐',    desc:'1월 1일 학습',
     check: function(){ return lsGet('kh_cult_newyear', false); } },
-  { id:'cult_chuseok', cat:'cultural',tier:'diamond',  icon:'🎑', name:'추석 학습',    desc:'추석 당일 학습',
+  { id:'cult_chuseok', cat:'cultural',tier:'diamond',  icon:'moon', name:'추석 학습',    desc:'추석 당일 학습',
     check: function(){ return lsGet('kh_cult_chuseok', false); } },
-  { id:'cult_seollal', cat:'cultural',tier:'diamond',  icon:'🌕', name:'설날 공부',    desc:'설날 당일 학습',
+  { id:'cult_seollal', cat:'cultural',tier:'diamond',  icon:'moon', name:'설날 공부',    desc:'설날 당일 학습',
     check: function(){ return lsGet('kh_cult_seollal', false); } },
-  { id:'cult_gwangbok',cat:'cultural',tier:'silver',   icon:'🌊', name:'광복절',       desc:'8월 15일 학습',
+  { id:'cult_gwangbok',cat:'cultural',tier:'silver',   icon:'flag', name:'광복절',       desc:'8월 15일 학습',
     check: function(){ return lsGet('kh_cult_gwangbok', false); } },
-  { id:'cult_pepero',  cat:'cultural',tier:'gold',     icon:'💘', name:'빼빼로 데이',  desc:'11월 11일 학습',
+  { id:'cult_pepero',  cat:'cultural',tier:'gold',     icon:'heart', name:'빼빼로 데이',  desc:'11월 11일 학습',
     check: function(){ return lsGet('kh_cult_pepero', false); } },
-  { id:'cult_valentine',cat:'cultural',tier:'silver',  icon:'❤️', name:'발렌타인',     desc:'2월 14일 학습',
+  { id:'cult_valentine',cat:'cultural',tier:'silver',  icon:'heart', name:'발렌타인',     desc:'2월 14일 학습',
     check: function(){ return lsGet('kh_cult_valentine', false); } },
-  { id:'cult_christmas',cat:'cultural',tier:'gold',    icon:'🎄', name:'크리스마스',   desc:'12월 25일 학습',
+  { id:'cult_christmas',cat:'cultural',tier:'gold',    icon:'gift', name:'크리스마스',   desc:'12월 25일 학습',
     check: function(){ return lsGet('kh_cult_christmas', false); } },
-  { id:'cult_collector',cat:'cultural',tier:'legendary',icon:'🗓️',name:'공휴일 컬렉터',desc:'기념일 뱃지 7개',
+  { id:'cult_collector',cat:'cultural',tier:'legendary',icon:'calendar',name:'공휴일 컬렉터',desc:'기념일 뱃지 7개',
     check: function(){
       var earned = getEarnedBadges();
       var cultIds = ['cult_march1','cult_hangul','cult_newyear','cult_chuseok','cult_seollal','cult_gwangbok','cult_pepero','cult_valentine','cult_christmas'];
@@ -4198,9 +4195,9 @@ function processNextBadgeToast() {
   el.innerHTML =
     '<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1a3a6b,#2255a4);'
     + 'display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;'
-    + 'box-shadow:0 0 0 2px '+color+'">' + b.icon + '</div>'
+    + 'box-shadow:0 0 0 2px '+color+'">' + khIcon(b.icon, 24) + '</div>'
     + '<div>'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:'+color+';margin-bottom:3px">🏅 Badge Unlocked!</div>'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:'+color+';margin-bottom:3px;display:flex;align-items:center;gap:4px">' + khIcon('award', 10) + ' Badge Unlocked!</div>'
     + '<div style="font-size:15px;font-weight:900;color:#fff;margin-bottom:2px">' + b.name + '</div>'
     + '<div style="font-size:11px;color:rgba(255,255,255,.5)">' + b.desc + '</div>'
     + '</div>';
@@ -4246,14 +4243,14 @@ function renderBadgePage(container) {
   var tierLabel = { bronze:'Bronze', silver:'Silver', gold:'Gold', diamond:'Diamond', legendary:'Legend' };
 
   var cats = [
-    { key:'streak',    label:'🔥 Streak' },
-    { key:'reading',   label:'📰 Reading' },
-    { key:'vocab',     label:'🔖 Vocabulary' },
-    { key:'quiz',      label:'📝 Quiz & Test' },
-    { key:'sections',  label:'🌍 Sections' },
-    { key:'milestone', label:'🔢 Milestone' },
-    { key:'time',      label:'⏰ Time' },
-    { key:'cultural',  label:'🎌 Cultural' },
+    { key:'streak',    label: khIcon('flame', 14) + ' Streak' },
+    { key:'reading',   label: khIcon('newspaper', 14) + ' Reading' },
+    { key:'vocab',     label: khIcon('bookmark', 14) + ' Vocabulary' },
+    { key:'quiz',      label: khIcon('file-text', 14) + ' Quiz & Test' },
+    { key:'sections',  label: khIcon('globe', 14) + ' Sections' },
+    { key:'milestone', label: khIcon('trending-up', 14) + ' Milestone' },
+    { key:'time',      label: khIcon('clock', 14) + ' Time' },
+    { key:'cultural',  label: khIcon('flag', 14) + ' Cultural' },
   ];
 
   var html =
@@ -4295,7 +4292,7 @@ function renderBadgePage(container) {
         // icon
         + '<div style="width:54px;height:54px;border-radius:50%;margin:0 auto 9px;display:flex;align-items:center;justify-content:center;font-size:26px;'
         + 'background:' + tbg + ';box-shadow:0 0 0 ' + (isEarned ? '3' : '2') + 'px ' + tc + (isEarned ? ',0 4px 14px rgba(0,0,0,.1)' : '') + '">'
-        + b.icon + '</div>'
+        + khIcon(b.icon, 26) + '</div>'
         + '<div style="font-size:11px;font-weight:800;color:#0b1626;margin-bottom:3px;line-height:1.3">' + b.name + '</div>'
         + '<div style="font-size:9px;color:#94a3b8;line-height:1.4">' + b.desc + '</div>';
 
@@ -4473,7 +4470,7 @@ function ttsSpeak(text, btnEl) {
 function _ttsReset() {
   if (_ttsCurrent) {
     _ttsCurrent.classList.remove('tts-playing');
-    _ttsCurrent.textContent = '🔊';
+    _ttsCurrent.innerHTML = khIcon('volume-2', 14);
     _ttsCurrent = null;
   }
 }
@@ -4481,7 +4478,7 @@ function _ttsReset() {
 // TTS 버튼 HTML 생성 헬퍼
 function ttsBtn(text) {
   var safe = text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-  return '<button class="tts-btn" title="발음 듣기" onclick="event.stopPropagation();ttsSpeak(\'' + safe + '\',this)">🔊</button>';
+  return '<button class="tts-btn" title="발음 듣기" onclick="event.stopPropagation();ttsSpeak(\'' + safe + '\',this)">' + khIcon('volume-2', 14) + '</button>';
 }
 
 // ══ USER STATS + DAILY MISSION SYNC (Supabase) ════════════════════════════════
@@ -4664,10 +4661,10 @@ function renderDailyMission() {
 
   var d = dmGet();
   var missions = [
-    { id:'articles', icon:'📰', label:'Read Articles', cur:d.articles||0, goal:3,  color:'#3d7fd4' },
-    { id:'words',    icon:'🔖', label:'Save Words',    cur:d.words||0,    goal:20, color:'#8b5cf6' },
-    { id:'quizzes',  icon:'📝', label:'Take Quiz',     cur:d.quizzes||0,  goal:3,  color:'#f59e0b' },
-    { id:'fill',     icon:'✏️', label:'Fill-in-Blank', cur:d.fill||0,     goal:1,  color:'#10b981' },
+    { id:'articles', icon:'newspaper', label:'Read Articles', cur:d.articles||0, goal:3,  color:'#3d7fd4' },
+    { id:'words',    icon:'bookmark',  label:'Save Words',    cur:d.words||0,    goal:20, color:'#8b5cf6' },
+    { id:'quizzes',  icon:'file-text', label:'Take Quiz',     cur:d.quizzes||0,  goal:3,  color:'#f59e0b' },
+    { id:'fill',     icon:'pencil',    label:'Fill-in-Blank', cur:d.fill||0,     goal:1,  color:'#10b981' },
   ];
 
   var totalXP = 0;
@@ -4687,7 +4684,7 @@ function renderDailyMission() {
     var done = cur >= m.goal;
     return '<div class="dm-item">'
       + '<div class="dm-item-hd">'
-      + '<div class="dm-item-left"><span class="dm-item-icon">' + m.icon + '</span>'
+      + '<div class="dm-item-left"><span class="dm-item-icon">' + khIcon(m.icon, 16) + '</span>'
       + '<span class="dm-item-label">' + m.label + '</span></div>'
       + '<span class="dm-item-count' + (done?' dm-done':'') + '">' + (done?'✓':cur+'/'+m.goal) + '</span>'
       + '</div>'
@@ -4696,10 +4693,10 @@ function renderDailyMission() {
   }).join('');
 
   widget.innerHTML = _dmCollapsed
-    ? '<button class="dm-pill" onclick="dmToggle()">🎯 Daily Mission</button>'
+    ? '<button class="dm-pill" onclick="dmToggle()">' + khIcon('target', 15) + ' Daily Mission</button>'
     : '<div class="dm-inner">'
       + '<div class="dm-hd">'
-      + '<span style="font-size:16px">🎯</span>'
+      + khIcon('target', 16)
       + '<span class="dm-title">Daily Mission</span>'
       + '<button class="dm-close" onclick="dmToggle()">✕</button>'
       + '</div>'
@@ -4710,7 +4707,7 @@ function renderDailyMission() {
       + '<span class="dm-xp-label">Today\'s XP</span>'
       + '<span class="dm-xp-val">+' + totalXP + ' XP</span>'
       + '</div>'
-      + (allDone ? '<div class="dm-complete">🎉 All done!</div>' : '')
+      + (allDone ? '<div class="dm-complete">' + khIcon('check-circle', 15) + ' All done!</div>' : '')
       + '</div>';
 }
 
@@ -5008,7 +5005,7 @@ async function renderHomeLearningPreview() {
     // streak 배지 + stats 한 줄
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">'
     + '<a href="korehan-learning-overview.html" style="font-size:12px;font-weight:800;color:var(--dark);text-decoration:none;">Today\'s Progress <span style="color:var(--bright);font-size:11px;">→</span></a>'
-    + '<div style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:#fff3e0;color:#c85000;">🔥 ' + streak + ' day streak</div>'
+    + '<div style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:#fff3e0;color:#c85000;display:flex;align-items:center;gap:4px;">' + khIcon('flame', 11, 'color:#c85000') + ' ' + streak + ' day streak</div>'
     + '</div>'
     + '<div style="display:flex;gap:6px;margin-bottom:12px;">'
     + '<div style="flex:1;background:#f7faff;border-radius:8px;padding:8px 10px;text-align:center;">'
@@ -5027,12 +5024,12 @@ async function renderHomeLearningPreview() {
     // weak grammar
     + '<div style="background:#fff8e1;border-radius:8px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">'
     + '<div style="min-width:0;">'
-    +   '<div style="font-size:10px;font-weight:800;color:' + (hasWeak?'#c85000':'#15803d') + ';margin-bottom:2px;">' + (hasWeak?'⚠️ Weak Grammar':'✅ Grammar') + '</div>'
+    +   '<div style="font-size:10px;font-weight:800;color:' + (hasWeak?'#c85000':'#15803d') + ';margin-bottom:2px;display:flex;align-items:center;gap:3px;">' + (hasWeak ? khIcon('alert-triangle', 10) + ' Weak Grammar' : khIcon('check-circle', 10) + ' Grammar') + '</div>'
     +   '<div style="font-size:13px;font-weight:800;color:#0b1626;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + weakGrammar + '</div>'
     + '</div>'
     + '<a href="korehan-study-room.html?focus=' + weakQ + '" style="flex-shrink:0;font-size:11px;font-weight:800;padding:5px 11px;background:var(--bright);color:#fff;border-radius:5px;text-decoration:none;white-space:nowrap;">연습 →</a>'
     + '</div>'
-    + '<a href="korehan-learning-overview.html" style="display:block;margin-top:10px;text-align:center;font-size:12px;font-weight:800;color:var(--bright);text-decoration:none;padding:8px;background:#f0f4ff;border-radius:7px;">📊 Learning Hub에서 전체 진도 보기 →</a>';
+    + '<a href="korehan-learning-overview.html" style="display:block;margin-top:10px;text-align:center;font-size:12px;font-weight:800;color:var(--bright);text-decoration:none;padding:8px;background:#f0f4ff;border-radius:7px;display:flex;align-items:center;justify-content:center;gap:4px;">' + khIcon('bar-chart-2', 12) + ' Learning Hub에서 전체 진도 보기 →</a>';
 }
 
 window.renderHomeLearningPreview = renderHomeLearningPreview;
@@ -5056,14 +5053,14 @@ function injectMobileBottomNav() {
   var nav = document.createElement('nav');
   nav.className = 'mobile-bottom-nav';
   var items = [
-    ['index.html','🏠','Home','index'],
-    ['korehan-all.html','📰','News','korehan-all'],
-    ['korehan-study-room.html','📘','Learn','korehan-study-room'],
-    ['korehan-conversations.html','💬','CONVO','korehan-conversations'],
-    ['korehan-learning-overview.html','🎯','Missions','korehan-learning-overview']
+    ['index.html','home','Home','index'],
+    ['korehan-all.html','newspaper','News','korehan-all'],
+    ['korehan-study-room.html','book-open','Learn','korehan-study-room'],
+    ['korehan-conversations.html','message-circle','CONVO','korehan-conversations'],
+    ['korehan-learning-overview.html','target','Missions','korehan-learning-overview']
   ];
   nav.innerHTML = items.map(function(it){
-    return '<a href="'+it[0]+'" class="'+(page===it[3]?'on':'')+'"><span class="ico">'+it[1]+'</span><span>'+it[2]+'</span></a>';
+    return '<a href="'+it[0]+'" class="'+(page===it[3]?'on':'')+'"><span class="ico">'+khIcon(it[1],22)+'</span><span>'+it[2]+'</span></a>';
   }).join('');
   document.body.appendChild(nav);
 }
@@ -5146,8 +5143,8 @@ function enhanceArticleMobile() {
       + '<h3 style="font-size:24px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">Read first. Then review grammar and quiz.</h3>'
       + '<p class="mobile-quick-sub">Keep the reading flow simple on mobile. Open translation only when you need it, save a few words, then jump to review.</p>'
       + '<div class="mobile-action-row">'
-      + '<a class="mobile-primary-btn" href="javascript:void(0)" onclick="toggleTranslate()">🌐 Toggle translation</a>'
-      + '<a class="mobile-secondary-btn" href="korehan-study-room.html">✏️ Writing practice</a>'
+      + '<a class="mobile-primary-btn" href="javascript:void(0)" onclick="toggleTranslate()">' + khIcon('languages', 14) + ' Toggle translation</a>'
+      + '<a class="mobile-secondary-btn" href="korehan-study-room.html">' + khIcon('pencil', 14) + ' Writing practice</a>'
       + '</div>';
     article.insertAdjacentElement('afterbegin', card);
   }
@@ -5169,8 +5166,8 @@ function enhanceConversationsMobile() {
         + '<h3 style="font-size:22px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">Read → Translate → Practice → Roleplay</h3>'
         + '<p class="mobile-quick-sub">Keep the conversation UI intact, then use the tools below to turn the chat into active speaking practice.</p>'
         + '<div class="mobile-action-row">'
-        + '<a class="mobile-primary-btn" href="javascript:void(0)" onclick="if(typeof startRolePlay===\'function\')startRolePlay()">💬 Roleplay</a>'
-        + '<a class="mobile-secondary-btn" href="korehan-study-room.html">✏️ Practice</a>'
+        + '<a class="mobile-primary-btn" href="javascript:void(0)" onclick="if(typeof startRolePlay===\'function\')startRolePlay()">' + khIcon('message-circle', 14) + ' Roleplay</a>'
+        + '<a class="mobile-secondary-btn" href="korehan-study-room.html">' + khIcon('pencil', 14) + ' Practice</a>'
         + '</div>';
       leftHead.insertAdjacentElement('afterend', box);
     }
@@ -5197,8 +5194,8 @@ function enhanceStoriesMobile() {
       + '<h2 class="mobile-quick-title" style="font-size:28px">Short stories should feel easy to finish on mobile.</h2>'
       + '<p class="mobile-quick-sub">Pick a mood, read one story, then review the key words and discuss what happened.</p>'
       + '<div class="mobile-action-row">'
-      + '<a class="mobile-primary-btn" href="korehan-stories.html?mood=fun">😂 Fun stories</a>'
-      + '<a class="mobile-secondary-btn" href="korehan-stories.html?mood=touching">🥹 Touching</a>'
+      + '<a class="mobile-primary-btn" href="korehan-stories.html?mood=fun">' + khIcon('smile', 14) + ' Fun stories</a>'
+      + '<a class="mobile-secondary-btn" href="korehan-stories.html?mood=touching">' + khIcon('heart', 14) + ' Touching</a>'
       + '</div>';
     root.insertAdjacentElement('afterbegin', shell);
   }
@@ -5216,8 +5213,8 @@ function enhanceStoriesMobile() {
         + '<h3 style="font-size:22px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">Read → Vocabulary → Quiz → Discussion</h3>'
         + '<p class="mobile-quick-sub">Stories work best when the reading screen is calm and the study actions are obvious.</p>'
         + '<div class="mobile-action-row">'
-        + '<a class="mobile-primary-btn" href="javascript:void(0)">📚 Vocabulary</a>'
-        + '<a class="mobile-secondary-btn" href="korehan-study-room.html">💭 Discussion</a>'
+        + '<a class="mobile-primary-btn" href="javascript:void(0)">' + khIcon('book-open', 14) + ' Vocabulary</a>'
+        + '<a class="mobile-secondary-btn" href="korehan-study-room.html">' + khIcon('message-square', 14) + ' Discussion</a>'
         + '</div>';
       head.insertAdjacentElement('afterend', box);
     }
