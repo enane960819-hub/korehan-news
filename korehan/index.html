@@ -6,6 +6,211 @@
 <title>KoreHan News — Learn Korean Through Real News</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css">
+<style>
+/* ── HOME REDESIGN ─────────────────────────────────────── */
+
+/* Daily strip */
+.daily-strip {
+  display: flex;
+  align-items: stretch;
+  background: var(--navy);
+  border-radius: 16px;
+  overflow: hidden;
+  margin: 20px 0 0;
+  box-shadow: 0 8px 28px rgba(11,22,38,.18);
+}
+.ds-phrase {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 24px;
+  cursor: pointer;
+  text-decoration: none;
+  display: block;
+  transition: background .15s;
+}
+.ds-phrase:hover { background: rgba(255,255,255,.04); }
+.ds-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.4);
+  margin-bottom: 6px;
+}
+.ds-ko {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 26px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.15;
+  letter-spacing: -.5px;
+}
+.ds-rom { font-size: 13px; color: rgba(255,255,255,.5); margin-top: 3px; }
+.ds-en  { font-size: 14px; font-weight: 600; color: #7ab8f5; margin-top: 2px; }
+
+.ds-divider { width: 1px; background: rgba(255,255,255,.1); flex-shrink: 0; }
+
+.ds-progress {
+  flex: 0 0 220px;
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+.ds-prog-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.4);
+  margin-bottom: 2px;
+}
+
+.ds-actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 20px;
+}
+.ds-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.1);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background .15s;
+  white-space: nowrap;
+}
+.ds-btn:hover { background: rgba(255,255,255,.16); }
+
+/* Section header */
+.home-sec {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 36px 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--dark);
+}
+.home-sec-title {
+  font-family: 'Playfair Display', 'Noto Serif KR', serif;
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--dark);
+}
+.home-sec-sub { font-size: 12px; color: var(--gray); font-style: italic; }
+.home-sec-more {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--bright);
+  text-decoration: none;
+}
+.home-sec-more:hover { text-decoration: underline; }
+
+/* Pills */
+.home-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+
+/* News grid — reuse existing .nc / .nc-overlay, just override grid */
+.home-news-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+@media (max-width: 980px) { .home-news-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 480px)  { .home-news-grid { grid-template-columns: 1fr; } }
+
+/* Conv grid */
+.home-conv-grid-wrap {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 32px;
+}
+@media (max-width: 980px) { .home-conv-grid-wrap { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 480px)  { .home-conv-grid-wrap { grid-template-columns: 1fr; } }
+
+/* Story cards */
+.home-story-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 40px;
+}
+@media (max-width: 980px) { .home-story-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 480px)  { .home-story-grid { grid-template-columns: 1fr; } }
+
+.story-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .18s, box-shadow .18s;
+  box-shadow: 0 4px 16px rgba(13,27,46,.06);
+}
+.story-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(13,27,46,.12); }
+.story-cover {
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  position: relative;
+}
+.story-cover.fun      { background: linear-gradient(135deg,#fff7ed,#fde68a); }
+.story-cover.touching { background: linear-gradient(135deg,#fdf2f8,#fbcfe8); }
+.story-cover.scary    { background: linear-gradient(135deg,#f1f5f9,#cbd5e1); }
+.story-cover.shocking { background: linear-gradient(135deg,#eff6ff,#bfdbfe); }
+.story-mood-tag {
+  position: absolute;
+  bottom: 8px; right: 10px;
+  font-size: 10px; font-weight: 800;
+  letter-spacing: .08em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 99px;
+}
+.story-mood-tag.fun      { background:#fef3c7; color:#92400e; }
+.story-mood-tag.touching { background:#fce7f3; color:#9d174d; }
+.story-mood-tag.scary    { background:#e2e8f0; color:#334155; }
+.story-mood-tag.shocking { background:#dbeafe; color:#1e40af; }
+.story-body { padding: 14px 16px 8px; }
+.story-title {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 14px; font-weight: 700;
+  color: var(--dark); line-height: 1.4;
+  margin-bottom: 5px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.story-preview {
+  font-size: 12px; color: var(--gray); line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.story-foot { display: flex; align-items: center; gap: 6px; padding: 8px 16px 12px; }
+.story-lvl { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+.story-lvl.lvl-b { background:#dcfce7; color:#15803d; }
+.story-lvl.lvl-i { background:#fef9c3; color:#b45309; }
+.story-lvl.lvl-a { background:#fee2e2; color:#b91c1c; }
+.story-time { font-size: 11px; color: var(--gray); margin-left: auto; }
+
+/* Mobile daily strip */
+@media (max-width: 760px) {
+  .daily-strip { flex-direction: column; }
+  .ds-divider { width: auto; height: 1px; }
+  .ds-progress { flex: none; width: 100%; padding: 12px 18px; }
+  .ds-actions { flex-direction: row; padding: 12px 18px; }
+  .ds-btn { flex: 1; justify-content: center; }
+}
+</style>
 </head>
 <body>
 <div id="kh-header"></div>
@@ -15,53 +220,37 @@
   <!-- HERO -->
   <div id="dyn-hero"></div>
 
-  <!-- TODAY'S PHRASE + LEARNING PREVIEW -->
-  <div class="phrase-dashboard" id="phrase-bar">
-
-    <!-- 좌상: Today's Phrase — 전체 클릭 링크 -->
-    <a id="pb-phrase-block" href="#" class="pb-card pd-phrase" style="text-decoration:none;display:block;cursor:pointer;">
-      <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:8px;">Today's Phrase</div>
-      <div class="pb-ko" id="pb-ko">경제 회복</div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin-top:4px;flex-wrap:wrap;">
-        <span class="pb-rom" id="pb-rom">gyeong-je hoe-bok</span>
-      </div>
-      <div class="pb-en" id="pb-en" style="margin-top:4px;">economic recovery</div>
+  <!-- DAILY STRIP -->
+  <div class="daily-strip">
+    <a id="pb-phrase-block" href="korehan-phrase.html" class="ds-phrase">
+      <div class="ds-label">Today's Phrase</div>
+      <div class="ds-ko"  id="pb-ko">경제 회복</div>
+      <div class="ds-rom" id="pb-rom">gyeong-je hoe-bok</div>
+      <div class="ds-en"  id="pb-en">economic recovery</div>
     </a>
 
-    <!-- 우상: Today's Progress -->
-    <aside class="home-learning-preview pd-progress" id="home-learning-preview" style="padding:16px 18px;">
-      <div class="hlp-loading">Loading...</div>
-    </aside>
+    <div class="ds-divider"></div>
 
-    <!-- 좌하: Writing Practice -->
-    <a href="korehan-study-room.html" class="pb-card pd-action pd-writing" style="text-decoration:none;display:flex;align-items:stretch;padding:0;overflow:hidden;">
-      <div style="flex:1;min-width:0;padding:20px 18px 20px 20px;">
-        <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px;">✍ Writing Practice</div>
-        <div style="font-size:18px;font-weight:900;color:#fff;line-height:1.25;margin-bottom:6px;">한 문장 써보세요.<br>Han이 직접 피드백.</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.5;">오늘의 구문으로 작문하고<br>실시간 AI + 개인 피드백.</div>
-      </div>
-      <div style="width:120px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.07);border-left:1px solid rgba(255,255,255,.1);font-size:14px;font-weight:900;color:#fff;text-align:center;line-height:1.6;padding:0 12px;">Open<br>Study<br>Room →</div>
-    </a>
+    <div class="ds-progress" id="home-learning-preview">
+      <div class="ds-prog-label">Today's Progress</div>
+      <div class="hlp-loading" style="color:rgba(255,255,255,.45);font-size:12px;">Loading...</div>
+    </div>
 
-    <!-- 우하: Learning Hub -->
-    <a href="korehan-learning-overview.html" class="pb-card pd-action pd-hub" style="text-decoration:none;display:flex;align-items:stretch;padding:0;overflow:hidden;">
-      <div style="flex:1;min-width:0;padding:20px 18px 20px 20px;">
-        <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px;">📊 Learning Hub</div>
-        <div style="font-size:18px;font-weight:900;color:#fff;line-height:1.25;margin-bottom:6px;">오늘 뭐 공부할지<br>바로 확인해요.</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.5;">취약 문법 · 단어 20개<br>읽기 기록 한 곳에.</div>
-      </div>
-      <div style="width:120px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.07);border-left:1px solid rgba(255,255,255,.1);font-size:14px;font-weight:900;color:#fff;text-align:center;line-height:1.6;padding:0 12px;">Open<br>Hub →</div>
-    </a>
+    <div class="ds-divider"></div>
 
+    <div class="ds-actions">
+      <a href="korehan-study-room.html" class="ds-btn">✍️&nbsp; Study Room</a>
+      <a href="korehan-learning-overview.html" class="ds-btn">📊&nbsp; Learning Hub</a>
+    </div>
   </div>
 
   <!-- LATEST NEWS -->
-  <div class="sec-hd">
-    <div class="sec-hd-title">Latest News</div>
-    <div class="sec-hd-sub">Updated daily · hover words for definitions</div>
-    <a href="korehan-all.html" class="sec-hd-more">All news →</a>
+  <div class="home-sec">
+    <div class="home-sec-title">Latest News</div>
+    <div class="home-sec-sub">Updated daily · hover words for definitions</div>
+    <a href="korehan-all.html" class="home-sec-more">All news →</a>
   </div>
-  <div class="sec-pills" id="news-pills">
+  <div class="home-pills" id="news-pills">
     <button class="sp on" data-filter="all">All</button>
     <button class="sp" data-filter="society">Society</button>
     <button class="sp" data-filter="world">World</button>
@@ -73,15 +262,15 @@
     <button class="sp" data-filter="Intermediate">🟡 Intermediate</button>
     <button class="sp" data-filter="Advanced">🔴 Advanced</button>
   </div>
-  <div class="news-grid" id="dyn-news-grid"></div>
+  <div class="home-news-grid" id="dyn-news-grid"></div>
 
   <!-- CONVERSATIONS -->
-  <div class="sec-hd" style="border-bottom-color:#2563eb;">
-    <div class="sec-hd-title">💬 Conversations</div>
-    <div class="sec-hd-sub">Real Korean text conversations</div>
-    <a href="korehan-conversations.html" class="sec-hd-more" style="color:#2563eb;">All conversations →</a>
+  <div class="home-sec" style="border-bottom-color:#2563eb;">
+    <div class="home-sec-title">💬 Conversations</div>
+    <div class="home-sec-sub">Real Korean text conversations</div>
+    <a href="korehan-conversations.html" class="home-sec-more" style="color:#2563eb;">All conversations →</a>
   </div>
-  <div class="sec-pills" id="conv-pills">
+  <div class="home-pills" id="conv-pills">
     <button class="sp on" data-cat="all">All</button>
     <button class="sp" data-cat="everyday">Everyday</button>
     <button class="sp" data-cat="work">Workplace</button>
@@ -89,34 +278,46 @@
     <button class="sp" data-cat="family">Family</button>
     <button class="sp" data-cat="dating">Dating</button>
   </div>
-  <div class="hc-grid" id="home-conv-grid"></div>
+  <div class="home-conv-grid-wrap" id="home-conv-grid"></div>
 
   <!-- STORIES -->
-  <div class="sec-hd" style="border-bottom-color:#7c3aed;">
-    <div class="sec-hd-title">📖 Stories</div>
-    <div class="sec-hd-sub">Fun · Touching · Scary · Shocking</div>
-    <a href="korehan-stories.html" class="sec-hd-more" style="color:#7c3aed;">All stories →</a>
+  <div class="home-sec" style="border-bottom-color:#7c3aed;">
+    <div class="home-sec-title">📖 Stories</div>
+    <div class="home-sec-sub">Fun · Touching · Scary · Shocking</div>
+    <a href="korehan-stories.html" class="home-sec-more" style="color:#7c3aed;">All stories →</a>
   </div>
-  <div class="story-grid">
-    <div class="sc" onclick="location.href='korehan-stories.html?mood=fun'">
-      <div class="sc-cover fun">😂<span class="sc-mood fun">Fun</span></div>
-      <div class="sc-body"><div class="sc-title">편의점 알바생의 황당한 하루</div><div class="sc-preview">오늘 손님이 들어오더니 갑자기 "여기 커피 파나요?" 하고 물어봤다...</div></div>
-      <div class="sc-foot"><span class="sc-lvl lvl-b">Beginner</span><span class="sc-time">3 min</span><button class="sc-study">📚</button></div>
+  <div class="home-story-grid">
+    <div class="story-card" onclick="location.href='korehan-stories.html?mood=fun'">
+      <div class="story-cover fun">😂<span class="story-mood-tag fun">Fun</span></div>
+      <div class="story-body">
+        <div class="story-title">편의점 알바생의 황당한 하루</div>
+        <div class="story-preview">오늘 손님이 들어오더니 갑자기 "여기 커피 파나요?" 하고 물어봤다...</div>
+      </div>
+      <div class="story-foot"><span class="story-lvl lvl-b">Beginner</span><span class="story-time">3 min</span></div>
     </div>
-    <div class="sc" onclick="location.href='korehan-stories.html?mood=touching'">
-      <div class="sc-cover touching">🥹<span class="sc-mood touching">Touching</span></div>
-      <div class="sc-body"><div class="sc-title">할머니의 마지막 선물</div><div class="sc-preview">돌아가시기 전 날, 할머니는 내 손을 꼭 잡고 작은 봉투를 건네셨다...</div></div>
-      <div class="sc-foot"><span class="sc-lvl lvl-i">Intermediate</span><span class="sc-time">5 min</span><button class="sc-study">📚</button></div>
+    <div class="story-card" onclick="location.href='korehan-stories.html?mood=touching'">
+      <div class="story-cover touching">🥹<span class="story-mood-tag touching">Touching</span></div>
+      <div class="story-body">
+        <div class="story-title">할머니의 마지막 선물</div>
+        <div class="story-preview">돌아가시기 전 날, 할머니는 내 손을 꼭 잡고 작은 봉투를 건네셨다...</div>
+      </div>
+      <div class="story-foot"><span class="story-lvl lvl-i">Intermediate</span><span class="story-time">5 min</span></div>
     </div>
-    <div class="sc" onclick="location.href='korehan-stories.html?mood=scary'">
-      <div class="sc-cover scary">😱<span class="sc-mood scary">Scary</span></div>
-      <div class="sc-body"><div class="sc-title">혼자 살면서 겪은 이상한 일</div><div class="sc-preview">분명히 혼자 사는데, 매일 아침 냉장고 속 음식이 조금씩 없어지고 있었다...</div></div>
-      <div class="sc-foot"><span class="sc-lvl lvl-i">Intermediate</span><span class="sc-time">4 min</span><button class="sc-study">📚</button></div>
+    <div class="story-card" onclick="location.href='korehan-stories.html?mood=scary'">
+      <div class="story-cover scary">😱<span class="story-mood-tag scary">Scary</span></div>
+      <div class="story-body">
+        <div class="story-title">혼자 살면서 겪은 이상한 일</div>
+        <div class="story-preview">분명히 혼자 사는데, 매일 아침 냉장고 속 음식이 조금씩 없어지고 있었다...</div>
+      </div>
+      <div class="story-foot"><span class="story-lvl lvl-i">Intermediate</span><span class="story-time">4 min</span></div>
     </div>
-    <div class="sc" onclick="location.href='korehan-stories.html?mood=shocking'">
-      <div class="sc-cover shocking">😮<span class="sc-mood shocking">Shocking</span></div>
-      <div class="sc-body"><div class="sc-title">10년 만에 알게 된 진실</div><div class="sc-preview">어릴 때 나를 버린 줄만 알았던 아버지가 사실 10년 동안 매달 학비를 보내고 있었다...</div></div>
-      <div class="sc-foot"><span class="sc-lvl lvl-a">Advanced</span><span class="sc-time">6 min</span><button class="sc-study">📚</button></div>
+    <div class="story-card" onclick="location.href='korehan-stories.html?mood=shocking'">
+      <div class="story-cover shocking">😮<span class="story-mood-tag shocking">Shocking</span></div>
+      <div class="story-body">
+        <div class="story-title">10년 만에 알게 된 진실</div>
+        <div class="story-preview">어릴 때 나를 버린 줄만 알았던 아버지가 사실 10년 동안 매달 학비를 보내고 있었다...</div>
+      </div>
+      <div class="story-foot"><span class="story-lvl lvl-a">Advanced</span><span class="story-time">6 min</span></div>
     </div>
   </div>
 
@@ -147,7 +348,7 @@ function renderHomeConvs() {
   var grid = document.getElementById('home-conv-grid');
   if (!grid) return;
   var list = HOME_CONVS.filter(function(c){ return _activeHomeCat === 'all' || c.cat === _activeHomeCat; }).slice(0,4);
-  grid.innerHTML = list.map(function(c, localIdx) {
+  grid.innerHTML = list.map(function(c) {
     var globalIdx = HOME_CONVS.indexOf(c);
     var catColor = {everyday:'#2563eb',work:'#0891b2',friends:'#7c3aed',family:'#059669',dating:'#db2777'}[c.cat] || '#2563eb';
     var lvlColor = {b:'#15803d',i:'#b45309',a:'#b91c1c'}[c.lvl] || '#64748b';
@@ -172,13 +373,12 @@ function renderHomeConvs() {
   }).join('');
 }
 
-// pill filter
 document.addEventListener('DOMContentLoaded', function() {
-  var pills = document.getElementById('conv-pills');
-  if (pills) {
-    pills.querySelectorAll('.sp').forEach(function(btn) {
+  var convPills = document.getElementById('conv-pills');
+  if (convPills) {
+    convPills.querySelectorAll('.sp').forEach(function(btn) {
       btn.addEventListener('click', function() {
-        pills.querySelectorAll('.sp').forEach(function(b){ b.classList.remove('on'); });
+        convPills.querySelectorAll('.sp').forEach(function(b){ b.classList.remove('on'); });
         btn.classList.add('on');
         _activeHomeCat = btn.dataset.cat;
         renderHomeConvs();
@@ -188,7 +388,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 document.addEventListener('DOMContentLoaded', async function() {
-  // DB에서 conversations 로드 시도
+  // Load conversations from DB
   try {
     var sb = getSupa();
     var { data } = await sb.from('conversations_data')
@@ -212,11 +412,10 @@ document.addEventListener('DOMContentLoaded', async function() {
       });
     }
   } catch(e) {
-    // fallback: 내장 HOME_CONVS 사용
     console.warn('conv DB load failed, using sample:', e.message);
   }
   renderHomeConvs();
-  // pill filter already bound above
+
   // Today's Phrase
   var phrases = getPhrases();
   if (phrases && phrases.length) {
@@ -228,27 +427,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (ko)  ko.textContent  = p.ko;
     if (rom) rom.textContent = p.rom;
     if (en)  en.textContent  = p.en;
-    var pb = document.getElementById('phrase-bar');
-    var pbBtn = document.getElementById('pb-btn');
-    var phraseHref = 'korehan-phrase.html?i=' + phraseIndex;
     var pbBlock = document.getElementById('pb-phrase-block');
-    if (pbBlock) pbBlock.href = phraseHref;
+    if (pbBlock) pbBlock.href = 'korehan-phrase.html?i=' + phraseIndex;
   }
 
   if (window.renderHomeLearningPreview) {
-    window.renderHomeLearningPreview().then(function() {
-      // Today's Phrase ↔ Learning Preview 높이 동기화
-      var phrase  = document.getElementById('pb-phrase-block');
-      var preview = document.getElementById('home-learning-preview');
-      if (phrase && preview) {
-        var h = Math.max(phrase.offsetHeight, preview.offsetHeight);
-        phrase.style.minHeight  = h + 'px';
-        preview.style.minHeight = h + 'px';
-      }
-    }).catch(function() {});
+    window.renderHomeLearningPreview().catch(function() {});
   }
 
-  // News grid (latest 8)
+  // News grid
   function renderNewsGrid() {
     var arts = getCachedArticles().filter(function(a){ return a.status === 'published'; }).slice(0,4);
     var grid = document.getElementById('dyn-news-grid');
@@ -283,25 +470,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         btn.classList.add('on');
         var f = btn.dataset.filter;
         document.querySelectorAll('#dyn-news-grid .nc').forEach(function(card) {
-          var match = f === 'all'
-            || card.dataset.section === f
-            || card.dataset.level === f;
+          var match = f === 'all' || card.dataset.section === f || card.dataset.level === f;
           card.style.display = match ? '' : 'none';
-        });
-      });
-    });
-  }
-
-  // Conv pills filter
-  var convPills = document.getElementById('conv-pills');
-  if (convPills) {
-    convPills.querySelectorAll('.sp').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        convPills.querySelectorAll('.sp').forEach(function(b){ b.classList.remove('on'); });
-        btn.classList.add('on');
-        var cat = btn.dataset.cat;
-        document.querySelectorAll('#home-conv-grid .conv-card').forEach(function(card) {
-          card.style.display = (cat === 'all' || card.dataset.cat === cat) ? '' : 'none';
         });
       });
     });
