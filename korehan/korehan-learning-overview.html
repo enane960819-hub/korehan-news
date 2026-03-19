@@ -110,7 +110,7 @@
       <div class="card-hd">
         <div><h2>20 words for today</h2><p>매일 새로운 10개 + 관심사 10개 · 하루 동안 고정됩니다.</p></div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <a class="soft-link" href="korehan-study-room.html?tab=vocab-quiz" style="background:#7c3aed;color:#fff;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:800;text-decoration:none;">단어 퀴즈 →</a>
+          <a class="soft-link" href="korehan-study-room.html?tab=vocab" style="background:#7c3aed;color:#fff;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:800;text-decoration:none;">단어 퀴즈 →</a>
           <a class="soft-link" href="korehan-study-room.html">Study Room</a>
         </div>
       </div>
@@ -291,13 +291,13 @@
     var cacheTagKey = (selectedTags || []).slice().sort().join(',');
     try {
       var gc = localStorage.getItem(vocabCacheKey('gen'));
-      if (gc) genCached = JSON.parse(gc);
+      if (gc) { var parsed = JSON.parse(gc); if (parsed && parsed.length >= 5) genCached = parsed; }
       var ic = localStorage.getItem(vocabCacheKey('int_' + cacheTagKey));
       if (ic) intCached = JSON.parse(ic);
     } catch(e) {}
 
-    // 둘 다 캐시 있으면 바로 렌더
-    if (genCached && genCached.length && (!selectedTags || !selectedTags.length || (intCached && intCached.length))) {
+    // 둘 다 캐시 있으면 바로 렌더 (gen 캐시가 5개 미만이면 재fetch — 구버전 is_active 버그 방지)
+    if (genCached && genCached.length >= 5 && (!selectedTags || !selectedTags.length || (intCached && intCached.length))) {
       renderWords(genCached.concat(intCached || []));
       return;
     }
@@ -307,52 +307,44 @@
     var genPool = genCached || [];
     var intPool = intCached || [];
 
-    // ── 일반 단어: 캐시 없을 때만 DB 쿼리 ──
+    // ── 일반 단어: hover_vocab_master에서 가져오기 (핵심 단어 DB) ──
     if (!genPool.length) {
       try {
-        // 전체 단어 가져오기 (is_active 필터 없음 — 컬럼 없거나 false인 경우 대비)
-        var r1 = await sb.from('vocabulary_bank')
-          .select('word_ko, word_rom, word_en, level, interest_tag')
+        var r1 = await sb.from('hover_vocab_master')
+          .select('word_ko, reading, meaning_en, level')
+          .eq('is_active', true)
           .limit(300);
-        var allWords = r1.data || [];
-
-        // daily 태그 단어 우선, 없으면 전체 사용
-        var dailyWords = allWords.filter(function(w){ return w.interest_tag === 'daily' || !w.interest_tag; });
-        var pool = dailyWords.length >= 10 ? dailyWords : allWords;
+        var allWords = (r1.data || []).map(function(w) {
+          return { word_ko: w.word_ko, word_rom: w.reading || '', word_en: w.meaning_en || '', level: w.level || '' };
+        });
 
         // 이전 날 나온 단어 제외 (중복 방지)
         var seenWords = getPastSeenWords();
-        var fresh = pool.filter(function(w){ return !seenWords.has(w.word_ko); });
-        // 새 단어 부족하면 전체 사용 (리셋)
-        if (fresh.length < 10) fresh = pool;
+        var fresh = allWords.filter(function(w){ return !seenWords.has(w.word_ko); });
+        if (fresh.length < 10) fresh = allWords;
 
-        // 셔플 후 10개 고정
         genPool = fresh.sort(function(){ return Math.random()-.5; }).slice(0,10);
-
-        // 오늘 날짜 캐시 저장
         try { localStorage.setItem(vocabCacheKey('gen'), JSON.stringify(genPool)); } catch(e) {}
       } catch(e) {
         console.warn('vocab general query error:', e.message);
       }
     }
 
-    // ── 관심사 단어: 정확히 태그 매칭 ──
+    // ── 관심사 단어: hover_vocab_master 랜덤 (태그 없으므로 일반 단어와 다른 셋) ──
     if (!intPool.length && selectedTags && selectedTags.length) {
       try {
-        var r3 = await sb.from('vocabulary_bank')
-          .select('word_ko, word_rom, word_en, level, interest_tag')
-          .in('interest_tag', selectedTags)
-          .limit(150);
-
+        var r3 = await sb.from('hover_vocab_master')
+          .select('word_ko, reading, meaning_en, level')
+          .eq('is_active', true)
+          .limit(300);
         if (r3.data && r3.data.length) {
-          intPool = r3.data.sort(function(){ return Math.random()-.5; }).slice(0,10);
-          // 일반 단어와 중복 제거
           var genKo = new Set(genPool.map(function(w){ return w.word_ko; }));
-          intPool = intPool.filter(function(w){ return !genKo.has(w.word_ko); }).slice(0,10);
+          intPool = r3.data
+            .map(function(w){ return { word_ko: w.word_ko, word_rom: w.reading || '', word_en: w.meaning_en || '', level: w.level || '', interest_tag: selectedTags[0] }; })
+            .filter(function(w){ return !genKo.has(w.word_ko); })
+            .sort(function(){ return Math.random()-.5; })
+            .slice(0,10);
           try { localStorage.setItem(vocabCacheKey('int_' + cacheTagKey), JSON.stringify(intPool)); } catch(e) {}
-        } else {
-          // 해당 태그 단어 없음 - 콘솔에 알림
-          console.warn('[vocab] no words found for tags:', selectedTags, '- vocabulary_bank에 해당 태그 단어를 추가하세요');
         }
       } catch(e) {
         console.warn('vocab interest query error:', e.message);
