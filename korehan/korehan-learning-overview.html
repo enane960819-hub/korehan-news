@@ -107,10 +107,25 @@
     </section>
 
     <section class="card" style="margin-bottom:18px">
-      <div class="card-hd"><div><h2>20 words for today</h2><p>10 general words and 10 interest-based words in one place.</p></div><a class="soft-link" href="korehan-study-room.html">Open Study Room</a></div>
+      <div class="card-hd">
+        <div><h2>20 words for today</h2><p>매일 새로운 10개 + 관심사 10개 · 하루 동안 고정됩니다.</p></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <a class="soft-link" href="korehan-study-room.html?tab=vocab-quiz" style="background:#7c3aed;color:#fff;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:800;text-decoration:none;">단어 퀴즈 →</a>
+          <a class="soft-link" href="korehan-study-room.html">Study Room</a>
+        </div>
+      </div>
       <div class="vocab-grid">
-        <div class="vocab-box"><h3>10 random essential words</h3><p>Useful daily vocabulary users should meet regularly.</p><div class="word-list" id="random-words"></div></div>
-        <div class="vocab-box"><h3>10 words from your interests</h3><p>관심 태그를 선택하면 해당 분야 단어만 배정됩니다.</p><div id="interest-selector"></div><div class="word-list" id="interest-words"></div></div>
+        <div class="vocab-box">
+          <h3>10 essential daily words</h3>
+          <p style="font-size:13px;color:#64748b;margin-bottom:12px;">Core vocabulary refreshed every day.</p>
+          <div class="word-list" id="random-words"></div>
+        </div>
+        <div class="vocab-box">
+          <h3>10 words from your interests</h3>
+          <p style="font-size:13px;color:#64748b;margin-bottom:12px;">Select your interest tags to get topic-specific words.</p>
+          <div id="interest-selector"></div>
+          <div class="word-list" id="interest-words"></div>
+        </div>
       </div>
     </section>
 
@@ -252,6 +267,21 @@
     return 'kh_vocab_' + type + '_' + today;
   }
 
+  // 이전 날에 나온 단어 키 수집 (중복 방지)
+  function getPastSeenWords() {
+    var todayKey = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
+    var seen = new Set();
+    try {
+      Object.keys(localStorage).forEach(function(k) {
+        if (k.startsWith('kh_vocab_gen_') && !k.endsWith(todayKey)) {
+          var words = JSON.parse(localStorage.getItem(k) || '[]');
+          words.forEach(function(w) { if (w.word_ko) seen.add(w.word_ko); });
+        }
+      });
+    } catch(e) {}
+    return seen;
+  }
+
   async function loadWordsDirectly(selectedTags) {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
 
@@ -280,27 +310,24 @@
     // ── 일반 단어: 캐시 없을 때만 DB 쿼리 ──
     if (!genPool.length) {
       try {
-        // daily 태그 우선
+        // 전체 단어 가져오기 (is_active 필터 없음 — 컬럼 없거나 false인 경우 대비)
         var r1 = await sb.from('vocabulary_bank')
           .select('word_ko, word_rom, word_en, level, interest_tag')
-          .eq('is_active', true)
-          .eq('interest_tag', 'daily')
-          .limit(80);
-        genPool = (r1.data || []);
+          .limit(300);
+        var allWords = r1.data || [];
 
-        // daily 부족하면 전체에서 보충
-        if (genPool.length < 10) {
-          var r2 = await sb.from('vocabulary_bank')
-            .select('word_ko, word_rom, word_en, level, interest_tag')
-            .eq('is_active', true)
-            .limit(150);
-          var allW = r2.data || [];
-          var existKo = new Set(genPool.map(function(w){ return w.word_ko; }));
-          genPool = genPool.concat(allW.filter(function(w){ return !existKo.has(w.word_ko); }));
-        }
+        // daily 태그 단어 우선, 없으면 전체 사용
+        var dailyWords = allWords.filter(function(w){ return w.interest_tag === 'daily' || !w.interest_tag; });
+        var pool = dailyWords.length >= 10 ? dailyWords : allWords;
+
+        // 이전 날 나온 단어 제외 (중복 방지)
+        var seenWords = getPastSeenWords();
+        var fresh = pool.filter(function(w){ return !seenWords.has(w.word_ko); });
+        // 새 단어 부족하면 전체 사용 (리셋)
+        if (fresh.length < 10) fresh = pool;
 
         // 셔플 후 10개 고정
-        genPool = genPool.sort(function(){ return Math.random()-.5; }).slice(0,10);
+        genPool = fresh.sort(function(){ return Math.random()-.5; }).slice(0,10);
 
         // 오늘 날짜 캐시 저장
         try { localStorage.setItem(vocabCacheKey('gen'), JSON.stringify(genPool)); } catch(e) {}
@@ -314,9 +341,8 @@
       try {
         var r3 = await sb.from('vocabulary_bank')
           .select('word_ko, word_rom, word_en, level, interest_tag')
-          .eq('is_active', true)
           .in('interest_tag', selectedTags)
-          .limit(100);
+          .limit(150);
 
         if (r3.data && r3.data.length) {
           intPool = r3.data.sort(function(){ return Math.random()-.5; }).slice(0,10);
@@ -370,7 +396,7 @@
     setText('review-sub',   q.length + '개 항목이 복습 대기 중');
     document.getElementById('review-queue').innerHTML = q.length
       ? q.map(item => `<a class="timeline-item" href="${contentHref(item.content_type, item.content_id)}">
-          <div class="time">${new Date(item.read_at||Date.now()).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</div>
+          <div class="time">${new Date(item.read_at||Date.now()).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Seoul'})}</div>
           <div>
             <div class="timeline-title">${{'article':'기사','conversation':'대화','story':'스토리'}[item.content_type]||item.content_type} — ${item.title||'(제목 없음)'}</div>
             <div class="timeline-sub">${item.level||''} · 복습 대기</div>
@@ -385,7 +411,7 @@
       ? hist.map(item => `<a class="article-row" href="${contentHref(item.content_type, item.content_id)}">
           <div>
             <div class="article-title">${item.title||'(제목 없음)'}</div>
-            <div class="article-sub">${item.content_type} · ${item.level||''} · ${new Date(item.read_at||Date.now()).toLocaleDateString('ko-KR')}</div>
+            <div class="article-sub">${item.content_type} · ${item.level||''} · ${new Date(item.read_at||Date.now()).toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul'})}</div>
           </div>
           <div class="article-tag">${item.completed?'완료':'열기'}</div>
         </a>`).join('')
@@ -500,7 +526,7 @@
 
   // ── hub snapshot: direct table queries (replaces missing RPC) ──
   async function buildHubSnapshot(sb, userId) {
-    var today = new Date().toISOString().slice(0,10);
+    var today = new Date(Date.now() + 9*3600000).toISOString().slice(0,10); // KST
     var snap = {
       today: { xp_earned:0, words_learned:0, articles_read:0, conversations_read:0, stories_read:0, quizzes_done:0 },
       streak: 0,
@@ -565,8 +591,12 @@
         snap.read_history = hist.map(function(r){
           return { content_type:'article', content_id:r.article_id, title:r.title, level:r.section, read_at:r.read_at, completed:true };
         });
+        // filter by KST date of read_at (read_at is stored as UTC ISO string)
         snap.review_queue = hist
-          .filter(function(r){ return (r.read_at||'').slice(0,10) === today; })
+          .filter(function(r){
+            var kst = new Date(new Date(r.read_at).getTime() + 9*3600000).toISOString().slice(0,10);
+            return kst === today;
+          })
           .map(function(r){
             return { content_type:'article', content_id:r.article_id, title:r.title, level:r.section, read_at:r.read_at };
           });
