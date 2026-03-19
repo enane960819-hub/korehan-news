@@ -41,7 +41,7 @@
 .conv-cat-tile:hover{background:#f8faff;border-bottom-color:#bfdbfe;}
 .conv-cat-tile.on{border-bottom-color:#2563eb;background:#f0f7ff;}
 .conv-cat-tile.on .cct-icon{transform:scale(1.12);}
-.cct-icon{font-size:24px;transition:transform .18s;}
+.cct-icon{width:24px;height:24px;transition:transform .18s;display:flex;align-items:center;justify-content:center;}
 .cct-label{font-size:12px;font-weight:800;color:#334155;}
 .conv-cat-tile.on .cct-label{color:#1d4ed8;}
 .cct-count{font-size:10px;color:#94a3b8;font-weight:600;}
@@ -278,12 +278,12 @@
 <!-- CATEGORY TILES -->
 <div class="conv-cats">
   <div class="conv-cats-inner" id="cat-pills">
-    <button class="conv-cat-tile on" data-cat="all"><span class="cct-icon">✨</span><span class="cct-label">All</span><span class="cct-count" id="cnt-all">—</span></button>
-    <button class="conv-cat-tile" data-cat="everyday"><span class="cct-icon">🏠</span><span class="cct-label">Everyday</span><span class="cct-count" id="cnt-everyday">—</span></button>
-    <button class="conv-cat-tile" data-cat="work"><span class="cct-icon">💼</span><span class="cct-label">Workplace</span><span class="cct-count" id="cnt-work">—</span></button>
-    <button class="conv-cat-tile" data-cat="friends"><span class="cct-icon">👫</span><span class="cct-label">Friends</span><span class="cct-count" id="cnt-friends">—</span></button>
-    <button class="conv-cat-tile" data-cat="family"><span class="cct-icon">👨‍👩‍👧</span><span class="cct-label">Family</span><span class="cct-count" id="cnt-family">—</span></button>
-    <button class="conv-cat-tile" data-cat="dating"><span class="cct-icon">💌</span><span class="cct-label">Dating</span><span class="cct-count" id="cnt-dating">—</span></button>
+    <button class="conv-cat-tile on" data-cat="all"><span class="cct-icon"><i data-lucide="sparkles" style="width:22px;height:22px"></i></span><span class="cct-label">All</span><span class="cct-count" id="cnt-all">—</span></button>
+    <button class="conv-cat-tile" data-cat="everyday"><span class="cct-icon"><i data-lucide="home" style="width:22px;height:22px"></i></span><span class="cct-label">Everyday</span><span class="cct-count" id="cnt-everyday">—</span></button>
+    <button class="conv-cat-tile" data-cat="work"><span class="cct-icon"><i data-lucide="briefcase" style="width:22px;height:22px"></i></span><span class="cct-label">Workplace</span><span class="cct-count" id="cnt-work">—</span></button>
+    <button class="conv-cat-tile" data-cat="friends"><span class="cct-icon"><i data-lucide="users" style="width:22px;height:22px"></i></span><span class="cct-label">Friends</span><span class="cct-count" id="cnt-friends">—</span></button>
+    <button class="conv-cat-tile" data-cat="family"><span class="cct-icon"><i data-lucide="house" style="width:22px;height:22px"></i></span><span class="cct-label">Family</span><span class="cct-count" id="cnt-family">—</span></button>
+    <button class="conv-cat-tile" data-cat="dating"><span class="cct-icon"><i data-lucide="heart" style="width:22px;height:22px"></i></span><span class="cct-label">Dating</span><span class="cct-count" id="cnt-dating">—</span></button>
   </div>
 </div>
 
@@ -314,7 +314,7 @@ const LVL_LABEL = {b:'Beginner',i:'Intermediate',a:'Advanced'};
 const LVL_CLS   = {b:'badge-b',i:'badge-i',a:'badge-a'};
 const CAT_PILL  = {everyday:'dp-pill-blue',work:'dp-pill-gray',friends:'dp-pill-green',family:'dp-pill-amber',dating:'dp-pill-pink'};
 
-var CAT_ICON = {everyday:'🏠',work:'💼',friends:'👫',family:'👨‍👩‍👧',dating:'💌'};
+var CAT_ICON = {everyday:'home',work:'briefcase',friends:'users',family:'house',dating:'heart'};
 var CAT_NAME = {everyday:'Everyday',work:'Workplace',friends:'Friends',family:'Family',dating:'Dating'};
 
 function updateCounts() {
@@ -441,14 +441,14 @@ function openDetail(idx) {
         +'<div class="dp-avatar">'+c.avi+'</div>'
         +'<div class="dp-bubble-group">'
           +'<div class="dp-who">'+msg.who+'</div>'
-          +'<div class="dp-bubble tts-bubble" onclick="playMsgTTS(\''+safe+'\')" title="Click to listen">'+txt+'<span class="dp-tts-icon">🔊</span></div>'
+          +'<div class="dp-bubble tts-bubble" onclick="playMsgTTS(\''+safe+'\')" title="Click to listen">'+txt+'<span class="dp-tts-icon"><i data-lucide="volume-2" style="width:11px;height:11px"></i></span></div>'
           +'<div class="dp-time">'+time+'</div>'
           +note
         +'</div></div>';
     } else {
       return '<div class="dp-msg-row right">'
         +'<div class="dp-bubble-group">'
-          +'<div class="dp-bubble tts-bubble" onclick="playMsgTTS(\''+safe+'\')" title="Click to listen">'+txt+'<span class="dp-tts-icon">🔊</span></div>'
+          +'<div class="dp-bubble tts-bubble" onclick="playMsgTTS(\''+safe+'\')" title="Click to listen">'+txt+'<span class="dp-tts-icon"><i data-lucide="volume-2" style="width:11px;height:11px"></i></span></div>'
           +'<div class="dp-time">'+time+'</div>'
           +note
         +'</div></div>';
@@ -910,7 +910,7 @@ function nextQuizQuestion() {
 function showQuizResult() {
   var overlay = document.getElementById('quiz-overlay');
   var pct = Math.round(_quizScore / _quizTotal * 100);
-  var emoji = pct >= 80 ? '🏆' : pct >= 60 ? '👍' : '📚';
+  var emoji = pct >= 80 ? khIcon('trophy', 56) : pct >= 60 ? khIcon('thumbs-up', 56) : khIcon('book-open', 56);
 
   // 데일리 미션 퀴즈 카운트
   if (typeof dmTrackQuiz === 'function') dmTrackQuiz();
@@ -942,7 +942,7 @@ function showQuizResult() {
   }
 
   overlay.innerHTML = '<div style="background:#fff;border-radius:24px;max-width:400px;width:100%;padding:40px 32px;text-align:center;box-shadow:0 32px 80px rgba(15,23,42,.25);">'
-    + '<div style="font-size:56px;margin-bottom:12px">' + emoji + '</div>'
+    + '<div style="margin-bottom:12px;color:#0f172a">' + emoji + '</div>'
     + '<div style="font-size:24px;font-weight:900;color:#0f172a;margin-bottom:6px">' + _quizScore + ' / ' + _quizTotal + ' 정답</div>'
     + '<div style="font-size:15px;color:#64748b;margin-bottom:24px">' + (pct>=80?'훌륭해요! 대화를 잘 이해했군요.':pct>=60?'잘 했어요! 조금 더 연습해봐요.':'다시 한번 대화를 읽어보세요 💪') + '</div>'
     + '<div style="display:flex;gap:10px;justify-content:center;">'
@@ -1703,7 +1703,7 @@ function closeInlineEdit() { var e = document.getElementById('conv-inline-edit')
   window.showQuizResult = function() {
     var overlay = document.getElementById('quiz-overlay');
     var pct = Math.round(_quizScore / _quizTotal * 100);
-    var emoji = pct >= 80 ? '🏆' : pct >= 60 ? '👍' : '📚';
+    var emoji = pct >= 80 ? khIcon('trophy', 56) : pct >= 60 ? khIcon('thumbs-up', 56) : khIcon('book-open', 56);
 
     // 데일리 미션 퀴즈 카운트
     if (typeof dmTrackQuiz === 'function') dmTrackQuiz();
@@ -1733,7 +1733,7 @@ function closeInlineEdit() { var e = document.getElementById('conv-inline-edit')
       } catch(e) {}
     }
     overlay.innerHTML = '<div style="background:#fff;border-radius:24px;max-width:400px;width:100%;padding:40px 32px;text-align:center;box-shadow:0 32px 80px rgba(15,23,42,.25);">'
-      + '<div style="font-size:56px;margin-bottom:12px">' + emoji + '</div>'
+      + '<div style="margin-bottom:12px;color:#0f172a">' + emoji + '</div>'
       + '<div style="font-size:24px;font-weight:900;color:#0f172a;margin-bottom:6px">' + _quizScore + ' / ' + _quizTotal + ' correct</div>'
       + '<div style="font-size:15px;color:#64748b;margin-bottom:24px">' + (pct>=80?'Excellent work. You understood the conversation well.':pct>=60?'Nice work. A bit more practice will help.':'Read the conversation again and try one more time 💪') + '</div>'
       + '<div style="display:flex;gap:10px;justify-content:center;">'

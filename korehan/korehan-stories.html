@@ -24,7 +24,7 @@
 .sc:hover{transform:translateY(-4px);box-shadow:0 20px 48px rgba(15,23,42,.12);}
 .sc-thumb{height:110px;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;}
 .sc-mood-badge{position:absolute;top:10px;left:12px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;padding:3px 8px;border-radius:3px;color:#fff;}
-.sc-emoji{font-size:40px;}
+.sc-emoji{display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,0.35);}
 .sc-body{padding:16px 18px;flex:1;display:flex;flex-direction:column;}
 .sc-title{font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;color:#0f172a;margin:0 0 6px;line-height:1.4;}
 .sc-title-en{font-size:12px;color:#64748b;margin:0 0 8px;font-style:italic;}
@@ -51,7 +51,7 @@
 .st-left{background:#fff;display:flex;flex-direction:column;}
 .st-left-head{padding:0;position:relative;}
 .st-head-banner{height:120px;display:flex;align-items:center;justify-content:center;position:relative;}
-.st-head-emoji{font-size:48px;}
+.st-head-emoji{display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,0.3);}
 .st-head-info{padding:20px 24px 16px;}
 .st-head-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
 .st-head-title{font-family:'Noto Serif KR',serif;font-size:20px;font-weight:900;color:#0f172a;margin:0 0 4px;line-height:1.35;}
@@ -109,15 +109,15 @@
   </div>
   <div class="st-filter-bar" id="mood-pills">
     <button class="sf-pill on" data-mood="all">All</button>
-    <button class="sf-pill" data-mood="fun">😂 Fun</button>
-    <button class="sf-pill" data-mood="touching">🥹 Touching</button>
-    <button class="sf-pill" data-mood="scary">😱 Scary</button>
-    <button class="sf-pill" data-mood="shocking">😮 Shocking</button>
+    <button class="sf-pill" data-mood="fun"><i data-lucide="smile" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"></i>Fun</button>
+    <button class="sf-pill" data-mood="touching"><i data-lucide="heart" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"></i>Touching</button>
+    <button class="sf-pill" data-mood="scary"><i data-lucide="zap" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"></i>Scary</button>
+    <button class="sf-pill" data-mood="shocking"><i data-lucide="alert-circle" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"></i>Shocking</button>
     <div class="sf-sep"></div>
     <button class="sf-pill on" data-lvl="all">All Levels</button>
-    <button class="sf-pill" data-lvl="b">🟢 Beginner</button>
-    <button class="sf-pill" data-lvl="i">🟡 Intermediate</button>
-    <button class="sf-pill" data-lvl="a">🔴 Advanced</button>
+    <button class="sf-pill" data-lvl="b"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:4px;vertical-align:1px"></span>Beginner</button>
+    <button class="sf-pill" data-lvl="i"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#eab308;margin-right:4px;vertical-align:1px"></span>Intermediate</button>
+    <button class="sf-pill" data-lvl="a"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-right:4px;vertical-align:1px"></span>Advanced</button>
   </div>
 </div>
 
@@ -646,6 +646,7 @@ const STORIES = [
 
 const MOOD_COLORS = {fun:'#d97706',touching:'#db2777',scary:'#7c3aed',shocking:'#dc2626'};
 const MOOD_BG     = {fun:'mood-fun',touching:'mood-touching',scary:'mood-scary',shocking:'mood-shocking'};
+const MOOD_ICON   = {fun:'smile',touching:'heart',scary:'zap',shocking:'alert-circle'};
 const MOOD_PILL   = {fun:'st-pill-amber',touching:'st-pill-pink',scary:'st-pill-purple',shocking:'st-pill-red'};
 const LVL_LABEL   = {b:'Beginner',i:'Intermediate',a:'Advanced'};
 const LVL_PILL    = {b:'st-pill-purple',i:'st-pill-gray',a:'st-pill-red'};
@@ -663,14 +664,14 @@ function renderStories(moodF, lvlF) {
     return '<div class="sc" onclick="openStory(' + s.id + ')">'
       + '<div class="sc-thumb ' + MOOD_BG[s.mood] + '">'
         + '<span class="sc-mood-badge" style="background:' + MOOD_COLORS[s.mood] + '">' + s.mood.toUpperCase() + '</span>'
-        + '<span class="sc-emoji">' + s.avi + '</span>'
+        + '<span class="sc-emoji">' + khIcon(MOOD_ICON[s.mood] || 'smile', 40) + '</span>'
       + '</div>'
       + '<div class="sc-body">'
         + '<div class="sc-title">' + s.title + '</div>'
         + '<div class="sc-title-en">' + s.title_en + '</div>'
         + '<div class="sc-preview">' + s.preview + '</div>'
         + '<div class="sc-foot">'
-          + '<span class="sc-meta">📖 ' + s.readTime + ' · ' + LVL_LABEL[s.lvl] + '</span>'
+          + '<span class="sc-meta">' + khIcon('book-open', 12) + ' ' + s.readTime + ' · ' + LVL_LABEL[s.lvl] + '</span>'
           + '<button class="sc-open">Read →</button>'
         + '</div>'
       + '</div>'
@@ -727,7 +728,7 @@ function openStory(id) {
       + '<div class="st-left-head">'
         + '<div class="st-head-banner ' + headBannerClass + '">'
           + '<button class="st-close" onclick="closeSt()">✕</button>'
-          + '<span class="st-head-emoji">' + s.avi + '</span>'
+          + '<span class="st-head-emoji">' + khIcon(MOOD_ICON[s.mood] || 'smile', 48) + '</span>'
         + '</div>'
         + '<div class="st-head-info">'
           + '<div class="st-head-label" style="color:' + MOOD_COLORS[s.mood] + '">' + s.mood.toUpperCase() + ' STORY</div>'
@@ -736,7 +737,7 @@ function openStory(id) {
           + '<div class="st-head-pills">'
             + '<span class="st-pill ' + moodPillClass + '">' + s.mood.charAt(0).toUpperCase()+s.mood.slice(1) + '</span>'
             + '<span class="st-pill ' + LVL_PILL[s.lvl] + '">' + LVL_LABEL[s.lvl] + '</span>'
-            + '<span class="st-pill st-pill-gray">📖 ' + s.readTime + '</span>'
+            + '<span class="st-pill st-pill-gray">' + khIcon('book-open', 12) + ' ' + s.readTime + '</span>'
           + '</div>'
         + '</div>'
       + '</div>'
@@ -797,7 +798,7 @@ async function loadStoriesFromDB() {
     if (error || !data || !data.length) return;
     var dbStories = data.map(function(row) { return row.data || row; }).filter(Boolean);
     var hardTitles = new Set(STORIES.map(function(s){ return s.title; }));
-    var newStories = dbStories.filter(function(s){ return !hardTitles.has(s.title); });
+    var newStories = dbStories.filter(function(s){ return s.title && !hardTitles.has(s.title); });
     if (newStories.length) {
       STORIES.unshift.apply(STORIES, newStories);
       renderStories(activeMood, activeLvl);
