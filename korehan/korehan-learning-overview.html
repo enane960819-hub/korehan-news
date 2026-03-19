@@ -233,16 +233,14 @@
       + '</div>' + badge + '</div>';
   }
 
-  function renderWords(dailyVocab) {
-    var general  = (dailyVocab||[]).filter(function(w){ return !w.interest_tag || w.interest_tag === 'daily'; }).slice(0,10);
-    var interest = (dailyVocab||[]).filter(function(w){ return w.interest_tag && w.interest_tag !== 'daily'; }).slice(0,10);
+  function renderWords(genPool, intPool) {
     var genEl = document.getElementById('random-words');
     var intEl = document.getElementById('interest-words');
-    if (genEl) genEl.innerHTML = general.length
-      ? general.map(wordRowHTML).join('')
+    if (genEl) genEl.innerHTML = (genPool||[]).length
+      ? genPool.map(wordRowHTML).join('')
       : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">Loading words...</div>';
-    if (intEl) intEl.innerHTML = interest.length
-      ? interest.map(wordRowHTML).join('')
+    if (intEl) intEl.innerHTML = (intPool||[]).length
+      ? intPool.map(wordRowHTML).join('')
       : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">Select and save interests to see topic-specific words.</div>';
   }
 
@@ -268,7 +266,7 @@
 
     // 둘 다 캐시 있으면 바로 렌더
     if (genCached && genCached.length && (!selectedTags || !selectedTags.length || (intCached && intCached.length))) {
-      renderWords(genCached.concat(intCached || []));
+      renderWords(genCached, intCached || []);
       return;
     }
 
@@ -296,7 +294,7 @@
             .limit(150);
           var allW = r2.data || [];
           var existKo = new Set(genPool.map(function(w){ return w.word_ko; }));
-          genPool = genPool.concat(allW.filter(function(w){ return !existKo.has(w.word_ko); }));
+          genPool = genPool.concat(allW.filter(function(w){ return !existKo.has(w.word_ko); }).map(function(w){ return {word_ko:w.word_ko, word_rom:w.word_rom, word_en:w.word_en, level:w.level, interest_tag:'daily'}; }));
         }
 
         // 셔플 후 10개 고정
@@ -338,7 +336,7 @@
       return;
     }
 
-    renderWords(genPool.concat(intPool));
+    renderWords(genPool, intPool);
   }
 
   // 완전 fallback: VOCAB 객체에서 (vocabulary_bank 비었을 때)
@@ -346,7 +344,7 @@
     try {
       var vocab = typeof VOCAB !== 'undefined' ? VOCAB : {};
       var keys = Object.keys(vocab);
-      if (!keys.length) { renderWords([]); return; }
+      if (!keys.length) { renderWords([], []); return; }
       // 오늘 날짜 시드로 매일 같은 단어 (새로고침해도 안 바뀜)
       var today = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
       var seed = parseInt(today.replace(/-/g,''), 10);
@@ -360,7 +358,7 @@
         return { word_ko: k, word_rom: vocab[k].rom, word_en: vocab[k].en,
                  interest_tag: selectedTags && selectedTags[0] ? selectedTags[0] : 'general' };
       });
-      renderWords(genWords.concat(intWords));
+      renderWords(genWords, intWords);
     } catch(e) { console.warn('loadWordsFallback error:', e); }
   }
 
