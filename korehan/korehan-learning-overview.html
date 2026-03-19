@@ -498,6 +498,99 @@
     loadWordsDirectly(saved);
   }
 
+  // ── hub snapshot: direct table queries (replaces missing RPC) ──
+  async function buildHubSnapshot(sb, userId) {
+    var today = new Date().toISOString().slice(0,10);
+    var snap = {
+      today: { xp_earned:0, words_learned:0, articles_read:0, conversations_read:0, stories_read:0, quizzes_done:0 },
+      streak: 0,
+      weak_grammar: [],
+      scores: { reading:0, grammar:0, vocabulary:0, writing:0, listening:0 },
+      review_queue: [],
+      read_history: [],
+      weekly_progress: []
+    };
+
+    // user_stats → streak + cumulative scores
+    try {
+      var { data: stats } = await sb.from('user_stats')
+        .select('xp, streak, mission_streak, articles_read, words_saved, quizzes_done')
+        .eq('user_id', userId).maybeSingle();
+      if (stats) {
+        snap.streak = stats.mission_streak || stats.streak || 0;
+        snap.scores.vocabulary = Math.min(100, Math.round((stats.words_saved || 0) / 2));
+        snap.scores.reading    = Math.min(100, (stats.articles_read || 0) * 3);
+      }
+    } catch(e) {}
+
+    // daily_missions → today's progress
+    try {
+      var { data: dm } = await sb.from('daily_missions')
+        .select('articles, words, quizzes, fill')
+        .eq('user_id', userId).eq('date', today).maybeSingle();
+      if (dm) {
+        snap.today.articles_read = dm.articles || 0;
+        snap.today.words_learned = dm.words    || 0;
+        snap.today.quizzes_done  = dm.quizzes  || 0;
+        snap.today.xp_earned = ((dm.articles||0)*10) + ((dm.words||0)*2) + ((dm.quizzes||0)*5) + ((dm.fill||0)*5);
+      }
+    } catch(e) {}
+
+    // user_grammar_stats → weak grammar + grammar score
+    try {
+      var { data: gStats } = await sb.from('user_grammar_stats')
+        .select('grammar_point, wrong_count, correct_count')
+        .eq('user_id', userId)
+        .gt('wrong_count', 0)
+        .order('wrong_count', { ascending: false })
+        .limit(5);
+      if (gStats && gStats.length) {
+        snap.weak_grammar = gStats;
+        var totalQ = gStats.reduce(function(a,g){ return a+(g.wrong_count||0)+(g.correct_count||0); }, 0);
+        var totalW = gStats.reduce(function(a,g){ return a+(g.wrong_count||0); }, 0);
+        snap.scores.grammar = totalQ >= 5 ? Math.round((1 - totalW/totalQ)*100) : 0;
+      }
+    } catch(e) {}
+
+    // read_articles → review queue + read history (last 30 days)
+    try {
+      var cutoff = new Date(Date.now() - 30*86400000).toISOString();
+      var { data: hist } = await sb.from('read_articles')
+        .select('article_id, title, section, read_at')
+        .eq('user_id', userId)
+        .gte('read_at', cutoff)
+        .order('read_at', { ascending: false })
+        .limit(20);
+      if (hist && hist.length) {
+        snap.read_history = hist.map(function(r){
+          return { content_type:'article', content_id:r.article_id, title:r.title, level:r.section, read_at:r.read_at, completed:true };
+        });
+        snap.review_queue = hist
+          .filter(function(r){ return (r.read_at||'').slice(0,10) === today; })
+          .map(function(r){
+            return { content_type:'article', content_id:r.article_id, title:r.title, level:r.section, read_at:r.read_at };
+          });
+      }
+    } catch(e) {}
+
+    // daily_missions (last 7 days) → weekly progress
+    try {
+      var sevenAgo = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
+      var { data: weekDMs } = await sb.from('daily_missions')
+        .select('date, articles, words, quizzes, fill')
+        .eq('user_id', userId)
+        .gte('date', sevenAgo)
+        .order('date', { ascending: true });
+      if (weekDMs && weekDMs.length) {
+        snap.weekly_progress = weekDMs.map(function(d){
+          return { date:d.date, xp_earned: ((d.articles||0)*10)+((d.words||0)*2)+((d.quizzes||0)*5)+((d.fill||0)*5) };
+        });
+      }
+    } catch(e) {}
+
+    return snap;
+  }
+
   // ── main load ───────────────────────────────────────────────
   async function loadHub() {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
@@ -528,9 +621,8 @@
     setText('stat-xp','…'); setText('stat-words','…'); setText('stat-articles','…'); setText('stat-streak','…');
 
     try {
-      // snapshot RPC
-      const { data: snap, error } = await sb.rpc('get_learning_hub_snapshot', { p_user_id: supaUser.id, p_days: 7 });
-      if (error) throw error;
+      // Direct table queries — no RPC needed
+      const snap = await buildHubSnapshot(sb, supaUser.id);
 
       renderTopStats(snap);
       renderWeakGrammar(snap);
@@ -544,18 +636,11 @@
       const speakEl = document.getElementById('speaking-note');
       if (speakEl) speakEl.innerHTML = '<strong>Speaking:</strong> Not scored yet — treat as practice activity until audio recording + STT are added.';
 
-      // 오늘의 단어 배정 (RPC 성공 시)
-      try {
-        const { data: vocab } = await sb.rpc('assign_daily_vocab', { p_user_id: supaUser.id, p_date: new Date().toISOString().slice(0,10) });
-        if (vocab && vocab.length) { renderWords(vocab); }
-        else { loadAndRenderInterests(); } // 배정 단어 없으면 직접 쿼리
-      } catch(ve) {
-        loadAndRenderInterests(); // vocab RPC 실패 → 직접 쿼리
-      }
+      // 단어 배정: 직접 쿼리
+      loadAndRenderInterests();
 
     } catch(e) {
-      console.warn('hub snapshot error:', e.message || e);
-      // snapshot RPC 실패 → 통계는 fallback, 단어는 직접 쿼리
+      console.warn('hub load error:', e.message || e);
       loadHubFallback();
       loadAndRenderInterests();
     }
