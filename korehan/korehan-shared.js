@@ -4585,7 +4585,11 @@ async function renderHomeLearningPreview() {
     +   '<div style="font-size:13px;font-weight:800;color:#0b1626;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + weakGrammar + '</div>'
     + '</div>'
     + '<a href="korehan-study-room.html?focus=' + weakQ + '" style="flex-shrink:0;font-size:11px;font-weight:800;padding:5px 11px;background:var(--bright);color:#fff;border-radius:5px;text-decoration:none;white-space:nowrap;">연습 →</a>'
-    + '</div>';
+    + '</div>'
+    // learning hub 바로가기
+    + '<a href="korehan-learning-overview.html" style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px;padding:9px 12px;background:linear-gradient(135deg,#1a3a6b,#2563eb);color:#fff;border-radius:8px;font-size:12px;font-weight:800;text-decoration:none;">'
+    + '<span>📊</span><span>Learning Hub에서 전체 진도 보기</span><span style="margin-left:auto;opacity:.8;">→</span>'
+    + '</a>';
 }
 
 window.renderHomeLearningPreview = renderHomeLearningPreview;
@@ -4613,7 +4617,7 @@ function injectMobileBottomNav() {
     ['korehan-all.html','📰','News','korehan-all'],
     ['korehan-study-room.html','📘','Learn','korehan-study-room'],
     ['korehan-conversations.html','💬','CONVO','korehan-conversations'],
-    ['korehan-mypage.html','👤','My','korehan-mypage']
+    ['korehan-learning-overview.html','🎯','Missions','korehan-learning-overview']
   ];
   nav.innerHTML = items.map(function(it){
     return '<a href="'+it[0]+'" class="'+(page===it[3]?'on':'')+'"><span class="ico">'+it[1]+'</span><span>'+it[2]+'</span></a>';
