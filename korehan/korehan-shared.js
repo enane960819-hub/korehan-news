@@ -2,6 +2,27 @@
    KoreHan News — Shared JS
    ============================================================ */
 
+// ── Lucide icon helper ────────────────────────────────────────
+(function() {
+  var s = document.createElement('script');
+  s.src = 'https://unpkg.com/lucide@0.475.0/dist/umd/lucide.min.js';
+  s.onload = function() {
+    if (!window.lucide) return;
+    lucide.createIcons();
+    var t;
+    new MutationObserver(function() {
+      clearTimeout(t);
+      t = setTimeout(function() { if (window.lucide) lucide.createIcons(); }, 30);
+    }).observe(document.body || document.documentElement, { childList: true, subtree: true });
+  };
+  (document.head || document.documentElement).appendChild(s);
+})();
+
+function khIcon(name, size, style) {
+  size = size || 16;
+  return '<i data-lucide="' + name + '" style="width:' + size + 'px;height:' + size + 'px;vertical-align:-' + Math.floor(size * 0.15) + 'px;display:inline-block;flex-shrink:0;' + (style || '') + '"></i>';
+}
+
 // ── Supabase ──────────────────────────────────────────────────
 const SUPA_URL = 'https://samghztrdvtxmrmawneu.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs';
@@ -332,7 +353,7 @@ async function authSignIn() {
     return;
   }
   closeAuthModal();
-  toast('Welcome back! 👋');
+  toast('Welcome back!');
 }
 
 // ── 이메일 회원가입 ───────────────────────────────────────────
@@ -378,7 +399,7 @@ async function authSignUp() {
     return;
   }
 
-  _authShowOk('✅ 가입 완료! 확인 이메일을 발송했어요. 받은 편지함(스팸함 포함)을 확인해주세요.');
+  _authShowOk('가입 완료! 확인 이메일을 발송했어요. 받은 편지함(스팸함 포함)을 확인해주세요.');
   document.getElementById('kh-signup-form').querySelectorAll('input').forEach(function(i){ i.value=''; });
 }
 
@@ -398,7 +419,7 @@ async function authResetPassword() {
   _authSetLoading(btn, false);
 
   if (error) { _authShowError(error.message); return; }
-  _authShowOk('✅ Password reset link sent! Check your email.');
+  _authShowOk('Password reset link sent! Check your email.');
 }
 
 // ── 모달 HTML 주입 ────────────────────────────────────────────
@@ -1837,8 +1858,8 @@ function renderArticlePage() {
 
     // 본문 탭
     + '<div class="art-tabs">'
-    + '<button class="art-tab on" onclick="switchArtTab(\'article\',this)">📰 Article</button>'
-    + '<button class="art-tab" onclick="switchArtTab(\'grammar\',this)">📖 Grammar Guide</button>'
+    + '<button class="art-tab on" onclick="switchArtTab(\'article\',this)">' + khIcon('newspaper', 15) + ' Article</button>'
+    + '<button class="art-tab" onclick="switchArtTab(\'grammar\',this)">' + khIcon('book-open', 15) + ' Grammar Guide</button>'
     + '</div>'
 
     // 기사 탭
@@ -1854,7 +1875,7 @@ function renderArticlePage() {
 
     // 단어 학습 박스
     + '<div class="art-vocab-box">'
-    + '<div class="art-vocab-title">📚 Key Vocabulary</div>'
+    + '<div class="art-vocab-title">' + khIcon('book-open', 15) + ' Key Vocabulary</div>'
     + '<div class="art-vocab-list" id="art-vocab-list"></div>'
     + '</div>'
 
@@ -1868,7 +1889,7 @@ function renderArticlePage() {
 
     // 댓글 섹션
     + '<section class="art-comments" id="art-comments">'
-    + '<h3 class="art-comments-title">💬 Comments <span id="comment-count" style="font-size:16px;color:var(--gray)"></span></h3>'
+    + '<h3 class="art-comments-title">' + khIcon('message-circle', 16) + ' Comments <span id="comment-count" style="font-size:16px;color:var(--gray)"></span></h3>'
     + '<div id="comment-form-wrap">'
     + '<div class="comment-login-notice" id="comment-login-notice" style="display:none">'
     + '<p>Sign in to leave a comment — <a href="#" onclick="event.preventDefault();openAuthModal(&apos;signin&apos;)">Sign in</a></p>'
@@ -1893,7 +1914,7 @@ function renderArticlePage() {
         if (!related.length) related = all.slice(0,3);
         if (!related.length) return '';
         return '<div class="art-related">'
-          + '<div class="art-related-title">📰 Related Articles</div>'
+          + '<div class="art-related-title">' + khIcon('newspaper', 15) + ' Related Articles</div>'
           + '<div class="art-related-grid">'
           + related.map(function(r){
               var levelColors = {'Starter':'#f3e8ff;color:#6b21a8','Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'};
@@ -3272,7 +3293,7 @@ function openVocabEditModal(word) {
         s.replaceWith(document.createTextNode(s.textContent));
       });
       modal.remove();
-      showToast('🗑 ' + word + ' 삭제됨');
+      showToast(word + ' 삭제됨');
     };
   }
 
@@ -3301,7 +3322,7 @@ function openVocabEditModal(word) {
       }
 
       modal.remove();
-      showToast('✅ ' + word + ' 저장됨');
+      showToast(word + ' 저장됨');
     } catch(e) {
       err.textContent = '저장 실패: ' + e.message;
       err.style.display = 'block';
@@ -3377,7 +3398,7 @@ async function awardXP(actionKey, meta) {
     if (res.data && res.data.ok) {
       // 레벨업이면 토스트 표시
       if (res.data.leveled_up) {
-        showToast('🎉 레벨 업! Lv.' + res.data.level + ' ' + res.data.level_name);
+        showToast('레벨 업! Lv.' + res.data.level + ' ' + res.data.level_name);
       }
       // XP 획득 토스트 (미니)
       showXPToast(res.data.xp_gained);
@@ -3402,7 +3423,7 @@ function showXPToast(xp) {
       + 'transition:opacity .3s;pointer-events:none;font-family:inherit';
     document.body.appendChild(el);
   }
-  el.textContent = '+' + _xpToastTotal + ' XP ⭐';
+  el.innerHTML = khIcon('star', 13, 'color:#7ab8f5') + ' +' + _xpToastTotal + ' XP';
   el.style.opacity = '1';
   _xpToastTimer = setTimeout(function(){
     el.style.opacity = '0';
@@ -4537,11 +4558,11 @@ async function onDailyMissionComplete() {
     if (Math.floor(newStreak / 5) > Math.floor(prevStreak / 5)) {
       newTickets += 1;
       setTimeout(function() {
-        toast('🎉 데일리 미션 ' + newStreak + '일 연속 완료! ✏️ 작문 첨삭권 1회 획득!');
+        toast('데일리 미션 ' + newStreak + '일 연속 완료! 작문 첨삭권 1회 획득!');
       }, 800);
     } else {
       setTimeout(function() {
-        toast('🎯 오늘 데일리 미션 완료! ' + newStreak + '일 연속 🔥');
+        toast('오늘 데일리 미션 완료! ' + newStreak + '일 연속');
       }, 800);
     }
 
@@ -4629,7 +4650,7 @@ async function checkDailyMissionComplete() {
   if ((d.articles||0) >= 3 && (d.words||0) >= 20 && (d.quizzes||0) >= 3 && (d.fill||0) >= 1) {
     _dailyMissionBonusGiven = true;
     var res = await awardXP('daily_mission_complete', {});
-    if (res && res.ok) showToast('🎯 일일 미션 완료! +50 XP 보너스');
+    if (res && res.ok) showToast('일일 미션 완료! +50 XP 보너스');
   }
 }
 
