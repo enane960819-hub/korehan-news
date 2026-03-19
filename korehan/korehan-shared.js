@@ -5007,7 +5007,8 @@ async function renderHomeLearningPreview() {
     +   '<div style="font-size:13px;font-weight:800;color:#0b1626;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + weakGrammar + '</div>'
     + '</div>'
     + '<a href="korehan-study-room.html?focus=' + weakQ + '" style="flex-shrink:0;font-size:11px;font-weight:800;padding:5px 11px;background:var(--bright);color:#fff;border-radius:5px;text-decoration:none;white-space:nowrap;">연습 →</a>'
-    + '</div>';
+    + '</div>'
+    + '<a href="korehan-learning-overview.html" style="display:block;margin-top:10px;text-align:center;font-size:12px;font-weight:800;color:var(--bright);text-decoration:none;padding:8px;background:#f0f4ff;border-radius:7px;">📊 Learning Hub에서 전체 진도 보기 →</a>';
 }
 
 window.renderHomeLearningPreview = renderHomeLearningPreview;
