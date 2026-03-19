@@ -4525,6 +4525,9 @@ async function onDailyMissionComplete() {
     var today = dmToday();
     var yesterday = new Date(Date.now() + 9*60*60*1000 - 86400000).toISOString().slice(0,10); // KST
 
+    // 오늘 이미 완료한 경우 streak 건드리지 않음
+    if (cur.last_mission_date === today) return;
+
     // 연속 완료 계산
     var newStreak = (cur.last_mission_date === yesterday) ? (cur.mission_streak||0) + 1 : 1;
     var newTickets = cur.writing_tickets || 0;
