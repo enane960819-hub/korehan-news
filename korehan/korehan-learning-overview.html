@@ -72,7 +72,7 @@
       <div class="hero-main">
         <div class="eyebrow">Learning Hub</div>
         <h1>Your study should tell you what to do next.</h1>
-        <p>Weak grammar, today’s 20 words, saved reading, review queue, and real weekly progress — all in one page.</p>
+        <p>Weak grammar, today’s level-based 10 words, your interest-based 10 words, saved reading, review queue, and real weekly progress — all in one page.</p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="korehan-study-room.html">Start Daily Review</a>
           <a class="btn btn-ghost" href="#weekly-progress">See Weekly Progress</a>
@@ -82,7 +82,7 @@
         <div class="mini-title">Recommended flow today</div>
         <div class="routine">
           <div class="routine-item"><div class="routine-num">1</div><div><h3>Review weak grammar</h3><p>Focus on the patterns you missed most often this week.</p></div></div>
-          <div class="routine-item"><div class="routine-num">2</div><div><h3>Study 20 words</h3><p>10 random words + 10 words based on your selected interests.</p></div></div>
+          <div class="routine-item"><div class="routine-num">2</div><div><h3>Study 20 words</h3><p>10 words from your selected level + 10 words from your selected interests.</p></div></div>
           <div class="routine-item"><div class="routine-num">3</div><div><h3>Revisit today’s reading</h3><p>Everything you read is saved and grouped into one review flow.</p></div></div>
         </div>
       </aside>
@@ -108,7 +108,7 @@
 
     <section class="card" style="margin-bottom:18px">
       <div class="card-hd">
-        <div><h2>20 words for today</h2><p>매일 새로운 10개 + 관심사 10개 · 하루 동안 고정됩니다.</p></div>
+        <div><h2>20 words for today</h2><p>선택한 레벨 10개 + 관심사 10개 · 하루 동안 고정되고 매일 중복 없이 순환됩니다.</p></div>
         <div style="display:flex;gap:8px;align-items:center;">
           <a class="soft-link" href="korehan-study-room.html?tab=vocab" style="background:#7c3aed;color:#fff;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:800;text-decoration:none;">단어 퀴즈 →</a>
           <a class="soft-link" href="korehan-study-room.html">Study Room</a>
@@ -116,14 +116,15 @@
       </div>
       <div class="vocab-grid">
         <div class="vocab-box">
-          <h3>10 essential daily words</h3>
-          <p style="font-size:13px;color:#64748b;margin-bottom:12px;">Core vocabulary refreshed every day.</p>
-          <div class="word-list" id="random-words"></div>
+          <h3>10 words from your level</h3>
+          <p style="font-size:13px;color:#64748b;margin-bottom:12px;">Choose Beginner, Intermediate, or Advanced to receive 10 non-repeating daily words from a 500-word bank.</p>
+          <div id="level-selector" class="label-selector"></div>
+          <div class="word-list" id="level-words"></div>
         </div>
         <div class="vocab-box">
           <h3>10 words from your interests</h3>
-          <p style="font-size:13px;color:#64748b;margin-bottom:12px;">Select your interest tags to get topic-specific words.</p>
-          <div id="interest-selector"></div>
+          <p style="font-size:13px;color:#64748b;margin-bottom:12px;">Select your interest tags to get 10 non-repeating topic words from 200-word banks.</p>
+          <div id="interest-selector" class="label-selector"></div>
           <div class="word-list" id="interest-words"></div>
         </div>
       </div>
@@ -152,6 +153,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="korehan-shared.js"></script>
+  <script src="learning_hub_vocab_data.js"></script>
   <script>
   // ── helpers ────────────────────────────────────────────────
   const pct = v => Math.max(0, Math.min(100, Number(v || 0)));
@@ -236,11 +238,9 @@
   }
 
   // 단어 행 HTML
-  function wordRowHTML(w) {
-    var tag = w.interest_tag && w.interest_tag !== 'daily' ? w.interest_tag : null;
-    var badge = tag
-      ? '<div class="level" style="background:#f3e8ff;color:#7c3aed">' + tag + '</div>'
-      : '<div class="level">' + (w.level||'General') + '</div>';
+  function wordRowHTML(w, badgeLabel, badgeTone) {
+    var tone = badgeTone || 'level';
+    var badge = '<div class="level ' + tone + '">' + (badgeLabel || w.level || 'General') + '</div>';
     return '<div class="word-row">'
       + '<div class="word-main">'
       + '<div class="ko">' + (w.word_ko||'') + '</div>'
@@ -248,46 +248,41 @@
       + '</div>' + badge + '</div>';
   }
 
-  function renderWords(dailyVocab) {
-    var general  = (dailyVocab||[]).filter(function(w){ return !w.interest_tag || w.interest_tag === 'daily'; }).slice(0,10);
-    var interest = (dailyVocab||[]).filter(function(w){ return w.interest_tag && w.interest_tag !== 'daily'; }).slice(0,10);
-    var genEl = document.getElementById('random-words');
+  function syncWordStat(levelWords, interestWords) {
+    var raw = (document.getElementById('stat-words') || {}).textContent || 0;
+    var current = Number(raw);
+    if (!isFinite(current)) current = 0;
+    var shown = (levelWords || []).length + (interestWords || []).length;
+    if (shown > current) setText('stat-words', shown);
+  }
+
+  function renderWords(payload) {
+    payload = payload || { levelWords: [], interestWords: [] };
+    var levelWords = payload.levelWords || [];
+    var interestWords = payload.interestWords || [];
+    var levelEl = document.getElementById('level-words');
     var intEl = document.getElementById('interest-words');
-    if (genEl) genEl.innerHTML = general.length
-      ? general.map(wordRowHTML).join('')
-      : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">단어 배정 중...</div>';
-    if (intEl) intEl.innerHTML = interest.length
-      ? interest.map(wordRowHTML).join('')
-      : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">관심사를 선택하고 저장하면 관련 단어가 표시됩니다.</div>';
+    if (levelEl) levelEl.innerHTML = levelWords.length
+      ? levelWords.map(function(w){ return wordRowHTML(w, w.level || 'Level', 'level'); }).join('')
+      : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">레벨을 선택하면 오늘의 단어 10개가 표시됩니다.</div>';
+    if (intEl) intEl.innerHTML = interestWords.length
+      ? interestWords.map(function(w){ return wordRowHTML(w, interestLabelFor(w.interest_tag), 'interest'); }).join('')
+      : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">관심사를 선택하고 저장하면 관련 단어 10개가 표시됩니다.</div>';
+    syncWordStat(levelWords, interestWords);
   }
 
-  // 오늘 날짜 캐시 키 (KST)
-  function vocabCacheKey(type) {
-    var today = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
-    return 'kh_vocab_' + type + '_' + today;
+  function vocabDateKey() {
+    return new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
   }
 
-  // 이전 날에 나온 일반 단어 수집 (중복 방지)
-  function getPastSeenWords() {
-    var todayKey = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
+  function vocabCacheKey(type, scope) {
+    return 'kh_vocab_' + type + '_' + scope + '_' + vocabDateKey();
+  }
+
+  function getPastSeenWords(prefix) {
+    var todayKey = vocabDateKey();
     var seen = new Set();
     try {
-      Object.keys(localStorage).forEach(function(k) {
-        if (k.startsWith('kh_vocab_gen_') && !k.endsWith(todayKey)) {
-          var words = JSON.parse(localStorage.getItem(k) || '[]');
-          words.forEach(function(w) { if (w.word_ko) seen.add(w.word_ko); });
-        }
-      });
-    } catch(e) {}
-    return seen;
-  }
-
-  // 이전 날에 나온 관심사 단어 수집 (중복 방지)
-  function getPastSeenInterestWords(cacheTagKey) {
-    var todayKey = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
-    var seen = new Set();
-    try {
-      var prefix = 'kh_vocab_int_' + cacheTagKey + '_';
       Object.keys(localStorage).forEach(function(k) {
         if (k.startsWith(prefix) && !k.endsWith(todayKey)) {
           var words = JSON.parse(localStorage.getItem(k) || '[]');
@@ -298,111 +293,69 @@
     return seen;
   }
 
-  async function loadWordsDirectly(selectedTags) {
-    var sb = (typeof getSupa === 'function') ? getSupa() : null;
-
-    // ── 캐시 확인 (오늘 날짜 기준) ──
-    var genCached  = null;
-    var intCached  = null;
-    var cacheTagKey = (selectedTags || []).slice().sort().join(',');
-    try {
-      var gc = localStorage.getItem(vocabCacheKey('gen'));
-      if (gc) { var parsed = JSON.parse(gc); if (parsed && parsed.length >= 5) genCached = parsed; }
-      var ic = localStorage.getItem(vocabCacheKey('int_' + cacheTagKey));
-      if (ic) intCached = JSON.parse(ic);
-    } catch(e) {}
-
-    // 둘 다 캐시 있으면 바로 렌더
-    if (genCached && genCached.length >= 5 && (!selectedTags || !selectedTags.length || (intCached && intCached.length))) {
-      renderWords(genCached.concat(intCached || []));
-      return;
+  function shuffleWithSeed(list, seedInput) {
+    var seed = 0;
+    String(seedInput || '').split('').forEach(function(ch, idx) {
+      seed = (seed * 31 + ch.charCodeAt(0) + idx) % 2147483647;
+    });
+    if (!seed) seed = 1234567;
+    function next() {
+      seed = (seed * 48271) % 2147483647;
+      return seed / 2147483647;
     }
-
-    if (!sb) { loadWordsFallback(selectedTags); return; }
-
-    var genPool = genCached || [];
-    var intPool = intCached || [];
-
-    // ── 일반(essential) 단어: vocabulary_bank 전체에서 하루 10개 랜덤, 매일 중복 없이 ──
-    if (!genPool.length) {
-      try {
-        var r1 = await sb.from('vocabulary_bank')
-          .select('word_ko, word_rom, word_en, interest_tag')
-          .neq('is_active', false)
-          .limit(600);
-        if (r1.error) throw r1.error;
-        var allWords = (r1.data || []).map(function(w) {
-          return { word_ko: w.word_ko, word_rom: w.word_rom || '', word_en: w.word_en || '', interest_tag: w.interest_tag || '' };
-        });
-
-        // 이전 날 나온 단어 제외 → 사이클 다 돌면 전체 리셋
-        var seenWords = getPastSeenWords();
-        var fresh = allWords.filter(function(w){ return !seenWords.has(w.word_ko); });
-        if (fresh.length < 10) fresh = allWords;
-
-        genPool = fresh.sort(function(){ return Math.random()-.5; }).slice(0,10);
-        try { localStorage.setItem(vocabCacheKey('gen'), JSON.stringify(genPool)); } catch(e) {}
-      } catch(e) {
-        console.warn('vocab general query error:', e.message);
-      }
+    var arr = list.slice();
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(next() * (i + 1));
+      var temp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = temp;
     }
-
-    // ── 관심사 단어: vocabulary_bank에서 interest_tag 매칭, 하루 10개 랜덤, 매일 중복 없이 ──
-    if (!intPool.length && selectedTags && selectedTags.length) {
-      try {
-        var r3 = await sb.from('vocabulary_bank')
-          .select('word_ko, word_rom, word_en, interest_tag')
-          .neq('is_active', false)
-          .in('interest_tag', selectedTags)
-          .limit(600);
-        if (r3.error) throw r3.error;
-        if (r3.data && r3.data.length) {
-          var genKo = new Set(genPool.map(function(w){ return w.word_ko; }));
-          var seenInt = getPastSeenInterestWords(cacheTagKey);
-          var intCandidates = r3.data.map(function(w) {
-            return { word_ko: w.word_ko, word_rom: w.word_rom || '', word_en: w.word_en || '', interest_tag: w.interest_tag || selectedTags[0] };
-          });
-          // 오늘 essential에 나온 단어 + 이전 날 관심사 단어 제외
-          var freshInt = intCandidates.filter(function(w){ return !genKo.has(w.word_ko) && !seenInt.has(w.word_ko); });
-          // 사이클 완료 시 essential 중복만 제외하고 전체 리셋
-          if (freshInt.length < 10) freshInt = intCandidates.filter(function(w){ return !genKo.has(w.word_ko); });
-          intPool = freshInt.sort(function(){ return Math.random()-.5; }).slice(0,10);
-          try { localStorage.setItem(vocabCacheKey('int_' + cacheTagKey), JSON.stringify(intPool)); } catch(e) {}
-        }
-      } catch(e) {
-        console.warn('vocab interest query error:', e.message);
-      }
-    }
-
-    if (!genPool.length && !intPool.length) {
-      loadWordsFallback(selectedTags);
-      return;
-    }
-
-    renderWords(genPool.concat(intPool));
+    return arr;
   }
 
-  // 완전 fallback: VOCAB 객체에서 (vocabulary_bank 비었을 때)
-  function loadWordsFallback(selectedTags) {
+  function pickDailyWords(pool, count, cachePrefix, cacheScope, excludeSet) {
+    var cacheKey = vocabCacheKey(cachePrefix, cacheScope);
     try {
-      var vocab = typeof VOCAB !== 'undefined' ? VOCAB : {};
-      var keys = Object.keys(vocab);
-      if (!keys.length) { renderWords([]); return; }
-      // 오늘 날짜 시드로 매일 같은 단어 (새로고침해도 안 바뀜)
-      var today = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
-      var seed = parseInt(today.replace(/-/g,''), 10);
-      var sorted = keys.slice().sort(function(a,b){
-        return ((seed * a.charCodeAt(0)) % 997) - ((seed * b.charCodeAt(0)) % 997);
+      var cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+      if (cached && cached.length) return cached;
+    } catch(e) {}
+
+    var excluded = excludeSet || new Set();
+    var seen = getPastSeenWords('kh_vocab_' + cachePrefix + '_' + cacheScope + '_');
+    var fresh = (pool || []).filter(function(item) {
+      return item && item.word_ko && !excluded.has(item.word_ko) && !seen.has(item.word_ko);
+    });
+    if (fresh.length < count) {
+      fresh = (pool || []).filter(function(item) {
+        return item && item.word_ko && !excluded.has(item.word_ko);
       });
-      var genWords = sorted.slice(0,10).map(function(k){
-        return { word_ko: k, word_rom: vocab[k].rom, word_en: vocab[k].en, interest_tag: 'daily' };
+    }
+    var picked = shuffleWithSeed(fresh, cacheScope + ':' + vocabDateKey()).slice(0, count);
+    try { localStorage.setItem(cacheKey, JSON.stringify(picked)); } catch(e) {}
+    return picked;
+  }
+
+  function getLearningHubVocabData() {
+    return (window.LEARNING_HUB_VOCAB_DATA || { levels: {}, interests: {} });
+  }
+
+  function loadWordsFromLocalBanks(selectedLevel, selectedTags) {
+    var data = getLearningHubVocabData();
+    var levelPool = ((data.levels || {})[selectedLevel] || []).map(function(item) {
+      return Object.assign({}, item, { level: selectedLevel });
+    });
+    var levelWords = pickDailyWords(levelPool, 10, 'level', selectedLevel || 'Beginner');
+
+    var interestPool = [];
+    (selectedTags || []).forEach(function(tag) {
+      (((data.interests || {})[tag]) || []).forEach(function(item) {
+        interestPool.push(Object.assign({}, item, { interest_tag: tag }));
       });
-      var intWords = sorted.slice(10,20).map(function(k){
-        return { word_ko: k, word_rom: vocab[k].rom, word_en: vocab[k].en,
-                 interest_tag: selectedTags && selectedTags[0] ? selectedTags[0] : 'general' };
-      });
-      renderWords(genWords.concat(intWords));
-    } catch(e) { console.warn('loadWordsFallback error:', e); }
+    });
+    var excludeSet = new Set(levelWords.map(function(item) { return item.word_ko; }));
+    var interestScope = (selectedTags || []).slice().sort().join('__') || 'none';
+    var interestWords = pickDailyWords(interestPool, 10, 'interest', interestScope, excludeSet);
+    renderWords({ levelWords: levelWords, interestWords: interestWords });
   }
 
   function renderReview(data) {
@@ -454,7 +407,13 @@
       <div class="streak-item"><div class="streak-title">Speaking</div><div class="streak-val">practice only</div></div>`;
   }
 
-  // ── interests 설정 UI ────────────────────────────────────────
+  // ── level / interest 설정 UI ──────────────────────────────
+  const LEVEL_TAGS = [
+    {tag:'Beginner', label:'🌱 Beginner'},
+    {tag:'Intermediate', label:'🚀 Intermediate'},
+    {tag:'Advanced', label:'🏔️ Advanced'},
+  ];
+
   const INTEREST_TAGS = [
     {tag:'kpop',     label:'🎤 K-pop'},
     {tag:'travel',   label:'✈️ Travel'},
@@ -468,74 +427,87 @@
     {tag:'beauty',   label:'💄 Beauty'},
   ];
 
+  function interestLabelFor(tag) {
+    var found = INTEREST_TAGS.find(function(item) { return item.tag === tag; });
+    return found ? found.label.replace(/^.+?\s/, '') : (tag || 'Interest');
+  }
+
+  function renderLevelSelector(selectedLevel) {
+    var box = document.getElementById('level-selector');
+    if (!box) return;
+    box.innerHTML = LEVEL_TAGS.map(function(item) {
+      return '<button class="label-chip level-chip' + (item.tag === selectedLevel ? ' on' : '') + '" data-level="' + item.tag + '">' + item.label + '</button>';
+    }).join('');
+    box.querySelectorAll('.level-chip').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        localStorage.setItem('kh_user_level', btn.dataset.level);
+        renderLevelSelector(btn.dataset.level);
+        var savedTags = [];
+        try { savedTags = JSON.parse(localStorage.getItem('kh_user_interests') || '[]'); } catch(e) {}
+        loadWordsFromLocalBanks(btn.dataset.level, savedTags);
+      });
+    });
+  }
+
   async function loadAndRenderInterests() {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    var savedLevel = localStorage.getItem('kh_user_level') || 'Beginner';
+    renderLevelSelector(savedLevel);
 
     // localStorage에서 먼저 표시 (빠른 렌더링, 로그인 없어도 동작)
     var saved = [];
-    try { saved = JSON.parse(localStorage.getItem('kh_user_interests') || '[]'); } catch(e) {}
+    try { saved = JSON.parse(localStorage.getItem('kh_user_interests') || '["daily","news"]'); } catch(e) { saved = ['daily','news']; }
+    if (!saved.length) saved = ['daily','news'];
 
     // 로그인된 경우 DB에서 최신 태그 로드
     if (sb && supaUser) {
       try {
         var res = await sb.from('user_interests').select('tags').eq('user_id', supaUser.id).maybeSingle();
-        if (res.data && res.data.tags) {
-          saved = res.data.tags;
-          localStorage.setItem('kh_user_interests', JSON.stringify(saved));
+        if (res.data) {
+          if (res.data.tags && res.data.tags.length) {
+            saved = res.data.tags;
+            localStorage.setItem('kh_user_interests', JSON.stringify(saved));
+          }
         }
       } catch(e) {}
     }
 
-    // 태그 버튼 렌더
     var box = document.getElementById('interest-selector');
     if (!box) return;
     box.innerHTML = INTEREST_TAGS.map(function(t) {
-      return '<button class="interest-btn' + (saved.indexOf(t.tag) !== -1 ? ' on' : '') + '" data-tag="' + t.tag + '">' + t.label + '</button>';
-    }).join('') + '<button id="save-interests-btn" style="margin-top:8px;padding:8px 18px;background:#7c3aed;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">저장</button>';
+      return '<button class="label-chip interest-chip' + (saved.indexOf(t.tag) !== -1 ? ' on' : '') + '" data-tag="' + t.tag + '">' + t.label + '</button>';
+    }).join('') + '<button id="save-interests-btn" class="selector-save-btn">저장</button>';
 
-    // 태그 토글
-    box.querySelectorAll('.interest-btn').forEach(function(btn) {
+    box.querySelectorAll('.interest-chip').forEach(function(btn) {
       btn.addEventListener('click', function() {
         btn.classList.toggle('on');
-        // 클릭 즉시 미리보기 단어 업데이트
-        var currentTags = Array.from(box.querySelectorAll('.interest-btn.on')).map(function(b){ return b.dataset.tag; });
-        loadWordsDirectly(currentTags);
+        var currentTags = Array.from(box.querySelectorAll('.interest-chip.on')).map(function(b){ return b.dataset.tag; });
+        loadWordsFromLocalBanks(localStorage.getItem('kh_user_level') || savedLevel, currentTags);
       });
     });
 
-    // 저장 버튼
     var saveBtn = document.getElementById('save-interests-btn');
     if (saveBtn) {
       saveBtn.addEventListener('click', async function() {
-        var selected = Array.from(box.querySelectorAll('.interest-btn.on')).map(function(b){ return b.dataset.tag; });
-        // localStorage 즉시 저장
+        var selected = Array.from(box.querySelectorAll('.interest-chip.on')).map(function(b){ return b.dataset.tag; });
+        var selectedLevel = localStorage.getItem('kh_user_level') || savedLevel;
         localStorage.setItem('kh_user_interests', JSON.stringify(selected));
-        // 관심사 변경 시 오늘 캐시 무효화 (새 태그로 다시 쿼리)
-        try {
-          var today = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
-          Object.keys(localStorage).forEach(function(k){
-            if (k.startsWith('kh_vocab_int_') && k.endsWith(today)) localStorage.removeItem(k);
-          });
-        } catch(e) {}
-        // DB 저장
         if (sb && supaUser) {
           try {
             await sb.from('user_interests').upsert(
               { user_id: supaUser.id, tags: selected, updated_at: new Date().toISOString() },
               { onConflict: 'user_id' }
             );
-            if (typeof toast === 'function') toast('관심사 저장 완료 ✓');
+            if (typeof toast === 'function') toast('레벨/관심사 저장 완료 ✓');
           } catch(e) {
             if (typeof toast === 'function') toast('저장 실패: ' + e.message, true);
           }
         }
-        // 단어 바로 갱신
-        loadWordsDirectly(selected);
+        loadWordsFromLocalBanks(selectedLevel, selected);
       });
     }
 
-    // 현재 저장된 태그로 단어 로드
-    loadWordsDirectly(saved);
+    loadWordsFromLocalBanks(savedLevel, saved);
   }
 
   // ── hub snapshot: direct table queries (replaces missing RPC) ──
@@ -647,11 +619,12 @@
         + '<div style="font-size:13px;color:#94a3b8;margin-bottom:16px">학습 데이터, 취약 문법, 단어 배정이 모두 계정에 저장됩니다.</div>'
         + '<button onclick="openAuthModal(\'signin\')" style="padding:10px 24px;background:#2563eb;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
         + '</div>';
-      ['weak-grammar-list','skills-list','random-words','interest-words','review-queue','saved-reading'].forEach(function(id) {
+      ['weak-grammar-list','skills-list','review-queue','saved-reading'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.innerHTML = loginMsg;
       });
       ['stat-xp','stat-words','stat-articles','stat-streak'].forEach(function(id) { setText(id, '—'); });
+      loadAndRenderInterests();
       return;
     }
 
@@ -714,6 +687,7 @@
       }
     } catch(e) {}
     renderWeakGrammar({ weak_grammar: weak });
+    loadAndRenderInterests();
 
     // skill scores fallback
     var savedWords = [];
@@ -728,14 +702,6 @@
       setText('stat-articles', total);
     } catch(e) {}
 
-    // 단어 fallback: VOCAB object에서 랜덤 10개
-    try {
-      var vocab = typeof VOCAB !== 'undefined' ? VOCAB : {};
-      var keys = Object.keys(vocab);
-      var shuffled = keys.sort(function() { return Math.random() - .5; }).slice(0,10);
-      var words = shuffled.map(function(k) { return { word_ko: k, word_rom: vocab[k].rom, word_en: vocab[k].en }; });
-      renderWords(words);
-    } catch(e) {}
   }
 
   // ── init ────────────────────────────────────────────────────
@@ -765,10 +731,14 @@
   </script>
 
   <style>
-  /* interests selector */
-  #interest-selector { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
-  .interest-btn { padding:7px 14px; border-radius:999px; border:1.5px solid #d8e1ef; background:#fff; color:#64748b; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; transition:all .15s; }
-  .interest-btn.on { background:#7c3aed; color:#fff; border-color:#7c3aed; }
+  .label-selector { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .label-chip { padding:8px 14px; border-radius:999px; border:1.5px solid #d8e1ef; background:#fff; color:#64748b; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit; transition:all .15s; }
+  .label-chip:hover { transform:translateY(-1px); border-color:#94a3b8; }
+  .level-chip.on { background:#2563eb; color:#fff; border-color:#2563eb; }
+  .interest-chip.on { background:#7c3aed; color:#fff; border-color:#7c3aed; }
+  .selector-save-btn { margin-top:8px; padding:9px 18px; background:#0f172a; color:#fff; border:none; border-radius:999px; font-size:13px; font-weight:800; cursor:pointer; }
+  .level.level { background:#eef4ff; color:#2563eb; }
+  .level.interest { background:#f3e8ff; color:#7c3aed; }
   </style>
   <div id="kh-footer"></div>
 </body>
