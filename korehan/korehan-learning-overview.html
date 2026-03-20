@@ -267,13 +267,29 @@
     return 'kh_vocab_' + type + '_' + today;
   }
 
-  // 이전 날에 나온 단어 키 수집 (중복 방지)
+  // 이전 날에 나온 일반 단어 수집 (중복 방지)
   function getPastSeenWords() {
     var todayKey = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
     var seen = new Set();
     try {
       Object.keys(localStorage).forEach(function(k) {
         if (k.startsWith('kh_vocab_gen_') && !k.endsWith(todayKey)) {
+          var words = JSON.parse(localStorage.getItem(k) || '[]');
+          words.forEach(function(w) { if (w.word_ko) seen.add(w.word_ko); });
+        }
+      });
+    } catch(e) {}
+    return seen;
+  }
+
+  // 이전 날에 나온 관심사 단어 수집 (중복 방지)
+  function getPastSeenInterestWords(cacheTagKey) {
+    var todayKey = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
+    var seen = new Set();
+    try {
+      var prefix = 'kh_vocab_int_' + cacheTagKey + '_';
+      Object.keys(localStorage).forEach(function(k) {
+        if (k.startsWith(prefix) && !k.endsWith(todayKey)) {
           var words = JSON.parse(localStorage.getItem(k) || '[]');
           words.forEach(function(w) { if (w.word_ko) seen.add(w.word_ko); });
         }
@@ -296,7 +312,7 @@
       if (ic) intCached = JSON.parse(ic);
     } catch(e) {}
 
-    // 둘 다 캐시 있으면 바로 렌더 (gen 캐시가 5개 미만이면 재fetch — 구버전 is_active 버그 방지)
+    // 둘 다 캐시 있으면 바로 렌더
     if (genCached && genCached.length >= 5 && (!selectedTags || !selectedTags.length || (intCached && intCached.length))) {
       renderWords(genCached.concat(intCached || []));
       return;
@@ -307,18 +323,19 @@
     var genPool = genCached || [];
     var intPool = intCached || [];
 
-    // ── 일반 단어: hover_vocab_master에서 가져오기 (핵심 단어 DB) ──
+    // ── 일반(essential) 단어: vocabulary_bank 전체에서 하루 10개 랜덤, 매일 중복 없이 ──
     if (!genPool.length) {
       try {
-        var r1 = await sb.from('hover_vocab_master')
-          .select('word_ko, reading, meaning_en, level')
+        var r1 = await sb.from('vocabulary_bank')
+          .select('word_ko, word_rom, word_en, interest_tag')
           .eq('is_active', true)
-          .limit(300);
+          .limit(600);
+        if (r1.error) throw r1.error;
         var allWords = (r1.data || []).map(function(w) {
-          return { word_ko: w.word_ko, word_rom: w.reading || '', word_en: w.meaning_en || '', level: w.level || '' };
+          return { word_ko: w.word_ko, word_rom: w.word_rom || '', word_en: w.word_en || '', interest_tag: w.interest_tag || '' };
         });
 
-        // 이전 날 나온 단어 제외 (중복 방지)
+        // 이전 날 나온 단어 제외 → 사이클 다 돌면 전체 리셋
         var seenWords = getPastSeenWords();
         var fresh = allWords.filter(function(w){ return !seenWords.has(w.word_ko); });
         if (fresh.length < 10) fresh = allWords;
@@ -330,20 +347,26 @@
       }
     }
 
-    // ── 관심사 단어: hover_vocab_master 랜덤 (태그 없으므로 일반 단어와 다른 셋) ──
+    // ── 관심사 단어: vocabulary_bank에서 interest_tag 매칭, 하루 10개 랜덤, 매일 중복 없이 ──
     if (!intPool.length && selectedTags && selectedTags.length) {
       try {
-        var r3 = await sb.from('hover_vocab_master')
-          .select('word_ko, reading, meaning_en, level')
+        var r3 = await sb.from('vocabulary_bank')
+          .select('word_ko, word_rom, word_en, interest_tag')
           .eq('is_active', true)
-          .limit(300);
+          .in('interest_tag', selectedTags)
+          .limit(600);
+        if (r3.error) throw r3.error;
         if (r3.data && r3.data.length) {
           var genKo = new Set(genPool.map(function(w){ return w.word_ko; }));
-          intPool = r3.data
-            .map(function(w){ return { word_ko: w.word_ko, word_rom: w.reading || '', word_en: w.meaning_en || '', level: w.level || '', interest_tag: selectedTags[0] }; })
-            .filter(function(w){ return !genKo.has(w.word_ko); })
-            .sort(function(){ return Math.random()-.5; })
-            .slice(0,10);
+          var seenInt = getPastSeenInterestWords(cacheTagKey);
+          var intCandidates = r3.data.map(function(w) {
+            return { word_ko: w.word_ko, word_rom: w.word_rom || '', word_en: w.word_en || '', interest_tag: w.interest_tag || selectedTags[0] };
+          });
+          // 오늘 essential에 나온 단어 + 이전 날 관심사 단어 제외
+          var freshInt = intCandidates.filter(function(w){ return !genKo.has(w.word_ko) && !seenInt.has(w.word_ko); });
+          // 사이클 완료 시 essential 중복만 제외하고 전체 리셋
+          if (freshInt.length < 10) freshInt = intCandidates.filter(function(w){ return !genKo.has(w.word_ko); });
+          intPool = freshInt.sort(function(){ return Math.random()-.5; }).slice(0,10);
           try { localStorage.setItem(vocabCacheKey('int_' + cacheTagKey), JSON.stringify(intPool)); } catch(e) {}
         }
       } catch(e) {
