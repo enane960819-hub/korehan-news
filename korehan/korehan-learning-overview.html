@@ -545,8 +545,13 @@
       // 오늘의 단어 배정 (RPC 성공 시)
       try {
         const { data: vocab } = await sb.rpc('assign_daily_vocab', { p_user_id: supaUser.id, p_date: new Date().toISOString().slice(0,10) });
-        if (vocab && vocab.length) { renderWords(vocab); }
-        else { loadAndRenderInterests(); } // 배정 단어 없으면 직접 쿼리
+        var rpcGen = (vocab||[]).filter(function(w){ return !w.interest_tag || w.interest_tag === 'daily'; });
+        var rpcInt = (vocab||[]).filter(function(w){ return w.interest_tag && w.interest_tag !== 'daily'; });
+        if (rpcGen.length >= 10) {
+          renderWords(rpcGen.slice(0,10), rpcInt.slice(0,10));
+        } else {
+          loadAndRenderInterests(); // DB 단어 부족 → 내장 VOCAB으로
+        }
       } catch(ve) {
         loadAndRenderInterests(); // vocab RPC 실패 → 직접 쿼리
       }
