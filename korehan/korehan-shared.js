@@ -1313,6 +1313,20 @@ function renderHeroSlide(heroEl) {
       + '</div>'
     : '';
 
+  var ctas = '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:18px">'
+    + '<a href="' + articleUrl(featured.id) + '" style="display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border-radius:999px;background:#fff;color:#0f172a;font-size:13px;font-weight:900;text-decoration:none;box-shadow:0 10px 24px rgba(255,255,255,.18)">Read article →</a>'
+    + '<a href="korehan-learn.html" style="display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);color:#fff;font-size:13px;font-weight:800;text-decoration:none">Vocab drill</a>'
+    + '<a href="korehan-learning-overview.html" style="display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border-radius:999px;background:rgba(122,184,245,.22);border:1px solid rgba(122,184,245,.28);color:#fff;font-size:13px;font-weight:800;text-decoration:none">Learning Hub</a>'
+    + '</div>';
+
+  var sideFooter = '<div style="padding:16px;border-top:1px solid #edf2f7;background:linear-gradient(180deg,#fff 0%,#f8fbff 100%)">'
+    + '<div style="font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:10px">Fast actions</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    + '<a href="beginner-guide.html" style="display:flex;align-items:center;justify-content:center;padding:10px 12px;border-radius:12px;background:#eef4ff;color:#1d4ed8;font-size:12px;font-weight:800;text-decoration:none">Starter guide</a>'
+    + '<a href="korehan-study-room.html" style="display:flex;align-items:center;justify-content:center;padding:10px 12px;border-radius:12px;background:#0f172a;color:#fff;font-size:12px;font-weight:800;text-decoration:none">Start review</a>'
+    + '</div>'
+    + '</div>';
+
   heroEl.innerHTML =
     '<div style="position:relative;min-height:460px;overflow:hidden;background:#0b1626;animation:khHeroSlideIn .55s cubic-bezier(.22,1,.36,1);">'
     + '<style>@keyframes khHeroSlideIn{from{opacity:.55;transform:translateX(34px)}to{opacity:1;transform:translateX(0)}}</style>'
@@ -1323,6 +1337,7 @@ function renderHeroSlide(heroEl) {
     + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span class="category-tag" style="display:inline-block">' + featured.section + '</span><span style="font-size:12px;color:rgba(255,255,255,.65)">' + relTime(featured.date) + '</span></div>'
     + '<h1 class="vocab-zone" style="font-family:\'Playfair Display\',serif;font-size:clamp(26px,3vw,42px);font-weight:900;color:#fff;line-height:1.18;margin:0 0 12px">' + featured.title + '</h1>'
     + '<p style="font-size:14px;color:rgba(255,255,255,.8);line-height:1.7;margin:0;max-width:62ch">' + featBody + '</p>'
+    + ctas
     + dots
     + '</div></a></div>'
     + '<aside style="background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);display:flex;flex-direction:column;border-left:1px solid #e7eef8;">'
@@ -1340,6 +1355,7 @@ function renderHeroSlide(heroEl) {
           + '</div></a>';
       }).join('')
     + '<div style="padding:16px"><a href="korehan-all.html" style="display:block;text-align:center;padding:11px 14px;border-radius:999px;background:#0f172a;color:#fff;font-size:13px;font-weight:800;text-decoration:none">Browse all news →</a></div>'
+    + sideFooter
     + '</aside>';
 }
 

@@ -51,7 +51,7 @@
 .ds-divider { width: 1px; background: rgba(255,255,255,.1); flex-shrink: 0; }
 
 .ds-progress {
-  flex: 0 0 220px;
+  flex: 0 0 260px;
   padding: 18px 22px;
   display: flex;
   flex-direction: column;
@@ -68,29 +68,38 @@
 }
 
 .ds-actions {
-  flex: 0 0 auto;
+  flex: 0 0 300px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   padding: 18px 20px;
+  background: linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.04));
 }
+.ds-quick-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .ds-btn {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 16px;
-  border-radius: 10px;
+  padding: 11px 16px;
+  border-radius: 12px;
   background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.12);
   color: #fff;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
   text-decoration: none;
-  transition: background .15s;
+  transition: background .15s, transform .15s, border-color .15s;
   white-space: nowrap;
+  justify-content:center;
 }
-.ds-btn:hover { background: rgba(255,255,255,.16); }
+.ds-btn:hover { background: rgba(255,255,255,.16); transform: translateY(-1px); border-color: rgba(122,184,245,.55); }
+.ds-btn-main { background: linear-gradient(135deg,#2563eb,#1d4ed8); border-color: rgba(255,255,255,.16); box-shadow: 0 10px 24px rgba(37,99,235,.28); }
+.ds-btn-main:hover { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+.ds-btn-sub { justify-content:flex-start; }
+.ds-note { padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); }
+.ds-note-title { font-size: 10px; font-weight: 900; letter-spacing:.12em; text-transform:uppercase; color: rgba(122,184,245,.9); margin-bottom:6px; }
+.ds-note-body { font-size: 12px; line-height:1.55; color: rgba(255,255,255,.78); }
 
 /* Section header */
 .home-sec {
@@ -207,7 +216,8 @@
   .daily-strip { flex-direction: column; }
   .ds-divider { width: auto; height: 1px; }
   .ds-progress { flex: none; width: 100%; padding: 12px 18px; }
-  .ds-actions { flex-direction: row; padding: 12px 18px; }
+  .ds-actions { flex-direction: column; padding: 12px 18px; }
+  .ds-quick-grid { grid-template-columns: 1fr 1fr; }
   .ds-btn { flex: 1; justify-content: center; }
 }
 </style>
@@ -239,8 +249,15 @@
     <div class="ds-divider"></div>
 
     <div class="ds-actions">
-      <a href="korehan-study-room.html" class="ds-btn">✍️&nbsp; Study Room</a>
-      <a href="korehan-learning-overview.html" class="ds-btn">📊&nbsp; Learning Hub</a>
+      <a href="korehan-study-room.html" class="ds-btn ds-btn-main">✍️&nbsp; Start today's review</a>
+      <div class="ds-quick-grid">
+        <a href="korehan-learning-overview.html" class="ds-btn ds-btn-sub">📊&nbsp; Learning Hub</a>
+        <a href="korehan-learn.html" class="ds-btn ds-btn-sub">🧠&nbsp; Vocab Drill</a>
+      </div>
+      <div class="ds-note">
+        <div class="ds-note-title">Quick win</div>
+        <div class="ds-note-body">Read one article, save 3 words, then jump straight into review without hunting for the next step.</div>
+      </div>
     </div>
   </div>
 
