@@ -470,14 +470,13 @@
 
   async function loadAndRenderInterests() {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
-    if (!supaUser) return;
 
-    // localStorage에서 먼저 표시 (빠른 렌더링)
+    // localStorage에서 먼저 표시 (빠른 렌더링, 로그인 없어도 동작)
     var saved = [];
     try { saved = JSON.parse(localStorage.getItem('kh_user_interests') || '[]'); } catch(e) {}
 
-    // DB에서 최신 태그 로드
-    if (sb) {
+    // 로그인된 경우 DB에서 최신 태그 로드
+    if (sb && supaUser) {
       try {
         var res = await sb.from('user_interests').select('tags').eq('user_id', supaUser.id).maybeSingle();
         if (res.data && res.data.tags) {
