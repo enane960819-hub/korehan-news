@@ -328,7 +328,7 @@
       try {
         var r1 = await sb.from('vocabulary_bank')
           .select('word_ko, word_rom, word_en, interest_tag')
-          .eq('is_active', true)
+          .neq('is_active', false)
           .limit(600);
         if (r1.error) throw r1.error;
         var allWords = (r1.data || []).map(function(w) {
@@ -352,7 +352,7 @@
       try {
         var r3 = await sb.from('vocabulary_bank')
           .select('word_ko, word_rom, word_en, interest_tag')
-          .eq('is_active', true)
+          .neq('is_active', false)
           .in('interest_tag', selectedTags)
           .limit(600);
         if (r3.error) throw r3.error;
