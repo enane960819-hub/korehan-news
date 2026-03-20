@@ -425,16 +425,16 @@
     {tag:'beauty',   label:'Beauty',     icon:'sparkles'},
   ];
 
+  // 관심사 버튼 렌더 (로그인 여부 관계없이 항상 표시)
   async function loadAndRenderInterests() {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
-    if (!supaUser) return;
 
-    // localStorage에서 먼저 표시 (빠른 렌더링)
+    // localStorage에서 먼저
     var saved = [];
     try { saved = JSON.parse(localStorage.getItem('kh_user_interests') || '[]'); } catch(e) {}
 
-    // DB에서 최신 태그 로드
-    if (sb) {
+    // 로그인 상태면 DB에서 최신 태그 로드
+    if (sb && supaUser) {
       try {
         var res = await sb.from('user_interests').select('tags').eq('user_id', supaUser.id).maybeSingle();
         if (res.data && res.data.tags) {
@@ -447,35 +447,35 @@
     // 태그 버튼 렌더
     var box = document.getElementById('interest-selector');
     if (!box) return;
+    var saveBtn = supaUser
+      ? '<button id="save-interests-btn" style="margin-top:8px;padding:8px 18px;background:#7c3aed;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Save interests</button>'
+      : '<div style="margin-top:8px;font-size:12px;color:#94a3b8"><a href="#" onclick="openAuthModal(\'signin\');return false;" style="color:#7c3aed;font-weight:700">Sign in</a> to save your interests.</div>';
     box.innerHTML = INTEREST_TAGS.map(function(t) {
       return '<button class="interest-btn' + (saved.indexOf(t.tag) !== -1 ? ' on' : '') + '" data-tag="' + t.tag + '">' + (typeof khIcon === 'function' ? khIcon(t.icon, 13) + ' ' : '') + t.label + '</button>';
-    }).join('') + '<button id="save-interests-btn" style="margin-top:8px;padding:8px 18px;background:#7c3aed;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Save</button>';
+    }).join('') + saveBtn;
 
-    // 태그 토글
+    // 태그 토글 → 즉시 단어 미리보기
     box.querySelectorAll('.interest-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         btn.classList.toggle('on');
-        // 클릭 즉시 미리보기 단어 업데이트
         var currentTags = Array.from(box.querySelectorAll('.interest-btn.on')).map(function(b){ return b.dataset.tag; });
         loadWordsDirectly(currentTags);
       });
     });
 
-    // 저장 버튼
-    var saveBtn = document.getElementById('save-interests-btn');
-    if (saveBtn) {
-      saveBtn.addEventListener('click', async function() {
+    // 저장 버튼 (로그인 상태일 때만 존재)
+    var saveBtnEl = document.getElementById('save-interests-btn');
+    if (saveBtnEl) {
+      saveBtnEl.addEventListener('click', async function() {
         var selected = Array.from(box.querySelectorAll('.interest-btn.on')).map(function(b){ return b.dataset.tag; });
-        // localStorage 즉시 저장
         localStorage.setItem('kh_user_interests', JSON.stringify(selected));
-        // 관심사 변경 시 오늘 캐시 무효화 (새 태그로 다시 쿼리)
+        // 오늘 관심사 캐시 무효화
         try {
           var today = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
           Object.keys(localStorage).forEach(function(k){
             if (k.startsWith('kh_vocab_int_') && k.endsWith(today)) localStorage.removeItem(k);
           });
         } catch(e) {}
-        // DB 저장
         if (sb && supaUser) {
           try {
             await sb.from('user_interests').upsert(
@@ -487,7 +487,6 @@
             if (typeof toast === 'function') toast('Save failed: ' + e.message, true);
           }
         }
-        // 단어 바로 갱신
         loadWordsDirectly(selected);
       });
     }
@@ -542,29 +541,13 @@
       const speakEl = document.getElementById('speaking-note');
       if (speakEl) speakEl.innerHTML = '<strong>Speaking:</strong> Not scored yet — treat as practice activity until audio recording + STT are added.';
 
-      // 오늘의 단어 배정 (RPC 성공 시)
-      try {
-        const { data: vocab } = await sb.rpc('assign_daily_vocab', { p_user_id: supaUser.id, p_date: new Date().toISOString().slice(0,10) });
-        var rpcGen = (vocab||[]).filter(function(w){ return !w.interest_tag || w.interest_tag === 'daily'; });
-        var rpcInt = (vocab||[]).filter(function(w){ return w.interest_tag && w.interest_tag !== 'daily'; });
-        if (rpcGen.length >= 10) {
-          renderWords(rpcGen.slice(0,10), rpcInt.slice(0,10));
-        } else {
-          loadAndRenderInterests(); // DB 단어 부족 → 내장 VOCAB으로
-        }
-      } catch(ve) {
-        loadAndRenderInterests(); // vocab RPC 실패 → 직접 쿼리
-      }
-
     } catch(e) {
       console.warn('hub snapshot error:', e.message || e);
-      // snapshot RPC 실패 → 통계는 fallback, 단어는 직접 쿼리
       loadHubFallback();
-      loadAndRenderInterests();
     }
 
-    // interests UI는 항상 렌더 (단어 로드와 분리)
-    // (단어는 위에서 이미 loadAndRenderInterests 또는 renderWords로 처리됨)
+    // 단어 + 관심사 버튼: 항상 로드 (RPC 결과와 무관)
+    loadAndRenderInterests();
   }
 
   // fallback: RPC 없을 때 localStorage에서 가능한 것만 표시
