@@ -48,12 +48,14 @@
     .wizard.active{display:grid}
     .rail{display:grid;gap:12px}
     .rail.hidden{display:none}
+    .wizard-enter{animation:wizardIn .45s cubic-bezier(.22,1,.36,1)}
+    @keyframes wizardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
     .mini-card{padding:18px;border-radius:24px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.04));border:1px solid var(--line)}
     .mini-card .mini-step{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.07);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#cae6ff;margin-bottom:12px}
     .mini-card h3{margin:0 0 8px;font-size:24px;line-height:1.1}
     .mini-card p{margin:0;color:var(--muted);line-height:1.55;font-size:14px}
 
-    .stage{padding:24px}
+    .stage{padding:24px;position:relative;overflow:hidden}
     .steps{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
     .dot{width:38px;height:38px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);color:#9db0c7;font-weight:800}
     .dot.active{background:#fff;color:#091426}
@@ -83,10 +85,23 @@
     .footer-bar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap}
     .footer-copy{color:var(--muted);font-size:14px}
 
+    .stage-content{transition:opacity .2s ease, transform .2s ease}
+    .stage-content.swap-out{opacity:0;transform:translateX(-18px)}
+    .stage-content.swap-in{opacity:0;transform:translateX(18px)}
+    .mini-card{animation:miniIn .35s cubic-bezier(.22,1,.36,1)}
+    @keyframes miniIn{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:translateX(0)}}
+    .final-banner{padding:22px;border-radius:28px;background:linear-gradient(135deg, rgba(37,99,235,.34), rgba(103,232,249,.15));border:1px solid rgba(103,232,249,.35)}
+    .final-banner h2{margin:12px 0 10px;font-size:clamp(34px,5vw,56px);line-height:.98;letter-spacing:-.05em;max-width:11ch}
+    .final-banner p{margin:0;color:#e3f3ff;max-width:42ch;line-height:1.7;font-size:16px}
+    .summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0}
+    .summary-pill{padding:14px;border-radius:18px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08)}
+    .summary-pill strong{display:block;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:#bfe0ff;margin-bottom:6px}
+    .summary-pill span{display:block;font-size:18px;font-weight:800}
+
     .hidden{display:none !important}
 
     @media (max-width: 980px){
-      .intro-notes,.goals,.times,.routes{grid-template-columns:1fr}
+      .intro-notes,.goals,.times,.routes,.summary-row{grid-template-columns:1fr}
       .wizard.active{grid-template-columns:1fr}
       .rail{order:2}
       .stage{order:1}
@@ -126,7 +141,7 @@
           <div class="dot" id="dot2">2</div><div class="line" id="line2"></div>
           <div class="dot" id="dot3">3</div>
         </div>
-        <div id="stageContent"></div>
+        <div id="stageContent" class="stage-content"></div>
       </main>
     </section>
   </div>
@@ -136,7 +151,8 @@
       view: 'intro',
       goal: '',
       minutes: 15,
-      route: ''
+      route: '',
+      ready: false
     };
 
     var GOALS = [
@@ -237,20 +253,44 @@
       document.getElementById('stageContent').innerHTML =
         '<div class="stage-head">'
           + '<div><div class="label">Step 3</div><h2>Pick your first click.</h2></div>'
-          + '<p>마지막은 설명문이 아니라 바로 눌러서 시작할 수 있는 큰 배너 3개로 끝냅니다.</p>'
+          + '<p>마지막은 설명문이 아니라 바로 눌러서 시작할 수 있는 큰 배너 3개로 끝내고, 선택 후 최종 Start 배너로 넘어갑니다.</p>'
         + '</div>'
         + '<div class="grid routes">'
         + ROUTES.map(function(route){
-            return '<a class="select-card route-card' + (state.route === route.id ? ' selected' : '') + '" href="' + route.href + '" onclick="selectRoute(\'' + route.id + '\'); return false;">'
+            return '<button class="select-card route-card' + (state.route === route.id ? ' selected' : '') + '" onclick="selectRoute(\'' + route.id + '\')">'
               + '<small>' + route.kicker + '</small>'
               + '<h3>' + route.title + '</h3>'
               + '<p>' + route.desc + '</p>'
-              + '</a>';
+              + '</button>';
           }).join('')
         + '</div>'
         + '<div class="footer-bar">'
-          + '<div class="footer-copy">선택한 첫 배너를 메인 온보딩 완료 직후 바로 연결하는 흐름을 상정한 프리뷰입니다.</div>'
-          + '<a class="btn btn-primary" href="' + (ROUTES.find(function(item){ return item.id === state.route; }) || ROUTES[0]).href + '">Open selected path →</a>'
+          + '<div class="footer-copy">배너를 고른 뒤 Continue를 누르면 최종 CTA 배너가 자연스럽게 이어지도록 합니다.</div>'
+          + '<button class="btn btn-primary" onclick="goReady()">Continue →</button>'
+        + '</div>';
+    }
+
+
+    function renderReady() {
+      setProgress(4);
+      renderRail();
+      var goal = GOALS.find(function(item){ return item.id === state.goal; }) || GOALS[0];
+      var time = TIMES.find(function(item){ return item.minutes === state.minutes; }) || TIMES[1];
+      var route = ROUTES.find(function(item){ return item.id === state.route; }) || ROUTES[0];
+      document.getElementById('stageContent').innerHTML =
+        '<div class="final-banner">'
+          + '<div class="label">Final banner</div>'
+          + '<h2>Ready to build fluency in Korean?</h2>'
+          + '<p>이제 바로 시작하면 됩니다. 목표, 오늘 시간, 첫 시작 경로가 모두 정해졌으니 온보딩 마지막은 큰 Start 배너 하나로 마무리하는 시안입니다.</p>'
+          + '<div class="summary-row">'
+            + '<div class="summary-pill"><strong>Goal</strong><span>' + goal.title + '</span></div>'
+            + '<div class="summary-pill"><strong>Time</strong><span>' + time.minutes + ' minutes</span></div>'
+            + '<div class="summary-pill"><strong>First click</strong><span>' + route.title + '</span></div>'
+          + '</div>'
+          + '<div class="intro-actions">'
+            + '<a class="btn btn-primary" href="' + route.href + '">Start →</a>'
+            + '<button class="btn btn-secondary" onclick="animateStage(renderStep3)">Back</button>'
+          + '</div>'
         + '</div>';
     }
 
@@ -267,18 +307,42 @@
       renderStep3();
     }
     function goStep2() {
-      renderStep2();
+      animateStage(renderStep2);
     }
     function goStep3() {
       if (!state.route) state.route = ROUTES[0].id;
-      renderStep3();
+      animateStage(renderStep3);
+    }
+
+    function goReady() {
+      if (!state.route) state.route = ROUTES[0].id;
+      animateStage(renderReady);
     }
 
     document.getElementById('startFlowBtn').addEventListener('click', function(){
       document.getElementById('introView').classList.add('hidden');
       document.getElementById('wizardView').classList.add('active');
-      renderStep1();
+      document.getElementById('wizardView').classList.add('wizard-enter');
+      animateStage(renderStep1, true);
     });
+
+    function animateStage(renderFn, immediate) {
+      var stage = document.getElementById('stageContent');
+      if (immediate) {
+        renderFn();
+        stage.classList.remove('swap-out');
+        stage.classList.add('swap-in');
+        requestAnimationFrame(function(){ stage.classList.remove('swap-in'); });
+        return;
+      }
+      stage.classList.add('swap-out');
+      setTimeout(function(){
+        renderFn();
+        stage.classList.remove('swap-out');
+        stage.classList.add('swap-in');
+        requestAnimationFrame(function(){ stage.classList.remove('swap-in'); });
+      }, 180);
+    }
   </script>
 </body>
 </html>
