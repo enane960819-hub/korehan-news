@@ -32,9 +32,14 @@
 .badge-i{background:#fef9c3;color:#92400e;}
 .badge-a{background:#fee2e2;color:#b91c1c;}
 .cc2-preview{padding:14px 20px;background:linear-gradient(180deg,#f8fbff 0%,#f8fafc 100%);display:flex;flex-direction:column;gap:6px;}
-.cc2-bub{max-width:82%;padding:8px 13px;border-radius:18px;font-size:13px;line-height:1.5;font-family:'Noto Sans KR',sans-serif;}
+.cc2-bub{max-width:82%;padding:8px 13px;border-radius:18px;font-size:13px;line-height:1.5;font-family:'Noto Sans KR',sans-serif;position:relative;}
 .cc2-bub.l{background:#fff;color:#0f172a;border:1px solid #e8eef7;border-bottom-left-radius:5px;align-self:flex-start;box-shadow:0 2px 8px rgba(15,23,42,.05);}
 .cc2-bub.r{background:#2563eb;color:#fff;border-bottom-right-radius:5px;align-self:flex-end;}
+.cc2-bub.l::after{content:'';position:absolute;left:-6px;bottom:6px;border-width:7px 7px 0 0;border-style:solid;border-color:#fff transparent transparent transparent;filter:drop-shadow(-1px 1px 0 #e8eef7);}
+.cc2-bub.r::after{content:'';position:absolute;right:-6px;bottom:6px;border-width:7px 0 0 7px;border-style:solid;border-color:#2563eb transparent transparent transparent;}
+.cc2-cast{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #e8eef7;}
+.cc2-cast-copy{font-size:11px;color:#64748b;line-height:1.5;}
+.cc2-cast-copy strong{display:block;color:#0f172a;font-size:12px;}
 .cc2-foot{padding:12px 20px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f0f4fa;background:#fff;}
 .cc2-vocab-count{font-size:12px;color:#64748b;}
 .cc2-open-btn{font-size:12px;font-weight:700;color:#2563eb;background:#eff6ff;border:1px solid #bfdbfe;border-radius:999px;padding:5px 14px;cursor:pointer;font-family:inherit;transition:all .15s;}
@@ -68,11 +73,18 @@
 .dp-avatar{width:36px;height:36px;border-radius:12px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:2px solid #bfdbfe;}
 .dp-bubble-group{max-width:74%;}
 .dp-who{font-size:11px;font-weight:700;color:#64748b;margin-bottom:5px;}
-.dp-bubble{border-radius:20px;padding:11px 15px;font-size:14px;line-height:1.6;font-family:'Noto Sans KR',sans-serif;}
+.dp-bubble{border-radius:20px;padding:11px 15px;font-size:14px;line-height:1.6;font-family:'Noto Sans KR',sans-serif;position:relative;}
 .dp-msg-row.left .dp-bubble{background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-bottom-left-radius:6px;box-shadow:0 4px 12px rgba(15,23,42,.06);}
 .dp-msg-row.right .dp-bubble{background:#2563eb;color:#fff;border-bottom-right-radius:6px;}
+.dp-msg-row.left .dp-bubble::after{content:'';position:absolute;left:-7px;bottom:8px;border-width:8px 8px 0 0;border-style:solid;border-color:#fff transparent transparent transparent;filter:drop-shadow(-1px 1px 0 #e2e8f0);}
+.dp-msg-row.right .dp-bubble::after{content:'';position:absolute;right:-7px;bottom:8px;border-width:8px 0 0 8px;border-style:solid;border-color:#2563eb transparent transparent transparent;}
 .dp-time{font-size:10px;color:#94a3b8;margin-top:4px;padding:0 3px;}
 .dp-msg-row.right .dp-time{text-align:right;}
+.dp-cast-bar{display:flex;flex-wrap:wrap;gap:10px;padding:14px 24px;border-bottom:1px solid #f0f4fa;background:#fff;}
+.dp-cast-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:#f8fafc;border:1px solid #e2e8f0;min-width:0;flex:1;}
+.dp-cast-meta{min-width:0;}
+.dp-cast-meta strong{display:block;font-size:12px;color:#0f172a;}
+.dp-cast-meta span{display:block;font-size:11px;color:#64748b;line-height:1.4;}
 .dp-inline-note{margin-top:7px;font-size:12px;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;padding:7px 11px;border-radius:12px;line-height:1.5;}
 .dp-cta-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 24px 20px;background:#fff;border-top:1px solid #f0f4fa;}
 .dp-cta-btn{padding:12px;border-radius:14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;transition:all .15s;}
@@ -155,16 +167,21 @@ function renderCards(catF, lvlF) {
   }
   grid.innerHTML = list.map(function(c) {
     var ri = CONVS.indexOf(c);
+    var cast = resolveConversationCast(c);
     var prev = c.msgs.slice(0,3).map(function(m){
-      return '<div class="cc2-bub '+m.s+'">'+m.txt+'</div>';
+      return '<div class="cc2-bub '+m.s+'">'+escapeHtml(m.txt || '')+'</div>';
     }).join('');
     return '<div class="cc2" onclick="openDetail('+ri+')">'
       +'<div class="cc2-top">'
-        +'<div class="cc2-avi">'+c.avi+'</div>'
-        +'<div class="cc2-info"><div class="cc2-name">'+c.name+'</div><div class="cc2-ctx">'+c.ctx+'</div></div>'
+        + renderCharacterAvatar(cast.left, 'kh-character-avatar', 44)
+        +'<div class="cc2-info"><div class="cc2-name">'+escapeHtml(c.name || '')+'</div><div class="cc2-ctx">'+escapeHtml(c.ctx || '')+'</div></div>'
         +'<span class="cc2-badge '+LVL_CLS[c.lvl]+'">'+LVL_LABEL[c.lvl]+'</span>'
       +'</div>'
       +'<div class="cc2-preview">'+prev+'</div>'
+      +'<div class="cc2-cast">'
+        + renderCharacterAvatar(cast.right, 'kh-character-avatar', 34)
+        +'<div class="cc2-cast-copy"><strong>'+characterDisplayName(cast.left)+' · '+characterDisplayName(cast.right)+'</strong><span>Shared KoreHan character cast</span></div>'
+      +'</div>'
       +'<div class="cc2-foot">'
         +'<span class="cc2-vocab-count">📚 '+c.vocab.length+' key words</span>'
         +'<button class="cc2-open-btn">Study →</button>'
@@ -174,6 +191,7 @@ function renderCards(catF, lvlF) {
 
 function openDetail(idx) {
   var c = CONVS[idx];
+  var cast = resolveConversationCast(c);
   window._currentConv = c;
 
   // ── 데일리 미션 + 읽기 기록 추적 ──────────────────────
@@ -218,20 +236,21 @@ function openDetail(idx) {
     var hr  = (h % 12) || 12;
     var ap  = h < 12 ? 'AM' : 'PM';
     var time = hr + ':' + min + ' ' + ap;
-    var note = msg.note ? '<div class="dp-inline-note">💡 '+msg.note+'</div>' : '';
+    var note = msg.note ? '<div class="dp-inline-note">💡 '+escapeHtml(msg.note || '')+'</div>' : '';
     if (msg.s === 'l') {
       return '<div class="dp-msg-row left">'
-        +'<div class="dp-avatar">'+c.avi+'</div>'
+        + renderCharacterAvatar(cast.left, 'kh-character-avatar', 36)
         +'<div class="dp-bubble-group">'
-          +'<div class="dp-who">'+msg.who+'</div>'
-          +'<div class="dp-bubble">'+msg.txt+'</div>'
+          +'<div class="dp-who">'+escapeHtml(msg.who || cast.left.name_ko || cast.left.name || '')+'</div>'
+          +'<div class="dp-bubble">'+escapeHtml(msg.txt || '')+'</div>'
           +'<div class="dp-time">'+time+'</div>'
           +note
         +'</div></div>';
     } else {
       return '<div class="dp-msg-row right">'
         +'<div class="dp-bubble-group">'
-          +'<div class="dp-bubble">'+msg.txt+'</div>'
+          +'<div class="dp-who">'+escapeHtml(msg.who || cast.right.name_ko || cast.right.name || '')+'</div>'
+          +'<div class="dp-bubble">'+escapeHtml(msg.txt || '')+'</div>'
           +'<div class="dp-time">'+time+'</div>'
           +note
         +'</div></div>';
@@ -249,15 +268,15 @@ function openDetail(idx) {
   }).join('');
 
   var grammar = (c.grammar||[]).map(function(g) {
-    return '<div class="dp-grammar-item"><strong>'+g.point+'</strong> — '+g.ex+'</div>';
+    return '<div class="dp-grammar-item"><strong>'+escapeHtml(g.point || '')+'</strong> — '+escapeHtml(g.ex || g.en || '')+'</div>';
   }).join('');
 
   var mission = (c.mission||[]).map(function(m) {
-    return '<div class="dp-grammar-item">🎯 '+(m.task||m)+'</div>';
+    return '<div class="dp-grammar-item">🎯 '+escapeHtml(m.task||m||'')+'</div>';
   }).join('');
 
   var keywords = c.vocab.map(function(v) {
-    return '<span class="dp-keyword">'+v.ko+'</span>';
+    return '<span class="dp-keyword">'+escapeHtml(v.ko || '')+'</span>';
   }).join('');
 
   var pills = '<span class="dp-pill dp-pill-blue">'+LVL_LABEL[c.lvl]+'</span>'
@@ -269,8 +288,18 @@ function openDetail(idx) {
       +'<div class="dp-left-head">'
         +'<button class="detail-close" onclick="closeDetail()">✕</button>'
         +'<div class="dp-left-eyebrow">Conversation</div>'
-        +'<div class="dp-left-title">'+c.name+'</div>'
-        +'<div class="dp-left-sub">'+c.ctx+'</div>'
+        +'<div class="dp-left-title">'+escapeHtml(c.name || '')+'</div>'
+        +'<div class="dp-left-sub">'+escapeHtml(c.ctx || '')+'</div>'
+      +'</div>'
+      +'<div class="dp-cast-bar">'
+        +'<a class="dp-cast-link" href="'+characterProfileUrl(cast.left.slug)+'">'
+          + renderCharacterAvatar(cast.left, 'kh-character-avatar', 38)
+          +'<div class="dp-cast-meta"><strong>'+characterDisplayName(cast.left)+'</strong><span>'+escapeHtml(cast.left.role||'')+'</span></div>'
+        +'</a>'
+        +'<a class="dp-cast-link" href="'+characterProfileUrl(cast.right.slug)+'">'
+          + renderCharacterAvatar(cast.right, 'kh-character-avatar', 38)
+          +'<div class="dp-cast-meta"><strong>'+characterDisplayName(cast.right)+'</strong><span>'+escapeHtml(cast.right.role||'')+'</span></div>'
+        +'</a>'
       +'</div>'
       +'<div class="dp-pills">'+pills+'</div>'
       +'<div class="dp-chat-area">'
@@ -311,10 +340,10 @@ function renderStudyNotes(c) {
       +'</div>';
   }).join('');
   var grammar = (c.grammar||[]).map(function(g) {
-    return '<div class="dp-grammar-item"><strong>'+(g.point||'')+'</strong> — '+(g.ex||g.en||'')+'</div>';
+    return '<div class="dp-grammar-item"><strong>'+escapeHtml(g.point||'')+'</strong> — '+escapeHtml(g.ex||g.en||'')+'</div>';
   }).join('');
-  var keywords = (c.vocab||[]).map(function(v){ return '<span class="dp-keyword">'+v.ko+'</span>'; }).join('');
-  var mission = (c.mission||[]).map(function(m){ return '<div class="dp-grammar-item">🎯 '+(m.task||m)+'</div>'; }).join('');
+  var keywords = (c.vocab||[]).map(function(v){ return '<span class="dp-keyword">'+escapeHtml(v.ko || '')+'</span>'; }).join('');
+  var mission = (c.mission||[]).map(function(m){ return '<div class="dp-grammar-item">🎯 '+escapeHtml(m.task||m||'')+'</div>'; }).join('');
   el.innerHTML =
     '<div class="dp-study-card"><div class="dp-study-card-title"><span>📚</span> Key Vocabulary</div><div class="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">단어 데이터 없음</span>')+'</div></div>'
     +(grammar ? '<div class="dp-study-card"><div class="dp-study-card-title"><span>✏️</span> Grammar Points</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
@@ -373,8 +402,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       // DB 데이터를 CONVS 형식으로 변환
       CONVS = data.map(function(row) {
         var d = row.data || {};
-        // data 객체가 있으면 그대로, 없으면 row 자체에서 구성
-        return Object.assign({
+        var base = Object.assign({
           _id: row.id,
           name: row.name || '',
           ctx:  row.ctx  || '',
@@ -387,6 +415,18 @@ document.addEventListener('DOMContentLoaded', async function() {
           grammar: [],
           mission: []
         }, d, {_id: row.id});
+        var cast = resolveConversationCast(base);
+        base.msgs = (base.msgs || []).map(function(msg) {
+          var side = msg.s || msg.side || 'l';
+          var speaker = side === 'l' ? cast.left : cast.right;
+          return Object.assign({}, msg, {
+            s: side,
+            who: msg.who || speaker.name_ko || speaker.name,
+            character_slug: msg.character_slug || speaker.slug
+          });
+        });
+        // data 객체가 있으면 그대로, 없으면 row 자체에서 구성
+        return base;
       });
     }
   } catch(e) {

@@ -29,6 +29,9 @@
 .sc-title{font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;color:#0f172a;margin:0 0 6px;line-height:1.4;}
 .sc-title-en{font-size:12px;color:#64748b;margin:0 0 8px;font-style:italic;}
 .sc-preview{font-size:13px;color:#475569;line-height:1.65;margin:0 0 10px;font-family:'Noto Sans KR',sans-serif;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.sc-author{display:flex;align-items:center;gap:8px;margin:10px 0 0;}
+.sc-author-copy{font-size:11px;color:#64748b;line-height:1.45;}
+.sc-author-copy strong{display:block;font-size:12px;color:#0f172a;}
 .sc-foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:10px;border-top:1px solid #f0f4fa;}
 .sc-meta{font-size:11px;color:#94a3b8;}
 .sc-open{font-size:12px;font-weight:700;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:999px;padding:5px 14px;cursor:pointer;font-family:inherit;transition:all .15s;border:none;}
@@ -57,6 +60,9 @@
 .st-head-title{font-family:'Noto Serif KR',serif;font-size:20px;font-weight:900;color:#0f172a;margin:0 0 4px;line-height:1.35;}
 .st-head-en{font-size:13px;color:#64748b;font-style:italic;margin:0 0 12px;}
 .st-head-pills{display:flex;gap:7px;flex-wrap:wrap;}
+.st-author-inline{display:flex;align-items:center;gap:10px;margin-top:14px;padding:10px 12px;border-radius:16px;background:#f8fafc;border:1px solid #e8eef7;}
+.st-author-inline-copy strong{display:block;font-size:12px;color:#0f172a;}
+.st-author-inline-copy span{display:block;font-size:11px;color:#64748b;line-height:1.4;}
 .st-pill{font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;}
 .st-pill-purple{background:#f5f3ff;color:#7c3aed;}
 .st-pill-gray{background:#f1f5f9;color:#475569;}
@@ -660,15 +666,17 @@ function renderStories(moodF, lvlF) {
     return;
   }
   grid.innerHTML = list.map(function(s) {
+    var author = resolveStoryAuthor(s);
     return '<div class="sc" onclick="openStory(' + s.id + ')">'
       + '<div class="sc-thumb ' + MOOD_BG[s.mood] + '">'
         + '<span class="sc-mood-badge" style="background:' + MOOD_COLORS[s.mood] + '">' + s.mood.toUpperCase() + '</span>'
         + '<span class="sc-emoji">' + s.avi + '</span>'
       + '</div>'
       + '<div class="sc-body">'
-        + '<div class="sc-title">' + s.title + '</div>'
-        + '<div class="sc-title-en">' + s.title_en + '</div>'
-        + '<div class="sc-preview">' + s.preview + '</div>'
+        + '<div class="sc-title">' + escapeHtml(s.title || '') + '</div>'
+        + '<div class="sc-title-en">' + escapeHtml(s.title_en || '') + '</div>'
+        + '<div class="sc-preview">' + escapeHtml(s.preview || '') + '</div>'
+        + (author ? '<div class="sc-author">' + renderCharacterAvatar(author, 'kh-character-avatar', 34) + '<div class="sc-author-copy"><strong>' + characterDisplayName(author) + '</strong><span>' + escapeHtml(author.role || '') + '</span></div></div>' : '')
         + '<div class="sc-foot">'
           + '<span class="sc-meta">📖 ' + s.readTime + ' · ' + LVL_LABEL[s.lvl] + '</span>'
           + '<button class="sc-open">Read →</button>'
@@ -681,6 +689,7 @@ function renderStories(moodF, lvlF) {
 function openStory(id) {
   var s = STORIES.find(function(x){ return x.id === id; });
   if (!s) return;
+  var author = resolveStoryAuthor(s);
   window._currentStory = s;  // 전역 저장
 
   // ── 데일리 미션 + 읽기 기록 추적 ──────────────────────
@@ -712,11 +721,11 @@ function openStory(id) {
   }).join('');
 
   var grammar = (s.grammar||[]).map(function(g) {
-    return '<div class="st-grammar-item"><strong>' + g.point + '</strong> — ' + g.ex + '</div>';
+    return '<div class="st-grammar-item"><strong>' + escapeHtml(g.point || '') + '</strong> — ' + escapeHtml(g.ex || '') + '</div>';
   }).join('');
 
   var comprehension = (s.comprehension||[]).map(function(q) {
-    return '<div class="st-q-item"><div class="st-q-q">Q: ' + q.q + '</div><div class="st-q-a">A: ' + q.a + '</div></div>';
+    return '<div class="st-q-item"><div class="st-q-q">Q: ' + escapeHtml(q.q || '') + '</div><div class="st-q-a">A: ' + escapeHtml(q.a || '') + '</div></div>';
   }).join('');
 
   var headBannerClass = MOOD_BG[s.mood];
@@ -731,17 +740,18 @@ function openStory(id) {
         + '</div>'
         + '<div class="st-head-info">'
           + '<div class="st-head-label" style="color:' + MOOD_COLORS[s.mood] + '">' + s.mood.toUpperCase() + ' STORY</div>'
-          + '<div class="st-head-title">' + s.title + '</div>'
-          + '<div class="st-head-en">' + s.title_en + '</div>'
+          + '<div class="st-head-title">' + escapeHtml(s.title || '') + '</div>'
+          + '<div class="st-head-en">' + escapeHtml(s.title_en || '') + '</div>'
           + '<div class="st-head-pills">'
             + '<span class="st-pill ' + moodPillClass + '">' + s.mood.charAt(0).toUpperCase()+s.mood.slice(1) + '</span>'
             + '<span class="st-pill ' + LVL_PILL[s.lvl] + '">' + LVL_LABEL[s.lvl] + '</span>'
             + '<span class="st-pill st-pill-gray">📖 ' + s.readTime + '</span>'
           + '</div>'
+          + (author ? '<a class="st-author-inline" href="' + characterProfileUrl(author.slug) + '">' + renderCharacterAvatar(author, 'kh-character-avatar', 40) + '<div class="st-author-inline-copy"><strong>' + characterDisplayName(author) + '</strong><span>' + escapeHtml(author.role || '') + '</span></div></a>' : '')
         + '</div>'
       + '</div>'
       + '<div class="st-body-scroll">'
-        + '<div class="st-body-text">' + s.body + '</div>'
+        + '<div class="st-body-text">' + escapeHtml(s.body || '') + '</div>'
       + '</div>'
       + '<div class="st-cta-row">'
         + '<button class="st-cta-btn st-cta-sec" onclick="closeSt()">← All Stories</button>'
@@ -795,7 +805,13 @@ async function loadStoriesFromDB() {
     if (!sb) return;
     var { data, error } = await sb.from('stories_data').select('*').order('created_at', {ascending: false}).limit(60);
     if (error || !data || !data.length) return;
-    var dbStories = data.map(function(row) { return row.data || row; }).filter(Boolean);
+    var dbStories = data.map(function(row) {
+      var story = row.data || row;
+      if (!story) return story;
+      return Object.assign({}, story, {
+        author_slug: story.author_slug || pickCharacterSlug(String(story.id || story.title || row.id) + '-story')
+      });
+    }).filter(Boolean);
     var hardTitles = new Set(STORIES.map(function(s){ return s.title; }));
     var newStories = dbStories.filter(function(s){ return !hardTitles.has(s.title); });
     if (newStories.length) {

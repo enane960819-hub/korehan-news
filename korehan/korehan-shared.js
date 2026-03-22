@@ -58,19 +58,59 @@ async function callClaude({ feature, model, max_tokens, messages }) {
 
 // ── article_cache — AI 분석 결과 캐시 ────────────────────────
 // conv/story 발행 시 admin에서 AI 생성 → 여기서 조회
+var _remoteCacheDisabled = false;
 async function getFromCache(contentType, contentId, cacheKey) {
+  if (_remoteCacheDisabled) return null;
   try {
     var sb = getSupa();
     if (!sb) return null;
+    if (contentType !== 'article') return null;
     var res = await sb.from('article_cache')
-      .select('cache_value')
-      .eq('content_type', contentType)
-      .eq('content_id', String(contentId))
-      .eq('cache_key', cacheKey)
+      .select('article_id, translation, vocab, grammar, quiz')
+      .eq('article_id', String(contentId))
       .maybeSingle();
-    if (res.data && res.data.cache_value) return res.data.cache_value;
-  } catch(e) {}
+    if (res.error) throw res.error;
+    if (!res.data) return null;
+    if (cacheKey === 'ai_analysis') {
+      return {
+        translation: typeof res.data.translation === 'string' ? safeParseJSON(res.data.translation, null) : res.data.translation,
+        vocab: typeof res.data.vocab === 'string' ? safeParseJSON(res.data.vocab, []) : (res.data.vocab || []),
+        grammar: typeof res.data.grammar === 'string' ? safeParseJSON(res.data.grammar, []) : (res.data.grammar || []),
+        quiz: typeof res.data.quiz === 'string' ? safeParseJSON(res.data.quiz, null) : res.data.quiz
+      };
+    }
+    if (cacheKey === 'translation_en') {
+      var translation = typeof res.data.translation === 'string' ? safeParseJSON(res.data.translation, null) : res.data.translation;
+      if (translation && translation.texts) return { translations: translation.texts };
+      return null;
+    }
+    if (cacheKey === 'grammar_guide') {
+      return typeof res.data.grammar === 'string' ? safeParseJSON(res.data.grammar, null) : res.data.grammar;
+    }
+    if (cacheKey.indexOf('fill_') === 0) {
+      return typeof res.data.quiz === 'string' ? safeParseJSON(res.data.quiz, null) : res.data.quiz;
+    }
+  } catch(e) {
+    var msg = String((e && e.message) || e || '');
+    if (/40[013]/.test(msg) || /unauthorized|forbidden|permission/i.test(msg)) {
+      _remoteCacheDisabled = true;
+    }
+  }
   return null;
+}
+
+async function upsertArticleCacheRow(articleId, patch) {
+  try {
+    var sb = getSupa();
+    if (!sb) return;
+    var base = { article_id: String(articleId), translation: null, vocab: null, grammar: null, quiz: null };
+    var existing = await sb.from('article_cache')
+      .select('article_id, translation, vocab, grammar, quiz')
+      .eq('article_id', String(articleId))
+      .maybeSingle();
+    if (existing && existing.data) base = Object.assign(base, existing.data);
+    await sb.from('article_cache').upsert(Object.assign(base, patch || {}, { article_id: String(articleId) }), { onConflict: 'article_id' });
+  } catch(e) {}
 }
 
 // Conv/Story 데이터에 캐시 병합 (vocab/grammar 없을 때만)
@@ -863,6 +903,206 @@ function articleUrl(id) {
   return 'korehan-article.html?id=' + encodeURIComponent(id);
 }
 
+var CHARACTER_STORAGE_KEY = 'kh_character_roster_v1';
+var CHARACTER_ROSTER = [
+  { slug:'yuna-kim', name:'Yuna Kim', name_ko:'김유나', role:'Politics & Society Reporter', title:'Calm explainer of politics and public policy.', bio:'Yuna turns complex headlines into learner-friendly Korean and always adds a practical civic angle.', image:'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=600&q=80', emoji:'📰', accent:'#2563eb', specialties:['Politics','Society','Explainers'] },
+  { slug:'minseo-park', name:'Minseo Park', name_ko:'박민서', role:'Culture Features Editor', title:'Warm storyteller for culture and lifestyle pieces.', bio:'Minseo writes soft but vivid stories about food, culture, trends, and everyday Korean life.', image:'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=600&q=80', emoji:'🎭', accent:'#ec4899', specialties:['Culture','Lifestyle','Trends'] },
+  { slug:'jiho-lee', name:'Jiho Lee', name_ko:'이지호', role:'Economy Desk Reporter', title:'Numbers-first reporter with a friendly tone.', bio:'Jiho likes turning markets, startups, and policy shifts into short readable lessons.', image:'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80', emoji:'📈', accent:'#0f766e', specialties:['Economy','Business','Markets'] },
+  { slug:'ara-choi', name:'Ara Choi', name_ko:'최아라', role:'World News Correspondent', title:'Fast, clear summaries of global issues.', bio:'Ara follows international news and rewrites it in simple Korean with strong context.', image:'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80', emoji:'🌍', accent:'#7c3aed', specialties:['World','Diplomacy','Climate'] },
+  { slug:'taeho-jung', name:'Taeho Jung', name_ko:'정태호', role:'Sports & Event Reporter', title:'Energetic voice for sports and live moments.', bio:'Taeho writes action-first recaps that feel lively even for beginner readers.', image:'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=600&q=80', emoji:'⚽', accent:'#ea580c', specialties:['Sports','Events','Competition'] },
+  { slug:'soyeon-han', name:'Soyeon Han', name_ko:'한소연', role:'Technology Reporter', title:'Curious guide to AI, startups, and gadgets.', bio:'Soyeon connects technology trends to real daily life and beginner-friendly vocabulary.', image:'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=600&q=80', emoji:'🤖', accent:'#4f46e5', specialties:['AI','Tech','Startups'] },
+  { slug:'dohyun-kang', name:'Dohyun Kang', name_ko:'강도현', role:'Investigation Editor', title:'Direct, concise, and detail-oriented.', bio:'Dohyun focuses on accountability stories and gives sharp summaries without overwhelming detail.', image:'https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=600&q=80', emoji:'🕵️', accent:'#334155', specialties:['Investigations','Society','Law'] },
+  { slug:'haeun-shin', name:'Haeun Shin', name_ko:'신하은', role:'Travel & Human Stories Writer', title:'Observant writer of emotional human stories.', bio:'Haeun collects touching moments and writes reflective pieces for story-driven readers.', image:'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=600&q=80', emoji:'✈️', accent:'#db2777', specialties:['Human stories','Travel','Interviews'] },
+  { slug:'woojin-oh', name:'Woojin Oh', name_ko:'오우진', role:'Conversation Script Writer', title:'Sharp ear for realistic spoken Korean.', bio:'Woojin builds natural chat scenarios that sound like real KakaoTalk messages.', image:'https://images.unsplash.com/photo-1504257432389-52343af06ae3?auto=format&fit=crop&w=600&q=80', emoji:'💬', accent:'#16a34a', specialties:['Conversations','Spoken Korean','Slang'] },
+  { slug:'nari-seo', name:'Nari Seo', name_ko:'서나리', role:'Fiction & Story Creator', title:'Playful writer of short emotional fiction.', bio:'Nari creates memorable characters and short fiction that learners can finish in one sitting.', image:'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80', emoji:'📚', accent:'#9333ea', specialties:['Stories','Fiction','Character arcs'] }
+];
+
+function safeParseJSON(raw, fallback) {
+  try { return JSON.parse(raw); } catch (e) { return fallback; }
+}
+
+function getCharacterRoster() {
+  var roster = CHARACTER_ROSTER.map(function(c){ return Object.assign({}, c); });
+  try {
+    var overrides = safeParseJSON(localStorage.getItem(CHARACTER_STORAGE_KEY) || '{}', {});
+    roster = roster.map(function(c){
+      return overrides[c.slug] ? Object.assign({}, c, overrides[c.slug]) : c;
+    });
+  } catch (e) {}
+  return roster;
+}
+
+function getCharacterBySlug(slug) {
+  if (!slug) return null;
+  var roster = getCharacterRoster();
+  for (var i = 0; i < roster.length; i++) if (roster[i].slug === slug) return roster[i];
+  return null;
+}
+
+function saveCharacterOverride(slug, patch) {
+  if (!slug) return;
+  var overrides = safeParseJSON(localStorage.getItem(CHARACTER_STORAGE_KEY) || '{}', {});
+  overrides[slug] = Object.assign({}, overrides[slug] || {}, patch || {});
+  localStorage.setItem(CHARACTER_STORAGE_KEY, JSON.stringify(overrides));
+}
+
+function characterProfileUrl(slug) {
+  return 'korehan-character.html?slug=' + encodeURIComponent(slug || '');
+}
+
+function characterDisplayName(character) {
+  return escapeHtml((character && (character.name_ko || character.name)) || 'KoreHan character');
+}
+
+function getCharacterImage(character) {
+  return (character && character.image) || 'https://picsum.photos/seed/kh-character/200/200';
+}
+
+function pickCharacterSlug(seed) {
+  var roster = getCharacterRoster();
+  if (!roster.length) return '';
+  var str = String(seed || '0');
+  var num = 0;
+  for (var i = 0; i < str.length; i++) num += str.charCodeAt(i);
+  return roster[num % roster.length].slug;
+}
+
+function resolveCharacter(input, fallbackSeed) {
+  if (!input) return getCharacterBySlug(pickCharacterSlug(fallbackSeed));
+  if (typeof input === 'string') return getCharacterBySlug(input) || getCharacterBySlug(pickCharacterSlug(input));
+  if (input.slug) return Object.assign({}, getCharacterBySlug(input.slug) || {}, input);
+  return Object.assign({}, getCharacterBySlug(pickCharacterSlug(fallbackSeed)) || {}, input);
+}
+
+function resolveArticleAuthor(article) {
+  var ref = article && (
+    article.author
+    || article.author_slug
+    || article.character_slug
+    || (article.data && (article.data.author || article.data.author_slug || article.data.character_slug))
+  );
+  var author = resolveCharacter(ref, article && article.id);
+  if (!author) return null;
+  return author;
+}
+
+function resolveStoryAuthor(story) {
+  var ref = story && (
+    story.author
+    || story.author_slug
+    || story.character_slug
+    || (story.data && (story.data.author || story.data.author_slug || story.data.character_slug))
+  );
+  return resolveCharacter(ref, story && (story.id || story.title));
+}
+
+function resolveConversationCast(conv) {
+  var speakerSlugs = (conv && (conv.speaker_slugs || conv.speakers || (conv.data && conv.data.speaker_slugs))) || [];
+  if (!Array.isArray(speakerSlugs)) speakerSlugs = [];
+  var left = resolveCharacter(speakerSlugs[0] || (conv && conv.left_character) || (conv && pickCharacterSlug((conv._id || conv.id || conv.name || '') + '-left')), (conv && conv._id) || 'left');
+  var right = resolveCharacter(speakerSlugs[1] || (conv && conv.right_character) || (conv && pickCharacterSlug((conv._id || conv.id || conv.name || '') + '-right')), (conv && conv.name) || 'right');
+  if (left && right && left.slug === right.slug) right = resolveCharacter(pickCharacterSlug(String(conv && (conv.name || conv._id || '')) + '-pair'), String(conv && (conv._id || '')) + '-pair');
+  return { left:left, right:right };
+}
+
+function renderCharacterAvatar(character, cls, size) {
+  var initials = (character && (character.name_ko || character.name || '?')).slice(0, 2);
+  var safeInitials = String(initials).replace(/'/g, "\\'");
+  var onError = "this.style.display='none';this.parentNode.classList.add('fallback');this.parentNode.setAttribute('data-fallback','" + safeInitials + "')";
+  return '<span class="' + (cls || 'kh-character-avatar') + '" style="--char-accent:' + ((character && character.accent) || '#2563eb') + ';' + (size ? '--char-size:' + size + 'px;' : '') + '"><img src="' + getCharacterImage(character) + '" alt="' + escapeHtml((character && character.name) || 'Character') + '" onerror="' + onError + '"></span>';
+}
+
+function renderAuthorInline(author, options) {
+  if (!author) return '';
+  options = options || {};
+  return '<a class="art-author-inline' + (options.compact ? ' compact' : '') + '" href="' + characterProfileUrl(author.slug) + '">'
+    + renderCharacterAvatar(author, 'kh-character-avatar', options.size || 48)
+    + '<span class="art-author-copy"><strong>' + characterDisplayName(author) + '</strong><span>' + escapeHtml(author.role || author.title || '') + '</span></span>'
+    + '<span class="art-author-link">Profile →</span>'
+    + '</a>';
+}
+
+function renderCharacterProfilePage() {
+  var wrap = document.getElementById('dyn-character-profile');
+  if (!wrap) return;
+  var params = new URLSearchParams(window.location.search);
+  var slug = params.get('slug') || CHARACTER_ROSTER[0].slug;
+  var character = getCharacterBySlug(slug);
+  if (!character) {
+    wrap.innerHTML = '<div style="padding:32px 0">Character not found.</div>';
+    return;
+  }
+  var roster = getCharacterRoster();
+  wrap.innerHTML = ''
+    + '<section class="character-hero">'
+      + '<div class="character-hero-main">'
+        + renderCharacterAvatar(character, 'kh-character-avatar hero', 108)
+        + '<div class="character-hero-copy">'
+          + '<div class="character-eyebrow">KoreHan character journalist</div>'
+          + '<h1>' + characterDisplayName(character) + '</h1>'
+          + '<p class="character-role">' + escapeHtml(character.role || '') + '</p>'
+          + '<p class="character-bio">' + escapeHtml(character.bio || character.title || '') + '</p>'
+          + '<div class="character-tags">' + (character.specialties || []).map(function(tag){ return '<span>' + escapeHtml(tag) + '</span>'; }).join('') + '</div>'
+        + '</div>'
+      + '</div>'
+      + '<form class="character-editor" id="character-editor">'
+        + '<div class="character-editor-title">Customize this character</div>'
+        + '<label>Name<input type="text" name="name_ko" value="' + escapeHtml(character.name_ko || '') + '"></label>'
+        + '<label>Role<input type="text" name="role" value="' + escapeHtml(character.role || '') + '"></label>'
+        + '<label>Bio<textarea name="bio" rows="4">' + escapeHtml(character.bio || '') + '</textarea></label>'
+        + '<label>Profile image URL<input type="url" name="image" value="' + escapeHtml(character.image || '') + '" placeholder="https://..."></label>'
+        + '<label>Upload image<input type="file" name="image_file" accept="image/*"></label>'
+        + '<div class="character-editor-actions"><button type="submit">Save profile</button><button type="button" class="ghost" id="character-reset-btn">Reset</button></div>'
+        + '<p class="character-editor-note">Saved in your browser so you can use your own profile images for articles, stories, and conversations.</p>'
+      + '</form>'
+    + '</section>'
+    + '<section class="character-roster">'
+      + '<div class="section-title">Character roster</div>'
+      + '<div class="character-roster-grid">'
+        + roster.map(function(item){
+          return '<a class="character-roster-card' + (item.slug === character.slug ? ' on' : '') + '" href="' + characterProfileUrl(item.slug) + '">'
+            + renderCharacterAvatar(item, 'kh-character-avatar', 56)
+            + '<div><strong>' + characterDisplayName(item) + '</strong><span>' + escapeHtml(item.role || '') + '</span></div>'
+          + '</a>';
+        }).join('')
+      + '</div>'
+    + '</section>';
+
+  var form = document.getElementById('character-editor');
+  var fileInput = form && form.elements.image_file;
+  if (form) form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var fd = new FormData(form);
+    saveCharacterOverride(character.slug, {
+      name_ko: fd.get('name_ko'),
+      role: fd.get('role'),
+      bio: fd.get('bio'),
+      image: fd.get('image')
+    });
+    if (typeof toast === 'function') toast('Character profile saved ✓');
+    renderCharacterProfilePage();
+  });
+  if (fileInput) fileInput.addEventListener('change', function(){
+    var file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      var image = String(reader.result || '');
+      saveCharacterOverride(character.slug, { image:image });
+      if (typeof toast === 'function') toast('Profile image updated ✓');
+      renderCharacterProfilePage();
+    };
+    reader.readAsDataURL(file);
+  });
+  var resetBtn = document.getElementById('character-reset-btn');
+  if (resetBtn) resetBtn.addEventListener('click', function(){
+    var overrides = safeParseJSON(localStorage.getItem(CHARACTER_STORAGE_KEY) || '{}', {});
+    delete overrides[character.slug];
+    localStorage.setItem(CHARACTER_STORAGE_KEY, JSON.stringify(overrides));
+    renderCharacterProfilePage();
+  });
+}
+
 // ── SEED DATA ─────────────────────────────────────────────────
 // ── DB (Supabase 기반) ───────────────────────────────────────────
 // 기사는 localStorage가 아닌 Supabase articles 테이블에서 로드
@@ -1165,6 +1405,7 @@ function relTime(dateStr) {
 function cardHTML(a, extraTagClass) {
   var img = a.image || ('https://picsum.photos/seed/' + a.id + '/600/400');
   var tc  = extraTagClass || '';
+  var author = resolveArticleAuthor(a);
   var levelColors = { 'Starter':'#f3e8ff;color:#6b21a8', 'Beginner':'#e8f5e9;color:#2e7d32', 'Intermediate':'#fff8e1;color:#f57f17', 'Advanced':'#fce4ec;color:#c62828' };
   var levelBadge = a.level ? '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + (levelColors[a.level] || '#f0f0f0;color:#666') + '">' + a.level + '</span>' : '';
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
@@ -1176,6 +1417,7 @@ function cardHTML(a, extraTagClass) {
     + '</div>'
     + '<h3 class="vocab-zone">' + a.title + '</h3>'
     + '<p class="vocab-zone">' + (a.body || '') + '</p>'
+    + (author ? '<div class="card-author-line">By ' + escapeHtml(author.name_ko || author.name) + '</div>' : '')
     + '<div class="meta">' + relTime(a.date) + '</div>'
     + '</div></a>';
 }
@@ -1194,12 +1436,13 @@ function filterByLevel(level, btn) {
 
 function storyItemHTML(a) {
   var img = a.image || ('https://picsum.photos/seed/' + a.id + '/300/200');
+  var author = resolveArticleAuthor(a);
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
     + '<div class="story-item">'
     + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/300/200\'">'
     + '<div>'
     + '<h4 class="vocab-zone">' + a.title + '</h4>'
-    + '<div class="meta">' + a.section + ' · ' + relTime(a.date) + '</div>'
+    + '<div class="meta">' + a.section + ' · ' + relTime(a.date) + (author ? ' · ' + escapeHtml(author.name_ko || author.name) : '') + '</div>'
     + '</div></div></a>';
 }
 
@@ -1590,6 +1833,7 @@ function renderArticlePage() {
 
   var img = a.image || ('https://picsum.photos/seed/' + a.id + '/1200/700');
   var dateStr = a.date ? new Date(a.date).toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'}) : '';
+  var author = resolveArticleAuthor(a);
 
   wrap.innerHTML =
     '<article class="kh-article-wrap">'
@@ -1612,11 +1856,12 @@ function renderArticlePage() {
     + '<span class="art-date">📅 ' + dateStr + '</span>'
     + '<span class="art-dot">·</span>'
     + '<span class="art-readtime">⏱ ' + Math.max(1, Math.ceil((a.full||a.body||'').length / 500)) + ' min read</span>'
+    + '</div>'
+    + (author ? renderAuthorInline(author) : '')
     + '<div class="art-actions">'
     + '<button class="kh-bm-btn" id="art-bm-btn" onclick="toggleBookmark(\'' + a.id + '\',this)">🔖 Bookmark</button>'
     + '<button class="kh-share-btn" onclick="shareArticle()">🔗 Share</button>'
     + '<button class="kh-trans-btn" id="translate-btn" onclick="toggleTranslate()">🌐 Translate</button>'
-    + '</div>'
     + '</div>'
     + '</div>'
 
@@ -1849,11 +2094,6 @@ async function loadFillExercise(container) {
 
   el.innerHTML = renderFillLoading();
 
-  if (!supaUser) {
-    el.innerHTML = renderFillNoKey();
-    return;
-  }
-
   // ── DB 캐시 확인 ──────────────────────────────────────────
   var cacheKey = 'fill_' + (a.level || 'intermediate').toLowerCase();
   try {
@@ -1864,6 +2104,11 @@ async function loadFillExercise(container) {
       return;
     }
   } catch(e) {}
+
+  if (!supaUser) {
+    el.innerHTML = renderFillNoKey();
+    return;
+  }
 
   var level = a.level || 'Intermediate';
   var text = (a.body || '') + (a.full ? ' ' + a.full : '');
@@ -1913,14 +2158,8 @@ Respond ONLY with this JSON (no markdown, no extra text):
 
     // ── DB에 캐시 저장 ────────────────────────────────────
     try {
-      var sb = getSupa();
-      if (sb && parsed.questions) {
-        sb.from('article_cache').upsert({
-          content_type: 'article',
-          content_id:   String(a.id),
-          cache_key:    cacheKey,
-          cache_value:  { questions: parsed.questions }
-        }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(){});
+      if (parsed.questions) {
+        upsertArticleCacheRow(a.id, { quiz: JSON.stringify({ questions: parsed.questions }) });
       }
     } catch(e) {}
   } catch(e) {
@@ -2278,69 +2517,99 @@ async function loadGrammarGuide() {
 
     // ── DB에 캐시 저장 ────────────────────────────────────
     try {
-      var sb = getSupa();
-      if (sb && guides.length) {
-        sb.from('article_cache').upsert({
-          content_type: 'article',
-          content_id:   String(a.id),
-          cache_key:    'grammar_guide',
-          cache_value:  { patterns: guides }
-        }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(){});
+      if (guides.length) {
+        upsertArticleCacheRow(a.id, { grammar: JSON.stringify({ patterns: guides }) });
       }
     } catch(e) {}
   } catch(e) {
-    if (e.message === 'Not signed in') {
-      el.dataset.source = ''; // 로그인 후 재시도 허용
-      el.innerHTML = '<div style="text-align:center;padding:28px 16px">'
-        + '<div style="font-size:32px;margin-bottom:12px">🔒</div>'
-        + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:8px">Sign in to use Grammar Guide</div>'
-        + '<div style="font-size:13px;color:#64748b;margin-bottom:20px">AI-powered grammar analysis is available for signed-in users.</div>'
-        + '<button onclick="openAuthModal(&apos;signin&apos;)" style="padding:10px 28px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
-        + '</div>';
-    } else {
-      renderStaticGrammar(el, a);
-    }
+    renderStaticGrammar(el, a);
   }
 }
 
 function renderGrammarGuideHTML(el, guides) {
-  el.innerHTML = '<p class="grammar-intro">✨ Grammar patterns found in this article:</p>'
+  el.innerHTML = '<p class="grammar-intro">✨ Grammar points pulled from this article:</p>'
     + guides.map(function(g){
       return '<div class="grammar-point">'
         + '<div class="grammar-name">' + g.name
-        + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
-        + '</div>'
+        + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span></div>'
         + '<div class="grammar-explanation">' + g.exp + '</div>'
-        + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
+        + '<div class="grammar-example"><strong>Article sentence</strong>' + g.ex_ko + '</div>'
+        + '<div class="grammar-extra"><strong>Meaning / function</strong>' + (g.ex_en || g.note || 'Used naturally in this article for context and sentence flow.') + '</div>'
         + '</div>';
     }).join('');
 }
 
-function renderStaticGrammar(el, a) {
-  var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
-  var patterns = [
-    { pattern:/었|았/, name:'~었/았 Past Tense', level:'Beginner', exp:'Added to verb stems to express past tense, like "-ed" in English. Use 았 after ㅏ/ㅗ vowels, 었 everywhere else.', ex_ko:'경제가 회복됐<strong>어요</strong>.', ex_en:'The economy recovered.' },
-    { pattern:/이다|입니다|이에요|예요/, name:'~이에요/예요 "To Be"', level:'Beginner', exp:'Korean equivalent of "is/are". Use 이에요 after a final consonant, 예요 after a vowel.', ex_ko:'서울<strong>이에요</strong>.', ex_en:"It's Seoul." },
-    { pattern:/을|를/, name:'을/를 Object Marker', level:'Beginner', exp:'Attaches to the object of a verb. Use 을 after a consonant, 를 after a vowel.', ex_ko:'뉴스<strong>를</strong> 읽어요.', ex_en:'I read the news.' },
-    { pattern:/에서/, name:'에서 Location Marker', level:'Beginner', exp:'Marks where an action takes place — like "at" or "in" in English.', ex_ko:'서울<strong>에서</strong> 발표했어요.', ex_en:'It was announced in Seoul.' },
-    { pattern:/위한|위해/, name:'~을 위해/위한 "For"', level:'Intermediate', exp:'Means "for the purpose of" or "in order to". 위해 precedes verbs, 위한 precedes nouns.', ex_ko:'경제 회복<strong>을 위한</strong> 방안이에요.', ex_en:"It's a plan for economic recovery." },
-    { pattern:/로 인해|로 인한/, name:'~로 인해 "Due to"', level:'Intermediate', exp:'Means "due to" or "because of" — used to state a cause or reason.', ex_ko:'수출 증가<strong>로 인해</strong> 흑자가 됐어요.', ex_en:'Due to export growth, it turned a surplus.' },
-    { pattern:/면서|하면서/, name:'~면서 "While"', level:'Intermediate', exp:'Connects two simultaneous actions, like "while" in English.', ex_ko:'일하<strong>면서</strong> 공부해요.', ex_en:'I study while working.' },
-    { pattern:/것으로|것이다|것을/, name:'~는 것 Nominalization', level:'Intermediate', exp:'Turns a verb into a noun clause — similar to adding "-ing" in English. 것 means "thing" or "fact".', ex_ko:'결정한 <strong>것으로</strong> 알려졌어요.', ex_en:'It is known that a decision was made.' },
-  ];
-  var guides = patterns.filter(function(p){ return p.pattern.test(text); }).slice(0, 4);
-  if (guides.length < 3) guides = patterns.slice(0, 4);
+function getArticlePlainText(a) {
+  return String((a && ((a.title || '') + '\n' + (a.body || '') + '\n' + (a.full || ''))) || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-  el.innerHTML = '<p class="grammar-intro">Grammar patterns in this article:</p>'
-    + guides.map(function(g){
-      return '<div class="grammar-point">'
-        + '<div class="grammar-name">' + g.name
-        + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
-        + '</div>'
-        + '<div class="grammar-explanation">' + g.exp + '</div>'
-        + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
-        + '</div>';
-    }).join('');
+function getArticleSentences(a) {
+  return getArticlePlainText(a)
+    .split(/(?<=[.!?])\s+|(?<=다)\s+|(?<=요)\s+|(?<=니다)\s+|(?<=죠)\s+|(?<=까)\s+|\n+/)
+    .map(function(s){ return s.trim(); })
+    .filter(function(s){ return s.length > 12; });
+}
+
+function escapeRegExp(str) {
+  return String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function highlightFirst(sentence, pattern) {
+  if (!sentence) return '';
+  if (typeof pattern === 'string') {
+    var re = new RegExp(escapeRegExp(pattern));
+    return sentence.replace(re, '<strong>' + pattern + '</strong>');
+  }
+  return sentence.replace(pattern, function(match) { return '<strong>' + match + '</strong>'; });
+}
+
+function buildArticleGrammarPatterns(a) {
+  var sentences = getArticleSentences(a);
+  var defs = [
+    { key:'reason', test:/기 때문에/, label:'-기 때문에', level:'Intermediate', exp:'Shows a clear reason or cause. It is common in news writing when the article explains why something is happening.', note:'Look at what comes before the form: that part gives the reason. The clause after it shows the result.', highlight:'기 때문에' },
+    { key:'change', test:/아지|어지|해지/, label:'-아/어지다', level:'Intermediate', exp:'Describes a change of state, such as becoming more serious, smaller, weaker, or safer.', note:'News articles use this pattern a lot to describe social change over time.', highlight:/[가-힣]+(?:아|어|해)지[가-힣]*/ },
+    { key:'and', test:/고\b|하고/, label:'-고 / 하고', level:'Beginner', exp:'Connects two actions, facts, or nouns. It often helps news articles list related information smoothly.', note:'Use this to notice how Korean chains facts together without making a new sentence every time.', highlight:/고|하고/ },
+    { key:'location', test:/에서|에\b/, label:'에 / 에서', level:'Beginner', exp:'에 marks a place or time target, while 에서 marks where an action happens.', note:'This is one of the fastest ways to understand where an event happened in a news sentence.', highlight:/에서|에/ },
+    { key:'object', test:/을|를/, label:'을 / 를', level:'Beginner', exp:'Marks the direct object of the verb — the thing affected by the action.', note:'When you spot this marker, ask yourself “what is being affected?”', highlight:/을|를/ },
+    { key:'topic', test:/은|는/, label:'은 / 는', level:'Beginner', exp:'Marks the topic or contrast in a sentence. Articles use it to frame the main subject and compare facts.', note:'This marker often tells you what the sentence is mainly talking about.', highlight:/은|는/ },
+    { key:'subject', test:/이|가/, label:'이 / 가', level:'Beginner', exp:'Marks the subject that directly carries the action or state.', note:'Try comparing this with 은/는 — news writing often uses both differently for focus.', highlight:/이|가/ },
+    { key:'purpose', test:/기 위해|위해|위한/, label:'-기 위해 / 위한', level:'Intermediate', exp:'Expresses purpose: “for” or “in order to.”', note:'This pattern often appears when the article explains a government plan or institutional response.', highlight:/기 위해|위해|위한/ },
+    { key:'contrast', test:/지만|는데/, label:'-지만 / -는데', level:'Intermediate', exp:'Adds contrast or background context before the next point.', note:'This helps you feel the shift in the article’s logic: expectation first, then contrast or added context.', highlight:/지만|는데/ },
+    { key:'past', test:/었|았|였/, label:'-았/었- past form', level:'Beginner', exp:'Marks past tense or completed events. News reports rely on it to describe what has already happened.', note:'When you see this ending, read the sentence as a reported event rather than a current plan.', highlight:/[가-힣]+(?:았|었|였)[가-힣]*/ }
+  ];
+  var out = [];
+  var used = {};
+  defs.forEach(function(def) {
+    if (out.length >= 4) return;
+    var sentence = sentences.find(function(s) { return def.test.test(s) && !used[s]; });
+    if (!sentence) return;
+    used[sentence] = true;
+    out.push({
+      name: def.label,
+      level: def.level,
+      exp: def.exp,
+      ex_ko: highlightFirst(sentence, def.highlight || def.test),
+      ex_en: def.note
+    });
+  });
+  return out;
+}
+
+function renderStaticGrammar(el, a) {
+  var guides = buildArticleGrammarPatterns(a);
+  if (!guides.length) {
+    guides = [{
+      name: 'Article sentence structure',
+      level: a.level || 'Beginner',
+      exp: 'This article is short, so the fallback guide is showing sentence-level reading help instead of AI grammar analysis.',
+      ex_ko: highlightFirst(getArticleSentences(a)[0] || getArticlePlainText(a).slice(0, 120), /[가-힣]+/),
+      ex_en: 'Focus on the sentence order first: topic → detail → result. That reading pattern appears often in Korean news.'
+    }];
+  }
+  renderGrammarGuideHTML(el, guides);
 }
 
 function renderArticleVocab(a) {
@@ -2451,6 +2720,19 @@ async function toggleTranslate() {
   var id = params.get('id');
   var cacheKey = 'trans_' + id;
 
+  try {
+    var sharedCached = await getFromCache('article', id, 'translation_en');
+    if (sharedCached && sharedCached.translations && sharedCached.translations.length) {
+      translateCache[cacheKey] = sharedCached.translations;
+      applyTranslation(zones, sharedCached.translations);
+      btn.textContent = '🇰🇷 Back to Korean';
+      btn.disabled = false;
+      btn.classList.add('active');
+      translateActive = true;
+      return;
+    }
+  } catch(e) {}
+
   if (translateCache[cacheKey]) {
     applyTranslation(zones, translateCache[cacheKey]);
     btn.textContent = '🇰🇷 Back to Korean';
@@ -2504,10 +2786,22 @@ async function toggleTranslate() {
     translateActive = true;
     btn.textContent = '🇰🇷 Back to Korean';
     btn.classList.add('active');
+
+    try {
+      if (translations.length) {
+        upsertArticleCacheRow(id, { translation: JSON.stringify({ texts: translations }) });
+      }
+    } catch(e) {}
   } catch(e) {
-    console.error('translate error', e);
     btn.textContent = '🌐 Translate';
-    if (typeof toast === 'function') toast('Translation failed — check your connection and try again.', true);
+    btn.classList.remove('active');
+    translateActive = false;
+    if (e && (e.message === 'unauthorized' || e.message === 'Not signed in')) {
+      if (typeof toast === 'function') toast('Translation needs a fresh sign-in. Please sign in again.', true);
+      if (typeof openAuthModal === 'function') openAuthModal('signin');
+    } else {
+      if (typeof toast === 'function') toast('Translation is temporarily unavailable right now.', true);
+    }
   }
   btn.disabled = false;
 }
@@ -3157,6 +3451,7 @@ function renderHeader() {
     + '</div>'
     + '<a href="korehan-study-room.html" class="tn-item' + (isOn('korehan-study-room') ? ' on' : '') + '">&#x1F4D6; Study Room</a>'
     + '<a href="korehan-courses.html" class="tn-item' + (isOn('korehan-courses') ? ' on' : '') + '">&#x1F393; Courses</a>'
+    + '<a href="' + characterProfileUrl(CHARACTER_ROSTER[0].slug) + '" class="tn-item' + (isOn('korehan-character') ? ' on' : '') + '">&#x1F9D1; Characters</a>'
     + '<a href="korehan-all.html" class="tn-item' + (isOn('korehan-all') ? ' on' : '') + '">All News</a>'
     + '</div>'
     + '</div>';
@@ -3350,24 +3645,21 @@ function getSiteConfig() {
 }
 
 function applySiteConfigToPage() {
-  var cfg = getSiteConfig();
-  var titleEl = document.querySelector('.learn-banner .lb-left h2');
-  var descEl = document.querySelector('.learn-banner .lb-left p');
-  if (titleEl) titleEl.textContent = cfg.learnBannerTitle || DEFAULT_SITE_CONFIG.learnBannerTitle;
-  if (descEl) descEl.textContent = cfg.learnBannerDesc || DEFAULT_SITE_CONFIG.learnBannerDesc;
+  // The legacy learn banner copy caused confusing homepage flashes.
+  // Keep site config available for footer/site metadata, but stop
+  // force-injecting banner marketing copy into page chrome.
 }
 
 async function loadAppSettings() {
   var sb = getSupa();
   if (!sb) return;
   try {
-    // API 키는 로그인한 유저만 읽을 수 있음 (RLS로 보호)
-    var res = await sb.from('app_settings').select('key,value');
+    // Public pages only need site-level copy/config, not every secret setting.
+    var res = await sb.from('app_settings').select('key,value').eq('key', 'site_config');
     if (res.data) {
       res.data.forEach(function(row) {
         _appSettings[row.key] = row.value;
       });
-      // API 키는 localStorage에 저장하지 않음 (보안)
     }
   } catch(e) {}
 }
@@ -3422,6 +3714,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   else if (pageBase === 'korehan-culture')   { await renderSectionPage('문화'); }
   else if (pageBase === 'korehan-opinion')   { await renderSectionPage('오피니언'); }
   else if (pageBase === 'korehan-article')   { renderArticlePage(); }
+  else if (pageBase === 'korehan-character') { renderCharacterProfilePage(); }
 
   ttsInit();
   injectDailyMission();
@@ -4526,26 +4819,10 @@ async function renderHomeLearningPreview() {
   var xp = getXP ? getXP() : 0;
   var streak = getCurrentStreak ? getCurrentStreak() : 0;
 
-  // weak grammar — localStorage 우선, DB에서 보강
-  var weakGrammar = '-아/어서 vs -고';
-  var weakCount = 0;
-  try {
-    var gStats = JSON.parse(localStorage.getItem('kh_quiz_grammar_stats') || '{}');
-    var gEntries = Object.keys(gStats).map(function(k){
-      return { name: k, wrong: gStats[k].wrong || 0, correct: gStats[k].correct || 0 };
-    }).filter(function(g){ return g.wrong > 0; })
-      .sort(function(a,b){ return b.wrong - a.wrong; });
-    if (gEntries.length) {
-      weakGrammar = gEntries[0].name;
-      weakCount   = gEntries[0].wrong;
-    }
-  } catch(e) {}
-
   // DB에서 최신 데이터 비동기로 보강
   var sb = getSupa();
   if (sb && supaUser) {
     try {
-      // user_stats
       var statsRes = await sb.from('user_stats').select('xp,mission_streak,streak,articles_read,words_saved,quizzes_done').eq('user_id', supaUser.id).maybeSingle();
       if (statsRes.data) {
         xp     = Math.max(xp,     statsRes.data.xp             || 0);
@@ -4554,28 +4831,19 @@ async function renderHomeLearningPreview() {
         dm.words    = Math.max(dm.words    || 0, Math.min(20, statsRes.data.words_saved || 0));
         dm.quizzes  = Math.max(dm.quizzes  || 0, statsRes.data.quizzes_done  || 0);
       }
-      // weak grammar from DB
-      var wgRes = await sb.from('user_grammar_stats')
-        .select('grammar_point,wrong_count')
-        .eq('user_id', supaUser.id)
-        .gt('wrong_count', 0)
-        .order('wrong_count', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (wgRes.data) {
-        weakGrammar = wgRes.data.grammar_point;
-        weakCount   = wgRes.data.wrong_count;
-      }
     } catch(e) {}
   }
 
   var wordsLeft   = Math.max(0, 20 - (dm.words    || 0));
   var artGoalLeft = Math.max(0, 3  - (dm.articles || 0));
-  var hasWeak = weakCount > 0;
-  var weakQ = encodeURIComponent(weakGrammar);
+  var quizzesLeft = Math.max(0, 3 - (dm.quizzes || 0));
+  var summary = [];
+  if (artGoalLeft > 0) summary.push('기사 ' + artGoalLeft + '개');
+  if (wordsLeft > 0) summary.push('단어 ' + wordsLeft + '개');
+  if (quizzesLeft > 0) summary.push('퀴즈 ' + quizzesLeft + '개');
+  var summaryText = summary.length ? '남은 목표: ' + summary.join(' · ') : '오늘 목표를 모두 완료했어요. 계속 읽어도 XP가 쌓여요.';
 
   box.innerHTML =
-    // streak 배지 + stats 한 줄
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">'
     + '<div style="font-size:12px;font-weight:800;color:var(--dark)">Today\'s Progress</div>'
     + '<div style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:#fff3e0;color:#c85000;">🔥 ' + streak + ' day streak</div>'
@@ -4594,13 +4862,9 @@ async function renderHomeLearningPreview() {
     +   '<div style="font-size:10px;color:var(--gray);font-weight:700;">XP</div>'
     + '</div>'
     + '</div>'
-    // weak grammar
-    + '<div style="background:#fff8e1;border-radius:8px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">'
-    + '<div style="min-width:0;">'
-    +   '<div style="font-size:10px;font-weight:800;color:' + (hasWeak?'#c85000':'#15803d') + ';margin-bottom:2px;">' + (hasWeak?'⚠️ Weak Grammar':'✅ Grammar') + '</div>'
-    +   '<div style="font-size:13px;font-weight:800;color:#0b1626;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + weakGrammar + '</div>'
-    + '</div>'
-    + '<a href="korehan-study-room.html?focus=' + weakQ + '" style="flex-shrink:0;font-size:11px;font-weight:800;padding:5px 11px;background:var(--bright);color:#fff;border-radius:5px;text-decoration:none;white-space:nowrap;">연습 →</a>'
+    + '<div style="background:#f7faff;border-radius:8px;padding:10px 12px;">'
+    +   '<div style="font-size:10px;font-weight:800;color:var(--bright);margin-bottom:3px;">Next up</div>'
+    +   '<div style="font-size:12px;line-height:1.55;color:#334155;">' + summaryText + '</div>'
     + '</div>';
 }
 
@@ -4665,61 +4929,7 @@ function enhanceHomeMobile() {
 
 function enhanceArticleMobile() {
   if (!isMobileRedesign() || pageName() !== 'korehan-article') return;
-  var article = document.querySelector('.kh-article-wrap');
-  if (!article || document.querySelector('.mobile-sticky-study')) return;
-
-  var title = (document.querySelector('.art-title') || {}).textContent || 'This article';
-  var header = article.querySelector('.art-header');
-  if (header && !header.querySelector('.mobile-study-tabs')) {
-    var tabs = document.createElement('div');
-    tabs.className = 'mobile-study-tabs';
-    tabs.innerHTML = ''
-      + '<button class="on" data-target="read">Read</button>'
-      + '<button data-target="grammar">Grammar</button>'
-      + '<button data-target="vocab">Vocab</button>'
-      + '<button data-target="quiz">Quiz</button>';
-    header.insertAdjacentElement('afterend', tabs);
-
-    var readTargets = [document.getElementById('art-tab-article'), document.querySelector('.art-hero-img')].filter(Boolean);
-    var grammarTarget = document.getElementById('art-tab-grammar');
-    var vocabTarget = document.querySelector('.art-vocab-box');
-    var quizTarget = document.getElementById('fill-wrap');
-
-    function showTab(name) {
-      tabs.querySelectorAll('button').forEach(function(btn){ btn.classList.toggle('on', btn.getAttribute('data-target')===name); });
-      readTargets.forEach(function(el){ el.classList.toggle('mobile-hidden', name !== 'read'); });
-      if (grammarTarget) grammarTarget.classList.toggle('mobile-hidden', name !== 'grammar');
-      if (vocabTarget) vocabTarget.classList.toggle('mobile-hidden', name !== 'vocab');
-      if (quizTarget) quizTarget.classList.toggle('mobile-hidden', name !== 'quiz');
-      if (name === 'grammar') loadGrammarGuide();
-    }
-    tabs.addEventListener('click', function(e){
-      var btn = e.target.closest('button[data-target]');
-      if (!btn) return;
-      showTab(btn.getAttribute('data-target'));
-    });
-    showTab('read');
-  }
-
-  var sticky = document.createElement('div');
-  sticky.className = 'mobile-sticky-study';
-  sticky.innerHTML = '<a href="korehan-study-room.html">Study this article →</a>';
-  document.body.appendChild(sticky);
-
-  var lead = article.querySelector('.art-lead');
-  if (lead && !article.querySelector('.mobile-tier-card')) {
-    var card = document.createElement('section');
-    card.className = 'mobile-tier-card';
-    card.innerHTML = ''
-      + '<div class="mobile-eyebrow">Article study</div>'
-      + '<h3 style="font-size:24px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">Read first. Then review grammar and quiz.</h3>'
-      + '<p class="mobile-quick-sub">Keep the reading flow simple on mobile. Open translation only when you need it, save a few words, then jump to review.</p>'
-      + '<div class="mobile-action-row">'
-      + '<a class="mobile-primary-btn" href="javascript:void(0)" onclick="toggleTranslate()">🌐 Toggle translation</a>'
-      + '<a class="mobile-secondary-btn" href="korehan-study-room.html">✏️ Writing practice</a>'
-      + '</div>';
-    article.insertAdjacentElement('afterbegin', card);
-  }
+  document.body.classList.add('article-desktop-mobile');
 }
 
 function enhanceConversationsMobile() {
@@ -4753,8 +4963,8 @@ function enhanceConversationsMobile() {
         + '<h3 style="font-size:22px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">Read → Translate → Practice → Roleplay</h3>'
         + '<p class="mobile-quick-sub">Keep the conversation UI intact, then use the tools below to turn the chat into active speaking practice.</p>'
         + '<div class="mobile-action-row">'
-        + '<a class="mobile-primary-btn" href="javascript:void(0)">💬 Roleplay</a>'
-        + '<a class="mobile-secondary-btn" href="korehan-study-room.html">✏️ Practice</a>'
+        + '<a class="mobile-primary-btn" href="#" onclick="event.preventDefault();startBlankQuiz()">✏️ Fill quiz</a>'
+        + '<a class="mobile-secondary-btn" href="#" onclick="event.preventDefault();startOrderQuiz()">🔀 Order quiz</a>'
         + '</div>';
       leftHead.insertAdjacentElement('afterend', box);
     }
@@ -4800,8 +5010,8 @@ function enhanceStoriesMobile() {
         + '<h3 style="font-size:22px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">Read → Vocabulary → Quiz → Discussion</h3>'
         + '<p class="mobile-quick-sub">Stories work best when the reading screen is calm and the study actions are obvious.</p>'
         + '<div class="mobile-action-row">'
-        + '<a class="mobile-primary-btn" href="javascript:void(0)">📚 Vocabulary</a>'
-        + '<a class="mobile-secondary-btn" href="korehan-study-room.html">💭 Discussion</a>'
+        + '<a class="mobile-primary-btn" href="#" onclick="event.preventDefault();startStoryBlank()">📚 Vocab quiz</a>'
+        + '<a class="mobile-secondary-btn" href="#" onclick="event.preventDefault();startStoryOrder()">🔀 Story order</a>'
         + '</div>';
       head.insertAdjacentElement('afterend', box);
     }
@@ -4809,10 +5019,8 @@ function enhanceStoriesMobile() {
     if (cta && !cta.dataset.mobileEnhanced) {
       cta.dataset.mobileEnhanced = '1';
       cta.innerHTML = ''
-        + '<button class="st-cta-btn st-cta-pri">Vocabulary</button>'
-        + '<button class="st-cta-btn st-cta-sec">Quiz</button>'
-        + '<button class="st-cta-btn st-cta-sec">Discussion</button>'
-        + '<button class="st-cta-btn st-cta-sec">Practice</button>';
+        + '<button class="st-cta-btn st-cta-pri" onclick="startStoryBlank()">✏️ Vocabulary</button>'
+        + '<button class="st-cta-btn st-cta-sec" onclick="startStoryOrder()">🔀 Quiz</button>';
       cta.style.gridTemplateColumns = '1fr 1fr';
     }
   });
