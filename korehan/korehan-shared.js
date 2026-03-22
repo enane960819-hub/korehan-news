@@ -75,7 +75,7 @@ function khIcon(name, label, extraClass) {
 // ── Claude API 프록시 (키를 서버에서만 관리) ─────────────────
 // Anthropic API를 직접 호출하지 않고 Supabase Edge Function을 통해 호출
 // → API 키가 브라우저에 절대 노출되지 않음
-const CLAUDE_PROXY_URL = window.location.origin + '/api/claude-proxy';
+const CLAUDE_PROXY_URL = SUPA_URL + '/functions/v1/claude-proxy';
 
 async function callClaudeRequest(accessToken, payload) {
   return fetch(CLAUDE_PROXY_URL, {
@@ -965,11 +965,14 @@ function normalizePhrase(row) {
   };
 }
 function getPhraseSourceRows() {
-  var raw = _appSettings && _appSettings.phrases;
+  var raw = lsGet(K_PHRASES, null);
+  if (Array.isArray(raw)) return raw;
+
+  raw = _appSettings && _appSettings.phrases;
   if (raw && typeof raw === 'string') {
     try { raw = JSON.parse(raw); } catch(e) { raw = null; }
   }
-  if (Array.isArray(raw) && raw.length) return raw;
+  if (Array.isArray(raw)) return raw;
   return DEF_PHRASES;
 }
 function getPhrases()   { return getPhraseSourceRows().map(normalizePhrase); }
@@ -3833,19 +3836,31 @@ document.addEventListener('DOMContentLoaded', async function() {
 // 하드코딩 VOCAB에 DB 단어를 덮어쓰기 (DB 우선)
 // ── 온보딩 체크 ────────────────────────────────────────────
 var _onboardingChecked = false;
-function hasCompletedOnboardingLocal() {
+function getOnboardingStorageKey(name, userId) {
+  return 'kh_onboarding_' + name + (userId ? '_' + userId : '');
+}
+function getWelcomeTipStorageKey(userId) {
+  return 'kh_new_user_tip' + (userId ? '_' + userId : '');
+}
+function hasCompletedOnboardingLocal(userId) {
   try {
-    return localStorage.getItem('kh_onboarding_completed') === '1';
+    return localStorage.getItem(getOnboardingStorageKey('completed', userId)) === '1';
   } catch(e) {
     return false;
   }
+}
+function markCompletedOnboardingLocal(userId, onboardedAt) {
+  try {
+    localStorage.setItem(getOnboardingStorageKey('completed', userId), '1');
+    if (onboardedAt) localStorage.setItem(getOnboardingStorageKey('completed_at', userId), onboardedAt);
+  } catch(e) {}
 }
 async function checkOnboardingStatus() {
   if (_onboardingChecked || !supaUser) return;
   if (window.location.pathname.includes('onboarding')) return;
   _onboardingChecked = true;
   try {
-    if (hasCompletedOnboardingLocal()) return;
+    if (hasCompletedOnboardingLocal(supaUser.id)) return;
     var sb = getSupa(); if (!sb) return;
     var res = await sb.from('user_stats')
       .select('onboarded, onboarded_at, created_at')
@@ -3853,10 +3868,7 @@ async function checkOnboardingStatus() {
       .maybeSingle();
 
     if (res.data && res.data.onboarded === true) {
-      try {
-        localStorage.setItem('kh_onboarding_completed', '1');
-        if (res.data.onboarded_at) localStorage.setItem('kh_onboarding_completed_at', res.data.onboarded_at);
-      } catch(e) {}
+      markCompletedOnboardingLocal(supaUser.id, res.data.onboarded_at || '');
       return;
     }
 
@@ -5026,7 +5038,8 @@ async function renderHomeLearningPreview() {
   if (!box) return;
   var showWelcomeTip = false;
   try {
-    showWelcomeTip = window.location.search.indexOf('welcome=1') > -1 || localStorage.getItem('kh_new_user_tip') === '1';
+    var welcomeTipKey = getWelcomeTipStorageKey(supaUser && supaUser.id);
+    showWelcomeTip = window.location.search.indexOf('welcome=1') > -1 || localStorage.getItem(welcomeTipKey) === '1';
   } catch(e) {}
 
   // 비로그인 — 컴팩트
@@ -5050,7 +5063,7 @@ async function renderHomeLearningPreview() {
       + '<div style="font-size:12px;color:rgba(255,255,255,.74);line-height:1.6;margin-bottom:12px">Read one article, open Study Room, then check Learning Hub. The Beginner Guide maps the full flow for your first session.</div>'
       + '<a href="beginner-guide.html" style="display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border-radius:12px;background:linear-gradient(135deg,#38bdf8,#2563eb);color:#fff;font-size:12px;font-weight:900;text-decoration:none;box-shadow:0 12px 22px rgba(37,99,235,.26);animation:khGuidePulse 1.8s ease-in-out infinite">Open Beginner Guide →</a>'
       + '<style>@keyframes khGuidePulse{0%,100%{transform:translateY(0);box-shadow:0 12px 22px rgba(37,99,235,.26)}50%{transform:translateY(-1px);box-shadow:0 16px 28px rgba(56,189,248,.34)}}</style>';
-    try { localStorage.removeItem('kh_new_user_tip'); } catch(e) {}
+    try { localStorage.removeItem(getWelcomeTipStorageKey(supaUser && supaUser.id)); } catch(e) {}
     return;
   }
 

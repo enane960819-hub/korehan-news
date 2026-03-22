@@ -285,16 +285,25 @@ function shuffle(arr) {
   return copy;
 }
 
+function getOnboardingStorageKey(name, userId) {
+  return 'kh_onboarding_' + name + (userId ? '_' + userId : '');
+}
+
+function getWelcomeTipStorageKey(userId) {
+  return 'kh_new_user_tip' + (userId ? '_' + userId : '');
+}
+
 function saveOnboardingLocal(done) {
   try {
+    var userId = _user && _user.id ? _user.id : '';
     if (done) {
-      localStorage.setItem('kh_onboarding_completed', '1');
-      localStorage.setItem('kh_onboarding_completed_at', new Date().toISOString());
-      localStorage.setItem('kh_new_user_tip', '1');
-      if (state.level) localStorage.setItem('kh_onboarding_level', state.level);
-      if (state.goals && state.goals.length) localStorage.setItem('kh_onboarding_goals', JSON.stringify(state.goals));
+      localStorage.setItem(getOnboardingStorageKey('completed', userId), '1');
+      localStorage.setItem(getOnboardingStorageKey('completed_at', userId), new Date().toISOString());
+      localStorage.setItem(getWelcomeTipStorageKey(userId), '1');
+      if (state.level) localStorage.setItem(getOnboardingStorageKey('level', userId), state.level);
+      if (state.goals && state.goals.length) localStorage.setItem(getOnboardingStorageKey('goals', userId), JSON.stringify(state.goals));
     } else {
-      localStorage.setItem('kh_onboarding_started', '1');
+      localStorage.setItem(getOnboardingStorageKey('started', userId), '1');
     }
   } catch(e) {}
 }
