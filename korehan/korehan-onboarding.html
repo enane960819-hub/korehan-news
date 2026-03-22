@@ -1,651 +1,750 @@
 <!DOCTYPE html>
-<html lang="ko">
+<!-- sync marker -->
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KoreHan News — 시작하기</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<title>KoreHan News — Getting Started</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
-:root{--navy:#0b1626;--blue:#1a3a6b;--bright:#2255a4;--sky:#7ab8f5;--bg:#f0f2f7;--white:#fff;--border:#d4dce8;--gray:#445566;--dark:#0d1b2e}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:inherit,'Noto Sans KR',sans-serif}
-body{background:var(--navy);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px}
-
-/* ── 레이아웃 ── */
-.ob-wrap{width:100%;max-width:520px}
-.ob-logo{font-family:serif;font-size:20px;font-weight:900;color:#fff;text-align:center;margin-bottom:32px;letter-spacing:-.02em}
+:root{--navy:#081222;--navy-2:#0f2342;--bright:#2563eb;--sky:#7dd3fc;--mint:#67e8f9;--violet:#a78bfa;--gold:#fbbf24;--rose:#fb7185;--white:#fff;--text-soft:rgba(255,255,255,.78);--text-dim:rgba(255,255,255,.56);--border:rgba(255,255,255,.12);--glass:rgba(255,255,255,.08);--glass-strong:rgba(255,255,255,.12);--shadow:0 30px 80px rgba(3,10,22,.45)}
+*,:before,:after{box-sizing:border-box}
+html,body{min-height:100%;margin:0;font-family:'Source Sans 3','Noto Sans KR',sans-serif;background:radial-gradient(circle at top left,rgba(125,211,252,.18),transparent 30%),radial-gradient(circle at top right,rgba(167,139,250,.18),transparent 26%),linear-gradient(135deg,#06111f 0%,#0b1626 45%,#12284d 100%);color:#fff}
+body{display:flex;align-items:center;justify-content:center;padding:24px;overflow-x:hidden}
+body:before,body:after{content:'';position:fixed;border-radius:999px;filter:blur(60px);opacity:.4;pointer-events:none;z-index:0}
+body:before{width:280px;height:280px;left:-80px;top:-40px;background:rgba(59,130,246,.3)}
+body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(168,85,247,.28)}
+.ob-shell{position:relative;z-index:1;width:min(1140px,100%);display:grid;grid-template-columns:minmax(320px,.92fr) minmax(340px,1.08fr);gap:22px;align-items:stretch}
+.ob-side,.ob-main{border:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.05));backdrop-filter:blur(16px);box-shadow:var(--shadow)}
+.ob-side{border-radius:34px;padding:32px 28px;position:relative;overflow:hidden}
+.ob-main{border-radius:36px;padding:28px;position:relative;overflow:hidden}
+.ob-side:before,.ob-main:before{content:'';position:absolute;inset:auto -70px -70px auto;width:220px;height:220px;background:radial-gradient(circle,rgba(125,211,252,.16),transparent 68%)}
+.ob-logo{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.86)}
+.ob-logo strong{font-family:'Playfair Display','Noto Serif KR',serif;font-size:22px;letter-spacing:-.03em;text-transform:none}
 .ob-logo span{color:var(--sky)}
-
-/* ── 진행 바 ── */
-.ob-progress{display:flex;align-items:center;gap:0;margin-bottom:32px}
-.ob-step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;transition:all .25s}
-.ob-step-dot.done{background:var(--bright);color:#fff}
-.ob-step-dot.active{background:#fff;color:var(--navy)}
-.ob-step-dot.pending{background:rgba(255,255,255,.12);color:rgba(255,255,255,.35)}
-.ob-step-line{flex:1;height:2px;background:rgba(255,255,255,.12);transition:background .25s}
-.ob-step-line.done{background:var(--bright)}
-
-/* ── 카드 ── */
-.ob-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px 24px}
-.ob-eyebrow{font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--sky);margin-bottom:8px}
-.ob-title{font-family:serif;font-size:22px;font-weight:900;line-height:1.25;margin-bottom:6px}
-.ob-desc{font-size:13px;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:22px}
-
-/* ── 선택 버튼들 ── */
-.ob-options{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
-.ob-opt{display:flex;align-items:center;gap:12px;padding:13px 16px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;cursor:pointer;transition:all .15s;text-align:left;font-family:inherit;color:#fff}
-.ob-opt:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.2)}
-.ob-opt.selected{background:rgba(34,85,164,.3);border-color:var(--bright)}
-.ob-opt-icon{font-size:20px;width:32px;text-align:center;flex-shrink:0}
-.ob-opt-text{flex:1}
-.ob-opt-label{font-size:14px;font-weight:700}
-.ob-opt-sub{font-size:12px;color:rgba(255,255,255,.45);margin-top:1px}
-.ob-opt-check{width:18px;height:18px;border-radius:50%;background:var(--bright);display:none;align-items:center;justify-content:center;flex-shrink:0}
-.ob-opt.selected .ob-opt-check{display:flex}
-
-/* ── 시간 옵션 ── */
-.ob-time-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
-.ob-time-btn{padding:16px 8px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;cursor:pointer;font-family:inherit;color:#fff;text-align:center;transition:all .15s}
-.ob-time-btn:hover{background:rgba(255,255,255,.09)}
-.ob-time-btn.selected{background:rgba(34,85,164,.3);border-color:var(--bright)}
-.ob-time-num{font-size:24px;font-weight:900;display:block;font-family:serif}
-.ob-time-label{font-size:11px;color:rgba(255,255,255,.5);display:block;margin-top:3px}
-.ob-time-sub{font-size:10px;color:rgba(255,255,255,.35);display:block;margin-top:2px}
-
-/* ── 레벨 테스트 ── */
-.test-progress{margin-bottom:14px}
-.test-prog-bar{height:4px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden;margin-bottom:6px}
-.test-prog-fill{height:100%;background:var(--sky);border-radius:999px;transition:width .3s}
-.test-prog-label{font-size:11px;color:rgba(255,255,255,.45);display:flex;justify-content:space-between}
-
-.test-level-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:800;margin-bottom:14px}
-.badge-beg{background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.25)}
-.badge-int{background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.25)}
-.badge-adv{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.25)}
-
-.test-q{font-size:16px;font-weight:700;line-height:1.6;margin-bottom:16px;color:#fff}
-.test-ko{font-family:serif;font-size:20px;font-weight:900;color:var(--sky);display:block;margin-bottom:6px}
-.test-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.test-opt{padding:11px 12px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;color:#fff;text-align:center;transition:all .15s}
-.test-opt:hover:not(:disabled){background:rgba(255,255,255,.1)}
-.test-opt.correct{background:rgba(34,197,94,.2);border-color:#4ade80;color:#4ade80}
-.test-opt.wrong{background:rgba(239,68,68,.15);border-color:#f87171;color:#f87171}
-.test-opt.reveal{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.3);color:rgba(255,255,255,.5)}
-.test-opt:disabled{cursor:default}
-.test-feedback{margin-top:10px;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.5;display:none}
+.ob-side-hero{margin:26px 0 24px}
+.ob-side-title{font-family:'Playfair Display','Noto Serif KR',serif;font-size:clamp(34px,5vw,56px);line-height:.98;letter-spacing:-.04em;margin:0 0 14px}
+.ob-side-desc{font-size:16px;line-height:1.75;color:var(--text-soft);max-width:38ch}
+.ob-side-stack{display:grid;gap:14px;margin-top:26px}
+.ob-side-card{padding:18px;border-radius:22px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
+.ob-side-card small{display:block;font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--sky);margin-bottom:8px}
+.ob-side-card h3{margin:0 0 8px;font-size:20px;font-weight:900}
+.ob-side-card p{margin:0;color:var(--text-soft);font-size:14px;line-height:1.65}
+.ob-feature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px}
+.ob-mini{padding:14px;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.08)}
+.ob-mini b{display:block;font-size:20px;margin-bottom:6px}
+.ob-mini span{font-size:12px;color:var(--text-dim);line-height:1.5;display:block}
+.ob-progress-wrap{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:20px}
+.ob-progress-label{font-size:12px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--sky)}
+.ob-progress-track{display:flex;gap:10px;flex:1;align-items:center}
+.ob-step-dot{width:36px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;background:rgba(255,255,255,.08);color:rgba(255,255,255,.42);border:1px solid rgba(255,255,255,.08);transition:.2s ease}
+.ob-step-dot.active{background:#fff;color:var(--navy);transform:scale(1.06)}
+.ob-step-dot.done{background:linear-gradient(135deg,#38bdf8,#2563eb);color:#fff;border-color:transparent}
+.ob-step-line{height:2px;flex:1;background:rgba(255,255,255,.1);border-radius:999px;transition:.2s ease}
+.ob-step-line.done{background:linear-gradient(90deg,#38bdf8,#2563eb)}
+.ob-card{position:relative;border-radius:30px;background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.08);padding:28px;min-height:600px;display:flex;flex-direction:column;justify-content:space-between}
+.ob-card-enter{animation:cardUp .45s cubic-bezier(.22,1,.36,1)}
+@keyframes cardUp{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+.ob-topline{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:12px}
+.ob-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:rgba(125,211,252,.12);border:1px solid rgba(125,211,252,.18);font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--sky)}
+.ob-stage{font-size:13px;color:var(--text-dim);font-weight:700}
+.ob-title{font-family:'Playfair Display','Noto Serif KR',serif;font-size:clamp(30px,4vw,42px);line-height:1.05;letter-spacing:-.04em;margin:0 0 10px}
+.ob-desc{margin:0 0 22px;color:var(--text-soft);font-size:16px;line-height:1.72;max-width:50ch}
+.ob-options,.ob-grid-2,.ob-level-list,.ob-test-actions,.ob-journey{display:grid;gap:12px}
+.ob-options{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ob-opt,.ob-time-btn,.test-opt,.ob-choice-card,.ob-link-card{position:relative;border:none;border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.09);padding:18px;text-align:left;color:#fff;font-family:inherit;cursor:pointer;transition:transform .18s ease,border-color .18s ease,background .18s ease,box-shadow .18s ease}
+.ob-opt:hover,.ob-time-btn:hover,.test-opt:hover:not(:disabled),.ob-choice-card:hover,.ob-link-card:hover{transform:translateY(-2px);border-color:rgba(125,211,252,.42);background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.06));box-shadow:0 18px 28px rgba(3,10,22,.2)}
+.ob-opt.selected,.ob-time-btn.selected,.ob-choice-card.selected{border-color:rgba(103,232,249,.75);background:linear-gradient(180deg,rgba(37,99,235,.26),rgba(125,211,252,.12));box-shadow:0 20px 32px rgba(37,99,235,.22)}
+.ob-opt-head{display:flex;align-items:flex-start;gap:12px}
+.ob-opt-icon{width:48px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px;background:rgba(255,255,255,.12);flex-shrink:0}
+.ob-opt-label{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:900;margin-bottom:4px}
+.ob-opt-sub{font-size:13px;color:var(--text-dim);line-height:1.6}
+.ob-tag{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.08);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--sky)}
+.ob-check{position:absolute;top:16px;right:16px;width:24px;height:24px;border-radius:999px;background:#fff;color:var(--navy);display:none;align-items:center;justify-content:center;font-size:14px;font-weight:900}
+.ob-opt.selected .ob-check,.ob-choice-card.selected .ob-check,.ob-time-btn.selected .ob-check{display:flex}
+.ob-helper{display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-size:13px;color:var(--text-soft);line-height:1.6;margin-bottom:18px}
+.ob-helper b{color:#fff}
+.ob-pill-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.ob-pill{padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.06);font-size:12px;font-weight:800;color:rgba(255,255,255,.78)}
+.ob-time-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.ob-time-btn{padding:20px;min-height:150px}
+.ob-time-num{display:block;font-family:'Playfair Display','Noto Serif KR',serif;font-size:36px;line-height:1;margin-bottom:10px}
+.ob-time-label{display:block;font-size:16px;font-weight:900;margin-bottom:8px}
+.ob-time-sub{display:block;font-size:13px;color:var(--text-soft);line-height:1.55}
+.ob-time-route{display:block;margin-top:10px;font-size:12px;color:var(--sky);font-weight:700;line-height:1.55}
+.ob-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.ob-choice-card h3,.ob-link-card h3{margin:0 0 8px;font-size:20px}
+.ob-choice-card p,.ob-link-card p{margin:0;color:var(--text-soft);line-height:1.65;font-size:14px}
+.ob-choice-card .ob-choice-badge{display:inline-flex;margin-bottom:14px;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.08);font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--sky)}
+.ob-link-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
+.ob-link-card{padding:18px;text-decoration:none;display:block}
+.ob-link-card span{display:block;font-size:12px;color:var(--sky);font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.test-progress{margin-bottom:16px}
+.test-prog-bar{height:8px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden}
+.test-prog-fill{height:100%;background:linear-gradient(90deg,#38bdf8,#2563eb);border-radius:999px;transition:width .3s ease}
+.test-prog-label{display:flex;justify-content:space-between;gap:12px;margin-top:8px;font-size:12px;color:var(--text-dim)}
+.test-level-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px}
+.badge-beg{background:rgba(74,222,128,.14);border:1px solid rgba(74,222,128,.22);color:#86efac}
+.badge-int{background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.22);color:#fde68a}
+.badge-adv{background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.24);color:#fda4af}
+.test-q{font-size:18px;font-weight:800;line-height:1.6;margin-bottom:18px}
+.test-ko{display:block;margin-top:8px;font-family:'Noto Serif KR',serif;font-size:22px;font-weight:900;color:var(--sky);line-height:1.4}
+.test-opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.test-opt{font-size:14px;font-weight:700;line-height:1.55;min-height:82px;display:flex;align-items:center;justify-content:center;text-align:center}
+.test-opt.correct{background:rgba(34,197,94,.18);border-color:#4ade80;color:#dcfce7}
+.test-opt.wrong{background:rgba(239,68,68,.16);border-color:#fb7185;color:#ffe4e6}
+.test-opt.reveal{background:rgba(56,189,248,.12);border-color:rgba(103,232,249,.34);color:#e0f2fe}
+.test-opt:disabled{cursor:default;transform:none;box-shadow:none}
+.test-feedback{display:none;margin-top:14px;padding:14px 16px;border-radius:18px;font-size:14px;line-height:1.65}
 .test-feedback.show{display:block}
-.test-feedback.ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#4ade80}
-.test-feedback.no{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#f87171}
-
-/* ── 결과 ── */
-.result-score{text-align:center;padding:20px 0}
-.result-num{font-family:serif;font-size:64px;font-weight:900;line-height:1;color:#fff}
-.result-denom{font-size:20px;color:rgba(255,255,255,.4)}
-.result-level{font-size:22px;font-weight:900;margin:10px 0 4px;color:var(--sky)}
-.result-desc{font-size:13px;color:rgba(255,255,255,.55);line-height:1.6}
-.result-breakdown{display:flex;gap:6px;justify-content:center;margin-top:14px}
-.rb-item{flex:1;background:rgba(255,255,255,.05);border-radius:8px;padding:8px;text-align:center}
-.rb-n{font-size:18px;font-weight:900}
-.rb-l{font-size:10px;color:rgba(255,255,255,.4);margin-top:2px}
-.rb-beg .rb-n{color:#4ade80}
-.rb-int .rb-n{color:#fbbf24}
-.rb-adv .rb-n{color:#f87171}
-
-/* ── 버튼 ── */
-.ob-btn-row{display:flex;gap:10px;margin-top:20px}
-.ob-btn{flex:1;padding:13px;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s;border:none}
-.ob-btn-primary{background:var(--bright);color:#fff}
-.ob-btn-primary:hover{background:#1a4a8a}
-.ob-btn-primary:disabled{opacity:.4;cursor:default}
-.ob-btn-secondary{background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.12)}
-.ob-btn-secondary:hover{background:rgba(255,255,255,.12)}
-.ob-btn-full{width:100%;padding:14px;border-radius:12px;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;border:none;background:var(--bright);color:#fff}
-.ob-btn-full:hover{background:#1a4a8a}
-.ob-btn-full:disabled{opacity:.4;cursor:default}
-
-.skip-link{text-align:center;margin-top:14px;font-size:12px;color:rgba(255,255,255,.3);cursor:pointer}
-.skip-link:hover{color:rgba(255,255,255,.5)}
+.test-feedback.ok{background:rgba(34,197,94,.14);border:1px solid rgba(34,197,94,.2);color:#dcfce7}
+.test-feedback.no{background:rgba(239,68,68,.12);border:1px solid rgba(251,113,133,.18);color:#ffe4e6}
+.result-hero{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;padding:20px;border-radius:26px;background:linear-gradient(135deg,rgba(37,99,235,.2),rgba(167,139,250,.16));border:1px solid rgba(255,255,255,.08);margin-bottom:18px}
+.result-num{font-family:'Playfair Display','Noto Serif KR',serif;font-size:62px;line-height:1;font-weight:900}
+.result-copy h3{margin:0 0 6px;font-size:28px}
+.result-copy p{margin:0;color:var(--text-soft);line-height:1.65}
+.result-breakdown{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.rb-item{padding:14px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);text-align:center}
+.rb-n{font-size:26px;font-weight:900}
+.rb-l{margin-top:4px;font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em}
+.rb-beg .rb-n{color:#86efac}.rb-int .rb-n{color:#fde68a}.rb-adv .rb-n{color:#fda4af}
+.ob-level-list{margin-bottom:20px}
+.ob-journey{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:18px}
+.ob-journey-card{padding:16px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+.ob-journey-card strong{display:block;font-size:14px;margin-bottom:6px}
+.ob-journey-card p{margin:0;font-size:13px;color:var(--text-soft);line-height:1.6}
+.ob-btn-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}
+.ob-btn{flex:1;min-width:140px;padding:15px 18px;border:none;border-radius:18px;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;transition:transform .16s ease,opacity .16s ease,background .16s ease}
+.ob-btn:hover{transform:translateY(-1px)}
+.ob-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.ob-btn-primary{background:linear-gradient(135deg,#38bdf8,#2563eb);color:#fff;box-shadow:0 14px 30px rgba(37,99,235,.3)}
+.ob-btn-secondary{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.12)}
+.ob-btn-ghost{background:transparent;color:rgba(255,255,255,.7);border:1px dashed rgba(255,255,255,.2)}
+.ob-btn-full{width:100%}
+.skip-link{text-align:center;margin-top:16px;font-size:13px;color:rgba(255,255,255,.45);cursor:pointer;font-weight:700}
+.skip-link:hover{color:#fff}
+.ob-footer-note{font-size:13px;color:var(--text-dim);line-height:1.7;margin-top:16px}
+.ob-footer-note b{color:#fff}
+.loading-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:540px;color:rgba(255,255,255,.6);font-size:14px}
+.loading-spinner{width:34px;height:34px;border-radius:999px;border:3px solid rgba(255,255,255,.18);border-top-color:#fff;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (max-width: 980px){body{padding:18px}.ob-shell{grid-template-columns:1fr}.ob-side{order:2}.ob-main{order:1}.ob-card{min-height:auto}.ob-options,.ob-choice-grid,.ob-link-grid,.ob-time-grid,.result-breakdown,.ob-journey{grid-template-columns:1fr}}
+@media (max-width: 640px){body{padding:12px}.ob-side,.ob-main{border-radius:24px;padding:18px}.ob-card{padding:20px;border-radius:24px}.ob-progress-wrap{display:block}.ob-progress-track{margin-top:12px}.ob-step-dot{width:32px;height:32px}.ob-side-title{font-size:36px}.ob-title{font-size:31px}.ob-desc{font-size:15px}.ob-opt,.ob-time-btn,.test-opt,.ob-choice-card,.ob-link-card{border-radius:18px;padding:16px}.result-hero{grid-template-columns:1fr;text-align:center}.result-num{font-size:52px}.ob-btn{width:100%}.ob-btn-row{display:grid;grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-
-<div class="ob-wrap">
-  <div class="ob-logo">Kore<span>Han</span> News</div>
-
-  <!-- 진행 바 -->
-  <div class="ob-progress" id="ob-progress">
-    <div class="ob-step-dot active" id="dot-1">1</div>
-    <div class="ob-step-line" id="line-1"></div>
-    <div class="ob-step-dot pending" id="dot-2">2</div>
-    <div class="ob-step-line" id="line-2"></div>
-    <div class="ob-step-dot pending" id="dot-3">3</div>
-    <div class="ob-step-line" id="line-3"></div>
-    <div class="ob-step-dot pending" id="dot-4">4</div>
-  </div>
-
-  <!-- 스텝 컨테이너 -->
-  <div id="ob-content">
-    <div style="text-align:center;padding:40px 0;color:rgba(255,255,255,.4);font-size:14px">
-      <div style="font-size:28px;margin-bottom:12px;animation:spin 1s linear infinite;display:inline-block">⏳</div><br>
-      불러오는 중...
+<div class="ob-shell">
+  <aside class="ob-side">
+    <div class="ob-logo">Start smart <strong>Kore<span>Han</span> News</strong></div>
+    <div class="ob-side-hero">
+      <h1 class="ob-side-title">Build a Korean routine that actually fits your day.</h1>
+      <p class="ob-side-desc">We will personalize your first learning path, help you choose a realistic schedule, and point you to the fastest wins across News, Study Room, Conversations, Stories, and Learning Hub.</p>
     </div>
-  </div>
-  <style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
+    <div class="ob-side-card">
+      <small>What changes after setup</small>
+      <h3>You land with a plan, not a blank screen.</h3>
+      <p>Pick more than one goal, choose your study time, set your level directly or take a fresh placement test, then jump into the main page with a highlighted Beginner Guide.</p>
+      <div class="ob-feature-grid">
+        <div class="ob-mini"><b>📰</b><span>Read real beginner-friendly news with hover vocab.</span></div>
+        <div class="ob-mini"><b>📘</b><span>Use Study Room for deeper review and active practice.</span></div>
+        <div class="ob-mini"><b>📊</b><span>Track streaks and progress inside Learning Hub.</span></div>
+        <div class="ob-mini"><b>💬</b><span>Mix in Conversations and Stories for natural input.</span></div>
+      </div>
+    </div>
+    <div class="ob-side-stack">
+      <div class="ob-side-card">
+        <small>Suggested routine</small>
+        <h3>Read → Review → Practice</h3>
+        <p>Start with one article, save a few words, then reinforce with Study Room or a short conversation lesson. Small loops work better than long random sessions.</p>
+      </div>
+      <div class="ob-side-card">
+        <small>Placement note</small>
+        <h3>Self-select or test</h3>
+        <p>If you already know your level, skip the placement test. If not, the quiz now randomizes both the questions and the answer order so it feels less repetitive.</p>
+      </div>
+    </div>
+  </aside>
+
+  <main class="ob-main">
+    <div class="ob-progress-wrap">
+      <div>
+        <div class="ob-progress-label">Personal setup</div>
+        <div class="ob-stage" id="ob-stage-copy">Step 1 of 4</div>
+      </div>
+      <div class="ob-progress-track" id="ob-progress">
+        <div class="ob-step-dot active" id="dot-1">1</div>
+        <div class="ob-step-line" id="line-1"></div>
+        <div class="ob-step-dot" id="dot-2">2</div>
+        <div class="ob-step-line" id="line-2"></div>
+        <div class="ob-step-dot" id="dot-3">3</div>
+        <div class="ob-step-line" id="line-3"></div>
+        <div class="ob-step-dot" id="dot-4">4</div>
+      </div>
+    </div>
+
+    <div id="ob-content">
+      <div class="ob-card loading-state">
+        <div class="loading-spinner"></div>
+        <div>Loading your onboarding flow…</div>
+      </div>
+    </div>
+  </main>
 </div>
 
 <script>
-// ══════════════════════════════════════════════
-// SUPABASE
-// ══════════════════════════════════════════════
 var SUPA_URL = 'https://samghztrdvtxmrmawneu.supabase.co';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI0MzYyODMsImV4cCI6MjA0ODAxMjI4M30.hPRBpCPHDMQFsIQdEFRJJoqSLJbFdnpjKS5fBLOTFSs';
 var _sb = null;
 var _user = null;
 
 function getSb() {
-  if (!_sb) {
-    if (window.supabase) _sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+  if (!_sb && window.supabase) {
+    _sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
   }
   return _sb;
 }
 
-// 유저 확인 — Supabase 로드 대기 후 실행
-async function initUser() {
-  // Supabase SDK 로드 대기 (최대 3초)
-  var waited = 0;
-  while (!window.supabase && waited < 30) {
-    await new Promise(function(r){ setTimeout(r, 100); });
-    waited++;
-  }
-
-  var sb = getSb();
-  if (!sb) {
-    // Supabase 로드 실패해도 온보딩 표시
-    startOnboarding();
-    return;
-  }
-
-  try {
-    var { data } = await sb.auth.getUser();
-    _user = data && data.user ? data.user : null;
-  } catch(e) {
-    _user = null;
-  }
-
-  if (!_user) {
-    // 비로그인 → 온보딩 그냥 보여줌 (완료 시 저장 생략)
-    startOnboarding();
-    return;
-  }
-
-  // 이미 온보딩 완료했으면 index로
-  try {
-    var res = await sb.from('user_stats')
-      .select('onboarded')
-      .eq('user_id', _user.id)
-      .maybeSingle();
-    // res.data가 null이면 신규 유저 → 온보딩 진행
-    if (res.data && res.data.onboarded === true) {
-      window.location.href = 'index.html';
-      return;
-    }
-  } catch(e) {
-    // DB 오류여도 온보딩 표시
-  }
-
-  startOnboarding();
-}
-
-// ══════════════════════════════════════════════
-// 상태
-// ══════════════════════════════════════════════
-var state = {
-  step: 1,
-  goal: null,        // travel / kpop / business / immigration / fun
-  minutes: 15,
-  level: null,       // Beginner / Intermediate / Advanced
-  testScore: 0,
-  testAnswers: [],   // 각 문제 결과
-};
-
-// ══════════════════════════════════════════════
-// 15개 레벨 테스트 문제 (Beginner 5 / Intermediate 5 / Advanced 5)
-// ══════════════════════════════════════════════
-var TEST_QS = [
-  // ── Beginner (1-5) ───────────────────────────
-  {
-    level:'Beginner', n:1,
-    q:'빈칸에 알맞은 것은?',
-    sentence:'저는 학생___.',
-    choices:['이에요','한테요','에서요','부터요'],
-    answer:0,
-    exp:'"이에요/예요"는 "~입니다"의 반말. 자음 받침 뒤에는 이에요.'
-  },
-  {
-    level:'Beginner', n:2,
-    q:'"I go to school" 을 한국어로 하면?',
-    sentence:'',
-    choices:['학교에 가요','학교를 가요','학교에서 가요','학교가 가요'],
-    answer:0,
-    exp:'"에 가요" = go TO (방향). "에서 가요"는 "go FROM"이에요.'
-  },
-  {
-    level:'Beginner', n:3,
-    q:'밑줄 친 부분의 뜻은?',
-    sentence:'오늘 날씨가 좋아요.',
-    choices:['날씨 = weather','날씨 = today','날씨 = good','날씨 = very'],
-    answer:0,
-    exp:'날씨 = weather. 오늘 = today, 좋아요 = is good.'
-  },
-  {
-    level:'Beginner', n:4,
-    q:'다음 중 과거형은?',
-    sentence:'',
-    choices:['먹었어요','먹어요','먹을 거예요','먹고 있어요'],
-    answer:0,
-    exp:'-었/았어요 = past tense. 먹었어요 = ate/have eaten.'
-  },
-  {
-    level:'Beginner', n:5,
-    q:'"저는 커피를 좋아해요" 에서 "를" 의 역할은?',
-    sentence:'저는 커피를 좋아해요.',
-    choices:['목적어 표시','주어 표시','장소 표시','시간 표시'],
-    answer:0,
-    exp:'을/를 = object marker. 커피를 = coffee (object of 좋아해요).'
-  },
-  // ── Intermediate (6-10) ──────────────────────
-  {
-    level:'Intermediate', n:6,
-    q:'빈칸에 알맞은 연결어는?',
-    sentence:'비가 ___ 우산을 가져왔어요.',
-    choices:['와서','오지만','오면서','오거나'],
-    answer:0,
-    exp:'-아/어서 = because/so. 비가 와서 = because it rained.'
-  },
-  {
-    level:'Intermediate', n:7,
-    q:'"-(으)ㄹ 것 같아요" 의 뜻은?',
-    sentence:'내일 비가 올 것 같아요.',
-    choices:['~인 것 같다 (추측)','~해야 한다 (의무)','~할 수 있다 (가능)','~하고 싶다 (희망)'],
-    answer:0,
-    exp:'-(으)ㄹ 것 같다 = "it seems like~" / "I think~". 추측을 나타내요.'
-  },
-  {
-    level:'Intermediate', n:8,
-    q:'다음 중 자연스러운 문장은?',
-    sentence:'',
-    choices:['친구한테 선물을 줬어요','친구에게서 선물을 줬어요','친구한테서 선물을 줬어요','친구에 선물을 줬어요'],
-    answer:0,
-    exp:'주다(give) → 한테/에게. 받다(receive) → 한테서/에게서. 줬어요 = gave.'
-  },
-  {
-    level:'Intermediate', n:9,
-    q:'"열심히 공부했는데 시험을 못 봤어요" 에서 "는데" 의 역할은?',
-    sentence:'열심히 공부했는데 시험을 못 봤어요.',
-    choices:['대조/배경 제시','이유/원인','순서 나열','조건'],
-    answer:0,
-    exp:'-는데/-은데/-ㄴ데 = contrast or background info. "공부했는데" = "even though I studied".'
-  },
-  {
-    level:'Intermediate', n:10,
-    q:'다음 중 "-(으)면서" 가 바르게 쓰인 문장은?',
-    sentence:'',
-    choices:['음악을 들으면서 공부해요','음악을 들으면서 잤어요','음악이 들으면서 공부해요','음악을 들으면 공부해요'],
-    answer:0,
-    exp:'-면서 = while doing (동시 동작). 주어가 같아야 하고, 같은 시간에 두 동작이 일어나야 해요.'
-  },
-  // ── Advanced (11-15) ─────────────────────────
-  {
-    level:'Advanced', n:11,
-    q:'"경제가 회복될수록 고용률도 높아진다" 에서 "-(으)ㄹ수록" 의 뜻은?',
-    sentence:'경제가 회복될수록 고용률도 높아진다.',
-    choices:['~하면 할수록 (비례)','~하는 동안 (동시)','~하기 때문에 (원인)','~하더라도 (양보)'],
-    answer:0,
-    exp:'-(으)ㄹ수록 = "the more~, the more~". 비례 관계를 나타내요.'
-  },
-  {
-    level:'Advanced', n:12,
-    q:'다음 중 "-에 비해" 가 바르게 쓰인 문장은?',
-    sentence:'',
-    choices:['작년에 비해 물가가 많이 올랐다','작년에 비해 물가를 많이 올랐다','작년이 비해 물가가 많이 올랐다','작년에도 비해 물가가 올랐다'],
-    answer:0,
-    exp:'"N에 비해" = compared to N. 비교 대상 뒤에 "에 비해" 를 붙여요.'
-  },
-  {
-    level:'Advanced', n:13,
-    q:'"정부가 정책을 발표했음에도 불구하고 국민 반응은 냉담했다" 에서 강조하는 것은?',
-    sentence:'정책 발표에도 불구하고 국민 반응은 냉담했다.',
-    choices:['예상과 다른 결과 (양보)','원인과 결과 (인과)','순차적 사건 (시간)','조건과 결과 (가정)'],
-    answer:0,
-    exp:'"-에도 불구하고" = "despite~, in spite of~". 기대와 반대되는 결과를 나타내요.'
-  },
-  {
-    level:'Advanced', n:14,
-    q:'"그 사람이 범인이라는 증거가 없다" — "이라는" 의 역할은?',
-    sentence:'그 사람이 범인이라는 증거가 없다.',
-    choices:['명사절화 (관형절)','과거 회상','불확실한 추측','다른 사람의 말 인용'],
-    answer:0,
-    exp:'"N이라는 + N" = 앞 명사가 뒤 명사를 수식. "범인이라는 증거" = "evidence that [he is] the culprit".'
-  },
-  {
-    level:'Advanced', n:15,
-    q:'다음 중 가장 격식체 (formal)인 문장은?',
-    sentence:'',
-    choices:['예산이 삭감되었습니다','예산이 줄었어요','예산이 줄었어','예산이 줄었거든'],
-    answer:0,
-    exp:'-(으)ㅂ니다/습니다 = 가장 격식체. 뉴스, 발표, 공문서에서 사용해요.'
-  },
+var GOALS = [
+  { id:'travel', icon:'✈️', label:'Travel', sub:'Handle airports, food, transport, and simple local conversations.', tag:'Real-life Korean' },
+  { id:'kpop', icon:'🎤', label:'K-pop & K-drama', sub:'Understand lyrics, variety clips, interviews, and fan content faster.', tag:'Culture first' },
+  { id:'business', icon:'💼', label:'Work & business', sub:'Build polite reading and useful vocabulary for meetings and news.', tag:'Professional focus' },
+  { id:'immigration', icon:'🏠', label:'Living in Korea', sub:'Prepare for daily life, forms, signs, services, and practical routines.', tag:'Daily survival' },
+  { id:'fun', icon:'✨', label:'Just for fun', sub:'Stay curious and make Korean a hobby you can actually keep doing.', tag:'Low pressure' }
 ];
 
-// ══════════════════════════════════════════════
-// 진행 바 업데이트
-// ══════════════════════════════════════════════
+var TIME_OPTIONS = [
+  { min:5, label:'5 minutes', sub:'One headline + hover vocab + quick phrase review.', route:'Best if you want the lightest habit: Latest News + Today\'s Phrase.' },
+  { min:15, label:'15 minutes', sub:'One article + saved words + a short review loop.', route:'Good default: Latest News → Beginner Guide tips → Study Room starter review.' },
+  { min:30, label:'30 minutes', sub:'A full focused session with reading and active recall.', route:'Recommended flow: Article → Study Room → save vocab → one Conversation or Story.' },
+  { min:60, label:'1 hour', sub:'A full immersion block with progress tracking.', route:'Deep practice: multiple articles + Study Room + Conversations/Stories + Learning Hub check-in.' }
+];
+
+var LEVEL_META = {
+  Starter:{ ko:'Starter', emoji:'🌱', desc:'You know a little Hangul or are just beginning to connect words and meaning.', color:'#c4b5fd' },
+  Beginner:{ ko:'Beginner', emoji:'🟢', desc:'You can follow very simple sentences and common particles.', color:'#86efac' },
+  Intermediate:{ ko:'Intermediate', emoji:'🟡', desc:'You can read connected ideas and common news-style patterns.', color:'#fde68a' },
+  Advanced:{ ko:'Advanced', emoji:'🔴', desc:'You can handle complex grammar and nuanced article language.', color:'#fda4af' }
+};
+
+var TEST_BANK = {
+  Beginner:[
+    { q:'Choose the best ending for this sentence.', sentence:'저는 학생___.', choices:['이에요','에서요','부터요','한테요'], answer:'이에요', exp:'이에요 / 예요 is the copula ending meaning “am / is / are.”' },
+    { q:'How do you say “I go to school” in natural Korean?', sentence:'', choices:['학교에 가요','학교를 가요','학교에서 가요','학교가 가요'], answer:'학교에 가요', exp:'에 marks the destination when you go somewhere.' },
+    { q:'What does the underlined word mean?', sentence:'오늘 날씨가 좋아요.', choices:['weather','today','very','good'], answer:'weather', exp:'날씨 means weather. 오늘 means today.' },
+    { q:'Which one is in the past tense?', sentence:'', choices:['먹었어요','먹어요','먹을 거예요','먹고 있어요'], answer:'먹었어요', exp:'-었/았어요 marks a completed past action.' },
+    { q:'What does 를 do in this sentence?', sentence:'저는 커피를 좋아해요.', choices:['Marks the object','Marks the subject','Marks the place','Marks the time'], answer:'Marks the object', exp:'을/를 marks the object affected by the action.' },
+    { q:'Which sentence sounds natural?', sentence:'', choices:['오늘은 집에서 쉬어요','오늘은 집에 쉬어요','오늘은 집으로 쉬어요','오늘은 집을 쉬어요'], answer:'오늘은 집에서 쉬어요', exp:'에서 marks the place where an action happens.' },
+    { q:'What is the meaning of 주세요?', sentence:'물 좀 주세요.', choices:['Please give me','I already gave it','I want to go','I can do it'], answer:'Please give me', exp:'주세요 is a polite request: “please give (me)” or “please.”' },
+    { q:'Choose the correct translation of “There is a book on the desk.”', sentence:'', choices:['책상 위에 책이 있어요','책상 위를 책이 있어요','책상 위에 책을 있어요','책상 위가 책에 있어요'], answer:'책상 위에 책이 있어요', exp:'있어요 is used with location + subject for existence.' }
+  ],
+  Intermediate:[
+    { q:'Choose the best connector.', sentence:'비가 ___ 우산을 가져왔어요.', choices:['와서','오지만','오면서','오거나'], answer:'와서', exp:'와서 means “because it rained / since it was raining.”' },
+    { q:'What does -(으)ㄹ 것 같아요 express?', sentence:'내일 비가 올 것 같아요.', choices:['A guess or expectation','An obligation','A possibility','A strong command'], answer:'A guess or expectation', exp:'-(으)ㄹ 것 같아요 is used for prediction or impression.' },
+    { q:'Which sentence is natural?', sentence:'', choices:['친구한테 선물을 줬어요','친구에게서 선물을 줬어요','친구한테서 선물을 줬어요','친구에 선물을 줬어요'], answer:'친구한테 선물을 줬어요', exp:'주다 pairs naturally with 한테/에게 for the receiver.' },
+    { q:'What does 는데 do here?', sentence:'열심히 공부했는데 시험을 못 봤어요.', choices:['Adds contrast/background','Shows reason','Lists events in order','Creates a condition'], answer:'Adds contrast/background', exp:'는데 often introduces background or contrast before the next point.' },
+    { q:'Which sentence uses -(으)면서 correctly?', sentence:'', choices:['음악을 들으면서 공부해요','음악이 들으면서 공부해요','음악을 들으면 공부해요','음악을 들으면서 공부했을 것이다'], answer:'음악을 들으면서 공부해요', exp:'-(으)면서 means “while doing,” usually with the same subject.' },
+    { q:'What does -기 때문에 mean?', sentence:'교통이 복잡했기 때문에 늦었어요.', choices:['Because','Although','If','In order to'], answer:'Because', exp:'-기 때문에 clearly explains a reason.' },
+    { q:'Which sentence best shows a change of state?', sentence:'', choices:['날씨가 따뜻해졌어요','날씨가 따뜻하고 있어요','날씨가 따뜻할 거예요','날씨가 따뜻하도록'], answer:'날씨가 따뜻해졌어요', exp:'-아/어지다 often describes becoming or changing into a state.' },
+    { q:'What does 위해 mean here?', sentence:'건강을 위해 매일 걸어요.', choices:['For / in order to','Instead of','Compared with','Even though'], answer:'For / in order to', exp:'위해 introduces purpose or benefit.' }
+  ],
+  Advanced:[
+    { q:'What does -(으)ㄹ수록 mean here?', sentence:'경제가 회복될수록 고용률도 높아진다.', choices:['The more..., the more...','While','Because','Even if'], answer:'The more..., the more...', exp:'-(으)ㄹ수록 shows a proportional relationship.' },
+    { q:'Which sentence uses 에 비해 correctly?', sentence:'', choices:['작년에 비해 물가가 많이 올랐다','작년에 비해 물가를 많이 올랐다','작년이 비해 물가가 많이 올랐다','작년에도 비해 물가가 올랐다'], answer:'작년에 비해 물가가 많이 올랐다', exp:'에 비해 means “compared to.”' },
+    { q:'What is emphasized by despite-like wording here?', sentence:'정책 발표에도 불구하고 국민 반응은 냉담했다.', choices:['An unexpected result','A direct cause','A timeline','A neutral description'], answer:'An unexpected result', exp:'에도 불구하고 highlights contrast against expectation.' },
+    { q:'What does 이라는 do in this phrase?', sentence:'그 사람이 범인이라는 증거가 없다.', choices:['Turns the clause into a modifier','Shows past recollection','Shows uncertainty only','Quotes someone directly'], answer:'Turns the clause into a modifier', exp:'이라는 links a noun phrase to the following noun, like “evidence that...”' },
+    { q:'Which sentence is the most formal?', sentence:'', choices:['예산이 삭감되었습니다','예산이 줄었어요','예산이 줄었어','예산이 줄었거든'], answer:'예산이 삭감되었습니다', exp:'습니다-style is the most formal and fits formal reports/news.' },
+    { q:'What is the role of -는 반면에?', sentence:'수출은 늘어난 반면에 소비는 둔화됐다.', choices:['Contrast between two trends','Reason and result','Quotation','Future intention'], answer:'Contrast between two trends', exp:'반면에 sets up a contrast between two sides.' },
+    { q:'What does -도록 mean here?', sentence:'누구나 이해할 수 있도록 쉽게 설명했다.', choices:['So that','As soon as','Even though','After doing'], answer:'So that', exp:'-도록 often expresses purpose or intended result.' },
+    { q:'Which sentence sounds most like formal report language?', sentence:'', choices:['정부는 추가 지원책을 검토하고 있다','정부가 추가 지원책을 검토 중이야','정부가 지원책 더 볼 거래','정부가 지원책 좀 본대'], answer:'정부는 추가 지원책을 검토하고 있다', exp:'Formal reporting style favors concise neutral declarative language.' }
+  ]
+};
+
+var state = {
+  step:1,
+  goals:[],
+  minutes:15,
+  levelChoice:'test',
+  level:null,
+  testScore:0,
+  testAnswers:[],
+  testQuestions:[]
+};
+
+var _testIdx = 0;
+var _testAnswered = false;
+
+function shuffle(arr) {
+  var copy = arr.slice();
+  for (var i = copy.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var temp = copy[i];
+    copy[i] = copy[j];
+    copy[j] = temp;
+  }
+  return copy;
+}
+
+function getOnboardingStorageKey(name, userId) {
+  return 'kh_onboarding_' + name + (userId ? '_' + userId : '');
+}
+
+function getWelcomeTipStorageKey(userId) {
+  return 'kh_new_user_tip' + (userId ? '_' + userId : '');
+}
+
+function saveOnboardingLocal(done) {
+  try {
+    var userId = _user && _user.id ? _user.id : '';
+    if (done) {
+      localStorage.setItem(getOnboardingStorageKey('completed', userId), '1');
+      localStorage.setItem(getOnboardingStorageKey('completed_at', userId), new Date().toISOString());
+      localStorage.setItem(getWelcomeTipStorageKey(userId), '1');
+      if (state.level) localStorage.setItem(getOnboardingStorageKey('level', userId), state.level);
+      if (state.goals && state.goals.length) localStorage.setItem(getOnboardingStorageKey('goals', userId), JSON.stringify(state.goals));
+    } else {
+      localStorage.setItem(getOnboardingStorageKey('started', userId), '1');
+    }
+  } catch(e) {}
+}
+
 function updateProgress(step) {
+  state.step = step;
+  var stageCopy = document.getElementById('ob-stage-copy');
+  if (stageCopy) stageCopy.textContent = 'Step ' + step + ' of 4';
   for (var i = 1; i <= 4; i++) {
     var dot = document.getElementById('dot-' + i);
-    if (i < step)       { dot.className = 'ob-step-dot done'; dot.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'; }
-    else if (i === step) { dot.className = 'ob-step-dot active'; dot.textContent = i; }
-    else                 { dot.className = 'ob-step-dot pending'; dot.textContent = i; }
+    if (!dot) continue;
+    if (i < step) {
+      dot.className = 'ob-step-dot done';
+      dot.innerHTML = '✓';
+    } else if (i === step) {
+      dot.className = 'ob-step-dot active';
+      dot.textContent = i;
+    } else {
+      dot.className = 'ob-step-dot';
+      dot.textContent = i;
+    }
     if (i < 4) {
       var line = document.getElementById('line-' + i);
-      line.className = 'ob-step-line' + (i < step ? ' done' : '');
+      if (line) line.className = 'ob-step-line' + (i < step ? ' done' : '');
     }
   }
 }
 
-// ══════════════════════════════════════════════
-// STEP 1 — 목표
-// ══════════════════════════════════════════════
+function cardWrap(inner) {
+  return '<div class="ob-card ob-card-enter">' + inner + '</div>';
+}
+
 function renderStep1() {
   updateProgress(1);
-  var goals = [
-    { id:'travel',     icon:'✈️', label:'여행',        sub:'한국 여행 때 쓸 수 있게' },
-    { id:'kpop',       icon:'🎵', label:'K-pop · 드라마', sub:'좋아하는 콘텐츠를 원어로' },
-    { id:'business',   icon:'💼', label:'비즈니스',     sub:'한국어 업무 커뮤니케이션' },
-    { id:'immigration',icon:'🏠', label:'이민 · 거주',  sub:'한국 생활을 위한 실용 한국어' },
-    { id:'fun',        icon:'😊', label:'그냥 재미로',  sub:'취미로 배우는 한국어' },
-  ];
-  document.getElementById('ob-content').innerHTML =
-    '<div class="ob-card">'
-    + '<div class="ob-eyebrow">Step 1 of 4</div>'
-    + '<div class="ob-title">왜 한국어를 배우나요?</div>'
-    + '<div class="ob-desc">학습 목적에 맞는 콘텐츠와 예문을 추천해드릴게요.</div>'
-    + '<div class="ob-options">'
-    + goals.map(function(g) {
-        return '<button class="ob-opt" data-id="' + g.id + '" onclick="selectGoal(\'' + g.id + '\')">'
-          + '<span class="ob-opt-icon">' + g.icon + '</span>'
-          + '<span class="ob-opt-text"><span class="ob-opt-label">' + g.label + '</span><span class="ob-opt-sub">' + g.sub + '</span></span>'
-          + '<span class="ob-opt-check"><svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1,5 4,8 9,2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'
-          + '</button>';
-      }).join('')
+  saveOnboardingLocal(false);
+  document.getElementById('ob-content').innerHTML = cardWrap(
+    '<div>'
+      + '<div class="ob-topline"><div class="ob-eyebrow">Step 1 · Goals</div><div class="ob-stage">Pick one or more reasons</div></div>'
+      + '<h2 class="ob-title">Why are you learning Korean?</h2>'
+      + '<p class="ob-desc">Choose every goal that fits. We will use this to shape your suggestions, examples, and first-study recommendations.</p>'
+      + '<div class="ob-helper"><span>💡</span><div><b>Multiple selections are allowed.</b> For example, you can learn for both travel and K-dramas at the same time.</div></div>'
+      + '<div class="ob-options">'
+      + GOALS.map(function(g) {
+          var selected = state.goals.indexOf(g.id) > -1;
+          return '<button class="ob-opt' + (selected ? ' selected' : '') + '" data-id="' + g.id + '" onclick="toggleGoal(\'" + g.id + "\')">'
+            + '<span class="ob-check">✓</span>'
+            + '<span class="ob-opt-head">'
+            + '<span class="ob-opt-icon">' + g.icon + '</span>'
+            + '<span><span class="ob-opt-label">' + g.label + '</span><span class="ob-tag">' + g.tag + '</span><span class="ob-opt-sub">' + g.sub + '</span></span>'
+            + '</span>'
+            + '</button>';
+        }).join('')
+      + '</div>'
+      + '<div class="ob-pill-list">'
+      + '<span class="ob-pill">News recommendations</span><span class="ob-pill">Study Room prompts</span><span class="ob-pill">Starter guide highlight</span>'
+      + '</div>'
     + '</div>'
-    + '<button class="ob-btn-full" id="step1-next" onclick="goStep2()" disabled>다음 →</button>'
+    + '<div>'
+      + '<div class="ob-btn-row">'
+      + '<button class="ob-btn ob-btn-primary ob-btn-full" id="step1-next" onclick="goStep2()"' + (state.goals.length ? '' : ' disabled') + '>Continue →</button>'
+      + '</div>'
+      + '<div class="skip-link" onclick="skipOnboarding()">Skip setup for now</div>'
     + '</div>'
-    + '<div class="skip-link" onclick="skipOnboarding()">건너뛰기</div>';
+  );
 }
 
-function selectGoal(id) {
-  state.goal = id;
-  document.querySelectorAll('.ob-opt').forEach(function(b){ b.classList.toggle('selected', b.dataset.id === id); });
-  document.getElementById('step1-next').disabled = false;
+function toggleGoal(id) {
+  var idx = state.goals.indexOf(id);
+  if (idx > -1) state.goals.splice(idx, 1);
+  else state.goals.push(id);
+  renderStep1();
 }
 
-function goStep2() {
-  state.step = 2;
+function goStep2() { renderStep2(); }
+
+function renderStep2() {
+  updateProgress(2);
+  document.getElementById('ob-content').innerHTML = cardWrap(
+    '<div>'
+      + '<div class="ob-topline"><div class="ob-eyebrow">Step 2 · Time</div><div class="ob-stage">Choose a realistic daily rhythm</div></div>'
+      + '<h2 class="ob-title">How much time can you study each day?</h2>'
+      + '<p class="ob-desc">Pick the pace you can repeat. The descriptions below match the actual flow of your site: news reading, Beginner Guide, Study Room, Conversations, Stories, and Learning Hub.</p>'
+      + '<div class="ob-time-grid">'
+      + TIME_OPTIONS.map(function(t) {
+          var selected = state.minutes === t.min;
+          return '<button class="ob-time-btn' + (selected ? ' selected' : '') + '" onclick="selectTime(' + t.min + ')">'
+            + '<span class="ob-check">✓</span>'
+            + '<span class="ob-time-num">' + t.min + '</span>'
+            + '<span class="ob-time-label">' + t.label + '</span>'
+            + '<span class="ob-time-sub">' + t.sub + '</span>'
+            + '<span class="ob-time-route">' + t.route + '</span>'
+            + '</button>';
+        }).join('')
+      + '</div>'
+    + '</div>'
+    + '<div>'
+      + '<div class="ob-footer-note">The best plan is the one you will actually repeat. <b>Even 5 minutes counts</b> if you keep the loop going.</div>'
+      + '<div class="ob-btn-row">'
+      + '<button class="ob-btn ob-btn-secondary" onclick="renderStep1()">← Back</button>'
+      + '<button class="ob-btn ob-btn-primary" onclick="goStep3()">Continue →</button>'
+      + '</div>'
+    + '</div>'
+  );
+}
+
+function selectTime(min) {
+  state.minutes = min;
   renderStep2();
 }
 
-// ══════════════════════════════════════════════
-// STEP 2 — 하루 목표 시간
-// ══════════════════════════════════════════════
-function renderStep2() {
-  updateProgress(2);
-  document.getElementById('ob-content').innerHTML =
-    '<div class="ob-card">'
-    + '<div class="ob-eyebrow">Step 2 of 4</div>'
-    + '<div class="ob-title">하루에 얼마나 공부할 수 있어요?</div>'
-    + '<div class="ob-desc">무리하지 않아도 돼요. 꾸준함이 가장 중요해요.</div>'
-    + '<div class="ob-time-grid">'
-    + [
-        { min:5,  label:'5분',  sub:'기사 1개' },
-        { min:15, label:'15분', sub:'기사 + 단어', default:true },
-        { min:30, label:'30분', sub:'풀 세션' },
-      ].map(function(t) {
-        return '<button class="ob-time-btn' + (t.default ? ' selected' : '') + '" data-min="' + t.min + '" onclick="selectTime(' + t.min + ',this)">'
-          + '<span class="ob-time-num">' + t.label + '</span>'
-          + '<span class="ob-time-label">' + t.sub + '</span>'
+function goStep3() { renderStep3Choice(); }
+
+function renderStep3Choice() {
+  updateProgress(3);
+  document.getElementById('ob-content').innerHTML = cardWrap(
+    '<div>'
+      + '<div class="ob-topline"><div class="ob-eyebrow">Step 3 · Level</div><div class="ob-stage">Self-select or take a test</div></div>'
+      + '<h2 class="ob-title">Choose how you want to set your level.</h2>'
+      + '<p class="ob-desc">If you already know your level, pick it directly and skip the test. If you are unsure, take a randomized placement test with mixed answer positions.</p>'
+      + '<div class="ob-choice-grid">'
+      + '<button class="ob-choice-card' + (state.levelChoice === 'self' ? ' selected' : '') + '" onclick="setLevelChoice(\'self\')"><span class="ob-check">✓</span><span class="ob-choice-badge">Fast start</span><h3>Pick my level myself</h3><p>Skip the quiz and start right away with Starter, Beginner, Intermediate, or Advanced.</p></button>'
+      + '<button class="ob-choice-card' + (state.levelChoice === 'test' ? ' selected' : '') + '" onclick="setLevelChoice(\'test\')"><span class="ob-check">✓</span><span class="ob-choice-badge">Recommended if unsure</span><h3>Take the placement test</h3><p>Answer 15 randomized questions pulled from beginner, intermediate, and advanced pools.</p></button>'
+      + '</div>'
+      + (state.levelChoice === 'self' ? renderSelfSelectHTML() : renderTestIntroHTML())
+    + '</div>'
+    + '<div>'
+      + '<div class="ob-btn-row">'
+      + '<button class="ob-btn ob-btn-secondary" onclick="renderStep2()">← Back</button>'
+      + (state.levelChoice === 'self'
+          ? '<button class="ob-btn ob-btn-primary" onclick="goStep4()"' + (state.level ? '' : ' disabled') + '>Use this level →</button>'
+          : '<button class="ob-btn ob-btn-primary" onclick="startPlacementTest()">Start test →</button>')
+      + '</div>'
+    + '</div>'
+  );
+}
+
+function renderSelfSelectHTML() {
+  return '<div style="margin-top:18px">'
+    + '<div class="ob-helper"><span>🎯</span><div><b>Skip the quiz if you already know your level.</b> You can still change it later on your profile or by retaking the test.</div></div>'
+    + '<div class="ob-level-list">'
+    + Object.keys(LEVEL_META).map(function(key) {
+        var meta = LEVEL_META[key];
+        var selected = state.level === key;
+        return '<button class="ob-opt' + (selected ? ' selected' : '') + '" data-level="' + key + '" onclick="selectLevel(\'" + key + "\')">'
+          + '<span class="ob-check">✓</span>'
+          + '<span class="ob-opt-head"><span class="ob-opt-icon">' + meta.emoji + '</span><span><span class="ob-opt-label">' + key + '</span><span class="ob-opt-sub">' + meta.desc + '</span></span></span>'
           + '</button>';
       }).join('')
-    + '</div>'
-    + '<div class="ob-btn-row">'
-    + '<button class="ob-btn ob-btn-secondary" onclick="renderStep1()">← 이전</button>'
-    + '<button class="ob-btn ob-btn-primary" onclick="goStep3()">다음 →</button>'
     + '</div>'
     + '</div>';
 }
 
-function selectTime(min, btn) {
-  state.minutes = min;
-  document.querySelectorAll('.ob-time-btn').forEach(function(b){ b.classList.toggle('selected', b === btn); });
+function renderTestIntroHTML() {
+  return '<div style="margin-top:18px">'
+    + '<div class="ob-helper"><span>🧪</span><div><b>Fresh every time:</b> the quiz now randomizes both questions and answer order, so the correct answer is no longer always the first option.</div></div>'
+    + '<div class="ob-link-grid">'
+    + '<div class="ob-link-card"><span>15 questions</span><h3>Balanced mix</h3><p>5 beginner, 5 intermediate, and 5 advanced items.</p></div>'
+    + '<div class="ob-link-card"><span>Fast result</span><h3>Recommended level</h3><p>You will still be able to override the suggested level after the test.</p></div>'
+    + '</div>'
+    + '</div>';
 }
 
-function goStep3() {
-  state.step = 3;
-  renderStep3();
+function setLevelChoice(choice) {
+  state.levelChoice = choice;
+  if (choice === 'self' && !state.level) state.level = 'Beginner';
+  renderStep3Choice();
 }
 
-// ══════════════════════════════════════════════
-// STEP 3 — 레벨 테스트 (15문제)
-// ══════════════════════════════════════════════
-var _testIdx = 0;
-var _testAnswered = false;
+function selectLevel(level) {
+  state.level = level;
+  state.levelChoice = 'self';
+  renderStep3Choice();
+}
 
-function renderStep3() {
-  updateProgress(3);
-  _testIdx = 0;
+function buildTestQuestions() {
+  var picked = [];
+  ['Beginner','Intermediate','Advanced'].forEach(function(level) {
+    picked = picked.concat(shuffle(TEST_BANK[level]).slice(0, 5).map(function(q) {
+      var opts = shuffle(q.choices);
+      return {
+        level: level,
+        q: q.q,
+        sentence: q.sentence,
+        choices: opts,
+        answer: opts.indexOf(q.answer),
+        exp: q.exp
+      };
+    }));
+  });
+  return picked;
+}
+
+function startPlacementTest() {
+  state.levelChoice = 'test';
+  state.testQuestions = buildTestQuestions();
   state.testAnswers = [];
+  state.testScore = 0;
+  _testIdx = 0;
   renderTestQuestion();
 }
 
 function renderTestQuestion() {
-  var q = TEST_QS[_testIdx];
+  updateProgress(3);
+  var q = state.testQuestions[_testIdx];
   _testAnswered = false;
-  var levelBadgeClass = { Beginner:'badge-beg', Intermediate:'badge-int', Advanced:'badge-adv' }[q.level];
-  var levelLabel      = { Beginner:'🟢 초급', Intermediate:'🟡 중급', Advanced:'🔴 고급' }[q.level];
-  var pct = Math.round((_testIdx / 15) * 100);
-
-  document.getElementById('ob-content').innerHTML =
-    '<div class="ob-card">'
-    + '<div class="ob-eyebrow">Step 3 of 4 · 레벨 테스트</div>'
-    + '<div class="test-progress">'
-    + '<div class="test-prog-bar"><div class="test-prog-fill" style="width:' + pct + '%"></div></div>'
-    + '<div class="test-prog-label"><span>문제 ' + (_testIdx+1) + ' / 15</span><span>' + pct + '%</span></div>'
+  var total = state.testQuestions.length || 15;
+  var pct = Math.round((_testIdx / total) * 100);
+  var badgeClass = { Beginner:'badge-beg', Intermediate:'badge-int', Advanced:'badge-adv' }[q.level] || 'badge-beg';
+  document.getElementById('ob-content').innerHTML = cardWrap(
+    '<div>'
+      + '<div class="ob-topline"><div class="ob-eyebrow">Step 3 · Placement test</div><div class="ob-stage">Question ' + (_testIdx + 1) + ' of ' + total + '</div></div>'
+      + '<div class="test-progress"><div class="test-prog-bar"><div class="test-prog-fill" style="width:' + pct + '%"></div></div><div class="test-prog-label"><span>' + pct + '% complete</span><span>Randomized answer order</span></div></div>'
+      + '<div class="test-level-badge ' + badgeClass + '">' + q.level + '</div>'
+      + '<div class="test-q">' + q.q + (q.sentence ? '<span class="test-ko">' + q.sentence + '</span>' : '') + '</div>'
+      + '<div class="test-opts">'
+      + q.choices.map(function(choice, i) {
+          return '<button class="test-opt" id="topt-' + i + '" onclick="answerTest(' + i + ')">' + choice + '</button>';
+        }).join('')
+      + '</div>'
+      + '<div class="test-feedback" id="test-fb"></div>'
     + '</div>'
-    + '<div class="test-level-badge ' + levelBadgeClass + '">' + levelLabel + '</div>'
-    + '<div class="test-q">' + q.q
-    + (q.sentence ? '<span class="test-ko">' + q.sentence + '</span>' : '')
+    + '<div>'
+      + '<div class="ob-btn-row">'
+      + '<button class="ob-btn ob-btn-secondary" onclick="backToLevelChoice()">← Back</button>'
+      + '<button class="ob-btn ob-btn-primary" id="test-next-btn" onclick="nextTestQ()" style="display:none">' + (_testIdx === total - 1 ? 'See result →' : 'Next question →') + '</button>'
+      + '</div>'
     + '</div>'
-    + '<div class="test-opts">'
-    + q.choices.map(function(c, i) {
-        return '<button class="test-opt" id="topt-' + i + '" onclick="answerTest(' + i + ')">' + c + '</button>';
-      }).join('')
-    + '</div>'
-    + '<div class="test-feedback" id="test-fb"></div>'
-    + '<button class="ob-btn-full" id="test-next-btn" onclick="nextTestQ()" style="margin-top:16px;display:none">'
-    + (_testIdx < 14 ? '다음 문제 →' : '결과 보기 →')
-    + '</button>'
-    + '</div>';
+  );
 }
 
 function answerTest(idx) {
   if (_testAnswered) return;
   _testAnswered = true;
-  var q = TEST_QS[_testIdx];
+  var q = state.testQuestions[_testIdx];
   var correct = idx === q.answer;
-  state.testAnswers.push(correct);
-
+  state.testAnswers.push({ level:q.level, correct:correct });
   var opts = document.querySelectorAll('.test-opt');
-  opts.forEach(function(b){ b.disabled = true; });
-  opts[idx].classList.add(correct ? 'correct' : 'wrong');
-  if (!correct) opts[q.answer].classList.add('reveal');
-
+  opts.forEach(function(btn) { btn.disabled = true; });
+  if (opts[idx]) opts[idx].classList.add(correct ? 'correct' : 'wrong');
+  if (!correct && opts[q.answer]) opts[q.answer].classList.add('reveal');
   var fb = document.getElementById('test-fb');
   fb.className = 'test-feedback show ' + (correct ? 'ok' : 'no');
-  fb.innerHTML = (correct ? '✅ 정답! ' : '❌ 오답. ') + q.exp;
-
-  document.getElementById('test-next-btn').style.display = 'block';
+  fb.innerHTML = (correct ? '✅ Correct. ' : '❌ Not quite. ') + q.exp;
+  document.getElementById('test-next-btn').style.display = 'inline-flex';
 }
 
 function nextTestQ() {
-  _testIdx++;
-  if (_testIdx >= 15) {
-    showTestResult();
-  } else {
-    renderTestQuestion();
+  _testIdx += 1;
+  if (_testIdx >= state.testQuestions.length) showTestResult();
+  else renderTestQuestion();
+}
+
+function backToLevelChoice() {
+  if (_testIdx > 0 || state.testAnswers.length) {
+    if (!confirm('Leave the test and go back to level selection?')) return;
   }
+  state.testQuestions = [];
+  state.testAnswers = [];
+  _testIdx = 0;
+  renderStep3Choice();
 }
 
 function showTestResult() {
-  updateProgress(3);
-  var correct = state.testAnswers.filter(Boolean).length;
+  var correct = state.testAnswers.filter(function(item) { return item.correct; }).length;
   state.testScore = correct;
-  var begCorrect = state.testAnswers.slice(0,5).filter(Boolean).length;
-  var intCorrect = state.testAnswers.slice(5,10).filter(Boolean).length;
-  var advCorrect = state.testAnswers.slice(10,15).filter(Boolean).length;
-
-  var recommended = advCorrect >= 3 ? 'Advanced' : intCorrect >= 3 ? 'Intermediate' : 'Beginner';
+  var breakdown = {
+    Beginner: state.testAnswers.filter(function(item) { return item.level === 'Beginner' && item.correct; }).length,
+    Intermediate: state.testAnswers.filter(function(item) { return item.level === 'Intermediate' && item.correct; }).length,
+    Advanced: state.testAnswers.filter(function(item) { return item.level === 'Advanced' && item.correct; }).length
+  };
+  var recommended = breakdown.Advanced >= 4 ? 'Advanced' : breakdown.Intermediate >= 3 ? 'Intermediate' : breakdown.Beginner >= 3 ? 'Beginner' : 'Starter';
   state.level = recommended;
 
-  var levelData = {
-    Starter:      { ko:'입문', color:'#a78bfa', desc:'한글 자모를 막 배운 단계예요.' },
-    Beginner:     { ko:'초급', color:'#4ade80', desc:'기본 조사와 시제를 이해하는 단계예요.' },
-    Intermediate: { ko:'중급', color:'#fbbf24', desc:'연결어미와 뉴스를 어느 정도 읽는 단계예요.' },
-    Advanced:     { ko:'고급', color:'#f87171', desc:'복잡한 문법과 시사 어휘를 이해하는 단계예요.' }
-  };
-  var icons = { Starter:'🌱', Beginner:'📗', Intermediate:'📘', Advanced:'📕' };
-  var recData = levelData[recommended];
-
-  // 레벨 버튼 HTML 별도 빌드 (이스케이프 문제 방지)
-  var levelBtns = '';
-  Object.keys(levelData).forEach(function(key) {
-    var d = levelData[key];
-    var sel = key === recommended;
-    levelBtns += '<button class="ob-opt' + (sel ? ' selected' : '') + '" data-level="' + key + '" onclick="selectLevel(this.dataset.level)">'
-      + '<span style="font-size:20px;width:32px;text-align:center;flex-shrink:0">' + icons[key] + '</span>'
-      + '<span class="ob-opt-text">'
-      + '<span class="ob-opt-label">' + d.ko + ' <span style="font-size:11px;font-weight:600;opacity:.6">(' + key + ')</span>'
-      + (sel ? '<span style="font-size:10px;background:rgba(122,184,245,.2);color:#7ab8f5;padding:1px 7px;border-radius:999px;font-weight:700;margin-left:6px">추천</span>' : '')
-      + '</span>'
-      + '<span class="ob-opt-sub">' + d.desc + '</span>'
-      + '</span>'
-      + '<span class="ob-opt-check"><svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1,5 4,8 9,2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'
-      + '</button>';
-  });
-
-  var el = document.getElementById('ob-content');
-  el.innerHTML =
-    '<div class="ob-card">'
-    + '<div class="ob-eyebrow">레벨 테스트 결과</div>'
-    + '<div style="text-align:center;padding:16px 0 20px">'
-    + '<div style="font-size:56px;font-weight:900;line-height:1">' + correct + '<span style="font-size:20px;color:rgba(255,255,255,.35)"> / 15</span></div>'
-    + '<div style="margin-top:10px;font-size:13px;color:rgba(255,255,255,.5)">추천 레벨</div>'
-    + '<div style="font-size:22px;font-weight:900;color:' + recData.color + ';margin:4px 0">' + recData.ko + ' · ' + recommended + '</div>'
-    + '<div style="font-size:13px;color:rgba(255,255,255,.45);line-height:1.5">' + recData.desc + '</div>'
+  document.getElementById('ob-content').innerHTML = cardWrap(
+    '<div>'
+      + '<div class="ob-topline"><div class="ob-eyebrow">Placement result</div><div class="ob-stage">You can still override the recommendation</div></div>'
+      + '<div class="result-hero">'
+      + '<div class="result-num">' + correct + '<span style="font-size:24px;color:rgba(255,255,255,.45)">/15</span></div>'
+      + '<div class="result-copy"><h3>' + LEVEL_META[recommended].emoji + ' Recommended: ' + recommended + '</h3><p>' + LEVEL_META[recommended].desc + ' Pick this level or choose a different one below.</p></div>'
+      + '</div>'
+      + '<div class="result-breakdown">'
+      + '<div class="rb-item rb-beg"><div class="rb-n">' + breakdown.Beginner + '/5</div><div class="rb-l">Beginner</div></div>'
+      + '<div class="rb-item rb-int"><div class="rb-n">' + breakdown.Intermediate + '/5</div><div class="rb-l">Intermediate</div></div>'
+      + '<div class="rb-item rb-adv"><div class="rb-n">' + breakdown.Advanced + '/5</div><div class="rb-l">Advanced</div></div>'
+      + '</div>'
+      + '<div class="ob-level-list">'
+      + Object.keys(LEVEL_META).map(function(key) {
+          var meta = LEVEL_META[key];
+          var selected = state.level === key;
+          return '<button class="ob-opt' + (selected ? ' selected' : '') + '" onclick="selectRecommendedLevel(\'" + key + "\')">'
+            + '<span class="ob-check">✓</span>'
+            + '<span class="ob-opt-head"><span class="ob-opt-icon">' + meta.emoji + '</span><span><span class="ob-opt-label">' + key + (key === recommended ? ' <span class="ob-tag" style="margin-left:8px">Recommended</span>' : '') + '</span><span class="ob-opt-sub">' + meta.desc + '</span></span></span>'
+            + '</button>';
+        }).join('')
+      + '</div>'
     + '</div>'
-    + '<div style="font-size:12px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">시작 레벨 직접 선택</div>'
-    + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">'
-    + levelBtns
+    + '<div>'
+      + '<div class="ob-btn-row">'
+      + '<button class="ob-btn ob-btn-secondary" onclick="startPlacementTest()">Retake test</button>'
+      + '<button class="ob-btn ob-btn-primary" onclick="goStep4()">Continue with this level →</button>'
+      + '</div>'
     + '</div>'
-    + '<div style="background:rgba(255,255,255,.04);border-radius:10px;padding:10px 14px;margin-bottom:18px;display:flex;gap:10px;justify-content:center">'
-    + '<div style="text-align:center"><div style="font-size:16px;font-weight:900;color:#4ade80">' + begCorrect + '<span style="font-size:11px;color:rgba(255,255,255,.35)">/5</span></div><div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px">초급</div></div>'
-    + '<div style="width:1px;background:rgba(255,255,255,.1)"></div>'
-    + '<div style="text-align:center"><div style="font-size:16px;font-weight:900;color:#fbbf24">' + intCorrect + '<span style="font-size:11px;color:rgba(255,255,255,.35)">/5</span></div><div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px">중급</div></div>'
-    + '<div style="width:1px;background:rgba(255,255,255,.1)"></div>'
-    + '<div style="text-align:center"><div style="font-size:16px;font-weight:900;color:#f87171">' + advCorrect + '<span style="font-size:11px;color:rgba(255,255,255,.35)">/5</span></div><div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px">고급</div></div>'
-    + '</div>'
-    + '<div style="display:flex;gap:10px">'
-    + '<button class="ob-btn ob-btn-secondary" onclick="retakeTest()" style="flex:0 0 auto;padding:13px 16px">다시 테스트</button>'
-    + '<button class="ob-btn ob-btn-primary" onclick="goStep4()">이 레벨로 시작 →</button>'
-    + '</div>'
-    + '</div>';
+  );
 }
-function selectLevel(key) {
-  state.level = key;
-  document.querySelectorAll('.ob-opt[data-level]').forEach(function(b){
-    b.classList.toggle('selected', b.dataset.level === key);
-  });
-}
-function retakeTest() {
-  renderStep3();
+
+function selectRecommendedLevel(level) {
+  state.level = level;
+  showTestResult();
 }
 
 function goStep4() {
-  state.step = 4;
-  renderStep4();
+  updateProgress(4);
+  var goalsText = state.goals.map(function(id) {
+    var found = GOALS.find(function(g) { return g.id === id; });
+    return found ? found.label : id;
+  }).join(', ');
+  var timeData = TIME_OPTIONS.find(function(item) { return item.min === state.minutes; }) || TIME_OPTIONS[1];
+  document.getElementById('ob-content').innerHTML = cardWrap(
+    '<div>'
+      + '<div class="ob-topline"><div class="ob-eyebrow">Step 4 · Finish</div><div class="ob-stage">Main page tip is ready</div></div>'
+      + '<h2 class="ob-title">You are ready to start.</h2>'
+      + '<p class="ob-desc">We will save your setup, send you to the main page, and highlight the Beginner Guide so first-time users can get oriented right away.</p>'
+      + '<div class="ob-side-card" style="background:rgba(255,255,255,.05);margin-bottom:18px">'
+      + '<small>Your setup summary</small>'
+      + '<h3 style="margin-bottom:12px">A quick plan for your first session</h3>'
+      + '<div class="ob-journey">'
+      + '<div class="ob-journey-card"><strong>Goals</strong><p>' + (goalsText || 'Not selected') + '</p></div>'
+      + '<div class="ob-journey-card"><strong>Level</strong><p>' + (state.level || 'Beginner') + (state.levelChoice === 'test' ? ' · From placement test' : ' · Self-selected') + '</p></div>'
+      + '<div class="ob-journey-card"><strong>Daily pace</strong><p>' + timeData.label + '<br>' + timeData.sub + '</p></div>'
+      + '</div>'
+      + '</div>'
+      + '<div class="ob-link-grid">'
+      + '<a class="ob-link-card" href="beginner-guide.html"><span>Tip page</span><h3>Beginner Guide</h3><p>See how News, Study Room, Learning Hub, Stories, and Conversations fit together.</p></a>'
+      + '<a class="ob-link-card" href="korehan-study-room.html"><span>Practice page</span><h3>Study Room</h3><p>Use your reading to review words, grammar, and active practice right away.</p></a>'
+      + '</div>'
+      + '<div class="ob-footer-note">Your onboarding state is also saved locally so you do not get bounced back into onboarding again if the database response is slow.</div>'
+    + '</div>'
+    + '<div>'
+      + '<div class="ob-btn-row">'
+      + '<button class="ob-btn ob-btn-secondary" onclick="renderStep3Choice()">← Back</button>'
+      + '<button class="ob-btn ob-btn-primary" id="finish-btn" onclick="finishOnboarding()">Go to main page →</button>'
+      + '</div>'
+    + '</div>'
+  );
 }
 
-// ══════════════════════════════════════════════
-// STEP 4 — 완료 + 첫 기사 유도
-// ══════════════════════════════════════════════
-function renderStep4() {
-  updateProgress(4);
-  var levelKo  = { Starter:'입문', Beginner:'초급', Intermediate:'중급', Advanced:'고급' }[state.level];
-  var goalKo   = { travel:'여행', kpop:'K-pop·드라마', business:'비즈니스', immigration:'이민·거주', fun:'재미로' }[state.goal] || '';
-  var minLabel = state.minutes + '분';
+async function persistOnboardingState() {
+  var sb = getSb();
+  if (!_user || !sb) return;
+  var payload = {
+    user_id: _user.id,
+    onboarded: true,
+    onboarded_at: new Date().toISOString(),
+    level: state.level,
+    daily_minutes: state.minutes,
+    test_score: state.testScore,
+    goal_type: (state.goals[0] || null),
+    goal_types: state.goals
+  };
 
-  document.getElementById('ob-content').innerHTML =
-    '<div class="ob-card">'
-    + '<div class="ob-eyebrow">Step 4 of 4 · 준비 완료!</div>'
-    + '<div class="ob-title">🎉 설정이 완료됐어요!</div>'
-    + '<div class="ob-desc">이제 KoreHan News를 시작해볼까요?</div>'
-    + '<div style="background:rgba(255,255,255,.05);border-radius:12px;padding:14px 16px;margin-bottom:20px;display:flex;flex-direction:column;gap:8px">'
-    + '<div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,.5);font-size:13px">목표</span><span style="font-weight:700;font-size:13px">' + goalKo + '</span></div>'
-    + '<div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,.5);font-size:13px">레벨</span><span style="font-weight:700;font-size:13px">' + levelKo + ' (' + state.level + ')</span></div>'
-    + '<div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,.5);font-size:13px">데일리 목표</span><span style="font-weight:700;font-size:13px">' + minLabel + '</span></div>'
-    + '<div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,.5);font-size:13px">테스트</span><span style="font-weight:700;font-size:13px">' + state.testScore + '/15 정답</span></div>'
-    + '</div>'
-    + '<div style="font-size:13px;color:rgba(255,255,255,.5);margin-bottom:14px;line-height:1.6">첫 기사를 읽고 나면 단어를 저장하고, 퀴즈를 풀고, 오늘의 데일리 미션을 완료해봐요. <b style="color:#fff">XP도 쌓이기 시작해요!</b></div>'
-    + '<button class="ob-btn-full" id="finish-btn" onclick="finishOnboarding()">첫 기사 읽으러 가기 →</button>'
-    + '</div>';
+  try {
+    await sb.rpc('complete_onboarding', {
+      p_user_id: _user.id,
+      p_goal_type: state.goals[0] || null,
+      p_daily_minutes: state.minutes,
+      p_level: state.level,
+      p_test_score: state.testScore
+    });
+  } catch(e) {}
+
+  try {
+    await sb.from('user_stats').upsert(payload, { onConflict: 'user_id' });
+  } catch(e) {}
 }
 
 async function finishOnboarding() {
   var btn = document.getElementById('finish-btn');
-  btn.textContent = '저장 중...'; btn.disabled = true;
-
-  var sb2 = getSb();
-  if (_user && sb2) {
-    await sb2.rpc('complete_onboarding', {
-      p_user_id:       _user.id,
-      p_goal_type:     state.goal,
-      p_daily_minutes: state.minutes,
-      p_level:         state.level,
-      p_test_score:    state.testScore
-    });
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving your setup…';
   }
-
-  // 레벨에 맞는 기사로 이동
-  var dest = state.level === 'Starter' ? 'korehan-all.html?level=Beginner' : 'korehan-all.html?level=' + state.level;
-    window.location.href = dest;
+  saveOnboardingLocal(true);
+  await persistOnboardingState();
+  window.location.href = 'index.html?welcome=1';
 }
 
 async function skipOnboarding() {
-  var sb3 = getSb();
-  if (_user && sb3) {
-    await sb3.from('user_stats').upsert(
-      { user_id: _user.id, onboarded: true, onboarded_at: new Date().toISOString() },
-      { onConflict: 'user_id' }
-    );
+  saveOnboardingLocal(true);
+  var sb = getSb();
+  if (_user && sb) {
+    try {
+      await sb.from('user_stats').upsert({
+        user_id: _user.id,
+        onboarded: true,
+        onboarded_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+    } catch(e) {}
   }
-  window.location.href = 'index.html';
+  window.location.href = 'index.html?welcome=1';
 }
 
-// ══════════════════════════════════════════════
-// INIT
-// ══════════════════════════════════════════════
 function startOnboarding() {
+  if (!state.level) state.level = 'Beginner';
   renderStep1();
+}
+
+async function initUser() {
+  var waited = 0;
+  while (!window.supabase && waited < 30) {
+    await new Promise(function(r) { setTimeout(r, 100); });
+    waited += 1;
+  }
+
+  var sb = getSb();
+  if (!sb) {
+    startOnboarding();
+    return;
+  }
+
+  try {
+    var sessionRes = await sb.auth.getUser();
+    _user = sessionRes && sessionRes.data ? sessionRes.data.user : null;
+  } catch(e) {
+    _user = null;
+  }
+
+  if (!_user) {
+    startOnboarding();
+    return;
+  }
+
+  try {
+    var res = await sb.from('user_stats').select('onboarded').eq('user_id', _user.id).maybeSingle();
+    if (res.data && res.data.onboarded === true) {
+      saveOnboardingLocal(true);
+      window.location.href = 'index.html';
+      return;
+    }
+  } catch(e) {}
+
+  startOnboarding();
 }
 
 initUser();
