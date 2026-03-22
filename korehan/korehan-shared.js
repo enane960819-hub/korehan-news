@@ -3833,30 +3833,40 @@ document.addEventListener('DOMContentLoaded', async function() {
 // 하드코딩 VOCAB에 DB 단어를 덮어쓰기 (DB 우선)
 // ── 온보딩 체크 ────────────────────────────────────────────
 var _onboardingChecked = false;
+function hasCompletedOnboardingLocal() {
+  try {
+    return localStorage.getItem('kh_onboarding_completed') === '1';
+  } catch(e) {
+    return false;
+  }
+}
 async function checkOnboardingStatus() {
   if (_onboardingChecked || !supaUser) return;
+  if (window.location.pathname.includes('onboarding')) return;
   _onboardingChecked = true;
   try {
+    if (hasCompletedOnboardingLocal()) return;
     var sb = getSupa(); if (!sb) return;
     var res = await sb.from('user_stats')
-      .select('onboarded')
+      .select('onboarded, onboarded_at, created_at')
       .eq('user_id', supaUser.id)
       .maybeSingle();
 
-    // 기존 유저 (user_stats 레코드 있음) → onboarded 값 무관하게 통과
-    if (res.data) return;
+    if (res.data && res.data.onboarded === true) {
+      try {
+        localStorage.setItem('kh_onboarding_completed', '1');
+        if (res.data.onboarded_at) localStorage.setItem('kh_onboarding_completed_at', res.data.onboarded_at);
+      } catch(e) {}
+      return;
+    }
 
-    // 레코드 자체가 없는 경우 → 가입 시각으로 신규 여부 판단
-    // 가입 후 10분 이내면 신규 유저로 간주
     var createdAt = supaUser.created_at ? new Date(supaUser.created_at) : null;
     var isNew = createdAt && (Date.now() - createdAt.getTime() < 10 * 60 * 1000);
-
     if (isNew) {
       setTimeout(function() {
         window.location.href = 'korehan-onboarding.html';
       }, 600);
     }
-    // 기존 유저인데 user_stats 없으면 그냥 통과 (기존 데이터 유지)
   } catch(e) {}
 }
 
@@ -5014,19 +5024,33 @@ async function getUnifiedWeakGrammarItems(limit) {
 async function renderHomeLearningPreview() {
   var box = document.getElementById('home-learning-preview');
   if (!box) return;
+  var showWelcomeTip = false;
+  try {
+    showWelcomeTip = window.location.search.indexOf('welcome=1') > -1 || localStorage.getItem('kh_new_user_tip') === '1';
+  } catch(e) {}
 
   // 비로그인 — 컴팩트
   if (!supaUser) {
     box.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">'
-      + '<div style="font-size:13px;font-weight:800;color:#fff">처음 오셨나요?</div>'
-      + '<div style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(122,184,245,.14);border:1px solid rgba(122,184,245,.28);color:#9ed0ff">Start easy</div>'
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">'
+      + '<div style="font-size:13px;font-weight:800;color:var(--dark)">First time here?</div>'
+      + '<div style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;background:#eef4ff;color:var(--bright)">Start easy</div>'
       + '</div>'
-      + '<div style="font-size:13px;color:rgba(255,255,255,.72);line-height:1.6;margin-bottom:12px;">기사 읽기 → 저장 단어 확인 → 복습. 메인에서 바로 다음 액션만 보이게 정리했습니다.</div>'
-      + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
-      + '<a href="beginner-guide.html" style="display:inline-block;padding:9px 16px;background:#2563eb;color:#fff;border-radius:999px;font-size:12px;font-weight:800;text-decoration:none;">시작하기 →</a>'
-      + '<a href="korehan-learning-overview.html" style="display:inline-block;padding:9px 16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#fff;border-radius:999px;font-size:12px;font-weight:800;text-decoration:none;">Learning Hub</a>'
-      + '</div>';
+      + '<div style="font-size:13px;color:var(--gray);line-height:1.55;margin-bottom:12px;">Read one article, review a few words, then use the Beginner Guide for your first learning loop.</div>'
+      + '<a href="beginner-guide.html" style="display:inline-block;padding:8px 16px;background:var(--bright);color:#fff;border-radius:6px;font-size:12px;font-weight:800;text-decoration:none;">Open Beginner Guide →</a>';
+    return;
+  }
+
+  if (showWelcomeTip) {
+    box.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
+      + '<div style="font-size:13px;font-weight:900;color:#fff">New here? Start with the Beginner Guide.</div>'
+      + '<div style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(125,211,252,.18);color:#dbeafe">Tip for first session</div>'
+      + '</div>'
+      + '<div style="font-size:12px;color:rgba(255,255,255,.74);line-height:1.6;margin-bottom:12px">Read one article, open Study Room, then check Learning Hub. The Beginner Guide maps the full flow for your first session.</div>'
+      + '<a href="beginner-guide.html" style="display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border-radius:12px;background:linear-gradient(135deg,#38bdf8,#2563eb);color:#fff;font-size:12px;font-weight:900;text-decoration:none;box-shadow:0 12px 22px rgba(37,99,235,.26);animation:khGuidePulse 1.8s ease-in-out infinite">Open Beginner Guide →</a>'
+      + '<style>@keyframes khGuidePulse{0%,100%{transform:translateY(0);box-shadow:0 12px 22px rgba(37,99,235,.26)}50%{transform:translateY(-1px);box-shadow:0 16px 28px rgba(56,189,248,.34)}}</style>';
+    try { localStorage.removeItem('kh_new_user_tip'); } catch(e) {}
     return;
   }
 
