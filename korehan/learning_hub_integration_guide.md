@@ -1,3 +1,4 @@
+<!-- sync marker -->
 # KoreHan Learning Hub integration guide
 
 ## What this gives you

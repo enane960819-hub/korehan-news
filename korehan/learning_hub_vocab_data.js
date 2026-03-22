@@ -1,3 +1,4 @@
+// sync marker
 (function() {
   function buildPairs(prefixes, nouns, enPrefixes, enNouns, limit, extra) {
     var out = [];

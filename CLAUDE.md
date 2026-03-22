@@ -1,3 +1,4 @@
+<!-- sync marker -->
 # CLAUDE.md — KoreHan News: AI Assistant Guide
 
 ## Project Overview
