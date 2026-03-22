@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- sync marker -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -1126,24 +1125,12 @@ async function generateAIContent(topic) {
     try { _aiContent = JSON.parse(cached); renderAIContent(); hideAILoading(); return; } catch(e) {}
   }
 
-  // 2. Supabase DB 캐시 (탭 닫아도 유지)
-  if (supaUser && typeof getSupa === 'function') {
-    try {
-      var sb = getSupa();
-      if (sb) {
-        var cres = await sb.from('article_cache')
-          .select('cache_value')
-          .eq('content_type', 'writing_topic')
-          .eq('content_id', String(topic.id))
-          .eq('cache_key', _currentLevel)
-          .maybeSingle();
-        if (cres.data && cres.data.cache_value && cres.data.cache_value.vocab) {
-          _aiContent = cres.data.cache_value;
-          sessionStorage.setItem(cacheKey, JSON.stringify(_aiContent));
-          renderAIContent(); hideAILoading(); return;
-        }
-      }
-    } catch(e) {}
+  if (!supaUser) {
+    _aiContent = buildStudyRoomFallbackContent(topic, _currentLevel);
+    sessionStorage.setItem(cacheKey, JSON.stringify(_aiContent));
+    renderAIContent();
+    hideAILoading();
+    return;
   }
 
   showAILoading();
@@ -1190,27 +1177,88 @@ async function generateAIContent(topic) {
     _aiContent = JSON.parse(clean);
     sessionStorage.setItem(cacheKey, JSON.stringify(_aiContent));
 
-    // DB에도 저장 (영구 캐시)
-    if (supaUser && typeof getSupa === 'function') {
-      try {
-        var sb2 = getSupa();
-        if (sb2) {
-          sb2.from('article_cache').upsert({
-            content_type: 'writing_topic',
-            content_id:   String(topic.id),
-            cache_key:    _currentLevel,
-            cache_value:  _aiContent
-          }, { onConflict: 'content_type,content_id,cache_key' }).catch(function(){});
-        }
-      } catch(e) {}
-    }
-
     renderAIContent();
     hideAILoading();
   } catch(err) {
+    _aiContent = buildStudyRoomFallbackContent(topic, _currentLevel);
+    sessionStorage.setItem(cacheKey, JSON.stringify(_aiContent));
+    renderAIContent();
     hideAILoading();
-    document.getElementById('vocab-box').innerHTML = '<div style="color:#c33;font-size:12px">⚠️ Could not load. <a href="#" onclick="generateAIContent(_todayTopic)">Retry</a></div>';
   }
+}
+
+function buildStudyRoomFallbackContent(topic, level) {
+  var topicKo = (topic && (topic.topic_ko || topic.topic_en)) || '오늘의 주제';
+  var topicEn = (topic && topic.topic_en) || 'today\'s topic';
+  var levelSets = {
+    Starter: {
+      vocab: [
+        { ko:'좋아해요', rom:'jo-a-hae-yo', en:'like', level:'Starter' },
+        { ko:'배우', rom:'bae-u', en:'actor', level:'Starter' },
+        { ko:'가수', rom:'ga-su', en:'singer', level:'Starter' },
+        { ko:'한국', rom:'han-guk', en:'Korea', level:'Starter' },
+        { ko:'있어요', rom:'i-sseo-yo', en:'there is / have', level:'Starter' }
+      ],
+      grammar: [
+        { level:'Starter', pattern:'~이에요/예요', explanation:'Use this to say what something is.', example_ko:'이 사람은 배우예요.', example_en:'This person is an actor.' },
+        { level:'Starter', pattern:'~을 좋아해요', explanation:'Use this to say what you like.', example_ko:'저는 한국 배우를 좋아해요.', example_en:'I like Korean actors.' },
+        { level:'Starter', pattern:'~이/가 있어요', explanation:'Use this to say that something exists or that you have it.', example_ko:'좋아하는 가수가 있어요.', example_en:'I have a singer that I like.' }
+      ]
+    },
+    Beginner: {
+      vocab: [
+        { ko:'좋아하다', rom:'jo-a-ha-da', en:'to like', level:'Beginner' },
+        { ko:'배우', rom:'bae-u', en:'actor', level:'Beginner' },
+        { ko:'가수', rom:'ga-su', en:'singer', level:'Beginner' },
+        { ko:'드라마', rom:'deu-ra-ma', en:'drama', level:'Beginner' },
+        { ko:'노래', rom:'no-rae', en:'song', level:'Beginner' }
+      ],
+      grammar: [
+        { level:'Beginner', pattern:'~이/가 있어요', explanation:'Use this to say that someone or something exists.', example_ko:'좋아하는 배우가 있어요.', example_en:'There is an actor I like.' },
+        { level:'Beginner', pattern:'~을/를 좋아해요', explanation:'Use this to say what you like.', example_ko:'저는 이 노래를 좋아해요.', example_en:'I like this song.' },
+        { level:'Beginner', pattern:'~고 싶어요', explanation:'Use this to say what you want to do.', example_ko:'콘서트에 가고 싶어요.', example_en:'I want to go to the concert.' }
+      ]
+    },
+    Intermediate: {
+      vocab: [
+        { ko:'팬', rom:'paen', en:'fan', level:'Intermediate' },
+        { ko:'활동', rom:'hwal-dong', en:'activities', level:'Intermediate' },
+        { ko:'매력', rom:'mae-ryeok', en:'charm', level:'Intermediate' },
+        { ko:'연기', rom:'yeon-gi', en:'acting', level:'Intermediate' },
+        { ko:'무대', rom:'mu-dae', en:'stage', level:'Intermediate' }
+      ],
+      grammar: [
+        { level:'Intermediate', pattern:'~아서/어서', explanation:'Use this to connect a reason with a result.', example_ko:'연기를 잘해서 더 좋아하게 됐어요.', example_en:'I came to like them more because they act well.' },
+        { level:'Intermediate', pattern:'~(으)ㄹ 것 같아요', explanation:'Use this to give an opinion or guess politely.', example_ko:'앞으로도 오래 활동할 것 같아요.', example_en:'I think they will stay active for a long time.' },
+        { level:'Intermediate', pattern:'~지만', explanation:'Use this to show contrast.', example_ko:'바쁘지만 새 작품을 꼭 챙겨 봐요.', example_en:'I am busy, but I still make sure to watch the new work.' }
+      ]
+    },
+    Advanced: {
+      vocab: [
+        { ko:'영향력', rom:'yeong-hyang-ryeok', en:'influence', level:'Advanced' },
+        { ko:'서사', rom:'seo-sa', en:'narrative', level:'Advanced' },
+        { ko:'대중성', rom:'dae-jung-seong', en:'mass appeal', level:'Advanced' },
+        { ko:'완성도', rom:'wan-seong-do', en:'quality / completeness', level:'Advanced' },
+        { ko:'상징적', rom:'sang-jing-jeok', en:'symbolic', level:'Advanced' }
+      ],
+      grammar: [
+        { level:'Advanced', pattern:'~는 반면에', explanation:'Use this to compare two contrasting facts.', example_ko:'대중성은 높아진 반면에 작품성 논의도 함께 늘었어요.', example_en:'While mass appeal increased, discussion about artistic quality also grew.' },
+        { level:'Advanced', pattern:'~(으)ㄹ수록', explanation:'Use this to say that one thing changes as another increases.', example_ko:'알면 알수록 더 매력적인 배우라고 생각해요.', example_en:'I think the actor becomes more charming the more you learn about them.' },
+        { level:'Advanced', pattern:'~다는 점에서', explanation:'Use this to explain in what respect something is meaningful.', example_ko:'세대 공감을 이끈다는 점에서 의미가 커요.', example_en:'It is meaningful in that it brings out generational empathy.' }
+      ]
+    }
+  };
+  var picked = levelSets[level] || levelSets.Beginner;
+  return {
+    vocab: picked.vocab,
+    grammar: picked.grammar,
+    helpers: [
+      { ko: topicKo + '에 대해 이야기하고 싶어요.', en: 'I want to talk about ' + topicEn + '.' },
+      { ko: '저는 이 주제가 정말 흥미로워요.', en: 'I find this topic really interesting.' },
+      { ko: '특히 기억에 남는 이유가 있어요.', en: 'There is a reason it especially stayed with me.' },
+      { ko: '제 생각을 한국어로 천천히 써 볼게요.', en: 'I will try writing my thoughts in Korean step by step.' }
+    ]
+  };
 }
 
 function renderAIContent() {
@@ -1766,7 +1814,6 @@ function setLQMode(mode, btn) {
 }
 
 async function startLQ() {
-  if (!supaUser) { openAuthModal('signin'); return; }
   var box = document.getElementById('lq-mini');
   box.innerHTML = '<div class="ai-loading"><div class="spin">✨</div><div style="margin-top:8px;font-size:12px">AI가 문제를 만드는 중…</div></div>';
 
@@ -1792,6 +1839,13 @@ async function startLQ() {
   var prompt = 'Korean listening quiz generator.\nWords: ' + words + '\n' + modeInstr
     + '\nReturn ONLY JSON (no markdown):\n{"questions":[{"sentence":"Korean","correct":"answer","wrong1":"wrong","wrong2":"wrong","explanation":"brief grammar note"}]}\nGenerate exactly 5 questions.';
 
+  if (!supaUser) {
+    _lqQ = buildLocalListeningQuiz(sample);
+    _lqIdx = 0; _lqScore = 0;
+    renderLQQ();
+    return;
+  }
+
   try {
     var data = await callClaude({ feature:'quiz', model:'claude-haiku-4-5-20251001', max_tokens:1000, messages:[{role:'user',content:prompt}] });
     var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('');
@@ -1805,8 +1859,32 @@ async function startLQ() {
     _lqIdx = 0; _lqScore = 0;
     renderLQQ();
   } catch(err) {
-    document.getElementById('lq-mini').innerHTML = '<div style="text-align:center;padding:16px;color:#c33;font-size:12px">⚠️ Failed. <button onclick="startLQ()" style="background:none;border:none;color:var(--bright);cursor:pointer;font-weight:700">Retry</button></div>';
+    _lqQ = buildLocalListeningQuiz(sample);
+    _lqIdx = 0; _lqScore = 0;
+    renderLQQ();
   }
+}
+
+function buildLocalListeningQuiz(words) {
+  var pool = (words || []).slice(0, 5);
+  if (!pool.length) {
+    pool = [
+      { ko:'친구', en:'friend' },
+      { ko:'학교', en:'school' },
+      { ko:'음악', en:'music' },
+      { ko:'배우', en:'actor' },
+      { ko:'여행', en:'trip' }
+    ];
+  }
+  return pool.map(function(w, idx) {
+    var options = pool.map(function(item){ return item.en || item.ko; }).filter(function(_, optionIdx){ return optionIdx !== idx; }).slice(0, 2);
+    return {
+      sentence: w.ko,
+      correct: w.en || w.ko,
+      choices: [w.en || w.ko].concat(options).sort(function(){ return Math.random() - .5; }),
+      explanation: 'Fallback quiz item based on today\'s study vocabulary.'
+    };
+  });
 }
 
 function renderLQQ() {
@@ -2517,25 +2595,13 @@ async function generateBeginnerSentences() {
     } catch(e) {}
   }
 
-  // ── 캐시 체크 2: Supabase article_cache ──
-  try {
-    var sb = getSupa();
-    if (sb && topic.id) {
-      var { data: cRow } = await sb.from('article_cache')
-        .select('cache_value')
-        .eq('content_type', 'topic')
-        .eq('content_id', String(topic.id))
-        .eq('cache_key', 'beginner_sentences')
-        .maybeSingle();
-      if (cRow && cRow.cache_value && cRow.cache_value.sentences) {
-        _bm.sentences = cRow.cache_value.sentences;
-        sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
-        _bm.generating = false;
-        renderBMStep1();
-        return;
-      }
-    }
-  } catch(e) { console.warn('cache read failed:', e); }
+  if (!supaUser) {
+    _bm.sentences = getFallbackSentences();
+    sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
+    _bm.generating = false;
+    renderBMStep1();
+    return;
+  }
 
   // ── 새로 생성 ──
   try {
@@ -2557,18 +2623,6 @@ async function generateBeginnerSentences() {
 
     // ── 생성 결과 캐시 저장 ──
     sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
-    try {
-      var sbW = getSupa();
-      if (sbW && topic.id) {
-        await sbW.from('article_cache').upsert({
-          content_type: 'topic',
-          content_id:   String(topic.id),
-          cache_key:    'beginner_sentences',
-          cache_value:  { sentences: _bm.sentences }
-        }, { onConflict: 'content_type,content_id,cache_key' });
-      }
-    } catch(e) { console.warn('cache write failed:', e); }
-
   } catch(e) {
     console.warn('Beginner sentence gen failed:', e);
     _bm.sentences = getFallbackSentences();

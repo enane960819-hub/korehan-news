@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- sync marker -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -49,8 +48,8 @@
   <a class="learn-banner" href="korehan-learn.html">
     <div class="lb-left">
       <div class="lb-badge">✏️ Learn Korean</div>
-      <h2>Learn Korean with real headlines</h2>
-      <p>Read, save useful words, and move into practice from one place.</p>
+      <h2 id="lb-title">Simplified Korean news for learners</h2>
+      <p id="lb-desc">KoreHan News is written in easy Korean for foreign learners. Hover any underlined word to instantly see its meaning and pronunciation.</p>
     </div>
     <div class="lb-right">
       <div class="lb-right-label">Today's Phrase</div>
@@ -81,8 +80,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  const phrases = getPhrases();
+document.addEventListener('DOMContentLoaded', async () => {
+  const phrases = typeof getPhrasesAsync === 'function' ? await getPhrasesAsync() : getPhrases();
   if (!phrases.length) return;
   const p = phrases[Math.floor((Date.now()+9*3600000)/86400000) % phrases.length];
   const ko  = document.getElementById('banner-phrase-ko');
