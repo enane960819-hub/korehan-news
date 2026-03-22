@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- sync marker -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -430,23 +429,48 @@ let deleteId = null;
 
 var _sbAdmin = null;
 // ── Claude API 프록시 (어드민용) ──────────────────────────────
-const ADMIN_CLAUDE_PROXY = SUPA_URL_ADMIN + '/functions/v1/claude-proxy';
+const ADMIN_CLAUDE_PROXY = window.location.origin + '/api/claude-proxy';
 
 async function callClaude({ feature, model, max_tokens, messages }) {
   var sb = getSb();
   if (!sb) throw new Error('Supabase not initialized');
 
-  var { data: { session } } = await sb.auth.getSession();
+  var sessionRes = await sb.auth.getSession();
+  var session = sessionRes && sessionRes.data && sessionRes.data.session;
+  var now = Math.floor(Date.now() / 1000);
+  var expiresSoon = session && session.expires_at && session.expires_at <= now + 90;
+  if (!session || expiresSoon) {
+    var refreshed = await sb.auth.refreshSession();
+    session = refreshed && refreshed.data && refreshed.data.session;
+  }
   if (!session) throw new Error('Not signed in');
 
+  var payload = { feature, model, max_tokens, messages };
   var resp = await fetch(ADMIN_CLAUDE_PROXY, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + session.access_token,
+      'apikey': SUPA_KEY_ADMIN,
     },
-    body: JSON.stringify({ feature, model, max_tokens, messages }),
+    body: JSON.stringify(payload),
   });
+
+  if (resp.status === 401) {
+    var forcedRefresh = await sb.auth.refreshSession();
+    var freshSession = forcedRefresh && forcedRefresh.data && forcedRefresh.data.session;
+    if (freshSession && freshSession.access_token) {
+      resp = await fetch(ADMIN_CLAUDE_PROXY, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + freshSession.access_token,
+          'apikey': SUPA_KEY_ADMIN,
+        },
+        body: JSON.stringify(payload),
+      });
+    }
+  }
 
   if (resp.status === 429) throw new Error('rate_limit');
   if (resp.status === 401) throw new Error('unauthorized - please sign in');

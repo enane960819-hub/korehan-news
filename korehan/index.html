@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- sync marker -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -12,21 +11,25 @@
 
 /* Daily strip */
 .daily-strip {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(320px,1.1fr) minmax(300px,.95fr) 320px;
+  grid-template-areas: "phrase progress actions";
   align-items: stretch;
   background: var(--navy);
-  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 24px;
   overflow: hidden;
   margin: 20px 0 0;
-  box-shadow: 0 8px 28px rgba(11,22,38,.18);
+  box-shadow: 0 18px 42px rgba(11,22,38,.18);
 }
+
 .ds-phrase {
-  flex: 1;
+  grid-area: phrase;
   min-width: 0;
-  padding: 20px 24px;
-  cursor: pointer;
-  text-decoration: none;
+  padding: 22px 24px;
   display: block;
+  color: inherit;
+  text-decoration: none;
   transition: background .15s;
 }
 .ds-phrase:hover { background: rgba(255,255,255,.04); }
@@ -35,48 +38,93 @@
   font-weight: 800;
   letter-spacing: .14em;
   text-transform: uppercase;
-  color: rgba(255,255,255,.4);
-  margin-bottom: 6px;
+  color: rgba(255,255,255,.48);
+  margin-bottom: 8px;
 }
 .ds-ko {
   font-family: 'Noto Serif KR', serif;
-  font-size: 26px;
+  font-size: 34px;
   font-weight: 900;
+  line-height: 1.14;
   color: #fff;
-  line-height: 1.15;
-  letter-spacing: -.5px;
+  letter-spacing: -.03em;
 }
-.ds-rom { font-size: 13px; color: rgba(255,255,255,.5); margin-top: 3px; }
-.ds-en  { font-size: 14px; font-weight: 600; color: #7ab8f5; margin-top: 2px; }
-
-.ds-divider { width: 1px; background: rgba(255,255,255,.1); flex-shrink: 0; }
+.ds-rom {
+  margin-top: 5px;
+  font-size: 14px;
+  color: rgba(255,255,255,.54);
+}
+.ds-en {
+  margin-top: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.55;
+  color: #9ed0ff;
+}
 
 .ds-progress {
-  flex: 0 0 260px;
-  padding: 18px 22px;
+  grid-area: progress;
+  min-width: 0;
+  padding: 24px 24px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 12px;
+  border-left: 1px solid rgba(255,255,255,.1);
 }
-.ds-prog-label {
+
+.ds-actions {
+  grid-area: actions;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 20px;
+  background: linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.04));
+  border-left: 1px solid rgba(255,255,255,.1);
+}
+.ds-quick-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; align-items:stretch; }
+.ds-summary-title {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: .14em;
   text-transform: uppercase;
-  color: rgba(255,255,255,.4);
-  margin-bottom: 2px;
+  color: rgba(255,255,255,.48);
 }
-
-.ds-actions {
-  flex: 0 0 300px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 18px 20px;
-  background: linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.04));
+.ds-summary-head {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
 }
-.ds-quick-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.ds-summary-copy h2 {
+  margin: 6px 0 4px;
+  font-family: 'Playfair Display', 'Noto Serif KR', serif;
+  font-size: 24px;
+  line-height: 1.12;
+  color: #fff;
+}
+.ds-summary-copy p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255,255,255,.72);
+  max-width: 56ch;
+}
+.ds-summary-badge {
+  flex-shrink: 0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:7px 12px;
+  border-radius:999px;
+  background: rgba(122,184,245,.12);
+  border: 1px solid rgba(122,184,245,.28);
+  color:#9ed0ff;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
 .ds-btn {
   display: flex;
   align-items: center;
@@ -91,16 +139,36 @@
   cursor: pointer;
   text-decoration: none;
   transition: background .15s, transform .15s, border-color .15s;
-  white-space: nowrap;
+  width:100%;
+  min-width:0;
+  text-align:center;
   justify-content:center;
 }
 .ds-btn:hover { background: rgba(255,255,255,.16); transform: translateY(-1px); border-color: rgba(122,184,245,.55); }
-.ds-btn-main { background: linear-gradient(135deg,#2563eb,#1d4ed8); border-color: rgba(255,255,255,.16); box-shadow: 0 10px 24px rgba(37,99,235,.28); }
+.ds-btn-main { min-height:48px; background: linear-gradient(135deg,#2563eb,#1d4ed8); border-color: rgba(255,255,255,.16); box-shadow: 0 10px 24px rgba(37,99,235,.28); }
 .ds-btn-main:hover { background: linear-gradient(135deg,#3b82f6,#2563eb); }
-.ds-btn-sub { justify-content:flex-start; }
-.ds-note { padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); }
+.ds-btn-sub { justify-content:center; }
+.ds-note { padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); margin-top:auto; }
 .ds-note-title { font-size: 10px; font-weight: 900; letter-spacing:.12em; text-transform:uppercase; color: rgba(122,184,245,.9); margin-bottom:6px; }
 .ds-note-body { font-size: 12px; line-height:1.55; color: rgba(255,255,255,.78); }
+
+@media (max-width: 1280px) {
+  .daily-strip { grid-template-columns: minmax(280px,1fr) minmax(280px,.95fr) 280px; }
+}
+
+@media (max-width: 1120px) {
+  .daily-strip {
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+    grid-template-areas:
+      "phrase progress"
+      "actions actions";
+  }
+  .ds-progress {
+    border-left: 1px solid rgba(255,255,255,.1);
+    border-top: 0;
+  }
+  .ds-actions { border-left: 0; border-top: 1px solid rgba(255,255,255,.1); }
+}
 
 /* Section header */
 .home-sec {
@@ -112,6 +180,9 @@
   border-bottom: 2px solid var(--dark);
 }
 .home-sec-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-family: 'Playfair Display', 'Noto Serif KR', serif;
   font-size: 20px;
   font-weight: 900;
@@ -146,7 +217,30 @@
   grid-template-columns: repeat(4, 1fr);
   gap: 14px;
   margin-bottom: 32px;
+  align-items: stretch;
 }
+.home-conv-grid-wrap .hconv-card {
+  height: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.home-conv-grid-wrap .hconv-head,
+.home-conv-grid-wrap .hconv-chat,
+.home-conv-grid-wrap .hconv-foot {
+  min-width: 0;
+}
+.home-conv-grid-wrap .hconv-chat {
+  flex: 1;
+  min-height: 132px;
+}
+.home-conv-grid-wrap .hcb {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.home-conv-grid-wrap .hconv-foot { margin-top: auto; }
 @media (max-width: 980px) { .home-conv-grid-wrap { grid-template-columns: repeat(2,1fr); } }
 @media (max-width: 480px)  { .home-conv-grid-wrap { grid-template-columns: 1fr; } }
 
@@ -213,13 +307,314 @@
 .story-time { font-size: 11px; color: var(--gray); margin-left: auto; }
 
 /* Mobile daily strip */
-@media (max-width: 760px) {
-  .daily-strip { flex-direction: column; }
-  .ds-divider { width: auto; height: 1px; }
-  .ds-progress { flex: none; width: 100%; padding: 12px 18px; }
+@media (max-width: 860px) {
+  .daily-strip {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "phrase"
+      "progress"
+      "actions";
+  }
+  .ds-phrase { padding: 18px; }
+  .ds-ko { font-size: 28px; }
+  .ds-progress { width: 100%; padding: 18px; border-top: 1px solid rgba(255,255,255,.1); }
   .ds-actions { flex-direction: column; padding: 12px 18px; }
-  .ds-quick-grid { grid-template-columns: 1fr 1fr; }
+  .ds-actions { border-left: 0; border-top: 1px solid rgba(255,255,255,.1); }
+  .ds-quick-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .ds-summary-head { flex-direction: column; }
+  .ds-summary-copy h2 { font-size: 21px; }
   .ds-btn { flex: 1; justify-content: center; }
+}
+
+@media (max-width: 480px) {
+  .daily-strip { border-radius: 18px; }
+  .ds-ko { font-size: 24px; }
+  .ds-en { font-size: 15px; }
+  .ds-quick-grid { grid-template-columns:1fr; }
+}
+
+@media (max-width: 640px) {
+  .home-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 8px;
+    margin: 0 -2px 14px;
+    padding: 2px 2px 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .home-pills::-webkit-scrollbar { display: none; }
+  .home-pills .sp {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+
+.home-top-tools {
+  display:flex;
+  justify-content:flex-end;
+  margin:12px 0 10px;
+}
+.home-neon-toggle {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 14px;
+  border-radius:999px;
+  border:1px solid rgba(34,85,164,.18);
+  background:#fff;
+  color:var(--dark);
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+  box-shadow:0 10px 24px rgba(15,23,42,.08);
+  transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+}
+.home-neon-toggle:hover { transform:translateY(-1px); box-shadow:0 16px 32px rgba(15,23,42,.12); }
+
+@keyframes homeNeonShift {
+  0% { background-position: 0% 0%, 100% 0%, 50% 0%; }
+  50% { background-position: 8% 12%, 90% 14%, 50% 100%; }
+  100% { background-position: 0% 0%, 100% 0%, 50% 0%; }
+}
+@keyframes homeNeonPulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(0,255,214,.18), 0 0 22px rgba(0,255,214,.12), 0 0 48px rgba(123,92,255,.10); }
+  50% { box-shadow: 0 0 0 1px rgba(0,255,214,.28), 0 0 34px rgba(0,255,214,.18), 0 0 72px rgba(123,92,255,.14); }
+}
+@keyframes homeNeonSweep {
+  0% { transform: translateX(-135%) skewX(-18deg); opacity: 0; }
+  16% { opacity: .16; }
+  48% { opacity: .32; }
+  100% { transform: translateX(180%) skewX(-18deg); opacity: 0; }
+}
+body.kh-neon-on {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(0,255,214,.16), transparent 30%),
+    radial-gradient(circle at 88% 10%, rgba(123,92,255,.18), transparent 26%),
+    linear-gradient(180deg,#050b15 0%,#091121 38%,#0a1325 100%) !important;
+  color:#effdff;
+  animation: homeNeonShift 18s ease-in-out infinite;
+}
+body.kh-neon-on::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-1;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(0,255,214,.08), transparent 0 22%),
+    radial-gradient(circle at 80% 12%, rgba(123,92,255,.10), transparent 0 24%),
+    radial-gradient(circle at 50% 100%, rgba(80,180,255,.08), transparent 0 30%);
+  filter: blur(16px);
+}
+body.kh-neon-on .kh-header-bar,
+body.kh-neon-on .kh-topnav {
+  background: rgba(6,11,22,.88);
+  box-shadow: 0 0 24px rgba(0,255,214,.08), inset 0 -1px 0 rgba(0,255,214,.08);
+}
+body.kh-neon-on .kh-logo-kore,
+body.kh-neon-on .kh-logo-news,
+body.kh-neon-on .kh-hdate,
+body.kh-neon-on .tn-item,
+body.kh-neon-on .tn-arr {
+  color:#f4ffff !important;
+}
+body.kh-neon-on .kh-logo-han {
+  color:#97fbff !important;
+  text-shadow: 0 0 18px rgba(0,255,214,.34), 0 0 36px rgba(0,255,214,.2);
+}
+body.kh-neon-on .home-top-tools { position: relative; z-index: 2; }
+body.kh-neon-on #dyn-hero,
+body.kh-neon-on .daily-strip,
+body.kh-neon-on .story-card,
+body.kh-neon-on .home-news-grid .nc,
+body.kh-neon-on .home-conv-grid-wrap .hconv-card,
+body.kh-neon-on .home-pills .sp,
+body.kh-neon-on .home-sec,
+body.kh-neon-on .home-neon-toggle {
+  position: relative;
+  overflow: hidden;
+}
+body.kh-neon-on #dyn-hero,
+body.kh-neon-on .daily-strip,
+body.kh-neon-on .story-card,
+body.kh-neon-on .home-news-grid .nc,
+body.kh-neon-on .home-conv-grid-wrap .hconv-card,
+body.kh-neon-on .home-pills .sp {
+  box-shadow: 0 0 0 1px rgba(0,255,214,.16), 0 0 20px rgba(0,255,214,.12), 0 0 40px rgba(123,92,255,.10) !important;
+}
+body.kh-neon-on .daily-strip,
+body.kh-neon-on #dyn-hero {
+  animation: homeNeonPulse 4.2s ease-in-out infinite;
+}
+body.kh-neon-on .daily-strip,
+body.kh-neon-on .story-card,
+body.kh-neon-on .home-news-grid .nc,
+body.kh-neon-on .home-conv-grid-wrap .hconv-card,
+body.kh-neon-on #dyn-hero {
+  border-color: rgba(0,255,214,.34) !important;
+  background: linear-gradient(180deg, rgba(6,12,24,.92), rgba(10,17,34,.94)) !important;
+}
+body.kh-neon-on #dyn-hero::before,
+body.kh-neon-on .daily-strip::before,
+body.kh-neon-on .home-neon-toggle::before {
+  content:'';
+  position:absolute;
+  inset:-35%;
+  background: linear-gradient(110deg, transparent 38%, rgba(0,255,214,.14) 50%, rgba(123,92,255,.18) 58%, transparent 70%);
+  transform: translateX(-135%) skewX(-18deg);
+  animation: homeNeonSweep 7.2s ease-in-out infinite;
+  pointer-events:none;
+}
+body.kh-neon-on .daily-strip::after,
+body.kh-neon-on .home-news-grid .nc::after,
+body.kh-neon-on .home-conv-grid-wrap .hconv-card::after,
+body.kh-neon-on .story-card::after {
+  content:'';
+  position:absolute;
+  inset:1px;
+  border-radius: inherit;
+  border:1px solid rgba(255,255,255,.05);
+  pointer-events:none;
+}
+body.kh-neon-on .kh-home-hero-main-shell {
+  background: radial-gradient(circle at top, rgba(0,255,214,.08), transparent 36%), #08101f !important;
+}
+body.kh-neon-on .kh-home-hero-main-shell::after {
+  content:'';
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background: radial-gradient(circle at 20% 18%, rgba(0,255,214,.14), transparent 0 24%), radial-gradient(circle at 80% 10%, rgba(123,92,255,.14), transparent 0 26%);
+  mix-blend-mode: screen;
+}
+body.kh-neon-on .kh-home-hero-slide h2,
+body.kh-neon-on .hero-title,
+body.kh-neon-on .ds-ko,
+body.kh-neon-on .home-sec-title {
+  color:#f7ffff !important;
+  text-shadow: 0 0 18px rgba(0,255,214,.16), 0 0 32px rgba(123,92,255,.16);
+}
+body.kh-neon-on .ds-en,
+body.kh-neon-on .ds-rom,
+body.kh-neon-on .ds-summary-copy p,
+body.kh-neon-on .ds-note-body,
+body.kh-neon-on .home-sec-sub,
+body.kh-neon-on .home-sec-more,
+body.kh-neon-on .story-title,
+body.kh-neon-on .story-preview {
+  color:#dffbfd !important;
+}
+body.kh-neon-on .home-news-grid .nc-title,
+body.kh-neon-on .home-news-grid .nc-date,
+body.kh-neon-on .home-conv-grid-wrap .hconv-name,
+body.kh-neon-on .home-conv-grid-wrap .hconv-ctx,
+body.kh-neon-on .home-conv-grid-wrap .hconv-arrow {
+  color:#f6ffff !important;
+}
+body.kh-neon-on .home-conv-grid-wrap .hconv-head,
+body.kh-neon-on .home-conv-grid-wrap .hconv-chat,
+body.kh-neon-on .home-conv-grid-wrap .hconv-foot {
+  background: linear-gradient(180deg, rgba(8,17,31,.96), rgba(12,22,40,.96)) !important;
+  border-color: rgba(0,255,214,.14) !important;
+}
+body.kh-neon-on .home-conv-grid-wrap .hcb.l {
+  background: rgba(255,255,255,.08) !important;
+  border-color: rgba(255,255,255,.12) !important;
+  color:#effdff !important;
+}
+body.kh-neon-on .home-conv-grid-wrap .hcb.r {
+  background: linear-gradient(135deg,#0ea5e9,#2563eb) !important;
+  color:#fff !important;
+}
+body.kh-neon-on .ds-summary-title,
+body.kh-neon-on .ds-note-title,
+body.kh-neon-on .ds-label,
+body.kh-neon-on .nc-cat,
+body.kh-neon-on .hconv-arrow {
+  color:#8ffcff !important;
+}
+body.kh-neon-on .ds-summary-badge,
+body.kh-neon-on .story-mood-tag,
+body.kh-neon-on .hconv-badge,
+body.kh-neon-on .nc-study,
+body.kh-neon-on .nc-lvl {
+  background: rgba(0,255,214,.1) !important;
+  border-color: rgba(0,255,214,.28) !important;
+  color:#aefcff !important;
+  box-shadow: inset 0 0 12px rgba(0,255,214,.12);
+}
+body.kh-neon-on .home-sec { border-bottom-color: rgba(0,255,214,.24); }
+body.kh-neon-on .home-sec-title,
+body.kh-neon-on .home-sec-sub,
+body.kh-neon-on .home-sec-more { color:#eefcff !important; }
+body.kh-neon-on .home-neon-toggle {
+  background: linear-gradient(135deg,rgba(0,255,214,.16),rgba(123,92,255,.18));
+  border-color:rgba(0,255,214,.45);
+  color:#f5ffff;
+  box-shadow:0 0 18px rgba(0,255,214,.18), 0 0 34px rgba(123,92,255,.16);
+  animation: homeNeonPulse 4.2s ease-in-out infinite;
+}
+body.kh-neon-on .home-neon-toggle,
+body.kh-neon-on .ds-btn,
+body.kh-neon-on .sp,
+body.kh-neon-on .story-card,
+body.kh-neon-on .home-news-grid .nc,
+body.kh-neon-on .home-conv-grid-wrap .hconv-card,
+body.kh-neon-on .kh-home-hero-main-shell,
+body.kh-neon-on .kh-hero-nav {
+  transition: transform .22s ease, box-shadow .24s ease, border-color .24s ease, background .24s ease, filter .24s ease;
+}
+body.kh-neon-on .ds-btn,
+body.kh-neon-on .sp,
+body.kh-neon-on .kh-hero-nav {
+  background: linear-gradient(135deg, rgba(11,22,38,.84), rgba(18,40,78,.88)) !important;
+  border: 1px solid rgba(0,255,214,.22) !important;
+  box-shadow: 0 0 0 1px rgba(0,255,214,.14), 0 0 18px rgba(0,255,214,.1);
+}
+body.kh-neon-on .sp,
+body.kh-neon-on .home-news-grid .nc,
+body.kh-neon-on .home-conv-grid-wrap .hconv-card,
+body.kh-neon-on .story-card {
+  will-change: auto;
+}
+body.kh-neon-on .ds-btn:hover,
+body.kh-neon-on .sp:hover,
+body.kh-neon-on .story-card:hover,
+body.kh-neon-on .home-news-grid .nc:hover,
+body.kh-neon-on .home-conv-grid-wrap .hconv-card:hover,
+body.kh-neon-on .kh-home-hero-main-shell:hover,
+body.kh-neon-on .kh-hero-nav:hover {
+  transform: translateY(-3px) scale(1.01);
+  filter: saturate(1.05);
+  box-shadow: 0 0 0 1px rgba(0,255,214,.32), 0 0 28px rgba(0,255,214,.22), 0 0 44px rgba(123,92,255,.16) !important;
+}
+body.kh-neon-on .ds-btn:active,
+body.kh-neon-on .sp:active,
+body.kh-neon-on .story-card:active,
+body.kh-neon-on .home-news-grid .nc:active,
+body.kh-neon-on .home-conv-grid-wrap .hconv-card:active,
+body.kh-neon-on .kh-hero-nav:active,
+body.kh-neon-on .home-neon-toggle:active {
+  transform: scale(.985);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.18), 0 0 18px rgba(0,255,214,.26), 0 0 44px rgba(0,255,214,.26) !important;
+}
+body.kh-neon-on .kh-home-hero-dots button,
+body.kh-neon-on .hero-dot {
+  box-shadow: 0 0 12px rgba(0,255,214,.3), 0 0 28px rgba(123,92,255,.16);
+}
+@media (prefers-reduced-motion: reduce) {
+  body.kh-neon-on,
+  body.kh-neon-on .daily-strip,
+  body.kh-neon-on .home-neon-toggle {
+    animation: none !important;
+  }
+  body.kh-neon-on #dyn-hero::before,
+  body.kh-neon-on .daily-strip::before,
+  body.kh-neon-on .home-neon-toggle::before {
+    animation: none !important;
+  }
 }
 </style>
 </head>
@@ -227,6 +622,9 @@
 <div id="kh-header"></div>
 
 <div class="container">
+  <div class="home-top-tools">
+    <button id="home-neon-toggle" class="home-neon-toggle" type="button" aria-pressed="false"><i data-lucide="zap" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Neon OFF</span></button>
+  </div>
 
   <!-- HERO -->
   <div id="dyn-hero"></div>
@@ -234,37 +632,40 @@
   <!-- DAILY STRIP -->
   <div class="daily-strip">
     <a id="pb-phrase-block" href="korehan-phrase.html" class="ds-phrase">
-      <div class="ds-label">Today's Phrase</div>
-      <div class="ds-ko"  id="pb-ko">경제 회복</div>
-      <div class="ds-rom" id="pb-rom">gyeong-je hoe-bok</div>
-      <div class="ds-en"  id="pb-en">economic recovery</div>
+      <div class="ds-label">Today’s Phrase</div>
+      <div class="ds-ko" id="pb-ko">고생 끝에 낙이 온다</div>
+      <div class="ds-rom" id="pb-rom">go-saeng kkeut-e nak-i on-da</div>
+      <div class="ds-en" id="pb-en">After hardship comes happiness.</div>
     </a>
 
-    <div class="ds-divider"></div>
-
     <div class="ds-progress" id="home-learning-preview">
-      <div class="ds-prog-label">Today's Progress</div>
-      <div class="hlp-loading" style="color:rgba(255,255,255,.45);font-size:12px;">Loading...</div>
+      <div class="ds-summary-head">
+        <div class="ds-summary-copy">
+          <div class="ds-summary-title">Today’s Learning Flow</div>
+          <h2>읽고, 약한 부분 찾고, 바로 복습.</h2>
+          <p>메인에서는 오늘의 표현과 다음 액션이 먼저 보이게 하고, Learning Hub와 Study Room으로 바로 이어지도록 동선을 정리했습니다.</p>
+        </div>
+        <div class="ds-summary-badge">Focus mode</div>
+      </div>
+      <div class="hlp-loading" style="color:rgba(255,255,255,.45);font-size:12px;">Preparing your learning snapshot…</div>
     </div>
 
-    <div class="ds-divider"></div>
-
     <div class="ds-actions">
-      <a href="korehan-study-room.html" class="ds-btn ds-btn-main">📘&nbsp; Open Study Room</a>
+      <a href="korehan-learning-overview.html#daily-review" class="ds-btn ds-btn-main"><i data-lucide="notebook-pen" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Start today's review</span></a>
       <div class="ds-quick-grid">
-        <a href="korehan-learning-overview.html" class="ds-btn ds-btn-sub">📊&nbsp; Learning Hub</a>
-        <a href="korehan-learn.html" class="ds-btn ds-btn-sub">🧠&nbsp; Vocab Drill</a>
+        <a href="korehan-learning-overview.html" class="ds-btn ds-btn-sub"><i data-lucide="chart-column" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Learning Hub</span></a>
+        <a href="korehan-learn.html" class="ds-btn ds-btn-sub"><i data-lucide="brain" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Vocab Drill</span></a>
       </div>
       <div class="ds-note">
         <div class="ds-note-title">Quick win</div>
-        <div class="ds-note-body">Read one article, save a few words, and keep everything in one study flow.</div>
+        <div class="ds-note-body">뉴스 1개 읽기 → 단어 3개 저장 → 약한 문법 복습까지 바로 이어가면 초보자도 흐름이 끊기지 않습니다.</div>
       </div>
     </div>
   </div>
 
   <!-- LATEST NEWS -->
   <div class="home-sec">
-    <div class="home-sec-title">Latest News</div>
+    <div class="home-sec-title"><i data-lucide="newspaper" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Latest News</span></div>
     <div class="home-sec-sub">Updated daily · hover words for definitions</div>
     <a href="korehan-all.html" class="home-sec-more">All news →</a>
   </div>
@@ -284,7 +685,7 @@
 
   <!-- CONVERSATIONS -->
   <div class="home-sec" style="border-bottom-color:#2563eb;">
-    <div class="home-sec-title">💬 Conversations</div>
+    <div class="home-sec-title"><i data-lucide="messages-square" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Conversations</span></div>
     <div class="home-sec-sub">Real Korean text conversations</div>
     <a href="korehan-conversations.html" class="home-sec-more" style="color:#2563eb;">All conversations →</a>
   </div>
@@ -300,7 +701,7 @@
 
   <!-- STORIES -->
   <div class="home-sec" style="border-bottom-color:#7c3aed;">
-    <div class="home-sec-title">📖 Stories</div>
+    <div class="home-sec-title"><i data-lucide="book-open" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Stories</span></div>
     <div class="home-sec-sub">Fun · Touching · Scary · Shocking</div>
     <a href="korehan-stories.html" class="home-sec-more" style="color:#7c3aed;">All stories →</a>
   </div>
@@ -361,6 +762,7 @@ var HOME_CONVS = [
 ];
 
 var _activeHomeCat = 'all';
+var _homeNewsReady = false;
 
 function renderHomeConvs() {
   var grid = document.getElementById('home-conv-grid');
@@ -392,6 +794,15 @@ function renderHomeConvs() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  if (window.syncNeonToggleButtons) window.syncNeonToggleButtons();
+  var neonBtn = document.getElementById('home-neon-toggle');
+  if (neonBtn && !neonBtn.dataset.khBound) {
+    neonBtn.dataset.khBound = '1';
+    neonBtn.addEventListener('click', function(e) {
+      if (window.toggleKhNeon) window.toggleKhNeon(e);
+    });
+  }
+
   var convPills = document.getElementById('conv-pills');
   if (convPills) {
     convPills.querySelectorAll('.sp').forEach(function(btn) {
@@ -435,7 +846,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   renderHomeConvs();
 
   // Today's Phrase
-  var phrases = getPhrases();
+  var phrases = typeof getPhrasesAsync === 'function' ? await getPhrasesAsync() : getPhrases();
   if (phrases && phrases.length) {
     var phraseIndex = Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length;
     var p = phrases[phraseIndex];
@@ -458,7 +869,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     var arts = getCachedArticles().filter(function(a){ return a.status === 'published'; }).slice(0,4);
     var grid = document.getElementById('dyn-news-grid');
     if (!grid) return;
-    if (!arts.length) { grid.innerHTML = '<p style="color:var(--gray);font-size:13px">Loading articles...</p>'; return; }
+    if (!arts.length) {
+      grid.innerHTML = _homeNewsReady
+        ? '<p style="color:var(--gray);font-size:13px">No published articles are ready yet. Check back after the next sync.</p>'
+        : '<p style="color:var(--gray);font-size:13px">Loading today’s articles…</p>';
+      return;
+    }
     grid.innerHTML = arts.map(function(a) {
       var lvl = a.level || 'Beginner';
       var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : 'lvl-b';
@@ -477,7 +893,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     }).join('');
   }
   renderNewsGrid();
-  document.addEventListener('khArticlesLoaded', renderNewsGrid);
+  document.addEventListener('khArticlesLoaded', function() {
+    _homeNewsReady = true;
+    renderNewsGrid();
+  });
 
   // News pills filter
   var newsPills = document.getElementById('news-pills');
