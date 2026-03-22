@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KoreHan Onboarding Preview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#071426;
+      --bg-2:#0b1d35;
+      --panel:#132338;
+      --panel-2:#1a2d46;
+      --line:rgba(255,255,255,.08);
+      --text:#f8fbff;
+      --muted:rgba(235,243,255,.68);
+      --blue:#60a5fa;
+      --cyan:#67e8f9;
+      --green:#34d399;
+      --gold:#fbbf24;
+      --shadow:0 18px 40px rgba(0,0,0,.28);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:'Inter','Noto Sans KR',sans-serif;
+      background:radial-gradient(circle at top left, rgba(96,165,250,.18), transparent 28%), linear-gradient(180deg, #081426 0%, #0b1730 100%);
+      color:var(--text);
+      min-height:100vh;
+    }
+    .shell{max-width:1180px;margin:0 auto;padding:24px 20px 60px}
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+    .brand{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--line);background:rgba(255,255,255,.05);border-radius:999px;font-weight:800}
+    .brand b{font-size:20px}
+    .mode-switch{display:flex;gap:8px;flex-wrap:wrap}
+    .mode-switch button{border:1px solid var(--line);background:rgba(255,255,255,.05);color:#fff;padding:10px 14px;border-radius:999px;font-weight:700;cursor:pointer}
+    .mode-switch button.active{background:linear-gradient(135deg,#2563eb,#38bdf8);border-color:transparent}
+
+    .hero{display:grid;grid-template-columns:1.08fr .92fr;gap:18px;align-items:start}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow)}
+    .hero-main{padding:28px;overflow:hidden;position:relative}
+    .hero-main:before{content:'';position:absolute;inset:auto -60px -60px auto;width:180px;height:180px;border-radius:999px;background:radial-gradient(circle, rgba(103,232,249,.18), transparent 68%)}
+    .eyebrow{display:inline-flex;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:rgba(96,165,250,.14);color:#cde7ff;margin-bottom:16px}
+    h1{margin:0;font-size:clamp(34px,5vw,58px);line-height:.98;letter-spacing:-.04em;max-width:11ch}
+    .hero-copy{margin-top:14px;max-width:40ch;color:var(--muted);font-size:17px;line-height:1.7}
+    .cta-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+    .cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 18px;border-radius:16px;font-weight:800;text-decoration:none;border:1px solid transparent;cursor:pointer}
+    .cta-primary{background:linear-gradient(135deg,#38bdf8,#2563eb);color:#fff}
+    .cta-secondary{background:rgba(255,255,255,.06);color:#fff;border-color:var(--line)}
+    .hero-notes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:22px}
+    .hero-note{padding:14px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+    .hero-note strong{display:block;font-size:22px;margin-bottom:4px}
+    .hero-note span{font-size:13px;color:var(--muted);line-height:1.55}
+
+    .preview-panel{padding:22px}
+    .steps{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+    .step-dot{width:36px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);color:#9fb0c5;font-weight:800}
+    .step-dot.active{background:#fff;color:#091426}
+    .step-line{height:2px;flex:1;min-width:40px;background:rgba(255,255,255,.1)}
+    .panel-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:16px}
+    .panel-head h2{margin:0;font-size:36px;line-height:1.05;letter-spacing:-.03em}
+    .panel-sub{color:var(--muted);font-size:15px;line-height:1.6;max-width:34ch}
+    .hint{padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:#dce8f8;font-size:14px;line-height:1.6;margin-bottom:16px}
+
+    .goal-grid,.time-grid,.route-grid{display:grid;gap:12px}
+    .goal-grid{grid-template-columns:repeat(2,1fr)}
+    .goal-card,.time-card,.route-card{padding:18px;border-radius:22px;background:rgba(255,255,255,.05);border:1px solid var(--line);cursor:pointer;transition:.18s ease}
+    .goal-card:hover,.time-card:hover,.route-card:hover{transform:translateY(-2px);border-color:rgba(96,165,250,.35)}
+    .goal-card.selected,.time-card.selected,.route-card.selected{background:linear-gradient(180deg, rgba(37,99,235,.3), rgba(103,232,249,.1));border-color:rgba(103,232,249,.6)}
+    .goal-top{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+    .goal-icon{width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:24px}
+    .goal-card h3,.time-card h3,.route-card h3{margin:0 0 6px;font-size:24px}
+    .goal-card p,.time-card p,.route-card p{margin:0;color:var(--muted);line-height:1.55}
+    .goal-tag{display:inline-flex;padding:5px 9px;border-radius:999px;background:rgba(96,165,250,.14);color:#a8d6ff;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;margin-top:10px}
+
+    .time-grid{grid-template-columns:repeat(3,1fr)}
+    .time-card small{display:block;color:#86d7ff;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+    .time-card .time-big{font-size:38px;font-weight:900;line-height:1;margin-bottom:8px}
+
+    .route-grid{grid-template-columns:repeat(3,1fr);margin-top:14px}
+    .route-card{min-height:180px}
+    .route-card small{display:block;color:#9dd2ff;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
+
+    .sticky-bar{position:sticky;bottom:12px;margin-top:18px;padding:14px 16px;border-radius:20px;background:rgba(8,20,38,.88);backdrop-filter:blur(10px);border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:14px}
+    .sticky-copy{font-size:14px;color:var(--muted)}
+    .sticky-actions{display:flex;gap:10px;flex-wrap:wrap}
+
+    .hidden{display:none}
+
+    @media (max-width: 980px){
+      .hero{grid-template-columns:1fr}
+      .hero-notes,.goal-grid,.time-grid,.route-grid{grid-template-columns:1fr}
+      h1{max-width:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="topbar">
+      <div class="brand">✨ <b>KoreHan News</b> · Compact onboarding preview</div>
+      <div class="mode-switch">
+        <button class="active" data-mode="goals">Goals</button>
+        <button data-mode="time">Time</button>
+        <button data-mode="route">After signup</button>
+      </div>
+    </div>
+
+    <section class="hero">
+      <div class="card hero-main">
+        <div class="eyebrow">Preview concept</div>
+        <h1>Less reading. More tapping.</h1>
+        <div class="hero-copy">첫 진입에서 설명문을 줄이고, “왜 왔는지 / 얼마나 할 건지 / 어디부터 시작할지”만 바로 누르게 바꾼 시안입니다. 큰 배너는 전부 클릭 타겟으로 설계했습니다.</div>
+        <div class="cta-row">
+          <a class="cta cta-primary" href="#preview-panel">Start in 5 seconds →</a>
+          <a class="cta cta-secondary" href="#">Skip intro</a>
+        </div>
+        <div class="hero-notes">
+          <div class="hero-note"><strong>1</strong><span>문단 3~4개 대신 핵심 질문 하나만 먼저 노출</span></div>
+          <div class="hero-note"><strong>2</strong><span>카드 전체를 버튼처럼 눌리게 설계</span></div>
+          <div class="hero-note"><strong>3</strong><span>온보딩 끝나면 바로 읽을 첫 코스 제안</span></div>
+        </div>
+      </div>
+
+      <div class="card preview-panel" id="preview-panel">
+        <div class="steps">
+          <div class="step-dot active">1</div><div class="step-line"></div>
+          <div class="step-dot">2</div><div class="step-line"></div>
+          <div class="step-dot">3</div>
+        </div>
+
+        <div id="mode-goals" class="preview-mode">
+          <div class="panel-head">
+            <div>
+              <div class="eyebrow">Step 1</div>
+              <h2>What brought you here?</h2>
+            </div>
+            <div class="panel-sub">설명 대신 선택지만 먼저 보여주고, 카드 전체가 눌리게 합니다.</div>
+          </div>
+          <div class="hint">한 개만 골라도 바로 다음 단계로 넘어가고, 여러 개를 같이 고를 수도 있게 합니다.</div>
+          <div class="goal-grid">
+            <div class="goal-card selected"><div class="goal-top"><div class="goal-icon">✈️</div><div><h3>Travel</h3><p>공항, 식당, 길찾기부터</p></div></div><span class="goal-tag">real-life Korean</span></div>
+            <div class="goal-card"><div class="goal-top"><div class="goal-icon">🎧</div><div><h3>K-pop / Drama</h3><p>가사·인터뷰·클립 이해</p></div></div><span class="goal-tag">culture</span></div>
+            <div class="goal-card"><div class="goal-top"><div class="goal-icon">💼</div><div><h3>Work</h3><p>정중한 표현과 기사 어휘</p></div></div><span class="goal-tag">professional</span></div>
+            <div class="goal-card"><div class="goal-top"><div class="goal-icon">🏠</div><div><h3>Living in Korea</h3><p>생활 표지·폼·서비스</p></div></div><span class="goal-tag">daily life</span></div>
+          </div>
+        </div>
+
+        <div id="mode-time" class="preview-mode hidden">
+          <div class="panel-head">
+            <div>
+              <div class="eyebrow">Step 2</div>
+              <h2>How much time today?</h2>
+            </div>
+            <div class="panel-sub">장문 설명 대신 “몇 분 할 건지”만 빠르게 고르게 합니다.</div>
+          </div>
+          <div class="time-grid">
+            <div class="time-card"><small>Light habit</small><div class="time-big">5m</div><h3>Just start</h3><p>헤드라인 1개 + 단어 3개</p></div>
+            <div class="time-card selected"><small>Best default</small><div class="time-big">15m</div><h3>Read + review</h3><p>기사 1개 → 단어 저장 → 짧은 복습</p></div>
+            <div class="time-card"><small>Focused</small><div class="time-big">30m</div><h3>Full session</h3><p>기사 + Study Room + Conversation 1개</p></div>
+          </div>
+        </div>
+
+        <div id="mode-route" class="preview-mode hidden">
+          <div class="panel-head">
+            <div>
+              <div class="eyebrow">After onboarding</div>
+              <h2>Where do I go first?</h2>
+            </div>
+            <div class="panel-sub">배너가 전부 클릭되고, 각 배너는 바로 시작 경로를 한 줄로 설명합니다.</div>
+          </div>
+          <div class="route-grid">
+            <a class="route-card selected" href="korehan-all.html?level=Beginner"><small>Start here</small><h3>Beginner News</h3><p>가장 쉬운 기사부터 바로 읽기</p></a>
+            <a class="route-card" href="korehan-study-room.html"><small>Review</small><h3>Study Room</h3><p>방금 본 기사 단어/문법 복습</p></a>
+            <a class="route-card" href="beginner-guide.html"><small>Quick map</small><h3>Beginner Guide</h3><p>뉴스 → 복습 → 진도 체크 흐름 보기</p></a>
+          </div>
+        </div>
+
+        <div class="sticky-bar">
+          <div class="sticky-copy">핵심: <strong>텍스트 줄이고, 큰 클릭 타겟 + 다음 액션만 보여주기</strong></div>
+          <div class="sticky-actions">
+            <a class="cta cta-secondary" href="#">Skip</a>
+            <a class="cta cta-primary" href="#">Continue →</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    var buttons = document.querySelectorAll('[data-mode]');
+    var modes = document.querySelectorAll('.preview-mode');
+    buttons.forEach(function(btn){
+      btn.addEventListener('click', function(){
+        buttons.forEach(function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+        modes.forEach(function(mode){ mode.classList.add('hidden'); });
+        document.getElementById('mode-' + btn.getAttribute('data-mode')).classList.remove('hidden');
+      });
+    });
+  </script>
+</body>
+</html>
