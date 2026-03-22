@@ -1,3 +1,4 @@
+// sync marker
 (function(){
   var vocabList = [];
   var vocabWords = [];
