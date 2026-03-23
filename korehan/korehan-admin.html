@@ -319,13 +319,13 @@ const K_PHRASES  = 'korehan_phrases';
 const K_WORDBANK   = 'korehan_wordbank';
 const K_SENTENCES  = 'korehan_sentences';
 const SUPA_URL_ADMIN = 'https://samghztrdvtxmrmawneu.supabase.co';
-const SUPA_KEY_ADMIN = 'sb_publishable_HGL3s1r-P4PDkjQ9mjPxug_yqlgldyU';
+const SUPA_KEY_ADMIN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs';
 const SUPA_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjQzNDc1MiwiZXhwIjoyMDg4MDEwNzUyfQ.npCvblrbeRiqwW76_23kYznrRuFHIKCD24JN3da--3c';
 function supaAdminGet(path){
   return fetch(SUPA_URL_ADMIN + path, {
     headers: {
-      'apikey': SUPA_KEY_ADMIN,
-      'Authorization': 'Bearer ' + SUPA_KEY_ADMIN,
+      'apikey': SUPA_SERVICE_KEY,
+      'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
       'Content-Type': 'application/json'
     }
   }).then(function(r){ return r.json(); });
@@ -2536,7 +2536,7 @@ function goComments() {
 async function loadAllComments() {
   var wrap = document.getElementById('comments-admin-wrap');
   try {
-    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?order=created_at.desc&limit=100', { headers: { 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN } });
+    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?order=created_at.desc&limit=100', { headers: { 'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY } });
     var rows = res.ok ? await res.json() : [];
     if(!rows.length) { wrap.innerHTML='<div class="infobox">아직 댓글이 없어요.</div>'; return; }
 
@@ -2577,7 +2577,7 @@ async function adminReplyComment(id, btn) {
   btn.disabled = true; btn.textContent = '저장 중…';
   await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?id=eq.'+id, {
     method:'PATCH',
-    headers:{ 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN,'Content-Type':'application/json','Prefer':'return=minimal' },
+    headers:{ 'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=minimal' },
     body: JSON.stringify({ reply:reply, replied_at:new Date().toISOString() })
   });
   btn.disabled = false; btn.textContent = '답변 저장';
@@ -2588,7 +2588,7 @@ async function adminDeleteComment(id) {
   if(!confirm('댓글을 삭제할까요?')) return;
   await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?id=eq.'+id, {
     method:'DELETE',
-    headers:{ 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN }
+    headers:{ 'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY }
   });
   loadAllComments();
   toast('🗑 삭제됐어요.');
@@ -2606,7 +2606,7 @@ function goNewsletter() {
 async function loadNewsletter() {
   var wrap = document.getElementById('nl-admin-wrap');
   try {
-    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/newsletter_subs?order=subscribed_at.desc', { headers: { 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN } });
+    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/newsletter_subs?order=subscribed_at.desc', { headers: { 'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY } });
     var rows = res.ok ? await res.json() : [];
     if(!rows.length) { wrap.innerHTML='<div class="infobox">아직 구독자가 없어요.</div>'; return; }
     wrap.innerHTML =
@@ -2662,7 +2662,7 @@ async function loadStats() {
   var wrap = document.getElementById('stats-admin-wrap');
   try {
     var since = new Date(Date.now()-30*86400000).toISOString();
-    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/page_views?viewed_at=gte.'+since+'&order=viewed_at.desc&limit=2000', { headers: { 'apikey':SUPA_KEY_ADMIN,'Authorization':'Bearer '+SUPA_KEY_ADMIN } });
+    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/page_views?viewed_at=gte.'+since+'&order=viewed_at.desc&limit=2000', { headers: { 'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY } });
     var rows = res.ok ? await res.json() : [];
 
     var totalViews = rows.length;
