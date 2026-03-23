@@ -628,6 +628,181 @@ body.kh-neon-on .kh-neon-toggle:hover { transform: translateY(-2px); box-shadow:
 .article-row .meta { color: #8899aa; font-size: 12px; }
 @media (max-width: 640px) { .article-row { grid-template-columns: 1fr; } .article-row img { width: 100%; height: 180px; } }
 
+/* ── ALL-ARTICLES PAGE ──────────────────────────────────── */
+
+/* Search area */
+.all-search-wrap {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 18px rgba(15,23,42,.06);
+  margin-bottom: 0;
+}
+.all-search-row { display: flex; gap: 10px; align-items: center; }
+.all-search-field {
+  flex: 1; display: flex; align-items: center; gap: 10px;
+  background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: 999px; padding: 0 16px; height: 44px;
+  transition: border-color .15s;
+}
+.all-search-field:focus-within { border-color: var(--bright); }
+.all-search-icon { width: 16px; height: 16px; flex-shrink: 0; color: var(--gray); }
+.all-search-input {
+  flex: 1; border: none; background: none; outline: none;
+  font-size: 14px; font-family: inherit; color: var(--dark);
+}
+.all-search-input::placeholder { color: #bbc4d0; }
+.all-search-clear {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; border: none;
+  background: #e2e8f0; cursor: pointer; padding: 0; flex-shrink: 0;
+}
+.all-search-clear svg { width: 12px; height: 12px; color: #64748b; }
+.all-search-btn {
+  height: 44px; padding: 0 22px; border-radius: 999px; border: none;
+  background: var(--bright); color: #fff; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit; flex-shrink: 0;
+  transition: background .15s;
+}
+.all-search-btn:hover { background: var(--blue); }
+.all-search-result-label { font-size: 13px; color: var(--gray); margin-top: 10px; }
+
+/* Level filter pills */
+.all-level-filter {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin: 14px 0 20px;
+}
+.alf-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 999px; border: 1.5px solid var(--border);
+  background: #fff; color: #64748b; font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: all .15s;
+}
+.alf-btn:hover { border-color: var(--bright); color: var(--bright); }
+.alf-btn.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+.alf-btn.on .alf-dot { background: #fff; }
+.alf-dot { width: 7px; height: 7px; border-radius: 50%; background: #adb5c6; flex-shrink: 0; }
+.alf-btn.starter .alf-dot  { background: #7b5cff; }
+.alf-btn.beginner .alf-dot { background: #22c55e; }
+.alf-btn.intermediate .alf-dot { background: #f59e0b; }
+.alf-btn.advanced .alf-dot { background: #ef4444; }
+.alf-btn.starter:hover  { border-color: #7b5cff; color: #7b5cff; }
+.alf-btn.beginner:hover { border-color: #22c55e; color: #22c55e; }
+.alf-btn.intermediate:hover { border-color: #f59e0b; color: #f59e0b; }
+.alf-btn.advanced:hover { border-color: #ef4444; color: #ef4444; }
+
+/* Article card grid */
+.all-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 4px;
+}
+.ac-card {
+  display: flex; flex-direction: column;
+  background: #fff; border: 1px solid var(--border); border-radius: 14px;
+  overflow: hidden; text-decoration: none; color: inherit;
+  box-shadow: 0 2px 12px rgba(15,23,42,.05);
+  transition: transform .18s, box-shadow .18s;
+}
+.ac-card:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(15,23,42,.12); }
+.ac-img-wrap {
+  position: relative; width: 100%; aspect-ratio: 16/9; overflow: hidden;
+  background: #e8edf4;
+}
+.ac-img-wrap img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
+.ac-card:hover .ac-img-wrap img { transform: scale(1.04); }
+.ac-img-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(10,20,40,.22) 0%, transparent 60%);
+  pointer-events: none;
+}
+.ac-body { padding: 14px 15px 15px; display: flex; flex-direction: column; flex: 1; }
+.ac-badges { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.ac-section-badge {
+  font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 999px;
+  background: rgba(34,85,164,.1); color: var(--bright);
+}
+.ac-lvl-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
+  background: rgba(0,0,0,.05); color: #555;
+}
+.ac-lvl-badge.starter      { background: rgba(123,92,255,.1); color: #6b21a8; }
+.ac-lvl-badge.beginner     { background: rgba(34,197,94,.1);  color: #166534; }
+.ac-lvl-badge.intermediate { background: rgba(245,158,11,.12); color: #92400e; }
+.ac-lvl-badge.advanced     { background: rgba(239,68,68,.1);  color: #991b1b; }
+.ac-lvl-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.ac-title {
+  margin: 0 0 7px; font-family: 'Noto Serif KR', 'Playfair Display', serif;
+  font-weight: 700; font-size: 15px; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ac-preview {
+  margin: 0 0 10px; font-size: 13px; color: var(--gray); line-height: 1.55;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  flex: 1;
+}
+.ac-meta { font-size: 11px; color: #94a3b8; margin-top: auto; }
+.all-empty {
+  padding: 50px 20px; text-align: center; color: #94a3b8;
+  display: flex; flex-direction: column; align-items: center; font-size: 14px;
+}
+@media (max-width: 860px) { .all-card-grid { grid-template-columns: 1fr; } }
+
+/* ── SIDEBAR: Word Bank rows ─────────────────────────────── */
+.kh-wb-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 10px; margin: 0 -10px; border-radius: 10px;
+  cursor: pointer; gap: 8px;
+  transition: background .14s;
+}
+.kh-wb-row:hover { background: rgba(34,85,164,.06); }
+.kh-wb-row + .kh-wb-row { border-top: 1px solid var(--border); }
+.kh-wb-left { display: flex; flex-direction: column; gap: 1px; }
+.kh-wb-ko { font-size: 16px; font-weight: 700; color: var(--accent); line-height: 1.2; }
+.kh-wb-rom { font-size: 11px; color: #889; font-style: italic; }
+.kh-wb-right { display: flex; align-items: center; gap: 8px; }
+.kh-wb-en { font-size: 12px; color: var(--gray); }
+.kh-wb-save-icon { display: flex; flex-shrink: 0; color: #cbd5e1; transition: color .15s; }
+.kh-wb-save-icon svg { width: 14px; height: 14px; }
+.kh-wb-row:hover .kh-wb-save-icon { color: var(--bright); }
+.kh-wb-row.saving .kh-wb-save-icon { color: var(--bright); }
+.kh-wb-row.saved { background: rgba(34,197,94,.07) !important; }
+.kh-wb-row.saved .kh-wb-ko { color: #16a34a; }
+.kh-wb-row.saved .kh-wb-save-icon { color: #22c55e; }
+.kh-wb-row.save-fail { background: rgba(239,68,68,.07) !important; }
+.kh-wb-row.save-fail .kh-wb-save-icon { color: #ef4444; }
+
+/* ── SIDEBAR: Korea Weather ─────────────────────────────── */
+.kh-kst-time {
+  margin-left: auto; font-size: 11px; font-weight: 600; color: var(--gray);
+  text-transform: none; letter-spacing: 0;
+}
+.kh-weather-loading {
+  display: flex; justify-content: center; padding: 18px 0;
+}
+.kh-weather-spinner {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2.5px solid var(--border); border-top-color: var(--bright);
+  animation: kwSpin .7s linear infinite;
+}
+@keyframes kwSpin { to { transform: rotate(360deg); } }
+.kh-weather-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.kh-weather-row.last { border-bottom: none; }
+.kh-weather-city { display: flex; flex-direction: column; gap: 1px; }
+.kh-weather-city-en { font-size: 13px; font-weight: 700; color: var(--dark); }
+.kh-weather-city-ko { font-size: 10px; color: var(--gray); }
+.kh-weather-right { display: flex; align-items: center; gap: 6px; }
+.kh-weather-icon { font-size: 18px; line-height: 1; }
+.kh-weather-temp { font-size: 14px; font-weight: 800; color: var(--dark); }
+.kh-weather-cond { font-size: 11px; color: var(--gray); }
+
 /* ── ARTICLE DETAIL ──────────────────────────────────────── */
 .kh-back { display: inline-flex; margin: 0 0 12px; font-weight: 700; font-size: 13px; color: var(--bright); }
 .kh-article-hero { background: var(--white); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); }

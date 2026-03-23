@@ -1846,21 +1846,27 @@ function renderAllPage() {
   var params = new URLSearchParams(window.location.search);
   var searchQ = params.get('search') || '';
 
-  // 검색 UI + 레벨 필터 버튼
   var searchWrap = document.getElementById('dyn-search-bar');
   if (searchWrap) {
-    searchWrap.innerHTML = '<div class="search-bar-wrap">'
-      + '<input type="text" id="search-bar-input" class="search-bar-input" placeholder="🔍 Search articles..." value="' + escapeHtml(searchQ) + '" onkeydown="if(event.key===\'Enter\')doSearch(this.value)">'
-      + '<button class="search-bar-btn" onclick="doSearch(document.getElementById(\'search-bar-input\').value)">Search</button>'
-      + (searchQ ? '<button class="search-bar-clear" onclick="window.location.href=\'korehan-all.html\'">✕ Clear</button>' : '')
+    searchWrap.innerHTML = '<div class="all-search-wrap">'
+      + '<div class="all-search-row">'
+      + '<div class="all-search-field">'
+      + '<svg class="all-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>'
+      + '<input type="text" id="search-bar-input" class="all-search-input" placeholder="Search articles, topics, keywords\u2026" value="' + escapeHtml(searchQ) + '" onkeydown="if(event.key===\'Enter\')doSearch(this.value)">'
+      + (searchQ ? '<button class="all-search-clear" onclick="window.location.href=\'korehan-all.html\'" title="Clear search">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'
+        + '</button>' : '')
       + '</div>'
-      + (searchQ ? '<div style="font-size:13px;color:var(--gray);margin:8px 0 16px"><strong>"' + escapeHtml(searchQ) + '"</strong>  search results</div>' : '')
-      + '<div style="display:flex;gap:6px;margin:12px 0 16px;flex-wrap:wrap" id="all-level-filter">'
-      + '<button class="level-filter-btn on" onclick="filterAllLevel(\'All\',this)">All</button>'
-      + '<button class="level-filter-btn" onclick="filterAllLevel(\'Starter\',this)">⚪ Starter</button>'
-      + '<button class="level-filter-btn" onclick="filterAllLevel(\'Beginner\',this)">🟢 Beginner</button>'
-      + '<button class="level-filter-btn" onclick="filterAllLevel(\'Intermediate\',this)">🟡 Intermediate</button>'
-      + '<button class="level-filter-btn" onclick="filterAllLevel(\'Advanced\',this)">🔴 Advanced</button>'
+      + '<button class="all-search-btn" onclick="doSearch(document.getElementById(\'search-bar-input\').value)">Search</button>'
+      + '</div>'
+      + (searchQ ? '<div class="all-search-result-label">Results for <strong>\u201c' + escapeHtml(searchQ) + '\u201d</strong></div>' : '')
+      + '</div>'
+      + '<div class="all-level-filter" id="all-level-filter">'
+      + '<button class="alf-btn on" data-level="All" onclick="filterAllLevel(\'All\',this)">All Levels</button>'
+      + '<button class="alf-btn starter" data-level="Starter" onclick="filterAllLevel(\'Starter\',this)"><span class="alf-dot"></span>Starter</button>'
+      + '<button class="alf-btn beginner" data-level="Beginner" onclick="filterAllLevel(\'Beginner\',this)"><span class="alf-dot"></span>Beginner</button>'
+      + '<button class="alf-btn intermediate" data-level="Intermediate" onclick="filterAllLevel(\'Intermediate\',this)"><span class="alf-dot"></span>Intermediate</button>'
+      + '<button class="alf-btn advanced" data-level="Advanced" onclick="filterAllLevel(\'Advanced\',this)"><span class="alf-dot"></span>Advanced</button>'
       + '</div>';
   }
 
@@ -1878,26 +1884,41 @@ function renderAllPage() {
 
 function renderAllList(listEl, articles) {
   if (!articles.length) {
-    listEl.innerHTML = '<div style="padding:40px;color:#999;text-align:center">No articles found.</div>';
+    listEl.innerHTML = '<div class="all-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;margin-bottom:10px;opacity:.4"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><div>No articles found.</div></div>';
     return;
   }
-  var levelColors = {'Starter':'#f3e8ff;color:#6b21a8','Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'};
+  var lvlMeta = {
+    'Starter':      { cls: 'starter',      dot: '#7b5cff' },
+    'Beginner':     { cls: 'beginner',     dot: '#22c55e' },
+    'Intermediate': { cls: 'intermediate', dot: '#f59e0b' },
+    'Advanced':     { cls: 'advanced',     dot: '#ef4444' }
+  };
+  listEl.className = 'all-card-grid';
   listEl.innerHTML = articles.map(function(a){
-    var levelBadge = a.level ? '<span style="font-size:10px;font-weight:800;padding:1px 8px;border-radius:999px;background:' + (levelColors[a.level]||'#f0f0f0;color:#666') + '">' + a.level + '</span>' : '';
-    return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
-      + '<div class="article-row">'
-      + '<img src="' + (a.image || 'https://picsum.photos/seed/' + a.id + '/300/200') + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/300/200\'">'
-      + '<div>'
-      + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><div class="tag">' + a.section + '</div>' + levelBadge + '</div>'
-      + '<h3 class="vocab-zone">' + a.title + '</h3>'
-      + '<p class="vocab-zone">' + (a.body || '') + '</p>'
-      + '<div class="meta">' + relTime(a.date) + '</div>'
-      + '</div></div></a>';
+    var lm = lvlMeta[a.level] || { cls: '', dot: '#aaa' };
+    var levelBadge = a.level
+      ? '<span class="ac-lvl-badge ' + lm.cls + '"><span class="ac-lvl-dot" style="background:' + lm.dot + '"></span>' + a.level + '</span>'
+      : '';
+    var section = a.section ? '<span class="ac-section-badge">' + escapeHtml(a.section) + '</span>' : '';
+    var preview = (a.body || '').replace(/<[^>]+>/g, '').trim();
+    if (preview.length > 90) preview = preview.slice(0, 88) + '\u2026';
+    var imgSrc = a.image || ('https://picsum.photos/seed/' + encodeURIComponent(a.id) + '/480/320');
+    return '<a href="' + articleUrl(a.id) + '" class="ac-card" data-level="' + escapeHtml(a.level || '') + '">'
+      + '<div class="ac-img-wrap"><img src="' + imgSrc + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/480/320\'">'
+      + '<div class="ac-img-overlay"></div>'
+      + '</div>'
+      + '<div class="ac-body">'
+      + '<div class="ac-badges">' + section + levelBadge + '</div>'
+      + '<h3 class="ac-title">' + escapeHtml(a.title || a.title_ko || '') + '</h3>'
+      + (preview ? '<p class="ac-preview">' + escapeHtml(preview) + '</p>' : '')
+      + '<div class="ac-meta">' + relTime(a.date || a.published_at) + '</div>'
+      + '</div>'
+      + '</a>';
   }).join('');
 }
 
 function filterAllLevel(level, btn) {
-  document.querySelectorAll('#all-level-filter .level-filter-btn').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelectorAll('#all-level-filter .alf-btn').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
   var base = window._allArticlesCache || published();
   var filtered = level === 'All' ? base : base.filter(function(a){ return a.level === level; });
@@ -3601,7 +3622,7 @@ function renderSharedSidebar() {
 
   // Word Bank - VOCAB에서 랜덤 6개
   var vocabKeys = Object.keys(VOCAB);
-  var seed = Math.floor(Date.now() / 60000); // 1분마다 바뀜 (새로고침마다 랜덤)
+  var seed = Math.floor(Date.now() / 60000);
   var shuffled = vocabKeys.slice().sort(function(a,b){
     return Math.sin(seed * a.charCodeAt(0)) - Math.sin(seed * b.charCodeAt(0));
   });
@@ -3615,22 +3636,29 @@ function renderSharedSidebar() {
     + '<div id="kh-most-read-list">' + trendingHTML + '</div>'
     + '</div>'
 
-    + '<div class="sidebar-box">'
-    + '<div class="box-title">' + khIcon('cloud-sun', 'Korea Weather', 'kh-ui-icon-sm') + '</div>'
-    + '<div style="font-size:13px;color:var(--gray);line-height:1.9">'
-    + '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>Seoul 서울</span><span style="display:inline-flex;align-items:center;gap:6px">' + khIcon('cloud-sun', '', 'kh-ui-icon-xs') + '<span>-3° / 6°C</span></span></div>'
-    + '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>Busan 부산</span><span style="display:inline-flex;align-items:center;gap:6px">' + khIcon('cloud-sun', '', 'kh-ui-icon-xs') + '<span>4° / 12°C</span></span></div>'
-    + '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>Incheon 인천</span><span style="display:inline-flex;align-items:center;gap:6px">' + khIcon('wind', '', 'kh-ui-icon-xs') + '<span>-4° / 5°C</span></span></div>'
-    + '<div style="display:flex;justify-content:space-between;padding:4px 0"><span>Jeju 제주</span><span style="display:inline-flex;align-items:center;gap:6px">' + khIcon('cloud-rain', '', 'kh-ui-icon-xs') + '<span>8° / 13°C</span></span></div>'
-    + '</div></div>'
+    // ── Live Korea Weather ────────────────────────────────────
+    + '<div class="sidebar-box kh-weather-box" id="kh-weather-box">'
+    + '<div class="box-title">' + khIcon('cloud-sun', 'Korea Weather', 'kh-ui-icon-sm') + '<span id="kh-kst-time" class="kh-kst-time"></span></div>'
+    + '<div id="kh-weather-content" class="kh-weather-loading">'
+    + '<div class="kh-weather-spinner"></div>'
+    + '</div>'
+    + '</div>'
 
+    // ── Word Bank ────────────────────────────────────────────
     + '<div class="sidebar-box">'
-    + '<div class="box-title">' + khIcon('book-marked', 'Word Bank', 'kh-ui-icon-sm') + '</div>'
+    + '<div class="box-title">' + khIcon('book-marked', 'Word Bank', 'kh-ui-icon-sm') + '<span style="margin-left:auto;font-size:10px;font-weight:500;color:var(--gray);text-transform:none;letter-spacing:0">Click to save</span></div>'
     + wbWords.map(function(w){
-        return '<div style="padding:7px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:baseline">'
-          + '<span><span class="kh-word" data-word="' + w.ko + '" style="font-size:17px;font-weight:700;color:var(--accent)">' + w.ko + '</span>'
-          + ' <span style="color:#889;font-style:italic;font-size:12px">' + w.rom + '</span></span>'
-          + '<span style="font-size:13px;color:var(--gray)">' + w.en + '</span>'
+        return '<div class="kh-wb-row" id="kh-wb-' + encodeURIComponent(w.ko) + '" onclick="khSaveWbWord(this,\'' + w.ko.replace(/'/g,"\\'") + '\',\'' + (w.rom||'').replace(/'/g,"\\'") + '\',\'' + (w.en||'').replace(/'/g,"\\'") + '\')">'
+          + '<div class="kh-wb-left">'
+          + '<span class="kh-wb-ko">' + w.ko + '</span>'
+          + '<span class="kh-wb-rom">' + (w.rom || '') + '</span>'
+          + '</div>'
+          + '<div class="kh-wb-right">'
+          + '<span class="kh-wb-en">' + (w.en || '') + '</span>'
+          + '<span class="kh-wb-save-icon">'
+          + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>'
+          + '</span>'
+          + '</div>'
           + '</div>';
       }).join('')
     + '</div>'
@@ -3642,6 +3670,158 @@ function renderSharedSidebar() {
     + '<div style="font-size:12px;color:rgba(255,255,255,0.6)">Flashcards · Quiz · Sentences</div>'
     + '</a></div>'
     + '</div>';
+}
+
+// ── Word Bank: click to save ─────────────────────────────────
+async function khSaveWbWord(rowEl, ko, rom, en) {
+  if (!rowEl || rowEl.classList.contains('saved')) return;
+  // Optimistic UI
+  rowEl.classList.add('saving');
+  var icon = rowEl.querySelector('.kh-wb-save-icon');
+  if (icon) icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+  try {
+    var sb = getSupa();
+    var user = supaUser;
+    if (!sb || !user) {
+      // Not logged in — show brief prompt
+      rowEl.classList.remove('saving');
+      rowEl.classList.add('save-fail');
+      if (icon) icon.title = 'Sign in to save words';
+      setTimeout(function(){ rowEl.classList.remove('save-fail'); }, 1800);
+      return;
+    }
+    if (typeof saveWord === 'function') {
+      await saveWord(sb, { wordKey: ko, wordKo: ko, wordRom: rom, wordEn: en, sourceKind: 'manual' });
+    } else {
+      await sb.rpc('save_or_update_word', {
+        p_word_key: ko, p_word_ko: ko, p_word_rom: rom || null, p_word_en: en || null,
+        p_source_kind: 'manual', p_source_content_type: null, p_source_content_id: null,
+        p_interest_tag: null, p_review_delta: 0, p_correct_delta: 0, p_wrong_delta: 0
+      });
+    }
+    rowEl.classList.remove('saving');
+    rowEl.classList.add('saved');
+  } catch(e) {
+    rowEl.classList.remove('saving');
+    rowEl.classList.add('save-fail');
+    if (icon) {
+      icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>';
+    }
+    setTimeout(function(){ rowEl.classList.remove('save-fail'); }, 1800);
+  }
+}
+
+// ── Korea Live Weather ───────────────────────────────────────
+var _khWeatherCache = null;
+var _khWeatherFetchTime = 0;
+
+var KH_WEATHER_CITIES = [
+  { id: 'Seoul',   label: 'Seoul',   ko: '서울' },
+  { id: 'Busan',   label: 'Busan',   ko: '부산' },
+  { id: 'Incheon', label: 'Incheon', ko: '인천' },
+  { id: 'Jeju',    label: 'Jeju',    ko: '제주' }
+];
+
+var KH_WMO_ICONS = {
+  0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',
+  51:'🌦️',53:'🌦️',55:'🌧️',56:'🌧️',57:'🌧️',
+  61:'🌧️',63:'🌧️',65:'🌧️',66:'🌨️',67:'🌨️',
+  71:'🌨️',73:'❄️',75:'❄️',77:'🌨️',
+  80:'🌦️',81:'🌧️',82:'⛈️',85:'🌨️',86:'❄️',
+  95:'⛈️',96:'⛈️',99:'⛈️'
+};
+
+function khKstTime() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+}
+
+function khStartKstClock() {
+  var el = document.getElementById('kh-kst-time');
+  if (!el) return;
+  function tick() {
+    var t = khKstTime();
+    var h = t.getHours(), m = t.getMinutes();
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    el.textContent = h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm + ' KST';
+  }
+  tick();
+  setInterval(tick, 30000);
+}
+
+async function khFetchWeather() {
+  var now = Date.now();
+  if (_khWeatherCache && now - _khWeatherFetchTime < 600000) return _khWeatherCache;
+
+  // Open-Meteo: free, no API key, CORS-friendly
+  var coords = {
+    Seoul:   { lat: 37.5665, lon: 126.9780 },
+    Busan:   { lat: 35.1796, lon: 129.0756 },
+    Incheon: { lat: 37.4563, lon: 126.7052 },
+    Jeju:    { lat: 33.4996, lon: 126.5312 }
+  };
+  var results = {};
+  try {
+    var entries = Object.keys(coords);
+    var fetches = entries.map(function(city) {
+      var c = coords[city];
+      return fetch('https://api.open-meteo.com/v1/forecast?latitude=' + c.lat + '&longitude=' + c.lon
+        + '&current=temperature_2m,weathercode,windspeed_10m&temperature_unit=celsius&windspeed_unit=kmh&forecast_days=1')
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          results[city] = {
+            temp: Math.round(d.current.temperature_2m),
+            code: d.current.weathercode,
+            wind: Math.round(d.current.windspeed_10m)
+          };
+        })
+        .catch(function(){ results[city] = null; });
+    });
+    await Promise.all(fetches);
+    _khWeatherCache = results;
+    _khWeatherFetchTime = now;
+    return results;
+  } catch(e) {
+    return null;
+  }
+}
+
+function khWeatherConditionLabel(code) {
+  if (code === 0) return 'Clear';
+  if (code <= 2) return 'Partly cloudy';
+  if (code === 3) return 'Overcast';
+  if (code <= 48) return 'Foggy';
+  if (code <= 57) return 'Drizzle';
+  if (code <= 67) return 'Rain';
+  if (code <= 77) return 'Snow';
+  if (code <= 82) return 'Showers';
+  return 'Thunderstorm';
+}
+
+async function khHydrateWeather() {
+  khStartKstClock();
+  var box = document.getElementById('kh-weather-content');
+  if (!box) return;
+  try {
+    var data = await khFetchWeather();
+    if (!data) throw new Error('no data');
+    box.className = '';
+    box.innerHTML = KH_WEATHER_CITIES.map(function(city, i) {
+      var w = data[city.id];
+      var icon = w ? (KH_WMO_ICONS[w.code] || '🌡️') : '–';
+      var temp = w ? w.temp + '°C' : '–';
+      var cond = w ? khWeatherConditionLabel(w.code) : '';
+      var isLast = i === KH_WEATHER_CITIES.length - 1;
+      return '<div class="kh-weather-row' + (isLast ? ' last' : '') + '">'
+        + '<span class="kh-weather-city"><span class="kh-weather-city-en">' + city.label + '</span><span class="kh-weather-city-ko">' + city.ko + '</span></span>'
+        + '<span class="kh-weather-right"><span class="kh-weather-icon">' + icon + '</span><span class="kh-weather-temp">' + temp + '</span><span class="kh-weather-cond">' + cond + '</span></span>'
+        + '</div>';
+    }).join('');
+  } catch(e) {
+    box.className = '';
+    box.innerHTML = '<div style="font-size:12px;color:var(--gray);padding:8px 0">Weather data unavailable</div>';
+  }
 }
 
 var _mostReadSidebarCache = null;
@@ -3860,6 +4040,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   renderKhLucideIcons();
   syncNeonToggleButtons();
   hydrateMostReadSidebar();
+  khHydrateWeather();
   applySiteConfigToPage();
   // 모바일 사이드바 CSS/overlay/nav 주입 (헤더 렌더 직후 실행)
   khInjectSidebar();
