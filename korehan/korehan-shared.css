@@ -703,14 +703,53 @@ body.kh-neon-on .kh-neon-toggle:hover { transform: translateY(-2px); box-shadow:
 @media (max-width: 760px)  { .all-card-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
 @media (max-width: 480px)  { .all-card-grid { grid-template-columns: 1fr; gap: 10px; } }
 
-/* Square-ish overlay cards in all-card-grid */
+/* Square overlay cards — desktop & landscape */
 .all-card-grid .nc.nc-overlay { min-height: 0; aspect-ratio: 1 / 1; }
 @media (max-width: 760px)  { .all-card-grid .nc.nc-overlay { aspect-ratio: 4 / 3; } }
-@media (max-width: 480px)  { .all-card-grid .nc.nc-overlay { aspect-ratio: 16 / 9; } }
 .all-card-grid .nc.nc-overlay .nc-title { font-size: 15px; line-height: 1.35; margin-bottom: 6px; }
-@media (max-width: 480px)  {
-  .all-card-grid .nc.nc-overlay .nc-title { font-size: 13px; }
-  .all-card-grid .nc.nc-overlay .nc-overlay-body { padding: 12px; }
+
+/* Portrait mobile — horizontal list card */
+@media (max-width: 480px) {
+  .all-card-grid { gap: 8px; }
+
+  .all-card-grid .nc.nc-overlay {
+    aspect-ratio: unset;
+    height: 104px;
+    border-radius: 14px;
+  }
+
+  /* gradient: left shows image, right fades to dark for text */
+  .all-card-grid .nc.nc-overlay .nc-overlay-grad {
+    background:
+      linear-gradient(90deg, transparent 28%, rgba(5,15,35,.82) 52%, rgba(5,15,35,.97) 100%),
+      linear-gradient(180deg, transparent 30%, rgba(5,15,35,.45) 100%);
+  }
+
+  /* text panel on the right half */
+  .all-card-grid .nc.nc-overlay .nc-overlay-body {
+    left: 32%;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 10px 14px 10px 12px;
+  }
+
+  .all-card-grid .nc.nc-overlay .nc-meta { margin-bottom: 5px; }
+  .all-card-grid .nc.nc-overlay .nc-cat  { font-size: 9px; }
+
+  .all-card-grid .nc.nc-overlay .nc-title {
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 5px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .all-card-grid .nc.nc-overlay .nc-date { font-size: 11px; }
 }
 .all-empty {
   padding: 50px 20px; text-align: center; color: #94a3b8;
