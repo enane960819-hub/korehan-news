@@ -25,6 +25,45 @@ function getSupa() {
 
 // 현재 로그인 유저
 var supaUser = null;
+
+// ── Global difficulty filter ───────────────────────────────────
+var _activeDiff = 'all';
+function khSetDiff(val) {
+  _activeDiff = val || 'all';
+  // Update dot color
+  var dot = document.getElementById('kh-diff-dot');
+  if (dot) {
+    dot.className = 'kh-diff-dot'
+      + (_activeDiff === 'Starter' ? ' dot-starter'
+      : _activeDiff === 'Beginner' ? ' dot-beginner'
+      : _activeDiff === 'Intermediate' ? ' dot-intermediate'
+      : _activeDiff === 'Advanced' ? ' dot-advanced' : '');
+  }
+  // Sync select value (in case called programmatically)
+  var sel = document.getElementById('kh-diff-select');
+  if (sel && sel.value !== _activeDiff) sel.value = _activeDiff;
+  applyGlobalDiffFilter();
+}
+function applyGlobalDiffFilter() {
+  // News cards
+  document.querySelectorAll('#dyn-news-grid .nc').forEach(function(card) {
+    var sectionBtn = document.querySelector('#news-pills .sp.on');
+    var sectionFilter = sectionBtn ? sectionBtn.dataset.filter : 'all';
+    var sectionMatch = sectionFilter === 'all' || card.dataset.section === sectionFilter;
+    var diffMatch = _activeDiff === 'all' || card.dataset.level === _activeDiff;
+    card.style.display = (sectionMatch && diffMatch) ? '' : 'none';
+  });
+  // Conversation cards
+  document.querySelectorAll('.hconv-card').forEach(function(card) {
+    var diffMatch = _activeDiff === 'all' || card.dataset.lvlLabel === _activeDiff;
+    card.style.display = diffMatch ? '' : 'none';
+  });
+  // Story cards
+  document.querySelectorAll('.story-card').forEach(function(card) {
+    var diffMatch = _activeDiff === 'all' || card.dataset.level === _activeDiff;
+    card.style.display = diffMatch ? '' : 'none';
+  });
+}
 var KH_LUCIDE_SRC = 'https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js';
 var _khLucideReady = null;
 
@@ -3402,6 +3441,7 @@ function renderHeader() {
     document.head.appendChild(fl);
   }
   var page = window.location.pathname.split('/').pop() || 'index.html';
+  var isHome = (page === 'index.html' || page === '');
   var currentSection = (new URLSearchParams(window.location.search)).get('s') || '';
 
   function isOn(base, sec) {
@@ -3422,6 +3462,7 @@ function renderHeader() {
     + '<span class="kh-hdate" id="date-str"></span>'
     + '<div class="kh-hsearch">' + khIcon('search', '', 'kh-ui-icon-muted kh-ui-icon-sm') + '<input type="text" placeholder="Search articles\u2026" onkeydown="if(event.key===\'Enter\')doSearch(this.value)" style="border:none;background:none;outline:none;font-size:13px;color:inherit;font-family:inherit;width:100%;"></div>'
     + '<button id="topbar-neon-toggle" class="kh-neon-toggle" type="button" aria-pressed="false" onclick="toggleKhNeon(event)">' + khIcon('zap', 'Neon OFF', 'kh-ui-icon-sm') + '</button>'
+    + (isHome ? '<div class="kh-diff-ctrl" id="kh-diff-ctrl"><span class="kh-diff-dot" id="kh-diff-dot"></span><select class="kh-diff-sel" id="kh-diff-select" onchange="khSetDiff(this.value)"><option value="all">All Levels</option><option value="Starter">Starter</option><option value="Beginner">Beginner</option><option value="Intermediate">Intermediate</option><option value="Advanced">Advanced</option></select><span class="kh-diff-arr">&#9662;</span></div>' : '')
     + '<div id="topbar-auth-menu" class="kh-auth-menu" style="display:none">'
     + '<button id="topbar-user-avatar" class="kh-avatar-btn" type="button" aria-label="Open profile menu" onclick="toggleTopbarUserMenu(event)" style="display:none"></button>'
     + '<div id="topbar-user-dropdown" class="kh-user-dropdown"></div>'

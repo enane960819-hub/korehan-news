@@ -9,35 +9,6 @@
 <style>
 /* ── HOME REDESIGN ─────────────────────────────────────── */
 
-/* ── Difficulty filter dropdown ─── */
-.kh-diff-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: #fff;
-  border: 1px solid rgba(34,85,164,.18);
-  border-radius: 999px;
-  padding: 0 14px 0 12px;
-  height: 40px;
-  box-shadow: 0 10px 24px rgba(15,23,42,.08);
-  cursor: pointer;
-  transition: box-shadow .18s, border-color .18s;
-}
-.kh-diff-wrap:hover { box-shadow: 0 16px 32px rgba(15,23,42,.12); border-color: rgba(37,99,235,.35); }
-.kh-diff-label { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--dark); white-space: nowrap; }
-.kh-diff-select {
-  border: none; background: none; outline: none;
-  font-size: 12px; font-weight: 800; color: var(--dark);
-  font-family: inherit; cursor: pointer; padding-right: 2px;
-}
-body.kh-neon-on .kh-diff-wrap {
-  background: linear-gradient(135deg,rgba(0,255,214,.16),rgba(123,92,255,.18));
-  border-color: rgba(0,255,214,.45); color: #f5ffff;
-  box-shadow: 0 0 18px rgba(0,255,214,.18);
-}
-body.kh-neon-on .kh-diff-label,
-body.kh-neon-on .kh-diff-select { color: #f5ffff; }
-
 /* ── Review button locked state ── */
 .ds-btn-main.locked {
   opacity: .48; pointer-events: none; cursor: not-allowed;
@@ -662,18 +633,6 @@ body.kh-neon-on .hero-dot {
 <div id="kh-welcome-banner" style="display:none"></div>
 
 <div class="container">
-  <div class="home-top-tools">
-    <label class="kh-diff-wrap" aria-label="Filter by difficulty">
-      <span class="kh-diff-label">Level</span>
-      <select class="kh-diff-select" id="kh-diff-select" onchange="khSetDiff(this.value)">
-        <option value="all">All</option>
-        <option value="Beginner">Beginner</option>
-        <option value="Intermediate">Intermediate</option>
-        <option value="Advanced">Advanced</option>
-      </select>
-    </label>
-  </div>
-
   <!-- HERO -->
   <div id="dyn-hero"></div>
 
@@ -809,7 +768,6 @@ var HOME_CONVS = [
 
 var _activeHomeCat = 'all';
 var _homeNewsReady = false;
-var _activeDiff = 'all'; // global difficulty filter
 
 var QUICK_WIN_TIPS = [
   'Read one article → save 3 words → check your weakest grammar point. Even 5 minutes a day builds real fluency.',
@@ -822,30 +780,6 @@ var QUICK_WIN_TIPS = [
   'Struggling with a grammar point? Paste it into Study Room and ask for a focused drill. It generates fresh examples instantly.'
 ];
 
-function khSetDiff(val) {
-  _activeDiff = val;
-  applyGlobalDiffFilter();
-}
-
-function applyGlobalDiffFilter() {
-  // Filter news cards
-  document.querySelectorAll('#dyn-news-grid .nc').forEach(function(card) {
-    var lvl = card.dataset.level || 'Beginner';
-    card.style.display = (_activeDiff === 'all' || lvl === _activeDiff) ? '' : 'none';
-  });
-  // Filter conversation cards
-  document.querySelectorAll('#home-conv-grid .hconv-card').forEach(function(card) {
-    var lvl = card.dataset.lvlLabel || '';
-    card.style.display = (_activeDiff === 'all' || lvl === _activeDiff) ? '' : 'none';
-  });
-  // Filter story cards
-  document.querySelectorAll('.home-story-grid .story-card').forEach(function(card) {
-    var lvlEl = card.querySelector('.story-lvl');
-    if (!lvlEl) { card.style.display = ''; return; }
-    var txt = lvlEl.textContent.trim();
-    card.style.display = (_activeDiff === 'all' || txt === _activeDiff) ? '' : 'none';
-  });
-}
 
 function renderHomeConvs() {
   var grid = document.getElementById('home-conv-grid');
