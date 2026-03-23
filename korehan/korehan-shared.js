@@ -1884,37 +1884,12 @@ function renderAllPage() {
 
 function renderAllList(listEl, articles) {
   if (!articles.length) {
+    listEl.className = '';
     listEl.innerHTML = '<div class="all-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;margin-bottom:10px;opacity:.4"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><div>No articles found.</div></div>';
     return;
   }
-  var lvlMeta = {
-    'Starter':      { cls: 'starter',      dot: '#7b5cff' },
-    'Beginner':     { cls: 'beginner',     dot: '#22c55e' },
-    'Intermediate': { cls: 'intermediate', dot: '#f59e0b' },
-    'Advanced':     { cls: 'advanced',     dot: '#ef4444' }
-  };
   listEl.className = 'all-card-grid';
-  listEl.innerHTML = articles.map(function(a){
-    var lm = lvlMeta[a.level] || { cls: '', dot: '#aaa' };
-    var levelBadge = a.level
-      ? '<span class="ac-lvl-badge ' + lm.cls + '"><span class="ac-lvl-dot" style="background:' + lm.dot + '"></span>' + a.level + '</span>'
-      : '';
-    var section = a.section ? '<span class="ac-section-badge">' + escapeHtml(a.section) + '</span>' : '';
-    var preview = (a.body || '').replace(/<[^>]+>/g, '').trim();
-    if (preview.length > 90) preview = preview.slice(0, 88) + '\u2026';
-    var imgSrc = a.image || ('https://picsum.photos/seed/' + encodeURIComponent(a.id) + '/480/320');
-    return '<a href="' + articleUrl(a.id) + '" class="ac-card" data-level="' + escapeHtml(a.level || '') + '">'
-      + '<div class="ac-img-wrap"><img src="' + imgSrc + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/480/320\'">'
-      + '<div class="ac-img-overlay"></div>'
-      + '</div>'
-      + '<div class="ac-body">'
-      + '<div class="ac-badges">' + section + levelBadge + '</div>'
-      + '<h3 class="ac-title">' + escapeHtml(a.title || a.title_ko || '') + '</h3>'
-      + (preview ? '<p class="ac-preview">' + escapeHtml(preview) + '</p>' : '')
-      + '<div class="ac-meta">' + relTime(a.date || a.published_at) + '</div>'
-      + '</div>'
-      + '</a>';
-  }).join('');
+  listEl.innerHTML = articles.map(function(a){ return cardHTML(a); }).join('');
 }
 
 function filterAllLevel(level, btn) {
