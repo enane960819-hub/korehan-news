@@ -183,6 +183,8 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" onclick="goStats()"><span class="ico">📊</span>User Analytics</button>
     <div class="sb-lbl">Content</div>
     <div class="sb-lbl">Settings</div>
+    <button class="sb-btn" id="sb-site-settings" onclick="goSiteSettings()"><span class="ico">⚙️</span>사이트 기본 설정</button>
+    <button class="sb-btn" id="sb-onb-settings" onclick="goOnboardingSettings()"><span class="ico">🧭</span>온보딩 편집</button>
     <button class="sb-btn" onclick="goOpinions()">    <span class="ico">✍️</span>오피니언 칼럼니스트</button>
 
     <div class="section-sep"></div>
@@ -329,6 +331,7 @@ function supaAdminGet(path){
   }).then(function(r){ return r.json(); });
 }
 const K_SITECONF = 'korehan_siteconf';
+const K_ONBOARDING_CONF = 'korehan_onboarding_conf';
 const K_OPINIONS = 'korehan_opinions';
 
 // ══ HELPERS ════════════════════════════════════════════════
@@ -388,6 +391,37 @@ const DEF_SITECONF = {
   footerDesc:'KoreHan News는 한국어를 배우는 외국인을 위한 뉴스 사이트입니다.\n유치원~중학교 수준의 쉬운 한국어로 쓴 뉴스를 제공합니다.\n단어에 마우스를 올리면 영어 뜻과 발음을 확인할 수 있어요.',
   learnBannerTitle:'유치원~중학교 수준의 쉬운 한국어 뉴스',
   learnBannerDesc:'KoreHan News는 한국어를 배우는 외국인을 위한 사이트예요. 뉴스 기사를 읽으면서 자연스럽게 한국어를 익힐 수 있어요.',
+};
+const DEF_ONBOARDING_COPY = {
+  heroTitle:'Build a Korean routine that actually fits your day.',
+  heroDesc:'We will personalize your first learning path, help you choose a realistic schedule, and point you to the fastest wins across News, Study Room, Conversations, Stories, and Learning Hub.',
+  setupKicker:'What changes after setup',
+  setupTitle:'You land with a plan, not a blank screen.',
+  setupDesc:'Pick more than one goal, choose your study time, set your level directly or take a fresh placement test, then jump into the main page with a highlighted Beginner Guide.',
+  routineKicker:'Suggested routine',
+  routineTitle:'Read → Review → Practice',
+  routineDesc:'Start with one article, save a few words, then reinforce with Study Room or a short conversation lesson. Small loops work better than long random sessions.',
+  placementKicker:'Placement note',
+  placementTitle:'Self-select or test',
+  placementDesc:'If you already know your level, skip the placement test. If not, the quiz now randomizes both the questions and the answer order so it feels less repetitive.',
+  step1Title:'Why are you learning Korean?',
+  step1Desc:'Choose every goal that fits. We will use this to shape your suggestions, examples, and first-study recommendations.',
+  step1Helper:'Multiple selections are allowed. For example, you can learn for both travel and K-dramas at the same time.',
+  step2Title:'How much time can you study each day?',
+  step2Desc:'Pick the pace you can repeat. The descriptions below match the actual flow of your site: news reading, Beginner Guide, Study Room, Conversations, Stories, and Learning Hub.',
+  step2Footer:'The best plan is the one you will actually repeat. Even 5 minutes counts if you keep the loop going.',
+  step3Title:'Choose how you want to set your level.',
+  step3Desc:'If you already know your level, pick it directly and skip the test. If you are unsure, take a randomized placement test with mixed answer positions.',
+  selfHelper:'Skip the quiz if you already know your level. You can still change it later on your profile or by retaking the test.',
+  testHelper:'Fresh every time: the quiz now randomizes both questions and answer order, so the correct answer is no longer always the first option.',
+  finishTitle:'You are ready to start.',
+  finishDesc:'We will save your setup, send you to the main page, and highlight the Beginner Guide so first-time users can get oriented right away.',
+  finishSummaryTitle:'A quick plan for your first session',
+  finishFooter:'Your onboarding state is also saved locally so you do not get bounced back into onboarding again if the database response is slow.',
+  guideCardTitle:'Beginner Guide',
+  guideCardDesc:'See how News, Study Room, Learning Hub, Stories, and Conversations fit together.',
+  practiceCardTitle:'Study Room',
+  practiceCardDesc:'Use your reading to review words, grammar, and active practice right away.'
 };
 const DEF_PHRASES = [
   {ko:'경제 회복',rom:'gyeong-je hoe-bok',en:'economic recovery'},
@@ -1195,6 +1229,151 @@ async function resetSiteSettings(){
     toast('초기화 저장 실패: ' + (e.message || e), true);
   }
   goSiteSettings();
+}
+
+async function loadOnboardingSettingsConfig(){
+  var local = ls(K_ONBOARDING_CONF, {});
+  var merged = {...DEF_ONBOARDING_COPY, ...local};
+  try {
+    var sb = getSb();
+    if (sb) {
+      var res = await sb.from('app_settings').select('value').eq('key','onboarding_content').maybeSingle();
+      var remote = res && res.data ? res.data.value : null;
+      if (remote && typeof remote === 'string') {
+        try { remote = JSON.parse(remote); } catch(_) { remote = null; }
+      }
+      if (remote && typeof remote === 'object') {
+        merged = {...DEF_ONBOARDING_COPY, ...remote};
+        lsSet(K_ONBOARDING_CONF, merged);
+      }
+    }
+  } catch(e) {}
+  return merged;
+}
+
+function onboardingField(id, label, value, rows) {
+  if (rows && rows > 1) {
+    return '<div class="fg"><label>' + label + '</label><textarea class="inp inp-ta" id="' + id + '" rows="' + rows + '">' + esc(value) + '</textarea></div>';
+  }
+  return '<div class="fg"><label>' + label + '</label><input class="inp inp-sm" id="' + id + '" value="' + esc(value) + '"></div>';
+}
+
+async function goOnboardingSettings(){
+  setSbOn('sb-onb-settings');
+  document.getElementById('main').innerHTML='<div class="pg-hd"><div><h1>🧭 온보딩 편집</h1><p>온보딩 페이지 문구와 마지막 CTA 카드를 직접 수정하세요.</p></div></div><div class="sf-card"><p style="color:#64748b">불러오는 중…</p></div>';
+  var c = await loadOnboardingSettingsConfig();
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>🧭 온보딩 편집</h1><p>온보딩 페이지의 핵심 문구를 어드민에서 바로 수정합니다. 저장하면 onboarding 페이지에 즉시 반영됩니다.</p></div></div>'
+    + '<div class="infobox"><h3>편집 범위</h3><div>히어로, 좌측 안내 카드, 1~4단계 설명, 그리고 마지막 Beginner Guide / Study Room 카드 문구를 여기서 직접 바꿀 수 있습니다. 링크는 현재 실제 페이지 경로로 고정되어 있습니다.</div></div>'
+    + '<div class="sf-card"><h3>Hero / left column</h3>'
+      + onboardingField('onb-hero-title', 'Hero title', c.heroTitle, 2)
+      + onboardingField('onb-hero-desc', 'Hero description', c.heroDesc, 4)
+      + '<div class="sf-row">'
+        + '<div>' + onboardingField('onb-setup-kicker', 'Setup kicker', c.setupKicker, 1) + '</div>'
+        + '<div>' + onboardingField('onb-setup-title', 'Setup title', c.setupTitle, 2) + '</div>'
+      + '</div>'
+      + onboardingField('onb-setup-desc', 'Setup description', c.setupDesc, 3)
+      + '<div class="sf-row">'
+        + '<div>' + onboardingField('onb-routine-kicker', 'Routine kicker', c.routineKicker, 1) + '</div>'
+        + '<div>' + onboardingField('onb-routine-title', 'Routine title', c.routineTitle, 2) + '</div>'
+      + '</div>'
+      + onboardingField('onb-routine-desc', 'Routine description', c.routineDesc, 3)
+      + '<div class="sf-row">'
+        + '<div>' + onboardingField('onb-placement-kicker', 'Placement kicker', c.placementKicker, 1) + '</div>'
+        + '<div>' + onboardingField('onb-placement-title', 'Placement title', c.placementTitle, 2) + '</div>'
+      + '</div>'
+      + onboardingField('onb-placement-desc', 'Placement description', c.placementDesc, 3)
+    + '</div>'
+    + '<div class="sf-card"><h3>Step copy</h3>'
+      + onboardingField('onb-step1-title', 'Step 1 title', c.step1Title, 2)
+      + onboardingField('onb-step1-desc', 'Step 1 description', c.step1Desc, 3)
+      + onboardingField('onb-step1-helper', 'Step 1 helper', c.step1Helper, 3)
+      + onboardingField('onb-step2-title', 'Step 2 title', c.step2Title, 2)
+      + onboardingField('onb-step2-desc', 'Step 2 description', c.step2Desc, 3)
+      + onboardingField('onb-step2-footer', 'Step 2 footer', c.step2Footer, 3)
+      + onboardingField('onb-step3-title', 'Step 3 title', c.step3Title, 2)
+      + onboardingField('onb-step3-desc', 'Step 3 description', c.step3Desc, 3)
+      + onboardingField('onb-self-helper', 'Self-select helper', c.selfHelper, 3)
+      + onboardingField('onb-test-helper', 'Placement test helper', c.testHelper, 3)
+    + '</div>'
+    + '<div class="sf-card"><h3>Finish / CTA copy</h3>'
+      + onboardingField('onb-finish-title', 'Finish title', c.finishTitle, 2)
+      + onboardingField('onb-finish-desc', 'Finish description', c.finishDesc, 3)
+      + onboardingField('onb-finish-summary-title', 'Finish summary title', c.finishSummaryTitle, 2)
+      + onboardingField('onb-finish-footer', 'Finish footer', c.finishFooter, 3)
+      + '<div class="sf-row">'
+        + '<div>' + onboardingField('onb-guide-card-title', 'Guide card title', c.guideCardTitle, 1) + '</div>'
+        + '<div>' + onboardingField('onb-practice-card-title', 'Practice card title', c.practiceCardTitle, 1) + '</div>'
+      + '</div>'
+      + onboardingField('onb-guide-card-desc', 'Guide card description', c.guideCardDesc, 3)
+      + onboardingField('onb-practice-card-desc', 'Practice card description', c.practiceCardDesc, 3)
+    + '</div>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
+      + '<button class="btn btn-g" onclick="saveOnboardingSettings()">💾 저장</button>'
+      + '<button class="btn btn-gh" onclick="resetOnboardingSettings()">↺ 기본값으로</button>'
+      + '<a class="btn btn-b" href="korehan-onboarding.html" target="_blank">↗ 온보딩 열기</a>'
+      + '<a class="btn btn-gh" href="beginner-guide.html" target="_blank">↗ Beginner Guide 열기</a>'
+    + '</div>';
+}
+
+async function saveOnboardingSettings(){
+  var c = {
+    heroTitle: document.getElementById('onb-hero-title')?.value.trim() || DEF_ONBOARDING_COPY.heroTitle,
+    heroDesc: document.getElementById('onb-hero-desc')?.value.trim() || DEF_ONBOARDING_COPY.heroDesc,
+    setupKicker: document.getElementById('onb-setup-kicker')?.value.trim() || DEF_ONBOARDING_COPY.setupKicker,
+    setupTitle: document.getElementById('onb-setup-title')?.value.trim() || DEF_ONBOARDING_COPY.setupTitle,
+    setupDesc: document.getElementById('onb-setup-desc')?.value.trim() || DEF_ONBOARDING_COPY.setupDesc,
+    routineKicker: document.getElementById('onb-routine-kicker')?.value.trim() || DEF_ONBOARDING_COPY.routineKicker,
+    routineTitle: document.getElementById('onb-routine-title')?.value.trim() || DEF_ONBOARDING_COPY.routineTitle,
+    routineDesc: document.getElementById('onb-routine-desc')?.value.trim() || DEF_ONBOARDING_COPY.routineDesc,
+    placementKicker: document.getElementById('onb-placement-kicker')?.value.trim() || DEF_ONBOARDING_COPY.placementKicker,
+    placementTitle: document.getElementById('onb-placement-title')?.value.trim() || DEF_ONBOARDING_COPY.placementTitle,
+    placementDesc: document.getElementById('onb-placement-desc')?.value.trim() || DEF_ONBOARDING_COPY.placementDesc,
+    step1Title: document.getElementById('onb-step1-title')?.value.trim() || DEF_ONBOARDING_COPY.step1Title,
+    step1Desc: document.getElementById('onb-step1-desc')?.value.trim() || DEF_ONBOARDING_COPY.step1Desc,
+    step1Helper: document.getElementById('onb-step1-helper')?.value.trim() || DEF_ONBOARDING_COPY.step1Helper,
+    step2Title: document.getElementById('onb-step2-title')?.value.trim() || DEF_ONBOARDING_COPY.step2Title,
+    step2Desc: document.getElementById('onb-step2-desc')?.value.trim() || DEF_ONBOARDING_COPY.step2Desc,
+    step2Footer: document.getElementById('onb-step2-footer')?.value.trim() || DEF_ONBOARDING_COPY.step2Footer,
+    step3Title: document.getElementById('onb-step3-title')?.value.trim() || DEF_ONBOARDING_COPY.step3Title,
+    step3Desc: document.getElementById('onb-step3-desc')?.value.trim() || DEF_ONBOARDING_COPY.step3Desc,
+    selfHelper: document.getElementById('onb-self-helper')?.value.trim() || DEF_ONBOARDING_COPY.selfHelper,
+    testHelper: document.getElementById('onb-test-helper')?.value.trim() || DEF_ONBOARDING_COPY.testHelper,
+    finishTitle: document.getElementById('onb-finish-title')?.value.trim() || DEF_ONBOARDING_COPY.finishTitle,
+    finishDesc: document.getElementById('onb-finish-desc')?.value.trim() || DEF_ONBOARDING_COPY.finishDesc,
+    finishSummaryTitle: document.getElementById('onb-finish-summary-title')?.value.trim() || DEF_ONBOARDING_COPY.finishSummaryTitle,
+    finishFooter: document.getElementById('onb-finish-footer')?.value.trim() || DEF_ONBOARDING_COPY.finishFooter,
+    guideCardTitle: document.getElementById('onb-guide-card-title')?.value.trim() || DEF_ONBOARDING_COPY.guideCardTitle,
+    guideCardDesc: document.getElementById('onb-guide-card-desc')?.value.trim() || DEF_ONBOARDING_COPY.guideCardDesc,
+    practiceCardTitle: document.getElementById('onb-practice-card-title')?.value.trim() || DEF_ONBOARDING_COPY.practiceCardTitle,
+    practiceCardDesc: document.getElementById('onb-practice-card-desc')?.value.trim() || DEF_ONBOARDING_COPY.practiceCardDesc
+  };
+  lsSet(K_ONBOARDING_CONF, c);
+  try {
+    var sb = getSb();
+    if (sb) {
+      var res = await sb.from('app_settings').upsert({ key:'onboarding_content', value:c }, { onConflict:'key' });
+      if (res.error) throw res.error;
+    }
+    toast('🧭 온보딩 문구 저장됨! 새로고침하면 바로 반영됩니다.');
+  } catch(e) {
+    toast('온보딩 저장 실패: ' + (e.message || e), true);
+  }
+}
+
+async function resetOnboardingSettings(){
+  lsSet(K_ONBOARDING_CONF, DEF_ONBOARDING_COPY);
+  try {
+    var sb = getSb();
+    if (sb) {
+      var res = await sb.from('app_settings').upsert({ key:'onboarding_content', value:DEF_ONBOARDING_COPY }, { onConflict:'key' });
+      if (res.error) throw res.error;
+    }
+    toast('온보딩 기본값으로 초기화됐어요');
+  } catch(e) {
+    toast('온보딩 초기화 저장 실패: ' + (e.message || e), true);
+  }
+  goOnboardingSettings();
 }
 
 async function loadApiKeyIntoSettings() {
