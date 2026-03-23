@@ -1581,23 +1581,23 @@ function renderHeroSlide(heroEl) {
       + '<div class="kh-home-hero-track" style="display:flex;height:100%;will-change:transform;transition:transform .72s cubic-bezier(.22,1,.36,1)">' + _heroSlides.map(function(item){
           var featImg = item.image || ('https://picsum.photos/seed/' + item.id + '/900/500');
           var featBody = (item.body || '').replace(/<[^>]*>/g, '').slice(0, 150);
-          return '<article class="kh-home-hero-slide" style="min-width:100%;position:relative;min-height:460px;overflow:hidden">'
-            + '<img src="' + featImg + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">'
-            + '<a href="' + articleUrl(item.id) + '" aria-label="Open featured article: ' + escapeHtml(item.title || '') + '" style="position:absolute;inset:0;z-index:1;display:block"></a>'
-            + '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,15,35,.88) 0%,rgba(5,15,35,.55) 38%,rgba(5,15,35,.16) 100%),linear-gradient(to top,rgba(5,15,35,.92) 0%,rgba(5,15,35,.1) 58%,transparent 100%)"></div>'
-            + '<div style="position:absolute;left:0;right:0;bottom:0;padding:34px 30px 30px;max-width:760px;z-index:2">'
+          var url = articleUrl(item.id);
+          return '<article class="kh-home-hero-slide" style="min-width:100%;position:relative;min-height:460px;overflow:hidden;cursor:pointer" onclick="location.href=\'' + url + '\'">'
+            + '<img src="' + featImg + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;pointer-events:none;">'
+            + '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,15,35,.88) 0%,rgba(5,15,35,.55) 38%,rgba(5,15,35,.16) 100%),linear-gradient(to top,rgba(5,15,35,.92) 0%,rgba(5,15,35,.1) 58%,transparent 100%);pointer-events:none;"></div>'
+            + '<div style="position:absolute;left:0;right:0;bottom:0;padding:34px 30px 30px;max-width:760px;z-index:2;pointer-events:none;">'
             + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span class="category-tag" style="display:inline-block">' + item.section + '</span><span style="font-size:12px;color:rgba(255,255,255,.65)">' + relTime(item.date) + '</span></div>'
-            + '<h1 class="vocab-zone" style="font-family:\'Playfair Display\',serif;font-size:clamp(26px,3vw,42px);font-weight:900;line-height:1.18;margin:0 0 12px"><a href="' + articleUrl(item.id) + '" style="color:#fff;text-decoration:none">' + item.title + '</a></h1>'
+            + '<h1 class="vocab-zone" style="font-family:\'Playfair Display\',serif;font-size:clamp(26px,3vw,42px);font-weight:900;line-height:1.18;margin:0 0 12px;color:#fff">' + item.title + '</h1>'
             + '<p style="font-size:14px;color:rgba(255,255,255,.8);line-height:1.7;margin:0;max-width:62ch">' + featBody + '</p>'
             + '</div></article>';
         }).join('') + '</div>'
-      + (_heroSlides.length > 1 ? '<button type="button" class="kh-hero-nav prev" onclick="heroPrev()" aria-label="Previous hero article" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);z-index:4;width:46px;height:46px;border:none;border-radius:999px;background:rgba(7,14,28,.44);backdrop-filter:blur(12px);color:#fff;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px rgba(0,0,0,.24);transition:transform .18s,background .18s">‹</button><button type="button" class="kh-hero-nav next" onclick="heroNext()" aria-label="Next hero article" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);z-index:4;width:46px;height:46px;border:none;border-radius:999px;background:rgba(7,14,28,.44);backdrop-filter:blur(12px);color:#fff;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px rgba(0,0,0,.24);transition:transform .18s,background .18s">›</button>' : '')
+      + (_heroSlides.length > 1 ? '<button type="button" class="kh-hero-nav prev" onclick="event.stopPropagation();heroPrev()" aria-label="Previous hero article" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);z-index:4;width:46px;height:46px;border:none;border-radius:999px;background:rgba(7,14,28,.44);backdrop-filter:blur(12px);color:#fff;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px rgba(0,0,0,.24);transition:transform .18s,background .18s">‹</button><button type="button" class="kh-hero-nav next" onclick="event.stopPropagation();heroNext()" aria-label="Next hero article" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);z-index:4;width:46px;height:46px;border:none;border-radius:999px;background:rgba(7,14,28,.44);backdrop-filter:blur(12px);color:#fff;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px rgba(0,0,0,.24);transition:transform .18s,background .18s">›</button>' : '')
       + '<div class="kh-home-hero-dots" style="position:absolute;left:30px;bottom:24px;z-index:4;display:flex;gap:7px"></div>'
       + '</div>'
       + '<aside style="background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);display:flex;flex-direction:column;border-left:1px solid #e7eef8;">'
       + '<div style="padding:18px 18px 12px;border-bottom:1px solid #edf2f7">'
       + '<div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8">More to explore</div>'
-      + '<div style="font-size:18px;font-weight:900;color:#0f172a;margin-top:4px">Latest picks</div>'
+      + '<div style="font-size:18px;font-weight:900;color:#0f172a;margin-top:4px">News</div>'
       + '</div>'
       + '<div id="kh-home-hero-side"></div>'
       + '<div style="padding:16px"><a href="korehan-all.html" style="display:block;text-align:center;padding:11px 14px;border-radius:999px;background:#0f172a;color:#fff;font-size:13px;font-weight:800;text-decoration:none">Browse all news →</a></div>'
@@ -1632,7 +1632,7 @@ function updateHeroSlideUI(heroEl) {
   var dotsWrap = heroEl.querySelector('.kh-home-hero-dots');
   if (dotsWrap) {
     dotsWrap.innerHTML = _heroSlides.map(function(_, i){
-      return '<button type="button" aria-label="Go to hero slide ' + (i + 1) + '" onclick="heroGoTo(' + i + ')" style="width:' + (i===_heroIdx?'26':'8') + 'px;height:8px;border-radius:999px;border:none;background:' + (i===_heroIdx?'#fff':'rgba(255,255,255,.35)') + ';cursor:pointer;transition:all .28s"></button>';
+      return '<button type="button" aria-label="Go to hero slide ' + (i + 1) + '" onclick="event.stopPropagation();heroGoTo(' + i + ')" style="width:' + (i===_heroIdx?'26':'8') + 'px;height:8px;border-radius:999px;border:none;background:' + (i===_heroIdx?'#fff':'rgba(255,255,255,.35)') + ';cursor:pointer;transition:all .28s"></button>';
     }).join('');
   }
   var sideWrap = document.getElementById('kh-home-hero-side');
@@ -3487,8 +3487,8 @@ function renderHeader() {
     var html = arts.slice(0,6).map(function(a){
       return '<span class="brk-item"><span class="brk-sep">&middot;</span><a href="korehan-article.html?id=' + a.id + '" style="color:#fff;text-decoration:none;">' + (a.title_ko || a.title || '') + '</a></span>';
     }).join('');
-    return '<div class="brk-bar">'
-      + '<div class="brk-label"><span class="brk-badge">&#9889;</span>&nbsp;Breaking</div>'
+    return '<div class="kh-breaking brk-bar">'
+      + '<div class="brk-label"><span class="brk-badge">&#9889;</span>&nbsp;BREAKING</div>'
       + '<div class="brk-track-wrap"><div class="brk-track">' + html + html + '</div></div>'
       + '</div>';
   })();
@@ -3500,21 +3500,52 @@ function renderHeader() {
 function renderFooter() {
   var cfg = getSiteConfig();
   var siteName = cfg.siteName || DEFAULT_SITE_CONFIG.siteName;
-  var footerDesc = cfg.footerDesc || DEFAULT_SITE_CONFIG.footerDesc;
-  var siteTagline = cfg.siteTagline || DEFAULT_SITE_CONFIG.siteTagline;
-  return '<footer class="kh-foot"><div class="kh-foot-inner">'
-    + '<h3>' + escapeHtml(siteName) + '</h3>'
-    + '<p>' + escapeHtml(footerDesc).replace(/\n/g, '<br>') + '</p>'
-    + '<div class="footer-links">'
-    + '<a href="index.html">Home</a>'
-    + getSections().map(function(s){
-        return '<a href="korehan-section.html?s=' + encodeURIComponent(s.key) + '">' + s.label + '</a>';
-      }).join('')
-    + '<a href="korehan-learn.html">' + khIcon('languages', 'Learn Korean', 'kh-ui-icon-sm') + '</a>'
-    + '<a href="korehan-all.html">All News</a>'
+  return '<footer class="kh-foot">'
+    + '<div class="kh-foot-inner">'
+
+    + '<div>'
+    + '<div style="font-family:\'Playfair Display\',serif;font-size:22px;font-weight:900;color:#fff;margin-bottom:10px">'
+    + '<span style="color:rgba(255,255,255,.85)">Kore</span><span style="color:#7dd3fc">Han</span><span style="color:rgba(255,255,255,.7)"> News</span>'
+    + '</div>'
+    + '<p style="font-size:13px;line-height:1.7;color:rgba(255,255,255,.55);margin:0 0 16px;max-width:28ch">Learn Korean naturally through real news, stories, and conversations.</p>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    + '<a href="korehan-all.html" style="font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.6);text-decoration:none">News</a>'
+    + '<a href="korehan-conversations.html" style="font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.6);text-decoration:none">Conversations</a>'
+    + '<a href="korehan-stories.html" style="font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.6);text-decoration:none">Stories</a>'
     + '</div>'
     + '</div>'
-    + '<div class="footer-copy">© 2026 ' + escapeHtml(siteName) + ' · ' + escapeHtml(siteTagline) + '</div>'
+
+    + '<div>'
+    + '<div style="font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:14px">Learn</div>'
+    + '<div style="display:flex;flex-direction:column;gap:9px">'
+    + '<a href="korehan-study-room.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Study Room</a>'
+    + '<a href="korehan-learning-overview.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Learning Hub</a>'
+    + '<a href="korehan-learn.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Vocab Drill</a>'
+    + '<a href="korehan-courses.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Courses</a>'
+    + '<a href="beginner-guide.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Beginner Guide</a>'
+    + '</div>'
+    + '</div>'
+
+    + '<div>'
+    + '<div style="font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:14px">Company</div>'
+    + '<div style="display:flex;flex-direction:column;gap:9px">'
+    + '<a href="about.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">About</a>'
+    + '<a href="mailto:hello@korehannews.com" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Contact</a>'
+    + '</div>'
+    + '</div>'
+
+    + '<div>'
+    + '<div style="font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:14px">Legal</div>'
+    + '<div style="display:flex;flex-direction:column;gap:9px">'
+    + '<a href="privacy.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Privacy Policy</a>'
+    + '<a href="terms.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Terms of Service</a>'
+    + '</div>'
+    + '</div>'
+
+    + '</div>'
+    + '<div style="border-top:1px solid rgba(255,255,255,.07);padding:16px 22px;text-align:center;font-size:12px;color:rgba(255,255,255,.28);">'
+    + '© 2026 KoreHan News · All rights reserved'
+    + '</div>'
     + '</footer>';
 }
 
@@ -5050,15 +5081,15 @@ async function renderHomeLearningPreview() {
     showWelcomeTip = window.location.search.indexOf('welcome=1') > -1 || localStorage.getItem(welcomeTipKey) === '1';
   } catch(e) {}
 
-  // 비로그인 — 컴팩트
+  // Not signed in
   if (!supaUser) {
     box.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">'
-      + '<div style="font-size:13px;font-weight:800;color:var(--dark)">First time here?</div>'
-      + '<div style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;background:#eef4ff;color:var(--bright)">Start easy</div>'
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">'
+      + '<div style="font-size:15px;font-weight:900;color:#fff;line-height:1.25">New to Korean? <span style="color:#7dd3fc">Start here.</span></div>'
+      + '<div style="font-size:10px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(125,211,252,.14);border:1px solid rgba(125,211,252,.22);color:#bfdbfe;white-space:nowrap">Free to start</div>'
       + '</div>'
-      + '<div style="font-size:13px;color:var(--gray);line-height:1.55;margin-bottom:12px;">Read one article, review a few words, then use the Beginner Guide for your first learning loop.</div>'
-      + '<a href="beginner-guide.html" style="display:inline-block;padding:8px 16px;background:var(--bright);color:#fff;border-radius:6px;font-size:12px;font-weight:800;text-decoration:none;">Open Beginner Guide →</a>';
+      + '<div style="font-size:14px;color:rgba(255,255,255,.72);line-height:1.65;margin-bottom:14px;">Pick an article, hover words to save them, then open Study Room for a focused review. Your progress tracks automatically once you sign up.</div>'
+      + '<a href="beginner-guide.html" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;background:linear-gradient(135deg,#38bdf8,#2563eb);color:#fff;border-radius:10px;font-size:13px;font-weight:900;text-decoration:none;box-shadow:0 10px 22px rgba(37,99,235,.28);">Open Beginner Guide →</a>';
     return;
   }
 
@@ -5120,8 +5151,11 @@ async function renderHomeLearningPreview() {
   var hasWeak = weakCount > 0;
   var weakQ = encodeURIComponent(weakGrammar);
 
+  // Update review button state based on today's articles read
+  if (window._updateReviewBtn) window._updateReviewBtn((dm.articles || 0) > 0);
+
   box.innerHTML =
-    // streak 배지 + stats 한 줄
+    // streak badge + stats row
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">'
     + '<div style="font-size:12px;font-weight:800;color:#fff">Today\'s Progress</div>'
     + '<div style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(255,179,71,.14);border:1px solid rgba(255,179,71,.24);color:#ffd089;">🔥 ' + streak + ' day streak</div>'
@@ -5146,7 +5180,7 @@ async function renderHomeLearningPreview() {
     +   '<div style="font-size:10px;font-weight:800;color:' + (hasWeak?'#ffd089':'#8ff0b3') + ';margin-bottom:2px;">' + (hasWeak?'⚠️ Weak Grammar':'✅ Grammar') + '</div>'
     +   '<div style="font-size:13px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + weakGrammar + '</div>'
     + '</div>'
-    + '<a href="korehan-study-room.html?focus=' + weakQ + '&source=home-weak-grammar" style="flex-shrink:0;font-size:11px;font-weight:800;padding:7px 11px;background:#2563eb;color:#fff;border-radius:999px;text-decoration:none;white-space:nowrap;">연습 →</a>'
+    + '<a href="korehan-study-room.html?focus=' + weakQ + '&source=home-weak-grammar" style="flex-shrink:0;font-size:11px;font-weight:800;padding:7px 11px;background:#2563eb;color:#fff;border-radius:999px;text-decoration:none;white-space:nowrap;">Practice →</a>'
     + '</div>';
 }
 

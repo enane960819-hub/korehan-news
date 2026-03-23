@@ -678,13 +678,19 @@ body.kh-neon-on .kh-neon-toggle:hover { transform: translateY(-2px); box-shadow:
 
 /* ── FOOTER ─────────────────────────────────────────────── */
 .kh-foot { margin-top: 20px; background: var(--dark); color: rgba(255,255,255,0.6); border-top: 1px solid rgba(255,255,255,0.07); }
-.kh-foot-inner { max-width: 1260px; margin: 0 auto; padding: 28px 22px; }
+.kh-foot-inner { max-width: 1280px; margin: 0 auto; padding: 40px 22px 32px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 32px 24px; }
 .kh-foot h3 { margin: 0 0 8px; font-family: 'Noto Serif KR', 'Playfair Display', serif; color: #fff; font-weight: 900; font-size: 20px; }
 .kh-foot p  { margin: 0; font-size: 13px; line-height: 1.65; opacity: 0.85; }
 .footer-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .footer-links a { display:inline-flex; align-items:center; gap:6px; font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14); color: rgba(255,255,255,0.65); }
 .footer-links a:hover { background: rgba(255,255,255,0.07); color: #fff; }
-.footer-copy { text-align: center; font-size: 12px; color: rgba(255,255,255,0.3); padding: 14px 22px; border-top: 1px solid rgba(255,255,255,0.07); }
+.footer-copy { text-align: center; font-size: 12px; color: rgba(255,255,255,0.3); padding: 16px 22px; border-top: 1px solid rgba(255,255,255,0.07); }
+@media (max-width: 860px) {
+  .kh-foot-inner { grid-template-columns: 1fr 1fr; gap: 28px 20px; }
+}
+@media (max-width: 480px) {
+  .kh-foot-inner { grid-template-columns: 1fr; gap: 22px; padding: 28px 18px 24px; }
+}
 
 /* ── LEARN PAGE ─────────────────────────────────────────── */
 .learn-hero { background: linear-gradient(135deg,#0b1626,#1a3a6b); padding: 44px 22px 36px; text-align:center; color:#fff; }
