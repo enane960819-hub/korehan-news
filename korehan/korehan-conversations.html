@@ -114,8 +114,19 @@
 .dp-keywords{display:flex;flex-wrap:wrap;gap:7px;}
 .dp-keyword{display:inline-block;padding:7px 13px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#334155;cursor:pointer;transition:all .12s;}
 .dp-keyword:hover{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;}
+/* Character Avatar */
+.kh-char-av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;flex-shrink:0;overflow:hidden;}
+.kh-char-av img{width:100%;height:100%;object-fit:cover;display:block;}
+/* dp-who right alignment */
+.dp-msg-row.right .dp-who{text-align:right;}
+/* SVG icon in study card title */
+.dp-study-card-title svg{width:15px;height:15px;flex-shrink:0;stroke:currentColor;}
+/* card cast avatars */
+.cc2-cast-avatars{display:flex;gap:4px;flex-shrink:0;}
+.cc2-cast-avatars .kh-char-av{border:2px solid #fff;}
+.cc2-cast-avatars .kh-char-av+.kh-char-av{margin-left:-8px;}
 @media(max-width:900px){.conv-cards-grid{grid-template-columns:repeat(2,1fr)}.detail-panel{grid-template-columns:1fr}.dp-right{border-left:none;border-top:1px solid #e8eef7}}
-@media(max-width:600px){.conv-cards-grid{grid-template-columns:1fr}.conv-hero h1{font-size:28px}.detail-panel{border-radius:20px}}
+@media(max-width:600px){.conv-cards-grid{grid-template-columns:1fr}.conv-hero h1{font-size:28px}.detail-panel{border-radius:20px}.dp-chat-area{max-height:300px}}
 </style>
 </head>
 <body>
@@ -124,7 +135,7 @@
   <div class="conv-hero-inner">
     <div class="conv-hero-eyebrow">KoreHan News</div>
     <h1>Real Korean Conversations</h1>
-    <p>Authentic KakaoTalk-style chats covering everyday life, work, friends, family &amp; dating. Click any conversation to study vocabulary and grammar in context.</p>
+    <p>Read natural Korean dialogues between recurring characters. Each conversation covers real vocabulary, grammar patterns, and speech styles — all grounded in authentic contexts.</p>
   </div>
   <div class="conv-filter-bar" id="cat-pills">
     <button class="cf-pill on" data-cat="all">All</button>
@@ -133,11 +144,6 @@
     <button class="cf-pill" data-cat="friends">Friends</button>
     <button class="cf-pill" data-cat="family">Family</button>
     <button class="cf-pill" data-cat="dating">Dating</button>
-    <div class="cf-sep"></div>
-    <button class="cf-pill on" data-lvl="all">All Levels</button>
-    <button class="cf-pill" data-lvl="b">🟢 Beginner</button>
-    <button class="cf-pill" data-lvl="i">🟡 Intermediate</button>
-    <button class="cf-pill" data-lvl="a">🔴 Advanced</button>
   </div>
 </div>
 <div class="conv-page-container">
@@ -150,6 +156,91 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js"></script>
 <script>
+// ═══════════════════════════════════════════════════════════════
+// KoreHan Character System
+// Shared registry — same characters used in Articles, Conversations, Stories.
+// Add a character entry when you have the image and profile ready.
+// ═══════════════════════════════════════════════════════════════
+var KH_CHARACTERS = {
+  // Example (uncomment and fill when ready):
+  // 'han': { slug:'han', name:'Han', name_ko:'한', role:'Journalist', img:'reporters/han.jpg', color:'#2255a4' },
+  // 'soo': { slug:'soo', name:'Soo', name_ko:'수', role:'Office Worker', img:'reporters/soo.jpg', color:'#0891b2' },
+};
+
+var _CHAR_PALETTE = ['#2255a4','#0891b2','#059669','#b45309','#7c3aed','#c2410c','#1e7e5e','#1d4ed8'];
+function _charInitialColor(name) {
+  var h = 0;
+  for (var i = 0; i < (name||'').length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return _CHAR_PALETTE[Math.abs(h) % _CHAR_PALETTE.length];
+}
+
+// Returns { left, right } character objects for a conversation
+function resolveConversationCast(c) {
+  var d = c || {};
+  // Support explicit slug fields stored on the conversation data
+  var leftSlug  = d.cast_left_slug  || d.left_slug  || null;
+  var rightSlug = d.cast_right_slug || d.right_slug || null;
+  var leftChar  = (leftSlug  && KH_CHARACTERS[leftSlug])  || null;
+  var rightChar = (rightSlug && KH_CHARACTERS[rightSlug]) || null;
+  // Extract first speaker names from messages
+  var msgs = d.msgs || [];
+  var leftMsg  = msgs.find(function(m){ return m.s === 'l'; });
+  var rightMsg = msgs.find(function(m){ return m.s === 'r' || m.s === 'right'; });
+  var leftName  = (leftMsg  && (leftMsg.who  || leftMsg.name)) || 'A';
+  var rightName = (rightMsg && (rightMsg.who || rightMsg.name)) || 'B';
+  var left = leftChar || {
+    slug: leftSlug || 'left',
+    name: leftName, name_ko: leftName,
+    role: 'Speaker A', img: null,
+    color: _charInitialColor(leftName)
+  };
+  var right = rightChar || {
+    slug: rightSlug || 'right',
+    name: rightName, name_ko: rightName,
+    role: 'Speaker B', img: null,
+    color: _charInitialColor(rightName)
+  };
+  return { left: left, right: right };
+}
+
+// Renders a circular character avatar (image or initial fallback)
+function renderCharacterAvatar(char, cls, size) {
+  var sz  = size || 36;
+  var nm  = (char && (char.name || char.name_ko)) || '?';
+  var col = (char && char.color) || _charInitialColor(nm);
+  var ini = nm.charAt(0).toUpperCase();
+  var fs  = Math.round(sz * 0.38) + 'px';
+  var base = 'class="kh-char-av' + (cls ? ' ' + cls : '') + '" '
+    + 'style="width:' + sz + 'px;height:' + sz + 'px;background:' + col + ';font-size:' + fs + '"';
+  if (char && char.img) {
+    return '<div ' + base + '>'
+      + '<img src="' + char.img + '" alt="' + escapeHtml(nm) + '" '
+      + 'onerror="this.style.display=\'none\'">'
+      + '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;font-size:' + fs + '">' + ini + '</span>'
+      + '</div>';
+  }
+  return '<div ' + base + '>' + ini + '</div>';
+}
+
+function characterDisplayName(char) {
+  if (!char) return 'Character';
+  return char.name || char.name_ko || 'Character';
+}
+
+function characterProfileUrl(slug) {
+  return 'korehan-reporters.html' + (slug ? '#' + slug : '');
+}
+
+// ─── SVG Icon helpers ───────────────────────────────────────────
+var _IC = {
+  book:    '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" style="width:15px;height:15px;flex-shrink:0;stroke:#2255a4"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  pen:     '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" style="width:15px;height:15px;flex-shrink:0;stroke:#2255a4"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+  key:     '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" style="width:15px;height:15px;flex-shrink:0;stroke:#2255a4"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>',
+  target:  '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" style="width:15px;height:15px;flex-shrink:0;stroke:#2255a4"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+  shuffle: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" style="width:14px;height:14px;stroke:currentColor"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>',
+  fill:    '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" style="width:14px;height:14px;stroke:currentColor"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="15" y2="18"/></svg>',
+};
+
 var CONVS = [];  // DB에서 로드
 
 const LVL_LABEL = {b:'Beginner',i:'Intermediate',a:'Advanced'};
@@ -162,7 +253,9 @@ function renderCards(catF, lvlF) {
     return (catF === 'all' || c.cat === catF) && (lvlF === 'all' || c.lvl === lvlF);
   });
   if (!list.length) {
-    grid.innerHTML = CONVS.length === 0 ? '<div style="grid-column:1/-1;text-align:center;padding:60px 20px"><div style="font-size:40px;margin-bottom:12px">💬</div><div style="font-size:16px;font-weight:700;color:#334155;margin-bottom:8px">아직 대화가 없어요</div><div style="font-size:13px;color:#94a3b8">Admin → Conversations 관리에서 추가하거나 AI Generator로 생성해보세요</div></div>' : '<p style="color:#64748b;font-size:14px;grid-column:1/-1;padding:20px 0">이 카테고리에 해당하는 대화가 없어요</p>';
+    grid.innerHTML = CONVS.length === 0
+      ? '<div style="grid-column:1/-1;text-align:center;padding:80px 20px"><div style="width:56px;height:56px;border-radius:16px;background:#eff6ff;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">' + _IC.book + '</div><div style="font-size:17px;font-weight:800;color:#0f172a;margin-bottom:8px">No conversations yet</div><div style="font-size:13px;color:#64748b;max-width:340px;margin:0 auto;line-height:1.65">Conversations will appear here once they\'re added. Check back soon.</div></div>'
+      : '<p style="color:#64748b;font-size:14px;grid-column:1/-1;padding:20px 0">No conversations in this category.</p>';
     return;
   }
   grid.innerHTML = list.map(function(c) {
@@ -179,11 +272,14 @@ function renderCards(catF, lvlF) {
       +'</div>'
       +'<div class="cc2-preview">'+prev+'</div>'
       +'<div class="cc2-cast">'
-        + renderCharacterAvatar(cast.right, 'kh-character-avatar', 34)
-        +'<div class="cc2-cast-copy"><strong>'+characterDisplayName(cast.left)+' · '+characterDisplayName(cast.right)+'</strong><span>Shared KoreHan character cast</span></div>'
+        +'<div class="cc2-cast-avatars">'
+          + renderCharacterAvatar(cast.left, '', 30)
+          + renderCharacterAvatar(cast.right, '', 30)
+        +'</div>'
+        +'<div class="cc2-cast-copy"><strong>'+characterDisplayName(cast.left)+' &amp; '+characterDisplayName(cast.right)+'</strong><span>Featured characters</span></div>'
       +'</div>'
       +'<div class="cc2-foot">'
-        +'<span class="cc2-vocab-count">📚 '+c.vocab.length+' key words</span>'
+        +'<span class="cc2-vocab-count" style="display:flex;align-items:center;gap:5px">'+_IC.book+' '+c.vocab.length+' key words</span>'
         +'<button class="cc2-open-btn">Study →</button>'
       +'</div></div>';
   }).join('');
@@ -236,10 +332,10 @@ function openDetail(idx) {
     var hr  = (h % 12) || 12;
     var ap  = h < 12 ? 'AM' : 'PM';
     var time = hr + ':' + min + ' ' + ap;
-    var note = msg.note ? '<div class="dp-inline-note">💡 '+escapeHtml(msg.note || '')+'</div>' : '';
+    var note = msg.note ? '<div class="dp-inline-note" style="display:flex;gap:6px;align-items:flex-start">' + _IC.key + '<span>'+escapeHtml(msg.note || '')+'</span></div>' : '';
     if (msg.s === 'l') {
       return '<div class="dp-msg-row left">'
-        + renderCharacterAvatar(cast.left, 'kh-character-avatar', 36)
+        + renderCharacterAvatar(cast.left, '', 36)
         +'<div class="dp-bubble-group">'
           +'<div class="dp-who">'+escapeHtml(msg.who || cast.left.name_ko || cast.left.name || '')+'</div>'
           +'<div class="dp-bubble">'+escapeHtml(msg.txt || '')+'</div>'
@@ -253,7 +349,9 @@ function openDetail(idx) {
           +'<div class="dp-bubble">'+escapeHtml(msg.txt || '')+'</div>'
           +'<div class="dp-time">'+time+'</div>'
           +note
-        +'</div></div>';
+        +'</div>'
+        + renderCharacterAvatar(cast.right, '', 36)
+        +'</div>';
     }
   }).join('');
 
@@ -272,7 +370,7 @@ function openDetail(idx) {
   }).join('');
 
   var mission = (c.mission||[]).map(function(m) {
-    return '<div class="dp-grammar-item">🎯 '+escapeHtml(m.task||m||'')+'</div>';
+    return '<div class="dp-grammar-item">'+_IC.target+' '+escapeHtml(m.task||m||'')+'</div>';
   }).join('');
 
   var keywords = c.vocab.map(function(v) {
@@ -306,16 +404,21 @@ function openDetail(idx) {
         +'<div class="dp-date-sep"><span>Today</span></div>'
         +msgs
       +'</div>'
-      +'<div class="dp-cta-row">'        +'<button class="dp-cta-btn dp-cta-secondary" onclick="closeDetail()">← All Conversations</button>'        +(window._isAdmin ? '<button class="dp-cta-btn" style="background:#f1f5f9;color:#334155" onclick="editCurrentConv()">✏️ 수정</button>'                          + '<button class="dp-cta-btn" style="background:#fee2e2;color:#b91c1c" onclick="deleteCurrentConv()">🗑 삭제</button>' : '')        +'<button class="dp-cta-btn dp-cta-secondary" onclick="startBlankQuiz()">✏️ 빈칸 채우기</button>'
-      +'<button class="dp-cta-btn dp-cta-primary" onclick="startOrderQuiz()">🔀 순서 맞추기</button>'      +'</div>'
+      +'<div class="dp-cta-row">'
+        +'<button class="dp-cta-btn dp-cta-secondary" onclick="closeDetail()" style="display:flex;align-items:center;justify-content:center;gap:6px">← Back</button>'
+        +(window._isAdmin ? '<button class="dp-cta-btn" style="background:#f1f5f9;color:#334155;display:flex;align-items:center;justify-content:center;gap:5px" onclick="editCurrentConv()">'+_IC.pen+' Edit</button>'
+                          + '<button class="dp-cta-btn" style="background:#fee2e2;color:#b91c1c" onclick="deleteCurrentConv()">Delete</button>' : '')
+        +'<button class="dp-cta-btn dp-cta-secondary" onclick="startBlankQuiz()" style="display:flex;align-items:center;justify-content:center;gap:6px">'+_IC.fill+' Blank Fill</button>'
+        +'<button class="dp-cta-btn dp-cta-primary" onclick="startOrderQuiz()" style="display:flex;align-items:center;justify-content:center;gap:6px">'+_IC.shuffle+' Word Order</button>'
+      +'</div>'
     +'</div>'
     +'<div class="dp-right">'
       +'<div class="dp-right-head"><div class="dp-right-label">Study Notes</div><div class="dp-right-title">Conversation Breakdown</div></div>'
       +'<div class="dp-study-sections" id="dp-study-sections">'
-        +'<div class="dp-study-card"><div class="dp-study-card-title"><span>📚</span> Key Vocabulary</div><div class="dp-vocab-list">'+vocab+'</div></div>'
-        +(grammar ? '<div class="dp-study-card"><div class="dp-study-card-title"><span>✏️</span> Grammar Points</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
-        +'<div class="dp-study-card"><div class="dp-study-card-title"><span>🔑</span> Quick Keywords</div><div class="dp-keywords">'+keywords+'</div></div>'
-        +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title"><span>🎯</span> Practice Mission</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
+        +'<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.book+' Key Vocabulary</div><div class="dp-vocab-list">'+vocab+'</div></div>'
+        +(grammar ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.pen+' Grammar Points</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
+        +'<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.key+' Quick Keywords</div><div class="dp-keywords">'+keywords+'</div></div>'
+        +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.target+' Practice Mission</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
       +'</div>'
     +'</div>';
 
@@ -343,12 +446,12 @@ function renderStudyNotes(c) {
     return '<div class="dp-grammar-item"><strong>'+escapeHtml(g.point||'')+'</strong> — '+escapeHtml(g.ex||g.en||'')+'</div>';
   }).join('');
   var keywords = (c.vocab||[]).map(function(v){ return '<span class="dp-keyword">'+escapeHtml(v.ko || '')+'</span>'; }).join('');
-  var mission = (c.mission||[]).map(function(m){ return '<div class="dp-grammar-item">🎯 '+escapeHtml(m.task||m||'')+'</div>'; }).join('');
+  var mission = (c.mission||[]).map(function(m){ return '<div class="dp-grammar-item">'+_IC.target+' '+escapeHtml(m.task||m||'')+'</div>'; }).join('');
   el.innerHTML =
-    '<div class="dp-study-card"><div class="dp-study-card-title"><span>📚</span> Key Vocabulary</div><div class="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">단어 데이터 없음</span>')+'</div></div>'
-    +(grammar ? '<div class="dp-study-card"><div class="dp-study-card-title"><span>✏️</span> Grammar Points</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
-    +'<div class="dp-study-card"><div class="dp-study-card-title"><span>🔑</span> Quick Keywords</div><div class="dp-keywords">'+(keywords||'—')+'</div></div>'
-    +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title"><span>🎯</span> Practice Mission</div><div class="dp-grammar-list">'+mission+'</div></div>' : '');
+    '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.book+' Key Vocabulary</div><div class="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">No vocabulary data</span>')+'</div></div>'
+    +(grammar ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.pen+' Grammar Points</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
+    +'<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.key+' Quick Keywords</div><div class="dp-keywords">'+(keywords||'—')+'</div></div>'
+    +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.target+' Practice Mission</div><div class="dp-grammar-list">'+mission+'</div></div>' : '');
 }
 
 function closeDetail() {
@@ -388,7 +491,7 @@ var activeCat = 'all', activeLvl = 'all';
 document.addEventListener('DOMContentLoaded', async function() {
   // ── DB에서 conversations 로드 ──────────────────────────
   var grid = document.getElementById('conv-cards-grid');
-  if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;font-size:14px">⏳ 불러오는 중...</div>';
+  if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;font-size:14px">⏳ Loading...</div>';
 
   try {
     var sb = getSupa();
@@ -476,10 +579,10 @@ function startBlankQuiz() {
   var c = window._currentConv;
   if (!c) return;
   var msgs = (c.msgs || []);
-  if (!msgs.length) { alert('대화 내용이 없어요'); return; }
+  if (!msgs.length) { alert('No dialogue content found'); return; }
 
   var vocab = (c.vocab || []).filter(function(v){ return v.ko && v.ko.length > 1; });
-  if (!vocab.length) { alert('단어 데이터가 없어요'); return; }
+  if (!vocab.length) { alert('No vocabulary data available'); return; }
 
   var questions = msgs.slice(0, 6).map(function(msg) {
     var text = msg.txt || msg.text || '';
@@ -491,7 +594,7 @@ function startBlankQuiz() {
   if (!questions.length) {
     // 단어가 대화에 없으면 단순 vocab 빈칸
     questions = vocab.slice(0, 4).map(function(v) {
-      return { original: '이 단어의 뜻은? → ' + v.en, word: v.ko, en: v.en, who: '' };
+      return { original: 'What does this mean? → ' + v.en, word: v.ko, en: v.en, who: '' };
     });
   }
 
@@ -503,7 +606,7 @@ function startOrderQuiz() {
   var c = window._currentConv;
   if (!c) return;
   var msgs = (c.msgs || []).slice(0, 6);
-  if (msgs.length < 3) { alert('대화가 너무 짧아요'); return; }
+  if (msgs.length < 3) { alert('Conversation is too short for this quiz'); return; }
 
   var questions = [];
   // 3개씩 슬라이딩 윈도우로 순서 맞추기
@@ -550,7 +653,7 @@ function renderQuizQuestion() {
   var inner = '<div style="background:#fff;border-radius:24px;max-width:520px;width:100%;box-shadow:0 32px 80px rgba(15,23,42,.25);overflow:hidden;">'
     + '<div style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);padding:18px 22px;display:flex;align-items:center;justify-content:space-between;">'
     + '<div style="color:#fff;">'
-    + '<div style="font-size:11px;font-weight:700;opacity:.8;letter-spacing:.08em;text-transform:uppercase;">' + (_quizMode==='blank'?'빈칸 채우기':'순서 맞추기') + '</div>'
+    + '<div style="font-size:11px;font-weight:700;opacity:.8;letter-spacing:.08em;text-transform:uppercase;">' + (_quizMode==='blank'?'Blank Fill':'Word Order') + '</div>'
     + '<div style="font-size:15px;font-weight:700;margin-top:2px">' + (_quizCurrent+1) + ' / ' + _quizTotal + '</div>'
     + '</div>'
     + '<button onclick="closeQuiz()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:22px;cursor:pointer;line-height:1;">✕</button>'
@@ -578,7 +681,7 @@ function renderBlankQ(q) {
   return '<div style="padding:24px 22px;">'
     + (q.who ? '<div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px;">💬 ' + q.who + '</div>' : '')
     + '<div style="font-size:16px;line-height:1.8;background:#f8fafc;border-radius:12px;padding:14px 16px;margin-bottom:18px;font-family:\'Noto Sans KR\',sans-serif;">' + displayed + '</div>'
-    + '<div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">( ' + q.en + ' )  ← 힌트</div>'
+    + '<div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">( ' + q.en + ' )  ← hint</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
     + choices.map(function(ch){
         return '<button onclick="checkBlank(\''+ch.replace(/'/g,"\\'")+'\')" style="padding:12px;border-radius:12px;border:2px solid #e2e8f0;background:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif;transition:all .12s;" onmouseover="this.style.borderColor=\'#3b82f6\'" onmouseout="this.style.borderColor=\'#e2e8f0\'">'
@@ -590,7 +693,7 @@ function renderBlankQ(q) {
 function renderOrderQ(q) {
   var shuffled = q.msgs.slice().sort(function(){ return Math.random()-.5; });
   var html = '<div style="padding:24px 22px;">'
-    + '<div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:14px;">대화 순서를 맞춰보세요 👆</div>'
+    + '<div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:14px;">Drag to arrange in the correct order 👆</div>'
     + '<div id="order-list" style="display:flex;flex-direction:column;gap:8px;">';
 
   shuffled.forEach(function(msg, i) {
@@ -604,7 +707,7 @@ function renderOrderQ(q) {
   });
 
   html += '</div>'
-    + '<button onclick="checkOrder()" style="width:100%;margin-top:16px;padding:13px;border-radius:14px;background:#2563eb;color:#fff;border:none;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">확인 →</button>'
+    + '<button onclick="checkOrder()" style="width:100%;margin-top:16px;padding:13px;border-radius:14px;background:#2563eb;color:#fff;border:none;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">Check →</button>'
     + '</div>';
 
   return html;
@@ -678,9 +781,9 @@ function showFeedback(correct, answer, next) {
   var fb = document.createElement('div');
   fb.style.cssText = 'padding:20px 22px;background:' + (correct?'#f0fdf4':'#fef2f2') + ';border-top:1px solid ' + (correct?'#bbf7d0':'#fecaca') + ';text-align:center;';
   fb.innerHTML = '<div style="font-size:28px;">' + (correct?'🎉':'😅') + '</div>'
-    + '<div style="font-size:16px;font-weight:700;color:' + (correct?'#15803d':'#b91c1c') + ';margin:6px 0">' + (correct?'정답!':'틀렸어요') + '</div>'
-    + (answer && !correct ? '<div style="font-size:14px;color:#64748b;">정답: <b>' + answer + '</b></div>' : '')
-    + '<button onclick="nextQuizQuestion()" style="margin-top:14px;padding:10px 24px;border-radius:12px;background:#2563eb;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">다음 →</button>';
+    + '<div style="font-size:16px;font-weight:700;color:' + (correct?'#15803d':'#b91c1c') + ';margin:6px 0">' + (correct?'Correct!':'Not quite') + '</div>'
+    + (answer && !correct ? '<div style="font-size:14px;color:#64748b;">Answer: <b>' + answer + '</b></div>' : '')
+    + '<button onclick="nextQuizQuestion()" style="margin-top:14px;padding:10px 24px;border-radius:12px;background:#2563eb;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Next →</button>';
 
   // 기존 버튼 비활성화
   inner.querySelectorAll('button:not([onclick="closeQuiz()"])').forEach(function(b){ b.disabled=true; b.style.opacity='.5'; });
@@ -732,11 +835,11 @@ function showQuizResult() {
 
   overlay.innerHTML = '<div style="background:#fff;border-radius:24px;max-width:400px;width:100%;padding:40px 32px;text-align:center;box-shadow:0 32px 80px rgba(15,23,42,.25);">'
     + '<div style="font-size:56px;margin-bottom:12px">' + emoji + '</div>'
-    + '<div style="font-size:24px;font-weight:900;color:#0f172a;margin-bottom:6px">' + _quizScore + ' / ' + _quizTotal + ' 정답</div>'
-    + '<div style="font-size:15px;color:#64748b;margin-bottom:24px">' + (pct>=80?'훌륭해요! 대화를 잘 이해했군요.':pct>=60?'잘 했어요! 조금 더 연습해봐요.':'다시 한번 대화를 읽어보세요 💪') + '</div>'
+    + '<div style="font-size:24px;font-weight:900;color:#0f172a;margin-bottom:6px">' + _quizScore + ' / ' + _quizTotal + ' correct</div>'
+    + '<div style="font-size:15px;color:#64748b;margin-bottom:24px">' + (pct>=80?'Excellent! You understood the dialogue well.':pct>=60?'Well done! Keep practicing.':'Try reading the dialogue again 💪') + '</div>'
     + '<div style="display:flex;gap:10px;justify-content:center;">'
-    + '<button onclick="closeQuiz()" style="padding:12px 20px;border-radius:12px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">닫기</button>'
-    + '<button onclick="retryQuiz()" style="padding:12px 20px;border-radius:12px;background:#2563eb;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">다시 도전</button>'
+    + '<button onclick="closeQuiz()" style="padding:12px 20px;border-radius:12px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Close</button>'
+    + '<button onclick="retryQuiz()" style="padding:12px 20px;border-radius:12px;background:#2563eb;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Try Again</button>'
     + '</div></div>';
 }
 
@@ -775,8 +878,8 @@ function editCurrentConv() {
 
 async function deleteCurrentConv() {
   var c = window._currentConv;
-  if (!c || !c._id) { alert('ID 없음 - DB에서 로드된 항목만 삭제 가능'); return; }
-  if (!confirm('"' + c.name + '" 대화를 삭제할까요?')) return;
+  if (!c || !c._id) { alert('No ID — only DB-loaded entries can be deleted'); return; }
+  if (!confirm('Delete "' + c.name + '"?')) return;
   try {
     var sb = getSupa();
     var { error } = await sb.from('conversations_data').delete().eq('id', c._id);
@@ -786,9 +889,9 @@ async function deleteCurrentConv() {
     if (idx >= 0) CONVS.splice(idx, 1);
     closeDetail();
     renderCards(activeCat, activeLvl);
-    showConvToast('🗑 삭제됨');
+    showConvToast('🗑 Deleted');
   } catch(e) {
-    alert('삭제 오류: ' + e.message);
+    alert('Delete error: ' + e.message);
   }
 }
 
@@ -806,21 +909,21 @@ function openInlineEditModal(c) {
 
   overlay.innerHTML = '<div style="background:#fff;border-radius:18px;width:100%;max-width:700px;padding:26px 28px;max-height:90vh;overflow-y:auto">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
-    + '<h3 style="font-size:17px;font-weight:800;margin:0">✏️ 대화 수정</h3>'
+    + '<h3 style="font-size:17px;font-weight:800;margin:0">✏️ Edit Conversation</h3>'
     + '<button onclick="closeInlineEdit()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#64748b">✕</button>'
     + '</div>'
-    + inpField('ie-name', '이름', c.name || '')
-    + inpField('ie-ctx',  '상황', c.ctx  || '')
+    + inpField('ie-name', 'Title', c.name || '')
+    + inpField('ie-ctx',  'Context', c.ctx  || '')
     + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">'
-    + inpField('ie-avi',  '이모지', c.avi || '💬')
-    + selField('ie-cat', '카테고리', ['everyday','work','friends','family','dating'], ['Everyday','Workplace','Friends','Family','Dating'], c.cat || 'everyday')
-    + selField('ie-lvl', '레벨', ['b','i','a'], ['Beginner','Intermediate','Advanced'], c.lvl || 'b')
+    + inpField('ie-avi',  'Emoji', c.avi || '💬')
+    + selField('ie-cat', 'Category', ['everyday','work','friends','family','dating'], ['Everyday','Workplace','Friends','Family','Dating'], c.cat || 'everyday')
+    + selField('ie-lvl', 'Level', ['b','i','a'], ['Beginner','Intermediate','Advanced'], c.lvl || 'b')
     + '</div>'
-    + '<label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:14px">💬 대화 내용 (A: 왼쪽 / B: 오른쪽)<textarea id="ie-msgs" rows="6" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical">' + msgsText.replace(/</g,'&lt;') + '</textarea></label>'
+    + '<label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:14px">💬 Dialogue (A: left / B: right)<textarea id="ie-msgs" rows="6" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical">' + msgsText.replace(/</g,'&lt;') + '</textarea></label>'
     + '<div id="ie-error" style="background:#fee2e2;border-radius:8px;padding:10px;color:#b91c1c;font-size:13px;display:none;margin-bottom:12px"></div>'
     + '<div style="display:flex;gap:10px;justify-content:flex-end">'
-    + '<button onclick="closeInlineEdit()" style="background:#f1f5f9;color:#334155;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">취소</button>'
-    + '<button onclick="saveInlineEdit(' + (c._id || 'null') + ')" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 저장</button>'
+    + '<button onclick="closeInlineEdit()" style="background:#f1f5f9;color:#334155;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Cancel</button>'
+    + '<button onclick="saveInlineEdit(' + (c._id || 'null') + ')" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 Save</button>'
     + '</div>'
     + '</div>';
 
@@ -850,7 +953,7 @@ async function saveInlineEdit(rowId) {
       var isB = /^B:/i.test(line.trim());
       return {s: isB?'r':'l', who: isB?'B':'A', txt: line.replace(/^[AB]:\s*/i,'').trim()};
     });
-    if (!msgs.length) throw new Error('대화 내용을 입력해주세요');
+    if (!msgs.length) throw new Error('Please enter dialogue content');
 
     var c = window._currentConv;
     var updatedData = Object.assign({}, c, {
@@ -879,7 +982,7 @@ async function saveInlineEdit(rowId) {
     window._currentConv = Object.assign({}, updatedData, {_id: rowId});
 
     document.getElementById('conv-inline-edit').remove();
-    showConvToast('✅ 저장 완료!');
+    showConvToast('✅ Saved!');
     renderCards(activeCat, activeLvl);
   } catch(e) {
     errEl.textContent = e.message || String(e);
@@ -901,14 +1004,6 @@ function closeInlineEdit() { var e = document.getElementById('conv-inline-edit')
 
 <script>
 (function(){
-  function patchLabels(){
-    document.querySelectorAll('.dp-cta-btn').forEach(function(btn){
-      if (btn.textContent.indexOf('빈칸') !== -1) btn.textContent = '✏️ Blank Fill';
-      if (btn.textContent.indexOf('순서') !== -1) btn.textContent = '🔀 Word Order';
-    });
-  }
-  document.addEventListener('DOMContentLoaded', patchLabels);
-
   window.toggleSave = async function(btn) {
     var item = btn.closest('.dp-vocab-item');
     if (!item) return;
