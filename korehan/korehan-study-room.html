@@ -645,6 +645,7 @@
         <div class="wc-mode-tabs" id="wc-mode-tabs">
           <button class="wc-mode-tab active" id="tab-topic" onclick="setWritingMode('topic')">📝 Topic Writing</button>
           <button class="wc-mode-tab" id="tab-reading" onclick="setWritingMode('reading')">📖 Reading & Write</button>
+          <button class="wc-mode-tab" id="tab-grammar-focus" onclick="openGrammarFocusModal()">🎯 Grammar Focus</button>
         </div>
         <!-- Reading 선택 시 기사 선택 드롭다운 -->
         
@@ -740,12 +741,12 @@
     <!-- Reading 소스 선택 바 (Reading 모드일 때만 표시) -->
     <div id="wm-source-bar" style="display:none;grid-column:1/-1;background:#0d1b2e;border-bottom:1px solid rgba(255,255,255,.1);padding:10px 20px;gap:10px;align-items:center;flex-wrap:wrap">
       <div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="wm-src-tab active" id="wsrc-article" onclick="switchModalSource('article',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.3);border-radius:20px;background:rgba(255,255,255,.15);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📰 기사</button>
-        <button class="wm-src-tab" id="wsrc-conv" onclick="switchModalSource('conv',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.1);border-radius:20px;background:none;color:rgba(255,255,255,.5);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">💬 대화</button>
-        <button class="wm-src-tab" id="wsrc-story" onclick="switchModalSource('story',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.1);border-radius:20px;background:none;color:rgba(255,255,255,.5);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📖 스토리</button>
+        <button class="wm-src-tab active" id="wsrc-article" onclick="switchModalSource('article',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.3);border-radius:20px;background:rgba(255,255,255,.15);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📰 Article</button>
+        <button class="wm-src-tab" id="wsrc-conv" onclick="switchModalSource('conv',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.1);border-radius:20px;background:none;color:rgba(255,255,255,.5);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">💬 Conversation</button>
+        <button class="wm-src-tab" id="wsrc-story" onclick="switchModalSource('story',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.1);border-radius:20px;background:none;color:rgba(255,255,255,.5);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📖 Story</button>
       </div>
       <select id="wm-src-select" onchange="onModalSourceSelect(this)" style="flex:1;min-width:200px;padding:6px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-family:inherit">
-        <option value="">선택...</option>
+        <option value="">Select...</option>
       </select>
     </div>
 
@@ -784,7 +785,7 @@
         </div>
         <!-- vocab/grammar validation status -->
         <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
-          <span id="wm-grammar-used-count" style="font-size:11px;font-weight:700;color:#94a3b8;">📐 Grammar는 참고용 — 첨삭에서 확인해드려요</span>
+          <span id="wm-grammar-used-count" style="font-size:11px;font-weight:700;color:#94a3b8;">📐 Grammar is for reference — corrections reviewed in feedback</span>
         </div>
       </div>
 
@@ -821,6 +822,60 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- ═══ GRAMMAR FOCUS MODAL ══════════════════════════════════════ -->
+<div class="woverlay hidden" id="gf-modal" onclick="if(event.target===this)closeGrammarFocusModal()">
+  <div style="background:#fff;border-radius:22px;width:min(680px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.25);display:flex;flex-direction:column">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#0b1626,#1a3a6b);padding:24px 28px 20px;border-radius:22px 22px 0 0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0">
+      <div>
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.5);margin-bottom:6px">Grammar Focus</div>
+        <div id="gf-title" style="font-size:20px;font-weight:900;color:#fff;line-height:1.3">Grammar Practice</div>
+        <div id="gf-subtitle" style="font-size:13px;color:rgba(255,255,255,.55);margin-top:4px">Deep-dive into today's grammar point</div>
+      </div>
+      <button onclick="closeGrammarFocusModal()" style="background:rgba(255,255,255,.1);border:none;color:#fff;font-size:20px;width:36px;height:36px;border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1">✕</button>
+    </div>
+
+    <!-- Tab bar -->
+    <div style="display:flex;gap:0;border-bottom:1px solid #f1f5f9;padding:0 24px;flex-shrink:0">
+      <button class="gf-tab active" onclick="switchGFTab('examples',this)" id="gft-examples" style="padding:13px 18px;border:none;background:none;font-size:13px;font-weight:700;color:#2255a4;border-bottom:2px solid #2255a4;cursor:pointer;font-family:inherit">Examples</button>
+      <button class="gf-tab" onclick="switchGFTab('fill',this)" id="gft-fill" style="padding:13px 18px;border:none;background:none;font-size:13px;font-weight:700;color:#94a3b8;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">Fill-in-Blank</button>
+      <button class="gf-tab" onclick="switchGFTab('translate',this)" id="gft-translate" style="padding:13px 18px;border:none;background:none;font-size:13px;font-weight:700;color:#94a3b8;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">Translate</button>
+      <button class="gf-tab" onclick="switchGFTab('build',this)" id="gft-build" style="padding:13px 18px;border:none;background:none;font-size:13px;font-weight:700;color:#94a3b8;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">Build</button>
+    </div>
+
+    <!-- Content -->
+    <div style="padding:24px 28px;flex:1">
+      <!-- Examples tab -->
+      <div id="gf-tab-examples">
+        <div id="gf-examples-content">
+          <div style="text-align:center;padding:40px;color:#94a3b8">✨ Loading grammar examples…</div>
+        </div>
+      </div>
+
+      <!-- Fill-in-blank tab -->
+      <div id="gf-tab-fill" style="display:none">
+        <div id="gf-fill-content">
+          <div style="text-align:center;padding:40px;color:#94a3b8">Choose a grammar pattern first</div>
+        </div>
+      </div>
+
+      <!-- Translate tab -->
+      <div id="gf-tab-translate" style="display:none">
+        <div id="gf-translate-content">
+          <div style="text-align:center;padding:40px;color:#94a3b8">Choose a grammar pattern first</div>
+        </div>
+      </div>
+
+      <!-- Build tab -->
+      <div id="gf-tab-build" style="display:none">
+        <div id="gf-build-content">
+          <div style="text-align:center;padding:40px;color:#94a3b8">Choose a grammar pattern first</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -867,8 +922,36 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
   waitForSession();
 
-  // URL 파라미터로 conversations/stories에서 넘어온 경우
+  // Grammar Focus from article grammar guide link
   var _urlParams = new URLSearchParams(window.location.search);
+  if (_urlParams.get('focus') && _urlParams.get('source') === 'grammar-guide') {
+    var _focusName = decodeURIComponent(_urlParams.get('focus') || '');
+    // Wait for content to load then auto-open grammar focus modal
+    var _focusWaited = 0;
+    function waitAndOpenGFModal() {
+      if (window._sessionChecked || _focusWaited >= 30) {
+        setTimeout(function() {
+          // Build a single-pattern object from the focus name
+          var pattern = { name: _focusName, level: 'Intermediate', exp: 'Practice this grammar pattern from the article you were reading.', examples: [{ ko: '이 문법으로 직접 문장을 만들어 보세요.', en: 'Try making your own sentence with this grammar pattern.' }] };
+          // Check if _aiContent already has this pattern loaded
+          var rawG = (_aiContent && _aiContent.grammar) || [];
+          var found = rawG.map(function(g){ return { name:g.pattern||g.name||'', level:g.level||'Intermediate', exp:g.explanation||g.exp||'', examples:[{ko:g.example_ko||'',en:g.example_en||''}] }; });
+          if (found.length) {
+            var match = found.find(function(p){ return p.name === _focusName; });
+            if (match) found = [match].concat(found.filter(function(p){ return p.name !== _focusName; }));
+          } else {
+            found = [pattern];
+          }
+          var modal = document.getElementById('gf-modal');
+          if (modal) { modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+          loadGFPatterns(found);
+        }, 600);
+      } else { _focusWaited++; setTimeout(waitAndOpenGFModal, 150); }
+    }
+    setTimeout(waitAndOpenGFModal, 400);
+  }
+
+  // URL 파라미터로 conversations/stories에서 넘어온 경우
   if (_urlParams.get('mode') === 'conv' || _urlParams.get('mode') === 'story') {
     function safeParseJSON(str, fallback) {
       if (!str) return fallback;
@@ -2186,7 +2269,7 @@ async function loadArticlesForReading() {
       });
     } else {
       var opt = document.createElement('option');
-      opt.textContent = '기사 없음 (published 상태 기사 필요)';
+      opt.textContent = 'No articles available';
       opt.disabled = true;
       sel.appendChild(opt);
     }
@@ -2225,7 +2308,7 @@ async function loadConvsForReading() {
       });
     } else {
       var opt = document.createElement('option');
-      opt.textContent = '대화 없음 (Conversations 추가 필요)';
+      opt.textContent = 'No conversations available';
       opt.disabled = true;
       sel.appendChild(opt);
     }
@@ -2258,7 +2341,7 @@ async function loadStoriesForReading() {
       });
     } else {
       var opt = document.createElement('option');
-      opt.textContent = '스토리 없음 (Stories 추가 필요)';
+      opt.textContent = 'No stories available';
       opt.disabled = true;
       sel.appendChild(opt);
     }
@@ -2380,7 +2463,7 @@ async function loadModalArticles(sel) {
       .eq('status', 'published')
       .order('created_at', {ascending: false})
       .limit(20);
-    sel.innerHTML = '<option value="">기사 선택...</option>';
+    sel.innerHTML = '<option value="">Select article...</option>';
     (data || []).forEach(function(a) {
       var opt = document.createElement('option');
       opt.value = JSON.stringify({id:a.id, title:a.title, body:(a.body||'').replace(/<[^>]*>/g,'').slice(0,800), type:'article'});
@@ -2398,7 +2481,7 @@ async function loadModalConvs(sel) {
       .select('id, name, ctx, data, lvl')
       .order('created_at', {ascending: false})
       .limit(30);
-    sel.innerHTML = '<option value="">대화 선택...</option>';
+    sel.innerHTML = '<option value="">Select conversation...</option>';
     (data || []).forEach(function(row) {
       var d = row.data || {};
       var msgs = (d.msgs||[]).map(function(m){ return (m.who||'')+'\n'+m.txt; }).join('\n');
@@ -2409,7 +2492,7 @@ async function loadModalConvs(sel) {
       opt.textContent = (d.name||row.name||'대화') + ' [' + (d.lvl||row.lvl||'') + ']';
       sel.appendChild(opt);
     });
-    if (!data || !data.length) sel.innerHTML = '<option value="">대화 없음</option>';
+    if (!data || !data.length) sel.innerHTML = '<option value="">No conversations available</option>';
   } catch(e) { sel.innerHTML = '<option value="">로드 실패</option>'; }
 }
 
@@ -2420,7 +2503,7 @@ async function loadModalStories(sel) {
       .select('id, title, data, lvl')
       .order('created_at', {ascending: false})
       .limit(30);
-    sel.innerHTML = '<option value="">스토리 선택...</option>';
+    sel.innerHTML = '<option value="">Select story...</option>';
     (data || []).forEach(function(row) {
       var d = row.data || {};
       var body = (d.body||d.preview||'').replace(/<[^>]*>/g,'').slice(0,800);
@@ -2429,7 +2512,7 @@ async function loadModalStories(sel) {
       opt.textContent = (d.title||row.title||'스토리') + ' [' + (d.lvl||row.lvl||'') + ']';
       sel.appendChild(opt);
     });
-    if (!data || !data.length) sel.innerHTML = '<option value="">스토리 없음</option>';
+    if (!data || !data.length) sel.innerHTML = '<option value="">No stories available</option>';
   } catch(e) { sel.innerHTML = '<option value="">로드 실패</option>'; }
 }
 
@@ -3020,6 +3103,267 @@ function retryBeginner() {
   renderBMStep1Loading();
   generateBeginnerSentences();
 }
+// ══ END BEGINNER 4-STEP SYSTEM ══════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
+// GRAMMAR FOCUS MODAL
+// ═══════════════════════════════════════════════════════════════
+var _gfPattern = null;
+var _gfExercises = null;
+
+function openGrammarFocusModal() {
+  var modal = document.getElementById('gf-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+
+  // Map _aiContent.grammar → loadGFPatterns format
+  var rawGrammar = (_aiContent && _aiContent.grammar) || [];
+  var patterns = rawGrammar.map(function(g) {
+    return {
+      name: g.pattern || g.name || '',
+      level: g.level || 'Intermediate',
+      exp: g.explanation || g.exp || '',
+      examples: [{ ko: g.example_ko || g.ex_ko || '', en: g.example_en || g.ex_en || '' }]
+    };
+  });
+  if (patterns.length) {
+    loadGFPatterns(patterns);
+  } else {
+    generateGFPatterns();
+  }
+}
+
+function closeGrammarFocusModal() {
+  var modal = document.getElementById('gf-modal');
+  if (modal) modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function switchGFTab(tabId, btn) {
+  ['examples','fill','translate','build'].forEach(function(t) {
+    document.getElementById('gf-tab-' + t).style.display = t === tabId ? 'block' : 'none';
+    var tb = document.getElementById('gft-' + t);
+    if (tb) {
+      tb.style.color     = t === tabId ? '#2255a4' : '#94a3b8';
+      tb.style.borderBottomColor = t === tabId ? '#2255a4' : 'transparent';
+      tb.style.fontWeight = t === tabId ? '800' : '700';
+    }
+  });
+}
+
+function loadGFPatterns(patterns) {
+  var el = document.getElementById('gf-examples-content');
+  if (!el || !patterns.length) return;
+
+  var first = patterns[0];
+  _gfPattern = first;
+
+  var titleEl = document.getElementById('gf-title');
+  var subEl   = document.getElementById('gf-subtitle');
+  if (titleEl) titleEl.textContent = first.name || 'Grammar Pattern';
+  if (subEl)   subEl.textContent   = first.exp  || '';
+
+  // Pattern selector chips
+  var chips = patterns.map(function(p, i) {
+    return '<button onclick="selectGFPattern(' + i + ',this)" '
+      + 'class="gf-pattern-chip' + (i===0?' active':'') + '" '
+      + 'style="padding:6px 14px;border-radius:999px;border:1.5px solid ' + (i===0?'#2255a4':'#e2e8f2') + ';background:' + (i===0?'#eff6ff':'#fff') + ';color:' + (i===0?'#2255a4':'#475569') + ';font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">'
+      + (p.name || 'Pattern ' + (i+1))
+      + '</button>';
+  }).join('');
+
+  el.innerHTML = '<div id="gf-pattern-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">' + chips + '</div>'
+    + '<div id="gf-pattern-body">' + renderGFPatternBody(first) + '</div>';
+
+  window._gfPatternList = patterns;
+  loadGFFill(first);
+  loadGFTranslate(first);
+  loadGFBuild(first);
+}
+
+function selectGFPattern(idx, btn) {
+  var patterns = window._gfPatternList || [];
+  var p = patterns[idx];
+  if (!p) return;
+  _gfPattern = p;
+  document.querySelectorAll('.gf-pattern-chip').forEach(function(b, i) {
+    var active = i === idx;
+    b.style.borderColor = active ? '#2255a4' : '#e2e8f2';
+    b.style.background  = active ? '#eff6ff' : '#fff';
+    b.style.color       = active ? '#2255a4' : '#475569';
+  });
+  var body = document.getElementById('gf-pattern-body');
+  if (body) body.innerHTML = renderGFPatternBody(p);
+  var titleEl = document.getElementById('gf-title');
+  var subEl   = document.getElementById('gf-subtitle');
+  if (titleEl) titleEl.textContent = p.name || '';
+  if (subEl)   subEl.textContent   = p.exp  || '';
+  loadGFFill(p);
+  loadGFTranslate(p);
+  loadGFBuild(p);
+}
+
+function renderGFPatternBody(p) {
+  var levelColors = { Beginner:'#16a34a', Intermediate:'#d97706', Advanced:'#dc2626' };
+  var levelBgs    = { Beginner:'#f0fdf4', Intermediate:'#fffbeb', Advanced:'#fff1f2' };
+  var lv = p.level || 'Intermediate';
+  return '<div style="margin-bottom:20px">'
+    + '<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:' + (levelBgs[lv]||'#f0f4ff') + ';color:' + (levelColors[lv]||'#2255a4') + ';margin-bottom:14px">' + lv + '</span>'
+    + '<p style="font-size:14px;color:#475569;line-height:1.8;margin:0 0 20px">' + (p.exp || '') + '</p>'
+    + '</div>'
+    + '<div style="margin-bottom:14px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">Example Sentences</div>'
+    + renderGFExamples(p)
+    + '</div>';
+}
+
+function renderGFExamples(p) {
+  var examples = p.examples || [{ ko: p.ex_ko, en: p.ex_en }];
+  return examples.map(function(ex, i) {
+    return '<div style="background:#f8faff;border:1px solid #dbeafe;border-radius:12px;padding:16px 18px;margin-bottom:10px">'
+      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:8px">Example ' + (i+1) + '</div>'
+      + '<p style="font-family:Noto Serif KR,serif;font-size:17px;font-weight:700;color:#0f172a;line-height:1.65;margin:0 0 8px">' + (ex.ko||'') + '</p>'
+      + '<p style="font-size:13px;color:#64748b;margin:0;padding-top:8px;border-top:1px solid #e8eef8">' + (ex.en||'') + '</p>'
+      + '</div>';
+  }).join('');
+}
+
+async function generateGFPatterns() {
+  var el = document.getElementById('gf-examples-content');
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">✨ Generating grammar patterns for today\'s topic…</div>';
+
+  var topic = (document.getElementById('wcard-topic-ko') || {}).textContent || '';
+  if (!topic || topic === 'Loading…') {
+    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Load today\'s topic first, then come back.</div>';
+    return;
+  }
+
+  try {
+    var res = await callClaude({
+      feature: 'grammar-focus',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1600,
+      messages: [{ role: 'user', content:
+        'You are a Korean grammar teacher. For this Korean topic: "' + topic + '"\n\n'
+        + 'Create 3 key grammar patterns a learner would use to write about this topic.\n'
+        + 'For each pattern provide 3 example sentences.\n'
+        + 'Return ONLY JSON:\n'
+        + '{"patterns":[{"name":"grammar name (KO + romanization)","level":"Beginner|Intermediate|Advanced","exp":"clear English explanation","examples":[{"ko":"Korean sentence","en":"English translation"},{"ko":"...","en":"..."},{"ko":"...","en":"..."}]}]}'
+      }]
+    });
+    var raw = (res.content && res.content[0] && res.content[0].text) || res.text || '';
+    var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+    var parsed = JSON.parse(raw.slice(oi, ei+1));
+    if (parsed.patterns && parsed.patterns.length) {
+      loadGFPatterns(parsed.patterns);
+    } else {
+      if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Could not generate grammar patterns. Try again.</div>';
+    }
+  } catch(e) {
+    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Sign in to use Grammar Focus with AI.</div>';
+  }
+}
+
+function loadGFFill(p) {
+  var el = document.getElementById('gf-fill-content');
+  if (!el || !p) return;
+  var examples = p.examples || [{ ko: p.ex_ko, en: p.ex_en }];
+  var qs = examples.map(function(ex, i) {
+    if (!ex.ko) return '';
+    // Find the pattern name's first Korean word to blank
+    var koText = ex.ko;
+    var patternParts = (p.name || '').split(/[\s\/]/);
+    var blank = patternParts.find(function(pt){ return /[가-힣]/.test(pt) && koText.indexOf(pt) !== -1; });
+    if (!blank) {
+      // Just blank the last 2-3 chars
+      var words = koText.split(' ');
+      blank = words[words.length - 1];
+    }
+    var blanked = koText.replace(blank, '______');
+    return '<div style="background:#f8faff;border:1px solid #dbeafe;border-radius:12px;padding:18px;margin-bottom:14px" id="gff-' + i + '">'
+      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">Question ' + (i+1) + '</div>'
+      + '<p style="font-family:Noto Serif KR,serif;font-size:16px;font-weight:700;color:#0f172a;margin:0 0 12px;line-height:1.65">' + blanked + '</p>'
+      + '<p style="font-size:12px;color:#64748b;margin:0 0 14px">' + ex.en + '</p>'
+      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+      + '<input id="gff-inp-' + i + '" type="text" placeholder="Fill in the blank…" style="flex:1;min-width:160px;padding:9px 14px;border:1.5px solid #e2e8f2;border-radius:8px;font-size:14px;font-family:Noto Serif KR,serif" onkeydown="if(event.key===\'Enter\')checkGFFill(' + i + ',\'' + blank.replace(/'/g,"\\'") + '\')">'
+      + '<button onclick="checkGFFill(' + i + ',\'' + blank.replace(/'/g,"\\'") + '\')" style="padding:9px 18px;background:#2255a4;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Check</button>'
+      + '</div>'
+      + '<div id="gff-res-' + i + '" style="margin-top:10px;font-size:13px;font-weight:700"></div>'
+      + '</div>';
+  }).join('');
+  el.innerHTML = '<div style="margin-bottom:16px;font-size:13px;color:#475569">Fill in the blank with the correct grammar form.</div>' + qs;
+}
+
+function checkGFFill(idx, answer) {
+  var inp = document.getElementById('gff-inp-' + idx);
+  var res = document.getElementById('gff-res-' + idx);
+  if (!inp || !res) return;
+  var val = inp.value.trim();
+  var correct = val === answer;
+  res.style.color = correct ? '#16a34a' : '#dc2626';
+  res.textContent = correct ? '✓ Correct!' : '✗ Answer: ' + answer;
+  if (correct) inp.style.borderColor = '#86efac';
+}
+
+function loadGFTranslate(p) {
+  var el = document.getElementById('gf-translate-content');
+  if (!el || !p) return;
+  var examples = p.examples || [{ ko: p.ex_ko, en: p.ex_en }];
+  var qs = examples.map(function(ex, i) {
+    if (!ex.en) return '';
+    return '<div style="background:#f8faff;border:1px solid #dbeafe;border-radius:12px;padding:18px;margin-bottom:14px">'
+      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">Sentence ' + (i+1) + '</div>'
+      + '<p style="font-size:15px;font-weight:600;color:#0f172a;margin:0 0 14px;line-height:1.65">' + ex.en + '</p>'
+      + '<textarea id="gft-inp-' + i + '" placeholder="Translate into Korean…" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f2;border-radius:8px;font-size:14px;font-family:Noto Serif KR,serif;resize:vertical;min-height:64px;box-sizing:border-box"></textarea>'
+      + '<div style="display:flex;gap:8px;margin-top:10px;align-items:center">'
+      + '<button onclick="revealGFTranslate(' + i + ',\'' + ex.ko.replace(/'/g,"\\'") + '\')" style="padding:8px 16px;background:#f1f5f9;border:1px solid #e2e8f2;border-radius:8px;font-size:12px;font-weight:700;color:#475569;cursor:pointer;font-family:inherit">Reveal Answer</button>'
+      + '</div>'
+      + '<div id="gft-ans-' + i + '" style="display:none;margin-top:10px;padding:12px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;font-family:Noto Serif KR,serif;font-size:15px;color:#166534;font-weight:700">' + ex.ko + '</div>'
+      + '</div>';
+  }).join('');
+  el.innerHTML = '<div style="margin-bottom:16px;font-size:13px;color:#475569">Translate these sentences into Korean using the grammar pattern.</div>' + qs;
+}
+
+function revealGFTranslate(idx, answer) {
+  var ans = document.getElementById('gft-ans-' + idx);
+  if (ans) ans.style.display = 'block';
+}
+
+function loadGFBuild(p) {
+  var el = document.getElementById('gf-build-content');
+  if (!el || !p) return;
+  var prompts = [
+    'Write a sentence about your daily routine using <strong>' + (p.name||'this grammar') + '</strong>.',
+    'Describe something that happened recently using <strong>' + (p.name||'this grammar') + '</strong>.',
+    'Use <strong>' + (p.name||'this grammar') + '</strong> to talk about a place you like.'
+  ];
+  var structure = '<div style="background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border-radius:12px;padding:16px 18px;margin-bottom:20px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#6b7db8;margin-bottom:8px">Pattern structure</div>'
+    + '<p style="font-size:14px;font-weight:700;color:#2255a4;margin:0">' + (p.name||'') + '</p>'
+    + '<p style="font-size:13px;color:#475569;margin:6px 0 0">' + (p.exp||'') + '</p>'
+    + '</div>';
+  var qs = prompts.map(function(prompt, i) {
+    return '<div style="margin-bottom:18px">'
+      + '<p style="font-size:14px;color:#0f172a;margin:0 0 10px;line-height:1.6">' + prompt + '</p>'
+      + '<textarea id="gfb-inp-' + i + '" placeholder="Write your own sentence…" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f2;border-radius:8px;font-size:14px;font-family:Noto Serif KR,serif;resize:vertical;min-height:60px;box-sizing:border-box"></textarea>'
+      + '</div>';
+  }).join('');
+  el.innerHTML = '<div style="margin-bottom:16px;font-size:13px;color:#475569">Build your own sentences using this grammar pattern.</div>'
+    + structure + qs
+    + '<button onclick="checkGFBuild()" style="padding:10px 22px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Submit for Review →</button>'
+    + '<div id="gfb-feedback" style="margin-top:14px;font-size:13px;color:#475569"></div>';
+}
+
+function checkGFBuild() {
+  var fb = document.getElementById('gfb-feedback');
+  var inputs = [0,1,2].map(function(i){ return (document.getElementById('gfb-inp-'+i)||{}).value||''; });
+  var filled = inputs.filter(function(v){ return v.trim().length > 0; }).length;
+  if (filled === 0) { if (fb) fb.textContent = 'Write at least one sentence first.'; return; }
+  if (fb) fb.innerHTML = '✅ Great! You wrote ' + filled + ' sentence' + (filled>1?'s':'') + '. Keep practicing — use the Fill-in-Blank tab to test your recall.';
+}
+
+// ══ END GRAMMAR FOCUS MODAL ══════════════════════════════════════
 // ══ END BEGINNER 4-STEP SYSTEM ══════════════════════════════════
 </script>══════════════════════════════════════════════════════
      BEGINNER 4-STEP MODAL

@@ -976,48 +976,82 @@ body.kh-neon-on .kh-neon-toggle:hover { transform: translateY(-2px); box-shadow:
 
 /* ── GRAMMAR GUIDE ───────────────────────────────────────── */
 .grammar-wrap { padding: 4px 0; }
+/* Grammar Guide Cards — Article Page */
+.grammar-intro {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--gray); margin: 0 0 20px;
+}
 .grammar-point {
   background: var(--white);
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--bright);
-  border-radius: 8px;
+  border: 1px solid #e2e8f2;
+  border-radius: 16px;
+  padding: 20px 22px;
+  margin-bottom: 16px;
+  transition: box-shadow .15s;
+}
+.grammar-point:hover { box-shadow: 0 4px 20px rgba(34,85,164,.08); }
+
+.gp-header {
+  display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px;
+}
+.gp-num {
+  width: 26px; height: 26px; border-radius: 8px;
+  background: var(--bright); color: #fff;
+  font-size: 12px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 2px;
+}
+.gp-title-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.grammar-name {
+  font-family: 'Noto Serif KR', 'Playfair Display', serif;
+  font-size: 17px; font-weight: 900; color: var(--accent); margin: 0;
+}
+.gp-level-badge {
+  font-size: 10px; font-weight: 800; padding: 3px 9px;
+  border-radius: 999px; letter-spacing: 0.4px;
+}
+.grammar-explanation {
+  font-size: 14px; color: #475569; line-height: 1.75;
+  margin: 0 0 16px; padding-left: 38px;
+}
+
+/* Example block */
+.grammar-example {
+  background: #f8faff;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
   padding: 16px 18px;
   margin-bottom: 14px;
 }
-.grammar-name {
-  font-family: 'Noto Serif KR', 'Playfair Display', serif;
-  font-size: 16px;
-  font-weight: 900;
-  color: var(--accent);
-  margin: 0 0 8px;
+.ge-label {
+  font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 1.2px; color: #94a3b8; margin-bottom: 10px;
 }
-.grammar-explanation {
-  font-size: 14px;
-  color: var(--dark);
-  line-height: 1.7;
-  margin: 0 0 12px;
+.ge-ko {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 16px; font-weight: 700; color: #0f172a;
+  line-height: 1.65; margin: 0 0 8px;
 }
-.grammar-example {
-  background: linear-gradient(135deg, #f0f4ff, #e8f0fe);
-  border-radius: 6px;
-  padding: 10px 14px;
-  margin-bottom: 8px;
-  font-size: 14px;
-  line-height: 1.7;
-  border-left: 3px solid var(--bright);
+.ge-ko strong { color: var(--bright); font-weight: 900; background: rgba(34,85,164,.08); padding: 0 2px; border-radius: 3px; }
+.ge-en {
+  font-size: 13px; color: #64748b; line-height: 1.6; margin: 0;
+  padding-top: 8px; border-top: 1px solid #e2e8f2;
 }
-.grammar-example strong, .grammar-extra strong {
-  display: block;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--gray);
-  margin-bottom: 4px;
+
+.gp-footer { padding-left: 38px; }
+.gp-study-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 8px 16px; border-radius: 999px;
+  background: linear-gradient(135deg, #2563eb, #1e4fa3);
+  color: #fff; font-size: 12px; font-weight: 800;
+  text-decoration: none; transition: opacity .15s; box-shadow: 0 4px 14px rgba(37,99,235,.22);
 }
+.gp-study-btn:hover { opacity: .88; }
+
 .grammar-extra {
   background: #f8faf0;
-  border-radius: 6px;
-  padding: 10px 14px;
+  border-radius: 10px;
+  padding: 12px 16px;
   font-size: 14px;
   line-height: 1.7;
   border-left: 3px solid #7ab85a;
@@ -1281,8 +1315,31 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   font-size:13px; color:var(--gray); margin-bottom:20px;
   padding-bottom:16px; border-bottom:1px solid var(--border);
 }
+.art-meta-right { display:flex; align-items:center; gap:6px; }
 .art-dot { color:#ccc; }
 .art-actions { margin-left:auto; display:flex; gap:8px; }
+
+/* Reporter profile chip */
+.art-reporter-link {
+  display:inline-flex; align-items:center; gap:7px;
+  text-decoration:none; color:inherit;
+  padding:4px 10px 4px 4px;
+  border-radius:999px; border:1px solid var(--border);
+  background:#fff; transition:border-color .15s, box-shadow .15s;
+}
+.art-reporter-link:hover { border-color:#93c5fd; box-shadow:0 2px 8px rgba(34,85,164,.1); }
+.art-reporter-avatar {
+  width:28px; height:28px; border-radius:50%;
+  overflow:hidden; flex-shrink:0;
+  background:linear-gradient(135deg,#2255a4,#3b82f6);
+}
+.art-reporter-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+.art-reporter-avatar-placeholder {
+  width:100%; height:100%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:900; color:#fff;
+}
+.art-reporter-name { font-size:12px; font-weight:700; color:#334155; }
 
 .kh-share-btn {
   display:inline-flex; align-items:center; gap:6px;
@@ -1310,21 +1367,39 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 }
 .art-full p { margin-bottom:22px; }
 
-/* 단어 박스 */
+/* Key Vocabulary Box */
 .art-vocab-box {
-  background:linear-gradient(135deg,#f0f4ff,#e8f0ff);
-  border:1px solid rgba(34,85,164,0.15); border-radius:12px;
-  padding:18px 20px; margin:24px 0;
+  border:1px solid #e2e8f2; border-radius:16px;
+  padding:20px 22px; margin:28px 0; background:#fff;
 }
-.art-vocab-title { font-size:13px; font-weight:800; color:var(--accent); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.8px; }
-.art-vocab-list { display:flex; flex-wrap:wrap; gap:8px; }
+.art-vocab-title {
+  font-size:11px; font-weight:800; color:#94a3b8;
+  margin-bottom:16px; text-transform:uppercase; letter-spacing:1.2px;
+}
+.art-vocab-list { display:flex; flex-direction:column; gap:10px; }
 .art-vocab-item {
-  background:#fff; border:1px solid rgba(34,85,164,0.15); border-radius:8px;
-  padding:8px 12px; display:flex; flex-direction:column; align-items:center; gap:2px; min-width:90px;
+  display:flex; align-items:center; gap:12px;
+  padding:12px 14px; border-radius:12px;
+  background:#f8faff; border:1px solid #e8eef8;
+  transition:border-color .15s, box-shadow .15s;
 }
-.art-vocab-ko  { font-family:'Noto Serif KR',serif; font-size:20px; font-weight:900; color:var(--accent); }
-.art-vocab-rom { font-size:10px; font-style:italic; color:var(--gray); }
-.art-vocab-en  { font-size:11px; font-weight:700; color:var(--dark); }
+.art-vocab-item:hover { border-color:#bfdbfe; box-shadow:0 2px 10px rgba(34,85,164,.06); }
+.avi-main { display:flex; align-items:center; gap:10px; flex:1; min-width:0; }
+.art-vocab-ko  { font-family:'Noto Serif KR',serif; font-size:19px; font-weight:900; color:#0f172a; flex-shrink:0; }
+.art-vocab-rom { font-size:11px; font-style:italic; color:#94a3b8; flex-shrink:0; }
+.art-vocab-en  { font-size:13px; font-weight:600; color:#334155; flex:1; min-width:0; }
+.avi-actions { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.avi-save-btn {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:5px 11px; border-radius:999px;
+  border:1.5px solid #cbd5e1; background:#fff;
+  color:#64748b; font-size:11px; font-weight:700;
+  cursor:pointer; transition:all .15s; font-family:inherit;
+}
+.avi-save-btn:hover { border-color:#2255a4; color:#2255a4; }
+.avi-save-btn.saved {
+  border-color:#2255a4; background:#eff6ff; color:#2255a4;
+}
 
 .art-divider { border:none; border-top:2px solid var(--border); margin:32px 0; }
 
@@ -1491,9 +1566,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 .tts-btn.tts-playing { background: #2255a4; animation: tts-pulse .8s ease-in-out infinite; }
 @keyframes tts-pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.12);} }
 
-/* art-vocab-item에 tts 버튼 자연스럽게 */
-.art-vocab-item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.art-vocab-item .tts-btn { margin-left: auto; }
+.art-vocab-item .tts-btn { flex-shrink: 0; }
 
 /* 플래시카드 tts 버튼 위치 */
 .vc-tts-btn {
