@@ -159,10 +159,8 @@ async function callClaude({ feature, model, max_tokens, messages }) {
 
   if (resp.status === 429) throw new Error('rate_limit');
   if (resp.status === 401) {
-    try { await sb.auth.signOut({ scope: 'local' }); } catch(e) {}
-    supaUser = null;
-    updateAuthUI();
-    updateCommentForm();
+    // Do NOT sign out the user here — a 401 may be transient (edge function cold start,
+    // token timing, etc.). Let the caller decide how to handle it.
     throw new Error('unauthorized');
   }
   if (!resp.ok) {
@@ -319,8 +317,9 @@ async function refreshSessionSafely() {
   if (error) {
     if (!_sessionWarningShown) {
       _sessionWarningShown = true;
-      if (typeof toast === 'function') toast('Your session has expired. Please sign in again.', true);
-      setTimeout(function() { sb.auth.signOut({ scope: 'local' }); }, 2000);
+      // Do NOT auto sign-out — a refresh failure may be a transient network error.
+      // Supabase's autoRefreshToken will keep retrying. Just warn the user.
+      if (typeof toast === 'function') toast('Session refresh failed — reload the page if you experience any issues.', true);
     }
   }
 }
@@ -799,13 +798,9 @@ function updateAuthUI() {
         + (isAdmin ? '<a href="korehan-admin.html" class="kh-user-dropdown-link">' + khIcon('settings', 'Admin CMS', 'kh-ui-icon-sm') + '</a>' : '')
         + '<button type="button" class="kh-user-dropdown-link kh-user-dropdown-btn" onclick="signOut();closeTopbarUserMenu()">' + khIcon('log-out', 'Sign Out', 'kh-ui-icon-sm') + '</button>';
     }
-    // 마이페이지 버튼
-    var mypageBtn = document.getElementById('topbar-mypage-btn');
-    if (mypageBtn) mypageBtn.style.display = 'inline-block';
-
     if (adminBtn) adminBtn.style.display = isAdmin ? 'inline-block' : 'none';
   } else {
-    // 비로그인 상태
+    // Logged out state
     if (signinBtn) {
       signinBtn.textContent = 'Sign In';
       signinBtn.style.display = '';
@@ -815,15 +810,10 @@ function updateAuthUI() {
     if (userAvatar) userAvatar.style.display = 'none';
     if (userDrop) userDrop.classList.remove('on');
     if (adminBtn) adminBtn.style.display = 'none';
-    var mypageBtn = document.getElementById('topbar-mypage-btn');
-    if (mypageBtn) mypageBtn.style.display = 'none';
   }
-  // Join Free 버튼: 비로그인 상태에서만 표시
+  // Join Free button: only visible when logged out
   var joinBtn = document.getElementById('topbar-join-btn');
   if (joinBtn) joinBtn.style.display = supaUser ? 'none' : '';
-  // My Page 버튼: 로그인 상태에서만 표시
-  var mp2 = document.getElementById('topbar-mypage-btn');
-  if (mp2) mp2.style.display = supaUser ? '' : 'none';
   updateSidebarAuth();
   injectMobileBottomNav();
   renderKhLucideIcons();
@@ -2297,20 +2287,25 @@ Respond ONLY with this JSON (no markdown, no extra text):
     } catch(e) {}
   } catch(e) {
     if (e && (e.message === 'unauthorized' || e.message === 'Not signed in')) {
-      el.innerHTML = renderFillNoKey();
-      if (typeof toast === 'function') toast('빈칸 문제를 만들려면 다시 로그인해주세요.', true);
-      if (typeof openAuthModal === 'function') openAuthModal('signin');
+      if (supaUser) {
+        // User is logged in but got a token error — don't sign them out, just ask to retry
+        el.innerHTML = '<div style="padding:24px;text-align:center;color:#e53e3e">⚠️ Session error. Please reload the page and try again.<br><button onclick="window.location.reload()" style="margin-top:12px;padding:8px 20px;background:#2255a4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">Reload</button></div>';
+        if (typeof toast === 'function') toast('Session error — please reload and try again.', true);
+      } else {
+        el.innerHTML = renderFillNoKey();
+        if (typeof openAuthModal === 'function') openAuthModal('signin');
+      }
       return;
     }
-    el.innerHTML = '<div style="padding:24px;text-align:center;color:#e53e3e">⚠️ AI 생성 실패. 다시 시도해주세요.<br><button onclick="loadFillExercise()" style="margin-top:12px;padding:8px 20px;background:#2255a4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">🔄 Retry</button></div>';
+    el.innerHTML = '<div style="padding:24px;text-align:center;color:#e53e3e">⚠️ Failed to generate exercise. Please try again.<br><button onclick="loadFillExercise()" style="margin-top:12px;padding:8px 20px;background:#2255a4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">🔄 Retry</button></div>';
   }
 }
 
 function renderFillLoading() {
   return '<div style="padding:40px;text-align:center">'
     + '<div style="font-size:32px;margin-bottom:16px;animation:spin 1s linear infinite;display:inline-block">✨</div>'
-    + '<div style="font-size:15px;font-weight:700;color:#2255a4;margin-bottom:6px">AI가 빈칸 문제를 만들고 있어요...</div>'
-    + '<div style="font-size:12px;color:#94a3b8">이 기사에서 핵심 단어와 문법을 분석 중</div>'
+    + '<div style="font-size:15px;font-weight:700;color:#2255a4;margin-bottom:6px">Generating fill-in-the-blank exercise...</div>'
+    + '<div style="font-size:12px;color:#94a3b8">Analyzing key vocabulary and grammar from this article</div>'
     + '</div>'
     + '<style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>';
 }
@@ -2318,8 +2313,8 @@ function renderFillLoading() {
 function renderFillNoKey() {
   return '<div style="padding:32px;text-align:center;background:#f8faff;border-radius:16px;margin:16px 0">'
     + '<div style="font-size:36px;margin-bottom:12px">🔒</div>'
-    + '<div style="font-size:15px;font-weight:800;color:#0b1626;margin-bottom:8px">로그인 필요</div>'
-    + '<div style="font-size:13px;color:#64748b;margin-bottom:20px">Fill-in-the-Blank은 로그인 후 사용할 수 있어요.</div>'
+    + '<div style="font-size:15px;font-weight:800;color:#0b1626;margin-bottom:8px">Sign in required</div>'
+    + '<div style="font-size:13px;color:#64748b;margin-bottom:20px">Fill-in-the-Blank is available for signed-in users.</div>'
     + '<button onclick="openAuthModal(\'signin\')" style="padding:10px 24px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
     + '</div>';
 }
@@ -2662,15 +2657,22 @@ async function loadGrammarGuide() {
     } catch(e) {}
   } catch(e) {
     if (e && (e.message === 'Not signed in' || e.message === 'unauthorized')) {
-      el.dataset.source = ''; // 로그인 후 재시도 허용
-      el.innerHTML = '<div style="text-align:center;padding:28px 16px">'
-        + '<div style="font-size:32px;margin-bottom:12px">🔒</div>'
-        + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:8px">Sign in to use Grammar Guide</div>'
-        + '<div style="font-size:13px;color:#64748b;margin-bottom:20px">AI-powered grammar analysis is available for signed-in users.</div>'
-        + '<button onclick="openAuthModal(&apos;signin&apos;)" style="padding:10px 28px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
-        + '</div>';
-      if (e.message === 'unauthorized' && typeof toast === 'function') {
-        toast('Grammar Guide needs a fresh sign-in. Please sign in again.', true);
+      el.dataset.source = ''; // allow retry
+      if (supaUser) {
+        // User is logged in but got a token error — don't show sign-in prompt
+        el.innerHTML = '<div style="text-align:center;padding:28px 16px">'
+          + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:8px">Grammar Guide unavailable</div>'
+          + '<div style="font-size:13px;color:#64748b;margin-bottom:20px">A session error occurred. Please reload the page and try again.</div>'
+          + '<button onclick="loadGrammarGuide()" style="padding:10px 28px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Retry</button>'
+          + '</div>';
+        if (typeof toast === 'function') toast('Session error — please reload and try again.', true);
+      } else {
+        el.innerHTML = '<div style="text-align:center;padding:28px 16px">'
+          + '<div style="font-size:32px;margin-bottom:12px">🔒</div>'
+          + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:8px">Sign in to use Grammar Guide</div>'
+          + '<div style="font-size:13px;color:#64748b;margin-bottom:20px">AI-powered grammar analysis is available for signed-in users.</div>'
+          + '<button onclick="openAuthModal(&apos;signin&apos;)" style="padding:10px 28px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
+          + '</div>';
       }
     } else {
       renderStaticGrammar(el, a);
@@ -3006,8 +3008,12 @@ async function toggleTranslate() {
     btn.classList.remove('active');
     translateActive = false;
     if (e && (e.message === 'unauthorized' || e.message === 'Not signed in')) {
-      if (typeof toast === 'function') toast('Translation needs a fresh sign-in. Please sign in again.', true);
-      if (typeof openAuthModal === 'function') openAuthModal('signin');
+      if (!supaUser) {
+        if (typeof openAuthModal === 'function') openAuthModal('signin');
+        if (typeof toast === 'function') toast('Please sign in to use Translation.', true);
+      } else {
+        if (typeof toast === 'function') toast('Session error — please reload and try again.', true);
+      }
     } else {
       if (typeof toast === 'function') toast('Translation failed — check your connection and try again.', true);
     }
@@ -3616,7 +3622,6 @@ function renderHeader() {
     + '<button id="topbar-user-avatar" class="kh-avatar-btn" type="button" aria-label="Open profile menu" onclick="toggleTopbarUserMenu(event)" style="display:none"></button>'
     + '<div id="topbar-user-dropdown" class="kh-user-dropdown"></div>'
     + '</div>'
-    + '<a href="korehan-mypage.html" id="topbar-mypage-btn" class="kh-hbtn kh-hbtn-out" style="display:none">' + khIcon('circle-user-round', 'My Page', 'kh-ui-icon-sm') + '</a>'
     + '<a href="#" id="topbar-signin-btn" class="kh-hbtn kh-hbtn-out" onclick="event.preventDefault();openAuthModal(\'signin\')">Sign In</a>'
     + '<a href="#" id="topbar-join-btn" class="kh-hbtn kh-hbtn-fill" onclick="event.preventDefault();openAuthModal(\'signup\')">Join Free</a>'
     + '<a href="korehan-admin.html" id="topbar-admin-btn" class="kh-hbtn kh-hbtn-out" style="display:none;background:rgba(231,76,60,0.15);border-color:rgba(231,76,60,0.4);">' + khIcon('settings', 'Admin', 'kh-ui-icon-sm') + '</a>'
@@ -5564,14 +5569,22 @@ function injectMobileBottomNav() {
     ['korehan-study-room.html','notebook-pen','Learn','korehan-study-room'],
     ['korehan-conversations.html','messages-square','CONVO','korehan-conversations'],
   ];
-  if (supaUser) items.push(['korehan-mypage.html','circle-user-round','My','korehan-mypage']);
+  if (supaUser) items.push(['#','circle-user-round','Account','account']);
   else items.push(['#','log-in','Sign In','signin']);
   nav.innerHTML = items.map(function(it){
     var isOn = page===it[3];
-    var extra = it[3]==='signin' ? ' onclick="event.preventDefault();openAuthModal(\'signin\')"' : '';
+    var extra = '';
+    if (it[3] === 'signin') extra = ' onclick="event.preventDefault();openAuthModal(\'signin\')"';
+    else if (it[3] === 'account') extra = ' onclick="event.preventDefault();openMobileAccountMenu()"';
     return '<a href="'+it[0]+'" class="'+(isOn?'on':'')+'"' + extra + '><span class="ico">' + khIcon(it[1], '', 'kh-ui-icon-mobile') + '</span><span>'+it[2]+'</span></a>';
   }).join('');
   renderKhLucideIcons();
+}
+
+function openMobileAccountMenu() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  // Open the sidebar — it has My Page + Sign Out for logged-in users
+  khSbOpen();
 }
 
 function mobileCreateCardHTML(label, value, href) {
