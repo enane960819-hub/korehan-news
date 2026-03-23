@@ -1890,7 +1890,22 @@ function renderAllList(listEl, articles) {
   }
   listEl.className = 'all-card-grid';
   listEl.innerHTML = articles.map(function(a){
-    return cardHTML(Object.assign({}, a, { body: '' }));
+    var lvl = a.level || '';
+    var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : lvl === 'Starter' ? 'lvl-s' : 'lvl-b';
+    var cat = (a.section || '').toLowerCase();
+    var img = a.image
+      ? '<img class="nc-img" src="' + a.image + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/600/400\'">'
+      : '<div class="nc-img nc-img-fallback"></div>';
+    var dateStr = a.date ? new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+    return '<div class="nc nc-overlay" data-section="' + escapeHtml(cat) + '" data-level="' + escapeHtml(lvl) + '" onclick="location.href=\'' + articleUrl(a.id) + '\'">'
+      + img
+      + '<div class="nc-overlay-grad"></div>'
+      + '<div class="nc-overlay-body">'
+      + '<div class="nc-meta"><span class="nc-cat">' + escapeHtml(a.section || '') + '</span>' + (lvl ? '<span class="nc-lvl ' + lvlCls + '">' + escapeHtml(lvl) + '</span>' : '') + '</div>'
+      + '<div class="nc-title vocab-zone">' + escapeHtml(a.title || a.title_ko || '') + '</div>'
+      + '<div class="nc-foot"><span class="nc-date">' + dateStr + '</span></div>'
+      + '</div>'
+      + '</div>';
   }).join('');
 }
 
