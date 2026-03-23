@@ -182,7 +182,7 @@ async function getFromCache(contentType, contentId, cacheKey) {
     if (!sb) return null;
     if (contentType !== 'article') return null;
     var res = await sb.from('article_cache')
-      .select('article_id, translation, vocab, grammar, quiz')
+      .select('article_id, translation, vocab, grammar, quiz, expressions')
       .eq('article_id', String(contentId))
       .maybeSingle();
     if (res.error) throw res.error;
@@ -202,6 +202,9 @@ async function getFromCache(contentType, contentId, cacheKey) {
     }
     if (cacheKey === 'grammar_guide') {
       return typeof res.data.grammar === 'string' ? safeParseJSON(res.data.grammar, null) : res.data.grammar;
+    }
+    if (cacheKey === 'expressions') {
+      return typeof res.data.expressions === 'string' ? safeParseJSON(res.data.expressions, []) : (res.data.expressions || []);
     }
     if (cacheKey.indexOf('fill_') === 0) {
       return typeof res.data.quiz === 'string' ? safeParseJSON(res.data.quiz, null) : res.data.quiz;
@@ -1917,6 +1920,29 @@ function filterAllLevel(level, btn) {
   renderAllList(document.getElementById('dyn-article-list'), filtered);
 }
 
+// ── Character Reporter Profiles ───────────────────────────────
+// Add reporter objects here when images/bios are ready.
+// reporter_id on article maps to a key here.
+var KH_REPORTERS = {
+  // 'han': { name: 'Han', img: 'reporters/han.jpg', href: 'korehan-reporters.html#han' },
+};
+
+function getReporterProfileHTML(article) {
+  var rid = article.reporter_id || article.reporter || null;
+  var rep = rid ? KH_REPORTERS[rid] : null;
+  var name = (rep && rep.name) ? rep.name : 'KoreHan Reporter';
+  var img  = (rep && rep.img)  ? rep.img  : null;
+  var href = (rep && rep.href) ? rep.href : 'korehan-reporters.html';
+  var avatar = img
+    ? '<img src="' + img + '" alt="' + name + '" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'">'
+      + '<div class="art-reporter-avatar-placeholder" style="display:none">' + name.charAt(0) + '</div>'
+    : '<div class="art-reporter-avatar-placeholder">' + name.charAt(0) + '</div>';
+  return '<a href="' + href + '" class="art-reporter-link">'
+    + '<div class="art-reporter-avatar">' + avatar + '</div>'
+    + '<span class="art-reporter-name">' + name + '</span>'
+    + '</a>';
+}
+
 function renderArticlePage() {
   var wrap = document.getElementById('dyn-article');
   if (!wrap) return;
@@ -1956,9 +1982,12 @@ function renderArticlePage() {
     + '</div>'
     + '<h1 class="art-title vocab-zone">' + a.title + ' ' + ttsBtn(a.title) + '</h1>'
     + '<div class="art-meta-row">'
-    + '<span class="art-date">📅 ' + dateStr + '</span>'
+    + getReporterProfileHTML(a)
+    + '<div class="art-meta-right">'
+    + '<span class="art-date">' + dateStr + '</span>'
     + '<span class="art-dot">·</span>'
-    + '<span class="art-readtime">⏱ ' + Math.max(1, Math.ceil((a.full||a.body||'').length / 500)) + ' min read</span>'
+    + '<span class="art-readtime">' + Math.max(1, Math.ceil((a.full||a.body||'').length / 500)) + ' min read</span>'
+    + '</div>'
     + '<div class="art-actions">'
     + '<button class="kh-bm-btn" id="art-bm-btn" onclick="toggleBookmark(\'' + a.id + '\',this)">🔖 Bookmark</button>'
     + '<button class="kh-share-btn" onclick="shareArticle()">🔗 Share</button>'
@@ -2053,6 +2082,9 @@ function renderArticlePage() {
   // 핵심 단어 추출
   renderArticleVocab(a);
 
+  // Highlighted expressions
+  applyHighlightedExpressions(a.id);
+
   // 댓글 로드
   loadComments(a.id);
 
@@ -2136,15 +2168,15 @@ function initFillTeaser(article) {
     + '<div style="flex:1;min-width:200px">'
     + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
     + '<span style="font-size:22px">✏️</span>'
-    + '<span style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:2px">복습 연습</span>'
+    + '<span style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:2px">Review Practice</span>'
     + '</div>'
     + '<div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:6px;line-height:1.3">Fill-in-the-Blank</div>'
     + '<div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.5;margin-bottom:16px">'
-    + '이 기사의 핵심 단어와 문법을 빈칸으로 풀어보세요.<br>AI가 자동으로 6문제를 만들어드려요.'
+    + 'Test your vocabulary and grammar from this article.<br>6 AI-generated questions, automatically.'
     + '</div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
     + '<span style="font-size:11px;font-weight:800;padding:4px 12px;border-radius:999px;background:' + levelBg + ';color:' + levelColor + '">' + level + '</span>'
-    + '<span style="font-size:11px;color:rgba(255,255,255,.4)">· 6문제 · 단어+문법</span>'
+    + '<span style="font-size:11px;color:rgba(255,255,255,.4)">· 6 questions · vocab + grammar</span>'
     + '</div>'
     + '</div>'
     + '<div style="flex-shrink:0;display:flex;flex-direction:column;gap:8px;align-items:flex-end">'
@@ -2153,8 +2185,7 @@ function initFillTeaser(article) {
     + 'font-size:14px;font-weight:900;cursor:pointer;white-space:nowrap;'
     + 'box-shadow:0 4px 20px rgba(0,0,0,.2);transition:transform .15s"'
     + 'onmouseover="this.style.transform=\'scale(1.04)\'" onmouseout="this.style.transform=\'scale(1)\'">'
-    + '시작하기 →</button>'
-    + '<span style="font-size:10px;color:rgba(255,255,255,.3);text-align:right">API Key 필요</span>'
+    + "Let's Go →</button>"
     + '</div>'
     + '</div>'
     + '</div>';
@@ -2648,19 +2679,33 @@ async function loadGrammarGuide() {
 }
 
 function renderGrammarGuideHTML(el, guides) {
-  el.innerHTML = '<p class="grammar-intro">✨ Grammar patterns found in this article:</p>'
-    + guides.map(renderGrammarGuideCard).join('');
+  el.innerHTML = '<p class="grammar-intro">Grammar patterns found in this article</p>'
+    + guides.map(function(g, i){ return renderGrammarGuideCard(g, i); }).join('');
 }
 
-function renderGrammarGuideCard(g) {
+function renderGrammarGuideCard(g, idx) {
   var focus = encodeURIComponent(g.name || '');
+  var levelColors = { Beginner:'#16a34a', Intermediate:'#d97706', Advanced:'#dc2626' };
+  var levelBgs    = { Beginner:'#f0fdf4', Intermediate:'#fffbeb', Advanced:'#fff1f2' };
+  var lv = g.level || 'Intermediate';
+  var num = (idx !== undefined) ? idx + 1 : '';
   return '<div class="grammar-point">'
-    + '<div class="grammar-name">' + g.name
-    + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
+    + '<div class="gp-header">'
+    + (num ? '<span class="gp-num">' + num + '</span>' : '')
+    + '<div class="gp-title-group">'
+    + '<span class="grammar-name">' + (g.name || '') + '</span>'
+    + '<span class="gp-level-badge" style="background:' + (levelBgs[lv]||'#f0f4ff') + ';color:' + (levelColors[lv]||'#2255a4') + '">' + lv + '</span>'
     + '</div>'
-    + '<div class="grammar-explanation">' + g.exp + '</div>'
-    + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
-    + '<div style="margin-top:12px"><a href="korehan-study-room.html?focus=' + focus + '&source=article-grammar-guide" style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;background:#2563eb;color:#fff;font-size:12px;font-weight:800;text-decoration:none;box-shadow:0 10px 24px rgba(37,99,235,.18)">이 문법 더 공부하기 <span aria-hidden="true">→</span></a></div>'
+    + '</div>'
+    + '<p class="grammar-explanation">' + (g.exp || '') + '</p>'
+    + '<div class="grammar-example">'
+    + '<div class="ge-label">Example</div>'
+    + '<p class="ge-ko">' + (g.ex_ko || '') + '</p>'
+    + '<p class="ge-en">' + (g.ex_en || '') + '</p>'
+    + '</div>'
+    + '<div class="gp-footer">'
+    + '<a href="korehan-study-room.html?focus=' + focus + '&source=grammar-guide" class="gp-study-btn">Study this grammar →</a>'
+    + '</div>'
     + '</div>';
 }
 
@@ -2683,23 +2728,113 @@ function renderStaticGrammar(el, a) {
     + guides.map(renderGrammarGuideCard).join('');
 }
 
+function isWordSaved(ko) {
+  var saved = lsGet(K_SAVED, []);
+  return saved.some(function(w){ return (w.ko || w.word_ko || '') === ko; });
+}
+
 function renderArticleVocab(a) {
   var el = document.getElementById('art-vocab-list');
   if (!el) return;
   var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
   var found = [];
   Object.keys(VOCAB).forEach(function(k) {
-    if (text.indexOf(k) !== -1 && found.length < 8) found.push(k);
+    if (text.indexOf(k) !== -1 && found.length < 10) found.push(k);
   });
-  if (!found.length) { el.closest('.art-vocab-box').style.display = 'none'; return; }
+  if (!found.length) { var box = el.closest('.art-vocab-box'); if(box) box.style.display = 'none'; return; }
+
   el.innerHTML = found.map(function(k) {
-    return '<div class="art-vocab-item">'
+    var v = VOCAB[k];
+    var saved = isWordSaved(k);
+    var safeK  = k.replace(/'/g, "\\'");
+    var safeR  = (v.rom||'').replace(/'/g, "\\'");
+    var safeE  = (v.en||'').replace(/'/g, "\\'");
+    return '<div class="art-vocab-item" id="avi-' + k + '">'
+      + '<div class="avi-main">'
       + '<span class="art-vocab-ko">' + k + '</span>'
-      + '<span class="art-vocab-rom">' + VOCAB[k].rom + '</span>'
-      + '<span class="art-vocab-en">' + VOCAB[k].en + '</span>'
+      + '<span class="art-vocab-rom">' + (v.rom||'') + '</span>'
+      + '<span class="art-vocab-en">' + (v.en||'') + '</span>'
+      + '</div>'
+      + '<div class="avi-actions">'
       + ttsBtn(k)
+      + '<button class="avi-save-btn' + (saved?' saved':'') + '" title="' + (saved?'Saved':'Save word') + '" '
+      + 'onclick="handleVocabSave(this,\'' + safeK + '\',\'' + safeR + '\',\'' + safeE + '\')">'
+      + (saved ? '<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z"/></svg><span>Saved</span>' : '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><span>Save</span>')
+      + '</button>'
+      + '</div>'
       + '</div>';
   }).join('');
+}
+
+async function handleVocabSave(btn, ko, rom, en) {
+  var already = btn.classList.contains('saved');
+  if (already) {
+    if (typeof toast === 'function') toast('Already in your word list.', false);
+    return;
+  }
+  btn.disabled = true;
+  await dbSaveWord(ko, rom, en);
+  btn.classList.add('saved');
+  btn.title = 'Saved';
+  btn.innerHTML = '<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z"/></svg><span>Saved</span>';
+  btn.disabled = false;
+  if (typeof toast === 'function') toast('Saved to your word list!', false);
+}
+
+// ── Highlighted Expressions ───────────────────────────────────
+// Expressions are stored in article_cache.expressions as:
+// [{"phrase":"표현","color":"blue","note":"optional note"}]
+// Colors: "blue" (default), "green", "amber", "rose"
+var _EXPR_COLORS = {
+  blue:  { bg:'rgba(37,99,235,.1)',   border:'#93c5fd', text:'#1e40af' },
+  green: { bg:'rgba(22,163,74,.1)',   border:'#86efac', text:'#15803d' },
+  amber: { bg:'rgba(217,119,6,.1)',   border:'#fcd34d', text:'#92400e' },
+  rose:  { bg:'rgba(225,29,72,.1)',   border:'#fda4af', text:'#9f1239' },
+};
+
+async function applyHighlightedExpressions(articleId) {
+  if (!articleId) return;
+  try {
+    var exprs = await getFromCache('article', articleId, 'expressions');
+    if (!exprs || !exprs.length) return;
+    var articleEl = document.getElementById('art-tab-article');
+    if (!articleEl) return;
+    exprs.forEach(function(ex) {
+      if (!ex.phrase) return;
+      var c = _EXPR_COLORS[ex.color] || _EXPR_COLORS.blue;
+      var safePhrase = ex.phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      var note = ex.note ? ' title="' + ex.note.replace(/"/g,'&quot;') + '"' : '';
+      var html = '<mark class="kh-expr"'
+        + ' style="background:' + c.bg + ';border-bottom:2px solid ' + c.border + ';color:' + c.text + '"'
+        + note + '>' + ex.phrase + '</mark>';
+      // Walk text nodes and replace
+      var walker = document.createTreeWalker(articleEl, NodeFilter.SHOW_TEXT, null);
+      var nodes = [];
+      while(walker.nextNode()) nodes.push(walker.currentNode);
+      nodes.forEach(function(n) {
+        if (n.nodeValue && n.nodeValue.indexOf(ex.phrase) !== -1) {
+          var parent = n.parentNode;
+          if (!parent || parent.tagName === 'SCRIPT' || parent.tagName === 'STYLE') return;
+          if (parent.closest('.kh-expr')) return;
+          var parts = n.nodeValue.split(ex.phrase);
+          if (parts.length < 2) return;
+          var frag = document.createDocumentFragment();
+          parts.forEach(function(part, i) {
+            if (part) frag.appendChild(document.createTextNode(part));
+            if (i < parts.length - 1) {
+              var span = document.createElement('mark');
+              span.className = 'kh-expr';
+              span.style.cssText = 'background:' + c.bg + ';border-bottom:2px solid ' + c.border + ';color:' + c.text + ';border-radius:3px;padding:0 1px';
+              if (ex.note) span.title = ex.note;
+              span.textContent = ex.phrase;
+              frag.appendChild(span);
+            }
+          });
+          parent.replaceChild(frag, n);
+        }
+      });
+    });
+  } catch(e) {}
 }
 
 // ── 기사 검색 ─────────────────────────────────────────────────
@@ -2821,18 +2956,19 @@ async function toggleTranslate() {
     if (!z.dataset.original) z.dataset.original = z.innerHTML;
     // kh-word span 제거하고 순수 텍스트만
     var clone = z.cloneNode(true);
-    clone.querySelectorAll('.kh-word').forEach(function(s){ s.replaceWith(s.textContent); });
-    texts.push(clone.textContent.trim().slice(0, 400));
+    clone.querySelectorAll('.kh-hover-word,.kh-word').forEach(function(s){ s.replaceWith(s.textContent); });
+    texts.push(clone.textContent.trim());
   });
 
-  var prompt = 'Translate each of the following Korean text segments into natural English. Return ONLY a JSON array of translated strings, same order, no extra text:\n'
-    + JSON.stringify(texts.map(function(t){ return t.slice(0, 300); }));
+  // 빈 존 제거 (인덱스 매핑 보존용으로 빈 문자열 유지)
+  var prompt = 'You are a Korean-to-English translator. Translate each numbered Korean text segment below into natural English. Translate the COMPLETE text without any truncation. Return ONLY a JSON array of translated strings in the exact same order. No markdown, no explanations, just the JSON array.\n\nSegments:\n'
+    + JSON.stringify(texts);
 
   try {
     var res = await callClaude({
       feature: 'translate',
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2000,
+      max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }]
     });
     var data = res;

@@ -7,7 +7,6 @@
   // shared.js의 getSupa() 재사용 — 이중 클라이언트 방지
   function getSb() {
     if (typeof window.getSupa === 'function') return window.getSupa();
-    // fallback: shared.js 아직 로드 안 됐을 때 (거의 발생 안함)
     return null;
   }
 
@@ -29,14 +28,14 @@
       .kh-hover-tip{
         position:fixed;
         z-index:99999;
-        min-width:180px;
-        max-width:280px;
-        pointer-events:none;
+        min-width:200px;
+        max-width:300px;
+        pointer-events:auto;
         background:#0f172a;
         color:#fff;
-        border-radius:14px;
-        padding:11px 12px 10px;
-        box-shadow:0 18px 40px rgba(2,8,23,.32);
+        border-radius:16px;
+        padding:13px 14px 10px;
+        box-shadow:0 18px 40px rgba(2,8,23,.38);
         opacity:0;
         transform:translateY(6px);
         transition:opacity .12s,transform .12s;
@@ -46,7 +45,7 @@
         transform:translateY(0);
       }
       .kh-hover-tip .ko{
-        font-size:15px;
+        font-size:16px;
         font-weight:800;
         color:#fff;
         margin-bottom:2px;
@@ -67,6 +66,31 @@
         line-height:1.55;
         color:#cbd5e1;
         margin-top:5px;
+      }
+      .kh-hover-tip .tip-footer{
+        display:flex;
+        align-items:center;
+        justify-content:flex-end;
+        margin-top:10px;
+        padding-top:8px;
+        border-top:1px solid rgba(255,255,255,.1);
+      }
+      .kh-tip-save{
+        display:inline-flex;align-items:center;gap:4px;
+        padding:5px 12px;border-radius:999px;
+        border:1.5px solid rgba(255,255,255,.2);
+        background:rgba(255,255,255,.08);
+        color:rgba(255,255,255,.8);
+        font-size:11px;font-weight:700;
+        cursor:pointer;transition:all .15s;
+        font-family:inherit;
+      }
+      .kh-tip-save:hover{
+        border-color:#93c5fd;background:rgba(147,197,253,.15);color:#fff;
+      }
+      .kh-tip-save.saved{
+        border-color:#4ade80;background:rgba(74,222,128,.12);color:#4ade80;
+        pointer-events:none;
       }
     `;
     document.head.appendChild(style);
@@ -149,8 +173,8 @@
     span.dataset.meaning = vocab.meaning_en || '';
     span.dataset.reading = vocab.reading || '';
     span.dataset.note = vocab.note || '';
-    span.addEventListener('mouseenter', showTooltip);
-    span.addEventListener('mouseleave', hideTooltip);
+    span.addEventListener('mouseenter', onWordEnter);
+    span.addEventListener('mouseleave', onWordLeave);
     span.addEventListener('mousemove', moveTooltip);
     frag.appendChild(span);
 
@@ -193,34 +217,94 @@
   }
 
   var tip = null;
+  var _hideTimer = null;
+  var _overTip = false;
+
   function ensureTooltip() {
     if (tip) return tip;
     tip = document.createElement('div');
     tip.className = 'kh-hover-tip';
+    tip.addEventListener('mouseenter', function(){ _overTip = true; clearTimeout(_hideTimer); });
+    tip.addEventListener('mouseleave', function(){ _overTip = false; scheduleHide(); });
     document.body.appendChild(tip);
     return tip;
+  }
+
+  function scheduleHide() {
+    clearTimeout(_hideTimer);
+    _hideTimer = setTimeout(function(){
+      if (!_overTip) {
+        var t = ensureTooltip();
+        t.classList.remove('show');
+      }
+    }, 200);
+  }
+
+  function isWordSavedLocally(ko) {
+    try {
+      var saved = JSON.parse(localStorage.getItem('korehan_saved_words') || '[]');
+      return saved.some(function(w){ return (w.ko || w.word_ko || '') === ko; });
+    } catch(e) { return false; }
   }
 
   function showTooltip(e) {
     var el = e.currentTarget;
     var t = ensureTooltip();
+    var word    = el.dataset.word    || '';
+    var reading = el.dataset.reading || '';
+    var meaning = el.dataset.meaning || '';
+    var note    = el.dataset.note    || '';
+    var saved = isWordSavedLocally(word);
+
     t.innerHTML =
-      '<div class="ko">' + (el.dataset.word || '') + '</div>'
-      + (el.dataset.reading ? '<div class="rom">' + el.dataset.reading + '</div>' : '')
-      + '<div class="en">' + (el.dataset.meaning || '') + '</div>'
-      + (el.dataset.note ? '<div class="note">' + el.dataset.note + '</div>' : '');
+      '<div class="ko">' + word + '</div>'
+      + (reading ? '<div class="rom">' + reading + '</div>' : '')
+      + '<div class="en">' + meaning + '</div>'
+      + (note ? '<div class="note">' + note + '</div>' : '')
+      + '<div class="tip-footer">'
+      + '<button class="kh-tip-save' + (saved ? ' saved' : '') + '" '
+      + 'data-word="' + word + '" data-reading="' + reading + '" data-meaning="' + meaning + '" '
+      + 'onclick="window._khTipSave && window._khTipSave(this)">'
+      + (saved ? '✓ Saved' : '+ Save')
+      + '</button>'
+      + '</div>';
+
     t.classList.add('show');
     moveTooltip(e);
+  }
+
+  // Exposed globally so the inline onclick can reach it
+  window._khTipSave = async function(btn) {
+    if (btn.classList.contains('saved')) return;
+    var ko      = btn.dataset.word    || '';
+    var rom     = btn.dataset.reading || '';
+    var en      = btn.dataset.meaning || '';
+    btn.disabled = true;
+    if (typeof window.dbSaveWord === 'function') {
+      await window.dbSaveWord(ko, rom, en);
+    }
+    btn.classList.add('saved');
+    btn.textContent = '✓ Saved';
+    btn.disabled = false;
+    if (typeof window.toast === 'function') window.toast('Saved to your word list!', false);
+  };
+
+  function onWordEnter(e) {
+    clearTimeout(_hideTimer);
+    showTooltip(e);
+  }
+  function onWordLeave() {
+    scheduleHide();
   }
 
   function moveTooltip(e) {
     var t = ensureTooltip();
     var x = e.clientX + 14;
     var y = e.clientY + 16;
-    var maxX = window.innerWidth - 300;
-    var maxY = window.innerHeight - 140;
+    var maxX = window.innerWidth - 320;
+    var maxY = window.innerHeight - 160;
     t.style.left = Math.max(10, Math.min(x, maxX)) + 'px';
-    t.style.top = Math.max(10, Math.min(y, maxY)) + 'px';
+    t.style.top  = Math.max(10, Math.min(y, maxY)) + 'px';
   }
 
   function hideTooltip() {

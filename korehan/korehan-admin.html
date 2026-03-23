@@ -2408,7 +2408,7 @@ async function goAICache() {
 
   let existingCache = {};
   try {
-    const cr = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?select=article_id,translation,vocab,grammar,quiz', {
+    const cr = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?select=article_id,translation,vocab,grammar,quiz,expressions', {
       headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
     });
     const cd = await cr.json();
@@ -2428,20 +2428,113 @@ async function goAICache() {
   articles.forEach(function(a) {
     const c = existingCache[String(a.id)] || {};
     const hasT = !!c.translation, hasV = !!c.vocab, hasG = !!c.grammar, hasQ = !!c.quiz;
+    const hasE = !!c.expressions;
     const allDone = hasT && hasV && hasG && hasQ;
     function badge(ok, label) {
       return '<span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-right:4px;background:' + (ok?'#dcfce7':'#fee2e2') + ';color:' + (ok?'#166534':'#991b1b') + '">' + (ok?'✓':'✗') + ' ' + label + '</span>';
     }
-    html += '<div id="crow-' + a.id + '" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fff;border:1px solid var(--bo);border-radius:10px;margin-bottom:8px;flex-wrap:wrap">'
+    const exprCount = hasE ? (() => { try { const e = JSON.parse(c.expressions); return Array.isArray(e)?e.length:0; } catch(e){return 0;} })() : 0;
+    html += '<div id="crow-' + a.id + '" style="background:#fff;border:1px solid var(--bo);border-radius:10px;margin-bottom:8px;overflow:hidden">'
+      + '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;flex-wrap:wrap">'
       + '<div style="flex:1;min-width:200px"><div style="font-weight:700;font-size:14px;margin-bottom:4px">' + (a.title||'(제목없음)') + '</div>'
       + '<div style="font-size:12px;color:var(--gr)">' + (a.section||'') + ' · ' + (a.date||'') + ' · ' + (a.level||'') + '</div></div>'
-      + '<div>' + badge(hasT,'번역') + badge(hasV,'단어') + badge(hasG,'문법') + badge(hasQ,'퀴즈') + '</div>'
-      + (allDone ? '<span style="color:#166534;font-weight:700">✅ 완료</span>'
-          : '<button class="btn btn-g" style="font-size:13px;padding:7px 16px" id="cbtn-' + a.id + '" onclick="genCache(\'' + a.id + '\')">🧠 생성</button>')
+      + '<div>' + badge(hasT,'Translation') + badge(hasV,'Vocab') + badge(hasG,'Grammar') + badge(hasQ,'Quiz') + '</div>'
+      + (allDone ? '<span style="color:#166534;font-weight:700;font-size:13px">✅ Done</span>'
+          : '<button class="btn btn-g" style="font-size:13px;padding:7px 16px" id="cbtn-' + a.id + '" onclick="genCache(\'' + a.id + '\')">🧠 Generate</button>')
+      + '<button style="padding:6px 13px;border:1.5px solid #6366f1;border-radius:8px;background:' + (hasE?'#eef2ff':'#fff') + ';color:#6366f1;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit" onclick="toggleExpressionsEditor(\'' + a.id + '\')">'
+      + '✏️ Expressions' + (exprCount ? ' (' + exprCount + ')' : '') + '</button>'
       + '<div id="cst-' + a.id + '" style="width:100%;font-size:12px;color:var(--gr);margin-top:4px"></div>'
+      + '</div>'
+      + '<div id="expr-editor-' + a.id + '" style="display:none;padding:0 16px 16px;border-top:1px solid #f1f5f9">'
+      + renderExpressionsEditor(a.id, hasE ? c.expressions : '[]')
+      + '</div>'
       + '</div>';
   });
   wrap.innerHTML = html;
+}
+
+function renderExpressionsEditor(articleId, existingJson) {
+  let exprs = [];
+  try { exprs = JSON.parse(existingJson || '[]'); if (!Array.isArray(exprs)) exprs = []; } catch(e) { exprs = []; }
+  const rows = exprs.map(function(ex, i) {
+    return '<div class="expr-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px">'
+      + '<input class="expr-phrase" style="flex:2;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-family:inherit" placeholder="Korean phrase…" value="' + (ex.phrase||'').replace(/"/g,'&quot;') + '">'
+      + '<select class="expr-color" style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-family:inherit">'
+      + ['blue','green','amber','rose'].map(function(c){ return '<option value="'+c+'"'+(ex.color===c?' selected':'')+'>'+c+'</option>'; }).join('')
+      + '</select>'
+      + '<input class="expr-note" style="flex:2;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-family:inherit" placeholder="Note (optional)…" value="' + (ex.note||'').replace(/"/g,'&quot;') + '">'
+      + '<button onclick="this.closest(\'.expr-row\').remove()" style="padding:5px 9px;border:none;background:#fee2e2;color:#991b1b;border-radius:6px;cursor:pointer;font-size:13px">✕</button>'
+      + '</div>';
+  }).join('');
+  return '<div style="padding-top:14px">'
+    + '<div style="font-size:12px;font-weight:800;color:#6366f1;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">✏️ Highlighted Expressions</div>'
+    + '<div style="font-size:12px;color:#64748b;margin-bottom:12px">Mark important phrases in this article. They will be highlighted in-article for learners.</div>'
+    + '<div id="expr-rows-' + articleId + '">' + rows + '</div>'
+    + '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
+    + '<button onclick="addExprRow(\'' + articleId + '\')" style="padding:7px 14px;background:#f0f0ff;border:1px dashed #6366f1;border-radius:8px;color:#6366f1;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">+ Add Expression</button>'
+    + '<button onclick="saveExpressions(\'' + articleId + '\')" style="padding:7px 18px;background:#6366f1;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">💾 Save</button>'
+    + '<span id="expr-status-' + articleId + '" style="font-size:12px;color:var(--gr);align-self:center"></span>'
+    + '</div>'
+    + '</div>';
+}
+
+function toggleExpressionsEditor(articleId) {
+  const el = document.getElementById('expr-editor-' + articleId);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function addExprRow(articleId) {
+  const container = document.getElementById('expr-rows-' + articleId);
+  if (!container) return;
+  const div = document.createElement('div');
+  div.className = 'expr-row';
+  div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px';
+  div.innerHTML = '<input class="expr-phrase" style="flex:2;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-family:inherit" placeholder="Korean phrase…">'
+    + '<select class="expr-color" style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-family:inherit">'
+    + ['blue','green','amber','rose'].map(function(c){ return '<option value="'+c+'">'+c+'</option>'; }).join('')
+    + '</select>'
+    + '<input class="expr-note" style="flex:2;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-family:inherit" placeholder="Note (optional)…">'
+    + '<button onclick="this.closest(\'.expr-row\').remove()" style="padding:5px 9px;border:none;background:#fee2e2;color:#991b1b;border-radius:6px;cursor:pointer;font-size:13px">✕</button>';
+  container.appendChild(div);
+  div.querySelector('.expr-phrase').focus();
+}
+
+async function saveExpressions(articleId) {
+  const container = document.getElementById('expr-rows-' + articleId);
+  const status = document.getElementById('expr-status-' + articleId);
+  if (!container) return;
+  const rows = container.querySelectorAll('.expr-row');
+  const exprs = [];
+  rows.forEach(function(row) {
+    const phrase = (row.querySelector('.expr-phrase').value || '').trim();
+    if (!phrase) return;
+    exprs.push({
+      phrase: phrase,
+      color:  (row.querySelector('.expr-color').value || 'blue'),
+      note:   (row.querySelector('.expr-note').value  || '').trim() || undefined
+    });
+  });
+  if (status) status.textContent = 'Saving…';
+  try {
+    const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?on_conflict=article_id', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
+        'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({ article_id: String(articleId), expressions: JSON.stringify(exprs) })
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      if (status) status.textContent = '❌ ' + t.slice(0,80);
+    } else {
+      if (status) status.textContent = '✅ Saved (' + exprs.length + ' expressions)';
+      setTimeout(function(){ if(status) status.textContent=''; }, 3000);
+    }
+  } catch(e) {
+    if (status) status.textContent = '❌ ' + e.message;
+  }
 }
 
 async function genCache(articleId) {
