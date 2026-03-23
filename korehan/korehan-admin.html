@@ -463,7 +463,7 @@ let deleteId = null;
 
 var _sbAdmin = null;
 // ── Claude API 프록시 (어드민용) ──────────────────────────────
-const ADMIN_CLAUDE_PROXY = SUPA_URL + '/functions/v1/claude-proxy';
+const ADMIN_CLAUDE_PROXY = SUPA_URL_ADMIN + '/functions/v1/claude-proxy';
 
 async function callClaude({ feature, model, max_tokens, messages }) {
   var sb = getSb();
