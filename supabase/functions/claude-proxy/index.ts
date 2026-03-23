@@ -11,8 +11,8 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const sb = createClient(supabaseUrl, supabaseKey)
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || supabaseServiceKey
 
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) return new Response(JSON.stringify({ error: 'No auth' }), { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } })
@@ -20,17 +20,24 @@ Deno.serve(async (req) => {
     const token = authHeader.replace('Bearer ', '')
     const isAdminBypass = req.headers.get('x-admin-bypass') === '1'
 
-    // service_role key로 호출하는 admin bypass
-    if (isAdminBypass && token === supabaseKey) {
-      // Admin 요청 - JWT verify 스킵, 바로 처리
+    // Service role client for DB reads (app_settings)
+    const sbAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
+    if (isAdminBypass && token === supabaseServiceKey) {
+      // Admin bypass — skip JWT verification
     } else {
-      // 일반 유저 - JWT verify
-      const { data: { user }, error: authErr } = await sb.auth.getUser(token)
+      // Standard user — verify JWT using the recommended Supabase pattern:
+      // create client with user's token in the Authorization header, then call getUser()
+      const sbUser = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
+        auth: { persistSession: false, autoRefreshToken: false },
+      })
+      const { data: { user }, error: authErr } = await sbUser.auth.getUser()
       if (authErr || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } })
     }
 
     // Get API key from DB
-    const { data: setting } = await sb.from('app_settings').select('value').eq('key', 'anthropic_key').single()
+    const { data: setting } = await sbAdmin.from('app_settings').select('value').eq('key', 'anthropic_key').single()
     const apiKey = setting?.value
     if (!apiKey) return new Response(JSON.stringify({ error: 'No API key configured' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
 
