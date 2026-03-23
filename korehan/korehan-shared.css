@@ -1376,7 +1376,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   font-size:11px; font-weight:800; color:#94a3b8;
   margin-bottom:16px; text-transform:uppercase; letter-spacing:1.2px;
 }
-.art-vocab-list { display:flex; flex-direction:column; gap:10px; }
+.art-vocab-list { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .art-vocab-item {
   display:flex; align-items:center; gap:12px;
   padding:12px 14px; border-radius:12px;
@@ -1753,19 +1753,23 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   .kh-topnav { display: none; }
   .conv-grid { grid-template-columns: 1fr; }
   .story-grid { grid-template-columns: repeat(2,1fr); gap: 12px; }
-  /* 헤더 오른쪽 버튼들 overflow 처리 */
-  .kh-hright { overflow: hidden; max-width: calc(100vw - 160px); flex-shrink: 1; }
-  #topbar-join-btn, #topbar-mypage-btn { display: none !important; }
+  /* Header right — hide neon toggle (accessible via sidebar), show auth buttons */
+  .kh-hright { overflow: visible; max-width: calc(100vw - 160px); flex-shrink: 1; }
+  #topbar-neon-toggle { display: none !important; }
+  #topbar-mypage-btn { display: none !important; }
   #topbar-signin-btn { display: inline-flex !important; padding: 7px 12px; font-size: 12px; }
+  #topbar-join-btn { display: inline-flex !important; padding: 7px 11px; font-size: 12px; }
   .kh-avatar-btn { width: 36px; height: 36px; }
+  /* Vocab — single column on mobile */
+  .art-vocab-list { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
   .story-grid { grid-template-columns: 1fr; }
-  /* 모바일에서 Join/Admin만 숨기고 Sign In/Avatar는 유지 */
-  #topbar-join-btn,
-  #topbar-mypage-btn, #topbar-admin-btn { display: none !important; }
+  /* Small phones — keep Sign In + Join compact, hide Admin */
+  #topbar-admin-btn, #topbar-mypage-btn { display: none !important; }
   .kh-hright { gap: 6px; }
-  #topbar-signin-btn { padding: 6px 10px; font-size: 12px; }
+  #topbar-signin-btn { padding: 6px 10px; font-size: 11px; }
+  #topbar-join-btn { display: inline-flex !important; padding: 6px 9px; font-size: 11px; }
   .kh-user-dropdown { right: -4px; min-width: 200px; }
 }
 
@@ -2245,10 +2249,11 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   body.mobile-redesign .kh-hright{gap:8px;}
   body.mobile-redesign .kh-hsearch,
   body.mobile-redesign .kh-hdate,
-  body.mobile-redesign #topbar-join-btn,
+  body.mobile-redesign #topbar-neon-toggle,
   body.mobile-redesign #topbar-admin-btn,
   body.mobile-redesign #topbar-mypage-btn{display:none !important;}
   body.mobile-redesign #topbar-signin-btn{display:inline-flex !important;padding:7px 12px !important;font-size:12px !important;}
+  body.mobile-redesign #topbar-join-btn{display:inline-flex !important;padding:7px 11px !important;font-size:12px !important;}
   body.mobile-redesign .brk-bar,
   body.mobile-redesign .kh-topnav,
   body.mobile-redesign #kh-sidebar,
