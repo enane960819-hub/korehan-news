@@ -1,4 +1,3 @@
-// sync marker
 async function logReadEvent(sb, payload) {
   const { error } = await sb.rpc('log_read_event', {
     p_content_type: payload.contentType,

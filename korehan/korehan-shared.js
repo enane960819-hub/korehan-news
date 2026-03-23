@@ -1,4 +1,3 @@
-// sync marker
 /* ============================================================
    KoreHan News — Shared JS
    ============================================================ */
@@ -26,30 +25,107 @@ function getSupa() {
 
 // 현재 로그인 유저
 var supaUser = null;
+var KH_LUCIDE_SRC = 'https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js';
+var _khLucideReady = null;
+
+function ensureKhLucide() {
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    return Promise.resolve(window.lucide);
+  }
+  if (_khLucideReady) return _khLucideReady;
+  _khLucideReady = new Promise(function(resolve, reject) {
+    var existing = document.querySelector('script[data-kh-lucide="1"]');
+    if (existing) {
+      existing.addEventListener('load', function() { resolve(window.lucide); }, { once: true });
+      existing.addEventListener('error', reject, { once: true });
+      return;
+    }
+    var script = document.createElement('script');
+    script.src = KH_LUCIDE_SRC;
+    script.defer = true;
+    script.setAttribute('data-kh-lucide', '1');
+    script.onload = function() { resolve(window.lucide); };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  }).catch(function(err) {
+    console.warn('Lucide failed to load.', err);
+    return null;
+  });
+  return _khLucideReady;
+}
+
+function renderKhLucideIcons() {
+  ensureKhLucide().then(function(lucideLib) {
+    if (!lucideLib || typeof lucideLib.createIcons !== 'function') return;
+    lucideLib.createIcons({
+      attrs: {
+        'stroke-width': 1.9
+      }
+    });
+  });
+}
+
+function khIcon(name, label, extraClass) {
+  var cls = 'kh-ui-icon' + (extraClass ? ' ' + extraClass : '');
+  var html = '<i data-lucide="' + name + '" class="' + cls + '" aria-hidden="true"></i>';
+  if (!label) return html;
+  return html + '<span>' + label + '</span>';
+}
 
 // ── Claude API 프록시 (키를 서버에서만 관리) ─────────────────
 // Anthropic API를 직접 호출하지 않고 Supabase Edge Function을 통해 호출
 // → API 키가 브라우저에 절대 노출되지 않음
 const CLAUDE_PROXY_URL = SUPA_URL + '/functions/v1/claude-proxy';
 
+async function callClaudeRequest(accessToken, payload) {
+  return fetch(CLAUDE_PROXY_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + accessToken,
+      'apikey': SUPA_KEY,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+async function getFreshClaudeSession(sb, forceRefresh) {
+  var sessionRes = await sb.auth.getSession();
+  var session = sessionRes && sessionRes.data && sessionRes.data.session;
+  var now = Math.floor(Date.now() / 1000);
+  var expiresSoon = session && session.expires_at && session.expires_at <= now + 90;
+  if (forceRefresh || !session || expiresSoon) {
+    var refreshed = await sb.auth.refreshSession();
+    session = refreshed && refreshed.data && refreshed.data.session;
+  }
+  return session || null;
+}
+
 async function callClaude({ feature, model, max_tokens, messages }) {
   var sb = getSupa();
   if (!sb) throw new Error('Supabase not initialized');
 
-  var { data: { session } } = await sb.auth.getSession();
+  var session = await getFreshClaudeSession(sb);
   if (!session) throw new Error('Not signed in');
 
-  var resp = await fetch(CLAUDE_PROXY_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + session.access_token,
-    },
-    body: JSON.stringify({ feature, model, max_tokens, messages }),
-  });
+  var payload = { feature, model, max_tokens, messages };
+  var resp = await callClaudeRequest(session.access_token, payload);
+
+  if (resp.status === 401) {
+    var freshSession = await getFreshClaudeSession(sb, true);
+    if (freshSession && freshSession.access_token) {
+      resp = await callClaudeRequest(freshSession.access_token, payload);
+    }
+  }
 
   if (resp.status === 429) throw new Error('rate_limit');
-  if (resp.status === 401) throw new Error('unauthorized');
+  if (resp.status === 401) {
+    try { await sb.auth.signOut({ scope: 'local' }); } catch(e) {}
+    supaUser = null;
+    updateAuthUI();
+    updateCommentForm();
+    throw new Error('unauthorized');
+  }
   if (!resp.ok) {
     var err = await resp.json().catch(function(){ return {}; });
     throw new Error(err.error || 'API error ' + resp.status);
@@ -202,7 +278,7 @@ async function refreshSessionSafely() {
     if (!_sessionWarningShown) {
       _sessionWarningShown = true;
       if (typeof toast === 'function') toast('Your session has expired. Please sign in again.', true);
-      setTimeout(function() { sb.auth.signOut(); }, 2000);
+      setTimeout(function() { sb.auth.signOut({ scope: 'local' }); }, 2000);
     }
   }
 }
@@ -309,6 +385,13 @@ async function authSignIn() {
     if (msg.includes('Email not confirmed')) msg = 'Please confirm your email first. Check your inbox.';
     _authShowError(msg);
     return;
+  }
+  if (data && data.user) {
+    supaUser = data.user;
+    _sessionWarningShown = false;
+    updateAuthUI();
+    updateCommentForm();
+    window.dispatchEvent(new Event('kh-auth-signed-in'));
   }
   closeAuthModal();
   toast('Welcome back! 👋');
@@ -490,7 +573,12 @@ function _injectAuthModal() {
         <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         Sign up with Google
       </button>
-      <div style="font-size:11px;color:#94a3b8;text-align:center;margin-top:12px;line-height:1.6">By creating an account, you agree to our<br>Terms of Service and Privacy Policy.</div>
+      <div style="font-size:11px;color:#94a3b8;text-align:center;margin-top:12px;line-height:1.6">
+        By creating an account, you agree to our<br>
+        <a href="terms.html" style="color:#1e4fa3;font-weight:700">Terms of Service</a>
+        and
+        <a href="privacy.html" style="color:#1e4fa3;font-weight:700">Privacy Policy</a>.
+      </div>
     </div>
 
     <!-- ── 비밀번호 재설정 폼 ── -->
@@ -546,20 +634,27 @@ function _authCheckPwStrength(pw) {
 }
 
 // 로그아웃
-async function signOut() {
+async function signOut(options) {
+  options = options || {};
+  var scope = options.scope || 'global';
+  var message = options.message || (scope === 'global' ? 'Signed out on all devices' : 'Signed out successfully');
   var sb = getSupa();
   if (sb) {
-    await sb.auth.signOut({ scope: 'local' }); // 현재 기기만 로그아웃
+    await sb.auth.signOut({ scope: scope });
   }
-  // Supabase 세션 localStorage에서 완전 삭제
-  Object.keys(localStorage).forEach(function(key) {
-    if (key.startsWith('sb-') || key.includes('supabase')) {
-      localStorage.removeItem(key);
-    }
+  // 현재 브라우저에 남은 세션 흔적은 scope와 관계없이 정리
+  [localStorage, sessionStorage].forEach(function(storage) {
+    try {
+      Object.keys(storage).forEach(function(key) {
+        if (key.startsWith('sb-') || key.includes('supabase')) {
+          storage.removeItem(key);
+        }
+      });
+    } catch (e) {}
   });
   supaUser = null;
   updateAuthUI();
-  toast('Signed out successfully');
+  toast(message);
 }
 
 // 세션 확인
@@ -629,7 +724,9 @@ async function checkSession() {
 function updateAuthUI() {
   var signinBtn  = document.getElementById('topbar-signin-btn');
   var adminBtn   = document.getElementById('topbar-admin-btn');
+  var authMenu   = document.getElementById('topbar-auth-menu');
   var userAvatar = document.getElementById('topbar-user-avatar');
+  var userDrop   = document.getElementById('topbar-user-dropdown');
 
   // 관리자 이메일 목록 (본인 Gmail 추가)
   var ADMIN_EMAILS = ['enane960819@gmail.com'];
@@ -639,15 +736,26 @@ function updateAuthUI() {
   if (supaUser) {
     // 로그인 상태
     if (signinBtn) {
-      signinBtn.textContent = 'Sign Out';
-      signinBtn.onclick = function(e){ e.preventDefault(); signOut(); };
+      signinBtn.style.display = 'none';
     }
+    if (authMenu) authMenu.style.display = 'inline-flex';
     if (userAvatar) {
       var avatar = supaUser.user_metadata && supaUser.user_metadata.avatar_url;
       userAvatar.style.display = 'inline-flex';
       userAvatar.innerHTML = avatar
         ? '<img src="' + avatar + '" style="width:28px;height:28px;border-radius:50%;vertical-align:middle">'
         : '<span style="font-size:13px">' + (supaUser.email || '').charAt(0).toUpperCase() + '</span>';
+    }
+    if (userDrop) {
+      var name = (supaUser.user_metadata && (supaUser.user_metadata.full_name || supaUser.user_metadata.name)) || (supaUser.email || '').split('@')[0];
+      userDrop.innerHTML =
+        '<div class="kh-user-dropdown-head">'
+        + '<div class="kh-user-dropdown-name">' + escapeHtml(name || 'User') + '</div>'
+        + '<div class="kh-user-dropdown-email">' + escapeHtml(supaUser.email || '') + '</div>'
+        + '</div>'
+        + '<a href="korehan-mypage.html" class="kh-user-dropdown-link">' + khIcon('circle-user-round', 'My Page', 'kh-ui-icon-sm') + '</a>'
+        + (isAdmin ? '<a href="korehan-admin.html" class="kh-user-dropdown-link">' + khIcon('settings', 'Admin CMS', 'kh-ui-icon-sm') + '</a>' : '')
+        + '<button type="button" class="kh-user-dropdown-link kh-user-dropdown-btn" onclick="signOut();closeTopbarUserMenu()">' + khIcon('log-out', 'Sign Out', 'kh-ui-icon-sm') + '</button>';
     }
     // 마이페이지 버튼
     var mypageBtn = document.getElementById('topbar-mypage-btn');
@@ -658,9 +766,12 @@ function updateAuthUI() {
     // 비로그인 상태
     if (signinBtn) {
       signinBtn.textContent = 'Sign In';
+      signinBtn.style.display = '';
       signinBtn.onclick = function(e){ e.preventDefault(); openAuthModal("signin"); };
     }
+    if (authMenu) authMenu.style.display = 'none';
     if (userAvatar) userAvatar.style.display = 'none';
+    if (userDrop) userDrop.classList.remove('on');
     if (adminBtn) adminBtn.style.display = 'none';
     var mypageBtn = document.getElementById('topbar-mypage-btn');
     if (mypageBtn) mypageBtn.style.display = 'none';
@@ -672,7 +783,27 @@ function updateAuthUI() {
   var mp2 = document.getElementById('topbar-mypage-btn');
   if (mp2) mp2.style.display = supaUser ? '' : 'none';
   updateSidebarAuth();
+  injectMobileBottomNav();
+  renderKhLucideIcons();
 }
+
+function toggleTopbarUserMenu(evt) {
+  if (evt) evt.preventDefault();
+  var drop = document.getElementById('topbar-user-dropdown');
+  if (!drop) return;
+  drop.classList.toggle('on');
+}
+
+function closeTopbarUserMenu() {
+  var drop = document.getElementById('topbar-user-dropdown');
+  if (drop) drop.classList.remove('on');
+}
+
+document.addEventListener('click', function(evt){
+  var wrap = document.getElementById('topbar-auth-menu');
+  if (!wrap || wrap.contains(evt.target)) return;
+  closeTopbarUserMenu();
+});
 
 const DB_KEY          = 'korehan_db';
 const K_PHRASES       = 'korehan_phrases';
@@ -681,39 +812,108 @@ const K_SENTENCES     = 'korehan_sentences';
 const K_OPINIONS      = 'korehan_opinions';
 const K_ADMIN_SESSION = 'korehan_admin_session';
 
+const K_NEON_THEME    = 'korehan_neon_theme';
+
+function isKhNeonEnabled() {
+  try {
+    var saved = localStorage.getItem(K_NEON_THEME);
+    if (saved === '1') return true;
+    if (saved === '0') return false;
+    return localStorage.getItem('korehan_home_neon') === '1';
+  } catch(e) {
+    return false;
+  }
+}
+
+function syncNeonToggleButtons() {
+  var on = !!(document.body && document.body.classList.contains('kh-neon-on'));
+  [
+    ['topbar-neon-toggle', 'zap', 'Neon '],
+    ['home-neon-toggle', 'zap', 'Neon '],
+    ['kh-sb-neon-toggle', 'zap', 'Neon theme: ']
+  ].forEach(function(pair) {
+    var btn = document.getElementById(pair[0]);
+    if (!btn) return;
+    btn.innerHTML = khIcon(pair[1], pair[2] + (on ? 'ON' : 'OFF'), 'kh-ui-icon-sm');
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.classList.toggle('on', on);
+  });
+  renderKhLucideIcons();
+}
+
+function applyKhNeon(on) {
+  if (!document.body) return;
+  document.body.classList.toggle('kh-neon-on', !!on);
+  syncNeonToggleButtons();
+}
+
+function toggleKhNeon(evt) {
+  if (evt && evt.preventDefault) evt.preventDefault();
+  var next = !(document.body && document.body.classList.contains('kh-neon-on'));
+  try {
+    localStorage.setItem(K_NEON_THEME, next ? '1' : '0');
+    localStorage.setItem('korehan_home_neon', next ? '1' : '0');
+  } catch(e) {}
+  applyKhNeon(next);
+}
+
+function initKhNeonTheme() {
+  applyKhNeon(isKhNeonEnabled());
+}
+
+window.isKhNeonEnabled = isKhNeonEnabled;
+window.applyKhNeon = applyKhNeon;
+window.toggleKhNeon = toggleKhNeon;
+window.syncNeonToggleButtons = syncNeonToggleButtons;
+
 const DEF_PHRASES = [
   {
-    ko:'경제 회복', rom:'gyeong-je hoe-bok', en:'economic recovery',
-    intro:'A phrase used when the economy starts improving again after a slowdown.',
-    nuance:'Often used in news, politics, and business reports when talking about growth, jobs, prices, or consumer confidence.',
+    ko:'고생 끝에 낙이 온다',
+    rom:'go-saeng kkeut-e nak-i on-da',
+    en:'After hardship comes happiness.',
+    intro:'A classic Korean proverb used to encourage someone who is going through a difficult stretch.',
+    nuance:'Used when reminding learners that steady effort pays off, especially after a tiring or frustrating period.',
     examples:[
-      {ko:'정부는 경제 회복을 위해 추가 지원책을 발표했어요.', en:'The government announced extra support measures for economic recovery.'},
-      {ko:'전문가들은 올해 하반기에 경제 회복이 본격화될 것으로 보고 있어요.', en:'Experts believe the economic recovery will pick up in the second half of this year.'},
-      {ko:'소비가 늘어나면서 경제 회복 기대감도 커지고 있어요.', en:'As spending rises, expectations for economic recovery are also growing.'}
+      {ko:'시험 준비가 힘들어도 고생 끝에 낙이 온다고 생각해 봐요.', en:'Even if test prep is hard, try thinking that happiness comes after hardship.'},
+      {ko:'매일 한국어를 조금씩 공부하면 고생 끝에 낙이 올 거예요.', en:'If you study Korean little by little every day, the reward will come after the struggle.'}
     ],
-    related:['물가 안정','소비 증가','고용 회복']
+    related:['인내','꾸준함','노력']
   },
   {
-    ko:'민간투자',  rom:'min-gan tu-ja',     en:'private investment',
-    intro:'Money invested by private companies or individuals rather than the government.',
-    nuance:'Common in economy and policy articles when discussing business expansion, infrastructure, or innovation.',
+    ko:'시작이 반이다',
+    rom:'si-jak-i ban-i-da',
+    en:'Starting is half the battle.',
+    intro:'A proverb that says beginning a task is already a huge part of finishing it.',
+    nuance:'Great for daily study motivation when someone is procrastinating or hesitating to begin.',
     examples:[
-      {ko:'정부는 민간투자를 늘리기 위한 규제 완화를 검토하고 있어요.', en:'The government is reviewing deregulation to increase private investment.'},
-      {ko:'이번 프로젝트는 대규모 민간투자를 바탕으로 추진돼요.', en:'This project is being pushed forward based on large-scale private investment.'},
-      {ko:'전문가들은 민간투자가 살아나야 경기 회복 속도도 빨라질 수 있다고 말해요.', en:'Experts say the recovery can speed up only if private investment picks up.'}
+      {ko:'오늘 한 문제라도 풀면 시작이 반이에요.', en:'If you solve even one question today, that is already half the battle.'},
+      {ko:'한국어 일기 첫 줄만 써도 시작이 반이다라는 말이 딱 맞아요.', en:'If you write just the first line of your Korean diary, “starting is half the battle” fits perfectly.'}
     ],
-    related:['규제 완화','기업 투자','경기 회복']
+    related:['첫걸음','동기부여','습관']
   },
   {
-    ko:'반도체',    rom:'ban-do-che',        en:'semiconductor',
-    intro:'A core technology product used in phones, computers, cars, and many modern devices.',
-    nuance:'One of the most common words in Korean tech and export news.',
+    ko:'백문이 불여일견',
+    rom:'baeng-mun-i bul-yeo-il-gyeon',
+    en:'Seeing once is better than hearing a hundred times.',
+    intro:'A proverb used when direct experience teaches better than repeated explanations.',
+    nuance:'Useful for language learning, travel, culture, and real-life practice contexts.',
     examples:[
-      {ko:'한국의 반도체 수출이 지난달보다 증가했어요.', en:'Korea’s semiconductor exports increased compared to last month.'},
-      {ko:'반도체 산업은 한국 경제에서 중요한 역할을 해요.', en:'The semiconductor industry plays an important role in the Korean economy.'},
-      {ko:'새 반도체 공장 건설로 일자리도 늘어날 전망이에요.', en:'Jobs are also expected to increase with the construction of a new semiconductor factory.'}
+      {ko:'문법 설명을 백 번 듣는 것보다 예문을 직접 보는 게 백문이 불여일견이에요.', en:'Rather than hearing grammar explained a hundred times, seeing examples yourself is better.'},
+      {ko:'한국에 가서 직접 말해 보니 백문이 불여일견이라는 걸 느꼈어요.', en:'After going to Korea and speaking directly, I felt that seeing once is better than hearing a hundred times.'}
     ],
-    related:['수출','공장 건설','첨단 산업']
+    related:['직접 경험','실전','예문']
+  },
+  {
+    ko:'티끌 모아 태산',
+    rom:'ti-kkeul mo-a tae-san',
+    en:'Dust gathered together becomes a mountain.',
+    intro:'A proverb meaning small efforts add up to something big over time.',
+    nuance:'Very natural for study streaks, vocabulary building, savings, and habit-building.',
+    examples:[
+      {ko:'단어 다섯 개씩 외워도 티끌 모아 태산이에요.', en:'Even memorizing five words at a time adds up like dust becoming a mountain.'},
+      {ko:'짧게 공부해도 매일 하면 티끌 모아 태산이죠.', en:'Even short study sessions add up if you do them every day.'}
+    ],
+    related:['누적','습관','복습']
   },
 ];
 const DEF_WORDBANK = [
@@ -764,7 +964,18 @@ function normalizePhrase(row) {
     related: Array.isArray(row.related) ? row.related.filter(Boolean).slice(0, 8) : []
   };
 }
-function getPhrases()   { return lsGet(K_PHRASES,   DEF_PHRASES).map(normalizePhrase); }
+function getPhraseSourceRows() {
+  var raw = lsGet(K_PHRASES, null);
+  if (Array.isArray(raw)) return raw;
+
+  raw = _appSettings && _appSettings.phrases;
+  if (raw && typeof raw === 'string') {
+    try { raw = JSON.parse(raw); } catch(e) { raw = null; }
+  }
+  if (Array.isArray(raw)) return raw;
+  return DEF_PHRASES;
+}
+function getPhrases()   { return getPhraseSourceRows().map(normalizePhrase); }
 function getTodaysPhraseIndex() {
   var phrases = getPhrases();
   if (!phrases.length) return 0;
@@ -773,6 +984,29 @@ function getTodaysPhraseIndex() {
 function getTodaysPhrase() {
   var phrases = getPhrases();
   return phrases[getTodaysPhraseIndex()] || normalizePhrase({});
+}
+
+async function getPhrasesAsync() {
+  await loadAppSettings();
+  return getPhrases();
+}
+
+async function saveSharedPhrases(rows) {
+  var normalized = (rows || []).map(normalizePhrase).filter(function(row){ return row.ko; });
+  if (!normalized.length) normalized = DEF_PHRASES.map(normalizePhrase);
+  lsSet(K_PHRASES, normalized);
+  _appSettings.phrases = normalized;
+
+  var sb = getSupa();
+  if (!sb || !supaUser) return normalized;
+  try {
+    await sb.from('app_settings').upsert({
+      key: 'phrases',
+      value: normalized,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'key' });
+  } catch(e) {}
+  return normalized;
 }
 
 // ── 공유 데이터 ───────────────────────────────────────────────
@@ -902,206 +1136,6 @@ async function restoreSaveButtons(containerId) {
 
 function articleUrl(id) {
   return 'korehan-article.html?id=' + encodeURIComponent(id);
-}
-
-var CHARACTER_STORAGE_KEY = 'kh_character_roster_v1';
-var CHARACTER_ROSTER = [
-  { slug:'yuna-kim', name:'Yuna Kim', name_ko:'김유나', role:'Politics & Society Reporter', title:'Calm explainer of politics and public policy.', bio:'Yuna turns complex headlines into learner-friendly Korean and always adds a practical civic angle.', image:'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=600&q=80', emoji:'📰', accent:'#2563eb', specialties:['Politics','Society','Explainers'] },
-  { slug:'minseo-park', name:'Minseo Park', name_ko:'박민서', role:'Culture Features Editor', title:'Warm storyteller for culture and lifestyle pieces.', bio:'Minseo writes soft but vivid stories about food, culture, trends, and everyday Korean life.', image:'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=600&q=80', emoji:'🎭', accent:'#ec4899', specialties:['Culture','Lifestyle','Trends'] },
-  { slug:'jiho-lee', name:'Jiho Lee', name_ko:'이지호', role:'Economy Desk Reporter', title:'Numbers-first reporter with a friendly tone.', bio:'Jiho likes turning markets, startups, and policy shifts into short readable lessons.', image:'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80', emoji:'📈', accent:'#0f766e', specialties:['Economy','Business','Markets'] },
-  { slug:'ara-choi', name:'Ara Choi', name_ko:'최아라', role:'World News Correspondent', title:'Fast, clear summaries of global issues.', bio:'Ara follows international news and rewrites it in simple Korean with strong context.', image:'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80', emoji:'🌍', accent:'#7c3aed', specialties:['World','Diplomacy','Climate'] },
-  { slug:'taeho-jung', name:'Taeho Jung', name_ko:'정태호', role:'Sports & Event Reporter', title:'Energetic voice for sports and live moments.', bio:'Taeho writes action-first recaps that feel lively even for beginner readers.', image:'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=600&q=80', emoji:'⚽', accent:'#ea580c', specialties:['Sports','Events','Competition'] },
-  { slug:'soyeon-han', name:'Soyeon Han', name_ko:'한소연', role:'Technology Reporter', title:'Curious guide to AI, startups, and gadgets.', bio:'Soyeon connects technology trends to real daily life and beginner-friendly vocabulary.', image:'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=600&q=80', emoji:'🤖', accent:'#4f46e5', specialties:['AI','Tech','Startups'] },
-  { slug:'dohyun-kang', name:'Dohyun Kang', name_ko:'강도현', role:'Investigation Editor', title:'Direct, concise, and detail-oriented.', bio:'Dohyun focuses on accountability stories and gives sharp summaries without overwhelming detail.', image:'https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=600&q=80', emoji:'🕵️', accent:'#334155', specialties:['Investigations','Society','Law'] },
-  { slug:'haeun-shin', name:'Haeun Shin', name_ko:'신하은', role:'Travel & Human Stories Writer', title:'Observant writer of emotional human stories.', bio:'Haeun collects touching moments and writes reflective pieces for story-driven readers.', image:'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=600&q=80', emoji:'✈️', accent:'#db2777', specialties:['Human stories','Travel','Interviews'] },
-  { slug:'woojin-oh', name:'Woojin Oh', name_ko:'오우진', role:'Conversation Script Writer', title:'Sharp ear for realistic spoken Korean.', bio:'Woojin builds natural chat scenarios that sound like real KakaoTalk messages.', image:'https://images.unsplash.com/photo-1504257432389-52343af06ae3?auto=format&fit=crop&w=600&q=80', emoji:'💬', accent:'#16a34a', specialties:['Conversations','Spoken Korean','Slang'] },
-  { slug:'nari-seo', name:'Nari Seo', name_ko:'서나리', role:'Fiction & Story Creator', title:'Playful writer of short emotional fiction.', bio:'Nari creates memorable characters and short fiction that learners can finish in one sitting.', image:'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80', emoji:'📚', accent:'#9333ea', specialties:['Stories','Fiction','Character arcs'] }
-];
-
-function safeParseJSON(raw, fallback) {
-  try { return JSON.parse(raw); } catch (e) { return fallback; }
-}
-
-function getCharacterRoster() {
-  var roster = CHARACTER_ROSTER.map(function(c){ return Object.assign({}, c); });
-  try {
-    var overrides = safeParseJSON(localStorage.getItem(CHARACTER_STORAGE_KEY) || '{}', {});
-    roster = roster.map(function(c){
-      return overrides[c.slug] ? Object.assign({}, c, overrides[c.slug]) : c;
-    });
-  } catch (e) {}
-  return roster;
-}
-
-function getCharacterBySlug(slug) {
-  if (!slug) return null;
-  var roster = getCharacterRoster();
-  for (var i = 0; i < roster.length; i++) if (roster[i].slug === slug) return roster[i];
-  return null;
-}
-
-function saveCharacterOverride(slug, patch) {
-  if (!slug) return;
-  var overrides = safeParseJSON(localStorage.getItem(CHARACTER_STORAGE_KEY) || '{}', {});
-  overrides[slug] = Object.assign({}, overrides[slug] || {}, patch || {});
-  localStorage.setItem(CHARACTER_STORAGE_KEY, JSON.stringify(overrides));
-}
-
-function characterProfileUrl(slug) {
-  return 'korehan-character.html?slug=' + encodeURIComponent(slug || '');
-}
-
-function characterDisplayName(character) {
-  return escapeHtml((character && (character.name_ko || character.name)) || 'KoreHan character');
-}
-
-function getCharacterImage(character) {
-  return (character && character.image) || 'https://picsum.photos/seed/kh-character/200/200';
-}
-
-function pickCharacterSlug(seed) {
-  var roster = getCharacterRoster();
-  if (!roster.length) return '';
-  var str = String(seed || '0');
-  var num = 0;
-  for (var i = 0; i < str.length; i++) num += str.charCodeAt(i);
-  return roster[num % roster.length].slug;
-}
-
-function resolveCharacter(input, fallbackSeed) {
-  if (!input) return getCharacterBySlug(pickCharacterSlug(fallbackSeed));
-  if (typeof input === 'string') return getCharacterBySlug(input) || getCharacterBySlug(pickCharacterSlug(input));
-  if (input.slug) return Object.assign({}, getCharacterBySlug(input.slug) || {}, input);
-  return Object.assign({}, getCharacterBySlug(pickCharacterSlug(fallbackSeed)) || {}, input);
-}
-
-function resolveArticleAuthor(article) {
-  var ref = article && (
-    article.author
-    || article.author_slug
-    || article.character_slug
-    || (article.data && (article.data.author || article.data.author_slug || article.data.character_slug))
-  );
-  var author = resolveCharacter(ref, article && article.id);
-  if (!author) return null;
-  return author;
-}
-
-function resolveStoryAuthor(story) {
-  var ref = story && (
-    story.author
-    || story.author_slug
-    || story.character_slug
-    || (story.data && (story.data.author || story.data.author_slug || story.data.character_slug))
-  );
-  return resolveCharacter(ref, story && (story.id || story.title));
-}
-
-function resolveConversationCast(conv) {
-  var speakerSlugs = (conv && (conv.speaker_slugs || conv.speakers || (conv.data && conv.data.speaker_slugs))) || [];
-  if (!Array.isArray(speakerSlugs)) speakerSlugs = [];
-  var left = resolveCharacter(speakerSlugs[0] || (conv && conv.left_character) || (conv && pickCharacterSlug((conv._id || conv.id || conv.name || '') + '-left')), (conv && conv._id) || 'left');
-  var right = resolveCharacter(speakerSlugs[1] || (conv && conv.right_character) || (conv && pickCharacterSlug((conv._id || conv.id || conv.name || '') + '-right')), (conv && conv.name) || 'right');
-  if (left && right && left.slug === right.slug) right = resolveCharacter(pickCharacterSlug(String(conv && (conv.name || conv._id || '')) + '-pair'), String(conv && (conv._id || '')) + '-pair');
-  return { left:left, right:right };
-}
-
-function renderCharacterAvatar(character, cls, size) {
-  var initials = (character && (character.name_ko || character.name || '?')).slice(0, 2);
-  var safeInitials = String(initials).replace(/'/g, "\\'");
-  var onError = "this.style.display='none';this.parentNode.classList.add('fallback');this.parentNode.setAttribute('data-fallback','" + safeInitials + "')";
-  return '<span class="' + (cls || 'kh-character-avatar') + '" style="--char-accent:' + ((character && character.accent) || '#2563eb') + ';' + (size ? '--char-size:' + size + 'px;' : '') + '"><img src="' + getCharacterImage(character) + '" alt="' + escapeHtml((character && character.name) || 'Character') + '" onerror="' + onError + '"></span>';
-}
-
-function renderAuthorInline(author, options) {
-  if (!author) return '';
-  options = options || {};
-  return '<a class="art-author-inline' + (options.compact ? ' compact' : '') + '" href="' + characterProfileUrl(author.slug) + '">'
-    + renderCharacterAvatar(author, 'kh-character-avatar', options.size || 48)
-    + '<span class="art-author-copy"><strong>' + characterDisplayName(author) + '</strong><span>' + escapeHtml(author.role || author.title || '') + '</span></span>'
-    + '<span class="art-author-link">Profile →</span>'
-    + '</a>';
-}
-
-function renderCharacterProfilePage() {
-  var wrap = document.getElementById('dyn-character-profile');
-  if (!wrap) return;
-  var params = new URLSearchParams(window.location.search);
-  var slug = params.get('slug') || CHARACTER_ROSTER[0].slug;
-  var character = getCharacterBySlug(slug);
-  if (!character) {
-    wrap.innerHTML = '<div style="padding:32px 0">Character not found.</div>';
-    return;
-  }
-  var roster = getCharacterRoster();
-  wrap.innerHTML = ''
-    + '<section class="character-hero">'
-      + '<div class="character-hero-main">'
-        + renderCharacterAvatar(character, 'kh-character-avatar hero', 108)
-        + '<div class="character-hero-copy">'
-          + '<div class="character-eyebrow">KoreHan character journalist</div>'
-          + '<h1>' + characterDisplayName(character) + '</h1>'
-          + '<p class="character-role">' + escapeHtml(character.role || '') + '</p>'
-          + '<p class="character-bio">' + escapeHtml(character.bio || character.title || '') + '</p>'
-          + '<div class="character-tags">' + (character.specialties || []).map(function(tag){ return '<span>' + escapeHtml(tag) + '</span>'; }).join('') + '</div>'
-        + '</div>'
-      + '</div>'
-      + '<form class="character-editor" id="character-editor">'
-        + '<div class="character-editor-title">Customize this character</div>'
-        + '<label>Name<input type="text" name="name_ko" value="' + escapeHtml(character.name_ko || '') + '"></label>'
-        + '<label>Role<input type="text" name="role" value="' + escapeHtml(character.role || '') + '"></label>'
-        + '<label>Bio<textarea name="bio" rows="4">' + escapeHtml(character.bio || '') + '</textarea></label>'
-        + '<label>Profile image URL<input type="url" name="image" value="' + escapeHtml(character.image || '') + '" placeholder="https://..."></label>'
-        + '<label>Upload image<input type="file" name="image_file" accept="image/*"></label>'
-        + '<div class="character-editor-actions"><button type="submit">Save profile</button><button type="button" class="ghost" id="character-reset-btn">Reset</button></div>'
-        + '<p class="character-editor-note">Saved in your browser so you can use your own profile images for articles, stories, and conversations.</p>'
-      + '</form>'
-    + '</section>'
-    + '<section class="character-roster">'
-      + '<div class="section-title">Character roster</div>'
-      + '<div class="character-roster-grid">'
-        + roster.map(function(item){
-          return '<a class="character-roster-card' + (item.slug === character.slug ? ' on' : '') + '" href="' + characterProfileUrl(item.slug) + '">'
-            + renderCharacterAvatar(item, 'kh-character-avatar', 56)
-            + '<div><strong>' + characterDisplayName(item) + '</strong><span>' + escapeHtml(item.role || '') + '</span></div>'
-          + '</a>';
-        }).join('')
-      + '</div>'
-    + '</section>';
-
-  var form = document.getElementById('character-editor');
-  var fileInput = form && form.elements.image_file;
-  if (form) form.addEventListener('submit', function(e){
-    e.preventDefault();
-    var fd = new FormData(form);
-    saveCharacterOverride(character.slug, {
-      name_ko: fd.get('name_ko'),
-      role: fd.get('role'),
-      bio: fd.get('bio'),
-      image: fd.get('image')
-    });
-    if (typeof toast === 'function') toast('Character profile saved ✓');
-    renderCharacterProfilePage();
-  });
-  if (fileInput) fileInput.addEventListener('change', function(){
-    var file = fileInput.files && fileInput.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function(){
-      var image = String(reader.result || '');
-      saveCharacterOverride(character.slug, { image:image });
-      if (typeof toast === 'function') toast('Profile image updated ✓');
-      renderCharacterProfilePage();
-    };
-    reader.readAsDataURL(file);
-  });
-  var resetBtn = document.getElementById('character-reset-btn');
-  if (resetBtn) resetBtn.addEventListener('click', function(){
-    var overrides = safeParseJSON(localStorage.getItem(CHARACTER_STORAGE_KEY) || '{}', {});
-    delete overrides[character.slug];
-    localStorage.setItem(CHARACTER_STORAGE_KEY, JSON.stringify(overrides));
-    renderCharacterProfilePage();
-  });
 }
 
 // ── SEED DATA ─────────────────────────────────────────────────
@@ -1406,7 +1440,6 @@ function relTime(dateStr) {
 function cardHTML(a, extraTagClass) {
   var img = a.image || ('https://picsum.photos/seed/' + a.id + '/600/400');
   var tc  = extraTagClass || '';
-  var author = resolveArticleAuthor(a);
   var levelColors = { 'Starter':'#f3e8ff;color:#6b21a8', 'Beginner':'#e8f5e9;color:#2e7d32', 'Intermediate':'#fff8e1;color:#f57f17', 'Advanced':'#fce4ec;color:#c62828' };
   var levelBadge = a.level ? '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + (levelColors[a.level] || '#f0f0f0;color:#666') + '">' + a.level + '</span>' : '';
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
@@ -1418,7 +1451,6 @@ function cardHTML(a, extraTagClass) {
     + '</div>'
     + '<h3 class="vocab-zone">' + a.title + '</h3>'
     + '<p class="vocab-zone">' + (a.body || '') + '</p>'
-    + (author ? '<div class="card-author-line">By ' + escapeHtml(author.name_ko || author.name) + '</div>' : '')
     + '<div class="meta">' + relTime(a.date) + '</div>'
     + '</div></a>';
 }
@@ -1437,13 +1469,12 @@ function filterByLevel(level, btn) {
 
 function storyItemHTML(a) {
   var img = a.image || ('https://picsum.photos/seed/' + a.id + '/300/200');
-  var author = resolveArticleAuthor(a);
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
     + '<div class="story-item">'
     + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/300/200\'">'
     + '<div>'
     + '<h4 class="vocab-zone">' + a.title + '</h4>'
-    + '<div class="meta">' + a.section + ' · ' + relTime(a.date) + (author ? ' · ' + escapeHtml(author.name_ko || author.name) : '') + '</div>'
+    + '<div class="meta">' + a.section + ' · ' + relTime(a.date) + '</div>'
     + '</div></div></a>';
 }
 
@@ -1462,6 +1493,8 @@ function heroSideItemHTML(a) {
 var _heroSlides = [];
 var _heroIdx = 0;
 var _heroTimer = null;
+var _heroTouchStartX = 0;
+var _heroTouchDeltaX = 0;
 
 function renderHomePage() {
   var all      = published();
@@ -1487,13 +1520,7 @@ function renderHomePage() {
   if (heroEl && featured.length) {
     heroEl.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:0;align-items:stretch;border-radius:18px;overflow:hidden;box-shadow:0 14px 50px rgba(13,27,46,.18);background:#fff;';
     renderHeroSlide(heroEl);
-    if (_heroTimer) clearInterval(_heroTimer);
-    if (_heroSlides.length > 1) {
-      _heroTimer = setInterval(function(){
-        _heroIdx = (_heroIdx + 1) % _heroSlides.length;
-        renderHeroSlide(heroEl);
-      }, 4200);
-    }
+    resetHeroTimer();
   }
 
   // TOP STORIES
@@ -1544,78 +1571,104 @@ function renderHomePage() {
 
 function renderHeroSlide(heroEl) {
   if (!heroEl || !_heroSlides.length) return;
-  var featured = _heroSlides[_heroIdx];
-  var sideItems = (window._heroStaticSide && window._heroStaticSide.length ? window._heroStaticSide : _heroSlides.filter(function(a, i){ return i !== _heroIdx; })).slice(0, 4);
-
-  var featImg = featured.image || ('https://picsum.photos/seed/' + featured.id + '/900/500');
-  var featBody = (featured.body || '').replace(/<[^>]*>/g, '').slice(0, 150);
-  var dots = _heroSlides.length > 1
-    ? '<div style="display:flex;gap:7px;margin-top:14px">'
-      + _heroSlides.map(function(_, i){
-          return '<button aria-label="Go to hero slide ' + (i + 1) + '" onclick="heroGoTo(' + i + ')" style="width:' + (i===_heroIdx?'26':'8') + 'px;height:8px;border-radius:999px;border:none;background:' + (i===_heroIdx?'#fff':'rgba(255,255,255,.35)') + ';cursor:pointer;transition:all .28s"></button>';
-        }).join('')
+  var heroSignature = _heroSlides.map(function(item){ return item.id; }).join(',');
+  if (heroEl.dataset.heroBuilt !== '1' || heroEl.dataset.heroCount !== String(_heroSlides.length) || heroEl.dataset.heroSignature !== heroSignature) {
+    heroEl.dataset.heroBuilt = '1';
+    heroEl.dataset.heroCount = String(_heroSlides.length);
+    heroEl.dataset.heroSignature = heroSignature;
+    heroEl.innerHTML =
+      '<div class="kh-home-hero-main-shell" style="position:relative;min-height:460px;overflow:hidden;background:#0b1626;touch-action:pan-y">'
+      + '<div class="kh-home-hero-track" style="display:flex;height:100%;will-change:transform;transition:transform .72s cubic-bezier(.22,1,.36,1)">' + _heroSlides.map(function(item){
+          var featImg = item.image || ('https://picsum.photos/seed/' + item.id + '/900/500');
+          var featBody = (item.body || '').replace(/<[^>]*>/g, '').slice(0, 150);
+          return '<article class="kh-home-hero-slide" style="min-width:100%;position:relative;min-height:460px;overflow:hidden">'
+            + '<img src="' + featImg + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">'
+            + '<a href="' + articleUrl(item.id) + '" aria-label="Open featured article: ' + escapeHtml(item.title || '') + '" style="position:absolute;inset:0;z-index:1;display:block"></a>'
+            + '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,15,35,.88) 0%,rgba(5,15,35,.55) 38%,rgba(5,15,35,.16) 100%),linear-gradient(to top,rgba(5,15,35,.92) 0%,rgba(5,15,35,.1) 58%,transparent 100%)"></div>'
+            + '<div style="position:absolute;left:0;right:0;bottom:0;padding:34px 30px 30px;max-width:760px;z-index:2">'
+            + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span class="category-tag" style="display:inline-block">' + item.section + '</span><span style="font-size:12px;color:rgba(255,255,255,.65)">' + relTime(item.date) + '</span></div>'
+            + '<h1 class="vocab-zone" style="font-family:\'Playfair Display\',serif;font-size:clamp(26px,3vw,42px);font-weight:900;line-height:1.18;margin:0 0 12px"><a href="' + articleUrl(item.id) + '" style="color:#fff;text-decoration:none">' + item.title + '</a></h1>'
+            + '<p style="font-size:14px;color:rgba(255,255,255,.8);line-height:1.7;margin:0;max-width:62ch">' + featBody + '</p>'
+            + '</div></article>';
+        }).join('') + '</div>'
+      + (_heroSlides.length > 1 ? '<button type="button" class="kh-hero-nav prev" onclick="heroPrev()" aria-label="Previous hero article" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);z-index:4;width:46px;height:46px;border:none;border-radius:999px;background:rgba(7,14,28,.44);backdrop-filter:blur(12px);color:#fff;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px rgba(0,0,0,.24);transition:transform .18s,background .18s">‹</button><button type="button" class="kh-hero-nav next" onclick="heroNext()" aria-label="Next hero article" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);z-index:4;width:46px;height:46px;border:none;border-radius:999px;background:rgba(7,14,28,.44);backdrop-filter:blur(12px);color:#fff;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px rgba(0,0,0,.24);transition:transform .18s,background .18s">›</button>' : '')
+      + '<div class="kh-home-hero-dots" style="position:absolute;left:30px;bottom:24px;z-index:4;display:flex;gap:7px"></div>'
       + '</div>'
-    : '';
-
-  var ctas = '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:18px">'
-    + '<a href="' + articleUrl(featured.id) + '" style="display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border-radius:999px;background:#fff;color:#0f172a;font-size:13px;font-weight:900;text-decoration:none;box-shadow:0 10px 24px rgba(255,255,255,.18)">Read article →</a>'
-    + '<a href="korehan-learn.html" style="display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);color:#fff;font-size:13px;font-weight:800;text-decoration:none">Vocab drill</a>'
-    + '<a href="korehan-learning-overview.html" style="display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border-radius:999px;background:rgba(122,184,245,.22);border:1px solid rgba(122,184,245,.28);color:#fff;font-size:13px;font-weight:800;text-decoration:none">Learning Hub</a>'
-    + '</div>';
-
-  var sideFooter = '<div style="padding:16px;border-top:1px solid #edf2f7;background:linear-gradient(180deg,#fff 0%,#f8fbff 100%)">'
-    + '<div style="font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:10px">Fast actions</div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
-    + '<a href="beginner-guide.html" style="display:flex;align-items:center;justify-content:center;padding:10px 12px;border-radius:12px;background:#eef4ff;color:#1d4ed8;font-size:12px;font-weight:800;text-decoration:none">Starter guide</a>'
-    + '<a href="korehan-study-room.html" style="display:flex;align-items:center;justify-content:center;padding:10px 12px;border-radius:12px;background:#0f172a;color:#fff;font-size:12px;font-weight:800;text-decoration:none">Start review</a>'
-    + '</div>'
-    + '</div>';
-
-  heroEl.innerHTML =
-    '<div style="position:relative;min-height:460px;overflow:hidden;background:#0b1626;animation:khHeroSlideIn .55s cubic-bezier(.22,1,.36,1);">'
-    + '<style>@keyframes khHeroSlideIn{from{opacity:.55;transform:translateX(34px)}to{opacity:1;transform:translateX(0)}}</style>'
-    + '<a href="' + articleUrl(featured.id) + '" style="display:block;position:absolute;inset:0;color:inherit;text-decoration:none">'
-    + '<img src="' + featImg + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">'
-    + '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,15,35,.88) 0%,rgba(5,15,35,.55) 38%,rgba(5,15,35,.16) 100%),linear-gradient(to top,rgba(5,15,35,.92) 0%,rgba(5,15,35,.1) 58%,transparent 100%)"></div>'
-    + '<div style="position:absolute;left:0;right:0;bottom:0;padding:34px 30px 30px;max-width:760px">'
-    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span class="category-tag" style="display:inline-block">' + featured.section + '</span><span style="font-size:12px;color:rgba(255,255,255,.65)">' + relTime(featured.date) + '</span></div>'
-    + '<h1 class="vocab-zone" style="font-family:\'Playfair Display\',serif;font-size:clamp(26px,3vw,42px);font-weight:900;color:#fff;line-height:1.18;margin:0 0 12px">' + featured.title + '</h1>'
-    + '<p style="font-size:14px;color:rgba(255,255,255,.8);line-height:1.7;margin:0;max-width:62ch">' + featBody + '</p>'
-    + ctas
-    + dots
-    + '</div></a></div>'
-    + '<aside style="background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);display:flex;flex-direction:column;border-left:1px solid #e7eef8;">'
-    + '<div style="padding:18px 18px 12px;border-bottom:1px solid #edf2f7">'
-    + '<div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8">More to explore</div>'
-    + '<div style="font-size:18px;font-weight:900;color:#0f172a;margin-top:4px">Latest picks</div>'
-    + '</div>'
-    + sideItems.map(function(a) {
-        var img = a.image || ('https://picsum.photos/seed/' + a.id + '/400/200');
-        return '<a href="' + articleUrl(a.id) + '" style="display:flex;gap:12px;padding:14px 16px;text-decoration:none;color:inherit;border-bottom:1px solid #edf2f7;transition:background .15s" onmouseover="this.style.background=\'#f2f7ff\'" onmouseout="this.style.background=\'\'">'
-          + '<img src="' + img + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/200/120\'" style="width:98px;height:78px;object-fit:cover;border-radius:14px;flex-shrink:0;box-shadow:0 6px 18px rgba(15,23,42,.08)">'
-          + '<div style="min-width:0;flex:1">'
-          + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:800;color:#2255a4;letter-spacing:.06em;text-transform:uppercase">' + a.section + '</span><span style="font-size:10px;color:#94a3b8">' + relTime(a.date) + '</span></div>'
-          + '<div class="vocab-zone" style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + a.title + '</div>'
-          + '</div></a>';
-      }).join('')
-    + '<div style="padding:16px"><a href="korehan-all.html" style="display:block;text-align:center;padding:11px 14px;border-radius:999px;background:#0f172a;color:#fff;font-size:13px;font-weight:800;text-decoration:none">Browse all news →</a></div>'
-    + sideFooter
-    + '</aside>';
+      + '<aside style="background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);display:flex;flex-direction:column;border-left:1px solid #e7eef8;">'
+      + '<div style="padding:18px 18px 12px;border-bottom:1px solid #edf2f7">'
+      + '<div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8">More to explore</div>'
+      + '<div style="font-size:18px;font-weight:900;color:#0f172a;margin-top:4px">Latest picks</div>'
+      + '</div>'
+      + '<div id="kh-home-hero-side"></div>'
+      + '<div style="padding:16px"><a href="korehan-all.html" style="display:block;text-align:center;padding:11px 14px;border-radius:999px;background:#0f172a;color:#fff;font-size:13px;font-weight:800;text-decoration:none">Browse all news →</a></div>'
+      + '</aside>';
+    attachHeroInteractions(heroEl);
+  }
+  updateHeroSlideUI(heroEl);
 }
 
 function heroGoTo(idx) {
-  _heroIdx = idx;
+  if (!_heroSlides.length) return;
+  _heroIdx = (idx + _heroSlides.length) % _heroSlides.length;
   var heroEl = document.getElementById('dyn-hero');
-  if (heroEl) renderHeroSlide(heroEl);
-  // 타이머 리셋
-  if (_heroTimer) { clearInterval(_heroTimer); }
+  if (heroEl) updateHeroSlideUI(heroEl);
+  resetHeroTimer();
+}
+
+function heroPrev() { heroGoTo(_heroIdx - 1); }
+function heroNext() { heroGoTo(_heroIdx + 1); }
+
+function resetHeroTimer() {
+  if (_heroTimer) clearInterval(_heroTimer);
   if (_heroSlides.length > 1) {
-    _heroTimer = setInterval(function(){
-      _heroIdx = (_heroIdx + 1) % _heroSlides.length;
-      var el = document.getElementById('dyn-hero');
-      if (el) renderHeroSlide(el);
-    }, 4200);
+    _heroTimer = setInterval(function(){ heroNext(); }, 5200);
   }
+}
+
+function updateHeroSlideUI(heroEl) {
+  if (!heroEl) return;
+  var track = heroEl.querySelector('.kh-home-hero-track');
+  if (track) track.style.transform = 'translate3d(-' + (_heroIdx * 100) + '%,0,0)';
+  var dotsWrap = heroEl.querySelector('.kh-home-hero-dots');
+  if (dotsWrap) {
+    dotsWrap.innerHTML = _heroSlides.map(function(_, i){
+      return '<button type="button" aria-label="Go to hero slide ' + (i + 1) + '" onclick="heroGoTo(' + i + ')" style="width:' + (i===_heroIdx?'26':'8') + 'px;height:8px;border-radius:999px;border:none;background:' + (i===_heroIdx?'#fff':'rgba(255,255,255,.35)') + ';cursor:pointer;transition:all .28s"></button>';
+    }).join('');
+  }
+  var sideWrap = document.getElementById('kh-home-hero-side');
+  if (sideWrap) {
+    var sideItems = (window._heroStaticSide && window._heroStaticSide.length ? window._heroStaticSide : _heroSlides.filter(function(a, i){ return i !== _heroIdx; })).slice(0, 4);
+    sideWrap.innerHTML = sideItems.map(function(a) {
+      var img = a.image || ('https://picsum.photos/seed/' + a.id + '/400/200');
+      return '<a href="' + articleUrl(a.id) + '" style="display:flex;gap:12px;padding:14px 16px;text-decoration:none;color:inherit;border-bottom:1px solid #edf2f7;transition:background .15s" onmouseover="this.style.background=\'#f2f7ff\'" onmouseout="this.style.background=\'\'">'
+        + '<img src="' + img + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/200/120\'" style="width:98px;height:78px;object-fit:cover;border-radius:14px;flex-shrink:0;box-shadow:0 6px 18px rgba(15,23,42,.08)">'
+        + '<div style="min-width:0;flex:1">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:800;color:#2255a4;letter-spacing:.06em;text-transform:uppercase">' + a.section + '</span><span style="font-size:10px;color:#94a3b8">' + relTime(a.date) + '</span></div>'
+        + '<div class="vocab-zone" style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + a.title + '</div>'
+        + '</div></a>';
+    }).join('');
+  }
+}
+
+function attachHeroInteractions(heroEl) {
+  var shell = heroEl && heroEl.querySelector('.kh-home-hero-main-shell');
+  if (!shell || shell.dataset.bound === '1') return;
+  shell.dataset.bound = '1';
+  shell.addEventListener('touchstart', function(evt){
+    _heroTouchStartX = evt.touches && evt.touches[0] ? evt.touches[0].clientX : 0;
+    _heroTouchDeltaX = 0;
+  }, { passive: true });
+  shell.addEventListener('touchmove', function(evt){
+    if (!evt.touches || !evt.touches[0]) return;
+    _heroTouchDeltaX = evt.touches[0].clientX - _heroTouchStartX;
+  }, { passive: true });
+  shell.addEventListener('touchend', function(){
+    if (Math.abs(_heroTouchDeltaX) < 42) return;
+    if (_heroTouchDeltaX < 0) heroNext();
+    else heroPrev();
+    _heroTouchStartX = 0;
+    _heroTouchDeltaX = 0;
+  });
 }
 
 function buildArticleRowHTML(a) {
@@ -1720,8 +1773,6 @@ async function renderSectionPage(section) {
       return da > db ? -1 : da < db ? 1 : 0;
     });
   }
-
-  console.log('[KH] section:', section, '| aliases:', aliases, '| found:', articles.length);
 
   var featured = articles[0];
   var rest     = articles.slice(1);
@@ -1834,7 +1885,6 @@ function renderArticlePage() {
 
   var img = a.image || ('https://picsum.photos/seed/' + a.id + '/1200/700');
   var dateStr = a.date ? new Date(a.date).toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'}) : '';
-  var author = resolveArticleAuthor(a);
 
   wrap.innerHTML =
     '<article class="kh-article-wrap">'
@@ -1857,12 +1907,11 @@ function renderArticlePage() {
     + '<span class="art-date">📅 ' + dateStr + '</span>'
     + '<span class="art-dot">·</span>'
     + '<span class="art-readtime">⏱ ' + Math.max(1, Math.ceil((a.full||a.body||'').length / 500)) + ' min read</span>'
-    + '</div>'
-    + (author ? renderAuthorInline(author) : '')
     + '<div class="art-actions">'
     + '<button class="kh-bm-btn" id="art-bm-btn" onclick="toggleBookmark(\'' + a.id + '\',this)">🔖 Bookmark</button>'
     + '<button class="kh-share-btn" onclick="shareArticle()">🔗 Share</button>'
     + '<button class="kh-trans-btn" id="translate-btn" onclick="toggleTranslate()">🌐 Translate</button>'
+    + '</div>'
     + '</div>'
     + '</div>'
 
@@ -2164,6 +2213,12 @@ Respond ONLY with this JSON (no markdown, no extra text):
       }
     } catch(e) {}
   } catch(e) {
+    if (e && (e.message === 'unauthorized' || e.message === 'Not signed in')) {
+      el.innerHTML = renderFillNoKey();
+      if (typeof toast === 'function') toast('빈칸 문제를 만들려면 다시 로그인해주세요.', true);
+      if (typeof openAuthModal === 'function') openAuthModal('signin');
+      return;
+    }
     el.innerHTML = '<div style="padding:24px;text-align:center;color:#e53e3e">⚠️ AI 생성 실패. 다시 시도해주세요.<br><button onclick="loadFillExercise()" style="margin-top:12px;padding:8px 20px;background:#2255a4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">🔄 Retry</button></div>';
   }
 }
@@ -2523,94 +2578,57 @@ async function loadGrammarGuide() {
       }
     } catch(e) {}
   } catch(e) {
-    renderStaticGrammar(el, a);
+    if (e && (e.message === 'Not signed in' || e.message === 'unauthorized')) {
+      el.dataset.source = ''; // 로그인 후 재시도 허용
+      el.innerHTML = '<div style="text-align:center;padding:28px 16px">'
+        + '<div style="font-size:32px;margin-bottom:12px">🔒</div>'
+        + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:8px">Sign in to use Grammar Guide</div>'
+        + '<div style="font-size:13px;color:#64748b;margin-bottom:20px">AI-powered grammar analysis is available for signed-in users.</div>'
+        + '<button onclick="openAuthModal(&apos;signin&apos;)" style="padding:10px 28px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
+        + '</div>';
+      if (e.message === 'unauthorized' && typeof toast === 'function') {
+        toast('Grammar Guide needs a fresh sign-in. Please sign in again.', true);
+      }
+    } else {
+      renderStaticGrammar(el, a);
+    }
   }
 }
 
 function renderGrammarGuideHTML(el, guides) {
-  el.innerHTML = '<p class="grammar-intro">✨ Grammar points pulled from this article:</p>'
-    + guides.map(function(g){
-      return '<div class="grammar-point">'
-        + '<div class="grammar-name">' + g.name
-        + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span></div>'
-        + '<div class="grammar-explanation">' + g.exp + '</div>'
-        + '<div class="grammar-example"><strong>Article sentence</strong>' + g.ex_ko + '</div>'
-        + '<div class="grammar-extra"><strong>Meaning / function</strong>' + (g.ex_en || g.note || 'Used naturally in this article for context and sentence flow.') + '</div>'
-        + '</div>';
-    }).join('');
+  el.innerHTML = '<p class="grammar-intro">✨ Grammar patterns found in this article:</p>'
+    + guides.map(renderGrammarGuideCard).join('');
 }
 
-function getArticlePlainText(a) {
-  return String((a && ((a.title || '') + '\n' + (a.body || '') + '\n' + (a.full || ''))) || '')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function getArticleSentences(a) {
-  return getArticlePlainText(a)
-    .split(/(?<=[.!?])\s+|(?<=다)\s+|(?<=요)\s+|(?<=니다)\s+|(?<=죠)\s+|(?<=까)\s+|\n+/)
-    .map(function(s){ return s.trim(); })
-    .filter(function(s){ return s.length > 12; });
-}
-
-function escapeRegExp(str) {
-  return String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function highlightFirst(sentence, pattern) {
-  if (!sentence) return '';
-  if (typeof pattern === 'string') {
-    var re = new RegExp(escapeRegExp(pattern));
-    return sentence.replace(re, '<strong>' + pattern + '</strong>');
-  }
-  return sentence.replace(pattern, function(match) { return '<strong>' + match + '</strong>'; });
-}
-
-function buildArticleGrammarPatterns(a) {
-  var sentences = getArticleSentences(a);
-  var defs = [
-    { key:'reason', test:/기 때문에/, label:'-기 때문에', level:'Intermediate', exp:'Shows a clear reason or cause. It is common in news writing when the article explains why something is happening.', note:'Look at what comes before the form: that part gives the reason. The clause after it shows the result.', highlight:'기 때문에' },
-    { key:'change', test:/아지|어지|해지/, label:'-아/어지다', level:'Intermediate', exp:'Describes a change of state, such as becoming more serious, smaller, weaker, or safer.', note:'News articles use this pattern a lot to describe social change over time.', highlight:/[가-힣]+(?:아|어|해)지[가-힣]*/ },
-    { key:'and', test:/고\b|하고/, label:'-고 / 하고', level:'Beginner', exp:'Connects two actions, facts, or nouns. It often helps news articles list related information smoothly.', note:'Use this to notice how Korean chains facts together without making a new sentence every time.', highlight:/고|하고/ },
-    { key:'location', test:/에서|에\b/, label:'에 / 에서', level:'Beginner', exp:'에 marks a place or time target, while 에서 marks where an action happens.', note:'This is one of the fastest ways to understand where an event happened in a news sentence.', highlight:/에서|에/ },
-    { key:'object', test:/을|를/, label:'을 / 를', level:'Beginner', exp:'Marks the direct object of the verb — the thing affected by the action.', note:'When you spot this marker, ask yourself “what is being affected?”', highlight:/을|를/ },
-    { key:'topic', test:/은|는/, label:'은 / 는', level:'Beginner', exp:'Marks the topic or contrast in a sentence. Articles use it to frame the main subject and compare facts.', note:'This marker often tells you what the sentence is mainly talking about.', highlight:/은|는/ },
-    { key:'subject', test:/이|가/, label:'이 / 가', level:'Beginner', exp:'Marks the subject that directly carries the action or state.', note:'Try comparing this with 은/는 — news writing often uses both differently for focus.', highlight:/이|가/ },
-    { key:'purpose', test:/기 위해|위해|위한/, label:'-기 위해 / 위한', level:'Intermediate', exp:'Expresses purpose: “for” or “in order to.”', note:'This pattern often appears when the article explains a government plan or institutional response.', highlight:/기 위해|위해|위한/ },
-    { key:'contrast', test:/지만|는데/, label:'-지만 / -는데', level:'Intermediate', exp:'Adds contrast or background context before the next point.', note:'This helps you feel the shift in the article’s logic: expectation first, then contrast or added context.', highlight:/지만|는데/ },
-    { key:'past', test:/었|았|였/, label:'-았/었- past form', level:'Beginner', exp:'Marks past tense or completed events. News reports rely on it to describe what has already happened.', note:'When you see this ending, read the sentence as a reported event rather than a current plan.', highlight:/[가-힣]+(?:았|었|였)[가-힣]*/ }
-  ];
-  var out = [];
-  var used = {};
-  defs.forEach(function(def) {
-    if (out.length >= 4) return;
-    var sentence = sentences.find(function(s) { return def.test.test(s) && !used[s]; });
-    if (!sentence) return;
-    used[sentence] = true;
-    out.push({
-      name: def.label,
-      level: def.level,
-      exp: def.exp,
-      ex_ko: highlightFirst(sentence, def.highlight || def.test),
-      ex_en: def.note
-    });
-  });
-  return out;
+function renderGrammarGuideCard(g) {
+  var focus = encodeURIComponent(g.name || '');
+  return '<div class="grammar-point">'
+    + '<div class="grammar-name">' + g.name
+    + ' <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,85,164,0.1);color:var(--bright);font-weight:700;vertical-align:middle">' + g.level + '</span>'
+    + '</div>'
+    + '<div class="grammar-explanation">' + g.exp + '</div>'
+    + '<div class="grammar-example"><strong>Example: </strong>' + g.ex_ko + '<br><span style="color:var(--gray);font-size:13px">' + g.ex_en + '</span></div>'
+    + '<div style="margin-top:12px"><a href="korehan-study-room.html?focus=' + focus + '&source=article-grammar-guide" style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;background:#2563eb;color:#fff;font-size:12px;font-weight:800;text-decoration:none;box-shadow:0 10px 24px rgba(37,99,235,.18)">이 문법 더 공부하기 <span aria-hidden="true">→</span></a></div>'
+    + '</div>';
 }
 
 function renderStaticGrammar(el, a) {
-  var guides = buildArticleGrammarPatterns(a);
-  if (!guides.length) {
-    guides = [{
-      name: 'Article sentence structure',
-      level: a.level || 'Beginner',
-      exp: 'This article is short, so the fallback guide is showing sentence-level reading help instead of AI grammar analysis.',
-      ex_ko: highlightFirst(getArticleSentences(a)[0] || getArticlePlainText(a).slice(0, 120), /[가-힣]+/),
-      ex_en: 'Focus on the sentence order first: topic → detail → result. That reading pattern appears often in Korean news.'
-    }];
-  }
-  renderGrammarGuideHTML(el, guides);
+  var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
+  var patterns = [
+    { pattern:/었|았/, name:'~었/았 Past Tense', level:'Beginner', exp:'Added to verb stems to express past tense, like "-ed" in English. Use 았 after ㅏ/ㅗ vowels, 었 everywhere else.', ex_ko:'경제가 회복됐<strong>어요</strong>.', ex_en:'The economy recovered.' },
+    { pattern:/이다|입니다|이에요|예요/, name:'~이에요/예요 "To Be"', level:'Beginner', exp:'Korean equivalent of "is/are". Use 이에요 after a final consonant, 예요 after a vowel.', ex_ko:'서울<strong>이에요</strong>.', ex_en:"It's Seoul." },
+    { pattern:/을|를/, name:'을/를 Object Marker', level:'Beginner', exp:'Attaches to the object of a verb. Use 을 after a consonant, 를 after a vowel.', ex_ko:'뉴스<strong>를</strong> 읽어요.', ex_en:'I read the news.' },
+    { pattern:/에서/, name:'에서 Location Marker', level:'Beginner', exp:'Marks where an action takes place — like "at" or "in" in English.', ex_ko:'서울<strong>에서</strong> 발표했어요.', ex_en:'It was announced in Seoul.' },
+    { pattern:/위한|위해/, name:'~을 위해/위한 "For"', level:'Intermediate', exp:'Means "for the purpose of" or "in order to". 위해 precedes verbs, 위한 precedes nouns.', ex_ko:'경제 회복<strong>을 위한</strong> 방안이에요.', ex_en:"It's a plan for economic recovery." },
+    { pattern:/로 인해|로 인한/, name:'~로 인해 "Due to"', level:'Intermediate', exp:'Means "due to" or "because of" — used to state a cause or reason.', ex_ko:'수출 증가<strong>로 인해</strong> 흑자가 됐어요.', ex_en:'Due to export growth, it turned a surplus.' },
+    { pattern:/면서|하면서/, name:'~면서 "While"', level:'Intermediate', exp:'Connects two simultaneous actions, like "while" in English.', ex_ko:'일하<strong>면서</strong> 공부해요.', ex_en:'I study while working.' },
+    { pattern:/것으로|것이다|것을/, name:'~는 것 Nominalization', level:'Intermediate', exp:'Turns a verb into a noun clause — similar to adding "-ing" in English. 것 means "thing" or "fact".', ex_ko:'결정한 <strong>것으로</strong> 알려졌어요.', ex_en:'It is known that a decision was made.' },
+  ];
+  var guides = patterns.filter(function(p){ return p.pattern.test(text); }).slice(0, 4);
+  if (guides.length < 3) guides = patterns.slice(0, 4);
+
+  el.innerHTML = '<p class="grammar-intro">Grammar patterns in this article:</p>'
+    + guides.map(renderGrammarGuideCard).join('');
 }
 
 function renderArticleVocab(a) {
@@ -2657,7 +2675,7 @@ async function markArticleRead(articleId, title, section, level) {
     if (readLog[todayKey].indexOf(id) === -1) {
       readLog[todayKey].push(id);
       localStorage.setItem('kh_read_log', JSON.stringify(readLog));
-      trackActivityOnArticleRead(section);
+      trackActivityOnArticleRead(section, { grantXP: readLog[todayKey].length <= ARTICLE_XP_DAILY_CAP });
     } else {
       localStorage.setItem('kh_read_log', JSON.stringify(readLog));
     }
@@ -2704,13 +2722,8 @@ async function toggleTranslate() {
       if (z.dataset.original) z.innerHTML = z.dataset.original;
     });
     translateActive = false;
-    btn.textContent = '🌐 Translate to English';
+    btn.textContent = '🌐 Translate';
     btn.classList.remove('active');
-    return;
-  }
-
-  if (!supaUser) {
-    if (typeof toast === 'function') toast('Please sign in to use translation.', true);
     return;
   }
 
@@ -2740,6 +2753,13 @@ async function toggleTranslate() {
     btn.disabled = false;
     btn.classList.add('active');
     translateActive = true;
+    return;
+  }
+
+  if (!supaUser) {
+    btn.textContent = '🌐 Translate';
+    btn.disabled = false;
+    if (typeof toast === 'function') toast('Please sign in to create a new translation when no shared cache exists.', true);
     return;
   }
 
@@ -2801,7 +2821,7 @@ async function toggleTranslate() {
       if (typeof toast === 'function') toast('Translation needs a fresh sign-in. Please sign in again.', true);
       if (typeof openAuthModal === 'function') openAuthModal('signin');
     } else {
-      if (typeof toast === 'function') toast('Translation is temporarily unavailable right now.', true);
+      if (typeof toast === 'function') toast('Translation failed — check your connection and try again.', true);
     }
   }
   btn.disabled = false;
@@ -3400,12 +3420,16 @@ function renderHeader() {
     + '</a>'
     + '<div class="kh-hright">'
     + '<span class="kh-hdate" id="date-str"></span>'
-    + '<div class="kh-hsearch"><input type="text" placeholder="&#x1F50D; Search articles\u2026" onkeydown="if(event.key===\'Enter\')doSearch(this.value)" style="border:none;background:none;outline:none;font-size:13px;color:inherit;font-family:inherit;width:100%;"></div>'
-    + '<span id="topbar-user-avatar" style="display:none;width:28px;height:28px;border-radius:50%;background:#2255a4;color:#fff;align-items:center;justify-content:center;font-weight:700;font-size:13px;overflow:hidden;vertical-align:middle;"></span>'
-    + '<a href="korehan-mypage.html" id="topbar-mypage-btn" class="kh-hbtn kh-hbtn-out" style="display:none">&#128100; My Page</a>'
+    + '<div class="kh-hsearch">' + khIcon('search', '', 'kh-ui-icon-muted kh-ui-icon-sm') + '<input type="text" placeholder="Search articles\u2026" onkeydown="if(event.key===\'Enter\')doSearch(this.value)" style="border:none;background:none;outline:none;font-size:13px;color:inherit;font-family:inherit;width:100%;"></div>'
+    + '<button id="topbar-neon-toggle" class="kh-neon-toggle" type="button" aria-pressed="false" onclick="toggleKhNeon(event)">' + khIcon('zap', 'Neon OFF', 'kh-ui-icon-sm') + '</button>'
+    + '<div id="topbar-auth-menu" class="kh-auth-menu" style="display:none">'
+    + '<button id="topbar-user-avatar" class="kh-avatar-btn" type="button" aria-label="Open profile menu" onclick="toggleTopbarUserMenu(event)" style="display:none"></button>'
+    + '<div id="topbar-user-dropdown" class="kh-user-dropdown"></div>'
+    + '</div>'
+    + '<a href="korehan-mypage.html" id="topbar-mypage-btn" class="kh-hbtn kh-hbtn-out" style="display:none">' + khIcon('circle-user-round', 'My Page', 'kh-ui-icon-sm') + '</a>'
     + '<a href="#" id="topbar-signin-btn" class="kh-hbtn kh-hbtn-out" onclick="event.preventDefault();openAuthModal(\'signin\')">Sign In</a>'
     + '<a href="#" id="topbar-join-btn" class="kh-hbtn kh-hbtn-fill" onclick="event.preventDefault();openAuthModal(\'signup\')">Join Free</a>'
-    + '<a href="korehan-admin.html" id="topbar-admin-btn" class="kh-hbtn kh-hbtn-out" style="display:none;background:rgba(231,76,60,0.15);border-color:rgba(231,76,60,0.4);">&#9881; Admin</a>'
+    + '<a href="korehan-admin.html" id="topbar-admin-btn" class="kh-hbtn kh-hbtn-out" style="display:none;background:rgba(231,76,60,0.15);border-color:rgba(231,76,60,0.4);">' + khIcon('settings', 'Admin', 'kh-ui-icon-sm') + '</a>'
     + '</div>'
     + '</div>'
     + '</div>';
@@ -3418,9 +3442,9 @@ function renderHeader() {
 
   var topnav = '<div class="kh-topnav">'
     + '<div class="kh-topnav-inner">'
-    + '<a href="index.html" class="tn-item' + (isOn('index.html') ? ' on' : '') + '">Home</a>'
+    + '<a href="index.html" class="tn-item' + (isOn('index.html') ? ' on' : '') + '">' + khIcon('home', 'Home', 'kh-ui-icon-sm') + '</a>'
     + '<div class="tn-item has-drop' + (page.indexOf('korehan-section') >= 0 ? ' on' : '') + '">'
-    + 'News <span class="tn-arr">&#9660;</span>'
+    + khIcon('newspaper', 'News', 'kh-ui-icon-sm') + ' <span class="tn-arr">&#9660;</span>'
     + '<div class="tn-drop">'
     + '<div class="tn-drop-label">Category</div>'
     + '<a href="korehan-all.html" class="tn-drop-item">All News</a>'
@@ -3428,7 +3452,7 @@ function renderHeader() {
     + '</div>'
     + '</div>'
     + '<div class="tn-item has-drop' + (isOn('korehan-conversations') ? ' on' : '') + '">'
-    + '&#x1F4AC; Conversations <span class="tn-new">New</span><span class="tn-arr" style="margin-left:3px">&#9660;</span>'
+    + khIcon('messages-square', 'Conversations', 'kh-ui-icon-sm') + ' <span class="tn-arr" style="margin-left:3px">&#9660;</span>'
     + '<div class="tn-drop">'
     + '<div class="tn-drop-label">Category</div>'
     + '<a href="korehan-conversations.html" class="tn-drop-item">All</a>'
@@ -3440,20 +3464,19 @@ function renderHeader() {
     + '</div>'
     + '</div>'
     + '<div class="tn-item has-drop' + (isOn('korehan-stories') ? ' on' : '') + '">'
-    + '&#x1F4D6; Stories <span class="tn-new">New</span><span class="tn-arr" style="margin-left:3px">&#9660;</span>'
+    + khIcon('book-open', 'Stories', 'kh-ui-icon-sm') + ' <span class="tn-arr" style="margin-left:3px">&#9660;</span>'
     + '<div class="tn-drop">'
     + '<div class="tn-drop-label">Mood</div>'
     + '<a href="korehan-stories.html" class="tn-drop-item">All Stories</a>'
-    + '<a href="korehan-stories.html?mood=fun" class="tn-drop-item">&#x1F602; Fun</a>'
-    + '<a href="korehan-stories.html?mood=touching" class="tn-drop-item">&#x1F979; Touching</a>'
-    + '<a href="korehan-stories.html?mood=scary" class="tn-drop-item">&#x1F631; Scary</a>'
-    + '<a href="korehan-stories.html?mood=shocking" class="tn-drop-item">&#x1F62E; Shocking</a>'
+    + '<a href="korehan-stories.html?mood=fun" class="tn-drop-item">' + khIcon('sparkles', 'Fun', 'kh-ui-icon-sm') + '</a>'
+    + '<a href="korehan-stories.html?mood=touching" class="tn-drop-item">' + khIcon('heart', 'Touching', 'kh-ui-icon-sm') + '</a>'
+    + '<a href="korehan-stories.html?mood=scary" class="tn-drop-item">' + khIcon('zap', 'Scary', 'kh-ui-icon-sm') + '</a>'
+    + '<a href="korehan-stories.html?mood=shocking" class="tn-drop-item">' + khIcon('flame', 'Shocking', 'kh-ui-icon-sm') + '</a>'
     + '</div>'
     + '</div>'
-    + '<a href="korehan-study-room.html" class="tn-item' + (isOn('korehan-study-room') ? ' on' : '') + '">&#x1F4D6; Study Room</a>'
-    + '<a href="korehan-courses.html" class="tn-item' + (isOn('korehan-courses') ? ' on' : '') + '">&#x1F393; Courses</a>'
-    + '<a href="' + characterProfileUrl(CHARACTER_ROSTER[0].slug) + '" class="tn-item' + (isOn('korehan-character') ? ' on' : '') + '">&#x1F9D1; Characters</a>'
-    + '<a href="korehan-all.html" class="tn-item' + (isOn('korehan-all') ? ' on' : '') + '">All News</a>'
+    + '<a href="korehan-study-room.html" class="tn-item' + (isOn('korehan-study-room') ? ' on' : '') + '">' + khIcon('notebook-pen', 'Study Room', 'kh-ui-icon-sm') + '</a>'
+    + '<a href="korehan-learning-overview.html" class="tn-item' + (isOn('korehan-learning-overview') ? ' on' : '') + '">' + khIcon('chart-column', 'Learning Hub', 'kh-ui-icon-sm') + '</a>'
+    + '<a href="korehan-courses.html" class="tn-item' + (isOn('korehan-courses') ? ' on' : '') + '">' + khIcon('graduation-cap', 'Courses', 'kh-ui-icon-sm') + '</a>'
     + '</div>'
     + '</div>';
 
@@ -3487,7 +3510,7 @@ function renderFooter() {
     + getSections().map(function(s){
         return '<a href="korehan-section.html?s=' + encodeURIComponent(s.key) + '">' + s.label + '</a>';
       }).join('')
-    + '<a href="korehan-learn.html">✏️ Learn Korean</a>'
+    + '<a href="korehan-learn.html">' + khIcon('languages', 'Learn Korean', 'kh-ui-icon-sm') + '</a>'
     + '<a href="korehan-all.html">All News</a>'
     + '</div>'
     + '</div>'
@@ -3496,12 +3519,11 @@ function renderFooter() {
 }
 
 function renderSharedSidebar() {
-  var all = published();
-  var trendingHTML = all.slice(0, 6).map(function(a, i){
-    return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
+  var trendingHTML = getFallbackMostReadItems().map(function(item, i){
+    return '<a href="' + item.href + '" style="color:inherit;text-decoration:none;">'
       + '<div class="trending-item">'
       + '<div class="trending-num">' + (i+1) + '</div>'
-      + '<p class="vocab-zone">' + a.title + '</p>'
+      + '<p class="vocab-zone">' + item.title + '</p>'
       + '</div></a>';
   }).join('');
 
@@ -3517,21 +3539,21 @@ function renderSharedSidebar() {
 
   return '<div class="sidebar">'
     + '<div class="sidebar-box">'
-    + '<div class="box-title">🔥 Most Read</div>'
-    + trendingHTML
+    + '<div class="box-title">' + khIcon('flame', 'Most Read', 'kh-ui-icon-sm') + '</div>'
+    + '<div id="kh-most-read-list">' + trendingHTML + '</div>'
     + '</div>'
 
     + '<div class="sidebar-box">'
-    + '<div class="box-title">🌤 Korea Weather</div>'
+    + '<div class="box-title">' + khIcon('cloud-sun', 'Korea Weather', 'kh-ui-icon-sm') + '</div>'
     + '<div style="font-size:13px;color:var(--gray);line-height:1.9">'
-    + '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>Seoul 서울</span><span>⛅ -3° / 6°C</span></div>'
-    + '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>Busan 부산</span><span>🌤 4° / 12°C</span></div>'
-    + '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>Incheon 인천</span><span>🌬 -4° / 5°C</span></div>'
-    + '<div style="display:flex;justify-content:space-between;padding:4px 0"><span>Jeju 제주</span><span>🌧 8° / 13°C</span></div>'
+    + '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>Seoul 서울</span><span style="display:inline-flex;align-items:center;gap:6px">' + khIcon('cloud-sun', '', 'kh-ui-icon-xs') + '<span>-3° / 6°C</span></span></div>'
+    + '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>Busan 부산</span><span style="display:inline-flex;align-items:center;gap:6px">' + khIcon('cloud-sun', '', 'kh-ui-icon-xs') + '<span>4° / 12°C</span></span></div>'
+    + '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>Incheon 인천</span><span style="display:inline-flex;align-items:center;gap:6px">' + khIcon('wind', '', 'kh-ui-icon-xs') + '<span>-4° / 5°C</span></span></div>'
+    + '<div style="display:flex;justify-content:space-between;padding:4px 0"><span>Jeju 제주</span><span style="display:inline-flex;align-items:center;gap:6px">' + khIcon('cloud-rain', '', 'kh-ui-icon-xs') + '<span>8° / 13°C</span></span></div>'
     + '</div></div>'
 
     + '<div class="sidebar-box">'
-    + '<div class="box-title">📚 Word Bank</div>'
+    + '<div class="box-title">' + khIcon('book-marked', 'Word Bank', 'kh-ui-icon-sm') + '</div>'
     + wbWords.map(function(w){
         return '<div style="padding:7px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:baseline">'
           + '<span><span class="kh-word" data-word="' + w.ko + '" style="font-size:17px;font-weight:700;color:var(--accent)">' + w.ko + '</span>'
@@ -3543,11 +3565,72 @@ function renderSharedSidebar() {
 
     + '<div class="sidebar-box">'
     + '<a href="korehan-learn.html" style="text-decoration:none;display:block;background:linear-gradient(135deg,#0b1626,#1a3a6b);border-radius:8px;padding:16px;color:#fff;text-align:center">'
-    + '<div style="font-size:20px;margin-bottom:6px">✏️</div>'
+    + '<div style="display:flex;justify-content:center;margin-bottom:8px">' + khIcon('languages', '', 'kh-ui-icon-lg') + '</div>'
     + '<div style="font-weight:700;font-size:14px;margin-bottom:4px">Learn Korean</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,0.6)">Flashcards · Quiz · Sentences</div>'
     + '</a></div>'
     + '</div>';
+}
+
+var _mostReadSidebarCache = null;
+
+function getFallbackMostReadItems() {
+  return published().slice(0, 5).map(function(a) {
+    return {
+      type: 'article',
+      id: a.id,
+      title: a.title || a.title_ko || 'Untitled article',
+      href: articleUrl(a.id),
+      score: 0
+    };
+  });
+}
+
+function mostReadHref(type, id) {
+  if (type === 'conversation') return 'korehan-conversations.html?id=' + encodeURIComponent(id);
+  if (type === 'story') return 'korehan-stories.html?id=' + encodeURIComponent(id);
+  return articleUrl(id);
+}
+
+function renderMostReadList(items) {
+  return (items || []).slice(0, 5).map(function(item, i){
+    return '<a href="' + item.href + '" style="color:inherit;text-decoration:none;">'
+      + '<div class="trending-item">'
+      + '<div class="trending-num">' + (i + 1) + '</div>'
+      + '<p class="vocab-zone">' + escapeHtml(item.title || 'Untitled') + '</p>'
+      + '</div></a>';
+  }).join('');
+}
+
+async function fetchMostReadItems() {
+  if (_mostReadSidebarCache && _mostReadSidebarCache.length) return _mostReadSidebarCache;
+  var fallback = getFallbackMostReadItems();
+  var sb = getSupa();
+  if (!sb) return fallback;
+
+  try {
+    var viewsRes = await sb.from('article_views')
+      .select('article_id,title,view_count')
+      .order('view_count', { ascending: false })
+      .limit(30);
+    var ranked = (viewsRes.data || []).slice(0, 5).map(function(row) {
+      return {
+        title: row.title || 'Untitled',
+        href: articleUrl(row.article_id)
+      };
+    });
+    _mostReadSidebarCache = ranked.length ? ranked : fallback;
+    return _mostReadSidebarCache;
+  } catch(e) {
+    return fallback;
+  }
+}
+
+async function hydrateMostReadSidebar() {
+  var el = document.getElementById('kh-most-read-list');
+  if (!el) return;
+  var items = await fetchMostReadItems();
+  el.innerHTML = renderMostReadList(items);
 }
 
 // ── 시계 ──────────────────────────────────────────────────────
@@ -3628,6 +3711,7 @@ function sectionLabel(key) {
 
 // ── 앱 설정 (API 키 등 어드민 전역 설정) ──────────────────────────────────
 var _appSettings = {};
+var _appSettingsPromise = null;
 var DEFAULT_SITE_CONFIG = {
   siteName: 'KoreHan News',
   siteTagline: 'Learn Korean, Naturally',
@@ -3646,23 +3730,30 @@ function getSiteConfig() {
 }
 
 function applySiteConfigToPage() {
-  // The legacy learn banner copy caused confusing homepage flashes.
-  // Keep site config available for footer/site metadata, but stop
-  // force-injecting banner marketing copy into page chrome.
+  var cfg = getSiteConfig();
+  var titleEl = document.querySelector('.learn-banner .lb-left h2');
+  var descEl = document.querySelector('.learn-banner .lb-left p');
+  if (titleEl) titleEl.textContent = cfg.learnBannerTitle || DEFAULT_SITE_CONFIG.learnBannerTitle;
+  if (descEl) descEl.textContent = cfg.learnBannerDesc || DEFAULT_SITE_CONFIG.learnBannerDesc;
 }
 
 async function loadAppSettings() {
-  var sb = getSupa();
-  if (!sb) return;
-  try {
-    // Public pages only need site-level copy/config, not every secret setting.
-    var res = await sb.from('app_settings').select('key,value').eq('key', 'site_config');
-    if (res.data) {
-      res.data.forEach(function(row) {
-        _appSettings[row.key] = row.value;
-      });
-    }
-  } catch(e) {}
+  if (_appSettingsPromise) return _appSettingsPromise;
+  _appSettingsPromise = (async function() {
+    var sb = getSupa();
+    if (!sb) return;
+    try {
+      // API 키는 로그인한 유저만 읽을 수 있음 (RLS로 보호)
+      var res = await sb.from('app_settings').select('key,value');
+      if (res.data) {
+        res.data.forEach(function(row) {
+          _appSettings[row.key] = row.value;
+        });
+        // API 키는 localStorage에 저장하지 않음 (보안)
+      }
+    } catch(e) {}
+  })();
+  return _appSettingsPromise;
 }
 
 function getApiKey() {
@@ -3671,7 +3762,22 @@ function getApiKey() {
 }
 
 // ── INIT ──────────────────────────────────────────────────────
+function markShellReady() {
+  if (document.body) document.body.classList.add('kh-ready');
+}
+
+function markShellLeaving() {
+  if (document.body) document.body.classList.add('kh-leaving');
+}
+
+window.addEventListener('load', markShellReady);
+window.addEventListener('beforeunload', markShellLeaving);
+window.addEventListener('pagehide', markShellLeaving);
+
 document.addEventListener('DOMContentLoaded', async function() {
+  renderKhLucideIcons();
+  initKhNeonTheme();
+  markShellReady();
   var headerEl  = document.getElementById('kh-header');
   var footerEl  = document.getElementById('kh-footer');
   var sidebarEl = document.getElementById('kh-sidebar');
@@ -3679,6 +3785,9 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (headerEl)  headerEl.innerHTML  = renderHeader();
   if (footerEl)  footerEl.innerHTML  = renderFooter();
   if (sidebarEl) sidebarEl.innerHTML = renderSharedSidebar();
+  renderKhLucideIcons();
+  syncNeonToggleButtons();
+  hydrateMostReadSidebar();
   applySiteConfigToPage();
   // 모바일 사이드바 CSS/overlay/nav 주입 (헤더 렌더 직후 실행)
   khInjectSidebar();
@@ -3699,6 +3808,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   await Promise.all([loadArticlesFromDB(), loadSections(), loadAppSettings()]);
 
   if (footerEl) footerEl.innerHTML = renderFooter();
+  renderKhLucideIcons();
   applySiteConfigToPage();
 
   if (!pageBase || pageBase === 'index') {
@@ -3715,7 +3825,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   else if (pageBase === 'korehan-culture')   { await renderSectionPage('문화'); }
   else if (pageBase === 'korehan-opinion')   { await renderSectionPage('오피니언'); }
   else if (pageBase === 'korehan-article')   { renderArticlePage(); }
-  else if (pageBase === 'korehan-character') { renderCharacterProfilePage(); }
 
   ttsInit();
   injectDailyMission();
@@ -3727,30 +3836,49 @@ document.addEventListener('DOMContentLoaded', async function() {
 // 하드코딩 VOCAB에 DB 단어를 덮어쓰기 (DB 우선)
 // ── 온보딩 체크 ────────────────────────────────────────────
 var _onboardingChecked = false;
+function getOnboardingStorageKey(name, userId) {
+  return 'kh_onboarding_' + name + (userId ? '_' + userId : '');
+}
+function getWelcomeTipStorageKey(userId) {
+  return 'kh_new_user_tip' + (userId ? '_' + userId : '');
+}
+function hasCompletedOnboardingLocal(userId) {
+  try {
+    return localStorage.getItem(getOnboardingStorageKey('completed', userId)) === '1';
+  } catch(e) {
+    return false;
+  }
+}
+function markCompletedOnboardingLocal(userId, onboardedAt) {
+  try {
+    localStorage.setItem(getOnboardingStorageKey('completed', userId), '1');
+    if (onboardedAt) localStorage.setItem(getOnboardingStorageKey('completed_at', userId), onboardedAt);
+  } catch(e) {}
+}
 async function checkOnboardingStatus() {
   if (_onboardingChecked || !supaUser) return;
+  if (window.location.pathname.includes('onboarding')) return;
   _onboardingChecked = true;
   try {
+    if (hasCompletedOnboardingLocal(supaUser.id)) return;
     var sb = getSupa(); if (!sb) return;
     var res = await sb.from('user_stats')
-      .select('onboarded, created_at')
+      .select('onboarded, onboarded_at, created_at')
       .eq('user_id', supaUser.id)
       .maybeSingle();
 
-    // 기존 유저 (user_stats 레코드 있음) → onboarded 값 무관하게 통과
-    if (res.data) return;
+    if (res.data && res.data.onboarded === true) {
+      markCompletedOnboardingLocal(supaUser.id, res.data.onboarded_at || '');
+      return;
+    }
 
-    // 레코드 자체가 없는 경우 → 가입 시각으로 신규 여부 판단
-    // 가입 후 10분 이내면 신규 유저로 간주
     var createdAt = supaUser.created_at ? new Date(supaUser.created_at) : null;
     var isNew = createdAt && (Date.now() - createdAt.getTime() < 10 * 60 * 1000);
-
     if (isNew) {
       setTimeout(function() {
         window.location.href = 'korehan-onboarding.html';
       }, 600);
     }
-    // 기존 유저인데 user_stats 없으면 그냥 통과 (기존 데이터 유지)
   } catch(e) {}
 }
 
@@ -3778,6 +3906,7 @@ async function loadVocabFromDB() {
 var K_BADGES = 'kh_earned_badges'; // { badgeId: { earnedAt: ISO } }
 var K_XP     = 'kh_xp';           // number
 var K_READ_SECTIONS = 'kh_read_sections'; // { sectionName: count }
+var ARTICLE_XP_DAILY_CAP = 6;
 
 // XP 획득량 정의
 var XP_TABLE = {
@@ -3821,7 +3950,7 @@ function getCurrentStreak() {
     else if (i === 0) { d.setDate(d.getDate()-1); } // 오늘 아직 안 했어도 어제부터
     else break;
   }
-  return streak;
+  return Math.max(streak, lsGet('kh_synced_activity_streak', 0));
 }
 
 function getSectionReadCounts() {
@@ -4247,12 +4376,13 @@ function getBadgeProgress(b) {
 }
 
 // ── 기사 읽을 때 자동으로 섹션 추적 + 시간 추적 + XP + 뱃지 체크 ─────────
-async function trackActivityOnArticleRead(section) {
+async function trackActivityOnArticleRead(section, opts) {
+  opts = opts || {};
   checkCulturalDateBadges();
   if (section) trackSectionRead(section);
-  addXP(XP_TABLE.article_read);
+  if (opts.grantXP !== false) addXP(XP_TABLE.article_read);
   checkBadges('article_read');
-  await dmTrackArticle();
+  await dmTrackArticle(opts);
 }
 
 // ── 단어 저장 시 XP + 뱃지 ──────────────────────────────────────────────────
@@ -4466,6 +4596,57 @@ async function syncArticleView(articleId, title, section) {
 
 // ══ DAILY MISSION ENGINE ══════════════════════════════════════════════════════
 function dmToday() { var d = new Date(Date.now() + 9*60*60*1000); return d.toISOString().slice(0,10); }
+function dmXPFromData(d) {
+  d = d || {};
+  return ((d.articles||0) * 10) + ((d.words||0) * 2) + ((d.quizzes||0) * 5) + ((d.fill||0) * 5);
+}
+function markStudyActivityToday(kind) {
+  var key = dmToday();
+  var log = lsGet('kh_study_log', {});
+  var cur = log[key] || { articles:0, words:0, quiz:0, fill:0 };
+  if (kind === 'articles') cur.articles = (cur.articles||0) + 1;
+  if (kind === 'words')    cur.words    = (cur.words||0) + 1;
+  if (kind === 'quiz')     cur.quiz     = (cur.quiz||0) + 1;
+  if (kind === 'fill')     cur.fill     = Math.min((cur.fill||0) + 1, 1);
+  log[key] = cur;
+  lsSet('kh_study_log', log);
+  var days = lsGet('kh_study_days', {});
+  days[key] = true;
+  lsSet('kh_study_days', days);
+}
+function computeStreakFromDateKeys(keys) {
+  var seen = Object.create(null);
+  (keys || []).forEach(function(key){ if (key) seen[key] = true; });
+  var streak = 0;
+  var d = new Date(Date.now() + 9*60*60*1000);
+  for (var i = 0; i < 400; i++) {
+    var key = d.toISOString().slice(0,10);
+    if (seen[key]) { streak++; d.setDate(d.getDate()-1); }
+    else if (i === 0) { d.setDate(d.getDate()-1); }
+    else break;
+  }
+  return streak;
+}
+async function fetchActivityStreakFromDB(sb, userId) {
+  if (!sb || !userId) return 0;
+  try {
+    var since = new Date(Date.now() - 120*86400000).toISOString().slice(0,10);
+    var res = await sb.from('daily_missions')
+      .select('date, articles, words, quizzes, fill')
+      .eq('user_id', userId)
+      .gte('date', since)
+      .order('date', { ascending: false })
+      .limit(120);
+    var keys = (res.data || []).filter(function(row){
+      return ((row.articles||0) + (row.words||0) + (row.quizzes||0) + (row.fill||0)) > 0;
+    }).map(function(row){ return row.date; });
+    var streak = computeStreakFromDateKeys(keys);
+    if (streak > 0) lsSet('kh_synced_activity_streak', streak);
+    return streak;
+  } catch(e) {
+    return 0;
+  }
+}
 
 function dmGet() {
   var key = 'kh_daily_' + dmToday();
@@ -4478,38 +4659,47 @@ function dmSet(data) {
   renderDailyMission(); // 위젯 즉시 업데이트
 }
 
-async function dmTrackArticle() {
-  if (!supaUser) return;
+async function dmTrackArticle(opts) {
+  opts = opts || {};
   var d = dmGet(); d.articles = (d.articles||0) + 1; dmSet(d);
-  await syncDailyMission('articles');
-  await syncUserStats({ articles_read: true });
-  awardXP('article_read', { source: 'article' });
+  markStudyActivityToday('articles');
+  if (supaUser) {
+    await syncDailyMission('articles');
+    await syncUserStats({ articles_read: true });
+  }
+  if (opts.grantXP !== false) awardXP('article_read', { source: 'article' });
   checkDailyMissionComplete();
 }
 
 async function dmTrackWord() {
-  if (!supaUser) return;
   var d = dmGet(); d.words = (d.words||0) + 1; dmSet(d);
-  await syncDailyMission('words');
-  await syncUserStats({ words_saved: true });
+  markStudyActivityToday('words');
+  if (supaUser) {
+    await syncDailyMission('words');
+    await syncUserStats({ words_saved: true });
+  }
   awardXP('word_save', {});
   checkDailyMissionComplete();
 }
 
 async function dmTrackQuiz() {
-  if (!supaUser) return;
   var d = dmGet(); d.quizzes = (d.quizzes||0) + 1; dmSet(d);
-  await syncDailyMission('quizzes');
-  await syncUserStats({ quizzes_done: true });
+  markStudyActivityToday('quiz');
+  if (supaUser) {
+    await syncDailyMission('quizzes');
+    await syncUserStats({ quizzes_done: true });
+  }
   awardXP('conv_quiz_complete', {});
   checkDailyMissionComplete();
 }
 
 async function dmTrackFill() {
-  if (!supaUser) return;
   var d = dmGet(); d.fill = Math.min((d.fill||0) + 1, 1); dmSet(d);
-  await syncDailyMission('fill');
-  await syncUserStats({ fill_done: true });
+  markStudyActivityToday('fill');
+  if (supaUser) {
+    await syncDailyMission('fill');
+    await syncUserStats({ fill_done: true });
+  }
   awardXP('fill_complete', {});
   checkDailyMissionComplete();
 }
@@ -4692,10 +4882,10 @@ function khInjectSidebar() {
     + '<div class="kh-sb-sec">'
       + '<div class="kh-sb-lbl">Learn</div>'
       + '<a href="korehan-study-room.html" class="kh-sb-a' + (page==='korehan-study-room.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F4D6;</span>Study Room</a>'
+      + '<a href="korehan-learning-overview.html" class="kh-sb-a' + (page==='korehan-learning-overview.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F4CA;</span>Learning Hub</a>'
       + '<a href="korehan-courses.html" class="kh-sb-a' + (page==='korehan-courses.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F393;</span>Courses</a>'
-      + '<a href="korehan-mypage.html" class="kh-sb-a' + (page==='korehan-mypage.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F464;</span>My Page</a>'
     + '</div>'
-    + '<div class="kh-sb-sec" id="kh-sb-auth-sec" style="margin-top:auto;padding-top:12px;border-top:1px solid var(--border,#e2e8f0)">'
+    + '<div class="kh-sb-sec" id="kh-sb-auth-sec" style="margin-top:auto;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;bottom:0;background:#0b1626;box-shadow:0 -10px 24px rgba(0,0,0,.18)">'
       + '<div id="kh-sb-auth-row"></div>'
     + '</div>';
   document.body.appendChild(sb);
@@ -4708,7 +4898,9 @@ function updateSidebarAuth() {
   if (supaUser) {
     var name = (supaUser.user_metadata && supaUser.user_metadata.full_name) || supaUser.email.split('@')[0];
     row.innerHTML =
-      '<div style="padding:10px 16px;font-size:13px;color:var(--gray,#445566)">'
+      '<button id="kh-sb-neon-toggle" class="kh-sb-a" onclick="toggleKhNeon(event)" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit">'
+      + '<span class="kh-sb-ico">&#9889;</span>Neon theme: OFF</button>'
+      + '<div style="padding:10px 16px;font-size:13px;color:var(--gray,#445566)">'
       + '<div style="font-weight:800;color:var(--dark,#0d1b2e);margin-bottom:2px">' + name + '</div>'
       + '<div style="font-size:11px;opacity:.6">' + supaUser.email + '</div>'
       + '</div>'
@@ -4718,11 +4910,14 @@ function updateSidebarAuth() {
       + '<span class="kh-sb-ico">&#x1F6AA;</span>Sign Out</button>';
   } else {
     row.innerHTML =
-      '<button class="kh-sb-a" onclick="openAuthModal(\'signin\');khSbClose()" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit">'
+      '<button id="kh-sb-neon-toggle" class="kh-sb-a" onclick="toggleKhNeon(event)" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit">'
+      + '<span class="kh-sb-ico">&#9889;</span>Neon theme: OFF</button>'
+      + '<button class="kh-sb-a" onclick="openAuthModal(\'signin\');khSbClose()" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit">'
       + '<span class="kh-sb-ico">&#x1F511;</span>Sign In</button>'
       + '<button class="kh-sb-a" onclick="openAuthModal(\'signup\');khSbClose()" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit;color:var(--bright,#2255a4);font-weight:800">'
       + '<span class="kh-sb-ico">&#x2728;</span>Join Free</button>';
   }
+  syncNeonToggleButtons();
 }
 
 function khSbOpen() {
@@ -4799,73 +4994,151 @@ async function fetchUserStatsRow() {
   }
 }
 
+function getLocalWeakGrammarItems(limit) {
+  var items = [];
+  try {
+    var raw = localStorage.getItem('kh_quiz_grammar_stats');
+    if (raw) {
+      var obj = JSON.parse(raw);
+      Object.keys(obj).forEach(function(k) {
+        var v = obj[k] || {};
+        if ((v.wrong || 0) > 0) {
+          items.push({
+            grammar_point: k,
+            wrong_count: v.wrong || 0,
+            correct_count: v.correct || 0
+          });
+        }
+      });
+      items.sort(function(a, b) { return (b.wrong_count || 0) - (a.wrong_count || 0); });
+    }
+  } catch(e) {}
+  return typeof limit === 'number' ? items.slice(0, limit) : items;
+}
+
+async function getUnifiedWeakGrammarItems(limit) {
+  var localItems = getLocalWeakGrammarItems(limit);
+  var sb = getSupa();
+  if (!(sb && supaUser)) return localItems;
+
+  try {
+    var res = await sb.from('user_grammar_stats')
+      .select('grammar_point,wrong_count,correct_count')
+      .eq('user_id', supaUser.id)
+      .gt('wrong_count', 0)
+      .order('wrong_count', { ascending: false })
+      .limit(limit || 5);
+    if (res.data && res.data.length) return res.data;
+  } catch(e) {}
+  return localItems;
+}
+
 async function renderHomeLearningPreview() {
   var box = document.getElementById('home-learning-preview');
   if (!box) return;
+  var showWelcomeTip = false;
+  try {
+    var welcomeTipKey = getWelcomeTipStorageKey(supaUser && supaUser.id);
+    showWelcomeTip = window.location.search.indexOf('welcome=1') > -1 || localStorage.getItem(welcomeTipKey) === '1';
+  } catch(e) {}
 
   // 비로그인 — 컴팩트
   if (!supaUser) {
     box.innerHTML =
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">'
-      + '<div style="font-size:13px;font-weight:800;color:var(--dark)">처음 오셨나요?</div>'
+      + '<div style="font-size:13px;font-weight:800;color:var(--dark)">First time here?</div>'
       + '<div style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;background:#eef4ff;color:var(--bright)">Start easy</div>'
       + '</div>'
-      + '<div style="font-size:13px;color:var(--gray);line-height:1.55;margin-bottom:12px;">기사 읽기 → 문법 확인 → 퀴즈. 하루 5분으로 시작하세요.</div>'
-      + '<a href="beginner-guide.html" style="display:inline-block;padding:8px 16px;background:var(--bright);color:#fff;border-radius:6px;font-size:12px;font-weight:800;text-decoration:none;">시작하기 →</a>';
+      + '<div style="font-size:13px;color:var(--gray);line-height:1.55;margin-bottom:12px;">Read one article, review a few words, then use the Beginner Guide for your first learning loop.</div>'
+      + '<a href="beginner-guide.html" style="display:inline-block;padding:8px 16px;background:var(--bright);color:#fff;border-radius:6px;font-size:12px;font-weight:800;text-decoration:none;">Open Beginner Guide →</a>';
+    return;
+  }
+
+  if (showWelcomeTip) {
+    box.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
+      + '<div style="font-size:13px;font-weight:900;color:#fff">New here? Start with the Beginner Guide.</div>'
+      + '<div style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(125,211,252,.18);color:#dbeafe">Tip for first session</div>'
+      + '</div>'
+      + '<div style="font-size:12px;color:rgba(255,255,255,.74);line-height:1.6;margin-bottom:12px">Read one article, open Study Room, then check Learning Hub. The Beginner Guide maps the full flow for your first session.</div>'
+      + '<a href="beginner-guide.html" style="display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border-radius:12px;background:linear-gradient(135deg,#38bdf8,#2563eb);color:#fff;font-size:12px;font-weight:900;text-decoration:none;box-shadow:0 12px 22px rgba(37,99,235,.26);animation:khGuidePulse 1.8s ease-in-out infinite">Open Beginner Guide →</a>'
+      + '<style>@keyframes khGuidePulse{0%,100%{transform:translateY(0);box-shadow:0 12px 22px rgba(37,99,235,.26)}50%{transform:translateY(-1px);box-shadow:0 16px 28px rgba(56,189,248,.34)}}</style>';
+    try { localStorage.removeItem(getWelcomeTipStorageKey(supaUser && supaUser.id)); } catch(e) {}
     return;
   }
 
   // localStorage 기반 즉시 표시 (빠른 렌더)
   var dm = dmGet ? dmGet() : {};
-  var xp = getXP ? getXP() : 0;
+  var xp = dmXPFromData(dm);
   var streak = getCurrentStreak ? getCurrentStreak() : 0;
+
+  // weak grammar — DB 우선, localStorage fallback
+  var weakGrammar = '-아/어서 vs -고';
+  var weakCount = 0;
+  var weakItems = await getUnifiedWeakGrammarItems(1);
+  if (weakItems.length) {
+    weakGrammar = weakItems[0].grammar_point;
+    weakCount   = weakItems[0].wrong_count || 0;
+  }
 
   // DB에서 최신 데이터 비동기로 보강
   var sb = getSupa();
   if (sb && supaUser) {
     try {
+      var dmRes = await sb.from('daily_missions')
+        .select('articles,words,quizzes,fill')
+        .eq('user_id', supaUser.id)
+        .eq('date', dmToday())
+        .maybeSingle();
+      if (dmRes.data) {
+        dm.articles = Math.max(dm.articles || 0, dmRes.data.articles || 0);
+        dm.words    = Math.max(dm.words    || 0, dmRes.data.words    || 0);
+        dm.quizzes  = Math.max(dm.quizzes  || 0, dmRes.data.quizzes  || 0);
+        dm.fill     = Math.max(dm.fill     || 0, dmRes.data.fill     || 0);
+        xp = dmXPFromData(dm);
+        dmSet(dm);
+      }
+      // user_stats
       var statsRes = await sb.from('user_stats').select('xp,mission_streak,streak,articles_read,words_saved,quizzes_done').eq('user_id', supaUser.id).maybeSingle();
       if (statsRes.data) {
-        xp     = Math.max(xp,     statsRes.data.xp             || 0);
-        streak = Math.max(streak, statsRes.data.mission_streak || statsRes.data.streak || 0);
-        dm.articles = Math.max(dm.articles || 0, statsRes.data.articles_read || 0);
-        dm.words    = Math.max(dm.words    || 0, Math.min(20, statsRes.data.words_saved || 0));
-        dm.quizzes  = Math.max(dm.quizzes  || 0, statsRes.data.quizzes_done  || 0);
+        lsSet('kh_synced_mission_streak', Math.max(statsRes.data.mission_streak || 0, statsRes.data.streak || 0));
       }
+      streak = Math.max(streak, await fetchActivityStreakFromDB(sb, supaUser.id));
     } catch(e) {}
   }
 
   var wordsLeft   = Math.max(0, 20 - (dm.words    || 0));
   var artGoalLeft = Math.max(0, 3  - (dm.articles || 0));
-  var quizzesLeft = Math.max(0, 3 - (dm.quizzes || 0));
-  var summary = [];
-  if (artGoalLeft > 0) summary.push('기사 ' + artGoalLeft + '개');
-  if (wordsLeft > 0) summary.push('단어 ' + wordsLeft + '개');
-  if (quizzesLeft > 0) summary.push('퀴즈 ' + quizzesLeft + '개');
-  var summaryText = summary.length ? '남은 목표: ' + summary.join(' · ') : '오늘 목표를 모두 완료했어요. 계속 읽어도 XP가 쌓여요.';
+  var hasWeak = weakCount > 0;
+  var weakQ = encodeURIComponent(weakGrammar);
 
   box.innerHTML =
+    // streak 배지 + stats 한 줄
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">'
-    + '<div style="font-size:12px;font-weight:800;color:var(--dark)">Today\'s Progress</div>'
-    + '<div style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:#fff3e0;color:#c85000;">🔥 ' + streak + ' day streak</div>'
+    + '<div style="font-size:12px;font-weight:800;color:#fff">Today\'s Progress</div>'
+    + '<div style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(255,179,71,.14);border:1px solid rgba(255,179,71,.24);color:#ffd089;">🔥 ' + streak + ' day streak</div>'
     + '</div>'
     + '<div style="display:flex;gap:6px;margin-bottom:12px;">'
-    + '<div style="flex:1;background:#f7faff;border-radius:8px;padding:8px 10px;text-align:center;">'
-    +   '<div style="font-size:16px;font-weight:900;color:var(--accent);">' + (dm.words||0) + '<span style="font-size:10px;color:var(--gray)">/20</span></div>'
-    +   '<div style="font-size:10px;color:var(--gray);font-weight:700;">Words</div>'
+    + '<div style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:9px 10px;text-align:center;">'
+    +   '<div style="font-size:16px;font-weight:900;color:#fff;">' + (dm.words||0) + '<span style="font-size:10px;color:rgba(255,255,255,.5)">/20</span></div>'
+    +   '<div style="font-size:10px;color:rgba(255,255,255,.58);font-weight:700;">Words</div>'
     + '</div>'
-    + '<div style="flex:1;background:#f7faff;border-radius:8px;padding:8px 10px;text-align:center;">'
-    +   '<div style="font-size:16px;font-weight:900;color:var(--accent);">' + (dm.articles||0) + '<span style="font-size:10px;color:var(--gray)">/3</span></div>'
-    +   '<div style="font-size:10px;color:var(--gray);font-weight:700;">Articles</div>'
+    + '<div style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:9px 10px;text-align:center;">'
+    +   '<div style="font-size:16px;font-weight:900;color:#fff;">' + (dm.articles||0) + '<span style="font-size:10px;color:rgba(255,255,255,.5)">/3</span></div>'
+    +   '<div style="font-size:10px;color:rgba(255,255,255,.58);font-weight:700;">Articles</div>'
     + '</div>'
-    + '<div style="flex:1;background:#f7faff;border-radius:8px;padding:8px 10px;text-align:center;">'
-    +   '<div style="font-size:16px;font-weight:900;color:var(--accent);">' + xp + '</div>'
-    +   '<div style="font-size:10px;color:var(--gray);font-weight:700;">XP</div>'
+    + '<div style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:9px 10px;text-align:center;">'
+    +   '<div style="font-size:16px;font-weight:900;color:#fff;">' + xp + '</div>'
+    +   '<div style="font-size:10px;color:rgba(255,255,255,.58);font-weight:700;">XP</div>'
     + '</div>'
     + '</div>'
-    + '<div style="background:#f7faff;border-radius:8px;padding:10px 12px;">'
-    +   '<div style="font-size:10px;font-weight:800;color:var(--bright);margin-bottom:3px;">Next up</div>'
-    +   '<div style="font-size:12px;line-height:1.55;color:#334155;">' + summaryText + '</div>'
+    // weak grammar
+    + '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+    + '<div style="min-width:0;">'
+    +   '<div style="font-size:10px;font-weight:800;color:' + (hasWeak?'#ffd089':'#8ff0b3') + ';margin-bottom:2px;">' + (hasWeak?'⚠️ Weak Grammar':'✅ Grammar') + '</div>'
+    +   '<div style="font-size:13px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + weakGrammar + '</div>'
+    + '</div>'
+    + '<a href="korehan-study-room.html?focus=' + weakQ + '&source=home-weak-grammar" style="flex-shrink:0;font-size:11px;font-weight:800;padding:7px 11px;background:#2563eb;color:#fff;border-radius:999px;text-decoration:none;white-space:nowrap;">연습 →</a>'
     + '</div>';
 }
 
@@ -4885,21 +5158,28 @@ function markMobileBody() {
 }
 
 function injectMobileBottomNav() {
-  if (!isMobileRedesign() || document.querySelector('.mobile-bottom-nav')) return;
+  if (!isMobileRedesign()) return;
   var page = pageName();
-  var nav = document.createElement('nav');
-  nav.className = 'mobile-bottom-nav';
+  var nav = document.querySelector('.mobile-bottom-nav');
+  if (!nav) {
+    nav = document.createElement('nav');
+    nav.className = 'mobile-bottom-nav';
+    document.body.appendChild(nav);
+  }
   var items = [
-    ['index.html','🏠','Home','index'],
-    ['korehan-all.html','📰','News','korehan-all'],
-    ['korehan-study-room.html','📘','Learn','korehan-study-room'],
-    ['korehan-conversations.html','💬','CONVO','korehan-conversations'],
-    ['korehan-mypage.html','👤','My','korehan-mypage']
+    ['index.html','home','Home','index'],
+    ['korehan-all.html','newspaper','News','korehan-all'],
+    ['korehan-study-room.html','notebook-pen','Learn','korehan-study-room'],
+    ['korehan-conversations.html','messages-square','CONVO','korehan-conversations'],
   ];
+  if (supaUser) items.push(['korehan-mypage.html','circle-user-round','My','korehan-mypage']);
+  else items.push(['#','log-in','Sign In','signin']);
   nav.innerHTML = items.map(function(it){
-    return '<a href="'+it[0]+'" class="'+(page===it[3]?'on':'')+'"><span class="ico">'+it[1]+'</span><span>'+it[2]+'</span></a>';
+    var isOn = page===it[3];
+    var extra = it[3]==='signin' ? ' onclick="event.preventDefault();openAuthModal(\'signin\')"' : '';
+    return '<a href="'+it[0]+'" class="'+(isOn?'on':'')+'"' + extra + '><span class="ico">' + khIcon(it[1], '', 'kh-ui-icon-mobile') + '</span><span>'+it[2]+'</span></a>';
   }).join('');
-  document.body.appendChild(nav);
+  renderKhLucideIcons();
 }
 
 function mobileCreateCardHTML(label, value, href) {
@@ -4930,7 +5210,61 @@ function enhanceHomeMobile() {
 
 function enhanceArticleMobile() {
   if (!isMobileRedesign() || pageName() !== 'korehan-article') return;
-  document.body.classList.add('article-desktop-mobile');
+  var article = document.querySelector('.kh-article-wrap');
+  if (!article || document.querySelector('.mobile-sticky-study')) return;
+
+  var title = (document.querySelector('.art-title') || {}).textContent || 'This article';
+  var header = article.querySelector('.art-header');
+  if (header && !header.querySelector('.mobile-study-tabs')) {
+    var tabs = document.createElement('div');
+    tabs.className = 'mobile-study-tabs';
+    tabs.innerHTML = ''
+      + '<button class="on" data-target="read">Read</button>'
+      + '<button data-target="grammar">Grammar</button>'
+      + '<button data-target="vocab">Vocab</button>'
+      + '<button data-target="quiz">Quiz</button>';
+    header.insertAdjacentElement('afterend', tabs);
+
+    var readTargets = [document.getElementById('art-tab-article'), document.querySelector('.art-hero-img')].filter(Boolean);
+    var grammarTarget = document.getElementById('art-tab-grammar');
+    var vocabTarget = document.querySelector('.art-vocab-box');
+    var quizTarget = document.getElementById('fill-wrap');
+
+    function showTab(name) {
+      tabs.querySelectorAll('button').forEach(function(btn){ btn.classList.toggle('on', btn.getAttribute('data-target')===name); });
+      readTargets.forEach(function(el){ el.classList.toggle('mobile-hidden', name !== 'read'); });
+      if (grammarTarget) grammarTarget.classList.toggle('mobile-hidden', name !== 'grammar');
+      if (vocabTarget) vocabTarget.classList.toggle('mobile-hidden', name !== 'vocab');
+      if (quizTarget) quizTarget.classList.toggle('mobile-hidden', name !== 'quiz');
+      if (name === 'grammar') loadGrammarGuide();
+    }
+    tabs.addEventListener('click', function(e){
+      var btn = e.target.closest('button[data-target]');
+      if (!btn) return;
+      showTab(btn.getAttribute('data-target'));
+    });
+    showTab('read');
+  }
+
+  var sticky = document.createElement('div');
+  sticky.className = 'mobile-sticky-study';
+  sticky.innerHTML = '<a href="korehan-study-room.html">Study this article →</a>';
+  document.body.appendChild(sticky);
+
+  var lead = article.querySelector('.art-lead');
+  if (lead && !article.querySelector('.mobile-tier-card')) {
+    var card = document.createElement('section');
+    card.className = 'mobile-tier-card';
+    card.innerHTML = ''
+      + '<div class="mobile-eyebrow">Article study</div>'
+      + '<h3 style="font-size:24px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">Read first. Then review grammar and quiz.</h3>'
+      + '<p class="mobile-quick-sub">Keep the reading flow simple on mobile. Open translation only when you need it, save a few words, then jump to review.</p>'
+      + '<div class="mobile-action-row">'
+      + '<a class="mobile-primary-btn" href="javascript:void(0)" onclick="toggleTranslate()">' + khIcon('languages', 'Toggle translation', 'kh-ui-icon-sm') + '</a>'
+      + '<a class="mobile-secondary-btn" href="korehan-study-room.html">' + khIcon('notebook-pen', 'Writing practice', 'kh-ui-icon-sm') + '</a>'
+      + '</div>';
+    article.insertAdjacentElement('afterbegin', card);
+  }
 }
 
 function enhanceConversationsMobile() {
@@ -4964,8 +5298,8 @@ function enhanceConversationsMobile() {
         + '<h3 style="font-size:22px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">Read → Translate → Practice → Roleplay</h3>'
         + '<p class="mobile-quick-sub">Keep the conversation UI intact, then use the tools below to turn the chat into active speaking practice.</p>'
         + '<div class="mobile-action-row">'
-        + '<a class="mobile-primary-btn" href="#" onclick="event.preventDefault();startBlankQuiz()">✏️ Fill quiz</a>'
-        + '<a class="mobile-secondary-btn" href="#" onclick="event.preventDefault();startOrderQuiz()">🔀 Order quiz</a>'
+        + '<a class="mobile-primary-btn" href="javascript:void(0)">' + khIcon('messages-square', 'Roleplay', 'kh-ui-icon-sm') + '</a>'
+        + '<a class="mobile-secondary-btn" href="korehan-study-room.html">' + khIcon('notebook-pen', 'Practice', 'kh-ui-icon-sm') + '</a>'
         + '</div>';
       leftHead.insertAdjacentElement('afterend', box);
     }
@@ -4992,8 +5326,8 @@ function enhanceStoriesMobile() {
       + '<h2 class="mobile-quick-title" style="font-size:28px">Short stories should feel easy to finish on mobile.</h2>'
       + '<p class="mobile-quick-sub">Pick a mood, read one story, then review the key words and discuss what happened.</p>'
       + '<div class="mobile-action-row">'
-      + '<a class="mobile-primary-btn" href="korehan-stories.html?mood=fun">😂 Fun stories</a>'
-      + '<a class="mobile-secondary-btn" href="korehan-stories.html?mood=touching">🥹 Touching</a>'
+      + '<a class="mobile-primary-btn" href="korehan-stories.html?mood=fun">' + khIcon('sparkles', 'Fun stories', 'kh-ui-icon-sm') + '</a>'
+      + '<a class="mobile-secondary-btn" href="korehan-stories.html?mood=touching">' + khIcon('heart', 'Touching', 'kh-ui-icon-sm') + '</a>'
       + '</div>';
     root.insertAdjacentElement('afterbegin', shell);
   }
@@ -5011,8 +5345,8 @@ function enhanceStoriesMobile() {
         + '<h3 style="font-size:22px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">Read → Vocabulary → Quiz → Discussion</h3>'
         + '<p class="mobile-quick-sub">Stories work best when the reading screen is calm and the study actions are obvious.</p>'
         + '<div class="mobile-action-row">'
-        + '<a class="mobile-primary-btn" href="#" onclick="event.preventDefault();startStoryBlank()">📚 Vocab quiz</a>'
-        + '<a class="mobile-secondary-btn" href="#" onclick="event.preventDefault();startStoryOrder()">🔀 Story order</a>'
+        + '<a class="mobile-primary-btn" href="javascript:void(0)">' + khIcon('book-marked', 'Vocabulary', 'kh-ui-icon-sm') + '</a>'
+        + '<a class="mobile-secondary-btn" href="korehan-study-room.html">' + khIcon('message-circle', 'Discussion', 'kh-ui-icon-sm') + '</a>'
         + '</div>';
       head.insertAdjacentElement('afterend', box);
     }
@@ -5020,8 +5354,10 @@ function enhanceStoriesMobile() {
     if (cta && !cta.dataset.mobileEnhanced) {
       cta.dataset.mobileEnhanced = '1';
       cta.innerHTML = ''
-        + '<button class="st-cta-btn st-cta-pri" onclick="startStoryBlank()">✏️ Vocabulary</button>'
-        + '<button class="st-cta-btn st-cta-sec" onclick="startStoryOrder()">🔀 Quiz</button>';
+        + '<button class="st-cta-btn st-cta-pri">Vocabulary</button>'
+        + '<button class="st-cta-btn st-cta-sec">Quiz</button>'
+        + '<button class="st-cta-btn st-cta-sec">Discussion</button>'
+        + '<button class="st-cta-btn st-cta-sec">Practice</button>';
       cta.style.gridTemplateColumns = '1fr 1fr';
     }
   });
@@ -5042,13 +5378,157 @@ function enhanceCollectionPagesMobile() {
         + '<h2 class="mobile-quick-title" style="font-size:28px">Read one article at your level, not ten at once.</h2>'
         + '<p class="mobile-quick-sub">The goal on mobile is quick entry: pick a category, open one article, then move into vocab or quiz.</p>'
         + '<div class="mobile-action-row">'
-        + '<a class="mobile-primary-btn" href="korehan-study-room.html">Start Learning</a>'
-        + '<a class="mobile-secondary-btn" href="korehan-learn.html">Review vocab</a>'
+        + '<a class="mobile-primary-btn" href="korehan-study-room.html">' + khIcon('notebook-pen', 'Start Learning', 'kh-ui-icon-sm') + '</a>'
+        + '<a class="mobile-secondary-btn" href="korehan-learn.html">' + khIcon('book-marked', 'Review vocab', 'kh-ui-icon-sm') + '</a>'
         + '</div>';
       list.insertAdjacentElement('beforebegin', shell);
     }
   }
 }
+
+// ── Study continuity helpers ───────────────────────────────────────────────
+var K_STUDY_PLAN     = 'kh_study_plan_v1';
+var K_PERSONAL_QUEUE = 'kh_personal_queue_v1';
+var K_SPEAKING_LOG   = 'kh_speaking_log_v1';
+var K_QUICK_OUTPUT   = 'kh_quick_output_v1';
+
+function khSafeReadJSON(key, fallback) {
+  try {
+    var raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch(e) {
+    return fallback;
+  }
+}
+
+function khSafeWriteJSON(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch(e) {}
+}
+
+function getStudyPlan() {
+  var base = {
+    goalLevel: 'Intermediate',
+    minutesPerDay: 20,
+    daysPerWeek: 5,
+    reminderTime: '20:00',
+    focus: 'Balanced',
+    targetExam: 'TOPIK I',
+    startDate: new Date().toISOString().slice(0, 10)
+  };
+  var saved = khSafeReadJSON(K_STUDY_PLAN, {});
+  return Object.assign({}, base, saved || {});
+}
+
+function saveStudyPlan(plan) {
+  var next = Object.assign({}, getStudyPlan(), plan || {});
+  khSafeWriteJSON(K_STUDY_PLAN, next);
+  return next;
+}
+
+function getPersonalQueue() {
+  var items = khSafeReadJSON(K_PERSONAL_QUEUE, []);
+  return Array.isArray(items) ? items : [];
+}
+
+function savePersonalQueue(items) {
+  khSafeWriteJSON(K_PERSONAL_QUEUE, Array.isArray(items) ? items : []);
+}
+
+function addPersonalQueueItem(item) {
+  var list = getPersonalQueue();
+  list.unshift({
+    id: 'pq_' + Date.now(),
+    title: item && item.title ? item.title : 'Untitled',
+    source: item && item.source ? item.source : '',
+    category: item && item.category ? item.category : 'Custom',
+    note: item && item.note ? item.note : '',
+    createdAt: new Date().toISOString(),
+    done: false
+  });
+  savePersonalQueue(list.slice(0, 20));
+  return getPersonalQueue();
+}
+
+function togglePersonalQueueItem(id) {
+  var list = getPersonalQueue().map(function(item) {
+    if (item.id === id) item.done = !item.done;
+    return item;
+  });
+  savePersonalQueue(list);
+  return list;
+}
+
+function removePersonalQueueItem(id) {
+  var list = getPersonalQueue().filter(function(item){ return item.id !== id; });
+  savePersonalQueue(list);
+  return list;
+}
+
+function recordSpeakingSession(entry) {
+  var log = khSafeReadJSON(K_SPEAKING_LOG, []);
+  log.unshift({
+    id: 'sp_' + Date.now(),
+    prompt: entry && entry.prompt ? entry.prompt : '',
+    transcript: entry && entry.transcript ? entry.transcript : '',
+    score: Number(entry && entry.score ? entry.score : 0),
+    durationSec: Number(entry && entry.durationSec ? entry.durationSec : 0),
+    createdAt: new Date().toISOString()
+  });
+  khSafeWriteJSON(K_SPEAKING_LOG, log.slice(0, 60));
+}
+
+function getSpeakingStats(days) {
+  var limitDays = Number(days || 7);
+  var since = Date.now() - (limitDays * 86400000);
+  var list = khSafeReadJSON(K_SPEAKING_LOG, []).filter(function(item){
+    return item && item.createdAt && new Date(item.createdAt).getTime() >= since;
+  });
+  var totalSec = list.reduce(function(sum, item){ return sum + Number(item.durationSec || 0); }, 0);
+  var totalScore = list.reduce(function(sum, item){ return sum + Number(item.score || 0); }, 0);
+  return {
+    sessions: list.length,
+    minutes: Math.round(totalSec / 60),
+    avgScore: list.length ? Math.round(totalScore / list.length) : 0,
+    lastPrompt: list[0] ? list[0].prompt : '',
+    lastAt: list[0] ? list[0].createdAt : null
+  };
+}
+
+function recordQuickOutput(entry) {
+  var log = khSafeReadJSON(K_QUICK_OUTPUT, []);
+  log.unshift({
+    id: 'qo_' + Date.now(),
+    text: entry && entry.text ? entry.text : '',
+    topic: entry && entry.topic ? entry.topic : '',
+    createdAt: new Date().toISOString()
+  });
+  khSafeWriteJSON(K_QUICK_OUTPUT, log.slice(0, 60));
+}
+
+function getQuickOutputStats(days) {
+  var limitDays = Number(days || 7);
+  var since = Date.now() - (limitDays * 86400000);
+  var list = khSafeReadJSON(K_QUICK_OUTPUT, []).filter(function(item){
+    return item && item.createdAt && new Date(item.createdAt).getTime() >= since;
+  });
+  return {
+    count: list.length,
+    lastText: list[0] ? list[0].text : '',
+    lastTopic: list[0] ? list[0].topic : '',
+    lastAt: list[0] ? list[0].createdAt : null
+  };
+}
+
+window.getStudyPlan = getStudyPlan;
+window.saveStudyPlan = saveStudyPlan;
+window.getPersonalQueue = getPersonalQueue;
+window.addPersonalQueueItem = addPersonalQueueItem;
+window.togglePersonalQueueItem = togglePersonalQueueItem;
+window.removePersonalQueueItem = removePersonalQueueItem;
+window.recordSpeakingSession = recordSpeakingSession;
+window.getSpeakingStats = getSpeakingStats;
+window.recordQuickOutput = recordQuickOutput;
+window.getQuickOutputStats = getQuickOutputStats;
 
 function runMobileRedesign() {
   markMobileBody();
@@ -5059,6 +5539,7 @@ function runMobileRedesign() {
   enhanceArticleMobile();
   enhanceConversationsMobile();
   enhanceStoriesMobile();
+  renderKhLucideIcons();
 }
 
 document.addEventListener('DOMContentLoaded', function(){
