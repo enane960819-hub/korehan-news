@@ -1889,7 +1889,9 @@ function renderAllList(listEl, articles) {
     return;
   }
   listEl.className = 'all-card-grid';
-  listEl.innerHTML = articles.map(function(a){ return cardHTML(a); }).join('');
+  listEl.innerHTML = articles.map(function(a){
+    return cardHTML(Object.assign({}, a, { body: '' }));
+  }).join('');
 }
 
 function filterAllLevel(level, btn) {
