@@ -3860,7 +3860,9 @@ async function checkOnboardingStatus() {
   if (window.location.pathname.includes('onboarding')) return;
   _onboardingChecked = true;
   try {
+    // Check both keyed and un-keyed localStorage (handles edge cases)
     if (hasCompletedOnboardingLocal(supaUser.id)) return;
+    if (hasCompletedOnboardingLocal('')) return;
     var sb = getSupa(); if (!sb) return;
     var res = await sb.from('user_stats')
       .select('onboarded, onboarded_at, created_at')
@@ -3872,9 +3874,15 @@ async function checkOnboardingStatus() {
       return;
     }
 
+    // Only redirect new accounts (created within 30 min) that haven't onboarded
     var createdAt = supaUser.created_at ? new Date(supaUser.created_at) : null;
-    var isNew = createdAt && (Date.now() - createdAt.getTime() < 10 * 60 * 1000);
-    if (isNew) {
+    var isNew = createdAt && (Date.now() - createdAt.getTime() < 30 * 60 * 1000);
+    if (isNew && res.data && res.data.onboarded === false) {
+      setTimeout(function() {
+        window.location.href = 'korehan-onboarding.html';
+      }, 600);
+    } else if (isNew && !res.data) {
+      // No user_stats row yet — new signup
       setTimeout(function() {
         window.location.href = 'korehan-onboarding.html';
       }, 600);

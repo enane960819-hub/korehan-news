@@ -129,8 +129,69 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
 .loading-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:540px;color:rgba(255,255,255,.6);font-size:14px}
 .loading-spinner{width:34px;height:34px;border-radius:999px;border:3px solid rgba(255,255,255,.18);border-top-color:#fff;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-@media (max-width: 980px){body{padding:18px}.ob-shell{grid-template-columns:1fr}.ob-side{order:2}.ob-main{order:1}.ob-card{min-height:auto}.ob-options,.ob-choice-grid,.ob-link-grid,.ob-time-grid,.result-breakdown,.ob-journey{grid-template-columns:1fr}}
-@media (max-width: 640px){body{padding:12px}.ob-side,.ob-main{border-radius:24px;padding:18px}.ob-card{padding:20px;border-radius:24px}.ob-progress-wrap{display:block}.ob-progress-track{margin-top:12px}.ob-step-dot{width:32px;height:32px}.ob-side-title{font-size:36px}.ob-title{font-size:31px}.ob-desc{font-size:15px}.ob-opt,.ob-time-btn,.test-opt,.ob-choice-card,.ob-link-card{border-radius:18px;padding:16px}.result-hero{grid-template-columns:1fr;text-align:center}.result-num{font-size:52px}.ob-btn{width:100%}.ob-btn-row{display:grid;grid-template-columns:1fr}}
+@media (max-width: 980px){
+  body{padding:14px;align-items:flex-start}
+  .ob-shell{grid-template-columns:1fr;gap:0}
+  .ob-side{order:2;border-radius:0 0 28px 28px;padding:24px 22px;border-top:none}
+  .ob-main{order:1;border-radius:28px 28px 0 0;padding:22px}
+  .ob-side-hero{margin:16px 0 16px}
+  .ob-side-title{font-size:clamp(26px,5vw,36px)}
+  .ob-card{min-height:auto}
+  .ob-options,.ob-choice-grid,.ob-link-grid,.ob-time-grid,.result-breakdown,.ob-journey{grid-template-columns:1fr}
+  .ob-side-stack{display:none}
+}
+@media (max-width: 640px){
+  body{padding:0;background-attachment:fixed;align-items:stretch}
+  body:before{width:200px;height:200px;left:-60px;top:-30px}
+  body:after{width:240px;height:240px;right:-70px;bottom:-60px}
+  .ob-shell{gap:0;min-height:100dvh;display:flex;flex-direction:column}
+  .ob-main{order:1;flex:1;border-radius:0;padding:18px 16px;border-left:none;border-right:none;border-top:none;border-bottom:none}
+  .ob-side{order:2;border-radius:0;padding:20px 16px;border-left:none;border-right:none;border-bottom:none;border-top:1px solid var(--border)}
+  .ob-side-hero{margin:12px 0 12px}
+  .ob-side-title{font-size:clamp(22px,6vw,32px);line-height:1.1}
+  .ob-side-desc{font-size:14px}
+  .ob-feature-grid{grid-template-columns:repeat(2,1fr)}
+  .ob-side-stack,.ob-feature-grid{display:none}
+  .ob-card{padding:16px;border-radius:20px;border:none;background:transparent}
+  .ob-progress-wrap{flex-direction:column;gap:10px;margin-bottom:16px}
+  .ob-progress-track{width:100%}
+  .ob-step-dot{width:34px;height:34px;font-size:12px}
+  .ob-title{font-size:clamp(26px,7vw,36px);letter-spacing:-.035em}
+  .ob-desc{font-size:14px;line-height:1.65;margin-bottom:16px}
+  .ob-eyebrow{font-size:10px;padding:5px 10px}
+  .ob-options{grid-template-columns:1fr;gap:10px}
+  .ob-opt,.ob-choice-card{border-radius:16px;padding:14px 16px}
+  .ob-opt-icon{width:40px;height:40px;font-size:20px}
+  .ob-opt-label{font-size:16px}
+  .ob-opt-sub{font-size:12px}
+  .ob-time-grid{grid-template-columns:1fr 1fr;gap:10px}
+  .ob-time-btn{padding:16px;min-height:130px}
+  .ob-time-num{font-size:30px}
+  .ob-time-label{font-size:14px}
+  .ob-time-sub{font-size:12px}
+  .ob-time-route{font-size:11px}
+  .ob-choice-grid{gap:10px}
+  .ob-choice-card h3{font-size:17px}
+  .ob-choice-card p{font-size:13px}
+  .test-opts{grid-template-columns:1fr 1fr;gap:10px}
+  .test-opt{font-size:13px;min-height:68px;padding:12px}
+  .test-q{font-size:16px;margin-bottom:14px}
+  .test-ko{font-size:19px}
+  .result-hero{grid-template-columns:1fr;text-align:center;padding:16px;gap:12px}
+  .result-num{font-size:54px}
+  .result-copy h3{font-size:22px}
+  .result-breakdown{grid-template-columns:repeat(3,1fr);gap:8px}
+  .rb-item{padding:10px}
+  .rb-n{font-size:20px}
+  .ob-journey{grid-template-columns:1fr;gap:8px}
+  .ob-btn-row{display:grid;grid-template-columns:1fr}
+  .ob-btn{width:100%;padding:14px;font-size:15px}
+  .ob-link-grid{gap:10px}
+  .ob-link-card{padding:14px;border-radius:16px}
+  .ob-helper{padding:12px 14px;font-size:12px}
+  .ob-footer-note{font-size:12px}
+  .skip-link{font-size:12px;margin-top:12px}
+}
 </style>
 </head>
 <body>
@@ -229,34 +290,46 @@ var LEVEL_META = {
 
 var TEST_BANK = {
   Beginner:[
-    { q:'Choose the best ending for this sentence.', sentence:'저는 학생___.', choices:['이에요','에서요','부터요','한테요'], answer:'이에요', exp:'이에요 / 예요 is the copula ending meaning “am / is / are.”' },
-    { q:'How do you say “I go to school” in natural Korean?', sentence:'', choices:['학교에 가요','학교를 가요','학교에서 가요','학교가 가요'], answer:'학교에 가요', exp:'에 marks the destination when you go somewhere.' },
-    { q:'What does the underlined word mean?', sentence:'오늘 날씨가 좋아요.', choices:['weather','today','very','good'], answer:'weather', exp:'날씨 means weather. 오늘 means today.' },
-    { q:'Which one is in the past tense?', sentence:'', choices:['먹었어요','먹어요','먹을 거예요','먹고 있어요'], answer:'먹었어요', exp:'-었/았어요 marks a completed past action.' },
-    { q:'What does 를 do in this sentence?', sentence:'저는 커피를 좋아해요.', choices:['Marks the object','Marks the subject','Marks the place','Marks the time'], answer:'Marks the object', exp:'을/를 marks the object affected by the action.' },
-    { q:'Which sentence sounds natural?', sentence:'', choices:['오늘은 집에서 쉬어요','오늘은 집에 쉬어요','오늘은 집으로 쉬어요','오늘은 집을 쉬어요'], answer:'오늘은 집에서 쉬어요', exp:'에서 marks the place where an action happens.' },
-    { q:'What is the meaning of 주세요?', sentence:'물 좀 주세요.', choices:['Please give me','I already gave it','I want to go','I can do it'], answer:'Please give me', exp:'주세요 is a polite request: “please give (me)” or “please.”' },
-    { q:'Choose the correct translation of “There is a book on the desk.”', sentence:'', choices:['책상 위에 책이 있어요','책상 위를 책이 있어요','책상 위에 책을 있어요','책상 위가 책에 있어요'], answer:'책상 위에 책이 있어요', exp:'있어요 is used with location + subject for existence.' }
+    { q:'Choose the best ending for this sentence.', sentence:'저는 학생___.', choices:['에서요','이에요','부터요','한테요'], answer:'이에요', exp:'이에요 / 예요 is the copula ending meaning “am / is / are.”' },
+    { q:'How do you say “I go to school” in natural Korean?', sentence:'', choices:['학교를 가요','학교에서 가요','학교에 가요','학교가 가요'], answer:'학교에 가요', exp:'에 marks the destination when you go somewhere.' },
+    { q:'What does the highlighted word mean?', sentence:'오늘 날씨가 좋아요.', choices:['today','good','날씨 → weather','very'], answer:'날씨 → weather', exp:'날씨 means weather. 오늘 means today, 좋아요 means good/nice.' },
+    { q:'Which one is in the past tense?', sentence:'', choices:['먹어요','먹고 있어요','먹을 거예요','먹었어요'], answer:'먹었어요', exp:'-었/았어요 marks a completed past action.' },
+    { q:'What does 를 do in this sentence?', sentence:'저는 커피를 좋아해요.', choices:['Marks the subject','Marks the place','Marks the time','Marks the object'], answer:'Marks the object', exp:'을/를 marks the object affected by the action.' },
+    { q:'Which sentence sounds natural?', sentence:'', choices:['오늘은 집에 쉬어요','오늘은 집으로 쉬어요','오늘은 집에서 쉬어요','오늘은 집을 쉬어요'], answer:'오늘은 집에서 쉬어요', exp:'에서 marks the place where an action happens.' },
+    { q:'What is the meaning of 주세요?', sentence:'물 좀 주세요.', choices:['I already gave it','I can do it','I want to go','Please give me'], answer:'Please give me', exp:'주세요 is a polite request: “please give (me)” or “please.”' },
+    { q:'Choose the correct Korean for “There is a book on the desk.”', sentence:'', choices:['책상 위를 책이 있어요','책상 위에 책을 있어요','책상 위가 책에 있어요','책상 위에 책이 있어요'], answer:'책상 위에 책이 있어요', exp:'있어요 is used with location + subject for existence.' },
+    { q:'What does 안 do in this sentence?', sentence:'저는 고기를 안 먹어요.', choices:['Makes it very','Adds past tense','Makes it a question','Makes it negative'], answer:'Makes it negative', exp:'안 placed before a verb creates a short-form negation.' },
+    { q:'Which word means “expensive”?', sentence:'', choices:['싸요','작아요','비싸요','많아요'], answer:'비싸요', exp:'비싸다 means expensive; 싸다 means cheap.' },
+    { q:'How do you ask “Do you have time?” politely?', sentence:'', choices:['시간이 없어요?','시간이 와요?','시간이 있어요?','시간이 가요?'], answer:'시간이 있어요?', exp:'있어요 means “there is / have.” Adding ? makes it a question.' },
+    { q:'Which particle marks the starting point of an action?', sentence:'서울에서 부산까지 가요.', choices:['부터','까지','에서','에'], answer:'에서', exp:'에서 can mark the starting location as well as the place of action.' }
   ],
   Intermediate:[
-    { q:'Choose the best connector.', sentence:'비가 ___ 우산을 가져왔어요.', choices:['와서','오지만','오면서','오거나'], answer:'와서', exp:'와서 means “because it rained / since it was raining.”' },
-    { q:'What does -(으)ㄹ 것 같아요 express?', sentence:'내일 비가 올 것 같아요.', choices:['A guess or expectation','An obligation','A possibility','A strong command'], answer:'A guess or expectation', exp:'-(으)ㄹ 것 같아요 is used for prediction or impression.' },
-    { q:'Which sentence is natural?', sentence:'', choices:['친구한테 선물을 줬어요','친구에게서 선물을 줬어요','친구한테서 선물을 줬어요','친구에 선물을 줬어요'], answer:'친구한테 선물을 줬어요', exp:'주다 pairs naturally with 한테/에게 for the receiver.' },
-    { q:'What does 는데 do here?', sentence:'열심히 공부했는데 시험을 못 봤어요.', choices:['Adds contrast/background','Shows reason','Lists events in order','Creates a condition'], answer:'Adds contrast/background', exp:'는데 often introduces background or contrast before the next point.' },
-    { q:'Which sentence uses -(으)면서 correctly?', sentence:'', choices:['음악을 들으면서 공부해요','음악이 들으면서 공부해요','음악을 들으면 공부해요','음악을 들으면서 공부했을 것이다'], answer:'음악을 들으면서 공부해요', exp:'-(으)면서 means “while doing,” usually with the same subject.' },
-    { q:'What does -기 때문에 mean?', sentence:'교통이 복잡했기 때문에 늦었어요.', choices:['Because','Although','If','In order to'], answer:'Because', exp:'-기 때문에 clearly explains a reason.' },
-    { q:'Which sentence best shows a change of state?', sentence:'', choices:['날씨가 따뜻해졌어요','날씨가 따뜻하고 있어요','날씨가 따뜻할 거예요','날씨가 따뜻하도록'], answer:'날씨가 따뜻해졌어요', exp:'-아/어지다 often describes becoming or changing into a state.' },
-    { q:'What does 위해 mean here?', sentence:'건강을 위해 매일 걸어요.', choices:['For / in order to','Instead of','Compared with','Even though'], answer:'For / in order to', exp:'위해 introduces purpose or benefit.' }
+    { q:'Choose the best connector.', sentence:'비가 ___ 우산을 가져왔어요.', choices:['오지만','오면서','오거나','와서'], answer:'와서', exp:'와서 means “because it rained / since it was raining.”' },
+    { q:'What does -(으)ㄹ 것 같아요 express?', sentence:'내일 비가 올 것 같아요.', choices:['An obligation','A strong command','A guess or expectation','A past fact'], answer:'A guess or expectation', exp:'-(으)ㄹ 것 같아요 is used for prediction or impression.' },
+    { q:'Which sentence is natural when giving a gift to a friend?', sentence:'', choices:['친구에게서 선물을 줬어요','친구한테서 선물을 줬어요','친구에 선물을 줬어요','친구한테 선물을 줬어요'], answer:'친구한테 선물을 줬어요', exp:'주다 pairs naturally with 한테/에게 for the receiver.' },
+    { q:'What does 는데 do here?', sentence:'열심히 공부했는데 시험을 못 봤어요.', choices:['Shows reason','Lists events in order','Creates a condition','Adds contrast/background'], answer:'Adds contrast/background', exp:'는데 often introduces background or contrast before the next point.' },
+    { q:'Which sentence uses -(으)면서 correctly?', sentence:'', choices:['음악이 들으면서 공부해요','음악을 들으면 공부해요','음악을 들으면서 공부했을 것이다','음악을 들으면서 공부해요'], answer:'음악을 들으면서 공부해요', exp:'-(으)면서 means “while doing,” usually with the same subject.' },
+    { q:'What does -기 때문에 mean?', sentence:'교통이 복잡했기 때문에 늦었어요.', choices:['Although','If','In order to','Because'], answer:'Because', exp:'-기 때문에 clearly explains a reason.' },
+    { q:'Which sentence best shows a change of state?', sentence:'', choices:['날씨가 따뜻하고 있어요','날씨가 따뜻할 거예요','날씨가 따뜻해졌어요','날씨가 따뜻하도록'], answer:'날씨가 따뜻해졌어요', exp:'-아/어지다 often describes becoming or changing into a state.' },
+    { q:'What does 위해 mean here?', sentence:'건강을 위해 매일 걸어요.', choices:['Instead of','Even though','Compared with','For / in order to'], answer:'For / in order to', exp:'위해 introduces purpose or benefit.' },
+    { q:'Which ending expresses an intention or plan?', sentence:'', choices:['-(으)ㄴ 것 같다','-(으)ㄹ 것이다','-(으)ㄴ 적이 있다','-았/었다'], answer:'-(으)ㄹ 것이다', exp:'-(으)ㄹ 것이다 expresses a firm future plan or prediction.' },
+    { q:'What does -아/어도 mean in context?', sentence:'아무리 피곤해도 운동해요.', choices:['Because I am tired','After getting tired','Even though / even if tired','While being tired'], answer:'Even though / even if tired', exp:'-아/어도 introduces a concessive meaning: “even if / even though.”' },
+    { q:'Which is the correct past-tense form of 쓰다 (to write)?', sentence:'', choices:['쓰었어요','씌어요','쓰고 있어요','썼어요'], answer:'썼어요', exp:'쓰다 contracts to 썼어요 in the past tense (irregular ㅡ stem).' },
+    { q:'What does 만 add to meaning here?', sentence:'하루에 한 번만 먹어요.', choices:['Also, too','Even, as well','Only, just','About, approximately'], answer:'Only, just', exp:'만 is a limiting particle meaning “only” or “just.”' }
   ],
   Advanced:[
-    { q:'What does -(으)ㄹ수록 mean here?', sentence:'경제가 회복될수록 고용률도 높아진다.', choices:['The more..., the more...','While','Because','Even if'], answer:'The more..., the more...', exp:'-(으)ㄹ수록 shows a proportional relationship.' },
-    { q:'Which sentence uses 에 비해 correctly?', sentence:'', choices:['작년에 비해 물가가 많이 올랐다','작년에 비해 물가를 많이 올랐다','작년이 비해 물가가 많이 올랐다','작년에도 비해 물가가 올랐다'], answer:'작년에 비해 물가가 많이 올랐다', exp:'에 비해 means “compared to.”' },
-    { q:'What is emphasized by despite-like wording here?', sentence:'정책 발표에도 불구하고 국민 반응은 냉담했다.', choices:['An unexpected result','A direct cause','A timeline','A neutral description'], answer:'An unexpected result', exp:'에도 불구하고 highlights contrast against expectation.' },
-    { q:'What does 이라는 do in this phrase?', sentence:'그 사람이 범인이라는 증거가 없다.', choices:['Turns the clause into a modifier','Shows past recollection','Shows uncertainty only','Quotes someone directly'], answer:'Turns the clause into a modifier', exp:'이라는 links a noun phrase to the following noun, like “evidence that...”' },
-    { q:'Which sentence is the most formal?', sentence:'', choices:['예산이 삭감되었습니다','예산이 줄었어요','예산이 줄었어','예산이 줄었거든'], answer:'예산이 삭감되었습니다', exp:'습니다-style is the most formal and fits formal reports/news.' },
-    { q:'What is the role of -는 반면에?', sentence:'수출은 늘어난 반면에 소비는 둔화됐다.', choices:['Contrast between two trends','Reason and result','Quotation','Future intention'], answer:'Contrast between two trends', exp:'반면에 sets up a contrast between two sides.' },
-    { q:'What does -도록 mean here?', sentence:'누구나 이해할 수 있도록 쉽게 설명했다.', choices:['So that','As soon as','Even though','After doing'], answer:'So that', exp:'-도록 often expresses purpose or intended result.' },
-    { q:'Which sentence sounds most like formal report language?', sentence:'', choices:['정부는 추가 지원책을 검토하고 있다','정부가 추가 지원책을 검토 중이야','정부가 지원책 더 볼 거래','정부가 지원책 좀 본대'], answer:'정부는 추가 지원책을 검토하고 있다', exp:'Formal reporting style favors concise neutral declarative language.' }
+    { q:'What does -(으)ㄹ수록 mean here?', sentence:'경제가 회복될수록 고용률도 높아진다.', choices:['While','Because','Even if','The more..., the more...'], answer:'The more..., the more...', exp:'-(으)ㄹ수록 shows a proportional relationship.' },
+    { q:'Which sentence uses 에 비해 correctly?', sentence:'', choices:['작년에 비해 물가를 많이 올랐다','작년이 비해 물가가 많이 올랐다','작년에도 비해 물가가 올랐다','작년에 비해 물가가 많이 올랐다'], answer:'작년에 비해 물가가 많이 올랐다', exp:'에 비해 means “compared to.”' },
+    { q:'What is emphasized by 에도 불구하고 here?', sentence:'정책 발표에도 불구하고 국민 반응은 냉담했다.', choices:['A direct cause','A timeline','A neutral description','An unexpected result'], answer:'An unexpected result', exp:'에도 불구하고 highlights contrast against expectation.' },
+    { q:'What does 이라는 do in this phrase?', sentence:'그 사람이 범인이라는 증거가 없다.', choices:['Shows past recollection','Shows uncertainty only','Quotes someone directly','Turns the clause into a modifier'], answer:'Turns the clause into a modifier', exp:'이라는 links a noun phrase to the following noun, like “evidence that...”' },
+    { q:'Which sentence is the most formal?', sentence:'', choices:['예산이 줄었어요','예산이 줄었어','예산이 줄었거든','예산이 삭감되었습니다'], answer:'예산이 삭감되었습니다', exp:'습니다-style is the most formal and fits formal reports/news.' },
+    { q:'What is the role of -는 반면에?', sentence:'수출은 늘어난 반면에 소비는 둔화됐다.', choices:['Reason and result','Quotation','Future intention','Contrast between two trends'], answer:'Contrast between two trends', exp:'반면에 sets up a contrast between two sides.' },
+    { q:'What does -도록 mean here?', sentence:'누구나 이해할 수 있도록 쉽게 설명했다.', choices:['As soon as','Even though','After doing','So that'], answer:'So that', exp:'-도록 often expresses purpose or intended result.' },
+    { q:'Which sentence sounds most like formal report language?', sentence:'', choices:['정부가 추가 지원책을 검토 중이야','정부가 지원책 더 볼 거래','정부가 지원책 좀 본대','정부는 추가 지원책을 검토하고 있다'], answer:'정부는 추가 지원책을 검토하고 있다', exp:'Formal reporting style favors concise neutral declarative language.' },
+    { q:'What nuance does -겠- add here?', sentence:'제가 직접 확인하겠습니다.', choices:['It happened in the past','It is a question','It is a prohibition','It signals intention or inference'], answer:'It signals intention or inference', exp:'-겠- expresses the speaker\'s will, plan, or inference.' },
+    { q:'Which ending correctly expresses “I heard that” (hearsay)?', sentence:'', choices:['-기 때문에','-도록','-다고 하다','-(으)ㄹ 것이다'], answer:'-다고 하다', exp:'-다고 하다 (or -래요 in spoken form) marks reported speech or hearsay.' },
+    { q:'What does -아/어 왔다 express?', sentence:'10년간 이 일을 해 왔다.', choices:['The action will happen soon','The action has been continuing up to now','The action started but stopped','The action is hypothetical'], answer:'The action has been continuing up to now', exp:'-아/어 오다 shows an action that began in the past and has continued up to the present.' },
+    { q:'Which is the passive form of 발표하다 (to announce)?', sentence:'', choices:['발표되다','발표해지다','발표당하다','발표받다'], answer:'발표되다', exp:'-되다 forms the passive of many Sino-Korean verbs.' }
   ]
 };
 
@@ -734,6 +807,16 @@ async function initUser() {
     startOnboarding();
     return;
   }
+
+  // Check localStorage FIRST — prevents loop when DB upsert is slow or fails
+  try {
+    var localKey = getOnboardingStorageKey('completed', _user.id);
+    var localKeyFallback = getOnboardingStorageKey('completed', '');
+    if (localStorage.getItem(localKey) === '1' || localStorage.getItem(localKeyFallback) === '1') {
+      window.location.href = 'index.html';
+      return;
+    }
+  } catch(e) {}
 
   try {
     var res = await sb.from('user_stats').select('onboarded').eq('user_id', _user.id).maybeSingle();
