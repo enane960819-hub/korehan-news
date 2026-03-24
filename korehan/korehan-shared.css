@@ -2023,7 +2023,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   background: #f8faff;
   border-bottom: 1px solid #e8f0fe;
 }
-.hconv-avi  { font-size: 22px; flex-shrink: 0; }
+.hconv-avi  { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .hconv-info { flex: 1; min-width: 0; }
 .hconv-name { font-size: 13px; font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hconv-ctx  { font-size: 11px; color: #64748b; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -1083,9 +1083,13 @@ async function reassignTopicForLevel(level) {
 // ═══════════════════════════════════════════════════════════════
 async function loadAllTopics() {
   try {
+    var controller = new AbortController();
+    var timer = setTimeout(function(){ controller.abort(); }, 5000);
     var res = await fetch(SUPA_URL + '/rest/v1/writing_topics?select=*&active=eq.true&order=category.asc', {
-      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY },
+      signal: controller.signal
     });
+    clearTimeout(timer);
     var data = await res.json();
     _allTopics = Array.isArray(data) && data.length ? data : getFallbackTopics();
   } catch(e) { _allTopics = getFallbackTopics(); }
@@ -1247,12 +1251,20 @@ async function generateAIContent(topic) {
     + '}';
 
   try {
-    var data = await callClaude({
-      feature: 'study-room',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 900,
-      messages: [{ role: 'user', content: prompt }]
+    var _aiTimeoutReject;
+    var _aiTimeoutPromise = new Promise(function(_, reject) {
+      _aiTimeoutReject = reject;
+      setTimeout(function(){ reject(new Error('ai_timeout')); }, 12000);
     });
+    var data = await Promise.race([
+      callClaude({
+        feature: 'study-room',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 900,
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      _aiTimeoutPromise
+    ]);
     var raw = (data.content || []).map(function(c){ return c.text || ''; }).join('');
     var clean = raw.replace(/```json|```/g, '').trim();
     var s = clean.indexOf('{'), e = clean.lastIndexOf('}');
