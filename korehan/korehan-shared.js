@@ -1178,7 +1178,7 @@ var _articlesCacheTime = 0;
 var CACHE_TTL = 60000; // 1분
 var ARTICLES_STORAGE_KEY = 'kh_articles_cache_v2';
 var ARTICLES_STORAGE_MAX_AGE = 5 * 60 * 1000; // 5분
-var HOME_ARTICLE_SELECT = 'id,title,title_ko,body,image,section,level,date,published_at,status,featured,created_at,updated_at';
+var HOME_ARTICLE_SELECT = '*';
 
 (function hydrateArticlesCacheFromStorage() {
   try {
@@ -1204,8 +1204,28 @@ function persistArticlesCache(items) {
   } catch (e) {}
 }
 
+function articleSortValue(a) {
+  return String((a && (a.date || a.published_at || a.created_at || a.updated_at)) || '');
+}
+
+function sortArticlesNewest(items) {
+  return (Array.isArray(items) ? items.slice() : []).sort(function(a, b) {
+    var da = articleSortValue(a);
+    var db = articleSortValue(b);
+    if (da > db) return -1;
+    if (da < db) return 1;
+    return String((b && b.id) || '').localeCompare(String((a && a.id) || ''));
+  });
+}
+
+function normalizeArticles(items) {
+  return sortArticlesNewest((Array.isArray(items) ? items : []).filter(function(item) {
+    return item && typeof item === 'object';
+  }));
+}
+
 function applyArticlesCache(items) {
-  _articlesCache = Array.isArray(items) ? items : [];
+  _articlesCache = normalizeArticles(items);
   _articlesCacheTime = Date.now();
   persistArticlesCache(_articlesCache);
   document.dispatchEvent(new Event('khArticlesLoaded'));
@@ -1216,24 +1236,24 @@ async function loadArticlesFromDB(options) {
   options = options || {};
   var sb = getSupa();
   if (!sb) return getCachedArticles();
-  var useHomeOptimizedQuery = !!options.homeOptimized;
   var shouldForceRefresh = !!options.force;
+  var useHomeOptimizedQuery = !!options.homeOptimized;
   if (!shouldForceRefresh && _articlesCache && (Date.now() - _articlesCacheTime) < CACHE_TTL) {
     return _articlesCache;
   }
   try {
-    var query = sb.from('articles')
-      .select(useHomeOptimizedQuery ? HOME_ARTICLE_SELECT : '*')
-      .order('date', { ascending: false });
+    var query = sb.from('articles').select(HOME_ARTICLE_SELECT);
     if (useHomeOptimizedQuery) {
-      query = query.eq('status', 'published').limit(18);
+      query = query.limit(18);
+    } else {
+      query = query.limit(200);
     }
     var res = await query;
     if (res.error) throw res.error;
-    return applyArticlesCache(res.data || []);
+    return applyArticlesCache(normalizeArticles(res.data || []));
   } catch(e) {
     console.warn('articles load error', e);
-    return _articlesCache || [];
+    return getCachedArticles();
   }
 }
 
@@ -1252,7 +1272,7 @@ function dbGet(filter) {
   return all.filter(filter);
 }
 function published(section) {
-  return dbGet(function(a){ return a.status === 'published' && (!section || a.section === section); })
+  return dbGet(function(a){ return (!a.status || a.status === 'published') && (!section || a.section === section); })
     .sort(function(a, b) {
       // 최신 날짜순 정렬 (date 없으면 id로 역순)
       var da = a.date || a.created_at || '';
@@ -1809,44 +1829,28 @@ async function renderSectionPage(section) {
   };
   var aliases = SECTION_ALIASES[section] || [section];
 
-  var articles = [];
-
-  // 2차: 직접 Supabase 쿼리 (가장 신뢰할 수 있는 방법)
-  try {
-    var sb = getSupa();
-    if (sb) {
-      // 모든 alias에 대해 OR 쿼리
-      var orFilter = aliases.map(function(a){ return 'section.eq.' + a; }).join(',');
-      var res = await sb.from('articles')
-        .select('*')
-        .eq('status', 'published')
-        .or(orFilter)
-        .order('date', { ascending: false })
-        .limit(50);
-      if (res.data && res.data.length) {
-        articles = res.data;
-        // 캐시에도 병합
-        if (_articlesCache) {
-          var ids = new Set(_articlesCache.map(function(a){ return a.id; }));
-          res.data.forEach(function(a){ if (!ids.has(a.id)) _articlesCache.push(a); });
-        }
-      }
-    }
-  } catch(e) {
-    console.warn('[KH] section direct query failed:', e);
-  }
-
-  // 3차: 캐시 fallback
-  if (!articles.length) {
-    articles = getCachedArticles().filter(function(a){
-      return a.status === 'published' && aliases.some(function(alias){
-        return (a.section || '') === alias;
-      });
-    }).sort(function(a,b){
-      var da = a.date||a.created_at||'', db = b.date||b.created_at||'';
-      return da > db ? -1 : da < db ? 1 : 0;
+  var articles = getCachedArticles().filter(function(a){
+    var statusOk = !a.status || a.status === 'published';
+    return statusOk && aliases.some(function(alias){
+      return (a.section || '') === alias;
     });
+  });
+
+  if (!articles.length) {
+    try {
+      await loadArticlesFromDB({ force: true });
+      articles = getCachedArticles().filter(function(a){
+        var statusOk = !a.status || a.status === 'published';
+        return statusOk && aliases.some(function(alias){
+          return (a.section || '') === alias;
+        });
+      });
+    } catch(e) {
+      console.warn('[KH] section refresh failed:', e);
+    }
   }
+
+  articles = sortArticlesNewest(articles).slice(0, 50);
 
   var featured = articles[0];
   var rest     = articles.slice(1);
