@@ -1172,23 +1172,65 @@ function articleUrl(id) {
 
 // ── SEED DATA ─────────────────────────────────────────────────
 // ── DB (Supabase 기반) ───────────────────────────────────────────
-// 기사는 localStorage가 아닌 Supabase articles 테이블에서 로드
+// 기사는 Supabase articles 테이블에서 로드
 var _articlesCache = null;
 var _articlesCacheTime = 0;
 var CACHE_TTL = 60000; // 1분
+var ARTICLES_STORAGE_KEY = 'kh_articles_cache_v2';
+var ARTICLES_STORAGE_MAX_AGE = 5 * 60 * 1000; // 5분
+var HOME_ARTICLE_SELECT = 'id,title,title_ko,body,image,section,level,date,published_at,status,featured,created_at,updated_at';
 
-async function loadArticlesFromDB() {
-  var sb = getSupa();
-  if (!sb) return [];
+(function hydrateArticlesCacheFromStorage() {
   try {
-    var res = await sb.from('articles')
-      .select('*')
-      .order('date', { ascending: false });
-    if (res.error) throw res.error;
-    _articlesCache = res.data || [];
-    _articlesCacheTime = Date.now();
-    document.dispatchEvent(new Event('khArticlesLoaded'));
+    var raw = localStorage.getItem(ARTICLES_STORAGE_KEY);
+    if (!raw) return;
+    var parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.items) || !parsed.items.length) return;
+    if (!parsed.savedAt || (Date.now() - parsed.savedAt) > ARTICLES_STORAGE_MAX_AGE) return;
+    _articlesCache = parsed.items;
+    _articlesCacheTime = parsed.savedAt;
+  } catch (e) {
+    console.warn('articles storage hydrate failed', e);
+  }
+})();
+
+function persistArticlesCache(items) {
+  if (!Array.isArray(items) || !items.length) return;
+  try {
+    localStorage.setItem(ARTICLES_STORAGE_KEY, JSON.stringify({
+      savedAt: Date.now(),
+      items: items
+    }));
+  } catch (e) {}
+}
+
+function applyArticlesCache(items) {
+  _articlesCache = Array.isArray(items) ? items : [];
+  _articlesCacheTime = Date.now();
+  persistArticlesCache(_articlesCache);
+  document.dispatchEvent(new Event('khArticlesLoaded'));
+  return _articlesCache;
+}
+
+async function loadArticlesFromDB(options) {
+  options = options || {};
+  var sb = getSupa();
+  if (!sb) return getCachedArticles();
+  var useHomeOptimizedQuery = !!options.homeOptimized;
+  var shouldForceRefresh = !!options.force;
+  if (!shouldForceRefresh && _articlesCache && (Date.now() - _articlesCacheTime) < CACHE_TTL) {
     return _articlesCache;
+  }
+  try {
+    var query = sb.from('articles')
+      .select(useHomeOptimizedQuery ? HOME_ARTICLE_SELECT : '*')
+      .order('date', { ascending: false });
+    if (useHomeOptimizedQuery) {
+      query = query.eq('status', 'published').limit(18);
+    }
+    var res = await query;
+    if (res.error) throw res.error;
+    return applyArticlesCache(res.data || []);
   } catch(e) {
     console.warn('articles load error', e);
     return _articlesCache || [];
@@ -4184,23 +4226,32 @@ document.addEventListener('DOMContentLoaded', async function() {
     hamBtn.addEventListener('touchend', function(e) { e.preventDefault(); khSbOpen(); });
   }
 
-  // 세션 먼저 확인 후 나머지 로드 (로그인 상태가 헤더 렌더 전에 준비되도록)
-  await checkSession();
-
   var page     = window.location.pathname.split('/').pop() || 'index.html';
   var pageBase = page.replace(/\.html$/, '');
+  var isHomePage = (!pageBase || pageBase === 'index' || pageBase === 'korehan-news');
 
-  // Supabase에서 기사 + 섹션 먼저 로드 후 렌더링
-  await Promise.all([loadArticlesFromDB(), loadSections(), loadAppSettings()]);
+  // Session / settings can hydrate in parallel — do not block the homepage hero.
+  var sessionPromise = checkSession().catch(function(err){ console.warn('session check failed', err); });
+  var sectionsPromise = loadSections().catch(function(err){ console.warn('sections load failed', err); });
+  var settingsPromise = loadAppSettings().catch(function(err){ console.warn('app settings load failed', err); });
+
+  if (isHomePage) {
+    if (getCachedArticles().length) {
+      renderHomePage();
+    }
+    await loadArticlesFromDB({ homeOptimized: true, force: true });
+    renderHomePage();
+  } else {
+    await Promise.all([loadArticlesFromDB({ force: true }), sectionsPromise, settingsPromise]);
+  }
+
+  await Promise.allSettled([sessionPromise, sectionsPromise, settingsPromise]);
 
   if (footerEl) footerEl.innerHTML = renderFooter();
   renderKhLucideIcons();
   applySiteConfigToPage();
 
-  if (!pageBase || pageBase === 'index') {
-    renderHomePage();
-  } else if (pageBase === 'korehan-news')     { renderHomePage(); }
-  else if (pageBase === 'korehan-all')     { renderAllPage(); }
+  if (pageBase === 'korehan-all')     { renderAllPage(); }
   else if (pageBase === 'korehan-section')   {
     var sKey = (new URLSearchParams(window.location.search)).get('s') || '';
     await renderSectionPage(sKey);
