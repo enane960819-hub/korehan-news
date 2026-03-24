@@ -186,6 +186,7 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" id="sb-site-settings" onclick="goSiteSettings()"><span class="ico">⚙️</span>사이트 기본 설정</button>
     <button class="sb-btn" id="sb-onb-settings" onclick="goOnboardingSettings()"><span class="ico">🧭</span>온보딩 편집</button>
     <button class="sb-btn" onclick="goOpinions()">    <span class="ico">✍️</span>오피니언 칼럼니스트</button>
+    <button class="sb-btn" id="sb-char-reporters" onclick="goCharReporters()"><span class="ico">🎭</span>Character Reporters<span class="sb-new-tag">NEW</span></button>
 
     <div class="section-sep"></div>
     <div class="sb-lbl">학습 콘텐츠</div>
@@ -220,13 +221,13 @@ a{color:inherit;text-decoration:none}
 <!-- ARTICLE MODAL -->
 <div class="ov" id="ov" style="display:none">
   <div class="mbox">
-    <div class="m-hd"><h2 id="m-ttl">Article</h2><button class="m-x" id="m-x">✕</button></div>
+    <div class="m-hd"><h2 id="m-ttl">Article</h2><button class="m-x" id="m-x" onclick="closeModal()">✕</button></div>
     <div class="m-bd" id="m-bd"></div>
     <div class="m-ft">
-      <button class="btn btn-gh" id="m-del-from-modal" style="background:#c33;color:#fff;margin-right:auto;display:none" onclick="deleteFromModal()">🗑 삭제</button>
-      <button class="btn btn-gh" id="m-cancel">취소</button>
-      <button class="btn btn-b" style="background:#555" id="m-draft">임시저장</button>
-      <button class="btn btn-g" id="m-pub">✓ 발행</button>
+      <button class="btn btn-gh" id="m-del-from-modal" style="background:#c33;color:#fff;margin-right:auto;display:none" onclick="deleteFromModal()">🗑 Delete</button>
+      <button class="btn btn-gh" id="m-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-b" style="background:#555" id="m-draft" onclick="submitForm('draft')">Save Draft</button>
+      <button class="btn btn-g" id="m-pub" onclick="submitForm('published')">✓ Publish</button>
     </div>
   </div>
 </div>
@@ -238,8 +239,8 @@ a{color:inherit;text-decoration:none}
     <h3>기사를 삭제할까요?</h3>
     <p id="del-msg">삭제하면 되돌릴 수 없습니다.</p>
     <div class="del-btns">
-      <button class="btn btn-gh" id="del-cancel">취소</button>
-      <button class="btn btn-r"  id="del-confirm">삭제</button>
+      <button class="btn btn-gh" id="del-cancel" onclick="closeDelete()">Cancel</button>
+      <button class="btn btn-r"  id="del-confirm" onclick="doDelete()">Delete</button>
     </div>
   </div>
 </div>
@@ -333,6 +334,19 @@ function supaAdminGet(path){
 const K_SITECONF = 'korehan_siteconf';
 const K_ONBOARDING_CONF = 'korehan_onboarding_conf';
 const K_OPINIONS = 'korehan_opinions';
+const K_CHAR_REPORTERS = 'korehan_char_reporters';
+
+// ── SINGLE SOURCE OF TRUTH FOR CATEGORIES ──────────────────
+// Used by: sidebar filters, article modal, All Articles table, AI generation
+const CATEGORIES = [
+  { key:'사회',    icon:'🏙️', label:'Society',    topics:'Korean society, education, housing, labor, welfare, demographics, social issues' },
+  { key:'국제',    icon:'🌍', label:'World',       topics:'international affairs, geopolitics, diplomacy, global economy, foreign relations' },
+  { key:'문화',    icon:'🎭', label:'Culture',     topics:'Korean culture, K-drama, K-pop, movies, arts, entertainment, cultural trends' },
+  { key:'Korea',   icon:'🇰🇷', label:'Korea',       topics:'K-pop, Korean Wave, tourism, traditional culture, Korean lifestyle and identity' },
+  { key:'스포츠',  icon:'⚽', label:'Sports',      topics:'Korean and international sports, football, baseball, Olympics, esports' },
+  { key:'IT과학',  icon:'💻', label:'Tech/Science', topics:'technology, AI, semiconductors, startups, science discoveries, digital innovation' },
+  { key:'오피니언',icon:'✍️', label:'Opinion',     topics:'Korean social commentary, editorial, economic opinion, political analysis' },
+];
 
 // ══ HELPERS ════════════════════════════════════════════════
 function ls(k,d){ try{const r=localStorage.getItem(k);if(r!=null)return JSON.parse(r);}catch(e){}return d; }
@@ -595,7 +609,6 @@ function renderList(){
   refreshCounts();
   const pub   = DB.filter(a=>a.status==='published').length;
   const draft = DB.filter(a=>a.status==='draft').length;
-  const SECS  = ['사회','국제','문화','Korea','스포츠','IT과학','오피니언'];
 
   document.getElementById('main').innerHTML=`
     <div class="pg-hd">
@@ -616,7 +629,7 @@ function renderList(){
       <div class="srch"><span>🔍</span><input id="q" type="text" placeholder="제목 검색…" oninput="renderRows()"></div>
       <select class="flt" id="fsec" onchange="renderRows()">
         <option value="">All Sections</option>
-        ${SECS.map(s=>`<option value="${s}"${activeFilter===s?' selected':''}>${s}</option>`).join('')}
+        ${CATEGORIES.map(c=>`<option value="${c.key}"${activeFilter===c.key?' selected':''}>${c.icon} ${c.key}</option>`).join('')}
       </select>
       <select class="flt" id="fsta" onchange="renderRows()">
         <option value="">전체 상태</option>
@@ -693,7 +706,6 @@ async function togglePub(id){
 }
 
 // ══ ARTICLE MODAL ════════════════════════════════════════════
-const SECS = ['사회','국제','문화','Korea','스포츠','IT과학','오피니언'];
 
 function openModal(id){
   const a = id ? DB.find(x=>x.id===id) : null;
@@ -732,7 +744,7 @@ function formHTML(a){
       <div class="fg">
         <label>Section *</label>
         <select id="f-sec">
-          ${SECS.map(s=>`<option value="${s}"${(v.section||'')==s?' selected':''}>${s}</option>`).join('')}
+          ${CATEGORIES.map(c=>`<option value="${c.key}"${(v.section||'')==c.key?' selected':''}>${c.icon} ${c.key} — ${c.label}</option>`).join('')}
         </select>
       </div>
       <div class="fg">
@@ -1480,6 +1492,187 @@ function saveOpinions(){
   toast('✍️ 오피니언 저장됨! ('+arr.length+'명)');
 }
 
+// ══ CHARACTER REPORTERS ══════════════════════════════════════
+var DEF_CHAR_REPORTERS = [
+  { id:'cr1', name:'박서진', role:'사회부 기자', image:'https://picsum.photos/seed/cr1/200/200', intro:'KoreHan News 사회부 기자. 복잡한 사회 이슈를 쉬운 한국어로 전달합니다.', personality:'친근하고 따뜻한 어조. 독자에게 설명하듯이 씁니다.', tone:'Friendly and approachable', tags:['사회','오피니언'], profilePage:'', color:'#2563eb' },
+  { id:'cr2', name:'김지원', role:'국제부 특파원', image:'https://picsum.photos/seed/cr2/200/200', intro:'전 세계 뉴스를 한국어로 쉽게 풀어드립니다. 국제 정세 전문.', personality:'분석적이고 논리적. 데이터와 사실 중심.', tone:'Analytical and precise', tags:['국제','IT과학'], profilePage:'', color:'#7c3aed' },
+];
+
+function goCharReporters() {
+  setSbOn('sb-char-reporters');
+  var reporters = [];
+  try { reporters = JSON.parse(localStorage.getItem(K_CHAR_REPORTERS) || 'null') || DEF_CHAR_REPORTERS; } catch(e) { reporters = DEF_CHAR_REPORTERS; }
+
+  document.getElementById('main').innerHTML = `
+    <div style="max-width:1000px">
+      <div class="pg-hd" style="margin-bottom:20px">
+        <div>
+          <h1>🎭 Character Reporters</h1>
+          <p style="margin:4px 0 0;color:#64748b;font-size:14px">Manage AI character reporter profiles. Used across Articles, Conversations, and Stories.</p>
+        </div>
+        <button class="btn btn-g" onclick="crAddNew()">＋ Add Reporter</button>
+      </div>
+      <div class="infobox" style="margin-bottom:18px">
+        💡 Character reporters are reusable personas that can be assigned to articles, conversations, and stories. Their profile images and introductions will appear on their public profile pages.
+      </div>
+      <div id="cr-list" style="display:grid;gap:14px"></div>
+    </div>`;
+
+  crRenderList(reporters);
+}
+
+function crRenderList(reporters) {
+  var box = document.getElementById('cr-list');
+  if (!box) return;
+  if (!reporters.length) {
+    box.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8;background:#fff;border-radius:16px;border:1px solid #e2e8f0"><div style="font-size:32px;margin-bottom:8px">🎭</div><div style="font-weight:700">No character reporters yet</div><div style="font-size:13px;margin-top:4px">Click "Add Reporter" to create your first one.</div></div>';
+    return;
+  }
+  box.innerHTML = reporters.map(function(r, idx) {
+    var tagsList = (r.tags||[]).join(', ');
+    return `<div style="background:#fff;border-radius:18px;border:1px solid #e2e8f0;padding:20px;display:grid;grid-template-columns:80px 1fr auto;gap:18px;align-items:start">
+      <div style="position:relative">
+        <img src="${esc(r.image||'https://picsum.photos/seed/cr_'+r.id+'/200/200')}" style="width:80px;height:80px;border-radius:16px;object-fit:cover;border:2px solid #e2e8f0" onerror="this.src='https://picsum.photos/seed/cr_x/200/200'">
+        <div style="position:absolute;bottom:-4px;right:-4px;width:20px;height:20px;border-radius:50%;background:${esc(r.color||'#2563eb')};border:2px solid #fff"></div>
+      </div>
+      <div>
+        <div style="font-size:18px;font-weight:800;color:#0f172a;margin-bottom:2px">${esc(r.name)}</div>
+        <div style="font-size:13px;color:#64748b;font-weight:600;margin-bottom:8px">${esc(r.role)}</div>
+        <div style="font-size:13px;color:#374151;margin-bottom:6px;line-height:1.5">${esc(r.intro||'').slice(0,120)}${(r.intro||'').length>120?'…':''}</div>
+        <div style="font-size:12px;color:#94a3b8"><strong>Tone:</strong> ${esc(r.tone||'')} &nbsp;·&nbsp; <strong>Sections:</strong> ${esc(tagsList||'All')}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0">
+        <button class="btn btn-gh" style="font-size:12px;padding:7px 14px" onclick="crEditModal(${idx})">✏️ Edit</button>
+        <button class="btn btn-r"  style="font-size:12px;padding:7px 14px" onclick="crDelete(${idx})">🗑 Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function crEditModal(idx) {
+  var reporters = [];
+  try { reporters = JSON.parse(localStorage.getItem(K_CHAR_REPORTERS) || 'null') || DEF_CHAR_REPORTERS; } catch(e) { reporters = DEF_CHAR_REPORTERS; }
+  var r = reporters[idx] || {};
+  var isNew = (idx === -1);
+  if (isNew) r = { id: uid(), name:'', role:'', image:'', intro:'', personality:'', tone:'', tags:[], profilePage:'', color:'#2563eb' };
+
+  document.getElementById('m-ttl').textContent = isNew ? '＋ New Reporter' : 'Edit: ' + r.name;
+  document.getElementById('ov').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  var catOptions = CATEGORIES.map(function(c){ return '<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;margin-right:12px;cursor:pointer"><input type="checkbox" value="'+c.key+'" '+(r.tags&&r.tags.includes(c.key)?'checked':'')+'> '+c.icon+' '+c.key+'</label>'; }).join('');
+
+  document.getElementById('m-bd').innerHTML = `
+    <input type="hidden" id="cr-idx" value="${idx}">
+    <input type="hidden" id="cr-id" value="${esc(r.id||'')}">
+    <div class="fg-row">
+      <div class="fg"><label>Name *</label><input id="cr-name" type="text" value="${esc(r.name)}" placeholder="e.g. 박서진"></div>
+      <div class="fg"><label>Role / Title *</label><input id="cr-role" type="text" value="${esc(r.role)}" placeholder="e.g. 사회부 기자"></div>
+    </div>
+    <div class="fg">
+      <label>Profile Image URL</label>
+      <input id="cr-img" type="text" value="${esc(r.image)}" placeholder="https://…" oninput="document.getElementById('cr-imgprev').src=this.value||'https://picsum.photos/seed/cr_x/200/200'">
+      <img id="cr-imgprev" src="${esc(r.image||'https://picsum.photos/seed/cr_x/200/200')}" style="width:80px;height:80px;border-radius:12px;object-fit:cover;margin-top:8px;border:2px solid #e2e8f0">
+    </div>
+    <div class="fg"><label>Introduction (shown on profile page)</label><textarea id="cr-intro" rows="3" placeholder="Brief introduction visible on the public profile page…">${esc(r.intro||'')}</textarea></div>
+    <div class="fg"><label>Personality / Writing Style</label><textarea id="cr-personality" rows="2" placeholder="e.g. 친근하고 따뜻한 어조. 독자에게 설명하듯이 씁니다.">${esc(r.personality||'')}</textarea></div>
+    <div class="fg"><label>Tone (English, used in AI prompts)</label><input id="cr-tone" type="text" value="${esc(r.tone||'')}" placeholder="e.g. Friendly and approachable, Analytical and precise"></div>
+    <div class="fg">
+      <label>Accent Color</label>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input id="cr-color" type="color" value="${esc(r.color||'#2563eb')}" style="width:40px;height:36px;border-radius:8px;border:1.5px solid #e2e8f0;cursor:pointer;padding:2px">
+        <span style="font-size:13px;color:#64748b">Used on profile page header</span>
+      </div>
+    </div>
+    <div class="fg"><label>Linked Sections</label><div style="display:flex;flex-wrap:wrap;gap:4px;padding:10px 0">${catOptions}</div></div>
+    <div class="fg"><label>Public Profile Page URL <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label><input id="cr-page" type="text" value="${esc(r.profilePage||'')}" placeholder="e.g. korehan-reporter-sj.html"></div>`;
+
+  // Replace footer buttons
+  document.getElementById('m-del-from-modal').style.display = isNew ? 'none' : 'inline-flex';
+  document.getElementById('m-del-from-modal').onclick = function(){ crDeleteFromModal(); };
+  document.getElementById('m-draft').style.display = 'none';
+  document.getElementById('m-pub').textContent = isNew ? '＋ Add Reporter' : '💾 Save Changes';
+  document.getElementById('m-pub').onclick = function(){ crSaveFromModal(); };
+}
+
+function crAddNew() {
+  crEditModal(-1);
+}
+
+function crSaveFromModal() {
+  var name = (document.getElementById('cr-name')?.value||'').trim();
+  var role = (document.getElementById('cr-role')?.value||'').trim();
+  if (!name || !role) { toast('Name and Role are required', true); return; }
+
+  var reporters = [];
+  try { reporters = JSON.parse(localStorage.getItem(K_CHAR_REPORTERS) || 'null') || DEF_CHAR_REPORTERS; } catch(e) { reporters = DEF_CHAR_REPORTERS.slice(); }
+
+  var idxVal = parseInt(document.getElementById('cr-idx')?.value??'-1', 10);
+  var tags = [...document.querySelectorAll('#m-bd input[type=checkbox]:checked')].map(function(c){ return c.value; });
+  var reporter = {
+    id: document.getElementById('cr-id')?.value || uid(),
+    name: name,
+    role: role,
+    image: (document.getElementById('cr-img')?.value||'').trim(),
+    intro: (document.getElementById('cr-intro')?.value||'').trim(),
+    personality: (document.getElementById('cr-personality')?.value||'').trim(),
+    tone: (document.getElementById('cr-tone')?.value||'').trim(),
+    color: document.getElementById('cr-color')?.value || '#2563eb',
+    tags: tags,
+    profilePage: (document.getElementById('cr-page')?.value||'').trim(),
+  };
+
+  if (idxVal === -1) {
+    reporters.unshift(reporter);
+  } else {
+    reporters[idxVal] = reporter;
+  }
+  localStorage.setItem(K_CHAR_REPORTERS, JSON.stringify(reporters));
+
+  // Also save to Supabase if possible
+  (async function() {
+    var sb = getSb();
+    if (sb) {
+      try { await sb.from('character_reporters').upsert({ id: reporter.id, data: reporter, updated_at: new Date().toISOString() }, { onConflict: 'id' }); } catch(e) {}
+    }
+  })();
+
+  closeModal();
+  // Restore modal footer defaults
+  document.getElementById('m-draft').style.display = '';
+  document.getElementById('m-pub').textContent = '✓ Publish';
+  document.getElementById('m-pub').onclick = function(){ submitForm('published'); };
+  goCharReporters();
+  toast('🎭 Reporter saved: ' + name);
+}
+
+function crDeleteFromModal() {
+  var idxVal = parseInt(document.getElementById('cr-idx')?.value??'-1', 10);
+  var name   = document.getElementById('cr-name')?.value || 'this reporter';
+  if (!confirm('Delete "' + name + '"? This cannot be undone.')) return;
+  var reporters = [];
+  try { reporters = JSON.parse(localStorage.getItem(K_CHAR_REPORTERS) || 'null') || DEF_CHAR_REPORTERS; } catch(e) { reporters = DEF_CHAR_REPORTERS.slice(); }
+  reporters.splice(idxVal, 1);
+  localStorage.setItem(K_CHAR_REPORTERS, JSON.stringify(reporters));
+  closeModal();
+  document.getElementById('m-draft').style.display = '';
+  document.getElementById('m-pub').textContent = '✓ Publish';
+  document.getElementById('m-pub').onclick = function(){ submitForm('published'); };
+  goCharReporters();
+  toast('🗑️ Reporter deleted');
+}
+
+function crDelete(idx) {
+  var reporters = [];
+  try { reporters = JSON.parse(localStorage.getItem(K_CHAR_REPORTERS) || 'null') || DEF_CHAR_REPORTERS; } catch(e) { reporters = DEF_CHAR_REPORTERS.slice(); }
+  var name = reporters[idx]?.name || 'this reporter';
+  if (!confirm('Delete "' + name + '"? This cannot be undone.')) return;
+  reporters.splice(idx, 1);
+  localStorage.setItem(K_CHAR_REPORTERS, JSON.stringify(reporters));
+  goCharReporters();
+  toast('🗑️ Reporter deleted');
+}
+
 // ══ PHRASES ══════════════════════════════════════════════════
 let phraseAdminItems = [];
 let phraseAdminCurrentIndex = 0;
@@ -2136,13 +2329,8 @@ function saveSentences(){
 }
 
 // ══ AUTO ARTICLE GENERATION ══════════════════════════════════
-const AUTO_SECTIONS = [
-  { key:'사회',  icon:'🏙️', topics:'Korean society, education, housing, labor, welfare, demographics' },
-  { key:'국제',  icon:'🌍', topics:'international affairs, geopolitics, diplomacy, global economy' },
-  { key:'문화',  icon:'🎭', topics:'Korean culture, K-drama, K-pop, movies, sports, arts' },
-  { key:'스포츠',icon:'⚽', topics:'Korean and international sports news, football, baseball, Olympics' },
-  { key:'IT과학',icon:'💻', topics:'technology, AI, semiconductors, startups, science discoveries' },
-];
+// AUTO_SECTIONS now uses the central CATEGORIES array (all 7 sections)
+const AUTO_SECTIONS = CATEGORIES; // single source of truth
 
 function goAutoArticle(){
   setSbOn(null);
@@ -2155,15 +2343,21 @@ function goAutoArticle(){
    +'style="flex:1;padding:9px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit">'
    +'<button class="btn btn-g" onclick="loadAutoApiKey()">키 불러오기</button>'
    +'</div>'
-   +'<div style="display:flex;gap:12px;align-items:center;margin-bottom:18px;flex-wrap:wrap">'
-   +'<div style="display:flex;align-items:center;gap:8px">'
-   +'<label style="font-weight:700;font-size:13px">Difficulty:</label>'
-   +'<select id="auto-difficulty" style="padding:8px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;background:#fff"><option>Starter</option>'
+   +'<div style="display:grid;grid-template-columns:auto auto auto 1fr;gap:16px;align-items:end;margin-bottom:18px;flex-wrap:wrap">'
+   +'<div><label style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#475569;display:block;margin-bottom:6px">Difficulty</label>'
+   +'<select id="auto-difficulty" style="padding:8px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;background:#fff">'
+   +'<option value="Starter">⚪ Starter</option>'
    +'<option value="Beginner">🟢 Beginner</option>'
    +'<option value="Intermediate" selected>🟡 Intermediate</option>'
    +'<option value="Advanced">🔴 Advanced</option>'
    +'</select></div>'
-   +'<div style="font-size:12px;color:var(--gr)">Beginner: simple vocab · Intermediate: news-level · Advanced: native-level</div>'
+   +'<div><label style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#475569;display:block;margin-bottom:6px">Articles per Section</label>'
+   +'<select id="auto-count" style="padding:8px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;background:#fff">'
+   +'<option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option></select></div>'
+   +'<div><label style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#475569;display:block;margin-bottom:6px">Save as</label>'
+   +'<select id="auto-status" style="padding:8px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;background:#fff">'
+   +'<option value="draft" selected>📝 Draft (review first)</option><option value="published">✓ Published directly</option></select></div>'
+   +'<div style="font-size:12px;color:var(--gr);padding-bottom:4px">Beginner: simple vocab · Intermediate: news-level · Advanced: native-level</div>'
    +'</div>'
    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:20px">'
    + AUTO_SECTIONS.map(function(s){
@@ -2208,7 +2402,9 @@ async function runAutoGenerate(){
     if (sb) await sb.from('app_settings').upsert({ key: 'anthropic_key', value: apiKey, updated_at: new Date().toISOString() });
   } catch(e) {}
 
-  const difficulty = document.getElementById('auto-difficulty') ? document.getElementById('auto-difficulty').value : 'Intermediate';
+  const difficulty  = document.getElementById('auto-difficulty') ? document.getElementById('auto-difficulty').value : 'Intermediate';
+  const countPerSec = parseInt(document.getElementById('auto-count') ? document.getElementById('auto-count').value : '1', 10) || 1;
+  const saveStatus  = document.getElementById('auto-status') ? document.getElementById('auto-status').value : 'draft';
   const diffMap = {
     'Starter': { ko:'입문 (한글 막 배운 단계, 초등 1~2학년 수준)', vocab:'한글 자모, 기초 낱말, 아주 짧은 문장, 1~2음절 어휘', level:'Starter' },
     'Beginner': { ko:'초급 (TOPIK 1~2급, 초등학교 수준)', vocab:'아주 쉬운 일상 어휘, 짧은 문장, ~해요/~이에요 체', level:'Beginner' },
@@ -2230,11 +2426,13 @@ async function runAutoGenerate(){
     if(!sec) continue;
 
     const rowId = 'prog-'+secKey;
-    progress.innerHTML += '<div id="'+rowId+'" style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:#fff;border:1px solid var(--bo);border-radius:8px;margin-bottom:8px">'
+    progress.innerHTML += '<div id="'+rowId+'" style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;background:#fff;border:1px solid var(--bo);border-radius:8px;margin-bottom:8px">'
       +'<span style="font-size:18px">'+sec.icon+'</span>'
-      +'<span style="font-weight:700">'+sec.key+'</span>'
-      +'<span id="'+rowId+'-status" style="color:var(--gr);font-size:13px">⏳ 생성 중…</span>'
+      +'<div style="flex:1"><div style="font-weight:700">'+sec.key+' <span style="font-weight:400;color:#94a3b8;font-size:12px">('+countPerSec+' article'+(countPerSec>1?'s':'')+')</span></div>'
+      +'<div id="'+rowId+'-status" style="color:var(--gr);font-size:13px;margin-top:2px">⏳ Generating…</div></div>'
       +'</div>';
+    // inner loop for countPerSec articles
+    for(let artIdx = 0; artIdx < countPerSec; artIdx++) {
 
     try {
       const today = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
@@ -2290,7 +2488,7 @@ async function runAutoGenerate(){
         title: article.title,
         body: article.body,
         date: today_date(),
-        status: 'draft',
+        status: saveStatus,
         featured: false,
         level: diffInfo.level,
         image: 'https://picsum.photos/seed/' + Math.random().toString(36).slice(2,8) + '/600/400',
@@ -2382,17 +2580,20 @@ async function runAutoGenerate(){
         } catch(e) { console.warn('upsert failed', e); }
       }
 
-      document.getElementById(rowId+'-status').innerHTML =
-        '<span style="color:#28a745;font-weight:700">✅ 완료 (캐시 ' + _ok + '/4) — </span>'
-        +"<a href=\"#\" onclick=\"openModal('"+articleId+"')\" style=\"color:var(--a);font-weight:700\">검토 후 발행하기 →</a>";
+      const statusLabel = saveStatus === 'published' ? 'Published' : 'Saved as draft';
+      const existingEl = document.getElementById(rowId+'-status');
+      if (existingEl) existingEl.innerHTML +=
+        '<br><span style="color:#28a745;font-weight:700">✅ ' + statusLabel + ' (cache '+_ok+'/4) — </span>'
+        +"<a href=\"#\" onclick=\"openModal('"+articleId+"')\" style=\"color:var(--a);font-weight:700\">Review &amp; edit →</a>";
 
     } catch(err) {
-      document.getElementById(rowId+'-status').innerHTML =
-        '<span style="color:#dc3545">❌ 실패: '+err.message+'</span>';
+      const existingEl2 = document.getElementById(rowId+'-status');
+      if (existingEl2) existingEl2.innerHTML += '<br><span style="color:#dc3545">❌ Failed: '+err.message+'</span>';
     }
+    } // end artIdx loop
   }
 
-  toast('🤖 기사 생성 완료! 임시저장 목록에서 확인하세요.');
+  toast('🤖 Article generation complete! Check ' + (saveStatus==='published'?'All Articles':'Drafts') + ' for results.');
 }
 
 function today_date(){
@@ -3077,50 +3278,94 @@ async function goConvEditor() {
   setSidebarActive('conv');
   var main = document.getElementById('main');
   main.innerHTML = `
-    <div style="max-width:900px">
-      <h2 style="font-family:'Playfair Display',serif;font-size:24px;margin:0 0 6px">💬 Conversations AI Generator</h2>
-      <p style="color:#64748b;font-size:13px;margin:0 0 20px">AI로 KakaoTalk 스타일 대화 콘텐츠 생성. 생성 후 저장 버튼으로 conversations_data 테이블에 저장됩니다.</p>
+    <div style="max-width:960px">
+      <div class="pg-hd" style="margin-bottom:20px">
+        <div>
+          <h1 style="font-size:26px;margin:0 0 4px">💬 Conversations AI Generator</h1>
+          <p style="margin:0;color:#64748b;font-size:14px">Generate KakaoTalk-style Korean dialogues for learners. Conversations are saved to <code>conversations_data</code>.</p>
+        </div>
+        <button class="btn" style="background:#f1f5f9;color:#374151;border:1px solid #e2e8f0;font-size:13px" onclick="goConvManager()">📋 Manage Saved</button>
+      </div>
 
-      <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px;margin-bottom:20px">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+      <!-- Config Panel -->
+      <div style="background:#fff;border-radius:18px;border:1px solid #e2e8f0;padding:24px;margin-bottom:20px;box-shadow:0 1px 6px rgba(0,0,0,.04)">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-bottom:16px">Generation Settings</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:16px">
           <div>
-            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">CATEGORY</label>
-            <select id="cv-cat" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
-              <option value="everyday">Everyday</option>
-              <option value="work">Workplace</option>
-              <option value="friends">Friends</option>
-              <option value="family">Family</option>
-              <option value="dating">Dating</option>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Category</label>
+            <select id="cv-cat" style="width:100%;padding:9px 10px;border-radius:10px;border:1.5px solid #e2e8f0;font-family:inherit;font-size:13px;background:#fafbfc">
+              <option value="everyday">💬 Everyday</option>
+              <option value="work">💼 Workplace</option>
+              <option value="friends">👯 Friends</option>
+              <option value="family">🏠 Family</option>
+              <option value="dating">💕 Dating</option>
+              <option value="travel">✈️ Travel</option>
+              <option value="food">🍜 Food & Dining</option>
+              <option value="shopping">🛍️ Shopping</option>
+              <option value="school">🎓 School / Study</option>
+              <option value="health">🏥 Health</option>
             </select>
           </div>
           <div>
-            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">LEVEL</label>
-            <select id="cv-lvl" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
-              <option value="b">Beginner</option>
-              <option value="i">Intermediate</option>
-              <option value="a">Advanced</option>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Level</label>
+            <select id="cv-lvl" style="width:100%;padding:9px 10px;border-radius:10px;border:1.5px solid #e2e8f0;font-family:inherit;font-size:13px;background:#fafbfc">
+              <option value="s">⚪ Starter</option>
+              <option value="b">🟢 Beginner</option>
+              <option value="i" selected>🟡 Intermediate</option>
+              <option value="a">🔴 Advanced</option>
             </select>
           </div>
           <div>
-            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">COUNT</label>
-            <select id="cv-count" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
-              <option value="3">3개</option>
-              <option value="5">5개</option>
-              <option value="10" selected>10개</option>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Count</label>
+            <select id="cv-count" style="width:100%;padding:9px 10px;border-radius:10px;border:1.5px solid #e2e8f0;font-family:inherit;font-size:13px;background:#fafbfc">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="5" selected>5</option>
+              <option value="8">8</option>
+              <option value="10">10</option>
+              <option value="15">15</option>
+              <option value="20">20</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Character</label>
+            <select id="cv-char" style="width:100%;padding:9px 10px;border-radius:10px;border:1.5px solid #e2e8f0;font-family:inherit;font-size:13px;background:#fafbfc">
+              <option value="">— None / Random —</option>
+              ${(function(){
+                var cr = [];
+                try { cr = JSON.parse(localStorage.getItem('korehan_char_reporters') || '[]'); } catch(e) {}
+                return cr.map(function(r){ return '<option value="' + r.id + '">' + r.name + ' — ' + r.role + '</option>'; }).join('');
+              })()}
             </select>
           </div>
         </div>
-        <div style="margin-bottom:14px">
-          <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">TOPIC (optional)</label>
-          <input id="cv-topic" placeholder="e.g. 카페, 병원, 여행 계획..." style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+        <div style="margin-bottom:16px">
+          <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Topic / Situation (optional)</label>
+          <input id="cv-topic" placeholder="e.g. 카페에서 친구를 만나기, 병원 예약하기, 취업 면접 준비..." style="width:100%;padding:9px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-family:inherit;font-size:13px;box-sizing:border-box">
         </div>
-        <button onclick="generateConvs()" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
-          🤖 Generate Conversations
-        </button>
+        <!-- Quick topic chips -->
+        <div style="margin-bottom:18px">
+          <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Quick Topics</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px" id="cv-chips"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <button onclick="generateConvs()" id="cv-gen-btn" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:11px 26px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px">
+            🤖 Generate Conversations
+          </button>
+          <div style="font-size:12px;color:#94a3b8">Results will appear below. Review before saving.</div>
+        </div>
       </div>
 
       <div id="cv-results"></div>
     </div>`;
+
+  // Populate quick-topic chips
+  var topics = ['카페 미팅','병원 예약','취업 면접','여행 계획','쇼핑몰','음식 주문','날씨 이야기','주말 약속','새 친구 소개','직장 회의','집 문제','공부 이야기','K-pop 이야기','운동 계획','생일 파티'];
+  var chipBox = document.getElementById('cv-chips');
+  if (chipBox) chipBox.innerHTML = topics.map(function(t){
+    return '<button onclick="document.getElementById(\'cv-topic\').value=\'' + t + '\'" style="padding:5px 11px;border-radius:999px;border:1.5px solid #e2e8f0;background:#f8faff;color:#374151;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.borderColor=\'#2563eb\';this.style.color=\'#2563eb\'" onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.color=\'#374151\'">' + t + '</button>';
+  }).join('');
 }
 
 async function generateConvs() {
@@ -3132,7 +3377,9 @@ async function generateConvs() {
   var lvlMap = {s:'Starter', b:'Beginner', i:'Intermediate', a:'Advanced'};
   var catMap = {everyday:'Everyday', work:'Workplace', friends:'Friends', family:'Family', dating:'Dating'};
 
-  res.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b"><div style="font-size:24px;margin-bottom:8px">⏳</div>AI 생성 중...</div>';
+  var genBtn = document.getElementById('cv-gen-btn');
+  if (genBtn) { genBtn.disabled = true; genBtn.textContent = '⏳ Generating…'; }
+  res.innerHTML = '<div style="padding:28px;text-align:center;color:#64748b;background:#fff;border-radius:16px;border:1px solid #e2e8f0"><div style="font-size:32px;margin-bottom:10px">⏳</div><div style="font-size:14px;font-weight:600">Generating ' + count + ' conversation' + (count>1?'s':'') + '…</div><div style="font-size:12px;margin-top:6px;color:#94a3b8">This may take 10–30 seconds</div></div>';
 
   var prompt = 'You are creating Korean language learning content for KoreHan News.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nLevel guidance: ' + ({s:'STARTER: 아주 짧은 2~4단어 문장만. 기초 인사/숫자. ~이에요/예요 체만.',b:'BEGINNER: 짧고 쉬운 문장. 기본 조사. 현재형 위주.',i:'INTERMEDIATE: 연결어미, 과거형 자연스럽게.',a:'ADVANCED: 복잡한 문장, 격식체, 고급 문법.'}[lvl]||'') + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","note":"optional"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3 missions. ' + lvlMap[lvl] + ' level Korean.';
 
@@ -3147,9 +3394,10 @@ async function generateConvs() {
     raw = raw.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
     var convs = JSON.parse(raw);
 
-    var html = '<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
-      + '<span style="font-size:14px;font-weight:700;color:#0f172a">Generated ' + convs.length + ' conversations</span>'
-      + '<button onclick="saveAllConvs()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Save All to DB</button>'
+    if (genBtn) { genBtn.disabled = false; genBtn.innerHTML = '🤖 Generate Conversations'; }
+    var html = '<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:14px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">'
+      + '<div><div style="font-size:14px;font-weight:800;color:#15803d">✅ Generated ' + convs.length + ' conversation' + (convs.length!==1?'s':'') + '</div><div style="font-size:12px;color:#16a34a;margin-top:2px">Review below, then save all to the database.</div></div>'
+      + '<button onclick="saveAllConvs()" style="background:#16a34a;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">💾 Save All to DB</button>'
       + '</div>';
 
     convs.forEach(function(c, i) {
@@ -3182,7 +3430,8 @@ async function generateConvs() {
     res.innerHTML = html;
     window._generatedConvs = convs;
   } catch(e) {
-    res.innerHTML = '<div style="background:#fee2e2;border-radius:10px;padding:14px;color:#b91c1c;font-size:13px">Error: ' + e.message + '</div>';
+    if (genBtn) { genBtn.disabled = false; genBtn.innerHTML = '🤖 Generate Conversations'; }
+    res.innerHTML = '<div style="background:#fee2e2;border-radius:12px;padding:16px 18px;color:#b91c1c;font-size:13px;border:1.5px solid #fecaca"><strong>Generation failed:</strong> ' + e.message + '</div>';
   }
 }
 
