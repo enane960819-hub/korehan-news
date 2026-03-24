@@ -5654,21 +5654,7 @@ function enhanceHomeMobile() {
   var container = document.querySelector('.container');
   if (!container || document.querySelector('.mobile-quick-start')) return;
 
-  // Quick-start 섹션 제거 — phrase-dashboard에 이미 Writing/Hub 바로가기 있음
-  // learn-strip만 최소화해서 유지
-  var newsGrid = document.getElementById('dyn-news-grid');
-  if (newsGrid && !document.querySelector('.mobile-learn-strip')) {
-    var strip = document.createElement('section');
-    strip.className = 'mobile-learn-strip';
-    strip.innerHTML = ''
-      + '<div class="mobile-eyebrow">바로가기</div>'
-      + '<div class="mobile-cta-grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px;">'
-      + mobileCreateCardHTML('Conversations','Chat-style Korean','korehan-conversations.html')
-      + mobileCreateCardHTML('Stories','Short stories','korehan-stories.html')
-      + mobileCreateCardHTML('My Page','Progress & words','korehan-mypage.html')
-      + '</div>';
-    newsGrid.insertAdjacentElement('beforebegin', strip);
-  }
+  // 바로가기 섹션 제거됨 — daily-strip 내 버튼으로 충분
 }
 
 function enhanceArticleMobile() {

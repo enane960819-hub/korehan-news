@@ -1850,7 +1850,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 .nc-overlay-body { position:absolute; left:0; right:0; bottom:0; padding:18px; }
 .nc.nc-overlay .nc-meta { margin-bottom: 8px; }
 .nc.nc-overlay .nc-cat { color:#fff; }
-.nc.nc-overlay .nc-title { color:#fff; font-size:18px; line-height:1.35; margin-bottom:10px; }
+.nc.nc-overlay .nc-title { color:#fff; font-size:22px; line-height:1.3; margin-bottom:10px; }
 .nc.nc-overlay .nc-date { color: rgba(255,255,255,.72); }
 .nc.nc-overlay .nc-study { background: rgba(255,255,255,.1); color:#fff; border-color: rgba(255,255,255,.2); }
 .nc.nc-overlay:hover { opacity: 1; transform: translateY(-2px); }
@@ -1908,6 +1908,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   .news-grid { grid-template-columns: repeat(2,1fr) !important; gap: 10px !important; }
   .nc-img { border-radius: 8px; margin-bottom: 6px; }
   .nc-title { font-size: 12px !important; line-height: 1.4; -webkit-line-clamp: 2; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+  .nc.nc-overlay .nc-title { font-size: 17px !important; }
   .nc-meta { font-size: 10px; }
   .nc-foot { display: none; }
 }

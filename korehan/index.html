@@ -565,6 +565,18 @@ body.kh-neon-on .nc-lvl {
   color:#aefcff !important;
   box-shadow: inset 0 0 12px rgba(0,255,214,.12);
 }
+body.kh-neon-on .story-cover,
+body.kh-neon-on .story-cover.fun,
+body.kh-neon-on .story-cover.touching,
+body.kh-neon-on .story-cover.scary,
+body.kh-neon-on .story-cover.shocking {
+  background: linear-gradient(135deg,rgba(4,14,30,.96),rgba(0,255,214,.07)) !important;
+}
+body.kh-neon-on .story-cover i[data-lucide] { opacity: .9; filter: drop-shadow(0 0 8px currentColor); }
+body.kh-neon-on .home-sec-title span,
+body.kh-neon-on .home-sec-title { color:#f7ffff !important; }
+body.kh-neon-on .home-pills .sp { color:#d0f0ff !important; }
+body.kh-neon-on .home-pills .sp.on { color:#08101f !important; }
 body.kh-neon-on .home-sec { border-bottom-color: rgba(0,255,214,.24); }
 body.kh-neon-on .home-sec-title,
 body.kh-neon-on .home-sec-sub,
@@ -848,9 +860,24 @@ function renderHomeConvs() {
 })();
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Random quick-win tip
+  // Random quick-win tip — show hardcoded immediately, then update from DB if available
   var tipEl = document.getElementById('ds-quick-win-text');
-  if (tipEl) tipEl.textContent = QUICK_WIN_TIPS[Math.floor(Math.random() * QUICK_WIN_TIPS.length)];
+  if (tipEl) {
+    tipEl.textContent = QUICK_WIN_TIPS[Math.floor(Math.random() * QUICK_WIN_TIPS.length)];
+    (async function() {
+      try {
+        var sb = getSupa();
+        if (!sb) return;
+        var res = await sb.from('app_settings').select('value').eq('key','quick_win_tips').maybeSingle();
+        if (res.data && res.data.value) {
+          var dbTips = JSON.parse(res.data.value);
+          if (Array.isArray(dbTips) && dbTips.length) {
+            tipEl.textContent = dbTips[Math.floor(Math.random() * dbTips.length)];
+          }
+        }
+      } catch(e) {}
+    })();
+  }
 
   // Review button state — lock if no articles read today
   function updateReviewBtn(articlesRead) {

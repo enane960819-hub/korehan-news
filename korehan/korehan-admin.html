@@ -194,6 +194,7 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" id="sb-conv-mgr" onclick="goConvManager()"><span class="ico">📝</span>Conversations 관리</button>
     <button class="sb-btn" id="sb-stor" onclick="goStoriesEditor()"><span class="ico">📖</span>Stories AI<span class="sb-new-tag">NEW</span></button>
     <button class="sb-btn" id="sb-stor-mgr" onclick="goStoriesManager()"><span class="ico">📝</span>Stories 관리</button>
+    <button class="sb-btn" id="sb-qw-tips" onclick="goQuickWinTips()"><span class="ico">💡</span>Quick Win Tips</button>
     <button class="sb-btn" onclick="goPhrases()"> <span class="ico">💬</span>오늘의 표현</button>
     <button class="sb-btn" onclick="goVocabEditor()"><span class="ico">✏️</span>단어 뜻 수정</button>
     <button class="sb-btn" onclick="goTopics()"><span class="ico">📝</span>작문 토픽 관리</button>
@@ -1241,6 +1242,92 @@ async function resetSiteSettings(){
     toast('초기화 저장 실패: ' + (e.message || e), true);
   }
   goSiteSettings();
+}
+
+// ══ QUICK WIN TIPS ══════════════════════════════════════════
+var QW_DEFAULT_TIPS = [
+  'Read one article → save 3 words → check your weakest grammar point. Even 5 minutes a day builds real fluency.',
+  'Hover any Korean word while reading to see its meaning. Save the ones you want to remember — they go straight to your vocab list.',
+  'Finished an article? Open Study Room with that article loaded and review the key grammar patterns right away.',
+  'Check Learning Hub once a day to see your streak, XP, and which grammar points need more practice.',
+  'Conversations are perfect for short sessions. Pick one scenario and read it twice — once for meaning, once for natural phrasing.',
+  'Try a Story for a change of pace. The narrative format locks in grammar naturally without you noticing.',
+  'Your daily mission: 3 articles + 20 saved words + any quiz attempt. Hit all three and your streak stays alive.',
+  'Struggling with a grammar point? Paste it into Study Room and ask for a focused drill. It generates fresh examples instantly.'
+];
+
+async function goQuickWinTips() {
+  setSbOn('sb-qw-tips');
+  document.getElementById('main').innerHTML = '<div class="pg-hd"><div><h1>💡 Quick Win Tips 관리</h1><p>메인 페이지 학습 팁을 관리하세요. 새로고침마다 랜덤으로 하나가 표시됩니다.</p></div></div><div class="sf-card"><p style="color:#64748b">불러오는 중…</p></div>';
+  var sb = getSb();
+  var tips = [];
+  try {
+    var res = await sb.from('app_settings').select('value').eq('key','quick_win_tips').maybeSingle();
+    if (res.data && res.data.value) {
+      var parsed = JSON.parse(res.data.value);
+      if (Array.isArray(parsed) && parsed.length) tips = parsed;
+    }
+  } catch(e) {}
+  if (!tips.length) tips = QW_DEFAULT_TIPS.slice();
+  renderQwTips(tips);
+}
+
+function renderQwTips(tips) {
+  document.getElementById('main').innerHTML = `
+    <div class="pg-hd"><div><h1>💡 Quick Win Tips 관리</h1><p>메인 페이지 학습 팁을 관리하세요. 새로고침마다 랜덤으로 하나가 표시됩니다.</p></div></div>
+    <div id="qw-list">
+      ${tips.map((t, i) => `<div class="sf-card" style="position:relative;display:flex;gap:12px;align-items:flex-start">
+        <div style="min-width:22px;padding-top:10px;font-size:12px;color:#94a3b8;font-weight:700">#${i+1}</div>
+        <textarea class="inp inp-ta qw-tip" style="flex:1;min-height:68px;resize:vertical">${esc(t)}</textarea>
+        <button class="btn btn-gh row-del" onclick="this.closest('.sf-card').remove()" style="flex-shrink:0;padding:6px 10px">✕</button>
+      </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      <button class="btn btn-gh" onclick="qwAddTip()">＋ 팁 추가</button>
+      <button class="btn btn-g"  onclick="saveQwTips()">💾 저장</button>
+      <button class="btn btn-gh" onclick="qwResetDefaults()" style="margin-left:auto;color:#94a3b8">↺ 기본값으로</button>
+    </div>`;
+}
+
+function qwAddTip() {
+  var list = document.getElementById('qw-list');
+  if (!list) return;
+  var count = list.querySelectorAll('.sf-card').length + 1;
+  var d = document.createElement('div');
+  d.className = 'sf-card';
+  d.style.cssText = 'position:relative;display:flex;gap:12px;align-items:flex-start';
+  d.innerHTML = '<div style="min-width:22px;padding-top:10px;font-size:12px;color:#94a3b8;font-weight:700">#'+count+'</div>'
+    + '<textarea class="inp inp-ta qw-tip" style="flex:1;min-height:68px;resize:vertical" placeholder="새 학습 팁 입력…"></textarea>'
+    + '<button class="btn btn-gh row-del" onclick="this.closest(\'.sf-card\').remove()" style="flex-shrink:0;padding:6px 10px">✕</button>';
+  list.appendChild(d);
+}
+
+async function saveQwTips() {
+  var tips = [...document.querySelectorAll('#qw-list .qw-tip')]
+    .map(function(t) { return t.value.trim(); })
+    .filter(Boolean);
+  if (!tips.length) { alert('최소 1개 이상의 팁이 필요합니다.'); return; }
+  var sb = getSb();
+  try {
+    var res = await sb.from('app_settings').upsert({ key:'quick_win_tips', value:JSON.stringify(tips) }, { onConflict:'key' });
+    if (res.error) throw res.error;
+    toast('💡 Quick Win Tips 저장됨! ('+tips.length+'개)');
+  } catch(e) {
+    toast('저장 실패: '+(e.message||e), true);
+  }
+}
+
+async function qwResetDefaults() {
+  if (!confirm('기본 팁으로 초기화하시겠어요?')) return;
+  var sb = getSb();
+  try {
+    var res = await sb.from('app_settings').upsert({ key:'quick_win_tips', value:JSON.stringify(QW_DEFAULT_TIPS) }, { onConflict:'key' });
+    if (res.error) throw res.error;
+    toast('↺ 기본값으로 초기화됐어요');
+    renderQwTips(QW_DEFAULT_TIPS.slice());
+  } catch(e) {
+    toast('초기화 실패: '+(e.message||e), true);
+  }
 }
 
 async function loadOnboardingSettingsConfig(){
