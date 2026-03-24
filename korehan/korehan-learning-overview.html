@@ -56,13 +56,71 @@
     .review-wrap{gap:14px}.review-day{border:1px solid var(--border);border-radius:20px;padding:16px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.review-top h3{margin:0;font-size:21px}.review-top p{margin:4px 0 0;color:var(--muted);font-size:14px}
     .timeline{gap:10px}.timeline-item{display:grid;grid-template-columns:86px 1fr;gap:12px;align-items:start;padding:10px 0;border-top:1px solid #edf2f7}.timeline-item:first-child{border-top:none;padding-top:0}.time{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}.timeline-title{font-size:16px;font-weight:800}.timeline-sub{font-size:14px;color:var(--muted);margin-top:2px}
     .articles-list{gap:12px}.article-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-radius:18px;border:1px solid var(--border);background:#fff}.article-title{font-size:16px;font-weight:800}.article-sub{font-size:13px;color:var(--muted);margin-top:3px}.article-tag{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;background:#eef4ff;color:var(--bright)}
-    .growth-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.chart-box{border:1px solid var(--border);border-radius:22px;padding:18px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.chart-title{font-size:20px;font-weight:800;margin-bottom:10px}.chart-sub{font-size:14px;color:var(--muted);margin-bottom:16px}
+    .growth-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.chart-box{border:1px solid var(--border);border-radius:22px;padding:22px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.chart-title{font-size:20px;font-weight:800;margin-bottom:4px}.chart-sub{font-size:13px;color:var(--muted);margin-bottom:18px}
+    /* Line chart */
+    .linechart-wrap{position:relative;width:100%;height:200px}.linechart-svg{width:100%;height:100%}
+    .linechart-legend{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap}.linechart-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted)}.linechart-legend-dot{width:10px;height:10px;border-radius:50%}
     .bars{grid-template-columns:repeat(7,1fr);gap:12px;align-items:end;height:220px;padding-top:20px}.bar-col{text-align:center}.bar{width:100%;border-radius:14px 14px 8px 8px;background:linear-gradient(180deg,#7ab8f5,#2563eb);box-shadow:0 8px 18px rgba(37,99,235,.16)}.bar-label{font-size:12px;color:var(--muted);margin-top:8px;font-weight:700}.bar-num{font-size:12px;color:var(--blue);font-weight:800;margin-top:5px}
     .streak-list{gap:10px}.streak-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:16px;background:#fff;border:1px solid var(--border)}.streak-title{font-size:15px;font-weight:800}.streak-val{font-size:14px;color:var(--muted);font-weight:800}
+    .impr-up{color:#16a34a;font-weight:900}.impr-dn{color:#ef4444;font-weight:900}.impr-eq{color:#94a3b8;font-weight:700}
     .footer-note{margin-top:18px;padding:18px 20px;border-radius:22px;border:1px dashed #bfd0ea;background:#f7fbff;color:var(--muted);font-size:14px;line-height:1.7}
     @media (max-width:1080px){.hero,.grid,.growth-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
     @media (max-width:700px){.wrap{padding:18px 14px 50px}h1{font-size:36px}.hero-main,.hero-side,.card,.stat{border-radius:22px}.hero-main,.hero-side,.card{padding:20px}.stats{grid-template-columns:1fr 1fr;gap:12px}.stat{padding:18px 16px}.stat-num{font-size:34px}.card-hd h2{font-size:28px}.vocab-grid,.growth-grid{grid-template-columns:1fr}.timeline-item{grid-template-columns:1fr}.bars{gap:8px}}
     @media (max-width:520px){.stats{grid-template-columns:1fr}}
+    /* Word row improvements */
+    .word-row{cursor:pointer;transition:all .15s}.word-row:hover{background:#eef4ff;border-color:#bfdbfe}
+    .word-row-actions{display:flex;gap:4px;flex-shrink:0}
+    .wra-btn{background:none;border:1px solid #e2e8f0;border-radius:8px;padding:4px 7px;cursor:pointer;font-size:13px;color:#64748b;transition:all .15s}
+    .wra-btn:hover{background:#f0f4ff;border-color:#93c5fd}
+    .wra-btn.saved{color:#16a34a;border-color:#bbf7d0;background:#dcfce7}
+    /* Word detail popup */
+    .word-popup-overlay{position:fixed;inset:0;background:rgba(5,12,24,.75);display:flex;align-items:center;justify-content:center;z-index:3000;padding:16px;animation:mIn .2s ease}
+    @keyframes mIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+    .word-popup{background:#fff;border-radius:24px;width:min(520px,96vw);max-height:86vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.3)}
+    .wp-head{background:linear-gradient(135deg,#0b1626,#1a3a6b);padding:24px 28px;border-radius:24px 24px 0 0}
+    .wp-ko{font-family:'Noto Serif KR',serif;font-size:32px;font-weight:900;color:#fff;margin-bottom:4px}
+    .wp-rom{font-size:14px;color:rgba(255,255,255,.55);margin-bottom:2px}
+    .wp-en{font-size:16px;font-weight:700;color:rgba(255,255,255,.85)}
+    .wp-body{padding:24px 28px}
+    .wp-ex-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-bottom:12px}
+    .wp-ex{background:#f8fafc;border-left:3px solid #2563eb;border-radius:0 10px 10px 0;padding:10px 14px;margin-bottom:10px}
+    .wp-ex-ko{font-family:'Noto Sans KR',sans-serif;font-size:15px;font-weight:700;color:#0f172a;margin-bottom:2px}
+    .wp-ex-en{font-size:13px;color:#64748b}
+    .wp-actions{display:flex;gap:10px;margin-top:16px}
+    /* Daily review modal */
+    .dr-overlay{position:fixed;inset:0;background:rgba(5,12,24,.85);display:flex;align-items:center;justify-content:center;z-index:2000;padding:14px}
+    .dr-overlay.hidden{display:none}
+    .dr-modal{background:#fff;border-radius:24px;width:min(680px,96vw);max-height:94vh;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,.35);overflow:hidden;animation:mIn .2s ease}
+    .dr-header{background:linear-gradient(135deg,#0b1626,#1a3a6b);padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+    .dr-header h2{margin:0;font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:#fff}
+    .dr-header p{margin:4px 0 0;font-size:11px;color:rgba(255,255,255,.5)}
+    .dr-progress-track{height:5px;background:rgba(255,255,255,.15);flex:1;border-radius:999px;margin:0 16px}
+    .dr-progress-fill{height:100%;border-radius:999px;background:#4ade80;transition:width .4s ease}
+    .dr-body{flex:1;overflow-y:auto;padding:28px 28px 16px}
+    .dr-footer{padding:14px 24px;border-top:1px solid #e8eef7;background:#f8fafc;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0}
+    .dr-q-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#2563eb;margin-bottom:8px}
+    .dr-q-title{font-size:22px;font-weight:900;color:#0f172a;line-height:1.3;margin-bottom:6px;font-family:'Playfair Display',serif}
+    .dr-q-hint{font-size:14px;color:#64748b;margin-bottom:20px;line-height:1.6}
+    .dr-choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+    .dr-choice{padding:13px 16px;border:2px solid #e2e8f0;border-radius:14px;background:#fff;font-size:14px;font-weight:700;cursor:pointer;text-align:left;font-family:inherit;transition:all .15s;line-height:1.4}
+    .dr-choice:hover{border-color:#2563eb;background:#eff6ff}
+    .dr-choice.selected{border-color:#2563eb;background:#eff6ff;color:#1d4ed8}
+    .dr-choice.correct{border-color:#16a34a;background:#dcfce7;color:#15803d}
+    .dr-choice.wrong{border-color:#dc2626;background:#fee2e2;color:#dc2626}
+    .dr-typed-input{width:100%;padding:13px 16px;border:2px solid #e2e8f0;border-radius:14px;font-size:15px;font-family:'Noto Sans KR',sans-serif;outline:none;transition:border-color .15s}
+    .dr-typed-input:focus{border-color:#2563eb}
+    .dr-feedback-box{margin-top:14px;padding:14px 16px;border-radius:14px;font-size:14px;line-height:1.6}
+    .dr-feedback-box.correct{background:#f0fdf4;border:2px solid #bbf7d0;color:#15803d}
+    .dr-feedback-box.wrong{background:#fef2f2;border:2px solid #fecaca;color:#991b1b}
+    .dr-score-screen{text-align:center;padding:28px 0}
+    .dr-score-num{font-family:'Playfair Display',serif;font-size:64px;font-weight:900;color:#0b1626;margin-bottom:6px}
+    .dr-score-sub{font-size:16px;color:#64748b;margin-bottom:24px;line-height:1.6}
+    /* Skill lock overlay */
+    .skill-lock{position:relative;overflow:hidden}
+    .skill-lock-overlay{position:absolute;inset:0;background:rgba(255,255,255,.82);backdrop-filter:blur(4px);border-radius:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:20px}
+    .skill-lock-icon{font-size:28px}
+    .skill-lock-msg{font-size:13px;font-weight:700;color:#0f172a}
+    .skill-lock-sub{font-size:12px;color:#64748b}
   </style>
 </head>
 <body>
@@ -74,7 +132,7 @@
         <h1>Your study should tell you what to do next.</h1>
         <p>Weak grammar, today’s level-based 10 words, your interest-based 10 words, saved reading, review queue, and real weekly progress — all in one page.</p>
         <div class="hero-actions">
-          <a class="btn btn-primary" href="korehan-study-room.html">Start Daily Review</a>
+          <button class="btn btn-primary" onclick="openDailyReview()">▶ Start Daily Review</button>
           <a class="btn btn-ghost" href="#weekly-progress">See Weekly Progress</a>
         </div>
       </div>
@@ -108,9 +166,9 @@
 
     <section class="card" style="margin-bottom:18px">
       <div class="card-hd">
-        <div><h2>20 words for today</h2><p>선택한 레벨 10개 + 관심사 10개 · 하루 동안 고정되고 매일 중복 없이 순환됩니다.</p></div>
+        <div><h2>20 words for today</h2><p>10 level words + 10 interest words — fixed for the day, no repeats across days.</p></div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <a class="soft-link" href="korehan-study-room.html?tab=vocab" style="background:#7c3aed;color:#fff;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:800;text-decoration:none;">단어 퀴즈 →</a>
+          <a class="soft-link" href="korehan-study-room.html?tab=vocab" style="background:#7c3aed;color:#fff;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:800;text-decoration:none;">Word Quiz →</a>
           <a class="soft-link" href="korehan-study-room.html">Study Room</a>
         </div>
       </div>
@@ -132,8 +190,8 @@
 
     <section class="grid">
       <div class="card">
-        <div class="card-hd"><div><h2>Daily review</h2><p>Everything studied that day should be easy to revisit in one place.</p></div><a class="soft-link" href="korehan-study-room.html">Review All</a></div>
-        <div class="review-wrap"><div class="review-day"><div class="review-top"><div><h3 id="review-title">Today</h3><p id="review-sub">0 items reviewed today</p></div><div class="tag amber">Needs review</div></div><div class="timeline" id="review-queue"></div></div></div>
+        <div class="card-hd"><div><h2>Read today</h2><p>Everything you read today — articles, conversations and stories — in one place.</p></div><button class="soft-link" onclick="openDailyReview()" style="border:none;cursor:pointer;white-space:nowrap">▶ Start Review</button></div>
+        <div class="review-wrap"><div class="review-day"><div class="review-top"><div><h3 id="review-title">Today</h3><p id="review-sub"></p></div></div><div class="timeline" id="review-queue"></div></div></div>
       </div>
       <div class="card">
         <div class="card-hd"><div><h2>Saved reading history</h2><p>Articles and posts the user already studied should stay visible.</p></div><a class="soft-link" href="korehan-mypage.html">Open My Page</a></div>
@@ -142,13 +200,67 @@
     </section>
 
     <section class="card" id="weekly-progress">
-      <div class="card-hd"><div><h2>Daily & weekly growth</h2><p>Users should be able to feel improvement, not guess it.</p></div></div>
+      <div class="card-hd"><div><h2>Daily &amp; weekly growth</h2><p>A clear picture of how you’re progressing over time.</p></div></div>
       <div class="growth-grid">
-        <div class="chart-box"><div class="chart-title">Weekly study XP</div><div class="chart-sub">A simple graph makes progress feel real.</div><div class="bars" id="weekly-bars"></div></div>
-        <div class="chart-box"><div class="chart-title">This week’s improvement</div><div class="chart-sub">Simple wins that feel motivating and believable.</div><div class="streak-list" id="weekly-improvements"></div></div>
+        <div class="chart-box">
+          <div class="chart-title">XP Trend</div>
+          <div class="chart-sub" id="chart-comparison-label">Last 7 days — comparing today vs yesterday</div>
+          <div class="linechart-wrap"><svg class="linechart-svg" id="growth-svg" viewBox="0 0 400 180" preserveAspectRatio="none"></svg></div>
+          <div class="linechart-legend" id="chart-legend"></div>
+        </div>
+        <div class="chart-box"><div class="chart-title">This week’s improvement</div><div class="chart-sub">Based on real activity data — quiz accuracy, XP trends and consistency.</div><div class="streak-list" id="weekly-improvements"></div></div>
       </div>
       <div class="footer-note" id="speaking-note"></div>
     </section>
+
+    <!-- Daily Review Modal -->
+    <div class="dr-overlay hidden" id="dr-overlay" onclick="if(event.target===this)closeDailyReview()">
+      <div class="dr-modal">
+        <div class="dr-header">
+          <div>
+            <h2 id="dr-title">Daily Review</h2>
+            <p id="dr-subtitle">Loading your personalized questions…</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex:1;margin-left:20px">
+            <div class="dr-progress-track"><div class="dr-progress-fill" id="dr-progress" style="width:0%"></div></div>
+            <span id="dr-q-counter" style="font-size:12px;font-weight:800;color:rgba(255,255,255,.6);white-space:nowrap">0 / 0</span>
+          </div>
+          <button onclick="closeDailyReview()" style="background:rgba(255,255,255,.12);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer;margin-left:12px;flex-shrink:0">✕</button>
+        </div>
+        <div class="dr-body" id="dr-body">
+          <div style="text-align:center;padding:40px 0">
+            <div style="font-size:40px;margin-bottom:12px">⏳</div>
+            <div style="font-size:14px;color:#64748b">Generating your personalized review…</div>
+          </div>
+        </div>
+        <div class="dr-footer" id="dr-footer" style="display:none">
+          <button class="btn" style="background:#e2e8f0;color:#0f172a" onclick="closeDailyReview()">Close</button>
+          <button class="btn btn-primary" style="background:#2563eb;color:#fff" id="dr-next-btn" onclick="drNext()" disabled>Next →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Word Detail Popup -->
+    <div id="word-popup-overlay" style="display:none" class="word-popup-overlay" onclick="if(event.target===this)closeWordPopup()">
+      <div class="word-popup">
+        <div class="wp-head">
+          <div class="wp-ko" id="wp-ko"></div>
+          <div class="wp-rom" id="wp-rom"></div>
+          <div class="wp-en" id="wp-en"></div>
+          <div style="margin-top:10px;display:flex;gap:8px">
+            <button onclick="speakWord(document.getElementById(‘wp-ko’).textContent)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">🔊 Listen</button>
+            <button id="wp-save-btn" onclick="saveCurrentWord()" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">📌 Save Word</button>
+          </div>
+        </div>
+        <div class="wp-body">
+          <div class="wp-ex-label">Example sentences</div>
+          <div id="wp-examples"><div style="color:#94a3b8;font-size:13px">Loading examples…</div></div>
+          <div class="wp-actions">
+            <button onclick="closeWordPopup()" style="flex:1;padding:11px;background:#f1f5f9;border:none;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -164,19 +276,25 @@
     return 'korehan-stories.html?open=' + (id || '');
   }
 
-  // ── skill score 설명 ────────────────────────────────────────
-  // 근거: DB에서 실제 행동 데이터를 집계
+  var DEFAULT_GRAMMAR_ITEMS = [
+    { grammar_point: '은/는 vs 이/가', desc: 'Topic marker (은/는) vs Subject marker (이/가) — one of the most common sources of confusion for learners.' },
+    { grammar_point: 'Verb endings: 아요 / 어요', desc: 'The standard polite present-tense ending. Every Korean verb needs a conjugated ending.' },
+    { grammar_point: '을/를 — Object marker', desc: 'Marks the direct object of a verb. Essential for basic sentence construction.' },
+    { grammar_point: '에 vs 에서', desc: '에 = location of existence or destination. 에서 = location where an action takes place.' },
+    { grammar_point: '고 싶다 — Want to', desc: 'Verb stem + 고 싶다 = "I want to ___". A core expression of desire or intention.' },
+  ];
+
   const SKILL_META = [
     { key:'reading',    label:'Reading',    color:'#2563eb',
-      note:'지난 30일 읽은 기사/대화/스토리 수 기반. 50개 = 100점.' },
+      note:'Based on articles/conversations/stories read in the last 30 days. 50 items = 100 points.' },
     { key:'grammar',    label:'Grammar',    color:'#60a5fa',
-      note:'fill-in-blank + grammar quiz 정답률 (최근 30일, 5문제 이상 시 반영).' },
+      note:'Quiz accuracy across fill-in-blank + grammar quizzes (last 30 days, requires 5+ attempts).' },
     { key:'vocabulary', label:'Vocabulary', color:'#f59e0b',
-      note:'저장 단어 수 기반. 200개 = 100점.' },
+      note:'Based on total saved words. 200 saved words = 100 points.' },
     { key:'writing',    label:'Writing',    color:'#8b5cf6',
-      note:'작문 제출 횟수 기반. 꾸준히 쓸수록 올라감.' },
+      note:'Based on writing submissions. Consistency counts.' },
     { key:'listening',  label:'Listening',  color:'#ef4444',
-      note:'Vocab flashcard 정답률 (최근 30일).' },
+      note:'Based on vocab flashcard review accuracy (last 30 days).' },
   ];
 
   // ── render functions ────────────────────────────────────────
@@ -199,7 +317,25 @@
     var box = document.getElementById('weak-grammar-list');
     var items = data.weak_grammar || [];
     if (!items.length) {
-      box.innerHTML = '<div style="padding:16px;text-align:center;color:#94a3b8;font-size:13px;">퀴즈를 풀면 취약 문법이 표시됩니다.</div>';
+      // No quiz data yet — show foundational grammar as starting points
+      box.innerHTML = '<div style="margin-bottom:14px;padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;font-size:13px;color:#92400e;">'
+        + '📚 Complete a few quizzes and your real weak grammar will appear here. Until then, here are the foundational patterns every learner needs.'
+        + '</div>'
+        + DEFAULT_GRAMMAR_ITEMS.map(function(item) {
+          return '<div class="grammar-item" style="padding:12px 14px;">'
+            + '<div class="grammar-top" style="margin-bottom:6px;">'
+            +   '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">'
+            +     '<div class="grammar-title" style="font-size:16px;">' + item.grammar_point + '</div>'
+            +   '</div>'
+            +   '<div class="tag amber" style="flex-shrink:0;">Foundational</div>'
+            + '</div>'
+            + '<div style="font-size:13px;color:#64748b;margin-bottom:10px;">' + item.desc + '</div>'
+            + '<div class="grammar-actions" style="gap:6px;">'
+            +   '<a class="solid-btn" style="padding:7px 12px;font-size:12px;" href="korehan-study-room.html?focus=' + encodeURIComponent(item.grammar_point) + '">Practice →</a>'
+            +   '<a class="ghost-btn" style="padding:7px 12px;font-size:12px;" href="korehan-study-room.html?tab=quiz">Mini Quiz</a>'
+            + '</div>'
+            + '</div>';
+        }).join('');
       return;
     }
     box.innerHTML = items.map(function(item) {
@@ -207,17 +343,18 @@
       var cfg   = weakTag(item.wrong_count||0, total);
       var q     = encodeURIComponent(item.grammar_point);
       var tagColor = cfg[0]==='Weak'?'red':cfg[0]==='Needs review'?'amber':'green';
+      var tagLabel = cfg[0] === 'Weak' ? 'Weak Grammar' : cfg[0];
       return '<div class="grammar-item" style="padding:12px 14px;">'
         + '<div class="grammar-top" style="margin-bottom:6px;">'
         +   '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">'
         +     '<div class="grammar-title" style="font-size:16px;">' + item.grammar_point + '</div>'
-        +     '<span style="font-size:11px;color:#94a3b8;white-space:nowrap;">틀림 ' + (item.wrong_count||0) + '회 · ' + cfg[2] + '%</span>'
+        +     '<span style="font-size:11px;color:#94a3b8;white-space:nowrap;">wrong ' + (item.wrong_count||0) + 'x · ' + cfg[2] + '%</span>'
         +   '</div>'
-        +   '<div class="tag ' + tagColor + '" style="flex-shrink:0;">' + cfg[0] + '</div>'
+        +   '<div class="tag ' + tagColor + '" style="flex-shrink:0;">' + tagLabel + '</div>'
         + '</div>'
         + '<div class="progress" style="margin-bottom:10px;"><div class="fill ' + tagColor + '" style="width:' + cfg[2] + '%"></div></div>'
         + '<div class="grammar-actions" style="gap:6px;">'
-        +   '<a class="solid-btn" style="padding:7px 12px;font-size:12px;" href="korehan-study-room.html?focus=' + q + '">연습 →</a>'
+        +   '<a class="solid-btn" style="padding:7px 12px;font-size:12px;" href="korehan-study-room.html?focus=' + q + '">Practice →</a>'
         +   '<a class="ghost-btn" style="padding:7px 12px;font-size:12px;" href="korehan-study-room.html?tab=quiz&grammar=' + q + '">Mini Quiz</a>'
         + '</div>'
         + '</div>';
@@ -226,7 +363,9 @@
 
   function renderSkills(data) {
     const s = data.scores || {};
-    document.getElementById('skills-list').innerHTML = SKILL_META.map(r => `
+    const activityDays = data.activity_days || 0;
+    const locked = activityDays < 10;
+    const skillsHtml = SKILL_META.map(r => `
       <div class="skill-row">
         <div class="skill-top">
           <div class="skill-name">${r.label}</div>
@@ -235,17 +374,43 @@
         <div class="skill-track"><div class="skill-bar" style="width:${pct(s[r.key])}%;background:${r.color}"></div></div>
         <div class="skill-note">${r.note}</div>
       </div>`).join('');
+    const container = document.getElementById('skills-list');
+    if (locked) {
+      container.innerHTML = `<div class="skill-lock" style="position:relative">
+        <div style="opacity:.35;pointer-events:none">${skillsHtml}</div>
+        <div class="skill-lock-overlay">
+          <div class="skill-lock-icon">🔒</div>
+          <div class="skill-lock-msg">Skill Balance unlocks after 10 active days</div>
+          <div class="skill-lock-sub">You have ${activityDays} day${activityDays===1?'':'s'} so far — keep studying daily!</div>
+        </div>
+      </div>`;
+    } else {
+      container.innerHTML = skillsHtml;
+    }
   }
 
-  // 단어 행 HTML
+  // ── Word rows ─────────────────────────────────────────────
+  var _savedWordKos = new Set();
+
   function wordRowHTML(w, badgeLabel, badgeTone) {
     var tone = badgeTone || 'level';
     var badge = '<div class="level ' + tone + '">' + (badgeLabel || w.level || 'General') + '</div>';
-    return '<div class="word-row">'
+    var isSaved = _savedWordKos.has(w.word_ko || '');
+    var koSafe  = (w.word_ko  || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var enSafe  = (w.word_en  || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var romSafe = (w.word_rom || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var wdEncoded = encodeURIComponent(JSON.stringify({ word_ko: w.word_ko, word_rom: w.word_rom, word_en: w.word_en, level: w.level, interest_tag: w.interest_tag }));
+    return '<div class="word-row" onclick="openWordPopup(\'' + wdEncoded + '\')" title="Click for details">'
       + '<div class="word-main">'
       + '<div class="ko">' + (w.word_ko||'') + '</div>'
       + '<div class="sub">' + (w.word_rom ? w.word_rom + ' · ' : '') + (w.word_en||'') + '</div>'
-      + '</div>' + badge + '</div>';
+      + '</div>'
+      + badge
+      + '<div class="word-row-actions" onclick="event.stopPropagation()">'
+      +   '<button class="wra-btn" title="Listen" onclick="speakWord(\'' + koSafe + '\')">🔊</button>'
+      +   '<button class="wra-btn' + (isSaved ? ' saved' : '') + '" title="' + (isSaved ? 'Saved' : 'Save word') + '" onclick="saveWordFromRow(this,\'' + koSafe + '\',\'' + enSafe + '\',\'' + romSafe + '\')">' + (isSaved ? '✓' : '📌') + '</button>'
+      + '</div>'
+      + '</div>';
   }
 
   function syncWordStat(levelWords, interestWords) {
@@ -264,10 +429,10 @@
     var intEl = document.getElementById('interest-words');
     if (levelEl) levelEl.innerHTML = levelWords.length
       ? levelWords.map(function(w){ return wordRowHTML(w, w.level || 'Level', 'level'); }).join('')
-      : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">레벨을 선택하면 오늘의 단어 10개가 표시됩니다.</div>';
+      : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">Select your level above to see 10 words for today.</div>';
     if (intEl) intEl.innerHTML = interestWords.length
       ? interestWords.map(function(w){ return wordRowHTML(w, interestLabelFor(w.interest_tag), 'interest'); }).join('')
-      : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">관심사를 선택하고 저장하면 관련 단어 10개가 표시됩니다.</div>';
+      : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">Select your interest tags and save to get 10 topic words each day.</div>';
     syncWordStat(levelWords, interestWords);
   }
 
@@ -360,51 +525,150 @@
 
   function renderReview(data) {
     const q = data.review_queue || [];
-    setText('review-title', '오늘 — ' + new Date().toLocaleDateString('ko-KR'));
-    setText('review-sub',   q.length + '개 항목이 복습 대기 중');
+    const todayStr = new Date(Date.now() + 9*3600000).toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', timeZone:'Asia/Seoul' });
+    setText('review-title', 'Today — ' + todayStr);
+    setText('review-sub', '');
+    const typeLabels = { article:'Article', conversation:'Conversation', story:'Story' };
     document.getElementById('review-queue').innerHTML = q.length
-      ? q.map(item => `<a class="timeline-item" href="${contentHref(item.content_type, item.content_id)}">
-          <div class="time">${new Date(item.read_at||Date.now()).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Seoul'})}</div>
-          <div>
-            <div class="timeline-title">${{'article':'기사','conversation':'대화','story':'스토리'}[item.content_type]||item.content_type} — ${item.title||'(제목 없음)'}</div>
-            <div class="timeline-sub">${item.level||''} · 복습 대기</div>
-          </div>
-        </a>`).join('')
-      : '<div style="color:#94a3b8;padding:16px 0;text-align:center">오늘 읽은 기사가 없습니다.</div>';
+      ? q.map(item => {
+          const lbl  = typeLabels[item.content_type] || item.content_type;
+          const time = new Date(item.read_at||Date.now()).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Seoul'});
+          return `<a class="timeline-item" href="${contentHref(item.content_type, item.content_id)}">
+            <div class="time">${time}</div>
+            <div>
+              <div class="timeline-title">${lbl} — ${item.title||'(untitled)'}</div>
+              <div class="timeline-sub">${item.level||''}</div>
+            </div>
+          </a>`;
+        }).join('')
+      : '<div style="color:#94a3b8;padding:16px 0;text-align:center">Nothing read yet today — start with an article or story!</div>';
   }
 
   function renderSavedReading(data) {
     const hist = data.read_history || [];
+    const typeLabels = { article:'Article', conversation:'Conversation', story:'Story' };
     document.getElementById('saved-reading').innerHTML = hist.length
-      ? hist.map(item => `<a class="article-row" href="${contentHref(item.content_type, item.content_id)}">
-          <div>
-            <div class="article-title">${item.title||'(제목 없음)'}</div>
-            <div class="article-sub">${item.content_type} · ${item.level||''} · ${new Date(item.read_at||Date.now()).toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul'})}</div>
-          </div>
-          <div class="article-tag">${item.completed?'완료':'열기'}</div>
-        </a>`).join('')
-      : '<div style="color:#94a3b8;padding:16px 0;text-align:center">읽기 기록이 없습니다.</div>';
+      ? hist.map(item => {
+          const lbl     = typeLabels[item.content_type] || item.content_type;
+          const dateStr = new Date(item.read_at||Date.now()).toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'Asia/Seoul'});
+          return `<a class="article-row" href="${contentHref(item.content_type, item.content_id)}">
+            <div>
+              <div class="article-title">${item.title||'(untitled)'}</div>
+              <div class="article-sub">${lbl} · ${item.level||''} · ${dateStr}</div>
+            </div>
+            <div class="article-tag">${item.completed ? 'Done' : 'Open'}</div>
+          </a>`;
+        }).join('')
+      : '<div style="color:#94a3b8;padding:16px 0;text-align:center">No reading history yet. Start with an article!</div>';
   }
 
-  function renderWeeklyBars(data) {
-    const weekly = data.weekly_progress || [];
-    const max = Math.max(1, ...weekly.map(d => Number(d.xp_earned||0)));
-    document.getElementById('weekly-bars').innerHTML = weekly.map(item => {
-      const h = Math.max(10, Math.round((Number(item.xp_earned||0) / max) * 100));
-      const day = new Date(item.date+'T12:00:00').toLocaleDateString('en-US', {weekday:'short'});
-      return `<div class="bar-col"><div class="bar" style="height:${h}%"></div><div class="bar-label">${day}</div><div class="bar-num">${item.xp_earned||0} XP</div></div>`;
+  function renderGrowthLineChart(data) {
+    var thisWeek = data.weekly_progress   || [];
+    var lastWeek = data.last_week_progress || [];
+    var todayKST = new Date(Date.now() + 9*3600000);
+
+    // Build 7-day date arrays
+    var days = [], lastDays = [];
+    for (var i = 6; i >= 0; i--) {
+      days.push(new Date(todayKST.getTime() - i*86400000).toISOString().slice(0,10));
+      lastDays.push(new Date(todayKST.getTime() - (i+7)*86400000).toISOString().slice(0,10));
+    }
+
+    var thisMap = {}, lastMap = {};
+    thisWeek.forEach(function(d){ thisMap[d.date] = Number(d.xp_earned||0); });
+    lastWeek.forEach(function(d){ lastMap[d.date] = Number(d.xp_earned||0); });
+
+    var thisVals = days.map(function(d){ return thisMap[d] || 0; });
+    var lastVals = lastDays.map(function(d){ return lastMap[d] || 0; });
+    var maxVal = Math.max(1, Math.max.apply(null, thisVals.concat(lastVals)));
+
+    // SVG drawing helpers (viewBox 400 x 180)
+    var padL = 32, padR = 10, padT = 12, padB = 28;
+    var plotW = 400 - padL - padR, plotH = 180 - padT - padB;
+    function toX(i){ return padL + (i / 6) * plotW; }
+    function toY(v){ return padT + (1 - v / maxVal) * plotH; }
+
+    function makeLine(vals, color, dash) {
+      var pts = vals.map(function(v,i){ return toX(i).toFixed(1) + ',' + toY(v).toFixed(1); }).join(' ');
+      var circles = vals.map(function(v,i){
+        return '<circle cx="' + toX(i).toFixed(1) + '" cy="' + toY(v).toFixed(1) + '" r="3" fill="' + color + '"/>';
+      }).join('');
+      return '<polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"' + (dash ? ' stroke-dasharray="5,4"' : '') + '/>' + circles;
+    }
+
+    // Grid lines
+    var grid = [0.25, 0.5, 0.75, 1].map(function(f){
+      var y = (padT + (1-f)*plotH).toFixed(1);
+      var val = Math.round(maxVal*f);
+      return '<line x1="' + padL + '" y1="' + y + '" x2="390" y2="' + y + '" stroke="#e8eef7" stroke-width="1"/>'
+        + '<text x="' + (padL-4) + '" y="' + (Number(y)+4) + '" text-anchor="end" font-size="9" fill="#cbd5e1" font-family="Source Sans 3,sans-serif">' + val + '</text>';
     }).join('');
+
+    // X-axis labels
+    var xLabels = days.map(function(d,i){
+      var lbl = new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short'});
+      return '<text x="' + toX(i).toFixed(1) + '" y="176" text-anchor="middle" font-size="10" fill="#94a3b8" font-family="Source Sans 3,sans-serif">' + lbl + '</text>';
+    }).join('');
+
+    var svg = document.getElementById('growth-svg');
+    if (svg) svg.innerHTML = grid + makeLine(lastVals,'#c7d2fe',true) + makeLine(thisVals,'#2563eb',false) + xLabels;
+
+    // Comparison label
+    var todayXP     = thisVals[6] || 0;
+    var yesterdayXP = thisVals[5] || 0;
+    var xpDiff      = todayXP - yesterdayXP;
+    var thisTotal   = thisVals.reduce(function(a,b){return a+b;},0);
+    var lastTotal   = lastVals.reduce(function(a,b){return a+b;},0);
+    var weekDiff    = thisTotal - lastTotal;
+    var compLabel   = document.getElementById('chart-comparison-label');
+    if (compLabel) compLabel.textContent =
+      'Today: ' + todayXP + ' XP  (' + (xpDiff>=0?'+':'') + xpDiff + ' vs yesterday)  ·  '
+      + 'This week: ' + thisTotal + ' XP  (' + (weekDiff>=0?'+':'') + weekDiff + ' vs last week)';
+
+    var legend = document.getElementById('chart-legend');
+    if (legend) legend.innerHTML =
+      '<div class="linechart-legend-item"><div class="linechart-legend-dot" style="background:#2563eb"></div>This week</div>'
+      + '<div class="linechart-legend-item"><div class="linechart-legend-dot" style="background:#c7d2fe"></div>Last week</div>';
   }
 
   function renderWeeklyImprovements(data) {
-    const t = data.today || {};
-    const s = data.scores || {};
-    document.getElementById('weekly-improvements').innerHTML = `
-      <div class="streak-item"><div class="streak-title">Grammar score</div><div class="streak-val">${pct(s.grammar)} / 100</div></div>
-      <div class="streak-item"><div class="streak-title">Words reviewed today</div><div class="streak-val">${t.words_learned||0}</div></div>
-      <div class="streak-item"><div class="streak-title">Content read today</div><div class="streak-val">${(t.articles_read||0)+(t.conversations_read||0)+(t.stories_read||0)}</div></div>
-      <div class="streak-item"><div class="streak-title">Quizzes done today</div><div class="streak-val">${t.quizzes_done||0}</div></div>
-      <div class="streak-item"><div class="streak-title">Speaking</div><div class="streak-val">practice only</div></div>`;
+    var thisWeek = data.weekly_progress    || [];
+    var lastWeek = data.last_week_progress || [];
+    var s = data.scores || {};
+    var t = data.today  || {};
+
+    var thisXP = thisWeek.reduce(function(a,d){return a+Number(d.xp_earned||0);},0);
+    var lastXP = lastWeek.reduce(function(a,d){return a+Number(d.xp_earned||0);},0);
+    var xpDiff = thisXP - lastXP;
+    var xpTrend = xpDiff > 0
+      ? '<span class="impr-up">↑ +' + xpDiff + ' XP</span>'
+      : xpDiff < 0
+        ? '<span class="impr-dn">↓ ' + xpDiff + ' XP</span>'
+        : '<span class="impr-eq">→ Same</span>';
+
+    var thisActive = thisWeek.filter(function(d){return Number(d.xp_earned||0)>0;}).length;
+    var lastActive = lastWeek.filter(function(d){return Number(d.xp_earned||0)>0;}).length;
+    var daysTrend = thisActive > lastActive
+      ? '<span class="impr-up">↑ more consistent</span>'
+      : thisActive < lastActive
+        ? '<span class="impr-dn">↓ fewer days</span>'
+        : '<span class="impr-eq">→ Same</span>';
+
+    var gScore = pct(s.grammar);
+    var gLabel = gScore >= 80
+      ? '<span class="impr-up">' + gScore + '%</span>'
+      : gScore >= 60
+        ? '<span class="impr-eq">' + gScore + '%</span>'
+        : '<span class="impr-dn">' + gScore + '%' + (gScore === 0 ? ' (need 5+ quizzes)' : '') + '</span>';
+
+    var todayContent = (t.articles_read||0)+(t.conversations_read||0)+(t.stories_read||0);
+
+    document.getElementById('weekly-improvements').innerHTML =
+      '<div class="streak-item"><div class="streak-title">XP this week vs last</div><div class="streak-val">' + thisXP + ' XP — ' + xpTrend + '</div></div>'
+      + '<div class="streak-item"><div class="streak-title">Active days this week</div><div class="streak-val">' + thisActive + ' / 7 ' + daysTrend + '</div></div>'
+      + '<div class="streak-item"><div class="streak-title">Grammar accuracy</div><div class="streak-val">' + gLabel + '</div></div>'
+      + '<div class="streak-item"><div class="streak-title">Content read today</div><div class="streak-val">' + todayContent + ' item' + (todayContent!==1?'s':'') + '</div></div>'
+      + '<div class="streak-item"><div class="streak-title">Quizzes today</div><div class="streak-val">' + (t.quizzes_done||0) + '</div></div>';
   }
 
   // ── level / interest 설정 UI ──────────────────────────────
@@ -454,12 +718,12 @@
     var savedLevel = localStorage.getItem('kh_user_level') || 'Beginner';
     renderLevelSelector(savedLevel);
 
-    // localStorage에서 먼저 표시 (빠른 렌더링, 로그인 없어도 동작)
+    // Show from localStorage first for instant render (works without login too)
     var saved = [];
     try { saved = JSON.parse(localStorage.getItem('kh_user_interests') || '["daily","news"]'); } catch(e) { saved = ['daily','news']; }
     if (!saved.length) saved = ['daily','news'];
 
-    // 로그인된 경우 DB에서 최신 태그 로드
+    // If logged in, fetch latest tags from DB
     if (sb && supaUser) {
       try {
         var res = await sb.from('user_interests').select('tags').eq('user_id', supaUser.id).maybeSingle();
@@ -476,7 +740,7 @@
     if (!box) return;
     box.innerHTML = INTEREST_TAGS.map(function(t) {
       return '<button class="label-chip interest-chip' + (saved.indexOf(t.tag) !== -1 ? ' on' : '') + '" data-tag="' + t.tag + '">' + t.label + '</button>';
-    }).join('') + '<button id="save-interests-btn" class="selector-save-btn">저장</button>';
+    }).join('') + '<button id="save-interests-btn" class="selector-save-btn">Save</button>';
 
     box.querySelectorAll('.interest-chip').forEach(function(btn) {
       btn.addEventListener('click', function() {
@@ -498,9 +762,9 @@
               { user_id: supaUser.id, tags: selected, updated_at: new Date().toISOString() },
               { onConflict: 'user_id' }
             );
-            if (typeof toast === 'function') toast('레벨/관심사 저장 완료 ✓');
+            if (typeof toast === 'function') toast('Interests saved ✓');
           } catch(e) {
-            if (typeof toast === 'function') toast('저장 실패: ' + e.message, true);
+            if (typeof toast === 'function') toast('Save failed: ' + e.message, true);
           }
         }
         loadWordsFromLocalBanks(selectedLevel, selected);
@@ -520,7 +784,9 @@
       scores: { reading:0, grammar:0, vocabulary:0, writing:0, listening:0 },
       review_queue: [],
       read_history: [],
-      weekly_progress: []
+      weekly_progress: [],
+      last_week_progress: [],
+      activity_days: 0
     };
 
     // user_stats → streak + cumulative scores
@@ -589,18 +855,24 @@
       }
     } catch(e) {}
 
-    // daily_missions (last 7 days) → weekly progress
+    // daily_missions (last 14 days) → this week + last week progress + activity_days
     try {
-      var sevenAgo = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
+      var fourteenAgo = new Date(Date.now() - 14*86400000).toISOString().slice(0,10);
+      var sevenAgo    = new Date(Date.now() -  7*86400000).toISOString().slice(0,10);
       var { data: weekDMs } = await sb.from('daily_missions')
         .select('date, articles, words, quizzes, fill')
         .eq('user_id', userId)
-        .gte('date', sevenAgo)
+        .gte('date', fourteenAgo)
         .order('date', { ascending: true });
       if (weekDMs && weekDMs.length) {
-        snap.weekly_progress = weekDMs.map(function(d){
-          return { date:d.date, xp_earned: ((d.articles||0)*10)+((d.words||0)*2)+((d.quizzes||0)*5)+((d.fill||0)*5) };
-        });
+        function dmXP(d){ return ((d.articles||0)*10)+((d.words||0)*2)+((d.quizzes||0)*5)+((d.fill||0)*5); }
+        snap.weekly_progress = weekDMs.filter(function(d){ return d.date >= sevenAgo; })
+          .map(function(d){ return { date:d.date, xp_earned: dmXP(d) }; });
+        snap.last_week_progress = weekDMs.filter(function(d){ return d.date < sevenAgo; })
+          .map(function(d){ return { date:d.date, xp_earned: dmXP(d) }; });
+        snap.activity_days = weekDMs.filter(function(d){
+          return (d.articles||0)+(d.words||0)+(d.quizzes||0) > 0;
+        }).length;
       }
     } catch(e) {}
 
@@ -611,12 +883,12 @@
   async function loadHub() {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
 
-    // 로그인 안 된 경우 → 로그인 유도 UI
+    // Not logged in → prompt sign-in
     if (!supaUser) {
       var loginMsg = '<div style="padding:20px;text-align:center">'
         + '<div style="font-size:28px;margin-bottom:10px">🔒</div>'
-        + '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:6px">로그인 후 확인할 수 있어요</div>'
-        + '<div style="font-size:13px;color:#94a3b8;margin-bottom:16px">학습 데이터, 취약 문법, 단어 배정이 모두 계정에 저장됩니다.</div>'
+        + '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:6px">Sign in to see your learning data</div>'
+        + '<div style="font-size:13px;color:#94a3b8;margin-bottom:16px">Your weak grammar, daily words, and progress are all saved to your account.</div>'
         + '<button onclick="openAuthModal(\'signin\')" style="padding:10px 24px;background:#2563eb;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
         + '</div>';
       ['weak-grammar-list','skills-list','review-queue','saved-reading'].forEach(function(id) {
@@ -646,7 +918,7 @@
       renderSkills(snap);
       renderReview(snap);
       renderSavedReading(snap);
-      renderWeeklyBars(snap);
+      renderGrowthLineChart(snap);
       renderWeeklyImprovements(snap);
 
       // 스피킹 노트
@@ -702,6 +974,392 @@
       setText('stat-articles', total);
     } catch(e) {}
 
+  }
+
+  // ── Daily Review ───────────────────────────────────────────
+  var _drQuestions = [];
+  var _drIndex = 0;
+  var _drAnswered = false;
+  var _drScores = [];
+
+  function openDailyReview() {
+    var overlay = document.getElementById('dr-overlay');
+    if (overlay) overlay.classList.remove('hidden');
+    _drQuestions = [];
+    _drIndex = 0;
+    _drScores = [];
+    _drAnswered = false;
+    drGenerateQuestions();
+  }
+
+  function closeDailyReview() {
+    var overlay = document.getElementById('dr-overlay');
+    if (overlay) overlay.classList.add('hidden');
+  }
+
+  function drGenerateQuestions() {
+    // Build word pool from today's cached words
+    var savedLevel = localStorage.getItem('kh_user_level') || 'Beginner';
+    var savedTags  = [];
+    try { savedTags = JSON.parse(localStorage.getItem('kh_user_interests') || '["daily","news"]'); } catch(e) {}
+    var interestScope = (savedTags || []).slice().sort().join('__') || 'none';
+
+    var levelWords = [];
+    var interestWords = [];
+    try {
+      levelWords    = JSON.parse(localStorage.getItem('kh_vocab_level_'    + savedLevel      + '_' + vocabDateKey()) || '[]');
+      interestWords = JSON.parse(localStorage.getItem('kh_vocab_interest_' + interestScope   + '_' + vocabDateKey()) || '[]');
+    } catch(e) {}
+
+    var allWords = levelWords.concat(interestWords).filter(function(w){ return w.word_ko && w.word_en; });
+    if (allWords.length < 6) {
+      // Fallback: pull directly from vocab bank data
+      var bankData = getLearningHubVocabData();
+      var bankPool = ((bankData.levels || {})[savedLevel] || []).slice(0, 20);
+      allWords = (allWords.length ? allWords : bankPool);
+    }
+
+    var pool = shuffleWithSeed(allWords, vocabDateKey() + '_review');
+    var questions = [];
+
+    // 10 vocabulary meaning (MC)
+    var vocabPool = pool.slice(0, Math.min(pool.length, 15));
+    vocabPool.slice(0, Math.min(10, vocabPool.length)).forEach(function(w) {
+      var distractors = pool.filter(function(x){ return x.word_ko !== w.word_ko; });
+      var wrongs = shuffleWithSeed(distractors, w.word_ko + '_d').slice(0, 3).map(function(x){ return x.word_en; });
+      var choices = shuffleWithSeed([w.word_en].concat(wrongs), w.word_ko + '_c');
+      questions.push({ type:'meaning', word_ko: w.word_ko, word_rom: w.word_rom||'', correct: w.word_en, choices: choices });
+    });
+
+    // 5 word order (MC sentence arrangement)
+    var orderSentences = [
+      { ko:['저는','학생','이에요'], en:'I am a student.' },
+      { ko:['오늘','날씨가','좋아요'], en:'The weather is nice today.' },
+      { ko:['저는','한국어를','공부해요'], en:'I study Korean.' },
+      { ko:['이것은','제','책이에요'], en:'This is my book.' },
+      { ko:['저는','밥을','먹었어요'], en:'I ate rice.' },
+      { ko:['친구가','학교에','가요'], en:'My friend goes to school.' },
+      { ko:['저는','음악을','좋아해요'], en:'I like music.' },
+      { ko:['오늘','제가','일했어요'], en:'I worked today.' },
+    ];
+    shuffleWithSeed(orderSentences, vocabDateKey()+'_ord').slice(0,5).forEach(function(s){
+      questions.push({ type:'order', words: shuffleWithSeed(s.ko, s.en), correct: s.ko, en: s.en });
+    });
+
+    // 5 fill-in-blank (MC grammar)
+    var fillTemplates = [
+      { template:'___ 학교에 가요.',         choices:['저는','저를','저의','저에'], correct:'저는', hint:'Who goes to school? (topic marker)' },
+      { template:'저는 음악___ 좋아해요.',    choices:['을','이','의','에서'],   correct:'을',  hint:'Object marker after 음악.' },
+      { template:'학교___ 도서관이 있어요.',  choices:['에','에서','의','이'],   correct:'에',  hint:'Location of existence.' },
+      { template:'저는 도서관___ 공부해요.',  choices:['에서','에','이','는'],   correct:'에서',hint:'Location of action.' },
+      { template:'오늘___ 날씨가 좋아요.',   choices:['은','의','이','에서'],   correct:'은',  hint:'Topic marker for 오늘.' },
+      { template:'제 친구___ 한국 사람이에요.',choices:['는','이','을','에'], correct:'는', hint:'Topic marker after a vowel.' },
+      { template:'저는 커피___ 마셔요.',      choices:['를','은','에','이'],    correct:'를',  hint:'Object marker after 커피.' },
+      { template:'선생님___ 교실에 계세요.',  choices:['이','는','을','에서'],  correct:'이',  hint:'Subject marker after a consonant.' },
+    ];
+    shuffleWithSeed(fillTemplates, vocabDateKey()+'_fill').slice(0,5).forEach(function(f){
+      questions.push({ type:'fill', template:f.template, correct:f.correct, choices: shuffleWithSeed(f.choices, f.template), hint:f.hint });
+    });
+
+    // 2 typed answers
+    pool.slice(10, 12).forEach(function(w){
+      if (w.word_en && w.word_ko) questions.push({ type:'typed', word_en:w.word_en, word_rom:w.word_rom||'', correct:w.word_ko });
+    });
+
+    _drQuestions = questions;
+    _drIndex = 0;
+    _drScores = [];
+    _drAnswered = false;
+    drShowQuestion();
+    drSaveToServer();
+  }
+
+  function drShowQuestion() {
+    var total = _drQuestions.length;
+    var progress = total > 0 ? Math.round((_drIndex / total) * 100) : 0;
+    var prog = document.getElementById('dr-progress');
+    var counter = document.getElementById('dr-q-counter');
+    if (prog) prog.style.width = progress + '%';
+    if (counter) counter.textContent = (_drIndex + 1) + ' / ' + total;
+
+    var drTitle    = document.getElementById('dr-title');
+    var drSubtitle = document.getElementById('dr-subtitle');
+    var drBody     = document.getElementById('dr-body');
+    var drFooter   = document.getElementById('dr-footer');
+    var drNextBtn  = document.getElementById('dr-next-btn');
+
+    if (_drIndex >= total) {
+      if (drTitle)    drTitle.textContent    = 'Review Complete!';
+      if (drSubtitle) drSubtitle.textContent = 'Here\'s how you did today';
+      if (prog)       prog.style.width = '100%';
+      if (counter)    counter.textContent = total + ' / ' + total;
+      drShowScore();
+      return;
+    }
+
+    if (drTitle)    drTitle.textContent    = 'Daily Review';
+    if (drSubtitle) drSubtitle.textContent = 'Question ' + (_drIndex + 1) + ' of ' + total;
+    if (drFooter)   drFooter.style.display = 'flex';
+    if (drNextBtn)  { drNextBtn.disabled = true; drNextBtn.textContent = 'Next →'; drNextBtn.onclick = drNext; }
+    _drAnswered = false;
+
+    var q = _drQuestions[_drIndex];
+    if (!drBody) return;
+
+    if (q.type === 'meaning') {
+      drBody.innerHTML = '<div class="dr-q-label">Vocabulary — What does this mean?</div>'
+        + '<div class="dr-q-title">' + q.word_ko + '</div>'
+        + (q.word_rom ? '<div class="dr-q-hint">' + q.word_rom + '</div>' : '')
+        + '<div class="dr-choices">' + q.choices.map(function(c){
+            return '<button class="dr-choice" onclick="drSelectMC(this,\'' + c.replace(/'/g,"\\'") + '\')">' + c + '</button>';
+          }).join('') + '</div>'
+        + '<div id="dr-feedback" style="display:none" class="dr-feedback-box"></div>';
+
+    } else if (q.type === 'order') {
+      drBody.innerHTML = '<div class="dr-q-label">Word Order — Arrange into a correct sentence</div>'
+        + '<div class="dr-q-hint" style="font-size:13px;margin-bottom:8px">English: ' + q.en + '</div>'
+        + '<div id="dr-order-selected" style="min-height:44px;border:2px dashed #e2e8f0;border-radius:12px;padding:8px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px;"></div>'
+        + '<div id="dr-order-pool" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">'
+        + q.words.map(function(w,i){
+            return '<button id="drow_' + i + '" class="dr-choice" style="display:inline-flex;padding:8px 12px" onclick="drSelectOrder(this,' + i + ',\'' + w.replace(/'/g,"\\'") + '\')">' + w + '</button>';
+          }).join('') + '</div>'
+        + '<div id="dr-feedback" style="display:none" class="dr-feedback-box"></div>'
+        + '<button onclick="drCheckOrder()" style="padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:999px;font-weight:800;font-size:13px;cursor:pointer">Check</button>';
+      window._drOrderSelected = [];
+
+    } else if (q.type === 'fill') {
+      drBody.innerHTML = '<div class="dr-q-label">Fill in the Blank</div>'
+        + '<div class="dr-q-title" style="font-size:18px;margin-bottom:6px">' + q.template + '</div>'
+        + '<div class="dr-q-hint">' + q.hint + '</div>'
+        + '<div class="dr-choices">' + q.choices.map(function(c){
+            return '<button class="dr-choice" onclick="drSelectMC(this,\'' + c.replace(/'/g,"\\'") + '\')">' + c + '</button>';
+          }).join('') + '</div>'
+        + '<div id="dr-feedback" style="display:none" class="dr-feedback-box"></div>';
+
+    } else if (q.type === 'typed') {
+      drBody.innerHTML = '<div class="dr-q-label">Typed Answer — Write in Korean</div>'
+        + '<div class="dr-q-title">' + q.word_en + '</div>'
+        + (q.word_rom ? '<div class="dr-q-hint">Romanization hint: ' + q.word_rom + '</div>' : '')
+        + '<input class="dr-typed-input" id="dr-typed" placeholder="Type the Korean word…" onkeydown="if(event.key===\'Enter\')drCheckTyped()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />'
+        + '<div id="dr-feedback" style="display:none" class="dr-feedback-box"></div>'
+        + '<button onclick="drCheckTyped()" style="padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:999px;font-weight:800;font-size:13px;cursor:pointer;margin-top:12px">Check</button>';
+      setTimeout(function(){ var el = document.getElementById('dr-typed'); if (el) el.focus(); }, 60);
+    }
+  }
+
+  function drSelectMC(btn, choice) {
+    if (_drAnswered) return;
+    _drAnswered = true;
+    var q = _drQuestions[_drIndex];
+    var correct = (choice === q.correct);
+    _drScores.push(correct ? 1 : 0);
+    var body = document.getElementById('dr-body');
+    if (body) body.querySelectorAll('.dr-choice').forEach(function(b){
+      b.disabled = true;
+      if (b === btn)                   b.classList.add(correct ? 'correct' : 'wrong');
+      if (b.textContent === q.correct) b.classList.add('correct');
+    });
+    drShowFeedback(correct, q.correct);
+    drEnableNext();
+  }
+
+  function drSelectOrder(btn, idx, word) {
+    if (_drAnswered) return;
+    btn.style.display = 'none';
+    window._drOrderSelected = window._drOrderSelected || [];
+    window._drOrderSelected.push({ idx:idx, word:word });
+    var sel = document.getElementById('dr-order-selected');
+    if (!sel) return;
+    var span = document.createElement('button');
+    span.className = 'dr-choice';
+    span.style.cssText = 'display:inline-flex;padding:8px 12px;cursor:pointer';
+    span.textContent = word;
+    span.onclick = function(){
+      window._drOrderSelected = window._drOrderSelected.filter(function(x){ return x.idx !== idx; });
+      sel.removeChild(span);
+      btn.style.display = '';
+    };
+    sel.appendChild(span);
+  }
+
+  function drCheckOrder() {
+    if (_drAnswered) return;
+    _drAnswered = true;
+    var q = _drQuestions[_drIndex];
+    var selected = (window._drOrderSelected || []).map(function(x){ return x.word; });
+    var correct  = selected.length === q.correct.length && selected.every(function(w,i){ return w === q.correct[i]; });
+    _drScores.push(correct ? 1 : 0);
+    drShowFeedback(correct, q.correct.join(' '));
+    drEnableNext();
+  }
+
+  function drCheckTyped() {
+    if (_drAnswered) return;
+    var inp = document.getElementById('dr-typed');
+    var answer = (inp ? inp.value : '').trim();
+    if (!answer) return;
+    _drAnswered = true;
+    var q = _drQuestions[_drIndex];
+    var correct = (answer === q.correct);
+    _drScores.push(correct ? 1 : 0);
+    if (inp) { inp.disabled = true; inp.style.borderColor = correct ? '#16a34a' : '#dc2626'; }
+    drShowFeedback(correct, q.correct);
+    drEnableNext();
+  }
+
+  function drShowFeedback(correct, correctAnswer) {
+    var fb = document.getElementById('dr-feedback');
+    if (!fb) return;
+    fb.style.display = 'block';
+    fb.className = 'dr-feedback-box ' + (correct ? 'correct' : 'wrong');
+    fb.textContent = correct ? '✓ Correct!' : '✗ Correct answer: ' + correctAnswer;
+  }
+
+  function drEnableNext() {
+    var nextBtn = document.getElementById('dr-next-btn');
+    if (nextBtn) {
+      nextBtn.disabled = false;
+      nextBtn.textContent = (_drIndex + 1 < _drQuestions.length) ? 'Next →' : 'See Results';
+    }
+  }
+
+  function drNext() {
+    _drIndex++;
+    drShowQuestion();
+  }
+
+  function drShowScore() {
+    var total   = _drQuestions.length;
+    var correct = _drScores.reduce(function(a,b){return a+b;},0);
+    var score   = total > 0 ? Math.round(correct / total * 100) : 0;
+    var emoji   = score >= 90 ? '🌟' : score >= 75 ? '🏆' : score >= 50 ? '⭐' : '💪';
+    var headline= score >= 90 ? 'Excellent work!' : score >= 75 ? 'Well done!' : score >= 50 ? 'Good effort!' : 'Keep practicing!';
+    var body = document.getElementById('dr-body');
+    if (body) body.innerHTML = '<div class="dr-score-screen">'
+      + '<div style="font-size:48px;margin-bottom:8px">' + emoji + '</div>'
+      + '<div class="dr-score-num">' + score + '%</div>'
+      + '<div class="dr-score-sub">' + headline + '<br>' + correct + ' correct out of ' + total + ' questions</div>'
+      + '</div>';
+    var nextBtn = document.getElementById('dr-next-btn');
+    if (nextBtn) { nextBtn.disabled = false; nextBtn.textContent = 'Close'; nextBtn.onclick = closeDailyReview; }
+    if (typeof awardXP === 'function') awardXP('quiz_complete');
+    drSaveToServer();
+  }
+
+  async function drSaveToServer() {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb || !supaUser) return;
+    try {
+      var today = vocabDateKey();
+      var correct = _drScores.reduce(function(a,b){return a+b;},0);
+      await sb.from('daily_reviews').upsert(
+        { user_id: supaUser.id, date: today, score: { correct: correct, total: _drQuestions.length }, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id,date' }
+      );
+    } catch(e) { /* table may not exist yet */ }
+  }
+
+  // ── Word popup ─────────────────────────────────────────────
+  var _currentPopupWord = null;
+
+  function openWordPopup(wordDataEncoded) {
+    var w;
+    try {
+      w = typeof wordDataEncoded === 'string'
+        ? JSON.parse(decodeURIComponent(wordDataEncoded))
+        : wordDataEncoded;
+    } catch(e) { return; }
+    _currentPopupWord = w;
+    setText('wp-ko',  w.word_ko  || '');
+    setText('wp-rom', w.word_rom || '');
+    setText('wp-en',  w.word_en  || '');
+    var saveBtn = document.getElementById('wp-save-btn');
+    if (saveBtn) saveBtn.textContent = _savedWordKos.has(w.word_ko||'') ? '✓ Saved' : '📌 Save Word';
+    document.getElementById('wp-examples').innerHTML = '<div style="color:#94a3b8;font-size:13px">Loading…</div>';
+    document.getElementById('word-popup-overlay').style.display = 'flex';
+    loadWordExamples(w);
+  }
+
+  function closeWordPopup() {
+    document.getElementById('word-popup-overlay').style.display = 'none';
+    _currentPopupWord = null;
+  }
+
+  function speakWord(text) {
+    if (!text || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    var utt = new SpeechSynthesisUtterance(text);
+    utt.lang = 'ko-KR'; utt.rate = 0.85;
+    var voices = window.speechSynthesis.getVoices();
+    var koVoice = voices.find(function(v){ return v.lang==='ko-KR' || v.lang.startsWith('ko'); });
+    if (koVoice) utt.voice = koVoice;
+    window.speechSynthesis.speak(utt);
+  }
+
+  async function loadWordExamples(w) {
+    var exBox = document.getElementById('wp-examples');
+    if (!exBox) return;
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (sb) {
+      try {
+        var { data: row } = await sb.from('vocabulary_bank')
+          .select('examples')
+          .eq('korean', w.word_ko)
+          .maybeSingle();
+        if (row && row.examples && row.examples.length) {
+          exBox.innerHTML = row.examples.map(function(ex) {
+            var ko = typeof ex === 'string' ? ex : (ex.ko || ex.korean || String(ex));
+            var en = typeof ex === 'object'  ? (ex.en || ex.english || '') : '';
+            var koEsc = ko.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+            return '<div class="wp-ex">'
+              + '<div class="wp-ex-ko">' + ko
+              + ' <button onclick="speakWord(\'' + koEsc + '\')" style="background:none;border:none;cursor:pointer;font-size:12px;color:#2563eb;padding:0;vertical-align:middle">🔊</button></div>'
+              + (en ? '<div class="wp-ex-en">' + en + '</div>' : '')
+              + '</div>';
+          }).join('');
+          return;
+        }
+      } catch(e) {}
+    }
+    exBox.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:8px 0">No examples found. Try using this word in the Study Room!</div>';
+  }
+
+  async function saveCurrentWord() {
+    if (!_currentPopupWord) return;
+    var w = _currentPopupWord;
+    _savedWordKos.add(w.word_ko || '');
+    var saveBtn = document.getElementById('wp-save-btn');
+    if (saveBtn) saveBtn.textContent = '✓ Saved';
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (sb && supaUser) {
+      try {
+        await sb.from('user_saved_words').upsert(
+          { user_id: supaUser.id, word_ko: w.word_ko, word_en: w.word_en, word_rom: w.word_rom, level: w.level || 'General', added_at: new Date().toISOString() },
+          { onConflict: 'user_id,word_ko' }
+        );
+        if (typeof awardXP === 'function') awardXP('word_saved');
+        if (typeof toast  === 'function') toast('Saved: ' + w.word_ko + ' ✓');
+      } catch(e) {}
+    }
+  }
+
+  async function saveWordFromRow(btn, word_ko, word_en, word_rom) {
+    if (_savedWordKos.has(word_ko)) return;
+    _savedWordKos.add(word_ko);
+    btn.textContent = '✓';
+    btn.classList.add('saved');
+    btn.title = 'Saved';
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (sb && supaUser) {
+      try {
+        await sb.from('user_saved_words').upsert(
+          { user_id: supaUser.id, word_ko: word_ko, word_en: word_en, word_rom: word_rom, added_at: new Date().toISOString() },
+          { onConflict: 'user_id,word_ko' }
+        );
+        if (typeof awardXP === 'function') awardXP('word_saved');
+        if (typeof toast  === 'function') toast('Saved: ' + word_ko + ' ✓');
+      } catch(e) {}
+    }
   }
 
   // ── init ────────────────────────────────────────────────────
