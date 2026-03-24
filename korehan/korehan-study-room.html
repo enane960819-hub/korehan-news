@@ -664,9 +664,9 @@ body.kh-neon-on .tc-en { color:rgba(160,240,255,.7) !important; }
         </div>
         <!-- 쓰기 모드 선택 -->
         <div class="wc-mode-tabs" id="wc-mode-tabs">
-          <button class="wc-mode-tab active" id="tab-topic" onclick="setWritingMode('topic')">📝 Topic Writing</button>
-          <button class="wc-mode-tab" id="tab-reading" onclick="setWritingMode('reading')">📖 Reading & Write</button>
-          <button class="wc-mode-tab" id="tab-grammar-focus" onclick="openGrammarFocusModal()">🎯 Grammar Focus</button>
+          <button class="wc-mode-tab active" id="tab-topic" onclick="event.stopPropagation();setWritingMode('topic')">📝 Topic Writing</button>
+          <button class="wc-mode-tab" id="tab-reading" onclick="event.stopPropagation();setWritingMode('reading')">📖 Reading & Write</button>
+          <button class="wc-mode-tab" id="tab-grammar-focus" onclick="event.stopPropagation();openGrammarFocusModal()">🎯 Grammar Focus</button>
         </div>
         <!-- Reading 선택 시 기사 선택 드롭다운 -->
         
@@ -1855,7 +1855,7 @@ async function loadVocabPool() {
     var [convRes, storyRes, bankRes] = await Promise.all([
       sb.from('conversations_data').select('data').limit(50),
       sb.from('stories_data').select('data').limit(50),
-      sb.from('vocabulary_bank').select('korean,english,romanization,level').limit(200)
+      sb.from('vocabulary_bank').select('word_ko,word_en,word_rom').limit(200)
     ]);
     if (convRes.data) {
       _convVocab = [];
@@ -1877,7 +1877,7 @@ async function loadVocabPool() {
     }
     if (bankRes.data) {
       _vocabBankWords = bankRes.data.map(function(r) {
-        return { ko: r.korean, en: r.english, rom: r.romanization || '', level: r.level || '', src: 'news' };
+        return { ko: r.word_ko, en: r.word_en, rom: r.word_rom || '', src: 'news' };
       }).filter(function(w){ return w.ko && w.en; });
     }
     _vocabPoolLoaded = true;
@@ -2342,8 +2342,8 @@ async function rspLoadSource(tab) {
       var { data } = await sb.from('articles_data').select('id,title').eq('status','published').order('created_at',{ascending:false}).limit(40);
       _rspData.article = (data||[]).map(function(r){ return { id:r.id, title:r.title, body:null }; });
     } else if (tab === 'conv') {
-      var { data } = await sb.from('conversations_data').select('id,title').order('created_at',{ascending:false}).limit(40);
-      _rspData.conv = (data||[]).map(function(r){ return { id:r.id, title:r.title, body:null }; });
+      var { data } = await sb.from('conversations_data').select('id,name,data').order('created_at',{ascending:false}).limit(40);
+      _rspData.conv = (data||[]).map(function(r){ var d=r.data||{}; return { id:r.id, title:d.name||r.name||'대화', body:null }; });
     } else {
       var { data } = await sb.from('stories_data').select('id,title').order('created_at',{ascending:false}).limit(40);
       _rspData.story = (data||[]).map(function(r){ return { id:r.id, title:r.title, body:null }; });
@@ -2442,7 +2442,7 @@ async function loadArticlesForReading() {
 
   try {
     var sb = getSupa();
-    var { data } = await sb.from('articles')
+    var { data } = await sb.from('articles_data')
       .select('id, title, body, section, level')
       .eq('status', 'published')
       .order('created_at', {ascending: false})
@@ -2649,7 +2649,7 @@ async function switchModalSource(src, btn) {
 async function loadModalArticles(sel) {
   try {
     var sb = getSupa();
-    var { data } = await sb.from('articles')
+    var { data } = await sb.from('articles_data')
       .select('id, title, body, section, level')
       .eq('status', 'published')
       .order('created_at', {ascending: false})

@@ -672,7 +672,7 @@ function renderStories(moodF, lvlF) {
     var author = resolveStoryAuthor(s);
     var iconName = s.banner_icon || MOOD_ICONS[s.mood] || 'book-open';
     var iconColor = MOOD_COLORS[s.mood] || '#7c3aed';
-    return '<div class="sc" onclick="openStory(' + s.id + ')">'
+    return '<div class="sc" onclick="openStory(\'' + s.id + '\')">'
       + '<div class="sc-thumb ' + MOOD_BG[s.mood] + '">'
         + '<span class="sc-mood-badge" style="background:' + iconColor + '">' + s.mood.toUpperCase() + '</span>'
         + '<span class="sc-icon-wrap"><i data-lucide="' + iconName + '" style="width:36px;height:36px;color:' + iconColor + ';opacity:.85" aria-hidden="true"></i></span>'
@@ -693,7 +693,7 @@ function renderStories(moodF, lvlF) {
 }
 
 function openStory(id) {
-  var s = STORIES.find(function(x){ return x.id === id; });
+  var s = STORIES.find(function(x){ return String(x.id) === String(id); });
   if (!s) return;
   var author = resolveStoryAuthor(s);
   window._currentStory = s;  // 전역 저장
