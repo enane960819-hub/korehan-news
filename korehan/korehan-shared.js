@@ -1242,9 +1242,12 @@ async function loadArticlesFromDB(options) {
     return _articlesCache;
   }
   try {
-    var query = sb.from('articles').select(HOME_ARTICLE_SELECT);
+    // Always order by created_at descending so newest articles are fetched first.
+    // Without ORDER BY the DB returns rows in an arbitrary order, meaning a
+    // limit(18) could miss recently published articles entirely.
+    var query = sb.from('articles').select(HOME_ARTICLE_SELECT).order('created_at', { ascending: false });
     if (useHomeOptimizedQuery) {
-      query = query.limit(18);
+      query = query.limit(60);  // was 18 — increased so fresh articles are not cut off
     } else {
       query = query.limit(200);
     }

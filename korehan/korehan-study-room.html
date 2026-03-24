@@ -2339,7 +2339,9 @@ async function rspLoadSource(tab) {
   try {
     var sel = document.getElementById('rsp-select'); if (!sel) return;
     if (tab === 'article') {
-      var { data } = await sb.from('articles_data').select('id,title').eq('status','published').order('created_at',{ascending:false}).limit(40);
+      // Articles are stored in the 'articles' table (same table used by admin and shared.js).
+      // 'articles_data' does not exist — this was the root cause of the empty article list.
+      var { data } = await sb.from('articles').select('id,title').eq('status','published').order('created_at',{ascending:false}).limit(40);
       _rspData.article = (data||[]).map(function(r){ return { id:r.id, title:r.title, body:null }; });
     } else if (tab === 'conv') {
       var { data } = await sb.from('conversations_data').select('id,name,data').order('created_at',{ascending:false}).limit(40);
@@ -2375,7 +2377,7 @@ async function rspShowPreview(item) {
   // Fetch full content
   try {
     var sb = getSupa(); if (!sb) return;
-    var table = _rspSource === 'article' ? 'articles_data' : _rspSource === 'conv' ? 'conversations_data' : 'stories_data';
+    var table = _rspSource === 'article' ? 'articles' : _rspSource === 'conv' ? 'conversations_data' : 'stories_data';
     var col   = _rspSource === 'article' ? 'body' : 'data';
     var { data } = await sb.from(table).select(col).eq('id', item.id).single();
     if (data) {
@@ -2442,11 +2444,12 @@ async function loadArticlesForReading() {
 
   try {
     var sb = getSupa();
-    var { data } = await sb.from('articles_data')
+    // Use 'articles' table — this is where admin saves articles and shared.js reads from.
+    var { data } = await sb.from('articles')
       .select('id, title, body, section, level')
       .eq('status', 'published')
       .order('created_at', {ascending: false})
-      .limit(20);
+      .limit(40);
 
     if (data && data.length) {
       data.forEach(function(a) {
@@ -2649,11 +2652,12 @@ async function switchModalSource(src, btn) {
 async function loadModalArticles(sel) {
   try {
     var sb = getSupa();
-    var { data } = await sb.from('articles_data')
+    // Use 'articles' table — articles_data is not the correct table name.
+    var { data } = await sb.from('articles')
       .select('id, title, body, section, level')
       .eq('status', 'published')
       .order('created_at', {ascending: false})
-      .limit(20);
+      .limit(40);
     sel.innerHTML = '<option value="">Select article...</option>';
     (data || []).forEach(function(a) {
       var opt = document.createElement('option');

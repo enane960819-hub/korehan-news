@@ -2418,8 +2418,13 @@ async function runAutoGenerate(){
   const progress = document.getElementById('auto-progress');
   progress.innerHTML = '';
 
-  // 중복 방지: 기존 DB 기사 제목 수집
+  // 중복 방지: 기존 DB 기사 제목 + 주제 수집 (제목만이 아닌 section+title 조합으로 토픽 레벨 중복도 차단)
   const existingTitles = DB.map(function(a){ return (a.title||'').trim(); });
+  // Build topic-level summary: "[section] title" for each published article
+  const existingTopics = DB
+    .filter(function(a){ return (a.status === 'published' || !a.status); })
+    .map(function(a){ return '[' + (a.section||'일반') + '] ' + (a.title||'').trim(); })
+    .filter(Boolean);
 
   for(const secKey of checked){
     const sec = AUTO_SECTIONS.find(function(s){ return s.key === secKey; });
@@ -2436,33 +2441,51 @@ async function runAutoGenerate(){
 
     try {
       const today = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
-      const prompt = '당신은 외국인 한국어 학습자를 위한 뉴스 기사를 쓰는 편집자입니다. '
-        +'오늘(' + today + ')을 기준으로 ' + sec.key + ' 분야(' + sec.topics + ')에서 '
-        +'실제로 화제가 되고 있는 이슈를 바탕으로 기사를 작성해 주세요.\n\n'
-        +'[난이도: ' + diffInfo.ko + ']\n'
-        +'[어휘 수준: ' + diffInfo.vocab + ']\n\n'
-        +'[독자 대상]\n'
-        +'- 한국어를 공부하는 외국인 (' + diffInfo.ko + ')\n'
-        +'- 뉴스를 읽으면서 자연스럽게 한국어를 배우고 싶은 성인 학습자\n\n'
-        +'[문체 및 형식]\n'
-        +'- 짧고 명확한 문장 (한 문장에 20~35자 이내)\n'
-        +'- 문장 끝은 "~했어요", "~입니다", "~예요" 등 정중체 사용\n'
-        +'- 단락마다 한 가지 내용만, 각 단락 2~3문장\n\n'
-        +'[어휘]\n'
-        +'- 초등 고학년~중학교 수준 어휘 사용\n'
-        +'- 어려운 한자어나 전문 용어는 반드시 괄호로 쉬운 뜻 설명\n'
-        +'  예: 기준금리(돈을 빌릴 때 기본이 되는 이자율)\n'
-        +'- 영어 단어는 원어도 함께 표기: 인공지능(AI)\n\n'
-        +'[분량]\n'
-        +'- 제목: 15~25자, 핵심 내용을 쉽게 표현\n'
-        +'- 본문: 4~6개 단락, 각 단락 2~3문장\n\n'
-        +'[주의사항]\n'
-        +'- 실제 최근 이슈 기반 (완전 허구 불가)\n'
-        +'- 특정 실존 인물 비방 금지\n'
-        +'- 너무 유치하게 쓰지 말 것 — 성인 학습자용\n\n'
-        +'응답은 반드시 아래 JSON 형식으로만 출력하세요 (마크다운 코드블록 불필요):\n'
-        +'{"title":"기사 제목","body":"기사 본문 (단락 구분은 \\n\\n 사용)"}\n\n'
-        +(existingTitles.length ? '[이미 있는 기사 제목 — 절대 중복 금지]\n' + existingTitles.map(function(t){return '- '+t;}).join('\n') : '');
+
+      // Build the duplicate-prevention block
+      const dupBlock = existingTopics.length
+        ? '[이미 게시된 기사 토픽 — 동일 주제 및 유사 주제 절대 금지]\n'
+          + existingTopics.slice(0, 60).map(function(t){ return '- ' + t; }).join('\n')
+        : '';
+
+      const prompt = '당신은 외국인 한국어 학습자를 위한 뉴스 기사를 쓰는 편집자입니다.\n\n'
+        + '[오늘 날짜: ' + today + ']\n'
+        + '[섹션: ' + sec.key + ' — 주제 범위: ' + sec.topics + ']\n'
+        + '[난이도: ' + diffInfo.ko + ']\n'
+        + '[어휘 수준: ' + diffInfo.vocab + ']\n\n'
+        + '─────────────────────────────────────────\n'
+        + '[소스 기준 — 반드시 준수]\n'
+        + '- 반드시 실제로 일어난 사건 또는 사실에 기반해야 합니다.\n'
+        + '- 뉴스 소재는 최근 1개월 이내의 실제 이슈여야 합니다.\n'
+        + '- 사실이 불확실하거나 검증할 수 없는 경우 해당 주제는 사용하지 마세요.\n'
+        + '- 완전히 가상의 사건이나 허위 정보를 작성하는 것은 절대 금지입니다.\n'
+        + '- 만약 최근 1개월 내 명확한 실제 이슈가 없다면, 해당 분야의 가장 최신의 검증된 사실을 사용하세요.\n\n'
+        + '[토픽 선정 기준]\n'
+        + '- 흥미롭고 구체적인 이슈를 선택하세요. "일반적인 사회 현황" 같은 막연한 주제는 금지입니다.\n'
+        + '- 특정 사건, 발표, 기록, 변화, 논쟁 등 구체적인 뉴스 앵글이 있어야 합니다.\n'
+        + '- 지루하거나 지나치게 일상적인 주제(예: "봄 날씨가 왔어요" 류)는 피하세요.\n\n'
+        + '[독자 대상]\n'
+        + '- 한국어를 공부하는 외국인 (' + diffInfo.ko + ')\n'
+        + '- 뉴스를 읽으면서 자연스럽게 한국어를 배우고 싶은 성인 학습자\n\n'
+        + '[문체 및 형식]\n'
+        + '- 짧고 명확한 문장 (한 문장에 20~35자 이내)\n'
+        + '- 문장 끝은 "~했어요", "~입니다", "~예요" 등 정중체 사용\n'
+        + '- 단락마다 한 가지 내용만, 각 단락 2~3문장\n\n'
+        + '[어휘]\n'
+        + '- 초등 고학년~중학교 수준 어휘 사용\n'
+        + '- 어려운 한자어나 전문 용어는 반드시 괄호로 쉬운 뜻 설명\n'
+        + '  예: 기준금리(돈을 빌릴 때 기본이 되는 이자율)\n'
+        + '- 영어 단어는 원어도 함께 표기: 인공지능(AI)\n\n'
+        + '[분량]\n'
+        + '- 제목: 15~25자, 핵심 내용을 쉽게 표현\n'
+        + '- 본문: 4~6개 단락, 각 단락 2~3문장\n\n'
+        + '[금지 사항]\n'
+        + '- 실존 인물에 대한 비방, 허위 사실, 미검증 주장 금지\n'
+        + '- 너무 유치하거나 어린이용 소재 금지 — 성인 학습자용\n'
+        + '- 제목과 주제 모두 아래 기존 기사와 중복되어서는 안 됩니다\n\n'
+        + '응답은 반드시 아래 JSON 형식으로만 출력하세요 (마크다운 코드블록 불필요):\n'
+        + '{"title":"기사 제목","body":"기사 본문 (단락 구분은 \\n\\n 사용)"}\n\n'
+        + dupBlock;
 
       // ── 1단계: 기사 본문 생성 ──
       document.getElementById(rowId+'-status').innerHTML = '⏳ 기사 생성 중…';
