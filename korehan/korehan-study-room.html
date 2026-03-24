@@ -39,9 +39,9 @@
   max-width:680px;
 }
 
-.tc-label { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:#7ab8f5; margin-bottom:4px; }
-.tc-ko   { font-family:'Noto Serif KR',serif; font-size:17px; font-weight:900; color:#fff; }
-.tc-en   { font-size:12px; color:rgba(255,255,255,0.5); margin-top:2px; }
+.tc-label { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; color:#7ab8f5; margin-bottom:6px; }
+.tc-ko   { font-family:'Noto Serif KR',serif; font-size:22px; font-weight:900; color:#fff; line-height:1.35; word-break:keep-all; }
+.tc-en   { font-size:14px; font-weight:600; color:rgba(255,255,255,0.65); margin-top:5px; }
 .tc-done { font-size:11px; color:#7ab8f5; font-weight:700; white-space:nowrap; }
 .tc-change { font-size:11px; color:rgba(255,255,255,0.35); white-space:nowrap; margin-left:auto; }
 
@@ -549,6 +549,27 @@
   .bm-sent-ko { font-size: 16px; }
   .bm-step-title { font-size: 18px; }
 }
+
+/* ── NEON MODE: Study Room readability fixes ─────────────── */
+body.kh-neon-on .pko  { color:#f0fcff !important; text-shadow:0 0 14px rgba(0,255,214,.18); }
+body.kh-neon-on .pen  { color:#8ffcff !important; }
+body.kh-neon-on .prom { color:rgba(160,235,255,.55) !important; }
+body.kh-neon-on .hko  { color:#eefcff !important; }
+body.kh-neon-on .hen  { color:#9de8ff !important; }
+body.kh-neon-on .plabel { color:#7ab8f5 !important; }
+body.kh-neon-on .mgrname { color:#eefcff !important; }
+body.kh-neon-on .mgrexp  { color:#aee8ff !important; }
+body.kh-neon-on .mgrko   { color:#7ab8f5 !important; }
+body.kh-neon-on .mgr-en  { color:#9de8ff !important; }
+body.kh-neon-on .mhko { color:#eefcff !important; }
+body.kh-neon-on .mhen { color:#9de8ff !important; }
+body.kh-neon-on .mhbtn { color:#7ab8f5 !important; }
+body.kh-neon-on .wm-left, body.kh-neon-on .wm-right { background: rgba(8,17,31,.96) !important; border-color:rgba(0,255,214,.14) !important; }
+body.kh-neon-on .chip  { background:rgba(0,255,214,.08) !important; color:#8ffcff !important; border-color:rgba(0,255,214,.2) !important; }
+body.kh-neon-on .chip.gc { background:rgba(255,214,0,.08) !important; color:#ffe080 !important; border-color:rgba(255,214,0,.2) !important; }
+body.kh-neon-on .submit-note { color:#7ab8f5 !important; }
+body.kh-neon-on .tc-ko { color:#f0fcff !important; text-shadow:0 0 12px rgba(0,255,214,.15); }
+body.kh-neon-on .tc-en { color:rgba(160,240,255,.7) !important; }
 </style>
 </head>
 <body>
@@ -626,7 +647,7 @@
       <!-- 피드백 인박스 버튼 -->
       <div id="feedback-inbox-btn" style="display:none;margin-bottom:10px;">
         <button onclick="openFeedbackInbox()" style="width:100%;padding:12px 16px;background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:12px;font-size:13px;font-weight:800;color:#0369a1;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;justify-content:center;">
-          <span>📬</span><span id="feedback-inbox-label">피드백 확인하기</span>
+          <span>📬</span><span id="feedback-inbox-label">Check My Feedback</span>
         </button>
       </div>
 
@@ -796,7 +817,7 @@
       </div>
 
       <button class="submit-btn" onclick="submitWriting()">📩 Submit for Feedback</button>
-      <div class="submit-note">Vocab 2개 이상 필수 · 하루 1건 · Han 24h 피드백</div>
+      <div class="submit-note">Use at least 2 vocabulary words · One submission per day · Han reviews within 24h</div>
     </div>
 
     <!-- RIGHT: helper sentences -->
@@ -815,7 +836,7 @@
       <div id="wm-reading-article" style="display:none">
         <div class="plabel">📖 Reading Material</div>
         <div id="wm-article-body" style="font-size:13px;color:#334155;line-height:1.8;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;max-height:300px;overflow-y:auto">
-          기사를 선택해주세요
+          Select a reading source above to begin.
         </div>
         <div class="plabel" style="margin-top:12px">✍️ Writing Prompts</div>
         <div id="wm-reading-prompts" style="font-size:12px;color:#64748b;background:#f0f6ff;border-radius:8px;padding:10px 12px;line-height:1.8"></div>
@@ -982,7 +1003,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 // ═══════════════════════════════════════════════════════════════
 function renderPhrase() {
   var phrases = typeof getPhrases === 'function' ? getPhrases() : [];
-  var p = phrases[Math.floor(Math.random() * phrases.length)] || { ko:'오늘도 화이팅!', rom:'Oneuldo hwaiting!', en:"You've got this today!" };
+  var dailyPhraseIdx = phrases.length ? Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length : 0;
+  var p = phrases[dailyPhraseIdx] || { ko:'오늘도 화이팅!', rom:'Oneuldo hwaiting!', en:"You've got this today!" };
   document.getElementById('phrase-box').innerHTML =
     '<div class="pko">' + p.ko + '</div>'
     + '<div class="prom">' + p.rom + '</div>'
@@ -1435,9 +1457,12 @@ function renderModalContent() {
   var whEl = document.getElementById('wm-helpers');
   if (whEl) {
     whEl.innerHTML = (_aiContent.helpers || []).map(function(h) {
+      var safeKo = h.ko.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
       return '<div class="mhrow">'
-        + '<div class="mhko">' + h.ko + '</div>'
-        + '<div class="mhen">' + h.en + '</div>'
+        + '<div style="display:flex;align-items:flex-start;gap:6px">'
+        + '<div style="flex:1"><div class="mhko">' + h.ko + '</div><div class="mhen">' + h.en + '</div></div>'
+        + '<button onclick="speakKorean(\'' + safeKo + '\')" title="Listen" style="background:none;border:1px solid #e2e8f0;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:14px;flex-shrink:0;color:#64748b" aria-label="Read aloud">🔊</button>'
+        + '</div>'
         + '<button class="mhbtn" data-ko="' + h.ko.replace(/"/g,'&quot;') + '" onclick="copyHelper(this)">+ copy to writing</button>'
         + '</div>';
     }).join('');
@@ -1538,6 +1563,18 @@ function closeWritingModal() {
   if (left) left.classList.remove('mob-on');
   if (right) right.classList.remove('mob-on');
   if (center) center.classList.remove('mob-hide');
+}
+
+function speakKorean(text) {
+  if (!text || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  var utt = new SpeechSynthesisUtterance(text);
+  utt.lang = 'ko-KR';
+  utt.rate = 0.88;
+  var voices = window.speechSynthesis.getVoices();
+  var koVoice = voices.find(function(v){ return v.lang === 'ko-KR' || v.lang.startsWith('ko'); });
+  if (koVoice) utt.voice = koVoice;
+  window.speechSynthesis.speak(utt);
 }
 
 function copyHelper(btn) {
@@ -1797,13 +1834,16 @@ async function renderFeedbackInboxContent() {
 // ═══════════════════════════════════════════════════════════════
 // VOCAB POOL — conv + stories vocab 통합 로드 (4번, 5번)
 // ═══════════════════════════════════════════════════════════════
+var _vocabBankWords = [];
+
 async function loadVocabPool() {
   if (_vocabPoolLoaded) return;
   try {
     var sb = getSupa(); if (!sb) return;
-    var [convRes, storyRes] = await Promise.all([
+    var [convRes, storyRes, bankRes] = await Promise.all([
       sb.from('conversations_data').select('data').limit(50),
-      sb.from('stories_data').select('data').limit(50)
+      sb.from('stories_data').select('data').limit(50),
+      sb.from('vocabulary_bank').select('korean,english,romanization,level').limit(200)
     ]);
     if (convRes.data) {
       _convVocab = [];
@@ -1823,16 +1863,21 @@ async function loadVocabPool() {
         });
       });
     }
+    if (bankRes.data) {
+      _vocabBankWords = bankRes.data.map(function(r) {
+        return { ko: r.korean, en: r.english, rom: r.romanization || '', level: r.level || '', src: 'news' };
+      }).filter(function(w){ return w.ko && w.en; });
+    }
     _vocabPoolLoaded = true;
   } catch(e) { console.warn('loadVocabPool failed:', e); }
 }
 
 function getAllVocabPool() {
   var wb = typeof getWordBank === 'function' ? getWordBank() : [];
-  // 중복 제거 (ko 기준)
+  // Deduplicate by ko
   var seen = new Set();
   var all = [];
-  [].concat(wb, _convVocab, _storyVocab).forEach(function(w) {
+  [].concat(_vocabBankWords, wb, _convVocab, _storyVocab).forEach(function(w) {
     if (w && w.ko && !seen.has(w.ko)) { seen.add(w.ko); all.push(w); }
   });
   return all;
@@ -1843,7 +1888,7 @@ function renderFlashcardFilters() {
   if (!el) return;
   el.innerHTML =
     '<button class="tpill on" onclick="loadFlashcards(\'all\',this)">All</button>'
-    + '<button class="tpill" onclick="loadFlashcards(\'news\',this)">📰 News</button>'
+    + '<button class="tpill" onclick="loadFlashcards(\'news\',this)">📚 Vocab Bank</button>'
     + '<button class="tpill" onclick="loadFlashcards(\'conv\',this)">💬 Conv</button>'
     + '<button class="tpill" onclick="loadFlashcards(\'story\',this)">📖 Story</button>';
 }
@@ -1855,7 +1900,7 @@ function loadFlashcards(cat, btn) {
   var wb = typeof getWordBank === 'function' ? getWordBank() : [];
   var pool;
   if (cat === 'news') {
-    pool = wb;
+    pool = _vocabBankWords.length ? _vocabBankWords : wb;
   } else if (cat === 'conv') {
     pool = _convVocab;
   } else if (cat === 'story') {
@@ -1867,7 +1912,7 @@ function loadFlashcards(cat, btn) {
 
   if (!pool.length && cat !== 'all') {
     document.getElementById('fc-grid').innerHTML =
-      '<div style="font-size:12px;color:#94a3b8;text-align:center;padding:20px">단어 없음 — 관리자에서 AI 생성 후 다시 확인하세요</div>';
+      '<div style="font-size:12px;color:#94a3b8;text-align:center;padding:20px">No words yet — vocab will appear once content is published.</div>';
     return;
   }
   if (!pool.length) {
@@ -2212,12 +2257,146 @@ function setWritingMode(mode) {
   var modeText = document.getElementById('wcf-mode-text');
   if (mode === 'reading') {
     if (modeText) modeText.textContent = 'Read & Write';
-    // 바로 모달 열기 - 소스 선택은 모달 안에서
-    openWritingModal();
+    // Show inline source-picker instead of jumping directly into the modal
+    openReadingSourcePicker();
   } else {
     if (modeText) modeText.textContent = 'Open Writing Room';
   }
 }
+
+function openReadingSourcePicker() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  // Build a lightweight overlay with Article / Conv / Story tabs + dropdown
+  var existing = document.getElementById('rsp-overlay');
+  if (existing) existing.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'rsp-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.8);display:flex;align-items:center;justify-content:center;z-index:1500;padding:16px';
+  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
+
+  overlay.innerHTML =
+    '<div style="background:#fff;border-radius:20px;width:min(520px,96vw);box-shadow:0 28px 80px rgba(0,0,0,.35);overflow:hidden;animation:mIn .2s ease">'
+    + '<div style="background:linear-gradient(135deg,#0d1b2e,#1a3a6b);padding:20px 24px;display:flex;align-items:center;justify-content:space-between">'
+    + '<div><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.5);margin-bottom:4px">Reading & Write</div>'
+    + '<div style="font-size:18px;font-weight:900;color:#fff;font-family:\'Playfair Display\',serif">Choose Your Reading Source</div></div>'
+    + '<button onclick="document.getElementById(\'rsp-overlay\').remove()" style="background:rgba(255,255,255,.12);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer">✕</button>'
+    + '</div>'
+    + '<div style="padding:20px 24px">'
+    + '<div style="display:flex;gap:8px;margin-bottom:16px">'
+    + '<button id="rsp-tab-article" onclick="rspSwitchTab(\'article\')" style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #2255a4;background:#eff6ff;color:#2255a4;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">📰 Article</button>'
+    + '<button id="rsp-tab-conv"    onclick="rspSwitchTab(\'conv\')"    style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">💬 Conversation</button>'
+    + '<button id="rsp-tab-story"   onclick="rspSwitchTab(\'story\')"   style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">📖 Story</button>'
+    + '</div>'
+    + '<select id="rsp-select" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;color:#0f172a;background:#fff;margin-bottom:16px"><option value="">Loading…</option></select>'
+    + '<div id="rsp-preview" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;font-size:13px;color:#334155;line-height:1.7;max-height:140px;overflow-y:auto;margin-bottom:16px"></div>'
+    + '<button onclick="rspStartWriting()" style="width:100%;padding:13px;background:linear-gradient(135deg,#0d1b2e,#2255a4);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Start Writing →</button>'
+    + '</div></div>';
+
+  document.body.appendChild(overlay);
+  rspSwitchTab('article');
+}
+
+var _rspSource = 'article';
+var _rspData   = {};   // { article:[], conv:[], story:[] }
+
+function rspSwitchTab(tab) {
+  _rspSource = tab;
+  ['article','conv','story'].forEach(function(t) {
+    var btn = document.getElementById('rsp-tab-' + t);
+    if (!btn) return;
+    var active = t === tab;
+    btn.style.background     = active ? '#eff6ff' : '#fff';
+    btn.style.borderColor    = active ? '#2255a4' : '#e2e8f0';
+    btn.style.color          = active ? '#2255a4' : '#64748b';
+  });
+  var sel = document.getElementById('rsp-select');
+  var prev = document.getElementById('rsp-preview');
+  if (sel) { sel.innerHTML = '<option value="">Loading…</option>'; }
+  if (prev) prev.style.display = 'none';
+
+  if (_rspData[tab] && _rspData[tab].length) {
+    rspPopulateSelect(tab);
+  } else {
+    rspLoadSource(tab);
+  }
+}
+
+async function rspLoadSource(tab) {
+  var sb = getSupa(); if (!sb) return;
+  try {
+    var sel = document.getElementById('rsp-select'); if (!sel) return;
+    if (tab === 'article') {
+      var { data } = await sb.from('articles_data').select('id,title').eq('status','published').order('created_at',{ascending:false}).limit(40);
+      _rspData.article = (data||[]).map(function(r){ return { id:r.id, title:r.title, body:null }; });
+    } else if (tab === 'conv') {
+      var { data } = await sb.from('conversations_data').select('id,title').order('created_at',{ascending:false}).limit(40);
+      _rspData.conv = (data||[]).map(function(r){ return { id:r.id, title:r.title, body:null }; });
+    } else {
+      var { data } = await sb.from('stories_data').select('id,title').order('created_at',{ascending:false}).limit(40);
+      _rspData.story = (data||[]).map(function(r){ return { id:r.id, title:r.title, body:null }; });
+    }
+    rspPopulateSelect(tab);
+  } catch(e) { console.warn('rspLoadSource error', e); }
+}
+
+function rspPopulateSelect(tab) {
+  var sel = document.getElementById('rsp-select'); if (!sel) return;
+  var items = _rspData[tab] || [];
+  sel.innerHTML = '<option value="">— Select —</option>'
+    + items.map(function(r, i){ return '<option value="' + i + '">' + (r.title||'Untitled') + '</option>'; }).join('');
+  sel.onchange = function() {
+    var idx = parseInt(sel.value);
+    if (isNaN(idx)) { document.getElementById('rsp-preview').style.display='none'; return; }
+    var item = (_rspData[tab]||[])[idx];
+    if (!item) return;
+    _rspSelectedItem = item;
+    rspShowPreview(item);
+  };
+}
+
+var _rspSelectedItem = null;
+
+async function rspShowPreview(item) {
+  var prev = document.getElementById('rsp-preview'); if (!prev) return;
+  if (item.body) { prev.innerHTML = item.body.replace(/\n/g,'<br>').slice(0,400)+'…'; prev.style.display='block'; return; }
+  // Fetch full content
+  try {
+    var sb = getSupa(); if (!sb) return;
+    var table = _rspSource === 'article' ? 'articles_data' : _rspSource === 'conv' ? 'conversations_data' : 'stories_data';
+    var col   = _rspSource === 'article' ? 'body' : 'data';
+    var { data } = await sb.from(table).select(col).eq('id', item.id).single();
+    if (data) {
+      var text = _rspSource === 'article' ? (data.body||'') : JSON.stringify(data.data||{}).slice(0,400);
+      item.body = text;
+      prev.innerHTML = text.replace(/\n/g,'<br>').slice(0,500) + (text.length>500?'…':'');
+      prev.style.display = 'block';
+    }
+  } catch(e) { prev.style.display='none'; }
+}
+
+function rspStartWriting() {
+  if (!_rspSelectedItem) { showToast('Please select a source first.'); return; }
+  var overlay = document.getElementById('rsp-overlay');
+  if (overlay) overlay.remove();
+  // Open the main writing modal in reading mode with the pre-selected item
+  _writingMode = 'reading';
+  _modalReadingBody = _rspSelectedItem.body || '';
+  _modalReadingTitle = _rspSelectedItem.title || '';
+  openWritingModal();
+  // After modal opens, switch to reading mode and show the material
+  setTimeout(function() {
+    switchModalMode('reading');
+    var bodyEl = document.getElementById('wm-article-body');
+    var titleEl = document.getElementById('wm-reading-prompts');
+    if (bodyEl && _modalReadingBody) {
+      bodyEl.innerHTML = '<strong style="color:#1e3a5f">' + _modalReadingTitle + '</strong><br><br>' + _modalReadingBody.replace(/\n/g,'<br>').slice(0,1500) + (_modalReadingBody.length>1500?'…':'');
+    }
+  }, 120);
+}
+
+var _modalReadingBody = '';
+var _modalReadingTitle = '';
 
 // 현재 읽기 소스 ('article' | 'conv' | 'story')
 var _readingSource = 'article';
@@ -2729,33 +2908,37 @@ function getFallbackSentences() {
 function renderBMStep1Loading() {
   document.getElementById('bm-body').innerHTML =
     '<div class="bm-step-label">Step 1 of 4</div>'
-    + '<div class="bm-step-title">문장 읽기</div>'
-    + '<div class="bm-step-desc">AI가 오늘의 이야기를 만들고 있어요 ✨</div>'
+    + '<div class="bm-step-title">Read the Sentences</div>'
+    + '<div class="bm-step-desc">AI is building your learning sentences ✨</div>'
     + '<div style="text-align:center;padding:40px 0;font-size:32px;">⏳</div>';
   document.getElementById('bm-footer').innerHTML =
-    '<button class="bm-btn-next" disabled>다음 단계 →</button>';
+    '<button class="bm-btn-next" disabled>Next Step →</button>';
 }
 
 function renderBMStep1() {
   var sents = _bm.sentences;
   var bodyHTML =
     '<div class="bm-step-label">Step 1 of 4</div>'
-    + '<div class="bm-step-title">📖 문장 읽기</div>'
-    + '<div class="bm-step-desc">아래 한국어 문장들을 소리 내어 읽어보세요. 다음 단계에서 순서를 맞춰야 해요!</div>'
+    + '<div class="bm-step-title">📖 Read the Sentences</div>'
+    + '<div class="bm-step-desc">Read each Korean sentence aloud. You\'ll need to remember them in the next step!</div>'
     + '<div class="bm-sentences">';
 
   sents.forEach(function(s, i) {
+    var safeKo = s.ko.replace(/'/g,"&#39;");
     bodyHTML += '<div class="bm-sentence" id="bm-s' + i + '">'
-      + '<div class="bm-sent-ko"><span class="bm-sent-num">' + (i+1) + '</span>' + s.ko + '</div>'
-      + '<div class="bm-sent-en">' + s.en + '</div>'
+      + '<div style="display:flex;align-items:flex-start;gap:8px">'
+      + '<div style="flex:1"><div class="bm-sent-ko"><span class="bm-sent-num">' + (i+1) + '</span>' + s.ko + '</div>'
+      + '<div class="bm-sent-en">' + s.en + '</div></div>'
+      + '<button onclick="speakKorean(\'' + safeKo + '\')" style="background:none;border:1px solid #e2e8f0;border-radius:8px;padding:5px 9px;cursor:pointer;font-size:16px;flex-shrink:0;color:#64748b;margin-top:2px" aria-label="Read aloud">🔊</button>'
+      + '</div>'
       + '</div>';
   });
   bodyHTML += '</div>';
 
   document.getElementById('bm-body').innerHTML = bodyHTML;
   document.getElementById('bm-footer').innerHTML =
-    '<span style="font-size:13px;color:#94a3b8;flex:1">읽으면서 내용을 기억하세요</span>'
-    + '<button class="bm-btn-next" onclick="goToBMStep2()">순서 맞추기 →</button>';
+    '<span style="font-size:13px;color:#94a3b8;flex:1">Read through and remember the sentences</span>'
+    + '<button class="bm-btn-next" onclick="goToBMStep2()">Build Order →</button>';
 
   // Highlight each sentence briefly
   sents.forEach(function(_, i) {
@@ -2801,9 +2984,9 @@ function renderBMStep2() {
   var s  = _bm.sentences[idx];
 
   var bodyHTML =
-    '<div class="bm-step-label">Step 2 of 4 · 문장 ' + (idx+1) + ' / ' + total + '</div>'
-    + '<div class="bm-step-title">🔀 어절 순서 맞추기</div>'
-    + '<div class="bm-step-desc">영어 해석을 참고해서 어절을 올바른 순서로 배치하세요.</div>'
+    '<div class="bm-step-label">Step 2 of 4 · Sentence ' + (idx+1) + ' / ' + total + '</div>'
+    + '<div class="bm-step-title">🔀 Build the Sentence</div>'
+    + '<div class="bm-step-desc">Use the English hint to put the Korean words in the correct order.</div>'
 
     // 영어 해석 힌트
     + '<div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#1e3a5f;line-height:1.6">'
@@ -2811,16 +2994,16 @@ function renderBMStep2() {
 
     // 선택된 어절 (답안 영역)
     + '<div style="margin-bottom:16px">'
-    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">내 답안</div>'
+    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Your Answer</div>'
     + '<div id="bm-answer-zone" style="min-height:52px;border:2px dashed #bfdbfe;border-radius:14px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#f8fbff;">'
     + (wo.selected.length ? wo.selected.map(function(w, i) {
         return '<button class="bm-word-chip bm-word-selected" onclick="bmDeselectWord(' + idx + ',' + i + ')">' + w + ' ×</button>';
-      }).join('') : '<span style="font-size:12px;color:#cbd5e1">어절을 아래에서 선택하세요</span>')
+      }).join('') : '<span style="font-size:12px;color:#cbd5e1">Select words from below to build the sentence</span>')
     + '</div></div>'
 
     // 섞인 어절 선택지
     + '<div>'
-    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">어절 선택</div>'
+    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Word Choices</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:8px;">'
     + wo.shuffled.map(function(w, i) {
         var used = wo.selected.indexOf(w) !== -1;
@@ -2836,9 +3019,9 @@ function renderBMStep2() {
 
   var allSelected = wo.selected.length === wo.original.length;
   document.getElementById('bm-footer').innerHTML =
-    '<button class="bm-btn-back" onclick="goToBMStep1Back()">← 읽기</button>'
-    + '<button class="bm-btn-back" onclick="bmClearAnswer(' + idx + ')" style="margin-right:auto">🔄 초기화</button>'
-    + '<button class="bm-btn-next" ' + (allSelected ? '' : 'disabled') + ' onclick="checkBMWordOrder()">확인</button>';
+    '<button class="bm-btn-back" onclick="goToBMStep1Back()">← Read</button>'
+    + '<button class="bm-btn-back" onclick="bmClearAnswer(' + idx + ')" style="margin-right:auto">🔄 Reset</button>'
+    + '<button class="bm-btn-next" ' + (allSelected ? '' : 'disabled') + ' onclick="checkBMWordOrder()">Check ✓</button>';
 }
 
 function bmSelectWord(sentIdx, wordPos) {
@@ -2877,20 +3060,44 @@ function checkBMWordOrder() {
     ansZone.style.background = isCorrect ? '#f0fdf4' : '#fef2f2';
   }
 
-  // 정답 문장 표시 (오답 시)
+  // Smart feedback
   var fb = document.createElement('div');
   fb.className = 'bm-feedback ' + (isCorrect ? 'correct' : 'wrong');
-  fb.innerHTML =
-    '<div class="bm-feedback-emoji">' + (isCorrect ? '🎉' : '🔍') + '</div>'
-    + '<div class="bm-feedback-msg" style="color:' + (isCorrect ? '#15803d' : '#dc2626') + '">'
-    + (isCorrect ? '완벽해요!' : '정답: ' + wo.original.join(' ')) + '</div>';
+  if (isCorrect) {
+    fb.innerHTML = '<div class="bm-feedback-emoji">🎉</div>'
+      + '<div class="bm-feedback-msg" style="color:#15803d">Perfect!</div>'
+      + '<div style="font-size:13px;color:#15803d;margin-top:4px">Great job — the word order is exactly right.</div>';
+  } else {
+    var sel = wo.selected;
+    var orig = wo.original;
+    var hint = '';
+    // Detect common mistake types
+    var lastOrig = orig[orig.length - 1];
+    var lastSel  = sel[sel.length - 1];
+    var verbEndings = ['요','다','어','아','죠','네','해','가','나'];
+    var isVerbEnd = lastOrig && verbEndings.some(function(e){ return lastOrig.endsWith(e); });
+    if (isVerbEnd && lastSel !== lastOrig) {
+      hint = 'In Korean, the verb always comes at the end of the sentence. Make sure ' + lastOrig + ' is placed last.';
+    } else if (orig[0] !== sel[0]) {
+      hint = 'The topic or subject usually comes first. Try starting with "' + orig[0] + '".';
+    } else if (sel.length === orig.length) {
+      // Same words, wrong middle order
+      var firstWrong = orig.findIndex(function(w, i){ return w !== sel[i]; });
+      if (firstWrong >= 0) hint = 'Your first ' + firstWrong + ' word' + (firstWrong===1?'':'s') + ' ' + (firstWrong===1?'is':'are') + ' correct — the order breaks at position ' + (firstWrong+1) + '. In Korean, time expressions and adverbs come before the verb.';
+    }
+    if (!hint) hint = 'Remember: Korean sentence order is Subject → Object → Verb. Particles (은/는/이/가/을/를) stay attached to their word.';
+    fb.innerHTML = '<div class="bm-feedback-emoji">🔍</div>'
+      + '<div class="bm-feedback-msg" style="color:#dc2626">Not quite — let\'s see why</div>'
+      + '<div style="font-size:13px;color:#7f1d1d;margin:6px 0 4px;line-height:1.6">' + hint + '</div>'
+      + '<div style="font-size:12px;font-weight:700;color:#dc2626;margin-top:6px">Correct order: <span style="font-family:\'Noto Sans KR\',sans-serif">' + orig.join(' ') + '</span></div>';
+  }
   bodyEl.appendChild(fb);
 
   var isLast = idx + 1 >= _bm.wordOrders.length;
   document.getElementById('bm-footer').innerHTML =
     (isLast
-      ? '<button class="bm-btn-next" onclick="finishBMWordOrders()">빈칸 채우기 →</button>'
-      : '<button class="bm-btn-next" onclick="bmNextWordOrder()">다음 문장 →</button>');
+      ? '<button class="bm-btn-next" onclick="finishBMWordOrders()">Fill Blanks →</button>'
+      : '<button class="bm-btn-next" onclick="bmNextWordOrder()">Next Sentence →</button>');
 }
 
 function bmNextWordOrder() {
@@ -2956,8 +3163,8 @@ function buildBMBlanks() {
 function renderBMStep3() {
   var bodyHTML =
     '<div class="bm-step-label">Step 3 of 4</div>'
-    + '<div class="bm-step-title">✏️ 빈칸 채우기</div>'
-    + '<div class="bm-step-desc">각 문장의 빈칸에 알맞은 단어를 선택하세요.</div>'
+    + '<div class="bm-step-title">✏️ Fill in the Blanks</div>'
+    + '<div class="bm-step-desc">Choose the correct word to complete each sentence.</div>'
     + '<div class="bm-blank-list" id="bm-blank-list">';
 
   _bm.blanks.forEach(function(b, i) {
@@ -2979,8 +3186,8 @@ function renderBMStep3() {
 
   document.getElementById('bm-body').innerHTML = bodyHTML;
   document.getElementById('bm-footer').innerHTML =
-    '<span style="font-size:13px;color:#94a3b8;flex:1" id="bm-blank-progress">0 / ' + _bm.blanks.filter(function(b){return b.answer;}).length + ' 완료</span>'
-    + '<button class="bm-btn-next" id="bm-blank-next-btn" disabled onclick="goToBMStep4()">작문하기 →</button>';
+    '<span style="font-size:13px;color:#94a3b8;flex:1" id="bm-blank-progress">0 / ' + _bm.blanks.filter(function(b){return b.answer;}).length + ' done</span>'
+    + '<button class="bm-btn-next" id="bm-blank-next-btn" disabled onclick="goToBMStep4()">Write →</button>';
 }
 
 function selectBMChoice(sentIdx, word) {
@@ -3025,7 +3232,7 @@ function selectBMChoice(sentIdx, word) {
   var validBlanks = _bm.blanks.filter(function(bb){ return bb.answer; });
   var filledCount = validBlanks.filter(function(bb){ return bb.filled !== null; }).length;
   var prog = document.getElementById('bm-blank-progress');
-  if (prog) prog.textContent = filledCount + ' / ' + validBlanks.length + ' 완료';
+  if (prog) prog.textContent = filledCount + ' / ' + validBlanks.length + ' done';
   if (filledCount >= validBlanks.length) {
     var correctCount = validBlanks.filter(function(bb){ return bb.correct; }).length;
     _bm.score.blank = Math.round(correctCount / validBlanks.length * 100);
@@ -3041,56 +3248,161 @@ function goToBMStep4() {
   renderBMStep4();
 }
 
-function renderBMStep4() {
+function renderBMStep4(mode) {
+  // mode: undefined = pick screen, 'free' = free write, 'transform' = sentence transformation
+  if (!mode) {
+    // Show mode selection screen
+    document.getElementById('bm-body').innerHTML =
+      '<div class="bm-step-label">Step 4 of 4</div>'
+      + '<div class="bm-step-title">📝 Writing Practice</div>'
+      + '<div class="bm-step-desc" style="margin-bottom:24px">How would you like to write today? Choose a path:</div>'
+      + '<div style="display:flex;flex-direction:column;gap:12px">'
+      + '<div onclick="renderBMStep4(\'free\')" style="border:2px solid #e2e8f0;border-radius:16px;padding:18px 20px;cursor:pointer;transition:all .15s;background:#fff" onmouseover="this.style.borderColor=\'#2255a4\';this.style.background=\'#eff6ff\'" onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.background=\'#fff\'">'
+      + '<div style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:4px">✍️ Free Writing</div>'
+      + '<div style="font-size:13px;color:#64748b">Write freely about today\'s topic using the sentences as inspiration.</div>'
+      + '</div>'
+      + '<div onclick="renderBMStep4(\'transform\')" style="border:2px solid #e2e8f0;border-radius:16px;padding:18px 20px;cursor:pointer;transition:all .15s;background:#fff" onmouseover="this.style.borderColor=\'#7c3aed\';this.style.background=\'#faf5ff\'" onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.background=\'#fff\'">'
+      + '<div style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:4px">🔄 Sentence Transformation</div>'
+      + '<div style="font-size:13px;color:#64748b">Click a sentence to load it, then rewrite it in your own way using the word bank.</div>'
+      + '</div>'
+      + '</div>';
+    document.getElementById('bm-footer').innerHTML =
+      '<button class="bm-btn-back" onclick="goToBMStep3Back()">← Fill Blanks</button>'
+      + '<span style="font-size:13px;color:#94a3b8;flex:1;text-align:right">Choose a writing style above</span>';
+    return;
+  }
+
   var refHTML = _bm.sentences.map(function(s, i) {
+    if (mode === 'transform') {
+      var safeKo = s.ko.replace(/'/g,"&#39;");
+      return '<div class="bm-ref-sent" onclick="bmLoadTransform(\'' + safeKo + '\')" style="cursor:pointer;padding:8px 10px;border-radius:10px;border:1.5px solid #e2e8f0;margin-bottom:6px;transition:all .15s" onmouseover="this.style.borderColor=\'#7c3aed\';this.style.background=\'#faf5ff\'" onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.background=\'\'"><span style="font-size:11px;font-weight:800;color:#7c3aed;margin-right:6px">Click to use</span><b>' + (i+1) + '.</b> ' + s.ko + ' <span style="color:#94a3b8;font-size:12px">(' + s.en + ')</span></div>';
+    }
     return '<div class="bm-ref-sent"><b>' + (i+1) + '.</b> ' + s.ko + ' <span style="color:#94a3b8;font-size:12px">(' + s.en + ')</span></div>';
   }).join('');
 
+  // Build a word bank from all sentence words for transformation mode
+  var wordBankHTML = '';
+  if (mode === 'transform') {
+    var allWords = [];
+    _bm.sentences.forEach(function(s) {
+      s.ko.replace(/[.!?]/g,'').split(/\s+/).forEach(function(w) {
+        if (w && allWords.indexOf(w) === -1) allWords.push(w);
+      });
+    });
+    wordBankHTML = '<div style="margin-bottom:14px">'
+      + '<div class="bm-step4-ref-title" style="color:#7c3aed">🗂 Word Bank — click to insert</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
+      + allWords.map(function(w) {
+          return '<button onclick="bmInsertWord(\'' + w.replace(/'/g,"&#39;") + '\')" style="padding:5px 12px;border:1.5px solid #e9d5ff;border-radius:20px;background:#faf5ff;color:#7c3aed;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.background=\'#ede9fe\'" onmouseout="this.style.background=\'#faf5ff\'">' + w + '</button>';
+        }).join('')
+      + '</div></div>';
+  }
+
+  var title  = mode === 'free' ? '✍️ Free Writing' : '🔄 Sentence Transformation';
+  var desc   = mode === 'free'
+    ? 'Write freely about today\'s topic: <b>' + (_todayTopic ? (_todayTopic.topic_en || _todayTopic.topic_ko || '') : '') + '</b>'
+    : 'Click a sentence above to load it into the editor, then rewrite it in your own way.';
+  var ph     = mode === 'free'
+    ? 'Write in Korean freely…\n\nYou can use the sentences above as inspiration.'
+    : 'Click a sentence above to load it here, then transform it in your own style…';
+
   var bodyHTML =
-    '<div class="bm-step-label">Step 4 of 4</div>'
-    + '<div class="bm-step-title">📝 자유 작문</div>'
-    + '<div class="bm-step-desc">위에서 배운 문장을 참고해서 비슷한 내용을 내 말로 써보세요. 오늘 주제: <b>' + (_todayTopic ? (_todayTopic.topic_ko||'') : '') + '</b></div>'
+    '<div class="bm-step-label">Step 4 of 4 · ' + (mode === 'free' ? 'Free Writing' : 'Sentence Transformation') + '</div>'
+    + '<div class="bm-step-title">' + title + '</div>'
+    + '<div class="bm-step-desc">' + desc + '</div>'
     + '<div class="bm-step4-ref">'
-    + '<div class="bm-step4-ref-title">📖 참고 문장</div>'
+    + '<div class="bm-step4-ref-title">📖 Reference Sentences' + (mode === 'transform' ? ' — tap to load' : '') + '</div>'
     + refHTML
     + '</div>'
-    + '<textarea class="bm-write-area" id="bm-write-area" placeholder="한국어로 자유롭게 써보세요…&#10;&#10;예) 저는 오늘 ~에 가요. 친구와 함께 ~해요." oninput="document.getElementById(\'bm-wc\').textContent=this.value.length+\' 자\'"></textarea>'
-    + '<div class="bm-wc" id="bm-wc">0 자</div>';
+    + wordBankHTML
+    + '<textarea class="bm-write-area" id="bm-write-area" placeholder="' + ph + '" oninput="document.getElementById(\'bm-wc\').textContent=this.value.length+\' chars\'"></textarea>'
+    + '<div class="bm-wc" id="bm-wc">0 chars</div>'
+    + '<div style="margin-top:10px;padding:10px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;font-size:12px;color:#0369a1;line-height:1.6">'
+    + '📬 Your writing will be reviewed within 24 hours by <b>Han</b>, your personal Korean tutor. Feedback will appear in your inbox.'
+    + '</div>';
 
   document.getElementById('bm-body').innerHTML = bodyHTML;
   document.getElementById('bm-footer').innerHTML =
-    '<button class="bm-btn-back" onclick="goToBMStep3Back()">← 빈칸 채우기</button>'
-    + '<button class="bm-btn-next" onclick="finishBeginner()">완료 🎉</button>';
+    '<button class="bm-btn-back" onclick="renderBMStep4()">← Back</button>'
+    + '<button class="bm-btn-next" onclick="finishBeginner()">Finish 🎉</button>';
+}
 }
 
 function goToBMStep3Back() { _bm.step = 3; updateBMHeader(); renderBMStep3(); }
+
+function bmLoadTransform(koText) {
+  var ta = document.getElementById('bm-write-area');
+  if (!ta) return;
+  ta.value = koText;
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+  var wc = document.getElementById('bm-wc');
+  if (wc) wc.textContent = ta.value.length + ' chars';
+}
+
+function bmInsertWord(word) {
+  var ta = document.getElementById('bm-write-area');
+  if (!ta) return;
+  var pos = ta.selectionStart || ta.value.length;
+  var before = ta.value.slice(0, pos);
+  var after  = ta.value.slice(pos);
+  var sep = before && !before.endsWith(' ') ? ' ' : '';
+  ta.value = before + sep + word + ' ' + after;
+  var newPos = pos + sep.length + word.length + 1;
+  ta.focus();
+  ta.setSelectionRange(newPos, newPos);
+  var wc = document.getElementById('bm-wc');
+  if (wc) wc.textContent = ta.value.length + ' chars';
+}
 
 function finishBeginner() {
   var writeArea = document.getElementById('bm-write-area');
   _bm.writing = writeArea ? writeArea.value : '';
   var charCount = _bm.writing.trim().length;
+
+  // Score excludes writing — only word order + fill blanks count
   var totalScore = Math.round((_bm.score.order + _bm.score.blank) / 2);
-  var emoji = totalScore >= 80 ? '🏆' : totalScore >= 60 ? '⭐' : '💪';
-  var msg = charCount < 20
-    ? '다음엔 더 길게 써봐요! 지금도 잘 했어요 👍'
-    : charCount < 60 ? '훌륭해요! 점점 늘고 있어요 🌱' : '대단해요! 실력이 쑥쑥 자라고 있어요 🌳';
+  var emoji, headline, sub;
+  if (totalScore >= 90) {
+    emoji = '🌟'; headline = 'Excellent — impressive work!';
+    sub = 'You really nailed it. Your accuracy is outstanding.';
+  } else if (totalScore >= 80) {
+    emoji = '🏆'; headline = 'Well done!';
+    sub = 'Strong performance. A little more practice and you\'ll ace it every time.';
+  } else if (totalScore >= 50) {
+    emoji = '⭐'; headline = 'Not bad at all!';
+    sub = 'Solid effort — you got more than half right. Keep going and it\'ll click.';
+  } else {
+    emoji = '💪'; headline = 'Keep at it!';
+    sub = 'Every attempt makes you stronger. Try again to improve your score.';
+  }
 
   document.getElementById('bm-body').innerHTML =
     '<div class="bm-result">'
     + '<div class="bm-result-emoji">' + emoji + '</div>'
-    + '<div class="bm-result-score">' + totalScore + '점</div>'
-    + '<div style="display:flex;gap:16px;justify-content:center;margin:10px 0 16px">'
-    + '<div style="text-align:center"><div style="font-size:22px;font-weight:900;color:#2255a4">' + _bm.score.order + '%</div><div style="font-size:11px;color:#94a3b8">순서 맞추기</div></div>'
-    + '<div style="text-align:center"><div style="font-size:22px;font-weight:900;color:#7c3aed">' + _bm.score.blank + '%</div><div style="font-size:11px;color:#94a3b8">빈칸 채우기</div></div>'
-    + '<div style="text-align:center"><div style="font-size:22px;font-weight:900;color:#16a34a">' + charCount + '</div><div style="font-size:11px;color:#94a3b8">글자 수</div></div>'
+    + '<div class="bm-result-score">' + totalScore + '%</div>'
+    + '<div style="font-size:17px;font-weight:800;color:#0f172a;margin-bottom:6px">' + headline + '</div>'
+    + '<div class="bm-result-msg">' + sub + '</div>'
+    + '<div style="display:flex;gap:16px;justify-content:center;margin:16px 0">'
+    + '<div style="text-align:center;background:#f0f7ff;border-radius:12px;padding:12px 18px">'
+    + '<div style="font-size:22px;font-weight:900;color:#2255a4">' + _bm.score.order + '%</div>'
+    + '<div style="font-size:11px;color:#94a3b8;margin-top:2px">Word Order</div></div>'
+    + '<div style="text-align:center;background:#faf5ff;border-radius:12px;padding:12px 18px">'
+    + '<div style="font-size:22px;font-weight:900;color:#7c3aed">' + _bm.score.blank + '%</div>'
+    + '<div style="font-size:11px;color:#94a3b8;margin-top:2px">Fill Blanks</div></div>'
     + '</div>'
-    + '<div class="bm-result-msg">' + msg + '</div>'
-    + (_bm.writing.trim() ? '<div style="background:#f8fafc;border-radius:12px;padding:14px 16px;text-align:left;border:1px solid #e2e8f0;font-family:\'Noto Sans KR\',sans-serif;font-size:14px;line-height:1.8;color:#0f172a">' + _bm.writing.replace(/\n/g,'<br>') + '</div>' : '')
+    + (_bm.writing.trim()
+        ? '<div style="text-align:left;margin-top:4px">'
+          + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">Your Writing</div>'
+          + '<div style="background:#f8fafc;border-radius:12px;padding:14px 16px;border:1px solid #e2e8f0;font-family:\'Noto Sans KR\',sans-serif;font-size:14px;line-height:1.8;color:#0f172a">' + _bm.writing.replace(/\n/g,'<br>') + '</div>'
+          + '<div style="margin-top:8px;font-size:12px;color:#0369a1;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px 12px">📬 Han will review your writing and send feedback within 24 hours.</div>'
+          + '</div>'
+        : '')
     + '</div>';
 
   document.getElementById('bm-footer').innerHTML =
-    '<button class="bm-btn-back" onclick="closeBModal()">닫기</button>'
-    + '<button class="bm-btn-next" onclick="retryBeginner()">다시 도전</button>';
+    '<button class="bm-btn-back" onclick="closeBModal()">Close</button>'
+    + '<button class="bm-btn-next" onclick="retryBeginner()">Try Again</button>';
 
   // XP 적립
   if (typeof addXP === 'function') addXP(30);
