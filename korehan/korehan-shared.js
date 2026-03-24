@@ -5646,7 +5646,8 @@ function enhanceArticleMobile() {
     function showTab(name) {
       tabs.querySelectorAll('button').forEach(function(btn){ btn.classList.toggle('on', btn.getAttribute('data-target')===name); });
       readTargets.forEach(function(el){ el.classList.toggle('mobile-hidden', name !== 'read'); });
-      if (grammarTarget) grammarTarget.classList.toggle('mobile-hidden', name !== 'grammar');
+      // grammarTarget starts with inline display:none — must use style.display, not mobile-hidden class
+      if (grammarTarget) grammarTarget.style.display = (name === 'grammar') ? 'block' : 'none';
       if (vocabTarget) vocabTarget.classList.toggle('mobile-hidden', name !== 'vocab');
       if (quizTarget) quizTarget.classList.toggle('mobile-hidden', name !== 'quiz');
       if (name === 'grammar') loadGrammarGuide();
@@ -5659,25 +5660,6 @@ function enhanceArticleMobile() {
     showTab('read');
   }
 
-  var sticky = document.createElement('div');
-  sticky.className = 'mobile-sticky-study';
-  sticky.innerHTML = '<a href="korehan-study-room.html">Study this article →</a>';
-  document.body.appendChild(sticky);
-
-  var lead = article.querySelector('.art-lead');
-  if (lead && !article.querySelector('.mobile-tier-card')) {
-    var card = document.createElement('section');
-    card.className = 'mobile-tier-card';
-    card.innerHTML = ''
-      + '<div class="mobile-eyebrow">Article study</div>'
-      + '<h3 style="font-size:24px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">Read first. Then review grammar and quiz.</h3>'
-      + '<p class="mobile-quick-sub">Keep the reading flow simple on mobile. Open translation only when you need it, save a few words, then jump to review.</p>'
-      + '<div class="mobile-action-row">'
-      + '<a class="mobile-primary-btn" href="javascript:void(0)" onclick="toggleTranslate()">' + khIcon('languages', 'Toggle translation', 'kh-ui-icon-sm') + '</a>'
-      + '<a class="mobile-secondary-btn" href="korehan-study-room.html">' + khIcon('notebook-pen', 'Writing practice', 'kh-ui-icon-sm') + '</a>'
-      + '</div>';
-    article.insertAdjacentElement('afterbegin', card);
-  }
 }
 
 function enhanceConversationsMobile() {
