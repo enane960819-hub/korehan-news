@@ -24,7 +24,7 @@
 .sc:hover{transform:translateY(-4px);box-shadow:0 20px 48px rgba(15,23,42,.12);}
 .sc-thumb{height:110px;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;}
 .sc-mood-badge{position:absolute;top:10px;left:12px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;padding:3px 8px;border-radius:3px;color:#fff;}
-.sc-emoji{font-size:40px;}
+.sc-icon-wrap{display:flex;align-items:center;justify-content:center;}
 .sc-body{padding:16px 18px;flex:1;display:flex;flex-direction:column;}
 .sc-title{font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;color:#0f172a;margin:0 0 6px;line-height:1.4;}
 .sc-title-en{font-size:12px;color:#64748b;margin:0 0 8px;font-style:italic;}
@@ -54,7 +54,7 @@
 .st-left{background:#fff;display:flex;flex-direction:column;}
 .st-left-head{padding:0;position:relative;}
 .st-head-banner{height:120px;display:flex;align-items:center;justify-content:center;position:relative;}
-.st-head-emoji{font-size:48px;}
+.st-head-icon{display:flex;align-items:center;justify-content:center;}
 .st-head-info{padding:20px 24px 16px;}
 .st-head-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
 .st-head-title{font-family:'Noto Serif KR',serif;font-size:20px;font-weight:900;color:#0f172a;margin:0 0 4px;line-height:1.35;}
@@ -115,15 +115,15 @@
   </div>
   <div class="st-filter-bar" id="mood-pills">
     <button class="sf-pill on" data-mood="all">All</button>
-    <button class="sf-pill" data-mood="fun">😂 Fun</button>
-    <button class="sf-pill" data-mood="touching">🥹 Touching</button>
-    <button class="sf-pill" data-mood="scary">😱 Scary</button>
-    <button class="sf-pill" data-mood="shocking">😮 Shocking</button>
+    <button class="sf-pill" data-mood="fun">Fun</button>
+    <button class="sf-pill" data-mood="touching">Touching</button>
+    <button class="sf-pill" data-mood="scary">Scary</button>
+    <button class="sf-pill" data-mood="shocking">Shocking</button>
     <div class="sf-sep"></div>
     <button class="sf-pill on" data-lvl="all">All Levels</button>
-    <button class="sf-pill" data-lvl="b">🟢 Beginner</button>
-    <button class="sf-pill" data-lvl="i">🟡 Intermediate</button>
-    <button class="sf-pill" data-lvl="a">🔴 Advanced</button>
+    <button class="sf-pill" data-lvl="b">Beginner</button>
+    <button class="sf-pill" data-lvl="i">Intermediate</button>
+    <button class="sf-pill" data-lvl="a">Advanced</button>
   </div>
 </div>
 
@@ -655,6 +655,9 @@ const MOOD_BG     = {fun:'mood-fun',touching:'mood-touching',scary:'mood-scary',
 const MOOD_PILL   = {fun:'st-pill-amber',touching:'st-pill-pink',scary:'st-pill-purple',shocking:'st-pill-red'};
 const LVL_LABEL   = {b:'Beginner',i:'Intermediate',a:'Advanced'};
 const LVL_PILL    = {b:'st-pill-purple',i:'st-pill-gray',a:'st-pill-red'};
+// Banner icon map — edit here to change icons for each mood. Each story can also
+// override with its own banner_icon field (a Lucide icon name).
+const MOOD_ICONS  = {fun:'sparkles',touching:'heart',scary:'zap',shocking:'flame'};
 
 function renderStories(moodF, lvlF) {
   var grid = document.getElementById('st-grid');
@@ -667,10 +670,12 @@ function renderStories(moodF, lvlF) {
   }
   grid.innerHTML = list.map(function(s) {
     var author = resolveStoryAuthor(s);
+    var iconName = s.banner_icon || MOOD_ICONS[s.mood] || 'book-open';
+    var iconColor = MOOD_COLORS[s.mood] || '#7c3aed';
     return '<div class="sc" onclick="openStory(' + s.id + ')">'
       + '<div class="sc-thumb ' + MOOD_BG[s.mood] + '">'
-        + '<span class="sc-mood-badge" style="background:' + MOOD_COLORS[s.mood] + '">' + s.mood.toUpperCase() + '</span>'
-        + '<span class="sc-emoji">' + s.avi + '</span>'
+        + '<span class="sc-mood-badge" style="background:' + iconColor + '">' + s.mood.toUpperCase() + '</span>'
+        + '<span class="sc-icon-wrap"><i data-lucide="' + iconName + '" style="width:36px;height:36px;color:' + iconColor + ';opacity:.85" aria-hidden="true"></i></span>'
       + '</div>'
       + '<div class="sc-body">'
         + '<div class="sc-title">' + escapeHtml(s.title || '') + '</div>'
@@ -678,12 +683,13 @@ function renderStories(moodF, lvlF) {
         + '<div class="sc-preview">' + escapeHtml(s.preview || '') + '</div>'
         + (author ? '<div class="sc-author">' + renderCharacterAvatar(author, 'kh-character-avatar', 34) + '<div class="sc-author-copy"><strong>' + characterDisplayName(author) + '</strong><span>' + escapeHtml(author.role || '') + '</span></div></div>' : '')
         + '<div class="sc-foot">'
-          + '<span class="sc-meta">📖 ' + s.readTime + ' · ' + LVL_LABEL[s.lvl] + '</span>'
+          + '<span class="sc-meta">' + s.readTime + ' · ' + LVL_LABEL[s.lvl] + '</span>'
           + '<button class="sc-open">Read →</button>'
         + '</div>'
       + '</div>'
     + '</div>';
   }).join('');
+  if (window.renderKhLucideIcons) renderKhLucideIcons();
 }
 
 function openStory(id) {
@@ -736,7 +742,7 @@ function openStory(id) {
       + '<div class="st-left-head">'
         + '<div class="st-head-banner ' + headBannerClass + '">'
           + '<button class="st-close" onclick="closeSt()">✕</button>'
-          + '<span class="st-head-emoji">' + s.avi + '</span>'
+          + '<span class="st-head-icon"><i data-lucide="' + (s.banner_icon || MOOD_ICONS[s.mood] || 'book-open') + '" style="width:44px;height:44px;color:#fff;opacity:.92" aria-hidden="true"></i></span>'
         + '</div>'
         + '<div class="st-head-info">'
           + '<div class="st-head-label" style="color:' + MOOD_COLORS[s.mood] + '">' + s.mood.toUpperCase() + ' STORY</div>'
@@ -771,6 +777,7 @@ function openStory(id) {
   document.getElementById('st-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 
+  if (window.renderKhLucideIcons) renderKhLucideIcons();
   // 저장된 단어 상태 복원
   if (typeof restoreSaveButtons === 'function') restoreSaveButtons('st-overlay');
 }
@@ -800,16 +807,22 @@ async function toggleStorySave(btn, ko, rom, en) {
 var activeMood = 'all', activeLvl = 'all';
 
 async function loadStoriesFromDB() {
+  var grid = document.getElementById('st-grid');
   try {
     var sb = typeof getSupa === 'function' ? getSupa() : null;
     if (!sb) return;
     var { data, error } = await sb.from('stories_data').select('*').order('created_at', {ascending: false}).limit(60);
-    if (error || !data || !data.length) return;
+    if (error) { console.warn('Stories DB error:', error.message || error); return; }
+    if (!data || !data.length) return;
     var dbStories = data.map(function(row) {
-      var story = row.data || row;
-      if (!story) return story;
+      // data column may be stored as JSONB (object) or TEXT (string) — handle both
+      var d = row.data;
+      if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e) { d = null; } }
+      var story = d || row;
+      if (!story || !story.title) return null;
       return Object.assign({}, story, {
-        author_slug: story.author_slug || pickCharacterSlug(String(story.id || story.title || row.id) + '-story')
+        id: story.id || row.id,
+        author_slug: story.author_slug || (typeof pickCharacterSlug === 'function' ? pickCharacterSlug(String(story.id || story.title || row.id) + '-story') : '')
       });
     }).filter(Boolean);
     var hardTitles = new Set(STORIES.map(function(s){ return s.title; }));
@@ -818,7 +831,7 @@ async function loadStoriesFromDB() {
       STORIES.unshift.apply(STORIES, newStories);
       renderStories(activeMood, activeLvl);
     }
-  } catch(e) { /* silently ignore */ }
+  } catch(e) { console.warn('loadStoriesFromDB failed:', e.message || e); }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
