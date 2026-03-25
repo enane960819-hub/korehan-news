@@ -217,17 +217,24 @@ async function getFromCache(contentType, contentId, cacheKey) {
 }
 
 async function upsertArticleCacheRow(articleId, patch) {
+  if (_remoteCacheDisabled) return;
   try {
     var sb = getSupa();
     if (!sb) return;
-    var base = { article_id: String(articleId), translation: null, vocab: null, grammar: null, quiz: null };
     var existing = await sb.from('article_cache')
-      .select('article_id, translation, vocab, grammar, quiz')
+      .select('article_id')
       .eq('article_id', String(articleId))
       .maybeSingle();
-    if (existing && existing.data) base = Object.assign(base, existing.data);
-    await sb.from('article_cache').upsert(Object.assign(base, patch || {}, { article_id: String(articleId) }), { onConflict: 'article_id' });
-  } catch(e) {}
+    if (existing && existing.data) {
+      await sb.from('article_cache').update(patch || {}).eq('article_id', String(articleId));
+    } else {
+      var row = Object.assign({ article_id: String(articleId) }, patch || {});
+      await sb.from('article_cache').insert(row);
+    }
+  } catch(e) {
+    var msg = String((e && e.message) || e || '');
+    if (/40[013]/.test(msg) || /unauthorized|forbidden|permission/i.test(msg)) _remoteCacheDisabled = true;
+  }
 }
 
 // Conv/Story 데이터에 캐시 병합 (vocab/grammar 없을 때만)
@@ -2152,11 +2159,80 @@ function renderArticlePage() {
     checkBookmarkState(articleId);
     if (supaUser) {
       markArticleRead(articleId, articleTitle, articleSection, articleLevel);
+      // 캐시 없는 기사: 첫 방문 유저가 자동으로 전체 캐시 생성 (공유 캐시)
+      _bgPregenArticleCache(a);
     } else if (attempts < 20) {
       setTimeout(waitAndUpdate, 300);
     }
   }
   setTimeout(waitAndUpdate, 300);
+}
+
+// 로그인 유저가 기사 열 때, 캐시 없으면 백그라운드 자동 생성 → 모든 유저가 공유
+async function _bgPregenArticleCache(a) {
+  if (!supaUser || _remoteCacheDisabled) return;
+  try {
+    var cached = await getFromCache('article', a.id, 'ai_analysis');
+    // translation/vocab/grammar/quiz 중 하나라도 있으면 이미 캐시 있음
+    if (cached && (cached.translation || (cached.vocab && cached.vocab.length) || (cached.grammar && cached.grammar.length) || cached.quiz)) return;
+    // quiz만 따로 확인
+    var quizCached = await getFromCache('article', a.id, 'fill_intermediate');
+    if (quizCached && quizCached.questions && quizCached.questions.length) return;
+  } catch(e) { return; }
+
+  // 캐시 완전 비어있음 → 백그라운드 생성 시작
+  var _body  = a.body  || '';
+  var _title = a.title || '';
+  var _level = a.level || 'Intermediate';
+  var _patch = {};
+
+  async function _call(instr, maxTok) {
+    try {
+      var r = await callClaude({
+        feature: 'bg-cache', model: 'claude-haiku-4-5-20251001', max_tokens: maxTok,
+        messages: [{ role: 'user', content: 'Korean article (level: ' + _level + ')\nTitle: ' + _title + '\n\n' + _body.slice(0, 1200) + '\n\n---\n' + instr }]
+      });
+      return (r && r.content && r.content[0] && r.content[0].text) || '';
+    } catch(e) { return ''; }
+  }
+
+  function _json(text) {
+    try {
+      var ai = text.indexOf('['), bi = text.lastIndexOf(']');
+      var oi = text.indexOf('{'), ei = text.lastIndexOf('}');
+      if (ai >= 0 && bi > ai && (oi < 0 || ai < oi)) return JSON.parse(text.slice(ai, bi+1));
+      if (oi >= 0 && ei > oi) return JSON.parse(text.slice(oi, ei+1));
+    } catch(e) {}
+    return null;
+  }
+
+  try {
+    var t = await _call('Translate each paragraph into English. Return ONLY a JSON array of strings, one per paragraph. No other text.', 800);
+    var ta = _json(t);
+    if (ta) _patch.translation = JSON.stringify({ texts: Array.isArray(ta) ? ta : [ta] });
+  } catch(e) {}
+
+  try {
+    var v = await _call('List 8 key vocabulary words. Return ONLY a JSON array. Each: {"word":"Korean","reading":"romanization","meaning":"English"}. No other text.', 800);
+    var va = _json(v);
+    if (va) _patch.vocab = JSON.stringify(va);
+  } catch(e) {}
+
+  try {
+    var g = await _call('Find 3 grammar patterns. Return ONLY: {"patterns":[{"name":"KO+romanization","level":"Starter|Beginner|Intermediate|Advanced","exp":"explanation","ex_ko":"sentence","ex_en":"translation"}]}. No other text.', 900);
+    var ga = _json(g);
+    if (ga && ga.patterns) _patch.grammar = JSON.stringify(ga);
+  } catch(e) {}
+
+  try {
+    var q = await _call('Create 10 fill-in-the-blank questions. Return ONLY: {"questions":[{"sentence":"Korean with _____","sentence_en":"English with _____","blank":"answer","blank_en":"meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.', 2000);
+    var qa = _json(q);
+    if (qa && qa.questions) _patch.quiz = JSON.stringify(qa);
+  } catch(e) {}
+
+  if (Object.keys(_patch).length > 0) {
+    await upsertArticleCacheRow(a.id, _patch);
+  }
 }
 
 function formatArticleBody(text) {

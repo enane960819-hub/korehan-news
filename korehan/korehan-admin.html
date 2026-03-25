@@ -3101,24 +3101,31 @@ async function genCache(articleId) {
   } catch(e) { console.warn('quiz failed', e.message); }
 
   if (_ok > 0) {
-    const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?on_conflict=article_id', {
-      method: 'POST',
-      headers: {
-        'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
-        'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal'
-      },
-      body: JSON.stringify(_row)
-    });
-    if (!res.ok) {
-      const errText = await res.text();
-      if (st) st.textContent = '❌ DB 저장 실패 ' + res.status + ': ' + errText;
-      console.error('cache save:', res.status, errText);
+    // article_id에 unique constraint가 없을 수 있으므로 select→PATCH/POST 패턴 사용
+    const H = { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+    const chk = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?article_id=eq.' + encodeURIComponent(articleId) + '&select=article_id', { headers: H });
+    const chkData = chk.ok ? await chk.json() : [];
+    let saveRes;
+    if (Array.isArray(chkData) && chkData.length > 0) {
+      saveRes = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?article_id=eq.' + encodeURIComponent(articleId), {
+        method: 'PATCH', headers: H, body: JSON.stringify(_row)
+      });
+    } else {
+      saveRes = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache', {
+        method: 'POST', headers: H, body: JSON.stringify(_row)
+      });
+    }
+    if (!saveRes.ok) {
+      const errText = await saveRes.text();
+      if (st) st.textContent = '❌ DB 저장 실패 ' + saveRes.status + ': ' + errText;
+      console.error('cache save:', saveRes.status, errText);
+      if (btn) btn.disabled = false;
       return;
     }
   }
 
   if (st) st.textContent = '✅ 완료 (' + _ok + '/4)';
-  setTimeout(function(){ goAICache(); }, 1000);
+  setTimeout(function(){ goAICache(); }, 1200);
 }
 
 
