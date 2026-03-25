@@ -180,7 +180,7 @@ a{color:inherit;text-decoration:none}
 
     <div class="section-sep"></div>
     <div class="sb-lbl">Analytics</div>
-    <button class="sb-btn" onclick="goStats()"><span class="ico">📊</span>User Analytics</button>
+    <button class="sb-btn" onclick="goUserStats()"><span class="ico">📊</span>User Analytics</button>
     <div class="sb-lbl">Content</div>
     <div class="sb-lbl">Settings</div>
     <button class="sb-btn" id="sb-site-settings" onclick="goSiteSettings()"><span class="ico">⚙️</span>사이트 기본 설정</button>
@@ -1039,7 +1039,7 @@ function editSection(id, key, label, icon, topics) {
     .then(function(){ toast('✅ Updated'); refreshSectionsList(); });
 }
 
-async function goStats() {
+async function goUserStats() {
   setSbOn(null);
   var main = document.getElementById('main');
   main.innerHTML = '<div class="pg-hd"><div><h1>📊 User Analytics</h1><p>전체 유저 학습 현황을 확인하세요.</p></div></div>'
@@ -1140,7 +1140,7 @@ async function goStats() {
 async function goUserXPLog(userId, displayName) {
   var main = document.getElementById('main');
   main.innerHTML = '<div class="pg-hd"><div>'
-    + '<button class="btn btn-gh" style="margin-bottom:12px" onclick="goStats()">← 뒤로</button>'
+    + '<button class="btn btn-gh" style="margin-bottom:12px" onclick="goUserStats()">← 뒤로</button>'
     + '<h1>📋 XP 내역: ' + (displayName||userId) + '</h1>'
     + '<p>daily_missions 기반 일별 XP 내역입니다.</p>'
     + '</div></div>'
