@@ -85,6 +85,26 @@
 .danger-zone { background:#fff5f5; border:1px solid #fecaca; border-radius:14px; padding:20px 22px; }
 .danger-zone h3 { color:#b91c1c; }
 
+/* Nickname modal */
+.nn-overlay { position:fixed; inset:0; background:rgba(5,12,24,.72); display:flex; align-items:center; justify-content:center; z-index:3000; padding:16px; }
+.nn-modal   { background:#fff; border-radius:20px; width:min(440px,96vw); padding:28px 26px; box-shadow:0 24px 64px rgba(0,0,0,.25); }
+.nn-modal h3 { margin:0 0 6px; font-size:18px; font-weight:900; color:#0b1626; }
+.nn-modal p  { font-size:13px; color:#64748b; margin:0 0 20px; line-height:1.6; }
+.nn-cost-badge { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; background:#eff6ff; color:#2255a4; font-size:13px; font-weight:800; margin-bottom:16px; }
+.nn-input { width:100%; padding:12px 14px; border:2px solid var(--border); border-radius:12px; font-size:15px; font-weight:600; font-family:inherit; outline:none; transition:border-color .15s; box-sizing:border-box; }
+.nn-input:focus { border-color:#2255a4; }
+.nn-actions { display:flex; gap:10px; margin-top:16px; }
+.nn-btn-cancel { flex:1; padding:12px; border:1.5px solid var(--border); border-radius:12px; background:#fff; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; color:#64748b; }
+.nn-btn-confirm { flex:1; padding:12px; border:none; border-radius:12px; background:#2255a4; color:#fff; font-size:14px; font-weight:800; cursor:pointer; font-family:inherit; }
+.nn-btn-confirm:disabled { opacity:.45; cursor:not-allowed; }
+body.kh-neon-on .nn-modal { background:#071320 !important; }
+body.kh-neon-on .nn-modal h3 { color:#e4f9ff !important; }
+body.kh-neon-on .nn-modal p  { color:rgba(163,230,235,.65) !important; }
+body.kh-neon-on .nn-cost-badge { background:rgba(0,255,214,.1) !important; color:#8ffcff !important; }
+body.kh-neon-on .nn-input { background:rgba(9,18,33,.9) !important; border-color:rgba(0,255,214,.25) !important; color:#e4f9ff !important; }
+body.kh-neon-on .nn-input:focus { border-color:rgba(0,255,214,.6) !important; }
+body.kh-neon-on .nn-btn-cancel { background:transparent !important; border-color:rgba(0,255,214,.2) !important; color:rgba(163,230,235,.7) !important; }
+
 /* XP log */
 .xp-log-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f0f4f9; }
 .xp-log-row:last-child { border-bottom:none; }
@@ -375,7 +395,11 @@ function xpLogCollapse() {
 }
 
 // ── Render profile fields ──────────────────────────────────────
-function renderProfileFields() {
+var _userXP = 0;
+var NICKNAME_COST = 100;
+
+function renderProfileFields(xp) {
+  if (xp !== undefined) _userXP = xp;
   var el = document.getElementById('mp-profile-fields');
   if (!el || !supaUser) return;
   var savedName = localStorage.getItem('kh_display_name');
@@ -384,10 +408,15 @@ function renderProfileFields() {
   var since = supaUser.created_at ? new Date(supaUser.created_at).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }) : '—';
   var provider = (supaUser.app_metadata && supaUser.app_metadata.provider) || 'email';
   var provLabel = provider === 'google' ? '🔑 Google' : '✉️ Email';
+  var canAfford = _userXP >= NICKNAME_COST;
 
   el.innerHTML =
-    '<div class="pf-row"><div class="pf-label">Name</div><div class="pf-value" id="pf-name-val">' + name + '</div>'
-    + '<button class="pf-btn" onclick="editProfileName()">Edit</button></div>'
+    '<div class="pf-row">'
+    + '<div class="pf-label">Nickname</div>'
+    + '<div class="pf-value" id="pf-name-val">' + name + '</div>'
+    + '<button class="pf-btn" onclick="openNicknameModal()" style="' + (canAfford ? '' : 'opacity:.55') + '" title="' + (canAfford ? 'Change nickname (costs 100 XP)' : 'Need ' + NICKNAME_COST + ' XP to change') + '">'
+    + '✏️ ' + NICKNAME_COST + ' XP</button>'
+    + '</div>'
     + '<div class="pf-row"><div class="pf-label">Email</div><div class="pf-value">' + email + '</div></div>'
     + '<div class="pf-row"><div class="pf-label">Sign-in</div><div class="pf-value">' + provLabel + '</div></div>'
     + '<div class="pf-row"><div class="pf-label">Member</div><div class="pf-value">' + since + '</div></div>'
@@ -397,47 +426,92 @@ function renderProfileFields() {
       : '');
 }
 
-function editProfileName() {
-  var valEl = document.getElementById('pf-name-val');
-  if (!valEl) return;
-  var current = valEl.textContent;
-  editDisplayName(valEl, current);
-}
+// ── Nickname change modal ──────────────────────────────────────
+function openNicknameModal() {
+  var existing = document.getElementById('nn-overlay');
+  if (existing) existing.remove();
 
-function editDisplayName(el, currentName) {
-  var input = document.createElement('input');
-  input.type = 'text';
-  input.value = currentName;
-  input.style.cssText = 'font-family:inherit;font-size:15px;font-weight:600;border:none;border-bottom:2px solid #2255a4;background:transparent;color:inherit;width:200px;outline:none;padding:2px 4px;';
+  var currentName = (document.getElementById('pf-name-val') || {}).textContent || '';
+  var canAfford = _userXP >= NICKNAME_COST;
 
-  function save() {
-    var newName = input.value.trim();
-    if (!newName) { el.textContent = currentName; el.style.display = ''; return; }
-    if (supaUser) {
-      var sb = getSupa();
-      if (sb) {
-        sb.auth.updateUser({ data: { full_name: newName } }).then(function(res) {
-          localStorage.setItem('kh_display_name', newName);
-          if (typeof toast === 'function') toast('Name updated ✓');
-          el.textContent = newName;
-          document.getElementById('mp-name').textContent = newName;
-        });
-      }
-    } else {
-      localStorage.setItem('kh_display_name', newName);
-      el.textContent = newName;
-    }
-    input.replaceWith(el);
+  var el = document.createElement('div');
+  el.id = 'nn-overlay';
+  el.className = 'nn-overlay';
+  el.innerHTML =
+    '<div class="nn-modal">'
+    + '<h3>Change Nickname</h3>'
+    + '<p>Changing your nickname costs <strong>' + NICKNAME_COST + ' XP</strong>. You currently have <strong>' + _userXP.toLocaleString() + ' XP</strong>.</p>'
+    + (canAfford
+      ? '<div class="nn-cost-badge">✨ ' + NICKNAME_COST + ' XP will be deducted</div>'
+        + '<input class="nn-input" id="nn-input" type="text" maxlength="30" placeholder="New nickname" value="' + currentName + '">'
+        + '<div class="nn-actions">'
+        + '<button class="nn-btn-cancel" onclick="closeNicknameModal()">Cancel</button>'
+        + '<button class="nn-btn-confirm" id="nn-confirm-btn" onclick="confirmNicknameChange()">Confirm — ' + NICKNAME_COST + ' XP</button>'
+        + '</div>'
+      : '<div style="text-align:center;padding:16px 0">'
+        + '<div style="font-size:36px;margin-bottom:10px">🔒</div>'
+        + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:6px">Not enough XP</div>'
+        + '<div style="font-size:13px;color:#64748b">You need ' + (NICKNAME_COST - _userXP) + ' more XP. Read articles, take quizzes, and save words to earn XP.</div>'
+        + '<button class="nn-btn-cancel" style="margin-top:18px;width:100%" onclick="closeNicknameModal()">OK</button>'
+        + '</div>')
+    + '</div>';
+
+  el.addEventListener('click', function(e) { if (e.target === el) closeNicknameModal(); });
+  document.body.appendChild(el);
+  if (canAfford) {
+    var inp = document.getElementById('nn-input');
+    if (inp) { inp.focus(); inp.select(); }
   }
-  input.onblur = save;
-  input.onkeydown = function(e) {
-    if (e.key === 'Enter') input.blur();
-    if (e.key === 'Escape') { input.value = currentName; input.blur(); }
-  };
-  el.replaceWith(input);
-  input.focus();
-  input.select();
 }
+
+function closeNicknameModal() {
+  var el = document.getElementById('nn-overlay');
+  if (el) el.remove();
+}
+
+async function confirmNicknameChange() {
+  var inp = document.getElementById('nn-input');
+  var newName = inp ? inp.value.trim() : '';
+  if (!newName) { if (inp) inp.focus(); return; }
+  if (_userXP < NICKNAME_COST) { closeNicknameModal(); return; }
+
+  var btn = document.getElementById('nn-confirm-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  var sb = getSupa();
+  try {
+    // Deduct XP
+    var newXP = _userXP - NICKNAME_COST;
+    await sb.from('user_stats').update({ xp: newXP, display_name: newName }).eq('user_id', supaUser.id);
+    // Log the XP spend
+    try { await sb.from('xp_log').insert({ user_id: supaUser.id, reason: 'Nickname change', amount: -NICKNAME_COST }); } catch(e) {}
+    // Update auth metadata
+    await sb.auth.updateUser({ data: { full_name: newName } });
+    // Persist locally
+    localStorage.setItem('kh_display_name', newName);
+
+    // Update UI
+    _userXP = newXP;
+    var nameDisp = document.getElementById('pf-name-val');
+    if (nameDisp) nameDisp.textContent = newName;
+    var heroName = document.getElementById('mp-name');
+    if (heroName) heroName.textContent = newName;
+    // Update initials
+    var initials = newName.replace(/[^a-zA-Z가-힣]/g,' ').trim().split(/\s+/).map(function(w){ return w[0]; }).join('').slice(0,2).toUpperCase() || '?';
+    var initialsEl = document.getElementById('mp-initials');
+    if (initialsEl) initialsEl.textContent = initials;
+    // Refresh XP card and profile button
+    renderXPCard(_userXP);
+    renderProfileFields(_userXP);
+
+    closeNicknameModal();
+    if (typeof toast === 'function') toast('Nickname updated ✓');
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirm — ' + NICKNAME_COST + ' XP'; }
+    alert('Error: ' + e.message);
+  }
+}
+
 
 async function sendPasswordReset() {
   if (!supaUser || !supaUser.email) return;
@@ -563,7 +637,6 @@ async function initMyPage() {
   var name = savedName || (supaUser.user_metadata && supaUser.user_metadata.full_name) || supaUser.email.split('@')[0];
   var nameEl = document.getElementById('mp-name');
   nameEl.textContent = name;
-  nameEl.onclick = function() { editDisplayName(nameEl, name); };
 
   document.getElementById('mp-email').textContent = supaUser.email || '';
 
@@ -586,11 +659,12 @@ async function initMyPage() {
   var xpLog = results[1];
   var xp = (stats && stats.xp) || 0;
 
+  _userXP = xp;
   renderXPCard(xp);
   renderMiniStats(stats);
   renderTierGrid(xp);
   renderXPLog(xpLog);
-  renderProfileFields();
+  renderProfileFields(xp);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
