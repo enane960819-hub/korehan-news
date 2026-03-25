@@ -318,14 +318,20 @@ async function upsertArticleCacheRow(articleId, patch) {
     // wide-table: 존재 여부 확인 후 update / insert
     try {
       var existing = await sb.from('article_cache').select('article_id').eq('article_id', String(articleId)).maybeSingle();
-      if (existing && existing.data) {
-        await sb.from('article_cache').update(patch).eq('article_id', String(articleId));
+      if (existing.error) { console.warn('[cache] wide select error:', existing.error); }
+      else if (existing && existing.data) {
+        var upRes = await sb.from('article_cache').update(patch).eq('article_id', String(articleId));
+        if (upRes.error) console.warn('[cache] wide update error:', upRes.error);
+        else console.log('[cache] wide updated articleId=' + articleId, Object.keys(patch));
       } else {
-        var row = Object.assign({ article_id: String(articleId) }, patch);
-        await sb.from('article_cache').insert(row);
+        var wRow = Object.assign({ article_id: String(articleId) }, patch);
+        var insRes = await sb.from('article_cache').insert(wRow);
+        if (insRes.error) console.warn('[cache] wide insert error:', insRes.error);
+        else console.log('[cache] wide inserted articleId=' + articleId, Object.keys(patch));
       }
     } catch(e) {
       var msg = String((e && e.message) || e || '');
+      console.warn('[cache] wide upsert exception:', msg);
       if (/40[013]/.test(msg) || /unauthorized|forbidden|permission/i.test(msg)) _remoteCacheDisabled = true;
     }
   }
