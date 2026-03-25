@@ -941,7 +941,7 @@ async function goSections() {
 }
 
 async function refreshSectionsList() {
-  var sb = getSupa ? getSb() : null;
+  var sb = getSb();
   if (!sb) return;
   var res = await sb.from('sections').select('*').order('sort_order');
   var sections = res.data || [];
@@ -994,7 +994,7 @@ async function addSection() {
   var topics = (document.getElementById('ns-topics')?.value||'').trim();
   if (!key || !label) { toast('Key and Label are required', true); return; }
 
-  var sb = getSupa ? getSb() : null;
+  var sb = getSb();
   if (!sb) return;
   var res = await sb.from('sections').insert({ key, label, icon, topics, sort_order:99, active:true });
   if (res.error) { toast('Error: ' + res.error.message, true); return; }
@@ -1008,7 +1008,7 @@ async function addSection() {
 
 async function deleteSection(id, key) {
   if (!confirm('Delete section "' + key + '"? Articles in this section will NOT be deleted.')) return;
-  var sb = getSupa ? getSb() : null;
+  var sb = getSb();
   if (!sb) return;
   await sb.from('sections').delete().eq('id', id);
   toast('🗑️ Section deleted');
@@ -1016,7 +1016,7 @@ async function deleteSection(id, key) {
 }
 
 async function toggleSection(id, active) {
-  var sb = getSupa ? getSb() : null;
+  var sb = getSb();
   if (!sb) return;
   await sb.from('sections').update({ active }).eq('id', id);
   toast(active ? '✅ Section activated' : '🙈 Section hidden');
@@ -1024,7 +1024,7 @@ async function toggleSection(id, active) {
 }
 
 async function updateSectionOrder(id, order) {
-  var sb = getSupa ? getSb() : null;
+  var sb = getSb();
   if (!sb) return;
   await sb.from('sections').update({ sort_order: parseInt(order) }).eq('id', id);
 }
@@ -1033,7 +1033,7 @@ function editSection(id, key, label, icon, topics) {
   var newLabel  = prompt('Label:', label);  if (newLabel  === null) return;
   var newIcon   = prompt('Icon:',  icon);   if (newIcon   === null) return;
   var newTopics = prompt('AI Topics:', topics); if (newTopics === null) return;
-  var sb = getSupa ? getSb() : null;
+  var sb = getSb();
   if (!sb) return;
   sb.from('sections').update({ label:newLabel, icon:newIcon, topics:newTopics }).eq('id', id)
     .then(function(){ toast('✅ Updated'); refreshSectionsList(); });
@@ -1045,7 +1045,7 @@ async function goUserStats() {
   main.innerHTML = '<div class="pg-hd"><div><h1>📊 User Analytics</h1><p>전체 유저 학습 현황을 확인하세요.</p></div></div>'
     + '<div id="stats-content"><div style="text-align:center;padding:48px;color:#aaa">⏳ Loading data...</div></div>';
 
-  var sb = getSupa ? getSb() : null;
+  var sb = getSb();
   if (!sb) { document.getElementById('stats-content').innerHTML = '<p style="color:red">Supabase connection failed</p>'; return; }
 
   try {
