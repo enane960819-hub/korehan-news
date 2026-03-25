@@ -122,8 +122,162 @@
 .lq-exp-body  { font-size:13px; color:#445566; line-height:1.65; }
 .lq-next-btn  { width:100%; margin-top:14px; padding:14px; background:#2255a4; color:#fff; border:none; border-radius:14px; font-size:15px; font-weight:900; cursor:pointer; transition:background .2s; }
 .lq-next-btn:hover { background:#1a3a6b; }
-.lq-score-ring { width:110px; height:110px; border-radius:50%; background:linear-gradient(135deg,#2255a4,#3d7fd4); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; flex-direction:column; color:#fff; }
+.lq-score-ring { width:110px; height:110px; border-radius:50%; background:linear-gradient(135deg,#2255a4,#3d7fd4); display:flex; align-items:center; justify-content:justify; margin:0 auto 16px; flex-direction:column; color:#fff; }
 
+/* ── XP CARD ──────────────────────────────────────────────── */
+.xp-card { background:#fff; border:1px solid var(--border); border-radius:18px; padding:24px; margin-bottom:20px; box-shadow:var(--shadow); }
+.xp-top { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px; }
+.xp-tier { display:inline-flex; align-items:center; gap:8px; padding:7px 16px; border-radius:999px; font-size:13px; font-weight:900; }
+.xp-tier.bronze  { background:#fef3c7; color:#b45309; }
+.xp-tier.silver  { background:#f1f5f9; color:#64748b; }
+.xp-tier.gold    { background:#fffbeb; color:#d97706; }
+.xp-tier.plat    { background:#f5f3ff; color:#7c3aed; }
+.xp-tier.diamond { background:#eff6ff; color:#1d4ed8; }
+.xp-total { font-family:'Playfair Display',serif; font-size:48px; font-weight:900; color:#0b1626; line-height:1; }
+.xp-total-label { font-size:13px; color:var(--gray); font-weight:600; margin-top:2px; }
+.xp-track { height:12px; border-radius:999px; background:#eef0f5; overflow:hidden; margin-bottom:8px; }
+.xp-fill  { height:100%; border-radius:999px; background:linear-gradient(90deg,#2255a4,#3d7fd4); transition:width .6s ease; }
+.xp-meta  { display:flex; justify-content:space-between; font-size:12px; color:var(--gray); font-weight:600; }
+
+/* ── MINI STATS ───────────────────────────────────────────── */
+.mini-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+.mini-stat  { background:#fff; border:1px solid var(--border); border-radius:14px; padding:16px; text-align:center; box-shadow:var(--shadow); }
+.mini-stat-num   { font-family:'Playfair Display',serif; font-size:28px; font-weight:900; color:var(--accent); line-height:1; }
+.mini-stat-label { font-size:11px; color:var(--gray); margin-top:5px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; }
+
+/* ── PROFILE PANEL ────────────────────────────────────────── */
+.profile-section { background:#fff; border:1px solid var(--border); border-radius:16px; padding:24px; margin-bottom:16px; box-shadow:var(--shadow); }
+.profile-section h3 { font-size:15px; font-weight:900; color:#0b1626; margin:0 0 18px; }
+.profile-field { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); }
+.profile-field:last-child { border-bottom:none; }
+.pf-label { font-size:12px; font-weight:700; color:var(--gray); text-transform:uppercase; letter-spacing:.5px; width:90px; flex-shrink:0; }
+.pf-value { flex:1; font-size:15px; color:#0b1626; font-weight:600; }
+.pf-edit-btn { padding:6px 14px; border:1px solid var(--border); border-radius:999px; background:#fff; font-size:12px; font-weight:700; color:var(--bright); cursor:pointer; white-space:nowrap; }
+.pf-edit-btn:hover { background:#f0f6ff; border-color:#93c5fd; }
+.danger-zone { background:#fff5f5; border:1px solid #fecaca; border-radius:14px; padding:20px 22px; }
+.danger-zone h3 { color:#b91c1c; margin:0 0 12px; font-size:14px; font-weight:900; }
+
+/* ── HERO INITIALS ────────────────────────────────────────── */
+.mp-initials { width:72px; height:72px; border-radius:50%; background:linear-gradient(135deg,rgba(255,255,255,.25),rgba(255,255,255,.08)); border:2px solid rgba(255,255,255,.35); display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:900; color:#fff; font-family:'Playfair Display',serif; flex-shrink:0; }
+.mp-member-since { font-size:11px; color:rgba(255,255,255,.45); margin-top:2px; }
+
+/* ── NEON MODE OVERRIDES ──────────────────────────────────── */
+body.kh-neon-on .mypage-hero { background:linear-gradient(135deg,#050d1a,#091b3a) !important; border-bottom:1px solid rgba(0,255,214,.12); }
+body.kh-neon-on .mypage-hero .mypage-name,
+body.kh-neon-on .mypage-hero h1 { color:#e4f9ff !important; }
+body.kh-neon-on .mypage-hero .mypage-email,
+body.kh-neon-on .mypage-hero .mp-member-since { color:rgba(163,230,235,.6) !important; }
+body.kh-neon-on .mypage-signout { background:rgba(255,255,255,.07) !important; border-color:rgba(0,255,214,.2) !important; color:rgba(163,230,235,.8) !important; }
+body.kh-neon-on .mp-initials { background:rgba(0,255,214,.12) !important; border-color:rgba(0,255,214,.3) !important; }
+
+body.kh-neon-on .xp-card,
+body.kh-neon-on .mini-stat,
+body.kh-neon-on .stat-card,
+body.kh-neon-on .profile-section,
+body.kh-neon-on .quiz-wrap2,
+body.kh-neon-on .lv-q-wrap,
+body.kh-neon-on .lq-wrap { background:rgba(9,18,33,.92) !important; border-color:rgba(0,255,214,.18) !important; }
+
+body.kh-neon-on .xp-total,
+body.kh-neon-on .mini-stat-num,
+body.kh-neon-on .stat-num,
+body.kh-neon-on .quiz-q2,
+body.kh-neon-on .lv-word,
+body.kh-neon-on .lq-question { color:#8ffcff !important; }
+
+body.kh-neon-on .xp-total-label,
+body.kh-neon-on .xp-meta,
+body.kh-neon-on .mini-stat-label,
+body.kh-neon-on .stat-label,
+body.kh-neon-on .stat-fire,
+body.kh-neon-on .quiz-score2,
+body.kh-neon-on .quiz-rom2,
+body.kh-neon-on .lv-progress,
+body.kh-neon-on .lv-rom { color:rgba(163,230,235,.65) !important; }
+
+body.kh-neon-on .xp-track { background:rgba(255,255,255,.08) !important; }
+
+body.kh-neon-on .xp-tier.bronze  { background:rgba(180,83,9,.15)   !important; color:#fcd34d !important; }
+body.kh-neon-on .xp-tier.silver  { background:rgba(100,116,139,.15) !important; color:#cbd5e1 !important; }
+body.kh-neon-on .xp-tier.gold    { background:rgba(217,119,6,.15)   !important; color:#fcd34d !important; }
+body.kh-neon-on .xp-tier.plat    { background:rgba(124,58,237,.15)  !important; color:#c4b5fd !important; }
+body.kh-neon-on .xp-tier.diamond { background:rgba(29,78,216,.15)   !important; color:#93c5fd !important; }
+
+body.kh-neon-on .my-tabs { border-bottom-color:rgba(0,255,214,.15) !important; }
+body.kh-neon-on .my-tab  { color:rgba(163,230,235,.6) !important; }
+body.kh-neon-on .my-tab:hover { color:#8ffcff !important; }
+body.kh-neon-on .my-tab.on { color:#8ffcff !important; border-bottom-color:#8ffcff !important; background:rgba(0,255,214,.05) !important; }
+
+body.kh-neon-on .profile-section h3 { color:#e4f9ff !important; }
+body.kh-neon-on .pf-value { color:#d7f8fb !important; }
+body.kh-neon-on .pf-label { color:rgba(163,230,235,.6) !important; }
+body.kh-neon-on .profile-field { border-bottom-color:rgba(0,255,214,.12) !important; }
+body.kh-neon-on .pf-edit-btn { background:rgba(0,255,214,.07) !important; border-color:rgba(0,255,214,.25) !important; color:#8ffcff !important; }
+body.kh-neon-on .pf-edit-btn:hover { background:rgba(0,255,214,.14) !important; }
+body.kh-neon-on .danger-zone { background:rgba(185,28,28,.08) !important; border-color:rgba(252,165,165,.25) !important; }
+body.kh-neon-on .danger-zone h3 { color:#fca5a5 !important; }
+
+body.kh-neon-on .saved-word-row { border-bottom-color:rgba(0,255,214,.12) !important; }
+body.kh-neon-on .sw-ko  { color:#8ffcff !important; }
+body.kh-neon-on .sw-en  { color:#d7f8fb !important; }
+body.kh-neon-on .sw-rom { color:rgba(163,230,235,.55) !important; }
+body.kh-neon-on .sw-del { color:rgba(163,230,235,.3) !important; }
+body.kh-neon-on .sw-del:hover { color:#fca5a5 !important; background:rgba(252,165,165,.08) !important; }
+
+body.kh-neon-on .read-row { border-bottom-color:rgba(0,255,214,.12) !important; }
+body.kh-neon-on .read-title { color:#d7f8fb !important; }
+body.kh-neon-on .read-title:hover { color:#8ffcff !important; }
+body.kh-neon-on .read-date { color:rgba(163,230,235,.55) !important; }
+body.kh-neon-on .read-tag { background:rgba(0,255,214,.1) !important; color:#8ffcff !important; }
+
+body.kh-neon-on .empty-state { color:rgba(163,230,235,.6) !important; }
+
+body.kh-neon-on .quiz-opt2,
+body.kh-neon-on .lv-opt,
+body.kh-neon-on .lq-choice { background:rgba(9,18,33,.9) !important; border-color:rgba(0,255,214,.2) !important; color:#d7f8fb !important; }
+body.kh-neon-on .quiz-opt2:hover,
+body.kh-neon-on .lv-opt:hover { border-color:rgba(0,255,214,.5) !important; background:rgba(0,255,214,.07) !important; }
+body.kh-neon-on .quiz-opt2.correct,
+body.kh-neon-on .lv-opt.correct,
+body.kh-neon-on .lq-choice.correct { background:rgba(134,239,172,.1) !important; border-color:rgba(134,239,172,.4) !important; color:#86efac !important; }
+body.kh-neon-on .quiz-opt2.wrong,
+body.kh-neon-on .lv-opt.wrong,
+body.kh-neon-on .lq-choice.wrong { background:rgba(252,165,165,.08) !important; border-color:rgba(252,165,165,.4) !important; color:#fca5a5 !important; }
+body.kh-neon-on .quiz-next2,
+body.kh-neon-on .lq-next-btn { background:rgba(0,255,214,.15) !important; color:#8ffcff !important; border-color:rgba(0,255,214,.3) !important; }
+
+body.kh-neon-on .level-badge.beginner     { background:rgba(22,163,74,.15)  !important; color:#86efac !important; }
+body.kh-neon-on .level-badge.intermediate { background:rgba(245,158,11,.12) !important; color:#fcd34d !important; }
+body.kh-neon-on .level-badge.advanced     { background:rgba(220,38,38,.12)  !important; color:#fca5a5 !important; }
+body.kh-neon-on .lv-result-title { color:#8ffcff !important; }
+body.kh-neon-on .lv-result-desc  { color:rgba(163,230,235,.7) !important; }
+
+body.kh-neon-on .lq-explanation { background:rgba(245,158,11,.08) !important; border-color:rgba(245,158,11,.3) !important; }
+body.kh-neon-on .lq-exp-title { color:#fcd34d !important; }
+body.kh-neon-on .lq-exp-body  { color:rgba(163,230,235,.75) !important; }
+
+body.kh-neon-on .goal-card  { background:rgba(9,18,33,.9) !important; border-color:rgba(0,255,214,.18) !important; }
+body.kh-neon-on .goal-title { color:#e4f9ff !important; }
+body.kh-neon-on .goal-count { color:rgba(163,230,235,.65) !important; }
+body.kh-neon-on .goal-bar-wrap { background:rgba(255,255,255,.08) !important; }
+
+body.kh-neon-on #word-modal { background:#071320 !important; }
+body.kh-neon-on #wm-ko  { color:#e4f9ff !important; }
+body.kh-neon-on #wm-rom { color:rgba(163,230,235,.55) !important; }
+body.kh-neon-on #wm-en  { color:#8ffcff !important; }
+body.kh-neon-on #wm-footer { background:rgba(0,255,214,.05) !important; color:rgba(163,230,235,.55) !important; }
+
+/* XP panel & profile panel inline content */
+body.kh-neon-on #xp-panel-area > div,
+body.kh-neon-on #xp-panel-area [style*="background:#fff"],
+body.kh-neon-on #xp-panel-area [style*="background:linear-gradient(135deg,#f0f6ff"],
+body.kh-neon-on #profile-panel-area [style*="background:#f8faff"] { background:rgba(9,18,33,.92) !important; border-color:rgba(0,255,214,.18) !important; }
+body.kh-neon-on #xp-panel-area [style*="color:#0b1626"],
+body.kh-neon-on #xp-panel-area [style*="color:#94a3b8"] { color:rgba(163,230,235,.7) !important; }
+body.kh-neon-on #xp-panel-area [style*="font-size:28px"] { /* tier icons — keep as-is */ }
+
+@media (max-width:700px) { .mini-stats { grid-template-columns:repeat(2,1fr); } }
+@media (max-width:420px) { .mini-stats { grid-template-columns:repeat(2,1fr); } }
 </style>
 </head>
 <body>
@@ -132,14 +286,15 @@
 <div class="mypage-hero">
   <div class="mypage-hero-inner">
     <div id="mp-avatar-wrap">
-      <div class="mypage-avatar-placeholder">👤</div>
+      <div class="mp-initials" id="mp-initials">?</div>
     </div>
-    <div>
+    <div style="flex:1;min-width:0">
       <div class="mypage-name" id="mp-name">Loading…</div>
       <div class="mypage-email" id="mp-email"></div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
+      <div class="mp-member-since" id="mp-member-since"></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+        <div id="mp-tier-badge"></div>
         <button class="mypage-signout" onclick="signOut()">Sign Out</button>
-        <button class="mypage-signout" onclick="confirmDeleteAccount()" style="color:rgba(255,100,100,0.7);border-color:rgba(255,100,100,0.3)">회원탈퇴</button>
       </div>
     </div>
   </div>
@@ -147,61 +302,56 @@
 
 <div class="mypage-body">
 
-  <!-- Learning Stats -->
-  <div class="stats-grid" id="mp-stats">
-    <div class="stat-card"><div class="stat-fire">🔥</div><div class="stat-label">Loading…</div></div>
-  </div>
+  <!-- XP Card -->
+  <div id="mp-xp-card"></div>
+
+  <!-- Mini Stats -->
+  <div class="mini-stats" id="mp-stats"></div>
 
   <!-- Tabs -->
   <div class="my-tabs">
-    <button class="my-tab on" onclick="switchMyTab('goals',this)">🎯 Daily Goals</button>
-    <button class="my-tab" onclick="switchMyTab('words',this)">🔖 Saved Words</button>
-    <button class="my-tab" onclick="switchMyTab('articles',this)">📰 Read Articles</button>
-    <button class="my-tab" onclick="switchMyTab('bookmarks',this)">🔖 Bookmarks</button>
-    <button class="my-tab" onclick="switchMyTab('level',this)">🏆 Level Test</button>
-    <button class="my-tab" onclick="switchMyTab('badges',this)">🏅 Badges</button>
-    <button class="my-tab" onclick="switchMyTab('leaderboard',this)">🏆 Leaderboard</button>
-    <button class="my-tab" onclick="switchMyTab('writing',this)">✏️ Writing</button>
-    <button class="my-tab" onclick="switchMyTab('classes',this)">🎓 Classes</button>
+    <button class="my-tab on" id="tab-btn-xp" onclick="switchMyTab('xp',this)">XP &amp; Progress</button>
+    <button class="my-tab" onclick="switchMyTab('words',this)">Saved Words</button>
+    <button class="my-tab" onclick="switchMyTab('articles',this)">Read History</button>
+    <button class="my-tab" onclick="switchMyTab('profile',this)">Profile</button>
+    <button class="my-tab" onclick="switchMyTab('level',this)">Level Test</button>
+    <button class="my-tab" onclick="switchMyTab('leaderboard',this)">Leaderboard</button>
+    <button class="my-tab" onclick="switchMyTab('writing',this)">Writing</button>
+    <button class="my-tab" onclick="switchMyTab('classes',this)">Classes</button>
   </div>
 
-  <!-- Today's Goals panel -->
-  <div class="my-panel on" id="panel-goals">
-    <div id="goals-area"><div style="text-align:center;padding:32px;color:var(--gray)">⏳ Loading...…</div></div>
+  <!-- XP & Progress panel (default) -->
+  <div class="my-panel on" id="panel-xp">
+    <div id="xp-panel-area"><div style="text-align:center;padding:32px;color:var(--gray)">⏳ Loading…</div></div>
   </div>
 
   <!-- Saved Words panel -->
   <div class="my-panel" id="panel-words">
     <div id="words-list-area">
-      <div class="empty-state"><div class="es-icon">⏳</div><p>Loading...…</p></div>
+      <div class="empty-state"><div class="es-icon">⏳</div><p>Loading…</p></div>
     </div>
   </div>
 
   <!-- Articles Read panel -->
   <div class="my-panel" id="panel-articles">
     <div id="articles-list-area">
-      <div class="empty-state"><div class="es-icon">⏳</div><p>Loading...…</p></div>
+      <div class="empty-state"><div class="es-icon">⏳</div><p>Loading…</p></div>
     </div>
   </div>
 
-  <!-- Bookmarks panel -->
-  <div class="my-panel" id="panel-bookmarks">
-    <div id="bookmarks-area"><div style="text-align:center;padding:32px;color:var(--gray)">⏳ Loading...…</div></div>
+  <!-- Profile panel -->
+  <div class="my-panel" id="panel-profile">
+    <div id="profile-panel-area"><div style="text-align:center;padding:32px;color:var(--gray)">⏳ Loading…</div></div>
   </div>
 
   <!-- Level Test panel -->
   <div class="my-panel" id="panel-level">
-    <div id="level-area"><div style="text-align:center;padding:32px;color:var(--gray)">⏳ Loading...…</div></div>
-  </div>
-
-  <!-- Badges panel -->
-  <div class="my-panel" id="panel-badges">
-    <div id="badges-area"><div style="text-align:center;padding:32px;color:var(--gray)">⏳ Loading...</div></div>
+    <div id="level-area"><div style="text-align:center;padding:32px;color:var(--gray)">⏳ Loading…</div></div>
   </div>
 
   <!-- Leaderboard panel -->
   <div class="my-panel" id="panel-leaderboard">
-    <div id="leaderboard-area"><div style="text-align:center;padding:32px;color:var(--gray)">⏳ Loading...</div></div>
+    <div id="leaderboard-area"><div style="text-align:center;padding:32px;color:var(--gray)">⏳ Loading…</div></div>
   </div>
 
   <!-- Writing panel -->
@@ -209,9 +359,15 @@
     <div id="writing-area"></div>
   </div>
 
+  <!-- Classes panel -->
   <div class="my-panel" id="panel-classes">
     <div id="classes-area"></div>
   </div>
+
+  <!-- Hidden legacy panels (JS compat) -->
+  <div style="display:none" id="panel-goals"><div id="goals-area"></div><div id="quiz-area"></div></div>
+  <div style="display:none" id="panel-badges"><div id="badges-area"></div></div>
+  <div style="display:none" id="panel-bookmarks"><div id="bookmarks-area"></div></div>
 
 </div>
 
@@ -402,24 +558,147 @@ var lvAnswer = '';
 
 function switchMyTab(tab, btn) {
   document.querySelectorAll('.my-tab').forEach(function(b){ b.classList.remove('on'); });
-  document.querySelectorAll('.my-panel').forEach(function(p){ p.classList.remove('on'); });
+  document.querySelectorAll('.my-panel:not([style*="display:none"])').forEach(function(p){ p.classList.remove('on'); });
   btn.classList.add('on');
-  document.getElementById('panel-' + tab).classList.add('on');
-  if (tab === 'badges') {
-    renderBadgePage(document.getElementById('badges-area'));
-  }
-  if (tab === 'leaderboard') {
-    renderLeaderboard();
-  }
-  if (tab === 'writing') {
-    renderWritingPanel();
-  }
-  if (tab === 'classes') {
-    renderClassesPanel();
-  }
+  var panelEl = document.getElementById('panel-' + tab);
+  if (panelEl) panelEl.classList.add('on');
+  if (tab === 'xp')          { renderXPPanel(); }
+  if (tab === 'profile')     { renderProfilePanel(); }
+  if (tab === 'badges')      { renderBadgePage(document.getElementById('badges-area')); }
+  if (tab === 'leaderboard') { renderLeaderboard(); }
+  if (tab === 'writing')     { renderWritingPanel(); }
+  if (tab === 'classes')     { renderClassesPanel(); }
 }
 
 
+
+// ── XP PANEL ─────────────────────────────────────────────────
+async function renderXPPanel() {
+  var area = document.getElementById('xp-panel-area');
+  if (!area) return;
+
+  var stats = await dbGetUserStats();
+  var xp    = (stats && stats.xp) || 0;
+  var tier  = getXPTier(xp);
+
+  var TIERS = [
+    { label:'Bronze',  cls:'bronze',  icon:'🥉', min:0,    max:300  },
+    { label:'Silver',  cls:'silver',  icon:'🥈', min:300,  max:800  },
+    { label:'Gold',    cls:'gold',    icon:'🥇', min:800,  max:2000 },
+    { label:'Platinum',cls:'plat',    icon:'💜', min:2000, max:5000 },
+    { label:'Diamond', cls:'diamond', icon:'💎', min:5000, max:5000 },
+  ];
+
+  var tierHtml = TIERS.map(function(t) {
+    var active = xp >= t.min;
+    var current = tier.label === t.label;
+    var pct = t.max > t.min ? Math.min(100, Math.round(Math.max(0, xp - t.min) / (t.max - t.min) * 100)) : 100;
+    if (t.max === t.min) pct = 100;
+    return '<div style="background:' + (current?'#f0f6ff':'#fff') + ';border:' + (current?'2px solid #2255a4':'1px solid var(--border)') + ';border-radius:14px;padding:16px;text-align:center">'
+      + '<div style="font-size:28px;margin-bottom:6px;' + (active?'':'filter:grayscale(1);opacity:.4') + '">' + t.icon + '</div>'
+      + '<div style="font-size:13px;font-weight:900;color:' + (active?'#0b1626':'#94a3b8') + ';margin-bottom:6px">' + t.label + '</div>'
+      + '<div style="font-size:11px;color:#94a3b8;margin-bottom:8px">' + t.min.toLocaleString() + (t.max !== t.min ? '+' : '') + ' XP</div>'
+      + (active && t.max !== t.min ? '<div style="height:6px;background:#eef0f5;border-radius:99px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#2255a4,#3d7fd4);border-radius:99px"></div></div>' : '')
+      + (active && t.max === t.min ? '<div style="font-size:10px;font-weight:800;color:#16a34a">MAX ✓</div>' : '')
+      + '</div>';
+  }).join('');
+
+  // XP history from user_stats won't have log, so show basic stats
+  var sb = getSupa();
+  var recentXP = [];
+  if (sb) {
+    try {
+      var res = await sb.from('xp_log').select('*').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(10);
+      recentXP = res.data || [];
+    } catch(e) {}
+  }
+
+  var historyHtml = recentXP.length
+    ? recentXP.map(function(row) {
+        var ds = row.created_at ? new Date(row.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">'
+          + '<div>'
+          + '<div style="font-size:14px;font-weight:700;color:#0b1626">' + (row.reason || 'Activity') + '</div>'
+          + '<div style="font-size:12px;color:#94a3b8;margin-top:1px">' + ds + '</div>'
+          + '</div>'
+          + '<div style="font-size:15px;font-weight:900;color:#2255a4">+' + (row.amount || row.xp || 0) + ' XP</div>'
+          + '</div>';
+      }).join('')
+    : '<div class="empty-state"><div class="es-icon">📊</div><p>No XP activity yet.<br>Read articles, take quizzes and save words to earn XP!</p></div>';
+
+  area.innerHTML =
+    // Tier grid
+    '<div style="margin-bottom:20px">'
+    + '<div style="font-size:13px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">Your Tier Progress</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px">' + tierHtml + '</div>'
+    + '</div>'
+    // XP history
+    + '<div style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:22px;box-shadow:var(--shadow)">'
+    + '<div style="font-size:15px;font-weight:900;color:#0b1626;margin-bottom:4px">Recent XP Activity</div>'
+    + '<div style="font-size:13px;color:#94a3b8;margin-bottom:16px">XP earned from your learning activity</div>'
+    + historyHtml
+    + '</div>';
+}
+
+// ── PROFILE PANEL ─────────────────────────────────────────────
+async function renderProfilePanel() {
+  var area = document.getElementById('profile-panel-area');
+  if (!area) return;
+
+  var savedName = localStorage.getItem('kh_display_name');
+  var name = savedName || (supaUser && supaUser.user_metadata && supaUser.user_metadata.full_name) || (supaUser && supaUser.email.split('@')[0]) || '';
+  var email = supaUser ? supaUser.email : '';
+  var since = supaUser && supaUser.created_at ? new Date(supaUser.created_at).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }) : 'Unknown';
+  var provider = (supaUser && supaUser.app_metadata && supaUser.app_metadata.provider) || 'email';
+  var providerLabel = provider === 'google' ? '🔑 Google' : '✉️ Email / Password';
+
+  area.innerHTML =
+    // Profile info
+    '<div class="profile-section">'
+    + '<h3>Profile Info</h3>'
+    + '<div class="profile-field"><div class="pf-label">Name</div><div class="pf-value" id="pf-name-val">' + name + '</div>'
+    + '<button class="pf-edit-btn" onclick="editProfileName()">Edit</button></div>'
+    + '<div class="profile-field"><div class="pf-label">Email</div><div class="pf-value">' + email + '</div></div>'
+    + '<div class="profile-field"><div class="pf-label">Sign In</div><div class="pf-value">' + providerLabel + '</div></div>'
+    + '<div class="profile-field" style="border-bottom:none"><div class="pf-label">Member</div><div class="pf-value">' + since + '</div></div>'
+    + '</div>'
+    // Account settings
+    + '<div class="profile-section">'
+    + '<h3>Account</h3>'
+    + '<div class="profile-field"><div class="pf-label">Password</div><div class="pf-value" style="color:#94a3b8">'
+    + (provider === 'google' ? 'Managed by Google' : 'Set via email')
+    + '</div>'
+    + (provider !== 'google' ? '<button class="pf-edit-btn" onclick="sendPasswordReset()">Reset</button>' : '')
+    + '</div>'
+    + '<div class="profile-field" style="border-bottom:none"><div class="pf-label">Sign Out</div><div class="pf-value" style="color:#94a3b8">Sign out of all devices</div>'
+    + '<button class="pf-edit-btn" onclick="signOut()">Sign Out</button></div>'
+    + '</div>'
+    // Danger zone
+    + '<div class="danger-zone">'
+    + '<h3>Danger Zone</h3>'
+    + '<p style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.6">Deleting your account permanently removes all your data — saved words, XP, reading history, and progress. This cannot be undone.</p>'
+    + '<button onclick="confirmDeleteAccount()" style="padding:10px 20px;background:#dc2626;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Delete Account</button>'
+    + '</div>';
+}
+
+function editProfileName() {
+  var valEl = document.getElementById('pf-name-val');
+  if (!valEl) return;
+  editDisplayName(valEl, valEl.textContent);
+}
+
+async function sendPasswordReset() {
+  if (!supaUser || !supaUser.email) return;
+  var sb = getSupa();
+  if (!sb) return;
+  var { error } = await sb.auth.resetPasswordForEmail(supaUser.email);
+  if (!error) {
+    if (typeof toast === 'function') toast('Password reset email sent ✓');
+    else alert('Password reset email sent to ' + supaUser.email);
+  } else {
+    alert('Error: ' + error.message);
+  }
+}
 
 async function renderLeaderboard() {
   var area = document.getElementById('leaderboard-area');
@@ -994,33 +1273,93 @@ async function initMyPage() {
   // Profile
   var savedName = localStorage.getItem('kh_display_name');
   var name = savedName || (supaUser.user_metadata && supaUser.user_metadata.full_name) || supaUser.email.split('@')[0];
-  var pic  = (supaUser.user_metadata && supaUser.user_metadata.avatar_url) || '';
   var nameEl = document.getElementById('mp-name');
   nameEl.textContent = name;
-  nameEl.title = 'Click to edit name';
+  nameEl.title = 'Click to edit';
   nameEl.style.cursor = 'pointer';
   nameEl.onclick = function() { editDisplayName(nameEl, name); };
   document.getElementById('mp-email').textContent = supaUser.email || '';
-  if(pic) {
-    document.getElementById('mp-avatar-wrap').innerHTML =
-      '<img class="mypage-avatar" src="' + pic + '" alt="">';
+
+  // Initials avatar
+  var initials = name.replace(/[^a-zA-Z가-힣]/g,' ').trim().split(/\s+/).map(function(w){ return w[0]; }).join('').slice(0,2).toUpperCase() || '?';
+  document.getElementById('mp-initials').textContent = initials;
+
+  // Member since
+  if (supaUser.created_at) {
+    var since = new Date(supaUser.created_at).toLocaleDateString('en-US', { year:'numeric', month:'long' });
+    document.getElementById('mp-member-since').textContent = 'Member since ' + since;
   }
 
   // Load data in parallel
-  const [words, articles, streak] = await Promise.all([
+  const [words, articles, streak, userStats] = await Promise.all([
     dbGetSavedWords(),
     getReadArticles(),
     getStreak(),
+    dbGetUserStats(),
   ]);
 
   savedWords = words;
-  renderStats(streak, words.length, articles.length);
-  renderGoals();
-  setQuizMode('flash', document.getElementById('qmode-flash'));
-  renderBookmarks();
+  renderStats(streak, words.length, articles.length, userStats);
+  renderXPCard(userStats);
+  renderXPPanel();
   renderWordsList(words);
   renderArticlesList(articles);
   renderLevelPanel();
+}
+
+async function dbGetUserStats() {
+  if (!supaUser) return null;
+  var sb = getSupa();
+  if (!sb) return null;
+  try {
+    var { data } = await sb.from('user_stats')
+      .select('xp, quizzes_done, mission_streak, articles_read, words_saved, writing_tickets')
+      .eq('user_id', supaUser.id).maybeSingle();
+    return data || null;
+  } catch(e) { return null; }
+}
+
+function getXPTier(xp) {
+  if (xp >= 5000) return { label:'Diamond', cls:'diamond', icon:'💎', next:null, nextXP:5000 };
+  if (xp >= 2000) return { label:'Platinum', cls:'plat',    icon:'💜', next:'Diamond', nextXP:5000 };
+  if (xp >= 800)  return { label:'Gold',     cls:'gold',    icon:'🥇', next:'Platinum', nextXP:2000 };
+  if (xp >= 300)  return { label:'Silver',   cls:'silver',  icon:'🥈', next:'Gold', nextXP:800 };
+  return               { label:'Bronze',   cls:'bronze',  icon:'🥉', next:'Silver', nextXP:300 };
+}
+
+function renderXPCard(stats) {
+  var area = document.getElementById('mp-xp-card');
+  if (!area) return;
+  var xp   = (stats && stats.xp) || 0;
+  var tier = getXPTier(xp);
+  var tierFrom = { bronze:0, silver:300, gold:800, plat:2000, diamond:5000 }[tier.cls] || 0;
+  var tierTo   = tier.nextXP || xp;
+  var pct      = tier.next ? Math.min(100, Math.round((xp - tierFrom) / (tierTo - tierFrom) * 100)) : 100;
+
+  // Hero tier badge
+  var badgeEl = document.getElementById('mp-tier-badge');
+  if (badgeEl) {
+    badgeEl.innerHTML = '<span class="xp-tier ' + tier.cls + '">' + tier.icon + ' ' + tier.label + ' · ' + xp.toLocaleString() + ' XP</span>';
+  }
+
+  area.innerHTML =
+    '<div class="xp-card">'
+    + '<div class="xp-top">'
+    + '<div>'
+    + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--gray);margin-bottom:6px">Total XP</div>'
+    + '<div class="xp-total">' + xp.toLocaleString() + '</div>'
+    + '<div class="xp-total-label">accumulated XP</div>'
+    + '</div>'
+    + '<div style="text-align:right">'
+    + '<span class="xp-tier ' + tier.cls + '">' + tier.icon + ' ' + tier.label + '</span>'
+    + (tier.next ? '<div style="font-size:12px;color:var(--gray);margin-top:8px;font-weight:600">' + (tierTo - xp).toLocaleString() + ' XP to ' + tier.next + '</div>' : '<div style="font-size:12px;color:#16a34a;margin-top:8px;font-weight:700">MAX TIER ✓</div>')
+    + '</div>'
+    + '</div>'
+    + '<div class="xp-track"><div class="xp-fill" style="width:' + pct + '%"></div></div>'
+    + '<div class="xp-meta"><span>' + tier.label + ' (' + tierFrom.toLocaleString() + ' XP)</span>'
+    + (tier.next ? '<span>' + tier.next + ' (' + tierTo.toLocaleString() + ' XP)</span>' : '<span>Tier Complete</span>')
+    + '</div>'
+    + '</div>';
 }
 
 async function getReadArticles() {
@@ -1540,18 +1879,18 @@ async function finishLevelTest() {
   }
 }
 
-async function renderStats(streak, wordCount, articleCount) {
-  var s = streak || {};
-  var level = await dbGetLevel();
-  var lm    = level ? (LEVEL_META[level] || LEVEL_META.beginner) : null;
-  var bms   = await dbGetBookmarks();
+function renderStats(streak, wordCount, articleCount, userStats) {
+  var s    = streak || {};
+  var us   = userStats || {};
+  var fire = (s.streak || us.mission_streak || 0);
+  var arts = (us.articles_read || articleCount || 0);
+  var wds  = (us.words_saved || wordCount || 0);
+  var qz   = (us.quizzes_done || 0);
   document.getElementById('mp-stats').innerHTML =
-    '<div class="stat-card"><div class="stat-fire">🔥</div><div class="stat-num">' + (s.streak||0) + '</div><div class="stat-label">Day Streak</div></div>' +
-    '<div class="stat-card"><div class="stat-num">' + (s.longest_streak||0) + '</div><div class="stat-label">최장 streak일</div></div>' +
-    '<div class="stat-card"><div class="stat-num">' + wordCount + '</div><div class="stat-label">Saved Words</div></div>' +
-    '<div class="stat-card"><div class="stat-num">' + articleCount + '</div><div class="stat-label">Articles Read</div></div>' +
-    '<div class="stat-card"><div class="stat-num">' + (bms.length||0) + '</div><div class="stat-label">북마크</div></div>' +
-    (lm ? '<div class="stat-card"><div class="stat-num" style="font-size:13px;line-height:1.3;margin-top:4px">'+lm.label+'</div><div class="stat-label">내 Level</div></div>' : '');
+    '<div class="mini-stat"><div class="mini-stat-num">🔥 ' + fire + '</div><div class="mini-stat-label">Day Streak</div></div>' +
+    '<div class="mini-stat"><div class="mini-stat-num">' + arts + '</div><div class="mini-stat-label">Articles Read</div></div>' +
+    '<div class="mini-stat"><div class="mini-stat-num">' + wds + '</div><div class="mini-stat-label" id="mp-words-stat-label">Saved Words</div></div>' +
+    '<div class="mini-stat"><div class="mini-stat-num">' + qz + '</div><div class="mini-stat-label">Quizzes Done</div></div>';
 }
 
 // ── 단어 퀴즈 ──────────────────────────────────────────────────
@@ -1952,8 +2291,12 @@ async function removeWord(ko, btn) {
   await dbRemoveWord(ko);
   savedWords = savedWords.filter(function(w){ return w.ko !== ko; });
   btn.closest('.saved-word-row').remove();
-  // Update stats
-  document.querySelector('#mp-stats .stat-card:nth-child(3) .stat-num').textContent = savedWords.length;
+  // Update words count in mini-stats (3rd card)
+  var statsEl = document.getElementById('mp-stats');
+  if (statsEl) {
+    var nums = statsEl.querySelectorAll('.mini-stat-num');
+    if (nums[2]) nums[2].textContent = savedWords.length;
+  }
 }
 
 // ── Articles Read 목록 ─────────────────────────────────────────────
