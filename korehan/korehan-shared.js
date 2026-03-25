@@ -2903,6 +2903,36 @@ function renderArticleVocab(a) {
   }).join('');
 }
 
+function _addWordToKeyVocabList(ko, rom, en) {
+  var el = document.getElementById('art-vocab-list');
+  if (!el) return;
+  // 이미 있으면 스킵
+  if (document.getElementById('avi-' + ko)) return;
+  // 박스 보이게
+  var box = el.closest('.art-vocab-box');
+  if (box) box.style.display = '';
+  var safeK = ko.replace(/'/g, "\\'");
+  var safeR = (rom||'').replace(/'/g, "\\'");
+  var safeE = (en||'').replace(/'/g, "\\'");
+  var item = document.createElement('div');
+  item.className = 'art-vocab-item';
+  item.id = 'avi-' + ko;
+  item.innerHTML =
+    '<div class="avi-main">'
+    + '<span class="art-vocab-ko">' + ko + '</span>'
+    + '<span class="art-vocab-rom">' + (rom||'') + '</span>'
+    + '<span class="art-vocab-en">' + (en||'') + '</span>'
+    + '</div>'
+    + '<div class="avi-actions">'
+    + ttsBtn(ko)
+    + '<button class="avi-save-btn" title="Save word" '
+    + 'onclick="handleVocabSave(this,\'' + safeK + '\',\'' + safeR + '\',\'' + safeE + '\')">'
+    + '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><span>Save</span>'
+    + '</button>'
+    + '</div>';
+  el.insertBefore(item, el.firstChild);
+}
+
 async function handleVocabSave(btn, ko, rom, en) {
   var already = btn.classList.contains('saved');
   if (already) {
@@ -3553,6 +3583,9 @@ function openVocabEditModal(word) {
           wrapSingleWord(zone, word);
         });
       }
+
+      // KEY VOCABULARY 섹션에 즉시 추가
+      _addWordToKeyVocabList(word, rom, en);
 
       modal.remove();
       showToast('✅ ' + word + ' 저장됨');
