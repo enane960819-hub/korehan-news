@@ -13,9 +13,10 @@ function getSupa() {
   if (window.supabase) {
     _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
       auth: {
-        detectSessionInUrl: true,
+        detectSessionInUrl: false,  // 수동 exchangeCodeForSession 사용 — auto와 충돌 방지
         persistSession: true,
         autoRefreshToken: true,
+        flowType: 'pkce',
       }
     });
     return _supa;
@@ -811,24 +812,40 @@ async function checkSession() {
   });
 
   // OAuth 콜백 처리 — ?code= 파라미터 (PKCE) 또는 #access_token (implicit)
+  // OAuth 콜백 처리 — detectSessionInUrl:false 이므로 수동으로만 처리
   var hasCode = window.location.search.includes('code=');
   var hasHash = window.location.hash && window.location.hash.includes('access_token');
 
   if (hasCode) {
-    // PKCE: 명시적으로 코드를 교환
-    try {
-      var urlParams = new URLSearchParams(window.location.search);
-      var code = urlParams.get('code');
-      if (code) {
-        await sb.auth.exchangeCodeForSession(code);
+    // PKCE flow: code → token 교환
+    var urlParams = new URLSearchParams(window.location.search);
+    var code = urlParams.get('code');
+    if (code) {
+      var exchangeErr = null;
+      try {
+        var exchRes = await sb.auth.exchangeCodeForSession(code);
+        if (exchRes.error) exchangeErr = exchRes.error;
+      } catch(e) {
+        exchangeErr = e;
       }
-    } catch(e) {
-      console.warn('exchangeCodeForSession failed:', e);
+      if (exchangeErr) {
+        console.warn('exchangeCodeForSession failed:', exchangeErr.message || exchangeErr);
+      }
     }
+    // URL에서 code 파라미터 제거 (재사용 방지)
     window.history.replaceState(null, '', window.location.pathname);
   } else if (hasHash) {
-    // Implicit: Supabase detectSessionInUrl이 처리할 시간 대기
-    await new Promise(function(r){ setTimeout(r, 800); });
+    // Implicit flow: hash에서 access_token 추출
+    try {
+      var hashParams = new URLSearchParams(window.location.hash.slice(1));
+      var accessToken = hashParams.get('access_token');
+      var refreshToken = hashParams.get('refresh_token');
+      if (accessToken) {
+        await sb.auth.setSession({ access_token: accessToken, refresh_token: refreshToken || '' });
+      }
+    } catch(e) {
+      console.warn('implicit flow session failed:', e);
+    }
     window.history.replaceState(null, '', window.location.pathname + window.location.search);
   }
 
