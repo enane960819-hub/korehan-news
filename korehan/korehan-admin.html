@@ -2909,22 +2909,44 @@ async function goAICache() {
   setSbOn('sb-cache');
   const main = document.getElementById('main');
   main.innerHTML = '<div class="pg-hd"><div><h1>🧠 AI Cache 관리</h1><p>각 기사의 번역·단어·문법·퀴즈 캐시를 확인하고 생성하세요.</p></div></div>'
-    + '<div id="cache-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 불러오는 중…</div></div>';
+    + '<div id="cache-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 스키마 확인 중…</div></div>';
 
-  // key-value 스키마: content_type, content_id, cache_key, cache_value
-  let existingCache = {}; // content_id → { translation:true, vocab:true, ... }
+  const H = { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY };
+
+  // ── 1. 실제 컬럼 감지 (limit=0 으로 컬럼 유효성만 확인) ─────────
+  let _schema = null; // 'kv' | 'wide' | null
   try {
-    const cr = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?content_type=eq.article&select=content_id,cache_key,cache_value', {
-      headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
-    });
-    const cd = await cr.json();
-    if (Array.isArray(cd)) {
-      cd.forEach(function(r) {
+    const r1 = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?select=content_type,content_id,cache_key,cache_value&limit=0', { headers: H });
+    if (r1.ok) _schema = 'kv';
+  } catch(e) {}
+  if (!_schema) {
+    try {
+      const r2 = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?select=article_id,vocab,grammar&limit=0', { headers: H });
+      if (r2.ok) _schema = 'wide';
+    } catch(e) {}
+  }
+
+  // ── 2. 스키마에 맞게 캐시 로드 ─────────────────────────────────
+  let existingCache = {}; // article_id → { translation, vocab, grammar, quiz, expressions }
+  if (_schema === 'kv') {
+    try {
+      const cr = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?content_type=eq.article&select=content_id,cache_key,cache_value', { headers: H });
+      const cd = cr.ok ? await cr.json() : [];
+      if (Array.isArray(cd)) cd.forEach(function(r) {
         if (!existingCache[r.content_id]) existingCache[r.content_id] = {};
         existingCache[r.content_id][r.cache_key] = r.cache_value || true;
       });
-    }
-  } catch(e) { console.warn('cache load failed', e); }
+    } catch(e) {}
+  } else if (_schema === 'wide') {
+    // wide-table: article_id + column per type
+    try {
+      const cr = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?select=*', { headers: H });
+      const cd = cr.ok ? await cr.json() : [];
+      if (Array.isArray(cd)) cd.forEach(function(r) {
+        existingCache[r.article_id || r.id] = r;
+      });
+    } catch(e) {}
+  }
 
   const articles = DB.filter(function(a){ return a.status === 'published'; });
   const wrap = document.getElementById('cache-wrap');
@@ -2934,8 +2956,14 @@ async function goAICache() {
     const c = existingCache[String(a.id)] || {};
     return c.translation && c.vocab && c.grammar && c.quiz;
   }).length;
-  let html = '<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center">'
+
+  let schemaNote = _schema
+    ? '<span style="font-size:11px;padding:2px 8px;background:' + (_schema==='kv'?'#d1fae5':'#fef9c3') + ';border-radius:8px;color:#374151;font-weight:700">스키마: ' + _schema + '</span>'
+    : '<span style="font-size:11px;padding:2px 8px;background:#fee2e2;border-radius:8px;color:#991b1b;font-weight:700">⚠️ 스키마 감지 실패 — Supabase 콘솔에서 article_cache 컬럼 확인 필요</span>';
+
+  let html = '<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
     + '<span style="font-size:13px;color:var(--gr)">발행 기사 <b>' + articles.length + '</b>개 · 캐시 완료 <b>' + cacheComplete + '</b>개</span>'
+    + schemaNote
     + '<button class="btn" style="font-size:12px;padding:6px 14px;background:#f1f5f9;color:#374151;border:1px solid var(--bo)" onclick="goAICache()">🔄 새로고침</button>'
     + '</div>';
 
@@ -2954,7 +2982,7 @@ async function goAICache() {
       + '<div style="font-size:12px;color:var(--gr)">' + (a.section||'') + ' · ' + (a.date||'') + ' · ' + (a.level||'') + '</div></div>'
       + '<div>' + badge(hasT,'Translation') + badge(hasV,'Vocab') + badge(hasG,'Grammar') + badge(hasQ,'Quiz') + '</div>'
       + (allDone ? '<span style="color:#166534;font-weight:700;font-size:13px">✅ Done</span>'
-          : '<button class="btn btn-g" style="font-size:13px;padding:7px 16px" id="cbtn-' + a.id + '" onclick="genCache(\'' + a.id + '\')">🧠 Generate</button>')
+          : '<button class="btn btn-g" style="font-size:13px;padding:7px 16px" id="cbtn-' + a.id + '" onclick="genCache(\'' + a.id + '\',\'' + (_schema||'') + '\')">🧠 Generate</button>')
       + '<button style="padding:6px 13px;border:1.5px solid #6366f1;border-radius:8px;background:' + (hasE?'#eef2ff':'#fff') + ';color:#6366f1;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit" onclick="toggleExpressionsEditor(\'' + a.id + '\')">'
       + '✏️ Expressions' + (exprCount ? ' (' + exprCount + ')' : '') + '</button>'
       + '<div id="cst-' + a.id + '" style="width:100%;font-size:12px;color:var(--gr);margin-top:4px"></div>'
@@ -3051,7 +3079,7 @@ async function saveExpressions(articleId) {
   }
 }
 
-async function genCache(articleId) {
+async function genCache(articleId, schema) {
   const a = DB.find(function(x){ return String(x.id) === String(articleId); });
   if (!a) return;
   const st  = document.getElementById('cst-' + articleId);
@@ -3109,24 +3137,53 @@ async function genCache(articleId) {
     _ok++;
   } catch(e) { console.warn('quiz failed', e.message); }
 
-  // key-value 스키마로 각 키를 개별 upsert
+  // 스키마에 맞게 저장
   if (_ok > 0) {
     const H = { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' };
-    const keys = ['translation', 'vocab', 'grammar', 'quiz'];
     let saved = 0;
-    for (const k of keys) {
-      if (!_row[k]) continue;
+
+    if (schema === 'kv') {
+      // key-value 스키마: 각 키별로 upsert
+      for (const k of ['translation', 'vocab', 'grammar', 'quiz']) {
+        if (!_row[k]) continue;
+        try {
+          const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?on_conflict=content_type,content_id,cache_key', {
+            method: 'POST', headers: H,
+            body: JSON.stringify({ content_type: 'article', content_id: String(articleId), cache_key: k, cache_value: _row[k] })
+          });
+          if (res.ok) saved++;
+          else { const t = await res.text(); console.error('cache save kv ' + k + ':', res.status, t); }
+        } catch(e) {}
+      }
+    } else if (schema === 'wide') {
+      // wide-table 스키마: article_id 기준 upsert
+      // 존재 여부 확인 후 PATCH or POST
       try {
-        const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?on_conflict=content_type,content_id,cache_key', {
-          method: 'POST', headers: H,
-          body: JSON.stringify({ content_type: 'article', content_id: String(articleId), cache_key: k, cache_value: _row[k] })
-        });
-        if (res.ok) saved++;
-        else { const t = await res.text(); console.error('cache save ' + k + ':', res.status, t); }
-      } catch(e) { console.error('cache save error', k, e); }
+        const chk = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?article_id=eq.' + encodeURIComponent(articleId) + '&select=article_id', { headers: H });
+        const chkData = chk.ok ? await chk.json() : [];
+        const wideRow = { article_id: String(articleId), translation: _row.translation, vocab: _row.vocab, grammar: _row.grammar, quiz: _row.quiz };
+        if (Array.isArray(chkData) && chkData.length > 0) {
+          const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?article_id=eq.' + encodeURIComponent(articleId), {
+            method: 'PATCH', headers: H, body: JSON.stringify(wideRow)
+          });
+          if (res.ok) saved++;
+          else { const t = await res.text(); console.error('cache patch wide:', res.status, t); }
+        } else {
+          const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache', {
+            method: 'POST', headers: H, body: JSON.stringify(wideRow)
+          });
+          if (res.ok) saved++;
+          else { const t = await res.text(); console.error('cache insert wide:', res.status, t); }
+        }
+      } catch(e) { console.error('cache save wide error', e); }
+    } else {
+      if (st) st.textContent = '❌ 스키마 감지 실패 — 어드민 콘솔에서 article_cache 컬럼 확인 필요';
+      if (btn) btn.disabled = false;
+      return;
     }
+
     if (saved === 0) {
-      if (st) st.textContent = '❌ DB 저장 실패 — Supabase 콘솔에서 article_cache unique constraint 확인 필요';
+      if (st) st.textContent = '❌ DB 저장 실패 (' + schema + ' 스키마) — 콘솔 오류 확인';
       if (btn) btn.disabled = false;
       return;
     }

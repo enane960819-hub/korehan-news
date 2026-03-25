@@ -173,42 +173,91 @@ async function callClaude({ feature, model, max_tokens, messages }) {
 // ── article_cache — AI 분석 결과 캐시 ────────────────────────
 // conv/story 발행 시 admin에서 AI 생성 → 여기서 조회
 var _remoteCacheDisabled = false;
-// article_cache 테이블: content_type, content_id, cache_key, cache_value (key-value 스키마)
+var _artCacheSchema = null;     // 'kv' | 'wide' | 'none'
+var _artCacheSchemaDone = false;
+
+async function _detectArtCacheSchema() {
+  if (_artCacheSchemaDone) return _artCacheSchema;
+  _artCacheSchemaDone = true;
+  var sb = getSupa();
+  if (!sb) { _artCacheSchema = 'none'; return 'none'; }
+  try {
+    var r1 = await sb.from('article_cache').select('content_type,content_id,cache_key,cache_value').limit(0);
+    if (!r1.error) { _artCacheSchema = 'kv'; return 'kv'; }
+  } catch(e) {}
+  try {
+    var r2 = await sb.from('article_cache').select('article_id,vocab,grammar').limit(0);
+    if (!r2.error) { _artCacheSchema = 'wide'; return 'wide'; }
+  } catch(e) {}
+  _artCacheSchema = 'none';
+  return 'none';
+}
+
 async function getFromCache(contentType, contentId, cacheKey) {
   if (_remoteCacheDisabled) return null;
   try {
     var sb = getSupa();
     if (!sb) return null;
-    // 'ai_analysis'는 여러 키를 한번에 가져옴
-    if (cacheKey === 'ai_analysis') {
+    var schema = await _detectArtCacheSchema();
+    if (schema === 'none') return null;
+
+    if (schema === 'kv') {
+      // key-value 스키마
+      if (cacheKey === 'ai_analysis') {
+        var res = await sb.from('article_cache')
+          .select('cache_key, cache_value')
+          .eq('content_type', contentType)
+          .eq('content_id', String(contentId))
+          .in('cache_key', ['translation', 'vocab', 'grammar', 'quiz']);
+        if (res.error) throw res.error;
+        if (!res.data || !res.data.length) return null;
+        var map = {};
+        res.data.forEach(function(r) { map[r.cache_key] = safeParseJSON(r.cache_value, null); });
+        return { translation: map.translation || null, vocab: map.vocab || [], grammar: map.grammar || null, quiz: map.quiz || null };
+      }
+      var actualKey = cacheKey;
+      if (cacheKey === 'translation_en') actualKey = 'translation';
+      else if (cacheKey === 'grammar_guide') actualKey = 'grammar';
+      else if (cacheKey.indexOf('fill_') === 0) actualKey = 'quiz';
       var res = await sb.from('article_cache')
-        .select('cache_key, cache_value')
+        .select('cache_value')
         .eq('content_type', contentType)
         .eq('content_id', String(contentId))
-        .in('cache_key', ['translation', 'vocab', 'grammar', 'quiz']);
+        .eq('cache_key', actualKey)
+        .maybeSingle();
       if (res.error) throw res.error;
-      if (!res.data || !res.data.length) return null;
-      var map = {};
-      res.data.forEach(function(r) { map[r.cache_key] = safeParseJSON(r.cache_value, null); });
-      return { translation: map.translation || null, vocab: map.vocab || [], grammar: map.grammar || null, quiz: map.quiz || null };
+      if (!res.data || !res.data.cache_value) return null;
+      var val = safeParseJSON(res.data.cache_value, null);
+      if (cacheKey === 'translation_en' && val && val.texts) return { translations: val.texts };
+      return val;
     }
-    // 단일 키 조회
-    var actualKey = cacheKey;
-    if (cacheKey === 'translation_en') actualKey = 'translation';
-    else if (cacheKey === 'grammar_guide') actualKey = 'grammar';
-    else if (cacheKey.indexOf('fill_') === 0) actualKey = 'quiz';
-    var res = await sb.from('article_cache')
-      .select('cache_value')
-      .eq('content_type', contentType)
-      .eq('content_id', String(contentId))
-      .eq('cache_key', actualKey)
-      .maybeSingle();
-    if (res.error) throw res.error;
-    if (!res.data || !res.data.cache_value) return null;
-    var val = safeParseJSON(res.data.cache_value, null);
-    // 호출자가 기대하는 형태로 변환
-    if (cacheKey === 'translation_en' && val && val.texts) return { translations: val.texts };
-    return val;
+
+    if (schema === 'wide') {
+      // wide-table 스키마 (article_id 기반)
+      var res = await sb.from('article_cache')
+        .select('*')
+        .eq('article_id', String(contentId))
+        .maybeSingle();
+      if (res.error) throw res.error;
+      if (!res.data) return null;
+      var row = res.data;
+      if (cacheKey === 'ai_analysis') {
+        return {
+          translation: safeParseJSON(row.translation, null),
+          vocab: safeParseJSON(row.vocab, []),
+          grammar: safeParseJSON(row.grammar, null),
+          quiz: safeParseJSON(row.quiz, null)
+        };
+      }
+      if (cacheKey === 'translation_en') {
+        var t = safeParseJSON(row.translation, null);
+        return (t && t.texts) ? { translations: t.texts } : null;
+      }
+      if (cacheKey === 'grammar_guide') return safeParseJSON(row.grammar, null);
+      if (cacheKey.indexOf('fill_') === 0) return safeParseJSON(row.quiz, null);
+      if (cacheKey === 'expressions') return safeParseJSON(row.expressions, []);
+      return null;
+    }
   } catch(e) {
     var msg = String((e && e.message) || e || '');
     if (/40[013]/.test(msg) || /unauthorized|forbidden|permission/i.test(msg)) _remoteCacheDisabled = true;
@@ -216,26 +265,44 @@ async function getFromCache(contentType, contentId, cacheKey) {
   return null;
 }
 
-// patch의 각 키를 key-value 행으로 upsert
 async function upsertArticleCacheRow(articleId, patch) {
   if (_remoteCacheDisabled || !patch) return;
   var sb = getSupa();
   if (!sb) return;
-  var keys = Object.keys(patch);
-  for (var i = 0; i < keys.length; i++) {
-    var k = keys[i];
-    var v = patch[k];
-    if (v === undefined || v === null) continue;
+  var schema = await _detectArtCacheSchema();
+  if (schema === 'none') return;
+
+  if (schema === 'kv') {
+    var keys = Object.keys(patch);
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      var v = patch[k];
+      if (v === undefined || v === null) continue;
+      try {
+        await sb.from('article_cache').upsert({
+          content_type: 'article',
+          content_id: String(articleId),
+          cache_key: k,
+          cache_value: typeof v === 'string' ? v : JSON.stringify(v)
+        }, { onConflict: 'content_type,content_id,cache_key' });
+      } catch(e) {
+        var msg = String((e && e.message) || e || '');
+        if (/40[013]/.test(msg) || /unauthorized|forbidden|permission/i.test(msg)) { _remoteCacheDisabled = true; break; }
+      }
+    }
+  } else if (schema === 'wide') {
+    // wide-table: 존재 여부 확인 후 update / insert
     try {
-      await sb.from('article_cache').upsert({
-        content_type: 'article',
-        content_id: String(articleId),
-        cache_key: k,
-        cache_value: typeof v === 'string' ? v : JSON.stringify(v)
-      }, { onConflict: 'content_type,content_id,cache_key' });
+      var existing = await sb.from('article_cache').select('article_id').eq('article_id', String(articleId)).maybeSingle();
+      if (existing && existing.data) {
+        await sb.from('article_cache').update(patch).eq('article_id', String(articleId));
+      } else {
+        var row = Object.assign({ article_id: String(articleId) }, patch);
+        await sb.from('article_cache').insert(row);
+      }
     } catch(e) {
       var msg = String((e && e.message) || e || '');
-      if (/40[013]/.test(msg) || /unauthorized|forbidden|permission/i.test(msg)) { _remoteCacheDisabled = true; break; }
+      if (/40[013]/.test(msg) || /unauthorized|forbidden|permission/i.test(msg)) _remoteCacheDisabled = true;
     }
   }
 }
