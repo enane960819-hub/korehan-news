@@ -3533,25 +3533,83 @@ async function loadXPConfig() {
   return _xpConfig;
 }
 
+var _XP_ACTION_AMOUNTS = {
+  article_read: 10,
+  word_save: 2,
+  conv_quiz_complete: 20,
+  fill_complete: 5,
+  daily_mission_complete: 50,
+  story_read: 10,
+  conversation_read: 10
+};
+var _XP_ACTION_LABELS = {
+  article_read: '기사 읽기',
+  word_save: '단어 저장',
+  conv_quiz_complete: '퀴즈 완료',
+  fill_complete: '빈칸 채우기',
+  daily_mission_complete: '일일 미션 완료',
+  story_read: '스토리 읽기',
+  conversation_read: '회화 읽기'
+};
+
 async function awardXP(actionKey, meta) {
   if (!supaUser) return null;
+  var sb = getSupa(); if (!sb) return null;
+
+  // Try RPC first
   try {
-    var sb = getSupa(); if (!sb) return null;
     var res = await sb.rpc('award_xp', {
       p_user_id: supaUser.id,
       p_action:  actionKey,
       p_meta:    meta || {}
     });
     if (res.data && res.data.ok) {
-      // 레벨업이면 토스트 표시
       if (res.data.leveled_up) {
         showToast('🎉 레벨 업! Lv.' + res.data.level + ' ' + res.data.level_name);
       }
-      // XP 획득 토스트 (미니)
       showXPToast(res.data.xp_gained);
+      // Also log directly so xp_log stays in sync
+      try {
+        var amt2 = res.data.xp_gained || (_XP_ACTION_AMOUNTS[actionKey] || 10);
+        await sb.from('xp_log').insert({
+          user_id: supaUser.id,
+          source: actionKey,
+          amount: amt2,
+          reason: _XP_ACTION_LABELS[actionKey] || actionKey,
+          content_id: (meta && (meta.content_id || meta.article_id)) || null
+        });
+      } catch(e) {}
       return res.data;
     }
   } catch(e) {}
+
+  // Fallback: direct DB write when RPC is unavailable or returns no success
+  try {
+    var amount = _XP_ACTION_AMOUNTS[actionKey] || 10;
+    var contentId = (meta && (meta.content_id || meta.article_id)) || null;
+    var reason = _XP_ACTION_LABELS[actionKey] || actionKey;
+
+    // Insert into xp_log
+    await sb.from('xp_log').insert({
+      user_id: supaUser.id,
+      source: actionKey,
+      amount: amount,
+      reason: reason,
+      content_id: contentId
+    });
+
+    // Increment xp in user_stats
+    var { data: statsRow } = await sb.from('user_stats').select('xp').eq('user_id', supaUser.id).maybeSingle();
+    var currentXP = (statsRow && statsRow.xp) || 0;
+    await sb.from('user_stats').upsert({
+      user_id: supaUser.id,
+      xp: currentXP + amount
+    }, { onConflict: 'user_id' });
+
+    showXPToast(amount);
+    return { ok: true, xp_gained: amount };
+  } catch(e) {}
+
   return null;
 }
 
