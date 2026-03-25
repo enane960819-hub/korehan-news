@@ -182,14 +182,29 @@ async function _detectArtCacheSchema() {
   _artCacheSchemaDone = true;
   var sb = getSupa();
   if (!sb) { _artCacheSchema = 'none'; return 'none'; }
+  // 먼저 실제 행으로 컬럼 감지
+  try {
+    var r0 = await sb.from('article_cache').select('*').limit(1);
+    if (!r0.error && r0.data && r0.data.length > 0) {
+      var cols = Object.keys(r0.data[0]);
+      if (cols.indexOf('cache_key') >= 0) { _artCacheSchema = 'kv'; console.log('[cache] schema=kv cols:', cols); return 'kv'; }
+      if (cols.indexOf('article_id') >= 0 && cols.indexOf('vocab') >= 0) { _artCacheSchema = 'wide'; console.log('[cache] schema=wide cols:', cols); return 'wide'; }
+      console.warn('[cache] 알 수 없는 컬럼:', cols);
+      _artCacheSchema = 'none'; return 'none';
+    }
+  } catch(e) {}
+  // 빈 테이블이면 컬럼 유효성으로 감지
   try {
     var r1 = await sb.from('article_cache').select('content_type,content_id,cache_key,cache_value').limit(0);
-    if (!r1.error) { _artCacheSchema = 'kv'; return 'kv'; }
+    if (!r1.error) { _artCacheSchema = 'kv'; console.log('[cache] schema=kv (empty table probe)'); return 'kv'; }
+    else console.warn('[cache] kv probe error:', r1.error);
   } catch(e) {}
   try {
     var r2 = await sb.from('article_cache').select('article_id,vocab,grammar').limit(0);
-    if (!r2.error) { _artCacheSchema = 'wide'; return 'wide'; }
+    if (!r2.error) { _artCacheSchema = 'wide'; console.log('[cache] schema=wide (empty table probe)'); return 'wide'; }
+    else console.warn('[cache] wide probe error:', r2.error);
   } catch(e) {}
+  console.warn('[cache] schema=none — article_cache 테이블 접근 불가');
   _artCacheSchema = 'none';
   return 'none';
 }
@@ -280,14 +295,22 @@ async function upsertArticleCacheRow(articleId, patch) {
       var v = patch[k];
       if (v === undefined || v === null) continue;
       try {
-        await sb.from('article_cache').upsert({
+        var upsRes = await sb.from('article_cache').upsert({
           content_type: 'article',
           content_id: String(articleId),
           cache_key: k,
           cache_value: typeof v === 'string' ? v : JSON.stringify(v)
         }, { onConflict: 'content_type,content_id,cache_key' });
+        if (upsRes.error) {
+          console.warn('[cache] upsert error key=' + k + ':', upsRes.error);
+          var msg = String((upsRes.error.message) || upsRes.error.code || '');
+          if (/40[013]/.test(msg) || /unauthorized|forbidden|permission/i.test(msg)) { _remoteCacheDisabled = true; break; }
+        } else {
+          console.log('[cache] saved key=' + k + ' articleId=' + articleId);
+        }
       } catch(e) {
         var msg = String((e && e.message) || e || '');
+        console.warn('[cache] upsert exception key=' + k + ':', msg);
         if (/40[013]/.test(msg) || /unauthorized|forbidden|permission/i.test(msg)) { _remoteCacheDisabled = true; break; }
       }
     }

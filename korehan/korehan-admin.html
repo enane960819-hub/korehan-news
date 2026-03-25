@@ -2913,17 +2913,44 @@ async function goAICache() {
 
   const H = { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY };
 
-  // ── 1. 실제 컬럼 감지 (limit=0 으로 컬럼 유효성만 확인) ─────────
+  // ── 1. 실제 컬럼 감지 ─────────────────────────────────────────────
   let _schema = null; // 'kv' | 'wide' | null
+  let _schemaError = '';
+  let _actualCols = [];
+
+  // 먼저 실제 컬럼명 확인 (행이 있으면 컬럼명 알 수 있음)
   try {
-    const r1 = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?select=content_type,content_id,cache_key,cache_value&limit=0', { headers: H });
-    if (r1.ok) _schema = 'kv';
-  } catch(e) {}
-  if (!_schema) {
+    const r0 = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?select=*&limit=1', { headers: H });
+    if (r0.ok) {
+      const d0 = await r0.json();
+      if (Array.isArray(d0) && d0.length > 0) {
+        _actualCols = Object.keys(d0[0]);
+        if (_actualCols.includes('cache_key') && _actualCols.includes('content_type')) _schema = 'kv';
+        else if (_actualCols.includes('article_id') && (_actualCols.includes('vocab') || _actualCols.includes('grammar'))) _schema = 'wide';
+        else _schemaError = '알 수 없는 컬럼: ' + _actualCols.join(', ');
+      }
+      // empty table — fall through to column probes below
+    } else {
+      const errBody = await r0.text().catch(()=>'');
+      _schemaError = 'HTTP ' + r0.status + (errBody ? ': ' + errBody.slice(0,120) : '');
+    }
+  } catch(e) { _schemaError = String(e && e.message || e); }
+
+  // 빈 테이블이거나 위에서 확인 못했으면 컬럼 유효성으로 재시도
+  if (!_schema && !_schemaError) {
     try {
-      const r2 = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?select=article_id,vocab,grammar&limit=0', { headers: H });
-      if (r2.ok) _schema = 'wide';
-    } catch(e) {}
+      const r1 = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?select=content_type,content_id,cache_key,cache_value&limit=0', { headers: H });
+      if (r1.ok) _schema = 'kv';
+      else {
+        const b1 = await r1.text().catch(()=>'');
+        const r2 = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?select=article_id,vocab,grammar&limit=0', { headers: H });
+        if (r2.ok) _schema = 'wide';
+        else {
+          const b2 = await r2.text().catch(()=>'');
+          _schemaError = 'kv probe: HTTP ' + r1.status + ' / wide probe: HTTP ' + r2.status;
+        }
+      }
+    } catch(e) { _schemaError = _schemaError || String(e && e.message || e); }
   }
 
   // ── 2. 스키마에 맞게 캐시 로드 ─────────────────────────────────
@@ -2958,8 +2985,8 @@ async function goAICache() {
   }).length;
 
   let schemaNote = _schema
-    ? '<span style="font-size:11px;padding:2px 8px;background:' + (_schema==='kv'?'#d1fae5':'#fef9c3') + ';border-radius:8px;color:#374151;font-weight:700">스키마: ' + _schema + '</span>'
-    : '<span style="font-size:11px;padding:2px 8px;background:#fee2e2;border-radius:8px;color:#991b1b;font-weight:700">⚠️ 스키마 감지 실패 — Supabase 콘솔에서 article_cache 컬럼 확인 필요</span>';
+    ? '<span style="font-size:11px;padding:2px 8px;background:' + (_schema==='kv'?'#d1fae5':'#fef9c3') + ';border-radius:8px;color:#374151;font-weight:700">스키마: ' + _schema + (_actualCols.length ? ' [' + _actualCols.join(', ') + ']' : '') + '</span>'
+    : '<span style="font-size:11px;padding:2px 8px;background:#fee2e2;border-radius:8px;color:#991b1b;font-weight:700">⚠️ 스키마 감지 실패' + (_schemaError ? ' — ' + _schemaError : ' — Supabase 콘솔에서 article_cache 컬럼 확인 필요') + '</span>';
 
   let html = '<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
     + '<span style="font-size:13px;color:var(--gr)">발행 기사 <b>' + articles.length + '</b>개 · 캐시 완료 <b>' + cacheComplete + '</b>개</span>'
