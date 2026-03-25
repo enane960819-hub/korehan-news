@@ -123,6 +123,138 @@
     .skill-lock-icon{font-size:28px}
     .skill-lock-msg{font-size:13px;font-weight:700;color:#0f172a}
     .skill-lock-sub{font-size:12px;color:#64748b}
+
+    /* ── Neon Mode Overrides ────────────────────────────────────── */
+    body.kh-neon-on { background:linear-gradient(180deg,#050d1a 0%,#060f1e 100%) !important; }
+    body.kh-neon-on .wrap { color:#d7f8fb; }
+
+    /* Cards / containers */
+    body.kh-neon-on .hero-side,
+    body.kh-neon-on .stat,
+    body.kh-neon-on .card,
+    body.kh-neon-on .routine-item,
+    body.kh-neon-on .grammar-item,
+    body.kh-neon-on .skill-row,
+    body.kh-neon-on .vocab-box,
+    body.kh-neon-on .word-row,
+    body.kh-neon-on .review-day,
+    body.kh-neon-on .streak-item,
+    body.kh-neon-on .chart-box,
+    body.kh-neon-on .article-row {
+      background: rgba(9,18,33,.92) !important;
+      border-color: rgba(0,255,214,.18) !important;
+    }
+
+    /* Hero side */
+    body.kh-neon-on .hero-side { box-shadow: 0 0 28px rgba(0,255,214,.07); }
+
+    /* Stat numbers / labels */
+    body.kh-neon-on .stat-num { color:#8ffcff !important; }
+    body.kh-neon-on .stat-label,
+    body.kh-neon-on .stat-sub,
+    body.kh-neon-on .mini-title,
+    body.kh-neon-on .routine-item p,
+    body.kh-neon-on .grammar-meta,
+    body.kh-neon-on .card-hd p,
+    body.kh-neon-on .chart-sub,
+    body.kh-neon-on .skill-score,
+    body.kh-neon-on .skill-note,
+    body.kh-neon-on .timeline-sub,
+    body.kh-neon-on .article-sub,
+    body.kh-neon-on .vocab-box p,
+    body.kh-neon-on .sub,
+    body.kh-neon-on .bar-label,
+    body.kh-neon-on .streak-val,
+    body.kh-neon-on .review-top p,
+    body.kh-neon-on .time { color: rgba(163,230,235,.7) !important; }
+
+    /* Headings inside cards */
+    body.kh-neon-on .card-hd h2,
+    body.kh-neon-on .chart-title,
+    body.kh-neon-on .routine-item h3,
+    body.kh-neon-on .grammar-title,
+    body.kh-neon-on .skill-name,
+    body.kh-neon-on .vocab-box h3,
+    body.kh-neon-on .review-top h3,
+    body.kh-neon-on .timeline-title,
+    body.kh-neon-on .article-title,
+    body.kh-neon-on .streak-title,
+    body.kh-neon-on .bar-num { color: #e4f9ff !important; }
+
+    /* Korean word highlight in word list */
+    body.kh-neon-on .ko { color: #8ffcff !important; }
+
+    /* Routine step numbers */
+    body.kh-neon-on .routine-num { background: rgba(0,255,214,.1) !important; color:#8ffcff !important; border-color: rgba(0,255,214,.2) !important; }
+
+    /* Soft link / article tags */
+    body.kh-neon-on .soft-link,
+    body.kh-neon-on .article-tag,
+    body.kh-neon-on .level { background: rgba(0,255,214,.1) !important; color:#8ffcff !important; }
+
+    /* Buttons */
+    body.kh-neon-on .ghost-btn { background: rgba(0,255,214,.07) !important; border-color: rgba(0,255,214,.3) !important; color:#8ffcff !important; }
+    body.kh-neon-on .solid-btn { background: rgba(0,255,214,.18) !important; color:#8ffcff !important; border: 1px solid rgba(0,255,214,.35) !important; }
+
+    /* Tag pills */
+    body.kh-neon-on .tag.red { background: rgba(239,68,68,.15) !important; color:#fca5a5 !important; }
+    body.kh-neon-on .tag.amber { background: rgba(245,158,11,.15) !important; color:#fcd34d !important; }
+    body.kh-neon-on .tag.green { background: rgba(22,163,74,.15) !important; color:#86efac !important; }
+
+    /* Progress bars */
+    body.kh-neon-on .progress { background: rgba(255,255,255,.08) !important; }
+    body.kh-neon-on .skill-track { background: rgba(255,255,255,.08) !important; }
+
+    /* Bars chart */
+    body.kh-neon-on .bar { background: linear-gradient(180deg,rgba(0,255,214,.55),rgba(0,180,160,.8)) !important; box-shadow: 0 4px 18px rgba(0,255,214,.18) !important; }
+
+    /* Timeline dividers */
+    body.kh-neon-on .timeline-item { border-top-color: rgba(0,255,214,.15) !important; }
+
+    /* Footer note */
+    body.kh-neon-on .footer-note { background: rgba(0,255,214,.04) !important; border-color: rgba(0,255,214,.2) !important; color: rgba(163,230,235,.75) !important; }
+
+    /* Word row hover */
+    body.kh-neon-on .word-row:hover { background: rgba(0,255,214,.08) !important; border-color: rgba(0,255,214,.3) !important; }
+
+    /* Action buttons on word rows */
+    body.kh-neon-on .wra-btn { background: transparent !important; border-color: rgba(0,255,214,.2) !important; color: rgba(163,230,235,.7) !important; }
+    body.kh-neon-on .wra-btn:hover { background: rgba(0,255,214,.08) !important; border-color: rgba(0,255,214,.4) !important; }
+    body.kh-neon-on .wra-btn.saved { color:#86efac !important; border-color: rgba(134,239,172,.35) !important; background: rgba(134,239,172,.08) !important; }
+
+    /* Daily review modal */
+    body.kh-neon-on .dr-modal { background: #071320 !important; }
+    body.kh-neon-on .dr-footer { background: rgba(9,18,33,.95) !important; border-top-color: rgba(0,255,214,.15) !important; }
+    body.kh-neon-on .dr-q-label { color: #8ffcff !important; }
+    body.kh-neon-on .dr-q-title { color: #e4f9ff !important; }
+    body.kh-neon-on .dr-q-hint { color: rgba(163,230,235,.75) !important; }
+    body.kh-neon-on .dr-choice { background: rgba(9,18,33,.9) !important; border-color: rgba(0,255,214,.2) !important; color: #d7f8fb !important; }
+    body.kh-neon-on .dr-choice:hover { border-color: rgba(0,255,214,.5) !important; background: rgba(0,255,214,.07) !important; }
+    body.kh-neon-on .dr-choice.selected { border-color: rgba(0,255,214,.6) !important; background: rgba(0,255,214,.1) !important; color:#8ffcff !important; }
+    body.kh-neon-on .dr-choice.correct { border-color: rgba(134,239,172,.5) !important; background: rgba(134,239,172,.1) !important; color:#86efac !important; }
+    body.kh-neon-on .dr-choice.wrong { border-color: rgba(252,165,165,.5) !important; background: rgba(252,165,165,.08) !important; color:#fca5a5 !important; }
+    body.kh-neon-on .dr-typed-input { background: rgba(9,18,33,.9) !important; border-color: rgba(0,255,214,.25) !important; color: #e4f9ff !important; }
+    body.kh-neon-on .dr-typed-input:focus { border-color: rgba(0,255,214,.6) !important; }
+    body.kh-neon-on .dr-feedback-box.correct { background: rgba(134,239,172,.08) !important; border-color: rgba(134,239,172,.3) !important; color:#86efac !important; }
+    body.kh-neon-on .dr-feedback-box.wrong { background: rgba(252,165,165,.06) !important; border-color: rgba(252,165,165,.3) !important; color:#fca5a5 !important; }
+    body.kh-neon-on .dr-score-num { color: #8ffcff !important; }
+    body.kh-neon-on .dr-score-sub { color: rgba(163,230,235,.75) !important; }
+
+    /* Word detail popup */
+    body.kh-neon-on .word-popup { background: #071320 !important; }
+    body.kh-neon-on .wp-body { color: #d7f8fb; }
+    body.kh-neon-on .wp-ex { background: rgba(0,255,214,.06) !important; border-left-color: #00ffd6 !important; }
+    body.kh-neon-on .wp-ex-ko { color: #e4f9ff !important; }
+    body.kh-neon-on .wp-ex-en { color: rgba(163,230,235,.75) !important; }
+    body.kh-neon-on .wp-ex-label { color: rgba(163,230,235,.55) !important; }
+
+    /* Skill lock overlay */
+    body.kh-neon-on .skill-lock-overlay { background: rgba(5,13,26,.88) !important; backdrop-filter: blur(6px); }
+    body.kh-neon-on .skill-lock-msg { color: #e4f9ff !important; }
+    body.kh-neon-on .skill-lock-sub { color: rgba(163,230,235,.7) !important; }
+
+    /* SVG line chart labels */
+    body.kh-neon-on .linechart-legend-item { color: rgba(163,230,235,.7) !important; }
   </style>
 </head>
 <body>
