@@ -138,6 +138,7 @@ body.kh-neon-on .xp-log-row { border-bottom-color:rgba(0,255,214,.1) !important;
 body.kh-neon-on .xp-log-reason { color:#d7f8fb !important; }
 body.kh-neon-on .xp-log-date { color:rgba(163,230,235,.5) !important; }
 body.kh-neon-on .xp-log-amount { color:#8ffcff !important; }
+body.kh-neon-on #mp-xp-log button { background:rgba(9,18,33,.7) !important; border-color:rgba(0,255,214,.18) !important; color:#8ffcff !important; }
 
 @media (max-width:700px) {
   .mini-stats { grid-template-columns:repeat(2,1fr); }
@@ -242,7 +243,7 @@ async function dbGetXPLog() {
   var sb = getSupa();
   if (!sb) return [];
   try {
-    var { data } = await sb.from('xp_log').select('*').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(15);
+    var { data } = await sb.from('xp_log').select('*').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(50);
     return data || [];
   } catch(e) { return []; }
 }
@@ -314,20 +315,54 @@ function renderTierGrid(xp) {
 }
 
 // ── Render XP log ──────────────────────────────────────────────
+var _xpLogAll = [];
+var _xpLogShowing = 5;
+
 function renderXPLog(rows) {
+  _xpLogAll = rows || [];
+  _xpLogShowing = 5;
+  _drawXPLog();
+}
+
+function _drawXPLog() {
   var el = document.getElementById('mp-xp-log');
   if (!el) return;
-  if (!rows || !rows.length) {
-    el.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px">No XP activity yet — read articles, take quizzes, save words to earn XP!</div>';
+  if (!_xpLogAll.length) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px">No XP activity yet — read articles, take quizzes, and save words to earn XP!</div>';
     return;
   }
-  el.innerHTML = rows.map(function(row) {
+  var visible = _xpLogAll.slice(0, _xpLogShowing);
+  var html = visible.map(function(row) {
     var ds = row.created_at ? new Date(row.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
+    var amt = row.amount !== undefined ? row.amount : (row.xp || 0);
+    var sign = amt >= 0 ? '+' : '';
+    var color = amt >= 0 ? '' : 'color:#ef4444';
     return '<div class="xp-log-row">'
       + '<div><div class="xp-log-reason">' + (row.reason || 'Activity') + '</div><div class="xp-log-date">' + ds + '</div></div>'
-      + '<div class="xp-log-amount">+' + (row.amount || row.xp || 0) + ' XP</div>'
+      + '<div class="xp-log-amount" style="' + color + '">' + sign + amt + ' XP</div>'
       + '</div>';
   }).join('');
+
+  // Show more / less button
+  if (_xpLogAll.length > 5) {
+    var remaining = _xpLogAll.length - _xpLogShowing;
+    if (remaining > 0) {
+      html += '<button onclick="xpLogShowMore()" style="width:100%;margin-top:14px;padding:10px;border:1px solid var(--border);border-radius:10px;background:#f8faff;color:#2255a4;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Show ' + Math.min(remaining, 10) + ' more ↓</button>';
+    } else if (_xpLogShowing > 5) {
+      html += '<button onclick="xpLogCollapse()" style="width:100%;margin-top:14px;padding:10px;border:1px solid var(--border);border-radius:10px;background:#f8faff;color:#94a3b8;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Show less ↑</button>';
+    }
+  }
+  el.innerHTML = html;
+}
+
+function xpLogShowMore() {
+  _xpLogShowing = Math.min(_xpLogShowing + 10, _xpLogAll.length);
+  _drawXPLog();
+}
+
+function xpLogCollapse() {
+  _xpLogShowing = 5;
+  _drawXPLog();
 }
 
 // ── Render profile fields ──────────────────────────────────────
