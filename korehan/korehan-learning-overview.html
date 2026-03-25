@@ -1009,23 +1009,48 @@
       }
     } catch(e) {}
 
-    // ALL daily_missions → compute total XP and sync to user_stats.xp
-    // This makes user_stats.xp always reflect the true earned XP across all pages
+    // ALL daily_missions → compute total XP + activity streak, sync to user_stats
     try {
       var { data: allDMs } = await sb.from('daily_missions')
-        .select('articles, words, quizzes, fill')
-        .eq('user_id', userId);
+        .select('date, articles, words, quizzes, fill')
+        .eq('user_id', userId)
+        .order('date', { ascending: false });
       if (allDMs && allDMs.length) {
+        // Total XP
         var totalXP = allDMs.reduce(function(s, d) {
           return s + ((d.articles||0)*10) + ((d.words||0)*2) + ((d.quizzes||0)*5) + ((d.fill||0)*5);
         }, 0);
         snap.total_xp = totalXP;
-        // Read current row first to preserve all other fields
-        var { data: curStats } = await sb.from('user_stats').select('*').eq('user_id', userId).maybeSingle();
+
+        // Activity streak: count consecutive days (from today/yesterday back) with any activity
+        var activeDateSet = {};
+        allDMs.forEach(function(d) {
+          if ((d.articles||0) + (d.words||0) + (d.quizzes||0) + (d.fill||0) > 0) {
+            activeDateSet[d.date] = true;
+          }
+        });
+        var actStreak = 0;
+        var cur = new Date(Date.now() + 9*3600000); // KST
+        for (var i = 0; i < 400; i++) {
+          var key = cur.toISOString().slice(0, 10);
+          if (activeDateSet[key]) {
+            actStreak++;
+            cur.setDate(cur.getDate() - 1);
+          } else if (i === 0) {
+            // today has no activity yet — allow checking yesterday
+            cur.setDate(cur.getDate() - 1);
+          } else {
+            break;
+          }
+        }
+        snap.streak = actStreak;
+
+        // Sync both xp and streak to user_stats
+        var { data: curStats } = await sb.from('user_stats').select('user_id').eq('user_id', userId).maybeSingle();
         if (curStats) {
-          await sb.from('user_stats').update({ xp: totalXP }).eq('user_id', userId);
+          await sb.from('user_stats').update({ xp: totalXP, streak: actStreak, mission_streak: actStreak }).eq('user_id', userId);
         } else {
-          await sb.from('user_stats').insert({ user_id: userId, xp: totalXP });
+          await sb.from('user_stats').insert({ user_id: userId, xp: totalXP, streak: actStreak, mission_streak: actStreak });
         }
       }
     } catch(e) {}

@@ -255,8 +255,7 @@ var TIERS = [
 ];
 
 // ── Load user stats ────────────────────────────────────────────
-// XP is ALWAYS computed from daily_missions (same source as Learning Hub)
-// user_stats used only for streak, articles_read, words_saved, quizzes_done
+// XP + streak are ALWAYS computed from daily_missions (same source as Learning Hub)
 async function dbGetUserStats() {
   if (!supaUser) return null;
   var sb = getSupa();
@@ -264,15 +263,17 @@ async function dbGetUserStats() {
 
   var statsData = null;
   var computedXP = 0;
+  var computedStreak = 0;
 
   // Load user_stats and all daily_missions in parallel
   var results = await Promise.allSettled([
     sb.from('user_stats')
-      .select('xp, quizzes_done, mission_streak, articles_read, words_saved')
+      .select('quizzes_done, articles_read, words_saved')
       .eq('user_id', supaUser.id).maybeSingle(),
     sb.from('daily_missions')
-      .select('articles, words, quizzes, fill')
+      .select('date, articles, words, quizzes, fill')
       .eq('user_id', supaUser.id)
+      .order('date', { ascending: false })
   ]);
 
   if (results[0].status === 'fulfilled' && results[0].value.data) {
@@ -280,14 +281,27 @@ async function dbGetUserStats() {
   }
   if (results[1].status === 'fulfilled' && results[1].value.data) {
     var rows = results[1].value.data;
+    // XP
     computedXP = rows.reduce(function(sum, d) {
       return sum + (d.articles||0)*10 + (d.words||0)*2 + (d.quizzes||0)*5 + (d.fill||0)*5;
     }, 0);
+    // Streak: consecutive days with any activity (KST)
+    var activeDates = {};
+    rows.forEach(function(d) {
+      if ((d.articles||0)+(d.words||0)+(d.quizzes||0)+(d.fill||0) > 0) activeDates[d.date] = true;
+    });
+    var cur = new Date(Date.now() + 9*3600000);
+    for (var i = 0; i < 400; i++) {
+      var key = cur.toISOString().slice(0, 10);
+      if (activeDates[key]) { computedStreak++; cur.setDate(cur.getDate() - 1); }
+      else if (i === 0) { cur.setDate(cur.getDate() - 1); }
+      else break;
+    }
   }
 
-  // Always use computedXP from daily_missions as XP source of truth
   statsData = statsData || {};
   statsData.xp = computedXP;
+  statsData.mission_streak = computedStreak;
   return statsData;
 }
 
