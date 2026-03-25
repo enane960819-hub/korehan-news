@@ -1142,7 +1142,7 @@ async function goUserXPLog(userId, displayName) {
   main.innerHTML = '<div class="pg-hd"><div>'
     + '<button class="btn btn-gh" style="margin-bottom:12px" onclick="goStats()">← 뒤로</button>'
     + '<h1>📋 XP 내역: ' + (displayName||userId) + '</h1>'
-    + '<p>해당 유저의 전체 XP 적립 및 차감 내역입니다.</p>'
+    + '<p>daily_missions 기반 일별 XP 내역입니다.</p>'
     + '</div></div>'
     + '<div id="xplog-content"><div style="text-align:center;padding:48px;color:#aaa">⏳ Loading...</div></div>';
 
@@ -1150,47 +1150,57 @@ async function goUserXPLog(userId, displayName) {
   if (!sb) { document.getElementById('xplog-content').innerHTML = '<p style="color:red">Supabase 연결 실패</p>'; return; }
 
   try {
-    var { data: rows, error } = await sb.from('xp_log')
-      .select('*')
+    // Load daily_missions (all-time) — this is the real XP source
+    var { data: missions, error: mErr } = await sb.from('daily_missions')
+      .select('date, articles, words, quizzes, fill, completed')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(200);
+      .order('date', { ascending: false });
+    if (mErr) throw mErr;
+    missions = missions || [];
 
-    if (error) throw error;
-    rows = rows || [];
+    var totalXP = missions.reduce(function(s, d) {
+      return s + (d.articles||0)*10 + (d.words||0)*2 + (d.quizzes||0)*5 + (d.fill||0)*5;
+    }, 0);
+    var activeDays = missions.filter(function(d) {
+      return (d.articles||0)+(d.words||0)+(d.quizzes||0) > 0;
+    }).length;
 
-    var totalXP = rows.reduce(function(s, r) { return s + (r.amount || r.xp || 0); }, 0);
-
-    var html = '<div style="display:flex;gap:12px;margin-bottom:20px">'
+    var html = '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px">'
       + '<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:16px 22px">'
-      + '<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:1px">총 XP 이벤트</div>'
-      + '<div style="font-size:26px;font-weight:900;color:#2255a4">' + rows.length + '건</div></div>'
-      + '<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:16px 22px">'
-      + '<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:1px">로그 합산 XP</div>'
+      + '<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:1px">총 XP</div>'
       + '<div style="font-size:26px;font-weight:900;color:#f59e0b">' + totalXP.toLocaleString() + ' XP</div></div>'
+      + '<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:16px 22px">'
+      + '<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:1px">활동 일수</div>'
+      + '<div style="font-size:26px;font-weight:900;color:#2255a4">' + activeDays + '일</div></div>'
+      + '<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:16px 22px">'
+      + '<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:1px">기록된 날</div>'
+      + '<div style="font-size:26px;font-weight:900;color:#10b981">' + missions.length + '일</div></div>'
       + '</div>';
 
-    if (rows.length === 0) {
-      html += '<div class="sf-card"><p style="color:#aaa;font-size:13px">XP 내역이 없습니다.</p></div>';
+    if (missions.length === 0) {
+      html += '<div class="sf-card"><p style="color:#aaa;font-size:13px">학습 기록이 없습니다.</p></div>';
     } else {
       html += '<div class="sf-card"><div style="overflow-x:auto">'
         + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
         + '<tr style="color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:1px;background:#f8faff">'
         + '<th style="text-align:left;padding:8px 10px">날짜</th>'
-        + '<th style="text-align:left;padding:8px">이유</th>'
-        + '<th style="text-align:left;padding:8px">타입</th>'
-        + '<th style="text-align:right;padding:8px">XP</th>'
+        + '<th style="text-align:right;padding:8px">기사</th>'
+        + '<th style="text-align:right;padding:8px">단어</th>'
+        + '<th style="text-align:right;padding:8px">퀴즈</th>'
+        + '<th style="text-align:right;padding:8px">Fill</th>'
+        + '<th style="text-align:right;padding:8px">미션</th>'
+        + '<th style="text-align:right;padding:8px;color:#f59e0b">XP</th>'
         + '</tr>'
-        + rows.map(function(r) {
-            var amt = r.amount !== undefined ? r.amount : (r.xp || 0);
-            var color = amt >= 0 ? '#2255a4' : '#ef4444';
-            var sign  = amt >= 0 ? '+' : '';
-            var ds = r.created_at ? new Date(r.created_at).toLocaleString('ko-KR', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : '-';
+        + missions.map(function(d) {
+            var xp = (d.articles||0)*10 + (d.words||0)*2 + (d.quizzes||0)*5 + (d.fill||0)*5;
             return '<tr style="border-top:1px solid #f0f3f9">'
-              + '<td style="padding:8px 10px;color:#64748b;font-size:12px">' + ds + '</td>'
-              + '<td style="padding:8px;font-weight:600">' + (r.reason || r.source || '-') + '</td>'
-              + '<td style="padding:8px;color:#64748b;font-size:12px">' + (r.source || '') + '</td>'
-              + '<td style="padding:8px;text-align:right;font-weight:800;color:' + color + '">' + sign + amt + ' XP</td>'
+              + '<td style="padding:8px 10px;font-weight:600">' + d.date + '</td>'
+              + '<td style="padding:8px;text-align:right">' + (d.articles||0) + '</td>'
+              + '<td style="padding:8px;text-align:right">' + (d.words||0) + '</td>'
+              + '<td style="padding:8px;text-align:right">' + (d.quizzes||0) + '</td>'
+              + '<td style="padding:8px;text-align:right">' + (d.fill||0) + '</td>'
+              + '<td style="padding:8px;text-align:center">' + (d.completed ? '✅' : '—') + '</td>'
+              + '<td style="padding:8px;text-align:right;font-weight:800;color:#f59e0b">+' + xp + '</td>'
               + '</tr>';
           }).join('')
         + '</table></div></div>';
