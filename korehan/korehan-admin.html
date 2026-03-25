@@ -1101,7 +1101,7 @@ async function goStats() {
       + '<h3 style="margin-bottom:14px">👤 User Learning Stats</h3>'
       + (users.length === 0
         ? '<p style="color:#aaa;font-size:13px">No data yet</p>'
-        : '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:600px">'
+        : '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:640px">'
           + '<tr style="color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:1px;background:#f8faff">'
           + '<th style="text-align:left;padding:8px 10px">유저</th>'
           + '<th style="text-align:right;padding:8px">XP</th>'
@@ -1110,8 +1110,11 @@ async function goStats() {
           + '<th style="text-align:right;padding:8px">퀴즈</th>'
           + '<th style="text-align:right;padding:8px">미션🔥</th>'
           + '<th style="text-align:right;padding:8px">첨삭권✏️</th>'
+          + '<th style="text-align:right;padding:8px">XP 내역</th>'
           + '</tr>'
           + users.map(function(u){
+              var uid = u.user_id || '';
+              var dname = (u.display_name||'-').replace(/'/g, "\\'");
               return '<tr style="border-top:1px solid #f0f3f9">'
                 + '<td style="padding:8px 10px"><div style="font-weight:700">' + (u.display_name||'-') + '</div>'
                 + '<div style="font-size:11px;color:#94a3b8">' + (u.email||'') + '</div></td>'
@@ -1121,6 +1124,7 @@ async function goStats() {
                 + '<td style="padding:8px;text-align:right">' + (u.quizzes_done||0) + '</td>'
                 + '<td style="padding:8px;text-align:right;font-weight:800;color:#f59e0b">' + (u.mission_streak||0) + '일</td>'
                 + '<td style="padding:8px;text-align:right;font-weight:800;color:#8b5cf6">' + (u.writing_tickets||0) + '</td>'
+                + '<td style="padding:8px;text-align:right"><button class="btn btn-gh" style="font-size:11px;padding:4px 10px" onclick="goUserXPLog(\'' + uid + '\',\'' + dname + '\')">📋 보기</button></td>'
                 + '</tr>';
             }).join('')
           + '</table></div>'
@@ -1130,6 +1134,71 @@ async function goStats() {
     document.getElementById('stats-content').innerHTML = html;
   } catch(e) {
     document.getElementById('stats-content').innerHTML = '<p style="color:red;padding:20px">Error: ' + e.message + '</p>';
+  }
+}
+
+async function goUserXPLog(userId, displayName) {
+  var main = document.getElementById('main');
+  main.innerHTML = '<div class="pg-hd"><div>'
+    + '<button class="btn btn-gh" style="margin-bottom:12px" onclick="goStats()">← 뒤로</button>'
+    + '<h1>📋 XP 내역: ' + (displayName||userId) + '</h1>'
+    + '<p>해당 유저의 전체 XP 적립 및 차감 내역입니다.</p>'
+    + '</div></div>'
+    + '<div id="xplog-content"><div style="text-align:center;padding:48px;color:#aaa">⏳ Loading...</div></div>';
+
+  var sb = getSb();
+  if (!sb) { document.getElementById('xplog-content').innerHTML = '<p style="color:red">Supabase 연결 실패</p>'; return; }
+
+  try {
+    var { data: rows, error } = await sb.from('xp_log')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (error) throw error;
+    rows = rows || [];
+
+    var totalXP = rows.reduce(function(s, r) { return s + (r.amount || r.xp || 0); }, 0);
+
+    var html = '<div style="display:flex;gap:12px;margin-bottom:20px">'
+      + '<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:16px 22px">'
+      + '<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:1px">총 XP 이벤트</div>'
+      + '<div style="font-size:26px;font-weight:900;color:#2255a4">' + rows.length + '건</div></div>'
+      + '<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:16px 22px">'
+      + '<div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:1px">로그 합산 XP</div>'
+      + '<div style="font-size:26px;font-weight:900;color:#f59e0b">' + totalXP.toLocaleString() + ' XP</div></div>'
+      + '</div>';
+
+    if (rows.length === 0) {
+      html += '<div class="sf-card"><p style="color:#aaa;font-size:13px">XP 내역이 없습니다.</p></div>';
+    } else {
+      html += '<div class="sf-card"><div style="overflow-x:auto">'
+        + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+        + '<tr style="color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:1px;background:#f8faff">'
+        + '<th style="text-align:left;padding:8px 10px">날짜</th>'
+        + '<th style="text-align:left;padding:8px">이유</th>'
+        + '<th style="text-align:left;padding:8px">타입</th>'
+        + '<th style="text-align:right;padding:8px">XP</th>'
+        + '</tr>'
+        + rows.map(function(r) {
+            var amt = r.amount !== undefined ? r.amount : (r.xp || 0);
+            var color = amt >= 0 ? '#2255a4' : '#ef4444';
+            var sign  = amt >= 0 ? '+' : '';
+            var ds = r.created_at ? new Date(r.created_at).toLocaleString('ko-KR', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : '-';
+            return '<tr style="border-top:1px solid #f0f3f9">'
+              + '<td style="padding:8px 10px;color:#64748b;font-size:12px">' + ds + '</td>'
+              + '<td style="padding:8px;font-weight:600">' + (r.reason || r.source || '-') + '</td>'
+              + '<td style="padding:8px;color:#64748b;font-size:12px">' + (r.source || '') + '</td>'
+              + '<td style="padding:8px;text-align:right;font-weight:800;color:' + color + '">' + sign + amt + ' XP</td>'
+              + '</tr>';
+          }).join('')
+        + '</table></div></div>';
+    }
+
+    document.getElementById('xplog-content').innerHTML = html;
+  } catch(e) {
+    document.getElementById('xplog-content').innerHTML = '<p style="color:red;padding:20px">Error: ' + e.message + '</p>';
   }
 }
 
