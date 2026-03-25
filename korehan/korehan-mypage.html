@@ -255,45 +255,40 @@ var TIERS = [
 ];
 
 // ── Load user stats ────────────────────────────────────────────
+// XP is ALWAYS computed from daily_missions (same source as Learning Hub)
+// user_stats used only for streak, articles_read, words_saved, quizzes_done
 async function dbGetUserStats() {
   if (!supaUser) return null;
   var sb = getSupa();
   if (!sb) return null;
-  try {
-    var { data } = await sb.from('user_stats')
-      .select('xp, quizzes_done, mission_streak, articles_read, words_saved')
-      .eq('user_id', supaUser.id).maybeSingle();
-    // If xp is 0 or missing, compute from daily_missions (same source as Learning Hub)
-    if (!data || !(data.xp > 0)) {
-      var computed = await _computeXPFromMissions();
-      if (computed > 0) {
-        try {
-          await sb.from('user_stats').upsert(
-            { user_id: supaUser.id, xp: computed },
-            { onConflict: 'user_id' }
-          );
-        } catch(e) {}
-        data = data || {};
-        data.xp = computed;
-      }
-    }
-    return data || null;
-  } catch(e) { return null; }
-}
 
-// Compute total XP from daily_missions (same formula as Learning Hub)
-async function _computeXPFromMissions() {
-  var sb = getSupa();
-  if (!sb || !supaUser) return 0;
-  try {
-    var { data } = await sb.from('daily_missions')
+  var statsData = null;
+  var computedXP = 0;
+
+  // Load user_stats and all daily_missions in parallel
+  var results = await Promise.allSettled([
+    sb.from('user_stats')
+      .select('xp, quizzes_done, mission_streak, articles_read, words_saved')
+      .eq('user_id', supaUser.id).maybeSingle(),
+    sb.from('daily_missions')
       .select('articles, words, quizzes, fill')
-      .eq('user_id', supaUser.id);
-    if (!data || !data.length) return 0;
-    return data.reduce(function(sum, d) {
+      .eq('user_id', supaUser.id)
+  ]);
+
+  if (results[0].status === 'fulfilled' && results[0].value.data) {
+    statsData = results[0].value.data;
+  }
+  if (results[1].status === 'fulfilled' && results[1].value.data) {
+    var rows = results[1].value.data;
+    computedXP = rows.reduce(function(sum, d) {
       return sum + (d.articles||0)*10 + (d.words||0)*2 + (d.quizzes||0)*5 + (d.fill||0)*5;
     }, 0);
-  } catch(e) { return 0; }
+  }
+
+  // Always use computedXP from daily_missions as XP source of truth
+  statsData = statsData || {};
+  statsData.xp = computedXP;
+  return statsData;
 }
 
 async function dbGetXPLog() {
