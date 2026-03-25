@@ -710,11 +710,15 @@ body.kh-neon-on .kh-neon-toggle:hover { transform: translateY(-2px); box-shadow:
 
 /* Portrait mobile — 2-column square cards, same shape as landscape just smaller */
 @media (max-width: 480px) {
-  .all-card-grid .nc.nc-overlay { border-radius: 14px; }
+  /* min-width:0 prevents grid tracks from expanding beyond their 1fr size */
+  .all-card-grid { min-width: 0; }
+  .all-card-grid .nc.nc-overlay { min-width: 0; border-radius: 14px; }
   .all-card-grid .nc.nc-overlay .nc-title { font-size: 13px; line-height: 1.35; margin-bottom: 4px; }
   .all-card-grid .nc.nc-overlay .nc-cat  { font-size: 9px; }
   .all-card-grid .nc.nc-overlay .nc-date { font-size: 10px; }
 }
+/* Ensure the two-col first child doesn't expand past its grid track on mobile */
+body.mobile-redesign .two-col > div:first-child { min-width: 0; }
 .all-empty {
   padding: 50px 20px; text-align: center; color: #94a3b8;
   display: flex; flex-direction: column; align-items: center; font-size: 14px;
