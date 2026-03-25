@@ -1009,6 +1009,24 @@
       }
     } catch(e) {}
 
+    // ALL daily_missions → compute total XP and sync to user_stats.xp
+    // This makes user_stats.xp always reflect the true earned XP across all pages
+    try {
+      var { data: allDMs } = await sb.from('daily_missions')
+        .select('articles, words, quizzes, fill')
+        .eq('user_id', userId);
+      if (allDMs && allDMs.length) {
+        function dmXPAll(d){ return ((d.articles||0)*10)+((d.words||0)*2)+((d.quizzes||0)*5)+((d.fill||0)*5); }
+        var totalXP = allDMs.reduce(function(s,d){ return s + dmXPAll(d); }, 0);
+        snap.total_xp = totalXP;
+        // Write back to user_stats.xp as single source of truth
+        await sb.from('user_stats').upsert(
+          { user_id: userId, xp: totalXP },
+          { onConflict: 'user_id' }
+        );
+      }
+    } catch(e) {}
+
     return snap;
   }
 
