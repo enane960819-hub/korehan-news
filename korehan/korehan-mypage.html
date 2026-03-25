@@ -13,7 +13,11 @@
   padding: 36px 22px 28px; color:#fff; overflow:hidden;
 }
 .mypage-hero-inner { max-width:960px; margin:0 auto; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
-.mp-initials { width:76px; height:76px; border-radius:50%; background:linear-gradient(135deg,rgba(255,255,255,.2),rgba(255,255,255,.07)); border:2px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:900; color:#fff; font-family:'Playfair Display',serif; flex-shrink:0; }
+.mp-avatar-wrap { position:relative; flex-shrink:0; cursor:pointer; }
+.mp-avatar-wrap:hover .mp-avatar-edit { opacity:1; }
+.mp-avatar-img  { width:76px; height:76px; border-radius:50%; border:2px solid rgba(255,255,255,.3); object-fit:cover; display:block; }
+.mp-initials { width:76px; height:76px; border-radius:50%; background:linear-gradient(135deg,rgba(255,255,255,.2),rgba(255,255,255,.07)); border:2px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:900; color:#fff; font-family:'Playfair Display',serif; }
+.mp-avatar-edit { position:absolute; inset:0; border-radius:50%; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .2s; font-size:18px; }
 .mypage-name { font-family:'Noto Serif KR','Playfair Display',serif; font-size:24px; font-weight:900; margin:0 0 3px; cursor:pointer; }
 .mypage-name:hover { opacity:.8; }
 .mypage-email { font-size:13px; color:rgba(255,255,255,.55); margin:0 0 3px; }
@@ -95,6 +99,7 @@ body.kh-neon-on .mypage-email { color:rgba(163,230,235,.55) !important; }
 body.kh-neon-on .mp-member-since { color:rgba(163,230,235,.35) !important; }
 body.kh-neon-on .mp-action-btn { background:rgba(255,255,255,.07) !important; border-color:rgba(0,255,214,.2) !important; color:rgba(163,230,235,.8) !important; }
 body.kh-neon-on .mp-initials { background:rgba(0,255,214,.1) !important; border-color:rgba(0,255,214,.28) !important; }
+body.kh-neon-on .mp-avatar-img { border-color:rgba(0,255,214,.35) !important; }
 
 body.kh-neon-on .xp-card,
 body.kh-neon-on .mini-stat,
@@ -154,7 +159,11 @@ body.kh-neon-on #mp-xp-log button { background:rgba(9,18,33,.7) !important; bord
 
 <div class="mypage-hero">
   <div class="mypage-hero-inner">
-    <div class="mp-initials" id="mp-initials">?</div>
+    <div class="mp-avatar-wrap" onclick="triggerAvatarUpload()" title="Change profile photo">
+      <div class="mp-initials" id="mp-initials">?</div>
+      <div class="mp-avatar-edit">📷</div>
+    </div>
+    <input type="file" id="avatar-file-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="handleAvatarUpload(this)">
     <div style="flex:1;min-width:0">
       <div class="mypage-name" id="mp-name" title="Click to edit">Loading…</div>
       <div class="mypage-email" id="mp-email"></div>
@@ -467,6 +476,84 @@ async function confirmDeleteAccount() {
   }
 }
 
+// ── Profile picture ────────────────────────────────────────────
+function triggerAvatarUpload() {
+  document.getElementById('avatar-file-input').click();
+}
+
+async function handleAvatarUpload(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { // 2 MB limit
+    if (typeof toast === 'function') toast('Image must be under 2 MB');
+    else alert('Image must be under 2 MB');
+    return;
+  }
+
+  var wrap = document.querySelector('.mp-avatar-wrap');
+  if (wrap) wrap.style.opacity = '.5';
+
+  var sb = getSupa();
+  var avatarUrl = null;
+
+  // Try Supabase Storage first
+  try {
+    var path = supaUser.id + '/avatar';
+    var ext  = file.type === 'image/png' ? '.png' : file.type === 'image/webp' ? '.webp' : '.jpg';
+    var fullPath = path + ext;
+    var { error: upErr } = await sb.storage.from('avatars').upload(fullPath, file, { upsert: true, contentType: file.type });
+    if (!upErr) {
+      var { data: urlData } = sb.storage.from('avatars').getPublicUrl(fullPath);
+      avatarUrl = urlData && urlData.publicUrl;
+    }
+  } catch(e) {}
+
+  // Fallback: data URL stored in auth metadata (small images only)
+  if (!avatarUrl) {
+    try {
+      avatarUrl = await new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function(e) { resolve(e.target.result); };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    } catch(e) {}
+  }
+
+  if (!avatarUrl) {
+    if (wrap) wrap.style.opacity = '1';
+    if (typeof toast === 'function') toast('Upload failed — please try again');
+    return;
+  }
+
+  // Save to auth metadata + user_stats
+  try {
+    await sb.auth.updateUser({ data: { avatar_url: avatarUrl } });
+    await sb.from('user_stats').update({ avatar_url: avatarUrl }).eq('user_id', supaUser.id);
+  } catch(e) {}
+
+  // Update avatar in hero
+  _setAvatarDisplay(avatarUrl);
+  if (wrap) wrap.style.opacity = '1';
+  if (typeof toast === 'function') toast('Profile photo updated ✓');
+  // Reset file input so same file can be re-selected
+  input.value = '';
+}
+
+function _setAvatarDisplay(url) {
+  var wrap = document.querySelector('.mp-avatar-wrap');
+  if (!wrap) return;
+  var existing = wrap.querySelector('.mp-initials, .mp-avatar-img');
+  if (url && url.length < 500000) { // skip huge data URLs
+    var img = document.createElement('img');
+    img.className = 'mp-avatar-img';
+    img.src = url;
+    img.alt = '';
+    img.onerror = function() { img.replaceWith(document.getElementById('mp-initials') || img); };
+    if (existing) existing.replaceWith(img);
+  }
+}
+
 // ── Init ───────────────────────────────────────────────────────
 async function initMyPage() {
   if (!supaUser) { window.location.href = 'index.html'; return; }
@@ -486,7 +573,12 @@ async function initMyPage() {
   }
 
   var initials = name.replace(/[^a-zA-Z가-힣]/g,' ').trim().split(/\s+/).map(function(w){ return w[0]; }).join('').slice(0,2).toUpperCase() || '?';
-  document.getElementById('mp-initials').textContent = initials;
+  var initialsEl = document.getElementById('mp-initials');
+  if (initialsEl) initialsEl.textContent = initials;
+
+  // Show existing profile photo if any
+  var existingAvatar = (supaUser.user_metadata && supaUser.user_metadata.avatar_url) || '';
+  if (existingAvatar) _setAvatarDisplay(existingAvatar);
 
   // Load in parallel
   var results = await Promise.all([ dbGetUserStats(), dbGetXPLog() ]);
