@@ -1016,14 +1016,17 @@
         .select('articles, words, quizzes, fill')
         .eq('user_id', userId);
       if (allDMs && allDMs.length) {
-        function dmXPAll(d){ return ((d.articles||0)*10)+((d.words||0)*2)+((d.quizzes||0)*5)+((d.fill||0)*5); }
-        var totalXP = allDMs.reduce(function(s,d){ return s + dmXPAll(d); }, 0);
+        var totalXP = allDMs.reduce(function(s, d) {
+          return s + ((d.articles||0)*10) + ((d.words||0)*2) + ((d.quizzes||0)*5) + ((d.fill||0)*5);
+        }, 0);
         snap.total_xp = totalXP;
-        // Write back to user_stats.xp as single source of truth
-        await sb.from('user_stats').upsert(
-          { user_id: userId, xp: totalXP },
-          { onConflict: 'user_id' }
-        );
+        // Read current row first to preserve all other fields
+        var { data: curStats } = await sb.from('user_stats').select('*').eq('user_id', userId).maybeSingle();
+        if (curStats) {
+          await sb.from('user_stats').update({ xp: totalXP }).eq('user_id', userId);
+        } else {
+          await sb.from('user_stats').insert({ user_id: userId, xp: totalXP });
+        }
       }
     } catch(e) {}
 
