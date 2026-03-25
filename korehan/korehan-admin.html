@@ -2528,198 +2528,293 @@ function saveSentences(){
 }
 
 // ══ AUTO ARTICLE GENERATION ══════════════════════════════════
-// AUTO_SECTIONS now uses the central CATEGORIES array (all 7 sections)
-const AUTO_SECTIONS = CATEGORIES; // single source of truth
+const AUTO_SECTIONS = CATEGORIES;
 
+// ── News sources ──────────────────────────────────────────────
+const NEWS_SOURCES = [
+  { id:'yonhap',    label:'연합뉴스',        icon:'🇰🇷', type:'rss',    url:'https://www.yna.co.kr/RSS/headline.xml' },
+  { id:'google-kr', label:'Google News KR',  icon:'🔍', type:'rss',    url:'https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko' },
+  { id:'bbc-world', label:'BBC World',       icon:'🌍', type:'rss',    url:'https://feeds.bbci.co.uk/news/world/rss.xml' },
+  { id:'bbc-tech',  label:'BBC Tech',        icon:'💻', type:'rss',    url:'https://feeds.bbci.co.uk/news/technology/rss.xml' },
+  { id:'techcrunch',label:'TechCrunch',      icon:'🚀', type:'rss',    url:'https://techcrunch.com/feed/' },
+  { id:'r-worldnews',label:'r/worldnews',    icon:'🌐', type:'reddit', sub:'worldnews' },
+  { id:'r-korea',   label:'r/korea',         icon:'🇰🇷', type:'reddit', sub:'korea' },
+  { id:'r-tech',    label:'r/technology',    icon:'🤖', type:'reddit', sub:'technology' },
+  { id:'r-science', label:'r/science',       icon:'🔬', type:'reddit', sub:'science' },
+  { id:'r-kpop',    label:'r/kpop',          icon:'🎵', type:'reddit', sub:'kpop' },
+  { id:'hn',        label:'Hacker News',     icon:'🟠', type:'hn' },
+];
+
+var _fetchedHeadlines = []; // 수집된 헤드라인 전역 저장
+
+// ── RSS fetch via allorigins proxy ────────────────────────────
+async function _fetchRSS(url, sourceLabel) {
+  const proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+  const res = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
+  const json = await res.json();
+  if (!json.contents) return [];
+  const xml = new DOMParser().parseFromString(json.contents, 'text/xml');
+  return Array.from(xml.querySelectorAll('item')).slice(0, 10).map(function(item) {
+    var title = (item.querySelector('title')?.textContent || '').replace(/<[^>]+>/g,'').trim();
+    var desc  = (item.querySelector('description')?.textContent || '').replace(/<[^>]+>/g,'').trim().slice(0, 250);
+    var link  = item.querySelector('link')?.textContent?.trim() || '';
+    return title ? { title, desc, link, source: sourceLabel } : null;
+  }).filter(Boolean);
+}
+
+// ── Reddit JSON API ───────────────────────────────────────────
+async function _fetchReddit(sub, sourceLabel) {
+  const res = await fetch('https://www.reddit.com/r/' + sub + '/hot.json?limit=10', {
+    headers: { 'User-Agent': 'KoreHanNews/1.0' },
+    signal: AbortSignal.timeout(8000)
+  });
+  const json = await res.json();
+  return (json.data?.children || []).map(function(p) {
+    var d = p.data;
+    if (!d.title || d.stickied) return null;
+    return { title: d.title, desc: (d.selftext||'').slice(0,250), link:'https://reddit.com'+d.permalink, source: sourceLabel };
+  }).filter(Boolean);
+}
+
+// ── Hacker News Firebase API ──────────────────────────────────
+async function _fetchHN() {
+  const ids = await fetch('https://hacker-news.firebaseio.com/v1/topstories.json').then(r=>r.json());
+  const items = await Promise.all(ids.slice(0,12).map(function(id) {
+    return fetch('https://hacker-news.firebaseio.com/v1/item/'+id+'.json').then(r=>r.json()).catch(()=>null);
+  }));
+  return items.filter(function(i){ return i && i.title; }).map(function(i) {
+    return { title: i.title, desc: i.url||'', link: i.url||'https://news.ycombinator.com/item?id='+i.id, source:'Hacker News' };
+  });
+}
+
+// ── Main UI ───────────────────────────────────────────────────
 function goAutoArticle(){
   setSbOn(null);
+  _fetchedHeadlines = [];
   document.getElementById('main').innerHTML =
     '<div class="pg-hd"><div><h1>🤖 AI 기사 자동생성</h1>'
-   +'<p>Claude AI automatically generates Korean news articles for each section.</p></div></div>'
-   +'<div class="infobox">💡 생성된 기사는 <b>임시저장</b> 상태로 저장됩니다. 검토 후 직접 발행하세요.<br>Anthropic API 키가 필요합니다.</div>'
-   +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">'
-   +'<input id="auto-api-key" type="password" placeholder="Anthropic API 키 (sk-ant-...)" '
-   +'style="flex:1;padding:9px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit">'
-   +'<button class="btn btn-g" onclick="loadAutoApiKey()">키 불러오기</button>'
-   +'</div>'
-   +'<div style="display:grid;grid-template-columns:auto auto auto 1fr;gap:16px;align-items:end;margin-bottom:18px;flex-wrap:wrap">'
-   +'<div><label style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#475569;display:block;margin-bottom:6px">Difficulty</label>'
-   +'<select id="auto-difficulty" style="padding:8px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;background:#fff">'
-   +'<option value="Starter">⚪ Starter</option>'
-   +'<option value="Beginner">🟢 Beginner</option>'
-   +'<option value="Intermediate" selected>🟡 Intermediate</option>'
-   +'<option value="Advanced">🔴 Advanced</option>'
-   +'</select></div>'
-   +'<div><label style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#475569;display:block;margin-bottom:6px">Articles per Section</label>'
-   +'<select id="auto-count" style="padding:8px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;background:#fff">'
-   +'<option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option></select></div>'
-   +'<div><label style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#475569;display:block;margin-bottom:6px">Save as</label>'
-   +'<select id="auto-status" style="padding:8px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;background:#fff">'
-   +'<option value="draft" selected>📝 Draft (review first)</option><option value="published">✓ Published directly</option></select></div>'
-   +'<div style="font-size:12px;color:var(--gr);padding-bottom:4px">Beginner: simple vocab · Intermediate: news-level · Advanced: native-level</div>'
-   +'</div>'
-   +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:20px">'
-   + AUTO_SECTIONS.map(function(s){
-       return '<label style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f8faff;border:1.5px solid var(--bo);border-radius:8px;cursor:pointer;font-weight:600">'
-         +'<input type="checkbox" value="'+s.key+'" checked style="width:16px;height:16px"> '+s.icon+' '+s.key+'</label>';
+   +'<p>실제 뉴스·커뮤니티 헤드라인을 가져와 Claude가 한국어 학습 기사로 각색합니다.</p></div></div>'
+
+   // STEP 1: 소스 선택
+   +'<div class="sf-card" style="margin-bottom:16px">'
+   +'<h3 style="margin-bottom:12px">① 뉴스 소스 선택</h3>'
+   +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:14px">'
+   + NEWS_SOURCES.map(function(s){
+       return '<label style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#f8faff;border:1.5px solid var(--bo);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">'
+         +'<input type="checkbox" class="ns-chk" value="'+s.id+'" checked style="width:15px;height:15px"> '+s.icon+' '+s.label+'</label>';
      }).join('')
    +'</div>'
-   +'<button class="btn btn-g" onclick="runAutoGenerate()" style="font-size:15px;padding:12px 32px">🚀 Generate Articles</button>'
-   +'<div id="auto-progress" style="margin-top:20px"></div>';
+   +'<button class="btn btn-g" onclick="fetchHeadlines()" id="btn-fetch">📥 헤드라인 가져오기</button>'
+   +'<div id="fetch-status" style="margin-top:10px;font-size:13px;color:var(--gr)"></div>'
+   +'</div>'
 
-  // Load saved key
+   // STEP 2: 헤드라인 선택 (동적으로 채워짐)
+   +'<div id="headline-panel" style="display:none" class="sf-card" style="margin-bottom:16px"></div>'
+
+   // STEP 3: 생성 설정
+   +'<div id="gen-panel" style="display:none" class="sf-card">'
+   +'<h3 style="margin-bottom:12px">③ 생성 설정</h3>'
+   +'<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:14px">'
+   +'<div><label style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#475569;display:block;margin-bottom:6px">난이도</label>'
+   +'<select id="auto-difficulty" style="padding:8px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;background:#fff">'
+   +'<option value="Starter">⚪ Starter</option><option value="Beginner">🟢 Beginner</option>'
+   +'<option value="Intermediate" selected>🟡 Intermediate</option><option value="Advanced">🔴 Advanced</option>'
+   +'</select></div>'
+   +'<div><label style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#475569;display:block;margin-bottom:6px">저장 상태</label>'
+   +'<select id="auto-status" style="padding:8px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;background:#fff">'
+   +'<option value="draft" selected>📝 Draft</option><option value="published">✅ Published</option>'
+   +'</select></div>'
+   +'</div>'
+   +'<button class="btn btn-g" onclick="runAutoGenerate()" style="font-size:15px;padding:12px 32px">✨ 선택 기사 각색 생성</button>'
+   +'<div id="auto-progress" style="margin-top:20px"></div>'
+   +'</div>';
+
   loadAutoApiKey();
 }
 
 async function loadAutoApiKey(){
-  const input = document.getElementById('auto-api-key');
-  if (!input) return;
-  // 로컬 캐시 먼저
-  const local = localStorage.getItem('kh_anthropic_key') || '';
-  if (local) input.value = local;
-  // Supabase에서 최신값 가져오기
   try {
     var sb = getSb();
     if (sb) {
       var res = await sb.from('app_settings').select('value').eq('key','anthropic_key').single();
-      if (res.data && res.data.value) {
-        input.value = res.data.value;
-        localStorage.setItem('kh_anthropic_key', res.data.value);
-      }
+      if (res.data && res.data.value) localStorage.setItem('kh_anthropic_key', res.data.value);
     }
   } catch(e) {}
 }
 
-async function runAutoGenerate(){
-  const keyInput = document.getElementById('auto-api-key');
-  const apiKey   = keyInput ? keyInput.value.trim() : '';
-  if(!apiKey){ toast('API 키를 입력해 주세요', true); return; }
-  // localStorage + Supabase 둘 다 저장
-  localStorage.setItem('kh_anthropic_key', apiKey);
-  try {
-    var sb = getSb();
-    if (sb) await sb.from('app_settings').upsert({ key: 'anthropic_key', value: apiKey, updated_at: new Date().toISOString() });
-  } catch(e) {}
+// ── STEP 1: Fetch headlines from all selected sources ─────────
+async function fetchHeadlines() {
+  const selected = [...document.querySelectorAll('.ns-chk:checked')].map(function(c){ return c.value; });
+  if (!selected.length) { toast('소스를 하나 이상 선택하세요', true); return; }
 
-  const difficulty  = document.getElementById('auto-difficulty') ? document.getElementById('auto-difficulty').value : 'Intermediate';
-  const countPerSec = parseInt(document.getElementById('auto-count') ? document.getElementById('auto-count').value : '1', 10) || 1;
-  const saveStatus  = document.getElementById('auto-status') ? document.getElementById('auto-status').value : 'draft';
+  const btn = document.getElementById('btn-fetch');
+  const statusEl = document.getElementById('fetch-status');
+  btn.disabled = true; btn.textContent = '⏳ 가져오는 중…';
+  statusEl.textContent = '';
+  _fetchedHeadlines = [];
+
+  const jobs = NEWS_SOURCES.filter(function(s){ return selected.includes(s.id); });
+  const results = await Promise.allSettled(jobs.map(async function(s) {
+    if (s.type === 'rss')    return _fetchRSS(s.url, s.label);
+    if (s.type === 'reddit') return _fetchReddit(s.sub, s.label);
+    if (s.type === 'hn')     return _fetchHN();
+    return [];
+  }));
+
+  results.forEach(function(r) {
+    if (r.status === 'fulfilled') _fetchedHeadlines = _fetchedHeadlines.concat(r.value);
+  });
+
+  btn.disabled = false; btn.textContent = '📥 헤드라인 가져오기';
+
+  if (!_fetchedHeadlines.length) {
+    statusEl.textContent = '❌ 헤드라인을 가져오지 못했습니다. 소스를 확인하세요.';
+    return;
+  }
+
+  statusEl.textContent = '✅ ' + _fetchedHeadlines.length + '개 헤드라인 수집 완료';
+  _renderHeadlinePanel();
+}
+
+// ── STEP 2: Render headline selection panel ───────────────────
+function _renderHeadlinePanel() {
+  const panel = document.getElementById('headline-panel');
+  panel.style.display = '';
+  document.getElementById('gen-panel').style.display = '';
+
+  var html = '<h3 style="margin-bottom:4px">② 기사 선택 <span id="hl-count" style="font-weight:400;font-size:13px;color:#94a3b8"></span></h3>'
+    + '<p style="font-size:12px;color:#94a3b8;margin-bottom:12px">각색할 헤드라인을 선택하세요. 섹션도 지정할 수 있습니다.</p>'
+    + '<div style="display:flex;gap:8px;margin-bottom:10px">'
+    + '<button class="btn btn-gh" style="font-size:12px" onclick="_hlSelectAll(true)">전체 선택</button>'
+    + '<button class="btn btn-gh" style="font-size:12px" onclick="_hlSelectAll(false)">전체 해제</button>'
+    + '</div>'
+    + '<div id="hl-list">'
+    + _fetchedHeadlines.map(function(h, i) {
+        var secOptions = AUTO_SECTIONS.map(function(s){ return '<option value="'+s.key+'">'+s.icon+' '+s.key+'</option>'; }).join('');
+        return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #f0f3f9">'
+          + '<input type="checkbox" class="hl-chk" data-idx="'+i+'" checked style="margin-top:3px;width:15px;height:15px;flex-shrink:0" onchange="_updateHLCount()">'
+          + '<div style="flex:1;min-width:0">'
+          + '<div style="font-weight:600;font-size:13px;line-height:1.4">' + esc(h.title) + '</div>'
+          + '<div style="font-size:11px;color:#94a3b8;margin-top:2px">' + esc(h.source) + (h.desc ? ' · ' + esc(h.desc.slice(0,80)) + '…' : '') + '</div>'
+          + '</div>'
+          + '<select class="hl-sec" data-idx="'+i+'" style="flex-shrink:0;padding:4px 8px;border:1px solid var(--bo);border-radius:6px;font-size:12px;font-family:inherit;background:#fff">'
+          + secOptions + '</select>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+
+  panel.innerHTML = html;
+  _updateHLCount();
+}
+
+function _hlSelectAll(val) {
+  document.querySelectorAll('.hl-chk').forEach(function(c){ c.checked = val; });
+  _updateHLCount();
+}
+function _updateHLCount() {
+  var n = document.querySelectorAll('.hl-chk:checked').length;
+  var el = document.getElementById('hl-count');
+  if (el) el.textContent = n + '개 선택됨';
+}
+
+// ── STEP 3: Generate adapted articles ────────────────────────
+async function runAutoGenerate(){
+  const saveStatus = document.getElementById('auto-status')?.value || 'draft';
+  const difficulty = document.getElementById('auto-difficulty')?.value || 'Intermediate';
+
+  // Collect selected headlines with their assigned section
+  const checkedBoxes = [...document.querySelectorAll('.hl-chk:checked')];
+  if (!checkedBoxes.length) { toast('기사를 하나 이상 선택하세요', true); return; }
+
+  const selected = checkedBoxes.map(function(cb) {
+    var idx = parseInt(cb.dataset.idx);
+    var secEl = document.querySelector('.hl-sec[data-idx="'+idx+'"]');
+    return { headline: _fetchedHeadlines[idx], section: secEl ? secEl.value : AUTO_SECTIONS[0].key };
+  });
+
   const diffMap = {
-    'Starter': { ko:'입문 (한글 막 배운 단계, 초등 1~2학년 수준)', vocab:'한글 자모, 기초 낱말, 아주 짧은 문장, 1~2음절 어휘', level:'Starter' },
-    'Beginner': { ko:'초급 (TOPIK 1~2급, 초등학교 수준)', vocab:'아주 쉬운 일상 어휘, 짧은 문장, ~해요/~이에요 체', level:'Beginner' },
-    'Intermediate': { ko:'중급 (TOPIK 3~4급, 중학교 수준)', vocab:'일반 뉴스 어휘, 중간 난이도 문장', level:'Intermediate' },
-    'Advanced': { ko:'고급 (TOPIK 5~6급, 원어민 수준)', vocab:'고급 한자어, 복잡한 문장 구조, 뉴스 문체', level:'Advanced' },
+    'Starter':      { ko:'입문 (초등 1~2학년 수준)', vocab:'기초 낱말, 아주 짧은 문장', level:'Starter' },
+    'Beginner':     { ko:'초급 (TOPIK 1~2급)', vocab:'쉬운 일상 어휘, ~해요/~이에요 체', level:'Beginner' },
+    'Intermediate': { ko:'중급 (TOPIK 3~4급)', vocab:'일반 뉴스 어휘, 중간 난이도 문장', level:'Intermediate' },
+    'Advanced':     { ko:'고급 (TOPIK 5~6급)', vocab:'고급 한자어, 복잡한 문장 구조', level:'Advanced' },
   };
   const diffInfo = diffMap[difficulty] || diffMap['Intermediate'];
-  const checked = [...document.querySelectorAll('#main input[type=checkbox]:checked')].map(function(c){ return c.value; });
-  if(!checked.length){ toast('Please select at least one section', true); return; }
 
   const progress = document.getElementById('auto-progress');
   progress.innerHTML = '';
 
-  // 중복 방지: 기존 DB 기사 제목 + 주제 수집 (제목만이 아닌 section+title 조합으로 토픽 레벨 중복도 차단)
-  const existingTitles = DB.map(function(a){ return (a.title||'').trim(); });
-  // Build topic-level summary: "[section] title" for each published article
-  const existingTopics = DB
-    .filter(function(a){ return (a.status === 'published' || !a.status); })
-    .map(function(a){ return '[' + (a.section||'일반') + '] ' + (a.title||'').trim(); })
-    .filter(Boolean);
+  for (var si = 0; si < selected.length; si++) {
+    var item = selected[si];
+    var h = item.headline;
+    var secKey = item.section;
+    var sec = AUTO_SECTIONS.find(function(s){ return s.key === secKey; }) || AUTO_SECTIONS[0];
+    var rowId = 'prog-' + si;
 
-  for(const secKey of checked){
-    const sec = AUTO_SECTIONS.find(function(s){ return s.key === secKey; });
-    if(!sec) continue;
-
-    const rowId = 'prog-'+secKey;
-    progress.innerHTML += '<div id="'+rowId+'" style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;background:#fff;border:1px solid var(--bo);border-radius:8px;margin-bottom:8px">'
+    progress.innerHTML +=
+      '<div id="'+rowId+'" style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;background:#fff;border:1px solid var(--bo);border-radius:8px;margin-bottom:8px">'
       +'<span style="font-size:18px">'+sec.icon+'</span>'
-      +'<div style="flex:1"><div style="font-weight:700">'+sec.key+' <span style="font-weight:400;color:#94a3b8;font-size:12px">('+countPerSec+' article'+(countPerSec>1?'s':'')+')</span></div>'
-      +'<div id="'+rowId+'-status" style="color:var(--gr);font-size:13px;margin-top:2px">⏳ Generating…</div></div>'
+      +'<div style="flex:1"><div style="font-weight:700;font-size:13px">'+esc(h.title.slice(0,60))+'…</div>'
+      +'<div style="font-size:11px;color:#94a3b8">'+esc(h.source)+' → '+secKey+'</div>'
+      +'<div id="'+rowId+'-status" style="color:var(--gr);font-size:13px;margin-top:4px">⏳ 각색 중…</div></div>'
       +'</div>';
-    // inner loop for countPerSec articles
-    for(let artIdx = 0; artIdx < countPerSec; artIdx++) {
 
     try {
       const today = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
 
-      // Build the duplicate-prevention block
-      const dupBlock = existingTopics.length
-        ? '[이미 게시된 기사 토픽 — 동일 주제 및 유사 주제 절대 금지]\n'
-          + existingTopics.slice(0, 60).map(function(t){ return '- ' + t; }).join('\n')
-        : '';
-
-      const prompt = '당신은 외국인 한국어 학습자를 위한 뉴스 기사를 쓰는 편집자입니다.\n\n'
-        + '[오늘 날짜: ' + today + ']\n'
-        + '[섹션: ' + sec.key + ' — 주제 범위: ' + sec.topics + ']\n'
+      const prompt =
+        '당신은 외국인 한국어 학습자를 위한 뉴스 기사를 각색하는 편집자입니다.\n\n'
+        + '[원본 뉴스]\n'
+        + '제목: ' + h.title + '\n'
+        + '내용: ' + (h.desc || '(요약 없음)') + '\n'
+        + '출처: ' + h.source + '\n\n'
+        + '[지시사항]\n'
+        + '위 실제 뉴스를 바탕으로 한국어 학습자용 기사를 작성하세요.\n'
+        + '- 원본의 핵심 사실과 주제를 유지하세요\n'
+        + '- 출처가 영어라면 한국어로 완전히 번역·각색하세요\n'
+        + '- 한국 독자 시각으로 관련성 있게 풀어주세요\n\n'
+        + '[섹션: ' + secKey + ']\n'
         + '[난이도: ' + diffInfo.ko + ']\n'
-        + '[어휘 수준: ' + diffInfo.vocab + ']\n\n'
-        + '─────────────────────────────────────────\n'
-        + '[소스 기준 — 반드시 준수]\n'
-        + '- 반드시 실제로 일어난 사건 또는 사실에 기반해야 합니다.\n'
-        + '- 뉴스 소재는 최근 1개월 이내의 실제 이슈여야 합니다.\n'
-        + '- 사실이 불확실하거나 검증할 수 없는 경우 해당 주제는 사용하지 마세요.\n'
-        + '- 완전히 가상의 사건이나 허위 정보를 작성하는 것은 절대 금지입니다.\n'
-        + '- 만약 최근 1개월 내 명확한 실제 이슈가 없다면, 해당 분야의 가장 최신의 검증된 사실을 사용하세요.\n\n'
-        + '[토픽 선정 기준]\n'
-        + '- 흥미롭고 구체적인 이슈를 선택하세요. "일반적인 사회 현황" 같은 막연한 주제는 금지입니다.\n'
-        + '- 특정 사건, 발표, 기록, 변화, 논쟁 등 구체적인 뉴스 앵글이 있어야 합니다.\n'
-        + '- 지루하거나 지나치게 일상적인 주제(예: "봄 날씨가 왔어요" 류)는 피하세요.\n\n'
-        + '[독자 대상]\n'
-        + '- 한국어를 공부하는 외국인 (' + diffInfo.ko + ')\n'
-        + '- 뉴스를 읽으면서 자연스럽게 한국어를 배우고 싶은 성인 학습자\n\n'
-        + '[문체 및 형식]\n'
-        + '- 짧고 명확한 문장 (한 문장에 20~35자 이내)\n'
-        + '- 문장 끝은 "~했어요", "~입니다", "~예요" 등 정중체 사용\n'
-        + '- 단락마다 한 가지 내용만, 각 단락 2~3문장\n\n'
-        + '[어휘]\n'
-        + '- 초등 고학년~중학교 수준 어휘 사용\n'
-        + '- 어려운 한자어나 전문 용어는 반드시 괄호로 쉬운 뜻 설명\n'
-        + '  예: 기준금리(돈을 빌릴 때 기본이 되는 이자율)\n'
-        + '- 영어 단어는 원어도 함께 표기: 인공지능(AI)\n\n'
-        + '[분량]\n'
-        + '- 제목: 15~25자, 핵심 내용을 쉽게 표현\n'
-        + '- 본문: 4~6개 단락, 각 단락 2~3문장\n\n'
-        + '[금지 사항]\n'
-        + '- 실존 인물에 대한 비방, 허위 사실, 미검증 주장 금지\n'
-        + '- 너무 유치하거나 어린이용 소재 금지 — 성인 학습자용\n'
-        + '- 제목과 주제 모두 아래 기존 기사와 중복되어서는 안 됩니다\n\n'
-        + '응답은 반드시 아래 JSON 형식으로만 출력하세요 (마크다운 코드블록 불필요):\n'
-        + '{"title":"기사 제목","body":"기사 본문 (단락 구분은 \\n\\n 사용)"}\n\n'
-        + dupBlock;
+        + '[어휘 수준: ' + diffInfo.vocab + ']\n'
+        + '[오늘 날짜: ' + today + ']\n\n'
+        + '[문체]\n'
+        + '- 짧고 명확한 문장 (20~35자)\n'
+        + '- 정중체 (~했어요, ~입니다, ~예요)\n'
+        + '- 어려운 용어는 괄호로 설명: 기준금리(돈을 빌릴 때 기본이 되는 이자율)\n'
+        + '- 영어 단어는 원어 병기: 인공지능(AI)\n'
+        + '- 4~6개 단락, 단락당 2~3문장\n'
+        + '- 제목: 15~25자\n\n'
+        + '[금지]\n'
+        + '- 실존 인물 비방, 미검증 주장 금지\n'
+        + '- 원본에 없는 사실 추가 금지\n\n'
+        + '응답은 JSON만: {"title":"제목","body":"본문 (단락 구분 \\n\\n)"}';
 
-      // ── 1단계: 기사 본문 생성 ──
-      document.getElementById(rowId+'-status').innerHTML = '⏳ 기사 생성 중…';
+      document.getElementById(rowId+'-status').innerHTML = '⏳ 기사 각색 중…';
       const res = await callClaude({
         feature: 'generate',
         model: 'claude-sonnet-4-20250514',
         max_tokens: 2000,
-        messages: [{role:'user', content: prompt}]
+        messages: [{ role:'user', content: prompt }]
       });
 
-      const data = res;
-      const text = data.content && data.content[0] && data.content[0].text || '';
-      if(!text) throw new Error('빈 응답');
-
-      const clean = text.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
+      const text = res.content && res.content[0] && res.content[0].text || '';
+      if (!text) throw new Error('빈 응답');
+      const clean = text.replace(/^```json?/,'').replace(/^```/,'').replace(/```$/,'').trim();
       const article = JSON.parse(clean);
-      if(!article.title || !article.body) throw new Error('Invalid format');
+      if (!article.title || !article.body) throw new Error('Invalid format');
 
       const articleId = uid();
       const newArticle = {
-        id: articleId,
-        section: sec.key,
-        title: article.title,
-        body: article.body,
-        date: today_date(),
-        status: saveStatus,
-        featured: false,
-        level: diffInfo.level,
-        image: 'https://picsum.photos/seed/' + Math.random().toString(36).slice(2,8) + '/600/400',
+        id: articleId, section: secKey,
+        title: article.title, body: article.body,
+        date: today_date(), status: saveStatus,
+        featured: false, level: diffInfo.level,
+        source_url: h.link || '',
+        image: 'https://picsum.photos/seed/'+Math.random().toString(36).slice(2,8)+'/600/400',
       };
       await dbSaveArticle(newArticle);
-      DB.unshift(newArticle);
-      refreshCounts();
+      DB.unshift(newArticle); refreshCounts();
 
-      // ── 2단계: 캐시 생성 (번역/단어/문법/퀴즈 각각 별도 호출) ──
+      // ── 캐시 생성 (번역/단어/문법/퀴즈) ──
       document.getElementById(rowId+'-status').innerHTML = '🧠 캐시 생성 중…';
 
       const _body  = article.body  || '';
@@ -2804,18 +2899,17 @@ async function runAutoGenerate(){
 
       const statusLabel = saveStatus === 'published' ? 'Published' : 'Saved as draft';
       const existingEl = document.getElementById(rowId+'-status');
-      if (existingEl) existingEl.innerHTML +=
-        '<br><span style="color:#28a745;font-weight:700">✅ ' + statusLabel + ' (cache '+_ok+'/4) — </span>'
+      if (existingEl) existingEl.innerHTML =
+        '<span style="color:#28a745;font-weight:700">✅ ' + statusLabel + ' (cache '+_ok+'/4) — </span>'
         +"<a href=\"#\" onclick=\"openModal('"+articleId+"')\" style=\"color:var(--a);font-weight:700\">Review &amp; edit →</a>";
 
     } catch(err) {
       const existingEl2 = document.getElementById(rowId+'-status');
-      if (existingEl2) existingEl2.innerHTML += '<br><span style="color:#dc3545">❌ Failed: '+err.message+'</span>';
+      if (existingEl2) existingEl2.innerHTML = '<span style="color:#dc3545">❌ Failed: '+err.message+'</span>';
     }
-    } // end artIdx loop
   }
 
-  toast('🤖 Article generation complete! Check ' + (saveStatus==='published'?'All Articles':'Drafts') + ' for results.');
+  toast('✨ 각색 완료! ' + selected.length + '개 기사가 생성됐습니다.');
 }
 
 function today_date(){
