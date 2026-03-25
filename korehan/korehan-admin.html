@@ -1050,19 +1050,50 @@ async function goUserStats() {
 
   try {
     // 병렬로 데이터 로드
-    var [usersRes, missionsRes, viewsRes] = await Promise.all([
+    var today = new Date(Date.now() + 9*3600000).toISOString().slice(0,10); // KST
+    var [usersRes, allDMsRes, missionsRes, viewsRes] = await Promise.all([
       sb.from('user_stats').select('*').order('xp', { ascending: false }),
-      sb.from('daily_missions').select('*').eq('date', new Date().toISOString().slice(0,10)),
+      sb.from('daily_missions').select('user_id, date, articles, words, quizzes, fill').order('date', { ascending: false }),
+      sb.from('daily_missions').select('user_id, completed').eq('date', today),
       sb.from('article_views').select('*').order('view_count', { ascending: false }).limit(10)
     ]);
 
     var users    = usersRes.data  || [];
+    var allDMs   = allDMsRes.data || [];
     var missions = missionsRes.data || [];
     var views    = viewsRes.data  || [];
 
+    // Compute streak per user from daily_missions
+    var dmByUser = {};
+    allDMs.forEach(function(d) {
+      if (!dmByUser[d.user_id]) dmByUser[d.user_id] = [];
+      dmByUser[d.user_id].push(d);
+    });
+    function calcStreak(rows) {
+      var active = {};
+      rows.forEach(function(d) {
+        if ((d.articles||0)+(d.words||0)+(d.quizzes||0)+(d.fill||0) > 0) active[d.date] = true;
+      });
+      var streak = 0;
+      var cur = new Date(Date.now() + 9*3600000);
+      for (var i = 0; i < 400; i++) {
+        var key = cur.toISOString().slice(0,10);
+        if (active[key]) { streak++; cur.setDate(cur.getDate()-1); }
+        else if (i === 0) { cur.setDate(cur.getDate()-1); }
+        else break;
+      }
+      return streak;
+    }
+
+    // Compute XP per user from daily_missions
+    var xpByUser = {};
+    allDMs.forEach(function(d) {
+      xpByUser[d.user_id] = (xpByUser[d.user_id]||0) + (d.articles||0)*10 + (d.words||0)*2 + (d.quizzes||0)*5 + (d.fill||0)*5;
+    });
+
     var todayCompleted = missions.filter(function(m){ return m.completed; }).length;
     var totalTickets   = users.reduce(function(s,u){ return s + (u.writing_tickets||0); }, 0);
-    var totalXP        = users.reduce(function(s,u){ return s + (u.xp||0); }, 0);
+    var totalXP        = Object.values(xpByUser).reduce(function(s,x){ return s+x; }, 0);
 
     var html =
       // 요약 카드 4개
@@ -1115,14 +1146,16 @@ async function goUserStats() {
           + users.map(function(u){
               var uid = u.user_id || '';
               var dname = (u.display_name||'-').replace(/'/g, "\\'");
+              var userXP = xpByUser[uid] !== undefined ? xpByUser[uid] : (u.xp||0);
+              var userStreak = dmByUser[uid] ? calcStreak(dmByUser[uid]) : (u.mission_streak||0);
               return '<tr style="border-top:1px solid #f0f3f9">'
                 + '<td style="padding:8px 10px"><div style="font-weight:700">' + (u.display_name||'-') + '</div>'
                 + '<div style="font-size:11px;color:#94a3b8">' + (u.email||'') + '</div></td>'
-                + '<td style="padding:8px;text-align:right;font-weight:800;color:#2255a4">' + (u.xp||0).toLocaleString() + '</td>'
+                + '<td style="padding:8px;text-align:right;font-weight:800;color:#2255a4">' + userXP.toLocaleString() + '</td>'
                 + '<td style="padding:8px;text-align:right">' + (u.articles_read||0) + '</td>'
                 + '<td style="padding:8px;text-align:right">' + (u.words_saved||0) + '</td>'
                 + '<td style="padding:8px;text-align:right">' + (u.quizzes_done||0) + '</td>'
-                + '<td style="padding:8px;text-align:right;font-weight:800;color:#f59e0b">' + (u.mission_streak||0) + '일</td>'
+                + '<td style="padding:8px;text-align:right;font-weight:800;color:#f59e0b">' + userStreak + '일</td>'
                 + '<td style="padding:8px;text-align:right;font-weight:800;color:#8b5cf6">' + (u.writing_tickets||0) + '</td>'
                 + '<td style="padding:8px;text-align:right"><button class="btn btn-gh" style="font-size:11px;padding:4px 10px" onclick="goUserXPLog(\'' + uid + '\',\'' + dname + '\')">📋 보기</button></td>'
                 + '</tr>';
