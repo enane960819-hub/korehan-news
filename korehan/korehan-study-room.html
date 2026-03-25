@@ -2393,20 +2393,32 @@ function rspStartWriting() {
   if (!_rspSelectedItem) { showToast('Please select a source first.'); return; }
   var overlay = document.getElementById('rsp-overlay');
   if (overlay) overlay.remove();
-  // Open the main writing modal in reading mode with the pre-selected item
+  if (!supaUser) { openAuthModal('signin'); return; }
+
+  // Set both state vars so the rest of the modal logic is consistent
   _writingMode = 'reading';
-  _modalReadingBody = _rspSelectedItem.body || '';
+  _selectedArticle = {
+    id:    _rspSelectedItem.id,
+    title: _rspSelectedItem.title,
+    body:  _rspSelectedItem.body,
+    type:  _rspSelectedItem.type || 'article'
+  };
+  _modalReadingBody  = _rspSelectedItem.body  || '';
   _modalReadingTitle = _rspSelectedItem.title || '';
-  openWritingModal();
-  // After modal opens, switch to reading mode and show the material
-  setTimeout(function() {
-    switchModalMode('reading');
-    var bodyEl = document.getElementById('wm-article-body');
-    var titleEl = document.getElementById('wm-reading-prompts');
-    if (bodyEl && _modalReadingBody) {
-      bodyEl.innerHTML = '<strong style="color:#1e3a5f">' + _modalReadingTitle + '</strong><br><br>' + _modalReadingBody.replace(/\n/g,'<br>').slice(0,1500) + (_modalReadingBody.length>1500?'…':'');
-    }
-  }, 120);
+
+  // Open the modal directly in reading mode — skip renderModalContent() which renders topic UI
+  document.getElementById('wmodal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  wmMobileInit();
+  switchModalMode('reading');
+
+  // Populate the article body immediately (no setTimeout flash)
+  var bodyEl = document.getElementById('wm-article-body');
+  if (bodyEl && _modalReadingBody) {
+    bodyEl.innerHTML = '<strong style="color:#1e3a5f">' + _modalReadingTitle + '</strong><br><br>'
+      + _modalReadingBody.replace(/\n/g,'<br>').slice(0, 1500)
+      + (_modalReadingBody.length > 1500 ? '…' : '');
+  }
 }
 
 var _modalReadingBody = '';

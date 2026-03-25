@@ -32,7 +32,9 @@
     .routine-item h3{margin:0 0 4px;font-size:18px}.routine-item p{margin:0;color:var(--muted);font-size:14px;line-height:1.55}
     .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.stat{padding:22px 20px}
     .stat-label{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
-    .stat-num{font-family:'Playfair Display',serif;font-size:42px;line-height:1;color:var(--blue);margin-bottom:6px}.stat-sub{font-size:14px;color:var(--muted)}
+    .stat-num{font-family:'Playfair Display',serif;font-size:42px;line-height:1;color:var(--blue);margin-bottom:6px;transition:color .3s}.stat-sub{font-size:14px;color:var(--muted)}
+    @keyframes statPop{0%{transform:scale(.92);opacity:0}60%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}
+    .stat-num.animating{animation:statPop .55s cubic-bezier(.34,1.56,.64,1) both}
     .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;margin-bottom:18px}.card{padding:24px}
     .card-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px}.card-hd h2{margin:0;font-family:'Playfair Display','Noto Serif KR',serif;font-size:34px;line-height:1.05}
     .card-hd p{margin:6px 0 0;color:var(--muted);font-size:15px}.soft-link{padding:9px 13px;border-radius:999px;background:#eef4ff;color:var(--bright);font-size:13px;font-weight:800;white-space:nowrap}
@@ -153,6 +155,20 @@
       <div class="stat"><div class="stat-label">Study Streak</div><div class="stat-num" id="stat-streak">0</div><div class="stat-sub">Consecutive active study days</div></div>
     </section>
 
+    <section class="card" id="weekly-progress" style="margin-bottom:18px">
+      <div class="card-hd"><div><h2>Daily &amp; weekly growth</h2><p>A clear picture of how you're progressing over time.</p></div></div>
+      <div class="growth-grid">
+        <div class="chart-box">
+          <div class="chart-title">XP Trend</div>
+          <div class="chart-sub" id="chart-comparison-label">Last 7 days — comparing today vs yesterday</div>
+          <div class="linechart-wrap"><svg class="linechart-svg" id="growth-svg" viewBox="0 0 400 180" preserveAspectRatio="none"></svg></div>
+          <div class="linechart-legend" id="chart-legend"></div>
+        </div>
+        <div class="chart-box"><div class="chart-title">This week's improvement</div><div class="chart-sub">Based on real activity data — quiz accuracy, XP trends and consistency.</div><div class="streak-list" id="weekly-improvements"></div></div>
+      </div>
+      <div class="footer-note" id="speaking-note"></div>
+    </section>
+
     <section class="grid">
       <div class="card">
         <div class="card-hd"><div><h2>Weak grammar patterns</h2><p>Show users what they are actually weak at, not just raw scores.</p></div><a class="soft-link" href="korehan-study-room.html">More practice</a></div>
@@ -188,29 +204,9 @@
       </div>
     </section>
 
-    <section class="grid">
-      <div class="card">
-        <div class="card-hd"><div><h2>Read today</h2><p>Everything you read today — articles, conversations and stories — in one place.</p></div><button class="soft-link" onclick="openDailyReview()" style="border:none;cursor:pointer;white-space:nowrap">▶ Start Review</button></div>
-        <div class="review-wrap"><div class="review-day"><div class="review-top"><div><h3 id="review-title">Today</h3><p id="review-sub"></p></div></div><div class="timeline" id="review-queue"></div></div></div>
-      </div>
-      <div class="card">
-        <div class="card-hd"><div><h2>Saved reading history</h2><p>Articles and posts the user already studied should stay visible.</p></div><a class="soft-link" href="korehan-mypage.html">Open My Page</a></div>
-        <div class="articles-list" id="saved-reading"></div>
-      </div>
-    </section>
-
-    <section class="card" id="weekly-progress">
-      <div class="card-hd"><div><h2>Daily &amp; weekly growth</h2><p>A clear picture of how you’re progressing over time.</p></div></div>
-      <div class="growth-grid">
-        <div class="chart-box">
-          <div class="chart-title">XP Trend</div>
-          <div class="chart-sub" id="chart-comparison-label">Last 7 days — comparing today vs yesterday</div>
-          <div class="linechart-wrap"><svg class="linechart-svg" id="growth-svg" viewBox="0 0 400 180" preserveAspectRatio="none"></svg></div>
-          <div class="linechart-legend" id="chart-legend"></div>
-        </div>
-        <div class="chart-box"><div class="chart-title">This week’s improvement</div><div class="chart-sub">Based on real activity data — quiz accuracy, XP trends and consistency.</div><div class="streak-list" id="weekly-improvements"></div></div>
-      </div>
-      <div class="footer-note" id="speaking-note"></div>
+    <section class="card" style="margin-bottom:18px">
+      <div class="card-hd"><div><h2>Read today</h2><p>Everything you read today — articles, conversations and stories — in one place.</p></div><button class="soft-link" onclick="openDailyReview()" style="border:none;cursor:pointer;white-space:nowrap">▶ Start Review</button></div>
+      <div class="review-wrap"><div class="review-day"><div class="review-top"><div><h3 id="review-title">Today</h3><p id="review-sub"></p></div></div><div class="timeline" id="review-queue"></div></div></div>
     </section>
 
     <!-- Daily Review Modal -->
@@ -298,12 +294,33 @@
   ];
 
   // ── render functions ────────────────────────────────────────
+  function countUp(id, target) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var end = Number(target) || 0;
+    // Trigger pop animation
+    el.classList.remove('animating');
+    void el.offsetWidth; // reflow to restart animation
+    el.classList.add('animating');
+    if (end === 0) { el.textContent = 0; return; }
+    var duration = 700, startTime = null;
+    function step(ts) {
+      if (!startTime) startTime = ts;
+      var progress = Math.min((ts - startTime) / duration, 1);
+      var ease = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.round(ease * end);
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
   function renderTopStats(data) {
     const t = data.today || {};
-    setText('stat-xp',       t.xp_earned || 0);
-    setText('stat-words',    t.words_learned || 0);
-    setText('stat-articles', (t.articles_read||0) + (t.conversations_read||0) + (t.stories_read||0));
-    setText('stat-streak',   data.streak || 0);
+    const total = (t.articles_read||0) + (t.conversations_read||0) + (t.stories_read||0);
+    countUp('stat-xp',       t.xp_earned || 0);
+    countUp('stat-words',    t.words_learned || 0);
+    countUp('stat-articles', total);
+    countUp('stat-streak',   data.streak || 0);
   }
 
   function weakTag(wrong, total) {
@@ -544,23 +561,6 @@
       : '<div style="color:#94a3b8;padding:16px 0;text-align:center">Nothing read yet today — start with an article or story!</div>';
   }
 
-  function renderSavedReading(data) {
-    const hist = data.read_history || [];
-    const typeLabels = { article:'Article', conversation:'Conversation', story:'Story' };
-    document.getElementById('saved-reading').innerHTML = hist.length
-      ? hist.map(item => {
-          const lbl     = typeLabels[item.content_type] || item.content_type;
-          const dateStr = new Date(item.read_at||Date.now()).toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'Asia/Seoul'});
-          return `<a class="article-row" href="${contentHref(item.content_type, item.content_id)}">
-            <div>
-              <div class="article-title">${item.title||'(untitled)'}</div>
-              <div class="article-sub">${lbl} · ${item.level||''} · ${dateStr}</div>
-            </div>
-            <div class="article-tag">${item.completed ? 'Done' : 'Open'}</div>
-          </a>`;
-        }).join('')
-      : '<div style="color:#94a3b8;padding:16px 0;text-align:center">No reading history yet. Start with an article!</div>';
-  }
 
   function renderGrowthLineChart(data) {
     var thisWeek = data.weekly_progress   || [];
@@ -789,7 +789,7 @@
       activity_days: 0
     };
 
-    // user_stats → streak + cumulative scores
+    // user_stats → streak + cumulative scores + quiz count
     try {
       var { data: stats } = await sb.from('user_stats')
         .select('xp, streak, mission_streak, articles_read, words_saved, quizzes_done')
@@ -798,6 +798,7 @@
         snap.streak = stats.mission_streak || stats.streak || 0;
         snap.scores.vocabulary = Math.min(100, Math.round((stats.words_saved || 0) / 2));
         snap.scores.reading    = Math.min(100, (stats.articles_read || 0) * 3);
+        snap.cumulative_quizzes = stats.quizzes_done || 0;
       }
     } catch(e) {}
 
@@ -891,7 +892,7 @@
         + '<div style="font-size:13px;color:#94a3b8;margin-bottom:16px">Your weak grammar, daily words, and progress are all saved to your account.</div>'
         + '<button onclick="openAuthModal(\'signin\')" style="padding:10px 24px;background:#2563eb;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
         + '</div>';
-      ['weak-grammar-list','skills-list','review-queue','saved-reading'].forEach(function(id) {
+      ['weak-grammar-list','skills-list','review-queue'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.innerHTML = loginMsg;
       });
@@ -912,12 +913,12 @@
     try {
       // Direct table queries — no RPC needed
       const snap = await buildHubSnapshot(sb, supaUser.id);
+      _totalQuizzesDone = snap.cumulative_quizzes || 0;
 
       renderTopStats(snap);
       renderWeakGrammar(snap);
       renderSkills(snap);
       renderReview(snap);
-      renderSavedReading(snap);
       renderGrowthLineChart(snap);
       renderWeeklyImprovements(snap);
 
@@ -981,8 +982,17 @@
   var _drIndex = 0;
   var _drAnswered = false;
   var _drScores = [];
+  var _totalQuizzesDone = 0; // set from user_stats after load
 
   function openDailyReview() {
+    if (!supaUser) {
+      if (typeof openAuthModal === 'function') openAuthModal('signin');
+      return;
+    }
+    if (_totalQuizzesDone < 3) {
+      showDailyReviewLocked();
+      return;
+    }
     var overlay = document.getElementById('dr-overlay');
     if (overlay) overlay.classList.remove('hidden');
     _drQuestions = [];
@@ -990,6 +1000,27 @@
     _drScores = [];
     _drAnswered = false;
     drGenerateQuestions();
+  }
+
+  function showDailyReviewLocked() {
+    var existing = document.getElementById('dr-locked-overlay');
+    if (existing) existing.remove();
+    var ov = document.createElement('div');
+    ov.id = 'dr-locked-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.85);display:flex;align-items:center;justify-content:center;z-index:2500;padding:16px';
+    ov.onclick = function(e){ if (e.target === ov) ov.remove(); };
+    ov.innerHTML =
+      '<div style="background:#fff;border-radius:24px;width:min(420px,94vw);padding:32px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.35);animation:mIn .2s ease">'
+      + '<div style="font-size:52px;margin-bottom:16px">🔒</div>'
+      + '<div style="font-size:22px;font-weight:900;color:#0f172a;margin-bottom:10px;font-family:\'Playfair Display\',serif">Daily Review Locked</div>'
+      + '<div style="font-size:15px;color:#64748b;line-height:1.6;margin-bottom:8px">Complete quizzes for at least <strong style="color:#0f172a">3 articles</strong> to unlock Daily Review.</div>'
+      + '<div style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:#f1f5f9;border-radius:999px;font-size:14px;font-weight:800;color:#0f172a;margin-bottom:24px">'
+      + '<span style="color:#2563eb">' + _totalQuizzesDone + '</span><span style="color:#94a3b8">/</span><span>3 quizzes done</span>'
+      + '</div><br>'
+      + '<a href="korehan-study-room.html" style="display:inline-flex;align-items:center;justify-content:center;padding:13px 28px;background:linear-gradient(135deg,#0b1626,#2357a2);color:#fff;border-radius:999px;font-size:14px;font-weight:800;text-decoration:none;margin-bottom:12px">Go to Study Room →</a><br>'
+      + '<button onclick="document.getElementById(\'dr-locked-overlay\').remove()" style="margin-top:6px;background:none;border:none;color:#94a3b8;font-size:13px;cursor:pointer;padding:6px 12px">Close</button>'
+      + '</div>';
+    document.body.appendChild(ov);
   }
 
   function closeDailyReview() {
