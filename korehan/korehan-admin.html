@@ -2562,25 +2562,37 @@ async function _fetchRSS(url, sourceLabel) {
   }).filter(Boolean);
 }
 
-// ── Reddit JSON API ───────────────────────────────────────────
+// ── Reddit JSON API (allorigins 프록시 경유 — CORS 우회) ──────
 async function _fetchReddit(sub, sourceLabel) {
-  const res = await fetch('https://www.reddit.com/r/' + sub + '/hot.json?limit=10', {
-    headers: { 'User-Agent': 'KoreHanNews/1.0' },
-    signal: AbortSignal.timeout(8000)
-  });
+  const redditUrl = 'https://www.reddit.com/r/' + sub + '/hot.json?limit=10&raw_json=1';
+  const proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(redditUrl);
+  const res = await fetch(proxy, { signal: AbortSignal.timeout(12000) });
   const json = await res.json();
-  return (json.data?.children || []).map(function(p) {
+  if (!json.contents) return [];
+  var data;
+  try { data = JSON.parse(json.contents); } catch(e) { return []; }
+  return ((data.data && data.data.children) || []).map(function(p) {
     var d = p.data;
-    if (!d.title || d.stickied) return null;
+    if (!d || !d.title || d.stickied) return null;
     return { title: d.title, desc: (d.selftext||'').slice(0,250), link:'https://reddit.com'+d.permalink, source: sourceLabel };
   }).filter(Boolean);
 }
 
-// ── Hacker News Firebase API ──────────────────────────────────
+// ── Hacker News (allorigins 프록시 경유) ──────────────────────
 async function _fetchHN() {
-  const ids = await fetch('https://hacker-news.firebaseio.com/v1/topstories.json').then(r=>r.json());
-  const items = await Promise.all(ids.slice(0,12).map(function(id) {
-    return fetch('https://hacker-news.firebaseio.com/v1/item/'+id+'.json').then(r=>r.json()).catch(()=>null);
+  const proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://hacker-news.firebaseio.com/v1/topstories.json');
+  const res = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
+  const json = await res.json();
+  if (!json.contents) return [];
+  var ids;
+  try { ids = JSON.parse(json.contents); } catch(e) { return []; }
+  const top = ids.slice(0, 12);
+  const items = await Promise.all(top.map(function(id) {
+    const itemProxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://hacker-news.firebaseio.com/v1/item/'+id+'.json');
+    return fetch(itemProxy, { signal: AbortSignal.timeout(8000) })
+      .then(function(r){ return r.json(); })
+      .then(function(j){ return j.contents ? JSON.parse(j.contents) : null; })
+      .catch(function(){ return null; });
   }));
   return items.filter(function(i){ return i && i.title; }).map(function(i) {
     return { title: i.title, desc: i.url||'', link: i.url||'https://news.ycombinator.com/item?id='+i.id, source:'Hacker News' };
