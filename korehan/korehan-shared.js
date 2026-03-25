@@ -333,7 +333,7 @@ async function signInWithGoogle() {
   var { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.href,
+      redirectTo: window.location.origin + window.location.pathname,
       queryParams: {
         access_type: 'offline',
         prompt: 'select_account'
@@ -703,34 +703,7 @@ async function checkSession() {
   var sb = getSupa();
   if (!sb) { window._sessionChecked = true; return; }
 
-  // OAuth 콜백 처리 — ?code= 파라미터 (PKCE) 또는 #access_token (implicit)
-  var hasCode = window.location.search.includes('code=');
-  var hasHash = window.location.hash && window.location.hash.includes('access_token');
-
-  if (hasCode || hasHash) {
-    // Supabase가 code를 exchange해서 세션 설정할 시간 대기
-    await new Promise(function(r){ setTimeout(r, 800); });
-    // URL 정리
-    if (hasCode) {
-      window.history.replaceState(null, '', window.location.pathname);
-    } else {
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
-    }
-  }
-
-  var { data } = await sb.auth.getSession();
-  if (data && data.session && data.session.user) {
-    supaUser = data.session.user;
-    updateAuthUI();
-    renderDailyMission();
-    window.dispatchEvent(new Event('kh-auth-signed-in'));
-    if (!window.location.pathname.includes('onboarding')) {
-      checkOnboardingStatus();
-    }
-  }
-  window._sessionChecked = true;
-
-  // 세션 변화 감지
+  // 세션 변화 감지 — OAuth 코드 교환 이전에 등록해야 SIGNED_IN 이벤트를 놓치지 않음
   sb.auth.onAuthStateChange(function(event, session) {
     if (event === 'SIGNED_OUT') {
       supaUser = null;
@@ -759,6 +732,40 @@ async function checkSession() {
       renderDailyMission();
     }
   });
+
+  // OAuth 콜백 처리 — ?code= 파라미터 (PKCE) 또는 #access_token (implicit)
+  var hasCode = window.location.search.includes('code=');
+  var hasHash = window.location.hash && window.location.hash.includes('access_token');
+
+  if (hasCode) {
+    // PKCE: 명시적으로 코드를 교환
+    try {
+      var urlParams = new URLSearchParams(window.location.search);
+      var code = urlParams.get('code');
+      if (code) {
+        await sb.auth.exchangeCodeForSession(code);
+      }
+    } catch(e) {
+      console.warn('exchangeCodeForSession failed:', e);
+    }
+    window.history.replaceState(null, '', window.location.pathname);
+  } else if (hasHash) {
+    // Implicit: Supabase detectSessionInUrl이 처리할 시간 대기
+    await new Promise(function(r){ setTimeout(r, 800); });
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
+
+  var { data } = await sb.auth.getSession();
+  if (data && data.session && data.session.user) {
+    supaUser = data.session.user;
+    updateAuthUI();
+    renderDailyMission();
+    window.dispatchEvent(new Event('kh-auth-signed-in'));
+    if (!window.location.pathname.includes('onboarding')) {
+      checkOnboardingStatus();
+    }
+  }
+  window._sessionChecked = true;
 }
 
 // UI 업데이트
