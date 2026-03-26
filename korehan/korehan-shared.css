@@ -831,6 +831,21 @@ body.mobile-redesign .two-col > div:first-child { min-width: 0; }
 .trending-num { width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; background: rgba(13,27,46,0.07); color: var(--accent); }
 .trending-item p { margin: 0; font-size: 13px; color: var(--dark); line-height: 1.35; }
 
+/* ── NEON MODE: sidebar / Most Read ─────────────────────── */
+body.kh-neon-on .sidebar-box {
+  background: rgba(6,11,22,.88) !important;
+  border-color: rgba(0,255,214,.12) !important;
+}
+body.kh-neon-on .box-title { color: rgba(0,255,214,.7) !important; }
+body.kh-neon-on .trending-item { border-top-color: rgba(0,255,214,.1) !important; }
+body.kh-neon-on .trending-item p { color: #dffbfd !important; }
+body.kh-neon-on .trending-num { background: rgba(0,255,214,.1) !important; color: #8ffcff !important; }
+body.kh-neon-on .kh-wb-ko { color: #f0ffff !important; }
+body.kh-neon-on .kh-wb-rom { color: rgba(0,255,214,.6) !important; }
+body.kh-neon-on .kh-wb-en { color: rgba(255,255,255,.7) !important; }
+body.kh-neon-on .kh-wb-row { border-bottom-color: rgba(0,255,214,.08) !important; }
+body.kh-neon-on .kh-wb-row:hover { background: rgba(0,255,214,.04) !important; }
+
 /* ── HOME SECTION BLOCKS ── */
 .home-section-block { margin-bottom: 28px; }
 

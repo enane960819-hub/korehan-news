@@ -401,11 +401,18 @@ function _drawXPLog() {
   var visible = _xpLogAll.slice(0, _xpLogShowing);
   var html = visible.map(function(row) {
     var ds = row.created_at ? new Date(row.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
-    // xp_log 컬럼명이 amount/xp/xp_amount/points 등일 수 있으므로 모두 시도
+    // xp_log 컬럼명이 amount/xp/xp_gained/points 등일 수 있으므로 모두 시도
     var _cols = ['amount', 'xp', 'xp_gained', 'xp_amount', 'points'];
     var amt = 0;
     for (var _ci = 0; _ci < _cols.length; _ci++) {
-      if (row[_cols[_ci]] !== undefined && row[_cols[_ci]] !== null) { amt = row[_cols[_ci]]; break; }
+      if (row[_cols[_ci]] != null && +row[_cols[_ci]] > 0) { amt = +row[_cols[_ci]]; break; }
+    }
+    // 위에서 못찾으면: 행의 모든 숫자 필드 중 양수 첫번째 사용
+    if (!amt) {
+      var skipCols = { user_id:1, id:1, level:1, streak:1, count:1 };
+      Object.keys(row).forEach(function(k) {
+        if (!amt && !skipCols[k] && typeof row[k] === 'number' && row[k] > 0 && row[k] < 10000) amt = row[k];
+      });
     }
     var sign = amt >= 0 ? '+' : '';
     var color = amt >= 0 ? '' : 'color:#ef4444';

@@ -1229,7 +1229,11 @@ async function dbSaveWord(ko, rom, en) {
   }
 
   var sb = getSupa();
-  if (!sb) return { ok: true, source: 'local' };
+  if (!sb) {
+    // Supabase 없음: localStorage에 추가됐으면 카운터 증가
+    if (!alreadyLocal && typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
+    return { ok: true, source: 'local' };
+  }
 
   try {
     // INSERT (upsert 대신): conflict 여부로 새 단어인지 판단
@@ -1250,13 +1254,16 @@ async function dbSaveWord(ko, rom, en) {
         .eq('user_id', supaUser.id).eq('word_ko', ko);
       return { ok: true, source: 'supabase', duplicate: true };
     } else {
-      // 다른 에러 → upsert 폴백
+      // 다른 에러 → upsert 폴백. 새 단어였으면 카운터 증가
       await sb.from('saved_words').upsert({
         user_id: supaUser.id, word_ko: ko, word_rom: rom || '', word_en: en || ''
       }, { onConflict: 'user_id,word_ko' });
+      if (!alreadyLocal && typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
       return { ok: true, source: 'supabase' };
     }
   } catch(e) {
+    // DB 예외 — localStorage엔 이미 추가됐으므로 카운터만 증가
+    if (!alreadyLocal && typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
     return { ok: false, source: 'local', error: e };
   }
 }
@@ -3167,18 +3174,19 @@ async function markArticleRead(articleId, title, section, level) {
     if (!readLog[todayKey]) readLog[todayKey] = [];
     var id = String(articleId);
 
-    // 기사별 총 조회수 추적 — 2회 초과 시 XP 없음
-    var artViews = JSON.parse(localStorage.getItem('kh_art_views') || '{}');
-    var prevViews = artViews[id] || 0;
-    artViews[id] = prevViews + 1;
-    localStorage.setItem('kh_art_views', JSON.stringify(artViews));
-    var canEarnXP = prevViews < 2; // 0번째·1번째 조회만 XP (최대 2회)
-
     if (readLog[todayKey].indexOf(id) === -1) {
+      // 오늘 처음 보는 기사 — 조회수 카운터 증가 후 XP 여부 결정
+      var artViews = JSON.parse(localStorage.getItem('kh_art_views') || '{}');
+      var prevViews = artViews[id] || 0;
+      artViews[id] = prevViews + 1;
+      localStorage.setItem('kh_art_views', JSON.stringify(artViews));
+      var canEarnXP = prevViews < 2; // 총 2일치 읽기만 XP (3일째부터 없음)
+
       readLog[todayKey].push(id);
       localStorage.setItem('kh_read_log', JSON.stringify(readLog));
       trackActivityOnArticleRead(section, { grantXP: canEarnXP && readLog[todayKey].length <= ARTICLE_XP_DAILY_CAP });
     } else {
+      // 오늘 이미 읽은 기사 — 재방문은 artViews 카운트에 포함시키지 않음
       localStorage.setItem('kh_read_log', JSON.stringify(readLog));
     }
   } catch(e) {}
@@ -3819,9 +3827,62 @@ var _XP_ACTION_LABELS = {
   conversation_read: '회화 읽기'
 };
 
+// ── xp_log 컬럼명 감지 (세션당 1회) ─────────────────────────────
+var _xpLogAmtCol  = null;  // 'amount' | 'xp' | 'xp_gained' | 'points' | null
+var _xpLogSrcCol  = null;  // 'source' | 'action' | null
+
+async function _detectXPLogCols() {
+  if (_xpLogAmtCol !== null) return;
+  var sb = getSupa();
+  if (!sb) { _xpLogAmtCol = 'amount'; _xpLogSrcCol = 'source'; return; }
+  // amount 컬럼 탐지
+  var amtCandidates = ['amount', 'xp', 'xp_gained', 'points'];
+  for (var i = 0; i < amtCandidates.length; i++) {
+    try {
+      var r = await sb.from('xp_log').select(amtCandidates[i]).limit(0);
+      if (!r.error) { _xpLogAmtCol = amtCandidates[i]; break; }
+    } catch(e) {}
+  }
+  if (!_xpLogAmtCol) _xpLogAmtCol = 'amount';
+  // source/action 컬럼 탐지
+  try {
+    var rs = await sb.from('xp_log').select('source').limit(0);
+    _xpLogSrcCol = rs.error ? 'action' : 'source';
+  } catch(e) { _xpLogSrcCol = 'source'; }
+  console.log('[xp] xp_log cols:', _xpLogAmtCol, _xpLogSrcCol);
+}
+
+async function _insertXPLog(sb, userId, actionKey, amount, reason, contentId) {
+  await _detectXPLogCols();
+  var row = { user_id: userId };
+  row[_xpLogAmtCol] = amount;
+  row[_xpLogSrcCol] = actionKey;
+  // 공통 컬럼은 있으면 삽입, 없어도 오류 안남
+  try {
+    var r = await sb.from('xp_log').insert(Object.assign({}, row, {
+      reason: reason,
+      content_id: contentId
+    }));
+    if (r.error) {
+      // reason/content_id 컬럼 없을 수도 — 최소 행으로 재시도
+      if (/column.*not.*exist/i.test((r.error.message||''))) {
+        await sb.from('xp_log').insert(row);
+      } else {
+        console.warn('[xp] log insert error:', r.error);
+      }
+    } else {
+      console.log('[xp] logged', actionKey, amount, 'XP (col=' + _xpLogAmtCol + ')');
+    }
+  } catch(e) { console.warn('[xp] log insert exception:', e); }
+}
+
 async function awardXP(actionKey, meta) {
   if (!supaUser) return null;
   var sb = getSupa(); if (!sb) return null;
+
+  var amount    = _XP_ACTION_AMOUNTS[actionKey] || 10;
+  var reason    = _XP_ACTION_LABELS[actionKey] || actionKey;
+  var contentId = (meta && (meta.content_id || meta.article_id)) || null;
 
   // Try RPC first
   try {
@@ -3834,40 +3895,16 @@ async function awardXP(actionKey, meta) {
       if (res.data.leveled_up) {
         showToast('🎉 레벨 업! Lv.' + res.data.level + ' ' + res.data.level_name);
       }
-      showXPToast(res.data.xp_gained);
-      // Also log directly so xp_log stays in sync
-      try {
-        var amt2 = res.data.xp_gained || (_XP_ACTION_AMOUNTS[actionKey] || 10);
-        var logRes = await sb.from('xp_log').insert({
-          user_id: supaUser.id,
-          source: actionKey,
-          amount: amt2,
-          xp: amt2,
-          reason: _XP_ACTION_LABELS[actionKey] || actionKey,
-          content_id: (meta && (meta.content_id || meta.article_id)) || null
-        });
-        if (logRes && logRes.error) console.warn('[xp] log insert error:', logRes.error);
-      } catch(e) { console.warn('[xp] log insert exception:', e); }
+      var gained = res.data.xp_gained || amount;
+      showXPToast(gained);
+      await _insertXPLog(sb, supaUser.id, actionKey, gained, reason, contentId);
       return res.data;
     }
   } catch(e) {}
 
-  // Fallback: direct DB write when RPC is unavailable or returns no success
+  // Fallback: direct DB write
   try {
-    var amount = _XP_ACTION_AMOUNTS[actionKey] || 10;
-    var contentId = (meta && (meta.content_id || meta.article_id)) || null;
-    var reason = _XP_ACTION_LABELS[actionKey] || actionKey;
-
-    // Insert into xp_log (include both 'amount' and 'xp' to handle different column names)
-    var logRes2 = await sb.from('xp_log').insert({
-      user_id: supaUser.id,
-      source: actionKey,
-      amount: amount,
-      xp: amount,
-      reason: reason,
-      content_id: contentId
-    });
-    if (logRes2 && logRes2.error) console.warn('[xp] fallback log insert error:', logRes2.error);
+    await _insertXPLog(sb, supaUser.id, actionKey, amount, reason, contentId);
 
     // Increment xp in user_stats
     var { data: statsRow } = await sb.from('user_stats').select('xp').eq('user_id', supaUser.id).maybeSingle();
@@ -4210,6 +4247,14 @@ async function khSaveWbWord(rowEl, ko, rom, en) {
         p_source_kind: 'manual', p_source_content_type: null, p_source_content_id: null,
         p_interest_tag: null, p_review_delta: 0, p_correct_delta: 0, p_wrong_delta: 0
       });
+    }
+    // localStorage 추가 + 카운터/XP 증가
+    var wbSaved = lsGet(K_SAVED, []);
+    var wbAlready = !!wbSaved.find(function(w){ return w.ko === ko; });
+    if (!wbAlready) {
+      wbSaved.push({ ko: ko, rom: rom, en: en });
+      lsSet(K_SAVED, wbSaved);
+      if (typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
     }
     rowEl.classList.remove('saving');
     rowEl.classList.add('saved');
@@ -5888,13 +5933,27 @@ async function renderHomeLearningPreview() {
     } catch(e) {}
   }
 
-  var wordsLeft   = Math.max(0, 20 - (dm.words    || 0));
-  var artGoalLeft = Math.max(0, 3  - (dm.articles || 0));
+  var wordsDone   = (dm.words    || 0) >= 20;
+  var artsDone    = (dm.articles || 0) >= 3;
   var hasWeak = weakCount > 0;
   var weakQ = encodeURIComponent(weakGrammar);
 
   // Update review button state based on today's articles read
   if (window._updateReviewBtn) window._updateReviewBtn((dm.articles || 0) > 0);
+
+  function _progCard(val, goal, label, done) {
+    var bg   = done ? 'rgba(74,222,128,.14)'    : 'rgba(255,255,255,.06)';
+    var bord = done ? 'rgba(74,222,128,.35)'    : 'rgba(255,255,255,.08)';
+    var valC = done ? '#4ade80'                 : '#fff';
+    var lblC = done ? 'rgba(74,222,128,.75)'    : 'rgba(255,255,255,.58)';
+    var tick = done ? ' ✓' : '';
+    return '<div style="flex:1;background:' + bg + ';border:1px solid ' + bord + ';border-radius:12px;padding:9px 10px;text-align:center;transition:background .2s,border-color .2s;">'
+      + '<div style="font-size:16px;font-weight:900;color:' + valC + ';">' + val
+      + (done ? tick : '<span style="font-size:10px;color:rgba(255,255,255,.5)">/' + goal + '</span>')
+      + '</div>'
+      + '<div style="font-size:10px;color:' + lblC + ';font-weight:700;">' + label + '</div>'
+      + '</div>';
+  }
 
   box.innerHTML =
     // streak badge + stats row
@@ -5903,18 +5962,9 @@ async function renderHomeLearningPreview() {
     + '<div style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(255,179,71,.14);border:1px solid rgba(255,179,71,.24);color:#ffd089;">🔥 ' + streak + ' day streak</div>'
     + '</div>'
     + '<div style="display:flex;gap:6px;margin-bottom:12px;">'
-    + '<div style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:9px 10px;text-align:center;">'
-    +   '<div style="font-size:16px;font-weight:900;color:#fff;">' + (dm.words||0) + '<span style="font-size:10px;color:rgba(255,255,255,.5)">/20</span></div>'
-    +   '<div style="font-size:10px;color:rgba(255,255,255,.58);font-weight:700;">Words</div>'
-    + '</div>'
-    + '<div style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:9px 10px;text-align:center;">'
-    +   '<div style="font-size:16px;font-weight:900;color:#fff;">' + (dm.articles||0) + '<span style="font-size:10px;color:rgba(255,255,255,.5)">/3</span></div>'
-    +   '<div style="font-size:10px;color:rgba(255,255,255,.58);font-weight:700;">Articles</div>'
-    + '</div>'
-    + '<div style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:9px 10px;text-align:center;">'
-    +   '<div style="font-size:16px;font-weight:900;color:#fff;">' + xp + '</div>'
-    +   '<div style="font-size:10px;color:rgba(255,255,255,.58);font-weight:700;">XP</div>'
-    + '</div>'
+    + _progCard(dm.words||0, 20, 'Words', wordsDone)
+    + _progCard(dm.articles||0, 3, 'Articles', artsDone)
+    + _progCard(xp, null, 'XP', false)
     + '</div>'
     // weak grammar
     + '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">'
