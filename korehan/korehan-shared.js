@@ -2124,13 +2124,32 @@ function filterAllLevel(level, btn) {
 }
 
 // ── Character Reporter Profiles ───────────────────────────────
-// Pre-populated from localStorage (sync), refreshed from Supabase (async).
 // reporter_id on article maps to an entry here.
 var KH_REPORTERS = {};           // id → { name, img, href, role, color }
 var _KH_REPORTERS_PROMISE = null;
 var _KH_REPORTERS_LS_KEY  = 'kh_reporters_cache';
 
-// Synchronous pre-load from localStorage so first render already has data
+// Default reporter data (matches DEF_CHAR_REPORTERS in admin).
+// Always available — no Supabase needed for basic display.
+var _KH_DEFAULT_REPORTERS_LIST = [
+  { id:'cr1',  name:'박서진', role:'사회부 기자',         image:'https://picsum.photos/seed/cr1/200/200',  profilePage:'', color:'#2563eb' },
+  { id:'cr2',  name:'김지원', role:'국제부 특파원',       image:'https://picsum.photos/seed/cr2/200/200',  profilePage:'', color:'#7c3aed' },
+  { id:'cr3',  name:'이민준', role:'경제부 에디터',       image:'https://picsum.photos/seed/cr3/200/200',  profilePage:'', color:'#059669' },
+  { id:'cr4',  name:'최유나', role:'문화부 기자',         image:'https://picsum.photos/seed/cr4/200/200',  profilePage:'', color:'#db2777' },
+  { id:'cr5',  name:'정우성', role:'정치부 선임기자',     image:'https://picsum.photos/seed/cr5/200/200',  profilePage:'', color:'#dc2626' },
+  { id:'cr6',  name:'한소희', role:'IT·과학 에디터',     image:'https://picsum.photos/seed/cr6/200/200',  profilePage:'', color:'#0891b2' },
+  { id:'cr7',  name:'오지훈', role:'스포츠부 기자',       image:'https://picsum.photos/seed/cr7/200/200',  profilePage:'', color:'#ea580c' },
+  { id:'cr8',  name:'신지은', role:'사회·환경 전문기자', image:'https://picsum.photos/seed/cr8/200/200',  profilePage:'', color:'#16a34a' },
+  { id:'cr9',  name:'강태양', role:'국제·외교 기자',      image:'https://picsum.photos/seed/cr9/200/200',  profilePage:'', color:'#4338ca' },
+  { id:'cr10', name:'류하늘', role:'문화·라이프 기자',    image:'https://picsum.photos/seed/cr10/200/200', profilePage:'', color:'#c026d3' },
+];
+
+// Seed KH_REPORTERS from defaults immediately (synchronous, always works)
+_KH_DEFAULT_REPORTERS_LIST.forEach(function(d) {
+  KH_REPORTERS[d.id] = { name:d.name, img:d.image, href:d.profilePage||'korehan-reporters.html', role:d.role, color:d.color };
+});
+
+// Then override with localStorage cache if present
 (function() {
   try {
     var c = JSON.parse(localStorage.getItem(_KH_REPORTERS_LS_KEY) || 'null');
