@@ -401,7 +401,12 @@ function _drawXPLog() {
   var visible = _xpLogAll.slice(0, _xpLogShowing);
   var html = visible.map(function(row) {
     var ds = row.created_at ? new Date(row.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
-    var amt = row.amount !== undefined ? row.amount : (row.xp || 0);
+    // xp_log 컬럼명이 amount/xp/xp_amount/points 등일 수 있으므로 모두 시도
+    var _cols = ['amount', 'xp', 'xp_gained', 'xp_amount', 'points'];
+    var amt = 0;
+    for (var _ci = 0; _ci < _cols.length; _ci++) {
+      if (row[_cols[_ci]] !== undefined && row[_cols[_ci]] !== null) { amt = row[_cols[_ci]]; break; }
+    }
     var sign = amt >= 0 ? '+' : '';
     var color = amt >= 0 ? '' : 'color:#ef4444';
     return '<div class="xp-log-row">'

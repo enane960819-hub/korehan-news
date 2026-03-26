@@ -1212,23 +1212,50 @@ async function dbGetSavedWords() {
   return localSaved;
 }
 async function dbSaveWord(ko, rom, en) {
+  // localStorage에도 추가 (중복 제거)
   var saved = lsGet(K_SAVED, []);
-  if (!saved.find(function(w){ return w.ko === ko; })) {
+  var alreadyLocal = !!saved.find(function(w){ return w.ko === ko; });
+  if (!alreadyLocal) {
     saved.push({ko:ko,rom:rom,en:en});
     lsSet(K_SAVED, saved);
-    if (typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
   }
-  if (!supaUser) return { ok: true, source: 'local' };
+
+  if (!supaUser) {
+    // 비로그인: localStorage만, 새 단어일 때만 XP
+    if (!alreadyLocal) {
+      if (typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
+    }
+    return { ok: true, source: 'local' };
+  }
+
   var sb = getSupa();
   if (!sb) return { ok: true, source: 'local' };
+
   try {
-    await sb.from('saved_words').upsert({
+    // INSERT (upsert 대신): conflict 여부로 새 단어인지 판단
+    var res = await sb.from('saved_words').insert({
       user_id: supaUser.id,
       word_ko: ko,
       word_rom: rom || '',
       word_en: en || ''
-    }, { onConflict: 'user_id,word_ko' });
-    return { ok: true, source: 'supabase' };
+    });
+
+    if (!res.error) {
+      // 성공적으로 새 단어 추가됨 → XP 및 카운터 증가
+      if (typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
+      return { ok: true, source: 'supabase' };
+    } else if (res.error.code === '23505') {
+      // 이미 저장된 단어 (중복) — 업데이트만
+      await sb.from('saved_words').update({ word_rom: rom || '', word_en: en || '' })
+        .eq('user_id', supaUser.id).eq('word_ko', ko);
+      return { ok: true, source: 'supabase', duplicate: true };
+    } else {
+      // 다른 에러 → upsert 폴백
+      await sb.from('saved_words').upsert({
+        user_id: supaUser.id, word_ko: ko, word_rom: rom || '', word_en: en || ''
+      }, { onConflict: 'user_id,word_ko' });
+      return { ok: true, source: 'supabase' };
+    }
   } catch(e) {
     return { ok: false, source: 'local', error: e };
   }
@@ -3139,10 +3166,18 @@ async function markArticleRead(articleId, title, section, level) {
     var readLog = JSON.parse(localStorage.getItem('kh_read_log') || '{}');
     if (!readLog[todayKey]) readLog[todayKey] = [];
     var id = String(articleId);
+
+    // 기사별 총 조회수 추적 — 2회 초과 시 XP 없음
+    var artViews = JSON.parse(localStorage.getItem('kh_art_views') || '{}');
+    var prevViews = artViews[id] || 0;
+    artViews[id] = prevViews + 1;
+    localStorage.setItem('kh_art_views', JSON.stringify(artViews));
+    var canEarnXP = prevViews < 2; // 0번째·1번째 조회만 XP (최대 2회)
+
     if (readLog[todayKey].indexOf(id) === -1) {
       readLog[todayKey].push(id);
       localStorage.setItem('kh_read_log', JSON.stringify(readLog));
-      trackActivityOnArticleRead(section, { grantXP: readLog[todayKey].length <= ARTICLE_XP_DAILY_CAP });
+      trackActivityOnArticleRead(section, { grantXP: canEarnXP && readLog[todayKey].length <= ARTICLE_XP_DAILY_CAP });
     } else {
       localStorage.setItem('kh_read_log', JSON.stringify(readLog));
     }
@@ -3803,14 +3838,16 @@ async function awardXP(actionKey, meta) {
       // Also log directly so xp_log stays in sync
       try {
         var amt2 = res.data.xp_gained || (_XP_ACTION_AMOUNTS[actionKey] || 10);
-        await sb.from('xp_log').insert({
+        var logRes = await sb.from('xp_log').insert({
           user_id: supaUser.id,
           source: actionKey,
           amount: amt2,
+          xp: amt2,
           reason: _XP_ACTION_LABELS[actionKey] || actionKey,
           content_id: (meta && (meta.content_id || meta.article_id)) || null
         });
-      } catch(e) {}
+        if (logRes && logRes.error) console.warn('[xp] log insert error:', logRes.error);
+      } catch(e) { console.warn('[xp] log insert exception:', e); }
       return res.data;
     }
   } catch(e) {}
@@ -3821,14 +3858,16 @@ async function awardXP(actionKey, meta) {
     var contentId = (meta && (meta.content_id || meta.article_id)) || null;
     var reason = _XP_ACTION_LABELS[actionKey] || actionKey;
 
-    // Insert into xp_log
-    await sb.from('xp_log').insert({
+    // Insert into xp_log (include both 'amount' and 'xp' to handle different column names)
+    var logRes2 = await sb.from('xp_log').insert({
       user_id: supaUser.id,
       source: actionKey,
       amount: amount,
+      xp: amount,
       reason: reason,
       content_id: contentId
     });
+    if (logRes2 && logRes2.error) console.warn('[xp] fallback log insert error:', logRes2.error);
 
     // Increment xp in user_stats
     var { data: statsRow } = await sb.from('user_stats').select('xp').eq('user_id', supaUser.id).maybeSingle();
