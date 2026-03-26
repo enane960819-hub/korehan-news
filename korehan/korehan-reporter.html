@@ -242,7 +242,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   root.innerHTML =
     '<div class="rp-wrap">'
-    + '<a href="javascript:history.back()" style="display:inline-flex;align-items:center;gap:6px;color:var(--bright);font-size:14px;font-weight:700;text-decoration:none;margin-bottom:20px;opacity:.8">← 뒤로가기</a>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    +   '<a href="javascript:history.back()" style="color:var(--bright);font-size:14px;font-weight:700;text-decoration:none;opacity:.8">← 뒤로가기</a>'
+    +   '<a href="korehan-reporters.html" style="color:var(--bright);font-size:13px;font-weight:700;text-decoration:none;opacity:.8">전체 기자 보기 →</a>'
+    + '</div>'
 
     // ── Profile ──
     + '<div class="rp-profile">'

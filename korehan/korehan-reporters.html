@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>기자 소개 — KoreHan News</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css">
+<style>
+.rpl-hero { background:linear-gradient(135deg,#0b1626 0%,#1a3a6b 100%); padding:40px 24px 48px; text-align:center; }
+.rpl-hero h1 { font-family:'Playfair Display',serif; font-size:32px; font-weight:900; color:#fff; margin-bottom:8px; }
+.rpl-hero p { font-size:14px; color:rgba(255,255,255,.6); }
+.rpl-grid { max-width:960px; margin:0 auto; padding:40px 20px 60px; display:grid; grid-template-columns:repeat(4,1fr); gap:20px; }
+.rpl-card { text-decoration:none; display:block; border-radius:20px; overflow:hidden; background:#fff; border:1px solid #e8eef7; box-shadow:0 4px 16px rgba(15,23,42,.06); transition:transform .18s,box-shadow .18s; cursor:pointer; }
+.rpl-card:hover { transform:translateY(-6px); box-shadow:0 16px 40px rgba(15,23,42,.13); }
+.rpl-card:hover .rpl-img { transform:scale(1.06); }
+.rpl-img-wrap { height:200px; overflow:hidden; position:relative; }
+.rpl-img { width:100%; height:100%; object-fit:cover; transition:transform .3s; display:block; }
+.rpl-ph { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:56px; font-weight:900; color:#fff; }
+.rpl-bottom { padding:14px 16px 16px; }
+.rpl-name { font-family:'Noto Serif KR',serif; font-size:16px; font-weight:900; color:#0f172a; margin-bottom:3px; }
+.rpl-role { font-size:12px; color:#64748b; font-weight:600; }
+.rpl-loading { text-align:center; padding:80px 20px; color:#94a3b8; }
+@media(max-width:640px){ .rpl-grid{ grid-template-columns:repeat(2,1fr); gap:14px; } .rpl-img-wrap{ height:160px; } }
+</style>
+</head>
+<body>
+<div id="dyn-header"></div>
+<div class="rpl-hero">
+  <h1>KoreHan 기자단</h1>
+  <p>기사를 쓰는 캐릭터 기자들을 만나보세요</p>
+</div>
+<div class="rpl-grid" id="rpl-grid"><div class="rpl-loading">⏳ 로딩 중…</div></div>
+<div id="dyn-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+  await _loadReportersIntoKHMap();
+  var grid = document.getElementById('rpl-grid');
+
+  // Try Supabase for full list first
+  var list = [];
+  var sb = getSupa();
+  if (sb) {
+    try {
+      var res = await sb.from('character_reporters').select('id,data').order('updated_at');
+      if (!res.error && res.data && res.data.length) {
+        list = res.data.map(function(r){ return r.data || r; });
+      }
+    } catch(e) {}
+  }
+  // Fallback: build from KH_REPORTERS map
+  if (!list.length) {
+    list = Object.keys(KH_REPORTERS).map(function(rid){
+      var r = KH_REPORTERS[rid];
+      return { id:rid, name:r.name, role:r.role, image:r.img, color:r.color };
+    });
+  }
+
+  if (!list.length) { grid.innerHTML = '<div class="rpl-loading">기자 정보가 없습니다.</div>'; return; }
+
+  grid.innerHTML = list.map(function(r) {
+    var color = r.color || '#2563eb';
+    var imgHtml = r.image
+      ? '<img class="rpl-img" src="' + r.image + '" alt="' + r.name + '" onerror="this.parentNode.innerHTML=\'<div class=rpl-ph style=background:' + color + '>' + r.name.charAt(0) + '</div>\'">'
+      : '<div class="rpl-ph" style="background:' + color + '">' + r.name.charAt(0) + '</div>';
+    return '<a class="rpl-card" href="korehan-reporter.html?id=' + r.id + '">'
+      + '<div class="rpl-img-wrap" style="background:' + color + '22">' + imgHtml + '</div>'
+      + '<div class="rpl-bottom" style="border-top:3px solid ' + color + '">'
+      + '<div class="rpl-name">' + r.name + '</div>'
+      + '<div class="rpl-role">' + (r.role||'') + '</div>'
+      + '</div></a>';
+  }).join('');
+});
+</script>
+</body>
+</html>
