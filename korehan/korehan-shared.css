@@ -1328,6 +1328,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   font-size:13px; font-weight:900; color:#fff;
 }
 .art-reporter-name { font-size:12px; font-weight:700; color:#334155; }
+.art-reporter-role { font-size:11px; color:#64748b; font-weight:500; margin-left:2px; }
 
 .kh-share-btn {
   display:inline-flex; align-items:center; gap:6px;

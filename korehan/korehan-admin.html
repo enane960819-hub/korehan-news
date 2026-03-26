@@ -708,7 +708,8 @@ async function togglePub(id){
 
 // ══ ARTICLE MODAL ════════════════════════════════════════════
 
-function openModal(id){
+async function openModal(id){
+  await _ensureAdminReporters();
   const a = id ? DB.find(x=>x.id===id) : null;
   document.getElementById('m-ttl').textContent = a ? '기사 수정' : 'New Article';
   document.getElementById('m-bd').innerHTML = formHTML(a);
@@ -778,14 +779,23 @@ function formHTML(a){
       <input type="checkbox" id="f-break" ${v.breaking?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0;accent-color:#d00">
       <label for="f-break" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:700;cursor:pointer;color:#c00">🔴 Breaking News (속보 티커에 표시)</label>
     </div>
-    <div class="fg">
-      <label>Difficulty Level</label>
-      <select id="f-level" style="height:38px">
-        <option value="">— 선택 안 함 —</option>
-        <option value="Starter"   ${(v.level||'')==='Starter'   ?'selected':''}>⚪ Starter   (입문)</option><option value="Beginner"  ${(v.level||'')==='Beginner'  ?'selected':''}>🟢 Beginner  (TOPIK 1-2)</option>
-        <option value="Intermediate" ${(v.level||'')==='Intermediate'?'selected':''}>🟡 Intermediate (TOPIK 3-4)</option>
-        <option value="Advanced" ${(v.level||'')==='Advanced' ?'selected':''}>🔴 Advanced  (TOPIK 5-6)</option>
-      </select>
+    <div class="fg-row">
+      <div class="fg">
+        <label>Difficulty Level</label>
+        <select id="f-level" style="height:38px">
+          <option value="">— 선택 안 함 —</option>
+          <option value="Starter"   ${(v.level||'')==='Starter'   ?'selected':''}>⚪ Starter   (입문)</option><option value="Beginner"  ${(v.level||'')==='Beginner'  ?'selected':''}>🟢 Beginner  (TOPIK 1-2)</option>
+          <option value="Intermediate" ${(v.level||'')==='Intermediate'?'selected':''}>🟡 Intermediate (TOPIK 3-4)</option>
+          <option value="Advanced" ${(v.level||'')==='Advanced' ?'selected':''}>🔴 Advanced  (TOPIK 5-6)</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Reporter (기자)</label>
+        <select id="f-reporter" style="height:38px">
+          <option value="">— 기자 없음 —</option>
+          ${(_adminReporters||DEF_CHAR_REPORTERS).map(r=>`<option value="${esc(r.id)}"${(v.reporter_id||'')===(r.id||'')?'selected':''}>${esc(r.name)} — ${esc(r.role)}</option>`).join('')}
+        </select>
+      </div>
     </div>
     <input type="hidden" id="f-id" value="${v.id||''}">`;
 }
@@ -803,7 +813,8 @@ async function submitForm(status){
   const image=(document.getElementById('f-image')?.value||'').trim();
   const feat    = document.getElementById('f-feat')?.checked||false;
   const breaking = document.getElementById('f-break')?.checked||false;
-  const level   = document.getElementById('f-level')?.value||'';
+  const level      = document.getElementById('f-level')?.value||'';
+  const reporterId = document.getElementById('f-reporter')?.value||'';
   const eid  = document.getElementById('f-id')?.value||'';
   if(!title){toast('제목을 입력해 주세요',true);return;}
   if(!body) {toast('본문을 입력해 주세요',true);return;}
@@ -811,7 +822,9 @@ async function submitForm(status){
   const article = {
     id: eid || uid(),
     title, body, section: sec, date, image,
-    featured: feat, breaking: breaking, level, status
+    featured: feat, breaking: breaking, level,
+    reporter_id: reporterId || null,
+    status
   };
 
   const ok = await dbSaveArticle(article);
@@ -1693,14 +1706,55 @@ function saveOpinions(){
 
 // ══ CHARACTER REPORTERS ══════════════════════════════════════
 var DEF_CHAR_REPORTERS = [
-  { id:'cr1', name:'박서진', role:'사회부 기자', image:'https://picsum.photos/seed/cr1/200/200', intro:'KoreHan News 사회부 기자. 복잡한 사회 이슈를 쉬운 한국어로 전달합니다.', personality:'친근하고 따뜻한 어조. 독자에게 설명하듯이 씁니다.', tone:'Friendly and approachable', tags:['사회','오피니언'], profilePage:'', color:'#2563eb' },
-  { id:'cr2', name:'김지원', role:'국제부 특파원', image:'https://picsum.photos/seed/cr2/200/200', intro:'전 세계 뉴스를 한국어로 쉽게 풀어드립니다. 국제 정세 전문.', personality:'분석적이고 논리적. 데이터와 사실 중심.', tone:'Analytical and precise', tags:['국제','IT과학'], profilePage:'', color:'#7c3aed' },
+  { id:'cr1',  name:'박서진',   role:'사회부 기자',       image:'https://picsum.photos/seed/cr1/200/200',  intro:'KoreHan News 사회부 기자. 복잡한 사회 이슈를 쉬운 한국어로 전달합니다.',             personality:'친근하고 따뜻한 어조. 독자에게 설명하듯이 씁니다.',    tone:'Friendly and approachable',  tags:['사회','오피니언'], profilePage:'', color:'#2563eb' },
+  { id:'cr2',  name:'김지원',   role:'국제부 특파원',     image:'https://picsum.photos/seed/cr2/200/200',  intro:'전 세계 뉴스를 한국어로 쉽게 풀어드립니다. 국제 정세 전문.',                          personality:'분석적이고 논리적. 데이터와 사실 중심.',               tone:'Analytical and precise',     tags:['국제','IT과학'],  profilePage:'', color:'#7c3aed' },
+  { id:'cr3',  name:'이민준',   role:'경제부 에디터',     image:'https://picsum.photos/seed/cr3/200/200',  intro:'경제 지표와 금융 시장을 알기 쉽게 분석합니다. 10년 경력의 경제 전문 기자.',             personality:'명확하고 숫자 중심. 배경 설명을 충실히 합니다.',       tone:'Clear and data-driven',      tags:['경제'],           profilePage:'', color:'#059669' },
+  { id:'cr4',  name:'최유나',   role:'문화부 기자',       image:'https://picsum.photos/seed/cr4/200/200',  intro:'K-팝, 영화, 드라마 등 한국 대중문화 전문 기자. 트렌드를 누구보다 빠르게 전달합니다.', personality:'활기차고 트렌디. 젊은 독자층을 고려합니다.',          tone:'Energetic and trendy',       tags:['문화','스포츠'],  profilePage:'', color:'#db2777' },
+  { id:'cr5',  name:'정우성',   role:'정치부 선임기자',   image:'https://picsum.photos/seed/cr5/200/200',  intro:'국회와 청와대를 20년 취재한 정치 전문 기자. 깊이 있는 분석으로 독자의 신뢰를 받습니다.',personality:'신중하고 균형 잡힌 시각. 중립적 보도.',               tone:'Balanced and measured',      tags:['정치'],           profilePage:'', color:'#dc2626' },
+  { id:'cr6',  name:'한소희',   role:'IT·과학 에디터',   image:'https://picsum.photos/seed/cr6/200/200',  intro:'AI, 반도체, 우주과학까지. 복잡한 기술 뉴스를 누구나 이해할 수 있게 씁니다.',           personality:'호기심 넘치고 쉬운 설명. 비유와 예시를 즐겨 사용.',   tone:'Curious and explanatory',    tags:['IT과학'],         profilePage:'', color:'#0891b2' },
+  { id:'cr7',  name:'오지훈',   role:'스포츠부 기자',     image:'https://picsum.photos/seed/cr7/200/200',  intro:'축구, 야구, 올림픽까지. 현장의 열기를 생생하게 전달하는 스포츠 전문 기자입니다.',       personality:'열정적이고 생동감 있는 문체. 현장감 강조.',           tone:'Passionate and vivid',       tags:['스포츠'],         profilePage:'', color:'#ea580c' },
+  { id:'cr8',  name:'신지은',   role:'사회·환경 전문기자', image:'https://picsum.photos/seed/cr8/200/200', intro:'기후 위기, 환경 정책, 복지 이슈를 사람 중심으로 취재합니다.',                          personality:'진지하고 공감 중심. 사람의 이야기를 중요시합니다.',   tone:'Empathetic and serious',     tags:['사회','오피니언'], profilePage:'', color:'#16a34a' },
+  { id:'cr9',  name:'강태양',   role:'국제·외교 기자',    image:'https://picsum.photos/seed/cr9/200/200',  intro:'미국, 중국, 일본 등 주요국 외교 뉴스를 심층 분석합니다.',                              personality:'통찰력 있고 비교 시각 강함. 맥락을 중시합니다.',     tone:'Insightful and contextual',  tags:['국제','정치'],    profilePage:'', color:'#4338ca' },
+  { id:'cr10', name:'류하늘',   role:'문화·라이프 기자',  image:'https://picsum.photos/seed/cr10/200/200', intro:'한국의 생활 문화, 음식, 여행, 트렌드를 친근하게 소개합니다.',                          personality:'가볍고 유머러스. 일상적인 언어를 선호합니다.',        tone:'Light and relatable',        tags:['문화','사회'],    profilePage:'', color:'#c026d3' },
 ];
 
-function goCharReporters() {
+// ── Admin reporter cache ─────────────────────────────────────
+var _adminReporters = null; // populated by _ensureAdminReporters()
+
+async function _ensureAdminReporters(force) {
+  if (_adminReporters && !force) return _adminReporters;
+  var sb = getSb();
+  if (sb) {
+    try {
+      var res = await sb.from('character_reporters').select('id, data').order('updated_at', { ascending: true });
+      if (!res.error && res.data && res.data.length > 0) {
+        var loaded = res.data.map(function(row){ return row.data || row; }).filter(Boolean);
+        if (loaded.length > 0) {
+          _adminReporters = loaded;
+          localStorage.setItem(K_CHAR_REPORTERS, JSON.stringify(loaded));
+          return _adminReporters;
+        }
+      }
+    } catch(e) {}
+  }
+  // Fall back to localStorage or defaults
+  try { _adminReporters = JSON.parse(localStorage.getItem(K_CHAR_REPORTERS) || 'null') || DEF_CHAR_REPORTERS; }
+  catch(e) { _adminReporters = DEF_CHAR_REPORTERS.slice(); }
+  // If still defaults, sync them to Supabase silently
+  if (sb) { _syncDefaultReportersToSupa(sb); }
+  return _adminReporters;
+}
+
+async function _syncDefaultReportersToSupa(sb) {
+  for (var i = 0; i < DEF_CHAR_REPORTERS.length; i++) {
+    var r = DEF_CHAR_REPORTERS[i];
+    try { await sb.from('character_reporters').upsert({ id: r.id, data: r, updated_at: new Date().toISOString() }, { onConflict: 'id' }); } catch(e) {}
+  }
+}
+
+async function goCharReporters() {
   setSbOn('sb-char-reporters');
-  var reporters = [];
-  try { reporters = JSON.parse(localStorage.getItem(K_CHAR_REPORTERS) || 'null') || DEF_CHAR_REPORTERS; } catch(e) { reporters = DEF_CHAR_REPORTERS; }
+  var reporters = await _ensureAdminReporters(true);
 
   document.getElementById('main').innerHTML = `
     <div style="max-width:1000px">
@@ -1749,8 +1803,8 @@ function crRenderList(reporters) {
 }
 
 function crEditModal(idx) {
-  var reporters = [];
-  try { reporters = JSON.parse(localStorage.getItem(K_CHAR_REPORTERS) || 'null') || DEF_CHAR_REPORTERS; } catch(e) { reporters = DEF_CHAR_REPORTERS; }
+  var reporters = _adminReporters || [];
+  try { if (!reporters.length) reporters = JSON.parse(localStorage.getItem(K_CHAR_REPORTERS) || 'null') || DEF_CHAR_REPORTERS; } catch(e) { reporters = DEF_CHAR_REPORTERS; }
   var r = reporters[idx] || {};
   var isNew = (idx === -1);
   if (isNew) r = { id: uid(), name:'', role:'', image:'', intro:'', personality:'', tone:'', tags:[], profilePage:'', color:'#2563eb' };
@@ -1803,8 +1857,8 @@ function crSaveFromModal() {
   var role = (document.getElementById('cr-role')?.value||'').trim();
   if (!name || !role) { toast('Name and Role are required', true); return; }
 
-  var reporters = [];
-  try { reporters = JSON.parse(localStorage.getItem(K_CHAR_REPORTERS) || 'null') || DEF_CHAR_REPORTERS; } catch(e) { reporters = DEF_CHAR_REPORTERS.slice(); }
+  var reporters = _adminReporters ? _adminReporters.slice() : [];
+  try { if (!reporters.length) reporters = JSON.parse(localStorage.getItem(K_CHAR_REPORTERS) || 'null') || DEF_CHAR_REPORTERS.slice(); } catch(e) { reporters = DEF_CHAR_REPORTERS.slice(); }
 
   var idxVal = parseInt(document.getElementById('cr-idx')?.value??'-1', 10);
   var tags = [...document.querySelectorAll('#m-bd input[type=checkbox]:checked')].map(function(c){ return c.value; });
@@ -1826,6 +1880,7 @@ function crSaveFromModal() {
   } else {
     reporters[idxVal] = reporter;
   }
+  _adminReporters = reporters;
   localStorage.setItem(K_CHAR_REPORTERS, JSON.stringify(reporters));
 
   // Also save to Supabase if possible
@@ -1849,10 +1904,16 @@ function crDeleteFromModal() {
   var idxVal = parseInt(document.getElementById('cr-idx')?.value??'-1', 10);
   var name   = document.getElementById('cr-name')?.value || 'this reporter';
   if (!confirm('Delete "' + name + '"? This cannot be undone.')) return;
-  var reporters = [];
-  try { reporters = JSON.parse(localStorage.getItem(K_CHAR_REPORTERS) || 'null') || DEF_CHAR_REPORTERS; } catch(e) { reporters = DEF_CHAR_REPORTERS.slice(); }
+  var reporters = _adminReporters ? _adminReporters.slice() : [];
+  try { if (!reporters.length) reporters = JSON.parse(localStorage.getItem(K_CHAR_REPORTERS) || 'null') || DEF_CHAR_REPORTERS.slice(); } catch(e) { reporters = DEF_CHAR_REPORTERS.slice(); }
+  var deleted = reporters[idxVal];
   reporters.splice(idxVal, 1);
+  _adminReporters = reporters;
   localStorage.setItem(K_CHAR_REPORTERS, JSON.stringify(reporters));
+  // Delete from Supabase
+  if (deleted && deleted.id) {
+    (async function(){ var sb=getSb(); if(sb){ try{ await sb.from('character_reporters').delete().eq('id', deleted.id); }catch(e){} } })();
+  }
   closeModal();
   document.getElementById('m-draft').style.display = '';
   document.getElementById('m-pub').textContent = '✓ Publish';
@@ -1862,12 +1923,18 @@ function crDeleteFromModal() {
 }
 
 function crDelete(idx) {
-  var reporters = [];
-  try { reporters = JSON.parse(localStorage.getItem(K_CHAR_REPORTERS) || 'null') || DEF_CHAR_REPORTERS; } catch(e) { reporters = DEF_CHAR_REPORTERS.slice(); }
+  var reporters = _adminReporters ? _adminReporters.slice() : [];
+  try { if (!reporters.length) reporters = JSON.parse(localStorage.getItem(K_CHAR_REPORTERS) || 'null') || DEF_CHAR_REPORTERS.slice(); } catch(e) { reporters = DEF_CHAR_REPORTERS.slice(); }
   var name = reporters[idx]?.name || 'this reporter';
   if (!confirm('Delete "' + name + '"? This cannot be undone.')) return;
+  var deleted = reporters[idx];
   reporters.splice(idx, 1);
+  _adminReporters = reporters;
   localStorage.setItem(K_CHAR_REPORTERS, JSON.stringify(reporters));
+  // Delete from Supabase
+  if (deleted && deleted.id) {
+    (async function(){ var sb=getSb(); if(sb){ try{ await sb.from('character_reporters').delete().eq('id', deleted.id); }catch(e){} } })();
+  }
   goCharReporters();
   toast('🗑️ Reporter deleted');
 }

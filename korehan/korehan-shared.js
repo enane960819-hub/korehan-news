@@ -2124,11 +2124,37 @@ function filterAllLevel(level, btn) {
 }
 
 // ── Character Reporter Profiles ───────────────────────────────
-// Add reporter objects here when images/bios are ready.
-// reporter_id on article maps to a key here.
-var KH_REPORTERS = {
-  // 'han': { name: 'Han', img: 'reporters/han.jpg', href: 'korehan-reporters.html#han' },
-};
+// Loaded async from Supabase character_reporters table.
+// reporter_id on article maps to an entry here.
+var KH_REPORTERS = {};            // id → { name, img, href, role, color }
+var _KH_REPORTERS_LOADED = false;
+
+function _loadReportersIntoKHMap() {
+  if (_KH_REPORTERS_LOADED) return;
+  _KH_REPORTERS_LOADED = true;
+  var sb = getSupa();
+  if (!sb) return;
+  sb.from('character_reporters').select('id, data').then(function(res) {
+    if (res.error || !res.data) return;
+    res.data.forEach(function(row) {
+      var d = row.data || {};
+      var rid = d.id || row.id;
+      if (!rid) return;
+      KH_REPORTERS[rid] = {
+        name : d.name  || '',
+        img  : d.image || '',
+        href : d.profilePage || 'korehan-reporters.html',
+        role : d.role  || '',
+        color: d.color || '#2563eb'
+      };
+    });
+    // Re-render any already-rendered reporter slots in the DOM
+    if (typeof _reRenderReporterSlots === 'function') _reRenderReporterSlots();
+  }).catch(function(){});
+}
+
+// Call once on page load (safe to call multiple times — idempotent)
+document.addEventListener('DOMContentLoaded', function() { _loadReportersIntoKHMap(); });
 
 function getReporterProfileHTML(article) {
   var rid = article.reporter_id || article.reporter || null;
@@ -2136,13 +2162,15 @@ function getReporterProfileHTML(article) {
   var name = (rep && rep.name) ? rep.name : 'KoreHan Reporter';
   var img  = (rep && rep.img)  ? rep.img  : null;
   var href = (rep && rep.href) ? rep.href : 'korehan-reporters.html';
+  var color = (rep && rep.color) ? rep.color : '#2563eb';
   var avatar = img
     ? '<img src="' + img + '" alt="' + name + '" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'">'
-      + '<div class="art-reporter-avatar-placeholder" style="display:none">' + name.charAt(0) + '</div>'
-    : '<div class="art-reporter-avatar-placeholder">' + name.charAt(0) + '</div>';
+      + '<div class="art-reporter-avatar-placeholder" style="display:none;background:' + color + '">' + name.charAt(0) + '</div>'
+    : '<div class="art-reporter-avatar-placeholder" style="background:' + color + '">' + name.charAt(0) + '</div>';
   return '<a href="' + href + '" class="art-reporter-link">'
     + '<div class="art-reporter-avatar">' + avatar + '</div>'
     + '<span class="art-reporter-name">' + name + '</span>'
+    + (rep && rep.role ? '<span class="art-reporter-role">' + rep.role + '</span>' : '')
     + '</a>';
 }
 
