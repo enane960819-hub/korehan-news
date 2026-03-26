@@ -1977,7 +1977,7 @@ async function crHandleImageUpload(input) {
   input.value = '';
 }
 
-function crSaveFromModal() {
+async function crSaveFromModal() {
   var name = (document.getElementById('cr-name')?.value||'').trim();
   var role = (document.getElementById('cr-role')?.value||'').trim();
   if (!name || !role) { toast('Name and Role are required', true); return; }
@@ -2019,33 +2019,33 @@ function crSaveFromModal() {
     } catch(e) {}
   })();
 
-  // Save to Supabase using service role key (bypasses RLS — reliable for all reporters)
-  (async function() {
-    try {
-      var res = await fetch(SUPA_URL_ADMIN + '/rest/v1/character_reporters', {
-        method: 'POST',
-        headers: {
-          'apikey': SUPA_SERVICE_KEY,
-          'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
-          'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates,return=minimal'
-        },
-        body: JSON.stringify({ id: reporter.id, data: reporter, updated_at: new Date().toISOString() })
-      });
-      if (!res.ok) {
-        var err = await res.json().catch(function(){ return {}; });
-        console.warn('[reporter save]', err.message || err.error || 'HTTP ' + res.status);
-      }
-    } catch(e) { console.warn('[reporter save]', e); }
-  })();
-
   closeModal();
-  // Restore modal footer defaults
   document.getElementById('m-draft').style.display = '';
   document.getElementById('m-pub').textContent = '✓ Publish';
   document.getElementById('m-pub').onclick = function(){ submitForm('published'); };
   goCharReporters();
-  toast('🎭 Reporter saved: ' + name);
+
+  // Save to Supabase using service role key — show result to user
+  try {
+    var res = await fetch(SUPA_URL_ADMIN + '/rest/v1/character_reporters', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({ id: reporter.id, data: reporter, updated_at: new Date().toISOString() })
+    });
+    if (res.ok) {
+      toast('🎭 저장 완료 (Supabase ✓) — 모든 기기에서 반영됩니다');
+    } else {
+      var err = await res.json().catch(function(){ return {}; });
+      toast('저장됨 (로컬만) — Supabase 오류: ' + (err.message || err.error || 'HTTP ' + res.status) + '\n테이블이 없으면 SQL Editor에서 character_reporters 테이블 생성 필요', true);
+    }
+  } catch(e) {
+    toast('저장됨 (로컬만) — Supabase 연결 실패', true);
+  }
 }
 
 function crDeleteFromModal() {
