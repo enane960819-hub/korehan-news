@@ -2124,39 +2124,56 @@ function filterAllLevel(level, btn) {
 }
 
 // ── Character Reporter Profiles ───────────────────────────────
-// Loaded async from Supabase character_reporters table.
+// Pre-populated from localStorage (sync), refreshed from Supabase (async).
 // reporter_id on article maps to an entry here.
-var KH_REPORTERS = {};            // id → { name, img, href, role, color }
-var _KH_REPORTERS_LOADED = false;
+var KH_REPORTERS = {};           // id → { name, img, href, role, color }
+var _KH_REPORTERS_PROMISE = null;
+var _KH_REPORTERS_LS_KEY  = 'kh_reporters_cache';
 
+// Synchronous pre-load from localStorage so first render already has data
+(function() {
+  try {
+    var c = JSON.parse(localStorage.getItem(_KH_REPORTERS_LS_KEY) || 'null');
+    if (c && typeof c === 'object') {
+      Object.keys(c).forEach(function(rid){ KH_REPORTERS[rid] = c[rid]; });
+    }
+  } catch(e) {}
+})();
+
+// Returns a Promise — resolves after KH_REPORTERS is fresh from Supabase.
+// Safe to call multiple times; only one fetch ever happens per page load.
 function _loadReportersIntoKHMap() {
-  if (_KH_REPORTERS_LOADED) return;
-  _KH_REPORTERS_LOADED = true;
-  var sb = getSupa();
-  if (!sb) return;
-  sb.from('character_reporters').select('id, data').then(function(res) {
-    if (res.error || !res.data) return;
-    res.data.forEach(function(row) {
-      var d = row.data || {};
-      var rid = d.id || row.id;
-      if (!rid) return;
-      KH_REPORTERS[rid] = {
-        name : d.name  || '',
-        img  : d.image || '',
-        href : d.profilePage || 'korehan-reporters.html',
-        role : d.role  || '',
-        color: d.color || '#2563eb'
-      };
-    });
-    // Re-render any already-rendered reporter slots in the DOM
-    _reRenderReporterSlots();
-  }).catch(function(){});
+  if (_KH_REPORTERS_PROMISE) return _KH_REPORTERS_PROMISE;
+  _KH_REPORTERS_PROMISE = new Promise(function(resolve) {
+    var sb = getSupa();
+    if (!sb) { resolve(); return; }
+    sb.from('character_reporters').select('id, data').then(function(res) {
+      if (!res.error && res.data && res.data.length > 0) {
+        var snap = {};
+        res.data.forEach(function(row) {
+          var d = row.data || {};
+          var rid = d.id || row.id;
+          if (!rid) return;
+          snap[rid] = KH_REPORTERS[rid] = {
+            name : d.name  || '',
+            img  : d.image || '',
+            href : d.profilePage || 'korehan-reporters.html',
+            role : d.role  || '',
+            color: d.color || '#2563eb'
+          };
+        });
+        try { localStorage.setItem(_KH_REPORTERS_LS_KEY, JSON.stringify(snap)); } catch(e) {}
+        _reRenderReporterSlots();
+      }
+      resolve();
+    }).catch(function(){ resolve(); });
+  });
+  return _KH_REPORTERS_PROMISE;
 }
 
 // After KH_REPORTERS loads, patch any .art-reporter-link[data-rid] already in the DOM
 function _reRenderReporterSlots() {
-  var links = document.querySelectorAll('.art-reporter-link[data-rid]');
-  links.forEach(function(el) {
+  document.querySelectorAll('.art-reporter-link[data-rid]').forEach(function(el) {
     var rid = el.getAttribute('data-rid');
     if (!rid) return;
     var rep = KH_REPORTERS[rid];
@@ -2184,7 +2201,7 @@ function _reRenderReporterSlots() {
   });
 }
 
-// Call once on page load (safe to call multiple times — idempotent)
+// Kick off fetch early (non-blocking background prefetch)
 document.addEventListener('DOMContentLoaded', function() { _loadReportersIntoKHMap(); });
 
 function getReporterProfileHTML(article) {
@@ -4702,7 +4719,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   else if (pageBase === 'korehan-world')     { await renderSectionPage('국제'); }
   else if (pageBase === 'korehan-culture')   { await renderSectionPage('문화'); }
   else if (pageBase === 'korehan-opinion')   { await renderSectionPage('오피니언'); }
-  else if (pageBase === 'korehan-article')   { renderArticlePage(); }
+  else if (pageBase === 'korehan-article')   { await _loadReportersIntoKHMap(); renderArticlePage(); }
 
   ttsInit();
   injectDailyMission();
