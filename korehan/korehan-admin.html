@@ -564,6 +564,18 @@ async function dbSaveArticle(article) {
     if (res.error) throw res.error;
     return true;
   } catch(e) {
+    // If reporter_id column doesn't exist yet, retry without it
+    if (/reporter_id/i.test(e.message || '') && article.reporter_id !== undefined) {
+      const fallback = Object.assign({}, article);
+      delete fallback.reporter_id;
+      try {
+        const res2 = await sb.from('articles').upsert(fallback, { onConflict: 'id' });
+        if (!res2.error) {
+          toast('저장됨 (reporter_id 컬럼 없음 — Supabase SQL에서 추가 필요: ALTER TABLE articles ADD COLUMN IF NOT EXISTS reporter_id TEXT)', true);
+          return true;
+        }
+      } catch(e2) {}
+    }
     toast('저장 오류: ' + e.message, true);
     return false;
   }
@@ -603,6 +615,7 @@ async function batchAssignReporters() {
   if (!confirm(unassigned.length + '개 기사에 섹션별 기자를 자동 배정할까요?\n(이미 기자가 지정된 기사는 변경되지 않습니다)')) return;
 
   var updated = 0;
+  var colMissing = false;
   for (var i = 0; i < unassigned.length; i++) {
     var a = unassigned[i];
     var rid = SECTION_REPORTER_MAP[a.section] || 'cr1';
@@ -611,10 +624,17 @@ async function batchAssignReporters() {
       if (!res.error) {
         a.reporter_id = rid;
         updated++;
+      } else if (/reporter_id/i.test((res.error.message||''))) {
+        colMissing = true;
+        break;
       }
     } catch(e) {}
   }
-  toast('✓ ' + updated + '개 기사에 기자 배정 완료');
+  if (colMissing) {
+    toast('reporter_id 컬럼이 없습니다. Supabase SQL Editor에서 실행:\nALTER TABLE articles ADD COLUMN IF NOT EXISTS reporter_id TEXT;', true);
+  } else {
+    toast('✓ ' + updated + '개 기사에 기자 배정 완료');
+  }
   renderRows();
 }
 
