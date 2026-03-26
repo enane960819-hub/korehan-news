@@ -1999,6 +1999,17 @@ function crSaveFromModal() {
   _adminReporters = reporters;
   localStorage.setItem(K_CHAR_REPORTERS, JSON.stringify(reporters));
 
+  // Sync to kh_reporters_cache (key read by korehan-shared.js on article pages)
+  (function() {
+    try {
+      var snap = {};
+      reporters.forEach(function(r) {
+        if (r.id) snap[r.id] = { name:r.name||'', img:r.image||'', href:r.profilePage||'korehan-reporters.html', role:r.role||'', color:r.color||'#2563eb' };
+      });
+      localStorage.setItem('kh_reporters_cache', JSON.stringify(snap));
+    } catch(e) {}
+  })();
+
   // Also save to Supabase if possible
   (async function() {
     var sb = getSb();

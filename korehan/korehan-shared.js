@@ -2183,6 +2183,20 @@ function _loadReportersIntoKHMap() {
         });
         try { localStorage.setItem(_KH_REPORTERS_LS_KEY, JSON.stringify(snap)); } catch(e) {}
         _reRenderReporterSlots();
+      } else {
+        // Supabase empty/missing — fall back to admin's localStorage key
+        try {
+          var adminList = JSON.parse(localStorage.getItem('korehan_char_reporters') || 'null');
+          if (adminList && adminList.length) {
+            var snap2 = {};
+            adminList.forEach(function(d) {
+              if (!d.id) return;
+              snap2[d.id] = KH_REPORTERS[d.id] = { name:d.name||'', img:d.image||'', href:d.profilePage||'korehan-reporters.html', role:d.role||'', color:d.color||'#2563eb' };
+            });
+            try { localStorage.setItem(_KH_REPORTERS_LS_KEY, JSON.stringify(snap2)); } catch(e) {}
+            _reRenderReporterSlots();
+          }
+        } catch(e2) {}
       }
       resolve();
     }).catch(function(){ resolve(); });
