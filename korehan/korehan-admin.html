@@ -1879,9 +1879,20 @@ function crEditModal(idx) {
       <div class="fg"><label>Role / Title *</label><input id="cr-role" type="text" value="${esc(r.role)}" placeholder="e.g. 사회부 기자"></div>
     </div>
     <div class="fg">
-      <label>Profile Image URL</label>
-      <input id="cr-img" type="text" value="${esc(r.image)}" placeholder="https://…" oninput="document.getElementById('cr-imgprev').src=this.value||'https://picsum.photos/seed/cr_x/200/200'">
-      <img id="cr-imgprev" src="${esc(r.image||'https://picsum.photos/seed/cr_x/200/200')}" style="width:80px;height:80px;border-radius:12px;object-fit:cover;margin-top:8px;border:2px solid #e2e8f0">
+      <label>Profile Image</label>
+      <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+        <img id="cr-imgprev" src="${esc(r.image||'https://picsum.photos/seed/cr_x/200/200')}" style="width:88px;height:88px;border-radius:14px;object-fit:cover;border:2px solid #e2e8f0;flex-shrink:0" onerror="this.src='https://picsum.photos/seed/cr_x/200/200'">
+        <div style="flex:1;min-width:180px;display:flex;flex-direction:column;gap:8px">
+          <input id="cr-img" type="text" value="${esc(r.image)}" placeholder="https://…" oninput="document.getElementById('cr-imgprev').src=this.value||'https://picsum.photos/seed/cr_x/200/200'" style="width:100%">
+          <div style="display:flex;gap:8px;align-items:center">
+            <label id="cr-upload-lbl" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;color:#334155;transition:background .15s" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
+              📷 사진 업로드
+              <input type="file" accept="image/*" style="display:none" onchange="crHandleImageUpload(this)">
+            </label>
+            <span id="cr-upload-status" style="font-size:12px;color:#64748b"></span>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="fg"><label>Introduction (shown on profile page)</label><textarea id="cr-intro" rows="3" placeholder="Brief introduction visible on the public profile page…">${esc(r.intro||'')}</textarea></div>
     <div class="fg"><label>Personality / Writing Style</label><textarea id="cr-personality" rows="2" placeholder="e.g. 친근하고 따뜻한 어조. 독자에게 설명하듯이 씁니다.">${esc(r.personality||'')}</textarea></div>
@@ -1906,6 +1917,55 @@ function crEditModal(idx) {
 
 function crAddNew() {
   crEditModal(-1);
+}
+
+async function crHandleImageUpload(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  var status = document.getElementById('cr-upload-status');
+  if (status) status.textContent = '업로드 중…';
+
+  // Validate size (max 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    toast('이미지 크기는 5MB 이하여야 합니다', true);
+    if (status) status.textContent = '';
+    return;
+  }
+
+  var sb = getSb();
+  if (!sb) { toast('Supabase 연결 없음', true); if (status) status.textContent = ''; return; }
+
+  var ext  = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  var rid  = document.getElementById('cr-id')?.value || ('cr_' + Date.now());
+  var path = 'reporters/' + rid + '_' + Date.now() + '.' + ext;
+
+  try {
+    var up = await sb.storage.from('reporter-images').upload(path, file, { upsert: true, contentType: file.type });
+    if (up.error) {
+      // Try fallback bucket name
+      up = await sb.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
+    }
+    if (up.error) throw up.error;
+
+    // Get public URL from whichever bucket succeeded
+    var bucket = up.error ? 'reporter-images' : (up.data?.path?.startsWith('reporters/') ? 'reporter-images' : 'avatars');
+    // Determine bucket by trying both
+    var pub1 = sb.storage.from('reporter-images').getPublicUrl(path);
+    var publicUrl = pub1.data?.publicUrl || '';
+
+    if (publicUrl) {
+      var imgInput = document.getElementById('cr-img');
+      var imgPrev  = document.getElementById('cr-imgprev');
+      if (imgInput) imgInput.value = publicUrl;
+      if (imgPrev)  imgPrev.src    = publicUrl;
+      if (status) status.textContent = '✓ 업로드 완료';
+      toast('✓ 이미지 업로드 완료');
+    }
+  } catch(e) {
+    toast('업로드 오류: ' + (e.message || e), true);
+    if (status) status.textContent = '';
+  }
+  input.value = ''; // reset file input
 }
 
 function crSaveFromModal() {
