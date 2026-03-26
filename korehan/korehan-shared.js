@@ -2149,8 +2149,39 @@ function _loadReportersIntoKHMap() {
       };
     });
     // Re-render any already-rendered reporter slots in the DOM
-    if (typeof _reRenderReporterSlots === 'function') _reRenderReporterSlots();
+    _reRenderReporterSlots();
   }).catch(function(){});
+}
+
+// After KH_REPORTERS loads, patch any .art-reporter-link[data-rid] already in the DOM
+function _reRenderReporterSlots() {
+  var links = document.querySelectorAll('.art-reporter-link[data-rid]');
+  links.forEach(function(el) {
+    var rid = el.getAttribute('data-rid');
+    if (!rid) return;
+    var rep = KH_REPORTERS[rid];
+    if (!rep || !rep.name) return;
+    var color = rep.color || '#2563eb';
+    var avatarEl = el.querySelector('.art-reporter-avatar');
+    var nameEl   = el.querySelector('.art-reporter-name');
+    var roleEl   = el.querySelector('.art-reporter-role');
+    el.href = rep.href || 'korehan-reporters.html';
+    if (nameEl) nameEl.textContent = rep.name;
+    if (avatarEl) {
+      avatarEl.innerHTML = rep.img
+        ? '<img src="' + rep.img + '" alt="' + rep.name + '" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'">'
+          + '<div class="art-reporter-avatar-placeholder" style="display:none;background:' + color + '">' + rep.name.charAt(0) + '</div>'
+        : '<div class="art-reporter-avatar-placeholder" style="background:' + color + '">' + rep.name.charAt(0) + '</div>';
+    }
+    if (rep.role && !roleEl) {
+      var rs = document.createElement('span');
+      rs.className = 'art-reporter-role';
+      rs.textContent = rep.role;
+      el.appendChild(rs);
+    } else if (rep.role && roleEl) {
+      roleEl.textContent = rep.role;
+    }
+  });
 }
 
 // Call once on page load (safe to call multiple times — idempotent)
@@ -2159,15 +2190,16 @@ document.addEventListener('DOMContentLoaded', function() { _loadReportersIntoKHM
 function getReporterProfileHTML(article) {
   var rid = article.reporter_id || article.reporter || null;
   var rep = rid ? KH_REPORTERS[rid] : null;
-  var name = (rep && rep.name) ? rep.name : 'KoreHan Reporter';
-  var img  = (rep && rep.img)  ? rep.img  : null;
-  var href = (rep && rep.href) ? rep.href : 'korehan-reporters.html';
+  var name  = (rep && rep.name)  ? rep.name  : 'KoreHan Reporter';
+  var img   = (rep && rep.img)   ? rep.img   : null;
+  var href  = (rep && rep.href)  ? rep.href  : 'korehan-reporters.html';
   var color = (rep && rep.color) ? rep.color : '#2563eb';
   var avatar = img
     ? '<img src="' + img + '" alt="' + name + '" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'">'
       + '<div class="art-reporter-avatar-placeholder" style="display:none;background:' + color + '">' + name.charAt(0) + '</div>'
     : '<div class="art-reporter-avatar-placeholder" style="background:' + color + '">' + name.charAt(0) + '</div>';
-  return '<a href="' + href + '" class="art-reporter-link">'
+  // data-rid lets _reRenderReporterSlots() update this element once KH_REPORTERS loads
+  return '<a href="' + href + '" class="art-reporter-link"' + (rid ? ' data-rid="' + rid + '"' : '') + '>'
     + '<div class="art-reporter-avatar">' + avatar + '</div>'
     + '<span class="art-reporter-name">' + name + '</span>'
     + (rep && rep.role ? '<span class="art-reporter-role">' + rep.role + '</span>' : '')

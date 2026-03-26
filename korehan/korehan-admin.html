@@ -582,6 +582,42 @@ async function dbDeleteArticle(id) {
   }
 }
 
+// ── Section → default reporter mapping ───────────────────────
+var SECTION_REPORTER_MAP = {
+  '사회'   : 'cr1',   // 박서진 — 사회부 기자
+  '국제'   : 'cr2',   // 김지원 — 국제부 특파원
+  '경제'   : 'cr3',   // 이민준 — 경제부 에디터
+  '문화'   : 'cr4',   // 최유나 — 문화부 기자
+  'Korea'  : 'cr4',   // 최유나
+  '정치'   : 'cr5',   // 정우성 — 정치부 선임기자
+  'IT과학' : 'cr6',   // 한소희 — IT·과학 에디터
+  '스포츠' : 'cr7',   // 오지훈 — 스포츠부 기자
+  '오피니언': 'cr8',  // 신지은 — 사회·환경 전문기자
+};
+
+async function batchAssignReporters() {
+  var sb = getSb();
+  if (!sb) { toast('Supabase 연결 없음', true); return; }
+  var unassigned = DB.filter(function(a){ return !a.reporter_id; });
+  if (!unassigned.length) { toast('모든 기사에 기자가 배정되어 있습니다 ✓'); return; }
+  if (!confirm(unassigned.length + '개 기사에 섹션별 기자를 자동 배정할까요?\n(이미 기자가 지정된 기사는 변경되지 않습니다)')) return;
+
+  var updated = 0;
+  for (var i = 0; i < unassigned.length; i++) {
+    var a = unassigned[i];
+    var rid = SECTION_REPORTER_MAP[a.section] || 'cr1';
+    try {
+      var res = await sb.from('articles').update({ reporter_id: rid }).eq('id', a.id);
+      if (!res.error) {
+        a.reporter_id = rid;
+        updated++;
+      }
+    } catch(e) {}
+  }
+  toast('✓ ' + updated + '개 기사에 기자 배정 완료');
+  renderRows();
+}
+
 // Init — Supabase에서 기사 로드
 dbLoadFromSupabase();
 
@@ -622,9 +658,9 @@ function renderList(){
       <div class="stat"><div class="stat-n">${draft}</div><div class="stat-l">임시저장</div></div>
       <div class="stat"><div class="stat-n">${DB.filter(a=>a.featured).length}</div><div class="stat-l">Featured</div></div>
     </div>
-    <div class="infobox">
-      💡 기사를 클릭해서 수정하거나, <strong>Featured</strong>로 표시하면 메인 히어로에 표시됩니다.
-      Export로 데이터를 저장하고 Import로 불러올 수 있어요.
+    <div class="infobox" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <span>💡 기사를 클릭해서 수정하거나, <strong>Featured</strong>로 표시하면 메인 히어로에 표시됩니다.</span>
+      <button class="btn" style="background:#f1f5f9;color:#334155;font-size:12px;padding:6px 14px;flex-shrink:0" onclick="batchAssignReporters()">🎭 기자 일괄 배정</button>
     </div>
     <div class="toolbar">
       <div class="srch"><span>🔍</span><input id="q" type="text" placeholder="제목 검색…" oninput="renderRows()"></div>
