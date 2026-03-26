@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>기자 소개 — KoreHan News</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&family=Noto+Sans+KR:wght@400;500;600;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css">
+<style>
+.rp-hero {
+  padding: 48px 24px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.rp-avatar {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #fff;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  margin-bottom: 20px;
+  background: #e2e8f0;
+}
+.rp-avatar-placeholder {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  margin-bottom: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 44px; font-weight: 900; color: #fff;
+}
+.rp-name {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 28px; font-weight: 900;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
+.rp-role {
+  font-size: 14px; font-weight: 600;
+  color: #64748b;
+  margin-bottom: 20px;
+}
+.rp-tags {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  justify-content: center;
+  margin-bottom: 0;
+}
+.rp-tag {
+  font-size: 12px; font-weight: 700;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.7);
+  border: 1.5px solid rgba(0,0,0,.08);
+  color: #334155;
+}
+.rp-card {
+  max-width: 640px;
+  margin: 0 auto 40px;
+  padding: 0 20px;
+}
+.rp-intro-box {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 28px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.06);
+  border: 1px solid #e8eef7;
+  font-size: 15px;
+  line-height: 1.8;
+  color: #374151;
+  font-family: 'Noto Sans KR', sans-serif;
+  text-align: left;
+  margin-bottom: 20px;
+}
+.rp-articles-title {
+  font-size: 13px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: #94a3b8;
+  margin-bottom: 14px;
+  padding-left: 2px;
+}
+.rp-art-list {
+  display: flex; flex-direction: column; gap: 12px;
+}
+.rp-art-item {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e8eef7;
+  padding: 14px 18px;
+  text-decoration: none;
+  display: block;
+  transition: box-shadow .15s, transform .15s;
+}
+.rp-art-item:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,.08);
+  transform: translateY(-2px);
+}
+.rp-art-title {
+  font-size: 14px; font-weight: 700;
+  color: #0f172a;
+  line-height: 1.45;
+  margin-bottom: 4px;
+  font-family: 'Noto Serif KR', serif;
+}
+.rp-art-meta {
+  font-size: 12px; color: #94a3b8;
+}
+.rp-loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+  font-size: 15px;
+}
+.rp-not-found {
+  text-align: center;
+  padding: 60px 20px;
+}
+.rp-not-found h2 { font-size: 22px; color: #0f172a; margin-bottom: 8px; }
+.rp-not-found p { color: #64748b; }
+</style>
+</head>
+<body>
+<div id="dyn-header"></div>
+
+<div id="rp-root">
+  <div class="rp-loading">⏳ 기자 정보를 불러오는 중…</div>
+</div>
+
+<div id="dyn-footer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+  var rid = new URLSearchParams(window.location.search).get('id');
+  var root = document.getElementById('rp-root');
+
+  if (!rid) {
+    root.innerHTML = '<div class="rp-not-found"><h2>기자를 찾을 수 없습니다</h2><p>URL에 ?id=cr1 같은 기자 ID가 필요합니다.</p></div>';
+    return;
+  }
+
+  // Load full reporter data from Supabase (has intro, personality etc.)
+  var reporter = null;
+  var sb = getSupa();
+  if (sb) {
+    try {
+      var res = await sb.from('character_reporters').select('data').eq('id', rid).maybeSingle();
+      if (!res.error && res.data) reporter = res.data.data || res.data;
+    } catch(e) {}
+  }
+
+  // Fallback to KH_REPORTERS (hardcoded defaults)
+  if (!reporter || !reporter.name) {
+    await _loadReportersIntoKHMap();
+    var base = KH_REPORTERS[rid];
+    if (base) reporter = { id: rid, name: base.name, role: base.role, image: base.img, color: base.color, intro: '', tags: [] };
+  }
+
+  if (!reporter || !reporter.name) {
+    root.innerHTML = '<div class="rp-not-found"><h2>기자를 찾을 수 없습니다</h2><p>해당 기자 정보가 없습니다.</p><p style="margin-top:12px"><a href="index.html" style="color:var(--bright)">← 홈으로</a></p></div>';
+    return;
+  }
+
+  var color = reporter.color || '#2563eb';
+  var img = reporter.image || '';
+  var tags = (reporter.tags || []);
+
+  // Hero background gradient from reporter's accent color
+  var avatarHtml = img
+    ? '<img class="rp-avatar" src="' + img + '" alt="' + reporter.name + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
+      + '<div class="rp-avatar-placeholder" style="background:' + color + ';display:none">' + reporter.name.charAt(0) + '</div>'
+    : '<div class="rp-avatar-placeholder" style="background:' + color + '">' + reporter.name.charAt(0) + '</div>';
+
+  var tagsHtml = tags.length
+    ? '<div class="rp-tags">' + tags.map(function(t){ return '<span class="rp-tag">' + t + '</span>'; }).join('') + '</div>'
+    : '';
+
+  root.innerHTML =
+    '<div style="background:linear-gradient(160deg,' + color + 'dd 0%,' + color + '88 100%);padding:8px 0 0">'
+    + '<div class="rp-hero">'
+    + avatarHtml
+    + '<div class="rp-name" style="color:#fff">' + reporter.name + '</div>'
+    + '<div class="rp-role" style="color:rgba(255,255,255,.8)">' + (reporter.role || '') + '</div>'
+    + tagsHtml
+    + '</div>'
+    + '</div>'
+    + '<div class="rp-card" style="margin-top:28px">'
+    + (reporter.intro ? '<div class="rp-intro-box">' + reporter.intro + '</div>' : '')
+    + '<div id="rp-arts"></div>'
+    + '</div>';
+
+  document.title = reporter.name + ' 기자 — KoreHan News';
+
+  // Load articles by this reporter
+  loadReporterArticles(rid, reporter.name);
+});
+
+async function loadReporterArticles(rid, name) {
+  var container = document.getElementById('rp-arts');
+  if (!container) return;
+
+  await loadArticlesFromDB({ force: false });
+  var arts = getCachedArticles().filter(function(a){
+    return a.reporter_id === rid && (!a.status || a.status === 'published');
+  });
+
+  if (!arts.length) return;
+
+  arts.sort(function(a, b){ return (b.date||'') > (a.date||'') ? 1 : -1; });
+
+  container.innerHTML =
+    '<div class="rp-articles-title">' + name + '의 기사 ' + arts.length + '편</div>'
+    + '<div class="rp-art-list">'
+    + arts.slice(0, 12).map(function(a){
+        var date = a.date ? new Date(a.date).toLocaleDateString('ko-KR', { year:'numeric', month:'short', day:'numeric' }) : '';
+        return '<a class="rp-art-item" href="korehan-article.html?id=' + a.id + '">'
+          + '<div class="rp-art-title">' + (a.title || '') + '</div>'
+          + '<div class="rp-art-meta">' + (a.section || '') + (date ? ' · ' + date : '') + '</div>'
+          + '</a>';
+      }).join('')
+    + '</div>';
+}
+</script>
+</body>
+</html>

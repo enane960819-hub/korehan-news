@@ -2242,7 +2242,7 @@ function getReporterProfileHTML(article) {
   var rep = rid ? KH_REPORTERS[rid] : null;
   var name  = (rep && rep.name)  ? rep.name  : 'KoreHan Reporter';
   var img   = (rep && rep.img)   ? rep.img   : null;
-  var href  = (rep && rep.href)  ? rep.href  : 'korehan-reporters.html';
+  var href  = (rep && rep.href && rep.href !== 'korehan-reporters.html') ? rep.href : (rid ? 'korehan-reporter.html?id=' + rid : 'korehan-reporters.html');
   var color = (rep && rep.color) ? rep.color : '#2563eb';
   var avatar = img
     ? '<img src="' + img + '" alt="' + name + '" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'">'
