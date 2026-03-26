@@ -186,12 +186,12 @@
 <script src="korehan-shared.js"></script>
 <script>
 var GIFTS = [
-  { icon:'☕', name:'커피',     cost:'50 XP',  xpCost:50  },
-  { icon:'📚', name:'한국어책', cost:'120 XP', xpCost:120 },
-  { icon:'🌸', name:'꽃다발',   cost:'200 XP', xpCost:200 },
-  { icon:'⭐', name:'응원',     cost:'500 XP', xpCost:500 },
+  { icon:'☕', name:'커피',   cost:'50 XP',  xpCost:50  },
+  { icon:'🧋', name:'버블티', cost:'120 XP', xpCost:120 },
+  { icon:'🌸', name:'꽃다발', cost:'300 XP', xpCost:300 },
+  { icon:'🎁', name:'선물',   cost:'800 XP', xpCost:800 },
 ];
-var FAV_HIRE_THRESHOLD = 300;
+var FAV_HIRE_THRESHOLD = 3000;
 
 document.addEventListener('DOMContentLoaded', async function() {
   var rid  = new URLSearchParams(window.location.search).get('id');
@@ -242,6 +242,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   root.innerHTML =
     '<div class="rp-wrap">'
+    + '<a href="javascript:history.back()" style="display:inline-flex;align-items:center;gap:6px;color:var(--bright);font-size:14px;font-weight:700;text-decoration:none;margin-bottom:20px;opacity:.8">← 뒤로가기</a>'
 
     // ── Profile ──
     + '<div class="rp-profile">'
