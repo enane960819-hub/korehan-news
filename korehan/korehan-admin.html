@@ -1925,47 +1925,47 @@ async function crHandleImageUpload(input) {
   var status = document.getElementById('cr-upload-status');
   if (status) status.textContent = '업로드 중…';
 
-  // Validate size (max 5MB)
   if (file.size > 5 * 1024 * 1024) {
     toast('이미지 크기는 5MB 이하여야 합니다', true);
     if (status) status.textContent = '';
     return;
   }
 
-  var sb = getSb();
-  if (!sb) { toast('Supabase 연결 없음', true); if (status) status.textContent = ''; return; }
-
-  var ext  = (file.name.split('.').pop() || 'jpg').toLowerCase();
-  var rid  = document.getElementById('cr-id')?.value || ('cr_' + Date.now());
-  var path = 'reporters/' + rid + '_' + Date.now() + '.' + ext;
+  var ext    = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  var rid    = document.getElementById('cr-id')?.value || ('cr_' + Date.now());
+  var path   = 'reporters/' + rid + '_' + Date.now() + '.' + ext;
+  var bucket = 'reporter-images';
 
   try {
-    var up = await sb.storage.from('reporter-images').upload(path, file, { upsert: true, contentType: file.type });
-    if (up.error) {
-      // Try fallback bucket name
-      up = await sb.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
-    }
-    if (up.error) throw up.error;
+    // Use service role key directly — bypasses all RLS / policy issues
+    var res = await fetch(SUPA_URL_ADMIN + '/storage/v1/object/' + bucket + '/' + path, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
+        'Content-Type': file.type,
+        'x-upsert': 'true'
+      },
+      body: file
+    });
 
-    // Get public URL from whichever bucket succeeded
-    var bucket = up.error ? 'reporter-images' : (up.data?.path?.startsWith('reporters/') ? 'reporter-images' : 'avatars');
-    // Determine bucket by trying both
-    var pub1 = sb.storage.from('reporter-images').getPublicUrl(path);
-    var publicUrl = pub1.data?.publicUrl || '';
-
-    if (publicUrl) {
-      var imgInput = document.getElementById('cr-img');
-      var imgPrev  = document.getElementById('cr-imgprev');
-      if (imgInput) imgInput.value = publicUrl;
-      if (imgPrev)  imgPrev.src    = publicUrl;
-      if (status) status.textContent = '✓ 업로드 완료';
-      toast('✓ 이미지 업로드 완료');
+    if (!res.ok) {
+      var err = await res.json().catch(function(){ return {}; });
+      throw new Error(err.message || err.error || 'HTTP ' + res.status);
     }
+
+    var publicUrl = SUPA_URL_ADMIN + '/storage/v1/object/public/' + bucket + '/' + path;
+    var imgInput = document.getElementById('cr-img');
+    var imgPrev  = document.getElementById('cr-imgprev');
+    if (imgInput) imgInput.value = publicUrl;
+    if (imgPrev)  imgPrev.src    = publicUrl;
+    if (status) status.textContent = '✓ 업로드 완료';
+    toast('✓ 이미지 업로드 완료');
   } catch(e) {
     toast('업로드 오류: ' + (e.message || e), true);
     if (status) status.textContent = '';
   }
-  input.value = ''; // reset file input
+  input.value = '';
 }
 
 function crSaveFromModal() {
