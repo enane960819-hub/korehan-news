@@ -166,6 +166,12 @@
 .rp-not-found h2 { font-size: 22px; color: #0f172a; margin-bottom: 8px; }
 .rp-not-found p { color: #64748b; }
 
+/* ── Lightbox ── */
+#rp-lb { display:none; position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:9999; align-items:center; justify-content:center; cursor:zoom-out; }
+#rp-lb.on { display:flex; }
+#rp-lb img { max-width:90vw; max-height:90vh; border-radius:16px; box-shadow:0 24px 80px rgba(0,0,0,.6); object-fit:contain; }
+.rp-photo-col { cursor:zoom-in; }
+
 /* ── Mobile ── */
 @media(max-width: 640px) {
   .rp-profile { grid-template-columns: 1fr; }
@@ -180,6 +186,7 @@
 <body>
 <div id="dyn-header"></div>
 <div id="rp-root"><div class="rp-loading">⏳ 로딩 중…</div></div>
+<div id="rp-lb" onclick="this.classList.remove('on')"><img id="rp-lb-img" src="" alt=""></div>
 <div id="dyn-footer"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -249,7 +256,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // ── Profile ──
     + '<div class="rp-profile">'
-    +   '<div class="rp-photo-col">'
+    +   '<div class="rp-photo-col" onclick="rpOpenLb()">'
     +     photoHtml
     +     '<div class="rp-color-bar" style="background:' + color + '"></div>'
     +   '</div>'
@@ -285,6 +292,14 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   loadReporterArticles(rid, reporter.name);
 });
+
+function rpOpenLb() {
+  var src = document.querySelector('.rp-photo-col img');
+  if (!src) return;
+  document.getElementById('rp-lb-img').src = src.src;
+  document.getElementById('rp-lb').classList.add('on');
+}
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') document.getElementById('rp-lb').classList.remove('on'); });
 
 async function loadReporterArticles(rid, name) {
   var el = document.getElementById('rp-arts');
