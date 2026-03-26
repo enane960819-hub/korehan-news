@@ -1797,15 +1797,24 @@ async function _ensureAdminReporters(force) {
   try { _adminReporters = JSON.parse(localStorage.getItem(K_CHAR_REPORTERS) || 'null') || DEF_CHAR_REPORTERS; }
   catch(e) { _adminReporters = DEF_CHAR_REPORTERS.slice(); }
   // If still defaults, sync them to Supabase silently
-  if (sb) { _syncDefaultReportersToSupa(sb); }
+  _syncDefaultReportersToSupa();
   return _adminReporters;
 }
 
-async function _syncDefaultReportersToSupa(sb) {
-  for (var i = 0; i < DEF_CHAR_REPORTERS.length; i++) {
-    var r = DEF_CHAR_REPORTERS[i];
-    try { await sb.from('character_reporters').upsert({ id: r.id, data: r, updated_at: new Date().toISOString() }, { onConflict: 'id' }); } catch(e) {}
-  }
+async function _syncDefaultReportersToSupa() {
+  var rows = DEF_CHAR_REPORTERS.map(function(r){ return { id: r.id, data: r, updated_at: new Date().toISOString() }; });
+  try {
+    await fetch(SUPA_URL_ADMIN + '/rest/v1/character_reporters', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify(rows)
+    });
+  } catch(e) {}
 }
 
 async function goCharReporters() {
@@ -2010,12 +2019,24 @@ function crSaveFromModal() {
     } catch(e) {}
   })();
 
-  // Also save to Supabase if possible
+  // Save to Supabase using service role key (bypasses RLS — reliable for all reporters)
   (async function() {
-    var sb = getSb();
-    if (sb) {
-      try { await sb.from('character_reporters').upsert({ id: reporter.id, data: reporter, updated_at: new Date().toISOString() }, { onConflict: 'id' }); } catch(e) {}
-    }
+    try {
+      var res = await fetch(SUPA_URL_ADMIN + '/rest/v1/character_reporters', {
+        method: 'POST',
+        headers: {
+          'apikey': SUPA_SERVICE_KEY,
+          'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates,return=minimal'
+        },
+        body: JSON.stringify({ id: reporter.id, data: reporter, updated_at: new Date().toISOString() })
+      });
+      if (!res.ok) {
+        var err = await res.json().catch(function(){ return {}; });
+        console.warn('[reporter save]', err.message || err.error || 'HTTP ' + res.status);
+      }
+    } catch(e) { console.warn('[reporter save]', e); }
   })();
 
   closeModal();
