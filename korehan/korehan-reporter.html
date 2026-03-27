@@ -291,6 +291,7 @@ var _canManagePosts = false;
 var _postDraftFiles = [];
 var _editingPostId = null;
 var _postCache = [];
+var _postMode = 'db'; // db | fallback
 
 document.addEventListener('DOMContentLoaded', async function() {
   var rid  = new URLSearchParams(window.location.search).get('id');
@@ -370,11 +371,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     + '</div>'
 
     + '<div class="rp-tabs">'
-    +   '<button class="rp-tab-btn on" id="rp-tab-btn-profile" onclick="rpSwitchTab(\'profile\')">👤 프로필</button>'
-    +   '<button class="rp-tab-btn" id="rp-tab-btn-posts" onclick="rpSwitchTab(\'posts\')">📝 Posts</button>'
+    +   '<button class="rp-tab-btn" id="rp-tab-btn-profile" onclick="rpSwitchTab(\'profile\')">👤 프로필</button>'
+    +   '<button class="rp-tab-btn on" id="rp-tab-btn-posts" onclick="rpSwitchTab(\'posts\')">📝 Posts</button>'
     + '</div>'
 
-    + '<div class="rp-tab-panel on" id="rp-tab-profile">'
+    + '<div class="rp-tab-panel" id="rp-tab-profile">'
     // ── Favorability ──
     + '<div class="rp-fav-card">'
     +   '<div class="rp-fav-header">'
@@ -393,7 +394,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     + '<div id="rp-arts"></div>'
     + '</div>'
 
-    + '<div class="rp-tab-panel" id="rp-tab-posts">'
+    + '<div class="rp-tab-panel on" id="rp-tab-posts">'
     +   '<div id="rp-post-compose"></div>'
     +   '<div id="rp-post-feed" class="rp-post-feed"><div class="rp-post-empty">Posts 로딩 중…</div></div>'
     + '</div>'
@@ -464,12 +465,56 @@ function onPostFilesPicked(input) {
   if (hint) hint.textContent = _postDraftFiles.length ? ('선택된 이미지 ' + _postDraftFiles.length + '개') : '';
 }
 
+function isMissingReporterPostsTableError(err) {
+  var msg = String(err && (err.message || err.details || err.hint || err.code) || '').toLowerCase();
+  return msg.indexOf('reporter_posts') >= 0 || msg.indexOf('reporter_post_images') >= 0 || msg.indexOf('pgrst') >= 0 || msg.indexOf('404') >= 0;
+}
+
+function _fallbackPostsKey(reporterId) {
+  return 'reporter_posts_fallback_' + reporterId;
+}
+
+async function loadFallbackReporterPosts(sb, reporterId) {
+  try {
+    if (!sb) return [];
+    var key = _fallbackPostsKey(reporterId);
+    var res = await sb.from('app_settings').select('value').eq('key', key).maybeSingle();
+    if (res.error) return [];
+    var raw = res.data && res.data.value ? res.data.value : '[]';
+    var arr = Array.isArray(raw) ? raw : JSON.parse(raw || '[]');
+    return Array.isArray(arr) ? arr : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+async function saveFallbackReporterPosts(sb, reporterId, posts) {
+  if (!sb) return false;
+  try {
+    var key = _fallbackPostsKey(reporterId);
+    var payload = { key:key, value:JSON.stringify(posts || []), updated_at:new Date().toISOString() };
+    var res = await sb.from('app_settings').upsert(payload, { onConflict:'key' });
+    return !res.error;
+  } catch(e) {
+    return false;
+  }
+}
+
 async function loadReporterPosts(reporterId) {
   var feed = document.getElementById('rp-post-feed');
   if (!feed) return;
   var sb = getSupa();
   if (!sb) { feed.innerHTML = '<div class="rp-post-empty">Posts를 불러올 수 없습니다.</div>'; return; }
   try {
+    if (_postMode === 'fallback') {
+      var fp = await loadFallbackReporterPosts(sb, reporterId);
+      fp = fp.filter(function(p){ return _canManagePosts || p.status === 'published'; });
+      fp.sort(function(a,b){ return Number(!!b.pinned) - Number(!!a.pinned) || String(b.created_at||'').localeCompare(String(a.created_at||'')); });
+      _postCache = fp;
+      renderReporterPosts(fp);
+      return;
+    }
+
     var q = sb.from('reporter_posts')
       .select('id,reporter_id,author_user_id,content,post_type,status,pinned,created_at,updated_at')
       .eq('reporter_id', reporterId)
@@ -483,6 +528,7 @@ async function loadReporterPosts(reporterId) {
     var imgMap = {};
     if (ids.length) {
       var ir = await sb.from('reporter_post_images').select('id,post_id,image_url,sort_order').in('post_id', ids).order('sort_order', { ascending:true });
+      if (ir.error && isMissingReporterPostsTableError(ir.error)) throw ir.error;
       if (!ir.error) {
         (ir.data || []).forEach(function(im){
           if (!imgMap[im.post_id]) imgMap[im.post_id] = [];
@@ -491,9 +537,19 @@ async function loadReporterPosts(reporterId) {
       }
     }
     posts.forEach(function(p){ p.images = imgMap[p.id] || []; });
+    _postMode = 'db';
     _postCache = posts;
     renderReporterPosts(posts);
   } catch(e) {
+    if (isMissingReporterPostsTableError(e)) {
+      _postMode = 'fallback';
+      var fposts = await loadFallbackReporterPosts(sb, reporterId);
+      fposts = fposts.filter(function(p){ return _canManagePosts || p.status === 'published'; });
+      fposts.sort(function(a,b){ return Number(!!b.pinned) - Number(!!a.pinned) || String(b.created_at||'').localeCompare(String(a.created_at||'')); });
+      _postCache = fposts;
+      renderReporterPosts(fposts);
+      return;
+    }
     feed.innerHTML = '<div class="rp-post-empty">Posts를 불러오지 못했습니다.</div>';
   }
 }
@@ -568,10 +624,39 @@ async function submitReporterPost(reporterId) {
   };
   if (!_editingPostId) payload.created_at = now;
 
+  if (_postMode === 'fallback') {
+    var local = await loadFallbackReporterPosts(sb, reporterId);
+    if (_editingPostId) {
+      local = local.map(function(p){ return p.id === postId ? Object.assign({}, p, payload) : p; });
+    } else {
+      local.unshift(Object.assign({ images:[] }, payload));
+    }
+    if (_postDraftFiles.length) {
+      var furls = await uploadPostImages(sb, reporterId, postId, _postDraftFiles);
+      local = local.map(function(p){
+        if (p.id !== postId) return p;
+        var imgs = Array.isArray(p.images) ? p.images.slice() : [];
+        return Object.assign({}, p, { images: imgs.concat(furls) });
+      });
+    }
+    var ok = await saveFallbackReporterPosts(sb, reporterId, local);
+    if (!ok) { alert('포스트 저장 실패'); return; }
+    cancelPostEdit();
+    await loadReporterPosts(reporterId);
+    return;
+  }
+
   var r = _editingPostId
     ? await sb.from('reporter_posts').update(payload).eq('id', postId).eq('reporter_id', reporterId)
     : await sb.from('reporter_posts').insert(payload);
-  if (r.error) { alert('포스트 저장 실패'); return; }
+  if (r.error) {
+    if (isMissingReporterPostsTableError(r.error)) {
+      _postMode = 'fallback';
+      return submitReporterPost(reporterId);
+    }
+    alert('포스트 저장 실패');
+    return;
+  }
 
   if (_postDraftFiles.length) {
     var urls = await uploadPostImages(sb, reporterId, postId, _postDraftFiles);
@@ -629,9 +714,23 @@ async function deleteReporterPost(postId) {
   if (!confirm('이 포스트를 삭제할까요?')) return;
   var sb = getSupa();
   if (!sb) return;
+  if (_postMode === 'fallback') {
+    var local = await loadFallbackReporterPosts(sb, _currentReporterId);
+    local = local.filter(function(p){ return p.id !== postId; });
+    var ok = await saveFallbackReporterPosts(sb, _currentReporterId, local);
+    if (!ok) { alert('삭제 실패'); return; }
+    await loadReporterPosts(_currentReporterId);
+    return;
+  }
   await sb.from('reporter_post_images').delete().eq('post_id', postId);
   var dr = await sb.from('reporter_posts').delete().eq('id', postId);
-  if (dr.error) { alert('삭제 실패'); return; }
+  if (dr.error) {
+    if (isMissingReporterPostsTableError(dr.error)) {
+      _postMode = 'fallback';
+      return deleteReporterPost(postId);
+    }
+    alert('삭제 실패'); return;
+  }
   await loadReporterPosts(_currentReporterId);
 }
 
