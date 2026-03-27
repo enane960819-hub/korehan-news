@@ -1,5 +1,6 @@
 name = "korehan-news"
 compatibility_date = "2026-03-26"
+pages_build_output_dir = "korehan"
 
 [pages]
 project_name = "korehan-news"

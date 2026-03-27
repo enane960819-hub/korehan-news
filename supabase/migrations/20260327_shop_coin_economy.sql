@@ -136,7 +136,8 @@ insert into public.shop_items (
   ('badge_founder', 'Founder Badge', 'founder-badge', 'Display an exclusive Founder profile badge.', 'https://picsum.photos/seed/shop-founder-badge/640/360', 'profile_badge', 120, 0, true, true, false, false, 10),
   ('cosmetic_neon_frame', 'Neon Profile Frame', 'neon-profile-frame', 'Cosmetic frame for your profile image.', 'https://picsum.photos/seed/shop-neon-frame/640/360', 'profile_cosmetic', 180, 0, true, true, false, false, 20),
   ('reporter_coffee', 'Reporter Coffee Treat', 'reporter-coffee-treat', 'Give your favorite reporter a coffee boost.', 'https://picsum.photos/seed/shop-reporter-coffee/640/360', 'reporter_item', 60, 0, true, true, false, true, 30),
-  ('reporter_flower', 'Reporter Flower Bouquet', 'reporter-flower-bouquet', 'A bouquet gift for reporter affinity moments.', 'https://picsum.photos/seed/shop-reporter-flower/640/360', 'reporter_item', 95, 0, true, true, false, true, 40)
+  ('reporter_bubble_tea', 'Reporter Bubble Tea', 'reporter-bubble-tea', 'A sweet bubble tea gift for your favorite reporter.', 'https://picsum.photos/seed/shop-reporter-bubble-tea/640/360', 'reporter_item', 75, 0, true, true, false, true, 40),
+  ('reporter_flower', 'Reporter Flower Bouquet', 'reporter-flower-bouquet', 'A bouquet gift for reporter affinity moments.', 'https://picsum.photos/seed/shop-reporter-flower/640/360', 'reporter_item', 95, 0, true, true, false, true, 50)
 on conflict (id) do update set
   name = excluded.name,
   slug = excluded.slug,
