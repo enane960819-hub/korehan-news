@@ -4853,19 +4853,37 @@ function closeStoryEditOverlay() {
 async function goShopManager() {
   setSbOn('sb-shop-mgr');
   var sb = getSb();
-  if (!sb) { document.getElementById('main').innerHTML = '<div class="empty">Supabase 연결 없음</div>'; return; }
-  var res = await sb.from('shop_items').select('*').order('sort_order', { ascending:true });
-  var items = res.data || [];
+  var items = [];
+  var localMode = false;
+  if (!sb) {
+    localMode = true;
+    items = getLocalShopItems();
+  } else {
+    var res = await sb.from('shop_items').select('*').order('sort_order', { ascending:true });
+    if (res.error && isShopTableMissingErr(res.error)) {
+      localMode = true;
+      items = getLocalShopItems();
+      window._shopUseLocal = true;
+    } else {
+      items = res.data || [];
+      window._shopUseLocal = false;
+    }
+  }
   if (!items.length) {
     try { await seedShopDefaults(true); } catch(e) {}
-    var res2 = await sb.from('shop_items').select('*').order('sort_order', { ascending:true });
-    items = res2.data || [];
+    if (window._shopUseLocal) {
+      items = getLocalShopItems();
+    } else if (sb) {
+      var res2 = await sb.from('shop_items').select('*').order('sort_order', { ascending:true });
+      items = res2.data || [];
+    }
   }
   function escJsSingle(s){ return String(s||'').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
 
   document.getElementById('main').innerHTML =
     '<div class="pg-hd"><div><h1>SHOP 관리</h1><p>Coin/Cash 상품을 관리합니다.</p></div>'
     + '<div style="display:flex;gap:8px"><button class="btn" onclick="seedShopDefaults()">Seed Default Items</button><button class="btn btn-g" onclick="openShopItemEditor(null)">＋ New Item</button></div></div>'
+    + (localMode ? '<div style="margin-bottom:12px;padding:10px 12px;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:13px">DB에 <code>public.shop_items</code> 테이블이 없어 <b>로컬 모드</b>로 동작 중입니다. Supabase migration 적용 후 DB 모드로 자동 전환됩니다.</div>' : '')
     + '<table class="tbl"><thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Coin</th><th>Cash</th><th>Flags</th><th></th></tr></thead><tbody>'
     + items.map(function(it){
       var itemId = escJsSingle(it.id);
@@ -4889,15 +4907,40 @@ function getDefaultShopItems() {
   ];
 }
 
+var K_SHOP_ITEMS_FALLBACK = 'kh_shop_items_fallback';
+function isShopTableMissingErr(err) {
+  var msg = (err && err.message) ? String(err.message) : '';
+  return msg.indexOf("Could not find the table 'public.shop_items'") >= 0
+    || msg.indexOf("relation \"public.shop_items\" does not exist") >= 0;
+}
+function getLocalShopItems() {
+  try { return JSON.parse(localStorage.getItem(K_SHOP_ITEMS_FALLBACK) || 'null') || []; }
+  catch(e) { return []; }
+}
+function setLocalShopItems(items) {
+  localStorage.setItem(K_SHOP_ITEMS_FALLBACK, JSON.stringify(items || []));
+}
+
 async function seedShopDefaults(silent) {
   var sb = getSb();
-  if (!sb) return;
+  if (!sb) {
+    setLocalShopItems(getDefaultShopItems());
+    if (!silent) toast('기본 SHOP 아이템을 로컬 모드로 저장했습니다.');
+    return;
+  }
   var seedItems = getDefaultShopItems().map(function(it){ it.updated_at = new Date().toISOString(); return it; });
   var r = await sb.from('shop_items').upsert(seedItems, { onConflict:'id' });
   if (r.error) {
+    if (isShopTableMissingErr(r.error)) {
+      setLocalShopItems(seedItems);
+      window._shopUseLocal = true;
+      if (!silent) toast('shop_items 테이블이 없어 로컬 모드로 시드했습니다.');
+      return;
+    }
     if (!silent) toast('기본 아이템 시드 실패: ' + r.error.message, true);
     return;
   }
+  window._shopUseLocal = false;
   if (!silent) toast('기본 SHOP 아이템 시드 완료');
 }
 
@@ -4926,6 +4969,7 @@ function openShopItemEditor(itemId) {
 
 async function saveShopItem(itemId, btn) {
   btn.disabled = true;
+  var useLocal = !!window._shopUseLocal;
   var sb = getSb();
   var body = {
     id: document.getElementById('si-id').value.trim(),
@@ -4943,17 +4987,53 @@ async function saveShopItem(itemId, btn) {
     sort_order: Number(document.getElementById('si-sort').value || 100),
     updated_at: new Date().toISOString()
   };
+  if (useLocal || !sb) {
+    var items = getLocalShopItems();
+    var idx = items.findIndex(function(x){ return x.id === body.id; });
+    if (idx >= 0) items[idx] = body; else items.push(body);
+    items.sort(function(a,b){ return Number(a.sort_order||100) - Number(b.sort_order||100); });
+    setLocalShopItems(items);
+    document.querySelector('.ov') && document.querySelector('.ov').remove();
+    goShopManager();
+    return;
+  }
   var r = await sb.from('shop_items').upsert(body, { onConflict:'id' });
-  if (r.error) { toast('저장 오류: ' + r.error.message, true); btn.disabled = false; return; }
+  if (r.error) {
+    if (isShopTableMissingErr(r.error)) {
+      window._shopUseLocal = true;
+      var items2 = getLocalShopItems();
+      var idx2 = items2.findIndex(function(x){ return x.id === body.id; });
+      if (idx2 >= 0) items2[idx2] = body; else items2.push(body);
+      setLocalShopItems(items2);
+      document.querySelector('.ov') && document.querySelector('.ov').remove();
+      goShopManager();
+      return;
+    }
+    toast('저장 오류: ' + r.error.message, true); btn.disabled = false; return;
+  }
   document.querySelector('.ov') && document.querySelector('.ov').remove();
   goShopManager();
 }
 
 async function deleteShopItem(itemId) {
   if (!confirm('Delete item ' + itemId + '?')) return;
+  if (window._shopUseLocal) {
+    setLocalShopItems(getLocalShopItems().filter(function(x){ return x.id !== itemId; }));
+    goShopManager();
+    return;
+  }
   var sb = getSb();
+  if (!sb) return;
   var r = await sb.from('shop_items').delete().eq('id', itemId);
-  if (r.error) { toast('삭제 오류: ' + r.error.message, true); return; }
+  if (r.error) {
+    if (isShopTableMissingErr(r.error)) {
+      window._shopUseLocal = true;
+      setLocalShopItems(getLocalShopItems().filter(function(x){ return x.id !== itemId; }));
+      goShopManager();
+      return;
+    }
+    toast('삭제 오류: ' + r.error.message, true); return;
+  }
   goShopManager();
 }
 
