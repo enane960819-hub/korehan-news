@@ -4856,17 +4856,19 @@ async function goShopManager() {
   if (!sb) { document.getElementById('main').innerHTML = '<div class="empty">Supabase 연결 없음</div>'; return; }
   var res = await sb.from('shop_items').select('*').order('sort_order', { ascending:true });
   var items = res.data || [];
+  function escJsSingle(s){ return String(s||'').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
 
   document.getElementById('main').innerHTML =
     '<div class="pg-hd"><div><h1>SHOP 관리</h1><p>Coin/Cash 상품을 관리합니다.</p></div>'
     + '<button class="btn btn-g" onclick="openShopItemEditor(null)">＋ New Item</button></div>'
     + '<table class="tbl"><thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Coin</th><th>Cash</th><th>Flags</th><th></th></tr></thead><tbody>'
     + items.map(function(it){
-      return `<tr><td>${it.id}</td><td>${it.name||''}</td><td>${it.item_type||''}</td>
+      var itemId = escJsSingle(it.id);
+      return `<tr><td>${esc(it.id)}</td><td>${esc(it.name||'')}</td><td>${esc(it.item_type||'')}</td>
         <td>${it.can_buy_with_coin ? (it.coin_price||0) : '-'}</td>
         <td>${it.can_buy_with_cash ? '$'+Number(it.cash_price||0).toFixed(2) : '-'}</td>
         <td>${it.is_active ? 'active' : 'inactive'} · ${it.is_repeatable ? 'repeat' : 'one-time'}</td>
-        <td><button class="btn" onclick="openShopItemEditor('${it.id}')">Edit</button> <button class="btn" style="background:#fee2e2;color:#b91c1c" onclick="deleteShopItem('${it.id}')">Delete</button></td></tr>`;
+        <td><button class="btn" onclick="openShopItemEditor('${itemId}')">Edit</button> <button class="btn" style="background:#fee2e2;color:#b91c1c" onclick="deleteShopItem('${itemId}')">Delete</button></td></tr>`;
     }).join('')
     + '</tbody></table>';
   window._shopItemsCache = items;
@@ -4879,11 +4881,11 @@ function openShopItemEditor(itemId) {
   var cleanId = itemId || '';
   ov.innerHTML = `<div class="mbox"><div class="m-hd"><h2>Shop Item</h2><button class="m-x" onclick="this.closest('.ov').remove()">×</button></div>
     <div class="m-bd">
-    <div class="fg"><label>ID</label><input id="si-id" value="${item.id||''}" ${itemId ? 'disabled' : ''}></div>
-    <div class="fg"><label>Name</label><input id="si-name" value="${item.name||''}"></div>
-    <div class="fg"><label>Description</label><textarea id="si-desc">${item.description||''}</textarea></div>
-    <div class="fg"><label>Image URL</label><input id="si-img" value="${item.image_url||''}"></div>
-    <div class="fg-row"><div class="fg"><label>Type</label><input id="si-type" value="${item.item_type||'one_time_unlock'}"></div>
+    <div class="fg"><label>ID</label><input id="si-id" value="${esc(item.id||'')}" ${itemId ? 'disabled' : ''}></div>
+    <div class="fg"><label>Name</label><input id="si-name" value="${esc(item.name||'')}"></div>
+    <div class="fg"><label>Description</label><textarea id="si-desc">${esc(item.description||'')}</textarea></div>
+    <div class="fg"><label>Image URL</label><input id="si-img" value="${esc(item.image_url||'')}"></div>
+    <div class="fg-row"><div class="fg"><label>Type</label><input id="si-type" value="${esc(item.item_type||'one_time_unlock')}"></div>
     <div class="fg"><label>Sort</label><input id="si-sort" type="number" value="${item.sort_order||100}"></div></div>
     <div class="fg-row"><div class="fg"><label>Coin Price</label><input id="si-coin" type="number" value="${item.coin_price||0}"></div>
     <div class="fg"><label>Cash Price</label><input id="si-cash" type="number" step="0.01" value="${item.cash_price||0}"></div></div>

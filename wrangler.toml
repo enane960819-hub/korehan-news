@@ -1,8 +1,3 @@
 name = "korehan-news"
 compatibility_date = "2026-03-26"
-
-[pages]
-project_name = "korehan-news"
-
-[assets]
-directory = "korehan"
+pages_build_output_dir = "korehan"

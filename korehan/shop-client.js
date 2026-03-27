@@ -44,6 +44,36 @@
       can_buy_with_cash: false,
       is_repeatable: true,
       sort_order: 30
+    },
+    {
+      id: 'reporter_bubble_tea',
+      name: 'Reporter Bubble Tea',
+      slug: 'reporter-bubble-tea',
+      description: 'A sweet bubble tea gift for your favorite reporter.',
+      image_url: 'https://picsum.photos/seed/shop-reporter-bubble-tea/640/360',
+      item_type: 'reporter_item',
+      coin_price: 75,
+      cash_price: 0,
+      is_active: true,
+      can_buy_with_coin: true,
+      can_buy_with_cash: false,
+      is_repeatable: true,
+      sort_order: 40
+    },
+    {
+      id: 'reporter_flower',
+      name: 'Reporter Flower Bouquet',
+      slug: 'reporter-flower-bouquet',
+      description: 'A bouquet gift for reporter affinity moments.',
+      image_url: 'https://picsum.photos/seed/shop-reporter-flower/640/360',
+      item_type: 'reporter_item',
+      coin_price: 95,
+      cash_price: 0,
+      is_active: true,
+      can_buy_with_coin: true,
+      can_buy_with_cash: false,
+      is_repeatable: true,
+      sort_order: 50
     }
   ];
 
