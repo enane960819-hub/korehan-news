@@ -78,10 +78,15 @@
   ];
 
   async function ensureDefaultShopItems(sb) {
-    var countRes = await sb.from('shop_items').select('id', { count:'exact', head:true });
-    var itemCount = Number((countRes && countRes.count) || 0);
-    if (itemCount > 0) return;
-    await sb.from('shop_items').upsert(DEFAULT_SHOP_ITEMS, { onConflict:'id' });
+    try {
+      var countRes = await sb.from('shop_items').select('id', { count:'exact', head:true });
+      var itemCount = Number((countRes && countRes.count) || 0);
+      if (itemCount > 0) return true;
+      var seedRes = await sb.from('shop_items').upsert(DEFAULT_SHOP_ITEMS, { onConflict:'id' });
+      return !seedRes.error;
+    } catch(e) {
+      return false;
+    }
   }
 
   async function initShop() {
@@ -94,6 +99,9 @@
       sb.from('shop_items').select('*').eq('is_active', true).order('sort_order', { ascending:true }),
       sb.from('owned_items').select('item_id, quantity').eq('user_id', supaUser.id)
     ]);
+    var liveItems = items || [];
+    var usingFallback = liveItems.length === 0;
+    var catalog = usingFallback ? DEFAULT_SHOP_ITEMS : liveItems;
 
     document.getElementById('shop-xp').textContent = 'XP: ' + ((stats && stats.xp) || 0).toLocaleString();
     document.getElementById('shop-coin').textContent = 'Coin: ' + ((stats && stats.coin_balance) || 0).toLocaleString();
@@ -102,10 +110,12 @@
     (owned || []).forEach(function(o){ ownedMap[o.item_id] = o.quantity || 0; });
 
     var grid = document.getElementById('shop-grid');
-    grid.innerHTML = (items || []).map(function(it){
+    grid.innerHTML = (usingFallback ? '<div style="grid-column:1/-1;padding:10px 14px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;font-size:13px">기본 아이템 프리뷰를 표시 중입니다. 관리자 페이지에서 <b>Seed Default Items</b>를 눌러 DB에 실제 아이템을 생성하세요.</div>' : '')
+      + catalog.map(function(it){
       var ownedQty = ownedMap[it.id] || 0;
       var notEnough = !!it.can_buy_with_coin && Number((stats && stats.coin_balance) || 0) < Number(it.coin_price || 0);
       var oneTimeOwned = !!ownedQty && !it.is_repeatable;
+      var disabledByFallback = usingFallback ? 'disabled title="DB에 저장된 아이템이 없어 구매할 수 없습니다"' : '';
       return '<article class="card">'
         + '<div class="thumb" style="background-image:url(\'' + (it.image_url || 'https://picsum.photos/seed/shop-'+it.id+'/640/360') + '\')"></div>'
         + '<div class="body">'
@@ -117,8 +127,8 @@
         + '</div>'
         + (ownedQty ? '<div class="owned">Owned x' + ownedQty + '</div>' : '')
         + '<div class="btns">'
-        + (it.can_buy_with_coin ? '<button class="btn coin" ' + ((notEnough || oneTimeOwned)?'disabled':'') + ' onclick="window.buyWithCoin(\'' + it.id + '\')">Buy with Coin</button>' : '')
-        + (it.can_buy_with_cash ? '<button class="btn cash" ' + (oneTimeOwned?'disabled':'') + ' onclick="window.buyWithCash(\'' + it.id + '\')">Buy with Cash</button>' : '')
+        + (it.can_buy_with_coin ? '<button class="btn coin" ' + ((notEnough || oneTimeOwned)?'disabled':'') + ' ' + disabledByFallback + ' onclick="window.buyWithCoin(\'' + it.id + '\')">Buy with Coin</button>' : '')
+        + (it.can_buy_with_cash ? '<button class="btn cash" ' + (oneTimeOwned?'disabled':'') + ' ' + disabledByFallback + ' onclick="window.buyWithCash(\'' + it.id + '\')">Buy with Cash</button>' : '')
         + '</div></div></article>';
     }).join('');
 
