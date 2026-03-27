@@ -82,7 +82,9 @@ a{color:inherit;text-decoration:none}
 .c문화{background:#f7e8ee;color:#7a1a3a}
 .c스포츠{background:#e8f4f7;color:#1a5a7a}
 .cKorea{background:#fff0ec;color:#cc2200}
-.cIT과학{background:#eef7e8;color:#3a7a1a}
+.cK-pop{background:#f3e8ff;color:#6b21a8}
+.cbeauty{background:#fce7f3;color:#9d174d}
+.ctravel{background:#e0f2fe;color:#075985}
 .c오피니언{background:#fffbe8;color:#7a6400}
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px}
 .dpub{background:var(--g)}
@@ -173,9 +175,11 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" onclick="goFilter('사회')"> <span class="ico">🏙️</span>사회 Society <span class="pill" id="p-사회">0</span></button>
     <button class="sb-btn" onclick="goFilter('국제')"> <span class="ico">🌍</span>국제 World   <span class="pill" id="p-국제">0</span></button>
     <button class="sb-btn" onclick="goFilter('문화')"> <span class="ico">🎭</span>문화 Culture <span class="pill" id="p-문화">0</span></button>
+    <button class="sb-btn" onclick="goFilter('K-pop')"><span class="ico">🎤</span>K-pop        <span class="pill" id="p-K-pop">0</span></button>
     <button class="sb-btn" onclick="goFilter('Korea')"><span class="ico">🇰🇷</span>Korea        <span class="pill" id="p-Korea">0</span></button>
     <button class="sb-btn" onclick="goFilter('스포츠')"><span class="ico">⚽</span>스포츠 Sports<span class="pill" id="p-스포츠">0</span></button>
-    <button class="sb-btn" onclick="goFilter('IT과학')"><span class="ico">💻</span>IT·과학      <span class="pill" id="p-IT과학">0</span></button>
+    <button class="sb-btn" onclick="goFilter('beauty')"><span class="ico">💄</span>Beauty      <span class="pill" id="p-beauty">0</span></button>
+    <button class="sb-btn" onclick="goFilter('travel')"><span class="ico">✈️</span>Travel      <span class="pill" id="p-travel">0</span></button>
     <button class="sb-btn" onclick="goFilter('오피니언')"><span class="ico">✍️</span>오피니언     <span class="pill" id="p-오피니언">0</span></button>
 
     <div class="section-sep"></div>
@@ -187,6 +191,8 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" id="sb-onb-settings" onclick="goOnboardingSettings()"><span class="ico">🧭</span>온보딩 편집</button>
     <button class="sb-btn" onclick="goOpinions()">    <span class="ico">✍️</span>오피니언 칼럼니스트</button>
     <button class="sb-btn" id="sb-char-reporters" onclick="goCharReporters()"><span class="ico">🎭</span>Character Reporters<span class="sb-new-tag">NEW</span></button>
+    <button class="sb-btn" id="sb-shop-mgr" onclick="goShopManager()"><span class="ico">🛍️</span>SHOP 관리</button>
+    <button class="sb-btn" id="sb-coin-admin" onclick="goCoinAdmin()"><span class="ico">🪙</span>Coin 조정</button>
 
     <div class="section-sep"></div>
     <div class="sb-lbl">학습 콘텐츠</div>
@@ -343,9 +349,11 @@ const CATEGORIES = [
   { key:'사회',    icon:'🏙️', label:'Society',    topics:'Korean society, education, housing, labor, welfare, demographics, social issues' },
   { key:'국제',    icon:'🌍', label:'World',       topics:'international affairs, geopolitics, diplomacy, global economy, foreign relations' },
   { key:'문화',    icon:'🎭', label:'Culture',     topics:'Korean culture, K-drama, K-pop, movies, arts, entertainment, cultural trends' },
+  { key:'K-pop',   icon:'🎤', label:'K-pop',       topics:'idol comebacks, chart rankings, fan culture, concerts, agencies, K-pop industry' },
   { key:'Korea',   icon:'🇰🇷', label:'Korea',       topics:'K-pop, Korean Wave, tourism, traditional culture, Korean lifestyle and identity' },
   { key:'스포츠',  icon:'⚽', label:'Sports',      topics:'Korean and international sports, football, baseball, Olympics, esports' },
-  { key:'IT과학',  icon:'💻', label:'Tech/Science', topics:'technology, AI, semiconductors, startups, science discoveries, digital innovation' },
+  { key:'beauty',  icon:'💄', label:'Beauty', topics:'beauty trends, skincare, cosmetics, wellness, self-care routines' },
+  { key:'travel',  icon:'✈️', label:'Travel', topics:'travel destinations, tourism, flights, accommodations, itineraries, travel tips' },
   { key:'오피니언',icon:'✍️', label:'Opinion',     topics:'Korean social commentary, editorial, economic opinion, political analysis' },
 ];
 
@@ -380,7 +388,7 @@ const SEED = [
   { id:'s8',  section:'Korea',  status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/korea1/600/400',  title:'BTS 월드투어 서울 공연 전석 매진… 추가 공연 검토 중',            body:'BTS 월드투어 서울 공연 티켓이 판매 시작 수분 만에 전석 매진되면서 소속사가 추가 공연 개최를 검토하고 있다.' },
   { id:'s9',  section:'Korea',  status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/korea2/600/400',  title:'유네스코, 김장 문화 세계 무형문화유산 등재 확정',                 body:'한국의 전통 김치 담그기 문화인 김장이 유네스코 인류 무형문화유산으로 공식 등재됐다.' },
   { id:'s10', section:'Korea',  status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/korea3/600/400',  title:'외국인 한국어 능력시험(TOPIK) 지원자 역대 최다 기록',             body:'2026년 TOPIK 시험 지원자 수가 역대 최고치를 기록하며 전 세계적인 한국어 학습 열풍을 실감케 했다.' },
-  { id:'s11', section:'IT과학', status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s1/600/400',      title:'삼성전자, 차세대 AI 반도체 양산 돌입… 엔비디아와 공급 계약',     body:'삼성전자가 차세대 AI 반도체 양산에 돌입하면서 엔비디아와 대규모 공급 계약을 체결했다.' },
+  { id:'s11', section:'beauty', status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/beauty1/600/400', title:'국내 스킨케어 브랜드, 북미 시장 점유율 급상승',                    body:'한국 스킨케어 브랜드들이 북미 온라인 채널을 중심으로 판매를 확대하며 점유율을 빠르게 끌어올리고 있다.' },
   { id:'s12', section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s2/600/400',      title:'여야, 민생 안정 패키지 법안 처리 합의… 이번 주 본회의 통과 예정', body:'여야가 민생 안정 패키지 법안 처리에 합의하면서 이번 주 본회의 통과가 유력해졌다.' },
   { id:'s13', section:'스포츠', status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s3/600/400',      title:'손흥민, 챔피언스리그 결승 진출… 한국 선수 최초 기록 수립',       body:'손흥민이 챔피언스리그 결승에 진출하며 한국 선수 최초라는 역사적 기록을 세웠다.' },
   { id:'s14', section:'국제',   status:'published', featured:false, date:'2026-03-02', image:'https://picsum.photos/seed/s4/600/400',      title:'기후변화 대응 새 국제협약 서명… 한국 탄소중립 2045년 목표 발표', body:'새로운 국제 기후 협약이 서명되면서 한국은 탄소중립 목표 시점을 2045년으로 앞당겼다.' },
@@ -394,8 +402,8 @@ const SEED = [
   { id:'s22', section:'국제',   status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/int2/600/400',    title:'일본, 독도 영유권 주장 또 반복… 외교부 강력 항의',               body:'일본 외무성이 연례 외교청서에서 독도를 일본 고유 영토라고 재차 주장했다. 우리 외교부는 즉각 주일 대사를 초치해 강력 항의했다.' },
   { id:'s23', section:'문화',   status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/cul2/600/400',    title:'한국 영화 "새벽의 빛", 칸 영화제 경쟁 부문 초청 확정',           body:'한국 신예 감독 박지수의 장편 데뷔작 "새벽의 빛"이 칸 국제영화제 경쟁 부문에 공식 초청됐다. 한국 영화의 글로벌 위상을 다시 한번 확인시켰다.' },
   { id:'s24', section:'스포츠', status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/spt2/600/400',    title:'한국 야구 대표팀, 프리미어12 우승 기대감 고조',                  body:'WBC 4강 신화의 주역들이 대거 포함된 한국 야구 대표팀이 다음 달 열리는 프리미어12 준비에 박차를 가하고 있다.' },
-  { id:'s25', section:'IT과학', status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/tech1/600/400',   title:'카카오, 자체 개발 AI 모델 "카나" 공개… 오픈AI에 도전장',         body:'카카오가 자체 개발한 대규모 언어 모델 "카나"를 공개했다. 한국어 이해·생성 능력에서 GPT-4를 능가한다는 내부 테스트 결과를 발표해 주목받고 있다.' },
-  { id:'s26', section:'IT과학', status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/tech2/600/400',   title:'현대차, 자율주행 레벨4 상용 택시 서울 도심 시범 운행 개시',       body:'현대자동차가 서울 강남 일대에서 운전자 없이 달리는 자율주행 레벨4 택시 시범 서비스를 시작했다. 안전 요원은 탑승하지 않는다.' },
+  { id:'s25', section:'travel', status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/travel1/600/400', title:'제주 직항 노선 확대… 봄 성수기 여행 수요 급증',                    body:'국내외 항공사가 제주 직항 노선을 늘리면서 봄 성수기 여행 예약이 지난해보다 큰 폭으로 증가했다.' },
+  { id:'s26', section:'beauty', status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/beauty2/600/400', title:'K-뷰티 박람회 개막… 친환경 화장품 수출 상담 집중',                 body:'서울에서 열린 K-뷰티 박람회에서 친환경 화장품 브랜드들이 해외 바이어와 활발한 수출 상담을 진행했다.' },
   { id:'s27', section:'Korea',  status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/kor4/600/400',    title:'제주 감귤 수확량 역대 최다… 올해 해외 수출도 사상 최고',          body:'올해 제주 감귤 생산량이 65만 톤으로 역대 최다를 기록했다. 동남아·미주 지역 수출도 크게 늘어 농가 소득 향상에 도움이 될 전망이다.' },
   { id:'s28', section:'Korea',  status:'published', featured:false, date:'2026-03-01', image:'https://picsum.photos/seed/kor5/600/400',    title:'경복궁 야간 특별 관람 올해도 매진… 외국인 관광객 급증',           body:'문화재청이 주관하는 경복궁 야간 특별 관람 올봄 티켓이 예매 시작 5분 만에 전부 매진됐다. 방문자의 40%는 외국인 관광객인 것으로 집계됐다.' },
 ];
@@ -542,13 +550,24 @@ function getSb() {
   return null;
 }
 
+function normalizeNewsSection(section) {
+  var key = String(section || '').trim();
+  var low = key.toLowerCase();
+  if (low === 'tech' || low === 'it과학' || low === 'technology' || low === 'tech/science') return 'beauty';
+  return key;
+}
+
 async function dbLoadFromSupabase() {
   const sb = getSb();
   if (!sb) { console.warn('Supabase not available'); goList(); return; }
   try {
     const res = await sb.from('articles').select('*').order('date', { ascending: false });
     if (res.error) throw res.error;
-    DB = res.data || [];
+    DB = (res.data || []).map(function(row){
+      var clone = Object.assign({}, row);
+      clone.section = normalizeNewsSection(row.section);
+      return clone;
+    });
     goList();
   } catch(e) {
     toast('DB 로드 오류: ' + e.message, true);
@@ -600,9 +619,11 @@ var SECTION_REPORTER_MAP = {
   '국제'   : 'cr2',   // 김지원 — 국제부 특파원
   '경제'   : 'cr3',   // 이민준 — 경제부 에디터
   '문화'   : 'cr4',   // 최유나 — 문화부 기자
+  'K-pop'  : 'cr4',   // 최유나
   'Korea'  : 'cr4',   // 최유나
   '정치'   : 'cr5',   // 정우성 — 정치부 선임기자
-  'IT과학' : 'cr6',   // 한소희 — IT·과학 에디터
+  'beauty' : 'cr6',   // 한소희 — 뷰티·트래블 에디터
+  'travel' : 'cr10',  // 류하늘 — 문화·라이프 기자
   '스포츠' : 'cr7',   // 오지훈 — 스포츠부 기자
   '오피니언': 'cr8',  // 신지은 — 사회·환경 전문기자
 };
@@ -644,7 +665,7 @@ dbLoadFromSupabase();
 // ══ COUNTS ══════════════════════════════════════════════════
 function refreshCounts(){
   document.getElementById('p-all').textContent = DB.length;
-  ['사회','국제','문화','Korea','스포츠','IT과학','오피니언'].forEach(s=>{
+  ['사회','국제','문화','K-pop','Korea','스포츠','beauty','travel','오피니언'].forEach(s=>{
     const el=document.getElementById('p-'+s);
     if(el) el.textContent=DB.filter(a=>a.section===s).length;
   });
@@ -1763,11 +1784,11 @@ function saveOpinions(){
 // ══ CHARACTER REPORTERS ══════════════════════════════════════
 var DEF_CHAR_REPORTERS = [
   { id:'cr1',  name:'박서진',   role:'사회부 기자',       image:'https://picsum.photos/seed/cr1/200/200',  intro:'KoreHan News 사회부 기자. 복잡한 사회 이슈를 쉬운 한국어로 전달합니다.',             personality:'친근하고 따뜻한 어조. 독자에게 설명하듯이 씁니다.',    tone:'Friendly and approachable',  tags:['사회','오피니언'], profilePage:'', color:'#2563eb' },
-  { id:'cr2',  name:'김지원',   role:'국제부 특파원',     image:'https://picsum.photos/seed/cr2/200/200',  intro:'전 세계 뉴스를 한국어로 쉽게 풀어드립니다. 국제 정세 전문.',                          personality:'분석적이고 논리적. 데이터와 사실 중심.',               tone:'Analytical and precise',     tags:['국제','IT과학'],  profilePage:'', color:'#7c3aed' },
+  { id:'cr2',  name:'김지원',   role:'국제부 특파원',     image:'https://picsum.photos/seed/cr2/200/200',  intro:'전 세계 뉴스를 한국어로 쉽게 풀어드립니다. 국제 정세 전문.',                          personality:'분석적이고 논리적. 데이터와 사실 중심.',               tone:'Analytical and precise',     tags:['국제','travel'],  profilePage:'', color:'#7c3aed' },
   { id:'cr3',  name:'이민준',   role:'경제부 에디터',     image:'https://picsum.photos/seed/cr3/200/200',  intro:'경제 지표와 금융 시장을 알기 쉽게 분석합니다. 10년 경력의 경제 전문 기자.',             personality:'명확하고 숫자 중심. 배경 설명을 충실히 합니다.',       tone:'Clear and data-driven',      tags:['경제'],           profilePage:'', color:'#059669' },
   { id:'cr4',  name:'최유나',   role:'문화부 기자',       image:'https://picsum.photos/seed/cr4/200/200',  intro:'K-팝, 영화, 드라마 등 한국 대중문화 전문 기자. 트렌드를 누구보다 빠르게 전달합니다.', personality:'활기차고 트렌디. 젊은 독자층을 고려합니다.',          tone:'Energetic and trendy',       tags:['문화','스포츠'],  profilePage:'', color:'#db2777' },
   { id:'cr5',  name:'정우성',   role:'정치부 선임기자',   image:'https://picsum.photos/seed/cr5/200/200',  intro:'국회와 청와대를 20년 취재한 정치 전문 기자. 깊이 있는 분석으로 독자의 신뢰를 받습니다.',personality:'신중하고 균형 잡힌 시각. 중립적 보도.',               tone:'Balanced and measured',      tags:['정치'],           profilePage:'', color:'#dc2626' },
-  { id:'cr6',  name:'한소희',   role:'IT·과학 에디터',   image:'https://picsum.photos/seed/cr6/200/200',  intro:'AI, 반도체, 우주과학까지. 복잡한 기술 뉴스를 누구나 이해할 수 있게 씁니다.',           personality:'호기심 넘치고 쉬운 설명. 비유와 예시를 즐겨 사용.',   tone:'Curious and explanatory',    tags:['IT과학'],         profilePage:'', color:'#0891b2' },
+  { id:'cr6',  name:'한소희',   role:'뷰티·트래블 에디터', image:'https://picsum.photos/seed/cr6/200/200',  intro:'뷰티 트렌드와 여행 라이프스타일 뉴스를 누구나 이해할 수 있게 쉽고 감각적으로 전달합니다.', personality:'호기심 넘치고 쉬운 설명. 비유와 예시를 즐겨 사용.',   tone:'Curious and explanatory',    tags:['beauty','travel'], profilePage:'', color:'#0891b2' },
   { id:'cr7',  name:'오지훈',   role:'스포츠부 기자',     image:'https://picsum.photos/seed/cr7/200/200',  intro:'축구, 야구, 올림픽까지. 현장의 열기를 생생하게 전달하는 스포츠 전문 기자입니다.',       personality:'열정적이고 생동감 있는 문체. 현장감 강조.',           tone:'Passionate and vivid',       tags:['스포츠'],         profilePage:'', color:'#ea580c' },
   { id:'cr8',  name:'신지은',   role:'사회·환경 전문기자', image:'https://picsum.photos/seed/cr8/200/200', intro:'기후 위기, 환경 정책, 복지 이슈를 사람 중심으로 취재합니다.',                          personality:'진지하고 공감 중심. 사람의 이야기를 중요시합니다.',   tone:'Empathetic and serious',     tags:['사회','오피니언'], profilePage:'', color:'#16a34a' },
   { id:'cr9',  name:'강태양',   role:'국제·외교 기자',    image:'https://picsum.photos/seed/cr9/200/200',  intro:'미국, 중국, 일본 등 주요국 외교 뉴스를 심층 분석합니다.',                              personality:'통찰력 있고 비교 시각 강함. 맥락을 중시합니다.',     tone:'Insightful and contextual',  tags:['국제','정치'],    profilePage:'', color:'#4338ca' },
@@ -4827,6 +4848,136 @@ function closeConvEditOverlay() {
 function closeStoryEditOverlay() {
   var el = document.getElementById('story-edit-overlay');
   if (el) el.remove();
+}
+
+async function goShopManager() {
+  setSbOn('sb-shop-mgr');
+  var sb = getSb();
+  if (!sb) { document.getElementById('main').innerHTML = '<div class="empty">Supabase 연결 없음</div>'; return; }
+  var res = await sb.from('shop_items').select('*').order('sort_order', { ascending:true });
+  var items = res.data || [];
+  if (!items.length) {
+    try { await seedShopDefaults(true); } catch(e) {}
+    var res2 = await sb.from('shop_items').select('*').order('sort_order', { ascending:true });
+    items = res2.data || [];
+  }
+  function escJsSingle(s){ return String(s||'').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>SHOP 관리</h1><p>Coin/Cash 상품을 관리합니다.</p></div>'
+    + '<div style="display:flex;gap:8px"><button class="btn" onclick="seedShopDefaults()">Seed Default Items</button><button class="btn btn-g" onclick="openShopItemEditor(null)">＋ New Item</button></div></div>'
+    + '<table class="tbl"><thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Coin</th><th>Cash</th><th>Flags</th><th></th></tr></thead><tbody>'
+    + items.map(function(it){
+      var itemId = escJsSingle(it.id);
+      return `<tr><td>${esc(it.id)}</td><td>${esc(it.name||'')}</td><td>${esc(it.item_type||'')}</td>
+        <td>${it.can_buy_with_coin ? (it.coin_price||0) : '-'}</td>
+        <td>${it.can_buy_with_cash ? '$'+Number(it.cash_price||0).toFixed(2) : '-'}</td>
+        <td>${it.is_active ? 'active' : 'inactive'} · ${it.is_repeatable ? 'repeat' : 'one-time'}</td>
+        <td><button class="btn" onclick="openShopItemEditor('${itemId}')">Edit</button> <button class="btn" style="background:#fee2e2;color:#b91c1c" onclick="deleteShopItem('${itemId}')">Delete</button></td></tr>`;
+    }).join('')
+    + '</tbody></table>';
+  window._shopItemsCache = items;
+}
+
+function getDefaultShopItems() {
+  return [
+    { id:'badge_founder', name:'Founder Badge', slug:'founder-badge', description:'Display an exclusive Founder profile badge.', image_url:'https://picsum.photos/seed/shop-founder-badge/640/360', item_type:'profile_badge', coin_price:120, cash_price:0, is_active:true, can_buy_with_coin:true, can_buy_with_cash:false, is_repeatable:false, sort_order:10 },
+    { id:'cosmetic_neon_frame', name:'Neon Profile Frame', slug:'neon-profile-frame', description:'Cosmetic frame for your profile image.', image_url:'https://picsum.photos/seed/shop-neon-frame/640/360', item_type:'profile_cosmetic', coin_price:180, cash_price:0, is_active:true, can_buy_with_coin:true, can_buy_with_cash:false, is_repeatable:false, sort_order:20 },
+    { id:'reporter_coffee', name:'Reporter Coffee Treat', slug:'reporter-coffee-treat', description:'Give your favorite reporter a coffee boost.', image_url:'https://picsum.photos/seed/shop-reporter-coffee/640/360', item_type:'reporter_item', coin_price:60, cash_price:0, is_active:true, can_buy_with_coin:true, can_buy_with_cash:false, is_repeatable:true, sort_order:30 },
+    { id:'reporter_bubble_tea', name:'Reporter Bubble Tea', slug:'reporter-bubble-tea', description:'A sweet bubble tea gift for your favorite reporter.', image_url:'https://picsum.photos/seed/shop-reporter-bubble-tea/640/360', item_type:'reporter_item', coin_price:75, cash_price:0, is_active:true, can_buy_with_coin:true, can_buy_with_cash:false, is_repeatable:true, sort_order:40 },
+    { id:'reporter_flower', name:'Reporter Flower Bouquet', slug:'reporter-flower-bouquet', description:'A bouquet gift for reporter affinity moments.', image_url:'https://picsum.photos/seed/shop-reporter-flower/640/360', item_type:'reporter_item', coin_price:95, cash_price:0, is_active:true, can_buy_with_coin:true, can_buy_with_cash:false, is_repeatable:true, sort_order:50 }
+  ];
+}
+
+async function seedShopDefaults(silent) {
+  var sb = getSb();
+  if (!sb) return;
+  var seedItems = getDefaultShopItems().map(function(it){ it.updated_at = new Date().toISOString(); return it; });
+  var r = await sb.from('shop_items').upsert(seedItems, { onConflict:'id' });
+  if (r.error) {
+    if (!silent) toast('기본 아이템 시드 실패: ' + r.error.message, true);
+    return;
+  }
+  if (!silent) toast('기본 SHOP 아이템 시드 완료');
+}
+
+function openShopItemEditor(itemId) {
+  var item = (window._shopItemsCache || []).find(function(x){ return x.id === itemId; }) || {};
+  var ov = document.createElement('div');
+  ov.className = 'ov';
+  var cleanId = itemId || '';
+  ov.innerHTML = `<div class="mbox"><div class="m-hd"><h2>Shop Item</h2><button class="m-x" onclick="this.closest('.ov').remove()">×</button></div>
+    <div class="m-bd">
+    <div class="fg"><label>ID</label><input id="si-id" value="${esc(item.id||'')}" ${itemId ? 'disabled' : ''}></div>
+    <div class="fg"><label>Name</label><input id="si-name" value="${esc(item.name||'')}"></div>
+    <div class="fg"><label>Description</label><textarea id="si-desc">${esc(item.description||'')}</textarea></div>
+    <div class="fg"><label>Image URL</label><input id="si-img" value="${esc(item.image_url||'')}"></div>
+    <div class="fg-row"><div class="fg"><label>Type</label><input id="si-type" value="${esc(item.item_type||'one_time_unlock')}"></div>
+    <div class="fg"><label>Sort</label><input id="si-sort" type="number" value="${item.sort_order||100}"></div></div>
+    <div class="fg-row"><div class="fg"><label>Coin Price</label><input id="si-coin" type="number" value="${item.coin_price||0}"></div>
+    <div class="fg"><label>Cash Price</label><input id="si-cash" type="number" step="0.01" value="${item.cash_price||0}"></div></div>
+    <div class="fg-row"><div class="fg"><label><input type="checkbox" id="si-active" ${item.is_active!==false?'checked':''}> active</label></div>
+    <div class="fg"><label><input type="checkbox" id="si-repeat" ${item.is_repeatable?'checked':''}> repeatable</label></div></div>
+    <div class="fg-row"><div class="fg"><label><input type="checkbox" id="si-coin-on" ${item.can_buy_with_coin!==false?'checked':''}> can buy with Coin</label></div>
+    <div class="fg"><label><input type="checkbox" id="si-cash-on" ${item.can_buy_with_cash?'checked':''}> can buy with Cash</label></div></div>
+    </div><div class="m-ft"><button class="btn" onclick="this.closest('.ov').remove()">Cancel</button><button class="btn btn-g" onclick="saveShopItem('${cleanId}', this)">Save</button></div></div>`;
+  document.body.appendChild(ov);
+}
+
+async function saveShopItem(itemId, btn) {
+  btn.disabled = true;
+  var sb = getSb();
+  var body = {
+    id: document.getElementById('si-id').value.trim(),
+    name: document.getElementById('si-name').value.trim(),
+    slug: document.getElementById('si-name').value.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-'),
+    description: document.getElementById('si-desc').value.trim(),
+    image_url: document.getElementById('si-img').value.trim(),
+    item_type: document.getElementById('si-type').value.trim() || 'one_time_unlock',
+    coin_price: Number(document.getElementById('si-coin').value || 0),
+    cash_price: Number(document.getElementById('si-cash').value || 0),
+    is_active: document.getElementById('si-active').checked,
+    can_buy_with_coin: document.getElementById('si-coin-on').checked,
+    can_buy_with_cash: document.getElementById('si-cash-on').checked,
+    is_repeatable: document.getElementById('si-repeat').checked,
+    sort_order: Number(document.getElementById('si-sort').value || 100),
+    updated_at: new Date().toISOString()
+  };
+  var r = await sb.from('shop_items').upsert(body, { onConflict:'id' });
+  if (r.error) { toast('저장 오류: ' + r.error.message, true); btn.disabled = false; return; }
+  document.querySelector('.ov') && document.querySelector('.ov').remove();
+  goShopManager();
+}
+
+async function deleteShopItem(itemId) {
+  if (!confirm('Delete item ' + itemId + '?')) return;
+  var sb = getSb();
+  var r = await sb.from('shop_items').delete().eq('id', itemId);
+  if (r.error) { toast('삭제 오류: ' + r.error.message, true); return; }
+  goShopManager();
+}
+
+async function goCoinAdmin() {
+  setSbOn('sb-coin-admin');
+  document.getElementById('main').innerHTML = '<div class=\"pg-hd\"><div><h1>Coin 조정</h1><p>사용자 Coin 잔액을 조정합니다.</p></div></div>'
+    + '<div class=\"sf-card\" style=\"max-width:520px\"><div class=\"fg\"><label>User ID</label><input id=\"coin-user-id\"></div>'
+    + '<div class=\"fg\"><label>Delta (+/-)</label><input id=\"coin-delta\" type=\"number\" value=\"100\"></div>'
+    + '<div class=\"fg\"><label>Reason</label><input id=\"coin-reason\" value=\"admin adjustment\"></div>'
+    + '<button class=\"btn btn-g\" onclick=\"applyCoinAdjustment()\">Apply</button><div id=\"coin-admin-msg\" style=\"margin-top:10px;font-size:13px;color:#475569\"></div></div>';
+}
+
+async function applyCoinAdjustment() {
+  var sb = getSb();
+  var uid = document.getElementById('coin-user-id').value.trim();
+  var delta = Number(document.getElementById('coin-delta').value || 0);
+  var reason = document.getElementById('coin-reason').value.trim() || 'admin adjustment';
+  var res = await sb.rpc('admin_adjust_coin', { p_user_id: uid, p_delta: delta, p_reason: reason });
+  var msg = document.getElementById('coin-admin-msg');
+  if (res.error || !res.data || !res.data.ok) {
+    msg.textContent = '오류: ' + ((res.error && res.error.message) || (res.data && res.data.error) || 'failed');
+    return;
+  }
+  msg.textContent = '완료: 신규 Coin 잔액 ' + res.data.coin_balance;
 }
 </script>
 </body>

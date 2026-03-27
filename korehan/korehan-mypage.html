@@ -268,7 +268,7 @@ async function dbGetUserStats() {
   // Load user_stats and all daily_missions in parallel
   var results = await Promise.allSettled([
     sb.from('user_stats')
-      .select('quizzes_done, articles_read, words_saved')
+      .select('quizzes_done, articles_read, words_saved, coin_balance')
       .eq('user_id', supaUser.id).maybeSingle(),
     sb.from('daily_missions')
       .select('date, articles, words, quizzes, fill')
@@ -301,6 +301,7 @@ async function dbGetUserStats() {
 
   statsData = statsData || {};
   statsData.xp = computedXP;
+  statsData.coin_balance = Number(statsData.coin_balance || 0);
   statsData.mission_streak = computedStreak;
   return statsData;
 }
@@ -356,11 +357,15 @@ function renderMiniStats(stats) {
       + '<div class="stat-body"><div class="stat-n">' + value + '</div><div class="stat-lbl">' + label + '</div></div>'
       + '</div>';
   }
+  var xpVal = Number(us.xp || 0);
+  var coinVal = Number(us.coin_balance || 0);
   el.innerHTML =
     card('s-streak',   '🔥', us.mission_streak || us.streak || 0, 'Day Streak')  +
     card('s-articles', '📰', us.articles_read  || 0,              'Articles Read') +
     card('s-words',    '📖', us.words_saved    || 0,              'Saved Words')   +
-    card('s-quizzes',  '🎯', us.quizzes_done   || 0,              'Quizzes Done');
+    card('s-quizzes',  '🎯', us.quizzes_done   || 0,              'Quizzes Done')  +
+    card('s-articles', '✨', xpVal.toLocaleString(),              'Total XP')       +
+    card('s-quizzes',  '🪙', coinVal.toLocaleString(),            'Coin Balance');
 }
 
 // ── Render tier grid ───────────────────────────────────────────
@@ -446,10 +451,12 @@ function xpLogCollapse() {
 
 // ── Render profile fields ──────────────────────────────────────
 var _userXP = 0;
+var _userCoin = 0;
 var NICKNAME_COST = 100;
 
-function renderProfileFields(xp) {
+function renderProfileFields(xp, coin) {
   if (xp !== undefined) _userXP = xp;
+  if (coin !== undefined) _userCoin = coin;
   var el = document.getElementById('mp-profile-fields');
   if (!el || !supaUser) return;
   var savedName = localStorage.getItem('kh_display_name');
@@ -458,14 +465,14 @@ function renderProfileFields(xp) {
   var since = supaUser.created_at ? new Date(supaUser.created_at).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }) : '—';
   var provider = (supaUser.app_metadata && supaUser.app_metadata.provider) || 'email';
   var provLabel = provider === 'google' ? '🔑 Google' : '✉️ Email';
-  var canAfford = _userXP >= NICKNAME_COST;
+  var canAfford = _userCoin >= NICKNAME_COST;
 
   el.innerHTML =
     '<div class="pf-row">'
     + '<div class="pf-label">Nickname</div>'
     + '<div class="pf-value" id="pf-name-val">' + name + '</div>'
-    + '<button class="pf-btn" onclick="openNicknameModal()" style="' + (canAfford ? '' : 'opacity:.55') + '" title="' + (canAfford ? 'Change nickname (costs 100 XP)' : 'Need ' + NICKNAME_COST + ' XP to change') + '">'
-    + '✏️ ' + NICKNAME_COST + ' XP</button>'
+    + '<button class="pf-btn" onclick="openNicknameModal()" style="' + (canAfford ? '' : 'opacity:.55') + '" title="' + (canAfford ? 'Change nickname (costs 100 Coin)' : 'Need ' + NICKNAME_COST + ' Coin to change') + '">'
+    + '✏️ ' + NICKNAME_COST + ' Coin</button>'
     + '</div>'
     + '<div class="pf-row"><div class="pf-label">Email</div><div class="pf-value">' + email + '</div></div>'
     + '<div class="pf-row"><div class="pf-label">Sign-in</div><div class="pf-value">' + provLabel + '</div></div>'
@@ -482,7 +489,7 @@ function openNicknameModal() {
   if (existing) existing.remove();
 
   var currentName = (document.getElementById('pf-name-val') || {}).textContent || '';
-  var canAfford = _userXP >= NICKNAME_COST;
+  var canAfford = _userCoin >= NICKNAME_COST;
 
   var el = document.createElement('div');
   el.id = 'nn-overlay';
@@ -490,18 +497,18 @@ function openNicknameModal() {
   el.innerHTML =
     '<div class="nn-modal">'
     + '<h3>Change Nickname</h3>'
-    + '<p>Changing your nickname costs <strong>' + NICKNAME_COST + ' XP</strong>. You currently have <strong>' + _userXP.toLocaleString() + ' XP</strong>.</p>'
+    + '<p>Changing your nickname costs <strong>' + NICKNAME_COST + ' Coin</strong>. You currently have <strong>' + _userCoin.toLocaleString() + ' Coin</strong>.</p>'
     + (canAfford
-      ? '<div class="nn-cost-badge">✨ ' + NICKNAME_COST + ' XP will be deducted</div>'
+      ? '<div class="nn-cost-badge">✨ ' + NICKNAME_COST + ' Coin will be deducted</div>'
         + '<input class="nn-input" id="nn-input" type="text" maxlength="30" placeholder="New nickname" value="' + currentName + '">'
         + '<div class="nn-actions">'
         + '<button class="nn-btn-cancel" onclick="closeNicknameModal()">Cancel</button>'
-        + '<button class="nn-btn-confirm" id="nn-confirm-btn" onclick="confirmNicknameChange()">Confirm — ' + NICKNAME_COST + ' XP</button>'
+        + '<button class="nn-btn-confirm" id="nn-confirm-btn" onclick="confirmNicknameChange()">Confirm — ' + NICKNAME_COST + ' Coin</button>'
         + '</div>'
       : '<div style="text-align:center;padding:16px 0">'
         + '<div style="font-size:36px;margin-bottom:10px">🔒</div>'
-        + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:6px">Not enough XP</div>'
-        + '<div style="font-size:13px;color:#64748b">You need ' + (NICKNAME_COST - _userXP) + ' more XP. Read articles, take quizzes, and save words to earn XP.</div>'
+        + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:6px">Not enough Coin</div>'
+        + '<div style="font-size:13px;color:#64748b">You need ' + (NICKNAME_COST - _userCoin) + ' more Coin. Keep studying to earn Coin.</div>'
         + '<button class="nn-btn-cancel" style="margin-top:18px;width:100%" onclick="closeNicknameModal()">OK</button>'
         + '</div>')
     + '</div>';
@@ -523,25 +530,24 @@ async function confirmNicknameChange() {
   var inp = document.getElementById('nn-input');
   var newName = inp ? inp.value.trim() : '';
   if (!newName) { if (inp) inp.focus(); return; }
-  if (_userXP < NICKNAME_COST) { closeNicknameModal(); return; }
+  if (_userCoin < NICKNAME_COST) { closeNicknameModal(); return; }
 
   var btn = document.getElementById('nn-confirm-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
   var sb = getSupa();
   try {
-    // Deduct XP
-    var newXP = _userXP - NICKNAME_COST;
-    await sb.from('user_stats').update({ xp: newXP, display_name: newName }).eq('user_id', supaUser.id);
-    // Log the XP spend
-    try { await sb.from('xp_log').insert({ user_id: supaUser.id, reason: 'Nickname change', amount: -NICKNAME_COST }); } catch(e) {}
+    // Deduct Coin only (XP is non-spendable progression stat)
+    var newCoin = _userCoin - NICKNAME_COST;
+    await sb.from('user_stats').update({ coin_balance: newCoin, display_name: newName }).eq('user_id', supaUser.id);
+    try { await sb.from('coin_transactions').insert({ user_id: supaUser.id, tx_type:'spend', amount:-NICKNAME_COST, balance_after:newCoin, source:'nickname_change', memo:'Nickname change' }); } catch(e) {}
     // Update auth metadata
     await sb.auth.updateUser({ data: { full_name: newName } });
     // Persist locally
     localStorage.setItem('kh_display_name', newName);
 
     // Update UI
-    _userXP = newXP;
+    _userCoin = newCoin;
     var nameDisp = document.getElementById('pf-name-val');
     if (nameDisp) nameDisp.textContent = newName;
     var heroName = document.getElementById('mp-name');
@@ -552,12 +558,12 @@ async function confirmNicknameChange() {
     if (initialsEl) initialsEl.textContent = initials;
     // Refresh XP card and profile button
     renderXPCard(_userXP);
-    renderProfileFields(_userXP);
+    renderProfileFields(_userXP, _userCoin);
 
     closeNicknameModal();
     if (typeof toast === 'function') toast('Nickname updated ✓');
   } catch(e) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Confirm — ' + NICKNAME_COST + ' XP'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirm — ' + NICKNAME_COST + ' Coin'; }
     alert('Error: ' + e.message);
   }
 }
@@ -708,13 +714,14 @@ async function initMyPage() {
   var stats = results[0];
   var xpLog = results[1];
   var xp = (stats && stats.xp) || 0;
+  var coin = Number((stats && stats.coin_balance) || 0);
 
   _userXP = xp;
   renderXPCard(xp);
   renderMiniStats(stats);
   renderTierGrid(xp);
   renderXPLog(xpLog);
-  renderProfileFields(xp);
+  renderProfileFields(xp, coin);
 }
 
 document.addEventListener('DOMContentLoaded', function() {

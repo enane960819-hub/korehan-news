@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FUN — KoreHan News</title>
+  <link rel="stylesheet" href="korehan-shared.css">
+  <style>
+    body{margin:0;background:#f3f7fc;color:#0f172a;font-family:Inter,Pretendard,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+    .wrap{max-width:1160px;margin:0 auto;padding:22px 16px 56px}
+    .hero{background:linear-gradient(135deg,#0b1f3f,#1e3a8a 56%,#7c3aed);color:#fff;border-radius:18px;padding:26px 22px;box-shadow:0 20px 38px rgba(15,23,42,.18)}
+    .hero h1{margin:0;font-size:30px}
+    .hero p{margin:8px 0 0;color:rgba(255,255,255,.82);line-height:1.55}
+    .fun-game-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:18px}
+    .fun-game-card{display:block;background:#fff;border:1px solid #dce8f5;border-radius:14px;overflow:hidden;text-decoration:none;color:inherit;transition:.2s transform,.2s box-shadow,.2s border-color}
+    .fun-game-card:hover{transform:translateY(-2px);border-color:#bfdbfe;box-shadow:0 14px 30px rgba(30,64,175,.14)}
+    .fun-game-cover{height:112px;display:flex;align-items:center;justify-content:center;font-size:36px;color:#fff}
+    .fun-game-body{padding:14px 14px 16px}
+    .fun-game-sub{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#64748b;margin-bottom:6px}
+    .fun-game-title{font-size:18px;font-weight:800;margin-bottom:6px;line-height:1.25}
+    .fun-game-desc{font-size:13px;color:#64748b;line-height:1.5}
+  </style>
+</head>
+<body>
+  <div id="kh-header"></div>
+  <main class="wrap">
+    <section class="hero">
+      <h1>✨ FUN</h1>
+      <p>Pick a mini game. Each game opens on its own dedicated page.</p>
+    </section>
+    <section id="fun-game-grid" class="fun-game-grid"></section>
+  </main>
+  <div id="kh-footer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="korehan-shared.js?v=20260327-fun2"></script>
+  <script src="fun/fun-games.js"></script>
+  <script src="fun/fun-list.js"></script>
+</body>
+</html>
