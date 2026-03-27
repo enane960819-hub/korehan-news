@@ -1,5 +1,6 @@
 (function(){
   var K_SHOP_ITEMS_FALLBACK = 'kh_shop_items_fallback';
+  var K_SHOP_ITEMS_FALLBACK_DB = 'shop_items_fallback';
   var DEFAULT_SHOP_ITEMS = [
     {
       id: 'badge_founder',
@@ -82,12 +83,22 @@
     return msg.indexOf("Could not find the table 'public.shop_items'") >= 0
       || msg.indexOf("relation \"public.shop_items\" does not exist") >= 0;
   }
-  function getLocalShopItems() {
+  async function getLocalShopItems(sb) {
+    if (sb) {
+      try {
+        var r = await sb.from('app_settings').select('value').eq('key', K_SHOP_ITEMS_FALLBACK_DB).maybeSingle();
+        if (r && r.data && r.data.value) return Array.isArray(r.data.value) ? r.data.value : JSON.parse(r.data.value || '[]');
+      } catch(e) {}
+    }
     try { return JSON.parse(localStorage.getItem(K_SHOP_ITEMS_FALLBACK) || 'null') || []; }
     catch(e) { return []; }
   }
-  function setLocalShopItems(items) {
-    localStorage.setItem(K_SHOP_ITEMS_FALLBACK, JSON.stringify(items || []));
+  async function setLocalShopItems(sb, items) {
+    var data = items || [];
+    if (sb) {
+      try { await sb.from('app_settings').upsert({ key: K_SHOP_ITEMS_FALLBACK_DB, value: data }, { onConflict:'key' }); } catch(e) {}
+    }
+    localStorage.setItem(K_SHOP_ITEMS_FALLBACK, JSON.stringify(data));
   }
 
   async function ensureDefaultShopItems(sb) {
@@ -98,7 +109,7 @@
       var seedRes = await sb.from('shop_items').upsert(DEFAULT_SHOP_ITEMS, { onConflict:'id' });
       if (!seedRes.error) return true;
       if (isShopTableMissingErr(seedRes.error)) {
-        setLocalShopItems(DEFAULT_SHOP_ITEMS);
+        await setLocalShopItems(sb, DEFAULT_SHOP_ITEMS);
         return false;
       }
       return false;
@@ -119,10 +130,10 @@
     ]);
     var dbItems = (itemsRes && itemsRes.data) || [];
     var usingFallback = !!(itemsRes && itemsRes.error && isShopTableMissingErr(itemsRes.error));
-    var liveItems = usingFallback ? getLocalShopItems() : dbItems;
+    var liveItems = usingFallback ? await getLocalShopItems(sb) : dbItems;
     if (!liveItems.length && usingFallback) {
-      setLocalShopItems(DEFAULT_SHOP_ITEMS);
-      liveItems = getLocalShopItems();
+      await setLocalShopItems(sb, DEFAULT_SHOP_ITEMS);
+      liveItems = await getLocalShopItems(sb);
     }
     usingFallback = usingFallback || liveItems.length === 0;
     var catalog = usingFallback ? DEFAULT_SHOP_ITEMS : liveItems;
