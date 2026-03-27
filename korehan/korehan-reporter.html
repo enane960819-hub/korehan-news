@@ -292,7 +292,6 @@ var _postDraftFiles = [];
 var _editingPostId = null;
 var _postCache = [];
 var _postMode = 'db'; // db | fallback
-var _canUploadPostImages = true;
 
 function _postModeKey() { return 'kh_reporter_posts_mode'; }
 function getPostModePref() {
@@ -301,19 +300,12 @@ function getPostModePref() {
 function setPostModePref(mode) {
   try { localStorage.setItem(_postModeKey(), mode); } catch(e) {}
 }
-function getUploadPref() {
-  try { return localStorage.getItem('kh_reporter_post_upload') !== '0'; } catch(e) { return true; }
-}
-function setUploadPref(on) {
-  try { localStorage.setItem('kh_reporter_post_upload', on ? '1' : '0'); } catch(e) {}
-}
 
 document.addEventListener('DOMContentLoaded', async function() {
   var rid  = new URLSearchParams(window.location.search).get('id');
   var root = document.getElementById('rp-root');
   if (!rid) { root.innerHTML = '<div class="rp-not-found"><h2>기자를 찾을 수 없습니다</h2></div>'; return; }
   _postMode = getPostModePref();
-  _canUploadPostImages = getUploadPref();
   try {
     var sbBg = getSupa && getSupa();
     var bgUrl = REPORTER_BG_DEFAULT;
@@ -449,7 +441,7 @@ function renderPostComposer(reporterId, reporter) {
     '<div class="rp-post-compose">'
     + '<textarea id="rp-post-content" placeholder="' + escHtml((reporter && reporter.name ? reporter.name : '기자') + '의 새 포스트를 작성해보세요…') + '"></textarea>'
     + '<div class="rp-post-compose-row">'
-    +   (_canUploadPostImages ? '<input id="rp-post-files" class="rp-post-file" type="file" accept="image/*" multiple onchange="onPostFilesPicked(this)">' : '<span style="font-size:11px;color:#94a3b8">이미지 업로드 임시 비활성(스토리지 설정 필요)</span>')
+    +   '<input id="rp-post-files" class="rp-post-file" type="file" accept="image/*" multiple onchange="onPostFilesPicked(this)">'
     +   '<select id="rp-post-status" class="rp-post-select"><option value="published">게시</option><option value="draft">임시저장</option></select>'
     +   '<label style="font-size:12px;color:#475569"><input type="checkbox" id="rp-post-pinned"> 상단 고정</label>'
     +   '<button class="rp-post-btn" onclick="submitReporterPost(\'' + reporterId + '\')">업로드</button>'
@@ -597,11 +589,7 @@ async function uploadPostImages(sb, reporterId, postId, files) {
     var ext = (f.name.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '');
     var path = 'posts/' + reporterId + '/' + postId + '/' + Date.now() + '_' + i + '.' + ext;
     var up = await sb.storage.from('reporter-images').upload(path, f, { upsert:true, contentType:f.type || 'image/jpeg' });
-    if (up.error) {
-      setUploadPref(false);
-      _canUploadPostImages = false;
-      continue;
-    }
+    if (up.error) continue;
     var pub = sb.storage.from('reporter-images').getPublicUrl(path);
     var u = pub && pub.data && pub.data.publicUrl ? pub.data.publicUrl : '';
     if (u) out.push(u);
