@@ -1406,10 +1406,23 @@ async function goSiteSettings(){
       </div>
       <div id="sc-api-status" style="font-size:12px;color:#94a3b8;margin-top:8px"></div>
     </div>
+    <div class="sf-card">
+      <h3>🖼 기자 페이지 배경 이미지</h3>
+      <p style="font-size:13px;color:#64748b;margin-bottom:10px">korehan-reporter 페이지 전체 배경에 사용할 이미지를 설정합니다.</p>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input id="sc-reporter-bg-url" class="inp inp-sm" style="flex:1;min-width:280px" placeholder="https://...">
+        <input id="sc-reporter-bg-file" type="file" accept="image/*" onchange="uploadReporterBgImage(this)" style="display:none">
+        <button class="btn" onclick="document.getElementById('sc-reporter-bg-file').click()">📤 업로드</button>
+        <button class="btn btn-g" onclick="saveReporterBgSetting()">💾 배경 저장</button>
+      </div>
+      <div id="sc-reporter-bg-status" style="font-size:12px;color:#94a3b8;margin-top:8px"></div>
+      <img id="sc-reporter-bg-preview" alt="Reporter BG Preview" style="margin-top:12px;width:100%;max-height:220px;object-fit:cover;border-radius:12px;border:1px solid #e2e8f0;display:none">
+    </div>
     <button class="btn btn-g" onclick="saveSiteSettings()">💾 저장</button>
     <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>`;
 
   loadApiKeyIntoSettings();
+  loadReporterBgSetting();
 }
 async function saveSiteSettings(){
   const c={
@@ -1444,6 +1457,83 @@ async function resetSiteSettings(){
     toast('초기화 저장 실패: ' + (e.message || e), true);
   }
   goSiteSettings();
+}
+
+async function loadReporterBgSetting() {
+  var sb = getSb();
+  if (!sb) return;
+  try {
+    var res = await sb.from('app_settings').select('value').eq('key', 'reporter_bg_image_url').maybeSingle();
+    var url = (res && res.data && res.data.value) ? String(res.data.value) : '';
+    var inp = document.getElementById('sc-reporter-bg-url');
+    var prev = document.getElementById('sc-reporter-bg-preview');
+    if (inp) inp.value = url;
+    if (prev && url) { prev.src = url; prev.style.display = 'block'; }
+  } catch(e) {}
+}
+
+async function saveReporterBgSetting() {
+  var sb = getSb();
+  var inp = document.getElementById('sc-reporter-bg-url');
+  var prev = document.getElementById('sc-reporter-bg-preview');
+  var status = document.getElementById('sc-reporter-bg-status');
+  var url = (inp && inp.value || '').trim();
+  if (!sb) { if (status) status.textContent = 'Supabase 연결 없음'; return; }
+  try {
+    var res = await sb.from('app_settings').upsert({ key:'reporter_bg_image_url', value: url }, { onConflict:'key' });
+    if (res.error) throw res.error;
+    if (status) status.textContent = '✓ 배경 이미지 저장 완료';
+    if (prev) {
+      if (url) { prev.src = url; prev.style.display = 'block'; }
+      else { prev.style.display = 'none'; }
+    }
+    toast('기자 페이지 배경 이미지 저장됨');
+  } catch(e) {
+    if (status) status.textContent = '오류: ' + (e.message || e);
+    toast('저장 실패: ' + (e.message || e), true);
+  }
+}
+
+async function uploadReporterBgImage(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  var status = document.getElementById('sc-reporter-bg-status');
+  if (status) status.textContent = '업로드 중…';
+  if (file.size > 8 * 1024 * 1024) {
+    if (status) status.textContent = '8MB 이하 파일만 업로드 가능';
+    input.value = '';
+    return;
+  }
+  var ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  var path = 'reporter-bg/bg_' + Date.now() + '.' + ext;
+  var bucket = 'reporter-images';
+  try {
+    var res = await fetch(SUPA_URL_ADMIN + '/storage/v1/object/' + bucket + '/' + path, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
+        'Content-Type': file.type,
+        'x-upsert': 'true'
+      },
+      body: file
+    });
+    if (!res.ok) {
+      var err = await res.json().catch(function(){ return {}; });
+      throw new Error(err.message || err.error || ('HTTP ' + res.status));
+    }
+    var publicUrl = SUPA_URL_ADMIN + '/storage/v1/object/public/' + bucket + '/' + path;
+    var inp = document.getElementById('sc-reporter-bg-url');
+    var prev = document.getElementById('sc-reporter-bg-preview');
+    if (inp) inp.value = publicUrl;
+    if (prev) { prev.src = publicUrl; prev.style.display = 'block'; }
+    if (status) status.textContent = '✓ 업로드 완료. [배경 저장]을 눌러 적용하세요.';
+    toast('배경 이미지 업로드 완료');
+  } catch(e) {
+    if (status) status.textContent = '업로드 오류: ' + (e.message || e);
+    toast('업로드 오류: ' + (e.message || e), true);
+  }
+  input.value = '';
 }
 
 // ══ QUICK WIN TIPS ══════════════════════════════════════════
