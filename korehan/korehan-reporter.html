@@ -187,17 +187,15 @@ body {
 .rp-art-title { font-size: 14px; font-weight: 700; color: #0f172a; line-height: 1.45; margin-bottom: 3px; font-family: 'Noto Serif KR', serif; }
 .rp-art-meta { font-size: 12px; color: #94a3b8; }
 
-/* ── Tabs / Posts ── */
-.rp-tabs {
-  display:flex; gap:8px; margin-bottom:16px;
+/* ── Reporter body layout ── */
+.rp-body-grid {
+  display:grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, .8fr);
+  gap: 18px;
+  align-items: start;
 }
-.rp-tab-btn {
-  border:1px solid #dbe5f2; background:#ffffffcc; color:#334155;
-  border-radius:999px; padding:9px 14px; font-size:13px; font-weight:800; cursor:pointer;
-}
-.rp-tab-btn.on { background:#0f172a; color:#fff; border-color:#0f172a; }
-.rp-tab-panel { display:none; }
-.rp-tab-panel.on { display:block; }
+.rp-main-col { min-width:0; }
+.rp-side-col { min-width:0; position: sticky; top: 96px; }
 
 .rp-post-compose {
   background:#fff; border:1px solid #e8eef7; border-radius:22px; padding:18px; margin-bottom:14px;
@@ -264,6 +262,8 @@ body {
   .rp-gift-icon { font-size: 22px; }
   .rp-post-images img { height:170px; }
   .rp-post-images.one img { height:240px; }
+  .rp-body-grid { grid-template-columns: 1fr; }
+  .rp-side-col { position: static; }
 }
 </style>
 </head>
@@ -292,11 +292,28 @@ var _postDraftFiles = [];
 var _editingPostId = null;
 var _postCache = [];
 var _postMode = 'db'; // db | fallback
+var _canUploadPostImages = true;
+
+function _postModeKey() { return 'kh_reporter_posts_mode'; }
+function getPostModePref() {
+  try { return localStorage.getItem(_postModeKey()) || 'db'; } catch(e) { return 'db'; }
+}
+function setPostModePref(mode) {
+  try { localStorage.setItem(_postModeKey(), mode); } catch(e) {}
+}
+function getUploadPref() {
+  try { return localStorage.getItem('kh_reporter_post_upload') !== '0'; } catch(e) { return true; }
+}
+function setUploadPref(on) {
+  try { localStorage.setItem('kh_reporter_post_upload', on ? '1' : '0'); } catch(e) {}
+}
 
 document.addEventListener('DOMContentLoaded', async function() {
   var rid  = new URLSearchParams(window.location.search).get('id');
   var root = document.getElementById('rp-root');
   if (!rid) { root.innerHTML = '<div class="rp-not-found"><h2>기자를 찾을 수 없습니다</h2></div>'; return; }
+  _postMode = getPostModePref();
+  _canUploadPostImages = getUploadPref();
   try {
     var sbBg = getSupa && getSupa();
     var bgUrl = REPORTER_BG_DEFAULT;
@@ -370,33 +387,28 @@ document.addEventListener('DOMContentLoaded', async function() {
     +   '</div>'
     + '</div>'
 
-    + '<div class="rp-tabs">'
-    +   '<button class="rp-tab-btn" id="rp-tab-btn-profile" onclick="rpSwitchTab(\'profile\')">👤 프로필</button>'
-    +   '<button class="rp-tab-btn on" id="rp-tab-btn-posts" onclick="rpSwitchTab(\'posts\')">📝 Posts</button>'
-    + '</div>'
-
-    + '<div class="rp-tab-panel" id="rp-tab-profile">'
-    // ── Favorability ──
-    + '<div class="rp-fav-card">'
-    +   '<div class="rp-fav-header">'
-    +     '<div class="rp-fav-title">❤️ 호감도</div>'
-    +     '<div style="display:flex;gap:8px;align-items:center"><span class="rp-nyang-chip" id="rp-nyang-balance">🐾 냥 -</span><div class="rp-fav-level" id="rp-fav-level">' + favLevel + '</div></div>'
+    + '<div class="rp-body-grid">'
+    +   '<div class="rp-main-col">'
+    +     '<div id="rp-post-compose"></div>'
+    +     '<div id="rp-post-feed" class="rp-post-feed"><div class="rp-post-empty">Posts 로딩 중…</div></div>'
     +   '</div>'
-    +   '<div class="rp-fav-bar-bg"><div class="rp-fav-bar-fill" id="rp-fav-bar-fill" style="width:' + favPct + '%;background:linear-gradient(90deg,' + color + ',' + color + 'aa)"></div></div>'
-    +   '<div class="rp-fav-meta"><span id="rp-fav-xp">' + favXP + ' / ' + FAV_HIRE_THRESHOLD + ' 친밀도</span><span id="rp-fav-left">매니저 고용까지 ' + (FAV_HIRE_THRESHOLD - favXP) + ' 남음</span></div>'
-    +   '<div class="rp-gifts" id="rp-gifts">선물 불러오는 중…</div>'
-    +   '<div id="rp-gift-msg" style="font-size:12px;color:#64748b;margin:2px 0 10px"></div>'
-    +   '<button class="rp-hire-btn" disabled>🎓 한국어 매니저로 고용하기</button>'
-    +   '<div class="rp-hire-progress" id="rp-fav-progress">호감도 ' + FAV_HIRE_THRESHOLD + ' 달성 시 고용 가능 · 현재 ' + favPct + '%</div>'
-    + '</div>'
-
+    +   '<aside class="rp-side-col">'
+    // ── Favorability ──
+    +   '<div class="rp-fav-card">'
+    +     '<div class="rp-fav-header">'
+    +       '<div class="rp-fav-title">❤️ 호감도</div>'
+    +       '<div style="display:flex;gap:8px;align-items:center"><span class="rp-nyang-chip" id="rp-nyang-balance">🐾 냥 -</span><div class="rp-fav-level" id="rp-fav-level">' + favLevel + '</div></div>'
+    +     '</div>'
+    +     '<div class="rp-fav-bar-bg"><div class="rp-fav-bar-fill" id="rp-fav-bar-fill" style="width:' + favPct + '%;background:linear-gradient(90deg,' + color + ',' + color + 'aa)"></div></div>'
+    +     '<div class="rp-fav-meta"><span id="rp-fav-xp">' + favXP + ' / ' + FAV_HIRE_THRESHOLD + ' 친밀도</span><span id="rp-fav-left">매니저 고용까지 ' + (FAV_HIRE_THRESHOLD - favXP) + ' 남음</span></div>'
+    +     '<div class="rp-gifts" id="rp-gifts">선물 불러오는 중…</div>'
+    +     '<div id="rp-gift-msg" style="font-size:12px;color:#64748b;margin:2px 0 10px"></div>'
+    +     '<button class="rp-hire-btn" disabled>🎓 한국어 매니저로 고용하기</button>'
+    +     '<div class="rp-hire-progress" id="rp-fav-progress">호감도 ' + FAV_HIRE_THRESHOLD + ' 달성 시 고용 가능 · 현재 ' + favPct + '%</div>'
+    +   '</div>'
     // ── Articles ──
-    + '<div id="rp-arts"></div>'
-    + '</div>'
-
-    + '<div class="rp-tab-panel on" id="rp-tab-posts">'
-    +   '<div id="rp-post-compose"></div>'
-    +   '<div id="rp-post-feed" class="rp-post-feed"><div class="rp-post-empty">Posts 로딩 중…</div></div>'
+    +   '<div id="rp-arts"></div>'
+    +   '</aside>'
     + '</div>'
     + '</div>';
 
@@ -404,18 +416,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   loadReporterGiftPanel(rid);
   initReporterPosts(rid, reporter);
 });
-
-function rpSwitchTab(tab) {
-  var isPosts = tab === 'posts';
-  var pBtn = document.getElementById('rp-tab-btn-profile');
-  var sBtn = document.getElementById('rp-tab-btn-posts');
-  var pPanel = document.getElementById('rp-tab-profile');
-  var sPanel = document.getElementById('rp-tab-posts');
-  if (pBtn) pBtn.classList.toggle('on', !isPosts);
-  if (sBtn) sBtn.classList.toggle('on', isPosts);
-  if (pPanel) pPanel.classList.toggle('on', !isPosts);
-  if (sPanel) sPanel.classList.toggle('on', isPosts);
-}
 
 function canManageReporterPosts(reporter) {
   if (window._isAdmin) return true;
@@ -449,7 +449,7 @@ function renderPostComposer(reporterId, reporter) {
     '<div class="rp-post-compose">'
     + '<textarea id="rp-post-content" placeholder="' + escHtml((reporter && reporter.name ? reporter.name : '기자') + '의 새 포스트를 작성해보세요…') + '"></textarea>'
     + '<div class="rp-post-compose-row">'
-    +   '<input id="rp-post-files" class="rp-post-file" type="file" accept="image/*" multiple onchange="onPostFilesPicked(this)">'
+    +   (_canUploadPostImages ? '<input id="rp-post-files" class="rp-post-file" type="file" accept="image/*" multiple onchange="onPostFilesPicked(this)">' : '<span style="font-size:11px;color:#94a3b8">이미지 업로드 임시 비활성(스토리지 설정 필요)</span>')
     +   '<select id="rp-post-status" class="rp-post-select"><option value="published">게시</option><option value="draft">임시저장</option></select>'
     +   '<label style="font-size:12px;color:#475569"><input type="checkbox" id="rp-post-pinned"> 상단 고정</label>'
     +   '<button class="rp-post-btn" onclick="submitReporterPost(\'' + reporterId + '\')">업로드</button>'
@@ -538,11 +538,13 @@ async function loadReporterPosts(reporterId) {
     }
     posts.forEach(function(p){ p.images = imgMap[p.id] || []; });
     _postMode = 'db';
+    setPostModePref('db');
     _postCache = posts;
     renderReporterPosts(posts);
   } catch(e) {
     if (isMissingReporterPostsTableError(e)) {
       _postMode = 'fallback';
+      setPostModePref('fallback');
       var fposts = await loadFallbackReporterPosts(sb, reporterId);
       fposts = fposts.filter(function(p){ return _canManagePosts || p.status === 'published'; });
       fposts.sort(function(a,b){ return Number(!!b.pinned) - Number(!!a.pinned) || String(b.created_at||'').localeCompare(String(a.created_at||'')); });
@@ -595,7 +597,11 @@ async function uploadPostImages(sb, reporterId, postId, files) {
     var ext = (f.name.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '');
     var path = 'posts/' + reporterId + '/' + postId + '/' + Date.now() + '_' + i + '.' + ext;
     var up = await sb.storage.from('reporter-images').upload(path, f, { upsert:true, contentType:f.type || 'image/jpeg' });
-    if (up.error) continue;
+    if (up.error) {
+      setUploadPref(false);
+      _canUploadPostImages = false;
+      continue;
+    }
     var pub = sb.storage.from('reporter-images').getPublicUrl(path);
     var u = pub && pub.data && pub.data.publicUrl ? pub.data.publicUrl : '';
     if (u) out.push(u);
@@ -652,6 +658,7 @@ async function submitReporterPost(reporterId) {
   if (r.error) {
     if (isMissingReporterPostsTableError(r.error)) {
       _postMode = 'fallback';
+      setPostModePref('fallback');
       return submitReporterPost(reporterId);
     }
     alert('포스트 저장 실패');
@@ -689,7 +696,7 @@ function editReporterPost(postId) {
   if (cancelBtn) cancelBtn.style.display = '';
   var hint = document.getElementById('rp-post-file-hint');
   if (hint) hint.textContent = '수정 모드: 새 이미지를 추가로 업로드할 수 있어요.';
-  rpSwitchTab('posts');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function cancelPostEdit() {
@@ -727,6 +734,7 @@ async function deleteReporterPost(postId) {
   if (dr.error) {
     if (isMissingReporterPostsTableError(dr.error)) {
       _postMode = 'fallback';
+      setPostModePref('fallback');
       return deleteReporterPost(postId);
     }
     alert('삭제 실패'); return;
