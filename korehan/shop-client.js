@@ -1,4 +1,5 @@
 (function(){
+  var K_SHOP_ITEMS_FALLBACK = 'kh_shop_items_fallback';
   var DEFAULT_SHOP_ITEMS = [
     {
       id: 'badge_founder',
@@ -76,6 +77,18 @@
       sort_order: 50
     }
   ];
+  function isShopTableMissingErr(err) {
+    var msg = (err && err.message) ? String(err.message) : '';
+    return msg.indexOf("Could not find the table 'public.shop_items'") >= 0
+      || msg.indexOf("relation \"public.shop_items\" does not exist") >= 0;
+  }
+  function getLocalShopItems() {
+    try { return JSON.parse(localStorage.getItem(K_SHOP_ITEMS_FALLBACK) || 'null') || []; }
+    catch(e) { return []; }
+  }
+  function setLocalShopItems(items) {
+    localStorage.setItem(K_SHOP_ITEMS_FALLBACK, JSON.stringify(items || []));
+  }
 
   async function ensureDefaultShopItems(sb) {
     try {
@@ -83,7 +96,12 @@
       var itemCount = Number((countRes && countRes.count) || 0);
       if (itemCount > 0) return true;
       var seedRes = await sb.from('shop_items').upsert(DEFAULT_SHOP_ITEMS, { onConflict:'id' });
-      return !seedRes.error;
+      if (!seedRes.error) return true;
+      if (isShopTableMissingErr(seedRes.error)) {
+        setLocalShopItems(DEFAULT_SHOP_ITEMS);
+        return false;
+      }
+      return false;
     } catch(e) {
       return false;
     }
@@ -94,13 +112,19 @@
     var sb = getSupa(); if (!sb) return;
     await ensureDefaultShopItems(sb);
 
-    var [{ data:stats }, { data:items }, { data:owned }] = await Promise.all([
+    var [{ data:stats }, itemsRes, { data:owned }] = await Promise.all([
       sb.from('user_stats').select('xp, coin_balance').eq('user_id', supaUser.id).maybeSingle(),
       sb.from('shop_items').select('*').eq('is_active', true).order('sort_order', { ascending:true }),
       sb.from('owned_items').select('item_id, quantity').eq('user_id', supaUser.id)
     ]);
-    var liveItems = items || [];
-    var usingFallback = liveItems.length === 0;
+    var dbItems = (itemsRes && itemsRes.data) || [];
+    var usingFallback = !!(itemsRes && itemsRes.error && isShopTableMissingErr(itemsRes.error));
+    var liveItems = usingFallback ? getLocalShopItems() : dbItems;
+    if (!liveItems.length && usingFallback) {
+      setLocalShopItems(DEFAULT_SHOP_ITEMS);
+      liveItems = getLocalShopItems();
+    }
+    usingFallback = usingFallback || liveItems.length === 0;
     var catalog = usingFallback ? DEFAULT_SHOP_ITEMS : liveItems;
 
     document.getElementById('shop-xp').textContent = 'XP: ' + ((stats && stats.xp) || 0).toLocaleString();
