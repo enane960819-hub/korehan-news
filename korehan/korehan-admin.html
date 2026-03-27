@@ -4856,11 +4856,16 @@ async function goShopManager() {
   if (!sb) { document.getElementById('main').innerHTML = '<div class="empty">Supabase 연결 없음</div>'; return; }
   var res = await sb.from('shop_items').select('*').order('sort_order', { ascending:true });
   var items = res.data || [];
+  if (!items.length) {
+    try { await seedShopDefaults(true); } catch(e) {}
+    var res2 = await sb.from('shop_items').select('*').order('sort_order', { ascending:true });
+    items = res2.data || [];
+  }
   function escJsSingle(s){ return String(s||'').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
 
   document.getElementById('main').innerHTML =
     '<div class="pg-hd"><div><h1>SHOP 관리</h1><p>Coin/Cash 상품을 관리합니다.</p></div>'
-    + '<button class="btn btn-g" onclick="openShopItemEditor(null)">＋ New Item</button></div>'
+    + '<div style="display:flex;gap:8px"><button class="btn" onclick="seedShopDefaults()">Seed Default Items</button><button class="btn btn-g" onclick="openShopItemEditor(null)">＋ New Item</button></div></div>'
     + '<table class="tbl"><thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Coin</th><th>Cash</th><th>Flags</th><th></th></tr></thead><tbody>'
     + items.map(function(it){
       var itemId = escJsSingle(it.id);
@@ -4872,6 +4877,28 @@ async function goShopManager() {
     }).join('')
     + '</tbody></table>';
   window._shopItemsCache = items;
+}
+
+function getDefaultShopItems() {
+  return [
+    { id:'badge_founder', name:'Founder Badge', slug:'founder-badge', description:'Display an exclusive Founder profile badge.', image_url:'https://picsum.photos/seed/shop-founder-badge/640/360', item_type:'profile_badge', coin_price:120, cash_price:0, is_active:true, can_buy_with_coin:true, can_buy_with_cash:false, is_repeatable:false, sort_order:10 },
+    { id:'cosmetic_neon_frame', name:'Neon Profile Frame', slug:'neon-profile-frame', description:'Cosmetic frame for your profile image.', image_url:'https://picsum.photos/seed/shop-neon-frame/640/360', item_type:'profile_cosmetic', coin_price:180, cash_price:0, is_active:true, can_buy_with_coin:true, can_buy_with_cash:false, is_repeatable:false, sort_order:20 },
+    { id:'reporter_coffee', name:'Reporter Coffee Treat', slug:'reporter-coffee-treat', description:'Give your favorite reporter a coffee boost.', image_url:'https://picsum.photos/seed/shop-reporter-coffee/640/360', item_type:'reporter_item', coin_price:60, cash_price:0, is_active:true, can_buy_with_coin:true, can_buy_with_cash:false, is_repeatable:true, sort_order:30 },
+    { id:'reporter_bubble_tea', name:'Reporter Bubble Tea', slug:'reporter-bubble-tea', description:'A sweet bubble tea gift for your favorite reporter.', image_url:'https://picsum.photos/seed/shop-reporter-bubble-tea/640/360', item_type:'reporter_item', coin_price:75, cash_price:0, is_active:true, can_buy_with_coin:true, can_buy_with_cash:false, is_repeatable:true, sort_order:40 },
+    { id:'reporter_flower', name:'Reporter Flower Bouquet', slug:'reporter-flower-bouquet', description:'A bouquet gift for reporter affinity moments.', image_url:'https://picsum.photos/seed/shop-reporter-flower/640/360', item_type:'reporter_item', coin_price:95, cash_price:0, is_active:true, can_buy_with_coin:true, can_buy_with_cash:false, is_repeatable:true, sort_order:50 }
+  ];
+}
+
+async function seedShopDefaults(silent) {
+  var sb = getSb();
+  if (!sb) return;
+  var seedItems = getDefaultShopItems().map(function(it){ it.updated_at = new Date().toISOString(); return it; });
+  var r = await sb.from('shop_items').upsert(seedItems, { onConflict:'id' });
+  if (r.error) {
+    if (!silent) toast('기본 아이템 시드 실패: ' + r.error.message, true);
+    return;
+  }
+  if (!silent) toast('기본 SHOP 아이템 시드 완료');
 }
 
 function openShopItemEditor(itemId) {
