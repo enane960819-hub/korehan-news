@@ -9,6 +9,28 @@
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
 /* ── Layout ── */
+body {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+.rp-page-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: saturate(1.05) brightness(.78);
+  transform: scale(1.02);
+}
+.rp-page-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(4,16,44,.58) 0%, rgba(8,14,28,.7) 60%, rgba(8,14,28,.84) 100%);
+}
+.rp-content-layer { position: relative; z-index: 1; }
 .rp-wrap { max-width: 960px; margin: 0 auto; padding: 36px 20px 60px; }
 
 /* ── Profile card ── */
@@ -184,10 +206,13 @@
 </style>
 </head>
 <body>
+<div id="rp-page-bg" class="rp-page-bg"></div>
+<div class="rp-content-layer">
 <div id="dyn-header"></div>
 <div id="rp-root"><div class="rp-loading">⏳ 로딩 중…</div></div>
 <div id="rp-lb" onclick="this.classList.remove('on')"><img id="rp-lb-img" src="" alt=""></div>
 <div id="dyn-footer"></div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js"></script>
@@ -199,11 +224,22 @@ var GIFTS = [
   { icon:'🎁', name:'선물',   cost:'800 XP', xpCost:800 },
 ];
 var FAV_HIRE_THRESHOLD = 3000;
+var REPORTER_BG_DEFAULT = 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=2200&q=80';
 
 document.addEventListener('DOMContentLoaded', async function() {
   var rid  = new URLSearchParams(window.location.search).get('id');
   var root = document.getElementById('rp-root');
   if (!rid) { root.innerHTML = '<div class="rp-not-found"><h2>기자를 찾을 수 없습니다</h2></div>'; return; }
+  try {
+    var sbBg = getSupa && getSupa();
+    var bgUrl = REPORTER_BG_DEFAULT;
+    if (sbBg) {
+      var bgRes = await sbBg.from('app_settings').select('value').eq('key', 'reporter_bg_image_url').maybeSingle();
+      if (!bgRes.error && bgRes.data && bgRes.data.value) bgUrl = String(bgRes.data.value);
+    }
+    var bgEl = document.getElementById('rp-page-bg');
+    if (bgEl) bgEl.style.backgroundImage = 'url(\"' + bgUrl.replace(/\"/g, '%22') + '\")';
+  } catch(e) {}
 
   var reporter = null;
   var sb = getSupa();
