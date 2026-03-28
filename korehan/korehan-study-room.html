@@ -223,6 +223,33 @@
 .mcard.flipped .mcen { display:block; color:#fff; }
 .lqbtn { width:100%; padding:10px; background:linear-gradient(135deg,#0d1b2e,#1a3a6b); color:#fff; border:none; border-radius:7px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
 
+/* Study Room extra activities */
+.sr-activity-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media(max-width:760px){ .sr-activity-grid { grid-template-columns:1fr; } }
+.sr-activity-card{
+  border:1px solid #dbe5f4; border-radius:14px; background:#fff; padding:14px;
+  box-shadow:0 6px 20px rgba(13,27,46,.06); display:flex; flex-direction:column; gap:9px;
+}
+.sr-activity-title{ font-size:15px; font-weight:900; color:#0f172a; }
+.sr-activity-desc{ font-size:12px; color:#64748b; line-height:1.55; }
+.sr-activity-btn{
+  border:none; background:linear-gradient(135deg,#0d1b2e,#2255a4); color:#fff; border-radius:10px;
+  padding:10px 12px; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit;
+}
+.sr-practice-box{
+  background:#fff; border-radius:14px; border:1px solid #e2e8f0; padding:14px; display:flex; flex-direction:column; gap:10px;
+}
+.sr-practice-label{ font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:.08em; }
+.sr-practice-img{ width:100%; border-radius:12px; border:1px solid #e2e8f0; object-fit:cover; max-height:240px; }
+.sr-practice-input{
+  width:100%; min-height:120px; padding:12px; border-radius:10px; border:1.5px solid #dbe5f4;
+  font-family:inherit; font-size:14px; resize:vertical;
+}
+.sr-practice-result{ background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:11px; font-size:13px; color:#334155; line-height:1.65; }
+.sr-pill-row{ display:flex; gap:6px; flex-wrap:wrap; }
+.sr-pill{ border:1px solid #cbd5e1; border-radius:999px; background:#fff; padding:5px 10px; font-size:11px; font-weight:700; color:#475569; cursor:pointer; }
+.sr-pill.on{ background:#eaf2ff; border-color:#2255a4; color:#1d4ed8; }
+
 /* skeleton/loading */
 .skel { background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%); background-size:200% 100%; animation:skel .8s infinite; border-radius:6px; }
 @keyframes skel { to{background-position:-200% 0;} }
@@ -580,7 +607,10 @@ body.kh-neon-on .tc-en { color:rgba(160,240,255,.7) !important; }
   <div class="sr-hi">
     <div class="sr-badge">📖 Korean Study Room</div>
     <h1>Study Room</h1>
-    <p>Pick your level, write in Korean — vocab, grammar & feedback, all in one place.</p>
+    <p>Pick your level, write in Korean — vocab, grammar & feedback, all in one premium flow.</p>
+    <div id="sr-credit-banner" style="margin-top:12px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.12);font-size:12px;color:rgba(255,255,255,.92);line-height:1.6">
+      Checking your Study Room credit…
+    </div>
 
     <div class="lv-row">
       <button class="lv-btn lv-s"    onclick="setLevel('Starter',this)">⚪ Starter</button>
@@ -617,15 +647,25 @@ body.kh-neon-on .tc-en { color:rgba(160,240,255,.7) !important; }
         </div>
       </div>
 
-      <!-- MUST-USE VOCAB -->
+      <!-- MUST-KNOW VOCAB -->
       <div class="card">
-        <div class="chd"><div class="ct">📌 Must-Use Vocab</div><span style="font-size:10px;color:var(--gray)" id="vocab-src"></span></div>
+        <div class="chd"><div class="ct">📌 Must-know Vocab</div><span style="font-size:10px;color:var(--gray)" id="vocab-src"></span></div>
         <div class="cb" id="vocab-box">
           <div class="skel" style="height:14px;margin-bottom:8px"></div>
           <div class="skel" style="height:14px;margin-bottom:8px"></div>
           <div class="skel" style="height:14px;margin-bottom:8px"></div>
           <div class="skel" style="height:14px"></div>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="chd"><div class="ct">🧠 10 words from your level</div></div>
+        <div class="cb" id="sr-level-words"><div class="skel" style="height:12px"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="chd"><div class="ct">🎯 10 words from your interests</div></div>
+        <div class="cb" id="sr-interest-words"><div class="skel" style="height:12px"></div></div>
       </div>
 
       <!-- GRAMMAR B→A -->
@@ -665,7 +705,6 @@ body.kh-neon-on .tc-en { color:rgba(160,240,255,.7) !important; }
         <!-- 쓰기 모드 선택 -->
         <div class="wc-mode-tabs" id="wc-mode-tabs">
           <button class="wc-mode-tab active" id="tab-topic" onclick="event.stopPropagation();setWritingMode('topic')">📝 Topic Writing</button>
-          <button class="wc-mode-tab" id="tab-reading" onclick="event.stopPropagation();setWritingMode('reading')">📖 Reading & Write</button>
           <button class="wc-mode-tab" id="tab-grammar-focus" onclick="event.stopPropagation();openGrammarFocusModal()">🎯 Grammar Focus</button>
         </div>
         <!-- Reading 선택 시 기사 선택 드롭다운 -->
@@ -674,6 +713,24 @@ body.kh-neon-on .tc-en { color:rgba(160,240,255,.7) !important; }
           <div><div class="wcf-text" id="wcf-mode-text">Open Writing Room</div><div class="wcf-sub">Courses subscribers · feedback within 24h</div></div>
           <button class="wcf-btn" onclick="event.stopPropagation();openWritingModalWithMode()">Start Writing →</button>
         </div>
+      </div>
+
+      <div class="sr-activity-grid">
+        <div class="sr-activity-card">
+          <div class="sr-activity-title">🖼️ Picture Description <span id="sr-done-picture" style="color:#16a34a;font-size:12px;font-weight:800"></span></div>
+          <div class="sr-activity-desc">Look at an image prompt, write a Korean description, and get correction + simple feedback.</div>
+          <button class="sr-activity-btn" onclick="openPictureDescription();event.stopPropagation();">Start Picture Description</button>
+        </div>
+        <div class="sr-activity-card">
+          <div class="sr-activity-title">📝 Sentence Writing from Articles <span id="sr-done-sentence" style="color:#16a34a;font-size:12px;font-weight:800"></span></div>
+          <div class="sr-activity-desc">Type one sentence at a time from existing articles. Compare mistakes, missing words, and spacing.</div>
+          <button class="sr-activity-btn" onclick="openSentenceWriting();event.stopPropagation();">Start Sentence Writing</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="chd"><div class="ct">✅ Daily study checklist</div><span style="font-size:10px;color:var(--gray)">KST reset</span></div>
+        <div class="cb" id="sr-checklist-box"></div>
       </div>
 
       <!-- HELPER SENTENCES -->
@@ -778,7 +835,7 @@ body.kh-neon-on .tc-en { color:rgba(160,240,255,.7) !important; }
         <div id="wm-grammar"></div>
       </div>
       <div>
-        <div class="plabel">📌 Must-Use Vocabulary</div>
+        <div class="plabel">📌 Must-know Vocabulary</div>
         <div class="chips" id="wm-vocab-chips"></div>
       </div>
       <div>
@@ -796,6 +853,8 @@ body.kh-neon-on .tc-en { color:rgba(160,240,255,.7) !important; }
       </div>
 
       <div>
+        <div class="plabel">🧾 Today’s Topic Content</div>
+        <div id="wm-topic-content" style="font-size:12px;color:#475569;line-height:1.7;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:11px 12px;margin-bottom:10px">Loading topic content…</div>
         <div class="plabel">✏️ Your Writing</div>
         <textarea class="write-area" id="write-area"
           placeholder="Write in Korean here…&#10;&#10;Try to use the vocab and grammar chips."
@@ -816,8 +875,8 @@ body.kh-neon-on .tc-en { color:rgba(160,240,255,.7) !important; }
         <button onclick="wmMobileTab('feedback')" style="flex:1;padding:10px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🤖 AI Feedback</button>
       </div>
 
-      <button class="submit-btn" onclick="submitWriting()">📩 Submit for Feedback</button>
-      <div class="submit-note">Use at least 2 vocabulary words · One submission per day · Han reviews within 24h</div>
+      <button class="submit-btn" onclick="submitWriting()">📩 Submit today’s writing practice</button>
+      <div class="submit-note">You do not need to finish every step · submission is limited to once per day (KST).</div>
     </div>
 
     <!-- RIGHT: helper sentences -->
@@ -826,7 +885,7 @@ body.kh-neon-on .tc-en { color:rgba(160,240,255,.7) !important; }
         <div class="plabel">💬 Helper Sentences <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;">tap to copy</span></div>
         <div id="wm-helpers"></div>
       </div>
-      <div>
+      <div style="display:none">
         <div class="plabel">📰 Article Context <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;">for inspiration</span></div>
         <div id="wm-context" style="font-size:12px;color:var(--gray);line-height:1.7;background:#f0f4ff;border-radius:8px;padding:11px 12px;">
           Loading…
@@ -843,6 +902,68 @@ body.kh-neon-on .tc-en { color:rgba(160,240,255,.7) !important; }
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- Picture Description modal -->
+<div class="woverlay hidden" id="pd-modal" onclick="if(event.target===this)closePictureDescription()">
+  <div class="wmodal" style="max-width:900px;grid-template-columns:1fr;height:auto;max-height:calc(100vh - 32px);">
+    <div class="wm-header">
+      <div>
+        <div class="wmh-title">🖼️ Picture Description</div>
+        <div class="wmh-sub" id="pd-subtitle">Describe what you see in Korean.</div>
+      </div>
+      <button class="wmh-close" onclick="closePictureDescription()">✕</button>
+    </div>
+    <div class="wm-center" style="padding:16px;gap:12px;">
+      <div class="sr-practice-box">
+        <div class="sr-practice-label" id="pd-prompt-label">Image Prompt</div>
+        <img id="pd-image" class="sr-practice-img" src="" alt="Picture description prompt image">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <label class="sr-pill" style="cursor:pointer">Upload my image<input id="pd-upload" type="file" accept="image/*" style="display:none" onchange="onPictureUploadPicked(this)"></label>
+          <button class="sr-pill" id="pd-admin-btn" style="display:none" onclick="openPicturePromptAdmin()">Admin Prompt CRUD</button>
+        </div>
+        <textarea id="pd-input" class="sr-practice-input" placeholder="이미지를 보고 한국어로 설명해 보세요. (2~4문장 추천)"></textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="sr-activity-btn" onclick="checkPictureDescription()">Check My Writing</button>
+          <button class="sr-pill" onclick="nextPicturePrompt()">Next Image</button>
+        </div>
+        <div id="pd-result" class="sr-practice-result" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sentence writing modal -->
+<div class="woverlay hidden" id="sw-modal" onclick="if(event.target===this)closeSentenceWriting()">
+  <div class="wmodal" style="max-width:980px;grid-template-columns:1fr;height:auto;max-height:calc(100vh - 32px);">
+    <div class="wm-header">
+      <div>
+        <div class="wmh-title">📝 Sentence Writing from Articles</div>
+        <div class="wmh-sub">Article-window style drills: word order, fill-in-the-blank, and writing with English support.</div>
+      </div>
+      <button class="wmh-close" onclick="closeSentenceWriting()">✕</button>
+    </div>
+    <div class="wm-center" style="padding:16px;gap:12px;">
+      <div class="sr-practice-box">
+        <div class="sr-practice-label">Article</div>
+        <select id="sw-article-select" class="sr-practice-input" style="min-height:auto;height:42px;padding:0 10px" onchange="onSentenceArticleChange(this)">
+          <option value="">Loading articles...</option>
+        </select>
+        <div class="sr-pill-row">
+          <button class="sr-pill on" id="sw-copy-btn" onclick="setSentenceMode('copy')">Copy mode</button>
+          <button class="sr-pill" id="sw-hidden-btn" onclick="setSentenceMode('hidden')">Hidden mode</button>
+          <button class="sr-pill" onclick="nextSentencePrompt()">Next sentence</button>
+        </div>
+        <div id="sw-target-wrap" class="sr-practice-result">
+          <div id="sw-target-label" style="font-size:11px;color:#64748b;margin-bottom:4px;font-weight:800">Target sentence</div>
+          <div id="sw-target">Select an article to start.</div>
+        </div>
+        <textarea id="sw-input" class="sr-practice-input" placeholder="Type the sentence in Korean exactly as you remember it."></textarea>
+        <button class="sr-activity-btn" onclick="checkSentenceWriting()">Check Sentence</button>
+        <div id="sw-result" class="sr-practice-result" style="display:none"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -917,11 +1038,103 @@ var _fcWords        = [];
 var _convVocab      = [];     // conv DB vocab 전체
 var _storyVocab     = [];     // stories DB vocab 전체
 var _vocabPoolLoaded = false;
+var _picturePrompts = [
+  {
+    id:'han-river',
+    image:'https://images.unsplash.com/photo-1538485399081-7c897f4f58f5?auto=format&fit=crop&w=1200&q=80',
+    prompt_ko:'한강 공원에서 자전거를 타고 있는 사람들을 묘사해 보세요.',
+    sample:'한강 공원에는 자전거를 타는 사람들이 많아요. 날씨가 좋아서 가족과 친구들이 함께 산책하고 있어요.'
+  },
+  {
+    id:'market',
+    image:'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80',
+    prompt_ko:'시장이나 길거리 음식 장면을 보고 분위기와 행동을 설명해 보세요.',
+    sample:'시장에는 다양한 음식 냄새가 나고 사람들이 활기차게 움직여요. 한 손님이 떡볶이를 주문하고 있어요.'
+  },
+  {
+    id:'classroom',
+    image:'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80',
+    prompt_ko:'교실에서 공부하는 장면을 묘사하고, 느낀 점도 한 문장 추가해 보세요.',
+    sample:'학생들이 교실에서 집중해서 공부하고 있어요. 선생님이 칠판에 문법을 설명하고 있고 분위기가 진지해 보여요.'
+  }
+];
+var _pictureIndex = 0;
+var _sentencePractice = {
+  mode:'copy',
+  articles:[],
+  selected:null,
+  sentences:[],
+  idx:0,
+  hideTimer:null,
+  hidden:false
+};
+var _studyPass = { active:false, expires_kst:'', credits:0, warned:false };
+var _studyDone = { topic:false, grammar:false, picture:false, sentence:false };
+var _studyUnlocked = false;
+
+function kstNow() { return new Date(Date.now() + (9 * 60 * 60 * 1000)); }
+function kstDateKey() {
+  var d = kstNow();
+  var y = d.getUTCFullYear();
+  var m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  var day = String(d.getUTCDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+function studyDoneKey() {
+  return 'kh_sr_done_' + (supaUser ? supaUser.id : 'guest') + '_' + kstDateKey();
+}
+function loadStudyDoneState() {
+  try {
+    _studyDone = JSON.parse(localStorage.getItem(studyDoneKey()) || '{"topic":false,"grammar":false,"picture":false,"sentence":false}');
+  } catch(e) {
+    _studyDone = { topic:false, grammar:false, picture:false, sentence:false };
+  }
+}
+function saveStudyDoneState() {
+  try { localStorage.setItem(studyDoneKey(), JSON.stringify(_studyDone)); } catch(e) {}
+  renderStudyChecklist();
+}
+function markStageDone(stage) {
+  if (!_studyDone[stage]) {
+    _studyDone[stage] = true;
+    saveStudyDoneState();
+    syncStudyProgress(stage);
+  }
+}
+
+async function syncStudyProgress(stage) {
+  var sb = getSupa();
+  if (!sb || !supaUser) return;
+  var patch = { user_id:supaUser.id, study_date:kstDateKey(), updated_at:new Date().toISOString() };
+  if (stage === 'topic') patch.topic_done = true;
+  if (stage === 'grammar') patch.grammar_done = true;
+  if (stage === 'picture') patch.picture_done = true;
+  if (stage === 'sentence') patch.sentence_done = true;
+  await sb.from('study_daily_progress').upsert(patch, { onConflict:'user_id,study_date' });
+  if (stage === 'grammar') {
+    var focus = new URLSearchParams(window.location.search).get('focus') || ((_gfPattern && _gfPattern.name) || '');
+    if (focus) {
+      await sb.from('study_grammar_progress').upsert({
+        user_id: supaUser.id,
+        grammar_key: focus,
+        completed_at: new Date().toISOString(),
+        start_writing_clicked: true,
+        attempt_count: 1,
+        updated_at: new Date().toISOString()
+      }, { onConflict:'user_id,grammar_key' });
+    }
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async function() {
+  loadStudyDoneState();
+  await loadStudyAccessGate();
+  renderStudyChecklist();
+  renderStudyRoomWordTracks();
+  await loadPicturePromptsFromDB();
   renderPhrase();
   await loadAllTopics();
   await loadVocabPool();   // conv+stories vocab 로드
@@ -942,6 +1155,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
   }
   waitForSession();
+  preloadSentenceArticles();
+  if (window._isAdmin) {
+    var adminBtn = document.getElementById('pd-admin-btn');
+    if (adminBtn) adminBtn.style.display = '';
+  }
 
   // Grammar Focus from article grammar guide link
   var _urlParams = new URLSearchParams(window.location.search);
@@ -998,6 +1216,119 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 });
 
+async function loadPicturePromptsFromDB() {
+  var sb = getSupa();
+  if (!sb) return;
+  try {
+    var r = await sb.from('study_picture_prompts')
+      .select('id,prompt_ko,image_url,sample_answer,sort_order')
+      .eq('is_active', true)
+      .order('sort_order', { ascending:true })
+      .limit(100);
+    if (r.error || !r.data || !r.data.length) return;
+    _picturePrompts = r.data.map(function(x){
+      return { id:x.id, image:x.image_url, prompt_ko:x.prompt_ko, sample:x.sample_answer || '' };
+    });
+  } catch(e) {}
+}
+
+async function loadStudyAccessGate() {
+  var banner = document.getElementById('sr-credit-banner');
+  var now = kstNow();
+  var hour = now.getUTCHours();
+  var key = 'kh_study_pass_' + (supaUser ? supaUser.id : 'guest');
+  try { _studyPass = JSON.parse(localStorage.getItem(key) || '{"active":false,"expires_kst":"","credits":3}'); } catch(e) {}
+  if (!_studyPass.credits && _studyPass.credits !== 0) _studyPass.credits = 3;
+  if (!_studyPass.expires_kst || _studyPass.expires_kst !== kstDateKey()) _studyPass.active = false;
+  _studyPass.expires_kst = kstDateKey();
+  if (!_studyPass.active) {
+    if (_studyPass.credits > 0) {
+      _studyPass.credits -= 1;
+      _studyPass.active = true;
+      _studyUnlocked = true;
+    } else {
+      _studyUnlocked = false;
+    }
+  } else {
+    _studyUnlocked = true;
+  }
+  try { localStorage.setItem(key, JSON.stringify(_studyPass)); } catch(e) {}
+  if (!banner) return;
+  if (!_studyUnlocked) {
+    banner.innerHTML = '🚫 오늘 사용 가능한 Study Room 크레딧이 없어요.<br>매일 공부하려면 <b>$8.99/month</b> 구독을 시작하세요. <br><a href=\"korehan-courses.html\" style=\"color:#fff;text-decoration:underline;font-weight:800\">Go to course page →</a>';
+    return;
+  }
+  var left = _studyPass.credits || 0;
+  var warning = hour >= 23 ? '<br>⚠️ 지금은 한국시간 밤 11시 이후라 이용 가능 시간이 짧을 수 있어요.' : '';
+  banner.innerHTML = '✅ 오늘 Study Room 이용권이 활성화됐어요. (한국시간 자정 리셋) · 남은 크레딧: ' + left + warning;
+}
+
+function ensureStudyUnlocked() {
+  if (_studyUnlocked) return true;
+  showToast('Study Room 크레딧이 없습니다. Courses 페이지에서 월 $8.99 플랜을 확인해 주세요.');
+  window.location.href = 'korehan-courses.html';
+  return false;
+}
+
+function renderStudyChecklist() {
+  var box = document.getElementById('sr-checklist-box');
+  if (!box) return;
+  var items = [
+    { k:'topic', label:'Topic study' },
+    { k:'grammar', label:'Grammar Focus' },
+    { k:'picture', label:'Picture Description' },
+    { k:'sentence', label:'Sentence Writing' }
+  ];
+  var doneCnt = items.filter(function(i){ return !!_studyDone[i.k]; }).length;
+  var pd = document.getElementById('sr-done-picture');
+  var sd = document.getElementById('sr-done-sentence');
+  if (pd) pd.textContent = _studyDone.picture ? '✅' : '';
+  if (sd) sd.textContent = _studyDone.sentence ? '✅' : '';
+  box.innerHTML = items.map(function(i){
+    var done = !!_studyDone[i.k];
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px;background:' + (done ? '#f0fdf4' : '#f8fafc') + '">'
+      + '<span style="font-size:12px;font-weight:700;color:#334155">' + i.label + '</span>'
+      + '<span style="font-size:12px;font-weight:800;color:' + (done ? '#15803d' : '#94a3b8') + '">' + (done ? '✅ DONE' : '⬜ TODO') + '</span></div>';
+  }).join('') + '<div style="margin-top:8px;font-size:11px;color:#64748b">Completed ' + doneCnt + ' / ' + items.length + ' · You do not need to finish every step.</div>';
+}
+
+function renderStudyRoomWordTracks() {
+  var lvEl = document.getElementById('sr-level-words');
+  var inEl = document.getElementById('sr-interest-words');
+  if (!lvEl || !inEl) return;
+  var lvKey = 'kh_vocab_level_' + (_currentLevel || 'Beginner') + '_' + (function(){ try{ return new Date().toISOString().slice(0,10);}catch(e){return '';} })();
+  var tags = [];
+  try { tags = JSON.parse(localStorage.getItem('kh_user_interests') || '[]'); } catch(e) {}
+  var intScope = (tags || []).slice().sort().join('__') || 'none';
+  var intKey = 'kh_vocab_interest_' + intScope + '_' + (function(){ try{ return new Date().toISOString().slice(0,10);}catch(e){return '';} })();
+  var lvWords = [];
+  var intWords = [];
+  try { lvWords = JSON.parse(localStorage.getItem(lvKey) || '[]'); } catch(e) {}
+  try { intWords = JSON.parse(localStorage.getItem(intKey) || '[]'); } catch(e) {}
+  function row(w) {
+    var ko = w.word_ko || w.ko || '';
+    var en = w.word_en || w.en || '';
+    var rom = w.word_rom || w.rom || '';
+    return '<div class="vrow"><div><div class="vko">' + ko + '</div><div class="ven">' + en + '</div></div>'
+      + '<button class="sr-pill" onclick="saveMustKnowWord(\'' + ko.replace(/'/g,"\\'") + '\',\'' + en.replace(/'/g,"\\'") + '\',\'' + rom.replace(/'/g,"\\'") + '\')">Save</button></div>';
+  }
+  lvEl.innerHTML = lvWords.length ? lvWords.slice(0,10).map(row).join('') : '<div style="font-size:12px;color:#94a3b8">Learning Hub에서 오늘의 단어를 먼저 생성하면 여기서 바로 이어서 학습할 수 있어요.</div>';
+  inEl.innerHTML = intWords.length ? intWords.slice(0,10).map(row).join('') : '<div style="font-size:12px;color:#94a3b8">관심사 단어가 아직 없습니다. Learning Hub에서 관심사를 저장해 주세요.</div>';
+}
+
+async function saveMustKnowWord(ko, en, rom) {
+  if (!ko) return;
+  if (typeof saveWord === 'function') {
+    await saveWord(ko, en || '', rom || '');
+    showToast('Saved to your vocab bank: ' + ko);
+    return;
+  }
+  var sb = getSupa();
+  if (!sb || !supaUser) { showToast('Sign in to save vocab.'); return; }
+  await sb.from('vocabulary_bank').upsert({ user_id:supaUser.id, word_ko:ko, word_en:en || '', word_rom:rom || '' }, { onConflict:'user_id,word_ko' });
+  showToast('Saved to your vocab bank: ' + ko);
+}
+
 // ═══════════════════════════════════════════════════════════════
 // PHRASE
 // ═══════════════════════════════════════════════════════════════
@@ -1047,6 +1378,7 @@ function setLevel(level, btn) {
 
   _aiContent = null;
   clearAIContentUI();
+  renderStudyRoomWordTracks();
   reassignTopicForLevel(level);
 }
 
@@ -1137,6 +1469,14 @@ function getFallbackTopics() {
 // ═══════════════════════════════════════════════════════════════
 async function assignDailyTopic() {
   var today = new Date().toISOString().slice(0, 10);
+  if (window._isAdmin) {
+    var p = new URLSearchParams(window.location.search).get('preview_date');
+    if (p && /^\d{4}-\d{2}-\d{2}$/.test(p)) {
+      var kst = kstDateKey();
+      var max = new Date(new Date(kst).getTime() + (6 * 24 * 60 * 60 * 1000)).toISOString().slice(0, 10);
+      if (p >= kst && p <= max) today = p;
+    }
+  }
 
   // 비로그인 → 블러 오버레이
   if (!supaUser) {
@@ -1482,6 +1822,7 @@ function renderModalContent() {
 
   // context
   var ctxEl = document.getElementById('wm-context');
+  var topicContentEl = document.getElementById('wm-topic-content');
   if (ctxEl) {
     var arts = (typeof published === 'function' ? published() : []).slice(0, 2);
     if (arts.length) {
@@ -1490,6 +1831,15 @@ function renderModalContent() {
       ctxEl.textContent = 'Topic: ' + _todayTopic.topic_ko + ' — ' + _todayTopic.topic_en;
     }
   }
+  if (topicContentEl) {
+    var ref = [];
+    if (_todayTopic) ref.push('<b>Topic:</b> ' + (_todayTopic.topic_ko || ''));
+    if (_studyDone.topic) ref.push('✅ Topic study completed');
+    if (_studyDone.grammar) ref.push('✅ Grammar Focus completed');
+    if (_studyDone.picture) ref.push('✅ Picture Description completed');
+    if (_studyDone.sentence) ref.push('✅ Sentence Writing completed');
+    topicContentEl.innerHTML = ref.join('<br>');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1497,6 +1847,8 @@ function renderModalContent() {
 // ═══════════════════════════════════════════════════════════════
 function openWritingModal() {
   if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  if (!canEnterWritingRoom()) return;
   // Beginner → 4단계 듀오링고 스타일
   if (_currentLevel === 'Beginner') {
     openBeginnerModal();
@@ -1509,6 +1861,13 @@ function openWritingModal() {
   renderModalContent();
   // 모바일 탭 초기화
   wmMobileInit();
+}
+
+function canEnterWritingRoom() {
+  var hasDoneStep = !!(_studyDone.topic || _studyDone.grammar || _studyDone.picture || _studyDone.sentence);
+  if (hasDoneStep) return true;
+  alert('먼저 최소 1개 학습 단계를 완료해야 Writing Room에 들어갈 수 있어요.\\n(Topic Writing / Grammar Focus / Picture Description / Sentence Writing)');
+  return false;
 }
 
 function wmMobileInit() {
@@ -1635,7 +1994,7 @@ async function submitWriting() {
     return;
   }
   if (usedVocab.length < 2) {
-    showToast('⚠️ Must-use vocab 중 최소 2개를 작문에 포함해야 합니다. (' + usedVocab.length + '/2)');
+    showToast('⚠️ Must-know vocab 중 최소 2개를 작문에 포함해야 합니다. (' + usedVocab.length + '/2)');
     return;
   }
 
@@ -1676,6 +2035,18 @@ async function submitWriting() {
 
     // XP 적립
     if (typeof awardXP === 'function') awardXP('writing_submit', { topic_ko: _todayTopic && _todayTopic.topic_ko });
+    markStageDone('topic');
+    await sb.from('study_daily_progress').upsert({
+      user_id: supaUser.id,
+      study_date: today,
+      topic_done: !!_studyDone.topic,
+      grammar_done: !!_studyDone.grammar,
+      picture_done: !!_studyDone.picture,
+      sentence_done: !!_studyDone.sentence,
+      submitted: true,
+      submitted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }, { onConflict:'user_id,study_date' });
 
     var doneEl = document.getElementById('hero-topic-done');
     if (doneEl) doneEl.style.display = 'flex';
@@ -2264,11 +2635,13 @@ var _selectedArticle = null;
 
 function setWritingMode(mode) {
   _writingMode = mode;
-  document.getElementById('tab-topic').classList.toggle('active', mode === 'topic');
-  document.getElementById('tab-reading').classList.toggle('active', mode === 'reading');
+  var tTopic = document.getElementById('tab-topic');
+  var tReading = document.getElementById('tab-reading');
+  if (tTopic) tTopic.classList.toggle('active', mode === 'topic');
+  if (tReading) tReading.classList.toggle('active', mode === 'reading');
   var modeText = document.getElementById('wcf-mode-text');
   if (mode === 'reading') {
-    if (modeText) modeText.textContent = 'Read & Write';
+    if (modeText) modeText.textContent = 'Sentence Study & Writing';
     // Show inline source-picker instead of jumping directly into the modal
     openReadingSourcePicker();
   } else {
@@ -2290,7 +2663,7 @@ function openReadingSourcePicker() {
   overlay.innerHTML =
     '<div style="background:#fff;border-radius:20px;width:min(520px,96vw);box-shadow:0 28px 80px rgba(0,0,0,.35);overflow:hidden;animation:mIn .2s ease">'
     + '<div style="background:linear-gradient(135deg,#0d1b2e,#1a3a6b);padding:20px 24px;display:flex;align-items:center;justify-content:space-between">'
-    + '<div><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.5);margin-bottom:4px">Reading & Write</div>'
+    + '<div><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.5);margin-bottom:4px">Sentence Study</div>'
     + '<div style="font-size:18px;font-weight:900;color:#fff;font-family:\'Playfair Display\',serif">Choose Your Reading Source</div></div>'
     + '<button onclick="document.getElementById(\'rsp-overlay\').remove()" style="background:rgba(255,255,255,.12);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer">✕</button>'
     + '</div>'
@@ -2394,6 +2767,7 @@ function rspStartWriting() {
   var overlay = document.getElementById('rsp-overlay');
   if (overlay) overlay.remove();
   if (!supaUser) { openAuthModal('signin'); return; }
+  if (!canEnterWritingRoom()) return;
 
   // Set both state vars so the rest of the modal logic is consistent
   _writingMode = 'reading';
@@ -2574,10 +2948,14 @@ function onReadingSelectChange(sel) {
 
 function openWritingModalWithMode() {
   if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  if (!canEnterWritingRoom()) return;
   if (_writingMode === 'reading' && !_selectedArticle) {
     alert('자료를 먼저 선택해주세요 (기사 / 대화 / 스토리)');
     return;
   }
+  if (_writingMode === 'topic') markStageDone('topic');
+  if (_writingMode === 'reading') markStageDone('sentence');
   document.getElementById('wmodal').classList.remove('hidden');
   if (_writingMode === 'reading') {
     switchModalMode('reading');
@@ -2761,6 +3139,250 @@ function showSelectedMaterial() {
   if (promptsEl) promptsEl.innerHTML = prompts[srcType] || prompts.article;
 }
 
+// ═══════════════════════════════════════════════════════════
+// EXTRA STUDY ROOM FEATURES
+// 1) Picture Description
+// 2) Sentence Writing from Articles
+// ═══════════════════════════════════════════════════════════
+function openPictureDescription() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  document.getElementById('pd-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  renderPicturePrompt();
+}
+function closePictureDescription() {
+  document.getElementById('pd-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+function onPictureUploadPicked(input) {
+  var file = input && input.files && input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function() {
+    _picturePrompts.unshift({
+      id: 'user_' + Date.now(),
+      image: String(reader.result || ''),
+      prompt_ko: '업로드한 이미지를 보고 상황, 행동, 감정을 2~4문장으로 써보세요.',
+      sample: ''
+    });
+    _pictureIndex = 0;
+    renderPicturePrompt();
+  };
+  reader.readAsDataURL(file);
+}
+function openPicturePromptAdmin() {
+  window.location.href = 'korehan-admin.html#study-picture-prompts';
+}
+function renderPicturePrompt() {
+  var item = _picturePrompts[_pictureIndex % _picturePrompts.length];
+  var img = document.getElementById('pd-image');
+  var label = document.getElementById('pd-prompt-label');
+  var result = document.getElementById('pd-result');
+  if (img) img.src = item.image;
+  if (label) label.textContent = item.prompt_ko;
+  if (result) { result.style.display = 'none'; result.innerHTML = ''; }
+  var input = document.getElementById('pd-input');
+  if (input) input.value = '';
+}
+function nextPicturePrompt() {
+  _pictureIndex = (_pictureIndex + 1) % _picturePrompts.length;
+  renderPicturePrompt();
+}
+async function checkPictureDescription() {
+  var input = document.getElementById('pd-input');
+  var result = document.getElementById('pd-result');
+  if (!input || !result) return;
+  var text = (input.value || '').trim();
+  if (!text) { showToast('먼저 문장을 작성해 주세요.'); return; }
+  var item = _picturePrompts[_pictureIndex % _picturePrompts.length];
+  var corrected = text;
+  var feedback = {
+    grammar:'문장 종결 표현과 조사(은/는, 이/가)를 한 번 더 확인해 보세요.',
+    vocab:'장소·행동·감정 단어를 1개씩 더 넣으면 더 풍부해져요.',
+    clarity:'누가 무엇을 하는지 순서대로 쓰면 더 명확해집니다.'
+  };
+  try {
+    var prompt = 'You are a Korean writing coach.\n'
+      + 'Image prompt: ' + item.prompt_ko + '\n'
+      + 'Student text:\n' + text + '\n\n'
+      + 'Return JSON only: {"corrected":"...","grammar":"...","vocab":"...","clarity":"...","sample":"..."}';
+    var data = await callClaude({
+      feature: 'study_room_picture_description',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 500,
+      messages: [{ role:'user', content: prompt }]
+    });
+    var raw = (data.content || []).map(function(c){ return c.text || ''; }).join('').replace(/```json|```/g,'').trim();
+    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+    var parsed = JSON.parse(s >= 0 && e > s ? raw.slice(s, e + 1) : raw);
+    corrected = parsed.corrected || corrected;
+    feedback.grammar = parsed.grammar || feedback.grammar;
+    feedback.vocab = parsed.vocab || feedback.vocab;
+    feedback.clarity = parsed.clarity || feedback.clarity;
+    if (parsed.sample) item.sample = parsed.sample;
+  } catch(e) {}
+  result.style.display = 'block';
+  result.innerHTML =
+    '<div><b>✅ Corrected version</b><br>' + escapeHTML(corrected) + '</div>'
+    + '<hr style="border:none;border-top:1px solid #e2e8f0;margin:10px 0">'
+    + '<div><b>Grammar</b>: ' + escapeHTML(feedback.grammar) + '</div>'
+    + '<div><b>Vocabulary</b>: ' + escapeHTML(feedback.vocab) + '</div>'
+    + '<div><b>Clarity</b>: ' + escapeHTML(feedback.clarity) + '</div>'
+    + (item.sample ? '<div style="margin-top:8px"><b>Sample answer</b>: ' + escapeHTML(item.sample) + '</div>' : '');
+  if (typeof awardXP === 'function') awardXP('study_picture_description', { prompt_id:item.id });
+  markStageDone('picture');
+  showToast('피드백이 준비됐어요!');
+}
+
+async function preloadSentenceArticles() {
+  if (_sentencePractice.articles.length) return;
+  var sb = getSupa();
+  if (!sb) return;
+  try {
+    var res = await sb.from('articles')
+      .select('id,title,body')
+      .eq('status','published')
+      .order('created_at', { ascending:false })
+      .limit(50);
+    _sentencePractice.articles = (res.data || []).map(function(a){
+      return { id:a.id, title:a.title || 'Untitled', body:(a.body || '').replace(/<[^>]*>/g,' ') };
+    });
+  } catch(e) {
+    _sentencePractice.articles = [];
+  }
+}
+async function openSentenceWriting() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  document.getElementById('sw-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  if (!_sentencePractice.articles.length) await preloadSentenceArticles();
+  populateSentenceArticleSelect();
+}
+function closeSentenceWriting() {
+  document.getElementById('sw-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+  clearTimeout(_sentencePractice.hideTimer);
+}
+function populateSentenceArticleSelect() {
+  var sel = document.getElementById('sw-article-select');
+  if (!sel) return;
+  if (!_sentencePractice.articles.length) {
+    sel.innerHTML = '<option value="">No published articles found</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">Select article...</option>' + _sentencePractice.articles.map(function(a, i){
+    return '<option value="' + i + '">' + escapeHTML(a.title) + '</option>';
+  }).join('');
+}
+function onSentenceArticleChange(sel) {
+  var idx = Number(sel.value);
+  if (Number.isNaN(idx)) return;
+  var article = _sentencePractice.articles[idx];
+  _sentencePractice.selected = article || null;
+  _sentencePractice.sentences = extractPracticeSentences(article && article.body || '');
+  _sentencePractice.idx = 0;
+  renderSentenceTarget();
+}
+function extractPracticeSentences(text) {
+  return (text || '')
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[.!?。！？])\s+/)
+    .map(function(s){ return s.trim(); })
+    .filter(function(s){ return /[가-힣]/.test(s) && s.length >= 12 && s.length <= 120; })
+    .slice(0, 30);
+}
+function currentSentence() {
+  return _sentencePractice.sentences[_sentencePractice.idx] || '';
+}
+function renderSentenceTarget() {
+  var target = document.getElementById('sw-target');
+  var label = document.getElementById('sw-target-label');
+  var sentence = currentSentence();
+  if (!target || !label) return;
+  if (!sentence) {
+    target.textContent = 'No sentence available. Choose a different article.';
+    label.textContent = 'Target sentence';
+    return;
+  }
+  label.textContent = 'Sentence ' + (_sentencePractice.idx + 1) + ' / ' + _sentencePractice.sentences.length;
+  target.textContent = sentence;
+  if (_sentencePractice.mode === 'hidden') {
+    _sentencePractice.hidden = false;
+    clearTimeout(_sentencePractice.hideTimer);
+    _sentencePractice.hideTimer = setTimeout(function() {
+      _sentencePractice.hidden = true;
+      target.textContent = 'Hidden mode: sentence is hidden. Type from memory.';
+    }, 3000);
+  }
+}
+function setSentenceMode(mode) {
+  _sentencePractice.mode = mode === 'hidden' ? 'hidden' : 'copy';
+  document.getElementById('sw-copy-btn').classList.toggle('on', _sentencePractice.mode === 'copy');
+  document.getElementById('sw-hidden-btn').classList.toggle('on', _sentencePractice.mode === 'hidden');
+  renderSentenceTarget();
+}
+function nextSentencePrompt() {
+  if (!_sentencePractice.sentences.length) return;
+  _sentencePractice.idx = (_sentencePractice.idx + 1) % _sentencePractice.sentences.length;
+  document.getElementById('sw-input').value = '';
+  document.getElementById('sw-result').style.display = 'none';
+  renderSentenceTarget();
+}
+function checkSentenceWriting() {
+  var inputEl = document.getElementById('sw-input');
+  var resultEl = document.getElementById('sw-result');
+  var expected = currentSentence();
+  if (!inputEl || !resultEl || !expected) return;
+  var typed = (inputEl.value || '').trim();
+  if (!typed) { showToast('먼저 문장을 입력해 주세요.'); return; }
+  var normalizedExpected = normalizeSentence(expected);
+  var normalizedTyped = normalizeSentence(typed);
+  var expectedWords = normalizedExpected.split(' ').filter(Boolean);
+  var typedWords = normalizedTyped.split(' ').filter(Boolean);
+  var missing = expectedWords.filter(function(w){ return typedWords.indexOf(w) < 0; });
+  var extra = typedWords.filter(function(w){ return expectedWords.indexOf(w) < 0; });
+  var spacingIssue = normalizedExpected.replace(/\s/g,'') === normalizedTyped.replace(/\s/g,'') && normalizedExpected !== normalizedTyped;
+  var score = Math.max(0, Math.round((1 - levenshtein(normalizedExpected, normalizedTyped) / Math.max(1, normalizedExpected.length)) * 100));
+  var mistakes = [];
+  if (missing.length) mistakes.push('Missing: ' + missing.slice(0, 6).join(', '));
+  if (extra.length) mistakes.push('Extra/typo: ' + extra.slice(0, 6).join(', '));
+  if (spacingIssue) mistakes.push('Spacing issue detected.');
+  resultEl.style.display = 'block';
+  resultEl.innerHTML =
+    '<div><b>Score</b>: ' + score + '%</div>'
+    + '<div><b>Mistakes</b>: ' + (mistakes.length ? escapeHTML(mistakes.join(' · ')) : 'Almost perfect!') + '</div>'
+    + '<div><b>Correct sentence</b>: ' + escapeHTML(expected) + '</div>'
+    + '<div><b>Feedback</b>: ' + (score >= 90 ? 'Excellent. Try hidden mode for harder practice.' : 'Read the correct sentence aloud and type again for muscle memory.') + '</div>';
+  if (typeof awardXP === 'function') awardXP('study_sentence_writing', {
+    article_id: _sentencePractice.selected && _sentencePractice.selected.id,
+    score: score
+  });
+  markStageDone('sentence');
+}
+function normalizeSentence(s) {
+  return String(s || '').replace(/[“”"'.!,?;:()\[\]{}]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+}
+function levenshtein(a, b) {
+  var m = a.length, n = b.length;
+  var dp = new Array(n + 1);
+  for (var j = 0; j <= n; j++) dp[j] = j;
+  for (var i = 1; i <= m; i++) {
+    var prev = dp[0];
+    dp[0] = i;
+    for (var k = 1; k <= n; k++) {
+      var tmp = dp[k];
+      var cost = a[i - 1] === b[k - 1] ? 0 : 1;
+      dp[k] = Math.min(dp[k] + 1, dp[k - 1] + 1, prev + cost);
+      prev = tmp;
+    }
+  }
+  return dp[n];
+}
+function escapeHTML(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 
 // ── 모바일 Writing 헬퍼 ────────────────────────────────────────────
 function onWriteAreaInput() {
@@ -3383,6 +4005,7 @@ function bmInsertWord(word) {
 }
 
 function finishBeginner() {
+  markStageDone('topic');
   var writeArea = document.getElementById('bm-write-area');
   _bm.writing = writeArea ? writeArea.value : '';
   var charCount = _bm.writing.trim().length;
@@ -3451,6 +4074,7 @@ var _gfPattern = null;
 var _gfExercises = null;
 
 function openGrammarFocusModal() {
+  if (!ensureStudyUnlocked()) return;
   var modal = document.getElementById('gf-modal');
   if (!modal) return;
   modal.classList.remove('hidden');
@@ -3699,6 +4323,7 @@ function checkGFBuild() {
   var inputs = [0,1,2].map(function(i){ return (document.getElementById('gfb-inp-'+i)||{}).value||''; });
   var filled = inputs.filter(function(v){ return v.trim().length > 0; }).length;
   if (filled === 0) { if (fb) fb.textContent = 'Write at least one sentence first.'; return; }
+  markStageDone('grammar');
   if (fb) fb.innerHTML = '✅ Great! You wrote ' + filled + ' sentence' + (filled>1?'s':'') + '. Keep practicing — use the Fill-in-Blank tab to test your recall.';
 }
 
