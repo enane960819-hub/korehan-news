@@ -9,6 +9,28 @@
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
 /* ── Layout ── */
+body {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+.rp-page-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: saturate(1.05) brightness(.78);
+  transform: scale(1.02);
+}
+.rp-page-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(4,16,44,.58) 0%, rgba(8,14,28,.7) 60%, rgba(8,14,28,.84) 100%);
+}
+.rp-content-layer { position: relative; z-index: 1; }
 .rp-wrap { max-width: 960px; margin: 0 auto; padding: 36px 20px 60px; }
 
 /* ── Profile card ── */
@@ -117,9 +139,12 @@
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   background: #f8fafc; border: 1.5px solid #e2e8f0;
   border-radius: 16px; padding: 16px 8px;
-  cursor: not-allowed; opacity: .7;
+  cursor: pointer; opacity: 1;
   position: relative;
+  transition: transform .15s ease, box-shadow .15s ease;
 }
+.rp-gift:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(2,6,23,.08); }
+.rp-gift.disabled { cursor:not-allowed; opacity:.55; }
 .rp-gift-icon { font-size: 28px; }
 .rp-gift-name { font-size: 11px; font-weight: 700; color: #475569; text-align: center; }
 .rp-gift-cost {
@@ -130,6 +155,8 @@
   position: absolute; top: 8px; right: 8px;
   font-size: 11px; color: #94a3b8;
 }
+.rp-gift-own { font-size:10px; color:#15803d; font-weight:800; }
+.rp-nyang-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; background:#ecfeff; color:#0f766e; font-size:12px; font-weight:800; border:1px solid #a5f3fc; }
 .rp-hire-btn {
   width: 100%; padding: 14px;
   border-radius: 14px; border: 2px dashed #e2e8f0;
@@ -160,6 +187,59 @@
 .rp-art-title { font-size: 14px; font-weight: 700; color: #0f172a; line-height: 1.45; margin-bottom: 3px; font-family: 'Noto Serif KR', serif; }
 .rp-art-meta { font-size: 12px; color: #94a3b8; }
 
+/* ── Reporter body layout ── */
+.rp-body-grid {
+  display:grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, .8fr);
+  gap: 18px;
+  align-items: start;
+}
+.rp-main-col { min-width:0; }
+.rp-side-col { min-width:0; position: sticky; top: 96px; }
+
+.rp-post-compose {
+  background:#fff; border:1px solid #e8eef7; border-radius:22px; padding:18px; margin-bottom:14px;
+  box-shadow:0 4px 18px rgba(15,23,42,.05);
+}
+.rp-post-compose textarea {
+  width:100%; min-height:92px; resize:vertical; border:1px solid #e2e8f0; border-radius:14px;
+  padding:12px; font:inherit; font-size:14px; color:#0f172a; background:#f8fafc;
+}
+.rp-post-compose-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+.rp-post-select, .rp-post-file {
+  border:1px solid #dbe5f2; border-radius:10px; padding:8px 10px; background:#fff; font:inherit; font-size:12px;
+}
+.rp-post-btn {
+  border:1px solid #0f172a; background:#0f172a; color:#fff; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:800; cursor:pointer;
+}
+.rp-post-btn.ghost { background:#fff; color:#334155; border-color:#dbe5f2; }
+.rp-post-feed { display:flex; flex-direction:column; gap:12px; }
+.rp-post-card {
+  background:#fff; border:1px solid #e8eef7; border-radius:18px; overflow:hidden;
+  box-shadow:0 4px 18px rgba(15,23,42,.04);
+}
+.rp-post-head { display:flex; justify-content:space-between; gap:12px; padding:14px 16px 8px; }
+.rp-post-meta { font-size:11px; color:#94a3b8; }
+.rp-post-pin { font-size:11px; color:#f97316; font-weight:900; }
+.rp-post-content { padding:0 16px 12px; color:#1e293b; font-size:14px; line-height:1.7; white-space:pre-wrap; }
+.rp-post-images {
+  display:grid; gap:4px; grid-template-columns: repeat(2, 1fr);
+}
+.rp-post-images img { width:100%; height:220px; object-fit:cover; display:block; cursor:zoom-in; }
+.rp-post-images.one { grid-template-columns:1fr; }
+.rp-post-images.one img { height:360px; }
+.rp-post-foot {
+  padding:10px 16px 14px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid #f1f5f9;
+}
+.rp-post-status { font-size:11px; color:#64748b; font-weight:700; }
+.rp-post-actions { display:flex; gap:8px; }
+.rp-post-act {
+  border:1px solid #dbe5f2; background:#fff; color:#334155; border-radius:8px; padding:5px 10px; font-size:11px; font-weight:800; cursor:pointer;
+}
+.rp-post-empty {
+  background:#ffffffcc; border:1px dashed #cbd5e1; border-radius:14px; padding:20px; text-align:center; color:#94a3b8; font-size:13px;
+}
+
 /* ── Loading / Error ── */
 .rp-loading { text-align: center; padding: 80px 20px; color: #94a3b8; font-size: 15px; }
 .rp-not-found { text-align: center; padding: 80px 20px; }
@@ -180,30 +260,79 @@
   .rp-gifts { grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .rp-gift { padding: 12px 4px; }
   .rp-gift-icon { font-size: 22px; }
+  .rp-post-images img { height:170px; }
+  .rp-post-images.one img { height:240px; }
+  .rp-body-grid { grid-template-columns: 1fr; }
+  .rp-side-col { position: static; }
 }
 </style>
 </head>
 <body>
+<div id="rp-page-bg" class="rp-page-bg"></div>
+<div class="rp-content-layer">
 <div id="dyn-header"></div>
 <div id="rp-root"><div class="rp-loading">⏳ 로딩 중…</div></div>
 <div id="rp-lb" onclick="this.classList.remove('on')"><img id="rp-lb-img" src="" alt=""></div>
 <div id="dyn-footer"></div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js"></script>
 <script>
-var GIFTS = [
-  { icon:'☕', name:'커피',   cost:'50 XP',  xpCost:50  },
-  { icon:'🧋', name:'버블티', cost:'120 XP', xpCost:120 },
-  { icon:'🌸', name:'꽃다발', cost:'300 XP', xpCost:300 },
-  { icon:'🎁', name:'선물',   cost:'800 XP', xpCost:800 },
-];
 var FAV_HIRE_THRESHOLD = 3000;
+var REPORTER_BG_DEFAULT = 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=2200&q=80';
+var _giftCatalog = [];
+var _giftOwnedMap = {};
+var _giftBalance = 0;
+var _currentReporterId = '';
+var _currentAffinityXP = 0;
+var _currentReporter = null;
+var _canManagePosts = false;
+var _postDraftFiles = [];
+var _editingPostId = null;
+var _postCache = [];
+var _postMode = 'db'; // db | fallback
+var _giftHistoryEnabled = true;
+
+function _postModeKey() { return 'kh_reporter_posts_mode'; }
+function getPostModePref() {
+  try { return localStorage.getItem(_postModeKey()) || 'db'; } catch(e) { return 'db'; }
+}
+function setPostModePref(mode) {
+  try { localStorage.setItem(_postModeKey(), mode); } catch(e) {}
+}
+function shouldUseGiftHistory() {
+  if (!_giftHistoryEnabled) return false;
+  try {
+    return localStorage.getItem('kh_reporter_gift_history_enabled') !== '0';
+  } catch(e) {
+    return true;
+  }
+}
+function disableGiftHistoryWrites() {
+  _giftHistoryEnabled = false;
+  try { localStorage.setItem('kh_reporter_gift_history_enabled', '0'); } catch(e) {}
+}
+function isMissingGiftHistoryTableError(err) {
+  var msg = String(err && (err.message || err.details || err.hint || err.code) || '').toLowerCase();
+  return msg.indexOf('reporter_gift_history') >= 0 || msg.indexOf('pgrst') >= 0 || msg.indexOf('404') >= 0;
+}
 
 document.addEventListener('DOMContentLoaded', async function() {
   var rid  = new URLSearchParams(window.location.search).get('id');
   var root = document.getElementById('rp-root');
   if (!rid) { root.innerHTML = '<div class="rp-not-found"><h2>기자를 찾을 수 없습니다</h2></div>'; return; }
+  _postMode = getPostModePref();
+  try {
+    var sbBg = getSupa && getSupa();
+    var bgUrl = REPORTER_BG_DEFAULT;
+    if (sbBg) {
+      var bgRes = await sbBg.from('app_settings').select('value').eq('key', 'reporter_bg_image_url').maybeSingle();
+      if (!bgRes.error && bgRes.data && bgRes.data.value) bgUrl = String(bgRes.data.value);
+    }
+    var bgEl = document.getElementById('rp-page-bg');
+    if (bgEl) bgEl.style.backgroundImage = 'url(\"' + bgUrl.replace(/\"/g, '%22') + '\")';
+  } catch(e) {}
 
   var reporter = null;
   var sb = getSupa();
@@ -226,8 +355,11 @@ document.addEventListener('DOMContentLoaded', async function() {
   var color = reporter.color || '#2563eb';
   document.title = reporter.name + ' 기자 — KoreHan News';
 
-  // Placeholder favorability (future: load from DB per user)
-  var favXP = 0;
+  _currentReporterId = rid;
+  _currentReporter = reporter;
+  _canManagePosts = canManageReporterPosts(reporter);
+  var favXP = await loadAffinityPoints(sb, rid);
+  _currentAffinityXP = favXP;
   var favPct = Math.min(100, Math.round(favXP / FAV_HIRE_THRESHOLD * 100));
   var favLevel = favXP >= FAV_HIRE_THRESHOLD ? '매니저' : favXP >= 200 ? '친구' : favXP >= 80 ? '지인' : '모르는 사이';
 
@@ -237,15 +369,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     : '<div class="rp-photo-ph" style="background:' + color + '">' + reporter.name.charAt(0) + '</div>';
 
   var tagsHtml = (reporter.tags||[]).map(function(t){ return '<span class="rp-tag">' + t + '</span>'; }).join('');
-
-  var giftsHtml = GIFTS.map(function(g){
-    return '<div class="rp-gift">'
-      + '<span class="rp-gift-icon">' + g.icon + '</span>'
-      + '<span class="rp-gift-name">' + g.name + '</span>'
-      + '<span class="rp-gift-cost">' + g.cost + '</span>'
-      + '<span class="rp-gift-lock">🔒</span>'
-      + '</div>';
-  }).join('');
 
   root.innerHTML =
     '<div class="rp-wrap">'
@@ -273,25 +396,602 @@ document.addEventListener('DOMContentLoaded', async function() {
     +   '</div>'
     + '</div>'
 
-    // ── Favorability ──
-    + '<div class="rp-fav-card">'
-    +   '<div class="rp-fav-header">'
-    +     '<div class="rp-fav-title">❤️ 호감도</div>'
-    +     '<div class="rp-fav-level">' + favLevel + '</div>'
+    + '<div class="rp-body-grid">'
+    +   '<div class="rp-main-col">'
+    +     '<div id="rp-post-compose"></div>'
+    +     '<div id="rp-post-feed" class="rp-post-feed"><div class="rp-post-empty">Posts 로딩 중…</div></div>'
     +   '</div>'
-    +   '<div class="rp-fav-bar-bg"><div class="rp-fav-bar-fill" style="width:' + favPct + '%;background:linear-gradient(90deg,' + color + ',' + color + 'aa)"></div></div>'
-    +   '<div class="rp-fav-meta"><span>' + favXP + ' / ' + FAV_HIRE_THRESHOLD + ' XP</span><span>매니저 고용까지 ' + (FAV_HIRE_THRESHOLD - favXP) + ' XP</span></div>'
-    +   '<div class="rp-gifts">' + giftsHtml + '</div>'
-    +   '<button class="rp-hire-btn" disabled>🎓 한국어 매니저로 고용하기</button>'
-    +   '<div class="rp-hire-progress">호감도 ' + FAV_HIRE_THRESHOLD + ' XP 달성 시 고용 가능 · 현재 ' + favPct + '%</div>'
-    + '</div>'
-
+    +   '<aside class="rp-side-col">'
+    // ── Favorability ──
+    +   '<div class="rp-fav-card">'
+    +     '<div class="rp-fav-header">'
+    +       '<div class="rp-fav-title">❤️ 호감도</div>'
+    +       '<div style="display:flex;gap:8px;align-items:center"><span class="rp-nyang-chip" id="rp-nyang-balance">🐾 냥 -</span><div class="rp-fav-level" id="rp-fav-level">' + favLevel + '</div></div>'
+    +     '</div>'
+    +     '<div class="rp-fav-bar-bg"><div class="rp-fav-bar-fill" id="rp-fav-bar-fill" style="width:' + favPct + '%;background:linear-gradient(90deg,' + color + ',' + color + 'aa)"></div></div>'
+    +     '<div class="rp-fav-meta"><span id="rp-fav-xp">' + favXP + ' / ' + FAV_HIRE_THRESHOLD + ' 친밀도</span><span id="rp-fav-left">매니저 고용까지 ' + (FAV_HIRE_THRESHOLD - favXP) + ' 남음</span></div>'
+    +     '<div class="rp-gifts" id="rp-gifts">선물 불러오는 중…</div>'
+    +     '<div id="rp-gift-msg" style="font-size:12px;color:#64748b;margin:2px 0 10px"></div>'
+    +     '<button class="rp-hire-btn" disabled>🎓 한국어 매니저로 고용하기</button>'
+    +     '<div class="rp-hire-progress" id="rp-fav-progress">호감도 ' + FAV_HIRE_THRESHOLD + ' 달성 시 고용 가능 · 현재 ' + favPct + '%</div>'
+    +   '</div>'
     // ── Articles ──
-    + '<div id="rp-arts"></div>'
+    +   '<div id="rp-arts"></div>'
+    +   '</aside>'
+    + '</div>'
     + '</div>';
 
   loadReporterArticles(rid, reporter.name);
+  loadReporterGiftPanel(rid);
+  initReporterPosts(rid, reporter);
 });
+
+function canManageReporterPosts(reporter) {
+  if (window._isAdmin) return true;
+  if (!supaUser || !reporter) return false;
+  var linked = reporter.user_id || reporter.owner_user_id || reporter.auth_user_id || reporter.account_user_id || reporter.linked_user_id || '';
+  return !!linked && String(linked) === String(supaUser.id);
+}
+
+function escHtml(t){ return String(t || '').replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); }
+
+function formatPostTime(ts) {
+  if (!ts) return '';
+  var d = new Date(ts);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString('ko-KR', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+async function initReporterPosts(reporterId, reporter) {
+  renderPostComposer(reporterId, reporter);
+  await loadReporterPosts(reporterId);
+}
+
+function renderPostComposer(reporterId, reporter) {
+  var el = document.getElementById('rp-post-compose');
+  if (!el) return;
+  if (!_canManagePosts) {
+    el.innerHTML = '<div class="rp-post-empty">게시물 작성 권한이 없습니다. 기자 계정 또는 관리자만 작성할 수 있어요.</div>';
+    return;
+  }
+  el.innerHTML =
+    '<div class="rp-post-compose">'
+    + '<textarea id="rp-post-content" placeholder="' + escHtml((reporter && reporter.name ? reporter.name : '기자') + '의 새 포스트를 작성해보세요…') + '"></textarea>'
+    + '<div class="rp-post-compose-row">'
+    +   '<input id="rp-post-files" class="rp-post-file" type="file" accept="image/*" multiple onchange="onPostFilesPicked(this)">'
+    +   '<select id="rp-post-status" class="rp-post-select"><option value="published">게시</option><option value="draft">임시저장</option></select>'
+    +   '<label style="font-size:12px;color:#475569"><input type="checkbox" id="rp-post-pinned"> 상단 고정</label>'
+    +   '<button class="rp-post-btn" onclick="submitReporterPost(\'' + reporterId + '\')">업로드</button>'
+    +   '<button class="rp-post-btn ghost" id="rp-post-cancel" style="display:none" onclick="cancelPostEdit()">취소</button>'
+    + '</div>'
+    + '<div id="rp-post-file-hint" style="margin-top:8px;font-size:11px;color:#94a3b8"></div>'
+    + '</div>';
+}
+
+function onPostFilesPicked(input) {
+  _postDraftFiles = Array.from(input.files || []);
+  var hint = document.getElementById('rp-post-file-hint');
+  if (hint) hint.textContent = _postDraftFiles.length ? ('선택된 이미지 ' + _postDraftFiles.length + '개') : '';
+}
+
+function isMissingReporterPostsTableError(err) {
+  var msg = String(err && (err.message || err.details || err.hint || err.code) || '').toLowerCase();
+  return msg.indexOf('reporter_posts') >= 0 || msg.indexOf('reporter_post_images') >= 0 || msg.indexOf('pgrst') >= 0 || msg.indexOf('404') >= 0;
+}
+
+function _fallbackPostsKey(reporterId) {
+  return 'reporter_posts_fallback_' + reporterId;
+}
+
+async function loadFallbackReporterPosts(sb, reporterId) {
+  try {
+    if (!sb) return [];
+    var key = _fallbackPostsKey(reporterId);
+    var res = await sb.from('app_settings').select('value').eq('key', key).maybeSingle();
+    if (res.error) return [];
+    var raw = res.data && res.data.value ? res.data.value : '[]';
+    var arr = Array.isArray(raw) ? raw : JSON.parse(raw || '[]');
+    return Array.isArray(arr) ? arr : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+async function saveFallbackReporterPosts(sb, reporterId, posts) {
+  if (!sb) return false;
+  try {
+    var key = _fallbackPostsKey(reporterId);
+    var payload = { key:key, value:JSON.stringify(posts || []), updated_at:new Date().toISOString() };
+    var res = await sb.from('app_settings').upsert(payload, { onConflict:'key' });
+    return !res.error;
+  } catch(e) {
+    return false;
+  }
+}
+
+async function loadReporterPosts(reporterId) {
+  var feed = document.getElementById('rp-post-feed');
+  if (!feed) return;
+  var sb = getSupa();
+  if (!sb) { feed.innerHTML = '<div class="rp-post-empty">Posts를 불러올 수 없습니다.</div>'; return; }
+  try {
+    if (_postMode === 'fallback') {
+      var fp = await loadFallbackReporterPosts(sb, reporterId);
+      fp = fp.filter(function(p){ return _canManagePosts || p.status === 'published'; });
+      fp.sort(function(a,b){ return Number(!!b.pinned) - Number(!!a.pinned) || String(b.created_at||'').localeCompare(String(a.created_at||'')); });
+      _postCache = fp;
+      renderReporterPosts(fp);
+      return;
+    }
+
+    var q = sb.from('reporter_posts')
+      .select('id,reporter_id,author_user_id,content,post_type,status,pinned,created_at,updated_at')
+      .eq('reporter_id', reporterId)
+      .order('pinned', { ascending:false })
+      .order('created_at', { ascending:false });
+    if (!_canManagePosts) q = q.eq('status', 'published');
+    var res = await q;
+    if (res.error) throw res.error;
+    var posts = res.data || [];
+    var ids = posts.map(function(p){ return p.id; });
+    var imgMap = {};
+    if (ids.length) {
+      var ir = await sb.from('reporter_post_images').select('id,post_id,image_url,sort_order').in('post_id', ids).order('sort_order', { ascending:true });
+      if (ir.error && isMissingReporterPostsTableError(ir.error)) throw ir.error;
+      if (!ir.error) {
+        (ir.data || []).forEach(function(im){
+          if (!imgMap[im.post_id]) imgMap[im.post_id] = [];
+          imgMap[im.post_id].push(im.image_url);
+        });
+      }
+    }
+    posts.forEach(function(p){ p.images = imgMap[p.id] || []; });
+    _postMode = 'db';
+    setPostModePref('db');
+    _postCache = posts;
+    renderReporterPosts(posts);
+  } catch(e) {
+    if (isMissingReporterPostsTableError(e)) {
+      _postMode = 'fallback';
+      setPostModePref('fallback');
+      var fposts = await loadFallbackReporterPosts(sb, reporterId);
+      fposts = fposts.filter(function(p){ return _canManagePosts || p.status === 'published'; });
+      fposts.sort(function(a,b){ return Number(!!b.pinned) - Number(!!a.pinned) || String(b.created_at||'').localeCompare(String(a.created_at||'')); });
+      _postCache = fposts;
+      renderReporterPosts(fposts);
+      return;
+    }
+    feed.innerHTML = '<div class="rp-post-empty">Posts를 불러오지 못했습니다.</div>';
+  }
+}
+
+function renderReporterPosts(posts) {
+  var feed = document.getElementById('rp-post-feed');
+  if (!feed) return;
+  if (!posts.length) {
+    feed.innerHTML = '<div class="rp-post-empty">아직 올라온 포스트가 없습니다.</div>';
+    return;
+  }
+  feed.innerHTML = posts.map(function(p){
+    var imgs = p.images || [];
+    var imgsClass = 'rp-post-images' + (imgs.length === 1 ? ' one' : '');
+    var actions = _canManagePosts
+      ? '<div class="rp-post-actions"><button class="rp-post-act" onclick="editReporterPost(&quot;' + p.id + '&quot;)">수정</button><button class="rp-post-act" onclick="deleteReporterPost(&quot;' + p.id + '&quot;)">삭제</button></div>'
+      : '';
+    return '<article class="rp-post-card">'
+      + '<div class="rp-post-head">'
+      +   '<div><div style="font-weight:800;color:#0f172a">기자 포스트</div><div class="rp-post-meta">' + escHtml(formatPostTime(p.created_at)) + (p.updated_at && p.updated_at !== p.created_at ? ' · 수정됨' : '') + '</div></div>'
+      +   (p.pinned ? '<div class="rp-post-pin">📌 PINNED</div>' : '')
+      + '</div>'
+      + '<div class="rp-post-content">' + escHtml(p.content || '') + '</div>'
+      + (imgs.length ? ('<div class="' + imgsClass + '">' + imgs.map(function(url){ return '<img src="' + escHtml(url) + '" onclick="rpOpenPostImage(&quot;' + escHtml(url) + '&quot;)">'; }).join('') + '</div>') : '')
+      + '<div class="rp-post-foot"><span class="rp-post-status">' + (p.status === 'draft' ? '임시저장' : '게시됨') + '</span>' + actions + '</div>'
+      + '</article>';
+  }).join('');
+}
+
+function rpOpenPostImage(url) {
+  var img = document.getElementById('rp-lb-img');
+  var lb = document.getElementById('rp-lb');
+  if (!img || !lb) return;
+  img.src = url;
+  lb.classList.add('on');
+}
+
+async function uploadPostImages(sb, reporterId, postId, files) {
+  var out = [];
+  if (!files || !files.length) return out;
+  for (var i = 0; i < files.length; i++) {
+    var f = files[i];
+    var ext = (f.name.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '');
+    var path = 'posts/' + reporterId + '/' + postId + '/' + Date.now() + '_' + i + '.' + ext;
+    var up = await sb.storage.from('reporter-images').upload(path, f, { upsert:true, contentType:f.type || 'image/jpeg' });
+    if (up.error) continue;
+    var pub = sb.storage.from('reporter-images').getPublicUrl(path);
+    var u = pub && pub.data && pub.data.publicUrl ? pub.data.publicUrl : '';
+    if (u) out.push(u);
+  }
+  return out;
+}
+
+async function submitReporterPost(reporterId) {
+  if (!_canManagePosts) return;
+  var sb = getSupa();
+  if (!sb || !supaUser) { openAuthModal('signin'); return; }
+  var contentEl = document.getElementById('rp-post-content');
+  var statusEl = document.getElementById('rp-post-status');
+  var pinEl = document.getElementById('rp-post-pinned');
+  var content = (contentEl && contentEl.value || '').trim();
+  if (!content && !_postDraftFiles.length) { alert('텍스트나 이미지 중 하나는 필요해요.'); return; }
+
+  var status = statusEl ? statusEl.value : 'published';
+  var pinned = !!(pinEl && pinEl.checked);
+  var now = new Date().toISOString();
+  var postId = _editingPostId || (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'rp_' + Date.now());
+  var payload = {
+    id: postId, reporter_id: reporterId, author_user_id: supaUser.id,
+    content: content, post_type: 'general', status: status, pinned: pinned,
+    updated_at: now
+  };
+  if (!_editingPostId) payload.created_at = now;
+
+  if (_postMode === 'fallback') {
+    var local = await loadFallbackReporterPosts(sb, reporterId);
+    if (_editingPostId) {
+      local = local.map(function(p){ return p.id === postId ? Object.assign({}, p, payload) : p; });
+    } else {
+      local.unshift(Object.assign({ images:[] }, payload));
+    }
+    if (_postDraftFiles.length) {
+      var furls = await uploadPostImages(sb, reporterId, postId, _postDraftFiles);
+      local = local.map(function(p){
+        if (p.id !== postId) return p;
+        var imgs = Array.isArray(p.images) ? p.images.slice() : [];
+        return Object.assign({}, p, { images: imgs.concat(furls) });
+      });
+    }
+    var ok = await saveFallbackReporterPosts(sb, reporterId, local);
+    if (!ok) { alert('포스트 저장 실패'); return; }
+    cancelPostEdit();
+    await loadReporterPosts(reporterId);
+    return;
+  }
+
+  var r = _editingPostId
+    ? await sb.from('reporter_posts').update(payload).eq('id', postId).eq('reporter_id', reporterId)
+    : await sb.from('reporter_posts').insert(payload);
+  if (r.error) {
+    if (isMissingReporterPostsTableError(r.error)) {
+      _postMode = 'fallback';
+      setPostModePref('fallback');
+      return submitReporterPost(reporterId);
+    }
+    alert('포스트 저장 실패');
+    return;
+  }
+
+  if (_postDraftFiles.length) {
+    var urls = await uploadPostImages(sb, reporterId, postId, _postDraftFiles);
+    if (urls.length) {
+      var existing = _postCache.find(function(p){ return p.id === postId; });
+      var start = existing && existing.images ? existing.images.length : 0;
+      var rows = urls.map(function(url, idx){
+        return { post_id: postId, image_url: url, sort_order: start + idx };
+      });
+      await sb.from('reporter_post_images').insert(rows);
+    }
+  }
+
+  cancelPostEdit();
+  await loadReporterPosts(reporterId);
+}
+
+function editReporterPost(postId) {
+  if (!_canManagePosts) return;
+  var p = _postCache.find(function(x){ return x.id === postId; });
+  if (!p) return;
+  _editingPostId = postId;
+  var contentEl = document.getElementById('rp-post-content');
+  var statusEl = document.getElementById('rp-post-status');
+  var pinEl = document.getElementById('rp-post-pinned');
+  var cancelBtn = document.getElementById('rp-post-cancel');
+  if (contentEl) contentEl.value = p.content || '';
+  if (statusEl) statusEl.value = p.status || 'published';
+  if (pinEl) pinEl.checked = !!p.pinned;
+  if (cancelBtn) cancelBtn.style.display = '';
+  var hint = document.getElementById('rp-post-file-hint');
+  if (hint) hint.textContent = '수정 모드: 새 이미지를 추가로 업로드할 수 있어요.';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelPostEdit() {
+  _editingPostId = null;
+  _postDraftFiles = [];
+  var contentEl = document.getElementById('rp-post-content');
+  var statusEl = document.getElementById('rp-post-status');
+  var pinEl = document.getElementById('rp-post-pinned');
+  var fileEl = document.getElementById('rp-post-files');
+  var hint = document.getElementById('rp-post-file-hint');
+  var cancelBtn = document.getElementById('rp-post-cancel');
+  if (contentEl) contentEl.value = '';
+  if (statusEl) statusEl.value = 'published';
+  if (pinEl) pinEl.checked = false;
+  if (fileEl) fileEl.value = '';
+  if (hint) hint.textContent = '';
+  if (cancelBtn) cancelBtn.style.display = 'none';
+}
+
+async function deleteReporterPost(postId) {
+  if (!_canManagePosts) return;
+  if (!confirm('이 포스트를 삭제할까요?')) return;
+  var sb = getSupa();
+  if (!sb) return;
+  if (_postMode === 'fallback') {
+    var local = await loadFallbackReporterPosts(sb, _currentReporterId);
+    local = local.filter(function(p){ return p.id !== postId; });
+    var ok = await saveFallbackReporterPosts(sb, _currentReporterId, local);
+    if (!ok) { alert('삭제 실패'); return; }
+    await loadReporterPosts(_currentReporterId);
+    return;
+  }
+  await sb.from('reporter_post_images').delete().eq('post_id', postId);
+  var dr = await sb.from('reporter_posts').delete().eq('id', postId);
+  if (dr.error) {
+    if (isMissingReporterPostsTableError(dr.error)) {
+      _postMode = 'fallback';
+      setPostModePref('fallback');
+      return deleteReporterPost(postId);
+    }
+    alert('삭제 실패'); return;
+  }
+  await loadReporterPosts(_currentReporterId);
+}
+
+async function loadReporterGiftPanel(reporterId) {
+  var grid = document.getElementById('rp-gifts');
+  var msg = document.getElementById('rp-gift-msg');
+  if (!grid) return;
+  var sb = getSupa();
+  if (!sb || !supaUser) {
+    grid.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:#94a3b8">로그인 후 선물을 보낼 수 있어요.</div>';
+    if (msg) msg.textContent = '';
+    return;
+  }
+  try {
+    var res = await Promise.all([
+      sb.from('shop_items').select('id,name,description,coin_price,image_url').eq('is_active', true).eq('item_type', 'reporter_item').order('sort_order', { ascending:true }),
+      sb.from('owned_items').select('item_id,quantity').eq('user_id', supaUser.id),
+      sb.from('user_stats').select('coin_balance').eq('user_id', supaUser.id).maybeSingle()
+    ]);
+    _giftCatalog = res[0].data || [];
+    _giftOwnedMap = {};
+    (res[1].data || []).forEach(function(o){ _giftOwnedMap[o.item_id] = Number(o.quantity || 0); });
+    _giftBalance = Number(res[2].data && res[2].data.coin_balance || 0);
+    var bal = document.getElementById('rp-nyang-balance');
+    if (bal) bal.textContent = '🐾 냥 ' + _giftBalance.toLocaleString();
+    renderGiftGrid(reporterId);
+    if (msg) msg.textContent = '보유 아이템이 있으면 인벤토리에서 차감, 없으면 냥으로 즉시 선물됩니다.';
+  } catch(e) {
+    grid.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:#ef4444">선물 정보를 불러오지 못했어요.</div>';
+  }
+}
+
+function renderGiftGrid(reporterId) {
+  var grid = document.getElementById('rp-gifts');
+  if (!grid) return;
+  if (!_giftCatalog.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:#94a3b8">사용 가능한 기자 선물이 없습니다.</div>';
+    return;
+  }
+  grid.innerHTML = _giftCatalog.map(function(g) {
+    var own = Number(_giftOwnedMap[g.id] || 0);
+    var price = Number(g.coin_price || 0);
+    var canBuy = _giftBalance >= price;
+    var disabled = own <= 0 && !canBuy;
+    var icon = g.name.indexOf('Coffee') >= 0 || g.name.indexOf('커피') >= 0 ? '☕' : g.name.indexOf('Bubble') >= 0 || g.name.indexOf('버블') >= 0 ? '🧋' : '🌸';
+    return '<button class="rp-gift' + (disabled ? ' disabled' : '') + '" ' + (disabled ? 'disabled' : '') + ' onclick="sendGiftToReporter(\'' + reporterId + '\',\'' + g.id + '\')">'
+      + '<span class="rp-gift-icon">' + icon + '</span>'
+      + '<span class="rp-gift-name">' + g.name + '</span>'
+      + '<span class="rp-gift-cost">🐾 ' + price.toLocaleString() + ' 냥</span>'
+      + (own > 0 ? '<span class="rp-gift-own">인벤토리 x' + own + '</span>' : '<span class="rp-gift-lock">즉시구매</span>')
+      + '</button>';
+  }).join('');
+}
+
+async function sendGiftToReporter(reporterId, itemId) {
+  var sb = getSupa();
+  if (!sb || !supaUser) { openAuthModal('signin'); return; }
+  var item = _giftCatalog.find(function(it){ return it.id === itemId; });
+  if (!item) return;
+  var own = Number(_giftOwnedMap[itemId] || 0);
+  var prompt = own > 0
+    ? item.name + ' 선물을 인벤토리에서 1개 사용해서 보내시겠어요?'
+    : item.name + ' 선물을 ' + Number(item.coin_price || 0).toLocaleString() + '냥으로 즉시 구매/전송할까요?';
+  if (!confirm(prompt)) return;
+
+  var res = null;
+  if (shouldUseGiftRpc()) {
+    res = await sb.rpc('send_reporter_gift', {
+      p_item_id: itemId,
+      p_reporter_id: reporterId,
+      p_user_id: supaUser.id
+    });
+    if (res.error && isMissingGiftRpcError(res.error)) {
+      try { localStorage.setItem('kh_use_gift_rpc', '0'); } catch(e) {}
+      res = await sendGiftFallbackNoRpc(sb, reporterId, itemId);
+    }
+  } else {
+    res = await sendGiftFallbackNoRpc(sb, reporterId, itemId);
+  }
+  if (res.error || !res.data || !res.data.ok) {
+    var code = (res.data && res.data.error) || 'GIFT_PROCESS_FAILED';
+    var friendly = '선물 전송에 실패했어요. 잠시 후 다시 시도해주세요.';
+    if (code === 'INSUFFICIENT_NYANG') friendly = '냥이 부족합니다.';
+    else if (code === 'ITEM_NOT_GIFTABLE') friendly = '현재 보낼 수 없는 아이템입니다.';
+    else if (code === 'INVALID_INPUT') friendly = '선물 정보가 올바르지 않습니다.';
+    else if (code === 'GIFT_PROCESS_FAILED') friendly = '선물 처리 중 오류가 발생했습니다.';
+    alert(friendly);
+    return;
+  }
+  alert('선물 전송 완료! 기자 호감도가 상승했어요.');
+  var delta = Number(res.data && (res.data.affinity_gained || res.data.affinity_delta) || 0);
+  if (!delta) {
+    delta = Math.max(10, Number(item.coin_price || 0));
+  }
+  _currentAffinityXP = Math.max(0, Number(_currentAffinityXP || 0) + delta);
+  setLocalAffinity(reporterId, _currentAffinityXP);
+  updateAffinityUI(_currentAffinityXP);
+  await loadReporterGiftPanel(reporterId);
+}
+
+function isMissingGiftRpcError(err) {
+  var msg = String(err && (err.message || err.details || err.hint || err.code) || '').toLowerCase();
+  return msg.indexOf('send_reporter_gift') >= 0 && (msg.indexOf('schema cache') >= 0 || msg.indexOf('404') >= 0 || msg.indexOf('pgrst') >= 0);
+}
+
+async function sendGiftFallbackNoRpc(sb, reporterId, itemId) {
+  try {
+    var item = _giftCatalog.find(function(it){ return it.id === itemId; });
+    if (!item) return { data:{ ok:false, error:'ITEM_NOT_GIFTABLE' } };
+    var cost = Number(item.coin_price || 0);
+
+    var ownQty = Number(_giftOwnedMap[itemId] || 0);
+    if (ownQty > 0) {
+      if (ownQty <= 1) {
+        await sb.from('owned_items').delete().eq('user_id', supaUser.id).eq('item_id', itemId);
+      } else {
+        await sb.from('owned_items').update({ quantity: ownQty - 1 }).eq('user_id', supaUser.id).eq('item_id', itemId);
+      }
+    } else {
+      var statsRes = await sb.from('user_stats').select('coin_balance').eq('user_id', supaUser.id).maybeSingle();
+      var bal = Number(statsRes.data && statsRes.data.coin_balance || 0);
+      if (bal < cost) return { data:{ ok:false, error:'INSUFFICIENT_NYANG' } };
+      var nextBal = bal - cost;
+      await sb.from('user_stats').update({ coin_balance: nextBal }).eq('user_id', supaUser.id);
+      try {
+        await sb.from('coin_transactions').insert({
+          user_id:supaUser.id, tx_type:'spend', amount:-cost, balance_after:nextBal,
+          source:'reporter_gift_direct', reference_id:itemId, memo:item.name || 'Reporter gift'
+        });
+      } catch(e) {}
+    }
+
+    if (shouldUseGiftHistory()) {
+      var gh = await sb.from('reporter_gift_history').insert({
+        user_id:supaUser.id, reporter_id:reporterId, item_id:itemId, quantity:1, nyang_spent:(ownQty > 0 ? 0 : cost)
+      });
+      if (gh && gh.error && isMissingGiftHistoryTableError(gh.error)) {
+        disableGiftHistoryWrites();
+      }
+    }
+
+    var affinityGain = Math.max(10, cost);
+    if (!shouldUseRemoteAffinity()) {
+      setLocalAffinity(reporterId, getLocalAffinity(reporterId) + affinityGain);
+      return { data:{ ok:true, success:true, affinity_gained: affinityGain } };
+    }
+    try {
+      var affRes = await sb.from('reporter_user_affinity').select('gift_count,affinity_points').eq('user_id', supaUser.id).eq('reporter_id', reporterId).maybeSingle();
+      var giftCount = Number(affRes.data && affRes.data.gift_count || 0) + 1;
+      var affinity = Number(affRes.data && affRes.data.affinity_points || 0) + affinityGain;
+      await sb.from('reporter_user_affinity').upsert({
+        user_id:supaUser.id, reporter_id:reporterId, gift_count:giftCount, affinity_points:affinity, updated_at:new Date().toISOString()
+      }, { onConflict:'user_id,reporter_id' });
+      setLocalAffinity(reporterId, affinity);
+    } catch(e) {
+      if (isMissingAffinityTableError(e)) {
+        try { localStorage.setItem('kh_remote_affinity', '0'); } catch(ex) {}
+        var localAffinity = getLocalAffinity(reporterId) + affinityGain;
+        setLocalAffinity(reporterId, localAffinity);
+      }
+    }
+
+    return { data:{ ok:true, success:true, affinity_gained: affinityGain } };
+  } catch(e) {
+    return { data:{ ok:false, error:'GIFT_PROCESS_FAILED' } };
+  }
+}
+
+function getAffinityStorageKey(reporterId) {
+  if (!supaUser || !reporterId) return '';
+  return 'kh_affinity_' + supaUser.id + '_' + reporterId;
+}
+
+function shouldUseRemoteAffinity() {
+  try {
+    return localStorage.getItem('kh_remote_affinity') !== '0';
+  } catch(e) {
+    return true;
+  }
+}
+
+function shouldUseGiftRpc() {
+  try {
+    return localStorage.getItem('kh_use_gift_rpc') !== '0';
+  } catch(e) {
+    return true;
+  }
+}
+
+function getLocalAffinity(reporterId) {
+  try {
+    var key = getAffinityStorageKey(reporterId);
+    if (!key) return 0;
+    return Number(localStorage.getItem(key) || 0);
+  } catch(e) {
+    return 0;
+  }
+}
+
+function setLocalAffinity(reporterId, points) {
+  try {
+    var key = getAffinityStorageKey(reporterId);
+    if (!key) return;
+    localStorage.setItem(key, String(Math.max(0, Number(points || 0))));
+  } catch(e) {}
+}
+
+function isMissingAffinityTableError(err) {
+  var msg = String(err && (err.message || err.details || err.hint || err.code) || '').toLowerCase();
+  return msg.indexOf('reporter_user_affinity') >= 0 || msg.indexOf('pgrst205') >= 0 || msg.indexOf('schema cache') >= 0 || msg.indexOf('404') >= 0;
+}
+
+async function loadAffinityPoints(sb, reporterId) {
+  if (!shouldUseRemoteAffinity()) return getLocalAffinity(reporterId);
+  if (!sb || !supaUser) return getLocalAffinity(reporterId);
+  try {
+    var af = await sb.from('reporter_user_affinity').select('affinity_points').eq('user_id', supaUser.id).eq('reporter_id', reporterId).maybeSingle();
+    if (af && af.error) {
+      if (isMissingAffinityTableError(af.error)) {
+        try { localStorage.setItem('kh_remote_affinity', '0'); } catch(e) {}
+        return getLocalAffinity(reporterId);
+      }
+      return 0;
+    }
+    var dbVal = Number(af.data && af.data.affinity_points || 0);
+    var localVal = getLocalAffinity(reporterId);
+    var finalVal = Math.max(dbVal, localVal);
+    if (finalVal !== localVal) setLocalAffinity(reporterId, finalVal);
+    return finalVal;
+  } catch(e) {
+    return getLocalAffinity(reporterId);
+  }
+}
+
+function updateAffinityUI(favXP) {
+  var pct = Math.min(100, Math.round(Number(favXP || 0) / FAV_HIRE_THRESHOLD * 100));
+  var level = favXP >= FAV_HIRE_THRESHOLD ? '매니저' : favXP >= 200 ? '친구' : favXP >= 80 ? '지인' : '모르는 사이';
+  var fill = document.getElementById('rp-fav-bar-fill');
+  if (fill) fill.style.width = pct + '%';
+  var xp = document.getElementById('rp-fav-xp');
+  if (xp) xp.textContent = Number(favXP || 0) + ' / ' + FAV_HIRE_THRESHOLD + ' 친밀도';
+  var left = document.getElementById('rp-fav-left');
+  if (left) left.textContent = '매니저 고용까지 ' + Math.max(0, FAV_HIRE_THRESHOLD - Number(favXP || 0)) + ' 남음';
+  var lv = document.getElementById('rp-fav-level');
+  if (lv) lv.textContent = level;
+  var p = document.getElementById('rp-fav-progress');
+  if (p) p.textContent = '호감도 ' + FAV_HIRE_THRESHOLD + ' 달성 시 고용 가능 · 현재 ' + pct + '%';
+}
 
 function rpOpenLb() {
   var src = document.querySelector('.rp-photo-col img');

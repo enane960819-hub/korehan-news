@@ -19,7 +19,8 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
 .ob-side,.ob-main{border:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.05));backdrop-filter:blur(16px);box-shadow:var(--shadow)}
 .ob-side{border-radius:34px;padding:32px 28px;position:relative;overflow:hidden}
 .ob-main{border-radius:36px;padding:28px;position:relative;overflow:hidden}
-.ob-side:before,.ob-main:before{content:'';position:absolute;inset:auto -70px -70px auto;width:220px;height:220px;background:radial-gradient(circle,rgba(125,211,252,.16),transparent 68%)}
+.ob-side:before,.ob-main:before{content:'';position:absolute;inset:auto -70px -70px auto;width:220px;height:220px;background:radial-gradient(circle,rgba(125,211,252,.16),transparent 68%);pointer-events:none;z-index:0}
+.ob-side > *, .ob-main > *{position:relative;z-index:1}
 .ob-logo{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.86)}
 .ob-logo strong{font-family:'Playfair Display','Noto Serif KR',serif;font-size:22px;letter-spacing:-.03em;text-transform:none}
 .ob-logo span{color:var(--sky)}
@@ -54,6 +55,7 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
 .ob-options,.ob-grid-2,.ob-level-list,.ob-test-actions,.ob-journey{display:grid;gap:12px}
 .ob-options{grid-template-columns:repeat(2,minmax(0,1fr))}
 .ob-opt,.ob-time-btn,.test-opt,.ob-choice-card,.ob-link-card{position:relative;border:none;border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.09);padding:18px;text-align:left;color:#fff;font-family:inherit;cursor:pointer;transition:transform .18s ease,border-color .18s ease,background .18s ease,box-shadow .18s ease}
+.ob-opt,.ob-time-btn,.test-opt,.ob-choice-card,.ob-btn,.skip-link,.ob-link-card{touch-action:manipulation}
 .ob-opt:hover,.ob-time-btn:hover,.test-opt:hover:not(:disabled),.ob-choice-card:hover,.ob-link-card:hover{transform:translateY(-2px);border-color:rgba(125,211,252,.42);background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.06));box-shadow:0 18px 28px rgba(3,10,22,.2)}
 .ob-opt.selected,.ob-time-btn.selected,.ob-choice-card.selected{border-color:rgba(103,232,249,.75);background:linear-gradient(180deg,rgba(37,99,235,.26),rgba(125,211,252,.12));box-shadow:0 20px 32px rgba(37,99,235,.22)}
 .ob-opt-head{display:flex;align-items:flex-start;gap:12px}
@@ -409,6 +411,60 @@ function cardWrap(inner) {
   return '<div class="ob-card ob-card-enter">' + inner + '</div>';
 }
 
+function bindTap(el, fn) {
+  if (!el || el.dataset.boundTap === '1') return;
+  el.dataset.boundTap = '1';
+  el.addEventListener('click', fn);
+  el.addEventListener('touchend', function(e){
+    e.preventDefault();
+    fn(e);
+  }, { passive:false });
+}
+
+function wireStepInteractions() {
+  var root = document.getElementById('ob-content');
+  if (!root) return;
+
+  root.querySelectorAll('.ob-opt[data-id]').forEach(function(btn){
+    bindTap(btn, function(e){ e.preventDefault(); toggleGoal(btn.dataset.id); });
+  });
+  root.querySelectorAll('.ob-time-btn[data-min]').forEach(function(btn){
+    bindTap(btn, function(e){ e.preventDefault(); selectTime(Number(btn.dataset.min)); });
+  });
+  root.querySelectorAll('.ob-choice-card[data-choice]').forEach(function(btn){
+    bindTap(btn, function(e){ e.preventDefault(); setLevelChoice(btn.dataset.choice); });
+  });
+  root.querySelectorAll('.ob-opt[data-level]').forEach(function(btn){
+    bindTap(btn, function(e){ e.preventDefault(); selectLevel(btn.dataset.level); });
+  });
+  root.querySelectorAll('.ob-opt[data-recommended-level]').forEach(function(btn){
+    bindTap(btn, function(e){ e.preventDefault(); selectRecommendedLevel(btn.dataset.recommendedLevel); });
+  });
+  root.querySelectorAll('.test-opt[data-test-idx]').forEach(function(btn){
+    bindTap(btn, function(e){ e.preventDefault(); answerTest(Number(btn.dataset.testIdx)); });
+  });
+
+  var actionMap = {
+    'go-step2': goStep2,
+    'go-step3': goStep3,
+    'go-step4': goStep4,
+    'back-step1': renderStep1,
+    'back-step2': renderStep2,
+    'back-step3': renderStep3Choice,
+    'start-test': startPlacementTest,
+    'retake-test': startPlacementTest,
+    'back-level-choice': backToLevelChoice,
+    'next-test': nextTestQ,
+    'finish': finishOnboarding,
+    'skip': skipOnboarding
+  };
+  root.querySelectorAll('[data-action]').forEach(function(el){
+    var fn = actionMap[el.dataset.action];
+    if (!fn) return;
+    bindTap(el, function(e){ e.preventDefault(); fn(); });
+  });
+}
+
 function renderStep1() {
   updateProgress(1);
   saveOnboardingLocal(false);
@@ -421,7 +477,7 @@ function renderStep1() {
       + '<div class="ob-options">'
       + GOALS.map(function(g) {
           var selected = state.goals.indexOf(g.id) > -1;
-          return '<button class="ob-opt' + (selected ? ' selected' : '') + '" data-id="' + g.id + '" onclick="toggleGoal(\'" + g.id + "\')">'
+          return '<button class="ob-opt' + (selected ? ' selected' : '') + '" data-id="' + g.id + '">'
             + '<span class="ob-check">✓</span>'
             + '<span class="ob-opt-head">'
             + '<span class="ob-opt-icon">' + g.icon + '</span>'
@@ -436,11 +492,12 @@ function renderStep1() {
     + '</div>'
     + '<div>'
       + '<div class="ob-btn-row">'
-      + '<button class="ob-btn ob-btn-primary ob-btn-full" id="step1-next" onclick="goStep2()"' + (state.goals.length ? '' : ' disabled') + '>Continue →</button>'
+      + '<button class="ob-btn ob-btn-primary ob-btn-full" id="step1-next" data-action="go-step2"' + (state.goals.length ? '' : ' disabled') + '>Continue →</button>'
       + '</div>'
-      + '<div class="skip-link" onclick="skipOnboarding()">Skip setup for now</div>'
+      + '<div class="skip-link" data-action="skip">Skip setup for now</div>'
     + '</div>'
   );
+  wireStepInteractions();
 }
 
 function toggleGoal(id) {
@@ -462,7 +519,7 @@ function renderStep2() {
       + '<div class="ob-time-grid">'
       + TIME_OPTIONS.map(function(t) {
           var selected = state.minutes === t.min;
-          return '<button class="ob-time-btn' + (selected ? ' selected' : '') + '" onclick="selectTime(' + t.min + ')">'
+          return '<button class="ob-time-btn' + (selected ? ' selected' : '') + '" data-min="' + t.min + '">'
             + '<span class="ob-check">✓</span>'
             + '<span class="ob-time-num">' + t.min + '</span>'
             + '<span class="ob-time-label">' + t.label + '</span>'
@@ -475,11 +532,12 @@ function renderStep2() {
     + '<div>'
       + '<div class="ob-footer-note">The best plan is the one you will actually repeat. <b>Even 5 minutes counts</b> if you keep the loop going.</div>'
       + '<div class="ob-btn-row">'
-      + '<button class="ob-btn ob-btn-secondary" onclick="renderStep1()">← Back</button>'
-      + '<button class="ob-btn ob-btn-primary" onclick="goStep3()">Continue →</button>'
+      + '<button class="ob-btn ob-btn-secondary" data-action="back-step1">← Back</button>'
+      + '<button class="ob-btn ob-btn-primary" data-action="go-step3">Continue →</button>'
       + '</div>'
     + '</div>'
   );
+  wireStepInteractions();
 }
 
 function selectTime(min) {
@@ -497,20 +555,21 @@ function renderStep3Choice() {
       + '<h2 class="ob-title">Choose how you want to set your level.</h2>'
       + '<p class="ob-desc">If you already know your level, pick it directly and skip the test. If you are unsure, take a randomized placement test with mixed answer positions.</p>'
       + '<div class="ob-choice-grid">'
-      + '<button class="ob-choice-card' + (state.levelChoice === 'self' ? ' selected' : '') + '" onclick="setLevelChoice(\'self\')"><span class="ob-check">✓</span><span class="ob-choice-badge">Fast start</span><h3>Pick my level myself</h3><p>Skip the quiz and start right away with Starter, Beginner, Intermediate, or Advanced.</p></button>'
-      + '<button class="ob-choice-card' + (state.levelChoice === 'test' ? ' selected' : '') + '" onclick="setLevelChoice(\'test\')"><span class="ob-check">✓</span><span class="ob-choice-badge">Recommended if unsure</span><h3>Take the placement test</h3><p>Answer 15 randomized questions pulled from beginner, intermediate, and advanced pools.</p></button>'
+      + '<button class="ob-choice-card' + (state.levelChoice === 'self' ? ' selected' : '') + '" data-choice="self"><span class="ob-check">✓</span><span class="ob-choice-badge">Fast start</span><h3>Pick my level myself</h3><p>Skip the quiz and start right away with Starter, Beginner, Intermediate, or Advanced.</p></button>'
+      + '<button class="ob-choice-card' + (state.levelChoice === 'test' ? ' selected' : '') + '" data-choice="test"><span class="ob-check">✓</span><span class="ob-choice-badge">Recommended if unsure</span><h3>Take the placement test</h3><p>Answer 15 randomized questions pulled from beginner, intermediate, and advanced pools.</p></button>'
       + '</div>'
       + (state.levelChoice === 'self' ? renderSelfSelectHTML() : renderTestIntroHTML())
     + '</div>'
     + '<div>'
       + '<div class="ob-btn-row">'
-      + '<button class="ob-btn ob-btn-secondary" onclick="renderStep2()">← Back</button>'
+      + '<button class="ob-btn ob-btn-secondary" data-action="back-step2">← Back</button>'
       + (state.levelChoice === 'self'
-          ? '<button class="ob-btn ob-btn-primary" onclick="goStep4()"' + (state.level ? '' : ' disabled') + '>Use this level →</button>'
-          : '<button class="ob-btn ob-btn-primary" onclick="startPlacementTest()">Start test →</button>')
+          ? '<button class="ob-btn ob-btn-primary" data-action="go-step4"' + (state.level ? '' : ' disabled') + '>Use this level →</button>'
+          : '<button class="ob-btn ob-btn-primary" data-action="start-test">Start test →</button>')
       + '</div>'
     + '</div>'
   );
+  wireStepInteractions();
 }
 
 function renderSelfSelectHTML() {
@@ -520,7 +579,7 @@ function renderSelfSelectHTML() {
     + Object.keys(LEVEL_META).map(function(key) {
         var meta = LEVEL_META[key];
         var selected = state.level === key;
-        return '<button class="ob-opt' + (selected ? ' selected' : '') + '" data-level="' + key + '" onclick="selectLevel(\'" + key + "\')">'
+        return '<button class="ob-opt' + (selected ? ' selected' : '') + '" data-level="' + key + '">'
           + '<span class="ob-check">✓</span>'
           + '<span class="ob-opt-head"><span class="ob-opt-icon">' + meta.emoji + '</span><span><span class="ob-opt-label">' + key + '</span><span class="ob-opt-sub">' + meta.desc + '</span></span></span>'
           + '</button>';
@@ -593,18 +652,19 @@ function renderTestQuestion() {
       + '<div class="test-q">' + q.q + (q.sentence ? '<span class="test-ko">' + q.sentence + '</span>' : '') + '</div>'
       + '<div class="test-opts">'
       + q.choices.map(function(choice, i) {
-          return '<button class="test-opt" id="topt-' + i + '" onclick="answerTest(' + i + ')">' + choice + '</button>';
+          return '<button class="test-opt" id="topt-' + i + '" data-test-idx="' + i + '">' + choice + '</button>';
         }).join('')
       + '</div>'
       + '<div class="test-feedback" id="test-fb"></div>'
     + '</div>'
     + '<div>'
       + '<div class="ob-btn-row">'
-      + '<button class="ob-btn ob-btn-secondary" onclick="backToLevelChoice()">← Back</button>'
-      + '<button class="ob-btn ob-btn-primary" id="test-next-btn" onclick="nextTestQ()" style="display:none">' + (_testIdx === total - 1 ? 'See result →' : 'Next question →') + '</button>'
+      + '<button class="ob-btn ob-btn-secondary" data-action="back-level-choice">← Back</button>'
+      + '<button class="ob-btn ob-btn-primary" id="test-next-btn" data-action="next-test" style="display:none">' + (_testIdx === total - 1 ? 'See result →' : 'Next question →') + '</button>'
       + '</div>'
     + '</div>'
   );
+  wireStepInteractions();
 }
 
 function answerTest(idx) {
@@ -666,7 +726,7 @@ function showTestResult() {
       + Object.keys(LEVEL_META).map(function(key) {
           var meta = LEVEL_META[key];
           var selected = state.level === key;
-          return '<button class="ob-opt' + (selected ? ' selected' : '') + '" onclick="selectRecommendedLevel(\'" + key + "\')">'
+          return '<button class="ob-opt' + (selected ? ' selected' : '') + '" data-recommended-level="' + key + '">'
             + '<span class="ob-check">✓</span>'
             + '<span class="ob-opt-head"><span class="ob-opt-icon">' + meta.emoji + '</span><span><span class="ob-opt-label">' + key + (key === recommended ? ' <span class="ob-tag" style="margin-left:8px">Recommended</span>' : '') + '</span><span class="ob-opt-sub">' + meta.desc + '</span></span></span>'
             + '</button>';
@@ -675,11 +735,12 @@ function showTestResult() {
     + '</div>'
     + '<div>'
       + '<div class="ob-btn-row">'
-      + '<button class="ob-btn ob-btn-secondary" onclick="startPlacementTest()">Retake test</button>'
-      + '<button class="ob-btn ob-btn-primary" onclick="goStep4()">Continue with this level →</button>'
+      + '<button class="ob-btn ob-btn-secondary" data-action="retake-test">Retake test</button>'
+      + '<button class="ob-btn ob-btn-primary" data-action="go-step4">Continue with this level →</button>'
       + '</div>'
     + '</div>'
   );
+  wireStepInteractions();
 }
 
 function selectRecommendedLevel(level) {
@@ -716,11 +777,12 @@ function goStep4() {
     + '</div>'
     + '<div>'
       + '<div class="ob-btn-row">'
-      + '<button class="ob-btn ob-btn-secondary" onclick="renderStep3Choice()">← Back</button>'
-      + '<button class="ob-btn ob-btn-primary" id="finish-btn" onclick="finishOnboarding()">Go to main page →</button>'
+      + '<button class="ob-btn ob-btn-secondary" data-action="back-step3">← Back</button>'
+      + '<button class="ob-btn ob-btn-primary" id="finish-btn" data-action="finish">Go to main page →</button>'
       + '</div>'
     + '</div>'
   );
+  wireStepInteractions();
 }
 
 async function persistOnboardingState() {

@@ -923,10 +923,24 @@ function updateAuthUI() {
         '<div class="kh-user-dropdown-head">'
         + '<div class="kh-user-dropdown-name">' + escapeHtml(name || 'User') + '</div>'
         + '<div class="kh-user-dropdown-email">' + escapeHtml(supaUser.email || '') + '</div>'
+        + '<div id="kh-user-dropdown-stats" style="margin-top:8px;font-size:12px;color:#64748b">✨ XP 0 · 🐾 냥 0</div>'
         + '</div>'
         + '<a href="korehan-mypage.html" class="kh-user-dropdown-link">' + khIcon('circle-user-round', 'My Page', 'kh-ui-icon-sm') + '</a>'
         + (isAdmin ? '<a href="korehan-admin.html" class="kh-user-dropdown-link">' + khIcon('settings', 'Admin CMS', 'kh-ui-icon-sm') + '</a>' : '')
         + '<button type="button" class="kh-user-dropdown-link kh-user-dropdown-btn" onclick="signOut();closeTopbarUserMenu()">' + khIcon('log-out', 'Sign Out', 'kh-ui-icon-sm') + '</button>';
+      (function loadDropdownStats(){
+        var sb = getSupa && getSupa();
+        if (!sb || !supaUser || !supaUser.id) return;
+        sb.from('user_stats').select('xp, coin_balance').eq('user_id', supaUser.id).maybeSingle()
+          .then(function(r){
+            var statsEl = document.getElementById('kh-user-dropdown-stats');
+            if (!statsEl) return;
+            var xp = Number(r && r.data && r.data.xp || 0);
+            var coin = Number(r && r.data && r.data.coin_balance || 0);
+            statsEl.textContent = '✨ XP ' + xp.toLocaleString() + ' · 🐾 냥 ' + coin.toLocaleString();
+          })
+          .catch(function(){});
+      })();
     }
     if (adminBtn) adminBtn.style.display = isAdmin ? 'inline-block' : 'none';
   } else {
@@ -1383,8 +1397,18 @@ function sortArticlesNewest(items) {
 }
 
 function normalizeArticles(items) {
+  function normalizeSection(section) {
+    var key = String(section || '').trim();
+    var low = key.toLowerCase();
+    if (low === 'tech' || low === 'it과학' || low === 'technology' || low === 'tech/science') return 'beauty';
+    return key;
+  }
   return sortArticlesNewest((Array.isArray(items) ? items : []).filter(function(item) {
     return item && typeof item === 'object';
+  }).map(function(item) {
+    var clone = Object.assign({}, item);
+    clone.section = normalizeSection(item.section);
+    return clone;
   }));
 }
 
@@ -1993,6 +2017,8 @@ async function renderSectionPage(section) {
     '오피니언': ['오피니언','Opinion','opinion'],
     'K-pop': ['K-pop','Kpop','케이팝','kpop','k-pop'],
     '스포츠': ['스포츠','Sports','sports'],
+    'beauty': ['beauty','Beauty','뷰티','미용','라이프스타일','IT과학','tech','Tech'],
+    'travel': ['travel','Travel','여행','관광','trip'],
   };
   var aliases = SECTION_ALIASES[section] || [section];
 
@@ -2137,7 +2163,7 @@ var _KH_DEFAULT_REPORTERS_LIST = [
   { id:'cr3',  name:'이민준', role:'경제부 에디터',       image:'https://picsum.photos/seed/cr3/200/200',  profilePage:'', color:'#059669' },
   { id:'cr4',  name:'최유나', role:'문화부 기자',         image:'https://picsum.photos/seed/cr4/200/200',  profilePage:'', color:'#db2777' },
   { id:'cr5',  name:'정우성', role:'정치부 선임기자',     image:'https://picsum.photos/seed/cr5/200/200',  profilePage:'', color:'#dc2626' },
-  { id:'cr6',  name:'한소희', role:'IT·과학 에디터',     image:'https://picsum.photos/seed/cr6/200/200',  profilePage:'', color:'#0891b2' },
+  { id:'cr6',  name:'한소희', role:'뷰티·트래블 에디터', image:'https://picsum.photos/seed/cr6/200/200',  profilePage:'', color:'#0891b2' },
   { id:'cr7',  name:'오지훈', role:'스포츠부 기자',       image:'https://picsum.photos/seed/cr7/200/200',  profilePage:'', color:'#ea580c' },
   { id:'cr8',  name:'신지은', role:'사회·환경 전문기자', image:'https://picsum.photos/seed/cr8/200/200',  profilePage:'', color:'#16a34a' },
   { id:'cr9',  name:'강태양', role:'국제·외교 기자',      image:'https://picsum.photos/seed/cr9/200/200',  profilePage:'', color:'#4338ca' },
@@ -3927,6 +3953,15 @@ var _XP_ACTION_AMOUNTS = {
   story_read: 10,
   conversation_read: 10
 };
+var _COIN_ACTION_AMOUNTS = {
+  article_read: 3,
+  word_save: 1,
+  conv_quiz_complete: 5,
+  fill_complete: 2,
+  daily_mission_complete: 12,
+  story_read: 3,
+  conversation_read: 3
+};
 var _XP_ACTION_LABELS = {
   article_read: '기사 읽기',
   word_save: '단어 저장',
@@ -3940,30 +3975,51 @@ var _XP_ACTION_LABELS = {
 // ── xp_log 컬럼명 감지 (세션당 1회) ─────────────────────────────
 var _xpLogAmtCol  = null;  // 'amount' | 'xp' | 'xp_gained' | 'points' | null
 var _xpLogSrcCol  = null;  // 'source' | 'action' | null
+var _xpLogDisabled = false;
+var _xpLogTriedFallbackInsert = false;
+
+function _isXPLogMissingColumnError(err) {
+  var msg = String((err && (err.message || err.details || err.hint || err.code)) || '').toLowerCase();
+  return msg.indexOf('column') >= 0 && msg.indexOf('does not exist') >= 0;
+}
 
 async function _detectXPLogCols() {
-  if (_xpLogAmtCol !== null) return;
+  if (_xpLogAmtCol !== null || _xpLogDisabled) return;
   var sb = getSupa();
   if (!sb) { _xpLogAmtCol = 'amount'; _xpLogSrcCol = 'source'; return; }
-  // amount 컬럼 탐지
-  var amtCandidates = ['amount', 'xp', 'xp_gained', 'points'];
-  for (var i = 0; i < amtCandidates.length; i++) {
-    try {
-      var r = await sb.from('xp_log').select(amtCandidates[i]).limit(0);
-      if (!r.error) { _xpLogAmtCol = amtCandidates[i]; break; }
-    } catch(e) {}
-  }
-  if (!_xpLogAmtCol) _xpLogAmtCol = 'amount';
-  // source/action 컬럼 탐지
   try {
-    var rs = await sb.from('xp_log').select('source').limit(0);
-    _xpLogSrcCol = rs.error ? 'action' : 'source';
-  } catch(e) { _xpLogSrcCol = 'source'; }
+    var probe = await sb.from('xp_log').select('*').limit(1);
+    if (probe.error) {
+      _xpLogDisabled = true;
+      console.warn('[xp] xp_log probe failed, disable remote xp_log writes:', probe.error);
+      return;
+    }
+    var row = (probe.data && probe.data[0]) || null;
+    if (row && typeof row === 'object') {
+      var keys = Object.keys(row);
+      _xpLogAmtCol = keys.indexOf('amount') >= 0 ? 'amount'
+        : keys.indexOf('xp') >= 0 ? 'xp'
+        : keys.indexOf('xp_gained') >= 0 ? 'xp_gained'
+        : keys.indexOf('points') >= 0 ? 'points'
+        : 'amount';
+      _xpLogSrcCol = keys.indexOf('source') >= 0 ? 'source'
+        : keys.indexOf('action') >= 0 ? 'action'
+        : 'source';
+    } else {
+      _xpLogAmtCol = 'amount';
+      _xpLogSrcCol = 'source';
+    }
+  } catch(e) {
+    _xpLogDisabled = true;
+    console.warn('[xp] xp_log probe exception, disable remote xp_log writes:', e);
+    return;
+  }
   console.log('[xp] xp_log cols:', _xpLogAmtCol, _xpLogSrcCol);
 }
 
 async function _insertXPLog(sb, userId, actionKey, amount, reason, contentId) {
   await _detectXPLogCols();
+  if (_xpLogDisabled) return;
   var row = { user_id: userId };
   row[_xpLogAmtCol] = amount;
   row[_xpLogSrcCol] = actionKey;
@@ -3975,8 +4031,29 @@ async function _insertXPLog(sb, userId, actionKey, amount, reason, contentId) {
     }));
     if (r.error) {
       // reason/content_id 컬럼 없을 수도 — 최소 행으로 재시도
-      if (/column.*not.*exist/i.test((r.error.message||''))) {
-        await sb.from('xp_log').insert(row);
+      if (_isXPLogMissingColumnError(r.error)) {
+        var rr = await sb.from('xp_log').insert(row);
+        if (rr && rr.error) {
+          if (_isXPLogMissingColumnError(rr.error)) {
+            if (!_xpLogTriedFallbackInsert) {
+              _xpLogTriedFallbackInsert = true;
+              var fallbackRows = [
+                { user_id:userId, action:actionKey, xp:amount },
+                { user_id:userId, source:actionKey, xp:amount },
+                { user_id:userId, action:actionKey, amount:amount },
+                { user_id:userId, source:actionKey, amount:amount }
+              ];
+              for (var i = 0; i < fallbackRows.length; i++) {
+                var fr = await sb.from('xp_log').insert(fallbackRows[i]);
+                if (!fr.error) { return; }
+              }
+            }
+            _xpLogDisabled = true;
+            console.warn('[xp] xp_log schema mismatch, disable remote xp_log writes:', rr.error);
+          } else {
+            console.warn('[xp] log insert error:', rr.error);
+          }
+        }
       } else {
         console.warn('[xp] log insert error:', r.error);
       }
@@ -3991,6 +4068,7 @@ async function awardXP(actionKey, meta) {
   var sb = getSupa(); if (!sb) return null;
 
   var amount    = _XP_ACTION_AMOUNTS[actionKey] || 10;
+  var coinAmt   = _COIN_ACTION_AMOUNTS[actionKey] || 0;
   var reason    = _XP_ACTION_LABELS[actionKey] || actionKey;
   var contentId = (meta && (meta.content_id || meta.article_id)) || null;
 
@@ -4007,6 +4085,29 @@ async function awardXP(actionKey, meta) {
       }
       var gained = res.data.xp_gained || amount;
       showXPToast(gained);
+      var coinGained = (typeof res.data.coin_gained === 'number') ? res.data.coin_gained : coinAmt;
+      if (coinGained > 0) {
+        var coinBalanceAfter = res.data.coin_balance || null;
+        if (coinBalanceAfter === null) {
+          try {
+            var cr = await sb.from('user_stats').select('coin_balance').eq('user_id', supaUser.id).maybeSingle();
+            var curCoin = (cr.data && cr.data.coin_balance) || 0;
+            coinBalanceAfter = curCoin + coinGained;
+            await sb.from('user_stats').upsert({ user_id: supaUser.id, coin_balance: coinBalanceAfter }, { onConflict:'user_id' });
+          } catch(e) {}
+        }
+        showCoinToast(coinGained);
+        try {
+          await sb.from('coin_transactions').insert({
+            user_id: supaUser.id,
+            tx_type: 'earn',
+            amount: coinGained,
+            balance_after: coinBalanceAfter,
+            source: actionKey,
+            memo: reason
+          });
+        } catch(e) {}
+      }
       await _insertXPLog(sb, supaUser.id, actionKey, gained, reason, contentId);
       return res.data;
     }
@@ -4017,14 +4118,29 @@ async function awardXP(actionKey, meta) {
     await _insertXPLog(sb, supaUser.id, actionKey, amount, reason, contentId);
 
     // Increment xp in user_stats
-    var { data: statsRow } = await sb.from('user_stats').select('xp').eq('user_id', supaUser.id).maybeSingle();
+    var { data: statsRow } = await sb.from('user_stats').select('xp, coin_balance').eq('user_id', supaUser.id).maybeSingle();
     var currentXP = (statsRow && statsRow.xp) || 0;
+    var currentCoin = (statsRow && statsRow.coin_balance) || 0;
     await sb.from('user_stats').upsert({
       user_id: supaUser.id,
-      xp: currentXP + amount
+      xp: currentXP + amount,
+      coin_balance: currentCoin + coinAmt
     }, { onConflict: 'user_id' });
 
     showXPToast(amount);
+    if (coinAmt > 0) {
+      showCoinToast(coinAmt);
+      try {
+        await sb.from('coin_transactions').insert({
+          user_id: supaUser.id,
+          tx_type: 'earn',
+          amount: coinAmt,
+          balance_after: currentCoin + coinAmt,
+          source: actionKey,
+          memo: reason
+        });
+      } catch(e) {}
+    }
     return { ok: true, xp_gained: amount };
   } catch(e) {}
 
@@ -4051,6 +4167,28 @@ function showXPToast(xp) {
   _xpToastTimer = setTimeout(function(){
     el.style.opacity = '0';
     setTimeout(function(){ _xpToastTotal = 0; }, 300);
+  }, 1800);
+}
+
+var _coinToastTimer = null;
+var _coinToastTotal = 0;
+function showCoinToast(coin) {
+  _coinToastTotal += coin;
+  clearTimeout(_coinToastTimer);
+  var el = document.getElementById('coin-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'coin-toast';
+    el.style.cssText = 'position:fixed;bottom:124px;right:16px;background:#052e2b;color:#5eead4;'
+      + 'padding:8px 14px;border-radius:999px;font-size:13px;font-weight:800;'
+      + 'border:1px solid rgba(94,234,212,.3);z-index:9999;transition:opacity .3s;pointer-events:none;font-family:inherit';
+    document.body.appendChild(el);
+  }
+  el.textContent = '+' + _coinToastTotal + '냥 🐾';
+  el.style.opacity = '1';
+  _coinToastTimer = setTimeout(function(){
+    el.style.opacity = '0';
+    setTimeout(function(){ _coinToastTotal = 0; }, 300);
   }, 1800);
 }
 
@@ -4195,6 +4333,8 @@ function renderHeader() {
     + '</div>'
     + '</div>'
     + '<a href="korehan-study-room.html" class="tn-item' + (isOn('korehan-study-room') ? ' on' : '') + '">' + khIcon('notebook-pen', 'Study Room', 'kh-ui-icon-sm') + '</a>'
+    + '<a href="korehan-shop.html" class="tn-item' + (isOn('korehan-shop') ? ' on' : '') + '">' + khIcon('shopping-bag', 'Shop', 'kh-ui-icon-sm') + '</a>'
+    + '<a href="korehan-fun.html" class="tn-item' + (isOn('korehan-fun') ? ' on' : '') + '">' + khIcon('sparkles', 'FUN', 'kh-ui-icon-sm') + '</a>'
     + '<a href="korehan-learning-overview.html" class="tn-item' + (isOn('korehan-learning-overview') ? ' on' : '') + '">' + khIcon('chart-column', 'Learning Hub', 'kh-ui-icon-sm') + '</a>'
     + '<a href="korehan-courses.html" class="tn-item' + (isOn('korehan-courses') ? ' on' : '') + '">' + khIcon('graduation-cap', 'Courses', 'kh-ui-icon-sm') + '</a>'
     + '</div>'
@@ -4232,6 +4372,8 @@ function renderFooter() {
     + '<a href="korehan-all.html" style="font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.6);text-decoration:none">News</a>'
     + '<a href="korehan-conversations.html" style="font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.6);text-decoration:none">Conversations</a>'
     + '<a href="korehan-stories.html" style="font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.6);text-decoration:none">Stories</a>'
+    + '<a href="korehan-shop.html" style="font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.6);text-decoration:none">Shop</a>'
+    + '<a href="korehan-fun.html" style="font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.6);text-decoration:none">FUN</a>'
     + '</div>'
     + '</div>'
 
@@ -4578,25 +4720,45 @@ var DEFAULT_SECTIONS = [
   { key:'문화',   label:'Culture',   icon:'🎭', sort_order:5 },
   { key:'K-pop',  label:'K-pop',     icon:'🎤', sort_order:6 },
   { key:'스포츠', label:'Sports',    icon:'⚽', sort_order:7 },
-  { key:'IT과학', label:'Tech',      icon:'💻', sort_order:8 },
-  { key:'Korea',  label:'🇰🇷 Korea', icon:'🇰🇷', sort_order:9 },
-  { key:'오피니언',label:'Opinion',  icon:'✍️', sort_order:10 },
+  { key:'beauty', label:'Beauty',    icon:'💄', sort_order:8 },
+  { key:'travel', label:'Travel',    icon:'✈️', sort_order:9 },
+  { key:'Korea',  label:'🇰🇷 Korea', icon:'🇰🇷', sort_order:10 },
+  { key:'오피니언',label:'Opinion',  icon:'✍️', sort_order:11 },
 ];
+
+function normalizeSectionCatalog(list) {
+  var items = Array.isArray(list) ? list.slice() : [];
+  var blocked = new Set(['tech', 'it과학', 'technology', 'tech/science']);
+  items = items.filter(function(row) {
+    var k = String((row && row.key) || '').trim().toLowerCase();
+    return k && !blocked.has(k);
+  });
+
+  function hasKey(key) {
+    return items.some(function(row) { return String((row && row.key) || '') === key; });
+  }
+  if (!hasKey('beauty')) items.push({ key:'beauty', label:'Beauty', icon:'💄', sort_order:8, active:true });
+  if (!hasKey('travel')) items.push({ key:'travel', label:'Travel', icon:'✈️', sort_order:9, active:true });
+
+  return items.sort(function(a, b) {
+    return Number(a.sort_order || 999) - Number(b.sort_order || 999);
+  });
+}
 
 async function loadSections() {
   var sb = getSupa();
-  if (!sb) { _sectionsCache = DEFAULT_SECTIONS; return; }
+  if (!sb) { _sectionsCache = normalizeSectionCatalog(DEFAULT_SECTIONS); return; }
   try {
     var res = await sb.from('sections').select('*').eq('active', true).order('sort_order');
-    _sectionsCache = (res.data && res.data.length) ? res.data : DEFAULT_SECTIONS;
+    _sectionsCache = normalizeSectionCatalog((res.data && res.data.length) ? res.data : DEFAULT_SECTIONS);
   } catch(e) {
-    _sectionsCache = DEFAULT_SECTIONS;
+    _sectionsCache = normalizeSectionCatalog(DEFAULT_SECTIONS);
   }
   // 네비만 업데이트 - 헤더 전체 재렌더 하지 않음 (Sign In 이슈 방지)
   var topnav = document.querySelector('.kh-topnav');
   if (topnav) {
     // 섹션 링크만 교체
-    var secLinks = _sectionsCache.slice(0,6).map(function(s){
+    var secLinks = _sectionsCache.map(function(s){
       return '<a class="kh-nav-a" href="korehan-section.html?s='+encodeURIComponent(s.key)+'">'+s.label+'</a>';
     }).join('');
     var newsDropdown = topnav.querySelector('.kh-dropdown');
@@ -4934,7 +5096,7 @@ var BADGE_DEFS = [
   { id:'read_allsec',cat:'reading',   tier:'diamond',  icon:'🔭', name:'올라운더',      desc:'모든 섹션 읽기',
     check: function(){
       var sc = getSectionReadCounts();
-      var secs = ['사회','국제','문화','스포츠','Korea','IT-과학','오피니언','정치','경제'];
+      var secs = ['사회','국제','문화','스포츠','Korea','beauty','travel','오피니언','정치','경제'];
       return secs.every(function(s){ return (sc[s]||0) >= 1; });
     } },
 
@@ -4977,8 +5139,10 @@ var BADGE_DEFS = [
     check: function(){ return (getSectionReadCounts()['스포츠']||0) >= 20; } },
   { id:'sec_korea',   cat:'sections', tier:'gold', icon:'🇰🇷', name:'Korea 마스터',desc:'Korea 기사 20개',
     check: function(){ return (getSectionReadCounts()['Korea']||0) >= 20; } },
-  { id:'sec_it',      cat:'sections', tier:'gold', icon:'💻', name:'IT 마스터',   desc:'IT·과학 기사 20개',
-    check: function(){ return (getSectionReadCounts()['IT-과학']||0) >= 20; } },
+  { id:'sec_beauty',  cat:'sections', tier:'gold', icon:'💄', name:'Beauty 마스터',desc:'Beauty 기사 20개',
+    check: function(){ return (getSectionReadCounts()['beauty']||0) >= 20; } },
+  { id:'sec_travel',  cat:'sections', tier:'gold', icon:'✈️', name:'Travel 마스터',desc:'Travel 기사 20개',
+    check: function(){ return (getSectionReadCounts()['travel']||0) >= 20; } },
   { id:'sec_opinion', cat:'sections', tier:'gold', icon:'✍️', name:'오피니언 마스터',desc:'오피니언 기사 10개',
     check: function(){ return (getSectionReadCounts()['오피니언']||0) >= 10; } },
 
@@ -5795,7 +5959,8 @@ function khInjectSidebar() {
         + '<a href="korehan-world.html" class="kh-sb-sub-a">&#x1F310; World</a>'
         + '<a href="korehan-culture.html" class="kh-sb-sub-a">&#x1F3AD; Culture</a>'
         + '<a href="korehan-section.html?s=kpop" class="kh-sb-sub-a">&#x1F3B5; K-pop</a>'
-        + '<a href="korehan-section.html?s=tech" class="kh-sb-sub-a">&#x1F4BB; Tech</a>'
+        + '<a href="korehan-section.html?s=beauty" class="kh-sb-sub-a">&#x1F484; Beauty</a>'
+        + '<a href="korehan-section.html?s=travel" class="kh-sb-sub-a">&#x2708;&#xFE0F; Travel</a>'
         + '<a href="korehan-korea.html" class="kh-sb-sub-a">&#x1F1F0;&#x1F1F7; Korea</a>'
       + '</div>'
       + '<button class="kh-sb-a" onclick=\"khSbToggle(\'sb-conv\',\'sb-arr-conv\')\"><span class="kh-sb-ico">&#x1F4AC;</span>Conversations<span class="kh-sb-new">New</span><span class="kh-sb-arrow" id="sb-arr-conv" style="margin-left:4px">&#x203A;</span></button>'
@@ -5818,6 +5983,8 @@ function khInjectSidebar() {
     + '<div class="kh-sb-sec">'
       + '<div class="kh-sb-lbl">Learn</div>'
       + '<a href="korehan-study-room.html" class="kh-sb-a' + (page==='korehan-study-room.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F4D6;</span>Study Room</a>'
+      + '<a href="korehan-shop.html" class="kh-sb-a' + (page==='korehan-shop.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F6D2;</span>Shop</a>'
+      + '<a href="korehan-fun.html" class="kh-sb-a' + (page==='korehan-fun.html'?' on':'') + '"><span class="kh-sb-ico">&#x2728;</span>FUN</a>'
       + '<a href="korehan-learning-overview.html" class="kh-sb-a' + (page==='korehan-learning-overview.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F4CA;</span>Learning Hub</a>'
       + '<a href="korehan-courses.html" class="kh-sb-a' + (page==='korehan-courses.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F393;</span>Courses</a>'
     + '</div>'
