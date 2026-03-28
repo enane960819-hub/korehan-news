@@ -4448,8 +4448,10 @@ async function openConvEditModal(rowId, existingData) {
   }
   var d = (rowData && rowData.data) ? rowData.data : {};
   var isNew = !rowId;
+  var reporters = await _ensureAdminReporters();
 
   var msgsText = (d.msgs || []).map(function(m){
+    if (m.s === 'n') return 'N: ' + m.txt;
     return (m.s === 'l' ? 'A' : 'B') + ': ' + m.txt;
   }).join('\n');
 
@@ -4480,10 +4482,10 @@ async function openConvEditModal(rowId, existingData) {
 
       +   '<div style="padding:16px 20px 20px;border-top:1px solid #e5ecf5;background:#fff;">'
       +     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
-      +       '<label style="font-size:12px;font-weight:800;color:#334155;">💬 Dialogue Script <span style="font-weight:500;color:#94a3b8;">(one line per message: A: / B:)</span></label>'
+      +       '<label style="font-size:12px;font-weight:800;color:#334155;">💬 Dialogue Script <span style="font-weight:500;color:#94a3b8;">(A: 왼쪽 / B: 오른쪽 / N: 지문)</span></label>'
       +       '<button id="ai-analyze-btn" onclick="aiAnalyzeConv()" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;">✨ AI Update</button>'
       +     '</div>'
-      +     '<textarea id="ce-msgs-text" oninput="syncConvPreview()" rows="8" placeholder="A: 오늘 괜찮아?&#10;B: 응, 왜?&#10;A: 그냥 안부 물어보려고." style="width:100%;padding:12px 14px;border:1px solid #dbe4f0;border-radius:14px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical;line-height:1.7;background:#fbfdff;">' + (msgsText.replace(/</g,'&lt;').replace(/>/g,'&gt;')) + '</textarea>'
+      +     '<textarea id="ce-msgs-text" oninput="syncConvPreview()" rows="8" placeholder="A: 오늘 괜찮아?&#10;B: 응, 왜?&#10;N: 잠시 침묵이 흘렀다.&#10;A: 그냥 안부 물어보려고." style="width:100%;padding:12px 14px;border:1px solid #dbe4f0;border-radius:14px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical;line-height:1.7;background:#fbfdff;">' + (msgsText.replace(/</g,'&lt;').replace(/>/g,'&gt;')) + '</textarea>'
       +     '<div style="margin-top:8px;font-size:12px;color:#64748b;line-height:1.6;">Edit the script in the same order users will read it. Click <b>AI Update</b> and vocab, grammar, and missions will regenerate from the edited dialogue.</div>'
       +   '</div>'
       + '</div>'
@@ -4500,9 +4502,18 @@ async function openConvEditModal(rowId, existingData) {
       +       + ceField('ce-ctx', '상황', 'text', d.ctx || '', '예: Asking for a deadline extension')
       +       + ceField('ce-avi', '이모지', 'text', d.avi || '💬', '대표 이모지')
       +     '</div>'
-      +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">'
+      +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">'
       +       ceSelect('ce-cat', '카테고리', ['everyday','work','friends','family','dating'], ['Everyday','Workplace','Friends','Family','Dating'], d.cat || 'everyday')
       +       + ceSelect('ce-lvl', '레벨', ['s','b','i','a'], ['Starter','Beginner','Intermediate','Advanced'], d.lvl || 'b')
+      +     '</div>'
+
+      +     '<div style="background:#fff;border:1px solid #e8edf5;border-radius:16px;padding:14px 14px 10px;margin-bottom:14px;">'
+      +       '<div style="font-size:11px;font-weight:800;color:#2255a4;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">🎭 대화 캐릭터</div>'
+      +       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+      +         ceCharSelect('ce-cast-a', 'A · 왼쪽 화자', d.cast_left_slug || '', reporters)
+      +         + ceCharSelect('ce-cast-b', 'B · 오른쪽 화자', d.cast_right_slug || '', reporters)
+      +       '</div>'
+      +       '<div style="font-size:11px;color:#94a3b8;margin-top:8px;line-height:1.5;">스크립트 A:/B: 줄에 연결됩니다. 미선택 시 기본 이름 사용.</div>'
       +     '</div>'
 
       +     '<div id="ai-result-area" style="display:block;">'
@@ -4565,14 +4576,50 @@ function syncConvPreview() {
     return;
   }
 
-  var html = '<div style="display:flex;flex-direction:column;gap:14px;">';
+  // 선택된 캐릭터 정보 가져오기
+  var castAEl = document.getElementById('ce-cast-a');
+  var castBEl = document.getElementById('ce-cast-b');
+  var castAId = castAEl && castAEl.value;
+  var castBId = castBEl && castBEl.value;
+  var rep = _adminReporters || [];
+  var repA = castAId ? rep.find(function(r){ return r.id === castAId; }) : null;
+  var repB = castBId ? rep.find(function(r){ return r.id === castBId; }) : null;
+  var nameA = repA ? repA.name : 'A';
+  var nameB = repB ? repB.name : 'B';
+  var colA  = repA ? (repA.color || '#64748b') : '#64748b';
+  var colB  = repB ? (repB.color || '#2563eb') : '#2563eb';
+
+  var html = '<div style="display:flex;flex-direction:column;gap:10px;">';
   lines.forEach(function(line){
     var raw = line.trim();
+    // N: 지문 (웹소설 지문 스타일)
+    if (/^N:/i.test(raw)) {
+      var ntxt = raw.replace(/^N:\s*/i, '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:6px 4px;">'
+        + '<span style="flex:1;height:1px;background:#e2e8f0;"></span>'
+        + '<span style="font-style:italic;color:#64748b;font-size:13px;white-space:pre-wrap;text-align:center;">' + ntxt + '</span>'
+        + '<span style="flex:1;height:1px;background:#e2e8f0;"></span>'
+        + '</div>';
+      return;
+    }
     var isB = /^B:/i.test(raw);
     var txt = raw.replace(/^[AB]:\s*/i, '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    html += '<div style="display:flex;' + (isB ? 'justify-content:flex-end;' : 'justify-content:flex-start;') + '">'
-      + '<div style="max-width:72%;background:' + (isB ? '#2563eb' : '#fff') + ';color:' + (isB ? '#fff' : '#0f172a') + ';border:' + (isB ? 'none' : '1px solid #e2e8f0') + ';border-radius:18px;padding:12px 14px;font-size:15px;line-height:1.6;box-shadow:0 8px 20px rgba(15,23,42,.05);">'
-      + txt + '</div></div>';
+    var nm  = isB ? nameB : nameA;
+    var col = isB ? colB : colA;
+    var ini = nm.charAt(0);
+    html += '<div style="display:flex;align-items:flex-end;gap:8px;' + (isB ? 'justify-content:flex-end;' : '') + '">';
+    if (!isB) {
+      html += '<div style="width:30px;height:30px;border-radius:10px;background:'+col+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;flex-shrink:0;">'+ini+'</div>';
+    }
+    html += '<div style="max-width:68%;">'
+      + '<div style="font-size:10px;font-weight:700;color:#94a3b8;margin-bottom:3px;'+(isB?'text-align:right;':'')+'">' + nm + '</div>'
+      + '<div style="background:' + (isB ? '#2563eb' : '#fff') + ';color:' + (isB ? '#fff' : '#0f172a') + ';border:' + (isB ? 'none' : '1px solid #e2e8f0') + ';border-radius:16px;padding:10px 13px;font-size:14px;line-height:1.6;box-shadow:0 4px 12px rgba(15,23,42,.05);">'
+      + txt + '</div>'
+      + '</div>';
+    if (isB) {
+      html += '<div style="width:30px;height:30px;border-radius:10px;background:'+col+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;flex-shrink:0;">'+ini+'</div>';
+    }
+    html += '</div>';
   });
   html += '</div>';
   chat.innerHTML = html;
@@ -4587,6 +4634,16 @@ function ceSelect(id, label, vals, labels, cur) {
   return '<label style="font-size:12px;font-weight:700;color:#374151;display:block">' + label
     + '<select id="' + id + '" onchange="syncConvPreview()" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'
     + vals.map(function(v,i){ return '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+labels[i]+'</option>'; }).join('')
+    + '</select></label>';
+}
+function ceCharSelect(id, label, curVal, reporters) {
+  var opts = '<option value="">— 없음 (기본 이름) —</option>'
+    + (reporters||[]).map(function(r){
+        return '<option value="'+r.id+'"'+(curVal===r.id?' selected':'')+'>'+r.name+' — '+r.role+'</option>';
+      }).join('');
+  return '<label style="font-size:12px;font-weight:700;color:#374151;display:block">' + label
+    + '<select id="'+id+'" onchange="syncConvPreview()" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'
+    + opts
     + '</select></label>';
 }
 
@@ -4657,12 +4714,22 @@ async function saveConvEdit(rowId) {
     catch(e) { throw new Error(id + ' JSON 파싱 오류: ' + e.message); }
   };
 
-  // A:/B: 텍스트 → msgs JSON
+  // A:/B:/N: 텍스트 → msgs JSON
   var msgsText = document.getElementById('ce-msgs-text').value.trim();
-  var msgs = msgsText.split('\n').filter(function(l){ return l.trim(); }).map(function(line, idx) {
-    var isB = /^B:/i.test(line.trim());
-    var txt = line.replace(/^[AB]:\s*/i, '').trim();
-    return {s: isB ? 'r' : 'l', who: isB ? 'B' : 'A', txt: txt};
+  var castAId = (document.getElementById('ce-cast-a') || {}).value || '';
+  var castBId = (document.getElementById('ce-cast-b') || {}).value || '';
+  var _rep = _adminReporters || [];
+  var _repA = castAId ? _rep.find(function(r){ return r.id === castAId; }) : null;
+  var _repB = castBId ? _rep.find(function(r){ return r.id === castBId; }) : null;
+  var msgs = msgsText.split('\n').filter(function(l){ return l.trim(); }).map(function(line) {
+    var raw = line.trim();
+    if (/^N:/i.test(raw)) {
+      return {s: 'n', txt: raw.replace(/^N:\s*/i, '')};
+    }
+    var isB = /^B:/i.test(raw);
+    var txt = raw.replace(/^[AB]:\s*/i, '').trim();
+    var charRef = isB ? _repB : _repA;
+    return {s: isB ? 'r' : 'l', who: charRef ? charRef.name : (isB ? 'B' : 'A'), txt: txt};
   });
 
   try {
@@ -4680,6 +4747,8 @@ async function saveConvEdit(rowId) {
       grammar:  parseField('ce-grammar'),
       mission:  parseField('ce-mission'),
     };
+    if (castAId) convObj.cast_left_slug  = castAId;
+    if (castBId) convObj.cast_right_slug = castBId;
 
     if (!convObj.name) throw new Error('이름을 입력해주세요');
     if (!convObj.msgs.length) throw new Error('대화 내용을 입력해주세요');

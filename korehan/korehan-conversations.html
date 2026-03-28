@@ -86,6 +86,9 @@
 .dp-cast-meta strong{display:block;font-size:12px;color:#0f172a;}
 .dp-cast-meta span{display:block;font-size:11px;color:#64748b;line-height:1.4;}
 .dp-inline-note{margin-top:7px;font-size:12px;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;padding:7px 11px;border-radius:12px;line-height:1.5;}
+.dp-narration{display:flex;align-items:center;gap:10px;padding:6px 4px;margin:2px 0;}
+.dp-narration::before,.dp-narration::after{content:'';flex:1;height:1px;background:#e2e8f0;}
+.dp-narration-text{font-style:italic;color:#64748b;font-size:13px;line-height:1.6;text-align:center;white-space:pre-wrap;padding:0 4px;}
 .dp-cta-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 24px 20px;background:#fff;border-top:1px solid #f0f4fa;}
 .dp-cta-btn{padding:12px;border-radius:14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;transition:all .15s;}
 .dp-cta-primary{background:#2563eb;color:#fff;}
@@ -174,14 +177,35 @@ function _charInitialColor(name) {
   return _CHAR_PALETTE[Math.abs(h) % _CHAR_PALETTE.length];
 }
 
+// 기자 캐릭터 맵 (character_reporters 테이블에서 로드)
+var _reporterMap = {};
+async function _loadReporters() {
+  var sb = getSupa();
+  if (!sb) return;
+  try {
+    var res = await sb.from('character_reporters').select('id, data').order('updated_at', {ascending: true});
+    if (!res.error && res.data && res.data.length) {
+      res.data.forEach(function(row) {
+        var r = row.data || row;
+        if (r && r.id) _reporterMap[r.id] = r;
+      });
+    }
+  } catch(e) {}
+}
+function _reporterFromMap(id) {
+  var r = _reporterMap[id];
+  if (!r) return null;
+  return { slug: r.id, name: r.name, name_ko: r.name, role: r.role || '', img: r.image || null, color: r.color || _charInitialColor(r.name) };
+}
+
 // Returns { left, right } character objects for a conversation
 function resolveConversationCast(c) {
   var d = c || {};
   // Support explicit slug fields stored on the conversation data
   var leftSlug  = d.cast_left_slug  || d.left_slug  || null;
   var rightSlug = d.cast_right_slug || d.right_slug || null;
-  var leftChar  = (leftSlug  && KH_CHARACTERS[leftSlug])  || null;
-  var rightChar = (rightSlug && KH_CHARACTERS[rightSlug]) || null;
+  var leftChar  = (leftSlug  && (KH_CHARACTERS[leftSlug]  || _reporterFromMap(leftSlug)))  || null;
+  var rightChar = (rightSlug && (KH_CHARACTERS[rightSlug] || _reporterFromMap(rightSlug))) || null;
   // Extract first speaker names from messages
   var msgs = d.msgs || [];
   var leftMsg  = msgs.find(function(m){ return m.s === 'l'; });
@@ -333,6 +357,10 @@ function openDetail(idx) {
     var ap  = h < 12 ? 'AM' : 'PM';
     var time = hr + ':' + min + ' ' + ap;
     var note = msg.note ? '<div class="dp-inline-note" style="display:flex;gap:6px;align-items:flex-start">' + _IC.key + '<span>'+escapeHtml(msg.note || '')+'</span></div>' : '';
+    // 지문 (웹소설 스타일 나레이션)
+    if (msg.s === 'n') {
+      return '<div class="dp-narration"><span class="dp-narration-text">'+escapeHtml(msg.txt || '')+'</span></div>';
+    }
     if (msg.s === 'l') {
       return '<div class="dp-msg-row left">'
         + renderCharacterAvatar(cast.left, '', 36)
@@ -489,6 +517,9 @@ async function toggleSave(btn) {
 
 var activeCat = 'all', activeLvl = 'all';
 document.addEventListener('DOMContentLoaded', async function() {
+  // ── 기자 캐릭터 먼저 로드 (resolveConversationCast에서 사용) ──
+  await _loadReporters();
+
   // ── DB에서 conversations 로드 ──────────────────────────
   var grid = document.getElementById('conv-cards-grid');
   if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;font-size:14px">⏳ Loading...</div>';
@@ -521,6 +552,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         var cast = resolveConversationCast(base);
         base.msgs = (base.msgs || []).map(function(msg) {
           var side = msg.s || msg.side || 'l';
+          if (side === 'n') return Object.assign({}, msg, {s: 'n'}); // 지문은 화자 없음
           var speaker = side === 'l' ? cast.left : cast.right;
           return Object.assign({}, msg, {
             s: side,
