@@ -5214,6 +5214,111 @@ async function applyCoinAdjustment() {
   }
   msg.textContent = '완료: 신규 Coin 잔액 ' + res.data.coin_balance;
 }
+
+// ─────────────────────────────────────────────────────────────
+// Study Room admin tools (Picture prompt CRUD + submission review)
+// open: korehan-admin.html#study-picture-prompts
+// ─────────────────────────────────────────────────────────────
+async function goStudyRoomOps() {
+  setSbOn('sb-manage-reporters');
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>Study Room Admin</h1><p>Picture prompt CRUD + submitted homework review</p></div></div>'
+    + '<div class="sf-card" style="margin-bottom:12px">'
+    + '<div style="font-weight:800;margin-bottom:8px">Picture Description Prompt</div>'
+    + '<div class="fg"><label>Prompt ID</label><input id="srp-id" placeholder="ex) city-night"></div>'
+    + '<div class="fg"><label>Prompt (KO)</label><input id="srp-prompt" placeholder="프롬프트를 입력하세요"></div>'
+    + '<div class="fg"><label>Image URL</label><input id="srp-image" placeholder="https://..."></div>'
+    + '<div class="fg"><label>Sample Answer</label><textarea id="srp-sample" style="min-height:90px"></textarea></div>'
+    + '<button class="btn btn-g" onclick="saveStudyPicturePrompt()">Save Prompt</button>'
+    + '<div id="srp-msg" style="margin-top:8px;font-size:12px;color:#475569"></div></div>'
+    + '<div class="sf-card" id="srp-list">Loading prompts…</div>'
+    + '<div class="sf-card" id="sr-homework-list" style="margin-top:12px">Loading submissions…</div>';
+  await loadStudyPicturePromptsAdmin();
+  await loadStudyHomeworkAdmin();
+}
+
+async function loadStudyPicturePromptsAdmin() {
+  var sb = getSb();
+  var el = document.getElementById('srp-list');
+  if (!sb || !el) return;
+  var r = await sb.from('study_picture_prompts').select('id,prompt_ko,image_url,sample_answer,is_active,updated_at').order('updated_at', { ascending:false }).limit(100);
+  if (r.error) { el.textContent = 'Prompt load error: ' + r.error.message; return; }
+  var rows = r.data || [];
+  if (!rows.length) { el.textContent = 'No prompts yet.'; return; }
+  el.innerHTML = '<div style="font-weight:800;margin-bottom:8px">Prompt List</div>' + rows.map(function(p){
+    return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:8px">'
+      + '<div style="font-weight:800">' + p.id + '</div>'
+      + '<div style="font-size:12px;color:#334155;margin-top:4px">' + (p.prompt_ko || '') + '</div>'
+      + '<div style="display:flex;gap:8px;margin-top:8px"><button class="btn" onclick="editStudyPicturePrompt(\'' + p.id + '\')">Edit</button>'
+      + '<button class="btn btn-r" onclick="deleteStudyPicturePrompt(\'' + p.id + '\')">Delete</button></div></div>';
+  }).join('');
+}
+
+async function editStudyPicturePrompt(id) {
+  var sb = getSb();
+  var r = await sb.from('study_picture_prompts').select('id,prompt_ko,image_url,sample_answer').eq('id', id).maybeSingle();
+  if (r.error || !r.data) return;
+  document.getElementById('srp-id').value = r.data.id || '';
+  document.getElementById('srp-prompt').value = r.data.prompt_ko || '';
+  document.getElementById('srp-image').value = r.data.image_url || '';
+  document.getElementById('srp-sample').value = r.data.sample_answer || '';
+}
+
+async function saveStudyPicturePrompt() {
+  var sb = getSb();
+  if (!sb) return;
+  var id = (document.getElementById('srp-id').value || '').trim();
+  if (!id) return;
+  var row = {
+    id: id,
+    prompt_ko: (document.getElementById('srp-prompt').value || '').trim(),
+    image_url: (document.getElementById('srp-image').value || '').trim(),
+    sample_answer: (document.getElementById('srp-sample').value || '').trim(),
+    is_active: true,
+    updated_at: new Date().toISOString()
+  };
+  var r = await sb.from('study_picture_prompts').upsert(row, { onConflict:'id' });
+  var msg = document.getElementById('srp-msg');
+  msg.textContent = r.error ? ('Save error: ' + r.error.message) : 'Saved.';
+  await loadStudyPicturePromptsAdmin();
+}
+
+async function deleteStudyPicturePrompt(id) {
+  if (!confirm('Delete prompt ' + id + '?')) return;
+  var sb = getSb();
+  var r = await sb.from('study_picture_prompts').delete().eq('id', id);
+  if (r.error) { alert(r.error.message); return; }
+  await loadStudyPicturePromptsAdmin();
+}
+
+async function loadStudyHomeworkAdmin() {
+  var sb = getSb();
+  var el = document.getElementById('sr-homework-list');
+  if (!sb || !el) return;
+  var r = await sb.from('writing_submissions').select('id,user_id,topic_ko,writing_text,status,submitted_at,final_feedback').order('submitted_at', { ascending:false }).limit(60);
+  if (r.error) { el.textContent = 'Submission load error: ' + r.error.message; return; }
+  var rows = r.data || [];
+  el.innerHTML = '<div style="font-weight:800;margin-bottom:8px">Submitted homework</div>' + (rows.length ? rows.map(function(s){
+    return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:8px">'
+      + '<div style="font-size:11px;color:#64748b">' + (s.submitted_at || '') + ' · ' + (s.user_id || '') + '</div>'
+      + '<div style="font-weight:800;margin:4px 0">' + (s.topic_ko || 'No topic') + '</div>'
+      + '<div style="font-size:12px;color:#334155;white-space:pre-wrap;max-height:120px;overflow:auto">' + (s.writing_text || '') + '</div>'
+      + '<textarea id="hw-fb-' + s.id + '" style="width:100%;min-height:72px;margin-top:8px" placeholder="Correction / feedback">' + (s.final_feedback || '') + '</textarea>'
+      + '<button class="btn btn-g" style="margin-top:6px" onclick="saveHomeworkFeedback(\'' + s.id + '\')">Save feedback</button></div>';
+  }).join('') : '<div style="font-size:12px;color:#94a3b8">No submissions.</div>');
+}
+
+async function saveHomeworkFeedback(id) {
+  var sb = getSb();
+  var fb = (document.getElementById('hw-fb-' + id).value || '').trim();
+  var r = await sb.from('writing_submissions').update({ final_feedback: fb, status: 'approved', reviewed_at: new Date().toISOString() }).eq('id', id);
+  if (r.error) { alert(r.error.message); return; }
+  toast('Saved');
+}
+
+if (window.location.hash === '#study-picture-prompts') {
+  setTimeout(function(){ goStudyRoomOps(); }, 120);
+}
 </script>
 </body>
 </html>
