@@ -1848,10 +1848,7 @@ function renderModalContent() {
 function openWritingModal() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
-  if (!_studyDone.topic && !_studyDone.grammar && !_studyDone.picture && !_studyDone.sentence) {
-    alert('Start Writing 전에 먼저 학습 단계를 하나 이상 완료해 주세요. (Topic / Grammar / Picture / Sentence)');
-    return;
-  }
+  if (!canEnterWritingRoom()) return;
   // Beginner → 4단계 듀오링고 스타일
   if (_currentLevel === 'Beginner') {
     openBeginnerModal();
@@ -1864,6 +1861,13 @@ function openWritingModal() {
   renderModalContent();
   // 모바일 탭 초기화
   wmMobileInit();
+}
+
+function canEnterWritingRoom() {
+  var hasDoneStep = !!(_studyDone.topic || _studyDone.grammar || _studyDone.picture || _studyDone.sentence);
+  if (hasDoneStep) return true;
+  alert('먼저 최소 1개 학습 단계를 완료해야 Writing Room에 들어갈 수 있어요.\\n(Topic Writing / Grammar Focus / Picture Description / Sentence Writing)');
+  return false;
 }
 
 function wmMobileInit() {
@@ -2763,6 +2767,7 @@ function rspStartWriting() {
   var overlay = document.getElementById('rsp-overlay');
   if (overlay) overlay.remove();
   if (!supaUser) { openAuthModal('signin'); return; }
+  if (!canEnterWritingRoom()) return;
 
   // Set both state vars so the rest of the modal logic is consistent
   _writingMode = 'reading';
@@ -2944,6 +2949,7 @@ function onReadingSelectChange(sel) {
 function openWritingModalWithMode() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
+  if (!canEnterWritingRoom()) return;
   if (_writingMode === 'reading' && !_selectedArticle) {
     alert('자료를 먼저 선택해주세요 (기사 / 대화 / 스토리)');
     return;
