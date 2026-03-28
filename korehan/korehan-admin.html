@@ -4498,20 +4498,16 @@ async function openConvEditModal(rowId, existingData) {
 
       +   '<div style="padding:18px 18px 8px;overflow:auto;">'
       +     '<div style="display:grid;grid-template-columns:1fr 1fr 90px;gap:10px;margin-bottom:16px;">'
-      +       ceField('ce-name', '이름', 'text', d.name || '', '예: Team Chat, Ji-yeon & Soo-jin')
-      +       + ceField('ce-ctx', '상황', 'text', d.ctx || '', '예: Asking for a deadline extension')
-      +       + ceField('ce-avi', '이모지', 'text', d.avi || '💬', '대표 이모지')
+      +       (ceField('ce-name', '이름', 'text', d.name || '', '예: Team Chat, Ji-yeon & Soo-jin') + ceField('ce-ctx', '상황', 'text', d.ctx || '', '예: Asking for a deadline extension') + ceField('ce-avi', '이모지', 'text', d.avi || '💬', '대표 이모지'))
       +     '</div>'
       +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">'
-      +       ceSelect('ce-cat', '카테고리', ['everyday','work','friends','family','dating'], ['Everyday','Workplace','Friends','Family','Dating'], d.cat || 'everyday')
-      +       + ceSelect('ce-lvl', '레벨', ['s','b','i','a'], ['Starter','Beginner','Intermediate','Advanced'], d.lvl || 'b')
+      +       (ceSelect('ce-cat', '카테고리', ['everyday','work','friends','family','dating'], ['Everyday','Workplace','Friends','Family','Dating'], d.cat || 'everyday') + ceSelect('ce-lvl', '레벨', ['s','b','i','a'], ['Starter','Beginner','Intermediate','Advanced'], d.lvl || 'b'))
       +     '</div>'
 
       +     '<div style="background:#fff;border:1px solid #e8edf5;border-radius:16px;padding:14px 14px 10px;margin-bottom:14px;">'
       +       '<div style="font-size:11px;font-weight:800;color:#2255a4;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">🎭 대화 캐릭터</div>'
       +       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
-      +         ceCharSelect('ce-cast-a', 'A · 왼쪽 화자', d.cast_left_slug || '', reporters)
-      +         + ceCharSelect('ce-cast-b', 'B · 오른쪽 화자', d.cast_right_slug || '', reporters)
+      +       (ceCharSelect('ce-cast-a', 'A · 왼쪽 화자', d.cast_left_slug || '', reporters) + ceCharSelect('ce-cast-b', 'B · 오른쪽 화자', d.cast_right_slug || '', reporters))
       +       '</div>'
       +       '<div style="font-size:11px;color:#94a3b8;margin-top:8px;line-height:1.5;">스크립트 A:/B: 줄에 연결됩니다. 미선택 시 기본 이름 사용.</div>'
       +     '</div>'
