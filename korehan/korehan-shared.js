@@ -3975,30 +3975,51 @@ var _XP_ACTION_LABELS = {
 // ── xp_log 컬럼명 감지 (세션당 1회) ─────────────────────────────
 var _xpLogAmtCol  = null;  // 'amount' | 'xp' | 'xp_gained' | 'points' | null
 var _xpLogSrcCol  = null;  // 'source' | 'action' | null
+var _xpLogDisabled = false;
+var _xpLogTriedFallbackInsert = false;
+
+function _isXPLogMissingColumnError(err) {
+  var msg = String((err && (err.message || err.details || err.hint || err.code)) || '').toLowerCase();
+  return msg.indexOf('column') >= 0 && msg.indexOf('does not exist') >= 0;
+}
 
 async function _detectXPLogCols() {
-  if (_xpLogAmtCol !== null) return;
+  if (_xpLogAmtCol !== null || _xpLogDisabled) return;
   var sb = getSupa();
   if (!sb) { _xpLogAmtCol = 'amount'; _xpLogSrcCol = 'source'; return; }
-  // amount 컬럼 탐지
-  var amtCandidates = ['amount', 'xp', 'xp_gained', 'points'];
-  for (var i = 0; i < amtCandidates.length; i++) {
-    try {
-      var r = await sb.from('xp_log').select(amtCandidates[i]).limit(0);
-      if (!r.error) { _xpLogAmtCol = amtCandidates[i]; break; }
-    } catch(e) {}
-  }
-  if (!_xpLogAmtCol) _xpLogAmtCol = 'amount';
-  // source/action 컬럼 탐지
   try {
-    var rs = await sb.from('xp_log').select('source').limit(0);
-    _xpLogSrcCol = rs.error ? 'action' : 'source';
-  } catch(e) { _xpLogSrcCol = 'source'; }
+    var probe = await sb.from('xp_log').select('*').limit(1);
+    if (probe.error) {
+      _xpLogDisabled = true;
+      console.warn('[xp] xp_log probe failed, disable remote xp_log writes:', probe.error);
+      return;
+    }
+    var row = (probe.data && probe.data[0]) || null;
+    if (row && typeof row === 'object') {
+      var keys = Object.keys(row);
+      _xpLogAmtCol = keys.indexOf('amount') >= 0 ? 'amount'
+        : keys.indexOf('xp') >= 0 ? 'xp'
+        : keys.indexOf('xp_gained') >= 0 ? 'xp_gained'
+        : keys.indexOf('points') >= 0 ? 'points'
+        : 'amount';
+      _xpLogSrcCol = keys.indexOf('source') >= 0 ? 'source'
+        : keys.indexOf('action') >= 0 ? 'action'
+        : 'source';
+    } else {
+      _xpLogAmtCol = 'amount';
+      _xpLogSrcCol = 'source';
+    }
+  } catch(e) {
+    _xpLogDisabled = true;
+    console.warn('[xp] xp_log probe exception, disable remote xp_log writes:', e);
+    return;
+  }
   console.log('[xp] xp_log cols:', _xpLogAmtCol, _xpLogSrcCol);
 }
 
 async function _insertXPLog(sb, userId, actionKey, amount, reason, contentId) {
   await _detectXPLogCols();
+  if (_xpLogDisabled) return;
   var row = { user_id: userId };
   row[_xpLogAmtCol] = amount;
   row[_xpLogSrcCol] = actionKey;
@@ -4010,8 +4031,29 @@ async function _insertXPLog(sb, userId, actionKey, amount, reason, contentId) {
     }));
     if (r.error) {
       // reason/content_id 컬럼 없을 수도 — 최소 행으로 재시도
-      if (/column.*not.*exist/i.test((r.error.message||''))) {
-        await sb.from('xp_log').insert(row);
+      if (_isXPLogMissingColumnError(r.error)) {
+        var rr = await sb.from('xp_log').insert(row);
+        if (rr && rr.error) {
+          if (_isXPLogMissingColumnError(rr.error)) {
+            if (!_xpLogTriedFallbackInsert) {
+              _xpLogTriedFallbackInsert = true;
+              var fallbackRows = [
+                { user_id:userId, action:actionKey, xp:amount },
+                { user_id:userId, source:actionKey, xp:amount },
+                { user_id:userId, action:actionKey, amount:amount },
+                { user_id:userId, source:actionKey, amount:amount }
+              ];
+              for (var i = 0; i < fallbackRows.length; i++) {
+                var fr = await sb.from('xp_log').insert(fallbackRows[i]);
+                if (!fr.error) { return; }
+              }
+            }
+            _xpLogDisabled = true;
+            console.warn('[xp] xp_log schema mismatch, disable remote xp_log writes:', rr.error);
+          } else {
+            console.warn('[xp] log insert error:', rr.error);
+          }
+        }
       } else {
         console.warn('[xp] log insert error:', r.error);
       }
