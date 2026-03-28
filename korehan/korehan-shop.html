@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shop — KoreHan News</title>
+<link rel="stylesheet" href="korehan-shared.css">
+<style>
+body{margin:0;background:#f3f7fc;font-family:Inter,Pretendard,sans-serif;color:#0f172a}
+.wrap{max-width:1160px;margin:0 auto;padding:22px 16px 56px}
+.hero{background:linear-gradient(135deg,#0b1626,#1d4ed8);border-radius:18px;color:#fff;padding:22px}
+.hero p{margin:6px 0 0;color:rgba(255,255,255,.82)}
+.balance{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.bal{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);padding:8px 12px;border-radius:999px;font-size:13px;font-weight:800}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:16px}
+.card{background:#fff;border:1px solid #dbe7f3;border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.thumb{height:126px;background:#e2e8f0;background-size:cover;background-position:center}
+.body{padding:12px 12px 14px;display:flex;flex-direction:column;gap:8px;flex:1}
+.title{font-size:16px;font-weight:800}.desc{font-size:13px;color:#64748b;line-height:1.45;min-height:38px}
+.price{display:flex;gap:8px;flex-wrap:wrap}.pill{font-size:12px;font-weight:800;border-radius:999px;padding:5px 9px}
+.coin{background:#ecfeff;color:#0f766e}.cash{background:#f5f3ff;color:#6d28d9}
+.btns{display:flex;gap:8px;flex-wrap:wrap}.btn{border:none;border-radius:10px;padding:8px 11px;font-size:12px;font-weight:800;cursor:pointer}
+.btn.coin{background:#0f766e;color:#fff}.btn.cash{background:#6d28d9;color:#fff}.btn:disabled{opacity:.45;cursor:not-allowed}
+.owned{font-size:12px;color:#16a34a;font-weight:800}
+.inv{margin-top:18px;background:#fff;border:1px solid #dbe7f3;border-radius:14px;padding:14px}
+.inv h3{margin:0 0 8px}.inv-item{padding:8px 0;border-bottom:1px solid #edf2f7;font-size:13px}
+.inv-item:last-child{border-bottom:none}
+</style>
+</head>
+<body>
+<div id="kh-header"></div>
+<main class="wrap">
+  <section class="hero">
+    <h1 style="margin:0">🛍️ SHOP</h1>
+    <p>XP는 학습 진행 전용, 냥은 상점/선물 전용 재화입니다.</p>
+    <div class="balance">
+      <div class="bal" id="shop-xp">XP: -</div>
+      <div class="bal" id="shop-coin">냥: -</div>
+    </div>
+  </section>
+  <section class="grid" id="shop-grid"></section>
+  <section class="inv"><h3>보유 아이템 인벤토리</h3><div id="shop-inventory">Loading…</div></section>
+</main>
+<div id="kh-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js?v=20260327-shop"></script>
+<script src="shop-client.js"></script>
+</body>
+</html>
