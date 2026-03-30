@@ -597,196 +597,607 @@ body.kh-neon-on .chip.gc { background:rgba(255,214,0,.08) !important; color:#ffe
 body.kh-neon-on .submit-note { color:#7ab8f5 !important; }
 body.kh-neon-on .tc-ko { color:#f0fcff !important; text-shadow:0 0 12px rgba(0,255,214,.15); }
 body.kh-neon-on .tc-en { color:rgba(160,240,255,.7) !important; }
+
+/* ═══════════════════════════════════════════════════════════════
+   STUDY ROOM v2 — DARK LAYOUT REDESIGN
+═══════════════════════════════════════════════════════════════ */
+
+/* Page wrapper — full dark background */
+.sr-page {
+  background: linear-gradient(180deg, #0b1626 0%, #0d1b2e 100%);
+  min-height: 100vh;
+}
+body { background: #0b1626 !important; }
+
+/* Content wrapper */
+.sr-wrap2 {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 28px 20px 80px;
+}
+
+/* Two-column layout: main + sidebar */
+.sr-layout {
+  display: grid;
+  grid-template-columns: 1fr 356px;
+  gap: 20px;
+  align-items: start;
+}
+@media(max-width: 1024px) { .sr-layout { grid-template-columns: 1fr 320px; } }
+@media(max-width: 860px)  { .sr-layout { grid-template-columns: 1fr; } }
+
+/* ── HERO BLOCK ── */
+.sr-hero-block {
+  background: linear-gradient(160deg, #0f2040 0%, #132a50 55%, #1a3a6b 100%);
+  border-radius: 20px;
+  padding: 32px 28px 26px;
+  border: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 14px;
+  position: relative;
+  overflow: hidden;
+}
+.sr-hero-block::after {
+  content: '✍';
+  position: absolute;
+  right: 20px; bottom: -10px;
+  font-size: 130px;
+  opacity: 0.04;
+  pointer-events: none;
+  line-height: 1;
+}
+.sr-lvbadge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 13px;
+  border-radius: 999px;
+  background: rgba(122,184,245,0.14);
+  border: 1px solid rgba(122,184,245,0.22);
+  color: #7ab8f5;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 18px;
+}
+.sr-headline {
+  font-family: 'Noto Serif KR', 'Playfair Display', serif;
+  font-size: clamp(28px, 3.8vw, 44px);
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.18;
+  letter-spacing: -0.03em;
+  margin: 0 0 10px;
+  word-break: keep-all;
+}
+.sr-headline-sub {
+  font-size: 13px;
+  color: rgba(255,255,255,0.48);
+  line-height: 1.75;
+  margin: 0 0 20px;
+  max-width: 60ch;
+}
+
+/* ── TOPIC CARD ── */
+.sr-topic-card2 {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.13);
+  border-radius: 14px;
+  padding: 20px 22px 18px;
+  position: relative;
+}
+.sr-topic-lbl {
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: #7ab8f5;
+  margin-bottom: 8px;
+}
+.sr-topic-q {
+  font-family: 'Noto Serif KR', 'Playfair Display', serif;
+  font-size: clamp(20px, 2.8vw, 28px);
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.3;
+  margin: 0 0 5px;
+  word-break: keep-all;
+}
+.sr-topic-en2 {
+  font-size: 14px;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+.sr-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+  min-height: 26px;
+}
+/* Chips inside dark topic card */
+.sr-topic-card2 .wchip  { background:rgba(122,184,245,0.18); border-color:rgba(122,184,245,0.28); color:#b8d9f7; }
+.sr-topic-card2 .wchip.g { background:rgba(255,220,100,0.15); border-color:rgba(255,220,100,0.22); color:#ffe599; }
+
+/* ── ACTION BUTTONS ── */
+.sr-action-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sr-btn-primary {
+  padding: 12px 22px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s, transform .15s;
+  white-space: nowrap;
+}
+.sr-btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); }
+.sr-btn-secondary {
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.09);
+  color: rgba(255,255,255,0.82);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.sr-btn-secondary:hover { background: rgba(255,255,255,0.16); color: #fff; }
+
+/* ── LEVEL SELECTOR (dark bg) ── */
+.sr-page .lv-row { margin-bottom: 14px; }
+
+/* ── MISSION SECTION ── */
+.sr-mission-section {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 16px;
+  padding: 20px 20px 16px;
+  margin-bottom: 14px;
+}
+.sr-mission-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.sr-mission-title { font-size: 17px; font-weight: 900; color: #fff; }
+.sr-mission-bonus { font-size: 12px; color: rgba(255,255,255,0.4); font-weight: 600; }
+.sr-mission-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 10px;
+  padding: 13px 14px;
+  margin-bottom: 8px;
+  transition: background .15s;
+}
+.sr-mission-item:last-child { margin-bottom: 0; }
+.sr-mission-item:hover { background: rgba(255,255,255,0.09); }
+.sr-mission-item-left { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.sr-mission-item-name { font-size: 14px; font-weight: 800; color: #fff; }
+.sr-mission-item-sub  { font-size: 11px; color: rgba(255,255,255,0.42); }
+.sr-mission-right     { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+.sr-mission-pts {
+  font-size: 11px; font-weight: 800; color: #f59e0b;
+  background: rgba(245,158,11,0.12);
+  border: 1px solid rgba(245,158,11,0.2);
+  border-radius: 999px; padding: 3px 10px;
+  white-space: nowrap;
+}
+.sr-mission-status-todo {
+  font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+  background: rgba(255,255,255,0.07);
+  border-radius: 6px; padding: 4px 9px;
+}
+.sr-mission-status-done {
+  font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
+  color: #22c55e;
+  background: rgba(34,197,94,0.12);
+  border: 1px solid rgba(34,197,94,0.2);
+  border-radius: 6px; padding: 4px 9px;
+}
+
+/* ── ACTIVITY CARDS (dark theme override) ── */
+.sr-activity-card {
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+}
+.sr-activity-title { color: #fff !important; }
+.sr-activity-desc  { color: rgba(255,255,255,0.52) !important; }
+.sr-activity-btn   { background: rgba(255,255,255,0.12) !important; border: 1px solid rgba(255,255,255,0.18); }
+.sr-activity-btn:hover { background: rgba(255,255,255,0.2) !important; }
+
+/* ── DARK CARD (word tracks, etc.) ── */
+.sr-dark-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.sr-dark-card .chd {
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 10px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.sr-dark-card .ct  { color: rgba(255,255,255,0.45) !important; }
+.sr-dark-card .cb  { padding: 12px 14px; }
+.sr-dark-card .vko { color: #7ab8f5 !important; }
+.sr-dark-card .ven { color: rgba(255,255,255,0.48) !important; }
+.sr-dark-card .vrow{ border-bottom-color: rgba(255,255,255,0.08) !important; }
+.sr-dark-card .sr-pill {
+  border-color: rgba(255,255,255,0.15) !important;
+  background: rgba(255,255,255,0.07) !important;
+  color: rgba(255,255,255,0.6) !important;
+}
+
+/* ── SIDEBAR ── */
+.sr-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: sticky;
+  top: 80px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.1) transparent;
+  padding-right: 2px;
+}
+.sr-sidebar::-webkit-scrollbar { width: 4px; }
+.sr-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 4px; }
+
+.sr-sb-panel {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 18px;
+  flex-shrink: 0;
+}
+.sr-sb-phd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.sr-sb-ptitle { font-size: 15px; font-weight: 900; color: #fff; }
+.sr-sb-psub   { font-size: 11px; color: rgba(255,255,255,0.38); font-weight: 600; white-space: nowrap; }
+.sr-sb-sublabel {
+  font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.2px;
+  color: rgba(255,255,255,0.28); margin-bottom: 10px;
+}
+
+/* Sidebar helper rows */
+.sr-sb-panel .hrow {
+  background: rgba(255,255,255,0.07) !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 11px 12px !important;
+  margin-bottom: 7px !important;
+}
+.sr-sb-panel .hrow:last-child { margin-bottom: 0 !important; }
+.sr-sb-panel .hko { color: #fff !important; font-size: 13px !important; font-weight: 700 !important; margin-bottom: 3px !important; }
+.sr-sb-panel .hen { color: rgba(255,255,255,0.5) !important; font-size: 12px !important; }
+.sr-sb-panel .hbtn { color: rgba(255,255,255,0.35) !important; }
+.sr-sb-panel .hbtn:hover { color: #7ab8f5 !important; }
+
+/* Sidebar grammar (compact dark) */
+.sr-sb-panel .grb { border-bottom-color: rgba(255,255,255,0.08) !important; }
+.sr-sb-panel .grbadge.lvb { background: rgba(46,125,50,0.2) !important; color: #86efac !important; }
+.sr-sb-panel .grbadge.lvi { background: rgba(245,127,23,0.2) !important; color: #fcd34d !important; }
+.sr-sb-panel .grbadge.lva { background: rgba(198,40,40,0.2) !important; color: #fca5a5 !important; }
+.sr-sb-panel .grname { color: #93c5fd !important; font-size: 13px !important; }
+.sr-sb-panel .grexp  { color: rgba(255,255,255,0.52) !important; font-size: 11px !important; }
+.sr-sb-panel .grex   { background: rgba(255,255,255,0.06) !important; border-left-color: #2563eb !important; }
+.sr-sb-panel .grko   { color: #bfdbfe !important; }
+.sr-sb-panel .gren   { color: rgba(255,255,255,0.38) !important; }
+
+/* Feature summary items */
+.sr-feature-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 9px; margin-bottom: 6px;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.sr-feature-item:last-child { margin-bottom: 0; }
+.sr-feature-icon  { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+.sr-feature-label { font-size: 13px; font-weight: 700; color: #fff; line-height: 1.3; }
+.sr-feature-sub   { font-size: 11px; color: rgba(255,255,255,0.42); margin-top: 2px; }
+
+/* Sidebar phrase card */
+.sr-sb-panel.pcard { background: linear-gradient(135deg, #0d1b2e, #1a3a6b) !important; }
+.sr-sb-panel.pcard .chd { border-color: rgba(255,255,255,0.1) !important; background: transparent !important; }
+
+/* Sidebar vocab rows */
+.sr-sb-panel .vrow  { border-bottom-color: rgba(255,255,255,0.08) !important; }
+.sr-sb-panel .vko   { color: #7ab8f5 !important; }
+.sr-sb-panel .ven   { color: rgba(255,255,255,0.48) !important; }
+
+/* Sidebar flashcard pills / mini cards */
+.sr-sb-panel .tpill {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(255,255,255,0.15) !important;
+  color: rgba(255,255,255,0.62) !important;
+}
+.sr-sb-panel .tpill.on { background: #2255a4 !important; border-color: #2255a4 !important; color: #fff !important; }
+.sr-sb-panel .mcard {
+  background: rgba(255,255,255,0.07) !important;
+  border-color: rgba(255,255,255,0.1) !important;
+}
+.sr-sb-panel .mcko { color: #7ab8f5 !important; }
+.sr-sb-panel .mcard.flipped { background: rgba(122,184,245,0.14) !important; }
+.sr-sb-panel .mcard.flipped .mcko { color: #fff !important; }
+.sr-sb-panel .lqbtn { background: rgba(37,99,235,0.5) !important; color: #fff !important; }
+
+/* ── RESPONSIVE ── */
+@media(max-width: 860px) {
+  .sr-sidebar {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+}
+@media(max-width: 560px) {
+  .sr-sidebar { grid-template-columns: 1fr; }
+  .sr-hero-block { padding: 22px 16px 18px; border-radius: 16px; }
+  .sr-topic-card2 { padding: 16px 14px 14px; }
+  .sr-topic-q { font-size: 20px; }
+  .sr-btn-primary { width: 100%; text-align: center; }
+  .sr-action-row { flex-direction: column; }
+  .sr-mission-section { padding: 16px 14px 14px; }
+}
 </style>
 </head>
 <body>
 <div id="kh-header"></div>
 
-<!-- HERO -->
-<div class="sr-hero">
-  <div class="sr-hi">
-    <div class="sr-badge">📖 Korean Study Room</div>
-    <h1>Study Room</h1>
-    <p>Pick your level, write in Korean — vocab, grammar & feedback, all in one premium flow.</p>
-    <div id="sr-credit-banner" style="margin-top:12px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.12);font-size:12px;color:rgba(255,255,255,.92);line-height:1.6">
-      Checking your Study Room credit…
+<!-- STUDY ROOM PAGE -->
+<div class="sr-page">
+<div class="sr-wrap2">
+<div class="sr-layout">
+
+<!-- ── MAIN COLUMN ── -->
+<div class="sr-main">
+
+  <!-- HERO BLOCK: badge + headline + topic card -->
+  <div class="sr-hero-block">
+    <div class="sr-lvbadge-pill" id="sr-lvbadge-pill">📖 STUDY ROOM / BEGINNER</div>
+    <h1 class="sr-headline">오늘의 주제로 쓰고,<br>성장이 눈에 보이게.</h1>
+    <p class="sr-headline-sub">정보가 흩어지지 않고 바로 쓰기를 시작할 수 있게 구성했어요. 문법과 예문은 오른쪽 사이드에서 보조합니다.</p>
+
+    <!-- Credit / access banner -->
+    <div id="sr-credit-banner" style="margin-bottom:16px;padding:11px 14px;border-radius:10px;background:rgba(255,255,255,.1);font-size:12px;color:rgba(255,255,255,.82);line-height:1.6">
+      Checking your Study Room access…
     </div>
 
-    <div class="lv-row">
-      <button class="lv-btn lv-s"    onclick="setLevel('Starter',this)">⚪ Starter</button>
-      <button class="lv-btn lv-b on" onclick="setLevel('Beginner',this)">🟢 Beginner</button>
-      <button class="lv-btn lv-i"    onclick="setLevel('Intermediate',this)">🟡 Intermediate</button>
-      <button class="lv-btn lv-a"    onclick="setLevel('Advanced',this)">🔴 Advanced</button>
+    <!-- TODAY'S TOPIC CARD -->
+    <div class="sr-topic-card2">
+      <div class="sr-topic-lbl">TODAY'S WRITING TOPIC</div>
+      <div class="sr-topic-q" id="hero-topic-ko">Loading…</div>
+      <div class="sr-topic-en2" id="hero-topic-en"></div>
+      <div id="hero-topic-done" style="display:none;font-size:11px;color:#7ab8f5;font-weight:700;margin-bottom:10px">✅ Done today</div>
+      <!-- vocab + grammar chips (populated by JS) -->
+      <div class="sr-chip-row wc-chips" id="wcard-chips"></div>
+      <!-- ACTION BUTTONS -->
+      <div class="sr-action-row">
+        <button class="sr-btn-primary" onclick="openWritingModalWithMode()">Start Writing Now →</button>
+        <button class="sr-btn-secondary" onclick="openGrammarFocusModal()">Grammar first</button>
+        <button class="sr-btn-secondary" onclick="(function(){var el=document.getElementById('sr-helper-anchor');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});})()">See example answers</button>
+      </div>
     </div>
 
-    <div class="topic-card" id="topic-card">
-      <div style="flex:1;min-width:0">
-        <div class="tc-label">✏️ Today's Writing Topic</div>
-        <div class="tc-ko" id="hero-topic-ko">Loading…</div>
-        <div class="tc-en" id="hero-topic-en"></div>
-      </div>
-      <div id="hero-topic-done" class="tc-done" style="display:none">✅ Done today</div>
-    </div>
-  </div>
-</div>
-
-<!-- BODY -->
-<div class="sr-body">
-  <div class="sr-grid">
-
-    <!-- ── LEFT ── -->
-    <div style="display:flex;flex-direction:column;gap:14px;">
-
-      <!-- TODAY'S PHRASE -->
-      <div class="card pcard">
-        <div class="chd"><div class="ct" style="color:rgba(255,255,255,0.4)">🌟 Today's Phrase</div></div>
-        <div class="cb" id="phrase-box">
-          <div class="skel" style="height:28px;width:80%;margin-bottom:6px"></div>
-          <div class="skel" style="height:12px;width:60%;margin-bottom:4px"></div>
-          <div class="skel" style="height:12px;width:70%"></div>
-        </div>
-      </div>
-
-      <!-- MUST-KNOW VOCAB -->
-      <div class="card">
-        <div class="chd"><div class="ct">📌 Must-know Vocab</div><span style="font-size:10px;color:var(--gray)" id="vocab-src"></span></div>
-        <div class="cb" id="vocab-box">
-          <div class="skel" style="height:14px;margin-bottom:8px"></div>
-          <div class="skel" style="height:14px;margin-bottom:8px"></div>
-          <div class="skel" style="height:14px;margin-bottom:8px"></div>
-          <div class="skel" style="height:14px"></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="chd"><div class="ct">🧠 10 words from your level</div></div>
-        <div class="cb" id="sr-level-words"><div class="skel" style="height:12px"></div></div>
-      </div>
-
-      <div class="card">
-        <div class="chd"><div class="ct">🎯 10 words from your interests</div></div>
-        <div class="cb" id="sr-interest-words"><div class="skel" style="height:12px"></div></div>
-      </div>
-
-      <!-- GRAMMAR B→A -->
-      <div class="card">
-        <div class="chd"><div class="ct">📚 Grammar</div><span style="font-size:10px;color:var(--gray)">B → A</span></div>
-        <div class="cb" id="grammar-box">
-          <div class="skel" style="height:70px;margin-bottom:8px"></div>
-          <div class="skel" style="height:70px;margin-bottom:8px"></div>
-          <div class="skel" style="height:70px"></div>
-        </div>
-      </div>
-
+    <!-- hidden compat elements — JS sets these but they don't need to be visible -->
+    <div id="wcard-topic-ko" style="display:none"></div>
+    <div id="wcf-mode-text"  style="display:none">Open Writing Room</div>
+    <!-- hidden mode tabs — JS reads/sets these -->
+    <div class="wc-mode-tabs" id="wc-mode-tabs" style="display:none">
+      <button class="wc-mode-tab active" id="tab-topic"        onclick="setWritingMode('topic')">📝 Topic Writing</button>
+      <button class="wc-mode-tab"        id="tab-grammar-focus" onclick="openGrammarFocusModal()">🎯 Grammar Focus</button>
     </div>
 
-    <!-- ── CENTER ── -->
-    <div style="display:flex;flex-direction:column;gap:14px;">
-
-      <!-- WRITING CARD -->
-      <!-- 피드백 인박스 버튼 -->
-      <div id="feedback-inbox-btn" style="display:none;margin-bottom:10px;">
-        <button onclick="openFeedbackInbox()" style="width:100%;padding:12px 16px;background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:12px;font-size:13px;font-weight:800;color:#0369a1;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;justify-content:center;">
-          <span>📬</span><span id="feedback-inbox-label">Check My Feedback</span>
-        </button>
-      </div>
-
-      <div class="wcard" id="wcard" onclick="openWritingModal()">
-        <div class="wc-top">
-          <div class="wcbadge">✍️ Writing Practice</div>
-          <div class="wctitle">Write in Korean.<br>Get real feedback.</div>
-          <div class="wcsub">Use today's vocab and grammar. Han personally reviews every submission within 24h.</div>
-          <div class="wc-topic">
-            <div class="wc-topic-label">Today's Topic</div>
-            <div class="wc-topic-ko" id="wcard-topic-ko">Loading…</div>
-          </div>
-          <div class="wc-chips" id="wcard-chips"></div>
-        </div>
-        <!-- 쓰기 모드 선택 -->
-        <div class="wc-mode-tabs" id="wc-mode-tabs">
-          <button class="wc-mode-tab active" id="tab-topic" onclick="event.stopPropagation();setWritingMode('topic')">📝 Topic Writing</button>
-          <button class="wc-mode-tab" id="tab-grammar-focus" onclick="event.stopPropagation();openGrammarFocusModal()">🎯 Grammar Focus</button>
-        </div>
-        <!-- Reading 선택 시 기사 선택 드롭다운 -->
-        
-        <div class="wc-footer">
-          <div><div class="wcf-text" id="wcf-mode-text">Open Writing Room</div><div class="wcf-sub">Courses subscribers · feedback within 24h</div></div>
-          <button class="wcf-btn" onclick="event.stopPropagation();openWritingModalWithMode()">Start Writing →</button>
-        </div>
-      </div>
-
-      <div class="sr-activity-grid">
-        <div class="sr-activity-card">
-          <div class="sr-activity-title">🖼️ Picture Description <span id="sr-done-picture" style="color:#16a34a;font-size:12px;font-weight:800"></span></div>
-          <div class="sr-activity-desc">Look at an image prompt, write a Korean description, and get correction + simple feedback.</div>
-          <button class="sr-activity-btn" onclick="openPictureDescription();event.stopPropagation();">Start Picture Description</button>
-        </div>
-        <div class="sr-activity-card">
-          <div class="sr-activity-title">📝 Sentence Writing from Articles <span id="sr-done-sentence" style="color:#16a34a;font-size:12px;font-weight:800"></span></div>
-          <div class="sr-activity-desc">Type one sentence at a time from existing articles. Compare mistakes, missing words, and spacing.</div>
-          <button class="sr-activity-btn" onclick="openSentenceWriting();event.stopPropagation();">Start Sentence Writing</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="chd"><div class="ct">✅ Daily study checklist</div><span style="font-size:10px;color:var(--gray)">KST reset</span></div>
-        <div class="cb" id="sr-checklist-box"></div>
-      </div>
-
-      <!-- HELPER SENTENCES -->
-      <div class="card">
-        <div class="chd"><div class="ct">💬 Helper Sentences</div><span style="font-size:10px;color:var(--gray)">click 🔊 to hear</span></div>
-        <div class="cb" id="helper-box">
-          <div class="skel" style="height:40px;margin-bottom:8px"></div>
-          <div class="skel" style="height:40px;margin-bottom:8px"></div>
-          <div class="skel" style="height:40px"></div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- ── RIGHT ── -->
-    <div style="display:flex;flex-direction:column;gap:14px;">
-
-      <!-- MINI FLASHCARDS -->
-      <div class="card">
-        <div class="chd" style="border:none;padding-bottom:0"><div class="ct">📇 Flashcards</div></div>
-        <div style="padding:8px 14px 0;display:flex;gap:6px;flex-wrap:wrap;" id="fc-filters">
-          <button class="tpill on" onclick="loadFlashcards('all',this)">All</button>
-        </div>
-        <div class="cb">
-          <div class="mgrid" id="fc-grid">
-            <div class="skel" style="height:70px"></div>
-            <div class="skel" style="height:70px"></div>
-            <div class="skel" style="height:70px"></div>
-            <div class="skel" style="height:70px"></div>
-          </div>
-          <div style="text-align:center;margin-top:8px">
-            <a href="korehan-learn.html" style="font-size:11px;color:var(--bright);font-weight:700;text-decoration:none">View all flashcards →</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- LISTENING QUIZ -->
-      <div class="card">
-        <div class="chd"><div class="ct">🎧 Listening Quiz</div></div>
-        <div class="cb" id="lq-mini">
-          <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
-            <button class="tpill on" onclick="setLQMode('hear',this)">🔊 Hear?</button>
-            <button class="tpill"    onclick="setLQMode('mean',this)">💬 Meaning?</button>
-          </div>
-          <div style="text-align:center;padding:10px 0">
-            <div style="font-size:36px;margin-bottom:6px">🎧</div>
-            <div style="font-size:12px;font-weight:600;color:var(--dark);margin-bottom:3px">Test your listening</div>
-            <div style="font-size:11px;color:var(--gray);margin-bottom:10px">AI generates from today's vocab</div>
-            <button class="lqbtn" onclick="startLQ()">Start Quiz</button>
-          </div>
-        </div>
-      </div>
-
+    <!-- Feedback inbox -->
+    <div id="feedback-inbox-btn" style="display:none;margin-top:14px;">
+      <button onclick="openFeedbackInbox()" style="width:100%;padding:11px 16px;background:rgba(14,165,233,0.12);border:1.5px solid rgba(14,165,233,0.25);border-radius:10px;font-size:13px;font-weight:800;color:#7dd3fc;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;justify-content:center;">
+        <span>📬</span><span id="feedback-inbox-label">Check My Feedback</span>
+      </button>
     </div>
   </div>
-</div>
+
+  <!-- LEVEL SELECTOR -->
+  <div class="lv-row">
+    <button class="lv-btn lv-s"    onclick="setLevel('Starter',this)">⚪ Starter</button>
+    <button class="lv-btn lv-b on" onclick="setLevel('Beginner',this)">🟢 Beginner</button>
+    <button class="lv-btn lv-i"    onclick="setLevel('Intermediate',this)">🟡 Intermediate</button>
+    <button class="lv-btn lv-a"    onclick="setLevel('Advanced',this)">🔴 Advanced</button>
+  </div>
+
+  <!-- TODAY'S MISSIONS -->
+  <div class="sr-mission-section">
+    <div class="sr-mission-header">
+      <span class="sr-mission-title">오늘 미션</span>
+      <span class="sr-mission-bonus">4개 완료 시 보너스 +40 김치</span>
+    </div>
+    <div id="sr-checklist-box"></div>
+  </div>
+
+  <!-- ACTIVITY CARDS -->
+  <div class="sr-activity-grid" style="margin-bottom:14px">
+    <div class="sr-activity-card">
+      <div class="sr-activity-title">🖼️ Picture Description <span id="sr-done-picture" style="color:#22c55e;font-size:12px;font-weight:800"></span></div>
+      <div class="sr-activity-desc">Look at an image prompt, write a Korean description, and get correction + simple feedback.</div>
+      <button class="sr-activity-btn" onclick="openPictureDescription();event.stopPropagation();">Start Picture Description</button>
+    </div>
+    <div class="sr-activity-card">
+      <div class="sr-activity-title">📝 Sentence Writing <span id="sr-done-sentence" style="color:#22c55e;font-size:12px;font-weight:800"></span></div>
+      <div class="sr-activity-desc">Type one sentence at a time from existing articles. Compare mistakes, missing words, and spacing.</div>
+      <button class="sr-activity-btn" onclick="openSentenceWriting();event.stopPropagation();">Start Sentence Writing</button>
+    </div>
+  </div>
+
+  <!-- WORD TRACKS -->
+  <div class="sr-dark-card">
+    <div class="chd"><div class="ct">🧠 10 words from your level</div></div>
+    <div class="cb" id="sr-level-words"><div class="skel" style="height:12px;background:rgba(255,255,255,.1)"></div></div>
+  </div>
+  <div class="sr-dark-card">
+    <div class="chd"><div class="ct">🎯 10 words from your interests</div></div>
+    <div class="cb" id="sr-interest-words"><div class="skel" style="height:12px;background:rgba(255,255,255,.1)"></div></div>
+  </div>
+
+</div><!-- /sr-main -->
+
+<!-- ── RIGHT SIDEBAR ── -->
+<div class="sr-sidebar">
+
+  <!-- anchor for "See example answers" scroll -->
+  <div id="sr-helper-anchor" style="scroll-margin-top:80px"></div>
+
+  <!-- QUICK HELP — helper sentences -->
+  <div class="sr-sb-panel">
+    <div class="sr-sb-phd">
+      <span class="sr-sb-ptitle">빠른 도움</span>
+      <span class="sr-sb-psub">쓰기 전에 30초만</span>
+    </div>
+    <div class="sr-sb-sublabel">EXAMPLE ANSWERS</div>
+    <div id="helper-box">
+      <div class="skel" style="height:52px;margin-bottom:7px;border-radius:10px;background:rgba(255,255,255,.08)"></div>
+      <div class="skel" style="height:52px;margin-bottom:7px;border-radius:10px;background:rgba(255,255,255,.08)"></div>
+      <div class="skel" style="height:52px;border-radius:10px;background:rgba(255,255,255,.08)"></div>
+    </div>
+  </div>
+
+  <!-- COMPACT GRAMMAR -->
+  <div class="sr-sb-panel">
+    <div class="sr-sb-phd">
+      <span class="sr-sb-ptitle">문법은 접어서 짧게</span>
+      <span class="sr-sb-psub">예전보다 덜 부담스럽게</span>
+    </div>
+    <div id="grammar-box">
+      <div class="skel" style="height:64px;margin-bottom:8px;border-radius:8px;background:rgba(255,255,255,.08)"></div>
+      <div class="skel" style="height:64px;margin-bottom:8px;border-radius:8px;background:rgba(255,255,255,.08)"></div>
+      <div class="skel" style="height:64px;border-radius:8px;background:rgba(255,255,255,.08)"></div>
+    </div>
+  </div>
+
+  <!-- FEATURE SUMMARY -->
+  <div class="sr-sb-panel">
+    <div class="sr-sb-phd">
+      <span class="sr-sb-ptitle">기능 정리</span>
+      <span class="sr-sb-psub">처음엔 적게</span>
+    </div>
+    <div class="sr-feature-item">
+      <span class="sr-feature-icon">✏️</span>
+      <div><div class="sr-feature-label">Topic Writing</div><div class="sr-feature-sub">오늘의 주제로 자유 작문 후 첨삭</div></div>
+    </div>
+    <div class="sr-feature-item">
+      <span class="sr-feature-icon">🎯</span>
+      <div><div class="sr-feature-label">Grammar Focus</div><div class="sr-feature-sub">문법 포인트 집중 연습</div></div>
+    </div>
+    <div class="sr-feature-item">
+      <span class="sr-feature-icon">🖼️</span>
+      <div><div class="sr-feature-label">Picture Description</div><div class="sr-feature-sub">이미지 보고 한국어 묘사</div></div>
+    </div>
+    <div class="sr-feature-item">
+      <span class="sr-feature-icon">📝</span>
+      <div><div class="sr-feature-label">Sentence Writing</div><div class="sr-feature-sub">기사 받아쓰기 정확도 훈련</div></div>
+    </div>
+    <div class="sr-feature-item">
+      <span class="sr-feature-icon">🤖</span>
+      <div><div class="sr-feature-label">AI Feedback</div><div class="sr-feature-sub">제출 후 24시간 내 첨삭 배달</div></div>
+    </div>
+  </div>
+
+  <!-- TODAY'S PHRASE -->
+  <div class="sr-sb-panel pcard" style="padding:0;overflow:hidden">
+    <div class="chd" style="padding:10px 14px"><div class="ct" style="color:rgba(255,255,255,.4)">🌟 Today's Phrase</div></div>
+    <div class="cb" id="phrase-box" style="padding:12px 14px">
+      <div class="skel" style="height:26px;width:80%;margin-bottom:6px;background:rgba(255,255,255,.1)"></div>
+      <div class="skel" style="height:11px;width:60%;margin-bottom:4px;background:rgba(255,255,255,.1)"></div>
+      <div class="skel" style="height:11px;width:70%;background:rgba(255,255,255,.1)"></div>
+    </div>
+  </div>
+
+  <!-- MUST-KNOW VOCAB -->
+  <div class="sr-sb-panel" style="padding:0;overflow:hidden">
+    <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between">
+      <div class="ct" style="color:rgba(255,255,255,.45)">📌 Must-know Vocab</div>
+      <span style="font-size:10px;color:rgba(255,255,255,.3)" id="vocab-src"></span>
+    </div>
+    <div class="cb" id="vocab-box" style="padding:12px 14px">
+      <div class="skel" style="height:14px;margin-bottom:8px;background:rgba(255,255,255,.08)"></div>
+      <div class="skel" style="height:14px;margin-bottom:8px;background:rgba(255,255,255,.08)"></div>
+      <div class="skel" style="height:14px;background:rgba(255,255,255,.08)"></div>
+    </div>
+  </div>
+
+  <!-- MINI FLASHCARDS -->
+  <div class="sr-sb-panel" style="padding:0;overflow:hidden">
+    <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
+      <div class="ct" style="color:rgba(255,255,255,.45)">📇 Flashcards</div>
+    </div>
+    <div style="padding:8px 14px 0;display:flex;gap:6px;flex-wrap:wrap" id="fc-filters">
+      <button class="tpill on" onclick="loadFlashcards('all',this)">All</button>
+    </div>
+    <div style="padding:10px 14px 14px">
+      <div class="mgrid" id="fc-grid">
+        <div class="skel" style="height:70px;background:rgba(255,255,255,.08)"></div>
+        <div class="skel" style="height:70px;background:rgba(255,255,255,.08)"></div>
+        <div class="skel" style="height:70px;background:rgba(255,255,255,.08)"></div>
+        <div class="skel" style="height:70px;background:rgba(255,255,255,.08)"></div>
+      </div>
+      <div style="text-align:center;margin-top:8px">
+        <a href="korehan-learn.html" style="font-size:11px;color:#7ab8f5;font-weight:700;text-decoration:none">View all flashcards →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- LISTENING QUIZ -->
+  <div class="sr-sb-panel" style="padding:0;overflow:hidden">
+    <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
+      <div class="ct" style="color:rgba(255,255,255,.45)">🎧 Listening Quiz</div>
+    </div>
+    <div id="lq-mini" style="padding:12px 14px">
+      <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+        <button class="tpill on" onclick="setLQMode('hear',this)">🔊 Hear?</button>
+        <button class="tpill"    onclick="setLQMode('mean',this)">💬 Meaning?</button>
+      </div>
+      <div style="text-align:center;padding:10px 0">
+        <div style="font-size:36px;margin-bottom:6px">🎧</div>
+        <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.8);margin-bottom:3px">Test your listening</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:10px">AI generates from today's vocab</div>
+        <button class="lqbtn" onclick="startLQ()">Start Quiz</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /sr-sidebar -->
+
+</div><!-- /sr-layout -->
+</div><!-- /sr-wrap2 -->
+</div><!-- /sr-page -->
 
 <!-- ═══ WRITING MODAL ══════════════════════════════════════════ -->
 <div class="woverlay hidden" id="wmodal" onclick="if(event.target===this)closeWritingModal()">
@@ -1274,10 +1685,10 @@ function renderStudyChecklist() {
   var box = document.getElementById('sr-checklist-box');
   if (!box) return;
   var items = [
-    { k:'topic', label:'Topic study' },
-    { k:'grammar', label:'Grammar Focus' },
-    { k:'picture', label:'Picture Description' },
-    { k:'sentence', label:'Sentence Writing' }
+    { k:'topic',    label:'오늘 주제로 문장 쓰기',  sub:'핵심 Writing 활동',    pts:'+20 김치' },
+    { k:'grammar',  label:'문법 포인트 확인하기',    sub:'짧고 가볍게 복습',      pts:'+10 김치' },
+    { k:'picture',  label:'사진 묘사 연습하기',      sub:'1~2분이면 충분해요',    pts:'+15 김치' },
+    { k:'sentence', label:'받아쓰기 연습하기',       sub:'정확도 트레이닝',        pts:'+10 김치' }
   ];
   var doneCnt = items.filter(function(i){ return !!_studyDone[i.k]; }).length;
   var pd = document.getElementById('sr-done-picture');
@@ -1286,10 +1697,17 @@ function renderStudyChecklist() {
   if (sd) sd.textContent = _studyDone.sentence ? '✅' : '';
   box.innerHTML = items.map(function(i){
     var done = !!_studyDone[i.k];
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px;background:' + (done ? '#f0fdf4' : '#f8fafc') + '">'
-      + '<span style="font-size:12px;font-weight:700;color:#334155">' + i.label + '</span>'
-      + '<span style="font-size:12px;font-weight:800;color:' + (done ? '#15803d' : '#94a3b8') + '">' + (done ? '✅ DONE' : '⬜ TODO') + '</span></div>';
-  }).join('') + '<div style="margin-top:8px;font-size:11px;color:#64748b">Completed ' + doneCnt + ' / ' + items.length + ' · You do not need to finish every step.</div>';
+    return '<div class="sr-mission-item">'
+      + '<div class="sr-mission-item-left">'
+      + '<span class="sr-mission-item-name">' + i.label + '</span>'
+      + '<span class="sr-mission-item-sub">' + i.sub + '</span>'
+      + '</div>'
+      + '<div class="sr-mission-right">'
+      + '<span class="sr-mission-pts">' + i.pts + '</span>'
+      + '<span class="' + (done ? 'sr-mission-status-done' : 'sr-mission-status-todo') + '">' + (done ? 'DONE' : 'TODO') + '</span>'
+      + '</div>'
+      + '</div>';
+  }).join('');
 }
 
 function renderStudyRoomWordTracks() {
@@ -1369,6 +1787,8 @@ function setLevel(level, btn) {
   _currentLevel = level;
   document.querySelectorAll('.lv-btn').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
+  var pill = document.getElementById('sr-lvbadge-pill');
+  if (pill) pill.textContent = '📖 STUDY ROOM / ' + level.toUpperCase();
 
   // Members only
   if (!supaUser) {
