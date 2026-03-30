@@ -686,6 +686,43 @@ body { background: #0b1626 !important; }
   padding: 20px 22px 18px;
   position: relative;
 }
+/* horizontal split: left content / right big button */
+.sr-topic-inner {
+  display: flex;
+  align-items: stretch;
+  gap: 18px;
+}
+.sr-topic-left { flex: 1; min-width: 0; }
+.sr-topic-right { display: flex; align-items: center; flex-shrink: 0; }
+.sr-start-writing-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 18px 22px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.3;
+  min-width: 108px;
+  text-align: center;
+  transition: background .15s, transform .15s;
+  white-space: nowrap;
+}
+.sr-start-writing-btn:hover { background: #1d4ed8; transform: scale(1.03); }
+.sr-start-writing-btn .sw-icon { font-size: 26px; }
+.sr-start-writing-btn .sw-arrow { font-size: 16px; margin-top: 2px; }
+@media(max-width: 480px) {
+  .sr-topic-inner { flex-direction: column; gap: 14px; }
+  .sr-topic-right { justify-content: stretch; }
+  .sr-start-writing-btn { flex-direction: row; gap: 10px; width: 100%; padding: 14px 18px; justify-content: center; }
+}
 .sr-topic-lbl {
   font-size: 10px;
   font-weight: 900;
@@ -989,27 +1026,42 @@ body { background: #0b1626 !important; }
 
     <!-- TODAY'S TOPIC CARD -->
     <div class="sr-topic-card2">
-      <div class="sr-topic-lbl">TODAY'S WRITING TOPIC</div>
-      <div class="sr-topic-q" id="hero-topic-ko">Loading…</div>
-      <div class="sr-topic-en2" id="hero-topic-en"></div>
-      <div id="hero-topic-done" style="display:none;font-size:11px;color:#7ab8f5;font-weight:700;margin-bottom:10px">✅ Done today</div>
-      <!-- vocab + grammar chips (populated by JS) -->
-      <div class="sr-chip-row wc-chips" id="wcard-chips"></div>
-      <!-- MODE TABS: Topic Writing / Grammar Focus -->
-      <div class="wc-mode-tabs" id="wc-mode-tabs" style="margin-bottom:14px">
-        <button class="wc-mode-tab active" id="tab-topic"        onclick="setWritingMode('topic')">📝 Topic Writing</button>
-        <button class="wc-mode-tab"        id="tab-grammar-focus" onclick="openGrammarFocusModal()">🎯 Grammar Focus</button>
-      </div>
-      <!-- ACTION BUTTONS -->
-      <div class="sr-action-row">
-        <button class="sr-btn-primary" onclick="openWritingModalWithMode()">Start Writing Now →</button>
-        <button class="sr-btn-secondary" onclick="(function(){var el=document.getElementById('sr-helper-anchor');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});})()">See example answers</button>
+      <div class="sr-topic-inner">
+
+        <!-- LEFT: topic info + secondary actions -->
+        <div class="sr-topic-left">
+          <div class="sr-topic-lbl">TODAY'S WRITING TOPIC</div>
+          <div class="sr-topic-q" id="hero-topic-ko">Loading…</div>
+          <div class="sr-topic-en2" id="hero-topic-en"></div>
+          <div id="hero-topic-done" style="display:none;font-size:11px;color:#7ab8f5;font-weight:700;margin-bottom:8px">✅ Done today</div>
+          <!-- vocab + grammar chips (populated by JS) -->
+          <div class="sr-chip-row wc-chips" id="wcard-chips"></div>
+          <!-- secondary buttons -->
+          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px">
+            <button class="wc-mode-tab" id="tab-grammar-focus" onclick="openGrammarFocusModal()" style="flex:none">🎯 Grammar Focus</button>
+            <button class="wc-mode-tab" onclick="(function(){var el=document.getElementById('sr-helper-anchor');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});})();" style="flex:none">💬 Example answers</button>
+          </div>
+        </div>
+
+        <!-- RIGHT: big Start Writing button -->
+        <div class="sr-topic-right">
+          <button class="sr-start-writing-btn" onclick="setWritingMode('topic');openWritingModalWithMode()">
+            <span class="sw-icon">✍️</span>
+            <span>Start<br>Writing</span>
+            <span class="sw-arrow">→</span>
+          </button>
+        </div>
+
       </div>
     </div>
 
     <!-- hidden compat elements — JS sets these but they don't need to be visible -->
     <div id="wcard-topic-ko" style="display:none"></div>
     <div id="wcf-mode-text"  style="display:none">Open Writing Room</div>
+    <!-- hidden mode tabs for JS state tracking -->
+    <div class="wc-mode-tabs" id="wc-mode-tabs" style="display:none">
+      <button class="wc-mode-tab active" id="tab-topic" onclick="setWritingMode('topic')">📝 Topic Writing</button>
+    </div>
 
     <!-- Feedback inbox -->
     <div id="feedback-inbox-btn" style="display:none;margin-top:14px;">
