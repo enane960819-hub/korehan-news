@@ -759,22 +759,6 @@ body { background: #0b1626 !important; }
 .sr-page .lv-row { margin-bottom: 14px; }
 
 /* ── MISSION SECTION ── */
-.sr-mission-section {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.09);
-  border-radius: 16px;
-  padding: 20px 20px 16px;
-  margin-bottom: 14px;
-}
-.sr-mission-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-.sr-mission-title { font-size: 17px; font-weight: 900; color: #fff; }
-.sr-mission-bonus { font-size: 12px; color: rgba(255,255,255,0.4); font-weight: 600; }
 .sr-mission-item {
   display: flex;
   align-items: center;
@@ -813,6 +797,17 @@ body { background: #0b1626 !important; }
   border: 1px solid rgba(34,197,94,0.2);
   border-radius: 6px; padding: 4px 9px;
 }
+
+/* Mission items compact inside sidebar */
+.sr-sb-panel .sr-mission-item {
+  padding: 9px 10px !important;
+  margin-bottom: 6px !important;
+}
+.sr-sb-panel .sr-mission-item-name { font-size: 12px !important; }
+.sr-sb-panel .sr-mission-item-sub  { font-size: 10px !important; }
+.sr-sb-panel .sr-mission-pts       { font-size: 10px !important; padding: 2px 7px !important; }
+.sr-sb-panel .sr-mission-status-todo,
+.sr-sb-panel .sr-mission-status-done { font-size: 9px !important; padding: 3px 7px !important; }
 
 /* ── ACTIVITY CARDS (dark theme override) ── */
 .sr-activity-card {
@@ -967,7 +962,6 @@ body { background: #0b1626 !important; }
   .sr-topic-q { font-size: 20px; }
   .sr-btn-primary { width: 100%; text-align: center; }
   .sr-action-row { flex-direction: column; }
-  .sr-mission-section { padding: 16px 14px 14px; }
 }
 </style>
 </head>
@@ -1001,10 +995,14 @@ body { background: #0b1626 !important; }
       <div id="hero-topic-done" style="display:none;font-size:11px;color:#7ab8f5;font-weight:700;margin-bottom:10px">✅ Done today</div>
       <!-- vocab + grammar chips (populated by JS) -->
       <div class="sr-chip-row wc-chips" id="wcard-chips"></div>
+      <!-- MODE TABS: Topic Writing / Grammar Focus -->
+      <div class="wc-mode-tabs" id="wc-mode-tabs" style="margin-bottom:14px">
+        <button class="wc-mode-tab active" id="tab-topic"        onclick="setWritingMode('topic')">📝 Topic Writing</button>
+        <button class="wc-mode-tab"        id="tab-grammar-focus" onclick="openGrammarFocusModal()">🎯 Grammar Focus</button>
+      </div>
       <!-- ACTION BUTTONS -->
       <div class="sr-action-row">
         <button class="sr-btn-primary" onclick="openWritingModalWithMode()">Start Writing Now →</button>
-        <button class="sr-btn-secondary" onclick="openGrammarFocusModal()">Grammar first</button>
         <button class="sr-btn-secondary" onclick="(function(){var el=document.getElementById('sr-helper-anchor');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});})()">See example answers</button>
       </div>
     </div>
@@ -1012,11 +1010,6 @@ body { background: #0b1626 !important; }
     <!-- hidden compat elements — JS sets these but they don't need to be visible -->
     <div id="wcard-topic-ko" style="display:none"></div>
     <div id="wcf-mode-text"  style="display:none">Open Writing Room</div>
-    <!-- hidden mode tabs — JS reads/sets these -->
-    <div class="wc-mode-tabs" id="wc-mode-tabs" style="display:none">
-      <button class="wc-mode-tab active" id="tab-topic"        onclick="setWritingMode('topic')">📝 Topic Writing</button>
-      <button class="wc-mode-tab"        id="tab-grammar-focus" onclick="openGrammarFocusModal()">🎯 Grammar Focus</button>
-    </div>
 
     <!-- Feedback inbox -->
     <div id="feedback-inbox-btn" style="display:none;margin-top:14px;">
@@ -1032,15 +1025,6 @@ body { background: #0b1626 !important; }
     <button class="lv-btn lv-b on" onclick="setLevel('Beginner',this)">🟢 Beginner</button>
     <button class="lv-btn lv-i"    onclick="setLevel('Intermediate',this)">🟡 Intermediate</button>
     <button class="lv-btn lv-a"    onclick="setLevel('Advanced',this)">🔴 Advanced</button>
-  </div>
-
-  <!-- TODAY'S MISSIONS -->
-  <div class="sr-mission-section">
-    <div class="sr-mission-header">
-      <span class="sr-mission-title">오늘 미션</span>
-      <span class="sr-mission-bonus">4개 완료 시 보너스 +40 김치</span>
-    </div>
-    <div id="sr-checklist-box"></div>
   </div>
 
   <!-- ACTIVITY CARDS -->
@@ -1102,32 +1086,13 @@ body { background: #0b1626 !important; }
     </div>
   </div>
 
-  <!-- FEATURE SUMMARY -->
-  <div class="sr-sb-panel">
-    <div class="sr-sb-phd">
-      <span class="sr-sb-ptitle">기능 정리</span>
-      <span class="sr-sb-psub">처음엔 적게</span>
+  <!-- TODAY'S MISSIONS (compact sidebar version) -->
+  <div class="sr-sb-panel" style="padding:14px 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:13px;font-weight:900;color:#fff">오늘 미션</span>
+      <span style="font-size:10px;color:rgba(255,255,255,.38);font-weight:600">+40 보너스</span>
     </div>
-    <div class="sr-feature-item">
-      <span class="sr-feature-icon">✏️</span>
-      <div><div class="sr-feature-label">Topic Writing</div><div class="sr-feature-sub">오늘의 주제로 자유 작문 후 첨삭</div></div>
-    </div>
-    <div class="sr-feature-item">
-      <span class="sr-feature-icon">🎯</span>
-      <div><div class="sr-feature-label">Grammar Focus</div><div class="sr-feature-sub">문법 포인트 집중 연습</div></div>
-    </div>
-    <div class="sr-feature-item">
-      <span class="sr-feature-icon">🖼️</span>
-      <div><div class="sr-feature-label">Picture Description</div><div class="sr-feature-sub">이미지 보고 한국어 묘사</div></div>
-    </div>
-    <div class="sr-feature-item">
-      <span class="sr-feature-icon">📝</span>
-      <div><div class="sr-feature-label">Sentence Writing</div><div class="sr-feature-sub">기사 받아쓰기 정확도 훈련</div></div>
-    </div>
-    <div class="sr-feature-item">
-      <span class="sr-feature-icon">🤖</span>
-      <div><div class="sr-feature-label">AI Feedback</div><div class="sr-feature-sub">제출 후 24시간 내 첨삭 배달</div></div>
-    </div>
+    <div id="sr-checklist-box"></div>
   </div>
 
   <!-- TODAY'S PHRASE -->
