@@ -1013,6 +1013,14 @@ body { background: #0b1626 !important; }
 <!-- ── MAIN COLUMN ── -->
 <div class="sr-main">
 
+  <!-- LEVEL SELECTOR — top of page -->
+  <div class="lv-row">
+    <button class="lv-btn lv-s"    onclick="setLevel('Starter',this)">⚪ Starter</button>
+    <button class="lv-btn lv-b on" onclick="setLevel('Beginner',this)">🟢 Beginner</button>
+    <button class="lv-btn lv-i"    onclick="setLevel('Intermediate',this)">🟡 Intermediate</button>
+    <button class="lv-btn lv-a"    onclick="setLevel('Advanced',this)">🔴 Advanced</button>
+  </div>
+
   <!-- HERO BLOCK: badge + headline + topic card -->
   <div class="sr-hero-block">
     <div class="sr-lvbadge-pill" id="sr-lvbadge-pill">📖 STUDY ROOM / BEGINNER</div>
@@ -1039,15 +1047,14 @@ body { background: #0b1626 !important; }
           <!-- secondary buttons -->
           <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px">
             <button class="wc-mode-tab" id="tab-grammar-focus" onclick="openGrammarFocusModal()" style="flex:none">🎯 Grammar Focus</button>
-            <button class="wc-mode-tab" onclick="(function(){var el=document.getElementById('sr-helper-anchor');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});})();" style="flex:none">💬 Example answers</button>
           </div>
         </div>
 
-        <!-- RIGHT: big Start Writing button -->
+        <!-- RIGHT: big Topic Writing button -->
         <div class="sr-topic-right">
           <button class="sr-start-writing-btn" onclick="setWritingMode('topic');openWritingModalWithMode()">
             <span class="sw-icon">✍️</span>
-            <span>Start<br>Writing</span>
+            <span>Topic<br>Writing</span>
             <span class="sw-arrow">→</span>
           </button>
         </div>
@@ -1069,14 +1076,6 @@ body { background: #0b1626 !important; }
         <span>📬</span><span id="feedback-inbox-label">Check My Feedback</span>
       </button>
     </div>
-  </div>
-
-  <!-- LEVEL SELECTOR -->
-  <div class="lv-row">
-    <button class="lv-btn lv-s"    onclick="setLevel('Starter',this)">⚪ Starter</button>
-    <button class="lv-btn lv-b on" onclick="setLevel('Beginner',this)">🟢 Beginner</button>
-    <button class="lv-btn lv-i"    onclick="setLevel('Intermediate',this)">🟡 Intermediate</button>
-    <button class="lv-btn lv-a"    onclick="setLevel('Advanced',this)">🔴 Advanced</button>
   </div>
 
   <!-- ACTIVITY CARDS -->
@@ -1662,6 +1661,11 @@ async function loadPicturePromptsFromDB() {
 
 async function loadStudyAccessGate() {
   var banner = document.getElementById('sr-credit-banner');
+  if (window._isAdmin) {
+    _studyUnlocked = true;
+    if (banner) banner.innerHTML = '🔑 Admin mode — Study Room credits bypassed.';
+    return;
+  }
   var now = kstNow();
   var hour = now.getUTCHours();
   var key = 'kh_study_pass_' + (supaUser ? supaUser.id : 'guest');
@@ -1692,6 +1696,7 @@ async function loadStudyAccessGate() {
 }
 
 function ensureStudyUnlocked() {
+  if (window._isAdmin) return true;
   if (_studyUnlocked) return true;
   showToast('Study Room 크레딧이 없습니다. Courses 페이지에서 월 $8.99 플랜을 확인해 주세요.');
   window.location.href = 'korehan-courses.html';
