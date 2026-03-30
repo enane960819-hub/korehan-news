@@ -723,9 +723,9 @@ function _injectAuthModal() {
       </button>
       <div style="font-size:11px;color:#94a3b8;text-align:center;margin-top:12px;line-height:1.6">
         By creating an account, you agree to our<br>
-        <a href="terms.html" style="color:#1e4fa3;font-weight:700">Terms of Service</a>
+        <a href="terms-of-service" style="color:#1e4fa3;font-weight:700">Terms of Service</a>
         and
-        <a href="privacy.html" style="color:#1e4fa3;font-weight:700">Privacy Policy</a>.
+        <a href="privacy-policy" style="color:#1e4fa3;font-weight:700">Privacy Policy</a>.
       </div>
     </div>
 
@@ -4399,8 +4399,8 @@ function renderFooter() {
     + '<div>'
     + '<div style="font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:14px">Legal</div>'
     + '<div style="display:flex;flex-direction:column;gap:9px">'
-    + '<a href="privacy.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Privacy Policy</a>'
-    + '<a href="terms.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Terms of Service</a>'
+    + '<a href="privacy-policy" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Privacy Policy</a>'
+    + '<a href="terms-of-service" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Terms of Service</a>'
     + '</div>'
     + '</div>'
 
