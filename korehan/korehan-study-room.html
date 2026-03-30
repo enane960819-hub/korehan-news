@@ -1047,14 +1047,15 @@ body { background: #0b1626 !important; }
           <!-- secondary buttons -->
           <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px">
             <button class="wc-mode-tab" id="tab-grammar-focus" onclick="openGrammarFocusModal()" style="flex:none">🎯 Grammar Focus</button>
+            <button class="wc-mode-tab" id="tab-topic" onclick="setWritingMode('topic');openWritingModalWithMode()" style="flex:none">📝 Topic Writing</button>
           </div>
         </div>
 
-        <!-- RIGHT: big Topic Writing button -->
+        <!-- RIGHT: big Start Writing button -->
         <div class="sr-topic-right">
-          <button class="sr-start-writing-btn" onclick="setWritingMode('topic');openWritingModalWithMode()">
+          <button class="sr-start-writing-btn" onclick="openWritingModalWithMode()">
             <span class="sw-icon">✍️</span>
-            <span>Topic<br>Writing</span>
+            <span>Start<br>Writing</span>
             <span class="sw-arrow">→</span>
           </button>
         </div>
