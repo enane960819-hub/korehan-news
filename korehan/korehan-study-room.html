@@ -694,34 +694,118 @@ body { background: #0b1626 !important; }
 }
 .sr-topic-left { flex: 1; min-width: 0; }
 .sr-topic-right { display: flex; align-items: center; flex-shrink: 0; }
-.sr-start-writing-btn {
+
+/* ── START button (game-like) ── */
+.sr-start-btn {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 18px 22px;
-  background: #2563eb;
-  color: #fff;
+  width: 96px;
+  height: 96px;
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
   border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 900;
+  border-radius: 50%;
   cursor: pointer;
   font-family: inherit;
-  line-height: 1.3;
-  min-width: 108px;
-  text-align: center;
-  transition: background .15s, transform .15s;
-  white-space: nowrap;
+  color: #fff;
+  animation: sr-start-pulse 2.2s ease-in-out infinite;
+  transition: transform .15s, box-shadow .15s;
+  flex-shrink: 0;
 }
-.sr-start-writing-btn:hover { background: #1d4ed8; transform: scale(1.03); }
-.sr-start-writing-btn .sw-icon { font-size: 26px; }
-.sr-start-writing-btn .sw-arrow { font-size: 16px; margin-top: 2px; }
+.sr-start-btn:hover { transform: scale(1.1); animation: none; box-shadow: 0 0 0 10px rgba(124,58,237,.25), 0 12px 36px rgba(37,99,235,.7); }
+.sr-start-btn-label { font-size: 20px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; line-height: 1; }
+.sr-start-btn-sub { font-size: 9px; font-weight: 700; color: rgba(255,255,255,.65); margin-top: 4px; letter-spacing: .5px; }
+@keyframes sr-start-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124,58,237,.45), 0 8px 28px rgba(37,99,235,.45); }
+  50% { box-shadow: 0 0 0 14px rgba(124,58,237,.08), 0 8px 28px rgba(37,99,235,.55); }
+}
 @media(max-width: 480px) {
   .sr-topic-inner { flex-direction: column; gap: 14px; }
-  .sr-topic-right { justify-content: stretch; }
-  .sr-start-writing-btn { flex-direction: row; gap: 10px; width: 100%; padding: 14px 18px; justify-content: center; }
+  .sr-topic-right { justify-content: center; }
+  .sr-start-btn { width: 110px; height: 54px; border-radius: 27px; flex-direction: row; gap: 8px; }
+  .sr-start-btn-sub { display: none; }
+}
+
+/* ── Learning Selector overlay ── */
+.ls-overlay {
+  position: fixed; inset: 0;
+  background: rgba(13,27,46,.88);
+  backdrop-filter: blur(5px);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.ls-panel {
+  background: linear-gradient(145deg,#0f2040 0%,#1a3a6b 100%);
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 22px;
+  padding: 28px 26px 22px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
+  position: relative;
+}
+.ls-close-btn {
+  position: absolute; top: 16px; right: 16px;
+  background: rgba(255,255,255,.1); border: none; border-radius: 50%;
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 16px; cursor: pointer; font-family: inherit;
+}
+.ls-close-btn:hover { background: rgba(255,255,255,.2); }
+.ls-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
+.ls-header-title { font-size: 19px; font-weight: 900; color: #fff; margin-bottom: 5px; }
+.ls-header-sub { font-size: 12px; color: rgba(255,255,255,.45); }
+.ls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+@media(max-width: 420px) { .ls-grid { grid-template-columns: 1fr; } }
+.ls-card {
+  position: relative;
+  padding: 16px 14px;
+  background: rgba(255,255,255,.07);
+  border: 1.5px solid rgba(255,255,255,.1);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all .18s;
+  text-align: center;
+}
+.ls-card:hover { background: rgba(255,255,255,.13); border-color: rgba(122,184,245,.4); transform: translateY(-2px); }
+.ls-card.ls-card-done { border-color: rgba(34,197,94,.45); background: rgba(34,197,94,.08); }
+.ls-card-icon { font-size: 28px; margin-bottom: 6px; }
+.ls-card-name { font-size: 13px; font-weight: 900; color: #fff; margin-bottom: 3px; }
+.ls-card-desc { font-size: 11px; color: rgba(255,255,255,.45); margin-bottom: 6px; }
+.ls-card-pts { font-size: 11px; font-weight: 800; color: #7ab8f5; }
+.ls-done-badge { position: absolute; top: 8px; right: 10px; font-size: 15px; display: none; }
+.ls-card.ls-card-done .ls-done-badge { display: block; }
+.ls-divider { border: none; border-top: 1px solid rgba(255,255,255,.1); margin: 14px 0 12px; }
+.ls-wp-btn {
+  width: 100%;
+  padding: 15px 18px;
+  background: rgba(255,255,255,.05);
+  border: 2px dashed rgba(255,255,255,.2);
+  border-radius: 14px;
+  cursor: not-allowed;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255,255,255,.35);
+  font-family: inherit;
+  transition: all .18s;
+}
+.ls-wp-btn.ls-wp-unlocked {
+  background: linear-gradient(135deg,rgba(37,99,235,.22),rgba(124,58,237,.22));
+  border: 2px solid rgba(122,184,245,.45);
+  color: #fff;
+  cursor: pointer;
+}
+.ls-wp-btn.ls-wp-unlocked:hover { background: linear-gradient(135deg,rgba(37,99,235,.35),rgba(124,58,237,.35)); transform: translateY(-2px); }
+.ls-wp-icon { font-size: 22px; flex-shrink: 0; }
+.ls-wp-text { flex: 1; text-align: left; }
+.ls-wp-name { font-size: 14px; font-weight: 900; }
+.ls-wp-sub { font-size: 11px; opacity: .7; margin-top: 2px; }
 }
 .sr-topic-lbl {
   font-size: 10px;
@@ -1044,19 +1128,13 @@ body { background: #0b1626 !important; }
           <div id="hero-topic-done" style="display:none;font-size:11px;color:#7ab8f5;font-weight:700;margin-bottom:8px">✅ Done today</div>
           <!-- vocab + grammar chips (populated by JS) -->
           <div class="sr-chip-row wc-chips" id="wcard-chips"></div>
-          <!-- secondary buttons -->
-          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px">
-            <button class="wc-mode-tab" id="tab-grammar-focus" onclick="openGrammarFocusModal()" style="flex:none">🎯 Grammar Focus</button>
-            <button class="wc-mode-tab" id="tab-topic" onclick="setWritingMode('topic');openWritingModalWithMode()" style="flex:none">📝 Topic Writing</button>
-          </div>
         </div>
 
-        <!-- RIGHT: big Start Writing button -->
+        <!-- RIGHT: START button -->
         <div class="sr-topic-right">
-          <button class="sr-start-writing-btn" onclick="openWritingModalWithMode()">
-            <span class="sw-icon">✍️</span>
-            <span>Start<br>Writing</span>
-            <span class="sw-arrow">→</span>
+          <button class="sr-start-btn" onclick="openLearningSelector()">
+            <span class="sr-start-btn-label">START</span>
+            <span class="sr-start-btn-sub">학습 시작</span>
           </button>
         </div>
 
@@ -1079,19 +1157,9 @@ body { background: #0b1626 !important; }
     </div>
   </div>
 
-  <!-- ACTIVITY CARDS -->
-  <div class="sr-activity-grid" style="margin-bottom:14px">
-    <div class="sr-activity-card">
-      <div class="sr-activity-title">🖼️ Picture Description <span id="sr-done-picture" style="color:#22c55e;font-size:12px;font-weight:800"></span></div>
-      <div class="sr-activity-desc">Look at an image prompt, write a Korean description, and get correction + simple feedback.</div>
-      <button class="sr-activity-btn" onclick="openPictureDescription();event.stopPropagation();">Start Picture Description</button>
-    </div>
-    <div class="sr-activity-card">
-      <div class="sr-activity-title">📝 Sentence Writing <span id="sr-done-sentence" style="color:#22c55e;font-size:12px;font-weight:800"></span></div>
-      <div class="sr-activity-desc">Type one sentence at a time from existing articles. Compare mistakes, missing words, and spacing.</div>
-      <button class="sr-activity-btn" onclick="openSentenceWriting();event.stopPropagation();">Start Sentence Writing</button>
-    </div>
-  </div>
+  <!-- hidden done-state spans kept for JS renderStudyChecklist compatibility -->
+  <span id="sr-done-picture" style="display:none"></span>
+  <span id="sr-done-sentence" style="display:none"></span>
 
   <!-- WORD TRACKS -->
   <div class="sr-dark-card">
@@ -1108,10 +1176,19 @@ body { background: #0b1626 !important; }
 <!-- ── RIGHT SIDEBAR ── -->
 <div class="sr-sidebar">
 
-  <!-- anchor for "See example answers" scroll -->
+  <!-- ① TODAY'S MISSIONS — always at top -->
+  <div class="sr-sb-panel" style="padding:14px 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:13px;font-weight:900;color:#fff">오늘 미션</span>
+      <span style="font-size:10px;color:rgba(255,255,255,.38);font-weight:600">+40 보너스</span>
+    </div>
+    <div id="sr-checklist-box"></div>
+  </div>
+
+  <!-- anchor for scroll -->
   <div id="sr-helper-anchor" style="scroll-margin-top:80px"></div>
 
-  <!-- QUICK HELP — helper sentences -->
+  <!-- ② QUICK HELP — helper sentences -->
   <div class="sr-sb-panel">
     <div class="sr-sb-phd">
       <span class="sr-sb-ptitle">빠른 도움</span>
@@ -1125,7 +1202,7 @@ body { background: #0b1626 !important; }
     </div>
   </div>
 
-  <!-- COMPACT GRAMMAR -->
+  <!-- ③ COMPACT GRAMMAR -->
   <div class="sr-sb-panel">
     <div class="sr-sb-phd">
       <span class="sr-sb-ptitle">문법은 접어서 짧게</span>
@@ -1136,15 +1213,6 @@ body { background: #0b1626 !important; }
       <div class="skel" style="height:64px;margin-bottom:8px;border-radius:8px;background:rgba(255,255,255,.08)"></div>
       <div class="skel" style="height:64px;border-radius:8px;background:rgba(255,255,255,.08)"></div>
     </div>
-  </div>
-
-  <!-- TODAY'S MISSIONS (compact sidebar version) -->
-  <div class="sr-sb-panel" style="padding:14px 16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <span style="font-size:13px;font-weight:900;color:#fff">오늘 미션</span>
-      <span style="font-size:10px;color:rgba(255,255,255,.38);font-weight:600">+40 보너스</span>
-    </div>
-    <div id="sr-checklist-box"></div>
   </div>
 
   <!-- TODAY'S PHRASE -->
@@ -1583,6 +1651,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     // supaUser가 확인됐거나 (null 포함) 3초 지나면 진행
     // korehan-shared.js의 checkSession()이 window._sessionChecked를 세팅함
     if (window._sessionChecked || waited >= 30) {
+      // Re-load done state now that supaUser is known (avoids 'guest' key bug)
+      loadStudyDoneState();
+      loadStudyDoneFromDB();   // merge DB progress → covers browser-switch / multi-device
       assignDailyTopic();
       loadFeedbackInbox();
     } else {
@@ -1893,6 +1964,9 @@ function renderStudyChecklist() {
       + '</div>'
       + '</div>';
   }).join('');
+  // Keep learning selector badges in sync if modal is open
+  var lsModal = document.getElementById('ls-modal');
+  if (lsModal && !lsModal.classList.contains('hidden')) _updateLSSelectorBadges();
 }
 
 function renderStudyRoomWordTracks() {
@@ -2481,6 +2555,125 @@ function canEnterWritingRoom() {
   if (hasDoneStep) return true;
   alert('먼저 최소 1개 학습 단계를 완료해야 Writing Room에 들어갈 수 있어요.\\n(Topic Writing / Grammar Focus / Picture Description / Sentence Writing)');
   return false;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LEARNING SELECTOR
+// ═══════════════════════════════════════════════════════════════
+function openLearningSelector() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  var modal = document.getElementById('ls-modal');
+  if (!modal) return;
+  _updateLSSelectorBadges();
+  modal.classList.remove('hidden');
+}
+
+function closeLearningSelector() {
+  var modal = document.getElementById('ls-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function _updateLSSelectorBadges() {
+  var types = ['topic','grammar','picture','sentence'];
+  types.forEach(function(t) {
+    var card = document.getElementById('ls-card-' + t);
+    if (!card) return;
+    if (_studyDone[t]) card.classList.add('ls-card-done');
+    else card.classList.remove('ls-card-done');
+  });
+  // Writing Practice button
+  var wpBtn  = document.getElementById('ls-wp-btn');
+  var wpLock = document.getElementById('ls-wp-lock');
+  var wpSub  = document.getElementById('ls-wp-sub');
+  var hasAny = !!(_studyDone.topic || _studyDone.grammar || _studyDone.picture || _studyDone.sentence);
+  if (wpBtn) {
+    if (hasAny) {
+      wpBtn.classList.add('ls-wp-unlocked');
+      wpBtn.disabled = false;
+      if (wpLock) wpLock.textContent = '🔓';
+      if (wpSub)  wpSub.textContent  = '학습 활동을 완료했어요! Writing Room으로 이동하기';
+    } else {
+      wpBtn.classList.remove('ls-wp-unlocked');
+      wpBtn.disabled = true;
+      if (wpLock) wpLock.textContent = '🔒';
+      if (wpSub)  wpSub.textContent  = '먼저 학습 활동을 1개 이상 완료하세요';
+    }
+  }
+}
+
+function lsStart(type) {
+  closeLearningSelector();
+  if (type === 'topic') {
+    openWritingModalForLearning();
+  } else if (type === 'grammar') {
+    if (typeof openGrammarFocusModal === 'function') openGrammarFocusModal();
+  } else if (type === 'picture') {
+    if (typeof openPictureDescription === 'function') openPictureDescription();
+  } else if (type === 'sentence') {
+    if (typeof openSentenceWriting === 'function') openSentenceWriting();
+  }
+}
+
+// Opens Topic Writing modal WITHOUT the canEnterWritingRoom() gate
+// (used by learning selector so users CAN do Topic Writing first)
+function openWritingModalForLearning() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  _writingMode = 'topic';
+  markStageDone('topic');
+  if (_currentLevel === 'Beginner') {
+    openBeginnerModal();
+    return;
+  }
+  document.getElementById('wmodal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
+  if (typeof renderModalContent === 'function') renderModalContent();
+  wmMobileInit();
+}
+
+// Opens Writing Practice WITH the canEnterWritingRoom() gate (used by ls-wp-btn)
+function lsStartWriting() {
+  closeLearningSelector();
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  if (!canEnterWritingRoom()) return;
+  _writingMode = 'topic';
+  if (_currentLevel === 'Beginner') {
+    openBeginnerModal();
+    return;
+  }
+  document.getElementById('wmodal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
+  if (typeof renderModalContent === 'function') renderModalContent();
+  wmMobileInit();
+}
+
+// Read today's study_daily_progress from DB and merge into _studyDone
+async function loadStudyDoneFromDB() {
+  var sb = getSupa();
+  if (!sb || !supaUser) return;
+  try {
+    var r = await sb.from('study_daily_progress')
+      .select('topic_done,grammar_done,picture_done,sentence_done')
+      .eq('user_id', supaUser.id)
+      .eq('study_date', kstDateKey())
+      .maybeSingle();
+    if (r.error || !r.data) return;
+    var d = r.data;
+    if (d.topic_done)   _studyDone.topic   = true;
+    if (d.grammar_done) _studyDone.grammar = true;
+    if (d.picture_done) _studyDone.picture = true;
+    if (d.sentence_done) _studyDone.sentence = true;
+    // Persist merged state to localStorage under correct user key
+    try { localStorage.setItem(studyDoneKey(), JSON.stringify(_studyDone)); } catch(e) {}
+    renderStudyChecklist();
+    // Refresh selector badges if open
+    var modal = document.getElementById('ls-modal');
+    if (modal && !modal.classList.contains('hidden')) _updateLSSelectorBadges();
+  } catch(e) {}
 }
 
 function wmMobileInit() {
@@ -4991,5 +5184,63 @@ function checkGFBuild() {
     <div class="bm-footer" id="bm-footer"></div>
   </div>
 </div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     LEARNING SELECTOR MODAL  (opened by START button)
+═══════════════════════════════════════════════════════════════ -->
+<div id="ls-modal" class="ls-overlay hidden" onclick="if(event.target===this)closeLearningSelector()">
+  <div class="ls-panel">
+    <!-- header -->
+    <div class="ls-header">
+      <div>
+        <div class="ls-header-title">오늘 무엇을 배울까요?</div>
+        <div class="ls-header-sub">학습 활동을 선택하세요 · 완료하면 Writing Room이 열립니다</div>
+      </div>
+      <button onclick="closeLearningSelector()" style="background:none;border:none;color:rgba(255,255,255,.45);font-size:22px;cursor:pointer;line-height:1;padding:0 4px">✕</button>
+    </div>
+    <!-- 4 activity cards -->
+    <div class="ls-grid">
+      <button class="ls-card" id="ls-card-topic" onclick="lsStart('topic')">
+        <div class="ls-done-badge">✅</div>
+        <div class="ls-card-icon">✍️</div>
+        <div class="ls-card-name">Topic Writing</div>
+        <div class="ls-card-desc">오늘의 주제로 문장 쓰기</div>
+        <div class="ls-card-pts">+20 김치</div>
+      </button>
+      <button class="ls-card" id="ls-card-grammar" onclick="lsStart('grammar')">
+        <div class="ls-done-badge">✅</div>
+        <div class="ls-card-icon">📖</div>
+        <div class="ls-card-name">Grammar</div>
+        <div class="ls-card-desc">문법 포인트 확인하기</div>
+        <div class="ls-card-pts">+10 김치</div>
+      </button>
+      <button class="ls-card" id="ls-card-picture" onclick="lsStart('picture')">
+        <div class="ls-done-badge">✅</div>
+        <div class="ls-card-icon">🖼️</div>
+        <div class="ls-card-name">Photo Description</div>
+        <div class="ls-card-desc">사진 묘사 연습하기</div>
+        <div class="ls-card-pts">+15 김치</div>
+      </button>
+      <button class="ls-card" id="ls-card-sentence" onclick="lsStart('sentence')">
+        <div class="ls-done-badge">✅</div>
+        <div class="ls-card-icon">🎧</div>
+        <div class="ls-card-name">Dictation</div>
+        <div class="ls-card-desc">받아쓰기 연습하기</div>
+        <div class="ls-card-pts">+10 김치</div>
+      </button>
+    </div>
+    <hr class="ls-divider">
+    <!-- Writing Practice button (locked/unlocked) -->
+    <button class="ls-wp-btn" id="ls-wp-btn" onclick="lsStartWriting()" disabled>
+      <span class="ls-wp-icon">🖊️</span>
+      <span class="ls-wp-text">
+        <span class="ls-wp-name" id="ls-wp-name">Writing Practice</span>
+        <span class="ls-wp-sub" id="ls-wp-sub">먼저 학습 활동을 1개 이상 완료하세요</span>
+      </span>
+      <span id="ls-wp-lock" style="font-size:18px">🔒</span>
+    </button>
+  </div>
+</div>
+
 </body>
 </html>
