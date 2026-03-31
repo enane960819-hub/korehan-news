@@ -808,6 +808,20 @@ body { background: #0b1626 !important; }
 .ls-wp-name { font-size: 14px; font-weight: 900; }
 .ls-wp-sub { font-size: 11px; opacity: .7; margin-top: 2px; }
 }
+/* ── Picture Description 3-step UI ── */
+.pd-step-pip { flex:1; height:4px; border-radius:2px; background:rgba(255,255,255,.15); transition:background .2s; }
+.pd-step-pip.pd-step-done   { background:rgba(34,197,94,.65); }
+.pd-step-pip.pd-step-active { background:#7ab8f5; }
+.pd-img-square { width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:12px; display:block; max-height:280px; max-width:280px; margin:0 auto; background:rgba(255,255,255,.05); }
+.pd-vocab-card { display:inline-block; min-width:80px; padding:8px 14px; background:rgba(255,255,255,.08); border:1.5px solid rgba(122,184,245,.25); border-radius:10px; cursor:pointer; font-size:14px; font-weight:700; color:#fff; text-align:center; transition:all .15s; user-select:none; margin:0; }
+.pd-vocab-card .pd-vocab-back { display:none; font-size:12px; color:#7ab8f5; font-weight:600; margin-top:2px; }
+.pd-vocab-card.flipped { background:rgba(122,184,245,.14); border-color:rgba(122,184,245,.55); }
+.pd-vocab-card.flipped .pd-vocab-front { display:none; }
+.pd-vocab-card.flipped .pd-vocab-back  { display:block; }
+.pd-sent-btn { width:100%; text-align:left; padding:11px 14px; margin-bottom:8px; background:rgba(255,255,255,.07); border:1.5px solid rgba(255,255,255,.12); border-radius:10px; color:#fff; font-family:inherit; font-size:14px; line-height:1.5; cursor:pointer; transition:all .15s; }
+.pd-sent-btn:hover:not(:disabled) { background:rgba(122,184,245,.12); border-color:rgba(122,184,245,.3); }
+.pd-sent-btn:disabled { cursor:default; opacity:.85; }
+
 .sr-topic-lbl {
   font-size: 10px;
   font-weight: 900;
@@ -1402,53 +1416,33 @@ body { background: #0b1626 !important; }
   </div>
 </div>
 
-<!-- Picture Description modal -->
+<!-- Picture Description modal — 3-step flow -->
 <div class="woverlay hidden" id="pd-modal" onclick="if(event.target===this)closePictureDescription()">
-  <div class="wmodal" style="max-width:900px;grid-template-columns:1fr;height:auto;max-height:calc(100vh - 32px);">
+  <div class="wmodal" style="max-width:620px;grid-template-columns:1fr;height:auto;max-height:calc(100vh - 32px);">
+    <!-- Header -->
     <div class="wm-header">
       <div>
-        <div class="wmh-title">🖼️ Picture Description</div>
-        <div class="wmh-sub" id="pd-subtitle">Describe what you see in Korean.</div>
+        <div class="wmh-title">🖼️ 이미지 묘사</div>
+        <div class="wmh-sub" id="pd-step-label">Step 1 / 3 — 핵심 어휘</div>
       </div>
       <button class="wmh-close" onclick="closePictureDescription()">✕</button>
     </div>
-    <div class="wm-center" style="padding:16px;gap:12px;overflow-y:auto;">
-      <div class="sr-practice-box">
-        <div class="sr-practice-label" id="pd-prompt-label">Image Prompt</div>
-        <img id="pd-image" class="sr-practice-img" src="" alt="Picture description prompt image">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-          <label class="sr-pill" style="cursor:pointer">Upload my image<input id="pd-upload" type="file" accept="image/*" style="display:none" onchange="onPictureUploadPicked(this)"></label>
-          <button class="sr-pill" id="pd-admin-btn" style="display:none" onclick="openPicturePromptAdmin()">Admin Prompt CRUD</button>
-        </div>
-
-        <!-- ① 어절 순서맞추기 (word-order activity — shown when word_order_words is set) -->
-        <div id="pd-word-order-section" style="display:none;margin-top:14px;padding:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;">
-          <div style="font-size:11px;font-weight:800;color:#7ab8f5;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📝 어절 순서맞추기</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:6px">단어를 클릭해서 올바른 순서로 배치하세요</div>
-          <div id="pd-word-pool" style="display:flex;gap:6px;flex-wrap:wrap;min-height:38px;padding:8px;background:rgba(255,255,255,.07);border-radius:10px;margin-bottom:8px;align-items:center"></div>
-          <div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:4px">내 답:</div>
-          <div id="pd-word-answer" style="display:flex;gap:6px;flex-wrap:wrap;min-height:38px;padding:8px;background:rgba(255,255,255,.04);border:1.5px dashed rgba(255,255,255,.18);border-radius:10px;margin-bottom:10px;align-items:center"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="sr-activity-btn" onclick="checkWordOrder()">정답 확인</button>
-            <button class="sr-pill" onclick="resetWordOrder()">다시하기</button>
-          </div>
-          <div id="pd-word-result" style="margin-top:8px;display:none"></div>
-        </div>
-
-        <!-- ② 커스텀 추가 질문 (optional, set by admin) -->
-        <div id="pd-custom-prompt" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(122,184,245,.08);border-radius:10px;font-size:13px;color:#b8d9f7;font-weight:600"></div>
-
-        <!-- ③ 자유 쓰기 (free writing) -->
-        <div style="margin-top:14px;">
-          <div style="font-size:11px;font-weight:800;color:#7ab8f5;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">✍️ 자유 쓰기</div>
-          <textarea id="pd-input" class="sr-practice-input" placeholder="이미지를 보고 한국어로 자유롭게 묘사해 보세요. (2~4문장 추천)"></textarea>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="sr-activity-btn" onclick="checkPictureDescription()">Check My Writing</button>
-            <button class="sr-pill" onclick="nextPicturePrompt()">Next Image</button>
-          </div>
-          <div id="pd-result" class="sr-practice-result" style="display:none"></div>
-        </div>
-      </div>
+    <!-- Step progress pips -->
+    <div style="display:flex;gap:6px;padding:0 16px 14px;flex-shrink:0">
+      <div class="pd-step-pip pd-step-active" id="pd-pip-1"></div>
+      <div class="pd-step-pip" id="pd-pip-2"></div>
+      <div class="pd-step-pip" id="pd-pip-3"></div>
+    </div>
+    <!-- Scrollable content -->
+    <div class="wm-center" style="padding:0 16px 16px;gap:0;overflow-y:auto;flex:1;">
+      <!-- Square image — always visible -->
+      <img id="pd-image" class="pd-img-square" src="" alt="">
+      <!-- Step bodies -->
+      <div id="pd-step1-body" style="margin-top:14px"></div>
+      <div id="pd-step2-body" style="margin-top:14px;display:none"></div>
+      <div id="pd-step3-body" style="margin-top:14px;display:none"></div>
+      <!-- Navigation button area -->
+      <div id="pd-nav" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap"></div>
     </div>
   </div>
 </div>
@@ -1561,6 +1555,7 @@ var _picturePrompts   = [];  // populated from DB via loadPicturePromptsFromDB()
 var _dbHelpersLoaded  = false;
 var _dbGrammarLoaded  = false;
 var _wordOrderState   = { pool:[], answer:[], correct:[] };
+var _pdStep = 1;            // current picture description step (1, 2, or 3)
 var _pictureIndex = 0;
 var _sentencePractice = {
   mode:'copy',
@@ -1726,12 +1721,14 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 function _mapPicturePrompt(x) {
   return {
-    id: x.id,
-    image: x.image_url || '',
-    prompt_ko: x.prompt_ko || '',
-    sample: x.sample_answer || '',
-    word_order_words: Array.isArray(x.word_order_words) ? x.word_order_words : [],
-    custom_prompt: x.custom_prompt || ''
+    id:                  x.id,
+    image:               x.image_url || '',
+    prompt_ko:           x.prompt_ko || '',
+    sample:              x.sample_answer || '',
+    word_order_words:    Array.isArray(x.word_order_words)    ? x.word_order_words    : [],
+    vocab_items:         Array.isArray(x.vocab_items)         ? x.vocab_items         : [],
+    incorrect_sentences: Array.isArray(x.incorrect_sentences) ? x.incorrect_sentences : [],
+    custom_prompt:       x.custom_prompt || ''
   };
 }
 
@@ -1739,7 +1736,7 @@ async function loadPicturePromptsFromDB() {
   var sb = getSupa();
   if (!sb) return;
   try {
-    var fields = 'id,prompt_ko,image_url,sample_answer,sort_order,word_order_words,custom_prompt,scheduled_date';
+    var fields = 'id,prompt_ko,image_url,sample_answer,sort_order,word_order_words,vocab_items,incorrect_sentences,custom_prompt,scheduled_date';
     var today = kstDateKey();  // "YYYY-MM-DD" in KST
 
     // 1. Prefer today's scheduled item
@@ -1869,8 +1866,8 @@ function removeWordFromAnswer(pos) {
 }
 
 function checkWordOrder() {
-  var ans = _wordOrderState.answer.map(function(item){ return item.word; });
-  var correct = _wordOrderState.correct;
+  var ans     = _wordOrderState.answer.map(function(item){ return item.word.trim(); });
+  var correct = _wordOrderState.correct.map(function(w){ return w.trim(); });
   var res = document.getElementById('pd-word-result');
   if (!res) return;
   res.style.display = '';
@@ -1881,9 +1878,21 @@ function checkWordOrder() {
   var isCorrect = ans.join(' ') === correct.join(' ');
   if (isCorrect) {
     res.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac">✅ 정답이에요!<br><span style="font-size:12px;opacity:.8">' + correct.join(' ') + '</span></div>';
-    markStudyDone('picture');
+    // Determine next step based on available data
+    var item = _picturePrompts.length ? _picturePrompts[_pictureIndex % _picturePrompts.length] : null;
+    var hasSents = item && item.incorrect_sentences && item.incorrect_sentences.length;
+    var nav = document.getElementById('pd-nav');
+    if (nav) {
+      if (hasSents) {
+        nav.innerHTML = '<button class="sr-activity-btn" onclick="_pdGoStep(3)">다음 단계 →</button>';
+      } else {
+        // No step 3 → mark done and allow close
+        markStageDone('picture');
+        nav.innerHTML = '<button class="sr-activity-btn" onclick="closePictureDescription()">완료 ✓</button>';
+      }
+    }
   } else {
-    res.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,.1);border-radius:8px;color:#fca5a5">❌ 틀렸어요. 다시 해보세요!<br><span style="font-size:12px;opacity:.8">정답: ' + correct.join(' ') + '</span></div>';
+    res.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,.1);border-radius:8px;color:#fca5a5">❌ 틀렸어요. 다시 해보세요!</div>';
   }
 }
 
@@ -2152,26 +2161,53 @@ function getFallbackTopics() {
 // ASSIGN DAILY TOPIC — unique per user, no repeats
 // ═══════════════════════════════════════════════════════════════
 async function assignDailyTopic() {
-  var today = new Date().toISOString().slice(0, 10);
+  var today = kstDateKey();
+
+  // Admin preview: ?preview_date=YYYY-MM-DD (up to +6 days)
   if (window._isAdmin) {
     var p = new URLSearchParams(window.location.search).get('preview_date');
     if (p && /^\d{4}-\d{2}-\d{2}$/.test(p)) {
-      var kst = kstDateKey();
-      var max = new Date(new Date(kst).getTime() + (6 * 24 * 60 * 60 * 1000)).toISOString().slice(0, 10);
-      if (p >= kst && p <= max) today = p;
+      var maxDate = new Date(new Date(today).getTime() + (6 * 24 * 60 * 60 * 1000)).toISOString().slice(0, 10);
+      if (p >= today && p <= maxDate) today = p;
     }
   }
 
-  // 비로그인 → 블러 오버레이
-  if (!supaUser) {
-    showLoginWall();
-    return;
-  }
+  if (!supaUser) { showLoginWall(); return; }
 
   var sb = getSupa();
 
   try {
-    // 1. 오늘 배정된 토픽 있는지 확인
+    // ── 1. GLOBAL SCHEDULE: same topic for all users on same date+level ──
+    var { data: scheduled } = await sb.from('study_topic_schedule')
+      .select('topic_id')
+      .eq('scheduled_date', today)
+      .eq('level', _currentLevel)
+      .maybeSingle();
+
+    if (scheduled && scheduled.topic_id) {
+      var globalTopic = _allTopics.find(function(t) {
+        return String(t.id) === String(scheduled.topic_id);
+      });
+      if (globalTopic) {
+        _todayTopic = globalTopic;
+        renderTopicUI();
+        generateAIContent(_todayTopic);
+        // Check if this user completed it today (for ✅ badge only)
+        var { data: hist } = await sb.from('user_topic_history')
+          .select('completed')
+          .eq('user_id', supaUser.id)
+          .eq('topic_id', globalTopic.id)
+          .eq('assigned_date', today)
+          .maybeSingle();
+        if (hist && hist.completed) {
+          var doneEl = document.getElementById('hero-topic-done');
+          if (doneEl) doneEl.style.display = 'flex';
+        }
+        return;
+      }
+    }
+
+    // ── 2. FALLBACK: check if user already has a topic assigned today ──
     var { data: todayRows, error: e1 } = await sb.from('user_topic_history')
       .select('topic_id, completed')
       .eq('user_id', supaUser.id)
@@ -2179,10 +2215,9 @@ async function assignDailyTopic() {
       .limit(1);
 
     if (!e1 && todayRows && todayRows.length) {
-      var todayTopicId = todayRows[0].topic_id;
-      var foundTopic = _allTopics.find(function(t){ return t.id === todayTopicId; });
-      if (foundTopic) {
-        _todayTopic = foundTopic;
+      var existingTopic = _allTopics.find(function(t) { return t.id === todayRows[0].topic_id; });
+      if (existingTopic) {
+        _todayTopic = existingTopic;
         if (todayRows[0].completed) {
           var doneEl = document.getElementById('hero-topic-done');
           if (doneEl) doneEl.style.display = 'flex';
@@ -2193,41 +2228,34 @@ async function assignDailyTopic() {
       }
     }
 
-    // 2. 유저가 이미 한 토픽 ID 목록
+    // ── 3. FALLBACK: random undone topic for this user ──
     var { data: doneRows } = await sb.from('user_topic_history')
       .select('topic_id')
       .eq('user_id', supaUser.id);
+    _doneTopicIds = new Set((doneRows || []).map(function(r) { return r.topic_id; }));
 
-    _doneTopicIds = new Set((doneRows || []).map(function(r){ return r.topic_id; }));
-
-    // 3. 안 한 토픽 중 랜덤 (현재 레벨 우선, 없으면 전체)
-    var levelPool = _allTopics.filter(function(t){ return normalizeLevelName(t.level) === _currentLevel; });
+    var levelPool = _allTopics.filter(function(t) { return normalizeLevelName(t.level) === _currentLevel; });
     if (!levelPool.length) levelPool = _allTopics;
-    var undone = levelPool.filter(function(t){ return !_doneTopicIds.has(t.id); });
+    var undone = levelPool.filter(function(t) { return !_doneTopicIds.has(t.id); });
     if (!undone.length) undone = levelPool;
     if (!undone.length) { renderTopicUI(); return; }
 
     var picked = undone[Math.floor(Math.random() * undone.length)];
-
-    // 4. DB에 저장 (실패해도 UI는 표시)
     try {
       await sb.from('user_topic_history').insert({
-        user_id:       supaUser.id,
-        topic_id:      picked.id,
-        assigned_date: today
+        user_id: supaUser.id, topic_id: picked.id, assigned_date: today
       });
-    } catch(insertErr) { /* DB 없어도 계속 */ }
-
+    } catch(e) {}
     _todayTopic = picked;
     renderTopicUI();
     generateAIContent(picked);
 
   } catch(err) {
-    // user_topic_history 테이블 없거나 오류 → fallback: 랜덤 토픽
-    var levelPool = _allTopics.filter(function(t){ return normalizeLevelName(t.level) === _currentLevel; });
-    if (!levelPool.length) levelPool = _allTopics;
-    if (!levelPool.length) return;
-    _todayTopic = levelPool[Math.floor(Math.random() * levelPool.length)];
+    // hard fallback if DB unavailable
+    var pool = _allTopics.filter(function(t) { return normalizeLevelName(t.level) === _currentLevel; });
+    if (!pool.length) pool = _allTopics;
+    if (!pool.length) return;
+    _todayTopic = pool[Math.floor(Math.random() * pool.length)];
     renderTopicUI();
     generateAIContent(_todayTopic);
   }
@@ -3949,6 +3977,7 @@ function showSelectedMaterial() {
 function openPictureDescription() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
+  _pdStep = 1;
   document.getElementById('pd-modal').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   renderPicturePrompt();
@@ -3956,70 +3985,124 @@ function openPictureDescription() {
 function closePictureDescription() {
   document.getElementById('pd-modal').classList.add('hidden');
   document.body.style.overflow = '';
-}
-function onPictureUploadPicked(input) {
-  var file = input && input.files && input.files[0];
-  if (!file) return;
-  var reader = new FileReader();
-  reader.onload = function() {
-    _picturePrompts.unshift({
-      id: 'user_' + Date.now(),
-      image: String(reader.result || ''),
-      prompt_ko: '업로드한 이미지를 보고 상황, 행동, 감정을 2~4문장으로 써보세요.',
-      sample: ''
-    });
-    _pictureIndex = 0;
-    renderPicturePrompt();
-  };
-  reader.readAsDataURL(file);
-}
-function openPicturePromptAdmin() {
-  window.location.href = 'korehan-admin.html#study-picture-prompts';
+  _pdStep = 1;
 }
 function renderPicturePrompt() {
+  var img = document.getElementById('pd-image');
   if (!_picturePrompts.length) {
-    var label0 = document.getElementById('pd-prompt-label');
-    if (label0) label0.textContent = '관리자가 아직 이미지를 등록하지 않았습니다.';
-    var img0 = document.getElementById('pd-image');
-    if (img0) img0.style.display = 'none';
+    document.getElementById('pd-step1-body').innerHTML =
+      '<div style="text-align:center;padding:24px;color:rgba(255,255,255,.45)">관리자가 아직 이미지를 등록하지 않았습니다.</div>';
+    if (img) { img.src = ''; img.style.display = 'none'; }
     return;
   }
   var item = _picturePrompts[_pictureIndex % _picturePrompts.length];
-  var img = document.getElementById('pd-image');
-  var label = document.getElementById('pd-prompt-label');
-  var result = document.getElementById('pd-result');
-  if (img) { img.src = item.image || ''; img.style.display = item.image ? '' : 'none'; }
-  if (label) label.textContent = item.prompt_ko || '사진을 묘사해 보세요.';
-  if (result) { result.style.display = 'none'; result.innerHTML = ''; }
-  var input = document.getElementById('pd-input');
-  if (input) input.value = '';
-
-  // Word-order activity
-  var woSection = document.getElementById('pd-word-order-section');
-  if (woSection) {
-    var words = item.word_order_words || [];
-    if (words.length) {
-      woSection.style.display = '';
-      renderWordOrderActivity(words);
-    } else {
-      woSection.style.display = 'none';
-    }
+  if (img) {
+    if (item.image) { img.src = item.image; img.style.display = ''; }
+    else { img.src = ''; img.style.display = 'none'; }
   }
-
-  // Custom extra prompt
-  var cpLabel = document.getElementById('pd-custom-prompt');
-  if (cpLabel) {
-    if (item.custom_prompt) {
-      cpLabel.textContent = item.custom_prompt;
-      cpLabel.style.display = '';
-    } else {
-      cpLabel.style.display = 'none';
-    }
-  }
+  _pdGoStep(1);
 }
-function nextPicturePrompt() {
-  _pictureIndex = (_pictureIndex + 1) % _picturePrompts.length;
-  renderPicturePrompt();
+
+// ── 3-step navigation ──────────────────────────────────────────
+function _pdGoStep(step) {
+  _pdStep = step;
+  var labels = ['Step 1 / 3 — 핵심 어휘', 'Step 2 / 3 — 어절 순서맞추기', 'Step 3 / 3 — 틀린 문장 찾기'];
+  var lbl = document.getElementById('pd-step-label');
+  if (lbl) lbl.textContent = labels[step - 1] || '';
+  [1,2,3].forEach(function(n) {
+    var pip = document.getElementById('pd-pip-' + n);
+    if (pip) pip.className = 'pd-step-pip' + (n < step ? ' pd-step-done' : n === step ? ' pd-step-active' : '');
+  });
+  document.getElementById('pd-step1-body').style.display = step === 1 ? '' : 'none';
+  document.getElementById('pd-step2-body').style.display = step === 2 ? '' : 'none';
+  document.getElementById('pd-step3-body').style.display = step === 3 ? '' : 'none';
+  document.getElementById('pd-nav').innerHTML = '';
+  var item = _picturePrompts[_pictureIndex % _picturePrompts.length];
+  if (step === 1) _pdRenderStep1(item);
+  else if (step === 2) _pdRenderStep2(item);
+  else if (step === 3) _pdRenderStep3(item);
+}
+
+function _pdRenderStep1(item) {
+  var body = document.getElementById('pd-step1-body'); if (!body) return;
+  var vocab = item.vocab_items || [];
+  if (!vocab.length) { _pdGoStep(2); return; }   // skip if admin left blank
+  body.innerHTML =
+    '<div style="font-size:11px;font-weight:800;color:#7ab8f5;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📚 이미지 관련 어휘</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:12px">단어를 탭해서 뜻을 확인하세요</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px">'
+    + vocab.map(function(v) {
+        return '<div class="pd-vocab-card" onclick="this.classList.toggle(\'flipped\')">'
+          + '<div class="pd-vocab-front">' + (v.ko || '') + '</div>'
+          + '<div class="pd-vocab-back">'  + (v.en || '') + '</div>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+  var nav = document.getElementById('pd-nav');
+  if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="_pdGoStep(2)">다음 단계 →</button>';
+}
+
+function _pdRenderStep2(item) {
+  var body = document.getElementById('pd-step2-body'); if (!body) return;
+  var words = item.word_order_words || [];
+  if (!words.length) { _pdGoStep(3); return; }   // skip if admin left blank
+  body.innerHTML =
+    '<div style="font-size:11px;font-weight:800;color:#7ab8f5;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📝 어절 순서맞추기</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:10px">단어를 클릭해서 올바른 순서로 배치하세요</div>'
+    + '<div id="pd-word-pool" style="display:flex;gap:6px;flex-wrap:wrap;min-height:42px;padding:8px;background:rgba(255,255,255,.07);border-radius:10px;margin-bottom:8px;align-items:center"></div>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:4px">내 답:</div>'
+    + '<div id="pd-word-answer" style="display:flex;gap:6px;flex-wrap:wrap;min-height:42px;padding:8px;background:rgba(255,255,255,.04);border:1.5px dashed rgba(255,255,255,.18);border-radius:10px;margin-bottom:10px;align-items:center"></div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    + '<button class="sr-activity-btn" onclick="checkWordOrder()">정답 확인</button>'
+    + '<button class="sr-pill" onclick="resetWordOrder()">다시하기</button>'
+    + '</div>'
+    + '<div id="pd-word-result" style="margin-top:8px;display:none"></div>';
+  renderWordOrderActivity(words);
+}
+
+function _pdRenderStep3(item) {
+  var body = document.getElementById('pd-step3-body'); if (!body) return;
+  var sents = item.incorrect_sentences || [];
+  if (!sents.length) {
+    // No step 3 data — just mark done
+    markStageDone('picture');
+    body.innerHTML = '<div style="text-align:center;padding:24px;background:rgba(34,197,94,.1);border-radius:12px;color:#86efac;font-weight:800;font-size:16px">🎉 모든 단계 완료!</div>';
+    var nav = document.getElementById('pd-nav');
+    if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="closePictureDescription()">완료 ✓</button>';
+    return;
+  }
+  // Shuffle for display
+  var shuffled = sents.slice().sort(function() { return Math.random() - 0.5; });
+  body.innerHTML =
+    '<div style="font-size:11px;font-weight:800;color:#7ab8f5;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">🔍 틀린 문장 찾기</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:12px">아래 문장 중 문법·어순이 틀린 문장을 클릭하세요</div>'
+    + '<div id="pd-sent-list">'
+    + shuffled.map(function(s) {
+        var isWrong = !s.is_correct;
+        return '<button class="pd-sent-btn" onclick="checkIncorrectSentence(this,' + JSON.stringify(isWrong) + ')">'
+          + (s.sentence || '') + '</button>';
+      }).join('')
+    + '</div>'
+    + '<div id="pd-sent-result" style="margin-top:10px;display:none"></div>';
+}
+
+function checkIncorrectSentence(btn, isWrong) {
+  document.querySelectorAll('.pd-sent-btn').forEach(function(b) { b.disabled = true; });
+  var result = document.getElementById('pd-sent-result'); if (!result) return;
+  result.style.display = '';
+  if (isWrong) {
+    btn.style.cssText += ';background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.5);color:#fca5a5';
+    result.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac">✅ 정답이에요! 이 문장에 오류가 있어요.</div>';
+    markStageDone('picture');
+    var nav = document.getElementById('pd-nav');
+    if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="closePictureDescription()">완료 ✓</button>';
+  } else {
+    btn.style.cssText += ';background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.4);color:#fbbf24';
+    result.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,.1);border-radius:8px;color:#fca5a5">❌ 틀렸어요. 다른 문장을 선택해 보세요.</div>';
+    document.querySelectorAll('.pd-sent-btn').forEach(function(b) {
+      if (b !== btn) b.disabled = false;
+    });
+  }
 }
 async function checkPictureDescription() {
   var input = document.getElementById('pd-input');
