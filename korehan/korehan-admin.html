@@ -206,6 +206,7 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" onclick="goTopics()"><span class="ico">📝</span>작문 토픽 관리</button>
     <button class="sb-btn" onclick="goWordBank()"><span class="ico">📚</span>단어 플래시 카드</button>
     <button class="sb-btn" onclick="goSentences()"><span class="ico">💬</span>예문 관리</button>
+    <button class="sb-btn" id="sb-study-room" onclick="goStudyRoomOps()"><span class="ico">🏫</span>Study Room 관리</button>
     <div class="sb-lbl" style="margin-top:14px">운영 관리</div>
     <button class="sb-btn" onclick="goUsers()"><span class="ico">👥</span>가입 회원</button>
     <button class="sb-btn" onclick="goComments()"><span class="ico">💬</span>댓글 관리</button>
@@ -5280,90 +5281,398 @@ async function applyCoinAdjustment() {
   msg.textContent = '완료: 신규 Coin 잔액 ' + res.data.coin_balance;
 }
 
-// ─────────────────────────────────────────────────────────────
-// Study Room admin tools (Picture prompt CRUD + submission review)
-// open: korehan-admin.html#study-picture-prompts
-// ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// STUDY ROOM ADMIN — Quick Help / Grammar / Picture / Homework
+// ═══════════════════════════════════════════════════════════════
+var _srTab = 'picture'; // active tab: 'helpers' | 'grammar' | 'picture' | 'homework'
+
 async function goStudyRoomOps() {
-  setSbOn('sb-manage-reporters');
+  setSbOn('sb-study-room');
+  _srTab = 'picture';
   document.getElementById('main').innerHTML =
-    '<div class="pg-hd"><div><h1>Study Room Admin</h1><p>Picture prompt CRUD + submitted homework review</p></div></div>'
-    + '<div class="sf-card" style="margin-bottom:12px">'
-    + '<div style="font-weight:800;margin-bottom:8px">Picture Description Prompt</div>'
-    + '<div class="fg"><label>Prompt ID</label><input id="srp-id" placeholder="ex) city-night"></div>'
-    + '<div class="fg"><label>Prompt (KO)</label><input id="srp-prompt" placeholder="프롬프트를 입력하세요"></div>'
-    + '<div class="fg"><label>Image URL</label><input id="srp-image" placeholder="https://..."></div>'
-    + '<div class="fg"><label>Sample Answer</label><textarea id="srp-sample" style="min-height:90px"></textarea></div>'
-    + '<button class="btn btn-g" onclick="saveStudyPicturePrompt()">Save Prompt</button>'
-    + '<div id="srp-msg" style="margin-top:8px;font-size:12px;color:#475569"></div></div>'
-    + '<div class="sf-card" id="srp-list">Loading prompts…</div>'
-    + '<div class="sf-card" id="sr-homework-list" style="margin-top:12px">Loading submissions…</div>';
-  await loadStudyPicturePromptsAdmin();
-  await loadStudyHomeworkAdmin();
+    '<div class="pg-hd"><div><h1>🏫 Study Room 관리</h1><p>Quick Help · Grammar · Picture Description · Homework</p></div></div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
+    + '  <button class="btn" id="srt-helpers"  onclick="srShowTab(\'helpers\')" >💬 빠른 도움</button>'
+    + '  <button class="btn" id="srt-grammar"  onclick="srShowTab(\'grammar\')" >📚 문법 설명</button>'
+    + '  <button class="btn btn-g" id="srt-picture" onclick="srShowTab(\'picture\')" >🖼️ Picture Description</button>'
+    + '  <button class="btn" id="srt-homework" onclick="srShowTab(\'homework\')">📝 Homework</button>'
+    + '</div>'
+    + '<div id="sr-tab-body"></div>';
+  await srShowTab('picture');
 }
 
-async function loadStudyPicturePromptsAdmin() {
+async function srShowTab(tab) {
+  _srTab = tab;
+  document.querySelectorAll('[id^="srt-"]').forEach(function(b){ b.classList.remove('btn-g'); });
+  var active = document.getElementById('srt-' + tab);
+  if (active) active.classList.add('btn-g');
+  var body = document.getElementById('sr-tab-body');
+  if (!body) return;
+  if (tab === 'helpers')  { body.innerHTML = srHelpersFormHTML(); await srLoadHelpers(); }
+  if (tab === 'grammar')  { body.innerHTML = srGrammarFormHTML(); await srLoadGrammar(); }
+  if (tab === 'picture')  { body.innerHTML = srPictureFormHTML(); await srLoadPictures(); }
+  if (tab === 'homework') { body.innerHTML = '<div class="sf-card" id="sr-homework-list">Loading…</div>'; await loadStudyHomeworkAdmin(); }
+}
+
+// ── HELPERS tab ────────────────────────────────────────────────
+function srHelpersFormHTML() {
+  return '<div class="sf-card" style="margin-bottom:12px">'
+    + '<div style="font-weight:800;font-size:15px;margin-bottom:12px">💬 빠른 도움 문장 추가/수정</div>'
+    + '<input type="hidden" id="srh-id">'
+    + '<div class="fg"><label>Level</label>'
+    + '<select id="srh-level"><option>Starter</option><option selected>Beginner</option><option>Intermediate</option><option>Advanced</option></select></div>'
+    + '<div class="fg"><label>Korean (ko)</label><input id="srh-ko" placeholder="예: 저는 오늘 학교에 갔어요."></div>'
+    + '<div class="fg"><label>English (en)</label><input id="srh-en" placeholder="e.g. I went to school today."></div>'
+    + '<div class="fg"><label>Display Order</label><input id="srh-order" type="number" value="0" style="width:80px"></div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    + '<button class="btn btn-g" onclick="srSaveHelper()">저장</button>'
+    + '<button class="btn" onclick="srClearHelperForm()">초기화</button>'
+    + '</div>'
+    + '<div id="srh-msg" style="margin-top:8px;font-size:12px;color:#475569"></div></div>'
+    + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">'
+    + '<span style="font-weight:700">레벨 필터:</span>'
+    + '<select id="srh-filter-level" onchange="srLoadHelpers()" style="padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1">'
+    + '<option value="">전체</option><option>Starter</option><option value="Beginner" selected>Beginner</option><option>Intermediate</option><option>Advanced</option>'
+    + '</select></div>'
+    + '<div class="sf-card" id="srh-list">Loading…</div>';
+}
+
+async function srLoadHelpers() {
   var sb = getSb();
-  var el = document.getElementById('srp-list');
+  var el = document.getElementById('srh-list');
   if (!sb || !el) return;
-  var r = await sb.from('study_picture_prompts').select('id,prompt_ko,image_url,sample_answer,is_active,updated_at').order('updated_at', { ascending:false }).limit(100);
-  if (r.error) { el.textContent = 'Prompt load error: ' + r.error.message; return; }
+  var lv = (document.getElementById('srh-filter-level') || {}).value || '';
+  var q = sb.from('study_room_helpers').select('id,level,ko,en,display_order,active').order('display_order');
+  if (lv) q = q.eq('level', lv);
+  var r = await q;
+  if (r.error) { el.innerHTML = 'Error: ' + r.error.message; return; }
   var rows = r.data || [];
-  if (!rows.length) { el.textContent = 'No prompts yet.'; return; }
-  el.innerHTML = '<div style="font-weight:800;margin-bottom:8px">Prompt List</div>' + rows.map(function(p){
+  if (!rows.length) { el.innerHTML = '<div style="color:#94a3b8;font-size:13px">등록된 도움 문장이 없습니다.</div>'; return; }
+  el.innerHTML = rows.map(function(h){
     return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:8px">'
-      + '<div style="font-weight:800">' + p.id + '</div>'
-      + '<div style="font-size:12px;color:#334155;margin-top:4px">' + (p.prompt_ko || '') + '</div>'
-      + '<div style="display:flex;gap:8px;margin-top:8px"><button class="btn" onclick="editStudyPicturePrompt(\'' + p.id + '\')">Edit</button>'
-      + '<button class="btn btn-r" onclick="deleteStudyPicturePrompt(\'' + p.id + '\')">Delete</button></div></div>';
+      + '<div style="display:flex;justify-content:space-between;align-items:center">'
+      + '<span style="font-size:11px;font-weight:700;color:#64748b">' + h.level + ' · order:' + h.display_order + (h.active ? '' : ' · [비활성]') + '</span>'
+      + '<div style="display:flex;gap:6px"><button class="btn" onclick="srEditHelper(\'' + h.id + '\')">수정</button>'
+      + '<button class="btn btn-r" onclick="srDeleteHelper(\'' + h.id + '\')">삭제</button></div></div>'
+      + '<div style="font-weight:700;margin-top:4px">' + h.ko + '</div>'
+      + '<div style="font-size:12px;color:#64748b">' + h.en + '</div></div>';
   }).join('');
 }
 
-async function editStudyPicturePrompt(id) {
+async function srEditHelper(id) {
   var sb = getSb();
-  var r = await sb.from('study_picture_prompts').select('id,prompt_ko,image_url,sample_answer').eq('id', id).maybeSingle();
+  var r = await sb.from('study_room_helpers').select('*').eq('id', id).maybeSingle();
   if (r.error || !r.data) return;
-  document.getElementById('srp-id').value = r.data.id || '';
-  document.getElementById('srp-prompt').value = r.data.prompt_ko || '';
-  document.getElementById('srp-image').value = r.data.image_url || '';
-  document.getElementById('srp-sample').value = r.data.sample_answer || '';
+  document.getElementById('srh-id').value    = r.data.id;
+  document.getElementById('srh-level').value = r.data.level;
+  document.getElementById('srh-ko').value    = r.data.ko;
+  document.getElementById('srh-en').value    = r.data.en;
+  document.getElementById('srh-order').value = r.data.display_order;
+  document.getElementById('srh-msg').textContent = '수정 중 — 저장 버튼을 눌러 확정하세요.';
+  window.scrollTo(0,0);
 }
 
-async function saveStudyPicturePrompt() {
+async function srSaveHelper() {
+  var sb = getSb(); if (!sb) return;
+  var id  = (document.getElementById('srh-id').value || '').trim();
+  var ko  = (document.getElementById('srh-ko').value || '').trim();
+  var en  = (document.getElementById('srh-en').value || '').trim();
+  var lv  = document.getElementById('srh-level').value;
+  var ord = parseInt(document.getElementById('srh-order').value) || 0;
+  if (!ko || !en) { document.getElementById('srh-msg').textContent = 'Korean + English 모두 입력하세요.'; return; }
+  var row = { level:lv, ko:ko, en:en, display_order:ord, active:true, updated_at:new Date().toISOString() };
+  var r;
+  if (id) { r = await sb.from('study_room_helpers').update(row).eq('id', id); }
+  else     { r = await sb.from('study_room_helpers').insert(row); }
+  var msg = document.getElementById('srh-msg');
+  if (r.error) { msg.textContent = 'Error: ' + r.error.message; return; }
+  msg.textContent = '저장됐습니다!';
+  srClearHelperForm();
+  await srLoadHelpers();
+}
+
+async function srDeleteHelper(id) {
+  if (!confirm('삭제할까요?')) return;
+  var r = await getSb().from('study_room_helpers').delete().eq('id', id);
+  if (r.error) { alert(r.error.message); return; }
+  await srLoadHelpers();
+}
+
+function srClearHelperForm() {
+  document.getElementById('srh-id').value = '';
+  document.getElementById('srh-ko').value = '';
+  document.getElementById('srh-en').value = '';
+  document.getElementById('srh-order').value = '0';
+  document.getElementById('srh-msg').textContent = '';
+}
+
+// ── GRAMMAR tab ────────────────────────────────────────────────
+function srGrammarFormHTML() {
+  return '<div class="sf-card" style="margin-bottom:12px">'
+    + '<div style="font-weight:800;font-size:15px;margin-bottom:12px">📚 문법 설명 추가/수정</div>'
+    + '<input type="hidden" id="srg-id">'
+    + '<div class="fg"><label>Level</label>'
+    + '<select id="srg-level"><option>Starter</option><option selected>Beginner</option><option>Intermediate</option><option>Advanced</option></select></div>'
+    + '<div class="fg"><label>Pattern (문법 패턴)</label><input id="srg-pattern" placeholder="예: ~아요/어요"></div>'
+    + '<div class="fg"><label>Explanation</label><input id="srg-exp" placeholder="e.g. Present tense polite ending"></div>'
+    + '<div class="fg"><label>Example KO</label><input id="srg-exko" placeholder="저는 밥을 먹어요."></div>'
+    + '<div class="fg"><label>Example EN</label><input id="srg-exen" placeholder="I eat rice."></div>'
+    + '<div class="fg"><label>Display Order</label><input id="srg-order" type="number" value="0" style="width:80px"></div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    + '<button class="btn btn-g" onclick="srSaveGrammar()">저장</button>'
+    + '<button class="btn" onclick="srClearGrammarForm()">초기화</button>'
+    + '</div>'
+    + '<div id="srg-msg" style="margin-top:8px;font-size:12px;color:#475569"></div></div>'
+    + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">'
+    + '<span style="font-weight:700">레벨 필터:</span>'
+    + '<select id="srg-filter-level" onchange="srLoadGrammar()" style="padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1">'
+    + '<option value="">전체</option><option>Starter</option><option value="Beginner" selected>Beginner</option><option>Intermediate</option><option>Advanced</option>'
+    + '</select></div>'
+    + '<div class="sf-card" id="srg-list">Loading…</div>';
+}
+
+async function srLoadGrammar() {
   var sb = getSb();
-  if (!sb) return;
-  var id = (document.getElementById('srp-id').value || '').trim();
-  if (!id) return;
+  var el = document.getElementById('srg-list');
+  if (!sb || !el) return;
+  var lv = (document.getElementById('srg-filter-level') || {}).value || '';
+  var q = sb.from('study_room_grammar').select('id,level,pattern,explanation,example_ko,example_en,display_order,active').order('display_order');
+  if (lv) q = q.eq('level', lv);
+  var r = await q;
+  if (r.error) { el.innerHTML = 'Error: ' + r.error.message; return; }
+  var rows = r.data || [];
+  if (!rows.length) { el.innerHTML = '<div style="color:#94a3b8;font-size:13px">등록된 문법 항목이 없습니다.</div>'; return; }
+  el.innerHTML = rows.map(function(g){
+    return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:8px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center">'
+      + '<span style="font-size:11px;font-weight:700;color:#64748b">' + g.level + ' · order:' + g.display_order + (g.active ? '' : ' · [비활성]') + '</span>'
+      + '<div style="display:flex;gap:6px"><button class="btn" onclick="srEditGrammar(\'' + g.id + '\')">수정</button>'
+      + '<button class="btn btn-r" onclick="srDeleteGrammar(\'' + g.id + '\')">삭제</button></div></div>'
+      + '<div style="font-weight:800;margin-top:4px">' + g.pattern + '</div>'
+      + '<div style="font-size:12px;color:#475569">' + g.explanation + '</div>'
+      + '<div style="font-size:12px;margin-top:4px"><span style="font-weight:600">' + g.example_ko + '</span> — ' + g.example_en + '</div></div>';
+  }).join('');
+}
+
+async function srEditGrammar(id) {
+  var sb = getSb();
+  var r = await sb.from('study_room_grammar').select('*').eq('id', id).maybeSingle();
+  if (r.error || !r.data) return;
+  document.getElementById('srg-id').value      = r.data.id;
+  document.getElementById('srg-level').value   = r.data.level;
+  document.getElementById('srg-pattern').value = r.data.pattern;
+  document.getElementById('srg-exp').value     = r.data.explanation;
+  document.getElementById('srg-exko').value    = r.data.example_ko;
+  document.getElementById('srg-exen').value    = r.data.example_en;
+  document.getElementById('srg-order').value   = r.data.display_order;
+  document.getElementById('srg-msg').textContent = '수정 중 — 저장 버튼을 눌러 확정하세요.';
+  window.scrollTo(0,0);
+}
+
+async function srSaveGrammar() {
+  var sb = getSb(); if (!sb) return;
+  var id  = (document.getElementById('srg-id').value || '').trim();
   var row = {
-    id: id,
-    prompt_ko: (document.getElementById('srp-prompt').value || '').trim(),
-    image_url: (document.getElementById('srp-image').value || '').trim(),
-    sample_answer: (document.getElementById('srp-sample').value || '').trim(),
-    is_active: true,
+    level:       document.getElementById('srg-level').value,
+    pattern:     (document.getElementById('srg-pattern').value || '').trim(),
+    explanation: (document.getElementById('srg-exp').value || '').trim(),
+    example_ko:  (document.getElementById('srg-exko').value || '').trim(),
+    example_en:  (document.getElementById('srg-exen').value || '').trim(),
+    display_order: parseInt(document.getElementById('srg-order').value) || 0,
+    active: true,
     updated_at: new Date().toISOString()
   };
-  var r = await sb.from('study_picture_prompts').upsert(row, { onConflict:'id' });
-  var msg = document.getElementById('srp-msg');
-  msg.textContent = r.error ? ('Save error: ' + r.error.message) : 'Saved.';
-  await loadStudyPicturePromptsAdmin();
+  if (!row.pattern || !row.example_ko) { document.getElementById('srg-msg').textContent = 'Pattern + Example KO 를 입력하세요.'; return; }
+  var r = id
+    ? await sb.from('study_room_grammar').update(row).eq('id', id)
+    : await sb.from('study_room_grammar').insert(row);
+  if (r.error) { document.getElementById('srg-msg').textContent = 'Error: ' + r.error.message; return; }
+  document.getElementById('srg-msg').textContent = '저장됐습니다!';
+  srClearGrammarForm();
+  await srLoadGrammar();
 }
 
-async function deleteStudyPicturePrompt(id) {
-  if (!confirm('Delete prompt ' + id + '?')) return;
-  var sb = getSb();
-  var r = await sb.from('study_picture_prompts').delete().eq('id', id);
+async function srDeleteGrammar(id) {
+  if (!confirm('삭제할까요?')) return;
+  var r = await getSb().from('study_room_grammar').delete().eq('id', id);
   if (r.error) { alert(r.error.message); return; }
-  await loadStudyPicturePromptsAdmin();
+  await srLoadGrammar();
 }
 
+function srClearGrammarForm() {
+  ['srg-id','srg-pattern','srg-exp','srg-exko','srg-exen'].forEach(function(id){ document.getElementById(id).value = ''; });
+  document.getElementById('srg-order').value = '0';
+  document.getElementById('srg-msg').textContent = '';
+}
+
+// ── PICTURE DESCRIPTION tab ────────────────────────────────────
+function srPictureFormHTML() {
+  return '<div class="sf-card" style="margin-bottom:12px">'
+    + '<div style="font-weight:800;font-size:15px;margin-bottom:12px">🖼️ Picture Description 추가/수정</div>'
+    + '<input type="hidden" id="srp-uuid">'
+    + '<div class="fg"><label>Prompt ID (slug)</label><input id="srp-id" placeholder="ex) han-river-2026"></div>'
+    + '<div class="fg"><label>Prompt (KO) — 이미지 설명 지시문</label><textarea id="srp-prompt" style="min-height:72px" placeholder="한강 공원에서 자전거를 타는 사람들을 묘사해 보세요."></textarea></div>'
+    + '<div class="fg"><label>이미지 업로드</label>'
+    + '<input type="file" id="srp-img-file" accept="image/*" onchange="srPreviewImage(this)">'
+    + '<div id="srp-img-preview" style="margin-top:8px"></div>'
+    + '<div style="font-size:12px;color:#94a3b8;margin-top:4px">또는 직접 URL 입력:</div>'
+    + '<input id="srp-image" placeholder="https://..." style="margin-top:4px"></div>'
+    + '<div class="fg"><label>어절 순서맞추기 — 단어/어절 목록 (줄바꿈 또는 쉼표로 구분)</label>'
+    + '<textarea id="srp-words" style="min-height:80px;font-family:monospace" placeholder="저는\n오늘\n한국어를\n공부했어요"></textarea>'
+    + '<div style="font-size:11px;color:#94a3b8;margin-top:3px">입력한 순서가 정답 순서입니다.</div></div>'
+    + '<div class="fg"><label>추가 커스텀 질문 (선택)</label><input id="srp-custom" placeholder="이 사진에서 가장 인상적인 것은 무엇인가요?"></div>'
+    + '<div class="fg"><label>Sample Answer</label><textarea id="srp-sample" style="min-height:80px"></textarea></div>'
+    + '<div class="fg"><label>표시 날짜 (YYYY-MM-DD) — 해당 날짜에 이 문제가 표시됩니다</label>'
+    + '<input id="srp-date" type="date" placeholder="2026-04-01"></div>'
+    + '<div class="fg" style="display:flex;gap:8px;align-items:center">'
+    + '<input type="checkbox" id="srp-active" checked> <label for="srp-active">Active (활성)</label></div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    + '<button class="btn btn-g" onclick="srSavePicture()">저장</button>'
+    + '<button class="btn" onclick="srClearPictureForm()">초기화</button>'
+    + '</div>'
+    + '<div id="srp-msg" style="margin-top:8px;font-size:12px;color:#475569"></div></div>'
+    + '<div class="sf-card" id="srp-list">Loading…</div>';
+}
+
+function srPreviewImage(input) {
+  var prev = document.getElementById('srp-img-preview');
+  if (!prev || !input.files[0]) return;
+  var url = URL.createObjectURL(input.files[0]);
+  prev.innerHTML = '<img src="' + url + '" style="max-width:240px;max-height:160px;border-radius:8px;margin-top:4px">';
+}
+
+async function srUploadImage(file) {
+  var sb = getSb();
+  if (!sb) throw new Error('No admin client');
+  var ext  = file.name.split('.').pop();
+  var path = 'study-images/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + ext;
+  var up   = await sb.storage.from('study-images').upload(path, file, { upsert:true, contentType: file.type });
+  if (up.error) throw up.error;
+  return sb.storage.from('study-images').getPublicUrl(path).data.publicUrl;
+}
+
+async function srLoadPictures() {
+  var sb = getSb();
+  var el = document.getElementById('srp-list');
+  if (!sb || !el) return;
+  var r = await sb.from('study_picture_prompts')
+    .select('id,prompt_ko,image_url,is_active,scheduled_date,word_order_words,updated_at')
+    .order('scheduled_date', { ascending:false, nullsFirst:false });
+  if (r.error) { el.innerHTML = 'Error: ' + r.error.message; return; }
+  var rows = r.data || [];
+  if (!rows.length) { el.innerHTML = '<div style="color:#94a3b8;font-size:13px">등록된 이미지가 없습니다.</div>'; return; }
+  el.innerHTML = '<div style="font-weight:800;margin-bottom:8px">Picture Prompt 목록</div>' + rows.map(function(p){
+    var badge = p.scheduled_date
+      ? '<span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800">' + p.scheduled_date + '</span>'
+      : '<span style="background:#f1f5f9;color:#94a3b8;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700">미지정</span>';
+    var woBadge = (p.word_order_words && p.word_order_words.length)
+      ? '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700">어절 ' + p.word_order_words.length + '개</span>' : '';
+    return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:start;gap:8px">'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'
+      + badge + woBadge
+      + (p.is_active ? '' : '<span style="background:#fee2e2;color:#dc2626;padding:2px 6px;border-radius:999px;font-size:10px;font-weight:700">비활성</span>') + '</div>'
+      + '<div style="font-weight:800;font-size:13px;word-break:break-all">' + p.id + '</div>'
+      + '<div style="font-size:12px;color:#475569;margin-top:3px">' + (p.prompt_ko || '') + '</div>'
+      + (p.image_url ? '<img src="' + p.image_url + '" style="margin-top:6px;max-width:120px;max-height:80px;border-radius:6px;object-fit:cover">' : '') + '</div>'
+      + '<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">'
+      + '<button class="btn" onclick="srEditPicture(\'' + p.id + '\')">수정</button>'
+      + '<button class="btn btn-r" onclick="srDeletePicture(\'' + p.id + '\')">삭제</button></div></div></div>';
+  }).join('');
+}
+
+async function srEditPicture(id) {
+  var sb = getSb();
+  var r = await sb.from('study_picture_prompts')
+    .select('id,prompt_ko,image_url,sample_answer,word_order_words,custom_prompt,scheduled_date,is_active')
+    .eq('id', id).maybeSingle();
+  if (r.error || !r.data) return;
+  var d = r.data;
+  document.getElementById('srp-uuid').value   = d.id;
+  document.getElementById('srp-id').value     = d.id;
+  document.getElementById('srp-prompt').value = d.prompt_ko || '';
+  document.getElementById('srp-image').value  = d.image_url || '';
+  document.getElementById('srp-custom').value = d.custom_prompt || '';
+  document.getElementById('srp-sample').value = d.sample_answer || '';
+  document.getElementById('srp-date').value   = d.scheduled_date || '';
+  document.getElementById('srp-active').checked = !!d.is_active;
+  var words = Array.isArray(d.word_order_words) ? d.word_order_words : [];
+  document.getElementById('srp-words').value = words.join('\n');
+  var prev = document.getElementById('srp-img-preview');
+  if (prev) prev.innerHTML = d.image_url ? '<img src="' + d.image_url + '" style="max-width:240px;max-height:160px;border-radius:8px">' : '';
+  document.getElementById('srp-msg').textContent = '수정 중 — 저장 버튼으로 확정하세요.';
+  window.scrollTo(0,0);
+}
+
+async function srSavePicture() {
+  var sb = getSb(); if (!sb) return;
+  var msgEl = document.getElementById('srp-msg');
+  msgEl.textContent = '저장 중…';
+  var id = (document.getElementById('srp-id').value || '').trim();
+  if (!id) { msgEl.textContent = 'Prompt ID를 입력하세요.'; return; }
+
+  // Image: upload file if selected, else use URL field
+  var imgUrl = (document.getElementById('srp-image').value || '').trim();
+  var fileInput = document.getElementById('srp-img-file');
+  if (fileInput && fileInput.files[0]) {
+    try { imgUrl = await srUploadImage(fileInput.files[0]); }
+    catch(e) { msgEl.textContent = '이미지 업로드 실패: ' + e.message; return; }
+  }
+
+  // Parse word-order words
+  var rawWords = (document.getElementById('srp-words').value || '').trim();
+  var words = rawWords
+    ? rawWords.split(/[\n,]+/).map(function(w){ return w.trim(); }).filter(Boolean)
+    : [];
+
+  var scheduledDate = (document.getElementById('srp-date').value || '').trim() || null;
+  var row = {
+    id:              id,
+    prompt_ko:       (document.getElementById('srp-prompt').value || '').trim(),
+    image_url:       imgUrl,
+    sample_answer:   (document.getElementById('srp-sample').value || '').trim(),
+    word_order_words: words,
+    custom_prompt:   (document.getElementById('srp-custom').value || '').trim() || null,
+    scheduled_date:  scheduledDate,
+    is_active:       document.getElementById('srp-active').checked,
+    updated_at:      new Date().toISOString()
+  };
+
+  var r = await sb.from('study_picture_prompts').upsert(row, { onConflict:'id' });
+  if (r.error) { msgEl.textContent = 'Error: ' + r.error.message; return; }
+  msgEl.textContent = '저장됐습니다! (' + id + ')';
+  srClearPictureForm();
+  await srLoadPictures();
+}
+
+async function srDeletePicture(id) {
+  if (!confirm('삭제할까요? (' + id + ')')) return;
+  var r = await getSb().from('study_picture_prompts').delete().eq('id', id);
+  if (r.error) { alert(r.error.message); return; }
+  await srLoadPictures();
+}
+
+function srClearPictureForm() {
+  ['srp-uuid','srp-id','srp-image','srp-custom','srp-sample','srp-date','srp-words'].forEach(function(id){
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('srp-prompt').value = '';
+  document.getElementById('srp-active').checked = true;
+  var prev = document.getElementById('srp-img-preview'); if (prev) prev.innerHTML = '';
+  var msg  = document.getElementById('srp-msg');        if (msg)  msg.textContent = '';
+  var fi   = document.getElementById('srp-img-file');   if (fi)   fi.value = '';
+}
+
+// ── HOMEWORK tab ───────────────────────────────────────────────
 async function loadStudyHomeworkAdmin() {
   var sb = getSb();
   var el = document.getElementById('sr-homework-list');
   if (!sb || !el) return;
   var r = await sb.from('writing_submissions').select('id,user_id,topic_ko,writing_text,status,submitted_at,final_feedback').order('submitted_at', { ascending:false }).limit(60);
-  if (r.error) { el.textContent = 'Submission load error: ' + r.error.message; return; }
+  if (r.error) { el.textContent = 'Error: ' + r.error.message; return; }
   var rows = r.data || [];
-  el.innerHTML = '<div style="font-weight:800;margin-bottom:8px">Submitted homework</div>' + (rows.length ? rows.map(function(s){
+  el.innerHTML = '<div style="font-weight:800;margin-bottom:8px">제출된 숙제</div>' + (rows.length ? rows.map(function(s){
     return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:8px">'
       + '<div style="font-size:11px;color:#64748b">' + (s.submitted_at || '') + ' · ' + (s.user_id || '') + '</div>'
       + '<div style="font-weight:800;margin:4px 0">' + (s.topic_ko || 'No topic') + '</div>'
@@ -5381,7 +5690,7 @@ async function saveHomeworkFeedback(id) {
   toast('Saved');
 }
 
-if (window.location.hash === '#study-picture-prompts') {
+if (window.location.hash === '#study-picture-prompts' || window.location.hash === '#study-room') {
   setTimeout(function(){ goStudyRoomOps(); }, 120);
 }
 </script>

@@ -1343,7 +1343,7 @@ body { background: #0b1626 !important; }
       </div>
       <button class="wmh-close" onclick="closePictureDescription()">✕</button>
     </div>
-    <div class="wm-center" style="padding:16px;gap:12px;">
+    <div class="wm-center" style="padding:16px;gap:12px;overflow-y:auto;">
       <div class="sr-practice-box">
         <div class="sr-practice-label" id="pd-prompt-label">Image Prompt</div>
         <img id="pd-image" class="sr-practice-img" src="" alt="Picture description prompt image">
@@ -1351,12 +1351,34 @@ body { background: #0b1626 !important; }
           <label class="sr-pill" style="cursor:pointer">Upload my image<input id="pd-upload" type="file" accept="image/*" style="display:none" onchange="onPictureUploadPicked(this)"></label>
           <button class="sr-pill" id="pd-admin-btn" style="display:none" onclick="openPicturePromptAdmin()">Admin Prompt CRUD</button>
         </div>
-        <textarea id="pd-input" class="sr-practice-input" placeholder="이미지를 보고 한국어로 설명해 보세요. (2~4문장 추천)"></textarea>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="sr-activity-btn" onclick="checkPictureDescription()">Check My Writing</button>
-          <button class="sr-pill" onclick="nextPicturePrompt()">Next Image</button>
+
+        <!-- ① 어절 순서맞추기 (word-order activity — shown when word_order_words is set) -->
+        <div id="pd-word-order-section" style="display:none;margin-top:14px;padding:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;">
+          <div style="font-size:11px;font-weight:800;color:#7ab8f5;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📝 어절 순서맞추기</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:6px">단어를 클릭해서 올바른 순서로 배치하세요</div>
+          <div id="pd-word-pool" style="display:flex;gap:6px;flex-wrap:wrap;min-height:38px;padding:8px;background:rgba(255,255,255,.07);border-radius:10px;margin-bottom:8px;align-items:center"></div>
+          <div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:4px">내 답:</div>
+          <div id="pd-word-answer" style="display:flex;gap:6px;flex-wrap:wrap;min-height:38px;padding:8px;background:rgba(255,255,255,.04);border:1.5px dashed rgba(255,255,255,.18);border-radius:10px;margin-bottom:10px;align-items:center"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="sr-activity-btn" onclick="checkWordOrder()">정답 확인</button>
+            <button class="sr-pill" onclick="resetWordOrder()">다시하기</button>
+          </div>
+          <div id="pd-word-result" style="margin-top:8px;display:none"></div>
         </div>
-        <div id="pd-result" class="sr-practice-result" style="display:none"></div>
+
+        <!-- ② 커스텀 추가 질문 (optional, set by admin) -->
+        <div id="pd-custom-prompt" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(122,184,245,.08);border-radius:10px;font-size:13px;color:#b8d9f7;font-weight:600"></div>
+
+        <!-- ③ 자유 쓰기 (free writing) -->
+        <div style="margin-top:14px;">
+          <div style="font-size:11px;font-weight:800;color:#7ab8f5;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">✍️ 자유 쓰기</div>
+          <textarea id="pd-input" class="sr-practice-input" placeholder="이미지를 보고 한국어로 자유롭게 묘사해 보세요. (2~4문장 추천)"></textarea>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="sr-activity-btn" onclick="checkPictureDescription()">Check My Writing</button>
+            <button class="sr-pill" onclick="nextPicturePrompt()">Next Image</button>
+          </div>
+          <div id="pd-result" class="sr-practice-result" style="display:none"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1466,26 +1488,10 @@ var _fcWords        = [];
 var _convVocab      = [];     // conv DB vocab 전체
 var _storyVocab     = [];     // stories DB vocab 전체
 var _vocabPoolLoaded = false;
-var _picturePrompts = [
-  {
-    id:'han-river',
-    image:'https://images.unsplash.com/photo-1538485399081-7c897f4f58f5?auto=format&fit=crop&w=1200&q=80',
-    prompt_ko:'한강 공원에서 자전거를 타고 있는 사람들을 묘사해 보세요.',
-    sample:'한강 공원에는 자전거를 타는 사람들이 많아요. 날씨가 좋아서 가족과 친구들이 함께 산책하고 있어요.'
-  },
-  {
-    id:'market',
-    image:'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80',
-    prompt_ko:'시장이나 길거리 음식 장면을 보고 분위기와 행동을 설명해 보세요.',
-    sample:'시장에는 다양한 음식 냄새가 나고 사람들이 활기차게 움직여요. 한 손님이 떡볶이를 주문하고 있어요.'
-  },
-  {
-    id:'classroom',
-    image:'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80',
-    prompt_ko:'교실에서 공부하는 장면을 묘사하고, 느낀 점도 한 문장 추가해 보세요.',
-    sample:'학생들이 교실에서 집중해서 공부하고 있어요. 선생님이 칠판에 문법을 설명하고 있고 분위기가 진지해 보여요.'
-  }
-];
+var _picturePrompts   = [];  // populated from DB via loadPicturePromptsFromDB()
+var _dbHelpersLoaded  = false;
+var _dbGrammarLoaded  = false;
+var _wordOrderState   = { pool:[], answer:[], correct:[] };
 var _pictureIndex = 0;
 var _sentencePractice = {
   mode:'copy',
@@ -1563,6 +1569,8 @@ document.addEventListener('DOMContentLoaded', async function() {
   renderStudyChecklist();
   renderStudyRoomWordTracks();
   await loadPicturePromptsFromDB();
+  loadDBHelpers(_currentLevel);   // async, no await — populates sidebar immediately if DB has content
+  loadDBGrammar(_currentLevel);
   renderPhrase();
   await loadAllTopics();
   await loadVocabPool();   // conv+stories vocab 로드
@@ -1644,20 +1652,174 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 });
 
+function _mapPicturePrompt(x) {
+  return {
+    id: x.id,
+    image: x.image_url || '',
+    prompt_ko: x.prompt_ko || '',
+    sample: x.sample_answer || '',
+    word_order_words: Array.isArray(x.word_order_words) ? x.word_order_words : [],
+    custom_prompt: x.custom_prompt || ''
+  };
+}
+
 async function loadPicturePromptsFromDB() {
   var sb = getSupa();
   if (!sb) return;
   try {
+    var fields = 'id,prompt_ko,image_url,sample_answer,sort_order,word_order_words,custom_prompt,scheduled_date';
+    var today = kstDateKey();  // "YYYY-MM-DD" in KST
+
+    // 1. Prefer today's scheduled item
     var r = await sb.from('study_picture_prompts')
-      .select('id,prompt_ko,image_url,sample_answer,sort_order')
+      .select(fields)
       .eq('is_active', true)
-      .order('sort_order', { ascending:true })
-      .limit(100);
-    if (r.error || !r.data || !r.data.length) return;
-    _picturePrompts = r.data.map(function(x){
-      return { id:x.id, image:x.image_url, prompt_ko:x.prompt_ko, sample:x.sample_answer || '' };
-    });
-  } catch(e) {}
+      .eq('scheduled_date', today)
+      .limit(1)
+      .maybeSingle();
+    if (!r.error && r.data) {
+      _picturePrompts = [_mapPicturePrompt(r.data)];
+      return;
+    }
+
+    // 2. Fallback: unscheduled items ordered by sort_order
+    var r2 = await sb.from('study_picture_prompts')
+      .select(fields)
+      .eq('is_active', true)
+      .is('scheduled_date', null)
+      .order('sort_order', { ascending: true })
+      .limit(50);
+    if (!r2.error && r2.data && r2.data.length) {
+      _picturePrompts = r2.data.map(_mapPicturePrompt);
+    }
+  } catch(e) { console.error('loadPicturePromptsFromDB', e); }
+}
+
+// ─── DB-backed Quick Help (빠른 도움) ───────────────────────
+async function loadDBHelpers(level) {
+  var sb = getSupa();
+  if (!sb) return false;
+  try {
+    var r = await sb.from('study_room_helpers')
+      .select('ko,en,display_order')
+      .eq('level', level)
+      .eq('active', true)
+      .order('display_order', { ascending: true });
+    if (r.error || !r.data || !r.data.length) return false;
+    var hhtml = r.data.map(function(h) {
+      return '<div class="hrow">'
+        + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="ttsSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)">🔊</button></div>'
+        + '<div class="hen">' + h.en + '</div>'
+        + '</div>';
+    }).join('');
+    var box = document.getElementById('helper-box');
+    if (box) box.innerHTML = hhtml;
+    _dbHelpersLoaded = true;
+    return true;
+  } catch(e) { return false; }
+}
+
+// ─── DB-backed Grammar ───────────────────────────────────────
+async function loadDBGrammar(level) {
+  var sb = getSupa();
+  if (!sb) return false;
+  try {
+    var r = await sb.from('study_room_grammar')
+      .select('pattern,explanation,example_ko,example_en,display_order')
+      .eq('level', level)
+      .eq('active', true)
+      .order('display_order', { ascending: true });
+    if (r.error || !r.data || !r.data.length) return false;
+    var glvColor = { Beginner:'lb', Intermediate:'li', Advanced:'la', Starter:'lb' };
+    var ghtml = r.data.map(function(g) {
+      return '<div class="grb">'
+        + '<span class="grbadge lvbadge ' + (glvColor[level]||'lb') + '">' + level + '</span>'
+        + '<div class="grname">' + g.pattern + '</div>'
+        + '<div class="grexp">' + g.explanation + '</div>'
+        + '<div class="grex"><div class="grko">' + g.example_ko + '</div><div class="gren">' + g.example_en + '</div></div>'
+        + '</div>';
+    }).join('');
+    var box = document.getElementById('grammar-box');
+    if (box) box.innerHTML = ghtml;
+    _dbGrammarLoaded = true;
+    return true;
+  } catch(e) { return false; }
+}
+
+// ─── Word-order activity (어절 순서맞추기) ─────────────────────
+function renderWordOrderActivity(words) {
+  _wordOrderState.correct = words.slice();
+  var shuffled = words.map(function(w, i){ return { word:w, origIdx:i }; });
+  for (var i = shuffled.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
+  }
+  _wordOrderState.pool = shuffled;
+  _wordOrderState.answer = [];
+  _renderWordOrderUI();
+}
+
+function _renderWordOrderUI() {
+  var pool = document.getElementById('pd-word-pool');
+  var ans  = document.getElementById('pd-word-answer');
+  var res  = document.getElementById('pd-word-result');
+  if (res) { res.style.display = 'none'; res.innerHTML = ''; }
+  if (pool) {
+    pool.innerHTML = _wordOrderState.pool.length
+      ? _wordOrderState.pool.map(function(item) {
+          return '<button class="wc-mode-tab" style="cursor:pointer" onclick="pickWordFromPool(' + item.origIdx + ')">' + item.word + '</button>';
+        }).join('')
+      : '<span style="font-size:12px;color:rgba(255,255,255,.3)">모두 배치됐어요</span>';
+  }
+  if (ans) {
+    ans.innerHTML = _wordOrderState.answer.length
+      ? _wordOrderState.answer.map(function(item, pos) {
+          return '<button class="wc-mode-tab" style="background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.3);color:#86efac;cursor:pointer" onclick="removeWordFromAnswer(' + pos + ')">' + item.word + '</button>';
+        }).join('')
+      : '<span style="font-size:12px;color:rgba(255,255,255,.3)">단어를 위에서 클릭해서 순서대로 배치하세요</span>';
+  }
+}
+
+function pickWordFromPool(origIdx) {
+  var idx = -1;
+  for (var i = 0; i < _wordOrderState.pool.length; i++) {
+    if (_wordOrderState.pool[i].origIdx === origIdx) { idx = i; break; }
+  }
+  if (idx < 0) return;
+  _wordOrderState.answer.push(_wordOrderState.pool.splice(idx, 1)[0]);
+  _renderWordOrderUI();
+}
+
+function removeWordFromAnswer(pos) {
+  if (pos < 0 || pos >= _wordOrderState.answer.length) return;
+  _wordOrderState.pool.push(_wordOrderState.answer.splice(pos, 1)[0]);
+  _renderWordOrderUI();
+}
+
+function checkWordOrder() {
+  var ans = _wordOrderState.answer.map(function(item){ return item.word; });
+  var correct = _wordOrderState.correct;
+  var res = document.getElementById('pd-word-result');
+  if (!res) return;
+  res.style.display = '';
+  if (ans.length < correct.length) {
+    res.innerHTML = '<div style="padding:10px;background:rgba(251,191,36,.1);border-radius:8px;color:#fbbf24">⚠️ 아직 모든 단어를 배치하지 않았어요!</div>';
+    return;
+  }
+  var isCorrect = ans.join(' ') === correct.join(' ');
+  if (isCorrect) {
+    res.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac">✅ 정답이에요!<br><span style="font-size:12px;opacity:.8">' + correct.join(' ') + '</span></div>';
+    markStudyDone('picture');
+  } else {
+    res.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,.1);border-radius:8px;color:#fca5a5">❌ 틀렸어요. 다시 해보세요!<br><span style="font-size:12px;opacity:.8">정답: ' + correct.join(' ') + '</span></div>';
+  }
+}
+
+function resetWordOrder() {
+  var item = _picturePrompts.length ? _picturePrompts[_pictureIndex % _picturePrompts.length] : null;
+  if (item && item.word_order_words && item.word_order_words.length) {
+    renderWordOrderActivity(item.word_order_words);
+  }
 }
 
 async function loadStudyAccessGate() {
@@ -1820,8 +1982,12 @@ function setLevel(level, btn) {
   }
 
   _aiContent = null;
+  _dbHelpersLoaded = false;
+  _dbGrammarLoaded = false;
   clearAIContentUI();
   renderStudyRoomWordTracks();
+  loadDBHelpers(level);
+  loadDBGrammar(level);
   reassignTopicForLevel(level);
 }
 
@@ -2177,18 +2343,20 @@ function renderAIContent() {
   document.getElementById('vocab-box').innerHTML = vhtml || '<div style="color:#aaa;font-size:12px">No vocab loaded.</div>';
   document.getElementById('vocab-src').textContent = 'topic-based';
 
-  // GRAMMAR BOX (left)
-  var ghtml = '';
-  var glvColor = { Beginner:'lb', Intermediate:'li', Advanced:'la' };
-  (_aiContent.grammar || []).forEach(function(g) {
-    ghtml += '<div class="grb">'
-      + '<span class="grbadge lvbadge ' + (glvColor[g.level]||'lb') + '">' + g.level + '</span>'
-      + '<div class="grname">' + g.pattern + '</div>'
-      + '<div class="grexp">' + g.explanation + '</div>'
-      + '<div class="grex"><div class="grko">' + g.example_ko + '</div><div class="gren">' + g.example_en + '</div></div>'
-      + '</div>';
-  });
-  document.getElementById('grammar-box').innerHTML = ghtml || '<div style="color:#aaa;font-size:12px">No grammar loaded.</div>';
+  // GRAMMAR BOX — skip if DB content is already loaded
+  if (!_dbGrammarLoaded) {
+    var ghtml = '';
+    var glvColor = { Beginner:'lb', Intermediate:'li', Advanced:'la' };
+    (_aiContent.grammar || []).forEach(function(g) {
+      ghtml += '<div class="grb">'
+        + '<span class="grbadge lvbadge ' + (glvColor[g.level]||'lb') + '">' + g.level + '</span>'
+        + '<div class="grname">' + g.pattern + '</div>'
+        + '<div class="grexp">' + g.explanation + '</div>'
+        + '<div class="grex"><div class="grko">' + g.example_ko + '</div><div class="gren">' + g.example_en + '</div></div>'
+        + '</div>';
+    });
+    document.getElementById('grammar-box').innerHTML = ghtml || '<div style="color:#aaa;font-size:12px">No grammar loaded.</div>';
+  }
 
   // WCARD CHIPS
   var chips = '';
@@ -2196,15 +2364,17 @@ function renderAIContent() {
   (_aiContent.grammar || []).slice(0,2).forEach(function(g){ chips += '<span class="wchip g">' + g.pattern + '</span>'; });
   document.getElementById('wcard-chips').innerHTML = chips;
 
-  // HELPER BOX (center)
-  var hhtml = '';
-  (_aiContent.helpers || []).forEach(function(h) {
-    hhtml += '<div class="hrow">'
-      + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="ttsSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)">🔊</button></div>'
-      + '<div class="hen">' + h.en + '</div>'
-      + '</div>';
-  });
-  document.getElementById('helper-box').innerHTML = hhtml || '<div style="color:#aaa;font-size:12px">No helpers loaded.</div>';
+  // HELPER BOX — skip if DB content is already loaded
+  if (!_dbHelpersLoaded) {
+    var hhtml = '';
+    (_aiContent.helpers || []).forEach(function(h) {
+      hhtml += '<div class="hrow">'
+        + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="ttsSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)">🔊</button></div>'
+        + '<div class="hen">' + h.en + '</div>'
+        + '</div>';
+    });
+    document.getElementById('helper-box').innerHTML = hhtml || '<div style="color:#aaa;font-size:12px">No helpers loaded.</div>';
+  }
 
   // MODAL content
   renderModalContent();
@@ -3618,15 +3788,45 @@ function openPicturePromptAdmin() {
   window.location.href = 'korehan-admin.html#study-picture-prompts';
 }
 function renderPicturePrompt() {
+  if (!_picturePrompts.length) {
+    var label0 = document.getElementById('pd-prompt-label');
+    if (label0) label0.textContent = '관리자가 아직 이미지를 등록하지 않았습니다.';
+    var img0 = document.getElementById('pd-image');
+    if (img0) img0.style.display = 'none';
+    return;
+  }
   var item = _picturePrompts[_pictureIndex % _picturePrompts.length];
   var img = document.getElementById('pd-image');
   var label = document.getElementById('pd-prompt-label');
   var result = document.getElementById('pd-result');
-  if (img) img.src = item.image;
-  if (label) label.textContent = item.prompt_ko;
+  if (img) { img.src = item.image || ''; img.style.display = item.image ? '' : 'none'; }
+  if (label) label.textContent = item.prompt_ko || '사진을 묘사해 보세요.';
   if (result) { result.style.display = 'none'; result.innerHTML = ''; }
   var input = document.getElementById('pd-input');
   if (input) input.value = '';
+
+  // Word-order activity
+  var woSection = document.getElementById('pd-word-order-section');
+  if (woSection) {
+    var words = item.word_order_words || [];
+    if (words.length) {
+      woSection.style.display = '';
+      renderWordOrderActivity(words);
+    } else {
+      woSection.style.display = 'none';
+    }
+  }
+
+  // Custom extra prompt
+  var cpLabel = document.getElementById('pd-custom-prompt');
+  if (cpLabel) {
+    if (item.custom_prompt) {
+      cpLabel.textContent = item.custom_prompt;
+      cpLabel.style.display = '';
+    } else {
+      cpLabel.style.display = 'none';
+    }
+  }
 }
 function nextPicturePrompt() {
   _pictureIndex = (_pictureIndex + 1) % _picturePrompts.length;
