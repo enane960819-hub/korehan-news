@@ -2634,10 +2634,17 @@ function openWritingModalForLearning() {
   wmMobileInit();
 }
 
-// Opens Writing Practice WITH the canEnterWritingRoom() gate (used by ls-wp-btn)
+// Opens Writing Practice — always opens #wmodal (the writing room), not the Beginner activity flow
 function lsStartWriting() {
   closeLearningSelector();
-  openWritingModal();
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  if (!canEnterWritingRoom()) return;
+  document.getElementById('wmodal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
+  renderModalContent();
+  wmMobileInit();
 }
 
 // Read today's study_daily_progress from DB and merge into _studyDone
