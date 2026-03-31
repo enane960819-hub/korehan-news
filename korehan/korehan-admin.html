@@ -847,8 +847,15 @@ function formHTML(a){
       <div class="cntlabel"><span id="bl">${(v.body||'').length}</span> / 2000</div>
     </div>
     <div class="fg">
-      <label>이미지 URL <span style="font-weight:400;text-transform:none;letter-spacing:0">(선택)</span></label>
-      <input type="text" id="f-image" value="${esc(v.image||'')}" placeholder="https://…">
+      <label>이미지 <span style="font-weight:400;text-transform:none;letter-spacing:0">(URL 입력 또는 파일 업로드)</span></label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="text" id="f-image" value="${esc(v.image||'')}" placeholder="https://…" style="flex:1;min-width:160px" oninput="livePreview()">
+        <label style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;background:#0ea5e9;color:#fff;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;border:none">
+          <span id="f-img-upload-lbl">📁 업로드</span>
+          <input type="file" id="f-img-file" accept="image/*" style="display:none" onchange="adminHandleImgFile(this)">
+        </label>
+      </div>
+      <div id="f-img-uploading" style="display:none;font-size:12px;color:#0ea5e9;margin-top:4px">⏳ 업로드 중…</div>
       <img id="f-imgprev" style="${v.image?'':'display:none'};max-width:100%;max-height:160px;border-radius:4px;margin-top:8px;object-fit:cover" src="${esc(v.image||'')}">
     </div>
     <div class="fg" style="flex-direction:row;align-items:center;gap:10px">
@@ -885,6 +892,56 @@ function livePreview(){
   if(!p) return;
   if(url){p.src=url;p.style.display='block';}else{p.style.display='none';}
 }
+
+// ── Article image upload helpers ──────────────────────────────
+async function adminUploadArticleImage(file) {
+  var sb = getSb();
+  if (!sb) throw new Error('Admin client not available');
+  var ext  = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  var path = 'articles/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + ext;
+  var up   = await sb.storage.from('article-images').upload(path, file, { upsert: true, contentType: file.type });
+  if (up.error) throw up.error;
+  return sb.storage.from('article-images').getPublicUrl(path).data.publicUrl;
+}
+
+async function adminHandleImgFile(input) {
+  // Called from the article create/edit form file picker
+  if (!input.files || !input.files[0]) return;
+  var lbl      = document.getElementById('f-img-upload-lbl');
+  var spinner  = document.getElementById('f-img-uploading');
+  if (lbl)     lbl.textContent = '⏳';
+  if (spinner) spinner.style.display = '';
+  try {
+    var url = await adminUploadArticleImage(input.files[0]);
+    var urlInput = document.getElementById('f-image');
+    if (urlInput) { urlInput.value = url; livePreview(); }
+  } catch(e) {
+    toast('이미지 업로드 실패: ' + e.message, true);
+  } finally {
+    if (lbl)     lbl.textContent = '📁 업로드';
+    if (spinner) spinner.style.display = 'none';
+    input.value = '';  // reset so same file can be re-picked
+  }
+}
+
+async function adminHandleImgUploadForArticle(input, articleId) {
+  // Called from the 기사 이미지 관리 upload button per article
+  if (!input.files || !input.files[0]) return;
+  var span = document.getElementById('img-upld-lbl-' + articleId);
+  if (span) span.textContent = '⏳';
+  try {
+    var url = await adminUploadArticleImage(input.files[0]);
+    var urlInput = document.getElementById('img-url-' + articleId);
+    if (urlInput) urlInput.value = url;
+    await saveArticleImage(articleId);
+  } catch(e) {
+    toast('업로드 실패: ' + e.message, true);
+  } finally {
+    if (span) span.textContent = '📁';
+    input.value = '';
+  }
+}
+
 async function submitForm(status){
   const title=(document.getElementById('f-title')?.value||'').trim();
   const body =(document.getElementById('f-body')?.value||'').trim();
@@ -4830,9 +4887,13 @@ async function loadArticleImageList() {
       + '<div style="flex:1;min-width:0">'
       + '<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (a.title_ko || a.title || '') + '</div>'
       + '<div style="font-size:11px;color:#94a3b8;margin-bottom:8px">' + (a.section || '') + ' · ' + (a.status || '') + '</div>'
-      + '<div style="display:flex;gap:6px;align-items:center">'
-      + '<input id="img-url-' + a.id + '" value="' + img + '" placeholder="이미지 URL 입력..." style="flex:1;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">'
+      + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+      + '<input id="img-url-' + a.id + '" value="' + img + '" placeholder="이미지 URL 입력..." style="flex:1;min-width:140px;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">'
       + '<button onclick="saveArticleImage(\'' + a.id + '\')" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">저장</button>'
+      + '<label style="display:inline-flex;align-items:center;gap:4px;padding:7px 12px;background:#0ea5e9;color:#fff;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">'
+      + '<span id="img-upld-lbl-' + a.id + '">📁</span>'
+      + '<input type="file" accept="image/*" style="display:none" onchange="adminHandleImgUploadForArticle(this,\'' + a.id + '\')">'
+      + '</label>'
       + '</div>'
       + '<div style="margin-top:6px;display:flex;gap:6px">'
       + '<input id="img-search-' + a.id + '" placeholder="Unsplash 검색어..." style="flex:1;padding:5px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">'
