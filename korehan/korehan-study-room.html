@@ -1569,6 +1569,8 @@ var _sentencePractice = {
 var _studyPass = { active:false, expires_kst:'', credits:0, warned:false };
 var _studyDone = { topic:false, grammar:false, picture:false, sentence:false };
 var _studyUnlocked = false;
+var _dailyDictationSentences = [];   // [{ko,en}]  from study_daily_content
+var _dailyDictationQuestions = [];   // [{question_ko,answer_ko,hint_en}]  from study_daily_content
 
 function kstNow() { return new Date(Date.now() + (9 * 60 * 60 * 1000)); }
 function kstDateKey() {
@@ -1650,7 +1652,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       // Re-load done state now that supaUser is known (avoids 'guest' key bug)
       loadStudyDoneState();
       loadStudyDoneFromDB();   // merge DB progress → covers browser-switch / multi-device
-      assignDailyTopic();
+      loadDailyContent();
       loadFeedbackInbox();
     } else {
       waited++;
@@ -1735,10 +1737,14 @@ function _mapPicturePrompt(x) {
 async function loadPicturePromptsFromDB() {
   var sb = getSupa();
   if (!sb) return;
-  try {
-    var fields = 'id,prompt_ko,image_url,sample_answer,sort_order,word_order_words,vocab_items,incorrect_sentences,custom_prompt,scheduled_date';
-    var today = kstDateKey();  // "YYYY-MM-DD" in KST
 
+  // Full field set (requires migration 20260402 to have run).
+  // Falls back to base fields if new columns don't exist yet.
+  var fieldsWithNew  = 'id,prompt_ko,image_url,sample_answer,sort_order,word_order_words,vocab_items,incorrect_sentences,custom_prompt,scheduled_date';
+  var fieldsBaseOnly = 'id,prompt_ko,image_url,sample_answer,sort_order,word_order_words,custom_prompt,scheduled_date';
+
+  async function fetchPrompts(fields) {
+    var today = kstDateKey();
     // 1. Prefer today's scheduled item
     var r = await sb.from('study_picture_prompts')
       .select(fields)
@@ -1746,10 +1752,8 @@ async function loadPicturePromptsFromDB() {
       .eq('scheduled_date', today)
       .limit(1)
       .maybeSingle();
-    if (!r.error && r.data) {
-      _picturePrompts = [_mapPicturePrompt(r.data)];
-      return;
-    }
+    if (!r.error && r.data) { _picturePrompts = [_mapPicturePrompt(r.data)]; return true; }
+    if (r.error && r.error.message && r.error.message.includes('column')) throw new Error('missing_column');
 
     // 2. Fallback: unscheduled items ordered by sort_order
     var r2 = await sb.from('study_picture_prompts')
@@ -1758,10 +1762,21 @@ async function loadPicturePromptsFromDB() {
       .is('scheduled_date', null)
       .order('sort_order', { ascending: true })
       .limit(50);
-    if (!r2.error && r2.data && r2.data.length) {
-      _picturePrompts = r2.data.map(_mapPicturePrompt);
+    if (r2.error && r2.error.message && r2.error.message.includes('column')) throw new Error('missing_column');
+    if (!r2.error && r2.data && r2.data.length) { _picturePrompts = r2.data.map(_mapPicturePrompt); }
+    return true;
+  }
+
+  try {
+    await fetchPrompts(fieldsWithNew);
+  } catch(e) {
+    if (e.message === 'missing_column') {
+      // Migration hasn't run yet — retry without new columns
+      try { await fetchPrompts(fieldsBaseOnly); } catch(e2) { console.error('loadPicturePromptsFromDB', e2); }
+    } else {
+      console.error('loadPicturePromptsFromDB', e);
     }
-  } catch(e) { console.error('loadPicturePromptsFromDB', e); }
+  }
 }
 
 // ─── DB-backed Quick Help (빠른 도움) ───────────────────────
@@ -2158,16 +2173,16 @@ function getFallbackTopics() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ASSIGN DAILY TOPIC — unique per user, no repeats
+// LOAD DAILY CONTENT — from study_daily_content (AI-generated + admin-editable)
 // ═══════════════════════════════════════════════════════════════
-async function assignDailyTopic() {
+async function loadDailyContent() {
   var today = kstDateKey();
 
   // Admin preview: ?preview_date=YYYY-MM-DD (up to +6 days)
   if (window._isAdmin) {
     var p = new URLSearchParams(window.location.search).get('preview_date');
     if (p && /^\d{4}-\d{2}-\d{2}$/.test(p)) {
-      var maxDate = new Date(new Date(today).getTime() + (6 * 24 * 60 * 60 * 1000)).toISOString().slice(0, 10);
+      var maxDate = new Date(new Date(today + 'T00:00:00Z').getTime() + (6 * 24 * 60 * 60 * 1000)).toISOString().slice(0, 10);
       if (p >= today && p <= maxDate) today = p;
     }
   }
@@ -2175,89 +2190,141 @@ async function assignDailyTopic() {
   if (!supaUser) { showLoginWall(); return; }
 
   var sb = getSupa();
-
   try {
-    // ── 1. GLOBAL SCHEDULE: same topic for all users on same date+level ──
-    var { data: scheduled } = await sb.from('study_topic_schedule')
-      .select('topic_id')
+    var r = await sb.from('study_daily_content')
+      .select('*')
       .eq('scheduled_date', today)
       .eq('level', _currentLevel)
       .maybeSingle();
 
-    if (scheduled && scheduled.topic_id) {
-      var globalTopic = _allTopics.find(function(t) {
-        return String(t.id) === String(scheduled.topic_id);
-      });
-      if (globalTopic) {
-        _todayTopic = globalTopic;
-        renderTopicUI();
-        generateAIContent(_todayTopic);
-        // Check if this user completed it today (for ✅ badge only)
-        var { data: hist } = await sb.from('user_topic_history')
-          .select('completed')
-          .eq('user_id', supaUser.id)
-          .eq('topic_id', globalTopic.id)
-          .eq('assigned_date', today)
-          .maybeSingle();
-        if (hist && hist.completed) {
-          var doneEl = document.getElementById('hero-topic-done');
-          if (doneEl) doneEl.style.display = 'flex';
-        }
-        return;
-      }
+    if (!r.error && r.data) {
+      _applyDailyContent(r.data);
+      return;
+    }
+  } catch(e) {
+    console.error('loadDailyContent:', e);
+  }
+
+  // Nothing in DB yet — generate via AI and persist
+  await _generateAndSaveDailyContent(today);
+}
+
+function _applyDailyContent(rec) {
+  _todayTopic = {
+    id:       (rec.scheduled_date || '') + '_' + (rec.level || ''),
+    topic_ko: rec.topic_ko || '',
+    topic_en: rec.topic_en || '',
+    level:    rec.level    || _currentLevel
+  };
+  _aiContent = {
+    vocab:   Array.isArray(rec.vocab)   ? rec.vocab   : [],
+    grammar: Array.isArray(rec.grammar) ? rec.grammar : [],
+    helpers: Array.isArray(rec.helpers) ? rec.helpers : []
+  };
+  _dailyDictationSentences = Array.isArray(rec.dictation_sentences) ? rec.dictation_sentences : [];
+  _dailyDictationQuestions = Array.isArray(rec.dictation_questions) ? rec.dictation_questions : [];
+  // Prevent AI from overwriting DB-loaded helpers and grammar
+  _dbHelpersLoaded = true;
+  _dbGrammarLoaded = true;
+  renderTopicUI();
+  renderAIContent();
+  hideAILoading();
+}
+
+async function _generateAndSaveDailyContent(date) {
+  if (!supaUser) { showLoginWall(); return; }
+  showAILoading();
+
+  var levelGuide = {
+    Starter:      'STARTER: Ultra-basic. Daily life, family, food. Vocab: 1-2 syllable words. Grammar: ~이에요/예요, ~있어요/없어요. Sentences max 4 words.',
+    Beginner:     'BEGINNER: Present tense (~아요/어요). Basic particles. Everyday vocab. Helper sentences 5-8 words.',
+    Intermediate: 'INTERMEDIATE: Past tense, conjunctions, modals. Sentences 8-12 words. Topic-specific terms.',
+    Advanced:     'ADVANCED: Complex structures, formal style, advanced connectors. Sentences 12+ words. Abstract vocab.'
+  };
+  var topicCategories = [
+    'daily life', 'food & cooking', 'K-pop & music', 'travel in Korea', 'Korean seasons & weather',
+    'school & studying', 'hobbies', 'Korean traditions & culture', 'family & relationships',
+    'technology & social media', 'health & wellness', 'sports & exercise', 'Korean cinema & dramas',
+    'friendship', 'work & career', 'nature & environment', 'festivals & holidays', 'shopping',
+    'transportation in Korea', 'Korean language learning'
+  ];
+  var randomCat = topicCategories[Math.floor(Math.random() * topicCategories.length)];
+
+  var prompt = 'You are a Korean language teacher creating complete daily study content for ' + _currentLevel + '-level students.\n\n'
+    + 'Level requirements: ' + (levelGuide[_currentLevel] || levelGuide.Beginner) + '\n'
+    + 'Pick an interesting, specific topic within the theme: "' + randomCat + '"\n\n'
+    + 'Return ONLY valid JSON (no markdown, no extra text):\n'
+    + '{\n'
+    + '  "topic_ko": "주제 한국어 (2-5 words)",\n'
+    + '  "topic_en": "Topic in English",\n'
+    + '  "vocab": [{"ko":"word","rom":"romanization","en":"meaning","level":"' + _currentLevel + '"}],\n'
+    + '  "grammar": [{"level":"' + _currentLevel + '","pattern":"pattern","explanation":"English explanation","example_ko":"example sentence","example_en":"translation"}],\n'
+    + '  "helpers": [{"ko":"Korean sentence","en":"translation"}],\n'
+    + '  "dictation_sentences": [{"ko":"Korean sentence","en":"English meaning"}],\n'
+    + '  "dictation_questions": [{"question_ko":"question","answer_ko":"short answer","hint_en":"hint in English"}]\n'
+    + '}\n'
+    + 'vocab: exactly 5 items. grammar: exactly 3 items. helpers: exactly 4 items. dictation_sentences: exactly 3 items. dictation_questions: exactly 3 items.';
+
+  try {
+    var _aiGenTimeout;
+    var timeoutPromise = new Promise(function(_, reject) {
+      _aiGenTimeout = setTimeout(function() { reject(new Error('timeout')); }, 15000);
+    });
+    var data = await Promise.race([
+      callClaude({
+        feature:    'study-room-daily',
+        model:      'claude-haiku-4-5-20251001',
+        max_tokens: 1200,
+        messages:   [{ role: 'user', content: prompt }]
+      }),
+      timeoutPromise
+    ]);
+    clearTimeout(_aiGenTimeout);
+
+    var raw = (data.content || []).map(function(c){ return c.text||''; }).join('');
+    var clean = raw.replace(/```json|```/g, '').trim();
+    var s = clean.indexOf('{'), e = clean.lastIndexOf('}');
+    if (s >= 0 && e > s) clean = clean.slice(s, e + 1);
+    var parsed = JSON.parse(clean);
+
+    var rec = {
+      scheduled_date:      date,
+      level:               _currentLevel,
+      topic_ko:            parsed.topic_ko             || '',
+      topic_en:            parsed.topic_en             || '',
+      vocab:               parsed.vocab               || [],
+      grammar:             parsed.grammar             || [],
+      helpers:             parsed.helpers             || [],
+      dictation_sentences: parsed.dictation_sentences || [],
+      dictation_questions: parsed.dictation_questions || [],
+      admin_edited:        false,
+      updated_at:          new Date().toISOString()
+    };
+
+    // Persist to DB (best-effort — don't block render if save fails)
+    var sb = getSupa();
+    if (sb) {
+      sb.from('study_daily_content').upsert(rec, { onConflict: 'scheduled_date,level' })
+        .then(function(r) { if (r.error) console.warn('study_daily_content save:', r.error.message); });
     }
 
-    // ── 2. FALLBACK: check if user already has a topic assigned today ──
-    var { data: todayRows, error: e1 } = await sb.from('user_topic_history')
-      .select('topic_id, completed')
-      .eq('user_id', supaUser.id)
-      .eq('assigned_date', today)
-      .limit(1);
-
-    if (!e1 && todayRows && todayRows.length) {
-      var existingTopic = _allTopics.find(function(t) { return t.id === todayRows[0].topic_id; });
-      if (existingTopic) {
-        _todayTopic = existingTopic;
-        if (todayRows[0].completed) {
-          var doneEl = document.getElementById('hero-topic-done');
-          if (doneEl) doneEl.style.display = 'flex';
-        }
-        renderTopicUI();
-        generateAIContent(_todayTopic);
-        return;
-      }
-    }
-
-    // ── 3. FALLBACK: random undone topic for this user ──
-    var { data: doneRows } = await sb.from('user_topic_history')
-      .select('topic_id')
-      .eq('user_id', supaUser.id);
-    _doneTopicIds = new Set((doneRows || []).map(function(r) { return r.topic_id; }));
-
-    var levelPool = _allTopics.filter(function(t) { return normalizeLevelName(t.level) === _currentLevel; });
-    if (!levelPool.length) levelPool = _allTopics;
-    var undone = levelPool.filter(function(t) { return !_doneTopicIds.has(t.id); });
-    if (!undone.length) undone = levelPool;
-    if (!undone.length) { renderTopicUI(); return; }
-
-    var picked = undone[Math.floor(Math.random() * undone.length)];
-    try {
-      await sb.from('user_topic_history').insert({
-        user_id: supaUser.id, topic_id: picked.id, assigned_date: today
-      });
-    } catch(e) {}
-    _todayTopic = picked;
-    renderTopicUI();
-    generateAIContent(picked);
+    _applyDailyContent(rec);
 
   } catch(err) {
-    // hard fallback if DB unavailable
-    var pool = _allTopics.filter(function(t) { return normalizeLevelName(t.level) === _currentLevel; });
-    if (!pool.length) pool = _allTopics;
-    if (!pool.length) return;
-    _todayTopic = pool[Math.floor(Math.random() * pool.length)];
-    renderTopicUI();
-    generateAIContent(_todayTopic);
+    console.error('_generateAndSaveDailyContent:', err);
+    // Hard fallback — use built-in content, don't save to DB
+    var fb = buildStudyRoomFallbackContent({ topic_ko:'오늘의 주제', topic_en:"Today's Topic" }, _currentLevel);
+    _applyDailyContent({
+      scheduled_date:      date,
+      level:               _currentLevel,
+      topic_ko:            '오늘의 주제',
+      topic_en:            "Today's Topic",
+      vocab:               fb.vocab,
+      grammar:             fb.grammar,
+      helpers:             fb.helpers,
+      dictation_sentences: [],
+      dictation_questions: []
+    });
   }
 }
 

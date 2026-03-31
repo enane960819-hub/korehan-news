@@ -5389,85 +5389,242 @@ async function srShowTab(tab) {
   if (tab === 'homework') { body.innerHTML = '<div class="sf-card" id="sr-homework-list">Loading…</div>'; await loadStudyHomeworkAdmin(); }
 }
 
-// ── TOPICS tab (global date-based schedule) ──────────────────────
+// ── TOPICS tab (daily content — AI-generated + admin-editable) ──────────────────────
 function srTopicsFormHTML() {
   return '<div class="sf-card" style="margin-bottom:12px">'
-    + '<div style="font-weight:800;font-size:15px;margin-bottom:6px">📅 오늘의 주제 스케줄</div>'
-    + '<div style="font-size:12px;color:#64748b;margin-bottom:14px">날짜 + 레벨별로 주제를 설정하면 <b>모든 사용자</b>에게 동일한 주제가 표시됩니다.<br>스케줄이 없는 날에는 각 사용자의 개인 랜덤 큐로 폴백됩니다.</div>'
-    + '<div class="fg"><label>날짜</label><input type="date" id="srt-date"></div>'
-    + '<div class="fg"><label>레벨</label>'
+    + '<div style="font-weight:800;font-size:15px;margin-bottom:6px">📅 오늘의 주제 편집</div>'
+    + '<div style="font-size:12px;color:#64748b;margin-bottom:14px">날짜 + 레벨로 AI 생성 콘텐츠를 불러오거나 직접 수정합니다. 저장하면 <b>모든 사용자</b>에게 동일한 콘텐츠가 표시됩니다.</div>'
+    + '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">'
+    + '<div class="fg" style="margin:0"><label>날짜</label><input type="date" id="srt-date"></div>'
+    + '<div class="fg" style="margin:0"><label>레벨</label>'
     + '<select id="srt-level"><option value="Starter">Starter</option><option value="Beginner" selected>Beginner</option><option value="Intermediate">Intermediate</option><option value="Advanced">Advanced</option></select></div>'
-    + '<div class="fg"><label>주제</label><select id="srt-topic-id"><option value="">로딩 중…</option></select></div>'
-    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
-    + '<button class="btn btn-g" onclick="srSaveTopic()">저장</button>'
-    + '<button class="btn" onclick="srLoadTopicSchedule()">새로고침</button>'
+    + '<button class="btn btn-g" onclick="srLoadDailyContent()">불러오기</button>'
     + '</div>'
-    + '<div id="srt-msg" style="margin-top:8px;font-size:12px;color:#475569"></div></div>'
+    + '<div id="srt-editor" style="display:none">'
+    + '<div style="margin-bottom:10px"><span id="srt-admin-badge" style="display:none;background:#fde68a;color:#92400e;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:800">관리자 편집됨</span></div>'
+    + '<div class="fg"><label>주제 (한국어)</label><input id="srt-topic-ko" placeholder="예: 한국 음식"></div>'
+    + '<div class="fg"><label>주제 (English)</label><input id="srt-topic-en" placeholder="e.g. Korean food"></div>'
+    + '<div class="fg"><label>Must Know Vocabulary <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|rom|en (5개)</span></label>'
+    + '<textarea id="srt-vocab" rows="5" style="width:100%;font-family:monospace;font-size:12px" placeholder="음식|eum-sik|food\n맛있다|mas-it-da|delicious"></textarea></div>'
+    + '<div class="fg"><label>문법 설명 Grammar <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = pattern|explanation|example_ko|example_en (3개)</span></label>'
+    + '<textarea id="srt-grammar" rows="4" style="width:100%;font-family:monospace;font-size:12px" placeholder="~을/를 좋아해요|I like ~|저는 음식을 좋아해요|I like food"></textarea></div>'
+    + '<div class="fg"><label>빠른 도움 Helpers <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|en (4개)</span></label>'
+    + '<textarea id="srt-helpers" rows="4" style="width:100%;font-family:monospace;font-size:12px" placeholder="저는 음식을 좋아해요|I like food"></textarea></div>'
+    + '<div class="fg"><label>Dictation 예문 <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|en (3개)</span></label>'
+    + '<textarea id="srt-dictation-sentences" rows="3" style="width:100%;font-family:monospace;font-size:12px" placeholder="한국 음식은 맛있어요|Korean food is delicious"></textarea></div>'
+    + '<div class="fg"><label>Dictation 질문 <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = question_ko|answer_ko|hint_en (3개)</span></label>'
+    + '<textarea id="srt-dictation-questions" rows="3" style="width:100%;font-family:monospace;font-size:12px" placeholder="좋아하는 음식이 있어요?|네, 비빔밥을 좋아해요|Yes, I like bibimbap"></textarea></div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
+    + '<button class="btn btn-g" onclick="srSaveDailyContent()">💾 저장</button>'
+    + '<button class="btn" onclick="srRegenDailyContent()" style="background:#f0fdf4;color:#15803d;border:1px solid #86efac">🤖 AI 재생성</button>'
+    + '<button class="btn btn-r" onclick="srDeleteDailyContent()">🗑 삭제</button>'
+    + '</div>'
+    + '<div id="srt-msg" style="margin-top:8px;font-size:12px;color:#475569"></div>'
+    + '</div>'
+    + '<div id="srt-empty" style="color:#94a3b8;font-size:13px;margin-top:8px;display:none">이 날짜+레벨의 콘텐츠가 없습니다. AI 재생성 버튼으로 생성하세요.</div>'
+    + '</div>'
     + '<div class="sf-card" id="srt-list">로딩 중…</div>';
+}
+
+async function srLoadDailyContent() {
+  var sb = getSb();
+  var msgEl    = document.getElementById('srt-msg');
+  var editorEl = document.getElementById('srt-editor');
+  var emptyEl  = document.getElementById('srt-empty');
+  var date  = (document.getElementById('srt-date').value  || '').trim();
+  var level = (document.getElementById('srt-level').value || '').trim();
+  if (!date || !level) { if (msgEl) msgEl.textContent = '날짜와 레벨을 선택하세요.'; return; }
+  if (msgEl) msgEl.textContent = '불러오는 중…';
+
+  var r = await sb.from('study_daily_content').select('*')
+    .eq('scheduled_date', date).eq('level', level).maybeSingle();
+  if (r.error) { if (msgEl) msgEl.textContent = 'Error: ' + r.error.message; return; }
+
+  if (editorEl) {
+    document.getElementById('srt-topic-ko').value = '';
+    document.getElementById('srt-topic-en').value = '';
+    document.getElementById('srt-vocab').value = '';
+    document.getElementById('srt-grammar').value = '';
+    document.getElementById('srt-helpers').value = '';
+    document.getElementById('srt-dictation-sentences').value = '';
+    document.getElementById('srt-dictation-questions').value = '';
+    document.getElementById('srt-admin-badge').style.display = 'none';
+  }
+
+  if (!r.data) {
+    if (editorEl) editorEl.style.display = '';
+    if (emptyEl)  emptyEl.style.display  = '';
+    if (msgEl)    msgEl.textContent = '';
+    return;
+  }
+
+  var rec = r.data;
+  document.getElementById('srt-topic-ko').value = rec.topic_ko || '';
+  document.getElementById('srt-topic-en').value = rec.topic_en || '';
+  document.getElementById('srt-vocab').value = (rec.vocab || []).map(function(v) {
+    return (v.ko||'') + '|' + (v.rom||'') + '|' + (v.en||'');
+  }).join('\n');
+  document.getElementById('srt-grammar').value = (rec.grammar || []).map(function(g) {
+    return (g.pattern||'') + '|' + (g.explanation||'') + '|' + (g.example_ko||'') + '|' + (g.example_en||'');
+  }).join('\n');
+  document.getElementById('srt-helpers').value = (rec.helpers || []).map(function(h) {
+    return (h.ko||'') + '|' + (h.en||'');
+  }).join('\n');
+  document.getElementById('srt-dictation-sentences').value = (rec.dictation_sentences || []).map(function(d) {
+    return (d.ko||'') + '|' + (d.en||'');
+  }).join('\n');
+  document.getElementById('srt-dictation-questions').value = (rec.dictation_questions || []).map(function(d) {
+    return (d.question_ko||'') + '|' + (d.answer_ko||'') + '|' + (d.hint_en||'');
+  }).join('\n');
+  var badge = document.getElementById('srt-admin-badge');
+  if (badge) badge.style.display = rec.admin_edited ? '' : 'none';
+
+  if (editorEl) editorEl.style.display = '';
+  if (emptyEl)  emptyEl.style.display  = 'none';
+  if (msgEl)    msgEl.textContent = '불러왔습니다.';
+}
+
+async function srSaveDailyContent() {
+  var sb = getSb(); if (!sb) return;
+  var msgEl = document.getElementById('srt-msg');
+  var date  = (document.getElementById('srt-date').value  || '').trim();
+  var level = (document.getElementById('srt-level').value || '').trim();
+  if (!date || !level) { if (msgEl) msgEl.textContent = '날짜와 레벨을 선택하세요.'; return; }
+  if (msgEl) msgEl.textContent = '저장 중…';
+
+  function parseLines(id, parser) {
+    return (document.getElementById(id).value || '').trim().split('\n').filter(Boolean).map(parser);
+  }
+  var vocab = parseLines('srt-vocab', function(line) {
+    var p = line.split('|'); return { ko:(p[0]||'').trim(), rom:(p[1]||'').trim(), en:(p[2]||'').trim(), level:level };
+  });
+  var grammar = parseLines('srt-grammar', function(line) {
+    var p = line.split('|'); return { level:level, pattern:(p[0]||'').trim(), explanation:(p[1]||'').trim(), example_ko:(p[2]||'').trim(), example_en:(p[3]||'').trim() };
+  });
+  var helpers = parseLines('srt-helpers', function(line) {
+    var p = line.split('|'); return { ko:(p[0]||'').trim(), en:(p[1]||'').trim() };
+  });
+  var dictation_sentences = parseLines('srt-dictation-sentences', function(line) {
+    var p = line.split('|'); return { ko:(p[0]||'').trim(), en:(p[1]||'').trim() };
+  });
+  var dictation_questions = parseLines('srt-dictation-questions', function(line) {
+    var p = line.split('|'); return { question_ko:(p[0]||'').trim(), answer_ko:(p[1]||'').trim(), hint_en:(p[2]||'').trim() };
+  });
+
+  var r = await sb.from('study_daily_content').upsert({
+    scheduled_date: date, level: level,
+    topic_ko: (document.getElementById('srt-topic-ko').value || '').trim(),
+    topic_en: (document.getElementById('srt-topic-en').value || '').trim(),
+    vocab, grammar, helpers, dictation_sentences, dictation_questions,
+    admin_edited: true, updated_at: new Date().toISOString()
+  }, { onConflict: 'scheduled_date,level' });
+
+  if (r.error) { if (msgEl) msgEl.textContent = 'Error: ' + r.error.message; return; }
+  if (msgEl) msgEl.textContent = '저장됐습니다! (' + date + ' / ' + level + ')';
+  var badge = document.getElementById('srt-admin-badge');
+  if (badge) badge.style.display = '';
+  await srLoadTopicSchedule();
+}
+
+async function srRegenDailyContent() {
+  var msgEl = document.getElementById('srt-msg');
+  var date  = (document.getElementById('srt-date').value  || '').trim();
+  var level = (document.getElementById('srt-level').value || '').trim();
+  if (!date || !level) { if (msgEl) msgEl.textContent = '날짜와 레벨을 선택하세요.'; return; }
+  if (!confirm('AI로 콘텐츠를 새로 생성합니다. 현재 내용이 덮어씌워집니다. 계속하시겠어요?')) return;
+  if (msgEl) msgEl.textContent = 'AI 생성 중… (약 10-15초)';
+
+  var levelGuide = {
+    Starter:      'STARTER: Ultra-basic. Daily life, family, food. Vocab: 1-2 syllable words. Grammar: ~이에요/예요, ~있어요/없어요. Sentences max 4 words.',
+    Beginner:     'BEGINNER: Present tense (~아요/어요). Basic particles. Everyday vocab. Helper sentences 5-8 words.',
+    Intermediate: 'INTERMEDIATE: Past tense, conjunctions, modals. Sentences 8-12 words. Topic-specific terms.',
+    Advanced:     'ADVANCED: Complex structures, formal style, advanced connectors. Sentences 12+ words. Abstract vocab.'
+  };
+  var cats = ['daily life','food & cooking','K-pop & music','travel in Korea','Korean seasons & weather',
+    'school & studying','hobbies','Korean traditions & culture','family & relationships',
+    'technology & social media','health & wellness','sports & exercise','Korean cinema & dramas',
+    'friendship','work & career','nature & environment','festivals & holidays','shopping'];
+  var cat = cats[Math.floor(Math.random() * cats.length)];
+
+  var prompt = 'You are a Korean language teacher creating complete daily study content for ' + level + '-level students.\n\n'
+    + 'Level requirements: ' + (levelGuide[level] || levelGuide.Beginner) + '\n'
+    + 'Pick an interesting, specific topic within the theme: "' + cat + '"\n\n'
+    + 'Return ONLY valid JSON (no markdown):\n'
+    + '{"topic_ko":"주제 한국어","topic_en":"Topic in English",'
+    + '"vocab":[{"ko":"word","rom":"rom","en":"meaning","level":"' + level + '"}],'
+    + '"grammar":[{"level":"' + level + '","pattern":"pattern","explanation":"explanation","example_ko":"example","example_en":"translation"}],'
+    + '"helpers":[{"ko":"Korean","en":"translation"}],'
+    + '"dictation_sentences":[{"ko":"Korean","en":"English"}],'
+    + '"dictation_questions":[{"question_ko":"question","answer_ko":"answer","hint_en":"hint"}]}\n'
+    + 'vocab:5, grammar:3, helpers:4, dictation_sentences:3, dictation_questions:3.';
+
+  try {
+    var resp = await callClaude({ feature:'study-room-daily-admin', model:'claude-haiku-4-5-20251001', max_tokens:1200, messages:[{role:'user',content:prompt}] });
+    var raw = (resp.content || []).map(function(c){ return c.text||''; }).join('');
+    var clean = raw.replace(/```json|```/g,'').trim();
+    var s = clean.indexOf('{'), e = clean.lastIndexOf('}');
+    if (s >= 0 && e > s) clean = clean.slice(s, e+1);
+    var parsed = JSON.parse(clean);
+
+    document.getElementById('srt-topic-ko').value = parsed.topic_ko || '';
+    document.getElementById('srt-topic-en').value = parsed.topic_en || '';
+    document.getElementById('srt-vocab').value = (parsed.vocab||[]).map(function(v){ return (v.ko||'')+'|'+(v.rom||'')+'|'+(v.en||''); }).join('\n');
+    document.getElementById('srt-grammar').value = (parsed.grammar||[]).map(function(g){ return (g.pattern||'')+'|'+(g.explanation||'')+'|'+(g.example_ko||'')+'|'+(g.example_en||''); }).join('\n');
+    document.getElementById('srt-helpers').value = (parsed.helpers||[]).map(function(h){ return (h.ko||'')+'|'+(h.en||''); }).join('\n');
+    document.getElementById('srt-dictation-sentences').value = (parsed.dictation_sentences||[]).map(function(d){ return (d.ko||'')+'|'+(d.en||''); }).join('\n');
+    document.getElementById('srt-dictation-questions').value = (parsed.dictation_questions||[]).map(function(d){ return (d.question_ko||'')+'|'+(d.answer_ko||'')+'|'+(d.hint_en||''); }).join('\n');
+
+    document.getElementById('srt-editor').style.display = '';
+    document.getElementById('srt-empty').style.display = 'none';
+    if (msgEl) msgEl.textContent = 'AI 생성 완료! 저장 버튼을 눌러 확정하세요.';
+  } catch(err) {
+    if (msgEl) msgEl.textContent = 'AI 생성 실패: ' + (err.message || err);
+  }
+}
+
+async function srDeleteDailyContent() {
+  var date  = (document.getElementById('srt-date').value  || '').trim();
+  var level = (document.getElementById('srt-level').value || '').trim();
+  if (!date || !level) return;
+  if (!confirm(date + ' [' + level + '] 콘텐츠를 삭제하시겠어요?')) return;
+  var sb = getSb();
+  await sb.from('study_daily_content').delete().eq('scheduled_date', date).eq('level', level);
+  var msgEl = document.getElementById('srt-msg');
+  if (msgEl) msgEl.textContent = '삭제됐습니다.';
+  document.getElementById('srt-editor').style.display = 'none';
+  document.getElementById('srt-empty').style.display = '';
+  await srLoadTopicSchedule();
 }
 
 async function srLoadTopicSchedule() {
   var sb = getSb();
-  // Load all topics for dropdown
-  try {
-    var r = await fetch(SUPA_URL + '/rest/v1/writing_topics?select=id,topic_ko,level&active=eq.true&order=level.asc,topic_ko.asc', {
-      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
-    });
-    var topics = await r.json();
-    var sel = document.getElementById('srt-topic-id');
-    if (sel && Array.isArray(topics)) {
-      sel.innerHTML = '<option value="">— 주제 선택 —</option>'
-        + topics.map(function(t) {
-            return '<option value="' + t.id + '">[' + (t.level||'') + '] ' + (t.topic_ko||'') + '</option>';
-          }).join('');
-    }
-  } catch(e) {}
-
-  // Load upcoming 14-day schedule
   var el = document.getElementById('srt-list'); if (!sb || !el) return;
   var today = new Date().toISOString().slice(0, 10);
   var future = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
-  var r2 = await sb.from('study_topic_schedule')
-    .select('scheduled_date,level,topic_id')
+  var r = await sb.from('study_daily_content')
+    .select('scheduled_date,level,topic_ko,topic_en,admin_edited')
     .gte('scheduled_date', today)
     .lte('scheduled_date', future)
     .order('scheduled_date', { ascending: true });
-  if (r2.error) { el.innerHTML = 'Error: ' + r2.error.message; return; }
-  var rows = r2.data || [];
-  if (!rows.length) { el.innerHTML = '<div style="color:#94a3b8;font-size:13px">향후 스케줄이 없습니다.</div>'; return; }
-  el.innerHTML = '<div style="font-weight:800;margin-bottom:10px">향후 14일 스케줄</div>'
+  if (r.error) { el.innerHTML = 'Error: ' + r.error.message; return; }
+  var rows = r.data || [];
+  if (!rows.length) { el.innerHTML = '<div style="color:#94a3b8;font-size:13px">향후 14일 콘텐츠가 없습니다.</div>'; return; }
+  el.innerHTML = '<div style="font-weight:800;margin-bottom:10px">향후 14일 콘텐츠</div>'
     + rows.map(function(row) {
-        return '<div style="display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px">'
+        return '<div style="display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;flex-wrap:wrap">'
           + '<span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap">' + row.scheduled_date + '</span>'
           + '<span style="background:#f1f5f9;color:#475569;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700">' + row.level + '</span>'
-          + '<span style="flex:1;font-size:12px;color:#334155">Topic ID: ' + row.topic_id + '</span>'
-          + '<button class="btn btn-r" style="font-size:11px;padding:4px 8px" onclick="srDeleteTopic(\'' + row.scheduled_date + '\',\'' + row.level + '\')">삭제</button>'
+          + (row.admin_edited ? '<span style="background:#fde68a;color:#92400e;padding:2px 6px;border-radius:999px;font-size:10px;font-weight:700">편집됨</span>' : '')
+          + '<span style="flex:1;font-size:12px;color:#334155">' + (row.topic_ko||'') + ' · ' + (row.topic_en||'') + '</span>'
+          + '<button class="btn" style="font-size:11px;padding:4px 8px" onclick="srEditDailyRow(\'' + row.scheduled_date + '\',\'' + row.level + '\')">수정</button>'
           + '</div>';
       }).join('');
 }
 
-async function srSaveTopic() {
-  var sb = getSb(); if (!sb) return;
-  var msgEl = document.getElementById('srt-msg');
-  var date    = (document.getElementById('srt-date').value    || '').trim();
-  var level   = (document.getElementById('srt-level').value   || '').trim();
-  var topicId = (document.getElementById('srt-topic-id').value|| '').trim();
-  if (!date || !level || !topicId) { msgEl.textContent = '날짜, 레벨, 주제를 모두 선택하세요.'; return; }
-  msgEl.textContent = '저장 중…';
-  var r = await sb.from('study_topic_schedule').upsert(
-    { scheduled_date: date, level: level, topic_id: topicId },
-    { onConflict: 'scheduled_date,level' }
-  );
-  if (r.error) { msgEl.textContent = 'Error: ' + r.error.message; return; }
-  msgEl.textContent = '저장됐습니다! (' + date + ' / ' + level + ')';
-  await srLoadTopicSchedule();
-}
-
-async function srDeleteTopic(date, level) {
-  if (!confirm(date + ' [' + level + '] 스케줄을 삭제하시겠어요?')) return;
-  var sb = getSb();
-  await sb.from('study_topic_schedule').delete().eq('scheduled_date', date).eq('level', level);
-  await srLoadTopicSchedule();
+function srEditDailyRow(date, level) {
+  document.getElementById('srt-date').value  = date;
+  document.getElementById('srt-level').value = level;
+  srLoadDailyContent();
 }
 
 // ── HELPERS tab ────────────────────────────────────────────────
