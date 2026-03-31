@@ -2637,19 +2637,7 @@ function openWritingModalForLearning() {
 // Opens Writing Practice WITH the canEnterWritingRoom() gate (used by ls-wp-btn)
 function lsStartWriting() {
   closeLearningSelector();
-  if (!supaUser) { openAuthModal('signin'); return; }
-  if (!ensureStudyUnlocked()) return;
-  if (!canEnterWritingRoom()) return;
-  _writingMode = 'topic';
-  if (_currentLevel === 'Beginner') {
-    openBeginnerModal();
-    return;
-  }
-  document.getElementById('wmodal').classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
-  if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
-  if (typeof renderModalContent === 'function') renderModalContent();
-  wmMobileInit();
+  openWritingModal();
 }
 
 // Read today's study_daily_progress from DB and merge into _studyDone
