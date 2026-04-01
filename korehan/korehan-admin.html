@@ -5408,10 +5408,18 @@ function srTopicsFormHTML() {
     + '<div class="fg"><label>주제 (English)</label><input id="srt-topic-en" placeholder="e.g. Korean food"></div>'
     + '<div class="fg"><label>Must Know Vocabulary <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|rom|en (5개)</span></label>'
     + '<textarea id="srt-vocab" rows="5" style="width:100%;font-family:monospace;font-size:12px" placeholder="음식|eum-sik|food\n맛있다|mas-it-da|delicious"></textarea></div>'
-    + '<div class="fg"><label>문법 설명 Grammar <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = pattern|explanation|example_ko|example_en (3개)</span></label>'
-    + '<textarea id="srt-grammar" rows="4" style="width:100%;font-family:monospace;font-size:12px" placeholder="~을/를 좋아해요|I like ~|저는 음식을 좋아해요|I like food"></textarea></div>'
-    + '<div class="fg"><label>빠른 도움 Helpers <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|en (4개)</span></label>'
-    + '<textarea id="srt-helpers" rows="4" style="width:100%;font-family:monospace;font-size:12px" placeholder="저는 음식을 좋아해요|I like food"></textarea></div>'
+    + '<div class="fg"><label style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
+    + '<span>문법 설명 Grammar <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = pattern|explanation|example_ko|example_en (3개)</span></span>'
+    + '<button type="button" onclick="srGenGrammar()" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 문법 생성</button>'
+    + '</label>'
+    + '<textarea id="srt-grammar" rows="4" style="width:100%;font-family:monospace;font-size:12px" placeholder="~을/를 좋아해요|I like ~|저는 음식을 좋아해요|I like food"></textarea>'
+    + '<div id="srt-grammar-msg" style="font-size:11px;color:#475569;margin-top:3px"></div></div>'
+    + '<div class="fg"><label style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
+    + '<span>빠른 도움 Helpers <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|en (4개)</span></span>'
+    + '<button type="button" onclick="srGenHelpers()" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 도움말 생성</button>'
+    + '</label>'
+    + '<textarea id="srt-helpers" rows="4" style="width:100%;font-family:monospace;font-size:12px" placeholder="저는 음식을 좋아해요|I like food"></textarea>'
+    + '<div id="srt-helpers-msg" style="font-size:11px;color:#475569;margin-top:3px"></div></div>'
     + '<div class="fg"><label>Dictation 예문 <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|en (3개)</span></label>'
     + '<textarea id="srt-dictation-sentences" rows="3" style="width:100%;font-family:monospace;font-size:12px" placeholder="한국 음식은 맛있어요|Korean food is delicious"></textarea></div>'
     + '<div class="fg"><label>Dictation 질문 <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = question_ko|answer_ko|hint_en (3개)</span></label>'
@@ -5616,6 +5624,71 @@ async function srRegenDailyContent() {
   } catch(err) {
     if (msgEl) msgEl.textContent = 'AI 생성 실패: ' + (err.message || err);
   }
+}
+
+// ── 문법 설명만 독립 생성 ────────────────────────────────────
+async function srGenGrammar() {
+  var msgEl = document.getElementById('srt-grammar-msg');
+  var ta    = document.getElementById('srt-grammar');
+  var ko    = (document.getElementById('srt-topic-ko').value || '').trim();
+  var en    = (document.getElementById('srt-topic-en').value || '').trim();
+  var level = (document.getElementById('srt-level').value || 'Beginner').trim();
+  if (!ko && !en) { if (msgEl) msgEl.textContent = '주제를 먼저 입력하세요.'; return; }
+  if (msgEl) msgEl.textContent = '🤖 문법 생성 중…';
+  var levelGuide = {
+    Starter:'STARTER: ~이에요/예요, ~있어요/없어요 only. Max 4-word sentences.',
+    Beginner:'BEGINNER: ~아요/어요, basic particles. Simple present tense.',
+    Intermediate:'INTERMEDIATE: ~았/었어요, conjunctions ~고/~지만/~서, modals ~고 싶어요.',
+    Advanced:'ADVANCED: Complex structures, formal style ~습니다, relative clauses, advanced connectors.'
+  };
+  var prompt = 'You are a Korean grammar teacher.\nTopic: "' + (ko||en) + '" | Level: ' + level + '\n'
+    + levelGuide[level] + '\n\n'
+    + 'Create exactly 3 grammar patterns suitable for writing about this topic at ' + level + ' level.\n'
+    + 'Return ONLY valid JSON (no markdown):\n'
+    + '{"grammar":[{"pattern":"~pattern","explanation":"English explanation","example_ko":"Korean example","example_en":"English translation"}]}';
+  try {
+    var resp = await callClaude({ feature:'study-room-grammar-admin', model:'claude-haiku-4-5-20251001', max_tokens:600, messages:[{role:'user',content:prompt}] });
+    var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
+    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+    var parsed = JSON.parse(raw.slice(s, e+1));
+    if (parsed.grammar && parsed.grammar.length) {
+      if (ta) ta.value = parsed.grammar.map(function(g){ return (g.pattern||'')+'|'+(g.explanation||'')+'|'+(g.example_ko||'')+'|'+(g.example_en||''); }).join('\n');
+      if (msgEl) msgEl.textContent = '✅ 문법 ' + parsed.grammar.length + '개 생성됨. 수정 후 저장하세요.';
+    } else { if (msgEl) msgEl.textContent = '생성 실패 — 다시 시도하세요.'; }
+  } catch(err) { if (msgEl) msgEl.textContent = '오류: ' + (err.message||err); }
+}
+
+// ── 빠른 도움말만 독립 생성 ─────────────────────────────────
+async function srGenHelpers() {
+  var msgEl = document.getElementById('srt-helpers-msg');
+  var ta    = document.getElementById('srt-helpers');
+  var ko    = (document.getElementById('srt-topic-ko').value || '').trim();
+  var en    = (document.getElementById('srt-topic-en').value || '').trim();
+  var level = (document.getElementById('srt-level').value || 'Beginner').trim();
+  if (!ko && !en) { if (msgEl) msgEl.textContent = '주제를 먼저 입력하세요.'; return; }
+  if (msgEl) msgEl.textContent = '🤖 도움말 생성 중…';
+  var levelGuide = {
+    Starter:'3-5 word sentences only. Ultra-simple vocabulary.',
+    Beginner:'5-8 word sentences. Present tense, everyday vocabulary.',
+    Intermediate:'8-12 word sentences. Include conjunctions and modals.',
+    Advanced:'12+ word sentences. Complex grammar, formal/written style.'
+  };
+  var prompt = 'You are a Korean language teacher.\nTopic: "' + (ko||en) + '" | Level: ' + level + '\n'
+    + 'Sentence length guideline: ' + levelGuide[level] + '\n\n'
+    + 'Create exactly 4 useful example helper sentences a student could use or adapt when writing about this topic.\n'
+    + 'Each sentence should demonstrate a different angle or expression.\n'
+    + 'Return ONLY valid JSON (no markdown):\n'
+    + '{"helpers":[{"ko":"Korean sentence","en":"English translation"}]}';
+  try {
+    var resp = await callClaude({ feature:'study-room-helpers-admin', model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content:prompt}] });
+    var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
+    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+    var parsed = JSON.parse(raw.slice(s, e+1));
+    if (parsed.helpers && parsed.helpers.length) {
+      if (ta) ta.value = parsed.helpers.map(function(h){ return (h.ko||'')+'|'+(h.en||''); }).join('\n');
+      if (msgEl) msgEl.textContent = '✅ 도움말 ' + parsed.helpers.length + '개 생성됨. 수정 후 저장하세요.';
+    } else { if (msgEl) msgEl.textContent = '생성 실패 — 다시 시도하세요.'; }
+  } catch(err) { if (msgEl) msgEl.textContent = '오류: ' + (err.message||err); }
 }
 
 async function srDeleteDailyContent() {
