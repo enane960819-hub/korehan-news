@@ -5335,6 +5335,7 @@ function retryBeginner() {
 // ═══════════════════════════════════════════════════════════════
 var _gfPattern = null;
 var _gfExercises = null;
+var _GF_TABS = ['learn','spotit','fill','translate','build'];
 
 function openGrammarFocusModal() {
   if (!ensureStudyUnlocked()) return;
@@ -5342,15 +5343,17 @@ function openGrammarFocusModal() {
   if (!modal) return;
   modal.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
+  switchGFTab('learn', document.getElementById('gft-learn'));
 
-  // Map _aiContent.grammar → loadGFPatterns format
   var rawGrammar = (_aiContent && _aiContent.grammar) || [];
   var patterns = rawGrammar.map(function(g) {
     return {
       name: g.pattern || g.name || '',
       level: g.level || 'Intermediate',
       exp: g.explanation || g.exp || '',
-      examples: [{ ko: g.example_ko || g.ex_ko || '', en: g.example_en || g.ex_en || '' }]
+      examples: (g.examples && g.examples.length)
+        ? g.examples
+        : [{ ko: g.example_ko || g.ex_ko || '', en: g.example_en || g.ex_en || '' }]
     };
   });
   if (patterns.length) {
@@ -5367,101 +5370,162 @@ function closeGrammarFocusModal() {
 }
 
 function switchGFTab(tabId, btn) {
-  ['examples','fill','translate','build'].forEach(function(t) {
-    document.getElementById('gf-tab-' + t).style.display = t === tabId ? 'block' : 'none';
+  _GF_TABS.forEach(function(t) {
+    var pane = document.getElementById('gf-tab-' + t);
+    if (pane) pane.style.display = t === tabId ? 'block' : 'none';
     var tb = document.getElementById('gft-' + t);
     if (tb) {
-      tb.style.color     = t === tabId ? '#2255a4' : '#94a3b8';
+      tb.style.color            = t === tabId ? '#2255a4' : '#94a3b8';
       tb.style.borderBottomColor = t === tabId ? '#2255a4' : 'transparent';
-      tb.style.fontWeight = t === tabId ? '800' : '700';
+      tb.style.fontWeight        = t === tabId ? '800' : '700';
     }
   });
+  // Scroll modal body to top on tab switch
+  var body = document.querySelector('.gf-modal-body');
+  if (body) body.scrollTop = 0;
+}
+
+function gfAdvanceTo(tabId) {
+  switchGFTab(tabId, document.getElementById('gft-' + tabId));
 }
 
 function loadGFPatterns(patterns) {
-  var el = document.getElementById('gf-examples-content');
-  if (!el || !patterns.length) return;
-
+  if (!patterns || !patterns.length) return;
   var first = patterns[0];
   _gfPattern = first;
+  window._gfPatternList = patterns;
 
   var titleEl = document.getElementById('gf-title');
-  var subEl   = document.getElementById('gf-subtitle');
   if (titleEl) titleEl.textContent = first.name || 'Grammar Pattern';
-  if (subEl)   subEl.textContent   = first.exp  || '';
 
-  // Pattern selector chips
-  var chips = patterns.map(function(p, i) {
-    return '<button onclick="selectGFPattern(' + i + ',this)" '
-      + 'class="gf-pattern-chip' + (i===0?' active':'') + '" '
-      + 'style="padding:6px 14px;border-radius:999px;border:1.5px solid ' + (i===0?'#2255a4':'#e2e8f2') + ';background:' + (i===0?'#eff6ff':'#fff') + ';color:' + (i===0?'#2255a4':'#475569') + ';font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">'
-      + (p.name || 'Pattern ' + (i+1))
-      + '</button>';
-  }).join('');
+  // Pattern selector chips (if multiple patterns)
+  var chipsHtml = '';
+  if (patterns.length > 1) {
+    chipsHtml = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">'
+      + patterns.map(function(p, i) {
+          return '<button onclick="selectGFPattern(' + i + ')" '
+            + 'class="gf-pattern-chip' + (i===0?' gf-chip-on':'') + '" '
+            + 'style="padding:5px 12px;border-radius:999px;border:1.5px solid '
+            + (i===0?'#2255a4':'#e2e8f2') + ';background:' + (i===0?'#eff6ff':'#fff')
+            + ';color:' + (i===0?'#2255a4':'#475569')
+            + ';font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">'
+            + (p.name || 'Pattern ' + (i+1)) + '</button>';
+        }).join('')
+      + '</div>';
+  }
 
-  el.innerHTML = '<div id="gf-pattern-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">' + chips + '</div>'
-    + '<div id="gf-pattern-body">' + renderGFPatternBody(first) + '</div>';
+  var el = document.getElementById('gf-examples-content');
+  if (el) el.innerHTML = chipsHtml + '<div id="gf-learn-body">' + renderGFLearn(first) + '</div>';
 
-  window._gfPatternList = patterns;
+  loadGFSpotIt(first);
   loadGFFill(first);
   loadGFTranslate(first);
   loadGFBuild(first);
 }
 
-function selectGFPattern(idx, btn) {
+function selectGFPattern(idx) {
   var patterns = window._gfPatternList || [];
   var p = patterns[idx];
   if (!p) return;
   _gfPattern = p;
   document.querySelectorAll('.gf-pattern-chip').forEach(function(b, i) {
-    var active = i === idx;
-    b.style.borderColor = active ? '#2255a4' : '#e2e8f2';
-    b.style.background  = active ? '#eff6ff' : '#fff';
-    b.style.color       = active ? '#2255a4' : '#475569';
+    var on = i === idx;
+    b.style.borderColor = on ? '#2255a4' : '#e2e8f2';
+    b.style.background  = on ? '#eff6ff' : '#fff';
+    b.style.color       = on ? '#2255a4' : '#475569';
   });
-  var body = document.getElementById('gf-pattern-body');
-  if (body) body.innerHTML = renderGFPatternBody(p);
   var titleEl = document.getElementById('gf-title');
-  var subEl   = document.getElementById('gf-subtitle');
   if (titleEl) titleEl.textContent = p.name || '';
-  if (subEl)   subEl.textContent   = p.exp  || '';
+  var body = document.getElementById('gf-learn-body');
+  if (body) body.innerHTML = renderGFLearn(p);
+  loadGFSpotIt(p);
   loadGFFill(p);
   loadGFTranslate(p);
   loadGFBuild(p);
+  switchGFTab('learn', document.getElementById('gft-learn'));
 }
 
-function renderGFPatternBody(p) {
-  var levelColors = { Beginner:'#16a34a', Intermediate:'#d97706', Advanced:'#dc2626' };
-  var levelBgs    = { Beginner:'#f0fdf4', Intermediate:'#fffbeb', Advanced:'#fff1f2' };
+function renderGFLearn(p) {
+  var levelColors = { Starter:'#7c3aed', Beginner:'#16a34a', Intermediate:'#d97706', Advanced:'#dc2626' };
+  var levelBgs    = { Starter:'#f5f3ff', Beginner:'#f0fdf4', Intermediate:'#fffbeb', Advanced:'#fff1f2' };
   var lv = p.level || 'Intermediate';
-  return '<div style="margin-bottom:20px">'
-    + '<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:' + (levelBgs[lv]||'#f0f4ff') + ';color:' + (levelColors[lv]||'#2255a4') + ';margin-bottom:14px">' + lv + '</span>'
-    + '<p style="font-size:14px;color:#475569;line-height:1.8;margin:0 0 20px">' + (p.exp || '') + '</p>'
-    + '</div>'
-    + '<div style="margin-bottom:14px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">Example Sentences</div>'
-    + renderGFExamples(p)
-    + '</div>';
-}
+  var lc = levelColors[lv] || '#2255a4';
+  var lb = levelBgs[lv]    || '#f0f4ff';
 
-function renderGFExamples(p) {
-  var examples = p.examples || [{ ko: p.ex_ko, en: p.ex_en }];
-  return examples.map(function(ex, i) {
-    return '<div style="background:#f8faff;border:1px solid #dbeafe;border-radius:12px;padding:16px 18px;margin-bottom:10px">'
-      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:8px">Example ' + (i+1) + '</div>'
-      + '<p style="font-family:Noto Serif KR,serif;font-size:17px;font-weight:700;color:#0f172a;line-height:1.65;margin:0 0 8px">' + (ex.ko||'') + '</p>'
-      + '<p style="font-size:13px;color:#64748b;margin:0;padding-top:8px;border-top:1px solid #e8eef8">' + (ex.en||'') + '</p>'
-      + '</div>';
-  }).join('');
+  // Extract Korean characters from pattern name for highlighting in examples
+  var koChars = (p.name || '').match(/[가-힣~]+/g) || [];
+
+  // Structure formula box
+  var structureHtml = p.structure
+    ? '<div style="background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border-radius:12px;padding:14px 16px;margin-bottom:16px">'
+      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#6b7db8;margin-bottom:6px">공식 Structure</div>'
+      + '<p style="font-size:15px;font-weight:800;color:#2255a4;margin:0;font-family:Noto Serif KR,serif">' + p.structure + '</p>'
+      + '</div>'
+    : '';
+
+  // Explanation
+  var expHtml = '<div style="background:#f8fafc;border-left:3px solid #7ab8f5;border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:16px">'
+    + '<p style="font-size:14px;color:#334155;line-height:1.8;margin:0">' + (p.exp || '') + '</p>'
+    + '</div>';
+
+  // When to use + watch out
+  var tipsHtml = '';
+  if (p.when_to_use || p.watch_out) {
+    tipsHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">';
+    if (p.when_to_use) {
+      tipsHtml += '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px">'
+        + '<div style="font-size:10px;font-weight:800;color:#16a34a;margin-bottom:4px">✅ WHEN TO USE</div>'
+        + '<p style="font-size:12px;color:#166534;margin:0;line-height:1.6">' + p.when_to_use + '</p>'
+        + '</div>';
+    }
+    if (p.watch_out) {
+      tipsHtml += '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px">'
+        + '<div style="font-size:10px;font-weight:800;color:#ea580c;margin-bottom:4px">⚠️ WATCH OUT</div>'
+        + '<p style="font-size:12px;color:#9a3412;margin:0;line-height:1.6">' + p.watch_out + '</p>'
+        + '</div>';
+    }
+    tipsHtml += '</div>';
+  }
+
+  // Examples with grammar highlighted
+  var examples = p.examples || [{ ko: p.ex_ko||'', en: p.ex_en||'' }];
+  var exHtml = '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">예문 Examples</div>'
+    + examples.map(function(ex, i) {
+        var koText = ex.ko || '';
+        // Highlight any token from the pattern name inside the sentence
+        koChars.forEach(function(kc) {
+          var clean = kc.replace(/~/g,'');
+          if (clean && koText.indexOf(clean) !== -1) {
+            koText = koText.split(clean).join('<mark style="background:#dbeafe;color:#2255a4;border-radius:4px;padding:1px 3px;font-style:normal">' + clean + '</mark>');
+          }
+        });
+        return '<div style="background:#f8faff;border:1px solid #dbeafe;border-radius:12px;padding:14px 16px;margin-bottom:10px">'
+          + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:7px">예문 ' + (i+1) + '</div>'
+          + '<p style="font-family:Noto Serif KR,serif;font-size:17px;font-weight:700;color:#0f172a;line-height:1.7;margin:0 0 8px">' + koText + '</p>'
+          + '<p style="font-size:13px;color:#64748b;margin:0;padding-top:8px;border-top:1px solid #e8eef8">' + (ex.en||'') + '</p>'
+          + '</div>';
+      }).join('');
+
+  // "Got it" advance button
+  var advBtn = '<div style="margin-top:20px;text-align:center">'
+    + '<button onclick="gfAdvanceTo(\'spotit\')" style="padding:12px 32px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.3px">이해했어요 → Spot It</button>'
+    + '</div>';
+
+  return '<div style="margin-bottom:14px">'
+    + '<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:' + lb + ';color:' + lc + ';margin-bottom:14px">' + lv + '</span>'
+    + structureHtml + expHtml + tipsHtml
+    + '</div>'
+    + exHtml
+    + advBtn;
 }
 
 async function generateGFPatterns() {
   var el = document.getElementById('gf-examples-content');
-  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">✨ Generating grammar patterns for today\'s topic…</div>';
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">✨ 오늘 주제에 맞는 문법 패턴 생성 중…</div>';
 
   var topic = (document.getElementById('wcard-topic-ko') || {}).textContent || '';
   if (!topic || topic === 'Loading…') {
-    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Load today\'s topic first, then come back.</div>';
+    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">오늘의 주제를 먼저 불러오세요.</div>';
     return;
   }
 
@@ -5469,13 +5533,20 @@ async function generateGFPatterns() {
     var res = await callClaude({
       feature: 'grammar-focus',
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1600,
+      max_tokens: 2000,
       messages: [{ role: 'user', content:
-        'You are a Korean grammar teacher. For this Korean topic: "' + topic + '"\n\n'
-        + 'Create 3 key grammar patterns a learner would use to write about this topic.\n'
-        + 'For each pattern provide 3 example sentences.\n'
-        + 'Return ONLY JSON:\n'
-        + '{"patterns":[{"name":"grammar name (KO + romanization)","level":"Beginner|Intermediate|Advanced","exp":"clear English explanation","examples":[{"ko":"Korean sentence","en":"English translation"},{"ko":"...","en":"..."},{"ko":"...","en":"..."}]}]}'
+        'You are a Korean grammar teacher creating a structured grammar lesson.\n'
+        + 'Topic: "' + topic + '"\n\n'
+        + 'Create 3 key grammar patterns to study. For each pattern provide:\n'
+        + '- name: pattern name with Korean and romanization (e.g. "~아요/어요 (a-yo/eo-yo)")\n'
+        + '- level: Beginner | Intermediate | Advanced\n'
+        + '- exp: clear English explanation of meaning and usage (2-3 sentences)\n'
+        + '- structure: the grammatical formula (e.g. "Verb stem + 아요/어요")\n'
+        + '- when_to_use: one short English bullet of when to use this\n'
+        + '- watch_out: one short English tip about common mistakes\n'
+        + '- examples: exactly 3 [{ko, en}] sentences using the topic\n\n'
+        + 'Return ONLY valid JSON:\n'
+        + '{"patterns":[{"name":"...","level":"...","exp":"...","structure":"...","when_to_use":"...","watch_out":"...","examples":[{"ko":"...","en":"..."}]}]}'
       }]
     });
     var raw = (res.content && res.content[0] && res.content[0].text) || res.text || '';
@@ -5484,119 +5555,293 @@ async function generateGFPatterns() {
     if (parsed.patterns && parsed.patterns.length) {
       loadGFPatterns(parsed.patterns);
     } else {
-      if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Could not generate grammar patterns. Try again.</div>';
+      if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">생성에 실패했습니다. 다시 시도하세요.</div>';
     }
   } catch(e) {
-    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Sign in to use Grammar Focus with AI.</div>';
+    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">로그인 후 이용 가능합니다.</div>';
   }
 }
 
+// ─── Spot It — pattern recognition ──────────────────────────
+var _gfSpotState = { idx:0, total:0, correct:0 };
+
+function loadGFSpotIt(p) {
+  var el = document.getElementById('gf-spotit-content');
+  if (!el || !p) return;
+  var examples = (p.examples || []).filter(function(e){ return e.ko; });
+  if (!examples.length) {
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8">예문이 없습니다.</div>';
+    return;
+  }
+  _gfSpotState = { idx:0, total:examples.length, correct:0, p:p, examples:examples };
+  _renderSpotItSentence();
+}
+
+function _renderSpotItSentence() {
+  var el = document.getElementById('gf-spotit-content');
+  if (!el) return;
+  var st = _gfSpotState;
+  var ex = st.examples[st.idx];
+  if (!ex) return;
+
+  // Extract Korean token from pattern name to highlight as target
+  var koChars = ((st.p.name || '').match(/[가-힣]+/g) || []);
+  var targetWord = '';
+  var words = ex.ko.split(' ');
+  // Find which word contains the grammar token
+  words.forEach(function(w) {
+    koChars.forEach(function(kc) {
+      if (w.indexOf(kc) !== -1 && !targetWord) targetWord = w;
+    });
+  });
+  if (!targetWord) targetWord = words[words.length - 1]; // fallback: last word
+
+  var progressHtml = '<div style="display:flex;gap:6px;margin-bottom:16px">'
+    + st.examples.map(function(_, i) {
+        var done = i < st.idx;
+        var active = i === st.idx;
+        return '<div style="flex:1;height:4px;border-radius:2px;background:'
+          + (done ? 'rgba(34,197,94,.7)' : active ? '#7ab8f5' : '#e2e8f0') + '"></div>';
+      }).join('')
+    + '</div>';
+
+  var wordChips = words.map(function(w, wi) {
+    return '<button onclick="checkGFSpotIt(' + wi + ',\'' + w.replace(/'/g,"\\'") + '\',\'' + targetWord.replace(/'/g,"\\'") + '\')" '
+      + 'id="gfsi-w-' + wi + '" '
+      + 'style="padding:8px 14px;margin:4px;border-radius:8px;border:1.5px solid #dbeafe;background:#fff;font-family:Noto Serif KR,serif;font-size:16px;font-weight:700;color:#0f172a;cursor:pointer;transition:all .15s;font-family:inherit">'
+      + w + '</button>';
+  }).join('');
+
+  el.innerHTML = progressHtml
+    + '<div style="margin-bottom:12px;font-size:13px;color:#475569;line-height:1.6">'
+    + '문법 패턴 <strong style="color:#2255a4">' + (st.p.name||'') + '</strong> 이 사용된 단어를 찾아 탭하세요.'
+    + '</div>'
+    + '<div style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:14px;padding:18px;margin-bottom:16px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">예문 ' + (st.idx+1) + ' / ' + st.total + '</div>'
+    + '<div style="font-size:13px;color:#64748b;margin-bottom:14px">' + (ex.en||'') + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:0">' + wordChips + '</div>'
+    + '</div>'
+    + '<div id="gfsi-feedback" style="min-height:24px;font-size:13px;font-weight:700;text-align:center"></div>';
+}
+
+function checkGFSpotIt(wordIdx, word, target) {
+  var fb = document.getElementById('gfsi-feedback');
+  var btn = document.getElementById('gfsi-w-' + wordIdx);
+  var correct = word === target || word.indexOf(target.replace(/~/g,'')) !== -1;
+  if (btn) {
+    btn.style.background    = correct ? '#f0fdf4' : '#fff5f5';
+    btn.style.borderColor   = correct ? '#22c55e' : '#f87171';
+    btn.style.color         = correct ? '#15803d' : '#dc2626';
+    btn.style.pointerEvents = 'none';
+  }
+  if (!correct) {
+    if (fb) fb.innerHTML = '<span style="color:#dc2626">틀렸어요. 다시 시도하세요!</span>';
+    // Un-disable other buttons after shake
+    setTimeout(function() {
+      document.querySelectorAll('[id^="gfsi-w-"]').forEach(function(b) {
+        b.style.pointerEvents = '';
+        b.style.background = '#fff';
+        b.style.borderColor = '#dbeafe';
+        b.style.color = '#0f172a';
+      });
+      if (fb) fb.innerHTML = '';
+    }, 900);
+    return;
+  }
+  if (fb) fb.innerHTML = '<span style="color:#16a34a">✓ 맞아요!</span>';
+  _gfSpotState.correct++;
+  setTimeout(function() {
+    _gfSpotState.idx++;
+    if (_gfSpotState.idx < _gfSpotState.total) {
+      _renderSpotItSentence();
+    } else {
+      // All done — show advance button
+      var el = document.getElementById('gf-spotit-content');
+      if (el) el.innerHTML = '<div style="text-align:center;padding:30px 20px">'
+        + '<div style="font-size:32px;margin-bottom:12px">🎯</div>'
+        + '<div style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:6px">패턴 인식 완료!</div>'
+        + '<div style="font-size:13px;color:#64748b;margin-bottom:22px">' + _gfSpotState.correct + ' / ' + _gfSpotState.total + ' 문장에서 문법 패턴을 찾았어요.</div>'
+        + '<button onclick="gfAdvanceTo(\'fill\')" style="padding:12px 32px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">빈칸 채우기 →</button>'
+        + '</div>';
+    }
+  }, 700);
+}
+
+// ─── Practice (Fill-in-Blank) ────────────────────────────────
 function loadGFFill(p) {
   var el = document.getElementById('gf-fill-content');
   if (!el || !p) return;
-  var examples = p.examples || [{ ko: p.ex_ko, en: p.ex_en }];
+  var examples = (p.examples || [{ ko: p.ex_ko||'', en: p.ex_en||'' }]).filter(function(e){ return e.ko; });
+  var total = examples.length;
+
+  // Extract Korean grammar tokens from pattern name for blanking
+  var koTokens = (p.name || '').match(/[가-힣~\/]+/g) || [];
+
   var qs = examples.map(function(ex, i) {
-    if (!ex.ko) return '';
-    // Find the pattern name's first Korean word to blank
     var koText = ex.ko;
-    var patternParts = (p.name || '').split(/[\s\/]/);
-    var blank = patternParts.find(function(pt){ return /[가-힣]/.test(pt) && koText.indexOf(pt) !== -1; });
-    if (!blank) {
-      // Just blank the last 2-3 chars
-      var words = koText.split(' ');
-      blank = words[words.length - 1];
+    var blank = '';
+    // Try to find the grammar ending in the sentence
+    var words = koText.split(' ');
+    for (var ti = 0; ti < koTokens.length && !blank; ti++) {
+      var tok = koTokens[ti].replace(/~/g, '');
+      if (!tok) continue;
+      for (var wi = 0; wi < words.length; wi++) {
+        if (words[wi].endsWith(tok) || words[wi].indexOf(tok) !== -1) {
+          blank = words[wi]; break;
+        }
+      }
     }
-    var blanked = koText.replace(blank, '______');
-    return '<div style="background:#f8faff;border:1px solid #dbeafe;border-radius:12px;padding:18px;margin-bottom:14px" id="gff-' + i + '">'
-      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">Question ' + (i+1) + '</div>'
-      + '<p style="font-family:Noto Serif KR,serif;font-size:16px;font-weight:700;color:#0f172a;margin:0 0 12px;line-height:1.65">' + blanked + '</p>'
-      + '<p style="font-size:12px;color:#64748b;margin:0 0 14px">' + ex.en + '</p>'
+    if (!blank) blank = words[words.length - 1];
+    var blanked = koText.replace(blank, '<span style="display:inline-block;min-width:70px;border-bottom:2.5px solid #2255a4;color:#94a3b8;text-align:center">______</span>');
+
+    return '<div style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:12px;padding:16px 18px;margin-bottom:14px" id="gff-card-' + i + '">'
+      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">문제 ' + (i+1) + ' / ' + total + '</div>'
+      + '<p style="font-size:14px;font-weight:600;color:#334155;margin:0 0 10px;line-height:1.65;background:#fffbeb;border-radius:8px;padding:8px 12px">' + ex.en + '</p>'
+      + '<p style="font-family:Noto Serif KR,serif;font-size:17px;font-weight:700;color:#0f172a;margin:0 0 14px;line-height:1.8">' + blanked + '</p>'
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-      + '<input id="gff-inp-' + i + '" type="text" placeholder="Fill in the blank…" style="flex:1;min-width:160px;padding:9px 14px;border:1.5px solid #e2e8f2;border-radius:8px;font-size:14px;font-family:Noto Serif KR,serif" onkeydown="if(event.key===\'Enter\')checkGFFill(' + i + ',\'' + blank.replace(/'/g,"\\'") + '\')">'
-      + '<button onclick="checkGFFill(' + i + ',\'' + blank.replace(/'/g,"\\'") + '\')" style="padding:9px 18px;background:#2255a4;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Check</button>'
+      + '<input id="gff-inp-' + i + '" type="text" placeholder="빈칸을 채우세요…" '
+      + 'style="flex:1;min-width:140px;padding:9px 14px;border:1.5px solid #e2e8f2;border-radius:8px;font-size:15px;font-family:Noto Serif KR,serif;outline:none" '
+      + 'onkeydown="if(event.key===\'Enter\')checkGFFill(' + i + ',\'' + blank.replace(/'/g,"\\'") + '\',' + total + ')">'
+      + '<button onclick="checkGFFill(' + i + ',\'' + blank.replace(/'/g,"\\'") + '\',' + total + ')" '
+      + 'style="padding:9px 18px;background:#2255a4;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">확인</button>'
       + '</div>'
       + '<div id="gff-res-' + i + '" style="margin-top:10px;font-size:13px;font-weight:700"></div>'
       + '</div>';
   }).join('');
-  el.innerHTML = '<div style="margin-bottom:16px;font-size:13px;color:#475569">Fill in the blank with the correct grammar form.</div>' + qs;
+
+  el.innerHTML = '<div style="margin-bottom:14px;font-size:13px;color:#475569;line-height:1.7">'
+    + '영어 뜻을 보고 빈칸에 올바른 문법 형태를 쓰세요. '
+    + '<span style="font-size:12px;background:#eff6ff;color:#2255a4;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span>'
+    + '</div>'
+    + qs
+    + '<div id="gff-next-wrap" style="display:none;text-align:center;margin-top:8px">'
+    + '<button onclick="gfAdvanceTo(\'translate\')" style="padding:12px 32px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">번역 연습 →</button>'
+    + '</div>';
+
+  window._gffAnswered = {};
 }
 
-function checkGFFill(idx, answer) {
+function checkGFFill(idx, answer, total) {
   var inp = document.getElementById('gff-inp-' + idx);
   var res = document.getElementById('gff-res-' + idx);
   if (!inp || !res) return;
   var val = inp.value.trim();
+  if (!val) return;
   var correct = val === answer;
   res.style.color = correct ? '#16a34a' : '#dc2626';
-  res.textContent = correct ? '✓ Correct!' : '✗ Answer: ' + answer;
-  if (correct) inp.style.borderColor = '#86efac';
+  res.innerHTML = correct
+    ? '<span>✓ 정답!</span>'
+    : '<span>✗ 정답: <span style="font-family:Noto Serif KR,serif">' + answer + '</span></span>';
+  if (correct) {
+    inp.style.borderColor = '#86efac';
+    inp.style.background  = '#f0fdf4';
+  } else {
+    inp.style.borderColor = '#fca5a5';
+  }
+  inp.disabled = true;
+  window._gffAnswered[idx] = true;
+  // Show "Next" once all questions have been attempted
+  if (Object.keys(window._gffAnswered).length >= total) {
+    var nw = document.getElementById('gff-next-wrap');
+    if (nw) nw.style.display = 'block';
+  }
 }
 
 function loadGFTranslate(p) {
   var el = document.getElementById('gf-translate-content');
   if (!el || !p) return;
-  var examples = p.examples || [{ ko: p.ex_ko, en: p.ex_en }];
+  var examples = (p.examples || [{ ko: p.ex_ko||'', en: p.ex_en||'' }]).filter(function(e){ return e.en; });
+  var total = examples.length;
+  window._gftRevealed = 0;
+
   var qs = examples.map(function(ex, i) {
-    if (!ex.en) return '';
-    return '<div style="background:#f8faff;border:1px solid #dbeafe;border-radius:12px;padding:18px;margin-bottom:14px">'
-      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">Sentence ' + (i+1) + '</div>'
-      + '<p style="font-size:15px;font-weight:600;color:#0f172a;margin:0 0 14px;line-height:1.65">' + ex.en + '</p>'
-      + '<textarea id="gft-inp-' + i + '" placeholder="Translate into Korean…" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f2;border-radius:8px;font-size:14px;font-family:Noto Serif KR,serif;resize:vertical;min-height:64px;box-sizing:border-box"></textarea>'
-      + '<div style="display:flex;gap:8px;margin-top:10px;align-items:center">'
-      + '<button onclick="revealGFTranslate(' + i + ',\'' + ex.ko.replace(/'/g,"\\'") + '\')" style="padding:8px 16px;background:#f1f5f9;border:1px solid #e2e8f2;border-radius:8px;font-size:12px;font-weight:700;color:#475569;cursor:pointer;font-family:inherit">Reveal Answer</button>'
+    return '<div style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:12px;padding:16px 18px;margin-bottom:14px">'
+      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">문장 ' + (i+1) + ' / ' + total + '</div>'
+      + '<p style="font-size:15px;font-weight:700;color:#0f172a;margin:0 0 14px;line-height:1.7;background:#fffbeb;border-radius:8px;padding:10px 12px">' + ex.en + '</p>'
+      + '<textarea id="gft-inp-' + i + '" placeholder="한국어로 번역하세요… (문법 패턴 사용)" '
+      + 'style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f2;border-radius:8px;font-size:15px;font-family:Noto Serif KR,serif;resize:vertical;min-height:62px;box-sizing:border-box;outline:none"></textarea>'
+      + '<div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">'
+      + '<button onclick="revealGFTranslate(' + i + ',\'' + ex.ko.replace(/'/g,"\\'") + '\',' + total + ')" id="gft-revbtn-' + i + '" '
+      + 'style="padding:8px 16px;background:#f1f5f9;border:1.5px solid #e2e8f2;border-radius:8px;font-size:12px;font-weight:700;color:#475569;cursor:pointer;font-family:inherit">정답 보기</button>'
       + '</div>'
-      + '<div id="gft-ans-' + i + '" style="display:none;margin-top:10px;padding:12px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;font-family:Noto Serif KR,serif;font-size:15px;color:#166534;font-weight:700">' + ex.ko + '</div>'
+      + '<div id="gft-ans-' + i + '" style="display:none;margin-top:10px;padding:12px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;font-family:Noto Serif KR,serif;font-size:15px;color:#166534;font-weight:700;line-height:1.7">'
+      + ex.ko + '</div>'
       + '</div>';
   }).join('');
-  el.innerHTML = '<div style="margin-bottom:16px;font-size:13px;color:#475569">Translate these sentences into Korean using the grammar pattern.</div>' + qs;
+
+  el.innerHTML = '<div style="margin-bottom:14px;font-size:13px;color:#475569;line-height:1.7">'
+    + '영어 문장을 한국어로 번역하세요. 문법 패턴 <span style="background:#eff6ff;color:#2255a4;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span> 을 사용하세요.'
+    + '</div>'
+    + qs
+    + '<div id="gft-next-wrap" style="display:none;text-align:center;margin-top:8px">'
+    + '<button onclick="gfAdvanceTo(\'build\')" style="padding:12px 32px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">나만의 문장 만들기 →</button>'
+    + '</div>';
 }
 
-function revealGFTranslate(idx, answer) {
+function revealGFTranslate(idx, answer, total) {
   var ans = document.getElementById('gft-ans-' + idx);
+  var btn = document.getElementById('gft-revbtn-' + idx);
   if (ans) ans.style.display = 'block';
+  if (btn) { btn.disabled = true; btn.style.opacity = '.45'; }
+  window._gftRevealed = (window._gftRevealed || 0) + 1;
+  if (window._gftRevealed >= total) {
+    var nw = document.getElementById('gft-next-wrap');
+    if (nw) nw.style.display = 'block';
+  }
 }
 
 function loadGFBuild(p) {
   var el = document.getElementById('gf-build-content');
   if (!el || !p) return;
+
+  var topic = (document.getElementById('wcard-topic-ko') || {}).textContent || '오늘의 주제';
   var prompts = [
-    'Write a sentence about your daily routine using <strong>' + (p.name||'this grammar') + '</strong>.',
-    'Describe something that happened recently using <strong>' + (p.name||'this grammar') + '</strong>.',
-    'Use <strong>' + (p.name||'this grammar') + '</strong> to talk about a place you like.'
+    '오늘 주제(<em>' + topic + '</em>)에 대해 <strong style="color:#2255a4">' + (p.name||'이 문법') + '</strong> 을 써서 문장을 만들어 보세요.',
+    '나의 일상이나 경험을 <strong style="color:#2255a4">' + (p.name||'이 문법') + '</strong> 을 이용해 설명해 보세요.',
+    '<strong style="color:#2255a4">' + (p.name||'이 문법') + '</strong> 을 사용해 좋아하는 장소나 사람에 대해 써 보세요.'
   ];
-  var structure = '<div style="background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border-radius:12px;padding:16px 18px;margin-bottom:20px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#6b7db8;margin-bottom:8px">Pattern structure</div>'
-    + '<p style="font-size:14px;font-weight:700;color:#2255a4;margin:0">' + (p.name||'') + '</p>'
-    + '<p style="font-size:13px;color:#475569;margin:6px 0 0">' + (p.exp||'') + '</p>'
+
+  var refBox = '<div style="background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border-radius:12px;padding:14px 16px;margin-bottom:20px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#6b7db8;margin-bottom:6px">참고 Pattern</div>'
+    + '<p style="font-size:15px;font-weight:800;color:#2255a4;margin:0;font-family:Noto Serif KR,serif">' + (p.name||'') + '</p>'
+    + (p.structure ? '<p style="font-size:12px;color:#475569;margin:4px 0 0">' + p.structure + '</p>' : '')
     + '</div>';
+
   var qs = prompts.map(function(prompt, i) {
-    return '<div style="margin-bottom:18px">'
-      + '<p style="font-size:14px;color:#0f172a;margin:0 0 10px;line-height:1.6">' + prompt + '</p>'
-      + '<textarea id="gfb-inp-' + i + '" placeholder="Write your own sentence…" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f2;border-radius:8px;font-size:14px;font-family:Noto Serif KR,serif;resize:vertical;min-height:60px;box-sizing:border-box"></textarea>'
+    return '<div style="margin-bottom:16px">'
+      + '<p style="font-size:13px;color:#0f172a;margin:0 0 8px;line-height:1.7">' + prompt + '</p>'
+      + '<textarea id="gfb-inp-' + i + '" placeholder="나만의 문장을 써보세요…" '
+      + 'style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f2;border-radius:8px;font-size:15px;font-family:Noto Serif KR,serif;resize:vertical;min-height:62px;box-sizing:border-box;outline:none"></textarea>'
       + '</div>';
   }).join('');
-  el.innerHTML = '<div style="margin-bottom:16px;font-size:13px;color:#475569">Build your own sentences using this grammar pattern.</div>'
-    + structure + qs
-    + '<button onclick="checkGFBuild()" style="padding:10px 22px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Done ✓</button>'
-    + '<div id="gfb-feedback" style="margin-top:14px;font-size:13px;color:#475569"></div>';
+
+  el.innerHTML = '<div style="margin-bottom:14px;font-size:13px;color:#475569">이제 직접 문장을 만들어보세요. 최소 1개 이상 작성하면 Grammar Focus 완료!</div>'
+    + refBox + qs
+    + '<button onclick="checkGFBuild()" style="width:100%;padding:13px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:4px">완료 ✓ 저장하기</button>'
+    + '<div id="gfb-feedback" style="margin-top:12px;font-size:13px;color:#475569"></div>';
 }
 
 function checkGFBuild() {
   var fb = document.getElementById('gfb-feedback');
   var inputs = [0,1,2].map(function(i){ return (document.getElementById('gfb-inp-'+i)||{}).value||''; });
-  var filled = inputs.filter(function(v){ return v.trim().length > 0; }).length;
-  if (filled === 0) { if (fb) fb.textContent = 'Write at least one sentence first.'; return; }
-  // Save as draft to localStorage (temporary — will be part of a batch submission later)
+  var filled = inputs.filter(function(v){ return v.trim().length > 2; });
+  if (!filled.length) {
+    if (fb) fb.textContent = '최소 1개 문장을 작성해 주세요.';
+    return;
+  }
   try {
     var draftKey = 'kh_gf_draft_' + (supaUser ? supaUser.id : 'g') + '_' + kstDateKey();
-    var draft = { pattern: (_gfPattern && _gfPattern.name) || '', sentences: inputs.filter(Boolean), savedAt: new Date().toISOString() };
+    var draft = { pattern: (_gfPattern && _gfPattern.name) || '', sentences: filled, savedAt: new Date().toISOString() };
     var all = JSON.parse(localStorage.getItem(draftKey) || '[]');
-    all = all.filter(function(d){ return d.pattern !== draft.pattern; }); // replace existing
+    all = all.filter(function(d){ return d.pattern !== draft.pattern; });
     all.push(draft);
     localStorage.setItem(draftKey, JSON.stringify(all));
   } catch(e) {}
   markStageDone('grammar');
-  if (fb) fb.innerHTML = '✅ Saved as draft! You wrote ' + filled + ' sentence' + (filled>1?'s':'') + '.<br><span style="font-size:12px;color:#64748b">Your practice is saved locally. You can submit all your grammar work together later.</span>';
+  if (fb) fb.innerHTML = '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 14px">'
+    + '<div style="font-size:14px;font-weight:800;color:#15803d;margin-bottom:4px">✅ 문법 연습 완료!</div>'
+    + '<div style="font-size:12px;color:#166534">' + filled.length + '개 문장이 로컬에 저장되었어요. Grammar Focus 미션 달성!</div>'
+    + '</div>';
 }
 
 // ══ END GRAMMAR FOCUS MODAL ══════════════════════════════════════
