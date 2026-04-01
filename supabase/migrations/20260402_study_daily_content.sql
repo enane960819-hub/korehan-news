@@ -20,15 +20,13 @@ CREATE TABLE IF NOT EXISTS study_topic_schedule (
 
 ALTER TABLE study_topic_schedule ENABLE ROW LEVEL SECURITY;
 
-DO $$ BEGIN
-  CREATE POLICY "study_topic_schedule_select"
-    ON study_topic_schedule FOR SELECT USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DROP POLICY IF EXISTS "study_topic_schedule_select" ON study_topic_schedule;
+CREATE POLICY "study_topic_schedule_select"
+  ON study_topic_schedule FOR SELECT USING (true);
 
-DO $$ BEGIN
-  CREATE POLICY "study_topic_schedule_write"
-    ON study_topic_schedule FOR ALL USING (true) WITH CHECK (true);
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DROP POLICY IF EXISTS "study_topic_schedule_write" ON study_topic_schedule;
+CREATE POLICY "study_topic_schedule_write"
+  ON study_topic_schedule FOR ALL USING (true) WITH CHECK (true);
 
 -- 3. NEW: study_daily_content — one row per (date, level).
 --    Stores the AI-generated (or admin-edited) topic + all study content.
@@ -50,12 +48,10 @@ CREATE TABLE IF NOT EXISTS study_daily_content (
 
 ALTER TABLE study_daily_content ENABLE ROW LEVEL SECURITY;
 
-DO $$ BEGIN
-  CREATE POLICY "study_daily_content_select"
-    ON study_daily_content FOR SELECT USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DROP POLICY IF EXISTS "study_daily_content_select" ON study_daily_content;
+CREATE POLICY "study_daily_content_select"
+  ON study_daily_content FOR SELECT USING (true);
 
-DO $$ BEGIN
-  CREATE POLICY "study_daily_content_write"
-    ON study_daily_content FOR ALL USING (true) WITH CHECK (true);
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DROP POLICY IF EXISTS "study_daily_content_write" ON study_daily_content;
+CREATE POLICY "study_daily_content_write"
+  ON study_daily_content FOR ALL USING (true) WITH CHECK (true);

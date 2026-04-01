@@ -20,18 +20,15 @@ CREATE TABLE IF NOT EXISTS article_study_submissions (
 
 ALTER TABLE article_study_submissions ENABLE ROW LEVEL SECURITY;
 
-DO $$ BEGIN
-  CREATE POLICY "article_study_select"
-    ON article_study_submissions FOR SELECT USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DROP POLICY IF EXISTS "article_study_select" ON article_study_submissions;
+CREATE POLICY "article_study_select"
+  ON article_study_submissions FOR SELECT USING (true);
 
-DO $$ BEGIN
-  CREATE POLICY "article_study_insert"
-    ON article_study_submissions FOR INSERT WITH CHECK (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DROP POLICY IF EXISTS "article_study_insert" ON article_study_submissions;
+CREATE POLICY "article_study_insert"
+  ON article_study_submissions FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-DO $$ BEGIN
-  CREATE POLICY "article_study_update"
-    ON article_study_submissions FOR UPDATE
-    USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DROP POLICY IF EXISTS "article_study_update" ON article_study_submissions;
+CREATE POLICY "article_study_update"
+  ON article_study_submissions FOR UPDATE
+  USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
