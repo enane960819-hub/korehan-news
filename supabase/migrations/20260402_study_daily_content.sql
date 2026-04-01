@@ -20,11 +20,15 @@ CREATE TABLE IF NOT EXISTS study_topic_schedule (
 
 ALTER TABLE study_topic_schedule ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "study_topic_schedule_select"
-  ON study_topic_schedule FOR SELECT USING (true);
+DO $$ BEGIN
+  CREATE POLICY "study_topic_schedule_select"
+    ON study_topic_schedule FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY IF NOT EXISTS "study_topic_schedule_write"
-  ON study_topic_schedule FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN
+  CREATE POLICY "study_topic_schedule_write"
+    ON study_topic_schedule FOR ALL USING (true) WITH CHECK (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- 3. NEW: study_daily_content — one row per (date, level).
 --    Stores the AI-generated (or admin-edited) topic + all study content.
@@ -33,11 +37,11 @@ CREATE TABLE IF NOT EXISTS study_daily_content (
   level                TEXT    NOT NULL,
   topic_ko             TEXT    DEFAULT '',
   topic_en             TEXT    DEFAULT '',
-  vocab                JSONB   DEFAULT '[]'::jsonb,   -- [{ko,rom,en,level}]
-  grammar              JSONB   DEFAULT '[]'::jsonb,   -- [{level,pattern,explanation,example_ko,example_en}]
-  helpers              JSONB   DEFAULT '[]'::jsonb,   -- [{ko,en}]  (빠른 도움)
-  dictation_sentences  JSONB   DEFAULT '[]'::jsonb,   -- [{ko,en}]
-  dictation_questions  JSONB   DEFAULT '[]'::jsonb,   -- [{question_ko,answer_ko,hint_en}]
+  vocab                JSONB   DEFAULT '[]'::jsonb,
+  grammar              JSONB   DEFAULT '[]'::jsonb,
+  helpers              JSONB   DEFAULT '[]'::jsonb,
+  dictation_sentences  JSONB   DEFAULT '[]'::jsonb,
+  dictation_questions  JSONB   DEFAULT '[]'::jsonb,
   admin_edited         BOOLEAN DEFAULT FALSE,
   created_at           TIMESTAMPTZ DEFAULT NOW(),
   updated_at           TIMESTAMPTZ DEFAULT NOW(),
@@ -46,10 +50,12 @@ CREATE TABLE IF NOT EXISTS study_daily_content (
 
 ALTER TABLE study_daily_content ENABLE ROW LEVEL SECURITY;
 
--- All users can read (needed for the study room page)
-CREATE POLICY IF NOT EXISTS "study_daily_content_select"
-  ON study_daily_content FOR SELECT USING (true);
+DO $$ BEGIN
+  CREATE POLICY "study_daily_content_select"
+    ON study_daily_content FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Any authenticated user can write (study room generates + saves content)
-CREATE POLICY IF NOT EXISTS "study_daily_content_write"
-  ON study_daily_content FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN
+  CREATE POLICY "study_daily_content_write"
+    ON study_daily_content FOR ALL USING (true) WITH CHECK (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;

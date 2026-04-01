@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS article_study_submissions (
   article_id      TEXT NOT NULL,
   article_title   TEXT DEFAULT '',
   study_date      DATE NOT NULL,
-  step4_content   TEXT DEFAULT '',    -- JSON-encoded comprehension answers
-  step5_content   TEXT DEFAULT '',    -- free-writing text
+  step4_content   TEXT DEFAULT '',
+  step5_content   TEXT DEFAULT '',
   submitted       BOOLEAN DEFAULT FALSE,
   auto_submitted  BOOLEAN DEFAULT FALSE,
   submitted_at    TIMESTAMPTZ,
@@ -20,13 +20,18 @@ CREATE TABLE IF NOT EXISTS article_study_submissions (
 
 ALTER TABLE article_study_submissions ENABLE ROW LEVEL SECURITY;
 
--- Users can manage their own submissions; admins can read all
-CREATE POLICY IF NOT EXISTS "article_study_select"
-  ON article_study_submissions FOR SELECT USING (true);
+DO $$ BEGIN
+  CREATE POLICY "article_study_select"
+    ON article_study_submissions FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY IF NOT EXISTS "article_study_insert"
-  ON article_study_submissions FOR INSERT WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "article_study_insert"
+    ON article_study_submissions FOR INSERT WITH CHECK (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY IF NOT EXISTS "article_study_update"
-  ON article_study_submissions FOR UPDATE
-  USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "article_study_update"
+    ON article_study_submissions FOR UPDATE
+    USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
