@@ -2226,53 +2226,15 @@ function setLevel(level, btn) {
 }
 
 async function reassignTopicForLevel(level) {
-  // 레벨 변경 시: 오늘 해당 레벨로 배정된 이력 있으면 그걸 보여주고
-  // 없으면 새 토픽 배정 (하루 1개 유지)
-  var sb = getSupa();
-  var today = new Date().toISOString().slice(0, 10);
-
-  // 1. 오늘 배정 이력 전체 로드
-  var { data: todayRows } = await sb.from('user_topic_history')
-    .select('topic_id, assigned_date')
-    .eq('user_id', supaUser.id)
-    .eq('assigned_date', today);
-
-  var todayTopicIds = (todayRows || []).map(function(r){ return r.topic_id; });
-
-  // 2. 이 레벨의 오늘 토픽이 이미 있는지
-  level = normalizeLevelName(level);
-  var levelTopics = _allTopics.filter(function(t){ return normalizeLevelName(t.level) === level; });
-  var alreadyAssigned = levelTopics.find(function(t){ return todayTopicIds.indexOf(t.id) >= 0; });
-
-  if (alreadyAssigned) {
-    // 이미 오늘 배정된 토픽 → 그대로 사용
-    _todayTopic = alreadyAssigned;
-    _aiContent = null;
-    renderTopicUI();
-    generateAIContent(_todayTopic);
-    return;
-  }
-
-  // 3. 새로 배정 (안 한 토픽 우선)
-  var doneSet = new Set(todayTopicIds);
-  var { data: allDone } = await sb.from('user_topic_history')
-    .select('topic_id').eq('user_id', supaUser.id);
-  (allDone || []).forEach(function(r){ doneSet.add(r.topic_id); });
-
-  var pool = levelTopics.length ? levelTopics : _allTopics;
-  var undone = pool.filter(function(t){ return !doneSet.has(t.id); });
-  if (!undone.length) undone = pool;
-  if (!undone.length) { renderTopicUI(); return; }
-
-  var picked = undone[Math.floor(Math.random() * undone.length)];
-  await sb.from('user_topic_history').insert({
-    user_id: supaUser.id, topic_id: picked.id, assigned_date: today
-  });
-  _todayTopic = picked;
+  // Level changed — reload daily content for the new level from study_daily_content (DB-first, AI-fallback).
+  // This is the same flow as the initial load, so we just delegate to loadDailyContent.
+  console.log('[reassignTopicForLevel] level changed to', level, '— reloading daily content');
+  _todayTopic = null;
   _aiContent = null;
-  renderTopicUI();
-  showAILoading();
-  generateAIContent(picked);
+  clearAIContentUI();
+  var subEl = document.getElementById('wm-topic-sub');
+  if (subEl) subEl.textContent = 'Loading…';
+  await loadDailyContent();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2312,6 +2274,7 @@ function getFallbackTopics() {
 // ═══════════════════════════════════════════════════════════════
 async function loadDailyContent() {
   var today = kstDateKey();
+  console.log('[loadDailyContent] start — date:', today, 'level:', _currentLevel, 'user:', supaUser ? supaUser.id : 'none');
 
   // Admin preview: ?preview_date=YYYY-MM-DD (up to +6 days)
   if (window._isAdmin) {
@@ -2322,29 +2285,64 @@ async function loadDailyContent() {
     }
   }
 
-  if (!supaUser) { showLoginWall(); return; }
+  if (!supaUser) {
+    console.log('[loadDailyContent] no user — showing login wall');
+    // Show sample topic text so "loading..." doesn't stay forever
+    var subEl = document.getElementById('wm-topic-sub');
+    if (subEl) subEl.textContent = '오늘의 주제 · Today\'s Topic';
+    var heroKo = document.getElementById('hero-topic-ko');
+    var heroEn = document.getElementById('hero-topic-en');
+    if (heroKo) heroKo.textContent = '오늘의 주제';
+    if (heroEn) heroEn.textContent = 'Today\'s Topic';
+    showLoginWall();
+    return;
+  }
 
   var sb = getSupa();
+  if (!sb) {
+    console.error('[loadDailyContent] getSupa() returned null — Supabase not initialized');
+    _setTopicLoadError('Connection error. Please refresh.');
+    return;
+  }
+
   try {
+    console.log('[loadDailyContent] querying study_daily_content for', today, _currentLevel);
     var r = await sb.from('study_daily_content')
       .select('*')
       .eq('scheduled_date', today)
       .eq('level', _currentLevel)
       .maybeSingle();
 
-    if (!r.error && r.data) {
+    if (r.error) {
+      console.warn('[loadDailyContent] DB query error:', r.error.message, '(code:', r.error.code, ')');
+      // Table likely doesn't exist yet — generate and save
+    } else if (r.data) {
+      console.log('[loadDailyContent] found existing DB record — applying (admin_edited:', r.data.admin_edited, ')');
       _applyDailyContent(r.data);
       return;
+    } else {
+      console.log('[loadDailyContent] no record in DB for today — will generate');
     }
   } catch(e) {
-    console.error('loadDailyContent:', e);
+    console.error('[loadDailyContent] exception during DB fetch:', e);
   }
 
   // Nothing in DB yet — generate via AI and persist
   await _generateAndSaveDailyContent(today);
 }
 
+function _setTopicLoadError(msg) {
+  hideAILoading();
+  var subEl = document.getElementById('wm-topic-sub');
+  if (subEl) subEl.textContent = msg || '⚠ Topic unavailable — please refresh';
+  var heroKo = document.getElementById('hero-topic-ko');
+  if (heroKo) heroKo.textContent = '⚠ 로딩 오류';
+  var heroEn = document.getElementById('hero-topic-en');
+  if (heroEn) heroEn.textContent = msg || 'Loading failed — please refresh the page';
+}
+
 function _applyDailyContent(rec) {
+  console.log('[_applyDailyContent] applying topic:', rec.topic_ko, '/', rec.topic_en, '| admin_edited:', rec.admin_edited);
   _todayTopic = {
     id:       (rec.scheduled_date || '') + '_' + (rec.level || ''),
     topic_ko: rec.topic_ko || '',
@@ -2368,6 +2366,7 @@ function _applyDailyContent(rec) {
 
 async function _generateAndSaveDailyContent(date) {
   if (!supaUser) { showLoginWall(); return; }
+  console.log('[_generateAndSaveDailyContent] generating for date:', date, 'level:', _currentLevel);
   showAILoading();
 
   var levelGuide = {
@@ -2443,23 +2442,29 @@ async function _generateAndSaveDailyContent(date) {
         .then(function(r) { if (r.error) console.warn('study_daily_content save:', r.error.message); });
     }
 
+    console.log('[_generateAndSaveDailyContent] AI succeeded — topic:', parsed.topic_ko);
     _applyDailyContent(rec);
 
   } catch(err) {
-    console.error('_generateAndSaveDailyContent:', err);
+    console.error('[_generateAndSaveDailyContent] failed:', err && err.message ? err.message : err);
     // Hard fallback — use built-in content, don't save to DB
-    var fb = buildStudyRoomFallbackContent({ topic_ko:'오늘의 주제', topic_en:"Today's Topic" }, _currentLevel);
-    _applyDailyContent({
-      scheduled_date:      date,
-      level:               _currentLevel,
-      topic_ko:            '오늘의 주제',
-      topic_en:            "Today's Topic",
-      vocab:               fb.vocab,
-      grammar:             fb.grammar,
-      helpers:             fb.helpers,
-      dictation_sentences: [],
-      dictation_questions: []
-    });
+    try {
+      var fb = buildStudyRoomFallbackContent({ topic_ko:'오늘의 주제', topic_en:"Today's Topic" }, _currentLevel);
+      _applyDailyContent({
+        scheduled_date:      date,
+        level:               _currentLevel,
+        topic_ko:            '오늘의 주제',
+        topic_en:            "Today's Topic",
+        vocab:               fb.vocab,
+        grammar:             fb.grammar,
+        helpers:             fb.helpers,
+        dictation_sentences: [],
+        dictation_questions: []
+      });
+    } catch(fb_err) {
+      console.error('[_generateAndSaveDailyContent] fallback also failed:', fb_err);
+      _setTopicLoadError('⚠ 로딩 실패 — 새로고침 해주세요');
+    }
   }
 }
 
@@ -5676,7 +5681,7 @@ function _asStep4(art,act) {
   _asQState={qs:qs,ans:new Array(qs.length).fill(null)};
   act.innerHTML='<p class="as-section-label">❓ 이해 확인 — 객관식</p>'
     +qs.map(function(q,qi){
-      return '<div style="margin-bottom:18px"><p style="font-weight:700;font-size:13px;margin-bottom:8px">+(qi+1)+'. '+(q.q||'')+'</p>'
+      return '<div style="margin-bottom:18px"><p style="font-weight:700;font-size:13px;margin-bottom:8px">'+(qi+1)+'. '+(q.q||'')+'</p>'
         +(q.options||[]).map(function(opt,oi){
           return '<div class="as-mc-opt" id="as-mc-'+qi+'-'+oi+'" onclick="asQAns('+qi+','+oi+')">'
             +'<div class="as-mc-letter">'+['A','B','C','D'][oi]+'</div><div>'+opt+'</div></div>';
@@ -5756,7 +5761,7 @@ function asMarkDone() {
 }
 
 // ── Temp save ──
-function _asTmpKey() { return 'kh_as_'+(supaUser?supaUser.id:'g')+'_'_'+kstDateKey(); }
+function _asTmpKey() { return 'kh_as_'+(supaUser?supaUser.id:'g')+'_'+kstDateKey(); }
 function _asGetTmp() {
   if(!_asCurrentArt) return null;
   try { var d=JSON.parse(localStorage.getItem(_asTmpKey())||'{}'); return d[_asCurrentArt.id]||null; } catch(e){return null;}
