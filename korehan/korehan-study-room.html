@@ -1231,6 +1231,32 @@ body { background: #0b1626 !important; }
 .dct-listen-btn { background:none; border:1.5px solid #bfdbfe; border-radius:8px; padding:5px 10px; cursor:pointer; font-size:15px; color:#2255a4; float:right; }
 .dct-wo-zone { background:#f0f7ff; border:1.5px solid #bfdbfe; border-radius:12px; padding:16px; margin-bottom:14px; font-family:'Noto Serif KR',serif; font-size:16px; line-height:2.4; min-height:56px; }
 @media(max-width:640px) { .dct-panel { max-height:100vh; border-radius:0; } }
+
+/* ── Mobile fixes ─────────────────────────────────────── */
+@media(max-width:640px) {
+  /* Grammar Focus modal — bottom sheet */
+  #gf-modal { align-items:flex-end !important; padding:0 !important; }
+  .gf-modal-panel { border-radius:22px 22px 0 0 !important; width:100% !important; max-height:95dvh !important; }
+  .gf-tab-bar { overflow-x:auto; -webkit-overflow-scrolling:touch; padding:0 16px !important; scrollbar-width:none; }
+  .gf-tab-bar::-webkit-scrollbar { display:none; }
+  .gf-tab { padding:11px 12px !important; font-size:12px !important; white-space:nowrap; }
+  .gf-modal-body { padding:16px 18px !important; }
+  /* Article Study modal — full screen */
+  .as-panel { height:100dvh !important; border-radius:0 !important; max-width:100% !important; }
+  /* Level selector — smaller buttons on narrow */
+  .lv-btn { padding:7px 14px; font-size:12px; }
+  /* Topic card action row */
+  .sr-action-row { flex-direction:column; gap:8px; }
+  /* START button full-width on tiny screens */
+  .sr-start-btn { width:100% !important; justify-content:center; }
+  /* Learning selector */
+  .ls-panel { border-radius:22px 22px 0 0; width:100%; }
+  #ls-overlay { align-items:flex-end !important; padding:0 !important; }
+}
+@media(max-width:860px) {
+  /* Sidebar grammar/helper panels: consistent spacing */
+  .sr-sb-panel { padding:12px 14px; }
+}
 </style>
 </head>
 <body>
@@ -1645,35 +1671,48 @@ body { background: #0b1626 !important; }
 
 <!-- ═══ GRAMMAR FOCUS MODAL ══════════════════════════════════════ -->
 <div class="woverlay hidden" id="gf-modal" onclick="if(event.target===this)closeGrammarFocusModal()">
-  <div style="background:#fff;border-radius:22px;width:min(680px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.25);display:flex;flex-direction:column">
+  <div class="gf-modal-panel" style="background:#fff;border-radius:22px;width:min(680px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.25);display:flex;flex-direction:column">
     <!-- Header -->
-    <div style="background:linear-gradient(135deg,#0b1626,#1a3a6b);padding:24px 28px 20px;border-radius:22px 22px 0 0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0">
+    <div style="background:linear-gradient(135deg,#0b1626,#1a3a6b);padding:20px 24px 16px;border-radius:22px 22px 0 0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0">
       <div>
-        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.5);margin-bottom:6px">Grammar Focus</div>
-        <div id="gf-title" style="font-size:20px;font-weight:900;color:#fff;line-height:1.3">Grammar Practice</div>
-        <div id="gf-subtitle" style="font-size:13px;color:rgba(255,255,255,.55);margin-top:4px">Deep-dive into today's grammar point</div>
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.5);margin-bottom:5px">Grammar Focus</div>
+        <div id="gf-title" style="font-size:19px;font-weight:900;color:#fff;line-height:1.3">Grammar Practice</div>
+        <div id="gf-subtitle" style="font-size:12px;color:rgba(255,255,255,.55);margin-top:3px">오늘의 문법 집중 학습</div>
       </div>
-      <button onclick="closeGrammarFocusModal()" style="background:rgba(255,255,255,.1);border:none;color:#fff;font-size:20px;width:36px;height:36px;border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1">✕</button>
+      <button onclick="closeGrammarFocusModal()" style="background:rgba(255,255,255,.1);border:none;color:#fff;font-size:18px;width:34px;height:34px;border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1">✕</button>
+    </div>
+
+    <!-- Step progress bar -->
+    <div id="gf-step-bar" style="display:flex;gap:0;padding:10px 24px 0;flex-shrink:0;align-items:center;gap:4px">
+      <!-- populated by JS -->
     </div>
 
     <!-- Tab bar -->
-    <div style="display:flex;gap:0;border-bottom:1px solid #f1f5f9;padding:0 24px;flex-shrink:0">
-      <button class="gf-tab active" onclick="switchGFTab('examples',this)" id="gft-examples" style="padding:13px 18px;border:none;background:none;font-size:13px;font-weight:700;color:#2255a4;border-bottom:2px solid #2255a4;cursor:pointer;font-family:inherit">Examples</button>
-      <button class="gf-tab" onclick="switchGFTab('fill',this)" id="gft-fill" style="padding:13px 18px;border:none;background:none;font-size:13px;font-weight:700;color:#94a3b8;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">Fill-in-Blank</button>
-      <button class="gf-tab" onclick="switchGFTab('translate',this)" id="gft-translate" style="padding:13px 18px;border:none;background:none;font-size:13px;font-weight:700;color:#94a3b8;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">Translate</button>
-      <button class="gf-tab" onclick="switchGFTab('build',this)" id="gft-build" style="padding:13px 18px;border:none;background:none;font-size:13px;font-weight:700;color:#94a3b8;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">Build</button>
+    <div class="gf-tab-bar" style="display:flex;gap:0;border-bottom:1px solid #f1f5f9;padding:0 24px;flex-shrink:0">
+      <button class="gf-tab active" onclick="switchGFTab('learn',this)" id="gft-learn" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:#2255a4;border-bottom:2px solid #2255a4;cursor:pointer;font-family:inherit">① Learn</button>
+      <button class="gf-tab" onclick="switchGFTab('spotit',this)" id="gft-spotit" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:#94a3b8;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">② Spot It</button>
+      <button class="gf-tab" onclick="switchGFTab('fill',this)" id="gft-fill" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:#94a3b8;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">③ Practice</button>
+      <button class="gf-tab" onclick="switchGFTab('translate',this)" id="gft-translate" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:#94a3b8;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">④ Translate</button>
+      <button class="gf-tab" onclick="switchGFTab('build',this)" id="gft-build" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:#94a3b8;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">⑤ Build</button>
     </div>
 
     <!-- Content -->
-    <div style="padding:24px 28px;flex:1">
-      <!-- Examples tab -->
-      <div id="gf-tab-examples">
+    <div class="gf-modal-body" style="padding:20px 24px;flex:1">
+      <!-- Learn tab (was Examples) -->
+      <div id="gf-tab-learn">
         <div id="gf-examples-content">
-          <div style="text-align:center;padding:40px;color:#94a3b8">✨ Loading grammar examples…</div>
+          <div style="text-align:center;padding:40px;color:#94a3b8">✨ Loading grammar…</div>
         </div>
       </div>
 
-      <!-- Fill-in-blank tab -->
+      <!-- Spot It tab (NEW — pattern recognition) -->
+      <div id="gf-tab-spotit" style="display:none">
+        <div id="gf-spotit-content">
+          <div style="text-align:center;padding:40px;color:#94a3b8">Complete Learn first</div>
+        </div>
+      </div>
+
+      <!-- Practice tab (was Fill-in-blank) -->
       <div id="gf-tab-fill" style="display:none">
         <div id="gf-fill-content">
           <div style="text-align:center;padding:40px;color:#94a3b8">Choose a grammar pattern first</div>
