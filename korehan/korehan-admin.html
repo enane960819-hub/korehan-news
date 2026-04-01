@@ -5358,11 +5358,12 @@ async function goStudyRoomOps() {
     + '<button class="btn" onclick="srPreviewDate(3)">👁 Preview +3일</button>'
     + '</div></div></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
-    + '  <button class="btn btn-g" id="srt-topics"   onclick="srShowTab(\'topics\')"  >📅 오늘의 주제</button>'
-    + '  <button class="btn"       id="srt-helpers"  onclick="srShowTab(\'helpers\')" >💬 빠른 도움</button>'
-    + '  <button class="btn"       id="srt-grammar"  onclick="srShowTab(\'grammar\')" >📚 문법 설명</button>'
-    + '  <button class="btn"       id="srt-picture"  onclick="srShowTab(\'picture\')" >🖼️ Picture</button>'
-    + '  <button class="btn"       id="srt-homework" onclick="srShowTab(\'homework\')">📝 Homework</button>'
+    + '  <button class="btn btn-g" id="srt-topics"      onclick="srShowTab(\'topics\')"     >📅 오늘의 주제</button>'
+    + '  <button class="btn"       id="srt-helpers"     onclick="srShowTab(\'helpers\')"    >💬 빠른 도움</button>'
+    + '  <button class="btn"       id="srt-grammar"     onclick="srShowTab(\'grammar\')"    >📚 문법 설명</button>'
+    + '  <button class="btn"       id="srt-picture"     onclick="srShowTab(\'picture\')"    >🖼️ Picture</button>'
+    + '  <button class="btn"       id="srt-homework"    onclick="srShowTab(\'homework\')"   >📝 Homework</button>'
+    + '  <button class="btn"       id="srt-submissions" onclick="srShowTab(\'submissions\')">📊 제출 현황</button>'
     + '</div>'
     + '<div id="sr-tab-body"></div>';
   await srShowTab('topics');
@@ -5386,7 +5387,8 @@ async function srShowTab(tab) {
   if (tab === 'helpers')  { body.innerHTML = srHelpersFormHTML(); await srLoadHelpers(); }
   if (tab === 'grammar')  { body.innerHTML = srGrammarFormHTML(); await srLoadGrammar(); }
   if (tab === 'picture')  { body.innerHTML = srPictureFormHTML(); await srLoadPictures(); }
-  if (tab === 'homework') { body.innerHTML = '<div class="sf-card" id="sr-homework-list">Loading…</div>'; await loadStudyHomeworkAdmin(); }
+  if (tab === 'homework')     { body.innerHTML = '<div class="sf-card" id="sr-homework-list">Loading…</div>'; await loadStudyHomeworkAdmin(); }
+  if (tab === 'submissions')  { body.innerHTML = srSubmissionsFormHTML(); await srLoadSubmissions(); }
 }
 
 // ── TOPICS tab (daily content — AI-generated + admin-editable) ──────────────────────
@@ -5625,6 +5627,73 @@ function srEditDailyRow(date, level) {
   document.getElementById('srt-date').value  = date;
   document.getElementById('srt-level').value = level;
   srLoadDailyContent();
+}
+
+// ── SUBMISSIONS tab ─────────────────────────────────────────────
+function srSubmissionsFormHTML() {
+  return '<div class="sf-card" style="margin-bottom:12px">'
+    + '<div style="font-weight:800;font-size:15px;margin-bottom:10px">📊 Article Study 제출 현황</div>'
+    + '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">'
+    + '<div class="fg" style="margin:0"><label>날짜 (이후)</label><input type="date" id="srs-date"></div>'
+    + '<button class="btn btn-g" onclick="srLoadSubmissions()">조회</button>'
+    + '<button class="btn" onclick="srExportSubmissions()">📥 CSV</button>'
+    + '</div>'
+    + '<div id="srs-msg" style="font-size:12px;color:#475569;margin-bottom:8px"></div>'
+    + '</div>'
+    + '<div class="sf-card" id="srs-list">조회 버튼을 눌러 불러오세요.</div>';
+}
+
+async function srLoadSubmissions() {
+  var sb = getSb(); if (!sb) return;
+  var el = document.getElementById('srs-list'); if (!el) return;
+  var msg = document.getElementById('srs-msg');
+  var date = (document.getElementById('srs-date').value || new Date(Date.now()-7*86400000).toISOString().slice(0,10));
+  el.innerHTML = '불러오는 중…';
+  var r = await sb.from('article_study_submissions')
+    .select('id,user_id,article_id,article_title,study_date,step4_content,step5_content,submitted,auto_submitted,submitted_at,created_at')
+    .gte('study_date', date)
+    .order('submitted_at', { ascending: false })
+    .limit(100);
+  if (r.error) { el.innerHTML = 'Error: ' + r.error.message; return; }
+  var rows = r.data || [];
+  if (msg) msg.textContent = rows.length + '건 조회됨 (' + date + ' 이후)';
+  if (!rows.length) { el.innerHTML = '<div style="color:#94a3b8;font-size:13px">제출 내역이 없습니다.</div>'; return; }
+  el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+    + '<thead><tr style="background:#f8fafc;font-weight:700">'
+    + '<th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0">날짜</th>'
+    + '<th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0">사용자</th>'
+    + '<th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0">기사</th>'
+    + '<th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0">글쓰기</th>'
+    + '<th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0">제출 방식</th>'
+    + '</tr></thead><tbody>'
+    + rows.map(function(row) {
+        var step5 = (row.step5_content||'').slice(0,80) + ((row.step5_content||'').length>80?'…':'');
+        var how = row.auto_submitted ? '<span style="background:#fde68a;color:#92400e;padding:1px 6px;border-radius:999px;font-size:10px">자동</span>'
+          : row.submitted ? '<span style="background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:999px;font-size:10px">수동</span>'
+          : '<span style="background:#f1f5f9;color:#64748b;padding:1px 6px;border-radius:999px;font-size:10px">미제출</span>';
+        return '<tr style="border-bottom:1px solid #f1f5f9">'
+          + '<td style="padding:8px;color:#475569">' + (row.study_date||'') + '</td>'
+          + '<td style="padding:8px;font-family:monospace;font-size:10px;color:#64748b">' + (row.user_id||'').slice(0,8) + '…</td>'
+          + '<td style="padding:8px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (row.article_title||row.article_id||'') + '</td>'
+          + '<td style="padding:8px;color:#334155;max-width:220px">' + step5 + '</td>'
+          + '<td style="padding:8px">' + how + '</td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table>';
+}
+
+function srExportSubmissions() {
+  var el = document.getElementById('srs-list'); if (!el) return;
+  var rows = el.querySelectorAll('tbody tr');
+  var csv = ['날짜,사용자ID,기사,글쓰기,제출방식'];
+  rows.forEach(function(tr) {
+    var cells = tr.querySelectorAll('td');
+    csv.push([0,1,2,3,4].map(function(i){ return '"'+(cells[i]?cells[i].textContent.replace(/"/g,'""'):'') +'"'; }).join(','));
+  });
+  var a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csv.join('\n'));
+  a.download = 'article_study_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
 }
 
 // ── HELPERS tab ────────────────────────────────────────────────

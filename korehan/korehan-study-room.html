@@ -1099,6 +1099,111 @@ body { background: #0b1626 !important; }
   .sr-btn-primary { width: 100%; text-align: center; }
   .sr-action-row { flex-direction: column; }
 }
+
+/* ─── Activity Banners (replaces word tracks) ─────────────────── */
+.sr-activity-banners { display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+.sr-act-banner {
+  display:flex; align-items:center; gap:14px; padding:14px 16px;
+  background:rgba(255,255,255,0.05); border:1.5px solid rgba(255,255,255,0.09);
+  border-radius:14px; cursor:pointer; transition:all .18s; text-decoration:none; width:100%;
+  font-family:inherit; text-align:left;
+}
+.sr-act-banner:hover { background:rgba(122,184,245,.1); border-color:rgba(122,184,245,.45); transform:translateY(-1px); }
+.sr-act-banner.coming-soon { opacity:.45; cursor:default; pointer-events:none; }
+.srab-icon  { font-size:22px; flex-shrink:0; width:36px; text-align:center; }
+.srab-body  { flex:1; min-width:0; }
+.srab-title { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.1px; color:#7ab8f5; margin-bottom:2px; }
+.srab-desc  { font-size:12px; color:rgba(255,255,255,.5); }
+.srab-arrow { font-size:15px; color:rgba(255,255,255,.28); flex-shrink:0; transition:color .18s; }
+.sr-act-banner:hover .srab-arrow { color:#7ab8f5; }
+/* submit-today banner (shows when there's unsaved work) */
+.as-submit-today { display:none; background:rgba(34,197,94,.1); border:1.5px solid rgba(34,197,94,.35);
+  border-radius:12px; padding:12px 14px; margin-bottom:14px; }
+.as-submit-today.visible { display:flex; align-items:center; gap:12px; }
+
+/* ─── Article Study Modal ─────────────────────────────────────── */
+.as-panel {
+  width:100%; max-width:900px; height:88vh; background:var(--bg);
+  border-radius:16px; overflow:hidden; display:flex; flex-direction:column;
+  animation:wm-in .2s ease;
+}
+#as-list-view  { display:flex; flex-direction:column; flex:1; min-height:0; }
+#as-study-view { display:flex; flex-direction:column; flex:1; min-height:0; }
+#as-list-view.as-hidden, #as-study-view.as-hidden { display:none !important; }
+.as-article-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px;
+}
+.as-article-card {
+  background:#fff; border:1.5px solid var(--border); border-radius:10px;
+  overflow:hidden; cursor:pointer; transition:all .15s; display:flex; flex-direction:column;
+}
+.as-article-card:hover { border-color:#7ab8f5; box-shadow:0 4px 14px rgba(34,85,164,.13); transform:translateY(-2px); }
+.as-article-card img    { width:100%; height:100px; object-fit:cover; display:block; }
+.as-article-card .asc-img-ph { height:100px; background:linear-gradient(135deg,#dbeafe,#e8f0ff); display:flex; align-items:center; justify-content:center; font-size:30px; }
+.as-article-card .asc-body  { padding:10px; flex:1; }
+.as-article-card .asc-cat   { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:4px; }
+.as-article-card .asc-title { font-size:13px; font-weight:700; color:var(--dark); line-height:1.4; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.as-article-card .asc-meta  { font-size:10px; color:var(--gray); margin-top:5px; }
+/* Step pips */
+.as-pip { flex:1; height:4px; border-radius:2px; background:rgba(34,85,164,.13); transition:background .2s; }
+.as-pip.done   { background:rgba(34,197,94,.65); }
+.as-pip.active { background:#7ab8f5; }
+/* Article content */
+.as-article-text { font-family:'Noto Serif KR',serif; font-size:14px; line-height:1.9; color:var(--dark); }
+.as-article-text mark          { background:#fff3b0; border-radius:2px; padding:1px 2px; }
+.as-article-text mark.ph-mark  { background:#d4edff; }
+/* Matching activity */
+.as-match-wrap { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.as-match-item {
+  padding:9px 12px; border:1.5px solid var(--border); border-radius:8px;
+  cursor:pointer; font-size:13px; line-height:1.4; background:#fff; transition:all .15s; text-align:center;
+}
+.as-match-item:hover   { border-color:#7ab8f5; background:#eaf5ff; }
+.as-match-item.sel     { border-color:#7ab8f5; background:#eaf5ff; }
+.as-match-item.correct { border-color:#22c55e; background:#f0fdf4; color:#15803d; pointer-events:none; font-weight:700; }
+.as-match-item.wrong   { border-color:#f87171; background:#fff5f5; animation:as-shake .3s; }
+.as-match-item.matched { border-color:#22c55e; background:#f0fdf4; opacity:.7; pointer-events:none; }
+@keyframes as-shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+.asmko { font-family:'Noto Serif KR',serif; font-weight:700; color:var(--accent); }
+.asmrom { font-size:11px; color:var(--gray); margin-top:1px; }
+/* Word-order */
+.as-chunk-pool { display:flex; flex-wrap:wrap; gap:6px; min-height:42px; padding:10px 12px; background:#f8fafc; border:2px dashed var(--border); border-radius:8px; margin-bottom:10px; }
+.as-answer-row { display:flex; flex-wrap:wrap; gap:6px; min-height:46px; padding:10px 12px; background:#fff; border:2px dashed #7ab8f5; border-radius:8px; }
+.as-chunk {
+  padding:7px 11px; background:#fff; border:1.5px solid var(--border);
+  border-radius:6px; font-family:'Noto Serif KR',serif; font-size:13px; cursor:pointer; transition:all .15s;
+}
+.as-chunk:hover      { border-color:#7ab8f5; background:#eaf5ff; }
+.as-chunk.in-answer  { background:#eaf5ff; border-color:#7ab8f5; }
+.as-chunk.correct    { background:#f0fdf4; border-color:#22c55e; color:#15803d; pointer-events:none; }
+.as-chunk.wrong      { background:#fff5f5; border-color:#f87171; animation:as-shake .3s; }
+/* Multiple choice */
+.as-mc-opt {
+  display:flex; align-items:flex-start; gap:10px; padding:11px 14px;
+  border:1.5px solid var(--border); border-radius:8px; cursor:pointer; font-size:13px;
+  background:#fff; transition:all .15s; margin-bottom:7px;
+}
+.as-mc-opt:hover  { border-color:#7ab8f5; background:#eaf5ff; }
+.as-mc-opt.sel    { border-color:#7ab8f5; background:#eaf5ff; }
+.as-mc-opt.right  { border-color:#22c55e; background:#f0fdf4; pointer-events:none; }
+.as-mc-opt.wrong  { border-color:#f87171; background:#fff5f5; pointer-events:none; }
+.as-mc-opt.dim    { opacity:.5; pointer-events:none; }
+.as-mc-letter { width:22px; height:22px; border-radius:50%; background:#e2e8f0; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:11px; flex-shrink:0; margin-top:1px; }
+/* Nav bar */
+.as-nav-bar { padding:10px 16px; border-top:1px solid var(--border); background:#fff; display:flex; gap:8px; justify-content:flex-end; flex-shrink:0; }
+/* Done banner */
+.as-done-banner { background:linear-gradient(135deg,#0f2040,#1a3a6b); border-radius:12px; padding:20px 18px; color:#fff; text-align:center; margin-bottom:12px; }
+/* Loading */
+.as-loading { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:40px 20px; color:var(--gray); font-size:13px; }
+.as-spinner { width:30px; height:30px; border:3px solid var(--border); border-top-color:#7ab8f5; border-radius:50%; animation:as-spin .7s linear infinite; }
+@keyframes as-spin { to { transform:rotate(360deg); } }
+/* Section label */
+.as-section-label { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:8px; }
+@media(max-width:640px) {
+  .as-panel { height:100vh; border-radius:0; }
+  .as-article-grid { grid-template-columns:1fr 1fr; gap:8px; }
+  .as-match-wrap { grid-template-columns:1fr; }
+}
 </style>
 </head>
 <body>
@@ -1176,14 +1281,42 @@ body { background: #0b1626 !important; }
   <span id="sr-done-picture" style="display:none"></span>
   <span id="sr-done-sentence" style="display:none"></span>
 
-  <!-- WORD TRACKS -->
-  <div class="sr-dark-card">
-    <div class="chd"><div class="ct">🧠 10 words from your level</div></div>
-    <div class="cb" id="sr-level-words"><div class="skel" style="height:12px;background:rgba(255,255,255,.1)"></div></div>
+  <!-- Submit-today banner (appears when there's unsaved work) -->
+  <div class="as-submit-today" id="as-submit-today-banner">
+    <span style="font-size:18px">📤</span>
+    <div style="flex:1">
+      <div style="font-size:12px;font-weight:800;color:#22c55e;margin-bottom:2px">오늘 학습한 내용이 있습니다</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6)">자정 전에 제출하지 않으면 자동 제출됩니다</div>
+    </div>
+    <button class="btn btn-g" onclick="asSubmitTodayAll()" style="font-size:12px;padding:6px 12px">오늘 학습 제출</button>
   </div>
-  <div class="sr-dark-card">
-    <div class="chd"><div class="ct">🎯 10 words from your interests</div></div>
-    <div class="cb" id="sr-interest-words"><div class="skel" style="height:12px;background:rgba(255,255,255,.1)"></div></div>
+
+  <!-- ACTIVITY BANNERS -->
+  <div class="sr-activity-banners">
+    <button class="sr-act-banner" onclick="openArticleStudy()">
+      <span class="srab-icon">📰</span>
+      <div class="srab-body">
+        <div class="srab-title">Article Study</div>
+        <div class="srab-desc">5-step reading practice from real Korean news</div>
+      </div>
+      <span class="srab-arrow">→</span>
+    </button>
+    <button class="sr-act-banner coming-soon">
+      <span class="srab-icon">💬</span>
+      <div class="srab-body">
+        <div class="srab-title">Conversations Study</div>
+        <div class="srab-desc">Coming soon</div>
+      </div>
+      <span class="srab-arrow">→</span>
+    </button>
+    <button class="sr-act-banner coming-soon">
+      <span class="srab-icon">📖</span>
+      <div class="srab-body">
+        <div class="srab-title">Stories Study</div>
+        <div class="srab-desc">Coming soon</div>
+      </div>
+      <span class="srab-arrow">→</span>
+    </button>
   </div>
 
 </div><!-- /sr-main -->
@@ -1654,6 +1787,8 @@ document.addEventListener('DOMContentLoaded', async function() {
       loadStudyDoneFromDB();   // merge DB progress → covers browser-switch / multi-device
       loadDailyContent();
       loadFeedbackInbox();
+      asAutoSubmitOldWork();
+      _asRefreshSubmitBanner();
     } else {
       waited++;
       setTimeout(waitForSession, 100);
@@ -5311,6 +5446,421 @@ function checkGFBuild() {
 
 // ══ END GRAMMAR FOCUS MODAL ══════════════════════════════════════
 // ══ END BEGINNER 4-STEP SYSTEM ══════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
+// ARTICLE STUDY
+// ═══════════════════════════════════════════════════════════════
+var _asArticles      = [];
+var _asCurrentArt    = null;
+var _asStudyContent  = null;
+var _asStep          = 1;
+var _asStepDone      = [false,false,false,false,false];
+var _asMatchState    = null;
+var _asWOState       = null;
+var _asQState        = null;
+
+function openArticleStudy() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  var m = document.getElementById('as-modal');
+  if (!m) return;
+  m.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('as-list-view').classList.remove('as-hidden');
+  document.getElementById('as-study-view').classList.add('as-hidden');
+  if (!_asArticles.length) _asLoadArticles();
+}
+function closeArticleStudy() {
+  var m = document.getElementById('as-modal');
+  if (m) m.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+function asBackToList() {
+  document.getElementById('as-list-view').classList.remove('as-hidden');
+  document.getElementById('as-study-view').classList.add('as-hidden');
+}
+
+async function _asLoadArticles() {
+  var sb = getSupa(); if (!sb) return;
+  var g = document.getElementById('as-article-grid'); if (!g) return;
+  g.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>기사 불러오는 중…</div></div>';
+  try {
+    var r = await sb.from('articles').select('id,title,section,level,image,body')
+      .eq('status','published').order('date',{ascending:false}).limit(24);
+    if (r.error) throw r.error;
+    _asArticles = (r.data||[]).filter(function(a){ return a.title; });
+    _asRenderGrid();
+  } catch(e) {
+    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">기사를 불러올 수 없습니다.</div>';
+  }
+}
+function _asRenderGrid() {
+  var g = document.getElementById('as-article-grid'); if (!g) return;
+  if (!_asArticles.length) { g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">등록된 기사가 없습니다.</div>'; return; }
+  g.innerHTML = _asArticles.map(function(a) {
+    var imgHtml = a.image
+      ? '<img src="' + a.image + '" alt="" onerror="this.style.display=\'none\'">'
+      : '<div class="asc-img-ph">📰</div>';
+    return '<div class="as-article-card" onclick="asSelectArticle(\'' + String(a.id).replace(/'/g,"\\'") + '\')">'
+      + imgHtml
+      + '<div class="asc-body">'
+      + '<div class="asc-cat">' + (a.section||'Article') + '</div>'
+      + '<div class="asc-title">' + (a.title||'') + '</div>'
+      + (a.level ? '<div class="asc-meta">' + a.level + '</div>' : '')
+      + '</div></div>';
+  }).join('');
+}
+
+async function asSelectArticle(id) {
+  var art = _asArticles.find(function(a){ return String(a.id)===String(id); });
+  if (!art) return;
+  _asCurrentArt = art; _asStep = 1; _asStepDone = [false,false,false,false,false];
+  _asStudyContent = null; _asMatchState = null; _asWOState = null; _asQState = null;
+  document.getElementById('as-list-view').classList.add('as-hidden');
+  document.getElementById('as-study-view').classList.remove('as-hidden');
+  document.getElementById('as-article-title').textContent = art.title || 'Article Study';
+  _asRenderPips();
+  document.getElementById('as-article-content').innerHTML =
+    '<p class="as-section-label">📖 기사 읽기</p><div class="as-article-text">' + _asFormatBody(art.body||'') + '</div>';
+  document.getElementById('as-activity-area').innerHTML =
+    '<div class="as-loading"><div class="as-spinner"></div><div>학습 콘텐츠 생성 중… (약 10초)</div></div>';
+  _asSetNav('none','none','none');
+  await _asLoadContent();
+  _asRenderStep();
+}
+
+function _asFormatBody(b) {
+  return b.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\n\n+/g,'</p><p style="margin-top:10px" class="as-article-text">').replace(/\n/g,'<br>');
+}
+function _asSetNav(check, next, done) {
+  var cb = document.getElementById('as-check-btn'), nb = document.getElementById('as-next-btn'), db = document.getElementById('as-done-btn');
+  if (cb) cb.style.display = check; if (nb) nb.style.display = next; if (db) db.style.display = done;
+}
+
+async function _asLoadContent() {
+  if (!_asCurrentArt) return;
+  var key = 'as_c_' + _asCurrentArt.id;
+  var c = sessionStorage.getItem(key);
+  if (c) { try { _asStudyContent = JSON.parse(c); return; } catch(e) {} }
+  if (!supaUser) return;
+  var lvG = { Beginner:'simple present tense, basic vocabulary, short sentences', Intermediate:'past tense, conjunctions, moderate vocabulary', Advanced:'complex structures, formal style, advanced vocabulary' };
+  var prompt = 'Korean news article study content for language learners.\nTitle: ' + (_asCurrentArt.title||'') + '\nBody:\n' + (_asCurrentArt.body||'').slice(0,1600)
+    + '\n\nReturn ONLY valid JSON:\n{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],"phrases":[{"ko":"sentence from article","en":"translation"}],"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\nvocab:6 key words from article. phrases:5 key sentences. word_order:3 sentences split into eojeol chunks in CORRECT order. questions:3 comprehension questions.';
+  try {
+    var data = await callClaude({ feature:'article-study', model:'claude-haiku-4-5-20251001', max_tokens:1500, messages:[{role:'user',content:prompt}] });
+    var raw = (data.content||[]).map(function(c){return c.text||'';}).join('');
+    var cl = raw.replace(/```json|```/g,'').trim();
+    var s=cl.indexOf('{'),e=cl.lastIndexOf('}'); if(s>=0&&e>s) cl=cl.slice(s,e+1);
+    _asStudyContent = JSON.parse(cl);
+    sessionStorage.setItem(key, JSON.stringify(_asStudyContent));
+  } catch(err) { _asStudyContent = {vocab:[],phrases:[],word_order:[],questions:[{q:'이 기사의 내용을 잘 이해했나요?',options:['네, 잘 이해했어요','조금 이해했어요','어려웠어요','다시 읽을게요'],correct:0}]}; }
+}
+
+var _asStepLabels = ['Step 1 / 5 — Vocabulary','Step 2 / 5 — Phrases','Step 3 / 5 — Reading','Step 4 / 5 — Speaking','Step 5 / 5 — Writing (Optional)'];
+function _asRenderPips() {
+  var bar = document.getElementById('as-pip-bar'); if (!bar) return;
+  bar.innerHTML = [1,2,3,4,5].map(function(n){
+    var cls='as-pip'+(n<_asStep?' done':n===_asStep?' active':'');
+    return '<div class="'+cls+'"></div>';
+  }).join('');
+  var lbl = document.getElementById('as-step-label'); if (lbl) lbl.textContent = _asStepLabels[_asStep-1]||'';
+}
+function _asRenderStep() {
+  _asRenderPips();
+  var art=document.getElementById('as-article-content'), act=document.getElementById('as-activity-area');
+  if (!art||!act) return;
+  _asSetNav('none','none','none');
+  switch(_asStep) {
+    case 1: _asStep1(art,act); break; case 2: _asStep2(art,act); break;
+    case 3: _asStep3(art,act); break; case 4: _asStep4(art,act); break;
+    case 5: _asStep5(art,act); break;
+  }
+}
+
+// ── Step 1: Vocab matching ──
+function _asStep1(art,act) {
+  var vocab=(_asStudyContent&&_asStudyContent.vocab)||[];
+  var body=_asCurrentArt&&_asCurrentArt.body?_asFormatBody(_asCurrentArt.body):'';
+  vocab.forEach(function(v){ if(v.ko) body=body.replace(new RegExp(_asEsc(v.ko),'g'),'<mark>'+v.ko+'</mark>'); });
+  art.innerHTML='<p class="as-section-label">📖 기사 읽기 — 형광펜 단어 확인</p><div class="as-article-text">'+body+'</div>';
+  if (!vocab.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px">어휘가 없습니다.</div>'; _asSetNav('none',''); return; }
+  var eng=_asShuffle(vocab.map(function(v,i){return{t:v.en,i:i};}));
+  _asMatchState={pairs:vocab,eng:eng,matched:[],sel:{l:null,r:null}};
+  act.innerHTML='<p class="as-section-label">🔗 단어 매칭 — 한국어와 영어 뜻을 연결하세요</p><div class="as-match-wrap" id="as-mg"></div><div id="as-mm" style="margin-top:8px;font-size:12px;color:var(--gray)"></div>';
+  _asRenderMatch(); _asSetNav('none','none','none');
+}
+function _asRenderMatch() {
+  var g=document.getElementById('as-mg'); if(!g||!_asMatchState) return;
+  var m=_asMatchState; var lh=m.pairs.map(function(v,i){
+    var isDone=m.matched.indexOf(i)>=0;
+    return '<div class="as-match-item'+(isDone?' matched':m.sel.l===i?' sel':'')+'" onclick="asML('+i+')" data-li="'+i+'"><div class="asmko">'+v.ko+'</div>'+(v.rom?'<div class="asmrom">'+v.rom+'</div>':'')+' </div>';
+  }).join('');
+  var rh=m.eng.map(function(item,ri){
+    var isDone=m.matched.indexOf(item.i)>=0;
+    return '<div class="as-match-item'+(isDone?' matched':m.sel.r===ri?' sel':'')+'" onclick="asMR('+ri+')" data-ri="'+ri+'">'+item.t+'</div>';
+  }).join('');
+  g.innerHTML='<div>'+lh+'</div><div>'+rh+'</div>';
+}
+function asML(i) {
+  if(!_asMatchState||_asMatchState.matched.indexOf(i)>=0) return;
+  _asMatchState.sel.l=(_asMatchState.sel.l===i?null:i); _asCheckMatchPair(); _asRenderMatch();
+}
+function asMR(ri) {
+  if(!_asMatchState) return;
+  _asMatchState.sel.r=(_asMatchState.sel.r===ri?null:ri); _asCheckMatchPair(); _asRenderMatch();
+}
+function _asCheckMatchPair() {
+  var m=_asMatchState; if(!m||m.sel.l===null||m.sel.r===null) return;
+  var correct=m.eng[m.sel.r].i===m.sel.l;
+  if (correct) {
+    m.matched.push(m.sel.l); m.sel={l:null,r:null};
+    var msg=document.getElementById('as-mm'); if(msg) msg.textContent='✓ 맞았어요! ('+m.matched.length+'/'+m.pairs.length+')';
+    if (m.matched.length===m.pairs.length) setTimeout(function(){ _asSetNav('none',''); },400);
+  } else {
+    var g=document.getElementById('as-mg');
+    if (g) {
+      var wl=g.querySelector('[data-li="'+m.sel.l+'"]'), wr=g.querySelector('[data-ri="'+m.sel.r+'"]');
+      if(wl){wl.classList.add('wrong');setTimeout(function(){wl.classList.remove('wrong');},400);}
+      if(wr){wr.classList.add('wrong');setTimeout(function(){wr.classList.remove('wrong');},400);}
+    }
+    m.sel={l:null,r:null}; setTimeout(_asRenderMatch,420);
+  }
+}
+
+// ── Step 2: Phrase matching ──
+function _asStep2(art,act) {
+  var phrases=(_asStudyContent&&_asStudyContent.phrases)||[];
+  var body=_asCurrentArt&&_asCurrentArt.body?_asFormatBody(_asCurrentArt.body):'';
+  phrases.forEach(function(p){ if(p.ko&&p.ko.length>8) body=body.replace(new RegExp(_asEsc(p.ko.slice(0,12)),'g'),'<mark class="ph-mark">'+p.ko.slice(0,12)+'</mark>'); });
+  art.innerHTML='<p class="as-section-label">📖 기사 읽기 — 핵심 표현 확인</p><div class="as-article-text">'+body+'</div>';
+  if (!phrases.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px">표현이 없습니다.</div>'; _asSetNav('none',''); return; }
+  var eng=_asShuffle(phrases.map(function(p,i){return{t:p.en,i:i};}));
+  _asMatchState={pairs:phrases,eng:eng,matched:[],sel:{l:null,r:null}};
+  act.innerHTML='<p class="as-section-label">🔗 표현 매칭 — 한국어 문장과 영어 뜻을 연결하세요</p><div class="as-match-wrap" id="as-mg"></div><div id="as-mm" style="margin-top:8px;font-size:12px;color:var(--gray)"></div>';
+  _asRenderMatch(); _asSetNav('none','none','none');
+}
+
+// ── Step 3: Word order ──
+function _asStep3(art,act) {
+  art.innerHTML='<p class="as-section-label">📖 기사 읽기</p><div class="as-article-text">'+(_asCurrentArt?_asFormatBody(_asCurrentArt.body||''):'')+'</div>';
+  var wo=(_asStudyContent&&_asStudyContent.word_order)||[];
+  if (!wo.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px">문장이 없습니다.</div>'; _asSetNav('none',''); return; }
+  _asWOState={sentences:wo,idx:0}; _asRenderWO(); _asSetNav('','none','none');
+}
+function _asRenderWO() {
+  var act=document.getElementById('as-activity-area'); if(!act||!_asWOState) return;
+  var s=_asWOState.sentences[_asWOState.idx]; if(!s){_asSetNav('none','');return;}
+  var pool=_asShuffle(s.chunks.slice()); _asWOState.pool=pool; _asWOState.answer=[];
+  act.innerHTML='<p class="as-section-label">✏️ 어절 순서맞추기 ('+(_asWOState.idx+1)+'/'+_asWOState.sentences.length+')</p>'
+    +'<p style="font-size:12px;color:var(--gray);margin-bottom:10px">단어를 눌러 순서대로 배치하세요</p>'
+    +'<div class="as-chunk-pool" id="as-pool"></div>'
+    +'<div class="as-answer-row" id="as-answer"></div>'
+    +'<div id="as-wo-msg" style="margin-top:8px;font-size:12px;color:var(--gray)"></div>';
+  _asRenderWOUI();
+}
+function _asRenderWOUI() {
+  var pe=document.getElementById('as-pool'),ae=document.getElementById('as-answer'); if(!pe||!ae||!_asWOState) return;
+  pe.innerHTML=_asWOState.pool.map(function(c,i){return '<div class="as-chunk" onclick="asWOPool('+i+')">'+c+'</div>';}).join('');
+  ae.innerHTML=_asWOState.answer.length
+    ? _asWOState.answer.map(function(c,i){return '<div class="as-chunk in-answer" onclick="asWOAns('+i+')">'+c+'</div>';}).join('')
+    : '<span style="color:#94a3b8;font-size:12px">여기에 어절을 배치하세요</span>';
+}
+function asWOPool(i) { if(!_asWOState) return; _asWOState.answer.push(_asWOState.pool.splice(i,1)[0]); _asRenderWOUI(); }
+function asWOAns(i)  { if(!_asWOState) return; _asWOState.pool.push(_asWOState.answer.splice(i,1)[0]); _asRenderWOUI(); }
+
+// ── Step 4: Comprehension questions ──
+function _asStep4(art,act) {
+  art.innerHTML='<p class="as-section-label">📖 기사 읽기</p><div class="as-article-text">'+(_asCurrentArt?_asFormatBody(_asCurrentArt.body||''):'')+'</div>';
+  var qs=(_asStudyContent&&_asStudyContent.questions)||[];
+  if (!qs.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px">문제가 없습니다.</div>'; _asSetNav('none',''); return; }
+  _asQState={qs:qs,ans:new Array(qs.length).fill(null)};
+  act.innerHTML='<p class="as-section-label">❓ 이해 확인 — 객관식</p>'
+    +qs.map(function(q,qi){
+      return '<div style="margin-bottom:18px"><p style="font-weight:700;font-size:13px;margin-bottom:8px">+(qi+1)+'. '+(q.q||'')+'</p>'
+        +(q.options||[]).map(function(opt,oi){
+          return '<div class="as-mc-opt" id="as-mc-'+qi+'-'+oi+'" onclick="asQAns('+qi+','+oi+')">'
+            +'<div class="as-mc-letter">'+['A','B','C','D'][oi]+'</div><div>'+opt+'</div></div>';
+        }).join('')+'</div>';
+    }).join('');
+  _asSetNav('none','none','none');
+}
+function asQAns(qi,oi) {
+  if(!_asQState||_asQState.ans[qi]!==null) return;
+  _asQState.ans[qi]=oi; var q=_asQState.qs[qi];
+  [0,1,2,3].forEach(function(i){
+    var el=document.getElementById('as-mc-'+qi+'-'+i); if(!el) return;
+    if(i===q.correct) el.classList.add('right');
+    else if(i===oi) el.classList.add('wrong');
+    else el.classList.add('dim');
+  });
+  if(_asQState.ans.every(function(a){return a!==null;})) {
+    _asTempSaveStep4(_asQState.ans);
+    setTimeout(function(){ _asSetNav('none',''); }, 600);
+  }
+}
+
+// ── Step 5: Free writing (optional) ──
+function _asStep5(art,act) {
+  art.innerHTML='<p class="as-section-label">📖 기사 읽기</p><div class="as-article-text">'+(_asCurrentArt?_asFormatBody(_asCurrentArt.body||''):'')+'</div>';
+  var saved=_asGetTmp(); var txt=(saved&&saved.step5_text)||'';
+  act.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+    +'<p class="as-section-label" style="margin:0">✍️ 자유 글쓰기</p>'
+    +'<span style="font-size:10px;background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:999px;font-weight:700">선택사항</span></div>'
+    +'<p style="font-size:12px;color:var(--gray);margin-bottom:10px">이 기사에 대한 생각이나 비슷한 경험을 한국어로 자유롭게 써보세요.</p>'
+    +'<textarea id="as-write-ta" style="width:100%;height:120px;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-family:\'Noto Sans KR\',sans-serif;font-size:13px;resize:vertical;box-sizing:border-box" placeholder="여기에 자유롭게 써보세요…" oninput="_asTmpStep5(this.value)">'+txt+'</textarea>'
+    +'<div style="margin-top:6px;font-size:11px;color:var(--gray)">💾 자동 저장됩니다.</div>';
+  _asSetNav('none','none','');
+}
+
+// ── Nav actions ──
+function asCheckAnswer() {
+  if (_asStep===3) _asCheckWO();
+  else _asSetNav('none','');
+}
+function _asCheckWO() {
+  if(!_asWOState) return;
+  var s=_asWOState.sentences[_asWOState.idx]; if(!s) return;
+  var ok=_asWOState.answer.join(' ')===s.chunks.join(' ');
+  var msg=document.getElementById('as-wo-msg');
+  if (ok) {
+    if(msg) msg.innerHTML='✅ 정답!';
+    document.getElementById('as-answer').querySelectorAll('.as-chunk').forEach(function(el){el.classList.add('correct');});
+    setTimeout(function(){
+      _asWOState.idx++;
+      if(_asWOState.idx<_asWOState.sentences.length) _asRenderWO();
+      else _asSetNav('none','');
+    },700);
+  } else {
+    if(msg) msg.textContent='❌ 다시 시도해보세요.';
+    document.getElementById('as-answer').querySelectorAll('.as-chunk').forEach(function(el){el.classList.add('wrong');});
+    setTimeout(function(){
+      _asWOState.pool=_asWOState.pool.concat(_asWOState.answer); _asWOState.answer=[];
+      _asRenderWOUI(); if(msg) msg.textContent='';
+    },600);
+  }
+}
+function asNextStep() { _asStepDone[_asStep-1]=true; _asStep=Math.min(_asStep+1,5); _asRenderStep(); }
+function asMarkDone() {
+  _asStepDone[_asStep-1]=true; _asTmpCompletion();
+  _asTmpStep5((document.getElementById('as-write-ta')||{}).value||'');
+  document.getElementById('as-activity-area').innerHTML=
+    '<div class="as-done-banner">'
+    +'<div style="font-size:28px;margin-bottom:8px">🎉</div>'
+    +'<div style="font-size:16px;font-weight:800;margin-bottom:6px">학습 완료!</div>'
+    +'<div style="font-size:13px;color:rgba(255,255,255,.75);margin-bottom:16px">오늘의 기사 학습을 모두 마쳤습니다.</div>'
+    +'<button class="btn btn-g" onclick="asSubmitWork()" style="min-width:200px;margin:0 auto;display:block">📤 오늘 학습 제출하기</button>'
+    +'<div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.45)">자정 전에 제출하지 않으면 자동으로 제출됩니다.</div>'
+    +'</div>';
+  _asSetNav('none','none','none');
+  _asRefreshSubmitBanner();
+}
+
+// ── Temp save ──
+function _asTmpKey() { return 'kh_as_'+(supaUser?supaUser.id:'g')+'_'_'+kstDateKey(); }
+function _asGetTmp() {
+  if(!_asCurrentArt) return null;
+  try { var d=JSON.parse(localStorage.getItem(_asTmpKey())||'{}'); return d[_asCurrentArt.id]||null; } catch(e){return null;}
+}
+function _asUpdateTmp(patch) {
+  if(!_asCurrentArt) return;
+  try {
+    var k=_asTmpKey(),d={}; try{d=JSON.parse(localStorage.getItem(k)||'{}');}catch(e){}
+    d[_asCurrentArt.id]=Object.assign({article_id:String(_asCurrentArt.id),article_title:_asCurrentArt.title||'',savedAt:new Date().toISOString()},d[_asCurrentArt.id]||{},patch);
+    localStorage.setItem(k,JSON.stringify(d));
+  } catch(e){}
+}
+function _asTmpStep4(a) { _asUpdateTmp({step4_answers:a}); }
+function _asTmpStep5(t) { _asUpdateTmp({step5_text:t}); }
+function _asTmpCompletion() { _asUpdateTmp({completed:true,completedAt:new Date().toISOString()}); }
+// alias
+var _asTempSaveStep4=_asTmpStep4;
+
+// ── Submit ──
+async function asSubmitWork() {
+  if(!_asCurrentArt||!supaUser) return;
+  var sb=getSupa(); if(!sb) return;
+  var saved=_asGetTmp()||{};
+  try {
+    var r=await sb.from('article_study_submissions').upsert({
+      user_id:supaUser.id, article_id:String(_asCurrentArt.id), article_title:_asCurrentArt.title||'',
+      study_date:kstDateKey(), step4_content:JSON.stringify(saved.step4_answers||[]),
+      step5_content:saved.step5_text||'', submitted:true, auto_submitted:false,
+      submitted_at:new Date().toISOString(), updated_at:new Date().toISOString()
+    },{onConflict:'user_id,article_id,study_date'});
+    if(r.error) throw r.error;
+    showToast('제출 완료! ✓');
+    _asUpdateTmp({submitted:true});
+    document.getElementById('as-activity-area').innerHTML=
+      '<div class="as-done-banner"><div style="font-size:28px;margin-bottom:8px">✅</div>'
+      +'<div style="font-size:16px;font-weight:800;margin-bottom:6px">제출 완료!</div>'
+      +'<div style="font-size:13px;color:rgba(255,255,255,.75)">오늘의 학습이 성공적으로 제출되었습니다.</div></div>';
+    _asRefreshSubmitBanner();
+  } catch(err) { showToast('제출 실패: '+(err.message||'')); }
+}
+
+// Submit all today's work at once (from banner button)
+async function asSubmitTodayAll() {
+  if(!supaUser) return;
+  var sb=getSupa(); if(!sb) return;
+  var today=kstDateKey(), key='kh_as_'+supaUser.id+'_'+today;
+  try { var d=JSON.parse(localStorage.getItem(key)||'{}');
+    var ids=Object.keys(d); var submitted=0;
+    for(var i=0;i<ids.length;i++){
+      var item=d[ids[i]]; if(!item||item.submitted) continue;
+      var r=await sb.from('article_study_submissions').upsert({
+        user_id:supaUser.id, article_id:String(ids[i]), article_title:item.article_title||'',
+        study_date:today, step4_content:JSON.stringify(item.step4_answers||[]),
+        step5_content:item.step5_text||'', submitted:true, auto_submitted:false,
+        submitted_at:new Date().toISOString(), updated_at:new Date().toISOString()
+      },{onConflict:'user_id,article_id,study_date'});
+      if(!r.error){item.submitted=true;submitted++;}
+    }
+    localStorage.setItem(key,JSON.stringify(d));
+    if(submitted) showToast(submitted+'개 제출 완료! ✓');
+    _asRefreshSubmitBanner();
+  } catch(e){ showToast('제출 실패'); }
+}
+
+// Auto-submit previous days' unsaved work on page load
+async function asAutoSubmitOldWork() {
+  if(!supaUser) return;
+  var sb=getSupa(); if(!sb) return;
+  var today=kstDateKey(), prefix='kh_as_'+supaUser.id+'_';
+  var keys=[]; for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(k&&k.startsWith(prefix)&&k.replace(prefix,'')< today) keys.push(k); }
+  for(var ki=0;ki<keys.length;ki++){
+    var date=keys[ki].replace(prefix,''); var d={}; try{d=JSON.parse(localStorage.getItem(keys[ki])||'{}');}catch(e){continue;}
+    var ids=Object.keys(d); var changed=false;
+    for(var ai=0;ai<ids.length;ai++){
+      var item=d[ids[ai]]; if(!item||item.submitted) continue;
+      var r=await sb.from('article_study_submissions').upsert({
+        user_id:supaUser.id, article_id:String(ids[ai]), article_title:item.article_title||'',
+        study_date:date, step4_content:JSON.stringify(item.step4_answers||[]),
+        step5_content:item.step5_text||'', submitted:true, auto_submitted:true,
+        submitted_at:new Date().toISOString(), updated_at:new Date().toISOString()
+      },{onConflict:'user_id,article_id,study_date'});
+      if(!r.error){item.submitted=true;changed=true;}
+    }
+    if(changed) localStorage.setItem(keys[ki],JSON.stringify(d));
+  }
+}
+
+function _asRefreshSubmitBanner() {
+  var b=document.getElementById('as-submit-today-banner'); if(!b) return;
+  if(!supaUser){b.classList.remove('visible');return;}
+  try {
+    var key='kh_as_'+supaUser.id+'_'+kstDateKey();
+    var d=JSON.parse(localStorage.getItem(key)||'{}');
+    var hasUnsub=Object.values(d).some(function(v){return v&&!v.submitted;});
+    b.classList.toggle('visible',hasUnsub);
+  } catch(e){ b.classList.remove('visible'); }
+}
+
+// ── Utilities ──
+function _asShuffle(a) {
+  var arr=a.slice(); for(var i=arr.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=arr[i];arr[i]=arr[j];arr[j]=t;} return arr;
+}
+function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+
 </script>══════════════════════════════════════════════════════
      BEGINNER 4-STEP MODAL
 ══════════════════════════════════════════════════════════ -->
@@ -5385,6 +5935,58 @@ function checkGFBuild() {
       </span>
       <span id="ls-wp-lock" style="font-size:18px">🔒</span>
     </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     ARTICLE STUDY MODAL
+═══════════════════════════════════════════ -->
+<div class="woverlay hidden" id="as-modal" onclick="if(event.target===this)closeArticleStudy()">
+  <div class="as-panel">
+
+    <!-- ── LIST VIEW ── -->
+    <div id="as-list-view">
+      <div class="wm-header">
+        <div>
+          <div class="wmh-title">📰 Article Study</div>
+          <div class="wmh-sub">학습할 기사를 선택하세요</div>
+        </div>
+        <button class="wmh-close" onclick="closeArticleStudy()">✕</button>
+      </div>
+      <div style="padding:16px;overflow-y:auto;flex:1">
+        <div id="as-article-grid" class="as-article-grid">
+          <div class="as-loading"><div class="as-spinner"></div><div>기사 불러오는 중…</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STUDY VIEW ── -->
+    <div id="as-study-view" class="as-hidden">
+      <div class="wm-header">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+          <button onclick="asBackToList()" style="padding:4px 10px;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:12px;white-space:nowrap;flex-shrink:0">← 목록</button>
+          <div style="min-width:0">
+            <div class="wmh-title" id="as-article-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px">Article Study</div>
+            <div class="wmh-sub" id="as-step-label">Step 1 / 5</div>
+          </div>
+        </div>
+        <button class="wmh-close" onclick="closeArticleStudy()">✕</button>
+      </div>
+      <!-- Step progress pips -->
+      <div id="as-pip-bar" style="display:flex;gap:5px;padding:8px 16px;flex-shrink:0;background:linear-gradient(180deg,#0f2040,#152d5a)"></div>
+      <!-- Scrollable content + activity -->
+      <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column">
+        <div id="as-article-content" style="padding:16px 20px;border-bottom:2px solid var(--border);background:#fff"></div>
+        <div id="as-activity-area" style="padding:16px 20px;flex:1;background:var(--bg)"></div>
+      </div>
+      <!-- Nav bar -->
+      <div class="as-nav-bar">
+        <button id="as-check-btn" class="btn" onclick="asCheckAnswer()">확인</button>
+        <button id="as-next-btn" class="btn btn-g" onclick="asNextStep()" style="display:none">다음 단계 →</button>
+        <button id="as-done-btn" class="btn btn-g" onclick="asMarkDone()" style="display:none">완료 ✓</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
