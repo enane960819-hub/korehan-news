@@ -1100,22 +1100,29 @@ body { background: #0b1626 !important; }
   .sr-action-row { flex-direction: column; }
 }
 
-/* ─── Activity Banners (replaces word tracks) ─────────────────── */
-.sr-activity-banners { display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
-.sr-act-banner {
-  display:flex; align-items:center; gap:14px; padding:14px 16px;
-  background:rgba(255,255,255,0.05); border:1.5px solid rgba(255,255,255,0.09);
-  border-radius:14px; cursor:pointer; transition:all .18s; text-decoration:none; width:100%;
-  font-family:inherit; text-align:left;
+/* ─── Activity Cards (Article / Conversations / Stories Study) ── */
+.sr-activity-cards {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px;
 }
-.sr-act-banner:hover { background:rgba(122,184,245,.1); border-color:rgba(122,184,245,.45); transform:translateY(-1px); }
-.sr-act-banner.coming-soon { opacity:.45; cursor:default; pointer-events:none; }
-.srab-icon  { font-size:22px; flex-shrink:0; width:36px; text-align:center; }
-.srab-body  { flex:1; min-width:0; }
-.srab-title { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.1px; color:#7ab8f5; margin-bottom:2px; }
-.srab-desc  { font-size:12px; color:rgba(255,255,255,.5); }
-.srab-arrow { font-size:15px; color:rgba(255,255,255,.28); flex-shrink:0; transition:color .18s; }
-.sr-act-banner:hover .srab-arrow { color:#7ab8f5; }
+@media(max-width:680px) { .sr-activity-cards { grid-template-columns:1fr; gap:8px; } }
+.sr-act-card {
+  display:flex; flex-direction:column; align-items:flex-start; gap:8px;
+  padding:16px 14px 14px; background:rgba(255,255,255,0.05);
+  border:1.5px solid rgba(255,255,255,0.09); border-radius:16px;
+  cursor:pointer; transition:all .18s; text-decoration:none; width:100%;
+  font-family:inherit; text-align:left; position:relative; overflow:hidden; box-sizing:border-box;
+}
+.sr-act-card:hover { background:rgba(122,184,245,.12); border-color:rgba(122,184,245,.5); transform:translateY(-2px); box-shadow:0 6px 22px rgba(34,85,164,.22); }
+.sr-act-card.coming-soon { opacity:.42; cursor:default; pointer-events:none; }
+.srac-icon  { font-size:26px; }
+.srac-title { font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:1.2px; color:#7ab8f5; margin-bottom:3px; }
+.srac-desc  { font-size:11px; color:rgba(255,255,255,.48); line-height:1.5; }
+.srac-foot  { display:flex; align-items:center; justify-content:space-between; width:100%; margin-top:auto; padding-top:10px; border-top:1px solid rgba(255,255,255,.07); }
+.srac-badge { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.8px; padding:2px 7px; border-radius:99px; background:rgba(122,184,245,.18); color:#7ab8f5; border:1px solid rgba(122,184,245,.28); }
+.srac-badge.cs { background:rgba(148,163,184,.12); color:rgba(255,255,255,.35); border-color:rgba(255,255,255,.1); }
+.srac-badge.done { background:rgba(34,197,94,.2); color:#4ade80; border-color:rgba(34,197,94,.35); }
+.srac-arrow { font-size:14px; color:rgba(255,255,255,.25); transition:color .18s; }
+.sr-act-card:hover .srac-arrow { color:#7ab8f5; }
 /* submit-today banner (shows when there's unsaved work) */
 .as-submit-today { display:none; background:rgba(34,197,94,.1); border:1.5px solid rgba(34,197,94,.35);
   border-radius:12px; padding:12px 14px; margin-bottom:14px; }
@@ -1199,11 +1206,31 @@ body { background: #0b1626 !important; }
 @keyframes as-spin { to { transform:rotate(360deg); } }
 /* Section label */
 .as-section-label { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:8px; }
-@media(max-width:640px) {
-  .as-panel { height:100vh; border-radius:0; }
-  .as-article-grid { grid-template-columns:1fr 1fr; gap:8px; }
-  .as-match-wrap { grid-template-columns:1fr; }
-}
+/* Inline blank fill (Step 3 word-order) */
+.as-blank { display:inline-block; padding:3px 8px; margin:0 3px; border-radius:7px; font-family:'Noto Serif KR',serif; font-weight:700; cursor:pointer; min-width:44px; text-align:center; transition:all .15s; vertical-align:baseline; }
+.as-blank.empty { background:#fff; border:2px dashed #bfdbfe; color:#94a3b8; }
+.as-blank.filled { background:#eaf5ff; border:2px solid #7ab8f5; color:#2255a4; }
+.as-blank.correct { background:#f0fdf4; border-color:#22c55e; color:#15803d; cursor:default; }
+.as-blank.wrong   { background:#fff5f5; border-color:#f87171; animation:as-shake .3s; }
+.as-given { font-family:'Noto Serif KR',serif; }
+.as-chunk.used    { opacity:.38; cursor:default; pointer-events:none; background:#f1f5f9; }
+/* Vocab match cards — no romanization, better visual */
+.as-match-item .asmko { font-size:14px; }
+/* Dictation modal */
+.dct-panel { width:100%; max-width:620px; background:#fff; border-radius:18px; overflow:hidden; animation:wm-in .2s ease; max-height:88vh; display:flex; flex-direction:column; }
+.dct-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; background:linear-gradient(135deg,#0f2040,#152d5a); color:#fff; flex-shrink:0; }
+.dct-step-pips { display:flex; gap:6px; padding:10px 20px; background:#f8fafc; border-bottom:1px solid #e2e8f0; flex-shrink:0; }
+.dct-pip { flex:1; height:4px; border-radius:2px; background:#e2e8f0; transition:background .2s; }
+.dct-pip.done   { background:rgba(34,197,94,.7); }
+.dct-pip.active { background:#7ab8f5; }
+.dct-body { flex:1; overflow-y:auto; padding:20px; }
+.dct-foot { padding:12px 20px; border-top:1px solid #e2e8f0; background:#fff; display:flex; justify-content:flex-end; gap:8px; flex-shrink:0; }
+.dct-sent-card { background:#f8faff; border:1.5px solid #dbeafe; border-radius:12px; padding:16px 18px; margin-bottom:12px; }
+.dct-sent-ko { font-family:'Noto Serif KR',serif; font-size:18px; font-weight:700; color:#0f172a; margin-bottom:6px; line-height:1.6; }
+.dct-sent-en { font-size:13px; color:#64748b; }
+.dct-listen-btn { background:none; border:1.5px solid #bfdbfe; border-radius:8px; padding:5px 10px; cursor:pointer; font-size:15px; color:#2255a4; float:right; }
+.dct-wo-zone { background:#f0f7ff; border:1.5px solid #bfdbfe; border-radius:12px; padding:16px; margin-bottom:14px; font-family:'Noto Serif KR',serif; font-size:16px; line-height:2.4; min-height:56px; }
+@media(max-width:640px) { .dct-panel { max-height:100vh; border-radius:0; } }
 </style>
 </head>
 <body>
@@ -1291,31 +1318,34 @@ body { background: #0b1626 !important; }
     <button class="btn btn-g" onclick="asSubmitTodayAll()" style="font-size:12px;padding:6px 12px">오늘 학습 제출</button>
   </div>
 
-  <!-- ACTIVITY BANNERS -->
-  <div class="sr-activity-banners">
-    <button class="sr-act-banner" onclick="openArticleStudy()">
-      <span class="srab-icon">📰</span>
-      <div class="srab-body">
-        <div class="srab-title">Article Study</div>
-        <div class="srab-desc">5-step reading practice from real Korean news</div>
+  <!-- ACTIVITY CARDS -->
+  <div class="sr-activity-cards">
+    <button class="sr-act-card" onclick="openArticleStudy()">
+      <span class="srac-icon">📰</span>
+      <div class="srac-title">Article Study</div>
+      <div class="srac-desc">Read real Korean news and complete 5 learning steps</div>
+      <div class="srac-foot">
+        <span class="srac-badge" id="srac-badge-article">5 Steps</span>
+        <span class="srac-arrow">→</span>
       </div>
-      <span class="srab-arrow">→</span>
     </button>
-    <button class="sr-act-banner coming-soon">
-      <span class="srab-icon">💬</span>
-      <div class="srab-body">
-        <div class="srab-title">Conversations Study</div>
-        <div class="srab-desc">Coming soon</div>
+    <button class="sr-act-card coming-soon">
+      <span class="srac-icon">💬</span>
+      <div class="srac-title">Conversations</div>
+      <div class="srac-desc">Practice real Korean dialogue patterns</div>
+      <div class="srac-foot">
+        <span class="srac-badge cs">Coming Soon</span>
+        <span class="srac-arrow">→</span>
       </div>
-      <span class="srab-arrow">→</span>
     </button>
-    <button class="sr-act-banner coming-soon">
-      <span class="srab-icon">📖</span>
-      <div class="srab-body">
-        <div class="srab-title">Stories Study</div>
-        <div class="srab-desc">Coming soon</div>
+    <button class="sr-act-card coming-soon">
+      <span class="srac-icon">📖</span>
+      <div class="srac-title">Stories</div>
+      <div class="srac-desc">Learn through graded Korean short stories</div>
+      <div class="srac-foot">
+        <span class="srac-badge cs">Coming Soon</span>
+        <span class="srac-arrow">→</span>
       </div>
-      <span class="srab-arrow">→</span>
     </button>
   </div>
 
@@ -2350,9 +2380,10 @@ function _applyDailyContent(rec) {
     level:    rec.level    || _currentLevel
   };
   _aiContent = {
-    vocab:   Array.isArray(rec.vocab)   ? rec.vocab   : [],
-    grammar: Array.isArray(rec.grammar) ? rec.grammar : [],
-    helpers: Array.isArray(rec.helpers) ? rec.helpers : []
+    vocab:                   Array.isArray(rec.vocab)                   ? rec.vocab                   : [],
+    grammar:                 Array.isArray(rec.grammar)                 ? rec.grammar                 : [],
+    helpers:                 Array.isArray(rec.helpers)                 ? rec.helpers                 : [],
+    topic_writing_sentences: Array.isArray(rec.topic_writing_sentences) ? rec.topic_writing_sentences : []
   };
   _dailyDictationSentences = Array.isArray(rec.dictation_sentences) ? rec.dictation_sentences : [];
   _dailyDictationQuestions = Array.isArray(rec.dictation_questions) ? rec.dictation_questions : [];
@@ -2847,7 +2878,7 @@ function lsStart(type) {
   } else if (type === 'picture') {
     if (typeof openPictureDescription === 'function') openPictureDescription();
   } else if (type === 'sentence') {
-    if (typeof openSentenceWriting === 'function') openSentenceWriting();
+    openDictationModal();
   }
 }
 
@@ -4568,10 +4599,50 @@ var _bm = {
   generating: false,
 };
 
+// ── Topic Writing progress save / restore (item 3) ──────────────
+function _bmProgressKey() {
+  return 'kh_bm_' + (supaUser ? supaUser.id : 'g') + '_' + kstDateKey();
+}
+function _bmSaveProgress() {
+  try {
+    var saved = {
+      step:        _bm.step,
+      wordOrderIdx: _bm.wordOrderIdx || 0,
+      wordOrders:   (_bm.wordOrders || []).map(function(wo){ return { result: wo.result || null, selected: wo.selected || [] }; }),
+      writing:      _bm.writing || '',
+      savedAt:      new Date().toISOString()
+    };
+    localStorage.setItem(_bmProgressKey(), JSON.stringify(saved));
+  } catch(e) {}
+}
+function _bmLoadProgress() {
+  try {
+    var raw = localStorage.getItem(_bmProgressKey());
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
 function openBeginnerModal() {
   var overlay = document.getElementById('bmodal-overlay');
   overlay.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
+
+  // Check for saved mid-flow progress from today
+  var saved = _bmLoadProgress();
+  if (saved && saved.step > 1 && _bm.sentences && _bm.sentences.length) {
+    // Restore: sentences already loaded in memory, just go to saved step
+    _bm.step = saved.step;
+    _bm.writing = saved.writing || '';
+    if (saved.wordOrders && saved.wordOrders.length) {
+      _bm.wordOrderIdx = saved.wordOrderIdx || 0;
+    }
+    updateBMHeader();
+    // Route to the correct step
+    if (_bm.step === 2) { goToBMStep2(); return; }
+    if (_bm.step === 3) { goToBMStep3(); return; }
+    if (_bm.step === 4) { goToBMStep4(); return; }
+  }
+
   _bm = { step:1, sentences:[], shuffled:[], blanks:[], score:{order:0,blank:0}, writing:'', generating:false };
   updateBMHeader();
   renderBMStep1Loading();
@@ -4617,7 +4688,17 @@ async function generateBeginnerSentences() {
     return;
   }
 
-  // ── 캐시 체크 1: sessionStorage (새로고침 전까지 유지) ──
+  // ── Priority 1: DB-loaded pre-generated sentences (admin-reviewed) ──
+  var dbSents = _aiContent && Array.isArray(_aiContent.topic_writing_sentences) && _aiContent.topic_writing_sentences;
+  if (dbSents && dbSents.length >= 3) {
+    console.log('[generateBeginnerSentences] using pre-generated DB sentences:', dbSents.length);
+    _bm.sentences = dbSents;
+    _bm.generating = false;
+    renderBMStep1();
+    return;
+  }
+
+  // ── Priority 2: sessionStorage cache (current session) ──
   var cacheKey = 'bm_sents_' + (topic.id || topic.topic_en || '').replace(/\s/g,'_');
   var cached = sessionStorage.getItem(cacheKey);
   if (cached) {
@@ -4637,7 +4718,8 @@ async function generateBeginnerSentences() {
     return;
   }
 
-  // ── 새로 생성 ──
+  // ── Priority 3: AI generation (no pre-generated content in DB) ──
+  console.log('[generateBeginnerSentences] no pre-generated sentences in DB — generating live');
   try {
     var prompt = '다음 토픽으로 초보자용 한국어 문장 5개를 만들어줘. JSON만 출력해. 다른 말 하지 마.\n\n'
       + '토픽: ' + (topic.topic_ko || topic.topic_en) + '\n\n'
@@ -4729,6 +4811,7 @@ function renderBMStep1() {
 function goToBMStep2() {
   _bm.step = 2;
   updateBMHeader();
+  _bmSaveProgress();
   // 각 문장별로 어절을 섞어서 저장
   _bm.wordOrders = _bm.sentences.map(function(s) {
     var words = s.ko.replace(/[.!?]/g, '').trim().split(/\s+/);
@@ -4820,25 +4903,42 @@ function bmClearAnswer(sentIdx) {
 function checkBMWordOrder() {
   var idx = _bm.wordOrderIdx;
   var wo  = _bm.wordOrders[idx];
-  var isCorrect = wo.selected.join(' ') === wo.original.join(' ');
-  wo.result = isCorrect;
+  var answer = wo.selected.join(' ');
+  var correct = wo.original.join(' ');
+  // Check acceptable alternative orders from admin-edited data
+  var s = _bm.sentences && _bm.sentences[idx];
+  var acceptable = (s && Array.isArray(s.acceptable_orders))
+    ? s.acceptable_orders.map(function(a){ return Array.isArray(a) ? a.join(' ') : String(a); })
+    : [];
+  var isCorrect = answer === correct;
+  var isPartial = !isCorrect && acceptable.indexOf(answer) >= 0;
+  wo.result = isCorrect ? 'correct' : isPartial ? 'partial' : 'wrong';
+  _bmSaveProgress();
 
   var bodyEl = document.getElementById('bm-body');
 
   // 정답 표시
+  var borderColor = isCorrect ? '#16a34a' : isPartial ? '#d97706' : '#dc2626';
+  var bgColor     = isCorrect ? '#f0fdf4' : isPartial ? '#fffbeb' : '#fef2f2';
   var ansZone = document.getElementById('bm-answer-zone');
   if (ansZone) {
-    ansZone.style.border = '2px solid ' + (isCorrect ? '#16a34a' : '#dc2626');
-    ansZone.style.background = isCorrect ? '#f0fdf4' : '#fef2f2';
+    ansZone.style.border = '2px solid ' + borderColor;
+    ansZone.style.background = bgColor;
   }
 
   // Smart feedback
   var fb = document.createElement('div');
-  fb.className = 'bm-feedback ' + (isCorrect ? 'correct' : 'wrong');
+  fb.className = 'bm-feedback ' + wo.result;
   if (isCorrect) {
     fb.innerHTML = '<div class="bm-feedback-emoji">🎉</div>'
       + '<div class="bm-feedback-msg" style="color:#15803d">Perfect!</div>'
       + '<div style="font-size:13px;color:#15803d;margin-top:4px">Great job — the word order is exactly right.</div>';
+  } else if (isPartial) {
+    var customExp = (s && s.explanation) || '';
+    fb.innerHTML = '<div class="bm-feedback-emoji">🔶</div>'
+      + '<div class="bm-feedback-msg" style="color:#92400e">Acceptable — but there\'s a more natural order</div>'
+      + '<div style="font-size:13px;color:#92400e;margin-top:4px;line-height:1.6">' + (customExp || 'This order works, but the standard order below sounds more natural in Korean.') + '</div>'
+      + '<div style="font-size:12px;font-weight:700;color:#92400e;margin-top:6px">Most natural: <span style="font-family:\'Noto Sans KR\',sans-serif">' + wo.original.join(' ') + '</span></div>';
   } else {
     var sel = wo.selected;
     var orig = wo.original;
@@ -4887,6 +4987,7 @@ function finishBMWordOrders() {
 function goToBMStep3() {
   _bm.step = 3;
   updateBMHeader();
+  _bmSaveProgress();
   buildBMBlanks();
   renderBMStep3();
 }
@@ -5017,6 +5118,7 @@ function selectBMChoice(sentIdx, word) {
 function goToBMStep4() {
   _bm.step = 4;
   updateBMHeader();
+  _bmSaveProgress();
   renderBMStep4();
 }
 
@@ -5436,7 +5538,7 @@ function loadGFBuild(p) {
   }).join('');
   el.innerHTML = '<div style="margin-bottom:16px;font-size:13px;color:#475569">Build your own sentences using this grammar pattern.</div>'
     + structure + qs
-    + '<button onclick="checkGFBuild()" style="padding:10px 22px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Submit for Review →</button>'
+    + '<button onclick="checkGFBuild()" style="padding:10px 22px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Done ✓</button>'
     + '<div id="gfb-feedback" style="margin-top:14px;font-size:13px;color:#475569"></div>';
 }
 
@@ -5445,8 +5547,17 @@ function checkGFBuild() {
   var inputs = [0,1,2].map(function(i){ return (document.getElementById('gfb-inp-'+i)||{}).value||''; });
   var filled = inputs.filter(function(v){ return v.trim().length > 0; }).length;
   if (filled === 0) { if (fb) fb.textContent = 'Write at least one sentence first.'; return; }
+  // Save as draft to localStorage (temporary — will be part of a batch submission later)
+  try {
+    var draftKey = 'kh_gf_draft_' + (supaUser ? supaUser.id : 'g') + '_' + kstDateKey();
+    var draft = { pattern: (_gfPattern && _gfPattern.name) || '', sentences: inputs.filter(Boolean), savedAt: new Date().toISOString() };
+    var all = JSON.parse(localStorage.getItem(draftKey) || '[]');
+    all = all.filter(function(d){ return d.pattern !== draft.pattern; }); // replace existing
+    all.push(draft);
+    localStorage.setItem(draftKey, JSON.stringify(all));
+  } catch(e) {}
   markStageDone('grammar');
-  if (fb) fb.innerHTML = '✅ Great! You wrote ' + filled + ' sentence' + (filled>1?'s':'') + '. Keep practicing — use the Fill-in-Blank tab to test your recall.';
+  if (fb) fb.innerHTML = '✅ Saved as draft! You wrote ' + filled + ' sentence' + (filled>1?'s':'') + '.<br><span style="font-size:12px;color:#64748b">Your practice is saved locally. You can submit all your grammar work together later.</span>';
 }
 
 // ══ END GRAMMAR FOCUS MODAL ══════════════════════════════════════
@@ -5482,6 +5593,139 @@ function closeArticleStudy() {
 function asBackToList() {
   document.getElementById('as-list-view').classList.remove('as-hidden');
   document.getElementById('as-study-view').classList.add('as-hidden');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DICTATION MODAL — listening + word arrangement from daily content
+// ═══════════════════════════════════════════════════════════════
+var _dctStep = 1;   // 1=listen, 2=arrange
+var _dctWOIdx = 0;  // current sentence in arrangement step
+var _dctWOState = null;
+
+function openDictationModal() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  var m = document.getElementById('dct-modal');
+  if (!m) return;
+  m.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  _dctStep = 1; _dctWOIdx = 0; _dctWOState = null;
+  _dctRender();
+}
+function closeDictationModal() {
+  var m = document.getElementById('dct-modal');
+  if (m) m.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+function _dctSetPips(step) {
+  var p1=document.getElementById('dct-pip-1'), p2=document.getElementById('dct-pip-2');
+  var sub=document.getElementById('dct-step-sub');
+  if(p1){ p1.className='dct-pip'+(step===1?' active':' done'); }
+  if(p2){ p2.className='dct-pip'+(step===2?' active':''); }
+  if(sub) sub.textContent = step===1 ? 'Step 1 of 2 — 듣기 연습' : 'Step 2 of 2 — 어절 배열하기';
+}
+function _dctRender() {
+  _dctSetPips(_dctStep);
+  if (_dctStep === 1) _dctRenderListen();
+  else _dctRenderArrange();
+}
+function _dctRenderListen() {
+  var sents = _dailyDictationSentences;
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  if (!body || !foot) return;
+  if (!sents || !sents.length) {
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">오늘의 듣기 문장이 없습니다.<br><span style="font-size:12px">관리자가 오늘의 주제를 생성하면 내용이 표시됩니다.</span></div>';
+    foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">닫기</button>';
+    return;
+  }
+  var html = '<div style="font-size:13px;color:#64748b;margin-bottom:16px">각 문장을 듣고 소리 내어 따라 읽어보세요.</div>';
+  sents.forEach(function(s, i) {
+    var safeKo = (s.ko||'').replace(/'/g,"&#39;");
+    html += '<div class="dct-sent-card">'
+      + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'
+      + '<div style="flex:1"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:6px">Sentence '+(i+1)+'</div>'
+      + '<div class="dct-sent-ko">'+escapeHTML(s.ko||'')+'</div>'
+      + '<div class="dct-sent-en">'+escapeHTML(s.en||'')+'</div></div>'
+      + '<button class="dct-listen-btn" onclick="speakKorean(\''+safeKo+'\')">🔊</button>'
+      + '</div></div>';
+  });
+  body.innerHTML = html;
+  foot.innerHTML = '<button class="btn btn-g" onclick="dctNext()" style="min-width:140px">어절 배열하기 →</button>';
+}
+function _dctRenderArrange() {
+  var sents = _dailyDictationSentences;
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  if (!body || !foot || !sents || !sents.length) return;
+  if (_dctWOIdx >= sents.length) {
+    // All done
+    body.innerHTML = '<div style="text-align:center;padding:30px 20px">'
+      + '<div style="font-size:36px;margin-bottom:12px">🎉</div>'
+      + '<div style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:8px">Dictation 완료!</div>'
+      + '<div style="font-size:13px;color:#64748b">모든 문장 배열을 완료했습니다.</div>'
+      + '</div>';
+    foot.innerHTML = '<button class="btn btn-g" onclick="closeDictationModal();markStageDone(\'sentence\')">완료 ✓</button>';
+    return;
+  }
+  var s = sents[_dctWOIdx];
+  var words = (s.ko||'').replace(/[.!?。！？]/g,'').trim().split(/\s+/).filter(Boolean);
+  if (!_dctWOState || _dctWOState.sentIdx !== _dctWOIdx) {
+    var shuffled = words.slice();
+    for (var i=shuffled.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1));var t=shuffled[i];shuffled[i]=shuffled[j];shuffled[j]=t; }
+    if(words.length>1&&shuffled.every(function(w,i){return w===words[i];})){var t=shuffled[0];shuffled[0]=shuffled[shuffled.length-1];shuffled[shuffled.length-1]=t;}
+    _dctWOState = { sentIdx:_dctWOIdx, original:words, pool:shuffled, selected:[], result:null };
+  }
+  var wo = _dctWOState;
+  var poolHTML = wo.pool.map(function(w,pi){
+    var used=wo.selected.indexOf(w)>=0;
+    var usedCount=wo.selected.filter(function(x){return x===w;}).length;
+    var totalCount=wo.pool.filter(function(x){return x===w;}).length;
+    var isUsed=usedCount>=totalCount;
+    return '<button class="bm-word-chip'+(isUsed?' bm-word-used':'')+'" '+(isUsed?'disabled':'')+' onclick="dctWOPick('+pi+')" style="font-family:\'Noto Serif KR\',serif">'+escapeHTML(w)+'</button>';
+  }).join('');
+  var ansHTML = wo.selected.length
+    ? wo.selected.map(function(w,si){return '<button class="bm-word-chip bm-word-selected" onclick="dctWORemove('+si+')" style="font-family:\'Noto Serif KR\',serif">'+escapeHTML(w)+' ×</button>';}).join('')
+    : '<span style="font-size:12px;color:#94a3b8">단어를 선택해서 문장을 만드세요</span>';
+  var allSel = wo.selected.length === wo.original.length;
+  body.innerHTML = '<div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">문장 '+(_dctWOIdx+1)+' / '+sents.length+'</div>'
+    + '<div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#1e3a5f">💡 '+escapeHTML(s.en||'')+'</div>'
+    + '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:8px">내 답</div>'
+    + '<div id="dct-answer-zone" style="min-height:48px;border:2px dashed #bfdbfe;border-radius:12px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#f8fbff;">'+ansHTML+'</div></div>'
+    + '<div><div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:8px">단어 목록</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px;">'+poolHTML+'</div></div>'
+    + '<div id="dct-wo-msg" style="margin-top:12px;font-size:13px;font-weight:700"></div>';
+  foot.innerHTML = '<button class="btn" onclick="dctWOClear()" style="margin-right:auto">🔄 다시</button>'
+    + '<button class="btn btn-g" '+(allSel?'':'disabled')+' onclick="dctWOCheck()">확인 ✓</button>';
+}
+function dctWOPick(pi) {
+  if(!_dctWOState) return;
+  var w=_dctWOState.pool[pi];
+  var used=_dctWOState.selected.filter(function(x){return x===w;}).length;
+  var total=_dctWOState.pool.filter(function(x){return x===w;}).length;
+  if(used>=total) return;
+  _dctWOState.selected.push(w); _dctRenderArrange();
+}
+function dctWORemove(si) { if(!_dctWOState) return; _dctWOState.selected.splice(si,1); _dctRenderArrange(); }
+function dctWOClear()    { if(!_dctWOState) return; _dctWOState.selected=[]; _dctRenderArrange(); }
+function dctWOCheck() {
+  if(!_dctWOState) return;
+  var ok=_dctWOState.selected.join(' ')===_dctWOState.original.join(' ');
+  var msg=document.getElementById('dct-wo-msg');
+  var zone=document.getElementById('dct-answer-zone');
+  if(ok){
+    if(msg) msg.innerHTML='<span style="color:#16a34a">✅ 정답! 잘 했어요.</span>';
+    if(zone){zone.style.border='2px solid #22c55e';zone.style.background='#f0fdf4';}
+    var foot=document.getElementById('dct-foot');
+    if(foot){ foot.innerHTML='<button class="btn btn-g" onclick="_dctWONext()">다음 →</button>'; }
+  } else {
+    if(msg) msg.innerHTML='<span style="color:#dc2626">❌ 다시 해보세요. 정답: <span style="font-family:\'Noto Serif KR\',serif;font-weight:700">'
+      +escapeHTML(_dctWOState.original.join(' '))+'</span></span>';
+    if(zone){zone.style.border='2px solid #f87171';zone.style.background='#fff5f5';}
+  }
+}
+function _dctWONext() { _dctWOIdx++; _dctWOState=null; _dctRenderArrange(); }
+function dctNext() {
+  if (_dctStep===1) { _dctStep=2; _dctWOIdx=0; _dctWOState=null; _dctRender(); }
 }
 
 async function _asLoadArticles() {
@@ -5596,15 +5840,19 @@ function _asStep1(art,act) {
 }
 function _asRenderMatch() {
   var g=document.getElementById('as-mg'); if(!g||!_asMatchState) return;
-  var m=_asMatchState; var lh=m.pairs.map(function(v,i){
+  var m=_asMatchState;
+  var lh=m.pairs.map(function(v,i){
     var isDone=m.matched.indexOf(i)>=0;
-    return '<div class="as-match-item'+(isDone?' matched':m.sel.l===i?' sel':'')+'" onclick="asML('+i+')" data-li="'+i+'"><div class="asmko">'+v.ko+'</div>'+(v.rom?'<div class="asmrom">'+v.rom+'</div>':'')+' </div>';
+    var cls='as-match-item'+(isDone?' matched':m.sel.l===i?' sel':'');
+    // Korean side: no romanization, larger Korean text
+    return '<div class="'+cls+'" onclick="asML('+i+')" data-li="'+i+'" style="font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;color:'+(isDone?'#15803d':'var(--accent)')+'">'+v.ko+'</div>';
   }).join('');
   var rh=m.eng.map(function(item,ri){
     var isDone=m.matched.indexOf(item.i)>=0;
-    return '<div class="as-match-item'+(isDone?' matched':m.sel.r===ri?' sel':'')+'" onclick="asMR('+ri+')" data-ri="'+ri+'">'+item.t+'</div>';
+    var cls='as-match-item'+(isDone?' matched':m.sel.r===ri?' sel':'');
+    return '<div class="'+cls+'" onclick="asMR('+ri+')" data-ri="'+ri+'" style="font-size:13px;color:#334155">'+item.t+'</div>';
   }).join('');
-  g.innerHTML='<div>'+lh+'</div><div>'+rh+'</div>';
+  g.innerHTML='<div style="display:flex;flex-direction:column;gap:7px">'+lh+'</div><div style="display:flex;flex-direction:column;gap:7px">'+rh+'</div>';
 }
 function asML(i) {
   if(!_asMatchState||_asMatchState.matched.indexOf(i)>=0) return;
@@ -5645,33 +5893,66 @@ function _asStep2(art,act) {
   _asRenderMatch(); _asSetNav('none','none','none');
 }
 
-// ── Step 3: Word order ──
+// ── Step 3: Fill-in-blank (words inside article sentence) ──
 function _asStep3(art,act) {
   art.innerHTML='<p class="as-section-label">📖 기사 읽기</p><div class="as-article-text">'+(_asCurrentArt?_asFormatBody(_asCurrentArt.body||''):'')+'</div>';
   var wo=(_asStudyContent&&_asStudyContent.word_order)||[];
   if (!wo.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px">문장이 없습니다.</div>'; _asSetNav('none',''); return; }
-  _asWOState={sentences:wo,idx:0}; _asRenderWO(); _asSetNav('','none','none');
+  _asWOState={sentences:wo,idx:0,filledBlanks:null,blankPositions:null,pool:null}; _asRenderBlankUI(); _asSetNav('','none','none');
 }
-function _asRenderWO() {
+function _asRenderBlankUI() {
   var act=document.getElementById('as-activity-area'); if(!act||!_asWOState) return;
-  var s=_asWOState.sentences[_asWOState.idx]; if(!s){_asSetNav('none','');return;}
-  var pool=_asShuffle(s.chunks.slice()); _asWOState.pool=pool; _asWOState.answer=[];
-  act.innerHTML='<p class="as-section-label">✏️ 어절 순서맞추기 ('+(_asWOState.idx+1)+'/'+_asWOState.sentences.length+')</p>'
-    +'<p style="font-size:12px;color:var(--gray);margin-bottom:10px">단어를 눌러 순서대로 배치하세요</p>'
-    +'<div class="as-chunk-pool" id="as-pool"></div>'
-    +'<div class="as-answer-row" id="as-answer"></div>'
+  var s=_asWOState.sentences[_asWOState.idx]; if(!s||!s.chunks||!s.chunks.length){_asSetNav('none','');return;}
+  var chunks=s.chunks;
+  // Pick 2-3 positions to blank (never first or last to keep context)
+  var available=[]; for(var i=1;i<chunks.length-1;i++) available.push(i);
+  if(!available.length){ available=[0]; }
+  var numBlanks=Math.min(3,Math.max(2,Math.ceil(chunks.length/3)));
+  numBlanks=Math.min(numBlanks,available.length);
+  var shuffledAvail=_asShuffle(available.slice());
+  var blankPos=shuffledAvail.slice(0,numBlanks).sort(function(a,b){return a-b;});
+  _asWOState.blankPositions=blankPos;
+  _asWOState.filledBlanks=new Array(blankPos.length).fill(null);
+  _asWOState.pool=_asShuffle(blankPos.map(function(p,bi){return {text:chunks[p],bi:bi};}));
+  // Build sentence HTML with blanks
+  var sentHTML=chunks.map(function(c,i){
+    var bi=blankPos.indexOf(i);
+    if(bi>=0){
+      var filled=_asWOState.filledBlanks[bi];
+      if(filled!==null) return '<span class="as-blank filled" data-bi="'+bi+'" onclick="asBlankClear('+bi+')" title="클릭해서 취소">'+filled+'</span>';
+      return '<span class="as-blank empty" data-bi="'+bi+'">___</span>';
+    }
+    return '<span class="as-given">'+c+'</span>';
+  }).join(' ');
+  var poolHTML=_asWOState.pool.map(function(item,pi){
+    var used=_asWOState.filledBlanks.indexOf(item.text)>=0&&_asWOState.filledBlanks[item.bi]===item.text;
+    return '<div class="as-chunk'+(used?' used':'')+'" '+(used?'':'onclick="asBlankFill('+pi+')"')+'>'+item.text+'</div>';
+  }).join('');
+  act.innerHTML='<p class="as-section-label">✏️ 빈칸 채우기 ('+(_asWOState.idx+1)+'/'+_asWOState.sentences.length+')</p>'
+    +'<p style="font-size:12px;color:var(--gray);margin-bottom:12px">단어 카드를 클릭해서 문장 안의 빈칸을 채우세요</p>'
+    +'<div class="dct-wo-zone" style="margin-bottom:14px">'+sentHTML+'</div>'
+    +'<div class="as-chunk-pool" id="as-pool">'+poolHTML+'</div>'
     +'<div id="as-wo-msg" style="margin-top:8px;font-size:12px;color:var(--gray)"></div>';
-  _asRenderWOUI();
+  // Show check only if all blanks filled
+  var allFilled=_asWOState.filledBlanks.every(function(v){return v!==null;});
+  _asSetNav(allFilled?'':'none','none','none');
 }
-function _asRenderWOUI() {
-  var pe=document.getElementById('as-pool'),ae=document.getElementById('as-answer'); if(!pe||!ae||!_asWOState) return;
-  pe.innerHTML=_asWOState.pool.map(function(c,i){return '<div class="as-chunk" onclick="asWOPool('+i+')">'+c+'</div>';}).join('');
-  ae.innerHTML=_asWOState.answer.length
-    ? _asWOState.answer.map(function(c,i){return '<div class="as-chunk in-answer" onclick="asWOAns('+i+')">'+c+'</div>';}).join('')
-    : '<span style="color:#94a3b8;font-size:12px">여기에 어절을 배치하세요</span>';
+function asBlankFill(pi) {
+  if(!_asWOState||!_asWOState.pool) return;
+  var item=_asWOState.pool[pi]; if(!item) return;
+  var nextEmpty=_asWOState.filledBlanks.indexOf(null);
+  if(nextEmpty<0) return;
+  _asWOState.filledBlanks[nextEmpty]=item.text;
+  _asRenderBlankUI();
 }
-function asWOPool(i) { if(!_asWOState) return; _asWOState.answer.push(_asWOState.pool.splice(i,1)[0]); _asRenderWOUI(); }
-function asWOAns(i)  { if(!_asWOState) return; _asWOState.pool.push(_asWOState.answer.splice(i,1)[0]); _asRenderWOUI(); }
+function asBlankClear(bi) {
+  if(!_asWOState) return;
+  _asWOState.filledBlanks[bi]=null;
+  _asRenderBlankUI();
+}
+// Keep old names as aliases (used in checkAnswer path)
+function asWOPool(i) { asBlankFill(i); }
+function asWOAns(i)  { asBlankClear(i); }
 
 // ── Step 4: Comprehension questions ──
 function _asStep4(art,act) {
@@ -5725,23 +6006,31 @@ function asCheckAnswer() {
 function _asCheckWO() {
   if(!_asWOState) return;
   var s=_asWOState.sentences[_asWOState.idx]; if(!s) return;
-  var ok=_asWOState.answer.join(' ')===s.chunks.join(' ');
   var msg=document.getElementById('as-wo-msg');
-  if (ok) {
+  // Check each filled blank against its correct position
+  var allCorrect=_asWOState.blankPositions.every(function(pos,bi){
+    return _asWOState.filledBlanks[bi]===s.chunks[pos];
+  });
+  if (allCorrect) {
     if(msg) msg.innerHTML='✅ 정답!';
-    document.getElementById('as-answer').querySelectorAll('.as-chunk').forEach(function(el){el.classList.add('correct');});
+    document.querySelectorAll('.as-blank.filled').forEach(function(el){el.classList.add('correct');});
+    _asSetNav('none','none','none');
     setTimeout(function(){
       _asWOState.idx++;
-      if(_asWOState.idx<_asWOState.sentences.length) _asRenderWO();
+      if(_asWOState.idx<_asWOState.sentences.length) _asRenderBlankUI();
       else _asSetNav('none','');
-    },700);
+    },800);
   } else {
-    if(msg) msg.textContent='❌ 다시 시도해보세요.';
-    document.getElementById('as-answer').querySelectorAll('.as-chunk').forEach(function(el){el.classList.add('wrong');});
-    setTimeout(function(){
-      _asWOState.pool=_asWOState.pool.concat(_asWOState.answer); _asWOState.answer=[];
-      _asRenderWOUI(); if(msg) msg.textContent='';
-    },600);
+    if(msg) msg.textContent='❌ 틀렸어요. 잘못된 칸은 비워집니다.';
+    // Clear only wrong blanks
+    _asWOState.blankPositions.forEach(function(pos,bi){
+      var el=document.querySelector('.as-blank[data-bi="'+bi+'"]');
+      if(_asWOState.filledBlanks[bi]!==s.chunks[pos]){
+        if(el){el.classList.add('wrong');}
+        setTimeout(function(){_asWOState.filledBlanks[bi]=null;},500);
+      }
+    });
+    setTimeout(function(){ _asRenderBlankUI(); if(msg) msg.textContent=''; },600);
   }
 }
 function asNextStep() { _asStepDone[_asStep-1]=true; _asStep=Math.min(_asStep+1,5); _asRenderStep(); }
@@ -5750,10 +6039,10 @@ function asMarkDone() {
   _asTmpStep5((document.getElementById('as-write-ta')||{}).value||'');
   document.getElementById('as-activity-area').innerHTML=
     '<div class="as-done-banner">'
-    +'<div style="font-size:28px;margin-bottom:8px">🎉</div>'
-    +'<div style="font-size:16px;font-weight:800;margin-bottom:6px">학습 완료!</div>'
-    +'<div style="font-size:13px;color:rgba(255,255,255,.75);margin-bottom:16px">오늘의 기사 학습을 모두 마쳤습니다.</div>'
-    +'<button class="btn btn-g" onclick="asSubmitWork()" style="min-width:200px;margin:0 auto;display:block">📤 오늘 학습 제출하기</button>'
+    +'<div style="font-size:28px;margin-bottom:8px">✅</div>'
+    +'<div style="font-size:16px;font-weight:800;margin-bottom:6px">기사 학습 완료!</div>'
+    +'<div style="font-size:13px;color:rgba(255,255,255,.75);margin-bottom:16px">이 기사의 모든 학습 단계를 마쳤습니다.</div>'
+    +'<button class="btn btn-g" onclick="asSubmitWork()" style="min-width:200px;margin:0 auto;display:block">📤 학습 저장하기</button>'
     +'<div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.45)">자정 전에 제출하지 않으면 자동으로 제출됩니다.</div>'
     +'</div>';
   _asSetNav('none','none','none');
@@ -5940,6 +6229,31 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
       </span>
       <span id="ls-wp-lock" style="font-size:18px">🔒</span>
     </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     DICTATION MODAL
+═══════════════════════════════════════════ -->
+<div class="woverlay hidden" id="dct-modal" onclick="if(event.target===this)closeDictationModal()">
+  <div class="dct-panel">
+    <div class="dct-header">
+      <div>
+        <div style="font-size:13px;font-weight:800;letter-spacing:.5px">🎧 Dictation</div>
+        <div style="font-size:11px;opacity:.65;margin-top:2px" id="dct-step-sub">Step 1 of 2 — Listen</div>
+      </div>
+      <button onclick="closeDictationModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:14px">✕</button>
+    </div>
+    <div class="dct-step-pips" id="dct-pips">
+      <div class="dct-pip active" id="dct-pip-1"></div>
+      <div class="dct-pip" id="dct-pip-2"></div>
+    </div>
+    <div class="dct-body" id="dct-body">
+      <div class="as-loading"><div class="as-spinner"></div><div>로딩 중…</div></div>
+    </div>
+    <div class="dct-foot" id="dct-foot">
+      <button class="btn btn-g" id="dct-next-btn" onclick="dctNext()" style="min-width:120px">다음 →</button>
+    </div>
   </div>
 </div>
 

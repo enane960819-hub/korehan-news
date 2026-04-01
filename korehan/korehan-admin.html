@@ -5416,6 +5416,9 @@ function srTopicsFormHTML() {
     + '<textarea id="srt-dictation-sentences" rows="3" style="width:100%;font-family:monospace;font-size:12px" placeholder="한국 음식은 맛있어요|Korean food is delicious"></textarea></div>'
     + '<div class="fg"><label>Dictation 질문 <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = question_ko|answer_ko|hint_en (3개)</span></label>'
     + '<textarea id="srt-dictation-questions" rows="3" style="width:100%;font-family:monospace;font-size:12px" placeholder="좋아하는 음식이 있어요?|네, 비빔밥을 좋아해요|Yes, I like bibimbap"></textarea></div>'
+    + '<div class="fg"><label>📝 Topic Writing 문장 <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|en|alternative1|alternative2|explanation (최소 3개). alternative와 explanation은 선택사항.</span></label>'
+    + '<textarea id="srt-tw-sentences" rows="5" style="width:100%;font-family:monospace;font-size:12px" placeholder="저는 한국 음식을 좋아해요|I like Korean food\n한국 음식은 정말 맛있어요|Korean food is really delicious"></textarea>'
+    + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">이 문장들이 학습자의 "문장 만들기" 단계에 사용됩니다. AI 재생성 시 자동 생성됩니다.</div></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
     + '<button class="btn btn-g" onclick="srSaveDailyContent()">💾 저장</button>'
     + '<button class="btn" onclick="srRegenDailyContent()" style="background:#f0fdf4;color:#15803d;border:1px solid #86efac">🤖 AI 재생성</button>'
@@ -5450,6 +5453,7 @@ async function srLoadDailyContent() {
     document.getElementById('srt-helpers').value = '';
     document.getElementById('srt-dictation-sentences').value = '';
     document.getElementById('srt-dictation-questions').value = '';
+    if (document.getElementById('srt-tw-sentences')) document.getElementById('srt-tw-sentences').value = '';
     document.getElementById('srt-admin-badge').style.display = 'none';
   }
 
@@ -5478,6 +5482,17 @@ async function srLoadDailyContent() {
   document.getElementById('srt-dictation-questions').value = (rec.dictation_questions || []).map(function(d) {
     return (d.question_ko||'') + '|' + (d.answer_ko||'') + '|' + (d.hint_en||'');
   }).join('\n');
+  var twEl = document.getElementById('srt-tw-sentences');
+  if (twEl) {
+    twEl.value = (rec.topic_writing_sentences || []).map(function(s) {
+      var parts = [(s.ko||''), (s.en||'')];
+      if (s.acceptable_orders && s.acceptable_orders.length) {
+        s.acceptable_orders.forEach(function(ao){ parts.push(Array.isArray(ao)?ao.join(' '):String(ao)); });
+      }
+      if (s.explanation) parts.push(s.explanation);
+      return parts.join('|');
+    }).join('\n');
+  }
   var badge = document.getElementById('srt-admin-badge');
   if (badge) badge.style.display = rec.admin_edited ? '' : 'none';
 
@@ -5513,11 +5528,27 @@ async function srSaveDailyContent() {
     var p = line.split('|'); return { question_ko:(p[0]||'').trim(), answer_ko:(p[1]||'').trim(), hint_en:(p[2]||'').trim() };
   });
 
+  var topic_writing_sentences = parseLines('srt-tw-sentences', function(line) {
+    var p = line.split('|');
+    var ko = (p[0]||'').trim(); var en = (p[1]||'').trim();
+    if (!ko) return null;
+    var acceptable_orders = []; var explanation = '';
+    // p[2]+ are alternative orders or explanation
+    for (var i = 2; i < p.length; i++) {
+      var v = (p[i]||'').trim(); if (!v) continue;
+      // If it contains Korean characters and spaces it's likely an alternative order
+      if (/[가-힣]/.test(v) && v.indexOf(' ') >= 0) acceptable_orders.push(v.split(' '));
+      else explanation = v; // last non-korean string is explanation
+    }
+    return { ko: ko, en: en, acceptable_orders: acceptable_orders, explanation: explanation };
+  }).filter(Boolean);
+
   var r = await sb.from('study_daily_content').upsert({
     scheduled_date: date, level: level,
     topic_ko: (document.getElementById('srt-topic-ko').value || '').trim(),
     topic_en: (document.getElementById('srt-topic-en').value || '').trim(),
     vocab, grammar, helpers, dictation_sentences, dictation_questions,
+    topic_writing_sentences,
     admin_edited: true, updated_at: new Date().toISOString()
   }, { onConflict: 'scheduled_date,level' });
 
@@ -5557,8 +5588,9 @@ async function srRegenDailyContent() {
     + '"grammar":[{"level":"' + level + '","pattern":"pattern","explanation":"explanation","example_ko":"example","example_en":"translation"}],'
     + '"helpers":[{"ko":"Korean","en":"translation"}],'
     + '"dictation_sentences":[{"ko":"Korean","en":"English"}],'
-    + '"dictation_questions":[{"question_ko":"question","answer_ko":"answer","hint_en":"hint"}]}\n'
-    + 'vocab:5, grammar:3, helpers:4, dictation_sentences:3, dictation_questions:3.';
+    + '"dictation_questions":[{"question_ko":"question","answer_ko":"answer","hint_en":"hint"}],'
+    + '"topic_writing_sentences":[{"ko":"Korean sentence","en":"English translation","acceptable_orders":[],"explanation":""}]}\n'
+    + 'vocab:5, grammar:3, helpers:4, dictation_sentences:3, dictation_questions:3, topic_writing_sentences:5 sentences (4-8 words each, at the correct level, all about the topic).';
 
   try {
     var resp = await callClaude({ feature:'study-room-daily-admin', model:'claude-haiku-4-5-20251001', max_tokens:1200, messages:[{role:'user',content:prompt}] });
@@ -5575,6 +5607,8 @@ async function srRegenDailyContent() {
     document.getElementById('srt-helpers').value = (parsed.helpers||[]).map(function(h){ return (h.ko||'')+'|'+(h.en||''); }).join('\n');
     document.getElementById('srt-dictation-sentences').value = (parsed.dictation_sentences||[]).map(function(d){ return (d.ko||'')+'|'+(d.en||''); }).join('\n');
     document.getElementById('srt-dictation-questions').value = (parsed.dictation_questions||[]).map(function(d){ return (d.question_ko||'')+'|'+(d.answer_ko||'')+'|'+(d.hint_en||''); }).join('\n');
+    var twEl = document.getElementById('srt-tw-sentences');
+    if (twEl) twEl.value = (parsed.topic_writing_sentences||[]).map(function(s){ return (s.ko||'')+'|'+(s.en||''); }).join('\n');
 
     document.getElementById('srt-editor').style.display = '';
     document.getElementById('srt-empty').style.display = 'none';
