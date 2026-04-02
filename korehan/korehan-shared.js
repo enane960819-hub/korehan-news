@@ -28,9 +28,10 @@ function getSupa() {
 var supaUser = null;
 
 // ── Global difficulty filter ───────────────────────────────────
-var _activeDiff = 'all';
+var _activeDiff = (function(){ try { return localStorage.getItem('kh_diff') || 'all'; } catch(e){ return 'all'; } })();
 function khSetDiff(val) {
   _activeDiff = val || 'all';
+  try { localStorage.setItem('kh_diff', _activeDiff); } catch(e) {}
   // Update dot color
   var dot = document.getElementById('kh-diff-dot');
   if (dot) {
@@ -146,27 +147,34 @@ async function callClaude({ feature, model, max_tokens, messages }) {
   if (!sb) throw new Error('Supabase not initialized');
 
   var session = await getFreshClaudeSession(sb);
-  if (!session) throw new Error('Not signed in');
+  if (!session) throw new Error('로그인이 필요합니다.');
 
   var payload = { feature, model, max_tokens, messages };
-  var resp = await callClaudeRequest(session.access_token, payload);
+  var resp;
+  try {
+    resp = await callClaudeRequest(session.access_token, payload);
+  } catch(netErr) {
+    throw new Error('네트워크 오류 — 인터넷 연결을 확인해주세요.');
+  }
 
   if (resp.status === 401) {
     var freshSession = await getFreshClaudeSession(sb, true);
     if (freshSession && freshSession.access_token) {
-      resp = await callClaudeRequest(freshSession.access_token, payload);
+      try {
+        resp = await callClaudeRequest(freshSession.access_token, payload);
+      } catch(netErr2) {
+        throw new Error('네트워크 오류 — 인터넷 연결을 확인해주세요.');
+      }
     }
   }
 
-  if (resp.status === 429) throw new Error('rate_limit');
+  if (resp.status === 429) throw new Error('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.');
   if (resp.status === 401) {
-    // Do NOT sign out the user here — a 401 may be transient (edge function cold start,
-    // token timing, etc.). Let the caller decide how to handle it.
-    throw new Error('unauthorized');
+    throw new Error('인증 오류 — 다시 로그인해주세요.');
   }
   if (!resp.ok) {
     var err = await resp.json().catch(function(){ return {}; });
-    throw new Error(err.error || 'API error ' + resp.status);
+    throw new Error(err.error || 'AI 서버 오류 (' + resp.status + ')');
   }
   return resp.json();
 }
@@ -1192,12 +1200,16 @@ function getOpinions()  { return lsGet(K_OPINIONS,  []);            }
 
 
 
-function toast(msg, isErr) {
+function toast(msg, typeOrBool) {
+  var bg = '#1a3a6b';
+  if (typeOrBool === true || typeOrBool === 'error') bg = '#cc2200';
+  else if (typeOrBool === 'warn')    bg = '#b45309';
+  else if (typeOrBool === 'success') bg = '#15803d';
   var d = document.createElement('div');
-  d.style.cssText = 'position:fixed;bottom:22px;right:22px;z-index:9999;background:'+(isErr?'#cc2200':'#1a3a6b')+';color:#fff;padding:11px 18px;border-radius:4px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,0.25);';
+  d.style.cssText = 'position:fixed;bottom:22px;right:22px;z-index:9999;background:'+bg+';color:#fff;padding:11px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,0.28);max-width:340px;line-height:1.4;transition:opacity .2s;';
   d.textContent = msg;
   document.body.appendChild(d);
-  setTimeout(function(){ d.remove(); }, 3000);
+  setTimeout(function(){ d.style.opacity='0'; setTimeout(function(){ d.remove(); },200); }, 3500);
 }
 
 // ── 저장 단어 ─────────────────────────────────────────────────

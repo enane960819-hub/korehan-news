@@ -351,7 +351,10 @@ function filterSentences(level, btn) {
 
 async function generateAISentences(btn) {
   var articles = published().slice(0, 6);
-  if (!articles.length) { alert('No articles found to generate from.'); return; }
+  if (!articles.length) {
+    toast('기사 데이터를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+    return;
+  }
   var orig = btn.textContent;
   btn.textContent = '⏳ Generating...';
   btn.disabled = true;
@@ -363,17 +366,13 @@ async function generateAISentences(btn) {
   var prompt = 'You are a Korean language teacher. Based on these Korean news article excerpts, create 12 natural example sentences for learners (4 Beginner, 4 Intermediate, 4 Advanced). Each sentence should use vocabulary that appears in the articles.\n\nArticles:\n' + articleTexts + '\n\nRespond ONLY in this exact JSON format (no markdown):\n[{"level":"Beginner","ko":"Korean sentence","en":"English translation"},...]';
 
   try {
-    var res = await fetch('https://purple-glitter-be9d.enane960819.workers.dev/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1500,
-        messages: [{ role: 'user', content: prompt }]
-      })
+    var data = await callClaude({
+      feature: 'learn-sentences',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }]
     });
-    var data = await res.json();
-    var rawText = (data.content && data.content[0] && data.content[0].text) || data.text || '';
+    var rawText = (data.content && data.content[0] && data.content[0].text) || '';
     var clean = rawText.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
     var start = clean.indexOf('['), end = clean.lastIndexOf(']');
     if (start >= 0 && end > start) clean = clean.slice(start, end + 1);
@@ -385,7 +384,7 @@ async function generateAISentences(btn) {
   } catch(e) {
     btn.textContent = orig;
     btn.disabled = false;
-    alert('Generation failed. Please try again.');
+    toast('생성 실패: ' + (e.message || '다시 시도해주세요.'), true);
   }
 }
 

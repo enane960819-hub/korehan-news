@@ -102,6 +102,7 @@
 .st-q-a{font-size:12px;color:#475569;line-height:1.5;}
 @media(max-width:900px){.st-grid{grid-template-columns:repeat(2,1fr)}.st-panel{grid-template-columns:1fr}.st-right{border-left:none;border-top:1px solid #e8eef7}}
 @media(max-width:600px){.st-grid{grid-template-columns:1fr}.st-hero h1{font-size:28px}.st-panel{border-radius:20px}}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -860,35 +861,45 @@ var activeMood = 'all', activeLvl = 'all';
 
 async function loadStoriesFromDB() {
   var grid = document.getElementById('st-grid');
+  // Show skeleton loader while fetching
+  grid.innerHTML = '<div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;color:#64748b;font-size:13px;padding:32px 0">'
+    + '<svg style="animation:spin .8s linear infinite;flex-shrink:0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>'
+    + '<span>스토리 불러오는 중…</span></div>';
   try {
     var sb = typeof getSupa === 'function' ? getSupa() : null;
-    if (!sb) return;
+    if (!sb) throw new Error('Supabase 연결 없음');
     var { data, error } = await sb.from('stories_data').select('*').order('created_at', {ascending: false}).limit(60);
-    if (error) { console.warn('Stories DB error:', error.message || error); return; }
-    if (!data || !data.length) return;
-    var dbStories = data.map(function(row) {
-      // data column may be stored as JSONB (object) or TEXT (string) — handle both
-      var d = row.data;
-      if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e) { d = null; } }
-      var story = d || row;
-      if (!story || !story.title) return null;
-      return Object.assign({}, story, {
-        id: story.id || row.id,
-        author_slug: story.author_slug || (typeof pickCharacterSlug === 'function' ? pickCharacterSlug(String(story.id || story.title || row.id) + '-story') : '')
-      });
-    }).filter(Boolean);
-    var hardTitles = new Set(STORIES.map(function(s){ return s.title; }));
-    var newStories = dbStories.filter(function(s){ return !hardTitles.has(s.title); });
-    if (newStories.length) {
-      STORIES.unshift.apply(STORIES, newStories);
-      renderStories(activeMood, activeLvl);
+    if (error) throw error;
+    if (data && data.length) {
+      var dbStories = data.map(function(row) {
+        var d = row.data;
+        if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e) { d = null; } }
+        var story = d || row;
+        if (!story || !story.title) return null;
+        return Object.assign({}, story, {
+          id: story.id || row.id,
+          author_slug: story.author_slug || (typeof pickCharacterSlug === 'function' ? pickCharacterSlug(String(story.id || story.title || row.id) + '-story') : '')
+        });
+      }).filter(Boolean);
+      // DB stories replace hardcoded ones; keep hardcoded only if title not in DB
+      var dbTitles = new Set(dbStories.map(function(s){ return s.title; }));
+      var fallbacks = STORIES.filter(function(s){ return !dbTitles.has(s.title); });
+      // Rebuild STORIES: DB first, then any hardcoded not covered
+      STORIES.length = 0;
+      dbStories.forEach(function(s){ STORIES.push(s); });
+      fallbacks.forEach(function(s){ STORIES.push(s); });
     }
-  } catch(e) { console.warn('loadStoriesFromDB failed:', e.message || e); }
+    renderStories(activeMood, activeLvl);
+  } catch(e) {
+    console.warn('loadStoriesFromDB failed:', e.message || e);
+    // Fall back to hardcoded stories — show them without error for the user
+    renderStories(activeMood, activeLvl);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  renderStories(activeMood, activeLvl);
-  setTimeout(loadStoriesFromDB, 800);
+  // Load from DB immediately (no artificial delay) — skeleton shows while loading
+  loadStoriesFromDB();
   var pills = document.getElementById('mood-pills');
   pills.querySelectorAll('.sf-pill[data-mood]').forEach(function(btn) {
     btn.addEventListener('click', function() {
@@ -917,7 +928,7 @@ function startStoryBlank() {
   var s = window._currentStory;
   if (!s) return;
   var vocab = (s.vocab || []).filter(function(v){ return v.ko && v.ko.length > 1; });
-  if (!vocab.length) { alert('No vocabulary data found.'); return; }
+  if (!vocab.length) { toast('이 스토리에 단어 데이터가 없습니다.'); return; }
 
   // 스토리 body에서 단어 찾아 빈칸
   var body = (s.body || '').replace(/<[^>]*>/g, '');
@@ -942,7 +953,7 @@ function startStoryOrder() {
   if (!s) return;
   var body = (s.body || '').replace(/<[^>]*>/g, '');
   var sentences = body.split(/[.。\n]/).filter(function(t){ return t.trim().length > 8; }).slice(0, 6);
-  if (sentences.length < 3) { alert('This story is too short for a sequence quiz.'); return; }
+  if (sentences.length < 3) { toast('이 스토리는 순서 퀴즈를 만들기에 너무 짧습니다.'); return; }
   var questions = [];
   for (var i = 0; i + 2 < sentences.length; i++) {
     questions.push({ msgs: sentences.slice(i, i+3).map(function(t){ return {txt: t.trim(), who:''}; }) });
