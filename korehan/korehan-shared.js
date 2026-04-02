@@ -2339,10 +2339,10 @@ function renderArticlePage() {
     + '<span class="art-dot">·</span>'
     + '<span class="art-readtime">' + Math.max(1, Math.ceil((a.full||a.body||'').length / 500)) + ' min read</span>'
     + '</div>'
-    + '<div class="art-actions">'
-    + '<button class="kh-bm-btn" id="art-bm-btn" onclick="toggleBookmark(\'' + a.id + '\',this)">🔖 Bookmark</button>'
-    + '<button class="kh-share-btn" onclick="shareArticle()">🔗 Share</button>'
-    + '<button class="kh-trans-btn" id="translate-btn" onclick="toggleTranslate()">🌐 Translate</button>'
+    + '<div class="art-actions-inline">'
+    + '<button class="art-action-icon" id="art-bm-btn" onclick="toggleBookmark(\'' + a.id + '\',this)" title="Bookmark"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button>'
+    + '<button class="art-action-icon" onclick="shareArticle()" title="Share"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>'
+    + '<button class="art-action-icon" id="translate-btn" onclick="toggleTranslate()" title="Translate"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></button>'
     + '</div>'
     + '</div>'
     + '</div>'
@@ -2352,32 +2352,38 @@ function renderArticlePage() {
     + '<img src="' + img + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/1200/700\'">'
     + '</div>'
 
-    // 본문 탭
+    // 4탭: Read / Grammar / Vocab / Quiz
     + '<div class="art-tabs">'
-    + '<button class="art-tab on" onclick="switchArtTab(\'article\',this)">📰 Article</button>'
-    + '<button class="art-tab" onclick="switchArtTab(\'grammar\',this)">📖 Grammar Guide</button>'
+    + '<button class="art-tab on" onclick="switchArtTab(\'article\',this)">Read</button>'
+    + '<button class="art-tab" onclick="switchArtTab(\'grammar\',this)">Grammar</button>'
+    + '<button class="art-tab" onclick="switchArtTab(\'vocab\',this)">Vocab</button>'
+    + '<button class="art-tab" onclick="switchArtTab(\'quiz\',this)">Quiz</button>'
     + '</div>'
 
-    // 기사 탭
+    // Read 탭
     + '<div id="art-tab-article">'
     + '<div class="art-lead vocab-zone">' + formatArticleBody(a.body || '') + '</div>'
     + (a.full ? '<div class="art-full vocab-zone">' + formatArticleBody(a.full) + '</div>' : '')
     + '</div>'
 
-    // 문법 탭
+    // Grammar 탭
     + '<div id="art-tab-grammar" style="display:none">'
     + '<div id="grammar-content"><div style="color:#aaa;padding:20px 0;text-align:center">Loading grammar guide...</div></div>'
     + '</div>'
 
-    // 단어 학습 박스
+    // Vocab 탭
+    + '<div id="art-tab-vocab" style="display:none">'
     + '<div class="art-vocab-box">'
     + '<div class="art-vocab-title">📚 Key Vocabulary</div>'
     + '<div class="art-vocab-list" id="art-vocab-list"></div>'
     + '</div>'
+    + '</div>'
 
-    // Fill-in-the-Blank 복습 섹션
-    + '<div id="fill-wrap" style="margin:32px 0">'
+    // Quiz 탭
+    + '<div id="art-tab-quiz" style="display:none">'
+    + '<div id="fill-wrap">'
     + '<div id="fill-content"><div id="fill-teaser"></div></div>'
+    + '</div>'
     + '</div>'
 
     // 구분선
@@ -2430,6 +2436,9 @@ function renderArticlePage() {
 
     + '</article>';
 
+  // 현재 기사 참조 저장 (Quiz 탭에서 사용)
+  window._currentArticle = a;
+
   // 핵심 단어 추출
   renderArticleVocab(a);
 
@@ -2439,8 +2448,6 @@ function renderArticlePage() {
   // 댓글 로드
   loadComments(a.id);
 
-  // Fill-in-the-Blank teaser 초기화
-  initFillTeaser(a);
   // 기사 조회수 기록
   if (supaUser) syncArticleView(a.id, a.title, a.section);
 
@@ -2556,16 +2563,13 @@ function formatArticleBody(text) {
 
 function switchArtTab(tab, btn) {
   document.querySelectorAll('.art-tab').forEach(function(b){ b.classList.remove('on'); });
-  btn.classList.add('on');
-  var artEl  = document.getElementById('art-tab-article');
-  var gramEl = document.getElementById('art-tab-grammar');
-  [artEl, gramEl].forEach(function(el){ if(el) el.style.display = 'none'; });
-  if (tab === 'article') {
-    if (artEl) artEl.style.display = 'block';
-  } else {
-    if (gramEl) gramEl.style.display = 'block';
-    loadGrammarGuide();
-  }
+  if (btn) btn.classList.add('on');
+  var tabs = ['article','grammar','vocab','quiz'];
+  tabs.forEach(function(t){ var el = document.getElementById('art-tab-' + t); if(el) el.style.display = 'none'; });
+  var active = document.getElementById('art-tab-' + tab);
+  if (active) active.style.display = 'block';
+  if (tab === 'grammar') loadGrammarGuide();
+  if (tab === 'quiz') { var teaser = document.getElementById('fill-teaser'); if (teaser && !teaser.innerHTML) initFillTeaser(window._currentArticle); }
 }
 
 
@@ -3516,12 +3520,12 @@ async function toggleBookmark(articleId, btn) {
   if (isBookmarked) {
     await sb.from('bookmarks').delete().eq('user_id', supaUser.id).eq('article_id', articleId);
     btn.classList.remove('active');
-    btn.textContent = '🔖 Bookmark';
+    btn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
     toast('Bookmark removed');
   } else {
     await sb.from('bookmarks').insert({ user_id: supaUser.id, article_id: articleId });
     btn.classList.add('active');
-    btn.textContent = '🔖 Saved';
+    btn.innerHTML = '<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 0-2-2h10a2 2 0 0 0 2 2z"/></svg>';
     toast('Bookmarked ✓');
   }
 }
@@ -3532,7 +3536,10 @@ async function checkBookmarkState(articleId) {
   var sb = getSupa();
   if (!sb) return;
   var { data } = await sb.from('bookmarks').select('id').eq('user_id', supaUser.id).eq('article_id', articleId).maybeSingle();
-  if (data) { btn.classList.add('active'); btn.textContent = '🔖 Saved'; }
+  if (data) {
+    btn.classList.add('active');
+    btn.innerHTML = '<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 0-2-2h10a2 2 0 0 0 2 2z"/></svg>';
+  }
 }
 
 // ── 댓글 ──────────────────────────────────────────────────────
