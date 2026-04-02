@@ -5195,14 +5195,14 @@ var BADGE_DEFS = [
     check: function(){ return (getSectionReadCounts()['오피니언']||0) >= 10; } },
 
   // 🔢 MILESTONE / XP
-  { id:'xp_500',     cat:'milestone', tier:'bronze',   icon:'⭐', name:'XP 500',     desc:'누적 XP 500',
-    check: function(){ return getXP() >= 500; } },
-  { id:'xp_2000',    cat:'milestone', tier:'silver',   icon:'💫', name:'XP 2,000',   desc:'누적 XP 2,000',
-    check: function(){ return getXP() >= 2000; } },
-  { id:'xp_5000',    cat:'milestone', tier:'gold',     icon:'🌠', name:'XP 5,000',   desc:'누적 XP 5,000',
-    check: function(){ return getXP() >= 5000; } },
-  { id:'xp_20000',   cat:'milestone', tier:'diamond',  icon:'🌌', name:'XP 20,000',  desc:'누적 XP 20,000',
-    check: function(){ return getXP() >= 20000; } },
+  { id:'xp_7500',    cat:'milestone', tier:'bronze',   icon:'⭐', name:'XP 7,500',    desc:'누적 XP 7,500',
+    check: function(){ return getXP() >= 7500; } },
+  { id:'xp_30000',   cat:'milestone', tier:'silver',   icon:'💫', name:'XP 30,000',   desc:'누적 XP 30,000',
+    check: function(){ return getXP() >= 30000; } },
+  { id:'xp_75000',   cat:'milestone', tier:'gold',     icon:'🌠', name:'XP 75,000',   desc:'누적 XP 75,000',
+    check: function(){ return getXP() >= 75000; } },
+  { id:'xp_300000',  cat:'milestone', tier:'diamond',  icon:'🌌', name:'XP 300,000',  desc:'누적 XP 300,000',
+    check: function(){ return getXP() >= 300000; } },
   { id:'days_90',    cat:'milestone', tier:'gold',     icon:'🎂', name:'3개월 완주',  desc:'가입 후 90일 학습',
     check: function(){
       var log = lsGet('kh_study_log',{});

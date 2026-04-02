@@ -198,6 +198,180 @@ body.kh-neon-on #mp-xp-log button { background:rgba(9,18,33,.7) !important; bord
   .tier-icon  { font-size:20px; }
 }
 @media (max-width:480px) { .tier-grid { grid-template-columns:repeat(3,1fr); } }
+
+/* ═══ Animations & visual life ═══ */
+
+/* XP number glow pulse */
+@keyframes xpGlow {
+  0%, 100% { text-shadow: 0 0 8px rgba(34,85,164,.15); }
+  50% { text-shadow: 0 0 24px rgba(34,85,164,.35), 0 0 48px rgba(61,127,212,.15); }
+}
+.xp-total { animation: xpGlow 3s ease-in-out infinite; }
+
+/* Tier badge shimmer */
+@keyframes badgeShimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.xp-tier-badge {
+  background-size: 200% auto;
+  animation: badgeShimmer 4s linear infinite;
+}
+.xp-tier-badge.bronze  { background-image: linear-gradient(90deg, #fef3c7 0%, #fde68a 25%, #fef3c7 50%, #fde68a 75%, #fef3c7 100%); }
+.xp-tier-badge.silver  { background-image: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%, #f1f5f9 100%); }
+.xp-tier-badge.gold    { background-image: linear-gradient(90deg, #fffbeb 0%, #fde68a 25%, #fffbeb 50%, #fde68a 75%, #fffbeb 100%); }
+.xp-tier-badge.plat    { background-image: linear-gradient(90deg, #f5f3ff 0%, #ddd6fe 25%, #f5f3ff 50%, #ddd6fe 75%, #f5f3ff 100%); }
+.xp-tier-badge.diamond { background-image: linear-gradient(90deg, #eff6ff 0%, #bfdbfe 25%, #eff6ff 50%, #bfdbfe 75%, #eff6ff 100%); }
+
+/* Progress bar animated fill */
+@keyframes progressPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .75; }
+}
+.xp-fill { animation: progressPulse 2.5s ease-in-out infinite; }
+
+/* Stat cards — staggered entrance */
+@keyframes statSlideIn {
+  from { opacity: 0; transform: translateY(18px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.stat-card {
+  animation: statSlideIn .45s cubic-bezier(.22,1,.36,1) both;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.stat-card:nth-child(1) { animation-delay: .05s; }
+.stat-card:nth-child(2) { animation-delay: .1s; }
+.stat-card:nth-child(3) { animation-delay: .15s; }
+.stat-card:nth-child(4) { animation-delay: .2s; }
+.stat-card:nth-child(5) { animation-delay: .25s; }
+.stat-card:nth-child(6) { animation-delay: .3s; }
+.stat-card:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 8px 24px rgba(15,23,42,.1); }
+
+/* XP card entrance */
+@keyframes xpCardIn {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.xp-card { animation: xpCardIn .5s cubic-bezier(.22,1,.36,1) both; }
+
+/* Tier items — staggered entrance + hover */
+@keyframes tierFadeIn {
+  from { opacity: 0; transform: scale(.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.tier-item {
+  animation: tierFadeIn .4s cubic-bezier(.22,1,.36,1) both;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.tier-item:nth-child(1) { animation-delay: .05s; }
+.tier-item:nth-child(2) { animation-delay: .1s; }
+.tier-item:nth-child(3) { animation-delay: .15s; }
+.tier-item:nth-child(4) { animation-delay: .2s; }
+.tier-item:nth-child(5) { animation-delay: .25s; }
+.tier-item:hover { transform: scale(1.06); box-shadow: 0 6px 20px rgba(15,23,42,.08); }
+
+/* Current tier gentle bounce */
+@keyframes tierBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+.tier-item.current { animation: tierBounce 2.5s ease-in-out infinite; }
+.tier-item.current .tier-icon { animation: tierBounce 2s ease-in-out infinite; animation-delay: .3s; }
+
+/* Stat number count-up feel */
+@keyframes numPop {
+  0%   { transform: scale(.7); opacity: 0; }
+  60%  { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.stat-n { animation: numPop .5s cubic-bezier(.22,1,.36,1) both; }
+
+/* Hero avatar float */
+@keyframes avatarFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.mp-avatar-wrap { animation: avatarFloat 4s ease-in-out infinite; }
+
+/* Streak icon flame flicker */
+@keyframes flameFlicker {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.08) rotate(-3deg); }
+  75% { transform: scale(1.04) rotate(2deg); }
+}
+.stat-icon.s-streak { animation: flameFlicker 1.8s ease-in-out infinite; }
+
+/* Progress bar shimmer overlay */
+@keyframes barShimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.xp-fill { position: relative; overflow: hidden; }
+.xp-fill::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+  animation: barShimmer 2s ease-in-out infinite;
+}
+.tier-bar-fill { position: relative; overflow: hidden; }
+.tier-bar-fill::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+  animation: barShimmer 2.5s ease-in-out infinite;
+}
+
+/* Section entrance */
+@keyframes sectionIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.mp-section { animation: sectionIn .5s cubic-bezier(.22,1,.36,1) both; }
+.mp-section:nth-of-type(1) { animation-delay: .1s; }
+.mp-section:nth-of-type(2) { animation-delay: .2s; }
+.mp-section:nth-of-type(3) { animation-delay: .3s; }
+.mp-section:nth-of-type(4) { animation-delay: .4s; }
+
+/* Hero background subtle movement */
+@keyframes heroBgShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.mypage-hero {
+  background-size: 200% 200%;
+  animation: heroBgShift 12s ease-in-out infinite;
+}
+
+/* Neon mode: animated glow on XP number */
+body.kh-neon-on .xp-total {
+  animation: xpGlowNeon 3s ease-in-out infinite !important;
+}
+@keyframes xpGlowNeon {
+  0%, 100% { text-shadow: 0 0 10px rgba(143,252,255,.3); }
+  50% { text-shadow: 0 0 30px rgba(143,252,255,.6), 0 0 60px rgba(0,255,214,.2); }
+}
+
+/* Neon mode: badge shimmer */
+body.kh-neon-on .xp-tier-badge.bronze  { background-image: linear-gradient(90deg, rgba(180,83,9,.15) 0%, rgba(252,211,77,.2) 50%, rgba(180,83,9,.15) 100%) !important; }
+body.kh-neon-on .xp-tier-badge.silver  { background-image: linear-gradient(90deg, rgba(100,116,139,.15) 0%, rgba(203,213,225,.2) 50%, rgba(100,116,139,.15) 100%) !important; }
+body.kh-neon-on .xp-tier-badge.gold    { background-image: linear-gradient(90deg, rgba(217,119,6,.15) 0%, rgba(252,211,77,.2) 50%, rgba(217,119,6,.15) 100%) !important; }
+body.kh-neon-on .xp-tier-badge.plat    { background-image: linear-gradient(90deg, rgba(124,58,237,.15) 0%, rgba(196,181,253,.2) 50%, rgba(124,58,237,.15) 100%) !important; }
+body.kh-neon-on .xp-tier-badge.diamond { background-image: linear-gradient(90deg, rgba(29,78,216,.15) 0%, rgba(147,197,253,.2) 50%, rgba(29,78,216,.15) 100%) !important; }
+
+/* Neon mode: stat card glow on hover */
+body.kh-neon-on .stat-card:hover { box-shadow: 0 0 20px rgba(0,255,214,.15), 0 8px 24px rgba(0,0,0,.3) !important; }
+body.kh-neon-on .tier-item:hover { box-shadow: 0 0 16px rgba(0,255,214,.12), 0 6px 20px rgba(0,0,0,.3) !important; }
+
+/* Neon mode: progress bar glow */
+body.kh-neon-on .xp-fill { background: linear-gradient(90deg, #0d9488, #00ffd6) !important; box-shadow: 0 0 10px rgba(0,255,214,.3); }
+body.kh-neon-on .tier-bar-fill { background: linear-gradient(90deg, #0d9488, #00ffd6) !important; box-shadow: 0 0 8px rgba(0,255,214,.25); }
+
+/* Neon hero glow */
+body.kh-neon-on .mypage-hero {
+  background-image: linear-gradient(135deg, #050d1a, #091b3a, #0d2847, #091b3a) !important;
+  background-size: 300% 300% !important;
+  animation: heroBgShift 10s ease-in-out infinite !important;
+}
 </style>
 </head>
 <body>
@@ -327,19 +501,19 @@ var SVG_ICONS = {
 
 // ── Tier helper ────────────────────────────────────────────────
 function getXPTier(xp) {
-  if (xp >= 5000) return { label:'Diamond', cls:'diamond', next:null,       from:5000, to:5000 };
-  if (xp >= 2000) return { label:'Platinum', cls:'plat',   next:'Diamond',  from:2000, to:5000 };
-  if (xp >= 800)  return { label:'Gold',     cls:'gold',   next:'Platinum', from:800,  to:2000 };
-  if (xp >= 300)  return { label:'Silver',   cls:'silver', next:'Gold',     from:300,  to:800  };
-  return               { label:'Bronze',   cls:'bronze', next:'Silver',   from:0,    to:300  };
+  if (xp >= 75000) return { label:'Diamond', cls:'diamond', next:null,       from:75000, to:75000 };
+  if (xp >= 30000) return { label:'Platinum', cls:'plat',   next:'Diamond',  from:30000, to:75000 };
+  if (xp >= 12000) return { label:'Gold',     cls:'gold',   next:'Platinum', from:12000, to:30000 };
+  if (xp >= 4500)  return { label:'Silver',   cls:'silver', next:'Gold',     from:4500,  to:12000 };
+  return               { label:'Bronze',   cls:'bronze', next:'Silver',   from:0,    to:4500  };
 }
 
 var TIERS = [
-  { label:'Bronze',  cls:'bronze',  min:0,    max:300  },
-  { label:'Silver',  cls:'silver',  min:300,  max:800  },
-  { label:'Gold',    cls:'gold',    min:800,  max:2000 },
-  { label:'Platinum',cls:'plat',    min:2000, max:5000 },
-  { label:'Diamond', cls:'diamond', min:5000, max:5000 },
+  { label:'Bronze',  cls:'bronze',  min:0,     max:4500  },
+  { label:'Silver',  cls:'silver',  min:4500,  max:12000 },
+  { label:'Gold',    cls:'gold',    min:12000, max:30000 },
+  { label:'Platinum',cls:'plat',    min:30000, max:75000 },
+  { label:'Diamond', cls:'diamond', min:75000, max:75000 },
 ];
 
 // ── Load user stats ────────────────────────────────────────────
