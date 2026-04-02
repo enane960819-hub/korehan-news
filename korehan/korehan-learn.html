@@ -164,6 +164,112 @@
 }
 .sentence-filter-btn.on,.sentence-filter-btn:hover{background:var(--bright);border-color:var(--bright);color:#fff}
 
+/* ── SRS REVIEW BANNER ── */
+.srs-banner {
+  background: linear-gradient(135deg,#0f2a5e,#1a4a9e);
+  border-radius: 16px; padding: 20px 22px; margin-bottom: 24px;
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  box-shadow: 0 4px 20px rgba(34,85,164,.25);
+}
+.srs-banner-icon { font-size: 40px; line-height: 1; flex-shrink: 0; }
+.srs-banner-text { flex: 1; min-width: 160px; }
+.srs-banner-text h3 { margin: 0 0 4px; font-size: 17px; font-weight: 900; color: #fff; }
+.srs-banner-text p  { margin: 0; font-size: 13px; color: rgba(255,255,255,.7); }
+.srs-due-badge {
+  display: inline-block; background: #f87171; color: #fff;
+  font-size: 11px; font-weight: 900; padding: 2px 9px; border-radius: 999px;
+  margin-left: 8px; vertical-align: middle;
+}
+.srs-start-btn {
+  padding: 12px 24px; background: #fff; color: #1a3a6b; border: none;
+  border-radius: 999px; font-size: 14px; font-weight: 900; cursor: pointer;
+  transition: transform .15s, box-shadow .15s; white-space: nowrap; flex-shrink: 0;
+}
+.srs-start-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.18); }
+.srs-start-btn:disabled { opacity: .55; cursor: default; transform: none; }
+
+/* ── SRS MODAL ── */
+.srs-overlay {
+  position: fixed; inset: 0; background: rgba(11,22,38,.82); z-index: 9999;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+  animation: srs-fadein .2s ease;
+}
+@keyframes srs-fadein { from{opacity:0} to{opacity:1} }
+.srs-modal {
+  background: #fff; border-radius: 22px; width: 100%; max-width: 480px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.35); overflow: hidden;
+  animation: srs-slidein .25s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes srs-slidein { from{opacity:0;transform:translateY(24px) scale(.97)} to{opacity:1;transform:none} }
+.srs-modal-head {
+  background: linear-gradient(135deg,#0b1626,#1a3a6b);
+  padding: 18px 20px; display: flex; align-items: center; justify-content: space-between;
+}
+.srs-modal-title { color: #fff; font-size: 15px; font-weight: 900; }
+.srs-modal-close {
+  background: rgba(255,255,255,.12); border: none; color: #fff; width: 30px; height: 30px;
+  border-radius: 50%; cursor: pointer; font-size: 16px; line-height: 30px; text-align: center;
+}
+.srs-progress-bar { height: 4px; background: rgba(255,255,255,.2); }
+.srs-progress-fill { height: 4px; background: #7ab8f5; transition: width .4s ease; }
+.srs-modal-body { padding: 28px 24px 24px; }
+
+/* SRS card */
+.srs-card {
+  background: linear-gradient(145deg,#0f1b31,#18345c,#2255a4);
+  border-radius: 20px; padding: 36px 24px; text-align: center; margin-bottom: 24px;
+  cursor: pointer; position: relative; min-height: 160px;
+  transition: transform .15s; user-select: none;
+}
+.srs-card:hover { transform: translateY(-2px); }
+.srs-card-front, .srs-card-back { transition: opacity .2s; }
+.srs-card-back { display: none; }
+.srs-card.revealed .srs-card-front { display: none; }
+.srs-card.revealed .srs-card-back  { display: block; }
+.srs-card-ko  { font-family:'Noto Serif KR',serif; font-size: 40px; font-weight: 900; color: #fff; line-height: 1.2; }
+.srs-card-rom { font-size: 13px; color: rgba(255,255,255,.55); font-style: italic; margin-top: 8px; }
+.srs-card-en  { font-size: 20px; font-weight: 900; color: #fff; margin-top: 10px; }
+.srs-card-hint { font-size: 12px; color: rgba(122,184,245,.7); margin-top: 16px; }
+.srs-reveal-btn {
+  display: block; width: 100%; padding: 14px; border: 2px dashed rgba(122,184,245,.45);
+  border-radius: 14px; background: rgba(255,255,255,.06); color: rgba(255,255,255,.75);
+  font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 16px;
+  transition: background .15s;
+}
+.srs-reveal-btn:hover { background: rgba(255,255,255,.12); }
+
+/* SRS rating buttons */
+.srs-ratings { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+.srs-rate-btn {
+  border: none; border-radius: 14px; padding: 14px 8px; cursor: pointer;
+  font-size: 12px; font-weight: 900; display: flex; flex-direction: column;
+  align-items: center; gap: 4px; transition: transform .15s, box-shadow .15s;
+  font-family: inherit;
+}
+.srs-rate-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,.12); }
+.srs-rate-btn .srs-rate-icon { font-size: 22px; }
+.srs-rate-btn .srs-rate-interval { font-size: 10px; font-weight: 700; opacity: .7; margin-top: 2px; }
+.srs-rate-again { background: #fef2f2; color: #b91c1c; }
+.srs-rate-hard  { background: #fffbeb; color: #92400e; }
+.srs-rate-good  { background: #f0fdf4; color: #15803d; }
+.srs-rate-easy  { background: #eff6ff; color: #1d4ed8; }
+
+/* SRS result */
+.srs-result { text-align: center; padding: 12px 0 8px; }
+.srs-result-ring {
+  width: 100px; height: 100px; border-radius: 50%;
+  background: linear-gradient(135deg,#2255a4,#3d7fd4);
+  display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;
+  flex-direction: column; color: #fff;
+}
+.srs-stats-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 16px 0 24px; }
+.srs-stat { background: #f4f8ff; border-radius: 12px; padding: 14px 20px; text-align: center; flex: 1; min-width: 70px; }
+.srs-stat-num { font-size: 22px; font-weight: 900; color: var(--accent); }
+.srs-stat-lbl { font-size: 11px; color: var(--gray); margin-top: 2px; }
+@media(max-width:480px){
+  .srs-ratings { grid-template-columns: repeat(2,1fr); }
+  .srs-card-ko { font-size: 34px; }
+}
 </style>
 </head>
 <body>
@@ -176,6 +282,16 @@
 </div>
 
 <div class="learn-body">
+
+  <!-- SRS REVIEW BANNER -->
+  <div class="srs-banner" id="srs-banner" style="display:none">
+    <div class="srs-banner-icon">🗂️</div>
+    <div class="srs-banner-text">
+      <h3>복습할 단어가 있어요! <span class="srs-due-badge" id="srs-due-count">0</span></h3>
+      <p>저장한 단어를 간격 반복(SRS)으로 복습하면 기억에 오래 남아요.</p>
+    </div>
+    <button class="srs-start-btn" id="srs-start-btn" onclick="srsStartReview()">📚 지금 복습하기</button>
+  </div>
 
   <!-- PHRASE OF DAY -->
   <div class="pod-section">
@@ -314,6 +430,7 @@ async function init() {
   initWordQuiz();
 
   initTooltips();
+  srsLoadDueWords();
 }
 
 
@@ -797,6 +914,244 @@ function lqShowResult() {
   // XP 트래킹
   if (typeof dmTrackQuiz === 'function') dmTrackQuiz();
 }
+
+// ══ SRS (SPACED REPETITION SYSTEM) ══════════════════════════════
+
+var _srsDueWords  = [];  // words due today
+var _srsQueue     = [];  // current session queue
+var _srsIdx       = 0;
+var _srsStats     = { again: 0, hard: 0, good: 0, easy: 0 };
+var _srsRevealed  = false;
+
+// SM-2 next-interval calculator
+function srsCalcNext(interval, easeFactor, grade) {
+  // grade: 0=Again, 3=Hard, 4=Good, 5=Easy
+  var newInterval, newEase;
+  if (grade === 0) {
+    newInterval = 1;
+    newEase = Math.max(1.3, easeFactor - 0.2);
+  } else if (grade === 3) {
+    newInterval = Math.max(1, Math.round(interval * 1.2));
+    newEase = Math.max(1.3, easeFactor - 0.15);
+  } else if (grade === 4) {
+    newInterval = Math.round(interval * easeFactor);
+    newEase = easeFactor;
+  } else { // 5 Easy
+    newInterval = Math.round(interval * easeFactor * 1.3);
+    newEase = Math.min(4.0, easeFactor + 0.15);
+  }
+  newInterval = Math.max(1, newInterval);
+  return { newInterval: newInterval, newEase: newEase };
+}
+
+function srsIntervalLabel(interval, easeFactor, grade) {
+  var r = srsCalcNext(interval, easeFactor, grade);
+  var d = r.newInterval;
+  if (d === 1)  return '내일';
+  if (d < 7)    return d + '일 후';
+  if (d < 30)   return Math.round(d/7) + '주 후';
+  return Math.round(d/30) + '개월 후';
+}
+
+async function srsLoadDueWords() {
+  if (!supaUser) return;
+  var today = new Date().toISOString().slice(0, 10);
+  var sb = getSupa();
+  var { data, error } = await sb.from('saved_words')
+    .select('word_ko, word_rom, word_en, srs_interval, srs_ease_factor, srs_next_review, srs_review_count')
+    .eq('user_id', supaUser.id)
+    .lte('srs_next_review', today)
+    .order('srs_next_review', { ascending: true })
+    .limit(50);
+  if (error) return;
+  _srsDueWords = (data || []).filter(function(w){ return w.word_ko; });
+  var banner = document.getElementById('srs-banner');
+  var badge  = document.getElementById('srs-due-count');
+  if (banner && _srsDueWords.length > 0) {
+    banner.style.display = 'flex';
+    if (badge) badge.textContent = _srsDueWords.length;
+  }
+}
+
+async function srsUpdateWord(wordKo, newInterval, newEase) {
+  if (!supaUser) return;
+  var today = new Date();
+  var nextDate = new Date(today);
+  nextDate.setDate(today.getDate() + newInterval);
+  var nextStr = nextDate.toISOString().slice(0, 10);
+  var sb = getSupa();
+  await sb.from('saved_words').update({
+    srs_interval:      newInterval,
+    srs_ease_factor:   newEase,
+    srs_next_review:   nextStr,
+    srs_review_count:  getSupa().rpc ? undefined : undefined, // handled below
+    srs_last_reviewed: new Date().toISOString()
+  }).eq('user_id', supaUser.id).eq('word_ko', wordKo);
+  // Increment review_count separately
+  await sb.rpc('increment_srs_review_count', { p_user_id: supaUser.id, p_word_ko: wordKo }).catch(function(){
+    // RPC may not exist yet — silently ignore
+  });
+}
+
+function srsStartReview() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!_srsDueWords.length) { toast('복습할 단어가 없어요!'); return; }
+  _srsQueue   = _srsDueWords.slice();
+  _srsIdx     = 0;
+  _srsStats   = { again: 0, hard: 0, good: 0, easy: 0 };
+  srsShowModal();
+}
+
+function srsShowModal() {
+  var existing = document.getElementById('srs-overlay');
+  if (existing) existing.remove();
+  var el = document.createElement('div');
+  el.className = 'srs-overlay';
+  el.id = 'srs-overlay';
+  el.innerHTML = '<div class="srs-modal" id="srs-modal">'
+    + '<div class="srs-modal-head">'
+    + '<div class="srs-modal-title">🗂️ 단어 복습 — SRS</div>'
+    + '<button class="srs-modal-close" onclick="srsCloseModal()">×</button>'
+    + '</div>'
+    + '<div class="srs-progress-bar"><div class="srs-progress-fill" id="srs-prog" style="width:0%"></div></div>'
+    + '<div class="srs-modal-body" id="srs-body"></div>'
+    + '</div>';
+  el.addEventListener('click', function(e){ if (e.target === el) srsCloseModal(); });
+  document.body.appendChild(el);
+  srsRenderCard();
+}
+
+function srsCloseModal() {
+  var el = document.getElementById('srs-overlay');
+  if (el) el.remove();
+}
+
+function srsRenderCard() {
+  var body = document.getElementById('srs-body');
+  var prog = document.getElementById('srs-prog');
+  if (!body) return;
+
+  if (_srsIdx >= _srsQueue.length) { srsShowResult(); return; }
+
+  var total = _srsQueue.length;
+  var pct   = Math.round((_srsIdx / total) * 100);
+  if (prog) prog.style.width = pct + '%';
+
+  var w = _srsQueue[_srsIdx];
+  var interval   = w.srs_interval   || 1;
+  var easeFactor = w.srs_ease_factor || 2.5;
+  _srsRevealed = false;
+
+  body.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+    + '<span style="font-size:12px;font-weight:700;color:var(--gray)">' + (_srsIdx+1) + ' / ' + total + '</span>'
+    + '<span style="font-size:12px;color:var(--gray)">복습 ' + (w.srs_review_count || 0) + '회</span>'
+    + '</div>'
+
+    + '<div class="srs-card" id="srs-card">'
+    + '<div class="srs-card-front">'
+    + '<div class="srs-card-ko">' + w.word_ko + '</div>'
+    + '<div class="srs-card-hint">뜻을 생각해본 후 아래 버튼을 눌러요</div>'
+    + '</div>'
+    + '<div class="srs-card-back">'
+    + '<div class="srs-card-ko">' + w.word_ko + '</div>'
+    + (w.word_rom ? '<div class="srs-card-rom">' + w.word_rom + '</div>' : '')
+    + '<div class="srs-card-en">' + (w.word_en || '') + '</div>'
+    + '</div>'
+    + '</div>'
+
+    + '<button class="srs-reveal-btn" id="srs-reveal-btn" onclick="srsReveal()">'
+    + '뜻 확인하기 👆'
+    + '</button>'
+
+    + '<div class="srs-ratings" id="srs-ratings" style="display:none">'
+    + '<button class="srs-rate-btn srs-rate-again" onclick="srsRate(0)">'
+    + '<span class="srs-rate-icon">😵</span><span>다시</span><span class="srs-rate-interval">' + srsIntervalLabel(interval, easeFactor, 0) + '</span>'
+    + '</button>'
+    + '<button class="srs-rate-btn srs-rate-hard" onclick="srsRate(3)">'
+    + '<span class="srs-rate-icon">😓</span><span>어려워</span><span class="srs-rate-interval">' + srsIntervalLabel(interval, easeFactor, 3) + '</span>'
+    + '</button>'
+    + '<button class="srs-rate-btn srs-rate-good" onclick="srsRate(4)">'
+    + '<span class="srs-rate-icon">😊</span><span>잘 알아</span><span class="srs-rate-interval">' + srsIntervalLabel(interval, easeFactor, 4) + '</span>'
+    + '</button>'
+    + '<button class="srs-rate-btn srs-rate-easy" onclick="srsRate(5)">'
+    + '<span class="srs-rate-icon">🚀</span><span>완벽해</span><span class="srs-rate-interval">' + srsIntervalLabel(interval, easeFactor, 5) + '</span>'
+    + '</button>'
+    + '</div>';
+
+  // card click to reveal
+  var card = document.getElementById('srs-card');
+  if (card) card.addEventListener('click', srsReveal);
+}
+
+function srsReveal() {
+  if (_srsRevealed) return;
+  _srsRevealed = true;
+  var card   = document.getElementById('srs-card');
+  var revBtn = document.getElementById('srs-reveal-btn');
+  var ratings = document.getElementById('srs-ratings');
+  if (card)    card.classList.add('revealed');
+  if (revBtn)  revBtn.style.display = 'none';
+  if (ratings) ratings.style.display = 'grid';
+}
+
+async function srsRate(grade) {
+  // grade: 0=Again, 3=Hard, 4=Good, 5=Easy
+  var w = _srsQueue[_srsIdx];
+  if (!w) return;
+
+  if (grade === 0) _srsStats.again++;
+  else if (grade === 3) _srsStats.hard++;
+  else if (grade === 4) _srsStats.good++;
+  else _srsStats.easy++;
+
+  var interval   = w.srs_interval   || 1;
+  var easeFactor = w.srs_ease_factor || 2.5;
+  var r = srsCalcNext(interval, easeFactor, grade);
+
+  // If Again, re-queue at end of session
+  if (grade === 0) {
+    _srsQueue.push(Object.assign({}, w, { srs_interval: 1, srs_ease_factor: r.newEase, _requeued: true }));
+  }
+
+  // Update DB (non-blocking)
+  srsUpdateWord(w.word_ko, r.newInterval, r.newEase);
+
+  _srsIdx++;
+  srsRenderCard();
+}
+
+function srsShowResult() {
+  var body = document.getElementById('srs-body');
+  var prog = document.getElementById('srs-prog');
+  if (prog) prog.style.width = '100%';
+
+  var total  = _srsQueue.length;
+  var known  = _srsStats.good + _srsStats.easy;
+  var pct    = total ? Math.round(known / (_srsStats.again + _srsStats.hard + _srsStats.good + _srsStats.easy) * 100) : 0;
+  var emoji  = pct >= 80 ? '🏆' : pct >= 60 ? '👍' : '💪';
+
+  body.innerHTML = '<div class="srs-result">'
+    + '<div class="srs-result-ring">'
+    + '<div style="font-size:32px">' + emoji + '</div>'
+    + '<div style="font-size:18px;font-weight:900">' + pct + '%</div>'
+    + '</div>'
+    + '<div style="font-size:18px;font-weight:900;color:#0b1626;margin-bottom:6px">복습 완료!</div>'
+    + '<div style="font-size:13px;color:var(--gray);margin-bottom:20px">오늘 ' + _srsDueWords.length + '개 단어를 복습했어요</div>'
+    + '<div class="srs-stats-row">'
+    + '<div class="srs-stat"><div class="srs-stat-num" style="color:#b91c1c">' + _srsStats.again + '</div><div class="srs-stat-lbl">다시</div></div>'
+    + '<div class="srs-stat"><div class="srs-stat-num" style="color:#92400e">' + _srsStats.hard + '</div><div class="srs-stat-lbl">어려워</div></div>'
+    + '<div class="srs-stat"><div class="srs-stat-num" style="color:#15803d">' + _srsStats.good + '</div><div class="srs-stat-lbl">잘 알아</div></div>'
+    + '<div class="srs-stat"><div class="srs-stat-num" style="color:#1d4ed8">' + _srsStats.easy + '</div><div class="srs-stat-lbl">완벽해</div></div>'
+    + '</div>'
+    + '<button onclick="srsCloseModal()" style="padding:13px 32px;background:#2255a4;color:#fff;border:none;border-radius:999px;font-size:14px;font-weight:900;cursor:pointer;width:100%">닫기</button>'
+    + '</div>';
+
+  // Hide banner after session
+  var banner = document.getElementById('srs-banner');
+  if (banner) banner.style.display = 'none';
+}
+
 
 document.addEventListener('DOMContentLoaded', init);
 </script>
