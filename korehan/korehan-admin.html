@@ -207,6 +207,7 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" onclick="goWordBank()"><span class="ico">📚</span>단어 플래시 카드</button>
     <button class="sb-btn" onclick="goSentences()"><span class="ico">💬</span>예문 관리</button>
     <button class="sb-btn" id="sb-study-room" onclick="goStudyRoomOps()"><span class="ico">🏫</span>Study Room 관리</button>
+    <button class="sb-btn" id="sb-art-study-ed" onclick="goArticleStudyEditor()"><span class="ico">📖</span>Article Study 편집<span class="sb-new-tag">NEW</span></button>
     <div class="sb-lbl" style="margin-top:14px">운영 관리</div>
     <button class="sb-btn" onclick="goUsers()"><span class="ico">👥</span>가입 회원</button>
     <button class="sb-btn" onclick="goComments()"><span class="ico">💬</span>댓글 관리</button>
@@ -6232,6 +6233,295 @@ async function saveHomeworkFeedback(id) {
 
 if (window.location.hash === '#study-picture-prompts' || window.location.hash === '#study-room') {
   setTimeout(function(){ goStudyRoomOps(); }, 120);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ARTICLE STUDY 편집
+// ═══════════════════════════════════════════════════════════
+var _aseCurrentArt = null;
+var _aseCurrentContent = null;
+
+async function goArticleStudyEditor() {
+  setSbOn('sb-art-study-ed');
+  var main = document.getElementById('main');
+  main.innerHTML = '<div style="max-width:960px">'
+    + '<div class="pg-hd"><div><h1>📖 Article Study 콘텐츠 편집</h1>'
+    + '<p style="color:#64748b;font-size:13px">기사별 단어/표현/하이라이트를 직접 수정합니다. 저장하면 AI 자동생성보다 우선 적용됩니다.</p></div></div>'
+    + '<div class="toolbar">'
+    + '<div class="srch"><span>🔍</span><input id="ase-search" placeholder="기사 제목으로 검색…" oninput="aseFilterList()" style="flex:1"></div>'
+    + '<select class="flt" id="ase-filter-edited" onchange="aseFilterList()">'
+    + '<option value="">전체 기사</option><option value="edited">편집된 기사만</option></select>'
+    + '</div>'
+    + '<div id="ase-list">⏳ 로딩 중…</div>'
+    + '</div>';
+  await aseLoadList();
+}
+
+var _aseAllArticles = [];
+var _aseEditedIds   = new Set();
+
+async function aseLoadList() {
+  var sb = getSb();
+  var el = document.getElementById('ase-list');
+  if (!el) return;
+  var [artsRes, editedRes] = await Promise.all([
+    sb.from('articles_data').select('id,title,section,topik_level,image_url,status').order('created_at',{ascending:false}).limit(200),
+    sb.from('article_study_content').select('article_id,admin_edited').limit(500)
+  ]);
+  _aseAllArticles = artsRes.data || [];
+  _aseEditedIds   = new Set((editedRes.data||[]).filter(function(r){return r.admin_edited;}).map(function(r){return String(r.article_id);}));
+  aseRenderList(_aseAllArticles);
+}
+
+function aseFilterList() {
+  var q = (document.getElementById('ase-search').value || '').toLowerCase();
+  var onlyEdited = document.getElementById('ase-filter-edited').value === 'edited';
+  var filtered = _aseAllArticles.filter(function(a){
+    if (onlyEdited && !_aseEditedIds.has(String(a.id))) return false;
+    if (q && !(a.title||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  aseRenderList(filtered);
+}
+
+function aseRenderList(arts) {
+  var el = document.getElementById('ase-list');
+  if (!el) return;
+  if (!arts.length) { el.innerHTML = '<div style="color:#94a3b8;padding:24px;text-align:center">기사가 없습니다.</div>'; return; }
+  el.innerHTML = arts.map(function(a){
+    var edited = _aseEditedIds.has(String(a.id));
+    var badge = edited ? '<span style="background:#dcfce7;color:#15803d;font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;margin-left:6px">편집됨</span>' : '';
+    return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">'
+      + (a.image_url ? '<img src="'+a.image_url+'" style="width:60px;height:42px;object-fit:cover;border-radius:6px;flex-shrink:0">' : '<div style="width:60px;height:42px;background:#f1f5f9;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px">📰</div>')
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-weight:700;font-size:13px;color:#0f172a;display:flex;align-items:center;gap:4px">'
+      + '<span style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis">' + (a.title||'제목없음') + '</span>' + badge + '</div>'
+      + '<div style="font-size:11px;color:#64748b;margin-top:3px">' + (a.section||'') + (a.topik_level?' · TOPIK '+a.topik_level:'') + '</div></div>'
+      + '<button onclick="aseOpenEditor('+a.id+')" style="background:#2255a4;color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">편집</button>'
+      + '</div>';
+  }).join('');
+}
+
+async function aseOpenEditor(artId) {
+  var sb = getSb();
+  var main = document.getElementById('main');
+
+  // Load article + existing study content
+  var [artRes, contentRes] = await Promise.all([
+    sb.from('articles_data').select('id,title,body,section,topik_level').eq('id', artId).maybeSingle(),
+    sb.from('article_study_content').select('*').eq('article_id', String(artId)).maybeSingle()
+  ]);
+  var art  = artRes.data;
+  var cont = contentRes.data;
+  if (!art) { alert('기사를 찾을 수 없습니다.'); return; }
+  _aseCurrentArt     = art;
+  _aseCurrentContent = cont || {};
+
+  var vocab   = cont && cont.vocab   ? cont.vocab   : [];
+  var phrases = cont && cont.phrases ? cont.phrases : [];
+  var hlVocab   = cont && cont.custom_highlights && cont.custom_highlights.vocab   ? cont.custom_highlights.vocab.join('\n')   : '';
+  var hlPhrases = cont && cont.custom_highlights && cont.custom_highlights.phrases ? cont.custom_highlights.phrases.join('\n') : '';
+
+  function vocabRow(v, i) {
+    return '<tr id="ase-vrow-'+i+'">'
+      + '<td><input id="ase-vko-'+i+'" value="'+(v.ko||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:5px;border:1px solid #e2e8f0;border-radius:6px;font-family:\'Noto Serif KR\',serif;font-size:13px"></td>'
+      + '<td><input id="ase-ven-'+i+'" value="'+(v.en||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:5px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px"></td>'
+      + '<td><input id="ase-vrom-'+i+'" value="'+(v.rom||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:5px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;color:#64748b"></td>'
+      + '<td><button onclick="aseRemoveVocab('+i+')" style="background:#fee2e2;color:#991b1b;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">✕</button></td>'
+      + '</tr>';
+  }
+  function phraseRow(p, i) {
+    return '<tr id="ase-prow-'+i+'">'
+      + '<td style="font-family:\'Noto Serif KR\',serif"><input id="ase-pko-'+i+'" value="'+(p.ko||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:5px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px"></td>'
+      + '<td><input id="ase-pen-'+i+'" value="'+(p.en||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:5px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px"></td>'
+      + '<td><button onclick="aseRemovePhrase('+i+')" style="background:#fee2e2;color:#991b1b;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">✕</button></td>'
+      + '</tr>';
+  }
+
+  window._aseVocab   = vocab.slice();
+  window._asePhrases = phrases.slice();
+
+  main.innerHTML = '<div style="max-width:960px">'
+    + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">'
+    + '<button onclick="goArticleStudyEditor()" style="background:#f1f5f9;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700">← 목록</button>'
+    + '<div><div style="font-size:18px;font-weight:800;color:#0f172a">'+art.title+'</div>'
+    + '<div style="font-size:12px;color:#64748b">'+(art.section||'')+(art.topik_level?' · TOPIK '+art.topik_level:'')+'</div></div></div>'
+
+    + '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#92400e">'
+    + '💡 저장하면 <b>모든 사용자</b>에게 이 콘텐츠가 표시됩니다. AI 자동 생성보다 우선합니다.</div>'
+
+    + '<div style="display:flex;gap:10px;margin-bottom:8px">'
+    + '<button onclick="aseGenFromAI()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">🤖 AI로 초안 생성</button>'
+    + '<button onclick="aseSaveContent()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 저장</button>'
+    + '<button onclick="aseDeleteContent()" style="background:#fee2e2;color:#991b1b;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">🗑 초기화 (AI 자동)</button>'
+    + '</div>'
+    + '<div id="ase-msg" style="font-size:12px;color:#475569;margin-bottom:12px"></div>'
+
+    // Vocab section
+    + '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:14px">'
+    + '<div style="font-weight:800;font-size:14px;margin-bottom:10px">📝 단어 (Vocabulary) <span style="font-size:11px;font-weight:400;color:#64748b">최대 8개 권장</span>'
+    + '<button onclick="aseAddVocab()" style="float:right;background:#eff6ff;color:#2255a4;border:1px solid #bfdbfe;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer">+ 추가</button></div>'
+    + '<table style="width:100%;border-collapse:collapse" id="ase-vtable">'
+    + '<thead><tr style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px">'
+    + '<th style="text-align:left;padding:4px 6px;width:28%">한국어</th><th style="text-align:left;padding:4px 6px;width:35%">English</th><th style="text-align:left;padding:4px 6px;width:28%">Romanization</th><th style="width:9%"></th></tr></thead>'
+    + '<tbody id="ase-vtbody">'
+    + (vocab.length ? vocab.map(vocabRow).join('') : '<tr><td colspan="4" style="color:#94a3b8;font-size:12px;padding:8px">AI로 초안을 생성하거나 직접 추가하세요.</td></tr>')
+    + '</tbody></table></div>'
+
+    // Phrases section
+    + '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:14px">'
+    + '<div style="font-weight:800;font-size:14px;margin-bottom:10px">💬 중요 표현 (Key Phrases) <span style="font-size:11px;font-weight:400;color:#64748b">최대 6개 권장</span>'
+    + '<button onclick="aseAddPhrase()" style="float:right;background:#eff6ff;color:#2255a4;border:1px solid #bfdbfe;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer">+ 추가</button></div>'
+    + '<table style="width:100%;border-collapse:collapse" id="ase-ptable">'
+    + '<thead><tr style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px">'
+    + '<th style="text-align:left;padding:4px 6px;width:46%">한국어 표현</th><th style="text-align:left;padding:4px 6px;width:46%">English</th><th style="width:8%"></th></tr></thead>'
+    + '<tbody id="ase-ptbody">'
+    + (phrases.length ? phrases.map(phraseRow).join('') : '<tr><td colspan="3" style="color:#94a3b8;font-size:12px;padding:8px">AI로 초안을 생성하거나 직접 추가하세요.</td></tr>')
+    + '</tbody></table></div>'
+
+    // Highlights override
+    + '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:14px">'
+    + '<div style="font-weight:800;font-size:14px;margin-bottom:6px">🖊️ 하이라이트 커스텀 <span style="font-size:11px;font-weight:400;color:#64748b">비워두면 단어/표현에서 자동 생성</span></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+    + '<div><label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px">단어 하이라이트 (노란색) — 줄마다 1개</label>'
+    + '<textarea id="ase-hl-vocab" rows="6" style="width:100%;font-family:monospace;font-size:12px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;resize:vertical" placeholder="갈등\n해결\n환경">'+hlVocab+'</textarea></div>'
+    + '<div><label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px">표현 하이라이트 (파란색) — 줄마다 1개</label>'
+    + '<textarea id="ase-hl-phrases" rows="6" style="width:100%;font-family:monospace;font-size:12px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;resize:vertical" placeholder="환경 문제를 해결\n새로운 방안">'+hlPhrases+'</textarea></div>'
+    + '</div></div>'
+
+    + '<div style="display:flex;gap:10px">'
+    + '<button onclick="aseSaveContent()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">💾 저장</button>'
+    + '<button onclick="goArticleStudyEditor()" style="background:#f1f5f9;color:#334155;border:none;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">← 목록으로</button>'
+    + '</div></div>';
+}
+
+function aseReadVocab() {
+  var rows = [];
+  var tbody = document.getElementById('ase-vtbody'); if (!tbody) return rows;
+  var i = 0;
+  while (document.getElementById('ase-vko-'+i) !== null) {
+    var ko  = (document.getElementById('ase-vko-'+i).value || '').trim();
+    var en  = (document.getElementById('ase-ven-'+i).value || '').trim();
+    var rom = (document.getElementById('ase-vrom-'+i).value || '').trim();
+    if (ko || en) rows.push({ko:ko, en:en, rom:rom});
+    i++;
+  }
+  return rows;
+}
+function aseReadPhrases() {
+  var rows = [];
+  var i = 0;
+  while (document.getElementById('ase-pko-'+i) !== null) {
+    var ko = (document.getElementById('ase-pko-'+i).value || '').trim();
+    var en = (document.getElementById('ase-pen-'+i).value || '').trim();
+    if (ko || en) rows.push({ko:ko, en:en});
+    i++;
+  }
+  return rows;
+}
+
+function aseAddVocab() {
+  var idx = 0;
+  while (document.getElementById('ase-vko-'+idx) !== null) idx++;
+  var tbody = document.getElementById('ase-vtbody');
+  if (!tbody) return;
+  // Remove empty placeholder row if present
+  if (tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
+  var tr = document.createElement('tr');
+  tr.id = 'ase-vrow-'+idx;
+  tr.innerHTML = '<td><input id="ase-vko-'+idx+'" value="" style="width:100%;padding:5px;border:1px solid #e2e8f0;border-radius:6px;font-family:\'Noto Serif KR\',serif;font-size:13px"></td>'
+    + '<td><input id="ase-ven-'+idx+'" value="" style="width:100%;padding:5px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px"></td>'
+    + '<td><input id="ase-vrom-'+idx+'" value="" style="width:100%;padding:5px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;color:#64748b"></td>'
+    + '<td><button onclick="aseRemoveVocab('+idx+')" style="background:#fee2e2;color:#991b1b;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">✕</button></td>';
+  tbody.appendChild(tr);
+  document.getElementById('ase-vko-'+idx).focus();
+}
+function aseRemoveVocab(i) {
+  var row = document.getElementById('ase-vrow-'+i);
+  if (row) row.remove();
+}
+function aseAddPhrase() {
+  var idx = 0;
+  while (document.getElementById('ase-pko-'+idx) !== null) idx++;
+  var tbody = document.getElementById('ase-ptbody');
+  if (!tbody) return;
+  if (tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
+  var tr = document.createElement('tr');
+  tr.id = 'ase-prow-'+idx;
+  tr.innerHTML = '<td><input id="ase-pko-'+idx+'" value="" style="width:100%;padding:5px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px"></td>'
+    + '<td><input id="ase-pen-'+idx+'" value="" style="width:100%;padding:5px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px"></td>'
+    + '<td><button onclick="aseRemovePhrase('+idx+')" style="background:#fee2e2;color:#991b1b;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">✕</button></td>';
+  tbody.appendChild(tr);
+  document.getElementById('ase-pko-'+idx).focus();
+}
+function aseRemovePhrase(i) {
+  var row = document.getElementById('ase-prow-'+i);
+  if (row) row.remove();
+}
+
+async function aseGenFromAI() {
+  var msgEl = document.getElementById('ase-msg');
+  var art = _aseCurrentArt; if (!art) return;
+  msgEl.textContent = '🤖 AI 초안 생성 중… (약 10초)';
+  var prompt = 'Korean news article study content for language learners.\nTitle: ' + art.title + '\nBody:\n' + (art.body||'').slice(0,1600)
+    + '\n\nReturn ONLY valid JSON:\n{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],"phrases":[{"ko":"sentence from article","en":"translation"}],"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\nvocab:6 key words. phrases:5 key sentences. word_order:3 sentences. questions:3 comprehension questions.';
+  try {
+    var sb = getSb();
+    var data = await sb.functions.invoke('claude-proxy', { body: { feature:'article-study-admin', model:'claude-haiku-4-5-20251001', max_tokens:1500, messages:[{role:'user',content:prompt}] } });
+    var raw = ((data.data&&data.data.content)||[]).map(function(c){return c.text||'';}).join('');
+    var cl = raw.replace(/```json|```/g,'').trim();
+    var s=cl.indexOf('{'),e=cl.lastIndexOf('}'); if(s>=0&&e>s) cl=cl.slice(s,e+1);
+    var parsed = JSON.parse(cl);
+    // Re-render editor with parsed data
+    var artId = art.id;
+    _aseCurrentContent = parsed;
+    await aseOpenEditor(artId);
+    document.getElementById('ase-msg').textContent = '✅ AI 초안 생성 완료. 수정 후 저장하세요.';
+  } catch(e) {
+    msgEl.textContent = '❌ AI 생성 실패: ' + e.message;
+  }
+}
+
+async function aseSaveContent() {
+  var sb  = getSb();
+  var art = _aseCurrentArt; if (!art) return;
+  var msgEl = document.getElementById('ase-msg');
+  var vocab   = aseReadVocab();
+  var phrases = aseReadPhrases();
+  var hlVocabRaw   = (document.getElementById('ase-hl-vocab').value   || '').trim();
+  var hlPhrasesRaw = (document.getElementById('ase-hl-phrases').value || '').trim();
+  var custom_highlights = {
+    vocab:   hlVocabRaw   ? hlVocabRaw.split('\n').map(function(s){return s.trim();}).filter(Boolean) : null,
+    phrases: hlPhrasesRaw ? hlPhrasesRaw.split('\n').map(function(s){return s.trim();}).filter(Boolean) : null
+  };
+  if (!custom_highlights.vocab && !custom_highlights.phrases) custom_highlights = null;
+  var row = {
+    article_id:        String(art.id),
+    article_title:     art.title || '',
+    vocab:             vocab,
+    phrases:           phrases,
+    word_order:        (_aseCurrentContent && _aseCurrentContent.word_order)  || [],
+    questions:         (_aseCurrentContent && _aseCurrentContent.questions)   || [],
+    custom_highlights: custom_highlights,
+    admin_edited:      true,
+    updated_at:        new Date().toISOString()
+  };
+  msgEl.textContent = '저장 중…';
+  var r = await sb.from('article_study_content').upsert(row, {onConflict:'article_id'});
+  if (r.error) { msgEl.textContent = '❌ 오류: ' + r.error.message; return; }
+  _aseEditedIds.add(String(art.id));
+  msgEl.textContent = '✅ 저장됐습니다! (사용자에게 즉시 반영됩니다)';
+}
+
+async function aseDeleteContent() {
+  if (!confirm('이 기사의 편집 콘텐츠를 삭제하고 AI 자동 생성으로 되돌릴까요?')) return;
+  var sb  = getSb();
+  var art = _aseCurrentArt; if (!art) return;
+  var r = await sb.from('article_study_content').delete().eq('article_id', String(art.id));
+  if (r.error) { alert(r.error.message); return; }
+  _aseEditedIds.delete(String(art.id));
+  await aseOpenEditor(art.id);
+  document.getElementById('ase-msg').textContent = '✅ 삭제됨. AI 자동 생성으로 복귀.';
 }
 
 // ── GRAMMAR PDF 가져오기 tab ────────────────────────────────────

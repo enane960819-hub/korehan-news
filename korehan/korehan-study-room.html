@@ -1160,19 +1160,37 @@ body { background: #0b1626 !important; }
 .as-article-text mark          { background:#fff3b0; border-radius:2px; padding:1px 2px; }
 .as-article-text mark.ph-mark  { background:#d4edff; }
 /* Matching activity */
-.as-match-wrap { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.as-match-wrap { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .as-match-item {
-  padding:9px 12px; border:1.5px solid var(--border); border-radius:8px;
-  cursor:pointer; font-size:13px; line-height:1.4; background:#fff; transition:all .15s; text-align:center;
+  padding:13px 14px; border:2px solid var(--border); border-radius:14px;
+  cursor:pointer; font-size:13px; line-height:1.4; background:#fff;
+  transition:all .22s cubic-bezier(.34,1.56,.64,1);
+  text-align:center; position:relative; overflow:hidden;
+  box-shadow:0 2px 6px rgba(0,0,0,.05);
 }
-.as-match-item:hover   { border-color:#7ab8f5; background:#eaf5ff; }
-.as-match-item.sel     { border-color:#7ab8f5; background:#eaf5ff; }
-.as-match-item.correct { border-color:#22c55e; background:#f0fdf4; color:#15803d; pointer-events:none; font-weight:700; }
-.as-match-item.wrong   { border-color:#f87171; background:#fff5f5; animation:as-shake .3s; }
-.as-match-item.matched { border-color:#22c55e; background:#f0fdf4; opacity:.7; pointer-events:none; }
-@keyframes as-shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
-.asmko { font-family:'Noto Serif KR',serif; font-weight:700; color:var(--accent); }
+.as-match-item:hover   { border-color:#7ab8f5; background:#f0f7ff; transform:translateY(-2px); box-shadow:0 4px 14px rgba(34,85,164,.14); }
+.as-match-item.sel     { border-color:#2255a4; background:#eaf5ff; transform:scale(1.04); box-shadow:0 4px 18px rgba(34,85,164,.22); }
+.as-match-item.wrong   { border-color:#f87171; background:#fff5f5; animation:as-shake .35s; }
+.as-match-item.matched {
+  border-color:#22c55e; background:linear-gradient(135deg,#f0fdf4,#dcfce7);
+  color:#15803d; pointer-events:none; font-weight:700;
+  box-shadow:0 2px 10px rgba(34,197,94,.2);
+}
+.as-match-item.burst   { animation:as-burst .45s cubic-bezier(.34,1.56,.64,1) forwards; }
+@keyframes as-burst { 0%{transform:scale(1)} 45%{transform:scale(1.18)} 100%{transform:scale(1)} }
+@keyframes as-shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+/* Particle dots spawned by JS */
+.as-particle { position:fixed; pointer-events:none; border-radius:50%; animation:as-particle-fly .7s ease-out forwards; z-index:9999; }
+@keyframes as-particle-fly { 0%{opacity:1;transform:scale(1) translate(0,0)} 100%{opacity:0;transform:scale(0) translate(var(--dx),var(--dy))} }
+.asmko { font-family:'Noto Serif KR',serif; font-weight:800; color:var(--accent); font-size:16px; }
 .asmrom { font-size:11px; color:var(--gray); margin-top:1px; }
+/* Korean vocab card tint */
+.as-match-ko {
+  background:linear-gradient(135deg,#eff6ff,#e0eeff);
+  border-color:#bfdbfe;
+}
+.as-match-ko:hover { border-color:#7ab8f5; background:linear-gradient(135deg,#dbeafe,#eff6ff); }
+.as-match-ko.sel   { border-color:#1d4ed8; background:#dbeafe; }
 /* Word-order */
 .as-chunk-pool { display:flex; flex-wrap:wrap; gap:6px; min-height:42px; padding:10px 12px; background:#f8fafc; border:2px dashed var(--border); border-radius:8px; margin-bottom:10px; }
 .as-answer-row { display:flex; flex-wrap:wrap; gap:6px; min-height:46px; padding:10px 12px; background:#fff; border:2px dashed #7ab8f5; border-radius:8px; }
@@ -6095,7 +6113,22 @@ async function _asLoadContent() {
   var c = sessionStorage.getItem(key);
   if (c) { try { _asStudyContent = JSON.parse(c); return; } catch(e) {} }
   if (!supaUser) return;
-  var lvG = { Beginner:'simple present tense, basic vocabulary, short sentences', Intermediate:'past tense, conjunctions, moderate vocabulary', Advanced:'complex structures, formal style, advanced vocabulary' };
+  // Check DB for admin-edited content first
+  try {
+    var sb = getSupa();
+    var dr = await sb.from('article_study_content').select('*').eq('article_id', String(_asCurrentArt.id)).maybeSingle();
+    if (dr.data && (dr.data.admin_edited || dr.data.vocab)) {
+      _asStudyContent = {
+        vocab:       dr.data.vocab       || [],
+        phrases:     dr.data.phrases     || [],
+        word_order:  dr.data.word_order  || [],
+        questions:   dr.data.questions   || [],
+        custom_highlights: dr.data.custom_highlights || null
+      };
+      sessionStorage.setItem(key, JSON.stringify(_asStudyContent));
+      return;
+    }
+  } catch(e) {}
   var prompt = 'Korean news article study content for language learners.\nTitle: ' + (_asCurrentArt.title||'') + '\nBody:\n' + (_asCurrentArt.body||'').slice(0,1600)
     + '\n\nReturn ONLY valid JSON:\n{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],"phrases":[{"ko":"sentence from article","en":"translation"}],"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\nvocab:6 key words from article. phrases:5 key sentences. word_order:3 sentences split into eojeol chunks in CORRECT order. questions:3 comprehension questions.';
   try {
@@ -6133,7 +6166,10 @@ function _asRenderStep() {
 function _asStep1(art,act) {
   var vocab=(_asStudyContent&&_asStudyContent.vocab)||[];
   var body=_asCurrentArt&&_asCurrentArt.body?_asFormatBody(_asCurrentArt.body):'';
-  vocab.forEach(function(v){ if(v.ko) body=body.replace(new RegExp(_asEsc(v.ko),'g'),'<mark>'+v.ko+'</mark>'); });
+  var hlWords = (_asStudyContent&&_asStudyContent.custom_highlights&&_asStudyContent.custom_highlights.vocab)
+    ? _asStudyContent.custom_highlights.vocab
+    : vocab.map(function(v){return v.ko;});
+  hlWords.forEach(function(w){ if(w) body=body.replace(new RegExp(_asEsc(w),'g'),'<mark>'+w+'</mark>'); });
   art.innerHTML='<p class="as-section-label">📖 기사 읽기 — 형광펜 단어 확인</p><div class="as-article-text">'+body+'</div>';
   if (!vocab.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px">어휘가 없습니다.</div>'; _asSetNav('none',''); return; }
   var eng=_asShuffle(vocab.map(function(v,i){return{t:v.en,i:i};}));
@@ -6146,16 +6182,21 @@ function _asRenderMatch() {
   var m=_asMatchState;
   var lh=m.pairs.map(function(v,i){
     var isDone=m.matched.indexOf(i)>=0;
-    var cls='as-match-item'+(isDone?' matched':m.sel.l===i?' sel':'');
-    // Korean side: no romanization, larger Korean text
-    return '<div class="'+cls+'" onclick="asML('+i+')" data-li="'+i+'" style="font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;color:'+(isDone?'#15803d':'var(--accent)')+'">'+v.ko+'</div>';
+    var cls='as-match-item as-match-ko'+(isDone?' matched':m.sel.l===i?' sel':'');
+    var inner = isDone
+      ? '<span style="font-size:18px;display:block;margin-bottom:2px">✓</span><span class="asmko" style="color:#15803d">'+v.ko+'</span>'
+      : '<span class="asmko">'+v.ko+'</span>';
+    return '<div class="'+cls+'" onclick="asML('+i+')" data-li="'+i+'">'+inner+'</div>';
   }).join('');
   var rh=m.eng.map(function(item,ri){
     var isDone=m.matched.indexOf(item.i)>=0;
     var cls='as-match-item'+(isDone?' matched':m.sel.r===ri?' sel':'');
-    return '<div class="'+cls+'" onclick="asMR('+ri+')" data-ri="'+ri+'" style="font-size:13px;color:#334155">'+item.t+'</div>';
+    var inner = isDone
+      ? '<span style="font-size:16px;display:block;margin-bottom:1px">✓</span><span style="font-size:13px;color:#15803d;font-weight:700">'+item.t+'</span>'
+      : '<span style="font-size:13px;color:#334155;font-weight:600">'+item.t+'</span>';
+    return '<div class="'+cls+'" onclick="asMR('+ri+')" data-ri="'+ri+'">'+inner+'</div>';
   }).join('');
-  g.innerHTML='<div style="display:flex;flex-direction:column;gap:7px">'+lh+'</div><div style="display:flex;flex-direction:column;gap:7px">'+rh+'</div>';
+  g.innerHTML='<div style="display:flex;flex-direction:column;gap:8px">'+lh+'</div><div style="display:flex;flex-direction:column;gap:8px">'+rh+'</div>';
 }
 function asML(i) {
   if(!_asMatchState||_asMatchState.matched.indexOf(i)>=0) return;
@@ -6169,9 +6210,21 @@ function _asCheckMatchPair() {
   var m=_asMatchState; if(!m||m.sel.l===null||m.sel.r===null) return;
   var correct=m.eng[m.sel.r].i===m.sel.l;
   if (correct) {
+    var g=document.getElementById('as-mg');
+    // Burst animation on both cards before marking matched
+    if (g) {
+      var bl=g.querySelector('[data-li="'+m.sel.l+'"]'), br=g.querySelector('[data-ri="'+m.sel.r+'"]');
+      if(bl){ bl.classList.add('burst'); _asSpawnParticles(bl); }
+      if(br){ br.classList.add('burst'); _asSpawnParticles(br); }
+    }
     m.matched.push(m.sel.l); m.sel={l:null,r:null};
-    var msg=document.getElementById('as-mm'); if(msg) msg.textContent='✓ 맞았어요! ('+m.matched.length+'/'+m.pairs.length+')';
-    if (m.matched.length===m.pairs.length) setTimeout(function(){ _asSetNav('none',''); },400);
+    var msg=document.getElementById('as-mm');
+    if(msg){
+      msg.innerHTML='<span style="color:#16a34a;font-weight:800;font-size:13px">✓ 맞았어요! '+m.matched.length+'/'+m.pairs.length+'</span>'
+        +(m.matched.length===m.pairs.length?' <span style="color:#7c3aed;font-weight:800">🎉 전부 완료!</span>':'');
+    }
+    setTimeout(_asRenderMatch, 80);
+    if (m.matched.length===m.pairs.length) setTimeout(function(){ _asSetNav('none',''); },500);
   } else {
     var g=document.getElementById('as-mg');
     if (g) {
@@ -6183,11 +6236,33 @@ function _asCheckMatchPair() {
   }
 }
 
+function _asSpawnParticles(el) {
+  if (!el) return;
+  var rect = el.getBoundingClientRect();
+  var cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+  var colors = ['#22c55e','#4ade80','#86efac','#7ab8f5','#fbbf24','#a78bfa'];
+  for (var i=0; i<10; i++) {
+    var p = document.createElement('div');
+    p.className = 'as-particle';
+    var size = 6 + Math.random()*6;
+    var angle = (i/10)*Math.PI*2;
+    var dist = 40+Math.random()*40;
+    p.style.cssText = 'width:'+size+'px;height:'+size+'px;background:'+colors[i%colors.length]
+      +';left:'+(cx-size/2)+'px;top:'+(cy-size/2)+'px'
+      +';--dx:'+(Math.cos(angle)*dist)+'px;--dy:'+(Math.sin(angle)*dist)+'px';
+    document.body.appendChild(p);
+    setTimeout(function(){ if(p.parentNode) p.parentNode.removeChild(p); }, 750);
+  }
+}
+
 // ── Step 2: Phrase matching ──
 function _asStep2(art,act) {
   var phrases=(_asStudyContent&&_asStudyContent.phrases)||[];
   var body=_asCurrentArt&&_asCurrentArt.body?_asFormatBody(_asCurrentArt.body):'';
-  phrases.forEach(function(p){ if(p.ko&&p.ko.length>8) body=body.replace(new RegExp(_asEsc(p.ko.slice(0,12)),'g'),'<mark class="ph-mark">'+p.ko.slice(0,12)+'</mark>'); });
+  var hlPhrases = (_asStudyContent&&_asStudyContent.custom_highlights&&_asStudyContent.custom_highlights.phrases)
+    ? _asStudyContent.custom_highlights.phrases
+    : phrases.map(function(p){return p.ko&&p.ko.length>8?p.ko.slice(0,12):null;}).filter(Boolean);
+  hlPhrases.forEach(function(s){ if(s) body=body.replace(new RegExp(_asEsc(s),'g'),'<mark class="ph-mark">'+s+'</mark>'); });
   art.innerHTML='<p class="as-section-label">📖 기사 읽기 — 핵심 표현 확인</p><div class="as-article-text">'+body+'</div>';
   if (!phrases.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px">표현이 없습니다.</div>'; _asSetNav('none',''); return; }
   var eng=_asShuffle(phrases.map(function(p,i){return{t:p.en,i:i};}));
