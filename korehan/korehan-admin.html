@@ -5364,6 +5364,7 @@ async function goStudyRoomOps() {
     + '  <button class="btn"       id="srt-picture"     onclick="srShowTab(\'picture\')"    >🖼️ Picture</button>'
     + '  <button class="btn"       id="srt-homework"    onclick="srShowTab(\'homework\')"   >📝 Homework</button>'
     + '  <button class="btn"       id="srt-submissions" onclick="srShowTab(\'submissions\')">📊 제출 현황</button>'
+    + '  <button class="btn"       id="srt-grammar-pdf" onclick="srShowTab(\'grammar-pdf\')">📄 문법 PDF 가져오기</button>'
     + '</div>'
     + '<div id="sr-tab-body"></div>';
   await srShowTab('topics');
@@ -5389,6 +5390,7 @@ async function srShowTab(tab) {
   if (tab === 'picture')  { body.innerHTML = srPictureFormHTML(); await srLoadPictures(); }
   if (tab === 'homework')     { body.innerHTML = '<div class="sf-card" id="sr-homework-list">Loading…</div>'; await loadStudyHomeworkAdmin(); }
   if (tab === 'submissions')  { body.innerHTML = srSubmissionsFormHTML(); await srLoadSubmissions(); }
+  if (tab === 'grammar-pdf')  { body.innerHTML = srGrammarPdfFormHTML(); }
 }
 
 // ── TOPICS tab (daily content — AI-generated + admin-editable) ──────────────────────
@@ -5906,6 +5908,9 @@ function srGrammarFormHTML() {
     + '<div class="fg"><label>Explanation</label><input id="srg-exp" placeholder="e.g. Present tense polite ending"></div>'
     + '<div class="fg"><label>Example KO</label><input id="srg-exko" placeholder="저는 밥을 먹어요."></div>'
     + '<div class="fg"><label>Example EN</label><input id="srg-exen" placeholder="I eat rice."></div>'
+    + '<div class="fg"><label>Structure <span style="font-weight:400;font-size:11px;color:#94a3b8">문법 구조 (선택)</span></label><input id="srg-structure" placeholder="예: 동사/형용사 + 아요/어요"></div>'
+    + '<div class="fg"><label>When to Use <span style="font-weight:400;font-size:11px;color:#94a3b8">사용 시점 설명 (선택)</span></label><textarea id="srg-when" rows="2" style="width:100%" placeholder="격식체 현재 시제. 상점, 직장 등 공식적인 상황에서 사용."></textarea></div>'
+    + '<div class="fg"><label>Watch Out <span style="font-weight:400;font-size:11px;color:#94a3b8">주의사항 (선택)</span></label><textarea id="srg-watch" rows="2" style="width:100%" placeholder="이다 뒤에는 아요/어요가 아닌 이에요/예요를 사용합니다."></textarea></div>'
     + '<div class="fg"><label>Display Order</label><input id="srg-order" type="number" value="0" style="width:80px"></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
     + '<button class="btn btn-g" onclick="srSaveGrammar()">저장</button>'
@@ -5947,13 +5952,16 @@ async function srEditGrammar(id) {
   var sb = getSb();
   var r = await sb.from('study_room_grammar').select('*').eq('id', id).maybeSingle();
   if (r.error || !r.data) return;
-  document.getElementById('srg-id').value      = r.data.id;
-  document.getElementById('srg-level').value   = r.data.level;
-  document.getElementById('srg-pattern').value = r.data.pattern;
-  document.getElementById('srg-exp').value     = r.data.explanation;
-  document.getElementById('srg-exko').value    = r.data.example_ko;
-  document.getElementById('srg-exen').value    = r.data.example_en;
-  document.getElementById('srg-order').value   = r.data.display_order;
+  document.getElementById('srg-id').value        = r.data.id;
+  document.getElementById('srg-level').value     = r.data.level;
+  document.getElementById('srg-pattern').value   = r.data.pattern;
+  document.getElementById('srg-exp').value       = r.data.explanation;
+  document.getElementById('srg-exko').value      = r.data.example_ko;
+  document.getElementById('srg-exen').value      = r.data.example_en;
+  document.getElementById('srg-structure').value = r.data.structure || '';
+  document.getElementById('srg-when').value      = r.data.when_to_use || '';
+  document.getElementById('srg-watch').value     = r.data.watch_out || '';
+  document.getElementById('srg-order').value     = r.data.display_order;
   document.getElementById('srg-msg').textContent = '수정 중 — 저장 버튼을 눌러 확정하세요.';
   window.scrollTo(0,0);
 }
@@ -5967,6 +5975,9 @@ async function srSaveGrammar() {
     explanation: (document.getElementById('srg-exp').value || '').trim(),
     example_ko:  (document.getElementById('srg-exko').value || '').trim(),
     example_en:  (document.getElementById('srg-exen').value || '').trim(),
+    structure:   (document.getElementById('srg-structure').value || '').trim() || null,
+    when_to_use: (document.getElementById('srg-when').value || '').trim() || null,
+    watch_out:   (document.getElementById('srg-watch').value || '').trim() || null,
     display_order: parseInt(document.getElementById('srg-order').value) || 0,
     active: true,
     updated_at: new Date().toISOString()
@@ -5989,7 +6000,7 @@ async function srDeleteGrammar(id) {
 }
 
 function srClearGrammarForm() {
-  ['srg-id','srg-pattern','srg-exp','srg-exko','srg-exen'].forEach(function(id){ document.getElementById(id).value = ''; });
+  ['srg-id','srg-pattern','srg-exp','srg-exko','srg-exen','srg-structure','srg-when','srg-watch'].forEach(function(id){ document.getElementById(id).value = ''; });
   document.getElementById('srg-order').value = '0';
   document.getElementById('srg-msg').textContent = '';
 }
@@ -6221,6 +6232,253 @@ async function saveHomeworkFeedback(id) {
 
 if (window.location.hash === '#study-picture-prompts' || window.location.hash === '#study-room') {
   setTimeout(function(){ goStudyRoomOps(); }, 120);
+}
+
+// ── GRAMMAR PDF 가져오기 tab ────────────────────────────────────
+function srGrammarPdfFormHTML() {
+  return '<div class="sf-card" style="margin-bottom:12px">'
+    + '<div style="font-weight:800;font-size:15px;margin-bottom:6px">📄 문법 교재 PDF 가져오기</div>'
+    + '<div style="font-size:12px;color:#64748b;margin-bottom:14px">PDF를 업로드하면 AI가 문법 패턴을 추출하여 <b>study_room_grammar</b> 테이블에 저장합니다.</div>'
+    + '<div class="fg"><label>레벨</label>'
+    + '<select id="srpdf-level"><option>Starter</option><option selected>Beginner</option><option>Intermediate</option><option>Advanced</option></select></div>'
+    + '<div class="fg"><label>PDF 파일 선택</label>'
+    + '<input type="file" id="srpdf-file" accept=".pdf" onchange="srHandlePdfUpload(this)">'
+    + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">PDF.js 라이브러리로 텍스트를 추출합니다. 스캔된 이미지 PDF는 지원하지 않습니다.</div></div>'
+    + '<div id="srpdf-extract-area" style="display:none">'
+    + '<div class="fg"><label>추출된 텍스트 <span style="font-weight:400;font-size:11px;color:#94a3b8">(편집 가능 — 필요 없는 부분 삭제 후 파싱)</span></label>'
+    + '<textarea id="srpdf-text" rows="12" style="width:100%;font-family:monospace;font-size:11px"></textarea></div>'
+    + '<div style="font-size:12px;color:#64748b;margin-bottom:8px" id="srpdf-page-info"></div>'
+    + '<div class="fg"><label>페이지 범위 <span style="font-weight:400;font-size:11px;color:#94a3b8">선택사항 — 빈 칸이면 전체, 예: 1-20</span></label>'
+    + '<input id="srpdf-pages" placeholder="1-50" style="width:120px"></div>'
+    + '<button class="btn btn-g" onclick="srRerextractPages()">🔄 페이지 범위 다시 추출</button>'
+    + '</div>'
+    + '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap" id="srpdf-parse-area" style="display:none">'
+    + '<button class="btn" id="srpdf-parse-btn" onclick="srParseGrammarWithClaude()" style="background:#7c3aed;color:#fff">🤖 AI로 문법 패턴 파싱</button>'
+    + '</div>'
+    + '<div id="srpdf-status" style="font-size:12px;color:#475569;margin-top:8px"></div>'
+    + '</div>'
+    + '<div id="srpdf-review-area" style="margin-top:16px;display:none">'
+    + '<div style="font-weight:800;font-size:14px;margin-bottom:10px">파싱 결과 검토 <span id="srpdf-count" style="font-size:12px;color:#64748b"></span></div>'
+    + '<div style="font-size:12px;color:#64748b;margin-bottom:10px">체크된 항목만 DB에 저장됩니다. 내용을 직접 편집할 수 있습니다.</div>'
+    + '<div id="srpdf-results"></div>'
+    + '<div style="margin-top:12px;display:flex;gap:8px">'
+    + '<button class="btn btn-g" onclick="srSaveParsedGrammar()">💾 선택된 항목 DB 저장</button>'
+    + '<button class="btn" onclick="srSelectAllParsed(true)">모두 선택</button>'
+    + '<button class="btn" onclick="srSelectAllParsed(false)">모두 해제</button>'
+    + '</div>'
+    + '<div id="srpdf-save-msg" style="font-size:12px;color:#475569;margin-top:8px"></div>'
+    + '</div>';
+}
+
+var _srpdfAllPages = 0;
+
+async function srHandlePdfUpload(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var statusEl = document.getElementById('srpdf-status');
+  statusEl.textContent = 'PDF.js 로딩 중…';
+
+  // Load PDF.js from CDN if not already loaded
+  if (!window.pdfjsLib) {
+    await new Promise(function(resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  }
+
+  statusEl.textContent = 'PDF 읽는 중…';
+  try {
+    var arrayBuffer = await file.arrayBuffer();
+    var pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    _srpdfAllPages = pdf.numPages;
+    document.getElementById('srpdf-page-info').textContent =
+      '총 ' + _srpdfAllPages + ' 페이지. 전체 추출 또는 페이지 범위를 지정하세요.';
+    await srExtractPdfText(pdf, 1, _srpdfAllPages);
+    document.getElementById('srpdf-extract-area').style.display = '';
+    document.getElementById('srpdf-parse-area').style.display = '';
+    statusEl.textContent = '텍스트 추출 완료. AI 파싱 버튼을 누르세요.';
+  } catch(e) {
+    statusEl.textContent = '오류: ' + e.message;
+  }
+}
+
+async function srExtractPdfText(pdf, from, to) {
+  var pages = [];
+  from = Math.max(1, from);
+  to   = Math.min(to, pdf.numPages);
+  for (var i = from; i <= to; i++) {
+    var page = await pdf.getPage(i);
+    var tc   = await page.getTextContent();
+    var txt  = tc.items.map(function(item){ return item.str; }).join(' ');
+    pages.push('=== Page ' + i + ' ===\n' + txt);
+  }
+  document.getElementById('srpdf-text').value = pages.join('\n\n');
+}
+
+async function srRerextractPages() {
+  var file = document.getElementById('srpdf-file').files[0];
+  if (!file || !window.pdfjsLib) return;
+  var rangeStr = (document.getElementById('srpdf-pages').value || '').trim();
+  var from = 1, to = _srpdfAllPages;
+  if (rangeStr) {
+    var parts = rangeStr.split('-');
+    from = parseInt(parts[0]) || 1;
+    to   = parseInt(parts[1]) || from;
+  }
+  document.getElementById('srpdf-status').textContent = '다시 추출 중…';
+  var arrayBuffer = await file.arrayBuffer();
+  var pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  await srExtractPdfText(pdf, from, to);
+  document.getElementById('srpdf-status').textContent = '추출 완료 (' + from + '~' + to + ' 페이지).';
+}
+
+async function srParseGrammarWithClaude() {
+  var text   = (document.getElementById('srpdf-text').value || '').trim();
+  var level  = document.getElementById('srpdf-level').value;
+  var status = document.getElementById('srpdf-status');
+  if (!text) { status.textContent = '먼저 PDF를 업로드하세요.'; return; }
+
+  // Truncate to ~12000 chars if very long (Claude has limits)
+  var chunk = text.length > 12000 ? text.slice(0, 12000) + '\n\n[텍스트가 너무 길어 앞 부분만 파싱됩니다]' : text;
+
+  status.textContent = 'Claude AI 파싱 중… (30~60초 소요)';
+  document.getElementById('srpdf-parse-btn').disabled = true;
+
+  var prompt = '당신은 한국어 문법 교재에서 문법 패턴을 추출하는 전문가입니다.\n'
+    + '아래 PDF 텍스트에서 문법 패턴을 모두 추출하여 JSON 배열로 반환하세요.\n'
+    + '레벨: ' + level + '\n\n'
+    + '각 항목은 아래 형식의 JSON 객체여야 합니다:\n'
+    + '{\n'
+    + '  "pattern": "~아요/어요",\n'
+    + '  "explanation": "Present tense polite ending (영어 설명)",\n'
+    + '  "example_ko": "저는 밥을 먹어요.",\n'
+    + '  "example_en": "I eat rice.",\n'
+    + '  "structure": "동사 어간 + 아요/어요 (받침 없으면 아요, 있으면 어요)",\n'
+    + '  "when_to_use": "일상적인 대화, 예의바른 상황에서 사용",\n'
+    + '  "watch_out": "이다 뒤에는 이에요/예요를 사용"\n'
+    + '}\n\n'
+    + '규칙:\n'
+    + '- pattern은 반드시 ~로 시작하는 한국어 문법 형태\n'
+    + '- explanation은 영어로\n'
+    + '- example_ko, example_en은 짧고 명확한 예문\n'
+    + '- structure, when_to_use, watch_out 은 없으면 null\n'
+    + '- 중복 패턴 제외\n'
+    + '- JSON 배열만 반환, 다른 텍스트 없이\n\n'
+    + 'PDF 텍스트:\n' + chunk;
+
+  try {
+    var res = await callClaude({
+      feature: 'grammar-pdf-parse',
+      model: 'claude-opus-4-6',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+    // Extract JSON array from response
+    var match = raw.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error('JSON 배열을 찾을 수 없습니다. Claude 응답: ' + raw.slice(0, 200));
+    var patterns = JSON.parse(match[0]);
+    status.textContent = patterns.length + '개 패턴 파싱 완료. 아래에서 검토 후 저장하세요.';
+    srShowParsedGrammar(patterns, level);
+  } catch(e) {
+    status.textContent = '파싱 오류: ' + e.message;
+  }
+  document.getElementById('srpdf-parse-btn').disabled = false;
+}
+
+function srShowParsedGrammar(patterns, level) {
+  var reviewArea = document.getElementById('srpdf-review-area');
+  var resultsEl  = document.getElementById('srpdf-results');
+  var countEl    = document.getElementById('srpdf-count');
+  reviewArea.style.display = '';
+  countEl.textContent = '(' + patterns.length + '개)';
+
+  window._srpdfPatterns = patterns;
+  window._srpdfLevel = level;
+
+  resultsEl.innerHTML = patterns.map(function(p, i) {
+    var safeVal = function(v){ return (v || '').replace(/"/g, '&quot;').replace(/</g, '&lt;'); };
+    return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:10px;background:#fff">'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+      + '<input type="checkbox" id="srpdf-chk-' + i + '" checked style="width:16px;height:16px;cursor:pointer">'
+      + '<span style="font-size:12px;font-weight:700;color:#7c3aed">패턴 ' + (i+1) + '</span>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      + '<div><label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:2px">Pattern</label>'
+      + '<input id="srpdf-p-' + i + '" value="' + safeVal(p.pattern) + '" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"></div>'
+      + '<div><label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:2px">Explanation (EN)</label>'
+      + '<input id="srpdf-e-' + i + '" value="' + safeVal(p.explanation) + '" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"></div>'
+      + '<div><label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:2px">Example KO</label>'
+      + '<input id="srpdf-eko-' + i + '" value="' + safeVal(p.example_ko) + '" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"></div>'
+      + '<div><label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:2px">Example EN</label>'
+      + '<input id="srpdf-een-' + i + '" value="' + safeVal(p.example_en) + '" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"></div>'
+      + '</div>'
+      + '<div style="margin-top:8px;display:grid;grid-template-columns:1fr;gap:6px">'
+      + '<div><label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:2px">Structure</label>'
+      + '<input id="srpdf-st-' + i + '" value="' + safeVal(p.structure) + '" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"></div>'
+      + '<div><label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:2px">When to Use</label>'
+      + '<textarea id="srpdf-wt-' + i + '" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;min-height:50px">' + safeVal(p.when_to_use) + '</textarea></div>'
+      + '<div><label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:2px">Watch Out</label>'
+      + '<textarea id="srpdf-wo-' + i + '" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;min-height:50px">' + safeVal(p.watch_out) + '</textarea></div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function srSelectAllParsed(checked) {
+  var patterns = window._srpdfPatterns || [];
+  patterns.forEach(function(_, i) {
+    var chk = document.getElementById('srpdf-chk-' + i);
+    if (chk) chk.checked = checked;
+  });
+}
+
+async function srSaveParsedGrammar() {
+  var sb = getSb();
+  var patterns = window._srpdfPatterns || [];
+  var level = window._srpdfLevel || document.getElementById('srpdf-level').value;
+  var msgEl = document.getElementById('srpdf-save-msg');
+  var rows = [];
+  patterns.forEach(function(_, i) {
+    var chk = document.getElementById('srpdf-chk-' + i);
+    if (!chk || !chk.checked) return;
+    var val = function(id){ return (document.getElementById(id) && document.getElementById(id).value || '').trim() || null; };
+    var pattern = val('srpdf-p-' + i);
+    if (!pattern) return;
+    rows.push({
+      level:         level,
+      pattern:       pattern,
+      explanation:   val('srpdf-e-'   + i),
+      example_ko:    val('srpdf-eko-' + i),
+      example_en:    val('srpdf-een-' + i),
+      structure:     val('srpdf-st-'  + i),
+      when_to_use:   val('srpdf-wt-'  + i),
+      watch_out:     val('srpdf-wo-'  + i),
+      display_order: i,
+      active: true
+    });
+  });
+
+  if (!rows.length) { msgEl.textContent = '선택된 항목이 없습니다.'; return; }
+  msgEl.textContent = rows.length + '개 저장 중…';
+
+  // Insert in batches of 20 to avoid request size limits
+  var errors = [];
+  for (var s = 0; s < rows.length; s += 20) {
+    var batch = rows.slice(s, s + 20);
+    var r = await sb.from('study_room_grammar').insert(batch);
+    if (r.error) errors.push(r.error.message);
+  }
+  if (errors.length) {
+    msgEl.textContent = '일부 오류: ' + errors.join(', ');
+  } else {
+    msgEl.textContent = '✅ ' + rows.length + '개 패턴이 study_room_grammar에 저장됐습니다!';
+  }
 }
 </script>
 </body>
