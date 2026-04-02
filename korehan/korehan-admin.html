@@ -204,7 +204,6 @@ a{color:inherit;text-decoration:none}
     <div class="sb-lbl">설정</div>
     <button class="sb-btn" id="sb-site-settings" onclick="goSiteSettings()"><span class="ico">⚙️</span>사이트 설정</button>
     <button class="sb-btn" id="sb-onb-settings" onclick="goOnboardingSettings()"><span class="ico">🧭</span>온보딩 편집</button>
-    <button class="sb-btn" onclick="goOpinions()"><span class="ico">✍️</span>칼럼니스트</button>
     <button class="sb-btn" id="sb-char-reporters" onclick="goCharReporters()"><span class="ico">🎭</span>캐릭터 기자</button>
     <button class="sb-btn" id="sb-shop" onclick="goShopContent()"><span class="ico">🛍️</span>상점 & 코인</button>
 
@@ -2437,14 +2436,18 @@ function savePhraseAdminItem(showMsg=true){
   }
   phraseAdminItems[phraseAdminCurrentIndex] = row;
   lsSet(K_PHRASES, phraseAdminItems);
+  // Sync to DB via shared function
+  if(typeof saveSharedPhrases==='function') saveSharedPhrases(phraseAdminItems);
   renderPhraseAdminTable();
-  if(showMsg) toast('✨ 오늘의 표현 저장됨');
+  if(showMsg) toast('✨ 오늘의 표현 저장됨 (DB 동기화 완료)');
   return true;
 }
 function saveAllPhraseAdminItems(){
   if(!savePhraseAdminItem(false)) return;
-  lsSet(K_PHRASES, phraseAdminItems.map(normalizePhraseAdmin).filter(p=>p.ko));
-  toast("✨ Today's Phrase 전체 저장 완료");
+  var cleaned = phraseAdminItems.map(normalizePhraseAdmin).filter(p=>p.ko);
+  lsSet(K_PHRASES, cleaned);
+  if(typeof saveSharedPhrases==='function') saveSharedPhrases(cleaned);
+  toast("✨ Today's Phrase 전체 저장 완료 (DB 동기화)");
 }
 function newPhraseAdminItem(){
   savePhraseAdminItem(false);
@@ -3678,7 +3681,7 @@ async function loadAllComments() {
             +'</div>'
             +'<button data-id="'+c.id+'" onclick="adminDeleteComment(this.dataset.id)" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:13px;padding:2px 6px">🗑</button>'
             +'</div>'
-            +'<div style="font-size:14px;color:#222;margin-bottom:10px">'+c.body+'</div>'
+            +'<div style="font-size:14px;color:#222;margin-bottom:10px">'+(c.content||c.body||'(내용 없음)')+'</div>'
             +(c.reply
               ? '<div style="background:#f0f4ff;border-left:3px solid var(--a);padding:8px 12px;border-radius:0 6px 6px 0;font-size:13px;margin-bottom:8px"><b>내 답변:</b> '+c.reply+'</div>'
               : ''
@@ -3876,12 +3879,11 @@ async function loadUsers(){
     const authData = await authRes.json();
     const authUsers = authData.users || [];
 
-    // 활동 데이터 병렬 조회
-    const [words, articles, quizzes, streaks, writings, comments] = await Promise.all([
-      supaAdminGet('/rest/v1/saved_words?select=user_id,created_at&order=created_at.desc'),
-      supaAdminGet('/rest/v1/read_articles?select=user_id,read_at&order=read_at.desc'),
-      supaAdminGet('/rest/v1/quiz_results?select=user_id,played_at&order=played_at.desc'),
-      supaAdminGet('/rest/v1/study_streaks?select=user_id,streak&order=streak.desc'),
+    // 활동 데이터 병렬 조회 (각 테이블 실패해도 계속)
+    const [words, articles, missions, writings, comments] = await Promise.all([
+      supaAdminGet('/rest/v1/saved_words?select=user_id,created_at&order=created_at.desc').catch(function(){return [];}),
+      supaAdminGet('/rest/v1/read_articles?select=user_id,read_at&order=read_at.desc').catch(function(){return [];}),
+      supaAdminGet('/rest/v1/daily_missions?select=user_id,date,articles,words,quizzes,fill&order=date.desc').catch(function(){return [];}),
       supaAdminGet('/rest/v1/writing_submissions?select=user_id,created_at&order=created_at.desc').catch(function(){return [];}),
       supaAdminGet('/rest/v1/comments?select=user_id,created_at&order=created_at.desc').catch(function(){return [];}),
     ]);
@@ -3889,12 +3891,11 @@ async function loadUsers(){
     // 활동 집계
     const act = {};
     function getAct(uid){ if(!act[uid]) act[uid]={words:0,articles:0,quizzes:0,streak:0,writings:0,comments:0,lastSeen:null}; return act[uid]; }
-    (words||[]).forEach(function(r){ var u=getAct(r.user_id); u.words++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
-    (articles||[]).forEach(function(r){ var u=getAct(r.user_id); u.articles++; if(!u.lastSeen||r.read_at>u.lastSeen) u.lastSeen=r.read_at; });
-    (quizzes||[]).forEach(function(r){ getAct(r.user_id).quizzes++; });
-    (streaks||[]).forEach(function(r){ getAct(r.user_id).streak=r.streak||0; });
-    (writings||[]).forEach(function(r){ var u=getAct(r.user_id); u.writings++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
-    (comments||[]).forEach(function(r){ var u=getAct(r.user_id); u.comments++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
+    (words||[]).forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.words++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
+    (articles||[]).forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.articles++; if(!u.lastSeen||r.read_at>u.lastSeen) u.lastSeen=r.read_at; });
+    (missions||[]).forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.quizzes+=(r.quizzes||0); u.articles+=(r.articles||0); });
+    (writings||[]).forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.writings++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
+    (comments||[]).forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.comments++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
 
     if (!authUsers.length) {
       el.innerHTML = '<div class="infobox">가입한 회원이 없습니다.</div>';
@@ -4149,10 +4150,10 @@ async function goConvEditor() {
           <div>
             <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Count</label>
             <select id="cv-count" style="width:100%;padding:9px 10px;border-radius:10px;border:1.5px solid #e2e8f0;font-family:inherit;font-size:13px;background:#fafbfc">
-              <option value="1">1</option>
+              <option value="1" selected>1</option>
               <option value="2">2</option>
               <option value="3">3</option>
-              <option value="5" selected>5</option>
+              <option value="5">5</option>
               <option value="8">8</option>
               <option value="10">10</option>
               <option value="15">15</option>
@@ -4655,18 +4656,19 @@ function syncConvPreview() {
     var nm  = isB ? nameB : nameA;
     var col = isB ? colB : colA;
     var ini = nm.charAt(0);
+    var rep = isB ? repB : repA;
+    var imgUrl = rep && rep.image ? rep.image : '';
+    var avatarHtml = imgUrl
+      ? '<img src="'+imgUrl+'" style="width:34px;height:34px;border-radius:10px;object-fit:cover;flex-shrink:0;border:2px solid '+col+';" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div style="width:34px;height:34px;border-radius:10px;background:'+col+';color:#fff;display:none;align-items:center;justify-content:center;font-size:13px;font-weight:900;flex-shrink:0;">'+ini+'</div>'
+      : '<div style="width:34px;height:34px;border-radius:10px;background:'+col+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;flex-shrink:0;">'+ini+'</div>';
     html += '<div style="display:flex;align-items:flex-end;gap:8px;' + (isB ? 'justify-content:flex-end;' : '') + '">';
-    if (!isB) {
-      html += '<div style="width:30px;height:30px;border-radius:10px;background:'+col+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;flex-shrink:0;">'+ini+'</div>';
-    }
+    if (!isB) html += avatarHtml;
     html += '<div style="max-width:68%;">'
-      + '<div style="font-size:10px;font-weight:700;color:#94a3b8;margin-bottom:3px;'+(isB?'text-align:right;':'')+'">' + nm + '</div>'
+      + '<div style="font-size:10px;font-weight:700;color:#94a3b8;margin-bottom:3px;'+(isB?'text-align:right;':'')+'">' + nm + (rep && rep.role ? ' · <span style="font-weight:500">'+rep.role+'</span>' : '') + '</div>'
       + '<div style="background:' + (isB ? '#2563eb' : '#fff') + ';color:' + (isB ? '#fff' : '#0f172a') + ';border:' + (isB ? 'none' : '1px solid #e2e8f0') + ';border-radius:16px;padding:10px 13px;font-size:14px;line-height:1.6;box-shadow:0 4px 12px rgba(15,23,42,.05);">'
       + txt + '</div>'
       + '</div>';
-    if (isB) {
-      html += '<div style="width:30px;height:30px;border-radius:10px;background:'+col+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;flex-shrink:0;">'+ini+'</div>';
-    }
+    if (isB) html += avatarHtml;
     html += '</div>';
   });
   html += '</div>';
@@ -5315,11 +5317,17 @@ async function deleteShopItem(itemId) {
 
 async function goCoinAdmin() {
   setSbOn('sb-coin-admin');
-  document.getElementById('main').innerHTML = '<div class=\"pg-hd\"><div><h1>Coin 조정</h1><p>사용자 Coin 잔액을 조정합니다.</p></div></div>'
-    + '<div class=\"sf-card\" style=\"max-width:520px\"><div class=\"fg\"><label>User ID</label><input id=\"coin-user-id\"></div>'
-    + '<div class=\"fg\"><label>Delta (+/-)</label><input id=\"coin-delta\" type=\"number\" value=\"100\"></div>'
-    + '<div class=\"fg\"><label>Reason</label><input id=\"coin-reason\" value=\"admin adjustment\"></div>'
-    + '<button class=\"btn btn-g\" onclick=\"applyCoinAdjustment()\">Apply</button><div id=\"coin-admin-msg\" style=\"margin-top:10px;font-size:13px;color:#475569\"></div></div>';
+  document.getElementById('main').innerHTML = '<div class="pg-hd"><div><h1>Coin 조정</h1><p>사용자 Coin 잔액을 조정합니다.</p></div></div>'
+    + '<div class="sf-row" style="grid-template-columns:minmax(320px,420px) 1fr;align-items:start">'
+    + '<div class="sf-card"><h3>Coin 조정</h3>'
+    + '<div class="fg"><label class="inp-label">User ID</label><input class="inp" id="coin-user-id"></div>'
+    + '<div class="fg"><label class="inp-label">Delta (+/-)</label><input class="inp" id="coin-delta" type="number" value="100"></div>'
+    + '<div class="fg"><label class="inp-label">Reason</label><input class="inp" id="coin-reason" value="admin adjustment"></div>'
+    + '<button class="btn btn-g" onclick="applyCoinAdjustment()">Apply</button>'
+    + '<div id="coin-admin-msg" style="margin-top:10px;font-size:13px;color:#475569"></div></div>'
+    + '<div class="sf-card"><h3>조정 내역</h3><div id="coin-history-wrap" style="max-height:500px;overflow-y:auto"><div style="color:var(--gr);font-size:13px;text-align:center;padding:20px">로딩 중…</div></div></div>'
+    + '</div>';
+  loadCoinHistory();
 }
 
 async function applyCoinAdjustment() {
@@ -5327,13 +5335,53 @@ async function applyCoinAdjustment() {
   var uid = document.getElementById('coin-user-id').value.trim();
   var delta = Number(document.getElementById('coin-delta').value || 0);
   var reason = document.getElementById('coin-reason').value.trim() || 'admin adjustment';
+  if (!uid) { toast('User ID를 입력하세요'); return; }
+  if (!delta) { toast('Delta 값을 입력하세요'); return; }
   var res = await sb.rpc('admin_adjust_coin', { p_user_id: uid, p_delta: delta, p_reason: reason });
   var msg = document.getElementById('coin-admin-msg');
   if (res.error || !res.data || !res.data.ok) {
     msg.textContent = '오류: ' + ((res.error && res.error.message) || (res.data && res.data.error) || 'failed');
     return;
   }
-  msg.textContent = '완료: 신규 Coin 잔액 ' + res.data.coin_balance;
+  msg.innerHTML = '✅ 완료: 신규 잔액 <b>' + res.data.coin_balance + '</b> 냥';
+  // Log to coin_adjustments table
+  try {
+    await fetch(SUPA_URL_ADMIN+'/rest/v1/coin_adjustments', {
+      method:'POST', headers:{'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({user_id:uid, delta:delta, reason:reason, new_balance:res.data.coin_balance, admin_by:'admin'})
+    });
+  } catch(e){}
+  // Also log locally as fallback
+  var history = JSON.parse(localStorage.getItem('kh_coin_history')||'[]');
+  history.unshift({user_id:uid, delta:delta, reason:reason, new_balance:res.data.coin_balance, ts:new Date().toISOString()});
+  localStorage.setItem('kh_coin_history', JSON.stringify(history.slice(0,200)));
+  loadCoinHistory();
+}
+
+async function loadCoinHistory() {
+  var wrap = document.getElementById('coin-history-wrap');
+  if (!wrap) return;
+  var rows = [];
+  // Try DB first
+  try {
+    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/coin_adjustments?order=created_at.desc&limit=100',
+      {headers:{'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY}});
+    if (res.ok) rows = await res.json();
+  } catch(e){}
+  // Fallback to localStorage
+  if (!rows.length) rows = JSON.parse(localStorage.getItem('kh_coin_history')||'[]');
+  if (!rows.length) { wrap.innerHTML='<div style="color:var(--gr);font-size:13px;text-align:center;padding:20px">아직 조정 내역이 없습니다.</div>'; return; }
+  wrap.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f8faff;border-bottom:2px solid var(--border);text-align:left">'
+    +'<th style="padding:8px">날짜</th><th style="padding:8px">User ID</th><th style="padding:8px">변동</th><th style="padding:8px">잔액</th><th style="padding:8px">사유</th></tr></thead><tbody>'
+    + rows.map(function(r){
+        var ts = r.created_at||r.ts; var date = ts ? new Date(ts).toLocaleString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '-';
+        var d = r.delta||0; var color = d>=0?'#16a34a':'#dc2626'; var sign = d>=0?'+':'';
+        return '<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--gr)">'+date+'</td>'
+          +'<td style="padding:8px;font-size:11px;font-family:monospace">'+(r.user_id||'').slice(0,12)+'…</td>'
+          +'<td style="padding:8px;font-weight:800;color:'+color+'">'+sign+d+'</td>'
+          +'<td style="padding:8px">'+(r.new_balance||'-')+'</td>'
+          +'<td style="padding:8px;color:var(--gr)">'+( r.reason||'-')+'</td></tr>';
+      }).join('')+'</tbody></table>';
 }
 
 // ═══════════════════════════════════════════════════════════════
