@@ -2855,8 +2855,8 @@ function renderAIContent() {
   document.getElementById('vocab-box').innerHTML = vhtml || '<div style="color:#aaa;font-size:12px">No vocab loaded.</div>';
   document.getElementById('vocab-src').textContent = 'topic-based';
 
-  // GRAMMAR BOX — skip if DB content is already loaded
-  if (!_dbGrammarLoaded) {
+  // GRAMMAR BOX — always render from _aiContent
+  {
     var ghtml = '';
     var glvColor = { Beginner:'lb', Intermediate:'li', Advanced:'la' };
     (_aiContent.grammar || []).forEach(function(g) {
@@ -2876,8 +2876,8 @@ function renderAIContent() {
   (_aiContent.grammar || []).slice(0,2).forEach(function(g){ chips += '<span class="wchip g">' + g.pattern + '</span>'; });
   document.getElementById('wcard-chips').innerHTML = chips;
 
-  // HELPER BOX — skip if DB content is already loaded
-  if (!_dbHelpersLoaded) {
+  // HELPER BOX — always render from _aiContent
+  {
     var hhtml = '';
     (_aiContent.helpers || []).forEach(function(h) {
       hhtml += '<div class="hrow">'
