@@ -452,8 +452,7 @@ function openDetail(idx) {
         +'<button class="dp-cta-btn dp-cta-secondary" onclick="closeDetail()" style="display:flex;align-items:center;justify-content:center;gap:6px">← Back</button>'
         +(window._isAdmin ? '<button class="dp-cta-btn" style="background:#f1f5f9;color:#334155;display:flex;align-items:center;justify-content:center;gap:5px" onclick="editCurrentConv()">'+_IC.pen+' Edit</button>'
                           + '<button class="dp-cta-btn" style="background:#fee2e2;color:#b91c1c" onclick="deleteCurrentConv()">Delete</button>' : '')
-        +'<button class="dp-cta-btn dp-cta-secondary" onclick="startBlankQuiz()" style="display:flex;align-items:center;justify-content:center;gap:6px">'+_IC.fill+' Blank Fill</button>'
-        +'<button class="dp-cta-btn dp-cta-primary" onclick="startOrderQuiz()" style="display:flex;align-items:center;justify-content:center;gap:6px">'+_IC.shuffle+' Word Order</button>'
+        +'<!-- Word Order & Blank Fill removed — studied in Study Room instead -->'
       +'</div>'
     +'</div>'
     +'<div class="dp-right">'

@@ -2542,18 +2542,53 @@ async function _generateAndSaveDailyContent(date) {
     Intermediate: 'INTERMEDIATE: Past tense, conjunctions, modals. Sentences 8-12 words. Topic-specific terms.',
     Advanced:     'ADVANCED: Complex structures, formal style, advanced connectors. Sentences 12+ words. Abstract vocab.'
   };
-  var topicCategories = [
-    'daily life', 'food & cooking', 'K-pop & music', 'travel in Korea', 'Korean seasons & weather',
-    'school & studying', 'hobbies', 'Korean traditions & culture', 'family & relationships',
-    'technology & social media', 'health & wellness', 'sports & exercise', 'Korean cinema & dramas',
-    'friendship', 'work & career', 'nature & environment', 'festivals & holidays', 'shopping',
-    'transportation in Korea', 'Korean language learning'
-  ];
-  var randomCat = topicCategories[Math.floor(Math.random() * topicCategories.length)];
+  // 작문 토픽 DB에서 오늘의 주제 가져오기 (중복 방지)
+  var assignedTopic = null;
+  try {
+    var sb = getSupa();
+    if (sb) {
+      // 최근 14일 사용된 토픽 조회
+      var usedRes = await sb.from('study_daily_content')
+        .select('topic_ko')
+        .eq('level', _currentLevel)
+        .order('scheduled_date', { ascending: false })
+        .limit(14);
+      var usedTopics = (usedRes.data || []).map(function(r){ return r.topic_ko; });
+      // writing_topics에서 미사용 토픽 가져오기
+      var topicRes = await sb.from('writing_topics')
+        .select('*')
+        .eq('level', _currentLevel)
+        .eq('active', true);
+      var available = (topicRes.data || []).filter(function(t){
+        return usedTopics.indexOf(t.topic_ko) < 0;
+      });
+      // 사용 가능한 토픽이 없으면 전체에서 선택
+      if (!available.length) available = topicRes.data || [];
+      if (available.length) {
+        // 날짜 기반 결정적 선택 (같은 날 같은 토픽)
+        var dateHash = date.split('-').reduce(function(a,b){ return a + parseInt(b); }, 0);
+        assignedTopic = available[dateHash % available.length];
+      }
+    }
+  } catch(e) { console.warn('[_generateAndSaveDailyContent] writing_topics fetch failed:', e); }
+
+  var topicHint = '';
+  if (assignedTopic) {
+    topicHint = 'Use EXACTLY this topic: "' + assignedTopic.topic_ko + '" (' + assignedTopic.topic_en + '). Category: ' + (assignedTopic.category || '') + '.';
+  } else {
+    var topicCategories = [
+      'daily life', 'food & cooking', 'K-pop & music', 'travel in Korea', 'Korean seasons & weather',
+      'school & studying', 'hobbies', 'Korean traditions & culture', 'family & relationships',
+      'technology & social media', 'health & wellness', 'sports & exercise', 'Korean cinema & dramas',
+      'friendship', 'work & career', 'nature & environment', 'festivals & holidays', 'shopping',
+      'transportation in Korea', 'Korean language learning'
+    ];
+    topicHint = 'Pick an interesting, specific topic within the theme: "' + topicCategories[Math.floor(Math.random() * topicCategories.length)] + '"';
+  }
 
   var prompt = 'You are a Korean language teacher creating complete daily study content for ' + _currentLevel + '-level students.\n\n'
     + 'Level requirements: ' + (levelGuide[_currentLevel] || levelGuide.Beginner) + '\n'
-    + 'Pick an interesting, specific topic within the theme: "' + randomCat + '"\n\n'
+    + topicHint + '\n\n'
     + 'Return ONLY valid JSON (no markdown, no extra text):\n'
     + '{\n'
     + '  "topic_ko": "주제 한국어 (2-5 words)",\n'
