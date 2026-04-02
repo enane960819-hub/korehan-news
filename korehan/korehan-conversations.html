@@ -64,7 +64,7 @@
 .dp-pill-green{background:#dcfce7;color:#15803d;}
 .dp-pill-pink{background:#fce7f3;color:#be185d;}
 .dp-pill-amber{background:#fef9c3;color:#92400e;}
-.dp-chat-area{flex:1;padding:20px 24px 16px;background:linear-gradient(180deg,#f8fbff 0%,#f8fafc 100%);overflow-y:auto;max-height:420px;}
+.dp-chat-area{flex:1;padding:20px 24px 80px;background:linear-gradient(180deg,#f8fbff 0%,#f8fafc 100%);overflow-y:auto;max-height:420px;}
 .dp-date-sep{text-align:center;margin-bottom:18px;}
 .dp-date-sep span{display:inline-block;padding:6px 14px;border-radius:999px;background:#e2e8f0;color:#64748b;font-size:11px;font-weight:700;}
 .dp-msg-row{display:flex;margin-bottom:12px;align-items:flex-end;gap:10px;}
@@ -102,7 +102,7 @@
 .dp-right-head{padding:22px 24px 16px;border-bottom:1px solid #e8eef7;background:#fff;}
 .dp-right-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#2563eb;margin-bottom:6px;}
 .dp-right-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#0f172a;margin:0;}
-.dp-study-sections{padding:18px 20px;display:flex;flex-direction:column;gap:16px;}
+.dp-study-sections{padding:18px 20px 90px;display:flex;flex-direction:column;gap:16px;}
 .dp-study-card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px;box-shadow:0 1px 4px rgba(15,23,42,.04);}
 .dp-study-card-title{font-size:13px;font-weight:800;color:#0f172a;margin:0 0 14px;display:flex;align-items:center;gap:7px;letter-spacing:-.01em;}
 .dp-study-card-title .admin-add-btn{margin-left:auto;font-size:11px;font-weight:700;color:#2563eb;background:none;border:1px solid #bfdbfe;border-radius:8px;padding:3px 10px;cursor:pointer;}
@@ -509,8 +509,8 @@ function renderStudyNotes(c) {
   el.innerHTML =
     '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.book+' Key Vocabulary'+addVocabBtn+'</div><div class="dp-vocab-list" id="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">No vocabulary data</span>')+'</div></div>'
     +(grammar||isAdm ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.pen+' Grammar Points'+addGrammarBtn+'</div><div class="dp-grammar-list" id="dp-grammar-list">'+(grammar||'')+'</div></div>' : '')
-    +'<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.key+' Quick Keywords</div><div class="dp-keywords">'+(keywords||'—')+'</div></div>'
-    +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.target+' Practice Mission</div><div class="dp-grammar-list">'+mission+'</div></div>' : '');
+    +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.target+' Practice Mission</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
+    +'<div style="height:80px"></div>';
 }
 
 // ── Bubble click → toggle English translation ──
