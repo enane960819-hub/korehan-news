@@ -5385,7 +5385,15 @@ async function srShowTab(tab) {
   if (active) active.classList.add('btn-g');
   var body = document.getElementById('sr-tab-body');
   if (!body) return;
-  if (tab === 'topics')   { body.innerHTML = srTopicsFormHTML();  await srLoadTopicSchedule(); }
+  if (tab === 'topics')   {
+    body.innerHTML = srTopicsFormHTML();
+    // Auto-populate today's date and load immediately
+    var todayStr = new Date().toISOString().slice(0,10);
+    var dateEl = document.getElementById('srt-date');
+    if (dateEl && !dateEl.value) dateEl.value = todayStr;
+    await srLoadTopicSchedule();
+    await srLoadDailyContent();
+  }
   if (tab === 'helpers')  { body.innerHTML = srHelpersFormHTML(); await srLoadHelpers(); }
   if (tab === 'grammar')  { body.innerHTML = srGrammarFormHTML(); await srLoadGrammar(); }
   if (tab === 'picture')  { body.innerHTML = srPictureFormHTML(); await srLoadPictures(); }
@@ -5400,7 +5408,7 @@ function srTopicsFormHTML() {
     + '<div style="font-weight:800;font-size:15px;margin-bottom:6px">📅 오늘의 주제 편집</div>'
     + '<div style="font-size:12px;color:#64748b;margin-bottom:14px">날짜 + 레벨로 AI 생성 콘텐츠를 불러오거나 직접 수정합니다. 저장하면 <b>모든 사용자</b>에게 동일한 콘텐츠가 표시됩니다.</div>'
     + '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">'
-    + '<div class="fg" style="margin:0"><label>날짜</label><input type="date" id="srt-date"></div>'
+    + '<div class="fg" style="margin:0"><label>날짜</label><input type="date" id="srt-date" value="'+new Date().toISOString().slice(0,10)+'"></div>'
     + '<div class="fg" style="margin:0"><label>레벨</label>'
     + '<select id="srt-level"><option value="Starter">Starter</option><option value="Beginner" selected>Beginner</option><option value="Intermediate">Intermediate</option><option value="Advanced">Advanced</option></select></div>'
     + '<button class="btn btn-g" onclick="srLoadDailyContent()">불러오기</button>'
@@ -5472,6 +5480,15 @@ async function srLoadDailyContent() {
     if (editorEl) editorEl.style.display = '';
     if (emptyEl)  emptyEl.style.display  = '';
     if (msgEl)    msgEl.textContent = '';
+    // Clear all fields when no record found
+    document.getElementById('srt-topic-ko').value = '';
+    document.getElementById('srt-topic-en').value = '';
+    document.getElementById('srt-vocab').value = '';
+    document.getElementById('srt-grammar').value = '';
+    document.getElementById('srt-helpers').value = '';
+    document.getElementById('srt-dictation-sentences').value = '';
+    document.getElementById('srt-dictation-questions').value = '';
+    var twEl2 = document.getElementById('srt-tw-sentences'); if (twEl2) twEl2.value = '';
     return;
   }
 
@@ -5590,21 +5607,21 @@ async function srRegenDailyContent() {
     'friendship','work & career','nature & environment','festivals & holidays','shopping'];
   var cat = cats[Math.floor(Math.random() * cats.length)];
 
-  var prompt = 'You are a Korean language teacher creating complete daily study content for ' + level + '-level students.\n\n'
-    + 'Level requirements: ' + (levelGuide[level] || levelGuide.Beginner) + '\n'
-    + 'Pick an interesting, specific topic within the theme: "' + cat + '"\n\n'
-    + 'Return ONLY valid JSON (no markdown):\n'
-    + '{"topic_ko":"주제 한국어","topic_en":"Topic in English",'
-    + '"vocab":[{"ko":"word","rom":"rom","en":"meaning","level":"' + level + '"}],'
-    + '"grammar":[{"level":"' + level + '","pattern":"pattern","explanation":"explanation","example_ko":"example","example_en":"translation"}],'
-    + '"helpers":[{"ko":"Korean","en":"translation"}],'
-    + '"dictation_sentences":[{"ko":"Korean","en":"English"}],'
-    + '"dictation_questions":[{"question_ko":"question","answer_ko":"answer","hint_en":"hint"}],'
-    + '"topic_writing_sentences":[{"ko":"Korean sentence","en":"English translation","acceptable_orders":[],"explanation":""}]}\n'
-    + 'vocab:5, grammar:3, helpers:4, dictation_sentences:3, dictation_questions:3, topic_writing_sentences:5 sentences (4-8 words each, at the correct level, all about the topic).';
+  var prompt = 'Korean language teacher. Create daily study content for ' + level + ' level.\n'
+    + 'Level: ' + (levelGuide[level] || levelGuide.Beginner) + '\n'
+    + 'Topic theme: "' + cat + '" — pick a specific interesting angle.\n\n'
+    + 'Return ONLY valid JSON, no markdown, no extra text:\n'
+    + '{"topic_ko":"...","topic_en":"...",'
+    + '"vocab":[{"ko":"","rom":"","en":""}],'  // 5 items
+    + '"grammar":[{"pattern":"","explanation":"","example_ko":"","example_en":""}],'  // 3 items
+    + '"helpers":[{"ko":"","en":""}],'  // 4 items
+    + '"dictation_sentences":[{"ko":"","en":""}],'  // 3 items
+    + '"dictation_questions":[{"question_ko":"","answer_ko":"","hint_en":""}],'  // 3 items
+    + '"topic_writing_sentences":[{"ko":"","en":"","acceptable_orders":[],"explanation":""}]}'  // 5 items
+    + '\nExact counts: vocab=5, grammar=3, helpers=4, dictation_sentences=3, dictation_questions=3, topic_writing_sentences=5.';
 
   try {
-    var resp = await callClaude({ feature:'study-room-daily-admin', model:'claude-haiku-4-5-20251001', max_tokens:1200, messages:[{role:'user',content:prompt}] });
+    var resp = await callClaude({ feature:'study-room-daily-admin', model:'claude-haiku-4-5-20251001', max_tokens:2500, messages:[{role:'user',content:prompt}] });
     var raw = (resp.content || []).map(function(c){ return c.text||''; }).join('');
     var clean = raw.replace(/```json|```/g,'').trim();
     var s = clean.indexOf('{'), e = clean.lastIndexOf('}');
