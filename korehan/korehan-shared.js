@@ -6371,42 +6371,10 @@ function enhanceHomeMobile() {
 function enhanceArticleMobile() {
   if (!isMobileRedesign() || pageName() !== 'korehan-article') return;
   var article = document.querySelector('.kh-article-wrap');
-  if (!article || document.querySelector('.mobile-sticky-study')) return;
-
-  var title = (document.querySelector('.art-title') || {}).textContent || 'This article';
-  var header = article.querySelector('.art-header');
-  if (header && !header.querySelector('.mobile-study-tabs')) {
-    var tabs = document.createElement('div');
-    tabs.className = 'mobile-study-tabs';
-    tabs.innerHTML = ''
-      + '<button class="on" data-target="read">Read</button>'
-      + '<button data-target="grammar">Grammar</button>'
-      + '<button data-target="vocab">Vocab</button>'
-      + '<button data-target="quiz">Quiz</button>';
-    header.insertAdjacentElement('afterend', tabs);
-
-    var readTargets = [document.getElementById('art-tab-article'), document.querySelector('.art-hero-img')].filter(Boolean);
-    var grammarTarget = document.getElementById('art-tab-grammar');
-    var vocabTarget = document.querySelector('.art-vocab-box');
-    var quizTarget = document.getElementById('fill-wrap');
-
-    function showTab(name) {
-      tabs.querySelectorAll('button').forEach(function(btn){ btn.classList.toggle('on', btn.getAttribute('data-target')===name); });
-      readTargets.forEach(function(el){ el.classList.toggle('mobile-hidden', name !== 'read'); });
-      // grammarTarget starts with inline display:none — must use style.display, not mobile-hidden class
-      if (grammarTarget) grammarTarget.style.display = (name === 'grammar') ? 'block' : 'none';
-      if (vocabTarget) vocabTarget.classList.toggle('mobile-hidden', name !== 'vocab');
-      if (quizTarget) quizTarget.classList.toggle('mobile-hidden', name !== 'quiz');
-      if (name === 'grammar') loadGrammarGuide();
-    }
-    tabs.addEventListener('click', function(e){
-      var btn = e.target.closest('button[data-target]');
-      if (!btn) return;
-      showTab(btn.getAttribute('data-target'));
-    });
-    showTab('read');
-  }
-
+  if (!article) return;
+  // Remove duplicate mobile-study-tabs if they exist (art-tabs already has 4 tabs)
+  var dupTabs = article.querySelector('.mobile-study-tabs');
+  if (dupTabs) dupTabs.remove();
 }
 
 function enhanceConversationsMobile() {
@@ -6429,27 +6397,10 @@ function enhanceConversationsMobile() {
 
   var observer = new MutationObserver(function(){
     var panel = document.querySelector('.detail-panel');
-    if (!panel || panel.querySelector('.mobile-tier-card')) return;
-    var leftHead = panel.querySelector('.dp-left-head');
-    if (leftHead) {
-      var box = document.createElement('div');
-      box.className = 'mobile-tier-card';
-      box.style.margin = '14px 24px 0';
-      box.innerHTML = ''
-        + '<div class="mobile-eyebrow">Study flow</div>'
-        + '<h3 style="font-size:22px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">Read → Translate → Practice → Roleplay</h3>'
-        + '<p class="mobile-quick-sub">Keep the conversation UI intact, then use the tools below to turn the chat into active speaking practice.</p>'
-        + '<div class="mobile-action-row">'
-        + '<a class="mobile-primary-btn" href="javascript:void(0)">' + khIcon('messages-square', 'Roleplay', 'kh-ui-icon-sm') + '</a>'
-        + '<a class="mobile-secondary-btn" href="korehan-study-room.html">' + khIcon('notebook-pen', 'Practice', 'kh-ui-icon-sm') + '</a>'
-        + '</div>';
-      leftHead.insertAdjacentElement('afterend', box);
-    }
+    if (!panel) return;
     var cta = panel.querySelector('.dp-cta-row');
     if (cta && !cta.dataset.mobileEnhanced) {
       cta.dataset.mobileEnhanced = '1';
-      // 기존 버튼 유지 — 빈칸채우기/순서맞추기는 원래 버튼 그대로
-      // grid를 2열로만 조정
       cta.style.gridTemplateColumns = '1fr 1fr';
     }
   });
