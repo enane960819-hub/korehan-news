@@ -262,8 +262,10 @@ Use `learning_hub_client.js` helpers if available. If adding a new RPC:
 
 ## Git Workflow
 
-- Main branch: `master` / `main`
+- **Production branch: `main`** — Cloudflare Pages deploys from `main`. Always merge to `main`, never `master`.
 - Feature branches: `claude/[description]-[id]` for AI-assisted changes
+- Workflow: feature branch → PR → merge to `main` → Cloudflare auto-deploys
+- `master` branch is deprecated — do not push to it
 - Commit messages should be descriptive and imperative: `Fix vocab quiz button: use tab=vocab`
 - No CI/CD pipeline — push triggers Netlify auto-deploy for frontend
 

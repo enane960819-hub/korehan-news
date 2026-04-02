@@ -5455,11 +5455,14 @@ function renderGFLearn(p) {
   // Extract Korean characters from pattern name for highlighting in examples
   var koChars = (p.name || '').match(/[가-힣~]+/g) || [];
 
+  // Derive structure from pattern name if not provided
+  var structure = p.structure || (p.name ? p.name.replace(/\(.*?\)/g,'').trim() : '');
+
   // Structure formula box
-  var structureHtml = p.structure
+  var structureHtml = structure
     ? '<div style="background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border-radius:12px;padding:14px 16px;margin-bottom:16px">'
       + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#6b7db8;margin-bottom:6px">공식 Structure</div>'
-      + '<p style="font-size:15px;font-weight:800;color:#2255a4;margin:0;font-family:Noto Serif KR,serif">' + p.structure + '</p>'
+      + '<p style="font-size:15px;font-weight:800;color:#2255a4;margin:0;font-family:Noto Serif KR,serif">' + structure + '</p>'
       + '</div>'
     : '';
 
@@ -5584,16 +5587,30 @@ function _renderSpotItSentence() {
   var ex = st.examples[st.idx];
   if (!ex) return;
 
-  // Extract Korean token from pattern name to highlight as target
-  var koChars = ((st.p.name || '').match(/[가-힣]+/g) || []);
+  // Extract grammar tokens from pattern name (e.g. "~았/었어요" → ["았어요","었어요"])
+  var koTokens = [];
+  (st.p.name || '').split(/[\/\s]/).forEach(function(part) {
+    var k = part.replace(/~/g,'').replace(/[^가-힣]/g,'');
+    if (k.length >= 2) koTokens.push(k);
+  });
   var targetWord = '';
-  var words = ex.ko.split(' ');
-  // Find which word contains the grammar token
+  var words = ex.ko.replace(/[.,!?。]/g,'').split(' ').filter(Boolean);
+  // Priority 1: word that ENDS WITH a grammar token (most reliable)
   words.forEach(function(w) {
-    koChars.forEach(function(kc) {
-      if (w.indexOf(kc) !== -1 && !targetWord) targetWord = w;
+    if (targetWord) return;
+    koTokens.forEach(function(tok) {
+      if (!targetWord && w.endsWith(tok)) targetWord = w;
     });
   });
+  // Priority 2: word that CONTAINS a grammar token
+  if (!targetWord) {
+    words.forEach(function(w) {
+      if (targetWord) return;
+      koTokens.forEach(function(tok) {
+        if (!targetWord && w.indexOf(tok) !== -1) targetWord = w;
+      });
+    });
+  }
   if (!targetWord) targetWord = words[words.length - 1]; // fallback: last word
 
   var progressHtml = '<div style="display:flex;gap:6px;margin-bottom:16px">'
@@ -5627,7 +5644,9 @@ function _renderSpotItSentence() {
 function checkGFSpotIt(wordIdx, word, target) {
   var fb = document.getElementById('gfsi-feedback');
   var btn = document.getElementById('gfsi-w-' + wordIdx);
-  var correct = word === target || word.indexOf(target.replace(/~/g,'')) !== -1;
+  var cleanWord = word.replace(/[.,!?。]/g,'');
+  var cleanTarget = target.replace(/[.,!?。]/g,'');
+  var correct = cleanWord === cleanTarget;
   if (btn) {
     btn.style.background    = correct ? '#f0fdf4' : '#fff5f5';
     btn.style.borderColor   = correct ? '#22c55e' : '#f87171';
