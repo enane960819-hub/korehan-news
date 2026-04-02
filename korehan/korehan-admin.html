@@ -3880,22 +3880,23 @@ async function loadUsers(){
     const authUsers = authData.users || [];
 
     // 활동 데이터 병렬 조회 (각 테이블 실패해도 계속)
+    function safeArr(p){ return p.then(function(d){ return Array.isArray(d)?d:[]; }).catch(function(){return [];}); }
     const [words, articles, missions, writings, comments] = await Promise.all([
-      supaAdminGet('/rest/v1/saved_words?select=user_id,created_at&order=created_at.desc').catch(function(){return [];}),
-      supaAdminGet('/rest/v1/read_articles?select=user_id,read_at&order=read_at.desc').catch(function(){return [];}),
-      supaAdminGet('/rest/v1/daily_missions?select=user_id,date,articles,words,quizzes,fill&order=date.desc').catch(function(){return [];}),
-      supaAdminGet('/rest/v1/writing_submissions?select=user_id,created_at&order=created_at.desc').catch(function(){return [];}),
-      supaAdminGet('/rest/v1/comments?select=user_id,created_at&order=created_at.desc').catch(function(){return [];}),
+      safeArr(supaAdminGet('/rest/v1/saved_words?select=user_id,created_at&order=created_at.desc')),
+      safeArr(supaAdminGet('/rest/v1/read_articles?select=user_id,read_at&order=read_at.desc')),
+      safeArr(supaAdminGet('/rest/v1/daily_missions?select=user_id,date,articles,words,quizzes,fill&order=date.desc')),
+      safeArr(supaAdminGet('/rest/v1/writing_submissions?select=user_id,created_at&order=created_at.desc')),
+      safeArr(supaAdminGet('/rest/v1/comments?select=user_id,created_at&order=created_at.desc')),
     ]);
 
     // 활동 집계
     const act = {};
     function getAct(uid){ if(!act[uid]) act[uid]={words:0,articles:0,quizzes:0,streak:0,writings:0,comments:0,lastSeen:null}; return act[uid]; }
-    (words||[]).forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.words++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
-    (articles||[]).forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.articles++; if(!u.lastSeen||r.read_at>u.lastSeen) u.lastSeen=r.read_at; });
-    (missions||[]).forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.quizzes+=(r.quizzes||0); u.articles+=(r.articles||0); });
-    (writings||[]).forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.writings++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
-    (comments||[]).forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.comments++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
+    words.forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.words++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
+    articles.forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.articles++; if(!u.lastSeen||r.read_at>u.lastSeen) u.lastSeen=r.read_at; });
+    missions.forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.quizzes+=(r.quizzes||0); u.articles+=(r.articles||0); });
+    writings.forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.writings++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
+    comments.forEach(function(r){ if(!r||!r.user_id)return; var u=getAct(r.user_id); u.comments++; if(!u.lastSeen||r.created_at>u.lastSeen) u.lastSeen=r.created_at; });
 
     if (!authUsers.length) {
       el.innerHTML = '<div class="infobox">가입한 회원이 없습니다.</div>';
@@ -6322,13 +6323,23 @@ async function aseLoadList() {
   var sb = getSb();
   var el = document.getElementById('ase-list');
   if (!el) return;
-  var [artsRes, editedRes] = await Promise.all([
-    sb.from('articles_data').select('id,title,section,topik_level,image_url,status').order('created_at',{ascending:false}).limit(200),
-    sb.from('article_study_content').select('article_id,admin_edited').limit(500)
-  ]);
-  _aseAllArticles = artsRes.data || [];
-  _aseEditedIds   = new Set((editedRes.data||[]).filter(function(r){return r.admin_edited;}).map(function(r){return String(r.article_id);}));
-  aseRenderList(_aseAllArticles);
+  try {
+    // articles_data 조회 — 컬럼 선택을 최소화 (누락 컬럼 에러 방지)
+    var artsRes = await sb.from('articles_data').select('id,title,section,topik_level,image').order('created_at',{ascending:false}).limit(200);
+    if (artsRes.error) {
+      // image 컬럼이 없을 수 있음 — 재시도
+      artsRes = await sb.from('articles_data').select('id,title,section,topik_level').order('created_at',{ascending:false}).limit(200);
+    }
+    _aseAllArticles = (artsRes.data || []).map(function(a){ a.image_url = a.image_url || a.image || ''; return a; });
+    // article_study_content 조회 (테이블 없어도 무시)
+    try {
+      var editedRes = await sb.from('article_study_content').select('article_id,admin_edited').limit(500);
+      _aseEditedIds = new Set((editedRes.data||[]).filter(function(r){return r.admin_edited;}).map(function(r){return String(r.article_id);}));
+    } catch(e) { _aseEditedIds = new Set(); }
+    aseRenderList(_aseAllArticles);
+  } catch(e) {
+    el.innerHTML = '<div class="infobox" style="color:#c33">⚠️ 로드 실패: '+e.message+'</div>';
+  }
 }
 
 function aseFilterList() {
