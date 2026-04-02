@@ -3714,15 +3714,22 @@ function initTooltips() {
     if (e.target.closest && e.target.closest('.kh-word')) tip.style.opacity = '0';
   });
 
-  // 어드민 편집 모드 클릭 처리
-  document.addEventListener('click', function(e) {
+  // 어드민 편집 모드 클릭/터치 처리
+  function _editModeWordHandler(e) {
     if (!window._vocabEditMode || !window._isAdmin) return;
     var w = e.target.closest ? e.target.closest('.kh-word') : null;
     if (!w) return;
+    // touchend: selection이 있으면 _handleVocabSelectionTouch가 처리
+    if (e.type === 'touchend') {
+      var sel = window.getSelection();
+      if (sel && sel.toString().trim().length > 0) return;
+    }
     e.preventDefault(); e.stopPropagation();
     tip.style.opacity = '0';
     openVocabEditModal(w.dataset.word);
-  });
+  }
+  document.addEventListener('click',    _editModeWordHandler);
+  document.addEventListener('touchend', _editModeWordHandler, { passive: false });
 }
 
 var _vocabEditModeActive = false;
@@ -3731,27 +3738,44 @@ function toggleVocabEditMode() {
   _vocabEditModeActive = window._vocabEditMode;
   var bar = document.getElementById('vocab-admin-bar');
   if (bar) {
-    bar.textContent = window._vocabEditMode ? '✅ 편집 모드 ON — 단어 클릭 or 드래그 선택' : '✏️ 단어 편집 모드';
-    bar.style.background = window._vocabEditMode ? '#16a34a' : '#0b1626';
+    if (window._vocabEditMode) {
+      bar.innerHTML = '<span>✅ 편집 ON</span>'
+        + '<button id="vocab-add-new-btn" onclick="event.stopPropagation();openVocabEditModal(\'\')" '
+        + 'style="margin-left:8px;background:#2255a4;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">+ 새 단어</button>';
+      bar.style.background = '#16a34a';
+      bar.style.padding = '8px 12px';
+    } else {
+      bar.textContent = '✏️ 단어 편집 모드';
+      bar.style.background = '#0b1626';
+      bar.style.padding = '8px 14px';
+    }
   }
   document.querySelectorAll('.kh-word').forEach(function(w) {
-    w.style.outline = window._vocabEditMode ? '1px dashed #fbbf24' : '';
+    w.style.outline = window._vocabEditMode ? '2px dashed #fbbf24' : '';
     w.style.cursor  = window._vocabEditMode ? 'pointer' : '';
+    w.style.borderRadius = window._vocabEditMode ? '2px' : '';
   });
 
-  // 드래그 선택 팝업 — 편집 모드 ON 시 등록
+  // 드래그/터치 선택 팝업 — 편집 모드 ON 시 등록
   if (window._vocabEditMode) {
-    document.addEventListener('mouseup', _handleVocabSelection);
+    document.addEventListener('mouseup',  _handleVocabSelection);
+    document.addEventListener('touchend', _handleVocabSelectionTouch);
   } else {
-    document.removeEventListener('mouseup', _handleVocabSelection);
+    document.removeEventListener('mouseup',  _handleVocabSelection);
+    document.removeEventListener('touchend', _handleVocabSelectionTouch);
     var pop = document.getElementById('vocab-select-popup');
     if (pop) pop.remove();
   }
 }
 
+function _handleVocabSelectionTouch(e) {
+  // On touch, selection needs a tick to settle after touchend
+  setTimeout(function() { _handleVocabSelection(e); }, 80);
+}
+
 function _handleVocabSelection(e) {
   if (!window._vocabEditMode || !window._isAdmin) return;
-  if (e.target && e.target.closest && (e.target.closest('#vocab-edit-modal') || e.target.closest('#vocab-select-popup'))) return;
+  if (e.target && e.target.closest && (e.target.closest('#vocab-edit-modal') || e.target.closest('#vocab-select-popup') || e.target.closest('#vocab-admin-bar'))) return;
 
   var sel = window.getSelection();
   var text = sel ? sel.toString().trim() : '';
@@ -3815,20 +3839,25 @@ function _handleVocabSelection(e) {
 
 function openVocabEditModal(word) {
   var existing = VOCAB[word] || { rom: '', en: '' };
+  var isNew = !word; // 새 단어 직접 입력 모드
   var modal = document.createElement('div');
   modal.id = 'vocab-edit-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
   modal.innerHTML =
     '<div style="background:#fff;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.3);">'
-    + '<div style="font-size:16px;font-weight:900;color:#0f172a;margin-bottom:16px;">✏️ 단어 수정: <span style="color:#2255a4">' + word + '</span></div>'
+    + '<div style="font-size:16px;font-weight:900;color:#0f172a;margin-bottom:16px;">✏️ ' + (isNew ? '새 단어 추가' : '단어 수정: <span style="color:#2255a4">' + word + '</span>') + '</div>'
+    + (isNew
+      ? '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">한국어 단어 <span style="color:#e53e3e">*</span></label>'
+        + '<input id="ve-word" placeholder="예: 환경" style="width:100%;padding:8px 12px;border:2px solid #2255a4;border-radius:8px;font-size:16px;font-family:\'Noto Serif KR\',serif;margin-bottom:12px;box-sizing:border-box;" autofocus>'
+      : '')
     + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">발음 (romanization)</label>'
-    + '<input id="ve-rom" value="' + existing.rom + '" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;">'
-    + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">영어 뜻</label>'
-    + '<input id="ve-en" value="' + existing.en + '" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:6px;box-sizing:border-box;">'
+    + '<input id="ve-rom" value="' + existing.rom + '" placeholder="예: hwan-gyeong" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;">'
+    + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">영어 뜻 <span style="color:#e53e3e">*</span></label>'
+    + '<input id="ve-en" value="' + existing.en + '" placeholder="예: environment" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:6px;box-sizing:border-box;">'
     + '<div id="ve-err" style="font-size:12px;color:#e53e3e;margin-bottom:12px;display:none;"></div>'
     + '<div style="display:flex;gap:8px;margin-top:16px;">'
     + '<button id="ve-save" style="flex:1;padding:10px;background:#2255a4;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:800;cursor:pointer;">저장</button>'
-    + (existing.en ? '<button id="ve-del" style="padding:10px 16px;background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">삭제</button>' : '')
+    + (!isNew && existing.en ? '<button id="ve-del" style="padding:10px 16px;background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">삭제</button>' : '')
     + '<button id="ve-cancel" style="padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">취소</button>'
     + '</div></div>';
 
@@ -3853,15 +3882,22 @@ function openVocabEditModal(word) {
   }
 
   modal.querySelector('#ve-save').onclick = async function() {
+    var wordEl = modal.querySelector('#ve-word');
+    var finalWord = isNew ? (wordEl ? wordEl.value.trim() : '') : word;
     var rom = modal.querySelector('#ve-rom').value.trim();
     var en  = modal.querySelector('#ve-en').value.trim();
     var err = modal.querySelector('#ve-err');
+    if (isNew && (!finalWord || !/[가-힣]/.test(finalWord))) {
+      err.textContent = '한국어 단어를 입력해주세요.'; err.style.display='block'; return;
+    }
     if (!en) { err.textContent = '영어 뜻을 입력해주세요.'; err.style.display='block'; return; }
     var btn = modal.querySelector('#ve-save');
     btn.textContent = '저장 중...'; btn.disabled = true;
     try {
-      await saveVocabToDB(word, rom, en, false);
-      VOCAB[word] = { rom: rom, en: en };
+      await saveVocabToDB(finalWord, rom, en, false);
+      VOCAB[finalWord] = { rom: rom, en: en };
+      // 로컬 변수 word를 finalWord로 덮어씌워 이하 코드가 올바른 단어를 참조
+      word = finalWord;
 
       // 기존 .kh-word tooltip 즉시 업데이트
       document.querySelectorAll('.kh-word[data-word="' + word + '"]').forEach(function(s) {
