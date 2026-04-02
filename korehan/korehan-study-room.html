@@ -2547,12 +2547,12 @@ async function _generateAndSaveDailyContent(date) {
   try {
     var sb = getSupa();
     if (sb) {
-      // 최근 14일 사용된 토픽 조회
+      // 최근 1년 사용된 토픽 조회 (중복 방지)
       var usedRes = await sb.from('study_daily_content')
         .select('topic_ko')
         .eq('level', _currentLevel)
         .order('scheduled_date', { ascending: false })
-        .limit(14);
+        .limit(365);
       var usedTopics = (usedRes.data || []).map(function(r){ return r.topic_ko; });
       // writing_topics에서 미사용 토픽 가져오기
       var topicRes = await sb.from('writing_topics')
