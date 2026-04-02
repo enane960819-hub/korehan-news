@@ -4214,7 +4214,7 @@ async function generateConvs() {
   if (genBtn) { genBtn.disabled = true; genBtn.textContent = '⏳ Generating…'; }
   res.innerHTML = '<div style="padding:28px;text-align:center;color:#64748b;background:#fff;border-radius:16px;border:1px solid #e2e8f0"><div style="font-size:32px;margin-bottom:10px">⏳</div><div style="font-size:14px;font-weight:600">Generating ' + count + ' conversation' + (count>1?'s':'') + '…</div><div style="font-size:12px;margin-top:6px;color:#94a3b8">This may take 10–30 seconds</div></div>';
 
-  var prompt = 'You are creating Korean language learning content for KoreHan News.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nLevel guidance: ' + ({s:'STARTER: 아주 짧은 2~4단어 문장만. 기초 인사/숫자. ~이에요/예요 체만.',b:'BEGINNER: 짧고 쉬운 문장. 기본 조사. 현재형 위주.',i:'INTERMEDIATE: 연결어미, 과거형 자연스럽게.',a:'ADVANCED: 복잡한 문장, 격식체, 고급 문법.'}[lvl]||'') + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","note":"optional"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3 missions. ' + lvlMap[lvl] + ' level Korean.';
+  var prompt = 'You are creating Korean language learning content for KoreHan News.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nLevel guidance: ' + ({s:'STARTER: 아주 짧은 2~4단어 문장만. 기초 인사/숫자. ~이에요/예요 체만.',b:'BEGINNER: 짧고 쉬운 문장. 기본 조사. 현재형 위주.',i:'INTERMEDIATE: 연결어미, 과거형 자연스럽게.',a:'ADVANCED: 복잡한 문장, 격식체, 고급 문법.'}[lvl]||'') + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","en":"English translation of txt"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3 missions. EVERY msg MUST have "en" field with natural English translation. ' + lvlMap[lvl] + ' level Korean.';
 
   try {
     var resp = await callClaude({
@@ -4710,11 +4710,12 @@ async function aiAnalyzeConv() {
   btn.textContent = '⏳ 분석 중...';
 
   var prompt = 'Korean language conversation (level: ' + lvlMap[lvl] + '):\n\n' + msgsText
-    + '\n\nExtract for learners. Return ONLY valid JSON, no markdown:\n'
-    + '{\n  "vocab": [{"ko":"단어","rom":"romanization","en":"meaning"}],\n'
+    + '\n\nExtract for learners AND translate each message. Return ONLY valid JSON, no markdown:\n'
+    + '{\n  "translations": [{"txt":"original Korean","en":"English translation"}],\n'
+    + '  "vocab": [{"ko":"단어","rom":"romanization","en":"meaning"}],\n'
     + '  "grammar": [{"point":"pattern","ex":"example in English"}],\n'
     + '  "mission": ["writing task 1","writing task 2","writing task 3"]\n}'
-    + '\n\nVocab: 5-7 key words. Grammar: 2-3 patterns. Mission: 3 writing practice tasks.';
+    + '\n\ntranslations: one entry per A:/B: line in order. Vocab: 5-7 key words. Grammar: 2-3 patterns. Mission: 3 writing practice tasks.';
 
   try {
     var resp = await callClaude({
@@ -4730,6 +4731,23 @@ async function aiAnalyzeConv() {
     document.getElementById('ce-vocab').value   = JSON.stringify(parsed.vocab   || [], null, 2);
     document.getElementById('ce-grammar').value = JSON.stringify(parsed.grammar || [], null, 2);
     document.getElementById('ce-mission').value = JSON.stringify(parsed.mission || [], null, 2);
+    // Apply translations to messages in the script
+    if (parsed.translations && parsed.translations.length) {
+      var ta = document.getElementById('ce-msgs-text');
+      var lines = ta.value.split('\n').filter(function(l){ return l.trim(); });
+      var ti = 0;
+      var newLines = lines.map(function(line) {
+        if (/^[AB]:/i.test(line.trim()) && ti < parsed.translations.length) {
+          var en = parsed.translations[ti].en || '';
+          ti++;
+          // Append [en:...] tag if not already present
+          if (en && line.indexOf('[en:') < 0) return line.trimEnd() + ' [en:' + en + ']';
+        }
+        return line;
+      });
+      ta.value = newLines.join('\n');
+      syncConvPreview();
+    }
     document.getElementById('ai-result-area').style.display = 'block';
 
     btn.disabled = false;
@@ -4774,13 +4792,17 @@ async function saveConvEdit(rowId) {
   var _repB = castBId ? _rep.find(function(r){ return r.id === castBId; }) : null;
   var msgs = msgsText.split('\n').filter(function(l){ return l.trim(); }).map(function(line) {
     var raw = line.trim();
+    // Extract [en:...] tag if present
+    var enMatch = raw.match(/\[en:([^\]]+)\]\s*$/);
+    var en = enMatch ? enMatch[1].trim() : '';
+    if (enMatch) raw = raw.replace(/\s*\[en:[^\]]+\]\s*$/, '').trim();
     if (/^N:/i.test(raw)) {
-      return {s: 'n', txt: raw.replace(/^N:\s*/i, '')};
+      return {s: 'n', txt: raw.replace(/^N:\s*/i, ''), en: en};
     }
     var isB = /^B:/i.test(raw);
     var txt = raw.replace(/^[AB]:\s*/i, '').trim();
     var charRef = isB ? _repB : _repA;
-    return {s: isB ? 'r' : 'l', who: charRef ? charRef.name : (isB ? 'B' : 'A'), txt: txt};
+    return {s: isB ? 'r' : 'l', who: charRef ? charRef.name : (isB ? 'B' : 'A'), txt: txt, en: en};
   });
 
   try {
