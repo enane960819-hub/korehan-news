@@ -62,11 +62,26 @@
 .tier-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:24px; }
 .tier-item { background:#fff; border:1px solid var(--border); border-radius:14px; padding:14px 10px; text-align:center; }
 .tier-item.current { border-color:#2255a4; border-width:2px; background:#f0f6ff; }
-.tier-icon  { font-size:26px; margin-bottom:6px; }
+.tier-icon  { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 8px; }
+.tier-icon svg { display:block; }
 .tier-label { font-size:12px; font-weight:900; color:#0b1626; margin-bottom:4px; }
 .tier-xp    { font-size:10px; color:#94a3b8; }
 .tier-bar   { height:5px; background:#eef0f5; border-radius:99px; overflow:hidden; margin-top:7px; }
 .tier-bar-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#2255a4,#3d7fd4); }
+
+/* Stat card SVG icons */
+.stat-icon svg { display:block; width:22px; height:22px; }
+
+/* Tier badge — text only, no emoji */
+.xp-tier-badge { display:inline-flex; align-items:center; gap:6px; }
+.xp-tier-badge .tier-dot {
+  width:8px; height:8px; border-radius:50%; flex-shrink:0;
+}
+.xp-tier-badge.bronze .tier-dot  { background:#cd7f32; }
+.xp-tier-badge.silver .tier-dot  { background:#94a3b8; }
+.xp-tier-badge.gold   .tier-dot  { background:#f59e0b; }
+.xp-tier-badge.plat   .tier-dot  { background:#7c3aed; }
+.xp-tier-badge.diamond .tier-dot { background:#1d4ed8; }
 
 /* Sections */
 .mp-section { background:#fff; border:1px solid var(--border); border-radius:16px; padding:24px; margin-bottom:16px; box-shadow:0 2px 10px rgba(15,23,42,.04); }
@@ -189,7 +204,12 @@ body.kh-neon-on #mp-xp-log button { background:rgba(9,18,33,.7) !important; bord
   <div class="mypage-hero-inner">
     <div class="mp-avatar-wrap" onclick="triggerAvatarUpload()" title="Change profile photo">
       <div class="mp-initials" id="mp-initials">?</div>
-      <div class="mp-avatar-edit">📷</div>
+      <div class="mp-avatar-edit">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+      </div>
     </div>
     <input type="file" id="avatar-file-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="handleAvatarUpload(this)">
     <div style="flex:1;min-width:0">
@@ -228,7 +248,7 @@ body.kh-neon-on #mp-xp-log button { background:rgba(9,18,33,.7) !important; bord
 
   <div class="mp-section">
     <h3>냥 & Inventory</h3>
-    <div id="mp-nyang-balance" style="font-size:20px;font-weight:900;color:#0b1626;margin-bottom:14px">🐾 냥: -</div>
+    <div id="mp-nyang-balance" style="font-size:20px;font-weight:900;color:#0b1626;margin-bottom:14px">냥: -</div>
     <div id="mp-owned-items"><div style="text-align:center;padding:20px;color:#94a3b8">Loading…</div></div>
   </div>
 
@@ -256,21 +276,67 @@ body.kh-neon-on #mp-xp-log button { background:rgba(9,18,33,.7) !important; bord
 <script src="korehan-shared.js"></script>
 <script>
 
+// ── Tier SVG mark helper ────────────────────────────────────────
+var TIER_COLORS = { bronze:'#cd7f32', silver:'#94a3b8', gold:'#f59e0b', plat:'#7c3aed', diamond:'#1d4ed8' };
+function tierMark(cls, size, faded) {
+  var c = TIER_COLORS[cls] || '#94a3b8';
+  var opacity = faded ? 0.28 : 1;
+  // Hexagon path
+  var s = size || 18;
+  return '<svg viewBox="0 0 24 24" width="' + s + '" height="' + s + '" style="opacity:' + opacity + '">'
+    + '<polygon points="12,2 20.5,7 20.5,17 12,22 3.5,17 3.5,7" fill="' + c + '" stroke="' + c + '" stroke-width="1" stroke-linejoin="round"/>'
+    + '</svg>';
+}
+
+// ── Stat card SVG icons ─────────────────────────────────────────
+var SVG_ICONS = {
+  streak:
+    '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="M12 2C12 8 6 9 6 14a6 6 0 0012 0C18 9 12 8 12 2z" stroke="#f97316" fill="#fed7aa"/>'
+    + '<path d="M12 12c0 3-2 4-2 5.5a2 2 0 004 0C14 16 12 15 12 12z" fill="#f97316" stroke="none"/>'
+    + '</svg>',
+  articles:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+    + '<rect x="4" y="3" width="16" height="18" rx="2"/>'
+    + '<line x1="8" y1="8" x2="16" y2="8"/>'
+    + '<line x1="8" y1="12" x2="16" y2="12"/>'
+    + '<line x1="8" y1="16" x2="12" y2="16"/>'
+    + '</svg>',
+  words:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" fill="#dcfce7"/>'
+    + '</svg>',
+  quizzes:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+    + '<circle cx="12" cy="12" r="10" fill="#f5f3ff"/>'
+    + '<polyline points="9 12 11 14.5 15 9.5"/>'
+    + '</svg>',
+  xp:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+    + '<polygon points="12 2 14.9 8.3 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 9.1 8.3 12 2" fill="#dbeafe"/>'
+    + '</svg>',
+  nyang:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+    + '<circle cx="12" cy="12" r="10" fill="#fef3c7"/>'
+    + '<path d="M9 9h.01M15 9h.01M8 13s1 2 4 2 4-2 4-2" stroke-linecap="round"/>'
+    + '</svg>',
+};
+
 // ── Tier helper ────────────────────────────────────────────────
 function getXPTier(xp) {
-  if (xp >= 5000) return { label:'Diamond', cls:'diamond', icon:'💎', next:null,       from:5000, to:5000 };
-  if (xp >= 2000) return { label:'Platinum', cls:'plat',   icon:'💜', next:'Diamond',  from:2000, to:5000 };
-  if (xp >= 800)  return { label:'Gold',     cls:'gold',   icon:'🥇', next:'Platinum', from:800,  to:2000 };
-  if (xp >= 300)  return { label:'Silver',   cls:'silver', icon:'🥈', next:'Gold',     from:300,  to:800  };
-  return               { label:'Bronze',   cls:'bronze', icon:'🥉', next:'Silver',   from:0,    to:300  };
+  if (xp >= 5000) return { label:'Diamond', cls:'diamond', next:null,       from:5000, to:5000 };
+  if (xp >= 2000) return { label:'Platinum', cls:'plat',   next:'Diamond',  from:2000, to:5000 };
+  if (xp >= 800)  return { label:'Gold',     cls:'gold',   next:'Platinum', from:800,  to:2000 };
+  if (xp >= 300)  return { label:'Silver',   cls:'silver', next:'Gold',     from:300,  to:800  };
+  return               { label:'Bronze',   cls:'bronze', next:'Silver',   from:0,    to:300  };
 }
 
 var TIERS = [
-  { label:'Bronze',  cls:'bronze',  icon:'🥉', min:0,    max:300  },
-  { label:'Silver',  cls:'silver',  icon:'🥈', min:300,  max:800  },
-  { label:'Gold',    cls:'gold',    icon:'🥇', min:800,  max:2000 },
-  { label:'Platinum',cls:'plat',    icon:'💜', min:2000, max:5000 },
-  { label:'Diamond', cls:'diamond', icon:'💎', min:5000, max:5000 },
+  { label:'Bronze',  cls:'bronze',  min:0,    max:300  },
+  { label:'Silver',  cls:'silver',  min:300,  max:800  },
+  { label:'Gold',    cls:'gold',    min:800,  max:2000 },
+  { label:'Platinum',cls:'plat',    min:2000, max:5000 },
+  { label:'Diamond', cls:'diamond', min:5000, max:5000 },
 ];
 
 // ── Load user stats ────────────────────────────────────────────
@@ -344,9 +410,11 @@ function renderXPCard(xp) {
     ? Math.min(100, Math.round((xp - tier.from) / (tier.to - tier.from) * 100))
     : 100;
 
+  var dotHtml = '<span class="tier-dot"></span>';
+
   // Hero badge
   var heroEl = document.getElementById('mp-tier-hero');
-  if (heroEl) heroEl.innerHTML = '<span class="xp-tier-badge ' + tier.cls + '">' + tier.icon + ' ' + tier.label + ' · ' + xp.toLocaleString() + ' XP</span>';
+  if (heroEl) heroEl.innerHTML = '<span class="xp-tier-badge ' + tier.cls + '">' + dotHtml + tier.label + ' · ' + xp.toLocaleString() + ' XP</span>';
 
   area.innerHTML =
     '<div class="xp-card">'
@@ -354,7 +422,7 @@ function renderXPCard(xp) {
     + '<div><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#94a3b8;margin-bottom:6px">Accumulated XP</div>'
     + '<div class="xp-total">' + xp.toLocaleString() + '</div>'
     + '<div class="xp-total-label">total experience points</div></div>'
-    + '<div style="text-align:right"><span class="xp-tier-badge ' + tier.cls + '">' + tier.icon + ' ' + tier.label + '</span>'
+    + '<div style="text-align:right"><span class="xp-tier-badge ' + tier.cls + '">' + dotHtml + tier.label + '</span>'
     + (tier.next
       ? '<div style="font-size:12px;color:#94a3b8;margin-top:8px;font-weight:600">' + (tier.to - xp).toLocaleString() + ' XP to ' + tier.next + '</div>'
       : '<div style="font-size:12px;color:#16a34a;margin-top:8px;font-weight:700">Maximum tier ✓</div>')
@@ -379,12 +447,12 @@ function renderMiniStats(stats) {
   var xpVal = Number(us.xp || 0);
   var coinVal = Number(us.coin_balance || 0);
   el.innerHTML =
-    card('s-streak',   '🔥', us.mission_streak || us.streak || 0, 'Day Streak')  +
-    card('s-articles', '📰', us.articles_read  || 0,              'Articles Read') +
-    card('s-words',    '📖', us.words_saved    || 0,              'Saved Words')   +
-    card('s-quizzes',  '🎯', us.quizzes_done   || 0,              'Quizzes Done')  +
-    card('s-articles', '✨', xpVal.toLocaleString(),              'Total XP')       +
-    card('s-quizzes',  '🐾', coinVal.toLocaleString(),            '냥 Balance');
+    card('s-streak',   SVG_ICONS.streak,   us.mission_streak || us.streak || 0, 'Day Streak')  +
+    card('s-articles', SVG_ICONS.articles, us.articles_read  || 0,              'Articles Read') +
+    card('s-words',    SVG_ICONS.words,    us.words_saved    || 0,              'Saved Words')   +
+    card('s-quizzes',  SVG_ICONS.quizzes,  us.quizzes_done   || 0,              'Quizzes Done')  +
+    card('s-articles', SVG_ICONS.xp,       xpVal.toLocaleString(),              'Total XP')       +
+    card('s-quizzes',  SVG_ICONS.nyang,    coinVal.toLocaleString(),            '냥 Balance');
 }
 
 // ── Render tier grid ───────────────────────────────────────────
@@ -396,8 +464,9 @@ function renderTierGrid(xp) {
     var active  = xp >= t.min;
     var current = tier.label === t.label;
     var pct = (t.max > t.min) ? Math.min(100, Math.round(Math.max(0, xp - t.min) / (t.max - t.min) * 100)) : 100;
+    var bgColor = active ? (TIER_COLORS[t.cls] + '18') : '#f4f6fa';
     return '<div class="tier-item' + (current ? ' current' : '') + '">'
-      + '<div class="tier-icon"' + (active ? '' : ' style="filter:grayscale(1);opacity:.35"') + '>' + t.icon + '</div>'
+      + '<div class="tier-icon" style="background:' + bgColor + '">' + tierMark(t.cls, 18, !active) + '</div>'
       + '<div class="tier-label" style="' + (active ? '' : 'color:#94a3b8') + '">' + t.label + '</div>'
       + '<div class="tier-xp">' + t.min.toLocaleString() + (t.max !== t.min ? '+' : '') + '</div>'
       + (active && t.max !== t.min ? '<div class="tier-bar"><div class="tier-bar-fill" style="width:' + pct + '%"></div></div>' : '')
@@ -483,7 +552,7 @@ function renderProfileFields(xp, coin) {
   var email = supaUser.email || '';
   var since = supaUser.created_at ? new Date(supaUser.created_at).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }) : '—';
   var provider = (supaUser.app_metadata && supaUser.app_metadata.provider) || 'email';
-  var provLabel = provider === 'google' ? '🔑 Google' : '✉️ Email';
+  var provLabel = provider === 'google' ? 'Google' : 'Email';
   var canAfford = _userCoin >= NICKNAME_COST;
 
   el.innerHTML =
@@ -491,7 +560,7 @@ function renderProfileFields(xp, coin) {
     + '<div class="pf-label">Nickname</div>'
     + '<div class="pf-value" id="pf-name-val">' + name + '</div>'
     + '<button class="pf-btn" onclick="openNicknameModal()" style="' + (canAfford ? '' : 'opacity:.55') + '" title="' + (canAfford ? '닉네임 변경 (100냥)' : '닉네임 변경에 ' + NICKNAME_COST + '냥 필요') + '">'
-    + '✏️ ' + NICKNAME_COST + '냥</button>'
+    + NICKNAME_COST + ' 냥</button>'
     + '</div>'
     + '<div class="pf-row"><div class="pf-label">Email</div><div class="pf-value">' + email + '</div></div>'
     + '<div class="pf-row"><div class="pf-label">Sign-in</div><div class="pf-value">' + provLabel + '</div></div>'
@@ -762,7 +831,7 @@ async function dbGetOwnedAndGifts() {
 
 function renderOwnedAndGiftSections(coin, data) {
   var balEl = document.getElementById('mp-nyang-balance');
-  if (balEl) balEl.textContent = '🐾 냥: ' + Number(coin || 0).toLocaleString();
+  if (balEl) balEl.textContent = '냥: ' + Number(coin || 0).toLocaleString();
 
   var ownedEl = document.getElementById('mp-owned-items');
   var owned = (data && data.owned) || [];
