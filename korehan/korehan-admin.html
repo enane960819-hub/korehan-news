@@ -144,6 +144,18 @@ a{color:inherit;text-decoration:none}
 @keyframes tsin{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
 
 .section-sep{height:1px;background:var(--br);margin:6px 0}
+
+/* INNER PANEL TABS (used by merged sections) */
+.itabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--br)}
+.itab{padding:6px 16px;border-radius:20px;border:1.5px solid var(--br);background:var(--w);
+  font-size:12px;font-weight:700;color:var(--gr);cursor:pointer;font-family:inherit;transition:all .15s}
+.itab:hover{background:var(--li);color:var(--a);border-color:var(--a)}
+.itab.on{background:var(--a);color:#fff;border-color:var(--a)}
+
+/* SIDEBAR improvements */
+.sb-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.8px;color:#b0bec8;
+  padding:14px 18px 5px;display:flex;align-items:center;gap:6px}
+.sb-lbl:first-child{padding-top:18px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -164,61 +176,42 @@ a{color:inherit;text-decoration:none}
 
   <!-- SIDEBAR -->
   <div class="sb">
-    <div class="sb-lbl">Articles</div>
-    <button class="sb-btn on" id="sb-all" onclick="goList()"><span class="ico">📰</span>All Articles<span class="pill" id="p-all">0</span></button>
-    <button class="sb-btn" id="sb-new" onclick="openModal(null)"><span class="ico">✏️</span>New Article</button>
-    <button class="sb-btn" onclick="goAutoArticle()"><span class="ico">🤖</span>AI Auto-Generate</button>
-    <button class="sb-btn" id="sb-cache" onclick="goAICache()"><span class="ico">🧠</span>AI Cache 관리</button>
-    <button class="sb-btn" id="sb-img" onclick="goArticleImages()"><span class="ico">🖼</span>기사 이미지 관리</button>
+    <div class="sb-lbl">기사 관리</div>
+    <button class="sb-btn on" id="sb-all" onclick="goList()"><span class="ico">📰</span>기사 목록<span class="pill" id="p-all">0</span></button>
+    <button class="sb-btn" onclick="openModal(null)"><span class="ico">✏️</span>새 기사 작성</button>
+    <button class="sb-btn" onclick="goAutoArticle()"><span class="ico">🤖</span>AI 기사 생성</button>
+    <button class="sb-btn" id="sb-cache" onclick="goAICache()"><span class="ico">🧠</span>AI 캐시 관리</button>
+    <button class="sb-btn" id="sb-img" onclick="goArticleImages()"><span class="ico">🖼️</span>이미지 관리</button>
 
-    <div class="sb-lbl">By Section</div>
-    <button class="sb-btn" onclick="goFilter('사회')"> <span class="ico">🏙️</span>사회 Society <span class="pill" id="p-사회">0</span></button>
-    <button class="sb-btn" onclick="goFilter('국제')"> <span class="ico">🌍</span>국제 World   <span class="pill" id="p-국제">0</span></button>
-    <button class="sb-btn" onclick="goFilter('문화')"> <span class="ico">🎭</span>문화 Culture <span class="pill" id="p-문화">0</span></button>
-    <button class="sb-btn" onclick="goFilter('K-pop')"><span class="ico">🎤</span>K-pop        <span class="pill" id="p-K-pop">0</span></button>
-    <button class="sb-btn" onclick="goFilter('Korea')"><span class="ico">🇰🇷</span>Korea        <span class="pill" id="p-Korea">0</span></button>
-    <button class="sb-btn" onclick="goFilter('스포츠')"><span class="ico">⚽</span>스포츠 Sports<span class="pill" id="p-스포츠">0</span></button>
-    <button class="sb-btn" onclick="goFilter('beauty')"><span class="ico">💄</span>Beauty      <span class="pill" id="p-beauty">0</span></button>
-    <button class="sb-btn" onclick="goFilter('travel')"><span class="ico">✈️</span>Travel      <span class="pill" id="p-travel">0</span></button>
-    <button class="sb-btn" onclick="goFilter('오피니언')"><span class="ico">✍️</span>오피니언     <span class="pill" id="p-오피니언">0</span></button>
-
-    <div class="section-sep"></div>
-    <div class="sb-lbl">Analytics</div>
-    <button class="sb-btn" onclick="goUserStats()"><span class="ico">📊</span>User Analytics</button>
-    <div class="sb-lbl">Content</div>
-    <div class="sb-lbl">Settings</div>
-    <button class="sb-btn" id="sb-site-settings" onclick="goSiteSettings()"><span class="ico">⚙️</span>사이트 기본 설정</button>
-    <button class="sb-btn" id="sb-onb-settings" onclick="goOnboardingSettings()"><span class="ico">🧭</span>온보딩 편집</button>
-    <button class="sb-btn" onclick="goOpinions()">    <span class="ico">✍️</span>오피니언 칼럼니스트</button>
-    <button class="sb-btn" id="sb-char-reporters" onclick="goCharReporters()"><span class="ico">🎭</span>Character Reporters<span class="sb-new-tag">NEW</span></button>
-    <button class="sb-btn" id="sb-shop-mgr" onclick="goShopManager()"><span class="ico">🛍️</span>SHOP 관리</button>
-    <button class="sb-btn" id="sb-coin-admin" onclick="goCoinAdmin()"><span class="ico">🪙</span>Coin 조정</button>
-
-    <div class="section-sep"></div>
+    <div class="section-sep" style="margin-top:8px"></div>
     <div class="sb-lbl">학습 콘텐츠</div>
-    <button class="sb-btn" id="sb-conv" onclick="goConvEditor()"><span class="ico">💬</span>Conversations AI<span class="sb-new-tag">NEW</span></button>
-    <button class="sb-btn" id="sb-conv-mgr" onclick="goConvManager()"><span class="ico">📝</span>Conversations 관리</button>
-    <button class="sb-btn" id="sb-stor" onclick="goStoriesEditor()"><span class="ico">📖</span>Stories AI<span class="sb-new-tag">NEW</span></button>
-    <button class="sb-btn" id="sb-stor-mgr" onclick="goStoriesManager()"><span class="ico">📝</span>Stories 관리</button>
+    <button class="sb-btn" id="sb-conv" onclick="goConversations()"><span class="ico">💬</span>Conversations</button>
+    <button class="sb-btn" id="sb-stor" onclick="goStories()"><span class="ico">📖</span>Stories</button>
+    <button class="sb-btn" id="sb-study-room" onclick="goStudyRoomOps()"><span class="ico">🏫</span>Study Room</button>
+    <button class="sb-btn" id="sb-vocab" onclick="goVocabContent()"><span class="ico">📚</span>단어 & 표현</button>
+    <button class="sb-btn" onclick="goTopics()"><span class="ico">📝</span>작문 토픽</button>
     <button class="sb-btn" id="sb-qw-tips" onclick="goQuickWinTips()"><span class="ico">💡</span>Quick Win Tips</button>
-    <button class="sb-btn" onclick="goPhrases()"> <span class="ico">💬</span>오늘의 표현</button>
-    <button class="sb-btn" onclick="goVocabEditor()"><span class="ico">✏️</span>단어 뜻 수정</button>
-    <button class="sb-btn" onclick="goTopics()"><span class="ico">📝</span>작문 토픽 관리</button>
-    <button class="sb-btn" onclick="goWordBank()"><span class="ico">📚</span>단어 플래시 카드</button>
-    <button class="sb-btn" onclick="goSentences()"><span class="ico">💬</span>예문 관리</button>
-    <button class="sb-btn" id="sb-study-room" onclick="goStudyRoomOps()"><span class="ico">🏫</span>Study Room 관리</button>
-    <div class="sb-lbl" style="margin-top:14px">운영 관리</div>
-    <button class="sb-btn" onclick="goUsers()"><span class="ico">👥</span>가입 회원</button>
-    <button class="sb-btn" onclick="goComments()"><span class="ico">💬</span>댓글 관리</button>
-    <button class="sb-btn" onclick="goNewsletter()"><span class="ico">📬</span>뉴스레터</button>
-    <button class="sb-btn" onclick="goStats()"><span class="ico">📊</span>방문자 통계</button>
 
-    <div class="section-sep"></div>
-    
-<div class="sb-lbl">데이터</div>
-    <button class="sb-btn" onclick="doExport()"><span class="ico">💾</span>내보내기 (JSON)</button>
-    <button class="sb-btn" onclick="document.getElementById('imp').click()"><span class="ico">📂</span>가져오기 (JSON)</button>
-    <button class="sb-btn" onclick="resetAll()" style="color:#cc2200"><span class="ico">🔄</span>전체 초기화</button>
+    <div class="section-sep" style="margin-top:8px"></div>
+    <div class="sb-lbl">운영</div>
+    <button class="sb-btn" onclick="goUsers()"><span class="ico">👥</span>회원 관리</button>
+    <button class="sb-btn" onclick="goComments()"><span class="ico">🗨️</span>댓글 관리</button>
+    <button class="sb-btn" onclick="goNewsletter()"><span class="ico">📬</span>뉴스레터</button>
+    <button class="sb-btn" id="sb-analytics" onclick="goAnalytics()"><span class="ico">📊</span>통계</button>
+
+    <div class="section-sep" style="margin-top:8px"></div>
+    <div class="sb-lbl">설정</div>
+    <button class="sb-btn" id="sb-site-settings" onclick="goSiteSettings()"><span class="ico">⚙️</span>사이트 설정</button>
+    <button class="sb-btn" id="sb-onb-settings" onclick="goOnboardingSettings()"><span class="ico">🧭</span>온보딩 편집</button>
+    <button class="sb-btn" onclick="goOpinions()"><span class="ico">✍️</span>칼럼니스트</button>
+    <button class="sb-btn" id="sb-char-reporters" onclick="goCharReporters()"><span class="ico">🎭</span>캐릭터 기자</button>
+    <button class="sb-btn" id="sb-shop" onclick="goShopContent()"><span class="ico">🛍️</span>상점 & 코인</button>
+
+    <div class="section-sep" style="margin-top:8px"></div>
+    <div class="sb-lbl">데이터</div>
+    <button class="sb-btn" onclick="doExport()"><span class="ico">💾</span>내보내기</button>
+    <button class="sb-btn" onclick="document.getElementById('imp').click()"><span class="ico">📂</span>가져오기</button>
+    <button class="sb-btn" onclick="resetAll()" style="color:#cc2200"><span class="ico">⚠️</span>전체 초기화</button>
     <input type="file" id="imp" accept=".json" style="display:none" onchange="doImport(event)">
   </div>
 
@@ -6221,6 +6214,79 @@ async function saveHomeworkFeedback(id) {
 
 if (window.location.hash === '#study-picture-prompts' || window.location.hash === '#study-room') {
   setTimeout(function(){ goStudyRoomOps(); }, 120);
+}
+
+// ══ MERGED SECTION WRAPPERS ════════════════════════════════════
+// Each wrapper: renders inner function → prepends a tab bar on top
+
+function _prependItabs(defs, activeKey) {
+  var main = document.getElementById('main');
+  if (!main) return;
+  var bar = document.createElement('div');
+  bar.className = 'itabs';
+  bar.innerHTML = defs.map(function(d){
+    return '<button class="itab' + (d.key===activeKey?' on':'') + '" onclick="' + d.fn + '">' + d.label + '</button>';
+  }).join('');
+  main.insertBefore(bar, main.firstChild);
+}
+
+async function goConversations(tab) {
+  tab = tab || 'gen';
+  if (tab === 'gen') { await goConvEditor(); }
+  else               { await goConvManager(); }
+  setSbOn('sb-conv');
+  _prependItabs([
+    { key:'gen', label:'🤖 AI 생성',  fn:"goConversations('gen')" },
+    { key:'mgr', label:'📋 목록 관리', fn:"goConversations('mgr')" }
+  ], tab);
+}
+
+async function goStories(tab) {
+  tab = tab || 'gen';
+  if (tab === 'gen') { await goStoriesEditor(); }
+  else               { await goStoriesManager(); }
+  setSbOn('sb-stor');
+  _prependItabs([
+    { key:'gen', label:'🤖 AI 생성',  fn:"goStories('gen')" },
+    { key:'mgr', label:'📋 목록 관리', fn:"goStories('mgr')" }
+  ], tab);
+}
+
+async function goAnalytics(tab) {
+  tab = tab || 'visitor';
+  if (tab === 'visitor') { await goStats(); }
+  else                   { await goUserStats(); }
+  setSbOn('sb-analytics');
+  _prependItabs([
+    { key:'visitor', label:'📈 방문자 통계', fn:"goAnalytics('visitor')" },
+    { key:'user',    label:'👤 유저 학습',   fn:"goAnalytics('user')" }
+  ], tab);
+}
+
+async function goVocabContent(tab) {
+  tab = tab || 'wordbank';
+  if      (tab === 'wordbank') { goWordBank(); }
+  else if (tab === 'sentences'){ goSentences(); }
+  else if (tab === 'vocab')    { await goVocabEditor(); }
+  else                         { goPhrases(); }
+  setSbOn('sb-vocab');
+  _prependItabs([
+    { key:'wordbank',  label:'📚 단어카드',    fn:"goVocabContent('wordbank')" },
+    { key:'sentences', label:'💬 예문',        fn:"goVocabContent('sentences')" },
+    { key:'vocab',     label:'✏️ 단어 뜻 수정', fn:"goVocabContent('vocab')" },
+    { key:'phrases',   label:'🌟 오늘의 표현',  fn:"goVocabContent('phrases')" }
+  ], tab);
+}
+
+async function goShopContent(tab) {
+  tab = tab || 'shop';
+  if (tab === 'shop') { await goShopManager(); }
+  else                { await goCoinAdmin(); }
+  setSbOn('sb-shop');
+  _prependItabs([
+    { key:'shop', label:'🛍️ 상점 관리', fn:"goShopContent('shop')" },
+    { key:'coin', label:'🪙 코인 조정', fn:"goShopContent('coin')" }
+  ], tab);
 }
 </script>
 </body>
