@@ -640,6 +640,8 @@ body.kh-neon-on .as-mc-letter { background:rgba(0,255,214,.1) !important; color:
 
 /* Nav bar */
 body.kh-neon-on .as-nav-bar { background:rgba(6,14,26,.96) !important; border-top:1px solid rgba(0,255,214,.12) !important; }
+body.kh-neon-on .as-article-toggle summary { color:rgba(160,235,255,.55) !important; }
+body.kh-neon-on .as-given { color:#d8eef5 !important; }
 
 /* Done banner */
 body.kh-neon-on .as-done-banner { color:#e4f9ff !important; }
@@ -6342,10 +6344,12 @@ function _asStep2(art,act) {
 
 // ── Step 3: Fill-in-blank (words inside article sentence) ──
 function _asStep3(art,act) {
-  art.innerHTML='<p class="as-section-label">📖 기사 읽기</p><div class="as-article-text">'+(_asCurrentArt?_asFormatBody(_asCurrentArt.body||''):'')+'</div>';
+  // Hide full article text during fill-in-blank so user can't copy answers
+  art.innerHTML='<p class="as-section-label">✏️ 빈칸 채우기</p>'
+    +'<p style="font-size:12px;color:var(--gray);margin:0">문장 속 빈칸에 알맞은 단어를 넣어보세요</p>';
   var wo=(_asStudyContent&&_asStudyContent.word_order)||[];
   if (!wo.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px">문장이 없습니다.</div>'; _asSetNav('none',''); return; }
-  _asWOState={sentences:wo,idx:0,filledBlanks:null,blankPositions:null,pool:null}; _asRenderBlankUI(); _asSetNav('','none','none');
+  _asWOState={sentences:wo,idx:0,filledBlanks:null,blankPositions:null,pool:null}; _asRenderBlankUI();
 }
 function _asRenderBlankUI() {
   var act=document.getElementById('as-activity-area'); if(!act||!_asWOState) return;
@@ -6391,6 +6395,9 @@ function asBlankFill(pi) {
   if(nextEmpty<0) return;
   _asWOState.filledBlanks[nextEmpty]=item.text;
   _asRenderBlankUI();
+  // Auto-check when all blanks filled
+  var allFilled=_asWOState.filledBlanks.every(function(v){return v!==null;});
+  if(allFilled) setTimeout(function(){ _asCheckWO(); }, 400);
 }
 function asBlankClear(bi) {
   if(!_asWOState) return;
@@ -6403,7 +6410,9 @@ function asWOAns(i)  { asBlankClear(i); }
 
 // ── Step 4: Comprehension questions ──
 function _asStep4(art,act) {
-  art.innerHTML='<p class="as-section-label">📖 기사 읽기</p><div class="as-article-text">'+(_asCurrentArt?_asFormatBody(_asCurrentArt.body||''):'')+'</div>';
+  // Show article in a collapsible section — user should try from memory first
+  var bodyHtml=_asCurrentArt?_asFormatBody(_asCurrentArt.body||''):'';
+  art.innerHTML='<details class="as-article-toggle"><summary style="cursor:pointer;font-size:12px;color:var(--gray);font-weight:700;padding:8px 0;user-select:none">📖 기사 다시 보기 (클릭해서 펼치기)</summary><div class="as-article-text" style="margin-top:8px">'+bodyHtml+'</div></details>';
   var qs=(_asStudyContent&&_asStudyContent.questions)||[];
   if (!qs.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px">문제가 없습니다.</div>'; _asSetNav('none',''); return; }
   _asQState={qs:qs,ans:new Array(qs.length).fill(null)};
@@ -6434,7 +6443,8 @@ function asQAns(qi,oi) {
 
 // ── Step 5: Free writing (optional) ──
 function _asStep5(art,act) {
-  art.innerHTML='<p class="as-section-label">📖 기사 읽기</p><div class="as-article-text">'+(_asCurrentArt?_asFormatBody(_asCurrentArt.body||''):'')+'</div>';
+  var bodyHtml=_asCurrentArt?_asFormatBody(_asCurrentArt.body||''):'';
+  art.innerHTML='<details class="as-article-toggle"><summary style="cursor:pointer;font-size:12px;color:var(--gray);font-weight:700;padding:8px 0;user-select:none">📖 기사 다시 보기 (클릭해서 펼치기)</summary><div class="as-article-text" style="margin-top:8px">'+bodyHtml+'</div></details>';
   var saved=_asGetTmp(); var txt=(saved&&saved.step5_text)||'';
   act.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
     +'<p class="as-section-label" style="margin:0">✍️ 자유 글쓰기</p>'
