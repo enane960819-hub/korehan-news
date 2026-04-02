@@ -6379,21 +6379,7 @@ function enhanceArticleMobile() {
 
 function enhanceConversationsMobile() {
   if (!isMobileRedesign() || pageName() !== 'korehan-conversations') return;
-  var root = document.querySelector('.conv-page-container') || document.body;
-  if (root && !document.querySelector('.mobile-section-shell[data-mobile="conv"]')) {
-    var shell = document.createElement('section');
-    shell.className = 'mobile-section-shell';
-    shell.setAttribute('data-mobile','conv');
-    shell.innerHTML = ''
-      + '<div class="mobile-eyebrow">Conversation study</div>'
-      + '<h2 class="mobile-quick-title" style="font-size:28px">Study chats the same way you actually text.</h2>'
-      + '<p class="mobile-quick-sub">Open one conversation, read it like KakaoTalk, then check vocabulary, grammar, and roleplay practice.</p>'
-      + '<div class="mobile-action-row">'
-      + '<a class="mobile-primary-btn" href="korehan-conversations.html?cat=everyday">Everyday chats</a>'
-      + '<a class="mobile-secondary-btn" href="korehan-conversations.html?cat=work">Workplace</a>'
-      + '</div>';
-    root.insertAdjacentElement('afterbegin', shell);
-  }
+  // Conversation Study banner removed — unnecessary
 
   var observer = new MutationObserver(function(){
     var panel = document.querySelector('.detail-panel');
