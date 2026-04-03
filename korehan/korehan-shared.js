@@ -547,6 +547,8 @@ async function authSignIn() {
     _sessionWarningShown = false;
     updateAuthUI();
     updateCommentForm();
+    renderDailyMission();
+    _syncSavedWordsFromDB();
     window.dispatchEvent(new Event('kh-auth-signed-in'));
   }
   closeAuthModal();
@@ -1214,6 +1216,35 @@ function toast(msg, typeOrBool) {
 
 // ── 저장 단어 ─────────────────────────────────────────────────
 var K_SAVED = 'korehan_saved_words';
+var _savedWordsSet = null; // Set of ko strings, populated from DB on auth
+
+// Fetch saved words from DB and populate _savedWordsSet (call after auth ready)
+async function _syncSavedWordsFromDB() {
+  if (!supaUser) { _savedWordsSet = null; return; }
+  var sb = getSupa();
+  if (!sb) return;
+  try {
+    var res = await sb.from('saved_words').select('word_ko, ko').eq('user_id', supaUser.id);
+    if (res.data && res.data.length) {
+      _savedWordsSet = new Set();
+      res.data.forEach(function(row) {
+        var k = row.word_ko || row.ko || '';
+        if (k) _savedWordsSet.add(k);
+      });
+      // Also sync to localStorage for offline/fallback
+      var normalized = res.data.map(normalizeSavedWord).filter(function(w){ return w && w.ko; });
+      lsSet(K_SAVED, normalized);
+    } else {
+      _savedWordsSet = new Set();
+    }
+  } catch(e) {
+    // If DB fetch fails, build set from localStorage
+    if (!_savedWordsSet) {
+      var local = lsGet(K_SAVED, []);
+      _savedWordsSet = new Set(local.map(function(w){ return w.ko || w.word_ko || ''; }).filter(Boolean));
+    }
+  }
+}
 function normalizeSavedWord(row) {
   if (!row) return null;
   return {
@@ -1238,6 +1269,8 @@ async function dbGetSavedWords() {
   return localSaved;
 }
 async function dbSaveWord(ko, rom, en) {
+  // Update in-memory set immediately for cross-device consistency
+  if (_savedWordsSet) _savedWordsSet.add(ko);
   // localStorage에도 추가 (중복 제거)
   var saved = lsGet(K_SAVED, []);
   var alreadyLocal = !!saved.find(function(w){ return w.ko === ko; });
@@ -1294,6 +1327,8 @@ async function dbSaveWord(ko, rom, en) {
   }
 }
 async function dbRemoveWord(ko) {
+  // Update in-memory set immediately for cross-device consistency
+  if (_savedWordsSet) _savedWordsSet.delete(ko);
   var saved = lsGet(K_SAVED, []).filter(function(w){ return w.ko !== ko; });
   lsSet(K_SAVED, saved);
   if (!supaUser) return { ok: true, source: 'local' };
@@ -1312,9 +1347,9 @@ async function restoreSaveButtons(containerId) {
   var container = containerId ? document.getElementById(containerId) : document;
   if (!container) return;
 
-  // localStorage에서 즉시 적용 (빠른 렌더)
+  // Use DB-backed set if available, otherwise fall back to localStorage
   var saved = lsGet(K_SAVED, []);
-  var savedSet = new Set(saved.map(function(w){ return w.ko || w.word_ko || ''; }).filter(Boolean));
+  var savedSet = _savedWordsSet || new Set(saved.map(function(w){ return w.ko || w.word_ko || ''; }).filter(Boolean));
 
   function applyState(set) {
     // dp-vocab-item (conversations)
@@ -3230,6 +3265,9 @@ function renderStaticGrammar(el, a) {
 }
 
 function isWordSaved(ko) {
+  // Prefer DB-backed set (synced on auth) for cross-device consistency
+  if (_savedWordsSet) return _savedWordsSet.has(ko);
+  // Fallback to localStorage for logged-out users or before DB sync completes
   var saved = lsGet(K_SAVED, []);
   return saved.some(function(w){ return (w.ko || w.word_ko || '') === ko; });
 }
@@ -4620,7 +4658,8 @@ async function khSaveWbWord(rowEl, ko, rom, en) {
         p_interest_tag: null, p_review_delta: 0, p_correct_delta: 0, p_wrong_delta: 0
       });
     }
-    // localStorage 추가 + 카운터/XP 증가
+    // Update in-memory set + localStorage + 카운터/XP 증가
+    if (_savedWordsSet) _savedWordsSet.add(ko);
     var wbSaved = lsGet(K_SAVED, []);
     var wbAlready = !!wbSaved.find(function(w){ return w.ko === ko; });
     if (!wbAlready) {
@@ -4975,7 +5014,6 @@ window.addEventListener('beforeunload', markShellLeaving);
 window.addEventListener('pagehide', markShellLeaving);
 
 document.addEventListener('DOMContentLoaded', async function() {
-  renderKhLucideIcons();
   initKhNeonTheme();
   markShellReady();
   var headerEl  = document.getElementById('kh-header');
@@ -4987,9 +5025,11 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (sidebarEl) sidebarEl.innerHTML = renderSharedSidebar();
   renderKhLucideIcons();
   syncNeonToggleButtons();
-  hydrateMostReadSidebar();
-  khHydrateWeather();
   applySiteConfigToPage();
+  // Defer non-critical sidebar hydrations to avoid blocking first paint on mobile
+  var _deferIdle = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 0); };
+  _deferIdle(function(){ hydrateMostReadSidebar(); });
+  _deferIdle(function(){ khHydrateWeather(); });
   // 모바일 사이드바 CSS/overlay/nav 주입 (헤더 렌더 직후 실행)
   khInjectSidebar();
   // Attach hamburger click explicitly (fixes mobile inline-onclick issues)
