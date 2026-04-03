@@ -377,13 +377,22 @@ body.kh-neon-on .mypage-hero {
 #miniroom-container { user-select:none; -webkit-user-select:none; }
 .room-placed-item {
   position:absolute; image-rendering:pixelated; background-repeat:no-repeat;
-  transition: outline .15s, box-shadow .15s, width .12s ease, height .12s ease;
+  transition: outline .15s, box-shadow .15s;
   z-index:1;
 }
 .room-placed-item.room-dragging { z-index:10; opacity:.85; }
 .room-placed-item.room-selected {
   outline:2px solid #facc15 !important;
   box-shadow:0 0 0 2px rgba(250,204,21,.35);
+}
+.room-placed-sprite {
+  position:absolute; inset:0;
+  image-rendering:pixelated;
+  background-repeat:no-repeat;
+  background-position:center;
+  background-size:contain;
+  transform-origin:center center;
+  pointer-events:none;
 }
 
 /* Shop modal */
@@ -1127,7 +1136,7 @@ function renderOwnedAndGiftSections(coin, data) {
   var roomHtml = roomOwned.length ? '<div style="font-size:12px;font-weight:700;color:#475569;margin-bottom:8px">Room Items</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">'
     + roomOwned.map(function(rid){
         var def = getRoomItemDef(rid); if(!def) return '';
-        return '<div style="width:56px;height:56px;border-radius:10px;border:1px solid #e2e8f0;'+roomItemBgStyle(def)+'" title="'+def.name+'"></div>';
+        return '<div style="width:56px;height:56px;border-radius:10px;border:1px solid #e2e8f0;'+roomItemThumbBgStyle(def)+'" title="'+def.name+'"></div>';
       }).join('') + '</div>' : '';
   if (ownedEl) {
     var shopHtml = owned.length
@@ -1184,6 +1193,9 @@ var _selectedRoomItemId = null;
 // ── Item background style (individual images) ───────────────
 function roomItemBgStyle(item) {
   return 'background-image:url(' + item.img + ');background-size:contain;background-repeat:no-repeat;background-position:center;';
+}
+function roomItemThumbBgStyle(item) {
+  return 'background-image:url(' + item.img + ');background-size:76% 76%;background-repeat:no-repeat;background-position:center;';
 }
 
 // ── Get item def by id ───────────────────────────────────────
@@ -1262,14 +1274,19 @@ function renderRoomItems() {
     div.className = 'room-placed-item';
     div.dataset.itemId = placed.id;
     var scale = Math.max(70, Math.min(170, Number(placed.scale || 100)));
-    var s = Math.round((def.size || 50) * (scale / 100));
+    var base = def.size || 50;
     div.setAttribute('style',
-      'left:' + placed.x + 'px;top:' + placed.y + 'px;width:' + s + 'px;height:' + s + 'px;'
-      + roomItemBgStyle(def)
+      'left:' + placed.x + 'px;top:' + placed.y + 'px;width:' + base + 'px;height:' + base + 'px;'
       + 'cursor:' + (_roomEditing ? 'grab' : 'default') + ';'
       + (_roomEditing ? 'outline:2px dashed rgba(255,255,255,.3);' : '')
     );
     div.title = def.name;
+    div.dataset.scale = String(scale);
+
+    var sprite = document.createElement('div');
+    sprite.className = 'room-placed-sprite';
+    sprite.setAttribute('style', roomItemBgStyle(def) + 'transform:scale(' + (scale / 100) + ');');
+    div.appendChild(sprite);
 
     // Drag events
     div.addEventListener('mousedown', roomDragStart);
@@ -1472,9 +1489,9 @@ function applySelectedItemScale(scaleValue) {
 
   var selectedEl = document.querySelector('.room-placed-item.room-selected');
   if (selectedEl) {
-    var s = Math.round((def.size || 50) * (scale / 100));
-    selectedEl.style.width = s + 'px';
-    selectedEl.style.height = s + 'px';
+    selectedEl.dataset.scale = String(scale);
+    var spriteEl = selectedEl.querySelector('.room-placed-sprite');
+    if (spriteEl) spriteEl.style.transform = 'scale(' + (scale / 100) + ')';
   }
   updateRoomSizeUI();
 }
@@ -1506,7 +1523,7 @@ function openRoomShop() {
     var s = 60;
 
     html += '<div class="room-shop-card" data-item-id="' + item.id + '">'
-      + '<div class="room-shop-sprite" style="width:' + s + 'px;height:' + s + 'px;' + roomItemBgStyle(item) + '"></div>'
+      + '<div class="room-shop-sprite" style="width:' + s + 'px;height:' + s + 'px;' + roomItemThumbBgStyle(item) + '"></div>'
       + '<div class="room-shop-name">' + item.name + '</div>'
       + '<div class="room-shop-price">' + (isOwned ? 'Owned' : item.price + ' nyang') + '</div>';
 
