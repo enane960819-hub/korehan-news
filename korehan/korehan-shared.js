@@ -824,15 +824,20 @@ async function checkSession() {
   sb.auth.onAuthStateChange(function(event, session) {
     if (event === 'SIGNED_OUT') {
       supaUser = null;
+      _savedWordsSet = null;
       updateAuthUI();
       updateCommentForm();
     } else if (event === 'SIGNED_IN') {
       supaUser = session ? session.user : null;
       _sessionWarningShown = false;
+      closeAuthModal();
       updateAuthUI();
       updateCommentForm();
       renderDailyMission();
+      _syncSavedWordsFromDB();
       window.dispatchEvent(new Event('kh-auth-signed-in'));
+      // Re-apply UI update after a short delay to catch any late-rendered DOM elements
+      setTimeout(function(){ updateAuthUI(); }, 300);
       if (!window.location.pathname.includes('onboarding')) {
         checkOnboardingStatus();
       }
@@ -847,6 +852,10 @@ async function checkSession() {
       updateAuthUI();
       updateCommentForm();
       renderDailyMission();
+      if (supaUser) {
+        _syncSavedWordsFromDB();
+        window.dispatchEvent(new Event('kh-auth-signed-in'));
+      }
     }
   });
 
@@ -892,7 +901,9 @@ async function checkSession() {
   if (data && data.session && data.session.user) {
     supaUser = data.session.user;
     updateAuthUI();
+    updateCommentForm();
     renderDailyMission();
+    _syncSavedWordsFromDB();
     window.dispatchEvent(new Event('kh-auth-signed-in'));
     if (!window.location.pathname.includes('onboarding')) {
       checkOnboardingStatus();
@@ -1400,7 +1411,7 @@ function articleUrl(id) {
 // 기사는 Supabase articles 테이블에서 로드
 var _articlesCache = null;
 var _articlesCacheTime = 0;
-var CACHE_TTL = 60000; // 1분
+var CACHE_TTL = 300000; // 5분
 var ARTICLES_STORAGE_KEY = 'kh_articles_cache_v2';
 var ARTICLES_STORAGE_MAX_AGE = 5 * 60 * 1000; // 5분
 var HOME_ARTICLE_SELECT = '*';
@@ -5052,13 +5063,17 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (getCachedArticles().length) {
       renderHomePage();
     }
-    await loadArticlesFromDB({ homeOptimized: true, force: true });
+    await Promise.all([
+      loadArticlesFromDB({ homeOptimized: true, force: true }),
+      sectionsPromise,
+      settingsPromise
+    ]);
     renderHomePage();
   } else {
     await Promise.all([loadArticlesFromDB({ force: true }), sectionsPromise, settingsPromise]);
   }
 
-  await Promise.allSettled([sessionPromise, sectionsPromise, settingsPromise]);
+  await Promise.allSettled([sessionPromise]);
 
   if (footerEl) footerEl.innerHTML = renderFooter();
   renderKhLucideIcons();
@@ -5076,10 +5091,12 @@ document.addEventListener('DOMContentLoaded', async function() {
   else if (pageBase === 'korehan-opinion')   { await renderSectionPage('오피니언'); }
   else if (pageBase === 'korehan-article')   { await _loadReportersIntoKHMap(); renderArticlePage(); }
 
-  ttsInit();
-  injectDailyMission();
-  startClock();
-  loadVocabFromDB().then(function(){ initTooltips(); });
+  // Defer non-critical initializations to avoid blocking first paint on mobile
+  var _deferPost = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 0); };
+  _deferPost(function(){ ttsInit(); });
+  _deferPost(function(){ injectDailyMission(); });
+  _deferPost(function(){ startClock(); });
+  _deferPost(function(){ loadVocabFromDB().then(function(){ initTooltips(); }); });
 });
 
 // ── vocabulary_bank DB → VOCAB 병합 ───────────────────────
