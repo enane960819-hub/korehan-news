@@ -87,6 +87,7 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
 .test-prog-fill{height:100%;background:linear-gradient(90deg,#38bdf8,#2563eb);border-radius:999px;transition:width .3s ease}
 .test-prog-label{display:flex;justify-content:space-between;gap:12px;margin-top:8px;font-size:12px;color:var(--text-dim)}
 .test-level-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px}
+.badge-starter{background:rgba(196,181,253,.14);border:1px solid rgba(196,181,253,.22);color:#ddd6fe}
 .badge-beg{background:rgba(74,222,128,.14);border:1px solid rgba(74,222,128,.22);color:#86efac}
 .badge-int{background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.22);color:#fde68a}
 .badge-adv{background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.24);color:#fda4af}
@@ -291,6 +292,13 @@ var LEVEL_META = {
 };
 
 var TEST_BANK = {
+  Starter:[
+    { q:'What sound does the Korean consonant ㄱ make?', sentence:'', choices:['g/k','n','m','s'], answer:'g/k', exp:'ㄱ is pronounced like "g" at the start of a syllable and "k" at the end.' },
+    { q:'What does 안녕하세요 mean?', sentence:'', choices:['Thank you','Goodbye','Hello','I am sorry'], answer:'Hello', exp:'안녕하세요 is the standard polite greeting, meaning "Hello."' },
+    { q:'What does the word 하나 mean?', sentence:'', choices:['Two','Three','Zero','One'], answer:'One', exp:'하나 is the native Korean number for "one."' },
+    { q:'What does 물 mean?', sentence:'', choices:['Fire','Water','Rice','Bread'], answer:'Water', exp:'물 means "water." It is one of the most basic Korean nouns.' },
+    { q:'What does 네 mean in a conversation?', sentence:'', choices:['No','Maybe','Yes','Please'], answer:'Yes', exp:'네 is the polite way to say "yes" in Korean.' }
+  ],
   Beginner:[
     { q:'Choose the best ending for this sentence.', sentence:'저는 학생___.', choices:['에서요','이에요','부터요','한테요'], answer:'이에요', exp:'이에요 / 예요 is the copula ending meaning “am / is / are.”' },
     { q:'How do you say “I go to school” in natural Korean?', sentence:'', choices:['학교를 가요','학교에서 가요','학교에 가요','학교가 가요'], answer:'학교에 가요', exp:'에 marks the destination when you go somewhere.' },
@@ -612,7 +620,7 @@ function selectLevel(level) {
 
 function buildTestQuestions() {
   var picked = [];
-  ['Beginner','Intermediate','Advanced'].forEach(function(level) {
+  ['Starter','Beginner','Intermediate','Advanced'].forEach(function(level) {
     picked = picked.concat(shuffle(TEST_BANK[level]).slice(0, 5).map(function(q) {
       var opts = shuffle(q.choices);
       return {
@@ -643,12 +651,12 @@ function renderTestQuestion() {
   _testAnswered = false;
   var total = state.testQuestions.length || 15;
   var pct = Math.round((_testIdx / total) * 100);
-  var badgeClass = { Beginner:'badge-beg', Intermediate:'badge-int', Advanced:'badge-adv' }[q.level] || 'badge-beg';
+  var badgeClass = { Starter:'badge-starter', Beginner:'badge-beg', Intermediate:'badge-int', Advanced:'badge-adv' }[q.level] || 'badge-beg';
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
       + '<div class="ob-topline"><div class="ob-eyebrow">Step 3 · Placement test</div><div class="ob-stage">Question ' + (_testIdx + 1) + ' of ' + total + '</div></div>'
       + '<div class="test-progress"><div class="test-prog-bar"><div class="test-prog-fill" style="width:' + pct + '%"></div></div><div class="test-prog-label"><span>' + pct + '% complete</span><span>Randomized answer order</span></div></div>'
-      + '<div class="test-level-badge ' + badgeClass + '">' + ({Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[q.level]||q.level) + '</div>'
+      + '<div class="test-level-badge ' + badgeClass + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[q.level]||q.level) + '</div>'
       + '<div class="test-q">' + q.q + (q.sentence ? '<span class="test-ko">' + q.sentence + '</span>' : '') + '</div>'
       + '<div class="test-opts">'
       + q.choices.map(function(choice, i) {
