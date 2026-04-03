@@ -536,7 +536,7 @@ function _convSaveData() {
   // conversations_data stores {data: {vocab, grammar, msgs, ...}} as JSONB
   var payload = {data: {name:c.name, ctx:c.ctx, cat:c.cat, lvl:c.lvl, avi:c.avi, msgs:c.msgs, vocab:c.vocab, grammar:c.grammar, mission:c.mission, cast_left_slug:c.cast_left_slug, cast_right_slug:c.cast_right_slug}};
   sb.from('conversations_data').update(payload).eq('id',c._id)
-    .then(function(r){ if(r.error) console.warn('conv save:',r.error.message); else if(typeof toast==='function') toast('저장됨'); });
+    .then(function(r){ if(r.error) console.warn('conv save:',r.error.message); else if(typeof toast==='function') toast('Saved'); });
 }
 function convDelVocab(idx) {
   var c = window._currentConv; if (!c) return;
@@ -547,15 +547,15 @@ function convDelGrammar(idx) {
   c.grammar.splice(idx,1); renderStudyNotes(c); _convSaveData();
 }
 function convAddVocab() {
-  var ko = prompt('한국어 단어:'); if (!ko) return;
-  var rom = prompt('로마자 (선택):') || '';
+  var ko = prompt('Korean word:'); if (!ko) return;
+  var rom = prompt('Romanization (optional):') || '';
   var en = prompt('영어 뜻:') || '';
   var c = window._currentConv; if (!c) return;
   if (!c.vocab) c.vocab = [];
   c.vocab.push({ko:ko,rom:rom,en:en}); renderStudyNotes(c); _convSaveData();
 }
 function convAddGrammar() {
-  var point = prompt('문법 포인트 (예: -(으)ㄹ까?):'); if (!point) return;
+  var point = prompt('Grammar point (e.g. -(으)ㄹ까?):'); if (!point) return;
   var ex = prompt('설명 + 예문:') || '';
   var c = window._currentConv; if (!c) return;
   if (!c.grammar) c.grammar = [];

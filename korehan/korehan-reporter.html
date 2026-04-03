@@ -723,7 +723,7 @@ function cancelPostEdit() {
 
 async function deleteReporterPost(postId) {
   if (!_canManagePosts) return;
-  if (!confirm('이 포스트를 삭제할까요?')) return;
+  if (!confirm('Delete this post?')) return;
   var sb = getSupa();
   if (!sb) return;
   if (_postMode === 'fallback') {
@@ -825,7 +825,7 @@ async function sendGiftToReporter(reporterId, itemId) {
   }
   if (res.error || !res.data || !res.data.ok) {
     var code = (res.data && res.data.error) || 'GIFT_PROCESS_FAILED';
-    var friendly = '선물 전송에 실패했어요. 잠시 후 다시 시도해주세요.';
+    var friendly = 'Gift sending failed. Please try again later.';
     if (code === 'INSUFFICIENT_NYANG') friendly = '냥이 부족합니다.';
     else if (code === 'ITEM_NOT_GIFTABLE') friendly = '현재 보낼 수 없는 아이템입니다.';
     else if (code === 'INVALID_INPUT') friendly = '선물 정보가 올바르지 않습니다.';

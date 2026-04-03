@@ -176,34 +176,34 @@ a{color:inherit;text-decoration:none}
 
   <!-- SIDEBAR -->
   <div class="sb">
-    <div class="sb-lbl">기사 관리</div>
-    <button class="sb-btn on" id="sb-all" onclick="goList()"><span class="ico">📰</span>기사 목록<span class="pill" id="p-all">0</span></button>
-    <button class="sb-btn" onclick="openModal(null)"><span class="ico">✏️</span>새 기사 작성</button>
-    <button class="sb-btn" onclick="goAutoArticle()"><span class="ico">🤖</span>AI 기사 생성</button>
-    <button class="sb-btn" id="sb-cache" onclick="goAICache()"><span class="ico">🧠</span>AI 캐시 관리</button>
-    <button class="sb-btn" id="sb-img" onclick="goArticleImages()"><span class="ico">🖼️</span>이미지 관리</button>
+    <div class="sb-lbl">Article Management</div>
+    <button class="sb-btn on" id="sb-all" onclick="goList()"><span class="ico">📰</span>Article List<span class="pill" id="p-all">0</span></button>
+    <button class="sb-btn" onclick="openModal(null)"><span class="ico">✏️</span>New Article</button>
+    <button class="sb-btn" onclick="goAutoArticle()"><span class="ico">🤖</span>AI Article Generator</button>
+    <button class="sb-btn" id="sb-cache" onclick="goAICache()"><span class="ico">🧠</span>AI Cache Management</button>
+    <button class="sb-btn" id="sb-img" onclick="goArticleImages()"><span class="ico">🖼️</span>Image Management</button>
 
     <div class="section-sep" style="margin-top:8px"></div>
-    <div class="sb-lbl">학습 콘텐츠</div>
+    <div class="sb-lbl">Learning Content</div>
     <button class="sb-btn" id="sb-conv" onclick="goConversations()"><span class="ico">💬</span>Conversations</button>
     <button class="sb-btn" id="sb-stor" onclick="goStories()"><span class="ico">📖</span>Stories</button>
     <button class="sb-btn" id="sb-study-room" onclick="goStudyRoomOps()"><span class="ico">🏫</span>Study Room</button>
     <button class="sb-btn" id="sb-vocab" onclick="goVocabContent()"><span class="ico">📚</span>단어 & 표현</button>
     <button class="sb-btn" onclick="goTopics()"><span class="ico">📝</span>작문 토픽</button>
     <button class="sb-btn" id="sb-qw-tips" onclick="goQuickWinTips()"><span class="ico">💡</span>Quick Win Tips</button>
-    <button class="sb-btn" id="sb-art-study-ed" onclick="goArticleStudyEditor()"><span class="ico">📖</span>Article Study 편집</button>
+    <button class="sb-btn" id="sb-art-study-ed" onclick="goArticleStudyEditor()"><span class="ico">📖</span>Article Study Editor</button>
 
     <div class="section-sep" style="margin-top:8px"></div>
     <div class="sb-lbl">운영</div>
-    <button class="sb-btn" onclick="goUsers()"><span class="ico">👥</span>회원 관리</button>
-    <button class="sb-btn" onclick="goComments()"><span class="ico">🗨️</span>댓글 관리</button>
+    <button class="sb-btn" onclick="goUsers()"><span class="ico">👥</span>User Management</button>
+    <button class="sb-btn" onclick="goComments()"><span class="ico">🗨️</span>Comment Management</button>
     <button class="sb-btn" onclick="goNewsletter()"><span class="ico">📬</span>뉴스레터</button>
     <button class="sb-btn" id="sb-analytics" onclick="goAnalytics()"><span class="ico">📊</span>통계</button>
 
     <div class="section-sep" style="margin-top:8px"></div>
     <div class="sb-lbl">설정</div>
     <button class="sb-btn" id="sb-site-settings" onclick="goSiteSettings()"><span class="ico">⚙️</span>사이트 설정</button>
-    <button class="sb-btn" id="sb-onb-settings" onclick="goOnboardingSettings()"><span class="ico">🧭</span>온보딩 편집</button>
+    <button class="sb-btn" id="sb-onb-settings" onclick="goOnboardingSettings()"><span class="ico">🧭</span>Edit Onboarding</button>
     <button class="sb-btn" id="sb-char-reporters" onclick="goCharReporters()"><span class="ico">🎭</span>캐릭터 기자</button>
     <button class="sb-btn" id="sb-shop" onclick="goShopContent()"><span class="ico">🛍️</span>상점 & 코인</button>
 
@@ -237,8 +237,8 @@ a{color:inherit;text-decoration:none}
 <div class="del-ov" id="del-ov" style="display:none">
   <div class="del-box">
     <div class="dico">🗑️</div>
-    <h3>기사를 삭제할까요?</h3>
-    <p id="del-msg">삭제하면 되돌릴 수 없습니다.</p>
+    <h3>Delete this article?</h3>
+    <p id="del-msg">This action cannot be undone.</p>
     <div class="del-btns">
       <button class="btn btn-gh" id="del-cancel" onclick="closeDelete()">Cancel</button>
       <button class="btn btn-r"  id="del-confirm" onclick="doDelete()">Delete</button>
@@ -564,7 +564,7 @@ async function dbLoadFromSupabase() {
     });
     goList();
   } catch(e) {
-    toast('DB 로드 오류: ' + e.message, true);
+    toast('DB load error: ' + e.message, true);
     goList();
   }
 }
@@ -591,7 +591,7 @@ async function dbSaveArticle(article) {
         if (!res2.error) return true;
       } catch(e2) {}
     }
-    toast('저장 오류: ' + e.message, true);
+    toast('Save error: ' + e.message, true);
     return false;
   }
 }
@@ -604,7 +604,7 @@ async function dbDeleteArticle(id) {
     if (res.error) throw res.error;
     return true;
   } catch(e) {
-    toast('삭제 오류: ' + e.message, true);
+    toast('Delete error: ' + e.message, true);
     return false;
   }
 }
@@ -628,8 +628,8 @@ async function batchAssignReporters() {
   var sb = getSb();
   if (!sb) { toast('Supabase 연결 없음', true); return; }
   var unassigned = DB.filter(function(a){ return !a.reporter_id; });
-  if (!unassigned.length) { toast('모든 기사에 기자가 배정되어 있습니다 ✓'); return; }
-  if (!confirm(unassigned.length + '개 기사에 섹션별 기자를 자동 배정할까요?\n(이미 기자가 지정된 기사는 변경되지 않습니다)')) return;
+  if (!unassigned.length) { toast('All articles already have reporters assigned ✓'); return; }
+  if (!confirm(unassigned.length + ' articles — auto-assign section reporters?\n(Articles with existing reporters will not change)')) return;
 
   var updated = 0;
   var colMissing = false;
@@ -648,9 +648,9 @@ async function batchAssignReporters() {
     } catch(e) {}
   }
   if (colMissing) {
-    toast('reporter_id 컬럼이 없습니다. Supabase SQL Editor에서 실행:\nALTER TABLE articles ADD COLUMN IF NOT EXISTS reporter_id TEXT;', true);
+    toast('reporter_id column not found. Supabase SQL Editor에서 실행:\nALTER TABLE articles ADD COLUMN IF NOT EXISTS reporter_id TEXT;', true);
   } else {
-    toast('✓ ' + updated + '개 기사에 기자 배정 완료');
+    toast('✓ ' + updated + ' articles assigned to reporters');
   }
   renderRows();
 }
@@ -686,29 +686,29 @@ function renderList(){
 
   document.getElementById('main').innerHTML=`
     <div class="pg-hd">
-      <div><h1>All Articles</h1><p>기사를 추가·수정·삭제하세요</p></div>
+      <div><h1>All Articles</h1><p>Add, edit, or delete articles</p></div>
       <button class="btn btn-g" id="btn-new">＋ New Article</button>
     </div>
     <div class="stats">
       <div class="stat"><div class="stat-n">${DB.length}</div><div class="stat-l">전체</div></div>
-      <div class="stat"><div class="stat-n">${pub}</div><div class="stat-l">발행됨</div></div>
-      <div class="stat"><div class="stat-n">${draft}</div><div class="stat-l">임시저장</div></div>
+      <div class="stat"><div class="stat-n">${pub}</div><div class="stat-l">Published</div></div>
+      <div class="stat"><div class="stat-n">${draft}</div><div class="stat-l">Draft</div></div>
       <div class="stat"><div class="stat-n">${DB.filter(a=>a.featured).length}</div><div class="stat-l">Featured</div></div>
     </div>
     <div class="infobox" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-      <span>💡 기사를 클릭해서 수정하거나, <strong>Featured</strong>로 표시하면 메인 히어로에 표시됩니다.</span>
+      <span>💡 Click an article to edit, or, <strong>Featured</strong>to feature it on the main hero.</span>
       <button class="btn" style="background:#f1f5f9;color:#334155;font-size:12px;padding:6px 14px;flex-shrink:0" onclick="batchAssignReporters()">🎭 기자 일괄 배정</button>
     </div>
     <div class="toolbar">
-      <div class="srch"><span>🔍</span><input id="q" type="text" placeholder="제목 검색…" oninput="renderRows()"></div>
+      <div class="srch"><span>🔍</span><input id="q" type="text" placeholder="Search by title..." oninput="renderRows()"></div>
       <select class="flt" id="fsec" onchange="renderRows()">
         <option value="">All Sections</option>
         ${CATEGORIES.map(c=>`<option value="${c.key}"${activeFilter===c.key?' selected':''}>${c.icon} ${c.key}</option>`).join('')}
       </select>
       <select class="flt" id="fsta" onchange="renderRows()">
         <option value="">전체 상태</option>
-        <option value="published">발행됨</option>
-        <option value="draft">임시저장</option>
+        <option value="published">Published</option>
+        <option value="draft">Draft</option>
       </select>
     </div>
     <div id="tbl-wrap"></div>`;
@@ -754,13 +754,13 @@ function renderRows(){
         </div>
       </td>
       <td><span class="cpill c${esc(a.section)}">${esc(a.section)}</span></td>
-      <td><span class="dot ${a.status==='published'?'dpub':'ddr'}"></span>${a.status==='published'?'발행됨':'임시저장'}</td>
+      <td><span class="dot ${a.status==='published'?'dpub':'ddr'}"></span>${a.status==='published'?'Published':'Draft'}</td>
       <td style="font-size:12px;color:var(--gr)">${fdate(a.date)}</td>
       <td>
         <div class="row-act">
-          <button class="btn btn-sm btn-gh edit-btn" data-id="${a.id}">수정</button>
-          <button class="btn btn-sm" style="background:#555;color:#fff" data-id="${a.id}" onclick="togglePub('${a.id}')">${a.status==='published'?'내리기':'발행'}</button>
-          <button class="btn btn-sm btn-r del-btn" data-id="${a.id}">삭제</button>
+          <button class="btn btn-sm btn-gh edit-btn" data-id="${a.id}">Edit</button>
+          <button class="btn btn-sm" style="background:#555;color:#fff" data-id="${a.id}" onclick="togglePub('${a.id}')">${a.status==='published'?'Unpublish':'Publish'}</button>
+          <button class="btn btn-sm btn-r del-btn" data-id="${a.id}">Delete</button>
         </div>
       </td>`;
     tbody.appendChild(tr);
@@ -784,7 +784,7 @@ async function togglePub(id){
 async function openModal(id){
   await _ensureAdminReporters();
   const a = id ? DB.find(x=>x.id===id) : null;
-  document.getElementById('m-ttl').textContent = a ? '기사 수정' : 'New Article';
+  document.getElementById('m-ttl').textContent = a ? 'Edit Article' : 'New Article';
   document.getElementById('m-bd').innerHTML = formHTML(a);
   document.getElementById('ov').style.display='flex';
   document.body.style.overflow='hidden';
@@ -799,7 +799,7 @@ async function deleteFromModal(){
   if(!eid) return;
   const a = DB.find(x=>x.id===eid);
   if(!a) return;
-  if(!confirm('「' + a.title + '」 이 기사를 삭제할까요? 되돌릴 수 없어요.')) return;
+  if(!confirm('「' + a.title + '」 이 Delete this article? This cannot be undone.')) return;
   const ok = await dbDeleteArticle(eid);
   if (!ok) return;
   DB = DB.filter(x=>x.id!==eid);
@@ -848,7 +848,7 @@ function formHTML(a){
           <input type="file" id="f-img-file" accept="image/*" style="display:none" onchange="adminHandleImgFile(this)">
         </label>
       </div>
-      <div id="f-img-uploading" style="display:none;font-size:12px;color:#0ea5e9;margin-top:4px">⏳ 업로드 중…</div>
+      <div id="f-img-uploading" style="display:none;font-size:12px;color:#0ea5e9;margin-top:4px">⏳ Uploading...</div>
       <img id="f-imgprev" style="${v.image?'':'display:none'};max-width:100%;max-height:160px;border-radius:4px;margin-top:8px;object-fit:cover" src="${esc(v.image||'')}">
     </div>
     <div class="fg" style="flex-direction:row;align-items:center;gap:10px">
@@ -909,7 +909,7 @@ async function adminHandleImgFile(input) {
     var urlInput = document.getElementById('f-image');
     if (urlInput) { urlInput.value = url; livePreview(); }
   } catch(e) {
-    toast('이미지 업로드 실패: ' + e.message, true);
+    toast('Image upload failed: ' + e.message, true);
   } finally {
     if (lbl)     lbl.textContent = '📁 업로드';
     if (spinner) spinner.style.display = 'none';
@@ -918,7 +918,7 @@ async function adminHandleImgFile(input) {
 }
 
 async function adminHandleImgUploadForArticle(input, articleId) {
-  // Called from the 기사 이미지 관리 upload button per article
+  // Called from the 기사 Image Management upload button per article
   if (!input.files || !input.files[0]) return;
   var span = document.getElementById('img-upld-lbl-' + articleId);
   if (span) span.textContent = '⏳';
@@ -928,7 +928,7 @@ async function adminHandleImgUploadForArticle(input, articleId) {
     if (urlInput) urlInput.value = url;
     await saveArticleImage(articleId);
   } catch(e) {
-    toast('업로드 실패: ' + e.message, true);
+    toast('Upload failed: ' + e.message, true);
   } finally {
     if (span) span.textContent = '📁';
     input.value = '';
@@ -946,8 +946,8 @@ async function submitForm(status){
   const level      = document.getElementById('f-level')?.value||'';
   const reporterId = document.getElementById('f-reporter')?.value||'';
   const eid  = document.getElementById('f-id')?.value||'';
-  if(!title){toast('제목을 입력해 주세요',true);return;}
-  if(!body) {toast('본문을 입력해 주세요',true);return;}
+  if(!title){toast('Please enter a title',true);return;}
+  if(!body) {toast('Please enter the body text',true);return;}
 
   const article = {
     id: eid || uid(),
@@ -1042,7 +1042,7 @@ function adminExtractVocab(article){
 function openDelete(id){
   deleteId=id;
   const a=DB.find(x=>x.id===id);
-  document.getElementById('del-msg').textContent=a?'"'+a.title.slice(0,55)+(a.title.length>55?'…':'')+'"':'삭제하면 되돌릴 수 없습니다.';
+  document.getElementById('del-msg').textContent=a?'"'+a.title.slice(0,55)+(a.title.length>55?'…':'')+'"':'This action cannot be undone.';
   document.getElementById('del-ov').style.display='flex';
 }
 function closeDelete(){ document.getElementById('del-ov').style.display='none'; deleteId=null; }
@@ -1185,7 +1185,7 @@ function editSection(id, key, label, icon, topics) {
 async function goUserStats() {
   setSbOn(null);
   var main = document.getElementById('main');
-  main.innerHTML = '<div class="pg-hd"><div><h1>📊 User Analytics</h1><p>전체 유저 학습 현황을 확인하세요.</p></div></div>'
+  main.innerHTML = '<div class="pg-hd"><div><h1>📊 User Analytics</h1><p>View learning analytics for all users.</p></div></div>'
     + '<div id="stats-content"><div style="text-align:center;padding:48px;color:#aaa">⏳ Loading data...</div></div>';
 
   var sb = getSb();
@@ -1323,7 +1323,7 @@ async function goUserXPLog(userId, displayName) {
     + '<div id="xplog-content"><div style="text-align:center;padding:48px;color:#aaa">⏳ Loading...</div></div>';
 
   var sb = getSb();
-  if (!sb) { document.getElementById('xplog-content').innerHTML = '<p style="color:red">Supabase 연결 실패</p>'; return; }
+  if (!sb) { document.getElementById('xplog-content').innerHTML = '<p style="color:red">Supabase connection failed</p>'; return; }
 
   try {
     // Load daily_missions (all-time) — this is the real XP source
@@ -1418,10 +1418,10 @@ async function loadSiteSettingsConfig(){
 
 async function goSiteSettings(){
   setSbOn(null);
-  document.getElementById('main').innerHTML='<div class="pg-hd"><div><h1>⚙️ 사이트 기본 설정</h1><p>사이트 이름, 슬로건, 푸터 설명, 학습 배너 등을 수정하세요</p></div></div><div class="sf-card"><p style="color:#64748b">불러오는 중…</p></div>';
+  document.getElementById('main').innerHTML='<div class="pg-hd"><div><h1>⚙️ Site Settings</h1><p>Edit site name, tagline, footer description, and learning banner</p></div></div><div class="sf-card"><p style="color:#64748b">Loading...</p></div>';
   const c = await loadSiteSettingsConfig();
   document.getElementById('main').innerHTML=`
-    <div class="pg-hd"><div><h1>⚙️ 사이트 기본 설정</h1><p>사이트 이름, 슬로건, 푸터 설명, 학습 배너 등을 수정하세요</p></div></div>
+    <div class="pg-hd"><div><h1>⚙️ Site Settings</h1><p>Edit site name, tagline, footer description, and learning banner</p></div></div>
     <div class="sf-card">
       <h3>🏷️ 기본 정보</h3>
       <div class="sf-row">
@@ -1452,10 +1452,10 @@ async function goSiteSettings(){
     </div>
     <div class="sf-card">
       <h3>🔑 AI 기능 설정</h3>
-      <p style="font-size:13px;color:#64748b;margin-bottom:12px">번역, 문법 가이드, Fill-in-the-Blank 등 AI 기능에 사용할 Anthropic API 키를 저장하세요. 모든 유저에게 적용됩니다.</p>
+      <p style="font-size:13px;color:#64748b;margin-bottom:12px">Save the Anthropic API key for AI features. Applies to all users.</p>
       <div style="display:flex;gap:10px;align-items:center">
         <input id="sc-api-key" type="password" placeholder="sk-ant-..." class="inp inp-sm" style="flex:1">
-        <button class="btn btn-g" onclick="saveApiKey()">🔑 저장</button>
+        <button class="btn btn-g" onclick="saveApiKey()">🔑 Save</button>
       </div>
       <div id="sc-api-status" style="font-size:12px;color:#94a3b8;margin-top:8px"></div>
     </div>
@@ -1466,12 +1466,12 @@ async function goSiteSettings(){
         <input id="sc-reporter-bg-url" class="inp inp-sm" style="flex:1;min-width:280px" placeholder="https://...">
         <input id="sc-reporter-bg-file" type="file" accept="image/*" onchange="uploadReporterBgImage(this)" style="display:none">
         <button class="btn" onclick="document.getElementById('sc-reporter-bg-file').click()">📤 업로드</button>
-        <button class="btn btn-g" onclick="saveReporterBgSetting()">💾 배경 저장</button>
+        <button class="btn btn-g" onclick="saveReporterBgSetting()">💾 배경 Save</button>
       </div>
       <div id="sc-reporter-bg-status" style="font-size:12px;color:#94a3b8;margin-top:8px"></div>
       <img id="sc-reporter-bg-preview" alt="Reporter BG Preview" style="margin-top:12px;width:100%;max-height:220px;object-fit:cover;border-radius:12px;border:1px solid #e2e8f0;display:none">
     </div>
-    <button class="btn btn-g" onclick="saveSiteSettings()">💾 저장</button>
+    <button class="btn btn-g" onclick="saveSiteSettings()">💾 Save</button>
     <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>`;
 
   loadApiKeyIntoSettings();
@@ -1492,9 +1492,9 @@ async function saveSiteSettings(){
       var res = await sb.from('app_settings').upsert({ key:'site_config', value:c }, { onConflict:'key' });
       if (res.error) throw res.error;
     }
-    toast('⚙️ 사이트 설정 저장됨! 메인페이지에 반영됩니다.');
+    toast('⚙️ Site settings saved!');
   } catch(e) {
-    toast('저장 실패: ' + (e.message || e), true);
+    toast('Save failed: ' + (e.message || e), true);
   }
 }
 async function resetSiteSettings(){
@@ -1505,9 +1505,9 @@ async function resetSiteSettings(){
       var res = await sb.from('app_settings').upsert({ key:'site_config', value:DEF_SITECONF }, { onConflict:'key' });
       if (res.error) throw res.error;
     }
-    toast('기본값으로 초기화됐어요');
+    toast('Reset to defaults');
   } catch(e) {
-    toast('초기화 저장 실패: ' + (e.message || e), true);
+    toast('초기화 Save failed: ' + (e.message || e), true);
   }
   goSiteSettings();
 }
@@ -1535,15 +1535,15 @@ async function saveReporterBgSetting() {
   try {
     var res = await sb.from('app_settings').upsert({ key:'reporter_bg_image_url', value: url }, { onConflict:'key' });
     if (res.error) throw res.error;
-    if (status) status.textContent = '✓ 배경 이미지 저장 완료';
+    if (status) status.textContent = '✓ Background image saved';
     if (prev) {
       if (url) { prev.src = url; prev.style.display = 'block'; }
       else { prev.style.display = 'none'; }
     }
-    toast('기자 페이지 배경 이미지 저장됨');
+    toast('Reporter page background saved');
   } catch(e) {
-    if (status) status.textContent = '오류: ' + (e.message || e);
-    toast('저장 실패: ' + (e.message || e), true);
+    if (status) status.textContent = 'Error: ' + (e.message || e);
+    toast('Save failed: ' + (e.message || e), true);
   }
 }
 
@@ -1551,9 +1551,9 @@ async function uploadReporterBgImage(input) {
   var file = input.files && input.files[0];
   if (!file) return;
   var status = document.getElementById('sc-reporter-bg-status');
-  if (status) status.textContent = '업로드 중…';
+  if (status) status.textContent = 'Uploading...';
   if (file.size > 8 * 1024 * 1024) {
-    if (status) status.textContent = '8MB 이하 파일만 업로드 가능';
+    if (status) status.textContent = 'Files must be under 8MB';
     input.value = '';
     return;
   }
@@ -1580,11 +1580,11 @@ async function uploadReporterBgImage(input) {
     var prev = document.getElementById('sc-reporter-bg-preview');
     if (inp) inp.value = publicUrl;
     if (prev) { prev.src = publicUrl; prev.style.display = 'block'; }
-    if (status) status.textContent = '✓ 업로드 완료. [배경 저장]을 눌러 적용하세요.';
-    toast('배경 이미지 업로드 완료');
+    if (status) status.textContent = '✓ Upload complete. Click [Save Background] to apply.';
+    toast('배경 이미지 Upload complete');
   } catch(e) {
-    if (status) status.textContent = '업로드 오류: ' + (e.message || e);
-    toast('업로드 오류: ' + (e.message || e), true);
+    if (status) status.textContent = '업로드 Error: ' + (e.message || e);
+    toast('업로드 Error: ' + (e.message || e), true);
   }
   input.value = '';
 }
@@ -1603,7 +1603,7 @@ var QW_DEFAULT_TIPS = [
 
 async function goQuickWinTips() {
   setSbOn('sb-qw-tips');
-  document.getElementById('main').innerHTML = '<div class="pg-hd"><div><h1>💡 Quick Win Tips 관리</h1><p>메인 페이지 학습 팁을 관리하세요. 새로고침마다 랜덤으로 하나가 표시됩니다.</p></div></div><div class="sf-card"><p style="color:#64748b">불러오는 중…</p></div>';
+  document.getElementById('main').innerHTML = '<div class="pg-hd"><div><h1>💡 Quick Win Tips Management</h1><p>Manage learning tips on the main page. A random tip is shown on each refresh.</p></div></div><div class="sf-card"><p style="color:#64748b">Loading...</p></div>';
   var sb = getSb();
   var tips = [];
   try {
@@ -1619,7 +1619,7 @@ async function goQuickWinTips() {
 
 function renderQwTips(tips) {
   document.getElementById('main').innerHTML = `
-    <div class="pg-hd"><div><h1>💡 Quick Win Tips 관리</h1><p>메인 페이지 학습 팁을 관리하세요. 새로고침마다 랜덤으로 하나가 표시됩니다.</p></div></div>
+    <div class="pg-hd"><div><h1>💡 Quick Win Tips Management</h1><p>Manage learning tips on the main page. A random tip is shown on each refresh.</p></div></div>
     <div id="qw-list">
       ${tips.map((t, i) => `<div class="sf-card" style="position:relative;display:flex;gap:12px;align-items:flex-start">
         <div style="min-width:22px;padding-top:10px;font-size:12px;color:#94a3b8;font-weight:700">#${i+1}</div>
@@ -1628,8 +1628,8 @@ function renderQwTips(tips) {
       </div>`).join('')}
     </div>
     <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-      <button class="btn btn-gh" onclick="qwAddTip()">＋ 팁 추가</button>
-      <button class="btn btn-g"  onclick="saveQwTips()">💾 저장</button>
+      <button class="btn btn-gh" onclick="qwAddTip()">＋ Add Tip</button>
+      <button class="btn btn-g"  onclick="saveQwTips()">💾 Save</button>
       <button class="btn btn-gh" onclick="qwResetDefaults()" style="margin-left:auto;color:#94a3b8">↺ 기본값으로</button>
     </div>`;
 }
@@ -1651,27 +1651,27 @@ async function saveQwTips() {
   var tips = [...document.querySelectorAll('#qw-list .qw-tip')]
     .map(function(t) { return t.value.trim(); })
     .filter(Boolean);
-  if (!tips.length) { alert('최소 1개 이상의 팁이 필요합니다.'); return; }
+  if (!tips.length) { alert('At least 1 tip is required.'); return; }
   var sb = getSb();
   try {
     var res = await sb.from('app_settings').upsert({ key:'quick_win_tips', value:JSON.stringify(tips) }, { onConflict:'key' });
     if (res.error) throw res.error;
-    toast('💡 Quick Win Tips 저장됨! ('+tips.length+'개)');
+    toast('💡 Quick Win Tips saved! ('+tips.length+'개)');
   } catch(e) {
-    toast('저장 실패: '+(e.message||e), true);
+    toast('Save failed: '+(e.message||e), true);
   }
 }
 
 async function qwResetDefaults() {
-  if (!confirm('기본 팁으로 초기화하시겠어요?')) return;
+  if (!confirm('Reset to default tips?')) return;
   var sb = getSb();
   try {
     var res = await sb.from('app_settings').upsert({ key:'quick_win_tips', value:JSON.stringify(QW_DEFAULT_TIPS) }, { onConflict:'key' });
     if (res.error) throw res.error;
-    toast('↺ 기본값으로 초기화됐어요');
+    toast('↺ Reset to defaults');
     renderQwTips(QW_DEFAULT_TIPS.slice());
   } catch(e) {
-    toast('초기화 실패: '+(e.message||e), true);
+    toast('Reset failed: '+(e.message||e), true);
   }
 }
 
@@ -1704,11 +1704,11 @@ function onboardingField(id, label, value, rows) {
 
 async function goOnboardingSettings(){
   setSbOn('sb-onb-settings');
-  document.getElementById('main').innerHTML='<div class="pg-hd"><div><h1>🧭 온보딩 편집</h1><p>온보딩 페이지 문구와 마지막 CTA 카드를 직접 수정하세요.</p></div></div><div class="sf-card"><p style="color:#64748b">불러오는 중…</p></div>';
+  document.getElementById('main').innerHTML='<div class="pg-hd"><div><h1>🧭 Edit Onboarding</h1><p>Edit onboarding page text and the final CTA card.</p></div></div><div class="sf-card"><p style="color:#64748b">Loading...</p></div>';
   var c = await loadOnboardingSettingsConfig();
   document.getElementById('main').innerHTML =
-    '<div class="pg-hd"><div><h1>🧭 온보딩 편집</h1><p>온보딩 페이지의 핵심 문구를 어드민에서 바로 수정합니다. 저장하면 onboarding 페이지에 즉시 반영됩니다.</p></div></div>'
-    + '<div class="infobox"><h3>편집 범위</h3><div>히어로, 좌측 안내 카드, 1~4단계 설명, 그리고 마지막 Beginner Guide / Study Room 카드 문구를 여기서 직접 바꿀 수 있습니다. 링크는 현재 실제 페이지 경로로 고정되어 있습니다.</div></div>'
+    '<div class="pg-hd"><div><h1>🧭 Edit Onboarding</h1><p>Edit key onboarding text from admin. Changes apply immediately after saving.</p></div></div>'
+    + '<div class="infobox"><h3>Edit Scope</h3><div>You can edit the hero, info cards, step descriptions, and the Beginner Guide / Study Room card text here. Links are set to actual page paths.</div></div>'
     + '<div class="sf-card"><h3>Hero / left column</h3>'
       + onboardingField('onb-hero-title', 'Hero title', c.heroTitle, 2)
       + onboardingField('onb-hero-desc', 'Hero description', c.heroDesc, 4)
@@ -1753,7 +1753,7 @@ async function goOnboardingSettings(){
       + onboardingField('onb-practice-card-desc', 'Practice card description', c.practiceCardDesc, 3)
     + '</div>'
     + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
-      + '<button class="btn btn-g" onclick="saveOnboardingSettings()">💾 저장</button>'
+      + '<button class="btn btn-g" onclick="saveOnboardingSettings()">💾 Save</button>'
       + '<button class="btn btn-gh" onclick="resetOnboardingSettings()">↺ 기본값으로</button>'
       + '<a class="btn btn-b" href="korehan-onboarding.html" target="_blank">↗ 온보딩 열기</a>'
       + '<a class="btn btn-gh" href="beginner-guide.html" target="_blank">↗ Beginner Guide 열기</a>'
@@ -1799,9 +1799,9 @@ async function saveOnboardingSettings(){
       var res = await sb.from('app_settings').upsert({ key:'onboarding_content', value:c }, { onConflict:'key' });
       if (res.error) throw res.error;
     }
-    toast('🧭 온보딩 문구 저장됨! 새로고침하면 바로 반영됩니다.');
+    toast('🧭 Onboarding text saved! Refresh to see changes.');
   } catch(e) {
-    toast('온보딩 저장 실패: ' + (e.message || e), true);
+    toast('온보딩 Save failed: ' + (e.message || e), true);
   }
 }
 
@@ -1813,9 +1813,9 @@ async function resetOnboardingSettings(){
       var res = await sb.from('app_settings').upsert({ key:'onboarding_content', value:DEF_ONBOARDING_COPY }, { onConflict:'key' });
       if (res.error) throw res.error;
     }
-    toast('온보딩 기본값으로 초기화됐어요');
+    toast('온보딩 Reset to defaults');
   } catch(e) {
-    toast('온보딩 초기화 저장 실패: ' + (e.message || e), true);
+    toast('온보딩 초기화 Save failed: ' + (e.message || e), true);
   }
   goOnboardingSettings();
 }
@@ -1831,15 +1831,15 @@ async function loadApiKeyIntoSettings() {
       if (res.data && res.data.value) {
         input.value = res.data.value;
         var d = new Date(res.data.updated_at).toLocaleDateString('ko-KR');
-        if (statusEl) statusEl.textContent = '✅ 저장된 키 있음 (마지막 업데이트: ' + d + ')';
+        if (statusEl) statusEl.textContent = '✅ Saved key found (last updated: ' + d + ')';
         return;
       }
     }
   } catch(e) {}
   // 로컬 캐시
   var local = localStorage.getItem('kh_anthropic_key') || '';
-  if (local) { input.value = local; if (statusEl) statusEl.textContent = '⚠️ 로컬 캐시만 있음 — 저장 버튼 눌러서 Supabase에 저장하세요'; }
-  else { if (statusEl) statusEl.textContent = '❌ 저장된 키 없음'; }
+  if (local) { input.value = local; if (statusEl) statusEl.textContent = '⚠️ Local cache only — click Save to store in Supabase'; }
+  else { if (statusEl) statusEl.textContent = '❌ No saved key'; }
 }
 
 async function saveApiKey() {
@@ -1847,17 +1847,17 @@ async function saveApiKey() {
   const statusEl = document.getElementById('sc-api-status');
   if (!input) return;
   const key = input.value.trim();
-  if (!key || !key.startsWith('sk-ant-')) { toast('올바른 API 키를 입력해주세요 (sk-ant-...)', true); return; }
+  if (!key || !key.startsWith('sk-ant-')) { toast('Please enter a valid API key (sk-ant-...)', true); return; }
   try {
     var sb = getSb();
     if (!sb) throw new Error('Supabase not ready');
     var res = await sb.from('app_settings').upsert({ key: 'anthropic_key', value: key, updated_at: new Date().toISOString() });
     if (res.error) throw res.error;
     localStorage.setItem('kh_anthropic_key', key);
-    toast('🔑 API 키 저장 완료! 모든 유저에게 적용됩니다.');
-    if (statusEl) statusEl.textContent = '✅ 저장 완료 (' + new Date().toLocaleDateString('ko-KR') + ')';
+    toast('🔑 API key saved! Applies to all users.');
+    if (statusEl) statusEl.textContent = '✅ Saved (' + new Date().toLocaleDateString('ko-KR') + ')';
   } catch(e) {
-    toast('저장 실패: ' + (e.message || e), true);
+    toast('Save failed: ' + (e.message || e), true);
   }
 }
 
@@ -1867,11 +1867,11 @@ function goOpinions(){
   setSbOn(null);
   const ops=ls(K_OPINIONS, DEF_OPINIONS);
   document.getElementById('main').innerHTML=`
-    <div class="pg-hd"><div><h1>✍️ 오피니언 칼럼니스트</h1><p>메인 페이지 하단 오피니언 카드를 수정하세요</p></div></div>
+    <div class="pg-hd"><div><h1>✍️ Opinion Columnists</h1><p>Edit the opinion cards on the home page</p></div></div>
     <div id="ops-list"></div>
     <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn btn-gh" onclick="addOpRow()">+ 칼럼니스트 추가</button>
-      <button class="btn btn-g"  onclick="saveOpinions()">💾 저장</button>
+      <button class="btn btn-gh" onclick="addOpRow()">+ Add Columnist</button>
+      <button class="btn btn-g"  onclick="saveOpinions()">💾 Save</button>
     </div>`;
   renderOpRows(ops);
 }
@@ -1879,7 +1879,7 @@ function renderOpRows(ops){
   const el=document.getElementById('ops-list'); if(!el) return;
   el.innerHTML=ops.map((o,i)=>`
     <div class="sf-card" data-i="${i}" style="position:relative">
-      <button class="row-del" onclick="this.closest('.sf-card').remove()">✕ 삭제</button>
+      <button class="row-del" onclick="this.closest('.sf-card').remove()">✕ Delete</button>
       <div class="sf-row">
         <div>
           <label class="inp-label">이름</label>
@@ -1895,7 +1895,7 @@ function renderOpRows(ops){
         <input class="inp inp-sm op-img" value="${esc(o.img)}" placeholder="https://…">
       </div>
       <div>
-        <label class="inp-label">헤드라인</label>
+        <label class="inp-label">Headline</label>
         <input class="inp op-headline" value="${esc(o.headline)}" placeholder="칼럼 제목…">
       </div>
     </div>`).join('');
@@ -1903,13 +1903,13 @@ function renderOpRows(ops){
 function addOpRow(){
   const el=document.getElementById('ops-list'); if(!el) return;
   const d=document.createElement('div'); d.className='sf-card'; d.style.position='relative';
-  d.innerHTML=`<button class="row-del" onclick="this.closest('.sf-card').remove()">✕ 삭제</button>
+  d.innerHTML=`<button class="row-del" onclick="this.closest('.sf-card').remove()">✕ Delete</button>
     <div class="sf-row">
       <div><label class="inp-label">이름</label><input class="inp inp-sm op-name" placeholder="이름"></div>
       <div><label class="inp-label">직책</label><input class="inp inp-sm op-title" placeholder="직책"></div>
     </div>
     <div style="margin-bottom:12px"><label class="inp-label">사진 URL</label><input class="inp inp-sm op-img" placeholder="https://…"></div>
-    <div><label class="inp-label">헤드라인</label><input class="inp op-headline" placeholder="칼럼 제목…"></div>`;
+    <div><label class="inp-label">Headline</label><input class="inp op-headline" placeholder="칼럼 제목…"></div>`;
   el.appendChild(d);
 }
 function saveOpinions(){
@@ -1921,7 +1921,7 @@ function saveOpinions(){
     headline:c.querySelector('.op-headline')?.value.trim()||'',
   })).filter(o=>o.name||o.headline);
   lsSet(K_OPINIONS, arr);
-  toast('✍️ 오피니언 저장됨! ('+arr.length+'명)');
+  toast('✍️ Opinions saved! ('+arr.length+'명)');
 }
 
 // ══ CHARACTER REPORTERS ══════════════════════════════════════
@@ -2096,7 +2096,7 @@ async function crHandleImageUpload(input) {
   var file = input.files && input.files[0];
   if (!file) return;
   var status = document.getElementById('cr-upload-status');
-  if (status) status.textContent = '업로드 중…';
+  if (status) status.textContent = 'Uploading...';
 
   if (file.size > 5 * 1024 * 1024) {
     toast('이미지 크기는 5MB 이하여야 합니다', true);
@@ -2132,10 +2132,10 @@ async function crHandleImageUpload(input) {
     var imgPrev  = document.getElementById('cr-imgprev');
     if (imgInput) imgInput.value = publicUrl;
     if (imgPrev)  imgPrev.src    = publicUrl;
-    if (status) status.textContent = '✓ 업로드 완료';
-    toast('✓ 이미지 업로드 완료');
+    if (status) status.textContent = '✓ Upload complete';
+    toast('✓ 이미지 Upload complete');
   } catch(e) {
-    toast('업로드 오류: ' + (e.message || e), true);
+    toast('업로드 Error: ' + (e.message || e), true);
     if (status) status.textContent = '';
   }
   input.value = '';
@@ -2202,13 +2202,13 @@ async function crSaveFromModal() {
       body: JSON.stringify({ id: reporter.id, data: reporter, updated_at: new Date().toISOString() })
     });
     if (res.ok) {
-      toast('🎭 저장 완료 (Supabase ✓) — 모든 기기에서 반영됩니다');
+      toast('🎭 Saved (Supabase ✓) — 모든 기기에서 반영됩니다');
     } else {
       var err = await res.json().catch(function(){ return {}; });
-      toast('저장됨 (로컬만) — Supabase 오류: ' + (err.message || err.error || 'HTTP ' + res.status) + '\n테이블이 없으면 SQL Editor에서 character_reporters 테이블 생성 필요', true);
+      toast('저장됨 (로컬만) — Supabase Error: ' + (err.message || err.error || 'HTTP ' + res.status) + '\nCreate character_reporters table in SQL Editor if missing', true);
     }
   } catch(e) {
-    toast('저장됨 (로컬만) — Supabase 연결 실패', true);
+    toast('저장됨 (로컬만) — Supabase connection failed', true);
   }
 }
 
@@ -2294,18 +2294,18 @@ function goPhrases(){
   document.getElementById('main').innerHTML=`
     <div class="pg-hd">
       <div>
-        <h1>✨ Today's Phrase 관리</h1>
-        <p>홈의 Today's Phrase와 phrase 상세 페이지에 반영되는 내용을 여기서 직접 수정하거나 AI로 생성할 수 있습니다.</p>
+        <h1>✨ Today's Phrase Management</h1>
+        <p>Edit content shown on the home Today's Phrase and phrase detail page. You can edit manually or generate with AI.</p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-gh" onclick="openPhrasePreview()">↗ Phrase 페이지 열기</button>
-        <button class="btn btn-g" onclick="savePhraseAdminItem()">💾 현재 표현 저장</button>
+        <button class="btn btn-g" onclick="savePhraseAdminItem()">💾 현재 표현 Save</button>
       </div>
     </div>
 
     <div class="sf-row" style="grid-template-columns:minmax(360px,420px) minmax(0,1fr);align-items:start">
       <div class="sf-card">
-        <h3>표현 편집</h3>
+        <h3>Edit Phrase</h3>
         <div class="sf-row">
           <div>
             <label class="inp-label">한국어 표현</label>
@@ -2335,7 +2335,7 @@ function goPhrases(){
         <div class="sf-card" style="background:var(--bg);margin-bottom:0">
           <h3 style="margin-bottom:10px">예문</h3>
           <div id="phrase-examples"></div>
-          <button class="btn btn-gh btn-sm" style="margin-top:10px" onclick="addPhraseExampleRow()">+ 예문 추가</button>
+          <button class="btn btn-gh btn-sm" style="margin-top:10px" onclick="addPhraseExampleRow()">+ Add Example</button>
         </div>
 
         <div style="margin-top:14px">
@@ -2346,7 +2346,7 @@ function goPhrases(){
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
           <button class="btn btn-b" onclick="runPhraseAIGenerate(this)">🤖 AI Generate</button>
           <button class="btn btn-gh" onclick="newPhraseAdminItem()">+ 새 표현</button>
-          <button class="btn btn-r" onclick="deletePhraseAdminItem()">🗑 삭제</button>
+          <button class="btn btn-r" onclick="deletePhraseAdminItem()">🗑 Delete</button>
         </div>
         <div class="cntlabel" style="text-align:left;margin-top:8px">AI Generate는 현재 표현 또는 힌트를 바탕으로 소개/뉘앙스/예문까지 한 번에 채워줍니다.</div>
       </div>
@@ -2359,7 +2359,7 @@ function goPhrases(){
             <input id="phrase-search" placeholder="Search phrase" oninput="renderPhraseAdminTable()">
           </div>
           <button class="btn btn-gh btn-sm" onclick="openTodayPhrasePreview()">오늘 표현 열기</button>
-          <button class="btn btn-g btn-sm" onclick="saveAllPhraseAdminItems()">전체 저장</button>
+          <button class="btn btn-g btn-sm" onclick="saveAllPhraseAdminItems()">전체 Save</button>
         </div>
         <table class="tbl">
           <thead>
@@ -2439,7 +2439,7 @@ function savePhraseAdminItem(showMsg=true){
   // Sync to DB via shared function
   if(typeof saveSharedPhrases==='function') saveSharedPhrases(phraseAdminItems);
   renderPhraseAdminTable();
-  if(showMsg) toast('✨ 오늘의 표현 저장됨 (DB 동기화 완료)');
+  if(showMsg) toast('✨ Phrase saved (DB synced)');
   return true;
 }
 function saveAllPhraseAdminItems(){
@@ -2447,7 +2447,7 @@ function saveAllPhraseAdminItems(){
   var cleaned = phraseAdminItems.map(normalizePhraseAdmin).filter(p=>p.ko);
   lsSet(K_PHRASES, cleaned);
   if(typeof saveSharedPhrases==='function') saveSharedPhrases(cleaned);
-  toast("✨ Today's Phrase 전체 저장 완료 (DB 동기화)");
+  toast("✨ Today's Phrase 전체 Saved (DB 동기화)");
 }
 function newPhraseAdminItem(){
   savePhraseAdminItem(false);
@@ -2458,7 +2458,7 @@ function newPhraseAdminItem(){
 }
 function deletePhraseAdminItem(){
   if(!phraseAdminItems.length) return;
-  if(!confirm('이 표현을 삭제할까요?')) return;
+  if(!confirm('Delete this phrase?')) return;
   phraseAdminItems.splice(phraseAdminCurrentIndex, 1);
   if(!phraseAdminItems.length) phraseAdminItems = [phraseAdminDefaultItem()];
   phraseAdminCurrentIndex = Math.max(0, Math.min(phraseAdminCurrentIndex, phraseAdminItems.length - 1));
@@ -2531,9 +2531,9 @@ Keep intro and nuance concise but useful. Make examples natural Korean for begin
     phraseAdminItems[phraseAdminCurrentIndex] = normalizePhraseAdmin(data);
     renderPhraseAdminForm(phraseAdminCurrentIndex);
     renderPhraseAdminTable();
-    toast('🤖 AI 초안 생성 완료');
+    toast('🤖 AI draft generated');
   }catch(e){
-    alert('AI 생성 실패: ' + (e.message || e));
+    alert('AI generation failed: ' + (e.message || e));
   }finally{
     btn.disabled = false;
     btn.innerHTML = old;
@@ -2545,24 +2545,24 @@ Keep intro and nuance concise but useful. Make examples natural Korean for begin
 // ══ VOCAB 뜻 수정 (hover tooltip 커스텀) ═══════════════════════
 
 // ═══════════════════════════════════════════════════════
-// 작문 토픽 관리
+// Writing Topic Management
 // ═══════════════════════════════════════════════════════
 function goTopics() {
   setSbOn(null);
   const main = document.getElementById('main');
   main.innerHTML =
-    '<div class="pg-hd"><div><h1>📝 작문 토픽 관리</h1><p>Writing Practice에 사용되는 토픽을 관리하세요.</p></div>'
-    + '<button onclick="openTopicModal()" class="btn-primary" style="margin-left:auto;white-space:nowrap">+ 토픽 추가</button></div>'
+    '<div class="pg-hd"><div><h1>📝 Writing Topic Management</h1><p>Manage topics used in Writing Practice.</p></div>'
+    + '<button onclick="openTopicModal()" class="btn-primary" style="margin-left:auto;white-space:nowrap">+ Add Topic</button></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
     + '<button class="sf-tag on" onclick="filterTopics(&apos;all&apos;,this)">전체</button>'
     + '<button class="sf-tag" onclick="filterTopics(&apos;Beginner&apos;,this)">🌿 Sprout</button>'
     + '<button class="sf-tag" onclick="filterTopics(&apos;Intermediate&apos;,this)">🌳 Tree</button>'
     + '<button class="sf-tag" onclick="filterTopics(&apos;Advanced&apos;,this)">🌲 Forest</button>'
     + '</div>'
-    + '<div id="topics-wrap"><div style="padding:24px;color:var(--gray);text-align:center">⏳ 불러오는 중…</div></div>'
+    + '<div id="topics-wrap"><div style="padding:24px;color:var(--gray);text-align:center">⏳ Loading...</div></div>'
     + '<div id="topic-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">'
     + '<div style="background:#fff;border-radius:14px;padding:28px;width:100%;max-width:520px;box-shadow:0 24px 80px rgba(0,0,0,0.3)">'
-    + '<h2 style="font-size:18px;margin-bottom:18px" id="topic-modal-title">토픽 추가</h2>'
+    + '<h2 style="font-size:18px;margin-bottom:18px" id="topic-modal-title">Add Topic</h2>'
     + '<input id="tm-id" type="hidden">'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">'
     + '<div><label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:4px">카테고리</label>'
@@ -2576,7 +2576,7 @@ function goTopics() {
     + '<input id="tm-en" class="sf-input" placeholder="예: What did you eat today?" style="width:100%;margin-bottom:18px">'
     + '<div style="display:flex;gap:10px;justify-content:flex-end">'
     + '<button onclick="closeTopicModal()" style="padding:9px 20px;border-radius:8px;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-weight:600">취소</button>'
-    + '<button onclick="saveTopic()" class="btn-primary">저장</button>'
+    + '<button onclick="saveTopic()" class="btn-primary">Save</button>'
     + '</div></div></div>';
   window._topicsAll = [];
   window._topicsFilter = 'all';
@@ -2622,9 +2622,9 @@ function renderTopicsTable(list) {
     rows += '<td style="padding:9px 12px;color:var(--gray);font-size:12px">' + t.topic_en + '</td>';
     rows += '<td style="padding:9px 12px"><span style="font-size:11px;font-weight:700;color:' + activeColor + '">' + activeLabel + '</span></td>';
     rows += '<td style="padding:9px 12px;white-space:nowrap">';
-    rows += '<button data-id="' + t.id + '" onclick="editTopicById(this.dataset.id)" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;margin-right:4px">수정</button>';
+    rows += '<button data-id="' + t.id + '" onclick="editTopicById(this.dataset.id)" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;margin-right:4px">Edit</button>';
     rows += '<button data-id="' + t.id + '" data-active="' + t.active + '" onclick="toggleTopicActive(this.dataset.id,this.dataset.active===\'true\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;margin-right:4px">' + toggleLabel + '</button>';
-    rows += '<button data-id="' + t.id + '" onclick="deleteTopic(this.dataset.id)" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #fdd;background:#fff5f5;color:#c33;cursor:pointer">삭제</button>';
+    rows += '<button data-id="' + t.id + '" onclick="deleteTopic(this.dataset.id)" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #fdd;background:#fff5f5;color:#c33;cursor:pointer">Delete</button>';
     rows += '</td></tr>';
   }
   el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개</div>'
@@ -2640,7 +2640,7 @@ function renderTopicsTable(list) {
 }
 
 function openTopicModal(topic) {
-  document.getElementById('topic-modal-title').textContent = topic ? '토픽 수정' : '토픽 추가';
+  document.getElementById('topic-modal-title').textContent = topic ? 'Edit Topic' : 'Add Topic';
   document.getElementById('tm-id').value = topic ? topic.id : '';
   document.getElementById('tm-cat').value = topic ? topic.category : '';
   document.getElementById('tm-ko').value = topic ? topic.topic_ko : '';
@@ -2677,7 +2677,7 @@ async function saveTopic() {
 }
 
 async function deleteTopic(id) {
-  if (!confirm('정말 삭제할까요?')) return;
+  if (!confirm('Are you sure you want to delete?')) return;
   const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/writing_topics?id=eq.' + id, {
     method: 'DELETE',
     headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
@@ -2701,11 +2701,11 @@ async function goVocabEditor() {
   main.innerHTML = '<div class="pg-hd"><div><h1>✏️ 단어 뜻 수정</h1><p>기사 hover 시 나오는 단어 뜻을 수정하세요. 비워두면 기본 사전 그대로 표시됩니다.</p></div></div>'
     + '<div class="infobox">수정한 뜻은 모든 기사 페이지에 즉시 반영돼요.</div>'
     + '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'
-    + '<input id="ve-search" placeholder="단어 검색..." style="flex:1;min-width:180px;padding:9px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:14px" oninput="veFilter()">'
-    + '<button class="btn btn-g" onclick="veAddRow()">+ 단어 추가</button>'
-    + '<button class="btn btn-g" onclick="veSaveAll()" style="background:#2563eb">💾 전체 저장</button>'
+    + '<input id="ve-search" placeholder="Search words..." style="flex:1;min-width:180px;padding:9px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:14px" oninput="veFilter()">'
+    + '<button class="btn btn-g" onclick="veAddRow()">+ Add Word</button>'
+    + '<button class="btn btn-g" onclick="veSaveAll()" style="background:#2563eb">💾 전체 Save</button>'
     + '</div>'
-    + '<div id="ve-list"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 불러오는 중…</div></div>';
+    + '<div id="ve-list"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ Loading...</div></div>';
 
   // DB에서 overrides 로드
   let overrides = [];
@@ -2724,7 +2724,7 @@ function veRender(rows) {
   const list = document.getElementById('ve-list');
   if (!list) return;
   if (!rows.length) {
-    list.innerHTML = '<p style="color:var(--gr);padding:12px">아직 수정된 단어가 없어요. + 단어 추가 버튼으로 추가하세요.</p>';
+    list.innerHTML = '<p style="color:var(--gr);padding:12px">아직 수정된 단어가 없어요. + Add Word 버튼으로 추가하세요.</p>';
     return;
   }
   list.innerHTML = '<table style="width:100%;border-collapse:collapse">'
@@ -2739,7 +2739,7 @@ function veRender(rows) {
         + '<td style="padding:8px"><input class="ve-word" style="width:100%;padding:6px 10px;border:1px solid var(--bo);border-radius:6px;font-size:14px" value="' + (r.word||'') + '" data-idx="' + i + '"></td>'
         + '<td style="padding:8px"><input class="ve-en" style="width:100%;padding:6px 10px;border:1px solid var(--bo);border-radius:6px;font-size:14px" value="' + (r.en||'') + '" data-idx="' + i + '"></td>'
         + '<td style="padding:8px"><input class="ve-rom" style="width:100%;padding:6px 10px;border:1px solid var(--bo);border-radius:6px;font-size:14px" value="' + (r.rom||'') + '" data-idx="' + i + '"></td>'
-        + '<td style="padding:8px;text-align:center"><button class="btn" style="padding:5px 12px;background:#fee2e2;color:#991b1b;border:none;border-radius:6px;cursor:pointer;font-size:12px" onclick="veDelete(' + i + ')">삭제</button></td>'
+        + '<td style="padding:8px;text-align:center"><button class="btn" style="padding:5px 12px;background:#fee2e2;color:#991b1b;border:none;border-radius:6px;cursor:pointer;font-size:12px" onclick="veDelete(' + i + ')">Delete</button></td>'
         + '</tr>';
     }).join('')
     + '</tbody></table>';
@@ -2797,8 +2797,8 @@ async function veSaveAll() {
       body: JSON.stringify(data.map(function(r){ return { word: r.word, en: r.en, rom: r.rom }; }))
     });
     if (res.ok) { toast('✅ 저장됨! 기사 페이지에 즉시 반영돼요.'); goVocabEditor(); }
-    else { const e = await res.text(); toast('저장 실패: ' + e, true); }
-  } catch(e) { toast('오류: ' + e.message, true); }
+    else { const e = await res.text(); toast('Save failed: ' + e, true); }
+  } catch(e) { toast('Error: ' + e.message, true); }
 }
 
 
@@ -2806,12 +2806,12 @@ function goWordBank(){
   setSbOn(null);
   const items=ls(K_WORDBANK, DEF_WORDBANK);
   document.getElementById('main').innerHTML=`
-    <div class="pg-hd"><div><h1>📚 단어 은행</h1><p>사이드바 & 학습 페이지 단어 플래시 카드에 표시됩니다. 여기에 추가한 단어가 카드로 바로 표시돼요.</p></div></div>
+    <div class="pg-hd"><div><h1>📚 Word Bank</h1><p>Words appear on sidebar and learning page flashcards. Added words show up immediately.</p></div></div>
     <div class="infobox">단어, 로마자 발음, 영어 뜻을 입력하세요. 사이드바에는 최대 6개가 표시됩니다.</div>
     <div id="wb-list"></div>
     <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn btn-gh" onclick="addWbRow()">+ 단어 추가</button>
-      <button class="btn btn-g"  onclick="saveWordBank()">💾 저장</button>
+      <button class="btn btn-gh" onclick="addWbRow()">+ Add Word</button>
+      <button class="btn btn-g"  onclick="saveWordBank()">💾 Save</button>
     </div>`;
   renderWbRows(items);
 }
@@ -2842,7 +2842,7 @@ function saveWordBank(){
     en: r.querySelector('.wb-en')?.value.trim()||'',
   })).filter(w=>w.ko);
   lsSet(K_WORDBANK, arr);
-  toast('📚 단어 은행 저장됨! ('+arr.length+'개)');
+  toast('📚 Word Bank 저장됨! ('+arr.length+'개)');
 }
 
 // ══ SENTENCES ═══════════════════════════════════════════════
@@ -2850,12 +2850,12 @@ function goSentences(){
   setSbOn(null);
   const items = ls(K_SENTENCES, DEF_SENTENCES);
   document.getElementById('main').innerHTML =
-    '<div class="pg-hd"><div><h1>💬 예문 관리</h1><p>학습 페이지 Example Sentences에 표시됩니다.</p></div></div>'
+    '<div class="pg-hd"><div><h1>💬 Example Sentences</h1><p>Shown on the learning page Example Sentences section.</p></div></div>'
    +'<div class="infobox">난이도(초급/중급/고급), 한국어 예문, 영어 번역을 입력하세요.</div>'
    +'<div id="sent-list"></div>'
    +'<div style="display:flex;gap:8px;margin-top:12px">'
-   +'<button class="btn btn-gh" onclick="addSentRow()">+ 예문 추가</button>'
-   +'<button class="btn btn-g" onclick="saveSentences()">💾 저장</button>'
+   +'<button class="btn btn-gh" onclick="addSentRow()">+ Add Example</button>'
+   +'<button class="btn btn-g" onclick="saveSentences()">💾 Save</button>'
    +'<button class="btn btn-r" onclick="resetSentences()">↺ 초기화</button>'
    +'</div>';
   renderSentRows(items);
@@ -2931,7 +2931,7 @@ const NEWS_SOURCES = [
   { id:'reddit-kpop',  label:'r/kpop',           icon:'🎵' },
 ];
 
-var _fetchedHeadlines = []; // 수집된 헤드라인 전역 저장
+var _fetchedHeadlines = []; // 수집된 Headline 전역 저장
 
 function _isRecentDate(iso, days){
   if (!iso) return true;
@@ -2975,8 +2975,8 @@ function goAutoArticle(){
   setSbOn(null);
   _fetchedHeadlines = [];
   document.getElementById('main').innerHTML =
-    '<div class="pg-hd"><div><h1>🤖 AI 기사 자동생성</h1>'
-   +'<p>실제 뉴스·커뮤니티 헤드라인을 가져와 Claude가 한국어 학습 기사로 각색합니다.</p></div></div>'
+    '<div class="pg-hd"><div><h1>🤖 AI Auto-Generate Articles</h1>'
+   +'<p>실제 뉴스·커뮤니티 Headline을 가져와 Claude가 한국어 학습 기사로 각색합니다.</p></div></div>'
 
    // STEP 1: 소스 선택
    +'<div class="sf-card" style="margin-bottom:16px">'
@@ -2987,16 +2987,16 @@ function goAutoArticle(){
          +'<input type="checkbox" class="ns-chk" value="'+s.id+'" checked style="width:15px;height:15px"> '+s.icon+' '+s.label+'</label>';
      }).join('')
    +'</div>'
-   +'<button class="btn btn-g" onclick="fetchHeadlines()" id="btn-fetch">📥 헤드라인 가져오기</button>'
+   +'<button class="btn btn-g" onclick="fetchHeadlines()" id="btn-fetch">📥 Headline 가져오기</button>'
    +'<div id="fetch-status" style="margin-top:10px;font-size:13px;color:var(--gr)"></div>'
    +'</div>'
 
-   // STEP 2: 헤드라인 선택 (동적으로 채워짐)
+   // STEP 2: Headline 선택 (동적으로 채워짐)
    +'<div id="headline-panel" style="display:none" class="sf-card" style="margin-bottom:16px"></div>'
 
-   // STEP 3: 생성 설정
+   // STEP 3: Generation Settings
    +'<div id="gen-panel" style="display:none" class="sf-card">'
-   +'<h3 style="margin-bottom:12px">③ 생성 설정</h3>'
+   +'<h3 style="margin-bottom:12px">③ Generation Settings</h3>'
    +'<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:14px">'
    +'<div><label style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#475569;display:block;margin-bottom:6px">난이도</label>'
    +'<select id="auto-difficulty" style="padding:8px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;background:#fff">'
@@ -3008,7 +3008,7 @@ function goAutoArticle(){
    +'<option value="draft" selected>📝 Draft</option><option value="published">✅ Published</option>'
    +'</select></div>'
    +'</div>'
-   +'<button class="btn btn-g" onclick="runAutoGenerate()" style="font-size:15px;padding:12px 32px">✨ 선택 기사 각색 생성</button>'
+   +'<button class="btn btn-g" onclick="runAutoGenerate()" style="font-size:15px;padding:12px 32px">✨ Generate Adapted Articles</button>'
    +'<div id="auto-progress" style="margin-top:20px"></div>'
    +'</div>';
 
@@ -3033,7 +3033,7 @@ async function fetchHeadlines() {
   const btn = document.getElementById('btn-fetch');
   const statusEl = document.getElementById('fetch-status');
   btn.disabled = true; btn.textContent = '⏳ 가져오는 중…';
-  statusEl.innerHTML = '<span style="color:#64748b">선택한 소스에서 최근 헤드라인을 수집 중입니다…</span>';
+  statusEl.innerHTML = '<span style="color:#64748b">선택한 소스에서 최근 Headline을 수집 중입니다…</span>';
   _fetchedHeadlines = [];
 
   try {
@@ -3060,7 +3060,7 @@ async function fetchHeadlines() {
       return;
     }
 
-    statusEl.innerHTML = '✅ ' + _fetchedHeadlines.length + '개 헤드라인 수집 완료'
+    statusEl.innerHTML = '✅ ' + _fetchedHeadlines.length + '개 Headline 수집 완료'
       + '<div style="margin-top:6px;color:#94a3b8;font-size:12px">'
       + perSource.map(function(p){ return p.label + ': ' + p.count + '개' + (p.error ? ' (일부 실패)' : ''); }).join(' · ')
       + '</div>'
@@ -3070,7 +3070,7 @@ async function fetchHeadlines() {
     statusEl.innerHTML = '❌ 소스 수집 서버 호출에 실패했습니다. 잠시 후 다시 시도하세요.';
   } finally {
     btn.disabled = false;
-    btn.textContent = '📥 헤드라인 가져오기';
+    btn.textContent = '📥 Headline 가져오기';
   }
 }
 
@@ -3095,7 +3095,7 @@ function _renderHeadlinePanel() {
   document.getElementById('gen-panel').style.display = '';
 
   var html = '<h3 style="margin-bottom:4px">② 기사 선택 <span id="hl-count" style="font-weight:400;font-size:13px;color:#94a3b8"></span></h3>'
-    + '<p style="font-size:12px;color:#94a3b8;margin-bottom:12px">각색할 헤드라인을 선택하세요. 섹션도 지정할 수 있습니다.</p>'
+    + '<p style="font-size:12px;color:#94a3b8;margin-bottom:12px">각색할 Headline을 선택하세요. 섹션도 지정할 수 있습니다.</p>'
     + '<div style="display:flex;gap:8px;margin-bottom:10px">'
     + '<button class="btn btn-gh" style="font-size:12px" onclick="_hlSelectAll(true)">전체 선택</button>'
     + '<button class="btn btn-gh" style="font-size:12px" onclick="_hlSelectAll(false)">전체 해제</button>'
@@ -3234,7 +3234,7 @@ async function runAutoGenerate(){
       DB.unshift(newArticle); refreshCounts();
 
       // ── 캐시 생성 (번역/단어/문법/퀴즈) ──
-      document.getElementById(rowId+'-status').innerHTML = '🧠 캐시 생성 중…';
+      document.getElementById(rowId+'-status').innerHTML = '🧠 Generating cache...';
 
       const _body  = article.body  || '';
       const _title = article.title || '';
@@ -3328,7 +3328,7 @@ async function runAutoGenerate(){
     }
   }
 
-  toast('✨ 각색 완료! ' + selected.length + '개 기사가 생성됐습니다.');
+  toast('✨ Adaptation complete! ' + selected.length + ' articles generated.');
 }
 
 function today_date(){
@@ -3339,7 +3339,7 @@ function today_date(){
 async function goAICache() {
   setSbOn('sb-cache');
   const main = document.getElementById('main');
-  main.innerHTML = '<div class="pg-hd"><div><h1>🧠 AI Cache 관리</h1><p>각 기사의 번역·단어·문법·퀴즈 캐시를 확인하고 생성하세요.</p></div></div>'
+  main.innerHTML = '<div class="pg-hd"><div><h1>🧠 AI Cache Management</h1><p>View and generate translation, vocab, grammar, and quiz cache for each article.</p></div></div>'
     + '<div id="cache-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 스키마 확인 중…</div></div>';
 
   const H = { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY };
@@ -3656,8 +3656,8 @@ async function genCache(articleId, schema) {
 function goComments() {
   setSbOn(null);
   document.getElementById('main').innerHTML =
-    '<div class="pg-hd"><div><h1>💬 댓글 관리</h1><p>모든 기사의 댓글을 확인하고 답변할 수 있어요.</p></div></div>'
-   +'<div id="comments-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 불러오는 중…</div></div>';
+    '<div class="pg-hd"><div><h1>💬 Comment Management</h1><p>View and reply to comments on all articles.</p></div></div>'
+   +'<div id="comments-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ Loading...</div></div>';
   loadAllComments();
 }
 
@@ -3688,7 +3688,7 @@ async function loadAllComments() {
             )
             +'<div style="display:flex;gap:8px;align-items:flex-end">'
             +'<textarea data-id="'+c.id+'" placeholder="답변 입력…" style="flex:1;padding:8px 12px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;min-height:60px">'+(c.reply||'')+'</textarea>'
-            +'<button data-id="'+c.id+'" onclick="adminReplyComment(this.dataset.id,this)" style="padding:8px 18px;background:var(--a);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">답변 저장</button>'
+            +'<button data-id="'+c.id+'" onclick="adminReplyComment(this.dataset.id,this)" style="padding:8px 18px;background:var(--a);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">답변 Save</button>'
             +'</div>'
             +'</div>';
         }).join('');
@@ -3713,7 +3713,7 @@ async function adminReplyComment(id, btn) {
 }
 
 async function adminDeleteComment(id) {
-  if(!confirm('댓글을 삭제할까요?')) return;
+  if(!confirm('Delete this comment?')) return;
   await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?id=eq.'+id, {
     method:'DELETE',
     headers:{ 'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY }
@@ -3727,7 +3727,7 @@ function goNewsletter() {
   setSbOn(null);
   document.getElementById('main').innerHTML =
     '<div class="pg-hd"><div><h1>📬 뉴스레터 구독자</h1><p>구독자 목록을 확인하고 CSV로 내보낼 수 있어요.</p></div></div>'
-   +'<div id="nl-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 불러오는 중…</div></div>';
+   +'<div id="nl-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ Loading...</div></div>';
   loadNewsletter();
 }
 
@@ -3782,7 +3782,7 @@ function goStats() {
   setSbOn(null);
   document.getElementById('main').innerHTML =
     '<div class="pg-hd"><div><h1>📊 Visitor Analytics</h1><p>Page views and top articles for the last 30 days.</p></div></div>'
-   +'<div id="stats-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 불러오는 중…</div></div>';
+   +'<div id="stats-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ Loading...</div></div>';
   loadStats();
 }
 
@@ -3861,7 +3861,7 @@ function goUsers(){
   setSbOn(null);
   document.getElementById('main').innerHTML =
     '<div class="pg-hd"><div><h1>👥 가입 회원</h1><p>구글 로그인으로 가입한 회원 목록입니다.</p></div></div>'
-   +'<div id="users-wrap"><div style="padding:24px;color:var(--gray);text-align:center">⏳ 불러오는 중…</div></div>';
+   +'<div id="users-wrap"><div style="padding:24px;color:var(--gray);text-align:center">⏳ Loading...</div></div>';
   loadUsers();
 }
 
@@ -4048,7 +4048,7 @@ async function autoGenConvAI(convId, convObj) {
     await loadConvList();
   } catch(e) {
     console.error('autoGenConvAI failed:', e);
-    showToastAdmin('⚠️ AI 생성 실패: ' + (e.message || String(e)));
+    showToastAdmin('⚠️ AI generation failed: ' + (e.message || String(e)));
   }
 }
 
@@ -4081,13 +4081,13 @@ async function autoGenStoryAI(storyId, storyObj) {
     await loadStoryList();
   } catch(e) {
     console.error('autoGenStoryAI failed:', e);
-    showToastAdmin('⚠️ AI 생성 실패: ' + (e.message || String(e)));
+    showToastAdmin('⚠️ AI generation failed: ' + (e.message || String(e)));
   }
 }
 
 // 수동 AI 재생성 버튼 (conv/story 목록에서 사용)
 async function regenConvAI(convId) {
-  showToastAdmin('🤖 AI 재생성 중…');
+  showToastAdmin('🤖 AI regenerating...');
   const sb = getSb();
   const res = await sb.from('conversations_data').select('*').eq('id', convId).single();
   if (res.data) await autoGenConvAI(convId, res.data.data);
@@ -4095,7 +4095,7 @@ async function regenConvAI(convId) {
 }
 
 async function regenStoryAI(storyId) {
-  showToastAdmin('🤖 AI 재생성 중…');
+  showToastAdmin('🤖 AI regenerating...');
   const sb = getSb();
   const res = await sb.from('stories_data').select('*').eq('id', storyId).single();
   if (res.data) await autoGenStoryAI(storyId, res.data.data);
@@ -4287,7 +4287,7 @@ async function saveAllConvs() {
   if (error) {
     alert('Save error: ' + error.message);
   } else {
-    var msg = '✅ ' + rows.length + '개 대화가 저장/발행되었습니다!\n\nConversations 관리에서 확인하세요.';
+    var msg = '✅ ' + rows.length + ' conversations saved/published!\n\nCheck in Conversations management.';
     alert(msg);
     window._generatedConvs = [];  // 초기화
     goConvManager();  // 저장 후 관리 화면으로 이동
@@ -4303,7 +4303,7 @@ async function goStoriesEditor() {
   main.innerHTML = `
     <div style="max-width:900px">
       <h2 style="font-family:'Playfair Display',serif;font-size:24px;margin:0 0 6px">📖 Stories AI Generator</h2>
-      <p style="color:#64748b;font-size:13px;margin:0 0 20px">AI로 한국어 단편 이야기 콘텐츠 생성. 생성 후 저장 버튼으로 stories_data 테이블에 저장됩니다.</p>
+      <p style="color:#64748b;font-size:13px;margin:0 0 20px">Generate short Korean story content with AI. After generation, save to stories_data table.</p>
 
       <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px;margin-bottom:20px">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
@@ -4352,7 +4352,7 @@ async function generateStories() {
   var moodEmoji = {fun:'😂', touching:'🥹', scary:'😱', shocking:'😮'};
   var moodColors = {fun:'#d97706', touching:'#db2777', scary:'#7c3aed', shocking:'#dc2626'};
 
-  res.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b">⏳ AI 생성 중...</div>';
+  res.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b">⏳ AI generating...</div>';
 
   var prompt = 'Generate ' + count + ' short Korean community-style stories for Korean learners.\nMood: ' + moodMap[mood] + '\nLevel: ' + lvlMap[lvl] + '\n\nReturn ONLY a valid JSON array, no markdown, no backticks.\n\nEach story object:\n{"title":"Korean title","title_en":"English","mood":"' + mood + '","lvl":"' + lvl + '","readTime":"X min","preview":"first 1-2 sentences","body":"full story in Korean with paragraphs","vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}\n\nRules: authentic Korean community post style, body 8-15 paragraphs, 6-8 vocab, 2-3 grammar, 3 comprehension questions.';
 
@@ -4419,7 +4419,7 @@ async function saveAllStories() {
   if (error) {
     alert('Save error: ' + error.message);
   } else {
-    alert('✅ ' + rows.length + '개 스토리가 저장/발행되었습니다!');
+    alert('✅ ' + rows.length + ' stories saved/published!');
     window._generatedStories = [];
     goStoriesManager();
   }
@@ -4438,7 +4438,7 @@ async function goConvManager() {
   var main = document.getElementById('main');
   main.innerHTML = '<div style="max-width:960px">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
-    + '<div><h2 style="font-size:22px;font-weight:800;margin:0">💬 Conversations 관리</h2>'
+    + '<div><h2 style="font-size:22px;font-weight:800;margin:0">💬 Conversations Management</h2>'
     + '<p style="color:#64748b;font-size:13px;margin:4px 0 0">conversations_data 테이블 — 조회/수정/삭제/추가</p></div>'
     + '<button onclick="openConvCreateModal()" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">+ 새 대화 추가</button>'
     + '</div>'
@@ -4455,7 +4455,7 @@ async function loadConvList() {
   if (!el) return;
   if (error || !data || !data.length) {
     el.innerHTML = '<div style="background:#f8fafc;border-radius:12px;padding:40px;text-align:center;color:#94a3b8">'
-      + (error ? '오류: ' + error.message : 'conversations_data 테이블에 데이터 없음') + '</div>';
+      + (error ? 'Error: ' + error.message : 'conversations_data 테이블에 데이터 없음') + '</div>';
     return;
   }
   
@@ -4482,8 +4482,8 @@ async function loadConvList() {
       + '</div></div>'
       + '<div style="display:flex;gap:8px;flex-shrink:0;">'
       + '<button onclick="regenConvAI(' + row.id + ')" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit" title="AI로 vocab/grammar/mission 자동 생성">🤖 AI</button>'
-      + '<button onclick="openConvEditModal(' + row.id + ')" style="background:#f1f5f9;color:#334155;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ 수정</button>'
-      + '<button onclick="deleteConv(' + row.id + ')" style="background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑 삭제</button>'
+      + '<button onclick="openConvEditModal(' + row.id + ')" style="background:#f1f5f9;color:#334155;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ Edit</button>'
+      + '<button onclick="deleteConv(' + row.id + ')" style="background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑 Delete</button>'
       + '</div></div>';
   }).join('');
   el.innerHTML = html;
@@ -4586,7 +4586,7 @@ async function openConvEditModal(rowId, existingData) {
 
       +   '<div style="display:flex;gap:10px;justify-content:flex-end;padding:16px 18px 18px;border-top:1px solid #e2e8f0;background:#fff;">'
       +     '<button onclick="closeConvEditOverlay()" style="background:#f1f5f9;color:#334155;border:none;border-radius:12px;padding:11px 24px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">취소</button>'
-      +     '<button onclick="saveConvEdit(' + (rowId||'null') + ')" style="background:#2563eb;color:#fff;border:none;border-radius:12px;padding:11px 24px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">💾 저장</button>'
+      +     '<button onclick="saveConvEdit(' + (rowId||'null') + ')" style="background:#2563eb;color:#fff;border:none;border-radius:12px;padding:11px 24px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">💾 Save</button>'
       +   '</div>'
       + '</div>'
 
@@ -4759,7 +4759,7 @@ async function aiAnalyzeConv() {
     btn.disabled = false;
     btn.textContent = '✨ AI 자동분석';
     var errEl = document.getElementById('ce-error');
-    errEl.textContent = 'AI 분석 오류: ' + (e.message || String(e));
+    errEl.textContent = 'AI 분석 Error: ' + (e.message || String(e));
     errEl.style.display = 'block';
   }
 }
@@ -4780,7 +4780,7 @@ async function saveConvEdit(rowId) {
     var el = document.getElementById(id);
     if (!el || !el.value.trim()) return [];
     try { return JSON.parse(el.value); }
-    catch(e) { throw new Error(id + ' JSON 파싱 오류: ' + e.message); }
+    catch(e) { throw new Error(id + ' JSON 파싱 Error: ' + e.message); }
   };
 
   // A:/B:/N: 텍스트 → msgs JSON
@@ -4857,10 +4857,10 @@ async function saveConvEdit(rowId) {
 }
 
 async function deleteConv(rowId) {
-  if (!confirm('이 대화를 삭제할까요?')) return;
+  if (!confirm('Delete this conversation?')) return;
   var sb = getSb();
   var { error } = await sb.from('conversations_data').delete().eq('id', rowId);
-  if (error) { alert('삭제 오류: ' + error.message); return; }
+  if (error) { alert('Delete error: ' + error.message); return; }
   showToastAdmin('🗑 삭제됨');
   await loadConvList();
 }
@@ -4880,7 +4880,7 @@ async function goArticleImages() {
   setSidebarActive('article-images');
   var main = document.getElementById('main');
   main.innerHTML = '<div style="max-width:960px">'
-    + '<h2 style="font-size:22px;font-weight:800;margin:0 0 6px">🖼 기사 이미지 관리</h2>'
+    + '<h2 style="font-size:22px;font-weight:800;margin:0 0 6px">🖼 기사 Image Management</h2>'
     + '<p style="color:#64748b;font-size:13px;margin:0 0 20px">URL을 입력하거나 Unsplash 검색으로 이미지 변경</p>'
     + '<div id="img-mgr-list">⏳ 불러오는 중...</div>'
     + '</div>';
@@ -4908,7 +4908,7 @@ async function loadArticleImageList() {
       + '<div style="font-size:11px;color:#94a3b8;margin-bottom:8px">' + (a.section || '') + ' · ' + (a.status || '') + '</div>'
       + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
       + '<input id="img-url-' + a.id + '" value="' + img + '" placeholder="이미지 URL 입력..." style="flex:1;min-width:140px;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">'
-      + '<button onclick="saveArticleImage(\'' + a.id + '\')" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">저장</button>'
+      + '<button onclick="saveArticleImage(\'' + a.id + '\')" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">Save</button>'
       + '<label style="display:inline-flex;align-items:center;gap:4px;padding:7px 12px;background:#0ea5e9;color:#fff;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">'
       + '<span id="img-upld-lbl-' + a.id + '">📁</span>'
       + '<input type="file" accept="image/*" style="display:none" onchange="adminHandleImgUploadForArticle(this,\'' + a.id + '\')">'
@@ -4932,7 +4932,7 @@ async function saveArticleImage(articleId) {
   // DB 업데이트
   var sb = getSb();
   var { error } = await sb.from('articles').update({ image: url }).eq('id', articleId);
-  if (error) { alert('저장 오류: ' + error.message); return; }
+  if (error) { alert('Save error: ' + error.message); return; }
   
   // 로컬 캐시도 업데이트
   var idx = DB.findIndex(function(a){ return a.id === articleId; });
@@ -4967,7 +4967,7 @@ async function searchUnsplash(articleId) {
         + 'onmouseover="this.style.borderColor=\'#2563eb\'" onmouseout="this.style.borderColor=\'transparent\'">';
     }).join('');
   } catch(e) {
-    res.innerHTML = '<span style="font-size:12px;color:#ef4444">오류: ' + e.message + '</span>';
+    res.innerHTML = '<span style="font-size:12px;color:#ef4444">Error: ' + e.message + '</span>';
   }
 }
 
@@ -5024,8 +5024,8 @@ async function loadStoryList() {
       + '<span style="background:#f0fdf4;color:#15803d;font-size:11px;padding:2px 8px;border-radius:999px">' + mood + '</span>'
       + '</div></div>'
       + '<div style="display:flex;gap:8px;flex-shrink:0">'
-      + '<button onclick="openStoryEditModal(' + row.id + ')" style="background:#f1f5f9;color:#334155;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ 수정</button>'
-      + '<button onclick="deleteStory(' + row.id + ')" style="background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑 삭제</button>'
+      + '<button onclick="openStoryEditModal(' + row.id + ')" style="background:#f1f5f9;color:#334155;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ Edit</button>'
+      + '<button onclick="deleteStory(' + row.id + ')" style="background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑 Delete</button>'
       + '</div></div>';
   }).join('');
 }
@@ -5068,7 +5068,7 @@ async function openStoryEditModal(rowId) {
     + '<div id="se-error" style="background:#fee2e2;border-radius:8px;padding:10px;color:#b91c1c;font-size:13px;display:none;margin-bottom:12px"></div>'
     + '<div style="display:flex;gap:10px;justify-content:flex-end">'
     + '<button onclick="closeStoryEditOverlay()" style="background:#f1f5f9;color:#334155;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">취소</button>'
-    + '<button onclick="saveStoryEdit(' + (rowId||'null') + ')" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">💾 저장</button>'
+    + '<button onclick="saveStoryEdit(' + (rowId||'null') + ')" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">💾 Save</button>'
     + '</div>'
     + '</div>';
 
@@ -5118,10 +5118,10 @@ async function saveStoryEdit(rowId) {
 }
 
 async function deleteStory(rowId) {
-  if (!confirm('이 스토리를 삭제할까요?')) return;
+  if (!confirm('Delete this story?')) return;
   var sb = getSb();
   var { error } = await sb.from('stories_data').delete().eq('id', rowId);
-  if (error) { alert('삭제 오류: ' + error.message); return; }
+  if (error) { alert('Delete error: ' + error.message); return; }
   showToastAdmin('🗑 삭제됨');
   await loadStoryList();
 }
@@ -5310,7 +5310,7 @@ async function saveShopItem(itemId, btn) {
       goShopManager();
       return;
     }
-    toast('저장 오류: ' + r.error.message, true); btn.disabled = false; return;
+    toast('Save error: ' + r.error.message, true); btn.disabled = false; return;
   }
   document.querySelector('.ov') && document.querySelector('.ov').remove();
   goShopManager();
@@ -5333,7 +5333,7 @@ async function deleteShopItem(itemId) {
       goShopManager();
       return;
     }
-    toast('삭제 오류: ' + r.error.message, true); return;
+    toast('Delete error: ' + r.error.message, true); return;
   }
   goShopManager();
 }
@@ -5363,7 +5363,7 @@ async function applyCoinAdjustment() {
   var res = await sb.rpc('admin_adjust_coin', { p_user_id: uid, p_delta: delta, p_reason: reason });
   var msg = document.getElementById('coin-admin-msg');
   if (res.error || !res.data || !res.data.ok) {
-    msg.textContent = '오류: ' + ((res.error && res.error.message) || (res.data && res.data.error) || 'failed');
+    msg.textContent = 'Error: ' + ((res.error && res.error.message) || (res.data && res.data.error) || 'failed');
     return;
   }
   msg.innerHTML = '✅ 완료: 신규 잔액 <b>' + res.data.coin_balance + '</b> 냥';
@@ -5503,9 +5503,9 @@ function srTopicsFormHTML() {
     + '<textarea id="srt-tw-sentences" rows="5" style="width:100%;font-family:monospace;font-size:12px" placeholder="저는 한국 음식을 좋아해요|I like Korean food\n한국 음식은 정말 맛있어요|Korean food is really delicious"></textarea>'
     + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">이 문장들이 학습자의 "문장 만들기" 단계에 사용됩니다. AI 재생성 시 자동 생성됩니다.</div></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
-    + '<button class="btn btn-g" onclick="srSaveDailyContent()">💾 저장</button>'
+    + '<button class="btn btn-g" onclick="srSaveDailyContent()">💾 Save</button>'
     + '<button class="btn" onclick="srRegenDailyContent()" style="background:#f0fdf4;color:#15803d;border:1px solid #86efac">🤖 AI 재생성</button>'
-    + '<button class="btn btn-r" onclick="srDeleteDailyContent()">🗑 삭제</button>'
+    + '<button class="btn btn-r" onclick="srDeleteDailyContent()">🗑 Delete</button>'
     + '</div>'
     + '<div id="srt-msg" style="margin-top:8px;font-size:12px;color:#475569"></div>'
     + '</div>'
@@ -5522,7 +5522,7 @@ async function srLoadDailyContent() {
   var date  = (document.getElementById('srt-date').value  || '').trim();
   var level = (document.getElementById('srt-level').value || '').trim();
   if (!date || !level) { if (msgEl) msgEl.textContent = '날짜와 레벨을 선택하세요.'; return; }
-  if (msgEl) msgEl.textContent = '불러오는 중…';
+  if (msgEl) msgEl.textContent = 'Loading...';
 
   var r = await sb.from('study_daily_content').select('*')
     .eq('scheduled_date', date).eq('level', level).maybeSingle();
@@ -5706,7 +5706,7 @@ async function srRegenDailyContent() {
     document.getElementById('srt-empty').style.display = 'none';
     if (msgEl) msgEl.textContent = 'AI 생성 완료! 저장 버튼을 눌러 확정하세요.';
   } catch(err) {
-    if (msgEl) msgEl.textContent = 'AI 생성 실패: ' + (err.message || err);
+    if (msgEl) msgEl.textContent = 'AI generation failed: ' + (err.message || err);
   }
 }
 
@@ -5739,7 +5739,7 @@ async function srGenGrammar() {
       if (ta) ta.value = parsed.grammar.map(function(g){ return (g.pattern||'')+'|'+(g.explanation||'')+'|'+(g.example_ko||'')+'|'+(g.example_en||''); }).join('\n');
       if (msgEl) msgEl.textContent = '✅ 문법 ' + parsed.grammar.length + '개 생성됨. 수정 후 저장하세요.';
     } else { if (msgEl) msgEl.textContent = '생성 실패 — 다시 시도하세요.'; }
-  } catch(err) { if (msgEl) msgEl.textContent = '오류: ' + (err.message||err); }
+  } catch(err) { if (msgEl) msgEl.textContent = 'Error: ' + (err.message||err); }
 }
 
 // ── 빠른 도움말만 독립 생성 ─────────────────────────────────
@@ -5772,7 +5772,7 @@ async function srGenHelpers() {
       if (ta) ta.value = parsed.helpers.map(function(h){ return (h.ko||'')+'|'+(h.en||''); }).join('\n');
       if (msgEl) msgEl.textContent = '✅ 도움말 ' + parsed.helpers.length + '개 생성됨. 수정 후 저장하세요.';
     } else { if (msgEl) msgEl.textContent = '생성 실패 — 다시 시도하세요.'; }
-  } catch(err) { if (msgEl) msgEl.textContent = '오류: ' + (err.message||err); }
+  } catch(err) { if (msgEl) msgEl.textContent = 'Error: ' + (err.message||err); }
 }
 
 async function srDeleteDailyContent() {
@@ -5809,7 +5809,7 @@ async function srLoadTopicSchedule() {
           + '<span style="background:#f1f5f9;color:#475569;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[row.level]||row.level) + '</span>'
           + (row.admin_edited ? '<span style="background:#fde68a;color:#92400e;padding:2px 6px;border-radius:999px;font-size:10px;font-weight:700">편집됨</span>' : '')
           + '<span style="flex:1;font-size:12px;color:#334155">' + (row.topic_ko||'') + ' · ' + (row.topic_en||'') + '</span>'
-          + '<button class="btn" style="font-size:11px;padding:4px 8px" onclick="srEditDailyRow(\'' + row.scheduled_date + '\',\'' + row.level + '\')">수정</button>'
+          + '<button class="btn" style="font-size:11px;padding:4px 8px" onclick="srEditDailyRow(\'' + row.scheduled_date + '\',\'' + row.level + '\')">Edit</button>'
           + '</div>';
       }).join('');
 }
@@ -5839,7 +5839,7 @@ async function srLoadSubmissions() {
   var el = document.getElementById('srs-list'); if (!el) return;
   var msg = document.getElementById('srs-msg');
   var date = (document.getElementById('srs-date').value || new Date(Date.now()-7*86400000).toISOString().slice(0,10));
-  el.innerHTML = '불러오는 중…';
+  el.innerHTML = 'Loading...';
   var r = await sb.from('article_study_submissions')
     .select('id,user_id,article_id,article_title,study_date,step4_content,step5_content,submitted,auto_submitted,submitted_at,created_at')
     .gte('study_date', date)
@@ -5898,7 +5898,7 @@ function srHelpersFormHTML() {
     + '<div class="fg"><label>English (en)</label><input id="srh-en" placeholder="e.g. I went to school today."></div>'
     + '<div class="fg"><label>Display Order</label><input id="srh-order" type="number" value="0" style="width:80px"></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-    + '<button class="btn btn-g" onclick="srSaveHelper()">저장</button>'
+    + '<button class="btn btn-g" onclick="srSaveHelper()">Save</button>'
     + '<button class="btn" onclick="srClearHelperForm()">초기화</button>'
     + '</div>'
     + '<div id="srh-msg" style="margin-top:8px;font-size:12px;color:#475569"></div></div>'
@@ -5925,8 +5925,8 @@ async function srLoadHelpers() {
     return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:8px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center">'
       + '<span style="font-size:11px;font-weight:700;color:#64748b">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[h.level]||h.level) + ' · order:' + h.display_order + (h.active ? '' : ' · [비활성]') + '</span>'
-      + '<div style="display:flex;gap:6px"><button class="btn" onclick="srEditHelper(\'' + h.id + '\')">수정</button>'
-      + '<button class="btn btn-r" onclick="srDeleteHelper(\'' + h.id + '\')">삭제</button></div></div>'
+      + '<div style="display:flex;gap:6px"><button class="btn" onclick="srEditHelper(\'' + h.id + '\')">Edit</button>'
+      + '<button class="btn btn-r" onclick="srDeleteHelper(\'' + h.id + '\')">Delete</button></div></div>'
       + '<div style="font-weight:700;margin-top:4px">' + h.ko + '</div>'
       + '<div style="font-size:12px;color:#64748b">' + h.en + '</div></div>';
   }).join('');
@@ -5965,7 +5965,7 @@ async function srSaveHelper() {
 }
 
 async function srDeleteHelper(id) {
-  if (!confirm('삭제할까요?')) return;
+  if (!confirm('Delete?')) return;
   var r = await getSb().from('study_room_helpers').delete().eq('id', id);
   if (r.error) { alert(r.error.message); return; }
   await srLoadHelpers();
@@ -5995,7 +5995,7 @@ function srGrammarFormHTML() {
     + '<div class="fg"><label>Watch Out <span style="font-weight:400;font-size:11px;color:#94a3b8">주의사항 (선택)</span></label><textarea id="srg-watch" rows="2" style="width:100%" placeholder="이다 뒤에는 아요/어요가 아닌 이에요/예요를 사용합니다."></textarea></div>'
     + '<div class="fg"><label>Display Order</label><input id="srg-order" type="number" value="0" style="width:80px"></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-    + '<button class="btn btn-g" onclick="srSaveGrammar()">저장</button>'
+    + '<button class="btn btn-g" onclick="srSaveGrammar()">Save</button>'
     + '<button class="btn" onclick="srClearGrammarForm()">초기화</button>'
     + '</div>'
     + '<div id="srg-msg" style="margin-top:8px;font-size:12px;color:#475569"></div></div>'
@@ -6022,8 +6022,8 @@ async function srLoadGrammar() {
     return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:8px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center">'
       + '<span style="font-size:11px;font-weight:700;color:#64748b">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[g.level]||g.level) + ' · order:' + g.display_order + (g.active ? '' : ' · [비활성]') + '</span>'
-      + '<div style="display:flex;gap:6px"><button class="btn" onclick="srEditGrammar(\'' + g.id + '\')">수정</button>'
-      + '<button class="btn btn-r" onclick="srDeleteGrammar(\'' + g.id + '\')">삭제</button></div></div>'
+      + '<div style="display:flex;gap:6px"><button class="btn" onclick="srEditGrammar(\'' + g.id + '\')">Edit</button>'
+      + '<button class="btn btn-r" onclick="srDeleteGrammar(\'' + g.id + '\')">Delete</button></div></div>'
       + '<div style="font-weight:800;margin-top:4px">' + g.pattern + '</div>'
       + '<div style="font-size:12px;color:#475569">' + g.explanation + '</div>'
       + '<div style="font-size:12px;margin-top:4px"><span style="font-weight:600">' + g.example_ko + '</span> — ' + g.example_en + '</div></div>';
@@ -6075,7 +6075,7 @@ async function srSaveGrammar() {
 }
 
 async function srDeleteGrammar(id) {
-  if (!confirm('삭제할까요?')) return;
+  if (!confirm('Delete?')) return;
   var r = await getSb().from('study_room_grammar').delete().eq('id', id);
   if (r.error) { alert(r.error.message); return; }
   await srLoadGrammar();
@@ -6115,7 +6115,7 @@ function srPictureFormHTML() {
     + '<div class="fg" style="display:flex;gap:8px;align-items:center">'
     + '<input type="checkbox" id="srp-active" checked> <label for="srp-active">Active (활성)</label></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-    + '<button class="btn btn-g" onclick="srSavePicture()">저장</button>'
+    + '<button class="btn btn-g" onclick="srSavePicture()">Save</button>'
     + '<button class="btn" onclick="srClearPictureForm()">초기화</button>'
     + '</div>'
     + '<div id="srp-msg" style="margin-top:8px;font-size:12px;color:#475569"></div></div>'
@@ -6169,8 +6169,8 @@ async function srLoadPictures() {
       + '<div style="font-size:12px;color:#475569;margin-top:3px">' + (p.prompt_ko || '') + '</div>'
       + (p.image_url ? '<img src="' + p.image_url + '" style="margin-top:6px;max-width:120px;max-height:80px;border-radius:6px;object-fit:cover">' : '') + '</div>'
       + '<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">'
-      + '<button class="btn" onclick="srEditPicture(\'' + p.id + '\')">수정</button>'
-      + '<button class="btn btn-r" onclick="srDeletePicture(\'' + p.id + '\')">삭제</button></div></div></div>';
+      + '<button class="btn" onclick="srEditPicture(\'' + p.id + '\')">Edit</button>'
+      + '<button class="btn btn-r" onclick="srDeletePicture(\'' + p.id + '\')">Delete</button></div></div></div>';
   }).join('');
 }
 
@@ -6217,7 +6217,7 @@ async function srSavePicture() {
   var fileInput = document.getElementById('srp-img-file');
   if (fileInput && fileInput.files[0]) {
     try { imgUrl = await srUploadImage(fileInput.files[0]); }
-    catch(e) { msgEl.textContent = '이미지 업로드 실패: ' + e.message; return; }
+    catch(e) { msgEl.textContent = 'Image upload failed: ' + e.message; return; }
   }
 
   // Parse word-order words (Step 2)
@@ -6269,7 +6269,7 @@ async function srSavePicture() {
 }
 
 async function srDeletePicture(id) {
-  if (!confirm('삭제할까요? (' + id + ')')) return;
+  if (!confirm('Delete? (' + id + ')')) return;
   var r = await getSb().from('study_picture_prompts').delete().eq('id', id);
   if (r.error) { alert(r.error.message); return; }
   await srLoadPictures();
@@ -6443,7 +6443,7 @@ async function aseOpenEditor(artId) {
 
     + '<div style="display:flex;gap:10px;margin-bottom:8px">'
     + '<button onclick="aseGenFromAI()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">🤖 AI로 초안 생성</button>'
-    + '<button onclick="aseSaveContent()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 저장</button>'
+    + '<button onclick="aseSaveContent()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 Save</button>'
     + '<button onclick="aseDeleteContent()" style="background:#fee2e2;color:#991b1b;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">🗑 초기화 (AI 자동)</button>'
     + '</div>'
     + '<div id="ase-msg" style="font-size:12px;color:#475569;margin-bottom:12px"></div>'
@@ -6481,7 +6481,7 @@ async function aseOpenEditor(artId) {
     + '</div></div>'
 
     + '<div style="display:flex;gap:10px">'
-    + '<button onclick="aseSaveContent()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">💾 저장</button>'
+    + '<button onclick="aseSaveContent()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">💾 Save</button>'
     + '<button onclick="goArticleStudyEditor()" style="background:#f1f5f9;color:#334155;border:none;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">← 목록으로</button>'
     + '</div></div>';
 }
@@ -6567,9 +6567,9 @@ async function aseGenFromAI() {
     var artId = art.id;
     _aseCurrentContent = parsed;
     await aseOpenEditor(artId);
-    document.getElementById('ase-msg').textContent = '✅ AI 초안 생성 완료. 수정 후 저장하세요.';
+    document.getElementById('ase-msg').textContent = '✅ AI draft generated. 수정 후 저장하세요.';
   } catch(e) {
-    msgEl.textContent = '❌ AI 생성 실패: ' + e.message;
+    msgEl.textContent = '❌ AI generation failed: ' + e.message;
   }
 }
 
@@ -6599,7 +6599,7 @@ async function aseSaveContent() {
   };
   msgEl.textContent = '저장 중…';
   var r = await sb.from('article_study_content').upsert(row, {onConflict:'article_id'});
-  if (r.error) { msgEl.textContent = '❌ 오류: ' + r.error.message; return; }
+  if (r.error) { msgEl.textContent = '❌ Error: ' + r.error.message; return; }
   _aseEditedIds.add(String(art.id));
   msgEl.textContent = '✅ 저장됐습니다! (사용자에게 즉시 반영됩니다)';
 }
@@ -6643,7 +6643,7 @@ function srGrammarPdfFormHTML() {
     + '<div style="font-size:12px;color:#64748b;margin-bottom:10px">체크된 항목만 DB에 저장됩니다. 내용을 직접 편집할 수 있습니다.</div>'
     + '<div id="srpdf-results"></div>'
     + '<div style="margin-top:12px;display:flex;gap:8px">'
-    + '<button class="btn btn-g" onclick="srSaveParsedGrammar()">💾 선택된 항목 DB 저장</button>'
+    + '<button class="btn btn-g" onclick="srSaveParsedGrammar()">💾 선택된 항목 DB Save</button>'
     + '<button class="btn" onclick="srSelectAllParsed(true)">모두 선택</button>'
     + '<button class="btn" onclick="srSelectAllParsed(false)">모두 해제</button>'
     + '</div>'
@@ -6684,7 +6684,7 @@ async function srHandlePdfUpload(input) {
     document.getElementById('srpdf-parse-area').style.display = '';
     statusEl.textContent = '텍스트 추출 완료. AI 파싱 버튼을 누르세요.';
   } catch(e) {
-    statusEl.textContent = '오류: ' + e.message;
+    statusEl.textContent = 'Error: ' + e.message;
   }
 }
 
@@ -6767,7 +6767,7 @@ async function srParseGrammarWithClaude() {
     status.textContent = patterns.length + '개 패턴 파싱 완료. 아래에서 검토 후 저장하세요.';
     srShowParsedGrammar(patterns, level);
   } catch(e) {
-    status.textContent = '파싱 오류: ' + e.message;
+    status.textContent = '파싱 Error: ' + e.message;
   }
   document.getElementById('srpdf-parse-btn').disabled = false;
 }
@@ -6856,7 +6856,7 @@ async function srSaveParsedGrammar() {
     if (r.error) errors.push(r.error.message);
   }
   if (errors.length) {
-    msgEl.textContent = '일부 오류: ' + errors.join(', ');
+    msgEl.textContent = '일부 Error: ' + errors.join(', ');
   } else {
     msgEl.textContent = '✅ ' + rows.length + '개 패턴이 study_room_grammar에 저장됐습니다!';
   }

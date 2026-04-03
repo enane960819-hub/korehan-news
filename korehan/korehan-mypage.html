@@ -442,7 +442,7 @@ body.kh-neon-on .mypage-hero {
 
   <div class="danger-zone">
     <h3 style="font-size:14px;font-weight:900;margin:0 0 10px">Danger Zone</h3>
-    <p style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.6">계정과 모든 학습 데이터가 영구 삭제되며 복구할 수 없어요.</p>
+    <p style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.6">Your account and all learning data will be permanently deleted and cannot be recovered.</p>
     <button onclick="confirmDeleteAccount()" style="padding:9px 20px;background:#dc2626;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Delete Account</button>
   </div>
 
@@ -736,7 +736,7 @@ function renderProfileFields(xp, coin) {
     '<div class="pf-row">'
     + '<div class="pf-label">Nickname</div>'
     + '<div class="pf-value" id="pf-name-val">' + name + '</div>'
-    + '<button class="pf-btn" onclick="openNicknameModal()" style="' + (canAfford ? '' : 'opacity:.55') + '" title="' + (canAfford ? '닉네임 변경 (100냥)' : '닉네임 변경에 ' + NICKNAME_COST + '냥 필요') + '">'
+    + '<button class="pf-btn" onclick="openNicknameModal()" style="' + (canAfford ? '' : 'opacity:.55') + '" title="' + (canAfford ? 'Change nickname (100 nyang)' : 'Need ' + NICKNAME_COST + ' nyang to change nickname') + '">'
     + NICKNAME_COST + ' 냥</button>'
     + '</div>'
     + '<div class="pf-row"><div class="pf-label">Email</div><div class="pf-value">' + email + '</div></div>'
@@ -762,18 +762,18 @@ function openNicknameModal() {
   el.innerHTML =
     '<div class="nn-modal">'
     + '<h3>Change Nickname</h3>'
-    + '<p>닉네임 변경에는 <strong>' + NICKNAME_COST + '냥</strong>이 필요합니다. 현재 보유: <strong>' + _userCoin.toLocaleString() + '냥</strong>.</p>'
+    + '<p>Changing your nickname costs <strong>' + NICKNAME_COST + ' nyang</strong>. You have: <strong>' + _userCoin.toLocaleString() + ' nyang</strong>.</p>'
     + (canAfford
-      ? '<div class="nn-cost-badge">✨ ' + NICKNAME_COST + '냥 차감</div>'
+      ? '<div class="nn-cost-badge">✨ ' + NICKNAME_COST + ' nyang deducted</div>'
         + '<input class="nn-input" id="nn-input" type="text" maxlength="30" placeholder="New nickname" value="' + currentName + '">'
         + '<div class="nn-actions">'
         + '<button class="nn-btn-cancel" onclick="closeNicknameModal()">Cancel</button>'
-        + '<button class="nn-btn-confirm" id="nn-confirm-btn" onclick="confirmNicknameChange()">변경 — ' + NICKNAME_COST + '냥</button>'
+        + '<button class="nn-btn-confirm" id="nn-confirm-btn" onclick="confirmNicknameChange()">Change — ' + NICKNAME_COST + ' nyang</button>'
         + '</div>'
       : '<div style="text-align:center;padding:16px 0">'
         + '<div style="font-size:36px;margin-bottom:10px">🔒</div>'
-        + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:6px">냥이 부족해요</div>'
-        + '<div style="font-size:13px;color:#64748b">추가로 ' + (NICKNAME_COST - _userCoin) + '냥이 필요해요.</div>'
+        + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:6px">Not enough nyang</div>'
+        + '<div style="font-size:13px;color:#64748b">You need ' + (NICKNAME_COST - _userCoin) + ' more nyang.</div>'
         + '<button class="nn-btn-cancel" style="margin-top:18px;width:100%" onclick="closeNicknameModal()">OK</button>'
         + '</div>')
     + '</div>';
@@ -828,7 +828,7 @@ async function confirmNicknameChange() {
     closeNicknameModal();
     if (typeof toast === 'function') toast('Nickname updated ✓');
   } catch(e) {
-    if (btn) { btn.disabled = false; btn.textContent = '변경 — ' + NICKNAME_COST + '냥'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Change — ' + NICKNAME_COST + ' nyang'; }
     alert('Error: ' + e.message);
   }
 }
@@ -848,8 +848,8 @@ async function sendPasswordReset() {
 }
 
 async function confirmDeleteAccount() {
-  if (!confirm('정말 탈퇴하시겠어요?\n\n저장된 단어, 학습 기록, XP가 모두 삭제되며 복구할 수 없어요.')) return;
-  if (!confirm('마지막 확인이에요. 계정과 모든 데이터를 영구 삭제할까요?')) return;
+  if (!confirm('Are you sure you want to delete your account?\n\nAll saved words, study history, and XP will be permanently deleted.')) return;
+  if (!confirm('Final confirmation. Permanently delete your account and all data?')) return;
 
   var sb = getSupa();
   if (!sb || !supaUser) return;
@@ -864,7 +864,7 @@ async function confirmDeleteAccount() {
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ((await sb.auth.getSession()).data.session?.access_token || '') }
     });
     await sb.auth.signOut();
-    alert(res.ok ? '탈퇴가 완료됐어요. 이용해주셔서 감사합니다.' : '데이터는 삭제됐어요. 계정 완전 삭제는 관리자에게 문의해주세요.');
+    alert(res.ok ? 'Account deleted. Thank you for using KoreHan.' : 'Data has been deleted. For full account removal, please contact an administrator.');
     window.location.href = 'index.html';
   } catch(e) {
     alert('오류: ' + e.message);
@@ -1023,7 +1023,7 @@ function renderOwnedAndGiftSections(coin, data) {
             + '<div class="inv-meta">수량: ' + (o.quantity || 0) + (it.item_type ? ' · ' + it.item_type : '') + '</div>'
             + '</div>';
         }).join('') + '</div>'
-      : '<div style="color:#94a3b8;font-size:13px">보유 아이템이 없습니다.</div>';
+      : '<div style="color:#94a3b8;font-size:13px">No items owned.</div>';
   }
 
   var ghEl = document.getElementById('mp-gift-history');
@@ -1035,7 +1035,7 @@ function renderOwnedAndGiftSections(coin, data) {
           var nm = (g.shop_items && g.shop_items.name) || g.item_id;
           return '<div class="gift-log-row"><b>' + nm + '</b> → 기자 <b>' + g.reporter_id + '</b> · 수량 ' + (g.quantity || 1) + ' · 사용 냥 ' + Number(g.nyang_spent || 0).toLocaleString() + '<div style="font-size:11px;color:#94a3b8;margin-top:3px">' + dt + '</div></div>';
         }).join('')
-      : '<div style="color:#94a3b8;font-size:13px">보낸 선물 기록이 없습니다.</div>';
+      : '<div style="color:#94a3b8;font-size:13px">No gift history.</div>';
   }
 }
 

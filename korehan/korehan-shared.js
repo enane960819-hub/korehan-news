@@ -147,14 +147,14 @@ async function callClaude({ feature, model, max_tokens, messages }) {
   if (!sb) throw new Error('Supabase not initialized');
 
   var session = await getFreshClaudeSession(sb);
-  if (!session) throw new Error('로그인이 필요합니다.');
+  if (!session) throw new Error('Please sign in to continue.');
 
   var payload = { feature, model, max_tokens, messages };
   var resp;
   try {
     resp = await callClaudeRequest(session.access_token, payload);
   } catch(netErr) {
-    throw new Error('네트워크 오류 — 인터넷 연결을 확인해주세요.');
+    throw new Error('Network error — please check your internet connection.');
   }
 
   if (resp.status === 401) {
@@ -163,18 +163,18 @@ async function callClaude({ feature, model, max_tokens, messages }) {
       try {
         resp = await callClaudeRequest(freshSession.access_token, payload);
       } catch(netErr2) {
-        throw new Error('네트워크 오류 — 인터넷 연결을 확인해주세요.');
+        throw new Error('Network error — please check your internet connection.');
       }
     }
   }
 
-  if (resp.status === 429) throw new Error('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.');
+  if (resp.status === 429) throw new Error('Too many requests. Please try again shortly.');
   if (resp.status === 401) {
-    throw new Error('인증 오류 — 다시 로그인해주세요.');
+    throw new Error('Authentication error — please sign in again.');
   }
   if (!resp.ok) {
     var err = await resp.json().catch(function(){ return {}; });
-    throw new Error(err.error || 'AI 서버 오류 (' + resp.status + ')');
+    throw new Error(err.error || 'AI server error (' + resp.status + ')');
   }
   return resp.json();
 }
@@ -592,11 +592,11 @@ async function authSignUp() {
 
   // Supabase는 중복 이메일도 success 반환 — identities 배열이 비어있으면 기존 계정
   if (data && data.user && (!data.user.identities || data.user.identities.length === 0)) {
-    _authShowError('이미 가입된 이메일이에요. Sign In으로 로그인해주세요.');
+    _authShowError('This email is already registered. Please sign in instead.');
     return;
   }
 
-  _authShowOk('✅ 가입 완료! 확인 이메일을 발송했어요. 받은 편지함(스팸함 포함)을 확인해주세요.');
+  _authShowOk('Account created! We sent a confirmation email. Please check your inbox (including spam).');
   document.getElementById('kh-signup-form').querySelectorAll('input').forEach(function(i){ i.value=''; });
 }
 
@@ -2016,7 +2016,7 @@ async function renderSectionPage(section) {
   // 로딩 표시
   var heroEl = document.getElementById('dyn-hero');
   var listEl = document.getElementById('dyn-article-list');
-  if (heroEl) heroEl.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8;grid-column:1/-1">⏳ 로딩 중…</div>';
+  if (heroEl) heroEl.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8;grid-column:1/-1">⏳ Loading...</div>';
 
   // 1차: 캐시에서 먼저 시도
   var SECTION_ALIASES = {
@@ -2066,14 +2066,14 @@ async function renderSectionPage(section) {
       heroEl.style.cssText = 'display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;';
       heroEl.innerHTML = buildHeroHTML(featured, rest);
     } else {
-      heroEl.innerHTML = '<div style="padding:40px;color:#94a3b8;text-align:center;grid-column:1/-1">이 섹션에 아직 기사가 없습니다.</div>';
+      heroEl.innerHTML = '<div style="padding:40px;color:#94a3b8;text-align:center;grid-column:1/-1">No articles in this section yet.</div>';
     }
   }
 
   // ARTICLE LIST
   if (listEl) {
     if (!rest.length) {
-      listEl.innerHTML = '<p style="color:#94a3b8;padding:20px 0">기사를 찾을 수 없습니다.</p>';
+      listEl.innerHTML = '<p style="color:#94a3b8;padding:20px 0">No articles found.</p>';
     } else {
       var levelColors = {Starter:'#f3e8ff;color:#6b21a8',Beginner:'#e8f5e9;color:#2e7d32',Intermediate:'#fff8e1;color:#f57f17',Advanced:'#fce4ec;color:#c62828'};
       listEl.innerHTML = rest.map(buildArticleRowHTML).join('');
@@ -2835,7 +2835,7 @@ function renderFillQuestions(container, questions, article) {
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">'
     + '<div>'
     + '<div style="font-size:17px;font-weight:900;color:#0b1626;margin-bottom:3px">✏️ Fill in the Blank</div>'
-    + '<div style="font-size:12px;color:#94a3b8">이 기사에서 추출한 핵심 표현 ' + questions.length + '문제</div>'
+    + '<div style="font-size:12px;color:#94a3b8">' + questions.length + ' key expressions from this article</div>'
     + '</div>'
     + '<div style="display:flex;gap:8px;align-items:center">'
     + '<span style="font-size:11px;font-weight:800;padding:4px 12px;border-radius:999px;background:#f0f4ff;color:' + levelColor + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]||level) + '</span>'
@@ -2874,11 +2874,11 @@ function renderFillQuestions(container, questions, article) {
 
       // 모드 토글 버튼
       + '<div style="display:flex;gap:6px;margin-bottom:12px">'
-      + '<button onclick="setFillMode(' + i + ',\'choice\')" id="fill-mode-choice-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #2255a4;background:#2255a4;color:#fff;cursor:pointer">🎯 4지선다</button>'
-      + '<button onclick="setFillMode(' + i + ',\'type\')" id="fill-mode-type-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer">⌨️ 직접 입력</button>'
+      + '<button onclick="setFillMode(' + i + ',\'choice\')" id="fill-mode-choice-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #2255a4;background:#2255a4;color:#fff;cursor:pointer">🎯 Multiple Choice</button>'
+      + '<button onclick="setFillMode(' + i + ',\'type\')" id="fill-mode-type-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer">⌨️ Type Answer</button>'
       + '</div>'
 
-      // 4지선다 영역
+      // Multiple Choice 영역
       + '<div id="fill-choices-' + i + '" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
       + shuffled.map(function(ch) {
           return '<button onclick="checkFillAnswer(' + i + ',\'' + ch.replace(/'/g, "\\'") + '\')" '
@@ -2888,13 +2888,13 @@ function renderFillQuestions(container, questions, article) {
         }).join('')
       + '</div>'
 
-      // 직접 입력 영역
+      // Type Answer 영역
       + '<div id="fill-type-' + i + '" style="display:none">'
       + '<div style="display:flex;gap:8px">'
-      + '<input id="fill-input-' + i + '" type="text" placeholder="한국어로 입력..." '
+      + '<input id="fill-input-' + i + '" type="text" placeholder="Type in Korean..." '
       + 'style="flex:1;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:15px;font-family:sans-serif;outline:none" '
       + 'onkeydown="if(event.key===\'Enter\')submitFillType(' + i + ')">'
-      + '<button onclick="submitFillType(' + i + ')" style="padding:10px 18px;background:#2255a4;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer">확인</button>'
+      + '<button onclick="submitFillType(' + i + ')" style="padding:10px 18px;background:#2255a4;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer">Check</button>'
       + '</div>'
       + '</div>'
 
@@ -2993,7 +2993,7 @@ function checkFillAnswer(qIdx, selected, isTyped) {
   var card = document.getElementById('fill-q-' + qIdx);
   if (card) card.style.borderColor = isCorrect ? '#86efac' : '#fca5a5';
 
-  // 4지선다 버튼 색 변경
+  // Multiple Choice 버튼 색 변경
   if (!isTyped) {
     var choicesEl = document.getElementById('fill-choices-' + qIdx);
     if (choicesEl) {
@@ -3017,16 +3017,16 @@ function checkFillAnswer(qIdx, selected, isTyped) {
     resultEl.innerHTML = (isCorrect
       ? '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start">'
         + '<span style="font-size:18px">✅</span>'
-        + '<div><div style="font-size:13px;font-weight:800;color:#16a34a;margin-bottom:2px">정답!</div>'
+        + '<div><div style="font-size:13px;font-weight:800;color:#16a34a;margin-bottom:2px">Correct!</div>'
         + '<div style="font-size:12px;color:#166534"><strong>' + correct + '</strong> = ' + q.blank_en + '</div></div>'
         + ttsBtn(correct)
         + '</div>'
       : '<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start">'
         + '<span style="font-size:18px">❌</span>'
         + '<div><div style="font-size:13px;font-weight:800;color:#dc2626;margin-bottom:2px">'
-        + (isTyped ? '틀렸어요 (입력: ' + selected + ')' : '틀렸어요')
+        + (isTyped ? 'Incorrect (your answer: ' + selected + ')' : 'Incorrect')
         + '</div>'
-        + '<div style="font-size:12px;color:#991b1b">정답: <strong>' + correct + '</strong> = ' + q.blank_en + '</div></div>'
+        + '<div style="font-size:12px;color:#991b1b">Answer: <strong>' + correct + '</strong> = ' + q.blank_en + '</div></div>'
         + ttsBtn(correct)
         + '</div>'
     );
@@ -3767,7 +3767,7 @@ function initTooltips() {
     var adminBar = document.createElement('div');
     adminBar.id = 'vocab-admin-bar';
     adminBar.style.cssText = 'position:fixed;bottom:70px;right:16px;z-index:8000;background:#0b1626;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);';
-    adminBar.textContent = '✏️ 단어 편집 모드';
+    adminBar.textContent = '✏️ Vocab Edit Mode';
     adminBar.onclick = function() { toggleVocabEditMode(); };
     document.body.appendChild(adminBar);
   }
@@ -3778,9 +3778,9 @@ function initTooltips() {
     var word = w.dataset.word;
     var d = VOCAB[word];
     if (window._vocabEditMode && window._isAdmin) {
-      tip.innerHTML = '<span style="font-size:13px;color:#fbbf24;font-weight:700">✏️ 클릭하여 편집</span><br>'
+      tip.innerHTML = '<span style="font-size:13px;color:#fbbf24;font-weight:700">✏️ Click to edit</span><br>'
         + '<span style="color:#7ab8f5;font-weight:700">' + word + '</span>'
-        + (d ? '<br><span style="color:#94a3b8;font-size:11px">' + d.en + '</span>' : '<br><span style="color:#f87171;font-size:11px">뜻 없음</span>');
+        + (d ? '<br><span style="color:#94a3b8;font-size:11px">' + d.en + '</span>' : '<br><span style="color:#f87171;font-size:11px">No definition</span>');
       tip.style.opacity = '1';
       return;
     }
@@ -3823,13 +3823,13 @@ function toggleVocabEditMode() {
   var bar = document.getElementById('vocab-admin-bar');
   if (bar) {
     if (window._vocabEditMode) {
-      bar.innerHTML = '<span>✅ 편집 ON</span>'
+      bar.innerHTML = '<span>✅ Edit ON</span>'
         + '<button id="vocab-add-new-btn" onclick="event.stopPropagation();openVocabEditModal(\'\')" '
-        + 'style="margin-left:8px;background:#2255a4;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">+ 새 단어</button>';
+        + 'style="margin-left:8px;background:#2255a4;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">+ New Word</button>';
       bar.style.background = '#16a34a';
       bar.style.padding = '8px 12px';
     } else {
-      bar.textContent = '✏️ 단어 편집 모드';
+      bar.textContent = '✏️ Vocab Edit Mode';
       bar.style.background = '#0b1626';
       bar.style.padding = '8px 14px';
     }
@@ -3897,7 +3897,7 @@ function _handleVocabSelection(e) {
   var topPos  = Math.max(8, rect.top - 48);
   pop.style.left = leftPos + 'px';
   pop.style.top  = topPos  + 'px';
-  pop.innerHTML = '+ <span style="color:#7ab8f5;font-weight:900">' + text + '</span> 추가';
+  pop.innerHTML = '+ Add <span style="color:#7ab8f5;font-weight:900">' + text + '</span>';
 
   var selCopy = text; // 클로저용 복사
   pop.onclick = function(ev) {
@@ -3923,26 +3923,26 @@ function _handleVocabSelection(e) {
 
 function openVocabEditModal(word) {
   var existing = VOCAB[word] || { rom: '', en: '' };
-  var isNew = !word; // 새 단어 직접 입력 모드
+  var isNew = !word; // 새 단어 Type Answer 모드
   var modal = document.createElement('div');
   modal.id = 'vocab-edit-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
   modal.innerHTML =
     '<div style="background:#fff;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.3);">'
-    + '<div style="font-size:16px;font-weight:900;color:#0f172a;margin-bottom:16px;">✏️ ' + (isNew ? '새 단어 추가' : '단어 수정: <span style="color:#2255a4">' + word + '</span>') + '</div>'
+    + '<div style="font-size:16px;font-weight:900;color:#0f172a;margin-bottom:16px;">✏️ ' + (isNew ? 'Add New Word' : 'Edit Word: <span style="color:#2255a4">' + word + '</span>') + '</div>'
     + (isNew
-      ? '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">한국어 단어 <span style="color:#e53e3e">*</span></label>'
-        + '<input id="ve-word" placeholder="예: 환경" style="width:100%;padding:8px 12px;border:2px solid #2255a4;border-radius:8px;font-size:16px;font-family:\'Noto Serif KR\',serif;margin-bottom:12px;box-sizing:border-box;" autofocus>'
+      ? '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">Korean Word <span style="color:#e53e3e">*</span></label>'
+        + '<input id="ve-word" placeholder="e.g. 환경" style="width:100%;padding:8px 12px;border:2px solid #2255a4;border-radius:8px;font-size:16px;font-family:\'Noto Serif KR\',serif;margin-bottom:12px;box-sizing:border-box;" autofocus>'
       : '')
-    + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">발음 (romanization)</label>'
-    + '<input id="ve-rom" value="' + existing.rom + '" placeholder="예: hwan-gyeong" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;">'
-    + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">영어 뜻 <span style="color:#e53e3e">*</span></label>'
-    + '<input id="ve-en" value="' + existing.en + '" placeholder="예: environment" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:6px;box-sizing:border-box;">'
+    + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">Pronunciation (romanization)</label>'
+    + '<input id="ve-rom" value="' + existing.rom + '" placeholder="e.g. hwan-gyeong" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;">'
+    + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">English Meaning <span style="color:#e53e3e">*</span></label>'
+    + '<input id="ve-en" value="' + existing.en + '" placeholder="e.g. environment" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:6px;box-sizing:border-box;">'
     + '<div id="ve-err" style="font-size:12px;color:#e53e3e;margin-bottom:12px;display:none;"></div>'
     + '<div style="display:flex;gap:8px;margin-top:16px;">'
-    + '<button id="ve-save" style="flex:1;padding:10px;background:#2255a4;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:800;cursor:pointer;">저장</button>'
-    + (!isNew && existing.en ? '<button id="ve-del" style="padding:10px 16px;background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">삭제</button>' : '')
-    + '<button id="ve-cancel" style="padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">취소</button>'
+    + '<button id="ve-save" style="flex:1;padding:10px;background:#2255a4;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:800;cursor:pointer;">Save</button>'
+    + (!isNew && existing.en ? '<button id="ve-del" style="padding:10px 16px;background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Delete</button>' : '')
+    + '<button id="ve-cancel" style="padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Cancel</button>'
     + '</div></div>';
 
   document.body.appendChild(modal);
@@ -3953,7 +3953,7 @@ function openVocabEditModal(word) {
   var delBtn = modal.querySelector('#ve-del');
   if (delBtn) {
     delBtn.onclick = async function() {
-      if (!confirm(word + ' 단어를 삭제할까요?')) return;
+      if (!confirm(word + '  — delete this word?')) return;
       await saveVocabToDB(word, null, null, true);
       delete VOCAB[word];
       // 해당 단어 span 제거
@@ -3961,7 +3961,7 @@ function openVocabEditModal(word) {
         s.replaceWith(document.createTextNode(s.textContent));
       });
       modal.remove();
-      showToast('🗑 ' + word + ' 삭제됨');
+      showToast('🗑 ' + word + ' deleted');
     };
   }
 
@@ -3972,11 +3972,11 @@ function openVocabEditModal(word) {
     var en  = modal.querySelector('#ve-en').value.trim();
     var err = modal.querySelector('#ve-err');
     if (isNew && (!finalWord || !/[가-힣]/.test(finalWord))) {
-      err.textContent = '한국어 단어를 입력해주세요.'; err.style.display='block'; return;
+      err.textContent = 'Please enter a Korean word.'; err.style.display='block'; return;
     }
-    if (!en) { err.textContent = '영어 뜻을 입력해주세요.'; err.style.display='block'; return; }
+    if (!en) { err.textContent = 'Please enter an English meaning.'; err.style.display='block'; return; }
     var btn = modal.querySelector('#ve-save');
-    btn.textContent = '저장 중...'; btn.disabled = true;
+    btn.textContent = 'Saving...'; btn.disabled = true;
     try {
       await saveVocabToDB(finalWord, rom, en, false);
       VOCAB[finalWord] = { rom: rom, en: en };
@@ -4000,11 +4000,11 @@ function openVocabEditModal(word) {
       _addWordToKeyVocabList(word, rom, en);
 
       modal.remove();
-      showToast('✅ ' + word + ' 저장됨');
+      showToast('✅ ' + word + ' saved');
     } catch(e) {
-      err.textContent = '저장 실패: ' + e.message;
+      err.textContent = 'Save failed:' + e.message;
       err.style.display = 'block';
-      btn.textContent = '저장'; btn.disabled = false;
+      btn.textContent = 'Save'; btn.disabled = false;
     }
   };
 }
@@ -4083,13 +4083,13 @@ var _COIN_ACTION_AMOUNTS = {
   conversation_read: 3
 };
 var _XP_ACTION_LABELS = {
-  article_read: '기사 읽기',
-  word_save: '단어 저장',
-  conv_quiz_complete: '퀴즈 완료',
-  fill_complete: '빈칸 채우기',
-  daily_mission_complete: '일일 미션 완료',
-  story_read: '스토리 읽기',
-  conversation_read: '회화 읽기'
+  article_read: 'Read Article',
+  word_save: 'Save Word',
+  conv_quiz_complete: 'Quiz Complete',
+  fill_complete: 'Fill in the Blank',
+  daily_mission_complete: 'Daily Mission Complete',
+  story_read: 'Read Story',
+  conversation_read: 'Read Conversation'
 };
 
 // ── xp_log 컬럼명 감지 (세션당 1회) ─────────────────────────────
@@ -4201,7 +4201,7 @@ async function awardXP(actionKey, meta) {
     });
     if (res.data && res.data.ok) {
       if (res.data.leveled_up) {
-        showToast('🎉 레벨 업! Lv.' + res.data.level + ' ' + res.data.level_name);
+        showToast('🎉 Level Up! Lv.' + res.data.level + ' ' + res.data.level_name);
       }
       var gained = res.data.xp_gained || amount;
       showXPToast(gained);
@@ -4314,7 +4314,7 @@ function showCoinToast(coin) {
 
 async function saveVocabToDB(word, rom, en, isDelete) {
   var sb = getSupa();
-  if (!sb) throw new Error('Supabase 연결 없음');
+  if (!sb) throw new Error('Supabase not connected');
   if (isDelete) {
     var res = await sb.from('vocabulary_bank').delete().eq('word_key', word);
     if (res.error) throw res.error;
@@ -5184,36 +5184,36 @@ function getQuizStreakDays() { return lsGet('kh_quiz_streak_days', 0); }
 var BADGE_DEFS = [
 
   // 🔥 STREAK
-  { id:'streak_3',   cat:'streak',    tier:'bronze',   icon:'🔥', name:'첫 불꽃',       desc:'3일 연속 학습',
+  { id:'streak_3',   cat:'streak',    tier:'bronze',   icon:'🔥', name:'First Spark',      desc:'3-day study streak',
     check: function(s){ return getCurrentStreak() >= 3; } },
-  { id:'streak_7',   cat:'streak',    tier:'silver',   icon:'🔥', name:'일주일 전사',   desc:'7일 연속 학습',
+  { id:'streak_7',   cat:'streak',    tier:'silver',   icon:'🔥', name:'Week Warrior',    desc:'7-day study streak',
     check: function(s){ return getCurrentStreak() >= 7; } },
-  { id:'streak_30',  cat:'streak',    tier:'gold',     icon:'🏅', name:'30일의 힘',     desc:'30일 연속 학습',
+  { id:'streak_30',  cat:'streak',    tier:'gold',     icon:'🏅', name:'30-Day Power',    desc:'30-day study streak',
     check: function(s){ return getCurrentStreak() >= 30; } },
-  { id:'streak_50',  cat:'streak',    tier:'gold',     icon:'🌊', name:'50일 달성',     desc:'50일 연속 학습',
+  { id:'streak_50',  cat:'streak',    tier:'gold',     icon:'🌊', name:'50-Day Milestone', desc:'50-day study streak',
     check: function(s){ return getCurrentStreak() >= 50; } },
-  { id:'streak_100', cat:'streak',    tier:'diamond',  icon:'💎', name:'100일 챔피언',  desc:'100일 연속 학습',
+  { id:'streak_100', cat:'streak',    tier:'diamond',  icon:'💎', name:'100-Day Champion', desc:'100-day study streak',
     check: function(s){ return getCurrentStreak() >= 100; } },
-  { id:'streak_365', cat:'streak',    tier:'legendary',icon:'👑', name:'365 레전드',    desc:'1년 연속 학습',
+  { id:'streak_365', cat:'streak',    tier:'legendary',icon:'👑', name:'365 Legend',       desc:'1-year study streak',
     check: function(s){ return getCurrentStreak() >= 365; } },
 
   // 📰 READING
-  { id:'read_1',     cat:'reading',   tier:'bronze',   icon:'📖', name:'첫 기사',       desc:'기사 첫 번째 읽기',
+  { id:'read_1',     cat:'reading',   tier:'bronze',   icon:'📖', name:'First Article',    desc:'Read your first article',
     check: function(){ return getTotalArticlesRead() >= 1; } },
-  { id:'read_10',    cat:'reading',   tier:'bronze',   icon:'📰', name:'뉴스 입문',     desc:'기사 10개 읽기',
+  { id:'read_10',    cat:'reading',   tier:'bronze',   icon:'📰', name:'News Beginner',    desc:'Read 10 articles',
     check: function(){ return getTotalArticlesRead() >= 10; } },
-  { id:'read_50',    cat:'reading',   tier:'silver',   icon:'📚', name:'뉴스 탐험가',   desc:'기사 50개 읽기',
+  { id:'read_50',    cat:'reading',   tier:'silver',   icon:'📚', name:'News Explorer',    desc:'Read 50 articles',
     check: function(){ return getTotalArticlesRead() >= 50; } },
-  { id:'read_100',   cat:'reading',   tier:'gold',     icon:'🗞️', name:'기자 지망생',   desc:'기사 100개 읽기',
+  { id:'read_100',   cat:'reading',   tier:'gold',     icon:'🗞️', name:'Aspiring Reporter', desc:'Read 100 articles',
     check: function(){ return getTotalArticlesRead() >= 100; } },
-  { id:'read_500',   cat:'reading',   tier:'legendary',icon:'📜', name:'한국어 박사',   desc:'기사 500개 읽기',
+  { id:'read_500',   cat:'reading',   tier:'legendary',icon:'📜', name:'Korean Scholar',   desc:'Read 500 articles',
     check: function(){ return getTotalArticlesRead() >= 500; } },
-  { id:'read_daily10',cat:'reading',  tier:'gold',     icon:'⚡', name:'하루 10개',     desc:'하루에 기사 10개',
+  { id:'read_daily10',cat:'reading',  tier:'gold',     icon:'⚡', name:'10 in a Day',      desc:'Read 10 articles in one day',
     check: function(){
       var log = lsGet('kh_read_log', {});
       return Object.values(log).some(function(arr){ return arr.length >= 10; });
     } },
-  { id:'read_allsec',cat:'reading',   tier:'diamond',  icon:'🔭', name:'올라운더',      desc:'모든 섹션 읽기',
+  { id:'read_allsec',cat:'reading',   tier:'diamond',  icon:'🔭', name:'All-Rounder',     desc:'Read from every section',
     check: function(){
       var sc = getSectionReadCounts();
       var secs = ['사회','국제','문화','스포츠','Korea','beauty','travel','오피니언','정치','경제'];
@@ -5221,61 +5221,61 @@ var BADGE_DEFS = [
     } },
 
   // 🔖 VOCAB
-  { id:'word_10',    cat:'vocab',     tier:'bronze',   icon:'🌱', name:'씨앗 단어장',   desc:'단어 10개 저장',
+  { id:'word_10',    cat:'vocab',     tier:'bronze',   icon:'🌱', name:'Seed Vocab',      desc:'Save 10 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 10; } },
-  { id:'word_50',    cat:'vocab',     tier:'silver',   icon:'🌿', name:'단어 새싹',     desc:'단어 50개 저장',
+  { id:'word_50',    cat:'vocab',     tier:'silver',   icon:'🌿', name:'Word Sprout',     desc:'Save 50 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 50; } },
-  { id:'word_100',   cat:'vocab',     tier:'silver',   icon:'🍃', name:'단어 수집가',   desc:'단어 100개 저장',
+  { id:'word_100',   cat:'vocab',     tier:'silver',   icon:'🍃', name:'Word Collector',  desc:'Save 100 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 100; } },
-  { id:'word_300',   cat:'vocab',     tier:'gold',     icon:'🌳', name:'어휘 나무',     desc:'단어 300개 저장',
+  { id:'word_300',   cat:'vocab',     tier:'gold',     icon:'🌳', name:'Vocab Tree',      desc:'Save 300 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 300; } },
-  { id:'word_1000',  cat:'vocab',     tier:'diamond',  icon:'💠', name:'TOPIK 단어장',  desc:'단어 1000개 저장',
+  { id:'word_1000',  cat:'vocab',     tier:'diamond',  icon:'💠', name:'TOPIK Vocab',     desc:'Save 1000 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 1000; } },
-  { id:'word_2000',  cat:'vocab',     tier:'legendary',icon:'🧬', name:'어휘 유전자',   desc:'단어 2000개 저장',
+  { id:'word_2000',  cat:'vocab',     tier:'legendary',icon:'🧬', name:'Vocab Master',    desc:'Save 2000 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 2000; } },
 
   // 📝 QUIZ
-  { id:'quiz_first', cat:'quiz',      tier:'bronze',   icon:'🎮', name:'첫 퀴즈',       desc:'퀴즈 첫 도전',
+  { id:'quiz_first', cat:'quiz',      tier:'bronze',   icon:'🎮', name:'First Quiz',      desc:'Complete your first quiz',
     check: function(){ return lsGet('kh_quiz_done_count',0) >= 1; } },
-  { id:'quiz_perfect1',cat:'quiz',    tier:'silver',   icon:'🎯', name:'데일리 퍼펙트', desc:'데일리 테스트 100점',
+  { id:'quiz_perfect1',cat:'quiz',    tier:'silver',   icon:'🎯', name:'Daily Perfect',   desc:'Score 100% on a daily test',
     check: function(){ return getQuizPerfectCount() >= 1; } },
-  { id:'quiz_perfect3',cat:'quiz',    tier:'gold',     icon:'💯', name:'3연속 만점',    desc:'데일리 테스트 100점 3연속',
+  { id:'quiz_perfect3',cat:'quiz',    tier:'gold',     icon:'💯', name:'3x Perfect',      desc:'Score 100% on 3 daily tests in a row',
     check: function(){ return lsGet('kh_quiz_perfect_streak',0) >= 3; } },
-  { id:'quiz_14days',cat:'quiz',      tier:'diamond',  icon:'📅', name:'데일리 개근',   desc:'14일 연속 데일리 테스트',
+  { id:'quiz_14days',cat:'quiz',      tier:'diamond',  icon:'📅', name:'Daily Devotee',   desc:'Complete daily tests 14 days in a row',
     check: function(){ return getQuizStreakDays() >= 14; } },
 
-  // 🌍 SECTIONS (각 섹션 20개)
-  { id:'sec_politics',cat:'sections', tier:'gold', icon:'🏛️', name:'정치 마스터', desc:'정치 기사 20개',
+  // 🌍 SECTIONS
+  { id:'sec_politics',cat:'sections', tier:'gold', icon:'🏛️', name:'Politics Master', desc:'Read 20 Politics articles',
     check: function(){ return (getSectionReadCounts()['정치']||0) >= 20; } },
-  { id:'sec_economy', cat:'sections', tier:'gold', icon:'💹', name:'경제 마스터', desc:'경제 기사 20개',
+  { id:'sec_economy', cat:'sections', tier:'gold', icon:'💹', name:'Economy Master', desc:'Read 20 Economy articles',
     check: function(){ return (getSectionReadCounts()['경제']||0) >= 20; } },
-  { id:'sec_society', cat:'sections', tier:'gold', icon:'🏘️', name:'사회 마스터', desc:'사회 기사 20개',
+  { id:'sec_society', cat:'sections', tier:'gold', icon:'🏘️', name:'Society Master', desc:'Read 20 Society articles',
     check: function(){ return (getSectionReadCounts()['사회']||0) >= 20; } },
-  { id:'sec_world',   cat:'sections', tier:'gold', icon:'🌐', name:'국제 마스터', desc:'국제 기사 20개',
+  { id:'sec_world',   cat:'sections', tier:'gold', icon:'🌐', name:'World Master', desc:'Read 20 World articles',
     check: function(){ return (getSectionReadCounts()['국제']||0) >= 20; } },
-  { id:'sec_culture', cat:'sections', tier:'gold', icon:'🎨', name:'문화 마스터', desc:'문화 기사 20개',
+  { id:'sec_culture', cat:'sections', tier:'gold', icon:'🎨', name:'Culture Master', desc:'Read 20 Culture articles',
     check: function(){ return (getSectionReadCounts()['문화']||0) >= 20; } },
-  { id:'sec_sports',  cat:'sections', tier:'gold', icon:'⚽', name:'스포츠 마스터',desc:'스포츠 기사 20개',
+  { id:'sec_sports',  cat:'sections', tier:'gold', icon:'⚽', name:'Sports Master',desc:'Read 20 Sports articles',
     check: function(){ return (getSectionReadCounts()['스포츠']||0) >= 20; } },
-  { id:'sec_korea',   cat:'sections', tier:'gold', icon:'🇰🇷', name:'Korea 마스터',desc:'Korea 기사 20개',
+  { id:'sec_korea',   cat:'sections', tier:'gold', icon:'🇰🇷', name:'Korea Master',desc:'Read 20 Korea articles',
     check: function(){ return (getSectionReadCounts()['Korea']||0) >= 20; } },
-  { id:'sec_beauty',  cat:'sections', tier:'gold', icon:'💄', name:'Beauty 마스터',desc:'Beauty 기사 20개',
+  { id:'sec_beauty',  cat:'sections', tier:'gold', icon:'💄', name:'Beauty Master',desc:'Read 20 Beauty articles',
     check: function(){ return (getSectionReadCounts()['beauty']||0) >= 20; } },
-  { id:'sec_travel',  cat:'sections', tier:'gold', icon:'✈️', name:'Travel 마스터',desc:'Travel 기사 20개',
+  { id:'sec_travel',  cat:'sections', tier:'gold', icon:'✈️', name:'Travel Master',desc:'Read 20 Travel articles',
     check: function(){ return (getSectionReadCounts()['travel']||0) >= 20; } },
-  { id:'sec_opinion', cat:'sections', tier:'gold', icon:'✍️', name:'오피니언 마스터',desc:'오피니언 기사 10개',
+  { id:'sec_opinion', cat:'sections', tier:'gold', icon:'✍️', name:'Opinion Master',desc:'Read 10 Opinion articles',
     check: function(){ return (getSectionReadCounts()['오피니언']||0) >= 10; } },
 
   // 🔢 MILESTONE / XP
-  { id:'xp_7500',    cat:'milestone', tier:'bronze',   icon:'⭐', name:'XP 7,500',    desc:'누적 XP 7,500',
+  { id:'xp_7500',    cat:'milestone', tier:'bronze',   icon:'⭐', name:'XP 7,500',    desc:'Earn 7,500 XP total',
     check: function(){ return getXP() >= 7500; } },
-  { id:'xp_30000',   cat:'milestone', tier:'silver',   icon:'💫', name:'XP 30,000',   desc:'누적 XP 30,000',
+  { id:'xp_30000',   cat:'milestone', tier:'silver',   icon:'💫', name:'XP 30,000',   desc:'Earn 30,000 XP total',
     check: function(){ return getXP() >= 30000; } },
-  { id:'xp_75000',   cat:'milestone', tier:'gold',     icon:'🌠', name:'XP 75,000',   desc:'누적 XP 75,000',
+  { id:'xp_75000',   cat:'milestone', tier:'gold',     icon:'🌠', name:'XP 75,000',   desc:'Earn 75,000 XP total',
     check: function(){ return getXP() >= 75000; } },
-  { id:'xp_300000',  cat:'milestone', tier:'diamond',  icon:'🌌', name:'XP 300,000',  desc:'누적 XP 300,000',
+  { id:'xp_300000',  cat:'milestone', tier:'diamond',  icon:'🌌', name:'XP 300,000',  desc:'Earn 300,000 XP total',
     check: function(){ return getXP() >= 300000; } },
-  { id:'days_90',    cat:'milestone', tier:'gold',     icon:'🎂', name:'3개월 완주',  desc:'가입 후 90일 학습',
+  { id:'days_90',    cat:'milestone', tier:'gold',     icon:'🎂', name:'3-Month Runner', desc:'Study for 90 days after signup',
     check: function(){
       var log = lsGet('kh_study_log',{});
       var active = Object.keys(log).filter(function(k){ var d=log[k]; return (d.articles||0)+(d.words||0)+(d.quiz||0)>0; });
@@ -5283,39 +5283,39 @@ var BADGE_DEFS = [
     } },
 
   // ⏰ TIME
-  { id:'time_midnight',cat:'time',    tier:'silver',   icon:'🌙', name:'야행성',       desc:'자정 이후 학습',
+  { id:'time_midnight',cat:'time',    tier:'silver',   icon:'🌙', name:'Night Owl',       desc:'Study after midnight',
     check: function(){ return lsGet('kh_badge_midnight', false); } },
-  { id:'time_dawn',    cat:'time',    tier:'gold',     icon:'🌅', name:'새벽 공부왕',  desc:'오전 6시 전 학습',
+  { id:'time_dawn',    cat:'time',    tier:'gold',     icon:'🌅', name:'Dawn Scholar',   desc:'Study before 6 AM',
     check: function(){ return lsGet('kh_badge_dawn', false); } },
-  { id:'time_morning7',cat:'time',    tier:'bronze',   icon:'☀️', name:'모닝 루틴',    desc:'오전 7시 전 학습 7회',
+  { id:'time_morning7',cat:'time',    tier:'bronze',   icon:'☀️', name:'Morning Routine', desc:'Study before 7 AM, 7 times',
     check: function(){ return lsGet('kh_morning_count',0) >= 7; } },
-  { id:'time_monday',  cat:'time',    tier:'bronze',   icon:'📅', name:'월요병 극복',  desc:'월요일 학습 4주 연속',
+  { id:'time_monday',  cat:'time',    tier:'bronze',   icon:'📅', name:'Monday Fighter',  desc:'Study on Mondays, 4 weeks in a row',
     check: function(){ return lsGet('kh_monday_streak',0) >= 4; } },
-  { id:'time_friday',  cat:'time',    tier:'silver',   icon:'🌃', name:'불금 학습자',  desc:'금요일 밤 학습 4회',
+  { id:'time_friday',  cat:'time',    tier:'silver',   icon:'🌃', name:'Friday Learner',  desc:'Study on Friday night, 4 times',
     check: function(){ return lsGet('kh_friday_night_count',0) >= 4; } },
-  { id:'time_weekend', cat:'time',    tier:'gold',     icon:'🎒', name:'주말 학습왕',  desc:'주말 학습 8주 연속',
+  { id:'time_weekend', cat:'time',    tier:'gold',     icon:'🎒', name:'Weekend Champ',   desc:'Study on weekends, 8 weeks in a row',
     check: function(){ return lsGet('kh_weekend_streak',0) >= 8; } },
 
   // 🎌 CULTURAL
-  { id:'cult_march1',  cat:'cultural',tier:'gold',     icon:'🌸', name:'삼일절',       desc:'3월 1일 학습',
+  { id:'cult_march1',  cat:'cultural',tier:'gold',     icon:'🌸', name:'March 1st',       desc:'Study on March 1 (Independence Day)',
     check: function(){ return lsGet('kh_cult_march1', false); } },
-  { id:'cult_hangul',  cat:'cultural',tier:'legendary',icon:'🇰🇷',name:'한글날 수호자',desc:'10월 9일 학습',
+  { id:'cult_hangul',  cat:'cultural',tier:'legendary',icon:'🇰🇷',name:'Hangul Guardian', desc:'Study on Oct 9 (Hangul Day)',
     check: function(){ return lsGet('kh_cult_hangul', false); } },
-  { id:'cult_newyear', cat:'cultural',tier:'gold',     icon:'🎆', name:'새해 다짐',    desc:'1월 1일 학습',
+  { id:'cult_newyear', cat:'cultural',tier:'gold',     icon:'🎆', name:'New Year\'s',     desc:'Study on January 1',
     check: function(){ return lsGet('kh_cult_newyear', false); } },
-  { id:'cult_chuseok', cat:'cultural',tier:'diamond',  icon:'🎑', name:'추석 학습',    desc:'추석 당일 학습',
+  { id:'cult_chuseok', cat:'cultural',tier:'diamond',  icon:'🎑', name:'Chuseok Study',   desc:'Study on Chuseok day',
     check: function(){ return lsGet('kh_cult_chuseok', false); } },
-  { id:'cult_seollal', cat:'cultural',tier:'diamond',  icon:'🌕', name:'설날 공부',    desc:'설날 당일 학습',
+  { id:'cult_seollal', cat:'cultural',tier:'diamond',  icon:'🌕', name:'Seollal Study',   desc:'Study on Seollal day',
     check: function(){ return lsGet('kh_cult_seollal', false); } },
-  { id:'cult_gwangbok',cat:'cultural',tier:'silver',   icon:'🌊', name:'광복절',       desc:'8월 15일 학습',
+  { id:'cult_gwangbok',cat:'cultural',tier:'silver',   icon:'🌊', name:'Liberation Day',  desc:'Study on August 15',
     check: function(){ return lsGet('kh_cult_gwangbok', false); } },
-  { id:'cult_pepero',  cat:'cultural',tier:'gold',     icon:'💘', name:'빼빼로 데이',  desc:'11월 11일 학습',
+  { id:'cult_pepero',  cat:'cultural',tier:'gold',     icon:'💘', name:'Pepero Day',      desc:'Study on November 11',
     check: function(){ return lsGet('kh_cult_pepero', false); } },
-  { id:'cult_valentine',cat:'cultural',tier:'silver',  icon:'❤️', name:'발렌타인',     desc:'2월 14일 학습',
+  { id:'cult_valentine',cat:'cultural',tier:'silver',  icon:'❤️', name:'Valentine\'s Day', desc:'Study on February 14',
     check: function(){ return lsGet('kh_cult_valentine', false); } },
-  { id:'cult_christmas',cat:'cultural',tier:'gold',    icon:'🎄', name:'크리스마스',   desc:'12월 25일 학습',
+  { id:'cult_christmas',cat:'cultural',tier:'gold',    icon:'🎄', name:'Christmas',       desc:'Study on December 25',
     check: function(){ return lsGet('kh_cult_christmas', false); } },
-  { id:'cult_collector',cat:'cultural',tier:'legendary',icon:'🗓️',name:'공휴일 컬렉터',desc:'기념일 뱃지 7개',
+  { id:'cult_collector',cat:'cultural',tier:'legendary',icon:'🗓️',name:'Holiday Collector',desc:'Earn 7 cultural date badges',
     check: function(){
       var earned = getEarnedBadges();
       var cultIds = ['cult_march1','cult_hangul','cult_newyear','cult_chuseok','cult_seollal','cult_gwangbok','cult_pepero','cult_valentine','cult_christmas'];
@@ -5586,7 +5586,7 @@ function getBadgeProgress(b) {
       var sc = getSectionReadCounts();
       var cur = sc[section_badge_sec[b.id]] || 0;
       var max = section_badge_max[b.id];
-      return { pct: cur/max*100, label: cur + ' / ' + max + '개' };
+      return { pct: cur/max*100, label: cur + ' / ' + max };
     }
     if (!map[b.id]) return null;
     var cur = map[b.id].cur();
@@ -5706,7 +5706,7 @@ function _ttsReset() {
 // TTS 버튼 HTML 생성 헬퍼
 function ttsBtn(text) {
   var safe = text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-  return '<button class="tts-btn" title="발음 듣기" onclick="event.stopPropagation();ttsSpeak(\'' + safe + '\',this)">🔊</button>';
+  return '<button class="tts-btn" title="Listen to pronunciation" onclick="event.stopPropagation();ttsSpeak(\'' + safe + '\',this)">🔊</button>';
 }
 
 // ══ USER STATS + DAILY MISSION SYNC (Supabase) ════════════════════════════════
@@ -5780,11 +5780,11 @@ async function onDailyMissionComplete() {
     if (Math.floor(newStreak / 5) > Math.floor(prevStreak / 5)) {
       newTickets += 1;
       setTimeout(function() {
-        toast('🎉 데일리 미션 ' + newStreak + '일 연속 완료! ✏️ 작문 첨삭권 1회 획득!');
+        toast('🎉 Daily mission ' + newStreak + '-day streak! Writing review ticket earned!');
       }, 800);
     } else {
       setTimeout(function() {
-        toast('🎯 오늘 데일리 미션 완료! ' + newStreak + '일 연속 🔥');
+        toast('🎯 Daily mission complete! ' + newStreak + '-day streak 🔥');
       }, 800);
     }
 
@@ -5931,7 +5931,7 @@ async function checkDailyMissionComplete() {
   if ((d.articles||0) >= 3 && (d.words||0) >= 20 && (d.quizzes||0) >= 3 && (d.fill||0) >= 1) {
     _dailyMissionBonusGiven = true;
     var res = await awardXP('daily_mission_complete', {});
-    if (res && res.ok) showToast('🎯 일일 미션 완료! +50 XP 보너스');
+    if (res && res.ok) showToast('🎯 Daily mission complete! +50 XP bonus');
   }
 }
 
