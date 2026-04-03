@@ -5424,8 +5424,8 @@ async function goStudyRoomOps() {
     + '</div></div></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
     + '  <button class="btn btn-g" id="srt-topics"      onclick="srShowTab(\'topics\')"     >📅 오늘의 주제</button>'
-    + '  <button class="btn"       id="srt-helpers"     onclick="srShowTab(\'helpers\')"    >💬 빠른 도움</button>'
-    + '  <button class="btn"       id="srt-grammar"     onclick="srShowTab(\'grammar\')"    >📚 문법 설명</button>'
+    + '  <button class="btn"       id="srt-tab-helpers"  onclick="srShowTab(\'helpers\')"    >💬 빠른 도움</button>'
+    + '  <button class="btn"       id="srt-tab-grammar"  onclick="srShowTab(\'grammar\')"    >📚 문법 설명</button>'
     + '  <button class="btn"       id="srt-picture"     onclick="srShowTab(\'picture\')"    >🖼️ Picture</button>'
     + '  <button class="btn"       id="srt-homework"    onclick="srShowTab(\'homework\')"   >📝 Homework</button>'
     + '  <button class="btn"       id="srt-submissions" onclick="srShowTab(\'submissions\')">📊 제출 현황</button>'
@@ -5444,9 +5444,9 @@ function srPreviewDate(offsetDays) {
 
 async function srShowTab(tab) {
   _srTab = tab;
-  document.querySelectorAll('[id^="srt-"]').forEach(function(b){ b.classList.remove('btn-g'); });
-  var active = document.getElementById('srt-' + tab);
-  if (active) active.classList.add('btn-g');
+  document.querySelectorAll('[id^="srt-topics"],[id^="srt-tab-"],[id^="srt-picture"],[id^="srt-homework"],[id^="srt-submissions"],[id^="srt-grammar-pdf"]').forEach(function(b){ if(b.tagName==='BUTTON') b.classList.remove('btn-g'); });
+  var active = document.getElementById('srt-tab-' + tab) || document.getElementById('srt-' + tab);
+  if (active && active.tagName==='BUTTON') active.classList.add('btn-g');
   var body = document.getElementById('sr-tab-body');
   if (!body) return;
   if (tab === 'topics')   {
@@ -5487,13 +5487,13 @@ function srTopicsFormHTML() {
     + '<span>문법 설명 Grammar <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = pattern|explanation|example_ko|example_en (3개)</span></span>'
     + '<button type="button" onclick="srGenGrammar()" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 문법 생성</button>'
     + '</label>'
-    + '<textarea id="srt-grammar" rows="4" style="width:100%;font-family:monospace;font-size:12px" placeholder="~을/를 좋아해요|I like ~|저는 음식을 좋아해요|I like food"></textarea>'
+    + '<textarea id="srt-grammar" rows="8" style="width:100%;font-family:monospace;font-size:12px" placeholder="~을/를 좋아해요|I like ~|저는 음식을 좋아해요|I like food"></textarea>'
     + '<div id="srt-grammar-msg" style="font-size:11px;color:#475569;margin-top:3px"></div></div>'
     + '<div class="fg"><label style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
     + '<span>빠른 도움 Helpers <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|en (4개)</span></span>'
     + '<button type="button" onclick="srGenHelpers()" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 도움말 생성</button>'
     + '</label>'
-    + '<textarea id="srt-helpers" rows="4" style="width:100%;font-family:monospace;font-size:12px" placeholder="저는 음식을 좋아해요|I like food"></textarea>'
+    + '<textarea id="srt-helpers" rows="8" style="width:100%;font-family:monospace;font-size:12px" placeholder="저는 음식을 좋아해요|I like food"></textarea>'
     + '<div id="srt-helpers-msg" style="font-size:11px;color:#475569;margin-top:3px"></div></div>'
     + '<div class="fg"><label>Dictation 예문 <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|en (3개)</span></label>'
     + '<textarea id="srt-dictation-sentences" rows="3" style="width:100%;font-family:monospace;font-size:12px" placeholder="한국 음식은 맛있어요|Korean food is delicious"></textarea></div>'

@@ -2393,6 +2393,11 @@ function renderArticlePage() {
     + '</div>'
     + '<div id="art-summary-feedback" style="margin-top:10px;font-size:13px;line-height:1.6"></div>'
     + '</div>'
+    + '<div style="margin-top:24px;padding-top:20px;border-top:2px solid var(--border)">'
+    + '<div style="font-size:14px;font-weight:800;margin-bottom:8px">🎧 Listening Quiz</div>'
+    + '<p style="font-size:12px;color:var(--gray);margin-bottom:10px">Listen to key vocabulary from this article and identify the meaning.</p>'
+    + '<div id="art-listening-quiz"><button onclick="startArticleListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div>'
+    + '</div>'
     + '</div>'
 
     // 구분선
@@ -2639,6 +2644,40 @@ async function checkArticleSummary() {
     var feedback = (r.content||[]).map(function(c){return c.text||'';}).join('');
     fb.innerHTML = '<div style="background:var(--light);border-radius:10px;padding:12px 14px;line-height:1.7;white-space:pre-wrap">'+feedback.replace(/</g,'&lt;')+'</div>';
   } catch(e) { fb.innerHTML = '<span style="color:#dc2626">Error: '+e.message+'</span>'; }
+}
+
+function startArticleListeningQuiz() {
+  var el = document.getElementById('art-listening-quiz');
+  if (!el) return;
+  var vocabItems = [];
+  document.querySelectorAll('#art-vocab-list .art-vocab-item').forEach(function(item){
+    var ko = item.querySelector('.art-vocab-ko');
+    var en = item.querySelector('.art-vocab-en');
+    if (ko && en) vocabItems.push({ko:ko.textContent.trim(), en:en.textContent.trim()});
+  });
+  if (!vocabItems.length) { el.innerHTML='<div style="color:#94a3b8;font-size:13px">No vocabulary available. Switch to Vocab tab first.</div>'; return; }
+  var items = vocabItems.slice(0,5);
+  var qi = 0;
+  function renderQ() {
+    if (qi >= items.length) {
+      el.innerHTML='<div style="text-align:center;padding:16px"><div style="font-size:18px;font-weight:800;color:#16a34a;margin-bottom:4px">Quiz Complete!</div><div style="font-size:13px;color:#64748b">Great listening practice!</div></div>';
+      return;
+    }
+    var v = items[qi];
+    var opts = items.map(function(x){return x.en;}).sort(function(){return Math.random()-.5;}).slice(0,3);
+    if (opts.indexOf(v.en)<0) opts[Math.floor(Math.random()*3)] = v.en;
+    el.innerHTML='<div style="text-align:center;margin-bottom:12px"><div style="font-size:12px;color:var(--gray);margin-bottom:8px">Listen and pick the meaning ('+(qi+1)+'/'+items.length+')</div>'
+      +'<button onclick="ttsSpeak(\''+v.ko.replace(/'/g,"\\'")+'\')" style="padding:12px 24px;background:var(--light);border:1.5px solid var(--border);border-radius:12px;font-size:16px;cursor:pointer;font-family:inherit">🔊 Play</button></div>'
+      +'<div style="display:flex;flex-direction:column;gap:6px">'+opts.map(function(o){
+        return '<button onclick="artListenPick(this,\''+o.replace(/'/g,"\\'")+'\',\''+v.en.replace(/'/g,"\\'")+'\')" style="padding:10px 14px;background:#fff;border:1px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer;font-family:inherit;text-align:left">'+o+'</button>';
+      }).join('')+'</div>';
+  }
+  window.artListenPick = function(btn,picked,correct){
+    if(picked===correct){btn.style.background='#dcfce7';btn.style.borderColor='#22c55e';btn.style.fontWeight='700';}
+    else{btn.style.background='#fee2e2';btn.style.borderColor='#ef4444';}
+    qi++; setTimeout(renderQ,800);
+  };
+  renderQ();
 }
 
 function startFillExercise() {
