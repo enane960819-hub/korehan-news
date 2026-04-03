@@ -5865,12 +5865,21 @@ async function srPregenerate10Days() {
     try {
       var prompt = 'Generate daily study content for ' + level + ' level Korean learners.\n'
         + 'Level: ' + (levelGuide[level]||'') + '\n' + topicHint + '\n\n'
-        + 'Return ONLY valid JSON:\n{"topic_ko":"주제","topic_en":"Topic","vocab":[{"ko":"","rom":"","en":"","level":"'+level+'"}],"grammar":[{"level":"'+level+'","pattern":"","explanation":"","example_ko":"","example_en":""}],"helpers":[{"ko":"","en":""}],"dictation_sentences":[{"ko":"","en":""}],"dictation_questions":[{"question_ko":"","answer_ko":"","hint_en":""}]}\nvocab:5. grammar:3. helpers:4. dictation_sentences:3. dictation_questions:3.';
+        + 'Return ONLY valid JSON (strict RFC8259, no markdown, no comments, no trailing commas):\n'
+        + '{"topic_ko":"주제","topic_en":"Topic","vocab":[{"ko":"","rom":"","en":"","level":"'+level+'"}],"grammar":[{"level":"'+level+'","pattern":"","explanation":"","example_ko":"","example_en":""}],"helpers":[{"ko":"","en":""}],"dictation_sentences":[{"ko":"","en":""}],"dictation_questions":[{"question_ko":"","answer_ko":"","hint_en":""}]}\n'
+        + 'Counts: vocab=5, grammar=3, helpers=4, dictation_sentences=3, dictation_questions=3.';
 
-      var resp = await callClaude({feature:'admin-pregen',model:'claude-haiku-4-5-20251001',max_tokens:1200,messages:[{role:'user',content:prompt}]});
-      var raw = (resp.content||[]).map(function(c){return c.text||'';}).join('');
-      var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
-      var parsed = JSON.parse(raw.slice(s, e+1));
+      var parsed = null;
+      for (var attempt = 1; attempt <= 3; attempt++) {
+        var resp = await callClaude({feature:'admin-pregen',model:'claude-haiku-4-5-20251001',max_tokens:1200,messages:[{role:'user',content:prompt}]});
+        var raw = (resp.content||[]).map(function(c){return c.text||'';}).join('');
+        try {
+          parsed = srParseStrictJsonObject(raw);
+          break;
+        } catch(parseErr) {
+          if (attempt === 3) throw parseErr;
+        }
+      }
 
       var rec = {
         scheduled_date: date, level: level,
@@ -5889,6 +5898,47 @@ async function srPregenerate10Days() {
 
   toast('Generated ' + generated + ' days of topics!');
   await srLoadTopicSchedule();
+}
+
+function srExtractFirstJSONObject(raw) {
+  var text = String(raw || '').replace(/```json|```/gi, '').trim();
+  if (!text) return '';
+  var start = text.indexOf('{');
+  if (start < 0) return '';
+
+  var depth = 0;
+  var inString = false;
+  var escaped = false;
+  for (var i = start; i < text.length; i++) {
+    var ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') { inString = true; continue; }
+    if (ch === '{') depth++;
+    if (ch === '}') {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return '';
+}
+
+function srParseStrictJsonObject(raw) {
+  var extracted = srExtractFirstJSONObject(raw);
+  if (!extracted) throw new Error('No JSON object in AI response');
+
+  // Try strict parse first.
+  try { return JSON.parse(extracted); } catch (_) {}
+
+  // Fallback: remove trailing commas that often break JSON.
+  var softened = extracted.replace(/,\s*([}\]])/g, '$1');
+  try { return JSON.parse(softened); } catch (e) {}
+
+  throw new Error('Invalid JSON from AI response');
 }
 
 function srEditDailyRow(date, level) {
