@@ -198,14 +198,35 @@
     initShop();
   };
 
-  // ── Room Items in Shop (loaded from DB via ROOM_ITEMS global, fallback hardcoded) ──
-  var ROOM_ITEMS_SHOP = (typeof ROOM_ITEMS !== 'undefined') ? ROOM_ITEMS : [];
+  // ── Room Items in Shop (loaded from DB, fallback hardcoded) ──
+  var ROOM_ITEMS_FALLBACK = [
+    {id:'character',  name:'Character',        price:0,   img:'assets/file_000000000570720694038be799df9f21-removebg-preview.png'},
+    {id:'cat',        name:'Sleeping Cat',     price:15,  img:'assets/file_000000003a7c7209a3877df863e15fd9-removebg-preview.png'},
+    {id:'poop',       name:'Happy Poop',       price:3,   img:'assets/file_000000004b247206b900dba933600c46-removebg-preview.png'},
+    {id:'cushion',    name:'Reading Cushion',  price:10,  img:'assets/file_0000000064f872098fc13437d998de5a-removebg-preview.png'},
+    {id:'lamp',       name:'Korean Lamp',      price:12,  img:'assets/file_00000000a2287209b632ccc0519de0e7-removebg-preview.png'},
+    {id:'bookshelf',  name:'Bookshelf',        price:25,  img:'assets/file_00000000a66472069f5c058b95fd2322-removebg-preview.png'},
+    {id:'plant',      name:'Potted Plant',     price:8,   img:'assets/file_00000000f734720691f7289c1f8a5e3c-removebg-preview.png'},
+    {id:'fennec',     name:'Fennec Fox',       price:20,  img:'assets/file_0000000097387206868da2533972ee90-removebg-preview.png'},
+    {id:'char_silver',name:'Silver Character', price:0,   img:'assets/file_00000000b8bc72069bc7877f36aaf27f-removebg-preview.png'},
+    {id:'char_thumbs',name:'Thumbs Up Guy',    price:0,   img:'assets/file_00000000d40c7206bb289cd92deab487-removebg-preview.png'},
+  ];
+  var ROOM_ITEMS_SHOP = ROOM_ITEMS_FALLBACK.slice();
+  var _shopRoomItemsLoaded = false;
 
   async function _ensureRoomItems() {
-    if (typeof loadRoomItemsFromDB === 'function') {
-      await loadRoomItemsFromDB();
-      ROOM_ITEMS_SHOP = (typeof ROOM_ITEMS !== 'undefined') ? ROOM_ITEMS : ROOM_ITEMS_SHOP;
-    }
+    if (_shopRoomItemsLoaded) return;
+    var sb = typeof getSupa === 'function' ? getSupa() : null;
+    if (!sb) return;
+    try {
+      var res = await sb.from('room_items').select('*').eq('active', true).order('sort_order');
+      if (!res.error && res.data && res.data.length) {
+        ROOM_ITEMS_SHOP = res.data.map(function(r) {
+          return { id: r.id, name: r.name, price: r.price_nyang, img: r.image_url, size: r.base_size };
+        });
+        _shopRoomItemsLoaded = true;
+      }
+    } catch(e) {}
   }
 
   async function renderRoomShop() {
@@ -217,7 +238,7 @@
     grid.innerHTML = ROOM_ITEMS_SHOP.map(function(it){
       var isOwned = owned.indexOf(it.id) >= 0;
       return '<article class="card">'
-        + '<div class="thumb" style="background-image:url('+it.img+');background-size:contain;background-repeat:no-repeat;background-position:center;background-color:#f8fafc"></div>'
+        + '<div class="thumb" style="display:flex;align-items:center;justify-content:center;background:#f8fafc"><img src="'+it.img+'" alt="'+it.name+'" style="max-width:80px;max-height:80px;object-fit:contain"></div>'
         + '<div class="body">'
         + '<div class="title">'+it.name+'</div>'
         + '<div class="desc">Room decoration item</div>'
