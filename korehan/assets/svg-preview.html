@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KoreHan Room Assets — SVG Preview</title>
+<style>
+body { background:#0b1626; color:#fff; font-family:'Inter',sans-serif; padding:40px 20px; margin:0; }
+h1 { font-size:28px; font-weight:900; margin-bottom:8px; }
+p { color:rgba(255,255,255,.5); font-size:14px; margin-bottom:40px; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:24px; max-width:900px; }
+.card { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:20px; text-align:center; }
+.card svg { display:block; margin:0 auto 12px; }
+.card-name { font-size:13px; font-weight:700; margin-bottom:4px; }
+.card-cat { font-size:11px; color:rgba(255,255,255,.4); }
+h2 { font-size:18px; font-weight:800; margin:40px 0 16px; color:#8ffcff; }
+.room-preview { background:linear-gradient(180deg,#1a1a3e,#2d1f4e); border-radius:20px; padding:40px; margin-top:40px; position:relative; width:360px; height:320px; border:1px solid rgba(255,255,255,.1); }
+.room-preview svg { position:absolute; cursor:grab; }
+.room-preview svg:hover { filter:drop-shadow(0 0 8px rgba(143,252,255,.4)); }
+</style>
+</head>
+<body>
+
+<h1>🏠 KoreHan Room Assets</h1>
+<p>SVG asset samples for the mini-room system. Each is 64x64, scalable, lightweight.</p>
+
+<h2>Furniture</h2>
+<div class="grid">
+
+<div class="card">
+<svg viewBox="0 0 64 64" width="96" height="96">
+  <!-- Study Desk -->
+  <rect x="8" y="30" width="48" height="5" rx="2" fill="#C4956A"/>
+  <rect x="10" y="35" width="5" height="22" rx="1" fill="#A67B5B"/>
+  <rect x="49" y="35" width="5" height="22" rx="1" fill="#A67B5B"/>
+  <!-- drawer -->
+  <rect x="20" y="35" width="24" height="14" rx="2" fill="#B8845A"/>
+  <rect x="29" y="40" width="6" height="2" rx="1" fill="#8B6914"/>
+  <!-- books on desk -->
+  <rect x="12" y="22" width="8" height="9" rx="1" fill="#4A90D9"/>
+  <rect x="21" y="24" width="7" height="7" rx="1" fill="#E74C3C"/>
+  <rect x="29" y="23" width="6" height="8" rx="1" fill="#2ECC71"/>
+  <!-- lamp -->
+  <rect x="43" y="14" width="2" height="17" fill="#FFD700"/>
+  <ellipse cx="44" cy="13" rx="7" ry="4" fill="#FFE066"/>
+  <ellipse cx="44" cy="12" rx="5" ry="2.5" fill="#FFF3B0"/>
+</svg>
+<div class="card-name">Study Desk</div>
+<div class="card-cat">Furniture</div>
+</div>
+
+<div class="card">
+<svg viewBox="0 0 64 64" width="96" height="96">
+  <!-- Bookshelf -->
+  <rect x="10" y="6" width="44" height="52" rx="3" fill="#8B6914"/>
+  <rect x="12" y="8" width="40" height="48" rx="2" fill="#A67B5B"/>
+  <!-- shelves -->
+  <rect x="12" y="20" width="40" height="3" fill="#8B6914"/>
+  <rect x="12" y="35" width="40" height="3" fill="#8B6914"/>
+  <!-- books row 1 -->
+  <rect x="15" y="10" width="5" height="10" rx="1" fill="#E74C3C"/>
+  <rect x="21" y="11" width="4" height="9" rx="1" fill="#3498DB"/>
+  <rect x="26" y="10" width="6" height="10" rx="1" fill="#2ECC71"/>
+  <rect x="33" y="12" width="5" height="8" rx="1" fill="#F39C12"/>
+  <rect x="39" y="10" width="4" height="10" rx="1" fill="#9B59B6"/>
+  <rect x="44" y="11" width="5" height="9" rx="1" fill="#1ABC9C"/>
+  <!-- books row 2 -->
+  <rect x="15" y="24" width="6" height="11" rx="1" fill="#E67E22"/>
+  <rect x="22" y="25" width="5" height="10" rx="1" fill="#2980B9"/>
+  <rect x="28" y="24" width="7" height="11" rx="1" fill="#C0392B"/>
+  <!-- plant on shelf -->
+  <circle cx="44" cy="28" r="4" fill="#27AE60"/>
+  <rect x="42" y="31" width="4" height="4" rx="1" fill="#8B6914"/>
+  <!-- books row 3 -->
+  <rect x="15" y="40" width="5" height="8" rx="1" fill="#8E44AD"/>
+  <rect x="21" y="39" width="6" height="9" rx="1" fill="#16A085"/>
+  <rect x="28" y="40" width="4" height="8" rx="1" fill="#D35400"/>
+</svg>
+<div class="card-name">Bookshelf</div>
+<div class="card-cat">Furniture</div>
+</div>
+
+<div class="card">
+<svg viewBox="0 0 64 64" width="96" height="96">
+  <!-- Floor Cushion (방석) -->
+  <ellipse cx="32" cy="48" rx="22" ry="8" fill="#1a1a3e" opacity=".15"/>
+  <ellipse cx="32" cy="42" rx="20" ry="12" fill="#E74C3C"/>
+  <ellipse cx="32" cy="40" rx="20" ry="12" fill="#FF6B6B"/>
+  <ellipse cx="32" cy="39" rx="16" ry="9" fill="#FF8E8E"/>
+  <!-- pattern -->
+  <ellipse cx="32" cy="39" rx="8" ry="4.5" fill="none" stroke="#E74C3C" stroke-width="1.5"/>
+  <!-- tassel -->
+  <circle cx="14" cy="42" r="2" fill="#FFD700"/>
+  <circle cx="50" cy="42" r="2" fill="#FFD700"/>
+</svg>
+<div class="card-name">Floor Cushion</div>
+<div class="card-cat">Korean Traditional</div>
+</div>
+
+</div>
+
+<h2>Pets</h2>
+<div class="grid">
+
+<div class="card">
+<svg viewBox="0 0 64 64" width="96" height="96">
+  <!-- Sleeping Cat -->
+  <ellipse cx="32" cy="50" rx="20" ry="5" fill="#1a1a3e" opacity=".12"/>
+  <!-- body -->
+  <ellipse cx="32" cy="42" rx="18" ry="10" fill="#FF9F43"/>
+  <ellipse cx="32" cy="41" rx="17" ry="9" fill="#FECA57"/>
+  <!-- head -->
+  <circle cx="18" cy="36" r="9" fill="#FF9F43"/>
+  <circle cx="18" cy="35" r="8.5" fill="#FECA57"/>
+  <!-- ears -->
+  <polygon points="12,28 10,20 17,26" fill="#FF9F43"/>
+  <polygon points="13,27 11.5,21 16.5,26" fill="#FFE4B5"/>
+  <polygon points="24,28 26,20 19,26" fill="#FF9F43"/>
+  <polygon points="23,27 24.5,21 19.5,26" fill="#FFE4B5"/>
+  <!-- closed eyes -->
+  <path d="M14,35 Q16,33 18,35" stroke="#C44" fill="none" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M18,35 Q20,33 22,35" stroke="#C44" fill="none" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- nose -->
+  <ellipse cx="18" cy="37" rx="1.5" ry="1" fill="#FF6B6B"/>
+  <!-- tail -->
+  <path d="M50,40 Q56,32 52,26" stroke="#FF9F43" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M50,39 Q55,32 51.5,27" stroke="#FECA57" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- stripes -->
+  <path d="M26,36 Q32,34 38,36" stroke="#E8A030" stroke-width="1.2" fill="none"/>
+  <path d="M24,40 Q32,38 40,40" stroke="#E8A030" stroke-width="1.2" fill="none"/>
+  <path d="M25,44 Q32,42 39,44" stroke="#E8A030" stroke-width="1.2" fill="none"/>
+</svg>
+<div class="card-name">Sleeping Cat</div>
+<div class="card-cat">Pet</div>
+</div>
+
+<div class="card">
+<svg viewBox="0 0 64 64" width="96" height="96">
+  <!-- Bunny -->
+  <ellipse cx="32" cy="54" rx="14" ry="4" fill="#1a1a3e" opacity=".12"/>
+  <!-- body -->
+  <ellipse cx="32" cy="44" rx="12" ry="11" fill="#F5F5F5"/>
+  <ellipse cx="32" cy="43" rx="11" ry="10" fill="#FFF"/>
+  <!-- head -->
+  <circle cx="32" cy="28" r="10" fill="#F5F5F5"/>
+  <circle cx="32" cy="27.5" r="9.5" fill="#FFF"/>
+  <!-- ears -->
+  <ellipse cx="25" cy="14" rx="4" ry="11" fill="#F5F5F5" transform="rotate(-10,25,14)"/>
+  <ellipse cx="25" cy="14" rx="2.5" ry="9" fill="#FFB5C5" transform="rotate(-10,25,14)"/>
+  <ellipse cx="39" cy="14" rx="4" ry="11" fill="#F5F5F5" transform="rotate(10,39,14)"/>
+  <ellipse cx="39" cy="14" rx="2.5" ry="9" fill="#FFB5C5" transform="rotate(10,39,14)"/>
+  <!-- eyes -->
+  <circle cx="28" cy="26" r="2.5" fill="#333"/>
+  <circle cx="36" cy="26" r="2.5" fill="#333"/>
+  <circle cx="29" cy="25" r="1" fill="#fff"/>
+  <circle cx="37" cy="25" r="1" fill="#fff"/>
+  <!-- nose -->
+  <ellipse cx="32" cy="30" rx="2" ry="1.5" fill="#FFB5C5"/>
+  <!-- mouth -->
+  <path d="M30,32 Q32,34 34,32" stroke="#DDA0A0" fill="none" stroke-width="1" stroke-linecap="round"/>
+  <!-- cheeks -->
+  <circle cx="24" cy="29" r="2.5" fill="#FFD4DE" opacity=".5"/>
+  <circle cx="40" cy="29" r="2.5" fill="#FFD4DE" opacity=".5"/>
+  <!-- feet -->
+  <ellipse cx="26" cy="52" rx="5" ry="3" fill="#F5F5F5"/>
+  <ellipse cx="38" cy="52" rx="5" ry="3" fill="#F5F5F5"/>
+</svg>
+<div class="card-name">Bunny</div>
+<div class="card-cat">Pet</div>
+</div>
+
+</div>
+
+<h2>Decorations</h2>
+<div class="grid">
+
+<div class="card">
+<svg viewBox="0 0 64 64" width="96" height="96">
+  <!-- Potted Plant -->
+  <ellipse cx="32" cy="56" rx="10" ry="3" fill="#1a1a3e" opacity=".12"/>
+  <!-- pot -->
+  <path d="M22,42 L24,56 L40,56 L42,42 Z" fill="#E07040"/>
+  <rect x="20" y="40" width="24" height="4" rx="2" fill="#C0522A"/>
+  <path d="M24,42 L25,54 L39,54 L40,42 Z" fill="#D4603A"/>
+  <!-- soil -->
+  <ellipse cx="32" cy="42" rx="10" ry="2.5" fill="#5D4037"/>
+  <!-- stems + leaves -->
+  <path d="M32,42 Q30,30 24,22" stroke="#2ECC71" stroke-width="2" fill="none"/>
+  <path d="M32,42 Q34,28 40,20" stroke="#2ECC71" stroke-width="2" fill="none"/>
+  <path d="M32,42 Q32,26 32,16" stroke="#27AE60" stroke-width="2" fill="none"/>
+  <!-- leaves -->
+  <ellipse cx="22" cy="20" rx="6" ry="4" fill="#2ECC71" transform="rotate(-30,22,20)"/>
+  <ellipse cx="23" cy="19" rx="5" ry="3" fill="#58D68D" transform="rotate(-30,23,19)"/>
+  <ellipse cx="42" cy="18" rx="6" ry="4" fill="#2ECC71" transform="rotate(25,42,18)"/>
+  <ellipse cx="41" cy="17" rx="5" ry="3" fill="#58D68D" transform="rotate(25,41,17)"/>
+  <ellipse cx="32" cy="14" rx="5" ry="7" fill="#27AE60" transform="rotate(5,32,14)"/>
+  <ellipse cx="32" cy="13" rx="4" ry="5.5" fill="#58D68D" transform="rotate(5,32,13)"/>
+  <!-- small leaf -->
+  <ellipse cx="28" cy="28" rx="4" ry="2.5" fill="#2ECC71" transform="rotate(-20,28,28)"/>
+</svg>
+<div class="card-name">Potted Plant</div>
+<div class="card-cat">Decoration</div>
+</div>
+
+<div class="card">
+<svg viewBox="0 0 64 64" width="96" height="96">
+  <!-- Korean Traditional Lamp (등) -->
+  <!-- base -->
+  <rect x="28" y="50" width="8" height="6" rx="2" fill="#8B6914"/>
+  <rect x="26" y="48" width="12" height="4" rx="2" fill="#A67B5B"/>
+  <!-- pole -->
+  <rect x="31" y="14" width="2" height="36" fill="#C4956A"/>
+  <!-- lamp shade (traditional 한지) -->
+  <path d="M20,14 Q20,6 32,4 Q44,6 44,14 L42,28 Q32,30 22,28 Z" fill="#FFF3E0" opacity=".9"/>
+  <path d="M22,14 Q22,8 32,6 Q42,8 42,14 L40,26 Q32,28 24,26 Z" fill="#FFECB3"/>
+  <!-- warm glow -->
+  <ellipse cx="32" cy="18" rx="14" ry="10" fill="#FFD54F" opacity=".15"/>
+  <!-- frame lines -->
+  <path d="M24,10 L26,26" stroke="#D4A04A" stroke-width=".8" fill="none"/>
+  <path d="M32,6 L32,28" stroke="#D4A04A" stroke-width=".8" fill="none"/>
+  <path d="M40,10 L38,26" stroke="#D4A04A" stroke-width=".8" fill="none"/>
+  <!-- top ornament -->
+  <circle cx="32" cy="4" r="2" fill="#E07040"/>
+</svg>
+<div class="card-name">Korean Lamp</div>
+<div class="card-cat">Korean Traditional</div>
+</div>
+
+</div>
+
+<h2>Room Preview (Drag concept)</h2>
+<div class="room-preview" id="room">
+  <div style="position:absolute;inset:0;background:linear-gradient(180deg,#2a1f4e 0%,#1a1a3e 40%,#3d2a5c 100%);border-radius:20px;z-index:0"></div>
+  <!-- floor line -->
+  <div style="position:absolute;bottom:80px;left:0;right:0;height:1px;background:rgba(255,255,255,.08);z-index:1"></div>
+  <!-- wall decoration -->
+  <div style="position:absolute;top:20px;left:50%;transform:translateX(-50%);font-size:11px;color:rgba(255,255,255,.2);letter-spacing:.1em;z-index:1">MY STUDY ROOM</div>
+
+  <!-- Items placed in room -->
+  <svg viewBox="0 0 64 64" width="80" height="80" style="left:40px;bottom:60px;z-index:2">
+    <!-- desk copy -->
+    <rect x="8" y="30" width="48" height="5" rx="2" fill="#C4956A"/>
+    <rect x="10" y="35" width="5" height="22" rx="1" fill="#A67B5B"/>
+    <rect x="49" y="35" width="5" height="22" rx="1" fill="#A67B5B"/>
+    <rect x="20" y="35" width="24" height="14" rx="2" fill="#B8845A"/>
+    <rect x="29" y="40" width="6" height="2" rx="1" fill="#8B6914"/>
+    <rect x="12" y="22" width="8" height="9" rx="1" fill="#4A90D9"/>
+    <rect x="21" y="24" width="7" height="7" rx="1" fill="#E74C3C"/>
+    <rect x="43" y="14" width="2" height="17" fill="#FFD700"/>
+    <ellipse cx="44" cy="13" rx="7" ry="4" fill="#FFE066"/>
+  </svg>
+
+  <svg viewBox="0 0 64 64" width="72" height="72" style="right:30px;bottom:60px;z-index:2">
+    <!-- bookshelf copy -->
+    <rect x="10" y="6" width="44" height="52" rx="3" fill="#8B6914"/>
+    <rect x="12" y="8" width="40" height="48" rx="2" fill="#A67B5B"/>
+    <rect x="12" y="20" width="40" height="3" fill="#8B6914"/>
+    <rect x="12" y="35" width="40" height="3" fill="#8B6914"/>
+    <rect x="15" y="10" width="5" height="10" rx="1" fill="#E74C3C"/>
+    <rect x="21" y="11" width="4" height="9" rx="1" fill="#3498DB"/>
+    <rect x="26" y="10" width="6" height="10" rx="1" fill="#2ECC71"/>
+    <rect x="33" y="12" width="5" height="8" rx="1" fill="#F39C12"/>
+    <rect x="15" y="24" width="6" height="11" rx="1" fill="#E67E22"/>
+    <rect x="22" y="25" width="5" height="10" rx="1" fill="#2980B9"/>
+  </svg>
+
+  <svg viewBox="0 0 64 64" width="56" height="56" style="left:160px;bottom:50px;z-index:3">
+    <!-- cat copy -->
+    <ellipse cx="32" cy="42" rx="18" ry="10" fill="#FF9F43"/>
+    <ellipse cx="32" cy="41" rx="17" ry="9" fill="#FECA57"/>
+    <circle cx="18" cy="36" r="9" fill="#FF9F43"/>
+    <circle cx="18" cy="35" r="8.5" fill="#FECA57"/>
+    <polygon points="12,28 10,20 17,26" fill="#FF9F43"/>
+    <polygon points="24,28 26,20 19,26" fill="#FF9F43"/>
+    <path d="M14,35 Q16,33 18,35" stroke="#C44" fill="none" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M18,35 Q20,33 22,35" stroke="#C44" fill="none" stroke-width="1.5" stroke-linecap="round"/>
+    <ellipse cx="18" cy="37" rx="1.5" ry="1" fill="#FF6B6B"/>
+    <path d="M50,40 Q56,32 52,26" stroke="#FF9F43" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </svg>
+
+  <svg viewBox="0 0 64 64" width="48" height="48" style="right:120px;bottom:100px;z-index:2">
+    <!-- plant copy -->
+    <path d="M22,42 L24,56 L40,56 L42,42 Z" fill="#E07040"/>
+    <rect x="20" y="40" width="24" height="4" rx="2" fill="#C0522A"/>
+    <ellipse cx="32" cy="42" rx="10" ry="2.5" fill="#5D4037"/>
+    <path d="M32,42 Q30,30 24,22" stroke="#2ECC71" stroke-width="2" fill="none"/>
+    <path d="M32,42 Q34,28 40,20" stroke="#2ECC71" stroke-width="2" fill="none"/>
+    <ellipse cx="22" cy="20" rx="6" ry="4" fill="#2ECC71" transform="rotate(-30,22,20)"/>
+    <ellipse cx="42" cy="18" rx="6" ry="4" fill="#2ECC71" transform="rotate(25,42,18)"/>
+    <ellipse cx="32" cy="14" rx="5" ry="7" fill="#27AE60"/>
+  </svg>
+
+  <svg viewBox="0 0 64 64" width="50" height="50" style="right:20px;top:30px;z-index:2">
+    <!-- lamp copy -->
+    <rect x="28" y="50" width="8" height="6" rx="2" fill="#8B6914"/>
+    <rect x="26" y="48" width="12" height="4" rx="2" fill="#A67B5B"/>
+    <rect x="31" y="14" width="2" height="36" fill="#C4956A"/>
+    <path d="M20,14 Q20,6 32,4 Q44,6 44,14 L42,28 Q32,30 22,28 Z" fill="#FFF3E0" opacity=".9"/>
+    <path d="M22,14 Q22,8 32,6 Q42,8 42,14 L40,26 Q32,28 24,26 Z" fill="#FFECB3"/>
+    <ellipse cx="32" cy="18" rx="14" ry="10" fill="#FFD54F" opacity=".15"/>
+    <circle cx="32" cy="4" r="2" fill="#E07040"/>
+  </svg>
+
+  <!-- Badges on wall -->
+  <div style="position:absolute;top:50px;left:30px;z-index:2;display:flex;gap:8px">
+    <div style="width:32px;height:32px;background:rgba(255,215,0,.15);border:1.5px solid rgba(255,215,0,.4);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">🔥</div>
+    <div style="width:32px;height:32px;background:rgba(96,165,250,.15);border:1.5px solid rgba(96,165,250,.4);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">📚</div>
+    <div style="width:32px;height:32px;background:rgba(168,85,247,.15);border:1.5px solid rgba(168,85,247,.4);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">💎</div>
+  </div>
+</div>
+
+</body>
+</html>
