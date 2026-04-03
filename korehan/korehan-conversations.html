@@ -509,6 +509,7 @@ function renderStudyNotes(c) {
     '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.book+' Key Vocabulary'+addVocabBtn+'</div><div class="dp-vocab-list" id="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">No vocabulary data</span>')+'</div></div>'
     +(grammar||isAdm ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.pen+' Grammar Points'+addGrammarBtn+'</div><div class="dp-grammar-list" id="dp-grammar-list">'+(grammar||'')+'</div></div>' : '')
     +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.target+' Practice Mission</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
+    +'<div class="dp-study-card"><div class="dp-study-card-title">🎧 Listening Quiz</div><div id="dp-listening-quiz"><button onclick="startConvListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div></div>'
     +'<div style="height:80px"></div>';
 }
 
@@ -559,6 +560,36 @@ function convAddGrammar() {
   var c = window._currentConv; if (!c) return;
   if (!c.grammar) c.grammar = [];
   c.grammar.push({point:point,ex:ex}); renderStudyNotes(c); _convSaveData();
+}
+
+// ── Listening Quiz for Conversations ──
+function startConvListeningQuiz() {
+  var c = window._currentConv;
+  if (!c || !c.vocab || !c.vocab.length) { toast('No vocab data for quiz'); return; }
+  var el = document.getElementById('dp-listening-quiz');
+  if (!el) return;
+  var items = c.vocab.slice(0,5);
+  var qi = 0;
+  function renderQ() {
+    if (qi >= items.length) {
+      el.innerHTML = '<div style="text-align:center;padding:16px"><div style="font-size:20px;font-weight:800;color:#16a34a;margin-bottom:6px">Quiz Complete!</div><div style="font-size:13px;color:#64748b">Great job practicing your listening!</div></div>';
+      return;
+    }
+    var v = items[qi];
+    var opts = items.map(function(x){return x.en;}).sort(function(){return Math.random()-.5;}).slice(0,3);
+    if (opts.indexOf(v.en)<0) opts[Math.floor(Math.random()*3)] = v.en;
+    el.innerHTML = '<div style="text-align:center;margin-bottom:12px"><div style="font-size:12px;color:#64748b;margin-bottom:8px">Listen and choose the correct meaning ('+(qi+1)+'/'+items.length+')</div>'
+      +'<button onclick="if(typeof ttsSpeak===\'function\')ttsSpeak(\''+v.ko.replace(/'/g,"\\'")+'\')" style="padding:12px 24px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;font-size:16px;cursor:pointer;font-family:inherit">🔊 Play</button></div>'
+      +'<div style="display:flex;flex-direction:column;gap:6px">'+opts.map(function(o){
+        return '<button onclick="checkListenAns(this,\''+o.replace(/'/g,"\\'")+'\',\''+v.en.replace(/'/g,"\\'")+'\','+qi+')" style="padding:10px 14px;background:#fafbfc;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;cursor:pointer;font-family:inherit;text-align:left">'+o+'</button>';
+      }).join('')+'</div>';
+  }
+  window.checkListenAns = function(btn, picked, correct, idx) {
+    if (picked===correct) { btn.style.background='#dcfce7'; btn.style.borderColor='#22c55e'; btn.style.fontWeight='700'; }
+    else { btn.style.background='#fee2e2'; btn.style.borderColor='#ef4444'; }
+    qi++; setTimeout(renderQ, 800);
+  };
+  renderQ();
 }
 
 function closeDetail() {

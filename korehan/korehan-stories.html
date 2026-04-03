@@ -824,6 +824,7 @@ function openStory(id) {
         + '<div class="st-card"><div class="st-card-title"><span>📚</span> Key Vocabulary</div><div class="st-vocab-list">' + vocab + '</div></div>'
         + (grammar ? '<div class="st-card"><div class="st-card-title"><span>✏️</span> Grammar Points</div><div class="st-grammar-list">' + grammar + '</div></div>' : '')
         + (comprehension ? '<div class="st-card"><div class="st-card-title"><span>🎯</span> Comprehension</div><div class="st-q-list">' + comprehension + '</div></div>' : '')
+        + '<div class="st-card"><div class="st-card-title"><span>🎧</span> Listening Quiz</div><div id="st-listening-quiz"><button onclick="startStoryListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div></div>'
       + '</div>'
     + '</div>';
 
@@ -833,6 +834,40 @@ function openStory(id) {
   if (window.renderKhLucideIcons) renderKhLucideIcons();
   // 저장된 단어 상태 복원
   if (typeof restoreSaveButtons === 'function') restoreSaveButtons('st-overlay');
+}
+
+function startStoryListeningQuiz() {
+  var el = document.getElementById('st-listening-quiz');
+  if (!el) return;
+  var vocabItems = [];
+  document.querySelectorAll('.st-vocab-item').forEach(function(item){
+    var ko = item.querySelector('.st-vi-ko');
+    var en = item.querySelector('.st-vi-en');
+    if (ko && en) vocabItems.push({ko:ko.textContent.trim(), en:en.textContent.trim()});
+  });
+  if (!vocabItems.length) { el.innerHTML='<span style="color:#94a3b8;font-size:13px">No vocabulary available.</span>'; return; }
+  var items = vocabItems.slice(0,5);
+  var qi = 0;
+  function renderQ() {
+    if (qi >= items.length) {
+      el.innerHTML='<div style="text-align:center;padding:16px"><div style="font-size:18px;font-weight:800;color:#16a34a;margin-bottom:4px">Quiz Complete!</div><div style="font-size:13px;color:#64748b">Great listening practice!</div></div>';
+      return;
+    }
+    var v = items[qi];
+    var opts = items.map(function(x){return x.en;}).sort(function(){return Math.random()-.5;}).slice(0,3);
+    if (opts.indexOf(v.en)<0) opts[Math.floor(Math.random()*3)] = v.en;
+    el.innerHTML='<div style="text-align:center;margin-bottom:12px"><div style="font-size:12px;color:#64748b;margin-bottom:8px">Listen and pick the meaning ('+(qi+1)+'/'+items.length+')</div>'
+      +'<button onclick="if(typeof ttsSpeak===\'function\')ttsSpeak(\''+v.ko.replace(/'/g,"\\'")+'\')" style="padding:12px 24px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;font-size:16px;cursor:pointer;font-family:inherit">🔊 Play</button></div>'
+      +'<div style="display:flex;flex-direction:column;gap:6px">'+opts.map(function(o){
+        return '<button onclick="stListenPick(this,\''+o.replace(/'/g,"\\'")+'\',\''+v.en.replace(/'/g,"\\'")+'\')" style="padding:10px 14px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;cursor:pointer;font-family:inherit;text-align:left">'+o+'</button>';
+      }).join('')+'</div>';
+  }
+  window.stListenPick = function(btn,picked,correct){
+    if(picked===correct){btn.style.background='#dcfce7';btn.style.borderColor='#22c55e';btn.style.fontWeight='700';}
+    else{btn.style.background='#fee2e2';btn.style.borderColor='#ef4444';}
+    qi++; setTimeout(renderQ,800);
+  };
+  renderQ();
 }
 
 function closeSt() {
