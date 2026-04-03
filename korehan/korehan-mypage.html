@@ -377,10 +377,14 @@ body.kh-neon-on .mypage-hero {
 #miniroom-container { user-select:none; -webkit-user-select:none; }
 .room-placed-item {
   position:absolute; image-rendering:pixelated; background-repeat:no-repeat;
-  transition: outline .15s, box-shadow .15s;
+  transition: outline .15s, box-shadow .15s, width .12s ease, height .12s ease;
   z-index:1;
 }
 .room-placed-item.room-dragging { z-index:10; opacity:.85; }
+.room-placed-item.room-selected {
+  outline:2px solid #facc15 !important;
+  box-shadow:0 0 0 2px rgba(250,204,21,.35);
+}
 
 /* Shop modal */
 .room-shop-overlay {
@@ -499,6 +503,16 @@ body.kh-neon-on .room-shop-price { color:#8ffcff !important; }
       <button onclick="openRoomShop()" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Item Shop</button>
       <button onclick="toggleRoomEdit()" id="room-edit-btn" style="padding:8px 18px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Edit Room</button>
       <button onclick="saveRoomLayout()" id="room-save-btn" style="padding:8px 18px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:none">Save</button>
+    </div>
+    <div id="room-size-controls" style="margin-top:10px;text-align:center;display:none">
+      <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:6px">선택한 아이템 크기</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap">
+        <button onclick="nudgeSelectedItemScale(-10)" style="width:28px;height:28px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-weight:800">−</button>
+        <input type="range" id="room-size-slider" min="70" max="170" step="5" value="100" style="width:170px" oninput="onRoomSizeSlider(this.value)">
+        <button onclick="nudgeSelectedItemScale(10)" style="width:28px;height:28px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-weight:800">+</button>
+        <span id="room-size-value" style="font-size:12px;font-weight:800;color:#0b1626;min-width:42px;text-align:left">100%</span>
+      </div>
+      <div style="font-size:10px;color:#94a3b8;margin-top:6px">Edit Room 모드에서 아이템을 클릭 후 조절하세요.</div>
     </div>
   </div>
 
@@ -1156,8 +1170,8 @@ var ROOM_ITEMS = [
   {id:'bookshelf',  name:'Bookshelf',        price:25,  img:'assets/file_00000000a66472069f5c058b95fd2322-removebg-preview.png', size:75},
   {id:'plant',      name:'Potted Plant',     price:8,   img:'assets/file_00000000f734720691f7289c1f8a5e3c-removebg-preview.png', size:55},
   {id:'fennec',     name:'Fennec Fox',       price:20,  img:'assets/file_0000000097387206868da2533972ee90-removebg-preview.png', size:60},
-  {id:'char_silver',name:'Silver Character', price:0,   img:'assets/file_00000000b8bc72069bc7877f36aaf27f-removebg-preview.png', size:80},
-  {id:'char_thumbs',name:'Thumbs Up Guy',    price:0,   img:'assets/file_00000000d40c7206bb289cd92deab487-removebg-preview.png', size:80},
+  {id:'char_silver',name:'Silver Character', price:0,   img:'assets/file_00000000b8bc72069bc7877f36aaf27f-removebg-preview.png', size:96},
+  {id:'char_thumbs',name:'Thumbs Up Guy',    price:0,   img:'assets/file_00000000d40c7206bb289cd92deab487-removebg-preview.png', size:96},
 ];
 
 var K_ROOM_LAYOUT = 'kh_room_layout';
@@ -1165,6 +1179,7 @@ var K_ROOM_OWNED  = 'kh_room_owned';
 var _roomEditing  = false;
 var _dragItem     = null;
 var _dragOffset   = {x:0, y:0};
+var _selectedRoomItemId = null;
 
 // ── Item background style (individual images) ───────────────
 function roomItemBgStyle(item) {
@@ -1246,7 +1261,8 @@ function renderRoomItems() {
     var div = document.createElement('div');
     div.className = 'room-placed-item';
     div.dataset.itemId = placed.id;
-    var s = def.size || 50;
+    var scale = Math.max(70, Math.min(170, Number(placed.scale || 100)));
+    var s = Math.round((def.size || 50) * (scale / 100));
     div.setAttribute('style',
       'left:' + placed.x + 'px;top:' + placed.y + 'px;width:' + s + 'px;height:' + s + 'px;'
       + roomItemBgStyle(def)
@@ -1258,6 +1274,11 @@ function renderRoomItems() {
     // Drag events
     div.addEventListener('mousedown', roomDragStart);
     div.addEventListener('touchstart', roomDragStart, {passive:false});
+    div.addEventListener('click', roomSelectItem);
+
+    if (_selectedRoomItemId && _selectedRoomItemId === placed.id) {
+      div.classList.add('room-selected');
+    }
 
     container.appendChild(div);
   });
@@ -1277,21 +1298,28 @@ async function loadRoomLayout() {
   if (owned.length === 0 && layout.length === 0) {
     var starterOwned = ['character', 'plant'];
     var starterLayout = [
-      {id:'character', x:150, y:160},
-      {id:'plant',     x:280, y:220}
+      {id:'character', x:150, y:160, scale:100},
+      {id:'plant',     x:280, y:220, scale:100}
     ];
     setRoomOwned(starterOwned);
     setRoomLayout(starterLayout);
   }
 
   renderRoomItems();
+  updateRoomSizeUI();
 }
 
 // ── Save room layout ─────────────────────────────────────────
 function saveRoomLayout() {
   var items = [];
   document.querySelectorAll('.room-placed-item').forEach(function(el) {
-    items.push({id: el.dataset.itemId, x: parseInt(el.style.left) || 0, y: parseInt(el.style.top) || 0});
+    var saved = getPlacedState(el.dataset.itemId) || {};
+    items.push({
+      id: el.dataset.itemId,
+      x: parseInt(el.style.left) || 0,
+      y: parseInt(el.style.top) || 0,
+      scale: Math.max(70, Math.min(170, Number(saved.scale || 100)))
+    });
   });
   setRoomLayout(items);
   _syncRoomToServer();
@@ -1306,11 +1334,18 @@ function toggleRoomEdit() {
   var saveBtn = document.getElementById('room-save-btn');
   if (btn) btn.textContent = _roomEditing ? 'Editing...' : 'Edit Room';
   if (saveBtn) saveBtn.style.display = _roomEditing ? '' : 'none';
+  var sizeControls = document.getElementById('room-size-controls');
+  if (sizeControls) sizeControls.style.display = _roomEditing ? '' : 'none';
 
   document.querySelectorAll('.room-placed-item').forEach(function(el) {
     el.style.cursor = _roomEditing ? 'grab' : 'default';
     el.style.outline = _roomEditing ? '2px dashed rgba(255,255,255,.3)' : 'none';
+    if (!_roomEditing) el.classList.remove('room-selected');
   });
+  if (!_roomEditing) {
+    _selectedRoomItemId = null;
+    updateRoomSizeUI();
+  }
 }
 
 // ── Drag & Drop ──────────────────────────────────────────────
@@ -1377,6 +1412,71 @@ function roomDragEnd(e) {
   document.removeEventListener('mouseup', roomDragEnd);
   document.removeEventListener('touchmove', roomDragMove);
   document.removeEventListener('touchend', roomDragEnd);
+}
+
+function getPlacedState(itemId) {
+  var layout = getRoomLayout();
+  for (var i = 0; i < layout.length; i++) {
+    if (layout[i].id === itemId) return layout[i];
+  }
+  return null;
+}
+
+function roomSelectItem(e) {
+  if (!_roomEditing) return;
+  var itemId = e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.itemId : null;
+  if (!itemId) return;
+  _selectedRoomItemId = itemId;
+  document.querySelectorAll('.room-placed-item').forEach(function(el) {
+    el.classList.toggle('room-selected', el.dataset.itemId === itemId);
+  });
+  updateRoomSizeUI();
+}
+
+function updateRoomSizeUI() {
+  var slider = document.getElementById('room-size-slider');
+  var valueEl = document.getElementById('room-size-value');
+  if (!slider || !valueEl) return;
+  var placed = _selectedRoomItemId ? getPlacedState(_selectedRoomItemId) : null;
+  var scale = placed ? Math.max(70, Math.min(170, Number(placed.scale || 100))) : 100;
+  slider.value = String(scale);
+  slider.disabled = !_selectedRoomItemId;
+  valueEl.textContent = scale + '%';
+  valueEl.style.opacity = _selectedRoomItemId ? '1' : '.45';
+}
+
+function onRoomSizeSlider(value) {
+  applySelectedItemScale(value);
+}
+
+function nudgeSelectedItemScale(delta) {
+  var slider = document.getElementById('room-size-slider');
+  if (!slider || !_selectedRoomItemId) return;
+  var next = Math.max(70, Math.min(170, (parseInt(slider.value, 10) || 100) + delta));
+  slider.value = String(next);
+  applySelectedItemScale(next);
+}
+
+function applySelectedItemScale(scaleValue) {
+  if (!_selectedRoomItemId) return;
+  var scale = Math.max(70, Math.min(170, Number(scaleValue || 100)));
+  var layout = getRoomLayout();
+  var def = getRoomItemDef(_selectedRoomItemId);
+  if (!def) return;
+
+  layout = layout.map(function(p) {
+    if (p.id !== _selectedRoomItemId) return p;
+    return { id: p.id, x: p.x, y: p.y, scale: scale };
+  });
+  setRoomLayout(layout);
+
+  var selectedEl = document.querySelector('.room-placed-item.room-selected');
+  if (selectedEl) {
+    var s = Math.round((def.size || 50) * (scale / 100));
+    selectedEl.style.width = s + 'px';
+    selectedEl.style.height = s + 'px';
+  }
+  updateRoomSizeUI();
 }
 
 // ── Item Shop ────────────────────────────────────────────────
@@ -1488,10 +1588,11 @@ function placeRoomItem(itemId) {
   // Place in a default position (center-ish, slightly randomized)
   var x = 120 + Math.floor(Math.random() * 120);
   var y = 140 + Math.floor(Math.random() * 100);
-  layout.push({id: itemId, x: x, y: y});
+  layout.push({id: itemId, x: x, y: y, scale:100});
   setRoomLayout(layout);
 
   renderRoomItems();
+  updateRoomSizeUI();
   if (typeof toast === 'function') toast(def.name + ' placed! Use Edit to move it.');
 
   // Refresh shop
@@ -1506,6 +1607,8 @@ function removeRoomItem(itemId) {
   setRoomLayout(layout);
 
   renderRoomItems();
+  if (_selectedRoomItemId === itemId) _selectedRoomItemId = null;
+  updateRoomSizeUI();
   if (typeof toast === 'function') toast('Item removed from room.');
 
   // Refresh shop
