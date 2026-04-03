@@ -207,6 +207,9 @@
     {id:'lamp',       name:'Korean Lamp',      price:12,  img:'assets/file_00000000a2287209b632ccc0519de0e7-removebg-preview.png'},
     {id:'bookshelf',  name:'Bookshelf',        price:25,  img:'assets/file_00000000a66472069f5c058b95fd2322-removebg-preview.png'},
     {id:'plant',      name:'Potted Plant',     price:8,   img:'assets/file_00000000f734720691f7289c1f8a5e3c-removebg-preview.png'},
+    {id:'fennec',     name:'Fennec Fox',       price:20,  img:'assets/file_0000000097387206868da2533972ee90-removebg-preview.png'},
+    {id:'char_silver',name:'Silver Character', price:0,   img:'assets/file_00000000b8bc72069bc7877f36aaf27f-removebg-preview.png'},
+    {id:'char_thumbs',name:'Thumbs Up Guy',    price:0,   img:'assets/file_00000000d40c7206bb289cd92deab487-removebg-preview.png'},
   ];
 
   function renderRoomShop() {
