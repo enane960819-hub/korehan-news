@@ -2328,7 +2328,7 @@ function checkWordOrder() {
   if (!res) return;
   res.style.display = '';
   if (ans.length < correct.length) {
-    res.innerHTML = '<div style="padding:10px;background:rgba(251,191,36,.1);border-radius:8px;color:#fbbf24">⚠️ You haven't placed all the words yet!</div>';
+    res.innerHTML = '<div style="padding:10px;background:rgba(251,191,36,.1);border-radius:8px;color:#fbbf24">Place all the words first!</div>';
     return;
   }
   var isCorrect = ans.join(' ') === correct.join(' ');
@@ -2391,7 +2391,7 @@ async function loadStudyAccessGate() {
     return;
   }
   var left = _studyPass.credits || 0;
-  var warning = hour >= 23 ? '<br>⚠️ It's past 11 PM KST, so available time may be limited.' : '';
+  var warning = hour >= 23 ? '<br>Past 11 PM KST — available time may be limited.' : '';
   banner.innerHTML = '✅ Study Room access is active today. (Resets at KST midnight) · Credits remaining: ' + left + warning;
 }
 
@@ -3733,7 +3733,7 @@ async function renderFeedbackInboxContent() {
       html += '<div style="font-size:13px;color:#475569;margin-bottom:10px;line-height:1.5;">' + preview + '</div>';
       if (item.status === 'approved' && item.final_feedback) {
         html += '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;">';
-        html += '<div style="font-size:11px;font-weight:800;color:#15803d;margin-bottom:8px;">✏️ Han's Feedback</div>';
+        html += '<div style="font-size:11px;font-weight:800;color:#15803d;margin-bottom:8px;">AI Feedback</div>';
         html += '<div style="font-size:13px;color:#1e293b;white-space:pre-wrap;line-height:1.7;">' + item.final_feedback + '</div>';
         html += '</div>';
       } else if (item.status === 'pending' || item.status === 'ai_done') {

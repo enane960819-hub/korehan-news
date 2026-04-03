@@ -497,7 +497,7 @@ body.kh-neon-on .room-shop-price { color:#8ffcff !important; }
     <!-- Controls -->
     <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
       <button onclick="openRoomShop()" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Item Shop</button>
-      <button onclick="toggleRoomEdit()" id="room-edit-btn" style="padding:8px 18px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Edit Room</button>
+      <button onclick="toggleRoomEdit()" id="room-edit-btn" style="padding:8px 18px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Edit Room</button>
       <button onclick="saveRoomLayout()" id="room-save-btn" style="padding:8px 18px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:none">Save</button>
     </div>
   </div>
@@ -1108,18 +1108,26 @@ function renderOwnedAndGiftSections(coin, data) {
 
   var ownedEl = document.getElementById('mp-owned-items');
   var owned = (data && data.owned) || [];
+  // Also include room items
+  var roomOwned = getRoomOwned();
+  var roomHtml = roomOwned.length ? '<div style="font-size:12px;font-weight:700;color:#475569;margin-bottom:8px">Room Items</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">'
+    + roomOwned.map(function(rid){
+        var def = getRoomItemDef(rid); if(!def) return '';
+        return '<div style="width:56px;height:56px;border-radius:10px;border:1px solid #e2e8f0;'+roomItemBgStyle(def)+'" title="'+def.name+'"></div>';
+      }).join('') + '</div>' : '';
   if (ownedEl) {
-    ownedEl.innerHTML = owned.length
+    var shopHtml = owned.length
       ? '<div class="inv-grid">' + owned.map(function(o){
           var it = o.shop_items || {};
           return '<div class="inv-card">'
             + '<div class="inv-thumb" style="background-image:url(\'' + (it.image_url || 'https://picsum.photos/seed/' + o.item_id + '/480/280') + '\')"></div>'
             + '<div class="inv-name">' + (it.name || o.item_id) + '</div>'
             + '<div class="inv-desc">' + (it.description || '-') + '</div>'
-            + '<div class="inv-meta">수량: ' + (o.quantity || 0) + (it.item_type ? ' · ' + it.item_type : '') + '</div>'
+            + '<div class="inv-meta">Qty: ' + (o.quantity || 0) + (it.item_type ? ' · ' + it.item_type : '') + '</div>'
             + '</div>';
         }).join('') + '</div>'
-      : '<div style="color:#94a3b8;font-size:13px">No items owned.</div>';
+      : '';
+    ownedEl.innerHTML = roomHtml + shopHtml || '<div style="color:#94a3b8;font-size:13px">No items owned.</div>';
   }
 
   var ghEl = document.getElementById('mp-gift-history');
@@ -1174,6 +1182,7 @@ function getRoomOwned() {
 }
 function setRoomOwned(arr) {
   localStorage.setItem(K_ROOM_OWNED, JSON.stringify(arr));
+  _syncRoomToServer();
 }
 function isRoomItemOwned(id) {
   return getRoomOwned().indexOf(id) !== -1;
@@ -1185,6 +1194,27 @@ function getRoomLayout() {
 }
 function setRoomLayout(arr) {
   localStorage.setItem(K_ROOM_LAYOUT, JSON.stringify(arr));
+}
+
+// ── Supabase sync (cross-device) ─────────────────────────────
+function _syncRoomToServer() {
+  if (!supaUser) return;
+  var sb = getSupa(); if (!sb) return;
+  var data = { room_layout: getRoomLayout(), room_owned: getRoomOwned() };
+  sb.from('user_stats').update({ room_data: data }).eq('user_id', supaUser.id)
+    .then(function(r){ if(r.error) console.warn('room sync:', r.error.message); });
+}
+async function _loadRoomFromServer() {
+  if (!supaUser) return;
+  var sb = getSupa(); if (!sb) return;
+  try {
+    var r = await sb.from('user_stats').select('room_data').eq('user_id', supaUser.id).maybeSingle();
+    if (r.data && r.data.room_data) {
+      var d = r.data.room_data;
+      if (Array.isArray(d.room_layout) && d.room_layout.length) localStorage.setItem(K_ROOM_LAYOUT, JSON.stringify(d.room_layout));
+      if (Array.isArray(d.room_owned) && d.room_owned.length) localStorage.setItem(K_ROOM_OWNED, JSON.stringify(d.room_owned));
+    }
+  } catch(e) {}
 }
 function isItemPlaced(id) {
   var layout = getRoomLayout();
@@ -1227,7 +1257,10 @@ function renderRoomItems() {
 // Badges on wall removed
 
 // ── Load room (call on page init) ────────────────────────────
-function loadRoomLayout() {
+async function loadRoomLayout() {
+  // Try loading from server first (cross-device sync)
+  await _loadRoomFromServer();
+
   var owned = getRoomOwned();
   var layout = getRoomLayout();
 
@@ -1252,8 +1285,8 @@ function saveRoomLayout() {
     items.push({id: el.dataset.itemId, x: parseInt(el.style.left) || 0, y: parseInt(el.style.top) || 0});
   });
   setRoomLayout(items);
+  _syncRoomToServer();
   if (typeof toast === 'function') toast('Room saved!');
-  // Exit edit mode after saving
   if (_roomEditing) toggleRoomEdit();
 }
 
