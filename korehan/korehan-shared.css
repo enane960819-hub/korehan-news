@@ -216,6 +216,8 @@ body.kh-neon-on .kh-diff-sel option { color:var(--dark); background:#fff; }
 }
 
 /* ── GLOBAL NEON THEME ───────────────────────────────────── */
+/* html.kh-neon-on: prevents white flash before body is parsed */
+html.kh-neon-on { background:#050b15 !important; }
 body.kh-neon-on {
   background: linear-gradient(180deg,#050b15 0%,#091121 38%,#0a1325 100%) !important;
   background-color:#0a1325 !important;
