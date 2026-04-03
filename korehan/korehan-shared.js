@@ -910,6 +910,7 @@ async function checkSession() {
     }
   }
   window._sessionChecked = true;
+  updateAuthUI();
 }
 
 // UI 업데이트
@@ -5060,7 +5061,10 @@ document.addEventListener('DOMContentLoaded', async function() {
   var settingsPromise = loadAppSettings().catch(function(err){ console.warn('app settings load failed', err); });
 
   if (isHomePage) {
-    // Do not render stale cached home feed first; wait for fresh DB payload to prevent "old page flash".
+    // Render cached articles immediately so hero + swipe is interactive while fresh data loads
+    if (getCachedArticles().length) {
+      renderHomePage();
+    }
     await Promise.all([
       loadArticlesFromDB({ homeOptimized: true, force: true }),
       sectionsPromise,
@@ -5072,6 +5076,13 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
   await Promise.allSettled([sessionPromise]);
+
+  // After session is confirmed, reload settings so RLS-protected data (phrases etc.) is fetched with auth
+  if (supaUser) {
+    _appSettingsPromise = null;
+    await loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
+    window.dispatchEvent(new Event('kh-settings-reloaded'));
+  }
 
   if (footerEl) footerEl.innerHTML = renderFooter();
   renderKhLucideIcons();

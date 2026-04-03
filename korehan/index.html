@@ -975,8 +975,9 @@ document.addEventListener('DOMContentLoaded', async function() {
   renderHomeConvs();
 
   // Today's Phrase
-  var phrases = typeof getPhrasesAsync === 'function' ? await getPhrasesAsync() : getPhrases();
-  if (phrases && phrases.length) {
+  function renderTodaysPhrase() {
+    var phrases = getPhrases();
+    if (!phrases || !phrases.length) return;
     var phraseIndex = Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length;
     var p = phrases[phraseIndex];
     var ko = document.getElementById('pb-ko');
@@ -1002,6 +1003,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     var pbBlock = document.getElementById('pb-phrase-block');
     if (pbBlock) pbBlock.href = 'korehan-phrase.html?i=' + phraseIndex;
   }
+  // Initial render after settings load
+  if (typeof getPhrasesAsync === 'function') await getPhrasesAsync();
+  renderTodaysPhrase();
+  // Re-render when settings are reloaded post-auth (picks up RLS-protected phrase data)
+  window.addEventListener('kh-settings-reloaded', renderTodaysPhrase);
 
   if (window.renderHomeLearningPreview) {
     window.renderHomeLearningPreview().catch(function() {});
