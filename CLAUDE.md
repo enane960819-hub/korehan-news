@@ -18,7 +18,7 @@ KoreHan News is a **Korean language learning platform** delivered as a static we
 korehan-news/
 ├── korehan/                        # All frontend files (served as-is)
 │   ├── index.html                  # Home/dashboard
-│   ├── korehan-admin.html          # Admin CMS (207KB — content management)
+│   ├── korehan-x9f4k2m7.html       # Admin CMS (obscured URL — content management)
 │   ├── korehan-study-room.html     # Main learning interface
 │   ├── korehan-mypage.html         # User profile & progress
 │   ├── korehan-learning-overview.html  # Learning hub dashboard

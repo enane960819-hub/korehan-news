@@ -3821,9 +3821,8 @@ async function deleteComment(commentId) {
   toast('Comment deleted');
 }
 
-function escapeHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+// Alias for escapeHTML (defined earlier) — single entry point for all HTML escaping
+var escapeHtml = escapeHTML;
 
 // ── TOOLTIP ───────────────────────────────────────────────────
 function initTooltips() {
