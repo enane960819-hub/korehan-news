@@ -968,7 +968,7 @@ function updateAuthUI() {
     // Logged out state
     if (signinBtn) {
       signinBtn.textContent = 'Sign In';
-      signinBtn.style.display = '';
+      signinBtn.style.display = window._sessionChecked ? '' : 'none';
       signinBtn.onclick = function(e){ e.preventDefault(); openAuthModal("signin"); };
     }
     if (authMenu) authMenu.style.display = 'none';
@@ -978,7 +978,7 @@ function updateAuthUI() {
   }
   // Join Free button: only visible when logged out
   var joinBtn = document.getElementById('topbar-join-btn');
-  if (joinBtn) joinBtn.style.display = supaUser ? 'none' : '';
+  if (joinBtn) joinBtn.style.display = supaUser ? 'none' : (window._sessionChecked ? '' : 'none');
   updateSidebarAuth();
   injectMobileBottomNav();
   renderKhLucideIcons();
@@ -5060,9 +5060,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   var settingsPromise = loadAppSettings().catch(function(err){ console.warn('app settings load failed', err); });
 
   if (isHomePage) {
-    if (getCachedArticles().length) {
-      renderHomePage();
-    }
+    // Do not render stale cached home feed first; wait for fresh DB payload to prevent "old page flash".
     await Promise.all([
       loadArticlesFromDB({ homeOptimized: true, force: true }),
       sectionsPromise,
