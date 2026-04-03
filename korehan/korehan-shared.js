@@ -2,6 +2,26 @@
    KoreHan News — Shared JS
    ============================================================ */
 
+// ── Neon/dark mode: apply IMMEDIATELY to prevent flash of light mode ──
+(function() {
+  try {
+    var neon = localStorage.getItem('korehan_neon_theme');
+    if (neon === '1') {
+      // Apply before body renders — works because script is in <head> or before </body>
+      if (document.body) {
+        document.body.classList.add('kh-neon-on');
+      } else {
+        // Body not yet parsed — use documentElement and add class as soon as body exists
+        document.documentElement.classList.add('kh-neon-on');
+        document.addEventListener('DOMContentLoaded', function() {
+          document.documentElement.classList.remove('kh-neon-on');
+          if (document.body) document.body.classList.add('kh-neon-on');
+        }, { once: true });
+      }
+    }
+  } catch(e) {}
+})();
+
 // ── Supabase ──────────────────────────────────────────────────
 const SUPA_URL = 'https://samghztrdvtxmrmawneu.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs';
