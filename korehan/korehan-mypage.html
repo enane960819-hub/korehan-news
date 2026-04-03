@@ -1142,13 +1142,393 @@ function renderOwnedAndGiftSections(coin, data) {
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+// ── Mini Room System ─────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+
+var ROOM_ITEMS = [
+  // Sheet 1: items (3x2 grid)
+  {id:'notepad',    name:'Notepad',          price:10,  sheet:'file_000000000240720ba720e94e6d031d06.png', col:0, row:0, cols:3, rows:2, size:50},
+  {id:'camera',     name:'Camera',           price:25,  sheet:'file_000000000240720ba720e94e6d031d06.png', col:1, row:0, cols:3, rows:2, size:50},
+  {id:'coffee',     name:'Coffee',           price:5,   sheet:'file_000000000240720ba720e94e6d031d06.png', col:2, row:0, cols:3, rows:2, size:40},
+  {id:'book',       name:'Open Book',        price:10,  sheet:'file_000000000240720ba720e94e6d031d06.png', col:0, row:1, cols:3, rows:2, size:55},
+  {id:'phone',      name:'Smartphone',       price:20,  sheet:'file_000000000240720ba720e94e6d031d06.png', col:1, row:1, cols:3, rows:2, size:40},
+  {id:'tangerines', name:'Tangerines',       price:8,   sheet:'file_000000000240720ba720e94e6d031d06.png', col:2, row:1, cols:3, rows:2, size:40},
+  // Sheet 2: gadgets (2 cols top row, 3 cols bottom row)
+  {id:'alarm',      name:'Alarm Clock',      price:15,  sheet:'file_000000009a74720b8e4e4e62f23cada2.png', col:0, row:0, cols:2, rows:2, size:55},
+  {id:'walkietalkie',name:'Walkie-Talkie',   price:30,  sheet:'file_000000009a74720b8e4e4e62f23cada2.png', col:1, row:0, cols:2, rows:2, size:50},
+  {id:'envelope',   name:'Letter',           price:5,   sheet:'file_000000009a74720b8e4e4e62f23cada2.png', col:0, row:1, cols:3, rows:2, size:45},
+  {id:'keys',       name:'Keys',             price:12,  sheet:'file_000000009a74720b8e4e4e62f23cada2.png', col:1, row:1, cols:3, rows:2, size:35},
+  {id:'laptop',     name:'Laptop',           price:35,  sheet:'file_000000009a74720b8e4e4e62f23cada2.png', col:2, row:1, cols:3, rows:2, size:55},
+  // Sheet 3: fun (2 cols top row, 3 cols bottom row)
+  {id:'poop',       name:'Happy Poop',       price:3,   sheet:'file_00000000fa88720ba61659bae3bba9eb.png', col:0, row:0, cols:2, rows:2, size:55},
+  {id:'chicken',    name:'Confused Chicken', price:20,  sheet:'file_00000000fa88720ba61659bae3bba9eb.png', col:1, row:0, cols:2, rows:2, size:60},
+  {id:'bomb',       name:'BOOM!',            price:15,  sheet:'file_00000000fa88720ba61659bae3bba9eb.png', col:0, row:1, cols:3, rows:2, size:55},
+  {id:'megaphone',  name:'Megaphone',        price:18,  sheet:'file_00000000fa88720ba61659bae3bba9eb.png', col:1, row:1, cols:3, rows:2, size:45},
+  {id:'ufo_poster', name:'UFO Poster',       price:25,  sheet:'file_00000000fa88720ba61659bae3bba9eb.png', col:2, row:1, cols:3, rows:2, size:60},
+];
+
+var K_ROOM_LAYOUT = 'kh_room_layout';
+var K_ROOM_OWNED  = 'kh_room_owned';
+var _roomEditing  = false;
+var _dragItem     = null;
+var _dragOffset   = {x:0, y:0};
+
+// ── Sprite background style ──────────────────────────────────
+function roomItemBgStyle(item) {
+  var bpx = item.cols <= 1 ? 0 : (item.col / (item.cols - 1)) * 100;
+  var bpy = item.rows <= 1 ? 0 : (item.row / (item.rows - 1)) * 100;
+  return 'background-image:url(assets/' + item.sheet + ');background-size:' + (item.cols * 100) + '% ' + (item.rows * 100) + '%;background-position:' + bpx + '% ' + bpy + '%;';
+}
+
+// ── Get item def by id ───────────────────────────────────────
+function getRoomItemDef(id) {
+  for (var i = 0; i < ROOM_ITEMS.length; i++) {
+    if (ROOM_ITEMS[i].id === id) return ROOM_ITEMS[i];
+  }
+  return null;
+}
+
+// ── Owned items helpers ──────────────────────────────────────
+function getRoomOwned() {
+  try { return JSON.parse(localStorage.getItem(K_ROOM_OWNED) || '[]'); } catch(e) { return []; }
+}
+function setRoomOwned(arr) {
+  localStorage.setItem(K_ROOM_OWNED, JSON.stringify(arr));
+}
+function isRoomItemOwned(id) {
+  return getRoomOwned().indexOf(id) !== -1;
+}
+
+// ── Layout helpers ───────────────────────────────────────────
+function getRoomLayout() {
+  try { return JSON.parse(localStorage.getItem(K_ROOM_LAYOUT) || '[]'); } catch(e) { return []; }
+}
+function setRoomLayout(arr) {
+  localStorage.setItem(K_ROOM_LAYOUT, JSON.stringify(arr));
+}
+function isItemPlaced(id) {
+  var layout = getRoomLayout();
+  for (var i = 0; i < layout.length; i++) {
+    if (layout[i].id === id) return true;
+  }
+  return false;
+}
+
+// ── Render placed items in room ──────────────────────────────
+function renderRoomItems() {
+  var container = document.getElementById('miniroom-items');
+  if (!container) return;
+  var layout = getRoomLayout();
+  container.innerHTML = '';
+
+  layout.forEach(function(placed) {
+    var def = getRoomItemDef(placed.id);
+    if (!def) return;
+    var div = document.createElement('div');
+    div.className = 'room-placed-item';
+    div.dataset.itemId = placed.id;
+    var s = def.size || 50;
+    div.setAttribute('style',
+      'left:' + placed.x + 'px;top:' + placed.y + 'px;width:' + s + 'px;height:' + s + 'px;'
+      + roomItemBgStyle(def)
+      + 'cursor:' + (_roomEditing ? 'grab' : 'default') + ';'
+      + (_roomEditing ? 'outline:2px dashed rgba(255,255,255,.3);' : '')
+    );
+    div.title = def.name;
+
+    // Drag events
+    div.addEventListener('mousedown', roomDragStart);
+    div.addEventListener('touchstart', roomDragStart, {passive:false});
+
+    container.appendChild(div);
+  });
+}
+
+// ── Render badges on wall ────────────────────────────────────
+function renderRoomBadges() {
+  var el = document.getElementById('miniroom-badges');
+  if (!el) return;
+  var earned = {};
+  if (typeof getEarnedBadges === 'function') earned = getEarnedBadges();
+  var badgeIds = Object.keys(earned).slice(0, 6);
+  if (!badgeIds.length) {
+    el.innerHTML = '';
+    return;
+  }
+  var tierColors = {bronze:'#cd7f32', silver:'#94a3b8', gold:'#f59e0b', plat:'#7c3aed', diamond:'#1d4ed8', legendary:'#ff6b6b'};
+  var html = '';
+  badgeIds.forEach(function(bid) {
+    // Find badge def
+    var bdef = null;
+    if (typeof BADGE_DEFS !== 'undefined') {
+      for (var i = 0; i < BADGE_DEFS.length; i++) {
+        if (BADGE_DEFS[i].id === bid) { bdef = BADGE_DEFS[i]; break; }
+      }
+    }
+    var icon = bdef ? bdef.icon : '?';
+    var bgColor = bdef ? (tierColors[bdef.tier] || 'rgba(255,255,255,.15)') : 'rgba(255,255,255,.15)';
+    var name = bdef ? bdef.name : bid;
+    html += '<div class="room-badge-icon" style="background:' + bgColor + '22;border-color:' + bgColor + '44" title="' + name + '">' + icon + '</div>';
+  });
+  el.innerHTML = html;
+}
+
+// ── Load room (call on page init) ────────────────────────────
+function loadRoomLayout() {
+  var owned = getRoomOwned();
+  var layout = getRoomLayout();
+
+  // First-time setup: give starter items
+  if (owned.length === 0 && layout.length === 0) {
+    var starterOwned = ['notepad', 'coffee'];
+    var starterLayout = [
+      {id:'notepad', x:60,  y:180},
+      {id:'coffee',  x:250, y:220}
+    ];
+    setRoomOwned(starterOwned);
+    setRoomLayout(starterLayout);
+  }
+
+  renderRoomItems();
+  renderRoomBadges();
+}
+
+// ── Save room layout ─────────────────────────────────────────
+function saveRoomLayout() {
+  var items = [];
+  document.querySelectorAll('.room-placed-item').forEach(function(el) {
+    items.push({id: el.dataset.itemId, x: parseInt(el.style.left) || 0, y: parseInt(el.style.top) || 0});
+  });
+  setRoomLayout(items);
+  if (typeof toast === 'function') toast('Room saved!');
+  // Exit edit mode after saving
+  if (_roomEditing) toggleRoomEdit();
+}
+
+// ── Toggle edit mode ─────────────────────────────────────────
+function toggleRoomEdit() {
+  _roomEditing = !_roomEditing;
+  var btn = document.getElementById('room-edit-btn');
+  var saveBtn = document.getElementById('room-save-btn');
+  if (btn) btn.textContent = _roomEditing ? 'Editing...' : 'Edit Room';
+  if (saveBtn) saveBtn.style.display = _roomEditing ? '' : 'none';
+
+  document.querySelectorAll('.room-placed-item').forEach(function(el) {
+    el.style.cursor = _roomEditing ? 'grab' : 'default';
+    el.style.outline = _roomEditing ? '2px dashed rgba(255,255,255,.3)' : 'none';
+  });
+}
+
+// ── Drag & Drop ──────────────────────────────────────────────
+function roomDragStart(e) {
+  if (!_roomEditing) return;
+  e.preventDefault();
+  var el = e.currentTarget;
+  _dragItem = el;
+  el.classList.add('room-dragging');
+  el.style.cursor = 'grabbing';
+
+  var container = document.getElementById('miniroom-container');
+  var rect = container.getBoundingClientRect();
+  var clientX, clientY;
+  if (e.touches) {
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  } else {
+    clientX = e.clientX;
+    clientY = e.clientY;
+  }
+  _dragOffset.x = clientX - rect.left - parseInt(el.style.left || 0);
+  _dragOffset.y = clientY - rect.top - parseInt(el.style.top || 0);
+
+  document.addEventListener('mousemove', roomDragMove);
+  document.addEventListener('mouseup', roomDragEnd);
+  document.addEventListener('touchmove', roomDragMove, {passive:false});
+  document.addEventListener('touchend', roomDragEnd);
+}
+
+function roomDragMove(e) {
+  if (!_dragItem) return;
+  e.preventDefault();
+  var container = document.getElementById('miniroom-container');
+  var rect = container.getBoundingClientRect();
+  var clientX, clientY;
+  if (e.touches) {
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  } else {
+    clientX = e.clientX;
+    clientY = e.clientY;
+  }
+  var x = clientX - rect.left - _dragOffset.x;
+  var y = clientY - rect.top - _dragOffset.y;
+
+  // Clamp within container
+  var itemW = _dragItem.offsetWidth || 50;
+  var itemH = _dragItem.offsetHeight || 50;
+  x = Math.max(0, Math.min(rect.width - itemW, x));
+  y = Math.max(0, Math.min(rect.height - itemH, y));
+
+  _dragItem.style.left = Math.round(x) + 'px';
+  _dragItem.style.top = Math.round(y) + 'px';
+}
+
+function roomDragEnd(e) {
+  if (_dragItem) {
+    _dragItem.classList.remove('room-dragging');
+    _dragItem.style.cursor = 'grab';
+    _dragItem = null;
+  }
+  document.removeEventListener('mousemove', roomDragMove);
+  document.removeEventListener('mouseup', roomDragEnd);
+  document.removeEventListener('touchmove', roomDragMove);
+  document.removeEventListener('touchend', roomDragEnd);
+}
+
+// ── Item Shop ────────────────────────────────────────────────
+function openRoomShop() {
+  var existing = document.querySelector('.room-shop-overlay');
+  if (existing) existing.remove();
+
+  var coin = _userCoin || 0;
+  var owned = getRoomOwned();
+
+  var overlay = document.createElement('div');
+  overlay.className = 'room-shop-overlay';
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeRoomShop(); });
+
+  var html = '<div class="room-shop-modal">'
+    + '<div class="room-shop-header">'
+    + '<h3>Item Shop</h3>'
+    + '<div class="room-shop-bal" id="room-shop-bal">' + coin.toLocaleString() + ' nyang</div>'
+    + '<button class="room-shop-close" onclick="closeRoomShop()">&times;</button>'
+    + '</div>'
+    + '<div class="room-shop-grid">';
+
+  ROOM_ITEMS.forEach(function(item) {
+    var isOwned = owned.indexOf(item.id) !== -1;
+    var placed = isItemPlaced(item.id);
+    var canBuy = coin >= item.price;
+    var s = 60;
+
+    html += '<div class="room-shop-card" data-item-id="' + item.id + '">'
+      + '<div class="room-shop-sprite" style="width:' + s + 'px;height:' + s + 'px;' + roomItemBgStyle(item) + '"></div>'
+      + '<div class="room-shop-name">' + item.name + '</div>'
+      + '<div class="room-shop-price">' + (isOwned ? 'Owned' : item.price + ' nyang') + '</div>';
+
+    if (!isOwned) {
+      html += '<button class="room-shop-btn buy" onclick="buyRoomItem(\'' + item.id + '\')"'
+        + (canBuy ? '' : ' disabled') + '>'
+        + (canBuy ? 'Buy' : 'Not enough') + '</button>';
+    } else if (!placed) {
+      html += '<button class="room-shop-btn place" onclick="placeRoomItem(\'' + item.id + '\')">Place in Room</button>';
+    } else {
+      html += '<button class="room-shop-btn owned">In Room</button>'
+        + '<button class="room-shop-btn remove" onclick="removeRoomItem(\'' + item.id + '\')">Remove</button>';
+    }
+
+    html += '</div>';
+  });
+
+  html += '</div></div>';
+  overlay.innerHTML = html;
+  document.body.appendChild(overlay);
+}
+
+function closeRoomShop() {
+  var overlay = document.querySelector('.room-shop-overlay');
+  if (overlay) overlay.remove();
+}
+
+// ── Buy item ─────────────────────────────────────────────────
+async function buyRoomItem(itemId) {
+  var def = getRoomItemDef(itemId);
+  if (!def) return;
+  if (isRoomItemOwned(itemId)) { if (typeof toast === 'function') toast('Already owned!'); return; }
+  if (_userCoin < def.price) { if (typeof toast === 'function') toast('Not enough nyang!'); return; }
+
+  // Deduct nyang
+  var newCoin = _userCoin - def.price;
+  var sb = getSupa();
+  if (sb && supaUser) {
+    try {
+      await sb.from('user_stats').update({coin_balance: newCoin}).eq('user_id', supaUser.id);
+      try {
+        await sb.from('coin_transactions').insert({
+          user_id: supaUser.id, tx_type:'spend', amount: -def.price,
+          balance_after: newCoin, source:'room_item', memo:'Room item: ' + def.name
+        });
+      } catch(e) {}
+    } catch(e) {
+      if (typeof toast === 'function') toast('Purchase failed!');
+      return;
+    }
+  }
+
+  _userCoin = newCoin;
+  // Update owned list
+  var owned = getRoomOwned();
+  owned.push(itemId);
+  setRoomOwned(owned);
+
+  // Update balance displays
+  var balEl = document.getElementById('mp-nyang-balance');
+  if (balEl) balEl.textContent = 'nyang: ' + newCoin.toLocaleString();
+  renderMiniStats({xp: _userXP, coin_balance: newCoin, mission_streak: 0, articles_read: 0, words_saved: 0, quizzes_done: 0});
+
+  if (typeof toast === 'function') toast('Purchased ' + def.name + '!');
+
+  // Refresh shop
+  closeRoomShop();
+  openRoomShop();
+}
+
+// ── Place item in room ───────────────────────────────────────
+function placeRoomItem(itemId) {
+  var def = getRoomItemDef(itemId);
+  if (!def) return;
+  if (!isRoomItemOwned(itemId)) return;
+  if (isItemPlaced(itemId)) return;
+
+  var layout = getRoomLayout();
+  // Place in a default position (center-ish, slightly randomized)
+  var x = 120 + Math.floor(Math.random() * 120);
+  var y = 140 + Math.floor(Math.random() * 100);
+  layout.push({id: itemId, x: x, y: y});
+  setRoomLayout(layout);
+
+  renderRoomItems();
+  if (typeof toast === 'function') toast(def.name + ' placed! Use Edit to move it.');
+
+  // Refresh shop
+  closeRoomShop();
+  openRoomShop();
+}
+
+// ── Remove item from room ────────────────────────────────────
+function removeRoomItem(itemId) {
+  var layout = getRoomLayout();
+  layout = layout.filter(function(p) { return p.id !== itemId; });
+  setRoomLayout(layout);
+
+  renderRoomItems();
+  if (typeof toast === 'function') toast('Item removed from room.');
+
+  // Refresh shop
+  closeRoomShop();
+  openRoomShop();
+}
+
+// ══════════════════════════════════════════════════════════════
+
 document.addEventListener('DOMContentLoaded', function() {
   var attempts = 0;
   function waitForSession() {
     attempts++;
-    if (supaUser) { initMyPage(); }
+    if (supaUser) { initMyPage(); loadRoomLayout(); }
     else if (attempts < 30) { setTimeout(waitForSession, 200); }
-    else { initMyPage(); }
+    else { initMyPage(); loadRoomLayout(); }
   }
   setTimeout(waitForSession, 300);
 });
