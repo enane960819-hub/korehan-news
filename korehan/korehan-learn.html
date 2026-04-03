@@ -1200,6 +1200,136 @@ function srsShowResult() {
 }
 
 
+// ══ LEARN SECTION TABS ═══════════════════════════════════════════
+function showLearnSection(section, btn) {
+  document.querySelectorAll('#learn-main-tabs .tab-btn').forEach(function(b){ b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+  var hangulSec = document.getElementById('learn-sec-hangul');
+  var vocabSec = document.getElementById('learn-sec-vocab-section');
+  if (section === 'hangul') {
+    if (hangulSec) hangulSec.style.display = 'block';
+    if (vocabSec) vocabSec.style.display = 'none';
+    if (!window._hangulInited) initHangul();
+  } else {
+    if (hangulSec) hangulSec.style.display = 'none';
+    if (vocabSec) vocabSec.style.display = 'block';
+  }
+}
+
+// ══ HANGUL LEARNING ═══════════════════════════════════════════════
+var HANGUL_CONSONANTS = [
+  {ch:'ㄱ',rom:'g/k',ex:'가방',exEn:'bag'},
+  {ch:'ㄴ',rom:'n',ex:'나무',exEn:'tree'},
+  {ch:'ㄷ',rom:'d/t',ex:'다리',exEn:'bridge/leg'},
+  {ch:'ㄹ',rom:'r/l',ex:'라면',exEn:'ramen'},
+  {ch:'ㅁ',rom:'m',ex:'물',exEn:'water'},
+  {ch:'ㅂ',rom:'b/p',ex:'바다',exEn:'sea'},
+  {ch:'ㅅ',rom:'s',ex:'사람',exEn:'person'},
+  {ch:'ㅇ',rom:'ng/silent',ex:'아이',exEn:'child'},
+  {ch:'ㅈ',rom:'j',ex:'자동차',exEn:'car'},
+  {ch:'ㅊ',rom:'ch',ex:'치즈',exEn:'cheese'},
+  {ch:'ㅋ',rom:'k',ex:'커피',exEn:'coffee'},
+  {ch:'ㅌ',rom:'t',ex:'토마토',exEn:'tomato'},
+  {ch:'ㅍ',rom:'p',ex:'포도',exEn:'grape'},
+  {ch:'ㅎ',rom:'h',ex:'하늘',exEn:'sky'}
+];
+var HANGUL_VOWELS = [
+  {ch:'ㅏ',rom:'a',ex:'아기',exEn:'baby'},
+  {ch:'ㅑ',rom:'ya',ex:'야구',exEn:'baseball'},
+  {ch:'ㅓ',rom:'eo',ex:'엄마',exEn:'mom'},
+  {ch:'ㅕ',rom:'yeo',ex:'여름',exEn:'summer'},
+  {ch:'ㅗ',rom:'o',ex:'오리',exEn:'duck'},
+  {ch:'ㅛ',rom:'yo',ex:'요리',exEn:'cooking'},
+  {ch:'ㅜ',rom:'u',ex:'우유',exEn:'milk'},
+  {ch:'ㅠ',rom:'yu',ex:'유리',exEn:'glass'},
+  {ch:'ㅡ',rom:'eu',ex:'으른',exEn:'adult'},
+  {ch:'ㅣ',rom:'i',ex:'이름',exEn:'name'}
+];
+
+function hangulCardHTML(item) {
+  return '<div class="hangul-card" onclick="this.classList.toggle(\'flipped\')">'
+    + '<div class="hangul-front">' + item.ch + '</div>'
+    + '<div class="hangul-back">'
+    + '<div style="font-size:14px;font-weight:900">' + item.rom + '</div>'
+    + '<div style="margin-top:4px;font-size:11px">' + item.ex + ' (' + item.exEn + ')' + '</div>'
+    + '<button onclick="event.stopPropagation();ttsSpeak(\'' + item.ex + '\')" style="margin-top:6px;background:rgba(255,255,255,.2);border:none;border-radius:6px;color:#fff;padding:3px 8px;font-size:14px;cursor:pointer">🔊</button>'
+    + '</div>'
+    + '</div>';
+}
+
+function initHangul() {
+  window._hangulInited = true;
+  var conEl = document.getElementById('hangul-consonants');
+  var vowEl = document.getElementById('hangul-vowels');
+  if (conEl) conEl.innerHTML = HANGUL_CONSONANTS.map(hangulCardHTML).join('');
+  if (vowEl) vowEl.innerHTML = HANGUL_VOWELS.map(hangulCardHTML).join('');
+  startHangulQuiz();
+}
+
+var _hqAll = [];
+var _hqIdx = 0;
+var _hqScore = 0;
+var _hqTotal = 8;
+
+function startHangulQuiz() {
+  _hqAll = HANGUL_CONSONANTS.concat(HANGUL_VOWELS).slice().sort(function(){ return Math.random()-0.5; }).slice(0, _hqTotal);
+  _hqIdx = 0;
+  _hqScore = 0;
+  renderHangulQuiz();
+}
+
+function renderHangulQuiz() {
+  var area = document.getElementById('hangul-quiz-area');
+  if (!area) return;
+  if (_hqIdx >= _hqAll.length) {
+    var pct = Math.round((_hqScore / _hqAll.length) * 100);
+    var emoji = pct >= 80 ? '🏆' : pct >= 50 ? '👍' : '💪';
+    area.innerHTML = '<div style="text-align:center;padding:24px 0">'
+      + '<div style="font-size:40px;margin-bottom:8px">' + emoji + '</div>'
+      + '<div style="font-size:20px;font-weight:900;color:#0b1626">' + pct + '% — ' + _hqScore + '/' + _hqAll.length + '</div>'
+      + '<div style="font-size:13px;color:var(--gray);margin:8px 0 16px">' + (pct >= 80 ? 'Great job!' : 'Keep practicing!') + '</div>'
+      + '<button onclick="startHangulQuiz()" style="padding:10px 24px;background:#2255a4;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:900;cursor:pointer">Try Again</button>'
+      + '</div>';
+    return;
+  }
+  var q = _hqAll[_hqIdx];
+  var allRoms = HANGUL_CONSONANTS.concat(HANGUL_VOWELS).map(function(h){ return h.rom; });
+  var wrongs = allRoms.filter(function(r){ return r !== q.rom; }).sort(function(){ return Math.random()-0.5; }).slice(0,3);
+  var options = [q.rom].concat(wrongs).sort(function(){ return Math.random()-0.5; });
+
+  area.innerHTML = '<div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">'
+    + '<span style="font-size:12px;font-weight:700;color:var(--gray)">' + (_hqIdx+1) + ' / ' + _hqAll.length + '</span>'
+    + '<span style="font-size:12px;font-weight:700;color:#2255a4">Score: ' + _hqScore + '</span>'
+    + '</div>'
+    + '<div style="text-align:center;margin-bottom:20px">'
+    + '<div style="font-size:64px;font-weight:900;color:#1e3a5f">' + q.ch + '</div>'
+    + '<div style="font-size:13px;color:var(--gray);margin-top:6px">What sound does this character make?</div>'
+    + '</div>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">'
+    + options.map(function(opt) {
+        return '<button class="hangul-quiz-opt" onclick="answerHangulQuiz(this,\'' + opt.replace(/'/g,"\\'") + '\',\'' + q.rom.replace(/'/g,"\\'") + '\')">' + opt + '</button>';
+      }).join('')
+    + '</div>'
+    + '<div id="hq-feedback" style="margin-top:12px;text-align:center"></div>';
+}
+
+function answerHangulQuiz(btn, chosen, correct) {
+  if (btn.disabled) return;
+  var isCorrect = chosen === correct;
+  if (isCorrect) _hqScore++;
+  document.querySelectorAll('.hangul-quiz-opt').forEach(function(b) {
+    b.disabled = true;
+    if (b.textContent === correct) b.classList.add('correct');
+    if (b === btn && !isCorrect) b.classList.add('wrong');
+  });
+  var fb = document.getElementById('hq-feedback');
+  if (fb) fb.innerHTML = '<div style="font-size:13px;font-weight:700;color:' + (isCorrect ? '#16a34a' : '#dc2626') + ';margin-bottom:8px">'
+    + (isCorrect ? 'Correct!' : 'The answer is: ' + correct)
+    + '</div>'
+    + '<button onclick="_hqIdx++;renderHangulQuiz()" style="padding:8px 20px;background:#2255a4;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer">'
+    + (_hqIdx < _hqAll.length - 1 ? 'Next' : 'See Results') + '</button>';
+}
+
 document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
