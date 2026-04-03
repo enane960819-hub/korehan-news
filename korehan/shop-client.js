@@ -198,8 +198,62 @@
     initShop();
   };
 
+  // ── Room Items in Shop ──────────────────────────────────────
+  var ROOM_ITEMS_SHOP = [
+    {id:'character',  name:'Character',        price:0,   img:'assets/file_000000000570720694038be799df9f21-removebg-preview.png'},
+    {id:'cat',        name:'Sleeping Cat',     price:15,  img:'assets/file_000000003a7c7209a3877df863e15fd9-removebg-preview.png'},
+    {id:'poop',       name:'Happy Poop',       price:3,   img:'assets/file_000000004b247206b900dba933600c46-removebg-preview.png'},
+    {id:'cushion',    name:'Reading Cushion',  price:10,  img:'assets/file_0000000064f872098fc13437d998de5a-removebg-preview.png'},
+    {id:'lamp',       name:'Korean Lamp',      price:12,  img:'assets/file_00000000a2287209b632ccc0519de0e7-removebg-preview.png'},
+    {id:'bookshelf',  name:'Bookshelf',        price:25,  img:'assets/file_00000000a66472069f5c058b95fd2322-removebg-preview.png'},
+    {id:'plant',      name:'Potted Plant',     price:8,   img:'assets/file_00000000f734720691f7289c1f8a5e3c-removebg-preview.png'},
+  ];
+
+  function renderRoomShop() {
+    var grid = document.getElementById('room-shop-grid');
+    if (!grid) return;
+    var owned = [];
+    try { owned = JSON.parse(localStorage.getItem('kh_room_owned')||'[]'); } catch(e){}
+    grid.innerHTML = ROOM_ITEMS_SHOP.map(function(it){
+      var isOwned = owned.indexOf(it.id) >= 0;
+      return '<article class="card">'
+        + '<div class="thumb" style="background-image:url('+it.img+');background-size:contain;background-repeat:no-repeat;background-position:center;background-color:#f8fafc"></div>'
+        + '<div class="body">'
+        + '<div class="title">'+it.name+'</div>'
+        + '<div class="desc">Room decoration item</div>'
+        + (it.price > 0 ? '<div class="price"><span class="pill coin">🐾 '+it.price+' nyang</span></div>' : '<div class="price"><span class="pill coin">Free</span></div>')
+        + (isOwned ? '<div class="owned">Owned ✓</div>' : '')
+        + '<div class="btns">'
+        + (isOwned ? '<button class="btn coin" disabled>Owned</button>' : '<button class="btn coin" onclick="window.buyRoomItem(\''+it.id+'\')">Buy with nyang</button>')
+        + '</div></div></article>';
+    }).join('');
+  }
+
+  window.buyRoomItem = async function(itemId) {
+    var item = ROOM_ITEMS_SHOP.find(function(x){return x.id===itemId;});
+    if (!item) return;
+    var owned = [];
+    try { owned = JSON.parse(localStorage.getItem('kh_room_owned')||'[]'); } catch(e){}
+    if (owned.indexOf(itemId) >= 0) { alert('Already owned!'); return; }
+
+    if (item.price > 0) {
+      var sb = getSupa();
+      if (!sb || !supaUser) { alert('Please sign in'); return; }
+      var statsRes = await sb.from('user_stats').select('coin_balance').eq('user_id',supaUser.id).maybeSingle();
+      var bal = (statsRes.data && statsRes.data.coin_balance) || 0;
+      if (bal < item.price) { alert('Not enough nyang! (Need '+item.price+', have '+bal+')'); return; }
+      await sb.from('user_stats').update({coin_balance: bal - item.price}).eq('user_id',supaUser.id);
+    }
+
+    owned.push(itemId);
+    localStorage.setItem('kh_room_owned', JSON.stringify(owned));
+    alert('Purchased ' + item.name + '! Place it in My Room.');
+    renderRoomShop();
+    initShop();
+  };
+
   document.addEventListener('DOMContentLoaded', function(){
     var attempts = 0;
-    (function waitSession(){ attempts++; if (window.supaUser || attempts > 25) initShop(); else setTimeout(waitSession, 200); })();
+    (function waitSession(){ attempts++; if (window.supaUser || attempts > 25) { initShop(); renderRoomShop(); } else setTimeout(waitSession, 200); })();
   });
 })();
