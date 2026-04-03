@@ -1146,26 +1146,28 @@ function renderOwnedAndGiftSections(coin, data) {
 // ── Mini Room System ─────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════
 
+var ROOM_SHEET = 'file_00000000e20072069b4401732a0607bf-removebg-preview.png';
 var ROOM_ITEMS = [
-  // Sheet 1: items (3x2 grid)
-  {id:'notepad',    name:'Notepad',          price:10,  sheet:'file_000000000240720ba720e94e6d031d06.png', col:0, row:0, cols:3, rows:2, size:50},
-  {id:'camera',     name:'Camera',           price:25,  sheet:'file_000000000240720ba720e94e6d031d06.png', col:1, row:0, cols:3, rows:2, size:50},
-  {id:'coffee',     name:'Coffee',           price:5,   sheet:'file_000000000240720ba720e94e6d031d06.png', col:2, row:0, cols:3, rows:2, size:40},
-  {id:'book',       name:'Open Book',        price:10,  sheet:'file_000000000240720ba720e94e6d031d06.png', col:0, row:1, cols:3, rows:2, size:55},
-  {id:'phone',      name:'Smartphone',       price:20,  sheet:'file_000000000240720ba720e94e6d031d06.png', col:1, row:1, cols:3, rows:2, size:40},
-  {id:'tangerines', name:'Tangerines',       price:8,   sheet:'file_000000000240720ba720e94e6d031d06.png', col:2, row:1, cols:3, rows:2, size:40},
-  // Sheet 2: gadgets (2 cols top row, 3 cols bottom row)
-  {id:'alarm',      name:'Alarm Clock',      price:15,  sheet:'file_000000009a74720b8e4e4e62f23cada2.png', col:0, row:0, cols:2, rows:2, size:55},
-  {id:'walkietalkie',name:'Walkie-Talkie',   price:30,  sheet:'file_000000009a74720b8e4e4e62f23cada2.png', col:1, row:0, cols:2, rows:2, size:50},
-  {id:'envelope',   name:'Letter',           price:5,   sheet:'file_000000009a74720b8e4e4e62f23cada2.png', col:0, row:1, cols:3, rows:2, size:45},
-  {id:'keys',       name:'Keys',             price:12,  sheet:'file_000000009a74720b8e4e4e62f23cada2.png', col:1, row:1, cols:3, rows:2, size:35},
-  {id:'laptop',     name:'Laptop',           price:35,  sheet:'file_000000009a74720b8e4e4e62f23cada2.png', col:2, row:1, cols:3, rows:2, size:55},
-  // Sheet 3: fun (2 cols top row, 3 cols bottom row)
-  {id:'poop',       name:'Happy Poop',       price:3,   sheet:'file_00000000fa88720ba61659bae3bba9eb.png', col:0, row:0, cols:2, rows:2, size:55},
-  {id:'chicken',    name:'Confused Chicken', price:20,  sheet:'file_00000000fa88720ba61659bae3bba9eb.png', col:1, row:0, cols:2, rows:2, size:60},
-  {id:'bomb',       name:'BOOM!',            price:15,  sheet:'file_00000000fa88720ba61659bae3bba9eb.png', col:0, row:1, cols:3, rows:2, size:55},
-  {id:'megaphone',  name:'Megaphone',        price:18,  sheet:'file_00000000fa88720ba61659bae3bba9eb.png', col:1, row:1, cols:3, rows:2, size:45},
-  {id:'ufo_poster', name:'UFO Poster',       price:25,  sheet:'file_00000000fa88720ba61659bae3bba9eb.png', col:2, row:1, cols:3, rows:2, size:60},
+  // Row 0 (top): desk, bookshelf, plant, lamp
+  {id:'desk',       name:'Study Desk',       price:30,  sheet:ROOM_SHEET, col:0, row:0, cols:4, rows:4, size:90},
+  {id:'bookshelf',  name:'Bookshelf',        price:25,  sheet:ROOM_SHEET, col:1, row:0, cols:4, rows:4, size:70},
+  {id:'plant',      name:'Potted Plant',     price:8,   sheet:ROOM_SHEET, col:2, row:0, cols:4, rows:4, size:45},
+  {id:'lamp',       name:'Korean Lamp',      price:15,  sheet:ROOM_SHEET, col:3, row:0, cols:4, rows:4, size:50},
+  // Row 1: cat, poop, chicken, cushion
+  {id:'cat',        name:'Sleeping Cat',     price:20,  sheet:ROOM_SHEET, col:0, row:1, cols:4, rows:4, size:60},
+  {id:'poop',       name:'Happy Poop',       price:3,   sheet:ROOM_SHEET, col:1, row:1, cols:4, rows:4, size:50},
+  {id:'chicken',    name:'Confused Chicken', price:20,  sheet:ROOM_SHEET, col:2, row:1, cols:4, rows:4, size:55},
+  {id:'cushion',    name:'Floor Cushion',    price:10,  sheet:ROOM_SHEET, col:3, row:1, cols:4, rows:4, size:50},
+  // Row 2: notepad, alarm, envelope, coffee
+  {id:'notepad',    name:'Notepad',          price:10,  sheet:ROOM_SHEET, col:0, row:2, cols:4, rows:4, size:45},
+  {id:'alarm',      name:'Alarm Clock',      price:15,  sheet:ROOM_SHEET, col:1, row:2, cols:4, rows:4, size:45},
+  {id:'envelope',   name:'Letter',           price:5,   sheet:ROOM_SHEET, col:2, row:2, cols:4, rows:4, size:40},
+  {id:'coffee',     name:'Coffee',           price:5,   sheet:ROOM_SHEET, col:3, row:2, cols:4, rows:4, size:40},
+  // Row 3: megaphone, laptop, bomb/boom, ufo poster
+  {id:'megaphone',  name:'Megaphone',        price:18,  sheet:ROOM_SHEET, col:0, row:3, cols:4, rows:4, size:45},
+  {id:'laptop',     name:'Laptop',           price:35,  sheet:ROOM_SHEET, col:1, row:3, cols:4, rows:4, size:55},
+  {id:'bomb',       name:'BOOM!',            price:15,  sheet:ROOM_SHEET, col:2, row:3, cols:4, rows:4, size:50},
+  {id:'ufo_poster', name:'UFO Poster',       price:25,  sheet:ROOM_SHEET, col:3, row:3, cols:4, rows:4, size:55},
 ];
 
 var K_ROOM_LAYOUT = 'kh_room_layout';
