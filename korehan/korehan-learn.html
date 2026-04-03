@@ -164,6 +164,26 @@
 }
 .sentence-filter-btn.on,.sentence-filter-btn:hover{background:var(--bright);border-color:var(--bright);color:#fff}
 
+/* ── HANGUL CARDS ── */
+.hangul-grid { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:24px; }
+.hangul-card { width:80px; height:100px; cursor:pointer; position:relative; }
+.hangul-card .hangul-front, .hangul-card .hangul-back {
+  position:absolute; inset:0; backface-visibility:hidden; border-radius:12px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  transition: transform .4s;
+}
+.hangul-card .hangul-front { background:#eff6ff; border:1.5px solid #bfdbfe; font-size:32px; font-weight:900; color:#1e3a5f; }
+.hangul-card .hangul-back { background:#1e3a5f; color:#fff; transform:rotateY(180deg); font-size:12px; padding:8px; }
+.hangul-card.flipped .hangul-front { transform:rotateY(180deg); }
+.hangul-card.flipped .hangul-back { transform:rotateY(0); }
+.hangul-quiz-opt {
+  padding:10px 18px; border:1.5px solid var(--border); border-radius:10px; background:#fff;
+  font-size:14px; font-weight:700; cursor:pointer; transition:all .15s; font-family:inherit;
+}
+.hangul-quiz-opt:hover:not(:disabled) { border-color:#2255a4; background:#f0f6ff; }
+.hangul-quiz-opt.correct { border-color:#16a34a; background:#f0fdf4; color:#15803d; }
+.hangul-quiz-opt.wrong { border-color:#dc2626; background:#fef2f2; color:#b91c1c; }
+
 /* ── SRS REVIEW BANNER ── */
 .srs-banner {
   background: linear-gradient(135deg,#0f2a5e,#1a4a9e);
@@ -299,7 +319,32 @@
     <div class="pod-grid" id="pod-grid"></div>
   </div>
 
+  <!-- LEARN TABS -->
+  <div class="learn-tabs" id="learn-main-tabs" style="margin-bottom:24px">
+    <button class="tab-btn" onclick="showLearnSection('hangul',this)">🌱 Hangul</button>
+    <button class="tab-btn on" onclick="showLearnSection('vocab-section',this)">📇 Vocabulary</button>
+  </div>
+
+  <!-- HANGUL SECTION -->
+  <div id="learn-sec-hangul" style="display:none">
+    <div class="learn-section-title">🌱 Hangul — Korean Alphabet</div>
+    <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">Click a card to reveal the sound and example word</p>
+
+    <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--gray);margin-bottom:10px">Consonants</div>
+    <div class="hangul-grid" id="hangul-consonants"></div>
+
+    <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--gray);margin-bottom:10px;margin-top:20px">Vowels</div>
+    <div class="hangul-grid" id="hangul-vowels"></div>
+
+    <div style="margin-top:32px;padding-top:20px;border-top:2px solid var(--border)">
+      <div style="font-size:16px;font-weight:900;margin-bottom:12px">🧠 Hangul Quiz</div>
+      <p style="color:var(--gray);font-size:13px;margin-bottom:14px">What sound does this character make?</p>
+      <div id="hangul-quiz-area"></div>
+    </div>
+  </div>
+
   <!-- FLASHCARDS -->
+  <div id="learn-sec-vocab-section">
   <div class="learn-section-title">📇 Vocabulary Flashcards — 단어 카드</div>
   <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">Click a card to reveal the meaning the meaning</p>
 
@@ -369,6 +414,7 @@
   </div>
 
 
+</div><!-- /learn-sec-vocab-section -->
 
 </div>
 

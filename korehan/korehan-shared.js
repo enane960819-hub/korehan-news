@@ -2384,6 +2384,15 @@ function renderArticlePage() {
     + '<div id="fill-wrap">'
     + '<div id="fill-content"><div id="fill-teaser"></div></div>'
     + '</div>'
+    + '<div style="margin-top:24px;padding-top:20px;border-top:2px solid var(--border)">'
+    + '<div style="font-size:14px;font-weight:800;margin-bottom:8px">📝 Article Summary</div>'
+    + '<p style="font-size:12px;color:var(--gray);margin-bottom:10px">Summarize this article in 3-5 Korean sentences. AI will check your summary.</p>'
+    + '<textarea id="art-summary-ta" style="width:100%;min-height:100px;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:\'Noto Sans KR\',sans-serif;font-size:13px;resize:vertical;box-sizing:border-box" placeholder="Write your summary in Korean..."></textarea>'
+    + '<div style="display:flex;gap:8px;margin-top:8px">'
+    + '<button onclick="checkArticleSummary()" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Check Summary</button>'
+    + '</div>'
+    + '<div id="art-summary-feedback" style="margin-top:10px;font-size:13px;line-height:1.6"></div>'
+    + '</div>'
     + '</div>'
 
     // 구분선
@@ -2613,6 +2622,23 @@ function initFillTeaser(article) {
     + '</div>'
     + '</div>'
     + '</div>';
+}
+
+async function checkArticleSummary() {
+  var ta = document.getElementById('art-summary-ta');
+  var fb = document.getElementById('art-summary-feedback');
+  if (!ta || !fb) return;
+  var text = ta.value.trim();
+  if (!text) { fb.innerHTML = '<span style="color:#dc2626">Please write a summary first.</span>'; return; }
+  fb.innerHTML = '<span style="color:var(--gray)">Checking...</span>';
+  var art = window._currentArticle;
+  var articleText = art ? (art.title + ' ' + (art.body || '') + ' ' + (art.full || '')).slice(0, 1000) : '';
+  try {
+    var r = await callClaude({feature:'summary-check', model:'claude-haiku-4-5-20251001', max_tokens:400,
+      messages:[{role:'user', content:'You are a Korean teacher. A student summarized this Korean article:\n\nARTICLE: '+articleText+'\n\nSTUDENT SUMMARY: '+text+'\n\nGive feedback in English:\n1. Key points covered? (list what they got and missed)\n2. Grammar mistakes (if any, show correction)\n3. Overall score: Excellent/Good/Needs improvement\n\nKeep feedback concise (under 150 words).'}]});
+    var feedback = (r.content||[]).map(function(c){return c.text||'';}).join('');
+    fb.innerHTML = '<div style="background:var(--light);border-radius:10px;padding:12px 14px;line-height:1.7;white-space:pre-wrap">'+feedback.replace(/</g,'&lt;')+'</div>';
+  } catch(e) { fb.innerHTML = '<span style="color:#dc2626">Error: '+e.message+'</span>'; }
 }
 
 function startFillExercise() {

@@ -2519,7 +2519,10 @@ function _applyDailyContent(rec) {
     vocab:                   Array.isArray(rec.vocab)                   ? rec.vocab                   : [],
     grammar:                 Array.isArray(rec.grammar)                 ? rec.grammar                 : [],
     helpers:                 Array.isArray(rec.helpers)                 ? rec.helpers                 : [],
-    topic_writing_sentences: Array.isArray(rec.topic_writing_sentences) ? rec.topic_writing_sentences : []
+    topic_writing_sentences: Array.isArray(rec.topic_writing_sentences) ? rec.topic_writing_sentences : [],
+    confusing_grammar:       Array.isArray(rec.confusing_grammar)       ? rec.confusing_grammar       : [],
+    formality_exercise:      rec.formality_exercise                     || null,
+    culture_note:            rec.culture_note                           || ''
   };
   _dailyDictationSentences = Array.isArray(rec.dictation_sentences) ? rec.dictation_sentences : [];
   _dailyDictationQuestions = Array.isArray(rec.dictation_questions) ? rec.dictation_questions : [];
@@ -2529,6 +2532,32 @@ function _applyDailyContent(rec) {
   renderTopicUI();
   renderAIContent();
   hideAILoading();
+  // Populate idiom/expression banner
+  _showIdiomBanner();
+}
+
+function _showIdiomBanner() {
+  var banner = document.getElementById('sr-idiom-banner');
+  if (!banner) return;
+  try {
+    // Try getTodaysPhrase from korehan-shared.js first
+    if (typeof getTodaysPhrase === 'function') {
+      var phrase = getTodaysPhrase();
+      if (phrase && phrase.ko) {
+        document.getElementById('sr-idiom-ko').textContent = phrase.ko;
+        document.getElementById('sr-idiom-en').textContent = phrase.en || '';
+        banner.style.display = 'block';
+        return;
+      }
+    }
+    // Fallback: pick a random helper from today's AI content
+    if (_aiContent && _aiContent.helpers && _aiContent.helpers.length > 0) {
+      var h = _aiContent.helpers[Math.floor(Math.random() * _aiContent.helpers.length)];
+      document.getElementById('sr-idiom-ko').textContent = h.ko || '';
+      document.getElementById('sr-idiom-en').textContent = h.en || '';
+      banner.style.display = 'block';
+    }
+  } catch(e) { console.warn('[_showIdiomBanner]', e); }
 }
 
 async function _generateAndSaveDailyContent(date) {
@@ -2586,6 +2615,24 @@ async function _generateAndSaveDailyContent(date) {
     topicHint = 'Pick an interesting, specific topic within the theme: "' + topicCategories[Math.floor(Math.random() * topicCategories.length)] + '"';
   }
 
+  // Level-specific extra fields for the AI prompt
+  var levelExtraFields = '';
+  var levelExtraInstructions = '';
+  if (_currentLevel === 'Beginner') {
+    levelExtraFields = '\n  NOTE: For each grammar item, also include a "parts" array that breaks the example_ko into color-coded sentence parts.\n'
+      + '  Each grammar item should have: "parts": [{"text":"저는","role":"subject"},{"text":"음식을","role":"object"},{"text":"좋아해요","role":"verb"}]\n'
+      + '  Valid roles: "subject", "object", "verb", "particle", "other". Every word/particle in example_ko must appear in parts.\n';
+  } else if (_currentLevel === 'Intermediate') {
+    levelExtraFields = '\n  Also include a top-level "confusing_grammar" array with 2 items:\n'
+      + '  "confusing_grammar": [{"pair":["~는/은","~이/가"],"explanation":"Topic marker vs subject marker","wrong":"incorrect example sentence","correct":"correct example sentence"}]\n';
+    levelExtraInstructions = '\nconfusing_grammar: exactly 2 items. Each must have pair (2 grammar patterns), explanation, wrong (common mistake sentence), correct (proper sentence).';
+  } else if (_currentLevel === 'Advanced') {
+    levelExtraFields = '\n  Also include:\n'
+      + '  "formality_exercise": {"casual":"casual sentence","formal":"formal/honorific equivalent","explanation":"English explanation of the formality difference"}\n'
+      + '  "culture_note": "A short cultural note (1-2 sentences) related to today\'s topic, explaining Korean customs, etiquette, or social norms relevant to the vocabulary/grammar being taught."\n';
+    levelExtraInstructions = '\nformality_exercise: 1 item with casual, formal, and explanation fields. culture_note: 1-2 sentences about Korean culture related to the topic.';
+  }
+
   var prompt = 'You are a Korean language teacher creating complete daily study content for ' + _currentLevel + '-level students.\n\n'
     + 'Level requirements: ' + (levelGuide[_currentLevel] || levelGuide.Beginner) + '\n'
     + topicHint + '\n\n'
@@ -2598,8 +2645,10 @@ async function _generateAndSaveDailyContent(date) {
     + '  "helpers": [{"ko":"Korean sentence","en":"translation"}],\n'
     + '  "dictation_sentences": [{"ko":"Korean sentence","en":"English meaning"}],\n'
     + '  "dictation_questions": [{"question_ko":"question","answer_ko":"short answer","hint_en":"hint in English"}]\n'
+    + levelExtraFields
     + '}\n'
-    + 'vocab: exactly 5 items. grammar: exactly 3 items. helpers: exactly 4 items. dictation_sentences: exactly 3 items. dictation_questions: exactly 3 items.';
+    + 'vocab: exactly 5 items. grammar: exactly 3 items. helpers: exactly 4 items. dictation_sentences: exactly 3 items. dictation_questions: exactly 3 items.'
+    + levelExtraInstructions;
 
   try {
     var _aiGenTimeout;
@@ -2633,6 +2682,9 @@ async function _generateAndSaveDailyContent(date) {
       helpers:             parsed.helpers             || [],
       dictation_sentences: parsed.dictation_sentences || [],
       dictation_questions: parsed.dictation_questions || [],
+      confusing_grammar:   parsed.confusing_grammar   || [],
+      formality_exercise:  parsed.formality_exercise  || null,
+      culture_note:        parsed.culture_note        || '',
       admin_edited:        false,
       updated_at:          new Date().toISOString()
     };
@@ -2859,15 +2911,70 @@ function renderAIContent() {
   {
     var ghtml = '';
     var glvColor = { Beginner:'lb', Intermediate:'li', Advanced:'la' };
+    var partColorMap = { subject:'#2563eb', object:'#16a34a', verb:'#7c3aed' };
     (_aiContent.grammar || []).forEach(function(g) {
+      // Build example display — for Beginner with parts, color-code them
+      var exampleHtml = '';
+      if (_currentLevel === 'Beginner' && Array.isArray(g.parts) && g.parts.length > 0) {
+        var partsHtml = g.parts.map(function(p) {
+          var color = partColorMap[p.role] || '';
+          if (color) return '<span style="color:' + color + ';font-weight:700">' + p.text + '</span>';
+          return p.text;
+        }).join(' ');
+        exampleHtml = '<div class="grex"><div class="grko">' + partsHtml + '</div><div class="gren">' + g.example_en + '</div></div>';
+      } else {
+        exampleHtml = '<div class="grex"><div class="grko">' + g.example_ko + '</div><div class="gren">' + g.example_en + '</div></div>';
+      }
       ghtml += '<div class="grb">'
         + '<span class="grbadge lvbadge ' + (glvColor[g.level]||'lb') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[g.level]||g.level) + '</span>'
         + '<div class="grname">' + g.pattern + '</div>'
         + '<div class="grexp">' + g.explanation + '</div>'
-        + '<div class="grex"><div class="grko">' + g.example_ko + '</div><div class="gren">' + g.example_en + '</div></div>'
+        + exampleHtml
         + '</div>';
     });
+    // Beginner: add color legend
+    if (_currentLevel === 'Beginner') {
+      ghtml += '<div style="margin-top:8px;padding:6px 8px;font-size:11px;color:rgba(255,255,255,.6);border-top:1px solid rgba(255,255,255,.08)">'
+        + '\uD83D\uDD35 Subject \uD83D\uDFE2 Object \uD83D\uDFE3 Verb</div>';
+    }
     document.getElementById('grammar-box').innerHTML = ghtml || '<div style="color:#aaa;font-size:12px">No grammar loaded.</div>';
+
+    // INTERMEDIATE: Confusing Grammar (Common Mistakes) section
+    if (_currentLevel === 'Intermediate' && _aiContent.confusing_grammar && _aiContent.confusing_grammar.length > 0) {
+      var cghtml = '<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1)">'
+        + '<div style="font-size:11px;font-weight:700;color:#f59e0b;margin-bottom:8px">\u26A1 COMMON MISTAKES</div>';
+      _aiContent.confusing_grammar.forEach(function(item) {
+        cghtml += '<div style="margin-bottom:10px">'
+          + '<div style="font-size:12px;font-weight:700;color:#e2e8f0;margin-bottom:3px">' + (item.pair || []).join(' vs ') + '</div>'
+          + '<div style="font-size:11px;color:rgba(255,255,255,.6);margin-bottom:4px">' + (item.explanation || '') + '</div>'
+          + '<div style="font-size:11px;color:#ef4444;margin-bottom:2px">\u2718 <span style="text-decoration:line-through">' + (item.wrong || '') + '</span></div>'
+          + '<div style="font-size:11px;color:#22c55e">\u2714 ' + (item.correct || '') + '</div>'
+          + '</div>';
+      });
+      cghtml += '</div>';
+      document.getElementById('grammar-box').innerHTML += cghtml;
+    }
+
+    // ADVANCED: Formality Switch section
+    if (_currentLevel === 'Advanced' && _aiContent.formality_exercise) {
+      var fe = _aiContent.formality_exercise;
+      var fehtml = '<div class="sr-sb-panel" style="margin-top:12px">'
+        + '<div style="font-size:11px;font-weight:700;color:#8b5cf6;margin-bottom:8px">\uD83C\uDFA9 FORMALITY SWITCH</div>'
+        + '<div style="font-size:12px;color:#e2e8f0;margin-bottom:4px"><span style="color:#94a3b8;font-size:10px;font-weight:600">CASUAL:</span> ' + (fe.casual || '') + '</div>'
+        + '<div style="font-size:12px;color:#e2e8f0;margin-bottom:4px"><span style="color:#94a3b8;font-size:10px;font-weight:600">FORMAL:</span> ' + (fe.formal || '') + '</div>'
+        + '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:4px">' + (fe.explanation || '') + '</div>'
+        + '</div>';
+      document.getElementById('grammar-box').innerHTML += fehtml;
+    }
+
+    // ADVANCED: Culture Note section
+    if (_currentLevel === 'Advanced' && _aiContent.culture_note) {
+      var cnhtml = '<div class="sr-sb-panel" style="margin-top:12px">'
+        + '<div style="font-size:11px;font-weight:700;color:#ec4899;margin-bottom:8px">\uD83C\uDDF0\uD83C\uDDF7 CULTURE NOTE</div>'
+        + '<p style="font-size:12px;color:rgba(255,255,255,.7);margin:0;line-height:1.5">' + _aiContent.culture_note + '</p>'
+        + '</div>';
+      document.getElementById('grammar-box').innerHTML += cnhtml;
+    }
   }
 
   // WCARD CHIPS
@@ -6814,6 +6921,14 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
     </div>
 
   </div>
+</div>
+
+<!-- ── IDIOM/PROVERB BANNER ── -->
+<div id="sr-idiom-banner" style="position:fixed;bottom:80px;right:16px;max-width:280px;background:linear-gradient(135deg,#1e1b4b,#312e81);border:1px solid rgba(139,92,246,.3);border-radius:16px;padding:14px 16px;color:#fff;box-shadow:0 8px 32px rgba(0,0,0,.3);z-index:900;display:none;cursor:pointer" onclick="this.style.display='none'">
+  <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#a78bfa;margin-bottom:6px">💎 TODAY'S EXPRESSION</div>
+  <div id="sr-idiom-ko" style="font-size:16px;font-weight:800;margin-bottom:4px"></div>
+  <div id="sr-idiom-en" style="font-size:12px;color:rgba(255,255,255,.65)"></div>
+  <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:8px">Tap to dismiss</div>
 </div>
 
 </body>
