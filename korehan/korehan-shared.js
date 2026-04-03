@@ -32,6 +32,7 @@ var _activeDiff = (function(){ try { return localStorage.getItem('kh_diff') || '
 function khSetDiff(val) {
   _activeDiff = val || 'all';
   try { localStorage.setItem('kh_diff', _activeDiff); } catch(e) {}
+  _syncPrefsToDB();
   // Update dot color
   var dot = document.getElementById('kh-diff-dot');
   if (dot) {
@@ -833,6 +834,7 @@ async function checkSession() {
       updateCommentForm();
       renderDailyMission();
       _syncSavedWordsFromDB();
+      _rehydrateUserState();
       window.dispatchEvent(new Event('kh-auth-signed-in'));
       // Re-apply UI update after a short delay to catch any late-rendered DOM elements
       setTimeout(function(){ updateAuthUI(); }, 300);
@@ -902,6 +904,7 @@ async function checkSession() {
     updateCommentForm();
     renderDailyMission();
     _syncSavedWordsFromDB();
+    _rehydrateUserState();
     window.dispatchEvent(new Event('kh-auth-signed-in'));
     if (!window.location.pathname.includes('onboarding')) {
       checkOnboardingStatus();
@@ -1051,6 +1054,7 @@ function toggleKhNeon(evt) {
     localStorage.setItem('korehan_home_neon', next ? '1' : '0');
   } catch(e) {}
   applyKhNeon(next);
+  _syncPrefsToDB();
 }
 
 function initKhNeonTheme() {
@@ -5934,6 +5938,68 @@ async function fetchActivityStreakFromDB(sb, userId) {
   } catch(e) {
     return 0;
   }
+}
+
+// ── Sync user preferences to DB (best-effort, non-blocking) ──
+function _syncPrefsToDB() {
+  if (!supaUser) return;
+  var sb = getSupa(); if (!sb) return;
+  var prefs = {
+    diff: _activeDiff || 'all',
+    neon: isKhNeonEnabled()
+  };
+  sb.from('user_stats').update({ preferences: prefs }).eq('user_id', supaUser.id)
+    .then(function(r) { if (r.error) console.warn('prefs sync:', r.error.message); })
+    .catch(function() {});
+}
+
+// ── Cross-device rehydration: restore XP + daily mission from DB on login ──
+async function _rehydrateUserState() {
+  if (!supaUser) return;
+  var sb = getSupa(); if (!sb) return;
+  try {
+    // 1) XP + stats from user_stats
+    var statsRes = await sb.from('user_stats').select('xp, coin_balance, streak, mission_streak, articles_read, words_saved, quizzes_done, fill_done, display_name')
+      .eq('user_id', supaUser.id).maybeSingle();
+    if (statsRes.data) {
+      var s = statsRes.data;
+      var localXP = lsGet(K_XP, 0);
+      if (s.xp > localXP) lsSet(K_XP, s.xp);
+      if (s.display_name) localStorage.setItem('kh_display_name', s.display_name);
+    }
+  } catch(e) { console.warn('rehydrate stats:', e); }
+  try {
+    // 2) Today's daily mission from daily_missions
+    var today = dmToday();
+    var dmRes = await sb.from('daily_missions').select('articles, words, quizzes, fill, completed')
+      .eq('user_id', supaUser.id).eq('date', today).maybeSingle();
+    if (dmRes.data) {
+      var dbDm = dmRes.data;
+      var localDm = lsGet('kh_daily_' + today, { articles:0, words:0, quizzes:0, fill:0 });
+      // Take the max of local vs DB for each field (handles partial sync)
+      var merged = {
+        articles: Math.max(localDm.articles||0, dbDm.articles||0),
+        words:    Math.max(localDm.words||0,    dbDm.words||0),
+        quizzes:  Math.max(localDm.quizzes||0,  dbDm.quizzes||0),
+        fill:     Math.max(localDm.fill||0,     dbDm.fill||0)
+      };
+      lsSet('kh_daily_' + today, merged);
+      renderDailyMission();
+    }
+  } catch(e) { console.warn('rehydrate daily mission:', e); }
+  try {
+    // 3) User preferences (difficulty, neon theme) from user_stats.preferences JSONB
+    var prefRes = await sb.from('user_stats').select('preferences').eq('user_id', supaUser.id).maybeSingle();
+    if (prefRes.data && prefRes.data.preferences) {
+      var prefs = prefRes.data.preferences;
+      if (typeof prefs === 'string') try { prefs = JSON.parse(prefs); } catch(e) { prefs = {}; }
+      if (prefs.diff && !localStorage.getItem('kh_diff')) khSetDiff(prefs.diff);
+      if (prefs.neon !== undefined && !localStorage.getItem(K_NEON_THEME)) {
+        localStorage.setItem(K_NEON_THEME, prefs.neon ? '1' : '0');
+        applyKhNeon(!!prefs.neon);
+      }
+    }
+  } catch(e) { /* preferences column may not exist yet — ignore */ }
 }
 
 function dmGet() {
