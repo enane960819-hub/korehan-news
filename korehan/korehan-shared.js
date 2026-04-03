@@ -187,7 +187,6 @@ var _artCacheSchemaDone = false;
 
 async function _detectArtCacheSchema() {
   if (_artCacheSchemaDone) return _artCacheSchema;
-  _artCacheSchemaDone = true;
   var sb = getSupa();
   if (!sb) { _artCacheSchema = 'none'; return 'none'; }
   // 먼저 실제 행으로 컬럼 감지
@@ -195,24 +194,23 @@ async function _detectArtCacheSchema() {
     var r0 = await sb.from('article_cache').select('*').limit(1);
     if (!r0.error && r0.data && r0.data.length > 0) {
       var cols = Object.keys(r0.data[0]);
-      if (cols.indexOf('cache_key') >= 0) { _artCacheSchema = 'kv'; console.log('[cache] schema=kv cols:', cols); return 'kv'; }
-      if (cols.indexOf('article_id') >= 0 && cols.indexOf('vocab') >= 0) { _artCacheSchema = 'wide'; console.log('[cache] schema=wide cols:', cols); return 'wide'; }
+      if (cols.indexOf('cache_key') >= 0) { _artCacheSchemaDone = true; _artCacheSchema = 'kv'; return 'kv'; }
+      if (cols.indexOf('article_id') >= 0 && cols.indexOf('vocab') >= 0) { _artCacheSchemaDone = true; _artCacheSchema = 'wide'; return 'wide'; }
       console.warn('[cache] 알 수 없는 컬럼:', cols);
-      _artCacheSchema = 'none'; return 'none';
+      _artCacheSchemaDone = true; _artCacheSchema = 'none'; return 'none';
     }
   } catch(e) {}
   // 빈 테이블이면 컬럼 유효성으로 감지
   try {
     var r1 = await sb.from('article_cache').select('content_type,content_id,cache_key,cache_value').limit(0);
-    if (!r1.error) { _artCacheSchema = 'kv'; console.log('[cache] schema=kv (empty table probe)'); return 'kv'; }
-    else console.warn('[cache] kv probe error:', r1.error);
+    if (!r1.error) { _artCacheSchemaDone = true; _artCacheSchema = 'kv'; return 'kv'; }
   } catch(e) {}
   try {
     var r2 = await sb.from('article_cache').select('article_id,vocab,grammar').limit(0);
-    if (!r2.error) { _artCacheSchema = 'wide'; console.log('[cache] schema=wide (empty table probe)'); return 'wide'; }
-    else console.warn('[cache] wide probe error:', r2.error);
+    if (!r2.error) { _artCacheSchemaDone = true; _artCacheSchema = 'wide'; return 'wide'; }
   } catch(e) {}
-  console.warn('[cache] schema=none — article_cache 테이블 접근 불가');
+  // Don't set _artCacheSchemaDone — allow retry after auth is restored
+  console.warn('[cache] schema detection failed — will retry after auth');
   _artCacheSchema = 'none';
   return 'none';
 }
@@ -5080,6 +5078,10 @@ document.addEventListener('DOMContentLoaded', async function() {
   // After session is confirmed, reload settings so RLS-protected data (phrases etc.) is fetched with auth
   if (supaUser) {
     _appSettingsPromise = null;
+    // Reset article cache detection — earlier probe may have failed due to missing auth
+    _artCacheSchemaDone = false;
+    _artCacheSchema = null;
+    _remoteCacheDisabled = false;
     await loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
     window.dispatchEvent(new Event('kh-settings-reloaded'));
   }
