@@ -372,6 +372,88 @@ body.kh-neon-on .mypage-hero {
   background-size: 300% 300% !important;
   animation: heroBgShift 10s ease-in-out infinite !important;
 }
+
+/* ═══ Mini Room ═══ */
+#miniroom-container { user-select:none; -webkit-user-select:none; }
+.room-placed-item {
+  position:absolute; image-rendering:pixelated; background-repeat:no-repeat;
+  transition: outline .15s, box-shadow .15s;
+  z-index:1;
+}
+.room-placed-item.room-dragging { z-index:10; opacity:.85; }
+
+/* Shop modal */
+.room-shop-overlay {
+  position:fixed; inset:0; background:rgba(5,12,24,.78); display:flex;
+  align-items:center; justify-content:center; z-index:3000; padding:16px;
+}
+.room-shop-modal {
+  background:#fff; border-radius:20px; width:min(520px,96vw); max-height:80vh;
+  padding:0; box-shadow:0 24px 64px rgba(0,0,0,.3); overflow:hidden;
+  display:flex; flex-direction:column;
+}
+.room-shop-header {
+  padding:22px 24px 14px; border-bottom:1px solid #eef2f7;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.room-shop-header h3 { margin:0; font-size:16px; font-weight:900; color:#0b1626; font-family:'Inter',sans-serif; }
+.room-shop-bal { font-size:13px; font-weight:800; color:#d97706; }
+.room-shop-close {
+  width:32px; height:32px; border-radius:50%; border:none; background:rgba(0,0,0,.06);
+  font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  color:#64748b; transition:background .15s;
+}
+.room-shop-close:hover { background:rgba(0,0,0,.12); }
+.room-shop-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px;
+  padding:18px 24px 24px; overflow-y:auto; flex:1;
+}
+.room-shop-card {
+  border:1px solid #e2e8f0; border-radius:14px; padding:14px 12px; text-align:center;
+  background:#f8fbff; transition:border-color .15s, box-shadow .15s;
+}
+.room-shop-card:hover { border-color:#93c5fd; box-shadow:0 4px 16px rgba(37,99,235,.08); }
+.room-shop-sprite {
+  width:60px; height:60px; margin:0 auto 10px; image-rendering:pixelated;
+  background-repeat:no-repeat;
+}
+.room-shop-name { font-size:12px; font-weight:800; color:#0b1626; margin-bottom:4px; }
+.room-shop-price { font-size:11px; font-weight:700; color:#d97706; margin-bottom:8px; }
+.room-shop-btn {
+  padding:6px 16px; border:none; border-radius:999px; font-size:11px; font-weight:800;
+  cursor:pointer; font-family:inherit; transition:all .15s;
+}
+.room-shop-btn.buy { background:#2563eb; color:#fff; }
+.room-shop-btn.buy:hover { background:#1d4ed8; }
+.room-shop-btn.buy:disabled { opacity:.45; cursor:not-allowed; }
+.room-shop-btn.place { background:#16a34a; color:#fff; }
+.room-shop-btn.place:hover { background:#15803d; }
+.room-shop-btn.owned { background:rgba(0,0,0,.06); color:#94a3b8; cursor:default; }
+.room-shop-btn.remove { background:#ef4444; color:#fff; margin-top:4px; }
+.room-shop-btn.remove:hover { background:#dc2626; }
+
+/* Room badges on wall */
+.room-badge-icon {
+  width:28px; height:28px; border-radius:6px; display:flex; align-items:center;
+  justify-content:center; font-size:14px; background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.15); cursor:default;
+}
+
+/* Neon overrides for mini room */
+body.kh-neon-on #miniroom-container { border-color:rgba(0,255,214,.2) !important; }
+body.kh-neon-on #mp-miniroom-section { background:rgba(9,18,33,.92) !important; border-color:rgba(0,255,214,.16) !important; }
+body.kh-neon-on #mp-miniroom-section h3 { color:#e4f9ff !important; }
+body.kh-neon-on .room-shop-modal { background:#071320 !important; }
+body.kh-neon-on .room-shop-header { border-bottom-color:rgba(0,255,214,.15) !important; }
+body.kh-neon-on .room-shop-header h3 { color:#e4f9ff !important; }
+body.kh-neon-on .room-shop-card { background:rgba(9,18,33,.8) !important; border-color:rgba(0,255,214,.15) !important; }
+body.kh-neon-on .room-shop-name { color:#e4f9ff !important; }
+body.kh-neon-on .room-shop-price { color:#8ffcff !important; }
+
+@media (max-width:480px) {
+  #miniroom-container { height:300px !important; }
+  .room-shop-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; padding:14px 16px 18px; }
+}
 </style>
 </head>
 <body>
@@ -405,6 +487,27 @@ body.kh-neon-on .mypage-hero {
 
   <!-- XP Card -->
   <div id="mp-xp-card"></div>
+
+  <!-- Mini Room -->
+  <div class="mp-section" id="mp-miniroom-section">
+    <h3>My Room</h3>
+    <div id="miniroom-container" style="position:relative;width:100%;max-width:400px;height:360px;margin:0 auto;background:linear-gradient(180deg,#1a1a3e 0%,#2d1f4e 60%,#3d2a5c 100%);border-radius:16px;border:1px solid rgba(255,255,255,.1);overflow:hidden;touch-action:none">
+      <!-- Floor line -->
+      <div style="position:absolute;bottom:80px;left:0;right:0;height:1px;background:rgba(255,255,255,.06)"></div>
+      <!-- Room label -->
+      <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,.2);letter-spacing:.1em">MY STUDY ROOM</div>
+      <!-- Placed items rendered here -->
+      <div id="miniroom-items"></div>
+      <!-- Badges on wall -->
+      <div id="miniroom-badges" style="position:absolute;top:40px;left:16px;display:flex;flex-wrap:wrap;gap:6px;max-width:120px"></div>
+    </div>
+    <!-- Controls -->
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
+      <button onclick="openRoomShop()" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Item Shop</button>
+      <button onclick="toggleRoomEdit()" id="room-edit-btn" style="padding:8px 18px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Edit Room</button>
+      <button onclick="saveRoomLayout()" id="room-save-btn" style="padding:8px 18px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:none">Save</button>
+    </div>
+  </div>
 
   <!-- Stats -->
   <div class="stats-grid" id="mp-mini-stats"></div>
