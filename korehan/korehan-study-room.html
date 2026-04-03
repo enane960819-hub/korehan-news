@@ -577,6 +577,132 @@
   .bm-step-title { font-size: 18px; }
 }
 
+/* ── STARTER 3-STEP MODAL ─────────────────────────────── */
+.smodal-overlay {
+  position: fixed; inset: 0; background: rgba(10,20,40,.88);
+  z-index: 2000; display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.smodal-overlay.hidden { display: none !important; }
+.smodal {
+  background: #0d1b2e; border-radius: 24px; width: 100%; max-width: 560px;
+  max-height: 92vh; display: flex; flex-direction: column;
+  box-shadow: 0 32px 80px rgba(0,0,0,.5); overflow: hidden; color: #fff;
+}
+.sm-header {
+  padding: 18px 20px 14px; display: flex; align-items: center; gap: 14px;
+  background: linear-gradient(135deg, #2e1065 0%, #6b21a8 100%);
+}
+.sm-pips { display: flex; gap: 8px; }
+.sm-pip {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: rgba(255,255,255,.2); transition: all .25s;
+}
+.sm-pip.active { background: #fff; box-shadow: 0 0 8px rgba(255,255,255,.5); }
+.sm-pip.done   { background: #4ade80; }
+.sm-title { flex: 1; font-size: 14px; font-weight: 800; color: rgba(255,255,255,.9); }
+.sm-close { background: none; border: none; color: rgba(255,255,255,.6); font-size: 20px; cursor: pointer; padding: 4px 8px; }
+.sm-body { flex: 1; overflow-y: auto; padding: 24px 20px; }
+.sm-footer { padding: 14px 20px; border-top: 1px solid rgba(255,255,255,.1); display: flex; gap: 10px; justify-content: flex-end; background: rgba(0,0,0,.15); }
+.sm-btn {
+  padding: 12px 28px; border-radius: 14px; border: none;
+  background: linear-gradient(135deg, #6b21a8, #9333ea); color: #fff;
+  font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit;
+  transition: transform .15s, box-shadow .15s;
+  box-shadow: 0 4px 16px rgba(107,33,168,.4);
+}
+.sm-btn:hover { transform: translateY(-2px); }
+.sm-btn:disabled { opacity: .4; transform: none; cursor: not-allowed; }
+.sm-btn-back {
+  padding: 12px 18px; border-radius: 14px; border: 1.5px solid rgba(255,255,255,.2);
+  background: transparent; color: rgba(255,255,255,.7); font-size: 14px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.sm-step-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #c084fc; margin-bottom: 10px; }
+.sm-step-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 900; color: #fff; margin-bottom: 6px; }
+.sm-step-desc { font-size: 14px; color: rgba(255,255,255,.55); margin-bottom: 20px; line-height: 1.6; }
+
+/* Starter Step 1 — Listen & Repeat */
+.sm-word-card {
+  background: rgba(255,255,255,.06); border: 1.5px solid rgba(255,255,255,.12);
+  border-radius: 14px; padding: 14px 16px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 12px; transition: all .2s;
+}
+.sm-word-card.heard { border-color: #4ade80; background: rgba(74,222,128,.08); }
+.sm-word-ko { font-family: 'Noto Sans KR', sans-serif; font-size: 20px; font-weight: 800; color: #fff; }
+.sm-word-rom { font-size: 12px; color: rgba(255,255,255,.4); margin-top: 2px; }
+.sm-word-en { font-size: 13px; color: rgba(255,255,255,.5); margin-left: auto; }
+.sm-tts-btn {
+  width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.06); color: #c084fc; font-size: 18px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s;
+}
+.sm-tts-btn:hover { background: rgba(107,33,168,.3); border-color: #9333ea; }
+.sm-said-btn {
+  padding: 8px 16px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,.15);
+  background: rgba(255,255,255,.06); color: rgba(255,255,255,.7); font-size: 12px;
+  font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; flex-shrink: 0;
+}
+.sm-said-btn:hover { background: rgba(74,222,128,.15); border-color: #4ade80; color: #4ade80; }
+.sm-said-btn.done { background: rgba(74,222,128,.15); border-color: #4ade80; color: #4ade80; pointer-events: none; }
+
+/* Starter Step 2 — Match Game */
+.sm-match-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sm-match-col-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.35); margin-bottom: 8px; text-align: center; }
+.sm-match-item {
+  padding: 12px 14px; border-radius: 12px; border: 2px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.05); text-align: center; cursor: pointer;
+  font-size: 15px; font-weight: 700; transition: all .15s; font-family: 'Noto Sans KR', sans-serif;
+}
+.sm-match-item.en { font-family: 'Source Sans 3', sans-serif; font-size: 14px; }
+.sm-match-item:hover { border-color: rgba(255,255,255,.3); background: rgba(255,255,255,.08); }
+.sm-match-item.selected { border-color: #c084fc; background: rgba(192,132,252,.15); }
+.sm-match-item.matched { border-color: #4ade80; background: rgba(74,222,128,.1); color: #4ade80; pointer-events: none; }
+.sm-match-item.wrong { border-color: #ef4444; background: rgba(239,68,68,.1); animation: smShake .4s; }
+@keyframes smShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+
+/* Starter Step 3 — Simple Quiz */
+.sm-quiz-card {
+  background: rgba(255,255,255,.05); border: 1.5px solid rgba(255,255,255,.1);
+  border-radius: 16px; padding: 20px; margin-bottom: 14px; text-align: center;
+}
+.sm-quiz-word { font-family: 'Noto Sans KR', sans-serif; font-size: 28px; font-weight: 900; color: #fff; margin-bottom: 6px; }
+.sm-quiz-rom { font-size: 13px; color: rgba(255,255,255,.4); margin-bottom: 16px; }
+.sm-quiz-opts { display: flex; flex-direction: column; gap: 8px; }
+.sm-quiz-opt {
+  padding: 14px 18px; border-radius: 12px; border: 2px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.04); color: rgba(255,255,255,.85); font-size: 15px;
+  font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; text-align: left;
+}
+.sm-quiz-opt:hover { border-color: rgba(255,255,255,.3); background: rgba(255,255,255,.08); }
+.sm-quiz-opt.correct { border-color: #4ade80; background: rgba(74,222,128,.12); color: #4ade80; }
+.sm-quiz-opt.wrong { border-color: #ef4444; background: rgba(239,68,68,.1); color: #ef4444; }
+
+/* Starter result */
+.sm-result { text-align: center; padding: 20px 0; }
+.sm-result-emoji { font-size: 56px; margin-bottom: 14px; }
+.sm-result-score { font-size: 32px; font-weight: 900; color: #fff; margin-bottom: 8px; }
+
+@media (max-width: 640px) {
+  .smodal { border-radius: 20px 20px 0 0; max-height: 97dvh; }
+  .smodal-overlay { align-items: flex-end; padding: 0; }
+  .sm-body { padding: 16px 14px; }
+  .sm-step-title { font-size: 18px; }
+}
+
+/* ── SENTENCE BUILDER PANEL ───────────────────────────── */
+.sb-chip {
+  padding: 8px 14px; border-radius: 10px;
+  border: 2px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06);
+  font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 700;
+  color: #fff; cursor: pointer; transition: all .15s;
+}
+.sb-chip:hover { border-color: #c084fc; background: rgba(192,132,252,.1); }
+.sb-chip.placed { opacity: .3; pointer-events: none; }
+.sb-chip.in-target {
+  background: rgba(107,33,168,.2); border-color: #9333ea; color: #c084fc; cursor: pointer;
+}
+
 /* ── NEON MODE: Study Room readability fixes ─────────────── */
 body.kh-neon-on .pko  { color:#f0fcff !important; text-shadow:0 0 14px rgba(0,255,214,.18); }
 body.kh-neon-on .pen  { color:#8ffcff !important; }
@@ -1369,10 +1495,10 @@ body { background: #0b1626 !important; }
 
   <!-- LEVEL SELECTOR — top of page -->
   <div class="lv-row">
-    <button class="lv-btn lv-s"    onclick="setLevel('Starter',this)">⚪ Starter</button>
-    <button class="lv-btn lv-b on" onclick="setLevel('Beginner',this)">🟢 Beginner</button>
-    <button class="lv-btn lv-i"    onclick="setLevel('Intermediate',this)">🟡 Intermediate</button>
-    <button class="lv-btn lv-a"    onclick="setLevel('Advanced',this)">🔴 Advanced</button>
+    <button class="lv-btn lv-s"    onclick="setLevel('Starter',this)">🌱 Seed</button>
+    <button class="lv-btn lv-b on" onclick="setLevel('Beginner',this)">🌿 Sprout</button>
+    <button class="lv-btn lv-i"    onclick="setLevel('Intermediate',this)">🌳 Tree</button>
+    <button class="lv-btn lv-a"    onclick="setLevel('Advanced',this)">🌲 Forest</button>
   </div>
 
   <!-- HERO BLOCK: badge + headline + topic card -->
@@ -1576,6 +1702,17 @@ body { background: #0b1626 !important; }
         <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:10px">AI generates from today's vocab</div>
         <button class="lqbtn" onclick="startLQ()">Start Quiz</button>
       </div>
+    </div>
+  </div>
+
+  <!-- SENTENCE BUILDER (Beginner only) -->
+  <div class="sr-sb-panel" id="sentence-builder-box" style="display:none">
+    <div class="sr-sb-hd" style="font-size:13px;font-weight:900;color:#fff;margin-bottom:10px">&#129513; Sentence Builder</div>
+    <div id="sb-content">
+      <p style="font-size:12px;color:rgba(255,255,255,.6);margin-bottom:10px">Arrange the words to make a correct sentence</p>
+      <div id="sb-target" style="min-height:40px;border:2px dashed rgba(255,255,255,.2);border-radius:10px;padding:8px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px"></div>
+      <div id="sb-pool" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      <div id="sb-feedback" style="margin-top:8px;font-size:12px"></div>
     </div>
   </div>
 
@@ -2118,7 +2255,7 @@ async function loadDBGrammar(level) {
     var glvColor = { Beginner:'lb', Intermediate:'li', Advanced:'la', Starter:'lb' };
     var ghtml = r.data.map(function(g) {
       return '<div class="grb">'
-        + '<span class="grbadge lvbadge ' + (glvColor[level]||'lb') + '">' + level + '</span>'
+        + '<span class="grbadge lvbadge ' + (glvColor[level]||'lb') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]||level) + '</span>'
         + '<div class="grname">' + g.pattern + '</div>'
         + '<div class="grexp">' + g.explanation + '</div>'
         + '<div class="grex"><div class="grko">' + g.example_ko + '</div><div class="gren">' + g.example_en + '</div></div>'
@@ -2519,7 +2656,10 @@ function _applyDailyContent(rec) {
     vocab:                   Array.isArray(rec.vocab)                   ? rec.vocab                   : [],
     grammar:                 Array.isArray(rec.grammar)                 ? rec.grammar                 : [],
     helpers:                 Array.isArray(rec.helpers)                 ? rec.helpers                 : [],
-    topic_writing_sentences: Array.isArray(rec.topic_writing_sentences) ? rec.topic_writing_sentences : []
+    topic_writing_sentences: Array.isArray(rec.topic_writing_sentences) ? rec.topic_writing_sentences : [],
+    confusing_grammar:       Array.isArray(rec.confusing_grammar)       ? rec.confusing_grammar       : [],
+    formality_exercise:      rec.formality_exercise                     || null,
+    culture_note:            rec.culture_note                           || ''
   };
   _dailyDictationSentences = Array.isArray(rec.dictation_sentences) ? rec.dictation_sentences : [];
   _dailyDictationQuestions = Array.isArray(rec.dictation_questions) ? rec.dictation_questions : [];
@@ -2529,6 +2669,32 @@ function _applyDailyContent(rec) {
   renderTopicUI();
   renderAIContent();
   hideAILoading();
+  // Populate idiom/expression banner
+  _showIdiomBanner();
+}
+
+function _showIdiomBanner() {
+  var banner = document.getElementById('sr-idiom-banner');
+  if (!banner) return;
+  try {
+    // Try getTodaysPhrase from korehan-shared.js first
+    if (typeof getTodaysPhrase === 'function') {
+      var phrase = getTodaysPhrase();
+      if (phrase && phrase.ko) {
+        document.getElementById('sr-idiom-ko').textContent = phrase.ko;
+        document.getElementById('sr-idiom-en').textContent = phrase.en || '';
+        banner.style.display = 'block';
+        return;
+      }
+    }
+    // Fallback: pick a random helper from today's AI content
+    if (_aiContent && _aiContent.helpers && _aiContent.helpers.length > 0) {
+      var h = _aiContent.helpers[Math.floor(Math.random() * _aiContent.helpers.length)];
+      document.getElementById('sr-idiom-ko').textContent = h.ko || '';
+      document.getElementById('sr-idiom-en').textContent = h.en || '';
+      banner.style.display = 'block';
+    }
+  } catch(e) { console.warn('[_showIdiomBanner]', e); }
 }
 
 async function _generateAndSaveDailyContent(date) {
@@ -2586,6 +2752,24 @@ async function _generateAndSaveDailyContent(date) {
     topicHint = 'Pick an interesting, specific topic within the theme: "' + topicCategories[Math.floor(Math.random() * topicCategories.length)] + '"';
   }
 
+  // Level-specific extra fields for the AI prompt
+  var levelExtraFields = '';
+  var levelExtraInstructions = '';
+  if (_currentLevel === 'Beginner') {
+    levelExtraFields = '\n  NOTE: For each grammar item, also include a "parts" array that breaks the example_ko into color-coded sentence parts.\n'
+      + '  Each grammar item should have: "parts": [{"text":"저는","role":"subject"},{"text":"음식을","role":"object"},{"text":"좋아해요","role":"verb"}]\n'
+      + '  Valid roles: "subject", "object", "verb", "particle", "other". Every word/particle in example_ko must appear in parts.\n';
+  } else if (_currentLevel === 'Intermediate') {
+    levelExtraFields = '\n  Also include a top-level "confusing_grammar" array with 2 items:\n'
+      + '  "confusing_grammar": [{"pair":["~는/은","~이/가"],"explanation":"Topic marker vs subject marker","wrong":"incorrect example sentence","correct":"correct example sentence"}]\n';
+    levelExtraInstructions = '\nconfusing_grammar: exactly 2 items. Each must have pair (2 grammar patterns), explanation, wrong (common mistake sentence), correct (proper sentence).';
+  } else if (_currentLevel === 'Advanced') {
+    levelExtraFields = '\n  Also include:\n'
+      + '  "formality_exercise": {"casual":"casual sentence","formal":"formal/honorific equivalent","explanation":"English explanation of the formality difference"}\n'
+      + '  "culture_note": "A short cultural note (1-2 sentences) related to today\'s topic, explaining Korean customs, etiquette, or social norms relevant to the vocabulary/grammar being taught."\n';
+    levelExtraInstructions = '\nformality_exercise: 1 item with casual, formal, and explanation fields. culture_note: 1-2 sentences about Korean culture related to the topic.';
+  }
+
   var prompt = 'You are a Korean language teacher creating complete daily study content for ' + _currentLevel + '-level students.\n\n'
     + 'Level requirements: ' + (levelGuide[_currentLevel] || levelGuide.Beginner) + '\n'
     + topicHint + '\n\n'
@@ -2598,8 +2782,10 @@ async function _generateAndSaveDailyContent(date) {
     + '  "helpers": [{"ko":"Korean sentence","en":"translation"}],\n'
     + '  "dictation_sentences": [{"ko":"Korean sentence","en":"English meaning"}],\n'
     + '  "dictation_questions": [{"question_ko":"question","answer_ko":"short answer","hint_en":"hint in English"}]\n'
+    + levelExtraFields
     + '}\n'
-    + 'vocab: exactly 5 items. grammar: exactly 3 items. helpers: exactly 4 items. dictation_sentences: exactly 3 items. dictation_questions: exactly 3 items.';
+    + 'vocab: exactly 5 items. grammar: exactly 3 items. helpers: exactly 4 items. dictation_sentences: exactly 3 items. dictation_questions: exactly 3 items.'
+    + levelExtraInstructions;
 
   try {
     var _aiGenTimeout;
@@ -2633,6 +2819,9 @@ async function _generateAndSaveDailyContent(date) {
       helpers:             parsed.helpers             || [],
       dictation_sentences: parsed.dictation_sentences || [],
       dictation_questions: parsed.dictation_questions || [],
+      confusing_grammar:   parsed.confusing_grammar   || [],
+      formality_exercise:  parsed.formality_exercise  || null,
+      culture_note:        parsed.culture_note        || '',
       admin_edited:        false,
       updated_at:          new Date().toISOString()
     };
@@ -2859,15 +3048,70 @@ function renderAIContent() {
   {
     var ghtml = '';
     var glvColor = { Beginner:'lb', Intermediate:'li', Advanced:'la' };
+    var partColorMap = { subject:'#2563eb', object:'#16a34a', verb:'#7c3aed' };
     (_aiContent.grammar || []).forEach(function(g) {
+      // Build example display — for Beginner with parts, color-code them
+      var exampleHtml = '';
+      if (_currentLevel === 'Beginner' && Array.isArray(g.parts) && g.parts.length > 0) {
+        var partsHtml = g.parts.map(function(p) {
+          var color = partColorMap[p.role] || '';
+          if (color) return '<span style="color:' + color + ';font-weight:700">' + p.text + '</span>';
+          return p.text;
+        }).join(' ');
+        exampleHtml = '<div class="grex"><div class="grko">' + partsHtml + '</div><div class="gren">' + g.example_en + '</div></div>';
+      } else {
+        exampleHtml = '<div class="grex"><div class="grko">' + g.example_ko + '</div><div class="gren">' + g.example_en + '</div></div>';
+      }
       ghtml += '<div class="grb">'
-        + '<span class="grbadge lvbadge ' + (glvColor[g.level]||'lb') + '">' + g.level + '</span>'
+        + '<span class="grbadge lvbadge ' + (glvColor[g.level]||'lb') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[g.level]||g.level) + '</span>'
         + '<div class="grname">' + g.pattern + '</div>'
         + '<div class="grexp">' + g.explanation + '</div>'
-        + '<div class="grex"><div class="grko">' + g.example_ko + '</div><div class="gren">' + g.example_en + '</div></div>'
+        + exampleHtml
         + '</div>';
     });
+    // Beginner: add color legend
+    if (_currentLevel === 'Beginner') {
+      ghtml += '<div style="margin-top:8px;padding:6px 8px;font-size:11px;color:rgba(255,255,255,.6);border-top:1px solid rgba(255,255,255,.08)">'
+        + '\uD83D\uDD35 Subject \uD83D\uDFE2 Object \uD83D\uDFE3 Verb</div>';
+    }
     document.getElementById('grammar-box').innerHTML = ghtml || '<div style="color:#aaa;font-size:12px">No grammar loaded.</div>';
+
+    // INTERMEDIATE: Confusing Grammar (Common Mistakes) section
+    if (_currentLevel === 'Intermediate' && _aiContent.confusing_grammar && _aiContent.confusing_grammar.length > 0) {
+      var cghtml = '<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1)">'
+        + '<div style="font-size:11px;font-weight:700;color:#f59e0b;margin-bottom:8px">\u26A1 COMMON MISTAKES</div>';
+      _aiContent.confusing_grammar.forEach(function(item) {
+        cghtml += '<div style="margin-bottom:10px">'
+          + '<div style="font-size:12px;font-weight:700;color:#e2e8f0;margin-bottom:3px">' + (item.pair || []).join(' vs ') + '</div>'
+          + '<div style="font-size:11px;color:rgba(255,255,255,.6);margin-bottom:4px">' + (item.explanation || '') + '</div>'
+          + '<div style="font-size:11px;color:#ef4444;margin-bottom:2px">\u2718 <span style="text-decoration:line-through">' + (item.wrong || '') + '</span></div>'
+          + '<div style="font-size:11px;color:#22c55e">\u2714 ' + (item.correct || '') + '</div>'
+          + '</div>';
+      });
+      cghtml += '</div>';
+      document.getElementById('grammar-box').innerHTML += cghtml;
+    }
+
+    // ADVANCED: Formality Switch section
+    if (_currentLevel === 'Advanced' && _aiContent.formality_exercise) {
+      var fe = _aiContent.formality_exercise;
+      var fehtml = '<div class="sr-sb-panel" style="margin-top:12px">'
+        + '<div style="font-size:11px;font-weight:700;color:#8b5cf6;margin-bottom:8px">\uD83C\uDFA9 FORMALITY SWITCH</div>'
+        + '<div style="font-size:12px;color:#e2e8f0;margin-bottom:4px"><span style="color:#94a3b8;font-size:10px;font-weight:600">CASUAL:</span> ' + (fe.casual || '') + '</div>'
+        + '<div style="font-size:12px;color:#e2e8f0;margin-bottom:4px"><span style="color:#94a3b8;font-size:10px;font-weight:600">FORMAL:</span> ' + (fe.formal || '') + '</div>'
+        + '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:4px">' + (fe.explanation || '') + '</div>'
+        + '</div>';
+      document.getElementById('grammar-box').innerHTML += fehtml;
+    }
+
+    // ADVANCED: Culture Note section
+    if (_currentLevel === 'Advanced' && _aiContent.culture_note) {
+      var cnhtml = '<div class="sr-sb-panel" style="margin-top:12px">'
+        + '<div style="font-size:11px;font-weight:700;color:#ec4899;margin-bottom:8px">\uD83C\uDDF0\uD83C\uDDF7 CULTURE NOTE</div>'
+        + '<p style="font-size:12px;color:rgba(255,255,255,.7);margin:0;line-height:1.5">' + _aiContent.culture_note + '</p>'
+        + '</div>';
+      document.getElementById('grammar-box').innerHTML += cnhtml;
+    }
   }
 
   // WCARD CHIPS
@@ -2890,6 +3134,9 @@ function renderAIContent() {
 
   // MODAL content
   renderModalContent();
+
+  // Sentence Builder for Beginner
+  if (typeof initSentenceBuilder === 'function') initSentenceBuilder();
 }
 
 function renderModalContent() {
@@ -2900,7 +3147,7 @@ function renderModalContent() {
   var glvColor = { Beginner:'lb', Intermediate:'li', Advanced:'la' };
   (_aiContent.grammar || []).forEach(function(g) {
     mgh += '<div class="mgrb">'
-      + '<span class="mgrbadge lvbadge ' + (glvColor[g.level]||'lb') + '">' + g.level + '</span>'
+      + '<span class="mgrbadge lvbadge ' + (glvColor[g.level]||'lb') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[g.level]||g.level) + '</span>'
       + '<div class="mgrname">' + g.pattern + '</div>'
       + '<div class="mgrexp">' + g.explanation + '</div>'
       + '<div class="mgrex"><div class="mgrko">' + g.example_ko + '</div><div class="mgr-en">' + g.example_en + '</div></div>'
@@ -2974,6 +3221,11 @@ function openWritingModal() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
   if (!canEnterWritingRoom()) return;
+  // Starter → 3-step modal
+  if (_currentLevel === 'Starter') {
+    openStarterModal();
+    return;
+  }
   // Beginner → 4단계 듀오링고 스타일
   if (_currentLevel === 'Beginner') {
     openBeginnerModal();
@@ -3060,6 +3312,10 @@ function openWritingModalForLearning() {
   if (!ensureStudyUnlocked()) return;
   _writingMode = 'topic';
   markStageDone('topic');
+  if (_currentLevel === 'Starter') {
+    openStarterModal();
+    return;
+  }
   if (_currentLevel === 'Beginner') {
     openBeginnerModal();
     return;
@@ -3310,14 +3566,22 @@ async function triggerAIFeedback(submissionId, text, vocab, grammar) {
       + '학생 작문:\n"""\n' + text + '\n"""\n\n'
       + '필수 어휘: ' + vocab.join(', ') + '\n'
       + '필수 문법: ' + grammar.join(', ') + '\n\n'
+      + 'Also categorize each mistake into one of these patterns:\n'
+      + '- PARTICLE: wrong particle (조사)\n'
+      + '- TENSE: wrong tense or ending\n'
+      + '- WORD_ORDER: incorrect word placement\n'
+      + '- SPELLING: typos or incorrect spelling\n'
+      + '- VOCAB: wrong word choice\n\n'
       + '다음 형식으로 첨삭해주세요 (JSON):\n'
       + '{\n'
       + '  "overall": "전반적인 평가 1-2문장",\n'
-      + '  "corrections": [{"original":"원문","corrected":"수정문","reason":"이유"}],\n'
+      + '  "corrections": [{"original":"원문","corrected":"수정문","reason":"이유","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB"}],\n'
       + '  "vocab_feedback": "어휘 사용에 대한 피드백",\n'
       + '  "grammar_feedback": "문법 사용에 대한 피드백",\n'
+      + '  "mistake_patterns": {"PARTICLE":0,"TENSE":0,"WORD_ORDER":0,"SPELLING":0,"VOCAB":0},\n'
       + '  "encouragement": "격려 한마디"\n'
       + '}\n'
+      + 'For mistake_patterns, count how many corrections fall into each category. Only include categories that have errors (count > 0).\n'
       + 'JSON만 반환하세요.';
 
     var data = await callClaude({
@@ -5463,6 +5727,413 @@ function retryBeginner() {
 // ══ END BEGINNER 4-STEP SYSTEM ══════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════
+// STARTER 3-STEP MODAL
+// ═══════════════════════════════════════════════════════════════
+var _sm = { step: 1, words: [], matchPairs: [], quizItems: [], score: { match: 0, quiz: 0 } };
+
+function openStarterModal() {
+  var overlay = document.getElementById('smodal-overlay');
+  overlay.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  _sm = { step: 1, words: [], matchPairs: [], quizItems: [], score: { match: 0, quiz: 0 }, heardCount: 0 };
+  _smBuildContent();
+  updateSMPips();
+  renderSMStep1();
+}
+
+function closeSModal() {
+  document.getElementById('smodal-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function updateSMPips() {
+  var pips = document.querySelectorAll('#sm-pips .sm-pip');
+  pips.forEach(function(pip, i) {
+    var stepNum = i + 1;
+    pip.className = 'sm-pip' + (stepNum < _sm.step ? ' done' : stepNum === _sm.step ? ' active' : '');
+  });
+}
+
+function _smBuildContent() {
+  // Grab vocab from AI content or fallback
+  var vocab = (_aiContent && _aiContent.vocab) || [];
+  if (vocab.length < 4) {
+    vocab = [
+      { ko: '안녕하세요', rom: 'an-nyeong-ha-se-yo', en: 'hello' },
+      { ko: '감사합니다', rom: 'gam-sa-ham-ni-da', en: 'thank you' },
+      { ko: '학교', rom: 'hak-gyo', en: 'school' },
+      { ko: '물', rom: 'mul', en: 'water' },
+      { ko: '밥', rom: 'bap', en: 'rice / meal' }
+    ];
+  }
+  // Pick 4-5 words for Step 1 (Listen & Repeat)
+  _sm.words = vocab.slice(0, Math.min(5, vocab.length));
+
+  // Step 2: Match game — pick 4 pairs
+  var matchSrc = vocab.slice(0, 4);
+  _sm.matchPairs = matchSrc.map(function(w) { return { ko: w.ko, en: w.en }; });
+
+  // Step 3: Quiz — 3 questions
+  _sm.quizItems = [];
+  var quizPool = vocab.slice();
+  for (var qi = 0; qi < 3 && qi < quizPool.length; qi++) {
+    var correct = quizPool[qi];
+    var wrongs = quizPool.filter(function(w) { return w.ko !== correct.ko; })
+      .sort(function() { return Math.random() - 0.5; }).slice(0, 2)
+      .map(function(w) { return w.en; });
+    while (wrongs.length < 2) wrongs.push('something');
+    var opts = [correct.en].concat(wrongs).sort(function() { return Math.random() - 0.5; });
+    _sm.quizItems.push({ ko: correct.ko, rom: correct.rom || '', answer: correct.en, options: opts, chosen: null });
+  }
+}
+
+// ── STEP 1: LISTEN & REPEAT ──
+function renderSMStep1() {
+  _sm.step = 1;
+  updateSMPips();
+  var bodyHTML = '<div class="sm-step-label">Step 1 of 3</div>'
+    + '<div class="sm-step-title">Listen & Repeat</div>'
+    + '<div class="sm-step-desc">Listen to each word, then say it out loud. Tap "I said it!" when you are done.</div>';
+
+  _sm.words.forEach(function(w, i) {
+    var safeKo = w.ko.replace(/'/g, "&#39;");
+    bodyHTML += '<div class="sm-word-card" id="sm-wc' + i + '">'
+      + '<button class="sm-tts-btn" onclick="speakKorean(\'' + safeKo + '\')">&#128264;</button>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div class="sm-word-ko">' + w.ko + '</div>'
+      + (w.rom ? '<div class="sm-word-rom">' + w.rom + '</div>' : '')
+      + '</div>'
+      + '<div class="sm-word-en">' + w.en + '</div>'
+      + '<button class="sm-said-btn" id="sm-said' + i + '" onclick="smMarkHeard(' + i + ')">I said it!</button>'
+      + '</div>';
+  });
+
+  document.getElementById('sm-body').innerHTML = bodyHTML;
+  document.getElementById('sm-footer').innerHTML =
+    '<button class="sm-btn" id="sm-step1-next" disabled onclick="goToSMStep2()">Match Game &#8594;</button>';
+}
+
+function smMarkHeard(idx) {
+  var card = document.getElementById('sm-wc' + idx);
+  var btn = document.getElementById('sm-said' + idx);
+  if (card) card.classList.add('heard');
+  if (btn) { btn.textContent = 'Done!'; btn.classList.add('done'); }
+  // Count heard
+  var heard = document.querySelectorAll('.sm-word-card.heard').length;
+  if (heard >= _sm.words.length) {
+    var nextBtn = document.getElementById('sm-step1-next');
+    if (nextBtn) nextBtn.disabled = false;
+  }
+}
+
+// ── STEP 2: MATCH GAME ──
+var _smMatchState = { selectedKo: null, selectedEn: null, matched: 0 };
+
+function goToSMStep2() {
+  _sm.step = 2;
+  updateSMPips();
+  _smMatchState = { selectedKo: null, selectedEn: null, matched: 0 };
+  renderSMStep2();
+}
+
+function renderSMStep2() {
+  var pairs = _sm.matchPairs;
+  // Shuffle ko and en columns independently
+  var koOrder = pairs.map(function(_, i) { return i; }).sort(function() { return Math.random() - 0.5; });
+  var enOrder = pairs.map(function(_, i) { return i; }).sort(function() { return Math.random() - 0.5; });
+
+  var bodyHTML = '<div class="sm-step-label">Step 2 of 3</div>'
+    + '<div class="sm-step-title">Match Game</div>'
+    + '<div class="sm-step-desc">Tap a Korean word, then tap its English meaning to make a match.</div>'
+    + '<div class="sm-match-grid">'
+    + '<div><div class="sm-match-col-label">Korean</div>';
+
+  koOrder.forEach(function(i) {
+    bodyHTML += '<div class="sm-match-item" id="sm-mk' + i + '" onclick="smSelectKo(' + i + ')" style="margin-bottom:8px">' + pairs[i].ko + '</div>';
+  });
+  bodyHTML += '</div><div><div class="sm-match-col-label">English</div>';
+  enOrder.forEach(function(i) {
+    bodyHTML += '<div class="sm-match-item en" id="sm-me' + i + '" onclick="smSelectEn(' + i + ')" style="margin-bottom:8px">' + pairs[i].en + '</div>';
+  });
+  bodyHTML += '</div></div>'
+    + '<div id="sm-match-feedback" style="text-align:center;margin-top:12px;font-size:13px"></div>';
+
+  document.getElementById('sm-body').innerHTML = bodyHTML;
+  document.getElementById('sm-footer').innerHTML =
+    '<button class="sm-btn-back" onclick="renderSMStep1()">&#8592; Listen</button>'
+    + '<button class="sm-btn" id="sm-step2-next" disabled onclick="goToSMStep3()">Quiz &#8594;</button>';
+}
+
+function smSelectKo(idx) {
+  if (document.getElementById('sm-mk' + idx).classList.contains('matched')) return;
+  // Deselect previous ko
+  document.querySelectorAll('.sm-match-item.selected').forEach(function(el) {
+    if (!el.classList.contains('en')) el.classList.remove('selected');
+  });
+  document.getElementById('sm-mk' + idx).classList.add('selected');
+  _smMatchState.selectedKo = idx;
+  if (_smMatchState.selectedEn !== null) smCheckMatch();
+}
+
+function smSelectEn(idx) {
+  if (document.getElementById('sm-me' + idx).classList.contains('matched')) return;
+  document.querySelectorAll('.sm-match-item.en.selected').forEach(function(el) {
+    el.classList.remove('selected');
+  });
+  document.getElementById('sm-me' + idx).classList.add('selected');
+  _smMatchState.selectedEn = idx;
+  if (_smMatchState.selectedKo !== null) smCheckMatch();
+}
+
+function smCheckMatch() {
+  var koIdx = _smMatchState.selectedKo;
+  var enIdx = _smMatchState.selectedEn;
+  var koEl = document.getElementById('sm-mk' + koIdx);
+  var enEl = document.getElementById('sm-me' + enIdx);
+
+  if (koIdx === enIdx) {
+    // Correct match
+    koEl.classList.remove('selected');
+    enEl.classList.remove('selected');
+    koEl.classList.add('matched');
+    enEl.classList.add('matched');
+    _smMatchState.matched++;
+    _smMatchState.selectedKo = null;
+    _smMatchState.selectedEn = null;
+
+    if (_smMatchState.matched >= _sm.matchPairs.length) {
+      _sm.score.match = 100;
+      document.getElementById('sm-match-feedback').innerHTML =
+        '<span style="color:#4ade80;font-weight:700">All matched! Great job!</span>';
+      var nextBtn = document.getElementById('sm-step2-next');
+      if (nextBtn) nextBtn.disabled = false;
+    }
+  } else {
+    // Wrong
+    koEl.classList.add('wrong');
+    enEl.classList.add('wrong');
+    setTimeout(function() {
+      koEl.classList.remove('selected', 'wrong');
+      enEl.classList.remove('selected', 'wrong');
+    }, 600);
+    _smMatchState.selectedKo = null;
+    _smMatchState.selectedEn = null;
+  }
+}
+
+// ── STEP 3: SIMPLE QUIZ ──
+var _smQuizIdx = 0;
+
+function goToSMStep3() {
+  _sm.step = 3;
+  updateSMPips();
+  _smQuizIdx = 0;
+  renderSMStep3();
+}
+
+function renderSMStep3() {
+  var q = _sm.quizItems[_smQuizIdx];
+  if (!q) { finishStarter(); return; }
+
+  var bodyHTML = '<div class="sm-step-label">Step 3 of 3 &middot; Question ' + (_smQuizIdx + 1) + ' / ' + _sm.quizItems.length + '</div>'
+    + '<div class="sm-step-title">Simple Quiz</div>'
+    + '<div class="sm-step-desc">What does this Korean word mean?</div>'
+    + '<div class="sm-quiz-card">'
+    + '<div class="sm-quiz-word">' + q.ko + '</div>'
+    + (q.rom ? '<div class="sm-quiz-rom">' + q.rom + '</div>' : '')
+    + '</div>'
+    + '<div class="sm-quiz-opts" id="sm-quiz-opts">';
+
+  q.options.forEach(function(opt, i) {
+    var safeOpt = opt.replace(/'/g, "&#39;");
+    bodyHTML += '<button class="sm-quiz-opt" id="sm-qo' + i + '" onclick="smPickQuiz(' + _smQuizIdx + ',' + i + ',\'' + safeOpt + '\')">' + opt + '</button>';
+  });
+  bodyHTML += '</div>';
+
+  document.getElementById('sm-body').innerHTML = bodyHTML;
+  document.getElementById('sm-footer').innerHTML =
+    '<button class="sm-btn-back" onclick="goToSMStep2()">&#8592; Match</button>'
+    + '<button class="sm-btn" id="sm-quiz-next" disabled onclick="smNextQuiz()">Next &#8594;</button>';
+}
+
+function smPickQuiz(qIdx, optIdx, chosen) {
+  var q = _sm.quizItems[qIdx];
+  if (q.chosen !== null) return; // already answered
+  q.chosen = chosen;
+  var isCorrect = (chosen === q.answer);
+
+  // Highlight
+  var opts = document.querySelectorAll('#sm-quiz-opts .sm-quiz-opt');
+  opts.forEach(function(btn, i) {
+    btn.style.pointerEvents = 'none';
+    if (btn.textContent === q.answer) btn.classList.add('correct');
+    if (i === optIdx && !isCorrect) btn.classList.add('wrong');
+  });
+
+  var nextBtn = document.getElementById('sm-quiz-next');
+  if (nextBtn) {
+    nextBtn.disabled = false;
+    var isLast = (_smQuizIdx + 1 >= _sm.quizItems.length);
+    nextBtn.textContent = isLast ? 'Finish!' : 'Next \u2192';
+    if (isLast) nextBtn.onclick = function() { finishStarter(); };
+  }
+}
+
+function smNextQuiz() {
+  _smQuizIdx++;
+  if (_smQuizIdx >= _sm.quizItems.length) {
+    finishStarter();
+  } else {
+    renderSMStep3();
+  }
+}
+
+function finishStarter() {
+  markStageDone('topic');
+  var correctCount = _sm.quizItems.filter(function(q) { return q.chosen === q.answer; }).length;
+  _sm.score.quiz = Math.round(correctCount / Math.max(1, _sm.quizItems.length) * 100);
+  var total = Math.round((_sm.score.match + _sm.score.quiz) / 2);
+
+  var emoji, headline, sub;
+  if (total >= 90) { emoji = '\uD83C\uDF1F'; headline = 'Amazing!'; sub = 'You nailed it! Keep up the great work.'; }
+  else if (total >= 60) { emoji = '\u2B50'; headline = 'Well done!'; sub = 'Solid effort. Practice makes perfect!'; }
+  else { emoji = '\uD83D\uDCAA'; headline = 'Keep going!'; sub = 'Every attempt makes you stronger.'; }
+
+  document.getElementById('sm-body').innerHTML =
+    '<div class="sm-result">'
+    + '<div class="sm-result-emoji">' + emoji + '</div>'
+    + '<div class="sm-result-score">' + total + '%</div>'
+    + '<div style="font-size:17px;font-weight:800;margin-bottom:6px">' + headline + '</div>'
+    + '<div style="font-size:14px;color:rgba(255,255,255,.55);margin-bottom:20px">' + sub + '</div>'
+    + '<div style="display:flex;gap:16px;justify-content:center">'
+    + '<div style="text-align:center;background:rgba(255,255,255,.06);border-radius:12px;padding:12px 18px">'
+    + '<div style="font-size:22px;font-weight:900;color:#c084fc">' + _sm.score.match + '%</div>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">Match</div></div>'
+    + '<div style="text-align:center;background:rgba(255,255,255,.06);border-radius:12px;padding:12px 18px">'
+    + '<div style="font-size:22px;font-weight:900;color:#4ade80">' + _sm.score.quiz + '%</div>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">Quiz</div></div>'
+    + '</div></div>';
+
+  document.getElementById('sm-footer').innerHTML =
+    '<button class="sm-btn-back" onclick="closeSModal()">Close</button>'
+    + '<button class="sm-btn" onclick="openStarterModal()">Try Again</button>';
+
+  if (typeof addXP === 'function') addXP(20);
+  if (typeof dmTrackFill === 'function') dmTrackFill();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SENTENCE BUILDER (Beginner sidebar panel)
+// ═══════════════════════════════════════════════════════════════
+var _sbState = { sentence: null, words: [], target: [], helperIdx: 0 };
+
+function initSentenceBuilder() {
+  if (_currentLevel !== 'Beginner') return;
+  var box = document.getElementById('sentence-builder-box');
+  if (!box) return;
+  box.style.display = '';
+  _sbState.helperIdx = 0;
+  sbLoadSentence();
+}
+
+function sbLoadSentence() {
+  var helpers = (_aiContent && _aiContent.helpers) || [];
+  if (!helpers.length) {
+    document.getElementById('sb-content').innerHTML = '<p style="font-size:12px;color:rgba(255,255,255,.5)">No sentences available yet.</p>';
+    return;
+  }
+  var h = helpers[_sbState.helperIdx % helpers.length];
+  _sbState.sentence = h.ko;
+  _sbState.target = [];
+  // Split into words and shuffle
+  var words = h.ko.replace(/[.!?]/g, '').trim().split(/\s+/);
+  var shuffled = words.slice();
+  for (var i = shuffled.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
+  }
+  // Ensure shuffled is different from original
+  if (words.length > 1 && shuffled.every(function(w, i) { return w === words[i]; })) {
+    var t = shuffled[0]; shuffled[0] = shuffled[shuffled.length - 1]; shuffled[shuffled.length - 1] = t;
+  }
+  _sbState.words = shuffled.map(function(w) { return { text: w, placed: false }; });
+  _sbState.original = words;
+  sbRender();
+}
+
+function sbRender() {
+  var targetEl = document.getElementById('sb-target');
+  var poolEl = document.getElementById('sb-pool');
+  var fbEl = document.getElementById('sb-feedback');
+
+  // Render target zone
+  if (_sbState.target.length === 0) {
+    targetEl.innerHTML = '<span style="font-size:11px;color:rgba(255,255,255,.3)">Tap words below to build the sentence</span>';
+  } else {
+    targetEl.innerHTML = _sbState.target.map(function(w, i) {
+      return '<button class="sb-chip in-target" onclick="sbRemoveFromTarget(' + i + ')">' + w + '</button>';
+    }).join('');
+  }
+
+  // Render pool
+  poolEl.innerHTML = _sbState.words.map(function(w, i) {
+    return '<button class="sb-chip' + (w.placed ? ' placed' : '') + '" onclick="sbAddToTarget(' + i + ')">' + w.text + '</button>';
+  }).join('');
+
+  // Auto-check if all words placed
+  var allPlaced = _sbState.words.every(function(w) { return w.placed; });
+  if (allPlaced && _sbState.target.length > 0) {
+    sbAutoCheck();
+  } else {
+    fbEl.innerHTML = '';
+  }
+}
+
+function sbAddToTarget(idx) {
+  if (_sbState.words[idx].placed) return;
+  _sbState.words[idx].placed = true;
+  _sbState.target.push(_sbState.words[idx].text);
+  sbRender();
+}
+
+function sbRemoveFromTarget(idx) {
+  var word = _sbState.target[idx];
+  _sbState.target.splice(idx, 1);
+  // Un-place the first matching word in pool
+  for (var i = 0; i < _sbState.words.length; i++) {
+    if (_sbState.words[i].text === word && _sbState.words[i].placed) {
+      _sbState.words[i].placed = false;
+      break;
+    }
+  }
+  sbRender();
+}
+
+function sbAutoCheck() {
+  var fbEl = document.getElementById('sb-feedback');
+  var answer = _sbState.target.join(' ');
+  var correct = _sbState.original.join(' ');
+  if (answer === correct) {
+    fbEl.innerHTML = '<span style="color:#4ade80;font-weight:700">&#9989; Correct!</span>'
+      + ' <button onclick="sbNextSentence()" style="margin-left:8px;padding:4px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#c084fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Next &#8594;</button>';
+  } else {
+    fbEl.innerHTML = '<span style="color:#f87171;font-weight:700">Try again</span>'
+      + ' <button onclick="sbReset()" style="margin-left:8px;padding:4px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Reset</button>';
+  }
+}
+
+function sbReset() {
+  _sbState.target = [];
+  _sbState.words.forEach(function(w) { w.placed = false; });
+  sbRender();
+}
+
+function sbNextSentence() {
+  _sbState.helperIdx++;
+  sbLoadSentence();
+}
+
+// ═══════════════════════════════════════════════════════════════
 // GRAMMAR FOCUS MODAL
 // ═══════════════════════════════════════════════════════════════
 var _gfPattern = null;
@@ -5647,7 +6318,7 @@ function renderGFLearn(p) {
     + '</div>';
 
   return '<div style="margin-bottom:14px">'
-    + '<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:' + lb + ';color:' + lc + ';margin-bottom:14px">' + lv + '</span>'
+    + '<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:' + lb + ';color:' + lc + ';margin-bottom:14px">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lv]||lv) + '</span>'
     + structureHtml + expHtml + tipsHtml
     + '</div>'
     + exHtml
@@ -6189,7 +6860,7 @@ function _asRenderGrid() {
       + '<div class="asc-body">'
       + '<div class="asc-cat">' + (a.section||'Article') + '</div>'
       + '<div class="asc-title">' + (a.title||'') + '</div>'
-      + (a.level ? '<div class="asc-meta">' + a.level + '</div>' : '')
+      + (a.level ? '<div class="asc-meta">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) + '</div>' : '')
       + '</div></div>';
   }).join('');
 }
@@ -6683,6 +7354,23 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════
+     STARTER 3-STEP MODAL
+═══════════════════════════════════════════════════════════════ -->
+<div id="smodal-overlay" class="smodal-overlay hidden" onclick="if(event.target===this)closeSModal()">
+  <div class="smodal" id="smodal">
+    <div class="sm-header">
+      <div class="sm-pips" id="sm-pips">
+        <div class="sm-pip"></div><div class="sm-pip"></div><div class="sm-pip"></div>
+      </div>
+      <div class="sm-title" id="sm-title">Starter Activity</div>
+      <button class="sm-close" onclick="closeSModal()">&#10005;</button>
+    </div>
+    <div class="sm-body" id="sm-body"></div>
+    <div class="sm-footer" id="sm-footer"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
      LEARNING SELECTOR MODAL  (opened by START button)
 ═══════════════════════════════════════════════════════════════ -->
 <div id="ls-modal" class="ls-overlay hidden" onclick="if(event.target===this)closeLearningSelector()">
@@ -6814,6 +7502,14 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
     </div>
 
   </div>
+</div>
+
+<!-- ── IDIOM/PROVERB BANNER ── -->
+<div id="sr-idiom-banner" style="position:fixed;bottom:80px;right:16px;max-width:280px;background:linear-gradient(135deg,#1e1b4b,#312e81);border:1px solid rgba(139,92,246,.3);border-radius:16px;padding:14px 16px;color:#fff;box-shadow:0 8px 32px rgba(0,0,0,.3);z-index:900;display:none;cursor:pointer" onclick="this.style.display='none'">
+  <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#a78bfa;margin-bottom:6px">💎 TODAY'S EXPRESSION</div>
+  <div id="sr-idiom-ko" style="font-size:16px;font-weight:800;margin-bottom:4px"></div>
+  <div id="sr-idiom-en" style="font-size:12px;color:rgba(255,255,255,.65)"></div>
+  <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:8px">Tap to dismiss</div>
 </div>
 
 </body>

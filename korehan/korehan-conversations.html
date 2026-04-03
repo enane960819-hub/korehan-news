@@ -292,7 +292,7 @@ var _IC = {
 
 var CONVS = [];  // DB에서 로드
 
-const LVL_LABEL = {b:'Beginner',i:'Intermediate',a:'Advanced'};
+const LVL_LABEL = {b:'Sprout',i:'Tree',a:'Forest'};
 const LVL_CLS   = {b:'badge-b',i:'badge-i',a:'badge-a'};
 const CAT_PILL  = {everyday:'dp-pill-blue',work:'dp-pill-gray',friends:'dp-pill-green',family:'dp-pill-amber',dating:'dp-pill-pink'};
 
@@ -1028,7 +1028,7 @@ function openInlineEditModal(c) {
     + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">'
     + inpField('ie-avi',  'Emoji', c.avi || '💬')
     + selField('ie-cat', 'Category', ['everyday','work','friends','family','dating'], ['Everyday','Workplace','Friends','Family','Dating'], c.cat || 'everyday')
-    + selField('ie-lvl', 'Level', ['b','i','a'], ['Beginner','Intermediate','Advanced'], c.lvl || 'b')
+    + selField('ie-lvl', 'Level', ['b','i','a'], ['Sprout','Tree','Forest'], c.lvl || 'b')
     + '</div>'
     + '<label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:14px">💬 Dialogue (A: left / B: right)<textarea id="ie-msgs" rows="6" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical">' + msgsText.replace(/</g,'&lt;') + '</textarea></label>'
     + '<div id="ie-error" style="background:#fee2e2;border-radius:8px;padding:10px;color:#b91c1c;font-size:13px;display:none;margin-bottom:12px"></div>'

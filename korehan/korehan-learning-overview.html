@@ -545,7 +545,7 @@
 
   function wordRowHTML(w, badgeLabel, badgeTone) {
     var tone = badgeTone || 'level';
-    var badge = '<div class="level ' + tone + '">' + (badgeLabel || w.level || 'General') + '</div>';
+    var badge = '<div class="level ' + tone + '">' + (badgeLabel || ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[w.level]||w.level) || 'General') + '</div>';
     var isSaved = _savedWordKos.has(w.word_ko || '');
     var koSafe  = (w.word_ko  || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var enSafe  = (w.word_en  || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
@@ -807,9 +807,9 @@
 
   // ── level / interest 설정 UI ──────────────────────────────
   const LEVEL_TAGS = [
-    {tag:'Beginner', label:'🌱 Beginner'},
-    {tag:'Intermediate', label:'🚀 Intermediate'},
-    {tag:'Advanced', label:'🏔️ Advanced'},
+    {tag:'Beginner', label:'🌿 Sprout'},
+    {tag:'Intermediate', label:'🌳 Tree'},
+    {tag:'Advanced', label:'🌲 Forest'},
   ];
 
   const INTEREST_TAGS = [

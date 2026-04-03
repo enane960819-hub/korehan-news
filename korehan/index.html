@@ -767,7 +767,7 @@ body.kh-neon-on .hero-dot {
         <div class="story-title">편의점 알바생의 황당한 하루</div>
         <div class="story-preview">오늘 손님이 들어오더니 갑자기 "여기 커피 파나요?" 하고 물어봤다...</div>
       </div>
-      <div class="story-foot"><span class="story-lvl lvl-b">Beginner</span><span class="story-time">3 min</span></div>
+      <div class="story-foot"><span class="story-lvl lvl-b">Sprout</span><span class="story-time">3 min</span></div>
     </div>
     <div class="story-card" onclick="location.href='korehan-stories.html?mood=touching'">
       <div class="story-cover touching"><i data-lucide="heart" style="width:36px;height:36px;color:#db2777;opacity:.85" aria-hidden="true"></i><span class="story-mood-tag touching">Touching</span></div>
@@ -775,7 +775,7 @@ body.kh-neon-on .hero-dot {
         <div class="story-title">할머니의 마지막 선물</div>
         <div class="story-preview">돌아가시기 전 날, 할머니는 내 손을 꼭 잡고 작은 봉투를 건네셨다...</div>
       </div>
-      <div class="story-foot"><span class="story-lvl lvl-i">Intermediate</span><span class="story-time">5 min</span></div>
+      <div class="story-foot"><span class="story-lvl lvl-i">Tree</span><span class="story-time">5 min</span></div>
     </div>
     <div class="story-card" onclick="location.href='korehan-stories.html?mood=scary'">
       <div class="story-cover scary"><i data-lucide="zap" style="width:36px;height:36px;color:#7c3aed;opacity:.85" aria-hidden="true"></i><span class="story-mood-tag scary">Scary</span></div>
@@ -783,7 +783,7 @@ body.kh-neon-on .hero-dot {
         <div class="story-title">혼자 살면서 겪은 이상한 일</div>
         <div class="story-preview">분명히 혼자 사는데, 매일 아침 냉장고 속 음식이 조금씩 없어지고 있었다...</div>
       </div>
-      <div class="story-foot"><span class="story-lvl lvl-i">Intermediate</span><span class="story-time">4 min</span></div>
+      <div class="story-foot"><span class="story-lvl lvl-i">Tree</span><span class="story-time">4 min</span></div>
     </div>
     <div class="story-card" onclick="location.href='korehan-stories.html?mood=shocking'">
       <div class="story-cover shocking"><i data-lucide="flame" style="width:36px;height:36px;color:#dc2626;opacity:.85" aria-hidden="true"></i><span class="story-mood-tag shocking">Shocking</span></div>
@@ -791,7 +791,7 @@ body.kh-neon-on .hero-dot {
         <div class="story-title">10년 만에 알게 된 진실</div>
         <div class="story-preview">어릴 때 나를 버린 줄만 알았던 아버지가 사실 10년 동안 매달 학비를 보내고 있었다...</div>
       </div>
-      <div class="story-foot"><span class="story-lvl lvl-a">Advanced</span><span class="story-time">6 min</span></div>
+      <div class="story-foot"><span class="story-lvl lvl-a">Forest</span><span class="story-time">6 min</span></div>
     </div>
   </div>
 
@@ -1027,7 +1027,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         + img
         + '<div class="nc-overlay-grad"></div>'
         + '<div class="nc-overlay-body">'
-        + '<div class="nc-meta"><span class="nc-cat">' + (a.section || '') + '</span><span class="nc-lvl ' + lvlCls + '">' + lvl + '</span></div>'
+        + '<div class="nc-meta"><span class="nc-cat">' + (a.section || '') + '</span><span class="nc-lvl ' + lvlCls + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span></div>'
         + '<div class="nc-title">' + (a.title_ko || a.title || '') + '</div>'
         + '<div class="nc-foot"><span class="nc-date">' + (a.published_at ? new Date(a.published_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '') + '</span>'
         + '<button class="nc-study" onclick="event.stopPropagation();openStudyModal && openStudyModal(\'' + a.id + '\')">📚 Study</button></div>'

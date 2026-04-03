@@ -164,6 +164,26 @@
 }
 .sentence-filter-btn.on,.sentence-filter-btn:hover{background:var(--bright);border-color:var(--bright);color:#fff}
 
+/* ── HANGUL CARDS ── */
+.hangul-grid { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:24px; }
+.hangul-card { width:80px; height:100px; cursor:pointer; position:relative; }
+.hangul-card .hangul-front, .hangul-card .hangul-back {
+  position:absolute; inset:0; backface-visibility:hidden; border-radius:12px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  transition: transform .4s;
+}
+.hangul-card .hangul-front { background:#eff6ff; border:1.5px solid #bfdbfe; font-size:32px; font-weight:900; color:#1e3a5f; }
+.hangul-card .hangul-back { background:#1e3a5f; color:#fff; transform:rotateY(180deg); font-size:12px; padding:8px; }
+.hangul-card.flipped .hangul-front { transform:rotateY(180deg); }
+.hangul-card.flipped .hangul-back { transform:rotateY(0); }
+.hangul-quiz-opt {
+  padding:10px 18px; border:1.5px solid var(--border); border-radius:10px; background:#fff;
+  font-size:14px; font-weight:700; cursor:pointer; transition:all .15s; font-family:inherit;
+}
+.hangul-quiz-opt:hover:not(:disabled) { border-color:#2255a4; background:#f0f6ff; }
+.hangul-quiz-opt.correct { border-color:#16a34a; background:#f0fdf4; color:#15803d; }
+.hangul-quiz-opt.wrong { border-color:#dc2626; background:#fef2f2; color:#b91c1c; }
+
 /* ── SRS REVIEW BANNER ── */
 .srs-banner {
   background: linear-gradient(135deg,#0f2a5e,#1a4a9e);
@@ -299,7 +319,32 @@
     <div class="pod-grid" id="pod-grid"></div>
   </div>
 
+  <!-- LEARN TABS -->
+  <div class="learn-tabs" id="learn-main-tabs" style="margin-bottom:24px">
+    <button class="tab-btn" onclick="showLearnSection('hangul',this)">🌱 Hangul</button>
+    <button class="tab-btn on" onclick="showLearnSection('vocab-section',this)">📇 Vocabulary</button>
+  </div>
+
+  <!-- HANGUL SECTION -->
+  <div id="learn-sec-hangul" style="display:none">
+    <div class="learn-section-title">🌱 Hangul — Korean Alphabet</div>
+    <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">Click a card to reveal the sound and example word</p>
+
+    <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--gray);margin-bottom:10px">Consonants</div>
+    <div class="hangul-grid" id="hangul-consonants"></div>
+
+    <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--gray);margin-bottom:10px;margin-top:20px">Vowels</div>
+    <div class="hangul-grid" id="hangul-vowels"></div>
+
+    <div style="margin-top:32px;padding-top:20px;border-top:2px solid var(--border)">
+      <div style="font-size:16px;font-weight:900;margin-bottom:12px">🧠 Hangul Quiz</div>
+      <p style="color:var(--gray);font-size:13px;margin-bottom:14px">What sound does this character make?</p>
+      <div id="hangul-quiz-area"></div>
+    </div>
+  </div>
+
   <!-- FLASHCARDS -->
+  <div id="learn-sec-vocab-section">
   <div class="learn-section-title">📇 Vocabulary Flashcards — 단어 카드</div>
   <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">Click a card to reveal the meaning the meaning</p>
 
@@ -311,9 +356,9 @@
   <div class="learn-section-title" style="margin-top:36px">💬 Example Sentences — 예문</div>
   <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
     <button class="sentence-filter-btn on" onclick="filterSentences('All',this)">All</button>
-    <button class="sentence-filter-btn" onclick="filterSentences('Beginner',this)">Beginner</button>
-    <button class="sentence-filter-btn" onclick="filterSentences('Intermediate',this)">Intermediate</button>
-    <button class="sentence-filter-btn" onclick="filterSentences('Advanced',this)">Advanced</button>
+    <button class="sentence-filter-btn" onclick="filterSentences('Beginner',this)">Sprout</button>
+    <button class="sentence-filter-btn" onclick="filterSentences('Intermediate',this)">Tree</button>
+    <button class="sentence-filter-btn" onclick="filterSentences('Advanced',this)">Forest</button>
     <button onclick="generateAISentences(this)" style="margin-left:auto;background:linear-gradient(135deg,#0b1626,#1a3a6b);color:#fff;border:none;border-radius:999px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer">✨ Generate from Articles</button>
   </div>
   <div id="sentences-list"></div>
@@ -369,6 +414,7 @@
   </div>
 
 
+</div><!-- /learn-sec-vocab-section -->
 
 </div>
 
@@ -442,9 +488,10 @@ function renderSentences(list) {
     var note = '';
     if ((s.level || '') === 'Beginner') note = 'This sentence is good for noticing basic subject + object + verb order.';
     else if ((s.level || '') === 'Intermediate') note = 'Focus on how connectors and longer noun phrases make the sentence feel more natural.';
+    /* note: level comparisons above use DB values intentionally */
     else note = 'Pay attention to nuance, embedded information, and how the sentence flows as a whole.';
     return '<div class="sentence-box">'
-      + '<div class="sent-level">' + s.level + '</div>'
+      + '<div class="sent-level">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[s.level]||s.level) + '</div>'
       + '<div class="sent-ko vocab-zone" id="sent-ko-' + idx + '">' + s.ko + '</div>'
       + '<div class="sent-en" id="sent-en-' + idx + '">' + s.en + '</div>'
       + '<div class="sent-tools">'
@@ -1152,6 +1199,136 @@ function srsShowResult() {
   if (banner) banner.style.display = 'none';
 }
 
+
+// ══ LEARN SECTION TABS ═══════════════════════════════════════════
+function showLearnSection(section, btn) {
+  document.querySelectorAll('#learn-main-tabs .tab-btn').forEach(function(b){ b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+  var hangulSec = document.getElementById('learn-sec-hangul');
+  var vocabSec = document.getElementById('learn-sec-vocab-section');
+  if (section === 'hangul') {
+    if (hangulSec) hangulSec.style.display = 'block';
+    if (vocabSec) vocabSec.style.display = 'none';
+    if (!window._hangulInited) initHangul();
+  } else {
+    if (hangulSec) hangulSec.style.display = 'none';
+    if (vocabSec) vocabSec.style.display = 'block';
+  }
+}
+
+// ══ HANGUL LEARNING ═══════════════════════════════════════════════
+var HANGUL_CONSONANTS = [
+  {ch:'ㄱ',rom:'g/k',ex:'가방',exEn:'bag'},
+  {ch:'ㄴ',rom:'n',ex:'나무',exEn:'tree'},
+  {ch:'ㄷ',rom:'d/t',ex:'다리',exEn:'bridge/leg'},
+  {ch:'ㄹ',rom:'r/l',ex:'라면',exEn:'ramen'},
+  {ch:'ㅁ',rom:'m',ex:'물',exEn:'water'},
+  {ch:'ㅂ',rom:'b/p',ex:'바다',exEn:'sea'},
+  {ch:'ㅅ',rom:'s',ex:'사람',exEn:'person'},
+  {ch:'ㅇ',rom:'ng/silent',ex:'아이',exEn:'child'},
+  {ch:'ㅈ',rom:'j',ex:'자동차',exEn:'car'},
+  {ch:'ㅊ',rom:'ch',ex:'치즈',exEn:'cheese'},
+  {ch:'ㅋ',rom:'k',ex:'커피',exEn:'coffee'},
+  {ch:'ㅌ',rom:'t',ex:'토마토',exEn:'tomato'},
+  {ch:'ㅍ',rom:'p',ex:'포도',exEn:'grape'},
+  {ch:'ㅎ',rom:'h',ex:'하늘',exEn:'sky'}
+];
+var HANGUL_VOWELS = [
+  {ch:'ㅏ',rom:'a',ex:'아기',exEn:'baby'},
+  {ch:'ㅑ',rom:'ya',ex:'야구',exEn:'baseball'},
+  {ch:'ㅓ',rom:'eo',ex:'엄마',exEn:'mom'},
+  {ch:'ㅕ',rom:'yeo',ex:'여름',exEn:'summer'},
+  {ch:'ㅗ',rom:'o',ex:'오리',exEn:'duck'},
+  {ch:'ㅛ',rom:'yo',ex:'요리',exEn:'cooking'},
+  {ch:'ㅜ',rom:'u',ex:'우유',exEn:'milk'},
+  {ch:'ㅠ',rom:'yu',ex:'유리',exEn:'glass'},
+  {ch:'ㅡ',rom:'eu',ex:'으른',exEn:'adult'},
+  {ch:'ㅣ',rom:'i',ex:'이름',exEn:'name'}
+];
+
+function hangulCardHTML(item) {
+  return '<div class="hangul-card" onclick="this.classList.toggle(\'flipped\')">'
+    + '<div class="hangul-front">' + item.ch + '</div>'
+    + '<div class="hangul-back">'
+    + '<div style="font-size:14px;font-weight:900">' + item.rom + '</div>'
+    + '<div style="margin-top:4px;font-size:11px">' + item.ex + ' (' + item.exEn + ')' + '</div>'
+    + '<button onclick="event.stopPropagation();ttsSpeak(\'' + item.ex + '\')" style="margin-top:6px;background:rgba(255,255,255,.2);border:none;border-radius:6px;color:#fff;padding:3px 8px;font-size:14px;cursor:pointer">🔊</button>'
+    + '</div>'
+    + '</div>';
+}
+
+function initHangul() {
+  window._hangulInited = true;
+  var conEl = document.getElementById('hangul-consonants');
+  var vowEl = document.getElementById('hangul-vowels');
+  if (conEl) conEl.innerHTML = HANGUL_CONSONANTS.map(hangulCardHTML).join('');
+  if (vowEl) vowEl.innerHTML = HANGUL_VOWELS.map(hangulCardHTML).join('');
+  startHangulQuiz();
+}
+
+var _hqAll = [];
+var _hqIdx = 0;
+var _hqScore = 0;
+var _hqTotal = 8;
+
+function startHangulQuiz() {
+  _hqAll = HANGUL_CONSONANTS.concat(HANGUL_VOWELS).slice().sort(function(){ return Math.random()-0.5; }).slice(0, _hqTotal);
+  _hqIdx = 0;
+  _hqScore = 0;
+  renderHangulQuiz();
+}
+
+function renderHangulQuiz() {
+  var area = document.getElementById('hangul-quiz-area');
+  if (!area) return;
+  if (_hqIdx >= _hqAll.length) {
+    var pct = Math.round((_hqScore / _hqAll.length) * 100);
+    var emoji = pct >= 80 ? '🏆' : pct >= 50 ? '👍' : '💪';
+    area.innerHTML = '<div style="text-align:center;padding:24px 0">'
+      + '<div style="font-size:40px;margin-bottom:8px">' + emoji + '</div>'
+      + '<div style="font-size:20px;font-weight:900;color:#0b1626">' + pct + '% — ' + _hqScore + '/' + _hqAll.length + '</div>'
+      + '<div style="font-size:13px;color:var(--gray);margin:8px 0 16px">' + (pct >= 80 ? 'Great job!' : 'Keep practicing!') + '</div>'
+      + '<button onclick="startHangulQuiz()" style="padding:10px 24px;background:#2255a4;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:900;cursor:pointer">Try Again</button>'
+      + '</div>';
+    return;
+  }
+  var q = _hqAll[_hqIdx];
+  var allRoms = HANGUL_CONSONANTS.concat(HANGUL_VOWELS).map(function(h){ return h.rom; });
+  var wrongs = allRoms.filter(function(r){ return r !== q.rom; }).sort(function(){ return Math.random()-0.5; }).slice(0,3);
+  var options = [q.rom].concat(wrongs).sort(function(){ return Math.random()-0.5; });
+
+  area.innerHTML = '<div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">'
+    + '<span style="font-size:12px;font-weight:700;color:var(--gray)">' + (_hqIdx+1) + ' / ' + _hqAll.length + '</span>'
+    + '<span style="font-size:12px;font-weight:700;color:#2255a4">Score: ' + _hqScore + '</span>'
+    + '</div>'
+    + '<div style="text-align:center;margin-bottom:20px">'
+    + '<div style="font-size:64px;font-weight:900;color:#1e3a5f">' + q.ch + '</div>'
+    + '<div style="font-size:13px;color:var(--gray);margin-top:6px">What sound does this character make?</div>'
+    + '</div>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">'
+    + options.map(function(opt) {
+        return '<button class="hangul-quiz-opt" onclick="answerHangulQuiz(this,\'' + opt.replace(/'/g,"\\'") + '\',\'' + q.rom.replace(/'/g,"\\'") + '\')">' + opt + '</button>';
+      }).join('')
+    + '</div>'
+    + '<div id="hq-feedback" style="margin-top:12px;text-align:center"></div>';
+}
+
+function answerHangulQuiz(btn, chosen, correct) {
+  if (btn.disabled) return;
+  var isCorrect = chosen === correct;
+  if (isCorrect) _hqScore++;
+  document.querySelectorAll('.hangul-quiz-opt').forEach(function(b) {
+    b.disabled = true;
+    if (b.textContent === correct) b.classList.add('correct');
+    if (b === btn && !isCorrect) b.classList.add('wrong');
+  });
+  var fb = document.getElementById('hq-feedback');
+  if (fb) fb.innerHTML = '<div style="font-size:13px;font-weight:700;color:' + (isCorrect ? '#16a34a' : '#dc2626') + ';margin-bottom:8px">'
+    + (isCorrect ? 'Correct!' : 'The answer is: ' + correct)
+    + '</div>'
+    + '<button onclick="_hqIdx++;renderHangulQuiz()" style="padding:8px 20px;background:#2255a4;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer">'
+    + (_hqIdx < _hqAll.length - 1 ? 'Next' : 'See Results') + '</button>';
+}
 
 document.addEventListener('DOMContentLoaded', init);
 </script>
