@@ -1170,7 +1170,8 @@ function renderOwnedAndGiftSections(coin, data) {
 // ── Mini Room System ─────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════
 
-var ROOM_ITEMS = [
+// Hardcoded fallback — used only if DB fetch fails
+var ROOM_ITEMS_FALLBACK = [
   {id:'character',  name:'Character',        price:0,   img:'assets/file_000000000570720694038be799df9f21-removebg-preview.png', size:80},
   {id:'cat',        name:'Sleeping Cat',     price:15,  img:'assets/file_000000003a7c7209a3877df863e15fd9-removebg-preview.png', size:65},
   {id:'poop',       name:'Happy Poop',       price:3,   img:'assets/file_000000004b247206b900dba933600c46-removebg-preview.png', size:50},
@@ -1182,6 +1183,23 @@ var ROOM_ITEMS = [
   {id:'char_silver',name:'Silver Character', price:0,   img:'assets/file_00000000b8bc72069bc7877f36aaf27f-removebg-preview.png', size:96},
   {id:'char_thumbs',name:'Thumbs Up Guy',    price:0,   img:'assets/file_00000000d40c7206bb289cd92deab487-removebg-preview.png', size:96},
 ];
+var ROOM_ITEMS = ROOM_ITEMS_FALLBACK.slice(); // will be replaced by DB data
+var _roomItemsLoaded = false;
+
+async function loadRoomItemsFromDB() {
+  if (_roomItemsLoaded) return ROOM_ITEMS;
+  var sb = getSupa(); if (!sb) return ROOM_ITEMS;
+  try {
+    var res = await sb.from('room_items').select('*').eq('active', true).order('sort_order');
+    if (!res.error && res.data && res.data.length) {
+      ROOM_ITEMS = res.data.map(function(r) {
+        return { id: r.id, name: r.name, price: r.price_nyang, img: r.image_url, size: r.base_size };
+      });
+      _roomItemsLoaded = true;
+    }
+  } catch(e) { console.warn('room_items load failed, using fallback'); }
+  return ROOM_ITEMS;
+}
 
 var K_ROOM_LAYOUT = 'kh_room_layout';
 var K_ROOM_OWNED  = 'kh_room_owned';
@@ -1305,6 +1323,8 @@ function renderRoomItems() {
 
 // ── Load room (call on page init) ────────────────────────────
 async function loadRoomLayout() {
+  // Load room item catalog from DB (replaces hardcoded array)
+  await loadRoomItemsFromDB();
   // Try loading from server first (cross-device sync)
   await _loadRoomFromServer();
 
@@ -1497,7 +1517,8 @@ function applySelectedItemScale(scaleValue) {
 }
 
 // ── Item Shop ────────────────────────────────────────────────
-function openRoomShop() {
+async function openRoomShop() {
+  await loadRoomItemsFromDB();
   var existing = document.querySelector('.room-shop-overlay');
   if (existing) existing.remove();
 

@@ -7142,13 +7142,93 @@ async function goVocabContent(tab) {
 
 async function goShopContent(tab) {
   tab = tab || 'shop';
-  if (tab === 'shop') { await goShopManager(); }
-  else                { await goCoinAdmin(); }
+  if (tab === 'shop')       { await goShopManager(); }
+  else if (tab === 'room')  { await goRoomItemManager(); }
+  else                      { await goCoinAdmin(); }
   setSbOn('sb-shop');
   _prependItabs([
     { key:'shop', label:'🛍️ 상점 관리', fn:"goShopContent('shop')" },
+    { key:'room', label:'🏠 방꾸미기 아이템', fn:"goShopContent('room')" },
     { key:'coin', label:'🪙 코인 조정', fn:"goShopContent('coin')" }
   ], tab);
+}
+
+// ── Room Item Manager (DB-backed CRUD) ─────────────────────────
+async function goRoomItemManager() {
+  var sb = getSb(); if (!sb) return;
+  document.getElementById('main').innerHTML = '<div class="pg-hd"><h1>🏠 방꾸미기 아이템 관리</h1><p>room_items 테이블에서 아이템을 추가·수정·삭제합니다. 변경 즉시 모든 유저에게 반영됩니다.</p></div>'
+    + '<div style="margin-bottom:12px"><button class="btn btn-g" onclick="openRoomItemEditor()">+ 새 아이템 추가</button></div>'
+    + '<div id="room-item-list">로딩 중…</div>';
+  var res = await sb.from('room_items').select('*').order('sort_order');
+  var el = document.getElementById('room-item-list');
+  if (res.error) { el.innerHTML = '<div style="color:#ef4444">Error: ' + res.error.message + '</div>'; return; }
+  var items = res.data || [];
+  if (!items.length) { el.innerHTML = '<div style="color:#94a3b8">아이템이 없습니다. 위 버튼으로 추가하세요.</div>'; return; }
+  el.innerHTML = '<table class="tbl" style="width:100%;font-size:13px"><thead><tr><th>순서</th><th>이미지</th><th>ID</th><th>이름</th><th>가격</th><th>크기</th><th>활성</th><th></th></tr></thead><tbody>'
+    + items.map(function(it) {
+      return '<tr>'
+        + '<td>' + it.sort_order + '</td>'
+        + '<td><div style="width:48px;height:48px;background:url(' + it.image_url + ') center/contain no-repeat;border-radius:8px;background-color:#f8fafc"></div></td>'
+        + '<td><code>' + it.id + '</code></td>'
+        + '<td>' + it.name + '</td>'
+        + '<td>🐾 ' + it.price_nyang + '</td>'
+        + '<td>' + it.base_size + 'px</td>'
+        + '<td>' + (it.active ? '✅' : '❌') + '</td>'
+        + '<td><button class="btn" onclick="openRoomItemEditor(\'' + it.id + '\')">Edit</button></td>'
+        + '</tr>';
+    }).join('') + '</tbody></table>';
+}
+
+async function openRoomItemEditor(editId) {
+  var sb = getSb(); if (!sb) return;
+  var existing = null;
+  if (editId) {
+    var res = await sb.from('room_items').select('*').eq('id', editId).maybeSingle();
+    existing = res.data;
+  }
+  var isNew = !existing;
+  var html = '<div class="sf-card" style="max-width:500px;margin:0 auto">'
+    + '<h3>' + (isNew ? '새 아이템 추가' : '아이템 수정: ' + editId) + '</h3>'
+    + '<div class="fg"><label>ID (영문, 변경불가)</label><input id="ri-id" value="' + (existing ? existing.id : '') + '" ' + (isNew ? '' : 'readonly style="background:#f1f5f9"') + '></div>'
+    + '<div class="fg"><label>이름</label><input id="ri-name" value="' + (existing ? existing.name : '') + '"></div>'
+    + '<div class="fg"><label>가격 (냥)</label><input id="ri-price" type="number" value="' + (existing ? existing.price_nyang : 0) + '"></div>'
+    + '<div class="fg"><label>이미지 경로 (assets/파일명.png)</label><input id="ri-img" value="' + (existing ? existing.image_url : 'assets/') + '"></div>'
+    + '<div class="fg"><label>기본 크기 (px)</label><input id="ri-size" type="number" value="' + (existing ? existing.base_size : 60) + '"></div>'
+    + '<div class="fg"><label>정렬 순서</label><input id="ri-order" type="number" value="' + (existing ? existing.sort_order : 99) + '"></div>'
+    + '<div class="fg"><label><input type="checkbox" id="ri-active" ' + (existing ? (existing.active ? 'checked' : '') : 'checked') + '> 활성화</label></div>'
+    + '<div style="display:flex;gap:8px;margin-top:12px">'
+    + '<button class="btn btn-g" onclick="saveRoomItem(\'' + (editId||'') + '\')">' + (isNew ? '추가' : '저장') + '</button>'
+    + '<button class="btn" onclick="goShopContent(\'room\')">취소</button>'
+    + (isNew ? '' : '<button class="btn btn-r" onclick="deleteRoomItem(\'' + editId + '\')">삭제</button>')
+    + '</div><div id="ri-msg" style="margin-top:8px;font-size:12px"></div></div>';
+  document.getElementById('main').innerHTML = html;
+}
+
+async function saveRoomItem(editId) {
+  var sb = getSb(); var msg = document.getElementById('ri-msg');
+  var id = (document.getElementById('ri-id').value||'').trim();
+  if (!id) { if (msg) msg.textContent = 'ID를 입력하세요.'; return; }
+  var rec = {
+    id: id,
+    name: (document.getElementById('ri-name').value||'').trim(),
+    price_nyang: parseInt(document.getElementById('ri-price').value) || 0,
+    image_url: (document.getElementById('ri-img').value||'').trim(),
+    base_size: parseInt(document.getElementById('ri-size').value) || 60,
+    sort_order: parseInt(document.getElementById('ri-order').value) || 0,
+    active: document.getElementById('ri-active').checked
+  };
+  var res = await sb.from('room_items').upsert(rec, { onConflict: 'id' });
+  if (res.error) { if (msg) msg.textContent = 'Error: ' + res.error.message; return; }
+  toast(editId ? '수정됨!' : '추가됨!');
+  goShopContent('room');
+}
+
+async function deleteRoomItem(id) {
+  if (!confirm(id + ' 아이템을 삭제하시겠어요?')) return;
+  var sb = getSb();
+  await sb.from('room_items').delete().eq('id', id);
+  toast('삭제됨!');
+  goShopContent('room');
 }
 </script>
 </body>
