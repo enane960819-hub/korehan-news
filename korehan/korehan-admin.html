@@ -5660,38 +5660,8 @@ async function srRegenDailyContent() {
   if (!confirm('AI로 콘텐츠를 새로 생성합니다. 현재 내용이 덮어씌워집니다. 계속하시겠어요?')) return;
   if (msgEl) msgEl.textContent = 'AI 생성 중… (약 10-15초)';
 
-  var levelGuide = {
-    Starter:      'STARTER: Ultra-basic. Daily life, family, food. Vocab: 1-2 syllable words. Grammar: ~이에요/예요, ~있어요/없어요. Sentences max 4 words.',
-    Beginner:     'BEGINNER: Present tense (~아요/어요). Basic particles. Everyday vocab. Helper sentences 5-8 words.',
-    Intermediate: 'INTERMEDIATE: Past tense, conjunctions, modals. Sentences 8-12 words. Topic-specific terms.',
-    Advanced:     'ADVANCED: Complex structures, formal style, advanced connectors. Sentences 12+ words. Abstract vocab.'
-  };
-  var cats = ['daily life','food & cooking','K-pop & music','travel in Korea','Korean seasons & weather',
-    'school & studying','hobbies','Korean traditions & culture','family & relationships',
-    'technology & social media','health & wellness','sports & exercise','Korean cinema & dramas',
-    'friendship','work & career','nature & environment','festivals & holidays','shopping'];
-  var cat = cats[Math.floor(Math.random() * cats.length)];
-
-  var prompt = 'Korean language teacher. Create daily study content for ' + level + ' level.\n'
-    + 'Level: ' + (levelGuide[level] || levelGuide.Beginner) + '\n'
-    + 'Topic theme: "' + cat + '" — pick a specific interesting angle.\n\n'
-    + 'Return ONLY valid JSON, no markdown, no extra text:\n'
-    + '{"topic_ko":"...","topic_en":"...",'
-    + '"vocab":[{"ko":"","rom":"","en":""}],'  // 5 items
-    + '"grammar":[{"pattern":"","explanation":"","example_ko":"","example_en":""}],'  // 3 items
-    + '"helpers":[{"ko":"","en":""}],'  // 4 items
-    + '"dictation_sentences":[{"ko":"","en":""}],'  // 3 items
-    + '"dictation_questions":[{"question_ko":"","answer_ko":"","hint_en":""}],'  // 3 items
-    + '"topic_writing_sentences":[{"ko":"","en":"","acceptable_orders":[],"explanation":""}]}'  // 5 items
-    + '\nExact counts: vocab=5, grammar=3, helpers=4, dictation_sentences=3, dictation_questions=3, topic_writing_sentences=5.';
-
   try {
-    var resp = await callClaude({ feature:'study-room-daily-admin', model:'claude-haiku-4-5-20251001', max_tokens:2500, messages:[{role:'user',content:prompt}] });
-    var raw = (resp.content || []).map(function(c){ return c.text||''; }).join('');
-    var clean = raw.replace(/```json|```/g,'').trim();
-    var s = clean.indexOf('{'), e = clean.lastIndexOf('}');
-    if (s >= 0 && e > s) clean = clean.slice(s, e+1);
-    var parsed = JSON.parse(clean);
+    var parsed = await _srGenerateContent(level, null);
 
     document.getElementById('srt-topic-ko').value = parsed.topic_ko || '';
     document.getElementById('srt-topic-en').value = parsed.topic_en || '';
@@ -5709,6 +5679,56 @@ async function srRegenDailyContent() {
   } catch(err) {
     if (msgEl) msgEl.textContent = 'AI generation failed: ' + (err.message || err);
   }
+}
+
+// ── Shared AI generation prompt builder (used by regen + pregenerate) ──
+function _srBuildPrompt(level, topicHint) {
+  var levelGuide = {
+    Starter:      'STARTER: Ultra-basic. Daily life, family, food. Vocab: 1-2 syllable words. Grammar: ~이에요/예요, ~있어요/없어요. Sentences max 4 words.',
+    Beginner:     'BEGINNER: Present tense (~아요/어요). Basic particles. Everyday vocab. Helper sentences 5-8 words.',
+    Intermediate: 'INTERMEDIATE: Past tense, conjunctions, modals. Sentences 8-12 words. Topic-specific terms.',
+    Advanced:     'ADVANCED: Complex structures, formal style, advanced connectors. Sentences 12+ words. Abstract vocab.'
+  };
+  if (!topicHint) {
+    var cats = ['daily life','food & cooking','K-pop & music','travel in Korea','Korean seasons & weather',
+      'school & studying','hobbies','Korean traditions & culture','family & relationships',
+      'technology & social media','health & wellness','sports & exercise','Korean cinema & dramas',
+      'friendship','work & career','nature & environment','festivals & holidays','shopping'];
+    topicHint = 'Topic theme: "' + cats[Math.floor(Math.random() * cats.length)] + '" — pick a specific interesting angle.';
+  }
+  var levelExtra = '';
+  if (level === 'Intermediate') levelExtra = ',"confusing_grammar":[{"pair":["~grammar1","~grammar2"],"explanation":"","wrong":"","correct":""}] (2 items)';
+  if (level === 'Advanced') levelExtra = ',"confusing_grammar":[{"pair":["~grammar1","~grammar2"],"explanation":"","wrong":"","correct":""}],"formality_exercise":{"casual":"","formal":"","explanation":""},"culture_note":"1-2 sentence Korean cultural note related to topic"';
+
+  return 'Korean language teacher. Create daily study content for ' + level + ' level.\n'
+    + 'Level: ' + (levelGuide[level] || levelGuide.Beginner) + '\n'
+    + topicHint + '\n\n'
+    + 'Return ONLY valid JSON (strict RFC8259, no markdown, no comments, no trailing commas):\n'
+    + '{"topic_ko":"...","topic_en":"...",'
+    + '"vocab":[{"ko":"","rom":"","en":""}],'
+    + '"grammar":[{"pattern":"","explanation":"","example_ko":"","example_en":""}],'
+    + '"helpers":[{"ko":"","en":""}],'
+    + '"dictation_sentences":[{"ko":"","en":""}],'
+    + '"dictation_questions":[{"question_ko":"","answer_ko":"","hint_en":""}],'
+    + '"topic_writing_sentences":[{"ko":"","en":"","acceptable_orders":[],"explanation":""}]'
+    + levelExtra + '}'
+    + '\nExact counts: vocab=5, grammar=3, helpers=4, dictation_sentences=3, dictation_questions=3, topic_writing_sentences=5.';
+}
+
+async function _srGenerateContent(level, topicHint) {
+  var prompt = _srBuildPrompt(level, topicHint);
+  var parsed = null;
+  for (var attempt = 1; attempt <= 3; attempt++) {
+    var resp = await callClaude({ feature:'study-room-daily-admin', model:'claude-haiku-4-5-20251001', max_tokens:2500, messages:[{role:'user',content:prompt}] });
+    var raw = (resp.content || []).map(function(c){ return c.text||''; }).join('');
+    try {
+      parsed = srParseStrictJsonObject(raw);
+      return parsed;
+    } catch(parseErr) {
+      if (attempt === 3) throw parseErr;
+    }
+  }
+  throw new Error('AI generation failed after 3 attempts');
 }
 
 // ── 문법 설명만 독립 생성 ────────────────────────────────────
@@ -5794,109 +5814,136 @@ async function srLoadTopicSchedule() {
   var sb = getSb();
   var el = document.getElementById('srt-list'); if (!sb || !el) return;
   var today = new Date().toISOString().slice(0, 10);
+  var past   = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
   var future = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
   var r = await sb.from('study_daily_content')
     .select('scheduled_date,level,topic_ko,topic_en,admin_edited')
-    .gte('scheduled_date', today)
+    .gte('scheduled_date', past)
     .lte('scheduled_date', future)
-    .order('scheduled_date', { ascending: true });
-  if (r.error) { el.innerHTML = 'Error: ' + r.error.message; return; }
+    .order('scheduled_date', { ascending: true })
+    .order('level', { ascending: true });
+  if (r.error) { el.innerHTML = '<div style="color:#ef4444;padding:12px">Error: ' + r.error.message + '</div>'; return; }
   var rows = r.data || [];
-  if (!rows.length) { el.innerHTML = '<div style="color:#94a3b8;font-size:13px">향후 14일 콘텐츠가 없습니다.</div>'; return; }
-  el.innerHTML = '<div style="font-weight:800;margin-bottom:10px">향후 14일 콘텐츠</div>'
-    + rows.map(function(row) {
-        return '<div style="display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;flex-wrap:wrap">'
-          + '<span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap">' + row.scheduled_date + '</span>'
-          + '<span style="background:#f1f5f9;color:#475569;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[row.level]||row.level) + '</span>'
-          + (row.admin_edited ? '<span style="background:#fde68a;color:#92400e;padding:2px 6px;border-radius:999px;font-size:10px;font-weight:700">편집됨</span>' : '')
-          + '<span style="flex:1;font-size:12px;color:#334155">' + (row.topic_ko||'') + ' · ' + (row.topic_en||'') + '</span>'
-          + '<button class="btn" style="font-size:11px;padding:4px 8px" onclick="srEditDailyRow(\'' + row.scheduled_date + '\',\'' + row.level + '\')">Edit</button>'
-          + '</div>';
-      }).join('');
+  if (!rows.length) { el.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:12px">콘텐츠가 없습니다. "Pre-generate 10 days" 버튼으로 생성하세요.</div>'; return; }
+
+  // Group by date for better readability
+  var lvlNames = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'};
+  var lvlColors = {Starter:'#a855f7',Beginner:'#22c55e',Intermediate:'#f59e0b',Advanced:'#ef4444'};
+  var allLevels = ['Starter','Beginner','Intermediate','Advanced'];
+
+  // Find dates that have all 4 levels
+  var dateMap = {};
+  rows.forEach(function(row) {
+    if (!dateMap[row.scheduled_date]) dateMap[row.scheduled_date] = {};
+    dateMap[row.scheduled_date][row.level] = row;
+  });
+
+  var html = '<div style="font-weight:800;margin-bottom:10px">콘텐츠 현황 (과거3일 ~ 미래14일)</div>';
+  Object.keys(dateMap).sort().forEach(function(date) {
+    var isPast = date < today;
+    var isToday = date === today;
+    var dateLabel = isToday ? '📌 ' + date + ' (오늘)' : date;
+    var dateBg = isToday ? '#eff6ff' : isPast ? '#f8fafc' : '#fff';
+    var levels = dateMap[date];
+    var missingLevels = allLevels.filter(function(l){ return !levels[l]; });
+
+    html += '<div style="padding:10px 12px;border:1px solid ' + (isToday ? '#3b82f6' : '#e2e8f0') + ';border-radius:10px;margin-bottom:8px;background:' + dateBg + '">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+      + '<span style="font-weight:800;font-size:13px;color:' + (isPast ? '#94a3b8' : '#0f172a') + '">' + dateLabel + '</span>';
+    if (missingLevels.length && !isPast) {
+      html += '<span style="font-size:10px;color:#ef4444;font-weight:700">⚠ ' + missingLevels.map(function(l){ return lvlNames[l]; }).join(', ') + ' 미생성</span>';
+    }
+    html += '</div>';
+    allLevels.forEach(function(lvl) {
+      var row = levels[lvl];
+      if (!row) return;
+      html += '<div style="display:flex;gap:6px;align-items:center;padding:4px 0;flex-wrap:wrap">'
+        + '<span style="background:' + (lvlColors[lvl]||'#94a3b8') + ';color:#fff;padding:1px 8px;border-radius:999px;font-size:10px;font-weight:800;min-width:48px;text-align:center">' + (lvlNames[lvl]||lvl) + '</span>'
+        + (row.admin_edited ? '<span style="background:#fde68a;color:#92400e;padding:1px 6px;border-radius:999px;font-size:9px;font-weight:700">편집됨</span>' : '')
+        + '<span style="flex:1;font-size:11px;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (row.topic_ko||'') + ' · ' + (row.topic_en||'') + '</span>'
+        + '<button class="btn" style="font-size:10px;padding:2px 8px" onclick="srEditDailyRow(\'' + row.scheduled_date + '\',\'' + lvl + '\')">Edit</button>'
+        + '</div>';
+    });
+    html += '</div>';
+  });
+  el.innerHTML = html;
 }
 
 async function srPregenerate10Days() {
-  var sb = getSb(); if (!sb) return;
+  var sb = getSb();
+  var el = document.getElementById('srt-list');
+  if (!sb) { if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444">Supabase 연결 실패 — 새로고침 후 다시 시도하세요.</div>'; return; }
   var level = (document.getElementById('srt-level').value || 'Beginner').trim();
-  var levelGuide = {
-    Starter:'STARTER: Ultra-basic. 1-2 syllable words. ~이에요/예요, ~있어요/없어요. Max 4-word sentences.',
-    Beginner:'BEGINNER: Present tense ~아요/어요. Basic particles. Everyday vocab. 5-8 word sentences.',
-    Intermediate:'INTERMEDIATE: Past tense, conjunctions, modals. 8-12 word sentences. Topic-specific.',
-    Advanced:'ADVANCED: Complex structures, formal style. 12+ word sentences. Abstract vocab.'
-  };
   var lvlDisplay = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]||level;
   if (!confirm('Generate 10 days of topics for ' + lvlDisplay + '?')) return;
-  var el = document.getElementById('srt-list');
-  el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">Generating 10 days of topics for ' + lvlDisplay + '... This may take 20-30 seconds.</div>';
+  if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">Generating 10 days for ' + lvlDisplay + '... (20-40초 소요)</div>';
 
-  // Check which dates already exist
-  var today = new Date();
-  var dates = [];
-  for (var i = 0; i < 10; i++) {
-    var d = new Date(today.getTime() + i * 86400000);
-    dates.push(d.toISOString().slice(0, 10));
-  }
-  var existing = await sb.from('study_daily_content').select('scheduled_date').eq('level', level).in('scheduled_date', dates);
-  var existingDates = (existing.data || []).map(function(r){ return r.scheduled_date; });
-  var missing = dates.filter(function(d){ return existingDates.indexOf(d) < 0; });
-
-  if (!missing.length) {
-    el.innerHTML = '<div style="padding:20px;text-align:center;color:#16a34a">All 10 days already have topics for ' + lvlDisplay + '!</div>';
-    await srLoadTopicSchedule();
-    return;
-  }
-
-  // Get writing_topics for dedup
-  var topicsRes = await sb.from('writing_topics').select('*').eq('level', level).eq('active', true);
-  var allTopics = topicsRes.data || [];
-  var usedRes = await sb.from('study_daily_content').select('topic_ko').eq('level', level).order('scheduled_date',{ascending:false}).limit(365);
-  var usedKo = (usedRes.data||[]).map(function(r){return r.topic_ko;});
-  var available = allTopics.filter(function(t){ return usedKo.indexOf(t.topic_ko)<0; });
-  if (!available.length) available = allTopics;
-
-  var generated = 0;
-  for (var mi = 0; mi < missing.length; mi++) {
-    var date = missing[mi];
-    var topic = available.length ? available[mi % available.length] : null;
-    var topicHint = topic
-      ? 'Use EXACTLY this topic: "' + topic.topic_ko + '" (' + topic.topic_en + ').'
-      : 'Pick an interesting Korean daily life topic.';
-
-    try {
-      var prompt = 'Generate daily study content for ' + level + ' level Korean learners.\n'
-        + 'Level: ' + (levelGuide[level]||'') + '\n' + topicHint + '\n\n'
-        + 'Return ONLY valid JSON (strict RFC8259, no markdown, no comments, no trailing commas):\n'
-        + '{"topic_ko":"주제","topic_en":"Topic","vocab":[{"ko":"","rom":"","en":"","level":"'+level+'"}],"grammar":[{"level":"'+level+'","pattern":"","explanation":"","example_ko":"","example_en":""}],"helpers":[{"ko":"","en":""}],"dictation_sentences":[{"ko":"","en":""}],"dictation_questions":[{"question_ko":"","answer_ko":"","hint_en":""}]}\n'
-        + 'Counts: vocab=5, grammar=3, helpers=4, dictation_sentences=3, dictation_questions=3.';
-
-      var parsed = null;
-      for (var attempt = 1; attempt <= 3; attempt++) {
-        var resp = await callClaude({feature:'admin-pregen',model:'claude-haiku-4-5-20251001',max_tokens:1200,messages:[{role:'user',content:prompt}]});
-        var raw = (resp.content||[]).map(function(c){return c.text||'';}).join('');
-        try {
-          parsed = srParseStrictJsonObject(raw);
-          break;
-        } catch(parseErr) {
-          if (attempt === 3) throw parseErr;
-        }
-      }
-
-      var rec = {
-        scheduled_date: date, level: level,
-        topic_ko: parsed.topic_ko||'', topic_en: parsed.topic_en||'',
-        vocab: parsed.vocab||[], grammar: parsed.grammar||[], helpers: parsed.helpers||[],
-        dictation_sentences: parsed.dictation_sentences||[], dictation_questions: parsed.dictation_questions||[],
-        admin_edited: false, updated_at: new Date().toISOString()
-      };
-      await sb.from('study_daily_content').upsert(rec, {onConflict:'scheduled_date,level'});
-      generated++;
-      el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">Generated ' + generated + '/' + missing.length + ' days...</div>';
-    } catch(err) {
-      console.warn('pregen failed for', date, err);
+  try {
+    // Check which dates already exist
+    var today = new Date();
+    var dates = [];
+    for (var i = 0; i < 10; i++) {
+      var d = new Date(today.getTime() + i * 86400000);
+      dates.push(d.toISOString().slice(0, 10));
     }
-  }
+    var existing = await sb.from('study_daily_content').select('scheduled_date').eq('level', level).in('scheduled_date', dates);
+    if (existing.error) throw new Error('DB 조회 실패: ' + existing.error.message);
+    var existingDates = (existing.data || []).map(function(r){ return r.scheduled_date; });
+    var missing = dates.filter(function(d){ return existingDates.indexOf(d) < 0; });
 
-  toast('Generated ' + generated + ' days of topics!');
+    if (!missing.length) {
+      if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#16a34a">All 10 days already have topics for ' + lvlDisplay + '!</div>';
+      await srLoadTopicSchedule();
+      return;
+    }
+
+    // Get writing_topics for dedup
+    var topicsRes = await sb.from('writing_topics').select('*').eq('level', level).eq('active', true);
+    var allTopics = topicsRes.data || [];
+    var usedRes = await sb.from('study_daily_content').select('topic_ko').eq('level', level).order('scheduled_date',{ascending:false}).limit(365);
+    var usedKo = (usedRes.data||[]).map(function(r){return r.topic_ko;});
+    var available = allTopics.filter(function(t){ return usedKo.indexOf(t.topic_ko)<0; });
+    if (!available.length) available = allTopics;
+
+    var generated = 0;
+    var errors = [];
+    for (var mi = 0; mi < missing.length; mi++) {
+      var date = missing[mi];
+      var topic = available.length ? available[mi % available.length] : null;
+      var topicHint = topic
+        ? 'Use EXACTLY this topic: "' + topic.topic_ko + '" (' + topic.topic_en + ').'
+        : 'Pick an interesting Korean daily life topic.';
+
+      try {
+        var parsed = await _srGenerateContent(level, topicHint);
+
+        var rec = {
+          scheduled_date: date, level: level,
+          topic_ko: parsed.topic_ko||'', topic_en: parsed.topic_en||'',
+          vocab: parsed.vocab||[], grammar: parsed.grammar||[], helpers: parsed.helpers||[],
+          dictation_sentences: parsed.dictation_sentences||[], dictation_questions: parsed.dictation_questions||[],
+          topic_writing_sentences: parsed.topic_writing_sentences||[],
+          confusing_grammar: parsed.confusing_grammar||null,
+          formality_exercise: parsed.formality_exercise||null,
+          culture_note: parsed.culture_note||null,
+          admin_edited: false, updated_at: new Date().toISOString()
+        };
+        var upsertRes = await sb.from('study_daily_content').upsert(rec, {onConflict:'scheduled_date,level'});
+        if (upsertRes.error) throw new Error('DB 저장 실패: ' + upsertRes.error.message);
+        generated++;
+        if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">' + lvlDisplay + ' ' + generated + '/' + missing.length + ' 생성 완료…</div>';
+      } catch(err) {
+        errors.push(date + ': ' + (err.message||err));
+        console.warn('pregen failed for', date, err);
+      }
+    }
+
+    var summary = generated + '/' + missing.length + ' days generated for ' + lvlDisplay + '.';
+    if (errors.length) summary += '\n실패: ' + errors.join(', ');
+    toast(summary);
+  } catch(err) {
+    if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444">Error: ' + (err.message||err) + '</div>';
+  }
   await srLoadTopicSchedule();
 }
 
