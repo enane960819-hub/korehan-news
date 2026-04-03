@@ -1197,24 +1197,30 @@ function setRoomLayout(arr) {
 }
 
 // ── Supabase sync (cross-device) ─────────────────────────────
+function _roomServerKey() { return 'room_data_' + (supaUser ? supaUser.id : 'anon'); }
+
 function _syncRoomToServer() {
   if (!supaUser) return;
   var sb = getSupa(); if (!sb) return;
-  var data = { room_layout: getRoomLayout(), room_owned: getRoomOwned() };
-  sb.from('user_stats').update({ room_data: data }).eq('user_id', supaUser.id)
-    .then(function(r){ if(r.error) console.warn('room sync:', r.error.message); });
+  var data = JSON.stringify({ room_layout: getRoomLayout(), room_owned: getRoomOwned() });
+  var key = _roomServerKey();
+  sb.from('app_settings').upsert({ key: key, value: data, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+    .then(function(r){ if(r.error) console.warn('room sync error:', r.error.message); else console.log('room synced to server'); });
 }
+
 async function _loadRoomFromServer() {
   if (!supaUser) return;
   var sb = getSupa(); if (!sb) return;
   try {
-    var r = await sb.from('user_stats').select('room_data').eq('user_id', supaUser.id).maybeSingle();
-    if (r.data && r.data.room_data) {
-      var d = r.data.room_data;
-      if (Array.isArray(d.room_layout) && d.room_layout.length) localStorage.setItem(K_ROOM_LAYOUT, JSON.stringify(d.room_layout));
-      if (Array.isArray(d.room_owned) && d.room_owned.length) localStorage.setItem(K_ROOM_OWNED, JSON.stringify(d.room_owned));
+    var key = _roomServerKey();
+    var r = await sb.from('app_settings').select('value').eq('key', key).maybeSingle();
+    if (r.data && r.data.value) {
+      var d = typeof r.data.value === 'string' ? JSON.parse(r.data.value) : r.data.value;
+      if (d && Array.isArray(d.room_layout)) localStorage.setItem(K_ROOM_LAYOUT, JSON.stringify(d.room_layout));
+      if (d && Array.isArray(d.room_owned)) localStorage.setItem(K_ROOM_OWNED, JSON.stringify(d.room_owned));
+      console.log('room loaded from server');
     }
-  } catch(e) {}
+  } catch(e) { console.warn('room load from server failed:', e); }
 }
 function isItemPlaced(id) {
   var layout = getRoomLayout();
