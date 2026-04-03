@@ -936,9 +936,9 @@ function updateAuthUI() {
     if (userAvatar) {
       var avatar = supaUser.user_metadata && supaUser.user_metadata.avatar_url;
       userAvatar.style.display = 'inline-flex';
-      userAvatar.innerHTML = avatar
-        ? '<img src="' + avatar + '" style="width:28px;height:28px;border-radius:50%;vertical-align:middle">'
-        : '<span style="font-size:13px">' + (supaUser.email || '').charAt(0).toUpperCase() + '</span>';
+      userAvatar.innerHTML = (avatar && isValidImageURL(avatar))
+        ? '<img src="' + escapeAttr(avatar) + '" style="width:28px;height:28px;border-radius:50%;vertical-align:middle">'
+        : '<span style="font-size:13px">' + escapeHTML((supaUser.email || '').charAt(0).toUpperCase()) + '</span>';
     }
     if (userDrop) {
       var name = (supaUser.user_metadata && (supaUser.user_metadata.full_name || supaUser.user_metadata.name)) || (supaUser.email || '').split('@')[0];
@@ -1141,6 +1141,34 @@ const DEF_SENTENCES = [
   {id:'e14', level:'Advanced',      ko:'저출생 위기 대응을 위한 범정부 대책이 필요하다는 목소리가 높다.', en:'There are growing calls for a whole-of-government response to the low birth rate crisis.'},
   {id:'e15', level:'Advanced',      ko:'탄소중립 목표 달성을 위해 재생에너지 투자를 확대해야 한다.',   en:'Investment in renewable energy must be expanded to achieve carbon neutrality goals.'},
 ];
+
+// ── Security helpers ─────────────────────────────────────────
+function escapeHTML(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function escapeAttr(str) {
+  return escapeHTML(str).replace(/\\/g,'\\\\');
+}
+// Strip dangerous HTML (scripts, event handlers, iframes) but keep safe tags
+function sanitizeHTML(html) {
+  if (!html) return '';
+  return String(html)
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
+    .replace(/<object[\s\S]*?<\/object>/gi, '')
+    .replace(/<embed[\s\S]*?>/gi, '')
+    .replace(/<link[\s\S]*?>/gi, '')
+    .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/\bon\w+\s*=\s*[^\s>]+/gi, '')
+    .replace(/javascript\s*:/gi, 'blocked:')
+    .replace(/data\s*:\s*text\/html/gi, 'blocked:');
+}
+function isValidImageURL(url) {
+  if (!url || typeof url !== 'string') return false;
+  try { var u = new URL(url); return u.protocol === 'https:' || u.protocol === 'http:'; }
+  catch(e) { return false; }
+}
 
 // ── localStorage ──────────────────────────────────────────────
 function lsGet(key, def) {
@@ -2605,6 +2633,8 @@ async function _bgPregenArticleCache(a) {
 
 function formatArticleBody(text) {
   if (!text) return '';
+  // Strip dangerous tags but keep basic formatting
+  text = sanitizeHTML(text);
   // \n\n 기준으로 먼저 분리
   var paras = text.split(/\n\n+/);
   if (paras.length <= 1) {
@@ -3700,18 +3730,18 @@ async function loadComments(articleId) {
 
   listEl.innerHTML = data.map(function(c) {
     var isOwn = supaUser && supaUser.id === c.user_id;
-    var avatar = c.avatar_url
-      ? '<img src="' + c.avatar_url + '" class="comment-avatar" onerror="this.style.display=\'none\'">'
+    var avatar = (c.avatar_url && isValidImageURL(c.avatar_url))
+      ? '<img src="' + escapeAttr(c.avatar_url) + '" class="comment-avatar" onerror="this.style.display=\'none\'">'
       : '<div class="comment-avatar" style="background:#2255a4;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700">' + (c.user_name||'?').charAt(0) + '</div>';
     var timeStr = c.created_at ? new Date(c.created_at).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
     return '<div class="comment-row" id="comment-' + c.id + '">'
       + '<div class="comment-top">'
       + avatar
       + '<div class="comment-meta">'
-      + '<span class="comment-name">' + (c.user_name || 'Anonymous') + '</span>'
+      + '<span class="comment-name">' + escapeHTML(c.user_name || 'Anonymous') + '</span>'
       + '<span class="comment-date">' + timeStr + '</span>'
       + '</div>'
-      + (isOwn ? '<button class="comment-del" onclick="deleteComment(\'' + c.id + '\')" title="Delete">✕</button>' : '')
+      + (isOwn ? '<button class="comment-del" onclick="deleteComment(\'' + escapeAttr(c.id) + '\')" title="Delete">✕</button>' : '')
       + '</div>'
       + '<div class="comment-body">' + escapeHtml(c.content) + '</div>'
       + '</div>';
