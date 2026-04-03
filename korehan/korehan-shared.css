@@ -2796,3 +2796,101 @@ body.dark-mode .kh-footer     { background: #0b1220; }
     font-size:12px;
   }
 }
+
+/* ── NEON / DARK MODE — readability overrides for dynamic HTML ──────── */
+/* Many inline styles use hardcoded dark text (#0f172a, #0b1626, #334155, #475569)
+   on light backgrounds. These overrides catch them in neon mode. */
+
+body.kh-neon-on [style*="color:#0f172a"],
+body.kh-neon-on [style*="color:#0b1626"],
+body.kh-neon-on [style*="color:#334155"],
+body.kh-neon-on [style*="color:#1a3a6b"],
+body.kh-neon-on [style*="color: #0f172a"],
+body.kh-neon-on [style*="color: #0b1626"],
+body.kh-neon-on [style*="color: #334155"] {
+  color: #e2e8f0 !important;
+}
+
+body.kh-neon-on [style*="color:#475569"],
+body.kh-neon-on [style*="color:#64748b"],
+body.kh-neon-on [style*="color: #475569"],
+body.kh-neon-on [style*="color: #64748b"] {
+  color: #94a3b8 !important;
+}
+
+body.kh-neon-on [style*="color:#94a3b8"],
+body.kh-neon-on [style*="color: #94a3b8"] {
+  color: rgba(255,255,255,.45) !important;
+}
+
+/* White/light backgrounds in neon mode → dark translucent */
+body.kh-neon-on [style*="background:#fff"],
+body.kh-neon-on [style*="background: #fff"],
+body.kh-neon-on [style*="background:#f8faff"],
+body.kh-neon-on [style*="background:#f8fafc"],
+body.kh-neon-on [style*="background:#f0f4ff"],
+body.kh-neon-on [style*="background:#f8fbff"] {
+  background: rgba(15,23,42,.65) !important;
+  border-color: rgba(255,255,255,.08) !important;
+}
+
+body.kh-neon-on [style*="background:linear-gradient(180deg,#fff"],
+body.kh-neon-on [style*="background:linear-gradient(180deg, #fff"] {
+  background: linear-gradient(180deg, rgba(15,23,42,.7) 0%, rgba(15,23,42,.5) 100%) !important;
+}
+
+/* Light border colors → subtle neon borders */
+body.kh-neon-on [style*="border-color:#e2e8f0"],
+body.kh-neon-on [style*="border-color:#edf2f7"],
+body.kh-neon-on [style*="border:1px solid #e2e8f0"],
+body.kh-neon-on [style*="border:1px solid #edf2f7"],
+body.kh-neon-on [style*="border-bottom:1px solid #edf2f7"] {
+  border-color: rgba(255,255,255,.08) !important;
+}
+
+/* Article action icons & reporter links */
+body.kh-neon-on .art-action-icon,
+body.kh-neon-on .art-reporter-link {
+  background: rgba(15,23,42,.6) !important;
+  color: #e2e8f0 !important;
+  border-color: rgba(255,255,255,.1) !important;
+}
+
+/* Level badges — ensure readable on dark bg */
+body.kh-neon-on [style*="background:#f3e8ff"],
+body.kh-neon-on [style*="background:#e8f5e9"],
+body.kh-neon-on [style*="background:#fff8e1"],
+body.kh-neon-on [style*="background:#fce4ec"],
+body.kh-neon-on [style*="background:#f0fdf4"],
+body.kh-neon-on [style*="background:#fff5f5"],
+body.kh-neon-on [style*="background:#eff6ff"] {
+  background: rgba(255,255,255,.08) !important;
+}
+
+/* Category tags in neon */
+body.kh-neon-on .category-tag {
+  background: rgba(255,255,255,.1) !important;
+  color: #e2e8f0 !important;
+}
+
+/* Hero sidebar: "More to explore" panel */
+body.kh-neon-on #kh-home-hero-side a {
+  border-color: rgba(255,255,255,.06) !important;
+}
+body.kh-neon-on #kh-home-hero-side a:hover {
+  background: rgba(255,255,255,.05) !important;
+}
+
+/* Fill/quiz containers */
+body.kh-neon-on .fill-question-card,
+body.kh-neon-on .fill-container {
+  background: rgba(15,23,42,.7) !important;
+  color: #e2e8f0 !important;
+}
+
+/* Grammar guide cards */
+body.kh-neon-on .grammar-pattern-card {
+  background: rgba(15,23,42,.6) !important;
+  border-color: rgba(255,255,255,.08) !important;
+  color: #e2e8f0 !important;
+}
