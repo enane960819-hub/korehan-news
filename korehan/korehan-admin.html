@@ -5641,7 +5641,6 @@ async function srSaveDailyContent() {
     topic_ko: (document.getElementById('srt-topic-ko').value || '').trim(),
     topic_en: (document.getElementById('srt-topic-en').value || '').trim(),
     vocab, grammar, helpers, dictation_sentences, dictation_questions,
-    topic_writing_sentences,
     admin_edited: true, updated_at: new Date().toISOString()
   }, { onConflict: 'scheduled_date,level' });
 
@@ -5653,35 +5652,75 @@ async function srSaveDailyContent() {
 }
 
 async function srRegenDailyContent() {
+  var sb = getSb();
   var msgEl = document.getElementById('srt-msg');
   var date  = (document.getElementById('srt-date').value  || '').trim();
   var level = (document.getElementById('srt-level').value || '').trim();
   if (!date || !level) { if (msgEl) msgEl.textContent = '날짜와 레벨을 선택하세요.'; return; }
   if (!confirm('AI로 콘텐츠를 새로 생성합니다. 현재 내용이 덮어씌워집니다. 계속하시겠어요?')) return;
-  if (msgEl) msgEl.textContent = 'AI 생성 중… (약 10-15초)';
 
   try {
-    var parsed = await _srGenerateContent(level, null);
+    // 1) Pick topic from writing_topics DB (or use form value if already filled)
+    var existingKo = (document.getElementById('srt-topic-ko').value || '').trim();
+    var existingEn = (document.getElementById('srt-topic-en').value || '').trim();
+    var topicKo = existingKo, topicEn = existingEn;
 
-    document.getElementById('srt-topic-ko').value = parsed.topic_ko || '';
-    document.getElementById('srt-topic-en').value = parsed.topic_en || '';
+    if (!topicKo) {
+      if (msgEl) msgEl.textContent = 'writing_topics에서 토픽 가져오는 중…';
+      var picked = await _srPickTopicFromDB(sb, level);
+      topicKo = picked.topic_ko;
+      topicEn = picked.topic_en;
+    }
+
+    if (msgEl) msgEl.textContent = 'AI 생성 중… 토픽: ' + topicKo + ' (' + topicEn + ')';
+
+    // 2) Generate content for this topic
+    var topicHint = 'Use EXACTLY this topic: "' + topicKo + '" (' + topicEn + '). Do NOT change the topic.';
+    var parsed = await _srGenerateContent(level, topicHint, topicKo, topicEn);
+
+    document.getElementById('srt-topic-ko').value = parsed.topic_ko || topicKo;
+    document.getElementById('srt-topic-en').value = parsed.topic_en || topicEn;
     document.getElementById('srt-vocab').value = (parsed.vocab||[]).map(function(v){ return (v.ko||'')+'|'+(v.rom||'')+'|'+(v.en||''); }).join('\n');
     document.getElementById('srt-grammar').value = (parsed.grammar||[]).map(function(g){ return (g.pattern||'')+'|'+(g.explanation||'')+'|'+(g.example_ko||'')+'|'+(g.example_en||''); }).join('\n');
     document.getElementById('srt-helpers').value = (parsed.helpers||[]).map(function(h){ return (h.ko||'')+'|'+(h.en||''); }).join('\n');
     document.getElementById('srt-dictation-sentences').value = (parsed.dictation_sentences||[]).map(function(d){ return (d.ko||'')+'|'+(d.en||''); }).join('\n');
     document.getElementById('srt-dictation-questions').value = (parsed.dictation_questions||[]).map(function(d){ return (d.question_ko||'')+'|'+(d.answer_ko||'')+'|'+(d.hint_en||''); }).join('\n');
     var twEl = document.getElementById('srt-tw-sentences');
-    if (twEl) twEl.value = (parsed.topic_writing_sentences||[]).map(function(s){ return (s.ko||'')+'|'+(s.en||''); }).join('\n');
+    if (twEl) twEl.value = '';
 
     document.getElementById('srt-editor').style.display = '';
     document.getElementById('srt-empty').style.display = 'none';
-    if (msgEl) msgEl.textContent = 'AI 생성 완료! 저장 버튼을 눌러 확정하세요.';
+    if (msgEl) msgEl.textContent = 'AI 생성 완료! 토픽: ' + topicKo + ' — 저장 버튼을 눌러 확정하세요.';
   } catch(err) {
     if (msgEl) msgEl.textContent = 'AI generation failed: ' + (err.message || err);
   }
 }
 
-// ── Shared AI generation prompt builder (used by regen + pregenerate) ──
+// ── Pick an unused topic from writing_topics DB ──
+async function _srPickTopicFromDB(sb, level) {
+  if (!sb) sb = getSb();
+  // Fetch all active topics for this level
+  var topicsRes = await sb.from('writing_topics').select('topic_ko,topic_en').eq('level', level).eq('active', true);
+  var allTopics = topicsRes.data || [];
+  if (!allTopics.length) {
+    // Fallback: try without level filter
+    var fallbackRes = await sb.from('writing_topics').select('topic_ko,topic_en').eq('active', true);
+    allTopics = fallbackRes.data || [];
+  }
+  if (!allTopics.length) return { topic_ko: '한국 음식', topic_en: 'Korean food' };
+
+  // Get recently used topics (past 365 days) to avoid duplicates
+  var usedRes = await sb.from('study_daily_content').select('topic_ko').eq('level', level).order('scheduled_date',{ascending:false}).limit(365);
+  var usedKo = (usedRes.data||[]).map(function(r){ return r.topic_ko; });
+  var available = allTopics.filter(function(t){ return usedKo.indexOf(t.topic_ko) < 0; });
+  if (!available.length) available = allTopics; // All used, recycle
+
+  // Random pick
+  var pick = available[Math.floor(Math.random() * available.length)];
+  return { topic_ko: pick.topic_ko || '', topic_en: pick.topic_en || '' };
+}
+
+// ── Shared AI generation prompt builder ──
 function _srBuildPrompt(level, topicHint) {
   var levelGuide = {
     Starter:      'STARTER: Ultra-basic. Daily life, family, food. Vocab: 1-2 syllable words. Grammar: ~이에요/예요, ~있어요/없어요. Sentences max 4 words.',
@@ -5689,16 +5728,16 @@ function _srBuildPrompt(level, topicHint) {
     Intermediate: 'INTERMEDIATE: Past tense, conjunctions, modals. Sentences 8-12 words. Topic-specific terms.',
     Advanced:     'ADVANCED: Complex structures, formal style, advanced connectors. Sentences 12+ words. Abstract vocab.'
   };
-  if (!topicHint) {
-    var cats = ['daily life','food & cooking','K-pop & music','travel in Korea','Korean seasons & weather',
-      'school & studying','hobbies','Korean traditions & culture','family & relationships',
-      'technology & social media','health & wellness','sports & exercise','Korean cinema & dramas',
-      'friendship','work & career','nature & environment','festivals & holidays','shopping'];
-    topicHint = 'Topic theme: "' + cats[Math.floor(Math.random() * cats.length)] + '" — pick a specific interesting angle.';
-  }
   var levelExtra = '';
-  if (level === 'Intermediate') levelExtra = ',"confusing_grammar":[{"pair":["~grammar1","~grammar2"],"explanation":"","wrong":"","correct":""}] (2 items)';
-  if (level === 'Advanced') levelExtra = ',"confusing_grammar":[{"pair":["~grammar1","~grammar2"],"explanation":"","wrong":"","correct":""}],"formality_exercise":{"casual":"","formal":"","explanation":""},"culture_note":"1-2 sentence Korean cultural note related to topic"';
+  var levelExtraCounts = '';
+  if (level === 'Intermediate' || level === 'Advanced') {
+    levelExtra = ',"confusing_grammar":[{"pair":["~grammar1","~grammar2"],"explanation":"","wrong":"","correct":""}]';
+    levelExtraCounts = ', confusing_grammar=2';
+  }
+  if (level === 'Advanced') {
+    levelExtra += ',"formality_exercise":{"casual":"","formal":"","explanation":""},"culture_note":"1-2 sentence Korean cultural note"';
+    levelExtraCounts += ', formality_exercise=1, culture_note=1';
+  }
 
   return 'Korean language teacher. Create daily study content for ' + level + ' level.\n'
     + 'Level: ' + (levelGuide[level] || levelGuide.Beginner) + '\n'
@@ -5709,13 +5748,12 @@ function _srBuildPrompt(level, topicHint) {
     + '"grammar":[{"pattern":"","explanation":"","example_ko":"","example_en":""}],'
     + '"helpers":[{"ko":"","en":""}],'
     + '"dictation_sentences":[{"ko":"","en":""}],'
-    + '"dictation_questions":[{"question_ko":"","answer_ko":"","hint_en":""}],'
-    + '"topic_writing_sentences":[{"ko":"","en":"","acceptable_orders":[],"explanation":""}]'
+    + '"dictation_questions":[{"question_ko":"","answer_ko":"","hint_en":""}]'
     + levelExtra + '}'
-    + '\nExact counts: vocab=5, grammar=3, helpers=4, dictation_sentences=3, dictation_questions=3, topic_writing_sentences=5.';
+    + '\nExact counts: vocab=5, grammar=3, helpers=4, dictation_sentences=3, dictation_questions=3' + levelExtraCounts + '.';
 }
 
-async function _srGenerateContent(level, topicHint) {
+async function _srGenerateContent(level, topicHint, forceTopicKo, forceTopicEn) {
   var prompt = _srBuildPrompt(level, topicHint);
   var parsed = null;
   for (var attempt = 1; attempt <= 3; attempt++) {
@@ -5723,6 +5761,9 @@ async function _srGenerateContent(level, topicHint) {
     var raw = (resp.content || []).map(function(c){ return c.text||''; }).join('');
     try {
       parsed = srParseStrictJsonObject(raw);
+      // Force the topic to match what was requested (AI sometimes changes it)
+      if (forceTopicKo) parsed.topic_ko = forceTopicKo;
+      if (forceTopicEn) parsed.topic_en = forceTopicEn;
       return parsed;
     } catch(parseErr) {
       if (attempt === 3) throw parseErr;
@@ -5910,19 +5951,20 @@ async function srPregenerate10Days() {
     for (var mi = 0; mi < missing.length; mi++) {
       var date = missing[mi];
       var topic = available.length ? available[mi % available.length] : null;
+      var topicKo = topic ? topic.topic_ko : '';
+      var topicEn = topic ? topic.topic_en : '';
       var topicHint = topic
-        ? 'Use EXACTLY this topic: "' + topic.topic_ko + '" (' + topic.topic_en + ').'
+        ? 'Use EXACTLY this topic: "' + topicKo + '" (' + topicEn + '). Do NOT change the topic.'
         : 'Pick an interesting Korean daily life topic.';
 
       try {
-        var parsed = await _srGenerateContent(level, topicHint);
+        var parsed = await _srGenerateContent(level, topicHint, topicKo || null, topicEn || null);
 
         var rec = {
           scheduled_date: date, level: level,
-          topic_ko: parsed.topic_ko||'', topic_en: parsed.topic_en||'',
+          topic_ko: parsed.topic_ko||topicKo||'', topic_en: parsed.topic_en||topicEn||'',
           vocab: parsed.vocab||[], grammar: parsed.grammar||[], helpers: parsed.helpers||[],
           dictation_sentences: parsed.dictation_sentences||[], dictation_questions: parsed.dictation_questions||[],
-          topic_writing_sentences: parsed.topic_writing_sentences||[],
           confusing_grammar: parsed.confusing_grammar||null,
           formality_exercise: parsed.formality_exercise||null,
           culture_note: parsed.culture_note||null,
