@@ -284,10 +284,10 @@ var TIME_OPTIONS = [
 ];
 
 var LEVEL_META = {
-  Starter:{ ko:'Starter', emoji:'🌱', desc:'You know a little Hangul or are just beginning to connect words and meaning.', color:'#c4b5fd' },
-  Beginner:{ ko:'Beginner', emoji:'🟢', desc:'You can follow very simple sentences and common particles.', color:'#86efac' },
-  Intermediate:{ ko:'Intermediate', emoji:'🟡', desc:'You can read connected ideas and common news-style patterns.', color:'#fde68a' },
-  Advanced:{ ko:'Advanced', emoji:'🔴', desc:'You can handle complex grammar and nuanced article language.', color:'#fda4af' }
+  Starter:{ ko:'Seed', emoji:'🌱', desc:'You know a little Hangul or are just beginning to connect words and meaning.', color:'#c4b5fd' },
+  Beginner:{ ko:'Sprout', emoji:'🌿', desc:'You can follow very simple sentences and common particles.', color:'#86efac' },
+  Intermediate:{ ko:'Tree', emoji:'🌳', desc:'You can read connected ideas and common news-style patterns.', color:'#fde68a' },
+  Advanced:{ ko:'Forest', emoji:'🌲', desc:'You can handle complex grammar and nuanced article language.', color:'#fda4af' }
 };
 
 var TEST_BANK = {
@@ -487,7 +487,7 @@ function renderStep1() {
         }).join('')
       + '</div>'
       + '<div class="ob-pill-list">'
-      + '<span class="ob-pill">News recommendations</span><span class="ob-pill">Study Room prompts</span><span class="ob-pill">Starter guide highlight</span>'
+      + '<span class="ob-pill">News recommendations</span><span class="ob-pill">Study Room prompts</span><span class="ob-pill">Beginner guide highlight</span>'
       + '</div>'
     + '</div>'
     + '<div>'
@@ -555,7 +555,7 @@ function renderStep3Choice() {
       + '<h2 class="ob-title">Choose how you want to set your level.</h2>'
       + '<p class="ob-desc">If you already know your level, pick it directly and skip the test. If you are unsure, take a randomized placement test with mixed answer positions.</p>'
       + '<div class="ob-choice-grid">'
-      + '<button class="ob-choice-card' + (state.levelChoice === 'self' ? ' selected' : '') + '" data-choice="self"><span class="ob-check">✓</span><span class="ob-choice-badge">Fast start</span><h3>Pick my level myself</h3><p>Skip the quiz and start right away with Starter, Beginner, Intermediate, or Advanced.</p></button>'
+      + '<button class="ob-choice-card' + (state.levelChoice === 'self' ? ' selected' : '') + '" data-choice="self"><span class="ob-check">✓</span><span class="ob-choice-badge">Fast start</span><h3>Pick my level myself</h3><p>Skip the quiz and start right away with Seed, Sprout, Tree, or Forest.</p></button>'
       + '<button class="ob-choice-card' + (state.levelChoice === 'test' ? ' selected' : '') + '" data-choice="test"><span class="ob-check">✓</span><span class="ob-choice-badge">Recommended if unsure</span><h3>Take the placement test</h3><p>Answer 15 randomized questions pulled from beginner, intermediate, and advanced pools.</p></button>'
       + '</div>'
       + (state.levelChoice === 'self' ? renderSelfSelectHTML() : renderTestIntroHTML())
@@ -581,7 +581,7 @@ function renderSelfSelectHTML() {
         var selected = state.level === key;
         return '<button class="ob-opt' + (selected ? ' selected' : '') + '" data-level="' + key + '">'
           + '<span class="ob-check">✓</span>'
-          + '<span class="ob-opt-head"><span class="ob-opt-icon">' + meta.emoji + '</span><span><span class="ob-opt-label">' + key + '</span><span class="ob-opt-sub">' + meta.desc + '</span></span></span>'
+          + '<span class="ob-opt-head"><span class="ob-opt-icon">' + meta.emoji + '</span><span><span class="ob-opt-label">' + meta.ko + '</span><span class="ob-opt-sub">' + meta.desc + '</span></span></span>'
           + '</button>';
       }).join('')
     + '</div>'
@@ -592,7 +592,7 @@ function renderTestIntroHTML() {
   return '<div style="margin-top:18px">'
     + '<div class="ob-helper"><span>🧪</span><div><b>Fresh every time:</b> the quiz now randomizes both questions and answer order, so the correct answer is no longer always the first option.</div></div>'
     + '<div class="ob-link-grid">'
-    + '<div class="ob-link-card"><span>15 questions</span><h3>Balanced mix</h3><p>5 beginner, 5 intermediate, and 5 advanced items.</p></div>'
+    + '<div class="ob-link-card"><span>15 questions</span><h3>Balanced mix</h3><p>5 Sprout, 5 Tree, and 5 Forest items.</p></div>'
     + '<div class="ob-link-card"><span>Fast result</span><h3>Recommended level</h3><p>You will still be able to override the suggested level after the test.</p></div>'
     + '</div>'
     + '</div>';
@@ -648,7 +648,7 @@ function renderTestQuestion() {
     '<div>'
       + '<div class="ob-topline"><div class="ob-eyebrow">Step 3 · Placement test</div><div class="ob-stage">Question ' + (_testIdx + 1) + ' of ' + total + '</div></div>'
       + '<div class="test-progress"><div class="test-prog-bar"><div class="test-prog-fill" style="width:' + pct + '%"></div></div><div class="test-prog-label"><span>' + pct + '% complete</span><span>Randomized answer order</span></div></div>'
-      + '<div class="test-level-badge ' + badgeClass + '">' + q.level + '</div>'
+      + '<div class="test-level-badge ' + badgeClass + '">' + ({Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[q.level]||q.level) + '</div>'
       + '<div class="test-q">' + q.q + (q.sentence ? '<span class="test-ko">' + q.sentence + '</span>' : '') + '</div>'
       + '<div class="test-opts">'
       + q.choices.map(function(choice, i) {
@@ -715,12 +715,12 @@ function showTestResult() {
       + '<div class="ob-topline"><div class="ob-eyebrow">Placement result</div><div class="ob-stage">You can still override the recommendation</div></div>'
       + '<div class="result-hero">'
       + '<div class="result-num">' + correct + '<span style="font-size:24px;color:rgba(255,255,255,.45)">/15</span></div>'
-      + '<div class="result-copy"><h3>' + LEVEL_META[recommended].emoji + ' Recommended: ' + recommended + '</h3><p>' + LEVEL_META[recommended].desc + ' Pick this level or choose a different one below.</p></div>'
+      + '<div class="result-copy"><h3>' + LEVEL_META[recommended].emoji + ' Recommended: ' + LEVEL_META[recommended].ko + '</h3><p>' + LEVEL_META[recommended].desc + ' Pick this level or choose a different one below.</p></div>'
       + '</div>'
       + '<div class="result-breakdown">'
-      + '<div class="rb-item rb-beg"><div class="rb-n">' + breakdown.Beginner + '/5</div><div class="rb-l">Beginner</div></div>'
-      + '<div class="rb-item rb-int"><div class="rb-n">' + breakdown.Intermediate + '/5</div><div class="rb-l">Intermediate</div></div>'
-      + '<div class="rb-item rb-adv"><div class="rb-n">' + breakdown.Advanced + '/5</div><div class="rb-l">Advanced</div></div>'
+      + '<div class="rb-item rb-beg"><div class="rb-n">' + breakdown.Beginner + '/5</div><div class="rb-l">Sprout</div></div>'
+      + '<div class="rb-item rb-int"><div class="rb-n">' + breakdown.Intermediate + '/5</div><div class="rb-l">Tree</div></div>'
+      + '<div class="rb-item rb-adv"><div class="rb-n">' + breakdown.Advanced + '/5</div><div class="rb-l">Forest</div></div>'
       + '</div>'
       + '<div class="ob-level-list">'
       + Object.keys(LEVEL_META).map(function(key) {
@@ -728,7 +728,7 @@ function showTestResult() {
           var selected = state.level === key;
           return '<button class="ob-opt' + (selected ? ' selected' : '') + '" data-recommended-level="' + key + '">'
             + '<span class="ob-check">✓</span>'
-            + '<span class="ob-opt-head"><span class="ob-opt-icon">' + meta.emoji + '</span><span><span class="ob-opt-label">' + key + (key === recommended ? ' <span class="ob-tag" style="margin-left:8px">Recommended</span>' : '') + '</span><span class="ob-opt-sub">' + meta.desc + '</span></span></span>'
+            + '<span class="ob-opt-head"><span class="ob-opt-icon">' + meta.emoji + '</span><span><span class="ob-opt-label">' + meta.ko + (key === recommended ? ' <span class="ob-tag" style="margin-left:8px">Recommended</span>' : '') + '</span><span class="ob-opt-sub">' + meta.desc + '</span></span></span>'
             + '</button>';
         }).join('')
       + '</div>'
@@ -765,7 +765,7 @@ function goStep4() {
       + '<h3 style="margin-bottom:12px">A quick plan for your first session</h3>'
       + '<div class="ob-journey">'
       + '<div class="ob-journey-card"><strong>Goals</strong><p>' + (goalsText || 'Not selected') + '</p></div>'
-      + '<div class="ob-journey-card"><strong>Level</strong><p>' + (state.level || 'Beginner') + (state.levelChoice === 'test' ? ' · From placement test' : ' · Self-selected') + '</p></div>'
+      + '<div class="ob-journey-card"><strong>Level</strong><p>' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[state.level]||state.level||'Sprout') + (state.levelChoice === 'test' ? ' · From placement test' : ' · Self-selected') + '</p></div>'
       + '<div class="ob-journey-card"><strong>Daily pace</strong><p>' + timeData.label + '<br>' + timeData.sub + '</p></div>'
       + '</div>'
       + '</div>'

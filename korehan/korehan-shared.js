@@ -1738,7 +1738,7 @@ function cardHTML(a, extraTagClass) {
   var img = a.image || ('https://picsum.photos/seed/' + a.id + '/600/400');
   var tc  = extraTagClass || '';
   var levelColors = { 'Starter':'#f3e8ff;color:#6b21a8', 'Beginner':'#e8f5e9;color:#2e7d32', 'Intermediate':'#fff8e1;color:#f57f17', 'Advanced':'#fce4ec;color:#c62828' };
-  var levelBadge = a.level ? '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + (levelColors[a.level] || '#f0f0f0;color:#666') + '">' + a.level + '</span>' : '';
+  var levelBadge = a.level ? '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + (levelColors[a.level] || '#f0f0f0;color:#666') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) + '</span>' : '';
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
     + '<div class="card">'
     + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/600/400\'">'
@@ -1978,7 +1978,7 @@ function buildArticleRowHTML(a) {
     + '<div class="article-row">'
     + '<img src="' + aImg + '" alt="" onerror="this.src=\'' + fallback + '\'" style="width:220px;height:140px;object-fit:cover;border-radius:10px;flex-shrink:0;">'
     + '<div class="article-info">'
-    + '<span class="category-tag" style="font-size:11px;padding:2px 8px;' + lvlStyle + '">' + (a.level || a.section || '') + '</span>'
+    + '<span class="category-tag" style="font-size:11px;padding:2px 8px;' + lvlStyle + '">' + (a.level ? ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) : (a.section || '')) + '</span>'
     + '<h2 class="article-title vocab-zone" style="margin:8px 0 6px;font-size:18px;">' + a.title + '</h2>'
     + '<p class="article-excerpt vocab-zone" style="font-size:14px;color:#64748b;line-height:1.6">' + aBody + '</p>'
     + '<div style="font-size:12px;color:#94a3b8;margin-top:6px">' + relTime(a.date) + '</div>'
@@ -2107,10 +2107,10 @@ function renderAllPage() {
       + '</div>'
       + '<div class="all-level-filter" id="all-level-filter">'
       + '<button class="alf-btn on" data-level="All" onclick="filterAllLevel(\'All\',this)">All Levels</button>'
-      + '<button class="alf-btn starter" data-level="Starter" onclick="filterAllLevel(\'Starter\',this)"><span class="alf-dot"></span>Starter</button>'
-      + '<button class="alf-btn beginner" data-level="Beginner" onclick="filterAllLevel(\'Beginner\',this)"><span class="alf-dot"></span>Beginner</button>'
-      + '<button class="alf-btn intermediate" data-level="Intermediate" onclick="filterAllLevel(\'Intermediate\',this)"><span class="alf-dot"></span>Intermediate</button>'
-      + '<button class="alf-btn advanced" data-level="Advanced" onclick="filterAllLevel(\'Advanced\',this)"><span class="alf-dot"></span>Advanced</button>'
+      + '<button class="alf-btn starter" data-level="Starter" onclick="filterAllLevel(\'Starter\',this)"><span class="alf-dot"></span>Seed</button>'
+      + '<button class="alf-btn beginner" data-level="Beginner" onclick="filterAllLevel(\'Beginner\',this)"><span class="alf-dot"></span>Sprout</button>'
+      + '<button class="alf-btn intermediate" data-level="Intermediate" onclick="filterAllLevel(\'Intermediate\',this)"><span class="alf-dot"></span>Tree</button>'
+      + '<button class="alf-btn advanced" data-level="Advanced" onclick="filterAllLevel(\'Advanced\',this)"><span class="alf-dot"></span>Forest</button>'
       + '</div>';
   }
 
@@ -2145,7 +2145,7 @@ function renderAllList(listEl, articles) {
       + img
       + '<div class="nc-overlay-grad"></div>'
       + '<div class="nc-overlay-body">'
-      + '<div class="nc-meta"><span class="nc-cat">' + escapeHtml(a.section || '') + '</span>' + (lvl ? '<span class="nc-lvl ' + lvlCls + '">' + escapeHtml(lvl) + '</span>' : '') + '</div>'
+      + '<div class="nc-meta"><span class="nc-cat">' + escapeHtml(a.section || '') + '</span>' + (lvl ? '<span class="nc-lvl ' + lvlCls + '">' + escapeHtml({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span>' : '') + '</div>'
       + '<div class="nc-title vocab-zone">' + escapeHtml(a.title || a.title_ko || '') + '</div>'
       + '<div class="nc-foot"><span class="nc-date">' + dateStr + '</span></div>'
       + '</div>'
@@ -2329,7 +2329,7 @@ function renderArticlePage() {
     + '<div class="art-header">'
     + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
     + '<span class="art-section-badge">' + a.section + '</span>'
-    + (a.level ? (function(lv){ var c={'Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'}; return '<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:'+(c[lv]||'#f0f0f0;color:#666')+'">'+lv+'</span>'; })(a.level) : '')
+    + (a.level ? (function(lv){ var c={'Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828','Starter':'#f3e8ff;color:#6b21a8'}; var dn={'Starter':'Seed','Beginner':'Sprout','Intermediate':'Tree','Advanced':'Forest'}; return '<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:'+(c[lv]||'#f0f0f0;color:#666')+'">'+(dn[lv]||lv)+'</span>'; })(a.level) : '')
     + '</div>'
     + '<h1 class="art-title vocab-zone">' + a.title + ' ' + ttsBtn(a.title) + '</h1>'
     + '<div class="art-meta-row">'
@@ -2425,7 +2425,7 @@ function renderArticlePage() {
                 + '<div class="art-related-info">'
                 + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'
                 + '<span style="font-size:10px;font-weight:800;text-transform:uppercase;color:#2255a4">' + r.section + '</span>'
-                + (r.level ? '<span style="font-size:10px;font-weight:800;padding:1px 7px;border-radius:999px;background:' + (levelColors[r.level]||'#f0f0f0;color:#666') + '">' + r.level + '</span>' : '')
+                + (r.level ? '<span style="font-size:10px;font-weight:800;padding:1px 7px;border-radius:999px;background:' + (levelColors[r.level]||'#f0f0f0;color:#666') + '">' + ({'Starter':'Seed','Beginner':'Sprout','Intermediate':'Tree','Advanced':'Forest'}[r.level]||r.level) + '</span>' : '')
                 + '</div>'
                 + '<div class="art-related-title-text">' + r.title + '</div>'
                 + '</div>'
@@ -2599,7 +2599,7 @@ function initFillTeaser(article) {
     + 'Test your vocabulary and grammar from this article.<br>6 AI-generated questions, automatically.'
     + '</div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-    + '<span style="font-size:11px;font-weight:800;padding:4px 12px;border-radius:999px;background:' + levelBg + ';color:' + levelColor + '">' + level + '</span>'
+    + '<span style="font-size:11px;font-weight:800;padding:4px 12px;border-radius:999px;background:' + levelBg + ';color:' + levelColor + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]||level) + '</span>'
     + '<span style="font-size:11px;color:rgba(255,255,255,.4)">· 6 questions · vocab + grammar</span>'
     + '</div>'
     + '</div>'
@@ -2773,7 +2773,7 @@ function renderFillQuestions(container, questions, article) {
     + '<div style="font-size:12px;color:#94a3b8">이 기사에서 추출한 핵심 표현 ' + questions.length + '문제</div>'
     + '</div>'
     + '<div style="display:flex;gap:8px;align-items:center">'
-    + '<span style="font-size:11px;font-weight:800;padding:4px 12px;border-radius:999px;background:#f0f4ff;color:' + levelColor + '">' + level + '</span>'
+    + '<span style="font-size:11px;font-weight:800;padding:4px 12px;border-radius:999px;background:#f0f4ff;color:' + levelColor + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]||level) + '</span>'
     + '<button onclick="resetFill()" style="font-size:11px;font-weight:700;padding:5px 14px;border:2px solid #e2e8f0;border-radius:999px;background:#fff;cursor:pointer;color:#64748b">🔄 Reset</button>'
     + '</div>'
     + '</div>'
@@ -3130,7 +3130,7 @@ function renderGrammarGuideCard(g, idx) {
     + (num ? '<span class="gp-num">' + num + '</span>' : '')
     + '<div class="gp-title-group">'
     + '<span class="grammar-name">' + (g.name || '') + '</span>'
-    + '<span class="gp-level-badge" style="background:' + (levelBgs[lv]||'#f0f4ff') + ';color:' + (levelColors[lv]||'#2255a4') + '">' + lv + '</span>'
+    + '<span class="gp-level-badge" style="background:' + (levelBgs[lv]||'#f0f4ff') + ';color:' + (levelColors[lv]||'#2255a4') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lv]||lv) + '</span>'
     + '</div>'
     + '</div>'
     + '<p class="grammar-explanation">' + (g.exp || '') + '</p>'
@@ -4335,7 +4335,7 @@ function renderHeader() {
     + '<span class="kh-hdate" id="date-str"></span>'
     + '<div class="kh-hsearch">' + khIcon('search', '', 'kh-ui-icon-muted kh-ui-icon-sm') + '<input type="text" placeholder="Search articles\u2026" onkeydown="if(event.key===\'Enter\')doSearch(this.value)" style="border:none;background:none;outline:none;font-size:13px;color:inherit;font-family:inherit;width:100%;"></div>'
     + '<button id="topbar-neon-toggle" class="kh-neon-toggle" type="button" aria-pressed="false" onclick="toggleKhNeon(event)">' + khIcon('zap', 'Neon OFF', 'kh-ui-icon-sm') + '</button>'
-    + (isHome ? '<div class="kh-diff-ctrl" id="kh-diff-ctrl"><span class="kh-diff-dot" id="kh-diff-dot"></span><select class="kh-diff-sel" id="kh-diff-select" onchange="khSetDiff(this.value)"><option value="all">All Levels</option><option value="Starter">Starter</option><option value="Beginner">Beginner</option><option value="Intermediate">Intermediate</option><option value="Advanced">Advanced</option></select><span class="kh-diff-arr">&#9662;</span></div>' : '')
+    + (isHome ? '<div class="kh-diff-ctrl" id="kh-diff-ctrl"><span class="kh-diff-dot" id="kh-diff-dot"></span><select class="kh-diff-sel" id="kh-diff-select" onchange="khSetDiff(this.value)"><option value="all">All Levels</option><option value="Starter">Seed</option><option value="Beginner">Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select><span class="kh-diff-arr">&#9662;</span></div>' : '')
     + '<div id="topbar-auth-menu" class="kh-auth-menu" style="display:none">'
     + '<button id="topbar-user-avatar" class="kh-avatar-btn" type="button" aria-label="Open profile menu" onclick="toggleTopbarUserMenu(event)" style="display:none"></button>'
     + '<div id="topbar-user-dropdown" class="kh-user-dropdown"></div>'

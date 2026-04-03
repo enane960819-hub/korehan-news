@@ -750,7 +750,7 @@ function renderRows(){
         <div class="art-b">${esc(a.body||'')}</div>
         <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
           ${a.featured?'<span style="font-size:11px;color:#b87800;font-weight:700;background:#fff8e1;padding:1px 7px;border-radius:999px">⭐ Featured</span>':''}
-          ${a.level?`<span style="font-size:11px;font-weight:800;padding:1px 8px;border-radius:999px;background:${a.level==='Beginner'?'#e8f5e9;color:#2e7d32':a.level==='Intermediate'?'#fff8e1;color:#f57f17':'#fce4ec;color:#c62828'}">${a.level}</span>`:''}
+          ${a.level?`<span style="font-size:11px;font-weight:800;padding:1px 8px;border-radius:999px;background:${a.level==='Beginner'?'#e8f5e9;color:#2e7d32':a.level==='Intermediate'?'#fff8e1;color:#f57f17':'#fce4ec;color:#c62828'}">${{Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level}</span>`:''}
         </div>
       </td>
       <td><span class="cpill c${esc(a.section)}">${esc(a.section)}</span></td>
@@ -864,9 +864,9 @@ function formHTML(a){
         <label>Difficulty Level</label>
         <select id="f-level" style="height:38px">
           <option value="">— 선택 안 함 —</option>
-          <option value="Starter"   ${(v.level||'')==='Starter'   ?'selected':''}>⚪ Starter   (입문)</option><option value="Beginner"  ${(v.level||'')==='Beginner'  ?'selected':''}>🟢 Beginner  (TOPIK 1-2)</option>
-          <option value="Intermediate" ${(v.level||'')==='Intermediate'?'selected':''}>🟡 Intermediate (TOPIK 3-4)</option>
-          <option value="Advanced" ${(v.level||'')==='Advanced' ?'selected':''}>🔴 Advanced  (TOPIK 5-6)</option>
+          <option value="Starter"   ${(v.level||'')==='Starter'   ?'selected':''}>🌱 Seed   (Pre-TOPIK)</option><option value="Beginner"  ${(v.level||'')==='Beginner'  ?'selected':''}>🌿 Sprout  (TOPIK 1-2)</option>
+          <option value="Intermediate" ${(v.level||'')==='Intermediate'?'selected':''}>🌳 Tree (TOPIK 3-4)</option>
+          <option value="Advanced" ${(v.level||'')==='Advanced' ?'selected':''}>🌲 Forest  (TOPIK 5-6)</option>
         </select>
       </div>
       <div class="fg">
@@ -2555,9 +2555,9 @@ function goTopics() {
     + '<button onclick="openTopicModal()" class="btn-primary" style="margin-left:auto;white-space:nowrap">+ 토픽 추가</button></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
     + '<button class="sf-tag on" onclick="filterTopics(&apos;all&apos;,this)">전체</button>'
-    + '<button class="sf-tag" onclick="filterTopics(&apos;Beginner&apos;,this)">🟢 Beginner</button>'
-    + '<button class="sf-tag" onclick="filterTopics(&apos;Intermediate&apos;,this)">🟡 Intermediate</button>'
-    + '<button class="sf-tag" onclick="filterTopics(&apos;Advanced&apos;,this)">🔴 Advanced</button>'
+    + '<button class="sf-tag" onclick="filterTopics(&apos;Beginner&apos;,this)">🌿 Sprout</button>'
+    + '<button class="sf-tag" onclick="filterTopics(&apos;Intermediate&apos;,this)">🌳 Tree</button>'
+    + '<button class="sf-tag" onclick="filterTopics(&apos;Advanced&apos;,this)">🌲 Forest</button>'
     + '</div>'
     + '<div id="topics-wrap"><div style="padding:24px;color:var(--gray);text-align:center">⏳ 불러오는 중…</div></div>'
     + '<div id="topic-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">'
@@ -2568,7 +2568,7 @@ function goTopics() {
     + '<div><label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:4px">카테고리</label>'
     + '<input id="tm-cat" class="sf-input" placeholder="예: 일상, 음식, 여행…" style="width:100%"></div>'
     + '<div><label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:4px">레벨</label>'
-    + '<select id="tm-level" class="sf-input" style="width:100%"><option>Starter</option><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></div>'
+    + '<select id="tm-level" class="sf-input" style="width:100%"><option value="Starter">Seed</option><option value="Beginner">Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select></div>'
     + '</div>'
     + '<label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:4px">토픽 (한국어)</label>'
     + '<input id="tm-ko" class="sf-input" placeholder="예: 오늘 뭐 먹었어요?" style="width:100%;margin-bottom:10px">'
@@ -2617,7 +2617,7 @@ function renderTopicsTable(list) {
     const toggleLabel = t.active ? '비활성화' : '활성화';
     rows += '<tr style="border-bottom:1px solid var(--border)">';
     rows += '<td style="padding:9px 12px;font-weight:600">' + t.category + '</td>';
-    rows += '<td style="padding:9px 12px"><span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;' + bg + '">' + t.level + '</span></td>';
+    rows += '<td style="padding:9px 12px"><span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;' + bg + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[t.level]||t.level) + '</span></td>';
     rows += '<td style="padding:9px 12px">' + t.topic_ko + '</td>';
     rows += '<td style="padding:9px 12px;color:var(--gray);font-size:12px">' + t.topic_en + '</td>';
     rows += '<td style="padding:9px 12px"><span style="font-size:11px;font-weight:700;color:' + activeColor + '">' + activeLabel + '</span></td>';
@@ -3000,8 +3000,8 @@ function goAutoArticle(){
    +'<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:14px">'
    +'<div><label style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#475569;display:block;margin-bottom:6px">난이도</label>'
    +'<select id="auto-difficulty" style="padding:8px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;background:#fff">'
-   +'<option value="Starter">⚪ Starter</option><option value="Beginner">🟢 Beginner</option>'
-   +'<option value="Intermediate" selected>🟡 Intermediate</option><option value="Advanced">🔴 Advanced</option>'
+   +'<option value="Starter">🌱 Seed</option><option value="Beginner">🌿 Sprout</option>'
+   +'<option value="Intermediate" selected>🌳 Tree</option><option value="Advanced">🌲 Forest</option>'
    +'</select></div>'
    +'<div><label style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#475569;display:block;margin-bottom:6px">저장 상태</label>'
    +'<select id="auto-status" style="padding:8px 14px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;background:#fff">'
@@ -3437,7 +3437,7 @@ async function goAICache() {
     html += '<div id="crow-' + a.id + '" style="background:#fff;border:1px solid var(--bo);border-radius:10px;margin-bottom:8px;overflow:hidden">'
       + '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;flex-wrap:wrap">'
       + '<div style="flex:1;min-width:200px"><div style="font-weight:700;font-size:14px;margin-bottom:4px">' + (a.title||'(제목없음)') + '</div>'
-      + '<div style="font-size:12px;color:var(--gr)">' + (a.section||'') + ' · ' + (a.date||'') + ' · ' + (a.level||'') + '</div></div>'
+      + '<div style="font-size:12px;color:var(--gr)">' + (a.section||'') + ' · ' + (a.date||'') + ' · ' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level||'') + '</div></div>'
       + '<div>' + badge(hasT,'Translation') + badge(hasV,'Vocab') + badge(hasG,'Grammar') + badge(hasQ,'Quiz') + '</div>'
       + (allDone ? '<span style="color:#166534;font-weight:700;font-size:13px">✅ Done</span>'
           : '<button class="btn btn-g" style="font-size:13px;padding:7px 16px" id="cbtn-' + a.id + '" onclick="genCache(\'' + a.id + '\',\'' + (_schema||'') + '\')">🧠 Generate</button>')
@@ -4142,10 +4142,10 @@ async function goConvEditor() {
           <div>
             <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Level</label>
             <select id="cv-lvl" style="width:100%;padding:9px 10px;border-radius:10px;border:1.5px solid #e2e8f0;font-family:inherit;font-size:13px;background:#fafbfc">
-              <option value="s">⚪ Starter</option>
-              <option value="b">🟢 Beginner</option>
-              <option value="i" selected>🟡 Intermediate</option>
-              <option value="a">🔴 Advanced</option>
+              <option value="s">🌱 Seed</option>
+              <option value="b">🌿 Sprout</option>
+              <option value="i" selected>🌳 Tree</option>
+              <option value="a">🌲 Forest</option>
             </select>
           </div>
           <div>
@@ -4207,7 +4207,7 @@ async function generateConvs() {
   var count  = document.getElementById('cv-count').value;
   var topic  = document.getElementById('cv-topic').value.trim();
   var res    = document.getElementById('cv-results');
-  var lvlMap = {s:'Starter', b:'Beginner', i:'Intermediate', a:'Advanced'};
+  var lvlMap = {s:'Seed', b:'Sprout', i:'Tree', a:'Forest'};
   var catMap = {everyday:'Everyday', work:'Workplace', friends:'Friends', family:'Family', dating:'Dating'};
 
   var genBtn = document.getElementById('cv-gen-btn');
@@ -4319,9 +4319,9 @@ async function goStoriesEditor() {
           <div>
             <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">LEVEL</label>
             <select id="st-lvl" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
-              <option value="b">Beginner</option>
-              <option value="i" selected>Intermediate</option>
-              <option value="a">Advanced</option>
+              <option value="b">Sprout</option>
+              <option value="i" selected>Tree</option>
+              <option value="a">Forest</option>
             </select>
           </div>
           <div>
@@ -4347,7 +4347,7 @@ async function generateStories() {
   var lvl    = document.getElementById('st-lvl').value;
   var count  = document.getElementById('st-count').value;
   var res    = document.getElementById('st-results');
-  var lvlMap  = {s:'Starter', b:'Beginner', i:'Intermediate', a:'Advanced'};
+  var lvlMap  = {s:'Seed', b:'Sprout', i:'Tree', a:'Forest'};
   var moodMap = {fun:'Fun', touching:'Touching', scary:'Scary', shocking:'Shocking'};
   var moodEmoji = {fun:'😂', touching:'🥹', scary:'😱', shocking:'😮'};
   var moodColors = {fun:'#d97706', touching:'#db2777', scary:'#7c3aed', shocking:'#dc2626'};
@@ -4465,7 +4465,7 @@ async function loadConvList() {
     var ctx  = d.ctx  || '—';
     var cat  = d.cat  || row.cat  || '—';
     var lvl  = d.lvl  || row.lvl  || '—';
-    var lvlMap = {s:'Starter', b:'Beginner', i:'Intermediate', a:'Advanced'};
+    var lvlMap = {s:'Seed', b:'Sprout', i:'Tree', a:'Forest'};
     var msgCount = (d.msgs || []).length;
     var vocabCount = (d.vocab || []).length;
     var grammarCount = (d.grammar || []).length;
@@ -4527,7 +4527,7 @@ async function openConvEditModal(rowId, existingData) {
 
       +   '<div style="padding:14px 20px 0;background:#fff;">'
       +     '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-      +       '<span id="ce-preview-level" style="display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:#eaf2ff;color:#1d4ed8;font-size:12px;font-weight:800;">' + ({s:'Starter',b:'Beginner',i:'Intermediate',a:'Advanced'}[(d.lvl||'b')] || 'Beginner') + '</span>'
+      +       '<span id="ce-preview-level" style="display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:#eaf2ff;color:#1d4ed8;font-size:12px;font-weight:800;">' + ({s:'Seed',b:'Sprout',i:'Tree',a:'Forest'}[(d.lvl||'b')] || 'Sprout') + '</span>'
       +       '<span id="ce-preview-cat" style="display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:#f3f4f6;color:#475569;font-size:12px;font-weight:700;">' + ({everyday:'Everyday',work:'Workplace',friends:'Friends',family:'Family',dating:'Dating'}[(d.cat||'everyday')] || 'Everyday') + '</span>'
       +     '</div>'
       +   '</div>'
@@ -4555,7 +4555,7 @@ async function openConvEditModal(rowId, existingData) {
       +       (ceField('ce-name', '이름', 'text', d.name || '', '예: Team Chat, Ji-yeon & Soo-jin') + ceField('ce-ctx', '상황', 'text', d.ctx || '', '예: Asking for a deadline extension') + ceField('ce-avi', '이모지', 'text', d.avi || '💬', '대표 이모지'))
       +     '</div>'
       +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">'
-      +       (ceSelect('ce-cat', '카테고리', ['everyday','work','friends','family','dating'], ['Everyday','Workplace','Friends','Family','Dating'], d.cat || 'everyday') + ceSelect('ce-lvl', '레벨', ['s','b','i','a'], ['Starter','Beginner','Intermediate','Advanced'], d.lvl || 'b'))
+      +       (ceSelect('ce-cat', '카테고리', ['everyday','work','friends','family','dating'], ['Everyday','Workplace','Friends','Family','Dating'], d.cat || 'everyday') + ceSelect('ce-lvl', '레벨', ['s','b','i','a'], ['Seed','Sprout','Tree','Forest'], d.lvl || 'b'))
       +     '</div>'
 
       +     '<div style="background:#fff;border:1px solid #e8edf5;border-radius:16px;padding:14px 14px 10px;margin-bottom:14px;">'
@@ -4612,12 +4612,12 @@ function syncConvPreview() {
 
   if (!chat) return;
 
-  var lvlMap = {s:'Starter', b:'Beginner', i:'Intermediate', a:'Advanced'};
+  var lvlMap = {s:'Seed', b:'Sprout', i:'Tree', a:'Forest'};
   var catMap = {everyday:'Everyday', work:'Workplace', friends:'Friends', family:'Family', dating:'Dating'};
 
   if (title) title.textContent = (nameEl && nameEl.value.trim()) || 'New Conversation';
   if (ctx) ctx.textContent = (ctxEl && ctxEl.value.trim()) || 'Edit the dialogue below, then run AI Update.';
-  if (lvl) lvl.textContent = lvlMap[(lvlEl && lvlEl.value) || 'b'] || 'Starter';
+  if (lvl) lvl.textContent = lvlMap[(lvlEl && lvlEl.value) || 'b'] || 'Seed';
   if (cat) cat.textContent = catMap[(catEl && catEl.value) || 'everyday'] || 'Everyday';
 
   var lines = ((msgsEl && msgsEl.value) || '').split('\n').filter(function(l){ return l.trim(); });
@@ -4704,7 +4704,7 @@ async function aiAnalyzeConv() {
   if (!msgsText) { alert('대화 내용을 먼저 입력해주세요'); return; }
 
   var lvl = document.getElementById('ce-lvl').value;
-  var lvlMap = {s:'Starter',b:'Beginner',i:'Intermediate',a:'Advanced'};
+  var lvlMap = {s:'Seed',b:'Sprout',i:'Tree',a:'Forest'};
 
   btn.disabled = true;
   btn.textContent = '⏳ 분석 중...';
@@ -5013,7 +5013,7 @@ async function loadStoryList() {
     var titleEn = d.title_en || row.title_en || '';
     var mood = d.mood || row.mood || '—';
     var lvl  = d.lvl  || row.lvl  || '—';
-    var lvlMap = {s:'Starter', b:'Beginner', i:'Intermediate', a:'Advanced'};
+    var lvlMap = {s:'Seed', b:'Sprout', i:'Tree', a:'Forest'};
     var preview = (d.preview || '').slice(0, 60);
     return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;gap:14px">'
       + '<div style="flex:1;min-width:0">'
@@ -5053,7 +5053,7 @@ async function openStoryEditModal(rowId) {
     + ceField('se-title-en', '제목 (영어)',   'text', d.title_en||'', 'e.g. Spring in Seoul')
     + ceField('se-read-time','읽기 시간',     'text', d.read_time||'3 min', '예: 3 min')
     + '<div>'
-    + ceSelect('se-lvl',  '레벨', ['s','b','i','a'], ['Starter','Beginner','Intermediate','Advanced'], d.lvl||'b')
+    + ceSelect('se-lvl',  '레벨', ['s','b','i','a'], ['Seed','Sprout','Tree','Forest'], d.lvl||'b')
     + '</div>'
     + '</div>'
     + '<div style="margin-bottom:12px">'
@@ -5474,7 +5474,7 @@ function srTopicsFormHTML() {
     + '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">'
     + '<div class="fg" style="margin:0"><label>날짜</label><input type="date" id="srt-date" value="'+new Date().toISOString().slice(0,10)+'"></div>'
     + '<div class="fg" style="margin:0"><label>레벨</label>'
-    + '<select id="srt-level"><option value="Starter">Starter</option><option value="Beginner" selected>Beginner</option><option value="Intermediate">Intermediate</option><option value="Advanced">Advanced</option></select></div>'
+    + '<select id="srt-level"><option value="Starter">Seed</option><option value="Beginner" selected>Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select></div>'
     + '<button class="btn btn-g" onclick="srLoadDailyContent()">불러오기</button>'
     + '</div>'
     + '<div id="srt-editor" style="display:none">'
@@ -5806,7 +5806,7 @@ async function srLoadTopicSchedule() {
     + rows.map(function(row) {
         return '<div style="display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;flex-wrap:wrap">'
           + '<span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap">' + row.scheduled_date + '</span>'
-          + '<span style="background:#f1f5f9;color:#475569;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700">' + row.level + '</span>'
+          + '<span style="background:#f1f5f9;color:#475569;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[row.level]||row.level) + '</span>'
           + (row.admin_edited ? '<span style="background:#fde68a;color:#92400e;padding:2px 6px;border-radius:999px;font-size:10px;font-weight:700">편집됨</span>' : '')
           + '<span style="flex:1;font-size:12px;color:#334155">' + (row.topic_ko||'') + ' · ' + (row.topic_en||'') + '</span>'
           + '<button class="btn" style="font-size:11px;padding:4px 8px" onclick="srEditDailyRow(\'' + row.scheduled_date + '\',\'' + row.level + '\')">수정</button>'
@@ -5893,7 +5893,7 @@ function srHelpersFormHTML() {
     + '<div style="font-weight:800;font-size:15px;margin-bottom:12px">💬 빠른 도움 문장 추가/수정</div>'
     + '<input type="hidden" id="srh-id">'
     + '<div class="fg"><label>Level</label>'
-    + '<select id="srh-level"><option>Starter</option><option selected>Beginner</option><option>Intermediate</option><option>Advanced</option></select></div>'
+    + '<select id="srh-level"><option value="Starter">Seed</option><option value="Beginner" selected>Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select></div>'
     + '<div class="fg"><label>Korean (ko)</label><input id="srh-ko" placeholder="예: 저는 오늘 학교에 갔어요."></div>'
     + '<div class="fg"><label>English (en)</label><input id="srh-en" placeholder="e.g. I went to school today."></div>'
     + '<div class="fg"><label>Display Order</label><input id="srh-order" type="number" value="0" style="width:80px"></div>'
@@ -5905,7 +5905,7 @@ function srHelpersFormHTML() {
     + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">'
     + '<span style="font-weight:700">레벨 필터:</span>'
     + '<select id="srh-filter-level" onchange="srLoadHelpers()" style="padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1">'
-    + '<option value="">전체</option><option>Starter</option><option value="Beginner" selected>Beginner</option><option>Intermediate</option><option>Advanced</option>'
+    + '<option value="">전체</option><option value="Starter">Seed</option><option value="Beginner" selected>Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option>'
     + '</select></div>'
     + '<div class="sf-card" id="srh-list">Loading…</div>';
 }
@@ -5924,7 +5924,7 @@ async function srLoadHelpers() {
   el.innerHTML = rows.map(function(h){
     return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:8px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center">'
-      + '<span style="font-size:11px;font-weight:700;color:#64748b">' + h.level + ' · order:' + h.display_order + (h.active ? '' : ' · [비활성]') + '</span>'
+      + '<span style="font-size:11px;font-weight:700;color:#64748b">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[h.level]||h.level) + ' · order:' + h.display_order + (h.active ? '' : ' · [비활성]') + '</span>'
       + '<div style="display:flex;gap:6px"><button class="btn" onclick="srEditHelper(\'' + h.id + '\')">수정</button>'
       + '<button class="btn btn-r" onclick="srDeleteHelper(\'' + h.id + '\')">삭제</button></div></div>'
       + '<div style="font-weight:700;margin-top:4px">' + h.ko + '</div>'
@@ -5985,7 +5985,7 @@ function srGrammarFormHTML() {
     + '<div style="font-weight:800;font-size:15px;margin-bottom:12px">📚 문법 설명 추가/수정</div>'
     + '<input type="hidden" id="srg-id">'
     + '<div class="fg"><label>Level</label>'
-    + '<select id="srg-level"><option>Starter</option><option selected>Beginner</option><option>Intermediate</option><option>Advanced</option></select></div>'
+    + '<select id="srg-level"><option value="Starter">Seed</option><option value="Beginner" selected>Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select></div>'
     + '<div class="fg"><label>Pattern (문법 패턴)</label><input id="srg-pattern" placeholder="예: ~아요/어요"></div>'
     + '<div class="fg"><label>Explanation</label><input id="srg-exp" placeholder="e.g. Present tense polite ending"></div>'
     + '<div class="fg"><label>Example KO</label><input id="srg-exko" placeholder="저는 밥을 먹어요."></div>'
@@ -6002,7 +6002,7 @@ function srGrammarFormHTML() {
     + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">'
     + '<span style="font-weight:700">레벨 필터:</span>'
     + '<select id="srg-filter-level" onchange="srLoadGrammar()" style="padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1">'
-    + '<option value="">전체</option><option>Starter</option><option value="Beginner" selected>Beginner</option><option>Intermediate</option><option>Advanced</option>'
+    + '<option value="">전체</option><option value="Starter">Seed</option><option value="Beginner" selected>Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option>'
     + '</select></div>'
     + '<div class="sf-card" id="srg-list">Loading…</div>';
 }
@@ -6021,7 +6021,7 @@ async function srLoadGrammar() {
   el.innerHTML = rows.map(function(g){
     return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:8px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center">'
-      + '<span style="font-size:11px;font-weight:700;color:#64748b">' + g.level + ' · order:' + g.display_order + (g.active ? '' : ' · [비활성]') + '</span>'
+      + '<span style="font-size:11px;font-weight:700;color:#64748b">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[g.level]||g.level) + ' · order:' + g.display_order + (g.active ? '' : ' · [비활성]') + '</span>'
       + '<div style="display:flex;gap:6px"><button class="btn" onclick="srEditGrammar(\'' + g.id + '\')">수정</button>'
       + '<button class="btn btn-r" onclick="srDeleteGrammar(\'' + g.id + '\')">삭제</button></div></div>'
       + '<div style="font-weight:800;margin-top:4px">' + g.pattern + '</div>'
@@ -6621,7 +6621,7 @@ function srGrammarPdfFormHTML() {
     + '<div style="font-weight:800;font-size:15px;margin-bottom:6px">📄 문법 교재 PDF 가져오기</div>'
     + '<div style="font-size:12px;color:#64748b;margin-bottom:14px">PDF를 업로드하면 AI가 문법 패턴을 추출하여 <b>study_room_grammar</b> 테이블에 저장합니다.</div>'
     + '<div class="fg"><label>레벨</label>'
-    + '<select id="srpdf-level"><option>Starter</option><option selected>Beginner</option><option>Intermediate</option><option>Advanced</option></select></div>'
+    + '<select id="srpdf-level"><option value="Starter">Seed</option><option value="Beginner" selected>Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select></div>'
     + '<div class="fg"><label>PDF 파일 선택</label>'
     + '<input type="file" id="srpdf-file" accept=".pdf" onchange="srHandlePdfUpload(this)">'
     + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">PDF.js 라이브러리로 텍스트를 추출합니다. 스캔된 이미지 PDF는 지원하지 않습니다.</div></div>'

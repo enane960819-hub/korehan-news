@@ -311,9 +311,9 @@
   <div class="learn-section-title" style="margin-top:36px">💬 Example Sentences — 예문</div>
   <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
     <button class="sentence-filter-btn on" onclick="filterSentences('All',this)">All</button>
-    <button class="sentence-filter-btn" onclick="filterSentences('Beginner',this)">Beginner</button>
-    <button class="sentence-filter-btn" onclick="filterSentences('Intermediate',this)">Intermediate</button>
-    <button class="sentence-filter-btn" onclick="filterSentences('Advanced',this)">Advanced</button>
+    <button class="sentence-filter-btn" onclick="filterSentences('Beginner',this)">Sprout</button>
+    <button class="sentence-filter-btn" onclick="filterSentences('Intermediate',this)">Tree</button>
+    <button class="sentence-filter-btn" onclick="filterSentences('Advanced',this)">Forest</button>
     <button onclick="generateAISentences(this)" style="margin-left:auto;background:linear-gradient(135deg,#0b1626,#1a3a6b);color:#fff;border:none;border-radius:999px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer">✨ Generate from Articles</button>
   </div>
   <div id="sentences-list"></div>
@@ -442,9 +442,10 @@ function renderSentences(list) {
     var note = '';
     if ((s.level || '') === 'Beginner') note = 'This sentence is good for noticing basic subject + object + verb order.';
     else if ((s.level || '') === 'Intermediate') note = 'Focus on how connectors and longer noun phrases make the sentence feel more natural.';
+    /* note: level comparisons above use DB values intentionally */
     else note = 'Pay attention to nuance, embedded information, and how the sentence flows as a whole.';
     return '<div class="sentence-box">'
-      + '<div class="sent-level">' + s.level + '</div>'
+      + '<div class="sent-level">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[s.level]||s.level) + '</div>'
       + '<div class="sent-ko vocab-zone" id="sent-ko-' + idx + '">' + s.ko + '</div>'
       + '<div class="sent-en" id="sent-en-' + idx + '">' + s.en + '</div>'
       + '<div class="sent-tools">'

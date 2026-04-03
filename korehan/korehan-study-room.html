@@ -1369,10 +1369,10 @@ body { background: #0b1626 !important; }
 
   <!-- LEVEL SELECTOR — top of page -->
   <div class="lv-row">
-    <button class="lv-btn lv-s"    onclick="setLevel('Starter',this)">⚪ Starter</button>
-    <button class="lv-btn lv-b on" onclick="setLevel('Beginner',this)">🟢 Beginner</button>
-    <button class="lv-btn lv-i"    onclick="setLevel('Intermediate',this)">🟡 Intermediate</button>
-    <button class="lv-btn lv-a"    onclick="setLevel('Advanced',this)">🔴 Advanced</button>
+    <button class="lv-btn lv-s"    onclick="setLevel('Starter',this)">🌱 Seed</button>
+    <button class="lv-btn lv-b on" onclick="setLevel('Beginner',this)">🌿 Sprout</button>
+    <button class="lv-btn lv-i"    onclick="setLevel('Intermediate',this)">🌳 Tree</button>
+    <button class="lv-btn lv-a"    onclick="setLevel('Advanced',this)">🌲 Forest</button>
   </div>
 
   <!-- HERO BLOCK: badge + headline + topic card -->
@@ -2118,7 +2118,7 @@ async function loadDBGrammar(level) {
     var glvColor = { Beginner:'lb', Intermediate:'li', Advanced:'la', Starter:'lb' };
     var ghtml = r.data.map(function(g) {
       return '<div class="grb">'
-        + '<span class="grbadge lvbadge ' + (glvColor[level]||'lb') + '">' + level + '</span>'
+        + '<span class="grbadge lvbadge ' + (glvColor[level]||'lb') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]||level) + '</span>'
         + '<div class="grname">' + g.pattern + '</div>'
         + '<div class="grexp">' + g.explanation + '</div>'
         + '<div class="grex"><div class="grko">' + g.example_ko + '</div><div class="gren">' + g.example_en + '</div></div>'
@@ -2861,7 +2861,7 @@ function renderAIContent() {
     var glvColor = { Beginner:'lb', Intermediate:'li', Advanced:'la' };
     (_aiContent.grammar || []).forEach(function(g) {
       ghtml += '<div class="grb">'
-        + '<span class="grbadge lvbadge ' + (glvColor[g.level]||'lb') + '">' + g.level + '</span>'
+        + '<span class="grbadge lvbadge ' + (glvColor[g.level]||'lb') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[g.level]||g.level) + '</span>'
         + '<div class="grname">' + g.pattern + '</div>'
         + '<div class="grexp">' + g.explanation + '</div>'
         + '<div class="grex"><div class="grko">' + g.example_ko + '</div><div class="gren">' + g.example_en + '</div></div>'
@@ -2900,7 +2900,7 @@ function renderModalContent() {
   var glvColor = { Beginner:'lb', Intermediate:'li', Advanced:'la' };
   (_aiContent.grammar || []).forEach(function(g) {
     mgh += '<div class="mgrb">'
-      + '<span class="mgrbadge lvbadge ' + (glvColor[g.level]||'lb') + '">' + g.level + '</span>'
+      + '<span class="mgrbadge lvbadge ' + (glvColor[g.level]||'lb') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[g.level]||g.level) + '</span>'
       + '<div class="mgrname">' + g.pattern + '</div>'
       + '<div class="mgrexp">' + g.explanation + '</div>'
       + '<div class="mgrex"><div class="mgrko">' + g.example_ko + '</div><div class="mgr-en">' + g.example_en + '</div></div>'
@@ -5647,7 +5647,7 @@ function renderGFLearn(p) {
     + '</div>';
 
   return '<div style="margin-bottom:14px">'
-    + '<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:' + lb + ';color:' + lc + ';margin-bottom:14px">' + lv + '</span>'
+    + '<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:' + lb + ';color:' + lc + ';margin-bottom:14px">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lv]||lv) + '</span>'
     + structureHtml + expHtml + tipsHtml
     + '</div>'
     + exHtml
@@ -6189,7 +6189,7 @@ function _asRenderGrid() {
       + '<div class="asc-body">'
       + '<div class="asc-cat">' + (a.section||'Article') + '</div>'
       + '<div class="asc-title">' + (a.title||'') + '</div>'
-      + (a.level ? '<div class="asc-meta">' + a.level + '</div>' : '')
+      + (a.level ? '<div class="asc-meta">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) + '</div>' : '')
       + '</div></div>';
   }).join('');
 }
