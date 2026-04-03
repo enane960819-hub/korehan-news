@@ -1342,6 +1342,9 @@ body { background: #0b1626 !important; }
 #as-list-view  { display:flex; flex-direction:column; flex:1; min-height:0; }
 #as-study-view { display:flex; flex-direction:column; flex:1; min-height:0; }
 #as-list-view.as-hidden, #as-study-view.as-hidden { display:none !important; }
+#cs-list-view  { display:flex; flex-direction:column; flex:1; min-height:0; }
+#cs-study-view { display:flex; flex-direction:column; flex:1; min-height:0; }
+#cs-list-view.as-hidden, #cs-study-view.as-hidden { display:none !important; }
 .as-article-grid {
   display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px;
 }
@@ -1578,12 +1581,12 @@ body { background: #0b1626 !important; }
         <span class="srac-arrow">→</span>
       </div>
     </button>
-    <button class="sr-act-card coming-soon">
+    <button class="sr-act-card" onclick="openConvStudy()">
       <span class="srac-icon">💬</span>
       <div class="srac-title">Conversations</div>
       <div class="srac-desc">Practice real Korean dialogue patterns</div>
       <div class="srac-foot">
-        <span class="srac-badge cs">Coming Soon</span>
+        <span class="srac-badge">5 Steps</span>
         <span class="srac-arrow">→</span>
       </div>
     </button>
@@ -7448,6 +7451,42 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
     </div>
     <div class="dct-foot" id="dct-foot">
       <button class="btn btn-g" id="dct-next-btn" onclick="dctNext()" style="min-width:120px">다음 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     CONVERSATION STUDY MODAL
+═══════════════════════════════════════════ -->
+<div class="woverlay hidden" id="cs-modal" onclick="if(event.target===this)closeConvStudy()">
+  <div class="as-panel">
+    <!-- LIST VIEW -->
+    <div id="cs-list-view">
+      <div class="wm-header">
+        <div><div class="wmh-title">Conversation Study</div><div class="wmh-sub">Pick a conversation to study</div></div>
+        <button class="wmh-close" onclick="closeConvStudy()">✕</button>
+      </div>
+      <div style="padding:16px;overflow-y:auto;flex:1">
+        <div id="cs-conv-grid" class="as-article-grid"><div class="as-loading"><div class="as-spinner"></div><div>Loading conversations...</div></div></div>
+      </div>
+    </div>
+    <!-- STUDY VIEW -->
+    <div id="cs-study-view" class="as-hidden">
+      <div class="wm-header">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+          <button onclick="csBackToList()" style="padding:4px 10px;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:12px">← Back</button>
+          <div style="min-width:0"><div class="wmh-title" id="cs-conv-title">Conversation Study</div><div class="wmh-sub" id="cs-step-label">Step 1 / 5</div></div>
+        </div>
+        <button class="wmh-close" onclick="closeConvStudy()">✕</button>
+      </div>
+      <div id="cs-pip-bar" style="display:flex;gap:5px;padding:8px 16px;flex-shrink:0;background:linear-gradient(180deg,#0f2040,#152d5a)"></div>
+      <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column">
+        <div id="cs-chat-area" style="padding:16px 20px;border-bottom:2px solid var(--border);background:#f8fbff"></div>
+        <div id="cs-activity-area" style="padding:16px 20px;flex:1;background:var(--bg)"></div>
+      </div>
+      <div class="as-nav-bar">
+        <button id="cs-next-btn" class="btn btn-g" onclick="csNextStep()" style="display:none">Next Step →</button>
+      </div>
     </div>
   </div>
 </div>
