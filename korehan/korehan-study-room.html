@@ -1590,12 +1590,12 @@ body { background: #0b1626 !important; }
         <span class="srac-arrow">→</span>
       </div>
     </button>
-    <button class="sr-act-card coming-soon">
+    <button class="sr-act-card" onclick="openStoryStudy && openStoryStudy() || window.location.assign('korehan-stories.html')">
       <span class="srac-icon">📖</span>
       <div class="srac-title">Stories</div>
       <div class="srac-desc">Learn through graded Korean short stories</div>
       <div class="srac-foot">
-        <span class="srac-badge cs">Coming Soon</span>
+        <span class="srac-badge">5 Steps</span>
         <span class="srac-arrow">→</span>
       </div>
     </button>
@@ -2913,16 +2913,16 @@ async function generateAIContent(topic) {
     + '{\n'
     + '  "vocab": [\n'
     + '    {"ko":"word","rom":"romanization","en":"meaning","level":"' + _currentLevel + '"}\n'
-    + '    // exactly 5 words, all at ' + _currentLevel + ' level, relevant to the topic\n'
+    + '    // exactly ' + (_currentLevel === 'Starter' ? '7' : '5') + ' words, all at ' + _currentLevel + ' level, relevant to the topic' + (_currentLevel === 'Starter' ? '. Ultra-basic 1-2 syllable words with romanization.' : '') + '\n'
     + '  ],\n'
     + '  "grammar": [\n'
     + '    {"level":"' + _currentLevel + '","pattern":"grammar pattern","explanation":"explanation in English","example_ko":"example using the topic","example_en":"translation"}\n'
-    + '    // exactly 3 grammar patterns, all at ' + _currentLevel + ' level\n'
+    + '    // exactly ' + (_currentLevel === 'Starter' ? '4' : '3') + ' grammar patterns, all at ' + _currentLevel + ' level\n'
     + '  ],\n'
     + '  "helpers": [\n'
     + '    {"ko":"Korean sentence at ' + _currentLevel + ' level","en":"English translation"}\n'
-    + '    // exactly 4 helper sentences, all at ' + _currentLevel + ' level, directly about the topic\n'
-    + '  ]\n'
+    + '    // exactly ' + (_currentLevel === 'Starter' ? '6' : '4') + ' helper sentences, all at ' + _currentLevel + ' level, directly about the topic' + (_currentLevel === 'Starter' ? '. Very short, max 4 words each.' : '') + '\n'
+    + '  ]' + (_currentLevel === 'Starter' ? ',\n  "sight_words": [\n    // exactly 5 common sight words (ultra-basic words like 나, 너, 이것, 저것, 뭐, 네, 아니요)\n    {"ko":"word","rom":"romanization","en":"meaning"}\n  ]' : '') + '\n'
     + '}';
 
   try {
@@ -2935,7 +2935,7 @@ async function generateAIContent(topic) {
       callClaude({
         feature: 'study-room',
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 900,
+        max_tokens: _currentLevel === 'Starter' ? 1200 : 900,
         messages: [{ role: 'user', content: prompt }]
       }),
       _aiTimeoutPromise
@@ -2967,12 +2967,24 @@ function buildStudyRoomFallbackContent(topic, level) {
         { ko:'배우', rom:'bae-u', en:'actor', level:'Starter' },
         { ko:'가수', rom:'ga-su', en:'singer', level:'Starter' },
         { ko:'한국', rom:'han-guk', en:'Korea', level:'Starter' },
-        { ko:'있어요', rom:'i-sseo-yo', en:'there is / have', level:'Starter' }
+        { ko:'있어요', rom:'i-sseo-yo', en:'there is / have', level:'Starter' },
+        { ko:'사람', rom:'sa-ram', en:'person', level:'Starter' },
+        { ko:'노래', rom:'no-rae', en:'song', level:'Starter' },
+        { ko:'학교', rom:'hak-gyo', en:'school', level:'Starter' }
       ],
       grammar: [
         { level:'Starter', pattern:'~이에요/예요', explanation:'Use this to say what something is.', example_ko:'이 사람은 배우예요.', example_en:'This person is an actor.' },
-        { level:'Starter', pattern:'~을 좋아해요', explanation:'Use this to say what you like.', example_ko:'저는 한국 배우를 좋아해요.', example_en:'I like Korean actors.' },
-        { level:'Starter', pattern:'~이/가 있어요', explanation:'Use this to say that something exists or that you have it.', example_ko:'좋아하는 가수가 있어요.', example_en:'I have a singer that I like.' }
+        { level:'Starter', pattern:'~을/를 좋아해요', explanation:'Use this to say what you like.', example_ko:'저는 노래를 좋아해요.', example_en:'I like songs.' },
+        { level:'Starter', pattern:'~이/가 있어요', explanation:'Use this to say that something exists or that you have it.', example_ko:'좋아하는 가수가 있어요.', example_en:'I have a singer that I like.' },
+        { level:'Starter', pattern:'~은/는', explanation:'Use this to mark the topic of the sentence.', example_ko:'저는 학생이에요.', example_en:'I am a student.' },
+        { level:'Starter', pattern:'~아니에요', explanation:'Use this to say something is not.', example_ko:'저는 가수가 아니에요.', example_en:'I am not a singer.' }
+      ],
+      sight_words: [
+        { ko:'나', rom:'na', en:'I / me' },
+        { ko:'너', rom:'neo', en:'you' },
+        { ko:'이것', rom:'i-geot', en:'this' },
+        { ko:'저것', rom:'jeo-geot', en:'that' },
+        { ko:'뭐', rom:'mwo', en:'what' }
       ]
     },
     Beginner: {
@@ -3019,16 +3031,31 @@ function buildStudyRoomFallbackContent(topic, level) {
     }
   };
   var picked = levelSets[level] || levelSets.Beginner;
-  return {
-    vocab: picked.vocab,
-    grammar: picked.grammar,
-    helpers: [
+  var helpers;
+  if (level === 'Starter') {
+    helpers = [
+      { ko: '저는 좋아해요.', en: 'I like it.' },
+      { ko: '이것은 뭐예요?', en: 'What is this?' },
+      { ko: '한국 노래 좋아요.', en: 'Korean songs are good.' },
+      { ko: '나는 학생이에요.', en: 'I am a student.' },
+      { ko: '사람이 있어요.', en: 'There is a person.' },
+      { ko: '저것은 학교예요.', en: 'That is a school.' }
+    ];
+  } else {
+    helpers = [
       { ko: topicKo + '에 대해 이야기하고 싶어요.', en: 'I want to talk about ' + topicEn + '.' },
       { ko: '저는 이 주제가 정말 흥미로워요.', en: 'I find this topic really interesting.' },
       { ko: '특히 기억에 남는 이유가 있어요.', en: 'There is a reason it especially stayed with me.' },
       { ko: '제 생각을 한국어로 천천히 써 볼게요.', en: 'I will try writing my thoughts in Korean step by step.' }
-    ]
+    ];
+  }
+  var result = {
+    vocab: picked.vocab,
+    grammar: picked.grammar,
+    helpers: helpers
   };
+  if (picked.sight_words) result.sight_words = picked.sight_words;
+  return result;
 }
 
 function renderAIContent() {
@@ -3305,6 +3332,8 @@ function lsStart(type) {
     if (typeof openPictureDescription === 'function') openPictureDescription();
   } else if (type === 'sentence') {
     openDictationModal();
+  } else if (type === 'conversation') {
+    if (typeof openConvStudy === 'function') openConvStudy();
   }
 }
 
@@ -5760,26 +5789,36 @@ function updateSMPips() {
 function _smBuildContent() {
   // Grab vocab from AI content or fallback
   var vocab = (_aiContent && _aiContent.vocab) || [];
+  // Also merge sight_words if available
+  if (_aiContent && Array.isArray(_aiContent.sight_words) && _aiContent.sight_words.length) {
+    var existingKo = {};
+    vocab.forEach(function(w) { existingKo[w.ko] = true; });
+    _aiContent.sight_words.forEach(function(sw) {
+      if (!existingKo[sw.ko]) vocab.push({ ko: sw.ko, rom: sw.rom || '', en: sw.en, level: 'Starter' });
+    });
+  }
   if (vocab.length < 4) {
     vocab = [
       { ko: '안녕하세요', rom: 'an-nyeong-ha-se-yo', en: 'hello' },
       { ko: '감사합니다', rom: 'gam-sa-ham-ni-da', en: 'thank you' },
       { ko: '학교', rom: 'hak-gyo', en: 'school' },
       { ko: '물', rom: 'mul', en: 'water' },
-      { ko: '밥', rom: 'bap', en: 'rice / meal' }
+      { ko: '밥', rom: 'bap', en: 'rice / meal' },
+      { ko: '사람', rom: 'sa-ram', en: 'person' },
+      { ko: '나', rom: 'na', en: 'I / me' }
     ];
   }
-  // Pick 4-5 words for Step 1 (Listen & Repeat)
-  _sm.words = vocab.slice(0, Math.min(5, vocab.length));
+  // Pick up to 7 words for Step 1 (Listen & Repeat)
+  _sm.words = vocab.slice(0, Math.min(7, vocab.length));
 
-  // Step 2: Match game — pick 4 pairs
-  var matchSrc = vocab.slice(0, 4);
+  // Step 2: Match game — pick up to 5 pairs
+  var matchSrc = vocab.slice(0, Math.min(5, vocab.length));
   _sm.matchPairs = matchSrc.map(function(w) { return { ko: w.ko, en: w.en }; });
 
-  // Step 3: Quiz — 3 questions
+  // Step 3: Quiz — up to 4 questions
   _sm.quizItems = [];
   var quizPool = vocab.slice();
-  for (var qi = 0; qi < 3 && qi < quizPool.length; qi++) {
+  for (var qi = 0; qi < 4 && qi < quizPool.length; qi++) {
     var correct = quizPool[qi];
     var wrongs = quizPool.filter(function(w) { return w.ko !== correct.ko; })
       .sort(function() { return Math.random() - 0.5; }).slice(0, 2)
@@ -7415,6 +7454,13 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
         <div class="ls-card-name">Dictation</div>
         <div class="ls-card-desc">받아쓰기 연습하기</div>
         <div class="ls-card-pts">+10 김치</div>
+      </button>
+      <button class="ls-card" id="ls-card-conversation" onclick="lsStart('conversation')">
+        <div class="ls-done-badge">✅</div>
+        <div class="ls-card-icon">💬</div>
+        <div class="ls-card-name">Conversation Study</div>
+        <div class="ls-card-desc">Practice with real Korean dialogues</div>
+        <div class="ls-card-pts">+15 김치</div>
       </button>
     </div>
     <hr class="ls-divider">

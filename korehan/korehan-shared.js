@@ -147,14 +147,14 @@ async function callClaude({ feature, model, max_tokens, messages }) {
   if (!sb) throw new Error('Supabase not initialized');
 
   var session = await getFreshClaudeSession(sb);
-  if (!session) throw new Error('로그인이 필요합니다.');
+  if (!session) throw new Error('Please sign in to continue.');
 
   var payload = { feature, model, max_tokens, messages };
   var resp;
   try {
     resp = await callClaudeRequest(session.access_token, payload);
   } catch(netErr) {
-    throw new Error('네트워크 오류 — 인터넷 연결을 확인해주세요.');
+    throw new Error('Network error — please check your internet connection.');
   }
 
   if (resp.status === 401) {
@@ -163,18 +163,18 @@ async function callClaude({ feature, model, max_tokens, messages }) {
       try {
         resp = await callClaudeRequest(freshSession.access_token, payload);
       } catch(netErr2) {
-        throw new Error('네트워크 오류 — 인터넷 연결을 확인해주세요.');
+        throw new Error('Network error — please check your internet connection.');
       }
     }
   }
 
-  if (resp.status === 429) throw new Error('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.');
+  if (resp.status === 429) throw new Error('Too many requests. Please try again shortly.');
   if (resp.status === 401) {
-    throw new Error('인증 오류 — 다시 로그인해주세요.');
+    throw new Error('Authentication error — please sign in again.');
   }
   if (!resp.ok) {
     var err = await resp.json().catch(function(){ return {}; });
-    throw new Error(err.error || 'AI 서버 오류 (' + resp.status + ')');
+    throw new Error(err.error || 'AI server error (' + resp.status + ')');
   }
   return resp.json();
 }
@@ -592,11 +592,11 @@ async function authSignUp() {
 
   // Supabase는 중복 이메일도 success 반환 — identities 배열이 비어있으면 기존 계정
   if (data && data.user && (!data.user.identities || data.user.identities.length === 0)) {
-    _authShowError('이미 가입된 이메일이에요. Sign In으로 로그인해주세요.');
+    _authShowError('This email is already registered. Please sign in instead.');
     return;
   }
 
-  _authShowOk('✅ 가입 완료! 확인 이메일을 발송했어요. 받은 편지함(스팸함 포함)을 확인해주세요.');
+  _authShowOk('Account created! We sent a confirmation email. Please check your inbox (including spam).');
   document.getElementById('kh-signup-form').querySelectorAll('input').forEach(function(i){ i.value=''; });
 }
 
@@ -2016,7 +2016,7 @@ async function renderSectionPage(section) {
   // 로딩 표시
   var heroEl = document.getElementById('dyn-hero');
   var listEl = document.getElementById('dyn-article-list');
-  if (heroEl) heroEl.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8;grid-column:1/-1">⏳ 로딩 중…</div>';
+  if (heroEl) heroEl.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8;grid-column:1/-1">⏳ Loading...</div>';
 
   // 1차: 캐시에서 먼저 시도
   var SECTION_ALIASES = {
@@ -2066,14 +2066,14 @@ async function renderSectionPage(section) {
       heroEl.style.cssText = 'display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;';
       heroEl.innerHTML = buildHeroHTML(featured, rest);
     } else {
-      heroEl.innerHTML = '<div style="padding:40px;color:#94a3b8;text-align:center;grid-column:1/-1">이 섹션에 아직 기사가 없습니다.</div>';
+      heroEl.innerHTML = '<div style="padding:40px;color:#94a3b8;text-align:center;grid-column:1/-1">No articles in this section yet.</div>';
     }
   }
 
   // ARTICLE LIST
   if (listEl) {
     if (!rest.length) {
-      listEl.innerHTML = '<p style="color:#94a3b8;padding:20px 0">기사를 찾을 수 없습니다.</p>';
+      listEl.innerHTML = '<p style="color:#94a3b8;padding:20px 0">No articles found.</p>';
     } else {
       var levelColors = {Starter:'#f3e8ff;color:#6b21a8',Beginner:'#e8f5e9;color:#2e7d32',Intermediate:'#fff8e1;color:#f57f17',Advanced:'#fce4ec;color:#c62828'};
       listEl.innerHTML = rest.map(buildArticleRowHTML).join('');
@@ -2835,7 +2835,7 @@ function renderFillQuestions(container, questions, article) {
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">'
     + '<div>'
     + '<div style="font-size:17px;font-weight:900;color:#0b1626;margin-bottom:3px">✏️ Fill in the Blank</div>'
-    + '<div style="font-size:12px;color:#94a3b8">이 기사에서 추출한 핵심 표현 ' + questions.length + '문제</div>'
+    + '<div style="font-size:12px;color:#94a3b8">' + questions.length + ' key expressions from this article</div>'
     + '</div>'
     + '<div style="display:flex;gap:8px;align-items:center">'
     + '<span style="font-size:11px;font-weight:800;padding:4px 12px;border-radius:999px;background:#f0f4ff;color:' + levelColor + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]||level) + '</span>'
@@ -2874,11 +2874,11 @@ function renderFillQuestions(container, questions, article) {
 
       // 모드 토글 버튼
       + '<div style="display:flex;gap:6px;margin-bottom:12px">'
-      + '<button onclick="setFillMode(' + i + ',\'choice\')" id="fill-mode-choice-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #2255a4;background:#2255a4;color:#fff;cursor:pointer">🎯 4지선다</button>'
-      + '<button onclick="setFillMode(' + i + ',\'type\')" id="fill-mode-type-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer">⌨️ 직접 입력</button>'
+      + '<button onclick="setFillMode(' + i + ',\'choice\')" id="fill-mode-choice-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #2255a4;background:#2255a4;color:#fff;cursor:pointer">🎯 Multiple Choice</button>'
+      + '<button onclick="setFillMode(' + i + ',\'type\')" id="fill-mode-type-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer">⌨️ Type Answer</button>'
       + '</div>'
 
-      // 4지선다 영역
+      // Multiple Choice 영역
       + '<div id="fill-choices-' + i + '" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
       + shuffled.map(function(ch) {
           return '<button onclick="checkFillAnswer(' + i + ',\'' + ch.replace(/'/g, "\\'") + '\')" '
@@ -2888,13 +2888,13 @@ function renderFillQuestions(container, questions, article) {
         }).join('')
       + '</div>'
 
-      // 직접 입력 영역
+      // Type Answer 영역
       + '<div id="fill-type-' + i + '" style="display:none">'
       + '<div style="display:flex;gap:8px">'
-      + '<input id="fill-input-' + i + '" type="text" placeholder="한국어로 입력..." '
+      + '<input id="fill-input-' + i + '" type="text" placeholder="Type in Korean..." '
       + 'style="flex:1;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:15px;font-family:sans-serif;outline:none" '
       + 'onkeydown="if(event.key===\'Enter\')submitFillType(' + i + ')">'
-      + '<button onclick="submitFillType(' + i + ')" style="padding:10px 18px;background:#2255a4;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer">확인</button>'
+      + '<button onclick="submitFillType(' + i + ')" style="padding:10px 18px;background:#2255a4;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer">Check</button>'
       + '</div>'
       + '</div>'
 
@@ -2993,7 +2993,7 @@ function checkFillAnswer(qIdx, selected, isTyped) {
   var card = document.getElementById('fill-q-' + qIdx);
   if (card) card.style.borderColor = isCorrect ? '#86efac' : '#fca5a5';
 
-  // 4지선다 버튼 색 변경
+  // Multiple Choice 버튼 색 변경
   if (!isTyped) {
     var choicesEl = document.getElementById('fill-choices-' + qIdx);
     if (choicesEl) {
@@ -3017,16 +3017,16 @@ function checkFillAnswer(qIdx, selected, isTyped) {
     resultEl.innerHTML = (isCorrect
       ? '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start">'
         + '<span style="font-size:18px">✅</span>'
-        + '<div><div style="font-size:13px;font-weight:800;color:#16a34a;margin-bottom:2px">정답!</div>'
+        + '<div><div style="font-size:13px;font-weight:800;color:#16a34a;margin-bottom:2px">Correct!</div>'
         + '<div style="font-size:12px;color:#166534"><strong>' + correct + '</strong> = ' + q.blank_en + '</div></div>'
         + ttsBtn(correct)
         + '</div>'
       : '<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start">'
         + '<span style="font-size:18px">❌</span>'
         + '<div><div style="font-size:13px;font-weight:800;color:#dc2626;margin-bottom:2px">'
-        + (isTyped ? '틀렸어요 (입력: ' + selected + ')' : '틀렸어요')
+        + (isTyped ? 'Incorrect (your answer: ' + selected + ')' : 'Incorrect')
         + '</div>'
-        + '<div style="font-size:12px;color:#991b1b">정답: <strong>' + correct + '</strong> = ' + q.blank_en + '</div></div>'
+        + '<div style="font-size:12px;color:#991b1b">Answer: <strong>' + correct + '</strong> = ' + q.blank_en + '</div></div>'
         + ttsBtn(correct)
         + '</div>'
     );
@@ -3767,7 +3767,7 @@ function initTooltips() {
     var adminBar = document.createElement('div');
     adminBar.id = 'vocab-admin-bar';
     adminBar.style.cssText = 'position:fixed;bottom:70px;right:16px;z-index:8000;background:#0b1626;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);';
-    adminBar.textContent = '✏️ 단어 편집 모드';
+    adminBar.textContent = '✏️ Vocab Edit Mode';
     adminBar.onclick = function() { toggleVocabEditMode(); };
     document.body.appendChild(adminBar);
   }
@@ -3778,9 +3778,9 @@ function initTooltips() {
     var word = w.dataset.word;
     var d = VOCAB[word];
     if (window._vocabEditMode && window._isAdmin) {
-      tip.innerHTML = '<span style="font-size:13px;color:#fbbf24;font-weight:700">✏️ 클릭하여 편집</span><br>'
+      tip.innerHTML = '<span style="font-size:13px;color:#fbbf24;font-weight:700">✏️ Click to edit</span><br>'
         + '<span style="color:#7ab8f5;font-weight:700">' + word + '</span>'
-        + (d ? '<br><span style="color:#94a3b8;font-size:11px">' + d.en + '</span>' : '<br><span style="color:#f87171;font-size:11px">뜻 없음</span>');
+        + (d ? '<br><span style="color:#94a3b8;font-size:11px">' + d.en + '</span>' : '<br><span style="color:#f87171;font-size:11px">No definition</span>');
       tip.style.opacity = '1';
       return;
     }
@@ -3823,13 +3823,13 @@ function toggleVocabEditMode() {
   var bar = document.getElementById('vocab-admin-bar');
   if (bar) {
     if (window._vocabEditMode) {
-      bar.innerHTML = '<span>✅ 편집 ON</span>'
+      bar.innerHTML = '<span>✅ Edit ON</span>'
         + '<button id="vocab-add-new-btn" onclick="event.stopPropagation();openVocabEditModal(\'\')" '
-        + 'style="margin-left:8px;background:#2255a4;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">+ 새 단어</button>';
+        + 'style="margin-left:8px;background:#2255a4;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">+ New Word</button>';
       bar.style.background = '#16a34a';
       bar.style.padding = '8px 12px';
     } else {
-      bar.textContent = '✏️ 단어 편집 모드';
+      bar.textContent = '✏️ Vocab Edit Mode';
       bar.style.background = '#0b1626';
       bar.style.padding = '8px 14px';
     }
@@ -3897,7 +3897,7 @@ function _handleVocabSelection(e) {
   var topPos  = Math.max(8, rect.top - 48);
   pop.style.left = leftPos + 'px';
   pop.style.top  = topPos  + 'px';
-  pop.innerHTML = '+ <span style="color:#7ab8f5;font-weight:900">' + text + '</span> 추가';
+  pop.innerHTML = '+ Add <span style="color:#7ab8f5;font-weight:900">' + text + '</span>';
 
   var selCopy = text; // 클로저용 복사
   pop.onclick = function(ev) {
@@ -3923,26 +3923,26 @@ function _handleVocabSelection(e) {
 
 function openVocabEditModal(word) {
   var existing = VOCAB[word] || { rom: '', en: '' };
-  var isNew = !word; // 새 단어 직접 입력 모드
+  var isNew = !word; // 새 단어 Type Answer 모드
   var modal = document.createElement('div');
   modal.id = 'vocab-edit-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
   modal.innerHTML =
     '<div style="background:#fff;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.3);">'
-    + '<div style="font-size:16px;font-weight:900;color:#0f172a;margin-bottom:16px;">✏️ ' + (isNew ? '새 단어 추가' : '단어 수정: <span style="color:#2255a4">' + word + '</span>') + '</div>'
+    + '<div style="font-size:16px;font-weight:900;color:#0f172a;margin-bottom:16px;">✏️ ' + (isNew ? 'Add New Word' : 'Edit Word: <span style="color:#2255a4">' + word + '</span>') + '</div>'
     + (isNew
-      ? '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">한국어 단어 <span style="color:#e53e3e">*</span></label>'
-        + '<input id="ve-word" placeholder="예: 환경" style="width:100%;padding:8px 12px;border:2px solid #2255a4;border-radius:8px;font-size:16px;font-family:\'Noto Serif KR\',serif;margin-bottom:12px;box-sizing:border-box;" autofocus>'
+      ? '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">Korean Word <span style="color:#e53e3e">*</span></label>'
+        + '<input id="ve-word" placeholder="e.g. 환경" style="width:100%;padding:8px 12px;border:2px solid #2255a4;border-radius:8px;font-size:16px;font-family:\'Noto Serif KR\',serif;margin-bottom:12px;box-sizing:border-box;" autofocus>'
       : '')
-    + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">발음 (romanization)</label>'
-    + '<input id="ve-rom" value="' + existing.rom + '" placeholder="예: hwan-gyeong" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;">'
-    + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">영어 뜻 <span style="color:#e53e3e">*</span></label>'
-    + '<input id="ve-en" value="' + existing.en + '" placeholder="예: environment" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:6px;box-sizing:border-box;">'
+    + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">Pronunciation (romanization)</label>'
+    + '<input id="ve-rom" value="' + existing.rom + '" placeholder="e.g. hwan-gyeong" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;">'
+    + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">English Meaning <span style="color:#e53e3e">*</span></label>'
+    + '<input id="ve-en" value="' + existing.en + '" placeholder="e.g. environment" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:6px;box-sizing:border-box;">'
     + '<div id="ve-err" style="font-size:12px;color:#e53e3e;margin-bottom:12px;display:none;"></div>'
     + '<div style="display:flex;gap:8px;margin-top:16px;">'
-    + '<button id="ve-save" style="flex:1;padding:10px;background:#2255a4;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:800;cursor:pointer;">저장</button>'
-    + (!isNew && existing.en ? '<button id="ve-del" style="padding:10px 16px;background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">삭제</button>' : '')
-    + '<button id="ve-cancel" style="padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">취소</button>'
+    + '<button id="ve-save" style="flex:1;padding:10px;background:#2255a4;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:800;cursor:pointer;">Save</button>'
+    + (!isNew && existing.en ? '<button id="ve-del" style="padding:10px 16px;background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Delete</button>' : '')
+    + '<button id="ve-cancel" style="padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Cancel</button>'
     + '</div></div>';
 
   document.body.appendChild(modal);
@@ -3953,7 +3953,7 @@ function openVocabEditModal(word) {
   var delBtn = modal.querySelector('#ve-del');
   if (delBtn) {
     delBtn.onclick = async function() {
-      if (!confirm(word + ' 단어를 삭제할까요?')) return;
+      if (!confirm(word + '  — delete this word?')) return;
       await saveVocabToDB(word, null, null, true);
       delete VOCAB[word];
       // 해당 단어 span 제거
@@ -3961,7 +3961,7 @@ function openVocabEditModal(word) {
         s.replaceWith(document.createTextNode(s.textContent));
       });
       modal.remove();
-      showToast('🗑 ' + word + ' 삭제됨');
+      showToast('🗑 ' + word + ' deleted');
     };
   }
 
@@ -3972,11 +3972,11 @@ function openVocabEditModal(word) {
     var en  = modal.querySelector('#ve-en').value.trim();
     var err = modal.querySelector('#ve-err');
     if (isNew && (!finalWord || !/[가-힣]/.test(finalWord))) {
-      err.textContent = '한국어 단어를 입력해주세요.'; err.style.display='block'; return;
+      err.textContent = 'Please enter a Korean word.'; err.style.display='block'; return;
     }
-    if (!en) { err.textContent = '영어 뜻을 입력해주세요.'; err.style.display='block'; return; }
+    if (!en) { err.textContent = 'Please enter an English meaning.'; err.style.display='block'; return; }
     var btn = modal.querySelector('#ve-save');
-    btn.textContent = '저장 중...'; btn.disabled = true;
+    btn.textContent = 'Saving...'; btn.disabled = true;
     try {
       await saveVocabToDB(finalWord, rom, en, false);
       VOCAB[finalWord] = { rom: rom, en: en };
@@ -4000,9 +4000,9 @@ function openVocabEditModal(word) {
       _addWordToKeyVocabList(word, rom, en);
 
       modal.remove();
-      showToast('✅ ' + word + ' 저장됨');
+      showToast('✅ ' + word + ' saved');
     } catch(e) {
-      err.textContent = '저장 실패: ' + e.message;
+      err.textContent = 'Save failed:' + e.message;
       err.style.display = 'block';
       btn.textContent = '저장'; btn.disabled = false;
     }
@@ -4083,13 +4083,13 @@ var _COIN_ACTION_AMOUNTS = {
   conversation_read: 3
 };
 var _XP_ACTION_LABELS = {
-  article_read: '기사 읽기',
-  word_save: '단어 저장',
-  conv_quiz_complete: '퀴즈 완료',
-  fill_complete: '빈칸 채우기',
-  daily_mission_complete: '일일 미션 완료',
-  story_read: '스토리 읽기',
-  conversation_read: '회화 읽기'
+  article_read: 'Read Article',
+  word_save: 'Save Word',
+  conv_quiz_complete: 'Quiz Complete',
+  fill_complete: 'Fill in the Blank',
+  daily_mission_complete: 'Daily Mission Complete',
+  story_read: 'Read Story',
+  conversation_read: 'Read Conversation'
 };
 
 // ── xp_log 컬럼명 감지 (세션당 1회) ─────────────────────────────
@@ -4201,7 +4201,7 @@ async function awardXP(actionKey, meta) {
     });
     if (res.data && res.data.ok) {
       if (res.data.leveled_up) {
-        showToast('🎉 레벨 업! Lv.' + res.data.level + ' ' + res.data.level_name);
+        showToast('🎉 Level Up! Lv.' + res.data.level + ' ' + res.data.level_name);
       }
       var gained = res.data.xp_gained || amount;
       showXPToast(gained);
@@ -4314,7 +4314,7 @@ function showCoinToast(coin) {
 
 async function saveVocabToDB(word, rom, en, isDelete) {
   var sb = getSupa();
-  if (!sb) throw new Error('Supabase 연결 없음');
+  if (!sb) throw new Error('Supabase not connected');
   if (isDelete) {
     var res = await sb.from('vocabulary_bank').delete().eq('word_key', word);
     if (res.error) throw res.error;
