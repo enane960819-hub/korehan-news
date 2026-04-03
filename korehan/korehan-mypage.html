@@ -491,15 +491,8 @@ body.kh-neon-on .room-shop-price { color:#8ffcff !important; }
   <!-- Mini Room -->
   <div class="mp-section" id="mp-miniroom-section">
     <h3>My Room</h3>
-    <div id="miniroom-container" style="position:relative;width:100%;max-width:400px;height:360px;margin:0 auto;background:linear-gradient(180deg,#1a1a3e 0%,#2d1f4e 60%,#3d2a5c 100%);border-radius:16px;border:1px solid rgba(255,255,255,.1);overflow:hidden;touch-action:none">
-      <!-- Floor line -->
-      <div style="position:absolute;bottom:80px;left:0;right:0;height:1px;background:rgba(255,255,255,.06)"></div>
-      <!-- Room label -->
-      <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,.2);letter-spacing:.1em">MY STUDY ROOM</div>
-      <!-- Placed items rendered here -->
+    <div id="miniroom-container" style="position:relative;width:100%;max-width:400px;height:360px;margin:0 auto;background:url(assets/room-bg.png) center/cover no-repeat,linear-gradient(180deg,#f5e6d0 0%,#f5e6d0 55%,#c8884e 55%,#b87a42 100%);border-radius:16px;border:1px solid rgba(0,0,0,.12);overflow:hidden;touch-action:none">
       <div id="miniroom-items"></div>
-      <!-- Badges on wall -->
-      <div id="miniroom-badges" style="position:absolute;top:40px;left:16px;display:flex;flex-wrap:wrap;gap:6px;max-width:120px"></div>
     </div>
     <!-- Controls -->
     <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
@@ -1231,34 +1224,7 @@ function renderRoomItems() {
   });
 }
 
-// ── Render badges on wall ────────────────────────────────────
-function renderRoomBadges() {
-  var el = document.getElementById('miniroom-badges');
-  if (!el) return;
-  var earned = {};
-  if (typeof getEarnedBadges === 'function') earned = getEarnedBadges();
-  var badgeIds = Object.keys(earned).slice(0, 6);
-  if (!badgeIds.length) {
-    el.innerHTML = '';
-    return;
-  }
-  var tierColors = {bronze:'#cd7f32', silver:'#94a3b8', gold:'#f59e0b', plat:'#7c3aed', diamond:'#1d4ed8', legendary:'#ff6b6b'};
-  var html = '';
-  badgeIds.forEach(function(bid) {
-    // Find badge def
-    var bdef = null;
-    if (typeof BADGE_DEFS !== 'undefined') {
-      for (var i = 0; i < BADGE_DEFS.length; i++) {
-        if (BADGE_DEFS[i].id === bid) { bdef = BADGE_DEFS[i]; break; }
-      }
-    }
-    var icon = bdef ? bdef.icon : '?';
-    var bgColor = bdef ? (tierColors[bdef.tier] || 'rgba(255,255,255,.15)') : 'rgba(255,255,255,.15)';
-    var name = bdef ? bdef.name : bid;
-    html += '<div class="room-badge-icon" style="background:' + bgColor + '22;border-color:' + bgColor + '44" title="' + name + '">' + icon + '</div>';
-  });
-  el.innerHTML = html;
-}
+// Badges on wall removed
 
 // ── Load room (call on page init) ────────────────────────────
 function loadRoomLayout() {
@@ -1277,7 +1243,6 @@ function loadRoomLayout() {
   }
 
   renderRoomItems();
-  renderRoomBadges();
 }
 
 // ── Save room layout ─────────────────────────────────────────
