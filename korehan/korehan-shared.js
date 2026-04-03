@@ -4004,7 +4004,7 @@ function openVocabEditModal(word) {
     } catch(e) {
       err.textContent = 'Save failed:' + e.message;
       err.style.display = 'block';
-      btn.textContent = '저장'; btn.disabled = false;
+      btn.textContent = 'Save'; btn.disabled = false;
     }
   };
 }
@@ -5184,36 +5184,36 @@ function getQuizStreakDays() { return lsGet('kh_quiz_streak_days', 0); }
 var BADGE_DEFS = [
 
   // 🔥 STREAK
-  { id:'streak_3',   cat:'streak',    tier:'bronze',   icon:'🔥', name:'첫 불꽃',       desc:'3일 연속 학습',
+  { id:'streak_3',   cat:'streak',    tier:'bronze',   icon:'🔥', name:'First Spark',      desc:'3-day study streak',
     check: function(s){ return getCurrentStreak() >= 3; } },
-  { id:'streak_7',   cat:'streak',    tier:'silver',   icon:'🔥', name:'일주일 전사',   desc:'7일 연속 학습',
+  { id:'streak_7',   cat:'streak',    tier:'silver',   icon:'🔥', name:'Week Warrior',    desc:'7-day study streak',
     check: function(s){ return getCurrentStreak() >= 7; } },
-  { id:'streak_30',  cat:'streak',    tier:'gold',     icon:'🏅', name:'30일의 힘',     desc:'30일 연속 학습',
+  { id:'streak_30',  cat:'streak',    tier:'gold',     icon:'🏅', name:'30-Day Power',    desc:'30-day study streak',
     check: function(s){ return getCurrentStreak() >= 30; } },
-  { id:'streak_50',  cat:'streak',    tier:'gold',     icon:'🌊', name:'50일 달성',     desc:'50일 연속 학습',
+  { id:'streak_50',  cat:'streak',    tier:'gold',     icon:'🌊', name:'50-Day Milestone', desc:'50-day study streak',
     check: function(s){ return getCurrentStreak() >= 50; } },
-  { id:'streak_100', cat:'streak',    tier:'diamond',  icon:'💎', name:'100일 챔피언',  desc:'100일 연속 학습',
+  { id:'streak_100', cat:'streak',    tier:'diamond',  icon:'💎', name:'100-Day Champion', desc:'100-day study streak',
     check: function(s){ return getCurrentStreak() >= 100; } },
-  { id:'streak_365', cat:'streak',    tier:'legendary',icon:'👑', name:'365 레전드',    desc:'1년 연속 학습',
+  { id:'streak_365', cat:'streak',    tier:'legendary',icon:'👑', name:'365 Legend',       desc:'1-year study streak',
     check: function(s){ return getCurrentStreak() >= 365; } },
 
   // 📰 READING
-  { id:'read_1',     cat:'reading',   tier:'bronze',   icon:'📖', name:'첫 기사',       desc:'기사 첫 번째 읽기',
+  { id:'read_1',     cat:'reading',   tier:'bronze',   icon:'📖', name:'First Article',    desc:'Read your first article',
     check: function(){ return getTotalArticlesRead() >= 1; } },
-  { id:'read_10',    cat:'reading',   tier:'bronze',   icon:'📰', name:'뉴스 입문',     desc:'기사 10개 읽기',
+  { id:'read_10',    cat:'reading',   tier:'bronze',   icon:'📰', name:'News Beginner',    desc:'Read 10 articles',
     check: function(){ return getTotalArticlesRead() >= 10; } },
-  { id:'read_50',    cat:'reading',   tier:'silver',   icon:'📚', name:'뉴스 탐험가',   desc:'기사 50개 읽기',
+  { id:'read_50',    cat:'reading',   tier:'silver',   icon:'📚', name:'News Explorer',    desc:'Read 50 articles',
     check: function(){ return getTotalArticlesRead() >= 50; } },
-  { id:'read_100',   cat:'reading',   tier:'gold',     icon:'🗞️', name:'기자 지망생',   desc:'기사 100개 읽기',
+  { id:'read_100',   cat:'reading',   tier:'gold',     icon:'🗞️', name:'Aspiring Reporter', desc:'Read 100 articles',
     check: function(){ return getTotalArticlesRead() >= 100; } },
-  { id:'read_500',   cat:'reading',   tier:'legendary',icon:'📜', name:'한국어 박사',   desc:'기사 500개 읽기',
+  { id:'read_500',   cat:'reading',   tier:'legendary',icon:'📜', name:'Korean Scholar',   desc:'Read 500 articles',
     check: function(){ return getTotalArticlesRead() >= 500; } },
-  { id:'read_daily10',cat:'reading',  tier:'gold',     icon:'⚡', name:'하루 10개',     desc:'하루에 기사 10개',
+  { id:'read_daily10',cat:'reading',  tier:'gold',     icon:'⚡', name:'10 in a Day',      desc:'Read 10 articles in one day',
     check: function(){
       var log = lsGet('kh_read_log', {});
       return Object.values(log).some(function(arr){ return arr.length >= 10; });
     } },
-  { id:'read_allsec',cat:'reading',   tier:'diamond',  icon:'🔭', name:'올라운더',      desc:'모든 섹션 읽기',
+  { id:'read_allsec',cat:'reading',   tier:'diamond',  icon:'🔭', name:'All-Rounder',     desc:'Read from every section',
     check: function(){
       var sc = getSectionReadCounts();
       var secs = ['사회','국제','문화','스포츠','Korea','beauty','travel','오피니언','정치','경제'];
@@ -5221,61 +5221,61 @@ var BADGE_DEFS = [
     } },
 
   // 🔖 VOCAB
-  { id:'word_10',    cat:'vocab',     tier:'bronze',   icon:'🌱', name:'씨앗 단어장',   desc:'단어 10개 저장',
+  { id:'word_10',    cat:'vocab',     tier:'bronze',   icon:'🌱', name:'Seed Vocab',      desc:'Save 10 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 10; } },
-  { id:'word_50',    cat:'vocab',     tier:'silver',   icon:'🌿', name:'단어 새싹',     desc:'단어 50개 저장',
+  { id:'word_50',    cat:'vocab',     tier:'silver',   icon:'🌿', name:'Word Sprout',     desc:'Save 50 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 50; } },
-  { id:'word_100',   cat:'vocab',     tier:'silver',   icon:'🍃', name:'단어 수집가',   desc:'단어 100개 저장',
+  { id:'word_100',   cat:'vocab',     tier:'silver',   icon:'🍃', name:'Word Collector',  desc:'Save 100 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 100; } },
-  { id:'word_300',   cat:'vocab',     tier:'gold',     icon:'🌳', name:'어휘 나무',     desc:'단어 300개 저장',
+  { id:'word_300',   cat:'vocab',     tier:'gold',     icon:'🌳', name:'Vocab Tree',      desc:'Save 300 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 300; } },
-  { id:'word_1000',  cat:'vocab',     tier:'diamond',  icon:'💠', name:'TOPIK 단어장',  desc:'단어 1000개 저장',
+  { id:'word_1000',  cat:'vocab',     tier:'diamond',  icon:'💠', name:'TOPIK Vocab',     desc:'Save 1000 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 1000; } },
-  { id:'word_2000',  cat:'vocab',     tier:'legendary',icon:'🧬', name:'어휘 유전자',   desc:'단어 2000개 저장',
+  { id:'word_2000',  cat:'vocab',     tier:'legendary',icon:'🧬', name:'Vocab Master',    desc:'Save 2000 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 2000; } },
 
   // 📝 QUIZ
-  { id:'quiz_first', cat:'quiz',      tier:'bronze',   icon:'🎮', name:'첫 퀴즈',       desc:'퀴즈 첫 도전',
+  { id:'quiz_first', cat:'quiz',      tier:'bronze',   icon:'🎮', name:'First Quiz',      desc:'Complete your first quiz',
     check: function(){ return lsGet('kh_quiz_done_count',0) >= 1; } },
-  { id:'quiz_perfect1',cat:'quiz',    tier:'silver',   icon:'🎯', name:'데일리 퍼펙트', desc:'데일리 테스트 100점',
+  { id:'quiz_perfect1',cat:'quiz',    tier:'silver',   icon:'🎯', name:'Daily Perfect',   desc:'Score 100% on a daily test',
     check: function(){ return getQuizPerfectCount() >= 1; } },
-  { id:'quiz_perfect3',cat:'quiz',    tier:'gold',     icon:'💯', name:'3연속 만점',    desc:'데일리 테스트 100점 3연속',
+  { id:'quiz_perfect3',cat:'quiz',    tier:'gold',     icon:'💯', name:'3x Perfect',      desc:'Score 100% on 3 daily tests in a row',
     check: function(){ return lsGet('kh_quiz_perfect_streak',0) >= 3; } },
-  { id:'quiz_14days',cat:'quiz',      tier:'diamond',  icon:'📅', name:'데일리 개근',   desc:'14일 연속 데일리 테스트',
+  { id:'quiz_14days',cat:'quiz',      tier:'diamond',  icon:'📅', name:'Daily Devotee',   desc:'Complete daily tests 14 days in a row',
     check: function(){ return getQuizStreakDays() >= 14; } },
 
-  // 🌍 SECTIONS (각 섹션 20개)
-  { id:'sec_politics',cat:'sections', tier:'gold', icon:'🏛️', name:'정치 마스터', desc:'정치 기사 20개',
+  // 🌍 SECTIONS
+  { id:'sec_politics',cat:'sections', tier:'gold', icon:'🏛️', name:'Politics Master', desc:'Read 20 Politics articles',
     check: function(){ return (getSectionReadCounts()['정치']||0) >= 20; } },
-  { id:'sec_economy', cat:'sections', tier:'gold', icon:'💹', name:'경제 마스터', desc:'경제 기사 20개',
+  { id:'sec_economy', cat:'sections', tier:'gold', icon:'💹', name:'Economy Master', desc:'Read 20 Economy articles',
     check: function(){ return (getSectionReadCounts()['경제']||0) >= 20; } },
-  { id:'sec_society', cat:'sections', tier:'gold', icon:'🏘️', name:'사회 마스터', desc:'사회 기사 20개',
+  { id:'sec_society', cat:'sections', tier:'gold', icon:'🏘️', name:'Society Master', desc:'Read 20 Society articles',
     check: function(){ return (getSectionReadCounts()['사회']||0) >= 20; } },
-  { id:'sec_world',   cat:'sections', tier:'gold', icon:'🌐', name:'국제 마스터', desc:'국제 기사 20개',
+  { id:'sec_world',   cat:'sections', tier:'gold', icon:'🌐', name:'World Master', desc:'Read 20 World articles',
     check: function(){ return (getSectionReadCounts()['국제']||0) >= 20; } },
-  { id:'sec_culture', cat:'sections', tier:'gold', icon:'🎨', name:'문화 마스터', desc:'문화 기사 20개',
+  { id:'sec_culture', cat:'sections', tier:'gold', icon:'🎨', name:'Culture Master', desc:'Read 20 Culture articles',
     check: function(){ return (getSectionReadCounts()['문화']||0) >= 20; } },
-  { id:'sec_sports',  cat:'sections', tier:'gold', icon:'⚽', name:'스포츠 마스터',desc:'스포츠 기사 20개',
+  { id:'sec_sports',  cat:'sections', tier:'gold', icon:'⚽', name:'Sports Master',desc:'Read 20 Sports articles',
     check: function(){ return (getSectionReadCounts()['스포츠']||0) >= 20; } },
-  { id:'sec_korea',   cat:'sections', tier:'gold', icon:'🇰🇷', name:'Korea 마스터',desc:'Korea 기사 20개',
+  { id:'sec_korea',   cat:'sections', tier:'gold', icon:'🇰🇷', name:'Korea Master',desc:'Read 20 Korea articles',
     check: function(){ return (getSectionReadCounts()['Korea']||0) >= 20; } },
-  { id:'sec_beauty',  cat:'sections', tier:'gold', icon:'💄', name:'Beauty 마스터',desc:'Beauty 기사 20개',
+  { id:'sec_beauty',  cat:'sections', tier:'gold', icon:'💄', name:'Beauty Master',desc:'Read 20 Beauty articles',
     check: function(){ return (getSectionReadCounts()['beauty']||0) >= 20; } },
-  { id:'sec_travel',  cat:'sections', tier:'gold', icon:'✈️', name:'Travel 마스터',desc:'Travel 기사 20개',
+  { id:'sec_travel',  cat:'sections', tier:'gold', icon:'✈️', name:'Travel Master',desc:'Read 20 Travel articles',
     check: function(){ return (getSectionReadCounts()['travel']||0) >= 20; } },
-  { id:'sec_opinion', cat:'sections', tier:'gold', icon:'✍️', name:'오피니언 마스터',desc:'오피니언 기사 10개',
+  { id:'sec_opinion', cat:'sections', tier:'gold', icon:'✍️', name:'Opinion Master',desc:'Read 10 Opinion articles',
     check: function(){ return (getSectionReadCounts()['오피니언']||0) >= 10; } },
 
   // 🔢 MILESTONE / XP
-  { id:'xp_7500',    cat:'milestone', tier:'bronze',   icon:'⭐', name:'XP 7,500',    desc:'누적 XP 7,500',
+  { id:'xp_7500',    cat:'milestone', tier:'bronze',   icon:'⭐', name:'XP 7,500',    desc:'Earn 7,500 XP total',
     check: function(){ return getXP() >= 7500; } },
-  { id:'xp_30000',   cat:'milestone', tier:'silver',   icon:'💫', name:'XP 30,000',   desc:'누적 XP 30,000',
+  { id:'xp_30000',   cat:'milestone', tier:'silver',   icon:'💫', name:'XP 30,000',   desc:'Earn 30,000 XP total',
     check: function(){ return getXP() >= 30000; } },
-  { id:'xp_75000',   cat:'milestone', tier:'gold',     icon:'🌠', name:'XP 75,000',   desc:'누적 XP 75,000',
+  { id:'xp_75000',   cat:'milestone', tier:'gold',     icon:'🌠', name:'XP 75,000',   desc:'Earn 75,000 XP total',
     check: function(){ return getXP() >= 75000; } },
-  { id:'xp_300000',  cat:'milestone', tier:'diamond',  icon:'🌌', name:'XP 300,000',  desc:'누적 XP 300,000',
+  { id:'xp_300000',  cat:'milestone', tier:'diamond',  icon:'🌌', name:'XP 300,000',  desc:'Earn 300,000 XP total',
     check: function(){ return getXP() >= 300000; } },
-  { id:'days_90',    cat:'milestone', tier:'gold',     icon:'🎂', name:'3개월 완주',  desc:'가입 후 90일 학습',
+  { id:'days_90',    cat:'milestone', tier:'gold',     icon:'🎂', name:'3-Month Runner', desc:'Study for 90 days after signup',
     check: function(){
       var log = lsGet('kh_study_log',{});
       var active = Object.keys(log).filter(function(k){ var d=log[k]; return (d.articles||0)+(d.words||0)+(d.quiz||0)>0; });
@@ -5283,39 +5283,39 @@ var BADGE_DEFS = [
     } },
 
   // ⏰ TIME
-  { id:'time_midnight',cat:'time',    tier:'silver',   icon:'🌙', name:'야행성',       desc:'자정 이후 학습',
+  { id:'time_midnight',cat:'time',    tier:'silver',   icon:'🌙', name:'Night Owl',       desc:'Study after midnight',
     check: function(){ return lsGet('kh_badge_midnight', false); } },
-  { id:'time_dawn',    cat:'time',    tier:'gold',     icon:'🌅', name:'새벽 공부왕',  desc:'오전 6시 전 학습',
+  { id:'time_dawn',    cat:'time',    tier:'gold',     icon:'🌅', name:'Dawn Scholar',   desc:'Study before 6 AM',
     check: function(){ return lsGet('kh_badge_dawn', false); } },
-  { id:'time_morning7',cat:'time',    tier:'bronze',   icon:'☀️', name:'모닝 루틴',    desc:'오전 7시 전 학습 7회',
+  { id:'time_morning7',cat:'time',    tier:'bronze',   icon:'☀️', name:'Morning Routine', desc:'Study before 7 AM, 7 times',
     check: function(){ return lsGet('kh_morning_count',0) >= 7; } },
-  { id:'time_monday',  cat:'time',    tier:'bronze',   icon:'📅', name:'월요병 극복',  desc:'월요일 학습 4주 연속',
+  { id:'time_monday',  cat:'time',    tier:'bronze',   icon:'📅', name:'Monday Fighter',  desc:'Study on Mondays, 4 weeks in a row',
     check: function(){ return lsGet('kh_monday_streak',0) >= 4; } },
-  { id:'time_friday',  cat:'time',    tier:'silver',   icon:'🌃', name:'불금 학습자',  desc:'금요일 밤 학습 4회',
+  { id:'time_friday',  cat:'time',    tier:'silver',   icon:'🌃', name:'Friday Learner',  desc:'Study on Friday night, 4 times',
     check: function(){ return lsGet('kh_friday_night_count',0) >= 4; } },
-  { id:'time_weekend', cat:'time',    tier:'gold',     icon:'🎒', name:'주말 학습왕',  desc:'주말 학습 8주 연속',
+  { id:'time_weekend', cat:'time',    tier:'gold',     icon:'🎒', name:'Weekend Champ',   desc:'Study on weekends, 8 weeks in a row',
     check: function(){ return lsGet('kh_weekend_streak',0) >= 8; } },
 
   // 🎌 CULTURAL
-  { id:'cult_march1',  cat:'cultural',tier:'gold',     icon:'🌸', name:'삼일절',       desc:'3월 1일 학습',
+  { id:'cult_march1',  cat:'cultural',tier:'gold',     icon:'🌸', name:'March 1st',       desc:'Study on March 1 (Independence Day)',
     check: function(){ return lsGet('kh_cult_march1', false); } },
-  { id:'cult_hangul',  cat:'cultural',tier:'legendary',icon:'🇰🇷',name:'한글날 수호자',desc:'10월 9일 학습',
+  { id:'cult_hangul',  cat:'cultural',tier:'legendary',icon:'🇰🇷',name:'Hangul Guardian', desc:'Study on Oct 9 (Hangul Day)',
     check: function(){ return lsGet('kh_cult_hangul', false); } },
-  { id:'cult_newyear', cat:'cultural',tier:'gold',     icon:'🎆', name:'새해 다짐',    desc:'1월 1일 학습',
+  { id:'cult_newyear', cat:'cultural',tier:'gold',     icon:'🎆', name:'New Year\'s',     desc:'Study on January 1',
     check: function(){ return lsGet('kh_cult_newyear', false); } },
-  { id:'cult_chuseok', cat:'cultural',tier:'diamond',  icon:'🎑', name:'추석 학습',    desc:'추석 당일 학습',
+  { id:'cult_chuseok', cat:'cultural',tier:'diamond',  icon:'🎑', name:'Chuseok Study',   desc:'Study on Chuseok day',
     check: function(){ return lsGet('kh_cult_chuseok', false); } },
-  { id:'cult_seollal', cat:'cultural',tier:'diamond',  icon:'🌕', name:'설날 공부',    desc:'설날 당일 학습',
+  { id:'cult_seollal', cat:'cultural',tier:'diamond',  icon:'🌕', name:'Seollal Study',   desc:'Study on Seollal day',
     check: function(){ return lsGet('kh_cult_seollal', false); } },
-  { id:'cult_gwangbok',cat:'cultural',tier:'silver',   icon:'🌊', name:'광복절',       desc:'8월 15일 학습',
+  { id:'cult_gwangbok',cat:'cultural',tier:'silver',   icon:'🌊', name:'Liberation Day',  desc:'Study on August 15',
     check: function(){ return lsGet('kh_cult_gwangbok', false); } },
-  { id:'cult_pepero',  cat:'cultural',tier:'gold',     icon:'💘', name:'빼빼로 데이',  desc:'11월 11일 학습',
+  { id:'cult_pepero',  cat:'cultural',tier:'gold',     icon:'💘', name:'Pepero Day',      desc:'Study on November 11',
     check: function(){ return lsGet('kh_cult_pepero', false); } },
-  { id:'cult_valentine',cat:'cultural',tier:'silver',  icon:'❤️', name:'발렌타인',     desc:'2월 14일 학습',
+  { id:'cult_valentine',cat:'cultural',tier:'silver',  icon:'❤️', name:'Valentine\'s Day', desc:'Study on February 14',
     check: function(){ return lsGet('kh_cult_valentine', false); } },
-  { id:'cult_christmas',cat:'cultural',tier:'gold',    icon:'🎄', name:'크리스마스',   desc:'12월 25일 학습',
+  { id:'cult_christmas',cat:'cultural',tier:'gold',    icon:'🎄', name:'Christmas',       desc:'Study on December 25',
     check: function(){ return lsGet('kh_cult_christmas', false); } },
-  { id:'cult_collector',cat:'cultural',tier:'legendary',icon:'🗓️',name:'공휴일 컬렉터',desc:'기념일 뱃지 7개',
+  { id:'cult_collector',cat:'cultural',tier:'legendary',icon:'🗓️',name:'Holiday Collector',desc:'Earn 7 cultural date badges',
     check: function(){
       var earned = getEarnedBadges();
       var cultIds = ['cult_march1','cult_hangul','cult_newyear','cult_chuseok','cult_seollal','cult_gwangbok','cult_pepero','cult_valentine','cult_christmas'];
@@ -5586,7 +5586,7 @@ function getBadgeProgress(b) {
       var sc = getSectionReadCounts();
       var cur = sc[section_badge_sec[b.id]] || 0;
       var max = section_badge_max[b.id];
-      return { pct: cur/max*100, label: cur + ' / ' + max + '개' };
+      return { pct: cur/max*100, label: cur + ' / ' + max };
     }
     if (!map[b.id]) return null;
     var cur = map[b.id].cur();
@@ -5706,7 +5706,7 @@ function _ttsReset() {
 // TTS 버튼 HTML 생성 헬퍼
 function ttsBtn(text) {
   var safe = text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-  return '<button class="tts-btn" title="발음 듣기" onclick="event.stopPropagation();ttsSpeak(\'' + safe + '\',this)">🔊</button>';
+  return '<button class="tts-btn" title="Listen to pronunciation" onclick="event.stopPropagation();ttsSpeak(\'' + safe + '\',this)">🔊</button>';
 }
 
 // ══ USER STATS + DAILY MISSION SYNC (Supabase) ════════════════════════════════
@@ -5780,11 +5780,11 @@ async function onDailyMissionComplete() {
     if (Math.floor(newStreak / 5) > Math.floor(prevStreak / 5)) {
       newTickets += 1;
       setTimeout(function() {
-        toast('🎉 데일리 미션 ' + newStreak + '일 연속 완료! ✏️ 작문 첨삭권 1회 획득!');
+        toast('🎉 Daily mission ' + newStreak + '-day streak! Writing review ticket earned!');
       }, 800);
     } else {
       setTimeout(function() {
-        toast('🎯 오늘 데일리 미션 완료! ' + newStreak + '일 연속 🔥');
+        toast('🎯 Daily mission complete! ' + newStreak + '-day streak 🔥');
       }, 800);
     }
 
@@ -5931,7 +5931,7 @@ async function checkDailyMissionComplete() {
   if ((d.articles||0) >= 3 && (d.words||0) >= 20 && (d.quizzes||0) >= 3 && (d.fill||0) >= 1) {
     _dailyMissionBonusGiven = true;
     var res = await awardXP('daily_mission_complete', {});
-    if (res && res.ok) showToast('🎯 일일 미션 완료! +50 XP 보너스');
+    if (res && res.ok) showToast('🎯 Daily mission complete! +50 XP bonus');
   }
 }
 

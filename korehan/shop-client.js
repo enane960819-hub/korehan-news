@@ -181,7 +181,7 @@
     var sb = getSupa(); if (!sb || !supaUser) return;
     var res = await sb.rpc('purchase_coin_shop_item', { p_user_id: supaUser.id, p_item_id: itemId });
     if (res.error || !res.data || !res.data.ok) {
-      alert((res.data && res.data.error) || (res.error && res.error.message) || '구매에 실패했어요.');
+      alert((res.data && res.data.error) || (res.error && res.error.message) || 'Purchase failed.');
       return;
     }
     alert('냥으로 구매 완료!');

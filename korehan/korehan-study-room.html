@@ -16,7 +16,7 @@
   background: linear-gradient(140deg,#0d1b2e 0%,#1a3a6b 65%,#2255a4 100%);
   padding: 36px 24px 28px; position:relative; overflow:hidden;
 }
-.sr-hero::after { content:'공부방'; position:absolute; right:3%; top:50%; transform:translateY(-50%); font-family:'Noto Serif KR',serif; font-size:110px; font-weight:900; color:rgba(255,255,255,0.03); pointer-events:none; }
+.sr-hero::after { content:'STUDY'; position:absolute; right:3%; top:50%; transform:translateY(-50%); font-family:'Noto Serif KR',serif; font-size:110px; font-weight:900; color:rgba(255,255,255,0.03); pointer-events:none; }
 .sr-hi { max-width:1160px; margin:0 auto; }
 .sr-badge { display:inline-block; padding:4px 12px; border-radius:999px; background:rgba(122,184,245,0.2); color:#7ab8f5; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:10px; }
 .sr-hero h1 { font-family:'Playfair Display',serif; font-size:32px; font-weight:900; color:#fff; margin-bottom:4px; }
@@ -1507,8 +1507,8 @@ body { background: #0b1626 !important; }
   <!-- HERO BLOCK: badge + headline + topic card -->
   <div class="sr-hero-block">
     <div class="sr-lvbadge-pill" id="sr-lvbadge-pill">📖 STUDY ROOM / BEGINNER</div>
-    <h1 class="sr-headline">오늘의 주제로 쓰고,<br>성장이 눈에 보이게.</h1>
-    <p class="sr-headline-sub">정보가 흩어지지 않고 바로 쓰기를 시작할 수 있게 구성했어요. 문법과 예문은 오른쪽 사이드에서 보조합니다.</p>
+    <h1 class="sr-headline">Write on today's topic,<br>and watch yourself grow.</h1>
+    <p class="sr-headline-sub">Everything is organized so you can start writing right away. Grammar and examples are available on the side for reference.</p>
 
     <!-- Credit / access banner -->
     <div id="sr-credit-banner" style="margin-bottom:16px;padding:11px 14px;border-radius:10px;background:rgba(255,255,255,.1);font-size:12px;color:rgba(255,255,255,.82);line-height:1.6">
@@ -1533,7 +1533,7 @@ body { background: #0b1626 !important; }
         <div class="sr-topic-right" style="width:100%;margin-top:8px">
           <button class="sr-start-btn" onclick="openLearningSelector()">
             <span class="sr-start-btn-label">START</span>
-            <span class="sr-start-btn-sub">오늘의 학습 시작하기 →</span>
+            <span class="sr-start-btn-sub">Start today's lesson →</span>
           </button>
         </div>
 
@@ -1564,10 +1564,10 @@ body { background: #0b1626 !important; }
   <div class="as-submit-today" id="as-submit-today-banner">
     <span style="font-size:18px">📤</span>
     <div style="flex:1">
-      <div style="font-size:12px;font-weight:800;color:#22c55e;margin-bottom:2px">오늘 학습한 내용이 있습니다</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.6)">자정 전에 제출하지 않으면 자동 제출됩니다</div>
+      <div style="font-size:12px;font-weight:800;color:#22c55e;margin-bottom:2px">You have unsaved study progress</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6)">Auto-submits at midnight if not submitted</div>
     </div>
-    <button class="btn btn-g" onclick="asSubmitTodayAll()" style="font-size:12px;padding:6px 12px">오늘 학습 제출</button>
+    <button class="btn btn-g" onclick="asSubmitTodayAll()" style="font-size:12px;padding:6px 12px">Submit Today's Study</button>
   </div>
 
   <!-- ACTIVITY CARDS -->
@@ -1609,8 +1609,8 @@ body { background: #0b1626 !important; }
   <!-- ① TODAY'S MISSIONS — always at top -->
   <div class="sr-sb-panel" style="padding:14px 16px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <span style="font-size:13px;font-weight:900;color:#fff">오늘 미션</span>
-      <span style="font-size:10px;color:rgba(255,255,255,.38);font-weight:600">+40 보너스</span>
+      <span style="font-size:13px;font-weight:900;color:#fff">Today's Mission</span>
+      <span style="font-size:10px;color:rgba(255,255,255,.38);font-weight:600">+40 bonus</span>
     </div>
     <div id="sr-checklist-box"></div>
   </div>
@@ -1621,8 +1621,8 @@ body { background: #0b1626 !important; }
   <!-- ② QUICK HELP — helper sentences -->
   <div class="sr-sb-panel">
     <div class="sr-sb-phd">
-      <span class="sr-sb-ptitle">빠른 도움</span>
-      <span class="sr-sb-psub">쓰기 전에 30초만</span>
+      <span class="sr-sb-ptitle">Quick Help</span>
+      <span class="sr-sb-psub">30 seconds before writing</span>
     </div>
     <div class="sr-sb-sublabel">EXAMPLE ANSWERS</div>
     <div id="helper-box">
@@ -1635,8 +1635,8 @@ body { background: #0b1626 !important; }
   <!-- ③ COMPACT GRAMMAR -->
   <div class="sr-sb-panel">
     <div class="sr-sb-phd">
-      <span class="sr-sb-ptitle">문법은 접어서 짧게</span>
-      <span class="sr-sb-psub">예전보다 덜 부담스럽게</span>
+      <span class="sr-sb-ptitle">Grammar at a Glance</span>
+      <span class="sr-sb-psub">Less overwhelming than before</span>
     </div>
     <div id="grammar-box">
       <div class="skel" style="height:64px;margin-bottom:8px;border-radius:8px;background:rgba(255,255,255,.08)"></div>
@@ -1848,8 +1848,8 @@ body { background: #0b1626 !important; }
     <!-- Header -->
     <div class="wm-header">
       <div>
-        <div class="wmh-title">🖼️ 이미지 묘사</div>
-        <div class="wmh-sub" id="pd-step-label">Step 1 / 3 — 핵심 어휘</div>
+        <div class="wmh-title">🖼️ Picture Description</div>
+        <div class="wmh-sub" id="pd-step-label">Step 1 / 3 — Key Vocabulary</div>
       </div>
       <button class="wmh-close" onclick="closePictureDescription()">✕</button>
     </div>
@@ -1914,7 +1914,7 @@ body { background: #0b1626 !important; }
       <div>
         <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.5);margin-bottom:5px">Grammar Focus</div>
         <div id="gf-title" style="font-size:19px;font-weight:900;color:#fff;line-height:1.3">Grammar Practice</div>
-        <div id="gf-subtitle" style="font-size:12px;color:rgba(255,255,255,.55);margin-top:3px">오늘의 문법 집중 학습</div>
+        <div id="gf-subtitle" style="font-size:12px;color:rgba(255,255,255,.55);margin-top:3px">Today's focused grammar study</div>
       </div>
       <button onclick="closeGrammarFocusModal()" style="background:rgba(255,255,255,.1);border:none;color:#fff;font-size:18px;width:34px;height:34px;border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1">✕</button>
     </div>
@@ -2294,14 +2294,14 @@ function _renderWordOrderUI() {
       ? _wordOrderState.pool.map(function(item) {
           return '<button class="wc-mode-tab" style="cursor:pointer" onclick="pickWordFromPool(' + item.origIdx + ')">' + item.word + '</button>';
         }).join('')
-      : '<span style="font-size:12px;color:rgba(255,255,255,.3)">모두 배치됐어요</span>';
+      : '<span style="font-size:12px;color:rgba(255,255,255,.3)">All placed</span>';
   }
   if (ans) {
     ans.innerHTML = _wordOrderState.answer.length
       ? _wordOrderState.answer.map(function(item, pos) {
           return '<button class="wc-mode-tab" style="background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.3);color:#86efac;cursor:pointer" onclick="removeWordFromAnswer(' + pos + ')">' + item.word + '</button>';
         }).join('')
-      : '<span style="font-size:12px;color:rgba(255,255,255,.3)">단어를 위에서 클릭해서 순서대로 배치하세요</span>';
+      : '<span style="font-size:12px;color:rgba(255,255,255,.3)">Click words above to arrange them in order</span>';
   }
 }
 
@@ -2328,27 +2328,27 @@ function checkWordOrder() {
   if (!res) return;
   res.style.display = '';
   if (ans.length < correct.length) {
-    res.innerHTML = '<div style="padding:10px;background:rgba(251,191,36,.1);border-radius:8px;color:#fbbf24">⚠️ 아직 모든 단어를 배치하지 않았어요!</div>';
+    res.innerHTML = '<div style="padding:10px;background:rgba(251,191,36,.1);border-radius:8px;color:#fbbf24">⚠️ You haven't placed all the words yet!</div>';
     return;
   }
   var isCorrect = ans.join(' ') === correct.join(' ');
   if (isCorrect) {
-    res.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac">✅ 정답이에요!<br><span style="font-size:12px;opacity:.8">' + correct.join(' ') + '</span></div>';
+    res.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac">✅ Correct!<br><span style="font-size:12px;opacity:.8">' + correct.join(' ') + '</span></div>';
     // Determine next step based on available data
     var item = _picturePrompts.length ? _picturePrompts[_pictureIndex % _picturePrompts.length] : null;
     var hasSents = item && item.incorrect_sentences && item.incorrect_sentences.length;
     var nav = document.getElementById('pd-nav');
     if (nav) {
       if (hasSents) {
-        nav.innerHTML = '<button class="sr-activity-btn" onclick="_pdGoStep(3)">다음 단계 →</button>';
+        nav.innerHTML = '<button class="sr-activity-btn" onclick="_pdGoStep(3)">Next Step →</button>';
       } else {
         // No step 3 → mark done and allow close
         markStageDone('picture');
-        nav.innerHTML = '<button class="sr-activity-btn" onclick="closePictureDescription()">완료 ✓</button>';
+        nav.innerHTML = '<button class="sr-activity-btn" onclick="closePictureDescription()">Done ✓</button>';
       }
     }
   } else {
-    res.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,.1);border-radius:8px;color:#fca5a5">❌ 틀렸어요. 다시 해보세요!</div>';
+    res.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,.1);border-radius:8px;color:#fca5a5">❌ Incorrect. Try again!</div>';
   }
 }
 
@@ -2387,18 +2387,18 @@ async function loadStudyAccessGate() {
   try { localStorage.setItem(key, JSON.stringify(_studyPass)); } catch(e) {}
   if (!banner) return;
   if (!_studyUnlocked) {
-    banner.innerHTML = '🚫 오늘 사용 가능한 Study Room 크레딧이 없어요.<br>매일 공부하려면 <b>$8.99/month</b> 구독을 시작하세요. <br><a href=\"korehan-courses.html\" style=\"color:#fff;text-decoration:underline;font-weight:800\">Go to course page →</a>';
+    banner.innerHTML = '🚫 No Study Room credits available today.<br>Start a <b>$8.99/month</b> subscription for daily study access. <br><a href=\"korehan-courses.html\" style=\"color:#fff;text-decoration:underline;font-weight:800\">Go to course page →</a>';
     return;
   }
   var left = _studyPass.credits || 0;
-  var warning = hour >= 23 ? '<br>⚠️ 지금은 한국시간 밤 11시 이후라 이용 가능 시간이 짧을 수 있어요.' : '';
-  banner.innerHTML = '✅ 오늘 Study Room 이용권이 활성화됐어요. (한국시간 자정 리셋) · 남은 크레딧: ' + left + warning;
+  var warning = hour >= 23 ? '<br>⚠️ It's past 11 PM KST, so available time may be limited.' : '';
+  banner.innerHTML = '✅ Study Room access is active today. (Resets at KST midnight) · Credits remaining: ' + left + warning;
 }
 
 function ensureStudyUnlocked() {
   if (window._isAdmin) return true;
   if (_studyUnlocked) return true;
-  showToast('Study Room 크레딧이 없습니다. Courses 페이지에서 월 $8.99 플랜을 확인해 주세요.');
+  showToast('No Study Room credits. Check the $8.99/month plan on the Courses page.');
   window.location.href = 'korehan-courses.html';
   return false;
 }
@@ -2407,10 +2407,10 @@ function renderStudyChecklist() {
   var box = document.getElementById('sr-checklist-box');
   if (!box) return;
   var items = [
-    { k:'topic',    label:'오늘 주제로 문장 쓰기',  sub:'핵심 Writing 활동',    pts:'+20 김치' },
-    { k:'grammar',  label:'문법 포인트 확인하기',    sub:'짧고 가볍게 복습',      pts:'+10 김치' },
-    { k:'picture',  label:'사진 묘사 연습하기',      sub:'1~2분이면 충분해요',    pts:'+15 김치' },
-    { k:'sentence', label:'받아쓰기 연습하기',       sub:'정확도 트레이닝',        pts:'+10 김치' }
+    { k:'topic',    label:'Write on today\'s topic',  sub:'Core writing activity',     pts:'+20 냥' },
+    { k:'grammar',  label:'Review grammar points',     sub:'Quick, light review',       pts:'+10 냥' },
+    { k:'picture',  label:'Picture description',        sub:'Just 1-2 minutes',          pts:'+15 냥' },
+    { k:'sentence', label:'Dictation practice',         sub:'Accuracy training',         pts:'+10 냥' }
   ];
   var doneCnt = items.filter(function(i){ return !!_studyDone[i.k]; }).length;
   var pd = document.getElementById('sr-done-picture');
@@ -3273,7 +3273,7 @@ function openWritingModal() {
 function canEnterWritingRoom() {
   var hasDoneStep = !!(_studyDone.topic || _studyDone.grammar || _studyDone.picture || _studyDone.sentence);
   if (hasDoneStep) return true;
-  alert('먼저 최소 1개 학습 단계를 완료해야 Writing Room에 들어갈 수 있어요.\\n(Topic Writing / Grammar Focus / Picture Description / Sentence Writing)');
+  alert('Please complete at least 1 learning step before entering the Writing Room.\\n(Topic Writing / Grammar Focus / Picture Description / Sentence Writing)');
   return false;
 }
 
@@ -3312,12 +3312,12 @@ function _updateLSSelectorBadges() {
       wpBtn.classList.add('ls-wp-unlocked');
       wpBtn.disabled = false;
       if (wpLock) wpLock.textContent = '🔓';
-      if (wpSub)  wpSub.textContent  = '학습 활동을 완료했어요! Writing Room으로 이동하기';
+      if (wpSub)  wpSub.textContent  = 'Learning activities complete! Enter Writing Room';
     } else {
       wpBtn.classList.remove('ls-wp-unlocked');
       wpBtn.disabled = true;
       if (wpLock) wpLock.textContent = '🔒';
-      if (wpSub)  wpSub.textContent  = '먼저 학습 활동을 1개 이상 완료하세요';
+      if (wpSub)  wpSub.textContent  = 'Complete at least 1 learning activity first';
     }
   }
 }
@@ -3503,7 +3503,7 @@ async function submitWriting() {
       .eq('user_id', supaUser.id)
       .eq('submit_date', today);
     if ((existing.count || 0) > 0) {
-      showToast('✅ 오늘 이미 제출하셨어요. 내일 다시 작성할 수 있어요!', true);
+      showToast('✅ You already submitted today. You can write again tomorrow!', true);
       closeWritingModal();
       return;
     }
@@ -3517,11 +3517,11 @@ async function submitWriting() {
   var usedGrammar = []; // grammar 체크 없음 — 첨삭에서 판단
 
   if (requiredVocab.length === 0) {
-    showToast('⚠️ AI vocab이 아직 로드 중이에요. 잠시 후 다시 시도해주세요.');
+    showToast('⚠️ AI vocab is still loading. Please try again shortly.');
     return;
   }
   if (usedVocab.length < 2) {
-    showToast('⚠️ Must-know vocab 중 최소 2개를 작문에 포함해야 합니다. (' + usedVocab.length + '/2)');
+    showToast('⚠️ You must include at least 2 must-know vocab words in your writing. (' + usedVocab.length + '/2)');
     return;
   }
 
@@ -3577,12 +3577,12 @@ async function submitWriting() {
 
     var doneEl = document.getElementById('hero-topic-done');
     if (doneEl) doneEl.style.display = 'flex';
-    showToast('✅ 제출 완료! Han이 24시간 내에 피드백을 드려요.');
+    showToast('✅ Submitted! Han will send feedback within 24 hours.');
     closeWritingModal();
 
   } catch(e) {
     if (e && e.code === '23505') {
-      showToast('✅ 오늘 이미 제출하셨어요!', true);
+      showToast('✅ You already submitted today!', true);
       closeWritingModal();
     } else {
       showToast('❌ 제출 오류: ' + (e.message || e), true);
@@ -3665,9 +3665,9 @@ async function loadFeedbackInbox() {
         btnEl.style.borderColor = '#86efac';
         btnEl.style.background  = '#f0fdf4';
         btnEl.querySelector('button').style.color = '#15803d';
-        if (labelEl) labelEl.textContent = '📬 피드백 도착! ' + approved.length + '개 확인하기';
+        if (labelEl) labelEl.textContent = '📬 Feedback arrived! View ' + approved.length + '';
       } else if (pending.length > 0) {
-        if (labelEl) labelEl.textContent = '⏳ 검토 중 ' + pending.length + '개 · 피드백 대기';
+        if (labelEl) labelEl.textContent = '⏳ Under review: ' + pending.length + ' · Awaiting feedback';
       } else if (items.length > 0) {
         if (labelEl) labelEl.textContent = '📝 내 작문 기록 보기';
       } else {
@@ -3687,11 +3687,11 @@ function openFeedbackInbox() {
   overlay.innerHTML =
     '<div style="background:#fff;border-radius:20px;max-width:600px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.25);">'
     + '<div style="padding:20px 24px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;">'
-    + '<div style="font-size:17px;font-weight:900;color:#0f172a;">📬 내 작문 피드백</div>'
+    + '<div style="font-size:17px;font-weight:900;color:#0f172a;">📬 My Writing Feedback</div>'
     + '<button onclick="document.getElementById(\'feedback-inbox-overlay\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;">✕</button>'
     + '</div>'
     + '<div id="feedback-inbox-content" style="padding:20px 24px;">'
-    + '<div style="text-align:center;color:#94a3b8;padding:30px;">불러오는 중...</div>'
+    + '<div style="text-align:center;color:#94a3b8;padding:30px;">Loading...</div>'
     + '</div>'
     + '</div>';
 
@@ -3712,10 +3712,10 @@ async function renderFeedbackInboxContent() {
     if (res.error) throw res.error;
     var items = res.data || [];
     if (!items.length) {
-      content.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px;">아직 제출한 작문이 없어요.</div>';
+      content.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px;">No submitted writings yet.</div>';
       return;
     }
-    var statusMap = { pending:'⏳ 검토 대기', ai_done:'🤖 AI 검토 완료', approved:'✅ 피드백 도착', rejected:'❌ 반려' };
+    var statusMap = { pending:'⏳ Under Review', ai_done:'🤖 AI Review Done', approved:'✅ Feedback Ready', rejected:'❌ Rejected' };
     var statusBg  = { pending:'#fef9c3', ai_done:'#eff6ff', approved:'#f0fdf4', rejected:'#fef2f2' };
     var statusColor = { pending:'#854d0e', ai_done:'#1d4ed8', approved:'#15803d', rejected:'#b91c1c' };
 
@@ -3733,11 +3733,11 @@ async function renderFeedbackInboxContent() {
       html += '<div style="font-size:13px;color:#475569;margin-bottom:10px;line-height:1.5;">' + preview + '</div>';
       if (item.status === 'approved' && item.final_feedback) {
         html += '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;">';
-        html += '<div style="font-size:11px;font-weight:800;color:#15803d;margin-bottom:8px;">✏️ Han의 피드백</div>';
+        html += '<div style="font-size:11px;font-weight:800;color:#15803d;margin-bottom:8px;">✏️ Han's Feedback</div>';
         html += '<div style="font-size:13px;color:#1e293b;white-space:pre-wrap;line-height:1.7;">' + item.final_feedback + '</div>';
         html += '</div>';
       } else if (item.status === 'pending' || item.status === 'ai_done') {
-        html += '<div style="font-size:12px;color:#94a3b8;">검토 중이에요. 24시간 내 피드백이 전달됩니다.</div>';
+        html += '<div style="font-size:12px;color:#94a3b8;">Under review. Feedback will be delivered within 24 hours.</div>';
       }
       html += '</div>';
       return html;
@@ -4711,7 +4711,7 @@ function renderPicturePrompt() {
 // ── 3-step navigation ──────────────────────────────────────────
 function _pdGoStep(step) {
   _pdStep = step;
-  var labels = ['Step 1 / 3 — 핵심 어휘', 'Step 2 / 3 — 어절 순서맞추기', 'Step 3 / 3 — 틀린 문장 찾기'];
+  var labels = ['Step 1 / 3 — Key Vocabulary', 'Step 2 / 3 — 어절 순서맞추기', 'Step 3 / 3 — 틀린 문장 찾기'];
   var lbl = document.getElementById('pd-step-label');
   if (lbl) lbl.textContent = labels[step - 1] || '';
   [1,2,3].forEach(function(n) {
@@ -4744,7 +4744,7 @@ function _pdRenderStep1(item) {
       }).join('')
     + '</div>';
   var nav = document.getElementById('pd-nav');
-  if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="_pdGoStep(2)">다음 단계 →</button>';
+  if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="_pdGoStep(2)">Next Step →</button>';
 }
 
 function _pdRenderStep2(item) {
@@ -4773,7 +4773,7 @@ function _pdRenderStep3(item) {
     markStageDone('picture');
     body.innerHTML = '<div style="text-align:center;padding:24px;background:rgba(34,197,94,.1);border-radius:12px;color:#86efac;font-weight:800;font-size:16px">🎉 모든 단계 완료!</div>';
     var nav = document.getElementById('pd-nav');
-    if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="closePictureDescription()">완료 ✓</button>';
+    if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="closePictureDescription()">Done ✓</button>';
     return;
   }
   // Shuffle for display
@@ -4797,10 +4797,10 @@ function checkIncorrectSentence(btn, isWrong) {
   result.style.display = '';
   if (isWrong) {
     btn.style.cssText += ';background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.5);color:#fca5a5';
-    result.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac">✅ 정답이에요! 이 문장에 오류가 있어요.</div>';
+    result.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac">✅ Correct! 이 문장에 오류가 있어요.</div>';
     markStageDone('picture');
     var nav = document.getElementById('pd-nav');
-    if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="closePictureDescription()">완료 ✓</button>';
+    if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="closePictureDescription()">Done ✓</button>';
   } else {
     btn.style.cssText += ';background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.4);color:#fbbf24';
     result.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,.1);border-radius:8px;color:#fca5a5">❌ 틀렸어요. 다른 문장을 선택해 보세요.</div>';
@@ -6681,7 +6681,7 @@ function loadGFBuild(p) {
 
   el.innerHTML = '<div style="margin-bottom:14px;font-size:13px;color:#475569">이제 직접 문장을 만들어보세요. 최소 1개 이상 작성하면 Grammar Focus 완료!</div>'
     + refBox + qs
-    + '<button onclick="checkGFBuild()" style="width:100%;padding:13px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:4px">완료 ✓ 저장하기</button>'
+    + '<button onclick="checkGFBuild()" style="width:100%;padding:13px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:4px">Done ✓ 저장하기</button>'
     + '<div id="gfb-feedback" style="margin-top:12px;font-size:13px;color:#475569"></div>';
 }
 
@@ -6812,7 +6812,7 @@ function _dctRenderArrange() {
       + '<div style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:8px">Dictation 완료!</div>'
       + '<div style="font-size:13px;color:#64748b">모든 문장 배열을 완료했습니다.</div>'
       + '</div>';
-    foot.innerHTML = '<button class="btn btn-g" onclick="closeDictationModal();markStageDone(\'sentence\')">완료 ✓</button>';
+    foot.innerHTML = '<button class="btn btn-g" onclick="closeDictationModal();markStageDone(\'sentence\')">Done ✓</button>';
     return;
   }
   var s = sents[_dctWOIdx];
@@ -7432,35 +7432,35 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
         <div class="ls-card-icon">✍️</div>
         <div class="ls-card-name">Topic Writing</div>
         <div class="ls-card-desc">오늘의 주제로 문장 쓰기</div>
-        <div class="ls-card-pts">+20 김치</div>
+        <div class="ls-card-pts">+20 냥</div>
       </button>
       <button class="ls-card" id="ls-card-grammar" onclick="lsStart('grammar')">
         <div class="ls-done-badge">✅</div>
         <div class="ls-card-icon">📖</div>
         <div class="ls-card-name">Grammar</div>
         <div class="ls-card-desc">문법 포인트 확인하기</div>
-        <div class="ls-card-pts">+10 김치</div>
+        <div class="ls-card-pts">+10 냥</div>
       </button>
       <button class="ls-card" id="ls-card-picture" onclick="lsStart('picture')">
         <div class="ls-done-badge">✅</div>
         <div class="ls-card-icon">🖼️</div>
         <div class="ls-card-name">Photo Description</div>
         <div class="ls-card-desc">사진 묘사 연습하기</div>
-        <div class="ls-card-pts">+15 김치</div>
+        <div class="ls-card-pts">+15 냥</div>
       </button>
       <button class="ls-card" id="ls-card-sentence" onclick="lsStart('sentence')">
         <div class="ls-done-badge">✅</div>
         <div class="ls-card-icon">🎧</div>
         <div class="ls-card-name">Dictation</div>
         <div class="ls-card-desc">받아쓰기 연습하기</div>
-        <div class="ls-card-pts">+10 김치</div>
+        <div class="ls-card-pts">+10 냥</div>
       </button>
       <button class="ls-card" id="ls-card-conversation" onclick="lsStart('conversation')">
         <div class="ls-done-badge">✅</div>
         <div class="ls-card-icon">💬</div>
         <div class="ls-card-name">Conversation Study</div>
         <div class="ls-card-desc">Practice with real Korean dialogues</div>
-        <div class="ls-card-pts">+15 김치</div>
+        <div class="ls-card-pts">+15 냥</div>
       </button>
     </div>
     <hr class="ls-divider">
@@ -7469,7 +7469,7 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
       <span class="ls-wp-icon">🖊️</span>
       <span class="ls-wp-text">
         <span class="ls-wp-name" id="ls-wp-name">Writing Practice</span>
-        <span class="ls-wp-sub" id="ls-wp-sub">먼저 학습 활동을 1개 이상 완료하세요</span>
+        <span class="ls-wp-sub" id="ls-wp-sub">Complete at least 1 learning activity first</span>
       </span>
       <span id="ls-wp-lock" style="font-size:18px">🔒</span>
     </button>
@@ -7581,8 +7581,8 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
       <!-- Nav bar -->
       <div class="as-nav-bar">
         <button id="as-check-btn" class="btn" onclick="asCheckAnswer()">확인</button>
-        <button id="as-next-btn" class="btn btn-g" onclick="asNextStep()" style="display:none">다음 단계 →</button>
-        <button id="as-done-btn" class="btn btn-g" onclick="asMarkDone()" style="display:none">완료 ✓</button>
+        <button id="as-next-btn" class="btn btn-g" onclick="asNextStep()" style="display:none">Next Step →</button>
+        <button id="as-done-btn" class="btn btn-g" onclick="asMarkDone()" style="display:none">Done ✓</button>
       </div>
     </div>
 
