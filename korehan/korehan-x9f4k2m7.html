@@ -523,6 +523,25 @@ async function callClaude({ feature, model, max_tokens, messages }) {
     }
   }
 
+  // Retry on rate limit with exponential backoff (up to 3 retries)
+  var rateLimitRetries = 0;
+  while (resp.status === 429 && rateLimitRetries < 3) {
+    rateLimitRetries++;
+    var backoff = Math.pow(2, rateLimitRetries) * 1000; // 2s, 4s, 8s
+    console.warn('Rate limited (429), retry ' + rateLimitRetries + '/3 after ' + backoff + 'ms');
+    await new Promise(function(r){ setTimeout(r, backoff); });
+    var retrySession = (await sb.auth.getSession()).data.session;
+    if (!retrySession) throw new Error('Not signed in');
+    resp = await fetch(ADMIN_CLAUDE_PROXY, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + retrySession.access_token,
+        'apikey': SUPA_KEY_ADMIN,
+      },
+      body: JSON.stringify(payload),
+    });
+  }
   if (resp.status === 429) throw new Error('rate_limit');
   if (resp.status === 401) throw new Error('unauthorized - please sign in');
   if (!resp.ok) {
@@ -5931,7 +5950,7 @@ async function srPregenerate10Days() {
   var level = (document.getElementById('srt-level').value || 'Beginner').trim();
   var lvlDisplay = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]||level;
   if (!confirm('Generate 10 days of topics for ' + lvlDisplay + '?')) return;
-  if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">Generating 10 days for ' + lvlDisplay + '... (20-40초 소요)</div>';
+  if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">Generating 10 days for ' + lvlDisplay + '... (30-60초 소요)</div>';
 
   try {
     // Check which dates already exist
@@ -5963,6 +5982,8 @@ async function srPregenerate10Days() {
     var generated = 0;
     var errors = [];
     for (var mi = 0; mi < missing.length; mi++) {
+      // Throttle: wait 1.5s between API calls to avoid rate limiting
+      if (mi > 0) await new Promise(function(r){ setTimeout(r, 1500); });
       var date = missing[mi];
       var topic = available.length ? available[mi % available.length] : null;
       var topicKo = topic ? topic.topic_ko : '';
@@ -6011,7 +6032,7 @@ async function srAssign3Days() {
   var allLevels = ['Starter','Beginner','Intermediate','Advanced'];
   var lvlNames = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'};
   if (!confirm('3일치 × 4레벨 = 최대 12개 콘텐츠를 생성합니다. 계속?')) return;
-  if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">3일치 배정 중… (1-2분 소요)</div>';
+  if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">3일치 배정 중… (2-3분 소요)</div>';
 
   var today = new Date();
   var dates = [];
@@ -6020,7 +6041,7 @@ async function srAssign3Days() {
     dates.push(d.toISOString().slice(0, 10));
   }
 
-  var generated = 0; var errors = [];
+  var generated = 0; var errors = []; var apiCallCount = 0;
   for (var di = 0; di < dates.length; di++) {
     for (var li = 0; li < allLevels.length; li++) {
       var date = dates[di]; var level = allLevels[li];
@@ -6029,12 +6050,15 @@ async function srAssign3Days() {
       if (existing.data) { generated++; continue; }
 
       try {
+        // Throttle: wait 1.5s between API calls to avoid rate limiting
+        if (apiCallCount > 0) await new Promise(function(r){ setTimeout(r, 1500); });
         // Pick topic from DB
         var picked = await _srPickTopicFromDB(sb, level);
         var topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
         if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">' + date + ' ' + lvlNames[level] + ' 생성 중… (' + (generated+1) + '/12)</div>';
 
         var parsed = await _srGenerateContent(level, topicHint, picked.topic_ko, picked.topic_en);
+        apiCallCount++;
         var rec = {
           scheduled_date: date, level: level,
           topic_ko: parsed.topic_ko || picked.topic_ko, topic_en: parsed.topic_en || picked.topic_en,
@@ -6049,6 +6073,7 @@ async function srAssign3Days() {
         if (upsertRes.error) throw new Error(upsertRes.error.message);
         generated++;
       } catch(err) {
+        apiCallCount++;
         errors.push(date + ' ' + lvlNames[level] + ': ' + (err.message||err));
       }
     }
