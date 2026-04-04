@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>My Page — KoreHan News</title>
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" as="script">
+<link rel="preload" href="korehan-shared.js" as="script">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
@@ -1415,7 +1417,10 @@ function renderRoomItems() {
     var leftPct = (placed.x / 400) * 100;
     var topPct  = (placed.y / 360) * 100;
     // Visual size in px, proportional to actual container width
-    var visualPx = Math.round(base * (cW / 400));
+    // Visual size: proportional to container, with mobile boost
+    var ratio = cW / 400;
+    if (ratio < 1.2) ratio = ratio * 1.35; // Boost items on small screens
+    var visualPx = Math.max(60, Math.round(base * ratio));
     div.setAttribute('style',
       'left:' + leftPct + '%;top:' + topPct + '%;width:40px;height:40px;'
       + 'cursor:' + (_roomEditing ? 'grab' : 'default') + ';'
