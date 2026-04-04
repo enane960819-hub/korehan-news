@@ -4902,7 +4902,7 @@ async function loadArticleImageList() {
     var img = a.image || '';
     var thumb = img || ('data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==' + a.id + '/120/80');
     return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:10px;display:flex;gap:14px;align-items:center">'
-      + '<img src="' + thumb + '" style="width:100px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0">'
+      + '<img src="' + thumb + '" style="width:100px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0" onerror="this.src=\'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='+a.id+'/120/80\'">'
       + '<div style="flex:1;min-width:0">'
       + '<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (a.title_ko || a.title || '') + '</div>'
       + '<div style="font-size:11px;color:#94a3b8;margin-bottom:8px">' + (a.section || '') + ' · ' + (a.status || '') + '</div>'
