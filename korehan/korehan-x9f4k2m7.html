@@ -6802,6 +6802,7 @@ function srPictureFormHTML() {
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
     + '<button class="btn btn-g" onclick="srSavePicture()">Save</button>'
     + '<button class="btn" onclick="srClearPictureForm()">초기화</button>'
+    + '<button class="btn" onclick="srAIGeneratePicture()" style="background:#f0fdf4;color:#15803d;border:1px solid #86efac">🤖 AI 전체 생성</button>'
     + '</div>'
     + '<div id="srp-msg" style="margin-top:8px;font-size:12px;color:#475569"></div></div>'
     + '<div class="sf-card" id="srp-list">Loading…</div>';
@@ -6888,6 +6889,72 @@ async function srEditPicture(id) {
   if (prev) prev.innerHTML = d.image_url ? '<img src="' + d.image_url + '" style="max-width:240px;max-height:160px;border-radius:8px">' : '';
   document.getElementById('srp-msg').textContent = '수정 중 — 저장 버튼으로 확정하세요.';
   window.scrollTo(0,0);
+}
+
+async function srAIGeneratePicture() {
+  var msgEl = document.getElementById('srp-msg');
+  var promptKo = (document.getElementById('srp-prompt').value || '').trim();
+  if (!promptKo) { if (msgEl) msgEl.textContent = '프롬프트(이미지 설명)를 먼저 입력하세요.'; return; }
+  if (msgEl) msgEl.textContent = '🤖 AI 생성 중… (10-15초)';
+
+  var level = 'Beginner'; // Default level — could add a level selector later
+  var levelGuide = {
+    Starter:'STARTER: Ultra-basic. 1-2 syllable words. 3-4 word sentences max.',
+    Beginner:'BEGINNER: Simple present tense (~아요/어요). 5-8 word sentences. Everyday vocabulary.',
+    Intermediate:'INTERMEDIATE: Past tense, conjunctions. 8-12 word sentences. Topic-specific terms.',
+    Advanced:'ADVANCED: Complex structures, formal style. 12+ word sentences.'
+  };
+
+  var prompt = 'You are a Korean language teacher creating picture description study materials.\n'
+    + 'Image description: "' + promptKo + '"\n'
+    + 'Level: ' + (levelGuide[level] || levelGuide.Beginner) + '\n\n'
+    + 'Generate ALL of the following in ONE JSON response:\n\n'
+    + '1. vocab_items: 4-6 key vocabulary words related to the image\n'
+    + '2. word_order_words: one sentence about the image, split into individual 어절 (word units) in CORRECT order\n'
+    + '3. correct_sentences: 3 grammatically correct sentences describing the image\n'
+    + '4. wrong_sentence: 1 sentence with a clear grammar/word-order mistake (NOT a spelling error)\n'
+    + '5. custom_prompt: 1 open-ended question about the image for the student to answer\n'
+    + '6. sample_answer: a model answer to the custom_prompt (2-3 sentences)\n\n'
+    + 'Return ONLY valid JSON (no markdown):\n'
+    + '{\n'
+    + '  "vocab_items": [{"ko":"한국어","en":"English"}],\n'
+    + '  "word_order_words": ["어절1","어절2","어절3","어절4"],\n'
+    + '  "correct_sentences": ["문장1","문장2","문장3"],\n'
+    + '  "wrong_sentence": "틀린 문장",\n'
+    + '  "custom_prompt": "질문",\n'
+    + '  "sample_answer": "모범 답안"\n'
+    + '}';
+
+  try {
+    var resp = await callClaude({ feature:'study-room-picture-admin', model:'claude-haiku-4-5-20251001', max_tokens:800, messages:[{role:'user',content:prompt}] });
+    var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
+    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+    var parsed = JSON.parse(raw.slice(s, e+1));
+
+    // Fill form fields
+    if (parsed.vocab_items && parsed.vocab_items.length) {
+      document.getElementById('srp-vocab').value = parsed.vocab_items.map(function(v){ return (v.ko||'')+'|'+(v.en||''); }).join('\n');
+    }
+    if (parsed.word_order_words && parsed.word_order_words.length) {
+      document.getElementById('srp-words').value = parsed.word_order_words.join('\n');
+    }
+    if (parsed.correct_sentences && parsed.correct_sentences.length) {
+      document.getElementById('srp-correct-sents').value = parsed.correct_sentences.join('\n');
+    }
+    if (parsed.wrong_sentence) {
+      document.getElementById('srp-wrong-sent').value = parsed.wrong_sentence;
+    }
+    if (parsed.custom_prompt) {
+      document.getElementById('srp-custom').value = parsed.custom_prompt;
+    }
+    if (parsed.sample_answer) {
+      document.getElementById('srp-sample').value = parsed.sample_answer;
+    }
+
+    if (msgEl) msgEl.textContent = '✅ AI 생성 완료! 확인 후 Save 하세요.';
+  } catch(err) {
+    if (msgEl) msgEl.textContent = 'AI 생성 실패: ' + (err.message||err);
+  }
 }
 
 async function srSavePicture() {
