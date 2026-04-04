@@ -5476,10 +5476,14 @@ function srTopicsFormHTML() {
     + '<div class="fg" style="margin:0"><label>레벨</label>'
     + '<select id="srt-level"><option value="Starter">Seed</option><option value="Beginner" selected>Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select></div>'
     + '<button class="btn btn-g" onclick="srLoadDailyContent()">Load</button>'
+    + '<button class="btn" onclick="srAssign3Days()" style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd">📅 3일치 전체 배정</button>'
     + '<button class="btn" onclick="srPregenerate10Days()" style="background:#f0fdf4;color:#15803d;border:1px solid #86efac">🤖 Pre-generate 10 days</button>'
     + '</div>'
     + '<div id="srt-editor" style="display:none">'
-    + '<div style="margin-bottom:10px"><span id="srt-admin-badge" style="display:none;background:#fde68a;color:#92400e;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:800">관리자 편집됨</span></div>'
+    + '<div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    + '<span id="srt-admin-badge" style="display:none;background:#fde68a;color:#92400e;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:800">관리자 편집됨</span>'
+    + '<span id="srt-status-badge" style="display:none;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:800"></span>'
+    + '</div>'
     + '<div class="fg"><label>주제 (한국어)</label><input id="srt-topic-ko" placeholder="예: 한국 음식"></div>'
     + '<div class="fg"><label>주제 (English)</label><input id="srt-topic-en" placeholder="e.g. Korean food"></div>'
     + '<div class="fg"><label>Must Know Vocabulary <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|rom|en (5개)</span></label>'
@@ -5504,7 +5508,8 @@ function srTopicsFormHTML() {
     + '<textarea id="srt-tw-sentences" rows="5" style="width:100%;font-family:monospace;font-size:12px" placeholder="저는 한국 음식을 좋아해요|I like Korean food\n한국 음식은 정말 맛있어요|Korean food is really delicious"></textarea>'
     + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">이 문장들이 학습자의 "문장 만들기" 단계에 사용됩니다. AI 재생성 시 자동 생성됩니다.</div></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
-    + '<button class="btn btn-g" onclick="srSaveDailyContent()">💾 Save</button>'
+    + '<button class="btn btn-g" onclick="srSaveDailyContent()">💾 Save (Draft)</button>'
+    + '<button class="btn" onclick="srApproveDailyContent()" style="background:#dcfce7;color:#15803d;border:1px solid #86efac">✅ Approve (유저 공개)</button>'
     + '<button class="btn" onclick="srRegenDailyContent()" style="background:#f0fdf4;color:#15803d;border:1px solid #86efac">🤖 AI 재생성</button>'
     + '<button class="btn btn-r" onclick="srDeleteDailyContent()">🗑 Delete</button>'
     + '</div>'
@@ -5588,6 +5593,14 @@ async function srLoadDailyContent() {
   }
   var badge = document.getElementById('srt-admin-badge');
   if (badge) badge.style.display = rec.admin_edited ? '' : 'none';
+  var statusBadge = document.getElementById('srt-status-badge');
+  if (statusBadge) {
+    var st = rec.status || 'draft';
+    statusBadge.style.display = '';
+    statusBadge.textContent = st.toUpperCase();
+    statusBadge.style.background = st === 'approved' ? '#dcfce7' : '#fef3c7';
+    statusBadge.style.color = st === 'approved' ? '#15803d' : '#92400e';
+  }
 
   if (editorEl) editorEl.style.display = '';
   if (emptyEl)  emptyEl.style.display  = 'none';
@@ -5858,7 +5871,7 @@ async function srLoadTopicSchedule() {
   var past   = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
   var future = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
   var r = await sb.from('study_daily_content')
-    .select('scheduled_date,level,topic_ko,topic_en,admin_edited')
+    .select('scheduled_date,level,topic_ko,topic_en,admin_edited,status')
     .gte('scheduled_date', past)
     .lte('scheduled_date', future)
     .order('scheduled_date', { ascending: true })
@@ -5901,6 +5914,7 @@ async function srLoadTopicSchedule() {
       html += '<div style="display:flex;gap:6px;align-items:center;padding:4px 0;flex-wrap:wrap">'
         + '<span style="background:' + (lvlColors[lvl]||'#94a3b8') + ';color:#fff;padding:1px 8px;border-radius:999px;font-size:10px;font-weight:800;min-width:48px;text-align:center">' + (lvlNames[lvl]||lvl) + '</span>'
         + (row.admin_edited ? '<span style="background:#fde68a;color:#92400e;padding:1px 6px;border-radius:999px;font-size:9px;font-weight:700">편집됨</span>' : '')
+        + '<span style="background:' + ((row.status||'draft')==='approved'?'#dcfce7':'#fef3c7') + ';color:' + ((row.status||'draft')==='approved'?'#15803d':'#92400e') + ';padding:1px 6px;border-radius:999px;font-size:9px;font-weight:700">' + (row.status||'draft').toUpperCase() + '</span>'
         + '<span style="flex:1;font-size:11px;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (row.topic_ko||'') + ' · ' + (row.topic_en||'') + '</span>'
         + '<button class="btn" style="font-size:10px;padding:2px 8px" onclick="srEditDailyRow(\'' + row.scheduled_date + '\',\'' + lvl + '\')">Edit</button>'
         + '</div>';
@@ -5986,6 +6000,79 @@ async function srPregenerate10Days() {
   } catch(err) {
     if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444">Error: ' + (err.message||err) + '</div>';
   }
+  await srLoadTopicSchedule();
+}
+
+// ── 3일치 전체 배정 (모든 레벨 × 3일) ─────────────────────────
+async function srAssign3Days() {
+  var sb = getSb();
+  var el = document.getElementById('srt-list');
+  if (!sb) { if (el) el.innerHTML = '<div style="color:#ef4444;padding:12px">Supabase 연결 실패</div>'; return; }
+  var allLevels = ['Starter','Beginner','Intermediate','Advanced'];
+  var lvlNames = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'};
+  if (!confirm('3일치 × 4레벨 = 최대 12개 콘텐츠를 생성합니다. 계속?')) return;
+  if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">3일치 배정 중… (1-2분 소요)</div>';
+
+  var today = new Date();
+  var dates = [];
+  for (var i = 0; i < 3; i++) {
+    var d = new Date(today.getTime() + i * 86400000);
+    dates.push(d.toISOString().slice(0, 10));
+  }
+
+  var generated = 0; var errors = [];
+  for (var di = 0; di < dates.length; di++) {
+    for (var li = 0; li < allLevels.length; li++) {
+      var date = dates[di]; var level = allLevels[li];
+      // Skip if already exists
+      var existing = await sb.from('study_daily_content').select('id').eq('scheduled_date', date).eq('level', level).maybeSingle();
+      if (existing.data) { generated++; continue; }
+
+      try {
+        // Pick topic from DB
+        var picked = await _srPickTopicFromDB(sb, level);
+        var topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
+        if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">' + date + ' ' + lvlNames[level] + ' 생성 중… (' + (generated+1) + '/12)</div>';
+
+        var parsed = await _srGenerateContent(level, topicHint, picked.topic_ko, picked.topic_en);
+        var rec = {
+          scheduled_date: date, level: level,
+          topic_ko: parsed.topic_ko || picked.topic_ko, topic_en: parsed.topic_en || picked.topic_en,
+          vocab: parsed.vocab || [], grammar: parsed.grammar || [], helpers: parsed.helpers || [],
+          dictation_sentences: parsed.dictation_sentences || [], dictation_questions: parsed.dictation_questions || [],
+          confusing_grammar: parsed.confusing_grammar || null,
+          formality_exercise: parsed.formality_exercise || null,
+          culture_note: parsed.culture_note || null,
+          status: 'draft', admin_edited: false, updated_at: new Date().toISOString()
+        };
+        var upsertRes = await sb.from('study_daily_content').upsert(rec, {onConflict:'scheduled_date,level'});
+        if (upsertRes.error) throw new Error(upsertRes.error.message);
+        generated++;
+      } catch(err) {
+        errors.push(date + ' ' + lvlNames[level] + ': ' + (err.message||err));
+      }
+    }
+  }
+  var msg = generated + '/12 생성 완료.';
+  if (errors.length) msg += ' 실패: ' + errors.join(', ');
+  toast(msg);
+  await srLoadTopicSchedule();
+}
+
+// ── Approve (유저 공개) ─────────────────────────────────────
+async function srApproveDailyContent() {
+  var sb = getSb(); if (!sb) return;
+  var msgEl = document.getElementById('srt-msg');
+  var date = (document.getElementById('srt-date').value || '').trim();
+  var level = (document.getElementById('srt-level').value || '').trim();
+  if (!date || !level) { if (msgEl) msgEl.textContent = '날짜와 레벨을 선택하세요.'; return; }
+  // Save first, then approve
+  await srSaveDailyContent();
+  var r = await sb.from('study_daily_content').update({ status: 'approved' }).eq('scheduled_date', date).eq('level', level);
+  if (r.error) { if (msgEl) msgEl.textContent = 'Approve 실패: ' + r.error.message; return; }
+  if (msgEl) msgEl.textContent = '✅ Approved! ' + date + ' [' + level + '] — 유저에게 공개됩니다.';
+  var statusBadge = document.getElementById('srt-status-badge');
+  if (statusBadge) { statusBadge.textContent = 'APPROVED'; statusBadge.style.display = ''; statusBadge.style.background = '#dcfce7'; statusBadge.style.color = '#15803d'; }
   await srLoadTopicSchedule();
 }
 
