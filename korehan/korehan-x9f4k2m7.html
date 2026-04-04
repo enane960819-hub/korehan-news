@@ -744,7 +744,7 @@ function renderRows(){
   rows.forEach(a=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`
-      <td><img class="thumb" src="${esc(a.image||'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='+a.id+'/200/140')}" onerror="this.src='data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='"></td>
+      <td><img class="thumb" src="${esc(a.image||'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='+a.id+'/200/140')}"></td>
       <td>
         <div class="art-t">${esc(a.title)}</div>
         <div class="art-b">${esc(a.body||'')}</div>
@@ -2014,7 +2014,7 @@ function crRenderList(reporters) {
     var tagsList = (r.tags||[]).join(', ');
     return `<div style="background:#fff;border-radius:18px;border:1px solid #e2e8f0;padding:20px;display:grid;grid-template-columns:80px 1fr auto;gap:18px;align-items:start">
       <div style="position:relative">
-        <img src="${esc(r.image||'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='+r.id+'/200/200')}" style="width:80px;height:80px;border-radius:16px;object-fit:cover;border:2px solid #e2e8f0" onerror="this.src='data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='">
+        <img src="${esc(r.image||'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='+r.id+'/200/200')}" style="width:80px;height:80px;border-radius:16px;object-fit:cover;border:2px solid #e2e8f0">
         <div style="position:absolute;bottom:-4px;right:-4px;width:20px;height:20px;border-radius:50%;background:${esc(r.color||'#2563eb')};border:2px solid #fff"></div>
       </div>
       <div>
@@ -2054,7 +2054,7 @@ function crEditModal(idx) {
     <div class="fg">
       <label>Profile Image</label>
       <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
-        <img id="cr-imgprev" src="${esc(r.image||'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==')}" style="width:88px;height:88px;border-radius:14px;object-fit:cover;border:2px solid #e2e8f0;flex-shrink:0" onerror="this.src='data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='">
+        <img id="cr-imgprev" src="${esc(r.image||'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==')}" style="width:88px;height:88px;border-radius:14px;object-fit:cover;border:2px solid #e2e8f0;flex-shrink:0">
         <div style="flex:1;min-width:180px;display:flex;flex-direction:column;gap:8px">
           <input id="cr-img" type="text" value="${esc(r.image)}" placeholder="https://…" oninput="document.getElementById('cr-imgprev').src=this.value||'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='" style="width:100%">
           <div style="display:flex;gap:8px;align-items:center">
@@ -4902,7 +4902,7 @@ async function loadArticleImageList() {
     var img = a.image || '';
     var thumb = img || ('data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==' + a.id + '/120/80');
     return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:10px;display:flex;gap:14px;align-items:center">'
-      + '<img src="' + thumb + '" style="width:100px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0" onerror="this.src=\'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='+a.id+'/120/80\'">'
+      + '<img src="' + thumb + '" style="width:100px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0">'
       + '<div style="flex:1;min-width:0">'
       + '<div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (a.title_ko || a.title || '') + '</div>'
       + '<div style="font-size:11px;color:#94a3b8;margin-bottom:8px">' + (a.section || '') + ' · ' + (a.status || '') + '</div>'
