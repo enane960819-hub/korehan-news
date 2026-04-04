@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS user_submissions (
   level             text,            -- user's level at time of submission (Starter/Beginner/Intermediate/Advanced)
 
   -- ── Prevent duplicate submissions ──
-  UNIQUE (user_id, content_type, study_date, COALESCE(content_id, '__none__'))
+  UNIQUE (user_id, content_type, study_date, content_id)
 );
 
 -- ── Indexes for common queries ──
