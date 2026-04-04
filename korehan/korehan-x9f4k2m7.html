@@ -5791,14 +5791,15 @@ function _srBuildPrompt(level, topicHint) {
     + topicHint + '\n\n'
     + 'Return ONLY valid JSON (strict RFC8259, no markdown, no comments, no trailing commas):\n'
     + '{"topic_ko":"...","topic_en":"...",'
-    + '"vocab":[{"ko":"","rom":"","en":""}],'
-    + '"grammar":[{"pattern":"","explanation":"","example_ko":"","example_en":""}],'
-    + '"helpers":[{"ko":"","en":""}],'
+    + '"vocab":[{"ko":"word","rom":"romanization","en":"meaning"}],'
+    + '"grammar":[{"pattern":"~grammar pattern","explanation":"English explanation","example_ko":"Korean example sentence","example_en":"English translation"}],'
+    + '"helpers":[{"ko":"Full Korean example sentence about the topic","en":"English translation"}],'
     + '"dictation_sentences":[{"ko":"","en":""}],'
     + '"dictation_questions":[{"question_ko":"","answer_ko":"","hint_en":""}],'
     + '"topic_writing_sentences":[{"ko":"","en":""}]'
     + levelExtra + '}'
-    + '\nExact counts: vocab=5, grammar=3, helpers=4, dictation_sentences=3, dictation_questions=3, topic_writing_sentences=3' + levelExtraCounts + '.';
+    + '\nExact counts: vocab=5, grammar=3, helpers=4, dictation_sentences=3, dictation_questions=3, topic_writing_sentences=3' + levelExtraCounts + '.'
+    + '\nIMPORTANT: "helpers" are full example SENTENCES (not single words) that a student can reference before writing. Each helper must be a complete sentence about the topic.';
 }
 
 async function _srGenerateContent(level, topicHint, forceTopicKo, forceTopicEn) {
