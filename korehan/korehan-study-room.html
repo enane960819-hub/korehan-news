@@ -3498,10 +3498,11 @@ async function submitWriting() {
 
   // ── 하루 1건 체크 ──
   try {
-    var existing = await sb.from('writing_submissions')
+    var existing = await sb.from('user_submissions')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', supaUser.id)
-      .eq('submit_date', today);
+      .eq('content_type', 'writing')
+      .eq('study_date', today);
     if ((existing.count || 0) > 0) {
       showToast('✅ You already submitted today. You can write again tomorrow!', true);
       closeWritingModal();
@@ -3531,19 +3532,23 @@ async function submitWriting() {
 
   try {
     // ── DB에 저장 ──
-    var insertRes = await sb.from('writing_submissions').insert({
+    var insertRes = await sb.from('user_submissions').insert({
       user_id:          supaUser.id,
-      submit_date:      today,
+      content_type:     'writing',
+      study_date:       today,
       writing_text:     text,
       word_count:       text.length,
       topic_ko:         (_todayTopic && _todayTopic.topic_ko) || '',
       topic_en:         (_todayTopic && _todayTopic.topic_en) || '',
       writing_mode:     _writingMode || 'topic',
-      used_vocab:       usedVocab,
-      used_grammar:     usedGrammar,
-      required_vocab:   requiredVocab,
-      required_grammar: requiredGrammar,
-      status:           'pending'
+      context_data:     JSON.stringify({
+        used_vocab:       usedVocab,
+        used_grammar:     usedGrammar,
+        required_vocab:   requiredVocab,
+        required_grammar: requiredGrammar
+      }),
+      level:            _currentLevel || '',
+      status:           'submitted'
     });
 
     if (insertRes.error) throw insertRes.error;
@@ -3631,10 +3636,11 @@ async function triggerAIFeedback(submissionId, text, vocab, grammar) {
     // DB 업데이트
     var sb = getSupa();
     if (sb) {
-      await sb.from('writing_submissions').update({
-        ai_feedback:    feedbackText,
+      await sb.from('user_submissions').update({
+        ai_feedback:    parsed,
         ai_feedback_at: new Date().toISOString(),
-        status:         'ai_done'
+        ai_model:       'claude-sonnet-4-20250514',
+        status:         'ai_reviewed'
       }).eq('id', submissionId);
     }
   } catch(e) {
@@ -3642,20 +3648,52 @@ async function triggerAIFeedback(submissionId, text, vocab, grammar) {
   }
 }
 
+// AI 1차 첨삭 — Article Study용 (백그라운드)
+async function triggerArticleAIFeedback(submissionId, text, articleTitle) {
+  try {
+    var prompt = '당신은 한국어 작문 첨삭 선생님입니다.\n\n'
+      + '학생이 기사 "' + articleTitle + '"를 읽고 작성한 글:\n"""\n' + text + '\n"""\n\n'
+      + '다음 형식으로 첨삭해주세요 (JSON):\n'
+      + '{\n'
+      + '  "overall": "전반적인 평가 1-2문장",\n'
+      + '  "corrections": [{"original":"원문","corrected":"수정문","reason":"이유","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB"}],\n'
+      + '  "encouragement": "격려 한마디"\n'
+      + '}\nJSON만 반환하세요.';
+    var data = await callClaude({
+      feature: 'article_study_feedback',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      messages: [{ role:'user', content: prompt }]
+    });
+    var raw = (data.content || []).map(function(c){ return c.text || ''; }).join('');
+    var clean = raw.replace(/```json|```/g,'').trim();
+    var parsed = JSON.parse(clean);
+    var sb = getSupa();
+    if (sb) {
+      await sb.from('user_submissions').update({
+        ai_feedback: parsed,
+        ai_feedback_at: new Date().toISOString(),
+        ai_model: 'claude-haiku-4-5-20251001',
+        status: 'ai_reviewed'
+      }).eq('id', submissionId);
+    }
+  } catch(e) { console.warn('Article AI feedback failed:', e); }
+}
+
 // ── 피드백 인박스 ─────────────────────────────────────────────
 async function loadFeedbackInbox() {
   if (!supaUser) return;
   var sb = getSupa(); if (!sb) return;
   try {
-    var res = await sb.from('writing_submissions')
-      .select('id, submit_date, status, final_feedback, writing_text, topic_ko')
+    var res = await sb.from('user_submissions')
+      .select('id, study_date, status, admin_feedback, writing_text, topic_ko, content_type')
       .eq('user_id', supaUser.id)
       .order('submitted_at', { ascending: false })
       .limit(20);
     if (res.error) return;
     var items = res.data || [];
-    var approved = items.filter(function(i){ return i.status === 'approved' && i.final_feedback; });
-    var pending  = items.filter(function(i){ return i.status === 'pending' || i.status === 'ai_done'; });
+    var approved = items.filter(function(i){ return (i.status === 'admin_approved' || i.status === 'sent') && i.admin_feedback; });
+    var pending  = items.filter(function(i){ return i.status === 'submitted' || i.status === 'ai_reviewed'; });
 
     var btnEl    = document.getElementById('feedback-inbox-btn');
     var labelEl  = document.getElementById('feedback-inbox-label');
@@ -3704,8 +3742,8 @@ async function renderFeedbackInboxContent() {
   if (!content) return;
   var sb = getSupa(); if (!sb) return;
   try {
-    var res = await sb.from('writing_submissions')
-      .select('id, submit_date, status, final_feedback, writing_text, topic_ko, ai_feedback_at, reviewed_at')
+    var res = await sb.from('user_submissions')
+      .select('id, study_date, status, admin_feedback, writing_text, topic_ko, content_type, ai_feedback_at, reviewed_at, sent_at')
       .eq('user_id', supaUser.id)
       .order('submitted_at', { ascending: false })
       .limit(20);
@@ -3715,9 +3753,9 @@ async function renderFeedbackInboxContent() {
       content.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px;">No submitted writings yet.</div>';
       return;
     }
-    var statusMap = { pending:'⏳ Under Review', ai_done:'🤖 AI Review Done', approved:'✅ Feedback Ready', rejected:'❌ Rejected' };
-    var statusBg  = { pending:'#fef9c3', ai_done:'#eff6ff', approved:'#f0fdf4', rejected:'#fef2f2' };
-    var statusColor = { pending:'#854d0e', ai_done:'#1d4ed8', approved:'#15803d', rejected:'#b91c1c' };
+    var statusMap = { submitted:'⏳ Under Review', ai_reviewed:'🤖 AI Review Done', admin_approved:'✅ Feedback Ready', sent:'✅ Feedback Ready' };
+    var statusBg  = { submitted:'#fef9c3', ai_reviewed:'#eff6ff', admin_approved:'#f0fdf4', sent:'#f0fdf4' };
+    var statusColor = { submitted:'#854d0e', ai_reviewed:'#1d4ed8', admin_approved:'#15803d', sent:'#15803d' };
 
     content.innerHTML = items.map(function(item) {
       var sl = statusMap[item.status] || item.status;
@@ -3727,16 +3765,18 @@ async function renderFeedbackInboxContent() {
       var html = '<div style="border:1px solid #e8edf5;border-radius:12px;padding:16px;margin-bottom:12px;">';
       html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">';
       html += '<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:' + sb2 + ';color:' + sc + ';">' + sl + '</span>';
-      html += '<span style="font-size:11px;color:#94a3b8;">' + (item.submit_date||'') + '</span>';
-      if (item.topic_ko) html += '<span style="font-size:11px;color:#64748b;font-weight:600;">📝 ' + item.topic_ko + '</span>';
+      html += '<span style="font-size:11px;color:#94a3b8;">' + (item.study_date||'') + '</span>';
+      var typeLabels = {writing:'📝 Writing', article_study:'📰 Article', conversation:'💬 Conversation', story:'📖 Story'};
+      html += '<span style="font-size:10px;padding:2px 6px;border-radius:999px;background:#f1f5f9;color:#64748b;font-weight:700;">' + (typeLabels[item.content_type]||item.content_type) + '</span>';
+      if (item.topic_ko) html += '<span style="font-size:11px;color:#64748b;font-weight:600;">' + item.topic_ko + '</span>';
       html += '</div>';
       html += '<div style="font-size:13px;color:#475569;margin-bottom:10px;line-height:1.5;">' + preview + '</div>';
-      if (item.status === 'approved' && item.final_feedback) {
+      if ((item.status === 'admin_approved' || item.status === 'sent') && item.admin_feedback) {
         html += '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;">';
-        html += '<div style="font-size:11px;font-weight:800;color:#15803d;margin-bottom:8px;">AI Feedback</div>';
-        html += '<div style="font-size:13px;color:#1e293b;white-space:pre-wrap;line-height:1.7;">' + item.final_feedback + '</div>';
+        html += '<div style="font-size:11px;font-weight:800;color:#15803d;margin-bottom:8px;">📬 Feedback from Han</div>';
+        html += '<div style="font-size:13px;color:#1e293b;white-space:pre-wrap;line-height:1.7;">' + item.admin_feedback + '</div>';
         html += '</div>';
-      } else if (item.status === 'pending' || item.status === 'ai_done') {
+      } else if (item.status === 'submitted' || item.status === 'ai_reviewed') {
         html += '<div style="font-size:12px;color:#94a3b8;">Under review. Feedback will be delivered within 24 hours.</div>';
       }
       html += '</div>';
@@ -7295,13 +7335,19 @@ async function asSubmitWork() {
   var sb=getSupa(); if(!sb) return;
   var saved=_asGetTmp()||{};
   try {
-    var r=await sb.from('article_study_submissions').upsert({
-      user_id:supaUser.id, article_id:String(_asCurrentArt.id), article_title:_asCurrentArt.title||'',
-      study_date:kstDateKey(), step4_content:JSON.stringify(saved.step4_answers||[]),
-      step5_content:saved.step5_text||'', submitted:true, auto_submitted:false,
-      submitted_at:new Date().toISOString(), updated_at:new Date().toISOString()
-    },{onConflict:'user_id,article_id,study_date'});
+    var step5 = saved.step5_text||'';
+    var r=await sb.from('user_submissions').upsert({
+      user_id:supaUser.id, content_type:'article_study',
+      content_id:String(_asCurrentArt.id), content_title:_asCurrentArt.title||'',
+      study_date:kstDateKey(), writing_text:step5, word_count:step5.length,
+      context_data:JSON.stringify({step4_answers:saved.step4_answers||[]}),
+      level:_currentLevel||'', status:'submitted'
+    },{onConflict:'user_id,content_type,study_date,content_id'});
     if(r.error) throw r.error;
+    // Trigger AI feedback if there's writing
+    if(step5.trim().length>10 && r.data && r.data[0] && r.data[0].id){
+      triggerArticleAIFeedback(r.data[0].id, step5, _asCurrentArt.title||'');
+    }
     showToast('제출 완료! ✓');
     _asUpdateTmp({submitted:true});
     document.getElementById('as-activity-area').innerHTML=
@@ -7321,12 +7367,14 @@ async function asSubmitTodayAll() {
     var ids=Object.keys(d); var submitted=0;
     for(var i=0;i<ids.length;i++){
       var item=d[ids[i]]; if(!item||item.submitted) continue;
-      var r=await sb.from('article_study_submissions').upsert({
-        user_id:supaUser.id, article_id:String(ids[i]), article_title:item.article_title||'',
-        study_date:today, step4_content:JSON.stringify(item.step4_answers||[]),
-        step5_content:item.step5_text||'', submitted:true, auto_submitted:false,
-        submitted_at:new Date().toISOString(), updated_at:new Date().toISOString()
-      },{onConflict:'user_id,article_id,study_date'});
+      var s5=item.step5_text||'';
+      var r=await sb.from('user_submissions').upsert({
+        user_id:supaUser.id, content_type:'article_study',
+        content_id:String(ids[i]), content_title:item.article_title||'',
+        study_date:today, writing_text:s5, word_count:s5.length,
+        context_data:JSON.stringify({step4_answers:item.step4_answers||[]}),
+        status:'submitted'
+      },{onConflict:'user_id,content_type,study_date,content_id'});
       if(!r.error){item.submitted=true;submitted++;}
     }
     localStorage.setItem(key,JSON.stringify(d));
@@ -7346,12 +7394,14 @@ async function asAutoSubmitOldWork() {
     var ids=Object.keys(d); var changed=false;
     for(var ai=0;ai<ids.length;ai++){
       var item=d[ids[ai]]; if(!item||item.submitted) continue;
-      var r=await sb.from('article_study_submissions').upsert({
-        user_id:supaUser.id, article_id:String(ids[ai]), article_title:item.article_title||'',
-        study_date:date, step4_content:JSON.stringify(item.step4_answers||[]),
-        step5_content:item.step5_text||'', submitted:true, auto_submitted:true,
-        submitted_at:new Date().toISOString(), updated_at:new Date().toISOString()
-      },{onConflict:'user_id,article_id,study_date'});
+      var s5a=item.step5_text||'';
+      var r=await sb.from('user_submissions').upsert({
+        user_id:supaUser.id, content_type:'article_study',
+        content_id:String(ids[ai]), content_title:item.article_title||'',
+        study_date:date, writing_text:s5a, word_count:s5a.length,
+        context_data:JSON.stringify({step4_answers:item.step4_answers||[]}),
+        status:'submitted'
+      },{onConflict:'user_id,content_type,study_date,content_id'});
       if(!r.error){item.submitted=true;changed=true;}
     }
     if(changed) localStorage.setItem(keys[ki],JSON.stringify(d));
