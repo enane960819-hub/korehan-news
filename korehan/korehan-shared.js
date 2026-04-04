@@ -1286,7 +1286,7 @@ async function _syncSavedWordsFromDB() {
   var sb = getSupa();
   if (!sb) return;
   try {
-    var res = await sb.from('saved_words').select('word_ko, ko').eq('user_id', supaUser.id);
+    var res = await sb.from('saved_words').select('*').eq('user_id', supaUser.id);
     if (res.data && res.data.length) {
       _savedWordsSet = new Set();
       res.data.forEach(function(row) {
@@ -6051,8 +6051,8 @@ async function _rehydrateUserState() {
     }
   } catch(e) { console.warn('rehydrate daily mission:', e); }
   try {
-    // 3) User preferences (difficulty, neon theme) from user_stats.preferences JSONB
-    var prefRes = await sb.from('user_stats').select('preferences').eq('user_id', supaUser.id).maybeSingle();
+    // 3) User preferences (difficulty, neon theme) from user_stats
+    var prefRes = await sb.from('user_stats').select('*').eq('user_id', supaUser.id).maybeSingle();
     if (prefRes.data && prefRes.data.preferences) {
       var prefs = prefRes.data.preferences;
       if (typeof prefs === 'string') try { prefs = JSON.parse(prefs); } catch(e) { prefs = {}; }
