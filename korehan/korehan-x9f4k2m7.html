@@ -2574,6 +2574,7 @@ function goTopics() {
     + '<button onclick="openTopicModal()" class="btn-primary" style="margin-left:auto;white-space:nowrap">+ Add Topic</button></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
     + '<button class="sf-tag on" onclick="filterTopics(&apos;all&apos;,this)">전체</button>'
+    + '<button class="sf-tag" onclick="filterTopics(&apos;Starter&apos;,this)">🌱 Seed</button>'
     + '<button class="sf-tag" onclick="filterTopics(&apos;Beginner&apos;,this)">🌿 Sprout</button>'
     + '<button class="sf-tag" onclick="filterTopics(&apos;Intermediate&apos;,this)">🌳 Tree</button>'
     + '<button class="sf-tag" onclick="filterTopics(&apos;Advanced&apos;,this)">🌲 Forest</button>'
@@ -2626,7 +2627,7 @@ function filterTopics(level, btn) {
 function renderTopicsTable(list) {
   const el = document.getElementById('topics-wrap');
   if (!list.length) { el.innerHTML = '<div class="infobox">토픽이 없습니다.</div>'; return; }
-  const lvBg = { Beginner:'background:#e8f5e9;color:#2e7d32', Intermediate:'background:#fff8e1;color:#f57f17', Advanced:'background:#fce4ec;color:#c62828' };
+  const lvBg = { Starter:'background:#f3e8ff;color:#7c3aed', Beginner:'background:#e8f5e9;color:#2e7d32', Intermediate:'background:#fff8e1;color:#f57f17', Advanced:'background:#fce4ec;color:#c62828' };
   let rows = '';
   for (let i=0; i<list.length; i++) {
     const t = list[i];
