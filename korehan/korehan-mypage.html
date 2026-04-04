@@ -1286,16 +1286,16 @@ function renderOwnedAndGiftSections(coin, data) {
 
 // Hardcoded fallback — used only if DB fetch fails
 var ROOM_ITEMS_FALLBACK = [
-  {id:'character',  name:'Character',        price:0,   img:'assets/file_000000000570720694038be799df9f21-removebg-preview.png', size:80},
-  {id:'cat',        name:'Sleeping Cat',     price:15,  img:'assets/file_000000003a7c7209a3877df863e15fd9-removebg-preview.png', size:65},
-  {id:'poop',       name:'Happy Poop',       price:3,   img:'assets/file_000000004b247206b900dba933600c46-removebg-preview.png', size:50},
-  {id:'cushion',    name:'Reading Cushion',  price:10,  img:'assets/file_0000000064f872098fc13437d998de5a-removebg-preview.png', size:70},
-  {id:'lamp',       name:'Korean Lamp',      price:12,  img:'assets/file_00000000a2287209b632ccc0519de0e7-removebg-preview.png', size:55},
-  {id:'bookshelf',  name:'Bookshelf',        price:25,  img:'assets/file_00000000a66472069f5c058b95fd2322-removebg-preview.png', size:75},
-  {id:'plant',      name:'Potted Plant',     price:8,   img:'assets/file_00000000f734720691f7289c1f8a5e3c-removebg-preview.png', size:55},
-  {id:'fennec',     name:'Fennec Fox',       price:20,  img:'assets/file_0000000097387206868da2533972ee90-removebg-preview.png', size:60},
-  {id:'char_silver',name:'Silver Character', price:0,   img:'assets/file_00000000b8bc72069bc7877f36aaf27f-removebg-preview.png', size:96},
-  {id:'char_thumbs',name:'Thumbs Up Guy',    price:0,   img:'assets/file_00000000d40c7206bb289cd92deab487-removebg-preview.png', size:96},
+  {id:'character',  name:'Character',        price:0,   img:'assets/file_000000000570720694038be799df9f21-removebg-preview.png', size:160},
+  {id:'cat',        name:'Sleeping Cat',     price:15,  img:'assets/file_000000003a7c7209a3877df863e15fd9-removebg-preview.png', size:130},
+  {id:'poop',       name:'Happy Poop',       price:3,   img:'assets/file_000000004b247206b900dba933600c46-removebg-preview.png', size:100},
+  {id:'cushion',    name:'Reading Cushion',  price:10,  img:'assets/file_0000000064f872098fc13437d998de5a-removebg-preview.png', size:140},
+  {id:'lamp',       name:'Korean Lamp',      price:12,  img:'assets/file_00000000a2287209b632ccc0519de0e7-removebg-preview.png', size:110},
+  {id:'bookshelf',  name:'Bookshelf',        price:25,  img:'assets/file_00000000a66472069f5c058b95fd2322-removebg-preview.png', size:150},
+  {id:'plant',      name:'Potted Plant',     price:8,   img:'assets/file_00000000f734720691f7289c1f8a5e3c-removebg-preview.png', size:110},
+  {id:'fennec',     name:'Fennec Fox',       price:20,  img:'assets/file_0000000097387206868da2533972ee90-removebg-preview.png', size:120},
+  {id:'char_silver',name:'Silver Character', price:0,   img:'assets/file_00000000b8bc72069bc7877f36aaf27f-removebg-preview.png', size:192},
+  {id:'char_thumbs',name:'Thumbs Up Guy',    price:0,   img:'assets/file_00000000d40c7206bb289cd92deab487-removebg-preview.png', size:192},
 ];
 var ROOM_ITEMS = ROOM_ITEMS_FALLBACK.slice(); // will be replaced by DB data
 var _roomItemsLoaded = false;
@@ -1307,7 +1307,7 @@ async function loadRoomItemsFromDB() {
     var res = await sb.from('room_items').select('*').eq('active', true).order('sort_order');
     if (!res.error && res.data && res.data.length) {
       ROOM_ITEMS = res.data.map(function(r) {
-        return { id: r.id, name: r.name, price: r.price_nyang, img: r.image_url, size: r.base_size, effect: r.effect || 'none', thumbnail: r.thumbnail_url || '' };
+        return { id: r.id, name: r.name, price: r.price_nyang, img: r.image_url, size: r.base_size, effect: r.effect || 'none', thumbnail: r.thumbnail_url || '', category: r.category || 'deco' };
       });
       _roomItemsLoaded = true;
     }
@@ -1408,11 +1408,13 @@ function renderRoomItems() {
     if (def.effect && def.effect !== 'none') div.dataset.effect = def.effect;
     var scale = Math.max(70, Math.min(170, Number(placed.scale || 100)));
     var base = def.size || 50;
-    // Convert px positions (stored as 400x360 base) to percentages for responsive sizing
+    // Convert to percentages of 400x360 base for responsive sizing
     var leftPct = (placed.x / 400) * 100;
     var topPct  = (placed.y / 360) * 100;
+    var wPct = (base / 400) * 100;
+    var hPct = (base / 360) * 100;
     div.setAttribute('style',
-      'left:' + leftPct + '%;top:' + topPct + '%;width:' + base + 'px;height:' + base + 'px;'
+      'left:' + leftPct + '%;top:' + topPct + '%;width:' + wPct + '%;height:' + hPct + '%;'
       + 'cursor:' + (_roomEditing ? 'grab' : 'default') + ';'
       + (_roomEditing ? 'outline:2px dashed rgba(255,255,255,.3);' : '')
     );
@@ -1421,7 +1423,10 @@ function renderRoomItems() {
 
     var sprite = document.createElement('div');
     sprite.className = 'room-placed-sprite';
-    sprite.setAttribute('style', roomItemBgStyle(def) + 'transform:scale(' + (scale / 100) + ');');
+    var flipped = !!placed.flipped;
+    var sx = flipped ? -(scale/100) : (scale/100);
+    sprite.setAttribute('style', roomItemBgStyle(def) + 'transform:scale(' + sx + ',' + (scale/100) + ');');
+    if (flipped) sprite.dataset.flipped = '1';
     div.appendChild(sprite);
 
     // Drag events
@@ -1650,11 +1655,21 @@ function flipSelectedItem() {
   if (!_selectedRoomItemId) return;
   var el = document.querySelector('.room-placed-item.room-selected .room-placed-sprite');
   if (!el) return;
-  var current = el.dataset.flipped === '1';
-  el.dataset.flipped = current ? '0' : '1';
-  var scale = el.style.transform.match(/scale\(([^)]+)\)/);
-  var s = scale ? scale[1] : '1';
-  el.style.transform = 'scale(' + (current ? '' : '-') + s.replace('-','') + ',' + s.replace('-','') + ')';
+  var flipped = el.dataset.flipped === '1';
+  el.dataset.flipped = flipped ? '0' : '1';
+  // Get current scale from parent's data
+  var parentEl = el.parentElement;
+  var s = parentEl ? (Number(parentEl.dataset.scale || 100) / 100) : 1;
+  var sx = flipped ? s : -s;  // toggle
+  el.style.transform = 'scale(' + sx + ',' + s + ')';
+  // Persist flip state in layout
+  var layout = getRoomLayout();
+  layout = layout.map(function(p) {
+    if (p.id !== _selectedRoomItemId) return p;
+    p.flipped = !flipped;
+    return p;
+  });
+  setRoomLayout(layout);
 }
 
 function moveSelectedLayer(dir) {
@@ -1738,11 +1753,19 @@ async function openRoomShop() {
   overlay.className = 'room-shop-overlay';
   overlay.addEventListener('click', function(e) { if (e.target === overlay) closeRoomShop(); });
 
+  var catLabels = { all:'All', character:'Characters', pet:'Pets', furniture:'Furniture', deco:'Deco' };
+  var cats = ['all','character','pet','furniture','deco'];
+
   var html = '<div class="room-shop-modal">'
     + '<div class="room-shop-header">'
     + '<h3>Item Shop</h3>'
     + '<div class="room-shop-bal" id="room-shop-bal">' + coin.toLocaleString() + ' nyang</div>'
     + '<button class="room-shop-close" onclick="closeRoomShop()">&times;</button>'
+    + '</div>'
+    + '<div style="display:flex;gap:6px;padding:10px 24px 0;flex-wrap:wrap">'
+    + cats.map(function(c) {
+      return '<button class="room-shop-btn ' + (c === 'all' ? 'buy' : '') + '" data-shop-cat="' + c + '" onclick="filterRoomShop(\'' + c + '\')" style="padding:4px 10px;font-size:10px;border-radius:999px;border:1px solid #cbd5e1;background:' + (c === 'all' ? '#2563eb' : '#f1f5f9') + ';color:' + (c === 'all' ? '#fff' : '#475569') + '">' + catLabels[c] + '</button>';
+    }).join('')
     + '</div>'
     + '<div class="room-shop-grid">';
 
@@ -1751,8 +1774,9 @@ async function openRoomShop() {
     var placed = isItemPlaced(item.id);
     var canBuy = coin >= item.price;
     var s = 60;
+    var cat = item.category || 'deco';
 
-    html += '<div class="room-shop-card" data-item-id="' + item.id + '">'
+    html += '<div class="room-shop-card" data-item-id="' + item.id + '" data-cat="' + cat + '">'
       + '<div class="room-shop-sprite" style="width:' + s + 'px;height:' + s + 'px;' + roomItemThumbBgStyle(item) + '"></div>'
       + '<div class="room-shop-name">' + item.name + '</div>'
       + '<div class="room-shop-price">' + (isOwned ? 'Owned' : item.price + ' nyang') + '</div>';
@@ -1774,6 +1798,17 @@ async function openRoomShop() {
   html += '</div></div>';
   overlay.innerHTML = html;
   document.body.appendChild(overlay);
+}
+
+function filterRoomShop(cat) {
+  document.querySelectorAll('[data-shop-cat]').forEach(function(btn) {
+    var active = btn.dataset.shopCat === cat;
+    btn.style.background = active ? '#2563eb' : '#f1f5f9';
+    btn.style.color = active ? '#fff' : '#475569';
+  });
+  document.querySelectorAll('.room-shop-card').forEach(function(card) {
+    card.style.display = (cat === 'all' || card.dataset.cat === cat) ? '' : 'none';
+  });
 }
 
 function closeRoomShop() {
