@@ -543,7 +543,7 @@ body.kh-neon-on .room-shop-price { color:#8ffcff !important; }
   <!-- Mini Room -->
   <div class="mp-section" id="mp-miniroom-section">
     <h3>My Room</h3>
-    <div id="miniroom-container" style="position:relative;width:100%;max-width:400px;height:360px;margin:0 auto;background:url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover no-repeat;border-radius:16px;border:1px solid rgba(0,0,0,.12);overflow:hidden;touch-action:none">
+    <div id="miniroom-container" style="position:relative;width:100%;max-width:600px;aspect-ratio:10/9;margin:0 auto;background:url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover no-repeat;border-radius:16px;border:1px solid rgba(0,0,0,.12);overflow:hidden;touch-action:none">
       <div id="miniroom-items"></div>
       <div id="room-light-switch" class="room-light-switch" onclick="toggleRoomLights()"
            style="background-image:url(assets/file_000000000f1c720bbe419c8601e6fb5e-removebg-preview.png)"
@@ -1337,8 +1337,11 @@ function renderRoomItems() {
     if (def.effect && def.effect !== 'none') div.dataset.effect = def.effect;
     var scale = Math.max(70, Math.min(170, Number(placed.scale || 100)));
     var base = def.size || 50;
+    // Convert px positions (stored as 400x360 base) to percentages for responsive sizing
+    var leftPct = (placed.x / 400) * 100;
+    var topPct  = (placed.y / 360) * 100;
     div.setAttribute('style',
-      'left:' + placed.x + 'px;top:' + placed.y + 'px;width:' + base + 'px;height:' + base + 'px;'
+      'left:' + leftPct + '%;top:' + topPct + '%;width:' + base + 'px;height:' + base + 'px;'
       + 'cursor:' + (_roomEditing ? 'grab' : 'default') + ';'
       + (_roomEditing ? 'outline:2px dashed rgba(255,255,255,.3);' : '')
     );
@@ -1429,13 +1432,28 @@ function toggleRoomLights() {
 
 // ── Save room layout ─────────────────────────────────────────
 function saveRoomLayout() {
+  var container = document.getElementById('miniroom-container');
+  var cW = container ? container.offsetWidth : 400;
+  var cH = container ? container.offsetHeight : 360;
   var items = [];
   document.querySelectorAll('.room-placed-item').forEach(function(el) {
     var saved = getPlacedState(el.dataset.itemId) || {};
+    // Convert current pixel position back to 400x360 base for storage
+    var curLeft = parseFloat(el.style.left) || 0;
+    var curTop  = parseFloat(el.style.top) || 0;
+    var x, y;
+    if (String(el.style.left).indexOf('%') >= 0) {
+      x = Math.round((curLeft / 100) * 400);
+      y = Math.round((curTop / 100) * 360);
+    } else {
+      // Pixel from drag — convert relative to current container size
+      x = Math.round((curLeft / cW) * 400);
+      y = Math.round((curTop / cH) * 360);
+    }
     items.push({
       id: el.dataset.itemId,
-      x: parseInt(el.style.left) || 0,
-      y: parseInt(el.style.top) || 0,
+      x: Math.max(0, Math.min(380, x)),
+      y: Math.max(0, Math.min(340, y)),
       scale: Math.max(70, Math.min(170, Number(saved.scale || 100)))
     });
   });
@@ -1518,8 +1536,8 @@ function roomDragMove(e) {
   x = Math.max(0, Math.min(rect.width - itemW, x));
   y = Math.max(0, Math.min(rect.height - itemH, y));
 
-  _dragItem.style.left = Math.round(x) + 'px';
-  _dragItem.style.top = Math.round(y) + 'px';
+  _dragItem.style.left = ((x / rect.width) * 100) + '%';
+  _dragItem.style.top = ((y / rect.height) * 100) + '%';
 }
 
 function roomDragEnd(e) {
