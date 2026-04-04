@@ -5495,6 +5495,8 @@ function srTopicsFormHTML() {
     + '<div class="fg" style="margin:0"><label>레벨</label>'
     + '<select id="srt-level"><option value="Starter">Seed</option><option value="Beginner" selected>Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select></div>'
     + '<button class="btn btn-g" onclick="srLoadDailyContent()">Load</button>'
+    + '<button class="btn" onclick="srGenerate1Day1Level()" style="background:#fefce8;color:#a16207;border:1px solid #fde047">🎲 선택레벨 1일 생성</button>'
+    + '<button class="btn" onclick="srGenerate1DayAllLevels()" style="background:#fdf2f8;color:#be185d;border:1px solid #f9a8d4">🎯 전체레벨 1일 생성</button>'
     + '<button class="btn" onclick="srAssign3Days()" style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd">📅 3일치 전체 배정</button>'
     + '<button class="btn" onclick="srPregenerate10Days()" style="background:#f0fdf4;color:#15803d;border:1px solid #86efac">🤖 Pre-generate 10 days</button>'
     + '</div>'
@@ -6021,6 +6023,95 @@ async function srPregenerate10Days() {
   } catch(err) {
     if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444">Error: ' + (err.message||err) + '</div>';
   }
+  await srLoadTopicSchedule();
+}
+
+// ── 선택 레벨 1일 생성 (랜덤 토픽 1개) ────────────────────────
+async function srGenerate1Day1Level() {
+  var sb = getSb();
+  var el = document.getElementById('srt-list');
+  if (!sb) { if (el) el.innerHTML = '<div style="color:#ef4444;padding:12px">Supabase 연결 실패</div>'; return; }
+  var date = (document.getElementById('srt-date').value || '').trim();
+  var level = (document.getElementById('srt-level').value || 'Beginner').trim();
+  var lvlDisplay = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]||level;
+  if (!date) { toast('날짜를 선택하세요.'); return; }
+
+  // Check if already exists
+  var existing = await sb.from('study_daily_content').select('id').eq('scheduled_date', date).eq('level', level).maybeSingle();
+  if (existing.data) {
+    if (!confirm(date + ' ' + lvlDisplay + ' 이미 존재합니다. 덮어쓰시겠습니까?')) return;
+  }
+
+  if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">' + date + ' ' + lvlDisplay + ' 생성 중… (5-10초)</div>';
+  try {
+    var picked = await _srPickTopicFromDB(sb, level);
+    var topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
+    var parsed = await _srGenerateContent(level, topicHint, picked.topic_ko, picked.topic_en);
+    var rec = {
+      scheduled_date: date, level: level,
+      topic_ko: parsed.topic_ko || picked.topic_ko, topic_en: parsed.topic_en || picked.topic_en,
+      vocab: parsed.vocab || [], grammar: parsed.grammar || [], helpers: parsed.helpers || [],
+      dictation_sentences: parsed.dictation_sentences || [], dictation_questions: parsed.dictation_questions || [],
+      confusing_grammar: parsed.confusing_grammar || null,
+      formality_exercise: parsed.formality_exercise || null,
+      culture_note: parsed.culture_note || null,
+      status: 'draft', admin_edited: false, updated_at: new Date().toISOString()
+    };
+    var upsertRes = await sb.from('study_daily_content').upsert(rec, {onConflict:'scheduled_date,level'});
+    if (upsertRes.error) throw new Error('DB 저장 실패: ' + upsertRes.error.message);
+    toast(date + ' ' + lvlDisplay + ' 생성 완료!');
+  } catch(err) {
+    toast('실패: ' + (err.message || err));
+    if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444">Error: ' + (err.message||err) + '</div>';
+  }
+  await srLoadTopicSchedule();
+}
+
+// ── 전체 레벨 1일 생성 (4레벨 × 랜덤 토픽) ───────────────────
+async function srGenerate1DayAllLevels() {
+  var sb = getSb();
+  var el = document.getElementById('srt-list');
+  if (!sb) { if (el) el.innerHTML = '<div style="color:#ef4444;padding:12px">Supabase 연결 실패</div>'; return; }
+  var date = (document.getElementById('srt-date').value || '').trim();
+  if (!date) { toast('날짜를 선택하세요.'); return; }
+  var allLevels = ['Starter','Beginner','Intermediate','Advanced'];
+  var lvlNames = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'};
+  if (!confirm(date + ' 전체 4레벨 생성합니다. 계속?')) return;
+  if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">' + date + ' 4레벨 생성 중… (20-30초)</div>';
+
+  var generated = 0; var errors = [];
+  for (var li = 0; li < allLevels.length; li++) {
+    var level = allLevels[li];
+    // Skip if already exists
+    var existing = await sb.from('study_daily_content').select('id').eq('scheduled_date', date).eq('level', level).maybeSingle();
+    if (existing.data) { generated++; continue; }
+
+    try {
+      if (li > 0) await new Promise(function(r){ setTimeout(r, 1500); });
+      var picked = await _srPickTopicFromDB(sb, level);
+      var topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
+      if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">' + date + ' ' + lvlNames[level] + ' 생성 중… (' + (generated+1) + '/4)</div>';
+      var parsed = await _srGenerateContent(level, topicHint, picked.topic_ko, picked.topic_en);
+      var rec = {
+        scheduled_date: date, level: level,
+        topic_ko: parsed.topic_ko || picked.topic_ko, topic_en: parsed.topic_en || picked.topic_en,
+        vocab: parsed.vocab || [], grammar: parsed.grammar || [], helpers: parsed.helpers || [],
+        dictation_sentences: parsed.dictation_sentences || [], dictation_questions: parsed.dictation_questions || [],
+        confusing_grammar: parsed.confusing_grammar || null,
+        formality_exercise: parsed.formality_exercise || null,
+        culture_note: parsed.culture_note || null,
+        status: 'draft', admin_edited: false, updated_at: new Date().toISOString()
+      };
+      var upsertRes = await sb.from('study_daily_content').upsert(rec, {onConflict:'scheduled_date,level'});
+      if (upsertRes.error) throw new Error(upsertRes.error.message);
+      generated++;
+    } catch(err) {
+      errors.push(lvlNames[level] + ': ' + (err.message||err));
+    }
+  }
+  var msg = date + ' — ' + generated + '/4 레벨 생성 완료.';
+  if (errors.length) msg += ' 실패: ' + errors.join(', ');
+  toast(msg);
   await srLoadTopicSchedule();
 }
 
