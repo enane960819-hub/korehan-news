@@ -1851,13 +1851,13 @@ function relTime(dateStr) {
 }
 
 function cardHTML(a, extraTagClass) {
-  var img = a.image || ('https://picsum.photos/seed/' + a.id + '/600/400');
+  var img = a.image || ('data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E' + a.id + '/600/400');
   var tc  = extraTagClass || '';
   var levelColors = { 'Starter':'#f3e8ff;color:#6b21a8', 'Beginner':'#e8f5e9;color:#2e7d32', 'Intermediate':'#fff8e1;color:#f57f17', 'Advanced':'#fce4ec;color:#c62828' };
   var levelBadge = a.level ? '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + (levelColors[a.level] || '#f0f0f0;color:#666') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) + '</span>' : '';
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
     + '<div class="card">'
-    + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/600/400\'">'
+    + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E'">'
     + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
     + '<div class="tag' + (tc ? ' ' + tc : '') + '">' + a.section + '</div>'
     + levelBadge
@@ -1881,10 +1881,10 @@ function filterByLevel(level, btn) {
 }
 
 function storyItemHTML(a) {
-  var img = a.image || ('https://picsum.photos/seed/' + a.id + '/300/200');
+  var img = a.image || ('data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E' + a.id + '/300/200');
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
     + '<div class="story-item">'
-    + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/300/200\'">'
+    + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E'">'
     + '<div>'
     + '<h4 class="vocab-zone">' + a.title + '</h4>'
     + '<div class="meta">' + a.section + ' · ' + relTime(a.date) + '</div>'
@@ -1892,10 +1892,10 @@ function storyItemHTML(a) {
 }
 
 function heroSideItemHTML(a) {
-  var img = a.image || ('https://picsum.photos/seed/' + a.id + '/400/200');
+  var img = a.image || ('data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E' + a.id + '/400/200');
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;display:block;">'
     + '<div class="hero-side-item">'
-    + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/400/200\'">'
+    + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E'">'
     + '<h3 class="vocab-zone">' + a.title + '</h3>'
     + '<p class="meta">' + a.section + ' · ' + relTime(a.date) + '</p>'
     + '</div></a>';
@@ -1972,7 +1972,7 @@ function renderHomePage() {
     if (ops.length) {
       opinionsEl.innerHTML = ops.map(function(op){
         return '<div class="opinion-card">'
-          + '<div class="author-img"><img src="' + (op.img || 'https://picsum.photos/seed/auth/100/100') + '" alt="' + (op.name||'') + '" onerror="this.src=\'https://picsum.photos/seed/auth/100/100\'"></div>'
+          + '<div class="author-img"><img src="' + (op.img || 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E') + '" alt="' + (op.name||'') + '" onerror="this.src=\'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E'"></div>'
           + '<div class="author">' + (op.name||'') + '</div>'
           + '<div class="author-title">' + (op.title||'') + '</div>'
           + '<h4 class="vocab-zone">' + (op.headline||'') + '</h4>'
@@ -1992,11 +1992,11 @@ function renderHeroSlide(heroEl) {
     heroEl.innerHTML =
       '<div class="kh-home-hero-main-shell" style="position:relative;min-height:460px;overflow:hidden;background:#0b1626;touch-action:pan-y">'
       + '<div class="kh-home-hero-track" style="display:flex;height:100%;will-change:transform;transition:transform .72s cubic-bezier(.22,1,.36,1)">' + _heroSlides.map(function(item){
-          var featImg = item.image || ('https://picsum.photos/seed/' + item.id + '/900/500');
+          var featImg = item.image || ('data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E' + item.id + '/900/500');
           var featBody = (item.body || '').replace(/<[^>]*>/g, '').slice(0, 150);
           var url = articleUrl(item.id);
           return '<article class="kh-home-hero-slide" style="min-width:100%;position:relative;min-height:460px;overflow:hidden;cursor:pointer" onclick="location.href=\'' + url + '\'">'
-            + '<img src="' + featImg + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/900/500\'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;pointer-events:none;">'
+            + '<img src="' + featImg + '" alt="" onerror="this.src=\'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;pointer-events:none;">'
             + '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,15,35,.88) 0%,rgba(5,15,35,.55) 38%,rgba(5,15,35,.16) 100%),linear-gradient(to top,rgba(5,15,35,.92) 0%,rgba(5,15,35,.1) 58%,transparent 100%);pointer-events:none;"></div>'
             + '<div style="position:absolute;left:0;right:0;bottom:0;padding:34px 30px 30px;max-width:760px;z-index:2;pointer-events:none;">'
             + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span class="category-tag" style="display:inline-block">' + item.section + '</span><span style="font-size:12px;color:rgba(255,255,255,.65)">' + relTime(item.date) + '</span></div>'
@@ -2052,9 +2052,9 @@ function updateHeroSlideUI(heroEl) {
   if (sideWrap) {
     var sideItems = (window._heroStaticSide && window._heroStaticSide.length ? window._heroStaticSide : _heroSlides.filter(function(a, i){ return i !== _heroIdx; })).slice(0, 4);
     sideWrap.innerHTML = sideItems.map(function(a) {
-      var img = a.image || ('https://picsum.photos/seed/' + a.id + '/400/200');
+      var img = a.image || ('data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E' + a.id + '/400/200');
       return '<a href="' + articleUrl(a.id) + '" style="display:flex;gap:12px;padding:14px 16px;text-decoration:none;color:inherit;border-bottom:1px solid #edf2f7;transition:background .15s" onmouseover="this.style.background=\'#f2f7ff\'" onmouseout="this.style.background=\'\'">'
-        + '<img src="' + img + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/200/120\'" style="width:98px;height:78px;object-fit:cover;border-radius:14px;flex-shrink:0;box-shadow:0 6px 18px rgba(15,23,42,.08)">'
+        + '<img src="' + img + '" alt="" onerror="this.src=\'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E'" style="width:98px;height:78px;object-fit:cover;border-radius:14px;flex-shrink:0;box-shadow:0 6px 18px rgba(15,23,42,.08)">'
         + '<div style="min-width:0;flex:1">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:800;color:#2255a4;letter-spacing:.06em;text-transform:uppercase">' + a.section + '</span><span style="font-size:10px;color:#94a3b8">' + relTime(a.date) + '</span></div>'
         + '<div class="vocab-zone" style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + a.title + '</div>'
@@ -2087,8 +2087,8 @@ function attachHeroInteractions(heroEl) {
 function buildArticleRowHTML(a) {
   var levelColors = {Starter:'background:#f3e8ff;color:#6b21a8',Beginner:'background:#e8f5e9;color:#2e7d32',Intermediate:'background:#fff8e1;color:#f57f17',Advanced:'background:#fce4ec;color:#c62828'};
   var lvlStyle = levelColors[a.level] || 'background:#f0f4ff;color:#1a3a6b';
-  var aImg = a.image || ('https://picsum.photos/seed/' + a.id + '/400/220');
-  var fallback = 'https://picsum.photos/seed/' + a.id + 'x/400/220';
+  var aImg = a.image || ('data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E' + a.id + '/400/220');
+  var fallback = 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E' + a.id + 'x/400/220';
   var aBody = (a.body || '').replace(/<[^>]*>/g, '').slice(0, 90);
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;display:block;margin-bottom:20px;">'
     + '<div class="article-row">'
@@ -2102,8 +2102,8 @@ function buildArticleRowHTML(a) {
 }
 
 function buildHeroHTML(featured, rest) {
-  var fallback = 'https://picsum.photos/seed/fallback/900/500';
-  var img = featured.image || ('https://picsum.photos/seed/' + featured.id + '/900/500');
+  var fallback = 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E';
+  var img = featured.image || ('data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E' + featured.id + '/900/500');
   var body = (featured.body || '').replace(/<[^>]*>/g, '').slice(0, 120);
   return '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;">'
     + '<div class="hero-main">'
@@ -2254,7 +2254,7 @@ function renderAllList(listEl, articles) {
     var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : lvl === 'Starter' ? 'lvl-s' : 'lvl-b';
     var cat = (a.section || '').toLowerCase();
     var img = a.image
-      ? '<img class="nc-img" src="' + a.image + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/600/400\'">'
+      ? '<img class="nc-img" src="' + a.image + '" alt="" loading="lazy" onerror="this.src=\'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E'">'
       : '<div class="nc-img nc-img-fallback"></div>';
     var dateStr = a.date ? new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
     return '<div class="nc nc-overlay" data-section="' + escapeHtml(cat) + '" data-level="' + escapeHtml(lvl) + '" onclick="location.href=\'' + articleUrl(a.id) + '\'">'
@@ -2286,16 +2286,16 @@ var _KH_REPORTERS_LS_KEY  = 'kh_reporters_cache';
 // Default reporter data (matches DEF_CHAR_REPORTERS in admin).
 // Always available — no Supabase needed for basic display.
 var _KH_DEFAULT_REPORTERS_LIST = [
-  { id:'cr1',  name:'박서진', role:'사회부 기자',         image:'https://picsum.photos/seed/cr1/200/200',  profilePage:'', color:'#2563eb' },
-  { id:'cr2',  name:'김지원', role:'국제부 특파원',       image:'https://picsum.photos/seed/cr2/200/200',  profilePage:'', color:'#7c3aed' },
-  { id:'cr3',  name:'이민준', role:'경제부 에디터',       image:'https://picsum.photos/seed/cr3/200/200',  profilePage:'', color:'#059669' },
-  { id:'cr4',  name:'최유나', role:'문화부 기자',         image:'https://picsum.photos/seed/cr4/200/200',  profilePage:'', color:'#db2777' },
-  { id:'cr5',  name:'정우성', role:'정치부 선임기자',     image:'https://picsum.photos/seed/cr5/200/200',  profilePage:'', color:'#dc2626' },
-  { id:'cr6',  name:'한소희', role:'뷰티·트래블 에디터', image:'https://picsum.photos/seed/cr6/200/200',  profilePage:'', color:'#0891b2' },
-  { id:'cr7',  name:'오지훈', role:'스포츠부 기자',       image:'https://picsum.photos/seed/cr7/200/200',  profilePage:'', color:'#ea580c' },
-  { id:'cr8',  name:'신지은', role:'사회·환경 전문기자', image:'https://picsum.photos/seed/cr8/200/200',  profilePage:'', color:'#16a34a' },
-  { id:'cr9',  name:'강태양', role:'국제·외교 기자',      image:'https://picsum.photos/seed/cr9/200/200',  profilePage:'', color:'#4338ca' },
-  { id:'cr10', name:'류하늘', role:'문화·라이프 기자',    image:'https://picsum.photos/seed/cr10/200/200', profilePage:'', color:'#c026d3' },
+  { id:'cr1',  name:'박서진', role:'사회부 기자',         image:'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E',  profilePage:'', color:'#2563eb' },
+  { id:'cr2',  name:'김지원', role:'국제부 특파원',       image:'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E',  profilePage:'', color:'#7c3aed' },
+  { id:'cr3',  name:'이민준', role:'경제부 에디터',       image:'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E',  profilePage:'', color:'#059669' },
+  { id:'cr4',  name:'최유나', role:'문화부 기자',         image:'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E',  profilePage:'', color:'#db2777' },
+  { id:'cr5',  name:'정우성', role:'정치부 선임기자',     image:'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E',  profilePage:'', color:'#dc2626' },
+  { id:'cr6',  name:'한소희', role:'뷰티·트래블 에디터', image:'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E',  profilePage:'', color:'#0891b2' },
+  { id:'cr7',  name:'오지훈', role:'스포츠부 기자',       image:'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E',  profilePage:'', color:'#ea580c' },
+  { id:'cr8',  name:'신지은', role:'사회·환경 전문기자', image:'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E',  profilePage:'', color:'#16a34a' },
+  { id:'cr9',  name:'강태양', role:'국제·외교 기자',      image:'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E',  profilePage:'', color:'#4338ca' },
+  { id:'cr10', name:'류하늘', role:'문화·라이프 기자',    image:'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E', profilePage:'', color:'#c026d3' },
 ];
 
 // Seed KH_REPORTERS from defaults immediately (synchronous, always works)
@@ -2428,7 +2428,7 @@ function renderArticlePage() {
     return;
   }
 
-  var img = a.image || ('https://picsum.photos/seed/' + a.id + '/1200/700');
+  var img = a.image || ('data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E' + a.id + '/1200/700');
   var dateStr = a.date ? new Date(a.date).toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'}) : '';
 
   wrap.innerHTML =
@@ -2465,7 +2465,7 @@ function renderArticlePage() {
 
     // 히어로 이미지
     + '<div class="art-hero-img">'
-    + '<img src="' + img + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/1200/700\'">'
+    + '<img src="' + img + '" alt="" onerror="this.src=\'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E'">'
     + '</div>'
 
     // 4탭: Read / Grammar / Vocab / Quiz
@@ -2551,7 +2551,7 @@ function renderArticlePage() {
           + related.map(function(r){
               var levelColors = {'Starter':'#f3e8ff;color:#6b21a8','Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'};
               return '<a href="' + articleUrl(r.id) + '" class="art-related-card">'
-                + '<img src="' + (r.image || 'https://picsum.photos/seed/'+r.id+'/300/200') + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/300/200\'">'
+                + '<img src="' + (r.image || 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E'+r.id+'/300/200') + '" alt="" onerror="this.src=\'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e2e8f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E'">'
                 + '<div class="art-related-info">'
                 + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'
                 + '<span style="font-size:10px;font-weight:800;text-transform:uppercase;color:#2255a4">' + r.section + '</span>'
