@@ -502,8 +502,68 @@ body.kh-neon-on .room-shop-card { background:rgba(9,18,33,.8) !important; border
 body.kh-neon-on .room-shop-name { color:#e4f9ff !important; }
 body.kh-neon-on .room-shop-price { color:#8ffcff !important; }
 
+/* ── #8 sparkle + float animations ──────────────── */
+@keyframes roomSparkle {
+  0%, 100% { filter:drop-shadow(0 0 3px rgba(255,255,180,.3)); }
+  50% { filter:drop-shadow(0 0 10px rgba(255,255,200,.7)) drop-shadow(0 0 20px rgba(255,220,100,.3)); }
+}
+@keyframes roomFloat {
+  0%, 100% { transform:translateY(0); }
+  50% { transform:translateY(-6px); }
+}
+.room-placed-item[data-effect="sparkle"] .room-placed-sprite { animation:roomSparkle 2s ease-in-out infinite; }
+.room-placed-item[data-effect="float"] .room-placed-sprite { animation:roomFloat 3s ease-in-out infinite; }
+
+/* ── #9 Edit mode visual ────────────────────────── */
+.room-editing-active { outline:3px solid rgba(250,204,21,.5) !important; outline-offset:-3px; }
+.room-editing-active::after {
+  content:'EDITING'; position:absolute; top:6px; left:50%; transform:translateX(-50%);
+  font-size:9px; font-weight:900; color:#facc15; background:rgba(0,0,0,.6);
+  padding:2px 8px; border-radius:999px; z-index:20; pointer-events:none; letter-spacing:.05em;
+}
+
+/* ── #12 Item selection bounce ──────────────────── */
+@keyframes selectBounce {
+  0% { transform:scale(1); }
+  30% { transform:scale(1.12); }
+  60% { transform:scale(.96); }
+  100% { transform:scale(1); }
+}
+.room-placed-item.room-selected { animation:selectBounce .3s ease-out; }
+
+/* ── #19 Section spacing + dividers ─────────────── */
+.mp-section { margin-bottom:20px; padding:18px 16px; border-radius:16px; background:#fff; border:1px solid #e8eef5; }
+body.kh-neon-on .mp-section { background:rgba(9,18,33,.7) !important; border-color:rgba(255,255,255,.06) !important; }
+.mp-section h3 { font-size:15px; font-weight:900; margin:0 0 12px; padding-bottom:8px; border-bottom:1px solid #edf2f7; }
+body.kh-neon-on .mp-section h3 { border-bottom-color:rgba(255,255,255,.06) !important; }
+
+/* ── #18 Profile hero enhanced ──────────────────── */
+.mypage-hero { position:relative; overflow:hidden; }
+.mypage-hero::before {
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(circle at 20% 40%, rgba(37,99,235,.15), transparent 50%),
+              radial-gradient(circle at 80% 60%, rgba(124,58,237,.1), transparent 50%);
+}
+
+/* ── #20 Dark mode text fixes for mypage ────────── */
+body.kh-neon-on .mypage-name,
+body.kh-neon-on .mp-section h3,
+body.kh-neon-on #mp-nyang-balance,
+body.kh-neon-on .room-shop-header h3 { color:#e2e8f0 !important; }
+body.kh-neon-on .mypage-email,
+body.kh-neon-on .mp-member-since { color:rgba(255,255,255,.5) !important; }
+body.kh-neon-on .stat-card .stat-value { color:#e2e8f0 !important; }
+body.kh-neon-on .stat-card .stat-label { color:rgba(255,255,255,.45) !important; }
+body.kh-neon-on .tier-item { background:rgba(15,23,42,.6) !important; border-color:rgba(255,255,255,.06) !important; }
+body.kh-neon-on .tier-name { color:#e2e8f0 !important; }
+body.kh-neon-on .tier-xp-label { color:rgba(255,255,255,.45) !important; }
+.tier-remain { font-size:10px; color:#2563eb; font-weight:700; margin-top:3px; }
+body.kh-neon-on .tier-remain { color:#8ffcff !important; }
+body.kh-neon-on .danger-zone { background:rgba(30,10,10,.5) !important; border-color:rgba(239,68,68,.2) !important; }
+body.kh-neon-on .danger-zone h3,
+body.kh-neon-on .danger-zone p { color:rgba(255,255,255,.6) !important; }
+
 @media (max-width:480px) {
-  #miniroom-container { height:300px !important; }
   .room-shop-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; padding:14px 16px 18px; }
 }
 </style>
@@ -563,8 +623,13 @@ body.kh-neon-on .room-shop-price { color:#8ffcff !important; }
         <button onclick="nudgeSelectedItemScale(10)" style="width:28px;height:28px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-weight:800">+</button>
         <span id="room-size-value" style="font-size:12px;font-weight:800;color:#0b1626;min-width:42px;text-align:left">100%</span>
       </div>
-      <button id="room-remove-btn" onclick="removeSelectedRoomItem()" style="margin-top:8px;padding:5px 14px;border:none;border-radius:8px;background:#ef4444;color:#fff;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;display:none">Remove from Room</button>
-      <div style="font-size:10px;color:#94a3b8;margin-top:6px">아이템 클릭 → 크기 조절 또는 방에서 빼기</div>
+      <div style="display:flex;gap:6px;justify-content:center;margin-top:8px;flex-wrap:wrap">
+        <button onclick="flipSelectedItem()" style="padding:4px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;cursor:pointer;font-size:11px;font-weight:700" title="Flip">↔ Flip</button>
+        <button onclick="moveSelectedLayer(1)" style="padding:4px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;cursor:pointer;font-size:11px;font-weight:700" title="Bring forward">↑ Front</button>
+        <button onclick="moveSelectedLayer(-1)" style="padding:4px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;cursor:pointer;font-size:11px;font-weight:700" title="Send back">↓ Back</button>
+        <button id="room-remove-btn" onclick="removeSelectedRoomItem()" style="padding:4px 10px;border:none;border-radius:8px;background:#ef4444;color:#fff;font-size:11px;font-weight:800;cursor:pointer;display:none">Remove</button>
+      </div>
+      <div style="font-size:10px;color:#94a3b8;margin-top:6px">클릭 → 크기/반전/앞뒤 조절 · 꾹 누르기 → 빼기</div>
     </div>
   </div>
 
@@ -804,11 +869,14 @@ function renderTierGrid(xp) {
     var current = tier.label === t.label;
     var pct = (t.max > t.min) ? Math.min(100, Math.round(Math.max(0, xp - t.min) / (t.max - t.min) * 100)) : 100;
     var bgColor = active ? (TIER_COLORS[t.cls] + '18') : '#f4f6fa';
+    var remain = (t.max > t.min && active && t.max !== Infinity) ? (t.max - xp) : 0;
+    var remainStr = remain > 0 ? '<div class="tier-remain">' + remain.toLocaleString() + ' XP left</div>' : '';
     return '<div class="tier-item' + (current ? ' current' : '') + '">'
       + '<div class="tier-icon" style="background:' + bgColor + '">' + tierMark(t.cls, 18, !active) + '</div>'
       + '<div class="tier-label" style="' + (active ? '' : 'color:#94a3b8') + '">' + t.label + '</div>'
       + '<div class="tier-xp">' + t.min.toLocaleString() + (t.max !== t.min ? '+' : '') + '</div>'
       + (active && t.max !== t.min ? '<div class="tier-bar"><div class="tier-bar-fill" style="width:' + pct + '%"></div></div>' : '')
+      + remainStr
       + '</div>';
   }).join('');
 }
@@ -848,8 +916,11 @@ function _drawXPLog() {
     }
     var sign = amt >= 0 ? '+' : '';
     var color = amt >= 0 ? '' : 'color:#ef4444';
+    var reasonIcons = { article_read:'📰', word_save:'💾', word_saved:'💾', quiz_complete:'✅', conv_quiz_complete:'✅', fill_complete:'📝', daily_mission_complete:'🎯', streak_day:'🔥', streak:'🔥' };
+    var rKey = (row.reason||'').toLowerCase().replace(/\s+/g,'_');
+    var rIcon = reasonIcons[rKey] || '✨';
     return '<div class="xp-log-row">'
-      + '<div><div class="xp-log-reason">' + (row.reason || 'Activity') + '</div><div class="xp-log-date">' + ds + '</div></div>'
+      + '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">' + rIcon + '</span><div><div class="xp-log-reason">' + (row.reason || 'Activity') + '</div><div class="xp-log-date">' + ds + '</div></div></div>'
       + '<div class="xp-log-amount" style="' + color + '">' + sign + amt + ' XP</div>'
       + '</div>';
   }).join('');
@@ -1468,8 +1539,10 @@ function toggleRoomEdit() {
   _roomEditing = !_roomEditing;
   var btn = document.getElementById('room-edit-btn');
   var saveBtn = document.getElementById('room-save-btn');
+  var container = document.getElementById('miniroom-container');
   if (btn) btn.textContent = _roomEditing ? 'Editing...' : 'Edit Room';
   if (saveBtn) saveBtn.style.display = _roomEditing ? '' : 'none';
+  if (container) container.classList.toggle('room-editing-active', _roomEditing);
   var sizeControls = document.getElementById('room-size-controls');
   if (sizeControls) sizeControls.style.display = _roomEditing ? '' : 'none';
 
@@ -1571,6 +1644,32 @@ function roomSelectItem(e) {
   updateRoomSizeUI();
   var rmBtn = document.getElementById('room-remove-btn');
   if (rmBtn) rmBtn.style.display = '';
+}
+
+function flipSelectedItem() {
+  if (!_selectedRoomItemId) return;
+  var el = document.querySelector('.room-placed-item.room-selected .room-placed-sprite');
+  if (!el) return;
+  var current = el.dataset.flipped === '1';
+  el.dataset.flipped = current ? '0' : '1';
+  var scale = el.style.transform.match(/scale\(([^)]+)\)/);
+  var s = scale ? scale[1] : '1';
+  el.style.transform = 'scale(' + (current ? '' : '-') + s.replace('-','') + ',' + s.replace('-','') + ')';
+}
+
+function moveSelectedLayer(dir) {
+  if (!_selectedRoomItemId) return;
+  var layout = getRoomLayout();
+  var idx = -1;
+  for (var i = 0; i < layout.length; i++) { if (layout[i].id === _selectedRoomItemId) { idx = i; break; } }
+  if (idx < 0) return;
+  var newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= layout.length) return;
+  var tmp = layout[idx];
+  layout[idx] = layout[newIdx];
+  layout[newIdx] = tmp;
+  setRoomLayout(layout);
+  renderRoomItems();
 }
 
 function removeSelectedRoomItem() {
