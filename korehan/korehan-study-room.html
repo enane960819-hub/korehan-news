@@ -2344,7 +2344,7 @@ function checkWordOrder() {
       } else {
         // No step 3 → mark done and allow close
         markStageDone('picture');
-        nav.innerHTML = '<button class="sr-activity-btn" onclick="closePictureDescription()">Done ✓</button>';
+        nav.innerHTML = '<button class="sr-activity-btn" onclick="returnToActivities(closePictureDescription)">Done ✓ 다른 활동하기</button>';
       }
     }
   } else {
@@ -3487,6 +3487,16 @@ function copyHelper(btn) {
 // ═══════════════════════════════════════════════════════════════
 // UNIFIED WRITING TEMP-SAVE & SUBMIT SYSTEM
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// ACTIVITY COMPLETION — return to activity selector
+// ═══════════════════════════════════════════════════════════════
+function returnToActivities(closeFunc) {
+  if (typeof closeFunc === 'function') closeFunc();
+  refreshSubmitBanner();
+  var cards = document.querySelector('.sr-activity-cards');
+  if (cards) cards.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
 function _writingDraftKey() {
   return 'kh_drafts_' + (supaUser ? supaUser.id : 'g') + '_' + kstDateKey();
 }
@@ -3707,7 +3717,7 @@ async function submitWriting() {
     var doneEl = document.getElementById('hero-topic-done');
     if (doneEl) doneEl.style.display = 'flex';
     showToast('✅ Submitted! Han will send feedback within 24 hours.');
-    closeWritingModal();
+    returnToActivities(closeWritingModal);
 
   } catch(e) {
     if (e && e.code === '23505') {
@@ -4937,7 +4947,7 @@ function _pdRenderStep3(item) {
     markStageDone('picture');
     body.innerHTML = '<div style="text-align:center;padding:24px;background:rgba(34,197,94,.1);border-radius:12px;color:#86efac;font-weight:800;font-size:16px">🎉 모든 단계 완료!</div>';
     var nav = document.getElementById('pd-nav');
-    if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="closePictureDescription()">Done ✓</button>';
+    if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="returnToActivities(closePictureDescription)">Done ✓ 다른 활동하기</button>';
     return;
   }
   // Shuffle for display
@@ -4964,7 +4974,7 @@ function checkIncorrectSentence(btn, isWrong) {
     result.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac">✅ Correct! 이 문장에 오류가 있어요.</div>';
     markStageDone('picture');
     var nav = document.getElementById('pd-nav');
-    if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="closePictureDescription()">Done ✓</button>';
+    if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="returnToActivities(closePictureDescription)">Done ✓ 다른 활동하기</button>';
   } else {
     btn.style.cssText += ';background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.4);color:#fbbf24';
     result.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,.1);border-radius:8px;color:#fca5a5">❌ 틀렸어요. 다른 문장을 선택해 보세요.</div>';
@@ -5917,8 +5927,8 @@ function finishBeginner() {
     + '</div>';
 
   document.getElementById('bm-footer').innerHTML =
-    '<button class="bm-btn-back" onclick="closeBModal()">Close</button>'
-    + '<button class="bm-btn-next" onclick="retryBeginner()">Try Again</button>';
+    '<button class="bm-btn-back" onclick="retryBeginner()">🔄 Try Again</button>'
+    + '<button class="bm-btn-next" onclick="returnToActivities(closeBModal)">📚 다른 활동하기</button>';
 
   // XP 적립
   if (typeof addXP === 'function') addXP(30);
@@ -6888,7 +6898,8 @@ function checkGFBuild() {
   markStageDone('grammar');
   if (fb) fb.innerHTML = '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 14px">'
     + '<div style="font-size:14px;font-weight:800;color:#15803d;margin-bottom:4px">✅ 문법 연습 완료!</div>'
-    + '<div style="font-size:12px;color:#166534">' + filled.length + '개 문장이 로컬에 저장되었어요. Grammar Focus 미션 달성!</div>'
+    + '<div style="font-size:12px;color:#166534;margin-bottom:10px">' + filled.length + '개 문장 저장됨 · 상단 제출 버튼으로 피드백 받기</div>'
+    + '<button onclick="returnToActivities(closeGrammarFocusModal)" style="width:100%;padding:10px;background:linear-gradient(135deg,#0d1b2e,#2255a4);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">📚 다른 활동하기</button>'
     + '</div>';
 }
 
@@ -6996,7 +7007,7 @@ function _dctRenderArrange() {
       + '<div style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:8px">Dictation 완료!</div>'
       + '<div style="font-size:13px;color:#64748b">모든 문장 배열을 완료했습니다.</div>'
       + '</div>';
-    foot.innerHTML = '<button class="btn btn-g" onclick="closeDictationModal();markStageDone(\'sentence\')">Done ✓</button>';
+    foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done ✓ 다른 활동하기</button>';
     return;
   }
   var s = sents[_dctWOIdx];
@@ -7440,8 +7451,9 @@ function asMarkDone() {
     +'<div style="font-size:28px;margin-bottom:8px">✅</div>'
     +'<div style="font-size:16px;font-weight:800;margin-bottom:6px">기사 학습 완료!</div>'
     +'<div style="font-size:13px;color:rgba(255,255,255,.75);margin-bottom:16px">이 기사의 모든 학습 단계를 마쳤습니다.</div>'
-    +'<button class="btn btn-g" onclick="asSubmitWork()" style="min-width:200px;margin:0 auto;display:block">📤 학습 저장하기</button>'
-    +'<div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.45)">자정 전에 제출하지 않으면 자동으로 제출됩니다.</div>'
+    +'<button class="btn btn-g" onclick="asSubmitWork()" style="min-width:200px;margin:0 auto;display:block;margin-bottom:8px">📤 학습 저장하기</button>'
+    +'<button class="btn" onclick="returnToActivities(closeArticleStudy)" style="min-width:200px;margin:0 auto;display:block;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:12px">📚 다른 활동하기</button>'
+    +'<div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.45)">상단 제출 버튼으로 한번에 제출할 수 있어요</div>'
     +'</div>';
   _asSetNav('none','none','none');
   _asRefreshSubmitBanner();
