@@ -388,7 +388,7 @@ body.kh-neon-on .mypage-hero {
   box-shadow:0 0 0 2px rgba(250,204,21,.35);
 }
 .room-placed-sprite {
-  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  position:absolute; inset:0;
   background-repeat:no-repeat;
   background-position:center;
   background-size:contain;
@@ -1399,8 +1399,6 @@ function isItemPlaced(id) {
 function renderRoomItems() {
   var container = document.getElementById('miniroom-items');
   if (!container) return;
-  var roomContainer = document.getElementById('miniroom-container');
-  var cW = (roomContainer && roomContainer.offsetWidth > 0) ? roomContainer.offsetWidth : 400;
   var layout = getRoomLayout();
   container.innerHTML = '';
 
@@ -1418,26 +1416,24 @@ function renderRoomItems() {
     var topPct  = (placed.y / 360) * 100;
     // Visual size in px, proportional to actual container width
     // Visual size: proportional to container, with mobile boost
-    var ratio = cW / 400;
-    if (ratio < 1.2) ratio = ratio * 1.35; // Boost items on small screens
-    var visualPx = Math.max(60, Math.round(base * ratio));
+    // Size as % of container — identical ratio on PC and mobile
+    var sizePct = (base / 400) * 100;
     div.setAttribute('style',
-      'left:' + leftPct + '%;top:' + topPct + '%;width:40px;height:40px;'
+      'left:' + leftPct + '%;top:' + topPct + '%;width:' + sizePct + '%;height:' + sizePct + '%;'
       + 'cursor:' + (_roomEditing ? 'grab' : 'default') + ';'
-      + (_roomEditing ? 'outline:2px dashed rgba(255,255,255,.3);outline-offset:4px;' : '')
+      + (_roomEditing ? 'outline:2px dashed rgba(255,255,255,.3);' : '')
     );
     div.title = def.name;
     div.dataset.scale = String(scale);
 
-    // Sprite: actual visual size in px, centered on hitbox
     var sprite = document.createElement('div');
     sprite.className = 'room-placed-sprite';
     var flipped = !!placed.flipped;
     var sx = flipped ? -1 : 1;
     var s = scale / 100;
     sprite.setAttribute('style', roomItemBgStyle(def)
-      + 'width:' + visualPx + 'px;height:' + visualPx + 'px;'
-      + 'transform:translate(-50%,-50%) scale(' + (sx * s) + ',' + s + ');');
+      + 'width:100%;height:100%;position:absolute;inset:0;'
+      + 'transform:scale(' + (sx * s) + ',' + s + ');');
     if (flipped) sprite.dataset.flipped = '1';
     div.appendChild(sprite);
 
@@ -1674,7 +1670,7 @@ function flipSelectedItem() {
   var parentEl = el.parentElement;
   var s = parentEl ? (Number(parentEl.dataset.scale || 100) / 100) : 1;
   var sx = nowFlipped ? -1 : 1;
-  el.style.transform = 'translate(-50%,-50%) scale(' + (sx * s) + ',' + s + ')';
+  el.style.transform = 'scale(' + (sx * s) + ',' + s + ')';
   // Persist
   _syncDOMToLayout();
 }
