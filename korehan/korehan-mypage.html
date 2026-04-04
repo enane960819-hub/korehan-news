@@ -462,15 +462,7 @@ body.kh-neon-on .mypage-hero {
 }
 .room-light-switch:active { transform:scale(.9); }
 
-/* ── Lights-off overlay ──────────────────────────── */
-.room-lights-off #miniroom-items::before {
-  content:''; position:absolute; inset:0; z-index:1;
-  background:rgba(0,0,0,.82);
-  pointer-events:none;
-  transition:background .4s;
-}
-
-/* ── Glow effects on items ───────────────────────── */
+/* ── Glow effects on items (lights on) ───────────── */
 .room-placed-item[data-effect="glow_neon"] .room-placed-sprite {
   filter:drop-shadow(0 0 6px rgba(0,200,255,.4)) drop-shadow(0 0 14px rgba(0,200,255,.2));
 }
@@ -478,25 +470,26 @@ body.kh-neon-on .mypage-hero {
   filter:drop-shadow(0 0 8px rgba(255,180,50,.35)) drop-shadow(0 0 18px rgba(255,160,30,.15));
 }
 
-/* Lights-off: glow items shine through the darkness */
-.room-lights-off .room-placed-item { position:relative; z-index:2; opacity:.12; transition:opacity .4s; }
+/* ── Lights-off mode ─────────────────────────────── */
+/* All items: dim silhouettes */
+.room-lights-off .room-placed-item {
+  opacity:.1; transition:opacity .4s;
+}
+/* Glow items: fully visible + enhanced glow */
 .room-lights-off .room-placed-item[data-effect="glow_neon"] {
-  opacity:1 !important; z-index:3;
-  filter:drop-shadow(0 0 18px rgba(0,200,255,.7)) drop-shadow(0 0 40px rgba(0,200,255,.3));
+  opacity:1 !important;
 }
 .room-lights-off .room-placed-item[data-effect="glow_neon"] .room-placed-sprite {
-  filter:drop-shadow(0 0 12px rgba(0,200,255,.8)) drop-shadow(0 0 30px rgba(0,200,255,.5)) brightness(1.2);
+  filter:drop-shadow(0 0 14px rgba(0,200,255,.9)) drop-shadow(0 0 36px rgba(0,200,255,.5)) drop-shadow(0 0 60px rgba(0,200,255,.25)) brightness(1.3);
 }
 .room-lights-off .room-placed-item[data-effect="glow_warm"] {
-  opacity:1 !important; z-index:3;
-  filter:drop-shadow(0 0 16px rgba(255,170,40,.7)) drop-shadow(0 0 36px rgba(255,140,20,.3));
+  opacity:1 !important;
 }
 .room-lights-off .room-placed-item[data-effect="glow_warm"] .room-placed-sprite {
-  filter:drop-shadow(0 0 10px rgba(255,180,50,.8)) drop-shadow(0 0 26px rgba(255,150,30,.4)) brightness(1.15);
+  filter:drop-shadow(0 0 12px rgba(255,180,50,.9)) drop-shadow(0 0 30px rgba(255,150,30,.5)) drop-shadow(0 0 50px rgba(255,130,20,.2)) brightness(1.2);
 }
-
-/* Light switch itself should always be visible */
-.room-lights-off .room-light-switch { z-index:5; }
+/* Switch always visible */
+.room-lights-off .room-light-switch { opacity:1 !important; }
 
 /* Neon overrides for mini room */
 body.kh-neon-on #miniroom-container { border-color:rgba(0,255,214,.2) !important; }
