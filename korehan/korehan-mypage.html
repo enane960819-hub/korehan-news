@@ -1354,6 +1354,19 @@ function renderRoomItems() {
     div.addEventListener('mousedown', roomDragStart);
     div.addEventListener('touchstart', roomDragStart, {passive:false});
     div.addEventListener('click', roomSelectItem);
+    // Long-press to remove (mobile-friendly)
+    (function(el, id) {
+      var _lp = null;
+      el.addEventListener('touchstart', function() {
+        _lp = setTimeout(function() {
+          if (_roomEditing && confirm('Remove "' + (def.name||id) + '" from room?')) {
+            removeRoomItem(id);
+          }
+        }, 600);
+      }, {passive:true});
+      el.addEventListener('touchend', function() { clearTimeout(_lp); });
+      el.addEventListener('touchmove', function() { clearTimeout(_lp); });
+    })(div, placed.id);
 
     if (_selectedRoomItemId && _selectedRoomItemId === placed.id) {
       div.classList.add('room-selected');
