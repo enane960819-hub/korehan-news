@@ -1232,8 +1232,8 @@ async function dbGetOwnedAndGifts() {
     out.owned = ownedRes.data || [];
   } catch(e) {}
   try {
-    var giftRes = await sb.from('reporter_gift_history').select('reporter_id,item_id,quantity,nyang_spent,gifted_at,shop_items(name)').eq('user_id', supaUser.id).order('gifted_at', { ascending:false }).limit(30);
-    out.gifts = giftRes.data || [];
+    var giftRes = await sb.from('reporter_gift_history').select('*').eq('user_id', supaUser.id).order('gifted_at', { ascending:false }).limit(30);
+    if (!giftRes.error) out.gifts = giftRes.data || [];
   } catch(e) {}
   return out;
 }
@@ -1398,7 +1398,7 @@ function renderRoomItems() {
   var container = document.getElementById('miniroom-items');
   if (!container) return;
   var roomContainer = document.getElementById('miniroom-container');
-  var cW = roomContainer ? roomContainer.offsetWidth : 400;
+  var cW = (roomContainer && roomContainer.offsetWidth > 0) ? roomContainer.offsetWidth : 400;
   var layout = getRoomLayout();
   container.innerHTML = '';
 
