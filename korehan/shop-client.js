@@ -152,7 +152,7 @@
       var oneTimeOwned = !!ownedQty && !it.is_repeatable;
       var disabledByFallback = usingFallback ? 'disabled title="DB에 저장된 아이템이 없어 구매할 수 없습니다"' : '';
       return '<article class="card">'
-        + '<div class="thumb" style="background-image:url(\'' + (it.image_url || 'https://picsum.photos/seed/shop-'+it.id+'/640/360') + '\')"></div>'
+        + '<div class="thumb"><img src="' + (it.image_url || 'https://picsum.photos/seed/shop-'+it.id+'/640/360') + '" alt="' + (it.name||'') + '"></div>'
         + '<div class="body">'
         + '<div class="title">' + (it.name || 'Item') + '</div>'
         + '<div class="desc">' + (it.description || '') + '</div>'
@@ -238,7 +238,7 @@
     grid.innerHTML = ROOM_ITEMS_SHOP.map(function(it){
       var isOwned = owned.indexOf(it.id) >= 0;
       return '<article class="card">'
-        + '<div class="thumb" style="display:flex;align-items:center;justify-content:center;background:#f8fafc"><img src="'+it.img+'" alt="'+it.name+'" style="max-width:80px;max-height:80px;object-fit:contain"></div>'
+        + '<div class="thumb"><img src="'+it.img+'" alt="'+it.name+'"></div>'
         + '<div class="body">'
         + '<div class="title">'+it.name+'</div>'
         + '<div class="desc">Room decoration item</div>'

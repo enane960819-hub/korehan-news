@@ -7,22 +7,26 @@
 <style>
 body{margin:0;background:#f3f7fc;font-family:Inter,Pretendard,sans-serif;color:#0f172a}
 .wrap{max-width:1160px;margin:0 auto;padding:22px 16px 56px}
-.hero{background:linear-gradient(135deg,#0b1626,#1d4ed8);border-radius:18px;color:#fff;padding:22px}
-.hero p{margin:6px 0 0;color:rgba(255,255,255,.82)}
-.balance{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.bal{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);padding:8px 12px;border-radius:999px;font-size:13px;font-weight:800}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:16px}
-.card{background:#fff;border:1px solid #dbe7f3;border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
-.thumb{height:126px;background:#e2e8f0;background-size:cover;background-position:center}
-.body{padding:12px 12px 14px;display:flex;flex-direction:column;gap:8px;flex:1}
-.title{font-size:16px;font-weight:800}.desc{font-size:13px;color:#64748b;line-height:1.45;min-height:38px}
-.price{display:flex;gap:8px;flex-wrap:wrap}.pill{font-size:12px;font-weight:800;border-radius:999px;padding:5px 9px}
+.hero{background:linear-gradient(135deg,#0b1626,#1d4ed8);border-radius:14px;color:#fff;padding:16px 18px}
+.hero h1{margin:0;font-size:20px}
+.hero p{margin:4px 0 0;color:rgba(255,255,255,.82);font-size:13px}
+.balance{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.bal{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);padding:5px 10px;border-radius:999px;font-size:12px;font-weight:800}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:12px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;padding:10px}
+.thumb{height:72px;display:flex;align-items:center;justify-content:center;background:#f8fafc;border-radius:8px;margin-bottom:8px}
+.thumb img{max-width:56px;max-height:56px;object-fit:contain}
+.body{display:flex;flex-direction:column;gap:4px;flex:1}
+.title{font-size:13px;font-weight:800}.desc{font-size:11px;color:#64748b;line-height:1.35}
+.price{display:flex;gap:6px;flex-wrap:wrap}.pill{font-size:11px;font-weight:800;border-radius:999px;padding:3px 7px}
 .coin{background:#ecfeff;color:#0f766e}.cash{background:#f5f3ff;color:#6d28d9}
-.btns{display:flex;gap:8px;flex-wrap:wrap}.btn{border:none;border-radius:10px;padding:8px 11px;font-size:12px;font-weight:800;cursor:pointer}
+.btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}.btn{border:none;border-radius:8px;padding:5px 9px;font-size:11px;font-weight:800;cursor:pointer}
 .btn.coin{background:#0f766e;color:#fff}.btn.cash{background:#6d28d9;color:#fff}.btn:disabled{opacity:.45;cursor:not-allowed}
-.owned{font-size:12px;color:#16a34a;font-weight:800}
+.owned{font-size:11px;color:#16a34a;font-weight:800}
 .inv{margin-top:18px;background:#fff;border:1px solid #dbe7f3;border-radius:14px;padding:14px}
-.inv h3{margin:0 0 8px}.inv-item{padding:8px 0;border-bottom:1px solid #edf2f7;font-size:13px}
+.inv h3{margin:0 0 8px;font-size:15px}.inv-item{padding:6px 0;border-bottom:1px solid #edf2f7;font-size:12px}
 .inv-item:last-child{border-bottom:none}
+.sec-title{margin:20px 0 6px;font-size:16px;font-weight:800}
+.sec-sub{font-size:12px;color:#64748b;margin:0 0 4px}
 </style>
 </head>
 <body>
@@ -37,8 +41,8 @@ body{margin:0;background:#f3f7fc;font-family:Inter,Pretendard,sans-serif;color:#
     </div>
   </section>
   <section class="grid" id="shop-grid"></section>
-  <h2 style="margin:24px 0 10px;font-size:18px;font-weight:800">🏠 Room Items</h2>
-  <p style="font-size:13px;color:#64748b;margin:0 0 14px">Decorate your room on My Page! Buy items with nyang.</p>
+  <h2 class="sec-title">🏠 Room Items</h2>
+  <p class="sec-sub">Decorate your room on My Page! Buy items with nyang.</p>
   <section class="grid" id="room-shop-grid"></section>
   <section class="inv"><h3>Your Inventory</h3><div id="shop-inventory">Loading…</div></section>
 </main>
