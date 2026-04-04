@@ -376,9 +376,9 @@ body.kh-neon-on .mypage-hero {
 /* ═══ Mini Room ═══ */
 #miniroom-container { user-select:none; -webkit-user-select:none; }
 .room-placed-item {
-  position:absolute; image-rendering:pixelated; background-repeat:no-repeat;
+  position:absolute; background-repeat:no-repeat;
   transition: outline .15s, box-shadow .15s;
-  z-index:1;
+  z-index:1; overflow:visible;
 }
 .room-placed-item.room-dragging { z-index:10; opacity:.85; }
 .room-placed-item.room-selected {
@@ -386,8 +386,7 @@ body.kh-neon-on .mypage-hero {
   box-shadow:0 0 0 2px rgba(250,204,21,.35);
 }
 .room-placed-sprite {
-  position:absolute; inset:0;
-  image-rendering:pixelated;
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
   background-repeat:no-repeat;
   background-position:center;
   background-size:contain;
@@ -1407,25 +1406,29 @@ function renderRoomItems() {
     div.dataset.itemId = placed.id;
     if (def.effect && def.effect !== 'none') div.dataset.effect = def.effect;
     var scale = Math.max(70, Math.min(170, Number(placed.scale || 100)));
-    var base = def.size || 50;
-    // Convert to percentages of 400x360 base for responsive sizing
+    var base = def.size || 100;
+    // Hitbox: small fixed anchor point (10% of room)
     var leftPct = (placed.x / 400) * 100;
     var topPct  = (placed.y / 360) * 100;
-    var wPct = (base / 400) * 100;
-    var hPct = (base / 360) * 100;
     div.setAttribute('style',
-      'left:' + leftPct + '%;top:' + topPct + '%;width:' + wPct + '%;height:' + hPct + '%;'
+      'left:' + leftPct + '%;top:' + topPct + '%;width:10%;height:11%;'
       + 'cursor:' + (_roomEditing ? 'grab' : 'default') + ';'
-      + (_roomEditing ? 'outline:2px dashed rgba(255,255,255,.3);' : '')
+      + (_roomEditing ? 'outline:2px dashed rgba(255,255,255,.3);outline-offset:4px;' : '')
     );
     div.title = def.name;
     div.dataset.scale = String(scale);
 
+    // Sprite: actual visual size, centered on hitbox
     var sprite = document.createElement('div');
     sprite.className = 'room-placed-sprite';
     var flipped = !!placed.flipped;
-    var sx = flipped ? -(scale/100) : (scale/100);
-    sprite.setAttribute('style', roomItemBgStyle(def) + 'transform:scale(' + sx + ',' + (scale/100) + ');');
+    var visualW = (base / 400) * 100;
+    var visualH = (base / 360) * 100;
+    var sx = flipped ? -1 : 1;
+    var s = scale / 100;
+    sprite.setAttribute('style', roomItemBgStyle(def)
+      + 'width:' + (visualW * 10) + '%;height:' + (visualH * 9.09) + '%;'
+      + 'transform:translate(-50%,-50%) scale(' + (sx * s) + ',' + s + ');');
     if (flipped) sprite.dataset.flipped = '1';
     div.appendChild(sprite);
 
@@ -1526,11 +1529,13 @@ function saveRoomLayout() {
       x = Math.round((curLeft / cW) * 400);
       y = Math.round((curTop / cH) * 360);
     }
+    var spriteEl = el.querySelector('.room-placed-sprite');
     items.push({
       id: el.dataset.itemId,
       x: Math.max(0, Math.min(380, x)),
       y: Math.max(0, Math.min(340, y)),
-      scale: Math.max(70, Math.min(170, Number(saved.scale || 100)))
+      scale: Math.max(70, Math.min(170, Number(saved.scale || 100))),
+      flipped: !!(spriteEl && spriteEl.dataset.flipped === '1')
     });
   });
   setRoomLayout(items);
@@ -1575,6 +1580,7 @@ function roomDragStart(e) {
 
   var container = document.getElementById('miniroom-container');
   var rect = container.getBoundingClientRect();
+  var elRect = el.getBoundingClientRect();
   var clientX, clientY;
   if (e.touches) {
     clientX = e.touches[0].clientX;
@@ -1583,8 +1589,8 @@ function roomDragStart(e) {
     clientX = e.clientX;
     clientY = e.clientY;
   }
-  _dragOffset.x = clientX - rect.left - parseInt(el.style.left || 0);
-  _dragOffset.y = clientY - rect.top - parseInt(el.style.top || 0);
+  _dragOffset.x = clientX - elRect.left;
+  _dragOffset.y = clientY - elRect.top;
 
   document.addEventListener('mousemove', roomDragMove);
   document.addEventListener('mouseup', roomDragEnd);
@@ -1608,11 +1614,9 @@ function roomDragMove(e) {
   var x = clientX - rect.left - _dragOffset.x;
   var y = clientY - rect.top - _dragOffset.y;
 
-  // Clamp within container
-  var itemW = _dragItem.offsetWidth || 50;
-  var itemH = _dragItem.offsetHeight || 50;
-  x = Math.max(0, Math.min(rect.width - itemW, x));
-  y = Math.max(0, Math.min(rect.height - itemH, y));
+  // Clamp within container (0% to 90%)
+  x = Math.max(0, Math.min(rect.width * 0.9, x));
+  y = Math.max(0, Math.min(rect.height * 0.9, y));
 
   _dragItem.style.left = ((x / rect.width) * 100) + '%';
   _dragItem.style.top = ((y / rect.height) * 100) + '%';
