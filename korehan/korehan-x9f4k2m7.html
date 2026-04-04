@@ -5522,12 +5522,24 @@ function srTopicsFormHTML() {
     + '</label>'
     + '<textarea id="srt-helpers" rows="8" style="width:100%;font-family:monospace;font-size:12px" placeholder="저는 음식을 좋아해요|I like food"></textarea>'
     + '<div id="srt-helpers-msg" style="font-size:11px;color:#475569;margin-top:3px"></div></div>'
-    + '<div class="fg"><label>Dictation 예문 <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|en (3개)</span></label>'
-    + '<textarea id="srt-dictation-sentences" rows="3" style="width:100%;font-family:monospace;font-size:12px" placeholder="한국 음식은 맛있어요|Korean food is delicious"></textarea></div>'
-    + '<div class="fg"><label>Dictation 질문 <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = question_ko|answer_ko|hint_en (3개)</span></label>'
-    + '<textarea id="srt-dictation-questions" rows="3" style="width:100%;font-family:monospace;font-size:12px" placeholder="좋아하는 음식이 있어요?|네, 비빔밥을 좋아해요|Yes, I like bibimbap"></textarea></div>'
-    + '<div class="fg"><label>📝 Topic Writing 문장 <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|en|alternative1|alternative2|explanation (최소 3개). alternative와 explanation은 선택사항.</span></label>'
+    + '<div class="fg"><label style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
+    + '<span>Dictation 예문 <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|en (3개)</span></span>'
+    + '<button type="button" onclick="srGenDictationSentences()" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 예문 생성</button>'
+    + '</label>'
+    + '<textarea id="srt-dictation-sentences" rows="3" style="width:100%;font-family:monospace;font-size:12px" placeholder="한국 음식은 맛있어요|Korean food is delicious"></textarea>'
+    + '<div id="srt-dictation-sentences-msg" style="font-size:11px;color:#475569;margin-top:3px"></div></div>'
+    + '<div class="fg"><label style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
+    + '<span>Dictation 질문 <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = question_ko|answer_ko|hint_en (3개)</span></span>'
+    + '<button type="button" onclick="srGenDictationQuestions()" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 질문 생성</button>'
+    + '</label>'
+    + '<textarea id="srt-dictation-questions" rows="3" style="width:100%;font-family:monospace;font-size:12px" placeholder="좋아하는 음식이 있어요?|네, 비빔밥을 좋아해요|Yes, I like bibimbap"></textarea>'
+    + '<div id="srt-dictation-questions-msg" style="font-size:11px;color:#475569;margin-top:3px"></div></div>'
+    + '<div class="fg"><label style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
+    + '<span>📝 Topic Writing 문장 <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|en|alternative1|alternative2|explanation (최소 3개). alternative와 explanation은 선택사항.</span></span>'
+    + '<button type="button" onclick="srGenTopicWriting()" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 문장 생성</button>'
+    + '</label>'
     + '<textarea id="srt-tw-sentences" rows="5" style="width:100%;font-family:monospace;font-size:12px" placeholder="저는 한국 음식을 좋아해요|I like Korean food\n한국 음식은 정말 맛있어요|Korean food is really delicious"></textarea>'
+    + '<div id="srt-tw-msg" style="font-size:11px;color:#475569;margin-top:3px"></div>'
     + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">이 문장들이 학습자의 "문장 만들기" 단계에 사용됩니다. AI 재생성 시 자동 생성됩니다.</div></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
     + '<button class="btn btn-g" onclick="srSaveDailyContent()">💾 Save (Draft)</button>'
@@ -5869,6 +5881,105 @@ async function srGenHelpers() {
     if (parsed.helpers && parsed.helpers.length) {
       if (ta) ta.value = parsed.helpers.map(function(h){ return (h.ko||'')+'|'+(h.en||''); }).join('\n');
       if (msgEl) msgEl.textContent = '✅ 도움말 ' + parsed.helpers.length + '개 생성됨. 수정 후 저장하세요.';
+    } else { if (msgEl) msgEl.textContent = '생성 실패 — 다시 시도하세요.'; }
+  } catch(err) { if (msgEl) msgEl.textContent = 'Error: ' + (err.message||err); }
+}
+
+// ── Dictation 예문만 독립 생성 ─────────────────────────────
+async function srGenDictationSentences() {
+  var msgEl = document.getElementById('srt-dictation-sentences-msg');
+  var ta    = document.getElementById('srt-dictation-sentences');
+  var ko    = (document.getElementById('srt-topic-ko').value || '').trim();
+  var en    = (document.getElementById('srt-topic-en').value || '').trim();
+  var level = (document.getElementById('srt-level').value || 'Beginner').trim();
+  if (!ko && !en) { if (msgEl) msgEl.textContent = '주제를 먼저 입력하세요.'; return; }
+  if (msgEl) msgEl.textContent = '🤖 예문 생성 중…';
+  var levelGuide = {
+    Starter:'3-5 word sentences only. Ultra-simple vocabulary. ~이에요/예요 endings.',
+    Beginner:'5-8 word sentences. Present tense ~아요/어요. Everyday vocabulary.',
+    Intermediate:'8-12 word sentences. Past tense, conjunctions. Topic-specific terms.',
+    Advanced:'12+ word sentences. Complex grammar, formal style. Abstract vocabulary.'
+  };
+  var prompt = 'You are a Korean dictation teacher.\nTopic: "' + (ko||en) + '" | Level: ' + level + '\n'
+    + 'Sentence guideline: ' + levelGuide[level] + '\n\n'
+    + 'Create exactly 3 Korean sentences suitable for dictation practice about this topic.\n'
+    + 'Each sentence should use different vocabulary and grammar patterns.\n'
+    + 'Return ONLY valid JSON (no markdown):\n'
+    + '{"dictation_sentences":[{"ko":"Korean sentence","en":"English translation"}]}';
+  try {
+    var resp = await callClaude({ feature:'study-room-dictation-sentences-admin', model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content:prompt}] });
+    var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
+    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+    var parsed = JSON.parse(raw.slice(s, e+1));
+    if (parsed.dictation_sentences && parsed.dictation_sentences.length) {
+      if (ta) ta.value = parsed.dictation_sentences.map(function(d){ return (d.ko||'')+'|'+(d.en||''); }).join('\n');
+      if (msgEl) msgEl.textContent = '✅ 예문 ' + parsed.dictation_sentences.length + '개 생성됨. 수정 후 저장하세요.';
+    } else { if (msgEl) msgEl.textContent = '생성 실패 — 다시 시도하세요.'; }
+  } catch(err) { if (msgEl) msgEl.textContent = 'Error: ' + (err.message||err); }
+}
+
+// ── Dictation 질문만 독립 생성 ─────────────────────────────
+async function srGenDictationQuestions() {
+  var msgEl = document.getElementById('srt-dictation-questions-msg');
+  var ta    = document.getElementById('srt-dictation-questions');
+  var ko    = (document.getElementById('srt-topic-ko').value || '').trim();
+  var en    = (document.getElementById('srt-topic-en').value || '').trim();
+  var level = (document.getElementById('srt-level').value || 'Beginner').trim();
+  if (!ko && !en) { if (msgEl) msgEl.textContent = '주제를 먼저 입력하세요.'; return; }
+  if (msgEl) msgEl.textContent = '🤖 질문 생성 중…';
+  var levelGuide = {
+    Starter:'Ultra-simple Q&A. 3-5 word answers. ~이에요/예요, ~있어요/없어요 only.',
+    Beginner:'Simple Q&A. 5-8 word answers. Present tense ~아요/어요.',
+    Intermediate:'Moderate Q&A. 8-12 word answers. Past tense, conjunctions.',
+    Advanced:'Complex Q&A. 12+ word answers. Formal style, advanced grammar.'
+  };
+  var prompt = 'You are a Korean dictation teacher.\nTopic: "' + (ko||en) + '" | Level: ' + level + '\n'
+    + 'Guideline: ' + levelGuide[level] + '\n\n'
+    + 'Create exactly 3 Korean dictation questions. Each has a question, an answer, and an English hint.\n'
+    + 'The question should prompt the student to write/speak a response about the topic.\n'
+    + 'Return ONLY valid JSON (no markdown):\n'
+    + '{"dictation_questions":[{"question_ko":"Korean question","answer_ko":"Korean answer","hint_en":"English hint"}]}';
+  try {
+    var resp = await callClaude({ feature:'study-room-dictation-questions-admin', model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content:prompt}] });
+    var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
+    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+    var parsed = JSON.parse(raw.slice(s, e+1));
+    if (parsed.dictation_questions && parsed.dictation_questions.length) {
+      if (ta) ta.value = parsed.dictation_questions.map(function(d){ return (d.question_ko||'')+'|'+(d.answer_ko||'')+'|'+(d.hint_en||''); }).join('\n');
+      if (msgEl) msgEl.textContent = '✅ 질문 ' + parsed.dictation_questions.length + '개 생성됨. 수정 후 저장하세요.';
+    } else { if (msgEl) msgEl.textContent = '생성 실패 — 다시 시도하세요.'; }
+  } catch(err) { if (msgEl) msgEl.textContent = 'Error: ' + (err.message||err); }
+}
+
+// ── Topic Writing 문장만 독립 생성 ─────────────────────────
+async function srGenTopicWriting() {
+  var msgEl = document.getElementById('srt-tw-msg');
+  var ta    = document.getElementById('srt-tw-sentences');
+  var ko    = (document.getElementById('srt-topic-ko').value || '').trim();
+  var en    = (document.getElementById('srt-topic-en').value || '').trim();
+  var level = (document.getElementById('srt-level').value || 'Beginner').trim();
+  if (!ko && !en) { if (msgEl) msgEl.textContent = '주제를 먼저 입력하세요.'; return; }
+  if (msgEl) msgEl.textContent = '🤖 문장 생성 중…';
+  var levelGuide = {
+    Starter:'3-5 word sentences only. Ultra-simple. ~이에요/예요 endings.',
+    Beginner:'5-8 word sentences. Present tense ~아요/어요. Basic particles.',
+    Intermediate:'8-12 word sentences. Conjunctions, modals, past tense.',
+    Advanced:'12+ word sentences. Complex structures, formal style.'
+  };
+  var prompt = 'You are a Korean writing teacher.\nTopic: "' + (ko||en) + '" | Level: ' + level + '\n'
+    + 'Sentence guideline: ' + levelGuide[level] + '\n\n'
+    + 'Create exactly 3 Korean sentences a student should be able to write about this topic.\n'
+    + 'Each sentence should demonstrate different grammar and vocabulary.\n'
+    + 'Return ONLY valid JSON (no markdown):\n'
+    + '{"topic_writing_sentences":[{"ko":"Korean sentence","en":"English translation"}]}';
+  try {
+    var resp = await callClaude({ feature:'study-room-topic-writing-admin', model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content:prompt}] });
+    var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
+    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+    var parsed = JSON.parse(raw.slice(s, e+1));
+    if (parsed.topic_writing_sentences && parsed.topic_writing_sentences.length) {
+      if (ta) ta.value = parsed.topic_writing_sentences.map(function(s){ return (s.ko||'')+'|'+(s.en||''); }).join('\n');
+      if (msgEl) msgEl.textContent = '✅ 문장 ' + parsed.topic_writing_sentences.length + '개 생성됨. 수정 후 저장하세요.';
     } else { if (msgEl) msgEl.textContent = '생성 실패 — 다시 시도하세요.'; }
   } catch(err) { if (msgEl) msgEl.textContent = 'Error: ' + (err.message||err); }
 }
