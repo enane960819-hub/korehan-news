@@ -563,7 +563,8 @@ body.kh-neon-on .room-shop-price { color:#8ffcff !important; }
         <button onclick="nudgeSelectedItemScale(10)" style="width:28px;height:28px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-weight:800">+</button>
         <span id="room-size-value" style="font-size:12px;font-weight:800;color:#0b1626;min-width:42px;text-align:left">100%</span>
       </div>
-      <div style="font-size:10px;color:#94a3b8;margin-top:6px">Edit Room 모드에서 아이템을 클릭 후 조절하세요.</div>
+      <button id="room-remove-btn" onclick="removeSelectedRoomItem()" style="margin-top:8px;padding:5px 14px;border:none;border-radius:8px;background:#ef4444;color:#fff;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;display:none">Remove from Room</button>
+      <div style="font-size:10px;color:#94a3b8;margin-top:6px">아이템 클릭 → 크기 조절 또는 방에서 빼기</div>
     </div>
   </div>
 
@@ -1449,6 +1450,8 @@ function toggleRoomEdit() {
   if (!_roomEditing) {
     _selectedRoomItemId = null;
     updateRoomSizeUI();
+    var rmBtn = document.getElementById('room-remove-btn');
+    if (rmBtn) rmBtn.style.display = 'none';
   }
 }
 
@@ -1535,6 +1538,15 @@ function roomSelectItem(e) {
     el.classList.toggle('room-selected', el.dataset.itemId === itemId);
   });
   updateRoomSizeUI();
+  var rmBtn = document.getElementById('room-remove-btn');
+  if (rmBtn) rmBtn.style.display = '';
+}
+
+function removeSelectedRoomItem() {
+  if (!_selectedRoomItemId) return;
+  removeRoomItem(_selectedRoomItemId);
+  var rmBtn = document.getElementById('room-remove-btn');
+  if (rmBtn) rmBtn.style.display = 'none';
 }
 
 function updateRoomSizeUI() {
