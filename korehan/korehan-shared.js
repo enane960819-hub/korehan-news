@@ -2,22 +2,38 @@
    KoreHan News — Shared JS
    ============================================================ */
 
-// ── Neon/dark mode: apply IMMEDIATELY to prevent flash of light mode ──
+// ── Neon/dark mode + auth flash prevention: apply IMMEDIATELY ──
 (function() {
   try {
+    // Neon theme
     var neon = localStorage.getItem('korehan_neon_theme');
     if (neon === '1') {
-      // Apply before body renders — works because script is in <head> or before </body>
       if (document.body) {
         document.body.classList.add('kh-neon-on');
       } else {
-        // Body not yet parsed — use documentElement and add class as soon as body exists
         document.documentElement.classList.add('kh-neon-on');
         document.addEventListener('DOMContentLoaded', function() {
           document.documentElement.classList.remove('kh-neon-on');
           if (document.body) document.body.classList.add('kh-neon-on');
         }, { once: true });
       }
+    }
+    // Hide Sign In / Join buttons if user has a stored session
+    // Supabase stores session as sb-{ref}-auth-token in localStorage
+    var hasSession = false;
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0) {
+        var v = localStorage.getItem(k);
+        if (v && v.indexOf('"access_token"') > 0) { hasSession = true; break; }
+      }
+    }
+    if (hasSession) {
+      // Inject a style that hides auth buttons until JS confirms state
+      var s = document.createElement('style');
+      s.id = 'kh-auth-flash-guard';
+      s.textContent = '#topbar-signin-btn,#topbar-join-btn,.kh-hbtn-out[onclick*="openAuth"]{display:none!important}';
+      (document.head || document.documentElement).appendChild(s);
     }
   } catch(e) {}
 })();
@@ -936,6 +952,9 @@ async function checkSession() {
 
 // UI 업데이트
 function updateAuthUI() {
+  // Remove flash guard now that we know the real auth state
+  var guard = document.getElementById('kh-auth-flash-guard');
+  if (guard) guard.remove();
   var signinBtn  = document.getElementById('topbar-signin-btn');
   var adminBtn   = document.getElementById('topbar-admin-btn');
   var authMenu   = document.getElementById('topbar-auth-menu');
