@@ -1306,7 +1306,9 @@ async function loadRoomItemsFromDB() {
     var res = await sb.from('room_items').select('*').eq('active', true).order('sort_order');
     if (!res.error && res.data && res.data.length) {
       ROOM_ITEMS = res.data.map(function(r) {
-        return { id: r.id, name: r.name, price: r.price_nyang, img: r.image_url, size: r.base_size, effect: r.effect || 'none', thumbnail: r.thumbnail_url || '', category: r.category || 'deco' };
+        var sz = r.base_size || 60;
+        if (sz < 100) sz = sz * 2; // Auto-double if DB hasn't been migrated yet
+        return { id: r.id, name: r.name, price: r.price_nyang, img: r.image_url, size: sz, effect: r.effect || 'none', thumbnail: r.thumbnail_url || '', category: r.category || 'deco' };
       });
       _roomItemsLoaded = true;
     }
@@ -1659,25 +1661,21 @@ function flipSelectedItem() {
   if (!_selectedRoomItemId) return;
   var el = document.querySelector('.room-placed-item.room-selected .room-placed-sprite');
   if (!el) return;
-  var flipped = el.dataset.flipped === '1';
-  el.dataset.flipped = flipped ? '0' : '1';
-  // Get current scale from parent's data
+  var wasFlipped = el.dataset.flipped === '1';
+  var nowFlipped = !wasFlipped;
+  el.dataset.flipped = nowFlipped ? '1' : '0';
   var parentEl = el.parentElement;
   var s = parentEl ? (Number(parentEl.dataset.scale || 100) / 100) : 1;
-  var sx = flipped ? s : -s;  // toggle
-  el.style.transform = 'scale(' + sx + ',' + s + ')';
-  // Persist flip state in layout
-  var layout = getRoomLayout();
-  layout = layout.map(function(p) {
-    if (p.id !== _selectedRoomItemId) return p;
-    p.flipped = !flipped;
-    return p;
-  });
-  setRoomLayout(layout);
+  var sx = nowFlipped ? -1 : 1;
+  el.style.transform = 'translate(-50%,-50%) scale(' + (sx * s) + ',' + s + ')';
+  // Persist
+  _syncDOMToLayout();
 }
 
 function moveSelectedLayer(dir) {
   if (!_selectedRoomItemId) return;
+  // Save current DOM positions to layout first (user may have dragged without saving)
+  _syncDOMToLayout();
   var layout = getRoomLayout();
   var idx = -1;
   for (var i = 0; i < layout.length; i++) { if (layout[i].id === _selectedRoomItemId) { idx = i; break; } }
@@ -1689,6 +1687,35 @@ function moveSelectedLayer(dir) {
   layout[newIdx] = tmp;
   setRoomLayout(layout);
   renderRoomItems();
+}
+
+// Sync current DOM positions back to layout without triggering save/toast
+function _syncDOMToLayout() {
+  var container = document.getElementById('miniroom-container');
+  var cW = container ? container.offsetWidth : 400;
+  var cH = container ? container.offsetHeight : 360;
+  var layout = getRoomLayout();
+  document.querySelectorAll('.room-placed-item').forEach(function(el) {
+    var id = el.dataset.itemId;
+    var curLeft = parseFloat(el.style.left) || 0;
+    var curTop  = parseFloat(el.style.top) || 0;
+    var x = (String(el.style.left).indexOf('%') >= 0)
+      ? Math.round((curLeft / 100) * 400)
+      : Math.round((curLeft / cW) * 400);
+    var y = (String(el.style.top).indexOf('%') >= 0)
+      ? Math.round((curTop / 100) * 360)
+      : Math.round((curTop / cH) * 360);
+    var spriteEl = el.querySelector('.room-placed-sprite');
+    for (var i = 0; i < layout.length; i++) {
+      if (layout[i].id === id) {
+        layout[i].x = Math.max(0, Math.min(380, x));
+        layout[i].y = Math.max(0, Math.min(340, y));
+        if (spriteEl) layout[i].flipped = spriteEl.dataset.flipped === '1';
+        break;
+      }
+    }
+  });
+  localStorage.setItem(K_ROOM_LAYOUT, JSON.stringify(layout));
 }
 
 function removeSelectedRoomItem() {
