@@ -6784,17 +6784,26 @@ function srPictureFormHTML() {
     + '<div id="srp-img-preview" style="margin-top:8px"></div>'
     + '<div style="font-size:12px;color:#94a3b8;margin-top:4px">또는 직접 URL 입력:</div>'
     + '<input id="srp-image" placeholder="https://..." style="margin-top:4px"></div>'
-    + '<div class="fg"><label>Step 1 — 어휘 (줄마다: 한국어|English)</label>'
+    + '<div class="fg"><label style="display:flex;align-items:center;justify-content:space-between"><span>Step 1 — 어휘 (줄마다: 한국어|English)</span>'
+    + '<button type="button" onclick="srAIGenPictureField(\'vocab\')" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 어휘 생성</button></label>'
     + '<textarea id="srp-vocab" style="min-height:90px;font-family:monospace" placeholder="한강|Han River&#10;자전거|Bicycle&#10;공원|Park"></textarea>'
-    + '<div style="font-size:11px;color:#94a3b8;margin-top:3px">각 줄 형식: 한국어|English (탭하면 뜻 공개)</div></div>'
-    + '<div class="fg"><label>Step 2 — 어절 순서맞추기 (줄바꿈으로 구분, 입력 순서 = 정답)</label>'
-    + '<textarea id="srp-words" style="min-height:80px;font-family:monospace" placeholder="저는\n오늘\n한강에\n갔어요"></textarea></div>'
-    + '<div class="fg"><label>Step 3 — 정상 문장들 (줄마다 1개)</label>'
-    + '<textarea id="srp-correct-sents" style="min-height:70px" placeholder="저는 한강 공원에 가요.&#10;우리는 자전거를 타요.&#10;공원에 사람이 많아요."></textarea></div>'
-    + '<div class="fg"><label>Step 3 — 틀린 문장 (1개만)</label>'
-    + '<input id="srp-wrong-sent" placeholder="저는 공원에 자전거 타요 갔어요."></div>'
-    + '<div class="fg"><label>추가 커스텀 질문 (선택)</label><input id="srp-custom" placeholder="이 사진에서 가장 인상적인 것은 무엇인가요?"></div>'
-    + '<div class="fg"><label>Sample Answer</label><textarea id="srp-sample" style="min-height:80px"></textarea></div>'
+    + '<div id="srp-vocab-msg" style="font-size:11px;color:#475569;margin-top:3px">각 줄 형식: 한국어|English (탭하면 뜻 공개)</div></div>'
+    + '<div class="fg"><label style="display:flex;align-items:center;justify-content:space-between"><span>Step 2 — 어절 순서맞추기 (줄바꿈으로 구분, 입력 순서 = 정답)</span>'
+    + '<button type="button" onclick="srAIGenPictureField(\'words\')" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 어절 생성</button></label>'
+    + '<textarea id="srp-words" style="min-height:80px;font-family:monospace" placeholder="저는\n오늘\n한강에\n갔어요"></textarea>'
+    + '<div id="srp-words-msg" style="font-size:11px;color:#475569;margin-top:3px"></div></div>'
+    + '<div class="fg"><label style="display:flex;align-items:center;justify-content:space-between"><span>Step 3 — 정상 문장들 + 틀린 문장</span>'
+    + '<button type="button" onclick="srAIGenPictureField(\'sentences\')" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 문장 생성</button></label>'
+    + '<textarea id="srp-correct-sents" style="min-height:70px" placeholder="저는 한강 공원에 가요.&#10;우리는 자전거를 타요.&#10;공원에 사람이 많아요."></textarea>'
+    + '<div style="margin-top:6px"><label>틀린 문장 (1개)</label></div>'
+    + '<input id="srp-wrong-sent" placeholder="저는 공원에 자전거 타요 갔어요.">'
+    + '<div id="srp-sents-msg" style="font-size:11px;color:#475569;margin-top:3px"></div></div>'
+    + '<div class="fg"><label style="display:flex;align-items:center;justify-content:space-between"><span>추가 커스텀 질문 + Sample Answer</span>'
+    + '<button type="button" onclick="srAIGenPictureField(\'question\')" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 질문 생성</button></label>'
+    + '<input id="srp-custom" placeholder="이 사진에서 가장 인상적인 것은 무엇인가요?" style="margin-bottom:6px">'
+    + '<label style="font-size:12px;font-weight:700;color:#445566">Sample Answer</label>'
+    + '<textarea id="srp-sample" style="min-height:80px"></textarea>'
+    + '<div id="srp-question-msg" style="font-size:11px;color:#475569;margin-top:3px"></div></div>'
     + '<div class="fg"><label>표시 날짜 (YYYY-MM-DD) — 해당 날짜에 이 문제가 표시됩니다</label>'
     + '<input id="srp-date" type="date" placeholder="2026-04-01"></div>'
     + '<div class="fg" style="display:flex;gap:8px;align-items:center">'
@@ -6954,6 +6963,53 @@ async function srAIGeneratePicture() {
     if (msgEl) msgEl.textContent = '✅ AI 생성 완료! 확인 후 Save 하세요.';
   } catch(err) {
     if (msgEl) msgEl.textContent = 'AI 생성 실패: ' + (err.message||err);
+  }
+}
+
+async function srAIGenPictureField(field) {
+  var promptKo = (document.getElementById('srp-prompt').value || '').trim();
+  if (!promptKo) { toast('프롬프트를 먼저 입력하세요.'); return; }
+  var msgEl = document.getElementById('srp-' + (field==='sentences'?'sents':field) + '-msg');
+  if (msgEl) msgEl.textContent = '🤖 생성 중…';
+
+  var prompts = {
+    vocab: 'You are a Korean teacher. Image: "' + promptKo + '"\n'
+      + 'Create 5 vocabulary words related to this image for beginner Korean learners.\n'
+      + 'Return ONLY JSON: {"vocab_items":[{"ko":"한국어","en":"English"}]}',
+    words: 'You are a Korean teacher. Image: "' + promptKo + '"\n'
+      + 'Create ONE Korean sentence (5-8 words) describing this image. Split it into individual 어절 (word units) in correct order.\n'
+      + 'Return ONLY JSON: {"word_order_words":["어절1","어절2","어절3"]}',
+    sentences: 'You are a Korean teacher. Image: "' + promptKo + '"\n'
+      + 'Create 3 correct Korean sentences and 1 grammatically wrong sentence about this image. The wrong sentence should have a word-order or grammar error (not spelling).\n'
+      + 'Return ONLY JSON: {"correct_sentences":["문장1","문장2","문장3"],"wrong_sentence":"틀린문장"}',
+    question: 'You are a Korean teacher. Image: "' + promptKo + '"\n'
+      + 'Create 1 open-ended Korean question about this image and a model answer (2-3 sentences, beginner level).\n'
+      + 'Return ONLY JSON: {"custom_prompt":"질문","sample_answer":"답변"}'
+  };
+
+  try {
+    var resp = await callClaude({ feature:'picture-field-'+field, model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content:prompts[field]}] });
+    var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
+    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+    var p = JSON.parse(raw.slice(s, e+1));
+
+    if (field === 'vocab' && p.vocab_items) {
+      document.getElementById('srp-vocab').value = p.vocab_items.map(function(v){ return (v.ko||'')+'|'+(v.en||''); }).join('\n');
+      if (msgEl) msgEl.textContent = '✅ 어휘 ' + p.vocab_items.length + '개 생성됨';
+    } else if (field === 'words' && p.word_order_words) {
+      document.getElementById('srp-words').value = p.word_order_words.join('\n');
+      if (msgEl) msgEl.textContent = '✅ 어절 ' + p.word_order_words.length + '개 생성됨';
+    } else if (field === 'sentences') {
+      if (p.correct_sentences) document.getElementById('srp-correct-sents').value = p.correct_sentences.join('\n');
+      if (p.wrong_sentence) document.getElementById('srp-wrong-sent').value = p.wrong_sentence;
+      if (msgEl) msgEl.textContent = '✅ 정상 ' + (p.correct_sentences||[]).length + '개 + 틀린 1개 생성됨';
+    } else if (field === 'question') {
+      if (p.custom_prompt) document.getElementById('srp-custom').value = p.custom_prompt;
+      if (p.sample_answer) document.getElementById('srp-sample').value = p.sample_answer;
+      if (msgEl) msgEl.textContent = '✅ 질문 + 답변 생성됨';
+    }
+  } catch(err) {
+    if (msgEl) msgEl.textContent = '실패: ' + (err.message||err);
   }
 }
 
