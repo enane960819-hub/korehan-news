@@ -5111,6 +5111,17 @@ document.addEventListener('DOMContentLoaded', async function() {
   var sectionsPromise = loadSections().catch(function(err){ console.warn('sections load failed', err); });
   var settingsPromise = loadAppSettings().catch(function(err){ console.warn('app settings load failed', err); });
 
+  // Pages that need article data
+  var needsArticles = isHomePage
+    || pageBase === 'korehan-all'
+    || pageBase === 'korehan-section'
+    || pageBase === 'korehan-korea'
+    || pageBase === 'korehan-society'
+    || pageBase === 'korehan-world'
+    || pageBase === 'korehan-culture'
+    || pageBase === 'korehan-opinion'
+    || pageBase === 'korehan-article';
+
   if (isHomePage) {
     // Render cached articles immediately so hero + swipe is interactive while fresh data loads
     if (getCachedArticles().length) {
@@ -5122,8 +5133,11 @@ document.addEventListener('DOMContentLoaded', async function() {
       settingsPromise
     ]);
     renderHomePage();
-  } else {
+  } else if (needsArticles) {
     await Promise.all([loadArticlesFromDB({ force: true }), sectionsPromise, settingsPromise]);
+  } else {
+    // Non-article pages (mypage, learn, shop, etc.) — just wait for session + settings
+    await Promise.all([sectionsPromise, settingsPromise]);
   }
 
   await Promise.allSettled([sessionPromise]);

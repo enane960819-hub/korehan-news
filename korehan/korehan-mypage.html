@@ -1397,6 +1397,8 @@ function isItemPlaced(id) {
 function renderRoomItems() {
   var container = document.getElementById('miniroom-items');
   if (!container) return;
+  var roomContainer = document.getElementById('miniroom-container');
+  var cW = roomContainer ? roomContainer.offsetWidth : 400;
   var layout = getRoomLayout();
   container.innerHTML = '';
 
@@ -1409,27 +1411,27 @@ function renderRoomItems() {
     if (def.effect && def.effect !== 'none') div.dataset.effect = def.effect;
     var scale = Math.max(70, Math.min(170, Number(placed.scale || 100)));
     var base = def.size || 100;
-    // Hitbox: small fixed anchor point (10% of room)
+    // Position as % of 400x360 base
     var leftPct = (placed.x / 400) * 100;
     var topPct  = (placed.y / 360) * 100;
+    // Visual size in px, proportional to actual container width
+    var visualPx = Math.round(base * (cW / 400));
     div.setAttribute('style',
-      'left:' + leftPct + '%;top:' + topPct + '%;width:10%;height:11%;'
+      'left:' + leftPct + '%;top:' + topPct + '%;width:40px;height:40px;'
       + 'cursor:' + (_roomEditing ? 'grab' : 'default') + ';'
       + (_roomEditing ? 'outline:2px dashed rgba(255,255,255,.3);outline-offset:4px;' : '')
     );
     div.title = def.name;
     div.dataset.scale = String(scale);
 
-    // Sprite: actual visual size, centered on hitbox
+    // Sprite: actual visual size in px, centered on hitbox
     var sprite = document.createElement('div');
     sprite.className = 'room-placed-sprite';
     var flipped = !!placed.flipped;
-    var visualW = (base / 400) * 100;
-    var visualH = (base / 360) * 100;
     var sx = flipped ? -1 : 1;
     var s = scale / 100;
     sprite.setAttribute('style', roomItemBgStyle(def)
-      + 'width:' + (visualW * 10) + '%;height:' + (visualH * 9.09) + '%;'
+      + 'width:' + visualPx + 'px;height:' + visualPx + 'px;'
       + 'transform:translate(-50%,-50%) scale(' + (sx * s) + ',' + s + ');');
     if (flipped) sprite.dataset.flipped = '1';
     div.appendChild(sprite);
