@@ -452,6 +452,52 @@ body.kh-neon-on .mypage-hero {
   border:1px solid rgba(255,255,255,.15); cursor:default;
 }
 
+/* ── Room light switch ───────────────────────────── */
+.room-light-switch {
+  position:absolute; top:8px; right:8px; z-index:10;
+  width:36px; height:52px; cursor:pointer;
+  background-size:contain; background-repeat:no-repeat; background-position:center;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.2));
+  transition:transform .1s;
+}
+.room-light-switch:active { transform:scale(.9); }
+
+/* ── Lights-off overlay ──────────────────────────── */
+.room-lights-off #miniroom-items::before {
+  content:''; position:absolute; inset:0; z-index:1;
+  background:rgba(0,0,0,.82);
+  pointer-events:none;
+  transition:background .4s;
+}
+
+/* ── Glow effects on items ───────────────────────── */
+.room-placed-item[data-effect="glow_neon"] .room-placed-sprite {
+  filter:drop-shadow(0 0 6px rgba(0,200,255,.4)) drop-shadow(0 0 14px rgba(0,200,255,.2));
+}
+.room-placed-item[data-effect="glow_warm"] .room-placed-sprite {
+  filter:drop-shadow(0 0 8px rgba(255,180,50,.35)) drop-shadow(0 0 18px rgba(255,160,30,.15));
+}
+
+/* Lights-off: glow items shine through the darkness */
+.room-lights-off .room-placed-item { position:relative; z-index:2; opacity:.12; transition:opacity .4s; }
+.room-lights-off .room-placed-item[data-effect="glow_neon"] {
+  opacity:1 !important; z-index:3;
+  filter:drop-shadow(0 0 18px rgba(0,200,255,.7)) drop-shadow(0 0 40px rgba(0,200,255,.3));
+}
+.room-lights-off .room-placed-item[data-effect="glow_neon"] .room-placed-sprite {
+  filter:drop-shadow(0 0 12px rgba(0,200,255,.8)) drop-shadow(0 0 30px rgba(0,200,255,.5)) brightness(1.2);
+}
+.room-lights-off .room-placed-item[data-effect="glow_warm"] {
+  opacity:1 !important; z-index:3;
+  filter:drop-shadow(0 0 16px rgba(255,170,40,.7)) drop-shadow(0 0 36px rgba(255,140,20,.3));
+}
+.room-lights-off .room-placed-item[data-effect="glow_warm"] .room-placed-sprite {
+  filter:drop-shadow(0 0 10px rgba(255,180,50,.8)) drop-shadow(0 0 26px rgba(255,150,30,.4)) brightness(1.15);
+}
+
+/* Light switch itself should always be visible */
+.room-lights-off .room-light-switch { z-index:5; }
+
 /* Neon overrides for mini room */
 body.kh-neon-on #miniroom-container { border-color:rgba(0,255,214,.2) !important; }
 body.kh-neon-on #mp-miniroom-section { background:rgba(9,18,33,.92) !important; border-color:rgba(0,255,214,.16) !important; }
@@ -506,6 +552,9 @@ body.kh-neon-on .room-shop-price { color:#8ffcff !important; }
     <h3>My Room</h3>
     <div id="miniroom-container" style="position:relative;width:100%;max-width:400px;height:360px;margin:0 auto;background:url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover no-repeat;border-radius:16px;border:1px solid rgba(0,0,0,.12);overflow:hidden;touch-action:none">
       <div id="miniroom-items"></div>
+      <div id="room-light-switch" class="room-light-switch" onclick="toggleRoomLights()"
+           style="background-image:url(assets/file_000000000f1c720bbe419c8601e6fb5e-removebg-preview.png)"
+           title="Toggle lights"></div>
     </div>
     <!-- Controls -->
     <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
@@ -1193,7 +1242,7 @@ async function loadRoomItemsFromDB() {
     var res = await sb.from('room_items').select('*').eq('active', true).order('sort_order');
     if (!res.error && res.data && res.data.length) {
       ROOM_ITEMS = res.data.map(function(r) {
-        return { id: r.id, name: r.name, price: r.price_nyang, img: r.image_url, size: r.base_size };
+        return { id: r.id, name: r.name, price: r.price_nyang, img: r.image_url, size: r.base_size, effect: r.effect || 'none', thumbnail: r.thumbnail_url || '' };
       });
       _roomItemsLoaded = true;
     }
@@ -1291,6 +1340,7 @@ function renderRoomItems() {
     var div = document.createElement('div');
     div.className = 'room-placed-item';
     div.dataset.itemId = placed.id;
+    if (def.effect && def.effect !== 'none') div.dataset.effect = def.effect;
     var scale = Math.max(70, Math.min(170, Number(placed.scale || 100)));
     var base = def.size || 50;
     div.setAttribute('style',
@@ -1344,6 +1394,30 @@ async function loadRoomLayout() {
 
   renderRoomItems();
   updateRoomSizeUI();
+}
+
+// ── Room lights toggle ──────────────────────────────────────
+var _roomLightsOff = false;
+function toggleRoomLights() {
+  _roomLightsOff = !_roomLightsOff;
+  var container = document.getElementById('miniroom-container');
+  var sw = document.getElementById('room-light-switch');
+  if (container) {
+    if (_roomLightsOff) {
+      container.classList.add('room-lights-off');
+      container.style.background = '#000 url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover no-repeat';
+      container.style.backgroundBlendMode = 'multiply';
+    } else {
+      container.classList.remove('room-lights-off');
+      container.style.background = 'url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover no-repeat';
+      container.style.backgroundBlendMode = '';
+    }
+  }
+  if (sw) {
+    sw.style.backgroundImage = _roomLightsOff
+      ? 'url(assets/file_000000001044720b91bcefa0c95a2231-removebg-preview.png)'
+      : 'url(assets/file_000000000f1c720bbe419c8601e6fb5e-removebg-preview.png)';
+  }
 }
 
 // ── Save room layout ─────────────────────────────────────────
