@@ -1560,14 +1560,14 @@ body { background: #0b1626 !important; }
   <span id="sr-done-picture" style="display:none"></span>
   <span id="sr-done-sentence" style="display:none"></span>
 
-  <!-- Submit-today banner (appears when there's unsaved work) -->
-  <div class="as-submit-today" id="as-submit-today-banner">
+  <!-- Unified submit-today banner (shows when there's unsaved writing work) -->
+  <div class="as-submit-today" id="submit-today-banner">
     <span style="font-size:18px">📤</span>
     <div style="flex:1">
-      <div style="font-size:12px;font-weight:800;color:#22c55e;margin-bottom:2px">You have unsaved study progress</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.6)">Auto-submits at midnight if not submitted</div>
+      <div style="font-size:12px;font-weight:800;color:#22c55e;margin-bottom:2px">오늘의 글쓰기가 있어요!</div>
+      <div id="submit-today-count" style="font-size:11px;color:rgba(255,255,255,.6)">제출하면 24시간 내 피드백을 받을 수 있어요</div>
     </div>
-    <button class="btn btn-g" onclick="asSubmitTodayAll()" style="font-size:12px;padding:6px 12px">Submit Today's Study</button>
+    <button class="btn btn-g" onclick="submitAllWritingsToday()" style="font-size:12px;padding:8px 16px;font-weight:800">📩 전부 제출하기</button>
   </div>
 
   <!-- ACTIVITY CARDS -->
@@ -3482,6 +3482,130 @@ function copyHelper(btn) {
   ta.value += (ta.value ? '\n' : '') + ko;
   document.getElementById('wc').textContent = ta.value.length + ' chars';
   showToast('📋 Copied!');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UNIFIED WRITING TEMP-SAVE & SUBMIT SYSTEM
+// ═══════════════════════════════════════════════════════════════
+function _writingDraftKey() {
+  return 'kh_drafts_' + (supaUser ? supaUser.id : 'g') + '_' + kstDateKey();
+}
+
+function saveDraft(type, data) {
+  // type: 'writing' | 'topic_writing' | 'grammar' | 'article_study'
+  // data: { text, topic_ko, topic_en, context }
+  try {
+    var all = JSON.parse(localStorage.getItem(_writingDraftKey()) || '{}');
+    if (!all[type]) all[type] = [];
+    // Deduplicate by context (e.g. grammar pattern name, article id)
+    var key = data.context_key || type;
+    all[type] = all[type].filter(function(d){ return (d.context_key||type) !== key; });
+    data.context_key = key;
+    data.savedAt = new Date().toISOString();
+    all[type].push(data);
+    localStorage.setItem(_writingDraftKey(), JSON.stringify(all));
+    refreshSubmitBanner();
+  } catch(e) { console.warn('saveDraft failed', e); }
+}
+
+function getAllDrafts() {
+  try {
+    return JSON.parse(localStorage.getItem(_writingDraftKey()) || '{}');
+  } catch(e) { return {}; }
+}
+
+function countDrafts() {
+  var all = getAllDrafts();
+  var count = 0;
+  Object.keys(all).forEach(function(type) { count += (all[type] || []).length; });
+  return count;
+}
+
+function refreshSubmitBanner() {
+  var banner = document.getElementById('submit-today-banner');
+  if (!banner) return;
+  var n = countDrafts();
+  if (n > 0) {
+    banner.classList.add('visible');
+    var countEl = document.getElementById('submit-today-count');
+    if (countEl) countEl.textContent = n + '개 글쓰기 임시저장됨 · 제출하면 24시간 내 피드백';
+  } else {
+    banner.classList.remove('visible');
+  }
+}
+
+async function submitAllWritingsToday() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  var sb = getSupa(); if (!sb) return;
+  var all = getAllDrafts();
+  var types = Object.keys(all);
+  if (!types.length) { showToast('제출할 글이 없습니다.'); return; }
+
+  var today = kstDateKey();
+  var submitted = 0; var errors = [];
+
+  for (var ti = 0; ti < types.length; ti++) {
+    var type = types[ti];
+    var items = all[type] || [];
+    for (var ii = 0; ii < items.length; ii++) {
+      var item = items[ii];
+      if (!item.text || !item.text.trim()) continue;
+      try {
+        var contentType = (type === 'topic_writing' || type === 'writing') ? 'writing' : type;
+        var rec = {
+          user_id: supaUser.id,
+          content_type: contentType,
+          content_id: item.content_id || null,
+          content_title: item.content_title || '',
+          study_date: today,
+          writing_text: item.text.trim(),
+          word_count: item.text.trim().length,
+          topic_ko: item.topic_ko || '',
+          topic_en: item.topic_en || '',
+          writing_mode: item.writing_mode || type,
+          context_data: JSON.stringify(item.context || {}),
+          level: _currentLevel || '',
+          status: 'submitted'
+        };
+        var r = await sb.from('user_submissions').upsert(rec, {onConflict:'user_id,content_type,study_date,content_id'}).select('id');
+        if (r.error) throw r.error;
+        submitted++;
+        // Trigger AI feedback
+        if (r.data && r.data[0] && r.data[0].id && item.text.trim().length > 5) {
+          _triggerUnifiedAIFeedback(r.data[0].id, item.text.trim(), item.topic_ko || item.content_title || type);
+        }
+      } catch(e) {
+        errors.push(type + ': ' + (e.message||e));
+      }
+    }
+  }
+
+  if (submitted > 0) {
+    // Clear drafts
+    localStorage.removeItem(_writingDraftKey());
+    refreshSubmitBanner();
+    showToast('✅ ' + submitted + '개 글쓰기 제출 완료! 24시간 내 피드백이 도착합니다.');
+    if (typeof awardXP === 'function') awardXP('writing_submit');
+  }
+  if (errors.length) console.warn('Submit errors:', errors);
+}
+
+async function _triggerUnifiedAIFeedback(submissionId, text, topicOrTitle) {
+  try {
+    var prompt = '당신은 한국어 작문 첨삭 선생님입니다.\n\n학생 작문:\n"""\n' + text + '\n"""\n주제: ' + topicOrTitle + '\n\n'
+      + '다음 형식으로 첨삭해주세요 (JSON):\n'
+      + '{"overall":"전반적인 평가 1-2문장","corrections":[{"original":"원문","corrected":"수정문","reason":"이유","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB"}],"encouragement":"격려 한마디"}\nJSON만 반환하세요.';
+    var data = await callClaude({ feature:'unified_writing_feedback', model:'claude-haiku-4-5-20251001', max_tokens:600, messages:[{role:'user',content:prompt}] });
+    var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('').replace(/```json|```/g,'').trim();
+    var parsed = JSON.parse(raw);
+    var sb = getSupa();
+    if (sb) {
+      await sb.from('user_submissions').update({
+        ai_feedback: parsed, ai_feedback_at: new Date().toISOString(),
+        ai_model: 'claude-haiku-4-5-20251001', status: 'ai_reviewed'
+      }).eq('id', submissionId);
+    }
+  } catch(e) { console.warn('AI feedback failed:', e); }
 }
 
 async function submitWriting() {
@@ -5741,6 +5865,17 @@ function finishBeginner() {
   _bm.writing = writeArea ? writeArea.value : '';
   var charCount = _bm.writing.trim().length;
 
+  // Save writing to unified drafts for batch submission
+  if (_bm.writing.trim().length > 2) {
+    saveDraft('topic_writing', {
+      text: _bm.writing.trim(),
+      topic_ko: (_todayTopic && _todayTopic.topic_ko) || '',
+      topic_en: (_todayTopic && _todayTopic.topic_en) || '',
+      writing_mode: 'topic_writing',
+      context_key: 'topic_writing_' + kstDateKey()
+    });
+  }
+
   // Score excludes writing — only word order + fill blanks count
   var totalScore = Math.round((_bm.score.order + _bm.score.blank) / 2);
   var emoji, headline, sub;
@@ -6736,11 +6871,20 @@ function checkGFBuild() {
   try {
     var draftKey = 'kh_gf_draft_' + (supaUser ? supaUser.id : 'g') + '_' + kstDateKey();
     var draft = { pattern: (_gfPattern && _gfPattern.name) || '', sentences: filled, savedAt: new Date().toISOString() };
-    var all = JSON.parse(localStorage.getItem(draftKey) || '[]');
-    all = all.filter(function(d){ return d.pattern !== draft.pattern; });
-    all.push(draft);
-    localStorage.setItem(draftKey, JSON.stringify(all));
+    var allGf = JSON.parse(localStorage.getItem(draftKey) || '[]');
+    allGf = allGf.filter(function(d){ return d.pattern !== draft.pattern; });
+    allGf.push(draft);
+    localStorage.setItem(draftKey, JSON.stringify(allGf));
   } catch(e) {}
+  // Save to unified drafts for batch submission
+  var patternName = (_gfPattern && _gfPattern.name) || 'grammar';
+  saveDraft('grammar', {
+    text: filled.join('\n'),
+    topic_ko: patternName,
+    writing_mode: 'grammar',
+    context_key: 'grammar_' + patternName,
+    context: { pattern: patternName, sentences: filled }
+  });
   markStageDone('grammar');
   if (fb) fb.innerHTML = '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 14px">'
     + '<div style="font-size:14px;font-weight:800;color:#15803d;margin-bottom:4px">✅ 문법 연습 완료!</div>'
@@ -7318,7 +7462,19 @@ function _asUpdateTmp(patch) {
   } catch(e){}
 }
 function _asTmpStep4(a) { _asUpdateTmp({step4_answers:a}); }
-function _asTmpStep5(t) { _asUpdateTmp({step5_text:t}); }
+function _asTmpStep5(t) {
+  _asUpdateTmp({step5_text:t});
+  // Also save to unified drafts if there's actual writing
+  if (t && t.trim().length > 5 && _asCurrentArt) {
+    saveDraft('article_study', {
+      text: t.trim(),
+      content_id: String(_asCurrentArt.id),
+      content_title: _asCurrentArt.title || '',
+      writing_mode: 'article_study',
+      context_key: 'article_' + _asCurrentArt.id
+    });
+  }
+}
 function _asTmpCompletion() { _asUpdateTmp({completed:true,completedAt:new Date().toISOString()}); }
 function _asSaveProgress() { _asUpdateTmp({step:_asStep,stepDone:_asStepDone.slice()}); }
 function _asRestoreProgress() {
@@ -7409,14 +7565,7 @@ async function asAutoSubmitOldWork() {
 }
 
 function _asRefreshSubmitBanner() {
-  var b=document.getElementById('as-submit-today-banner'); if(!b) return;
-  if(!supaUser){b.classList.remove('visible');return;}
-  try {
-    var key='kh_as_'+supaUser.id+'_'+kstDateKey();
-    var d=JSON.parse(localStorage.getItem(key)||'{}');
-    var hasUnsub=Object.values(d).some(function(v){return v&&!v.submitted;});
-    b.classList.toggle('visible',hasUnsub);
-  } catch(e){ b.classList.remove('visible'); }
+  refreshSubmitBanner();
 }
 
 // ── Utilities ──
