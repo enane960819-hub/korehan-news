@@ -2617,24 +2617,24 @@ async function loadDailyContent() {
       .select('*')
       .eq('scheduled_date', today)
       .eq('level', _currentLevel)
+      .eq('status', 'approved')
       .maybeSingle();
 
     if (r.error) {
       console.warn('[loadDailyContent] DB query error:', r.error.message, '(code:', r.error.code, ')');
-      // Table likely doesn't exist yet — generate and save
     } else if (r.data) {
-      console.log('[loadDailyContent] found existing DB record — applying (admin_edited:', r.data.admin_edited, ')');
+      console.log('[loadDailyContent] found approved record — applying');
       _applyDailyContent(r.data);
       return;
     } else {
-      console.log('[loadDailyContent] no record in DB for today — will generate');
+      console.log('[loadDailyContent] no approved content for today');
     }
   } catch(e) {
     console.error('[loadDailyContent] exception during DB fetch:', e);
   }
 
-  // Nothing in DB yet — generate via AI and persist
-  await _generateAndSaveDailyContent(today);
+  // No approved content — show "preparing" message instead of generating
+  _setTopicLoadError('오늘의 학습이 준비 중입니다. 곧 공개됩니다! 🎯');
 }
 
 function _setTopicLoadError(msg) {
