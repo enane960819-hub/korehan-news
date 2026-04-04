@@ -5436,7 +5436,7 @@ async function goStudyRoomOps() {
   setSbOn('sb-study-room');
   _srTab = 'topics';
   document.getElementById('main').innerHTML =
-    '<div class="pg-hd"><div><h1>🏫 Study Room 관리</h1><p>오늘의 주제 · Quick Help · Grammar · Picture Description · Homework</p>'
+    '<div class="pg-hd"><div><h1>🏫 Study Room 관리</h1><p>오늘의 주제 · Picture Description · Homework</p>'
     + '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">'
     + '<button class="btn" onclick="srPreviewDate(1)">👁 Preview +1일</button>'
     + '<button class="btn" onclick="srPreviewDate(2)">👁 Preview +2일</button>'
@@ -5444,8 +5444,6 @@ async function goStudyRoomOps() {
     + '</div></div></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
     + '  <button class="btn btn-g" id="srt-topics"      onclick="srShowTab(\'topics\')"     >📅 오늘의 주제</button>'
-    + '  <button class="btn"       id="srt-tab-helpers"  onclick="srShowTab(\'helpers\')"    >💬 빠른 도움</button>'
-    + '  <button class="btn"       id="srt-tab-grammar"  onclick="srShowTab(\'grammar\')"    >📚 문법 설명</button>'
     + '  <button class="btn"       id="srt-picture"     onclick="srShowTab(\'picture\')"    >🖼️ Picture</button>'
     + '  <button class="btn"       id="srt-homework"    onclick="srShowTab(\'homework\')"   >📝 Homework</button>'
     + '  <button class="btn"       id="srt-submissions" onclick="srShowTab(\'submissions\')">📊 제출 현황</button>'
@@ -5478,8 +5476,6 @@ async function srShowTab(tab) {
     await srLoadTopicSchedule();
     await srLoadDailyContent();
   }
-  if (tab === 'helpers')  { body.innerHTML = srHelpersFormHTML(); await srLoadHelpers(); }
-  if (tab === 'grammar')  { body.innerHTML = srGrammarFormHTML(); await srLoadGrammar(); }
   if (tab === 'picture')  { body.innerHTML = srPictureFormHTML(); await srLoadPictures(); }
   if (tab === 'homework')     { body.innerHTML = '<div class="sf-card" id="sr-homework-list">Loading…</div>'; await loadStudyHomeworkAdmin(); }
   if (tab === 'submissions')  { body.innerHTML = srSubmissionsFormHTML(); await srLoadSubmissions(); }
