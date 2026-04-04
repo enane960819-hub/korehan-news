@@ -7173,6 +7173,7 @@ async function goRoomItemManager() {
         + '<td>' + it.name + '</td>'
         + '<td>🐾 ' + it.price_nyang + '</td>'
         + '<td>' + it.base_size + 'px</td>'
+        + '<td>' + (it.effect && it.effect !== 'none' ? it.effect : '-') + '</td>'
         + '<td>' + (it.active ? '✅' : '❌') + '</td>'
         + '<td><button class="btn" onclick="openRoomItemEditor(\'' + it.id + '\')">Edit</button></td>'
         + '</tr>';
@@ -7193,7 +7194,9 @@ async function openRoomItemEditor(editId) {
     + '<div class="fg"><label>이름</label><input id="ri-name" value="' + (existing ? existing.name : '') + '"></div>'
     + '<div class="fg"><label>가격 (냥)</label><input id="ri-price" type="number" value="' + (existing ? existing.price_nyang : 0) + '"></div>'
     + '<div class="fg"><label>이미지 경로 (assets/파일명.png)</label><input id="ri-img" value="' + (existing ? existing.image_url : 'assets/') + '"></div>'
+    + '<div class="fg"><label>썸네일 경로 (상점 표시용, 비우면 이미지와 동일)</label><input id="ri-thumb" value="' + (existing && existing.thumbnail_url ? existing.thumbnail_url : '') + '"></div>'
     + '<div class="fg"><label>기본 크기 (px)</label><input id="ri-size" type="number" value="' + (existing ? existing.base_size : 60) + '"></div>'
+    + '<div class="fg"><label>효과</label><select id="ri-effect"><option value="none"' + (existing && existing.effect === 'none' ? ' selected' : '') + '>없음</option><option value="glow_neon"' + (existing && existing.effect === 'glow_neon' ? ' selected' : '') + '>네온 발광</option><option value="glow_warm"' + (existing && existing.effect === 'glow_warm' ? ' selected' : '') + '>따뜻한 빛</option><option value="sparkle"' + (existing && existing.effect === 'sparkle' ? ' selected' : '') + '>반짝임</option><option value="float"' + (existing && existing.effect === 'float' ? ' selected' : '') + '>둥실둥실</option></select></div>'
     + '<div class="fg"><label>정렬 순서</label><input id="ri-order" type="number" value="' + (existing ? existing.sort_order : 99) + '"></div>'
     + '<div class="fg"><label><input type="checkbox" id="ri-active" ' + (existing ? (existing.active ? 'checked' : '') : 'checked') + '> 활성화</label></div>'
     + '<div style="display:flex;gap:8px;margin-top:12px">'
@@ -7213,7 +7216,9 @@ async function saveRoomItem(editId) {
     name: (document.getElementById('ri-name').value||'').trim(),
     price_nyang: parseInt(document.getElementById('ri-price').value) || 0,
     image_url: (document.getElementById('ri-img').value||'').trim(),
+    thumbnail_url: (document.getElementById('ri-thumb').value||'').trim() || null,
     base_size: parseInt(document.getElementById('ri-size').value) || 60,
+    effect: (document.getElementById('ri-effect').value||'none'),
     sort_order: parseInt(document.getElementById('ri-order').value) || 0,
     active: document.getElementById('ri-active').checked
   };
