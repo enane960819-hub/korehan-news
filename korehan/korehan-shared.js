@@ -1857,7 +1857,7 @@ function cardHTML(a, extraTagClass) {
   var levelBadge = a.level ? '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + (levelColors[a.level] || '#f0f0f0;color:#666') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) + '</span>' : '';
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
     + '<div class="card">'
-    + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='">'
+    + '<img src="' + img + '" alt="" loading="lazy">'
     + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
     + '<div class="tag' + (tc ? ' ' + tc : '') + '">' + a.section + '</div>'
     + levelBadge
@@ -1884,7 +1884,7 @@ function storyItemHTML(a) {
   var img = a.image || ('data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==' + a.id + '/300/200');
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
     + '<div class="story-item">'
-    + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='">'
+    + '<img src="' + img + '" alt="" loading="lazy">'
     + '<div>'
     + '<h4 class="vocab-zone">' + a.title + '</h4>'
     + '<div class="meta">' + a.section + ' · ' + relTime(a.date) + '</div>'
@@ -1895,7 +1895,7 @@ function heroSideItemHTML(a) {
   var img = a.image || ('data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==' + a.id + '/400/200');
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;display:block;">'
     + '<div class="hero-side-item">'
-    + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='">'
+    + '<img src="' + img + '" alt="" loading="lazy">'
     + '<h3 class="vocab-zone">' + a.title + '</h3>'
     + '<p class="meta">' + a.section + ' · ' + relTime(a.date) + '</p>'
     + '</div></a>';
@@ -1972,7 +1972,7 @@ function renderHomePage() {
     if (ops.length) {
       opinionsEl.innerHTML = ops.map(function(op){
         return '<div class="opinion-card">'
-          + '<div class="author-img"><img src="' + (op.img || 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==') + '" alt="' + (op.name||'') + '" onerror="this.src=\'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='"></div>'
+          + '<div class="author-img"><img src="' + (op.img || 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==') + '" alt="' + (op.name||'') + '"></div>'
           + '<div class="author">' + (op.name||'') + '</div>'
           + '<div class="author-title">' + (op.title||'') + '</div>'
           + '<h4 class="vocab-zone">' + (op.headline||'') + '</h4>'
@@ -1996,7 +1996,7 @@ function renderHeroSlide(heroEl) {
           var featBody = (item.body || '').replace(/<[^>]*>/g, '').slice(0, 150);
           var url = articleUrl(item.id);
           return '<article class="kh-home-hero-slide" style="min-width:100%;position:relative;min-height:460px;overflow:hidden;cursor:pointer" onclick="location.href=\'' + url + '\'">'
-            + '<img src="' + featImg + '" alt="" onerror="this.src=\'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;pointer-events:none;">'
+            + '<img src="' + featImg + '" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;pointer-events:none;">'
             + '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,15,35,.88) 0%,rgba(5,15,35,.55) 38%,rgba(5,15,35,.16) 100%),linear-gradient(to top,rgba(5,15,35,.92) 0%,rgba(5,15,35,.1) 58%,transparent 100%);pointer-events:none;"></div>'
             + '<div style="position:absolute;left:0;right:0;bottom:0;padding:34px 30px 30px;max-width:760px;z-index:2;pointer-events:none;">'
             + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span class="category-tag" style="display:inline-block">' + item.section + '</span><span style="font-size:12px;color:rgba(255,255,255,.65)">' + relTime(item.date) + '</span></div>'
@@ -2054,7 +2054,7 @@ function updateHeroSlideUI(heroEl) {
     sideWrap.innerHTML = sideItems.map(function(a) {
       var img = a.image || ('data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==' + a.id + '/400/200');
       return '<a href="' + articleUrl(a.id) + '" style="display:flex;gap:12px;padding:14px 16px;text-decoration:none;color:inherit;border-bottom:1px solid #edf2f7;transition:background .15s" onmouseover="this.style.background=\'#f2f7ff\'" onmouseout="this.style.background=\'\'">'
-        + '<img src="' + img + '" alt="" onerror="this.src=\'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='" style="width:98px;height:78px;object-fit:cover;border-radius:14px;flex-shrink:0;box-shadow:0 6px 18px rgba(15,23,42,.08)">'
+        + '<img src="' + img + '" alt="" style="width:98px;height:78px;object-fit:cover;border-radius:14px;flex-shrink:0;box-shadow:0 6px 18px rgba(15,23,42,.08)">'
         + '<div style="min-width:0;flex:1">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:800;color:#2255a4;letter-spacing:.06em;text-transform:uppercase">' + a.section + '</span><span style="font-size:10px;color:#94a3b8">' + relTime(a.date) + '</span></div>'
         + '<div class="vocab-zone" style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + a.title + '</div>'
@@ -2254,7 +2254,7 @@ function renderAllList(listEl, articles) {
     var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : lvl === 'Starter' ? 'lvl-s' : 'lvl-b';
     var cat = (a.section || '').toLowerCase();
     var img = a.image
-      ? '<img class="nc-img" src="' + a.image + '" alt="" loading="lazy" onerror="this.src=\'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='">'
+      ? '<img class="nc-img" src="' + a.image + '" alt="" loading="lazy">'
       : '<div class="nc-img nc-img-fallback"></div>';
     var dateStr = a.date ? new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
     return '<div class="nc nc-overlay" data-section="' + escapeHtml(cat) + '" data-level="' + escapeHtml(lvl) + '" onclick="location.href=\'' + articleUrl(a.id) + '\'">'
@@ -2465,7 +2465,7 @@ function renderArticlePage() {
 
     // 히어로 이미지
     + '<div class="art-hero-img">'
-    + '<img src="' + img + '" alt="" onerror="this.src=\'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='">'
+    + '<img src="' + img + '" alt="">'
     + '</div>'
 
     // 4탭: Read / Grammar / Vocab / Quiz
@@ -2551,7 +2551,7 @@ function renderArticlePage() {
           + related.map(function(r){
               var levelColors = {'Starter':'#f3e8ff;color:#6b21a8','Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'};
               return '<a href="' + articleUrl(r.id) + '" class="art-related-card">'
-                + '<img src="' + (r.image || 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='+r.id+'/300/200') + '" alt="" onerror="this.src=\'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='">'
+                + '<img src="' + (r.image || 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='+r.id+'/300/200') + '" alt="">'
                 + '<div class="art-related-info">'
                 + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'
                 + '<span style="font-size:10px;font-weight:800;text-transform:uppercase;color:#2255a4">' + r.section + '</span>'
