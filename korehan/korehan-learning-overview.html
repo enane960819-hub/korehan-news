@@ -1462,10 +1462,19 @@
     try {
       var today = vocabDateKey();
       var correct = _drScores.reduce(function(a,b){return a+b;},0);
+      var total = _drQuestions.length;
+      var pct = total > 0 ? Math.round(correct / total * 100) : 0;
       await sb.from('daily_reviews').upsert(
-        { user_id: supaUser.id, date: today, score: { correct: correct, total: _drQuestions.length }, updated_at: new Date().toISOString() },
+        { user_id: supaUser.id, date: today, score: { correct: correct, total: total }, updated_at: new Date().toISOString() },
         { onConflict: 'user_id,date' }
       );
+      // Log to learning hub pipeline
+      if (typeof logQuizResult === 'function') {
+        logQuizResult('daily_review', { score: correct, max_score: total, accuracy_pct: pct });
+      }
+      if (typeof logActivity === 'function') {
+        logActivity('quiz', { content_type:'daily_review', score:correct, max_score:total, metadata:{accuracy_pct:pct} });
+      }
     } catch(e) { /* table may not exist yet */ }
   }
 
@@ -1548,6 +1557,7 @@
           { onConflict: 'user_id,word_ko' }
         );
         if (typeof awardXP === 'function') awardXP('word_saved');
+        if (typeof logActivity === 'function') logActivity('word_save', { content_title: w.word_ko, metadata: { word_en: w.word_en, level: w.level } });
         if (typeof toast  === 'function') toast('Saved: ' + w.word_ko + ' ✓');
       } catch(e) {}
     }

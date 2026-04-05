@@ -6911,3 +6911,66 @@ window.addEventListener('resize', function(){
     injectMobileBottomNav();
   }
 });
+
+// ═══════════════════════════════════════════════════════════════
+// LEARNING HUB — Data Pipeline Helpers
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Log any learning activity to user_activity_log.
+ * Called from any page — articles, study room, conversations, stories.
+ *
+ * @param {string} activityType - 'read','quiz','word_save','writing_submit','dictation','grammar_practice','picture_desc'
+ * @param {object} opts - { content_type, content_id, content_title, score, max_score, metadata }
+ */
+async function logActivity(activityType, opts) {
+  if (typeof supaUser === 'undefined' || !supaUser) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return;
+  opts = opts || {};
+  try {
+    await sb.from('user_activity_log').insert({
+      user_id:       supaUser.id,
+      activity_type: activityType,
+      content_type:  opts.content_type || null,
+      content_id:    opts.content_id ? String(opts.content_id) : null,
+      content_title: opts.content_title || '',
+      score:         typeof opts.score === 'number' ? opts.score : null,
+      max_score:     typeof opts.max_score === 'number' ? opts.max_score : null,
+      metadata:      JSON.stringify(opts.metadata || {}),
+      study_date:    _kstDateKey()
+    });
+  } catch(e) { console.warn('[logActivity]', e.message || e); }
+}
+
+/**
+ * Log quiz result with score and wrong-pattern analysis.
+ *
+ * @param {string} quizType - 'daily_review','grammar','vocab','dictation','article_comprehension','writing_feedback'
+ * @param {object} opts - { content_type, content_id, score, max_score, accuracy_pct, wrong_patterns, details }
+ */
+async function logQuizResult(quizType, opts) {
+  if (typeof supaUser === 'undefined' || !supaUser) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return;
+  opts = opts || {};
+  try {
+    await sb.from('user_quiz_results').insert({
+      user_id:        supaUser.id,
+      quiz_type:      quizType,
+      content_type:   opts.content_type || null,
+      content_id:     opts.content_id ? String(opts.content_id) : null,
+      score:          opts.score || 0,
+      max_score:      opts.max_score || 100,
+      accuracy_pct:   typeof opts.accuracy_pct === 'number' ? opts.accuracy_pct : null,
+      wrong_patterns: JSON.stringify(opts.wrong_patterns || {}),
+      details:        JSON.stringify(opts.details || {}),
+      study_date:     _kstDateKey()
+    });
+  } catch(e) { console.warn('[logQuizResult]', e.message || e); }
+}
+
+/** KST date key helper (shared) */
+function _kstDateKey() {
+  return new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+}

@@ -768,6 +768,9 @@ function openStory(id) {
         }).catch(function(){});
       }
     } catch(e) {}
+    if (typeof logActivity === 'function') {
+      logActivity('read', { content_type:'story', content_id:String(s.id), content_title:s.title||'', metadata:{level:s.lvl||'',mood:s.mood||''} });
+    }
   }
 
   var vocab = (s.vocab||[]).map(function(v) {

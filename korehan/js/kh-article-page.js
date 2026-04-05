@@ -1275,6 +1275,10 @@ async function markArticleRead(articleId, title, section, level) {
       p_completed: false
     });
   } catch(e) {} // RPC 미설치 시 조용히 무시
+  // Activity pipeline
+  if (typeof logActivity === 'function') {
+    logActivity('read', { content_type:'article', content_id:String(articleId), content_title:title||'', metadata:{section:section||'',level:level||''} });
+  }
 }
 
 // ── 영어 번역 토글 ─────────────────────────────────────────────

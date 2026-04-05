@@ -2038,6 +2038,15 @@ function markStageDone(stage) {
     _studyDone[stage] = true;
     saveStudyDoneState();
     syncStudyProgress(stage);
+    // Log to activity pipeline
+    var typeMap = {topic:'writing_submit', grammar:'grammar_practice', picture:'picture_desc', sentence:'dictation'};
+    if (typeof logActivity === 'function') {
+      logActivity(typeMap[stage] || stage, {
+        content_type: 'daily_topic',
+        content_title: (_todayTopic && _todayTopic.topic_ko) || '',
+        metadata: { stage: stage, level: _currentLevel || '' }
+      });
+    }
   }
 }
 
@@ -3614,6 +3623,22 @@ async function _triggerUnifiedAIFeedback(submissionId, text, topicOrTitle) {
         ai_feedback: parsed, ai_feedback_at: new Date().toISOString(),
         ai_model: 'claude-haiku-4-5-20251001', status: 'ai_reviewed'
       }).eq('id', submissionId);
+    }
+    // Log wrong patterns to quiz_results for analytics
+    if (parsed.corrections && parsed.corrections.length && typeof logQuizResult === 'function') {
+      var patterns = {};
+      parsed.corrections.forEach(function(c) {
+        var p = c.pattern || 'OTHER';
+        patterns[p] = (patterns[p] || 0) + 1;
+      });
+      logQuizResult('writing_feedback', {
+        content_type: 'writing', content_id: submissionId,
+        score: Math.max(0, 100 - parsed.corrections.length * 15),
+        max_score: 100,
+        accuracy_pct: Math.max(0, 100 - parsed.corrections.length * 15),
+        wrong_patterns: patterns,
+        details: { corrections_count: parsed.corrections.length, topic: topicOrTitle }
+      });
     }
   } catch(e) { console.warn('AI feedback failed:', e); }
 }

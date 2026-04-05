@@ -356,6 +356,9 @@ function openDetail(idx) {
         }).catch(function(){});
       }
     } catch(e) {}
+    if (typeof logActivity === 'function') {
+      logActivity('read', { content_type:'conversation', content_id:String(c._id), content_title:c.name||'', metadata:{level:c.lvl||'',category:c.cat||''} });
+    }
   }
 
   // 캐시에서 vocab/grammar 보강 (비동기, 완료되면 Study Notes 업데이트)
