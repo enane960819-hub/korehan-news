@@ -203,7 +203,7 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
     <div class="ob-logo">Start smart <strong>Kore<span>Han</span> News</strong></div>
     <div class="ob-side-hero">
       <h1 class="ob-side-title">Build a Korean routine that actually fits your day.</h1>
-      <p class="ob-side-desc">We will personalize your first learning path, help you choose a realistic schedule, and point you to the fastest wins across News, Study Room, Conversations, Stories, and Learning Hub.</p>
+      <p class="ob-side-desc">We will personalize your first learning path, help you choose a realistic schedule, and point you to the fastest wins across News, Study Room, Conversations, Stories, and Growth Lab.</p>
     </div>
     <div class="ob-side-card">
       <small>What changes after setup</small>
@@ -212,7 +212,7 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
       <div class="ob-feature-grid">
         <div class="ob-mini"><b>📰</b><span>Read real beginner-friendly news with hover vocab.</span></div>
         <div class="ob-mini"><b>📘</b><span>Use Study Room for deeper review and active practice.</span></div>
-        <div class="ob-mini"><b>📊</b><span>Track streaks and progress inside Learning Hub.</span></div>
+        <div class="ob-mini"><b>📊</b><span>Track streaks and progress inside Growth Lab.</span></div>
         <div class="ob-mini"><b>💬</b><span>Mix in Conversations and Stories for natural input.</span></div>
       </div>
     </div>
@@ -281,7 +281,7 @@ var TIME_OPTIONS = [
   { min:5, label:'5 minutes', sub:'One headline + hover vocab + quick phrase review.', route:'Best if you want the lightest habit: Latest News + Today\'s Phrase.' },
   { min:15, label:'15 minutes', sub:'One article + saved words + a short review loop.', route:'Good default: Latest News → Beginner Guide tips → Study Room starter review.' },
   { min:30, label:'30 minutes', sub:'A full focused session with reading and active recall.', route:'Recommended flow: Article → Study Room → save vocab → one Conversation or Story.' },
-  { min:60, label:'1 hour', sub:'A full immersion block with progress tracking.', route:'Deep practice: multiple articles + Study Room + Conversations/Stories + Learning Hub check-in.' }
+  { min:60, label:'1 hour', sub:'A full immersion block with progress tracking.', route:'Deep practice: multiple articles + Study Room + Conversations/Stories + Growth Lab check-in.' }
 ];
 
 var LEVEL_META = {
@@ -523,7 +523,7 @@ function renderStep2() {
     '<div>'
       + '<div class="ob-topline"><div class="ob-eyebrow">Step 2 · Time</div><div class="ob-stage">Choose a realistic daily rhythm</div></div>'
       + '<h2 class="ob-title">How much time can you study each day?</h2>'
-      + '<p class="ob-desc">Pick the pace you can repeat. The descriptions below match the actual flow of your site: news reading, Beginner Guide, Study Room, Conversations, Stories, and Learning Hub.</p>'
+      + '<p class="ob-desc">Pick the pace you can repeat. The descriptions below match the actual flow of your site: news reading, Beginner Guide, Study Room, Conversations, Stories, and Growth Lab.</p>'
       + '<div class="ob-time-grid">'
       + TIME_OPTIONS.map(function(t) {
           var selected = state.minutes === t.min;
@@ -780,7 +780,7 @@ function goStep4() {
       + '</div>'
       + '</div>'
       + '<div class="ob-link-grid">'
-      + '<a class="ob-link-card" href="beginner-guide.html"><span>Tip page</span><h3>Beginner Guide</h3><p>See how News, Study Room, Learning Hub, Stories, and Conversations fit together.</p></a>'
+      + '<a class="ob-link-card" href="beginner-guide.html"><span>Tip page</span><h3>Beginner Guide</h3><p>See how News, Study Room, Growth Lab, Stories, and Conversations fit together.</p></a>'
       + '<a class="ob-link-card" href="korehan-study-room.html"><span>Practice page</span><h3>Study Room</h3><p>Use your reading to review words, grammar, and active practice right away.</p></a>'
       + '</div>'
       + '<div class="ob-footer-note">Your onboarding state is also saved locally so you do not get bounced back into onboarding again if the database response is slow.</div>'

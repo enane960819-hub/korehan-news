@@ -231,7 +231,7 @@ function renderHeader() {
     + '<a href="korehan-study-room.html" class="tn-item' + (isOn('korehan-study-room') ? ' on' : '') + '">' + khIcon('notebook-pen', 'Study Room', 'kh-ui-icon-sm') + '</a>'
     + '<a href="korehan-shop.html" class="tn-item' + (isOn('korehan-shop') ? ' on' : '') + '">' + khIcon('shopping-bag', 'Shop', 'kh-ui-icon-sm') + '</a>'
     + '<a href="korehan-fun.html" class="tn-item' + (isOn('korehan-fun') ? ' on' : '') + '">' + khIcon('sparkles', 'FUN', 'kh-ui-icon-sm') + '</a>'
-    + '<a href="korehan-learning-overview.html" class="tn-item' + (isOn('korehan-learning-overview') ? ' on' : '') + '">' + khIcon('chart-column', 'Learning Hub', 'kh-ui-icon-sm') + '</a>'
+    + '<a href="korehan-learning-overview.html" class="tn-item' + (isOn('korehan-learning-overview') ? ' on' : '') + '">' + khIcon('chart-column', 'Growth Lab', 'kh-ui-icon-sm') + '</a>'
     + '<a href="korehan-courses.html" class="tn-item' + (isOn('korehan-courses') ? ' on' : '') + '">' + khIcon('graduation-cap', 'Courses', 'kh-ui-icon-sm') + '</a>'
     + '</div>'
     + '</div>';
@@ -277,7 +277,7 @@ function renderFooter() {
     + '<div style="font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:14px">Learn</div>'
     + '<div style="display:flex;flex-direction:column;gap:9px">'
     + '<a href="korehan-study-room.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Study Room</a>'
-    + '<a href="korehan-learning-overview.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Learning Hub</a>'
+    + '<a href="korehan-learning-overview.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Growth Lab</a>'
     + '<a href="korehan-learn.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Vocab Drill</a>'
     + '<a href="korehan-courses.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Courses</a>'
     + '<a href="beginner-guide.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Beginner Guide</a>'
@@ -697,7 +697,7 @@ function khInjectSidebar() {
       + '<a href="korehan-study-room.html" class="kh-sb-a' + (page==='korehan-study-room.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F4D6;</span>Study Room</a>'
       + '<a href="korehan-shop.html" class="kh-sb-a' + (page==='korehan-shop.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F6D2;</span>Shop</a>'
       + '<a href="korehan-fun.html" class="kh-sb-a' + (page==='korehan-fun.html'?' on':'') + '"><span class="kh-sb-ico">&#x2728;</span>FUN</a>'
-      + '<a href="korehan-learning-overview.html" class="kh-sb-a' + (page==='korehan-learning-overview.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F4CA;</span>Learning Hub</a>'
+      + '<a href="korehan-learning-overview.html" class="kh-sb-a' + (page==='korehan-learning-overview.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F4CA;</span>Growth Lab</a>'
       + '<a href="korehan-courses.html" class="kh-sb-a' + (page==='korehan-courses.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F393;</span>Courses</a>'
     + '</div>'
     + '<div class="kh-sb-sec" id="kh-sb-auth-sec" style="margin-top:auto;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;bottom:0;background:#0b1626;box-shadow:0 -10px 24px rgba(0,0,0,.18)">'
@@ -875,7 +875,7 @@ async function renderHomeLearningPreview() {
       + '<div style="font-size:13px;font-weight:900;color:#fff">New here? Start with the Beginner Guide.</div>'
       + '<div style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(125,211,252,.18);color:#dbeafe">Tip for first session</div>'
       + '</div>'
-      + '<div style="font-size:12px;color:rgba(255,255,255,.74);line-height:1.6;margin-bottom:12px">Read one article, open Study Room, then check Learning Hub. The Beginner Guide maps the full flow for your first session.</div>'
+      + '<div style="font-size:12px;color:rgba(255,255,255,.74);line-height:1.6;margin-bottom:12px">Read one article, open Study Room, then check Growth Lab. The Beginner Guide maps the full flow for your first session.</div>'
       + '<a href="beginner-guide.html" style="display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border-radius:12px;background:linear-gradient(135deg,#38bdf8,#2563eb);color:#fff;font-size:12px;font-weight:900;text-decoration:none;box-shadow:0 12px 22px rgba(37,99,235,.26);animation:khGuidePulse 1.8s ease-in-out infinite">Open Beginner Guide →</a>'
       + '<style>@keyframes khGuidePulse{0%,100%{transform:translateY(0);box-shadow:0 12px 22px rgba(37,99,235,.26)}50%{transform:translateY(-1px);box-shadow:0 16px 28px rgba(56,189,248,.34)}}</style>';
     try { localStorage.removeItem(getWelcomeTipStorageKey(supaUser && supaUser.id)); } catch(e) {}
