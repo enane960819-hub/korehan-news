@@ -4542,7 +4542,7 @@ async function openConvEditModal(rowId, existingData) {
 
   overlay.innerHTML =
     '<div style="background:#f8fbff;border-radius:26px;width:100%;max-width:1280px;box-shadow:0 32px 80px rgba(0,0,0,.28);overflow:hidden;border:1px solid #dbe4f0;">'
-      + '<div style="display:grid;grid-template-columns:1.22fr .88fr;min-height:82vh;">'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;min-height:82vh;">'
 
       + '<div style="background:#fff;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;min-width:0;">'
       +   '<div style="padding:20px 22px;background:linear-gradient(135deg,#2550b7 0%,#3a72ea 100%);color:#fff;position:relative;">'
@@ -4594,18 +4594,53 @@ async function openConvEditModal(rowId, existingData) {
       +     '</div>'
 
       +     '<div id="ai-result-area" style="display:block;">'
+
+      // ── Vocabulary Table UI ──
       +       '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:14px 14px 12px;margin-bottom:12px;">'
-      +         '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px;">📚 Vocabulary JSON</div>'
-      +         '<textarea id="ce-vocab" rows="8" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:12px;font-size:11px;font-family:monospace;box-sizing:border-box;resize:vertical;background:#fbfdff;">' + JSON.stringify(d.vocab||[], null, 2).replace(/</g,'&lt;') + '</textarea>'
+      +         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+      +           '<div style="font-size:13px;font-weight:800;color:#0f172a;">📚 Vocabulary</div>'
+      +           '<button onclick="ceAddVocabRow()" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">+ 추가</button>'
+      +         '</div>'
+      +         '<div style="font-size:10px;color:#94a3b8;display:grid;grid-template-columns:1fr 1fr 1fr 30px;gap:4px;padding:0 4px 4px;font-weight:600;">'+
+                  '<span>한국어</span><span>로마자</span><span>뜻 (EN)</span><span></span></div>'
+      +         '<div id="ce-vocab-rows"></div>'
+      +         '<textarea id="ce-vocab" style="display:none"></textarea>'
       +       '</div>'
+
+      // ── Grammar Table UI ──
       +       '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:14px 14px 12px;margin-bottom:12px;">'
-      +         '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px;">✏️ Grammar JSON</div>'
-      +         '<textarea id="ce-grammar" rows="8" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:12px;font-size:11px;font-family:monospace;box-sizing:border-box;resize:vertical;background:#fbfdff;">' + JSON.stringify(d.grammar||[], null, 2).replace(/</g,'&lt;') + '</textarea>'
+      +         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+      +           '<div style="font-size:13px;font-weight:800;color:#0f172a;">✏️ Grammar</div>'
+      +           '<button onclick="ceAddGrammarRow()" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">+ 추가</button>'
+      +         '</div>'
+      +         '<div style="font-size:10px;color:#94a3b8;display:grid;grid-template-columns:1fr 1.5fr 30px;gap:4px;padding:0 4px 4px;font-weight:600;">'+
+                  '<span>문법 패턴</span><span>예문 (EN)</span><span></span></div>'
+      +         '<div id="ce-grammar-rows"></div>'
+      +         '<textarea id="ce-grammar" style="display:none"></textarea>'
       +       '</div>'
+
+      // ── Mission Table UI ──
       +       '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:14px 14px 12px;margin-bottom:12px;">'
-      +         '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:8px;">🎯 Mission JSON</div>'
-      +         '<textarea id="ce-mission" rows="5" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:12px;font-size:11px;font-family:monospace;box-sizing:border-box;resize:vertical;background:#fbfdff;">' + JSON.stringify(d.mission||[], null, 2).replace(/</g,'&lt;') + '</textarea>'
+      +         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+      +           '<div style="font-size:13px;font-weight:800;color:#0f172a;">🎯 Mission</div>'
+      +           '<button onclick="ceAddMissionRow()" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">+ 추가</button>'
+      +         '</div>'
+      +         '<div id="ce-mission-rows"></div>'
+      +         '<textarea id="ce-mission" style="display:none"></textarea>'
       +       '</div>'
+
+      // ── Key Expressions (필수표현) ──
+      +       '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:18px;padding:14px 14px 12px;margin-bottom:12px;">'
+      +         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+      +           '<div style="font-size:13px;font-weight:800;color:#92400e;">⭐ 필수표현 (Key Expressions)</div>'
+      +           '<button onclick="ceAddKeyExprRow()" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">+ 추가</button>'
+      +         '</div>'
+      +         '<div style="font-size:10px;color:#a16207;display:grid;grid-template-columns:1fr 1.5fr 30px;gap:4px;padding:0 4px 4px;font-weight:600;">'+
+                  '<span>표현 (KO)</span><span>설명 (EN)</span><span></span></div>'
+      +         '<div id="ce-keyexpr-rows"></div>'
+      +         '<div style="font-size:11px;color:#a16207;margin-top:8px;line-height:1.5;">대화에서 하이라이트할 핵심 표현들. 유저에게 별도 카드로 표시됩니다.</div>'
+      +       '</div>'
+
       +     '</div>'
 
       +     '<div id="ce-error" style="background:#fee2e2;border-radius:12px;padding:12px 14px;color:#b91c1c;font-size:13px;display:none;margin-bottom:12px;"></div>'
@@ -4622,6 +4657,11 @@ async function openConvEditModal(rowId, existingData) {
 
   document.body.appendChild(overlay);
   syncConvPreview();
+  // Render table UIs for vocab/grammar/mission/keyexpr
+  ceRenderVocabRows(d.vocab || []);
+  ceRenderGrammarRows(d.grammar || []);
+  ceRenderMissionRows(d.mission || []);
+  ceRenderKeyExprRows(d.key_expressions || []);
 }
 
 function syncConvPreview() {
@@ -4725,6 +4765,118 @@ function ceCharSelect(id, label, curVal, reporters) {
     + '</select></label>';
 }
 
+// ── Table UI helpers for vocab/grammar/mission/keyexpr ──
+var _ceInputStyle = 'width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;font-family:inherit;box-sizing:border-box;';
+var _ceDelBtn = '<button onclick="this.parentElement.parentElement.remove();ceSyncHiddenFields()" style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;padding:2px" title="삭제">✕</button>';
+
+function ceRenderVocabRows(vocabArr) {
+  var el = document.getElementById('ce-vocab-rows'); if (!el) return;
+  el.innerHTML = (vocabArr||[]).map(function(v,i){
+    return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 30px;gap:4px;margin-bottom:4px;" data-type="vocab">'
+      + '<input value="'+(v.ko||'').replace(/"/g,'&quot;')+'" placeholder="단어" style="'+_ceInputStyle+'" data-field="ko">'
+      + '<input value="'+(v.rom||'').replace(/"/g,'&quot;')+'" placeholder="romanization" style="'+_ceInputStyle+'" data-field="rom">'
+      + '<input value="'+(v.en||'').replace(/"/g,'&quot;')+'" placeholder="meaning" style="'+_ceInputStyle+'" data-field="en">'
+      + '<div style="display:flex;align-items:center;justify-content:center">'+_ceDelBtn+'</div></div>';
+  }).join('');
+}
+function ceAddVocabRow() {
+  var el = document.getElementById('ce-vocab-rows'); if (!el) return;
+  el.insertAdjacentHTML('beforeend',
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 30px;gap:4px;margin-bottom:4px;" data-type="vocab">'
+    + '<input value="" placeholder="단어" style="'+_ceInputStyle+'" data-field="ko">'
+    + '<input value="" placeholder="romanization" style="'+_ceInputStyle+'" data-field="rom">'
+    + '<input value="" placeholder="meaning" style="'+_ceInputStyle+'" data-field="en">'
+    + '<div style="display:flex;align-items:center;justify-content:center">'+_ceDelBtn+'</div></div>');
+}
+
+function ceRenderGrammarRows(grammarArr) {
+  var el = document.getElementById('ce-grammar-rows'); if (!el) return;
+  el.innerHTML = (grammarArr||[]).map(function(g){
+    return '<div style="display:grid;grid-template-columns:1fr 1.5fr 30px;gap:4px;margin-bottom:4px;" data-type="grammar">'
+      + '<input value="'+(g.point||'').replace(/"/g,'&quot;')+'" placeholder="문법 패턴" style="'+_ceInputStyle+'" data-field="point">'
+      + '<input value="'+(g.ex||'').replace(/"/g,'&quot;')+'" placeholder="example / explanation" style="'+_ceInputStyle+'" data-field="ex">'
+      + '<div style="display:flex;align-items:center;justify-content:center">'+_ceDelBtn+'</div></div>';
+  }).join('');
+}
+function ceAddGrammarRow() {
+  var el = document.getElementById('ce-grammar-rows'); if (!el) return;
+  el.insertAdjacentHTML('beforeend',
+    '<div style="display:grid;grid-template-columns:1fr 1.5fr 30px;gap:4px;margin-bottom:4px;" data-type="grammar">'
+    + '<input value="" placeholder="문법 패턴" style="'+_ceInputStyle+'" data-field="point">'
+    + '<input value="" placeholder="example / explanation" style="'+_ceInputStyle+'" data-field="ex">'
+    + '<div style="display:flex;align-items:center;justify-content:center">'+_ceDelBtn+'</div></div>');
+}
+
+function ceRenderMissionRows(missionArr) {
+  var el = document.getElementById('ce-mission-rows'); if (!el) return;
+  el.innerHTML = (missionArr||[]).map(function(m){
+    return '<div style="display:grid;grid-template-columns:1fr 30px;gap:4px;margin-bottom:4px;" data-type="mission">'
+      + '<input value="'+(typeof m==='string'?m:m.text||'').replace(/"/g,'&quot;')+'" placeholder="Writing task" style="'+_ceInputStyle+'" data-field="text">'
+      + '<div style="display:flex;align-items:center;justify-content:center">'+_ceDelBtn+'</div></div>';
+  }).join('');
+}
+function ceAddMissionRow() {
+  var el = document.getElementById('ce-mission-rows'); if (!el) return;
+  el.insertAdjacentHTML('beforeend',
+    '<div style="display:grid;grid-template-columns:1fr 30px;gap:4px;margin-bottom:4px;" data-type="mission">'
+    + '<input value="" placeholder="Writing task" style="'+_ceInputStyle+'" data-field="text">'
+    + '<div style="display:flex;align-items:center;justify-content:center">'+_ceDelBtn+'</div></div>');
+}
+
+function ceRenderKeyExprRows(exprArr) {
+  var el = document.getElementById('ce-keyexpr-rows'); if (!el) return;
+  el.innerHTML = (exprArr||[]).map(function(e){
+    return '<div style="display:grid;grid-template-columns:1fr 1.5fr 30px;gap:4px;margin-bottom:4px;" data-type="keyexpr">'
+      + '<input value="'+(e.ko||'').replace(/"/g,'&quot;')+'" placeholder="표현" style="'+_ceInputStyle+'border-color:#fde68a;" data-field="ko">'
+      + '<input value="'+(e.en||'').replace(/"/g,'&quot;')+'" placeholder="explanation" style="'+_ceInputStyle+'border-color:#fde68a;" data-field="en">'
+      + '<div style="display:flex;align-items:center;justify-content:center">'+_ceDelBtn+'</div></div>';
+  }).join('');
+}
+function ceAddKeyExprRow() {
+  var el = document.getElementById('ce-keyexpr-rows'); if (!el) return;
+  el.insertAdjacentHTML('beforeend',
+    '<div style="display:grid;grid-template-columns:1fr 1.5fr 30px;gap:4px;margin-bottom:4px;" data-type="keyexpr">'
+    + '<input value="" placeholder="표현" style="'+_ceInputStyle+'border-color:#fde68a;" data-field="ko">'
+    + '<input value="" placeholder="explanation" style="'+_ceInputStyle+'border-color:#fde68a;" data-field="en">'
+    + '<div style="display:flex;align-items:center;justify-content:center">'+_ceDelBtn+'</div></div>');
+}
+
+// Read table rows back to JSON for saving
+function ceReadVocabFromUI() {
+  var rows = document.querySelectorAll('#ce-vocab-rows [data-type="vocab"]');
+  return Array.from(rows).map(function(r){
+    return { ko: r.querySelector('[data-field="ko"]').value.trim(), rom: r.querySelector('[data-field="rom"]').value.trim(), en: r.querySelector('[data-field="en"]').value.trim() };
+  }).filter(function(v){ return v.ko; });
+}
+function ceReadGrammarFromUI() {
+  var rows = document.querySelectorAll('#ce-grammar-rows [data-type="grammar"]');
+  return Array.from(rows).map(function(r){
+    return { point: r.querySelector('[data-field="point"]').value.trim(), ex: r.querySelector('[data-field="ex"]').value.trim() };
+  }).filter(function(v){ return v.point; });
+}
+function ceReadMissionFromUI() {
+  var rows = document.querySelectorAll('#ce-mission-rows [data-type="mission"]');
+  return Array.from(rows).map(function(r){
+    return r.querySelector('[data-field="text"]').value.trim();
+  }).filter(function(v){ return v; });
+}
+function ceReadKeyExprFromUI() {
+  var rows = document.querySelectorAll('#ce-keyexpr-rows [data-type="keyexpr"]');
+  return Array.from(rows).map(function(r){
+    return { ko: r.querySelector('[data-field="ko"]').value.trim(), en: r.querySelector('[data-field="en"]').value.trim() };
+  }).filter(function(v){ return v.ko; });
+}
+
+// Sync hidden textareas for backward compatibility
+function ceSyncHiddenFields() {
+  var vocabEl = document.getElementById('ce-vocab');
+  var grammarEl = document.getElementById('ce-grammar');
+  var missionEl = document.getElementById('ce-mission');
+  if (vocabEl) vocabEl.value = JSON.stringify(ceReadVocabFromUI());
+  if (grammarEl) grammarEl.value = JSON.stringify(ceReadGrammarFromUI());
+  if (missionEl) missionEl.value = JSON.stringify(ceReadMissionFromUI());
+}
+
 async function aiAnalyzeConv() {
   var btn = document.getElementById('ai-analyze-btn');
   var msgsText = document.getElementById('ce-msgs-text').value.trim();
@@ -4758,6 +4910,10 @@ async function aiAnalyzeConv() {
     document.getElementById('ce-vocab').value   = JSON.stringify(parsed.vocab   || [], null, 2);
     document.getElementById('ce-grammar').value = JSON.stringify(parsed.grammar || [], null, 2);
     document.getElementById('ce-mission').value = JSON.stringify(parsed.mission || [], null, 2);
+    // Update table UIs
+    ceRenderVocabRows(parsed.vocab || []);
+    ceRenderGrammarRows(parsed.grammar || []);
+    ceRenderMissionRows(parsed.mission || []);
     // Apply translations to messages in the script
     if (parsed.translations && parsed.translations.length) {
       var ta = document.getElementById('ce-msgs-text');
@@ -4803,7 +4959,11 @@ async function saveConvEdit(rowId) {
   var ceErr = document.getElementById('ce-error');
   ceErr.style.display = 'none';
 
+  // Read from table UI instead of raw JSON textareas
   var parseField = function(id) {
+    if (id === 'ce-vocab') return ceReadVocabFromUI();
+    if (id === 'ce-grammar') return ceReadGrammarFromUI();
+    if (id === 'ce-mission') return ceReadMissionFromUI();
     var el = document.getElementById(id);
     if (!el || !el.value.trim()) return [];
     try { return JSON.parse(el.value); }
@@ -4846,6 +5006,7 @@ async function saveConvEdit(rowId) {
       vocab:    parseField('ce-vocab'),
       grammar:  parseField('ce-grammar'),
       mission:  parseField('ce-mission'),
+      key_expressions: ceReadKeyExprFromUI(),
     };
     if (castAId) convObj.cast_left_slug  = castAId;
     if (castBId) convObj.cast_right_slug = castBId;
