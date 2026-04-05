@@ -7725,10 +7725,12 @@ async function goVocabContent(tab) {
   if      (tab === 'wordbank') { goWordBank(); }
   else if (tab === 'sentences'){ goSentences(); }
   else if (tab === 'vocab')    { await goVocabEditor(); }
+  else if (tab === 'vocabdb')  { await goVocabBankAdmin(); }
   else                         { goPhrases(); }
   setSbOn('sb-vocab');
   _prependItabs([
     { key:'wordbank',  label:'📚 단어카드',    fn:"goVocabContent('wordbank')" },
+    { key:'vocabdb',   label:'🗃️ Vocab DB',   fn:"goVocabContent('vocabdb')" },
     { key:'sentences', label:'💬 예문',        fn:"goVocabContent('sentences')" },
     { key:'vocab',     label:'✏️ 단어 뜻 수정', fn:"goVocabContent('vocab')" },
     { key:'phrases',   label:'🌟 오늘의 표현',  fn:"goVocabContent('phrases')" }
@@ -8000,6 +8002,127 @@ async function deleteBadge(id) {
   await sb.from('badges').delete().eq('id', id);
   toast('삭제됨');
   loadBadgeList();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VOCAB BANK ADMIN — CRUD for vocabulary_bank DB
+// ═══════════════════════════════════════════════════════════════
+var _vbAll = [];
+var _vbFilter = '';
+
+async function goVocabBankAdmin() {
+  var main = document.getElementById('main');
+  main.innerHTML = '<div style="max-width:960px">'
+    + '<div class="pg-hd"><div><h1>Vocabulary Bank</h1><p>vocabulary_bank DB 직접 관리 · 중복 체크 포함</p></div></div>'
+    // Add form
+    + '<div class="sf-card" style="margin-bottom:12px">'
+    + '<div style="font-weight:700;margin-bottom:8px">단어 추가</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:6px;align-items:end">'
+    + '<div><label style="font-size:11px;font-weight:600;color:#555">한국어</label><input id="vb-ko" class="sf-input" placeholder="한국어" style="width:100%"></div>'
+    + '<div><label style="font-size:11px;font-weight:600;color:#555">로마자</label><input id="vb-rom" class="sf-input" placeholder="han-guk-eo" style="width:100%"></div>'
+    + '<div><label style="font-size:11px;font-weight:600;color:#555">영어</label><input id="vb-en" class="sf-input" placeholder="Korean language" style="width:100%"></div>'
+    + '<div><label style="font-size:11px;font-weight:600;color:#555">레벨</label><select id="vb-level" class="sf-input" style="width:100%"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></div>'
+    + '<div><label style="font-size:11px;font-weight:600;color:#555">관심사</label><select id="vb-tag" class="sf-input" style="width:100%"><option value="">없음</option><option>kpop</option><option>travel</option><option>food</option><option>business</option><option>daily</option><option>news</option><option>sports</option><option>drama</option><option>beauty</option></select></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:6px;margin-top:8px;align-items:center">'
+    + '<button class="btn btn-g" onclick="vbAddWord()" style="font-size:12px;padding:6px 14px">추가</button>'
+    + '<span id="vb-add-msg" style="font-size:12px;color:#555"></span>'
+    + '</div>'
+    + '</div>'
+    // Filters
+    + '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center">'
+    + '<input id="vb-search" class="sf-input" placeholder="검색..." oninput="vbRenderList()" style="width:160px;font-size:12px;padding:5px 8px">'
+    + '<select id="vb-filter-level" class="sf-input" onchange="vbRenderList()" style="font-size:12px;padding:5px 8px"><option value="">전체 레벨</option><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select>'
+    + '<select id="vb-filter-tag" class="sf-input" onchange="vbRenderList()" style="font-size:12px;padding:5px 8px"><option value="">전체 관심사</option><option>kpop</option><option>travel</option><option>food</option><option>business</option><option>daily</option><option>news</option><option>sports</option><option>drama</option><option>beauty</option></select>'
+    + '<span id="vb-count" style="font-size:12px;color:#8b8b8b;margin-left:auto"></span>'
+    + '</div>'
+    + '<div class="sf-card" id="vb-list">Loading...</div>'
+    + '</div>';
+  await vbLoadAll();
+}
+
+async function vbLoadAll() {
+  var sb = getSb(); if (!sb) return;
+  var r = await sb.from('vocabulary_bank').select('word_key,word_ko,word_rom,word_en,level,interest_tag,is_active').order('word_ko');
+  if (r.error) { document.getElementById('vb-list').textContent = 'Error: ' + r.error.message; return; }
+  _vbAll = r.data || [];
+  vbRenderList();
+}
+
+function vbRenderList() {
+  var el = document.getElementById('vb-list');
+  var countEl = document.getElementById('vb-count');
+  var search = (document.getElementById('vb-search').value || '').toLowerCase().trim();
+  var filterLevel = document.getElementById('vb-filter-level').value;
+  var filterTag = document.getElementById('vb-filter-tag').value;
+  var filtered = _vbAll.filter(function(w) {
+    if (search && w.word_ko.indexOf(search) < 0 && (w.word_en||'').toLowerCase().indexOf(search) < 0 && (w.word_rom||'').toLowerCase().indexOf(search) < 0) return false;
+    if (filterLevel && w.level !== filterLevel) return false;
+    if (filterTag && w.interest_tag !== filterTag) return false;
+    return true;
+  });
+  if (countEl) countEl.textContent = filtered.length + '/' + _vbAll.length + '개';
+  if (!filtered.length) { el.innerHTML = '<div style="color:#8b8b8b;font-size:13px;padding:8px">결과 없음</div>'; return; }
+  var shown = filtered.slice(0, 100); // Limit for performance
+  el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="border-bottom:1px solid #e8e8e8">'
+    + '<th style="padding:6px;text-align:left;font-weight:600;color:#555">한국어</th>'
+    + '<th style="padding:6px;text-align:left;font-weight:600;color:#555">로마자</th>'
+    + '<th style="padding:6px;text-align:left;font-weight:600;color:#555">영어</th>'
+    + '<th style="padding:6px;text-align:left;font-weight:600;color:#555">레벨</th>'
+    + '<th style="padding:6px;text-align:left;font-weight:600;color:#555">관심사</th>'
+    + '<th style="padding:6px"></th>'
+    + '</tr></thead><tbody>'
+    + shown.map(function(w) {
+        return '<tr style="border-bottom:1px solid #f5f5f5">'
+          + '<td style="padding:5px 6px;font-weight:700">' + w.word_ko + '</td>'
+          + '<td style="padding:5px 6px;color:#8b8b8b">' + (w.word_rom||'') + '</td>'
+          + '<td style="padding:5px 6px">' + (w.word_en||'') + '</td>'
+          + '<td style="padding:5px 6px"><span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:#f5f5f5;color:#555">' + (w.level||'') + '</span></td>'
+          + '<td style="padding:5px 6px;font-size:11px;color:#8b8b8b">' + (w.interest_tag||'-') + '</td>'
+          + '<td style="padding:5px 6px"><button onclick="vbDelete(\'' + (w.word_key||w.word_ko).replace(/'/g,"\\'") + '\')" style="font-size:10px;padding:2px 6px;border:1px solid #fdd;border-radius:3px;background:#fff5f5;color:#c33;cursor:pointer">삭제</button></td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table>'
+    + (filtered.length > 100 ? '<div style="padding:8px;font-size:11px;color:#8b8b8b;text-align:center">... 외 ' + (filtered.length - 100) + '개 (검색으로 필터링하세요)</div>' : '');
+}
+
+async function vbAddWord() {
+  var sb = getSb(); if (!sb) return;
+  var msg = document.getElementById('vb-add-msg');
+  var ko = (document.getElementById('vb-ko').value||'').trim();
+  var rom = (document.getElementById('vb-rom').value||'').trim();
+  var en = (document.getElementById('vb-en').value||'').trim();
+  var level = document.getElementById('vb-level').value;
+  var tag = document.getElementById('vb-tag').value || null;
+  if (!ko) { if (msg) msg.textContent = '한국어를 입력하세요.'; return; }
+  if (!en) { if (msg) msg.textContent = '영어 뜻을 입력하세요.'; return; }
+  // Check duplicate
+  var dup = _vbAll.find(function(w) { return w.word_ko === ko; });
+  if (dup) {
+    if (msg) { msg.style.color = '#e53e3e'; msg.textContent = '중복! "' + ko + '" 이미 존재합니다 (' + (dup.level||'') + ', ' + (dup.interest_tag||'일반') + ')'; }
+    return;
+  }
+  var r = await sb.from('vocabulary_bank').insert({
+    word_key: ko, word_ko: ko, word_rom: rom, word_en: en, level: level, interest_tag: tag, is_active: true
+  });
+  if (r.error) {
+    if (r.error.code === '23505') { if (msg) { msg.style.color = '#e53e3e'; msg.textContent = '중복! DB에 이미 존재합니다.'; } }
+    else { if (msg) msg.textContent = 'Error: ' + r.error.message; }
+    return;
+  }
+  if (msg) { msg.style.color = '#16a34a'; msg.textContent = '"' + ko + '" 추가 완료!'; }
+  document.getElementById('vb-ko').value = '';
+  document.getElementById('vb-rom').value = '';
+  document.getElementById('vb-en').value = '';
+  document.getElementById('vb-ko').focus();
+  await vbLoadAll();
+}
+
+async function vbDelete(key) {
+  if (!confirm(key + ' 삭제?')) return;
+  var sb = getSb(); if (!sb) return;
+  await sb.from('vocabulary_bank').delete().eq('word_key', key);
+  await vbLoadAll();
 }
 
 // ═══════════════════════════════════════════════════════════════
