@@ -482,19 +482,27 @@ let activeFilter = '';
 let deleteId = null;
 
 var _sbAdmin = null;
+var _sbAuth = null; // 세션 전용 클라이언트 (anon key + persistSession:true)
+function _getAuthClient() {
+  if (_sbAuth) return _sbAuth;
+  if (typeof supabase !== 'undefined') {
+    _sbAuth = supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN, { auth: { persistSession: true } });
+  }
+  return _sbAuth;
+}
 // ── Claude API 프록시 (어드민용) ──────────────────────────────
 const ADMIN_CLAUDE_PROXY = SUPA_URL_ADMIN + '/functions/v1/claude-proxy';
 
 async function callClaude({ feature, model, max_tokens, messages }) {
-  var sb = getSb();
-  if (!sb) throw new Error('Supabase not initialized');
+  var authClient = _getAuthClient();
+  if (!authClient) throw new Error('Supabase not initialized');
 
-  var sessionRes = await sb.auth.getSession();
+  var sessionRes = await authClient.auth.getSession();
   var session = sessionRes && sessionRes.data && sessionRes.data.session;
   var now = Math.floor(Date.now() / 1000);
   var expiresSoon = session && session.expires_at && session.expires_at <= now + 90;
   if (!session || expiresSoon) {
-    var refreshed = await sb.auth.refreshSession();
+    var refreshed = await authClient.auth.refreshSession();
     session = refreshed && refreshed.data && refreshed.data.session;
   }
   if (!session) throw new Error('Not signed in');
@@ -511,7 +519,7 @@ async function callClaude({ feature, model, max_tokens, messages }) {
   });
 
   if (resp.status === 401) {
-    var forcedRefresh = await sb.auth.refreshSession();
+    var forcedRefresh = await authClient.auth.refreshSession();
     var freshSession = forcedRefresh && forcedRefresh.data && forcedRefresh.data.session;
     if (freshSession && freshSession.access_token) {
       resp = await fetch(ADMIN_CLAUDE_PROXY, {
@@ -533,7 +541,7 @@ async function callClaude({ feature, model, max_tokens, messages }) {
     var backoff = Math.pow(2, rateLimitRetries) * 1000; // 2s, 4s, 8s
     console.warn('Rate limited (429), retry ' + rateLimitRetries + '/3 after ' + backoff + 'ms');
     await new Promise(function(r){ setTimeout(r, backoff); });
-    var retrySession = (await sb.auth.getSession()).data.session;
+    var retrySession = (await authClient.auth.getSession()).data.session;
     if (!retrySession) throw new Error('Not signed in');
     resp = await fetch(ADMIN_CLAUDE_PROXY, {
       method: 'POST',
