@@ -47,19 +47,16 @@ body { font-family: 'Inter', 'Noto Sans KR', sans-serif; }
 .xp-fill  { height:100%; border-radius:999px; background:linear-gradient(90deg,#2255a4,#3d7fd4); transition:width .7s ease; }
 .xp-meta  { display:flex; justify-content:space-between; font-size:11px; color:#94a3b8; font-weight:500; }
 
-/* Stats grid */
-.stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:28px; }
-.stat-card  { background:#fff; border:1px solid var(--border); border-radius:16px; padding:18px 16px; display:flex; align-items:center; gap:14px; box-shadow:0 2px 12px rgba(15,23,42,.05); }
-.stat-icon  { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.stat-icon.s-streak  { background:#fff7ed; }
-.stat-icon.s-articles{ background:#eff6ff; }
-.stat-icon.s-words   { background:#f0fdf4; }
-.stat-icon.s-quizzes { background:#fdf4ff; }
-.stat-body  { min-width:0; }
-.stat-n     { font-family:'Inter',sans-serif; font-size:28px; font-weight:800; color:#0b1626; line-height:1; letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
-.stat-lbl   { font-size:10px; color:#94a3b8; font-weight:600; text-transform:uppercase; letter-spacing:.06em; margin-top:5px; white-space:nowrap; }
-@media (max-width:800px) { .stats-grid { grid-template-columns:repeat(2,1fr); } }
-@media (max-width:420px) { .stats-grid { grid-template-columns:repeat(2,1fr); gap:10px; } .stat-card { padding:16px 14px; gap:12px; } .stat-n { font-size:26px; } }
+/* Stats overview — Duolingo-style compact */
+.stats-overview { background:#fff; border:1px solid var(--border); border-radius:16px; padding:18px 20px; margin-bottom:20px; box-shadow:0 2px 12px rgba(15,23,42,.05); }
+.stats-overview h3 { font-family:'Inter',sans-serif; font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.1em; margin:0 0 14px; }
+.stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:0; }
+.stat-row { display:flex; align-items:center; gap:10px; padding:10px 4px; }
+.stat-icon { width:28px; height:28px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+.stat-icon img { width:24px; height:24px; object-fit:contain; display:block; }
+.stat-text { display:flex; align-items:baseline; gap:6px; min-width:0; }
+.stat-n { font-family:'Inter',sans-serif; font-size:16px; font-weight:800; color:#0b1626; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.stat-lbl { font-size:11px; color:#64748b; font-weight:500; white-space:nowrap; }
 
 /* Tier grid */
 .tier-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:24px; }
@@ -74,6 +71,7 @@ body { font-family: 'Inter', 'Noto Sans KR', sans-serif; }
 
 /* Stat card SVG icons */
 .stat-icon svg { display:block; width:22px; height:22px; }
+.stat-icon img { display:block; width:28px; height:28px; object-fit:contain; }
 
 /* Tier badge — text only, no emoji */
 .xp-tier-badge { display:inline-flex; align-items:center; gap:6px; }
@@ -167,11 +165,8 @@ body.kh-neon-on .xp-tier-badge.gold    { background:rgba(217,119,6,.15)   !impor
 body.kh-neon-on .xp-tier-badge.plat    { background:rgba(124,58,237,.15)  !important; color:#c4b5fd !important; }
 body.kh-neon-on .xp-tier-badge.diamond { background:rgba(29,78,216,.15)   !important; color:#93c5fd !important; }
 
-body.kh-neon-on .stat-card { background:rgba(9,18,33,.92) !important; border-color:rgba(0,255,214,.16) !important; }
-body.kh-neon-on .stat-icon.s-streak   { background:rgba(245,158,11,.12)  !important; }
-body.kh-neon-on .stat-icon.s-articles { background:rgba(37,99,235,.12)   !important; }
-body.kh-neon-on .stat-icon.s-words    { background:rgba(22,163,74,.12)   !important; }
-body.kh-neon-on .stat-icon.s-quizzes  { background:rgba(124,58,237,.12)  !important; }
+body.kh-neon-on .stats-overview { background:rgba(9,18,33,.92) !important; border-color:rgba(0,255,214,.16) !important; }
+body.kh-neon-on .stats-overview h3 { color:rgba(163,230,235,.55) !important; }
 body.kh-neon-on .stat-n   { color:#8ffcff !important; }
 body.kh-neon-on .stat-lbl { color:rgba(163,230,235,.55) !important; }
 
@@ -230,22 +225,14 @@ body.kh-neon-on #mp-xp-log button { background:rgba(9,18,33,.7) !important; bord
 }
 .xp-fill { animation: progressPulse 2.5s ease-in-out infinite; }
 
-/* Stat cards — staggered entrance */
+/* Stats overview entrance */
 @keyframes statSlideIn {
   from { opacity: 0; transform: translateY(18px) scale(.96); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-.stat-card {
+.stats-overview {
   animation: statSlideIn .45s cubic-bezier(.22,1,.36,1) both;
-  transition: transform .18s ease, box-shadow .18s ease;
 }
-.stat-card:nth-child(1) { animation-delay: .05s; }
-.stat-card:nth-child(2) { animation-delay: .1s; }
-.stat-card:nth-child(3) { animation-delay: .15s; }
-.stat-card:nth-child(4) { animation-delay: .2s; }
-.stat-card:nth-child(5) { animation-delay: .25s; }
-.stat-card:nth-child(6) { animation-delay: .3s; }
-.stat-card:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 8px 24px rgba(15,23,42,.1); }
 
 /* XP card entrance */
 @keyframes xpCardIn {
@@ -285,6 +272,9 @@ body.kh-neon-on #mp-xp-log button { background:rgba(9,18,33,.7) !important; bord
   100% { transform: scale(1); opacity: 1; }
 }
 .stat-n { animation: numPop .5s cubic-bezier(.22,1,.36,1) both; }
+.stat-row.clickable { cursor:pointer; border-radius:8px; transition:background .15s; }
+.stat-row.clickable:hover { background:rgba(37,99,235,.06); }
+body.kh-neon-on .stat-row.clickable:hover { background:rgba(0,255,214,.06) !important; }
 
 /* Hero avatar float */
 @keyframes avatarFloat {
@@ -358,8 +348,7 @@ body.kh-neon-on .xp-tier-badge.gold    { background-image: linear-gradient(90deg
 body.kh-neon-on .xp-tier-badge.plat    { background-image: linear-gradient(90deg, rgba(124,58,237,.15) 0%, rgba(196,181,253,.2) 50%, rgba(124,58,237,.15) 100%) !important; }
 body.kh-neon-on .xp-tier-badge.diamond { background-image: linear-gradient(90deg, rgba(29,78,216,.15) 0%, rgba(147,197,253,.2) 50%, rgba(29,78,216,.15) 100%) !important; }
 
-/* Neon mode: stat card glow on hover */
-body.kh-neon-on .stat-card:hover { box-shadow: 0 0 20px rgba(0,255,214,.15), 0 8px 24px rgba(0,0,0,.3) !important; }
+/* Neon mode: overview hover */
 body.kh-neon-on .tier-item:hover { box-shadow: 0 0 16px rgba(0,255,214,.12), 0 6px 20px rgba(0,0,0,.3) !important; }
 
 /* Neon mode: progress bar glow */
@@ -551,8 +540,6 @@ body.kh-neon-on #mp-nyang-balance,
 body.kh-neon-on .room-shop-header h3 { color:#e2e8f0 !important; }
 body.kh-neon-on .mypage-email,
 body.kh-neon-on .mp-member-since { color:rgba(255,255,255,.5) !important; }
-body.kh-neon-on .stat-card .stat-value { color:#e2e8f0 !important; }
-body.kh-neon-on .stat-card .stat-label { color:rgba(255,255,255,.45) !important; }
 body.kh-neon-on .tier-item { background:rgba(15,23,42,.6) !important; border-color:rgba(255,255,255,.06) !important; }
 body.kh-neon-on .tier-name { color:#e2e8f0 !important; }
 body.kh-neon-on .tier-xp-label { color:rgba(255,255,255,.45) !important; }
@@ -735,9 +722,6 @@ body.kh-neon-on .badge-name-mp { color:rgba(163,230,235,.5) !important; }
 body.kh-neon-on .badge-progress-bar { background:rgba(255,255,255,.08) !important; }
 body.kh-neon-on .badge-progress-fill { background:linear-gradient(90deg,#0d9488,#00ffd6) !important; }
 
-/* Saved Words clickable stat card */
-.stat-card.clickable { cursor:pointer; }
-.stat-card.clickable:hover { border-color:#93c5fd; }
 
 /* ═══ Neon mode: comprehensive text visibility fixes ═══ */
 body.kh-neon-on .inv-name { color:#e4f9ff !important; }
@@ -752,8 +736,6 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 /* Normal mode: ensure all text is visible */
 .xp-log-reason, .inv-name, .room-shop-name { color:#0b1626; }
 #room-edit-btn { color:#334155; }
-body.kh-neon-on .stat-card.clickable { border-color:rgba(0,255,214,.16) !important; }
-body.kh-neon-on .stat-card.clickable:hover { border-color:rgba(0,255,214,.4) !important; }
 </style>
 </head>
 <body>
@@ -884,36 +866,12 @@ function tierMark(cls, size, faded) {
 
 // ── Stat card SVG icons ─────────────────────────────────────────
 var SVG_ICONS = {
-  streak:
-    '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-    + '<path d="M12 2C12 8 6 9 6 14a6 6 0 0012 0C18 9 12 8 12 2z" stroke="#f97316" fill="#fed7aa"/>'
-    + '<path d="M12 12c0 3-2 4-2 5.5a2 2 0 004 0C14 16 12 15 12 12z" fill="#f97316" stroke="none"/>'
-    + '</svg>',
-  articles:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-    + '<rect x="4" y="3" width="16" height="18" rx="2"/>'
-    + '<line x1="8" y1="8" x2="16" y2="8"/>'
-    + '<line x1="8" y1="12" x2="16" y2="12"/>'
-    + '<line x1="8" y1="16" x2="12" y2="16"/>'
-    + '</svg>',
-  words:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-    + '<path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" fill="#dcfce7"/>'
-    + '</svg>',
-  quizzes:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-    + '<circle cx="12" cy="12" r="10" fill="#f5f3ff"/>'
-    + '<polyline points="9 12 11 14.5 15 9.5"/>'
-    + '</svg>',
-  xp:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-    + '<polygon points="12 2 14.9 8.3 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 9.1 8.3 12 2" fill="#dbeafe"/>'
-    + '</svg>',
-  nyang:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-    + '<circle cx="12" cy="12" r="10" fill="#fef3c7"/>'
-    + '<path d="M9 9h.01M15 9h.01M8 13s1 2 4 2 4-2 4-2" stroke-linecap="round"/>'
-    + '</svg>',
+  streak:   '<img src="assets/streak.png" alt="streak">',
+  articles: '<img src="assets/article.png" alt="articles">',
+  words:    '<img src="assets/bookmark.png" alt="words">',
+  quizzes:  '<img src="assets/check.png" alt="quizzes">',
+  xp:       '<img src="assets/streak.png" alt="xp">',
+  nyang:    '<img src="assets/currency.png" alt="kimchi">',
 };
 
 // ── Tier helper ────────────────────────────────────────────────
@@ -1032,25 +990,21 @@ function renderMiniStats(stats) {
   var el = document.getElementById('mp-mini-stats');
   if (!el) return;
   var us = stats || {};
-  function card(iconCls, icon, value, label) {
-    return '<div class="stat-card">'
-      + '<div class="stat-icon ' + iconCls + '">' + icon + '</div>'
-      + '<div class="stat-body"><div class="stat-n">' + value + '</div><div class="stat-lbl">' + label + '</div></div>'
-      + '</div>';
-  }
   var coinVal = Number(us.coin_balance || 0);
-  function clickableCard(iconCls, icon, value, label, onClick) {
-    return '<div class="stat-card clickable" onclick="' + onClick + '">'
-      + '<div class="stat-icon ' + iconCls + '">' + icon + '</div>'
-      + '<div class="stat-body"><div class="stat-n">' + value + '</div><div class="stat-lbl">' + label + '</div></div>'
+  function row(icon, value, label, extra) {
+    return '<div class="stat-row' + (extra || '') + '">'
+      + '<div class="stat-icon">' + icon + '</div>'
+      + '<div class="stat-text"><span class="stat-n">' + value + '</span><span class="stat-lbl">' + label + '</span></div>'
       + '</div>';
   }
   el.innerHTML =
-    card('s-streak',   SVG_ICONS.streak,   us.mission_streak || us.streak || 0, 'Day Streak')  +
-    card('s-articles', SVG_ICONS.articles, us.articles_read  || 0,              'Articles Read') +
-    clickableCard('s-words', SVG_ICONS.words, us.words_saved || 0, 'Saved Words', 'openSavedWordsModal()') +
-    card('s-quizzes',  SVG_ICONS.quizzes,  us.quizzes_done   || 0,              'Quizzes Done')  +
-    card('s-quizzes',  SVG_ICONS.nyang,    coinVal.toLocaleString(),            '냥 Balance');
+    '<div class="stats-overview"><h3>Overview</h3><div class="stats-grid">'
+    + row(SVG_ICONS.streak,   us.mission_streak || us.streak || 0, 'day streak')
+    + row(SVG_ICONS.articles, us.articles_read  || 0,              'articles')
+    + row(SVG_ICONS.words,    us.words_saved    || 0,              'saved words', ' clickable" onclick="openSavedWordsModal()')
+    + row(SVG_ICONS.quizzes,  us.quizzes_done   || 0,              'quizzes')
+    + row(SVG_ICONS.nyang,    coinVal.toLocaleString(),            'kimchi')
+    + '</div></div>';
 }
 
 // ── Render tier grid ───────────────────────────────────────────
