@@ -122,6 +122,13 @@
 .dp-grammar-item strong{color:#1e3a5f;font-weight:800;}
 .dp-grammar-item .dp-gi-del{position:absolute;right:8px;top:8px;font-size:10px;color:#94a3b8;background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px;display:none;}
 .dp-grammar-item:hover .dp-gi-del{display:block;}
+/* Key Expressions */
+.dp-keyexpr-card{background:linear-gradient(135deg,#fffbeb,#fef9c3);border:1px solid #fde68a;border-radius:16px;padding:20px;box-shadow:0 1px 4px rgba(146,64,14,.06);}
+.dp-keyexpr-item{display:flex;align-items:baseline;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.7);margin-bottom:6px;border:1px solid rgba(253,230,138,.5);}
+.dp-keyexpr-item:last-child{margin-bottom:0;}
+.dp-keyexpr-ko{font-family:'Noto Sans KR',sans-serif;font-size:15px;font-weight:800;color:#92400e;}
+.dp-keyexpr-en{font-size:13px;color:#a16207;font-weight:500;flex:1;}
+.dp-keyexpr-star{color:#f59e0b;font-size:14px;flex-shrink:0;}
 .dp-grammar-item .dp-gi-del:hover{color:#dc2626;background:#fee2e2;}
 .dp-keywords{display:flex;flex-wrap:wrap;gap:6px;}
 .dp-keyword{display:inline-block;padding:6px 12px;border-radius:8px;background:#f0f5ff;font-size:12px;font-weight:600;color:#2563eb;cursor:pointer;transition:all .12s;border:none;}
@@ -334,6 +341,18 @@ function renderCards(catF, lvlF) {
   }).join('');
 }
 
+// Highlight key expressions in bubble text
+function highlightKeyExprs(text, keyExprs) {
+  if (!keyExprs || !keyExprs.length) return escapeHtml(text);
+  var escaped = escapeHtml(text);
+  keyExprs.forEach(function(e) {
+    if (!e.ko) return;
+    var re = new RegExp('(' + e.ko.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'g');
+    escaped = escaped.replace(re, '<span style="background:linear-gradient(180deg,transparent 60%,rgba(251,191,36,.35) 60%);font-weight:700;cursor:help" title="' + (e.en||'').replace(/"/g,'&quot;') + '">$1</span>');
+  });
+  return escaped;
+}
+
 function openDetail(idx) {
   var c = CONVS[idx];
   var cast = resolveConversationCast(c);
@@ -390,12 +409,13 @@ function openDetail(idx) {
       return '<div class="dp-narration"><span class="dp-narration-text">'+escapeHtml(msg.txt || '')+'</span></div>';
     }
     var enNote = msg.en || msg.note || '';
+    var _keyExprs = c.key_expressions || [];
     if (msg.s === 'l') {
       return '<div class="dp-msg-row left">'
         + renderCharacterAvatar(cast.left, '', 36)
         +'<div class="dp-bubble-group">'
           +'<div class="dp-who">'+escapeHtml(msg.who || cast.left.name_ko || cast.left.name || '')+'</div>'
-          +'<div class="dp-bubble" onclick="toggleBubbleEn(this)">'+escapeHtml(msg.txt || '')+'</div>'
+          +'<div class="dp-bubble" onclick="toggleBubbleEn(this)">'+highlightKeyExprs(msg.txt || '', _keyExprs)+'</div>'
           +(enNote ? '<div class="dp-bubble-en">'+escapeHtml(enNote)+'</div>' : '')
           +'<div class="dp-time">'+time+'</div>'
         +'</div></div>';
@@ -403,7 +423,7 @@ function openDetail(idx) {
       return '<div class="dp-msg-row right">'
         +'<div class="dp-bubble-group">'
           +'<div class="dp-who">'+escapeHtml(msg.who || cast.right.name_ko || cast.right.name || '')+'</div>'
-          +'<div class="dp-bubble" onclick="toggleBubbleEn(this)">'+escapeHtml(msg.txt || '')+'</div>'
+          +'<div class="dp-bubble" onclick="toggleBubbleEn(this)">'+highlightKeyExprs(msg.txt || '', _keyExprs)+'</div>'
           +(enNote ? '<div class="dp-bubble-en">'+escapeHtml(enNote)+'</div>' : '')
           +'<div class="dp-time">'+time+'</div>'
         +'</div>'
@@ -433,6 +453,11 @@ function openDetail(idx) {
   var keywords = c.vocab.map(function(v) {
     return '<span class="dp-keyword">'+escapeHtml(v.ko || '')+'</span>';
   }).join('');
+
+  var initKeyExprs = (c.key_expressions||[]).map(function(e){
+    return '<div class="dp-keyexpr-item"><span class="dp-keyexpr-star">⭐</span><span class="dp-keyexpr-ko">'+escapeHtml(e.ko||'')+'</span><span class="dp-keyexpr-en">'+escapeHtml(e.en||'')+'</span></div>';
+  }).join('');
+  var initKeyExprCard = initKeyExprs ? '<div class="dp-keyexpr-card"><div class="dp-study-card-title" style="color:#92400e">⭐ Key Expressions</div>'+initKeyExprs+'</div>' : '';
 
   var pills = '<span class="dp-pill dp-pill-blue">'+LVL_LABEL[c.lvl]+'</span>'
     +'<span class="dp-pill '+(CAT_PILL[c.cat]||'dp-pill-gray')+'">'+c.catLabel+'</span>'
@@ -471,6 +496,7 @@ function openDetail(idx) {
     +'<div class="dp-right">'
       +'<div class="dp-right-head"><div class="dp-right-label">Study Notes</div><div class="dp-right-title">Conversation Breakdown</div></div>'
       +'<div class="dp-study-sections" id="dp-study-sections">'
+        +initKeyExprCard
         +'<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.book+' Key Vocabulary</div><div class="dp-vocab-list">'+vocab+'</div></div>'
         +(grammar ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.pen+' Grammar Points</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
         +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.target+' Practice Mission</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
@@ -508,8 +534,19 @@ function renderStudyNotes(c) {
   var mission = (c.mission||[]).map(function(m){ return '<div class="dp-grammar-item">'+_IC.target+' '+escapeHtml(m.task||m||'')+'</div>'; }).join('');
   var addVocabBtn = isAdm ? '<button class="admin-add-btn" onclick="convAddVocab()">+ 단어 추가</button>' : '';
   var addGrammarBtn = isAdm ? '<button class="admin-add-btn" onclick="convAddGrammar()">+ 문법 추가</button>' : '';
+  // Key Expressions
+  var keyExprs = c.key_expressions || [];
+  var keyExprHtml = keyExprs.length ? keyExprs.map(function(e){
+    return '<div class="dp-keyexpr-item">'
+      +'<span class="dp-keyexpr-star">⭐</span>'
+      +'<span class="dp-keyexpr-ko">'+escapeHtml(e.ko||'')+'</span>'
+      +'<span class="dp-keyexpr-en">'+escapeHtml(e.en||'')+'</span>'
+      +'</div>';
+  }).join('') : '';
+
   el.innerHTML =
-    '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.book+' Key Vocabulary'+addVocabBtn+'</div><div class="dp-vocab-list" id="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">No vocabulary data</span>')+'</div></div>'
+    (keyExprHtml ? '<div class="dp-keyexpr-card"><div class="dp-study-card-title" style="color:#92400e">⭐ Key Expressions</div>'+keyExprHtml+'</div>' : '')
+    +'<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.book+' Key Vocabulary'+addVocabBtn+'</div><div class="dp-vocab-list" id="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">No vocabulary data</span>')+'</div></div>'
     +(grammar||isAdm ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.pen+' Grammar Points'+addGrammarBtn+'</div><div class="dp-grammar-list" id="dp-grammar-list">'+(grammar||'')+'</div></div>' : '')
     +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.target+' Practice Mission</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
     +'<div class="dp-study-card"><div class="dp-study-card-title">🎧 Listening Quiz</div><div id="dp-listening-quiz"><button onclick="startConvListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div></div>'
