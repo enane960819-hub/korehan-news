@@ -40,7 +40,7 @@
 }
 
 .tc-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.8px; color:#7ab8f5; margin-bottom:6px; }
-.tc-ko   { font-family:'Noto Serif KR',serif; font-size:22px; font-weight:900; color:#fff; line-height:1.35; word-break:keep-all; }
+.tc-ko   { font-family:'Noto Serif KR',serif; font-size:26px; font-weight:800; color:#fff; line-height:1.35; word-break:keep-all; }
 .tc-en   { font-size:14px; font-weight:600; color:rgba(255,255,255,0.65); margin-top:5px; }
 .tc-done { font-size:11px; color:#7ab8f5; font-weight:700; white-space:nowrap; }
 .tc-change { font-size:11px; color:rgba(255,255,255,0.35); white-space:nowrap; margin-left:auto; }
@@ -192,7 +192,7 @@
 .wcsub   { font-size:13px; color:rgba(255,255,255,0.5); line-height:1.6; margin-bottom:16px; }
 .wc-topic { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.18); border-radius:8px; padding:10px 14px; margin-bottom:14px; }
 .wc-topic-label { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:#7ab8f5; margin-bottom:3px; }
-.wc-topic-ko { font-family:'Noto Serif KR',serif; font-size:16px; font-weight:900; color:#fff; }
+.wc-topic-ko { font-family:'Noto Serif KR',serif; font-size:18px; font-weight:800; color:#fff; }
 .wc-chips { display:flex; flex-wrap:wrap; gap:5px; }
 .wchip   { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.16); border-radius:6px; padding:3px 10px; font-size:11px; font-weight:600; color:#fff; }
 .wchip.v { background:rgba(122,184,245,0.2); border-color:rgba(122,184,245,0.28); color:#b8d9f7; }
@@ -893,19 +893,19 @@ body { background: #0b1626 !important; }
   width: 100%;
   min-height: 64px;
   padding: 16px 28px;
-  background: #fff;
-  border: 1.5px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.12);
+  border: 1.5px solid rgba(255,255,255,0.22);
   border-radius: 12px;
   cursor: pointer;
   font-family: inherit;
-  color: #0f172a;
-  transition: transform .15s, box-shadow .15s, background .15s;
+  color: #fff;
+  transition: transform .15s, background .15s, border-color .15s;
   flex-shrink: 0;
 }
-.sr-start-btn:hover { transform: scale(1.02); background: rgba(255,255,255,0.95); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+.sr-start-btn:hover { transform: scale(1.02); background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.35); }
 .sr-start-btn:active { transform: scale(.98); }
-.sr-start-btn-label { font-size: 18px; font-weight: 800; letter-spacing: 1px; line-height: 1; color: #0f172a; }
-.sr-start-btn-sub { font-size: 12px; font-weight: 600; color: #64748b; }
+.sr-start-btn-label { font-size: 18px; font-weight: 800; letter-spacing: 1px; line-height: 1; color: #fff; }
+.sr-start-btn-sub { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.55); }
 @media(max-width: 480px) {
   .sr-topic-inner { flex-direction: column; gap: 14px; }
   .sr-topic-right { justify-content: center; }
@@ -1580,6 +1580,34 @@ body { background: #0b1626 !important; }
         <span class="srac-arrow">→</span>
       </div>
     </button>
+  </div>
+
+  <!-- ═══ REVIEW SECTION ═══ -->
+  <div style="margin-top:14px">
+    <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Review</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
+      <a href="korehan-learning-overview.html" style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;text-decoration:none;color:#fff;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">
+        <span style="font-size:20px">📋</span>
+        <div>
+          <div style="font-size:13px;font-weight:700">Daily Review</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.45)">22 questions</div>
+        </div>
+      </a>
+      <button onclick="openWeeklyReview()" style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;cursor:pointer;font-family:inherit;transition:background .15s;text-align:left" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">
+        <span style="font-size:20px">📊</span>
+        <div>
+          <div style="font-size:13px;font-weight:700">Weekly Review</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.45)" id="weekly-review-sub">40 questions · 15s timer</div>
+        </div>
+      </button>
+      <button onclick="openMonthlyReview()" style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;cursor:pointer;font-family:inherit;transition:background .15s;text-align:left" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">
+        <span style="font-size:20px">🏆</span>
+        <div>
+          <div style="font-size:13px;font-weight:700">Monthly Review</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.45)" id="monthly-review-sub">60 questions · 12s timer</div>
+        </div>
+      </button>
+    </div>
   </div>
 
 </div><!-- /sr-main -->
@@ -7808,6 +7836,232 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
   <div id="sr-idiom-en" style="font-size:12px;color:rgba(255,255,255,.65)"></div>
   <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:8px">Tap to dismiss</div>
 </div>
+
+<!-- ═══════════════════════════════════════════════════════
+     WEEKLY / MONTHLY REVIEW MODAL
+═══════════════════════════════════════════════════════ -->
+<div id="review-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(5,12,24,.9);z-index:3000;align-items:center;justify-content:center;padding:14px">
+  <div style="background:#0f1f38;border-radius:14px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;border:1px solid rgba(255,255,255,.1)">
+    <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08)">
+      <div>
+        <div id="rv-title" style="font-size:16px;font-weight:800;color:#fff">Weekly Review</div>
+        <div id="rv-subtitle" style="font-size:12px;color:rgba(255,255,255,.45)">Loading...</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="rv-timer" style="font-size:14px;font-weight:800;color:#f59e0b;display:none">15s</div>
+        <div style="flex:1;min-width:80px;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div id="rv-progress" style="width:0%;height:100%;background:var(--bright,#2563eb);border-radius:2px;transition:width .3s"></div></div>
+        <span id="rv-counter" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4)">0/0</span>
+        <button onclick="closeReviewModal()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px">✕</button>
+      </div>
+    </div>
+    <div id="rv-body" style="padding:20px;min-height:200px"></div>
+    <div id="rv-footer" style="padding:12px 20px;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:flex-end;gap:8px">
+      <button id="rv-next-btn" onclick="rvNext()" style="padding:10px 20px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px">Next →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// WEEKLY / MONTHLY REVIEW SYSTEM
+// ═══════════════════════════════════════════════════════════════
+var _rv = { type:'weekly', questions:[], current:0, scores:[], timeLimit:15, timer:null, timerVal:0 };
+
+var _RV_REWARDS = {
+  weekly:  { 70:100, 80:150, 90:200, 100:300 },
+  monthly: { 70:300, 80:500, 90:700, 100:1000 }
+};
+
+function openWeeklyReview() {
+  // Check: only available on Sunday
+  var day = new Date().getDay();
+  if (day !== 0) { showToast('Weekly Review는 매주 일요일에 열립니다!'); return; }
+  _rv.type = 'weekly'; _rv.timeLimit = 15;
+  startReview('Weekly Review', 40);
+}
+
+function openMonthlyReview() {
+  // Check: only available on 1st of month
+  var date = new Date().getDate();
+  if (date !== 1) { showToast('Monthly Review는 매월 1일에 열립니다!'); return; }
+  _rv.type = 'monthly'; _rv.timeLimit = 12;
+  startReview('Monthly Review', 60);
+}
+
+function startReview(title, count) {
+  _rv.questions = generateReviewQuestions(count);
+  _rv.current = 0;
+  _rv.scores = [];
+  document.getElementById('rv-title').textContent = title;
+  document.getElementById('rv-subtitle').textContent = _rv.questions.length + ' questions · ' + _rv.timeLimit + 's per question';
+  document.getElementById('review-modal-overlay').style.display = 'flex';
+  document.getElementById('rv-timer').style.display = '';
+  renderReviewQuestion();
+}
+
+function generateReviewQuestions(count) {
+  // Pull from today's vocab cache + recently saved words
+  var questions = [];
+  var vocabData = [];
+  try {
+    var keys = Object.keys(localStorage);
+    keys.forEach(function(k) {
+      if (k.indexOf('kh_vocab_') === 0 || k.indexOf('kh_bm_') === 0) {
+        try { var d = JSON.parse(localStorage.getItem(k)); if (d && d.vocab) vocabData = vocabData.concat(d.vocab); } catch(e) {}
+      }
+    });
+  } catch(e) {}
+  // Also try AI content
+  if (typeof _aiContent !== 'undefined' && _aiContent && _aiContent.vocab) {
+    vocabData = vocabData.concat(_aiContent.vocab);
+  }
+  // Deduplicate
+  var seen = new Set();
+  vocabData = vocabData.filter(function(v) {
+    if (!v || !v.ko || seen.has(v.ko)) return false;
+    seen.add(v.ko); return true;
+  });
+  // Generate MCQ questions
+  for (var i = 0; i < Math.min(count, vocabData.length); i++) {
+    var correct = vocabData[i];
+    var wrongs = vocabData.filter(function(v) { return v.ko !== correct.ko; }).sort(function() { return Math.random() - .5; }).slice(0, 3);
+    var choices = [correct.en || correct.rom || ''].concat(wrongs.map(function(w) { return w.en || w.rom || ''; }));
+    choices.sort(function() { return Math.random() - .5; });
+    questions.push({ type:'mcq', prompt: correct.ko, answer: correct.en || correct.rom || '', choices: choices });
+  }
+  // Pad with fallback if not enough
+  while (questions.length < count) {
+    questions.push({ type:'mcq', prompt:'한국어', answer:'Korean language', choices:['Korean language','Korean food','Korean music','Korean drama'].sort(function(){return Math.random()-.5;}) });
+  }
+  return questions.sort(function() { return Math.random() - .5; });
+}
+
+function renderReviewQuestion() {
+  var q = _rv.questions[_rv.current];
+  if (!q) { finishReview(); return; }
+  document.getElementById('rv-counter').textContent = (_rv.current + 1) + '/' + _rv.questions.length;
+  document.getElementById('rv-progress').style.width = Math.round((_rv.current / _rv.questions.length) * 100) + '%';
+
+  var body = document.getElementById('rv-body');
+  body.innerHTML = '<div style="text-align:center;margin-bottom:20px">'
+    + '<div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.4);margin-bottom:8px">What does this mean?</div>'
+    + '<div style="font-size:28px;font-weight:800;color:#fff;font-family:\'Noto Serif KR\',serif">' + q.prompt + '</div>'
+    + '</div>'
+    + '<div id="rv-choices" style="display:grid;gap:8px">'
+    + q.choices.map(function(c, i) {
+        return '<button class="rv-choice" onclick="rvAnswer(this,' + JSON.stringify(c === q.answer) + ')" style="padding:12px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;transition:background .15s">' + c + '</button>';
+      }).join('')
+    + '</div>';
+
+  // Start timer
+  startQuestionTimer();
+}
+
+function startQuestionTimer() {
+  clearInterval(_rv.timer);
+  _rv.timerVal = _rv.timeLimit;
+  var el = document.getElementById('rv-timer');
+  el.textContent = _rv.timerVal + 's';
+  el.style.color = '#f59e0b';
+  _rv.timer = setInterval(function() {
+    _rv.timerVal--;
+    el.textContent = _rv.timerVal + 's';
+    if (_rv.timerVal <= 5) el.style.color = '#ef4444';
+    if (_rv.timerVal <= 0) {
+      clearInterval(_rv.timer);
+      _rv.scores.push(0);
+      // Auto-advance
+      document.querySelectorAll('.rv-choice').forEach(function(b) { b.disabled = true; });
+      var q = _rv.questions[_rv.current];
+      document.querySelectorAll('.rv-choice').forEach(function(b) {
+        if (b.textContent === q.answer) b.style.cssText += ';background:rgba(34,197,94,.2);border-color:rgba(34,197,94,.5);color:#4ade80';
+      });
+      setTimeout(function() { _rv.current++; renderReviewQuestion(); }, 800);
+    }
+  }, 1000);
+}
+
+function rvAnswer(btn, correct) {
+  clearInterval(_rv.timer);
+  document.querySelectorAll('.rv-choice').forEach(function(b) { b.disabled = true; });
+  _rv.scores.push(correct ? 1 : 0);
+  if (correct) {
+    btn.style.cssText += ';background:rgba(34,197,94,.2);border-color:rgba(34,197,94,.5);color:#4ade80';
+  } else {
+    btn.style.cssText += ';background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#fca5a5';
+    var q = _rv.questions[_rv.current];
+    document.querySelectorAll('.rv-choice').forEach(function(b) {
+      if (b.textContent === q.answer) b.style.cssText += ';background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.4);color:#4ade80';
+    });
+  }
+  setTimeout(function() { _rv.current++; renderReviewQuestion(); }, 800);
+}
+
+function rvNext() {
+  _rv.current++;
+  renderReviewQuestion();
+}
+
+function finishReview() {
+  clearInterval(_rv.timer);
+  var correct = _rv.scores.reduce(function(a, b) { return a + b; }, 0);
+  var total = _rv.scores.length;
+  var pct = total > 0 ? Math.round(correct / total * 100) : 0;
+  document.getElementById('rv-timer').style.display = 'none';
+  document.getElementById('rv-progress').style.width = '100%';
+  document.getElementById('rv-counter').textContent = 'Done';
+
+  // Calculate reward
+  var rewards = _RV_REWARDS[_rv.type] || {};
+  var xpEarned = 0;
+  if (pct >= 100 && rewards[100]) xpEarned = rewards[100];
+  else if (pct >= 90 && rewards[90]) xpEarned = rewards[90];
+  else if (pct >= 80 && rewards[80]) xpEarned = rewards[80];
+  else if (pct >= 70 && rewards[70]) xpEarned = rewards[70];
+
+  var emoji = pct >= 90 ? '🌟' : pct >= 80 ? '🏆' : pct >= 70 ? '⭐' : '💪';
+
+  var body = document.getElementById('rv-body');
+  body.innerHTML = '<div style="text-align:center;padding:20px 0">'
+    + '<div style="font-size:48px;margin-bottom:12px">' + emoji + '</div>'
+    + '<div style="font-size:36px;font-weight:800;color:#fff;margin-bottom:4px">' + pct + '%</div>'
+    + '<div style="font-size:14px;color:rgba(255,255,255,.5);margin-bottom:16px">' + correct + ' / ' + total + ' correct</div>'
+    + (xpEarned > 0
+      ? '<div style="padding:12px 20px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:8px;display:inline-block">'
+        + '<span style="font-size:14px;font-weight:700;color:#4ade80">+' + xpEarned + ' XP · +' + xpEarned + ' 냥</span></div>'
+      : '<div style="font-size:13px;color:rgba(255,255,255,.4)">70% 이상 달성 시 보상 지급</div>')
+    + '</div>';
+
+  document.getElementById('rv-footer').innerHTML =
+    '<button onclick="closeReviewModal()" style="padding:10px 20px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px">Close</button>';
+
+  // Award XP + save results
+  if (xpEarned > 0 && typeof awardXP === 'function') {
+    awardXP(_rv.type + '_review_complete', { score: pct });
+  }
+  if (typeof logQuizResult === 'function') {
+    logQuizResult(_rv.type + '_review', { score: correct, max_score: total, accuracy_pct: pct });
+  }
+  if (typeof logActivity === 'function') {
+    logActivity('quiz', { content_type: _rv.type + '_review', score: correct, max_score: total, metadata: { accuracy_pct: pct, xp_earned: xpEarned } });
+  }
+}
+
+function closeReviewModal() {
+  clearInterval(_rv.timer);
+  document.getElementById('review-modal-overlay').style.display = 'none';
+}
+
+// Update availability labels
+(function() {
+  var day = new Date().getDay();
+  var date = new Date().getDate();
+  var wSub = document.getElementById('weekly-review-sub');
+  var mSub = document.getElementById('monthly-review-sub');
+  if (wSub) wSub.textContent = day === 0 ? '40 questions · 15s timer' : '매주 일요일에 열림';
+  if (mSub) mSub.textContent = date === 1 ? '60 questions · 12s timer' : '매월 1일에 열림';
+})();
+</script>
 
 </body>
 </html>

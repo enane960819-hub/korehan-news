@@ -22,7 +22,9 @@ var _XP_ACTION_AMOUNTS = {
   fill_complete: 5,
   daily_mission_complete: 50,
   story_read: 10,
-  conversation_read: 10
+  conversation_read: 10,
+  weekly_review_complete: 200,
+  monthly_review_complete: 700
 };
 var _COIN_ACTION_AMOUNTS = {
   article_read: 3,
@@ -30,6 +32,8 @@ var _COIN_ACTION_AMOUNTS = {
   conv_quiz_complete: 5,
   fill_complete: 2,
   daily_mission_complete: 12,
+  weekly_review_complete: 200,
+  monthly_review_complete: 700,
   story_read: 3,
   conversation_read: 3
 };
