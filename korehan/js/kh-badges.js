@@ -580,8 +580,47 @@ function checkBadges(event, payload) {
   if (newBadges.length) {
     lsSet(K_BADGES, earned);
     newBadges.forEach(function(b){ showBadgeToast(b); });
+    // Server sync: save to user_badges table
+    _syncBadgesToServer(newBadges);
   }
   return newBadges;
+}
+
+async function _syncBadgesToServer(badges) {
+  if (typeof supaUser === 'undefined' || !supaUser) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return;
+  for (var i = 0; i < badges.length; i++) {
+    try {
+      await sb.from('user_badges').upsert({
+        user_id: supaUser.id,
+        badge_id: badges[i].id,
+        earned_at: new Date().toISOString()
+      }, { onConflict: 'user_id,badge_id' });
+    } catch(e) {}
+  }
+}
+
+// Sync all existing localStorage badges to server (run once on load)
+async function syncAllBadgesToServer() {
+  if (typeof supaUser === 'undefined' || !supaUser) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return;
+  var earned = getEarnedBadges();
+  var ids = Object.keys(earned);
+  if (!ids.length) return;
+  try {
+    var existing = await sb.from('user_badges').select('badge_id').eq('user_id', supaUser.id);
+    var existingIds = new Set((existing.data||[]).map(function(r){ return r.badge_id; }));
+    var toSync = ids.filter(function(id){ return !existingIds.has(id); });
+    for (var i = 0; i < toSync.length; i++) {
+      await sb.from('user_badges').upsert({
+        user_id: supaUser.id,
+        badge_id: toSync[i],
+        earned_at: earned[toSync[i]].earnedAt || new Date().toISOString()
+      }, { onConflict: 'user_id,badge_id' });
+    }
+  } catch(e) {}
 }
 
 // ── 뱃지 획득 토스트 알림 ───────────────────────────────────────────────────

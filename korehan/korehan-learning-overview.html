@@ -351,8 +351,9 @@
           <button onclick="calNavMonth(1)" style="padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px">→</button>
         </div>
         <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center"></div>
-        <div style="display:flex;gap:12px;justify-content:center;margin-top:8px;font-size:11px;color:#64748b">
+        <div style="display:flex;gap:12px;justify-content:center;align-items:center;margin-top:8px;font-size:11px;color:#64748b;flex-wrap:wrap">
           <span id="cal-streak-label"></span>
+          <span id="cal-longest-label" style="color:#a16207"></span>
         </div>
       </div>
     </section>
@@ -379,8 +380,24 @@
       </div>
       <div class="card">
         <div style="font-size:15px;font-weight:800;margin-bottom:10px">Skill balance</div>
+        <div style="display:flex;justify-content:center;margin-bottom:10px">
+          <svg id="radar-chart" viewBox="0 0 260 260" style="width:100%;max-width:240px;height:auto"></svg>
+        </div>
+        <div style="display:flex;gap:12px;justify-content:center;margin-bottom:10px;font-size:10px;font-weight:700">
+          <span style="color:var(--bright)">● 현재</span>
+          <span style="color:#cbd5e1">● 4주 전</span>
+        </div>
         <div class="skills" id="skills-list"></div>
       </div>
+    </section>
+
+    <!-- ═══ ERROR PATTERN ANALYSIS ═══ -->
+    <section class="card" style="margin-bottom:14px;padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:15px;font-weight:800">✏️ 오답 패턴 분석</span>
+        <span style="font-size:11px;color:var(--muted)" id="error-period">최근 4주</span>
+      </div>
+      <div id="error-patterns-list"></div>
     </section>
 
     <!-- 20 words 섹션 removed — DB 정리 후 복구 예정 -->
@@ -392,6 +409,15 @@
     <section class="card" style="margin-bottom:14px;padding:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:15px;font-weight:800">Read today</span><button onclick="openDailyReview()" style="font-size:11px;font-weight:700;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;color:var(--bright)">▶ Review</button></div>
       <div class="review-wrap"><div class="review-day"><div class="review-top"><div><h3 id="review-title">Today</h3><p id="review-sub"></p></div></div><div class="timeline" id="review-queue"></div></div></div>
+    </section>
+
+    <!-- ═══ RECENT BADGES ═══ -->
+    <section class="card" style="margin-bottom:14px;padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:15px;font-weight:800">🏆 최근 뱃지</span>
+        <a href="korehan-mypage.html" style="font-size:11px;font-weight:700;color:var(--bright);text-decoration:none">전체 보기 →</a>
+      </div>
+      <div id="recent-badges-list"></div>
     </section>
 
     <!-- Daily Review Modal -->
@@ -1910,13 +1936,189 @@
     for (var i = 0; i < 365; i++) {
       var d = new Date(today.getTime() - i * 86400000).toISOString().slice(0,10);
       if (_calActivityDays[d]) streak++;
-      else if (i > 0) break; // Allow today to be unchecked
+      else if (i > 0) break;
+    }
+    // Calculate longest streak
+    var longest = 0, cur = 0;
+    var allDates = Object.keys(_calActivityDays).sort();
+    for (var j = 0; j < allDates.length; j++) {
+      if (j === 0) { cur = 1; }
+      else {
+        var prev = new Date(allDates[j-1]).getTime();
+        var now2 = new Date(allDates[j]).getTime();
+        if (now2 - prev <= 86400000 * 1.5) cur++;
+        else cur = 1;
+      }
+      if (cur > longest) longest = cur;
     }
     var labelEl = document.getElementById('cal-streak-label');
     if (labelEl) {
-      if (streak > 0) labelEl.innerHTML = '<span style="font-size:22px;font-weight:900;color:#ea580c">🔥 ' + streak + '일</span> 연속 학습 중!';
+      if (streak > 0) labelEl.innerHTML = '🔥 <b style="font-size:16px;color:#ea580c">' + streak + '일</b> 연속 학습 중';
       else labelEl.textContent = '오늘 첫 학습을 시작해보세요!';
     }
+    var longestEl = document.getElementById('cal-longest-label');
+    if (longestEl && longest > 0) longestEl.innerHTML = '🏆 최장 <b>' + longest + '일</b>';
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 5-AXIS RADAR CHART (SVG)
+  // ═══════════════════════════════════════════════════════════════
+  function renderRadarChart(current, previous) {
+    var svg = document.getElementById('radar-chart');
+    if (!svg) return;
+    var axes = ['Reading','Vocab','Grammar','Writing','Listening'];
+    var keys = ['skill_reading','skill_vocab','skill_grammar','skill_writing','skill_listening'];
+    var cx = 130, cy = 130, maxR = 100;
+    var n = 5;
+    var angleStep = (2 * Math.PI) / n;
+    var startAngle = -Math.PI / 2; // top
+
+    function getPoint(i, val) {
+      var a = startAngle + i * angleStep;
+      var r = (val / 100) * maxR;
+      return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+    }
+
+    var html = '';
+    // Grid rings
+    [20,40,60,80,100].forEach(function(v) {
+      var pts = [];
+      for (var i = 0; i < n; i++) pts.push(getPoint(i, v).join(','));
+      html += '<polygon points="' + pts.join(' ') + '" fill="none" stroke="#e8ecf2" stroke-width="0.8"/>';
+    });
+    // Axis lines + labels
+    for (var i = 0; i < n; i++) {
+      var p = getPoint(i, 100);
+      html += '<line x1="' + cx + '" y1="' + cy + '" x2="' + p[0] + '" y2="' + p[1] + '" stroke="#e8ecf2" stroke-width="0.6"/>';
+      var lp = getPoint(i, 118);
+      html += '<text x="' + lp[0] + '" y="' + (lp[1]+3) + '" text-anchor="middle" font-size="9" font-weight="700" fill="#64748b">' + axes[i] + '</text>';
+    }
+    // Previous (4 weeks ago) polygon
+    if (previous) {
+      var prevPts = keys.map(function(k, i) { return getPoint(i, previous[k] || 0).join(','); });
+      html += '<polygon points="' + prevPts.join(' ') + '" fill="rgba(203,213,225,0.2)" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4,3"/>';
+    }
+    // Current polygon
+    var curPts = keys.map(function(k, i) { return getPoint(i, current[k] || 0).join(','); });
+    html += '<polygon points="' + curPts.join(' ') + '" fill="rgba(37,99,235,0.12)" stroke="#2563eb" stroke-width="2"/>';
+    // Current dots
+    keys.forEach(function(k, i) {
+      var p = getPoint(i, current[k] || 0);
+      html += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="3.5" fill="#2563eb" stroke="#fff" stroke-width="1.5"/>';
+    });
+
+    svg.innerHTML = html;
+  }
+
+  async function loadRadarChart() {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb || !supaUser) return;
+    try {
+      var r = await sb.from('user_weekly_snapshot')
+        .select('week_start,skill_reading,skill_vocab,skill_grammar,skill_writing,skill_listening')
+        .eq('user_id', supaUser.id)
+        .order('week_start', { ascending: false })
+        .limit(5);
+      var snaps = r.data || [];
+      var current = snaps[0] || { skill_reading:0, skill_vocab:0, skill_grammar:0, skill_writing:0, skill_listening:0 };
+      var fourWeeksAgo = snaps[3] || snaps[snaps.length - 1] || null;
+      renderRadarChart(current, fourWeeksAgo);
+    } catch(e) { console.warn('[radar]', e); }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ERROR PATTERN ANALYSIS
+  // ═══════════════════════════════════════════════════════════════
+  async function loadErrorPatterns() {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb || !supaUser) return;
+    var el = document.getElementById('error-patterns-list');
+    if (!el) return;
+    try {
+      var since = new Date(Date.now() - 28 * 86400000).toISOString().slice(0, 10);
+      var r = await sb.from('user_quiz_results')
+        .select('wrong_patterns,study_date')
+        .eq('user_id', supaUser.id)
+        .gte('study_date', since)
+        .not('wrong_patterns', 'is', null);
+      var rows = r.data || [];
+      if (!rows.length) { el.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:8px 0">아직 데이터가 부족합니다. 퀴즈와 글쓰기를 더 해보세요!</div>'; return; }
+
+      // Aggregate patterns
+      var totals = {};
+      var recentTotals = {}; // last 7 days
+      var sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+      var olderTotals = {}; // 8-28 days ago
+      rows.forEach(function(row) {
+        var wp = typeof row.wrong_patterns === 'string' ? JSON.parse(row.wrong_patterns) : (row.wrong_patterns || {});
+        var isRecent = row.study_date >= sevenDaysAgo;
+        Object.keys(wp).forEach(function(k) {
+          var v = wp[k] || 0;
+          totals[k] = (totals[k] || 0) + v;
+          if (isRecent) recentTotals[k] = (recentTotals[k] || 0) + v;
+          else olderTotals[k] = (olderTotals[k] || 0) + v;
+        });
+      });
+
+      var totalErrors = Object.values(totals).reduce(function(a, b) { return a + b; }, 0);
+      if (totalErrors === 0) { el.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:8px 0">오답이 없습니다!</div>'; return; }
+
+      var labels = { PARTICLE:'조사 (Particle)', TENSE:'시제 (Tense)', WORD_ORDER:'어순 (Word Order)', SPELLING:'맞춤법 (Spelling)', VOCAB:'어휘 (Vocab)', OTHER:'기타' };
+      var colors = { PARTICLE:'#ef4444', TENSE:'#f59e0b', WORD_ORDER:'#8b5cf6', SPELLING:'#06b6d4', VOCAB:'#22c55e', OTHER:'#94a3b8' };
+
+      var sorted = Object.keys(totals).filter(function(k) { return totals[k] > 0; }).sort(function(a, b) { return totals[b] - totals[a]; });
+
+      el.innerHTML = sorted.map(function(k) {
+        var pct = Math.round(totals[k] / totalErrors * 100);
+        var recent = recentTotals[k] || 0;
+        var older = olderTotals[k] || 0;
+        // Normalize per week for fair comparison
+        var recentPerWeek = recent;
+        var olderPerWeek = Math.round(older / 3);
+        var trend = '', trendColor = '';
+        if (olderPerWeek > 0) {
+          var change = Math.round((recentPerWeek - olderPerWeek) / olderPerWeek * 100);
+          if (change < -10) { trend = '↓ 개선'; trendColor = '#16a34a'; }
+          else if (change > 10) { trend = '↑ 주의'; trendColor = '#ef4444'; }
+          else { trend = '→ 유지'; trendColor = '#64748b'; }
+        }
+        return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+          + '<span style="font-size:12px;font-weight:700;min-width:110px;color:#334155">' + (labels[k]||k) + '</span>'
+          + '<div style="flex:1;height:8px;background:#eef2f8;border-radius:999px;overflow:hidden">'
+          + '<div style="width:' + pct + '%;height:100%;background:' + (colors[k]||'#94a3b8') + ';border-radius:999px"></div></div>'
+          + '<span style="font-size:11px;font-weight:800;min-width:32px;text-align:right;color:#334155">' + pct + '%</span>'
+          + (trend ? '<span style="font-size:10px;font-weight:700;min-width:50px;color:' + trendColor + '">' + trend + '</span>' : '')
+          + '</div>';
+      }).join('');
+    } catch(e) { console.warn('[error-patterns]', e); }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // RECENT BADGES
+  // ═══════════════════════════════════════════════════════════════
+  function loadRecentBadges() {
+    var el = document.getElementById('recent-badges-list');
+    if (!el) return;
+    var earned = (typeof getEarnedBadges === 'function') ? getEarnedBadges() : {};
+    var defs = (typeof BADGE_DEFS !== 'undefined') ? BADGE_DEFS : [];
+    var list = [];
+    defs.forEach(function(b) {
+      if (earned[b.id]) list.push({ id:b.id, icon:b.icon, name:b.name, desc:b.desc, tier:b.tier, earnedAt:earned[b.id].earnedAt });
+    });
+    list.sort(function(a,b) { return (b.earnedAt||'').localeCompare(a.earnedAt||''); });
+    var recent = list.slice(0, 6);
+    if (!recent.length) { el.innerHTML = '<div style="font-size:12px;color:#94a3b8">아직 획득한 뱃지가 없습니다. 학습하면 뱃지를 받을 수 있어요!</div>'; return; }
+    var tierBg = { bronze:'#fef3c7', silver:'#f1f5f9', gold:'#fef9c3', diamond:'#eff6ff', legendary:'#faf5ff' };
+    var tierBorder = { bronze:'#fde68a', silver:'#e2e8f0', gold:'#fde047', diamond:'#bfdbfe', legendary:'#e9d5ff' };
+    el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">' + recent.map(function(b) {
+      return '<div style="padding:10px;border-radius:10px;background:' + (tierBg[b.tier]||'#f8fafc') + ';border:1px solid ' + (tierBorder[b.tier]||'#e2e8f0') + ';text-align:center">'
+        + '<div style="font-size:24px;margin-bottom:4px">' + b.icon + '</div>'
+        + '<div style="font-size:11px;font-weight:800;color:#334155">' + b.name + '</div>'
+        + '<div style="font-size:10px;color:#64748b;margin-top:2px">' + (b.earnedAt ? b.earnedAt.slice(0,10) : '') + '</div>'
+        + '</div>';
+    }).join('') + '</div>';
+    // Sync to server on load
+    if (typeof syncAllBadgesToServer === 'function') syncAllBadgesToServer();
   }
 
   // ═══ Init new sections ═══
@@ -1927,6 +2129,9 @@
     loadWeeklyComparison();
     loadWeeklyGoals();
     loadCalendarData();
+    loadRadarChart();
+    loadErrorPatterns();
+    loadRecentBadges();
   }
   // Hook into existing loadHub flow
   var _origLoadHub = (typeof loadHub === 'function') ? loadHub : null;
