@@ -1590,21 +1590,21 @@ body { background: #0b1626 !important; }
         <span style="font-size:20px">📋</span>
         <div>
           <div style="font-size:13px;font-weight:700">Daily Review</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.45)">22 questions</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.45)">10 questions</div>
         </div>
       </button>
       <button onclick="openWeeklyReview()" style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;cursor:pointer;font-family:inherit;transition:background .15s;text-align:left" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">
         <span style="font-size:20px">📊</span>
         <div>
           <div style="font-size:13px;font-weight:700">Weekly Review</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.45)" id="weekly-review-sub">40 questions · 15s timer</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.45)" id="weekly-review-sub">20 questions · 15s timer</div>
         </div>
       </button>
       <button onclick="openMonthlyReview()" style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;cursor:pointer;font-family:inherit;transition:background .15s;text-align:left" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">
         <span style="font-size:20px">🏆</span>
         <div>
           <div style="font-size:13px;font-weight:700">Monthly Review</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.45)" id="monthly-review-sub">60 questions · 12s timer</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.45)" id="monthly-review-sub">25 questions · 15s timer</div>
         </div>
       </button>
     </div>
@@ -7940,24 +7940,24 @@ function drGenerateQuestions() {
   var pool = _drShuffle(allWords);
   var questions = [];
 
-  // 10 vocab meaning MCQ
-  pool.slice(0, Math.min(10, pool.length)).forEach(function(w) {
+  // 5 vocab meaning MCQ
+  pool.slice(0, Math.min(5, pool.length)).forEach(function(w) {
     var wrongs = _drShuffle(pool.filter(function(x){return x.word_ko!==w.word_ko;})).slice(0,3).map(function(x){return x.word_en;});
     questions.push({type:'meaning', word_ko:w.word_ko, word_rom:w.word_rom, correct:w.word_en, choices:_drShuffle([w.word_en].concat(wrongs))});
   });
 
-  // 5 word order
+  // 2 word order
   var orderSentences = [
     {ko:['저는','학생','이에요'],en:'I am a student.'},{ko:['오늘','날씨가','좋아요'],en:'The weather is nice today.'},
     {ko:['저는','한국어를','공부해요'],en:'I study Korean.'},{ko:['이것은','제','책이에요'],en:'This is my book.'},
     {ko:['저는','밥을','먹었어요'],en:'I ate rice.'},{ko:['친구가','학교에','가요'],en:'My friend goes to school.'},
     {ko:['저는','음악을','좋아해요'],en:'I like music.'},{ko:['오늘','제가','일했어요'],en:'I worked today.'}
   ];
-  _drShuffle(orderSentences).slice(0,5).forEach(function(s){
+  _drShuffle(orderSentences).slice(0,2).forEach(function(s){
     questions.push({type:'order', words:_drShuffle(s.ko), correct:s.ko, en:s.en});
   });
 
-  // 5 fill-in-blank
+  // 2 fill-in-blank
   var fillTemplates = [
     {template:'___ 학교에 가요.',choices:['저는','저를','저의','저에'],correct:'저는',hint:'Who goes to school?'},
     {template:'저는 음악___ 좋아해요.',choices:['을','이','의','에서'],correct:'을',hint:'Object marker'},
@@ -7968,12 +7968,12 @@ function drGenerateQuestions() {
     {template:'저는 커피___ 마셔요.',choices:['를','은','에','이'],correct:'를',hint:'Object marker'},
     {template:'선생님___ 교실에 계세요.',choices:['이','는','을','에서'],correct:'이',hint:'Subject marker (consonant)'}
   ];
-  _drShuffle(fillTemplates).slice(0,5).forEach(function(f){
+  _drShuffle(fillTemplates).slice(0,2).forEach(function(f){
     questions.push({type:'fill',template:f.template,correct:f.correct,choices:_drShuffle(f.choices),hint:f.hint});
   });
 
-  // 2 typed
-  pool.slice(10,12).forEach(function(w){
+  // 1 typed
+  pool.slice(9,10).forEach(function(w){
     if(w.word_en&&w.word_ko) questions.push({type:'typed',word_en:w.word_en,word_rom:w.word_rom,correct:w.word_ko});
   });
 
@@ -8112,15 +8112,15 @@ function openWeeklyReview() {
   var day = new Date().getDay();
   if (day !== 0) { showToast('Weekly Review는 매주 일요일에 열립니다!'); return; }
   _rv.type = 'weekly'; _rv.timeLimit = 15;
-  startReview('Weekly Review', 40);
+  startReview('Weekly Review', 20);
 }
 
 function openMonthlyReview() {
   // Check: only available on 1st of month
   var date = new Date().getDate();
   if (date !== 1) { showToast('Monthly Review는 매월 1일에 열립니다!'); return; }
-  _rv.type = 'monthly'; _rv.timeLimit = 12;
-  startReview('Monthly Review', 60);
+  _rv.type = 'monthly'; _rv.timeLimit = 15;
+  startReview('Monthly Review', 25);
 }
 
 function startReview(title, count) {
@@ -8293,8 +8293,8 @@ function closeReviewModal() {
   var date = new Date().getDate();
   var wSub = document.getElementById('weekly-review-sub');
   var mSub = document.getElementById('monthly-review-sub');
-  if (wSub) wSub.textContent = day === 0 ? '40 questions · 15s timer' : '매주 일요일에 열림';
-  if (mSub) mSub.textContent = date === 1 ? '60 questions · 12s timer' : '매월 1일에 열림';
+  if (wSub) wSub.textContent = day === 0 ? '20 questions · 15s timer' : '매주 일요일에 열림';
+  if (mSub) mSub.textContent = date === 1 ? '25 questions · 15s timer' : '매월 1일에 열림';
 })();
 </script>
 
