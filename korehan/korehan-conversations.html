@@ -144,8 +144,19 @@
 .cc2-cast-avatars{display:flex;gap:4px;flex-shrink:0;}
 .cc2-cast-avatars .kh-char-av{border:2px solid #fff;}
 .cc2-cast-avatars .kh-char-av+.kh-char-av{margin-left:-8px;}
-@media(max-width:900px){.conv-cards-grid{grid-template-columns:repeat(2,1fr)}.detail-panel{grid-template-columns:1fr}.dp-right{border-left:none;border-top:1px solid #e8eef7}}
-@media(max-width:600px){.conv-cards-grid{grid-template-columns:1fr}.conv-hero h1{font-size:28px}.detail-panel{border-radius:20px}.dp-chat-area{max-height:300px}}
+@media(max-width:900px){
+  .conv-cards-grid{grid-template-columns:repeat(2,1fr)}
+  .detail-overlay{overflow-y:auto!important;align-items:flex-start!important;padding:10px!important;}
+  .detail-panel{grid-template-columns:1fr;height:auto!important;max-height:none!important;border-radius:20px;}
+  .dp-left{max-height:none!important;overflow:visible!important;}
+  .dp-chat-area{max-height:none!important;overflow:visible!important;min-height:auto!important;}
+  .dp-right{border-left:none;border-top:1px solid #e8eef7;overflow:visible!important;}
+}
+@media(max-width:600px){
+  .conv-cards-grid{grid-template-columns:1fr}
+  .conv-hero h1{font-size:28px}
+  .detail-panel{border-radius:16px;}
+}
 </style>
 </head>
 <body>
