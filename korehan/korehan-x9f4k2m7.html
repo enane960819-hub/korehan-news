@@ -486,65 +486,67 @@ var _sbAdmin = null;
 // ── Claude API 프록시 (어드민용) ──────────────────────────────
 const ADMIN_CLAUDE_PROXY = SUPA_URL_ADMIN + '/functions/v1/claude-proxy';
 
-async function callClaude({ feature, model, max_tokens, messages }) {
-  var authClient = window._adminAuthClient;
-  if (!authClient) throw new Error('Auth client not ready — please reload the page');
+// localStorage에서 Supabase 세션 토큰 직접 읽기 (Multiple GoTrueClient 충돌 방지)
+function _getAccessTokenFromStorage() {
+  try {
+    var key = 'sb-samghztrdvtxmrmawneu-auth-token';
+    var raw = localStorage.getItem(key);
+    if (!raw) return null;
+    var parsed = JSON.parse(raw);
+    return (parsed && parsed.access_token) ? parsed.access_token : null;
+  } catch(e) { return null; }
+}
 
-  var sessionRes = await authClient.auth.getSession();
-  var session = sessionRes && sessionRes.data && sessionRes.data.session;
-  var now = Math.floor(Date.now() / 1000);
-  var expiresSoon = session && session.expires_at && session.expires_at <= now + 90;
-  if (!session || expiresSoon) {
-    var refreshed = await authClient.auth.refreshSession();
-    session = refreshed && refreshed.data && refreshed.data.session;
+async function _refreshAndGetToken() {
+  var authClient = window._adminAuthClient;
+  if (!authClient) return null;
+  var refreshed = await authClient.auth.refreshSession();
+  var s = refreshed && refreshed.data && refreshed.data.session;
+  return s ? s.access_token : null;
+}
+
+async function callClaude({ feature, model, max_tokens, messages }) {
+  var token = _getAccessTokenFromStorage();
+  if (!token) {
+    token = await _refreshAndGetToken();
   }
-  if (!session) throw new Error('Not signed in');
+  if (!token) throw new Error('Not signed in');
 
   var payload = { feature, model, max_tokens, messages };
-  var resp = await fetch(ADMIN_CLAUDE_PROXY, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + session.access_token,
-      'apikey': SUPA_KEY_ADMIN,
-    },
-    body: JSON.stringify(payload),
-  });
 
-  if (resp.status === 401) {
-    var forcedRefresh = await authClient.auth.refreshSession();
-    var freshSession = forcedRefresh && forcedRefresh.data && forcedRefresh.data.session;
-    if (freshSession && freshSession.access_token) {
-      resp = await fetch(ADMIN_CLAUDE_PROXY, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + freshSession.access_token,
-          'apikey': SUPA_KEY_ADMIN,
-        },
-        body: JSON.stringify(payload),
-      });
-    }
-  }
-
-  // Retry on rate limit with exponential backoff (up to 3 retries)
-  var rateLimitRetries = 0;
-  while (resp.status === 429 && rateLimitRetries < 3) {
-    rateLimitRetries++;
-    var backoff = Math.pow(2, rateLimitRetries) * 1000; // 2s, 4s, 8s
-    console.warn('Rate limited (429), retry ' + rateLimitRetries + '/3 after ' + backoff + 'ms');
-    await new Promise(function(r){ setTimeout(r, backoff); });
-    var retrySession = (await authClient.auth.getSession()).data.session;
-    if (!retrySession) throw new Error('Not signed in');
-    resp = await fetch(ADMIN_CLAUDE_PROXY, {
+  async function _doFetch(t) {
+    return fetch(ADMIN_CLAUDE_PROXY, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + retrySession.access_token,
+        'Authorization': 'Bearer ' + t,
         'apikey': SUPA_KEY_ADMIN,
       },
       body: JSON.stringify(payload),
     });
+  }
+
+  var resp = await _doFetch(token);
+
+  // 401 → 토큰 갱신 후 재시도
+  if (resp.status === 401) {
+    var freshToken = await _refreshAndGetToken();
+    if (freshToken) {
+      token = freshToken;
+      resp = await _doFetch(token);
+    }
+  }
+
+  // Rate limit 재시도 (최대 3회)
+  var rateLimitRetries = 0;
+  while (resp.status === 429 && rateLimitRetries < 3) {
+    rateLimitRetries++;
+    var backoff = Math.pow(2, rateLimitRetries) * 1000;
+    console.warn('Rate limited (429), retry ' + rateLimitRetries + '/3 after ' + backoff + 'ms');
+    await new Promise(function(r){ setTimeout(r, backoff); });
+    var retryToken = _getAccessTokenFromStorage();
+    if (!retryToken) throw new Error('Not signed in');
+    resp = await _doFetch(retryToken);
   }
   if (resp.status === 429) throw new Error('rate_limit');
   if (resp.status === 401) throw new Error('unauthorized - please sign in');
