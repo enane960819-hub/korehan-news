@@ -7325,17 +7325,19 @@ async function aseLoadList() {
   var el = document.getElementById('ase-list');
   if (!el) return;
   try {
-    // articles_data 조회 — 컬럼 선택을 최소화 (누락 컬럼 에러 방지)
-    var artsRes = await sb.from('articles_data').select('id,title,section,topik_level,image').order('created_at',{ascending:false}).limit(200);
+    // articles 테이블에서 조회
+    var artsRes = await sb.from('articles').select('id,title,section,topik_level,image').order('date',{ascending:false}).limit(200);
     if (artsRes.error) {
       // image 컬럼이 없을 수 있음 — 재시도
-      artsRes = await sb.from('articles_data').select('id,title,section,topik_level').order('created_at',{ascending:false}).limit(200);
+      artsRes = await sb.from('articles').select('id,title,section,topik_level').order('date',{ascending:false}).limit(200);
     }
     _aseAllArticles = (artsRes.data || []).map(function(a){ a.image_url = a.image_url || a.image || ''; return a; });
     // article_study_content 조회 (테이블 없어도 무시)
     try {
       var editedRes = await sb.from('article_study_content').select('article_id,admin_edited').limit(500);
-      _aseEditedIds = new Set((editedRes.data||[]).filter(function(r){return r.admin_edited;}).map(function(r){return String(r.article_id);}));
+      if (!editedRes.error) {
+        _aseEditedIds = new Set((editedRes.data||[]).filter(function(r){return r.admin_edited;}).map(function(r){return String(r.article_id);}));
+      }
     } catch(e) { _aseEditedIds = new Set(); }
     aseRenderList(_aseAllArticles);
   } catch(e) {
@@ -7378,7 +7380,7 @@ async function aseOpenEditor(artId) {
 
   // Load article + existing study content
   var [artRes, contentRes] = await Promise.all([
-    sb.from('articles_data').select('id,title,body,section,topik_level').eq('id', artId).maybeSingle(),
+    sb.from('articles').select('id,title,body,section,topik_level').eq('id', artId).maybeSingle(),
     sb.from('article_study_content').select('*').eq('article_id', String(artId)).maybeSingle()
   ]);
   var art  = artRes.data;
