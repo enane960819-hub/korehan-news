@@ -192,6 +192,7 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" onclick="goTopics()"><span class="ico">📝</span>작문 토픽</button>
     <button class="sb-btn" id="sb-qw-tips" onclick="goQuickWinTips()"><span class="ico">💡</span>Quick Win Tips</button>
     <button class="sb-btn" id="sb-art-study-ed" onclick="goArticleStudyEditor()"><span class="ico">📖</span>Article Study Editor</button>
+    <button class="sb-btn" id="sb-badges" onclick="goBadgeAdmin()"><span class="ico">🏆</span>뱃지 관리</button>
 
     <div class="section-sep" style="margin-top:8px"></div>
     <div class="sb-lbl">운영</div>
@@ -7828,6 +7829,175 @@ async function deleteRoomItem(id) {
   await sb.from('room_items').delete().eq('id', id);
   toast('삭제됨!');
   goShopContent('room');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BADGE ADMIN
+// ═══════════════════════════════════════════════════════════════
+function goBadgeAdmin() {
+  setSbOn('sb-badges');
+  var main = document.getElementById('main');
+  main.innerHTML = '<div style="max-width:960px">'
+    + '<div class="pg-hd"><div><h1>뱃지 관리</h1><p>뱃지 정의, 이미지 업로드, 룸 에셋 연결</p></div>'
+    + '<button onclick="openBadgeModal()" class="btn-primary">+ 새 뱃지</button></div>'
+    + '<div class="sf-card" id="badge-list">Loading...</div>'
+    + '</div>';
+  loadBadgeList();
+
+  // Badge modal (reusable)
+  if (!document.getElementById('badge-modal')) {
+    var m = document.createElement('div');
+    m.id = 'badge-modal';
+    m.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center';
+    m.innerHTML = '<div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:480px;box-shadow:0 16px 48px rgba(0,0,0,.2)">'
+      + '<h2 style="font-size:16px;margin-bottom:14px" id="badge-modal-title">뱃지 추가</h2>'
+      + '<input id="bm-id" type="hidden">'
+      + '<div class="fg"><label style="font-size:12px;font-weight:700;color:#555">뱃지 ID (slug)</label>'
+      + '<input id="bm-slug" class="sf-input" placeholder="streak-7" style="width:100%"></div>'
+      + '<div class="fg"><label style="font-size:12px;font-weight:700;color:#555">이름</label>'
+      + '<input id="bm-name" class="sf-input" placeholder="Week Warrior" style="width:100%"></div>'
+      + '<div class="fg"><label style="font-size:12px;font-weight:700;color:#555">설명</label>'
+      + '<input id="bm-desc" class="sf-input" placeholder="7일 연속 학습" style="width:100%"></div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      + '<div class="fg"><label style="font-size:12px;font-weight:700;color:#555">카테고리</label>'
+      + '<select id="bm-cat" class="sf-input" style="width:100%"><option>milestone</option><option>streak</option><option>skill</option><option>special</option></select></div>'
+      + '<div class="fg"><label style="font-size:12px;font-weight:700;color:#555">등급</label>'
+      + '<select id="bm-tier" class="sf-input" style="width:100%"><option>bronze</option><option>silver</option><option>gold</option><option>platinum</option><option>diamond</option></select></div>'
+      + '</div>'
+      + '<div class="fg"><label style="font-size:12px;font-weight:700;color:#555">이미지 업로드</label>'
+      + '<input type="file" id="bm-img-file" accept="image/*" onchange="bmPreviewImg(this)">'
+      + '<div id="bm-img-preview" style="margin-top:6px"></div>'
+      + '<div style="font-size:11px;color:#8b8b8b;margin-top:4px">또는 URL 직접 입력:</div>'
+      + '<input id="bm-img-url" class="sf-input" placeholder="https://..." style="width:100%;margin-top:4px"></div>'
+      + '<div class="fg"><label style="font-size:12px;font-weight:700;color:#555">해금 조건 (JSON)</label>'
+      + '<input id="bm-condition" class="sf-input" placeholder=\'{"type":"streak","value":7}\' style="width:100%"></div>'
+      + '<div class="fg"><label style="font-size:12px;font-weight:700;color:#555">룸 에셋 ID (연결할 아이템, 선택)</label>'
+      + '<input id="bm-room" class="sf-input" placeholder="room_item_id" style="width:100%"></div>'
+      + '<div style="display:flex;gap:8px;margin-top:12px">'
+      + '<button onclick="closeBadgeModal()" style="padding:8px 16px;border-radius:6px;border:1px solid #e8e8e8;background:#fff;cursor:pointer;font-weight:600">취소</button>'
+      + '<button onclick="saveBadge()" class="btn-primary" style="padding:8px 16px">저장</button>'
+      + '</div>'
+      + '<div id="bm-msg" style="margin-top:8px;font-size:12px;color:#555"></div>'
+      + '</div>';
+    document.body.appendChild(m);
+  }
+}
+
+function bmPreviewImg(input) {
+  var prev = document.getElementById('bm-img-preview');
+  if (!prev || !input.files[0]) return;
+  prev.innerHTML = '<img src="' + URL.createObjectURL(input.files[0]) + '" style="max-width:80px;max-height:80px;border-radius:8px">';
+}
+
+function openBadgeModal(id) {
+  document.getElementById('badge-modal').style.display = 'flex';
+  document.getElementById('badge-modal-title').textContent = id ? '뱃지 수정' : '뱃지 추가';
+  document.getElementById('bm-id').value = id || '';
+  if (!id) {
+    ['bm-slug','bm-name','bm-desc','bm-condition','bm-room','bm-img-url'].forEach(function(x){document.getElementById(x).value='';});
+    document.getElementById('bm-img-preview').innerHTML = '';
+  }
+}
+
+function closeBadgeModal() { document.getElementById('badge-modal').style.display = 'none'; }
+
+async function loadBadgeList() {
+  var sb = getSb(); if (!sb) return;
+  var el = document.getElementById('badge-list'); if (!el) return;
+  var r = await sb.from('badges').select('*').order('sort_order', {ascending:true});
+  if (r.error) { el.innerHTML = 'Error: ' + r.error.message; return; }
+  var rows = r.data || [];
+  if (!rows.length) { el.innerHTML = '<div style="color:#8b8b8b;font-size:13px;padding:12px">뱃지가 없습니다. "새 뱃지" 버튼으로 추가하세요.</div>'; return; }
+  var tierColors = {bronze:'#cd7c3a',silver:'#9aa5b4',gold:'#f5a623',platinum:'#60a5fa',diamond:'#a855f7'};
+  el.innerHTML = '<div style="font-weight:800;margin-bottom:10px">뱃지 목록 (' + rows.length + '개)</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">'
+    + rows.map(function(b) {
+        return '<div style="border:1px solid #e8e8e8;border-radius:10px;padding:12px;position:relative">'
+          + '<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">'
+          + (b.image_url ? '<img src="' + b.image_url + '" style="width:40px;height:40px;border-radius:8px;object-fit:cover">' : '<div style="width:40px;height:40px;border-radius:8px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:20px">🏅</div>')
+          + '<div>'
+          + '<div style="font-size:13px;font-weight:700">' + (b.name||b.id) + '</div>'
+          + '<div style="font-size:10px;color:#8b8b8b">' + b.id + '</div>'
+          + '</div></div>'
+          + '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">'
+          + '<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;color:#fff;background:' + (tierColors[b.tier]||'#8b8b8b') + '">' + (b.tier||'') + '</span>'
+          + '<span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:3px;background:#f5f5f5;color:#555">' + (b.category||'') + '</span>'
+          + (b.room_asset_id ? '<span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:3px;background:#fef9c3;color:#a16207">룸 연동</span>' : '')
+          + (!b.active ? '<span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:3px;background:#fee2e2;color:#dc2626">비활성</span>' : '')
+          + '</div>'
+          + '<div style="font-size:11px;color:#8b8b8b;margin-bottom:8px">' + (b.description||'') + '</div>'
+          + '<div style="display:flex;gap:4px">'
+          + '<button onclick="editBadge(\'' + b.id + '\')" style="font-size:10px;padding:3px 8px;border:1px solid #e8e8e8;border-radius:4px;background:#fff;cursor:pointer">Edit</button>'
+          + '<button onclick="deleteBadge(\'' + b.id + '\')" style="font-size:10px;padding:3px 8px;border:1px solid #fdd;border-radius:4px;background:#fff5f5;color:#c33;cursor:pointer">Delete</button>'
+          + '</div></div>';
+      }).join('')
+    + '</div>';
+}
+
+async function editBadge(id) {
+  var sb = getSb(); if (!sb) return;
+  var r = await sb.from('badges').select('*').eq('id', id).maybeSingle();
+  if (!r.data) return;
+  var d = r.data;
+  openBadgeModal(d.id);
+  document.getElementById('bm-slug').value = d.id;
+  document.getElementById('bm-name').value = d.name || '';
+  document.getElementById('bm-desc').value = d.description || '';
+  document.getElementById('bm-cat').value = d.category || 'milestone';
+  document.getElementById('bm-tier').value = d.tier || 'bronze';
+  document.getElementById('bm-img-url').value = d.image_url || '';
+  document.getElementById('bm-condition').value = d.unlock_condition ? JSON.stringify(d.unlock_condition) : '';
+  document.getElementById('bm-room').value = d.room_asset_id || '';
+  if (d.image_url) document.getElementById('bm-img-preview').innerHTML = '<img src="' + d.image_url + '" style="max-width:80px;max-height:80px;border-radius:8px">';
+}
+
+async function saveBadge() {
+  var sb = getSb(); if (!sb) return;
+  var msg = document.getElementById('bm-msg');
+  var slug = (document.getElementById('bm-slug').value || '').trim();
+  if (!slug) { if (msg) msg.textContent = 'ID를 입력하세요.'; return; }
+
+  // Upload image if file selected
+  var imgUrl = (document.getElementById('bm-img-url').value || '').trim();
+  var fileInput = document.getElementById('bm-img-file');
+  if (fileInput && fileInput.files[0]) {
+    try {
+      var file = fileInput.files[0];
+      var ext = file.name.split('.').pop();
+      var path = 'badges/' + slug + '-' + Date.now() + '.' + ext;
+      var up = await sb.storage.from('study-images').upload(path, file, {upsert:true, contentType:file.type});
+      if (up.error) throw up.error;
+      imgUrl = sb.storage.from('study-images').getPublicUrl(path).data.publicUrl;
+    } catch(e) { if (msg) msg.textContent = '이미지 업로드 실패: ' + e.message; return; }
+  }
+
+  var condition = {};
+  try { condition = JSON.parse(document.getElementById('bm-condition').value || '{}'); } catch(e) {}
+
+  var row = {
+    id: slug,
+    name: (document.getElementById('bm-name').value || '').trim(),
+    description: (document.getElementById('bm-desc').value || '').trim(),
+    category: document.getElementById('bm-cat').value,
+    tier: document.getElementById('bm-tier').value,
+    image_url: imgUrl || null,
+    unlock_condition: condition,
+    room_asset_id: (document.getElementById('bm-room').value || '').trim() || null,
+    active: true
+  };
+  var r = await sb.from('badges').upsert(row, {onConflict:'id'});
+  if (r.error) { if (msg) msg.textContent = 'Error: ' + r.error.message; return; }
+  closeBadgeModal();
+  toast('뱃지 저장 완료');
+  loadBadgeList();
+}
+
+async function deleteBadge(id) {
+  if (!confirm(id + ' 뱃지를 삭제합니까?')) return;
+  var sb = getSb(); if (!sb) return;
+  await sb.from('badges').delete().eq('id', id);
+  toast('삭제됨');
+  loadBadgeList();
 }
 </script>
 </body>
