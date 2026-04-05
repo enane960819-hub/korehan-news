@@ -350,21 +350,41 @@ function getTotalArticlesRead() {
   return ids.size;
 }
 
+function getStreakFreezes() { return lsGet('kh_streak_freezes', 1); }
+function useStreakFreeze() {
+  var f = getStreakFreezes();
+  if (f > 0) { lsSet('kh_streak_freezes', f - 1); return true; }
+  return false;
+}
+function addStreakFreeze(n) { lsSet('kh_streak_freezes', getStreakFreezes() + (n||1)); }
+function getUsedFreezes() { return lsGet('kh_used_freezes', {}); }
+
 function getCurrentStreak() {
   var log = lsGet('kh_study_log', {});
   var days = lsGet('kh_study_days', {});
+  var usedFreezes = getUsedFreezes();
   var allDays = Object.assign({}, days);
   Object.keys(log).forEach(function(k){
     var d = log[k];
     if ((d.articles||0) + (d.words||0) + (d.quiz||0) > 0) allDays[k] = true;
   });
   var streak = 0;
+  var freezesUsed = 0;
   var d = new Date();
   for (var i = 0; i < 400; i++) {
     var key = d.toISOString().slice(0,10);
     if (allDays[key]) { streak++; d.setDate(d.getDate()-1); }
     else if (i === 0) { d.setDate(d.getDate()-1); } // 오늘 아직 안 했어도 어제부터
-    else break;
+    else if (usedFreezes[key]) { streak++; d.setDate(d.getDate()-1); } // 프리즈 사용된 날
+    else {
+      // Try auto-use freeze for yesterday gap
+      var avail = getStreakFreezes();
+      if (avail > 0 && i <= 2 && streak > 0) {
+        useStreakFreeze();
+        var uf = getUsedFreezes(); uf[key] = true; lsSet('kh_used_freezes', uf);
+        streak++; d.setDate(d.getDate()-1);
+      } else { break; }
+    }
   }
   return Math.max(streak, lsGet('kh_synced_activity_streak', 0));
 }
