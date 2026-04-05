@@ -158,6 +158,7 @@ a{color:inherit;text-decoration:none}
 .sb-lbl:first-child{padding-top:18px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="learning_hub_vocab_data.js"></script>
 </head>
 <body>
 
@@ -210,6 +211,7 @@ a{color:inherit;text-decoration:none}
 
     <div class="section-sep" style="margin-top:8px"></div>
     <div class="sb-lbl">데이터</div>
+    <button class="sb-btn" onclick="syncVocabToDB()"><span class="ico">🔄</span>단어 DB 동기화</button>
     <button class="sb-btn" onclick="doExport()"><span class="ico">💾</span>내보내기</button>
     <button class="sb-btn" onclick="document.getElementById('imp').click()"><span class="ico">📂</span>가져오기</button>
     <button class="sb-btn" onclick="resetAll()" style="color:#cc2200"><span class="ico">⚠️</span>전체 초기화</button>
@@ -7998,6 +8000,75 @@ async function deleteBadge(id) {
   await sb.from('badges').delete().eq('id', id);
   toast('삭제됨');
   loadBadgeList();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VOCAB BANK SYNC — Push JS data to vocabulary_bank DB
+// ═══════════════════════════════════════════════════════════════
+async function syncVocabToDB() {
+  var sb = getSb(); if (!sb) { toast('Supabase 연결 실패'); return; }
+  if (!confirm('JS 단어 데이터 1044개를 vocabulary_bank DB에 동기화합니다. 계속?')) return;
+
+  var data = (typeof getLearningHubVocabData === 'function') ? getLearningHubVocabData() : null;
+  if (!data) { toast('getLearningHubVocabData 없음 — learning_hub_vocab_data.js 로드 확인'); return; }
+
+  var total = 0, ok = 0, errors = 0;
+
+  // Level words
+  var levels = data.levels || {};
+  var levelKeys = Object.keys(levels);
+  for (var li = 0; li < levelKeys.length; li++) {
+    var level = levelKeys[li];
+    var words = levels[level] || [];
+    for (var wi = 0; wi < words.length; wi++) {
+      var w = words[wi];
+      if (!w.word_ko) continue;
+      total++;
+      try {
+        var r = await sb.from('vocabulary_bank').upsert({
+          word_key: w.word_ko,
+          word_ko: w.word_ko,
+          word_rom: w.word_rom || '',
+          word_en: w.word_en || '',
+          level: level,
+          interest_tag: null,
+          is_active: true
+        }, { onConflict: 'word_key' });
+        if (r.error) throw r.error;
+        ok++;
+      } catch(e) { errors++; }
+      // Throttle every 50
+      if (total % 50 === 0) toast(total + '개 처리 중...');
+    }
+  }
+
+  // Interest words
+  var interests = data.interests || {};
+  var intKeys = Object.keys(interests);
+  for (var ii = 0; ii < intKeys.length; ii++) {
+    var tag = intKeys[ii];
+    var iwords = interests[tag] || [];
+    for (var iw = 0; iw < iwords.length; iw++) {
+      var w2 = iwords[iw];
+      if (!w2.word_ko) continue;
+      total++;
+      try {
+        var r2 = await sb.from('vocabulary_bank').upsert({
+          word_key: w2.word_ko,
+          word_ko: w2.word_ko,
+          word_rom: w2.word_rom || '',
+          word_en: w2.word_en || '',
+          level: 'Beginner',
+          interest_tag: tag,
+          is_active: true
+        }, { onConflict: 'word_key' });
+        if (r2.error) throw r2.error;
+        ok++;
+      } catch(e) { errors++; }
+    }
+  }
+
+  toast('동기화 완료! ' + ok + '/' + total + ' 성공' + (errors ? ', ' + errors + '개 실패' : ''));
 }
 </script>
 </body>
