@@ -47,16 +47,16 @@ body { font-family: 'Inter', 'Noto Sans KR', sans-serif; }
 .xp-fill  { height:100%; border-radius:999px; background:linear-gradient(90deg,#2255a4,#3d7fd4); transition:width .7s ease; }
 .xp-meta  { display:flex; justify-content:space-between; font-size:11px; color:#94a3b8; font-weight:500; }
 
-/* Stats overview — Duolingo-style compact */
+/* Stats overview — compact status */
 .stats-overview { background:#fff; border:1px solid var(--border); border-radius:16px; padding:18px 20px; margin-bottom:20px; box-shadow:0 2px 12px rgba(15,23,42,.05); }
 .stats-overview h3 { font-family:'Inter',sans-serif; font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.1em; margin:0 0 14px; }
-.stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:0; }
-.stat-row { display:flex; align-items:center; gap:10px; padding:10px 4px; }
-.stat-icon { width:28px; height:28px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
-.stat-icon img { width:24px; height:24px; object-fit:contain; display:block; }
+.stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; }
+.stat-row { display:flex; align-items:center; gap:12px; padding:8px 6px; }
+.stat-icon { width:44px; height:44px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+.stat-icon img { width:44px; height:44px; object-fit:contain; object-position:center; display:block; }
 .stat-text { display:flex; align-items:baseline; gap:6px; min-width:0; }
-.stat-n { font-family:'Inter',sans-serif; font-size:16px; font-weight:800; color:#0b1626; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
-.stat-lbl { font-size:11px; color:#64748b; font-weight:500; white-space:nowrap; }
+.stat-n { font-family:'Inter',sans-serif; font-size:18px; font-weight:800; color:#0b1626; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.stat-lbl { font-size:12px; color:#64748b; font-weight:500; white-space:nowrap; }
 
 /* Tier grid */
 .tier-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:24px; }
@@ -70,8 +70,7 @@ body { font-family: 'Inter', 'Noto Sans KR', sans-serif; }
 .tier-bar-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#2255a4,#3d7fd4); }
 
 /* Stat card SVG icons */
-.stat-icon svg { display:block; width:22px; height:22px; }
-.stat-icon img { display:block; width:28px; height:28px; object-fit:contain; }
+/* stat icons handled by .stat-icon img above */
 
 /* Tier badge — text only, no emoji */
 .xp-tier-badge { display:inline-flex; align-items:center; gap:6px; }
@@ -998,7 +997,7 @@ function renderMiniStats(stats) {
       + '</div>';
   }
   el.innerHTML =
-    '<div class="stats-overview"><h3>Overview</h3><div class="stats-grid">'
+    '<div class="stats-overview"><h3>Current Status</h3><div class="stats-grid">'
     + row(SVG_ICONS.streak,   us.mission_streak || us.streak || 0, 'day streak')
     + row(SVG_ICONS.articles, us.articles_read  || 0,              'articles')
     + row(SVG_ICONS.words,    us.words_saved    || 0,              'saved words', ' clickable" onclick="openSavedWordsModal()')
