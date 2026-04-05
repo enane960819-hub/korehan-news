@@ -46,11 +46,11 @@
 .cc2-open-btn:hover{background:#2563eb;color:#fff;border-color:#2563eb;}
 
 /* DETAIL OVERLAY */
-.detail-overlay{position:fixed;inset:0;background:rgba(5,12,24,.6);backdrop-filter:blur(4px);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px 16px;overflow:hidden;overscroll-behavior:contain;isolation:isolate;}
+.detail-overlay{position:fixed;inset:0;background:rgba(5,12,24,.72);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px 16px;overflow:hidden;}
 .detail-overlay.hidden{display:none;}
 .detail-panel{width:100%;max-width:1100px;height:90vh;background:#f8fafc;border-radius:28px;overflow:hidden;box-shadow:0 32px 80px rgba(5,12,24,.3);display:grid;grid-template-columns:1.2fr .85fr;animation:panelIn .22s cubic-bezier(.22,1,.36,1);}
 @keyframes panelIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
-.dp-left{background:#fff;display:flex;flex-direction:column;overflow:hidden;}
+.dp-left{background:#fff;display:flex;flex-direction:column;overflow:hidden;min-height:0;}
 .dp-left-head{background:linear-gradient(135deg,#1d4ed8 0%,#3b82f6 100%);padding:22px 24px 18px;position:relative;}
 .dp-left-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.7);margin-bottom:6px;}
 .dp-left-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#fff;margin:0 0 4px;}
@@ -64,7 +64,7 @@
 .dp-pill-green{background:#dcfce7;color:#15803d;}
 .dp-pill-pink{background:#fce7f3;color:#be185d;}
 .dp-pill-amber{background:#fef9c3;color:#92400e;}
-.dp-chat-area{flex:1;padding:20px 24px 80px;background:linear-gradient(180deg,#f8fbff 0%,#f8fafc 100%);overflow-y:auto;overscroll-behavior:contain;}
+.dp-chat-area{flex:1;min-height:0;padding:20px 24px 80px;background:linear-gradient(180deg,#f8fbff 0%,#f8fafc 100%);overflow-y:auto;overscroll-behavior:contain;}
 .dp-date-sep{text-align:center;margin-bottom:18px;}
 .dp-date-sep span{display:inline-block;padding:6px 14px;border-radius:999px;background:#e2e8f0;color:#64748b;font-size:11px;font-weight:700;}
 .dp-msg-row{display:flex;margin-bottom:12px;align-items:flex-end;gap:10px;}
