@@ -37,22 +37,22 @@
     .stat-num.animating{animation:statPop .55s cubic-bezier(.34,1.56,.64,1) both}
     .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:10px;margin-bottom:14px}.card{padding:16px}
     .card-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}.card-hd h2{margin:0;font-size:15px;font-weight:800;line-height:1.3}
-    .card-hd p{margin:2px 0 0;color:var(--muted);font-size:12px}.soft-link{padding:9px 13px;border-radius:999px;background:#eef4ff;color:var(--bright);font-size:13px;font-weight:800;white-space:nowrap}
+    .card-hd p{margin:2px 0 0;color:var(--muted);font-size:12px}.soft-link{padding:7px 12px;border-radius:6px;background:#eef4ff;color:var(--bright);font-size:12px;font-weight:700;white-space:nowrap}
     .grammar-list,.review-wrap,.articles-list,.streak-list,.word-list,.timeline,.bars,.skills{display:grid}
     .grammar-list{gap:8px}.grammar-item{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff}
     .grammar-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}.grammar-title{font-size:14px;font-weight:800}.grammar-meta{font-size:11px;color:var(--muted)}
-    .tag{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:800}.tag.red{background:#fee2e2;color:#b91c1c}.tag.amber{background:#fef3c7;color:#b45309}.tag.green{background:#dcfce7;color:#15803d}
-    .progress{height:10px;border-radius:999px;background:#eef2f8;overflow:hidden;margin-bottom:10px}.fill{height:100%;border-radius:999px}.fill.red{background:linear-gradient(90deg,#ef4444,#f97316)}.fill.amber{background:linear-gradient(90deg,#f59e0b,#fbbf24)}.fill.green{background:linear-gradient(90deg,#22c55e,#4ade80)}
-    .grammar-actions{display:flex;gap:10px;flex-wrap:wrap}.ghost-btn,.solid-btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:999px;font-size:13px;font-weight:800}
+    .tag{display:inline-flex;align-items:center;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:700}.tag.red{background:#fee2e2;color:#b91c1c}.tag.amber{background:#fef3c7;color:#b45309}.tag.green{background:#dcfce7;color:#15803d}
+    .progress{height:6px;border-radius:3px;background:#eef2f8;overflow:hidden;margin-bottom:10px}.fill{height:100%;border-radius:3px}.fill.red{background:linear-gradient(90deg,#ef4444,#f97316)}.fill.amber{background:linear-gradient(90deg,#f59e0b,#fbbf24)}.fill.green{background:linear-gradient(90deg,#22c55e,#4ade80)}
+    .grammar-actions{display:flex;gap:8px;flex-wrap:wrap}.ghost-btn,.solid-btn{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px;border-radius:6px;font-size:12px;font-weight:700}
     .ghost-btn{background:#f8fbff;border:1px solid #dbe7fb;color:var(--bright)}.solid-btn{background:var(--bright);color:#fff}
     .skills{gap:6px}
     .skill-row{padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:#fff}
     .skill-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
     .skill-name{font-size:13px;font-weight:800}
     .skill-score{font-size:12px;font-weight:800;color:var(--muted)}
-    .skill-track{height:8px;border-radius:999px;background:#eef2f8;overflow:hidden}
-    .skill-bar{height:100%;border-radius:999px}
-    .skill-note{margin-top:8px;font-size:13px;color:var(--muted)}
+    .skill-track{height:4px;border-radius:2px;background:#f0f0f0;overflow:hidden}
+    .skill-bar{height:100%;border-radius:2px}
+    .skill-note{margin-top:6px;font-size:12px;color:var(--muted)}
     .vocab-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.vocab-box{border:1px solid var(--border);border-radius:22px;padding:18px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.vocab-box h3{margin:0 0 6px;font-size:22px}.vocab-box p{margin:0 0 14px;color:var(--muted);font-size:14px}
     .word-list{gap:10px}.word-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:16px;background:#f7faff;border:1px solid #e3ecfa}.word-main{display:flex;flex-direction:column}.ko{font-size:17px;font-weight:900;color:var(--blue)}.sub{font-size:12px;color:var(--muted)}.level{padding:5px 9px;border-radius:999px;background:#eef4ff;color:var(--bright);font-size:11px;font-weight:800}
     .review-wrap{gap:14px}.review-day{border:1px solid var(--border);border-radius:20px;padding:16px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.review-top h3{margin:0;font-size:21px}.review-top p{margin:4px 0 0;color:var(--muted);font-size:14px}
@@ -274,57 +274,57 @@
     <!-- Inline stats bar -->
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
       <div style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center">
-        <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">XP</div>
-        <div style="font-size:22px;font-weight:900;color:var(--blue)" id="stat-xp">0</div>
+        <div style="font-size:10px;font-weight:500;color:var(--muted)">XP</div>
+        <div style="font-size:22px;font-weight:800;color:var(--text)" id="stat-xp">0</div>
       </div>
       <div style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center">
-        <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">단어</div>
-        <div style="font-size:22px;font-weight:900;color:#15803d" id="stat-words">0</div>
+        <div style="font-size:10px;font-weight:500;color:var(--muted)">단어</div>
+        <div style="font-size:22px;font-weight:800;color:var(--text)" id="stat-words">0</div>
       </div>
       <div style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center">
-        <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">기사</div>
-        <div style="font-size:22px;font-weight:900;color:var(--bright)" id="stat-articles">0</div>
+        <div style="font-size:10px;font-weight:500;color:var(--muted)">기사</div>
+        <div style="font-size:22px;font-weight:800;color:var(--text)" id="stat-articles">0</div>
       </div>
       <div style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center">
-        <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">🔥 스트릭</div>
-        <div style="font-size:22px;font-weight:900;color:#ea580c" id="stat-streak">0</div>
+        <div style="font-size:10px;font-weight:500;color:var(--muted)">스트릭</div>
+        <div style="font-size:22px;font-weight:800;color:#ea580c" id="stat-streak">0</div>
       </div>
     </div>
 
     <!-- ═══ TABBED WEEKLY SECTION (비교 | 목표 | 캘린더) ═══ -->
     <section class="card" style="margin-bottom:14px;padding:16px">
       <div style="display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px">
-        <button onclick="switchHubTab(‘compare’)" id="htab-compare" class="htab active" style="padding:6px 12px;font-size:12px;font-weight:800;border:none;background:none;cursor:pointer;color:var(--bright);border-bottom:2px solid var(--bright)">📊 이번주</button>
-        <button onclick="switchHubTab(‘goals’)" id="htab-goals" class="htab" style="padding:6px 12px;font-size:12px;font-weight:800;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent">🎯 목표</button>
-        <button onclick="switchHubTab(‘calendar’)" id="htab-calendar" class="htab" style="padding:6px 12px;font-size:12px;font-weight:800;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent">🔥 캘린더</button>
+        <button onclick="switchHubTab(‘compare’)" id="htab-compare" class="htab active" style="padding:6px 12px;font-size:12px;font-weight:700;border:none;background:none;cursor:pointer;color:var(--bright);border-bottom:2px solid var(--bright)">이번주</button>
+        <button onclick="switchHubTab(‘goals’)" id="htab-goals" class="htab" style="padding:6px 12px;font-size:12px;font-weight:700;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent">목표</button>
+        <button onclick="switchHubTab(‘calendar’)" id="htab-calendar" class="htab" style="padding:6px 12px;font-size:12px;font-weight:700;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent">캘린더</button>
       </div>
       <!-- Tab: Compare -->
       <div id="htab-body-compare">
-        <div id="weekly-compare-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
-          <div style="text-align:center;padding:10px 6px;border-radius:10px;background:#f0f7ff">
-            <div style="font-size:10px;font-weight:800;color:#64748b;margin-bottom:4px">📰 기사</div>
-            <div style="font-size:24px;font-weight:900;color:#1d4ed8" id="wc-articles">-</div>
-            <div style="font-size:10px;font-weight:700;margin-top:2px" id="wc-articles-delta"></div>
+        <div id="weekly-compare-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:0">
+          <div style="text-align:center;padding:10px 6px;border-right:1px solid #f0f0f0">
+            <div style="font-size:10px;font-weight:500;color:#8b8b8b;margin-bottom:4px">기사</div>
+            <div style="font-size:22px;font-weight:800;color:var(--text)" id="wc-articles">-</div>
+            <div style="font-size:10px;font-weight:600;margin-top:2px" id="wc-articles-delta"></div>
           </div>
-          <div style="text-align:center;padding:10px 6px;border-radius:10px;background:#f0fdf4">
-            <div style="font-size:10px;font-weight:800;color:#64748b;margin-bottom:4px">📚 단어</div>
-            <div style="font-size:24px;font-weight:900;color:#15803d" id="wc-words">-</div>
-            <div style="font-size:10px;font-weight:700;margin-top:2px" id="wc-words-delta"></div>
+          <div style="text-align:center;padding:10px 6px;border-right:1px solid #f0f0f0">
+            <div style="font-size:10px;font-weight:500;color:#8b8b8b;margin-bottom:4px">단어</div>
+            <div style="font-size:22px;font-weight:800;color:var(--text)" id="wc-words">-</div>
+            <div style="font-size:10px;font-weight:600;margin-top:2px" id="wc-words-delta"></div>
           </div>
-          <div style="text-align:center;padding:10px 6px;border-radius:10px;background:#fef9c3">
-            <div style="font-size:10px;font-weight:800;color:#64748b;margin-bottom:4px">✏️ 퀴즈</div>
-            <div style="font-size:24px;font-weight:900;color:#a16207" id="wc-quizzes">-</div>
-            <div style="font-size:10px;font-weight:700;margin-top:2px" id="wc-quizzes-delta"></div>
+          <div style="text-align:center;padding:10px 6px;border-right:1px solid #f0f0f0">
+            <div style="font-size:10px;font-weight:500;color:#8b8b8b;margin-bottom:4px">퀴즈</div>
+            <div style="font-size:22px;font-weight:800;color:var(--text)" id="wc-quizzes">-</div>
+            <div style="font-size:10px;font-weight:600;margin-top:2px" id="wc-quizzes-delta"></div>
           </div>
-          <div style="text-align:center;padding:10px 6px;border-radius:10px;background:#faf5ff">
-            <div style="font-size:10px;font-weight:800;color:#64748b;margin-bottom:4px">📝 글쓰기</div>
-            <div style="font-size:24px;font-weight:900;color:#7c3aed" id="wc-writing">-</div>
-            <div style="font-size:10px;font-weight:700;margin-top:2px" id="wc-writing-delta"></div>
+          <div style="text-align:center;padding:10px 6px;border-right:1px solid #f0f0f0">
+            <div style="font-size:10px;font-weight:500;color:#8b8b8b;margin-bottom:4px">글쓰기</div>
+            <div style="font-size:22px;font-weight:800;color:var(--text)" id="wc-writing">-</div>
+            <div style="font-size:10px;font-weight:600;margin-top:2px" id="wc-writing-delta"></div>
           </div>
-          <div style="text-align:center;padding:10px 6px;border-radius:10px;background:#fff1f2">
-            <div style="font-size:10px;font-weight:800;color:#64748b;margin-bottom:4px">🔥 활동일</div>
-            <div style="font-size:24px;font-weight:900;color:#e11d48" id="wc-days">-<span style="font-size:13px">/7</span></div>
-            <div style="font-size:10px;font-weight:700;margin-top:2px" id="wc-days-delta"></div>
+          <div style="text-align:center;padding:10px 6px">
+            <div style="font-size:10px;font-weight:500;color:#8b8b8b;margin-bottom:4px">활동일</div>
+            <div style="font-size:22px;font-weight:800;color:var(--text)" id="wc-days">-<span style="font-size:13px;font-weight:500">/7</span></div>
+            <div style="font-size:10px;font-weight:600;margin-top:2px" id="wc-days-delta"></div>
           </div>
         </div>
       </div>
@@ -394,7 +394,7 @@
     <!-- ═══ ERROR PATTERN ANALYSIS ═══ -->
     <section class="card" style="margin-bottom:14px;padding:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:15px;font-weight:800">✏️ 오답 패턴 분석</span>
+        <span style="font-size:15px;font-weight:800">오답 패턴 분석</span>
         <span style="font-size:11px;color:var(--muted)" id="error-period">최근 4주</span>
       </div>
       <div id="error-patterns-list"></div>
@@ -414,7 +414,7 @@
     <!-- ═══ RECENT BADGES ═══ -->
     <section class="card" style="margin-bottom:14px;padding:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:15px;font-weight:800">🏆 최근 뱃지</span>
+        <span style="font-size:15px;font-weight:800">최근 뱃지</span>
         <a href="korehan-mypage.html" style="font-size:11px;font-weight:700;color:var(--bright);text-decoration:none">전체 보기 →</a>
       </div>
       <div id="recent-badges-list"></div>
@@ -1796,22 +1796,22 @@
   function renderWeeklyGoals(stats) {
     var g = _weeklyGoals;
     var bars = [
-      { label:'📰 기사', actual:stats.articles_read, goal:g.goal_articles, color:'#3b82f6' },
-      { label:'📚 단어', actual:stats.words_learned, goal:g.goal_words, color:'#22c55e' },
-      { label:'✏️ 퀴즈', actual:stats.quizzes_done, goal:g.goal_quizzes, color:'#f59e0b' },
-      { label:'📝 글쓰기', actual:stats.writing_count, goal:g.goal_writing, color:'#7c3aed' },
-      { label:'🔥 활동일', actual:stats.active_days, goal:g.goal_active_days, color:'#e11d48' }
+      { label:'기사', actual:stats.articles_read, goal:g.goal_articles, color:'var(--bright)' },
+      { label:'단어', actual:stats.words_learned, goal:g.goal_words, color:'var(--bright)' },
+      { label:'퀴즈', actual:stats.quizzes_done, goal:g.goal_quizzes, color:'var(--bright)' },
+      { label:'글쓰기', actual:stats.writing_count, goal:g.goal_writing, color:'var(--bright)' },
+      { label:'활동일', actual:stats.active_days, goal:g.goal_active_days, color:'var(--bright)' }
     ];
     var el = document.getElementById('weekly-goals-bars');
     if (!el) return;
     el.innerHTML = bars.map(function(b) {
       var pct = b.goal > 0 ? Math.min(100, Math.round(b.actual / b.goal * 100)) : 0;
       var done = b.actual >= b.goal;
-      return '<div style="display:flex;align-items:center;gap:12px">'
-        + '<span style="font-size:13px;font-weight:700;min-width:80px;color:#334155">' + b.label + '</span>'
-        + '<div style="flex:1;height:12px;background:#eef2f8;border-radius:999px;overflow:hidden">'
-        + '<div style="width:' + pct + '%;height:100%;background:' + (done ? '#22c55e' : b.color) + ';border-radius:999px;transition:width .5s"></div></div>'
-        + '<span style="font-size:12px;font-weight:800;min-width:55px;text-align:right;color:' + (done?'#16a34a':'#64748b') + '">' + b.actual + '/' + b.goal + (done?' ✅':'') + '</span>'
+      return '<div style="display:flex;align-items:center;gap:10px">'
+        + '<span style="font-size:12px;font-weight:600;min-width:50px;color:#555">' + b.label + '</span>'
+        + '<div style="flex:1;height:4px;background:#f0f0f0;border-radius:2px;overflow:hidden">'
+        + '<div style="width:' + pct + '%;height:100%;background:' + (done ? '#00c471' : b.color) + ';border-radius:2px;transition:width .5s"></div></div>'
+        + '<span style="font-size:11px;font-weight:700;min-width:48px;text-align:right;color:' + (done?'#00c471':'#8b8b8b') + '">' + b.actual + '/' + b.goal + (done?' ✓':'') + '</span>'
         + '</div>';
     }).join('');
   }
@@ -2064,7 +2064,7 @@
       if (totalErrors === 0) { el.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:8px 0">오답이 없습니다!</div>'; return; }
 
       var labels = { PARTICLE:'조사 (Particle)', TENSE:'시제 (Tense)', WORD_ORDER:'어순 (Word Order)', SPELLING:'맞춤법 (Spelling)', VOCAB:'어휘 (Vocab)', OTHER:'기타' };
-      var colors = { PARTICLE:'#ef4444', TENSE:'#f59e0b', WORD_ORDER:'#8b5cf6', SPELLING:'#06b6d4', VOCAB:'#22c55e', OTHER:'#94a3b8' };
+      var colors = { PARTICLE:'var(--bright)', TENSE:'var(--bright)', WORD_ORDER:'var(--bright)', SPELLING:'var(--bright)', VOCAB:'var(--bright)', OTHER:'#ccc' };
 
       var sorted = Object.keys(totals).filter(function(k) { return totals[k] > 0; }).sort(function(a, b) { return totals[b] - totals[a]; });
 
@@ -2083,11 +2083,11 @@
           else { trend = '→ 유지'; trendColor = '#64748b'; }
         }
         return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
-          + '<span style="font-size:12px;font-weight:700;min-width:110px;color:#334155">' + (labels[k]||k) + '</span>'
-          + '<div style="flex:1;height:8px;background:#eef2f8;border-radius:999px;overflow:hidden">'
-          + '<div style="width:' + pct + '%;height:100%;background:' + (colors[k]||'#94a3b8') + ';border-radius:999px"></div></div>'
-          + '<span style="font-size:11px;font-weight:800;min-width:32px;text-align:right;color:#334155">' + pct + '%</span>'
-          + (trend ? '<span style="font-size:10px;font-weight:700;min-width:50px;color:' + trendColor + '">' + trend + '</span>' : '')
+          + '<span style="font-size:12px;font-weight:600;min-width:90px;color:#555">' + (labels[k]||k) + '</span>'
+          + '<div style="flex:1;height:4px;background:#f0f0f0;border-radius:2px;overflow:hidden">'
+          + '<div style="width:' + pct + '%;height:100%;background:' + (colors[k]||'#ccc') + ';border-radius:2px"></div></div>'
+          + '<span style="font-size:11px;font-weight:700;min-width:32px;text-align:right;color:#555">' + pct + '%</span>'
+          + (trend ? '<span style="font-size:10px;font-weight:600;min-width:50px;color:' + trendColor + '">' + trend + '</span>' : '')
           + '</div>';
       }).join('');
     } catch(e) { console.warn('[error-patterns]', e); }
