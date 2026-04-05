@@ -8029,8 +8029,12 @@ function goBadgeAdmin() {
       + '<input id="bm-slug" class="sf-input" placeholder="streak-7" style="width:100%"></div>'
       + '<div class="fg"><label style="font-size:12px;font-weight:700;color:#555">이름</label>'
       + '<input id="bm-name" class="sf-input" placeholder="Week Warrior" style="width:100%"></div>'
+      + '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end">'
       + '<div class="fg"><label style="font-size:12px;font-weight:700;color:#555">설명</label>'
       + '<input id="bm-desc" class="sf-input" placeholder="7일 연속 학습" style="width:100%"></div>'
+      + '<div class="fg"><label style="font-size:12px;font-weight:700;color:#555">아이콘</label>'
+      + '<input id="bm-icon" class="sf-input" placeholder="🔥" style="width:60px;text-align:center;font-size:18px"></div>'
+      + '</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
       + '<div class="fg"><label style="font-size:12px;font-weight:700;color:#555">카테고리</label>'
       + '<select id="bm-cat" class="sf-input" style="width:100%"><option>milestone</option><option>streak</option><option>skill</option><option>special</option></select></div>'
@@ -8067,7 +8071,7 @@ function openBadgeModal(id) {
   document.getElementById('badge-modal-title').textContent = id ? '뱃지 수정' : '뱃지 추가';
   document.getElementById('bm-id').value = id || '';
   if (!id) {
-    ['bm-slug','bm-name','bm-desc','bm-condition','bm-room','bm-img-url'].forEach(function(x){document.getElementById(x).value='';});
+    ['bm-slug','bm-name','bm-desc','bm-icon','bm-condition','bm-room','bm-img-url'].forEach(function(x){document.getElementById(x).value='';});
     document.getElementById('bm-img-preview').innerHTML = '';
   }
 }
@@ -8087,7 +8091,7 @@ async function loadBadgeList() {
     + rows.map(function(b) {
         return '<div style="border:1px solid #e8e8e8;border-radius:10px;padding:12px;position:relative">'
           + '<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">'
-          + (b.image_url ? '<img src="' + b.image_url + '" style="width:40px;height:40px;border-radius:8px;object-fit:cover">' : '<div style="width:40px;height:40px;border-radius:8px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:20px">🏅</div>')
+          + (b.image_url ? '<img src="' + b.image_url + '" style="width:40px;height:40px;border-radius:8px;object-fit:cover">' : '<div style="width:40px;height:40px;border-radius:8px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:20px">' + (b.icon||'🏅') + '</div>')
           + '<div>'
           + '<div style="font-size:13px;font-weight:700">' + (b.name||b.id) + '</div>'
           + '<div style="font-size:10px;color:#8b8b8b">' + b.id + '</div>'
@@ -8116,6 +8120,7 @@ async function editBadge(id) {
   document.getElementById('bm-slug').value = d.id;
   document.getElementById('bm-name').value = d.name || '';
   document.getElementById('bm-desc').value = d.description || '';
+  document.getElementById('bm-icon').value = d.icon || '';
   document.getElementById('bm-cat').value = d.category || 'milestone';
   document.getElementById('bm-tier').value = d.tier || 'bronze';
   document.getElementById('bm-img-url').value = d.image_url || '';
@@ -8151,6 +8156,7 @@ async function saveBadge() {
     id: slug,
     name: (document.getElementById('bm-name').value || '').trim(),
     description: (document.getElementById('bm-desc').value || '').trim(),
+    icon: (document.getElementById('bm-icon').value || '').trim() || null,
     category: document.getElementById('bm-cat').value,
     tier: document.getElementById('bm-tier').value,
     image_url: imgUrl || null,
@@ -8229,7 +8235,8 @@ async function syncDefaultBadges() {
   var rows = _DEFAULT_BADGES.map(function(b, i) {
     return {
       id: b.id,
-      name: (b.icon || '') + ' ' + b.name,
+      name: b.name,
+      icon: b.icon || null,
       description: b.desc,
       category: b.cat,
       tier: b.tier,
