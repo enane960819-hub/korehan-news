@@ -74,6 +74,7 @@ body { font-family: 'Inter', 'Noto Sans KR', sans-serif; }
 
 /* Stat card SVG icons */
 .stat-icon svg { display:block; width:22px; height:22px; }
+.stat-icon img { display:block; width:28px; height:28px; object-fit:contain; }
 
 /* Tier badge — text only, no emoji */
 .xp-tier-badge { display:inline-flex; align-items:center; gap:6px; }
@@ -884,36 +885,12 @@ function tierMark(cls, size, faded) {
 
 // ── Stat card SVG icons ─────────────────────────────────────────
 var SVG_ICONS = {
-  streak:
-    '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-    + '<path d="M12 2C12 8 6 9 6 14a6 6 0 0012 0C18 9 12 8 12 2z" stroke="#f97316" fill="#fed7aa"/>'
-    + '<path d="M12 12c0 3-2 4-2 5.5a2 2 0 004 0C14 16 12 15 12 12z" fill="#f97316" stroke="none"/>'
-    + '</svg>',
-  articles:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-    + '<rect x="4" y="3" width="16" height="18" rx="2"/>'
-    + '<line x1="8" y1="8" x2="16" y2="8"/>'
-    + '<line x1="8" y1="12" x2="16" y2="12"/>'
-    + '<line x1="8" y1="16" x2="12" y2="16"/>'
-    + '</svg>',
-  words:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-    + '<path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" fill="#dcfce7"/>'
-    + '</svg>',
-  quizzes:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-    + '<circle cx="12" cy="12" r="10" fill="#f5f3ff"/>'
-    + '<polyline points="9 12 11 14.5 15 9.5"/>'
-    + '</svg>',
-  xp:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-    + '<polygon points="12 2 14.9 8.3 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 9.1 8.3 12 2" fill="#dbeafe"/>'
-    + '</svg>',
-  nyang:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-    + '<circle cx="12" cy="12" r="10" fill="#fef3c7"/>'
-    + '<path d="M9 9h.01M15 9h.01M8 13s1 2 4 2 4-2 4-2" stroke-linecap="round"/>'
-    + '</svg>',
+  streak:   '<img src="assets/streak.png" alt="streak">',
+  articles: '<img src="assets/article.png" alt="articles">',
+  words:    '<img src="assets/bookmark.png" alt="words">',
+  quizzes:  '<img src="assets/check.png" alt="quizzes">',
+  xp:       '<img src="assets/streak.png" alt="xp">',
+  nyang:    '<img src="assets/currency.png" alt="kimchi">',
 };
 
 // ── Tier helper ────────────────────────────────────────────────
