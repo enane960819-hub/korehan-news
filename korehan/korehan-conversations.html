@@ -48,9 +48,9 @@
 /* DETAIL OVERLAY */
 .detail-overlay{position:fixed;inset:0;background:rgba(5,12,24,.6);backdrop-filter:blur(4px);z-index:400;display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto;}
 .detail-overlay.hidden{display:none;}
-.detail-panel{width:100%;max-width:1100px;max-height:90vh;background:#f8fafc;border-radius:28px;overflow:hidden;box-shadow:0 32px 80px rgba(5,12,24,.3);display:grid;grid-template-columns:1.2fr .85fr;min-height:600px;animation:panelIn .22s cubic-bezier(.22,1,.36,1);}
+.detail-panel{width:100%;max-width:1100px;height:90vh;background:#f8fafc;border-radius:28px;overflow:hidden;box-shadow:0 32px 80px rgba(5,12,24,.3);display:grid;grid-template-columns:1.2fr .85fr;animation:panelIn .22s cubic-bezier(.22,1,.36,1);}
 @keyframes panelIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
-.dp-left{background:#fff;display:flex;flex-direction:column;max-height:90vh;overflow-y:auto;}
+.dp-left{background:#fff;display:flex;flex-direction:column;overflow:hidden;}
 .dp-left-head{background:linear-gradient(135deg,#1d4ed8 0%,#3b82f6 100%);padding:22px 24px 18px;position:relative;}
 .dp-left-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.7);margin-bottom:6px;}
 .dp-left-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#fff;margin:0 0 4px;}
@@ -98,7 +98,7 @@
 .dp-cta-primary:hover{background:#1d4ed8;}
 .dp-cta-secondary{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;}
 .dp-cta-secondary:hover{background:#dbeafe;}
-.dp-right{background:#f8fafc;display:flex;flex-direction:column;border-left:1px solid #e8eef7;overflow-y:auto;max-height:90vh;}
+.dp-right{background:#f8fafc;display:flex;flex-direction:column;border-left:1px solid #e8eef7;overflow-y:auto;}
 .dp-right-head{padding:22px 24px 16px;border-bottom:1px solid #e8eef7;background:#fff;}
 .dp-right-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#2563eb;margin-bottom:6px;}
 .dp-right-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#0f172a;margin:0;}
