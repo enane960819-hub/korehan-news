@@ -3845,31 +3845,27 @@ async function loadFeedbackInbox() {
   var sb = getSupa(); if (!sb) return;
   try {
     var res = await sb.from('user_submissions')
-      .select('id, study_date, status, admin_feedback, writing_text, topic_ko, content_type')
+      .select('id, study_date, status, admin_feedback, topic_ko, content_type')
       .eq('user_id', supaUser.id)
       .order('submitted_at', { ascending: false })
-      .limit(20);
+      .limit(5);
     if (res.error) return;
     var items = res.data || [];
-    var approved = items.filter(function(i){ return (i.status === 'admin_approved' || i.status === 'sent') && i.admin_feedback; });
-    var pending  = items.filter(function(i){ return i.status === 'submitted' || i.status === 'ai_reviewed'; });
-
-    var btnEl    = document.getElementById('feedback-inbox-btn');
-    var labelEl  = document.getElementById('feedback-inbox-label');
-    if (btnEl) {
-      btnEl.style.display = 'block';
-      if (approved.length > 0) {
-        btnEl.style.borderColor = '#86efac';
-        btnEl.style.background  = '#f0fdf4';
-        btnEl.querySelector('button').style.color = '#15803d';
-        if (labelEl) labelEl.textContent = '📬 Feedback arrived! View ' + approved.length + '';
-      } else if (pending.length > 0) {
-        if (labelEl) labelEl.textContent = '⏳ Under review: ' + pending.length + ' · Awaiting feedback';
-      } else if (items.length > 0) {
-        if (labelEl) labelEl.textContent = '📝 내 작문 기록 보기';
-      } else {
-        btnEl.style.display = 'none';
-      }
+    var latest = items[0];
+    var btnEl   = document.getElementById('feedback-inbox-btn');
+    var labelEl = document.getElementById('feedback-inbox-label');
+    if (!btnEl) return;
+    if (!latest) { btnEl.style.display = 'none'; return; }
+    btnEl.style.display = 'block';
+    if ((latest.status === 'admin_approved' || latest.status === 'sent') && latest.admin_feedback) {
+      btnEl.querySelector('button').style.borderColor = 'rgba(34,197,94,.35)';
+      btnEl.querySelector('button').style.background = 'rgba(34,197,94,.1)';
+      btnEl.querySelector('button').style.color = '#4ade80';
+      if (labelEl) labelEl.textContent = 'New feedback arrived! Tap to view';
+    } else if (latest.status === 'submitted' || latest.status === 'ai_reviewed') {
+      if (labelEl) labelEl.textContent = 'Writing under review · feedback within 24h';
+    } else {
+      if (labelEl) labelEl.textContent = 'View my writing feedback';
     }
   } catch(e) {}
 }
@@ -3882,13 +3878,16 @@ function openFeedbackInbox() {
   overlay.onclick = function(e){ if (e.target === overlay) overlay.remove(); };
 
   overlay.innerHTML =
-    '<div style="background:#fff;border-radius:20px;max-width:600px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.25);">'
-    + '<div style="padding:20px 24px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;">'
-    + '<div style="font-size:17px;font-weight:900;color:#0f172a;">📬 My Writing Feedback</div>'
-    + '<button onclick="document.getElementById(\'feedback-inbox-overlay\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;">✕</button>'
+    '<div style="background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.2);">'
+    + '<div style="padding:16px 20px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;">'
+    + '<div style="font-size:16px;font-weight:800;color:#1a1a1a;">Writing Feedback</div>'
+    + '<button onclick="document.getElementById(\'feedback-inbox-overlay\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#94a3b8;">✕</button>'
     + '</div>'
-    + '<div id="feedback-inbox-content" style="padding:20px 24px;">'
-    + '<div style="text-align:center;color:#94a3b8;padding:30px;">Loading...</div>'
+    + '<div id="feedback-inbox-content" style="padding:16px 20px;">'
+    + '<div style="text-align:center;color:#94a3b8;padding:24px;">Loading...</div>'
+    + '</div>'
+    + '<div style="padding:12px 20px;border-top:1px solid #f0f0f0;text-align:center">'
+    + '<a href="korehan-learning-overview.html" style="font-size:12px;font-weight:700;color:var(--bright,#2563eb);text-decoration:none">전체 히스토리 보기 → Growth Lab</a>'
     + '</div>'
     + '</div>';
 
@@ -3901,48 +3900,40 @@ async function renderFeedbackInboxContent() {
   if (!content) return;
   var sb = getSupa(); if (!sb) return;
   try {
+    // Only show latest 3 in Study Room
     var res = await sb.from('user_submissions')
-      .select('id, study_date, status, admin_feedback, writing_text, topic_ko, content_type, ai_feedback_at, reviewed_at, sent_at')
+      .select('id, study_date, status, admin_feedback, writing_text, topic_ko, content_type')
       .eq('user_id', supaUser.id)
       .order('submitted_at', { ascending: false })
-      .limit(20);
+      .limit(3);
     if (res.error) throw res.error;
     var items = res.data || [];
     if (!items.length) {
-      content.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px;">No submitted writings yet.</div>';
+      content.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:24px;">아직 제출한 글이 없습니다.</div>';
       return;
     }
-    var statusMap = { submitted:'⏳ Under Review', ai_reviewed:'🤖 AI Review Done', admin_approved:'✅ Feedback Ready', sent:'✅ Feedback Ready' };
-    var statusBg  = { submitted:'#fef9c3', ai_reviewed:'#eff6ff', admin_approved:'#f0fdf4', sent:'#f0fdf4' };
-    var statusColor = { submitted:'#854d0e', ai_reviewed:'#1d4ed8', admin_approved:'#15803d', sent:'#15803d' };
+    var statusLabel = { submitted:'검토 중', ai_reviewed:'AI 검토 완료', admin_approved:'피드백 도착', sent:'피드백 도착' };
+    var statusColor = { submitted:'#8b8b8b', ai_reviewed:'var(--bright,#2563eb)', admin_approved:'#00c471', sent:'#00c471' };
 
     content.innerHTML = items.map(function(item) {
-      var sl = statusMap[item.status] || item.status;
-      var sb2 = statusBg[item.status] || '#f8f9fb';
-      var sc  = statusColor[item.status] || '#64748b';
-      var preview = (item.writing_text||'').slice(0,60) + ((item.writing_text||'').length > 60 ? '…' : '');
-      var html = '<div style="border:1px solid #e8edf5;border-radius:12px;padding:16px;margin-bottom:12px;">';
-      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">';
-      html += '<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:' + sb2 + ';color:' + sc + ';">' + sl + '</span>';
-      html += '<span style="font-size:11px;color:#94a3b8;">' + (item.study_date||'') + '</span>';
-      var typeLabels = {writing:'📝 Writing', article_study:'📰 Article', conversation:'💬 Conversation', story:'📖 Story'};
-      html += '<span style="font-size:10px;padding:2px 6px;border-radius:999px;background:#f1f5f9;color:#64748b;font-weight:700;">' + (typeLabels[item.content_type]||item.content_type) + '</span>';
-      if (item.topic_ko) html += '<span style="font-size:11px;color:#64748b;font-weight:600;">' + item.topic_ko + '</span>';
+      var preview = (item.writing_text||'').slice(0,50) + ((item.writing_text||'').length > 50 ? '…' : '');
+      var html = '<div style="padding:12px 0;border-bottom:1px solid #f5f5f5">';
+      html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">';
+      html += '<span style="font-size:11px;font-weight:700;color:' + (statusColor[item.status]||'#8b8b8b') + '">' + (statusLabel[item.status]||item.status) + '</span>';
+      html += '<span style="font-size:11px;color:#8b8b8b">' + (item.study_date||'') + '</span>';
+      if (item.topic_ko) html += '<span style="font-size:11px;color:#555">' + item.topic_ko + '</span>';
       html += '</div>';
-      html += '<div style="font-size:13px;color:#475569;margin-bottom:10px;line-height:1.5;">' + preview + '</div>';
+      html += '<div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:6px">' + preview + '</div>';
       if ((item.status === 'admin_approved' || item.status === 'sent') && item.admin_feedback) {
-        html += '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;">';
-        html += '<div style="font-size:11px;font-weight:800;color:#15803d;margin-bottom:8px;">📬 Feedback from Han</div>';
-        html += '<div style="font-size:13px;color:#1e293b;white-space:pre-wrap;line-height:1.7;">' + item.admin_feedback + '</div>';
+        html += '<div style="background:#f8faf8;border-left:3px solid #00c471;padding:10px 12px;border-radius:4px;">';
+        html += '<div style="font-size:13px;color:#1a1a1a;white-space:pre-wrap;line-height:1.6;">' + item.admin_feedback + '</div>';
         html += '</div>';
-      } else if (item.status === 'submitted' || item.status === 'ai_reviewed') {
-        html += '<div style="font-size:12px;color:#94a3b8;">Under review. Feedback will be delivered within 24 hours.</div>';
       }
       html += '</div>';
       return html;
     }).join('');
   } catch(e) {
-    content.innerHTML = '<div style="text-align:center;color:#e53e3e;padding:30px;">오류: ' + e.message + '</div>';
+    content.innerHTML = '<div style="text-align:center;color:#e53e3e;padding:24px;">오류: ' + e.message + '</div>';
   }
 }
 

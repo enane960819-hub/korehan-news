@@ -426,6 +426,15 @@
       <div class="review-wrap"><div class="review-day"><div class="review-top"><div><h3 id="review-title">Today</h3><p id="review-sub"></p></div></div><div class="timeline" id="review-queue"></div></div></div>
     </section>
 
+    <!-- ═══ WRITING FEEDBACK HISTORY ═══ -->
+    <section class="card" style="margin-bottom:14px;padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:17px;font-weight:800">Writing Feedback</span>
+        <span style="font-size:11px;color:var(--muted)" id="fb-hist-count"></span>
+      </div>
+      <div id="fb-history-list"></div>
+    </section>
+
     <!-- ═══ RECENT BADGES ═══ -->
     <section class="card" style="margin-bottom:14px;padding:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -2109,6 +2118,71 @@
   }
 
   // ═══════════════════════════════════════════════════════════════
+  // WRITING FEEDBACK HISTORY
+  // ═══════════════════════════════════════════════════════════════
+  async function loadFeedbackHistory() {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb || !supaUser) return;
+    var el = document.getElementById('fb-history-list');
+    var countEl = document.getElementById('fb-hist-count');
+    if (!el) return;
+    try {
+      var res = await sb.from('user_submissions')
+        .select('id, study_date, status, admin_feedback, ai_feedback, writing_text, topic_ko, content_type, score')
+        .eq('user_id', supaUser.id)
+        .order('submitted_at', { ascending: false })
+        .limit(20);
+      if (res.error) throw res.error;
+      var items = res.data || [];
+      if (countEl) countEl.textContent = items.length + '건';
+      if (!items.length) {
+        el.innerHTML = '<div style="font-size:13px;color:#8b8b8b;padding:8px 0">아직 제출한 글이 없습니다. Study Room에서 글쓰기를 시작해보세요.</div>';
+        return;
+      }
+      var statusLabel = { submitted:'검토 중', ai_reviewed:'AI 검토 완료', admin_approved:'피드백 도착', sent:'피드백 전달됨' };
+      var statusColor = { submitted:'#8b8b8b', ai_reviewed:'var(--bright)', admin_approved:'#00c471', sent:'#00c471' };
+      var typeLabel = { writing:'Writing', article_study:'Article', conversation:'Conversation', story:'Story' };
+
+      el.innerHTML = items.map(function(item) {
+        var preview = (item.writing_text||'').slice(0,80) + ((item.writing_text||'').length > 80 ? '…' : '');
+        var html = '<div style="padding:12px 0;border-bottom:1px solid #f0f0f0">';
+        // Header row
+        html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">';
+        html += '<span style="font-size:11px;font-weight:700;color:' + (statusColor[item.status]||'#8b8b8b') + '">' + (statusLabel[item.status]||item.status) + '</span>';
+        html += '<span style="font-size:11px;color:#8b8b8b">' + (item.study_date||'') + '</span>';
+        html += '<span style="font-size:10px;font-weight:600;color:#8b8b8b;padding:1px 6px;border:1px solid #e8e8e8;border-radius:3px">' + (typeLabel[item.content_type]||item.content_type) + '</span>';
+        if (item.topic_ko) html += '<span style="font-size:11px;color:#555;font-weight:600">' + item.topic_ko + '</span>';
+        if (typeof item.score === 'number') html += '<span style="font-size:11px;font-weight:700;color:var(--bright)">' + item.score + '점</span>';
+        html += '</div>';
+        // Writing preview
+        html += '<div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:8px">' + preview + '</div>';
+        // Admin feedback
+        if ((item.status === 'admin_approved' || item.status === 'sent') && item.admin_feedback) {
+          html += '<div style="background:#f8faf8;border-left:3px solid #00c471;padding:10px 12px;border-radius:4px;margin-bottom:6px">';
+          html += '<div style="font-size:11px;font-weight:700;color:#00c471;margin-bottom:4px">Han\'s feedback</div>';
+          html += '<div style="font-size:13px;color:#1a1a1a;white-space:pre-wrap;line-height:1.6">' + item.admin_feedback + '</div>';
+          html += '</div>';
+        }
+        // AI feedback summary (if no admin feedback yet)
+        if (item.status === 'ai_reviewed' && item.ai_feedback && !item.admin_feedback) {
+          var aiFb = typeof item.ai_feedback === 'string' ? JSON.parse(item.ai_feedback) : item.ai_feedback;
+          if (aiFb && aiFb.overall) {
+            html += '<div style="background:#f8f9ff;border-left:3px solid var(--bright);padding:10px 12px;border-radius:4px;margin-bottom:6px">';
+            html += '<div style="font-size:11px;font-weight:700;color:var(--bright);margin-bottom:4px">AI Review</div>';
+            html += '<div style="font-size:13px;color:#555;line-height:1.6">' + aiFb.overall + '</div>';
+            if (aiFb.corrections && aiFb.corrections.length) {
+              html += '<div style="margin-top:6px;font-size:12px;color:#8b8b8b">' + aiFb.corrections.length + '개 교정사항</div>';
+            }
+            html += '</div>';
+          }
+        }
+        html += '</div>';
+        return html;
+      }).join('');
+    } catch(e) { el.innerHTML = '<div style="color:#e53e3e;font-size:12px">오류: ' + (e.message||e) + '</div>'; }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // RECENT BADGES
   // ═══════════════════════════════════════════════════════════════
   function loadRecentBadges() {
@@ -2146,6 +2220,7 @@
     loadCalendarData();
     loadRadarChart();
     loadErrorPatterns();
+    loadFeedbackHistory();
     loadRecentBadges();
   }
   // Hook into existing loadHub flow
