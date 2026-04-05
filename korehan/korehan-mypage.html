@@ -565,6 +565,195 @@ body.kh-neon-on .danger-zone p { color:rgba(255,255,255,.6) !important; }
 @media (max-width:480px) {
   .room-shop-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; padding:14px 16px 18px; }
 }
+
+/* ═══ #4 Tier glow effects — Gold / Platinum / Diamond ═══ */
+
+/* Gold tier — warm golden glow */
+@keyframes goldGlow {
+  0%, 100% { box-shadow:0 0 8px rgba(245,158,11,.15), inset 0 0 6px rgba(245,158,11,.05); }
+  50% { box-shadow:0 0 18px rgba(245,158,11,.35), 0 0 36px rgba(245,158,11,.1), inset 0 0 10px rgba(245,158,11,.08); }
+}
+@keyframes goldShine {
+  0% { background-position:-200% center; }
+  100% { background-position:200% center; }
+}
+.tier-item[data-tier="gold"] {
+  border-color:#f59e0b !important;
+  background:linear-gradient(135deg, #fffbeb, #fef3c7, #fffbeb) !important;
+  animation: goldGlow 3s ease-in-out infinite;
+}
+.tier-item[data-tier="gold"] .tier-icon {
+  background:linear-gradient(135deg, #fef3c7, #fde68a) !important;
+  box-shadow:0 0 12px rgba(245,158,11,.25);
+}
+.tier-item[data-tier="gold"]::after {
+  content:''; position:absolute; inset:0; border-radius:14px; pointer-events:none;
+  background:linear-gradient(90deg, transparent 30%, rgba(255,215,0,.15) 50%, transparent 70%);
+  background-size:200% 100%;
+  animation:goldShine 4s linear infinite;
+}
+.tier-item[data-tier="gold"] { position:relative; overflow:hidden; }
+
+/* Platinum tier — elegant purple metallic glow */
+@keyframes platGlow {
+  0%, 100% { box-shadow:0 0 10px rgba(124,58,237,.15), 0 0 24px rgba(124,58,237,.05); }
+  50% { box-shadow:0 0 22px rgba(124,58,237,.4), 0 0 48px rgba(167,139,250,.12), inset 0 0 12px rgba(124,58,237,.06); }
+}
+@keyframes platShine {
+  0% { background-position:-200% center; }
+  100% { background-position:200% center; }
+}
+.tier-item[data-tier="plat"] {
+  border-color:#7c3aed !important;
+  background:linear-gradient(135deg, #f5f3ff, #ede9fe, #f5f3ff) !important;
+  animation: platGlow 2.8s ease-in-out infinite;
+}
+.tier-item[data-tier="plat"] .tier-icon {
+  background:linear-gradient(135deg, #ede9fe, #ddd6fe) !important;
+  box-shadow:0 0 16px rgba(124,58,237,.3);
+}
+.tier-item[data-tier="plat"]::before {
+  content:''; position:absolute; inset:-1px; border-radius:14px; pointer-events:none;
+  background:linear-gradient(135deg, rgba(124,58,237,.2), transparent 40%, rgba(167,139,250,.15) 60%, transparent);
+  z-index:0;
+}
+.tier-item[data-tier="plat"]::after {
+  content:''; position:absolute; inset:0; border-radius:14px; pointer-events:none;
+  background:linear-gradient(90deg, transparent 20%, rgba(196,181,253,.25) 45%, rgba(255,255,255,.35) 50%, rgba(196,181,253,.25) 55%, transparent 80%);
+  background-size:200% 100%;
+  animation:platShine 3s linear infinite;
+  z-index:1;
+}
+.tier-item[data-tier="plat"] { position:relative; overflow:hidden; }
+.tier-item[data-tier="plat"] > * { position:relative; z-index:2; }
+
+/* Diamond tier — dazzling blue sparkle */
+@keyframes diamondGlow {
+  0%, 100% { box-shadow:0 0 12px rgba(59,130,246,.2), 0 0 32px rgba(59,130,246,.08); }
+  33% { box-shadow:0 0 28px rgba(59,130,246,.5), 0 0 56px rgba(96,165,250,.18), 0 0 4px rgba(255,255,255,.3); }
+  66% { box-shadow:0 0 20px rgba(29,78,216,.4), 0 0 48px rgba(147,197,253,.15); }
+}
+@keyframes diamondSparkle {
+  0% { background-position:-300% center; }
+  100% { background-position:300% center; }
+}
+@keyframes diamondPrism {
+  0%, 100% { opacity:.3; }
+  50% { opacity:.7; }
+}
+.tier-item[data-tier="diamond"] {
+  border-color:#3b82f6 !important; border-width:2px;
+  background:linear-gradient(135deg, #eff6ff, #dbeafe, #e0f2fe, #dbeafe, #eff6ff) !important;
+  background-size:200% 200%;
+  animation: diamondGlow 2.5s ease-in-out infinite, heroBgShift 6s ease-in-out infinite;
+}
+.tier-item[data-tier="diamond"] .tier-icon {
+  background:linear-gradient(135deg, #dbeafe, #93c5fd, #bfdbfe) !important;
+  box-shadow:0 0 20px rgba(59,130,246,.35), 0 0 6px rgba(255,255,255,.4);
+}
+.tier-item[data-tier="diamond"]::before {
+  content:''; position:absolute; inset:-1px; border-radius:14px; pointer-events:none;
+  background:linear-gradient(135deg, rgba(59,130,246,.3), transparent 30%, rgba(147,197,253,.2) 50%, transparent 70%, rgba(96,165,250,.25));
+  z-index:0;
+}
+.tier-item[data-tier="diamond"]::after {
+  content:''; position:absolute; inset:0; border-radius:14px; pointer-events:none;
+  background:linear-gradient(90deg, transparent 10%, rgba(255,255,255,.4) 30%, rgba(147,197,253,.35) 45%, rgba(255,255,255,.5) 50%, rgba(147,197,253,.35) 55%, rgba(255,255,255,.4) 70%, transparent 90%);
+  background-size:300% 100%;
+  animation:diamondSparkle 2.5s linear infinite;
+  z-index:1;
+}
+.tier-item[data-tier="diamond"] { position:relative; overflow:hidden; }
+.tier-item[data-tier="diamond"] > * { position:relative; z-index:2; }
+
+/* Neon mode tier glow overrides */
+body.kh-neon-on .tier-item[data-tier="gold"] {
+  background:rgba(245,158,11,.08) !important;
+  box-shadow:0 0 16px rgba(245,158,11,.25), inset 0 0 8px rgba(245,158,11,.05);
+}
+body.kh-neon-on .tier-item[data-tier="plat"] {
+  background:rgba(124,58,237,.08) !important;
+  box-shadow:0 0 20px rgba(124,58,237,.3), inset 0 0 10px rgba(124,58,237,.05);
+}
+body.kh-neon-on .tier-item[data-tier="diamond"] {
+  background:rgba(59,130,246,.08) !important;
+  box-shadow:0 0 24px rgba(59,130,246,.35), inset 0 0 12px rgba(59,130,246,.06);
+}
+
+/* ═══ Neon mode: Edit Room / control button fixes ═══ */
+body.kh-neon-on #room-edit-btn {
+  background:rgba(0,255,214,.08) !important;
+  border-color:rgba(0,255,214,.22) !important;
+  color:#8ffcff !important;
+}
+body.kh-neon-on #room-save-btn {
+  background:rgba(0,255,214,.18) !important;
+  color:#e4f9ff !important;
+}
+body.kh-neon-on #room-size-controls { color:#e4f9ff !important; }
+body.kh-neon-on #room-size-controls div { color:rgba(163,230,235,.7) !important; }
+body.kh-neon-on #room-size-controls button {
+  background:rgba(9,18,33,.7) !important;
+  border-color:rgba(0,255,214,.2) !important;
+  color:#8ffcff !important;
+}
+body.kh-neon-on #room-size-controls span { color:#8ffcff !important; }
+body.kh-neon-on #room-size-value { color:#8ffcff !important; }
+body.kh-neon-on #room-remove-btn {
+  background:rgba(239,68,68,.7) !important;
+  color:#fff !important;
+}
+
+/* ═══ Friends section ═══ */
+.friends-empty {
+  text-align:center; padding:32px 16px; color:#94a3b8;
+}
+.friends-empty-icon { font-size:40px; margin-bottom:12px; opacity:.6; }
+.friends-empty-title { font-size:14px; font-weight:700; color:#475569; margin-bottom:6px; }
+.friends-empty-desc { font-size:12px; line-height:1.6; color:#94a3b8; }
+body.kh-neon-on .friends-empty-title { color:#e4f9ff !important; }
+body.kh-neon-on .friends-empty-desc { color:rgba(163,230,235,.5) !important; }
+
+/* ═══ Badges section on mypage ═══ */
+.badge-grid-mp { display:flex; flex-wrap:wrap; gap:10px; }
+.badge-item-mp {
+  width:54px; text-align:center; cursor:default;
+  transition:transform .15s;
+}
+.badge-item-mp:hover { transform:scale(1.12); }
+.badge-icon-mp {
+  width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:20px; margin:0 auto 4px;
+  border:2px solid transparent;
+}
+.badge-icon-mp.earned { border-color:var(--badge-color,#f5a623); box-shadow:0 0 8px var(--badge-glow,rgba(245,166,35,.3)); }
+.badge-icon-mp.locked { filter:grayscale(1); opacity:.35; }
+.badge-name-mp { font-size:9px; font-weight:600; color:#64748b; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+body.kh-neon-on .badge-name-mp { color:rgba(163,230,235,.5) !important; }
+.badge-progress-bar { height:4px; background:#eef0f5; border-radius:99px; overflow:hidden; margin-top:8px; }
+.badge-progress-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#f59e0b,#fbbf24); }
+body.kh-neon-on .badge-progress-bar { background:rgba(255,255,255,.08) !important; }
+body.kh-neon-on .badge-progress-fill { background:linear-gradient(90deg,#0d9488,#00ffd6) !important; }
+
+/* Saved Words clickable stat card */
+.stat-card.clickable { cursor:pointer; }
+.stat-card.clickable:hover { border-color:#93c5fd; }
+
+/* ═══ Neon mode: comprehensive text visibility fixes ═══ */
+body.kh-neon-on .inv-name { color:#e4f9ff !important; }
+body.kh-neon-on .inv-desc { color:rgba(163,230,235,.6) !important; }
+body.kh-neon-on .inv-meta { color:#8ffcff !important; }
+body.kh-neon-on .inv-card { background:rgba(9,18,33,.8) !important; border-color:rgba(0,255,214,.15) !important; }
+body.kh-neon-on .badge-icon-mp.earned { border-color:var(--badge-color) !important; }
+body.kh-neon-on .badge-icon-mp.locked { background:rgba(255,255,255,.05) !important; }
+body.kh-neon-on .badge-name-mp { color:rgba(163,230,235,.5) !important; }
+body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255,255,.08) !important; }
+
+/* Normal mode: ensure all text is visible */
+.xp-log-reason, .inv-name, .room-shop-name { color:#0b1626; }
+#room-edit-btn { color:#334155; }
+body.kh-neon-on .stat-card.clickable { border-color:rgba(0,255,214,.16) !important; }
+body.kh-neon-on .stat-card.clickable:hover { border-color:rgba(0,255,214,.4) !important; }
 </style>
 </head>
 <body>
@@ -643,21 +832,22 @@ body.kh-neon-on .danger-zone p { color:rgba(255,255,255,.6) !important; }
     </div>
   </div>
 
-  <!-- XP Activity -->
-  <div class="mp-section">
-    <h3>Recent XP Activity</h3>
-    <div id="mp-xp-log"><div style="text-align:center;padding:20px;color:#94a3b8">Loading…</div></div>
+  <!-- Badges -->
+  <div class="mp-section" id="mp-badges-section">
+    <h3>Badges</h3>
+    <div id="mp-badges-content"><div style="text-align:center;padding:20px;color:#94a3b8">Loading…</div></div>
+  </div>
+
+  <!-- Friends -->
+  <div class="mp-section" id="mp-friends-section">
+    <h3>Friends</h3>
+    <div id="mp-friends-content"><div style="text-align:center;padding:20px;color:#94a3b8">Loading…</div></div>
   </div>
 
   <div class="mp-section">
     <h3>냥 & Inventory</h3>
     <div id="mp-nyang-balance" style="font-size:20px;font-weight:900;color:#0b1626;margin-bottom:14px">냥: -</div>
     <div id="mp-owned-items"><div style="text-align:center;padding:20px;color:#94a3b8">Loading…</div></div>
-  </div>
-
-  <div class="mp-section">
-    <h3>Sent Gift History</h3>
-    <div id="mp-gift-history"><div style="text-align:center;padding:20px;color:#94a3b8">Loading…</div></div>
   </div>
 
   <!-- Profile & Account -->
@@ -677,6 +867,7 @@ body.kh-neon-on .danger-zone p { color:rgba(255,255,255,.6) !important; }
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js?v=20260404fix"></script>
+<script src="js/kh-badges.js"></script>
 <script>
 
 // ── Tier SVG mark helper ────────────────────────────────────────
@@ -847,14 +1038,18 @@ function renderMiniStats(stats) {
       + '<div class="stat-body"><div class="stat-n">' + value + '</div><div class="stat-lbl">' + label + '</div></div>'
       + '</div>';
   }
-  var xpVal = Number(us.xp || 0);
   var coinVal = Number(us.coin_balance || 0);
+  function clickableCard(iconCls, icon, value, label, onClick) {
+    return '<div class="stat-card clickable" onclick="' + onClick + '">'
+      + '<div class="stat-icon ' + iconCls + '">' + icon + '</div>'
+      + '<div class="stat-body"><div class="stat-n">' + value + '</div><div class="stat-lbl">' + label + '</div></div>'
+      + '</div>';
+  }
   el.innerHTML =
     card('s-streak',   SVG_ICONS.streak,   us.mission_streak || us.streak || 0, 'Day Streak')  +
     card('s-articles', SVG_ICONS.articles, us.articles_read  || 0,              'Articles Read') +
-    card('s-words',    SVG_ICONS.words,    us.words_saved    || 0,              'Saved Words')   +
+    clickableCard('s-words', SVG_ICONS.words, us.words_saved || 0, 'Saved Words', 'openSavedWordsModal()') +
     card('s-quizzes',  SVG_ICONS.quizzes,  us.quizzes_done   || 0,              'Quizzes Done')  +
-    card('s-articles', SVG_ICONS.xp,       xpVal.toLocaleString(),              'Total XP')       +
     card('s-quizzes',  SVG_ICONS.nyang,    coinVal.toLocaleString(),            '냥 Balance');
 }
 
@@ -870,7 +1065,7 @@ function renderTierGrid(xp) {
     var bgColor = active ? (TIER_COLORS[t.cls] + '18') : '#f4f6fa';
     var remain = (t.max > t.min && active && t.max !== Infinity) ? (t.max - xp) : 0;
     var remainStr = remain > 0 ? '<div class="tier-remain">' + remain.toLocaleString() + ' XP left</div>' : '';
-    return '<div class="tier-item' + (current ? ' current' : '') + '">'
+    return '<div class="tier-item' + (current ? ' current' : '') + '" data-tier="' + t.cls + '">'
       + '<div class="tier-icon" style="background:' + bgColor + '">' + tierMark(t.cls, 18, !active) + '</div>'
       + '<div class="tier-label" style="' + (active ? '' : 'color:#94a3b8') + '">' + t.label + '</div>'
       + '<div class="tier-xp">' + t.min.toLocaleString() + (t.max !== t.min ? '+' : '') + '</div>'
@@ -1202,15 +1397,26 @@ async function initMyPage() {
   var initialsEl = document.getElementById('mp-initials');
   if (initialsEl) initialsEl.textContent = initials;
 
-  // Show existing profile photo if any
+  // Show existing profile photo — check auth metadata first, then user_stats
   var existingAvatar = (supaUser.user_metadata && supaUser.user_metadata.avatar_url) || '';
   if (existingAvatar) _setAvatarDisplay(existingAvatar);
+  // Also try loading from user_stats (more reliable across sessions)
+  if (!existingAvatar) {
+    try {
+      var sb = getSupa();
+      if (sb) {
+        var avatarRes = await sb.from('user_stats').select('avatar_url').eq('user_id', supaUser.id).maybeSingle();
+        if (avatarRes.data && avatarRes.data.avatar_url) {
+          _setAvatarDisplay(avatarRes.data.avatar_url);
+        }
+      }
+    } catch(e) {}
+  }
 
   // Load in parallel
-  var results = await Promise.all([ dbGetUserStats(), dbGetXPLog() ]);
-  var invRes = await dbGetOwnedAndGifts();
+  var results = await Promise.all([ dbGetUserStats(), dbGetOwnedAndGifts() ]);
   var stats = results[0];
-  var xpLog = results[1];
+  var invRes = results[1];
   var xp = (stats && stats.xp) || 0;
   var coin = Number((stats && stats.coin_balance) || 0);
 
@@ -1218,9 +1424,10 @@ async function initMyPage() {
   renderXPCard(xp);
   renderMiniStats(stats);
   renderTierGrid(xp);
-  renderXPLog(xpLog);
   renderProfileFields(xp, coin);
   renderOwnedAndGiftSections(coin, invRes);
+  renderFriendsList();
+  renderMyPageBadges();
 }
 
 async function dbGetOwnedAndGifts() {
@@ -1266,17 +1473,6 @@ function renderOwnedAndGiftSections(coin, data) {
     ownedEl.innerHTML = roomHtml + shopHtml || '<div style="color:#94a3b8;font-size:13px">No items owned.</div>';
   }
 
-  var ghEl = document.getElementById('mp-gift-history');
-  var gifts = (data && data.gifts) || [];
-  if (ghEl) {
-    ghEl.innerHTML = gifts.length
-      ? gifts.map(function(g){
-          var dt = g.gifted_at ? new Date(g.gifted_at).toLocaleString('ko-KR') : '-';
-          var nm = (g.shop_items && g.shop_items.name) || g.item_id;
-          return '<div class="gift-log-row"><b>' + nm + '</b> → 기자 <b>' + g.reporter_id + '</b> · 수량 ' + (g.quantity || 1) + ' · 사용 냥 ' + Number(g.nyang_spent || 0).toLocaleString() + '<div style="font-size:11px;color:#94a3b8;margin-top:3px">' + dt + '</div></div>';
-        }).join('')
-      : '<div style="color:#94a3b8;font-size:13px">No gift history.</div>';
-  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1413,22 +1609,35 @@ function renderRoomItems() {
     var leftPct = (placed.x / 400) * 100;
     var topPct  = (placed.y / 360) * 100;
     // Visual size in px, proportional to actual container width
-    // Visual size: proportional to container, with mobile boost
-    // Size as % of container — identical ratio on PC and mobile
+    // Visual size: proportional to container
+    // On PC (>700px) reduce hitbox to 40% and compensate with sprite scale
     var sizePct = (base / 400) * 100;
+    var isPC = window.innerWidth > 700;
+    var hitboxRatio = isPC ? 0.4 : 0.7;
+    var hitboxPct = sizePct * hitboxRatio;
+    var spriteCompensate = 1 / hitboxRatio;
+    // Adjust position so visual center stays the same
+    var offsetPct = (sizePct - hitboxPct) / 2;
+    var adjLeftPct = leftPct + (offsetPct / 100) * (100); // shift right
+    var adjTopPct = topPct + (offsetPct / 100) * (100);   // shift down
+    // Simple: offset = (sizePct - hitboxPct) / 2 in % units
+    adjLeftPct = leftPct + (sizePct - hitboxPct) / 2;
+    adjTopPct = topPct + (sizePct - hitboxPct) / 2;
     div.setAttribute('style',
-      'left:' + leftPct + '%;top:' + topPct + '%;width:' + sizePct + '%;height:' + sizePct + '%;'
+      'left:' + adjLeftPct + '%;top:' + adjTopPct + '%;width:' + hitboxPct + '%;height:' + hitboxPct + '%;'
       + 'cursor:' + (_roomEditing ? 'grab' : 'default') + ';'
       + (_roomEditing ? 'outline:2px dashed rgba(255,255,255,.3);' : '')
     );
     div.title = def.name;
     div.dataset.scale = String(scale);
+    div.dataset.sizePct = String(sizePct);
+    div.dataset.hitboxRatio = String(hitboxRatio);
 
     var sprite = document.createElement('div');
     sprite.className = 'room-placed-sprite';
     var flipped = !!placed.flipped;
     var sx = flipped ? -1 : 1;
-    var s = scale / 100;
+    var s = (scale / 100) * spriteCompensate;
     sprite.setAttribute('style', roomItemBgStyle(def)
       + 'width:100%;height:100%;position:absolute;inset:0;'
       + 'transform:scale(' + (sx * s) + ',' + s + ');');
@@ -1439,10 +1648,14 @@ function renderRoomItems() {
     div.addEventListener('mousedown', roomDragStart);
     div.addEventListener('touchstart', roomDragStart, {passive:false});
     div.addEventListener('click', roomSelectItem);
-    // Long-press to remove (mobile-friendly)
+    // Long-press to remove (mobile-friendly) — with movement threshold
     (function(el, id) {
       var _lp = null;
-      el.addEventListener('touchstart', function() {
+      var _lpStartX = 0, _lpStartY = 0;
+      el.addEventListener('touchstart', function(ev) {
+        var t = ev.touches && ev.touches[0];
+        _lpStartX = t ? t.clientX : 0;
+        _lpStartY = t ? t.clientY : 0;
         _lp = setTimeout(function() {
           if (_roomEditing && confirm('Remove "' + (def.name||id) + '" from room?')) {
             removeRoomItem(id);
@@ -1450,7 +1663,15 @@ function renderRoomItems() {
         }, 600);
       }, {passive:true});
       el.addEventListener('touchend', function() { clearTimeout(_lp); });
-      el.addEventListener('touchmove', function() { clearTimeout(_lp); });
+      el.addEventListener('touchmove', function(ev) {
+        // Only cancel if moved more than 12px (prevent jitter cancellation)
+        var t = ev.touches && ev.touches[0];
+        if (t) {
+          var dx = Math.abs(t.clientX - _lpStartX);
+          var dy = Math.abs(t.clientY - _lpStartY);
+          if (dx > 12 || dy > 12) clearTimeout(_lp);
+        }
+      });
     })(div, placed.id);
 
     if (_selectedRoomItemId && _selectedRoomItemId === placed.id) {
@@ -1573,11 +1794,15 @@ function toggleRoomEdit() {
 }
 
 // ── Drag & Drop ──────────────────────────────────────────────
+var _dragStartPos = {x:0, y:0};
+var _dragMoved = false;
+
 function roomDragStart(e) {
   if (!_roomEditing) return;
   e.preventDefault();
   var el = e.currentTarget;
   _dragItem = el;
+  _dragMoved = false;
   el.classList.add('room-dragging');
   el.style.cursor = 'grabbing';
 
@@ -1592,6 +1817,8 @@ function roomDragStart(e) {
     clientX = e.clientX;
     clientY = e.clientY;
   }
+  _dragStartPos.x = clientX;
+  _dragStartPos.y = clientY;
   _dragOffset.x = clientX - elRect.left;
   _dragOffset.y = clientY - elRect.top;
 
@@ -1614,6 +1841,11 @@ function roomDragMove(e) {
     clientX = e.clientX;
     clientY = e.clientY;
   }
+  // Track if actually moved (for tap detection)
+  var dx = Math.abs(clientX - _dragStartPos.x);
+  var dy = Math.abs(clientY - _dragStartPos.y);
+  if (dx > 5 || dy > 5) _dragMoved = true;
+
   var x = clientX - rect.left - _dragOffset.x;
   var y = clientY - rect.top - _dragOffset.y;
 
@@ -1627,9 +1859,20 @@ function roomDragMove(e) {
 
 function roomDragEnd(e) {
   if (_dragItem) {
+    var wasItem = _dragItem;
     _dragItem.classList.remove('room-dragging');
     _dragItem.style.cursor = 'grab';
     _dragItem = null;
+    // If user didn't move (tap), trigger selection (fixes mobile tap)
+    if (!_dragMoved && _roomEditing && wasItem.dataset.itemId) {
+      _selectedRoomItemId = wasItem.dataset.itemId;
+      document.querySelectorAll('.room-placed-item').forEach(function(el) {
+        el.classList.toggle('room-selected', el.dataset.itemId === _selectedRoomItemId);
+      });
+      updateRoomSizeUI();
+      var rmBtn = document.getElementById('room-remove-btn');
+      if (rmBtn) rmBtn.style.display = '';
+    }
   }
   document.removeEventListener('mousemove', roomDragMove);
   document.removeEventListener('mouseup', roomDragEnd);
@@ -1666,10 +1909,11 @@ function flipSelectedItem() {
   var nowFlipped = !wasFlipped;
   el.dataset.flipped = nowFlipped ? '1' : '0';
   var parentEl = el.parentElement;
-  var s = parentEl ? (Number(parentEl.dataset.scale || 100) / 100) : 1;
+  var hratio = Number(parentEl.dataset.hitboxRatio || 1);
+  var compensate = 1 / hratio;
+  var s = parentEl ? (Number(parentEl.dataset.scale || 100) / 100) * compensate : 1;
   var sx = nowFlipped ? -1 : 1;
   el.style.transform = 'scale(' + (sx * s) + ',' + s + ')';
-  // Persist
   _syncDOMToLayout();
 }
 
@@ -1766,8 +2010,15 @@ function applySelectedItemScale(scaleValue) {
   var selectedEl = document.querySelector('.room-placed-item.room-selected');
   if (selectedEl) {
     selectedEl.dataset.scale = String(scale);
+    var hratio = Number(selectedEl.dataset.hitboxRatio || 1);
+    var compensate = 1 / hratio;
     var spriteEl = selectedEl.querySelector('.room-placed-sprite');
-    if (spriteEl) spriteEl.style.transform = 'scale(' + (scale / 100) + ')';
+    if (spriteEl) {
+      var flipped = spriteEl.dataset.flipped === '1';
+      var sx = flipped ? -1 : 1;
+      var s = (scale / 100) * compensate;
+      spriteEl.style.transform = 'scale(' + (sx * s) + ',' + s + ')';
+    }
   }
   updateRoomSizeUI();
 }
@@ -1928,6 +2179,129 @@ function removeRoomItem(itemId) {
   // Refresh shop
   closeRoomShop();
   openRoomShop();
+}
+
+// ── Saved Words modal ────────────────────────────────────────
+async function openSavedWordsModal() {
+  var existing = document.querySelector('.nn-overlay');
+  if (existing) existing.remove();
+
+  var overlay = document.createElement('div');
+  overlay.className = 'nn-overlay';
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+  var modal = document.createElement('div');
+  modal.className = 'nn-modal';
+  modal.style.maxHeight = '80vh';
+  modal.style.overflow = 'auto';
+  modal.innerHTML = '<h3>Saved Words</h3><p style="color:#94a3b8">Loading…</p>';
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  var sb = getSupa();
+  var words = [];
+  if (sb && supaUser) {
+    try {
+      var res = await sb.from('saved_words').select('word_ko, word_en, word_rom, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(100);
+      if (res.data) words = res.data;
+    } catch(e) {}
+  }
+  // Also check localStorage
+  if (!words.length) {
+    try {
+      var lsWords = JSON.parse(localStorage.getItem('kh_saved') || '[]');
+      words = lsWords.map(function(w) {
+        if (typeof w === 'string') return { word_ko: w, word_en: '', word_rom: '' };
+        return w;
+      });
+    } catch(e) {}
+  }
+
+  if (!words.length) {
+    modal.innerHTML = '<h3>Saved Words</h3>'
+      + '<div style="text-align:center;padding:28px 0">'
+      + '<div style="font-size:32px;margin-bottom:10px">📚</div>'
+      + '<div style="font-size:14px;color:#64748b">No saved words yet.</div>'
+      + '<div style="font-size:12px;color:#94a3b8;margin-top:6px">Hover over Korean words in articles and save them!</div>'
+      + '</div>'
+      + '<button class="nn-btn-cancel" style="width:100%;margin-top:12px" onclick="this.closest(\'.nn-overlay\').remove()">Close</button>';
+    return;
+  }
+
+  var listHtml = words.map(function(w) {
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f0f4f9">'
+      + '<div><div style="font-size:15px;font-weight:700;color:#0b1626">' + (w.word_ko || '') + '</div>'
+      + (w.word_rom ? '<div style="font-size:11px;color:#94a3b8">' + w.word_rom + '</div>' : '') + '</div>'
+      + '<div style="font-size:13px;color:#475569;text-align:right;max-width:180px">' + (w.word_en || '') + '</div>'
+      + '</div>';
+  }).join('');
+
+  modal.innerHTML = '<h3>Saved Words <span style="font-size:12px;font-weight:500;color:#94a3b8">(' + words.length + ')</span></h3>'
+    + '<div style="max-height:55vh;overflow-y:auto">' + listHtml + '</div>'
+    + '<button class="nn-btn-cancel" style="width:100%;margin-top:16px" onclick="this.closest(\'.nn-overlay\').remove()">Close</button>';
+}
+
+// ── Badges rendering on mypage ──────────────────────────────
+function renderMyPageBadges() {
+  var el = document.getElementById('mp-badges-content');
+  if (!el) return;
+
+  // Check if kh-badges.js is loaded
+  if (typeof BADGE_DEFS === 'undefined' || typeof getEarnedBadges !== 'function') {
+    el.innerHTML = '<div style="color:#94a3b8;font-size:13px">Badge system loading…</div>';
+    return;
+  }
+
+  var earned = getEarnedBadges();
+  var earnedCount = Object.keys(earned).length;
+  var total = BADGE_DEFS.length;
+  var pct = total > 0 ? Math.round(earnedCount / total * 100) : 0;
+
+  var tierColor = { bronze:'#cd7c3a', silver:'#9aa5b4', gold:'#f5a623', diamond:'#60a5fa', legendary:'#a855f7' };
+  var tierBg    = { bronze:'#fff3e0', silver:'#f1f5f9', gold:'#fffbeb', diamond:'#eff6ff', legendary:'#fdf4ff' };
+
+  var html = '<div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;flex-wrap:wrap">'
+    + '<div style="font-size:24px;font-weight:900;color:#0b1626">' + earnedCount + '<span style="font-size:14px;font-weight:500;color:#94a3b8">/' + total + '</span></div>'
+    + '<div style="flex:1;min-width:120px"><div class="badge-progress-bar"><div class="badge-progress-fill" style="width:' + pct + '%"></div></div>'
+    + '<div style="font-size:10px;color:#94a3b8;margin-top:4px">' + pct + '% complete</div></div>'
+    + '</div>';
+
+  // Show earned badges first, then a few locked ones
+  var earnedBadges = BADGE_DEFS.filter(function(b) { return !!earned[b.id]; });
+  var lockedBadges = BADGE_DEFS.filter(function(b) { return !earned[b.id]; });
+
+  html += '<div class="badge-grid-mp">';
+  earnedBadges.forEach(function(b) {
+    var c = tierColor[b.tier] || '#f5a623';
+    var bg = tierBg[b.tier] || '#fffbeb';
+    html += '<div class="badge-item-mp" title="' + b.name + ': ' + b.desc + '">'
+      + '<div class="badge-icon-mp earned" style="background:' + bg + ';--badge-color:' + c + ';--badge-glow:' + c + '33">' + b.icon + '</div>'
+      + '<div class="badge-name-mp">' + b.name + '</div></div>';
+  });
+  // Show first 8 locked badges
+  lockedBadges.slice(0, 8).forEach(function(b) {
+    html += '<div class="badge-item-mp" title="' + b.name + ': ' + b.desc + ' (Locked)">'
+      + '<div class="badge-icon-mp locked" style="background:#f4f6fa">' + b.icon + '</div>'
+      + '<div class="badge-name-mp" style="color:#cbd5e1">' + b.name + '</div></div>';
+  });
+  if (lockedBadges.length > 8) {
+    html += '<div class="badge-item-mp" style="display:flex;align-items:center;justify-content:center;width:54px;height:54px">'
+      + '<div style="font-size:12px;font-weight:700;color:#94a3b8">+' + (lockedBadges.length - 8) + '</div></div>';
+  }
+  html += '</div>';
+
+  el.innerHTML = html;
+}
+
+// ── Friends section rendering ──────────────────────────��─────
+function renderFriendsList() {
+  var el = document.getElementById('mp-friends-content');
+  if (!el) return;
+  el.innerHTML = '<div class="friends-empty">'
+    + '<div class="friends-empty-icon">👥</div>'
+    + '<div class="friends-empty-title">Coming Soon!</div>'
+    + '<div class="friends-empty-desc">친구 기능이 곧 추가됩니다.<br>서로의 마이페이지를 방문하고 선물을 보낼 수 있어요!</div>'
+    + '</div>';
 }
 
 // ══════════════════════════════════════════════════════════════
