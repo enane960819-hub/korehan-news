@@ -253,6 +253,48 @@
     body.kh-neon-on .skill-lock-msg { color: #e4f9ff !important; }
     body.kh-neon-on .skill-lock-sub { color: rgba(163,230,235,.7) !important; }
 
+    /* ═══ Neon readability: inline stat boxes ═══ */
+    body.kh-neon-on [style*="background:#fff"],
+    body.kh-neon-on [style*="background: #fff"] {
+      background: rgba(9,18,33,.92) !important;
+      border-color: rgba(0,255,214,.18) !important;
+    }
+    body.kh-neon-on [style*="color:var(--text)"] { color: #e4f9ff !important; }
+    body.kh-neon-on [style*="color:#8b8b8b"] { color: rgba(163,230,235,.55) !important; }
+    body.kh-neon-on [style*="color:#555"] { color: rgba(163,230,235,.7) !important; }
+    body.kh-neon-on [style*="color:#1a1a1a"] { color: #d7f8fb !important; }
+    body.kh-neon-on [style*="color:#64748b"] { color: rgba(163,230,235,.6) !important; }
+    body.kh-neon-on [style*="color:#92400e"] { color: #fcd34d !important; }
+    body.kh-neon-on [style*="color:var(--muted)"] { color: rgba(163,230,235,.6) !important; }
+    /* Inline stat top bar */
+    body.kh-neon-on .wrap > div > [style*="flex:1"] { background: rgba(9,18,33,.92) !important; border-color: rgba(0,255,214,.18) !important; }
+    /* Weekly compare grid text */
+    body.kh-neon-on #weekly-compare-grid > div { border-color: rgba(0,255,214,.12) !important; }
+    /* Goal settings modal */
+    body.kh-neon-on #goal-settings-modal { background: rgba(9,18,33,.8) !important; border-color: rgba(0,255,214,.18) !important; }
+    body.kh-neon-on #goal-settings-modal input { background: rgba(9,18,33,.9) !important; border-color: rgba(0,255,214,.2) !important; color: #e4f9ff !important; }
+    body.kh-neon-on #goal-settings-modal label { color: rgba(163,230,235,.6) !important; }
+    /* Calendar */
+    body.kh-neon-on #cal-grid div { color: rgba(163,230,235,.7); }
+    body.kh-neon-on #cal-streak-label,
+    body.kh-neon-on #cal-longest-label { color: rgba(163,230,235,.6) !important; }
+    /* SVG text in chart */
+    body.kh-neon-on .linechart-svg text { fill: rgba(163,230,235,.55) !important; }
+    body.kh-neon-on .linechart-svg line { stroke: rgba(0,255,214,.1) !important; }
+    /* Writing feedback in neon */
+    body.kh-neon-on [style*="background:#f8faf8"] { background: rgba(0,255,214,.06) !important; }
+    body.kh-neon-on [style*="border-left:3px solid #00c471"] { border-left-color: #00ffd6 !important; }
+    /* Tab buttons neon */
+    body.kh-neon-on .htab { color: rgba(163,230,235,.5) !important; }
+    body.kh-neon-on .htab.active { color: #8ffcff !important; border-bottom-color: #00ffd6 !important; }
+    /* Weekly goals bars */
+    body.kh-neon-on #weekly-goals-bars span { color: rgba(163,230,235,.7) !important; }
+    /* Foundational grammar info box */
+    body.kh-neon-on [style*="background:#fffbeb"] { background: rgba(245,158,11,.08) !important; border-color: rgba(245,158,11,.2) !important; color: #fcd34d !important; }
+    /* XP trend last dot glow */
+    .xp-dot-latest { filter: drop-shadow(0 0 6px rgba(37,99,235,.6)) drop-shadow(0 0 12px rgba(37,99,235,.3)); }
+    body.kh-neon-on .xp-dot-latest { filter: drop-shadow(0 0 8px rgba(0,255,214,.7)) drop-shadow(0 0 18px rgba(0,255,214,.35)); }
+
     /* SVG line chart labels */
     body.kh-neon-on .linechart-legend-item { color: rgba(163,230,235,.7) !important; }
 
@@ -306,7 +348,6 @@
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <a href="korehan-study-room.html" style="padding:8px 14px;font-size:12px;background:var(--bright);color:#fff;border-radius:8px;text-decoration:none;font-weight:700">Study Room →</a>
-        <a class="btn btn-ghost" href="korehan-study-room.html" style="padding:8px 14px;font-size:12px;border-radius:8px;border:1px solid var(--border);color:var(--muted)">Study Room →</a>
       </div>
     </div>
 
@@ -397,6 +438,15 @@
       </div>
     </section>
 
+    <!-- ═══ WRITING FEEDBACK HISTORY (moved to top) ═══ -->
+    <section class="card" style="margin-bottom:14px;padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:17px;font-weight:800">Writing Feedback</span>
+        <span style="font-size:11px;color:var(--muted)" id="fb-hist-count-top"></span>
+      </div>
+      <div id="fb-history-list-top"></div>
+    </section>
+
     <!-- ═══ XP TREND + WEEKLY IMPROVEMENT (compact) ═══ -->
     <section class="card" id="weekly-progress" style="margin-bottom:14px;padding:16px">
       <div style="font-size:17px;font-weight:800;margin-bottom:10px">Daily & weekly growth</div>
@@ -410,6 +460,18 @@
         <div class="chart-box"><div class="chart-title">This week's improvement</div><div class="chart-sub">Based on real activity data — quiz accuracy, XP trends and consistency.</div><div class="streak-list" id="weekly-improvements"></div></div>
       </div>
       <div class="footer-note" id="speaking-note"></div>
+    </section>
+
+    <!-- Weak Grammar Practice Banner -->
+    <section class="card" id="weak-grammar-banner" style="margin-bottom:14px;padding:16px;display:none">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">📝</div>
+        <div style="flex:1;min-width:160px">
+          <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:3px">Weak Grammar Practice</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.5">퀴즈에서 자주 틀린 문법을 집중 연습하세요</div>
+        </div>
+        <a href="korehan-study-room.html?tab=grammar" style="padding:10px 20px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-size:13px;font-weight:800;white-space:nowrap">Study Room에서 연습 →</a>
+      </div>
     </section>
 
     <section class="grid">
@@ -459,14 +521,7 @@
       <div id="review-history-list"></div>
     </section>
 
-    <!-- ═══ WRITING FEEDBACK HISTORY ═══ -->
-    <section class="card" style="margin-bottom:14px;padding:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:17px;font-weight:800">Writing Feedback</span>
-        <span style="font-size:11px;color:var(--muted)" id="fb-hist-count"></span>
-      </div>
-      <div id="fb-history-list"></div>
-    </section>
+    <!-- Writing Feedback moved to top -->
 
     <!-- ═══ RECENT BADGES ═══ -->
     <section class="card" style="margin-bottom:14px;padding:16px">
@@ -516,13 +571,38 @@
     return 'korehan-stories.html?open=' + (id || '');
   }
 
-  var DEFAULT_GRAMMAR_ITEMS = [
-    { grammar_point: '은/는 vs 이/가', desc: 'Topic marker (은/는) vs Subject marker (이/가) — one of the most common sources of confusion for learners.' },
-    { grammar_point: 'Verb endings: 아요 / 어요', desc: 'The standard polite present-tense ending. Every Korean verb needs a conjugated ending.' },
+  var _ALL_DEFAULT_GRAMMAR = [
+    { grammar_point: '은/는 vs 이/가', desc: 'Topic marker (은/는) vs Subject marker (이/가) — one of the most common sources of confusion.' },
+    { grammar_point: 'Verb endings: 아요 / 어요', desc: 'Standard polite present-tense ending. Every Korean verb needs a conjugated ending.' },
     { grammar_point: '을/를 — Object marker', desc: 'Marks the direct object of a verb. Essential for basic sentence construction.' },
-    { grammar_point: '에 vs 에서', desc: '에 = location of existence or destination. 에서 = location where an action takes place.' },
-    { grammar_point: '고 싶다 — Want to', desc: 'Verb stem + 고 싶다 = "I want to ___". A core expression of desire or intention.' },
+    { grammar_point: '에 vs 에서', desc: '에 = location/destination. 에서 = location where an action takes place.' },
+    { grammar_point: '고 싶다 — Want to', desc: 'Verb stem + 고 싶다 = "I want to ___". Core expression of desire.' },
+    { grammar_point: '았/었/였 — Past tense', desc: 'Add 았/었 to verb stems to express past tense. 했다 = did.' },
+    { grammar_point: '(으)ㄹ 거예요 — Future tense', desc: 'Expresses future plans or predictions. 갈 거예요 = will go.' },
+    { grammar_point: '(으)면 — If/When', desc: 'Conditional "if". 비가 오면 = if it rains.' },
+    { grammar_point: '때문에 — Because of', desc: 'Noun + 때문에 or V-기 때문에 for reasons/causes.' },
+    { grammar_point: '(으)ㄹ 수 있다/없다 — Can/Cannot', desc: 'Express ability or possibility. 할 수 있다 = can do.' },
+    { grammar_point: '지 마세요 — Don\'t', desc: 'Negative imperative. 걱정하지 마세요 = don\'t worry.' },
+    { grammar_point: '(으)니까 — Because/Since', desc: 'Cause-reason connector. 추우니까 = because it\'s cold.' },
+    { grammar_point: '도 — Also/Too', desc: 'Particle meaning "also". 나도 = me too, 여기도 = here too.' },
+    { grammar_point: '부터 ~ 까지 — From ~ To', desc: 'Time/place range. 9시부터 6시까지 = from 9 to 6.' },
+    { grammar_point: '(으)ㄹ래요 — Shall/Want to', desc: 'Casual intention/suggestion. 갈래요? = shall we go?' },
+    { grammar_point: '는 것 — Nominalization', desc: 'Turns verbs into nouns. 먹는 것 = eating (the act of).' },
+    { grammar_point: '아/어 보다 — Try doing', desc: 'Verb + 아/어 보다 = try doing. 먹어 보다 = try eating.' },
+    { grammar_point: '(으)ㄹ 때 — When', desc: 'Time clause. 어릴 때 = when (I was) young.' },
+    { grammar_point: '겠 — Intention/Guess', desc: 'Express intention or conjecture. 맛있겠다 = it looks delicious.' },
+    { grammar_point: '잖아(요) — You know / Obviously', desc: 'Implies shared knowledge. 알잖아 = you know, right?' },
   ];
+  // Randomly pick 5 each time page loads
+  function getRandomGrammar(n) {
+    var pool = _ALL_DEFAULT_GRAMMAR.slice();
+    for (var i = pool.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+    }
+    return pool.slice(0, n || 5);
+  }
+  var DEFAULT_GRAMMAR_ITEMS = getRandomGrammar(5);
 
   const SKILL_META = [
     { key:'reading',    label:'Reading',    color:'#2563eb',
@@ -577,6 +657,8 @@
   function renderWeakGrammar(data) {
     var box = document.getElementById('weak-grammar-list');
     var items = data.weak_grammar || [];
+    var banner = document.getElementById('weak-grammar-banner');
+    if (banner) banner.style.display = items.length ? '' : 'none';
     if (!items.length) {
       // No quiz data yet — show foundational grammar as starting points
       box.innerHTML = '<div style="margin-bottom:14px;padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;font-size:13px;color:#92400e;">'
@@ -593,7 +675,6 @@
             + '<div style="font-size:13px;color:#64748b;margin-bottom:10px;">' + item.desc + '</div>'
             + '<div class="grammar-actions" style="gap:6px;">'
             +   '<a class="solid-btn" style="padding:7px 12px;font-size:12px;" href="korehan-study-room.html?focus=' + encodeURIComponent(item.grammar_point) + '">Practice →</a>'
-            +   '<a class="ghost-btn" style="padding:7px 12px;font-size:12px;" href="korehan-study-room.html?tab=quiz">Mini Quiz</a>'
             + '</div>'
             + '</div>';
         }).join('');
@@ -616,7 +697,6 @@
         + '<div class="progress" style="margin-bottom:10px;"><div class="fill ' + tagColor + '" style="width:' + cfg[2] + '%"></div></div>'
         + '<div class="grammar-actions" style="gap:6px;">'
         +   '<a class="solid-btn" style="padding:7px 12px;font-size:12px;" href="korehan-study-room.html?focus=' + q + '">Practice →</a>'
-        +   '<a class="ghost-btn" style="padding:7px 12px;font-size:12px;" href="korehan-study-room.html?tab=quiz&grammar=' + q + '">Mini Quiz</a>'
         + '</div>'
         + '</div>';
     }).join('');
@@ -832,10 +912,13 @@
     function toX(i){ return padL + (i / 6) * plotW; }
     function toY(v){ return padT + (1 - v / maxVal) * plotH; }
 
-    function makeLine(vals, color, dash) {
+    function makeLine(vals, color, dash, isThisWeek) {
       var pts = vals.map(function(v,i){ return toX(i).toFixed(1) + ',' + toY(v).toFixed(1); }).join(' ');
       var circles = vals.map(function(v,i){
-        return '<circle cx="' + toX(i).toFixed(1) + '" cy="' + toY(v).toFixed(1) + '" r="3" fill="' + color + '"/>';
+        var isLast = isThisWeek && i === vals.length - 1;
+        var r = isLast ? '5' : '3';
+        var cls = isLast ? ' class="xp-dot-latest"' : '';
+        return '<circle cx="' + toX(i).toFixed(1) + '" cy="' + toY(v).toFixed(1) + '" r="' + r + '" fill="' + color + '"' + cls + '/>';
       }).join('');
       return '<polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"' + (dash ? ' stroke-dasharray="5,4"' : '') + '/>' + circles;
     }
@@ -855,7 +938,7 @@
     }).join('');
 
     var svg = document.getElementById('growth-svg');
-    if (svg) svg.innerHTML = grid + makeLine(lastVals,'#c7d2fe',true) + makeLine(thisVals,'#2563eb',false) + xLabels;
+    if (svg) svg.innerHTML = grid + makeLine(lastVals,'#c7d2fe',true,false) + makeLine(thisVals,'#2563eb',false,true) + xLabels;
 
     // Comparison label
     var todayXP     = thisVals[6] || 0;
@@ -1723,8 +1806,15 @@
       var body = document.getElementById('htab-body-' + t);
       var btn = document.getElementById('htab-' + t);
       if (body) body.style.display = t === tab ? '' : 'none';
-      if (btn) { btn.style.color = t === tab ? 'var(--bright)' : 'var(--muted)'; btn.style.borderBottomColor = t === tab ? 'var(--bright)' : 'transparent'; }
+      if (btn) {
+        btn.style.color = t === tab ? 'var(--bright)' : 'var(--muted)';
+        btn.style.borderBottomColor = t === tab ? 'var(--bright)' : 'transparent';
+        btn.classList.toggle('active', t === tab);
+      }
     });
+    // Lazy-load data on first tab switch
+    if (tab === 'goals' && !document.getElementById('weekly-goals-bars').innerHTML) loadWeeklyGoals();
+    if (tab === 'calendar' && !document.getElementById('cal-grid').innerHTML) loadCalendarData();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -2163,8 +2253,8 @@
   async function loadFeedbackHistory() {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
     if (!sb || !supaUser) return;
-    var el = document.getElementById('fb-history-list');
-    var countEl = document.getElementById('fb-hist-count');
+    var el = document.getElementById('fb-history-list-top');
+    var countEl = document.getElementById('fb-hist-count-top');
     if (!el) return;
     try {
       var res = await sb.from('user_submissions')
