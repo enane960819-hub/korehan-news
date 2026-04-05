@@ -825,45 +825,36 @@ body { background: #0b1626 !important; }
 /* ── HERO BLOCK ── */
 .sr-hero-block {
   background: linear-gradient(160deg, #0f2040 0%, #132a50 55%, #1a3a6b 100%);
-  border-radius: 20px;
-  padding: 32px 28px 26px;
+  border-radius: 12px;
+  padding: 24px 22px 20px;
   border: 1px solid rgba(255,255,255,0.08);
   margin-bottom: 14px;
   position: relative;
   overflow: hidden;
 }
-.sr-hero-block::after {
-  content: '✍';
-  position: absolute;
-  right: 20px; bottom: -10px;
-  font-size: 130px;
-  opacity: 0.04;
-  pointer-events: none;
-  line-height: 1;
-}
 .sr-lvbadge-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 13px;
-  border-radius: 999px;
-  background: rgba(122,184,245,0.14);
-  border: 1px solid rgba(122,184,245,0.22);
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(122,184,245,0.12);
+  border: 1px solid rgba(122,184,245,0.18);
   color: #7ab8f5;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin-bottom: 18px;
+  letter-spacing: .8px;
+  margin-bottom: 14px;
 }
 .sr-headline {
   font-family: 'Noto Serif KR', 'Playfair Display', serif;
-  font-size: clamp(28px, 3.8vw, 44px);
-  font-weight: 900;
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 800;
   color: #fff;
-  line-height: 1.18;
-  letter-spacing: -0.03em;
-  margin: 0 0 10px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
   word-break: keep-all;
 }
 .sr-headline-sub {
@@ -891,7 +882,7 @@ body { background: #0b1626 !important; }
 .sr-topic-left { flex: 1; min-width: 0; }
 .sr-topic-right { display: flex; align-items: center; }
 
-/* ── START button (game-like) ── */
+/* ── START button ── */
 .sr-start-btn {
   position: relative;
   display: flex;
@@ -900,37 +891,27 @@ body { background: #0b1626 !important; }
   justify-content: center;
   gap: 4px;
   width: 100%;
-  min-height: 80px;
-  padding: 20px 32px;
-  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #2563eb 100%);
-  background-size: 200% 200%;
-  border: none;
-  border-radius: 20px;
+  min-height: 64px;
+  padding: 16px 28px;
+  background: #fff;
+  border: 1.5px solid rgba(255,255,255,0.2);
+  border-radius: 12px;
   cursor: pointer;
   font-family: inherit;
-  color: #fff;
-  animation: sr-start-pulse 2.2s ease-in-out infinite, sr-start-bg 4s ease-in-out infinite;
-  transition: transform .15s, box-shadow .15s;
+  color: #0f172a;
+  transition: transform .15s, box-shadow .15s, background .15s;
   flex-shrink: 0;
 }
-.sr-start-btn:hover { transform: scale(1.04); animation: sr-start-bg 4s ease-in-out infinite; box-shadow: 0 0 0 6px rgba(124,58,237,.2), 0 12px 40px rgba(37,99,235,.5); }
+.sr-start-btn:hover { transform: scale(1.02); background: rgba(255,255,255,0.95); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
 .sr-start-btn:active { transform: scale(.98); }
-.sr-start-btn-label { font-size: 32px; font-weight: 900; letter-spacing: 6px; text-transform: uppercase; line-height: 1; }
-.sr-start-btn-sub { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.7); letter-spacing: 1px; }
-@keyframes sr-start-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(124,58,237,.4), 0 8px 28px rgba(37,99,235,.4); }
-  50% { box-shadow: 0 0 0 12px rgba(124,58,237,.06), 0 12px 36px rgba(37,99,235,.5); }
-}
-@keyframes sr-start-bg {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
+.sr-start-btn-label { font-size: 18px; font-weight: 800; letter-spacing: 1px; line-height: 1; color: #0f172a; }
+.sr-start-btn-sub { font-size: 12px; font-weight: 600; color: #64748b; }
 @media(max-width: 480px) {
   .sr-topic-inner { flex-direction: column; gap: 14px; }
   .sr-topic-right { justify-content: center; }
-  .sr-start-btn { min-height: 70px; padding: 18px 24px; border-radius: 18px; }
-  .sr-start-btn-label { font-size: 28px; letter-spacing: 5px; }
-  .sr-start-btn-sub { font-size: 12px; }
+  .sr-start-btn { min-height: 56px; padding: 14px 20px; }
+  .sr-start-btn-label { font-size: 16px; letter-spacing: .5px; }
+  .sr-start-btn-sub { font-size: 11px; }
 }
 
 /* ── Learning Selector overlay ── */
@@ -2464,8 +2445,8 @@ function renderStudyRoomWordTracks() {
     return '<div class="vrow"><div><div class="vko">' + ko + '</div><div class="ven">' + en + '</div></div>'
       + '<button class="sr-pill" onclick="saveMustKnowWord(\'' + ko.replace(/'/g,"\\'") + '\',\'' + en.replace(/'/g,"\\'") + '\',\'' + rom.replace(/'/g,"\\'") + '\')">Save</button></div>';
   }
-  lvEl.innerHTML = lvWords.length ? lvWords.slice(0,10).map(row).join('') : '<div style="font-size:12px;color:#94a3b8">Learning Hub에서 오늘의 단어를 먼저 생성하면 여기서 바로 이어서 학습할 수 있어요.</div>';
-  inEl.innerHTML = intWords.length ? intWords.slice(0,10).map(row).join('') : '<div style="font-size:12px;color:#94a3b8">관심사 단어가 아직 없습니다. Learning Hub에서 관심사를 저장해 주세요.</div>';
+  lvEl.innerHTML = lvWords.length ? lvWords.slice(0,10).map(row).join('') : '<div style="font-size:12px;color:#94a3b8">Growth Lab에서 오늘의 단어를 먼저 생성하면 여기서 바로 이어서 학습할 수 있어요.</div>';
+  inEl.innerHTML = intWords.length ? intWords.slice(0,10).map(row).join('') : '<div style="font-size:12px;color:#94a3b8">관심사 단어가 아직 없습니다. Growth Lab에서 관심사를 저장해 주세요.</div>';
 }
 
 async function saveMustKnowWord(ko, en, rom) {
