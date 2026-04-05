@@ -566,7 +566,7 @@ function getSb() {
   var key = svcKey || SUPA_KEY_ADMIN;
   if (typeof supabase !== 'undefined' && url && key) {
     _sbAdmin = supabase.createClient(url, key, {
-      auth: { detectSessionInUrl: false, persistSession: false }
+      auth: { detectSessionInUrl: false, persistSession: false, storageKey: 'sb-admin-svc' }
     });
     return _sbAdmin;
   }
