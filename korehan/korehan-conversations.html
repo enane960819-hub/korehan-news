@@ -472,7 +472,7 @@ function openDetail(idx) {
 
   var pills = '<span class="dp-pill dp-pill-blue">'+LVL_LABEL[c.lvl]+'</span>'
     +'<span class="dp-pill '+(CAT_PILL[c.cat]||'dp-pill-gray')+'">'+c.catLabel+'</span>'
-    +'<span class="dp-pill dp-pill-gray">'+c.topic+'</span>';
+    +(c.topic ? '<span class="dp-pill dp-pill-gray">'+c.topic+'</span>' : '');
 
   document.getElementById('detail-panel').innerHTML =
     '<div class="dp-left">'
