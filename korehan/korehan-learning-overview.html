@@ -291,9 +291,23 @@
     body.kh-neon-on #weekly-goals-bars span { color: rgba(163,230,235,.7) !important; }
     /* Foundational grammar info box */
     body.kh-neon-on [style*="background:#fffbeb"] { background: rgba(245,158,11,.08) !important; border-color: rgba(245,158,11,.2) !important; color: #fcd34d !important; }
-    /* XP trend last dot glow */
-    .xp-dot-latest { filter: drop-shadow(0 0 6px rgba(37,99,235,.6)) drop-shadow(0 0 12px rgba(37,99,235,.3)); }
-    body.kh-neon-on .xp-dot-latest { filter: drop-shadow(0 0 8px rgba(0,255,214,.7)) drop-shadow(0 0 18px rgba(0,255,214,.35)); }
+    /* XP trend last dot — radar ping pulse */
+    @keyframes radarPing {
+      0% { r: 5; opacity: .8; }
+      70% { r: 18; opacity: 0; }
+      100% { r: 18; opacity: 0; }
+    }
+    @keyframes radarPing2 {
+      0% { r: 5; opacity: .5; }
+      70% { r: 28; opacity: 0; }
+      100% { r: 28; opacity: 0; }
+    }
+    .xp-dot-latest { filter: drop-shadow(0 0 4px rgba(37,99,235,.5)); }
+    .xp-dot-ping1 { fill: rgba(37,99,235,.35); animation: radarPing 2s ease-out infinite; }
+    .xp-dot-ping2 { fill: rgba(37,99,235,.15); animation: radarPing2 2s ease-out infinite; animation-delay: .4s; }
+    body.kh-neon-on .xp-dot-latest { filter: drop-shadow(0 0 4px rgba(0,255,214,.6)); }
+    body.kh-neon-on .xp-dot-ping1 { fill: rgba(0,255,214,.3); }
+    body.kh-neon-on .xp-dot-ping2 { fill: rgba(0,255,214,.12); }
 
     /* SVG line chart labels */
     body.kh-neon-on .linechart-legend-item { color: rgba(163,230,235,.7) !important; }
@@ -916,9 +930,13 @@
       var pts = vals.map(function(v,i){ return toX(i).toFixed(1) + ',' + toY(v).toFixed(1); }).join(' ');
       var circles = vals.map(function(v,i){
         var isLast = isThisWeek && i === vals.length - 1;
-        var r = isLast ? '5' : '3';
-        var cls = isLast ? ' class="xp-dot-latest"' : '';
-        return '<circle cx="' + toX(i).toFixed(1) + '" cy="' + toY(v).toFixed(1) + '" r="' + r + '" fill="' + color + '"' + cls + '/>';
+        var cx = toX(i).toFixed(1), cy = toY(v).toFixed(1);
+        if (isLast) {
+          return '<circle cx="' + cx + '" cy="' + cy + '" r="5" class="xp-dot-ping2"/>'
+            + '<circle cx="' + cx + '" cy="' + cy + '" r="5" class="xp-dot-ping1"/>'
+            + '<circle cx="' + cx + '" cy="' + cy + '" r="5" fill="' + color + '" class="xp-dot-latest"/>';
+        }
+        return '<circle cx="' + cx + '" cy="' + cy + '" r="3" fill="' + color + '"/>';
       }).join('');
       return '<polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"' + (dash ? ' stroke-dasharray="5,4"' : '') + '/>' + circles;
     }
