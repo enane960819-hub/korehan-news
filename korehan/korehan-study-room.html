@@ -7903,6 +7903,7 @@ function openDailyReview() {
   var overlay = document.getElementById('dr-overlay');
   if (overlay) overlay.classList.remove('hidden');
   _drQuestions = []; _drIndex = 0; _drScores = []; _drAnswered = false;
+  document.getElementById('dr-body').innerHTML = '<div style="text-align:center;padding:30px"><div style="font-size:14px;color:#8b8b8b">Loading your review...</div></div>';
   drGenerateQuestions();
 }
 
@@ -7911,73 +7912,140 @@ function closeDailyReview() {
   if (overlay) overlay.classList.add('hidden');
 }
 
-function _drShuffle(arr, seed) {
+function _drShuffle(arr) {
   var a = arr.slice();
   for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
   return a;
 }
 
-function drGenerateQuestions() {
-  var allWords = [];
-  // Pull from AI content
-  if (typeof _aiContent !== 'undefined' && _aiContent && _aiContent.vocab) {
-    _aiContent.vocab.forEach(function(v) { if (v.ko && v.en) allWords.push({word_ko:v.ko, word_en:v.en, word_rom:v.rom||''}); });
-  }
-  // Pull from localStorage vocab caches
-  try {
-    for (var i = 0; i < localStorage.length; i++) {
-      var k = localStorage.key(i);
-      if (k && (k.indexOf('kh_vocab_') === 0 || k.indexOf('kh_bm_') === 0)) {
-        try { var d = JSON.parse(localStorage.getItem(k));
-          if (d && d.vocab) d.vocab.forEach(function(v){ if(v.ko&&v.en) allWords.push({word_ko:v.ko,word_en:v.en,word_rom:v.rom||''}); });
-        } catch(e) {}
+async function drGenerateQuestions() {
+  var sb = getSupa();
+  var today = kstDateKey();
+  var vocabPool = [];
+  var grammarPool = [];
+
+  // 1) saved_words — 유저가 저장한 단어 (최근 50개)
+  if (sb && supaUser) {
+    try {
+      var swRes = await sb.from('saved_words')
+        .select('word_ko, word_en, word_rom')
+        .eq('user_id', supaUser.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (swRes.data) {
+        swRes.data.forEach(function(w) {
+          if (w.word_ko && w.word_en) vocabPool.push({ word_ko: w.word_ko, word_en: w.word_en, word_rom: w.word_rom || '' });
+        });
       }
+    } catch(e) {}
+  }
+
+  // 2) study_daily_content — 오늘의 주제 vocab/grammar
+  if (typeof _aiContent !== 'undefined' && _aiContent) {
+    if (_aiContent.vocab) {
+      _aiContent.vocab.forEach(function(v) {
+        if (v.ko && v.en) vocabPool.push({ word_ko: v.ko, word_en: v.en, word_rom: v.rom || '' });
+      });
     }
-  } catch(e) {}
-  // Deduplicate
+    if (_aiContent.grammar) {
+      _aiContent.grammar.forEach(function(g) {
+        if (g.pattern && g.explanation) grammarPool.push(g);
+      });
+    }
+  }
+
+  // 3) article_cache — 오늘 읽은 기사 vocab (read_articles에서)
+  if (sb && supaUser) {
+    try {
+      var readRes = await sb.from('read_articles')
+        .select('article_id')
+        .eq('user_id', supaUser.id)
+        .gte('read_at', today + 'T00:00:00')
+        .limit(5);
+      if (readRes.data && readRes.data.length) {
+        var articleIds = readRes.data.map(function(r) { return String(r.article_id); });
+        for (var ai = 0; ai < articleIds.length; ai++) {
+          try {
+            var cached = await (typeof getFromCache === 'function'
+              ? getFromCache('article', articleIds[ai], 'ai_analysis')
+              : null);
+            if (cached && cached.vocab && Array.isArray(cached.vocab)) {
+              cached.vocab.forEach(function(v) {
+                if (v.ko && v.en) vocabPool.push({ word_ko: v.ko, word_en: v.en, word_rom: v.rom || '' });
+              });
+            }
+            if (cached && cached.grammar) {
+              var gArr = Array.isArray(cached.grammar) ? cached.grammar : (cached.grammar.points || []);
+              gArr.forEach(function(g) {
+                if (g.pattern && g.explanation) grammarPool.push(g);
+              });
+            }
+          } catch(e) {}
+        }
+      }
+    } catch(e) {}
+  }
+
+  // Deduplicate vocab
   var seen = new Set();
-  allWords = allWords.filter(function(w) { if (seen.has(w.word_ko)) return false; seen.add(w.word_ko); return true; });
-  var pool = _drShuffle(allWords);
+  vocabPool = vocabPool.filter(function(w) { if (seen.has(w.word_ko)) return false; seen.add(w.word_ko); return true; });
+
+  // Not enough data?
+  if (vocabPool.length < 4) {
+    document.getElementById('dr-body').innerHTML =
+      '<div style="text-align:center;padding:30px">'
+      + '<div style="font-size:32px;margin-bottom:10px">📚</div>'
+      + '<div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:6px">리뷰할 데이터가 부족합니다</div>'
+      + '<div style="font-size:13px;color:#8b8b8b;line-height:1.6">기사를 읽고 단어를 저장하면<br>맞춤 복습 문제가 생성됩니다.</div>'
+      + '</div>';
+    return;
+  }
+
+  var pool = _drShuffle(vocabPool);
   var questions = [];
 
-  // 5 vocab meaning MCQ
+  // 5 vocab meaning MCQ (from saved_words + article vocab)
   pool.slice(0, Math.min(5, pool.length)).forEach(function(w) {
-    var wrongs = _drShuffle(pool.filter(function(x){return x.word_ko!==w.word_ko;})).slice(0,3).map(function(x){return x.word_en;});
-    questions.push({type:'meaning', word_ko:w.word_ko, word_rom:w.word_rom, correct:w.word_en, choices:_drShuffle([w.word_en].concat(wrongs))});
+    var wrongs = _drShuffle(pool.filter(function(x){ return x.word_ko !== w.word_ko; })).slice(0, 3).map(function(x){ return x.word_en; });
+    if (wrongs.length < 3) return;
+    questions.push({ type:'meaning', word_ko: w.word_ko, word_rom: w.word_rom, correct: w.word_en, choices: _drShuffle([w.word_en].concat(wrongs)) });
   });
 
-  // 2 word order
+  // 2 grammar fill-in (from today's topic grammar or article grammar)
+  if (grammarPool.length >= 2) {
+    _drShuffle(grammarPool).slice(0, 2).forEach(function(g) {
+      var pattern = g.pattern || '';
+      var explanation = g.explanation || '';
+      var exKo = g.example_ko || '';
+      if (pattern && explanation) {
+        // Create a "what does this grammar mean?" question
+        var wrongGrammars = _drShuffle(grammarPool.filter(function(x){ return x.pattern !== pattern; })).slice(0, 3);
+        var choices = [explanation].concat(wrongGrammars.map(function(x){ return x.explanation || ''; })).filter(Boolean);
+        if (choices.length >= 4) {
+          questions.push({ type:'meaning', word_ko: pattern, word_rom: exKo, correct: explanation, choices: _drShuffle(choices.slice(0, 4)) });
+        }
+      }
+    });
+  }
+
+  // 2 word order (hardcoded — these are grammar exercises)
   var orderSentences = [
     {ko:['저는','학생','이에요'],en:'I am a student.'},{ko:['오늘','날씨가','좋아요'],en:'The weather is nice today.'},
     {ko:['저는','한국어를','공부해요'],en:'I study Korean.'},{ko:['이것은','제','책이에요'],en:'This is my book.'},
-    {ko:['저는','밥을','먹었어요'],en:'I ate rice.'},{ko:['친구가','학교에','가요'],en:'My friend goes to school.'},
-    {ko:['저는','음악을','좋아해요'],en:'I like music.'},{ko:['오늘','제가','일했어요'],en:'I worked today.'}
+    {ko:['저는','밥을','먹었어요'],en:'I ate rice.'},{ko:['친구가','학교에','가요'],en:'My friend goes to school.'}
   ];
-  _drShuffle(orderSentences).slice(0,2).forEach(function(s){
-    questions.push({type:'order', words:_drShuffle(s.ko), correct:s.ko, en:s.en});
+  _drShuffle(orderSentences).slice(0, 2).forEach(function(s) {
+    questions.push({ type:'order', words: _drShuffle(s.ko), correct: s.ko, en: s.en });
   });
 
-  // 2 fill-in-blank
-  var fillTemplates = [
-    {template:'___ 학교에 가요.',choices:['저는','저를','저의','저에'],correct:'저는',hint:'Who goes to school?'},
-    {template:'저는 음악___ 좋아해요.',choices:['을','이','의','에서'],correct:'을',hint:'Object marker'},
-    {template:'학교___ 도서관이 있어요.',choices:['에','에서','의','이'],correct:'에',hint:'Location of existence'},
-    {template:'저는 도서관___ 공부해요.',choices:['에서','에','이','는'],correct:'에서',hint:'Location of action'},
-    {template:'오늘___ 날씨가 좋아요.',choices:['은','의','이','에서'],correct:'은',hint:'Topic marker'},
-    {template:'제 친구___ 한국 사람이에요.',choices:['는','이','을','에'],correct:'는',hint:'Topic marker (vowel)'},
-    {template:'저는 커피___ 마셔요.',choices:['를','은','에','이'],correct:'를',hint:'Object marker'},
-    {template:'선생님___ 교실에 계세요.',choices:['이','는','을','에서'],correct:'이',hint:'Subject marker (consonant)'}
-  ];
-  _drShuffle(fillTemplates).slice(0,2).forEach(function(f){
-    questions.push({type:'fill',template:f.template,correct:f.correct,choices:_drShuffle(f.choices),hint:f.hint});
-  });
+  // 1 typed (from saved words)
+  if (pool.length > 8) {
+    var tw = pool[8];
+    questions.push({ type:'typed', word_en: tw.word_en, word_rom: tw.word_rom, correct: tw.word_ko });
+  }
 
-  // 1 typed
-  pool.slice(9,10).forEach(function(w){
-    if(w.word_en&&w.word_ko) questions.push({type:'typed',word_en:w.word_en,word_rom:w.word_rom,correct:w.word_ko});
-  });
-
-  _drQuestions = questions; _drIndex = 0; _drScores = []; _drAnswered = false;
+  _drQuestions = _drShuffle(questions);
+  _drIndex = 0; _drScores = []; _drAnswered = false;
   drShowQuestion();
 }
 
