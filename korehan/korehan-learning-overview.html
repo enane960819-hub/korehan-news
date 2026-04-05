@@ -287,6 +287,78 @@
       <div class="stat"><div class="stat-label">Study Streak</div><div class="stat-num" id="stat-streak">0</div><div class="stat-sub">Consecutive active study days</div></div>
     </section>
 
+    <!-- ═══ WEEKLY COMPARISON CARD ═══ -->
+    <section class="card" id="weekly-comparison-card" style="margin-bottom:18px">
+      <div class="card-hd">
+        <div><h2>📊 이번 주 vs 지난 주</h2><p>한 주간의 학습 변화를 한눈에 비교합니다.</p></div>
+      </div>
+      <div id="weekly-compare-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
+        <div style="text-align:center;padding:16px;border-radius:16px;background:#f0f7ff;border:1px solid #dbeafe">
+          <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">📰 기사 읽기</div>
+          <div style="font-size:32px;font-weight:900;color:#1d4ed8" id="wc-articles">-</div>
+          <div style="font-size:12px;font-weight:700;margin-top:4px" id="wc-articles-delta"></div>
+        </div>
+        <div style="text-align:center;padding:16px;border-radius:16px;background:#f0fdf4;border:1px solid #bbf7d0">
+          <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">📚 단어</div>
+          <div style="font-size:32px;font-weight:900;color:#15803d" id="wc-words">-</div>
+          <div style="font-size:12px;font-weight:700;margin-top:4px" id="wc-words-delta"></div>
+        </div>
+        <div style="text-align:center;padding:16px;border-radius:16px;background:#fef9c3;border:1px solid #fde68a">
+          <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">✏️ 퀴즈</div>
+          <div style="font-size:32px;font-weight:900;color:#a16207" id="wc-quizzes">-</div>
+          <div style="font-size:12px;font-weight:700;margin-top:4px" id="wc-quizzes-delta"></div>
+        </div>
+        <div style="text-align:center;padding:16px;border-radius:16px;background:#faf5ff;border:1px solid #e9d5ff">
+          <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">📝 글쓰기</div>
+          <div style="font-size:32px;font-weight:900;color:#7c3aed" id="wc-writing">-</div>
+          <div style="font-size:12px;font-weight:700;margin-top:4px" id="wc-writing-delta"></div>
+        </div>
+        <div style="text-align:center;padding:16px;border-radius:16px;background:#fff1f2;border:1px solid #fecdd3">
+          <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">🔥 활동일</div>
+          <div style="font-size:32px;font-weight:900;color:#e11d48" id="wc-days">-<span style="font-size:16px;font-weight:700">/7</span></div>
+          <div style="font-size:12px;font-weight:700;margin-top:4px" id="wc-days-delta"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ WEEKLY GOALS ═══ -->
+    <section class="card" id="weekly-goals-card" style="margin-bottom:18px">
+      <div class="card-hd">
+        <div><h2>🎯 주간 목표</h2><p>이번 주 학습 목표와 달성률</p></div>
+        <button class="soft-link" onclick="openGoalSettings()" style="cursor:pointer;border:none">⚙️ 설정</button>
+      </div>
+      <div id="weekly-goals-bars" style="display:grid;gap:10px"></div>
+      <div id="goal-settings-modal" style="display:none;margin-top:14px;padding:16px;background:#f8fafc;border-radius:16px;border:1px solid #e2e8f0">
+        <div style="font-weight:800;margin-bottom:10px">목표 설정</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px">
+          <div><label style="font-size:11px;font-weight:700;color:#64748b">기사</label><input id="goal-articles" type="number" value="5" min="1" max="50" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:8px"></div>
+          <div><label style="font-size:11px;font-weight:700;color:#64748b">단어</label><input id="goal-words" type="number" value="20" min="1" max="100" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:8px"></div>
+          <div><label style="font-size:11px;font-weight:700;color:#64748b">퀴즈</label><input id="goal-quizzes" type="number" value="10" min="1" max="50" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:8px"></div>
+          <div><label style="font-size:11px;font-weight:700;color:#64748b">글쓰기</label><input id="goal-writing" type="number" value="3" min="1" max="20" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:8px"></div>
+          <div><label style="font-size:11px;font-weight:700;color:#64748b">활동일</label><input id="goal-days" type="number" value="5" min="1" max="7" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:8px"></div>
+        </div>
+        <button onclick="saveWeeklyGoals()" style="margin-top:10px;padding:8px 16px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-weight:800;cursor:pointer">저장</button>
+      </div>
+    </section>
+
+    <!-- ═══ LEARNING CALENDAR (Duolingo-style) ═══ -->
+    <section class="card" id="learning-calendar-card" style="margin-bottom:18px">
+      <div class="card-hd">
+        <div><h2>🔥 학습 캘린더</h2><p id="cal-streak-label">연속 학습 기록</p></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="calNavMonth(-1)" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer;font-size:14px">←</button>
+          <span id="cal-month-label" style="font-weight:800;font-size:14px;min-width:100px;text-align:center"></span>
+          <button onclick="calNavMonth(1)" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer;font-size:14px">→</button>
+        </div>
+      </div>
+      <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center"></div>
+      <div style="display:flex;gap:16px;justify-content:center;margin-top:12px;font-size:12px;color:#64748b">
+        <span>🔥 학습</span>
+        <span>❄️ 프리즈</span>
+        <span style="color:#cbd5e1">○ 미학습</span>
+      </div>
+    </section>
+
     <section class="card" id="weekly-progress" style="margin-bottom:18px">
       <div class="card-hd"><div><h2>Daily &amp; weekly growth</h2><p>A clear picture of how you're progressing over time.</p></div></div>
       <div class="growth-grid">
@@ -1606,6 +1678,281 @@
       loadHub();
     });
   });
+
+  // ═══════════════════════════════════════════════════════════════
+  // WEEKLY COMPARISON CARD
+  // ═══════════════════════════════════════════════════════════════
+  async function loadWeeklyComparison() {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb || !supaUser) return;
+    try {
+      var thisWeekStart = getMonday(new Date()).toISOString().slice(0,10);
+      var lastWeekStart = getMonday(new Date(Date.now() - 7*86400000)).toISOString().slice(0,10);
+      var r = await sb.from('user_weekly_snapshot')
+        .select('*')
+        .eq('user_id', supaUser.id)
+        .in('week_start', [thisWeekStart, lastWeekStart]);
+      var thisW = null, lastW = null;
+      (r.data||[]).forEach(function(s) {
+        if (s.week_start === thisWeekStart) thisW = s;
+        else if (s.week_start === lastWeekStart) lastW = s;
+      });
+      // If no snapshot for this week yet, compute from activity_log
+      if (!thisW) {
+        thisW = await computeCurrentWeekStats(sb, thisWeekStart);
+      }
+      renderWeeklyComparison(thisW, lastW);
+    } catch(e) { console.warn('[weekly-compare]', e); }
+  }
+
+  async function computeCurrentWeekStats(sb, weekStart) {
+    var weekEnd = new Date(new Date(weekStart).getTime() + 6*86400000).toISOString().slice(0,10);
+    var r = await sb.from('user_activity_log')
+      .select('activity_type, study_date')
+      .eq('user_id', supaUser.id)
+      .gte('study_date', weekStart)
+      .lte('study_date', weekEnd);
+    var rows = r.data || [];
+    var days = new Set();
+    var articles = 0, words = 0, quizzes = 0, writing = 0;
+    rows.forEach(function(a) {
+      days.add(a.study_date);
+      if (a.activity_type === 'read') articles++;
+      if (a.activity_type === 'word_save') words++;
+      if (a.activity_type === 'quiz') quizzes++;
+      if (a.activity_type === 'writing_submit' || a.activity_type === 'grammar_practice') writing++;
+    });
+    return { articles_read:articles, words_learned:words, quizzes_done:quizzes, writing_count:writing, active_days:days.size };
+  }
+
+  function renderWeeklyComparison(thisW, lastW) {
+    var fields = [
+      { id:'articles', key:'articles_read', last:lastW },
+      { id:'words', key:'words_learned', last:lastW },
+      { id:'quizzes', key:'quizzes_done', last:lastW },
+      { id:'writing', key:'writing_count', last:lastW },
+      { id:'days', key:'active_days', last:lastW }
+    ];
+    fields.forEach(function(f) {
+      var cur = (thisW && thisW[f.key]) || 0;
+      var prev = (f.last && f.last[f.key]) || 0;
+      var el = document.getElementById('wc-' + f.id);
+      var deltaEl = document.getElementById('wc-' + f.id + '-delta');
+      if (el) el.textContent = f.id === 'days' ? cur : cur;
+      if (f.id === 'days' && el) el.innerHTML = cur + '<span style="font-size:16px;font-weight:700">/7</span>';
+      if (deltaEl) {
+        if (prev === 0 && cur === 0) { deltaEl.textContent = '—'; deltaEl.style.color = '#94a3b8'; }
+        else if (prev === 0) { deltaEl.textContent = '🆕 NEW'; deltaEl.style.color = '#16a34a'; }
+        else {
+          var pct = Math.round((cur - prev) / prev * 100);
+          var arrow = pct > 0 ? '↑' : pct < 0 ? '↓' : '→';
+          var color = pct > 0 ? '#16a34a' : pct < 0 ? '#ef4444' : '#64748b';
+          deltaEl.textContent = arrow + ' ' + Math.abs(pct) + '% vs 지난주';
+          deltaEl.style.color = color;
+        }
+      }
+    });
+  }
+
+  function getMonday(d) {
+    d = new Date(d);
+    var day = d.getDay(); var diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(d.setDate(diff));
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // WEEKLY GOALS
+  // ═══════════════════════════════════════════════════════════════
+  var _weeklyGoals = null;
+
+  async function loadWeeklyGoals() {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb || !supaUser) return;
+    var weekStart = getMonday(new Date()).toISOString().slice(0,10);
+    try {
+      var r = await sb.from('user_weekly_goals').select('*').eq('user_id', supaUser.id).eq('week_start', weekStart).maybeSingle();
+      _weeklyGoals = r.data || { goal_articles:5, goal_words:20, goal_quizzes:10, goal_writing:3, goal_active_days:5 };
+      // Get current week progress
+      var stats = await computeCurrentWeekStats(sb, weekStart);
+      renderWeeklyGoals(stats);
+    } catch(e) { console.warn('[weekly-goals]', e); }
+  }
+
+  function renderWeeklyGoals(stats) {
+    var g = _weeklyGoals;
+    var bars = [
+      { label:'📰 기사', actual:stats.articles_read, goal:g.goal_articles, color:'#3b82f6' },
+      { label:'📚 단어', actual:stats.words_learned, goal:g.goal_words, color:'#22c55e' },
+      { label:'✏️ 퀴즈', actual:stats.quizzes_done, goal:g.goal_quizzes, color:'#f59e0b' },
+      { label:'📝 글쓰기', actual:stats.writing_count, goal:g.goal_writing, color:'#7c3aed' },
+      { label:'🔥 활동일', actual:stats.active_days, goal:g.goal_active_days, color:'#e11d48' }
+    ];
+    var el = document.getElementById('weekly-goals-bars');
+    if (!el) return;
+    el.innerHTML = bars.map(function(b) {
+      var pct = b.goal > 0 ? Math.min(100, Math.round(b.actual / b.goal * 100)) : 0;
+      var done = b.actual >= b.goal;
+      return '<div style="display:flex;align-items:center;gap:12px">'
+        + '<span style="font-size:13px;font-weight:700;min-width:80px;color:#334155">' + b.label + '</span>'
+        + '<div style="flex:1;height:12px;background:#eef2f8;border-radius:999px;overflow:hidden">'
+        + '<div style="width:' + pct + '%;height:100%;background:' + (done ? '#22c55e' : b.color) + ';border-radius:999px;transition:width .5s"></div></div>'
+        + '<span style="font-size:12px;font-weight:800;min-width:55px;text-align:right;color:' + (done?'#16a34a':'#64748b') + '">' + b.actual + '/' + b.goal + (done?' ✅':'') + '</span>'
+        + '</div>';
+    }).join('');
+  }
+
+  function openGoalSettings() {
+    var m = document.getElementById('goal-settings-modal');
+    m.style.display = m.style.display === 'none' ? '' : 'none';
+    if (_weeklyGoals) {
+      document.getElementById('goal-articles').value = _weeklyGoals.goal_articles || 5;
+      document.getElementById('goal-words').value = _weeklyGoals.goal_words || 20;
+      document.getElementById('goal-quizzes').value = _weeklyGoals.goal_quizzes || 10;
+      document.getElementById('goal-writing').value = _weeklyGoals.goal_writing || 3;
+      document.getElementById('goal-days').value = _weeklyGoals.goal_active_days || 5;
+    }
+  }
+
+  async function saveWeeklyGoals() {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb || !supaUser) return;
+    var weekStart = getMonday(new Date()).toISOString().slice(0,10);
+    var goals = {
+      user_id: supaUser.id, week_start: weekStart,
+      goal_articles: parseInt(document.getElementById('goal-articles').value) || 5,
+      goal_words: parseInt(document.getElementById('goal-words').value) || 20,
+      goal_quizzes: parseInt(document.getElementById('goal-quizzes').value) || 10,
+      goal_writing: parseInt(document.getElementById('goal-writing').value) || 3,
+      goal_active_days: parseInt(document.getElementById('goal-days').value) || 5
+    };
+    await sb.from('user_weekly_goals').upsert(goals, { onConflict:'user_id,week_start' });
+    _weeklyGoals = goals;
+    document.getElementById('goal-settings-modal').style.display = 'none';
+    loadWeeklyGoals();
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // LEARNING CALENDAR (Duolingo-style)
+  // ═══════════════════════════════════════════════════════════════
+  var _calMonth = new Date().getMonth();
+  var _calYear = new Date().getFullYear();
+  var _calActivityDays = {};
+
+  async function loadCalendarData() {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb || !supaUser) return;
+    // Load 90 days of activity
+    var since = new Date(Date.now() - 90*86400000).toISOString().slice(0,10);
+    try {
+      var r = await sb.from('user_activity_log')
+        .select('study_date')
+        .eq('user_id', supaUser.id)
+        .gte('study_date', since);
+      _calActivityDays = {};
+      (r.data||[]).forEach(function(a) {
+        _calActivityDays[a.study_date] = (_calActivityDays[a.study_date] || 0) + 1;
+      });
+      renderCalendar();
+      updateStreakLabel();
+    } catch(e) { console.warn('[calendar]', e); }
+  }
+
+  function calNavMonth(dir) {
+    _calMonth += dir;
+    if (_calMonth > 11) { _calMonth = 0; _calYear++; }
+    if (_calMonth < 0) { _calMonth = 11; _calYear--; }
+    renderCalendar();
+  }
+
+  function renderCalendar() {
+    var grid = document.getElementById('cal-grid');
+    var label = document.getElementById('cal-month-label');
+    if (!grid) return;
+    var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    if (label) label.textContent = monthNames[_calMonth] + ' ' + _calYear;
+
+    var firstDay = new Date(_calYear, _calMonth, 1).getDay(); // 0=Sun
+    var mondayFirst = firstDay === 0 ? 6 : firstDay - 1; // Convert to Mon=0
+    var daysInMonth = new Date(_calYear, _calMonth + 1, 0).getDate();
+    var today = new Date().toISOString().slice(0,10);
+
+    var html = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(function(d) {
+      return '<div style="font-size:11px;font-weight:800;color:#94a3b8;padding:6px 0">' + d + '</div>';
+    }).join('');
+
+    // Empty cells before first day
+    for (var e = 0; e < mondayFirst; e++) {
+      html += '<div></div>';
+    }
+
+    for (var d = 1; d <= daysInMonth; d++) {
+      var dateStr = _calYear + '-' + String(_calMonth+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+      var count = _calActivityDays[dateStr] || 0;
+      var isToday = dateStr === today;
+      var isFuture = dateStr > today;
+
+      var bg, icon, border;
+      if (isFuture) {
+        bg = '#f8fafc'; icon = ''; border = '1px solid #f1f5f9';
+      } else if (count >= 5) {
+        bg = 'linear-gradient(135deg,#ea580c,#f97316)'; icon = '🔥'; border = '2px solid #ea580c';
+      } else if (count >= 3) {
+        bg = 'linear-gradient(135deg,#f97316,#fb923c)'; icon = '🔥'; border = '2px solid #f97316';
+      } else if (count >= 1) {
+        bg = 'linear-gradient(135deg,#fdba74,#fed7aa)'; icon = '🔥'; border = '2px solid #fdba74';
+      } else {
+        bg = '#fff'; icon = ''; border = '1px solid #e2e8f0';
+      }
+
+      var todayRing = isToday ? ';box-shadow:0 0 0 3px #3b82f6' : '';
+
+      html += '<div style="position:relative;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:12px;background:' + bg + ';border:' + border + todayRing + ';transition:transform .15s;cursor:default' + (isFuture?';opacity:.4':'') + '">'
+        + (icon ? '<div style="font-size:16px;line-height:1">' + icon + '</div>' : '')
+        + '<div style="font-size:' + (icon ? '10' : '13') + 'px;font-weight:' + (isToday?'900':'700') + ';color:' + (count > 0 ? '#fff' : '#94a3b8') + '">' + d + '</div>'
+        + '</div>';
+    }
+
+    grid.innerHTML = html;
+  }
+
+  function updateStreakLabel() {
+    var today = new Date();
+    var streak = 0;
+    for (var i = 0; i < 365; i++) {
+      var d = new Date(today.getTime() - i * 86400000).toISOString().slice(0,10);
+      if (_calActivityDays[d]) streak++;
+      else if (i > 0) break; // Allow today to be unchecked
+    }
+    var labelEl = document.getElementById('cal-streak-label');
+    if (labelEl) {
+      if (streak > 0) labelEl.innerHTML = '<span style="font-size:22px;font-weight:900;color:#ea580c">🔥 ' + streak + '일</span> 연속 학습 중!';
+      else labelEl.textContent = '오늘 첫 학습을 시작해보세요!';
+    }
+  }
+
+  // ═══ Init new sections ═══
+  var _hubNewSectionsLoaded = false;
+  function loadNewHubSections() {
+    if (_hubNewSectionsLoaded) return;
+    _hubNewSectionsLoaded = true;
+    loadWeeklyComparison();
+    loadWeeklyGoals();
+    loadCalendarData();
+  }
+  // Hook into existing loadHub flow
+  var _origLoadHub = (typeof loadHub === 'function') ? loadHub : null;
+  document.addEventListener('DOMContentLoaded', function() {
+    // Try to hook after auth ready
+    var waitNew = setInterval(function() {
+      if (typeof supaUser !== 'undefined' && supaUser) {
+        clearInterval(waitNew);
+        loadNewHubSections();
+      }
+    }, 500);
+    // Timeout after 10s
+    setTimeout(function() { clearInterval(waitNew); }, 10000);
+  });
+
   </script>
 
   <style>
