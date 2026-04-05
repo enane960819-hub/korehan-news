@@ -8011,7 +8011,8 @@ function goBadgeAdmin() {
   var main = document.getElementById('main');
   main.innerHTML = '<div style="max-width:960px">'
     + '<div class="pg-hd"><div><h1>뱃지 관리</h1><p>뱃지 정의, 이미지 업로드, 룸 에셋 연결</p></div>'
-    + '<button onclick="openBadgeModal()" class="btn-primary">+ 새 뱃지</button></div>'
+    + '<div style="display:flex;gap:8px"><button onclick="syncDefaultBadges()" class="btn-primary" style="background:#059669">📥 기본 뱃지 동기화</button>'
+    + '<button onclick="openBadgeModal()" class="btn-primary">+ 새 뱃지</button></div></div>'
     + '<div class="sf-card" id="badge-list">Loading...</div>'
     + '</div>';
   loadBadgeList();
@@ -8161,6 +8162,85 @@ async function saveBadge() {
   if (r.error) { if (msg) msg.textContent = 'Error: ' + r.error.message; return; }
   closeBadgeModal();
   toast('뱃지 저장 완료');
+  loadBadgeList();
+}
+
+// 코드 기반 뱃지 정의 → DB 동기화
+var _DEFAULT_BADGES = [
+  {id:'streak_3',cat:'streak',tier:'bronze',icon:'🔥',name:'First Spark',desc:'3-day study streak',condition:{type:'streak',value:3}},
+  {id:'streak_7',cat:'streak',tier:'silver',icon:'🔥',name:'Week Warrior',desc:'7-day study streak',condition:{type:'streak',value:7}},
+  {id:'streak_30',cat:'streak',tier:'gold',icon:'🏅',name:'30-Day Power',desc:'30-day study streak',condition:{type:'streak',value:30}},
+  {id:'streak_50',cat:'streak',tier:'gold',icon:'🌊',name:'50-Day Milestone',desc:'50-day study streak',condition:{type:'streak',value:50}},
+  {id:'streak_100',cat:'streak',tier:'diamond',icon:'💎',name:'100-Day Champion',desc:'100-day study streak',condition:{type:'streak',value:100}},
+  {id:'streak_365',cat:'streak',tier:'legendary',icon:'👑',name:'365 Legend',desc:'1-year study streak',condition:{type:'streak',value:365}},
+  {id:'read_1',cat:'reading',tier:'bronze',icon:'📖',name:'First Article',desc:'Read your first article',condition:{type:'articles_read',value:1}},
+  {id:'read_10',cat:'reading',tier:'bronze',icon:'📰',name:'News Beginner',desc:'Read 10 articles',condition:{type:'articles_read',value:10}},
+  {id:'read_50',cat:'reading',tier:'silver',icon:'📚',name:'News Explorer',desc:'Read 50 articles',condition:{type:'articles_read',value:50}},
+  {id:'read_100',cat:'reading',tier:'gold',icon:'🗞️',name:'Aspiring Reporter',desc:'Read 100 articles',condition:{type:'articles_read',value:100}},
+  {id:'read_500',cat:'reading',tier:'legendary',icon:'📜',name:'Korean Scholar',desc:'Read 500 articles',condition:{type:'articles_read',value:500}},
+  {id:'read_daily10',cat:'reading',tier:'gold',icon:'⚡',name:'10 in a Day',desc:'Read 10 articles in one day',condition:{type:'daily_reads',value:10}},
+  {id:'read_allsec',cat:'reading',tier:'diamond',icon:'🔭',name:'All-Rounder',desc:'Read from every section',condition:{type:'all_sections'}},
+  {id:'word_10',cat:'vocab',tier:'bronze',icon:'🌱',name:'Seed Vocab',desc:'Save 10 words',condition:{type:'words_saved',value:10}},
+  {id:'word_50',cat:'vocab',tier:'silver',icon:'🌿',name:'Word Sprout',desc:'Save 50 words',condition:{type:'words_saved',value:50}},
+  {id:'word_100',cat:'vocab',tier:'silver',icon:'🍃',name:'Word Collector',desc:'Save 100 words',condition:{type:'words_saved',value:100}},
+  {id:'word_300',cat:'vocab',tier:'gold',icon:'🌳',name:'Vocab Tree',desc:'Save 300 words',condition:{type:'words_saved',value:300}},
+  {id:'word_1000',cat:'vocab',tier:'diamond',icon:'💠',name:'TOPIK Vocab',desc:'Save 1000 words',condition:{type:'words_saved',value:1000}},
+  {id:'word_2000',cat:'vocab',tier:'legendary',icon:'🧬',name:'Vocab Master',desc:'Save 2000 words',condition:{type:'words_saved',value:2000}},
+  {id:'quiz_first',cat:'quiz',tier:'bronze',icon:'🎮',name:'First Quiz',desc:'Complete your first quiz',condition:{type:'quiz_count',value:1}},
+  {id:'quiz_perfect1',cat:'quiz',tier:'silver',icon:'🎯',name:'Daily Perfect',desc:'Score 100% on a daily test',condition:{type:'quiz_perfect',value:1}},
+  {id:'quiz_perfect3',cat:'quiz',tier:'gold',icon:'💯',name:'3x Perfect',desc:'Score 100% on 3 daily tests in a row',condition:{type:'quiz_perfect_streak',value:3}},
+  {id:'quiz_14days',cat:'quiz',tier:'diamond',icon:'📅',name:'Daily Devotee',desc:'Complete daily tests 14 days in a row',condition:{type:'quiz_streak',value:14}},
+  {id:'sec_politics',cat:'sections',tier:'gold',icon:'🏛️',name:'Politics Master',desc:'Read 20 Politics articles',condition:{type:'section_read',section:'정치',value:20}},
+  {id:'sec_economy',cat:'sections',tier:'gold',icon:'💹',name:'Economy Master',desc:'Read 20 Economy articles',condition:{type:'section_read',section:'경제',value:20}},
+  {id:'sec_society',cat:'sections',tier:'gold',icon:'🏘️',name:'Society Master',desc:'Read 20 Society articles',condition:{type:'section_read',section:'사회',value:20}},
+  {id:'sec_world',cat:'sections',tier:'gold',icon:'🌐',name:'World Master',desc:'Read 20 World articles',condition:{type:'section_read',section:'국제',value:20}},
+  {id:'sec_culture',cat:'sections',tier:'gold',icon:'🎨',name:'Culture Master',desc:'Read 20 Culture articles',condition:{type:'section_read',section:'문화',value:20}},
+  {id:'sec_sports',cat:'sections',tier:'gold',icon:'⚽',name:'Sports Master',desc:'Read 20 Sports articles',condition:{type:'section_read',section:'스포츠',value:20}},
+  {id:'sec_korea',cat:'sections',tier:'gold',icon:'🇰🇷',name:'Korea Master',desc:'Read 20 Korea articles',condition:{type:'section_read',section:'Korea',value:20}},
+  {id:'sec_beauty',cat:'sections',tier:'gold',icon:'💄',name:'Beauty Master',desc:'Read 20 Beauty articles',condition:{type:'section_read',section:'beauty',value:20}},
+  {id:'sec_travel',cat:'sections',tier:'gold',icon:'✈️',name:'Travel Master',desc:'Read 20 Travel articles',condition:{type:'section_read',section:'travel',value:20}},
+  {id:'sec_opinion',cat:'sections',tier:'gold',icon:'✍️',name:'Opinion Master',desc:'Read 10 Opinion articles',condition:{type:'section_read',section:'오피니언',value:10}},
+  {id:'xp_7500',cat:'milestone',tier:'bronze',icon:'⭐',name:'XP 7,500',desc:'Earn 7,500 XP total',condition:{type:'xp',value:7500}},
+  {id:'xp_30000',cat:'milestone',tier:'silver',icon:'💫',name:'XP 30,000',desc:'Earn 30,000 XP total',condition:{type:'xp',value:30000}},
+  {id:'xp_75000',cat:'milestone',tier:'gold',icon:'🌠',name:'XP 75,000',desc:'Earn 75,000 XP total',condition:{type:'xp',value:75000}},
+  {id:'xp_300000',cat:'milestone',tier:'diamond',icon:'🌌',name:'XP 300,000',desc:'Earn 300,000 XP total',condition:{type:'xp',value:300000}},
+  {id:'days_90',cat:'milestone',tier:'gold',icon:'🎂',name:'3-Month Runner',desc:'Study for 90 days after signup',condition:{type:'active_days',value:90}},
+  {id:'time_midnight',cat:'time',tier:'silver',icon:'🌙',name:'Night Owl',desc:'Study after midnight',condition:{type:'time',hour:'0-3'}},
+  {id:'time_dawn',cat:'time',tier:'gold',icon:'🌅',name:'Dawn Scholar',desc:'Study before 6 AM',condition:{type:'time',hour:'4-5'}},
+  {id:'time_morning7',cat:'time',tier:'bronze',icon:'☀️',name:'Morning Routine',desc:'Study before 7 AM, 7 times',condition:{type:'morning_count',value:7}},
+  {id:'time_monday',cat:'time',tier:'bronze',icon:'📅',name:'Monday Fighter',desc:'Study on Mondays, 4 weeks in a row',condition:{type:'day_streak',day:'monday',value:4}},
+  {id:'time_friday',cat:'time',tier:'silver',icon:'🌃',name:'Friday Learner',desc:'Study on Friday night, 4 times',condition:{type:'day_count',day:'friday',value:4}},
+  {id:'time_weekend',cat:'time',tier:'gold',icon:'🎒',name:'Weekend Champ',desc:'Study on weekends, 8 weeks in a row',condition:{type:'weekend_streak',value:8}},
+  {id:'cult_march1',cat:'cultural',tier:'gold',icon:'🌸',name:'March 1st',desc:'Study on March 1 (Independence Day)',condition:{type:'date',month:3,day:1}},
+  {id:'cult_hangul',cat:'cultural',tier:'legendary',icon:'🇰🇷',name:'Hangul Guardian',desc:'Study on Oct 9 (Hangul Day)',condition:{type:'date',month:10,day:9}},
+  {id:'cult_newyear',cat:'cultural',tier:'gold',icon:'🎆',name:"New Year's",desc:'Study on January 1',condition:{type:'date',month:1,day:1}},
+  {id:'cult_chuseok',cat:'cultural',tier:'diamond',icon:'🎑',name:'Chuseok Study',desc:'Study on Chuseok day',condition:{type:'date',event:'chuseok'}},
+  {id:'cult_seollal',cat:'cultural',tier:'diamond',icon:'🌕',name:'Seollal Study',desc:'Study on Seollal day',condition:{type:'date',event:'seollal'}},
+  {id:'cult_gwangbok',cat:'cultural',tier:'silver',icon:'🌊',name:'Liberation Day',desc:'Study on August 15',condition:{type:'date',month:8,day:15}},
+  {id:'cult_pepero',cat:'cultural',tier:'gold',icon:'💘',name:'Pepero Day',desc:'Study on November 11',condition:{type:'date',month:11,day:11}},
+  {id:'cult_valentine',cat:'cultural',tier:'silver',icon:'❤️',name:"Valentine's Day",desc:'Study on February 14',condition:{type:'date',month:2,day:14}},
+  {id:'cult_christmas',cat:'cultural',tier:'gold',icon:'🎄',name:'Christmas',desc:'Study on December 25',condition:{type:'date',month:12,day:25}},
+  {id:'cult_collector',cat:'cultural',tier:'legendary',icon:'🗓️',name:'Holiday Collector',desc:'Earn 7 cultural date badges',condition:{type:'cultural_count',value:7}},
+];
+
+async function syncDefaultBadges() {
+  if (!confirm('기본 뱃지 ' + _DEFAULT_BADGES.length + '개를 DB에 동기화합니다. 기존 뱃지는 업데이트됩니다.')) return;
+  var sb = getSb(); if (!sb) return;
+  var rows = _DEFAULT_BADGES.map(function(b, i) {
+    return {
+      id: b.id,
+      name: (b.icon || '') + ' ' + b.name,
+      description: b.desc,
+      category: b.cat,
+      tier: b.tier,
+      unlock_condition: b.condition || {},
+      sort_order: i,
+      active: true
+    };
+  });
+  var r = await sb.from('badges').upsert(rows, { onConflict: 'id', ignoreDuplicates: false });
+  if (r.error) { toast('동기화 실패: ' + r.error.message); return; }
+  toast('✅ ' + rows.length + '개 뱃지 동기화 완료');
   loadBadgeList();
 }
 
