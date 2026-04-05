@@ -3902,7 +3902,7 @@ async function renderFeedbackInboxContent() {
   try {
     // Only show latest 3 in Study Room
     var res = await sb.from('user_submissions')
-      .select('id, study_date, status, admin_feedback, writing_text, topic_ko, content_type')
+      .select('id, study_date, status, admin_feedback, ai_feedback, writing_text, topic_ko, content_type')
       .eq('user_id', supaUser.id)
       .order('submitted_at', { ascending: false })
       .limit(3);
@@ -3912,8 +3912,8 @@ async function renderFeedbackInboxContent() {
       content.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:24px;">아직 제출한 글이 없습니다.</div>';
       return;
     }
-    var statusLabel = { submitted:'검토 중', ai_reviewed:'AI 검토 완료', admin_approved:'피드백 도착', sent:'피드백 도착' };
-    var statusColor = { submitted:'#8b8b8b', ai_reviewed:'var(--bright,#2563eb)', admin_approved:'#00c471', sent:'#00c471' };
+    var statusLabel = { submitted:'검토 중', ai_reviewed:'검토 중', admin_approved:'피드백 도착', sent:'피드백 도착' };
+    var statusColor = { submitted:'#8b8b8b', ai_reviewed:'#8b8b8b', admin_approved:'#00c471', sent:'#00c471' };
 
     content.innerHTML = items.map(function(item) {
       var preview = (item.writing_text||'').slice(0,50) + ((item.writing_text||'').length > 50 ? '…' : '');
@@ -3924,9 +3924,13 @@ async function renderFeedbackInboxContent() {
       if (item.topic_ko) html += '<span style="font-size:11px;color:#555">' + item.topic_ko + '</span>';
       html += '</div>';
       html += '<div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:6px">' + preview + '</div>';
-      if ((item.status === 'admin_approved' || item.status === 'sent') && item.admin_feedback) {
+      var fbText = item.admin_feedback || '';
+      if (!fbText && item.ai_feedback) {
+        try { var fb = typeof item.ai_feedback === 'string' ? JSON.parse(item.ai_feedback) : item.ai_feedback; if (fb && fb.overall) fbText = fb.overall; } catch(e) {}
+      }
+      if (fbText && (item.status === 'admin_approved' || item.status === 'sent')) {
         html += '<div style="background:#f8faf8;border-left:3px solid #00c471;padding:10px 12px;border-radius:4px;">';
-        html += '<div style="font-size:13px;color:#1a1a1a;white-space:pre-wrap;line-height:1.6;">' + item.admin_feedback + '</div>';
+        html += '<div style="font-size:13px;color:#1a1a1a;white-space:pre-wrap;line-height:1.6;">' + fbText + '</div>';
         html += '</div>';
       }
       html += '</div>';
