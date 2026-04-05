@@ -281,7 +281,7 @@
         <div style="font-size:20px;font-weight:900;color:var(--blue);font-family:’Playfair Display’,serif">Growth Lab</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="openDailyReview()" style="padding:8px 14px;font-size:12px;background:var(--bright);color:#fff;border-radius:8px">▶ Daily Review</button>
+        <a href="korehan-study-room.html" style="padding:8px 14px;font-size:12px;background:var(--bright);color:#fff;border-radius:8px;text-decoration:none;font-weight:700">Study Room →</a>
         <a class="btn btn-ghost" href="korehan-study-room.html" style="padding:8px 14px;font-size:12px;border-radius:8px;border:1px solid var(--border);color:var(--muted)">Study Room →</a>
       </div>
     </div>
@@ -422,8 +422,17 @@
     <div id="interest-words" style="display:none"></div>
 
     <section class="card" style="margin-bottom:14px;padding:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:17px;font-weight:800">Read today</span><button onclick="openDailyReview()" style="font-size:11px;font-weight:700;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;color:var(--bright)">▶ Review</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:17px;font-weight:800">Read today</span><a href="korehan-study-room.html" style="font-size:11px;font-weight:700;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--bright);text-decoration:none">Study Room →</a></div>
       <div class="review-wrap"><div class="review-day"><div class="review-top"><div><h3 id="review-title">Today</h3><p id="review-sub"></p></div></div><div class="timeline" id="review-queue"></div></div></div>
+    </section>
+
+    <!-- ═══ REVIEW HISTORY ═══ -->
+    <section class="card" style="margin-bottom:14px;padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:17px;font-weight:800">Review History</span>
+        <a href="korehan-study-room.html" style="font-size:11px;font-weight:700;color:var(--bright);text-decoration:none">Start Review →</a>
+      </div>
+      <div id="review-history-list"></div>
     </section>
 
     <!-- ═══ WRITING FEEDBACK HISTORY ═══ -->
@@ -445,31 +454,7 @@
     </section>
 
     <!-- Daily Review Modal -->
-    <div class="dr-overlay hidden" id="dr-overlay" onclick="if(event.target===this)closeDailyReview()">
-      <div class="dr-modal">
-        <div class="dr-header">
-          <div>
-            <h2 id="dr-title">Daily Review</h2>
-            <p id="dr-subtitle">Loading your personalized questions…</p>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;flex:1;margin-left:20px">
-            <div class="dr-progress-track"><div class="dr-progress-fill" id="dr-progress" style="width:0%"></div></div>
-            <span id="dr-q-counter" style="font-size:12px;font-weight:800;color:rgba(255,255,255,.6);white-space:nowrap">0 / 0</span>
-          </div>
-          <button onclick="closeDailyReview()" style="background:rgba(255,255,255,.12);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer;margin-left:12px;flex-shrink:0">✕</button>
-        </div>
-        <div class="dr-body" id="dr-body">
-          <div style="text-align:center;padding:40px 0">
-            <div style="font-size:40px;margin-bottom:12px">⏳</div>
-            <div style="font-size:14px;color:#64748b">Generating your personalized review…</div>
-          </div>
-        </div>
-        <div class="dr-footer" id="dr-footer" style="display:none">
-          <button class="btn" style="background:#e2e8f0;color:#0f172a" onclick="closeDailyReview()">Close</button>
-          <button class="btn btn-primary" style="background:#2563eb;color:#fff" id="dr-next-btn" onclick="drNext()" disabled>Next →</button>
-        </div>
-      </div>
-    </div>
+    <!-- Daily Review moved to Study Room -->
 
     <!-- Word Detail Popup -->
     <div id="word-popup-overlay" style="display:none" class="word-popup-overlay" onclick="if(event.target===this)closeWordPopup()">
@@ -2118,6 +2103,37 @@
   }
 
   // ═══════════════════════════════════════════════════════════════
+  // REVIEW HISTORY
+  // ═══════════════════════════════════════════════════════════════
+  async function loadReviewHistory() {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb || !supaUser) return;
+    var el = document.getElementById('review-history-list');
+    if (!el) return;
+    try {
+      var r = await sb.from('user_quiz_results')
+        .select('quiz_type, score, max_score, accuracy_pct, study_date, created_at')
+        .eq('user_id', supaUser.id)
+        .in('quiz_type', ['daily_review', 'weekly_review', 'monthly_review'])
+        .order('created_at', { ascending: false })
+        .limit(15);
+      var rows = r.data || [];
+      if (!rows.length) { el.innerHTML = '<div style="font-size:13px;color:#8b8b8b;padding:8px 0">아직 리뷰 기록이 없습니다. Study Room에서 시작해보세요.</div>'; return; }
+      var typeLabel = { daily_review:'Daily', weekly_review:'Weekly', monthly_review:'Monthly' };
+      el.innerHTML = rows.map(function(row) {
+        var pct = row.accuracy_pct || (row.max_score > 0 ? Math.round(row.score / row.max_score * 100) : 0);
+        var color = pct >= 90 ? '#00c471' : pct >= 70 ? 'var(--bright)' : '#8b8b8b';
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0">'
+          + '<span style="font-size:12px;font-weight:600;min-width:55px;color:#555">' + (typeLabel[row.quiz_type]||row.quiz_type) + '</span>'
+          + '<span style="font-size:11px;color:#8b8b8b;min-width:70px">' + (row.study_date||'') + '</span>'
+          + '<div style="flex:1;height:4px;background:#f0f0f0;border-radius:2px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:2px"></div></div>'
+          + '<span style="font-size:12px;font-weight:700;color:' + color + ';min-width:35px;text-align:right">' + pct + '%</span>'
+          + '</div>';
+      }).join('');
+    } catch(e) { el.innerHTML = '<div style="font-size:12px;color:#8b8b8b">데이터를 불러올 수 없습니다.</div>'; }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // WRITING FEEDBACK HISTORY
   // ═══════════════════════════════════════════════════════════════
   async function loadFeedbackHistory() {
@@ -2213,6 +2229,7 @@
     loadCalendarData();
     loadRadarChart();
     loadErrorPatterns();
+    loadReviewHistory();
     loadFeedbackHistory();
     loadRecentBadges();
   }
