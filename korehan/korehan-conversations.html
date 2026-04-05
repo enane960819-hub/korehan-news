@@ -46,7 +46,7 @@
 .cc2-open-btn:hover{background:#2563eb;color:#fff;border-color:#2563eb;}
 
 /* DETAIL OVERLAY */
-.detail-overlay{position:fixed;inset:0;background:rgba(5,12,24,.6);backdrop-filter:blur(4px);z-index:400;display:flex;align-items:center;justify-content:center;padding:20px 16px;overflow:hidden;overscroll-behavior:contain;isolation:isolate;}
+.detail-overlay{position:fixed;inset:0;background:rgba(5,12,24,.6);backdrop-filter:blur(4px);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px 16px;overflow:hidden;overscroll-behavior:contain;isolation:isolate;}
 .detail-overlay.hidden{display:none;}
 .detail-panel{width:100%;max-width:1100px;height:90vh;background:#f8fafc;border-radius:28px;overflow:hidden;box-shadow:0 32px 80px rgba(5,12,24,.3);display:grid;grid-template-columns:1.2fr .85fr;animation:panelIn .22s cubic-bezier(.22,1,.36,1);}
 @keyframes panelIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
