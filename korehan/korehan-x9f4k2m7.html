@@ -299,6 +299,7 @@ a{color:inherit;text-decoration:none}
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs'
     );
     if (!sb) return;
+    window._adminAuthClient = sb; // callClaude에서 세션 조회용으로 재사용
     sb.auth.getSession().then(function(r) {
       var email = r.data && r.data.session && r.data.session.user && r.data.session.user.email;
       if (!email || email !== ADMIN_EMAIL) {
@@ -482,20 +483,12 @@ let activeFilter = '';
 let deleteId = null;
 
 var _sbAdmin = null;
-var _sbAuth = null; // 세션 전용 클라이언트 (anon key + persistSession:true)
-function _getAuthClient() {
-  if (_sbAuth) return _sbAuth;
-  if (typeof supabase !== 'undefined') {
-    _sbAuth = supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN, { auth: { persistSession: true } });
-  }
-  return _sbAuth;
-}
 // ── Claude API 프록시 (어드민용) ──────────────────────────────
 const ADMIN_CLAUDE_PROXY = SUPA_URL_ADMIN + '/functions/v1/claude-proxy';
 
 async function callClaude({ feature, model, max_tokens, messages }) {
-  var authClient = _getAuthClient();
-  if (!authClient) throw new Error('Supabase not initialized');
+  var authClient = window._adminAuthClient;
+  if (!authClient) throw new Error('Auth client not ready — please reload the page');
 
   var sessionRes = await authClient.auth.getSession();
   var session = sessionRes && sessionRes.data && sessionRes.data.session;
