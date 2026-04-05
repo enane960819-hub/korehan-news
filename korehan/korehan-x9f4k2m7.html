@@ -557,9 +557,13 @@ async function callClaude({ feature, model, max_tokens, messages }) {
 
 function getSb() {
   if (_sbAdmin) return _sbAdmin;
-  if (typeof supabase !== 'undefined' && SUPA_URL_ADMIN && SUPA_KEY_ADMIN) {
-    _sbAdmin = supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN, {
-      auth: { detectSessionInUrl: true, persistSession: true, autoRefreshToken: true }
+  var url = SUPA_URL_ADMIN;
+  // Prefer service_role key for admin operations (bypasses RLS)
+  var svcKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjQzNDc1MiwiZXhwIjoyMDg4MDEwNzUyfQ.npCvblrbeRiqwW76_23kYznrRuFHIKCD24JN3da--3c';
+  var key = svcKey || SUPA_KEY_ADMIN;
+  if (typeof supabase !== 'undefined' && url && key) {
+    _sbAdmin = supabase.createClient(url, key, {
+      auth: { detectSessionInUrl: false, persistSession: false }
     });
     return _sbAdmin;
   }
