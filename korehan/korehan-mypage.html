@@ -47,9 +47,8 @@ body { font-family: 'Inter', 'Noto Sans KR', sans-serif; }
 .xp-fill  { height:100%; border-radius:999px; background:linear-gradient(90deg,#2255a4,#3d7fd4); transition:width .7s ease; }
 .xp-meta  { display:flex; justify-content:space-between; font-size:11px; color:#94a3b8; font-weight:500; }
 
-/* Stats overview — compact status */
-.stats-overview { background:#fff; border:1px solid var(--border); border-radius:16px; padding:18px 20px; margin-bottom:20px; box-shadow:0 2px 12px rgba(15,23,42,.05); }
-.stats-overview h3 { font-family:'Inter',sans-serif; font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.1em; margin:0 0 14px; }
+/* Stats overview — uses mp-section sizing for consistency */
+.stats-overview { margin-bottom:20px; }
 .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; }
 .stat-row { display:flex; align-items:center; gap:12px; padding:8px 6px; }
 .stat-icon { width:44px; height:44px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
@@ -164,8 +163,7 @@ body.kh-neon-on .xp-tier-badge.gold    { background:rgba(217,119,6,.15)   !impor
 body.kh-neon-on .xp-tier-badge.plat    { background:rgba(124,58,237,.15)  !important; color:#c4b5fd !important; }
 body.kh-neon-on .xp-tier-badge.diamond { background:rgba(29,78,216,.15)   !important; color:#93c5fd !important; }
 
-body.kh-neon-on .stats-overview { background:rgba(9,18,33,.92) !important; border-color:rgba(0,255,214,.16) !important; }
-body.kh-neon-on .stats-overview h3 { color:rgba(163,230,235,.55) !important; }
+/* stats-overview inherits mp-section neon styles */
 body.kh-neon-on .stat-n   { color:#8ffcff !important; }
 body.kh-neon-on .stat-lbl { color:rgba(163,230,235,.55) !important; }
 
@@ -868,7 +866,7 @@ var SVG_ICONS = {
   streak:   '<img src="assets/streak.png" alt="streak">',
   articles: '<img src="assets/article.png" alt="articles">',
   words:    '<img src="assets/bookmark.png" alt="words">',
-  quizzes:  '<img src="assets/check.png" alt="quizzes">',
+  quizzes:  '<img src="assets/check.png" alt="quizzes" style="width:64px;height:64px">',
   xp:       '<img src="assets/streak.png" alt="xp">',
   nyang:    '<img src="assets/currency.png" alt="kimchi">',
 };
@@ -997,7 +995,7 @@ function renderMiniStats(stats) {
       + '</div>';
   }
   el.innerHTML =
-    '<div class="stats-overview"><h3>Current Status</h3><div class="stats-grid">'
+    '<div class="mp-section stats-overview"><h3>Current Status</h3><div class="stats-grid">'
     + row(SVG_ICONS.streak,   us.mission_streak || us.streak || 0, 'day streak')
     + row(SVG_ICONS.articles, us.articles_read  || 0,              'articles')
     + row(SVG_ICONS.words,    us.words_saved    || 0,              'saved words', ' clickable" onclick="openSavedWordsModal()')
