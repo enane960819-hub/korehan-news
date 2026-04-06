@@ -74,7 +74,9 @@
     /* ── Placeholder for missing images ── */
     .img-placeholder{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e293b,#334155);color:rgba(255,255,255,.3);font-size:14px;font-weight:700;border-radius:16px;min-height:240px;border:2px dashed rgba(255,255,255,.1)}
     /* ── Responsive ── */
+    .feat-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(15,23,42,.1)}
     @media(max-width:900px){
+      .feat-grid{grid-template-columns:repeat(2,1fr)!important}
       .steps-grid{grid-template-columns:1fr;max-width:480px}
       .steps-section{margin-top:-40px}
       .detail-section,.detail-section.reverse{grid-template-columns:1fr;gap:24px;padding:40px 0}
@@ -83,6 +85,7 @@
       .bg-hero{min-height:80vh}
     }
     @media(max-width:600px){
+      .feat-grid{grid-template-columns:1fr!important}
       .bg-hero-content{padding:40px 16px 30px}
       .step-img{height:160px}
       .detail-text h2{font-size:26px}
@@ -220,6 +223,74 @@
   </section>
 
 </div>
+
+<!-- ═══ EXPLORE FEATURES ═══ -->
+<section style="background:linear-gradient(180deg,var(--bg),#eef4fb);padding:60px 24px 70px">
+  <div style="max-width:1100px;margin:0 auto">
+    <div style="text-align:center;margin-bottom:40px" data-reveal>
+      <div style="font-size:12px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--bright);margin-bottom:10px">Explore</div>
+      <h2 style="font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-.02em;margin:0 0 10px">Everything KoreHan News Offers</h2>
+      <p style="font-size:15px;color:var(--muted);max-width:520px;margin:0 auto;line-height:1.7">More than just news — a full Korean learning ecosystem</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px" class="feat-grid">
+
+      <a href="korehan-study-room.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">📝</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Study Room</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">AI-powered review sessions. Load any article and get vocab quizzes, grammar breakdowns, and fill-in exercises.</p>
+      </a>
+
+      <a href="korehan-mypage.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🏠</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">My Room</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Your personal space. Customize your room with items from the Shop, track stats, and manage your profile.</p>
+      </a>
+
+      <a href="korehan-shop.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fdf4ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🛍️</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Shop</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Spend Nyang (냥) on room decorations, avatar items, and gifts. Earn Nyang by studying consistently.</p>
+      </a>
+
+      <a href="korehan-learning-overview.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fefce8;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">📊</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Growth Lab</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Your learning dashboard. Daily missions, streaks, XP history, weak grammar tracking, and weekly analytics.</p>
+      </a>
+
+      <a href="korehan-reporters.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fff1f2;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">👨‍💼</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">KoreHan Characters</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Meet our reporters and conversation characters. Each has a unique personality, writing style, and recurring role.</p>
+      </a>
+
+      <a href="korehan-conversations.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#ecfeff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">💬</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Conversations</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Real Korean dialogues in everyday, workplace, friends, family, and dating contexts. Natural speech patterns you can actually use.</p>
+      </a>
+
+      <a href="korehan-stories.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">📖</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Stories</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Longer narrative reading — fun, touching, scary, or shocking. Great for building reading stamina and emotional vocab.</p>
+      </a>
+
+      <a href="korehan-learn.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fff7ed;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🎴</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Flashcards</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Daily vocabulary cards pulled from your saved words and the master word bank. Swipe through and test yourself.</p>
+      </a>
+
+      <a href="korehan-fun.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🎮</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">FUN Zone</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Korean name generator, fortune telling, worldcup games — take a break from studying and have fun with Korean culture.</p>
+      </a>
+
+    </div>
+  </div>
+</section>
 
 <!-- ═══ CTA ═══ -->
 <section class="cta-section" data-reveal>
