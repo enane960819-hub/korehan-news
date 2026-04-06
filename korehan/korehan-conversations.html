@@ -372,8 +372,30 @@ function highlightKeyExprs(text, keyExprs) {
   return escaped;
 }
 
-function openDetail(idx) {
+async function openDetail(idx) {
   var c = CONVS[idx];
+  if (!c) return;
+
+  // 상세 데이터 아직 안 로드됐으면 DB에서 가져오기
+  if (!c._loaded && c._id) {
+    try {
+      var sb = getSupa();
+      var { data: row } = await sb.from('conversations_data').select('*').eq('id', c._id).maybeSingle();
+      if (row) {
+        var d = row.data || {};
+        Object.assign(c, d, { _id: row.id, _loaded: true });
+        c.msgs = (c.msgs || []).map(function(msg) {
+          var side = msg.s || msg.side || 'l';
+          if (side === 'n') return Object.assign({}, msg, {s: 'n'});
+          return Object.assign({}, msg, { s: side });
+        });
+        if (!c.vocab) c.vocab = [];
+        if (!c.grammar) c.grammar = [];
+        if (!c.mission) c.mission = [];
+      }
+    } catch(e) { console.warn('conv detail load failed:', e); }
+  }
+
   var cast = resolveConversationCast(c);
   window._currentConv = c;
 
@@ -697,42 +719,30 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   try {
     var sb = getSupa();
+    // 목록용 최소 데이터만 로드 (msgs, vocab, grammar 제외 → 빠른 로딩)
     var { data, error } = await sb.from('conversations_data')
-      .select('*')
+      .select('id,name,ctx,cat,lvl')
       .order('created_at', {ascending: false});
 
     if (error) throw error;
 
     if (data && data.length) {
-      // DB 데이터를 CONVS 형식으로 변환
+      // 목록용 최소 데이터만 매핑 (상세는 openDetail에서 로드)
       CONVS = data.map(function(row) {
-        var d = row.data || {};
-        var base = Object.assign({
-          _id: row.id,
+        return {
+          _id:  row.id,
           name: row.name || '',
           ctx:  row.ctx  || '',
           cat:  row.cat  || 'everyday',
           lvl:  row.lvl  || 'b',
-          avi:  '💬',
-          catLabel: '',
+          topic: '',
+          thumb: null,
           msgs: [],
           vocab: [],
           grammar: [],
-          mission: []
-        }, d, {_id: row.id});
-        var cast = resolveConversationCast(base);
-        base.msgs = (base.msgs || []).map(function(msg) {
-          var side = msg.s || msg.side || 'l';
-          if (side === 'n') return Object.assign({}, msg, {s: 'n'}); // 지문은 화자 없음
-          var speaker = side === 'l' ? cast.left : cast.right;
-          return Object.assign({}, msg, {
-            s: side,
-            who: msg.who || speaker.name_ko || speaker.name,
-            character_slug: msg.character_slug || speaker.slug
-          });
-        });
-        // data 객체가 있으면 그대로, 없으면 row 자체에서 구성
-        return base;
+          mission: [],
+          _loaded: false // 상세 로드 여부
+        };
       });
     }
   } catch(e) {
