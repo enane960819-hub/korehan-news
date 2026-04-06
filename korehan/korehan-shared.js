@@ -1493,7 +1493,8 @@ var _articlesCacheTime = 0;
 var CACHE_TTL = 300000; // 5분 (메모리 캐시)
 var ARTICLES_STORAGE_KEY = 'kh_articles_cache_v2';
 var ARTICLES_STORAGE_MAX_AGE = 60 * 60 * 1000; // 1시간 (localStorage — stale-while-revalidate로 항상 백그라운드 갱신)
-var HOME_ARTICLE_SELECT = '*';
+// 홈/목록 카드에 필요한 컬럼만 SELECT — 본문(full) 제외로 응답 크기 90% 감소
+var HOME_ARTICLE_SELECT = 'id,title,title_ko,body,section,level,image,date,published_at,created_at,updated_at,status,featured,reporter_id';
 
 (function hydrateArticlesCacheFromStorage() {
   try {
@@ -1572,7 +1573,7 @@ async function loadArticlesFromDB(options) {
     // limit(18) could miss recently published articles entirely.
     var query = sb.from('articles').select(HOME_ARTICLE_SELECT).order('created_at', { ascending: false });
     if (useHomeOptimizedQuery) {
-      query = query.limit(60);  // was 18 — increased so fresh articles are not cut off
+      query = query.limit(30);  // 홈에 필요한 최대: hero 7 + top 4 + grid 12 = 23
     } else {
       query = query.limit(200);
     }
@@ -2419,7 +2420,7 @@ function getReporterProfileHTML(article) {
     + '</a>';
 }
 
-function renderArticlePage() {
+async function renderArticlePage() {
   var wrap = document.getElementById('dyn-article');
   if (!wrap) return;
 
@@ -2427,6 +2428,17 @@ function renderArticlePage() {
   var id     = params.get('id');
   var all    = getCachedArticles();
   var a      = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
+
+  // 목록 캐시에 full 본문이 없으면 DB에서 개별 조회
+  if (a && !a.full && id) {
+    try {
+      var sb = getSupa();
+      if (sb) {
+        var res = await sb.from('articles').select('full').eq('id', id).maybeSingle();
+        if (res.data && res.data.full) a.full = res.data.full;
+      }
+    } catch(e) {}
+  }
 
   if (!a) {
     wrap.innerHTML = '<div style="padding:30px">'
@@ -5470,7 +5482,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   else if (pageBase === 'korehan-world')     { await renderSectionPage('국제'); }
   else if (pageBase === 'korehan-culture')   { await renderSectionPage('문화'); }
   else if (pageBase === 'korehan-opinion')   { await renderSectionPage('오피니언'); }
-  else if (pageBase === 'korehan-article')   { await _loadReportersIntoKHMap(); renderArticlePage(); }
+  else if (pageBase === 'korehan-article')   { await _loadReportersIntoKHMap(); await renderArticlePage(); }
 
   // Defer non-critical initializations to avoid blocking first paint on mobile
   var _deferPost = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 0); };
