@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>My Page — KoreHan News</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
 /* Base font override for this page */
@@ -2258,14 +2260,16 @@ function renderFriendsList() {
 // ══════════════════════════════════════════════════════════════
 
 document.addEventListener('DOMContentLoaded', function() {
-  var attempts = 0;
-  function waitForSession() {
-    attempts++;
-    if (supaUser) { initMyPage(); loadRoomLayout(); }
-    else if (attempts < 30) { setTimeout(waitForSession, 200); }
-    else { initMyPage(); loadRoomLayout(); }
+  function _startMyPage() { initMyPage(); loadRoomLayout(); }
+  // supaUser가 이미 있으면 즉시 실행, 없으면 이벤트 대기
+  if (window.supaUser) {
+    _startMyPage();
+  } else {
+    window.addEventListener('kh-auth-signed-in', function() { _startMyPage(); }, { once: true });
+    // 세션 체크 완료 후에도 미로그인이면 실행 (게스트 모드)
+    var _fallback = setTimeout(function() { if (!window.supaUser) _startMyPage(); }, 3000);
+    window.addEventListener('kh-auth-signed-in', function() { clearTimeout(_fallback); }, { once: true });
   }
-  setTimeout(waitForSession, 300);
 });
 </script>
 </body>

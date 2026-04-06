@@ -5351,7 +5351,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // 카드 리스트 페이지 — 자체 localStorage 캐시로 이미 렌더 완료
   // sections/settings/session을 await하지 않고 백그라운드 처리
-  var _fastPages = ['korehan-conversations','korehan-stories'];
+  var _fastPages = ['korehan-conversations','korehan-stories','korehan-mypage','korehan-shop'];
   var _isFastPage = _fastPages.indexOf(pageBase) >= 0;
 
   if (_isFastPage) {
