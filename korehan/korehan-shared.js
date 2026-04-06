@@ -5379,66 +5379,77 @@ document.addEventListener('DOMContentLoaded', async function() {
       }
     });
   } else if (isHomePage) {
-    // Render cached articles immediately so hero + swipe is interactive while fresh data loads
+    // 캐시 있으면 즉시 렌더 (재방문 시 즉시 화면 표시)
     if (getCachedArticles().length) {
       renderHomePage();
     }
-    await Promise.all([
-      loadArticlesFromDB({ homeOptimized: true, force: true }),
-      sectionsPromise,
-      settingsPromise
-    ]);
+    // 기사 데이터만 await — sections/settings는 헤더에 필요하지만 기본값으로 이미 렌더됨
+    await loadArticlesFromDB({ homeOptimized: true, force: true });
     renderHomePage();
 
-    await Promise.allSettled([sessionPromise]);
-
-    if (supaUser) {
-      _appSettingsPromise = null;
-      _artCacheSchemaDone = false;
-      _artCacheSchema = null;
-      _remoteCacheDisabled = false;
-      await loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
-      window.dispatchEvent(new Event('kh-settings-reloaded'));
-    }
-
+    // 나머지는 백그라운드에서 완료 후 UI 갱신 (세션, 섹션, 설정)
     if (footerEl) footerEl.innerHTML = renderFooter();
     renderKhLucideIcons();
     applySiteConfigToPage();
+
+    Promise.allSettled([sessionPromise, sectionsPromise, settingsPromise]).then(function() {
+      if (headerEl) { headerEl.innerHTML = renderHeader(); khInjectSidebar(); }
+      if (footerEl) footerEl.innerHTML = renderFooter();
+      renderKhLucideIcons();
+      updateAuthUI();
+      var _hamBtn = headerEl && headerEl.querySelector('.kh-ham');
+      if (_hamBtn) {
+        _hamBtn.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); khSbOpen(); });
+        _hamBtn.addEventListener('touchend', function(e) { e.preventDefault(); khSbOpen(); });
+      }
+      if (supaUser) {
+        _appSettingsPromise = null;
+        _artCacheSchemaDone = false;
+        _artCacheSchema = null;
+        _remoteCacheDisabled = false;
+        loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
+        window.dispatchEvent(new Event('kh-settings-reloaded'));
+      }
+    });
   } else if (needsArticles) {
     await Promise.all([loadArticlesFromDB({ force: true }), sectionsPromise, settingsPromise]);
 
-    await Promise.allSettled([sessionPromise]);
-
-    if (supaUser) {
-      _appSettingsPromise = null;
-      _artCacheSchemaDone = false;
-      _artCacheSchema = null;
-      _remoteCacheDisabled = false;
-      await loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
-      window.dispatchEvent(new Event('kh-settings-reloaded'));
-    }
-
     if (footerEl) footerEl.innerHTML = renderFooter();
     renderKhLucideIcons();
     applySiteConfigToPage();
+
+    // 세션/재인증은 백그라운드 — 기사 렌더 차단하지 않음
+    Promise.allSettled([sessionPromise]).then(function() {
+      updateAuthUI();
+      if (supaUser) {
+        _appSettingsPromise = null;
+        _artCacheSchemaDone = false;
+        _artCacheSchema = null;
+        _remoteCacheDisabled = false;
+        loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
+        window.dispatchEvent(new Event('kh-settings-reloaded'));
+      }
+    });
   } else {
-    // Non-article pages (mypage, learn, etc.) — wait for session + settings
+    // Non-article pages (mypage, learn, etc.)
     await Promise.all([sectionsPromise, settingsPromise]);
 
-    await Promise.allSettled([sessionPromise]);
-
-    if (supaUser) {
-      _appSettingsPromise = null;
-      _artCacheSchemaDone = false;
-      _artCacheSchema = null;
-      _remoteCacheDisabled = false;
-      loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
-      window.dispatchEvent(new Event('kh-settings-reloaded'));
-    }
-
     if (footerEl) footerEl.innerHTML = renderFooter();
     renderKhLucideIcons();
     applySiteConfigToPage();
+
+    // 세션 완료 후 인증 UI 갱신 — 백그라운드
+    Promise.allSettled([sessionPromise]).then(function() {
+      updateAuthUI();
+      if (supaUser) {
+        _appSettingsPromise = null;
+        _artCacheSchemaDone = false;
+        _artCacheSchema = null;
+        _remoteCacheDisabled = false;
+        loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
+        window.dispatchEvent(new Event('kh-settings-reloaded'));
+      }
+    });
   }
 
   if (pageBase === 'korehan-all')     { renderAllPage(); }
