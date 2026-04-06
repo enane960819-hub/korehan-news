@@ -7319,17 +7319,39 @@ async function goArticleStudyEditor() {
 
 var _aseAllArticles = [];
 var _aseEditedIds   = new Set();
+var _aseTableReady  = null; // null=unchecked, true=ok, false=missing
+
+var _ASE_CREATE_SQL = "CREATE TABLE IF NOT EXISTS article_study_content (\n  article_id text PRIMARY KEY,\n  vocab jsonb DEFAULT '[]',\n  phrases jsonb DEFAULT '[]',\n  custom_highlights jsonb DEFAULT '{}',\n  admin_edited boolean DEFAULT false,\n  updated_at timestamptz DEFAULT now()\n);\nALTER TABLE article_study_content ENABLE ROW LEVEL SECURITY;\nCREATE POLICY \"public_read\" ON article_study_content FOR SELECT USING (true);\nCREATE POLICY \"service_write\" ON article_study_content FOR ALL USING (true);";
+
+async function _aseCheckTable() {
+  if (_aseTableReady !== null) return _aseTableReady;
+  var sb = getSb(); if (!sb) return false;
+  var probe = await sb.from('article_study_content').select('article_id').limit(1);
+  _aseTableReady = !probe.error;
+  return _aseTableReady;
+}
+
+function _aseShowTableMissing(el) {
+  el.innerHTML = '<div style="background:#fef3c7;border:1.5px solid #fde68a;border-radius:12px;padding:20px;text-align:center">'
+    + '<div style="font-size:16px;font-weight:800;color:#92400e;margin-bottom:8px">⚠️ article_study_content 테이블이 없습니다</div>'
+    + '<div style="font-size:13px;color:#a16207;margin-bottom:14px">Supabase SQL Editor에서 아래 SQL을 실행해주세요.</div>'
+    + '<textarea id="ase-sql" readonly style="width:100%;height:140px;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-family:monospace;font-size:11px;resize:vertical;background:#fff">' + _ASE_CREATE_SQL + '</textarea>'
+    + '<div style="margin-top:10px;display:flex;gap:8px;justify-content:center">'
+    + '<button onclick="document.getElementById(\'ase-sql\').select();document.execCommand(\'copy\');toast(\'SQL 복사됨\')" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer">📋 SQL 복사</button>'
+    + '<button onclick="_aseTableReady=null;aseLoadList()" style="background:#059669;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer">🔄 다시 확인</button>'
+    + '</div></div>';
+}
 
 async function aseLoadList() {
   var sb = getSb();
+  var tableOk = await _aseCheckTable();
   var el = document.getElementById('ase-list');
   if (!el) return;
+  if (!tableOk) { _aseShowTableMissing(el); return; }
   try {
-    // articles 테이블에서 조회 (Article List와 동일한 쿼리)
     var artsRes = await sb.from('articles').select('*').order('date',{ascending:false}).limit(200);
     if (artsRes.error) throw artsRes.error;
     _aseAllArticles = (artsRes.data || []).map(function(a){ a.image_url = a.image_url || a.image || ''; return a; });
-    // article_study_content 조회 (테이블 없어도 무시)
     try {
       var editedRes = await sb.from('article_study_content').select('article_id,admin_edited').limit(500);
       if (!editedRes.error) {
@@ -7374,6 +7396,7 @@ function aseRenderList(arts) {
 async function aseOpenEditor(artId) {
   var sb = getSb();
   var main = document.getElementById('main');
+  if (!await _aseCheckTable()) { alert('article_study_content 테이블을 먼저 생성해주세요.'); return; }
 
   // Load article + existing study content
   var artRes = await sb.from('articles').select('*').eq('id', artId).maybeSingle();
