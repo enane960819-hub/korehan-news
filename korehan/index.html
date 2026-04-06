@@ -376,6 +376,24 @@
   .ds-quick-grid { grid-template-columns:1fr; }
 }
 
+/* Mobile: hero + cards 0.75x smaller */
+@media (max-width: 768px) {
+  #dyn-hero { max-height: 340px !important; }
+  .kh-home-hero-slide { min-height: 340px !important; }
+  .kh-home-hero-main-shell { min-height: 340px !important; }
+  .kh-home-hero-slide h1 { font-size: clamp(20px,4vw,28px) !important; }
+  .kh-home-hero-slide p { font-size: 12px !important; }
+  #dyn-hero > aside { display: none !important; }
+  #dyn-hero { grid-template-columns: 1fr !important; }
+  .home-news-grid .nc { flex: 0 0 210px; min-width: 210px; }
+  .home-news-grid .nc .nc-title { font-size: 14px !important; }
+  .home-conv-grid-wrap .hconv-card { flex: 0 0 220px; min-width: 220px; }
+  .home-story-grid .story-card { flex: 0 0 180px; min-width: 180px; }
+  .home-hero-loading { min-height: 340px !important; grid-template-columns: 1fr !important; }
+  .home-hero-skeleton-main { min-height: 340px !important; }
+  .home-hero-skeleton-side { display: none !important; }
+}
+
 @media (max-width: 640px) {
   .home-pills {
     flex-wrap: nowrap;
@@ -871,7 +889,7 @@ body.kh-neon-on .hero-dot {
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260406a"></script>
+<script src="korehan-shared.js?v=20260406b"></script>
 <script>
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},

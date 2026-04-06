@@ -137,9 +137,10 @@
 .cc2-cast-avatars .kh-char-av+.kh-char-av{margin-left:-8px;}
 @media(max-width:900px){
   .conv-two-col{grid-template-columns:1fr!important;}
-  .conv-cards-grid{grid-template-columns:repeat(2,1fr)!important;gap:10px!important;}
-  .cc2{aspect-ratio:4/3!important;}
-  .cc2-title{font-size:13px!important;}
+  #conv-sidebar{display:none!important;}
+  .conv-cards-grid{grid-template-columns:repeat(3,1fr)!important;gap:8px!important;}
+  .cc2{aspect-ratio:1/1!important;}
+  .cc2-title{font-size:12px!important;}
   .detail-overlay{overflow-y:auto!important;align-items:flex-start!important;padding:10px!important;}
   .detail-panel{grid-template-columns:1fr;height:auto!important;max-height:none!important;border-radius:20px;}
   .dp-left{max-height:none!important;overflow:visible!important;}
@@ -148,8 +149,8 @@
 }
 @media(max-width:600px){
   .conv-page-container{padding:0 8px 60px!important;}
-  .conv-cards-grid{grid-template-columns:1fr!important;gap:10px!important;}
-  .cc2{border-radius:10px!important;aspect-ratio:4/3!important;}
+  .conv-cards-grid{grid-template-columns:repeat(3,1fr)!important;gap:6px!important;}
+  .cc2{border-radius:8px!important;aspect-ratio:1/1!important;}
   .cc2-title{font-size:11px!important;}
   .cc2-tag{font-size:7px!important;padding:1px 5px!important;}
   .conv-hero{padding:20px 0 44px!important;margin-bottom:-30px!important;}
@@ -192,7 +193,7 @@
 </div>
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260406a"></script>
+<script src="korehan-shared.js?v=20260406b"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // KoreHan Character System
