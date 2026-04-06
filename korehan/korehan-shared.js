@@ -2459,6 +2459,7 @@ function renderArticlePage() {
     + '<button class="art-action-icon" id="art-bm-btn" onclick="toggleBookmark(\'' + a.id + '\',this)" title="Bookmark"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button>'
     + '<button class="art-action-icon" onclick="shareArticle()" title="Share"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>'
     + '<button class="art-action-icon" id="translate-btn" onclick="toggleTranslate()" title="Translate"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></button>'
+    + '<button class="art-action-icon" id="analyze-btn" onclick="toggleAnalyze()" title="Analyze"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></button>'
     + '</div>'
     + '</div>'
     + '</div>'
@@ -2568,6 +2569,8 @@ function renderArticlePage() {
 
   // 현재 기사 참조 저장 (Quiz 탭에서 사용)
   window._currentArticle = a;
+  _analyzeOn = false;
+  _analyzeData = null;
 
   // 핵심 단어 추출
   renderArticleVocab(a);
@@ -3488,6 +3491,124 @@ async function applyHighlightedExpressions(articleId) {
     });
   } catch(e) {}
 }
+
+// ── Analyze Mode ──────────────────────────────────────────────
+var _analyzeOn = false;
+var _analyzeData = null; // { vocab, grammar, phrases }
+var _analyzeOrigHTML = '';
+
+async function toggleAnalyze() {
+  var btn = document.getElementById('analyze-btn');
+  var articleEl = document.getElementById('art-tab-article');
+  if (!articleEl) return;
+
+  if (_analyzeOn) {
+    // OFF — 원래 텍스트로 복원, 단어 hover는 유지
+    _analyzeOn = false;
+    if (btn) btn.classList.remove('on');
+    articleEl.querySelectorAll('.kh-analyze-mark').forEach(function(m) {
+      m.outerHTML = m.textContent;
+    });
+    // 단어 hover 재적용
+    articleEl.querySelectorAll('.vocab-zone').forEach(function(el){ wrapVocab(el); });
+    return;
+  }
+
+  // ON
+  _analyzeOn = true;
+  if (btn) btn.classList.add('on');
+
+  var a = window._currentArticle;
+  if (!a) return;
+
+  // 캐시에서 데이터 로드
+  if (!_analyzeData) {
+    try {
+      var cached = await getFromCache('article', a.id);
+      _analyzeData = {
+        vocab: (cached && cached.vocab) || [],
+        grammar: [],
+        phrases: []
+      };
+      // grammar_guide 캐시에서 문법 패턴 추출
+      var gramCache = await getFromCache('article', a.id, 'grammar_guide');
+      if (gramCache && typeof gramCache === 'string') {
+        var gMatch = gramCache.match(/\*\*([^*]+)\*\*/g);
+        if (gMatch) _analyzeData.grammar = gMatch.map(function(m){ return m.replace(/\*\*/g,'').trim(); }).filter(function(g){ return g.length > 1 && g.length < 20; });
+      }
+      // expressions 캐시
+      var exprCache = await getFromCache('article', a.id, 'expressions');
+      if (exprCache && exprCache.length) {
+        _analyzeData.phrases = exprCache.map(function(e){ return { text: e.phrase, note: e.note||'' }; });
+      }
+    } catch(e) { _analyzeData = { vocab:[], grammar:[], phrases:[] }; }
+  }
+
+  // 데이터 부족하면 Claude로 생성
+  if (!_analyzeData.vocab.length && !_analyzeData.grammar.length && !_analyzeData.phrases.length) {
+    if (btn) btn.textContent = '...';
+    try {
+      var bodyText = (a.body||'').replace(/<[^>]*>/g,'').slice(0,1600);
+      var res = await callClaude({
+        feature:'article-analyze', model:'claude-haiku-4-5-20251001', max_tokens:800,
+        messages:[{role:'user',content:'Analyze this Korean article for language learners. Return ONLY JSON:\n{"vocab":["word1","word2"],"grammar":["pattern1","pattern2"],"phrases":["phrase1","phrase2"]}\nvocab: 8 key Korean words. grammar: 5 grammar patterns (Korean only, e.g. -(으)면). phrases: 5 important expressions/sentences.\n\nArticle:\n'+bodyText}]
+      });
+      var raw = ((res.content)||[]).map(function(c){return c.text||'';}).join('');
+      var cl = raw.replace(/```json|```/g,'').trim();
+      var s=cl.indexOf('{'),e2=cl.lastIndexOf('}'); if(s>=0&&e2>s) cl=cl.slice(s,e2+1);
+      var parsed = JSON.parse(cl);
+      _analyzeData.vocab = (parsed.vocab||[]).map(function(w){ return typeof w==='string'?w:w.ko||''; }).filter(Boolean);
+      _analyzeData.grammar = (parsed.grammar||[]).filter(Boolean);
+      _analyzeData.phrases = (parsed.phrases||[]).map(function(p){ return typeof p==='string'?{text:p,note:''}:{text:p.ko||p,note:p.en||''}; });
+    } catch(e) { console.warn('Analyze generation failed:', e); }
+    if (btn) btn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>';
+  }
+
+  // 하이라이트 적용
+  _applyAnalyzeHighlights(articleEl);
+}
+
+function _applyAnalyzeHighlights(articleEl) {
+  if (!_analyzeData) return;
+  var bodyText = articleEl.innerHTML;
+
+  // 우선순위: phrases(노란) > grammar(초록) > vocab(주황)
+  // phrases 먼저 (긴 텍스트)
+  (_analyzeData.phrases||[]).forEach(function(p) {
+    if (!p.text || p.text.length < 2) return;
+    var safe = p.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    var re = new RegExp('(?<!<[^>]*)(' + safe + ')(?![^<]*>)', 'g');
+    var tooltip = p.note ? ' title="'+p.note.replace(/"/g,'&quot;')+'"' : '';
+    bodyText = bodyText.replace(re, '<mark class="kh-analyze-mark kh-a-phrase" style="background:rgba(251,191,36,.3);border-bottom:2px solid #f59e0b;border-radius:3px;padding:0 2px;cursor:help"'+tooltip+'>$1</mark>');
+  });
+  // grammar (초록)
+  (_analyzeData.grammar||[]).forEach(function(g) {
+    if (!g || g.length < 2) return;
+    var safe = g.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    var re = new RegExp('(?<!<[^>]*)(' + safe + ')(?![^<]*>)', 'g');
+    bodyText = bodyText.replace(re, '<mark class="kh-analyze-mark kh-a-grammar" style="background:rgba(34,197,94,.2);border-bottom:2px solid #22c55e;border-radius:3px;padding:0 2px;cursor:help" title="Grammar pattern">$1</mark>');
+  });
+  // vocab (주황) — VOCAB 사전에 있는 단어만
+  (_analyzeData.vocab||[]).forEach(function(w) {
+    if (!w || w.length < 1) return;
+    var safe = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    var re = new RegExp('(?<!<[^>]*)(' + safe + ')(?![^<]*>)', 'g');
+    var vInfo = window.VOCAB && window.VOCAB[w];
+    var tip = vInfo ? (w + ': ' + (vInfo.en||'')).replace(/"/g,'&quot;') : w;
+    bodyText = bodyText.replace(re, '<mark class="kh-analyze-mark kh-a-vocab" style="background:rgba(249,115,22,.2);border-bottom:2px solid #f97316;border-radius:3px;padding:0 2px;cursor:help" title="'+tip+'">$1</mark>');
+  });
+
+  articleEl.innerHTML = bodyText;
+  // 단어 hover 재적용
+  articleEl.querySelectorAll('.vocab-zone').forEach(function(el){ wrapVocab(el); });
+}
+
+// Analyze 버튼 active 스타일
+(function(){
+  var s = document.createElement('style');
+  s.textContent = '.art-action-icon.on{background:#2563eb!important;color:#fff!important;}';
+  document.head.appendChild(s);
+})();
 
 // ── 기사 검색 ─────────────────────────────────────────────────
 function doSearch(q) {
