@@ -3445,10 +3445,10 @@ async function handleVocabSave(btn, ko, rom, en) {
 // [{"phrase":"표현","color":"blue","note":"optional note"}]
 // Colors: "blue" (default), "green", "amber", "rose"
 var _EXPR_COLORS = {
-  blue:  { bg:'rgba(37,99,235,.1)',   border:'#93c5fd', text:'#1e40af' },
-  green: { bg:'rgba(22,163,74,.1)',   border:'#86efac', text:'#15803d' },
-  amber: { bg:'rgba(217,119,6,.1)',   border:'#fcd34d', text:'#92400e' },
-  rose:  { bg:'rgba(225,29,72,.1)',   border:'#fda4af', text:'#9f1239' },
+  blue:  { bg:'rgba(37,99,235,.25)',  border:'#93c5fd', text:'inherit' },
+  green: { bg:'rgba(22,163,74,.25)',  border:'#86efac', text:'inherit' },
+  amber: { bg:'rgba(217,119,6,.25)',  border:'#fcd34d', text:'inherit' },
+  rose:  { bg:'rgba(225,29,72,.25)',  border:'#fda4af', text:'inherit' },
 };
 
 async function applyHighlightedExpressions(articleId) {
@@ -3570,7 +3570,7 @@ async function _phraseAdminSave() {
   var valid = _phrasesAdminData.filter(function(p){ return p.phrase; });
   _phrasesAdminData = valid;
   try {
-    await upsertArticleCacheRow(_phrasesAdminArtId, { expressions: JSON.stringify(valid) });
+    await upsertArticleCacheRow(_phrasesAdminArtId, { expressions: valid });
     toast('✅ 중요표현 저장 완료');
     // 하이라이트 재적용
     var articleEl = document.getElementById('art-tab-article');
@@ -3643,7 +3643,7 @@ async function toggleAnalyze() {
       var bodyText = (a.body||'').replace(/<[^>]*>/g,'').slice(0,1600);
       var res = await callClaude({
         feature:'article-analyze', model:'claude-haiku-4-5-20251001', max_tokens:800,
-        messages:[{role:'user',content:'Analyze this Korean article for language learners. Return ONLY JSON:\n{"vocab":["word1","word2"],"grammar":["pattern1","pattern2"],"phrases":["phrase1","phrase2"]}\nvocab: 8 key Korean words. grammar: 5 grammar patterns (Korean only, e.g. -(으)면). phrases: 5 important expressions/sentences.\n\nArticle:\n'+bodyText}]
+        messages:[{role:'user',content:'Analyze this Korean article for language learners. Return ONLY JSON:\n{"vocab":["word1","word2"],"grammar":["어미1","어미2"],"phrases":["phrase1","phrase2"]}\n\nRules:\n- vocab: 8 key Korean WORDS (single words only, e.g. 경제, 발표, 증가)\n- grammar: 5 grammar ENDINGS as they appear in the article text (e.g. 했다, 된다, 하고 있다, 할 수 있다, 때문에). Must be short (2-6 chars), must appear verbatim in the text.\n- phrases: 5 important multi-word expressions (2-5 words, e.g. 문제가 되다, 영향을 미치다)\n\nArticle:\n'+bodyText}]
       });
       var raw = ((res.content)||[]).map(function(c){return c.text||'';}).join('');
       var cl = raw.replace(/```json|```/g,'').trim();
@@ -3671,23 +3671,23 @@ function _applyAnalyzeHighlights(articleEl) {
     var safe = p.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     var re = new RegExp('(?<!<[^>]*)(' + safe + ')(?![^<]*>)', 'g');
     var tooltip = p.note ? ' title="'+p.note.replace(/"/g,'&quot;')+'"' : '';
-    bodyText = bodyText.replace(re, '<mark class="kh-analyze-mark kh-a-phrase" style="background:rgba(251,191,36,.3);border-bottom:2px solid #f59e0b;border-radius:3px;padding:0 2px;cursor:help"'+tooltip+'>$1</mark>');
+    bodyText = bodyText.replace(re, '<mark class="kh-analyze-mark kh-a-phrase" style="background:rgba(251,191,36,.4);border-bottom:2.5px solid #f59e0b;border-radius:3px;padding:0 2px;cursor:help;color:inherit"'+tooltip+'>$1</mark>');
   });
-  // grammar (초록)
+  // grammar (초록) — 짧은 어미만 (6자 이하)
   (_analyzeData.grammar||[]).forEach(function(g) {
-    if (!g || g.length < 2) return;
+    if (!g || g.length < 2 || g.length > 8) return;
     var safe = g.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     var re = new RegExp('(?<!<[^>]*)(' + safe + ')(?![^<]*>)', 'g');
-    bodyText = bodyText.replace(re, '<mark class="kh-analyze-mark kh-a-grammar" style="background:rgba(34,197,94,.2);border-bottom:2px solid #22c55e;border-radius:3px;padding:0 2px;cursor:help" title="Grammar pattern">$1</mark>');
+    bodyText = bodyText.replace(re, '<mark class="kh-analyze-mark kh-a-grammar" style="background:rgba(34,197,94,.35);border-bottom:2.5px solid #22c55e;border-radius:3px;padding:0 2px;cursor:help;color:inherit" title="Grammar: '+g+'">$1</mark>');
   });
-  // vocab (주황) — VOCAB 사전에 있는 단어만
+  // vocab (주황)
   (_analyzeData.vocab||[]).forEach(function(w) {
     if (!w || w.length < 1) return;
     var safe = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     var re = new RegExp('(?<!<[^>]*)(' + safe + ')(?![^<]*>)', 'g');
     var vInfo = window.VOCAB && window.VOCAB[w];
     var tip = vInfo ? (w + ': ' + (vInfo.en||'')).replace(/"/g,'&quot;') : w;
-    bodyText = bodyText.replace(re, '<mark class="kh-analyze-mark kh-a-vocab" style="background:rgba(249,115,22,.2);border-bottom:2px solid #f97316;border-radius:3px;padding:0 2px;cursor:help" title="'+tip+'">$1</mark>');
+    bodyText = bodyText.replace(re, '<mark class="kh-analyze-mark kh-a-vocab" style="background:rgba(249,115,22,.35);border-bottom:2.5px solid #f97316;border-radius:3px;padding:0 2px;cursor:help;color:inherit" title="'+tip+'">$1</mark>');
   });
 
   articleEl.innerHTML = bodyText;
