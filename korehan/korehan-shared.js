@@ -5356,7 +5356,29 @@ document.addEventListener('DOMContentLoaded', async function() {
     || pageBase === 'korehan-opinion'
     || pageBase === 'korehan-article';
 
-  if (isHomePage) {
+  // 카드 리스트 페이지 — 자체 localStorage 캐시로 이미 렌더 완료
+  // sections/settings/session을 await하지 않고 백그라운드 처리
+  var _fastPages = ['korehan-conversations','korehan-stories'];
+  var _isFastPage = _fastPages.indexOf(pageBase) >= 0;
+
+  if (_isFastPage) {
+    // 네트워크 차단 없이 즉시 footer 렌더 → 백그라운드에서 세션/설정 완료 후 UI 갱신
+    if (footerEl) footerEl.innerHTML = renderFooter();
+    renderKhLucideIcons();
+    applySiteConfigToPage();
+    // 백그라운드: 세션/설정 완료 후 헤더/푸터 갱신
+    Promise.allSettled([sessionPromise, sectionsPromise, settingsPromise]).then(function() {
+      if (headerEl) { headerEl.innerHTML = renderHeader(); khInjectSidebar(); }
+      if (footerEl) footerEl.innerHTML = renderFooter();
+      renderKhLucideIcons();
+      updateAuthUI();
+      if (supaUser) {
+        _appSettingsPromise = null;
+        loadAppSettings().catch(function(){});
+        window.dispatchEvent(new Event('kh-settings-reloaded'));
+      }
+    });
+  } else if (isHomePage) {
     // Render cached articles immediately so hero + swipe is interactive while fresh data loads
     if (getCachedArticles().length) {
       renderHomePage();
@@ -5367,35 +5389,57 @@ document.addEventListener('DOMContentLoaded', async function() {
       settingsPromise
     ]);
     renderHomePage();
+
+    await Promise.allSettled([sessionPromise]);
+
+    if (supaUser) {
+      _appSettingsPromise = null;
+      _artCacheSchemaDone = false;
+      _artCacheSchema = null;
+      _remoteCacheDisabled = false;
+      await loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
+      window.dispatchEvent(new Event('kh-settings-reloaded'));
+    }
+
+    if (footerEl) footerEl.innerHTML = renderFooter();
+    renderKhLucideIcons();
+    applySiteConfigToPage();
   } else if (needsArticles) {
     await Promise.all([loadArticlesFromDB({ force: true }), sectionsPromise, settingsPromise]);
-  } else {
-    // Non-article pages (mypage, learn, shop, etc.) — just wait for session + settings
-    await Promise.all([sectionsPromise, settingsPromise]);
-  }
 
-  await Promise.allSettled([sessionPromise]);
+    await Promise.allSettled([sessionPromise]);
 
-  // After session is confirmed, reload settings so RLS-protected data (phrases etc.) is fetched with auth
-  if (supaUser) {
-    _appSettingsPromise = null;
-    // Reset article cache detection — earlier probe may have failed due to missing auth
-    _artCacheSchemaDone = false;
-    _artCacheSchema = null;
-    _remoteCacheDisabled = false;
-    if (needsArticles || isHomePage) {
-      // 기사/홈 페이지: settings 완료 대기 (API 키 등 필요)
+    if (supaUser) {
+      _appSettingsPromise = null;
+      _artCacheSchemaDone = false;
+      _artCacheSchema = null;
+      _remoteCacheDisabled = false;
       await loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
-    } else {
-      // 비기사 페이지: 백그라운드 로드 (초기 렌더 차단 안 함)
-      loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
+      window.dispatchEvent(new Event('kh-settings-reloaded'));
     }
-    window.dispatchEvent(new Event('kh-settings-reloaded'));
-  }
 
-  if (footerEl) footerEl.innerHTML = renderFooter();
-  renderKhLucideIcons();
-  applySiteConfigToPage();
+    if (footerEl) footerEl.innerHTML = renderFooter();
+    renderKhLucideIcons();
+    applySiteConfigToPage();
+  } else {
+    // Non-article pages (mypage, learn, etc.) — wait for session + settings
+    await Promise.all([sectionsPromise, settingsPromise]);
+
+    await Promise.allSettled([sessionPromise]);
+
+    if (supaUser) {
+      _appSettingsPromise = null;
+      _artCacheSchemaDone = false;
+      _artCacheSchema = null;
+      _remoteCacheDisabled = false;
+      loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
+      window.dispatchEvent(new Event('kh-settings-reloaded'));
+    }
+
+    if (footerEl) footerEl.innerHTML = renderFooter();
+    renderKhLucideIcons();
+    applySiteConfigToPage();
+  }
 
   if (pageBase === 'korehan-all')     { renderAllPage(); }
   else if (pageBase === 'korehan-section')   {
