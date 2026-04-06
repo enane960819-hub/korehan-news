@@ -385,8 +385,10 @@
   .kh-home-hero-slide p { font-size: 12px !important; }
   #dyn-hero > aside { display: none !important; }
   #dyn-hero { grid-template-columns: 1fr !important; }
+  /* News cards: 정사각형에 가깝게 */
   .home-news-grid .nc { flex: 0 0 210px; min-width: 210px; }
-  .home-news-grid .nc .nc-title { font-size: 14px !important; }
+  .home-news-grid .nc.nc-overlay { min-height: 0 !important; aspect-ratio: 4/3; }
+  .home-news-grid .nc.nc-overlay .nc-title { font-size: 14px !important; }
   .home-conv-grid-wrap .hconv-card { flex: 0 0 220px; min-width: 220px; }
   .home-story-grid .story-card { flex: 0 0 180px; min-width: 180px; }
   .home-hero-loading { min-height: 340px !important; grid-template-columns: 1fr !important; }
