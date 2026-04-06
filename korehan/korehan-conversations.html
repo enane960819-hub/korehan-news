@@ -21,8 +21,8 @@
 .cf-tab.on{color:#fff;border-bottom-color:#fff;}
 .cf-tab:hover{color:rgba(255,255,255,.85);}
 .conv-page-container{max-width:1280px;margin:0 auto;padding:0 24px 60px;}
-.conv-cards-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
-.cc2{position:relative;border-radius:12px;overflow:hidden;cursor:pointer;aspect-ratio:5/3;transition:transform .18s,box-shadow .18s;}
+.conv-cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.cc2{position:relative;border-radius:10px;overflow:hidden;cursor:pointer;aspect-ratio:4/3;transition:box-shadow .15s,transform .15s;border:1px solid rgba(255,255,255,.08);}
 .cc2:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.2);}
 .cc2-bg{position:absolute;inset:0;background-size:cover;background-position:center;}
 .cc2-overlay{position:absolute;inset:0;background:rgba(0,0,0,.38);}
@@ -136,8 +136,8 @@
 .cc2-cast-avatars .kh-char-av{border:2px solid #fff;}
 .cc2-cast-avatars .kh-char-av+.kh-char-av{margin-left:-8px;}
 @media(max-width:900px){
-  .conv-cards-grid{grid-template-columns:repeat(3,1fr)!important;gap:8px!important;}
-  .cc2{aspect-ratio:1/1!important;}
+  .conv-cards-grid{grid-template-columns:repeat(2,1fr)!important;gap:10px!important;}
+  .cc2{aspect-ratio:4/3!important;}
   .cc2-title{font-size:13px!important;}
   .detail-overlay{overflow-y:auto!important;align-items:flex-start!important;padding:10px!important;}
   .detail-panel{grid-template-columns:1fr;height:auto!important;max-height:none!important;border-radius:20px;}
@@ -147,8 +147,8 @@
 }
 @media(max-width:600px){
   .conv-page-container{padding:0 8px 60px!important;}
-  .conv-cards-grid{grid-template-columns:repeat(3,1fr)!important;gap:6px!important;}
-  .cc2{border-radius:10px!important;aspect-ratio:1/1!important;}
+  .conv-cards-grid{grid-template-columns:1fr!important;gap:10px!important;}
+  .cc2{border-radius:10px!important;aspect-ratio:4/3!important;}
   .cc2-title{font-size:11px!important;}
   .cc2-tag{font-size:7px!important;padding:1px 5px!important;}
   .conv-hero{padding:20px 0 44px!important;margin-bottom:-30px!important;}
