@@ -11,17 +11,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
-.conv-hero{background:linear-gradient(160deg,#1d4ed8 0%,#3b82f6 55%,#60a5fa 100%);padding:28px 0 60px;margin-bottom:-40px;}
-.conv-hero-inner{max-width:1280px;margin:0 auto;padding:0 24px;}
-.conv-hero-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.75);margin-bottom:10px;}
-.conv-hero h1{font-family:'Playfair Display',serif;font-size:38px;font-weight:900;color:#fff;margin:0 0 10px;line-height:1.15;}
-.conv-hero p{font-size:15px;color:rgba(255,255,255,.85);line-height:1.7;max-width:560px;margin:0;}
-.conv-tab-bar{max-width:1280px;margin:0 auto;padding:0 24px;display:flex;border-bottom:2px solid rgba(255,255,255,.12);position:relative;z-index:2;}
-.cf-tab{padding:10px 16px;background:none;border:none;color:rgba(255,255,255,.55);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;border-bottom:2px solid transparent;margin-bottom:-2px;}
-.cf-tab.on{color:#fff;border-bottom-color:#fff;}
-.cf-tab:hover{color:rgba(255,255,255,.85);}
-.conv-page-container{max-width:1280px;margin:0 auto;padding:0 24px 60px;}
+.conv-tab-bar{max-width:1280px;margin:0 auto;padding:0 24px;display:flex;gap:2px;border-bottom:2px solid rgba(255,255,255,.08);position:relative;z-index:2;background:var(--dark);}
+.cf-tab{padding:10px 16px;background:none;border:none;color:rgba(255,255,255,.45);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;border-bottom:2px solid transparent;margin-bottom:-2px;}
+.cf-tab.on{color:#fff;border-bottom-color:var(--bright);}
+.cf-tab:hover{color:rgba(255,255,255,.75);}
+.conv-page-container{max-width:1280px;margin:0 auto;padding:20px 24px 60px;}
+.conv-two-col{display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;}
+@media(max-width:980px){.conv-two-col{grid-template-columns:1fr;}}
 .conv-cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.conv-search{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 14px;margin-bottom:16px;}
+.conv-search input{border:none;background:none;outline:none;font-size:13px;color:#fff;font-family:inherit;width:100%;}
+.conv-search input::placeholder{color:rgba(255,255,255,.35);}
 .cc2{position:relative;border-radius:10px;overflow:hidden;cursor:pointer;aspect-ratio:4/3;transition:box-shadow .15s,transform .15s;border:1px solid rgba(255,255,255,.08);}
 .cc2:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.2);}
 .cc2-bg{position:absolute;inset:0;background-size:cover;background-position:center;}
@@ -136,6 +136,7 @@
 .cc2-cast-avatars .kh-char-av{border:2px solid #fff;}
 .cc2-cast-avatars .kh-char-av+.kh-char-av{margin-left:-8px;}
 @media(max-width:900px){
+  .conv-two-col{grid-template-columns:1fr!important;}
   .conv-cards-grid{grid-template-columns:repeat(2,1fr)!important;gap:10px!important;}
   .cc2{aspect-ratio:4/3!important;}
   .cc2-title{font-size:13px!important;}
@@ -160,23 +161,31 @@
 </head>
 <body>
 <div id="kh-header"></div>
-<div class="conv-hero">
-  <div class="conv-hero-inner">
-    <div class="conv-hero-eyebrow">KoreHan News</div>
-    <h1>Real Korean Conversations</h1>
-    <p>Read natural Korean dialogues between recurring characters. Each conversation covers real vocabulary, grammar patterns, and speech styles — all grounded in authentic contexts.</p>
-  </div>
-  <div class="conv-tab-bar" id="cat-pills">
-    <button class="cf-tab on" data-cat="all">All</button>
-    <button class="cf-tab" data-cat="everyday">Everyday</button>
-    <button class="cf-tab" data-cat="work">Workplace</button>
-    <button class="cf-tab" data-cat="friends">Friends</button>
-    <button class="cf-tab" data-cat="family">Family</button>
-    <button class="cf-tab" data-cat="dating">Dating</button>
+<div class="page-banner">
+  <div class="page-banner-inner">
+    <h1>Conversations</h1>
+    <p>Real Korean dialogues for every situation</p>
   </div>
 </div>
+<div class="conv-tab-bar" id="cat-pills">
+  <button class="cf-tab on" data-cat="all">All</button>
+  <button class="cf-tab" data-cat="everyday">Everyday</button>
+  <button class="cf-tab" data-cat="work">Workplace</button>
+  <button class="cf-tab" data-cat="friends">Friends</button>
+  <button class="cf-tab" data-cat="family">Family</button>
+  <button class="cf-tab" data-cat="dating">Dating</button>
+</div>
 <div class="conv-page-container">
-  <div class="conv-cards-grid" id="conv-cards-grid"></div>
+  <div class="conv-two-col">
+    <div>
+      <div class="conv-search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Search conversations..." id="conv-search-input" oninput="_filterConvSearch(this.value)">
+      </div>
+      <div class="conv-cards-grid" id="conv-cards-grid"></div>
+    </div>
+    <div id="conv-sidebar" class="sidebar"></div>
+  </div>
 </div>
 <div class="detail-overlay hidden" id="detail-overlay" onclick="if(event.target===this)closeDetail()">
   <div class="detail-panel" id="detail-panel"></div>
@@ -871,6 +880,40 @@ function _convRowToObj(row) {
   if (cp) { var t = pills.querySelector('[data-cat="'+cp+'"]'); if(t) t.click(); }
 })();
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeDetail(); });
+
+// ── Conversations 사이드바 (Most Read + Weather + Word Bank) ──
+(function() {
+  var sb = document.getElementById('conv-sidebar');
+  if (!sb) return;
+  // shared sidebar와 동일한 구조 사용
+  if (typeof renderSharedSidebar === 'function') {
+    sb.innerHTML = renderSharedSidebar();
+    if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+    if (typeof hydrateMostReadSidebar === 'function') hydrateMostReadSidebar();
+    if (typeof khHydrateWeather === 'function') khHydrateWeather();
+  }
+})();
+
+// ── 검색 필터 ──
+var _convSearchTerm = '';
+function _filterConvSearch(val) {
+  _convSearchTerm = (val || '').toLowerCase().trim();
+  renderCards(activeCat, activeLvl);
+}
+// renderCards에서 검색어 반영되도록 원래 filter에 추가
+var _origRenderCards = renderCards;
+renderCards = function(catF, lvlF) {
+  _origRenderCards(catF, lvlF);
+  if (_convSearchTerm) {
+    var grid = document.getElementById('conv-cards-grid');
+    if (!grid) return;
+    var cards = grid.querySelectorAll('.cc2');
+    cards.forEach(function(card) {
+      var title = (card.querySelector('.cc2-title') || {}).textContent || '';
+      card.style.display = title.toLowerCase().indexOf(_convSearchTerm) >= 0 ? '' : 'none';
+    });
+  }
+};
 
 // ── BLANK FILL QUIZ ──────────────────────────────────────────
 function startBlankQuiz() {
