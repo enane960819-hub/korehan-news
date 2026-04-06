@@ -683,6 +683,10 @@ body.kh-neon-on .hero-dot {
 </head>
 <body>
 <!-- ── 로딩 오버레이 (인라인 — 외부 리소스 의존 없이 즉시 표시) ── -->
+<style>
+@keyframes kh-shimmer{0%{background-position:-200px 0}100%{background-position:200px 0}}
+@keyframes kh-pulse{0%,100%{opacity:.45}50%{opacity:.7}}
+</style>
 <div id="kh-loader" style="position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#0b1626 0%,#1a3a6b 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .4s ease-out">
   <div style="text-align:center;margin-bottom:28px">
     <div style="font-family:Georgia,'Playfair Display',serif;font-size:28px;font-weight:900;color:#fff;letter-spacing:-.02em">
@@ -690,32 +694,55 @@ body.kh-neon-on .hero-dot {
     </div>
     <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:6px;letter-spacing:.08em;text-transform:uppercase">Learn Korean Through Real News</div>
   </div>
-  <div style="width:200px;height:4px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden">
-    <div id="kh-loader-bar" style="width:5%;height:100%;background:linear-gradient(90deg,#38bdf8,#2563eb);border-radius:4px;transition:width .3s ease-out"></div>
+  <div style="width:220px;height:5px;background:rgba(255,255,255,.08);border-radius:5px;overflow:hidden">
+    <div id="kh-loader-bar" style="width:5%;height:100%;border-radius:5px;background:linear-gradient(90deg,#38bdf8,#2563eb,#38bdf8);background-size:400px 100%;animation:kh-shimmer 1.5s linear infinite;transition:width .4s ease-out"></div>
   </div>
   <div id="kh-loader-pct" style="font-size:12px;color:rgba(255,255,255,.5);margin-top:10px;font-weight:700;font-family:monospace">5%</div>
+  <div id="kh-loader-tip" style="font-size:11px;color:rgba(255,255,255,.35);margin-top:16px;max-width:260px;text-align:center;line-height:1.5;animation:kh-pulse 2s ease-in-out infinite"></div>
 </div>
 <script>
 (function(){
   var bar = document.getElementById('kh-loader-bar');
   var pct = document.getElementById('kh-loader-pct');
+  var tip = document.getElementById('kh-loader-tip');
   var current = 5;
+  var done = false;
+  var tips = [
+    'Hover any Korean word to see its meaning',
+    'Save words to build your personal vocab list',
+    'Try a conversation lesson for natural Korean',
+    'Check Growth Lab to track your progress',
+    'Daily missions keep your streak alive'
+  ];
+  var tipIdx = 0;
+  if (tip) tip.textContent = tips[0];
+  var _tipTimer = setInterval(function() {
+    tipIdx = (tipIdx + 1) % tips.length;
+    if (tip) { tip.style.opacity = '0'; setTimeout(function(){ tip.textContent = tips[tipIdx]; tip.style.opacity = ''; }, 200); }
+  }, 3000);
+
   window._khLoaderSet = function(v) {
+    if (done) return;
     current = Math.max(current, Math.min(v, 100));
     if (bar) bar.style.width = current + '%';
-    if (pct) pct.textContent = current + '%';
+    if (pct) pct.textContent = Math.round(current) + '%';
     if (current >= 100) {
+      done = true;
+      clearInterval(_tipTimer);
       setTimeout(function() {
         var el = document.getElementById('kh-loader');
         if (el) { el.style.opacity = '0'; setTimeout(function(){ el.remove(); }, 400); }
-      }, 200);
+      }, 150);
     }
   };
-  // 자동 진행 — 네트워크 느려도 멈춰 보이지 않게
+
+  // 감속 곡선 — 절대 멈추지 않음, 99%까지 점근적 접근
+  // 속도: (99 - current) * 0.04 → 현재값이 높을수록 느려짐
   var _autoStep = setInterval(function() {
-    if (current >= 85) { clearInterval(_autoStep); return; }
-    window._khLoaderSet(current + 2);
-  }, 300);
+    if (done || current >= 99) return;
+    var increment = Math.max(0.3, (99 - current) * 0.04);
+    window._khLoaderSet(current + increment);
+  }, 400);
   window._khLoaderClearAuto = function() { clearInterval(_autoStep); };
 })();
 </script>
