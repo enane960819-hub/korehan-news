@@ -682,6 +682,43 @@ body.kh-neon-on .hero-dot {
 </style>
 </head>
 <body>
+<!-- ── 로딩 오버레이 (인라인 — 외부 리소스 의존 없이 즉시 표시) ── -->
+<div id="kh-loader" style="position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#0b1626 0%,#1a3a6b 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .4s ease-out">
+  <div style="text-align:center;margin-bottom:28px">
+    <div style="font-family:Georgia,'Playfair Display',serif;font-size:28px;font-weight:900;color:#fff;letter-spacing:-.02em">
+      <span>Kore</span><span style="color:#38bdf8">Han</span><span style="font-weight:400;opacity:.7"> News</span>
+    </div>
+    <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:6px;letter-spacing:.08em;text-transform:uppercase">Learn Korean Through Real News</div>
+  </div>
+  <div style="width:200px;height:4px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden">
+    <div id="kh-loader-bar" style="width:5%;height:100%;background:linear-gradient(90deg,#38bdf8,#2563eb);border-radius:4px;transition:width .3s ease-out"></div>
+  </div>
+  <div id="kh-loader-pct" style="font-size:12px;color:rgba(255,255,255,.5);margin-top:10px;font-weight:700;font-family:monospace">5%</div>
+</div>
+<script>
+(function(){
+  var bar = document.getElementById('kh-loader-bar');
+  var pct = document.getElementById('kh-loader-pct');
+  var current = 5;
+  window._khLoaderSet = function(v) {
+    current = Math.max(current, Math.min(v, 100));
+    if (bar) bar.style.width = current + '%';
+    if (pct) pct.textContent = current + '%';
+    if (current >= 100) {
+      setTimeout(function() {
+        var el = document.getElementById('kh-loader');
+        if (el) { el.style.opacity = '0'; setTimeout(function(){ el.remove(); }, 400); }
+      }, 200);
+    }
+  };
+  // 자동 진행 — 네트워크 느려도 멈춰 보이지 않게
+  var _autoStep = setInterval(function() {
+    if (current >= 85) { clearInterval(_autoStep); return; }
+    window._khLoaderSet(current + 2);
+  }, 300);
+  window._khLoaderClearAuto = function() { clearInterval(_autoStep); };
+})();
+</script>
 <div id="kh-header"></div>
 <div id="kh-welcome-banner" style="display:none"></div>
 

@@ -5304,6 +5304,8 @@ window.addEventListener('beforeunload', markShellLeaving);
 window.addEventListener('pagehide', markShellLeaving);
 
 document.addEventListener('DOMContentLoaded', async function() {
+  var _ldr = window._khLoaderSet || function(){};
+  _ldr(20); // Scripts loaded
   initKhNeonTheme();
   markShellReady();
   var headerEl  = document.getElementById('kh-header');
@@ -5311,6 +5313,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   var sidebarEl = document.getElementById('kh-sidebar');
 
   if (headerEl)  headerEl.innerHTML  = renderHeader();
+  _ldr(35); // Header rendered
   if (footerEl)  footerEl.innerHTML  = renderFooter();
   if (sidebarEl) sidebarEl.innerHTML = renderSharedSidebar();
   renderKhLucideIcons();
@@ -5356,6 +5359,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   if (_isFastPage) {
     // 네트워크 차단 없이 즉시 footer 렌더 → 백그라운드에서 세션/설정 완료 후 UI 갱신
+    if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+    _ldr(100);
     if (footerEl) footerEl.innerHTML = renderFooter();
     renderKhLucideIcons();
     applySiteConfigToPage();
@@ -5375,10 +5380,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     // 캐시 있으면 즉시 렌더 (재방문 시 즉시 화면 표시)
     if (getCachedArticles().length) {
       renderHomePage();
+      _ldr(80); // Cached articles rendered
     }
+    _ldr(50); // Loading articles...
     // 기사 데이터만 await — sections/settings는 헤더에 필요하지만 기본값으로 이미 렌더됨
     await loadArticlesFromDB({ homeOptimized: true, force: true });
+    _ldr(85); // Articles loaded
     renderHomePage();
+    if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+    _ldr(100); // Done
 
     // 나머지는 백그라운드에서 완료 후 UI 갱신 (세션, 섹션, 설정)
     if (footerEl) footerEl.innerHTML = renderFooter();
@@ -5405,7 +5415,10 @@ document.addEventListener('DOMContentLoaded', async function() {
       }
     });
   } else if (needsArticles) {
+    _ldr(50);
     await Promise.all([loadArticlesFromDB({ force: true }), sectionsPromise, settingsPromise]);
+    if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+    _ldr(100);
 
     if (footerEl) footerEl.innerHTML = renderFooter();
     renderKhLucideIcons();
@@ -5426,6 +5439,8 @@ document.addEventListener('DOMContentLoaded', async function() {
   } else {
     // Non-article pages (mypage, learn, etc.)
     await Promise.all([sectionsPromise, settingsPromise]);
+    if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+    _ldr(100);
 
     if (footerEl) footerEl.innerHTML = renderFooter();
     renderKhLucideIcons();
