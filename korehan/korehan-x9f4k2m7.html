@@ -7376,12 +7376,13 @@ async function aseOpenEditor(artId) {
   var main = document.getElementById('main');
 
   // Load article + existing study content
-  var [artRes, contentRes] = await Promise.all([
-    sb.from('articles').select('id,title,body,section,topik_level').eq('id', artId).maybeSingle(),
-    sb.from('article_study_content').select('*').eq('article_id', String(artId)).maybeSingle()
-  ]);
+  var artRes = await sb.from('articles').select('*').eq('id', artId).maybeSingle();
+  var cont = null;
+  try {
+    var contentRes = await sb.from('article_study_content').select('*').eq('article_id', String(artId)).maybeSingle();
+    cont = contentRes.data;
+  } catch(e) { /* table may not exist */ }
   var art  = artRes.data;
-  var cont = contentRes.data;
   if (!art) { alert('기사를 찾을 수 없습니다.'); return; }
   _aseCurrentArt     = art;
   _aseCurrentContent = cont || {};
