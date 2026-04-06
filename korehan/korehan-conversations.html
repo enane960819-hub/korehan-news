@@ -750,9 +750,15 @@ async function toggleSave(btn) {
 }
 
 var activeCat = 'all', activeLvl = 'all';
-document.addEventListener('DOMContentLoaded', async function() {
-  // ── 기자 캐릭터 먼저 로드 (resolveConversationCast에서 사용) ──
-  await _loadReporters();
+
+// shared.js 초기화 기다리지 않고 Supabase 준비되면 바로 로드
+(async function _initConvPage() {
+  // Supabase SDK 로드 대기 (최대 3초)
+  var waited = 0;
+  while (!window.supabase && waited < 3000) { await new Promise(function(r){setTimeout(r,50);}); waited += 50; }
+
+  // 기자 캐릭터 로드 (resolveConversationCast에서 사용)
+  if (typeof _loadReporters === 'function') await _loadReporters().catch(function(){});
 
   // ── DB에서 conversations 로드 ──────────────────────────
   var grid = document.getElementById('conv-cards-grid');
@@ -824,7 +830,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   var params = new URLSearchParams(window.location.search);
   var cp = params.get('cat');
   if (cp) { var t = pills.querySelector('[data-cat="'+cp+'"]'); if(t) t.click(); }
-});
+})();
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeDetail(); });
 
 // ── BLANK FILL QUIZ ──────────────────────────────────────────
