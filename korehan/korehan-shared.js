@@ -2481,6 +2481,7 @@ function renderArticlePage() {
     + '<div id="art-tab-article">'
     + '<div class="art-lead vocab-zone">' + formatArticleBody(a.body || '') + '</div>'
     + (a.full ? '<div class="art-full vocab-zone">' + formatArticleBody(a.full) + '</div>' : '')
+    + '<div id="art-phrases-admin" style="display:none"></div>'
     + '</div>'
 
     // Grammar 탭
@@ -2577,6 +2578,9 @@ function renderArticlePage() {
 
   // Highlighted expressions
   applyHighlightedExpressions(a.id);
+
+  // 어드민이면 중요표현 관리 패널 표시
+  if (window._isAdmin) _renderPhrasesAdmin(a.id);
 
   // 댓글 로드
   loadComments(a.id);
@@ -3490,6 +3494,94 @@ async function applyHighlightedExpressions(articleId) {
       });
     });
   } catch(e) {}
+}
+
+// ── 어드민 중요표현 CRUD ──────────────────────────────────────
+var _phrasesAdminData = [];
+var _phrasesAdminArtId = null;
+
+async function _renderPhrasesAdmin(articleId) {
+  var el = document.getElementById('art-phrases-admin');
+  if (!el) return;
+  _phrasesAdminArtId = articleId;
+  el.style.display = 'block';
+  el.innerHTML = '<div style="color:#94a3b8;font-size:12px;padding:8px">Loading...</div>';
+
+  try {
+    var exprs = await getFromCache('article', articleId, 'expressions');
+    _phrasesAdminData = exprs && Array.isArray(exprs) ? exprs : [];
+  } catch(e) { _phrasesAdminData = []; }
+  _phrasesAdminRender(el);
+}
+
+function _phrasesAdminRender(el) {
+  if (!el) el = document.getElementById('art-phrases-admin');
+  if (!el) return;
+  var rows = _phrasesAdminData.map(function(p, i) {
+    var colorOpts = ['blue','green','amber','rose'].map(function(c){
+      return '<option value="'+c+'"'+(p.color===c?' selected':'')+'>'+c+'</option>';
+    }).join('');
+    return '<div style="display:grid;grid-template-columns:1fr 1fr 80px 32px;gap:6px;align-items:center;margin-bottom:4px" data-pi="'+i+'">'
+      + '<input class="pa-phrase" value="'+(p.phrase||'').replace(/"/g,'&quot;')+'" placeholder="표현" style="padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;font-family:\'Noto Sans KR\',sans-serif">'
+      + '<input class="pa-note" value="'+(p.note||'').replace(/"/g,'&quot;')+'" placeholder="설명 (영어)" style="padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">'
+      + '<select class="pa-color" style="padding:5px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px">'+colorOpts+'</select>'
+      + '<button onclick="_phraseAdminDel('+i+')" style="background:#fee2e2;color:#991b1b;border:none;border-radius:6px;padding:4px;cursor:pointer;font-size:12px">✕</button>'
+      + '</div>';
+  }).join('');
+
+  el.innerHTML = '<div style="margin-top:20px;padding:16px;background:#fefce8;border:1px solid #fde68a;border-radius:12px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+    + '<div style="font-size:13px;font-weight:800;color:#92400e">✏️ 중요표현 관리 (Admin)</div>'
+    + '<div style="display:flex;gap:6px">'
+    + '<button onclick="_phraseAdminAdd()" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer">+ 추가</button>'
+    + '<button onclick="_phraseAdminSave()" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer">저장</button>'
+    + '</div></div>'
+    + (rows || '<div style="font-size:12px;color:#a16207;padding:4px">표현이 없습니다. + 추가를 눌러주세요.</div>')
+    + '</div>';
+}
+
+function _phraseAdminAdd() {
+  _phrasesAdminData.push({ phrase:'', note:'', color:'amber' });
+  _phrasesAdminRender();
+}
+
+function _phraseAdminDel(i) {
+  _phrasesAdminData.splice(i, 1);
+  _phrasesAdminRender();
+}
+
+function _phraseAdminReadFromDOM() {
+  var el = document.getElementById('art-phrases-admin');
+  if (!el) return;
+  var rows = el.querySelectorAll('[data-pi]');
+  rows.forEach(function(row, i) {
+    if (!_phrasesAdminData[i]) return;
+    var phr = row.querySelector('.pa-phrase');
+    var note = row.querySelector('.pa-note');
+    var color = row.querySelector('.pa-color');
+    if (phr) _phrasesAdminData[i].phrase = phr.value.trim();
+    if (note) _phrasesAdminData[i].note = note.value.trim();
+    if (color) _phrasesAdminData[i].color = color.value;
+  });
+}
+
+async function _phraseAdminSave() {
+  _phraseAdminReadFromDOM();
+  var valid = _phrasesAdminData.filter(function(p){ return p.phrase; });
+  _phrasesAdminData = valid;
+  try {
+    await upsertArticleCacheRow(_phrasesAdminArtId, { expressions: JSON.stringify(valid) });
+    toast('✅ 중요표현 저장 완료');
+    // 하이라이트 재적용
+    var articleEl = document.getElementById('art-tab-article');
+    if (articleEl) {
+      articleEl.querySelectorAll('.kh-expr').forEach(function(m){ m.outerHTML = m.textContent; });
+      applyHighlightedExpressions(_phrasesAdminArtId);
+    }
+    _phrasesAdminRender();
+  } catch(e) {
+    toast('❌ 저장 실패: ' + e.message);
+  }
 }
 
 // ── Analyze Mode ──────────────────────────────────────────────
