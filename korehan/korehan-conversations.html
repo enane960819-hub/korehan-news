@@ -14,10 +14,10 @@
 .conv-hero-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.75);margin-bottom:10px;}
 .conv-hero h1{font-family:'Playfair Display',serif;font-size:38px;font-weight:900;color:#fff;margin:0 0 10px;line-height:1.15;}
 .conv-hero p{font-size:15px;color:rgba(255,255,255,.85);line-height:1.7;max-width:560px;margin:0;}
-.conv-filter-bar{max-width:1280px;margin:0 auto;padding:20px 24px 28px;display:flex;flex-wrap:wrap;gap:8px;position:relative;z-index:2;}
-.cf-pill{padding:8px 18px;border-radius:999px;background:rgba(255,255,255,.18);backdrop-filter:blur(8px);border:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;}
-.cf-pill.on,.cf-pill:hover{background:#fff;color:#1d4ed8;border-color:#fff;}
-.cf-sep{flex-basis:100%;height:0;}
+.conv-tab-bar{max-width:1280px;margin:0 auto;padding:0 24px;display:flex;border-bottom:2px solid rgba(255,255,255,.12);position:relative;z-index:2;}
+.cf-tab{padding:10px 16px;background:none;border:none;color:rgba(255,255,255,.55);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;border-bottom:2px solid transparent;margin-bottom:-2px;}
+.cf-tab.on{color:#fff;border-bottom-color:#fff;}
+.cf-tab:hover{color:rgba(255,255,255,.85);}
 .conv-page-container{max-width:1280px;margin:0 auto;padding:0 24px 60px;}
 .conv-cards-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
 .cc2{position:relative;border-radius:12px;overflow:hidden;cursor:pointer;aspect-ratio:5/3;transition:transform .18s,box-shadow .18s;}
@@ -164,13 +164,13 @@
     <h1>Real Korean Conversations</h1>
     <p>Read natural Korean dialogues between recurring characters. Each conversation covers real vocabulary, grammar patterns, and speech styles — all grounded in authentic contexts.</p>
   </div>
-  <div class="conv-filter-bar" id="cat-pills">
-    <button class="cf-pill on" data-cat="all">All</button>
-    <button class="cf-pill" data-cat="everyday">Everyday</button>
-    <button class="cf-pill" data-cat="work">Workplace</button>
-    <button class="cf-pill" data-cat="friends">Friends</button>
-    <button class="cf-pill" data-cat="family">Family</button>
-    <button class="cf-pill" data-cat="dating">Dating</button>
+  <div class="conv-tab-bar" id="cat-pills">
+    <button class="cf-tab on" data-cat="all">All</button>
+    <button class="cf-tab" data-cat="everyday">Everyday</button>
+    <button class="cf-tab" data-cat="work">Workplace</button>
+    <button class="cf-tab" data-cat="friends">Friends</button>
+    <button class="cf-tab" data-cat="family">Family</button>
+    <button class="cf-tab" data-cat="dating">Dating</button>
   </div>
 </div>
 <div class="conv-page-container">
@@ -752,24 +752,14 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   try {
     var sb = getSupa();
-    // 목록용 최소 데이터 + thumb만 로드 (msgs, vocab, grammar 제외 → 빠른 로딩)
+    // 목록용 최소 데이터만 로드 (빠른 로딩)
     var { data, error } = await sb.from('conversations_data')
-      .select('id,name,ctx,cat,lvl,data->thumb')
+      .select('id,name,ctx,cat,lvl')
       .order('created_at', {ascending: false});
-
-    // data->thumb이 안 되면 fallback
-    if (error) {
-      var fallback = await sb.from('conversations_data')
-        .select('id,name,ctx,cat,lvl')
-        .order('created_at', {ascending: false});
-      data = fallback.data;
-      error = fallback.error;
-    }
 
     if (error) throw error;
 
     if (data && data.length) {
-      // 목록용 최소 데이터만 매핑 (상세는 openDetail에서 로드)
       CONVS = data.map(function(row) {
         return {
           _id:  row.id,
@@ -778,7 +768,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           cat:  row.cat  || 'everyday',
           lvl:  row.lvl  || 'b',
           topic: '',
-          thumb: row.thumb || null,
+          thumb: null,
           msgs: [],
           vocab: [],
           grammar: [],
@@ -807,17 +797,17 @@ document.addEventListener('DOMContentLoaded', async function() {
     setTimeout(function(){ openDetail(parseInt(_openIdx)); }, 80);
   }
   var pills = document.getElementById('cat-pills');
-  pills.querySelectorAll('.cf-pill:not([data-lvl])').forEach(function(btn) {
+  pills.querySelectorAll('.cf-tab:not([data-lvl])').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      pills.querySelectorAll('.cf-pill:not([data-lvl])').forEach(function(b){b.classList.remove('on');});
+      pills.querySelectorAll('.cf-tab:not([data-lvl])').forEach(function(b){b.classList.remove('on');});
       btn.classList.add('on');
       activeCat = btn.dataset.cat;
       renderCards(activeCat, activeLvl);
     });
   });
-  pills.querySelectorAll('.cf-pill[data-lvl]').forEach(function(btn) {
+  pills.querySelectorAll('.cf-tab[data-lvl]').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      pills.querySelectorAll('.cf-pill[data-lvl]').forEach(function(b){b.classList.remove('on');});
+      pills.querySelectorAll('.cf-tab[data-lvl]').forEach(function(b){b.classList.remove('on');});
       btn.classList.add('on');
       activeLvl = btn.dataset.lvl;
       renderCards(activeCat, activeLvl);
