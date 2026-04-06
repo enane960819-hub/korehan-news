@@ -452,7 +452,7 @@ async function openDetail(idx) {
   window._currentConv = c;
 
   // ── 데일리 미션 + 읽기 기록 추적 ──────────────────────
-  if (typeof dmTrackArticle === 'function') dmTrackArticle();
+  if (typeof dmTrackArticle === 'function') dmTrackArticle({ content_id: c._id ? String(c._id) : null });
   if (supaUser && typeof getSupa === 'function') {
     try {
       var _sb = getSupa();
