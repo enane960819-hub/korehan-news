@@ -3,11 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <title>KoreHan News — Learn Korean Through Real News</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="korehan-shared.css?v=20260324b">
 <style>
 /* ── HOME REDESIGN ─────────────────────────────────────── */
@@ -941,31 +940,50 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 document.addEventListener('DOMContentLoaded', async function() {
-  // Load conversations from DB
+  // ── Conversations: localStorage 캐시 즉시 렌더 → 백그라운드 DB 갱신 ──
+  var _HOME_CONV_CACHE_KEY = 'kh_home_convs_v1';
+  var _cachedConvs = null;
+  try { _cachedConvs = JSON.parse(localStorage.getItem(_HOME_CONV_CACHE_KEY)); } catch(e) {}
+
+  function _mapConvRow(row) {
+    return {
+      _id:  row._id || row.id,
+      name: row.name || '',
+      ctx:  row.ctx  || '',
+      cat:  row.cat  || 'everyday',
+      lvl:  row.lvl  || 'b',
+      catLabel: '',
+      lvlLabel: {b:'Beginner',i:'Intermediate',a:'Advanced'}[row.lvl||'b'] || 'Beginner',
+      msgs: [],
+    };
+  }
+
+  // 1) 캐시 있으면 즉시 렌더
+  if (_cachedConvs && _cachedConvs.length) {
+    HOME_CONVS = _cachedConvs.map(_mapConvRow);
+    renderHomeConvs();
+  }
+
+  // 2) 백그라운드 DB 갱신 (data 컬럼 제외 — 카드에 불필요)
   try {
     var sb = getSupa();
-    var { data } = await sb.from('conversations_data')
-      .select('id, data, cat, lvl, name, ctx')
+    var res = await sb.from('conversations_data')
+      .select('id, cat, lvl, name, ctx')
       .order('created_at', {ascending: false})
       .limit(12);
-    if (data && data.length) {
-      HOME_CONVS = data.map(function(row) {
-        var d = row.data || {};
-        return {
-          _id: row.id,
-          avi:      d.avi      || '💬',
-          name:     d.name     || row.name || '',
-          ctx:      d.ctx      || row.ctx  || '',
-          cat:      d.cat      || row.cat  || 'everyday',
-          lvl:      d.lvl      || row.lvl  || 'b',
-          catLabel: d.catLabel || '',
-          lvlLabel: {b:'Beginner',i:'Intermediate',a:'Advanced'}[d.lvl||row.lvl||'b'] || 'Beginner',
-          msgs:     (d.msgs    || []).slice(0, 3).map(function(m){ return {s:m.s, txt:m.txt}; }),
-        };
+    if (res.data && res.data.length) {
+      var freshConvs = res.data.map(function(row) {
+        return _mapConvRow({_id: row.id, name: row.name, ctx: row.ctx, cat: row.cat, lvl: row.lvl});
       });
+      // 캐시 저장
+      try {
+        var toCache = res.data.map(function(r){ return {_id:r.id,name:r.name||'',ctx:r.ctx||'',cat:r.cat||'everyday',lvl:r.lvl||'b'}; });
+        localStorage.setItem(_HOME_CONV_CACHE_KEY, JSON.stringify(toCache));
+      } catch(e) {}
+      HOME_CONVS = freshConvs;
     }
   } catch(e) {
-    console.warn('conv DB load failed, using sample:', e.message);
+    console.warn('conv DB load failed, using fallback:', e.message);
   }
   renderHomeConvs();
 
@@ -998,15 +1016,24 @@ document.addEventListener('DOMContentLoaded', async function() {
     var pbBlock = document.getElementById('pb-phrase-block');
     if (pbBlock) pbBlock.href = 'korehan-phrase.html?i=' + phraseIndex;
   }
-  // Initial render after settings load
-  if (typeof getPhrasesAsync === 'function') await getPhrasesAsync();
+  // 먼저 localStorage 캐시된 phrases로 즉시 렌더 (네트워크 불필요)
   renderTodaysPhrase();
+  // DB phrases는 idle 시 백그라운드 로드 → 렌더 갱신
+  var _deferHome = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 50); };
+  _deferHome(function() {
+    if (typeof getPhrasesAsync === 'function') {
+      getPhrasesAsync().then(renderTodaysPhrase).catch(function(){});
+    }
+  });
   // Re-render when settings are reloaded post-auth (picks up RLS-protected phrase data)
   window.addEventListener('kh-settings-reloaded', renderTodaysPhrase);
 
-  if (window.renderHomeLearningPreview) {
-    window.renderHomeLearningPreview().catch(function() {});
-  }
+  // Learning preview는 below-the-fold — idle 시 로드 (여러 DB 쿼리 포함)
+  _deferHome(function() {
+    if (window.renderHomeLearningPreview) {
+      window.renderHomeLearningPreview().catch(function() {});
+    }
+  });
 
   // News grid
   function renderNewsGrid() {

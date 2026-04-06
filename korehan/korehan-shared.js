@@ -869,14 +869,17 @@ async function checkSession() {
       updateAuthUI();
       updateCommentForm();
       renderDailyMission();
-      _syncSavedWordsFromDB();
-      _rehydrateUserState();
       window.dispatchEvent(new Event('kh-auth-signed-in'));
-      // Re-apply UI update after a short delay to catch any late-rendered DOM elements
       setTimeout(function(){ updateAuthUI(); }, 300);
-      if (!window.location.pathname.includes('onboarding')) {
-        checkOnboardingStatus();
-      }
+      // DB 동기화는 idle 시점으로 지연
+      var _deferSI = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 200); };
+      _deferSI(function() {
+        _syncSavedWordsFromDB();
+        _rehydrateUserState();
+        if (!window.location.pathname.includes('onboarding')) {
+          checkOnboardingStatus();
+        }
+      });
     } else if (event === 'TOKEN_REFRESHED') {
       supaUser = session ? session.user : null;
       updateAuthUI();
@@ -939,12 +942,16 @@ async function checkSession() {
     updateAuthUI();
     updateCommentForm();
     renderDailyMission();
-    _syncSavedWordsFromDB();
-    _rehydrateUserState();
     window.dispatchEvent(new Event('kh-auth-signed-in'));
-    if (!window.location.pathname.includes('onboarding')) {
-      checkOnboardingStatus();
-    }
+    // DB 동기화는 화면 렌더와 무관 — idle 시점으로 지연 (연결 경쟁 방지)
+    var _deferAuth = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 200); };
+    _deferAuth(function() {
+      _syncSavedWordsFromDB();
+      _rehydrateUserState();
+      if (!window.location.pathname.includes('onboarding')) {
+        checkOnboardingStatus();
+      }
+    });
   }
   window._sessionChecked = true;
   updateAuthUI();
@@ -1483,9 +1490,9 @@ function articleUrl(id) {
 // 기사는 Supabase articles 테이블에서 로드
 var _articlesCache = null;
 var _articlesCacheTime = 0;
-var CACHE_TTL = 300000; // 5분
+var CACHE_TTL = 300000; // 5분 (메모리 캐시)
 var ARTICLES_STORAGE_KEY = 'kh_articles_cache_v2';
-var ARTICLES_STORAGE_MAX_AGE = 5 * 60 * 1000; // 5분
+var ARTICLES_STORAGE_MAX_AGE = 60 * 60 * 1000; // 1시간 (localStorage — stale-while-revalidate로 항상 백그라운드 갱신)
 var HOME_ARTICLE_SELECT = '*';
 
 (function hydrateArticlesCacheFromStorage() {
@@ -4697,22 +4704,8 @@ function wrapVocab(el) {
 
 // ── 헤더 / 푸터 / 사이드바 ────────────────────────────────────
 function renderHeader() {
-  // 폰트가 없으면 동적 주입
-  if (!document.getElementById('kh-font-link')) {
-    var fl = document.createElement('link');
-    fl.id   = 'kh-font-link';
-    fl.rel  = 'stylesheet';
-    fl.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&display=swap';
-    // Pretendard (한국어 + 영문 최적화, OFL 라이선스)
-    if (!document.getElementById('kh-pretendard')) {
-      var pf = document.createElement('link');
-      pf.id   = 'kh-pretendard';
-      pf.rel  = 'stylesheet';
-      pf.href = 'https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css';
-      document.head.appendChild(pf);
-    }
-    document.head.appendChild(fl);
-  }
+  // 폰트는 각 HTML <head>에서 async로 로드 — 여기서 동적 주입하지 않음
+  // (중복 주입 시 렌더 블로킹 + 불필요한 네트워크 요청 발생)
   var page = window.location.pathname.split('/').pop() || 'index.html';
   var isHome = (page === 'index.html' || page === '');
   var currentSection = (new URLSearchParams(window.location.search)).get('s') || '';
@@ -5356,40 +5349,101 @@ document.addEventListener('DOMContentLoaded', async function() {
     || pageBase === 'korehan-opinion'
     || pageBase === 'korehan-article';
 
-  if (isHomePage) {
-    // Render cached articles immediately so hero + swipe is interactive while fresh data loads
+  // 카드 리스트 페이지 — 자체 localStorage 캐시로 이미 렌더 완료
+  // sections/settings/session을 await하지 않고 백그라운드 처리
+  var _fastPages = ['korehan-conversations','korehan-stories'];
+  var _isFastPage = _fastPages.indexOf(pageBase) >= 0;
+
+  if (_isFastPage) {
+    // 네트워크 차단 없이 즉시 footer 렌더 → 백그라운드에서 세션/설정 완료 후 UI 갱신
+    if (footerEl) footerEl.innerHTML = renderFooter();
+    renderKhLucideIcons();
+    applySiteConfigToPage();
+    // 백그라운드: 세션/설정 완료 후 헤더/푸터 갱신
+    Promise.allSettled([sessionPromise, sectionsPromise, settingsPromise]).then(function() {
+      if (headerEl) { headerEl.innerHTML = renderHeader(); khInjectSidebar(); }
+      if (footerEl) footerEl.innerHTML = renderFooter();
+      renderKhLucideIcons();
+      updateAuthUI();
+      if (supaUser) {
+        _appSettingsPromise = null;
+        loadAppSettings().catch(function(){});
+        window.dispatchEvent(new Event('kh-settings-reloaded'));
+      }
+    });
+  } else if (isHomePage) {
+    // 캐시 있으면 즉시 렌더 (재방문 시 즉시 화면 표시)
     if (getCachedArticles().length) {
       renderHomePage();
     }
-    await Promise.all([
-      loadArticlesFromDB({ homeOptimized: true, force: true }),
-      sectionsPromise,
-      settingsPromise
-    ]);
+    // 기사 데이터만 await — sections/settings는 헤더에 필요하지만 기본값으로 이미 렌더됨
+    await loadArticlesFromDB({ homeOptimized: true, force: true });
     renderHomePage();
+
+    // 나머지는 백그라운드에서 완료 후 UI 갱신 (세션, 섹션, 설정)
+    if (footerEl) footerEl.innerHTML = renderFooter();
+    renderKhLucideIcons();
+    applySiteConfigToPage();
+
+    Promise.allSettled([sessionPromise, sectionsPromise, settingsPromise]).then(function() {
+      if (headerEl) { headerEl.innerHTML = renderHeader(); khInjectSidebar(); }
+      if (footerEl) footerEl.innerHTML = renderFooter();
+      renderKhLucideIcons();
+      updateAuthUI();
+      var _hamBtn = headerEl && headerEl.querySelector('.kh-ham');
+      if (_hamBtn) {
+        _hamBtn.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); khSbOpen(); });
+        _hamBtn.addEventListener('touchend', function(e) { e.preventDefault(); khSbOpen(); });
+      }
+      if (supaUser) {
+        _appSettingsPromise = null;
+        _artCacheSchemaDone = false;
+        _artCacheSchema = null;
+        _remoteCacheDisabled = false;
+        loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
+        window.dispatchEvent(new Event('kh-settings-reloaded'));
+      }
+    });
   } else if (needsArticles) {
     await Promise.all([loadArticlesFromDB({ force: true }), sectionsPromise, settingsPromise]);
+
+    if (footerEl) footerEl.innerHTML = renderFooter();
+    renderKhLucideIcons();
+    applySiteConfigToPage();
+
+    // 세션/재인증은 백그라운드 — 기사 렌더 차단하지 않음
+    Promise.allSettled([sessionPromise]).then(function() {
+      updateAuthUI();
+      if (supaUser) {
+        _appSettingsPromise = null;
+        _artCacheSchemaDone = false;
+        _artCacheSchema = null;
+        _remoteCacheDisabled = false;
+        loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
+        window.dispatchEvent(new Event('kh-settings-reloaded'));
+      }
+    });
   } else {
-    // Non-article pages (mypage, learn, shop, etc.) — just wait for session + settings
+    // Non-article pages (mypage, learn, etc.)
     await Promise.all([sectionsPromise, settingsPromise]);
+
+    if (footerEl) footerEl.innerHTML = renderFooter();
+    renderKhLucideIcons();
+    applySiteConfigToPage();
+
+    // 세션 완료 후 인증 UI 갱신 — 백그라운드
+    Promise.allSettled([sessionPromise]).then(function() {
+      updateAuthUI();
+      if (supaUser) {
+        _appSettingsPromise = null;
+        _artCacheSchemaDone = false;
+        _artCacheSchema = null;
+        _remoteCacheDisabled = false;
+        loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
+        window.dispatchEvent(new Event('kh-settings-reloaded'));
+      }
+    });
   }
-
-  await Promise.allSettled([sessionPromise]);
-
-  // After session is confirmed, reload settings so RLS-protected data (phrases etc.) is fetched with auth
-  if (supaUser) {
-    _appSettingsPromise = null;
-    // Reset article cache detection — earlier probe may have failed due to missing auth
-    _artCacheSchemaDone = false;
-    _artCacheSchema = null;
-    _remoteCacheDisabled = false;
-    await loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
-    window.dispatchEvent(new Event('kh-settings-reloaded'));
-  }
-
-  if (footerEl) footerEl.innerHTML = renderFooter();
-  renderKhLucideIcons();
-  applySiteConfigToPage();
 
   if (pageBase === 'korehan-all')     { renderAllPage(); }
   else if (pageBase === 'korehan-section')   {
@@ -5408,7 +5462,13 @@ document.addEventListener('DOMContentLoaded', async function() {
   _deferPost(function(){ ttsInit(); });
   _deferPost(function(){ injectDailyMission(); });
   _deferPost(function(){ startClock(); });
-  _deferPost(function(){ loadVocabFromDB().then(function(){ initTooltips(); }); });
+  // conversations/stories 등 tooltip 불필요 페이지에서는 2000행 vocabulary_bank 쿼리 스킵
+  var _skipVocabPages = ['index','','korehan-news','korehan-conversations','korehan-stories','korehan-mypage','korehan-learn','korehan-courses','korehan-onboarding','korehan-learning-overview'];
+  if (_skipVocabPages.indexOf(pageBase) < 0) {
+    _deferPost(function(){ loadVocabFromDB().then(function(){ initTooltips(); }); });
+  } else {
+    _deferPost(function(){ initTooltips(); });
+  }
 });
 
 // ── vocabulary_bank DB → VOCAB 병합 ───────────────────────

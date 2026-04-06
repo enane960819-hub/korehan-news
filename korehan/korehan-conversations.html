@@ -6,7 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Conversations — KoreHan News</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
 .conv-hero{background:linear-gradient(160deg,#1d4ed8 0%,#3b82f6 55%,#60a5fa 100%);padding:28px 0 60px;margin-bottom:-40px;}
@@ -751,65 +753,102 @@ async function toggleSave(btn) {
 
 var activeCat = 'all', activeLvl = 'all';
 
-// shared.js 초기화 기다리지 않고 Supabase 준비되면 바로 로드
-(async function _initConvPage() {
-  // Supabase SDK 로드 대기 (최대 3초)
-  var waited = 0;
-  while (!window.supabase && waited < 3000) { await new Promise(function(r){setTimeout(r,50);}); waited += 50; }
+// ── Stale-While-Revalidate: 캐시 즉시 렌더 → 백그라운드 DB 갱신 ──
+var _CONV_CACHE_KEY = 'kh_conv_list_v1';
 
-  // 기자 캐릭터 로드 (resolveConversationCast에서 사용)
-  if (typeof _loadReporters === 'function') await _loadReporters().catch(function(){});
+function _convRowToObj(row) {
+  return {
+    _id:  row._id || row.id,
+    name: row.name || '',
+    ctx:  row.ctx  || '',
+    cat:  row.cat  || 'everyday',
+    lvl:  row.lvl  || 'b',
+    catLabel: row.catLabel || '',
+    topic: row.topic || '',
+    thumb: row.thumb || null,
+    msgs: [],
+    vocab: [],
+    grammar: [],
+    mission: [],
+    _loaded: false
+  };
+}
 
-  // ── DB에서 conversations 로드 ──────────────────────────
-  var grid = document.getElementById('conv-cards-grid');
-  if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;font-size:14px">⏳ Loading...</div>';
+(function _initConvPage() {
+  // ── 1단계: localStorage 캐시에서 즉시 렌더 (네트워크 0회) ──
+  var cached = null;
+  try { cached = JSON.parse(localStorage.getItem(_CONV_CACHE_KEY)); } catch(e) {}
 
-  try {
-    var sb = getSupa();
-    // 목록용 최소 데이터만 로드 (빠른 로딩)
-    var { data, error } = await sb.from('conversations_data')
-      .select('id,name,ctx,cat,lvl')
-      .order('created_at', {ascending: false});
+  if (cached && cached.length) {
+    CONVS = cached.map(_convRowToObj);
+    renderCards(activeCat, activeLvl);
+  }
 
-    if (error) throw error;
+  // ── 2단계: 백그라운드에서 DB 최신 데이터 로드 ──
+  (async function() {
+    // Supabase SDK는 sync <script>로 이미 로드됨
+    if (!window.supabase) { await new Promise(function(r){setTimeout(r, 150);}); }
 
-    if (data && data.length) {
-      CONVS = data.map(function(row) {
-        return {
-          _id:  row.id,
-          name: row.name || '',
-          ctx:  row.ctx  || '',
-          cat:  row.cat  || 'everyday',
-          lvl:  row.lvl  || 'b',
-          topic: '',
-          thumb: null,
-          msgs: [],
-          vocab: [],
-          grammar: [],
-          mission: [],
-          _loaded: false
-        };
-      });
+    // 기자 캐릭터는 카드 클릭(openDetail) 시에만 필요
+    if (typeof _loadReporters === 'function') _loadReporters().catch(function(){});
+
+    var grid = document.getElementById('conv-cards-grid');
+    // 캐시가 없을 때만 로딩 표시 (캐시 있으면 이미 카드가 보임)
+    if (!cached && grid) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;font-size:14px">\u23F3 Loading...</div>';
     }
-  } catch(e) {
-    console.warn('DB 로드 실패, 내장 샘플 사용:', e.message);
-    // fallback: 빈 상태 유지 (CONVS = [])
-  }
 
-  // 로드 완료 후 렌더
-  renderCards(activeCat, activeLvl);
+    try {
+      var sb = getSupa();
+      var res = await sb.from('conversations_data')
+        .select('id,name,ctx,cat,lvl')
+        .order('created_at', {ascending: false});
 
-  // URL ?open=N → 해당 인덱스 자동 오픈
-  // ?id=DB_ID 또는 ?open=INDEX 로 특정 대화 자동 오픈
-  var _params = new URLSearchParams(window.location.search);
-  var _openId  = _params.get('id');
-  var _openIdx = _params.get('open');
-  if (_openId) {
-    var _targetIdx = CONVS.findIndex(function(c){ return String(c._id) === String(_openId); });
-    if (_targetIdx >= 0) setTimeout(function(){ openDetail(_targetIdx); }, 80);
-  } else if (_openIdx !== null && CONVS[parseInt(_openIdx)]) {
-    setTimeout(function(){ openDetail(parseInt(_openIdx)); }, 80);
-  }
+      if (res.error) throw res.error;
+
+      if (res.data && res.data.length) {
+        var freshConvs = res.data.map(function(row) {
+          return _convRowToObj({_id: row.id, name: row.name, ctx: row.ctx, cat: row.cat, lvl: row.lvl});
+        });
+
+        // localStorage 캐시 업데이트
+        try {
+          var toCache = res.data.map(function(row){ return {_id:row.id, name:row.name||'', ctx:row.ctx||'', cat:row.cat||'everyday', lvl:row.lvl||'b'}; });
+          localStorage.setItem(_CONV_CACHE_KEY, JSON.stringify(toCache));
+        } catch(e) {}
+
+        // 데이터가 변경됐을 때만 다시 렌더 (캐시와 동일하면 스킵)
+        var oldIds = CONVS.map(function(c){return c._id;}).join(',');
+        var newIds = freshConvs.map(function(c){return c._id;}).join(',');
+        if (oldIds !== newIds || !cached) {
+          CONVS = freshConvs;
+          renderCards(activeCat, activeLvl);
+        } else {
+          // ID 순서 같아도 내용 변경 가능 — 조용히 교체
+          CONVS = freshConvs;
+        }
+      } else if (!cached) {
+        // DB에 데이터 없고 캐시도 없으면 빈 상태 렌더
+        renderCards(activeCat, activeLvl);
+      }
+    } catch(e) {
+      console.warn('DB 로드 실패:', e.message);
+      if (!cached) renderCards(activeCat, activeLvl);
+    }
+
+    // URL ?id=DB_ID 또는 ?open=INDEX 로 특정 대화 자동 오픈
+    var _params = new URLSearchParams(window.location.search);
+    var _openId  = _params.get('id');
+    var _openIdx = _params.get('open');
+    if (_openId) {
+      var _targetIdx = CONVS.findIndex(function(c){ return String(c._id) === String(_openId); });
+      if (_targetIdx >= 0) setTimeout(function(){ openDetail(_targetIdx); }, 80);
+    } else if (_openIdx !== null && CONVS[parseInt(_openIdx)]) {
+      setTimeout(function(){ openDetail(parseInt(_openIdx)); }, 80);
+    }
+  })();
+
+  // ── 탭 바 이벤트 (동기 — 즉시 바인딩) ──
   var pills = document.getElementById('cat-pills');
   pills.querySelectorAll('.cf-tab:not([data-lvl])').forEach(function(btn) {
     btn.addEventListener('click', function() {
