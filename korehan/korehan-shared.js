@@ -3747,7 +3747,7 @@ async function markArticleRead(articleId, title, section, level) {
 
       readLog[todayKey].push(id);
       localStorage.setItem('kh_read_log', JSON.stringify(readLog));
-      trackActivityOnArticleRead(section, { grantXP: canEarnXP && readLog[todayKey].length <= ARTICLE_XP_DAILY_CAP });
+      trackActivityOnArticleRead(section, { grantXP: canEarnXP && readLog[todayKey].length <= ARTICLE_XP_DAILY_CAP, content_id: id });
     } else {
       // 오늘 이미 읽은 기사 — 재방문은 artViews 카운트에 포함시키지 않음
       localStorage.setItem('kh_read_log', JSON.stringify(readLog));
@@ -4528,6 +4528,37 @@ async function _insertXPLog(sb, userId, actionKey, amount, reason, contentId) {
   } catch(e) { console.warn('[xp] log insert exception:', e); }
 }
 
+// ── XP 중복 지급 방지 ──
+// 같은 날 같은 콘텐츠 → XP 0, 다른 날이어도 같은 콘텐츠 최대 2회까지만
+var _XP_GRANT_LOG_KEY = 'kh_xp_grant_log';
+function _checkXPDuplicate(actionKey, contentId) {
+  if (!contentId) return false; // content_id 없으면 항상 지급 (퀴즈 등)
+  try {
+    var log = JSON.parse(localStorage.getItem(_XP_GRANT_LOG_KEY) || '{}');
+    var key = actionKey + ':' + contentId;
+    var entry = log[key] || { count: 0, lastDate: '' };
+    var today = new Date().toISOString().slice(0, 10);
+    // 같은 날 같은 콘텐츠 → 중복
+    if (entry.lastDate === today) return true;
+    // 다른 날이어도 2회 초과 → 중복
+    if (entry.count >= 2) return true;
+    return false;
+  } catch(e) { return false; }
+}
+function _recordXPGrant(actionKey, contentId) {
+  if (!contentId) return;
+  try {
+    var log = JSON.parse(localStorage.getItem(_XP_GRANT_LOG_KEY) || '{}');
+    var key = actionKey + ':' + contentId;
+    var entry = log[key] || { count: 0, lastDate: '' };
+    var today = new Date().toISOString().slice(0, 10);
+    entry.count = (entry.count || 0) + 1;
+    entry.lastDate = today;
+    log[key] = entry;
+    localStorage.setItem(_XP_GRANT_LOG_KEY, JSON.stringify(log));
+  } catch(e) {}
+}
+
 async function awardXP(actionKey, meta) {
   if (!supaUser) return null;
   var sb = getSupa(); if (!sb) return null;
@@ -4536,6 +4567,11 @@ async function awardXP(actionKey, meta) {
   var coinAmt   = _COIN_ACTION_AMOUNTS[actionKey] || 0;
   var reason    = _XP_ACTION_LABELS[actionKey] || actionKey;
   var contentId = (meta && (meta.content_id || meta.article_id)) || null;
+
+  // 중복 체크: 같은 날 같은 콘텐츠 or 통산 2회 초과 → XP 미지급
+  if (_checkXPDuplicate(actionKey, contentId)) {
+    return { ok: true, xp_gained: 0, duplicate: true };
+  }
 
   // Try RPC first
   try {
@@ -4574,6 +4610,7 @@ async function awardXP(actionKey, meta) {
         } catch(e) {}
       }
       await _insertXPLog(sb, supaUser.id, actionKey, gained, reason, contentId);
+      _recordXPGrant(actionKey, contentId);
       return res.data;
     }
   } catch(e) {}
@@ -4606,6 +4643,7 @@ async function awardXP(actionKey, meta) {
         });
       } catch(e) {}
     }
+    _recordXPGrant(actionKey, contentId);
     return { ok: true, xp_gained: amount };
   } catch(e) {}
 
@@ -6396,7 +6434,7 @@ async function dmTrackArticle(opts) {
     await syncDailyMission('articles');
     await syncUserStats({ articles_read: true });
   }
-  if (opts.grantXP !== false) awardXP('article_read', { source: 'article' });
+  if (opts.grantXP !== false) awardXP('article_read', { source: 'article', content_id: opts.content_id || opts.articleId || null });
   checkDailyMissionComplete();
 }
 
