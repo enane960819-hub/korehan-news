@@ -1483,9 +1483,9 @@ function articleUrl(id) {
 // 기사는 Supabase articles 테이블에서 로드
 var _articlesCache = null;
 var _articlesCacheTime = 0;
-var CACHE_TTL = 300000; // 5분
+var CACHE_TTL = 300000; // 5분 (메모리 캐시)
 var ARTICLES_STORAGE_KEY = 'kh_articles_cache_v2';
-var ARTICLES_STORAGE_MAX_AGE = 5 * 60 * 1000; // 5분
+var ARTICLES_STORAGE_MAX_AGE = 60 * 60 * 1000; // 1시간 (localStorage — stale-while-revalidate로 항상 백그라운드 갱신)
 var HOME_ARTICLE_SELECT = '*';
 
 (function hydrateArticlesCacheFromStorage() {
@@ -5415,7 +5415,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   _deferPost(function(){ injectDailyMission(); });
   _deferPost(function(){ startClock(); });
   // conversations/stories 등 tooltip 불필요 페이지에서는 2000행 vocabulary_bank 쿼리 스킵
-  var _skipVocabPages = ['korehan-conversations','korehan-stories','korehan-mypage','korehan-learn','korehan-courses','korehan-onboarding','korehan-learning-overview'];
+  var _skipVocabPages = ['index','','korehan-news','korehan-conversations','korehan-stories','korehan-mypage','korehan-learn','korehan-courses','korehan-onboarding','korehan-learning-overview'];
   if (_skipVocabPages.indexOf(pageBase) < 0) {
     _deferPost(function(){ loadVocabFromDB().then(function(){ initTooltips(); }); });
   } else {
