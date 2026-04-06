@@ -5383,7 +5383,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     _artCacheSchemaDone = false;
     _artCacheSchema = null;
     _remoteCacheDisabled = false;
-    await loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
+    if (needsArticles || isHomePage) {
+      // 기사/홈 페이지: settings 완료 대기 (API 키 등 필요)
+      await loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
+    } else {
+      // 비기사 페이지: 백그라운드 로드 (초기 렌더 차단 안 함)
+      loadAppSettings().catch(function(err){ console.warn('post-auth settings reload failed', err); });
+    }
     window.dispatchEvent(new Event('kh-settings-reloaded'));
   }
 
@@ -5408,7 +5414,13 @@ document.addEventListener('DOMContentLoaded', async function() {
   _deferPost(function(){ ttsInit(); });
   _deferPost(function(){ injectDailyMission(); });
   _deferPost(function(){ startClock(); });
-  _deferPost(function(){ loadVocabFromDB().then(function(){ initTooltips(); }); });
+  // conversations/stories 등 tooltip 불필요 페이지에서는 2000행 vocabulary_bank 쿼리 스킵
+  var _skipVocabPages = ['korehan-conversations','korehan-stories','korehan-mypage','korehan-learn','korehan-courses','korehan-onboarding','korehan-learning-overview'];
+  if (_skipVocabPages.indexOf(pageBase) < 0) {
+    _deferPost(function(){ loadVocabFromDB().then(function(){ initTooltips(); }); });
+  } else {
+    _deferPost(function(){ initTooltips(); });
+  }
 });
 
 // ── vocabulary_bank DB → VOCAB 병합 ───────────────────────

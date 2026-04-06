@@ -6,7 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Conversations — KoreHan News</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
 .conv-hero{background:linear-gradient(160deg,#1d4ed8 0%,#3b82f6 55%,#60a5fa 100%);padding:28px 0 60px;margin-bottom:-40px;}
@@ -753,12 +755,11 @@ var activeCat = 'all', activeLvl = 'all';
 
 // shared.js 초기화 기다리지 않고 Supabase 준비되면 바로 로드
 (async function _initConvPage() {
-  // Supabase SDK 로드 대기 (최대 3초)
-  var waited = 0;
-  while (!window.supabase && waited < 3000) { await new Promise(function(r){setTimeout(r,50);}); waited += 50; }
+  // Supabase SDK는 sync <script>로 이미 로드됨 — 혹시 없으면 짧게 대기
+  if (!window.supabase) { await new Promise(function(r){setTimeout(r, 150);}); }
 
-  // 기자 캐릭터 로드 (resolveConversationCast에서 사용)
-  if (typeof _loadReporters === 'function') await _loadReporters().catch(function(){});
+  // 기자 캐릭터는 카드 클릭(openDetail) 시에만 필요 — 백그라운드로 로드
+  if (typeof _loadReporters === 'function') _loadReporters().catch(function(){});
 
   // ── DB에서 conversations 로드 ──────────────────────────
   var grid = document.getElementById('conv-cards-grid');
