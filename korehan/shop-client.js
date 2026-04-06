@@ -274,7 +274,15 @@
   };
 
   document.addEventListener('DOMContentLoaded', function(){
-    var attempts = 0;
-    (function waitSession(){ attempts++; if (window.supaUser || attempts > 25) { initShop(); renderRoomShop(); } else setTimeout(waitSession, 200); })();
+    function _startShop() { initShop(); renderRoomShop(); }
+    // supaUser가 이미 있으면 즉시 실행, 없으면 이벤트 대기
+    if (window.supaUser) {
+      _startShop();
+    } else {
+      window.addEventListener('kh-auth-signed-in', function() { _startShop(); }, { once: true });
+      // 세션 체크 완료 후에도 미로그인이면 실행 (게스트 모드)
+      var _fallback = setTimeout(function() { if (!window.supaUser) _startShop(); }, 3000);
+      window.addEventListener('kh-auth-signed-in', function() { clearTimeout(_fallback); }, { once: true });
+    }
   });
 })();
