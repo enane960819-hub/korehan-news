@@ -7558,9 +7558,8 @@ async function aseGenFromAI() {
   var prompt = 'Korean news article study content for language learners.\nTitle: ' + art.title + '\nBody:\n' + (art.body||'').slice(0,1600)
     + '\n\nReturn ONLY valid JSON:\n{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],"phrases":[{"ko":"sentence from article","en":"translation"}],"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\nvocab:6 key words. phrases:5 key sentences. word_order:3 sentences. questions:3 comprehension questions.';
   try {
-    var sb = getSb();
-    var data = await sb.functions.invoke('claude-proxy', { body: { feature:'article-study-admin', model:'claude-haiku-4-5-20251001', max_tokens:1500, messages:[{role:'user',content:prompt}] } });
-    var raw = ((data.data&&data.data.content)||[]).map(function(c){return c.text||'';}).join('');
+    var data = await callClaude({ feature:'article-study-admin', model:'claude-haiku-4-5-20251001', max_tokens:1500, messages:[{role:'user',content:prompt}] });
+    var raw = ((data.content)||[]).map(function(c){return c.text||'';}).join('');
     var cl = raw.replace(/```json|```/g,'').trim();
     var s=cl.indexOf('{'),e=cl.lastIndexOf('}'); if(s>=0&&e>s) cl=cl.slice(s,e+1);
     var parsed = JSON.parse(cl);
