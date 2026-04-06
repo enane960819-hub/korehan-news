@@ -869,14 +869,17 @@ async function checkSession() {
       updateAuthUI();
       updateCommentForm();
       renderDailyMission();
-      _syncSavedWordsFromDB();
-      _rehydrateUserState();
       window.dispatchEvent(new Event('kh-auth-signed-in'));
-      // Re-apply UI update after a short delay to catch any late-rendered DOM elements
       setTimeout(function(){ updateAuthUI(); }, 300);
-      if (!window.location.pathname.includes('onboarding')) {
-        checkOnboardingStatus();
-      }
+      // DB 동기화는 idle 시점으로 지연
+      var _deferSI = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 200); };
+      _deferSI(function() {
+        _syncSavedWordsFromDB();
+        _rehydrateUserState();
+        if (!window.location.pathname.includes('onboarding')) {
+          checkOnboardingStatus();
+        }
+      });
     } else if (event === 'TOKEN_REFRESHED') {
       supaUser = session ? session.user : null;
       updateAuthUI();
@@ -939,12 +942,16 @@ async function checkSession() {
     updateAuthUI();
     updateCommentForm();
     renderDailyMission();
-    _syncSavedWordsFromDB();
-    _rehydrateUserState();
     window.dispatchEvent(new Event('kh-auth-signed-in'));
-    if (!window.location.pathname.includes('onboarding')) {
-      checkOnboardingStatus();
-    }
+    // DB 동기화는 화면 렌더와 무관 — idle 시점으로 지연 (연결 경쟁 방지)
+    var _deferAuth = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 200); };
+    _deferAuth(function() {
+      _syncSavedWordsFromDB();
+      _rehydrateUserState();
+      if (!window.location.pathname.includes('onboarding')) {
+        checkOnboardingStatus();
+      }
+    });
   }
   window._sessionChecked = true;
   updateAuthUI();
@@ -4697,22 +4704,8 @@ function wrapVocab(el) {
 
 // ── 헤더 / 푸터 / 사이드바 ────────────────────────────────────
 function renderHeader() {
-  // 폰트가 없으면 동적 주입
-  if (!document.getElementById('kh-font-link')) {
-    var fl = document.createElement('link');
-    fl.id   = 'kh-font-link';
-    fl.rel  = 'stylesheet';
-    fl.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&display=swap';
-    // Pretendard (한국어 + 영문 최적화, OFL 라이선스)
-    if (!document.getElementById('kh-pretendard')) {
-      var pf = document.createElement('link');
-      pf.id   = 'kh-pretendard';
-      pf.rel  = 'stylesheet';
-      pf.href = 'https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css';
-      document.head.appendChild(pf);
-    }
-    document.head.appendChild(fl);
-  }
+  // 폰트는 각 HTML <head>에서 async로 로드 — 여기서 동적 주입하지 않음
+  // (중복 주입 시 렌더 블로킹 + 불필요한 네트워크 요청 발생)
   var page = window.location.pathname.split('/').pop() || 'index.html';
   var isHome = (page === 'index.html' || page === '');
   var currentSection = (new URLSearchParams(window.location.search)).get('s') || '';
