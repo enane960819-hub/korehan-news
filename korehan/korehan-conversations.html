@@ -411,20 +411,30 @@ async function openDetail(idx) {
   if (!c._loaded && c._id) {
     try {
       var sb = getSupa();
-      var { data: row } = await sb.from('conversations_data').select('*').eq('id', c._id).maybeSingle();
-      if (row) {
-        var d = row.data || {};
-        Object.assign(c, d, { _id: row.id, _loaded: true });
-        c.msgs = (c.msgs || []).map(function(msg) {
-          var side = msg.s || msg.side || 'l';
-          if (side === 'n') return Object.assign({}, msg, {s: 'n'});
-          return Object.assign({}, msg, { s: side });
-        });
-        if (!c.vocab) c.vocab = [];
-        if (!c.grammar) c.grammar = [];
-        if (!c.mission) c.mission = [];
+      var res = await sb.from('conversations_data').select('*').eq('id', c._id).maybeSingle();
+      if (res.error) { console.warn('conv load error:', res.error); }
+      var row = res.data;
+      if (row && row.data) {
+        var d = row.data;
+        // 기존 카드 정보 유지하면서 상세 데이터 병합
+        c.msgs = d.msgs || [];
+        c.vocab = d.vocab || [];
+        c.grammar = d.grammar || [];
+        c.mission = d.mission || [];
+        c.key_expressions = d.key_expressions || [];
+        c.thumb = d.thumb || c.thumb;
+        c.topic = d.topic || c.topic;
+        c.avi = d.avi || '💬';
+        c.cast_left_slug = d.cast_left_slug;
+        c.cast_right_slug = d.cast_right_slug;
+        c._loaded = true;
       }
     } catch(e) { console.warn('conv detail load failed:', e); }
+  }
+
+  if (!c.msgs || !c.msgs.length) {
+    alert('대화 내용을 불러올 수 없습니다.');
+    return;
   }
 
   var cast = resolveConversationCast(c);
