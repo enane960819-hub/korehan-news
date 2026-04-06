@@ -1210,9 +1210,9 @@ async function uploadConvThumb(input) {
   var ext = file.name.split('.').pop().toLowerCase();
   var path = 'conversations/' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '.' + ext;
   try {
-    var { error } = await sb.storage.from('images').upload(path, file, { cacheControl:'3600', upsert:false });
+    var { error } = await sb.storage.from('article-images').upload(path, file, { cacheControl:'3600', upsert:true });
     if (error) throw error;
-    var { data: urlData } = sb.storage.from('images').getPublicUrl(path);
+    var { data: urlData } = sb.storage.from('article-images').getPublicUrl(path);
     var url = urlData && urlData.publicUrl;
     if (url) {
       document.getElementById('ie-thumb').value = url;
