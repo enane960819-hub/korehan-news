@@ -39,7 +39,7 @@ function renderPhrasePage() {
     + (related ? '<div class="phrase-chip-row">' + related + '</div>' : '')
     + '<div class="phrase-actions">'
     + '<a class="phrase-action primary" href="korehan-study-room.html">Start studying</a>'
-    + '<a class="phrase-action" href="korehan-x9f4k2m7-phrases.html?edit=' + idx + '">Edit phrase</a>'
+    + (window._isAdmin ? '<a class="phrase-action" href="korehan-x9f4k2m7-phrases.html?edit=' + idx + '">Edit phrase</a>' : '')
     + '</div>'
     + '</section>'
     + '<div class="phrase-grid">'

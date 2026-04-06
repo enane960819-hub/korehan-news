@@ -1232,14 +1232,16 @@ function normalizePhrase(row) {
   };
 }
 function getPhraseSourceRows() {
-  var raw = lsGet(K_PHRASES, null);
-  if (Array.isArray(raw)) return raw;
-
-  raw = _appSettings && _appSettings.phrases;
+  // DB(app_settings) 우선 — 기기별 차이 방지
+  var raw = _appSettings && _appSettings.phrases;
   if (raw && typeof raw === 'string') {
     try { raw = JSON.parse(raw); } catch(e) { raw = null; }
   }
-  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw) && raw.length) return raw;
+
+  var local = lsGet(K_PHRASES, null);
+  if (Array.isArray(local) && local.length) return local;
+
   return DEF_PHRASES;
 }
 function getPhrases()   { return getPhraseSourceRows().map(normalizePhrase); }
@@ -6775,7 +6777,7 @@ async function renderHomeLearningPreview() {
     var tick = done ? ' ✓' : '';
     return '<div style="flex:1;background:' + bg + ';border:1px solid ' + bord + ';border-radius:12px;padding:9px 10px;text-align:center;transition:background .2s,border-color .2s;">'
       + '<div style="font-size:16px;font-weight:900;color:' + valC + ';">' + val
-      + (done ? tick : '<span style="font-size:10px;color:rgba(255,255,255,.5)">/' + goal + '</span>')
+      + (done ? tick : (goal ? '<span style="font-size:10px;color:rgba(255,255,255,.5)">/' + goal + '</span>' : ''))
       + '</div>'
       + '<div style="font-size:10px;color:' + lblC + ';font-weight:700;">' + label + '</div>'
       + '</div>';
