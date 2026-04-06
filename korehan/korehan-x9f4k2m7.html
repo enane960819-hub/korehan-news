@@ -7325,12 +7325,9 @@ async function aseLoadList() {
   var el = document.getElementById('ase-list');
   if (!el) return;
   try {
-    // articles 테이블에서 조회
-    var artsRes = await sb.from('articles').select('id,title,section,topik_level,image').order('date',{ascending:false}).limit(200);
-    if (artsRes.error) {
-      // image 컬럼이 없을 수 있음 — 재시도
-      artsRes = await sb.from('articles').select('id,title,section,topik_level').order('date',{ascending:false}).limit(200);
-    }
+    // articles 테이블에서 조회 (Article List와 동일한 쿼리)
+    var artsRes = await sb.from('articles').select('*').order('date',{ascending:false}).limit(200);
+    if (artsRes.error) throw artsRes.error;
     _aseAllArticles = (artsRes.data || []).map(function(a){ a.image_url = a.image_url || a.image || ''; return a; });
     // article_study_content 조회 (테이블 없어도 무시)
     try {
