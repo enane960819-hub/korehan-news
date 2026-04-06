@@ -24,8 +24,8 @@
 /* Daily strip */
 .daily-strip {
   display: grid;
-  grid-template-columns: minmax(320px,1.1fr) minmax(300px,.95fr) 320px;
-  grid-template-areas: "phrase progress actions";
+  grid-template-columns: minmax(200px,.8fr) minmax(200px,.8fr) minmax(280px,.95fr) 300px;
+  grid-template-areas: "phrase guide progress actions";
   align-items: stretch;
   background: var(--navy);
   border: 1px solid rgba(255,255,255,.08);
@@ -189,15 +189,15 @@
 .ds-note-body { font-size: 12px; line-height:1.55; color: rgba(255,255,255,.78); }
 
 @media (max-width: 1280px) {
-  .daily-strip { grid-template-columns: minmax(280px,1fr) minmax(280px,.95fr) 280px; }
+  .daily-strip { grid-template-columns: minmax(180px,.7fr) minmax(180px,.7fr) minmax(260px,.95fr) 280px; }
 }
 
 @media (max-width: 1120px) {
   .daily-strip {
     grid-template-columns: minmax(0,1fr) minmax(0,1fr);
     grid-template-areas:
-      "phrase progress"
-      "actions actions";
+      "phrase guide"
+      "progress actions";
   }
   .ds-progress {
     border-left: 1px solid rgba(255,255,255,.1);
@@ -355,6 +355,7 @@
     grid-template-columns: 1fr;
     grid-template-areas:
       "phrase"
+      "guide"
       "progress"
       "actions";
   }
@@ -758,11 +759,17 @@ body.kh-neon-on .hero-dot {
     <a id="pb-phrase-block" href="korehan-phrase.html" class="ds-phrase">
       <div class="ds-label">Today’s Phrase</div>
       <div class="ds-ko" id="pb-ko"></div>
-      <div class="ds-rom" id="pb-rom"></div>
-      <div class="ds-en" id="pb-en"></div>
-      <div id="pb-note" class="ds-phrase-note" style="display:none"></div>
-      <div id="pb-example" class="ds-phrase-example" style="display:none"></div>
-      <div class="ds-phrase-footer">All phrases →</div>
+      <div class="ds-en" id="pb-en" style="margin-top:4px"></div>
+      <div id="pb-rom" style="display:none"></div>
+      <div id="pb-note" style="display:none"></div>
+      <div id="pb-example" style="display:none"></div>
+      <div class="ds-phrase-footer" style="margin-top:auto;padding-top:8px">See details →</div>
+    </a>
+    <a href="beginner-guide.html" class="ds-phrase" style="border-left:1px solid rgba(255,255,255,.06);background:rgba(56,189,248,.04)">
+      <div class="ds-label" style="color:#38bdf8">Beginner’s Guide</div>
+      <div style="font-size:15px;font-weight:800;color:#fff;line-height:1.35;margin-top:4px">New here? Start<br>with the basics.</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:6px;line-height:1.5">Learn how the platform works — reading, vocab, quizzes, and more.</div>
+      <div class="ds-phrase-footer" style="margin-top:auto;padding-top:8px;color:#38bdf8">Open guide →</div>
     </a>
 
     <div class="ds-progress" id="home-learning-preview">
@@ -1063,20 +1070,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (ko)  ko.textContent  = p.ko;
     if (rom) rom.textContent = p.rom;
     if (en)  en.textContent  = p.en;
-    // intro/nuance 추가
-    var pbNote = document.getElementById('pb-note');
-    if (pbNote) {
-      var noteText = (p.nuance || p.intro || '').trim();
-      if (noteText) { pbNote.textContent = noteText; pbNote.style.display = ''; }
-    }
-    // 오늘의 예문 첫번째
-    var pbEx = document.getElementById('pb-example');
-    if (pbEx && p.examples && p.examples.length) {
-      var ex = p.examples[0];
-      pbEx.innerHTML = '<span style="font-size:13px;font-weight:700;color:rgba(255,255,255,.88)">' + ex.ko + '</span>'
-        + (ex.en ? '<span style="font-size:11px;color:rgba(255,255,255,.46);margin-left:6px">' + ex.en + '</span>' : '');
-      pbEx.style.display = '';
-    }
+    // note/example는 축소된 배너에서 숨김 — phrase 상세 페이지에서 확인
     var pbBlock = document.getElementById('pb-phrase-block');
     if (pbBlock) pbBlock.href = 'korehan-phrase.html?i=' + phraseIndex;
   }
