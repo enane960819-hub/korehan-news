@@ -24,8 +24,8 @@
 /* Daily strip */
 .daily-strip {
   display: grid;
-  grid-template-columns: minmax(200px,.8fr) minmax(200px,.8fr) minmax(280px,.95fr) 300px;
-  grid-template-areas: "phrase guide progress actions";
+  grid-template-columns: minmax(320px,1.1fr) minmax(300px,.95fr) 320px;
+  grid-template-areas: "phrase progress actions";
   align-items: stretch;
   background: var(--navy);
   border: 1px solid rgba(255,255,255,.08);
@@ -189,15 +189,15 @@
 .ds-note-body { font-size: 12px; line-height:1.55; color: rgba(255,255,255,.78); }
 
 @media (max-width: 1280px) {
-  .daily-strip { grid-template-columns: minmax(180px,.7fr) minmax(180px,.7fr) minmax(260px,.95fr) 280px; }
+  .daily-strip { grid-template-columns: minmax(280px,1fr) minmax(280px,.95fr) 280px; }
 }
 
 @media (max-width: 1120px) {
   .daily-strip {
     grid-template-columns: minmax(0,1fr) minmax(0,1fr);
     grid-template-areas:
-      "phrase guide"
-      "progress actions";
+      "phrase progress"
+      "actions actions";
   }
   .ds-progress {
     border-left: 1px solid rgba(255,255,255,.1);
@@ -355,7 +355,6 @@
     grid-template-columns: 1fr;
     grid-template-areas:
       "phrase"
-      "guide"
       "progress"
       "actions";
   }
@@ -765,13 +764,6 @@ body.kh-neon-on .hero-dot {
       <div id="pb-example" style="display:none"></div>
       <div class="ds-phrase-footer" style="margin-top:auto;padding-top:8px">See details →</div>
     </a>
-    <a href="beginner-guide.html" class="ds-phrase" style="border-left:1px solid rgba(255,255,255,.06);background:rgba(56,189,248,.04)">
-      <div class="ds-label" style="color:#38bdf8">Beginner’s Guide</div>
-      <div style="font-size:15px;font-weight:800;color:#fff;line-height:1.35;margin-top:4px">New here? Start<br>with the basics.</div>
-      <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:6px;line-height:1.5">Learn how the platform works — reading, vocab, quizzes, and more.</div>
-      <div class="ds-phrase-footer" style="margin-top:auto;padding-top:8px;color:#38bdf8">Open guide →</div>
-    </a>
-
     <div class="ds-progress" id="home-learning-preview">
       <div class="hlp-loading" style="color:rgba(255,255,255,.45);font-size:12px;">Preparing your learning snapshot…</div>
     </div>
@@ -789,6 +781,16 @@ body.kh-neon-on .hero-dot {
       </div>
     </div>
   </div>
+
+  <!-- BEGINNER GUIDE BANNER -->
+  <a href="beginner-guide.html" style="display:flex;align-items:center;gap:14px;margin:16px 0 0;padding:14px 20px;background:linear-gradient(135deg,rgba(56,189,248,.08),rgba(37,99,235,.08));border:1px solid rgba(56,189,248,.15);border-radius:14px;text-decoration:none;transition:background .15s" onmouseover="this.style.background='rgba(56,189,248,.12)'" onmouseout="this.style.background=''">
+    <div style="width:36px;height:36px;border-radius:10px;background:rgba(56,189,248,.12);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📘</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:800;color:var(--text)">New here? Start with the Beginner's Guide</div>
+      <div style="font-size:11px;color:var(--gray);margin-top:2px">Learn how reading, vocab, quizzes, and progress tracking work together</div>
+    </div>
+    <span style="font-size:12px;font-weight:700;color:#38bdf8;white-space:nowrap">Open →</span>
+  </a>
 
   <!-- NEWS -->
   <div class="home-sec">
