@@ -4246,6 +4246,20 @@ function showLoginWall() {
   document.body.appendChild(wall);
 }
 
+// 로그인 성공 시 login wall 자동 제거 + 재초기화
+window.addEventListener('kh-auth-signed-in', function() {
+  var wall = document.getElementById('login-wall');
+  if (wall) {
+    wall.style.opacity = '0';
+    wall.style.transition = 'opacity .3s';
+    setTimeout(function(){ wall.remove(); }, 300);
+    // 현재 레벨로 재시작
+    if (typeof loadLevel === 'function' && _currentLevel) {
+      loadLevel(_currentLevel);
+    }
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════
 // TOAST
 // ═══════════════════════════════════════════════════════════════
