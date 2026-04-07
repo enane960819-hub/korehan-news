@@ -697,6 +697,7 @@ body.kh-neon-on .hero-dot {
 .home-hero-skeleton-side{display:flex;flex-direction:column;gap:14px;padding:18px;background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);border-left:1px solid #e7eef8;}
 .home-hero-skeleton-side span{display:block;height:72px;border-radius:14px;background:linear-gradient(120deg,#edf2f8 0%,#f8fbff 50%,#edf2f8 100%);background-size:200% 100%;animation:khHeroPulse 1.2s ease-in-out infinite;}
 @keyframes khHeroPulse{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes khBannerGlow{0%,100%{box-shadow:0 0 20px rgba(37,99,235,.12),inset 0 0 20px rgba(37,99,235,.03)}50%{box-shadow:0 0 32px rgba(56,189,248,.2),inset 0 0 24px rgba(56,189,248,.05)}}
 @media (max-width: 980px){.home-hero-loading{grid-template-columns:1fr}.home-hero-skeleton-side{display:none}.home-hero-skeleton-main{min-height:380px}}
 
 </style>
@@ -789,6 +790,33 @@ body.kh-neon-on .hero-dot {
 <div id="kh-welcome-banner" style="display:none"></div>
 
 <div class="container">
+  <!-- ONBOARDING / BEGINNER BANNER — 히어로 위에 눈에 띄게 -->
+  <div id="kh-welcome-action-banner"></div>
+  <script>
+  (function(){
+    var el = document.getElementById('kh-welcome-action-banner');
+    if (!el) return;
+    var glowStyle = 'display:flex;align-items:center;gap:14px;margin:0 0 14px;padding:16px 20px;border-radius:16px;text-decoration:none;transition:box-shadow .3s,background .2s;position:relative;overflow:hidden;';
+    function renderBanner() {
+      if (window.supaUser) {
+        el.innerHTML = '<a href="beginner-guide.html" style="' + glowStyle + 'background:linear-gradient(135deg,rgba(56,189,248,.06),rgba(37,99,235,.06));border:1.5px solid rgba(56,189,248,.25);box-shadow:0 0 20px rgba(56,189,248,.1),inset 0 0 20px rgba(56,189,248,.03)">'
+          + '<div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,rgba(56,189,248,.15),rgba(37,99,235,.15));display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📘</div>'
+          + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:#fff">Beginner\'s Guide</div>'
+          + '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:3px">Learn how all the features work together</div></div>'
+          + '<span style="font-size:12px;font-weight:800;color:#38bdf8;white-space:nowrap;padding:6px 14px;border-radius:999px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.2)">Open →</span></a>';
+      } else {
+        el.innerHTML = '<a href="korehan-onboarding.html" style="' + glowStyle + 'background:linear-gradient(135deg,rgba(37,99,235,.08),rgba(56,189,248,.05));border:1.5px solid rgba(37,99,235,.3);box-shadow:0 0 24px rgba(37,99,235,.15),inset 0 0 20px rgba(37,99,235,.04);animation:khBannerGlow 3s ease-in-out infinite">'
+          + '<div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#2563eb,#38bdf8);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 4px 14px rgba(37,99,235,.3)">🚀</div>'
+          + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:#fff">New here? Set up your profile in 1 minute</div>'
+          + '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:3px">Choose your level, set goals, and start learning</div></div>'
+          + '<span style="font-size:12px;font-weight:800;color:#fff;white-space:nowrap;padding:6px 14px;border-radius:999px;background:linear-gradient(135deg,#2563eb,#38bdf8);box-shadow:0 4px 12px rgba(37,99,235,.25)">Start →</span></a>';
+      }
+    }
+    renderBanner();
+    window.addEventListener('kh-auth-signed-in', renderBanner);
+  })();
+  </script>
+
   <!-- HERO -->
   <div id="dyn-hero" class="home-hero-loading"><div class="home-hero-skeleton-main"></div><div class="home-hero-skeleton-side"><span></span><span></span><span></span><span></span></div></div>
 
@@ -820,34 +848,6 @@ body.kh-neon-on .hero-dot {
       </div>
     </div>
   </div>
-
-  <!-- ONBOARDING / BEGINNER BANNER — 미로그인 시 온보딩, 로그인 시 가이드 -->
-  <div id="kh-welcome-action-banner"></div>
-  <script>
-  (function(){
-    var el = document.getElementById('kh-welcome-action-banner');
-    if (!el) return;
-    function renderBanner() {
-      if (window.supaUser) {
-        // 로그인 유저 → Beginner Guide
-        el.innerHTML = '<a href="beginner-guide.html" style="display:flex;align-items:center;gap:14px;margin:16px 0 0;padding:14px 20px;background:linear-gradient(135deg,rgba(56,189,248,.08),rgba(37,99,235,.08));border:1px solid rgba(56,189,248,.15);border-radius:14px;text-decoration:none;transition:background .15s">'
-          + '<div style="width:36px;height:36px;border-radius:10px;background:rgba(56,189,248,.12);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📘</div>'
-          + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:var(--text)">Check the Beginner\'s Guide</div>'
-          + '<div style="font-size:11px;color:var(--gray);margin-top:2px">Learn how all the features work together</div></div>'
-          + '<span style="font-size:12px;font-weight:700;color:#38bdf8;white-space:nowrap">Open →</span></a>';
-      } else {
-        // 미로그인 → 가입 + 온보딩 유도
-        el.innerHTML = '<a href="korehan-onboarding.html" style="display:flex;align-items:center;gap:14px;margin:16px 0 0;padding:14px 20px;background:linear-gradient(135deg,rgba(37,99,235,.1),rgba(56,189,248,.08));border:1px solid rgba(37,99,235,.2);border-radius:14px;text-decoration:none;transition:background .15s">'
-          + '<div style="width:36px;height:36px;border-radius:10px;background:rgba(37,99,235,.15);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🚀</div>'
-          + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:var(--text)">New here? Set up your profile in 1 minute</div>'
-          + '<div style="font-size:11px;color:var(--gray);margin-top:2px">Choose your level, set goals, and start your Korean journey</div></div>'
-          + '<span style="font-size:12px;font-weight:700;color:#2563eb;white-space:nowrap">Start →</span></a>';
-      }
-    }
-    renderBanner();
-    window.addEventListener('kh-auth-signed-in', renderBanner);
-  })();
-  </script>
 
   <!-- NEWS -->
   <div class="home-sec">
