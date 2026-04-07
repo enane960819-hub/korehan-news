@@ -704,15 +704,20 @@ body.kh-neon-on .hero-dot {
 <body>
 <script>
 // 첫 방문자 → 랜딩 페이지로 리다이렉트
-// localStorage에 kh_visited 없고, Supabase 세션도 없으면 첫 방문자
+// sessionStorage로 관리 — 탭/브라우저 닫으면 초기화되어 다시 랜딩 표시 가능
+// localStorage kh_visited는 "한 번이라도 Start Free 눌렀음"을 의미
+// Supabase 세션 있으면 (기존 유저) 항상 메인 직행
 (function(){
-  if (localStorage.getItem('kh_visited')) return; // 이미 방문한 유저
-  // Supabase 세션 토큰이 있으면 기존 유저
+  // Supabase 세션 토큰이 있으면 기존 유저 → 메인
   for (var i = 0; i < localStorage.length; i++) {
     var k = localStorage.key(i);
     if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0) return;
   }
-  // 첫 방문자 → 랜딩 페이지
+  // 이번 세션에서 이미 메인 본 적 있으면 스킵
+  if (sessionStorage.getItem('kh_seen_main')) return;
+  // 한 번이라도 Start Free 눌렀고 + 가입은 안 한 유저 → 메인 보여줌
+  if (localStorage.getItem('kh_visited')) { sessionStorage.setItem('kh_seen_main','1'); return; }
+  // 완전 첫 방문자 → 랜딩
   window.location.replace('landing.html');
 })();
 </script>
@@ -923,7 +928,7 @@ body.kh-neon-on .hero-dot {
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260407b"></script>
+<script src="korehan-shared.js?v=20260407c"></script>
 <script>
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},

@@ -4881,7 +4881,7 @@ function renderFooter() {
     + '<div>'
     + '<div style="font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:14px">Company</div>'
     + '<div style="display:flex;flex-direction:column;gap:9px">'
-    + '<a href="about.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">About</a>'
+    + '<a href="landing.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">About KoreHan News</a>'
     + '<a href="mailto:hello@korehannews.com" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Contact</a>'
     + '</div>'
     + '</div>'
@@ -7472,21 +7472,47 @@ function _fjRenderWidget() {
     '<div style="padding:16px 16px 12px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between">'
     + '<div><div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#38bdf8">Your First Journey</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:2px">' + done + '/' + total + ' completed</div></div>'
-    + '<button onclick="document.getElementById(\'fj-widget\').remove();localStorage.setItem(\'kh_fj_dismissed\',\'1\')" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:18px;cursor:pointer;padding:4px">✕</button>'
+    + '<button onclick="_fjDismissWidget()" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:18px;cursor:pointer;padding:4px">✕</button>'
     + '</div>'
     + '<div style="padding:4px 16px"><div style="height:4px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin:8px 0"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#38bdf8,#2563eb);border-radius:4px;transition:width .3s"></div></div></div>'
     + '<div style="padding:4px 16px 16px">' + stepsHtml + '</div>'
     + (done < total ? '<div style="padding:0 16px 14px;font-size:11px;color:rgba(255,255,255,.35);text-align:center">🎁 Complete all → +' + _FJ_BONUS + ' nyang bonus!</div>' : '');
 }
 
+// dismiss → 위젯 닫고 작은 resume 버튼 표시
+function _fjDismissWidget() {
+  var w = document.getElementById('fj-widget');
+  if (w) w.remove();
+  localStorage.setItem('kh_fj_dismissed', '1');
+  _fjShowResumeBtn();
+}
+function _fjShowResumeBtn() {
+  if (_fjAllDone()) return;
+  if (document.getElementById('fj-resume')) return;
+  var btn = document.createElement('button');
+  btn.id = 'fj-resume';
+  btn.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:7999;width:44px;height:44px;border-radius:50%;background:#0f1a2e;border:1px solid rgba(56,189,248,.25);color:#38bdf8;font-size:18px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;transition:transform .15s';
+  btn.innerHTML = '🎯';
+  btn.title = 'Resume First Journey';
+  btn.onclick = function() {
+    localStorage.removeItem('kh_fj_dismissed');
+    btn.remove();
+    _fjRenderWidget();
+  };
+  btn.onmouseover = function(){ btn.style.transform='scale(1.1)'; };
+  btn.onmouseout = function(){ btn.style.transform=''; };
+  document.body.appendChild(btn);
+}
+
 // 초기화 — DOMContentLoaded 후 실행
 document.addEventListener('DOMContentLoaded', function() {
-  // 첫 유저만 표시 (Journey 시작된 유저 or 신규)
   setTimeout(function() {
     _fjAutoCheck();
-    // 완료되지 않았고 dismiss 안 했으면 위젯 표시
-    if (!_fjAllDone() && !localStorage.getItem('kh_fj_dismissed')) {
-      _fjRenderWidget();
+    if (_fjAllDone()) return;
+    if (localStorage.getItem('kh_fj_dismissed')) {
+      _fjShowResumeBtn(); // dismissed → 작은 🎯 버튼만
+    } else {
+      _fjRenderWidget();  // 처음 → 전체 위젯
     }
   }, 1500);
 });
