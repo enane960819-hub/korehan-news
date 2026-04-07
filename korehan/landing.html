@@ -3,29 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KoreHan News — Learn Korean Through Real News</title>
+<title>KoreHan News — Learn Korean, Naturally</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;700;800&family=Noto+Sans+KR:wght@400;600;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
-:root{--navy:#0a1423;--bright:#2563eb;--sky:#38bdf8;--mint:#5eead4;--text:#0f172a;--muted:#64748b;--bg:#f8fafc;--card:#fff;--border:#e2e8f0}
-*{box-sizing:border-box;margin:0}
-html{scroll-behavior:smooth}
+:root{--navy:#0a1423;--bright:#2563eb;--sky:#38bdf8;--mint:#5eead4;--gold:#f59e0b;--text:#0f172a;--muted:#64748b;--bg:#f8fafc;--card:#fff;--border:#e2e8f0}
+*{box-sizing:border-box;margin:0}html{scroll-behavior:smooth}
 body{font-family:'DM Sans','Noto Sans KR',sans-serif;color:var(--text);background:var(--navy)}
 a{text-decoration:none;color:inherit}
 
-/* ── Hero ── */
+/* Hero */
 .l-hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative;overflow:hidden;padding:40px 24px}
 .l-hero-bg{position:absolute;inset:0;background:url('img/guide/hero-bg.png') center/cover no-repeat;opacity:.15;filter:blur(3px)}
 .l-hero-grad{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,20,35,.6) 0%,rgba(10,20,35,.85) 50%,var(--navy) 100%)}
 .l-hero-content{position:relative;z-index:2;max-width:680px}
 .l-logo{font-family:'Playfair Display',Georgia,serif;font-size:clamp(48px,10vw,80px);font-weight:900;color:#fff;letter-spacing:-.04em;line-height:1;margin-bottom:20px}
-.l-logo .han{color:var(--sky)}
-.l-logo .news{font-weight:400;opacity:.5}
+.l-logo .han{color:var(--sky)}.l-logo .news{font-weight:400;opacity:.5}
 .l-tagline{font-size:clamp(18px,3vw,28px);font-weight:800;color:#fff;line-height:1.3;margin-bottom:12px}
-.l-sub{font-size:16px;color:rgba(255,255,255,.55);line-height:1.7;max-width:480px;margin:0 auto 32px}
+.l-sub{font-size:16px;color:rgba(255,255,255,.55);line-height:1.7;max-width:500px;margin:0 auto 32px}
 .l-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.l-btn{display:inline-flex;align-items:center;justify-content:center;padding:14px 32px;border-radius:999px;font-size:15px;font-weight:800;transition:transform .15s,opacity .15s;border:none;cursor:pointer}
+.l-btn{display:inline-flex;align-items:center;justify-content:center;padding:14px 32px;border-radius:999px;font-size:15px;font-weight:800;transition:transform .15s;border:none;cursor:pointer}
 .l-btn:hover{transform:translateY(-2px)}
 .l-btn-primary{background:#fff;color:var(--navy)}
 .l-btn-ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);color:#fff}
@@ -33,14 +31,25 @@ a{text-decoration:none;color:inherit}
 @keyframes lBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
 .l-trust{display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin-top:36px;position:relative;z-index:2}
 .l-trust-item{font-size:13px;font-weight:700;color:rgba(255,255,255,.4);display:flex;align-items:center;gap:6px}
-.l-trust-item span{font-size:18px}
 
-/* ── Steps ── */
-.l-steps{background:var(--bg);padding:80px 24px}
+/* Screenshot showcase */
+.l-showcase{background:var(--navy);padding:0 24px 80px;text-align:center}
+.l-showcase-wrap{position:relative;max-width:900px;margin:0 auto;min-height:300px}
+.l-showcase-wrap img{border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.08)}
+.l-ss-main{width:80%;position:relative;z-index:2}
+.l-ss-float{position:absolute;z-index:3;border-radius:12px !important;box-shadow:0 16px 40px rgba(0,0,0,.5) !important}
+.l-ss-left{left:-5%;top:15%;width:30%;transform:rotate(-4deg)}
+.l-ss-right{right:-5%;top:25%;width:28%;transform:rotate(3deg)}
+.l-ss-placeholder{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e293b,#334155);color:rgba(255,255,255,.2);font-size:13px;font-weight:700;border-radius:16px;min-height:200px;border:2px dashed rgba(255,255,255,.1);width:80%;margin:0 auto}
+
+/* Section shared */
 .l-section-hd{text-align:center;margin-bottom:48px}
 .l-section-hd .eyebrow{font-size:12px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--bright);margin-bottom:10px}
 .l-section-hd h2{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);font-weight:900;letter-spacing:-.02em;margin-bottom:10px}
 .l-section-hd p{font-size:15px;color:var(--muted);max-width:480px;margin:0 auto;line-height:1.7}
+
+/* Steps */
+.l-steps{background:var(--bg);padding:80px 24px}
 .l-steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1000px;margin:0 auto}
 .l-step{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:32px 24px;text-align:center;transition:transform .2s,box-shadow .2s}
 .l-step:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(15,23,42,.08)}
@@ -48,7 +57,7 @@ a{text-decoration:none;color:inherit}
 .l-step h3{font-size:18px;font-weight:900;margin-bottom:8px}
 .l-step p{font-size:13px;color:var(--muted);line-height:1.65}
 
-/* ── Features ── */
+/* Features */
 .l-features{background:var(--navy);padding:80px 24px}
 .l-features .l-section-hd h2,.l-features .l-section-hd p{color:#fff}
 .l-features .l-section-hd p{color:rgba(255,255,255,.5)}
@@ -59,31 +68,46 @@ a{text-decoration:none;color:inherit}
 .l-feat h3{font-size:16px;font-weight:800;color:#fff;margin-bottom:6px}
 .l-feat p{font-size:12px;color:rgba(255,255,255,.5);line-height:1.6}
 
-/* ── Stats ── */
+/* Stats */
 .l-stats{background:linear-gradient(135deg,#0f2342,#1e3a5f);padding:60px 24px}
 .l-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:800px;margin:0 auto;text-align:center}
 .l-stat-num{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);font-weight:900;color:#fff}
 .l-stat-label{font-size:12px;color:rgba(255,255,255,.45);margin-top:4px}
 
-/* ── CTA ── */
-.l-cta{background:var(--bg);padding:80px 24px;text-align:center}
-.l-cta h2{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,40px);font-weight:900;margin-bottom:12px}
-.l-cta p{font-size:15px;color:var(--muted);max-width:460px;margin:0 auto 28px;line-height:1.7}
-.l-cta .l-btn-primary{background:var(--bright);color:#fff;font-size:16px;padding:16px 40px}
-.l-cta-note{font-size:12px;color:var(--muted);margin-top:14px}
+/* Featured */
+.l-featured{background:var(--bg);padding:80px 24px}
+.l-featured .l-section-hd .eyebrow{color:var(--gold)}
+.l-feat-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1060px;margin:0 auto}
+.l-feat-card{position:relative;border-radius:24px;overflow:hidden;min-height:340px;display:flex;flex-direction:column;justify-content:flex-end;padding:28px;transition:transform .2s,box-shadow .2s;cursor:pointer}
+.l-feat-card:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,.2)}
+.l-feat-card-bg{position:absolute;inset:0;z-index:0}
+.l-feat-card-overlay{position:absolute;inset:0;z-index:1}
+.l-feat-card-body{position:relative;z-index:2}
+.l-feat-card-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px}
+.l-feat-card h3{font-size:22px;font-weight:900;color:#fff;margin-bottom:8px;line-height:1.2}
+.l-feat-card p{font-size:13px;color:rgba(255,255,255,.7);line-height:1.6;margin-bottom:16px}
+.l-feat-card .l-btn{padding:10px 20px;font-size:13px}
 
-/* ── Footer ── */
-.l-footer{background:var(--navy);padding:24px;text-align:center;font-size:12px;color:rgba(255,255,255,.3)}
+/* CTA */
+.l-cta{background:var(--navy);padding:80px 24px;text-align:center}
+.l-cta h2{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,40px);font-weight:900;color:#fff;margin-bottom:12px}
+.l-cta p{font-size:15px;color:rgba(255,255,255,.5);max-width:460px;margin:0 auto 28px;line-height:1.7}
+.l-cta .l-btn-primary{background:#fff;color:var(--navy);font-size:16px;padding:16px 40px}
+.l-cta-note{font-size:12px;color:rgba(255,255,255,.35);margin-top:14px}
+.l-footer{background:var(--navy);border-top:1px solid rgba(255,255,255,.06);padding:24px;text-align:center;font-size:12px;color:rgba(255,255,255,.3)}
 
-/* ── Reveal ── */
+/* Reveal */
 [data-reveal]{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s cubic-bezier(.22,1,.36,1)}
 [data-reveal].is-in{opacity:1;transform:translateY(0)}
 
-/* ── Responsive ── */
+/* Responsive */
 @media(max-width:768px){
-  .l-steps-grid,.l-feat-grid{grid-template-columns:1fr;max-width:400px}
+  .l-steps-grid,.l-feat-grid,.l-feat-cards{grid-template-columns:1fr;max-width:400px}
   .l-stats-grid{grid-template-columns:repeat(2,1fr)}
   .l-hero{min-height:90vh;padding:30px 16px}
+  .l-feat-card{min-height:280px}
+  .l-ss-left,.l-ss-right{display:none}
+  .l-ss-main{width:95%}
 }
 </style>
 </head>
@@ -97,22 +121,34 @@ a{text-decoration:none;color:inherit}
     <div class="l-logo">
       <span>Kore</span><span class="han">Han</span><span class="news"> News</span>
     </div>
-    <div class="l-tagline">Learn Korean Through Real News</div>
-    <div class="l-sub">Read real Korean articles, save vocabulary, practice grammar, and track your progress — all for free.</div>
+    <div class="l-tagline">Learn Korean, Naturally.</div>
+    <div class="l-sub">Read real Korean content, build vocabulary, practice grammar, and track your progress — at your own pace.</div>
     <div class="l-btns">
-      <a href="index.html" class="l-btn l-btn-primary" onclick="localStorage.setItem('kh_visited','1')">Start Learning — Free</a>
-      <a href="beginner-guide.html" class="l-btn l-btn-ghost">See How It Works</a>
+      <a href="index.html" class="l-btn l-btn-primary" onclick="localStorage.setItem('kh_visited','1')">Get Started — Free</a>
+      <a href="beginner-guide.html" class="l-btn l-btn-ghost">How It Works</a>
     </div>
     <div class="l-trust">
-      <div class="l-trust-item"><span>📰</span> Real Korean news daily</div>
-      <div class="l-trust-item"><span>🎓</span> TOPIK levels supported</div>
-      <div class="l-trust-item"><span>💰</span> 100% free to use</div>
+      <div class="l-trust-item">📚 1,000+ content pieces</div>
+      <div class="l-trust-item">🎓 All TOPIK levels</div>
+      <div class="l-trust-item">✨ Free to start</div>
     </div>
   </div>
-  <a href="#how" class="l-scroll">
-    <span>Scroll to learn more</span>
+  <a href="#screenshots" class="l-scroll">
+    <span>Scroll to explore</span>
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
   </a>
+</section>
+
+<!-- ═══ SCREENSHOT SHOWCASE ═══ -->
+<section class="l-showcase" id="screenshots" data-reveal>
+  <div class="l-showcase-wrap">
+    <img class="l-ss-main" src="img/guide/hero-bg.png" alt="KoreHan News dashboard"
+         onerror="this.outerHTML='<div class=l-ss-placeholder>Add screenshot: hero-bg.png</div>'">
+    <img class="l-ss-float l-ss-left" src="img/guide/detail-article.png" alt="Article view"
+         onerror="this.style.display='none'">
+    <img class="l-ss-float l-ss-right" src="img/guide/detail-studyroom.png" alt="Study Room"
+         onerror="this.style.display='none'">
+  </div>
 </section>
 
 <!-- ═══ HOW IT WORKS ═══ -->
@@ -120,13 +156,13 @@ a{text-decoration:none;color:inherit}
   <div class="l-section-hd" data-reveal>
     <div class="eyebrow">How It Works</div>
     <h2>Three steps to real Korean</h2>
-    <p>No textbooks, no boring drills. Just real news you actually want to read.</p>
+    <p>No textbooks. No boring drills. Just real content you actually want to engage with.</p>
   </div>
   <div class="l-steps-grid">
     <div class="l-step" data-reveal>
       <div class="l-step-num">1</div>
       <h3>Pick & Read</h3>
-      <p>Choose a news article at your level. Hover any word to see its meaning and pronunciation instantly.</p>
+      <p>Choose from news, conversations, or stories at your level. Hover any word to see its meaning instantly.</p>
     </div>
     <div class="l-step" data-reveal>
       <div class="l-step-num">2</div>
@@ -151,33 +187,33 @@ a{text-decoration:none;color:inherit}
   <div class="l-feat-grid">
     <div class="l-feat" data-reveal>
       <div class="l-feat-icon" style="background:rgba(37,99,235,.15)">📰</div>
-      <h3>News Articles</h3>
-      <p>Real Korean news updated daily. Hover words for definitions. Every article has vocab, grammar, and quizzes.</p>
+      <h3>News</h3>
+      <p>Korean news updated daily with hover vocab, grammar highlights, and level-appropriate content.</p>
     </div>
     <div class="l-feat" data-reveal>
       <div class="l-feat-icon" style="background:rgba(16,185,129,.15)">💬</div>
       <h3>Conversations</h3>
-      <p>Natural Korean dialogues — everyday, workplace, friends, family, dating scenarios with real speech patterns.</p>
+      <p>Natural dialogues in everyday, workplace, friends, family, and dating scenarios.</p>
     </div>
     <div class="l-feat" data-reveal>
       <div class="l-feat-icon" style="background:rgba(139,92,246,.15)">📖</div>
       <h3>Stories</h3>
-      <p>Longer narratives for deeper reading. Fun, touching, scary, shocking — learn through emotion.</p>
+      <p>Longer narratives for deeper reading. Fun, touching, scary — learn through emotion.</p>
     </div>
     <div class="l-feat" data-reveal>
       <div class="l-feat-icon" style="background:rgba(245,158,11,.15)">📝</div>
       <h3>Study Room</h3>
-      <p>AI-powered review. Load any article for vocab quizzes, grammar breakdowns, fill-in-the-blank exercises.</p>
+      <p>AI-powered review with vocab quizzes, grammar breakdowns, and fill-in exercises.</p>
     </div>
     <div class="l-feat" data-reveal>
       <div class="l-feat-icon" style="background:rgba(236,72,153,.15)">📊</div>
       <h3>Growth Lab</h3>
-      <p>Track streaks, XP, weak grammar, daily missions. See your progress at a glance.</p>
+      <p>Track streaks, XP, weak grammar, and daily missions. See your progress at a glance.</p>
     </div>
     <div class="l-feat" data-reveal>
       <div class="l-feat-icon" style="background:rgba(14,165,233,.15)">🛍️</div>
       <h3>Shop & My Room</h3>
-      <p>Earn Nyang currency by studying. Spend it on room decorations, avatar items, and gifts.</p>
+      <p>Earn Nyang by studying. Spend it on room decorations, avatar items, and gifts.</p>
     </div>
   </div>
 </section>
@@ -185,39 +221,74 @@ a{text-decoration:none;color:inherit}
 <!-- ═══ STATS ═══ -->
 <section class="l-stats">
   <div class="l-stats-grid" data-reveal>
-    <div>
-      <div class="l-stat-num">30+</div>
-      <div class="l-stat-label">News articles</div>
+    <div><div class="l-stat-num">1,000+</div><div class="l-stat-label">Content pieces</div></div>
+    <div><div class="l-stat-num">500+</div><div class="l-stat-label">Conversations</div></div>
+    <div><div class="l-stat-num">4</div><div class="l-stat-label">TOPIK levels</div></div>
+    <div><div class="l-stat-num">2,000+</div><div class="l-stat-label">Vocab words</div></div>
+  </div>
+</section>
+
+<!-- ═══ FEATURED ═══ -->
+<section class="l-featured">
+  <div class="l-section-hd" data-reveal>
+    <div class="eyebrow">Featured</div>
+    <h2>Go deeper with premium content</h2>
+    <p>Curated packs and live sessions designed for serious learners</p>
+  </div>
+  <div class="l-feat-cards">
+
+    <!-- Korean Master Pack -->
+    <div class="l-feat-card" data-reveal onclick="location.href='korehan-courses.html'">
+      <div class="l-feat-card-bg" style="background:linear-gradient(135deg,#1e3a8a,#3b82f6)"></div>
+      <div class="l-feat-card-overlay" style="background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,.6) 100%)"></div>
+      <div class="l-feat-card-body">
+        <div class="l-feat-card-badge" style="background:rgba(255,255,255,.15);color:#93c5fd">⭐ Best Value</div>
+        <h3>Korean Master Pack</h3>
+        <p>Complete learning bundle — structured lessons, advanced grammar guides, exclusive content, and priority support.</p>
+        <span class="l-btn l-btn-primary" style="display:inline-flex">Learn More →</span>
+      </div>
     </div>
-    <div>
-      <div class="l-stat-num">45+</div>
-      <div class="l-stat-label">Conversations</div>
+
+    <!-- Slang & Culture -->
+    <div class="l-feat-card" data-reveal onclick="location.href='korehan-courses.html'">
+      <div class="l-feat-card-bg" style="background:linear-gradient(135deg,#065f46,#10b981)"></div>
+      <div class="l-feat-card-overlay" style="background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,.6) 100%)"></div>
+      <div class="l-feat-card-body">
+        <div class="l-feat-card-badge" style="background:rgba(255,255,255,.15);color:#6ee7b7">🔥 Popular</div>
+        <h3>Korean Slang & Culture</h3>
+        <p>Real street Korean — slang, abbreviations, internet language, memes, and cultural references that textbooks don't teach.</p>
+        <span class="l-btn l-btn-primary" style="display:inline-flex">Explore →</span>
+      </div>
     </div>
-    <div>
-      <div class="l-stat-num">4</div>
-      <div class="l-stat-label">TOPIK levels</div>
+
+    <!-- 1:1 Session -->
+    <div class="l-feat-card" data-reveal onclick="location.href='korehan-courses.html'">
+      <div class="l-feat-card-bg" style="background:linear-gradient(135deg,#7c2d12,#f59e0b)"></div>
+      <div class="l-feat-card-overlay" style="background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,.6) 100%)"></div>
+      <div class="l-feat-card-body">
+        <div class="l-feat-card-badge" style="background:rgba(255,255,255,.15);color:#fcd34d">👤 Personal</div>
+        <h3>1:1 Tutoring Session</h3>
+        <p>Book a private session with a native Korean speaker. Get personalized feedback on pronunciation, grammar, and conversation skills.</p>
+        <span class="l-btn l-btn-primary" style="display:inline-flex">Book Now →</span>
+      </div>
     </div>
-    <div>
-      <div class="l-stat-num">2000+</div>
-      <div class="l-stat-label">Vocab words</div>
-    </div>
+
   </div>
 </section>
 
 <!-- ═══ CTA ═══ -->
 <section class="l-cta">
   <div data-reveal>
-    <h2>Ready to start reading real Korean?</h2>
-    <p>Join KoreHan News and build your Korean skills with real news, every day. No credit card needed.</p>
-    <a href="index.html" class="l-btn l-btn-primary" onclick="localStorage.setItem('kh_visited','1')">Start Learning — Free</a>
-    <div class="l-cta-note">Already have an account? <a href="index.html" style="color:var(--bright);font-weight:700" onclick="localStorage.setItem('kh_visited','1')">Go to dashboard →</a></div>
+    <h2>Start your Korean journey today</h2>
+    <p>Join KoreHan News and build real Korean skills — one article, one conversation, one story at a time.</p>
+    <a href="index.html" class="l-btn l-btn-primary" onclick="localStorage.setItem('kh_visited','1')">Get Started — Free</a>
+    <div class="l-cta-note">No credit card required · <a href="index.html" style="color:var(--sky);font-weight:700" onclick="localStorage.setItem('kh_visited','1')">Already a member? Go to dashboard →</a></div>
   </div>
 </section>
 
 <div class="l-footer">© 2026 KoreHan News · <a href="terms-of-service.html" style="color:rgba(255,255,255,.4)">Terms</a> · <a href="privacy-policy.html" style="color:rgba(255,255,255,.4)">Privacy</a></div>
 
 <script>
-// Scroll reveal
 (function(){
   var items=document.querySelectorAll('[data-reveal]');
   if(!items.length)return;
