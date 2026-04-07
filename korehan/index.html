@@ -702,6 +702,20 @@ body.kh-neon-on .hero-dot {
 </style>
 </head>
 <body>
+<script>
+// 첫 방문자 → 랜딩 페이지로 리다이렉트
+// localStorage에 kh_visited 없고, Supabase 세션도 없으면 첫 방문자
+(function(){
+  if (localStorage.getItem('kh_visited')) return; // 이미 방문한 유저
+  // Supabase 세션 토큰이 있으면 기존 유저
+  for (var i = 0; i < localStorage.length; i++) {
+    var k = localStorage.key(i);
+    if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0) return;
+  }
+  // 첫 방문자 → 랜딩 페이지
+  window.location.replace('landing.html');
+})();
+</script>
 <!-- ── 로딩 오버레이 (인라인 — 외부 리소스 의존 없이 즉시 표시) ── -->
 <style>
 @keyframes kh-shimmer{0%{background-position:-200px 0}100%{background-position:200px 0}}
@@ -891,7 +905,7 @@ body.kh-neon-on .hero-dot {
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260406b"></script>
+<script src="korehan-shared.js?v=20260407a"></script>
 <script>
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},

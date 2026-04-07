@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KoreHan News — Learn Korean Through Real News</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;700;800&family=Noto+Sans+KR:wght@400;600;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<style>
+:root{--navy:#0a1423;--bright:#2563eb;--sky:#38bdf8;--mint:#5eead4;--text:#0f172a;--muted:#64748b;--bg:#f8fafc;--card:#fff;--border:#e2e8f0}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans','Noto Sans KR',sans-serif;color:var(--text);background:var(--navy)}
+a{text-decoration:none;color:inherit}
+
+/* ── Hero ── */
+.l-hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative;overflow:hidden;padding:40px 24px}
+.l-hero-bg{position:absolute;inset:0;background:url('img/guide/hero-bg.png') center/cover no-repeat;opacity:.15;filter:blur(3px)}
+.l-hero-grad{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,20,35,.6) 0%,rgba(10,20,35,.85) 50%,var(--navy) 100%)}
+.l-hero-content{position:relative;z-index:2;max-width:680px}
+.l-logo{font-family:'Playfair Display',Georgia,serif;font-size:clamp(48px,10vw,80px);font-weight:900;color:#fff;letter-spacing:-.04em;line-height:1;margin-bottom:20px}
+.l-logo .han{color:var(--sky)}
+.l-logo .news{font-weight:400;opacity:.5}
+.l-tagline{font-size:clamp(18px,3vw,28px);font-weight:800;color:#fff;line-height:1.3;margin-bottom:12px}
+.l-sub{font-size:16px;color:rgba(255,255,255,.55);line-height:1.7;max-width:480px;margin:0 auto 32px}
+.l-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.l-btn{display:inline-flex;align-items:center;justify-content:center;padding:14px 32px;border-radius:999px;font-size:15px;font-weight:800;transition:transform .15s,opacity .15s;border:none;cursor:pointer}
+.l-btn:hover{transform:translateY(-2px)}
+.l-btn-primary{background:#fff;color:var(--navy)}
+.l-btn-ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);color:#fff}
+.l-scroll{position:relative;z-index:2;margin-top:40px;color:rgba(255,255,255,.3);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:6px;animation:lBounce 2s ease-in-out infinite}
+@keyframes lBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+.l-trust{display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin-top:36px;position:relative;z-index:2}
+.l-trust-item{font-size:13px;font-weight:700;color:rgba(255,255,255,.4);display:flex;align-items:center;gap:6px}
+.l-trust-item span{font-size:18px}
+
+/* ── Steps ── */
+.l-steps{background:var(--bg);padding:80px 24px}
+.l-section-hd{text-align:center;margin-bottom:48px}
+.l-section-hd .eyebrow{font-size:12px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--bright);margin-bottom:10px}
+.l-section-hd h2{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);font-weight:900;letter-spacing:-.02em;margin-bottom:10px}
+.l-section-hd p{font-size:15px;color:var(--muted);max-width:480px;margin:0 auto;line-height:1.7}
+.l-steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1000px;margin:0 auto}
+.l-step{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:32px 24px;text-align:center;transition:transform .2s,box-shadow .2s}
+.l-step:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(15,23,42,.08)}
+.l-step-num{width:48px;height:48px;border-radius:50%;background:var(--bright);color:#fff;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.l-step h3{font-size:18px;font-weight:900;margin-bottom:8px}
+.l-step p{font-size:13px;color:var(--muted);line-height:1.65}
+
+/* ── Features ── */
+.l-features{background:var(--navy);padding:80px 24px}
+.l-features .l-section-hd h2,.l-features .l-section-hd p{color:#fff}
+.l-features .l-section-hd p{color:rgba(255,255,255,.5)}
+.l-feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:1000px;margin:0 auto}
+.l-feat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:24px;transition:background .2s}
+.l-feat:hover{background:rgba(255,255,255,.08)}
+.l-feat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:14px}
+.l-feat h3{font-size:16px;font-weight:800;color:#fff;margin-bottom:6px}
+.l-feat p{font-size:12px;color:rgba(255,255,255,.5);line-height:1.6}
+
+/* ── Stats ── */
+.l-stats{background:linear-gradient(135deg,#0f2342,#1e3a5f);padding:60px 24px}
+.l-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:800px;margin:0 auto;text-align:center}
+.l-stat-num{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);font-weight:900;color:#fff}
+.l-stat-label{font-size:12px;color:rgba(255,255,255,.45);margin-top:4px}
+
+/* ── CTA ── */
+.l-cta{background:var(--bg);padding:80px 24px;text-align:center}
+.l-cta h2{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,40px);font-weight:900;margin-bottom:12px}
+.l-cta p{font-size:15px;color:var(--muted);max-width:460px;margin:0 auto 28px;line-height:1.7}
+.l-cta .l-btn-primary{background:var(--bright);color:#fff;font-size:16px;padding:16px 40px}
+.l-cta-note{font-size:12px;color:var(--muted);margin-top:14px}
+
+/* ── Footer ── */
+.l-footer{background:var(--navy);padding:24px;text-align:center;font-size:12px;color:rgba(255,255,255,.3)}
+
+/* ── Reveal ── */
+[data-reveal]{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s cubic-bezier(.22,1,.36,1)}
+[data-reveal].is-in{opacity:1;transform:translateY(0)}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .l-steps-grid,.l-feat-grid{grid-template-columns:1fr;max-width:400px}
+  .l-stats-grid{grid-template-columns:repeat(2,1fr)}
+  .l-hero{min-height:90vh;padding:30px 16px}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ HERO ═══ -->
+<section class="l-hero">
+  <div class="l-hero-bg"></div>
+  <div class="l-hero-grad"></div>
+  <div class="l-hero-content" data-reveal>
+    <div class="l-logo">
+      <span>Kore</span><span class="han">Han</span><span class="news"> News</span>
+    </div>
+    <div class="l-tagline">Learn Korean Through Real News</div>
+    <div class="l-sub">Read real Korean articles, save vocabulary, practice grammar, and track your progress — all for free.</div>
+    <div class="l-btns">
+      <a href="index.html" class="l-btn l-btn-primary" onclick="localStorage.setItem('kh_visited','1')">Start Learning — Free</a>
+      <a href="beginner-guide.html" class="l-btn l-btn-ghost">See How It Works</a>
+    </div>
+    <div class="l-trust">
+      <div class="l-trust-item"><span>📰</span> Real Korean news daily</div>
+      <div class="l-trust-item"><span>🎓</span> TOPIK levels supported</div>
+      <div class="l-trust-item"><span>💰</span> 100% free to use</div>
+    </div>
+  </div>
+  <a href="#how" class="l-scroll">
+    <span>Scroll to learn more</span>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+  </a>
+</section>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section class="l-steps" id="how">
+  <div class="l-section-hd" data-reveal>
+    <div class="eyebrow">How It Works</div>
+    <h2>Three steps to real Korean</h2>
+    <p>No textbooks, no boring drills. Just real news you actually want to read.</p>
+  </div>
+  <div class="l-steps-grid">
+    <div class="l-step" data-reveal>
+      <div class="l-step-num">1</div>
+      <h3>Pick & Read</h3>
+      <p>Choose a news article at your level. Hover any word to see its meaning and pronunciation instantly.</p>
+    </div>
+    <div class="l-step" data-reveal>
+      <div class="l-step-num">2</div>
+      <h3>Study & Review</h3>
+      <p>Save words, check grammar patterns, and practice with AI-powered quizzes in Study Room.</p>
+    </div>
+    <div class="l-step" data-reveal>
+      <div class="l-step-num">3</div>
+      <h3>Track & Grow</h3>
+      <p>Earn XP, maintain your streak, and watch your Korean improve day by day in Growth Lab.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FEATURES ═══ -->
+<section class="l-features">
+  <div class="l-section-hd" data-reveal>
+    <div class="eyebrow" style="color:var(--sky)">Features</div>
+    <h2>Everything you need in one place</h2>
+    <p>A complete Korean learning ecosystem — not just another flashcard app</p>
+  </div>
+  <div class="l-feat-grid">
+    <div class="l-feat" data-reveal>
+      <div class="l-feat-icon" style="background:rgba(37,99,235,.15)">📰</div>
+      <h3>News Articles</h3>
+      <p>Real Korean news updated daily. Hover words for definitions. Every article has vocab, grammar, and quizzes.</p>
+    </div>
+    <div class="l-feat" data-reveal>
+      <div class="l-feat-icon" style="background:rgba(16,185,129,.15)">💬</div>
+      <h3>Conversations</h3>
+      <p>Natural Korean dialogues — everyday, workplace, friends, family, dating scenarios with real speech patterns.</p>
+    </div>
+    <div class="l-feat" data-reveal>
+      <div class="l-feat-icon" style="background:rgba(139,92,246,.15)">📖</div>
+      <h3>Stories</h3>
+      <p>Longer narratives for deeper reading. Fun, touching, scary, shocking — learn through emotion.</p>
+    </div>
+    <div class="l-feat" data-reveal>
+      <div class="l-feat-icon" style="background:rgba(245,158,11,.15)">📝</div>
+      <h3>Study Room</h3>
+      <p>AI-powered review. Load any article for vocab quizzes, grammar breakdowns, fill-in-the-blank exercises.</p>
+    </div>
+    <div class="l-feat" data-reveal>
+      <div class="l-feat-icon" style="background:rgba(236,72,153,.15)">📊</div>
+      <h3>Growth Lab</h3>
+      <p>Track streaks, XP, weak grammar, daily missions. See your progress at a glance.</p>
+    </div>
+    <div class="l-feat" data-reveal>
+      <div class="l-feat-icon" style="background:rgba(14,165,233,.15)">🛍️</div>
+      <h3>Shop & My Room</h3>
+      <p>Earn Nyang currency by studying. Spend it on room decorations, avatar items, and gifts.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ STATS ═══ -->
+<section class="l-stats">
+  <div class="l-stats-grid" data-reveal>
+    <div>
+      <div class="l-stat-num">30+</div>
+      <div class="l-stat-label">News articles</div>
+    </div>
+    <div>
+      <div class="l-stat-num">45+</div>
+      <div class="l-stat-label">Conversations</div>
+    </div>
+    <div>
+      <div class="l-stat-num">4</div>
+      <div class="l-stat-label">TOPIK levels</div>
+    </div>
+    <div>
+      <div class="l-stat-num">2000+</div>
+      <div class="l-stat-label">Vocab words</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CTA ═══ -->
+<section class="l-cta">
+  <div data-reveal>
+    <h2>Ready to start reading real Korean?</h2>
+    <p>Join KoreHan News and build your Korean skills with real news, every day. No credit card needed.</p>
+    <a href="index.html" class="l-btn l-btn-primary" onclick="localStorage.setItem('kh_visited','1')">Start Learning — Free</a>
+    <div class="l-cta-note">Already have an account? <a href="index.html" style="color:var(--bright);font-weight:700" onclick="localStorage.setItem('kh_visited','1')">Go to dashboard →</a></div>
+  </div>
+</section>
+
+<div class="l-footer">© 2026 KoreHan News · <a href="terms-of-service.html" style="color:rgba(255,255,255,.4)">Terms</a> · <a href="privacy-policy.html" style="color:rgba(255,255,255,.4)">Privacy</a></div>
+
+<script>
+// Scroll reveal
+(function(){
+  var items=document.querySelectorAll('[data-reveal]');
+  if(!items.length)return;
+  if(!('IntersectionObserver' in window)){items.forEach(function(e){e.classList.add('is-in')});return}
+  var io=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('is-in');io.unobserve(e.target)}})},{threshold:.12});
+  items.forEach(function(e){io.observe(e)});
+})();
+</script>
+</body>
+</html>

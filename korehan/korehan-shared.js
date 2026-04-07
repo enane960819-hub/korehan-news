@@ -4411,19 +4411,20 @@ async function loadXPConfig() {
 
 var _XP_ACTION_AMOUNTS = {
   article_read: 10,
-  word_save: 2,
+  word_save: 5,
   conv_quiz_complete: 20,
   fill_complete: 5,
   daily_mission_complete: 50,
   story_read: 10,
-  conversation_read: 10
+  conversation_read: 10,
+  first_journey_step: 5
 };
 var _COIN_ACTION_AMOUNTS = {
   article_read: 3,
-  word_save: 1,
+  word_save: 2,
   conv_quiz_complete: 5,
   fill_complete: 2,
-  daily_mission_complete: 12,
+  daily_mission_complete: 20,   // 12 → 20 (밸런스 상향)
   story_read: 3,
   conversation_read: 3
 };
@@ -6085,14 +6086,14 @@ async function trackActivityOnArticleRead(section, opts) {
   opts = opts || {};
   checkCulturalDateBadges();
   if (section) trackSectionRead(section);
-  if (opts.grantXP !== false) addXP(XP_TABLE.article_read);
+  // XP는 awardXP()에서만 지급 (addXP 이중지급 제거)
   checkBadges('article_read');
   await dmTrackArticle(opts);
 }
 
 // ── 단어 저장 시 XP + 뱃지 ──────────────────────────────────────────────────
 async function trackActivityOnWordSave() {
-  addXP(XP_TABLE.word_saved);
+  // XP는 awardXP()에서만 지급 (addXP 이중지급 제거)
   checkBadges('word_saved');
   await dmTrackWord();
 }
@@ -6100,7 +6101,7 @@ async function trackActivityOnWordSave() {
 // ── 퀴즈 완료 시 XP + 뱃지 ──────────────────────────────────────────────────
 async function trackActivityOnQuizComplete(pct) {
   var isPerfect = pct === 100;
-  addXP(isPerfect ? XP_TABLE.quiz_perfect : XP_TABLE.quiz_complete);
+  // XP는 awardXP()에서만 지급 (addXP 이중지급 제거)
 
   // 퀴즈 완료 횟수
   var done = lsGet('kh_quiz_done_count', 0);
@@ -7305,3 +7306,163 @@ async function logQuizResult(quizType, opts) {
 function _kstDateKey() {
   return new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 }
+
+// ══════════════════════════════════════════════════════════════════
+// FIRST JOURNEY — 신규 유저 퀘스트 시스템
+// ══════════════════════════════════════════════════════════════════
+var _FJ_KEY = 'kh_first_journey';
+var _FJ_STEPS = [
+  { id:'signup',    label:'Sign up & onboard',         icon:'✅', nyang: 0,  auto: true },
+  { id:'read',      label:'Read your first article',   icon:'📰', nyang: 10, page:'korehan-all.html' },
+  { id:'save_words',label:'Save 5 words',              icon:'💾', nyang: 5,  page:null },
+  { id:'study',     label:'Try Study Room',             icon:'📝', nyang: 5,  page:'korehan-study-room.html' },
+  { id:'convo',     label:'Read a conversation',        icon:'💬', nyang: 5,  page:'korehan-conversations.html' },
+  { id:'growth',    label:'Visit Growth Lab',            icon:'📊', nyang: 5,  page:'korehan-learning-overview.html' },
+  { id:'shop',      label:'Buy an item in Shop',        icon:'🛍️', nyang: 10, page:'korehan-shop.html' },
+  { id:'room',      label:'Place an item in My Room',   icon:'🏠', nyang: 10, page:'korehan-mypage.html' }
+];
+var _FJ_BONUS = 50; // 전체 완료 보너스
+
+function _fjGet() {
+  try { return JSON.parse(localStorage.getItem(_FJ_KEY)) || {}; } catch(e) { return {}; }
+}
+function _fjSet(data) {
+  try { localStorage.setItem(_FJ_KEY, JSON.stringify(data)); } catch(e) {}
+}
+function _fjIsComplete(stepId) {
+  return !!(_fjGet()[stepId]);
+}
+function _fjDoneCount() {
+  var d = _fjGet();
+  return _FJ_STEPS.filter(function(s){ return !!d[s.id]; }).length;
+}
+function _fjAllDone() {
+  return _fjDoneCount() >= _FJ_STEPS.length;
+}
+function _fjMarkDone(stepId) {
+  if (_fjIsComplete(stepId) || _fjAllDone()) return;
+  var d = _fjGet();
+  d[stepId] = Date.now();
+  _fjSet(d);
+  // 단계별 냥 보상
+  var step = _FJ_STEPS.find(function(s){ return s.id === stepId; });
+  if (step && step.nyang > 0 && supaUser) {
+    awardXP('first_journey_step', { content_id: stepId }).catch(function(){});
+    // 냥 직접 지급 (XP 시스템과 별도)
+    var sb = getSupa();
+    if (sb) {
+      sb.from('user_stats').select('coin_balance').eq('user_id', supaUser.id).maybeSingle()
+        .then(function(r) {
+          var cur = (r.data && r.data.coin_balance) || 0;
+          sb.from('user_stats').upsert({ user_id: supaUser.id, coin_balance: cur + step.nyang }, { onConflict:'user_id' });
+          if (typeof showCoinToast === 'function') showCoinToast(step.nyang);
+        }).catch(function(){});
+    }
+  }
+  _fjRenderWidget();
+  // 전체 완료 체크
+  if (_fjAllDone()) {
+    if (supaUser) {
+      var sb2 = getSupa();
+      if (sb2) {
+        sb2.from('user_stats').select('coin_balance').eq('user_id', supaUser.id).maybeSingle()
+          .then(function(r) {
+            var cur2 = (r.data && r.data.coin_balance) || 0;
+            sb2.from('user_stats').upsert({ user_id: supaUser.id, coin_balance: cur2 + _FJ_BONUS }, { onConflict:'user_id' });
+            if (typeof showCoinToast === 'function') showCoinToast(_FJ_BONUS);
+            if (typeof toast === 'function') toast('🎉 First Journey Complete! +' + _FJ_BONUS + ' nyang!', 'success');
+          }).catch(function(){});
+      }
+    }
+  }
+}
+
+// 자동 감지 hooks
+function _fjAutoCheck() {
+  if (_fjAllDone()) return;
+  var page = window.location.pathname.split('/').pop().replace(/\.html$/,'') || 'index';
+  // signup: 로그인 상태면 완료
+  if (supaUser && !_fjIsComplete('signup')) _fjMarkDone('signup');
+  // growth: Growth Lab 페이지 방문
+  if (page === 'korehan-learning-overview' && !_fjIsComplete('growth')) _fjMarkDone('growth');
+}
+
+// 글로벌 이벤트 hooks
+window.addEventListener('kh-auth-signed-in', function() {
+  if (!_fjIsComplete('signup')) _fjMarkDone('signup');
+  _fjRenderWidget();
+});
+
+// 기사 읽기 감지 — markArticleRead 호출 시
+var _origMarkArticleRead = window.markArticleRead;
+if (typeof _origMarkArticleRead === 'function') {
+  window.markArticleRead = function() {
+    if (!_fjIsComplete('read')) _fjMarkDone('read');
+    return _origMarkArticleRead.apply(this, arguments);
+  };
+}
+// 단어 저장 감지 — dbSaveWord 호출 시
+var _fjWordCount = 0;
+var _origDbSaveWord = window.dbSaveWord;
+if (typeof _origDbSaveWord === 'function') {
+  window.dbSaveWord = function() {
+    _fjWordCount++;
+    if (_fjWordCount >= 5 && !_fjIsComplete('save_words')) _fjMarkDone('save_words');
+    return _origDbSaveWord.apply(this, arguments);
+  };
+}
+
+// ── 플로팅 위젯 ──
+function _fjRenderWidget() {
+  if (_fjAllDone()) {
+    var el = document.getElementById('fj-widget');
+    if (el) el.remove();
+    // 완료 후 표시 안 함
+    var dismissed = localStorage.getItem('kh_fj_dismissed');
+    if (dismissed) return;
+    localStorage.setItem('kh_fj_dismissed', '1');
+    return;
+  }
+  if (localStorage.getItem('kh_fj_dismissed')) return;
+  var done = _fjDoneCount();
+  var total = _FJ_STEPS.length;
+  var pct = Math.round(done / total * 100);
+  var widget = document.getElementById('fj-widget');
+  if (!widget) {
+    widget = document.createElement('div');
+    widget.id = 'fj-widget';
+    widget.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:8000;width:300px;max-height:80vh;overflow-y:auto;background:#0f1a2e;border:1px solid rgba(56,189,248,.2);border-radius:18px;box-shadow:0 16px 48px rgba(0,0,0,.4);color:#fff;font-family:inherit;font-size:13px;transition:opacity .3s';
+    document.body.appendChild(widget);
+  }
+  var stepsHtml = _FJ_STEPS.map(function(s) {
+    var isDone = _fjIsComplete(s.id);
+    var link = (!isDone && s.page) ? ' onclick="location.href=\'' + s.page + '\'"' : '';
+    var cursor = (!isDone && s.page) ? 'cursor:pointer;' : '';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;' + cursor + (isDone ? 'opacity:.5' : '') + '"' + link + '>'
+      + '<span style="font-size:16px">' + (isDone ? '✅' : s.icon) + '</span>'
+      + '<span style="flex:1;' + (isDone ? 'text-decoration:line-through' : '') + '">' + s.label + '</span>'
+      + (s.nyang > 0 ? '<span style="font-size:11px;color:var(--mint,#5eead4);font-weight:700">' + (isDone ? '' : '+' + s.nyang + ' 냥') + '</span>' : '')
+      + '</div>';
+  }).join('');
+  widget.innerHTML =
+    '<div style="padding:16px 16px 12px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between">'
+    + '<div><div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#38bdf8">Your First Journey</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:2px">' + done + '/' + total + ' completed</div></div>'
+    + '<button onclick="document.getElementById(\'fj-widget\').remove();localStorage.setItem(\'kh_fj_dismissed\',\'1\')" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:18px;cursor:pointer;padding:4px">✕</button>'
+    + '</div>'
+    + '<div style="padding:4px 16px"><div style="height:4px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin:8px 0"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#38bdf8,#2563eb);border-radius:4px;transition:width .3s"></div></div></div>'
+    + '<div style="padding:4px 16px 16px">' + stepsHtml + '</div>'
+    + (done < total ? '<div style="padding:0 16px 14px;font-size:11px;color:rgba(255,255,255,.35);text-align:center">🎁 Complete all → +' + _FJ_BONUS + ' nyang bonus!</div>' : '');
+}
+
+// 초기화 — DOMContentLoaded 후 실행
+document.addEventListener('DOMContentLoaded', function() {
+  // 첫 유저만 표시 (Journey 시작된 유저 or 신규)
+  setTimeout(function() {
+    _fjAutoCheck();
+    // 완료되지 않았고 dismiss 안 했으면 위젯 표시
+    if (!_fjAllDone() && !localStorage.getItem('kh_fj_dismissed')) {
+      _fjRenderWidget();
+    }
+  }, 1500);
+});
