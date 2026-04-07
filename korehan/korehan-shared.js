@@ -7312,9 +7312,9 @@ function _kstDateKey() {
 // ══════════════════════════════════════════════════════════════════
 var _FJ_KEY = 'kh_first_journey';
 var _FJ_STEPS = [
-  { id:'signup',    label:'Sign up & onboard',         icon:'✅', nyang: 0,  auto: true },
+  { id:'signup',    label:'Sign up & complete onboarding', icon:'👤', nyang: 0,  auto: true, page:'korehan-onboarding.html' },
   { id:'read',      label:'Read your first article',   icon:'📰', nyang: 10, page:'korehan-all.html' },
-  { id:'save_words',label:'Save 5 words',              icon:'💾', nyang: 5,  page:null },
+  { id:'save_words',label:'Save 5 words',              icon:'💾', nyang: 5,  page:'korehan-all.html', hint:'Hover a word → click + Save' },
   { id:'study',     label:'Try Study Room',             icon:'📝', nyang: 5,  page:'korehan-study-room.html' },
   { id:'convo',     label:'Read a conversation',        icon:'💬', nyang: 5,  page:'korehan-conversations.html' },
   { id:'growth',    label:'Visit Growth Lab',            icon:'📊', nyang: 5,  page:'korehan-learning-overview.html' },
@@ -7381,15 +7381,26 @@ function _fjMarkDone(stepId) {
 function _fjAutoCheck() {
   if (_fjAllDone()) return;
   var page = window.location.pathname.split('/').pop().replace(/\.html$/,'') || 'index';
-  // signup: 로그인 상태면 완료
-  if (supaUser && !_fjIsComplete('signup')) _fjMarkDone('signup');
+  // signup: 로그인 + 온보딩 완료 시에만 체크
+  if (supaUser && !_fjIsComplete('signup')) {
+    var onboarded = false;
+    try { onboarded = hasCompletedOnboardingLocal(supaUser.id) || hasCompletedOnboardingLocal(''); } catch(e) {}
+    if (onboarded) _fjMarkDone('signup');
+  }
   // growth: Growth Lab 페이지 방문
   if (page === 'korehan-learning-overview' && !_fjIsComplete('growth')) _fjMarkDone('growth');
+  // study: Study Room 페이지 방문
+  if (page === 'korehan-study-room' && !_fjIsComplete('study')) _fjMarkDone('study');
+  // convo: Conversations 페이지에서 대화 열기 (openDetail에서 감지)
+  if (page === 'korehan-conversations' && !_fjIsComplete('convo')) {
+    // openDetail 호출 시 감지 — conversations.html에서 처리
+  }
 }
 
 // 글로벌 이벤트 hooks
 window.addEventListener('kh-auth-signed-in', function() {
-  if (!_fjIsComplete('signup')) _fjMarkDone('signup');
+  // signup은 onboarding 완료 후에만 체크 — 여기선 위젯만 갱신
+  _fjAutoCheck();
   _fjRenderWidget();
 });
 
@@ -7434,14 +7445,27 @@ function _fjRenderWidget() {
     widget.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:8000;width:300px;max-height:80vh;overflow-y:auto;background:#0f1a2e;border:1px solid rgba(56,189,248,.2);border-radius:18px;box-shadow:0 16px 48px rgba(0,0,0,.4);color:#fff;font-family:inherit;font-size:13px;transition:opacity .3s';
     document.body.appendChild(widget);
   }
+  // 다음 할 일 찾기 (첫 번째 미완료 항목)
+  var _fjNextId = null;
+  for (var _fi = 0; _fi < _FJ_STEPS.length; _fi++) {
+    if (!_fjIsComplete(_FJ_STEPS[_fi].id)) { _fjNextId = _FJ_STEPS[_fi].id; break; }
+  }
   var stepsHtml = _FJ_STEPS.map(function(s) {
     var isDone = _fjIsComplete(s.id);
-    var link = (!isDone && s.page) ? ' onclick="location.href=\'' + s.page + '\'"' : '';
+    var isNext = (s.id === _fjNextId);
+    var link = (!isDone && s.page) ? ' onclick="location.href=\'' + s.page + (s.id === 'save_words' ? '#vocab-zone' : '') + '\'"' : '';
     var cursor = (!isDone && s.page) ? 'cursor:pointer;' : '';
-    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;' + cursor + (isDone ? 'opacity:.5' : '') + '"' + link + '>'
+    var highlight = isNext ? 'background:rgba(56,189,248,.08);border-radius:8px;margin:0 -8px;padding:8px;' : 'padding:8px 0;';
+    var nextArrow = isNext ? '<span style="font-size:11px;color:#38bdf8;font-weight:800;white-space:nowrap">Go →</span>' : '';
+    return '<div style="display:flex;align-items:center;gap:10px;' + highlight + cursor + (isDone ? 'opacity:.45' : '') + ';transition:background .15s"' + link
+      + (!isDone && s.page ? ' onmouseover="this.style.background=\'rgba(56,189,248,.12)\'" onmouseout="this.style.background=\'' + (isNext ? 'rgba(56,189,248,.08)' : '') + '\'"' : '')
+      + '>'
       + '<span style="font-size:16px">' + (isDone ? '✅' : s.icon) + '</span>'
-      + '<span style="flex:1;' + (isDone ? 'text-decoration:line-through' : '') + '">' + s.label + '</span>'
-      + (s.nyang > 0 ? '<span style="font-size:11px;color:var(--mint,#5eead4);font-weight:700">' + (isDone ? '' : '+' + s.nyang + ' 냥') + '</span>' : '')
+      + '<div style="flex:1;min-width:0"><span style="' + (isDone ? 'text-decoration:line-through;' : '') + (isNext ? 'font-weight:700;color:#fff' : '') + '">' + s.label + '</span>'
+      + (isNext && s.hint ? '<div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px">' + s.hint + '</div>' : '')
+      + '</div>'
+      + (s.nyang > 0 && !isDone ? '<span style="font-size:10px;color:#5eead4;font-weight:700;white-space:nowrap">+' + s.nyang + '</span>' : '')
+      + nextArrow
       + '</div>';
   }).join('');
   widget.innerHTML =
