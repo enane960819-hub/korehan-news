@@ -193,7 +193,7 @@
 </div>
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260407a"></script>
+<script src="korehan-shared.js?v=20260407b"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // KoreHan Character System
@@ -418,6 +418,10 @@ function highlightKeyExprs(text, keyExprs) {
 async function openDetail(idx) {
   var c = CONVS[idx];
   if (!c) return;
+  // First Journey: 대화 읽기 퀘스트 체크
+  if (typeof _fjIsComplete === 'function' && !_fjIsComplete('convo')) {
+    if (typeof _fjMarkDone === 'function') _fjMarkDone('convo');
+  }
 
   // 상세 데이터 아직 안 로드됐으면 DB에서 가져오기
   if (!c._loaded && c._id) {

@@ -816,15 +816,33 @@ body.kh-neon-on .hero-dot {
     </div>
   </div>
 
-  <!-- BEGINNER GUIDE BANNER -->
-  <a href="beginner-guide.html" style="display:flex;align-items:center;gap:14px;margin:16px 0 0;padding:14px 20px;background:linear-gradient(135deg,rgba(56,189,248,.08),rgba(37,99,235,.08));border:1px solid rgba(56,189,248,.15);border-radius:14px;text-decoration:none;transition:background .15s" onmouseover="this.style.background='rgba(56,189,248,.12)'" onmouseout="this.style.background=''">
-    <div style="width:36px;height:36px;border-radius:10px;background:rgba(56,189,248,.12);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📘</div>
-    <div style="flex:1;min-width:0">
-      <div style="font-size:13px;font-weight:800;color:var(--text)">New here? Start with the Beginner's Guide</div>
-      <div style="font-size:11px;color:var(--gray);margin-top:2px">Learn how reading, vocab, quizzes, and progress tracking work together</div>
-    </div>
-    <span style="font-size:12px;font-weight:700;color:#38bdf8;white-space:nowrap">Open →</span>
-  </a>
+  <!-- ONBOARDING / BEGINNER BANNER — 미로그인 시 온보딩, 로그인 시 가이드 -->
+  <div id="kh-welcome-action-banner"></div>
+  <script>
+  (function(){
+    var el = document.getElementById('kh-welcome-action-banner');
+    if (!el) return;
+    function renderBanner() {
+      if (window.supaUser) {
+        // 로그인 유저 → Beginner Guide
+        el.innerHTML = '<a href="beginner-guide.html" style="display:flex;align-items:center;gap:14px;margin:16px 0 0;padding:14px 20px;background:linear-gradient(135deg,rgba(56,189,248,.08),rgba(37,99,235,.08));border:1px solid rgba(56,189,248,.15);border-radius:14px;text-decoration:none;transition:background .15s">'
+          + '<div style="width:36px;height:36px;border-radius:10px;background:rgba(56,189,248,.12);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📘</div>'
+          + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:var(--text)">Check the Beginner\'s Guide</div>'
+          + '<div style="font-size:11px;color:var(--gray);margin-top:2px">Learn how all the features work together</div></div>'
+          + '<span style="font-size:12px;font-weight:700;color:#38bdf8;white-space:nowrap">Open →</span></a>';
+      } else {
+        // 미로그인 → 가입 + 온보딩 유도
+        el.innerHTML = '<a href="korehan-onboarding.html" style="display:flex;align-items:center;gap:14px;margin:16px 0 0;padding:14px 20px;background:linear-gradient(135deg,rgba(37,99,235,.1),rgba(56,189,248,.08));border:1px solid rgba(37,99,235,.2);border-radius:14px;text-decoration:none;transition:background .15s">'
+          + '<div style="width:36px;height:36px;border-radius:10px;background:rgba(37,99,235,.15);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🚀</div>'
+          + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:var(--text)">New here? Set up your profile in 1 minute</div>'
+          + '<div style="font-size:11px;color:var(--gray);margin-top:2px">Choose your level, set goals, and start your Korean journey</div></div>'
+          + '<span style="font-size:12px;font-weight:700;color:#2563eb;white-space:nowrap">Start →</span></a>';
+      }
+    }
+    renderBanner();
+    window.addEventListener('kh-auth-signed-in', renderBanner);
+  })();
+  </script>
 
   <!-- NEWS -->
   <div class="home-sec">
@@ -905,7 +923,7 @@ body.kh-neon-on .hero-dot {
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260407a"></script>
+<script src="korehan-shared.js?v=20260407b"></script>
 <script>
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},
