@@ -4004,41 +4004,47 @@ async function submitWriting() {
 // AI 1차 첨삭 — 백그라운드 실행
 async function triggerAIFeedback(submissionId, text, vocab, grammar) {
   try {
-    var prompt = '당신은 한국어 작문 첨삭 선생님입니다.\n\n'
+    var wordCount = text.replace(/\s+/g,' ').trim().split(' ').length;
+    var isTooShort = wordCount < 8;
+
+    var prompt = '당신은 한국어 작문 첨삭 전문가입니다. 학생의 작문을 매우 세밀하게 분석해주세요.\n\n'
       + '학생 작문:\n"""\n' + text + '\n"""\n\n'
       + '필수 어휘: ' + vocab.join(', ') + '\n'
       + '필수 문법: ' + grammar.join(', ') + '\n\n'
-      + 'Also categorize each mistake into one of these patterns:\n'
-      + '- PARTICLE: wrong particle (조사)\n'
-      + '- TENSE: wrong tense or ending\n'
-      + '- WORD_ORDER: incorrect word placement\n'
-      + '- SPELLING: typos or incorrect spelling\n'
-      + '- VOCAB: wrong word choice\n\n'
-      + '다음 형식으로 첨삭해주세요 (JSON):\n'
+      + '다음 JSON 형식으로 상세 피드백을 제공하세요:\n'
       + '{\n'
-      + '  "overall": "전반적인 평가 1-2문장",\n'
-      + '  "corrections": [{"original":"원문","corrected":"수정문","reason":"이유","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB"}],\n'
-      + '  "vocab_feedback": "어휘 사용에 대한 피드백",\n'
-      + '  "grammar_feedback": "문법 사용에 대한 피드백",\n'
-      + '  "mistake_patterns": {"PARTICLE":0,"TENSE":0,"WORD_ORDER":0,"SPELLING":0,"VOCAB":0},\n'
-      + '  "encouragement": "격려 한마디"\n'
-      + '}\n'
-      + 'For mistake_patterns, count how many corrections fall into each category. Only include categories that have errors (count > 0).\n'
-      + 'JSON만 반환하세요.';
+      + '  "score": 0~100 (정수, 전체 점수),\n'
+      + '  "overall": "전반적인 평가 2-3문장 (한국어로, 잘한 점 먼저 + 개선점)",\n'
+      + '  "corrected_full": "학생의 전체 문장을 교정한 완성본 (틀린 부분만 고친 자연스러운 문장)",\n'
+      + '  "corrections": [\n'
+      + '    {"original":"틀린 표현","corrected":"수정된 표현","reason":"왜 틀렸는지 한국어로 설명","pattern":"SPELLING|PARTICLE|TENSE|WORD_ORDER|VOCAB|NUANCE"}\n'
+      + '  ],\n'
+      + '  "spelling": [{"wrong":"맞춤법 틀린 단어","correct":"올바른 표기","tip":"쉬운 기억법"}],\n'
+      + '  "naturalness": {"score":0~10,"comment":"자연스러움 평가 (원어민 관점에서 어색한 부분)","suggestions":["더 자연스러운 대안 표현1","대안2"]},\n'
+      + '  "nuance": {"comment":"뉘앙스/어감 피드백","word_swaps":[{"from":"사용된 단어","to":"추천 단어","why":"뉘앙스 차이 설명"}]},\n'
+      + '  "structure": {"comment":"문장 구조/어순 평가","tip":"구조 개선 팁"},\n'
+      + '  "vocab_feedback": "어휘 사용 평가 + 추가 추천 어휘",\n'
+      + '  "grammar_feedback": "문법 사용 평가 + 주의할 점",\n'
+      + '  "extra_content": "이 주제로 더 쓸 수 있는 내용 아이디어 2-3가지",\n'
+      + '  "mistake_patterns": {"SPELLING":0,"PARTICLE":0,"TENSE":0,"WORD_ORDER":0,"VOCAB":0,"NUANCE":0},\n'
+      + '  "encouragement": "격려 한마디 (한국어)"'
+      + (isTooShort ? ',\n  "example_answer": "이 주제에 대한 예시 답변 (3-5문장, 학생 수준에 맞게)"' : '')
+      + '\n}\n'
+      + '모든 피드백은 한국어로 작성. JSON만 반환하세요.';
 
     var data = await callClaude({
       feature: 'writing_feedback',
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
+      max_tokens: 2000,
       messages: [{ role: 'user', content: prompt }]
     });
 
     var raw = (data.content || []).map(function(c){ return c.text || ''; }).join('');
-    var clean = raw.replace(/```json|```/g,'').trim();
-    var parsed = JSON.parse(clean);
-    var feedbackText = JSON.stringify(parsed, null, 2);
+    var clean = raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+    var openB = clean.indexOf('{'), closeB = clean.lastIndexOf('}');
+    if (openB < 0 || closeB <= openB) throw new Error('Invalid JSON response');
+    var parsed = JSON.parse(clean.slice(openB, closeB + 1));
 
-    // DB 업데이트
     var sb = getSupa();
     if (sb) {
       await sb.from('user_submissions').update({
@@ -4120,20 +4126,17 @@ function openFeedbackInbox() {
   if (!supaUser) { openAuthModal('signin'); return; }
   var overlay = document.createElement('div');
   overlay.id = 'feedback-inbox-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.85);z-index:3000;display:flex;align-items:center;justify-content:center;padding:12px;';
   overlay.onclick = function(e){ if (e.target === overlay) overlay.remove(); };
 
   overlay.innerHTML =
-    '<div style="background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.2);">'
-    + '<div style="padding:16px 20px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;">'
-    + '<div style="font-size:16px;font-weight:800;color:#1a1a1a;">Writing Feedback</div>'
-    + '<button onclick="document.getElementById(\'feedback-inbox-overlay\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#94a3b8;">✕</button>'
+    '<div style="background:#0d1b2e;border:1px solid rgba(255,255,255,.1);border-radius:16px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.4);color:#fff">'
+    + '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#0d1b2e;z-index:1;border-radius:16px 16px 0 0">'
+    + '<div style="font-size:16px;font-weight:800">📝 Writing Feedback</div>'
+    + '<button onclick="document.getElementById(\'feedback-inbox-overlay\').remove()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px">✕</button>'
     + '</div>'
     + '<div id="feedback-inbox-content" style="padding:16px 20px;">'
-    + '<div style="text-align:center;color:#94a3b8;padding:24px;">Loading...</div>'
-    + '</div>'
-    + '<div style="padding:12px 20px;border-top:1px solid #f0f0f0;text-align:center">'
-    + '<a href="korehan-learning-overview.html" style="font-size:12px;font-weight:700;color:var(--bright,#2563eb);text-decoration:none">전체 히스토리 보기 → Growth Lab</a>'
+    + '<div style="text-align:center;color:rgba(255,255,255,.4);padding:24px">Loading...</div>'
     + '</div>'
     + '</div>';
 
@@ -4141,49 +4144,176 @@ function openFeedbackInbox() {
   renderFeedbackInboxContent();
 }
 
+// ── Feedback rendering helpers ──
+var _fbPatternIcons = { SPELLING:'✏️', PARTICLE:'🔗', TENSE:'⏰', WORD_ORDER:'🔀', VOCAB:'📖', NUANCE:'💬' };
+var _fbPatternLabels = { SPELLING:'맞춤법', PARTICLE:'조사', TENSE:'시제/어미', WORD_ORDER:'어순', VOCAB:'어휘 선택', NUANCE:'뉘앙스' };
+
+function renderDetailedFeedback(fb, writingText) {
+  if (!fb) return '<div style="color:rgba(255,255,255,.4)">피드백 데이터 없음</div>';
+  var h = '';
+
+  // Score badge
+  if (fb.score !== undefined) {
+    var scoreColor = fb.score >= 80 ? '#4ade80' : fb.score >= 60 ? '#fbbf24' : '#f87171';
+    h += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">'
+      + '<div style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.06);border:3px solid ' + scoreColor + ';display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:' + scoreColor + '">' + fb.score + '</div>'
+      + '<div><div style="font-size:14px;font-weight:700">' + (fb.score >= 80 ? '잘 했어요!' : fb.score >= 60 ? '거의 다 왔어요!' : '조금 더 연습해요!') + '</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.5);line-height:1.5">' + (fb.overall || '') + '</div></div></div>';
+  } else if (fb.overall) {
+    h += '<div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.6;margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,.04);border-radius:8px">' + fb.overall + '</div>';
+  }
+
+  // Corrected full text
+  if (fb.corrected_full) {
+    h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">교정된 전체 문장</div>'
+      + '<div style="font-size:14px;line-height:1.7;padding:12px 14px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15);border-radius:10px;font-family:\'Noto Sans KR\',sans-serif">' + fb.corrected_full + '</div></div>';
+  }
+
+  // Corrections (main)
+  if (fb.corrections && fb.corrections.length) {
+    h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#f87171;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">수정 사항 (' + fb.corrections.length + ')</div>';
+    fb.corrections.forEach(function(c) {
+      var icon = _fbPatternIcons[c.pattern] || '🔧';
+      var label = _fbPatternLabels[c.pattern] || c.pattern;
+      h += '<div style="padding:10px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;margin-bottom:6px">'
+        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:14px">' + icon + '</span><span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;background:rgba(248,113,113,.15);color:#fca5a5">' + label + '</span></div>'
+        + '<div style="font-size:13px;margin-bottom:4px"><span style="text-decoration:line-through;color:#f87171;background:rgba(248,113,113,.1);padding:1px 4px;border-radius:3px">' + (c.original||'') + '</span> → <span style="color:#4ade80;background:rgba(74,222,128,.1);padding:1px 4px;border-radius:3px;font-weight:700">' + (c.corrected||'') + '</span></div>'
+        + '<div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.5">' + (c.reason||'') + '</div></div>';
+    });
+    h += '</div>';
+  }
+
+  // Spelling
+  if (fb.spelling && fb.spelling.length) {
+    h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">✏️ 맞춤법</div>';
+    fb.spelling.forEach(function(s) {
+      h += '<div style="font-size:13px;padding:6px 10px;background:rgba(251,191,36,.06);border-left:3px solid #fbbf24;border-radius:0 6px 6px 0;margin-bottom:4px">'
+        + '<span style="text-decoration:line-through;color:#fbbf24">' + (s.wrong||'') + '</span> → <span style="font-weight:700">' + (s.correct||'') + '</span>'
+        + (s.tip ? ' <span style="color:rgba(255,255,255,.4);font-size:11px">(' + s.tip + ')</span>' : '')
+        + '</div>';
+    });
+    h += '</div>';
+  }
+
+  // Naturalness
+  if (fb.naturalness) {
+    h += '<div style="margin-bottom:14px;padding:12px 14px;background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.15);border-radius:10px">'
+      + '<div style="font-size:11px;font-weight:700;color:#60a5fa;margin-bottom:6px">🗣️ 자연스러움 ' + (fb.naturalness.score !== undefined ? fb.naturalness.score + '/10' : '') + '</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.65);line-height:1.6;margin-bottom:6px">' + (fb.naturalness.comment||'') + '</div>';
+    if (fb.naturalness.suggestions && fb.naturalness.suggestions.length) {
+      h += '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">추천 표현:</div>';
+      fb.naturalness.suggestions.forEach(function(s) { h += '<div style="font-size:13px;color:#60a5fa;margin-top:2px">• ' + s + '</div>'; });
+    }
+    h += '</div>';
+  }
+
+  // Nuance / Word Swaps
+  if (fb.nuance && (fb.nuance.comment || (fb.nuance.word_swaps && fb.nuance.word_swaps.length))) {
+    h += '<div style="margin-bottom:14px;padding:12px 14px;background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.15);border-radius:10px">'
+      + '<div style="font-size:11px;font-weight:700;color:#c4b5fd;margin-bottom:6px">💬 뉘앙스</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.6;margin-bottom:6px">' + (fb.nuance.comment||'') + '</div>';
+    if (fb.nuance.word_swaps && fb.nuance.word_swaps.length) {
+      fb.nuance.word_swaps.forEach(function(ws) {
+        h += '<div style="font-size:12px;padding:4px 0"><span style="color:#c4b5fd;font-weight:700">' + (ws.from||'') + '</span> → <span style="color:#a78bfa;font-weight:700">' + (ws.to||'') + '</span> <span style="color:rgba(255,255,255,.35)">(' + (ws.why||'') + ')</span></div>';
+      });
+    }
+    h += '</div>';
+  }
+
+  // Structure
+  if (fb.structure && fb.structure.comment) {
+    h += '<div style="margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px">'
+      + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:4px">🏗️ 문장 구조</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.5">' + fb.structure.comment + '</div>'
+      + (fb.structure.tip ? '<div style="font-size:12px;color:#fbbf24;margin-top:4px">💡 ' + fb.structure.tip + '</div>' : '')
+      + '</div>';
+  }
+
+  // Extra content ideas
+  if (fb.extra_content) {
+    h += '<div style="margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px">'
+      + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:4px">💡 더 쓸 수 있는 내용</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.6">' + fb.extra_content + '</div></div>';
+  }
+
+  // Example answer (for too-short or off-topic writing)
+  if (fb.example_answer) {
+    h += '<div style="margin-bottom:14px;padding:12px 14px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.15);border-radius:10px">'
+      + '<div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:6px">📝 예시 답변</div>'
+      + '<div style="font-size:14px;color:rgba(255,255,255,.75);line-height:1.7;font-family:\'Noto Sans KR\',sans-serif">' + fb.example_answer + '</div></div>';
+  }
+
+  // Encouragement
+  if (fb.encouragement) {
+    h += '<div style="text-align:center;padding:12px;font-size:14px;color:#4ade80;font-weight:700">' + fb.encouragement + '</div>';
+  }
+
+  return h;
+}
+
 async function renderFeedbackInboxContent() {
   var content = document.getElementById('feedback-inbox-content');
   if (!content) return;
   var sb = getSupa(); if (!sb) return;
   try {
-    // Only show latest 3 in Study Room
     var res = await sb.from('user_submissions')
       .select('id, study_date, status, admin_feedback, ai_feedback, writing_text, topic_ko, content_type')
       .eq('user_id', supaUser.id)
       .order('submitted_at', { ascending: false })
-      .limit(3);
+      .limit(5);
     if (res.error) throw res.error;
     var items = res.data || [];
     if (!items.length) {
-      content.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:24px;">아직 제출한 글이 없습니다.</div>';
+      content.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,.4);padding:24px">아직 제출한 글이 없습니다.</div>';
       return;
     }
-    var statusLabel = { submitted:'검토 중', ai_reviewed:'검토 중', admin_approved:'피드백 도착', sent:'피드백 도착' };
-    var statusColor = { submitted:'#8b8b8b', ai_reviewed:'#8b8b8b', admin_approved:'#00c471', sent:'#00c471' };
 
-    content.innerHTML = items.map(function(item) {
-      var preview = (item.writing_text||'').slice(0,50) + ((item.writing_text||'').length > 50 ? '…' : '');
-      var html = '<div style="padding:12px 0;border-bottom:1px solid #f5f5f5">';
-      html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">';
-      html += '<span style="font-size:11px;font-weight:700;color:' + (statusColor[item.status]||'#8b8b8b') + '">' + (statusLabel[item.status]||item.status) + '</span>';
-      html += '<span style="font-size:11px;color:#8b8b8b">' + (item.study_date||'') + '</span>';
-      if (item.topic_ko) html += '<span style="font-size:11px;color:#555">' + item.topic_ko + '</span>';
-      html += '</div>';
-      html += '<div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:6px">' + preview + '</div>';
-      var fbText = item.admin_feedback || '';
-      if (!fbText && item.ai_feedback) {
-        try { var fb = typeof item.ai_feedback === 'string' ? JSON.parse(item.ai_feedback) : item.ai_feedback; if (fb && fb.overall) fbText = fb.overall; } catch(e) {}
+    content.innerHTML = items.map(function(item, idx) {
+      var fb = null;
+      try { fb = typeof item.ai_feedback === 'string' ? JSON.parse(item.ai_feedback) : item.ai_feedback; } catch(e) {}
+      var hasFb = !!fb && (fb.corrections || fb.overall);
+      var isOpen = idx === 0 && hasFb;
+      var statusLabel = (item.status === 'admin_approved' || item.status === 'sent') ? '피드백 도착' : (item.status === 'ai_reviewed' || hasFb) ? 'AI 검토 완료' : '검토 중';
+      var statusColor = (item.status === 'admin_approved' || item.status === 'sent') ? '#4ade80' : hasFb ? '#60a5fa' : 'rgba(255,255,255,.35)';
+      var preview = (item.writing_text||'').slice(0,60) + ((item.writing_text||'').length > 60 ? '…' : '');
+
+      var h = '<div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:10px;overflow:hidden">';
+      // Header (clickable)
+      h += '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'\':\'none\'" style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03)">';
+      h += '<div style="flex:1;min-width:0">';
+      h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">';
+      h += '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + statusColor + '"></span>';
+      h += '<span style="font-size:11px;font-weight:700;color:' + statusColor + '">' + statusLabel + '</span>';
+      h += '<span style="font-size:11px;color:rgba(255,255,255,.3)">' + (item.study_date||'') + '</span>';
+      if (item.topic_ko) h += '<span style="font-size:11px;color:rgba(255,255,255,.4)">' + item.topic_ko + '</span>';
+      h += '</div>';
+      h += '<div style="font-size:12px;color:rgba(255,255,255,.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + preview + '</div>';
+      h += '</div>';
+      h += '<span style="font-size:12px;color:rgba(255,255,255,.2)">' + (isOpen ? '▲' : '▼') + '</span>';
+      h += '</div>';
+
+      // Detail body
+      h += '<div style="' + (isOpen ? '' : 'display:none;') + 'padding:14px;border-top:1px solid rgba(255,255,255,.06)">';
+
+      // Admin feedback (priority)
+      if (item.admin_feedback && (item.status === 'admin_approved' || item.status === 'sent')) {
+        h += '<div style="padding:10px 12px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15);border-radius:8px;margin-bottom:12px">'
+          + '<div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:4px">선생님 피드백</div>'
+          + '<div style="font-size:13px;color:rgba(255,255,255,.75);white-space:pre-wrap;line-height:1.6">' + item.admin_feedback + '</div></div>';
       }
-      if (fbText && (item.status === 'admin_approved' || item.status === 'sent')) {
-        html += '<div style="background:#f8faf8;border-left:3px solid #00c471;padding:10px 12px;border-radius:4px;">';
-        html += '<div style="font-size:13px;color:#1a1a1a;white-space:pre-wrap;line-height:1.6;">' + fbText + '</div>';
-        html += '</div>';
+
+      // AI detailed feedback
+      if (hasFb) {
+        h += renderDetailedFeedback(fb, item.writing_text);
+      } else {
+        h += '<div style="color:rgba(255,255,255,.3);text-align:center;padding:16px">피드백 생성 중...</div>';
       }
-      html += '</div>';
-      return html;
+
+      h += '</div></div>';
+      return h;
     }).join('');
   } catch(e) {
-    content.innerHTML = '<div style="text-align:center;color:#e53e3e;padding:24px;">오류: ' + e.message + '</div>';
+    content.innerHTML = '<div style="text-align:center;color:#f87171;padding:24px">오류: ' + e.message + '</div>';
   }
 }
 
