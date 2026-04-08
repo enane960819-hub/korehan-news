@@ -6613,6 +6613,103 @@ async function srLoadFeedbackDashboard() {
   srRenderFeedbackPage();
 }
 
+var _fbPatternIconsAdmin = { SPELLING:'✏️', PARTICLE:'🔗', TENSE:'⏰', WORD_ORDER:'🔀', VOCAB:'📖', NUANCE:'💬' };
+var _fbPatternLabelsAdmin = { SPELLING:'맞춤법', PARTICLE:'조사', TENSE:'시제', WORD_ORDER:'어순', VOCAB:'어휘', NUANCE:'뉘앙스' };
+
+function _renderAdminAIDetail(fb) {
+  if (!fb) return '';
+  var h = '';
+
+  // Score + Overall
+  if (fb.score !== undefined) {
+    var sc = Number(fb.score);
+    var sCol = sc >= 80 ? '#15803d' : sc >= 60 ? '#a16207' : '#dc2626';
+    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+      + '<div style="width:36px;height:36px;border-radius:50%;border:2.5px solid ' + sCol + ';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:' + sCol + '">' + sc + '</div>'
+      + '<div style="font-size:12px;color:#475569;flex:1;line-height:1.5">' + (fb.overall||'') + '</div></div>';
+  } else if (fb.overall) {
+    h += '<div style="font-size:12px;color:#475569;line-height:1.5;margin-bottom:8px;padding:6px 8px;background:#f8fafc;border-radius:6px">' + fb.overall + '</div>';
+  }
+
+  // Corrected full text
+  if (fb.corrected_full) {
+    h += '<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;color:#15803d;margin-bottom:3px">교정 완성본</div>'
+      + '<div style="font-size:12px;line-height:1.6;padding:8px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;color:#166534">' + fb.corrected_full + '</div></div>';
+  }
+
+  // Corrections table
+  if (fb.corrections && fb.corrections.length) {
+    h += '<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;color:#dc2626;margin-bottom:4px">교정 사항 (' + fb.corrections.length + ')</div>'
+      + '<div style="display:flex;flex-direction:column;gap:4px">';
+    fb.corrections.forEach(function(c) {
+      var icon = _fbPatternIconsAdmin[c.pattern] || '🔧';
+      var label = _fbPatternLabelsAdmin[c.pattern] || c.pattern || '';
+      h += '<div style="display:flex;gap:6px;align-items:flex-start;padding:6px 8px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;font-size:11px">'
+        + '<span style="flex-shrink:0">' + icon + '</span>'
+        + '<div style="flex:1;min-width:0">'
+        + '<span style="text-decoration:line-through;color:#dc2626">' + (c.original||'') + '</span>'
+        + ' → <span style="color:#15803d;font-weight:700">' + (c.corrected||'') + '</span>'
+        + '<div style="color:#64748b;margin-top:2px">' + (c.reason||'') + '</div>'
+        + '</div></div>';
+    });
+    h += '</div></div>';
+  }
+
+  // Spelling
+  if (fb.spelling && fb.spelling.length) {
+    h += '<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;color:#a16207;margin-bottom:3px">✏️ 맞춤법</div>';
+    fb.spelling.forEach(function(s) {
+      h += '<div style="font-size:11px;padding:3px 6px;background:#fefce8;border-radius:4px;margin-bottom:2px">'
+        + '<s style="color:#dc2626">' + (s.wrong||'') + '</s> → <b style="color:#15803d">' + (s.correct||'') + '</b>'
+        + (s.tip ? ' <span style="color:#94a3b8">(' + s.tip + ')</span>' : '') + '</div>';
+    });
+    h += '</div>';
+  }
+
+  // Naturalness
+  if (fb.naturalness && fb.naturalness.comment) {
+    h += '<div style="font-size:11px;padding:6px 8px;background:#eff6ff;border-radius:6px;margin-bottom:6px;color:#1d4ed8">'
+      + '🗣️ 자연스러움 ' + (fb.naturalness.score !== undefined ? fb.naturalness.score + '/10' : '') + ' — ' + fb.naturalness.comment + '</div>';
+  }
+
+  // Nuance word swaps
+  if (fb.nuance && fb.nuance.word_swaps && fb.nuance.word_swaps.length) {
+    h += '<div style="margin-bottom:6px"><div style="font-size:10px;font-weight:700;color:#7c3aed;margin-bottom:3px">💬 뉘앙스 교체</div>';
+    fb.nuance.word_swaps.forEach(function(ws) {
+      h += '<div style="font-size:11px;padding:2px 6px"><span style="color:#7c3aed;font-weight:700">' + (ws.from||'') + '</span> → <span style="color:#6d28d9;font-weight:700">' + (ws.to||'') + '</span> <span style="color:#94a3b8">(' + (ws.why||'') + ')</span></div>';
+    });
+    h += '</div>';
+  }
+
+  // Extra content + Example answer
+  if (fb.extra_content) h += '<div style="font-size:11px;color:#64748b;padding:4px 8px;background:#f8fafc;border-radius:4px;margin-bottom:4px">💡 ' + fb.extra_content + '</div>';
+  if (fb.example_answer) h += '<div style="font-size:11px;color:#a16207;padding:6px 8px;background:#fefce8;border-radius:6px;margin-bottom:4px">📝 예시 답변: ' + fb.example_answer + '</div>';
+  if (fb.encouragement) h += '<div style="font-size:11px;color:#15803d;padding:3px 0">💚 ' + fb.encouragement + '</div>';
+
+  return h;
+}
+
+function _buildAdminFeedbackDraft(fb) {
+  // Pre-fill admin textarea with AI feedback summary for quick editing
+  if (!fb) return '';
+  var lines = [];
+  if (fb.overall) lines.push(fb.overall);
+  if (fb.corrections && fb.corrections.length) {
+    lines.push('');
+    lines.push('📌 수정 사항:');
+    fb.corrections.forEach(function(c) {
+      lines.push('• ' + (c.original||'') + ' → ' + (c.corrected||'') + ' (' + (c.reason||'') + ')');
+    });
+  }
+  if (fb.naturalness && fb.naturalness.suggestions && fb.naturalness.suggestions.length) {
+    lines.push('');
+    lines.push('💡 추천 표현:');
+    fb.naturalness.suggestions.forEach(function(s) { lines.push('• ' + s); });
+  }
+  if (fb.encouragement) { lines.push(''); lines.push(fb.encouragement); }
+  return lines.join('\n');
+}
+
 function srRenderFeedbackPage() {
   var el = document.getElementById('fb-list'); if (!el) return;
   var start = _fbPage * _fbPageSize;
@@ -6624,40 +6721,60 @@ function srRenderFeedbackPage() {
   var statusColor = {submitted:'#854d0e', ai_reviewed:'#1d4ed8', admin_approved:'#15803d', sent:'#15803d'};
   var statusLabel = {submitted:'미검토', ai_reviewed:'AI완료', admin_approved:'승인', sent:'전송됨'};
 
-  el.innerHTML = page.map(function(row, idx) {
-    var gIdx = start + idx;
-    var preview = (row.writing_text||'').slice(0,100) + ((row.writing_text||'').length>100?'…':'');
-    var aiFb = '';
-    if (row.ai_feedback) {
-      try {
-        var fb = typeof row.ai_feedback === 'string' ? JSON.parse(row.ai_feedback) : row.ai_feedback;
-        aiFb = fb.overall || '';
-        if (fb.corrections && fb.corrections.length) aiFb += ' (' + fb.corrections.length + '개 교정)';
-      } catch(e) { aiFb = String(row.ai_feedback).slice(0,80); }
-    }
-    return '<div style="border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:10px;background:#fff">'
-      + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">'
-      + '<span style="font-size:14px">' + (typeIcons[row.content_type]||'') + '</span>'
+  el.innerHTML = page.map(function(row) {
+    var fullText = row.writing_text || '';
+    var fb = null;
+    try { fb = typeof row.ai_feedback === 'string' ? JSON.parse(row.ai_feedback) : row.ai_feedback; } catch(e) {}
+    var hasFb = !!fb && (fb.corrections || fb.overall);
+    var adminDraft = row.admin_feedback || (hasFb ? _buildAdminFeedbackDraft(fb) : '');
+
+    var h = '<div style="border:1px solid #e2e8f0;border-radius:14px;margin-bottom:12px;background:#fff;overflow:hidden">';
+
+    // ── Header bar ──
+    h += '<div style="padding:10px 14px;background:#f8fafc;border-bottom:1px solid #f0f0f0;display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+      + '<span style="font-size:14px">' + (typeIcons[row.content_type]||'📄') + '</span>'
       + '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + (statusBg[row.status]||'#f1f5f9') + ';color:' + (statusColor[row.status]||'#64748b') + '">' + (statusLabel[row.status]||row.status) + '</span>'
       + '<span style="font-size:11px;color:#94a3b8">' + (row.study_date||'') + '</span>'
       + '<span style="font-size:10px;color:#64748b;font-family:monospace">' + (row.user_id||'').slice(0,8) + '</span>'
-      + (row.level ? '<span style="font-size:10px;padding:1px 6px;border-radius:999px;background:#f1f5f9;color:#475569;font-weight:700">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[row.level]||row.level) + '</span>' : '')
-      + (row.topic_ko ? '<span style="font-size:11px;color:#475569;font-weight:600">' + row.topic_ko + '</span>' : '')
-      + (row.content_title ? '<span style="font-size:11px;color:#475569">' + row.content_title + '</span>' : '')
+      + (row.topic_ko ? '<span style="font-size:11px;font-weight:700;color:#334155;margin-left:auto">' + row.topic_ko + '</span>' : '')
+      + '</div>';
+
+    // ── Two-column body: left=student writing, right=AI analysis ──
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;min-height:0">';
+
+    // Left: Student writing
+    h += '<div style="padding:12px 14px;border-right:1px solid #f0f0f0">'
+      + '<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">학생 작문</div>'
+      + '<div style="font-size:13px;color:#1e293b;line-height:1.7;white-space:pre-wrap;max-height:200px;overflow-y:auto;font-family:\'Noto Sans KR\',sans-serif">' + (fullText || '<em style="color:#cbd5e1">글 없음</em>') + '</div>'
+      + '</div>';
+
+    // Right: AI Analysis
+    h += '<div style="padding:12px 14px;max-height:280px;overflow-y:auto">'
+      + '<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🤖 AI 분석</div>';
+    if (hasFb) {
+      h += _renderAdminAIDetail(fb);
+    } else {
+      h += '<div style="color:#94a3b8;font-size:12px;padding:12px 0;text-align:center">'
+        + (row.status === 'submitted' ? 'AI 분석 대기 중' : 'AI 분석 없음') + '</div>';
+    }
+    h += '</div></div>';
+
+    // ── Bottom: Admin feedback editor ──
+    h += '<div style="padding:12px 14px;border-top:1px solid #f0f0f0;background:#fafbfc">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      + '<span style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px">어드민 피드백</span>'
+      + (hasFb && !row.admin_feedback ? '<button onclick="document.getElementById(\'fb-admin-' + row.id + '\').value=_buildAdminFeedbackDraft(' + (fb ? 'JSON.parse(atob(\'' + btoa(JSON.stringify(fb)) + '\'))' : 'null') + ')" style="font-size:10px;padding:2px 8px;border:1px solid #93c5fd;border-radius:4px;background:#eff6ff;color:#1d4ed8;cursor:pointer;font-family:inherit">📋 AI 초안 불러오기</button>' : '')
       + '</div>'
-      // User writing
-      + '<div style="font-size:12px;color:#334155;background:#f8fafc;padding:10px;border-radius:8px;margin-bottom:8px;white-space:pre-wrap;max-height:100px;overflow:auto;line-height:1.6">' + (preview||'<em style="color:#94a3b8">글 없음</em>') + '</div>'
-      // AI feedback summary
-      + (aiFb ? '<div style="font-size:11px;color:#1d4ed8;background:#eff6ff;padding:8px 10px;border-radius:8px;margin-bottom:8px">🤖 ' + aiFb + '</div>' : '')
-      // Admin feedback textarea
-      + '<textarea id="fb-admin-' + row.id + '" rows="2" style="width:100%;font-size:12px;border:1px solid #e2e8f0;border-radius:8px;padding:8px;margin-bottom:6px;font-family:inherit" placeholder="어드민 피드백 작성 (수정/추가)…">' + (row.admin_feedback||'') + '</textarea>'
-      // Score + Actions
+      + '<textarea id="fb-admin-' + row.id + '" rows="4" style="width:100%;font-size:12px;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-family:\'Noto Sans KR\',sans-serif;line-height:1.6;resize:vertical" placeholder="피드백을 작성하거나 AI 초안을 불러와서 수정하세요...">' + (adminDraft||'') + '</textarea>'
       + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
-      + '<input id="fb-score-' + row.id + '" type="number" min="0" max="100" placeholder="점수" value="' + (row.score||'') + '" style="width:60px;font-size:11px;padding:4px 6px;border:1px solid #e2e8f0;border-radius:6px">'
-      + '<button class="btn" onclick="srApproveFeedback(\'' + row.id + '\')" style="font-size:11px;padding:4px 12px;background:#dcfce7;color:#15803d;border:1px solid #86efac">✅ 승인</button>'
-      + '<button class="btn" onclick="srSendFeedback(\'' + row.id + '\')" style="font-size:11px;padding:4px 12px;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd">📨 전송</button>'
-      + (row.status === 'submitted' ? '<button class="btn" onclick="srRetriggerAI(\'' + row.id + '\')" style="font-size:11px;padding:4px 12px;background:#fefce8;color:#a16207;border:1px solid #fde047">🤖 AI 재생성</button>' : '')
+      + '<input id="fb-score-' + row.id + '" type="number" min="0" max="100" placeholder="점수" value="' + (row.score || (fb && fb.score ? fb.score : '')) + '" style="width:60px;font-size:12px;padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px">'
+      + '<button onclick="srApproveFeedback(\'' + row.id + '\')" style="font-size:11px;font-weight:700;padding:6px 14px;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:6px;cursor:pointer;font-family:inherit">✅ 승인</button>'
+      + '<button onclick="srSendFeedback(\'' + row.id + '\')" style="font-size:11px;font-weight:700;padding:6px 14px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit">📨 유저에게 전송</button>'
+      + (row.status === 'submitted' ? '<button onclick="srRetriggerAI(\'' + row.id + '\')" style="font-size:11px;padding:6px 14px;background:#fefce8;color:#a16207;border:1px solid #fde047;border-radius:6px;cursor:pointer;font-family:inherit">🤖 AI 재생성</button>' : '')
       + '</div></div>';
+
+    h += '</div>';
+    return h;
   }).join('');
 
   // Pager
@@ -6705,16 +6822,30 @@ async function srRetriggerAI(id) {
   if (!row || !row.writing_text) { toast('글 내용이 없습니다.'); return; }
   toast('AI 피드백 생성 중…');
   try {
-    var prompt = '당신은 한국어 작문 첨삭 선생님입니다.\n\n학생 작문:\n"""\n' + row.writing_text + '\n"""\n\n'
-      + '다음 형식으로 첨삭해주세요 (JSON):\n'
-      + '{"overall":"전반적인 평가","corrections":[{"original":"원문","corrected":"수정문","reason":"이유"}],"encouragement":"격려 한마디"}\nJSON만 반환하세요.';
-    var data = await callClaude({ feature:'admin_retrigger_feedback', model:'claude-haiku-4-5-20251001', max_tokens:600, messages:[{role:'user',content:prompt}] });
+    var wordCount = row.writing_text.replace(/\s+/g,' ').trim().split(' ').length;
+    var isTooShort = wordCount < 8;
+    var prompt = '당신은 한국어 작문 첨삭 전문가입니다. 학생의 작문을 매우 세밀하게 분석해주세요.\n\n'
+      + '학생 작문:\n"""\n' + row.writing_text + '\n"""\n\n'
+      + (row.topic_ko ? '주제: ' + row.topic_ko + '\n\n' : '')
+      + 'JSON 형식으로 상세 피드백:\n'
+      + '{"score":0~100,"overall":"전반적 평가 2-3문장","corrected_full":"교정된 전체 문장",'
+      + '"corrections":[{"original":"원문","corrected":"수정문","reason":"이유","pattern":"SPELLING|PARTICLE|TENSE|WORD_ORDER|VOCAB|NUANCE"}],'
+      + '"spelling":[{"wrong":"","correct":"","tip":""}],'
+      + '"naturalness":{"score":0~10,"comment":"","suggestions":[""]},'
+      + '"nuance":{"comment":"","word_swaps":[{"from":"","to":"","why":""}]},'
+      + '"structure":{"comment":"","tip":""},'
+      + '"vocab_feedback":"","grammar_feedback":"","extra_content":"","encouragement":""'
+      + (isTooShort ? ',"example_answer":"예시 답변 3-5문장"' : '')
+      + '}\n한국어로 작성. JSON만 반환.';
+    var data = await callClaude({ feature:'admin_retrigger_feedback', model:'claude-sonnet-4-20250514', max_tokens:2000, messages:[{role:'user',content:prompt}] });
     var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('');
-    var clean = raw.replace(/```json|```/g,'').trim();
-    var parsed = JSON.parse(clean);
+    var clean = raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+    var ob = clean.indexOf('{'), cb = clean.lastIndexOf('}');
+    if (ob < 0 || cb <= ob) throw new Error('Invalid JSON response');
+    var parsed = JSON.parse(clean.slice(ob, cb+1));
     await sb.from('user_submissions').update({
       ai_feedback: parsed, ai_feedback_at: new Date().toISOString(),
-      ai_model: 'claude-haiku-4-5-20251001', status: 'ai_reviewed'
+      ai_model: 'claude-sonnet-4-20250514', status: 'ai_reviewed'
     }).eq('id', id);
     toast('AI 피드백 생성 완료');
     await srLoadFeedbackDashboard();
@@ -6964,6 +7095,7 @@ function srPictureFormHTML() {
     + '<input type="hidden" id="srp-uuid">'
     + '<div class="fg"><label>Prompt ID (slug)</label><input id="srp-id" placeholder="ex) han-river-2026"></div>'
     + '<div class="fg"><label>Prompt (KO) — 이미지 설명 지시문</label><textarea id="srp-prompt" style="min-height:72px" placeholder="한강 공원에서 자전거를 타는 사람들을 묘사해 보세요."></textarea></div>'
+    + '<div class="fg"><label>🎨 이미지 검색 프롬프트 (AI 생성)</label><textarea id="srp-img-prompt" style="min-height:48px;background:#fefce8;font-size:12px" placeholder="AI 전체 생성 시 자동 생성됩니다. 이 프롬프트로 이미지를 검색하세요." readonly></textarea></div>'
     + '<div class="fg"><label>이미지 업로드</label>'
     + '<input type="file" id="srp-img-file" accept="image/*" onchange="srPreviewImage(this)">'
     + '<div id="srp-img-preview" style="margin-top:8px"></div>'
@@ -7103,14 +7235,16 @@ async function srAIGeneratePicture() {
     + 'Image description: "' + promptKo + '"\n'
     + 'Level: ' + (levelGuide[level] || levelGuide.Beginner) + '\n\n'
     + 'Generate ALL of the following in ONE JSON response:\n\n'
-    + '1. vocab_items: 4-6 key vocabulary words related to the image\n'
-    + '2. word_order_words: one sentence about the image, split into individual 어절 (word units) in CORRECT order\n'
-    + '3. correct_sentences: 3 grammatically correct sentences describing the image\n'
-    + '4. wrong_sentence: 1 sentence with a clear grammar/word-order mistake (NOT a spelling error)\n'
-    + '5. custom_prompt: 1 open-ended question about the image for the student to answer\n'
-    + '6. sample_answer: a model answer to the custom_prompt (2-3 sentences)\n\n'
+    + '1. image_prompt: A detailed English description for searching/generating the image on stock photo sites (specific scene, setting, mood, objects, people, actions — 2-3 sentences)\n'
+    + '2. vocab_items: 4-6 key vocabulary words related to the image\n'
+    + '3. word_order_words: one sentence about the image, split into individual 어절 (word units) in CORRECT order\n'
+    + '4. correct_sentences: 3 grammatically correct sentences describing the image\n'
+    + '5. wrong_sentence: 1 sentence with a clear grammar/word-order mistake (NOT a spelling error)\n'
+    + '6. custom_prompt: 1 open-ended question about the image for the student to answer\n'
+    + '7. sample_answer: a model answer to the custom_prompt (2-3 sentences)\n\n'
     + 'Return ONLY valid JSON (no markdown):\n'
     + '{\n'
+    + '  "image_prompt": "Detailed English image description for stock photo search",\n'
     + '  "vocab_items": [{"ko":"한국어","en":"English"}],\n'
     + '  "word_order_words": ["어절1","어절2","어절3","어절4"],\n'
     + '  "correct_sentences": ["문장1","문장2","문장3"],\n'
@@ -7126,6 +7260,10 @@ async function srAIGeneratePicture() {
     var parsed = JSON.parse(raw.slice(s, e+1));
 
     // Fill form fields
+    if (parsed.image_prompt) {
+      var imgPromptEl = document.getElementById('srp-img-prompt');
+      if (imgPromptEl) imgPromptEl.value = parsed.image_prompt;
+    }
     if (parsed.vocab_items && parsed.vocab_items.length) {
       document.getElementById('srp-vocab').value = parsed.vocab_items.map(function(v){ return (v.ko||'')+'|'+(v.en||''); }).join('\n');
     }
