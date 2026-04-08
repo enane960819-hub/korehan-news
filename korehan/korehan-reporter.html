@@ -48,6 +48,7 @@ body {
 .rp-photo-col {
   position: relative;
   min-height: 320px;
+  overflow: hidden;
 }
 .rp-photo-col img, .rp-photo-ph {
   width: 100%; height: 100%;
@@ -61,7 +62,7 @@ body {
 }
 .rp-color-bar {
   position: absolute; bottom: 0; left: 0; right: 0;
-  height: 6px;
+  height: 6px; border-radius: 0 0 16px 16px; pointer-events: none;
 }
 .rp-info-col {
   padding: 32px 32px 28px 0;
@@ -484,30 +485,40 @@ function _fallbackPostsKey(reporterId) {
 }
 
 async function loadFallbackReporterPosts(sb, reporterId) {
+  var localPosts = [];
+  try { localPosts = JSON.parse(localStorage.getItem('kh_rp_posts_' + reporterId) || '[]'); } catch(e) { localPosts = []; }
   try {
-    if (!sb) return [];
+    if (!sb) return localPosts;
     var key = _fallbackPostsKey(reporterId);
     var res = await sb.from('app_settings').select('value').eq('key', key).maybeSingle();
-    if (res.error) return [];
+    if (res.error) return localPosts.length ? localPosts : [];
     var raw = res.data && res.data.value ? res.data.value : '[]';
     var arr = Array.isArray(raw) ? raw : JSON.parse(raw || '[]');
-    return Array.isArray(arr) ? arr : [];
+    arr = Array.isArray(arr) ? arr : [];
+    // Merge: use whichever has more posts (server or local)
+    return arr.length >= localPosts.length ? arr : localPosts;
   } catch(e) {
-    return [];
+    return localPosts;
   }
 }
 
 async function saveFallbackReporterPosts(sb, reporterId, posts) {
+  var postsJson = JSON.stringify(posts || []);
+  // Always save to localStorage as backup
+  try { localStorage.setItem('kh_rp_posts_' + reporterId, postsJson); } catch(e) {}
   if (!sb) return false;
   try {
     var key = _fallbackPostsKey(reporterId);
-    var payload = { key:key, value:JSON.stringify(posts || []), updated_at:new Date().toISOString() };
+    var payload = { key:key, value:postsJson, updated_at:new Date().toISOString() };
     var res = await sb.from('app_settings').upsert(payload, { onConflict:'key' });
     return !res.error;
   } catch(e) {
     return false;
   }
 }
+
+// Also load from localStorage as secondary fallback
+
 
 async function loadReporterPosts(reporterId) {
   var feed = document.getElementById('rp-post-feed');
@@ -886,25 +897,24 @@ async function sendGiftFallbackNoRpc(sb, reporterId, itemId) {
     }
 
     var affinityGain = Math.max(10, cost);
-    if (!shouldUseRemoteAffinity()) {
-      setLocalAffinity(reporterId, getLocalAffinity(reporterId) + affinityGain);
-      return { data:{ ok:true, success:true, affinity_gained: affinityGain } };
-    }
-    try {
-      var affRes = await sb.from('reporter_user_affinity').select('gift_count,affinity_points').eq('user_id', supaUser.id).eq('reporter_id', reporterId).maybeSingle();
-      var giftCount = Number(affRes.data && affRes.data.gift_count || 0) + 1;
-      var affinity = Number(affRes.data && affRes.data.affinity_points || 0) + affinityGain;
-      await sb.from('reporter_user_affinity').upsert({
-        user_id:supaUser.id, reporter_id:reporterId, gift_count:giftCount, affinity_points:affinity, updated_at:new Date().toISOString()
-      }, { onConflict:'user_id,reporter_id' });
-      setLocalAffinity(reporterId, affinity);
-    } catch(e) {
-      if (isMissingAffinityTableError(e)) {
-        try { localStorage.setItem('kh_remote_affinity', '0'); } catch(ex) {}
-        var localAffinity = getLocalAffinity(reporterId) + affinityGain;
-        setLocalAffinity(reporterId, localAffinity);
+    var newAffinity = getLocalAffinity(reporterId) + affinityGain;
+    if (shouldUseRemoteAffinity()) {
+      try {
+        var affRes = await sb.from('reporter_user_affinity').select('gift_count,affinity_points').eq('user_id', supaUser.id).eq('reporter_id', reporterId).maybeSingle();
+        var giftCount = Number(affRes.data && affRes.data.gift_count || 0) + 1;
+        newAffinity = Number(affRes.data && affRes.data.affinity_points || 0) + affinityGain;
+        await sb.from('reporter_user_affinity').upsert({
+          user_id:supaUser.id, reporter_id:reporterId, gift_count:giftCount, affinity_points:newAffinity, updated_at:new Date().toISOString()
+        }, { onConflict:'user_id,reporter_id' });
+      } catch(e) {
+        if (isMissingAffinityTableError(e)) {
+          try { localStorage.setItem('kh_remote_affinity', '0'); } catch(ex) {}
+        }
       }
     }
+    // Always save to localStorage + app_settings fallback
+    setLocalAffinity(reporterId, newAffinity);
+    saveAffinityToAppSettings(sb, reporterId, newAffinity);
 
     return { data:{ ok:true, success:true, affinity_gained: affinityGain } };
   } catch(e) {
@@ -956,26 +966,53 @@ function isMissingAffinityTableError(err) {
   return msg.indexOf('reporter_user_affinity') >= 0 || msg.indexOf('pgrst205') >= 0 || msg.indexOf('schema cache') >= 0 || msg.indexOf('404') >= 0;
 }
 
-async function loadAffinityPoints(sb, reporterId) {
-  if (!shouldUseRemoteAffinity()) return getLocalAffinity(reporterId);
-  if (!sb || !supaUser) return getLocalAffinity(reporterId);
+// ── app_settings fallback for affinity ──
+function _affinityFallbackKey(reporterId) {
+  return 'kh_affinity_fb_' + (supaUser ? supaUser.id : 'anon') + '_' + reporterId;
+}
+async function loadAffinityFromAppSettings(sb, reporterId) {
   try {
-    var af = await sb.from('reporter_user_affinity').select('affinity_points').eq('user_id', supaUser.id).eq('reporter_id', reporterId).maybeSingle();
-    if (af && af.error) {
-      if (isMissingAffinityTableError(af.error)) {
-        try { localStorage.setItem('kh_remote_affinity', '0'); } catch(e) {}
-        return getLocalAffinity(reporterId);
+    var key = _affinityFallbackKey(reporterId);
+    var res = await sb.from('app_settings').select('value').eq('key', key).maybeSingle();
+    if (res.data && res.data.value) return Number(res.data.value) || 0;
+  } catch(e) {}
+  return 0;
+}
+async function saveAffinityToAppSettings(sb, reporterId, points) {
+  try {
+    var key = _affinityFallbackKey(reporterId);
+    await sb.from('app_settings').upsert({ key: key, value: String(points), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  } catch(e) {}
+}
+
+async function loadAffinityPoints(sb, reporterId) {
+  if (!sb || !supaUser) return getLocalAffinity(reporterId);
+  // Try primary table first
+  if (shouldUseRemoteAffinity()) {
+    try {
+      var af = await sb.from('reporter_user_affinity').select('affinity_points').eq('user_id', supaUser.id).eq('reporter_id', reporterId).maybeSingle();
+      if (af && af.error) {
+        if (isMissingAffinityTableError(af.error)) {
+          try { localStorage.setItem('kh_remote_affinity', '0'); } catch(e) {}
+        }
+      } else {
+        var dbVal = Number(af.data && af.data.affinity_points || 0);
+        var localVal = getLocalAffinity(reporterId);
+        var finalVal = Math.max(dbVal, localVal);
+        if (finalVal !== localVal) setLocalAffinity(reporterId, finalVal);
+        return finalVal;
       }
-      return 0;
-    }
-    var dbVal = Number(af.data && af.data.affinity_points || 0);
-    var localVal = getLocalAffinity(reporterId);
-    var finalVal = Math.max(dbVal, localVal);
-    if (finalVal !== localVal) setLocalAffinity(reporterId, finalVal);
-    return finalVal;
-  } catch(e) {
-    return getLocalAffinity(reporterId);
+    } catch(e) {}
   }
+  // Fallback: app_settings table
+  var fbVal = await loadAffinityFromAppSettings(sb, reporterId);
+  var localVal = getLocalAffinity(reporterId);
+  var finalVal = Math.max(fbVal, localVal);
+  if (finalVal > 0) {
+    setLocalAffinity(reporterId, finalVal);
+    if (finalVal > fbVal) saveAffinityToAppSettings(sb, reporterId, finalVal);
+  }
+  return finalVal;
 }
 
 function updateAffinityUI(favXP) {
