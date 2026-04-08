@@ -639,15 +639,15 @@
 
   const SKILL_META = [
     { key:'reading',    label:'Reading',    color:'#2563eb',
-      note:'Based on articles/conversations/stories read in the last 30 days. 50 items = 100 points.' },
+      note:'Articles/conversations/stories read + review completion bonus (last 30 days).' },
     { key:'grammar',    label:'Grammar',    color:'#60a5fa',
-      note:'Quiz accuracy across fill-in-blank + grammar quizzes (last 30 days, requires 5+ attempts).' },
+      note:'Quiz accuracy (40%) + Daily/Weekly/Monthly review scores (60%). Monthly reviews count 3x.' },
     { key:'vocabulary', label:'Vocabulary', color:'#f59e0b',
-      note:'Based on total saved words. 200 saved words = 100 points.' },
+      note:'Saved words (60%) + review accuracy on vocab questions (40%). 200 words = full base score.' },
     { key:'writing',    label:'Writing',    color:'#8b5cf6',
-      note:'Based on writing submissions. Consistency counts.' },
+      note:'Review participation + accuracy. Spelling error patterns reduce score.' },
     { key:'listening',  label:'Listening',  color:'#ef4444',
-      note:'Based on vocab flashcard review accuracy (last 30 days).' },
+      note:'Daily review dictation accuracy (last 30 days).' },
   ];
 
   // ── render functions ────────────────────────────────────────
@@ -1191,6 +1191,86 @@
         var totalQ = gStats.reduce(function(a,g){ return a+(g.wrong_count||0)+(g.correct_count||0); }, 0);
         var totalW = gStats.reduce(function(a,g){ return a+(g.wrong_count||0); }, 0);
         snap.scores.grammar = totalQ >= 5 ? Math.round((1 - totalW/totalQ)*100) : 0;
+      }
+    } catch(e) {}
+
+    // ── Review data → enhanced Skill Balance scores ──
+    try {
+      var reviewCutoff = new Date(Date.now() - 30*86400000).toISOString();
+      var { data: reviews } = await sb.from('user_quiz_results')
+        .select('quiz_type, score, max_score, accuracy_pct, study_date, wrong_patterns')
+        .eq('user_id', userId)
+        .gte('study_date', reviewCutoff.slice(0,10))
+        .order('study_date', { ascending: false })
+        .limit(100);
+      if (reviews && reviews.length) {
+        // Separate by type with weights: daily=1, weekly=2, monthly=3
+        var weightMap = { daily_review:1, weekly_review:2, monthly_review:3 };
+        var grammarScores = [], vocabScores = [], writingScores = [], listeningScores = [], readingBonus = 0;
+
+        reviews.forEach(function(r) {
+          var w = weightMap[r.quiz_type] || 1;
+          var pct = r.accuracy_pct || (r.max_score > 0 ? Math.round(r.score / r.max_score * 100) : 0);
+
+          // Grammar: all review quizzes contribute
+          grammarScores.push({ pct: pct, weight: w });
+
+          // Vocab: reviews help vocabulary retention score
+          vocabScores.push({ pct: pct, weight: w * 0.5 });
+
+          // Writing: track submission count as writing activity
+          writingScores.push({ pct: pct, weight: w * 0.3 });
+
+          // Listening: dictation-type reviews
+          if (r.quiz_type === 'daily_review') listeningScores.push({ pct: pct, weight: 0.5 });
+
+          // Reading bonus: completing reviews shows engagement
+          readingBonus += w;
+
+          // Analyze wrong_patterns for detailed scoring
+          if (r.wrong_patterns) {
+            try {
+              var patterns = typeof r.wrong_patterns === 'string' ? JSON.parse(r.wrong_patterns) : r.wrong_patterns;
+              // PARTICLE, TENSE errors → grammar penalty; VOCAB errors → vocab penalty
+              if (patterns.VOCAB) vocabScores.push({ pct: Math.max(0, 100 - patterns.VOCAB * 15), weight: w });
+              if (patterns.SPELLING) writingScores.push({ pct: Math.max(0, 100 - patterns.SPELLING * 10), weight: w });
+            } catch(pe) {}
+          }
+        });
+
+        // Weighted average calculator
+        function weightedAvg(arr) {
+          if (!arr.length) return 0;
+          var totalW = 0, totalS = 0;
+          arr.forEach(function(a) { totalW += a.weight; totalS += a.pct * a.weight; });
+          return totalW > 0 ? Math.round(totalS / totalW) : 0;
+        }
+
+        // Blend review scores with existing scores
+        var reviewGrammar = weightedAvg(grammarScores);
+        if (snap.scores.grammar > 0) {
+          snap.scores.grammar = Math.round(snap.scores.grammar * 0.4 + reviewGrammar * 0.6);
+        } else if (grammarScores.length >= 3) {
+          snap.scores.grammar = reviewGrammar;
+        }
+
+        // Reading: add engagement bonus from review completion
+        snap.scores.reading = Math.min(100, snap.scores.reading + Math.min(15, readingBonus));
+
+        // Vocabulary: blend saved words score with review accuracy
+        var reviewVocab = weightedAvg(vocabScores);
+        if (reviewVocab > 0) {
+          snap.scores.vocabulary = Math.min(100, Math.round(snap.scores.vocabulary * 0.6 + reviewVocab * 0.4));
+        }
+
+        // Writing: based on review participation + accuracy
+        var reviewWriting = weightedAvg(writingScores);
+        var writingBase = Math.min(30, reviews.length * 2); // participation score
+        snap.scores.writing = Math.min(100, writingBase + Math.round(reviewWriting * 0.7));
+
+        // Listening: review-based for now
+        var reviewListening = weightedAvg(listeningScores);
+        snap.scores.listening = Math.min(100, Math.max(snap.scores.listening, reviewListening));
       }
     } catch(e) {}
 
@@ -2408,7 +2488,7 @@
     var tierBorder = { bronze:'#fde68a', silver:'#e2e8f0', gold:'#fde047', diamond:'#bfdbfe', legendary:'#e9d5ff' };
     el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">' + recent.map(function(b) {
       return '<div style="padding:10px;border-radius:10px;background:' + (tierBg[b.tier]||'#f8fafc') + ';border:1px solid ' + (tierBorder[b.tier]||'#e2e8f0') + ';text-align:center">'
-        + '<div style="font-size:24px;margin-bottom:4px">' + b.icon + '</div>'
+        + '<div style="display:flex;align-items:center;justify-content:center;margin-bottom:4px;min-height:28px">' + b.icon + '</div>'
         + '<div style="font-size:11px;font-weight:800;color:#334155">' + b.name + '</div>'
         + '<div style="font-size:10px;color:#64748b;margin-top:2px">' + (b.earnedAt ? b.earnedAt.slice(0,10) : '') + '</div>'
         + '</div>';

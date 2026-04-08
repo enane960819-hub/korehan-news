@@ -5628,39 +5628,41 @@ function getQuizPerfectCount() { return lsGet('kh_quiz_perfect_count', 0); }
 function getQuizStreakDays() { return lsGet('kh_quiz_streak_days', 0); }
 
 // ── 뱃지 정의 목록 ──────────────────────────────────────────────────────────
+var _PIXEL_CDN = 'https://unpkg.com/pixelarticons@2.0.2/svg/';
+function pxBadge(name) { return '<img src="' + _PIXEL_CDN + name + '.svg" width="24" height="24" style="image-rendering:pixelated;filter:drop-shadow(0 1px 2px rgba(0,0,0,.15))" alt="">'; }
 var BADGE_DEFS = [
 
   // 🔥 STREAK
-  { id:'streak_3',   cat:'streak',    tier:'bronze',   icon:'🔥', name:'First Spark',      desc:'3-day study streak',
+  { id:'streak_3',   cat:'streak',    tier:'bronze',   icon:pxBadge('fire'), name:'First Spark',      desc:'3-day study streak',
     check: function(s){ return getCurrentStreak() >= 3; } },
-  { id:'streak_7',   cat:'streak',    tier:'silver',   icon:'🔥', name:'Week Warrior',    desc:'7-day study streak',
+  { id:'streak_7',   cat:'streak',    tier:'silver',   icon:pxBadge('fire'), name:'Week Warrior',    desc:'7-day study streak',
     check: function(s){ return getCurrentStreak() >= 7; } },
-  { id:'streak_30',  cat:'streak',    tier:'gold',     icon:'🏅', name:'30-Day Power',    desc:'30-day study streak',
+  { id:'streak_30',  cat:'streak',    tier:'gold',     icon:pxBadge('trophy'), name:'30-Day Power',    desc:'30-day study streak',
     check: function(s){ return getCurrentStreak() >= 30; } },
-  { id:'streak_50',  cat:'streak',    tier:'gold',     icon:'🌊', name:'50-Day Milestone', desc:'50-day study streak',
+  { id:'streak_50',  cat:'streak',    tier:'gold',     icon:pxBadge('zap'), name:'50-Day Milestone', desc:'50-day study streak',
     check: function(s){ return getCurrentStreak() >= 50; } },
-  { id:'streak_100', cat:'streak',    tier:'diamond',  icon:'💎', name:'100-Day Champion', desc:'100-day study streak',
+  { id:'streak_100', cat:'streak',    tier:'diamond',  icon:pxBadge('diamond-gem'), name:'100-Day Champion', desc:'100-day study streak',
     check: function(s){ return getCurrentStreak() >= 100; } },
-  { id:'streak_365', cat:'streak',    tier:'legendary',icon:'👑', name:'365 Legend',       desc:'1-year study streak',
+  { id:'streak_365', cat:'streak',    tier:'legendary',icon:pxBadge('crown'), name:'365 Legend',       desc:'1-year study streak',
     check: function(s){ return getCurrentStreak() >= 365; } },
 
   // 📰 READING
-  { id:'read_1',     cat:'reading',   tier:'bronze',   icon:'📖', name:'First Article',    desc:'Read your first article',
+  { id:'read_1',     cat:'reading',   tier:'bronze',   icon:pxBadge('book-open'), name:'First Article',    desc:'Read your first article',
     check: function(){ return getTotalArticlesRead() >= 1; } },
-  { id:'read_10',    cat:'reading',   tier:'bronze',   icon:'📰', name:'News Beginner',    desc:'Read 10 articles',
+  { id:'read_10',    cat:'reading',   tier:'bronze',   icon:pxBadge('notebook'), name:'News Beginner',    desc:'Read 10 articles',
     check: function(){ return getTotalArticlesRead() >= 10; } },
-  { id:'read_50',    cat:'reading',   tier:'silver',   icon:'📚', name:'News Explorer',    desc:'Read 50 articles',
+  { id:'read_50',    cat:'reading',   tier:'silver',   icon:pxBadge('notes'), name:'News Explorer',    desc:'Read 50 articles',
     check: function(){ return getTotalArticlesRead() >= 50; } },
-  { id:'read_100',   cat:'reading',   tier:'gold',     icon:'🗞️', name:'Aspiring Reporter', desc:'Read 100 articles',
+  { id:'read_100',   cat:'reading',   tier:'gold',     icon:pxBadge('clipboard-note'), name:'Aspiring Reporter', desc:'Read 100 articles',
     check: function(){ return getTotalArticlesRead() >= 100; } },
-  { id:'read_500',   cat:'reading',   tier:'legendary',icon:'📜', name:'Korean Scholar',   desc:'Read 500 articles',
+  { id:'read_500',   cat:'reading',   tier:'legendary',icon:pxBadge('scroll-vertical'), name:'Korean Scholar',   desc:'Read 500 articles',
     check: function(){ return getTotalArticlesRead() >= 500; } },
-  { id:'read_daily10',cat:'reading',  tier:'gold',     icon:'⚡', name:'10 in a Day',      desc:'Read 10 articles in one day',
+  { id:'read_daily10',cat:'reading',  tier:'gold',     icon:pxBadge('zap'), name:'10 in a Day',      desc:'Read 10 articles in one day',
     check: function(){
       var log = lsGet('kh_read_log', {});
       return Object.values(log).some(function(arr){ return arr.length >= 10; });
     } },
-  { id:'read_allsec',cat:'reading',   tier:'diamond',  icon:'🔭', name:'All-Rounder',     desc:'Read from every section',
+  { id:'read_allsec',cat:'reading',   tier:'diamond',  icon:pxBadge('target'), name:'All-Rounder',     desc:'Read from every section',
     check: function(){
       var sc = getSectionReadCounts();
       var secs = ['사회','국제','문화','스포츠','Korea','beauty','travel','오피니언','정치','경제'];
