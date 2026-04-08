@@ -2125,8 +2125,20 @@ body { background: #0b1626 !important; }
         <button onclick="wmMobileTab('feedback')" style="flex:1;padding:10px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🤖 AI Feedback</button>
       </div>
 
-      <button class="submit-btn" onclick="submitWriting()">📩 Submit today’s writing practice</button>
-      <div class="submit-note">You do not need to finish every step · submission is limited to once per day (KST).</div>
+      <!-- Speaking practice section -->
+      <div id="wm-speak-section" style="margin-bottom:12px;padding:14px;border-radius:12px;background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.12)">
+        <div style="font-size:12px;font-weight:700;color:#7c3aed;margin-bottom:8px">🎙️ 말하기 연습 (Speaking Practice)</div>
+        <div style="font-size:11px;color:#6b7280;margin-bottom:10px;line-height:1.5">작성한 글을 소리내어 읽어보세요. 녹음해서 제출하면 AI가 발음 & 자연스러움을 분석해줍니다.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button id="wm-speak-listen" onclick="speakMyWriting()" style="flex:1;min-width:120px;padding:10px;border-radius:10px;border:1px solid rgba(124,58,237,.2);background:rgba(124,58,237,.08);color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🔊 AI가 읽어주기</button>
+          <button id="wm-speak-record" onclick="toggleSpeakRecord()" style="flex:1;min-width:120px;padding:10px;border-radius:10px;border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.08);color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🎙️ 내 목소리 녹음</button>
+        </div>
+        <div id="wm-speak-status" style="font-size:11px;color:#6b7280;margin-top:8px;min-height:18px"></div>
+        <audio id="wm-speak-playback" style="width:100%;margin-top:8px;display:none" controls></audio>
+        <button id="wm-speak-submit" onclick="submitSpeaking()" style="display:none;width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📩 녹음 제출하기</button>
+      </div>
+      <button class="submit-btn" onclick="submitWriting()">📩 Submit today’s Express Practice</button>
+      <div class="submit-note">Writing + Speaking 모두 제출 가능 · 하루 1회 (KST)</div>
     </div>
 
     <!-- RIGHT: helper sentences -->
@@ -5388,6 +5400,72 @@ function speakKorean(text) {
   var koVoice = voices.find(function(v){ return v.lang === 'ko-KR' || v.lang.startsWith('ko'); });
   if (koVoice) utt.voice = koVoice;
   window.speechSynthesis.speak(utt);
+}
+
+// ── Express Practice: Speaking ──
+var _speakRecorder = null, _speakChunks = [], _speakBlob = null;
+function speakMyWriting() {
+  var ta = document.getElementById('write-area');
+  if (!ta || !ta.value.trim()) { showToast('먼저 글을 작성하세요'); return; }
+  speakHangul(ta.value.trim(), 'female');
+}
+function toggleSpeakRecord() {
+  if (_speakRecorder && _speakRecorder.state === 'recording') {
+    _speakRecorder.stop();
+    document.getElementById('wm-speak-record').innerHTML = '🎙️ 내 목소리 녹음';
+    document.getElementById('wm-speak-record').style.background = 'rgba(239,68,68,.08)';
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+    _speakChunks = [];
+    _speakRecorder = new MediaRecorder(stream);
+    _speakRecorder.ondataavailable = function(e) { if (e.data.size > 0) _speakChunks.push(e.data); };
+    _speakRecorder.onstop = function() {
+      stream.getTracks().forEach(function(t){ t.stop(); });
+      _speakBlob = new Blob(_speakChunks, { type:'audio/webm' });
+      var url = URL.createObjectURL(_speakBlob);
+      var audio = document.getElementById('wm-speak-playback');
+      audio.src = url;
+      audio.style.display = 'block';
+      document.getElementById('wm-speak-submit').style.display = 'block';
+      document.getElementById('wm-speak-status').textContent = '녹음 완료! 들어보고 제출하세요.';
+    };
+    _speakRecorder.start();
+    document.getElementById('wm-speak-record').innerHTML = '⏹️ 녹음 중... (누르면 정지)';
+    document.getElementById('wm-speak-record').style.background = 'rgba(239,68,68,.2)';
+    document.getElementById('wm-speak-status').textContent = '🔴 녹음 중...';
+  }).catch(function(err) {
+    showToast('마이크 권한이 필요합니다');
+    console.warn('[Speaking] mic error:', err);
+  });
+}
+async function submitSpeaking() {
+  if (!_speakBlob || !supaUser) { showToast('녹음이 없거나 로그인이 필요합니다'); return; }
+  try {
+    var sb = getSupa();
+    if (!sb) return;
+    var fileName = 'speaking/' + supaUser.id + '/' + kstDateKey() + '_' + Date.now() + '.webm';
+    var { error: upErr } = await sb.storage.from('avatars').upload(fileName, _speakBlob, { contentType:'audio/webm', upsert:true });
+    if (upErr) { showToast('업로드 실패: ' + upErr.message); return; }
+    // Save record to user_submissions
+    var ta = document.getElementById('write-area');
+    await sb.from('user_submissions').insert({
+      user_id: supaUser.id,
+      content_type: 'speaking',
+      study_date: kstDateKey(),
+      writing_text: ta ? ta.value : '',
+      topic_ko: _todayTopic ? _todayTopic.topic_ko : '',
+      topic_en: _todayTopic ? _todayTopic.topic_en : '',
+      level: _currentLevel,
+      status: 'submitted',
+      context_data: JSON.stringify({ audio_path: fileName })
+    });
+    showToast('🎙️ 녹음이 제출되었습니다! AI 피드백을 기다려주세요.');
+    document.getElementById('wm-speak-submit').style.display = 'none';
+    document.getElementById('wm-speak-status').textContent = '✅ 제출 완료!';
+  } catch(e) {
+    showToast('제출 실패: ' + e.message);
+  }
 }
 
 function copyHelper(btn) {
