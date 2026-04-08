@@ -2738,7 +2738,6 @@ async function loadDailyContent() {
 
   if (!supaUser) {
     console.log('[loadDailyContent] no user — showing login wall');
-    // Show sample topic text so "loading..." doesn't stay forever
     var subEl = document.getElementById('wm-topic-sub');
     if (subEl) subEl.textContent = '오늘의 주제 · Today\'s Topic';
     var heroKo = document.getElementById('hero-topic-ko');
@@ -2751,40 +2750,76 @@ async function loadDailyContent() {
 
   var sb = getSupa();
   if (!sb) {
-    console.error('[loadDailyContent] getSupa() returned null — Supabase not initialized');
-    _setTopicLoadError('Connection error. Please refresh.');
+    console.error('[loadDailyContent] getSupa() returned null');
+    _applyFallbackTopic(today);
     return;
   }
 
+  // Step 1: Try loading from study_daily_content (approved by admin)
   try {
-    console.log('[loadDailyContent] querying study_daily_content for', today, _currentLevel);
-    var r = await sb.from('study_daily_content')
-      .select('*')
-      .eq('scheduled_date', today)
-      .eq('level', _currentLevel)
-      .eq('status', 'approved')
-      .maybeSingle();
-
-    if (r.error) {
-      console.warn('[loadDailyContent] DB query error:', r.error.message, '(code:', r.error.code, ')');
-    } else if (r.data) {
-      console.log('[loadDailyContent] found approved record — applying');
+    console.log('[loadDailyContent] querying study_daily_content');
+    var r = await Promise.race([
+      sb.from('study_daily_content').select('*').eq('scheduled_date', today).eq('level', _currentLevel).eq('status', 'approved').maybeSingle(),
+      new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('db_timeout')); }, 8000); })
+    ]);
+    if (!r.error && r.data) {
+      console.log('[loadDailyContent] found approved content');
       _applyDailyContent(r.data);
       return;
-    } else {
-      console.log('[loadDailyContent] no approved content for today');
     }
+    if (r.error) console.warn('[loadDailyContent] DB error:', r.error.message);
   } catch(e) {
-    console.error('[loadDailyContent] exception during DB fetch:', e);
+    console.warn('[loadDailyContent] study_daily_content failed:', e.message);
   }
 
-  // No approved content — try auto-generating from writing_topics + AI
-  console.log('[loadDailyContent] no approved content — auto-generating');
+  // Step 2: Try auto-generating via AI
   try {
-    await _generateAndSaveDailyContent(today);
-  } catch(genErr) {
-    console.error('[loadDailyContent] auto-generation failed:', genErr);
-    _setTopicLoadError('오늘의 학습이 준비 중입니다. 곧 공개됩니다! 🎯');
+    console.log('[loadDailyContent] auto-generating via AI');
+    await Promise.race([
+      _generateAndSaveDailyContent(today),
+      new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('gen_timeout')); }, 20000); })
+    ]);
+    // If _generateAndSaveDailyContent succeeded, _applyDailyContent was already called
+    if (_todayTopic && _todayTopic.topic_ko) return;
+  } catch(e) {
+    console.warn('[loadDailyContent] AI generation failed:', e.message);
+  }
+
+  // Step 3: Last resort — local fallback content (no DB, no AI needed)
+  console.log('[loadDailyContent] applying local fallback');
+  _applyFallbackTopic(today);
+}
+
+function _applyFallbackTopic(date) {
+  hideAILoading();
+  try {
+    // Pick a topic from built-in categories based on date
+    var cats = [
+      { ko:'나의 하루', en:'My Daily Routine' },
+      { ko:'좋아하는 음식', en:'My Favorite Food' },
+      { ko:'주말 계획', en:'Weekend Plans' },
+      { ko:'한국 여행', en:'Traveling in Korea' },
+      { ko:'좋아하는 계절', en:'My Favorite Season' },
+      { ko:'가족 소개', en:'Introducing My Family' },
+      { ko:'취미 생활', en:'My Hobbies' }
+    ];
+    var dateHash = date.split('-').reduce(function(a,b){ return a + parseInt(b); }, 0);
+    var topic = cats[dateHash % cats.length];
+    var fb = buildStudyRoomFallbackContent({ topic_ko: topic.ko, topic_en: topic.en }, _currentLevel);
+    _applyDailyContent({
+      scheduled_date: date,
+      level: _currentLevel,
+      topic_ko: topic.ko,
+      topic_en: topic.en,
+      vocab: fb.vocab,
+      grammar: fb.grammar,
+      helpers: fb.helpers,
+      dictation_sentences: [],
+      dictation_questions: []
+    });
+  } catch(e) {
+    console.error('[_applyFallbackTopic] failed:', e);
+    _setTopicLoadError('새로고침 해주세요');
   }
 }
 
