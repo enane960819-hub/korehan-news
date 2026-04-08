@@ -1497,6 +1497,30 @@ body { background: #0b1626 !important; }
     </div>
   </div>
 
+  <!-- Korean Alphabet Cards (complete beginner) -->
+  <div class="sr-sb-panel" style="padding:0;overflow:hidden;background:linear-gradient(135deg,#0c4a6e,#0369a1);border:1px solid rgba(56,189,248,.2)">
+    <div style="padding:16px">
+      <div style="font-size:18px;margin-bottom:4px">🇰🇷</div>
+      <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:4px">Korean Alphabet</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.5;margin-bottom:10px">한글 자음 & 모음 카드로 기초부터!</div>
+      <div id="sr-hangul-card" style="text-align:center;margin-bottom:10px">
+        <div id="sr-hangul-char" style="font-size:48px;font-weight:900;color:#fff;font-family:'Noto Serif KR',serif;line-height:1;margin-bottom:6px">ㄱ</div>
+        <div id="sr-hangul-rom" style="font-size:14px;font-weight:700;color:#7dd3fc;margin-bottom:2px">g/k</div>
+        <div id="sr-hangul-name" style="font-size:11px;color:rgba(255,255,255,.5)">기역 (giyeok)</div>
+        <div id="sr-hangul-example" style="font-size:13px;color:rgba(255,255,255,.6);margin-top:6px">가방 (gabang) = bag</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="prevHangul()" style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(56,189,248,.3);background:rgba(56,189,248,.1);color:#7dd3fc;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">← 이전</button>
+        <button onclick="nextHangul()" style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(56,189,248,.3);background:rgba(56,189,248,.1);color:#7dd3fc;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">다음 →</button>
+      </div>
+      <div style="display:flex;gap:4px;margin-top:8px;justify-content:center">
+        <button onclick="setHangulMode('consonant')" id="sr-hg-btn-con" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(56,189,248,.3);background:rgba(56,189,248,.15);color:#7dd3fc;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">자음</button>
+        <button onclick="setHangulMode('vowel')" id="sr-hg-btn-vow" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.1);background:transparent;color:rgba(255,255,255,.4);font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">모음</button>
+        <button onclick="setHangulMode('double')" id="sr-hg-btn-dbl" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.1);background:transparent;color:rgba(255,255,255,.4);font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">쌍자음</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Korean Slang 배너 -->
   <div class="sr-sb-panel" style="padding:0;overflow:hidden;background:linear-gradient(135deg,#312e81,#7c3aed);border:1px solid rgba(196,181,253,.2)">
     <div style="padding:16px">
@@ -2754,8 +2778,14 @@ async function loadDailyContent() {
     console.error('[loadDailyContent] exception during DB fetch:', e);
   }
 
-  // No approved content — show "preparing" message instead of generating
-  _setTopicLoadError('오늘의 학습이 준비 중입니다. 곧 공개됩니다! 🎯');
+  // No approved content — try auto-generating from writing_topics + AI
+  console.log('[loadDailyContent] no approved content — auto-generating');
+  try {
+    await _generateAndSaveDailyContent(today);
+  } catch(genErr) {
+    console.error('[loadDailyContent] auto-generation failed:', genErr);
+    _setTopicLoadError('오늘의 학습이 준비 중입니다. 곧 공개됩니다! 🎯');
+  }
 }
 
 function _setTopicLoadError(msg) {
@@ -3528,6 +3558,75 @@ function srMobTab(tab, btn) {
     if (sidebarR) sidebarR.style.display = 'none';
     if (sidebarL) { sidebarL.style.display = ''; sidebarL.style.position = 'static'; }
   }
+}
+
+// ── Korean Alphabet (Hangul) Cards ──
+var _HANGUL = {
+  consonant: [
+    { char:'ㄱ', rom:'g/k', name:'기역 (giyeok)', ex:'가방 (gabang) = bag' },
+    { char:'ㄴ', rom:'n', name:'니은 (nieun)', ex:'나라 (nara) = country' },
+    { char:'ㄷ', rom:'d/t', name:'디귿 (digeut)', ex:'다리 (dari) = bridge' },
+    { char:'ㄹ', rom:'r/l', name:'리을 (rieul)', ex:'라면 (ramyeon) = ramen' },
+    { char:'ㅁ', rom:'m', name:'미음 (mieum)', ex:'물 (mul) = water' },
+    { char:'ㅂ', rom:'b/p', name:'비읍 (bieup)', ex:'바다 (bada) = sea' },
+    { char:'ㅅ', rom:'s', name:'시옷 (siot)', ex:'산 (san) = mountain' },
+    { char:'ㅇ', rom:'-/ng', name:'이응 (ieung)', ex:'아이 (ai) = child' },
+    { char:'ㅈ', rom:'j', name:'지읒 (jieut)', ex:'집 (jip) = house' },
+    { char:'ㅊ', rom:'ch', name:'치읓 (chieut)', ex:'차 (cha) = tea/car' },
+    { char:'ㅋ', rom:'k', name:'키읔 (kieuk)', ex:'코 (ko) = nose' },
+    { char:'ㅌ', rom:'t', name:'티읕 (tieut)', ex:'토끼 (tokki) = rabbit' },
+    { char:'ㅍ', rom:'p', name:'피읖 (pieup)', ex:'포도 (podo) = grape' },
+    { char:'ㅎ', rom:'h', name:'히읗 (hieut)', ex:'하늘 (haneul) = sky' }
+  ],
+  vowel: [
+    { char:'ㅏ', rom:'a', name:'아 (a)', ex:'아버지 (abeoji) = father' },
+    { char:'ㅑ', rom:'ya', name:'야 (ya)', ex:'야구 (yagu) = baseball' },
+    { char:'ㅓ', rom:'eo', name:'어 (eo)', ex:'어머니 (eomeoni) = mother' },
+    { char:'ㅕ', rom:'yeo', name:'여 (yeo)', ex:'여름 (yeoreum) = summer' },
+    { char:'ㅗ', rom:'o', name:'오 (o)', ex:'오리 (ori) = duck' },
+    { char:'ㅛ', rom:'yo', name:'요 (yo)', ex:'요리 (yori) = cooking' },
+    { char:'ㅜ', rom:'u', name:'우 (u)', ex:'우유 (uyu) = milk' },
+    { char:'ㅠ', rom:'yu', name:'유 (yu)', ex:'유리 (yuri) = glass' },
+    { char:'ㅡ', rom:'eu', name:'으 (eu)', ex:'으악! (euak!) = yikes!' },
+    { char:'ㅣ', rom:'i', name:'이 (i)', ex:'이름 (ireum) = name' },
+    { char:'ㅐ', rom:'ae', name:'애 (ae)', ex:'개 (gae) = dog' },
+    { char:'ㅔ', rom:'e', name:'에 (e)', ex:'세계 (segye) = world' }
+  ],
+  double: [
+    { char:'ㄲ', rom:'kk', name:'쌍기역 (ssang-giyeok)', ex:'꽃 (kkot) = flower' },
+    { char:'ㄸ', rom:'tt', name:'쌍디귿 (ssang-digeut)', ex:'딸 (ttal) = daughter' },
+    { char:'ㅃ', rom:'pp', name:'쌍비읍 (ssang-bieup)', ex:'빵 (ppang) = bread' },
+    { char:'ㅆ', rom:'ss', name:'쌍시옷 (ssang-siot)', ex:'쓰다 (sseuda) = to write' },
+    { char:'ㅉ', rom:'jj', name:'쌍지읒 (ssang-jieut)', ex:'짜다 (jjada) = salty' }
+  ]
+};
+var _hangulMode = 'consonant';
+var _hangulIdx = 0;
+function setHangulMode(mode) {
+  _hangulMode = mode;
+  _hangulIdx = 0;
+  renderHangulCard();
+  // Update button styles
+  ['con','vow','dbl'].forEach(function(k) {
+    var b = document.getElementById('sr-hg-btn-' + k);
+    if (!b) return;
+    var isOn = (k === 'con' && mode === 'consonant') || (k === 'vow' && mode === 'vowel') || (k === 'dbl' && mode === 'double');
+    b.style.background = isOn ? 'rgba(56,189,248,.15)' : 'transparent';
+    b.style.borderColor = isOn ? 'rgba(56,189,248,.3)' : 'rgba(255,255,255,.1)';
+    b.style.color = isOn ? '#7dd3fc' : 'rgba(255,255,255,.4)';
+  });
+}
+function prevHangul() { var arr = _HANGUL[_hangulMode]; _hangulIdx = (_hangulIdx - 1 + arr.length) % arr.length; renderHangulCard(); }
+function nextHangul() { var arr = _HANGUL[_hangulMode]; _hangulIdx = (_hangulIdx + 1) % arr.length; renderHangulCard(); }
+function renderHangulCard() {
+  var arr = _HANGUL[_hangulMode];
+  if (!arr || !arr[_hangulIdx]) return;
+  var h = arr[_hangulIdx];
+  var el = function(id){ return document.getElementById(id); };
+  if (el('sr-hangul-char')) el('sr-hangul-char').textContent = h.char;
+  if (el('sr-hangul-rom')) el('sr-hangul-rom').textContent = h.rom;
+  if (el('sr-hangul-name')) el('sr-hangul-name').textContent = h.name;
+  if (el('sr-hangul-example')) el('sr-hangul-example').textContent = h.ex;
 }
 
 // ── Korean Slang Data ──
