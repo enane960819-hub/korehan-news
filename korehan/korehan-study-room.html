@@ -4518,19 +4518,289 @@ var _FT_SCENARIOS = [
 },
 {
   id:'immigration', title:'THE IMMIGRATION OFFICE', sub:'출입국사무소 방문', titleKo:'출입국사무소',
-  difficulty:'Intermediate', icon:'🏛️', locked:true, nodes:{}, edges:[]
+  difficulty:'Intermediate', icon:'🏛️', locked:false,
+  nodes:{
+    start:{type:'start',x:3,y:50,label:'사무소 도착',next:'number'},
+    number:{type:'npc',x:13,y:50,label:'번호표 뽑기',npc:'안내원',scene:'출입국사무소 로비',
+      text:'번호표 뽑으시고 앉아서 기다려주세요~',textEn:'Please take a number and wait.',
+      choices:[
+        {id:'n1',text:'감사합니다 (번호표 뽑음)',textEn:'Thank you (takes number)',next:'wait',pts:2,phrase:'감사합니다'},
+        {id:'n2',text:'(번호표 안 뽑고 바로 창구로 감)',textEn:'(goes straight to counter without number)',next:'no_number',pts:0}
+      ]},
+    no_number:{type:'npc',x:24,y:20,label:'번호표 없음',npc:'직원',scene:'창구',
+      text:'손님, 번호표 먼저 뽑아오세요. 저기 기계에서요.',textEn:'Please get a number first. From the machine over there.',
+      choices:[
+        {id:'nn1',text:'아 죄송합니다!',textEn:'Oh sorry!',next:'wait',pts:1,phrase:'죄송합니다'}
+      ]},
+    wait:{type:'npc',x:24,y:50,label:'대기',npc:'스피커',scene:'대기실',
+      text:'352번 손님~ 3번 창구로 오세요!',textEn:'Number 352~ Please come to counter 3!',
+      choices:[
+        {id:'w1',text:'(창구로 이동) 안녕하세요',textEn:'(walks to counter) Hello',next:'clerk_greet',pts:2,phrase:'안녕하세요'}
+      ]},
+    clerk_greet:{type:'npc',x:36,y:50,label:'직원 인사',npc:'직원',scene:'3번 창구',
+      text:'안녕하세요. 어떤 업무로 오셨어요?',textEn:'Hello. What brings you here today?',
+      choices:[
+        {id:'cg1',text:'외국인등록증 만들러 왔어요',textEn:'I came to make an alien registration card',next:'passport_check',pts:3,phrase:'외국인등록증 만들러 왔어요'},
+        {id:'cg2',text:'비자 연장하러 왔어요',textEn:'I came to extend my visa',next:'passport_check',pts:3,phrase:'비자 연장하러 왔어요'},
+        {id:'cg3',text:'음... 잘 모르겠는데요',textEn:'Um... I am not sure',next:'clerk_help',pts:1}
+      ]},
+    clerk_help:{type:'npc',x:36,y:80,label:'직원 도움',npc:'직원',scene:'3번 창구',
+      text:'혹시 한국에 처음 오셨어요? 여권 좀 보여주시겠어요?',textEn:'Is this your first time in Korea? Can I see your passport?',
+      choices:[
+        {id:'ch1',text:'네, 여기요 (여권 건냄)',textEn:'Yes, here (hands passport)',next:'passport_check',pts:2}
+      ]},
+    passport_check:{type:'npc',x:50,y:50,label:'여권 확인',npc:'직원',scene:'3번 창구',
+      text:'여권 보여주세요.',textEn:'Please show me your passport.',
+      choices:[
+        {id:'pc1',text:'여기 있습니다 (여권 건냄)',textEn:'Here it is',next:'address_q',pts:2},
+        {id:'pc2',text:'어... 여권을 호텔에 두고 왔어요',textEn:'Uh... I left my passport at the hotel',next:'forgot_passport',pts:0}
+      ]},
+    forgot_passport:{type:'end',x:62,y:20,label:'여권 깜빡 😱',npc:'직원',scene:'3번 창구',
+      text:'여권 없이는 업무 처리가 안 돼요. 여권 가지고 다시 오세요.',textEn:'I cannot process anything without a passport. Please come back with it.',
+      choices:[]},
+    address_q:{type:'npc',x:62,y:50,label:'주소 확인',npc:'직원',scene:'3번 창구',
+      text:'한국 주소가 어떻게 되세요?',textEn:'What is your address in Korea?',
+      choices:[
+        {id:'aq1',text:'서울시 강남구... (주소 말함)',textEn:'Seoul Gangnam-gu... (gives address)',next:'docs_check',pts:3,phrase:'한국 주소가 어떻게 되세요?'},
+        {id:'aq2',text:'아직 주소가 없어요...',textEn:'I don\'t have an address yet...',next:'no_address',pts:1}
+      ]},
+    no_address:{type:'npc',x:74,y:80,label:'주소 없음',npc:'직원',scene:'3번 창구',
+      text:'주소가 있어야 등록이 가능해요. 숙소 주소라도 괜찮아요.',textEn:'You need an address to register. Even your accommodation address is fine.',
+      choices:[
+        {id:'na1',text:'아 그러면 호텔 주소요! (보여줌)',textEn:'Oh then my hotel address! (shows it)',next:'docs_check',pts:2}
+      ]},
+    docs_check:{type:'npc',x:74,y:50,label:'서류 확인',npc:'직원',scene:'3번 창구',
+      text:'네 확인됐습니다. 수수료 3만원이에요. 카드 되세요?',textEn:'Confirmed. The fee is 30,000 won. Can you pay by card?',
+      choices:[
+        {id:'dc1',text:'네, 카드로 할게요',textEn:'Yes, by card',next:'done_imm',pts:2,phrase:'카드로 할게요'},
+        {id:'dc2',text:'현금으로 할게요',textEn:'Cash please',next:'done_imm',pts:2}
+      ]},
+    done_imm:{type:'end',x:90,y:50,label:'등록 완료! 🏛️',npc:'직원',scene:'3번 창구',
+      text:'2주 후에 등록증 찾으러 오시면 됩니다. 수고하셨어요~',textEn:'Come back in 2 weeks to pick up your card. Good job~',
+      choices:[]}
+  },
+  edges:[
+    ['start','number'],['number','wait'],['number','no_number'],['no_number','wait'],
+    ['wait','clerk_greet'],['clerk_greet','passport_check'],['clerk_greet','clerk_help'],
+    ['clerk_help','passport_check'],['passport_check','address_q'],['passport_check','forgot_passport'],
+    ['address_q','docs_check'],['address_q','no_address'],['no_address','docs_check'],
+    ['docs_check','done_imm']
+  ]
 },
 {
   id:'directions', title:'ASKING DIRECTIONS', sub:'길 물어보기', titleKo:'길 묻기',
-  difficulty:'Beginner', icon:'🗺️', locked:true, nodes:{}, edges:[]
+  difficulty:'Beginner', icon:'🗺️', locked:false,
+  nodes:{
+    start:{type:'start',x:3,y:50,label:'길을 잃음',next:'look_around'},
+    look_around:{type:'npc',x:13,y:50,label:'주위 둘러보기',npc:'나',scene:'낯선 거리',
+      text:'(지도 앱이 안 돼서 길을 잃었다...)',textEn:'(Map app isn\'t working, I\'m lost...)',
+      choices:[
+        {id:'la1',text:'(행인에게) 저기요, 길 좀 물어볼게요',textEn:'Excuse me, can I ask for directions?',next:'ask_person',pts:3,phrase:'길 좀 물어볼게요'},
+        {id:'la2',text:'(편의점에 들어감) 여기 지하철역 어디예요?',textEn:'(enters convenience store) Where is the subway?',next:'conv_help',pts:2,phrase:'지하철역 어디예요?'},
+        {id:'la3',text:'(감으로 걸어봄)',textEn:'(walks by instinct)',next:'wrong_way',pts:0}
+      ]},
+    ask_person:{type:'npc',x:26,y:35,label:'행인에게 묻기',npc:'행인',scene:'거리',
+      text:'네! 어디 가세요?',textEn:'Sure! Where are you going?',
+      choices:[
+        {id:'ap1',text:'강남역 가려고 하는데요',textEn:'I\'m trying to go to Gangnam Station',next:'directions_given',pts:2,phrase:'강남역 가려고 하는데요'},
+        {id:'ap2',text:'이 주소로 가고 싶어요 (핸드폰 보여줌)',textEn:'I want to go to this address (shows phone)',next:'directions_given',pts:2}
+      ]},
+    conv_help:{type:'npc',x:26,y:70,label:'편의점에서 묻기',npc:'점원',scene:'편의점',
+      text:'지하철역이요? 여기서 나가서 오른쪽으로 쭉 가면 있어요!',textEn:'Subway? Go out and keep going right!',
+      choices:[
+        {id:'cvh1',text:'오른쪽이요? 감사합니다!',textEn:'Right? Thank you!',next:'follow_right',pts:2,phrase:'오른쪽이요'},
+        {id:'cvh2',text:'오른쪽이... 어느 쪽이에요?',textEn:'Right is... which way?',next:'point_dir',pts:1}
+      ]},
+    wrong_way:{type:'npc',x:26,y:15,label:'엉뚱한 방향',npc:'나',scene:'골목길',
+      text:'(20분째 걷고 있는데 점점 더 모르는 곳으로...)',textEn:'(Walking for 20 min, getting more lost...)',
+      choices:[
+        {id:'ww1',text:'(결국 사람에게 물어봄) 저기요!',textEn:'(finally asks someone) Excuse me!',next:'ask_person',pts:1},
+        {id:'ww2',text:'(계속 걸음)',textEn:'(keeps walking)',next:'circle_end',pts:0}
+      ]},
+    circle_end:{type:'end',x:40,y:15,label:'제자리 엔딩 🔄',npc:'나',scene:'출발점',
+      text:'어...? 여기 아까 왔던 곳 아니야?? (원점 회귀 ㅋㅋ)',textEn:'Wait...? Isn\'t this where I started?? (back to square one lol)',
+      choices:[]},
+    point_dir:{type:'npc',x:40,y:70,label:'방향 확인',npc:'점원',scene:'편의점',
+      text:'(밖으로 나와서 가리키며) 저쪽이요! 5분이면 돼요~',textEn:'(comes outside and points) That way! 5 minutes~',
+      choices:[
+        {id:'pd1',text:'아! 감사합니다!',textEn:'Ah! Thank you!',next:'follow_right',pts:2,phrase:'감사합니다'}
+      ]},
+    directions_given:{type:'npc',x:40,y:35,label:'길 안내',npc:'행인',scene:'거리',
+      text:'여기서 직진하다가 사거리에서 왼쪽으로 꺾으세요. 그러면 보여요!',textEn:'Go straight and turn left at the intersection. You\'ll see it!',
+      choices:[
+        {id:'dg1',text:'직진하고 왼쪽이요? 감사합니다!',textEn:'Straight then left? Thanks!',next:'follow_left',pts:3,phrase:'직진하고 왼쪽이요'},
+        {id:'dg2',text:'(왼쪽 오른쪽 헷갈림) 왼쪽이... 이쪽?',textEn:'(confused) Left is... this way?',next:'wrong_turn',pts:1}
+      ]},
+    follow_left:{type:'npc',x:56,y:35,label:'왼쪽으로',npc:'나',scene:'사거리',
+      text:'(사거리 도착! 왼쪽으로 꺾으니까 역이 보인다!)',textEn:'(At the intersection! Turn left and I can see the station!)',
+      choices:[
+        {id:'fl1',text:'찾았다! 감사합니다~',textEn:'Found it! Thank you~',next:'found',pts:2}
+      ]},
+    follow_right:{type:'npc',x:56,y:70,label:'오른쪽으로',npc:'나',scene:'거리',
+      text:'(오른쪽으로 걷다보니 지하철 표지가 보인다!)',textEn:'(Walking right, I can see the subway sign!)',
+      choices:[
+        {id:'fr1',text:'오 저기다! 감사합니다~',textEn:'Oh there it is! Thank you~',next:'found',pts:2}
+      ]},
+    wrong_turn:{type:'npc',x:56,y:15,label:'잘못된 방향',npc:'또 다른 행인',scene:'골목',
+      text:'아 거기 아니에요! 반대쪽이에요 ㅋㅋ',textEn:'No not that way! It\'s the opposite direction haha',
+      choices:[
+        {id:'wt1',text:'아 ㅋㅋ 감사합니다!',textEn:'Oh haha thanks!',next:'follow_left',pts:1}
+      ]},
+    found:{type:'end',x:75,y:50,label:'도착 성공! 🗺️',npc:'나',scene:'지하철역 앞',
+      text:'드디어 찾았다! 한국어로 길 물어보기 성공! 🎉',textEn:'Finally found it! Successfully asked for directions in Korean! 🎉',
+      choices:[]}
+  },
+  edges:[
+    ['start','look_around'],['look_around','ask_person'],['look_around','conv_help'],['look_around','wrong_way'],
+    ['wrong_way','ask_person'],['wrong_way','circle_end'],
+    ['ask_person','directions_given'],['conv_help','follow_right'],['conv_help','point_dir'],
+    ['point_dir','follow_right'],['directions_given','follow_left'],['directions_given','wrong_turn'],
+    ['wrong_turn','follow_left'],['follow_left','found'],['follow_right','found']
+  ]
 },
 {
   id:'hospital', title:'THE HOSPITAL', sub:'병원에서 증상 설명하기', titleKo:'병원 방문',
-  difficulty:'Intermediate', icon:'🏥', locked:true, nodes:{}, edges:[]
+  difficulty:'Intermediate', icon:'🏥', locked:false,
+  nodes:{
+    start:{type:'start',x:3,y:50,label:'병원 도착',next:'reception'},
+    reception:{type:'npc',x:13,y:50,label:'접수',npc:'간호사',scene:'접수 데스크',
+      text:'안녕하세요~ 어디가 불편하세요?',textEn:'Hello~ What seems to be the problem?',
+      choices:[
+        {id:'rc1',text:'머리가 아프고 열이 나요',textEn:'I have a headache and fever',next:'form',pts:3,phrase:'머리가 아프고 열이 나요'},
+        {id:'rc2',text:'배가 아파요',textEn:'My stomach hurts',next:'form',pts:3,phrase:'배가 아파요'},
+        {id:'rc3',text:'(번역기로) I am... 아프다...',textEn:'(with translator) I am... sick...',next:'nurse_help',pts:1},
+        {id:'rc4',text:'강아지가 아파요',textEn:'My dog is sick',next:'vet_end',pts:0}
+      ]},
+    vet_end:{type:'end',x:24,y:15,label:'동물병원 아닌데 🐶',npc:'간호사',scene:'접수',
+      text:'여기는 사람 병원이에요... 동물병원은 길 건너편에 있어요 ㅋㅋ',textEn:'This is a hospital for people... The vet is across the street haha',
+      choices:[]},
+    nurse_help:{type:'npc',x:24,y:80,label:'간호사 도움',npc:'간호사',scene:'접수',
+      text:'괜찮아요~ 어디가 아프세요? (몸 가리키며) 여기? 여기?',textEn:'It\'s okay~ Where does it hurt? (pointing) Here? Here?',
+      choices:[
+        {id:'nh1',text:'(배를 가리키며) 여기... 아파요',textEn:'(points at stomach) Here... hurts',next:'form',pts:2,phrase:'여기 아파요'}
+      ]},
+    form:{type:'npc',x:28,y:50,label:'접수서 작성',npc:'간호사',scene:'접수',
+      text:'보험 있으세요? 여권이나 외국인등록증 주세요.',textEn:'Do you have insurance? Please give me your passport or ARC.',
+      choices:[
+        {id:'f1',text:'네, 보험 있어요 (카드 건냄)',textEn:'Yes I have insurance (hands card)',next:'wait_doc',pts:2,phrase:'보험 있어요'},
+        {id:'f2',text:'보험 없어요...',textEn:'I don\'t have insurance...',next:'no_insurance',pts:1}
+      ]},
+    no_insurance:{type:'npc',x:40,y:75,label:'보험 없음',npc:'간호사',scene:'접수',
+      text:'보험 없으시면 진료비가 좀 나올 수 있어요. 괜찮으세요?',textEn:'Without insurance it might be expensive. Is that okay?',
+      choices:[
+        {id:'ni1',text:'네, 괜찮아요',textEn:'Yes, that\'s fine',next:'wait_doc',pts:2,phrase:'괜찮아요'}
+      ]},
+    wait_doc:{type:'npc',x:42,y:50,label:'진료 대기',npc:'간호사',scene:'대기실',
+      text:'잠시만 기다려주세요~ 곧 불러드릴게요.',textEn:'Please wait a moment~ We\'ll call you soon.',
+      choices:[
+        {id:'wd1',text:'(기다림) 네~',textEn:'(waits) Okay~',next:'see_doctor',pts:1}
+      ]},
+    see_doctor:{type:'npc',x:55,y:50,label:'의사 진료',npc:'의사',scene:'진료실',
+      text:'어서오세요. 어디가 불편하세요? 언제부터 아팠어요?',textEn:'Come in. What\'s bothering you? When did it start?',
+      choices:[
+        {id:'sd1',text:'어제부터 머리가 아프고 열이 나요',textEn:'Since yesterday, headache and fever',next:'examine',pts:3,phrase:'어제부터 아팠어요'},
+        {id:'sd2',text:'3일 전부터 배가 아파요. 설사도 해요',textEn:'Stomach pain for 3 days. Also diarrhea',next:'examine',pts:3,phrase:'설사도 해요'},
+        {id:'sd3',text:'(증상을 과장해서 설명) 온몸이 다 아파요!!!',textEn:'(exaggerates) MY WHOLE BODY HURTS!!!',next:'drama_end',pts:0}
+      ]},
+    drama_end:{type:'end',x:68,y:15,label:'응급실 이송 😅',npc:'의사',scene:'진료실',
+      text:'온몸이요?! 간호사! 응급실 준비해주세요! ...환자분 표정이 너무 괜찮아 보이는데요?',textEn:'Whole body?! Nurse! Prep the ER! ...The patient looks surprisingly fine though?',
+      choices:[]},
+    examine:{type:'npc',x:68,y:50,label:'검사',npc:'의사',scene:'진료실',
+      text:'음, 알겠습니다. 목 좀 벌려보세요. 아~ 해보세요.',textEn:'I see. Open your mouth please. Say ah~.',
+      choices:[
+        {id:'ex1',text:'아~~~',textEn:'Ah~~~',next:'prescription',pts:2}
+      ]},
+    prescription:{type:'npc',x:80,y:50,label:'처방',npc:'의사',scene:'진료실',
+      text:'감기 같네요. 약 처방해드릴게요. 3일치 드릴 테니 하루 세 번 드세요.',textEn:'Looks like a cold. I\'ll prescribe medicine. Take it 3 times a day for 3 days.',
+      choices:[
+        {id:'pr1',text:'감사합니다. 약국은 어디예요?',textEn:'Thank you. Where is the pharmacy?',next:'done_hosp',pts:3,phrase:'약국은 어디예요?'},
+        {id:'pr2',text:'하루에 세 번이요? 알겠습니다',textEn:'Three times a day? Got it',next:'done_hosp',pts:2,phrase:'하루에 세 번이요'}
+      ]},
+    done_hosp:{type:'end',x:94,y:50,label:'진료 완료! 🏥',npc:'의사',scene:'진료실',
+      text:'1층 약국에서 약 받으세요. 푹 쉬시고 안 나으면 다시 오세요~',textEn:'Get your medicine at the pharmacy on 1F. Rest well and come back if it doesn\'t improve~',
+      choices:[]}
+  },
+  edges:[
+    ['start','reception'],['reception','form'],['reception','nurse_help'],['reception','vet_end'],
+    ['nurse_help','form'],['form','wait_doc'],['form','no_insurance'],['no_insurance','wait_doc'],
+    ['wait_doc','see_doctor'],['see_doctor','examine'],['see_doctor','drama_end'],
+    ['examine','prescription'],['prescription','done_hosp']
+  ]
 },
 {
   id:'phone-shop', title:'THE PHONE SHOP', sub:'통신사에서 폰 개통하기', titleKo:'폰 개통',
-  difficulty:'Intermediate', icon:'📱', locked:true, nodes:{}, edges:[]
+  difficulty:'Intermediate', icon:'📱', locked:false,
+  nodes:{
+    start:{type:'start',x:3,y:50,label:'통신사 입장',next:'staff_greet'},
+    staff_greet:{type:'npc',x:13,y:50,label:'직원 인사',npc:'직원',scene:'통신사 매장',
+      text:'어서오세요! 어떤 걸로 도와드릴까요?',textEn:'Welcome! How can I help you?',
+      choices:[
+        {id:'sg1',text:'폰 개통하러 왔어요',textEn:'I came to activate a phone',next:'plan_type',pts:3,phrase:'폰 개통하러 왔어요'},
+        {id:'sg2',text:'유심만 살 수 있어요?',textEn:'Can I just buy a SIM card?',next:'usim_only',pts:2,phrase:'유심만 살 수 있어요?'},
+        {id:'sg3',text:'와이파이 비밀번호 뭐예요?',textEn:'What\'s the WiFi password?',next:'wifi_end',pts:0}
+      ]},
+    wifi_end:{type:'end',x:24,y:15,label:'와이파이 도둑 😅',npc:'직원',scene:'통신사',
+      text:'...여기 카페가 아니라 통신사인데요 ㅋㅋ 와이파이는 "store_5G"이에요...',textEn:'...This is a phone shop, not a cafe lol The WiFi is "store_5G"...',
+      choices:[]},
+    usim_only:{type:'npc',x:24,y:75,label:'유심 문의',npc:'직원',scene:'통신사',
+      text:'네! 선불 유심이랑 후불 유심 있어요. 여권 있으시죠?',textEn:'Sure! We have prepaid and postpaid SIMs. Do you have your passport?',
+      choices:[
+        {id:'uo1',text:'선불로 할게요. 여기 여권이요',textEn:'Prepaid please. Here\'s my passport',next:'plan_choose',pts:2,phrase:'선불로 할게요'},
+        {id:'uo2',text:'후불이 뭐예요?',textEn:'What\'s postpaid?',next:'explain_plan',pts:1}
+      ]},
+    plan_type:{type:'npc',x:24,y:50,label:'개통 유형',npc:'직원',scene:'통신사',
+      text:'새 폰도 같이 구매하실 건가요, 아니면 유심만 하실 건가요?',textEn:'Will you also buy a new phone, or just a SIM card?',
+      choices:[
+        {id:'pt1',text:'유심만이요',textEn:'Just SIM',next:'plan_choose',pts:2},
+        {id:'pt2',text:'새 폰도 보고 싶어요',textEn:'I\'d like to see new phones too',next:'phone_browse',pts:2,phrase:'새 폰도 보고 싶어요'}
+      ]},
+    phone_browse:{type:'npc',x:38,y:35,label:'폰 구경',npc:'직원',scene:'매장 진열대',
+      text:'요즘 이 모델이 제일 인기 있어요! 할부도 가능하고요.',textEn:'This model is the most popular! Installment plans are available too.',
+      choices:[
+        {id:'pb1',text:'한달에 얼마예요?',textEn:'How much per month?',next:'plan_choose',pts:2,phrase:'한달에 얼마예요?'},
+        {id:'pb2',text:'제일 비싼 거 주세요!',textEn:'Give me the most expensive one!',next:'expensive_end',pts:0}
+      ]},
+    expensive_end:{type:'end',x:52,y:15,label:'통장 텅 💸',npc:'직원',scene:'통신사',
+      text:'최신 폰 + 무제한 요금제... 월 18만원입니다! (3년 약정) 😱',textEn:'Latest phone + unlimited plan... 180,000 won/month! (3-year contract) 😱',
+      choices:[]},
+    explain_plan:{type:'npc',x:38,y:75,label:'요금제 설명',npc:'직원',scene:'통신사',
+      text:'선불은 미리 충전해서 쓰는 거고, 후불은 매달 자동 결제돼요. 외국인은 선불을 많이 써요!',textEn:'Prepaid is pay-in-advance, postpaid is monthly auto-payment. Foreigners usually use prepaid!',
+      choices:[
+        {id:'ep1',text:'그러면 선불로 할게요',textEn:'Then prepaid please',next:'plan_choose',pts:2}
+      ]},
+    plan_choose:{type:'npc',x:52,y:50,label:'요금제 선택',npc:'직원',scene:'통신사',
+      text:'요금제는 3만원, 5만원, 7만원짜리가 있어요. 데이터 차이예요.',textEn:'Plans are 30K, 50K, 70K won. The difference is data.',
+      choices:[
+        {id:'plc1',text:'5만원짜리로 할게요',textEn:'50K won plan please',next:'id_check',pts:2,phrase:'5만원짜리로 할게요'},
+        {id:'plc2',text:'데이터 무제한은 없어요?',textEn:'No unlimited data?',next:'unlimited_q',pts:2,phrase:'데이터 무제한은 없어요?'}
+      ]},
+    unlimited_q:{type:'npc',x:64,y:75,label:'무제한 문의',npc:'직원',scene:'통신사',
+      text:'무제한은 후불 요금제에만 있어요. 후불은 외국인등록증이 필요한데, 있으세요?',textEn:'Unlimited is only for postpaid plans. You need an ARC. Do you have one?',
+      choices:[
+        {id:'uq1',text:'아직 없어요. 5만원짜리로 할게요',textEn:'Not yet. 50K plan then',next:'id_check',pts:2}
+      ]},
+    id_check:{type:'npc',x:68,y:50,label:'신분증 확인',npc:'직원',scene:'통신사',
+      text:'여권 확인할게요. 사인도 부탁드려요.',textEn:'Let me check your passport. Please sign here too.',
+      choices:[
+        {id:'ic1',text:'(여권 건네고 사인) 여기요',textEn:'(hands passport and signs) Here',next:'activate',pts:2}
+      ]},
+    activate:{type:'npc',x:82,y:50,label:'개통 중',npc:'직원',scene:'통신사',
+      text:'유심 넣어드릴게요~ 잠시만요... 네, 개통됐습니다!',textEn:'I\'ll put the SIM in~ One moment... Done, it\'s activated!',
+      choices:[
+        {id:'ac1',text:'감사합니다! 인터넷 되는지 확인해볼게요',textEn:'Thanks! Let me check if internet works',next:'done_phone',pts:2,phrase:'인터넷 되는지 확인해볼게요'}
+      ]},
+    done_phone:{type:'end',x:94,y:50,label:'개통 완료! 📱',npc:'직원',scene:'통신사',
+      text:'잘 되시죠? 문제 있으면 언제든 오세요~ 감사합니다!',textEn:'Working well? Come anytime if there are issues~ Thank you!',
+      choices:[]}
+  },
+  edges:[
+    ['start','staff_greet'],['staff_greet','plan_type'],['staff_greet','usim_only'],['staff_greet','wifi_end'],
+    ['usim_only','plan_choose'],['usim_only','explain_plan'],['explain_plan','plan_choose'],
+    ['plan_type','plan_choose'],['plan_type','phone_browse'],
+    ['phone_browse','plan_choose'],['phone_browse','expensive_end'],
+    ['plan_choose','id_check'],['plan_choose','unlimited_q'],['unlimited_q','id_check'],
+    ['id_check','activate'],['activate','done_phone']
+  ]
 }
 ];
 
