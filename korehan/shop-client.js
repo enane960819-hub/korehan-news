@@ -296,15 +296,21 @@
       shopGrid.style.display = 'none';
       roomGrid.style.display = '';
       if (invSection) invSection.style.display = 'none';
+    } else if (tab === 'all') {
+      // ALL: show both shop items AND room items
+      shopGrid.style.display = '';
+      roomGrid.style.display = '';
+      if (invSection) invSection.style.display = '';
+      var cards = shopGrid.querySelectorAll('.card');
+      cards.forEach(function(card) { card.style.display = ''; });
     } else {
       shopGrid.style.display = '';
       roomGrid.style.display = 'none';
       if (invSection) invSection.style.display = '';
-      // filter visible cards
       var cards = shopGrid.querySelectorAll('.card');
       cards.forEach(function(card) {
         var cardTab = card.getAttribute('data-tab-type') || 'all';
-        var show = tab === 'all' || cardTab === tab;
+        var show = cardTab === tab;
         card.style.display = show ? '' : 'none';
       });
     }

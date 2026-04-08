@@ -2553,10 +2553,15 @@ Keep intro and nuance concise but useful. Make examples natural Korean for begin
       max_tokens:900,
       messages:[{role:'user', content: prompt}]
     });
-    const raw = (res && res.content && res.content[0] && res.content[0].text) ? res.content[0].text : (res.text || '');
-    const clean = raw.replace(/^```json\s*/,'').replace(/```$/,'').trim();
-    const jsonText = clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1);
-    const data = JSON.parse(jsonText);
+    const raw = (res && res.content && res.content[0] && res.content[0].text) ? res.content[0].text : (res && res.text) ? res.text : '';
+    if (!raw) throw new Error('AI returned empty response');
+    const clean = raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+    var openBrace = clean.indexOf('{');
+    var closeBrace = clean.lastIndexOf('}');
+    if (openBrace < 0 || closeBrace <= openBrace) throw new Error('AI response not valid JSON: ' + clean.slice(0, 100));
+    const jsonText = clean.slice(openBrace, closeBrace + 1);
+    var data;
+    try { data = JSON.parse(jsonText); } catch(pe) { throw new Error('JSON parse failed: ' + pe.message + ' — raw: ' + jsonText.slice(0, 200)); }
     phraseAdminItems[phraseAdminCurrentIndex] = normalizePhraseAdmin(data);
     renderPhraseAdminForm(phraseAdminCurrentIndex);
     renderPhraseAdminTable();
@@ -8348,27 +8353,41 @@ function vbRenderList() {
   });
   if (countEl) countEl.textContent = filtered.length + '/' + _vbAll.length + '개';
   if (!filtered.length) { el.innerHTML = '<div style="color:#8b8b8b;font-size:13px;padding:8px">결과 없음</div>'; return; }
-  var shown = filtered.slice(0, 100); // Limit for performance
+  var pageSize = 50;
+  var page = window._vbPage || 0;
+  var totalPages = Math.ceil(filtered.length / pageSize);
+  if (page >= totalPages) page = Math.max(0, totalPages - 1);
+  window._vbPage = page;
+  var shown = filtered.slice(page * pageSize, (page + 1) * pageSize);
   el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="border-bottom:1px solid #e8e8e8">'
     + '<th style="padding:6px;text-align:left;font-weight:600;color:#555">한국어</th>'
     + '<th style="padding:6px;text-align:left;font-weight:600;color:#555">로마자</th>'
     + '<th style="padding:6px;text-align:left;font-weight:600;color:#555">영어</th>'
     + '<th style="padding:6px;text-align:left;font-weight:600;color:#555">레벨</th>'
     + '<th style="padding:6px;text-align:left;font-weight:600;color:#555">관심사</th>'
-    + '<th style="padding:6px"></th>'
+    + '<th style="padding:6px;text-align:left;font-weight:600;color:#555">관리</th>'
     + '</tr></thead><tbody>'
     + shown.map(function(w) {
-        return '<tr style="border-bottom:1px solid #f5f5f5">'
+        var safeKey = (w.word_key||w.word_ko).replace(/'/g,"\\'");
+        return '<tr style="border-bottom:1px solid #f5f5f5" id="vb-row-' + encodeURIComponent(w.word_key||w.word_ko) + '">'
           + '<td style="padding:5px 6px;font-weight:700">' + w.word_ko + '</td>'
           + '<td style="padding:5px 6px;color:#8b8b8b">' + (w.word_rom||'') + '</td>'
           + '<td style="padding:5px 6px">' + (w.word_en||'') + '</td>'
           + '<td style="padding:5px 6px"><span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:#f5f5f5;color:#555">' + (w.level||'') + '</span></td>'
           + '<td style="padding:5px 6px;font-size:11px;color:#8b8b8b">' + (w.interest_tag||'-') + '</td>'
-          + '<td style="padding:5px 6px"><button onclick="vbDelete(\'' + (w.word_key||w.word_ko).replace(/'/g,"\\'") + '\')" style="font-size:10px;padding:2px 6px;border:1px solid #fdd;border-radius:3px;background:#fff5f5;color:#c33;cursor:pointer">삭제</button></td>'
-          + '</tr>';
+          + '<td style="padding:5px 6px;white-space:nowrap">'
+          + '<button onclick="vbEdit(\'' + safeKey + '\')" style="font-size:10px;padding:2px 6px;border:1px solid #cde;border-radius:3px;background:#f0f6ff;color:#2563eb;cursor:pointer;margin-right:4px">수정</button>'
+          + '<button onclick="vbDelete(\'' + safeKey + '\')" style="font-size:10px;padding:2px 6px;border:1px solid #fdd;border-radius:3px;background:#fff5f5;color:#c33;cursor:pointer">삭제</button>'
+          + '</td></tr>';
       }).join('')
     + '</tbody></table>'
-    + (filtered.length > 100 ? '<div style="padding:8px;font-size:11px;color:#8b8b8b;text-align:center">... 외 ' + (filtered.length - 100) + '개 (검색으로 필터링하세요)</div>' : '');
+    + (totalPages > 1
+      ? '<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 0">'
+        + '<button onclick="window._vbPage=Math.max(0,window._vbPage-1);vbRenderList()" style="padding:4px 10px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;font-size:11px"' + (page === 0 ? ' disabled' : '') + '>← 이전</button>'
+        + '<span style="font-size:12px;color:#555">' + (page+1) + ' / ' + totalPages + '</span>'
+        + '<button onclick="window._vbPage=Math.min(' + (totalPages-1) + ',window._vbPage+1);vbRenderList()" style="padding:4px 10px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;font-size:11px"' + (page >= totalPages-1 ? ' disabled' : '') + '>다음 →</button>'
+        + '</div>'
+      : '');
 }
 
 async function vbAddWord() {
@@ -8400,6 +8419,27 @@ async function vbAddWord() {
   document.getElementById('vb-rom').value = '';
   document.getElementById('vb-en').value = '';
   document.getElementById('vb-ko').focus();
+  await vbLoadAll();
+}
+
+function vbEdit(key) {
+  var w = _vbAll.find(function(x){ return (x.word_key||x.word_ko) === key; });
+  if (!w) return;
+  var newEn = prompt('영어 뜻 수정:', w.word_en || '');
+  if (newEn === null) return;
+  var newRom = prompt('로마자 수정:', w.word_rom || '');
+  if (newRom === null) return;
+  var newLevel = prompt('레벨 (Beginner/Intermediate/Advanced):', w.level || 'Beginner');
+  if (newLevel === null) return;
+  var newTag = prompt('관심사 태그 (kpop/travel/food/business/daily/news/sports/drama/beauty):', w.interest_tag || '');
+  if (newTag === null) return;
+  vbSaveEdit(key, { word_en: newEn.trim(), word_rom: newRom.trim(), level: newLevel.trim(), interest_tag: newTag.trim() || null });
+}
+
+async function vbSaveEdit(key, updates) {
+  var sb = getSb(); if (!sb) return;
+  var r = await sb.from('vocabulary_bank').update(updates).eq('word_key', key);
+  if (r.error) { alert('수정 실패: ' + r.error.message); return; }
   await vbLoadAll();
 }
 
