@@ -1594,6 +1594,17 @@ body { background: #0b1626 !important; }
     </button>
   </div>
 
+  <!-- ═══ MY WORD BANK ═══ -->
+  <div style="margin-top:14px" id="sr-my-wordbank">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px">📚 내 단어장</div>
+      <button onclick="openWordBankModal()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:rgba(255,255,255,.5);font-size:11px;font-weight:700;padding:5px 12px;cursor:pointer;font-family:inherit">전체 보기 →</button>
+    </div>
+    <div id="sr-wordbank-preview" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">
+      <div style="grid-column:1/-1;text-align:center;padding:16px;color:rgba(255,255,255,.3);font-size:13px">단어를 저장하면 여기에 표시됩니다</div>
+    </div>
+  </div>
+
   <!-- ═══ REVIEW SECTION ═══ -->
   <div style="margin-top:14px">
     <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Review</div>
@@ -2126,6 +2137,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       asAutoSubmitOldWork();
       _asRefreshSubmitBanner();
       loadWeakGrammarBanner();
+      loadWordBankPreview();
     } else {
       waited++;
       setTimeout(waitForSession, 100);
@@ -3413,6 +3425,71 @@ function closeKeyExpressionsModal() {
   var modal = document.getElementById('ke-modal');
   if (modal) modal.classList.add('hidden');
   document.body.style.overflow = '';
+}
+
+// ── My Word Bank ──
+var _wbAllWords = [];
+async function loadWordBankPreview() {
+  if (!supaUser) return;
+  try {
+    var sb = getSupa();
+    var { data } = await sb.from('saved_words')
+      .select('word_ko, word_rom, word_en, created_at')
+      .eq('user_id', supaUser.id)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    _wbAllWords = data || [];
+    var preview = document.getElementById('sr-wordbank-preview');
+    if (!preview) return;
+    if (!_wbAllWords.length) {
+      preview.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:16px;color:rgba(255,255,255,.3);font-size:13px">단어를 저장하면 여기에 표시됩니다</div>';
+      return;
+    }
+    preview.innerHTML = _wbAllWords.slice(0, 6).map(function(w) {
+      return '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 12px;cursor:default">'
+        + '<div style="font-size:14px;font-weight:800">' + (w.word_ko||'') + '</div>'
+        + '<div style="font-size:11px;color:rgba(255,255,255,.4)">' + (w.word_rom||'') + '</div>'
+        + '<div style="font-size:12px;color:#7dd3fc;margin-top:3px">' + (w.word_en||'') + '</div>'
+        + '</div>';
+    }).join('') + (_wbAllWords.length > 6 ? '<div style="display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,.35)">+' + (_wbAllWords.length - 6) + ' more</div>' : '');
+  } catch(e) {}
+}
+function openWordBankModal() {
+  var modal = document.getElementById('wb-modal');
+  if (modal) modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  renderWordBankList(_wbAllWords);
+}
+function closeWordBankModal() {
+  var modal = document.getElementById('wb-modal');
+  if (modal) modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+function renderWordBankList(words) {
+  var list = document.getElementById('wb-full-list');
+  if (!list) return;
+  if (!words.length) {
+    list.innerHTML = '<div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">저장한 단어가 없습니다</div>';
+    return;
+  }
+  list.innerHTML = words.map(function(w) {
+    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px">'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:15px;font-weight:800">' + (w.word_ko||'') + '</span><span style="font-size:11px;color:rgba(255,255,255,.35)">' + (w.word_rom||'') + '</span></div>'
+      + '<div style="font-size:12px;color:#7dd3fc;margin-top:2px">' + (w.word_en||'') + '</div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+function filterWordBank() {
+  var q = (document.getElementById('wb-search').value || '').toLowerCase().trim();
+  if (!q) { renderWordBankList(_wbAllWords); return; }
+  var filtered = _wbAllWords.filter(function(w) {
+    return (w.word_ko||'').toLowerCase().indexOf(q) >= 0
+      || (w.word_en||'').toLowerCase().indexOf(q) >= 0
+      || (w.word_rom||'').toLowerCase().indexOf(q) >= 0;
+  });
+  renderWordBankList(filtered);
 }
 
 // ── Weak Grammar Banner ──
@@ -7793,6 +7870,24 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
       </span>
       <span id="ls-wp-lock" style="font-size:18px">🔒</span>
     </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MY WORD BANK MODAL
+═══════════════════════════════════════════ -->
+<div class="woverlay hidden" id="wb-modal" onclick="if(event.target===this)closeWordBankModal()">
+  <div style="background:#0d1b2e;border-radius:18px;max-width:620px;width:95%;margin:auto;padding:28px 24px;color:#fff;max-height:85vh;overflow-y:auto;position:relative">
+    <button onclick="closeWordBankModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:rgba(255,255,255,.4);font-size:20px;cursor:pointer">✕</button>
+    <div style="font-size:24px;margin-bottom:6px">📚</div>
+    <h2 style="margin:0 0 4px;font-size:18px;font-weight:900">내 단어장</h2>
+    <p style="margin:0 0 14px;font-size:13px;color:rgba(255,255,255,.5)">저장한 단어 목록 · 클릭하면 뜻을 확인할 수 있어요</p>
+    <div id="wb-search-wrap" style="margin-bottom:14px">
+      <input type="text" id="wb-search" placeholder="단어 검색..." oninput="filterWordBank()" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-family:inherit;outline:none">
+    </div>
+    <div id="wb-full-list" style="display:flex;flex-direction:column;gap:6px">
+      <div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Loading...</div>
+    </div>
   </div>
 </div>
 

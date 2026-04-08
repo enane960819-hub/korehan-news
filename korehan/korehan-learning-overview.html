@@ -1314,19 +1314,45 @@
   async function loadHub() {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
 
-    // Not logged in → prompt sign-in
+    // Not logged in → show demo data preview
     if (!supaUser) {
-      var loginMsg = '<div style="padding:20px;text-align:center">'
-        + '<div style="font-size:28px;margin-bottom:10px">🔒</div>'
-        + '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:6px">Sign in to see your learning data</div>'
-        + '<div style="font-size:13px;color:#94a3b8;margin-bottom:16px">Your weak grammar, daily words, and progress are all saved to your account.</div>'
-        + '<button onclick="openAuthModal(\'signin\')" style="padding:10px 24px;background:#2563eb;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
+      var demoSnap = {
+        today: { xp_earned: 145, words_learned: 12, articles_read: 3, conversations_read: 1, stories_read: 1, quizzes_done: 2 },
+        streak: 7,
+        weak_grammar: [
+          { grammar_point: '은/는 vs 이/가', wrong_count: 5, correct_count: 8 },
+          { grammar_point: '(으)ㄹ 거예요', wrong_count: 4, correct_count: 6 },
+          { grammar_point: '때문에', wrong_count: 3, correct_count: 7 },
+          { grammar_point: '(으)면', wrong_count: 2, correct_count: 9 },
+          { grammar_point: '고 싶다', wrong_count: 1, correct_count: 10 }
+        ],
+        scores: { reading: 72, grammar: 55, vocabulary: 68, writing: 40, listening: 30 },
+        review_queue: [
+          { content_type:'article', content_id:'demo1', title:'서울 지하철 이용법', level:'Beginner', read_at: new Date().toISOString() },
+          { content_type:'conversation', content_id:'demo2', title:'카페에서 주문하기', level:'Beginner', read_at: new Date(Date.now()-3600000).toISOString() },
+          { content_type:'story', content_id:'demo3', title:'비 오는 날의 산책', level:'Intermediate', read_at: new Date(Date.now()-7200000).toISOString() }
+        ],
+        weekly_progress: (function(){ var a=[]; for(var i=6;i>=0;i--){ var d=new Date(Date.now()-i*86400000); a.push({date:d.toISOString().slice(0,10),xp_earned:Math.floor(Math.random()*80+40)}); } return a; })(),
+        last_week_progress: (function(){ var a=[]; for(var i=13;i>=7;i--){ var d=new Date(Date.now()-i*86400000); a.push({date:d.toISOString().slice(0,10),xp_earned:Math.floor(Math.random()*60+20)}); } return a; })(),
+        activity_days: 15
+      };
+      // Render demo data with overlay
+      renderTopStats(demoSnap);
+      renderWeakGrammar(demoSnap);
+      renderSkills(demoSnap);
+      renderReview(demoSnap);
+      renderGrowthLineChart(demoSnap);
+      renderWeeklyImprovements(demoSnap);
+      // Add demo overlay banner
+      var demoOverlay = document.createElement('div');
+      demoOverlay.id = 'demo-overlay';
+      demoOverlay.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:999;background:linear-gradient(180deg,transparent,rgba(11,22,38,.95) 30%);padding:30px 20px 24px;text-align:center';
+      demoOverlay.innerHTML = '<div style="max-width:480px;margin:0 auto">'
+        + '<div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:6px">이것은 데모 데이터입니다</div>'
+        + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:14px">로그인하면 나만의 학습 데이터를 확인할 수 있어요</div>'
+        + '<button onclick="openAuthModal(\'signin\')" style="padding:12px 32px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none;border-radius:999px;font-size:14px;font-weight:900;cursor:pointer;box-shadow:0 4px 16px rgba(37,99,235,.4)">Sign In →</button>'
         + '</div>';
-      ['weak-grammar-list','skills-list','review-queue'].forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el) el.innerHTML = loginMsg;
-      });
-      ['stat-xp','stat-words','stat-articles','stat-streak'].forEach(function(id) { setText(id, '—'); });
+      document.body.appendChild(demoOverlay);
       loadAndRenderInterests();
       return;
     }
