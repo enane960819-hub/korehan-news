@@ -5667,8 +5667,42 @@ function getQuizPerfectCount() { return lsGet('kh_quiz_perfect_count', 0); }
 function getQuizStreakDays() { return lsGet('kh_quiz_streak_days', 0); }
 
 // ── 뱃지 정의 목록 ──────────────────────────────────────────────────────────
-var _PIXEL_CDN = 'https://unpkg.com/pixelarticons@2.0.2/svg/';
-function pxBadge(name) { return '<img src="' + _PIXEL_CDN + name + '.svg" width="24" height="24" style="image-rendering:pixelated;filter:drop-shadow(0 1px 2px rgba(0,0,0,.15))" alt="">'; }
+// Custom colored pixel-art badge icons (inline SVG, 16x16 grid)
+var _PX = {
+  // 🔥 fire — orange/red flame
+  fire: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="7" y="1" width="2" height="1" fill="#ff6b2b"/><rect x="6" y="2" width="4" height="1" fill="#ff6b2b"/><rect x="5" y="3" width="2" height="1" fill="#ff6b2b"/><rect x="7" y="3" width="2" height="1" fill="#ffb020"/><rect x="9" y="3" width="2" height="1" fill="#ff6b2b"/><rect x="4" y="4" width="2" height="1" fill="#ff4500"/><rect x="6" y="4" width="4" height="1" fill="#ffb020"/><rect x="10" y="4" width="2" height="1" fill="#ff4500"/><rect x="4" y="5" width="2" height="1" fill="#ff4500"/><rect x="6" y="5" width="1" height="1" fill="#ffb020"/><rect x="7" y="5" width="2" height="1" fill="#ffd700"/><rect x="9" y="5" width="1" height="1" fill="#ffb020"/><rect x="10" y="5" width="2" height="1" fill="#ff4500"/><rect x="3" y="6" width="2" height="1" fill="#e03000"/><rect x="5" y="6" width="1" height="1" fill="#ff4500"/><rect x="6" y="6" width="4" height="1" fill="#ffd700"/><rect x="10" y="6" width="1" height="1" fill="#ff4500"/><rect x="11" y="6" width="2" height="1" fill="#e03000"/><rect x="3" y="7" width="2" height="2" fill="#e03000"/><rect x="5" y="7" width="1" height="2" fill="#ff4500"/><rect x="6" y="7" width="4" height="2" fill="#ffd700"/><rect x="10" y="7" width="1" height="2" fill="#ff4500"/><rect x="11" y="7" width="2" height="2" fill="#e03000"/><rect x="4" y="9" width="8" height="1" fill="#ff4500"/><rect x="4" y="10" width="2" height="1" fill="#e03000"/><rect x="6" y="10" width="4" height="1" fill="#ff6b2b"/><rect x="10" y="10" width="2" height="1" fill="#e03000"/><rect x="5" y="11" width="6" height="1" fill="#e03000"/><rect x="6" y="12" width="4" height="1" fill="#c02000"/></svg>',
+  // 🏆 trophy — golden trophy
+  trophy: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="4" y="2" width="8" height="1" fill="#ffd700"/><rect x="3" y="3" width="10" height="1" fill="#ffd700"/><rect x="2" y="4" width="1" height="3" fill="#daa520"/><rect x="3" y="4" width="1" height="3" fill="#ffd700"/><rect x="4" y="4" width="8" height="1" fill="#ffed4a"/><rect x="12" y="4" width="1" height="3" fill="#ffd700"/><rect x="13" y="4" width="1" height="3" fill="#daa520"/><rect x="4" y="5" width="8" height="2" fill="#ffd700"/><rect x="6" y="5" width="4" height="2" fill="#ffed4a"/><rect x="3" y="7" width="10" height="1" fill="#daa520"/><rect x="4" y="8" width="8" height="1" fill="#daa520"/><rect x="5" y="9" width="6" height="1" fill="#c8960c"/><rect x="7" y="10" width="2" height="2" fill="#c8960c"/><rect x="5" y="12" width="6" height="1" fill="#daa520"/><rect x="4" y="13" width="8" height="1" fill="#ffd700"/></svg>',
+  // 👑 crown — golden crown with gems
+  crown: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="2" y="4" width="2" height="1" fill="#ffd700"/><rect x="7" y="3" width="2" height="1" fill="#ffd700"/><rect x="12" y="4" width="2" height="1" fill="#ffd700"/><rect x="2" y="5" width="2" height="1" fill="#ffed4a"/><rect x="5" y="5" width="1" height="1" fill="#ffd700"/><rect x="7" y="4" width="2" height="1" fill="#ffed4a"/><rect x="10" y="5" width="1" height="1" fill="#ffd700"/><rect x="12" y="5" width="2" height="1" fill="#ffed4a"/><rect x="2" y="6" width="12" height="1" fill="#ffd700"/><rect x="2" y="7" width="12" height="1" fill="#daa520"/><rect x="2" y="8" width="12" height="1" fill="#ffd700"/><rect x="4" y="8" width="2" height="1" fill="#e53e3e"/><rect x="7" y="8" width="2" height="1" fill="#38bdf8"/><rect x="10" y="8" width="2" height="1" fill="#4ade80"/><rect x="2" y="9" width="12" height="1" fill="#daa520"/><rect x="2" y="10" width="12" height="1" fill="#c8960c"/></svg>',
+  // 💎 diamond — blue diamond gem
+  diamond: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="5" y="3" width="6" height="1" fill="#93c5fd"/><rect x="4" y="4" width="2" height="1" fill="#60a5fa"/><rect x="6" y="4" width="4" height="1" fill="#bfdbfe"/><rect x="10" y="4" width="2" height="1" fill="#60a5fa"/><rect x="3" y="5" width="2" height="1" fill="#3b82f6"/><rect x="5" y="5" width="6" height="1" fill="#93c5fd"/><rect x="11" y="5" width="2" height="1" fill="#3b82f6"/><rect x="2" y="6" width="12" height="1" fill="#60a5fa"/><rect x="3" y="7" width="4" height="1" fill="#3b82f6"/><rect x="7" y="7" width="2" height="1" fill="#93c5fd"/><rect x="9" y="7" width="4" height="1" fill="#3b82f6"/><rect x="4" y="8" width="3" height="1" fill="#2563eb"/><rect x="7" y="8" width="2" height="1" fill="#60a5fa"/><rect x="9" y="8" width="3" height="1" fill="#2563eb"/><rect x="5" y="9" width="6" height="1" fill="#2563eb"/><rect x="6" y="10" width="4" height="1" fill="#1d4ed8"/><rect x="7" y="11" width="2" height="1" fill="#1e3a8a"/></svg>',
+  // 📖 book — blue/brown open book
+  book: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="1" y="3" width="6" height="1" fill="#92400e"/><rect x="9" y="3" width="6" height="1" fill="#92400e"/><rect x="1" y="4" width="1" height="8" fill="#92400e"/><rect x="2" y="4" width="5" height="8" fill="#fef3c7"/><rect x="8" y="4" width="1" height="8" fill="#7c3aed"/><rect x="9" y="4" width="5" height="8" fill="#fef3c7"/><rect x="14" y="4" width="1" height="8" fill="#92400e"/><rect x="3" y="5" width="3" height="1" fill="#60a5fa"/><rect x="10" y="5" width="3" height="1" fill="#60a5fa"/><rect x="3" y="7" width="3" height="1" fill="#94a3b8"/><rect x="10" y="7" width="3" height="1" fill="#94a3b8"/><rect x="3" y="9" width="3" height="1" fill="#94a3b8"/><rect x="10" y="9" width="3" height="1" fill="#94a3b8"/><rect x="1" y="12" width="6" height="1" fill="#92400e"/><rect x="9" y="12" width="6" height="1" fill="#92400e"/><rect x="7" y="4" width="2" height="9" fill="#7c3aed"/></svg>',
+  // ⭐ star — golden star
+  star: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="7" y="1" width="2" height="2" fill="#ffd700"/><rect x="6" y="3" width="4" height="1" fill="#ffd700"/><rect x="5" y="4" width="6" height="1" fill="#ffed4a"/><rect x="1" y="5" width="14" height="1" fill="#ffd700"/><rect x="2" y="6" width="12" height="1" fill="#ffd700"/><rect x="3" y="7" width="10" height="1" fill="#daa520"/><rect x="4" y="8" width="8" height="1" fill="#daa520"/><rect x="3" y="9" width="4" height="1" fill="#c8960c"/><rect x="9" y="9" width="4" height="1" fill="#c8960c"/><rect x="2" y="10" width="4" height="1" fill="#b8860b"/><rect x="10" y="10" width="4" height="1" fill="#b8860b"/><rect x="1" y="11" width="3" height="1" fill="#8b6914"/><rect x="12" y="11" width="3" height="1" fill="#8b6914"/></svg>',
+  // ❤️ heart — red heart
+  heart: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="2" y="4" width="4" height="1" fill="#f87171"/><rect x="10" y="4" width="4" height="1" fill="#f87171"/><rect x="1" y="5" width="6" height="1" fill="#ef4444"/><rect x="3" y="5" width="2" height="1" fill="#fca5a5"/><rect x="9" y="5" width="6" height="1" fill="#ef4444"/><rect x="1" y="6" width="14" height="1" fill="#ef4444"/><rect x="1" y="7" width="14" height="1" fill="#dc2626"/><rect x="2" y="8" width="12" height="1" fill="#dc2626"/><rect x="3" y="9" width="10" height="1" fill="#b91c1c"/><rect x="4" y="10" width="8" height="1" fill="#b91c1c"/><rect x="5" y="11" width="6" height="1" fill="#991b1b"/><rect x="6" y="12" width="4" height="1" fill="#7f1d1d"/><rect x="7" y="13" width="2" height="1" fill="#7f1d1d"/></svg>',
+  // ⚡ zap — yellow lightning bolt
+  zap: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="8" y="1" width="3" height="1" fill="#fbbf24"/><rect x="7" y="2" width="3" height="1" fill="#fbbf24"/><rect x="6" y="3" width="3" height="1" fill="#f59e0b"/><rect x="5" y="4" width="3" height="1" fill="#f59e0b"/><rect x="4" y="5" width="3" height="1" fill="#f59e0b"/><rect x="3" y="6" width="7" height="1" fill="#fbbf24"/><rect x="3" y="7" width="8" height="1" fill="#fcd34d"/><rect x="7" y="8" width="3" height="1" fill="#f59e0b"/><rect x="8" y="9" width="3" height="1" fill="#f59e0b"/><rect x="9" y="10" width="2" height="1" fill="#d97706"/><rect x="8" y="11" width="2" height="1" fill="#d97706"/><rect x="7" y="12" width="2" height="1" fill="#b45309"/><rect x="6" y="13" width="2" height="1" fill="#b45309"/></svg>',
+  // 🎯 target — red/white target
+  target: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="5" y="2" width="6" height="1" fill="#ef4444"/><rect x="3" y="3" width="2" height="1" fill="#ef4444"/><rect x="5" y="3" width="6" height="1" fill="#fca5a5"/><rect x="11" y="3" width="2" height="1" fill="#ef4444"/><rect x="2" y="4" width="1" height="1" fill="#ef4444"/><rect x="3" y="4" width="2" height="1" fill="#fca5a5"/><rect x="5" y="4" width="6" height="1" fill="#fff"/><rect x="11" y="4" width="2" height="1" fill="#fca5a5"/><rect x="13" y="4" width="1" height="1" fill="#ef4444"/><rect x="2" y="5" width="1" height="6" fill="#ef4444"/><rect x="3" y="5" width="2" height="6" fill="#fca5a5"/><rect x="5" y="5" width="1" height="6" fill="#fff"/><rect x="6" y="5" width="1" height="6" fill="#ef4444"/><rect x="7" y="6" width="2" height="4" fill="#ef4444"/><rect x="7" y="7" width="2" height="2" fill="#ffd700"/><rect x="9" y="5" width="1" height="6" fill="#ef4444"/><rect x="10" y="5" width="1" height="6" fill="#fff"/><rect x="11" y="5" width="2" height="6" fill="#fca5a5"/><rect x="13" y="5" width="1" height="6" fill="#ef4444"/><rect x="3" y="11" width="2" height="1" fill="#fca5a5"/><rect x="5" y="11" width="6" height="1" fill="#fff"/><rect x="11" y="11" width="2" height="1" fill="#fca5a5"/><rect x="5" y="12" width="6" height="1" fill="#fca5a5"/><rect x="5" y="13" width="6" height="1" fill="#ef4444"/></svg>',
+  // 🛡️ shield — blue/silver shield
+  shield: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="4" y="2" width="8" height="1" fill="#60a5fa"/><rect x="3" y="3" width="10" height="1" fill="#3b82f6"/><rect x="3" y="4" width="1" height="1" fill="#3b82f6"/><rect x="4" y="4" width="8" height="1" fill="#93c5fd"/><rect x="12" y="4" width="1" height="1" fill="#3b82f6"/><rect x="3" y="5" width="1" height="4" fill="#2563eb"/><rect x="4" y="5" width="8" height="1" fill="#60a5fa"/><rect x="7" y="5" width="2" height="1" fill="#ffd700"/><rect x="12" y="5" width="1" height="4" fill="#2563eb"/><rect x="4" y="6" width="8" height="1" fill="#60a5fa"/><rect x="6" y="6" width="4" height="1" fill="#ffd700"/><rect x="4" y="7" width="8" height="1" fill="#3b82f6"/><rect x="7" y="7" width="2" height="1" fill="#ffd700"/><rect x="4" y="8" width="8" height="1" fill="#3b82f6"/><rect x="4" y="9" width="8" height="1" fill="#2563eb"/><rect x="5" y="10" width="6" height="1" fill="#2563eb"/><rect x="6" y="11" width="4" height="1" fill="#1d4ed8"/><rect x="7" y="12" width="2" height="1" fill="#1e3a8a"/></svg>',
+  // 🪙 coin — golden coin
+  coin: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="5" y="3" width="6" height="1" fill="#fbbf24"/><rect x="4" y="4" width="2" height="1" fill="#f59e0b"/><rect x="6" y="4" width="4" height="1" fill="#fde68a"/><rect x="10" y="4" width="2" height="1" fill="#f59e0b"/><rect x="3" y="5" width="1" height="6" fill="#d97706"/><rect x="4" y="5" width="1" height="6" fill="#f59e0b"/><rect x="5" y="5" width="6" height="6" fill="#fbbf24"/><rect x="7" y="5" width="2" height="1" fill="#fde68a"/><rect x="7" y="6" width="2" height="4" fill="#f59e0b"/><rect x="6" y="7" width="1" height="2" fill="#f59e0b"/><rect x="9" y="7" width="1" height="2" fill="#d97706"/><rect x="11" y="5" width="1" height="6" fill="#f59e0b"/><rect x="12" y="5" width="1" height="6" fill="#d97706"/><rect x="4" y="11" width="2" height="1" fill="#d97706"/><rect x="6" y="11" width="4" height="1" fill="#f59e0b"/><rect x="10" y="11" width="2" height="1" fill="#d97706"/><rect x="5" y="12" width="6" height="1" fill="#b45309"/></svg>',
+  // ✨ sparkle — multi-color sparkle
+  sparkle: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="7" y="1" width="2" height="1" fill="#fbbf24"/><rect x="7" y="2" width="2" height="1" fill="#fde68a"/><rect x="7" y="3" width="2" height="2" fill="#fbbf24"/><rect x="3" y="6" width="2" height="1" fill="#fbbf24"/><rect x="5" y="6" width="1" height="1" fill="#fde68a"/><rect x="6" y="5" width="1" height="3" fill="#fbbf24"/><rect x="7" y="4" width="2" height="5" fill="#fff7ed"/><rect x="9" y="5" width="1" height="3" fill="#fbbf24"/><rect x="10" y="6" width="1" height="1" fill="#fde68a"/><rect x="11" y="6" width="2" height="1" fill="#fbbf24"/><rect x="7" y="9" width="2" height="2" fill="#fbbf24"/><rect x="7" y="11" width="2" height="1" fill="#fde68a"/><rect x="7" y="12" width="2" height="1" fill="#fbbf24"/><rect x="2" y="2" width="1" height="1" fill="#c4b5fd"/><rect x="13" y="3" width="1" height="1" fill="#93c5fd"/><rect x="3" y="12" width="1" height="1" fill="#93c5fd"/><rect x="12" y="11" width="1" height="1" fill="#c4b5fd"/></svg>',
+  // 🎁 gift — wrapped gift box
+  gift: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="5" y="2" width="2" height="2" fill="#f87171"/><rect x="9" y="2" width="2" height="2" fill="#f87171"/><rect x="7" y="3" width="2" height="1" fill="#fca5a5"/><rect x="2" y="4" width="12" height="2" fill="#ef4444"/><rect x="7" y="4" width="2" height="2" fill="#fbbf24"/><rect x="2" y="6" width="12" height="1" fill="#dc2626"/><rect x="2" y="7" width="5" height="5" fill="#ef4444"/><rect x="7" y="7" width="2" height="5" fill="#fbbf24"/><rect x="9" y="7" width="5" height="5" fill="#ef4444"/><rect x="2" y="12" width="12" height="1" fill="#dc2626"/></svg>',
+  // 🕐 clock — blue clock
+  clock: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="5" y="2" width="6" height="1" fill="#60a5fa"/><rect x="3" y="3" width="2" height="1" fill="#60a5fa"/><rect x="11" y="3" width="2" height="1" fill="#60a5fa"/><rect x="2" y="4" width="1" height="1" fill="#3b82f6"/><rect x="3" y="4" width="10" height="1" fill="#dbeafe"/><rect x="13" y="4" width="1" height="1" fill="#3b82f6"/><rect x="2" y="5" width="1" height="6" fill="#3b82f6"/><rect x="3" y="5" width="10" height="6" fill="#eff6ff"/><rect x="13" y="5" width="1" height="6" fill="#3b82f6"/><rect x="7" y="5" width="2" height="1" fill="#1e40af"/><rect x="7" y="6" width="2" height="2" fill="#1e40af"/><rect x="9" y="7" width="2" height="1" fill="#1e40af"/><rect x="3" y="11" width="2" height="1" fill="#60a5fa"/><rect x="5" y="11" width="6" height="1" fill="#dbeafe"/><rect x="11" y="11" width="2" height="1" fill="#60a5fa"/><rect x="5" y="12" width="6" height="1" fill="#3b82f6"/></svg>',
+  // 📝 note — notepad with pencil
+  note: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="3" y="2" width="9" height="1" fill="#fbbf24"/><rect x="3" y="3" width="9" height="9" fill="#fef3c7"/><rect x="3" y="3" width="1" height="9" fill="#f59e0b"/><rect x="11" y="3" width="1" height="9" fill="#f59e0b"/><rect x="5" y="4" width="5" height="1" fill="#94a3b8"/><rect x="5" y="6" width="4" height="1" fill="#94a3b8"/><rect x="5" y="8" width="5" height="1" fill="#94a3b8"/><rect x="5" y="10" width="3" height="1" fill="#94a3b8"/><rect x="3" y="12" width="9" height="1" fill="#d97706"/><rect x="12" y="3" width="1" height="1" fill="#ef4444"/><rect x="13" y="2" width="1" height="1" fill="#ef4444"/><rect x="12" y="4" width="1" height="8" fill="#fbbf24"/></svg>',
+  // 📚 scroll — purple scroll
+  scroll: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="3" y="2" width="8" height="1" fill="#a78bfa"/><rect x="2" y="3" width="1" height="1" fill="#8b5cf6"/><rect x="3" y="3" width="8" height="1" fill="#ede9fe"/><rect x="11" y="3" width="1" height="1" fill="#8b5cf6"/><rect x="2" y="4" width="1" height="7" fill="#7c3aed"/><rect x="3" y="4" width="8" height="7" fill="#f5f3ff"/><rect x="11" y="4" width="1" height="7" fill="#7c3aed"/><rect x="4" y="5" width="5" height="1" fill="#a78bfa"/><rect x="4" y="7" width="4" height="1" fill="#c4b5fd"/><rect x="4" y="9" width="5" height="1" fill="#c4b5fd"/><rect x="3" y="11" width="8" height="1" fill="#ede9fe"/><rect x="3" y="12" width="10" height="1" fill="#8b5cf6"/><rect x="12" y="11" width="1" height="1" fill="#8b5cf6"/><rect x="13" y="12" width="1" height="1" fill="#7c3aed"/></svg>',
+};
+function pxBadge(name) { return _PX[name] || _PX.star; }
 var BADGE_DEFS = [
 
   // 🔥 STREAK
@@ -5680,21 +5714,21 @@ var BADGE_DEFS = [
     check: function(s){ return getCurrentStreak() >= 30; } },
   { id:'streak_50',  cat:'streak',    tier:'gold',     icon:pxBadge('zap'), name:'50-Day Milestone', desc:'50-day study streak',
     check: function(s){ return getCurrentStreak() >= 50; } },
-  { id:'streak_100', cat:'streak',    tier:'diamond',  icon:pxBadge('diamond-gem'), name:'100-Day Champion', desc:'100-day study streak',
+  { id:'streak_100', cat:'streak',    tier:'diamond',  icon:pxBadge('diamond'), name:'100-Day Champion', desc:'100-day study streak',
     check: function(s){ return getCurrentStreak() >= 100; } },
   { id:'streak_365', cat:'streak',    tier:'legendary',icon:pxBadge('crown'), name:'365 Legend',       desc:'1-year study streak',
     check: function(s){ return getCurrentStreak() >= 365; } },
 
   // 📰 READING
-  { id:'read_1',     cat:'reading',   tier:'bronze',   icon:pxBadge('book-open'), name:'First Article',    desc:'Read your first article',
+  { id:'read_1',     cat:'reading',   tier:'bronze',   icon:pxBadge('book'), name:'First Article',    desc:'Read your first article',
     check: function(){ return getTotalArticlesRead() >= 1; } },
-  { id:'read_10',    cat:'reading',   tier:'bronze',   icon:pxBadge('notebook'), name:'News Beginner',    desc:'Read 10 articles',
+  { id:'read_10',    cat:'reading',   tier:'bronze',   icon:pxBadge('note'), name:'News Beginner',    desc:'Read 10 articles',
     check: function(){ return getTotalArticlesRead() >= 10; } },
-  { id:'read_50',    cat:'reading',   tier:'silver',   icon:pxBadge('notes'), name:'News Explorer',    desc:'Read 50 articles',
+  { id:'read_50',    cat:'reading',   tier:'silver',   icon:pxBadge('scroll'), name:'News Explorer',    desc:'Read 50 articles',
     check: function(){ return getTotalArticlesRead() >= 50; } },
-  { id:'read_100',   cat:'reading',   tier:'gold',     icon:pxBadge('clipboard-note'), name:'Aspiring Reporter', desc:'Read 100 articles',
+  { id:'read_100',   cat:'reading',   tier:'gold',     icon:pxBadge('note'), name:'Aspiring Reporter', desc:'Read 100 articles',
     check: function(){ return getTotalArticlesRead() >= 100; } },
-  { id:'read_500',   cat:'reading',   tier:'legendary',icon:pxBadge('scroll-vertical'), name:'Korean Scholar',   desc:'Read 500 articles',
+  { id:'read_500',   cat:'reading',   tier:'legendary',icon:pxBadge('scroll'), name:'Korean Scholar',   desc:'Read 500 articles',
     check: function(){ return getTotalArticlesRead() >= 500; } },
   { id:'read_daily10',cat:'reading',  tier:'gold',     icon:pxBadge('zap'), name:'10 in a Day',      desc:'Read 10 articles in one day',
     check: function(){
@@ -5709,61 +5743,61 @@ var BADGE_DEFS = [
     } },
 
   // 🔖 VOCAB
-  { id:'word_10',    cat:'vocab',     tier:'bronze',   icon:'🌱', name:'Seed Vocab',      desc:'Save 10 words',
+  { id:'word_10',    cat:'vocab',     tier:'bronze',   icon:pxBadge('sparkle'), name:'Seed Vocab',      desc:'Save 10 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 10; } },
-  { id:'word_50',    cat:'vocab',     tier:'silver',   icon:'🌿', name:'Word Sprout',     desc:'Save 50 words',
+  { id:'word_50',    cat:'vocab',     tier:'silver',   icon:pxBadge('book'), name:'Word Sprout',     desc:'Save 50 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 50; } },
-  { id:'word_100',   cat:'vocab',     tier:'silver',   icon:'🍃', name:'Word Collector',  desc:'Save 100 words',
+  { id:'word_100',   cat:'vocab',     tier:'silver',   icon:pxBadge('scroll'), name:'Word Collector',  desc:'Save 100 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 100; } },
-  { id:'word_300',   cat:'vocab',     tier:'gold',     icon:'🌳', name:'Vocab Tree',      desc:'Save 300 words',
+  { id:'word_300',   cat:'vocab',     tier:'gold',     icon:pxBadge('shield'), name:'Vocab Tree',      desc:'Save 300 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 300; } },
-  { id:'word_1000',  cat:'vocab',     tier:'diamond',  icon:'💠', name:'TOPIK Vocab',     desc:'Save 1000 words',
+  { id:'word_1000',  cat:'vocab',     tier:'diamond',  icon:pxBadge('diamond'), name:'TOPIK Vocab',     desc:'Save 1000 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 1000; } },
-  { id:'word_2000',  cat:'vocab',     tier:'legendary',icon:'🧬', name:'Vocab Master',    desc:'Save 2000 words',
+  { id:'word_2000',  cat:'vocab',     tier:'legendary',icon:pxBadge('crown'), name:'Vocab Master',    desc:'Save 2000 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 2000; } },
 
   // 📝 QUIZ
-  { id:'quiz_first', cat:'quiz',      tier:'bronze',   icon:'🎮', name:'First Quiz',      desc:'Complete your first quiz',
+  { id:'quiz_first', cat:'quiz',      tier:'bronze',   icon:pxBadge('star'), name:'First Quiz',      desc:'Complete your first quiz',
     check: function(){ return lsGet('kh_quiz_done_count',0) >= 1; } },
-  { id:'quiz_perfect1',cat:'quiz',    tier:'silver',   icon:'🎯', name:'Daily Perfect',   desc:'Score 100% on a daily test',
+  { id:'quiz_perfect1',cat:'quiz',    tier:'silver',   icon:pxBadge('target'), name:'Daily Perfect',   desc:'Score 100% on a daily test',
     check: function(){ return getQuizPerfectCount() >= 1; } },
-  { id:'quiz_perfect3',cat:'quiz',    tier:'gold',     icon:'💯', name:'3x Perfect',      desc:'Score 100% on 3 daily tests in a row',
+  { id:'quiz_perfect3',cat:'quiz',    tier:'gold',     icon:pxBadge('sparkle'), name:'3x Perfect',      desc:'Score 100% on 3 daily tests in a row',
     check: function(){ return lsGet('kh_quiz_perfect_streak',0) >= 3; } },
-  { id:'quiz_14days',cat:'quiz',      tier:'diamond',  icon:'📅', name:'Daily Devotee',   desc:'Complete daily tests 14 days in a row',
+  { id:'quiz_14days',cat:'quiz',      tier:'diamond',  icon:pxBadge('clock'), name:'Daily Devotee',   desc:'Complete daily tests 14 days in a row',
     check: function(){ return getQuizStreakDays() >= 14; } },
 
   // 🌍 SECTIONS
-  { id:'sec_politics',cat:'sections', tier:'gold', icon:'🏛️', name:'Politics Master', desc:'Read 20 Politics articles',
+  { id:'sec_politics',cat:'sections', tier:'gold', icon:pxBadge('shield'), name:'Politics Master', desc:'Read 20 Politics articles',
     check: function(){ return (getSectionReadCounts()['정치']||0) >= 20; } },
-  { id:'sec_economy', cat:'sections', tier:'gold', icon:'💹', name:'Economy Master', desc:'Read 20 Economy articles',
+  { id:'sec_economy', cat:'sections', tier:'gold', icon:pxBadge('coin'), name:'Economy Master', desc:'Read 20 Economy articles',
     check: function(){ return (getSectionReadCounts()['경제']||0) >= 20; } },
-  { id:'sec_society', cat:'sections', tier:'gold', icon:'🏘️', name:'Society Master', desc:'Read 20 Society articles',
+  { id:'sec_society', cat:'sections', tier:'gold', icon:pxBadge('heart'), name:'Society Master', desc:'Read 20 Society articles',
     check: function(){ return (getSectionReadCounts()['사회']||0) >= 20; } },
-  { id:'sec_world',   cat:'sections', tier:'gold', icon:'🌐', name:'World Master', desc:'Read 20 World articles',
+  { id:'sec_world',   cat:'sections', tier:'gold', icon:pxBadge('scroll'), name:'World Master', desc:'Read 20 World articles',
     check: function(){ return (getSectionReadCounts()['국제']||0) >= 20; } },
-  { id:'sec_culture', cat:'sections', tier:'gold', icon:'🎨', name:'Culture Master', desc:'Read 20 Culture articles',
+  { id:'sec_culture', cat:'sections', tier:'gold', icon:pxBadge('sparkle'), name:'Culture Master', desc:'Read 20 Culture articles',
     check: function(){ return (getSectionReadCounts()['문화']||0) >= 20; } },
-  { id:'sec_sports',  cat:'sections', tier:'gold', icon:'⚽', name:'Sports Master',desc:'Read 20 Sports articles',
+  { id:'sec_sports',  cat:'sections', tier:'gold', icon:pxBadge('trophy'), name:'Sports Master',desc:'Read 20 Sports articles',
     check: function(){ return (getSectionReadCounts()['스포츠']||0) >= 20; } },
-  { id:'sec_korea',   cat:'sections', tier:'gold', icon:'🇰🇷', name:'Korea Master',desc:'Read 20 Korea articles',
+  { id:'sec_korea',   cat:'sections', tier:'gold', icon:pxBadge('gift'), name:'Korea Master',desc:'Read 20 Korea articles',
     check: function(){ return (getSectionReadCounts()['Korea']||0) >= 20; } },
-  { id:'sec_beauty',  cat:'sections', tier:'gold', icon:'💄', name:'Beauty Master',desc:'Read 20 Beauty articles',
+  { id:'sec_beauty',  cat:'sections', tier:'gold', icon:pxBadge('sparkle'), name:'Beauty Master',desc:'Read 20 Beauty articles',
     check: function(){ return (getSectionReadCounts()['beauty']||0) >= 20; } },
-  { id:'sec_travel',  cat:'sections', tier:'gold', icon:'✈️', name:'Travel Master',desc:'Read 20 Travel articles',
+  { id:'sec_travel',  cat:'sections', tier:'gold', icon:pxBadge('scroll'), name:'Travel Master',desc:'Read 20 Travel articles',
     check: function(){ return (getSectionReadCounts()['travel']||0) >= 20; } },
-  { id:'sec_opinion', cat:'sections', tier:'gold', icon:'✍️', name:'Opinion Master',desc:'Read 10 Opinion articles',
+  { id:'sec_opinion', cat:'sections', tier:'gold', icon:pxBadge('note'), name:'Opinion Master',desc:'Read 10 Opinion articles',
     check: function(){ return (getSectionReadCounts()['오피니언']||0) >= 10; } },
 
   // 🔢 MILESTONE / XP
-  { id:'xp_7500',    cat:'milestone', tier:'bronze',   icon:'⭐', name:'XP 7,500',    desc:'Earn 7,500 XP total',
+  { id:'xp_7500',    cat:'milestone', tier:'bronze',   icon:pxBadge('star'), name:'XP 7,500',    desc:'Earn 7,500 XP total',
     check: function(){ return getXP() >= 7500; } },
-  { id:'xp_30000',   cat:'milestone', tier:'silver',   icon:'💫', name:'XP 30,000',   desc:'Earn 30,000 XP total',
+  { id:'xp_30000',   cat:'milestone', tier:'silver',   icon:pxBadge('sparkle'), name:'XP 30,000',   desc:'Earn 30,000 XP total',
     check: function(){ return getXP() >= 30000; } },
-  { id:'xp_75000',   cat:'milestone', tier:'gold',     icon:'🌠', name:'XP 75,000',   desc:'Earn 75,000 XP total',
+  { id:'xp_75000',   cat:'milestone', tier:'gold',     icon:pxBadge('trophy'), name:'XP 75,000',   desc:'Earn 75,000 XP total',
     check: function(){ return getXP() >= 75000; } },
-  { id:'xp_300000',  cat:'milestone', tier:'diamond',  icon:'🌌', name:'XP 300,000',  desc:'Earn 300,000 XP total',
+  { id:'xp_300000',  cat:'milestone', tier:'diamond',  icon:pxBadge('diamond'), name:'XP 300,000',  desc:'Earn 300,000 XP total',
     check: function(){ return getXP() >= 300000; } },
-  { id:'days_90',    cat:'milestone', tier:'gold',     icon:'🎂', name:'3-Month Runner', desc:'Study for 90 days after signup',
+  { id:'days_90',    cat:'milestone', tier:'gold',     icon:pxBadge('gift'), name:'3-Month Runner', desc:'Study for 90 days after signup',
     check: function(){
       var log = lsGet('kh_study_log',{});
       var active = Object.keys(log).filter(function(k){ var d=log[k]; return (d.articles||0)+(d.words||0)+(d.quiz||0)>0; });
@@ -5771,39 +5805,39 @@ var BADGE_DEFS = [
     } },
 
   // ⏰ TIME
-  { id:'time_midnight',cat:'time',    tier:'silver',   icon:'🌙', name:'Night Owl',       desc:'Study after midnight',
+  { id:'time_midnight',cat:'time',    tier:'silver',   icon:pxBadge('clock'), name:'Night Owl',       desc:'Study after midnight',
     check: function(){ return lsGet('kh_badge_midnight', false); } },
-  { id:'time_dawn',    cat:'time',    tier:'gold',     icon:'🌅', name:'Dawn Scholar',   desc:'Study before 6 AM',
+  { id:'time_dawn',    cat:'time',    tier:'gold',     icon:pxBadge('sparkle'), name:'Dawn Scholar',   desc:'Study before 6 AM',
     check: function(){ return lsGet('kh_badge_dawn', false); } },
-  { id:'time_morning7',cat:'time',    tier:'bronze',   icon:'☀️', name:'Morning Routine', desc:'Study before 7 AM, 7 times',
+  { id:'time_morning7',cat:'time',    tier:'bronze',   icon:pxBadge('zap'), name:'Morning Routine', desc:'Study before 7 AM, 7 times',
     check: function(){ return lsGet('kh_morning_count',0) >= 7; } },
-  { id:'time_monday',  cat:'time',    tier:'bronze',   icon:'📅', name:'Monday Fighter',  desc:'Study on Mondays, 4 weeks in a row',
+  { id:'time_monday',  cat:'time',    tier:'bronze',   icon:pxBadge('clock'), name:'Monday Fighter',  desc:'Study on Mondays, 4 weeks in a row',
     check: function(){ return lsGet('kh_monday_streak',0) >= 4; } },
-  { id:'time_friday',  cat:'time',    tier:'silver',   icon:'🌃', name:'Friday Learner',  desc:'Study on Friday night, 4 times',
+  { id:'time_friday',  cat:'time',    tier:'silver',   icon:pxBadge('sparkle'), name:'Friday Learner',  desc:'Study on Friday night, 4 times',
     check: function(){ return lsGet('kh_friday_night_count',0) >= 4; } },
-  { id:'time_weekend', cat:'time',    tier:'gold',     icon:'🎒', name:'Weekend Champ',   desc:'Study on weekends, 8 weeks in a row',
+  { id:'time_weekend', cat:'time',    tier:'gold',     icon:pxBadge('trophy'), name:'Weekend Champ',   desc:'Study on weekends, 8 weeks in a row',
     check: function(){ return lsGet('kh_weekend_streak',0) >= 8; } },
 
   // 🎌 CULTURAL
-  { id:'cult_march1',  cat:'cultural',tier:'gold',     icon:'🌸', name:'March 1st',       desc:'Study on March 1 (Independence Day)',
+  { id:'cult_march1',  cat:'cultural',tier:'gold',     icon:pxBadge('heart'), name:'March 1st',       desc:'Study on March 1 (Independence Day)',
     check: function(){ return lsGet('kh_cult_march1', false); } },
-  { id:'cult_hangul',  cat:'cultural',tier:'legendary',icon:'🇰🇷',name:'Hangul Guardian', desc:'Study on Oct 9 (Hangul Day)',
+  { id:'cult_hangul',  cat:'cultural',tier:'legendary',icon:pxBadge('gift'),name:'Hangul Guardian', desc:'Study on Oct 9 (Hangul Day)',
     check: function(){ return lsGet('kh_cult_hangul', false); } },
-  { id:'cult_newyear', cat:'cultural',tier:'gold',     icon:'🎆', name:'New Year\'s',     desc:'Study on January 1',
+  { id:'cult_newyear', cat:'cultural',tier:'gold',     icon:pxBadge('sparkle'), name:'New Year\'s',     desc:'Study on January 1',
     check: function(){ return lsGet('kh_cult_newyear', false); } },
-  { id:'cult_chuseok', cat:'cultural',tier:'diamond',  icon:'🎑', name:'Chuseok Study',   desc:'Study on Chuseok day',
+  { id:'cult_chuseok', cat:'cultural',tier:'diamond',  icon:pxBadge('diamond'), name:'Chuseok Study',   desc:'Study on Chuseok day',
     check: function(){ return lsGet('kh_cult_chuseok', false); } },
-  { id:'cult_seollal', cat:'cultural',tier:'diamond',  icon:'🌕', name:'Seollal Study',   desc:'Study on Seollal day',
+  { id:'cult_seollal', cat:'cultural',tier:'diamond',  icon:pxBadge('crown'), name:'Seollal Study',   desc:'Study on Seollal day',
     check: function(){ return lsGet('kh_cult_seollal', false); } },
-  { id:'cult_gwangbok',cat:'cultural',tier:'silver',   icon:'🌊', name:'Liberation Day',  desc:'Study on August 15',
+  { id:'cult_gwangbok',cat:'cultural',tier:'silver',   icon:pxBadge('shield'), name:'Liberation Day',  desc:'Study on August 15',
     check: function(){ return lsGet('kh_cult_gwangbok', false); } },
-  { id:'cult_pepero',  cat:'cultural',tier:'gold',     icon:'💘', name:'Pepero Day',      desc:'Study on November 11',
+  { id:'cult_pepero',  cat:'cultural',tier:'gold',     icon:pxBadge('heart'), name:'Pepero Day',      desc:'Study on November 11',
     check: function(){ return lsGet('kh_cult_pepero', false); } },
-  { id:'cult_valentine',cat:'cultural',tier:'silver',  icon:'❤️', name:'Valentine\'s Day', desc:'Study on February 14',
+  { id:'cult_valentine',cat:'cultural',tier:'silver',  icon:pxBadge('heart'), name:'Valentine\'s Day', desc:'Study on February 14',
     check: function(){ return lsGet('kh_cult_valentine', false); } },
-  { id:'cult_christmas',cat:'cultural',tier:'gold',    icon:'🎄', name:'Christmas',       desc:'Study on December 25',
+  { id:'cult_christmas',cat:'cultural',tier:'gold',    icon:pxBadge('gift'), name:'Christmas',       desc:'Study on December 25',
     check: function(){ return lsGet('kh_cult_christmas', false); } },
-  { id:'cult_collector',cat:'cultural',tier:'legendary',icon:'🗓️',name:'Holiday Collector',desc:'Earn 7 cultural date badges',
+  { id:'cult_collector',cat:'cultural',tier:'legendary',icon:pxBadge('crown'),name:'Holiday Collector',desc:'Earn 7 cultural date badges',
     check: function(){
       var earned = getEarnedBadges();
       var cultIds = ['cult_march1','cult_hangul','cult_newyear','cult_chuseok','cult_seollal','cult_gwangbok','cult_pepero','cult_valentine','cult_christmas'];
