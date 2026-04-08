@@ -376,6 +376,26 @@
   .ds-quick-grid { grid-template-columns:1fr; }
 }
 
+/* Mobile: hero + cards 0.75x smaller */
+@media (max-width: 768px) {
+  #dyn-hero { max-height: 340px !important; }
+  .kh-home-hero-slide { min-height: 340px !important; }
+  .kh-home-hero-main-shell { min-height: 340px !important; }
+  .kh-home-hero-slide h1 { font-size: clamp(20px,4vw,28px) !important; }
+  .kh-home-hero-slide p { font-size: 12px !important; }
+  #dyn-hero > aside { display: none !important; }
+  #dyn-hero { grid-template-columns: 1fr !important; }
+  /* News cards: 정사각형에 가깝게 */
+  .home-news-grid .nc { flex: 0 0 210px; min-width: 210px; }
+  .home-news-grid .nc.nc-overlay { min-height: 0 !important; aspect-ratio: 4/3; }
+  .home-news-grid .nc.nc-overlay .nc-title { font-size: 14px !important; }
+  .home-conv-grid-wrap .hconv-card { flex: 0 0 220px; min-width: 220px; }
+  .home-story-grid .story-card { flex: 0 0 180px; min-width: 180px; }
+  .home-hero-loading { min-height: 340px !important; grid-template-columns: 1fr !important; }
+  .home-hero-skeleton-main { min-height: 340px !important; }
+  .home-hero-skeleton-side { display: none !important; }
+}
+
 @media (max-width: 640px) {
   .home-pills {
     flex-wrap: nowrap;
@@ -677,11 +697,31 @@ body.kh-neon-on .hero-dot {
 .home-hero-skeleton-side{display:flex;flex-direction:column;gap:14px;padding:18px;background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);border-left:1px solid #e7eef8;}
 .home-hero-skeleton-side span{display:block;height:72px;border-radius:14px;background:linear-gradient(120deg,#edf2f8 0%,#f8fbff 50%,#edf2f8 100%);background-size:200% 100%;animation:khHeroPulse 1.2s ease-in-out infinite;}
 @keyframes khHeroPulse{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes khBannerGlow{0%,100%{box-shadow:0 0 20px rgba(37,99,235,.12),inset 0 0 20px rgba(37,99,235,.03)}50%{box-shadow:0 0 32px rgba(56,189,248,.2),inset 0 0 24px rgba(56,189,248,.05)}}
 @media (max-width: 980px){.home-hero-loading{grid-template-columns:1fr}.home-hero-skeleton-side{display:none}.home-hero-skeleton-main{min-height:380px}}
 
 </style>
 </head>
 <body>
+<script>
+// 첫 방문자 → 랜딩 페이지로 리다이렉트
+// sessionStorage로 관리 — 탭/브라우저 닫으면 초기화되어 다시 랜딩 표시 가능
+// localStorage kh_visited는 "한 번이라도 Start Free 눌렀음"을 의미
+// Supabase 세션 있으면 (기존 유저) 항상 메인 직행
+(function(){
+  // Supabase 세션 토큰이 있으면 기존 유저 → 메인
+  for (var i = 0; i < localStorage.length; i++) {
+    var k = localStorage.key(i);
+    if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0) return;
+  }
+  // 이번 세션에서 이미 메인 본 적 있으면 스킵
+  if (sessionStorage.getItem('kh_seen_main')) return;
+  // 한 번이라도 Start Free 눌렀고 + 가입은 안 한 유저 → 메인 보여줌
+  if (localStorage.getItem('kh_visited')) { sessionStorage.setItem('kh_seen_main','1'); return; }
+  // 완전 첫 방문자 → 랜딩
+  window.location.replace('landing.html');
+})();
+</script>
 <!-- ── 로딩 오버레이 (인라인 — 외부 리소스 의존 없이 즉시 표시) ── -->
 <style>
 @keyframes kh-shimmer{0%{background-position:-200px 0}100%{background-position:200px 0}}
@@ -750,6 +790,33 @@ body.kh-neon-on .hero-dot {
 <div id="kh-welcome-banner" style="display:none"></div>
 
 <div class="container">
+  <!-- ONBOARDING / BEGINNER BANNER — 히어로 위에 눈에 띄게 -->
+  <div id="kh-welcome-action-banner"></div>
+  <script>
+  (function(){
+    var el = document.getElementById('kh-welcome-action-banner');
+    if (!el) return;
+    var glowStyle = 'display:flex;align-items:center;gap:14px;margin:0 0 14px;padding:16px 20px;border-radius:16px;text-decoration:none;transition:box-shadow .3s,background .2s;position:relative;overflow:hidden;';
+    function renderBanner() {
+      if (window.supaUser) {
+        el.innerHTML = '<a href="beginner-guide.html" style="' + glowStyle + 'background:linear-gradient(135deg,rgba(56,189,248,.06),rgba(37,99,235,.06));border:1.5px solid rgba(56,189,248,.25);box-shadow:0 0 20px rgba(56,189,248,.1),inset 0 0 20px rgba(56,189,248,.03)">'
+          + '<div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,rgba(56,189,248,.15),rgba(37,99,235,.15));display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📘</div>'
+          + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:#fff">Beginner\'s Guide</div>'
+          + '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:3px">Learn how all the features work together</div></div>'
+          + '<span style="font-size:12px;font-weight:800;color:#38bdf8;white-space:nowrap;padding:6px 14px;border-radius:999px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.2)">Open →</span></a>';
+      } else {
+        el.innerHTML = '<a href="korehan-onboarding.html" style="' + glowStyle + 'background:linear-gradient(135deg,rgba(37,99,235,.08),rgba(56,189,248,.05));border:1.5px solid rgba(37,99,235,.3);box-shadow:0 0 24px rgba(37,99,235,.15),inset 0 0 20px rgba(37,99,235,.04);animation:khBannerGlow 3s ease-in-out infinite">'
+          + '<div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#2563eb,#38bdf8);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 4px 14px rgba(37,99,235,.3)">🚀</div>'
+          + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:#fff">New here? Set up your profile in 1 minute</div>'
+          + '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:3px">Choose your level, set goals, and start learning</div></div>'
+          + '<span style="font-size:12px;font-weight:800;color:#fff;white-space:nowrap;padding:6px 14px;border-radius:999px;background:linear-gradient(135deg,#2563eb,#38bdf8);box-shadow:0 4px 12px rgba(37,99,235,.25)">Start →</span></a>';
+      }
+    }
+    renderBanner();
+    window.addEventListener('kh-auth-signed-in', renderBanner);
+  })();
+  </script>
+
   <!-- HERO -->
   <div id="dyn-hero" class="home-hero-loading"><div class="home-hero-skeleton-main"></div><div class="home-hero-skeleton-side"><span></span><span></span><span></span><span></span></div></div>
 
@@ -785,13 +852,12 @@ body.kh-neon-on .hero-dot {
     <a id="pb-phrase-block" href="korehan-phrase.html" class="ds-phrase">
       <div class="ds-label">Today’s Phrase</div>
       <div class="ds-ko" id="pb-ko"></div>
-      <div class="ds-rom" id="pb-rom"></div>
-      <div class="ds-en" id="pb-en"></div>
-      <div id="pb-note" class="ds-phrase-note" style="display:none"></div>
-      <div id="pb-example" class="ds-phrase-example" style="display:none"></div>
-      <div class="ds-phrase-footer">All phrases →</div>
+      <div class="ds-en" id="pb-en" style="margin-top:4px"></div>
+      <div id="pb-rom" style="display:none"></div>
+      <div id="pb-note" style="display:none"></div>
+      <div id="pb-example" style="display:none"></div>
+      <div class="ds-phrase-footer" style="margin-top:auto;padding-top:8px">See details →</div>
     </a>
-
     <div class="ds-progress" id="home-learning-preview">
       <div class="hlp-loading" style="color:rgba(255,255,255,.45);font-size:12px;">Preparing your learning snapshot…</div>
     </div>
@@ -889,7 +955,7 @@ body.kh-neon-on .hero-dot {
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260406a"></script>
+<script src="korehan-shared.js?v=20260407c"></script>
 <script>
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},
@@ -1093,20 +1159,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (ko)  ko.textContent  = p.ko;
     if (rom) rom.textContent = p.rom;
     if (en)  en.textContent  = p.en;
-    // intro/nuance 추가
-    var pbNote = document.getElementById('pb-note');
-    if (pbNote) {
-      var noteText = (p.nuance || p.intro || '').trim();
-      if (noteText) { pbNote.textContent = noteText; pbNote.style.display = ''; }
-    }
-    // 오늘의 예문 첫번째
-    var pbEx = document.getElementById('pb-example');
-    if (pbEx && p.examples && p.examples.length) {
-      var ex = p.examples[0];
-      pbEx.innerHTML = '<span style="font-size:13px;font-weight:700;color:rgba(255,255,255,.88)">' + ex.ko + '</span>'
-        + (ex.en ? '<span style="font-size:11px;color:rgba(255,255,255,.46);margin-left:6px">' + ex.en + '</span>' : '');
-      pbEx.style.display = '';
-    }
+    // note/example는 축소된 배너에서 숨김 — phrase 상세 페이지에서 확인
     var pbBlock = document.getElementById('pb-phrase-block');
     if (pbBlock) pbBlock.href = 'korehan-phrase.html?i=' + phraseIndex;
   }

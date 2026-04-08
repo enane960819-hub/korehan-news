@@ -138,8 +138,8 @@
     usingFallback = usingFallback || liveItems.length === 0;
     var catalog = usingFallback ? DEFAULT_SHOP_ITEMS : liveItems;
 
-    document.getElementById('shop-xp').textContent = 'XP: ' + ((stats && stats.xp) || 0).toLocaleString();
-    document.getElementById('shop-coin').textContent = '냥: ' + ((stats && stats.coin_balance) || 0).toLocaleString();
+    document.getElementById('shop-xp').textContent = ((stats && stats.xp) || 0).toLocaleString();
+    document.getElementById('shop-coin').textContent = ((stats && stats.coin_balance) || 0).toLocaleString();
 
     var ownedMap = {};
     (owned || []).forEach(function(o){ ownedMap[o.item_id] = o.quantity || 0; });

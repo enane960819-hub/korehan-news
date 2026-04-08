@@ -5,47 +5,71 @@
 <title>Shop — KoreHan News</title>
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
-body{margin:0;background:#f3f7fc;font-family:Inter,Pretendard,sans-serif;color:#0f172a}
-.wrap{max-width:1160px;margin:0 auto;padding:22px 16px 56px}
-.hero{background:linear-gradient(135deg,#0b1626,#1d4ed8);border-radius:14px;color:#fff;padding:16px 18px}
-.hero h1{margin:0;font-size:20px}
-.hero p{margin:4px 0 0;color:rgba(255,255,255,.82);font-size:13px}
-.balance{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.bal{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);padding:6px 14px;border-radius:999px;font-size:14px;font-weight:900;color:#fff;letter-spacing:.3px;text-shadow:0 1px 3px rgba(0,0,0,.25)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:12px}
-.card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;padding:10px}
-.thumb{height:110px;display:flex;align-items:center;justify-content:center;background:#f8fafc;border-radius:8px;margin-bottom:8px}
-.thumb img{max-width:90px;max-height:90px;object-fit:contain}
-.body{display:flex;flex-direction:column;gap:4px;flex:1}
-.title{font-size:13px;font-weight:800}.desc{font-size:11px;color:#64748b;line-height:1.35}
-.price{display:flex;gap:6px;flex-wrap:wrap}.pill{font-size:11px;font-weight:800;border-radius:999px;padding:3px 7px}
-.coin{background:#ecfeff;color:#0f766e}.cash{background:#f5f3ff;color:#6d28d9}
-.btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}.btn{border:none;border-radius:8px;padding:5px 9px;font-size:11px;font-weight:800;cursor:pointer}
-.btn.coin{background:#0f766e;color:#fff}.btn.cash{background:#6d28d9;color:#fff}.btn:disabled{opacity:.45;cursor:not-allowed}
-.owned{font-size:11px;color:#16a34a;font-weight:800}
-.inv{margin-top:18px;background:#fff;border:1px solid #dbe7f3;border-radius:14px;padding:14px}
-.inv h3{margin:0 0 8px;font-size:15px}.inv-item{padding:6px 0;border-bottom:1px solid #edf2f7;font-size:12px}
-.inv-item:last-child{border-bottom:none}
-.sec-title{margin:20px 0 6px;font-size:16px;font-weight:800}
-.sec-sub{font-size:12px;color:#64748b;margin:0 0 4px}
-.shop-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px;padding:4px;background:#fff;border:1px solid #e2e8f0;border-radius:14px}
+body{margin:0;background:#f8fafc;font-family:'DM Sans',Inter,'Noto Sans KR',sans-serif;color:#0f172a}
+.wrap{max-width:1160px;margin:0 auto;padding:0 16px 56px}
+/* ── Shop Hero Banner ── */
+.shop-hero{background:linear-gradient(135deg,#0b1626 0%,#1e3a5f 50%,#0f766e 100%);border-radius:0 0 24px 24px;padding:32px 28px 28px;color:#fff;position:relative;overflow:hidden;margin-bottom:20px}
+.shop-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(56,189,248,.08)}
+.shop-hero::after{content:'';position:absolute;bottom:-60px;left:30%;width:300px;height:160px;border-radius:50%;background:rgba(15,118,110,.1)}
+.shop-hero-top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;position:relative;z-index:1}
+.shop-hero-left h1{font-family:'Playfair Display',Georgia,serif;font-size:28px;font-weight:900;margin:0;letter-spacing:-.02em}
+.shop-hero-left p{font-size:13px;color:rgba(255,255,255,.6);margin:6px 0 0;line-height:1.5}
+.shop-balances{display:flex;gap:10px;position:relative;z-index:1}
+.shop-bal{background:rgba(255,255,255,.08);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px 18px;min-width:100px;text-align:center}
+.shop-bal-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:4px}
+.shop-bal-value{font-size:22px;font-weight:900;color:#fff}
+.shop-bal-value.xp{color:#38bdf8}
+.shop-bal-value.nyang{color:#5eead4}
+/* ── Tabs ── */
+.shop-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:4px;background:#fff;border:1px solid #e2e8f0;border-radius:14px;margin-bottom:4px}
 .shop-tab{padding:8px 16px;border-radius:10px;border:none;cursor:pointer;font-size:12px;font-weight:800;font-family:inherit;background:transparent;color:#64748b;transition:.15s}
 .shop-tab:hover{background:#f1f5f9;color:#334155}
 .shop-tab.active{background:#0b1626;color:#fff;box-shadow:0 2px 8px rgba(11,22,38,.2)}
-.shop-tab .tab-count{display:inline-block;margin-left:4px;font-size:10px;font-weight:700;background:rgba(0,0,0,.08);padding:1px 6px;border-radius:999px}
-.shop-tab.active .tab-count{background:rgba(255,255,255,.2)}
+/* ── Grid & Cards ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:14px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;padding:12px;transition:box-shadow .15s,transform .15s}
+.card:hover{box-shadow:0 8px 24px rgba(15,23,42,.08);transform:translateY(-2px)}
+.thumb{height:120px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#f8fafc,#f0f4fa);border-radius:10px;margin-bottom:10px}
+.thumb img{max-width:90px;max-height:90px;object-fit:contain}
+.body{display:flex;flex-direction:column;gap:5px;flex:1}
+.title{font-size:13px;font-weight:800}.desc{font-size:11px;color:#64748b;line-height:1.4}
+.price{display:flex;gap:6px;flex-wrap:wrap}.pill{font-size:11px;font-weight:800;border-radius:999px;padding:3px 8px}
+.coin{background:#ecfeff;color:#0f766e}.cash{background:#f5f3ff;color:#6d28d9}
+.btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.btn{border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer;transition:opacity .15s}
+.btn.coin{background:#0f766e;color:#fff}.btn.cash{background:#6d28d9;color:#fff}.btn:hover{opacity:.85}.btn:disabled{opacity:.4;cursor:not-allowed}
+.owned{font-size:11px;color:#16a34a;font-weight:800}
+/* ── Sections ── */
+.sec-header{display:flex;align-items:center;gap:10px;margin:28px 0 8px}
+.sec-header h2{font-size:18px;font-weight:900;margin:0}
+.sec-header p{font-size:12px;color:#64748b;margin:0}
+/* ── Inventory ── */
+.inv{margin-top:24px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:18px;box-shadow:0 1px 4px rgba(15,23,42,.04)}
+.inv h3{margin:0 0 10px;font-size:16px;font-weight:900}.inv-item{padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:12px;display:flex;justify-content:space-between;align-items:center}
+.inv-item:last-child{border-bottom:none}
+@media(max-width:600px){.shop-hero{padding:22px 18px 20px;border-radius:0 0 18px 18px}.shop-hero-left h1{font-size:22px}.shop-balances{gap:8px}.shop-bal{padding:10px 14px;min-width:80px}.shop-bal-value{font-size:18px}.grid{grid-template-columns:repeat(2,1fr);gap:8px}}
 </style>
 </head>
 <body>
 <div id="kh-header"></div>
-<main class="wrap">
-  <section class="hero">
-    <h1 style="margin:0">🛍️ SHOP</h1>
-    <p>XP is for learning progress, nyang is for shop and gifts.</p>
-    <div class="balance">
-      <div class="bal" id="shop-xp">XP: -</div>
-      <div class="bal" id="shop-coin">냥: -</div>
+<section class="shop-hero">
+  <div class="shop-hero-top">
+    <div class="shop-hero-left">
+      <h1>Shop</h1>
+      <p>Spend nyang on items, gifts, and room decorations</p>
     </div>
-  </section>
+    <div class="shop-balances">
+      <div class="shop-bal">
+        <div class="shop-bal-label">XP</div>
+        <div class="shop-bal-value xp" id="shop-xp">—</div>
+      </div>
+      <div class="shop-bal">
+        <div class="shop-bal-label">Nyang</div>
+        <div class="shop-bal-value nyang" id="shop-coin">—</div>
+      </div>
+    </div>
+  </div>
+</section>
+<main class="wrap">
   <nav class="shop-tabs" id="shop-tabs">
     <button class="shop-tab active" data-tab="all">ALL</button>
     <button class="shop-tab" data-tab="gift">🎁 Gift</button>
@@ -59,7 +83,7 @@ body{margin:0;background:#f3f7fc;font-family:Inter,Pretendard,sans-serif;color:#
 </main>
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260406a"></script>
+<script src="korehan-shared.js?v=20260407c"></script>
 <script src="shop-client.js"></script>
 </body>
 </html>

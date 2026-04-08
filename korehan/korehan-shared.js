@@ -3747,7 +3747,7 @@ async function markArticleRead(articleId, title, section, level) {
 
       readLog[todayKey].push(id);
       localStorage.setItem('kh_read_log', JSON.stringify(readLog));
-      trackActivityOnArticleRead(section, { grantXP: canEarnXP && readLog[todayKey].length <= ARTICLE_XP_DAILY_CAP });
+      trackActivityOnArticleRead(section, { grantXP: canEarnXP && readLog[todayKey].length <= ARTICLE_XP_DAILY_CAP, content_id: id });
     } else {
       // 오늘 이미 읽은 기사 — 재방문은 artViews 카운트에 포함시키지 않음
       localStorage.setItem('kh_read_log', JSON.stringify(readLog));
@@ -4411,19 +4411,20 @@ async function loadXPConfig() {
 
 var _XP_ACTION_AMOUNTS = {
   article_read: 10,
-  word_save: 2,
+  word_save: 5,
   conv_quiz_complete: 20,
   fill_complete: 5,
   daily_mission_complete: 50,
   story_read: 10,
-  conversation_read: 10
+  conversation_read: 10,
+  first_journey_step: 5
 };
 var _COIN_ACTION_AMOUNTS = {
   article_read: 3,
-  word_save: 1,
+  word_save: 2,
   conv_quiz_complete: 5,
   fill_complete: 2,
-  daily_mission_complete: 12,
+  daily_mission_complete: 20,   // 12 → 20 (밸런스 상향)
   story_read: 3,
   conversation_read: 3
 };
@@ -4528,6 +4529,37 @@ async function _insertXPLog(sb, userId, actionKey, amount, reason, contentId) {
   } catch(e) { console.warn('[xp] log insert exception:', e); }
 }
 
+// ── XP 중복 지급 방지 ──
+// 같은 날 같은 콘텐츠 → XP 0, 다른 날이어도 같은 콘텐츠 최대 2회까지만
+var _XP_GRANT_LOG_KEY = 'kh_xp_grant_log';
+function _checkXPDuplicate(actionKey, contentId) {
+  if (!contentId) return false; // content_id 없으면 항상 지급 (퀴즈 등)
+  try {
+    var log = JSON.parse(localStorage.getItem(_XP_GRANT_LOG_KEY) || '{}');
+    var key = actionKey + ':' + contentId;
+    var entry = log[key] || { count: 0, lastDate: '' };
+    var today = new Date().toISOString().slice(0, 10);
+    // 같은 날 같은 콘텐츠 → 중복
+    if (entry.lastDate === today) return true;
+    // 다른 날이어도 2회 초과 → 중복
+    if (entry.count >= 2) return true;
+    return false;
+  } catch(e) { return false; }
+}
+function _recordXPGrant(actionKey, contentId) {
+  if (!contentId) return;
+  try {
+    var log = JSON.parse(localStorage.getItem(_XP_GRANT_LOG_KEY) || '{}');
+    var key = actionKey + ':' + contentId;
+    var entry = log[key] || { count: 0, lastDate: '' };
+    var today = new Date().toISOString().slice(0, 10);
+    entry.count = (entry.count || 0) + 1;
+    entry.lastDate = today;
+    log[key] = entry;
+    localStorage.setItem(_XP_GRANT_LOG_KEY, JSON.stringify(log));
+  } catch(e) {}
+}
+
 async function awardXP(actionKey, meta) {
   if (!supaUser) return null;
   var sb = getSupa(); if (!sb) return null;
@@ -4536,6 +4568,11 @@ async function awardXP(actionKey, meta) {
   var coinAmt   = _COIN_ACTION_AMOUNTS[actionKey] || 0;
   var reason    = _XP_ACTION_LABELS[actionKey] || actionKey;
   var contentId = (meta && (meta.content_id || meta.article_id)) || null;
+
+  // 중복 체크: 같은 날 같은 콘텐츠 or 통산 2회 초과 → XP 미지급
+  if (_checkXPDuplicate(actionKey, contentId)) {
+    return { ok: true, xp_gained: 0, duplicate: true };
+  }
 
   // Try RPC first
   try {
@@ -4574,6 +4611,7 @@ async function awardXP(actionKey, meta) {
         } catch(e) {}
       }
       await _insertXPLog(sb, supaUser.id, actionKey, gained, reason, contentId);
+      _recordXPGrant(actionKey, contentId);
       return res.data;
     }
   } catch(e) {}
@@ -4606,6 +4644,7 @@ async function awardXP(actionKey, meta) {
         });
       } catch(e) {}
     }
+    _recordXPGrant(actionKey, contentId);
     return { ok: true, xp_gained: amount };
   } catch(e) {}
 
@@ -4842,7 +4881,7 @@ function renderFooter() {
     + '<div>'
     + '<div style="font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:14px">Company</div>'
     + '<div style="display:flex;flex-direction:column;gap:9px">'
-    + '<a href="about.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">About</a>'
+    + '<a href="landing.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">About KoreHan News</a>'
     + '<a href="mailto:hello@korehannews.com" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Contact</a>'
     + '</div>'
     + '</div>'
@@ -6049,14 +6088,14 @@ async function trackActivityOnArticleRead(section, opts) {
   opts = opts || {};
   checkCulturalDateBadges();
   if (section) trackSectionRead(section);
-  if (opts.grantXP !== false) addXP(XP_TABLE.article_read);
+  // XP는 awardXP()에서만 지급 (addXP 이중지급 제거)
   checkBadges('article_read');
   await dmTrackArticle(opts);
 }
 
 // ── 단어 저장 시 XP + 뱃지 ──────────────────────────────────────────────────
 async function trackActivityOnWordSave() {
-  addXP(XP_TABLE.word_saved);
+  // XP는 awardXP()에서만 지급 (addXP 이중지급 제거)
   checkBadges('word_saved');
   await dmTrackWord();
 }
@@ -6064,7 +6103,7 @@ async function trackActivityOnWordSave() {
 // ── 퀴즈 완료 시 XP + 뱃지 ──────────────────────────────────────────────────
 async function trackActivityOnQuizComplete(pct) {
   var isPerfect = pct === 100;
-  addXP(isPerfect ? XP_TABLE.quiz_perfect : XP_TABLE.quiz_complete);
+  // XP는 awardXP()에서만 지급 (addXP 이중지급 제거)
 
   // 퀴즈 완료 횟수
   var done = lsGet('kh_quiz_done_count', 0);
@@ -6398,7 +6437,7 @@ async function dmTrackArticle(opts) {
     await syncDailyMission('articles');
     await syncUserStats({ articles_read: true });
   }
-  if (opts.grantXP !== false) awardXP('article_read', { source: 'article' });
+  if (opts.grantXP !== false) awardXP('article_read', { source: 'article', content_id: opts.content_id || opts.articleId || null });
   checkDailyMissionComplete();
 }
 
@@ -7269,3 +7308,213 @@ async function logQuizResult(quizType, opts) {
 function _kstDateKey() {
   return new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 }
+
+// ══════════════════════════════════════════════════════════════════
+// FIRST JOURNEY — 신규 유저 퀘스트 시스템
+// ══════════════════════════════════════════════════════════════════
+var _FJ_KEY = 'kh_first_journey';
+var _FJ_STEPS = [
+  { id:'signup',    label:'Sign up & complete onboarding', icon:'👤', nyang: 0,  auto: true, page:'korehan-onboarding.html' },
+  { id:'read',      label:'Read your first article',   icon:'📰', nyang: 10, page:'korehan-all.html' },
+  { id:'save_words',label:'Save 5 words',              icon:'💾', nyang: 5,  page:'korehan-all.html', hint:'Hover a word → click + Save' },
+  { id:'study',     label:'Try Study Room',             icon:'📝', nyang: 5,  page:'korehan-study-room.html' },
+  { id:'convo',     label:'Read a conversation',        icon:'💬', nyang: 5,  page:'korehan-conversations.html' },
+  { id:'growth',    label:'Visit Growth Lab',            icon:'📊', nyang: 5,  page:'korehan-learning-overview.html' },
+  { id:'shop',      label:'Buy an item in Shop',        icon:'🛍️', nyang: 10, page:'korehan-shop.html' },
+  { id:'room',      label:'Place an item in My Room',   icon:'🏠', nyang: 10, page:'korehan-mypage.html' }
+];
+var _FJ_BONUS = 50; // 전체 완료 보너스
+
+function _fjGet() {
+  try { return JSON.parse(localStorage.getItem(_FJ_KEY)) || {}; } catch(e) { return {}; }
+}
+function _fjSet(data) {
+  try { localStorage.setItem(_FJ_KEY, JSON.stringify(data)); } catch(e) {}
+}
+function _fjIsComplete(stepId) {
+  return !!(_fjGet()[stepId]);
+}
+function _fjDoneCount() {
+  var d = _fjGet();
+  return _FJ_STEPS.filter(function(s){ return !!d[s.id]; }).length;
+}
+function _fjAllDone() {
+  return _fjDoneCount() >= _FJ_STEPS.length;
+}
+function _fjMarkDone(stepId) {
+  if (_fjIsComplete(stepId) || _fjAllDone()) return;
+  var d = _fjGet();
+  d[stepId] = Date.now();
+  _fjSet(d);
+  // 단계별 냥 보상
+  var step = _FJ_STEPS.find(function(s){ return s.id === stepId; });
+  if (step && step.nyang > 0 && supaUser) {
+    awardXP('first_journey_step', { content_id: stepId }).catch(function(){});
+    // 냥 직접 지급 (XP 시스템과 별도)
+    var sb = getSupa();
+    if (sb) {
+      sb.from('user_stats').select('coin_balance').eq('user_id', supaUser.id).maybeSingle()
+        .then(function(r) {
+          var cur = (r.data && r.data.coin_balance) || 0;
+          sb.from('user_stats').upsert({ user_id: supaUser.id, coin_balance: cur + step.nyang }, { onConflict:'user_id' });
+          if (typeof showCoinToast === 'function') showCoinToast(step.nyang);
+        }).catch(function(){});
+    }
+  }
+  _fjRenderWidget();
+  // 전체 완료 체크
+  if (_fjAllDone()) {
+    if (supaUser) {
+      var sb2 = getSupa();
+      if (sb2) {
+        sb2.from('user_stats').select('coin_balance').eq('user_id', supaUser.id).maybeSingle()
+          .then(function(r) {
+            var cur2 = (r.data && r.data.coin_balance) || 0;
+            sb2.from('user_stats').upsert({ user_id: supaUser.id, coin_balance: cur2 + _FJ_BONUS }, { onConflict:'user_id' });
+            if (typeof showCoinToast === 'function') showCoinToast(_FJ_BONUS);
+            if (typeof toast === 'function') toast('🎉 First Journey Complete! +' + _FJ_BONUS + ' nyang!', 'success');
+          }).catch(function(){});
+      }
+    }
+  }
+}
+
+// 자동 감지 hooks
+function _fjAutoCheck() {
+  if (_fjAllDone()) return;
+  var page = window.location.pathname.split('/').pop().replace(/\.html$/,'') || 'index';
+  // signup: 로그인 + 온보딩 완료 시에만 체크
+  if (supaUser && !_fjIsComplete('signup')) {
+    var onboarded = false;
+    try { onboarded = hasCompletedOnboardingLocal(supaUser.id) || hasCompletedOnboardingLocal(''); } catch(e) {}
+    if (onboarded) _fjMarkDone('signup');
+  }
+  // growth: Growth Lab 페이지 방문
+  if (page === 'korehan-learning-overview' && !_fjIsComplete('growth')) _fjMarkDone('growth');
+  // study: Study Room 페이지 방문
+  if (page === 'korehan-study-room' && !_fjIsComplete('study')) _fjMarkDone('study');
+  // convo: Conversations 페이지에서 대화 열기 (openDetail에서 감지)
+  if (page === 'korehan-conversations' && !_fjIsComplete('convo')) {
+    // openDetail 호출 시 감지 — conversations.html에서 처리
+  }
+}
+
+// 글로벌 이벤트 hooks
+window.addEventListener('kh-auth-signed-in', function() {
+  // signup은 onboarding 완료 후에만 체크 — 여기선 위젯만 갱신
+  _fjAutoCheck();
+  _fjRenderWidget();
+});
+
+// 기사 읽기 감지 — markArticleRead 호출 시
+var _origMarkArticleRead = window.markArticleRead;
+if (typeof _origMarkArticleRead === 'function') {
+  window.markArticleRead = function() {
+    if (!_fjIsComplete('read')) _fjMarkDone('read');
+    return _origMarkArticleRead.apply(this, arguments);
+  };
+}
+// 단어 저장 감지 — dbSaveWord 호출 시
+var _fjWordCount = 0;
+var _origDbSaveWord = window.dbSaveWord;
+if (typeof _origDbSaveWord === 'function') {
+  window.dbSaveWord = function() {
+    _fjWordCount++;
+    if (_fjWordCount >= 5 && !_fjIsComplete('save_words')) _fjMarkDone('save_words');
+    return _origDbSaveWord.apply(this, arguments);
+  };
+}
+
+// ── 플로팅 위젯 ──
+function _fjRenderWidget() {
+  if (_fjAllDone()) {
+    var el = document.getElementById('fj-widget');
+    if (el) el.remove();
+    // 완료 후 표시 안 함
+    var dismissed = localStorage.getItem('kh_fj_dismissed');
+    if (dismissed) return;
+    localStorage.setItem('kh_fj_dismissed', '1');
+    return;
+  }
+  if (localStorage.getItem('kh_fj_dismissed')) return;
+  var done = _fjDoneCount();
+  var total = _FJ_STEPS.length;
+  var pct = Math.round(done / total * 100);
+  var widget = document.getElementById('fj-widget');
+  if (!widget) {
+    widget = document.createElement('div');
+    widget.id = 'fj-widget';
+    widget.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:8000;width:300px;max-height:80vh;overflow-y:auto;background:#0f1a2e;border:1px solid rgba(56,189,248,.2);border-radius:18px;box-shadow:0 16px 48px rgba(0,0,0,.4);color:#fff;font-family:inherit;font-size:13px;transition:opacity .3s';
+    document.body.appendChild(widget);
+  }
+  // 다음 할 일 찾기 (첫 번째 미완료 항목)
+  var _fjNextId = null;
+  for (var _fi = 0; _fi < _FJ_STEPS.length; _fi++) {
+    if (!_fjIsComplete(_FJ_STEPS[_fi].id)) { _fjNextId = _FJ_STEPS[_fi].id; break; }
+  }
+  var stepsHtml = _FJ_STEPS.map(function(s) {
+    var isDone = _fjIsComplete(s.id);
+    var isNext = (s.id === _fjNextId);
+    var link = (!isDone && s.page) ? ' onclick="location.href=\'' + s.page + (s.id === 'save_words' ? '#vocab-zone' : '') + '\'"' : '';
+    var cursor = (!isDone && s.page) ? 'cursor:pointer;' : '';
+    var highlight = isNext ? 'background:rgba(56,189,248,.08);border-radius:8px;margin:0 -8px;padding:8px;' : 'padding:8px 0;';
+    var nextArrow = isNext ? '<span style="font-size:11px;color:#38bdf8;font-weight:800;white-space:nowrap">Go →</span>' : '';
+    return '<div style="display:flex;align-items:center;gap:10px;' + highlight + cursor + (isDone ? 'opacity:.45' : '') + ';transition:background .15s"' + link
+      + (!isDone && s.page ? ' onmouseover="this.style.background=\'rgba(56,189,248,.12)\'" onmouseout="this.style.background=\'' + (isNext ? 'rgba(56,189,248,.08)' : '') + '\'"' : '')
+      + '>'
+      + '<span style="font-size:16px">' + (isDone ? '✅' : s.icon) + '</span>'
+      + '<div style="flex:1;min-width:0"><span style="' + (isDone ? 'text-decoration:line-through;' : '') + (isNext ? 'font-weight:700;color:#fff' : '') + '">' + s.label + '</span>'
+      + (isNext && s.hint ? '<div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px">' + s.hint + '</div>' : '')
+      + '</div>'
+      + (s.nyang > 0 && !isDone ? '<span style="font-size:10px;color:#5eead4;font-weight:700;white-space:nowrap">+' + s.nyang + '</span>' : '')
+      + nextArrow
+      + '</div>';
+  }).join('');
+  widget.innerHTML =
+    '<div style="padding:16px 16px 12px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between">'
+    + '<div><div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#38bdf8">Your First Journey</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:2px">' + done + '/' + total + ' completed</div></div>'
+    + '<button onclick="_fjDismissWidget()" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:18px;cursor:pointer;padding:4px">✕</button>'
+    + '</div>'
+    + '<div style="padding:4px 16px"><div style="height:4px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin:8px 0"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#38bdf8,#2563eb);border-radius:4px;transition:width .3s"></div></div></div>'
+    + '<div style="padding:4px 16px 16px">' + stepsHtml + '</div>'
+    + (done < total ? '<div style="padding:0 16px 14px;font-size:11px;color:rgba(255,255,255,.35);text-align:center">🎁 Complete all → +' + _FJ_BONUS + ' nyang bonus!</div>' : '');
+}
+
+// dismiss → 위젯 닫고 작은 resume 버튼 표시
+function _fjDismissWidget() {
+  var w = document.getElementById('fj-widget');
+  if (w) w.remove();
+  localStorage.setItem('kh_fj_dismissed', '1');
+  _fjShowResumeBtn();
+}
+function _fjShowResumeBtn() {
+  if (_fjAllDone()) return;
+  if (document.getElementById('fj-resume')) return;
+  var btn = document.createElement('button');
+  btn.id = 'fj-resume';
+  btn.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:7999;width:44px;height:44px;border-radius:50%;background:#0f1a2e;border:1px solid rgba(56,189,248,.25);color:#38bdf8;font-size:18px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;transition:transform .15s';
+  btn.innerHTML = '🎯';
+  btn.title = 'Resume First Journey';
+  btn.onclick = function() {
+    localStorage.removeItem('kh_fj_dismissed');
+    btn.remove();
+    _fjRenderWidget();
+  };
+  btn.onmouseover = function(){ btn.style.transform='scale(1.1)'; };
+  btn.onmouseout = function(){ btn.style.transform=''; };
+  document.body.appendChild(btn);
+}
+
+// 초기화 — DOMContentLoaded 후 실행
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    _fjAutoCheck();
+    if (_fjAllDone()) return;
+    if (localStorage.getItem('kh_fj_dismissed')) {
+      _fjShowResumeBtn(); // dismissed → 작은 🎯 버튼만
+    } else {
+      _fjRenderWidget();  // 처음 → 전체 위젯
+    }
+  }, 1500);
+});

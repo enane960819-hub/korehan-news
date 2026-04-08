@@ -1,360 +1,325 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Beginner Guide — KoreHan News</title>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;500;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;700;800&family=Noto+Sans+KR:wght@400;600;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <style>
-    :root{
-      --navy:#0a1423;--navy-2:#17345c;--bright:#2563eb;--sky:#7dd3fc;--mint:#67e8f9;
-      --bg:#f3f7fc;--card:#ffffff;--soft:#eef5ff;--border:#d8e4f3;--text:#0f172a;--muted:#64748b;
-      --shadow:0 18px 42px rgba(15,23,42,.08);--shadow-strong:0 24px 60px rgba(8,18,34,.18);
-    }
-    *{box-sizing:border-box}
+    :root{--navy:#0a1423;--bright:#2563eb;--sky:#38bdf8;--mint:#5eead4;--text:#0f172a;--muted:#64748b;--bg:#f8fafc;--card:#fff;--border:#e2e8f0}
+    *{box-sizing:border-box;margin:0}
     html{scroll-behavior:smooth}
-    body{margin:0;background:linear-gradient(180deg,#edf4fb 0%,#f8fbfe 40%,#f3f7fc 100%);color:var(--text);font-family:'Source Sans 3','Noto Sans KR',sans-serif}
+    body{font-family:'DM Sans','Noto Sans KR',sans-serif;color:var(--text);background:var(--bg)}
     a{text-decoration:none;color:inherit}
-    .topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px;background:rgba(10,20,35,.88);backdrop-filter:blur(14px);color:#fff;border-bottom:1px solid rgba(255,255,255,.08)}
-    .brand{font-family:'Playfair Display','Noto Serif KR',serif;font-size:28px;font-weight:900;letter-spacing:-.03em}
-    .brand .k{color:#93c5fd}.brand .h{color:#67e8f9}
-    .top-actions{display:flex;gap:10px;flex-wrap:wrap}
-    .btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;border-radius:999px;font-size:14px;font-weight:800;line-height:1;border:1px solid transparent;transition:transform .18s ease,background .18s ease,border-color .18s ease}
-    .btn:hover{transform:translateY(-1px)}
-    .btn:before{content:'';position:absolute;inset:-1px auto -1px -60%;width:42%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.22),transparent);transform:skewX(-18deg);transition:transform .4s ease}
-    .btn:hover:before{transform:translateX(260%) skewX(-18deg)}
-    .btn-primary{background:#fff;color:var(--navy)}
-    .btn-ghost{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.16);color:#fff}
-    .wrap{max-width:1200px;margin:0 auto;padding:32px 22px 84px}
-    .hero{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(320px,.88fr);gap:22px;align-items:stretch;margin-bottom:24px}
-    .hero-main,.hero-side,.section,.cta,.map-card,.flow-card,.check-card{background:var(--card);border:1px solid var(--border);border-radius:30px;box-shadow:var(--shadow)}
-    [data-reveal]{opacity:0;transform:translateY(24px) scale(.985);transition:opacity .6s ease,transform .6s cubic-bezier(.22,1,.36,1)}
-    [data-reveal].is-in{opacity:1;transform:translateY(0) scale(1)}
-    .hero-main{padding:38px;position:relative;overflow:hidden;background:linear-gradient(135deg,#07111f 0%,#15335c 58%,#2563eb 100%);color:#fff;box-shadow:var(--shadow-strong)}
-    .hero-main:before,.hero-main:after{content:'';position:absolute;border-radius:999px;pointer-events:none}
-    .hero-main:before{width:240px;height:240px;right:-80px;bottom:-80px;background:radial-gradient(circle,rgba(125,211,252,.24),transparent 65%)}
-    .hero-main:after{width:180px;height:180px;left:-40px;top:-40px;background:radial-gradient(circle,rgba(103,232,249,.16),transparent 70%)}
-    .eyebrow{display:inline-flex;align-items:center;padding:7px 13px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.78);margin-bottom:18px}
-    .hero h1{margin:0 0 14px;font-family:'Playfair Display','Noto Serif KR',serif;font-size:clamp(38px,5vw,60px);line-height:1.02;letter-spacing:-.04em}
-    .hero p{margin:0;color:rgba(255,255,255,.84);font-size:18px;line-height:1.72;max-width:620px}
-    .hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
-    .hero-note{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:28px}
-    .hero-stat{padding:14px 16px;border-radius:18px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}
-    .hero-stat strong{display:block;font-size:24px;margin-bottom:4px}
-    .hero-stat span{display:block;color:rgba(255,255,255,.72);font-size:13px;line-height:1.5}
-    .hero-side{padding:28px;background:linear-gradient(180deg,#fff 0%,#f7fbff 100%)}
-    .mini-title{margin:0 0 14px;font-size:12px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-    .routine{display:grid;gap:12px}
-    .routine-item{display:grid;grid-template-columns:56px 1fr;gap:12px;padding:14px;border-radius:18px;border:1px solid var(--border);background:#fff}
-    .routine-num{display:flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:18px;background:#eff6ff;color:var(--bright);font-size:20px;font-weight:900}
-    .routine-item h3{margin:0 0 4px;font-size:18px}
-    .routine-item p{margin:0;color:var(--muted);font-size:14px;line-height:1.55}
-    .grid{display:grid;gap:18px}
-    .section{padding:28px}
-    .section-hd{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px}
-    .section-hd h2{margin:0;font-family:'Playfair Display','Noto Serif KR',serif;font-size:36px;line-height:1.08;letter-spacing:-.03em}
-    .section-hd p{margin:0;color:var(--muted);font-size:15px;line-height:1.6;max-width:58ch}
-    .lead{color:var(--muted);font-size:16px;line-height:1.72;margin:0 0 18px}
-    .flow-grid,.map-grid,.check-grid,.path-grid,.cards3{display:grid;gap:14px}
-    .flow-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
-    .flow-card{padding:20px}
-    .flow-step{display:inline-flex;align-items:center;justify-content:center;min-width:42px;height:42px;padding:0 14px;border-radius:999px;background:#eef4ff;color:var(--bright);font-size:13px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
-    .flow-card h3,.map-card h3,.check-card h3,.small-card h3{margin:0 0 8px;font-size:20px}
-    .flow-card p,.map-card p,.check-card p,.small-card p{margin:0;color:var(--muted);font-size:14px;line-height:1.62}
-    .flow-link,.map-link{display:inline-flex;align-items:center;gap:8px;margin-top:14px;color:var(--bright);font-size:13px;font-weight:900}
-    .map-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .map-card{padding:22px;background:linear-gradient(180deg,#fff 0%,#f9fbff 100%)}
-    .map-kicker{display:inline-flex;margin-bottom:10px;padding:6px 10px;border-radius:999px;background:#eef4ff;color:var(--bright);font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
-    .check-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
-    .check-card{padding:22px}
-    .check-card ul{margin:12px 0 0;padding-left:18px;color:var(--muted)}
-    .check-card li{margin:8px 0;line-height:1.55}
-    .path-grid,.cards3{grid-template-columns:repeat(3,minmax(0,1fr))}
-    .small-card{padding:20px;border:1px solid var(--border);border-radius:22px;background:linear-gradient(180deg,#fff 0%,#f9fbff 100%)}
-    .small-card strong{display:inline-flex;margin-bottom:10px;padding:6px 10px;border-radius:999px;background:#eef4ff;color:var(--bright);font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
-    .cta{margin-top:4px;padding:30px;background:linear-gradient(135deg,#fff 0%,#f4f9ff 100%)}
-    .cta h2{margin:0 0 10px;font-family:'Playfair Display','Noto Serif KR',serif;font-size:38px;letter-spacing:-.03em}
-    .cta p{margin:0;color:var(--muted);font-size:16px;line-height:1.72;max-width:62ch}
-    .cta-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
-    .btn-blue{background:var(--bright);color:#fff}
-    .btn-soft{background:#eef4ff;color:var(--bright)}
-    .footer-note{margin-top:14px;color:var(--muted);font-size:14px;line-height:1.65}
-    @media (max-width: 1040px){
-      .hero,.flow-grid,.map-grid,.check-grid,.path-grid,.cards3{grid-template-columns:1fr}
-      .hero-note{grid-template-columns:1fr 1fr 1fr}
+    /* ── Hero: fullscreen background ── */
+    .bg-hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:#0a1423}
+    .bg-hero-img{position:absolute;inset:0;background:url('img/guide/hero-bg.png') center/cover no-repeat;opacity:.25;filter:blur(2px)}
+    .bg-hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,20,35,.7) 0%,rgba(10,20,35,.85) 50%,rgba(10,20,35,.95) 100%)}
+    .bg-hero-content{position:relative;z-index:2;text-align:center;padding:60px 24px 40px;max-width:720px}
+    .bg-hero-eyebrow{font-size:12px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--sky);margin-bottom:16px}
+    .bg-hero-content h1{font-family:'Playfair Display',serif;font-size:clamp(36px,6vw,64px);font-weight:900;color:#fff;line-height:1.08;letter-spacing:-.03em;margin-bottom:16px}
+    .bg-hero-content p{font-size:17px;color:rgba(255,255,255,.65);line-height:1.7;max-width:520px;margin:0 auto}
+    .bg-hero-scroll{position:relative;z-index:2;margin-top:32px;display:flex;flex-direction:column;align-items:center;gap:8px;color:rgba(255,255,255,.35);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;animation:bounce 2s ease-in-out infinite}
+    @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+    .bg-hero-scroll svg{opacity:.5}
+    /* ── 3 Step Cards ── */
+    .steps-section{position:relative;z-index:3;margin-top:-80px;padding:0 24px 60px}
+    .steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:1100px;margin:0 auto}
+    .step-card{background:var(--card);border:1px solid var(--border);border-radius:24px;overflow:hidden;cursor:pointer;transition:transform .2s,box-shadow .2s;box-shadow:0 8px 30px rgba(15,23,42,.08)}
+    .step-card:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(15,23,42,.12)}
+    .step-img{height:200px;overflow:hidden;position:relative;background:linear-gradient(135deg,#1e293b,#0f172a)}
+    .step-img img{width:100%;height:100%;object-fit:cover;opacity:.7;transition:opacity .3s,transform .3s}
+    .step-card:hover .step-img img{opacity:.9;transform:scale(1.03)}
+    .step-num{position:absolute;top:14px;left:14px;width:36px;height:36px;border-radius:50%;background:var(--bright);color:#fff;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(37,99,235,.4)}
+    .step-body{padding:20px}
+    .step-body h3{font-size:18px;font-weight:900;margin-bottom:6px}
+    .step-body p{font-size:13px;color:var(--muted);line-height:1.6}
+    .step-body .arrow{display:inline-flex;align-items:center;gap:4px;margin-top:12px;font-size:12px;font-weight:800;color:var(--bright)}
+    /* ── Detail Sections ── */
+    .detail-wrap{max-width:1100px;margin:0 auto;padding:0 24px 80px}
+    .detail-section{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;padding:60px 0;border-top:1px solid var(--border)}
+    .detail-section:first-child{border-top:none}
+    .detail-section.reverse{direction:rtl}
+    .detail-section.reverse>*{direction:ltr}
+    .detail-text{max-width:480px}
+    .detail-num{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:50%;background:#eff6ff;color:var(--bright);font-size:16px;font-weight:900;margin-bottom:16px}
+    .detail-text h2{font-family:'Playfair Display',serif;font-size:32px;font-weight:900;line-height:1.15;letter-spacing:-.02em;margin-bottom:12px}
+    .detail-text p{font-size:15px;color:var(--muted);line-height:1.75;margin-bottom:16px}
+    .detail-text ul{padding-left:20px;color:var(--muted);font-size:14px;line-height:1.7}
+    .detail-text li{margin-bottom:8px}
+    .detail-text .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:999px;font-size:13px;font-weight:800;transition:transform .15s}
+    .detail-text .btn:hover{transform:translateY(-1px)}
+    .btn-primary{background:var(--bright);color:#fff}
+    .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}
+    /* ── Screenshot showcase ── */
+    .detail-showcase{position:relative;min-height:340px}
+    .detail-showcase img{border-radius:16px;box-shadow:0 16px 48px rgba(15,23,42,.12);border:1px solid rgba(0,0,0,.06)}
+    .detail-showcase .ss-main{width:100%;border-radius:16px}
+    .detail-showcase .ss-float{position:absolute;border-radius:12px;box-shadow:0 12px 36px rgba(15,23,42,.18)}
+    .detail-showcase .ss-float.top-right{top:-20px;right:-10px;width:45%;transform:rotate(2deg)}
+    .detail-showcase .ss-float.bottom-left{bottom:-20px;left:-10px;width:40%;transform:rotate(-3deg)}
+    .detail-showcase .ss-float.blurred{filter:blur(1.5px);opacity:.5}
+    /* ── CTA ── */
+    .cta-section{background:linear-gradient(135deg,#0a1423,#1e3a5f);padding:60px 24px;text-align:center}
+    .cta-section h2{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);color:#fff;font-weight:900;margin-bottom:12px}
+    .cta-section p{font-size:15px;color:rgba(255,255,255,.6);max-width:500px;margin:0 auto 24px;line-height:1.7}
+    .cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .cta-btns .btn-primary{background:#fff;color:var(--navy)}
+    .cta-btns .btn-ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);color:#fff}
+    /* ── Scroll reveal ── */
+    [data-reveal]{opacity:0;transform:translateY(28px);transition:opacity .6s ease,transform .6s cubic-bezier(.22,1,.36,1)}
+    [data-reveal].is-in{opacity:1;transform:translateY(0)}
+    /* ── Placeholder for missing images ── */
+    .img-placeholder{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e293b,#334155);color:rgba(255,255,255,.3);font-size:14px;font-weight:700;border-radius:16px;min-height:240px;border:2px dashed rgba(255,255,255,.1)}
+    /* ── Responsive ── */
+    .feat-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(15,23,42,.1)}
+    @media(max-width:900px){
+      .feat-grid{grid-template-columns:repeat(2,1fr)!important}
+      .steps-grid{grid-template-columns:1fr;max-width:480px}
+      .steps-section{margin-top:-40px}
+      .detail-section,.detail-section.reverse{grid-template-columns:1fr;gap:24px;padding:40px 0}
+      .detail-section.reverse{direction:ltr}
+      .detail-showcase{min-height:auto}
+      .bg-hero{min-height:80vh}
     }
-    @media (max-width: 720px){
-      .topbar{padding:15px 16px;align-items:flex-start;flex-direction:column}
-      .top-actions{width:100%}
-      .wrap{padding:18px 14px 60px}
-      .hero-main,.hero-side,.section,.cta,.map-card,.flow-card,.check-card{border-radius:22px}
-      .hero-main,.hero-side,.section,.cta{padding:20px}
-      .section-hd{display:block}
-      .section-hd h2,.cta h2{font-size:30px;margin-bottom:8px}
-      .hero p,.lead,.cta p{font-size:15px}
-      .btn{width:100%}
-      .hero-actions,.cta-actions{display:grid;grid-template-columns:1fr;gap:10px}
-      .hero-note{grid-template-columns:1fr}
+    @media(max-width:600px){
+      .feat-grid{grid-template-columns:1fr!important}
+      .bg-hero-content{padding:40px 16px 30px}
+      .step-img{height:160px}
+      .detail-text h2{font-size:26px}
     }
   </style>
 </head>
 <body>
-  <div class="topbar">
-    <div class="brand"><span class="k">Kore</span><span class="h">Han</span> News</div>
-    <div class="top-actions">
-      <a href="korehan-onboarding.html" class="btn btn-primary">Start onboarding</a>
-      <a href="#first-session" class="btn btn-ghost">See first session</a>
-    </div>
-  </div>
 
-  <div class="wrap">
-    <section class="hero">
-      <div class="hero-main" data-reveal>
-        <div class="eyebrow">Beginner Guide</div>
-        <h1>Start with a clear loop, not a blank homepage.</h1>
-        <p>KoreHan News works best when you use it as a short repeatable routine: read one article, review the useful parts, then practice right away with Study Room, Conversations, Stories, or Growth Lab.</p>
-        <div class="hero-actions">
-          <a href="korehan-news.html" class="btn btn-primary">Open latest news</a>
-          <a href="korehan-study-room.html" class="btn btn-ghost">Go to Study Room</a>
-        </div>
-        <div class="hero-note">
-          <div class="hero-stat"><strong>5 min</strong><span>Read one short article and check key words.</span></div>
-          <div class="hero-stat"><strong>15 min</strong><span>Add one quick review loop and one small practice task.</span></div>
-          <div class="hero-stat"><strong>30 min</strong><span>Finish with Conversations, Stories, or a Growth Lab check-in.</span></div>
-        </div>
+<!-- ═══ HERO: Fullscreen background ═══ -->
+<section class="bg-hero">
+  <div class="bg-hero-img"></div>
+  <div class="bg-hero-overlay"></div>
+  <div class="bg-hero-content" data-reveal>
+    <a href="index.html" style="display:inline-block;margin-bottom:24px;text-decoration:none">
+      <div style="font-family:'Playfair Display',Georgia,serif;font-size:clamp(42px,8vw,72px);font-weight:900;color:#fff;letter-spacing:-.03em;line-height:1"><span>Kore</span><span style="color:#38bdf8">Han</span><span style="font-weight:400;opacity:.55"> News</span></div>
+    </a>
+    <div class="bg-hero-eyebrow">Beginner Guide</div>
+    <h1>Learn Korean<br>Through Real News.</h1>
+    <p>Read articles, save vocabulary, study grammar, and track your progress — all in one place. Here's how to get started.</p>
+  </div>
+  <a href="#steps" class="bg-hero-scroll">
+    <span>Get Started</span>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+  </a>
+</section>
+
+<!-- ═══ 3 STEP CARDS ═══ -->
+<div class="steps-section" id="steps">
+  <div class="steps-grid">
+    <a href="#step1" class="step-card" data-reveal>
+      <div class="step-img">
+        <img src="img/guide/step1-read.png" alt="Pick an article" onerror="this.style.display='none';this.parentElement.innerHTML+='<div class=img-placeholder>Screenshot: Article Page</div>'">
+        <div class="step-num">1</div>
       </div>
+      <div class="step-body">
+        <h3>Pick Your Article</h3>
+        <p>Choose a news article at your level. Hover words to see meanings instantly.</p>
+        <span class="arrow">Learn more ↓</span>
+      </div>
+    </a>
+    <a href="#step2" class="step-card" data-reveal>
+      <div class="step-img">
+        <img src="img/guide/step2-study.png" alt="Study and review" onerror="this.style.display='none';this.parentElement.innerHTML+='<div class=img-placeholder>Screenshot: Study Room</div>'">
+        <div class="step-num">2</div>
+      </div>
+      <div class="step-body">
+        <h3>Study & Review</h3>
+        <p>Save words, check grammar, and practice in Study Room while it's fresh.</p>
+        <span class="arrow">Learn more ↓</span>
+      </div>
+    </a>
+    <a href="#step3" class="step-card" data-reveal>
+      <div class="step-img">
+        <img src="img/guide/step3-xp.png" alt="Gain XP" onerror="this.style.display='none';this.parentElement.innerHTML+='<div class=img-placeholder>Screenshot: Growth Lab</div>'">
+        <div class="step-num">3</div>
+      </div>
+      <div class="step-body">
+        <h3>Gain XP & Enjoy</h3>
+        <p>Track your streak, earn XP, and watch your Korean grow day by day.</p>
+        <span class="arrow">Learn more ↓</span>
+      </div>
+    </a>
+  </div>
+</div>
 
-      <aside class="hero-side" data-reveal>
-        <div class="mini-title">Your easiest daily routine</div>
-        <div class="routine">
-          <div class="routine-item">
-            <div class="routine-num">1</div>
-            <div>
-              <h3>Read</h3>
-              <p>Open one beginner-friendly article in <a href="korehan-news.html" style="color:var(--bright);font-weight:800">News</a> and focus on understanding the main idea.</p>
-            </div>
-          </div>
-          <div class="routine-item">
-            <div class="routine-num">2</div>
-            <div>
-              <h3>Review</h3>
-              <p>Use hover vocab, translations, and grammar help to notice what the article is teaching you.</p>
-            </div>
-          </div>
-          <div class="routine-item">
-            <div class="routine-num">3</div>
-            <div>
-              <h3>Practice</h3>
-              <p>Move into <a href="korehan-study-room.html" style="color:var(--bright);font-weight:800">Study Room</a> or a short conversation lesson before you forget what you read.</p>
-            </div>
-          </div>
-        </div>
-      </aside>
-    </section>
+<!-- ═══ DETAIL SECTIONS ═══ -->
+<div class="detail-wrap">
 
-    <div class="grid">
-      <section class="section" id="first-session" data-reveal>
-        <div class="section-hd">
-          <div>
-            <h2>Your first session in KoreHan News</h2>
-            <p>This is the fastest way to understand how the product fits together and what to click first as a new learner.</p>
-          </div>
-        </div>
-        <div class="flow-grid">
-          <article class="flow-card" data-reveal>
-            <div class="flow-step">Step 1</div>
-            <h3>Open News</h3>
-            <p>Read a short article in real Korean. Do not try to understand every word at first; focus on the main topic and repeated expressions.</p>
-            <a class="flow-link" href="korehan-news.html">Go to News →</a>
-          </article>
-          <article class="flow-card" data-reveal>
-            <div class="flow-step">Step 2</div>
-            <h3>Notice vocab and grammar</h3>
-            <p>Use the built-in support around the article to identify the words, sentence patterns, and phrases that appear more than once.</p>
-            <a class="flow-link" href="korehan-news.html">Review with an article →</a>
-          </article>
-          <article class="flow-card" data-reveal>
-            <div class="flow-step">Step 3</div>
-            <h3>Reinforce in Study Room</h3>
-            <p>Turn passive reading into active memory by doing a short review loop while the article is still fresh in your head.</p>
-            <a class="flow-link" href="korehan-study-room.html">Open Study Room →</a>
-          </article>
-          <article class="flow-card" data-reveal>
-            <div class="flow-step">Step 4</div>
-            <h3>Finish with one extra module</h3>
-            <p>Pick Conversations for speaking patterns, Stories for more reading, or Growth Lab to track what you studied.</p>
-            <a class="flow-link" href="korehan-learning-overview.html">Open Growth Lab →</a>
-          </article>
-        </div>
-      </section>
+  <!-- STEP 1 -->
+  <section class="detail-section" id="step1" data-reveal>
+    <div class="detail-text">
+      <div class="detail-num">1</div>
+      <h2>Pick an article and start reading</h2>
+      <p>Browse articles by section — Society, World, Culture, K-pop, and more. Each article is tagged with a difficulty level so you always know what fits your skill.</p>
+      <ul>
+        <li><strong>Hover any word</strong> to see its meaning, pronunciation, and save it</li>
+        <li><strong>Click translate</strong> to see the full English version side-by-side</li>
+        <li><strong>Grammar highlights</strong> show key patterns used in the article</li>
+      </ul>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+        <a href="korehan-all.html" class="btn btn-primary">Browse Articles →</a>
+      </div>
+    </div>
+    <div class="detail-showcase">
+      <!-- Main screenshot + floating overlay -->
+      <img class="ss-main" src="img/guide/detail-article.png" alt="Article page" onerror="this.outerHTML='<div class=img-placeholder style=min-height:320px>Screenshot: Article with vocab tooltip</div>'">
+      <img class="ss-float top-right" src="img/guide/detail-tooltip.png" alt="Vocab tooltip" onerror="this.style.display='none'">
+    </div>
+  </section>
 
-      <section class="section" data-reveal>
-        <div class="section-hd">
-          <div>
-            <h2>What each area is for</h2>
-            <p>Use this map when you are unsure where to go next. Each page has a different role in the learning loop.</p>
-          </div>
-        </div>
-        <div class="map-grid">
-          <article class="map-card" data-reveal>
-            <div class="map-kicker">Core reading</div>
-            <h3>News</h3>
-            <p>Best starting point for daily study. You get real Korean topics, repeated vocabulary, and a natural reason to keep reading every day.</p>
-            <a class="map-link" href="korehan-news.html">Open News →</a>
-          </article>
-          <article class="map-card" data-reveal>
-            <div class="map-kicker">Active review</div>
-            <h3>Study Room</h3>
-            <p>Use it right after reading when you want to lock in words, grammar, and recall instead of only recognizing them.</p>
-            <a class="map-link" href="korehan-study-room.html">Open Study Room →</a>
-          </article>
-          <article class="map-card" data-reveal>
-            <div class="map-kicker">Progress tracking</div>
-            <h3>Growth Lab</h3>
-            <p>Helpful when you want a more organized view of streaks, saved study, and a bigger picture of how often you are practicing.</p>
-            <a class="map-link" href="korehan-learning-overview.html">Open Growth Lab →</a>
-          </article>
-          <article class="map-card" data-reveal>
-            <div class="map-kicker">Useful phrases</div>
-            <h3>Today's Phrase</h3>
-            <p>Great for very short sessions. Use it when you only have a few minutes but still want to keep your Korean loop going.</p>
-            <a class="map-link" href="korehan-phrase.html">Open Phrase page →</a>
-          </article>
-          <article class="map-card" data-reveal>
-            <div class="map-kicker">Natural dialogue</div>
-            <h3>Conversations</h3>
-            <p>Best when you want everyday sentence patterns and realistic exchanges you can borrow for speaking and listening practice.</p>
-            <a class="map-link" href="korehan-conversations.html">Open Conversations →</a>
-          </article>
-          <article class="map-card" data-reveal>
-            <div class="map-kicker">Extra reading</div>
-            <h3>Stories</h3>
-            <p>Use Stories when you want more relaxed reading practice and emotional or narrative context instead of straight news format.</p>
-            <a class="map-link" href="korehan-stories.html">Open Stories →</a>
-          </article>
-        </div>
-      </section>
+  <!-- STEP 2 -->
+  <section class="detail-section reverse" id="step2" data-reveal>
+    <div class="detail-text">
+      <div class="detail-num">2</div>
+      <h2>Study and reinforce what you read</h2>
+      <p>Don't just read — practice. Study Room takes the article you just read and turns it into active learning exercises.</p>
+      <ul>
+        <li><strong>Vocabulary quiz</strong> — test yourself on saved words</li>
+        <li><strong>Grammar breakdown</strong> — understand the patterns</li>
+        <li><strong>Conversations</strong> — see the same words in real dialogue</li>
+        <li><strong>Stories</strong> — longer narratives for deeper reading</li>
+      </ul>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+        <a href="korehan-study-room.html" class="btn btn-primary">Open Study Room →</a>
+        <a href="korehan-conversations.html" class="btn btn-outline">Try Conversations →</a>
+      </div>
+    </div>
+    <div class="detail-showcase">
+      <img class="ss-main" src="img/guide/detail-studyroom.png" alt="Study Room" onerror="this.outerHTML='<div class=img-placeholder style=min-height:320px>Screenshot: Study Room interface</div>'">
+      <img class="ss-float bottom-left" src="img/guide/detail-quiz.png" alt="Quiz" onerror="this.style.display='none'">
+    </div>
+  </section>
 
-      <section class="section" data-reveal>
-        <div class="section-hd">
-          <div>
-            <h2>Choose a path that matches your time</h2>
-            <p>You do not need to use every feature every day. Pick a repeatable path and expand later.</p>
-          </div>
-        </div>
-        <div class="path-grid">
-          <article class="small-card" data-reveal>
-            <strong>5 minutes</strong>
-            <h3>Light habit</h3>
-            <p>Read one headline or short article, check a few hover meanings, then finish on <a href="korehan-phrase.html" style="color:var(--bright);font-weight:800">Today's Phrase</a>.</p>
-          </article>
-          <article class="small-card" data-reveal>
-            <strong>15 minutes</strong>
-            <h3>Best beginner default</h3>
-            <p>Read one article, review the key vocabulary, then spend a few minutes in <a href="korehan-study-room.html" style="color:var(--bright);font-weight:800">Study Room</a> to reinforce it.</p>
-          </article>
-          <article class="small-card" data-reveal>
-            <strong>30 minutes</strong>
-            <h3>Full focused loop</h3>
-            <p>Do the 15-minute path, then add one <a href="korehan-conversations.html" style="color:var(--bright);font-weight:800">Conversation</a> or <a href="korehan-stories.html" style="color:var(--bright);font-weight:800">Story</a> and finish with a quick Growth Lab check-in.</p>
-          </article>
-        </div>
-      </section>
+  <!-- STEP 3 -->
+  <section class="detail-section" id="step3" data-reveal>
+    <div class="detail-text">
+      <div class="detail-num">3</div>
+      <h2>Track progress and build your streak</h2>
+      <p>Growth Lab shows everything at a glance — your daily streak, XP earned, weak grammar points, and words saved. The more consistent you are, the faster you grow.</p>
+      <ul>
+        <li><strong>Daily missions</strong> — read articles, save words, take quizzes</li>
+        <li><strong>XP & Nyang</strong> — earn rewards for consistent study</li>
+        <li><strong>Weak grammar</strong> — focus practice where you need it most</li>
+        <li><strong>Shop</strong> — spend Nyang on room decorations and items</li>
+      </ul>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+        <a href="korehan-learning-overview.html" class="btn btn-primary">Open Growth Lab →</a>
+        <a href="korehan-shop.html" class="btn btn-outline">Visit Shop →</a>
+      </div>
+    </div>
+    <div class="detail-showcase">
+      <img class="ss-main" src="img/guide/detail-growthlab.png" alt="Growth Lab" onerror="this.outerHTML='<div class=img-placeholder style=min-height:320px>Screenshot: Growth Lab dashboard</div>'">
+      <img class="ss-float top-right blurred" src="img/guide/detail-shop.png" alt="Shop" onerror="this.style.display='none'">
+    </div>
+  </section>
 
-      <section class="section" data-reveal>
-        <div class="section-hd">
-          <div>
-            <h2>What beginners should focus on first</h2>
-            <p>If everything feels new, keep your attention on comprehension, repetition, and small outputs instead of perfection.</p>
-          </div>
-        </div>
-        <div class="check-grid">
-          <article class="check-card" data-reveal>
-            <h3>During reading</h3>
-            <ul>
-              <li>Understand the topic before you worry about every unknown word.</li>
-              <li>Notice repeated particles, endings, and sentence frames.</li>
-              <li>Save only a small number of words you will actually review.</li>
-            </ul>
-          </article>
-          <article class="check-card" data-reveal>
-            <h3>During review</h3>
-            <ul>
-              <li>Say example sentences out loud once or twice.</li>
-              <li>Compare similar grammar patterns instead of memorizing isolated rules.</li>
-              <li>Use Study Room soon after reading so the article is still familiar.</li>
-            </ul>
-          </article>
-          <article class="check-card" data-reveal>
-            <h3>During practice</h3>
-            <ul>
-              <li>Write one simple sentence about what you read.</li>
-              <li>Repeat a short line from Conversations using your own word choice.</li>
-              <li>Track consistency in Growth Lab rather than chasing long sessions.</li>
-            </ul>
-          </article>
-        </div>
-      </section>
+</div>
 
-      <section class="section" data-reveal>
-        <div class="section-hd">
-          <div>
-            <h2>If you are completely new</h2>
-            <p>These pages are the safest starting points when you do not yet know your level or what feature to use first.</p>
-          </div>
-        </div>
-        <div class="cards3">
-          <article class="small-card" data-reveal>
-            <strong>Start here</strong>
-            <h3>Onboarding</h3>
-            <p>Use the setup flow to choose your goals, daily study time, and level. It also points you back to this guide and your best next step.</p>
-            <a class="map-link" href="korehan-onboarding.html">Open onboarding →</a>
-          </article>
-          <article class="small-card" data-reveal>
-            <strong>First click</strong>
-            <h3>News page</h3>
-            <p>If you only open one page after reading this guide, make it News. That is the center of the daily learning routine.</p>
-            <a class="map-link" href="korehan-news.html">Open News →</a>
-          </article>
-          <article class="small-card" data-reveal>
-            <strong>Second click</strong>
-            <h3>Study Room</h3>
-            <p>After the article, move here for a quick review. This is where new vocabulary and patterns start becoming usable.</p>
-            <a class="map-link" href="korehan-study-room.html">Open Study Room →</a>
-          </article>
-        </div>
-      </section>
+<!-- ═══ EXPLORE FEATURES ═══ -->
+<section style="background:linear-gradient(180deg,var(--bg),#eef4fb);padding:60px 24px 70px">
+  <div style="max-width:1100px;margin:0 auto">
+    <div style="text-align:center;margin-bottom:40px" data-reveal>
+      <div style="font-size:12px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--bright);margin-bottom:10px">Explore</div>
+      <h2 style="font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-.02em;margin:0 0 10px">Everything KoreHan News Offers</h2>
+      <p style="font-size:15px;color:var(--muted);max-width:520px;margin:0 auto;line-height:1.7">More than just news — a full Korean learning ecosystem</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px" class="feat-grid">
 
-      <section class="cta" data-reveal>
-        <h2>Ready to start your first real loop?</h2>
-        <p>Keep it simple: one article, one short review, and one small piece of practice. That is enough to make KoreHan News feel structured from day one.</p>
-        <div class="cta-actions">
-          <a href="korehan-news.html" class="btn btn-blue">Read News</a>
-          <a href="korehan-study-room.html" class="btn btn-soft">Open Study Room</a>
-          <a href="korehan-learning-overview.html" class="btn btn-soft">Check Growth Lab</a>
-        </div>
-        <div class="footer-note">If you have not finished setup yet, start with <a href="korehan-onboarding.html" style="color:var(--bright);font-weight:800">Onboarding</a> and then come back here from the highlighted Beginner Guide.</div>
-      </section>
+      <a href="korehan-study-room.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">📝</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Study Room</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">AI-powered review sessions. Load any article and get vocab quizzes, grammar breakdowns, and fill-in exercises.</p>
+      </a>
+
+      <a href="korehan-mypage.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🏠</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">My Room</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Your personal space. Customize your room with items from the Shop, track stats, and manage your profile.</p>
+      </a>
+
+      <a href="korehan-shop.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fdf4ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🛍️</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Shop</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Spend Nyang (냥) on room decorations, avatar items, and gifts. Earn Nyang by studying consistently.</p>
+      </a>
+
+      <a href="korehan-learning-overview.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fefce8;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">📊</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Growth Lab</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Your learning dashboard. Daily missions, streaks, XP history, weak grammar tracking, and weekly analytics.</p>
+      </a>
+
+      <a href="korehan-reporters.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fff1f2;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">👨‍💼</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">KoreHan Characters</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Meet our reporters and conversation characters. Each has a unique personality, writing style, and recurring role.</p>
+      </a>
+
+      <a href="korehan-conversations.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#ecfeff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">💬</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Conversations</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Real Korean dialogues in everyday, workplace, friends, family, and dating contexts. Natural speech patterns you can actually use.</p>
+      </a>
+
+      <a href="korehan-stories.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">📖</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Stories</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Longer narrative reading — fun, touching, scary, or shocking. Great for building reading stamina and emotional vocab.</p>
+      </a>
+
+      <a href="korehan-learn.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fff7ed;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🎴</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Flashcards</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Daily vocabulary cards pulled from your saved words and the master word bank. Swipe through and test yourself.</p>
+      </a>
+
+      <a href="korehan-fun.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🎮</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">FUN Zone</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Korean name generator, fortune telling, worldcup games — take a break from studying and have fun with Korean culture.</p>
+      </a>
+
     </div>
   </div>
-  <script>
-    (function(){
-      var items = Array.prototype.slice.call(document.querySelectorAll('[data-reveal]'));
-      if (!items.length) return;
-      if (!('IntersectionObserver' in window)) {
-        items.forEach(function(el){ el.classList.add('is-in'); });
-        return;
+</section>
+
+<!-- ═══ CTA ═══ -->
+<section class="cta-section" data-reveal>
+  <h2>Ready to start?</h2>
+  <p>One article, one review, one small practice. That's all it takes to build a real Korean study habit.</p>
+  <div class="cta-btns">
+    <a href="korehan-all.html" class="btn btn-primary">Read Your First Article</a>
+    <a href="index.html" class="btn btn-ghost">Back to Home</a>
+  </div>
+</section>
+
+<script>
+(function(){
+  var items = Array.prototype.slice.call(document.querySelectorAll('[data-reveal]'));
+  if (!items.length) return;
+  if (!('IntersectionObserver' in window)) {
+    items.forEach(function(el){ el.classList.add('is-in'); });
+    return;
+  }
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-in');
+        io.unobserve(entry.target);
       }
-      var io = new IntersectionObserver(function(entries){
-        entries.forEach(function(entry){
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-in');
-            io.unobserve(entry.target);
-          }
-        });
-      }, { threshold: 0.14, rootMargin: '0px 0px -6% 0px' });
-      items.forEach(function(el){ io.observe(el); });
-    })();
-  </script>
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+  items.forEach(function(el){ io.observe(el); });
+})();
+</script>
 </body>
 </html>
