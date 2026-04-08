@@ -2454,41 +2454,42 @@ async function syncStudyProgress(stage) {
 // ═══════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async function() {
   loadStudyDoneState();
-  await loadStudyAccessGate();
   renderStudyChecklist();
-  renderStudyRoomWordTracks();
-  await loadPicturePromptsFromDB();
-  loadDBHelpers(_currentLevel);   // async, no await — populates sidebar immediately if DB has content
-  loadDBGrammar(_currentLevel);
   renderPhrase();
-  await loadAllTopics();
-  await loadVocabPool();   // conv+stories vocab 로드
-  renderFlashcardFilters();
-  loadFlashcards('all', document.querySelector('#fc-filters-left .tpill'));
 
-  // supaUser가 세팅될 때까지 최대 3초 대기 후 토픽 배정
+  // ── OPTIMIZED: Only 2 essential DB calls at page load ──
+  // 1) Access gate (subscription check)
+  // 2) Daily content (includes vocab, grammar, helpers — no separate calls)
+  // Everything else loads AFTER session is confirmed, or lazily.
+  await loadStudyAccessGate();
+
+  // Wait for auth session, then load daily content (single call)
   var waited = 0;
   function waitForSession() {
-    // supaUser가 확인됐거나 (null 포함) 3초 지나면 진행
-    // korehan-shared.js의 checkSession()이 window._sessionChecked를 세팅함
     if (window._sessionChecked || waited >= 30) {
-      // Re-load done state now that supaUser is known (avoids 'guest' key bug)
       loadStudyDoneState();
-      loadStudyDoneFromDB();   // merge DB progress → covers browser-switch / multi-device
-      loadDailyContent();
+      loadStudyDoneFromDB();
+      loadDailyContent();       // ← THE main DB call: topic + vocab + grammar + helpers all-in-one
       loadFeedbackInbox();
       asAutoSubmitOldWork();
       _asRefreshSubmitBanner();
-      loadWeakGrammarBanner();
-      loadWordBankPreview();
-      showReviewNotifications();
+      // Lazy load non-critical data
+      setTimeout(function() {
+        loadVocabPool();        // conv+stories vocab for flashcards
+        renderFlashcardFilters();
+        loadFlashcards('all', document.querySelector('#fc-filters-left .tpill'));
+        loadWordBankPreview();
+        loadWeakGrammarBanner();
+        showReviewNotifications();
+      }, 1500);
     } else {
       waited++;
       setTimeout(waitForSession, 100);
     }
   }
   waitForSession();
-  preloadSentenceArticles();
+  // Removed: loadPicturePromptsFromDB, loadDBHelpers, loadDBGrammar, loadAllTopics, preloadSentenceArticles
+  // These are now covered by loadDailyContent or deferred to when actually needed
   if (window._isAdmin) {
     var adminBtn = document.getElementById('pd-admin-btn');
     if (adminBtn) adminBtn.style.display = '';
@@ -2848,15 +2849,23 @@ function renderStudyRoomWordTracks() {
 
 async function saveMustKnowWord(ko, en, rom) {
   if (!ko) return;
-  if (typeof saveWord === 'function') {
-    await saveWord(ko, en || '', rom || '');
-    showToast('Saved to your vocab bank: ' + ko);
-    return;
+  await saveToWordBook(ko, en, rom);
+}
+// Universal save to word book — works from anywhere
+async function saveToWordBook(ko, en, rom) {
+  if (!ko) return;
+  if (!supaUser) { showToast('로그인하면 단어를 저장할 수 있어요'); return; }
+  try {
+    var sb = getSupa();
+    if (!sb) return;
+    await sb.from('saved_words').upsert({
+      user_id: supaUser.id, word_ko: ko, word_en: en || '', word_rom: rom || ''
+    }, { onConflict: 'user_id,word_ko' });
+    showToast('📖 단어장에 저장: ' + ko);
+  } catch(e) {
+    console.warn('[saveToWordBook]', e);
+    showToast('저장 실패');
   }
-  var sb = getSupa();
-  if (!sb || !supaUser) { showToast('Sign in to save vocab.'); return; }
-  await sb.from('vocabulary_bank').upsert({ user_id:supaUser.id, word_ko:ko, word_en:en || '', word_rom:rom || '' }, { onConflict:'user_id,word_ko' });
-  showToast('Saved to your vocab bank: ' + ko);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3995,6 +4004,7 @@ function showSlangDetail(idx) {
     + '<div class="slang-detail-hd">' + s.ko + '</div>'
     + '<div class="slang-detail-en">' + s.en + '</div>'
     + '<div class="slang-detail-desc">' + s.desc + '</div>'
+    + '<button onclick="saveToWordBook(\'' + s.ko.replace(/'/g,"\\'") + '\',\'' + s.en.replace(/'/g,"\\'") + '\',\'\')" style="padding:6px 16px;border-radius:8px;border:1px solid rgba(196,181,253,.3);background:rgba(196,181,253,.1);color:#c4b5fd;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:12px">📖 단어장에 저장</button>'
     + chatHtml
     + '</div>';
   det.style.display = 'block';
@@ -5045,7 +5055,7 @@ function showDialogue(node) {
   var phrasesEl = document.getElementById('ftp-phrases');
   var phrasesList = document.getElementById('ftp-phrases-list');
   if (_ftState.phrases.length) {
-    phrasesList.innerHTML = _ftState.phrases.map(function(p){ return '<span class="ft-phrase-chip">' + p + '</span>'; }).join('');
+    phrasesList.innerHTML = _ftState.phrases.map(function(p){ return '<span class="ft-phrase-chip" onclick="saveToWordBook(\'' + p.replace(/'/g,"\\'") + '\',\'(패스트트랙 표현)\',\'\')" style="cursor:pointer" title="탭하면 단어장에 저장">' + p + ' <span style="font-size:9px;opacity:.5">💾</span></span>'; }).join('');
     phrasesEl.style.display = 'block';
   } else {
     phrasesEl.style.display = 'none';
@@ -5103,7 +5113,7 @@ function showEndNode(node) {
   var phrasesEl = document.getElementById('ftp-phrases');
   var phrasesList = document.getElementById('ftp-phrases-list');
   if (_ftState.phrases.length) {
-    phrasesList.innerHTML = _ftState.phrases.map(function(p){ return '<span class="ft-phrase-chip">' + p + '</span>'; }).join('');
+    phrasesList.innerHTML = _ftState.phrases.map(function(p){ return '<span class="ft-phrase-chip" onclick="saveToWordBook(\'' + p.replace(/'/g,"\\'") + '\',\'(패스트트랙 표현)\',\'\')" style="cursor:pointer" title="탭하면 단어장에 저장">' + p + ' <span style="font-size:9px;opacity:.5">💾</span></span>'; }).join('');
     phrasesEl.style.display = 'block';
   }
   player.classList.add('open');
