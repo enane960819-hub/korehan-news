@@ -824,7 +824,7 @@ body { background: #0b1626 !important; }
 @media(max-width: 860px)  { .sr-layout { grid-template-columns: 1fr; } .sr-sidebar, .sr-sidebar-left { display:none; } }
 
 /* Mobile sidebar tabs */
-.sr-mob-tabs { display:none; }
+.sr-mob-tabs { display:none !important; }
 @media(max-width: 860px) {
   .sr-mob-tabs { display:flex; gap:0; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:10px; overflow:hidden; margin:12px 0; }
   .sr-mob-tab { flex:1; padding:10px 6px; border:none; background:transparent; color:rgba(255,255,255,.45); font-size:11px; font-weight:700; font-family:inherit; cursor:pointer; text-align:center; transition:.15s; }
@@ -1692,65 +1692,20 @@ body { background: #0b1626 !important; }
 <div style="background:linear-gradient(135deg,#0d1b2e,#1a3a6b);border-bottom:1px solid rgba(255,255,255,.08)">
 <div class="sr-top-tabs">
   <button class="sr-top-tab on" onclick="switchSrTab('study',this)">📝 Study</button>
+  <button class="sr-top-tab" onclick="switchSrTab('help',this)">📖 Help</button>
   <button class="sr-top-tab" onclick="switchSrTab('master',this)">🎯 Master</button>
   <button class="sr-top-tab" onclick="switchSrTab('wordbook',this)">📖 단어장</button>
 </div>
 </div>
 
-<!-- ═══ TAB: Study (current layout) ═══ -->
+<!-- ═══ TAB: Study (main learning content FIRST) ═══ -->
 <div class="sr-tab-panel active" id="sr-panel-study">
 <div class="sr-layout">
-
-<!-- ── LEFT SIDEBAR ── -->
-<div class="sr-sidebar sr-sidebar-left">
-  <!-- TODAY'S PHRASE -->
-  <div class="sr-sb-panel pcard" style="padding:0;overflow:hidden">
-    <div class="chd" style="padding:10px 14px"><div class="ct" style="color:rgba(255,255,255,.4)">🌟 Today's Phrase</div></div>
-    <div class="cb" id="phrase-box-left" style="padding:12px 14px">
-      <div class="skel" style="height:26px;width:80%;margin-bottom:6px;background:rgba(255,255,255,.1)"></div>
-      <div class="skel" style="height:11px;width:60%;background:rgba(255,255,255,.1)"></div>
-    </div>
-  </div>
-
-  <!-- MUST-KNOW VOCAB -->
-  <div class="sr-sb-panel" style="padding:0;overflow:hidden">
-    <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
-      <div class="ct" style="color:rgba(255,255,255,.45)">📌 Must-know Vocab</div>
-    </div>
-    <div class="cb" id="vocab-box-left" style="padding:12px 14px">
-      <div class="skel" style="height:14px;margin-bottom:8px;background:rgba(255,255,255,.08)"></div>
-      <div class="skel" style="height:14px;background:rgba(255,255,255,.08)"></div>
-    </div>
-  </div>
-
-  <!-- MINI FLASHCARDS -->
-  <div class="sr-sb-panel" style="padding:0;overflow:hidden">
-    <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
-      <div class="ct" style="color:rgba(255,255,255,.45)">📇 Flashcards</div>
-    </div>
-    <div style="padding:8px 14px 0;display:flex;gap:6px;flex-wrap:wrap" id="fc-filters-left">
-      <button class="tpill on" onclick="loadFlashcards('all',this)">All</button>
-    </div>
-    <div style="padding:10px 14px 14px">
-      <div class="mgrid" id="fc-grid-left"></div>
-      <div style="text-align:center;margin-top:8px">
-        <a href="korehan-learn.html" style="font-size:11px;color:#7ab8f5;font-weight:700;text-decoration:none">View all →</a>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- ── MAIN COLUMN ── -->
 <div class="sr-main">
 
-<!-- Mobile tabs (visible only on mobile) -->
-<div class="sr-mob-tabs">
-  <button class="sr-mob-tab on" onclick="srMobTab('main',this)">📝 Study</button>
-  <button class="sr-mob-tab" onclick="srMobTab('help',this)">📖 Help</button>
-  <button class="sr-mob-tab" onclick="srMobTab('tools',this)">🎯 Tools</button>
-  <button class="sr-mob-tab" onclick="srMobTab('extras',this)">🔥 Extras</button>
-</div>
-<div class="sr-mob-panel on" id="sr-mob-main">
+<div id="sr-mob-main">
 
   <!-- LEVEL SELECTOR — top of page -->
   <div class="lv-row">
@@ -2026,6 +1981,45 @@ body { background: #0b1626 !important; }
 
 </div><!-- /sr-layout -->
 </div><!-- /sr-panel-study -->
+
+<!-- ═══ TAB: Help (vocab, grammar, flashcards, phrases) ═══ -->
+<div class="sr-tab-panel" id="sr-panel-help">
+  <div style="max-width:600px;margin:0 auto;padding:16px">
+    <!-- TODAY'S PHRASE -->
+    <div class="sr-sb-panel pcard" style="padding:0;overflow:hidden;margin-bottom:12px">
+      <div class="chd" style="padding:10px 14px"><div class="ct" style="color:rgba(255,255,255,.4)">🌟 Today's Phrase</div></div>
+      <div class="cb" id="phrase-box-left" style="padding:12px 14px">
+        <div class="skel" style="height:26px;width:80%;margin-bottom:6px;background:rgba(255,255,255,.1)"></div>
+        <div class="skel" style="height:11px;width:60%;background:rgba(255,255,255,.1)"></div>
+      </div>
+    </div>
+    <!-- MUST-KNOW VOCAB -->
+    <div class="sr-sb-panel" style="padding:0;overflow:hidden;margin-bottom:12px">
+      <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
+        <div class="ct" style="color:rgba(255,255,255,.45)">📌 Must-know Vocab</div>
+      </div>
+      <div class="cb" id="vocab-box-left" style="padding:12px 14px">
+        <div class="skel" style="height:14px;margin-bottom:8px;background:rgba(255,255,255,.08)"></div>
+        <div class="skel" style="height:14px;background:rgba(255,255,255,.08)"></div>
+      </div>
+    </div>
+    <!-- FLASHCARDS -->
+    <div class="sr-sb-panel" style="padding:0;overflow:hidden;margin-bottom:12px">
+      <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
+        <div class="ct" style="color:rgba(255,255,255,.45)">📇 Flashcards</div>
+      </div>
+      <div style="padding:8px 14px 0;display:flex;gap:6px;flex-wrap:wrap" id="fc-filters-left">
+        <button class="tpill on" onclick="loadFlashcards('all',this)">All</button>
+      </div>
+      <div style="padding:10px 14px 14px">
+        <div class="mgrid" id="fc-grid-left"></div>
+        <div style="text-align:center;margin-top:8px">
+          <a href="korehan-learn.html" style="font-size:11px;color:#7ab8f5;font-weight:700;text-decoration:none">View all →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ TAB: Master ═══ -->
 <div class="sr-tab-panel" id="sr-panel-master">
