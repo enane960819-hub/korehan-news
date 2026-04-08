@@ -2222,7 +2222,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   await loadAllTopics();
   await loadVocabPool();   // conv+stories vocab 로드
   renderFlashcardFilters();
-  loadFlashcards('all', document.querySelector('#fc-filters .tpill'));
+  loadFlashcards('all', document.querySelector('#fc-filters-left .tpill'));
 
   // supaUser가 세팅될 때까지 최대 3초 대기 후 토픽 배정
   var waited = 0;
@@ -3258,8 +3258,8 @@ function renderAIContent() {
       + '<div class="ven">' + w.en + '</div></div>'
       + '</div>';
   });
-  document.getElementById('vocab-box').innerHTML = vhtml || '<div style="color:#aaa;font-size:12px">No vocab loaded.</div>';
-  document.getElementById('vocab-src').textContent = 'topic-based';
+  var vboxEl = document.getElementById('vocab-box-left');
+  if (vboxEl) vboxEl.innerHTML = vhtml || '<div style="color:#aaa;font-size:12px">No vocab loaded.</div>';
 
   // GRAMMAR BOX — always render from _aiContent
   {
@@ -4604,7 +4604,7 @@ function getAllVocabPool() {
 }
 
 function renderFlashcardFilters() {
-  var el = document.getElementById('fc-filters');
+  var el = document.getElementById('fc-filters-left');
   if (!el) return;
   el.innerHTML =
     '<button class="tpill on" onclick="loadFlashcards(\'all\',this)">All</button>'
@@ -4614,7 +4614,7 @@ function renderFlashcardFilters() {
 }
 
 function loadFlashcards(cat, btn) {
-  document.querySelectorAll('#fc-filters .tpill').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelectorAll('#fc-filters-left .tpill').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
 
   var wb = typeof getWordBank === 'function' ? getWordBank() : [];
@@ -4630,8 +4630,10 @@ function loadFlashcards(cat, btn) {
   }
   _fcWords = pool;
 
+  var fcGridEl = document.getElementById('fc-grid-left');
+  if (!fcGridEl) return;
   if (!pool.length && cat !== 'all') {
-    document.getElementById('fc-grid').innerHTML =
+    fcGridEl.innerHTML =
       '<div style="font-size:12px;color:#94a3b8;text-align:center;padding:20px">No words yet — vocab will appear once content is published.</div>';
     return;
   }
@@ -4641,7 +4643,7 @@ function loadFlashcards(cat, btn) {
   }
 
   var cards = pool.slice().sort(function(){ return Math.random() - .5; }).slice(0, 6);
-  document.getElementById('fc-grid').innerHTML = cards.map(function(w) {
+  fcGridEl.innerHTML = cards.map(function(w) {
     var srcBadge = w.src === 'conv' ? '💬' : w.src === 'story' ? '📖' : '📰';
     return '<div class="mcard" onclick="this.classList.toggle(\'flipped\')">'
       + '<div class="mcko">' + w.ko + '<span style="font-size:10px;margin-left:6px;opacity:.5">' + srcBadge + '</span></div>'
