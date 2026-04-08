@@ -753,6 +753,33 @@ body.kh-neon-on .hero-dot {
   <!-- HERO -->
   <div id="dyn-hero" class="home-hero-loading"><div class="home-hero-skeleton-main"></div><div class="home-hero-skeleton-side"><span></span><span></span><span></span><span></span></div></div>
 
+  <!-- REVIEW NOTIFICATIONS (home page) -->
+  <div id="home-review-banners" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"></div>
+  <script>
+  (function(){
+    function kstNow(){ return new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Seoul'})); }
+    var wrap = document.getElementById('home-review-banners');
+    if(!wrap) return;
+    var html = '';
+    var now = kstNow(), day = now.getDay(), date = now.getDate();
+    // Weekly
+    if(day === 0 && !localStorage.getItem('kh_weekly_review_done_'+now.toISOString().slice(0,10))){
+      html += '<a href="korehan-study-room.html" style="flex:1;min-width:220px;padding:10px 14px;border-radius:10px;background:linear-gradient(135deg,#1e3a5f,#1d4ed8);border:1px solid rgba(96,165,250,.3);text-decoration:none;display:flex;align-items:center;gap:10px">'
+        + '<span style="font-size:16px">📊</span>'
+        + '<div><div style="font-size:12px;font-weight:800;color:#60a5fa">Weekly Review</div><div style="font-size:11px;color:rgba(255,255,255,.5)">일요일 한정 · 20문제</div></div>'
+        + '<span style="margin-left:auto;font-size:12px;color:rgba(255,255,255,.3)">→</span></a>';
+    }
+    // Monthly
+    if(date>=1 && date<=3 && !localStorage.getItem('kh_monthly_review_done_'+now.toISOString().slice(0,7))){
+      html += '<a href="korehan-study-room.html" style="flex:1;min-width:220px;padding:10px 14px;border-radius:10px;background:linear-gradient(135deg,#312e81,#7c3aed);border:1px solid rgba(139,92,246,.3);text-decoration:none;display:flex;align-items:center;gap:10px">'
+        + '<span style="font-size:16px">🏆</span>'
+        + '<div><div style="font-size:12px;font-weight:800;color:#c4b5fd">Monthly Review</div><div style="font-size:11px;color:rgba(255,255,255,.5)">'+(4-date)+'일 남음 · 25문제</div></div>'
+        + '<span style="margin-left:auto;font-size:12px;color:rgba(255,255,255,.3)">→</span></a>';
+    }
+    if(html) wrap.innerHTML = html; else wrap.style.display = 'none';
+  })();
+  </script>
+
   <!-- DAILY STRIP -->
   <div class="daily-strip">
     <a id="pb-phrase-block" href="korehan-phrase.html" class="ds-phrase">

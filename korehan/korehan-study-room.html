@@ -1491,6 +1491,43 @@ body { background: #0b1626 !important; }
     <h1 class="sr-headline">Write on today's topic,<br>and watch yourself grow.</h1>
     <p class="sr-headline-sub">Everything is organized so you can start writing right away. Grammar and examples are available on the side for reference.</p>
 
+    <!-- REVIEW NOTIFICATION BANNERS -->
+    <div id="sr-review-notifications" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+      <!-- Daily Review Banner -->
+      <div id="sr-notif-daily" style="display:none;padding:12px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(34,197,94,.15),rgba(16,185,129,.1));border:1px solid rgba(34,197,94,.25);cursor:pointer" onclick="openDailyReview()">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(34,197,94,.2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📋</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:800;color:#4ade80">Daily Review 가능</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.5)" id="sr-notif-daily-deadline">오늘 23:59까지</div>
+          </div>
+          <span style="font-size:12px;color:rgba(255,255,255,.3)">시작 →</span>
+        </div>
+      </div>
+      <!-- Weekly Review Banner -->
+      <div id="sr-notif-weekly" style="display:none;padding:12px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(37,99,235,.15),rgba(59,130,246,.1));border:1px solid rgba(37,99,235,.3);cursor:pointer" onclick="openWeeklyReview()">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(37,99,235,.2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📊</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:800;color:#60a5fa">Weekly Review 오픈!</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.5)">20문제 · 오늘 일요일까지 · 임시저장 1회 가능</div>
+          </div>
+          <span style="font-size:12px;color:rgba(255,255,255,.3)">시작 →</span>
+        </div>
+      </div>
+      <!-- Monthly Review Banner -->
+      <div id="sr-notif-monthly" style="display:none;padding:12px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(124,58,237,.1));border:1px solid rgba(139,92,246,.3);cursor:pointer" onclick="openMonthlyReview()">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(139,92,246,.2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🏆</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:800;color:#c4b5fd">Monthly Review 오픈!</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.5)" id="sr-notif-monthly-deadline">25문제 · 3일까지 · 임시저장 1회 가능</div>
+          </div>
+          <span style="font-size:12px;color:rgba(255,255,255,.3)">시작 →</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Credit / access banner -->
     <div id="sr-credit-banner" style="margin-bottom:16px;padding:11px 14px;border-radius:10px;background:rgba(255,255,255,.1);font-size:12px;color:rgba(255,255,255,.82);line-height:1.6">
       Checking your Study Room access…
@@ -2138,6 +2175,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       _asRefreshSubmitBanner();
       loadWeakGrammarBanner();
       loadWordBankPreview();
+      showReviewNotifications();
     } else {
       waited++;
       setTimeout(waitForSession, 100);
@@ -3510,6 +3548,48 @@ async function loadWeakGrammarBanner() {
       if (desc) desc.textContent = data.map(function(d){ return d.grammar_point; }).join(', ') + ' — 복습이 필요해요';
     }
   } catch(e) {}
+}
+
+// ── Review Notification Banners ──
+function showReviewNotifications() {
+  if (typeof kstNow !== 'function') return;
+  // Daily: show if user hasn't completed today's review
+  var dailyEl = document.getElementById('sr-notif-daily');
+  if (dailyEl) {
+    var todayKey = 'kh_daily_review_done_' + kstNow().toISOString().slice(0,10);
+    if (!localStorage.getItem(todayKey)) {
+      dailyEl.style.display = '';
+      var deadlineEl = document.getElementById('sr-notif-daily-deadline');
+      if (deadlineEl) deadlineEl.textContent = '오늘 23:59까지';
+    }
+  }
+  // Weekly: show on Sunday
+  var weeklyEl = document.getElementById('sr-notif-weekly');
+  if (weeklyEl && isWeeklyReviewAvailable()) {
+    var weekKey = 'kh_weekly_review_done_' + kstNow().toISOString().slice(0,10);
+    if (!localStorage.getItem(weekKey)) {
+      weeklyEl.style.display = '';
+      if (rvLoadSaved('weekly')) {
+        weeklyEl.querySelector('div > div > div:nth-child(2) > div:first-child').textContent = 'Weekly Review 이어하기!';
+      }
+    }
+  }
+  // Monthly: show on 1st~3rd
+  var monthlyEl = document.getElementById('sr-notif-monthly');
+  if (monthlyEl && isMonthlyReviewAvailable()) {
+    var monthKey = 'kh_monthly_review_done_' + kstNow().toISOString().slice(0,7);
+    if (!localStorage.getItem(monthKey)) {
+      monthlyEl.style.display = '';
+      var mDeadline = document.getElementById('sr-notif-monthly-deadline');
+      if (mDeadline) {
+        var d = kstNow().getDate();
+        mDeadline.textContent = '25문제 · ' + (3 - d + 1) + '일 남음 · 임시저장 1회 가능';
+      }
+      if (rvLoadSaved('monthly')) {
+        monthlyEl.querySelector('div > div > div:nth-child(2) > div:first-child').textContent = 'Monthly Review 이어하기!';
+      }
+    }
+  }
 }
 
 // Opens Topic Writing modal WITHOUT the canEnterWritingRoom() gate
@@ -8328,13 +8408,19 @@ function drShowScore(){
   if(typeof awardXP==='function') awardXP('quiz_complete');
   if(typeof logQuizResult==='function') logQuizResult('daily_review',{score:correct,max_score:total,accuracy_pct:pct});
   if(typeof logActivity==='function') logActivity('quiz',{content_type:'daily_review',score:correct,max_score:total});
+  // Mark daily review completed
+  if(typeof kstNow==='function'){
+    localStorage.setItem('kh_daily_review_done_'+kstNow().toISOString().slice(0,10),'1');
+    var notifDaily=document.getElementById('sr-notif-daily');
+    if(notifDaily) notifDaily.style.display='none';
+  }
 }
 </script>
 
 <!-- ═══════════════════════════════════════════════════════
      WEEKLY / MONTHLY REVIEW MODAL
 ═══════════════════════════════════════════════════════ -->
-<div id="review-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(5,12,24,.9);z-index:3000;align-items:center;justify-content:center;padding:14px">
+<div id="review-modal-overlay" onclick="if(event.target===this)rvHandleClose()" style="display:none;position:fixed;inset:0;background:rgba(5,12,24,.9);z-index:3000;align-items:center;justify-content:center;padding:14px">
   <div style="background:#0f1f38;border-radius:14px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;border:1px solid rgba(255,255,255,.1)">
     <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08)">
       <div>
@@ -8345,7 +8431,7 @@ function drShowScore(){
         <div id="rv-timer" style="font-size:14px;font-weight:800;color:#f59e0b;display:none">15s</div>
         <div style="flex:1;min-width:80px;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div id="rv-progress" style="width:0%;height:100%;background:var(--bright,#2563eb);border-radius:2px;transition:width .3s"></div></div>
         <span id="rv-counter" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4)">0/0</span>
-        <button onclick="closeReviewModal()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px">✕</button>
+        <button onclick="rvHandleClose()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px">✕</button>
       </div>
     </div>
     <div id="rv-body" style="padding:20px;min-height:200px"></div>
@@ -8366,20 +8452,164 @@ var _RV_REWARDS = {
   monthly: { 70:300, 80:500, 90:700, 100:1000 }
 };
 
+// ── Review Schedule Helpers (KST) ──
+function kstNow() { return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' })); }
+
+function isDailyReviewAvailable() {
+  // Daily review for yesterday's learning: available until today 23:59:59 KST
+  return true; // always available (deadline checked on completion)
+}
+
+function getDailyReviewDeadline() {
+  var now = kstNow();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+}
+
+function isWeeklyReviewAvailable() {
+  var now = kstNow();
+  return now.getDay() === 0; // Sunday only
+}
+
+function isMonthlyReviewAvailable() {
+  var now = kstNow();
+  var d = now.getDate();
+  return d >= 1 && d <= 3; // 1st~3rd of month
+}
+
+function getWeeklyReviewPeriod() {
+  // Weekly review on Sunday covers Mon~Sat (Sunday learning goes to NEXT week)
+  var now = kstNow();
+  var sun = new Date(now); sun.setDate(sun.getDate() - sun.getDay()); // this Sunday
+  var mon = new Date(sun); mon.setDate(mon.getDate() - 6); // last Monday
+  var sat = new Date(sun); sat.setDate(sat.getDate() - 1); // last Saturday
+  return { start: mon.toISOString().slice(0,10), end: sat.toISOString().slice(0,10) };
+}
+
+function getMonthlyReviewPeriod() {
+  var now = kstNow();
+  var y = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+  var m = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+  var firstDay = new Date(y, m, 1).toISOString().slice(0,10);
+  var lastDay = new Date(y, m + 1, 0).toISOString().slice(0,10);
+  return { start: firstDay, end: lastDay };
+}
+
+// ── Save/Resume for Weekly & Monthly ──
+function _rvSaveKey(type) { return 'kh_rv_save_' + type; }
+function _rvCloseCountKey(type) { return 'kh_rv_closes_' + type + '_' + kstNow().toISOString().slice(0,10); }
+
+function rvSaveProgress() {
+  var key = _rvSaveKey(_rv.type);
+  var saves = parseInt(localStorage.getItem(key + '_count') || '0');
+  if (saves >= 1) {
+    showToast('임시저장은 1회만 가능합니다!');
+    return false;
+  }
+  var saveData = {
+    type: _rv.type,
+    questions: _rv.questions,
+    current: _rv.current,
+    scores: _rv.scores,
+    timeLimit: _rv.timeLimit,
+    savedAt: new Date().toISOString()
+  };
+  localStorage.setItem(key, JSON.stringify(saveData));
+  localStorage.setItem(key + '_count', '1');
+  showToast('임시저장 완료! (1/1)');
+  return true;
+}
+
+function rvLoadSaved(type) {
+  var key = _rvSaveKey(type);
+  try {
+    var data = JSON.parse(localStorage.getItem(key));
+    if (data && data.questions && data.questions.length) return data;
+  } catch(e) {}
+  return null;
+}
+
+function rvClearSaved(type) {
+  localStorage.removeItem(_rvSaveKey(type));
+  localStorage.removeItem(_rvSaveKey(type) + '_count');
+}
+
+function rvHandleClose() {
+  // For weekly/monthly: track close attempts
+  if (_rv.type === 'weekly' || _rv.type === 'monthly') {
+    // If review is finished (showing score), just close
+    if (_rv.current >= _rv.questions.length) {
+      closeReviewModal();
+      return;
+    }
+    var closeKey = _rvCloseCountKey(_rv.type);
+    var closes = parseInt(localStorage.getItem(closeKey) || '0');
+    if (closes === 0) {
+      // First close: offer save
+      if (confirm('임시저장하고 나가시겠습니까?\n\n• 임시저장은 1회만 가능합니다\n• 다음에 창을 닫으면 리뷰가 종료되고 미응답 문제는 0점 처리됩니다')) {
+        rvSaveProgress();
+        localStorage.setItem(closeKey, '1');
+        closeReviewModal();
+      }
+    } else {
+      // 2nd close: end review, unanswered = 0
+      if (confirm('리뷰를 종료하시겠습니까?\n\n응답하지 않은 문제는 전부 0점 처리됩니다.')) {
+        // Fill remaining with 0 scores
+        while (_rv.scores.length < _rv.questions.length) {
+          _rv.scores.push(0);
+        }
+        rvClearSaved(_rv.type);
+        localStorage.removeItem(closeKey);
+        finishReview();
+      }
+    }
+  } else {
+    // Daily review: just close
+    closeReviewModal();
+  }
+}
+
 function openWeeklyReview() {
-  // Check: only available on Sunday
-  var day = new Date().getDay();
-  if (day !== 0) { showToast('Weekly Review는 매주 일요일에 열립니다!'); return; }
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!isWeeklyReviewAvailable()) { showToast('Weekly Review는 매주 일요일에 열립니다!'); return; }
   _rv.type = 'weekly'; _rv.timeLimit = 15;
-  startReview('Weekly Review', 20);
+  // Check for saved progress
+  var saved = rvLoadSaved('weekly');
+  if (saved) {
+    _rv.questions = saved.questions;
+    _rv.current = saved.current;
+    _rv.scores = saved.scores;
+    _rv.timeLimit = saved.timeLimit;
+    rvClearSaved('weekly');
+    document.getElementById('rv-title').textContent = 'Weekly Review (이어서)';
+    document.getElementById('rv-subtitle').textContent = (_rv.questions.length - _rv.current) + ' questions remaining · ' + _rv.timeLimit + 's per question';
+    document.getElementById('review-modal-overlay').style.display = 'flex';
+    document.getElementById('rv-timer').style.display = '';
+    renderReviewQuestion();
+  } else {
+    startReview('Weekly Review', 20);
+  }
 }
 
 function openMonthlyReview() {
-  // Check: only available on 1st of month
-  var date = new Date().getDate();
-  if (date !== 1) { showToast('Monthly Review는 매월 1일에 열립니다!'); return; }
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!isMonthlyReviewAvailable()) { showToast('Monthly Review는 매월 1~3일에 열립니다!'); return; }
   _rv.type = 'monthly'; _rv.timeLimit = 15;
-  startReview('Monthly Review', 25);
+  // Check for saved progress
+  var saved = rvLoadSaved('monthly');
+  if (saved) {
+    _rv.questions = saved.questions;
+    _rv.current = saved.current;
+    _rv.scores = saved.scores;
+    _rv.timeLimit = saved.timeLimit;
+    rvClearSaved('monthly');
+    document.getElementById('rv-title').textContent = 'Monthly Review (이어서)';
+    document.getElementById('rv-subtitle').textContent = (_rv.questions.length - _rv.current) + ' questions remaining · ' + _rv.timeLimit + 's per question';
+    document.getElementById('review-modal-overlay').style.display = 'flex';
+    document.getElementById('rv-timer').style.display = '';
+    renderReviewQuestion();
+  } else {
+    startReview('Monthly Review', 25);
+  }
 }
 
 function startReview(title, count) {
@@ -8539,6 +8769,19 @@ function finishReview() {
   if (typeof logActivity === 'function') {
     logActivity('quiz', { content_type: _rv.type + '_review', score: correct, max_score: total, metadata: { accuracy_pct: pct, xp_earned: xpEarned } });
   }
+  // Mark review as completed to hide notification banner
+  if (typeof kstNow === 'function') {
+    if (_rv.type === 'weekly') {
+      localStorage.setItem('kh_weekly_review_done_' + kstNow().toISOString().slice(0,10), '1');
+    } else if (_rv.type === 'monthly') {
+      localStorage.setItem('kh_monthly_review_done_' + kstNow().toISOString().slice(0,7), '1');
+    }
+  }
+  // Clear saved progress
+  rvClearSaved(_rv.type);
+  // Hide the notification banner
+  var notifEl = document.getElementById('sr-notif-' + _rv.type);
+  if (notifEl) notifEl.style.display = 'none';
 }
 
 function closeReviewModal() {
@@ -8553,7 +8796,7 @@ function closeReviewModal() {
   var wSub = document.getElementById('weekly-review-sub');
   var mSub = document.getElementById('monthly-review-sub');
   if (wSub) wSub.textContent = day === 0 ? '20 questions · 15s timer' : '매주 일요일에 열림';
-  if (mSub) mSub.textContent = date === 1 ? '25 questions · 15s timer' : '매월 1일에 열림';
+  if (mSub) mSub.textContent = (date >= 1 && date <= 3) ? '25 questions · 15s timer' : '매월 1~3일에 열림';
 })();
 </script>
 
