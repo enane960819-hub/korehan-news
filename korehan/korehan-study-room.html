@@ -3975,7 +3975,49 @@ var _ALPHA_QUIZ = [
 var _ALL_CON = [].concat(_HANGUL.consonant, _HANGUL.double);
 var _ALL_VOW = _HANGUL.vowel;
 
-function speakHangul(text) {
+var _ttsAudio = null;
+var _ttsCache = {};
+function speakHangul(text, voice) {
+  if (!text) return;
+  // Try Edge TTS first (natural AI voice), fall back to Web Speech API
+  speakEdgeTTS(text, voice || 'female');
+}
+async function speakEdgeTTS(text, voice) {
+  try {
+    // Check cache
+    var cacheKey = text + '_' + voice;
+    if (_ttsCache[cacheKey]) {
+      playTTSAudio(_ttsCache[cacheKey]);
+      return;
+    }
+    var sb = getSupa();
+    if (!sb) { speakFallback(text); return; }
+    var sess = sb.auth && (await sb.auth.getSession());
+    var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+    var res = await fetch((typeof SUPA_URL !== 'undefined' ? SUPA_URL : '') + '/functions/v1/tts-proxy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (token || '')
+      },
+      body: JSON.stringify({ text: text.slice(0, 200), voice: voice })
+    });
+    if (!res.ok) throw new Error('TTS ' + res.status);
+    var blob = await res.blob();
+    var url = URL.createObjectURL(blob);
+    _ttsCache[cacheKey] = url;
+    playTTSAudio(url);
+  } catch(e) {
+    console.warn('[TTS] Edge TTS failed, using fallback:', e.message);
+    speakFallback(text);
+  }
+}
+function playTTSAudio(url) {
+  if (_ttsAudio) { _ttsAudio.pause(); _ttsAudio = null; }
+  _ttsAudio = new Audio(url);
+  _ttsAudio.play().catch(function(){});
+}
+function speakFallback(text) {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   var u = new SpeechSynthesisUtterance(text);
@@ -4150,7 +4192,8 @@ var _FT_SCENARIOS = [
                 choices:[
                   { id:'g1', text:'아이스 아메리카노 주세요', textEn:'Iced americano please', next:'size_q', pts:3, phrase:'아이스 아메리카노 주세요' },
                   { id:'g2', text:'네, 잠시만요...', textEn:'Yes, just a moment...', next:'hesitate', pts:1 },
-                  { id:'g3', text:'(메뉴판을 가리키며) 이거요', textEn:'(pointing at menu) This one', next:'point', pts:1 }
+                  { id:'g3', text:'(메뉴판을 가리키며) 이거요', textEn:'(pointing at menu) This one', next:'point', pts:1 },
+                  { id:'g4', text:'(영어로) ONE COFFEE PLEASE', textEn:'(in English) ONE COFFEE PLEASE', next:'english_fail', pts:0 }
                 ]},
     hesitate: { type:'npc', x:30, y:20, label:'잠시 망설임', npc:'바리스타', scene:'카페 카운터',
                 text:'천천히 보세요~ 메뉴 추천해드릴까요?', textEn:'Take your time~ Want me to recommend something?',
@@ -4194,12 +4237,29 @@ var _FT_SCENARIOS = [
                 choices:[
                   { id:'pa1', text:'카드로 할게요', textEn:'By card please', next:'done_good', pts:2, phrase:'카드로 할게요' }
                 ]},
+    english_fail:{ type:'npc', x:30, y:50, label:'영어 시도 😅', npc:'바리스타', scene:'카페 카운터',
+                text:'아... 저 영어 잘 못하는데... 한국어로 해주실 수 있어요?', textEn:'Ah... I\'m not good at English... Can you try in Korean?',
+                choices:[
+                  { id:'ef1', text:'아... 아메리카노... 주세요?', textEn:'Ah... americano... please?', next:'size_q', pts:2, phrase:'아메리카노 주세요' },
+                  { id:'ef2', text:'(구글 번역기 꺼냄)', textEn:'(pulls out Google Translate)', next:'translate', pts:1 },
+                  { id:'ef3', text:'AMERICANO! BIG! COLD!', textEn:'AMERICANO! BIG! COLD!', next:'angry_barista', pts:0 }
+                ]},
+    translate:{ type:'npc', x:44, y:80, label:'번역기 사용', npc:'바리스타', scene:'카페 카운터',
+                text:'ㅋㅋ 괜찮아요~ 여기 가리켜주세요!', textEn:'Haha it\'s okay~ Just point here!',
+                choices:[
+                  { id:'tr1', text:'(메뉴 가리킴) 이거... 차가운 거...', textEn:'(points) This... cold one...', next:'size_q', pts:1 }
+                ]},
+    angry_barista:{ type:'end', x:56, y:80, label:'바리스타 짜증 😤', npc:'바리스타', scene:'카페 카운터',
+                text:'...손님, 여기 한국이에요. "아이스 아메리카노 주세요" 이렇게 말해보세요 😤', textEn:'...Sir/Ma\'am, this is Korea. Try saying "아이스 아메리카노 주세요" 😤',
+                choices:[]},
     done_good:{ type:'end', x:94, y:50, label:'주문 완료! ☕', npc:'바리스타', scene:'카페 카운터',
                 text:'네~ 잠시만 기다려주세요! 음료 나오면 불러드릴게요 😊', textEn:'Yes~ Please wait a moment! I\'ll call you when your drink is ready 😊',
                 choices:[]}
   },
   edges:[
-    ['start','greet'],['greet','size_q'],['greet','hesitate'],['greet','point'],
+    ['start','greet'],['greet','size_q'],['greet','hesitate'],['greet','point'],['greet','english_fail'],
+    ['english_fail','size_q'],['english_fail','translate'],['english_fail','angry_barista'],
+    ['translate','size_q'],
     ['hesitate','recommend'],['hesitate','size_q'],['point','size_q'],
     ['recommend','size_q'],['size_q','pay_q'],['size_q','size_explain'],
     ['size_explain','pay_q'],['pay_q','done_good'],['pay_q','price_ask'],['price_ask','done_good']
@@ -4215,7 +4275,8 @@ var _FT_SCENARIOS = [
                 choices:[
                   { id:'t1', text:'강남역으로 가주세요', textEn:'Gangnam Station please', next:'confirm', pts:3, phrase:'강남역으로 가주세요' },
                   { id:'t2', text:'이 주소로 가주세요 (핸드폰 보여줌)', textEn:'Please go to this address (shows phone)', next:'phone_addr', pts:2, phrase:'이 주소로 가주세요' },
-                  { id:'t3', text:'음... 잠깐만요', textEn:'Um... just a moment', next:'search', pts:1 }
+                  { id:'t3', text:'음... 잠깐만요', textEn:'Um... just a moment', next:'search', pts:1 },
+                  { id:'t4', text:'(한참 침묵...)', textEn:'(long silence...)', next:'driver_impatient', pts:0 }
                 ]},
     phone_addr:{ type:'npc', x:28, y:25, label:'주소 확인', npc:'택시기사', scene:'택시',
                 text:'아~ 여기요? 한 20분 정도 걸릴 것 같은데, 괜찮으시죠?', textEn:'Ah here? It\'ll take about 20 minutes, is that okay?',
@@ -4244,6 +4305,7 @@ var _FT_SCENARIOS = [
                 choices:[
                   { id:'r1', text:'한 달 정도 됐어요', textEn:'About a month', next:'small_talk', pts:3, phrase:'한 달 정도 됐어요' },
                   { id:'r2', text:'(알아듣지 못함) 네...?', textEn:'(didn\'t understand) Yes...?', next:'arrive_quiet', pts:1 },
+                  { id:'r4', text:'여기 아닌 것 같은데... 어디예요 여기?', textEn:'I don\'t think this is right... Where are we?', next:'wrong_dest', pts:0 },
                   { id:'r3', text:'일주일이요! 한국 좋아요', textEn:'One week! I like Korea', next:'small_talk', pts:3, phrase:'한국 좋아요' }
                 ]},
     small_talk:{ type:'npc', x:68, y:35, label:'스몰톡', npc:'택시기사', scene:'택시',
@@ -4263,15 +4325,35 @@ var _FT_SCENARIOS = [
                   { id:'a1', text:'여기서 세워주세요', textEn:'Please stop here', next:'pay', pts:3, phrase:'여기서 세워주세요' },
                   { id:'a2', text:'조금만 더 가주세요', textEn:'A bit further please', next:'pay', pts:2, phrase:'조금만 더 가주세요' }
                 ]},
+    driver_impatient:{ type:'npc', x:28, y:80, label:'기사 짜증', npc:'택시기사', scene:'택시',
+                text:'손님... 어디 가실 건지 빨리 좀 말해주세요. 미터기 돌아가고 있어요.', textEn:'Sir/Ma\'am... please tell me quickly where you\'re going. The meter is running.',
+                choices:[
+                  { id:'di1', text:'아! 죄송해요. 강남역이요!', textEn:'Ah! Sorry. Gangnam Station!', next:'confirm', pts:2, phrase:'죄송해요' },
+                  { id:'di2', text:'(계속 핸드폰만 봄)', textEn:'(keeps looking at phone)', next:'kicked_out', pts:0 }
+                ]},
+    kicked_out:{ type:'end', x:44, y:80, label:'하차 당함 😱', npc:'택시기사', scene:'택시',
+                text:'손님 죄송한데 다른 택시 타세요. 뒤에 손님 많아요.', textEn:'Sorry but please take another taxi. There are other customers waiting.',
+                choices:[]},
+    wrong_dest:{ type:'npc', x:80, y:20, label:'엉뚱한 곳', npc:'택시기사', scene:'낯선 거리',
+                text:'여기가 맞아요? 근데 여긴 공장 지대인데...', textEn:'Is this right? But this is an industrial area...',
+                choices:[
+                  { id:'wd1', text:'아... 아닌 것 같아요. 강남역 가주세요!', textEn:'Ah... I don\'t think so. Gangnam Station please!', next:'arrive', pts:1, phrase:'아닌 것 같아요' },
+                  { id:'wd2', text:'맞아요! (아닌데 자존심 때문에)', textEn:'Yes! (wrong but too proud)', next:'lost_end', pts:0 }
+                ]},
+    lost_end: { type:'end', x:94, y:20, label:'미아 엔딩 😭', npc:'나', scene:'낯선 거리',
+                text:'(공장 지대 한가운데서 혼자 서있음... 다시 택시 잡아야 함)', textEn:'(Standing alone in an industrial area... need to catch another taxi)',
+                choices:[]},
     pay:      { type:'end', x:94, y:50, label:'하차 완료 🚕', npc:'택시기사', scene:'택시',
                 text:'네~ 감사합니다! 안녕히 가세요~', textEn:'Thank you! Have a good day~',
                 choices:[]}
   },
   edges:[
-    ['start','driver_greet'],['driver_greet','confirm'],['driver_greet','phone_addr'],['driver_greet','search'],
+    ['start','driver_greet'],['driver_greet','confirm'],['driver_greet','phone_addr'],['driver_greet','search'],['driver_greet','driver_impatient'],
+    ['driver_impatient','confirm'],['driver_impatient','kicked_out'],
     ['phone_addr','riding'],['phone_addr','ask_fare'],['search','confirm'],
     ['confirm','riding'],['ask_fare','riding'],
-    ['riding','small_talk'],['riding','arrive_quiet'],
+    ['riding','small_talk'],['riding','arrive_quiet'],['riding','wrong_dest'],
+    ['wrong_dest','arrive'],['wrong_dest','lost_end'],
     ['small_talk','arrive'],['arrive_quiet','pay'],['arrive','pay']
   ]
 },
@@ -4285,7 +4367,8 @@ var _FT_SCENARIOS = [
                 choices:[
                   { id:'b1', text:'삼각김밥이랑 음료수 사자', textEn:'Let me get a triangle kimbap and a drink', next:'counter', pts:2 },
                   { id:'b2', text:'(점원에게) 충전기 있어요?', textEn:'(to clerk) Do you have chargers?', next:'ask_item', pts:2, phrase:'충전기 있어요?' },
-                  { id:'b3', text:'도시락 데워주세요', textEn:'Please heat up this lunch box', next:'microwave', pts:3, phrase:'도시락 데워주세요' }
+                  { id:'b3', text:'도시락 데워주세요', textEn:'Please heat up this lunch box', next:'microwave', pts:3, phrase:'도시락 데워주세요' },
+                  { id:'b4', text:'(삼각김밥을 뜯어서 바로 먹기 시작)', textEn:'(opens triangle kimbap and starts eating)', next:'caught_eating', pts:0 }
                 ]},
     ask_item: { type:'npc', x:28, y:25, label:'물건 위치 문의', npc:'점원', scene:'편의점',
                 text:'충전기요? 저쪽 선반에 있어요~', textEn:'Chargers? They\'re on that shelf over there~',
@@ -4327,12 +4410,22 @@ var _FT_SCENARIOS = [
                 choices:[
                   { id:'pt1', text:'010-xxxx-xxxx요', textEn:'010-xxxx-xxxx', next:'done', pts:2, phrase:'전화번호 알려주세요' }
                 ]},
+    caught_eating:{ type:'npc', x:28, y:50, label:'현장 적발 😳', npc:'점원', scene:'편의점',
+                text:'저기... 손님? 그거 아직 계산 안 하신 건데요...', textEn:'Um... customer? You haven\'t paid for that yet...',
+                choices:[
+                  { id:'ce1', text:'아! 죄송해요! 바로 계산할게요!', textEn:'Ah! Sorry! I\'ll pay right away!', next:'counter', pts:1, phrase:'바로 계산할게요' },
+                  { id:'ce2', text:'(모른 척하며 계속 먹음)', textEn:'(pretends not to hear, keeps eating)', next:'police_end', pts:0 }
+                ]},
+    police_end:{ type:'end', x:44, y:50, label:'경찰 출동 🚔', npc:'점원', scene:'편의점',
+                text:'(점원이 전화를 들며) 여보세요? 경찰서요? 네, 편의점 도둑이요...', textEn:'(clerk picks up phone) Hello? Police? Yes, a shoplifter...',
+                choices:[]},
     done:     { type:'end', x:94, y:50, label:'구매 완료! 🏪', npc:'점원', scene:'편의점',
                 text:'감사합니다~ 안녕히 가세요!', textEn:'Thank you~ Goodbye!',
                 choices:[]}
   },
   edges:[
-    ['start','browse'],['browse','counter'],['browse','ask_item'],['browse','microwave'],
+    ['start','browse'],['browse','counter'],['browse','ask_item'],['browse','microwave'],['browse','caught_eating'],
+    ['caught_eating','counter'],['caught_eating','police_end'],
     ['ask_item','counter'],['ask_item','type_c'],['type_c','counter'],['microwave','counter'],
     ['counter','pay_method'],['pay_method','kakao'],['pay_method','done'],['pay_method','points'],
     ['kakao','done'],['points','done']
@@ -4354,7 +4447,8 @@ var _FT_SCENARIOS = [
                 choices:[
                   { id:'m1', text:'저기요~ 추천 메뉴 뭐예요?', textEn:'Excuse me~ What do you recommend?', next:'recommend', pts:3, phrase:'추천 메뉴 뭐예요?' },
                   { id:'m2', text:'주문할게요!', textEn:'I\'d like to order!', next:'order', pts:2, phrase:'주문할게요' },
-                  { id:'m3', text:'이거 매워요?', textEn:'Is this spicy?', next:'spicy_q', pts:2, phrase:'이거 매워요?' }
+                  { id:'m3', text:'이거 매워요?', textEn:'Is this spicy?', next:'spicy_q', pts:2, phrase:'이거 매워요?' },
+                  { id:'m4', text:'전부 다 주세요!', textEn:'Give me everything!', next:'too_much', pts:0 }
                 ]},
     recommend:{ type:'npc', x:40, y:25, label:'추천 메뉴', npc:'직원', scene:'테이블',
                 text:'김치찌개가 제일 인기 많아요! 된장찌개도 맛있어요~', textEn:'Kimchi jjigae is the most popular! Doenjang jjigae is also good~',
@@ -4379,7 +4473,8 @@ var _FT_SCENARIOS = [
                 choices:[
                   { id:'sq1', text:'물 주세요', textEn:'Water please', next:'eating', pts:2, phrase:'물 주세요' },
                   { id:'sq2', text:'콜라 하나요', textEn:'One cola', next:'eating', pts:2 },
-                  { id:'sq3', text:'소주 한 병이요!', textEn:'One bottle of soju!', next:'eating', pts:3, phrase:'소주 한 병이요' }
+                  { id:'sq3', text:'소주 한 병이요!', textEn:'One bottle of soju!', next:'eating', pts:3, phrase:'소주 한 병이요' },
+                  { id:'sq4', text:'제일 매운 거로 해주세요!!! 🔥', textEn:'Make it the spiciest!!! 🔥', next:'spicy_die', pts:0 }
                 ]},
     eating:   { type:'npc', x:80, y:50, label:'식사 완료', npc:'직원', scene:'테이블',
                 text:'맛있게 드셨어요?', textEn:'Did you enjoy your meal?',
@@ -4387,14 +4482,28 @@ var _FT_SCENARIOS = [
                   { id:'e1', text:'네, 너무 맛있었어요!', textEn:'Yes, it was delicious!', next:'bill', pts:3, phrase:'너무 맛있었어요' },
                   { id:'e2', text:'계산해주세요', textEn:'Check please', next:'bill', pts:2, phrase:'계산해주세요' }
                 ]},
+    too_much: { type:'npc', x:40, y:15, label:'과다 주문', npc:'직원', scene:'테이블',
+                text:'네...? 전부요? 메뉴가 30개가 넘는데... 정말이요?', textEn:'Yes...? Everything? There are over 30 items... Are you sure?',
+                choices:[
+                  { id:'tm1', text:'ㅋㅋ 농담이에요. 비빔밥 하나만요', textEn:'Haha just kidding. Just one bibimbap', next:'side_q', pts:1, phrase:'농담이에요' },
+                  { id:'tm2', text:'네! 전부 다요! 💪', textEn:'Yes! Everything! 💪', next:'broke_end', pts:0 }
+                ]},
+    broke_end:{ type:'end', x:56, y:15, label:'파산 엔딩 💸', npc:'직원', scene:'테이블',
+                text:'(30분 후... 테이블 위에 음식이 가득) 계산은... 487,000원입니다 😅', textEn:'(30 min later... table covered in food) The bill is... 487,000 won 😅',
+                choices:[]},
+    spicy_die:{ type:'end', x:94, y:80, label:'매운맛 KO 🥵', npc:'나', scene:'테이블',
+                text:'(김치찌개 한 입 먹고 얼굴이 빨개짐) 물... 물 주세요!!!! 🥵🔥', textEn:'(one bite of kimchi jjigae, face turns red) Water... WATER PLEASE!!!! 🥵🔥',
+                choices:[]},
     bill:     { type:'end', x:94, y:50, label:'계산 완료! 🍜', npc:'직원', scene:'카운터',
                 text:'감사합니다! 또 오세요~', textEn:'Thank you! Please come again~',
                 choices:[]}
   },
   edges:[
-    ['start','seat'],['seat','menu'],['menu','recommend'],['menu','order'],['menu','spicy_q'],
+    ['start','seat'],['seat','menu'],['menu','recommend'],['menu','order'],['menu','spicy_q'],['menu','too_much'],
+    ['too_much','side_q'],['too_much','broke_end'],
     ['recommend','side_q'],['spicy_q','side_q'],['spicy_q','order'],['order','side_q'],
-    ['side_q','eating'],['eating','bill']
+    ['side_q','eating'],['side_q','spicy_die'],
+    ['eating','bill']
   ]
 },
 {
