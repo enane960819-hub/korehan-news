@@ -151,7 +151,8 @@
       var notEnough = !!it.can_buy_with_coin && Number((stats && stats.coin_balance) || 0) < Number(it.coin_price || 0);
       var oneTimeOwned = !!ownedQty && !it.is_repeatable;
       var disabledByFallback = usingFallback ? 'disabled title="DB에 저장된 아이템이 없어 구매할 수 없습니다"' : '';
-      return '<article class="card">'
+      var tabType = it.item_type === 'reporter_item' ? 'gift' : (it.item_type === 'profile_badge' || it.item_type === 'profile_cosmetic') ? 'profile' : it.can_buy_with_cash ? 'cash' : 'all';
+      return '<article class="card" data-tab-type="' + tabType + '">'
         + '<div class="thumb"><img src="' + (it.image_url || 'https://picsum.photos/seed/shop-'+it.id+'/640/360') + '" alt="' + (it.name||'') + '"></div>'
         + '<div class="body">'
         + '<div class="title">' + (it.name || 'Item') + '</div>'
@@ -175,6 +176,8 @@
           return '<div class="inv-item"><b>' + (it.name || o.item_id) + '</b> · qty ' + (o.quantity||0) + (it.description ? '<div style="color:#64748b;margin-top:3px">' + it.description + '</div>' : '') + '</div>';
         }).join('')
       : '<div style="color:#94a3b8;font-size:13px">보유한 아이템이 아직 없습니다.</div>';
+    // Apply current tab filter
+    applyTab(_currentTab);
   }
 
   window.buyWithCoin = async function(itemId) {
@@ -273,7 +276,45 @@
     initShop();
   };
 
+  // ── Tab filtering ──
+  var _currentTab = 'all';
+  function itemMatchesTab(item, tab) {
+    if (tab === 'all') return true;
+    if (tab === 'gift') return item.item_type === 'reporter_item';
+    if (tab === 'profile') return item.item_type === 'profile_badge' || item.item_type === 'profile_cosmetic';
+    if (tab === 'cash') return !!item.can_buy_with_cash;
+    return false; // room handled separately
+  }
+  function applyTab(tab) {
+    _currentTab = tab;
+    var tabs = document.querySelectorAll('.shop-tab');
+    tabs.forEach(function(t){ t.classList.toggle('active', t.getAttribute('data-tab') === tab); });
+    var shopGrid = document.getElementById('shop-grid');
+    var roomGrid = document.getElementById('room-shop-grid');
+    var invSection = document.getElementById('shop-inventory-section');
+    if (tab === 'room') {
+      shopGrid.style.display = 'none';
+      roomGrid.style.display = '';
+      if (invSection) invSection.style.display = 'none';
+    } else {
+      shopGrid.style.display = '';
+      roomGrid.style.display = 'none';
+      if (invSection) invSection.style.display = '';
+      // filter visible cards
+      var cards = shopGrid.querySelectorAll('.card');
+      cards.forEach(function(card) {
+        var cardTab = card.getAttribute('data-tab-type') || 'all';
+        var show = tab === 'all' || cardTab === tab;
+        card.style.display = show ? '' : 'none';
+      });
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', function(){
+    // Tab click handlers
+    document.querySelectorAll('.shop-tab').forEach(function(btn){
+      btn.addEventListener('click', function(){ applyTab(this.getAttribute('data-tab')); });
+    });
     function _startShop() { initShop(); renderRoomShop(); }
     // supaUser가 이미 있으면 즉시 실행, 없으면 이벤트 대기
     if (window.supaUser) {

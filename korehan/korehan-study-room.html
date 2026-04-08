@@ -1551,6 +1551,18 @@ body { background: #0b1626 !important; }
     <button class="btn btn-g" onclick="submitAllWritingsToday()" style="font-size:12px;padding:8px 16px;font-weight:800">📩 전부 제출하기</button>
   </div>
 
+  <!-- WEAK GRAMMAR BANNER -->
+  <div id="sr-weak-grammar-banner" style="display:none;background:linear-gradient(135deg,#1e1b4b,#312e81);border:1px solid rgba(139,92,246,.3);border-radius:14px;padding:14px 16px;margin-bottom:12px;cursor:pointer" onclick="window.location.assign('korehan-learning-overview.html#weak-grammar')">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:38px;height:38px;border-radius:10px;background:rgba(139,92,246,.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📝</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:800;color:#c4b5fd;margin-bottom:2px">Weak Grammar Practice</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5)" id="sr-weak-grammar-desc">자주 틀리는 문법을 복습하세요</div>
+      </div>
+      <span style="font-size:14px;color:rgba(255,255,255,.3)">→</span>
+    </div>
+  </div>
+
   <!-- ACTIVITY CARDS -->
   <div class="sr-activity-cards">
     <button class="sr-act-card" onclick="openArticleStudy()">
@@ -2113,6 +2125,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       loadFeedbackInbox();
       asAutoSubmitOldWork();
       _asRefreshSubmitBanner();
+      loadWeakGrammarBanner();
     } else {
       waited++;
       setTimeout(waitForSession, 100);
@@ -3350,7 +3363,76 @@ function lsStart(type) {
     if (typeof openPictureDescription === 'function') openPictureDescription();
   } else if (type === 'sentence') {
     openDictationModal();
+  } else if (type === 'expressions') {
+    openKeyExpressionsModal();
   }
+}
+
+// ── Key Expressions Modal ──
+function openKeyExpressionsModal() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  markStageDone('expressions');
+  var modal = document.getElementById('ke-modal');
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  var topicLabel = document.getElementById('ke-topic-label');
+  if (_todayTopic) topicLabel.textContent = _todayTopic.ko || _todayTopic.en || '오늘 주제 관련 핵심 표현';
+  // Generate expressions via Claude
+  var list = document.getElementById('ke-expressions-list');
+  list.innerHTML = '<div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">AI가 핵심 표현을 생성 중...</div>';
+  var topicText = (_todayTopic && (_todayTopic.ko || _todayTopic.en)) || 'daily life';
+  var level = _currentLevel || 'Beginner';
+  callClaude({
+    feature: 'key-expressions',
+    model: 'claude-3-sonnet-20240229',
+    max_tokens: 1200,
+    messages: [{ role: 'user', content: 'You are a Korean language teacher. Generate 5 key Korean expressions/phrases related to the topic "' + topicText + '" for a ' + level + ' level learner. For each expression provide: the Korean phrase, romanization, English meaning, and one example sentence using it. Return as JSON array: [{"ko":"...","rom":"...","en":"...","example_ko":"...","example_en":"..."}]. Return ONLY the JSON array, no markdown.' }]
+  }).then(function(res) {
+    try {
+      var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+      text = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+      var expressions = JSON.parse(text);
+      list.innerHTML = expressions.map(function(exp) {
+        return '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px">'
+          + '<div style="font-size:16px;font-weight:800;margin-bottom:3px">' + (exp.ko||'') + '</div>'
+          + '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:6px">' + (exp.rom||'') + '</div>'
+          + '<div style="font-size:13px;color:#7dd3fc;margin-bottom:8px">' + (exp.en||'') + '</div>'
+          + '<div style="font-size:12px;color:rgba(255,255,255,.55);border-top:1px solid rgba(255,255,255,.08);padding-top:8px">'
+          + '<span style="font-weight:700">예문:</span> ' + (exp.example_ko||'') + '<br><span style="color:rgba(255,255,255,.35)">' + (exp.example_en||'') + '</span></div>'
+          + '</div>';
+      }).join('');
+    } catch(e) {
+      list.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px 0">표현 생성에 실패했습니다. 다시 시도해주세요.</div>';
+    }
+  }).catch(function() {
+    list.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px 0">네트워크 오류. 다시 시도해주세요.</div>';
+  });
+}
+function closeKeyExpressionsModal() {
+  var modal = document.getElementById('ke-modal');
+  if (modal) modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+// ── Weak Grammar Banner ──
+async function loadWeakGrammarBanner() {
+  var banner = document.getElementById('sr-weak-grammar-banner');
+  if (!banner || !supaUser) return;
+  try {
+    var sb = getSupa();
+    var { data } = await sb.from('user_grammar_stats')
+      .select('grammar_point, wrong_count')
+      .eq('user_id', supaUser.id)
+      .gt('wrong_count', 0)
+      .order('wrong_count', { ascending: false })
+      .limit(3);
+    if (data && data.length > 0) {
+      banner.style.display = '';
+      var desc = document.getElementById('sr-weak-grammar-desc');
+      if (desc) desc.textContent = data.map(function(d){ return d.grammar_point; }).join(', ') + ' — 복습이 필요해요';
+    }
+  } catch(e) {}
 }
 
 // Opens Topic Writing modal WITHOUT the canEnterWritingRoom() gate
@@ -7693,6 +7775,13 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
         <div class="ls-card-desc">받아쓰기 연습하기</div>
         <div class="ls-card-pts">+10 냥</div>
       </button>
+      <button class="ls-card" id="ls-card-expressions" onclick="lsStart('expressions')">
+        <div class="ls-done-badge">✅</div>
+        <div class="ls-card-icon">💡</div>
+        <div class="ls-card-name">Key Expressions</div>
+        <div class="ls-card-desc">오늘 주제 관련 핵심 표현 학습</div>
+        <div class="ls-card-pts">+10 냥</div>
+      </button>
     </div>
     <hr class="ls-divider">
     <!-- Writing Practice button (locked/unlocked) -->
@@ -7704,6 +7793,22 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
       </span>
       <span id="ls-wp-lock" style="font-size:18px">🔒</span>
     </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     KEY EXPRESSIONS MODAL
+═══════════════════════════════════════════ -->
+<div class="woverlay hidden" id="ke-modal" onclick="if(event.target===this)closeKeyExpressionsModal()">
+  <div style="background:#0d1b2e;border-radius:18px;max-width:560px;width:95%;margin:auto;padding:28px 24px;color:#fff;max-height:85vh;overflow-y:auto;position:relative">
+    <button onclick="closeKeyExpressionsModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:rgba(255,255,255,.4);font-size:20px;cursor:pointer">✕</button>
+    <div style="font-size:24px;margin-bottom:6px">💡</div>
+    <h2 style="margin:0 0 4px;font-size:18px;font-weight:900">Key Expressions</h2>
+    <p style="margin:0 0 18px;font-size:13px;color:rgba(255,255,255,.5)" id="ke-topic-label">오늘 주제 관련 핵심 표현</p>
+    <div id="ke-expressions-list" style="display:flex;flex-direction:column;gap:10px">
+      <div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Loading expressions...</div>
+    </div>
+    <button onclick="markStageDone('expressions');closeKeyExpressionsModal()" style="display:block;width:100%;margin-top:18px;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer">학습 완료 ✓</button>
   </div>
 </div>
 
