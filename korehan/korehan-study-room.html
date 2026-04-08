@@ -1585,7 +1585,9 @@ body { background: #0b1626 !important; }
 .ft-node:hover .ft-node-box { box-shadow:0 4px 20px rgba(0,0,0,.2);transform:scale(1.04); }
 .ft-node.visited .ft-node-box { border-color:#2196F3;background:#e3f2fd; }
 .ft-node.current .ft-node-box { border-color:#2196F3;box-shadow:0 0 0 4px rgba(33,150,243,.25);background:#e3f2fd; }
-.ft-node.locked .ft-node-box { opacity:.35;background:#e8eaed; }
+.ft-node.locked .ft-node-box { opacity:0;pointer-events:none; }
+.ft-node.locked { pointer-events:none; }
+.ft-edge.hidden { opacity:0; }
 .ft-node-label { font-size:11px;font-weight:700;color:#1a2a3a; }
 .ft-node-sub { font-size:9px;color:#6a7a8a;margin-top:2px; }
 .ft-node.start .ft-node-box { background:#1a3a5a;border-color:#1a3a5a; }
@@ -4562,7 +4564,15 @@ function renderFlowchart(scenario, animateEdge) {
     var edgeKey = e[0]+'->'+e[1];
     var isVisited = visitedEdges.indexOf(edgeKey) >= 0;
     var isLatest = animateEdge && edgeKey === latestEdge;
-    path.setAttribute('class', 'ft-edge' + (isLatest ? ' animating' : isVisited ? ' visited glow' : ''));
+    // Hide edges to nodes player hasn't discovered yet
+    var fromVisited = visited.indexOf(e[0]) >= 0;
+    var toVisited = visited.indexOf(e[1]) >= 0;
+    var isHidden = !fromVisited && !toVisited;
+    // Show edge only if: both visited, or one is current adjacent
+    var toCurrent = e[1] === _ftState.nodeId;
+    var fromCurrent = e[0] === _ftState.nodeId;
+    if (!isVisited && !isLatest && !toCurrent && !fromCurrent && !fromVisited) isHidden = true;
+    path.setAttribute('class', 'ft-edge' + (isLatest ? ' animating' : isVisited ? ' visited glow' : isHidden ? ' hidden' : ''));
     // For animating edge, compute path length for dasharray
     svg.appendChild(path);
     if (isLatest) {
