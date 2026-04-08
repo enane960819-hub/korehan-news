@@ -1657,6 +1657,7 @@ body { background: #0b1626 !important; }
 .wb-empty { text-align:center;padding:40px 20px;color:#a78bfa;font-size:13px; }
 .wb-search { width:100%;padding:10px 16px;border:none;border-bottom:2px solid #ede9fe;font-size:13px;font-family:inherit;background:#faf5ff;outline:none; }
 .wb-search:focus { border-bottom-color:#7c3aed; }
+.wb-cat-btn.on { color:#7c3aed !important;border-bottom-color:#7c3aed !important; }
 @media(max-width:600px) {
   .sr-top-tabs { padding:0 12px; }
   .sr-top-tab { padding:10px 16px;font-size:12px; }
@@ -2074,6 +2075,12 @@ body { background: #0b1626 !important; }
         <div class="wb-header-sub">저장한 단어와 표현을 복습하세요</div>
       </div>
       <div class="wb-spine"></div>
+      <div style="display:flex;gap:0;border-bottom:1px solid #ede9fe">
+        <button class="wb-cat-btn on" onclick="setWbCategory('all',this)" style="flex:1;padding:10px;border:none;background:transparent;font-size:12px;font-weight:700;color:#7c3aed;cursor:pointer;font-family:inherit;border-bottom:2px solid #7c3aed">전체 <span id="wb-cnt-all" style="font-size:10px;opacity:.6">0</span></button>
+        <button class="wb-cat-btn" onclick="setWbCategory('word',this)" style="flex:1;padding:10px;border:none;background:transparent;font-size:12px;font-weight:600;color:#9ca3af;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent">단어 <span id="wb-cnt-word" style="font-size:10px;opacity:.6">0</span></button>
+        <button class="wb-cat-btn" onclick="setWbCategory('slang',this)" style="flex:1;padding:10px;border:none;background:transparent;font-size:12px;font-weight:600;color:#9ca3af;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent">슬랭 <span id="wb-cnt-slang" style="font-size:10px;opacity:.6">0</span></button>
+        <button class="wb-cat-btn" onclick="setWbCategory('expression',this)" style="flex:1;padding:10px;border:none;background:transparent;font-size:12px;font-weight:600;color:#9ca3af;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent">표현 <span id="wb-cnt-expression" style="font-size:10px;opacity:.6">0</span></button>
+      </div>
       <input class="wb-search" type="text" placeholder="🔍 단어 검색..." oninput="filterWordBook(this.value)">
       <div id="wb-list">
         <div class="wb-empty">로딩 중...</div>
@@ -2852,14 +2859,20 @@ async function saveMustKnowWord(ko, en, rom) {
   await saveToWordBook(ko, en, rom);
 }
 // Universal save to word book — works from anywhere
-async function saveToWordBook(ko, en, rom) {
+async function saveToWordBook(ko, en, rom, category) {
   if (!ko) return;
   if (!supaUser) { showToast('로그인하면 단어를 저장할 수 있어요'); return; }
   try {
     var sb = getSupa();
     if (!sb) return;
+    // category: 'word' (default), 'slang', 'expression'
+    var cat = category || 'word';
+    var enWithCat = en || '';
+    // Prefix category marker if not already present
+    if (cat === 'slang' && enWithCat.indexOf('[슬랭]') < 0) enWithCat = '[슬랭] ' + enWithCat;
+    if (cat === 'expression' && enWithCat.indexOf('[표현]') < 0) enWithCat = '[표현] ' + enWithCat;
     await sb.from('saved_words').upsert({
-      user_id: supaUser.id, word_ko: ko, word_en: en || '', word_rom: rom || ''
+      user_id: supaUser.id, word_ko: ko, word_en: enWithCat, word_rom: rom || ''
     }, { onConflict: 'user_id,word_ko' });
     showToast('📖 단어장에 저장: ' + ko);
   } catch(e) {
@@ -4004,7 +4017,7 @@ function showSlangDetail(idx) {
     + '<div class="slang-detail-hd">' + s.ko + '</div>'
     + '<div class="slang-detail-en">' + s.en + '</div>'
     + '<div class="slang-detail-desc">' + s.desc + '</div>'
-    + '<button onclick="saveToWordBook(\'' + s.ko.replace(/'/g,"\\'") + '\',\'' + s.en.replace(/'/g,"\\'") + '\',\'\')" style="padding:6px 16px;border-radius:8px;border:1px solid rgba(196,181,253,.3);background:rgba(196,181,253,.1);color:#c4b5fd;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:12px">📖 단어장에 저장</button>'
+    + '<button onclick="saveToWordBook(\'' + s.ko.replace(/'/g,"\\'") + '\',\'' + s.en.replace(/'/g,"\\'") + '\',\'\',\'slang\')" style="padding:6px 16px;border-radius:8px;border:1px solid rgba(196,181,253,.3);background:rgba(196,181,253,.1);color:#c4b5fd;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:12px">📖 단어장에 저장</button>'
     + chatHtml
     + '</div>';
   det.style.display = 'block';
@@ -5055,7 +5068,7 @@ function showDialogue(node) {
   var phrasesEl = document.getElementById('ftp-phrases');
   var phrasesList = document.getElementById('ftp-phrases-list');
   if (_ftState.phrases.length) {
-    phrasesList.innerHTML = _ftState.phrases.map(function(p){ return '<span class="ft-phrase-chip" onclick="saveToWordBook(\'' + p.replace(/'/g,"\\'") + '\',\'(패스트트랙 표현)\',\'\')" style="cursor:pointer" title="탭하면 단어장에 저장">' + p + ' <span style="font-size:9px;opacity:.5">💾</span></span>'; }).join('');
+    phrasesList.innerHTML = _ftState.phrases.map(function(p){ return '<span class="ft-phrase-chip" onclick="saveToWordBook(\'' + p.replace(/'/g,"\\'") + '\',\'패스트트랙 표현\',\'\',\'expression\')" style="cursor:pointer" title="탭하면 단어장에 저장">' + p + ' <span style="font-size:9px;opacity:.5">💾</span></span>'; }).join('');
     phrasesEl.style.display = 'block';
   } else {
     phrasesEl.style.display = 'none';
@@ -5113,7 +5126,7 @@ function showEndNode(node) {
   var phrasesEl = document.getElementById('ftp-phrases');
   var phrasesList = document.getElementById('ftp-phrases-list');
   if (_ftState.phrases.length) {
-    phrasesList.innerHTML = _ftState.phrases.map(function(p){ return '<span class="ft-phrase-chip" onclick="saveToWordBook(\'' + p.replace(/'/g,"\\'") + '\',\'(패스트트랙 표현)\',\'\')" style="cursor:pointer" title="탭하면 단어장에 저장">' + p + ' <span style="font-size:9px;opacity:.5">💾</span></span>'; }).join('');
+    phrasesList.innerHTML = _ftState.phrases.map(function(p){ return '<span class="ft-phrase-chip" onclick="saveToWordBook(\'' + p.replace(/'/g,"\\'") + '\',\'패스트트랙 표현\',\'\',\'expression\')" style="cursor:pointer" title="탭하면 단어장에 저장">' + p + ' <span style="font-size:9px;opacity:.5">💾</span></span>'; }).join('');
     phrasesEl.style.display = 'block';
   }
   player.classList.add('open');
@@ -5209,41 +5222,73 @@ function switchSrTab(tab, btn) {
 
 // ── Word Book (단어장) ──
 var _wbData = [];
+var _wbCategory = 'all';
 async function loadWordBook() {
   var list = document.getElementById('wb-list');
   if (!list) return;
   if (!supaUser) { list.innerHTML = '<div class="wb-empty">로그인하면 저장한 단어를 볼 수 있어요</div>'; return; }
+  list.innerHTML = '<div class="wb-empty">로딩 중...</div>';
   try {
     var sb = getSupa();
     if (!sb) return;
-    // Load from saved_words + user_saved_words (both tables)
     var results = [];
-    var { data: sw } = await sb.from('saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(200);
-    if (sw) results = results.concat(sw.map(function(w){ return { ko:w.word_ko, rom:w.word_rom||'', en:w.word_en||'', date:w.created_at }; }));
-    var { data: usw } = await sb.from('user_saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(200);
-    if (usw) results = results.concat(usw.map(function(w){ return { ko:w.word_ko, rom:w.word_rom||'', en:w.word_en||'', date:w.created_at }; }));
-    // Also load Fast Track phrases
-    var { data: ftp } = await sb.from('fast_track_progress').select('phrases').eq('user_id', supaUser.id);
-    if (ftp) ftp.forEach(function(r){ (r.phrases||[]).forEach(function(p){ results.push({ ko:p, rom:'', en:'(패스트트랙 표현)', date:null }); }); });
-    // Deduplicate by ko
+    // 1) saved_words (main vocab table — used everywhere)
+    var { data: sw } = await sb.from('saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
+    if (sw) sw.forEach(function(w) {
+      var en = w.word_en || '';
+      var cat = 'word';
+      if (en.indexOf('[슬랭]') === 0) { cat = 'slang'; en = en.replace('[슬랭] ',''); }
+      else if (en.indexOf('[표현]') === 0) { cat = 'expression'; en = en.replace('[표현] ',''); }
+      results.push({ ko:w.word_ko, rom:w.word_rom||'', en:en, date:w.created_at, cat:cat });
+    });
+    // 2) Fast Track collected phrases (not in saved_words yet)
+    try {
+      var { data: ftp } = await sb.from('fast_track_progress').select('phrases').eq('user_id', supaUser.id);
+      if (ftp) ftp.forEach(function(r){ (r.phrases||[]).forEach(function(p){
+        if (!results.some(function(x){ return x.ko === p; })) {
+          results.push({ ko:p, rom:'', en:'패스트트랙 표현', date:null, cat:'expression' });
+        }
+      }); });
+    } catch(e){}
+    // Deduplicate
     var seen = {};
     _wbData = results.filter(function(w){ if (!w.ko || seen[w.ko]) return false; seen[w.ko]=true; return true; });
     renderWordBook(_wbData);
+    renderWbCounts();
   } catch(e) {
     console.warn('[WordBook]', e);
     list.innerHTML = '<div class="wb-empty">단어를 불러올 수 없습니다</div>';
   }
 }
+function setWbCategory(cat, btn) {
+  _wbCategory = cat;
+  document.querySelectorAll('.wb-cat-btn').forEach(function(b){ b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+  var q = document.querySelector('.wb-search');
+  filterWordBook(q ? q.value : '');
+}
+function renderWbCounts() {
+  var counts = { all:_wbData.length, word:0, slang:0, expression:0 };
+  _wbData.forEach(function(w){ counts[w.cat] = (counts[w.cat]||0) + 1; });
+  ['all','word','slang','expression'].forEach(function(k){
+    var el = document.getElementById('wb-cnt-' + k);
+    if (el) el.textContent = counts[k];
+  });
+}
 function renderWordBook(data) {
   var list = document.getElementById('wb-list');
-  if (!data.length) {
-    list.innerHTML = '<div class="wb-empty">📝 저장한 단어가 없습니다<br><span style="font-size:11px;margin-top:8px;display:block">학습 중 단어를 탭하거나 패스트트랙에서 표현을 수집해보세요</span></div>';
+  // Filter by category
+  var filtered = _wbCategory === 'all' ? data : data.filter(function(w){ return w.cat === _wbCategory; });
+  if (!filtered.length) {
+    var emptyMsg = _wbCategory === 'all' ? '저장한 단어가 없습니다' : (_wbCategory === 'slang' ? '저장한 슬랭이 없습니다' : _wbCategory === 'expression' ? '저장한 중요표현이 없습니다' : '저장한 단어가 없습니다');
+    list.innerHTML = '<div class="wb-empty">📝 ' + emptyMsg + '<br><span style="font-size:11px;margin-top:8px;display:block">학습 중 단어를 탭하거나 패스트트랙에서 표현을 수집해보세요</span></div>';
     return;
   }
-  list.innerHTML = data.map(function(w) {
+  var catBadge = { word:'', slang:'<span style="display:inline-block;padding:1px 6px;border-radius:8px;background:rgba(124,58,237,.1);color:#7c3aed;font-size:8px;font-weight:700;margin-left:6px">슬랭</span>', expression:'<span style="display:inline-block;padding:1px 6px;border-radius:8px;background:rgba(5,150,105,.1);color:#059669;font-size:8px;font-weight:700;margin-left:6px">표현</span>' };
+  list.innerHTML = filtered.map(function(w) {
     var dateStr = w.date ? new Date(w.date).toLocaleDateString('ko-KR', { month:'short', day:'numeric' }) : '';
     return '<div class="wb-entry">'
-      + '<div><div class="wb-entry-ko">' + w.ko + '</div>' + (w.rom ? '<div class="wb-entry-rom">' + w.rom + '</div>' : '') + '</div>'
+      + '<div style="flex:1;min-width:0"><div class="wb-entry-ko">' + w.ko + (catBadge[w.cat]||'') + '</div>' + (w.rom ? '<div class="wb-entry-rom">' + w.rom + '</div>' : '') + '</div>'
       + '<div class="wb-entry-en">' + w.en + '</div>'
       + (dateStr ? '<div class="wb-entry-date">' + dateStr + '</div>' : '')
       + '</div>';
