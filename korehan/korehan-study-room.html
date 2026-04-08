@@ -4539,6 +4539,9 @@ function renderFlowchart(scenario, animateEdge) {
   if (!chart || !svg) return;
   chart.querySelectorAll('.ft-node').forEach(function(n){ n.remove(); });
   svg.innerHTML = '';
+  // Set viewBox to 1000x400 so we use simple coordinates
+  svg.setAttribute('viewBox', '0 0 1000 400');
+  svg.setAttribute('preserveAspectRatio', 'none');
   var nodes = scenario.nodes;
   var edges = scenario.edges;
   var visited = _ftState.visited;
@@ -4546,15 +4549,14 @@ function renderFlowchart(scenario, animateEdge) {
   for (var i = 0; i < _ftState.path.length - 1; i++) {
     visitedEdges.push(_ftState.path[i] + '->' + _ftState.path[i+1]);
   }
-  // The latest edge in the path (for animation)
   var latestEdge = _ftState.path.length >= 2
     ? _ftState.path[_ftState.path.length-2] + '->' + _ftState.path[_ftState.path.length-1] : null;
-  // Draw edges
+  // Draw edges — convert % to viewBox coordinates (1000 x 400)
   edges.forEach(function(e) {
     var from = nodes[e[0]], to = nodes[e[1]];
     if (!from || !to) return;
-    var x1 = from.x + '%', y1 = from.y + '%', x2 = to.x + '%', y2 = to.y + '%';
-    var mx = ((from.x + to.x) / 2) + '%';
+    var x1 = from.x * 10, y1 = from.y * 4, x2 = to.x * 10, y2 = to.y * 4;
+    var mx = (x1 + x2) / 2;
     var path = document.createElementNS('http://www.w3.org/2000/svg','path');
     path.setAttribute('d', 'M ' + x1 + ' ' + y1 + ' C ' + mx + ' ' + y1 + ', ' + mx + ' ' + y2 + ', ' + x2 + ' ' + y2);
     var edgeKey = e[0]+'->'+e[1];
