@@ -3984,26 +3984,34 @@ function speakHangul(text, voice) {
 }
 async function speakEdgeTTS(text, voice) {
   try {
-    // Check cache
     var cacheKey = text + '_' + voice;
-    if (_ttsCache[cacheKey]) {
-      playTTSAudio(_ttsCache[cacheKey]);
-      return;
+    if (_ttsCache[cacheKey]) { playTTSAudio(_ttsCache[cacheKey]); return; }
+    var supaUrl = typeof SUPA_URL !== 'undefined' ? SUPA_URL : '';
+    if (!supaUrl) { speakFallback(text); return; }
+    var headers = { 'Content-Type': 'application/json' };
+    // Add auth token if available
+    try {
+      var sb = getSupa();
+      if (sb) {
+        var sess = await sb.auth.getSession();
+        if (sess && sess.data && sess.data.session) {
+          headers['Authorization'] = 'Bearer ' + sess.data.session.access_token;
+        }
+      }
+    } catch(e) {}
+    // If no auth, use anon key
+    if (!headers['Authorization']) {
+      headers['Authorization'] = 'Bearer ' + (typeof SUPA_KEY !== 'undefined' ? SUPA_KEY : '');
+      headers['apikey'] = typeof SUPA_KEY !== 'undefined' ? SUPA_KEY : '';
     }
-    var sb = getSupa();
-    if (!sb) { speakFallback(text); return; }
-    var sess = sb.auth && (await sb.auth.getSession());
-    var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
-    var res = await fetch((typeof SUPA_URL !== 'undefined' ? SUPA_URL : '') + '/functions/v1/tts-proxy', {
+    var res = await fetch(supaUrl + '/functions/v1/tts-proxy', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + (token || '')
-      },
+      headers: headers,
       body: JSON.stringify({ text: text.slice(0, 200), voice: voice })
     });
     if (!res.ok) throw new Error('TTS ' + res.status);
     var blob = await res.blob();
+    if (blob.size < 100) throw new Error('empty audio');
     var url = URL.createObjectURL(blob);
     _ttsCache[cacheKey] = url;
     playTTSAudio(url);
