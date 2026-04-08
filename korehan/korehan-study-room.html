@@ -2624,7 +2624,8 @@ function renderPhrase() {
   var phrases = typeof getPhrases === 'function' ? getPhrases() : [];
   var dailyPhraseIdx = phrases.length ? Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length : 0;
   var p = phrases[dailyPhraseIdx] || { ko:'오늘도 화이팅!', rom:'Oneuldo hwaiting!', en:"You've got this today!" };
-  document.getElementById('phrase-box').innerHTML =
+  var el = document.getElementById('phrase-box-left');
+  if (el) el.innerHTML =
     '<div class="pko">' + p.ko + '</div>'
     + '<div class="prom">' + p.rom + '</div>'
     + '<div class="pen">' + p.en + '</div>';
