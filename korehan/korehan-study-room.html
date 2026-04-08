@@ -1513,21 +1513,46 @@ body { background: #0b1626 !important; }
 .kt-time { font-size:9px;color:rgba(0,0,0,.3);align-self:flex-end;flex-shrink:0; }
 .kt-hl { background:rgba(124,58,237,.2);border-radius:4px;padding:1px 4px;font-weight:700;color:#5b21b6; }
 
-/* Alphabet Modal */
-.alpha-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:6px;padding:16px 20px; }
-.alpha-card { width:100%;aspect-ratio:1;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all .15s; }
-.alpha-card:hover { background:rgba(56,189,248,.15);border-color:rgba(56,189,248,.3); }
-.alpha-card.selected { background:rgba(56,189,248,.25);border-color:#38bdf8;box-shadow:0 0 12px rgba(56,189,248,.3); }
-.alpha-card-char { font-size:22px;font-weight:900;color:#fff;font-family:'Noto Serif KR',serif; }
-.alpha-card-rom { font-size:9px;color:rgba(255,255,255,.4);margin-top:2px; }
-.alpha-combine { padding:20px;text-align:center; }
-.alpha-combine-result { font-size:64px;font-weight:900;color:#fff;font-family:'Noto Serif KR',serif;min-height:80px;line-height:80px; }
-.alpha-combine-rom { font-size:16px;color:#7dd3fc;font-weight:700;margin-top:4px; }
-.alpha-combine-hint { font-size:12px;color:rgba(255,255,255,.4);margin-top:8px; }
-.alpha-slot { display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:12px;border:2px dashed rgba(56,189,248,.3);margin:0 4px;font-size:28px;font-weight:900;color:#7dd3fc;font-family:'Noto Serif KR',serif;transition:all .15s;vertical-align:middle; }
+/* Alphabet Modal — full-screen quiz layout */
+.alpha-modal { max-width:780px !important;max-height:92vh !important; }
+.alpha-quiz { margin:0 20px 16px;padding:20px;border-radius:16px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.12);text-align:center; }
+.alpha-quiz-target { font-size:56px;font-weight:900;color:#fff;font-family:'Noto Serif KR',serif;line-height:1;margin-bottom:4px; }
+.alpha-quiz-rom { font-size:16px;color:#7dd3fc;font-weight:700; }
+.alpha-quiz-word { font-size:14px;color:rgba(255,255,255,.45);margin-top:6px; }
+.alpha-quiz-slots { display:flex;align-items:center;justify-content:center;gap:6px;margin:16px 0 12px; }
+.alpha-slot { display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:12px;border:2px dashed rgba(56,189,248,.3);font-size:26px;font-weight:900;color:#7dd3fc;font-family:'Noto Serif KR',serif;transition:all .15s;cursor:pointer; }
 .alpha-slot.filled { border-style:solid;background:rgba(56,189,248,.1); }
-.alpha-examples { padding:12px 20px 20px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center; }
-.alpha-ex-chip { padding:6px 14px;border-radius:20px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.2);color:#7dd3fc;font-size:13px;font-weight:600; }
+.alpha-slot-op { font-size:20px;color:rgba(255,255,255,.2);user-select:none; }
+.alpha-slot-res { border-color:rgba(250,204,21,.3);color:#facc15;font-size:30px; }
+.alpha-quiz-btns { display:flex;gap:8px;justify-content:center;margin-top:12px; }
+.alpha-quiz-btns button { padding:8px 20px;border-radius:10px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s; }
+.aq-reset { background:rgba(255,255,255,.08);color:rgba(255,255,255,.5); }
+.aq-reset:hover { background:rgba(255,255,255,.14); }
+.aq-check { background:#0369a1;color:#fff; }
+.aq-check:hover { background:#0284c7; }
+.aq-next { background:#059669;color:#fff; }
+.aq-next:hover { background:#047857; }
+.alpha-quiz-fb { margin-top:10px;font-size:14px;font-weight:700;min-height:22px; }
+.alpha-quiz-score { font-size:12px;color:rgba(255,255,255,.35);margin-top:8px; }
+/* Two-column consonant + vowel panels */
+.alpha-panels { display:flex;gap:12px;padding:0 20px 20px; }
+.alpha-panel { flex:1;min-width:0; }
+.alpha-panel-title { font-size:11px;font-weight:700;color:rgba(255,255,255,.35);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px; }
+.alpha-grid { display:flex;flex-wrap:wrap;gap:5px; }
+.alpha-card { width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0; }
+.alpha-card:hover { background:rgba(56,189,248,.15);border-color:rgba(56,189,248,.3);transform:scale(1.08); }
+.alpha-card.selected { background:rgba(56,189,248,.3);border-color:#38bdf8;box-shadow:0 0 10px rgba(56,189,248,.3); }
+.alpha-card.correct { background:rgba(5,150,105,.3);border-color:#34d399; }
+.alpha-card.wrong { background:rgba(239,68,68,.2);border-color:#ef4444; }
+.alpha-card-char { font-size:20px;font-weight:900;color:#fff;font-family:'Noto Serif KR',serif;line-height:1; }
+.alpha-card-rom { font-size:8px;color:rgba(255,255,255,.35);margin-top:1px; }
+@media(max-width:600px) {
+  .alpha-panels { flex-direction:column;gap:16px; }
+  .alpha-card { width:40px;height:40px; }
+  .alpha-card-char { font-size:18px; }
+  .alpha-quiz-target { font-size:44px; }
+  .alpha-slot { width:44px;height:44px;font-size:22px; }
+}
 
 /* Phone Call banner + modal */
 .phone-wave { display:inline-block;width:3px;height:12px;background:#34d399;border-radius:2px;margin:0 1px;animation:phoneWave .6s ease-in-out infinite alternate; }
@@ -3835,17 +3860,61 @@ function showSlangDetail(idx) {
   det.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
-// ── Alphabet Modal ──
-var _alphaMode = 'consonant';
-var _alphaSelCon = null;
-var _alphaSelVow = null;
+// ── Alphabet Modal (Quiz + dual-panel + pronunciation) ──
+var _aqSelCon = null, _aqSelVow = null, _aqCorrect = 0, _aqTotal = 0, _aqCurrent = null, _aqAnswered = false;
+var _ALPHA_QUIZ = [
+  { target:'가', con:'ㄱ', vow:'ㅏ', rom:'ga', word:'가방 (gabang) = bag' },
+  { target:'나', con:'ㄴ', vow:'ㅏ', rom:'na', word:'나라 (nara) = country' },
+  { target:'다', con:'ㄷ', vow:'ㅏ', rom:'da', word:'다리 (dari) = bridge' },
+  { target:'마', con:'ㅁ', vow:'ㅏ', rom:'ma', word:'마음 (maeum) = heart' },
+  { target:'바', con:'ㅂ', vow:'ㅏ', rom:'ba', word:'바다 (bada) = sea' },
+  { target:'사', con:'ㅅ', vow:'ㅏ', rom:'sa', word:'사랑 (sarang) = love' },
+  { target:'하', con:'ㅎ', vow:'ㅏ', rom:'ha', word:'하늘 (haneul) = sky' },
+  { target:'고', con:'ㄱ', vow:'ㅗ', rom:'go', word:'고양이 (goyangi) = cat' },
+  { target:'노', con:'ㄴ', vow:'ㅗ', rom:'no', word:'노래 (norae) = song' },
+  { target:'도', con:'ㄷ', vow:'ㅗ', rom:'do', word:'도시 (dosi) = city' },
+  { target:'소', con:'ㅅ', vow:'ㅗ', rom:'so', word:'소리 (sori) = sound' },
+  { target:'구', con:'ㄱ', vow:'ㅜ', rom:'gu', word:'구름 (gureum) = cloud' },
+  { target:'우', con:'ㅇ', vow:'ㅜ', rom:'u', word:'우유 (uyu) = milk' },
+  { target:'주', con:'ㅈ', vow:'ㅜ', rom:'ju', word:'주말 (jumal) = weekend' },
+  { target:'수', con:'ㅅ', vow:'ㅜ', rom:'su', word:'수박 (subak) = watermelon' },
+  { target:'기', con:'ㄱ', vow:'ㅣ', rom:'gi', word:'기분 (gibun) = feeling' },
+  { target:'비', con:'ㅂ', vow:'ㅣ', rom:'bi', word:'비행기 (bihaenggi) = airplane' },
+  { target:'시', con:'ㅅ', vow:'ㅣ', rom:'si', word:'시간 (sigan) = time' },
+  { target:'이', con:'ㅇ', vow:'ㅣ', rom:'i', word:'이름 (ireum) = name' },
+  { target:'미', con:'ㅁ', vow:'ㅣ', rom:'mi', word:'미안 (mian) = sorry' },
+  { target:'서', con:'ㅅ', vow:'ㅓ', rom:'seo', word:'서울 (Seoul)' },
+  { target:'어', con:'ㅇ', vow:'ㅓ', rom:'eo', word:'어머니 (eomeoni) = mother' },
+  { target:'커', con:'ㅋ', vow:'ㅓ', rom:'keo', word:'커피 (keopi) = coffee' },
+  { target:'머', con:'ㅁ', vow:'ㅓ', rom:'meo', word:'머리 (meori) = head' },
+  { target:'해', con:'ㅎ', vow:'ㅐ', rom:'hae', word:'해 (hae) = sun' },
+  { target:'내', con:'ㄴ', vow:'ㅐ', rom:'nae', word:'내일 (naeil) = tomorrow' },
+  { target:'대', con:'ㄷ', vow:'ㅐ', rom:'dae', word:'대학교 (daehakgyo) = university' },
+  { target:'개', con:'ㄱ', vow:'ㅐ', rom:'gae', word:'개 (gae) = dog' },
+  { target:'까', con:'ㄲ', vow:'ㅏ', rom:'kka', word:'까치 (kkachi) = magpie' },
+  { target:'빠', con:'ㅃ', vow:'ㅏ', rom:'ppa', word:'빠르다 (ppareuda) = fast' }
+];
+// All consonants (basic + double) for the left panel
+var _ALL_CON = [].concat(_HANGUL.consonant, _HANGUL.double);
+var _ALL_VOW = _HANGUL.vowel;
+
+function speakHangul(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  var u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ko-KR'; u.rate = 0.8;
+  var voices = window.speechSynthesis.getVoices();
+  var kr = voices.find(function(v){ return v.lang && v.lang.indexOf('ko') === 0; });
+  if (kr) u.voice = kr;
+  window.speechSynthesis.speak(u);
+}
+
 function openAlphaModal() {
   var ov = document.getElementById('alpha-overlay');
   if (!ov) return;
-  _alphaSelCon = null;
-  _alphaSelVow = null;
-  renderAlphaGrid();
-  updateAlphaCombine();
+  _aqCorrect = 0; _aqTotal = 0;
+  renderAlphaPanels();
+  nextAlphaQuiz();
   ov.classList.add('open');
   document.body.style.overflow = 'hidden';
 }
@@ -3853,92 +3922,138 @@ function closeAlphaModal() {
   document.getElementById('alpha-overlay').classList.remove('open');
   document.body.style.overflow = '';
 }
-function setAlphaMode(mode, btn) {
-  _alphaMode = mode;
-  document.querySelectorAll('#alpha-overlay .tpill').forEach(function(b){ b.classList.remove('on'); });
-  if (btn) btn.classList.add('on');
-  renderAlphaGrid();
-}
-function renderAlphaGrid() {
-  var grid = document.getElementById('alpha-grid');
-  var arr = _HANGUL[_alphaMode] || [];
-  var isVowel = _alphaMode === 'vowel';
-  grid.innerHTML = arr.map(function(h, i) {
-    var sel = false;
-    if (isVowel && _alphaSelVow && _alphaSelVow.char === h.char) sel = true;
-    if (!isVowel && _alphaSelCon && _alphaSelCon.char === h.char) sel = true;
-    return '<div class="alpha-card' + (sel ? ' selected' : '') + '" onclick="selectAlpha(\'' + _alphaMode + '\',' + i + ')">'
+
+function renderAlphaPanels() {
+  var conGrid = document.getElementById('ag-con');
+  var vowGrid = document.getElementById('ag-vow');
+  conGrid.innerHTML = _ALL_CON.map(function(h, i) {
+    return '<div class="alpha-card" id="ac-c' + i + '" onclick="pickAlpha(\'con\',' + i + ')">'
       + '<div class="alpha-card-char">' + h.char + '</div>'
-      + '<div class="alpha-card-rom">' + h.rom + '</div>'
-      + '</div>';
+      + '<div class="alpha-card-rom">' + h.rom + '</div></div>';
+  }).join('');
+  vowGrid.innerHTML = _ALL_VOW.map(function(h, i) {
+    return '<div class="alpha-card" id="ac-v' + i + '" onclick="pickAlpha(\'vow\',' + i + ')">'
+      + '<div class="alpha-card-char">' + h.char + '</div>'
+      + '<div class="alpha-card-rom">' + h.rom + '</div></div>';
   }).join('');
 }
-function selectAlpha(mode, idx) {
-  var h = _HANGUL[mode][idx];
-  if (mode === 'vowel') {
-    _alphaSelVow = h;
+
+function pickAlpha(type, idx) {
+  if (_aqAnswered) return;
+  var h = type === 'con' ? _ALL_CON[idx] : _ALL_VOW[idx];
+  // Speak the character
+  speakHangul(h.char);
+  if (type === 'con') {
+    _aqSelCon = { idx:idx, data:h };
+    // Update selection highlighting
+    document.querySelectorAll('#ag-con .alpha-card').forEach(function(c){ c.classList.remove('selected'); });
+    document.getElementById('ac-c' + idx).classList.add('selected');
   } else {
-    _alphaSelCon = h;
+    _aqSelVow = { idx:idx, data:h };
+    document.querySelectorAll('#ag-vow .alpha-card').forEach(function(c){ c.classList.remove('selected'); });
+    document.getElementById('ac-v' + idx).classList.add('selected');
   }
-  renderAlphaGrid();
-  updateAlphaCombine();
+  // Update slots
+  var slotCon = document.getElementById('aq-slot-con');
+  var slotVow = document.getElementById('aq-slot-vow');
+  var slotRes = document.getElementById('aq-slot-result');
+  slotCon.textContent = _aqSelCon ? _aqSelCon.data.char : '';
+  slotCon.classList.toggle('filled', !!_aqSelCon);
+  slotVow.textContent = _aqSelVow ? _aqSelVow.data.char : '';
+  slotVow.classList.toggle('filled', !!_aqSelVow);
+  if (_aqSelCon && _aqSelVow) {
+    var combined = combineHangul(_aqSelCon.data.char, _aqSelVow.data.char);
+    slotRes.textContent = combined;
+    speakHangul(combined);
+  } else {
+    slotRes.textContent = '';
+  }
 }
+
+function clearAlphaSlot(type) {
+  if (_aqAnswered) return;
+  if (type === 'con') {
+    if (_aqSelCon) document.getElementById('ac-c' + _aqSelCon.idx).classList.remove('selected');
+    _aqSelCon = null;
+    document.getElementById('aq-slot-con').textContent = '';
+    document.getElementById('aq-slot-con').classList.remove('filled');
+  } else {
+    if (_aqSelVow) document.getElementById('ac-v' + _aqSelVow.idx).classList.remove('selected');
+    _aqSelVow = null;
+    document.getElementById('aq-slot-vow').textContent = '';
+    document.getElementById('aq-slot-vow').classList.remove('filled');
+  }
+  document.getElementById('aq-slot-result').textContent = '';
+}
+
+function resetAlphaQuiz() {
+  _aqAnswered = false;
+  clearAlphaSlot('con'); clearAlphaSlot('vow');
+  document.getElementById('aq-feedback').innerHTML = '';
+  document.querySelectorAll('.alpha-card').forEach(function(c){ c.classList.remove('correct','wrong'); });
+  document.getElementById('aq-btns').innerHTML =
+    '<button class="aq-reset" onclick="resetAlphaQuiz()">리셋</button>'
+    + '<button class="aq-check" onclick="checkAlphaQuiz()">정답 확인</button>';
+}
+
+function checkAlphaQuiz() {
+  if (!_aqSelCon || !_aqSelVow || !_aqCurrent) return;
+  _aqAnswered = true;
+  _aqTotal++;
+  var correct = _aqSelCon.data.char === _aqCurrent.con && _aqSelVow.data.char === _aqCurrent.vow;
+  var fb = document.getElementById('aq-feedback');
+  if (correct) {
+    _aqCorrect++;
+    fb.innerHTML = '<span style="color:#34d399">✅ 정답! ' + _aqCurrent.target + ' = ' + _aqCurrent.con + ' + ' + _aqCurrent.vow + '</span>';
+    speakHangul(_aqCurrent.word.split(' ')[0]);
+    document.getElementById('ac-c' + _aqSelCon.idx).classList.add('correct');
+    document.getElementById('ac-v' + _aqSelVow.idx).classList.add('correct');
+  } else {
+    fb.innerHTML = '<span style="color:#ef4444">❌ 정답: ' + _aqCurrent.con + ' + ' + _aqCurrent.vow + ' = ' + _aqCurrent.target + '</span>';
+    if (_aqSelCon) document.getElementById('ac-c' + _aqSelCon.idx).classList.add('wrong');
+    if (_aqSelVow) document.getElementById('ac-v' + _aqSelVow.idx).classList.add('wrong');
+    // Highlight correct ones
+    var cIdx = _ALL_CON.findIndex(function(c){ return c.char === _aqCurrent.con; });
+    var vIdx = _ALL_VOW.findIndex(function(v){ return v.char === _aqCurrent.vow; });
+    if (cIdx >= 0) document.getElementById('ac-c' + cIdx).classList.add('correct');
+    if (vIdx >= 0) document.getElementById('ac-v' + vIdx).classList.add('correct');
+  }
+  document.getElementById('aq-score').textContent = _aqCorrect + ' / ' + _aqTotal + ' correct';
+  document.getElementById('aq-btns').innerHTML =
+    '<button class="aq-next" onclick="nextAlphaQuiz()">다음 문제 →</button>';
+}
+
+function nextAlphaQuiz() {
+  _aqAnswered = false;
+  _aqSelCon = null; _aqSelVow = null;
+  // Pick random quiz
+  _aqCurrent = _ALPHA_QUIZ[Math.floor(Math.random() * _ALPHA_QUIZ.length)];
+  document.getElementById('aq-target').textContent = _aqCurrent.target;
+  document.getElementById('aq-target-rom').textContent = _aqCurrent.rom;
+  document.getElementById('aq-target-word').textContent = _aqCurrent.word;
+  document.getElementById('aq-slot-con').textContent = '';
+  document.getElementById('aq-slot-con').classList.remove('filled');
+  document.getElementById('aq-slot-vow').textContent = '';
+  document.getElementById('aq-slot-vow').classList.remove('filled');
+  document.getElementById('aq-slot-result').textContent = '';
+  document.getElementById('aq-feedback').innerHTML = '';
+  document.getElementById('aq-score').textContent = _aqTotal > 0 ? _aqCorrect + ' / ' + _aqTotal + ' correct' : '';
+  document.getElementById('aq-btns').innerHTML =
+    '<button class="aq-reset" onclick="resetAlphaQuiz()">리셋</button>'
+    + '<button class="aq-check" onclick="checkAlphaQuiz()">정답 확인</button>';
+  // Clear all card states
+  document.querySelectorAll('.alpha-card').forEach(function(c){ c.classList.remove('selected','correct','wrong'); });
+  // Speak target
+  speakHangul(_aqCurrent.target);
+}
+
 function combineHangul(con, vow) {
-  // Unicode Hangul formula: (initial * 21 + medial) * 28 + 0xAC00
   var initials = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
   var medials = 'ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ';
   var ci = initials.indexOf(con);
   var mi = medials.indexOf(vow);
   if (ci < 0 || mi < 0) return '';
   return String.fromCharCode(0xAC00 + (ci * 21 + mi) * 28);
-}
-function updateAlphaCombine() {
-  var slotCon = document.getElementById('alpha-slot-con');
-  var slotVow = document.getElementById('alpha-slot-vow');
-  var slotRes = document.getElementById('alpha-slot-result');
-  var romEl = document.getElementById('alpha-result-rom');
-  var hintEl = document.getElementById('alpha-result-hint');
-  var exEl = document.getElementById('alpha-examples');
-  slotCon.textContent = _alphaSelCon ? _alphaSelCon.char : '';
-  slotCon.classList.toggle('filled', !!_alphaSelCon);
-  slotVow.textContent = _alphaSelVow ? _alphaSelVow.char : '';
-  slotVow.classList.toggle('filled', !!_alphaSelVow);
-  if (_alphaSelCon && _alphaSelVow) {
-    var combined = combineHangul(_alphaSelCon.char, _alphaSelVow.char);
-    slotRes.textContent = combined;
-    var rom = (_alphaSelCon.rom.split('/')[0]) + _alphaSelVow.rom;
-    romEl.textContent = rom;
-    hintEl.textContent = _alphaSelCon.name.split('(')[0].trim() + ' + ' + _alphaSelVow.name.split('(')[0].trim();
-    // Show example words starting with this syllable
-    var examples = getAlphaExamples(combined);
-    exEl.innerHTML = examples.map(function(w){ return '<div class="alpha-ex-chip">' + w + '</div>'; }).join('');
-  } else {
-    slotRes.textContent = '';
-    romEl.textContent = '';
-    hintEl.textContent = _alphaSelCon ? '이제 모음을 선택하세요' : _alphaSelVow ? '이제 자음을 선택하세요' : '자음과 모음을 하나씩 선택하세요';
-    exEl.innerHTML = '';
-  }
-}
-function getAlphaExamples(syllable) {
-  var bank = {
-    '가':['가방 bag','가수 singer','가족 family'],'나':['나라 country','나무 tree','나이 age'],
-    '다':['다리 bridge','다음 next'],'라':['라면 ramen','라디오 radio'],'마':['마음 heart','마트 mart'],
-    '바':['바다 sea','바람 wind'],'사':['사람 person','사랑 love'],'아':['아이 child','아침 morning'],
-    '자':['자동차 car','잠 sleep'],'차':['차 tea','친구 friend'],'카':['카페 cafe','카드 card'],
-    '타':['타다 to ride'],'파':['파도 wave','파란 blue'],'하':['하늘 sky','학교 school'],
-    '거':['거울 mirror'],'너':['너무 very'],'더':['더운 hot'],'머':['머리 head'],'버':['버스 bus'],
-    '서':['서울 Seoul'],'어':['어머니 mother'],'저':['저녁 evening'],'커':['커피 coffee'],'허':['허리 waist'],
-    '고':['고양이 cat','고마워 thanks'],'노':['노래 song'],'도':['도시 city'],'모':['모자 hat'],
-    '보':['보다 to see'],'소':['소리 sound'],'오':['오늘 today'],'조':['조금 a little'],
-    '구':['구름 cloud'],'누':['누나 older sister'],'두':['두부 tofu'],'무':['무엇 what'],
-    '부':['부모 parents'],'수':['수박 watermelon'],'우':['우유 milk'],'주':['주말 weekend'],
-    '기':['기분 feeling'],'니':['니가 you(casual)'],'디':['디자인 design'],'미':['미안 sorry'],
-    '비':['비 rain','비행기 airplane'],'시':['시간 time'],'이':['이름 name'],'지':['지하철 subway'],
-    '개':['개 dog'],'새':['새 bird'],'내':['내일 tomorrow'],'대':['대학교 university'],
-    '해':['해 sun','해변 beach'],'세':['세계 world'],'게':['게임 game'],'네':['네 yes'],
-    '까':['까치 magpie'],'따':['따뜻 warm'],'빠':['빠르다 fast'],'싸':['싸다 cheap'],'짜':['짜다 salty']
-  };
-  return bank[syllable] || ['(예시 단어 준비 중)'];
 }
 
 // ── Phone Call Modal ──
@@ -9449,32 +9564,43 @@ function closeReviewModal() {
 
 <!-- ═══ ALPHABET MODAL ═══ -->
 <div class="feat-overlay" id="alpha-overlay" onclick="if(event.target===this)closeAlphaModal()">
-<div class="feat-modal" style="max-width:600px">
+<div class="feat-modal alpha-modal">
   <button class="feat-close" onclick="closeAlphaModal()">&times;</button>
-  <div style="padding:24px 20px 8px">
+  <div style="padding:24px 20px 12px">
     <div style="font-size:24px;font-weight:900;color:#fff">🇰🇷 Korean Alphabet</div>
-    <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">자음 + 모음을 선택해서 글자를 조합해보세요</div>
+    <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">예시 단어를 보고 맞는 자음 + 모음을 선택하세요. 카드를 누르면 발음이 나와요!</div>
   </div>
-  <!-- Combination area -->
-  <div class="alpha-combine">
-    <div style="margin-bottom:8px">
-      <span class="alpha-slot" id="alpha-slot-con"></span>
-      <span style="font-size:24px;color:rgba(255,255,255,.2);vertical-align:middle;margin:0 4px">+</span>
-      <span class="alpha-slot" id="alpha-slot-vow"></span>
-      <span style="font-size:24px;color:rgba(255,255,255,.2);vertical-align:middle;margin:0 4px">=</span>
-      <span class="alpha-slot filled" id="alpha-slot-result" style="border-color:rgba(250,204,21,.3);color:#facc15;font-size:32px"></span>
+  <!-- Quiz area -->
+  <div class="alpha-quiz" id="alpha-quiz">
+    <div style="font-size:11px;color:rgba(255,255,255,.35);margin-bottom:8px">🎯 이 글자를 조합하세요</div>
+    <div class="alpha-quiz-target" id="aq-target"></div>
+    <div class="alpha-quiz-rom" id="aq-target-rom"></div>
+    <div class="alpha-quiz-word" id="aq-target-word"></div>
+    <div class="alpha-quiz-slots">
+      <div class="alpha-slot" id="aq-slot-con" onclick="clearAlphaSlot('con')"></div>
+      <div class="alpha-slot-op">+</div>
+      <div class="alpha-slot" id="aq-slot-vow" onclick="clearAlphaSlot('vow')"></div>
+      <div class="alpha-slot-op">=</div>
+      <div class="alpha-slot alpha-slot-res" id="aq-slot-result"></div>
     </div>
-    <div class="alpha-combine-rom" id="alpha-result-rom"></div>
-    <div class="alpha-combine-hint" id="alpha-result-hint">자음과 모음을 하나씩 선택하세요</div>
+    <div class="alpha-quiz-fb" id="aq-feedback"></div>
+    <div class="alpha-quiz-btns" id="aq-btns">
+      <button class="aq-reset" onclick="resetAlphaQuiz()">리셋</button>
+      <button class="aq-check" onclick="checkAlphaQuiz()">정답 확인</button>
+    </div>
+    <div class="alpha-quiz-score" id="aq-score"></div>
   </div>
-  <!-- Mode tabs -->
-  <div style="display:flex;gap:6px;padding:0 20px 8px;justify-content:center">
-    <button class="tpill on" id="am-btn-con" onclick="setAlphaMode('consonant',this)" style="font-size:11px">자음 Consonants</button>
-    <button class="tpill" id="am-btn-vow" onclick="setAlphaMode('vowel',this)" style="font-size:11px">모음 Vowels</button>
-    <button class="tpill" id="am-btn-dbl" onclick="setAlphaMode('double',this)" style="font-size:11px">쌍자음 Double</button>
+  <!-- Two-column: consonants + vowels side by side -->
+  <div class="alpha-panels">
+    <div class="alpha-panel">
+      <div class="alpha-panel-title">자음 Consonants</div>
+      <div class="alpha-grid" id="ag-con"></div>
+    </div>
+    <div class="alpha-panel">
+      <div class="alpha-panel-title">모음 Vowels</div>
+      <div class="alpha-grid" id="ag-vow"></div>
+    </div>
   </div>
-  <div class="alpha-grid" id="alpha-grid"></div>
-  <div class="alpha-examples" id="alpha-examples"></div>
 </div>
 </div>
 
