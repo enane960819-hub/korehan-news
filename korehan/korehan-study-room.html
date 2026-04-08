@@ -4905,10 +4905,18 @@ function closeFastTrack() {
   _ftState.playing = false;
 }
 
-function renderScenarioList() {
+async function renderScenarioList() {
   var el = document.getElementById('ft-scenarios');
+  var progress = await loadAllFtProgress();
   el.innerHTML = _FT_SCENARIOS.map(function(s) {
     var lockStyle = s.locked ? 'opacity:.4;pointer-events:none;' : 'cursor:pointer;';
+    var prog = progress[s.id];
+    var pctBar = '';
+    if (prog && prog.completion_pct > 0) {
+      pctBar = '<div style="margin-top:8px;height:4px;border-radius:2px;background:#e5e7eb;overflow:hidden">'
+        + '<div style="height:100%;width:' + prog.completion_pct + '%;background:#2196F3;border-radius:2px"></div></div>'
+        + '<div style="font-size:9px;color:#5a6a7a;margin-top:3px">' + prog.completion_pct + '% 탐색 · ' + (prog.play_count||1) + '회 플레이 · ' + (prog.phrases||[]).length + '개 표현</div>';
+    }
     return '<div onclick="startScenario(\'' + s.id + '\')" style="padding:20px;border-radius:14px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);border:2px solid transparent;transition:all .15s;' + lockStyle + '"'
       + ' onmouseover="if(!' + s.locked + ')this.style.borderColor=\'#2196F3\'" onmouseout="this.style.borderColor=\'transparent\'">'
       + '<div style="font-size:28px;margin-bottom:8px">' + s.icon + '</div>'
@@ -4916,7 +4924,8 @@ function renderScenarioList() {
       + '<div style="font-size:11px;color:#5a6a7a;margin-top:2px">' + s.sub + '</div>'
       + '<div style="margin-top:8px;display:flex;align-items:center;gap:6px">'
       + '<span style="padding:2px 8px;border-radius:10px;background:' + (s.locked ? '#e5e7eb' : '#dbeafe') + ';color:' + (s.locked ? '#9ca3af' : '#2563eb') + ';font-size:10px;font-weight:700">' + s.difficulty + '</span>'
-      + (s.locked ? '<span style="font-size:10px;color:#9ca3af">🔒 Locked</span>' : '') + '</div></div>';
+      + (s.locked ? '<span style="font-size:10px;color:#9ca3af">🔒 Locked</span>' : '')
+      + '</div>' + pctBar + '</div>';
   }).join('');
 }
 
@@ -5007,6 +5016,7 @@ function pickChoice(nodeId, idx) {
 }
 
 function showEndNode(node) {
+  saveFtProgress(); // Save to DB
   var player = document.getElementById('ft-player');
   document.getElementById('ftp-scene').textContent = '';
   document.getElementById('ftp-npc').textContent = node.npc || '';
@@ -5052,6 +5062,55 @@ function updateFtPct() {
   var visited = _ftState.visited.length;
   var pct = Math.round((visited / total) * 100);
   document.getElementById('ft-pct').textContent = pct + '%';
+}
+
+// ── Fast Track DB Save/Load ──
+async function saveFtProgress() {
+  if (!supaUser || !_ftState.scenario) return;
+  try {
+    var sb = getSupa();
+    if (!sb) return;
+    var total = Object.keys(_ftState.scenario.nodes).length;
+    var pct = Math.round((_ftState.visited.length / total) * 100);
+    await sb.from('fast_track_progress').upsert({
+      user_id: supaUser.id,
+      scenario_id: _ftState.scenario.id,
+      visited_nodes: _ftState.visited,
+      best_path: _ftState.path,
+      phrases: _ftState.phrases,
+      completion_pct: pct,
+      play_count: 1,  // increment handled below
+      best_score: _ftState.phrases.length,
+      last_played: new Date().toISOString()
+    }, { onConflict: 'user_id,scenario_id' });
+    // Increment play_count
+    await sb.rpc('increment_ft_play_count', { p_user_id: supaUser.id, p_scenario_id: _ftState.scenario.id }).catch(function(){});
+  } catch(e) { console.warn('[FT] save failed:', e.message); }
+}
+
+async function loadFtProgress(scenarioId) {
+  if (!supaUser) return null;
+  try {
+    var sb = getSupa();
+    if (!sb) return null;
+    var { data } = await sb.from('fast_track_progress')
+      .select('*').eq('user_id', supaUser.id).eq('scenario_id', scenarioId).maybeSingle();
+    return data;
+  } catch(e) { return null; }
+}
+
+async function loadAllFtProgress() {
+  if (!supaUser) return {};
+  try {
+    var sb = getSupa();
+    if (!sb) return {};
+    var { data } = await sb.from('fast_track_progress')
+      .select('scenario_id, completion_pct, play_count, phrases')
+      .eq('user_id', supaUser.id);
+    var map = {};
+    (data || []).forEach(function(r) { map[r.scenario_id] = r; });
+    return map;
+  } catch(e) { return {}; }
 }
 
 // ── Phone Call Modal ──
