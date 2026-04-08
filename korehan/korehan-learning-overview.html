@@ -606,6 +606,25 @@
     { grammar_point: '(으)ㄹ 때 — When', desc: 'Time clause. 어릴 때 = when (I was) young.' },
     { grammar_point: '겠 — Intention/Guess', desc: 'Express intention or conjecture. 맛있겠다 = it looks delicious.' },
     { grammar_point: '잖아(요) — You know / Obviously', desc: 'Implies shared knowledge. 알잖아 = you know, right?' },
+    { grammar_point: '(으)ㄹ까요? — Shall we?', desc: 'Polite suggestion or question about plans. 같이 갈까요? = shall we go together?' },
+    { grammar_point: '(으)세요 — Honorific imperative', desc: 'Polite request or description of someone respected. 앉으세요 = please sit.' },
+    { grammar_point: '고 — And (connecting)', desc: 'Connects two actions/states. 먹고 마시다 = eat and drink.' },
+    { grammar_point: '지만 — But/However', desc: 'Contrast connector. 비싸지만 맛있어요 = it\'s expensive but delicious.' },
+    { grammar_point: '아/어서 — So/Because', desc: 'Cause-and-effect or sequential. 배고파서 밥을 먹었어요 = I was hungry so I ate.' },
+    { grammar_point: '(으)려고 — In order to', desc: 'Purpose clause. 한국어를 배우려고 = in order to learn Korean.' },
+    { grammar_point: '밖에 + negative — Only/Nothing but', desc: 'Used with negatives. 하나밖에 없어요 = there\'s only one.' },
+    { grammar_point: '(으)ㄴ/는데 — Background/Contrast', desc: 'Sets up context or soft contrast. 날씨가 좋은데 산책할까요? = the weather is nice, shall we walk?' },
+    { grammar_point: '아/어 주다 — Do for someone', desc: 'Helping verb. 도와주다 = help (do for someone). 사 주다 = buy for someone.' },
+    { grammar_point: '(으)면서 — While doing', desc: 'Simultaneous actions. 음악을 들으면서 공부해요 = I study while listening to music.' },
+    { grammar_point: '네요 — Surprise/Realization', desc: 'Expresses mild surprise. 맛있네요! = oh, this is delicious!' },
+    { grammar_point: '(으)ㄴ 적이 있다/없다 — Have done / Never done', desc: 'Experience marker. 한국에 간 적이 있어요 = I\'ve been to Korea.' },
+    { grammar_point: '처럼 / 같이 — Like/As', desc: 'Comparison particles. 배우처럼 = like an actor. 나같이 = like me.' },
+    { grammar_point: '(이)나 — Or / As many as', desc: 'Choice or emphasis on amount. 커피나 차 = coffee or tea. 세 잔이나 = as many as 3 cups.' },
+    { grammar_point: '마다 — Every/Each', desc: 'Distribution particle. 날마다 = every day. 사람마다 = each person.' },
+    { grammar_point: '(으)ㄹ 줄 알다/모르다 — Know how to / Don\'t know how to', desc: 'Ability from learned skill. 수영할 줄 알아요 = I know how to swim.' },
+    { grammar_point: '기로 하다 — Decide to', desc: 'Making decisions. 유학 가기로 했어요 = I decided to study abroad.' },
+    { grammar_point: '(이)라서 — Because it is', desc: 'Noun + reason. 학생이라서 할인돼요 = because I\'m a student, I get a discount.' },
+    { grammar_point: '든지 — Whatever/Whenever', desc: 'Indifference or any-choice. 언제든지 = whenever. 뭐든지 = whatever.' },
   ];
   // Randomly pick 5 each time page loads
   function getRandomGrammar(n) {
@@ -896,7 +915,7 @@
             </div>
           </a>`;
         }).join('')
-      : '<div style="color:#94a3b8;padding:16px 0;text-align:center">Nothing read yet today — start with an article or story!</div>';
+      : '<div style="color:#94a3b8;padding:16px 0;text-align:center">Nothing read yet today — start with an article, conversation, or story!</div>';
   }
 
 
@@ -1175,29 +1194,50 @@
       }
     } catch(e) {}
 
-    // read_articles → review queue + read history (last 30 days)
+    // read_articles + user_read_history → review queue + read history (last 30 days)
     try {
       var cutoff = new Date(Date.now() - 30*86400000).toISOString();
-      var { data: hist } = await sb.from('read_articles')
+      var allHistory = [];
+
+      // 1) Articles from read_articles table
+      var { data: artHist } = await sb.from('read_articles')
         .select('article_id, title, section, read_at')
         .eq('user_id', userId)
         .gte('read_at', cutoff)
         .order('read_at', { ascending: false })
         .limit(20);
-      if (hist && hist.length) {
-        snap.read_history = hist.map(function(r){
-          return { content_type:'article', content_id:r.article_id, title:r.title, level:r.section, read_at:r.read_at, completed:true };
+      if (artHist && artHist.length) {
+        artHist.forEach(function(r){
+          allHistory.push({ content_type:'article', content_id:r.article_id, title:r.title, level:r.section, read_at:r.read_at, completed:true });
         });
-        // filter by KST date of read_at (read_at is stored as UTC ISO string)
-        snap.review_queue = hist
-          .filter(function(r){
-            var kst = new Date(new Date(r.read_at).getTime() + 9*3600000).toISOString().slice(0,10);
-            return kst === today;
-          })
-          .map(function(r){
-            return { content_type:'article', content_id:r.article_id, title:r.title, level:r.section, read_at:r.read_at };
-          });
       }
+
+      // 2) Conversations & Stories from user_read_history table
+      try {
+        var { data: rhHist } = await sb.from('user_read_history')
+          .select('content_type, content_id, title, level, read_at, completed')
+          .eq('user_id', userId)
+          .in('content_type', ['conversation', 'story'])
+          .gte('read_at', cutoff)
+          .order('read_at', { ascending: false })
+          .limit(20);
+        if (rhHist && rhHist.length) {
+          rhHist.forEach(function(r){
+            allHistory.push({ content_type:r.content_type, content_id:r.content_id, title:r.title||'', level:r.level||'', read_at:r.read_at, completed:!!r.completed });
+          });
+        }
+      } catch(e2) {}
+
+      // Sort merged history by read_at descending
+      allHistory.sort(function(a,b){ return new Date(b.read_at) - new Date(a.read_at); });
+      snap.read_history = allHistory.slice(0, 30);
+
+      // filter by KST today for review_queue
+      snap.review_queue = allHistory
+        .filter(function(r){
+          var kst = new Date(new Date(r.read_at).getTime() + 9*3600000).toISOString().slice(0,10);
+          return kst === today;
+        });
     } catch(e) {}
 
     // daily_missions (last 14 days) → this week + last week progress + activity_days

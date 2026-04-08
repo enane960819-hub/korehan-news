@@ -3350,8 +3350,6 @@ function lsStart(type) {
     if (typeof openPictureDescription === 'function') openPictureDescription();
   } else if (type === 'sentence') {
     openDictationModal();
-  } else if (type === 'conversation') {
-    if (typeof openConvStudy === 'function') openConvStudy();
   }
 }
 
@@ -7694,13 +7692,6 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
         <div class="ls-card-name">Dictation</div>
         <div class="ls-card-desc">받아쓰기 연습하기</div>
         <div class="ls-card-pts">+10 냥</div>
-      </button>
-      <button class="ls-card" id="ls-card-conversation" onclick="lsStart('conversation')">
-        <div class="ls-done-badge">✅</div>
-        <div class="ls-card-icon">💬</div>
-        <div class="ls-card-name">Conversation Study</div>
-        <div class="ls-card-desc">Practice with real Korean dialogues</div>
-        <div class="ls-card-pts">+15 냥</div>
       </button>
     </div>
     <hr class="ls-divider">
