@@ -1475,6 +1475,75 @@ body { background: #0b1626 !important; }
   /* Sidebar grammar/helper panels: consistent spacing */
   .sr-sb-panel { padding:12px 14px; }
 }
+
+/* ─── FEATURE MODALS (Slang / Alphabet / Phone Call) ─── */
+.feat-overlay { position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s; }
+.feat-overlay.open { opacity:1;pointer-events:auto; }
+.feat-modal { background:#0f172a;border-radius:20px;width:92vw;max-width:680px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.5);position:relative; }
+.feat-modal::-webkit-scrollbar { width:6px; }
+.feat-modal::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15);border-radius:3px; }
+.feat-close { position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2; }
+.feat-close:hover { background:rgba(255,255,255,.2); }
+
+/* Slang Modal */
+.slang-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;padding:16px 20px; }
+.slang-card { padding:14px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);cursor:pointer;transition:all .15s;text-align:center; }
+.slang-card:hover { background:rgba(124,58,237,.2);border-color:rgba(196,181,253,.3); }
+.slang-card.active { background:rgba(124,58,237,.25);border-color:#7c3aed; }
+.slang-card-ko { font-size:18px;font-weight:900;color:#fff;margin-bottom:4px; }
+.slang-card-en { font-size:11px;color:rgba(255,255,255,.45); }
+.slang-detail { padding:20px; }
+.slang-detail-hd { font-size:28px;font-weight:900;color:#fff;margin-bottom:2px; }
+.slang-detail-en { font-size:14px;color:#c4b5fd;margin-bottom:4px;font-weight:600; }
+.slang-detail-desc { font-size:13px;color:rgba(255,255,255,.5);margin-bottom:16px;line-height:1.6; }
+.slang-tag { display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;margin-right:4px;margin-bottom:12px; }
+.slang-tag-gen { background:rgba(251,191,36,.15);color:#fbbf24; }
+.slang-tag-warn { background:rgba(239,68,68,.15);color:#ef4444; }
+
+/* KakaoTalk chat */
+.kt-chat { background:#9bbbd4;border-radius:14px;padding:16px;margin-bottom:16px; }
+.kt-header { text-align:center;font-size:10px;color:rgba(0,0,0,.35);margin-bottom:12px; }
+.kt-row { display:flex;gap:8px;margin-bottom:10px;align-items:flex-end; }
+.kt-row.me { flex-direction:row-reverse; }
+.kt-avatar { width:36px;height:36px;border-radius:12px;background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px; }
+.kt-name { font-size:10px;color:rgba(0,0,0,.45);margin-bottom:3px;font-weight:600; }
+.kt-bubble { max-width:70%;padding:9px 14px;border-radius:14px;font-size:13px;line-height:1.5; }
+.kt-row:not(.me) .kt-bubble { background:#fff;color:#1a1a1a;border-top-left-radius:4px; }
+.kt-row.me .kt-bubble { background:#ffeb33;color:#1a1a1a;border-top-right-radius:4px; }
+.kt-time { font-size:9px;color:rgba(0,0,0,.3);align-self:flex-end;flex-shrink:0; }
+.kt-hl { background:rgba(124,58,237,.2);border-radius:4px;padding:1px 4px;font-weight:700;color:#5b21b6; }
+
+/* Alphabet Modal */
+.alpha-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:6px;padding:16px 20px; }
+.alpha-card { width:100%;aspect-ratio:1;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all .15s; }
+.alpha-card:hover { background:rgba(56,189,248,.15);border-color:rgba(56,189,248,.3); }
+.alpha-card.selected { background:rgba(56,189,248,.25);border-color:#38bdf8;box-shadow:0 0 12px rgba(56,189,248,.3); }
+.alpha-card-char { font-size:22px;font-weight:900;color:#fff;font-family:'Noto Serif KR',serif; }
+.alpha-card-rom { font-size:9px;color:rgba(255,255,255,.4);margin-top:2px; }
+.alpha-combine { padding:20px;text-align:center; }
+.alpha-combine-result { font-size:64px;font-weight:900;color:#fff;font-family:'Noto Serif KR',serif;min-height:80px;line-height:80px; }
+.alpha-combine-rom { font-size:16px;color:#7dd3fc;font-weight:700;margin-top:4px; }
+.alpha-combine-hint { font-size:12px;color:rgba(255,255,255,.4);margin-top:8px; }
+.alpha-slot { display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:12px;border:2px dashed rgba(56,189,248,.3);margin:0 4px;font-size:28px;font-weight:900;color:#7dd3fc;font-family:'Noto Serif KR',serif;transition:all .15s;vertical-align:middle; }
+.alpha-slot.filled { border-style:solid;background:rgba(56,189,248,.1); }
+.alpha-examples { padding:12px 20px 20px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center; }
+.alpha-ex-chip { padding:6px 14px;border-radius:20px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.2);color:#7dd3fc;font-size:13px;font-weight:600; }
+
+/* Phone Call banner + modal */
+.phone-wave { display:inline-block;width:3px;height:12px;background:#34d399;border-radius:2px;margin:0 1px;animation:phoneWave .6s ease-in-out infinite alternate; }
+.phone-wave:nth-child(2) { animation-delay:.1s;height:18px; }
+.phone-wave:nth-child(3) { animation-delay:.2s;height:10px; }
+.phone-wave:nth-child(4) { animation-delay:.3s;height:16px; }
+.phone-wave:nth-child(5) { animation-delay:.4s;height:8px; }
+@keyframes phoneWave { to { height:6px; } }
+.phone-script-line { padding:10px 14px;border-radius:10px;margin-bottom:6px;font-size:13px;line-height:1.6;transition:background .2s;cursor:pointer; }
+.phone-script-line:hover { background:rgba(255,255,255,.06); }
+.phone-script-line.highlight { background:rgba(52,211,153,.12);border-left:3px solid #34d399; }
+.phone-script-line .ps-ko { color:#fff;font-weight:600; }
+.phone-script-line .ps-en { color:rgba(255,255,255,.4);font-size:11px;margin-top:2px; }
+.phone-speaker { font-size:10px;font-weight:700;margin-bottom:3px; }
+.phone-speaker.a { color:#34d399; }
+.phone-speaker.b { color:#7dd3fc; }
 </style>
 </head>
 <body>
@@ -1497,8 +1566,8 @@ body { background: #0b1626 !important; }
     </div>
   </div>
 
-  <!-- Korean Alphabet Cards (complete beginner) -->
-  <div class="sr-sb-panel" style="padding:0;overflow:hidden;background:linear-gradient(135deg,#0c4a6e,#0369a1);border:1px solid rgba(56,189,248,.2)">
+  <!-- Korean Alphabet Cards -->
+  <div class="sr-sb-panel" style="padding:0;overflow:hidden;background:linear-gradient(135deg,#0c4a6e,#0369a1);border:1px solid rgba(56,189,248,.2);cursor:pointer" onclick="openAlphaModal()">
     <div style="padding:16px">
       <div style="font-size:18px;margin-bottom:4px">🇰🇷</div>
       <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:4px">Korean Alphabet</div>
@@ -1509,27 +1578,34 @@ body { background: #0b1626 !important; }
         <div id="sr-hangul-name" style="font-size:11px;color:rgba(255,255,255,.5)">기역 (giyeok)</div>
         <div id="sr-hangul-example" style="font-size:13px;color:rgba(255,255,255,.6);margin-top:6px">가방 (gabang) = bag</div>
       </div>
-      <div style="display:flex;gap:6px">
-        <button onclick="prevHangul()" style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(56,189,248,.3);background:rgba(56,189,248,.1);color:#7dd3fc;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">← 이전</button>
-        <button onclick="nextHangul()" style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(56,189,248,.3);background:rgba(56,189,248,.1);color:#7dd3fc;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">다음 →</button>
-      </div>
-      <div style="display:flex;gap:4px;margin-top:8px;justify-content:center">
-        <button onclick="setHangulMode('consonant')" id="sr-hg-btn-con" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(56,189,248,.3);background:rgba(56,189,248,.15);color:#7dd3fc;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">자음</button>
-        <button onclick="setHangulMode('vowel')" id="sr-hg-btn-vow" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.1);background:transparent;color:rgba(255,255,255,.4);font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">모음</button>
-        <button onclick="setHangulMode('double')" id="sr-hg-btn-dbl" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.1);background:transparent;color:rgba(255,255,255,.4);font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">쌍자음</button>
-      </div>
+      <button onclick="event.stopPropagation();openAlphaModal()" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(56,189,248,.3);background:rgba(56,189,248,.1);color:#7dd3fc;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">한글 학습하기 →</button>
     </div>
   </div>
 
   <!-- Korean Slang 배너 -->
-  <div class="sr-sb-panel" style="padding:0;overflow:hidden;background:linear-gradient(135deg,#312e81,#7c3aed);border:1px solid rgba(196,181,253,.2)">
+  <div class="sr-sb-panel" style="padding:0;overflow:hidden;background:linear-gradient(135deg,#312e81,#7c3aed);border:1px solid rgba(196,181,253,.2);cursor:pointer" onclick="openSlangModal()">
     <div style="padding:16px">
       <div style="font-size:18px;margin-bottom:4px">🔥</div>
       <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:4px">Korean Slang</div>
       <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.5;margin-bottom:10px">요즘 한국인이 실제로 쓰는 신조어 & 줄임말</div>
       <div id="sr-slang-preview" style="font-size:13px;color:#c4b5fd;font-weight:700;margin-bottom:6px">Loading...</div>
       <div id="sr-slang-meaning" style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:8px"></div>
-      <button onclick="loadNextSlang()" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(196,181,253,.3);background:rgba(196,181,253,.1);color:#c4b5fd;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">다음 슬랭 →</button>
+      <button onclick="event.stopPropagation();openSlangModal()" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(196,181,253,.3);background:rgba(196,181,253,.1);color:#c4b5fd;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">슬랭 학습하기 →</button>
+    </div>
+  </div>
+
+  <!-- Phone Call Learning 배너 -->
+  <div class="sr-sb-panel" style="padding:0;overflow:hidden;background:linear-gradient(135deg,#064e3b,#047857);border:1px solid rgba(52,211,153,.2);cursor:pointer" onclick="openPhoneModal()">
+    <div style="padding:16px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:18px">📞</span>
+        <div style="display:flex;align-items:center;gap:1px;height:20px">
+          <span class="phone-wave"></span><span class="phone-wave"></span><span class="phone-wave"></span><span class="phone-wave"></span><span class="phone-wave"></span>
+        </div>
+      </div>
+      <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:4px">Phone Call Practice</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.5;margin-bottom:10px">실제 전화 통화로 듣기 & 말하기 연습</div>
+      <button onclick="event.stopPropagation();openPhoneModal()" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(52,211,153,.3);background:rgba(52,211,153,.1);color:#34d399;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">통화 연습하기 →</button>
     </div>
   </div>
 
@@ -1593,8 +1669,8 @@ body { background: #0b1626 !important; }
   <!-- HERO BLOCK: badge + headline + topic card -->
   <div class="sr-hero-block">
     <div class="sr-lvbadge-pill" id="sr-lvbadge-pill">📖 STUDY ROOM / BEGINNER</div>
-    <h1 class="sr-headline">Write on today's topic,<br>and watch yourself grow.</h1>
-    <p class="sr-headline-sub">Everything is organized so you can start writing right away. Grammar and examples are available on the side for reference.</p>
+    <h1 class="sr-headline">Express yourself in Korean,<br>and watch yourself grow.</h1>
+    <p class="sr-headline-sub">Write and speak on today's topic. Grammar and examples are available on the side for reference.</p>
 
     <!-- REVIEW NOTIFICATION BANNERS -->
     <div id="sr-review-notifications" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
@@ -1665,7 +1741,7 @@ body { background: #0b1626 !important; }
 
     <!-- hidden compat elements — JS sets these but they don't need to be visible -->
     <div id="wcard-topic-ko" style="display:none"></div>
-    <div id="wcf-mode-text"  style="display:none">Open Writing Room</div>
+    <div id="wcf-mode-text"  style="display:none">Open Express Practice</div>
     <!-- hidden mode tabs for JS state tracking -->
     <div class="wc-mode-tabs" id="wc-mode-tabs" style="display:none">
       <button class="wc-mode-tab active" id="tab-topic" onclick="setWritingMode('topic')">📝 Topic Writing</button>
@@ -1866,7 +1942,7 @@ body { background: #0b1626 !important; }
     <div class="wm-header">
       <div class="wmh-topic">
         <div>
-          <div class="wmh-title" id="wm-mode-label">✍️ Writing Room</div>
+          <div class="wmh-title" id="wm-mode-label">✍️ Express Practice</div>
           <div class="wmh-sub" id="wm-topic-sub">Today's topic loading…</div>
         </div>
         <!-- 모달 내 모드 탭 -->
@@ -2552,7 +2628,7 @@ function renderStudyChecklist() {
   var box = document.getElementById('sr-checklist-box');
   if (!box) return;
   var items = [
-    { k:'topic',    label:'Write on today\'s topic',  sub:'Core writing activity',     pts:'+20 냥' },
+    { k:'topic',    label:'Express Practice',  sub:'Write & speak on today\'s topic',     pts:'+20 냥' },
     { k:'grammar',  label:'Review grammar points',     sub:'Quick, light review',       pts:'+10 냥' },
     { k:'picture',  label:'Picture description',        sub:'Just 1-2 minutes',          pts:'+15 냥' },
     { k:'sentence', label:'Dictation practice',         sub:'Accuracy training',         pts:'+10 냥' }
@@ -3460,7 +3536,7 @@ function openWritingModal() {
 function canEnterWritingRoom() {
   var hasDoneStep = !!(_studyDone.topic || _studyDone.grammar || _studyDone.picture || _studyDone.sentence);
   if (hasDoneStep) return true;
-  alert('Please complete at least 1 learning step before entering the Writing Room.\\n(Topic Writing / Grammar Focus / Picture Description / Sentence Writing)');
+  alert('Please complete at least 1 learning step before entering the Express Practice.\\n(Topic Writing / Grammar Focus / Picture Description / Sentence Writing)');
   return false;
 }
 
@@ -3499,7 +3575,7 @@ function _updateLSSelectorBadges() {
       wpBtn.classList.add('ls-wp-unlocked');
       wpBtn.disabled = false;
       if (wpLock) wpLock.textContent = '🔓';
-      if (wpSub)  wpSub.textContent  = 'Learning activities complete! Enter Writing Room';
+      if (wpSub)  wpSub.textContent  = 'Learning activities complete! Enter Express Practice';
     } else {
       wpBtn.classList.remove('ls-wp-unlocked');
       wpBtn.disabled = true;
@@ -3665,29 +3741,41 @@ function renderHangulCard() {
   if (el('sr-hangul-example')) el('sr-hangul-example').textContent = h.ex;
 }
 
-// ── Korean Slang Data ──
+// ── Korean Slang Data (with KakaoTalk conversation examples) ──
 var _KOREAN_SLANGS = [
-  { ko: '갓생', en: 'God-life', desc: '"신(God)" + "인생(life)". 매우 성실하고 생산적인 하루를 보내는 것' },
-  { ko: 'ㅋㅋㅋ', en: 'hahaha', desc: '한국어 웃음소리. ㅋ이 많을수록 더 웃김' },
-  { ko: '혼코노', en: 'solo karaoke', desc: '혼자(alone) + 코인 노래방(coin karaoke). 혼자 노래방 가는 것' },
-  { ko: '꿀잼', en: 'super fun', desc: '꿀(honey) + 재미(fun). 정말 재밌다는 의미' },
-  { ko: '노잼', en: 'no fun', desc: 'No + 재미(fun). 전혀 재미없다' },
-  { ko: '존맛탱', en: 'crazy delicious', desc: '존나 맛있다의 줄임말. 매우 맛있다' },
-  { ko: '별다줄', en: 'abbreviation lovers', desc: '"별걸 다 줄인다"의 줄임말. 뭐든 줄여쓴다는 의미' },
-  { ko: '인싸', en: 'insider', desc: 'Insider의 한국식 발음. 사교적이고 인기 많은 사람' },
-  { ko: '아싸', en: 'outsider', desc: 'Outsider의 한국식 발음. 혼자 있는 걸 좋아하는 사람' },
-  { ko: '떡상', en: 'skyrocket', desc: '떡(rice cake) + 상승(rise). 가격이나 인기가 급등하는 것' },
-  { ko: '플렉스', en: 'flex/show off', desc: '영어 flex에서 온 말. 비싼 것을 사며 과시하는 것' },
-  { ko: '갑분싸', en: 'sudden awkward silence', desc: '"갑자기 분위기 싸해짐"의 줄임말' },
-  { ko: '혼밥', en: 'eating alone', desc: '혼자(alone) + 밥(rice/meal). 혼자 밥 먹는 것' },
-  { ko: '댕댕이', en: 'puppy/doggo', desc: '멍멍이(doggy)를 귀엽게 바꾼 말' },
-  { ko: '실화냐', en: 'is this real?', desc: '"실화(real story)냐?" 믿기 어려울 때 쓰는 말' }
+  { ko:'갓생', en:'God-life', desc:'"신(God)" + "인생(life)". 매우 성실하고 생산적인 하루를 보내는 것', tag:'MZ세대', warn:false,
+    chat:[{me:false,name:'수진',msg:'오늘 새벽 5시에 일어나서 운동하고 공부했어'},{me:true,msg:'와 진짜 <hl>갓생</hl> 사네 😱'},{me:false,name:'수진',msg:'ㅋㅋ 내일부터 같이 할래?'},{me:true,msg:'나는 갓생은 무리... 낮생이라도 할게'}]},
+  { ko:'ㅋㅋㅋ', en:'hahaha', desc:'한국어 웃음소리. ㅋ이 많을수록 더 웃김. ㅋ 하나면 비꼬는 느낌일 수 있음', tag:'기본', warn:true, warnText:'ㅋ 하나만 쓰면 "재미없다/비꼬는" 느낌',
+    chat:[{me:false,name:'민수',msg:'나 오늘 면접에서 자기소개를 일본어로 했어'},{me:true,msg:'뭐?? <hl>ㅋㅋㅋㅋㅋㅋ</hl>'},{me:false,name:'민수',msg:'긴장해서 ㅠㅠ'},{me:true,msg:'ㅋㅋㅋㅋ 아 진짜 웃기다'}]},
+  { ko:'혼코노', en:'solo karaoke', desc:'혼자(alone) + 코인 노래방(coin karaoke). 혼자 노래방 가는 것', tag:'혼족문화',
+    chat:[{me:false,name:'지영',msg:'오늘 뭐 해?'},{me:true,msg:'<hl>혼코노</hl> 가려고 ㅎㅎ'},{me:false,name:'지영',msg:'오 좋다~ 나도 혼코노 좋아해'},{me:true,msg:'스트레스 풀기 최고지'}]},
+  { ko:'꿀잼', en:'super fun', desc:'꿀(honey) + 재미(fun). 정말 재밌다는 의미. 반대말: 노잼', tag:'일상',
+    chat:[{me:false,name:'하은',msg:'그 드라마 봤어?'},{me:true,msg:'응 어제 밤새 봤어 진짜 <hl>꿀잼</hl>이야'},{me:false,name:'하은',msg:'맞아 나도 멈출 수가 없었어'},{me:true,msg:'시즌2 나와야 하는데...'}]},
+  { ko:'노잼', en:'no fun', desc:'No + 재미(fun). 전혀 재미없다', tag:'일상',
+    chat:[{me:false,name:'서준',msg:'어제 소개팅 어땠어?'},{me:true,msg:'완전 <hl>노잼</hl>이었어...'},{me:false,name:'서준',msg:'왜 뭐가 문제였는데'},{me:true,msg:'자기 얘기만 2시간 함 ㅠ'}]},
+  { ko:'존맛탱', en:'crazy delicious', desc:'존나 맛있다의 줄임말. 매우 맛있다', tag:'음식', warn:true, warnText:'원래 비속어에서 온 말 — 친구 사이에서만',
+    chat:[{me:false,name:'유진',msg:'이 떡볶이 먹어봐'},{me:true,msg:'헐... <hl>존맛탱</hl> 🤤🤤🤤'},{me:false,name:'유진',msg:'여기 맨날 줄 서는 곳이야'},{me:true,msg:'이해된다 진짜'}]},
+  { ko:'별다줄', en:'abbreviation of everything', desc:'"별걸 다 줄인다"의 줄임말. 그 자체가 줄임말인 게 포인트', tag:'메타',
+    chat:[{me:false,name:'현우',msg:'갑분싸, 별다줄, 설참... 한국어 줄임말 너무 많아'},{me:true,msg:'ㅋㅋ <hl>별다줄</hl> 자체도 줄임말이잖아'},{me:false,name:'현우',msg:'아... 진짜네 ㅋㅋㅋ'}]},
+  { ko:'인싸', en:'insider/popular person', desc:'Insider의 한국식 발음. 사교적이고 인기 많은 사람', tag:'사회생활',
+    chat:[{me:false,name:'소연',msg:'새 동기가 벌써 모든 팀이랑 친해짐'},{me:true,msg:'완전 <hl>인싸</hl>네'},{me:false,name:'소연',msg:'부럽다 나는 만년 아싸인데'},{me:true,msg:'ㅋㅋ 우리 둘 다 아싸끼리 잘 지내잖아'}]},
+  { ko:'아싸', en:'outsider/loner', desc:'Outsider의 한국식 발음. 혼자 있는 걸 좋아하는 사람 (부정적이지 않음)', tag:'사회생활',
+    chat:[{me:true,msg:'주말에 뭐 했어?'},{me:false,name:'태현',msg:'집에서 넷플릭스 정주행 ㅎㅎ'},{me:true,msg:'완전 <hl>아싸</hl> 라이프 ㅋㅋ'},{me:false,name:'태현',msg:'행복한 아싸입니다 😌'}]},
+  { ko:'떡상', en:'skyrocket', desc:'떡(rice cake) + 상승(rise). 가격이나 인기가 급등하는 것', tag:'투자/트렌드',
+    chat:[{me:false,name:'준호',msg:'비트코인 또 올랐대'},{me:true,msg:'진짜? 완전 <hl>떡상</hl>이네'},{me:false,name:'준호',msg:'나 왜 안 샀을까 ㅠㅠ'},{me:true,msg:'떡락할 수도 있으니까 ㅋㅋ'}]},
+  { ko:'플렉스', en:'flex/show off', desc:'영어 flex에서 온 말. 돈을 쓰며 과시하는 것', tag:'소비문화',
+    chat:[{me:false,name:'다은',msg:'새 가방 샀다~'},{me:true,msg:'오 <hl>플렉스</hl> 했네 👀'},{me:false,name:'다은',msg:'월급 들어온 기념 ㅎㅎ'},{me:true,msg:'부럽... 나는 이번달 텅장이야'}]},
+  { ko:'갑분싸', en:'sudden awkward silence', desc:'"갑자기 분위기 싸해짐"의 줄임말', tag:'일상',
+    chat:[{me:false,name:'채원',msg:'다들 재밌게 놀고 있었는데 팀장님이 들어오심'},{me:true,msg:'<hl>갑분싸</hl> ㅋㅋㅋㅋ'},{me:false,name:'채원',msg:'모두 갑자기 조용해짐 ㅎㅎ'}]},
+  { ko:'혼밥', en:'eating alone', desc:'혼자(alone) + 밥(rice/meal). 혼자 밥 먹는 것. 지금은 매우 자연스러운 문화', tag:'혼족문화',
+    chat:[{me:true,msg:'오늘 점심 같이 먹을 사람?'},{me:false,name:'은지',msg:'미안 나 오늘 <hl>혼밥</hl>할래 ㅎㅎ'},{me:true,msg:'ㅋㅋ 혼밥러 갬성 즐기는 거지?'},{me:false,name:'은지',msg:'응 이어폰 끼고 유튜브 보면서 먹는 게 최고야'}]},
+  { ko:'댕댕이', en:'puppy/doggo', desc:'멍멍이(doggy)를 귀엽게 바꾼 말. ㅁ→ㄷ, ㅇ→ㅇ 글자 모양이 비슷해서', tag:'귀여움',
+    chat:[{me:false,name:'예린',msg:'[사진] 우리 <hl>댕댕이</hl> 봐 🐶'},{me:true,msg:'어머 너무 귀여워!!'},{me:false,name:'예린',msg:'오늘 산책하다가 다른 댕댕이랑 친구 됨 ㅎㅎ'},{me:true,msg:'댕댕이 인싸네 ㅋㅋ'}]},
+  { ko:'실화냐', en:'is this real?', desc:'"실화(real story)냐?" 믿기 어려울 때 쓰는 말', tag:'리액션',
+    chat:[{me:false,name:'성민',msg:'나 복권 당첨됐어'},{me:true,msg:'....<hl>실화냐</hl>???'},{me:false,name:'성민',msg:'5000원 ㅋㅋ'},{me:true,msg:'ㅋㅋㅋㅋ 그것도 실화라고'}]}
 ];
 var _slangIdx = 0;
-function loadNextSlang() {
-  _slangIdx = (_slangIdx + 1) % _KOREAN_SLANGS.length;
-  renderSlang();
-}
+function loadNextSlang() { _slangIdx = (_slangIdx + 1) % _KOREAN_SLANGS.length; renderSlang(); }
 function renderSlang() {
   var s = _KOREAN_SLANGS[_slangIdx];
   var pre = document.getElementById('sr-slang-preview');
@@ -3696,6 +3784,174 @@ function renderSlang() {
   if (mean) mean.textContent = s.desc;
 }
 (function(){ _slangIdx = Math.floor(Math.random() * _KOREAN_SLANGS.length); setTimeout(renderSlang, 500); })();
+
+// ── Slang Modal ──
+function openSlangModal() {
+  var ov = document.getElementById('slang-overlay');
+  var grid = document.getElementById('slang-grid');
+  if (!ov || !grid) return;
+  grid.innerHTML = _KOREAN_SLANGS.map(function(s, i) {
+    return '<div class="slang-card" onclick="showSlangDetail(' + i + ')" id="sc-' + i + '">'
+      + '<div class="slang-card-ko">' + s.ko + '</div>'
+      + '<div class="slang-card-en">' + s.en + '</div>'
+      + '</div>';
+  }).join('');
+  document.getElementById('slang-detail').style.display = 'none';
+  ov.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSlangModal() {
+  document.getElementById('slang-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function showSlangDetail(idx) {
+  var s = _KOREAN_SLANGS[idx];
+  document.querySelectorAll('.slang-card').forEach(function(c){ c.classList.remove('active'); });
+  var card = document.getElementById('sc-' + idx);
+  if (card) card.classList.add('active');
+  var det = document.getElementById('slang-detail');
+  var tags = '<span class="slang-tag slang-tag-gen">' + (s.tag||'일상') + '</span>';
+  if (s.warn) tags += '<span class="slang-tag slang-tag-warn">⚠ ' + (s.warnText||'친구 사이에서만') + '</span>';
+  var chatHtml = '<div class="kt-chat"><div class="kt-header">카카오톡 대화</div>';
+  (s.chat || []).forEach(function(m) {
+    var bubble = m.msg.replace(/<hl>/g, '<span class="kt-hl">').replace(/<\/hl>/g, '</span>');
+    if (m.me) {
+      chatHtml += '<div class="kt-row me"><div class="kt-bubble">' + bubble + '</div></div>';
+    } else {
+      chatHtml += '<div class="kt-row">'
+        + '<div class="kt-avatar">' + (m.name||'?')[0] + '</div>'
+        + '<div><div class="kt-name">' + (m.name||'친구') + '</div><div class="kt-bubble">' + bubble + '</div></div>'
+        + '</div>';
+    }
+  });
+  chatHtml += '</div>';
+  det.innerHTML = '<div class="slang-detail">' + tags
+    + '<div class="slang-detail-hd">' + s.ko + '</div>'
+    + '<div class="slang-detail-en">' + s.en + '</div>'
+    + '<div class="slang-detail-desc">' + s.desc + '</div>'
+    + chatHtml
+    + '</div>';
+  det.style.display = 'block';
+  det.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+// ── Alphabet Modal ──
+var _alphaMode = 'consonant';
+var _alphaSelCon = null;
+var _alphaSelVow = null;
+function openAlphaModal() {
+  var ov = document.getElementById('alpha-overlay');
+  if (!ov) return;
+  _alphaSelCon = null;
+  _alphaSelVow = null;
+  renderAlphaGrid();
+  updateAlphaCombine();
+  ov.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeAlphaModal() {
+  document.getElementById('alpha-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function setAlphaMode(mode, btn) {
+  _alphaMode = mode;
+  document.querySelectorAll('#alpha-overlay .tpill').forEach(function(b){ b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+  renderAlphaGrid();
+}
+function renderAlphaGrid() {
+  var grid = document.getElementById('alpha-grid');
+  var arr = _HANGUL[_alphaMode] || [];
+  var isVowel = _alphaMode === 'vowel';
+  grid.innerHTML = arr.map(function(h, i) {
+    var sel = false;
+    if (isVowel && _alphaSelVow && _alphaSelVow.char === h.char) sel = true;
+    if (!isVowel && _alphaSelCon && _alphaSelCon.char === h.char) sel = true;
+    return '<div class="alpha-card' + (sel ? ' selected' : '') + '" onclick="selectAlpha(\'' + _alphaMode + '\',' + i + ')">'
+      + '<div class="alpha-card-char">' + h.char + '</div>'
+      + '<div class="alpha-card-rom">' + h.rom + '</div>'
+      + '</div>';
+  }).join('');
+}
+function selectAlpha(mode, idx) {
+  var h = _HANGUL[mode][idx];
+  if (mode === 'vowel') {
+    _alphaSelVow = h;
+  } else {
+    _alphaSelCon = h;
+  }
+  renderAlphaGrid();
+  updateAlphaCombine();
+}
+function combineHangul(con, vow) {
+  // Unicode Hangul formula: (initial * 21 + medial) * 28 + 0xAC00
+  var initials = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+  var medials = 'ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ';
+  var ci = initials.indexOf(con);
+  var mi = medials.indexOf(vow);
+  if (ci < 0 || mi < 0) return '';
+  return String.fromCharCode(0xAC00 + (ci * 21 + mi) * 28);
+}
+function updateAlphaCombine() {
+  var slotCon = document.getElementById('alpha-slot-con');
+  var slotVow = document.getElementById('alpha-slot-vow');
+  var slotRes = document.getElementById('alpha-slot-result');
+  var romEl = document.getElementById('alpha-result-rom');
+  var hintEl = document.getElementById('alpha-result-hint');
+  var exEl = document.getElementById('alpha-examples');
+  slotCon.textContent = _alphaSelCon ? _alphaSelCon.char : '';
+  slotCon.classList.toggle('filled', !!_alphaSelCon);
+  slotVow.textContent = _alphaSelVow ? _alphaSelVow.char : '';
+  slotVow.classList.toggle('filled', !!_alphaSelVow);
+  if (_alphaSelCon && _alphaSelVow) {
+    var combined = combineHangul(_alphaSelCon.char, _alphaSelVow.char);
+    slotRes.textContent = combined;
+    var rom = (_alphaSelCon.rom.split('/')[0]) + _alphaSelVow.rom;
+    romEl.textContent = rom;
+    hintEl.textContent = _alphaSelCon.name.split('(')[0].trim() + ' + ' + _alphaSelVow.name.split('(')[0].trim();
+    // Show example words starting with this syllable
+    var examples = getAlphaExamples(combined);
+    exEl.innerHTML = examples.map(function(w){ return '<div class="alpha-ex-chip">' + w + '</div>'; }).join('');
+  } else {
+    slotRes.textContent = '';
+    romEl.textContent = '';
+    hintEl.textContent = _alphaSelCon ? '이제 모음을 선택하세요' : _alphaSelVow ? '이제 자음을 선택하세요' : '자음과 모음을 하나씩 선택하세요';
+    exEl.innerHTML = '';
+  }
+}
+function getAlphaExamples(syllable) {
+  var bank = {
+    '가':['가방 bag','가수 singer','가족 family'],'나':['나라 country','나무 tree','나이 age'],
+    '다':['다리 bridge','다음 next'],'라':['라면 ramen','라디오 radio'],'마':['마음 heart','마트 mart'],
+    '바':['바다 sea','바람 wind'],'사':['사람 person','사랑 love'],'아':['아이 child','아침 morning'],
+    '자':['자동차 car','잠 sleep'],'차':['차 tea','친구 friend'],'카':['카페 cafe','카드 card'],
+    '타':['타다 to ride'],'파':['파도 wave','파란 blue'],'하':['하늘 sky','학교 school'],
+    '거':['거울 mirror'],'너':['너무 very'],'더':['더운 hot'],'머':['머리 head'],'버':['버스 bus'],
+    '서':['서울 Seoul'],'어':['어머니 mother'],'저':['저녁 evening'],'커':['커피 coffee'],'허':['허리 waist'],
+    '고':['고양이 cat','고마워 thanks'],'노':['노래 song'],'도':['도시 city'],'모':['모자 hat'],
+    '보':['보다 to see'],'소':['소리 sound'],'오':['오늘 today'],'조':['조금 a little'],
+    '구':['구름 cloud'],'누':['누나 older sister'],'두':['두부 tofu'],'무':['무엇 what'],
+    '부':['부모 parents'],'수':['수박 watermelon'],'우':['우유 milk'],'주':['주말 weekend'],
+    '기':['기분 feeling'],'니':['니가 you(casual)'],'디':['디자인 design'],'미':['미안 sorry'],
+    '비':['비 rain','비행기 airplane'],'시':['시간 time'],'이':['이름 name'],'지':['지하철 subway'],
+    '개':['개 dog'],'새':['새 bird'],'내':['내일 tomorrow'],'대':['대학교 university'],
+    '해':['해 sun','해변 beach'],'세':['세계 world'],'게':['게임 game'],'네':['네 yes'],
+    '까':['까치 magpie'],'따':['따뜻 warm'],'빠':['빠르다 fast'],'싸':['싸다 cheap'],'짜':['짜다 salty']
+  };
+  return bank[syllable] || ['(예시 단어 준비 중)'];
+}
+
+// ── Phone Call Modal ──
+function openPhoneModal() {
+  var ov = document.getElementById('phone-overlay');
+  if (!ov) return;
+  ov.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closePhoneModal() {
+  document.getElementById('phone-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
 
 // ── My Word Bank ──
 var _wbAllWords = [];
@@ -4998,7 +5254,7 @@ function setWritingMode(mode) {
     // Show inline source-picker instead of jumping directly into the modal
     openReadingSourcePicker();
   } else {
-    if (modeText) modeText.textContent = 'Open Writing Room';
+    if (modeText) modeText.textContent = 'Open Express Practice';
   }
 }
 
@@ -5357,7 +5613,7 @@ function switchModalMode(mode) {
     if (sourceBar) { sourceBar.style.display = 'none'; }
     var modalEl = document.querySelector('.wmodal');
     if (modalEl) modalEl.classList.remove('reading-mode');
-    if (modeLabel) modeLabel.textContent = '✍️ Writing Room';
+    if (modeLabel) modeLabel.textContent = '✍️ Express Practice';
     if (readingBlock) readingBlock.style.display = 'none';
     if (contextBlock) contextBlock.style.display = 'block';
     if (helpersBlock) helpersBlock.style.display = 'block';
@@ -8276,7 +8532,7 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
     <div class="ls-header">
       <div>
         <div class="ls-header-title">오늘 무엇을 배울까요?</div>
-        <div class="ls-header-sub">학습 활동을 선택하세요 · 완료하면 Writing Room이 열립니다</div>
+        <div class="ls-header-sub">학습 활동을 선택하세요 · 완료하면 Express Practice이 열립니다</div>
       </div>
       <button onclick="closeLearningSelector()" style="background:none;border:none;color:rgba(255,255,255,.45);font-size:22px;cursor:pointer;line-height:1;padding:0 4px">✕</button>
     </div>
@@ -9177,6 +9433,86 @@ function closeReviewModal() {
   if (mSub) mSub.textContent = (date >= 1 && date <= 3) ? '25 questions · 15s timer' : '매월 1~3일에 열림';
 })();
 </script>
+
+<!-- ═══ SLANG MODAL ═══ -->
+<div class="feat-overlay" id="slang-overlay" onclick="if(event.target===this)closeSlangModal()">
+<div class="feat-modal">
+  <button class="feat-close" onclick="closeSlangModal()">&times;</button>
+  <div style="padding:24px 20px 12px">
+    <div style="font-size:24px;font-weight:900;color:#fff">🔥 Korean Slang</div>
+    <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">카드를 눌러서 실제 대화 예문을 확인하세요</div>
+  </div>
+  <div class="slang-grid" id="slang-grid"></div>
+  <div id="slang-detail" style="display:none"></div>
+</div>
+</div>
+
+<!-- ═══ ALPHABET MODAL ═══ -->
+<div class="feat-overlay" id="alpha-overlay" onclick="if(event.target===this)closeAlphaModal()">
+<div class="feat-modal" style="max-width:600px">
+  <button class="feat-close" onclick="closeAlphaModal()">&times;</button>
+  <div style="padding:24px 20px 8px">
+    <div style="font-size:24px;font-weight:900;color:#fff">🇰🇷 Korean Alphabet</div>
+    <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">자음 + 모음을 선택해서 글자를 조합해보세요</div>
+  </div>
+  <!-- Combination area -->
+  <div class="alpha-combine">
+    <div style="margin-bottom:8px">
+      <span class="alpha-slot" id="alpha-slot-con"></span>
+      <span style="font-size:24px;color:rgba(255,255,255,.2);vertical-align:middle;margin:0 4px">+</span>
+      <span class="alpha-slot" id="alpha-slot-vow"></span>
+      <span style="font-size:24px;color:rgba(255,255,255,.2);vertical-align:middle;margin:0 4px">=</span>
+      <span class="alpha-slot filled" id="alpha-slot-result" style="border-color:rgba(250,204,21,.3);color:#facc15;font-size:32px"></span>
+    </div>
+    <div class="alpha-combine-rom" id="alpha-result-rom"></div>
+    <div class="alpha-combine-hint" id="alpha-result-hint">자음과 모음을 하나씩 선택하세요</div>
+  </div>
+  <!-- Mode tabs -->
+  <div style="display:flex;gap:6px;padding:0 20px 8px;justify-content:center">
+    <button class="tpill on" id="am-btn-con" onclick="setAlphaMode('consonant',this)" style="font-size:11px">자음 Consonants</button>
+    <button class="tpill" id="am-btn-vow" onclick="setAlphaMode('vowel',this)" style="font-size:11px">모음 Vowels</button>
+    <button class="tpill" id="am-btn-dbl" onclick="setAlphaMode('double',this)" style="font-size:11px">쌍자음 Double</button>
+  </div>
+  <div class="alpha-grid" id="alpha-grid"></div>
+  <div class="alpha-examples" id="alpha-examples"></div>
+</div>
+</div>
+
+<!-- ═══ PHONE CALL MODAL ═══ -->
+<div class="feat-overlay" id="phone-overlay" onclick="if(event.target===this)closePhoneModal()">
+<div class="feat-modal" style="max-width:560px">
+  <button class="feat-close" onclick="closePhoneModal()">&times;</button>
+  <div style="padding:24px 20px 16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span style="font-size:24px">📞</span>
+      <div>
+        <div style="font-size:20px;font-weight:900;color:#fff">Phone Call Practice</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.4)">실제 전화 통화로 듣기 & 말하기 연습</div>
+      </div>
+    </div>
+  </div>
+  <!-- Call list -->
+  <div id="phone-call-list" style="padding:0 20px 20px">
+    <div style="text-align:center;padding:40px 20px">
+      <div style="font-size:48px;margin-bottom:12px">🎧</div>
+      <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px">Coming Soon</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.4);line-height:1.6">
+        실제 한국어 전화 통화 녹음으로<br>듣기 연습 & 스크립트 따라 말하기<br>
+        <span style="color:#34d399;font-weight:600">스크립트가 하이라이트되면서 따라가요</span>
+      </div>
+      <div style="margin-top:20px;padding:16px;border-radius:12px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.15)">
+        <div style="font-size:11px;color:#34d399;font-weight:700;margin-bottom:6px">예정 기능</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.8;text-align:left">
+          ✓ 전화 통화 오디오 재생 + 스크립트 실시간 하이라이트<br>
+          ✓ 섀도잉 모드 — 문장별 끊어듣고 따라하기<br>
+          ✓ 녹음 제출 → AI 피드백 (발음/자연스러움 분석)<br>
+          ✓ 난이도별 통화 (일상 / 비즈니스 / 긴급)
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
 
 </body>
 </html>
