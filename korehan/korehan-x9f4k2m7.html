@@ -6615,26 +6615,263 @@ async function srLoadFeedbackDashboard() {
 
 var _fbPatternIconsAdmin = { SPELLING:'✏️', PARTICLE:'🔗', TENSE:'⏰', WORD_ORDER:'🔀', VOCAB:'📖', NUANCE:'💬' };
 var _fbPatternLabelsAdmin = { SPELLING:'맞춤법', PARTICLE:'조사', TENSE:'시제', WORD_ORDER:'어순', VOCAB:'어휘', NUANCE:'뉘앙스' };
+var _fbModalRow = null; // currently open row in modal
 
-function _renderAdminAIDetail(fb) {
+function _buildAdminFeedbackDraft(fb) {
   if (!fb) return '';
-  var h = '';
-
-  // Score + Overall
-  if (fb.score !== undefined) {
-    var sc = Number(fb.score);
-    var sCol = sc >= 80 ? '#15803d' : sc >= 60 ? '#a16207' : '#dc2626';
-    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
-      + '<div style="width:36px;height:36px;border-radius:50%;border:2.5px solid ' + sCol + ';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:' + sCol + '">' + sc + '</div>'
-      + '<div style="font-size:12px;color:#475569;flex:1;line-height:1.5">' + (fb.overall||'') + '</div></div>';
-  } else if (fb.overall) {
-    h += '<div style="font-size:12px;color:#475569;line-height:1.5;margin-bottom:8px;padding:6px 8px;background:#f8fafc;border-radius:6px">' + fb.overall + '</div>';
+  var lines = [];
+  if (fb.overall) lines.push(fb.overall);
+  if (fb.corrections && fb.corrections.length) {
+    lines.push('\n📌 수정 사항:');
+    fb.corrections.forEach(function(c) {
+      lines.push('• ' + (c.original||'') + ' → ' + (c.corrected||'') + ' (' + (c.reason||'') + ')');
+    });
   }
+  if (fb.naturalness && fb.naturalness.suggestions && fb.naturalness.suggestions.length) {
+    lines.push('\n💡 추천 표현:');
+    fb.naturalness.suggestions.forEach(function(s) { lines.push('• ' + s); });
+  }
+  if (fb.encouragement) { lines.push('\n' + fb.encouragement); }
+  return lines.join('\n');
+}
 
-  // Corrected full text
-  if (fb.corrected_full) {
-    h += '<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;color:#15803d;margin-bottom:3px">교정 완성본</div>'
-      + '<div style="font-size:12px;line-height:1.6;padding:8px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;color:#166534">' + fb.corrected_full + '</div></div>';
+// ── Feedback list (compact rows, click to open modal) ──
+function srRenderFeedbackPage() {
+  var el = document.getElementById('fb-list'); if (!el) return;
+  var start = _fbPage * _fbPageSize;
+  var page = _fbAllRows.slice(start, start + _fbPageSize);
+  if (!page.length) { el.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:12px">제출 내역이 없습니다.</div>'; return; }
+
+  var typeIcons = {writing:'📝', article_study:'📰', conversation:'💬', story:'📖', picture:'🖼️', dictation:'🎧', grammar:'📖'};
+  var statusBg = {submitted:'#fef9c3', ai_reviewed:'#eff6ff', admin_approved:'#f0fdf4', sent:'#dcfce7'};
+  var statusColor = {submitted:'#854d0e', ai_reviewed:'#1d4ed8', admin_approved:'#15803d', sent:'#166534'};
+  var statusLabel = {submitted:'⏳ 대기', ai_reviewed:'🤖 AI완료', admin_approved:'✅ 승인', sent:'📨 전송됨'};
+
+  el.innerHTML = page.map(function(row, idx) {
+    var fb = null;
+    try { fb = typeof row.ai_feedback === 'string' ? JSON.parse(row.ai_feedback) : row.ai_feedback; } catch(e) {}
+    var score = (fb && fb.score) || row.score || '';
+    var corrCount = (fb && fb.corrections) ? fb.corrections.length : 0;
+    var preview = (row.writing_text||'').slice(0,60) + ((row.writing_text||'').length > 60 ? '…' : '');
+    var gIdx = start + idx;
+
+    return '<div onclick="openFbModal(' + gIdx + ')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:6px;cursor:pointer;background:#fff;transition:background .1s" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'#fff\'">'
+      + '<span style="font-size:16px">' + (typeIcons[row.content_type]||'📄') + '</span>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:2px">'
+      + '<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:' + (statusBg[row.status]||'#f1f5f9') + ';color:' + (statusColor[row.status]||'#64748b') + '">' + (statusLabel[row.status]||row.status) + '</span>'
+      + '<span style="font-size:11px;color:#94a3b8">' + (row.study_date||'') + '</span>'
+      + (row.topic_ko ? '<span style="font-size:11px;font-weight:600;color:#334155">' + row.topic_ko + '</span>' : '')
+      + '</div>'
+      + '<div style="font-size:12px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + preview + '</div>'
+      + '</div>'
+      + (score ? '<div style="font-size:14px;font-weight:900;color:' + (score >= 80 ? '#15803d' : score >= 60 ? '#a16207' : '#dc2626') + '">' + score + '</div>' : '')
+      + (corrCount ? '<div style="font-size:10px;color:#dc2626;font-weight:700">' + corrCount + '교정</div>' : '')
+      + '<span style="color:#cbd5e1;font-size:14px">›</span>'
+      + '</div>';
+  }).join('');
+
+  // Pager
+  var totalPages = Math.ceil(_fbAllRows.length / _fbPageSize);
+  var pager = document.getElementById('fb-pager');
+  if (pager && totalPages > 1) {
+    pager.innerHTML = Array.from({length:totalPages}, function(_,p) {
+      return '<button onclick="_fbPage=' + p + ';srRenderFeedbackPage()" style="padding:4px 10px;border-radius:6px;border:1px solid ' + (p===_fbPage?'#3b82f6':'#e2e8f0') + ';background:' + (p===_fbPage?'#eff6ff':'#fff') + ';font-weight:' + (p===_fbPage?'800':'400') + ';cursor:pointer;font-size:11px">' + (p+1) + '</button>';
+    }).join('');
+  } else if (pager) pager.innerHTML = '';
+}
+
+// ── Feedback Detail Modal ──
+function openFbModal(idx) {
+  var row = _fbAllRows[idx];
+  if (!row) return;
+  _fbModalRow = row;
+  var fb = null;
+  try { fb = typeof row.ai_feedback === 'string' ? JSON.parse(row.ai_feedback) : row.ai_feedback; } catch(e) {}
+  var adminDraft = row.admin_feedback || (fb ? _buildAdminFeedbackDraft(fb) : '');
+
+  var old = document.getElementById('fb-detail-modal');
+  if (old) old.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'fb-detail-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
+  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
+
+  var typeLabels = {writing:'Writing Practice', article_study:'Article Study', conversation:'Conversation', story:'Story', picture:'Picture Description', dictation:'Dictation', grammar:'Grammar Focus'};
+  var m = '<div style="background:#fff;border-radius:16px;max-width:900px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.2);margin:10px 0">';
+
+  // Header
+  m += '<div style="padding:16px 20px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between">'
+    + '<div><div style="font-size:16px;font-weight:900">📋 피드백 상세</div>'
+    + '<div style="font-size:12px;color:#64748b">' + (typeLabels[row.content_type]||row.content_type) + ' · ' + (row.study_date||'') + ' · ' + (row.topic_ko||'') + '</div></div>'
+    + '<button onclick="document.getElementById(\'fb-detail-modal\').remove()" style="background:#f1f5f9;border:none;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px">✕</button></div>';
+
+  // Body: student writing + AI sections as tabs
+  m += '<div style="display:grid;grid-template-columns:1fr 1.2fr;min-height:0" id="fb-modal-body">';
+
+  // LEFT: Student writing
+  m += '<div style="padding:16px 20px;border-right:1px solid #f0f0f0;overflow-y:auto;max-height:70vh">'
+    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:8px">학생 원문</div>'
+    + '<div style="font-size:14px;color:#1e293b;line-height:1.8;white-space:pre-wrap;font-family:\'Noto Sans KR\',sans-serif">' + (row.writing_text || '(없음)') + '</div>';
+  if (fb && fb.corrected_full) {
+    m += '<div style="margin-top:16px;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px">'
+      + '<div style="font-size:10px;font-weight:700;color:#15803d;margin-bottom:4px">✅ 교정 완성본</div>'
+      + '<div style="font-size:14px;color:#166534;line-height:1.8;font-family:\'Noto Sans KR\',sans-serif">' + fb.corrected_full + '</div></div>';
+  }
+  m += '</div>';
+
+  // RIGHT: AI analysis sections as banners
+  m += '<div style="padding:16px 20px;overflow-y:auto;max-height:70vh">'
+    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:10px">🤖 AI 분석 (평가 요소별)</div>';
+
+  if (fb) {
+    // Score banner
+    if (fb.score !== undefined) {
+      var sc = Number(fb.score);
+      var sCol = sc >= 80 ? '#15803d' : sc >= 60 ? '#a16207' : '#dc2626';
+      var sBg = sc >= 80 ? '#f0fdf4' : sc >= 60 ? '#fefce8' : '#fef2f2';
+      m += '<div style="padding:12px 14px;background:' + sBg + ';border:1px solid ' + sCol + '33;border-radius:10px;margin-bottom:8px;display:flex;align-items:center;gap:10px">'
+        + '<div style="width:44px;height:44px;border-radius:50%;border:3px solid ' + sCol + ';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:' + sCol + '">' + sc + '</div>'
+        + '<div style="flex:1"><div style="font-size:11px;font-weight:700;color:' + sCol + '">종합 점수</div>'
+        + '<div style="font-size:13px;color:#475569;line-height:1.5">' + (fb.overall||'') + '</div></div></div>';
+    }
+
+    // Corrections banner
+    if (fb.corrections && fb.corrections.length) {
+      m += '<div style="padding:12px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;margin-bottom:8px">'
+        + '<div style="font-size:11px;font-weight:700;color:#dc2626;margin-bottom:8px">🔴 수정 사항 (' + fb.corrections.length + ')</div>';
+      fb.corrections.forEach(function(c) {
+        var icon = _fbPatternIconsAdmin[c.pattern] || '🔧';
+        var label = _fbPatternLabelsAdmin[c.pattern] || c.pattern || '';
+        m += '<div style="display:flex;gap:6px;padding:6px 8px;background:#fff;border:1px solid #fde2e2;border-radius:6px;margin-bottom:4px;font-size:12px">'
+          + '<span>' + icon + '</span>'
+          + '<div style="flex:1"><span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:#fef2f2;color:#dc2626">' + label + '</span> '
+          + '<s style="color:#dc2626">' + (c.original||'') + '</s> → <b style="color:#15803d">' + (c.corrected||'') + '</b>'
+          + '<div style="color:#64748b;font-size:11px;margin-top:2px">' + (c.reason||'') + '</div></div></div>';
+      });
+      m += '</div>';
+    }
+
+    // Spelling banner
+    if (fb.spelling && fb.spelling.length) {
+      m += '<div style="padding:12px 14px;background:#fefce8;border:1px solid #fde68a;border-radius:10px;margin-bottom:8px">'
+        + '<div style="font-size:11px;font-weight:700;color:#a16207;margin-bottom:6px">✏️ 맞춤법</div>';
+      fb.spelling.forEach(function(s) {
+        m += '<div style="font-size:12px;margin-bottom:3px"><s style="color:#dc2626">' + (s.wrong||'') + '</s> → <b style="color:#15803d">' + (s.correct||'') + '</b>'
+          + (s.tip ? ' <span style="color:#94a3b8;font-size:11px">(' + s.tip + ')</span>' : '') + '</div>';
+      });
+      m += '</div>';
+    }
+
+    // Naturalness banner
+    if (fb.naturalness && fb.naturalness.comment) {
+      m += '<div style="padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;margin-bottom:8px">'
+        + '<div style="font-size:11px;font-weight:700;color:#1d4ed8;margin-bottom:4px">🗣️ 자연스러움 ' + (fb.naturalness.score !== undefined ? fb.naturalness.score + '/10' : '') + '</div>'
+        + '<div style="font-size:12px;color:#475569;line-height:1.5">' + fb.naturalness.comment + '</div>';
+      if (fb.naturalness.suggestions && fb.naturalness.suggestions.length) {
+        m += '<div style="margin-top:6px">';
+        fb.naturalness.suggestions.forEach(function(s) { m += '<div style="font-size:12px;color:#1d4ed8;margin-top:2px">💡 ' + s + '</div>'; });
+        m += '</div>';
+      }
+      m += '</div>';
+    }
+
+    // Nuance banner
+    if (fb.nuance && (fb.nuance.comment || (fb.nuance.word_swaps && fb.nuance.word_swaps.length))) {
+      m += '<div style="padding:12px 14px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;margin-bottom:8px">'
+        + '<div style="font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:4px">💬 뉘앙스</div>'
+        + '<div style="font-size:12px;color:#475569;line-height:1.5">' + (fb.nuance.comment||'') + '</div>';
+      if (fb.nuance.word_swaps && fb.nuance.word_swaps.length) {
+        fb.nuance.word_swaps.forEach(function(ws) {
+          m += '<div style="font-size:12px;margin-top:3px"><span style="color:#7c3aed;font-weight:700">' + (ws.from||'') + '</span> → <span style="color:#6d28d9;font-weight:700">' + (ws.to||'') + '</span> <span style="color:#94a3b8">(' + (ws.why||'') + ')</span></div>';
+        });
+      }
+      m += '</div>';
+    }
+
+    // Structure banner
+    if (fb.structure && fb.structure.comment) {
+      m += '<div style="padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px">'
+        + '<div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:3px">🏗️ 문장 구조</div>'
+        + '<div style="font-size:12px;color:#64748b;line-height:1.5">' + fb.structure.comment + '</div>'
+        + (fb.structure.tip ? '<div style="font-size:11px;color:#a16207;margin-top:3px">💡 ' + fb.structure.tip + '</div>' : '')
+        + '</div>';
+    }
+
+    // Extra content + Example
+    if (fb.extra_content) m += '<div style="padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:3px">💡 추가 내용 아이디어</div><div style="font-size:12px;color:#64748b">' + fb.extra_content + '</div></div>';
+    if (fb.example_answer) m += '<div style="padding:10px 14px;background:#fefce8;border:1px solid #fde68a;border-radius:10px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:#a16207;margin-bottom:3px">📝 예시 답변</div><div style="font-size:13px;color:#475569;line-height:1.6">' + fb.example_answer + '</div></div>';
+    if (fb.encouragement) m += '<div style="font-size:12px;color:#15803d;padding:6px 0;text-align:center">💚 ' + fb.encouragement + '</div>';
+  } else {
+    m += '<div style="text-align:center;color:#94a3b8;padding:24px">AI 분석 없음</div>';
+  }
+  m += '</div></div>'; // end grid
+
+  // Bottom: Admin feedback editor
+  m += '<div style="padding:16px 20px;border-top:1px solid #f0f0f0;background:#fafbfc">'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+    + '<span style="font-size:12px;font-weight:800;color:#334155">어드민 피드백</span>'
+    + (fb && !row.admin_feedback ? '<button onclick="document.getElementById(\'fb-modal-admin\').value=_buildAdminFeedbackDraft(_fbModalFb())" style="font-size:11px;padding:4px 10px;border:1px solid #93c5fd;border-radius:6px;background:#eff6ff;color:#1d4ed8;cursor:pointer;font-family:inherit">📋 AI 초안 불러오기</button>' : '')
+    + '</div>'
+    + '<textarea id="fb-modal-admin" rows="5" style="width:100%;font-size:13px;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-family:\'Noto Sans KR\',sans-serif;line-height:1.7;resize:vertical;margin-bottom:10px" placeholder="피드백을 작성하거나 AI 초안을 수정하세요...">' + (adminDraft||'') + '</textarea>'
+    + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    + '<label style="font-size:12px;font-weight:700;color:#475569">점수</label>'
+    + '<input id="fb-modal-score" type="number" min="0" max="100" value="' + (row.score || (fb && fb.score ? fb.score : '')) + '" style="width:64px;font-size:13px;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;font-weight:700">'
+    + '<div style="flex:1"></div>'
+    + '<button onclick="fbModalApprove()" style="font-size:12px;font-weight:700;padding:8px 16px;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:8px;cursor:pointer;font-family:inherit">✅ 승인</button>'
+    + '<button onclick="fbModalSend()" style="font-size:12px;font-weight:700;padding:8px 16px;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit">📨 전송</button>'
+    + (row.status === 'submitted' ? '<button onclick="fbModalRetriggerAI()" style="font-size:12px;padding:8px 16px;background:#fefce8;color:#a16207;border:1px solid #fde047;border-radius:8px;cursor:pointer;font-family:inherit">🤖 AI 재생성</button>' : '')
+    + '</div></div>';
+
+  m += '</div>';
+  overlay.innerHTML = m;
+  document.body.appendChild(overlay);
+}
+
+function _fbModalFb() {
+  if (!_fbModalRow || !_fbModalRow.ai_feedback) return null;
+  try { return typeof _fbModalRow.ai_feedback === 'string' ? JSON.parse(_fbModalRow.ai_feedback) : _fbModalRow.ai_feedback; } catch(e) { return null; }
+}
+
+async function fbModalApprove() {
+  if (!_fbModalRow) return;
+  var sb = getSb(); if (!sb) return;
+  var fb = (document.getElementById('fb-modal-admin').value || '').trim();
+  var score = parseInt(document.getElementById('fb-modal-score').value) || null;
+  var r = await sb.from('user_submissions').update({
+    admin_feedback: fb || null, score: score,
+    status: 'admin_approved', reviewed_at: new Date().toISOString()
+  }).eq('id', _fbModalRow.id);
+  if (r.error) { toast('Error: ' + r.error.message); return; }
+  toast('승인 완료');
+  document.getElementById('fb-detail-modal').remove();
+  await srLoadFeedbackDashboard();
+}
+
+async function fbModalSend() {
+  if (!_fbModalRow) return;
+  var sb = getSb(); if (!sb) return;
+  var fb = (document.getElementById('fb-modal-admin').value || '').trim();
+  var score = parseInt(document.getElementById('fb-modal-score').value) || null;
+  if (!fb) { toast('피드백을 먼저 작성하세요.'); return; }
+  var r = await sb.from('user_submissions').update({
+    admin_feedback: fb, score: score,
+    status: 'sent', sent_at: new Date().toISOString(), reviewed_at: new Date().toISOString()
+  }).eq('id', _fbModalRow.id);
+  if (r.error) { toast('Error: ' + r.error.message); return; }
+  toast('전송 완료!');
+  document.getElementById('fb-detail-modal').remove();
+  await srLoadFeedbackDashboard();
+}
+
+async function fbModalRetriggerAI() {
+  if (!_fbModalRow || !_fbModalRow.writing_text) { toast('글 내용이 없습니다.'); return; }
+  var sb = getSb(); if (!sb) return;
+  toast('AI 피드백 생성 중…');
+  document.getElementById('fb-detail-modal').remove();
+  await srRetriggerAI(_fbModalRow.id);
+}
   }
 
   // Corrections table
@@ -6790,19 +7027,16 @@ function srRenderFeedbackPage() {
 }
 
 async function srApproveFeedback(id) {
-  var sb = getSb(); if (!sb) return;
-  var fb = (document.getElementById('fb-admin-' + id).value || '').trim();
-  var score = parseInt(document.getElementById('fb-score-' + id).value) || null;
-  var r = await sb.from('user_submissions').update({
-    admin_feedback: fb || null, score: score,
-    status: 'admin_approved', reviewed_at: new Date().toISOString()
-  }).eq('id', id);
-  if (r.error) { toast('Error: ' + r.error.message); return; }
-  toast('승인 완료');
-  await srLoadFeedbackDashboard();
+  // Legacy inline — redirect to modal
+  var idx = _fbAllRows.findIndex(function(r){ return r.id === id; });
+  if (idx >= 0) openFbModal(idx);
 }
 
 async function srSendFeedback(id) {
+  var idx = _fbAllRows.findIndex(function(r){ return r.id === id; });
+  if (idx >= 0) openFbModal(idx);
+  return;
+  // Legacy code below kept for reference
   var sb = getSb(); if (!sb) return;
   var fb = (document.getElementById('fb-admin-' + id).value || '').trim();
   var score = parseInt(document.getElementById('fb-score-' + id).value) || null;
