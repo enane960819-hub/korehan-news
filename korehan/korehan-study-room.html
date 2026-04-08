@@ -1627,6 +1627,42 @@ body { background: #0b1626 !important; }
   .ft-node-label { font-size:10px; }
 }
 
+/* ─── Study Room Top Tabs ─── */
+.sr-top-tabs { display:flex;gap:0;max-width:1160px;margin:0 auto;padding:0 24px; }
+.sr-top-tab { padding:12px 24px;font-size:13px;font-weight:700;color:rgba(255,255,255,.45);cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;font-family:inherit;background:none;border-top:none;border-left:none;border-right:none; }
+.sr-top-tab:hover { color:rgba(255,255,255,.7); }
+.sr-top-tab.on { color:#fff;border-bottom-color:#7ab8f5; }
+.sr-tab-panel { display:none; }
+.sr-tab-panel.active { display:block; }
+/* Master tab grid */
+.master-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding:24px; }
+.master-card { padding:24px;border-radius:16px;cursor:pointer;transition:all .15s;border:1px solid rgba(255,255,255,.08); }
+.master-card:hover { transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.2); }
+.master-card-icon { font-size:36px;margin-bottom:12px; }
+.master-card-title { font-size:16px;font-weight:900;color:#fff;margin-bottom:4px; }
+.master-card-desc { font-size:12px;color:rgba(255,255,255,.45);line-height:1.5; }
+/* Word Book notebook style */
+.wb-notebook { max-width:480px;margin:24px auto;background:#f5f0ff;border-radius:16px;border:2px solid #e9d5ff;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.15); }
+.wb-header { background:linear-gradient(135deg,#7c3aed,#a855f7);padding:16px 20px;text-align:center; }
+.wb-header-title { font-size:18px;font-weight:900;color:#fff; }
+.wb-header-sub { font-size:11px;color:rgba(255,255,255,.6);margin-top:4px; }
+.wb-spine { position:relative;border-top:3px solid #d8b4fe; }
+.wb-spine::before { content:'';position:absolute;top:-8px;left:20px;right:20px;height:16px;background:repeating-linear-gradient(90deg,transparent,transparent 24px,#c084fc 24px,#c084fc 28px);opacity:.3; }
+.wb-entry { display:flex;border-bottom:1px solid #ede9fe;padding:12px 20px;align-items:center;transition:background .1s; }
+.wb-entry:hover { background:rgba(124,58,237,.04); }
+.wb-entry-ko { flex:1;font-size:15px;font-weight:700;color:#1a1a2e; }
+.wb-entry-rom { font-size:10px;color:#7c3aed;margin-top:2px; }
+.wb-entry-en { flex:1;font-size:13px;color:#6b7280;text-align:right; }
+.wb-entry-date { font-size:9px;color:#a78bfa;margin-left:8px; }
+.wb-empty { text-align:center;padding:40px 20px;color:#a78bfa;font-size:13px; }
+.wb-search { width:100%;padding:10px 16px;border:none;border-bottom:2px solid #ede9fe;font-size:13px;font-family:inherit;background:#faf5ff;outline:none; }
+.wb-search:focus { border-bottom-color:#7c3aed; }
+@media(max-width:600px) {
+  .sr-top-tabs { padding:0 12px; }
+  .sr-top-tab { padding:10px 16px;font-size:12px; }
+  .master-grid { grid-template-columns:1fr;padding:16px; }
+}
+
 /* Phone Call banner + modal */
 .phone-wave { display:inline-block;width:3px;height:12px;background:#34d399;border-radius:2px;margin:0 1px;animation:phoneWave .6s ease-in-out infinite alternate; }
 .phone-wave:nth-child(2) { animation-delay:.1s;height:18px; }
@@ -1650,70 +1686,23 @@ body { background: #0b1626 !important; }
 <!-- STUDY ROOM PAGE -->
 <div class="sr-page">
 <div class="sr-wrap2">
+
+<!-- ── TOP TAB BAR ── -->
+<div style="background:linear-gradient(135deg,#0d1b2e,#1a3a6b);border-bottom:1px solid rgba(255,255,255,.08)">
+<div class="sr-top-tabs">
+  <button class="sr-top-tab on" onclick="switchSrTab('study',this)">📝 Study</button>
+  <button class="sr-top-tab" onclick="switchSrTab('master',this)">🎯 Master</button>
+  <button class="sr-top-tab" onclick="switchSrTab('wordbook',this)">📖 단어장</button>
+</div>
+</div>
+
+<!-- ═══ TAB: Study (current layout) ═══ -->
+<div class="sr-tab-panel active" id="sr-panel-study">
 <div class="sr-layout">
 
 <!-- ── LEFT SIDEBAR ── -->
 <div class="sr-sidebar sr-sidebar-left">
-  <!-- 한국어 마스터 패스트트랙 배너 -->
-  <div class="sr-sb-panel" style="padding:0;overflow:hidden;background:linear-gradient(135deg,#1e3a5f,#0f766e);border:1px solid rgba(94,234,212,.2);cursor:pointer" onclick="openFastTrack()">
-    <div style="padding:16px">
-      <div style="font-size:18px;margin-bottom:4px">🎯</div>
-      <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:4px">한국어 마스터 패스트트랙</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.5;margin-bottom:10px">실제 상황별 대화 시나리오로 한국어를 배우세요</div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
-        <span style="padding:2px 8px;border-radius:10px;background:rgba(94,234,212,.1);color:#5eead4;font-size:9px;font-weight:700">카페</span>
-        <span style="padding:2px 8px;border-radius:10px;background:rgba(94,234,212,.1);color:#5eead4;font-size:9px;font-weight:700">택시</span>
-        <span style="padding:2px 8px;border-radius:10px;background:rgba(94,234,212,.1);color:#5eead4;font-size:9px;font-weight:700">편의점</span>
-        <span style="padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.3);font-size:9px;font-weight:700">+10 more</span>
-      </div>
-      <button onclick="event.stopPropagation();openFastTrack()" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(94,234,212,.3);background:rgba(94,234,212,.1);color:#5eead4;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">시작하기 →</button>
-    </div>
-  </div>
-
-  <!-- Korean Alphabet Cards -->
-  <div class="sr-sb-panel" style="padding:0;overflow:hidden;background:linear-gradient(135deg,#0c4a6e,#0369a1);border:1px solid rgba(56,189,248,.2);cursor:pointer" onclick="openAlphaModal()">
-    <div style="padding:16px">
-      <div style="font-size:18px;margin-bottom:4px">🇰🇷</div>
-      <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:4px">Korean Alphabet</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.5;margin-bottom:10px">한글 자음 & 모음 카드로 기초부터!</div>
-      <div id="sr-hangul-card" style="text-align:center;margin-bottom:10px">
-        <div id="sr-hangul-char" style="font-size:48px;font-weight:900;color:#fff;font-family:'Noto Serif KR',serif;line-height:1;margin-bottom:6px">ㄱ</div>
-        <div id="sr-hangul-rom" style="font-size:14px;font-weight:700;color:#7dd3fc;margin-bottom:2px">g/k</div>
-        <div id="sr-hangul-name" style="font-size:11px;color:rgba(255,255,255,.5)">기역 (giyeok)</div>
-        <div id="sr-hangul-example" style="font-size:13px;color:rgba(255,255,255,.6);margin-top:6px">가방 (gabang) = bag</div>
-      </div>
-      <button onclick="event.stopPropagation();openAlphaModal()" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(56,189,248,.3);background:rgba(56,189,248,.1);color:#7dd3fc;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">한글 학습하기 →</button>
-    </div>
-  </div>
-
-  <!-- Korean Slang 배너 -->
-  <div class="sr-sb-panel" style="padding:0;overflow:hidden;background:linear-gradient(135deg,#312e81,#7c3aed);border:1px solid rgba(196,181,253,.2);cursor:pointer" onclick="openSlangModal()">
-    <div style="padding:16px">
-      <div style="font-size:18px;margin-bottom:4px">🔥</div>
-      <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:4px">Korean Slang</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.5;margin-bottom:10px">요즘 한국인이 실제로 쓰는 신조어 & 줄임말</div>
-      <div id="sr-slang-preview" style="font-size:13px;color:#c4b5fd;font-weight:700;margin-bottom:6px">Loading...</div>
-      <div id="sr-slang-meaning" style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:8px"></div>
-      <button onclick="event.stopPropagation();openSlangModal()" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(196,181,253,.3);background:rgba(196,181,253,.1);color:#c4b5fd;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">슬랭 학습하기 →</button>
-    </div>
-  </div>
-
-  <!-- Phone Call Learning 배너 -->
-  <div class="sr-sb-panel" style="padding:0;overflow:hidden;background:linear-gradient(135deg,#064e3b,#047857);border:1px solid rgba(52,211,153,.2);cursor:pointer" onclick="openPhoneModal()">
-    <div style="padding:16px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span style="font-size:18px">📞</span>
-        <div style="display:flex;align-items:center;gap:1px;height:20px">
-          <span class="phone-wave"></span><span class="phone-wave"></span><span class="phone-wave"></span><span class="phone-wave"></span><span class="phone-wave"></span>
-        </div>
-      </div>
-      <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:4px">Phone Call Practice</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.5;margin-bottom:10px">실제 전화 통화로 듣기 & 말하기 연습</div>
-      <button onclick="event.stopPropagation();openPhoneModal()" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(52,211,153,.3);background:rgba(52,211,153,.1);color:#34d399;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">통화 연습하기 →</button>
-    </div>
-  </div>
-
-  <!-- TODAY'S PHRASE (moved from right) -->
+  <!-- TODAY'S PHRASE -->
   <div class="sr-sb-panel pcard" style="padding:0;overflow:hidden">
     <div class="chd" style="padding:10px 14px"><div class="ct" style="color:rgba(255,255,255,.4)">🌟 Today's Phrase</div></div>
     <div class="cb" id="phrase-box-left" style="padding:12px 14px">
@@ -1722,7 +1711,7 @@ body { background: #0b1626 !important; }
     </div>
   </div>
 
-  <!-- MUST-KNOW VOCAB (moved from right) -->
+  <!-- MUST-KNOW VOCAB -->
   <div class="sr-sb-panel" style="padding:0;overflow:hidden">
     <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
       <div class="ct" style="color:rgba(255,255,255,.45)">📌 Must-know Vocab</div>
@@ -1733,7 +1722,7 @@ body { background: #0b1626 !important; }
     </div>
   </div>
 
-  <!-- MINI FLASHCARDS (moved from right) -->
+  <!-- MINI FLASHCARDS -->
   <div class="sr-sb-panel" style="padding:0;overflow:hidden">
     <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
       <div class="ct" style="color:rgba(255,255,255,.45)">📇 Flashcards</div>
@@ -2035,6 +2024,67 @@ body { background: #0b1626 !important; }
 </div><!-- /sr-sidebar -->
 
 </div><!-- /sr-layout -->
+</div><!-- /sr-panel-study -->
+
+<!-- ═══ TAB: Master ═══ -->
+<div class="sr-tab-panel" id="sr-panel-master">
+  <div style="max-width:1160px;margin:0 auto;padding:24px">
+    <div style="margin-bottom:20px">
+      <div style="font-size:20px;font-weight:900;color:#fff">🎯 Master Korean</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">실전 한국어 실력을 키우는 마스터 프로그램</div>
+    </div>
+    <div class="master-grid">
+      <div class="master-card" style="background:linear-gradient(135deg,#1e3a5f,#0f766e)" onclick="openFastTrack()">
+        <div class="master-card-icon">🎯</div>
+        <div class="master-card-title">패스트트랙</div>
+        <div class="master-card-desc">실제 상황별 대화 시나리오 · 카페, 택시, 편의점 등 8개 시나리오</div>
+        <div style="margin-top:12px;display:flex;gap:4px;flex-wrap:wrap">
+          <span style="padding:2px 8px;border-radius:10px;background:rgba(94,234,212,.15);color:#5eead4;font-size:9px;font-weight:700">8 시나리오</span>
+          <span style="padding:2px 8px;border-radius:10px;background:rgba(94,234,212,.15);color:#5eead4;font-size:9px;font-weight:700">분기 선택</span>
+        </div>
+      </div>
+      <div class="master-card" style="background:linear-gradient(135deg,#312e81,#7c3aed)" onclick="openSlangModal()">
+        <div class="master-card-icon">🔥</div>
+        <div class="master-card-title">Korean Slang</div>
+        <div class="master-card-desc">요즘 한국인이 실제로 쓰는 신조어 & 줄임말 · 카톡 대화 예문</div>
+        <div style="margin-top:12px"><span style="padding:2px 8px;border-radius:10px;background:rgba(196,181,253,.15);color:#c4b5fd;font-size:9px;font-weight:700">15 슬랭</span></div>
+      </div>
+      <div class="master-card" style="background:linear-gradient(135deg,#0c4a6e,#0369a1)" onclick="openAlphaModal()">
+        <div class="master-card-icon">🇰🇷</div>
+        <div class="master-card-title">Korean Alphabet</div>
+        <div class="master-card-desc">한글 자음 & 모음 조합 퀴즈 · 클릭하면 발음 재생</div>
+        <div style="margin-top:12px"><span style="padding:2px 8px;border-radius:10px;background:rgba(56,189,248,.15);color:#7dd3fc;font-size:9px;font-weight:700">30 퀴즈</span></div>
+      </div>
+      <div class="master-card" style="background:linear-gradient(135deg,#064e3b,#047857)" onclick="openPhoneModal()">
+        <div class="master-card-icon">📞</div>
+        <div class="master-card-title">Phone Call Practice</div>
+        <div class="master-card-desc">실제 전화 통화로 듣기 & 말하기 연습</div>
+        <div style="margin-top:12px"><span style="padding:2px 8px;border-radius:10px;background:rgba(52,211,153,.15);color:#34d399;font-size:9px;font-weight:700">Coming Soon</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB: Word Book (단어장) ═══ -->
+<div class="sr-tab-panel" id="sr-panel-wordbook">
+  <div style="max-width:1160px;margin:0 auto;padding:24px">
+    <div class="wb-notebook">
+      <div class="wb-header">
+        <div class="wb-header-title">📖 나의 단어장</div>
+        <div class="wb-header-sub">저장한 단어와 표현을 복습하세요</div>
+      </div>
+      <div class="wb-spine"></div>
+      <input class="wb-search" type="text" placeholder="🔍 단어 검색..." oninput="filterWordBook(this.value)">
+      <div id="wb-list">
+        <div class="wb-empty">로딩 중...</div>
+      </div>
+      <div style="padding:12px 20px;text-align:center;border-top:1px solid #ede9fe">
+        <button onclick="loadWordBook()" style="padding:8px 20px;border-radius:8px;border:1px solid #d8b4fe;background:#faf5ff;color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🔄 새로고침</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </div><!-- /sr-wrap2 -->
 </div><!-- /sr-page -->
 
@@ -5135,6 +5185,67 @@ function openPhoneModal() {
 function closePhoneModal() {
   document.getElementById('phone-overlay').classList.remove('open');
   document.body.style.overflow = '';
+}
+
+// ── Study Room Tab Switching ──
+function switchSrTab(tab, btn) {
+  document.querySelectorAll('.sr-top-tab').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelectorAll('.sr-tab-panel').forEach(function(p){ p.classList.remove('active'); });
+  if (btn) btn.classList.add('on');
+  var panel = document.getElementById('sr-panel-' + tab);
+  if (panel) panel.classList.add('active');
+  if (tab === 'wordbook') loadWordBook();
+}
+
+// ── Word Book (단어장) ──
+var _wbData = [];
+async function loadWordBook() {
+  var list = document.getElementById('wb-list');
+  if (!list) return;
+  if (!supaUser) { list.innerHTML = '<div class="wb-empty">로그인하면 저장한 단어를 볼 수 있어요</div>'; return; }
+  try {
+    var sb = getSupa();
+    if (!sb) return;
+    // Load from saved_words + user_saved_words (both tables)
+    var results = [];
+    var { data: sw } = await sb.from('saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(200);
+    if (sw) results = results.concat(sw.map(function(w){ return { ko:w.word_ko, rom:w.word_rom||'', en:w.word_en||'', date:w.created_at }; }));
+    var { data: usw } = await sb.from('user_saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(200);
+    if (usw) results = results.concat(usw.map(function(w){ return { ko:w.word_ko, rom:w.word_rom||'', en:w.word_en||'', date:w.created_at }; }));
+    // Also load Fast Track phrases
+    var { data: ftp } = await sb.from('fast_track_progress').select('phrases').eq('user_id', supaUser.id);
+    if (ftp) ftp.forEach(function(r){ (r.phrases||[]).forEach(function(p){ results.push({ ko:p, rom:'', en:'(패스트트랙 표현)', date:null }); }); });
+    // Deduplicate by ko
+    var seen = {};
+    _wbData = results.filter(function(w){ if (!w.ko || seen[w.ko]) return false; seen[w.ko]=true; return true; });
+    renderWordBook(_wbData);
+  } catch(e) {
+    console.warn('[WordBook]', e);
+    list.innerHTML = '<div class="wb-empty">단어를 불러올 수 없습니다</div>';
+  }
+}
+function renderWordBook(data) {
+  var list = document.getElementById('wb-list');
+  if (!data.length) {
+    list.innerHTML = '<div class="wb-empty">📝 저장한 단어가 없습니다<br><span style="font-size:11px;margin-top:8px;display:block">학습 중 단어를 탭하거나 패스트트랙에서 표현을 수집해보세요</span></div>';
+    return;
+  }
+  list.innerHTML = data.map(function(w) {
+    var dateStr = w.date ? new Date(w.date).toLocaleDateString('ko-KR', { month:'short', day:'numeric' }) : '';
+    return '<div class="wb-entry">'
+      + '<div><div class="wb-entry-ko">' + w.ko + '</div>' + (w.rom ? '<div class="wb-entry-rom">' + w.rom + '</div>' : '') + '</div>'
+      + '<div class="wb-entry-en">' + w.en + '</div>'
+      + (dateStr ? '<div class="wb-entry-date">' + dateStr + '</div>' : '')
+      + '</div>';
+  }).join('');
+}
+function filterWordBook(q) {
+  if (!q) { renderWordBook(_wbData); return; }
+  var lower = q.toLowerCase();
+  var filtered = _wbData.filter(function(w) {
+    return w.ko.indexOf(q) >= 0 || w.en.toLowerCase().indexOf(lower) >= 0 || (w.rom && w.rom.toLowerCase().indexOf(lower) >= 0);
+  });
+  renderWordBook(filtered);
 }
 
 // ── My Word Bank ──
