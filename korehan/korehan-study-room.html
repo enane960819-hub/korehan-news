@@ -1554,6 +1554,72 @@ body { background: #0b1626 !important; }
   .alpha-slot { width:44px;height:44px;font-size:22px; }
 }
 
+/* ─── FAST TRACK: Detroit-style Flowchart + Player ─── */
+.ft-overlay { position:fixed;inset:0;z-index:9500;background:#c8cdd3;opacity:0;pointer-events:none;transition:opacity .25s;overflow:hidden; }
+.ft-overlay.open { opacity:1;pointer-events:auto; }
+/* Geometric triangle pattern background */
+.ft-bg { position:absolute;inset:0;overflow:hidden; }
+.ft-bg::before,.ft-bg::after { content:'';position:absolute;background:rgba(255,255,255,.35); }
+.ft-bg::before { width:60vw;height:60vw;top:-10%;right:-5%;clip-path:polygon(50% 0%,0% 100%,100% 100%);transform:rotate(15deg); }
+.ft-bg::after { width:45vw;height:45vw;bottom:-15%;left:10%;clip-path:polygon(50% 0%,0% 100%,100% 100%);transform:rotate(-25deg);background:rgba(255,255,255,.2); }
+.ft-top { position:relative;z-index:2;padding:24px 28px 12px;display:flex;align-items:flex-start;justify-content:space-between; }
+.ft-title { font-family:'Playfair Display',serif;font-size:28px;font-weight:900;color:#1a2a3a; }
+.ft-sub { font-size:12px;color:#5a6a7a;margin-top:4px; }
+.ft-pct { font-size:32px;font-weight:900;color:#1a3a5a; }
+.ft-close-btn { position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;border:none;background:rgba(0,0,0,.1);color:#3a4a5a;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10; }
+.ft-close-btn:hover { background:rgba(0,0,0,.2); }
+/* Flowchart area (scrollable horizontally) */
+.ft-chart-wrap { position:relative;z-index:2;overflow-x:auto;overflow-y:hidden;padding:20px 28px 100px;-webkit-overflow-scrolling:touch; }
+.ft-chart { position:relative;min-width:1200px;height:400px; }
+.ft-chart svg { position:absolute;inset:0;width:100%;height:100%;pointer-events:none; }
+.ft-edge { stroke:#b0bcc8;stroke-width:3;fill:none;opacity:.4;transition:all .3s; }
+.ft-edge.visited { stroke:#2196F3;stroke-width:3.5;opacity:1; }
+/* Nodes */
+.ft-node { position:absolute;transform:translate(-50%,-50%);cursor:pointer;transition:all .2s; }
+.ft-node-box { padding:8px 16px;border-radius:10px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.12);border:2px solid transparent;text-align:center;min-width:100px;transition:all .2s; }
+.ft-node:hover .ft-node-box { box-shadow:0 4px 20px rgba(0,0,0,.2);transform:scale(1.04); }
+.ft-node.visited .ft-node-box { border-color:#2196F3;background:#e3f2fd; }
+.ft-node.current .ft-node-box { border-color:#2196F3;box-shadow:0 0 0 4px rgba(33,150,243,.25);background:#e3f2fd; }
+.ft-node.locked .ft-node-box { opacity:.35;background:#e8eaed; }
+.ft-node-label { font-size:11px;font-weight:700;color:#1a2a3a; }
+.ft-node-sub { font-size:9px;color:#6a7a8a;margin-top:2px; }
+.ft-node.start .ft-node-box { background:#1a3a5a;border-color:#1a3a5a; }
+.ft-node.start .ft-node-label { color:#fff; }
+.ft-node.end .ft-node-box { border-color:#059669;background:#ecfdf5; }
+.ft-node.end .ft-node-label { color:#059669; }
+/* Player modal (dialogue) */
+.ft-player { position:fixed;bottom:0;left:0;right:0;z-index:9600;background:linear-gradient(180deg,rgba(13,27,46,.0) 0%,#0d1b2e 15%);padding:40px 20px 28px;transform:translateY(100%);transition:transform .3s;max-height:60vh;overflow-y:auto; }
+.ft-player.open { transform:translateY(0); }
+.ft-player-scene { text-align:center;margin-bottom:8px;font-size:11px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:1px; }
+.ft-player-npc { font-size:12px;font-weight:700;color:#7ab8f5;margin-bottom:6px; }
+.ft-player-text { font-size:18px;font-weight:700;color:#fff;line-height:1.5;margin-bottom:20px;max-width:540px;margin-left:auto;margin-right:auto;text-align:center; }
+.ft-player-text .ft-ko { display:block;margin-bottom:4px; }
+.ft-player-text .ft-en { font-size:13px;font-weight:400;color:rgba(255,255,255,.4); }
+.ft-choices { display:flex;flex-direction:column;gap:8px;max-width:480px;margin:0 auto; }
+.ft-choice { padding:14px 20px;border-radius:12px;border:1.5px solid rgba(122,184,245,.25);background:rgba(122,184,245,.08);color:#fff;font-size:14px;font-weight:600;cursor:pointer;text-align:left;transition:all .15s;font-family:inherit;line-height:1.4; }
+.ft-choice:hover { background:rgba(122,184,245,.18);border-color:rgba(122,184,245,.5); }
+.ft-choice .ft-choice-en { font-size:11px;font-weight:400;color:rgba(255,255,255,.35);margin-top:3px; }
+.ft-choice.picked { border-color:#2196F3;background:rgba(33,150,243,.2); }
+.ft-choice.best { border-color:#059669;background:rgba(5,150,105,.15); }
+/* Phrases collected */
+.ft-phrases { max-width:480px;margin:20px auto 0;padding:16px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08); }
+.ft-phrases-title { font-size:11px;font-weight:700;color:rgba(255,255,255,.3);margin-bottom:8px; }
+.ft-phrase-chip { display:inline-block;padding:4px 12px;border-radius:20px;background:rgba(122,184,245,.1);border:1px solid rgba(122,184,245,.15);color:#7ab8f5;font-size:12px;font-weight:600;margin:3px 4px; }
+/* Result screen */
+.ft-result { text-align:center;padding:40px 20px; }
+.ft-result-icon { font-size:48px;margin-bottom:12px; }
+.ft-result-title { font-size:24px;font-weight:900;color:#1a2a3a;margin-bottom:4px; }
+.ft-result-sub { font-size:14px;color:#5a6a7a;margin-bottom:20px; }
+.ft-result-btn { padding:12px 32px;border-radius:12px;border:none;background:#2196F3;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin:4px; }
+.ft-result-btn.sec { background:rgba(0,0,0,.08);color:#3a4a5a; }
+@media(max-width:600px) {
+  .ft-title { font-size:20px; }
+  .ft-chart { min-width:900px;height:320px; }
+  .ft-player-text { font-size:16px; }
+  .ft-node-box { padding:6px 10px;min-width:80px; }
+  .ft-node-label { font-size:10px; }
+}
+
 /* Phone Call banner + modal */
 .phone-wave { display:inline-block;width:3px;height:12px;background:#34d399;border-radius:2px;margin:0 1px;animation:phoneWave .6s ease-in-out infinite alternate; }
 .phone-wave:nth-child(2) { animation-delay:.1s;height:18px; }
@@ -1581,13 +1647,19 @@ body { background: #0b1626 !important; }
 
 <!-- ── LEFT SIDEBAR ── -->
 <div class="sr-sidebar sr-sidebar-left">
-  <!-- 한국어 마스터팩 배너 -->
-  <div class="sr-sb-panel" style="padding:0;overflow:hidden;background:linear-gradient(135deg,#1e3a5f,#0f766e);border:1px solid rgba(94,234,212,.2)">
+  <!-- 한국어 마스터 패스트트랙 배너 -->
+  <div class="sr-sb-panel" style="padding:0;overflow:hidden;background:linear-gradient(135deg,#1e3a5f,#0f766e);border:1px solid rgba(94,234,212,.2);cursor:pointer" onclick="openFastTrack()">
     <div style="padding:16px">
       <div style="font-size:18px;margin-bottom:4px">🎯</div>
-      <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:4px">한국어 마스터팩</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.5;margin-bottom:10px">오늘의 주제에 맞는 문법, 어휘, 표현을 한번에 학습하세요</div>
-      <button onclick="openLearningSelector()" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(94,234,212,.3);background:rgba(94,234,212,.1);color:#5eead4;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">학습 시작하기 →</button>
+      <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:4px">한국어 마스터 패스트트랙</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.5;margin-bottom:10px">실제 상황별 대화 시나리오로 한국어를 배우세요</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
+        <span style="padding:2px 8px;border-radius:10px;background:rgba(94,234,212,.1);color:#5eead4;font-size:9px;font-weight:700">카페</span>
+        <span style="padding:2px 8px;border-radius:10px;background:rgba(94,234,212,.1);color:#5eead4;font-size:9px;font-weight:700">택시</span>
+        <span style="padding:2px 8px;border-radius:10px;background:rgba(94,234,212,.1);color:#5eead4;font-size:9px;font-weight:700">편의점</span>
+        <span style="padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.3);font-size:9px;font-weight:700">+10 more</span>
+      </div>
+      <button onclick="event.stopPropagation();openFastTrack()" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(94,234,212,.3);background:rgba(94,234,212,.1);color:#5eead4;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">시작하기 →</button>
     </div>
   </div>
 
@@ -4054,6 +4126,319 @@ function combineHangul(con, vow) {
   var mi = medials.indexOf(vow);
   if (ci < 0 || mi < 0) return '';
   return String.fromCharCode(0xAC00 + (ci * 21 + mi) * 28);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FAST TRACK — Scenario Engine + Detroit-style Flowchart
+// ═══════════════════════════════════════════════════════════════
+var _ftState = { scenario:null, nodeId:null, visited:[], path:[], phrases:[], playing:false };
+
+// ── Scenario Data ──
+var _FT_SCENARIOS = [
+{
+  id:'cafe', title:'THE CAFE', sub:'카페에서 음료 주문하기', titleKo:'카페 주문',
+  difficulty:'Beginner', icon:'☕', locked:false,
+  nodes: {
+    start:    { type:'start', x:3, y:50, label:'입장', next:'greet' },
+    greet:    { type:'npc', x:16, y:50, label:'바리스타 인사', npc:'바리스타', scene:'카페 카운터',
+                text:'어서오세요~ 주문하시겠어요?', textEn:'Welcome~ Would you like to order?',
+                choices:[
+                  { id:'g1', text:'아이스 아메리카노 주세요', textEn:'Iced americano please', next:'size_q', pts:3, phrase:'아이스 아메리카노 주세요' },
+                  { id:'g2', text:'네, 잠시만요...', textEn:'Yes, just a moment...', next:'hesitate', pts:1 },
+                  { id:'g3', text:'(메뉴판을 가리키며) 이거요', textEn:'(pointing at menu) This one', next:'point', pts:1 }
+                ]},
+    hesitate: { type:'npc', x:30, y:20, label:'잠시 망설임', npc:'바리스타', scene:'카페 카운터',
+                text:'천천히 보세요~ 메뉴 추천해드릴까요?', textEn:'Take your time~ Want me to recommend something?',
+                choices:[
+                  { id:'h1', text:'네, 추천해주세요!', textEn:'Yes, please recommend!', next:'recommend', pts:2, phrase:'추천해주세요' },
+                  { id:'h2', text:'아메리카노 있어요?', textEn:'Do you have americano?', next:'size_q', pts:2, phrase:'아메리카노 있어요?' }
+                ]},
+    point:    { type:'npc', x:30, y:80, label:'메뉴 가리킴', npc:'바리스타', scene:'카페 카운터',
+                text:'카페라떼요? 핫으로 드릴까요, 아이스로 드릴까요?', textEn:'Cafe latte? Hot or iced?',
+                choices:[
+                  { id:'p1', text:'아이스로 주세요', textEn:'Iced please', next:'size_q', pts:2, phrase:'아이스로 주세요' },
+                  { id:'p2', text:'핫으로 주세요', textEn:'Hot please', next:'size_q', pts:2, phrase:'핫으로 주세요' }
+                ]},
+    recommend:{ type:'npc', x:44, y:20, label:'추천 받기', npc:'바리스타', scene:'카페 카운터',
+                text:'요즘 자몽 허니 블랙티 인기 많아요! 드셔보시겠어요?', textEn:'Grapefruit honey black tea is popular these days! Want to try it?',
+                choices:[
+                  { id:'r1', text:'네, 그걸로 할게요!', textEn:'Yes, I\'ll have that!', next:'size_q', pts:3, phrase:'그걸로 할게요' },
+                  { id:'r2', text:'그냥 아메리카노로 할게요', textEn:'I\'ll just have americano', next:'size_q', pts:2 }
+                ]},
+    size_q:   { type:'npc', x:56, y:50, label:'사이즈 선택', npc:'바리스타', scene:'카페 카운터',
+                text:'사이즈 어떤 걸로 하시겠어요? 톨, 그란데, 벤티 있어요.', textEn:'What size? We have Tall, Grande, Venti.',
+                choices:[
+                  { id:'s1', text:'톨 사이즈로 주세요', textEn:'Tall size please', next:'pay_q', pts:3, phrase:'톨 사이즈로 주세요' },
+                  { id:'s2', text:'제일 큰 거로 주세요', textEn:'The biggest one please', next:'pay_q', pts:2, phrase:'제일 큰 거로 주세요' },
+                  { id:'s3', text:'사이즈가 뭐예요?', textEn:'What are the sizes?', next:'size_explain', pts:1, phrase:'사이즈가 뭐예요?' }
+                ]},
+    size_explain:{ type:'npc', x:68, y:25, label:'사이즈 설명', npc:'바리스타', scene:'카페 카운터',
+                text:'톨이 제일 작고요, 그란데가 중간, 벤티가 제일 커요!', textEn:'Tall is the smallest, Grande is medium, Venti is the largest!',
+                choices:[
+                  { id:'se1', text:'그란데로 할게요', textEn:'I\'ll have Grande', next:'pay_q', pts:2, phrase:'그란데로 할게요' }
+                ]},
+    pay_q:    { type:'npc', x:76, y:50, label:'결제', npc:'바리스타', scene:'카페 카운터',
+                text:'결제는 어떻게 하시겠어요?', textEn:'How would you like to pay?',
+                choices:[
+                  { id:'pq1', text:'카드로 할게요', textEn:'By card please', next:'done_good', pts:3, phrase:'카드로 할게요' },
+                  { id:'pq2', text:'현금이요', textEn:'Cash', next:'done_good', pts:2 },
+                  { id:'pq3', text:'이거 얼마예요?', textEn:'How much is this?', next:'price_ask', pts:1, phrase:'이거 얼마예요?' }
+                ]},
+    price_ask:{ type:'npc', x:86, y:25, label:'가격 확인', npc:'바리스타', scene:'카페 카운터',
+                text:'4,500원이에요~', textEn:'It\'s 4,500 won~',
+                choices:[
+                  { id:'pa1', text:'카드로 할게요', textEn:'By card please', next:'done_good', pts:2, phrase:'카드로 할게요' }
+                ]},
+    done_good:{ type:'end', x:94, y:50, label:'주문 완료! ☕', npc:'바리스타', scene:'카페 카운터',
+                text:'네~ 잠시만 기다려주세요! 음료 나오면 불러드릴게요 😊', textEn:'Yes~ Please wait a moment! I\'ll call you when your drink is ready 😊',
+                choices:[]}
+  },
+  edges:[
+    ['start','greet'],['greet','size_q'],['greet','hesitate'],['greet','point'],
+    ['hesitate','recommend'],['hesitate','size_q'],['point','size_q'],
+    ['recommend','size_q'],['size_q','pay_q'],['size_q','size_explain'],
+    ['size_explain','pay_q'],['pay_q','done_good'],['pay_q','price_ask'],['price_ask','done_good']
+  ]
+},
+{
+  id:'taxi', title:'THE TAXI', sub:'택시 타고 목적지 가기', titleKo:'택시 타기',
+  difficulty:'Beginner', icon:'🚕', locked:true, nodes:{}, edges:[]
+},
+{
+  id:'conv-store', title:'THE CONVENIENCE STORE', sub:'편의점에서 물건 사기', titleKo:'편의점',
+  difficulty:'Beginner', icon:'🏪', locked:true, nodes:{}, edges:[]
+},
+{
+  id:'restaurant', title:'THE RESTAURANT', sub:'식당에서 주문하기', titleKo:'식당 주문',
+  difficulty:'Beginner', icon:'🍜', locked:true, nodes:{}, edges:[]
+},
+{
+  id:'immigration', title:'THE IMMIGRATION OFFICE', sub:'출입국사무소 방문', titleKo:'출입국사무소',
+  difficulty:'Intermediate', icon:'🏛️', locked:true, nodes:{}, edges:[]
+}
+];
+
+// ── Flowchart Renderer ──
+function renderFlowchart(scenario) {
+  var chart = document.getElementById('ft-chart');
+  var svg = document.getElementById('ft-svg');
+  if (!chart || !svg) return;
+  // Clear
+  chart.querySelectorAll('.ft-node').forEach(function(n){ n.remove(); });
+  svg.innerHTML = '';
+  var nodes = scenario.nodes;
+  var edges = scenario.edges;
+  var visited = _ftState.visited;
+  var visitedEdges = [];
+  for (var i = 0; i < _ftState.path.length - 1; i++) {
+    visitedEdges.push(_ftState.path[i] + '->' + _ftState.path[i+1]);
+  }
+  // Draw edges
+  edges.forEach(function(e) {
+    var from = nodes[e[0]], to = nodes[e[1]];
+    if (!from || !to) return;
+    var x1 = from.x + '%', y1 = from.y + '%', x2 = to.x + '%', y2 = to.y + '%';
+    var mx = ((from.x + to.x) / 2) + '%';
+    var path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', 'M ' + x1 + ' ' + y1 + ' C ' + mx + ' ' + y1 + ', ' + mx + ' ' + y2 + ', ' + x2 + ' ' + y2);
+    path.setAttribute('class', 'ft-edge' + (visitedEdges.indexOf(e[0]+'->'+e[1]) >= 0 ? ' visited' : ''));
+    svg.appendChild(path);
+  });
+  // Draw nodes
+  Object.keys(nodes).forEach(function(id) {
+    var n = nodes[id];
+    var div = document.createElement('div');
+    var isVisited = visited.indexOf(id) >= 0;
+    var isCurrent = _ftState.nodeId === id;
+    var isLocked = !isVisited && !isCurrent;
+    div.className = 'ft-node' + (n.type === 'start' ? ' start' : '') + (n.type === 'end' ? ' end' : '')
+      + (isVisited ? ' visited' : '') + (isCurrent ? ' current' : '') + (isLocked ? ' locked' : '');
+    div.style.left = n.x + '%';
+    div.style.top = n.y + '%';
+    div.innerHTML = '<div class="ft-node-box"><div class="ft-node-label">' + n.label + '</div>'
+      + (n.npc ? '<div class="ft-node-sub">' + n.npc + '</div>' : '') + '</div>';
+    div.onclick = function() {
+      if (isVisited && n.type !== 'start') showNodeReplay(id);
+    };
+    chart.appendChild(div);
+  });
+}
+
+function showNodeReplay(id) {
+  var n = _ftState.scenario.nodes[id];
+  if (!n) return;
+  showToast(n.npc + ': ' + n.text);
+}
+
+// ── Player Engine ──
+function openFastTrack() {
+  var ov = document.getElementById('ft-overlay');
+  if (!ov) return;
+  // Show scenario list
+  renderScenarioList();
+  document.getElementById('ft-scenario-list').style.display = 'block';
+  document.getElementById('ft-chart').parentElement.style.display = 'none';
+  document.getElementById('ft-title').textContent = 'FAST TRACK';
+  document.getElementById('ft-sub').textContent = '한국어 마스터 패스트트랙';
+  document.getElementById('ft-pct').textContent = '';
+  ov.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeFastTrack() {
+  document.getElementById('ft-overlay').classList.remove('open');
+  document.getElementById('ft-player').classList.remove('open');
+  document.body.style.overflow = '';
+  _ftState.playing = false;
+}
+
+function renderScenarioList() {
+  var el = document.getElementById('ft-scenarios');
+  el.innerHTML = _FT_SCENARIOS.map(function(s) {
+    var lockStyle = s.locked ? 'opacity:.4;pointer-events:none;' : 'cursor:pointer;';
+    return '<div onclick="startScenario(\'' + s.id + '\')" style="padding:20px;border-radius:14px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);border:2px solid transparent;transition:all .15s;' + lockStyle + '"'
+      + ' onmouseover="if(!' + s.locked + ')this.style.borderColor=\'#2196F3\'" onmouseout="this.style.borderColor=\'transparent\'">'
+      + '<div style="font-size:28px;margin-bottom:8px">' + s.icon + '</div>'
+      + '<div style="font-size:14px;font-weight:900;color:#1a2a3a">' + s.titleKo + '</div>'
+      + '<div style="font-size:11px;color:#5a6a7a;margin-top:2px">' + s.sub + '</div>'
+      + '<div style="margin-top:8px;display:flex;align-items:center;gap:6px">'
+      + '<span style="padding:2px 8px;border-radius:10px;background:' + (s.locked ? '#e5e7eb' : '#dbeafe') + ';color:' + (s.locked ? '#9ca3af' : '#2563eb') + ';font-size:10px;font-weight:700">' + s.difficulty + '</span>'
+      + (s.locked ? '<span style="font-size:10px;color:#9ca3af">🔒 Locked</span>' : '') + '</div></div>';
+  }).join('');
+}
+
+function startScenario(id) {
+  var scenario = _FT_SCENARIOS.find(function(s){ return s.id === id; });
+  if (!scenario || scenario.locked) return;
+  _ftState = { scenario:scenario, nodeId:'start', visited:['start'], path:['start'], phrases:[], playing:true };
+  // Update header
+  document.getElementById('ft-title').textContent = scenario.title;
+  document.getElementById('ft-sub').textContent = scenario.sub;
+  updateFtPct();
+  // Show chart, hide list
+  document.getElementById('ft-scenario-list').style.display = 'none';
+  document.getElementById('ft-chart').parentElement.style.display = 'block';
+  renderFlowchart(scenario);
+  // Auto-advance from start
+  var startNode = scenario.nodes.start;
+  if (startNode && startNode.next) {
+    setTimeout(function(){ advanceToNode(startNode.next); }, 600);
+  }
+}
+
+function advanceToNode(nodeId) {
+  var scenario = _ftState.scenario;
+  var node = scenario.nodes[nodeId];
+  if (!node) return;
+  _ftState.nodeId = nodeId;
+  if (_ftState.visited.indexOf(nodeId) < 0) _ftState.visited.push(nodeId);
+  if (_ftState.path[_ftState.path.length - 1] !== nodeId) _ftState.path.push(nodeId);
+  updateFtPct();
+  renderFlowchart(scenario);
+  // Show player
+  if (node.type === 'end') {
+    showEndNode(node);
+  } else if (node.text) {
+    showDialogue(node);
+  }
+}
+
+function showDialogue(node) {
+  var player = document.getElementById('ft-player');
+  document.getElementById('ftp-scene').textContent = node.scene || '';
+  document.getElementById('ftp-npc').textContent = node.npc || '';
+  document.getElementById('ftp-text').innerHTML =
+    '<span class="ft-ko">' + node.text + '</span>'
+    + '<span class="ft-en">' + (node.textEn || '') + '</span>';
+  var choicesEl = document.getElementById('ftp-choices');
+  choicesEl.innerHTML = (node.choices || []).map(function(c, i) {
+    return '<button class="ft-choice" onclick="pickChoice(\'' + _ftState.nodeId + '\',' + i + ')">'
+      + c.text
+      + (c.textEn ? '<div class="ft-choice-en">' + c.textEn + '</div>' : '')
+      + '</button>';
+  }).join('');
+  // Show collected phrases
+  var phrasesEl = document.getElementById('ftp-phrases');
+  var phrasesList = document.getElementById('ftp-phrases-list');
+  if (_ftState.phrases.length) {
+    phrasesList.innerHTML = _ftState.phrases.map(function(p){ return '<span class="ft-phrase-chip">' + p + '</span>'; }).join('');
+    phrasesEl.style.display = 'block';
+  } else {
+    phrasesEl.style.display = 'none';
+  }
+  player.classList.add('open');
+  // Speak NPC line
+  speakHangul(node.text);
+}
+
+function pickChoice(nodeId, idx) {
+  var node = _ftState.scenario.nodes[nodeId];
+  if (!node || !node.choices || !node.choices[idx]) return;
+  var choice = node.choices[idx];
+  // Highlight picked choice
+  var btns = document.querySelectorAll('#ftp-choices .ft-choice');
+  btns.forEach(function(b, i) {
+    b.style.pointerEvents = 'none';
+    if (i === idx) b.classList.add('picked');
+    else b.style.opacity = '.3';
+  });
+  // Collect phrase
+  if (choice.phrase && _ftState.phrases.indexOf(choice.phrase) < 0) {
+    _ftState.phrases.push(choice.phrase);
+  }
+  // Advance after short delay
+  setTimeout(function(){
+    document.getElementById('ft-player').classList.remove('open');
+    setTimeout(function(){ advanceToNode(choice.next); }, 300);
+  }, 800);
+}
+
+function showEndNode(node) {
+  var player = document.getElementById('ft-player');
+  document.getElementById('ftp-scene').textContent = '';
+  document.getElementById('ftp-npc').textContent = node.npc || '';
+  document.getElementById('ftp-text').innerHTML =
+    '<span class="ft-ko">' + node.text + '</span>'
+    + '<span class="ft-en">' + (node.textEn || '') + '</span>';
+  var choicesEl = document.getElementById('ftp-choices');
+  // Show result
+  var totalNodes = Object.keys(_ftState.scenario.nodes).length;
+  var visitedCount = _ftState.visited.length;
+  var pct = Math.round((visitedCount / totalNodes) * 100);
+  choicesEl.innerHTML = '<div class="ft-result">'
+    + '<div class="ft-result-icon">🎉</div>'
+    + '<div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:4px">시나리오 완료!</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:6px">탐색률: ' + pct + '% (' + visitedCount + '/' + totalNodes + ' 노드)</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.35);margin-bottom:16px">다른 선택지를 골라 더 많은 경로를 탐색해보세요!</div>'
+    + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
+    + '<button class="ft-result-btn" onclick="startScenario(\'' + _ftState.scenario.id + '\')">🔄 다시 하기</button>'
+    + '<button class="ft-result-btn sec" style="background:rgba(255,255,255,.1);color:#fff" onclick="closeFtPlayer();showFtChart()">📊 플로우차트 보기</button>'
+    + '</div></div>';
+  // Phrases
+  var phrasesEl = document.getElementById('ftp-phrases');
+  var phrasesList = document.getElementById('ftp-phrases-list');
+  if (_ftState.phrases.length) {
+    phrasesList.innerHTML = _ftState.phrases.map(function(p){ return '<span class="ft-phrase-chip">' + p + '</span>'; }).join('');
+    phrasesEl.style.display = 'block';
+  }
+  player.classList.add('open');
+}
+
+function closeFtPlayer() {
+  document.getElementById('ft-player').classList.remove('open');
+}
+
+function showFtChart() {
+  // Just close player, chart is already visible
+  closeFtPlayer();
+  renderFlowchart(_ftState.scenario);
+}
+
+function updateFtPct() {
+  var total = Object.keys(_ftState.scenario.nodes).length;
+  var visited = _ftState.visited.length;
+  var pct = Math.round((visited / total) * 100);
+  document.getElementById('ft-pct').textContent = pct + '%';
 }
 
 // ── Phone Call Modal ──
@@ -9548,6 +9933,43 @@ function closeReviewModal() {
   if (mSub) mSub.textContent = (date >= 1 && date <= 3) ? '25 questions · 15s timer' : '매월 1~3일에 열림';
 })();
 </script>
+
+<!-- ═══ FAST TRACK OVERLAY ═══ -->
+<div class="ft-overlay" id="ft-overlay">
+  <div class="ft-bg"></div>
+  <button class="ft-close-btn" onclick="closeFastTrack()">&times;</button>
+  <div class="ft-top">
+    <div>
+      <div class="ft-title" id="ft-title">THE CAFE</div>
+      <div class="ft-sub" id="ft-sub">카페에서 음료 주문하기</div>
+    </div>
+    <div style="text-align:right">
+      <div class="ft-pct" id="ft-pct">0%</div>
+      <div class="ft-sub">COMPLETED</div>
+    </div>
+  </div>
+  <div class="ft-chart-wrap">
+    <div class="ft-chart" id="ft-chart">
+      <svg id="ft-svg"></svg>
+    </div>
+  </div>
+  <!-- Scenario list (shown when no scenario is active) -->
+  <div id="ft-scenario-list" style="position:relative;z-index:2;padding:0 28px 28px;display:none">
+    <div style="font-size:16px;font-weight:900;color:#1a2a3a;margin-bottom:16px">시나리오 선택</div>
+    <div id="ft-scenarios" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px"></div>
+  </div>
+</div>
+<!-- Fast Track Player (dialogue overlay at bottom) -->
+<div class="ft-player" id="ft-player">
+  <div class="ft-player-scene" id="ftp-scene"></div>
+  <div class="ft-player-npc" id="ftp-npc"></div>
+  <div class="ft-player-text" id="ftp-text"></div>
+  <div class="ft-choices" id="ftp-choices"></div>
+  <div class="ft-phrases" id="ftp-phrases" style="display:none">
+    <div class="ft-phrases-title">📝 배운 표현</div>
+    <div id="ftp-phrases-list"></div>
+  </div>
+</div>
 
 <!-- ═══ SLANG MODAL ═══ -->
 <div class="feat-overlay" id="slang-overlay" onclick="if(event.target===this)closeSlangModal()">
