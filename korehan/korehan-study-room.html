@@ -821,7 +821,8 @@ body { background: #0b1626 !important; }
 }
 @media(max-width: 1280px) { .sr-layout { grid-template-columns: 246px 1fr 290px; gap:12px; } }
 @media(max-width: 1024px) { .sr-layout { grid-template-columns: 1fr 320px; } .sr-sidebar-left { display:none; } }
-@media(max-width: 860px)  { .sr-layout { grid-template-columns: 1fr; } .sr-sidebar, .sr-sidebar-left { display:none !important; } }
+@media(max-width: 860px)  { .sr-layout { grid-template-columns: 1fr; } .sr-sidebar-left { display:none !important; } }
+@media(max-width: 640px)  { .sr-sidebar { display:none !important; } }
 
 /* Mobile sidebar tabs */
 .sr-mob-tabs { display:none !important; }
@@ -1627,15 +1628,18 @@ body { background: #0b1626 !important; }
   .ft-node-label { font-size:10px; }
 }
 
-/* ─── Study Room Top Tabs (mobile only, sticky) ─── */
-.sr-top-tabs-wrap { display:none; }
-@media(max-width:860px) {
-  .sr-top-tabs-wrap { display:block;position:sticky;top:0;z-index:100;background:#0d1b2e;border-bottom:1px solid rgba(255,255,255,.1);padding:0; }
-  .sr-top-tabs { display:flex;gap:0;margin:0;padding:0; }
+/* ─── Study Room Category Tabs ─── */
+.sr-top-tabs-wrap { position:sticky;top:0;z-index:100;background:linear-gradient(180deg,#080f1a 0%,#0d1b2e 100%);border-bottom:1px solid rgba(255,255,255,.06);padding:8px 16px 0; }
+.sr-top-tabs { display:flex;gap:6px;max-width:1160px;margin:0 auto; }
+.sr-top-tab { padding:8px 18px;font-size:12px;font-weight:700;color:rgba(255,255,255,.35);cursor:pointer;border:1px solid rgba(255,255,255,.06);border-bottom:none;border-radius:8px 8px 0 0;background:rgba(255,255,255,.03);font-family:inherit;text-align:center;transition:all .15s;white-space:nowrap; }
+.sr-top-tab:hover { color:rgba(255,255,255,.6);background:rgba(255,255,255,.06); }
+.sr-top-tab.on { color:#fff;background:rgba(122,184,245,.12);border-color:rgba(122,184,245,.2); }
+@media(max-width:640px) { .sr-top-tab { flex:1;padding:10px 6px;font-size:11px; } }
+/* On desktop, always show Study tab regardless of active panel */
+@media(min-width:861px) {
+  .sr-tab-panel#sr-panel-study { display:block !important; }
+  .sr-tab-panel#sr-panel-help { display:none !important; }
 }
-.sr-top-tab { flex:1;padding:12px 0;font-size:12px;font-weight:700;color:rgba(255,255,255,.4);cursor:pointer;border:none;border-bottom:2px solid transparent;background:none;font-family:inherit;text-align:center;transition:all .15s; }
-.sr-top-tab:hover { color:rgba(255,255,255,.7); }
-.sr-top-tab.on { color:#7ab8f5;border-bottom-color:#7ab8f5; }
 .sr-tab-panel { display:none; }
 .sr-tab-panel.active { display:block; }
 /* On desktop, always show Study tab and ignore other tab panels */
@@ -1651,7 +1655,7 @@ body { background: #0b1626 !important; }
 .master-card-title { font-size:16px;font-weight:900;color:#fff;margin-bottom:4px; }
 .master-card-desc { font-size:12px;color:rgba(255,255,255,.45);line-height:1.5; }
 /* Word Book notebook style */
-.wb-notebook { max-width:480px;margin:24px auto;background:#f5f0ff;border-radius:16px;border:2px solid #e9d5ff;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.15); }
+.wb-notebook { max-width:800px;margin:24px auto;background:#f5f0ff;border-radius:16px;border:2px solid #e9d5ff;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.15); }
 .wb-header { background:linear-gradient(135deg,#7c3aed,#a855f7);padding:16px 20px;text-align:center; }
 .wb-header-title { font-size:18px;font-weight:900;color:#fff; }
 .wb-header-sub { font-size:11px;color:rgba(255,255,255,.6);margin-top:4px; }
@@ -1700,10 +1704,10 @@ body { background: #0b1626 !important; }
 <!-- ── TOP TAB BAR (mobile only, sticky) ── -->
 <div class="sr-top-tabs-wrap">
 <div class="sr-top-tabs">
-  <button class="sr-top-tab on" onclick="switchSrTab('study',this)">Study</button>
-  <button class="sr-top-tab" onclick="switchSrTab('help',this)">Help</button>
-  <button class="sr-top-tab" onclick="switchSrTab('master',this)">Master</button>
-  <button class="sr-top-tab" onclick="switchSrTab('wordbook',this)">단어장</button>
+  <button class="sr-top-tab on" onclick="switchSrTab('study',this)">📝 Study</button>
+  <button class="sr-top-tab" onclick="switchSrTab('help',this)">📚 Help</button>
+  <button class="sr-top-tab" onclick="switchSrTab('master',this)">🎯 Master</button>
+  <button class="sr-top-tab" onclick="switchSrTab('wordbook',this)">📖 단어장</button>
 </div>
 </div>
 
@@ -2089,6 +2093,10 @@ body { background: #0b1626 !important; }
       <div class="wb-header">
         <div class="wb-header-title">📖 나의 단어장</div>
         <div class="wb-header-sub">저장한 단어와 표현을 복습하세요</div>
+        <div style="display:flex;gap:6px;margin-top:10px;justify-content:center">
+          <button onclick="toggleWbHide()" id="wb-hide-btn" style="padding:5px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">👁️ 뜻 가리기</button>
+          <button onclick="startWbQuiz()" style="padding:5px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">🧪 퀴즈 모드</button>
+        </div>
       </div>
       <div class="wb-spine"></div>
       <div style="display:flex;gap:0;border-bottom:1px solid #ede9fe">
@@ -5323,6 +5331,76 @@ function filterWordBook(q) {
     return w.ko.indexOf(q) >= 0 || w.en.toLowerCase().indexOf(lower) >= 0 || (w.rom && w.rom.toLowerCase().indexOf(lower) >= 0);
   });
   renderWordBook(filtered);
+}
+
+// ── Word Book: Hide meaning toggle ──
+var _wbHidden = false;
+function toggleWbHide() {
+  _wbHidden = !_wbHidden;
+  var btn = document.getElementById('wb-hide-btn');
+  if (btn) btn.textContent = _wbHidden ? '👁️ 뜻 보기' : '👁️ 뜻 가리기';
+  document.querySelectorAll('.wb-entry-en').forEach(function(el) {
+    if (_wbHidden) {
+      el.dataset.original = el.textContent;
+      el.textContent = '??? (탭하면 보기)';
+      el.style.cursor = 'pointer';
+      el.style.color = '#d8b4fe';
+      el.onclick = function() { this.textContent = this.dataset.original; this.style.color = ''; };
+    } else {
+      if (el.dataset.original) el.textContent = el.dataset.original;
+      el.style.cursor = '';
+      el.style.color = '';
+      el.onclick = null;
+    }
+  });
+}
+
+// ── Word Book: Quiz mode ──
+var _wbQuizIdx = 0, _wbQuizScore = 0, _wbQuizPool = [];
+function startWbQuiz() {
+  if (!_wbData || _wbData.length < 4) { showToast('단어 4개 이상 저장해야 퀴즈 가능해요'); return; }
+  _wbQuizPool = _wbData.slice().sort(function(){ return Math.random()-.5; }).slice(0, Math.min(10, _wbData.length));
+  _wbQuizIdx = 0; _wbQuizScore = 0;
+  renderWbQuizQ();
+}
+function renderWbQuizQ() {
+  var list = document.getElementById('wb-list');
+  if (_wbQuizIdx >= _wbQuizPool.length) {
+    list.innerHTML = '<div style="text-align:center;padding:40px 20px">'
+      + '<div style="font-size:36px;margin-bottom:12px">🎉</div>'
+      + '<div style="font-size:18px;font-weight:900;color:#7c3aed">퀴즈 완료!</div>'
+      + '<div style="font-size:14px;color:#6b7280;margin-top:8px">' + _wbQuizScore + ' / ' + _wbQuizPool.length + ' 정답</div>'
+      + '<button onclick="renderWordBook(_wbData);renderWbCounts()" style="margin-top:16px;padding:10px 24px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">단어장으로 돌아가기</button>'
+      + '</div>';
+    return;
+  }
+  var q = _wbQuizPool[_wbQuizIdx];
+  // 4 choices: correct + 3 random wrong
+  var wrongs = _wbData.filter(function(w){ return w.ko !== q.ko && w.en; }).sort(function(){ return Math.random()-.5; }).slice(0,3);
+  var choices = wrongs.map(function(w){ return w.en; }).concat([q.en]).sort(function(){ return Math.random()-.5; });
+  list.innerHTML = '<div style="padding:30px 20px;text-align:center">'
+    + '<div style="font-size:11px;color:#9ca3af;margin-bottom:8px">' + (_wbQuizIdx+1) + ' / ' + _wbQuizPool.length + '</div>'
+    + '<div style="font-size:32px;font-weight:900;color:#1a1a2e;margin-bottom:4px;font-family:\'Noto Serif KR\',serif">' + q.ko + '</div>'
+    + (q.rom ? '<div style="font-size:13px;color:#7c3aed;margin-bottom:16px;font-style:italic">' + q.rom + '</div>' : '<div style="margin-bottom:16px"></div>')
+    + '<div style="display:flex;flex-direction:column;gap:8px;max-width:400px;margin:0 auto">'
+    + choices.map(function(c) {
+      return '<button onclick="checkWbQuiz(this,\'' + c.replace(/'/g,"\\'") + '\',\'' + q.en.replace(/'/g,"\\'") + '\')" style="padding:12px 16px;border-radius:10px;border:1px solid #e9d5ff;background:#fff;color:#1a1a2e;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s">' + c + '</button>';
+    }).join('')
+    + '</div></div>';
+}
+function checkWbQuiz(btn, picked, correct) {
+  var btns = btn.parentElement.querySelectorAll('button');
+  btns.forEach(function(b) {
+    b.style.pointerEvents = 'none';
+    if (b.textContent === correct) { b.style.background = '#dcfce7'; b.style.borderColor = '#22c55e'; b.style.color = '#166534'; }
+  });
+  if (picked === correct) {
+    _wbQuizScore++;
+    btn.style.background = '#dcfce7'; btn.style.borderColor = '#22c55e';
+  } else {
+    btn.style.background = '#fee2e2'; btn.style.borderColor = '#ef4444'; btn.style.color = '#991b1b';
+  }
+  setTimeout(function() { _wbQuizIdx++; renderWbQuizQ(); }, 1200);
 }
 
 // ── My Word Bank ──
