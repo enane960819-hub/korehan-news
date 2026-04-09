@@ -905,16 +905,18 @@ body { background: #0b1626 !important; }
   width: 100%;
   min-height: 64px;
   padding: 16px 28px;
-  background: rgba(255,255,255,0.12);
-  border: 1.5px solid rgba(255,255,255,0.22);
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  border: 1.5px solid rgba(122,184,245,0.35);
   border-radius: 12px;
   cursor: pointer;
   font-family: inherit;
   color: #fff;
-  transition: transform .15s, background .15s, border-color .15s;
+  transition: transform .15s, box-shadow .2s;
   flex-shrink: 0;
+  box-shadow: 0 4px 20px rgba(37,99,235,.3);
+  overflow: hidden;
 }
-.sr-start-btn:hover { transform: scale(1.02); background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.35); }
+.sr-start-btn:hover { transform: scale(1.02); box-shadow: 0 6px 28px rgba(37,99,235,.45); }
 .sr-start-btn:active { transform: scale(.98); }
 .sr-start-btn-label { font-size: 18px; font-weight: 800; letter-spacing: 1px; line-height: 1; color: #fff; }
 .sr-start-btn-sub { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.55); }
@@ -1839,10 +1841,10 @@ body { background: #0b1626 !important; }
 
 <!-- Level bar (always visible, top of page) -->
 <div class="sr-level-bar" id="sr-level-bar">
-  <button class="lv-pill lv-s"    onclick="setLevel('Starter',this)">Seed</button>
-  <button class="lv-pill lv-b on" onclick="setLevel('Beginner',this)">Sprout</button>
-  <button class="lv-pill lv-i"    onclick="setLevel('Intermediate',this)">Tree</button>
-  <button class="lv-pill lv-a"    onclick="setLevel('Advanced',this)">Forest</button>
+  <button class="lv-pill lv-s"    onclick="setLevel('Starter',this)">🌰 Seed</button>
+  <button class="lv-pill lv-b on" onclick="setLevel('Beginner',this)">🌱 Sprout</button>
+  <button class="lv-pill lv-i"    onclick="setLevel('Intermediate',this)">🌳 Tree</button>
+  <button class="lv-pill lv-a"    onclick="setLevel('Advanced',this)">🌲 Forest</button>
 </div>
 
 <!-- TAB BAR (mobile/tablet only — outside all panels so it persists) -->
@@ -1861,28 +1863,46 @@ body { background: #0b1626 !important; }
 
 <!-- ── LEFT SIDEBAR (desktop/tablet only) ── -->
 <div class="sr-sidebar sr-sidebar-left">
-  <div class="sr-sb-panel pcard" style="padding:0;overflow:hidden">
-    <div class="chd" style="padding:10px 14px"><div class="ct" style="color:rgba(255,255,255,.4)">🌟 Today's Phrase</div></div>
-    <div class="cb" id="phrase-box-left" style="padding:12px 14px">
-      <div class="skel" style="height:26px;width:80%;margin-bottom:6px;background:rgba(255,255,255,.1)"></div>
-      <div class="skel" style="height:11px;width:60%;background:rgba(255,255,255,.1)"></div>
+  <!-- 단어장 (replaces Today's Phrase) -->
+  <div class="sr-sb-panel" style="padding:0;overflow:hidden;cursor:pointer" onclick="openWordBankModal()">
+    <div style="padding:12px 14px;background:rgba(124,58,237,.08);border-bottom:1px solid rgba(124,58,237,.15)">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="ct" style="color:#c4b5fd">📖 나의 단어장</div>
+        <span style="font-size:11px;color:rgba(255,255,255,.3)">전체 →</span>
+      </div>
+    </div>
+    <div id="sr-wordbank-sidebar" style="padding:10px 14px">
+      <div style="text-align:center;padding:8px;color:rgba(255,255,255,.3);font-size:11px">저장한 단어가 여기 표시됩니다</div>
     </div>
   </div>
+  <!-- Must-know Vocab -->
   <div class="sr-sb-panel" style="padding:0;overflow:hidden">
     <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
       <div class="ct" style="color:rgba(255,255,255,.45)">📌 Must-know Vocab</div>
     </div>
     <div class="cb" id="vocab-box-left" style="padding:12px 14px"></div>
   </div>
-  <div class="sr-sb-panel" style="padding:0;overflow:hidden">
-    <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
-      <div class="ct" style="color:rgba(255,255,255,.45)">📇 Flashcards</div>
+  <!-- Grammar at a Glance (moved from right sidebar) -->
+  <div class="sr-sb-panel">
+    <div class="sr-sb-phd">
+      <span class="sr-sb-ptitle">Grammar at a Glance</span>
+      <span class="sr-sb-psub">Today's topic grammar</span>
     </div>
-    <div style="padding:8px 14px 0;display:flex;gap:6px;flex-wrap:wrap" id="fc-filters-left">
-      <button class="tpill on" onclick="loadFlashcards('all',this)">All</button>
+    <div id="grammar-box">
+      <div class="skel" style="height:64px;margin-bottom:8px;border-radius:8px;background:rgba(255,255,255,.08)"></div>
+      <div class="skel" style="height:64px;border-radius:8px;background:rgba(255,255,255,.08)"></div>
     </div>
-    <div style="padding:10px 14px 14px">
-      <div class="mgrid" id="fc-grid-left"></div>
+  </div>
+  <!-- Quick Help (moved from right sidebar) -->
+  <div class="sr-sb-panel">
+    <div class="sr-sb-phd">
+      <span class="sr-sb-ptitle">Quick Help</span>
+      <span class="sr-sb-psub">30 seconds before writing</span>
+    </div>
+    <div class="sr-sb-sublabel">EXAMPLE ANSWERS</div>
+    <div id="helper-box">
+      <div class="skel" style="height:52px;margin-bottom:7px;border-radius:10px;background:rgba(255,255,255,.08)"></div>
+      <div class="skel" style="height:52px;border-radius:10px;background:rgba(255,255,255,.08)"></div>
     </div>
   </div>
 </div>
@@ -2062,16 +2082,7 @@ body { background: #0b1626 !important; }
     </div>
   </div>
 
-  <!-- ═══ MY WORD BANK ═══ -->
-  <div style="margin-top:14px" id="sr-my-wordbank">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px">📚 내 단어장</div>
-      <button onclick="openWordBankModal()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:rgba(255,255,255,.5);font-size:11px;font-weight:700;padding:5px 12px;cursor:pointer;font-family:inherit">전체 보기 →</button>
-    </div>
-    <div id="sr-wordbank-preview" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">
-      <div style="grid-column:1/-1;text-align:center;padding:16px;color:rgba(255,255,255,.3);font-size:13px">단어를 저장하면 여기에 표시됩니다</div>
-    </div>
-  </div>
+  <!-- Word bank moved to left sidebar -->
 
   <!-- ═══ REVIEW SECTION ═══ -->
   <div style="margin-top:14px">
@@ -2119,37 +2130,18 @@ body { background: #0b1626 !important; }
     <div id="sr-checklist-box"></div>
   </div>
 
-  <!-- anchor for scroll -->
-  <div id="sr-helper-anchor" style="scroll-margin-top:80px"></div>
-
-  <!-- ② QUICK HELP — helper sentences -->
-  <div class="sr-sb-panel">
-    <div class="sr-sb-phd">
-      <span class="sr-sb-ptitle">Quick Help</span>
-      <span class="sr-sb-psub">30 seconds before writing</span>
+  <!-- ② FLASHCARDS -->
+  <div class="sr-sb-panel" style="padding:0;overflow:hidden">
+    <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
+      <div class="ct" style="color:rgba(255,255,255,.45)">📇 Flashcards</div>
     </div>
-    <div class="sr-sb-sublabel">EXAMPLE ANSWERS</div>
-    <div id="helper-box">
-      <div class="skel" style="height:52px;margin-bottom:7px;border-radius:10px;background:rgba(255,255,255,.08)"></div>
-      <div class="skel" style="height:52px;margin-bottom:7px;border-radius:10px;background:rgba(255,255,255,.08)"></div>
-      <div class="skel" style="height:52px;border-radius:10px;background:rgba(255,255,255,.08)"></div>
+    <div style="padding:8px 14px 0;display:flex;gap:6px;flex-wrap:wrap" id="fc-filters-left">
+      <button class="tpill on" onclick="loadFlashcards('all',this)">All</button>
+    </div>
+    <div style="padding:10px 14px 14px">
+      <div class="mgrid" id="fc-grid-left"></div>
     </div>
   </div>
-
-  <!-- ③ COMPACT GRAMMAR -->
-  <div class="sr-sb-panel">
-    <div class="sr-sb-phd">
-      <span class="sr-sb-ptitle">Grammar at a Glance</span>
-      <span class="sr-sb-psub">Less overwhelming than before</span>
-    </div>
-    <div id="grammar-box">
-      <div class="skel" style="height:64px;margin-bottom:8px;border-radius:8px;background:rgba(255,255,255,.08)"></div>
-      <div class="skel" style="height:64px;margin-bottom:8px;border-radius:8px;background:rgba(255,255,255,.08)"></div>
-      <div class="skel" style="height:64px;border-radius:8px;background:rgba(255,255,255,.08)"></div>
-    </div>
-  </div>
-
-  <!-- Note: Phrase, Vocab, Flashcards moved to left sidebar -->
 
   <!-- LISTENING QUIZ -->
   <div class="sr-sb-panel" style="padding:0;overflow:hidden">
@@ -2182,14 +2174,16 @@ body { background: #0b1626 !important; }
   </div>
 
   <!-- HANGUL ALPHABET (desktop sidebar) -->
-  <div class="sr-sb-panel" style="padding:14px 16px;cursor:pointer;background:linear-gradient(135deg,rgba(12,74,110,.3),rgba(3,105,161,.2));border:1px solid rgba(56,189,248,.15)" onclick="openAlphaModal()">
-    <div style="display:flex;align-items:center;gap:10px">
-      <span style="font-size:22px">🇰🇷</span>
-      <div>
-        <div style="font-size:13px;font-weight:800;color:#7dd3fc">Korean Alphabet</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.4)">한글 자음 & 모음 퀴즈</div>
+  <div class="sr-sb-panel" style="padding:0;overflow:hidden;cursor:pointer;border:1px solid rgba(56,189,248,.2)" onclick="openAlphaModal()">
+    <div style="padding:18px 16px;background:linear-gradient(135deg,rgba(12,74,110,.4),rgba(3,105,161,.25));text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">🇰🇷</div>
+      <div style="font-size:15px;font-weight:900;color:#7dd3fc;margin-bottom:4px">Korean Alphabet</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:10px">쉬운 한국어 단어로 한글 배우기</div>
+      <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+        <span style="padding:3px 10px;border-radius:8px;background:rgba(56,189,248,.12);color:#7dd3fc;font-size:10px;font-weight:700">📝 학습</span>
+        <span style="padding:3px 10px;border-radius:8px;background:rgba(56,189,248,.12);color:#7dd3fc;font-size:10px;font-weight:700">🔄 복습</span>
+        <span style="padding:3px 10px;border-radius:8px;background:rgba(56,189,248,.12);color:#7dd3fc;font-size:10px;font-weight:700">최대 20단어</span>
       </div>
-      <span style="margin-left:auto;font-size:12px;color:rgba(255,255,255,.25)">→</span>
     </div>
   </div>
 
