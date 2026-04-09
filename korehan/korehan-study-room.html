@@ -1720,17 +1720,18 @@ body { background: #0b1626 !important; }
 .sr-mob-aid-icon { font-size:13px;flex-shrink:0; }
 .sr-mob-aid-title { font-size:11px;font-weight:700;color:rgba(255,255,255,.7); }
 
-/* ─── DESKTOP (861px+): hide tabs entirely, show level bar only ─── */
+/* ─── DESKTOP (861px+): show tabs, keep layout clean ─── */
 @media(min-width:861px) {
-  .sr-top-tabs-wrap { position:static;background:transparent;border-bottom:none;padding:0 20px; }
-  .sr-top-tabs { display:none; }
+  .sr-top-tabs-wrap { position:static;background:transparent;border-bottom:none;padding:0;margin-bottom:14px; }
+  .sr-top-tabs { gap:4px;background:rgba(255,255,255,.04);border-radius:10px;padding:3px;max-width:480px; }
+  .sr-top-tab { flex:1;padding:9px 16px;font-size:12px;border:none;border-radius:8px;background:transparent;color:rgba(255,255,255,.35);text-align:center; }
+  .sr-top-tab.on { color:#fff;background:rgba(122,184,245,.15); }
+  .sr-top-tab:hover { background:rgba(255,255,255,.06); }
   .sr-level-bar { padding:10px 0 14px; }
   .lv-pill { padding:10px 20px;font-size:13px; }
-  /* On desktop: always show Study, Help content is in sidebar */
+  /* On desktop: Help content is in sidebar, hide Help panel only */
   .sr-tab-panel#sr-panel-study { display:block !important; }
   .sr-tab-panel#sr-panel-help { display:none !important; }
-  .sr-tab-panel#sr-panel-master { display:none !important; }
-  .sr-tab-panel#sr-panel-wordbook { display:none !important; }
 }
 /* ─── TABLET (641–860px): tabs above activity cards, not sticky ─── */
 @media(min-width:641px) and (max-width:860px) {
