@@ -1644,18 +1644,13 @@ body { background: #0b1626 !important; }
 .lv-pill.lv-i.on { background:#0369a1; }
 .lv-pill.lv-a.on { background:#b91c1c; }
 @media(max-width:640px) { .sr-top-tab { flex:1;padding:10px 6px;font-size:11px; } .lv-pill { padding:4px 10px;font-size:10px; } }
-/* On desktop, always show Study tab regardless of active panel */
+/* On desktop (861px+), always show Study, hide Help (sidebar visible instead) */
 @media(min-width:861px) {
   .sr-tab-panel#sr-panel-study { display:block !important; }
   .sr-tab-panel#sr-panel-help { display:none !important; }
 }
 .sr-tab-panel { display:none; }
 .sr-tab-panel.active { display:block; }
-/* On desktop, always show Study tab and ignore other tab panels */
-@media(min-width:861px) {
-  .sr-tab-panel#sr-panel-study { display:block !important; }
-  .sr-tab-panel#sr-panel-help { display:none !important; }
-}
 /* Master tab grid */
 .master-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding:24px; }
 .master-card { padding:24px;border-radius:16px;cursor:pointer;transition:all .15s;border:1px solid rgba(255,255,255,.08); }
@@ -2043,6 +2038,18 @@ body { background: #0b1626 !important; }
       </div>
       <div class="cb" id="vocab-box-help" style="padding:12px 14px"></div>
     </div>
+    <!-- Quick Help (mirrors right sidebar) -->
+    <div class="sr-sb-panel" style="margin-bottom:12px">
+      <div class="sr-sb-phd"><span class="sr-sb-ptitle">Quick Help</span><span class="sr-sb-psub">30 seconds before writing</span></div>
+      <div class="sr-sb-sublabel">EXAMPLE ANSWERS</div>
+      <div id="helper-box-help"></div>
+    </div>
+    <!-- Grammar (mirrors right sidebar) -->
+    <div class="sr-sb-panel" style="margin-bottom:12px">
+      <div class="sr-sb-phd"><span class="sr-sb-ptitle">Grammar at a Glance</span></div>
+      <div id="grammar-box-help"></div>
+    </div>
+    <!-- Flashcards -->
     <div class="sr-sb-panel" style="padding:0;overflow:hidden;margin-bottom:12px">
       <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
         <div class="ct" style="color:rgba(255,255,255,.45)">📇 Flashcards</div>
@@ -5233,15 +5240,17 @@ function switchSrTab(tab, btn) {
   if (lvBar) lvBar.style.display = (tab === 'study') ? '' : 'none';
   // Mirror sidebar content to Help tab for mobile
   if (tab === 'help') {
-    var src = document.getElementById('phrase-box-left');
-    var dst = document.getElementById('phrase-box-help');
-    if (src && dst) dst.innerHTML = src.innerHTML;
-    var vsrc = document.getElementById('vocab-box-left');
-    var vdst = document.getElementById('vocab-box-help');
-    if (vsrc && vdst) vdst.innerHTML = vsrc.innerHTML;
-    var fsrc = document.getElementById('fc-grid-left');
-    var fdst = document.getElementById('fc-grid-help');
-    if (fsrc && fdst) fdst.innerHTML = fsrc.innerHTML;
+    ['phrase-box-left','vocab-box-left','fc-grid-left','helper-box','grammar-box'].forEach(function(srcId) {
+      var src = document.getElementById(srcId);
+      var dstId = srcId.replace('-left','').replace('-box','-box-help').replace('helper-box','helper-box-help').replace('grammar-box','grammar-box-help');
+      if (srcId === 'fc-grid-left') dstId = 'fc-grid-help';
+      if (srcId === 'phrase-box-left') dstId = 'phrase-box-help';
+      if (srcId === 'vocab-box-left') dstId = 'vocab-box-help';
+      if (srcId === 'helper-box') dstId = 'helper-box-help';
+      if (srcId === 'grammar-box') dstId = 'grammar-box-help';
+      var dst = document.getElementById(dstId);
+      if (src && dst) dst.innerHTML = src.innerHTML;
+    });
   }
 }
 
