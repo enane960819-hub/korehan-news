@@ -1703,9 +1703,9 @@ body { background: #0b1626 !important; }
 .sr-top-tab:hover { color:rgba(255,255,255,.6);background:rgba(255,255,255,.06); }
 .sr-top-tab.on { color:#fff;background:rgba(122,184,245,.12);border-color:rgba(122,184,245,.2); }
 /* Level sub-bar */
-.sr-level-bar { display:flex;gap:6px;padding:6px 0 8px;max-width:1160px;margin:0 auto; }
-.lv-pill { padding:6px 16px;border-radius:6px;border:1px solid rgba(255,255,255,.1);background:transparent;color:rgba(255,255,255,.35);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s; }
-.lv-pill:hover { color:rgba(255,255,255,.6);background:rgba(255,255,255,.06); }
+.sr-level-bar { display:flex;gap:8px;padding:6px 0 14px;max-width:1160px;margin:0 auto; }
+.lv-pill { flex:1;padding:10px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:rgba(255,255,255,.4);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;text-align:center; }
+.lv-pill:hover { color:rgba(255,255,255,.65);background:rgba(255,255,255,.07); }
 .lv-pill.on { color:#fff;border-color:transparent; }
 .lv-pill.lv-s.on { background:#6b21a8; }
 .lv-pill.lv-b.on { background:#15803d; }
@@ -1724,8 +1724,8 @@ body { background: #0b1626 !important; }
 @media(min-width:861px) {
   .sr-top-tabs-wrap { position:static;background:transparent;border-bottom:none;padding:0 20px; }
   .sr-top-tabs { display:none; }
-  .sr-level-bar { padding:10px 0 8px; }
-  .lv-pill { padding:7px 20px;font-size:12px; }
+  .sr-level-bar { padding:10px 0 14px; }
+  .lv-pill { padding:10px 20px;font-size:13px; }
   .sr-tab-panel#sr-panel-study { display:block !important; }
   .sr-tab-panel#sr-panel-help { display:none !important; }
 }
@@ -1735,8 +1735,8 @@ body { background: #0b1626 !important; }
   .sr-top-tabs { gap:4px;background:rgba(255,255,255,.04);border-radius:10px;padding:3px; }
   .sr-top-tab { flex:1;padding:9px 12px;font-size:12px;border:none;border-radius:8px;background:transparent;color:rgba(255,255,255,.35);text-align:center; }
   .sr-top-tab.on { color:#fff;background:rgba(122,184,245,.15); }
-  .sr-level-bar { padding:0 0 10px;gap:6px; }
-  .lv-pill { padding:6px 16px;font-size:11px; }
+  .sr-level-bar { padding:0 0 12px;gap:6px; }
+  .lv-pill { padding:9px 14px;font-size:12px; }
   .sr-headline { font-size:24px !important; }
   .sr-headline-sub { font-size:12px !important; }
 }
@@ -1750,8 +1750,8 @@ body { background: #0b1626 !important; }
   .sr-top-tab { flex:1;border:none;border-radius:8px;padding:8px 4px;font-size:11px;background:transparent;color:rgba(255,255,255,.35);letter-spacing:.02em; }
   .sr-top-tab.on { background:rgba(122,184,245,.15);color:#fff; }
   .sr-top-tab:hover { background:rgba(255,255,255,.06); }
-  .sr-level-bar { gap:5px;padding:0 0 6px;justify-content:center; }
-  .lv-pill { padding:5px 14px;font-size:10px; }
+  .sr-level-bar { gap:5px;padding:0 0 8px; }
+  .lv-pill { padding:8px 0;font-size:11px; }
   /* Shrink hero — hide big headline, keep only badge */
   .sr-hero-block { display:flex;flex-direction:column;padding:12px 14px 14px !important; }
   .sr-headline { display:none !important; }
@@ -1824,7 +1824,7 @@ body { background: #0b1626 !important; }
 <div class="sr-wrap2">
 
 <!-- Level bar (always visible, top of page) -->
-<div class="sr-level-bar" id="sr-level-bar" style="padding-top:10px">
+<div class="sr-level-bar" id="sr-level-bar">
   <button class="lv-pill lv-s"    onclick="setLevel('Starter',this)">Seed</button>
   <button class="lv-pill lv-b on" onclick="setLevel('Beginner',this)">Sprout</button>
   <button class="lv-pill lv-i"    onclick="setLevel('Intermediate',this)">Tree</button>
