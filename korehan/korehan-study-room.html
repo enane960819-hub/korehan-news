@@ -1713,18 +1713,15 @@ body { background: #0b1626 !important; }
 .lv-pill.lv-a.on { background:#b91c1c; }
 /* ─── Mobile study aids (inside topic card) ─── */
 .sr-mobile-aids { display:none; }
-.sr-mob-aid { display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);cursor:pointer;transition:background .15s; }
-.sr-mob-aid:active { background:rgba(255,255,255,.12); }
-.sr-mob-aid-icon { font-size:18px;flex-shrink:0; }
-.sr-mob-aid-body { flex:1;min-width:0; }
-.sr-mob-aid-title { font-size:12px;font-weight:800;color:#fff;margin-bottom:2px; }
-.sr-mob-aid-preview { font-size:11px;color:rgba(255,255,255,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-.sr-mob-aid-arrow { font-size:12px;color:rgba(255,255,255,.25);flex-shrink:0; }
+.sr-mob-aid { display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);cursor:pointer;transition:background .15s;white-space:nowrap; }
+.sr-mob-aid:active { background:rgba(255,255,255,.14); }
+.sr-mob-aid-icon { font-size:13px;flex-shrink:0; }
+.sr-mob-aid-title { font-size:11px;font-weight:700;color:rgba(255,255,255,.7); }
 
 /* ─── MOBILE TAB REDESIGN ─── */
 @media(max-width:860px) {
   #wcard-chips { display:none; }
-  .sr-mobile-aids { display:flex;flex-direction:column;gap:6px;margin-top:4px; }
+  .sr-mobile-aids { display:flex;flex-direction:row;gap:6px;margin-top:6px;flex-wrap:wrap; }
   .sr-topic-q { font-size:clamp(22px,4.5vw,30px); }
   .sr-top-tabs-wrap { padding:12px 14px 10px;margin-bottom:12px;border-bottom:none;background:linear-gradient(180deg,#0a1220 0%,#0f1d30 100%);border-radius:0 0 16px 16px;box-shadow:0 4px 16px rgba(0,0,0,.3); }
   .sr-top-tabs { gap:6px;background:rgba(255,255,255,.04);border-radius:12px;padding:4px; }
@@ -2070,9 +2067,12 @@ body { background: #0b1626 !important; }
 
   <!-- ① TODAY'S MISSIONS — always at top -->
   <div class="sr-sb-panel" style="padding:14px 16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <span style="font-size:13px;font-weight:900;color:#fff">Daily Quest</span>
-      <span style="font-size:10px;color:rgba(255,255,255,.38);font-weight:600">+40 bonus</span>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <canvas id="sr-quest-ring" width="72" height="72" style="width:36px;height:36px;flex-shrink:0"></canvas>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:900;color:#fff">Daily Quest</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.38);font-weight:600" id="sr-quest-sub">0/4 · +40 bonus</div>
+      </div>
     </div>
     <div id="sr-checklist-box"></div>
   </div>
@@ -2983,9 +2983,74 @@ function renderStudyChecklist() {
       + '</div>'
       + '</div>';
   }).join('');
+  // Update quest ring
+  _drawQuestRing(doneCnt, items.length);
+  var qSub = document.getElementById('sr-quest-sub');
+  if (qSub) qSub.textContent = doneCnt + '/' + items.length + ' · +40 bonus';
   // Keep learning selector badges in sync if modal is open
   var lsModal = document.getElementById('ls-modal');
   if (lsModal && !lsModal.classList.contains('hidden')) _updateLSSelectorBadges();
+}
+
+var _questRingFill = 0;
+function _drawQuestRing(done, total) {
+  var canvas = document.getElementById('sr-quest-ring');
+  if (!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext('2d');
+  var S = 72, R = S / 2, r = 28, lw = 6;
+  var target = done / Math.max(1, total);
+
+  function frame() {
+    _questRingFill += (target - _questRingFill) * 0.08;
+    if (Math.abs(_questRingFill - target) < 0.005) _questRingFill = target;
+    ctx.clearRect(0, 0, S, S);
+
+    // Background ring
+    ctx.beginPath();
+    ctx.arc(R, R, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,.08)';
+    ctx.lineWidth = lw;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Progress arc
+    if (_questRingFill > 0) {
+      var startAngle = -Math.PI / 2;
+      var endAngle = startAngle + (Math.PI * 2 * _questRingFill);
+      var grad = ctx.createLinearGradient(0, 0, S, S);
+      if (_questRingFill >= 1) {
+        grad.addColorStop(0, '#34d399');
+        grad.addColorStop(1, '#22c55e');
+      } else {
+        grad.addColorStop(0, '#a78bfa');
+        grad.addColorStop(1, '#7c3aed');
+      }
+      ctx.beginPath();
+      ctx.arc(R, R, r, startAngle, endAngle);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = lw;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Glow on arc
+      ctx.beginPath();
+      ctx.arc(R, R, r, startAngle, endAngle);
+      ctx.strokeStyle = _questRingFill >= 1 ? 'rgba(52,211,153,.3)' : 'rgba(124,58,237,.3)';
+      ctx.lineWidth = lw + 4;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    // Center text
+    ctx.fillStyle = '#fff';
+    ctx.font = '900 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(done, R, R);
+
+    if (Math.abs(_questRingFill - target) > 0.003) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
 }
 
 function renderStudyRoomWordTracks() {
@@ -3782,22 +3847,13 @@ function renderAIContent() {
   // MOBILE STUDY AIDS (replaces chips on mobile)
   var maEl = document.getElementById('sr-mobile-aids');
   if (maEl) {
-    var vocabPreview = (_aiContent.vocab || []).slice(0,3).map(function(w){ return w.ko; }).join(', ') || '—';
-    var grammarPreview = (_aiContent.grammar || []).slice(0,2).map(function(g){ return g.pattern; }).join(', ') || '—';
-    var helperPreview = (_aiContent.helpers || []).length ? (_aiContent.helpers[0].ko || '—') : '—';
     maEl.innerHTML =
       '<div class="sr-mob-aid" onclick="switchSrTab(\'help\',null);setTimeout(function(){var e=document.getElementById(\'vocab-box-help\');if(e)e.scrollIntoView({behavior:\'smooth\',block:\'center\'})},200)">'
-      + '<span class="sr-mob-aid-icon">📌</span>'
-      + '<div class="sr-mob-aid-body"><div class="sr-mob-aid-title">Must-know Vocab</div><div class="sr-mob-aid-preview">' + vocabPreview + '</div></div>'
-      + '<span class="sr-mob-aid-arrow">›</span></div>'
+      + '<span class="sr-mob-aid-icon">📌</span><span class="sr-mob-aid-title">Vocab</span></div>'
       + '<div class="sr-mob-aid" onclick="switchSrTab(\'help\',null);setTimeout(function(){var e=document.getElementById(\'grammar-box-help\');if(e)e.scrollIntoView({behavior:\'smooth\',block:\'center\'})},200)">'
-      + '<span class="sr-mob-aid-icon">📝</span>'
-      + '<div class="sr-mob-aid-body"><div class="sr-mob-aid-title">Grammar at a Glance</div><div class="sr-mob-aid-preview">' + grammarPreview + '</div></div>'
-      + '<span class="sr-mob-aid-arrow">›</span></div>'
+      + '<span class="sr-mob-aid-icon">📝</span><span class="sr-mob-aid-title">Grammar</span></div>'
       + '<div class="sr-mob-aid" onclick="switchSrTab(\'help\',null);setTimeout(function(){var e=document.getElementById(\'helper-box-help\');if(e)e.scrollIntoView({behavior:\'smooth\',block:\'center\'})},200)">'
-      + '<span class="sr-mob-aid-icon">💡</span>'
-      + '<div class="sr-mob-aid-body"><div class="sr-mob-aid-title">Quick Help</div><div class="sr-mob-aid-preview">' + helperPreview + '</div></div>'
-      + '<span class="sr-mob-aid-arrow">›</span></div>';
+      + '<span class="sr-mob-aid-icon">💡</span><span class="sr-mob-aid-title">Quick Help</span></div>';
   }
 
   // HELPER BOX — always render from _aiContent
