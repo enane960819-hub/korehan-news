@@ -1701,7 +1701,7 @@ body { background: #0b1626 !important; }
 /* ─── Study Room Category Tabs ─── */
 .sr-top-tabs-wrap { padding:0;margin-bottom:10px; }
 .sr-top-tabs { display:flex;gap:6px;max-width:1160px;margin:0 auto; }
-.sr-top-tab { padding:8px 18px;font-size:12px;font-weight:700;color:rgba(255,255,255,.35);cursor:pointer;border:1px solid rgba(255,255,255,.06);border-bottom:none;border-radius:8px 8px 0 0;background:rgba(255,255,255,.03);font-family:inherit;text-align:center;transition:all .15s;white-space:nowrap; }
+.sr-top-tab { padding:8px 18px;font-size:12px;font-weight:700;color:rgba(255,255,255,.35);cursor:pointer;border:1px solid rgba(255,255,255,.06);border-bottom:none;border-radius:8px 8px 0 0;background:rgba(255,255,255,.03);font-family:inherit;text-align:center;transition:all .15s;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:5px; }
 .sr-top-tab:hover { color:rgba(255,255,255,.6);background:rgba(255,255,255,.06); }
 .sr-top-tab.on { color:#fff;background:rgba(122,184,245,.12);border-color:rgba(122,184,245,.2); }
 /* Level sub-bar */
@@ -1849,10 +1849,10 @@ body { background: #0b1626 !important; }
 <!-- TAB BAR (mobile/tablet only — outside all panels so it persists) -->
 <div class="sr-top-tabs-wrap">
 <div class="sr-top-tabs">
-  <button class="sr-top-tab on" onclick="switchSrTab('study',this)">📝 Study</button>
-  <button class="sr-top-tab" onclick="switchSrTab('help',this)">📚 Help</button>
-  <button class="sr-top-tab" onclick="switchSrTab('master',this)">🎯 Master</button>
-  <button class="sr-top-tab" onclick="switchSrTab('wordbook',this)">📖 단어장</button>
+  <button class="sr-top-tab on" onclick="switchSrTab('study',this)"><i data-lucide="notebook-pen" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Study</button>
+  <button class="sr-top-tab" onclick="switchSrTab('help',this)"><i data-lucide="book-marked" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Help</button>
+  <button class="sr-top-tab" onclick="switchSrTab('master',this)"><i data-lucide="target" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Master</button>
+  <button class="sr-top-tab" onclick="switchSrTab('wordbook',this)"><i data-lucide="book-open" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> 단어장</button>
 </div>
 </div>
 
@@ -1920,7 +1920,7 @@ body { background: #0b1626 !important; }
       <!-- Daily Review Banner -->
       <div id="sr-notif-daily" style="display:none;padding:12px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(34,197,94,.15),rgba(16,185,129,.1));border:1px solid rgba(34,197,94,.25);cursor:pointer" onclick="openDailyReview()">
         <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:32px;height:32px;border-radius:8px;background:rgba(34,197,94,.2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📋</div>
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(34,197,94,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#4ade80"><i data-lucide="clipboard-list" class="kh-ui-icon" style="width:16px;height:16px" aria-hidden="true"></i></div>
           <div style="flex:1;min-width:0">
             <div style="font-size:12px;font-weight:800;color:#4ade80">Daily Review 가능</div>
             <div style="font-size:11px;color:rgba(255,255,255,.5)" id="sr-notif-daily-deadline">오늘 23:59까지</div>
@@ -1931,7 +1931,7 @@ body { background: #0b1626 !important; }
       <!-- Weekly Review Banner -->
       <div id="sr-notif-weekly" style="display:none;padding:12px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(37,99,235,.15),rgba(59,130,246,.1));border:1px solid rgba(37,99,235,.3);cursor:pointer" onclick="openWeeklyReview()">
         <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:32px;height:32px;border-radius:8px;background:rgba(37,99,235,.2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📊</div>
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(37,99,235,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#60a5fa"><i data-lucide="chart-column" class="kh-ui-icon" style="width:16px;height:16px" aria-hidden="true"></i></div>
           <div style="flex:1;min-width:0">
             <div style="font-size:12px;font-weight:800;color:#60a5fa">Weekly Review 오픈!</div>
             <div style="font-size:11px;color:rgba(255,255,255,.5)">20문제 · 오늘 일요일까지 · 임시저장 1회 가능</div>
@@ -1942,7 +1942,7 @@ body { background: #0b1626 !important; }
       <!-- Monthly Review Banner -->
       <div id="sr-notif-monthly" style="display:none;padding:12px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(124,58,237,.1));border:1px solid rgba(139,92,246,.3);cursor:pointer" onclick="openMonthlyReview()">
         <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:32px;height:32px;border-radius:8px;background:rgba(139,92,246,.2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🏆</div>
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(139,92,246,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#c4b5fd"><i data-lucide="trophy" class="kh-ui-icon" style="width:16px;height:16px" aria-hidden="true"></i></div>
           <div style="flex:1;min-width:0">
             <div style="font-size:12px;font-weight:800;color:#c4b5fd">Monthly Review 오픈!</div>
             <div style="font-size:11px;color:rgba(255,255,255,.5)" id="sr-notif-monthly-deadline">25문제 · 3일까지 · 임시저장 1회 가능</div>
@@ -2021,7 +2021,7 @@ body { background: #0b1626 !important; }
   <!-- WEAK GRAMMAR BANNER -->
   <div id="sr-weak-grammar-banner" style="display:none;background:linear-gradient(135deg,#1e1b4b,#312e81);border:1px solid rgba(139,92,246,.3);border-radius:14px;padding:14px 16px;margin-bottom:12px;cursor:pointer" onclick="window.location.assign('korehan-learning-overview.html#weak-grammar')">
     <div style="display:flex;align-items:center;gap:12px">
-      <div style="width:38px;height:38px;border-radius:10px;background:rgba(139,92,246,.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📝</div>
+      <div style="width:38px;height:38px;border-radius:10px;background:rgba(139,92,246,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#c4b5fd"><i data-lucide="pen-tool" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i></div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:800;color:#c4b5fd;margin-bottom:2px">Weak Grammar Practice</div>
         <div style="font-size:11px;color:rgba(255,255,255,.5)" id="sr-weak-grammar-desc">자주 틀리는 문법을 복습하세요</div>
@@ -2033,7 +2033,7 @@ body { background: #0b1626 !important; }
   <!-- ACTIVITY CARDS -->
   <div class="sr-activity-cards">
     <button class="sr-act-card" onclick="openArticleStudy()">
-      <span class="srac-icon">📰</span>
+      <span class="srac-icon"><i data-lucide="newspaper" class="kh-ui-icon" style="width:26px;height:26px" aria-hidden="true"></i></span>
       <div class="srac-title">Article Study</div>
       <div class="srac-desc">Read real Korean news and complete 5 learning steps</div>
       <div class="srac-foot">
@@ -2042,7 +2042,7 @@ body { background: #0b1626 !important; }
       </div>
     </button>
     <button class="sr-act-card" onclick="openConvStudy()">
-      <span class="srac-icon">💬</span>
+      <span class="srac-icon"><i data-lucide="messages-square" class="kh-ui-icon" style="width:26px;height:26px" aria-hidden="true"></i></span>
       <div class="srac-title">Conversations</div>
       <div class="srac-desc">Practice real Korean dialogue patterns</div>
       <div class="srac-foot">
@@ -2051,7 +2051,7 @@ body { background: #0b1626 !important; }
       </div>
     </button>
     <button class="sr-act-card" onclick="openStoryStudy && openStoryStudy() || window.location.assign('korehan-stories.html')">
-      <span class="srac-icon">📖</span>
+      <span class="srac-icon"><i data-lucide="book-open" class="kh-ui-icon" style="width:26px;height:26px" aria-hidden="true"></i></span>
       <div class="srac-title">Stories</div>
       <div class="srac-desc">Learn through graded Korean short stories</div>
       <div class="srac-foot">
@@ -2064,17 +2064,17 @@ body { background: #0b1626 !important; }
   <!-- Desktop-only Master cards (Fast Track, Slang, Phone Call) -->
   <div class="sr-desktop-master" style="display:none">
     <div class="master-card" style="background:linear-gradient(135deg,#1e3a5f,#0f766e);padding:16px;border-radius:14px;cursor:pointer" onclick="openFastTrack()">
-      <div style="font-size:22px;margin-bottom:6px">🎯</div>
+      <div style="margin-bottom:6px;color:#5eead4"><i data-lucide="target" class="kh-ui-icon" style="width:22px;height:22px" aria-hidden="true"></i></div>
       <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:3px">패스트트랙</div>
       <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.4">실제 상황별 대화 시나리오</div>
     </div>
     <div class="master-card" style="background:linear-gradient(135deg,#312e81,#7c3aed);padding:16px;border-radius:14px;cursor:pointer" onclick="openSlangModal()">
-      <div style="font-size:22px;margin-bottom:6px">🔥</div>
+      <div style="margin-bottom:6px;color:#c4b5fd"><i data-lucide="flame" class="kh-ui-icon" style="width:22px;height:22px" aria-hidden="true"></i></div>
       <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:3px">Korean Slang</div>
       <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.4">신조어 & 줄임말 학습</div>
     </div>
     <div class="master-card" style="background:linear-gradient(135deg,#064e3b,#047857);padding:16px;border-radius:14px;cursor:pointer" onclick="openPhoneModal()">
-      <div style="font-size:22px;margin-bottom:6px">📞</div>
+      <div style="margin-bottom:6px;color:#34d399"><i data-lucide="phone" class="kh-ui-icon" style="width:22px;height:22px" aria-hidden="true"></i></div>
       <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:3px">Phone Call</div>
       <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.4">전화 통화 듣기 & 말하기</div>
     </div>
@@ -2087,21 +2087,21 @@ body { background: #0b1626 !important; }
     <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Review</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
       <button onclick="openDailyReview()" style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;cursor:pointer;font-family:inherit;transition:background .15s;text-align:left" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">
-        <span style="font-size:20px">📋</span>
+        <span style="font-size:20px;display:flex;align-items:center;justify-content:center"><i data-lucide="clipboard-list" class="kh-ui-icon" style="width:20px;height:20px" aria-hidden="true"></i></span>
         <div>
           <div style="font-size:13px;font-weight:700">Daily Review</div>
           <div style="font-size:11px;color:rgba(255,255,255,.45)">10 questions</div>
         </div>
       </button>
       <button onclick="openWeeklyReview()" style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;cursor:pointer;font-family:inherit;transition:background .15s;text-align:left" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">
-        <span style="font-size:20px">📊</span>
+        <span style="font-size:20px;display:flex;align-items:center;justify-content:center"><i data-lucide="chart-column" class="kh-ui-icon" style="width:20px;height:20px" aria-hidden="true"></i></span>
         <div>
           <div style="font-size:13px;font-weight:700">Weekly Review</div>
           <div style="font-size:11px;color:rgba(255,255,255,.45)" id="weekly-review-sub">20 questions · 15s timer</div>
         </div>
       </button>
       <button onclick="openMonthlyReview()" style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;cursor:pointer;font-family:inherit;transition:background .15s;text-align:left" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">
-        <span style="font-size:20px">🏆</span>
+        <span style="font-size:20px;display:flex;align-items:center;justify-content:center"><i data-lucide="trophy" class="kh-ui-icon" style="width:20px;height:20px" aria-hidden="true"></i></span>
         <div>
           <div style="font-size:13px;font-weight:700">Monthly Review</div>
           <div style="font-size:11px;color:rgba(255,255,255,.45)" id="monthly-review-sub">25 questions · 15s timer</div>
