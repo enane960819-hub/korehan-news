@@ -1643,13 +1643,23 @@ body { background: #0b1626 !important; }
 .lv-pill.lv-b.on { background:#15803d; }
 .lv-pill.lv-i.on { background:#0369a1; }
 .lv-pill.lv-a.on { background:#b91c1c; }
+/* ─── MOBILE TAB REDESIGN ─── */
+@media(max-width:860px) {
+  .sr-top-tabs-wrap { padding:12px 14px 10px;margin-bottom:12px;border-bottom:none;background:linear-gradient(180deg,#0a1220 0%,#0f1d30 100%);border-radius:0 0 16px 16px;box-shadow:0 4px 16px rgba(0,0,0,.3); }
+  .sr-top-tabs { gap:6px;background:rgba(255,255,255,.04);border-radius:12px;padding:4px; }
+  .sr-top-tab { flex:1;border:none;border-radius:10px;padding:9px 6px;font-size:12px;background:transparent;color:rgba(255,255,255,.35);letter-spacing:.02em; }
+  .sr-top-tab.on { background:rgba(122,184,245,.15);color:#fff;box-shadow:0 2px 8px rgba(122,184,245,.15); }
+  .sr-top-tab:hover { background:rgba(255,255,255,.06); }
+  .sr-level-bar { gap:6px;padding:10px 0 2px;justify-content:center; }
+  .lv-pill { padding:6px 16px;font-size:11px;border-radius:20px; }
+}
 /* ─── MOBILE LAYOUT OPTIMIZATION ─── */
 @media(max-width:640px) {
   /* Compact tab bar */
-  .sr-top-tabs-wrap { padding:4px 8px 0; }
-  .sr-top-tab { padding:7px 4px;font-size:11px; }
-  .sr-level-bar { padding:4px 0 6px;gap:3px; }
-  .lv-pill { padding:3px 10px;font-size:10px; }
+  .sr-top-tabs-wrap { padding:10px 10px 8px;margin-bottom:10px; }
+  .sr-top-tab { padding:8px 4px;font-size:11px; }
+  .sr-level-bar { padding:8px 0 2px;gap:5px; }
+  .lv-pill { padding:5px 12px;font-size:10px; }
   /* Shrink hero — hide big headline, keep only badge */
   .sr-hero-block { display:flex;flex-direction:column;padding:12px 14px 14px !important; }
   .sr-headline { display:none !important; }
@@ -1704,8 +1714,6 @@ body { background: #0b1626 !important; }
 .wb-search:focus { border-bottom-color:#7c3aed; }
 .wb-cat-btn.on { color:#7c3aed !important;border-bottom-color:#7c3aed !important; }
 @media(max-width:600px) {
-  .sr-top-tabs { padding:0 12px; }
-  .sr-top-tab { padding:10px 16px;font-size:12px; }
   .master-grid { grid-template-columns:1fr;padding:16px; }
 }
 
