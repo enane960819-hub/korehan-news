@@ -821,7 +821,7 @@ body { background: #0b1626 !important; }
 }
 @media(max-width: 1280px) { .sr-layout { grid-template-columns: 246px 1fr 290px; gap:12px; } }
 @media(max-width: 1024px) { .sr-layout { grid-template-columns: 1fr 320px; } .sr-sidebar-left { display:none; } }
-@media(max-width: 860px)  { .sr-layout { grid-template-columns: 1fr; } .sr-sidebar, .sr-sidebar-left { display:none; } }
+@media(max-width: 860px)  { .sr-layout { grid-template-columns: 1fr; } .sr-sidebar, .sr-sidebar-left { display:none !important; } }
 
 /* Mobile sidebar tabs */
 .sr-mob-tabs { display:none !important; }
@@ -3851,29 +3851,7 @@ function closeKeyExpressionsModal() {
 }
 
 // ── Mobile Tab Switcher ──
-function srMobTab(tab, btn) {
-  document.querySelectorAll('.sr-mob-tab').forEach(function(t){ t.classList.remove('on'); });
-  btn.classList.add('on');
-  // On mobile, show/hide appropriate sections
-  var main = document.querySelector('.sr-main');
-  if (!main) return;
-  // For 'main' tab, show the main content and hide sidebars inline
-  var sidebarR = document.querySelector('.sr-sidebar:not(.sr-sidebar-left)');
-  var sidebarL = document.querySelector('.sr-sidebar-left');
-  if (tab === 'main') {
-    document.getElementById('sr-mob-main').style.display = '';
-    if (sidebarR) sidebarR.style.display = 'none';
-    if (sidebarL) sidebarL.style.display = 'none';
-  } else if (tab === 'help') {
-    document.getElementById('sr-mob-main').style.display = 'none';
-    if (sidebarR) { sidebarR.style.display = ''; sidebarR.style.position = 'static'; }
-    if (sidebarL) sidebarL.style.display = 'none';
-  } else if (tab === 'tools' || tab === 'extras') {
-    document.getElementById('sr-mob-main').style.display = 'none';
-    if (sidebarR) sidebarR.style.display = 'none';
-    if (sidebarL) { sidebarL.style.display = ''; sidebarL.style.position = 'static'; }
-  }
-}
+// srMobTab removed — replaced by switchSrTab
 
 // ── Korean Alphabet (Hangul) Cards ──
 var _HANGUL = {
