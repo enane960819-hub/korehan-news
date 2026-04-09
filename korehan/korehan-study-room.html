@@ -1643,7 +1643,35 @@ body { background: #0b1626 !important; }
 .lv-pill.lv-b.on { background:#15803d; }
 .lv-pill.lv-i.on { background:#0369a1; }
 .lv-pill.lv-a.on { background:#b91c1c; }
-@media(max-width:640px) { .sr-top-tab { flex:1;padding:10px 6px;font-size:11px; } .lv-pill { padding:4px 10px;font-size:10px; } }
+/* ─── MOBILE LAYOUT OPTIMIZATION ─── */
+@media(max-width:640px) {
+  /* Compact tab bar */
+  .sr-top-tabs-wrap { padding:4px 8px 0; }
+  .sr-top-tab { padding:7px 4px;font-size:11px; }
+  .sr-level-bar { padding:4px 0 6px;gap:3px; }
+  .lv-pill { padding:3px 10px;font-size:10px; }
+  /* Shrink hero — hide big headline, keep only badge */
+  .sr-hero-block { display:flex;flex-direction:column;padding:12px 14px 14px !important; }
+  .sr-headline { display:none !important; }
+  .sr-headline-sub { display:none !important; }
+  .sr-lvbadge-pill { margin-bottom:8px; }
+  /* Reorder: topic card first, banners after */
+  .sr-topic-card2 { order:-2; }
+  #sr-credit-banner { order:-1;margin-bottom:8px !important;margin-top:8px; }
+  #sr-review-notifications { order:0;margin-bottom:8px !important; }
+  /* Compact credit banner */
+  #sr-credit-banner { padding:8px 12px !important;font-size:11px !important; }
+  /* Compact activity cards */
+  .sr-act-grid { gap:8px !important; }
+  .sr-act-card { padding:14px !important; }
+  /* Right sidebar hidden */
+  .sr-sidebar { display:none !important; }
+}
+@media(min-width:641px) and (max-width:860px) {
+  /* Tablet: shrink hero slightly */
+  .sr-headline { font-size:24px !important; }
+  .sr-headline-sub { font-size:12px !important; }
+}
 /* On desktop (861px+), always show Study, hide Help (sidebar visible instead) */
 @media(min-width:861px) {
   .sr-tab-panel#sr-panel-study { display:block !important; }
