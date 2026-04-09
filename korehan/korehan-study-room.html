@@ -1720,18 +1720,28 @@ body { background: #0b1626 !important; }
 .sr-mob-aid-icon { font-size:13px;flex-shrink:0; }
 .sr-mob-aid-title { font-size:11px;font-weight:700;color:rgba(255,255,255,.7); }
 
-/* ─── DESKTOP (861px+): show tabs, keep layout clean ─── */
+/* ─── DESKTOP (861px+) ─── */
 @media(min-width:861px) {
-  .sr-top-tabs-wrap { position:static;background:transparent;border-bottom:none;padding:0;margin-bottom:14px; }
-  .sr-top-tabs { gap:4px;background:rgba(255,255,255,.04);border-radius:10px;padding:3px;max-width:480px; }
-  .sr-top-tab { flex:1;padding:9px 16px;font-size:12px;border:none;border-radius:8px;background:transparent;color:rgba(255,255,255,.35);text-align:center; }
-  .sr-top-tab.on { color:#fff;background:rgba(122,184,245,.15); }
-  .sr-top-tab:hover { background:rgba(255,255,255,.06); }
+  /* Hide tabs on desktop */
+  .sr-top-tabs-wrap { display:none; }
   .sr-level-bar { padding:10px 0 14px; }
   .lv-pill { padding:10px 20px;font-size:13px; }
-  /* On desktop: Help content is in sidebar, hide Help panel only */
+  /* Help panel handled by sidebar */
   .sr-tab-panel#sr-panel-study { display:block !important; }
   .sr-tab-panel#sr-panel-help { display:none !important; }
+  /* Hide hero text + credit banner on desktop */
+  .sr-headline { display:none !important; }
+  .sr-headline-sub { display:none !important; }
+  #sr-credit-banner { display:none !important; }
+  /* Hero block: minimal padding, just topic card */
+  .sr-hero-block { padding:0 !important;background:transparent !important;border:none !important;margin-bottom:10px !important; }
+  /* Reorder main content: topic card first, then activity cards immediately */
+  #sr-mob-main { display:flex;flex-direction:column; }
+  .sr-topic-card2 { order:-10; }
+  #sr-review-notifications { order:-9; }
+  .sr-activity-cards { order:-5;margin-top:14px; }
+  /* Master cards inline on desktop (below activity cards) */
+  .sr-desktop-master { display:grid !important;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px; }
 }
 /* ─── TABLET (641–860px): tabs above activity cards, not sticky ─── */
 @media(min-width:641px) and (max-width:860px) {
@@ -2033,6 +2043,25 @@ body { background: #0b1626 !important; }
     </button>
   </div>
 
+  <!-- Desktop-only Master cards (Fast Track, Slang, Phone Call) -->
+  <div class="sr-desktop-master" style="display:none">
+    <div class="master-card" style="background:linear-gradient(135deg,#1e3a5f,#0f766e);padding:16px;border-radius:14px;cursor:pointer" onclick="openFastTrack()">
+      <div style="font-size:22px;margin-bottom:6px">🎯</div>
+      <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:3px">패스트트랙</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.4">실제 상황별 대화 시나리오</div>
+    </div>
+    <div class="master-card" style="background:linear-gradient(135deg,#312e81,#7c3aed);padding:16px;border-radius:14px;cursor:pointer" onclick="openSlangModal()">
+      <div style="font-size:22px;margin-bottom:6px">🔥</div>
+      <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:3px">Korean Slang</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.4">신조어 & 줄임말 학습</div>
+    </div>
+    <div class="master-card" style="background:linear-gradient(135deg,#064e3b,#047857);padding:16px;border-radius:14px;cursor:pointer" onclick="openPhoneModal()">
+      <div style="font-size:22px;margin-bottom:6px">📞</div>
+      <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:3px">Phone Call</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.4">전화 통화 듣기 & 말하기</div>
+    </div>
+  </div>
+
   <!-- ═══ MY WORD BANK ═══ -->
   <div style="margin-top:14px" id="sr-my-wordbank">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -2149,6 +2178,18 @@ body { background: #0b1626 !important; }
       <div id="sb-target" style="min-height:40px;border:2px dashed rgba(255,255,255,.2);border-radius:10px;padding:8px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px"></div>
       <div id="sb-pool" style="display:flex;flex-wrap:wrap;gap:6px"></div>
       <div id="sb-feedback" style="margin-top:8px;font-size:12px"></div>
+    </div>
+  </div>
+
+  <!-- HANGUL ALPHABET (desktop sidebar) -->
+  <div class="sr-sb-panel" style="padding:14px 16px;cursor:pointer;background:linear-gradient(135deg,rgba(12,74,110,.3),rgba(3,105,161,.2));border:1px solid rgba(56,189,248,.15)" onclick="openAlphaModal()">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:22px">🇰🇷</span>
+      <div>
+        <div style="font-size:13px;font-weight:800;color:#7dd3fc">Korean Alphabet</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4)">한글 자음 & 모음 퀴즈</div>
+      </div>
+      <span style="margin-left:auto;font-size:12px;color:rgba(255,255,255,.25)">→</span>
     </div>
   </div>
 
@@ -6135,7 +6176,7 @@ async function loadStudyDoneFromDB() {
   if (!sb || !supaUser) return;
   try {
     var r = await sb.from('study_daily_progress')
-      .select('topic_done,grammar_done,picture_done,sentence_done')
+      .select('*')
       .eq('user_id', supaUser.id)
       .eq('study_date', kstDateKey())
       .maybeSingle();
