@@ -2645,9 +2645,8 @@ async function syncStudyProgress(stage) {
   if (stage === 'grammar') patch.grammar_done = true;
   if (stage === 'picture') patch.picture_done = true;
   if (stage === 'sentence') patch.sentence_done = true;
-  try { await sb.from('study_daily_progress').upsert(patch, { onConflict:'user_id,study_date' }); } catch(e) {}
-  // expressions tracked in localStorage only (column may not exist in DB)
-  if (stage === 'expressions') { try { localStorage.setItem(studyDoneKey(), JSON.stringify(_studyDone)); } catch(e){} }
+  if (stage === 'expressions') patch.expressions_done = true;
+  try { await sb.from('user_daily_progress').upsert(patch, { onConflict:'user_id,study_date' }); } catch(e) {}
   if (stage === 'grammar') {
     var focus = new URLSearchParams(window.location.search).get('focus') || ((_gfPattern && _gfPattern.name) || '');
     if (focus) {
@@ -5847,15 +5846,17 @@ async function loadWordBook() {
     var sb = getSupa();
     if (!sb) return;
     var results = [];
-    // 1) saved_words (columns: ko, en, rom — NOT word_ko)
+    // 1) saved_words (word_ko, word_en, word_rom columns added via migration)
     try {
-      var { data: sw, error: swErr } = await sb.from('saved_words').select('ko, en, rom, english, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
+      var { data: sw, error: swErr } = await sb.from('saved_words').select('word_ko, word_en, word_rom, ko, en, rom, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
       if (sw && !swErr) sw.forEach(function(w) {
-        var en = w.en || w.english || '';
+        var ko = w.word_ko || w.ko || '';
+        var en = w.word_en || w.en || '';
+        var rom = w.word_rom || w.rom || '';
         var cat = 'word';
         if (en.indexOf('[슬랭]') === 0) { cat = 'slang'; en = en.replace('[슬랭] ',''); }
         else if (en.indexOf('[표현]') === 0) { cat = 'expression'; en = en.replace('[표현] ',''); }
-        results.push({ ko:w.ko, rom:w.rom||'', en:en, date:w.created_at, cat:cat });
+        if (ko) results.push({ ko:ko, rom:rom, en:en, date:w.created_at, cat:cat });
       });
     } catch(e){ }
     // 2) user_saved_words (learning hub saves)
@@ -5865,13 +5866,7 @@ async function loadWordBook() {
         results.push({ ko:w.word_ko, rom:w.word_rom||'', en:w.word_en||'', date:w.created_at, cat:'word' });
       });
     } catch(e){}
-    // 3) vocabulary_bank (personal vocab bank)
-    try {
-      var { data: vb } = await sb.from('vocabulary_bank').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
-      if (vb) vb.forEach(function(w) {
-        results.push({ ko:w.word_ko, rom:w.word_rom||'', en:w.word_en||'', date:w.created_at, cat:'word' });
-      });
-    } catch(e){}
+    // 3) vocabulary_bank is a system word pool, not user saves — skipped
     // 4) Fast Track collected phrases
     try {
       var { data: ftp } = await sb.from('fast_track_progress').select('phrases').eq('user_id', supaUser.id);
@@ -6009,10 +6004,10 @@ async function loadWordBankPreview() {
   try {
     var sb = getSupa();
     var allWords = [];
-    // saved_words (columns: ko, en, rom)
+    // saved_words (word_ko/word_en/word_rom + legacy ko/en/rom)
     try {
-      var r = await sb.from('saved_words').select('ko, en, rom, english, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(50);
-      if (r.data && !r.error) r.data.forEach(function(w){ allWords.push({ word_ko:w.ko, word_en:w.en||w.english||'', word_rom:w.rom||'', created_at:w.created_at }); });
+      var r = await sb.from('saved_words').select('word_ko, word_en, word_rom, ko, en, rom, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(50);
+      if (r.data && !r.error) r.data.forEach(function(w){ allWords.push({ word_ko:w.word_ko||w.ko||'', word_en:w.word_en||w.en||'', word_rom:w.word_rom||w.rom||'', created_at:w.created_at }); });
     } catch(e){}
     // user_saved_words (columns: word_ko, word_en, word_rom)
     try {
@@ -6159,12 +6154,12 @@ function lsStartWriting() {
   wmMobileInit();
 }
 
-// Read today's study_daily_progress from DB and merge into _studyDone
+// Read today's user_daily_progress from DB and merge into _studyDone
 async function loadStudyDoneFromDB() {
   var sb = getSupa();
   if (!sb || !supaUser) return;
   try {
-    var r = await sb.from('study_daily_progress')
+    var r = await sb.from('user_daily_progress')
       .select('*')
       .eq('user_id', supaUser.id)
       .eq('study_date', kstDateKey())
@@ -6572,7 +6567,7 @@ async function submitWriting() {
     // XP 적립
     if (typeof awardXP === 'function') awardXP('writing_submit', { topic_ko: _todayTopic && _todayTopic.topic_ko });
     markStageDone('topic');
-    await sb.from('study_daily_progress').upsert({
+    await sb.from('user_daily_progress').upsert({
       user_id: supaUser.id,
       study_date: today,
       topic_done: !!_studyDone.topic,
