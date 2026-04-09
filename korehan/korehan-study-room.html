@@ -929,8 +929,8 @@ body { background: #0b1626 !important; }
 /* ── Learning Selector overlay ── */
 .ls-overlay {
   position: fixed; inset: 0;
-  background: rgba(13,27,46,.88);
-  backdrop-filter: blur(5px);
+  background: rgba(5,12,24,.92);
+  backdrop-filter: blur(8px);
   z-index: 2000;
   display: flex;
   align-items: center;
@@ -939,11 +939,11 @@ body { background: #0b1626 !important; }
 }
 .ls-overlay.hidden { display: none; }
 .ls-panel {
-  background: linear-gradient(145deg,#0f2040 0%,#1a3a6b 100%);
-  border: 1px solid rgba(255,255,255,.13);
+  background: radial-gradient(ellipse at 50% 30%,#132848 0%,#0a1628 60%,#060e1c 100%);
+  border: 1px solid rgba(255,255,255,.08);
   border-radius: 22px;
-  padding: 28px 26px 22px;
-  max-width: 500px;
+  padding: 22px 16px 18px;
+  max-width: 420px;
   width: 100%;
   max-height: 92vh;
   overflow-y: auto;
@@ -956,56 +956,162 @@ body { background: #0b1626 !important; }
   color: #fff; font-size: 16px; cursor: pointer; font-family: inherit;
 }
 .ls-close-btn:hover { background: rgba(255,255,255,.2); }
-.ls-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
-.ls-header-title { font-size: 19px; font-weight: 900; color: #fff; margin-bottom: 5px; }
-.ls-header-sub { font-size: 12px; color: rgba(255,255,255,.45); }
-.ls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-@media(max-width: 420px) { .ls-grid { grid-template-columns: 1fr; } }
-.ls-card {
+.ls-header { text-align: center; margin-bottom: 8px; }
+.ls-header-title { font-size: 17px; font-weight: 900; color: #fff; margin-bottom: 3px; }
+.ls-header-sub { font-size: 11px; color: rgba(255,255,255,.35); }
+
+/* ── Mind Map Container ── */
+.ls-mindmap {
   position: relative;
-  padding: 16px 14px;
-  background: rgba(255,255,255,.07);
-  border: 1.5px solid rgba(255,255,255,.1);
-  border-radius: 14px;
-  cursor: pointer;
-  transition: all .18s;
-  text-align: center;
+  width: 100%;
+  aspect-ratio: 1 / 1.05;
+  max-width: 380px;
+  margin: 0 auto 12px;
 }
-.ls-card:hover { background: rgba(255,255,255,.13); border-color: rgba(122,184,245,.4); transform: translateY(-2px); }
-.ls-card.ls-card-done { border-color: rgba(34,197,94,.45); background: rgba(34,197,94,.08); }
-.ls-card-icon { font-size: 28px; margin-bottom: 6px; }
-.ls-card-name { font-size: 13px; font-weight: 900; color: #fff; margin-bottom: 3px; }
-.ls-card-desc { font-size: 11px; color: rgba(255,255,255,.45); margin-bottom: 6px; }
-.ls-card-pts { font-size: 11px; font-weight: 800; color: #7ab8f5; }
-.ls-done-badge { position: absolute; top: 8px; right: 10px; font-size: 15px; display: none; }
-.ls-card.ls-card-done .ls-done-badge { display: block; }
-.ls-divider { border: none; border-top: 1px solid rgba(255,255,255,.1); margin: 14px 0 12px; }
+.ls-mindmap svg.ls-lines {
+  position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none;
+}
+.ls-line { stroke: rgba(255,255,255,.1); stroke-width: 2; stroke-dasharray: 6 4; fill: none; transition: all .4s; }
+.ls-line.ls-line-done {
+  stroke: rgba(52,211,153,.6); stroke-width: 2.5; stroke-dasharray: none;
+  filter: drop-shadow(0 0 6px rgba(52,211,153,.5));
+  animation: lsLinePulse 2s ease-in-out infinite;
+}
+@keyframes lsLinePulse {
+  0%,100% { filter: drop-shadow(0 0 4px rgba(52,211,153,.4)); }
+  50%     { filter: drop-shadow(0 0 10px rgba(52,211,153,.7)); }
+}
+
+/* ── Diablo Orb (center) ── */
+.ls-orb-wrap {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  width: 120px; height: 120px;
+}
+.ls-orb {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #1a0a2e 0%, #0d0518 100%);
+  border: 3px solid rgba(180,120,255,.25);
+  box-shadow: 0 0 20px rgba(120,60,200,.25), inset 0 0 20px rgba(0,0,0,.5);
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
+.ls-orb-liquid {
+  position: absolute;
+  bottom: 0; left: -10%; width: 120%;
+  height: var(--orb-fill, 15%);
+  transition: height .8s cubic-bezier(.4,0,.2,1);
+}
+.ls-orb-wave1, .ls-orb-wave2 {
+  position: absolute; top: -12px; left: 0; width: 200%; height: 24px;
+}
+.ls-orb-wave1 {
+  background: radial-gradient(ellipse at 25% 50%, rgba(168,85,247,.7), transparent 60%),
+              radial-gradient(ellipse at 75% 50%, rgba(168,85,247,.7), transparent 60%);
+  animation: lsWave1 2.5s ease-in-out infinite;
+}
+.ls-orb-wave2 {
+  background: radial-gradient(ellipse at 30% 50%, rgba(139,92,246,.5), transparent 55%),
+              radial-gradient(ellipse at 80% 50%, rgba(139,92,246,.5), transparent 55%);
+  animation: lsWave2 3s ease-in-out infinite;
+}
+.ls-orb-fill-body {
+  position: absolute; top: 12px; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, rgba(168,85,247,.7) 0%, rgba(124,58,237,.85) 40%, rgba(91,33,182,.9) 100%);
+}
+@keyframes lsWave1 { 0%,100%{ transform:translateX(0); } 50%{ transform:translateX(-25%); } }
+@keyframes lsWave2 { 0%,100%{ transform:translateX(-10%); } 50%{ transform:translateX(-30%); } }
+
+.ls-orb-label {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; z-index: 5;
+  text-shadow: 0 1px 6px rgba(0,0,0,.7);
+}
+.ls-orb-count { font-size: 28px; font-weight: 900; color: #fff; line-height: 1; }
+.ls-orb-total { font-size: 11px; color: rgba(255,255,255,.55); margin-top: 2px; }
+.ls-orb-pts { font-size: 10px; color: #c4b5fd; margin-top: 4px; font-weight: 700; }
+/* orb shine overlay */
+.ls-orb::after {
+  content: ''; position: absolute; top: 8%; left: 15%; width: 35%; height: 25%;
+  background: radial-gradient(ellipse, rgba(255,255,255,.18), transparent);
+  border-radius: 50%; z-index: 6; pointer-events: none;
+}
+
+/* ── Activity Nodes ── */
+.ls-node {
+  position: absolute; z-index: 5;
+  width: 82px;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; cursor: pointer;
+  transition: transform .15s, filter .15s;
+}
+.ls-node:active { transform: scale(.93); }
+.ls-node-circle {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: rgba(255,255,255,.06);
+  border: 2px solid rgba(255,255,255,.12);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  transition: all .3s;
+  position: relative;
+}
+.ls-node-circle .ls-node-check {
+  display: none; position: absolute; top: -4px; right: -4px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #22c55e; color: #fff; font-size: 10px;
+  line-height: 18px; text-align: center; font-weight: 900;
+}
+.ls-node.ls-node-done .ls-node-circle {
+  border-color: rgba(52,211,153,.5);
+  background: rgba(52,211,153,.1);
+  box-shadow: 0 0 12px rgba(52,211,153,.3);
+}
+.ls-node.ls-node-done .ls-node-check { display: block; }
+.ls-node-name { font-size: 10px; font-weight: 800; color: rgba(255,255,255,.7); margin-top: 5px; line-height: 1.2; }
+.ls-node-pts { font-size: 9px; color: #7ab8f5; font-weight: 700; margin-top: 1px; }
+/* node positions (pentagon around center) */
+.ls-node[data-pos="top"]    { top: 2%;  left: 50%; transform: translateX(-50%); }
+.ls-node[data-pos="tr"]     { top: 22%; right: 2%; }
+.ls-node[data-pos="br"]     { bottom: 12%; right: 6%; }
+.ls-node[data-pos="bl"]     { bottom: 12%; left: 6%; }
+.ls-node[data-pos="tl"]     { top: 22%; left: 2%; }
+
+/* ── Divider & Writing Practice ── */
+.ls-divider { border: none; border-top: 1px solid rgba(255,255,255,.08); margin: 8px 0 10px; }
 .ls-wp-btn {
   width: 100%;
-  padding: 15px 18px;
-  background: rgba(255,255,255,.05);
-  border: 2px dashed rgba(255,255,255,.2);
+  padding: 13px 16px;
+  background: rgba(255,255,255,.04);
+  border: 2px dashed rgba(255,255,255,.15);
   border-radius: 14px;
   cursor: not-allowed;
   display: flex;
   align-items: center;
   gap: 12px;
-  color: rgba(255,255,255,.35);
+  color: rgba(255,255,255,.3);
   font-family: inherit;
   transition: all .18s;
 }
 .ls-wp-btn.ls-wp-unlocked {
-  background: linear-gradient(135deg,rgba(37,99,235,.22),rgba(124,58,237,.22));
-  border: 2px solid rgba(122,184,245,.45);
+  background: linear-gradient(135deg,rgba(124,58,237,.2),rgba(37,99,235,.2));
+  border: 2px solid rgba(168,85,247,.45);
   color: #fff;
   cursor: pointer;
+  animation: lsWpGlow 2s ease-in-out infinite;
 }
-.ls-wp-btn.ls-wp-unlocked:hover { background: linear-gradient(135deg,rgba(37,99,235,.35),rgba(124,58,237,.35)); transform: translateY(-2px); }
-.ls-wp-icon { font-size: 22px; flex-shrink: 0; }
+@keyframes lsWpGlow {
+  0%,100% { box-shadow: 0 0 8px rgba(168,85,247,.2); }
+  50%     { box-shadow: 0 0 18px rgba(168,85,247,.4); }
+}
+.ls-wp-btn.ls-wp-unlocked:hover { transform: translateY(-2px); }
+.ls-wp-icon { font-size: 20px; flex-shrink: 0; }
 .ls-wp-text { flex: 1; text-align: left; }
-.ls-wp-name { font-size: 14px; font-weight: 900; }
-.ls-wp-sub { font-size: 11px; opacity: .7; margin-top: 2px; }
-}
+.ls-wp-name { font-size: 13px; font-weight: 900; }
+.ls-wp-sub { font-size: 10px; opacity: .7; margin-top: 2px; }
 /* ── Picture Description 3-step UI ── */
 .pd-step-pip { flex:1; height:4px; border-radius:2px; background:rgba(255,255,255,.15); transition:background .2s; }
 .pd-step-pip.pd-step-done   { background:rgba(34,197,94,.65); }
@@ -1469,8 +1575,14 @@ body { background: #0b1626 !important; }
   /* START button full-width on tiny screens */
   .sr-start-btn { width:100% !important; justify-content:center; }
   /* Learning selector */
-  .ls-panel { border-radius:22px 22px 0 0; width:100%; }
-  #ls-overlay { align-items:flex-end !important; padding:0 !important; }
+  .ls-panel { border-radius:22px; width:95%; }
+  .ls-mindmap { max-width:340px; }
+  .ls-orb-wrap { width:100px;height:100px; }
+  .ls-orb { width:100px;height:100px; }
+  .ls-orb-count { font-size:24px; }
+  .ls-node-circle { width:48px;height:48px;font-size:18px; }
+  .ls-node { width:72px; }
+  .ls-node-name { font-size:9px; }
 }
 @media(max-width:860px) {
   /* Sidebar grammar/helper panels: consistent spacing */
@@ -3877,29 +3989,48 @@ function closeLearningSelector() {
 }
 
 function _updateLSSelectorBadges() {
-  var types = ['topic','grammar','picture','sentence'];
+  var types = ['topic','grammar','picture','sentence','expressions'];
+  var ptsMap = { topic:20, grammar:10, picture:15, sentence:10, expressions:10 };
+  var doneCount = 0;
+  var totalPts = 0;
   types.forEach(function(t) {
-    var card = document.getElementById('ls-card-' + t);
-    if (!card) return;
-    if (_studyDone[t]) card.classList.add('ls-card-done');
-    else card.classList.remove('ls-card-done');
+    var node = document.getElementById('ls-card-' + t);
+    var line = document.getElementById('ls-ln-' + t);
+    if (!node) return;
+    if (_studyDone[t]) {
+      node.classList.add('ls-node-done');
+      if (line) line.classList.add('ls-line-done');
+      doneCount++;
+      totalPts += ptsMap[t] || 0;
+    } else {
+      node.classList.remove('ls-node-done');
+      if (line) line.classList.remove('ls-line-done');
+    }
   });
+  // Update orb
+  var orbLiquid = document.getElementById('ls-orb-liquid');
+  var orbCount  = document.getElementById('ls-orb-count');
+  var orbPts    = document.getElementById('ls-orb-pts');
+  var fillPct   = Math.max(15, Math.round((doneCount / 5) * 100));
+  if (orbLiquid) orbLiquid.style.setProperty('--orb-fill', fillPct + '%');
+  if (orbCount)  orbCount.textContent = doneCount;
+  if (orbPts)    orbPts.textContent = totalPts + ' 냥';
   // Writing Practice button
   var wpBtn  = document.getElementById('ls-wp-btn');
   var wpLock = document.getElementById('ls-wp-lock');
   var wpSub  = document.getElementById('ls-wp-sub');
-  var hasAny = !!(_studyDone.topic || _studyDone.grammar || _studyDone.picture || _studyDone.sentence);
+  var hasAny = doneCount > 0;
   if (wpBtn) {
     if (hasAny) {
       wpBtn.classList.add('ls-wp-unlocked');
       wpBtn.disabled = false;
       if (wpLock) wpLock.textContent = '🔓';
-      if (wpSub)  wpSub.textContent  = 'Learning activities complete! Enter Express Practice';
+      if (wpSub)  wpSub.textContent  = doneCount + '/5 완료! Express Practice 시작 →';
     } else {
       wpBtn.classList.remove('ls-wp-unlocked');
       wpBtn.disabled = true;
       if (wpLock) wpLock.textContent = '🔒';
-      if (wpSub)  wpSub.textContent  = 'Complete at least 1 learning activity first';
+      if (wpSub)  wpSub.textContent  = '학습 1개 이상 완료 시 열립니다';
     }
   }
 }
@@ -10157,59 +10288,75 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
   <div class="ls-panel">
     <!-- header -->
     <div class="ls-header">
-      <div>
-        <div class="ls-header-title">오늘 무엇을 배울까요?</div>
-        <div class="ls-header-sub">학습 활동을 선택하세요 · 완료하면 Express Practice이 열립니다</div>
+      <div class="ls-header-title">오늘 무엇을 배울까요?</div>
+      <div class="ls-header-sub">노드를 탭하여 학습을 시작하세요</div>
+      <button onclick="closeLearningSelector()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:rgba(255,255,255,.35);font-size:20px;cursor:pointer;line-height:1">✕</button>
+    </div>
+
+    <!-- Mind Map -->
+    <div class="ls-mindmap" id="ls-mindmap">
+      <!-- SVG connection lines -->
+      <svg class="ls-lines" id="ls-lines" viewBox="0 0 380 399" preserveAspectRatio="xMidYMid meet">
+        <line class="ls-line" id="ls-ln-topic"       x1="190" y1="200" x2="190" y2="48"/>
+        <line class="ls-line" id="ls-ln-grammar"      x1="190" y1="200" x2="338" y2="120"/>
+        <line class="ls-line" id="ls-ln-picture"       x1="190" y1="200" x2="320" y2="330"/>
+        <line class="ls-line" id="ls-ln-sentence"      x1="190" y1="200" x2="60"  y2="330"/>
+        <line class="ls-line" id="ls-ln-expressions"   x1="190" y1="200" x2="42"  y2="120"/>
+      </svg>
+
+      <!-- Center Orb -->
+      <div class="ls-orb-wrap">
+        <div class="ls-orb" id="ls-orb" onclick="lsStartWriting()">
+          <div class="ls-orb-liquid" id="ls-orb-liquid">
+            <div class="ls-orb-wave1"></div>
+            <div class="ls-orb-wave2"></div>
+            <div class="ls-orb-fill-body"></div>
+          </div>
+          <div class="ls-orb-label">
+            <div class="ls-orb-count" id="ls-orb-count">0</div>
+            <div class="ls-orb-total">/ 5 완료</div>
+            <div class="ls-orb-pts" id="ls-orb-pts">0 냥</div>
+          </div>
+        </div>
       </div>
-      <button onclick="closeLearningSelector()" style="background:none;border:none;color:rgba(255,255,255,.45);font-size:22px;cursor:pointer;line-height:1;padding:0 4px">✕</button>
+
+      <!-- Activity Nodes -->
+      <div class="ls-node" id="ls-card-topic" data-pos="top" onclick="lsStart('topic')">
+        <div class="ls-node-circle">✍️<span class="ls-node-check">✓</span></div>
+        <div class="ls-node-name">Topic Writing</div>
+        <div class="ls-node-pts">+20 냥</div>
+      </div>
+      <div class="ls-node" id="ls-card-grammar" data-pos="tr" onclick="lsStart('grammar')">
+        <div class="ls-node-circle">📖<span class="ls-node-check">✓</span></div>
+        <div class="ls-node-name">Grammar</div>
+        <div class="ls-node-pts">+10 냥</div>
+      </div>
+      <div class="ls-node" id="ls-card-picture" data-pos="br" onclick="lsStart('picture')">
+        <div class="ls-node-circle">🖼️<span class="ls-node-check">✓</span></div>
+        <div class="ls-node-name">Photo Desc.</div>
+        <div class="ls-node-pts">+15 냥</div>
+      </div>
+      <div class="ls-node" id="ls-card-sentence" data-pos="bl" onclick="lsStart('sentence')">
+        <div class="ls-node-circle">🎧<span class="ls-node-check">✓</span></div>
+        <div class="ls-node-name">Dictation</div>
+        <div class="ls-node-pts">+10 냥</div>
+      </div>
+      <div class="ls-node" id="ls-card-expressions" data-pos="tl" onclick="lsStart('expressions')">
+        <div class="ls-node-circle">💡<span class="ls-node-check">✓</span></div>
+        <div class="ls-node-name">Key Expr.</div>
+        <div class="ls-node-pts">+10 냥</div>
+      </div>
     </div>
-    <!-- 4 activity cards -->
-    <div class="ls-grid">
-      <button class="ls-card" id="ls-card-topic" onclick="lsStart('topic')">
-        <div class="ls-done-badge">✅</div>
-        <div class="ls-card-icon">✍️</div>
-        <div class="ls-card-name">Topic Writing</div>
-        <div class="ls-card-desc">오늘의 주제로 문장 쓰기</div>
-        <div class="ls-card-pts">+20 냥</div>
-      </button>
-      <button class="ls-card" id="ls-card-grammar" onclick="lsStart('grammar')">
-        <div class="ls-done-badge">✅</div>
-        <div class="ls-card-icon">📖</div>
-        <div class="ls-card-name">Grammar</div>
-        <div class="ls-card-desc">문법 포인트 확인하기</div>
-        <div class="ls-card-pts">+10 냥</div>
-      </button>
-      <button class="ls-card" id="ls-card-picture" onclick="lsStart('picture')">
-        <div class="ls-done-badge">✅</div>
-        <div class="ls-card-icon">🖼️</div>
-        <div class="ls-card-name">Photo Description</div>
-        <div class="ls-card-desc">사진 묘사 연습하기</div>
-        <div class="ls-card-pts">+15 냥</div>
-      </button>
-      <button class="ls-card" id="ls-card-sentence" onclick="lsStart('sentence')">
-        <div class="ls-done-badge">✅</div>
-        <div class="ls-card-icon">🎧</div>
-        <div class="ls-card-name">Dictation</div>
-        <div class="ls-card-desc">받아쓰기 연습하기</div>
-        <div class="ls-card-pts">+10 냥</div>
-      </button>
-      <button class="ls-card" id="ls-card-expressions" onclick="lsStart('expressions')">
-        <div class="ls-done-badge">✅</div>
-        <div class="ls-card-icon">💡</div>
-        <div class="ls-card-name">Key Expressions</div>
-        <div class="ls-card-desc">오늘 주제 관련 핵심 표현 학습</div>
-        <div class="ls-card-pts">+10 냥</div>
-      </button>
-    </div>
+
     <hr class="ls-divider">
     <!-- Writing Practice button (locked/unlocked) -->
     <button class="ls-wp-btn" id="ls-wp-btn" onclick="lsStartWriting()" disabled>
       <span class="ls-wp-icon">🖊️</span>
       <span class="ls-wp-text">
-        <span class="ls-wp-name" id="ls-wp-name">Writing Practice</span>
-        <span class="ls-wp-sub" id="ls-wp-sub">Complete at least 1 learning activity first</span>
+        <span class="ls-wp-name" id="ls-wp-name">Express Practice</span>
+        <span class="ls-wp-sub" id="ls-wp-sub">학습 1개 이상 완료 시 열립니다</span>
       </span>
-      <span id="ls-wp-lock" style="font-size:18px">🔒</span>
+      <span id="ls-wp-lock" style="font-size:16px">🔒</span>
     </button>
   </div>
 </div>
