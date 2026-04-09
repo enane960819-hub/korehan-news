@@ -5847,17 +5847,17 @@ async function loadWordBook() {
     var sb = getSupa();
     if (!sb) return;
     var results = [];
-    // 1) saved_words (may not exist on all setups)
+    // 1) saved_words (columns: ko, en, rom — NOT word_ko)
     try {
-      var { data: sw, error: swErr } = await sb.from('saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
+      var { data: sw, error: swErr } = await sb.from('saved_words').select('ko, en, rom, english, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
       if (sw && !swErr) sw.forEach(function(w) {
-        var en = w.word_en || '';
+        var en = w.en || w.english || '';
         var cat = 'word';
         if (en.indexOf('[슬랭]') === 0) { cat = 'slang'; en = en.replace('[슬랭] ',''); }
         else if (en.indexOf('[표현]') === 0) { cat = 'expression'; en = en.replace('[표현] ',''); }
-        results.push({ ko:w.word_ko, rom:w.word_rom||'', en:en, date:w.created_at, cat:cat });
+        results.push({ ko:w.ko, rom:w.rom||'', en:en, date:w.created_at, cat:cat });
       });
-    } catch(e){ console.warn('[WordBook] saved_words:', e); }
+    } catch(e){ }
     // 2) user_saved_words (learning hub saves)
     try {
       var { data: usw } = await sb.from('user_saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
@@ -6008,31 +6008,20 @@ async function loadWordBankPreview() {
   if (!supaUser) return;
   try {
     var sb = getSupa();
-    var data = null;
-    // Try saved_words first, fallback to user_saved_words
+    var allWords = [];
+    // saved_words (columns: ko, en, rom)
     try {
-      var r = await sb.from('saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(100);
-      if (!r.error) data = r.data;
+      var r = await sb.from('saved_words').select('ko, en, rom, english, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(50);
+      if (r.data && !r.error) r.data.forEach(function(w){ allWords.push({ word_ko:w.ko, word_en:w.en||w.english||'', word_rom:w.rom||'', created_at:w.created_at }); });
     } catch(e){}
-    if (!data) {
-      try {
-        var r2 = await sb.from('user_saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(100);
-        if (!r2.error) data = r2.data;
-      } catch(e){}
-    }
-    _wbAllWords = data || [];
-    var preview = document.getElementById('sr-wordbank-preview');
-    if (!preview) return;
-    if (!_wbAllWords.length) {
-      preview.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:16px;color:rgba(255,255,255,.3);font-size:13px">단어를 저장하면 여기에 표시됩니다</div>';
-      return;
-    }
-    preview.innerHTML = _wbAllWords.slice(0, 8).map(function(w) {
-      return '<div style="display:flex;align-items:baseline;gap:8px;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.05)">'
-        + '<div style="font-size:13px;font-weight:800;flex-shrink:0">' + (w.word_ko||'') + '</div>'
-        + '<div style="font-size:11px;color:#7dd3fc;flex:1;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (w.word_en||'') + '</div>'
-        + '</div>';
-    }).join('') + (_wbAllWords.length > 8 ? '<div style="text-align:center;padding:8px;font-size:11px;color:rgba(255,255,255,.3);cursor:pointer" onclick="openWordBankModal()">+' + (_wbAllWords.length - 8) + ' more →</div>' : '');
+    // user_saved_words (columns: word_ko, word_en, word_rom)
+    try {
+      var r2 = await sb.from('user_saved_words').select('word_ko, word_en, word_rom, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(50);
+      if (r2.data && !r2.error) r2.data.forEach(function(w){ allWords.push(w); });
+    } catch(e){}
+    // Deduplicate by word_ko
+    var seen = {};
+    _wbAllWords = allWords.filter(function(w){ if (!w.word_ko || seen[w.word_ko]) return false; seen[w.word_ko]=true; return true; });
   } catch(e) {}
 }
 function openWordBankModal() {
