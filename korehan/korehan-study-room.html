@@ -1627,14 +1627,15 @@ body { background: #0b1626 !important; }
   .ft-node-label { font-size:10px; }
 }
 
-/* ─── Study Room Top Tabs (mobile only) ─── */
-.sr-top-tabs { display:none; }
+/* ─── Study Room Top Tabs (mobile only, sticky) ─── */
+.sr-top-tabs-wrap { display:none; }
 @media(max-width:860px) {
-  .sr-top-tabs { display:flex;gap:0;max-width:1160px;margin:0 auto;padding:0 12px; }
+  .sr-top-tabs-wrap { display:block;position:sticky;top:0;z-index:100;background:#0d1b2e;border-bottom:1px solid rgba(255,255,255,.1);padding:0; }
+  .sr-top-tabs { display:flex;gap:0;margin:0;padding:0; }
 }
-.sr-top-tab { padding:10px 16px;font-size:12px;font-weight:700;color:rgba(255,255,255,.45);cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;font-family:inherit;background:none;border-top:none;border-left:none;border-right:none; }
+.sr-top-tab { flex:1;padding:12px 0;font-size:12px;font-weight:700;color:rgba(255,255,255,.4);cursor:pointer;border:none;border-bottom:2px solid transparent;background:none;font-family:inherit;text-align:center;transition:all .15s; }
 .sr-top-tab:hover { color:rgba(255,255,255,.7); }
-.sr-top-tab.on { color:#fff;border-bottom-color:#7ab8f5; }
+.sr-top-tab.on { color:#7ab8f5;border-bottom-color:#7ab8f5; }
 .sr-tab-panel { display:none; }
 .sr-tab-panel.active { display:block; }
 /* On desktop, always show Study tab and ignore other tab panels */
@@ -1696,13 +1697,13 @@ body { background: #0b1626 !important; }
 <div class="sr-page">
 <div class="sr-wrap2">
 
-<!-- ── TOP TAB BAR ── -->
-<div style="background:linear-gradient(135deg,#0d1b2e,#1a3a6b);border-bottom:1px solid rgba(255,255,255,.08)">
+<!-- ── TOP TAB BAR (mobile only, sticky) ── -->
+<div class="sr-top-tabs-wrap">
 <div class="sr-top-tabs">
-  <button class="sr-top-tab on" onclick="switchSrTab('study',this)">📝 Study</button>
-  <button class="sr-top-tab" onclick="switchSrTab('help',this)">📖 Help</button>
-  <button class="sr-top-tab" onclick="switchSrTab('master',this)">🎯 Master</button>
-  <button class="sr-top-tab" onclick="switchSrTab('wordbook',this)">📖 단어장</button>
+  <button class="sr-top-tab on" onclick="switchSrTab('study',this)">Study</button>
+  <button class="sr-top-tab" onclick="switchSrTab('help',this)">Help</button>
+  <button class="sr-top-tab" onclick="switchSrTab('master',this)">Master</button>
+  <button class="sr-top-tab" onclick="switchSrTab('wordbook',this)">단어장</button>
 </div>
 </div>
 
@@ -1945,7 +1946,7 @@ body { background: #0b1626 !important; }
   <!-- ① TODAY'S MISSIONS — always at top -->
   <div class="sr-sb-panel" style="padding:14px 16px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <span style="font-size:13px;font-weight:900;color:#fff">Today's Mission</span>
+      <span style="font-size:13px;font-weight:900;color:#fff">Daily Quest</span>
       <span style="font-size:10px;color:rgba(255,255,255,.38);font-weight:600">+40 bonus</span>
     </div>
     <div id="sr-checklist-box"></div>
@@ -2829,10 +2830,11 @@ function renderStudyChecklist() {
   if (sd) sd.textContent = _studyDone.sentence ? '✅' : '';
   box.innerHTML = items.map(function(i){
     var done = !!_studyDone[i.k];
-    return '<div class="sr-mission-item">'
+    var nameStyle = done ? 'text-decoration:line-through;opacity:.5' : '';
+    return '<div class="sr-mission-item" style="' + (done ? 'opacity:.7' : '') + '">'
       + '<div class="sr-mission-item-left">'
-      + '<span class="sr-mission-item-name">' + i.label + '</span>'
-      + '<span class="sr-mission-item-sub">' + i.sub + '</span>'
+      + '<span class="sr-mission-item-name" style="' + nameStyle + '">' + (done ? '✅ ' : '') + i.label + '</span>'
+      + '<span class="sr-mission-item-sub" style="' + nameStyle + '">' + i.sub + '</span>'
       + '</div>'
       + '<div class="sr-mission-right">'
       + '<span class="sr-mission-pts">' + i.pts + '</span>'
@@ -5237,22 +5239,37 @@ async function loadWordBook() {
     var sb = getSupa();
     if (!sb) return;
     var results = [];
-    // 1) saved_words (main vocab table — used everywhere)
-    var { data: sw } = await sb.from('saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
-    if (sw) sw.forEach(function(w) {
-      var en = w.word_en || '';
-      var cat = 'word';
-      if (en.indexOf('[슬랭]') === 0) { cat = 'slang'; en = en.replace('[슬랭] ',''); }
-      else if (en.indexOf('[표현]') === 0) { cat = 'expression'; en = en.replace('[표현] ',''); }
-      results.push({ ko:w.word_ko, rom:w.word_rom||'', en:en, date:w.created_at, cat:cat });
-    });
-    // 2) Fast Track collected phrases (not in saved_words yet)
+    // 1) saved_words (main vocab table — used everywhere in the app)
+    try {
+      var { data: sw, error: swErr } = await sb.from('saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
+      if (swErr) console.warn('[WordBook] saved_words error:', swErr.message);
+      if (sw) sw.forEach(function(w) {
+        var en = w.word_en || '';
+        var cat = 'word';
+        if (en.indexOf('[슬랭]') === 0) { cat = 'slang'; en = en.replace('[슬랭] ',''); }
+        else if (en.indexOf('[표현]') === 0) { cat = 'expression'; en = en.replace('[표현] ',''); }
+        results.push({ ko:w.word_ko, rom:w.word_rom||'', en:en, date:w.created_at, cat:cat });
+      });
+    } catch(e){ console.warn('[WordBook] saved_words:', e); }
+    // 2) user_saved_words (learning hub saves)
+    try {
+      var { data: usw } = await sb.from('user_saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
+      if (usw) usw.forEach(function(w) {
+        results.push({ ko:w.word_ko, rom:w.word_rom||'', en:w.word_en||'', date:w.created_at, cat:'word' });
+      });
+    } catch(e){}
+    // 3) vocabulary_bank (personal vocab bank)
+    try {
+      var { data: vb } = await sb.from('vocabulary_bank').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
+      if (vb) vb.forEach(function(w) {
+        results.push({ ko:w.word_ko, rom:w.word_rom||'', en:w.word_en||'', date:w.created_at, cat:'word' });
+      });
+    } catch(e){}
+    // 4) Fast Track collected phrases
     try {
       var { data: ftp } = await sb.from('fast_track_progress').select('phrases').eq('user_id', supaUser.id);
       if (ftp) ftp.forEach(function(r){ (r.phrases||[]).forEach(function(p){
-        if (!results.some(function(x){ return x.ko === p; })) {
-          results.push({ ko:p, rom:'', en:'패스트트랙 표현', date:null, cat:'expression' });
-        }
+        results.push({ ko:p, rom:'', en:'패스트트랙 표현', date:null, cat:'expression' });
       }); });
     } catch(e){}
     // Deduplicate
@@ -5896,7 +5913,7 @@ async function submitWriting() {
 
     var doneEl = document.getElementById('hero-topic-done');
     if (doneEl) doneEl.style.display = 'flex';
-    showToast('✅ Submitted! Han will send feedback within 24 hours.');
+    showToast('✅ Submitted! Feedback will be ready within 24 hours.');
     returnToActivities(closeWritingModal);
 
   } catch(e) {
@@ -5916,30 +5933,30 @@ async function triggerAIFeedback(submissionId, text, vocab, grammar) {
     var wordCount = text.replace(/\s+/g,' ').trim().split(' ').length;
     var isTooShort = wordCount < 8;
 
-    var prompt = '당신은 한국어 작문 첨삭 전문가입니다. 학생의 작문을 매우 세밀하게 분석해주세요.\n\n'
-      + '학생 작문:\n"""\n' + text + '\n"""\n\n'
-      + '필수 어휘: ' + vocab.join(', ') + '\n'
-      + '필수 문법: ' + grammar.join(', ') + '\n\n'
-      + '다음 JSON 형식으로 상세 피드백을 제공하세요:\n'
+    var prompt = 'You are an expert Korean writing tutor. Analyze the student\'s Korean writing in detail and provide feedback IN ENGLISH.\n\n'
+      + 'Student writing:\n"""\n' + text + '\n"""\n\n'
+      + 'Required vocab: ' + vocab.join(', ') + '\n'
+      + 'Required grammar: ' + grammar.join(', ') + '\n\n'
+      + 'Return ONLY JSON in this format:\n'
       + '{\n'
-      + '  "score": 0~100 (정수, 전체 점수),\n'
-      + '  "overall": "전반적인 평가 2-3문장 (한국어로, 잘한 점 먼저 + 개선점)",\n'
-      + '  "corrected_full": "학생의 전체 문장을 교정한 완성본 (틀린 부분만 고친 자연스러운 문장)",\n'
+      + '  "score": 0-100 (integer),\n'
+      + '  "overall": "2-3 sentence overall evaluation in English (praise first, then improvements)",\n'
+      + '  "corrected_full": "Full corrected version of the student\'s text (fix errors while keeping their style)",\n'
       + '  "corrections": [\n'
-      + '    {"original":"틀린 표현","corrected":"수정된 표현","reason":"왜 틀렸는지 한국어로 설명","pattern":"SPELLING|PARTICLE|TENSE|WORD_ORDER|VOCAB|NUANCE"}\n'
+      + '    {"original":"incorrect expression","corrected":"corrected expression","reason":"English explanation of why it\'s wrong","pattern":"SPELLING|PARTICLE|TENSE|WORD_ORDER|VOCAB|NUANCE"}\n'
       + '  ],\n'
-      + '  "spelling": [{"wrong":"맞춤법 틀린 단어","correct":"올바른 표기","tip":"쉬운 기억법"}],\n'
-      + '  "naturalness": {"score":0~10,"comment":"자연스러움 평가 (원어민 관점에서 어색한 부분)","suggestions":["더 자연스러운 대안 표현1","대안2"]},\n'
-      + '  "nuance": {"comment":"뉘앙스/어감 피드백","word_swaps":[{"from":"사용된 단어","to":"추천 단어","why":"뉘앙스 차이 설명"}]},\n'
-      + '  "structure": {"comment":"문장 구조/어순 평가","tip":"구조 개선 팁"},\n'
-      + '  "vocab_feedback": "어휘 사용 평가 + 추가 추천 어휘",\n'
-      + '  "grammar_feedback": "문법 사용 평가 + 주의할 점",\n'
-      + '  "extra_content": "이 주제로 더 쓸 수 있는 내용 아이디어 2-3가지",\n'
+      + '  "spelling": [{"wrong":"misspelled word","correct":"correct spelling","tip":"easy way to remember"}],\n'
+      + '  "naturalness": {"score":0-10,"comment":"How natural it sounds from a native perspective","suggestions":["more natural alternative 1","alternative 2"]},\n'
+      + '  "nuance": {"comment":"Nuance/tone feedback","word_swaps":[{"from":"word used","to":"recommended word","why":"nuance difference"}]},\n'
+      + '  "structure": {"comment":"Sentence structure/word order evaluation","tip":"Improvement tip"},\n'
+      + '  "vocab_feedback": "Vocabulary usage evaluation + recommended additional words",\n'
+      + '  "grammar_feedback": "Grammar usage evaluation + things to watch out for",\n'
+      + '  "extra_content": "2-3 ideas for extending this topic in writing",\n'
       + '  "mistake_patterns": {"SPELLING":0,"PARTICLE":0,"TENSE":0,"WORD_ORDER":0,"VOCAB":0,"NUANCE":0},\n'
-      + '  "encouragement": "격려 한마디 (한국어)"'
-      + (isTooShort ? ',\n  "example_answer": "이 주제에 대한 예시 답변 (3-5문장, 학생 수준에 맞게)"' : '')
+      + '  "encouragement": "A short encouraging message in English"'
+      + (isTooShort ? ',\n  "example_answer": "Example answer for this topic (3-5 sentences, matched to student level)"' : '')
       + '\n}\n'
-      + '모든 피드백은 한국어로 작성. JSON만 반환하세요.';
+      + 'ALL feedback text must be in English. Korean only appears in corrected_full, corrections.original/corrected, spelling fields. Return ONLY valid JSON.';
 
     var data = await callClaude({
       feature: 'writing_feedback',
@@ -6024,7 +6041,7 @@ async function loadFeedbackInbox() {
       btnEl.querySelector('button').style.color = '#4ade80';
       if (labelEl) labelEl.textContent = 'New feedback arrived! Tap to view';
     } else if (latest.status === 'submitted' || latest.status === 'ai_reviewed') {
-      if (labelEl) labelEl.textContent = 'Writing under review · feedback within 24h';
+      if (labelEl) labelEl.textContent = 'Under review · feedback within 24h';
     } else {
       if (labelEl) labelEl.textContent = 'View my writing feedback';
     }
@@ -6182,7 +6199,7 @@ async function renderFeedbackInboxContent() {
       try { fb = typeof item.ai_feedback === 'string' ? JSON.parse(item.ai_feedback) : item.ai_feedback; } catch(e) {}
       var hasFb = !!fb && (fb.corrections || fb.overall);
       var isOpen = idx === 0 && hasFb;
-      var statusLabel = (item.status === 'admin_approved' || item.status === 'sent') ? '피드백 도착' : (item.status === 'ai_reviewed' || hasFb) ? 'AI 검토 완료' : '검토 중';
+      var statusLabel = (item.status === 'admin_approved' || item.status === 'sent') ? 'Feedback ready' : (item.status === 'ai_reviewed' || hasFb) ? 'Review complete' : 'Under review';
       var statusColor = (item.status === 'admin_approved' || item.status === 'sent') ? '#4ade80' : hasFb ? '#60a5fa' : 'rgba(255,255,255,.35)';
       var preview = (item.writing_text||'').slice(0,60) + ((item.writing_text||'').length > 60 ? '…' : '');
 
