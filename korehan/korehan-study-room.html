@@ -968,19 +968,7 @@ body { background: #0b1626 !important; }
   max-width: 380px;
   margin: 0 auto 12px;
 }
-.ls-mindmap svg.ls-lines {
-  position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none;
-}
-.ls-line { stroke: rgba(255,255,255,.1); stroke-width: 2; stroke-dasharray: 6 4; fill: none; transition: all .4s; }
-.ls-line.ls-line-done {
-  stroke: rgba(52,211,153,.6); stroke-width: 2.5; stroke-dasharray: none;
-  filter: drop-shadow(0 0 6px rgba(52,211,153,.5));
-  animation: lsLinePulse 2s ease-in-out infinite;
-}
-@keyframes lsLinePulse {
-  0%,100% { filter: drop-shadow(0 0 4px rgba(52,211,153,.4)); }
-  50%     { filter: drop-shadow(0 0 10px rgba(52,211,153,.7)); }
-}
+/* lines rendered via canvas */
 
 /* ── Diablo Orb (center) ── */
 .ls-orb-wrap {
@@ -993,53 +981,21 @@ body { background: #0b1626 !important; }
 .ls-orb {
   width: 120px; height: 120px;
   border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #1a0a2e 0%, #0d0518 100%);
-  border: 3px solid rgba(180,120,255,.25);
-  box-shadow: 0 0 20px rgba(120,60,200,.25), inset 0 0 20px rgba(0,0,0,.5);
-  overflow: hidden;
   position: relative;
   cursor: pointer;
 }
-.ls-orb-liquid {
-  position: absolute;
-  bottom: 0; left: -10%; width: 120%;
-  height: var(--orb-fill, 15%);
-  transition: height .8s cubic-bezier(.4,0,.2,1);
+.ls-orb canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%;
 }
-.ls-orb-wave1, .ls-orb-wave2 {
-  position: absolute; top: -12px; left: 0; width: 200%; height: 24px;
-}
-.ls-orb-wave1 {
-  background: radial-gradient(ellipse at 25% 50%, rgba(168,85,247,.7), transparent 60%),
-              radial-gradient(ellipse at 75% 50%, rgba(168,85,247,.7), transparent 60%);
-  animation: lsWave1 2.5s ease-in-out infinite;
-}
-.ls-orb-wave2 {
-  background: radial-gradient(ellipse at 30% 50%, rgba(139,92,246,.5), transparent 55%),
-              radial-gradient(ellipse at 80% 50%, rgba(139,92,246,.5), transparent 55%);
-  animation: lsWave2 3s ease-in-out infinite;
-}
-.ls-orb-fill-body {
-  position: absolute; top: 12px; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(180deg, rgba(168,85,247,.7) 0%, rgba(124,58,237,.85) 40%, rgba(91,33,182,.9) 100%);
-}
-@keyframes lsWave1 { 0%,100%{ transform:translateX(0); } 50%{ transform:translateX(-25%); } }
-@keyframes lsWave2 { 0%,100%{ transform:translateX(-10%); } 50%{ transform:translateX(-30%); } }
-
 .ls-orb-label {
   position: absolute; inset: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; z-index: 5;
-  text-shadow: 0 1px 6px rgba(0,0,0,.7);
+  text-shadow: 0 2px 8px rgba(0,0,0,.9);
+  pointer-events: none;
 }
 .ls-orb-count { font-size: 28px; font-weight: 900; color: #fff; line-height: 1; }
 .ls-orb-total { font-size: 11px; color: rgba(255,255,255,.55); margin-top: 2px; }
 .ls-orb-pts { font-size: 10px; color: #c4b5fd; margin-top: 4px; font-weight: 700; }
-/* orb shine overlay */
-.ls-orb::after {
-  content: ''; position: absolute; top: 8%; left: 15%; width: 35%; height: 25%;
-  background: radial-gradient(ellipse, rgba(255,255,255,.18), transparent);
-  border-radius: 50%; z-index: 6; pointer-events: none;
-}
 
 /* ── Activity Nodes ── */
 .ls-node {
@@ -1575,13 +1531,13 @@ body { background: #0b1626 !important; }
   /* START button full-width on tiny screens */
   .sr-start-btn { width:100% !important; justify-content:center; }
   /* Learning selector */
-  .ls-panel { border-radius:22px; width:95%; }
+  .ls-panel { border-radius:22px; width:95%; padding:18px 12px 14px; }
   .ls-mindmap { max-width:340px; }
-  .ls-orb-wrap { width:100px;height:100px; }
-  .ls-orb { width:100px;height:100px; }
+  .ls-orb-wrap { width:105px;height:105px; }
+  .ls-orb { width:105px;height:105px; }
   .ls-orb-count { font-size:24px; }
-  .ls-node-circle { width:48px;height:48px;font-size:18px; }
-  .ls-node { width:72px; }
+  .ls-node-circle { width:50px;height:50px;font-size:19px; }
+  .ls-node { width:74px; }
   .ls-node-name { font-size:9px; }
 }
 @media(max-width:860px) {
@@ -3995,26 +3951,26 @@ function _updateLSSelectorBadges() {
   var totalPts = 0;
   types.forEach(function(t) {
     var node = document.getElementById('ls-card-' + t);
-    var line = document.getElementById('ls-ln-' + t);
     if (!node) return;
     if (_studyDone[t]) {
       node.classList.add('ls-node-done');
-      if (line) line.classList.add('ls-line-done');
       doneCount++;
       totalPts += ptsMap[t] || 0;
     } else {
       node.classList.remove('ls-node-done');
-      if (line) line.classList.remove('ls-line-done');
     }
   });
   // Update orb
-  var orbLiquid = document.getElementById('ls-orb-liquid');
-  var orbCount  = document.getElementById('ls-orb-count');
-  var orbPts    = document.getElementById('ls-orb-pts');
-  var fillPct   = Math.max(15, Math.round((doneCount / 5) * 100));
-  if (orbLiquid) orbLiquid.style.setProperty('--orb-fill', fillPct + '%');
-  if (orbCount)  orbCount.textContent = doneCount;
-  if (orbPts)    orbPts.textContent = totalPts + ' 냥';
+  var orbCount = document.getElementById('ls-orb-count');
+  var orbPts   = document.getElementById('ls-orb-pts');
+  if (orbCount) orbCount.textContent = doneCount;
+  if (orbPts)   orbPts.textContent = totalPts + ' 냥';
+  // Set target fill for canvas orb
+  if (typeof _lsOrbTargetFill !== 'undefined') _lsOrbTargetFill = Math.max(0.12, doneCount / 5);
+  // Update line done states for canvas
+  if (typeof _lsLineDone !== 'undefined') {
+    types.forEach(function(t){ _lsLineDone[t] = !!_studyDone[t]; });
+  }
   // Writing Practice button
   var wpBtn  = document.getElementById('ls-wp-btn');
   var wpLock = document.getElementById('ls-wp-lock');
@@ -4034,6 +3990,294 @@ function _updateLSSelectorBadges() {
     }
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// CANVAS ORB + LINE RENDERER
+// ═══════════════════════════════════════════════════════════════
+var _lsOrbTargetFill = 0.12;
+var _lsOrbCurrentFill = 0.12;
+var _lsOrbAnimId = null;
+var _lsLineDone = { topic:false, grammar:false, picture:false, sentence:false, expressions:false };
+
+// Node endpoint positions in viewBox coords (380×399)
+var _lsNodeCoords = {
+  topic:       { x:190, y:45  },
+  grammar:     { x:340, y:118 },
+  picture:     { x:318, y:330 },
+  sentence:    { x:62,  y:330 },
+  expressions: { x:40,  y:118 }
+};
+var _lsCenterCoord = { x:190, y:200 };
+
+// Particles for completed lines
+var _lsParticles = [];
+
+function _lsSpawnParticle(key) {
+  var n = _lsNodeCoords[key]; if (!n) return;
+  _lsParticles.push({
+    key: key,
+    t: 0,
+    speed: 0.008 + Math.random() * 0.006,
+    x1: _lsCenterCoord.x, y1: _lsCenterCoord.y,
+    x2: n.x, y2: n.y,
+    size: 1.5 + Math.random() * 2,
+    alpha: 0.6 + Math.random() * 0.4
+  });
+}
+
+function _lsInitOrbCanvas() {
+  var canvas = document.getElementById('ls-orb-canvas');
+  if (!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext('2d');
+  var S = 240; // canvas pixel size
+  var R = S / 2;
+  var t = 0;
+
+  function drawOrb() {
+    t += 0.025;
+    // Smooth fill interpolation
+    _lsOrbCurrentFill += (_lsOrbTargetFill - _lsOrbCurrentFill) * 0.04;
+    var fill = _lsOrbCurrentFill;
+
+    ctx.clearRect(0, 0, S, S);
+    ctx.save();
+
+    // Clip to circle
+    ctx.beginPath();
+    ctx.arc(R, R, R - 2, 0, Math.PI * 2);
+    ctx.clip();
+
+    // Background
+    var bgGrad = ctx.createRadialGradient(R * 0.75, R * 0.6, 0, R, R, R);
+    bgGrad.addColorStop(0, '#1a0a2e');
+    bgGrad.addColorStop(1, '#060210');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, S, S);
+
+    // Liquid fill level (bottom up)
+    var liquidTop = S - (fill * S * 0.88) - S * 0.06;
+
+    // Draw 4 wave layers for realistic liquid surface
+    var waves = [
+      { amp:6, freq:2.2, speed:1.0,  color:'rgba(168,85,247,0.3)',  yOff:-8 },
+      { amp:4, freq:3.0, speed:1.4,  color:'rgba(139,92,246,0.35)', yOff:-4 },
+      { amp:5, freq:2.5, speed:-0.8, color:'rgba(124,58,237,0.45)', yOff:0  },
+      { amp:3, freq:3.5, speed:1.8,  color:'rgba(168,85,247,0.25)', yOff:-6 }
+    ];
+
+    waves.forEach(function(w) {
+      ctx.beginPath();
+      ctx.moveTo(0, S);
+      for (var x = 0; x <= S; x += 2) {
+        var y = liquidTop + w.yOff
+          + Math.sin((x / S) * Math.PI * w.freq + t * w.speed) * w.amp
+          + Math.sin((x / S) * Math.PI * (w.freq * 0.7) + t * w.speed * 1.3) * (w.amp * 0.5);
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.lineTo(S, S);
+      ctx.lineTo(0, S);
+      ctx.closePath();
+      ctx.fillStyle = w.color;
+      ctx.fill();
+    });
+
+    // Main liquid body
+    var mainWaveY = liquidTop;
+    ctx.beginPath();
+    for (var x = 0; x <= S; x += 2) {
+      var y = mainWaveY
+        + Math.sin((x / S) * Math.PI * 2.8 + t) * 5
+        + Math.sin((x / S) * Math.PI * 1.5 + t * 1.5) * 3;
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.lineTo(S, S);
+    ctx.lineTo(0, S);
+    ctx.closePath();
+
+    var liqGrad = ctx.createLinearGradient(0, liquidTop, 0, S);
+    liqGrad.addColorStop(0, 'rgba(168,85,247,0.75)');
+    liqGrad.addColorStop(0.3, 'rgba(124,58,237,0.85)');
+    liqGrad.addColorStop(0.7, 'rgba(91,33,182,0.92)');
+    liqGrad.addColorStop(1, 'rgba(67,20,150,0.95)');
+    ctx.fillStyle = liqGrad;
+    ctx.fill();
+
+    // Surface highlight (bright line at wave surface)
+    ctx.beginPath();
+    for (var x = 0; x <= S; x += 2) {
+      var y = mainWaveY
+        + Math.sin((x / S) * Math.PI * 2.8 + t) * 5
+        + Math.sin((x / S) * Math.PI * 1.5 + t * 1.5) * 3;
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = 'rgba(200,160,255,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Floating bubbles in liquid
+    for (var i = 0; i < 6; i++) {
+      var bx = ((i * 41 + t * 15) % S);
+      var by = liquidTop + 15 + ((i * 37 + Math.sin(t + i) * 10) % (S - liquidTop - 20));
+      var br = 1.5 + Math.sin(t * 0.8 + i * 2) * 0.8;
+      var ba = 0.15 + Math.sin(t + i * 1.5) * 0.1;
+      ctx.beginPath();
+      ctx.arc(bx, by, br, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(220,190,255,' + ba + ')';
+      ctx.fill();
+    }
+
+    // Glass refraction edge (inner shadow)
+    var edgeGrad = ctx.createRadialGradient(R, R, R * 0.75, R, R, R);
+    edgeGrad.addColorStop(0, 'rgba(0,0,0,0)');
+    edgeGrad.addColorStop(0.85, 'rgba(0,0,0,0.15)');
+    edgeGrad.addColorStop(1, 'rgba(0,0,0,0.55)');
+    ctx.fillStyle = edgeGrad;
+    ctx.fillRect(0, 0, S, S);
+
+    // Specular highlight (top-left)
+    ctx.beginPath();
+    ctx.ellipse(R * 0.62, R * 0.42, R * 0.28, R * 0.18, -0.4, 0, Math.PI * 2);
+    var specGrad = ctx.createRadialGradient(R * 0.62, R * 0.42, 0, R * 0.62, R * 0.42, R * 0.28);
+    specGrad.addColorStop(0, 'rgba(255,255,255,0.22)');
+    specGrad.addColorStop(0.5, 'rgba(255,255,255,0.06)');
+    specGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = specGrad;
+    ctx.fill();
+
+    // Small secondary highlight
+    ctx.beginPath();
+    ctx.ellipse(R * 0.45, R * 0.32, R * 0.08, R * 0.05, -0.3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fill();
+
+    // Border ring
+    ctx.restore();
+    ctx.beginPath();
+    ctx.arc(R, R, R - 2, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(160,100,240,0.35)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Outer glow
+    ctx.beginPath();
+    ctx.arc(R, R, R - 1, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(140,80,220,' + (0.1 + Math.sin(t * 0.8) * 0.08) + ')';
+    ctx.lineWidth = 6;
+    ctx.stroke();
+
+    _lsOrbAnimId = requestAnimationFrame(drawOrb);
+  }
+
+  drawOrb();
+}
+
+function _lsInitLinesCanvas() {
+  var wrap = document.getElementById('ls-mindmap');
+  var canvas = document.getElementById('ls-lines-canvas');
+  if (!wrap || !canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext('2d');
+  var t = 0;
+
+  function resizeCanvas() {
+    var rect = wrap.getBoundingClientRect();
+    canvas.width = rect.width * (window.devicePixelRatio || 1);
+    canvas.height = rect.height * (window.devicePixelRatio || 1);
+    ctx.setTransform(
+      canvas.width / 380, 0, 0,
+      canvas.height / 399, 0, 0
+    );
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  function drawLines() {
+    t += 0.02;
+    ctx.clearRect(0, 0, 380, 399);
+
+    Object.keys(_lsNodeCoords).forEach(function(key) {
+      var n = _lsNodeCoords[key];
+      var done = _lsLineDone[key];
+
+      if (done) {
+        // Glowing line
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(_lsCenterCoord.x, _lsCenterCoord.y);
+        ctx.lineTo(n.x, n.y);
+        // Outer glow
+        ctx.strokeStyle = 'rgba(52,211,153,0.2)';
+        ctx.lineWidth = 8;
+        ctx.stroke();
+        // Mid glow
+        ctx.strokeStyle = 'rgba(52,211,153,' + (0.35 + Math.sin(t * 2) * 0.15) + ')';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        // Core
+        ctx.strokeStyle = 'rgba(120,255,200,' + (0.6 + Math.sin(t * 2) * 0.2) + ')';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+
+        // Spawn particles occasionally
+        if (Math.random() < 0.06) _lsSpawnParticle(key);
+      } else {
+        // Dim dashed line
+        ctx.save();
+        ctx.beginPath();
+        ctx.setLineDash([5, 5]);
+        ctx.moveTo(_lsCenterCoord.x, _lsCenterCoord.y);
+        ctx.lineTo(n.x, n.y);
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+    });
+
+    // Draw particles
+    for (var i = _lsParticles.length - 1; i >= 0; i--) {
+      var p = _lsParticles[i];
+      p.t += p.speed;
+      if (p.t > 1) { _lsParticles.splice(i, 1); continue; }
+      var px = p.x1 + (p.x2 - p.x1) * p.t;
+      var py = p.y1 + (p.y2 - p.y1) * p.t;
+      var fadeAlpha = p.alpha * (1 - Math.pow(p.t * 2 - 1, 2));
+      // Glow
+      ctx.beginPath();
+      ctx.arc(px, py, p.size * 3, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(52,211,153,' + (fadeAlpha * 0.2) + ')';
+      ctx.fill();
+      // Core
+      ctx.beginPath();
+      ctx.arc(px, py, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(160,255,220,' + fadeAlpha + ')';
+      ctx.fill();
+    }
+
+    requestAnimationFrame(drawLines);
+  }
+
+  drawLines();
+}
+
+function _lsStartCanvasRendering() {
+  _lsInitOrbCanvas();
+  _lsInitLinesCanvas();
+}
+
+// Start canvas when modal opens
+var _origOpenLS = openLearningSelector;
+openLearningSelector = function() {
+  _origOpenLS();
+  // Start canvas on first open
+  if (!_lsOrbAnimId) {
+    setTimeout(_lsStartCanvasRendering, 50);
+  }
+};
 
 function lsStart(type) {
   closeLearningSelector();
@@ -10295,23 +10539,13 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 
     <!-- Mind Map -->
     <div class="ls-mindmap" id="ls-mindmap">
-      <!-- SVG connection lines -->
-      <svg class="ls-lines" id="ls-lines" viewBox="0 0 380 399" preserveAspectRatio="xMidYMid meet">
-        <line class="ls-line" id="ls-ln-topic"       x1="190" y1="200" x2="190" y2="48"/>
-        <line class="ls-line" id="ls-ln-grammar"      x1="190" y1="200" x2="338" y2="120"/>
-        <line class="ls-line" id="ls-ln-picture"       x1="190" y1="200" x2="320" y2="330"/>
-        <line class="ls-line" id="ls-ln-sentence"      x1="190" y1="200" x2="60"  y2="330"/>
-        <line class="ls-line" id="ls-ln-expressions"   x1="190" y1="200" x2="42"  y2="120"/>
-      </svg>
+      <!-- Connection lines canvas (particles + glow) -->
+      <canvas id="ls-lines-canvas" style="position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none"></canvas>
 
-      <!-- Center Orb -->
+      <!-- Center Orb (Canvas) -->
       <div class="ls-orb-wrap">
         <div class="ls-orb" id="ls-orb" onclick="lsStartWriting()">
-          <div class="ls-orb-liquid" id="ls-orb-liquid">
-            <div class="ls-orb-wave1"></div>
-            <div class="ls-orb-wave2"></div>
-            <div class="ls-orb-fill-body"></div>
-          </div>
+          <canvas id="ls-orb-canvas" width="240" height="240"></canvas>
           <div class="ls-orb-label">
             <div class="ls-orb-count" id="ls-orb-count">0</div>
             <div class="ls-orb-total">/ 5 완료</div>
