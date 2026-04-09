@@ -1697,14 +1697,14 @@ body { background: #0b1626 !important; }
 }
 
 /* ─── Study Room Category Tabs ─── */
-.sr-top-tabs-wrap { position:sticky;top:0;z-index:100;background:linear-gradient(180deg,#080f1a 0%,#0d1b2e 100%);border-bottom:1px solid rgba(255,255,255,.06);padding:8px 16px 0;margin-bottom:0; }
+.sr-top-tabs-wrap { padding:0;margin-bottom:10px; }
 .sr-top-tabs { display:flex;gap:6px;max-width:1160px;margin:0 auto; }
 .sr-top-tab { padding:8px 18px;font-size:12px;font-weight:700;color:rgba(255,255,255,.35);cursor:pointer;border:1px solid rgba(255,255,255,.06);border-bottom:none;border-radius:8px 8px 0 0;background:rgba(255,255,255,.03);font-family:inherit;text-align:center;transition:all .15s;white-space:nowrap; }
 .sr-top-tab:hover { color:rgba(255,255,255,.6);background:rgba(255,255,255,.06); }
 .sr-top-tab.on { color:#fff;background:rgba(122,184,245,.12);border-color:rgba(122,184,245,.2); }
 /* Level sub-bar */
-.sr-level-bar { display:flex;gap:4px;padding:6px 0 8px;max-width:1160px;margin:0 auto; }
-.lv-pill { padding:5px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:transparent;color:rgba(255,255,255,.35);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s; }
+.sr-level-bar { display:flex;gap:6px;padding:6px 0 8px;max-width:1160px;margin:0 auto; }
+.lv-pill { padding:6px 16px;border-radius:6px;border:1px solid rgba(255,255,255,.1);background:transparent;color:rgba(255,255,255,.35);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s; }
 .lv-pill:hover { color:rgba(255,255,255,.6);background:rgba(255,255,255,.06); }
 .lv-pill.on { color:#fff;border-color:transparent; }
 .lv-pill.lv-s.on { background:#6b21a8; }
@@ -1720,42 +1720,38 @@ body { background: #0b1626 !important; }
 .sr-mob-aid-icon { font-size:13px;flex-shrink:0; }
 .sr-mob-aid-title { font-size:11px;font-weight:700;color:rgba(255,255,255,.7); }
 
-/* ─── DESKTOP TABS (861px+) ─── */
+/* ─── DESKTOP (861px+): hide tabs entirely, show level bar only ─── */
 @media(min-width:861px) {
-  .sr-top-tabs-wrap { padding:0 20px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:0; }
-  .sr-top-tabs { gap:0; }
-  .sr-top-tab { padding:12px 24px;font-size:13px;border:none;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:rgba(255,255,255,.4);transition:color .15s,border-color .15s; }
-  .sr-top-tab:hover { color:rgba(255,255,255,.7);background:transparent; }
-  .sr-top-tab.on { color:#fff;background:transparent;border-bottom-color:#7ab8f5; }
+  .sr-top-tabs-wrap { position:static;background:transparent;border-bottom:none;padding:0 20px; }
+  .sr-top-tabs { display:none; }
   .sr-level-bar { padding:10px 0 8px; }
-  .lv-pill { padding:6px 18px;font-size:12px; }
+  .lv-pill { padding:7px 20px;font-size:12px; }
   .sr-tab-panel#sr-panel-study { display:block !important; }
   .sr-tab-panel#sr-panel-help { display:none !important; }
 }
-/* ─── TABLET TABS (641px–860px) ─── */
+/* ─── TABLET (641–860px): tabs above activity cards, not sticky ─── */
 @media(min-width:641px) and (max-width:860px) {
-  .sr-top-tabs-wrap { padding:8px 16px 0;border-bottom:1px solid rgba(255,255,255,.06); }
-  .sr-top-tabs { gap:4px; }
-  .sr-top-tab { padding:10px 20px;font-size:12px;border:none;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:rgba(255,255,255,.35); }
-  .sr-top-tab.on { color:#fff;border-bottom-color:#7ab8f5;background:transparent; }
-  .sr-level-bar { padding:8px 0 6px; }
-  .lv-pill { padding:5px 16px;font-size:11px; }
+  .sr-top-tabs-wrap { position:static;padding:0;margin-bottom:14px;border-bottom:none;background:transparent; }
+  .sr-top-tabs { gap:4px;background:rgba(255,255,255,.04);border-radius:10px;padding:3px; }
+  .sr-top-tab { flex:1;padding:9px 12px;font-size:12px;border:none;border-radius:8px;background:transparent;color:rgba(255,255,255,.35);text-align:center; }
+  .sr-top-tab.on { color:#fff;background:rgba(122,184,245,.15); }
+  .sr-level-bar { padding:0 0 10px;gap:6px; }
+  .lv-pill { padding:6px 16px;font-size:11px; }
   .sr-headline { font-size:24px !important; }
   .sr-headline-sub { font-size:12px !important; }
 }
-/* ─── MOBILE TABS + LAYOUT (≤640px) ─── */
+/* ─── MOBILE (≤640px): tabs above activity cards, not sticky ─── */
 @media(max-width:640px) {
   #wcard-chips { display:none; }
   .sr-mobile-aids { display:flex;flex-direction:row;gap:6px;margin-top:6px;flex-wrap:wrap; }
   .sr-topic-q { font-size:clamp(22px,4.5vw,30px); }
-  /* Pill-style segmented tabs */
-  .sr-top-tabs-wrap { padding:10px 10px 8px;margin-bottom:10px;border-bottom:none;background:linear-gradient(180deg,#0a1220 0%,#0f1d30 100%);border-radius:0 0 16px 16px;box-shadow:0 4px 16px rgba(0,0,0,.3); }
-  .sr-top-tabs { gap:4px;background:rgba(255,255,255,.04);border-radius:12px;padding:4px; }
-  .sr-top-tab { flex:1;border:none;border-radius:10px;padding:8px 4px;font-size:11px;background:transparent;color:rgba(255,255,255,.35);letter-spacing:.02em; }
-  .sr-top-tab.on { background:rgba(122,184,245,.15);color:#fff;box-shadow:0 2px 8px rgba(122,184,245,.15); }
+  .sr-top-tabs-wrap { position:static;padding:0;margin-bottom:10px;border-bottom:none;background:transparent;border-radius:0;box-shadow:none; }
+  .sr-top-tabs { gap:4px;background:rgba(255,255,255,.04);border-radius:10px;padding:3px; }
+  .sr-top-tab { flex:1;border:none;border-radius:8px;padding:8px 4px;font-size:11px;background:transparent;color:rgba(255,255,255,.35);letter-spacing:.02em; }
+  .sr-top-tab.on { background:rgba(122,184,245,.15);color:#fff; }
   .sr-top-tab:hover { background:rgba(255,255,255,.06); }
-  .sr-level-bar { gap:5px;padding:8px 0 2px;justify-content:center; }
-  .lv-pill { padding:5px 12px;font-size:10px; }
+  .sr-level-bar { gap:5px;padding:0 0 6px;justify-content:center; }
+  .lv-pill { padding:5px 14px;font-size:10px; }
   /* Shrink hero — hide big headline, keep only badge */
   .sr-hero-block { display:flex;flex-direction:column;padding:12px 14px 14px !important; }
   .sr-headline { display:none !important; }
@@ -1827,20 +1823,12 @@ body { background: #0b1626 !important; }
 <div class="sr-page">
 <div class="sr-wrap2">
 
-<!-- ── TOP TAB BAR (sticky) ── -->
-<div class="sr-top-tabs-wrap">
-<div class="sr-top-tabs">
-  <button class="sr-top-tab on" onclick="switchSrTab('study',this)">📝 Study</button>
-  <button class="sr-top-tab" onclick="switchSrTab('help',this)">📚 Help</button>
-  <button class="sr-top-tab" onclick="switchSrTab('master',this)">🎯 Master</button>
-  <button class="sr-top-tab" onclick="switchSrTab('wordbook',this)">📖 단어장</button>
-</div>
-<div class="sr-level-bar" id="sr-level-bar">
+<!-- Level bar (always visible, top of page) -->
+<div class="sr-level-bar" id="sr-level-bar" style="padding-top:10px">
   <button class="lv-pill lv-s"    onclick="setLevel('Starter',this)">Seed</button>
   <button class="lv-pill lv-b on" onclick="setLevel('Beginner',this)">Sprout</button>
   <button class="lv-pill lv-i"    onclick="setLevel('Intermediate',this)">Tree</button>
   <button class="lv-pill lv-a"    onclick="setLevel('Advanced',this)">Forest</button>
-</div>
 </div>
 
 <!-- ═══ TAB: Study (main learning content) ═══ -->
@@ -1999,6 +1987,16 @@ body { background: #0b1626 !important; }
       </div>
       <span style="font-size:14px;color:rgba(255,255,255,.3)">→</span>
     </div>
+  </div>
+
+  <!-- TAB BAR (mobile/tablet only — hidden on desktop) -->
+  <div class="sr-top-tabs-wrap">
+  <div class="sr-top-tabs">
+    <button class="sr-top-tab on" onclick="switchSrTab('study',this)">📝 Study</button>
+    <button class="sr-top-tab" onclick="switchSrTab('help',this)">📚 Help</button>
+    <button class="sr-top-tab" onclick="switchSrTab('master',this)">🎯 Master</button>
+    <button class="sr-top-tab" onclick="switchSrTab('wordbook',this)">📖 단어장</button>
+  </div>
   </div>
 
   <!-- ACTIVITY CARDS -->
