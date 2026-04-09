@@ -5513,7 +5513,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   // conversations/stories 등 tooltip 불필요 페이지에서는 2000행 vocabulary_bank 쿼리 스킵
   var _skipVocabPages = ['index','','korehan-news','korehan-conversations','korehan-stories','korehan-mypage','korehan-learn','korehan-courses','korehan-onboarding','korehan-learning-overview'];
   if (_skipVocabPages.indexOf(pageBase) < 0) {
-    _deferPost(function(){ loadVocabFromDB().then(function(){ initTooltips(); }); });
+    _deferPost(function(){ loadVocabFromDB().then(function(){ initTooltips(); if (typeof renderArticleVocab === 'function' && window._currentArticle) renderArticleVocab(window._currentArticle); }); });
   } else {
     _deferPost(function(){ initTooltips(); });
   }
