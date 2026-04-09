@@ -1629,7 +1629,7 @@ body { background: #0b1626 !important; }
 }
 
 /* ─── Study Room Category Tabs ─── */
-.sr-top-tabs-wrap { position:sticky;top:0;z-index:100;background:linear-gradient(180deg,#080f1a 0%,#0d1b2e 100%);border-bottom:1px solid rgba(255,255,255,.06);padding:8px 16px 0; }
+.sr-top-tabs-wrap { position:sticky;top:0;z-index:100;background:linear-gradient(180deg,#080f1a 0%,#0d1b2e 100%);border-bottom:1px solid rgba(255,255,255,.06);padding:8px 16px 0;margin-bottom:0; }
 .sr-top-tabs { display:flex;gap:6px;max-width:1160px;margin:0 auto; }
 .sr-top-tab { padding:8px 18px;font-size:12px;font-weight:700;color:rgba(255,255,255,.35);cursor:pointer;border:1px solid rgba(255,255,255,.06);border-bottom:none;border-radius:8px 8px 0 0;background:rgba(255,255,255,.03);font-family:inherit;text-align:center;transition:all .15s;white-space:nowrap; }
 .sr-top-tab:hover { color:rgba(255,255,255,.6);background:rgba(255,255,255,.06); }
@@ -1748,16 +1748,15 @@ body { background: #0b1626 !important; }
 
 <div id="sr-mob-main">
 
-  <!-- LEVEL SELECTOR — top of page -->
-  <div class="lv-row">
-    <button class="lv-btn lv-s"    onclick="setLevel('Starter',this)">🌱 Seed</button>
-    <button class="lv-btn lv-b on" onclick="setLevel('Beginner',this)">🌿 Sprout</button>
-    <button class="lv-btn lv-i"    onclick="setLevel('Intermediate',this)">🌳 Tree</button>
-    <button class="lv-btn lv-a"    onclick="setLevel('Advanced',this)">🌲 Forest</button>
-  </div>
-
-  <!-- HERO BLOCK: badge + headline + topic card -->
+  <!-- HERO BLOCK: badge + headline + level selector + topic card -->
   <div class="sr-hero-block">
+    <!-- LEVEL SELECTOR — inside hero -->
+    <div class="lv-row" style="margin-bottom:16px">
+      <button class="lv-btn lv-s"    onclick="setLevel('Starter',this)">🌱 Seed</button>
+      <button class="lv-btn lv-b on" onclick="setLevel('Beginner',this)">🌿 Sprout</button>
+      <button class="lv-btn lv-i"    onclick="setLevel('Intermediate',this)">🌳 Tree</button>
+      <button class="lv-btn lv-a"    onclick="setLevel('Advanced',this)">🌲 Forest</button>
+    </div>
     <div class="sr-lvbadge-pill" id="sr-lvbadge-pill">📖 STUDY ROOM / BEGINNER</div>
     <h1 class="sr-headline">Express yourself in Korean,<br>and watch yourself grow.</h1>
     <p class="sr-headline-sub">Write and speak on today's topic. Grammar and examples are available on the side for reference.</p>
