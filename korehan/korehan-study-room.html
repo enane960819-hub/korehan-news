@@ -1627,13 +1627,21 @@ body { background: #0b1626 !important; }
   .ft-node-label { font-size:10px; }
 }
 
-/* ─── Study Room Top Tabs ─── */
-.sr-top-tabs { display:flex;gap:0;max-width:1160px;margin:0 auto;padding:0 24px; }
-.sr-top-tab { padding:12px 24px;font-size:13px;font-weight:700;color:rgba(255,255,255,.45);cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;font-family:inherit;background:none;border-top:none;border-left:none;border-right:none; }
+/* ─── Study Room Top Tabs (mobile only) ─── */
+.sr-top-tabs { display:none; }
+@media(max-width:860px) {
+  .sr-top-tabs { display:flex;gap:0;max-width:1160px;margin:0 auto;padding:0 12px; }
+}
+.sr-top-tab { padding:10px 16px;font-size:12px;font-weight:700;color:rgba(255,255,255,.45);cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;font-family:inherit;background:none;border-top:none;border-left:none;border-right:none; }
 .sr-top-tab:hover { color:rgba(255,255,255,.7); }
 .sr-top-tab.on { color:#fff;border-bottom-color:#7ab8f5; }
 .sr-tab-panel { display:none; }
 .sr-tab-panel.active { display:block; }
+/* On desktop, always show Study tab and ignore other tab panels */
+@media(min-width:861px) {
+  .sr-tab-panel#sr-panel-study { display:block !important; }
+  .sr-tab-panel#sr-panel-help { display:none !important; }
+}
 /* Master tab grid */
 .master-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding:24px; }
 .master-card { padding:24px;border-radius:16px;cursor:pointer;transition:all .15s;border:1px solid rgba(255,255,255,.08); }
@@ -1698,9 +1706,37 @@ body { background: #0b1626 !important; }
 </div>
 </div>
 
-<!-- ═══ TAB: Study (main learning content FIRST) ═══ -->
+<!-- ═══ TAB: Study (main learning content) ═══ -->
 <div class="sr-tab-panel active" id="sr-panel-study">
-<div class="sr-layout" style="grid-template-columns:1fr;max-width:900px;margin:0 auto">
+<div class="sr-layout">
+
+<!-- ── LEFT SIDEBAR (desktop/tablet only) ── -->
+<div class="sr-sidebar sr-sidebar-left">
+  <div class="sr-sb-panel pcard" style="padding:0;overflow:hidden">
+    <div class="chd" style="padding:10px 14px"><div class="ct" style="color:rgba(255,255,255,.4)">🌟 Today's Phrase</div></div>
+    <div class="cb" id="phrase-box-left" style="padding:12px 14px">
+      <div class="skel" style="height:26px;width:80%;margin-bottom:6px;background:rgba(255,255,255,.1)"></div>
+      <div class="skel" style="height:11px;width:60%;background:rgba(255,255,255,.1)"></div>
+    </div>
+  </div>
+  <div class="sr-sb-panel" style="padding:0;overflow:hidden">
+    <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
+      <div class="ct" style="color:rgba(255,255,255,.45)">📌 Must-know Vocab</div>
+    </div>
+    <div class="cb" id="vocab-box-left" style="padding:12px 14px"></div>
+  </div>
+  <div class="sr-sb-panel" style="padding:0;overflow:hidden">
+    <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
+      <div class="ct" style="color:rgba(255,255,255,.45)">📇 Flashcards</div>
+    </div>
+    <div style="padding:8px 14px 0;display:flex;gap:6px;flex-wrap:wrap" id="fc-filters-left">
+      <button class="tpill on" onclick="loadFlashcards('all',this)">All</button>
+    </div>
+    <div style="padding:10px 14px 14px">
+      <div class="mgrid" id="fc-grid-left"></div>
+    </div>
+  </div>
+</div>
 
 <!-- ── MAIN COLUMN ── -->
 <div class="sr-main">
@@ -1903,8 +1939,8 @@ body { background: #0b1626 !important; }
 </div><!-- /sr-mob-main -->
 </div><!-- /sr-main -->
 
-<!-- ── RIGHT SIDEBAR (hidden — content moved to Help tab) ── -->
-<div class="sr-sidebar" style="display:none">
+<!-- ── RIGHT SIDEBAR ── -->
+<div class="sr-sidebar">
 
   <!-- ① TODAY'S MISSIONS — always at top -->
   <div class="sr-sb-panel" style="padding:14px 16px">
@@ -1982,40 +2018,25 @@ body { background: #0b1626 !important; }
 </div><!-- /sr-layout -->
 </div><!-- /sr-panel-study -->
 
-<!-- ═══ TAB: Help (vocab, grammar, flashcards, phrases) ═══ -->
+<!-- ═══ TAB: Help (mobile only — shows sidebar content) ═══ -->
 <div class="sr-tab-panel" id="sr-panel-help">
   <div style="max-width:600px;margin:0 auto;padding:16px">
-    <!-- TODAY'S PHRASE -->
     <div class="sr-sb-panel pcard" style="padding:0;overflow:hidden;margin-bottom:12px">
       <div class="chd" style="padding:10px 14px"><div class="ct" style="color:rgba(255,255,255,.4)">🌟 Today's Phrase</div></div>
-      <div class="cb" id="phrase-box-left" style="padding:12px 14px">
-        <div class="skel" style="height:26px;width:80%;margin-bottom:6px;background:rgba(255,255,255,.1)"></div>
-        <div class="skel" style="height:11px;width:60%;background:rgba(255,255,255,.1)"></div>
-      </div>
+      <div class="cb" id="phrase-box-help" style="padding:12px 14px"></div>
     </div>
-    <!-- MUST-KNOW VOCAB -->
     <div class="sr-sb-panel" style="padding:0;overflow:hidden;margin-bottom:12px">
       <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
         <div class="ct" style="color:rgba(255,255,255,.45)">📌 Must-know Vocab</div>
       </div>
-      <div class="cb" id="vocab-box-left" style="padding:12px 14px">
-        <div class="skel" style="height:14px;margin-bottom:8px;background:rgba(255,255,255,.08)"></div>
-        <div class="skel" style="height:14px;background:rgba(255,255,255,.08)"></div>
-      </div>
+      <div class="cb" id="vocab-box-help" style="padding:12px 14px"></div>
     </div>
-    <!-- FLASHCARDS -->
     <div class="sr-sb-panel" style="padding:0;overflow:hidden;margin-bottom:12px">
       <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
         <div class="ct" style="color:rgba(255,255,255,.45)">📇 Flashcards</div>
       </div>
-      <div style="padding:8px 14px 0;display:flex;gap:6px;flex-wrap:wrap" id="fc-filters-left">
-        <button class="tpill on" onclick="loadFlashcards('all',this)">All</button>
-      </div>
       <div style="padding:10px 14px 14px">
-        <div class="mgrid" id="fc-grid-left"></div>
-        <div style="text-align:center;margin-top:8px">
-          <a href="korehan-learn.html" style="font-size:11px;color:#7ab8f5;font-weight:700;text-decoration:none">View all →</a>
-        </div>
+        <div class="mgrid" id="fc-grid-help"></div>
       </div>
     </div>
   </div>
@@ -5212,6 +5233,18 @@ function switchSrTab(tab, btn) {
   var panel = document.getElementById('sr-panel-' + tab);
   if (panel) panel.classList.add('active');
   if (tab === 'wordbook') loadWordBook();
+  // Mirror sidebar content to Help tab for mobile
+  if (tab === 'help') {
+    var src = document.getElementById('phrase-box-left');
+    var dst = document.getElementById('phrase-box-help');
+    if (src && dst) dst.innerHTML = src.innerHTML;
+    var vsrc = document.getElementById('vocab-box-left');
+    var vdst = document.getElementById('vocab-box-help');
+    if (vsrc && vdst) vdst.innerHTML = vsrc.innerHTML;
+    var fsrc = document.getElementById('fc-grid-left');
+    var fdst = document.getElementById('fc-grid-help');
+    if (fsrc && fdst) fdst.innerHTML = fsrc.innerHTML;
+  }
 }
 
 // ── Word Book (단어장) ──
