@@ -1000,10 +1000,24 @@ function renderMiniStats(stats) {
     '<div class="mp-section stats-overview"><h3>Current Status</h3><div class="stats-grid">'
     + row(SVG_ICONS.streak,   us.mission_streak || us.streak || 0, 'day streak')
     + row(SVG_ICONS.articles, us.articles_read  || 0,              'articles')
-    + row(SVG_ICONS.words,    us.words_saved    || 0,              'saved words', ' clickable" onclick="openSavedWordsModal()')
+    + row(SVG_ICONS.words,    '<span id="mp-real-word-count">' + (us.words_saved || 0) + '</span>', 'saved words', ' clickable" onclick="openSavedWordsModal()')
     + row(SVG_ICONS.quizzes,  us.quizzes_done   || 0,              'quizzes')
     + row(SVG_ICONS.nyang,    coinVal.toLocaleString(),            'kimchi')
     + '</div></div>';
+}
+
+// ── Sync real word count from DB ──────────────────────────────
+async function syncRealWordCount() {
+  if (!supaUser) return;
+  var sb = getSupa(); if (!sb) return;
+  try {
+    var r = await sb.from('user_saved_words').select('id', { count: 'exact', head: true }).eq('user_id', supaUser.id);
+    var realCount = r.count || 0;
+    var el = document.getElementById('mp-real-word-count');
+    if (el) el.textContent = realCount;
+    // Sync user_stats.words_saved to real count
+    await sb.from('user_stats').update({ words_saved: realCount }).eq('user_id', supaUser.id);
+  } catch(e) {}
 }
 
 // ── Render tier grid ───────────────────────────────────────────
@@ -1376,6 +1390,7 @@ async function initMyPage() {
   _userXP = xp;
   renderXPCard(xp);
   renderMiniStats(stats);
+  syncRealWordCount();
   renderTierGrid(xp);
   renderProfileFields(xp, coin);
   renderOwnedAndGiftSections(coin, invRes);

@@ -5857,14 +5857,7 @@ async function loadWordBook() {
         results.push({ ko:w.word_ko, rom:w.word_rom||'', en:en, date:w.created_at, cat:cat });
       });
     } catch(e){}
-    // 3) vocabulary_bank is a system word pool, not user saves — skipped
-    // 4) Fast Track collected phrases
-    try {
-      var { data: ftp } = await sb.from('fast_track_progress').select('phrases').eq('user_id', supaUser.id);
-      if (ftp) ftp.forEach(function(r){ (r.phrases||[]).forEach(function(p){
-        results.push({ ko:p, rom:'', en:'패스트트랙 표현', date:null, cat:'expression' });
-      }); });
-    } catch(e){}
+    // Only user_saved_words — no vocabulary_bank or fast_track_progress
     // Deduplicate
     var seen = {};
     _wbData = results.filter(function(w){ if (!w.ko || seen[w.ko]) return false; seen[w.ko]=true; return true; });
