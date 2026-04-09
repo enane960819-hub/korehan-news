@@ -3250,6 +3250,12 @@ async function loadDailyContent() {
   }
 
   if (!supaUser) {
+    // If session check isn't done yet, wait a bit more before showing login wall
+    if (!window._sessionChecked) {
+      console.log('[loadDailyContent] session not checked yet, deferring...');
+      setTimeout(loadDailyContent, 300);
+      return;
+    }
     console.log('[loadDailyContent] no user — showing login wall');
     var subEl = document.getElementById('wm-topic-sub');
     if (subEl) subEl.textContent = '오늘의 주제 · Today\'s Topic';
@@ -7157,6 +7163,10 @@ function hideAILoading() {
 // LOGIN WALL
 // ═══════════════════════════════════════════════════════════════
 function showLoginWall() {
+  // Don't show if user is already logged in (session loading delay)
+  if (supaUser) return;
+  // Don't show duplicate
+  if (document.getElementById('login-wall')) return;
   // 페이지 내용은 그대로 두고 블러 오버레이만 올림
   // 샘플 토픽 하나 보여줌 (맛보기)
   var sample = _allTopics[0] || { topic_ko: '오늘 하루 어땠나요?', topic_en: 'How was your day today?' };
