@@ -1726,8 +1726,11 @@ body { background: #0b1626 !important; }
   .sr-top-tabs { display:none; }
   .sr-level-bar { padding:10px 0 14px; }
   .lv-pill { padding:10px 20px;font-size:13px; }
+  /* On desktop: always show Study, Help content is in sidebar */
   .sr-tab-panel#sr-panel-study { display:block !important; }
   .sr-tab-panel#sr-panel-help { display:none !important; }
+  .sr-tab-panel#sr-panel-master { display:none !important; }
+  .sr-tab-panel#sr-panel-wordbook { display:none !important; }
 }
 /* ─── TABLET (641–860px): tabs above activity cards, not sticky ─── */
 @media(min-width:641px) and (max-width:860px) {
@@ -1831,6 +1834,16 @@ body { background: #0b1626 !important; }
   <button class="lv-pill lv-a"    onclick="setLevel('Advanced',this)">Forest</button>
 </div>
 
+<!-- TAB BAR (mobile/tablet only — outside all panels so it persists) -->
+<div class="sr-top-tabs-wrap">
+<div class="sr-top-tabs">
+  <button class="sr-top-tab on" onclick="switchSrTab('study',this)">📝 Study</button>
+  <button class="sr-top-tab" onclick="switchSrTab('help',this)">📚 Help</button>
+  <button class="sr-top-tab" onclick="switchSrTab('master',this)">🎯 Master</button>
+  <button class="sr-top-tab" onclick="switchSrTab('wordbook',this)">📖 단어장</button>
+</div>
+</div>
+
 <!-- ═══ TAB: Study (main learning content) ═══ -->
 <div class="sr-tab-panel active" id="sr-panel-study">
 <div class="sr-layout">
@@ -1870,7 +1883,6 @@ body { background: #0b1626 !important; }
 
   <!-- HERO BLOCK -->
   <div class="sr-hero-block">
-    <div class="sr-lvbadge-pill" id="sr-lvbadge-pill">📖 STUDY ROOM / BEGINNER</div>
     <h1 class="sr-headline">Express yourself in Korean,<br>and watch yourself grow.</h1>
     <p class="sr-headline-sub">Write and speak on today's topic. Grammar and examples are available on the side for reference.</p>
 
@@ -1987,16 +1999,6 @@ body { background: #0b1626 !important; }
       </div>
       <span style="font-size:14px;color:rgba(255,255,255,.3)">→</span>
     </div>
-  </div>
-
-  <!-- TAB BAR (mobile/tablet only — hidden on desktop) -->
-  <div class="sr-top-tabs-wrap">
-  <div class="sr-top-tabs">
-    <button class="sr-top-tab on" onclick="switchSrTab('study',this)">📝 Study</button>
-    <button class="sr-top-tab" onclick="switchSrTab('help',this)">📚 Help</button>
-    <button class="sr-top-tab" onclick="switchSrTab('master',this)">🎯 Master</button>
-    <button class="sr-top-tab" onclick="switchSrTab('wordbook',this)">📖 단어장</button>
-  </div>
   </div>
 
   <!-- ACTIVITY CARDS -->
@@ -3168,8 +3170,6 @@ function setLevel(level, btn) {
   _currentLevel = level;
   document.querySelectorAll('.lv-btn,.lv-pill').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
-  var pill = document.getElementById('sr-lvbadge-pill');
-  if (pill) pill.textContent = '📖 STUDY ROOM / ' + level.toUpperCase();
 
   // Members only
   if (!supaUser) {
