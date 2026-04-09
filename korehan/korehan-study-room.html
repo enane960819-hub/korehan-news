@@ -3156,8 +3156,8 @@ async function saveToWordBook(ko, en, rom, category) {
     if (cat === 'slang' && enWithCat.indexOf('[슬랭]') < 0) enWithCat = '[슬랭] ' + enWithCat;
     if (cat === 'expression' && enWithCat.indexOf('[표현]') < 0) enWithCat = '[표현] ' + enWithCat;
     await sb.from('user_saved_words').upsert({
-      user_id: supaUser.id, word_ko: ko, word_en: enWithCat, word_rom: rom || ''
-    }, { onConflict: 'user_id,word_ko' });
+      user_id: supaUser.id, word_key: ko, word_ko: ko, word_en: enWithCat, word_rom: rom || ''
+    }, { onConflict: 'user_id,word_key' });
     showToast('📖 단어장에 저장: ' + ko);
   } catch(e) {
     console.warn('[saveToWordBook]', e);

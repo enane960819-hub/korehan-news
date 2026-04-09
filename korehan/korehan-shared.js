@@ -1386,29 +1386,20 @@ async function dbSaveWord(ko, rom, en) {
 
   try {
     // INSERT (upsert 대신): conflict 여부로 새 단어인지 판단
-    var res = await sb.from('user_saved_words').insert({
+    var res = await sb.from('user_saved_words').upsert({
       user_id: supaUser.id,
+      word_key: ko,
       word_ko: ko,
       word_rom: rom || '',
       word_en: en || ''
-    });
+    }, { onConflict: 'user_id,word_key' });
 
     if (!res.error) {
-      // 성공적으로 새 단어 추가됨 → XP 및 카운터 증가
-      if (typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
-      return { ok: true, source: 'supabase' };
-    } else if (res.error.code === '23505') {
-      // 이미 저장된 단어 (중복) — 업데이트만
-      await sb.from('user_saved_words').update({ word_rom: rom || '', word_en: en || '' })
-        .eq('user_id', supaUser.id).eq('word_ko', ko);
-      return { ok: true, source: 'supabase', duplicate: true };
-    } else {
-      // 다른 에러 → upsert 폴백. 새 단어였으면 카운터 증가
-      await sb.from('user_saved_words').upsert({
-        user_id: supaUser.id, word_ko: ko, word_rom: rom || '', word_en: en || ''
-      }, { onConflict: 'user_id,word_ko' });
       if (!alreadyLocal && typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
       return { ok: true, source: 'supabase' };
+    } else {
+      console.warn('[dbSaveWord]', res.error.message);
+      return { ok: false, source: 'local', error: res.error };
     }
   } catch(e) {
     // DB 예외 — localStorage엔 이미 추가됐으므로 카운터만 증가

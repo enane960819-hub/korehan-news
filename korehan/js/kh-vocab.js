@@ -79,10 +79,11 @@ async function dbSaveWord(ko, rom, en) {
   try {
     var res = await sb.from('user_saved_words').upsert({
       user_id: supaUser.id,
+      word_key: ko,
       word_ko: ko,
       word_rom: rom || '',
       word_en: en || ''
-    }, { onConflict: 'user_id,word_ko' });
+    }, { onConflict: 'user_id,word_key' });
 
     if (!res.error) {
       if (!alreadyLocal && typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
