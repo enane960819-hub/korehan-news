@@ -1713,6 +1713,8 @@ body { background: #0b1626 !important; }
 .lv-pill.lv-a.on { background:#b91c1c; }
 /* ─── Mobile study aids (inside topic card) ─── */
 .sr-mobile-aids { display:none; }
+.sr-quest-ring-mob { display:none !important; }
+@media(max-width:860px) { .sr-quest-ring-mob { display:block !important; } }
 .sr-mob-aid { display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);cursor:pointer;transition:background .15s;white-space:nowrap; }
 .sr-mob-aid:active { background:rgba(255,255,255,.14); }
 .sr-mob-aid-icon { font-size:13px;flex-shrink:0; }
@@ -1932,7 +1934,10 @@ body { background: #0b1626 !important; }
 
         <!-- LEFT: topic info + secondary actions -->
         <div class="sr-topic-left">
-          <div class="sr-topic-lbl">TODAY'S WRITING TOPIC</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="sr-topic-lbl" style="margin-bottom:0">TODAY'S WRITING TOPIC</div>
+            <canvas id="sr-quest-ring-mobile" width="40" height="40" class="sr-quest-ring-mob" style="display:none;width:20px;height:20px;flex-shrink:0"></canvas>
+          </div>
           <div class="sr-topic-q" id="hero-topic-ko">Loading…</div>
           <div class="sr-topic-en2" id="hero-topic-en"></div>
           <div id="hero-topic-done" style="display:none;font-size:11px;color:#7ab8f5;font-weight:700;margin-bottom:8px">✅ Done today</div>
@@ -2552,7 +2557,7 @@ var _sentencePractice = {
   hidden:false
 };
 var _studyPass = { active:false, expires_kst:'', credits:0, warned:false };
-var _studyDone = { topic:false, grammar:false, picture:false, sentence:false };
+var _studyDone = { topic:false, grammar:false, picture:false, sentence:false, expressions:false };
 var _studyUnlocked = false;
 var _dailyDictationSentences = [];   // [{ko,en}]  from study_daily_content
 var _dailyDictationQuestions = [];   // [{question_ko,answer_ko,hint_en}]  from study_daily_content
@@ -2570,9 +2575,9 @@ function studyDoneKey() {
 }
 function loadStudyDoneState() {
   try {
-    _studyDone = JSON.parse(localStorage.getItem(studyDoneKey()) || '{"topic":false,"grammar":false,"picture":false,"sentence":false}');
+    _studyDone = JSON.parse(localStorage.getItem(studyDoneKey()) || '{"topic":false,"grammar":false,"picture":false,"sentence":false,"expressions":false}');
   } catch(e) {
-    _studyDone = { topic:false, grammar:false, picture:false, sentence:false };
+    _studyDone = { topic:false, grammar:false, picture:false, sentence:false, expressions:false };
   }
 }
 function saveStudyDoneState() {
@@ -2604,7 +2609,8 @@ async function syncStudyProgress(stage) {
   if (stage === 'grammar') patch.grammar_done = true;
   if (stage === 'picture') patch.picture_done = true;
   if (stage === 'sentence') patch.sentence_done = true;
-  await sb.from('study_daily_progress').upsert(patch, { onConflict:'user_id,study_date' });
+  if (stage === 'expressions') patch.expressions_done = true;
+  try { await sb.from('study_daily_progress').upsert(patch, { onConflict:'user_id,study_date' }); } catch(e) { console.warn('[syncStudyProgress]', e); }
   if (stage === 'grammar') {
     var focus = new URLSearchParams(window.location.search).get('focus') || ((_gfPattern && _gfPattern.name) || '');
     if (focus) {
@@ -3001,60 +3007,33 @@ function renderStudyChecklist() {
 
 var _questRingFill = 0;
 function _drawQuestRing(done, total) {
-  var canvas = document.getElementById('sr-quest-ring');
+  _drawRingOnCanvas('sr-quest-ring', 72, done, total, true);
+  _drawRingOnCanvas('sr-quest-ring-mobile', 40, done, total, false);
+}
+function _drawRingOnCanvas(canvasId, S, done, total, showText) {
+  var canvas = document.getElementById(canvasId);
   if (!canvas || !canvas.getContext) return;
   var ctx = canvas.getContext('2d');
-  var S = 72, R = S / 2, r = 28, lw = 6;
+  var R = S / 2, r = R * 0.78, lw = S * 0.083;
   var target = done / Math.max(1, total);
 
   function frame() {
     _questRingFill += (target - _questRingFill) * 0.08;
     if (Math.abs(_questRingFill - target) < 0.005) _questRingFill = target;
     ctx.clearRect(0, 0, S, S);
-
-    // Background ring
-    ctx.beginPath();
-    ctx.arc(R, R, r, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255,255,255,.08)';
-    ctx.lineWidth = lw;
-    ctx.lineCap = 'round';
-    ctx.stroke();
-
-    // Progress arc
+    ctx.beginPath(); ctx.arc(R, R, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.stroke();
     if (_questRingFill > 0) {
-      var startAngle = -Math.PI / 2;
-      var endAngle = startAngle + (Math.PI * 2 * _questRingFill);
-      var grad = ctx.createLinearGradient(0, 0, S, S);
-      if (_questRingFill >= 1) {
-        grad.addColorStop(0, '#34d399');
-        grad.addColorStop(1, '#22c55e');
-      } else {
-        grad.addColorStop(0, '#a78bfa');
-        grad.addColorStop(1, '#7c3aed');
-      }
-      ctx.beginPath();
-      ctx.arc(R, R, r, startAngle, endAngle);
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = lw;
-      ctx.lineCap = 'round';
-      ctx.stroke();
-
-      // Glow on arc
-      ctx.beginPath();
-      ctx.arc(R, R, r, startAngle, endAngle);
+      var sa = -Math.PI / 2, ea = sa + Math.PI * 2 * _questRingFill;
+      var g = ctx.createLinearGradient(0, 0, S, S);
+      if (_questRingFill >= 1) { g.addColorStop(0,'#34d399'); g.addColorStop(1,'#22c55e'); }
+      else { g.addColorStop(0,'#a78bfa'); g.addColorStop(1,'#7c3aed'); }
+      ctx.beginPath(); ctx.arc(R, R, r, sa, ea); ctx.strokeStyle = g; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.beginPath(); ctx.arc(R, R, r, sa, ea);
       ctx.strokeStyle = _questRingFill >= 1 ? 'rgba(52,211,153,.3)' : 'rgba(124,58,237,.3)';
-      ctx.lineWidth = lw + 4;
-      ctx.lineCap = 'round';
-      ctx.stroke();
+      ctx.lineWidth = lw + 4; ctx.lineCap = 'round'; ctx.stroke();
     }
-
-    // Center text
-    ctx.fillStyle = '#fff';
-    ctx.font = '900 18px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(done, R, R);
-
+    if (showText) { ctx.fillStyle = '#fff'; ctx.font = '900 ' + Math.round(S * 0.25) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(done, R, R); }
     if (Math.abs(_questRingFill - target) > 0.003) requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -3282,23 +3261,15 @@ async function loadDailyContent() {
     return;
   }
 
-  // Step 0: Check localStorage cache (prevents topic from changing on every reload)
-  var lsCacheKey = 'sr_daily_' + today + '_' + _currentLevel;
-  try {
-    var lsCached = localStorage.getItem(lsCacheKey);
-    if (lsCached) {
-      var cachedRec = JSON.parse(lsCached);
-      if (cachedRec && cachedRec.topic_ko) {
-        console.log('[loadDailyContent] using localStorage cache');
-        _applyDailyContent(cachedRec);
-        return;
-      }
-    }
-  } catch(e) { console.warn('[loadDailyContent] localStorage read failed:', e); }
-
   var sb = getSupa();
   if (!sb) {
     console.error('[loadDailyContent] getSupa() returned null');
+    // Fallback: try localStorage cache when DB unavailable
+    var lsCacheKey = 'sr_daily_' + today + '_' + _currentLevel;
+    try {
+      var lsCached = localStorage.getItem(lsCacheKey);
+      if (lsCached) { var cachedRec = JSON.parse(lsCached); if (cachedRec && cachedRec.topic_ko) { _applyDailyContent(cachedRec); return; } }
+    } catch(e) {}
     _applyFallbackTopic(today);
     return;
   }
@@ -6165,10 +6136,11 @@ async function loadStudyDoneFromDB() {
       .maybeSingle();
     if (r.error || !r.data) return;
     var d = r.data;
-    if (d.topic_done)   _studyDone.topic   = true;
-    if (d.grammar_done) _studyDone.grammar = true;
-    if (d.picture_done) _studyDone.picture = true;
-    if (d.sentence_done) _studyDone.sentence = true;
+    if (d.topic_done)       _studyDone.topic       = true;
+    if (d.grammar_done)     _studyDone.grammar     = true;
+    if (d.picture_done)     _studyDone.picture     = true;
+    if (d.sentence_done)    _studyDone.sentence    = true;
+    if (d.expressions_done) _studyDone.expressions = true;
     // Persist merged state to localStorage under correct user key
     try { localStorage.setItem(studyDoneKey(), JSON.stringify(_studyDone)); } catch(e) {}
     renderStudyChecklist();
