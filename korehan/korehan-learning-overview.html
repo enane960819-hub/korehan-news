@@ -468,7 +468,7 @@
         <div class="chart-box">
           <div class="chart-title">XP Trend</div>
           <div class="chart-sub" id="chart-comparison-label">Last 7 days — comparing today vs yesterday</div>
-          <div class="linechart-wrap"><svg class="linechart-svg" id="growth-svg" viewBox="0 0 400 180" preserveAspectRatio="none"></svg></div>
+          <div class="linechart-wrap"><canvas id="growth-canvas" style="width:100%;height:100%"></canvas></div>
           <div class="linechart-legend" id="chart-legend"></div>
         </div>
         <div class="chart-box"><div class="chart-title">This week's improvement</div><div class="chart-sub">Based on real activity data — quiz accuracy, XP trends and consistency.</div><div class="streak-list" id="weekly-improvements"></div></div>
@@ -496,7 +496,7 @@
       <div class="card">
         <div style="font-size:17px;font-weight:800;margin-bottom:10px">Skill balance</div>
         <div style="display:flex;justify-content:center;margin-bottom:10px">
-          <svg id="radar-chart" viewBox="0 0 260 260" style="width:100%;max-width:320px;height:auto"></svg>
+          <canvas id="radar-canvas" style="width:100%;max-width:320px;height:auto"></canvas>
         </div>
         <div style="display:flex;gap:12px;justify-content:center;margin-bottom:10px;font-size:10px;font-weight:700">
           <span style="color:var(--bright)">● 현재</span>
@@ -926,79 +926,118 @@
 
 
   function renderGrowthLineChart(data) {
-    var thisWeek = data.weekly_progress   || [];
+    var thisWeek = data.weekly_progress || [];
     var lastWeek = data.last_week_progress || [];
     var todayKST = new Date(Date.now() + 9*3600000);
-
-    // Build 7-day date arrays
     var days = [], lastDays = [];
     for (var i = 6; i >= 0; i--) {
       days.push(new Date(todayKST.getTime() - i*86400000).toISOString().slice(0,10));
       lastDays.push(new Date(todayKST.getTime() - (i+7)*86400000).toISOString().slice(0,10));
     }
-
     var thisMap = {}, lastMap = {};
     thisWeek.forEach(function(d){ thisMap[d.date] = Number(d.xp_earned||0); });
     lastWeek.forEach(function(d){ lastMap[d.date] = Number(d.xp_earned||0); });
-
     var thisVals = days.map(function(d){ return thisMap[d] || 0; });
     var lastVals = lastDays.map(function(d){ return lastMap[d] || 0; });
     var maxVal = Math.max(1, Math.max.apply(null, thisVals.concat(lastVals)));
 
-    // SVG drawing helpers (viewBox 400 x 180)
-    var padL = 32, padR = 10, padT = 12, padB = 28;
-    var plotW = 400 - padL - padR, plotH = 180 - padT - padB;
-    function toX(i){ return padL + (i / 6) * plotW; }
-    function toY(v){ return padT + (1 - v / maxVal) * plotH; }
+    var canvas = document.getElementById('growth-canvas');
+    if (!canvas || !canvas.getContext) return;
+    var wrap = canvas.parentElement;
+    var dpr = window.devicePixelRatio || 1;
+    var W = wrap.offsetWidth, H = wrap.offsetHeight || 200;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    var ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
 
-    function makeLine(vals, color, dash, isThisWeek) {
-      var pts = vals.map(function(v,i){ return toX(i).toFixed(1) + ',' + toY(v).toFixed(1); }).join(' ');
-      var circles = vals.map(function(v,i){
-        var isLast = isThisWeek && i === vals.length - 1;
-        var cx = toX(i).toFixed(1), cy = toY(v).toFixed(1);
-        if (isLast) {
-          return '<circle cx="' + cx + '" cy="' + cy + '" r="5" class="xp-dot-ping2"/>'
-            + '<circle cx="' + cx + '" cy="' + cy + '" r="5" class="xp-dot-ping1"/>'
-            + '<circle cx="' + cx + '" cy="' + cy + '" r="5" fill="' + color + '" class="xp-dot-latest"/>';
+    var padL = 36, padR = 12, padT = 14, padB = 30;
+    var pW = W - padL - padR, pH = H - padT - padB;
+    function toX(i){ return padL + (i/6)*pW; }
+    function toY(v){ return padT + (1-v/maxVal)*pH; }
+
+    var _lineAnim = 0;
+    var t = 0;
+    function frame() {
+      _lineAnim = Math.min(1, _lineAnim + 0.03);
+      t += 0.03;
+      var ease = 1 - Math.pow(1 - _lineAnim, 3);
+      ctx.clearRect(0, 0, W, H);
+
+      // Grid
+      ctx.font = '500 9px "Source Sans 3",sans-serif';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      [0.25,0.5,0.75,1].forEach(function(f){
+        var y = padT + (1-f)*pH;
+        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W-padR, y);
+        ctx.strokeStyle = '#e8eef7'; ctx.lineWidth = 0.8; ctx.stroke();
+        ctx.fillStyle = '#b0b8c8'; ctx.fillText(Math.round(maxVal*f), padL-5, y);
+      });
+      // X labels
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.font = '600 10px "Source Sans 3",sans-serif'; ctx.fillStyle = '#94a3b8';
+      days.forEach(function(d,i){
+        var lbl = new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short'});
+        ctx.fillText(lbl, toX(i), H - padB + 8);
+      });
+
+      // Draw line helper
+      function drawLine(vals, color, dash, isThis) {
+        var drawCount = Math.min(7, Math.ceil(ease * 7));
+        // Area fill
+        ctx.beginPath(); ctx.moveTo(toX(0), toY(vals[0]*ease));
+        for (var i=1;i<drawCount;i++) ctx.lineTo(toX(i), toY(vals[i]*ease));
+        ctx.lineTo(toX(drawCount-1), padT+pH); ctx.lineTo(toX(0), padT+pH); ctx.closePath();
+        var aGrad = ctx.createLinearGradient(0, padT, 0, padT+pH);
+        aGrad.addColorStop(0, isThis ? 'rgba(37,99,235,0.12)' : 'rgba(200,210,254,0.08)');
+        aGrad.addColorStop(1, 'rgba(37,99,235,0)');
+        ctx.fillStyle = aGrad; ctx.fill();
+        // Line
+        ctx.beginPath();
+        for (var i=0;i<drawCount;i++){
+          var x=toX(i),y=toY(vals[i]*ease);
+          i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
         }
-        return '<circle cx="' + cx + '" cy="' + cy + '" r="3" fill="' + color + '"/>';
-      }).join('');
-      return '<polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"' + (dash ? ' stroke-dasharray="5,4"' : '') + '/>' + circles;
+        ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.lineJoin='round'; ctx.lineCap='round';
+        ctx.setLineDash(dash||[]); ctx.stroke(); ctx.setLineDash([]);
+        // Dots
+        for (var i=0;i<drawCount;i++){
+          var x=toX(i),y=toY(vals[i]*ease);
+          var isLast = isThis && i===6 && _lineAnim>=1;
+          if (isLast) {
+            // Ping effect
+            var pingR = 5 + Math.sin(t*2)*3 + 10;
+            ctx.beginPath(); ctx.arc(x,y,pingR,0,Math.PI*2);
+            ctx.fillStyle = 'rgba(37,99,235,' + (0.1*(1-pingR/25)) + ')'; ctx.fill();
+            var pingR2 = 5 + Math.sin(t*2+0.5)*2 + 5;
+            ctx.beginPath(); ctx.arc(x,y,pingR2,0,Math.PI*2);
+            ctx.fillStyle = 'rgba(37,99,235,0.15)'; ctx.fill();
+          }
+          ctx.beginPath(); ctx.arc(x,y, isLast?5:3, 0,Math.PI*2);
+          ctx.fillStyle = color; ctx.fill();
+          if (isLast) { ctx.strokeStyle = '#fff'; ctx.lineWidth=2; ctx.stroke(); }
+        }
+      }
+      drawLine(lastVals, '#c7d2fe', [5,4], false);
+      drawLine(thisVals, '#2563eb', null, true);
+
+      if (_lineAnim < 1 || true) requestAnimationFrame(frame); // keep animating for ping
     }
-
-    // Grid lines
-    var grid = [0.25, 0.5, 0.75, 1].map(function(f){
-      var y = (padT + (1-f)*plotH).toFixed(1);
-      var val = Math.round(maxVal*f);
-      return '<line x1="' + padL + '" y1="' + y + '" x2="390" y2="' + y + '" stroke="#e8eef7" stroke-width="1"/>'
-        + '<text x="' + (padL-4) + '" y="' + (Number(y)+4) + '" text-anchor="end" font-size="9" fill="#cbd5e1" font-family="Source Sans 3,sans-serif">' + val + '</text>';
-    }).join('');
-
-    // X-axis labels
-    var xLabels = days.map(function(d,i){
-      var lbl = new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short'});
-      return '<text x="' + toX(i).toFixed(1) + '" y="176" text-anchor="middle" font-size="10" fill="#94a3b8" font-family="Source Sans 3,sans-serif">' + lbl + '</text>';
-    }).join('');
-
-    var svg = document.getElementById('growth-svg');
-    if (svg) svg.innerHTML = grid + makeLine(lastVals,'#c7d2fe',true,false) + makeLine(thisVals,'#2563eb',false,true) + xLabels;
+    requestAnimationFrame(frame);
 
     // Comparison label
-    var todayXP     = thisVals[6] || 0;
-    var yesterdayXP = thisVals[5] || 0;
-    var xpDiff      = todayXP - yesterdayXP;
-    var thisTotal   = thisVals.reduce(function(a,b){return a+b;},0);
-    var lastTotal   = lastVals.reduce(function(a,b){return a+b;},0);
-    var weekDiff    = thisTotal - lastTotal;
-    var compLabel   = document.getElementById('chart-comparison-label');
+    var todayXP = thisVals[6]||0, yesterdayXP = thisVals[5]||0;
+    var xpDiff = todayXP - yesterdayXP;
+    var thisTotal = thisVals.reduce(function(a,b){return a+b;},0);
+    var lastTotal = lastVals.reduce(function(a,b){return a+b;},0);
+    var weekDiff = thisTotal - lastTotal;
+    var compLabel = document.getElementById('chart-comparison-label');
     if (compLabel) compLabel.textContent =
-      'Today: ' + todayXP + ' XP  (' + (xpDiff>=0?'+':'') + xpDiff + ' vs yesterday)  ·  '
-      + 'This week: ' + thisTotal + ' XP  (' + (weekDiff>=0?'+':'') + weekDiff + ' vs last week)';
-
+      'Today: '+todayXP+' XP  ('+(xpDiff>=0?'+':'')+xpDiff+' vs yesterday)  ·  '
+      +'This week: '+thisTotal+' XP  ('+(weekDiff>=0?'+':'')+weekDiff+' vs last week)';
     var legend = document.getElementById('chart-legend');
     if (legend) legend.innerHTML =
       '<div class="linechart-legend-item"><div class="linechart-legend-dot" style="background:#2563eb"></div>This week</div>'
-      + '<div class="linechart-legend-item"><div class="linechart-legend-dot" style="background:#c7d2fe"></div>Last week</div>';
+      +'<div class="linechart-legend-item"><div class="linechart-legend-dot" style="background:#c7d2fe"></div>Last week</div>';
   }
 
   function renderWeeklyImprovements(data) {
@@ -2256,51 +2295,77 @@
   // ═══════════════════════════════════════════════════════════════
   // 5-AXIS RADAR CHART (SVG)
   // ═══════════════════════════════════════════════════════════════
+  var _radarAnimProgress = 0;
+  var _radarAnimTarget = null;
   function renderRadarChart(current, previous) {
-    var svg = document.getElementById('radar-chart');
-    if (!svg) return;
+    var canvas = document.getElementById('radar-canvas');
+    if (!canvas || !canvas.getContext) return;
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = 320 * dpr; canvas.height = 320 * dpr;
+    canvas.style.height = canvas.style.maxWidth;
+    var ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    var W = 320, cx = W/2, cy = W/2, maxR = 120;
     var axes = ['Reading','Vocab','Grammar','Writing','Listening'];
     var keys = ['skill_reading','skill_vocab','skill_grammar','skill_writing','skill_listening'];
-    var cx = 130, cy = 130, maxR = 100;
-    var n = 5;
-    var angleStep = (2 * Math.PI) / n;
-    var startAngle = -Math.PI / 2; // top
+    var n = 5, step = (2*Math.PI)/n, sa = -Math.PI/2;
+    _radarAnimTarget = { current:current, previous:previous };
+    _radarAnimProgress = 0;
 
-    function getPoint(i, val) {
-      var a = startAngle + i * angleStep;
-      var r = (val / 100) * maxR;
-      return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+    function pt(i,v){ var a=sa+i*step,r=(v/100)*maxR; return [cx+r*Math.cos(a),cy+r*Math.sin(a)]; }
+    function drawPoly(pts,fill,stroke,lw,dash){
+      ctx.beginPath();
+      pts.forEach(function(p,i){ i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
+      ctx.closePath();
+      if(fill){ctx.fillStyle=fill;ctx.fill();}
+      if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||2;ctx.setLineDash(dash||[]);ctx.stroke();ctx.setLineDash([]);}
     }
 
-    var html = '';
-    // Grid rings
-    [20,40,60,80,100].forEach(function(v) {
-      var pts = [];
-      for (var i = 0; i < n; i++) pts.push(getPoint(i, v).join(','));
-      html += '<polygon points="' + pts.join(' ') + '" fill="none" stroke="#e8ecf2" stroke-width="0.8"/>';
-    });
-    // Axis lines + labels
-    for (var i = 0; i < n; i++) {
-      var p = getPoint(i, 100);
-      html += '<line x1="' + cx + '" y1="' + cy + '" x2="' + p[0] + '" y2="' + p[1] + '" stroke="#e8ecf2" stroke-width="0.6"/>';
-      var lp = getPoint(i, 118);
-      html += '<text x="' + lp[0] + '" y="' + (lp[1]+3) + '" text-anchor="middle" font-size="9" font-weight="700" fill="#64748b">' + axes[i] + '</text>';
-    }
-    // Previous (4 weeks ago) polygon
-    if (previous) {
-      var prevPts = keys.map(function(k, i) { return getPoint(i, previous[k] || 0).join(','); });
-      html += '<polygon points="' + prevPts.join(' ') + '" fill="rgba(203,213,225,0.2)" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4,3"/>';
-    }
-    // Current polygon
-    var curPts = keys.map(function(k, i) { return getPoint(i, current[k] || 0).join(','); });
-    html += '<polygon points="' + curPts.join(' ') + '" fill="rgba(37,99,235,0.12)" stroke="#2563eb" stroke-width="2"/>';
-    // Current dots
-    keys.forEach(function(k, i) {
-      var p = getPoint(i, current[k] || 0);
-      html += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="3.5" fill="#2563eb" stroke="#fff" stroke-width="1.5"/>';
-    });
+    function frame() {
+      _radarAnimProgress = Math.min(1, _radarAnimProgress + 0.025);
+      var ease = 1 - Math.pow(1 - _radarAnimProgress, 3);
+      ctx.clearRect(0,0,W,W);
 
-    svg.innerHTML = html;
+      // Grid rings
+      [20,40,60,80,100].forEach(function(v){
+        var gpts=[]; for(var i=0;i<n;i++) gpts.push(pt(i,v));
+        drawPoly(gpts,null,'#e2e6ee',0.8);
+      });
+      // Axis lines
+      for(var i=0;i<n;i++){
+        var p=pt(i,100);
+        ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(p[0],p[1]);
+        ctx.strokeStyle='#e2e6ee';ctx.lineWidth=0.6;ctx.stroke();
+      }
+      // Labels
+      ctx.font='700 10px "DM Sans",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      for(var i=0;i<n;i++){
+        var lp=pt(i,122); ctx.fillStyle='#64748b'; ctx.fillText(axes[i],lp[0],lp[1]);
+      }
+      // Previous polygon
+      if(previous){
+        var prevPts=keys.map(function(k,i){ return pt(i,(previous[k]||0)*ease); });
+        drawPoly(prevPts,'rgba(203,213,225,0.15)','#cbd5e1',1.5,[5,4]);
+      }
+      // Current polygon with glow
+      var curPts=keys.map(function(k,i){ return pt(i,(current[k]||0)*ease); });
+      drawPoly(curPts,'rgba(37,99,235,0.1)');
+      // Glow pass
+      ctx.save(); ctx.filter='blur(6px)';
+      drawPoly(curPts,null,'rgba(37,99,235,0.3)',3);
+      ctx.restore();
+      drawPoly(curPts,null,'#2563eb',2);
+      // Dots with glow
+      curPts.forEach(function(p){
+        ctx.beginPath();ctx.arc(p[0],p[1],5,0,Math.PI*2);
+        ctx.fillStyle='rgba(37,99,235,0.2)';ctx.fill();
+        ctx.beginPath();ctx.arc(p[0],p[1],3.5,0,Math.PI*2);
+        ctx.fillStyle='#2563eb';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+      });
+
+      if(_radarAnimProgress < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
   }
 
   async function loadRadarChart() {
