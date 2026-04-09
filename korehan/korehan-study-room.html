@@ -1293,7 +1293,7 @@ body { background: #0b1626 !important; }
   .sr-sidebar { grid-template-columns: 1fr; }
   .sr-hero-block { padding: 22px 16px 18px; border-radius: 16px; }
   .sr-topic-card2 { padding: 16px 14px 14px; }
-  .sr-topic-q { font-size: 20px; }
+  .sr-topic-q { font-size: 22px; }
   .sr-btn-primary { width: 100%; text-align: center; }
   .sr-action-row { flex-direction: column; }
 }
@@ -1643,8 +1643,21 @@ body { background: #0b1626 !important; }
 .lv-pill.lv-b.on { background:#15803d; }
 .lv-pill.lv-i.on { background:#0369a1; }
 .lv-pill.lv-a.on { background:#b91c1c; }
+/* ─── Mobile study aids (inside topic card) ─── */
+.sr-mobile-aids { display:none; }
+.sr-mob-aid { display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);cursor:pointer;transition:background .15s; }
+.sr-mob-aid:active { background:rgba(255,255,255,.12); }
+.sr-mob-aid-icon { font-size:18px;flex-shrink:0; }
+.sr-mob-aid-body { flex:1;min-width:0; }
+.sr-mob-aid-title { font-size:12px;font-weight:800;color:#fff;margin-bottom:2px; }
+.sr-mob-aid-preview { font-size:11px;color:rgba(255,255,255,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.sr-mob-aid-arrow { font-size:12px;color:rgba(255,255,255,.25);flex-shrink:0; }
+
 /* ─── MOBILE TAB REDESIGN ─── */
 @media(max-width:860px) {
+  #wcard-chips { display:none; }
+  .sr-mobile-aids { display:flex;flex-direction:column;gap:6px;margin-top:4px; }
+  .sr-topic-q { font-size:clamp(22px,4.5vw,30px); }
   .sr-top-tabs-wrap { padding:12px 14px 10px;margin-bottom:12px;border-bottom:none;background:linear-gradient(180deg,#0a1220 0%,#0f1d30 100%);border-radius:0 0 16px 16px;box-shadow:0 4px 16px rgba(0,0,0,.3); }
   .sr-top-tabs { gap:6px;background:rgba(255,255,255,.04);border-radius:12px;padding:4px; }
   .sr-top-tab { flex:1;border:none;border-radius:10px;padding:9px 6px;font-size:12px;background:transparent;color:rgba(255,255,255,.35);letter-spacing:.02em; }
@@ -1852,8 +1865,10 @@ body { background: #0b1626 !important; }
           <div class="sr-topic-q" id="hero-topic-ko">Loading…</div>
           <div class="sr-topic-en2" id="hero-topic-en"></div>
           <div id="hero-topic-done" style="display:none;font-size:11px;color:#7ab8f5;font-weight:700;margin-bottom:8px">✅ Done today</div>
-          <!-- vocab + grammar chips (populated by JS) -->
+          <!-- vocab + grammar chips (desktop only) -->
           <div class="sr-chip-row wc-chips" id="wcard-chips"></div>
+          <!-- mobile study aids (replaces chips on mobile) -->
+          <div class="sr-mobile-aids" id="sr-mobile-aids"></div>
         </div>
 
         <!-- START button -->
@@ -3088,6 +3103,20 @@ async function loadDailyContent() {
     return;
   }
 
+  // Step 0: Check localStorage cache (prevents topic from changing on every reload)
+  var lsCacheKey = 'sr_daily_' + today + '_' + _currentLevel;
+  try {
+    var lsCached = localStorage.getItem(lsCacheKey);
+    if (lsCached) {
+      var cachedRec = JSON.parse(lsCached);
+      if (cachedRec && cachedRec.topic_ko) {
+        console.log('[loadDailyContent] using localStorage cache');
+        _applyDailyContent(cachedRec);
+        return;
+      }
+    }
+  } catch(e) { console.warn('[loadDailyContent] localStorage read failed:', e); }
+
   var sb = getSupa();
   if (!sb) {
     console.error('[loadDailyContent] getSupa() returned null');
@@ -3200,6 +3229,11 @@ function _applyDailyContent(rec) {
   hideAILoading();
   // Populate idiom/expression banner
   _showIdiomBanner();
+  // Cache in localStorage so topic stays consistent across reloads
+  try {
+    var lsKey = 'sr_daily_' + (rec.scheduled_date || kstDateKey()) + '_' + (rec.level || _currentLevel);
+    localStorage.setItem(lsKey, JSON.stringify(rec));
+  } catch(e) {}
 }
 
 function _showIdiomBanner() {
@@ -3278,7 +3312,8 @@ async function _generateAndSaveDailyContent(date) {
       'friendship', 'work & career', 'nature & environment', 'festivals & holidays', 'shopping',
       'transportation in Korea', 'Korean language learning'
     ];
-    topicHint = 'Pick an interesting, specific topic within the theme: "' + topicCategories[Math.floor(Math.random() * topicCategories.length)] + '"';
+    var catHash = date.split('-').reduce(function(a,b){ return a + parseInt(b); }, 0);
+    topicHint = 'Pick an interesting, specific topic within the theme: "' + topicCategories[catHash % topicCategories.length] + '"';
   }
 
   // Level-specific extra fields for the AI prompt
@@ -3670,11 +3705,32 @@ function renderAIContent() {
     }
   }
 
-  // WCARD CHIPS
+  // WCARD CHIPS (desktop)
   var chips = '';
   (_aiContent.vocab || []).slice(0,4).forEach(function(w){ chips += '<span class="wchip v">' + w.ko + '</span>'; });
   (_aiContent.grammar || []).slice(0,2).forEach(function(g){ chips += '<span class="wchip g">' + g.pattern + '</span>'; });
   document.getElementById('wcard-chips').innerHTML = chips;
+
+  // MOBILE STUDY AIDS (replaces chips on mobile)
+  var maEl = document.getElementById('sr-mobile-aids');
+  if (maEl) {
+    var vocabPreview = (_aiContent.vocab || []).slice(0,3).map(function(w){ return w.ko; }).join(', ') || '—';
+    var grammarPreview = (_aiContent.grammar || []).slice(0,2).map(function(g){ return g.pattern; }).join(', ') || '—';
+    var helperPreview = (_aiContent.helpers || []).length ? (_aiContent.helpers[0].ko || '—') : '—';
+    maEl.innerHTML =
+      '<div class="sr-mob-aid" onclick="switchSrTab(\'help\',null);setTimeout(function(){var e=document.getElementById(\'vocab-box-help\');if(e)e.scrollIntoView({behavior:\'smooth\',block:\'center\'})},200)">'
+      + '<span class="sr-mob-aid-icon">📌</span>'
+      + '<div class="sr-mob-aid-body"><div class="sr-mob-aid-title">Must-know Vocab</div><div class="sr-mob-aid-preview">' + vocabPreview + '</div></div>'
+      + '<span class="sr-mob-aid-arrow">›</span></div>'
+      + '<div class="sr-mob-aid" onclick="switchSrTab(\'help\',null);setTimeout(function(){var e=document.getElementById(\'grammar-box-help\');if(e)e.scrollIntoView({behavior:\'smooth\',block:\'center\'})},200)">'
+      + '<span class="sr-mob-aid-icon">📝</span>'
+      + '<div class="sr-mob-aid-body"><div class="sr-mob-aid-title">Grammar at a Glance</div><div class="sr-mob-aid-preview">' + grammarPreview + '</div></div>'
+      + '<span class="sr-mob-aid-arrow">›</span></div>'
+      + '<div class="sr-mob-aid" onclick="switchSrTab(\'help\',null);setTimeout(function(){var e=document.getElementById(\'helper-box-help\');if(e)e.scrollIntoView({behavior:\'smooth\',block:\'center\'})},200)">'
+      + '<span class="sr-mob-aid-icon">💡</span>'
+      + '<div class="sr-mob-aid-body"><div class="sr-mob-aid-title">Quick Help</div><div class="sr-mob-aid-preview">' + helperPreview + '</div></div>'
+      + '<span class="sr-mob-aid-arrow">›</span></div>';
+  }
 
   // HELPER BOX — always render from _aiContent
   {
