@@ -9,21 +9,18 @@ async function _syncSavedWordsFromDB() {
   var sb = getSupa();
   if (!sb) return;
   try {
-    var res = await sb.from('saved_words').select('word_ko, ko').eq('user_id', supaUser.id);
+    var res = await sb.from('user_saved_words').select('word_ko').eq('user_id', supaUser.id);
     if (res.data && res.data.length) {
       _savedWordsSet = new Set();
       res.data.forEach(function(row) {
-        var k = row.word_ko || row.ko || '';
-        if (k) _savedWordsSet.add(k);
+        if (row.word_ko) _savedWordsSet.add(row.word_ko);
       });
-      // Also sync to localStorage for offline/fallback
-      var normalized = res.data.map(normalizeSavedWord).filter(function(w){ return w && w.ko; });
+      var normalized = res.data.map(function(r){ return { ko:r.word_ko||'' }; }).filter(function(w){ return w.ko; });
       lsSet(K_SAVED, normalized);
     } else {
       _savedWordsSet = new Set();
     }
   } catch(e) {
-    // If DB fetch fails, build set from localStorage
     if (!_savedWordsSet) {
       var local = lsGet(K_SAVED, []);
       _savedWordsSet = new Set(local.map(function(w){ return w.ko || w.word_ko || ''; }).filter(Boolean));
@@ -44,9 +41,9 @@ async function dbGetSavedWords() {
   var sb = getSupa();
   if (!sb) return localSaved;
   try {
-    var res = await sb.from('saved_words').select('*').eq('user_id', supaUser.id).order('created_at', { ascending: false });
+    var res = await sb.from('user_saved_words').select('word_ko, word_en, word_rom, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false });
     if (res.data && res.data.length) {
-      var normalized = res.data.map(normalizeSavedWord).filter(function(w){ return w && w.ko; });
+      var normalized = res.data.map(function(r){ return { ko:r.word_ko||'', rom:r.word_rom||'', en:r.word_en||'' }; }).filter(function(w){ return w.ko; });
       lsSet(K_SAVED, normalized);
       return normalized;
     }
@@ -80,33 +77,22 @@ async function dbSaveWord(ko, rom, en) {
   }
 
   try {
-    // INSERT (upsert 대신): conflict 여부로 새 단어인지 판단
-    var res = await sb.from('saved_words').insert({
+    var res = await sb.from('user_saved_words').upsert({
       user_id: supaUser.id,
       word_ko: ko,
       word_rom: rom || '',
       word_en: en || ''
-    });
+    }, { onConflict: 'user_id,word_ko' });
 
     if (!res.error) {
-      // 성공적으로 새 단어 추가됨 → XP 및 카운터 증가
-      if (typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
-      return { ok: true, source: 'supabase' };
-    } else if (res.error.code === '23505') {
-      // 이미 저장된 단어 (중복) — 업데이트만
-      await sb.from('saved_words').update({ word_rom: rom || '', word_en: en || '' })
-        .eq('user_id', supaUser.id).eq('word_ko', ko);
-      return { ok: true, source: 'supabase', duplicate: true };
-    } else {
-      // 다른 에러 → upsert 폴백. 새 단어였으면 카운터 증가
-      await sb.from('saved_words').upsert({
-        user_id: supaUser.id, word_ko: ko, word_rom: rom || '', word_en: en || ''
-      }, { onConflict: 'user_id,word_ko' });
       if (!alreadyLocal && typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
       return { ok: true, source: 'supabase' };
+    } else {
+      console.warn('[dbSaveWord] upsert error:', res.error.message);
+      return { ok: false, source: 'local', error: res.error };
     }
   } catch(e) {
-    // DB 예외 — localStorage엔 이미 추가됐으므로 카운터만 증가
+    console.warn('[dbSaveWord] exception:', e);
     if (!alreadyLocal && typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
     return { ok: false, source: 'local', error: e };
   }
@@ -120,7 +106,7 @@ async function dbRemoveWord(ko) {
   var sb = getSupa();
   if (!sb) return { ok: true, source: 'local' };
   try {
-    await sb.from('saved_words').delete().eq('user_id', supaUser.id).or('word_ko.eq."' + ko.replace(/"/g, '\\"') + '",ko.eq."' + ko.replace(/"/g, '\\"') + '"');
+    await sb.from('user_saved_words').delete().eq('user_id', supaUser.id).eq('word_ko', ko);
     return { ok: true, source: 'supabase' };
   } catch(e) {
     return { ok: false, source: 'local', error: e };

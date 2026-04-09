@@ -1314,7 +1314,7 @@ async function _syncSavedWordsFromDB() {
   var sb = getSupa();
   if (!sb) return;
   try {
-    var res = await sb.from('saved_words').select('*').eq('user_id', supaUser.id);
+    var res = await sb.from('user_saved_words').select('*').eq('user_id', supaUser.id);
     if (res.data && res.data.length) {
       _savedWordsSet = new Set();
       res.data.forEach(function(row) {
@@ -1349,7 +1349,7 @@ async function dbGetSavedWords() {
   var sb = getSupa();
   if (!sb) return localSaved;
   try {
-    var res = await sb.from('saved_words').select('*').eq('user_id', supaUser.id).order('created_at', { ascending: false });
+    var res = await sb.from('user_saved_words').select('*').eq('user_id', supaUser.id).order('created_at', { ascending: false });
     if (res.data && res.data.length) {
       var normalized = res.data.map(normalizeSavedWord).filter(function(w){ return w && w.ko; });
       lsSet(K_SAVED, normalized);
@@ -1386,7 +1386,7 @@ async function dbSaveWord(ko, rom, en) {
 
   try {
     // INSERT (upsert 대신): conflict 여부로 새 단어인지 판단
-    var res = await sb.from('saved_words').insert({
+    var res = await sb.from('user_saved_words').insert({
       user_id: supaUser.id,
       word_ko: ko,
       word_rom: rom || '',
@@ -1399,12 +1399,12 @@ async function dbSaveWord(ko, rom, en) {
       return { ok: true, source: 'supabase' };
     } else if (res.error.code === '23505') {
       // 이미 저장된 단어 (중복) — 업데이트만
-      await sb.from('saved_words').update({ word_rom: rom || '', word_en: en || '' })
+      await sb.from('user_saved_words').update({ word_rom: rom || '', word_en: en || '' })
         .eq('user_id', supaUser.id).eq('word_ko', ko);
       return { ok: true, source: 'supabase', duplicate: true };
     } else {
       // 다른 에러 → upsert 폴백. 새 단어였으면 카운터 증가
-      await sb.from('saved_words').upsert({
+      await sb.from('user_saved_words').upsert({
         user_id: supaUser.id, word_ko: ko, word_rom: rom || '', word_en: en || ''
       }, { onConflict: 'user_id,word_ko' });
       if (!alreadyLocal && typeof trackActivityOnWordSave === 'function') trackActivityOnWordSave();
@@ -1425,7 +1425,7 @@ async function dbRemoveWord(ko) {
   var sb = getSupa();
   if (!sb) return { ok: true, source: 'local' };
   try {
-    await sb.from('saved_words').delete().eq('user_id', supaUser.id).or('word_ko.eq."' + ko.replace(/"/g, '\\"') + '",ko.eq."' + ko.replace(/"/g, '\\"') + '"');
+    await sb.from('user_saved_words').delete().eq('user_id', supaUser.id).or('word_ko.eq."' + ko.replace(/"/g, '\\"') + '",ko.eq."' + ko.replace(/"/g, '\\"') + '"');
     return { ok: true, source: 'supabase' };
   } catch(e) {
     return { ok: false, source: 'local', error: e };

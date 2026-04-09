@@ -3155,7 +3155,7 @@ async function saveToWordBook(ko, en, rom, category) {
     // Prefix category marker if not already present
     if (cat === 'slang' && enWithCat.indexOf('[슬랭]') < 0) enWithCat = '[슬랭] ' + enWithCat;
     if (cat === 'expression' && enWithCat.indexOf('[표현]') < 0) enWithCat = '[표현] ' + enWithCat;
-    await sb.from('saved_words').upsert({
+    await sb.from('user_saved_words').upsert({
       user_id: supaUser.id, word_ko: ko, word_en: enWithCat, word_rom: rom || ''
     }, { onConflict: 'user_id,word_ko' });
     showToast('📖 단어장에 저장: ' + ko);
@@ -5846,24 +5846,15 @@ async function loadWordBook() {
     var sb = getSupa();
     if (!sb) return;
     var results = [];
-    // 1) saved_words (word_ko, word_en, word_rom columns added via migration)
-    try {
-      var { data: sw, error: swErr } = await sb.from('saved_words').select('word_ko, word_en, word_rom, ko, en, rom, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
-      if (sw && !swErr) sw.forEach(function(w) {
-        var ko = w.word_ko || w.ko || '';
-        var en = w.word_en || w.en || '';
-        var rom = w.word_rom || w.rom || '';
-        var cat = 'word';
-        if (en.indexOf('[슬랭]') === 0) { cat = 'slang'; en = en.replace('[슬랭] ',''); }
-        else if (en.indexOf('[표현]') === 0) { cat = 'expression'; en = en.replace('[표현] ',''); }
-        if (ko) results.push({ ko:ko, rom:rom, en:en, date:w.created_at, cat:cat });
-      });
-    } catch(e){ }
-    // 2) user_saved_words (learning hub saves)
+    // user_saved_words (primary word storage)
     try {
       var { data: usw } = await sb.from('user_saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
       if (usw) usw.forEach(function(w) {
-        results.push({ ko:w.word_ko, rom:w.word_rom||'', en:w.word_en||'', date:w.created_at, cat:'word' });
+        var en = w.word_en || '';
+        var cat = 'word';
+        if (en.indexOf('[슬랭]') === 0) { cat = 'slang'; en = en.replace('[슬랭] ',''); }
+        else if (en.indexOf('[표현]') === 0) { cat = 'expression'; en = en.replace('[표현] ',''); }
+        results.push({ ko:w.word_ko, rom:w.word_rom||'', en:en, date:w.created_at, cat:cat });
       });
     } catch(e){}
     // 3) vocabulary_bank is a system word pool, not user saves — skipped
@@ -6004,15 +5995,10 @@ async function loadWordBankPreview() {
   try {
     var sb = getSupa();
     var allWords = [];
-    // saved_words (word_ko/word_en/word_rom + legacy ko/en/rom)
+    // user_saved_words (primary)
     try {
-      var r = await sb.from('saved_words').select('word_ko, word_en, word_rom, ko, en, rom, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(50);
-      if (r.data && !r.error) r.data.forEach(function(w){ allWords.push({ word_ko:w.word_ko||w.ko||'', word_en:w.word_en||w.en||'', word_rom:w.word_rom||w.rom||'', created_at:w.created_at }); });
-    } catch(e){}
-    // user_saved_words (columns: word_ko, word_en, word_rom)
-    try {
-      var r2 = await sb.from('user_saved_words').select('word_ko, word_en, word_rom, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(50);
-      if (r2.data && !r2.error) r2.data.forEach(function(w){ allWords.push(w); });
+      var r = await sb.from('user_saved_words').select('word_ko, word_en, word_rom, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(50);
+      if (r.data && !r.error) r.data.forEach(function(w){ allWords.push(w); });
     } catch(e){}
     // Deduplicate by word_ko
     var seen = {};
@@ -10947,7 +10933,7 @@ async function drGenerateQuestions() {
   // 1) saved_words — 유저가 저장한 단어 (최근 50개)
   if (sb && supaUser) {
     try {
-      var swRes = await sb.from('saved_words')
+      var swRes = await sb.from('user_saved_words')
         .select('word_ko, word_en, word_rom')
         .eq('user_id', supaUser.id)
         .order('created_at', { ascending: false })

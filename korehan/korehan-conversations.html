@@ -1405,9 +1405,9 @@ function closeInlineEdit() { var e = document.getElementById('conv-inline-edit')
         return;
       }
       if (btn.classList.contains('saved')) {
-        await sb.from('saved_words').upsert({ user_id: user.id, word_ko: ko, word_rom: rom, word_en: en }, { onConflict: 'user_id,word_ko' });
+        await sb.from('user_saved_words').upsert({ user_id: user.id, word_ko: ko, word_rom: rom, word_en: en }, { onConflict: 'user_id,word_ko' });
       } else {
-        await sb.from('saved_words').delete().eq('user_id', user.id).eq('word_ko', ko);
+        await sb.from('user_saved_words').delete().eq('user_id', user.id).eq('word_ko', ko);
       }
     } catch (e) { console.warn('save vocab failed', e); }
   };
