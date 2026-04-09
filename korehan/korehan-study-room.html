@@ -1863,16 +1863,16 @@ body { background: #0b1626 !important; }
 
 <!-- ── LEFT SIDEBAR (desktop/tablet only) ── -->
 <div class="sr-sidebar sr-sidebar-left">
-  <!-- 단어장 (replaces Today's Phrase) -->
-  <div class="sr-sb-panel" style="padding:0;overflow:hidden;cursor:pointer" onclick="openWordBankModal()">
-    <div style="padding:12px 14px;background:rgba(124,58,237,.08);border-bottom:1px solid rgba(124,58,237,.15)">
+  <!-- 단어장 -->
+  <div class="sr-sb-panel" style="padding:0;overflow:hidden">
+    <div style="padding:10px 14px;background:rgba(124,58,237,.08);border-bottom:1px solid rgba(124,58,237,.15)">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div class="ct" style="color:#c4b5fd">📖 나의 단어장</div>
-        <span style="font-size:11px;color:rgba(255,255,255,.3)">전체 →</span>
+        <button onclick="openWordBankModal()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:rgba(255,255,255,.5);font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer;font-family:inherit">전체 →</button>
       </div>
     </div>
-    <div id="sr-wordbank-sidebar" style="padding:10px 14px">
-      <div style="text-align:center;padding:8px;color:rgba(255,255,255,.3);font-size:11px">저장한 단어가 여기 표시됩니다</div>
+    <div id="sr-wordbank-preview" style="display:grid;grid-template-columns:1fr;gap:0;padding:0">
+      <div style="text-align:center;padding:14px;color:rgba(255,255,255,.3);font-size:11px">단어를 저장하면 여기에 표시됩니다</div>
     </div>
   </div>
   <!-- Must-know Vocab -->
@@ -6008,11 +6008,18 @@ async function loadWordBankPreview() {
   if (!supaUser) return;
   try {
     var sb = getSupa();
-    var { data } = await sb.from('saved_words')
-      .select('word_ko, word_rom, word_en, created_at')
-      .eq('user_id', supaUser.id)
-      .order('created_at', { ascending: false })
-      .limit(100);
+    var data = null;
+    // Try saved_words first, fallback to user_saved_words
+    try {
+      var r = await sb.from('saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(100);
+      if (!r.error) data = r.data;
+    } catch(e){}
+    if (!data) {
+      try {
+        var r2 = await sb.from('user_saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(100);
+        if (!r2.error) data = r2.data;
+      } catch(e){}
+    }
     _wbAllWords = data || [];
     var preview = document.getElementById('sr-wordbank-preview');
     if (!preview) return;
@@ -6020,13 +6027,12 @@ async function loadWordBankPreview() {
       preview.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:16px;color:rgba(255,255,255,.3);font-size:13px">단어를 저장하면 여기에 표시됩니다</div>';
       return;
     }
-    preview.innerHTML = _wbAllWords.slice(0, 6).map(function(w) {
-      return '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 12px;cursor:default">'
-        + '<div style="font-size:14px;font-weight:800">' + (w.word_ko||'') + '</div>'
-        + '<div style="font-size:11px;color:rgba(255,255,255,.4)">' + (w.word_rom||'') + '</div>'
-        + '<div style="font-size:12px;color:#7dd3fc;margin-top:3px">' + (w.word_en||'') + '</div>'
+    preview.innerHTML = _wbAllWords.slice(0, 8).map(function(w) {
+      return '<div style="display:flex;align-items:baseline;gap:8px;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.05)">'
+        + '<div style="font-size:13px;font-weight:800;flex-shrink:0">' + (w.word_ko||'') + '</div>'
+        + '<div style="font-size:11px;color:#7dd3fc;flex:1;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (w.word_en||'') + '</div>'
         + '</div>';
-    }).join('') + (_wbAllWords.length > 6 ? '<div style="display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,.35)">+' + (_wbAllWords.length - 6) + ' more</div>' : '');
+    }).join('') + (_wbAllWords.length > 8 ? '<div style="text-align:center;padding:8px;font-size:11px;color:rgba(255,255,255,.3);cursor:pointer" onclick="openWordBankModal()">+' + (_wbAllWords.length - 8) + ' more →</div>' : '');
   } catch(e) {}
 }
 function openWordBankModal() {
