@@ -2666,6 +2666,21 @@ async function syncStudyProgress(stage) {
 // INIT
 // ═══════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async function() {
+  // ── Mobile layout restructure ──
+  // Move hero block outside tab panel so it stays visible across all tabs
+  // Move tab bar between hero block and activity cards
+  (function() {
+    if (window.innerWidth > 860) return;
+    var heroBlock = document.querySelector('.sr-hero-block');
+    var tabsWrap = document.querySelector('.sr-top-tabs-wrap');
+    var levelBar = document.getElementById('sr-level-bar');
+    if (!heroBlock || !tabsWrap || !levelBar) return;
+    // Move hero block after level bar (outside sr-panel-study)
+    levelBar.after(heroBlock);
+    // Move tabs after hero block (between Daily Review and Activity cards)
+    heroBlock.after(tabsWrap);
+  })();
+
   loadStudyDoneState();
   renderStudyChecklist();
   renderPhrase();
@@ -5815,9 +5830,9 @@ function switchSrTab(tab, btn) {
   var panel = document.getElementById('sr-panel-' + tab);
   if (panel) panel.classList.add('active');
   if (tab === 'wordbook') loadWordBook();
-  // Show level bar only on Study tab
+  // Show level bar only on Study tab (desktop only — on mobile it stays visible with hero)
   var lvBar = document.getElementById('sr-level-bar');
-  if (lvBar) lvBar.style.display = (tab === 'study') ? '' : 'none';
+  if (lvBar && window.innerWidth > 860) lvBar.style.display = (tab === 'study') ? '' : 'none';
   // Mirror sidebar content to Help tab for mobile
   if (tab === 'help') {
     ['phrase-box-left','vocab-box-left','fc-grid-left','helper-box','grammar-box'].forEach(function(srcId) {
