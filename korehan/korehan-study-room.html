@@ -1718,25 +1718,41 @@ body { background: #0b1626 !important; }
 .sr-mob-aid-icon { font-size:13px;flex-shrink:0; }
 .sr-mob-aid-title { font-size:11px;font-weight:700;color:rgba(255,255,255,.7); }
 
-/* ─── MOBILE TAB REDESIGN ─── */
-@media(max-width:860px) {
+/* ─── DESKTOP TABS (861px+) ─── */
+@media(min-width:861px) {
+  .sr-top-tabs-wrap { padding:0 20px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:0; }
+  .sr-top-tabs { gap:0; }
+  .sr-top-tab { padding:12px 24px;font-size:13px;border:none;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:rgba(255,255,255,.4);transition:color .15s,border-color .15s; }
+  .sr-top-tab:hover { color:rgba(255,255,255,.7);background:transparent; }
+  .sr-top-tab.on { color:#fff;background:transparent;border-bottom-color:#7ab8f5; }
+  .sr-level-bar { padding:10px 0 8px; }
+  .lv-pill { padding:6px 18px;font-size:12px; }
+  .sr-tab-panel#sr-panel-study { display:block !important; }
+  .sr-tab-panel#sr-panel-help { display:none !important; }
+}
+/* ─── TABLET TABS (641px–860px) ─── */
+@media(min-width:641px) and (max-width:860px) {
+  .sr-top-tabs-wrap { padding:8px 16px 0;border-bottom:1px solid rgba(255,255,255,.06); }
+  .sr-top-tabs { gap:4px; }
+  .sr-top-tab { padding:10px 20px;font-size:12px;border:none;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:rgba(255,255,255,.35); }
+  .sr-top-tab.on { color:#fff;border-bottom-color:#7ab8f5;background:transparent; }
+  .sr-level-bar { padding:8px 0 6px; }
+  .lv-pill { padding:5px 16px;font-size:11px; }
+  .sr-headline { font-size:24px !important; }
+  .sr-headline-sub { font-size:12px !important; }
+}
+/* ─── MOBILE TABS + LAYOUT (≤640px) ─── */
+@media(max-width:640px) {
   #wcard-chips { display:none; }
   .sr-mobile-aids { display:flex;flex-direction:row;gap:6px;margin-top:6px;flex-wrap:wrap; }
   .sr-topic-q { font-size:clamp(22px,4.5vw,30px); }
-  .sr-top-tabs-wrap { padding:12px 14px 10px;margin-bottom:12px;border-bottom:none;background:linear-gradient(180deg,#0a1220 0%,#0f1d30 100%);border-radius:0 0 16px 16px;box-shadow:0 4px 16px rgba(0,0,0,.3); }
-  .sr-top-tabs { gap:6px;background:rgba(255,255,255,.04);border-radius:12px;padding:4px; }
-  .sr-top-tab { flex:1;border:none;border-radius:10px;padding:9px 6px;font-size:12px;background:transparent;color:rgba(255,255,255,.35);letter-spacing:.02em; }
+  /* Pill-style segmented tabs */
+  .sr-top-tabs-wrap { padding:10px 10px 8px;margin-bottom:10px;border-bottom:none;background:linear-gradient(180deg,#0a1220 0%,#0f1d30 100%);border-radius:0 0 16px 16px;box-shadow:0 4px 16px rgba(0,0,0,.3); }
+  .sr-top-tabs { gap:4px;background:rgba(255,255,255,.04);border-radius:12px;padding:4px; }
+  .sr-top-tab { flex:1;border:none;border-radius:10px;padding:8px 4px;font-size:11px;background:transparent;color:rgba(255,255,255,.35);letter-spacing:.02em; }
   .sr-top-tab.on { background:rgba(122,184,245,.15);color:#fff;box-shadow:0 2px 8px rgba(122,184,245,.15); }
   .sr-top-tab:hover { background:rgba(255,255,255,.06); }
-  .sr-level-bar { gap:6px;padding:10px 0 2px;justify-content:center; }
-  .lv-pill { padding:6px 16px;font-size:11px;border-radius:20px; }
-}
-/* ─── MOBILE LAYOUT OPTIMIZATION ─── */
-@media(max-width:640px) {
-  /* Compact tab bar */
-  .sr-top-tabs-wrap { padding:10px 10px 8px;margin-bottom:10px; }
-  .sr-top-tab { padding:8px 4px;font-size:11px; }
-  .sr-level-bar { padding:8px 0 2px;gap:5px; }
+  .sr-level-bar { gap:5px;padding:8px 0 2px;justify-content:center; }
   .lv-pill { padding:5px 12px;font-size:10px; }
   /* Shrink hero — hide big headline, keep only badge */
   .sr-hero-block { display:flex;flex-direction:column;padding:12px 14px 14px !important; }
@@ -1754,16 +1770,6 @@ body { background: #0b1626 !important; }
   .sr-act-card { padding:14px !important; }
   /* Right sidebar hidden */
   .sr-sidebar { display:none !important; }
-}
-@media(min-width:641px) and (max-width:860px) {
-  /* Tablet: shrink hero slightly */
-  .sr-headline { font-size:24px !important; }
-  .sr-headline-sub { font-size:12px !important; }
-}
-/* On desktop (861px+), always show Study, hide Help (sidebar visible instead) */
-@media(min-width:861px) {
-  .sr-tab-panel#sr-panel-study { display:block !important; }
-  .sr-tab-panel#sr-panel-help { display:none !important; }
 }
 .sr-tab-panel { display:none; }
 .sr-tab-panel.active { display:block; }
@@ -1936,11 +1942,12 @@ body { background: #0b1626 !important; }
           <div class="sr-mobile-aids" id="sr-mobile-aids"></div>
         </div>
 
-        <!-- START button -->
+        <!-- START button with ripple canvas -->
         <div class="sr-topic-right" style="width:100%;margin-top:8px">
-          <button class="sr-start-btn" onclick="openLearningSelector()">
-            <span class="sr-start-btn-label">START</span>
-            <span class="sr-start-btn-sub">Start today's lesson →</span>
+          <button class="sr-start-btn" onclick="_startBtnRipple(event);openLearningSelector()">
+            <canvas id="sr-start-ripple" style="position:absolute;inset:0;width:100%;height:100%;border-radius:12px;pointer-events:none;z-index:0"></canvas>
+            <span class="sr-start-btn-label" style="position:relative;z-index:1">START</span>
+            <span class="sr-start-btn-sub" style="position:relative;z-index:1">Start today's lesson →</span>
           </button>
         </div>
 
@@ -3049,6 +3056,45 @@ function _drawQuestRing(done, total) {
     ctx.fillText(done, R, R);
 
     if (Math.abs(_questRingFill - target) > 0.003) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+// ── START Button Ripple Effect ──
+function _startBtnRipple(e) {
+  var canvas = document.getElementById('sr-start-ripple');
+  if (!canvas || !canvas.getContext) return;
+  var btn = canvas.parentElement;
+  var rect = btn.getBoundingClientRect();
+  var dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  var ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  var cx = e.clientX - rect.left;
+  var cy = e.clientY - rect.top;
+  var maxR = Math.sqrt(rect.width * rect.width + rect.height * rect.height);
+  var t = 0;
+
+  function frame() {
+    t += 0.035;
+    if (t > 1) { ctx.clearRect(0, 0, rect.width, rect.height); return; }
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    var r = maxR * t;
+    var alpha = 0.35 * (1 - t);
+    // Outer ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(122,184,245,' + alpha + ')';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    // Inner glow
+    var grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.8);
+    grad.addColorStop(0, 'rgba(122,184,245,' + (alpha * 0.4) + ')');
+    grad.addColorStop(1, 'rgba(122,184,245,0)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 }
