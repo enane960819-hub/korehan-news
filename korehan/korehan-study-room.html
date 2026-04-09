@@ -4298,7 +4298,7 @@ function lsStart(type) {
 function openKeyExpressionsModal() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
-  markStageDone('expressions');
+  // markStageDone('expressions') moved to "학습 완료" button
   var modal = document.getElementById('ke-modal');
   modal.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
@@ -6022,7 +6022,7 @@ function openWritingModalForLearning() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
   _writingMode = 'topic';
-  markStageDone('topic');
+  // markStageDone('topic') moved to actual submit/finish functions
   if (_currentLevel === 'Starter') {
     openStarterModal();
     return;
@@ -7565,8 +7565,7 @@ function openWritingModalWithMode() {
     alert('자료를 먼저 선택해주세요 (기사 / 대화 / 스토리)');
     return;
   }
-  if (_writingMode === 'topic') markStageDone('topic');
-  if (_writingMode === 'reading') markStageDone('sentence');
+  // markStageDone moved to actual submit/finish functions
   document.getElementById('wmodal').classList.remove('hidden');
   if (_writingMode === 'reading') {
     switchModalMode('reading');
