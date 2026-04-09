@@ -1728,8 +1728,7 @@ body { background: #0b1626 !important; }
   .sr-top-tabs-wrap { display:none; }
   .sr-level-bar { padding:10px 0 14px; }
   .lv-pill { padding:10px 20px;font-size:13px; }
-  /* Help panel handled by sidebar */
-  .sr-tab-panel#sr-panel-study { display:block !important; }
+  /* Help panel handled by sidebar (always hidden on desktop) */
   .sr-tab-panel#sr-panel-help { display:none !important; }
   /* Hide hero text + credit banner on desktop */
   .sr-headline { display:none !important; }
@@ -1863,16 +1862,15 @@ body { background: #0b1626 !important; }
 
 <!-- ── LEFT SIDEBAR (desktop/tablet only) ── -->
 <div class="sr-sidebar sr-sidebar-left">
-  <!-- 단어장 -->
-  <div class="sr-sb-panel" style="padding:0;overflow:hidden">
-    <div style="padding:10px 14px;background:rgba(124,58,237,.08);border-bottom:1px solid rgba(124,58,237,.15)">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div class="ct" style="color:#c4b5fd">📖 나의 단어장</div>
-        <button onclick="openWordBankModal()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:rgba(255,255,255,.5);font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer;font-family:inherit">전체 →</button>
+  <!-- 단어장 (클릭 시 단어장 탭 열기) -->
+  <div class="sr-sb-panel" style="padding:14px 16px;cursor:pointer;background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(124,58,237,.04));border:1px solid rgba(124,58,237,.15)" onclick="switchSrTab('wordbook')">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:22px">📖</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:800;color:#c4b5fd">나의 단어장</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4)">단어 · 표현 · 슬랭 · 뜻가리기 · 퀴즈</div>
       </div>
-    </div>
-    <div id="sr-wordbank-preview" style="display:grid;grid-template-columns:1fr;gap:0;padding:0">
-      <div style="text-align:center;padding:14px;color:rgba(255,255,255,.3);font-size:11px">단어를 저장하면 여기에 표시됩니다</div>
+      <span style="font-size:12px;color:rgba(255,255,255,.25)">→</span>
     </div>
   </div>
   <!-- Must-know Vocab -->
@@ -2231,6 +2229,7 @@ body { background: #0b1626 !important; }
 <!-- ═══ TAB: Master ═══ -->
 <div class="sr-tab-panel" id="sr-panel-master">
   <div style="max-width:1160px;margin:0 auto;padding:24px">
+    <button onclick="switchSrTab('study')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:16px">← Study Room으로</button>
     <div style="margin-bottom:20px">
       <div style="font-size:20px;font-weight:900;color:#fff">🎯 Master Korean</div>
       <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">실전 한국어 실력을 키우는 마스터 프로그램</div>
@@ -2270,6 +2269,7 @@ body { background: #0b1626 !important; }
 <!-- ═══ TAB: Word Book (단어장) ═══ -->
 <div class="sr-tab-panel" id="sr-panel-wordbook">
   <div style="max-width:1160px;margin:0 auto;padding:24px">
+    <button onclick="switchSrTab('study')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:16px">← Study Room으로</button>
     <div class="wb-notebook">
       <div class="wb-header">
         <div class="wb-header-title">📖 나의 단어장</div>
@@ -2645,8 +2645,9 @@ async function syncStudyProgress(stage) {
   if (stage === 'grammar') patch.grammar_done = true;
   if (stage === 'picture') patch.picture_done = true;
   if (stage === 'sentence') patch.sentence_done = true;
-  if (stage === 'expressions') patch.expressions_done = true;
-  try { await sb.from('study_daily_progress').upsert(patch, { onConflict:'user_id,study_date' }); } catch(e) { console.warn('[syncStudyProgress]', e); }
+  try { await sb.from('study_daily_progress').upsert(patch, { onConflict:'user_id,study_date' }); } catch(e) {}
+  // expressions tracked in localStorage only (column may not exist in DB)
+  if (stage === 'expressions') { try { localStorage.setItem(studyDoneKey(), JSON.stringify(_studyDone)); } catch(e){} }
   if (stage === 'grammar') {
     var focus = new URLSearchParams(window.location.search).get('focus') || ((_gfPattern && _gfPattern.name) || '');
     if (focus) {
@@ -5846,11 +5847,10 @@ async function loadWordBook() {
     var sb = getSupa();
     if (!sb) return;
     var results = [];
-    // 1) saved_words (main vocab table — used everywhere in the app)
+    // 1) saved_words (may not exist on all setups)
     try {
       var { data: sw, error: swErr } = await sb.from('saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
-      if (swErr) console.warn('[WordBook] saved_words error:', swErr.message);
-      if (sw) sw.forEach(function(w) {
+      if (sw && !swErr) sw.forEach(function(w) {
         var en = w.word_en || '';
         var cat = 'word';
         if (en.indexOf('[슬랭]') === 0) { cat = 'slang'; en = en.replace('[슬랭] ',''); }
