@@ -1634,7 +1634,16 @@ body { background: #0b1626 !important; }
 .sr-top-tab { padding:8px 18px;font-size:12px;font-weight:700;color:rgba(255,255,255,.35);cursor:pointer;border:1px solid rgba(255,255,255,.06);border-bottom:none;border-radius:8px 8px 0 0;background:rgba(255,255,255,.03);font-family:inherit;text-align:center;transition:all .15s;white-space:nowrap; }
 .sr-top-tab:hover { color:rgba(255,255,255,.6);background:rgba(255,255,255,.06); }
 .sr-top-tab.on { color:#fff;background:rgba(122,184,245,.12);border-color:rgba(122,184,245,.2); }
-@media(max-width:640px) { .sr-top-tab { flex:1;padding:10px 6px;font-size:11px; } }
+/* Level sub-bar */
+.sr-level-bar { display:flex;gap:4px;padding:6px 0 8px;max-width:1160px;margin:0 auto; }
+.lv-pill { padding:5px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:transparent;color:rgba(255,255,255,.35);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s; }
+.lv-pill:hover { color:rgba(255,255,255,.6);background:rgba(255,255,255,.06); }
+.lv-pill.on { color:#fff;border-color:transparent; }
+.lv-pill.lv-s.on { background:#6b21a8; }
+.lv-pill.lv-b.on { background:#15803d; }
+.lv-pill.lv-i.on { background:#0369a1; }
+.lv-pill.lv-a.on { background:#b91c1c; }
+@media(max-width:640px) { .sr-top-tab { flex:1;padding:10px 6px;font-size:11px; } .lv-pill { padding:4px 10px;font-size:10px; } }
 /* On desktop, always show Study tab regardless of active panel */
 @media(min-width:861px) {
   .sr-tab-panel#sr-panel-study { display:block !important; }
@@ -1701,13 +1710,19 @@ body { background: #0b1626 !important; }
 <div class="sr-page">
 <div class="sr-wrap2">
 
-<!-- ── TOP TAB BAR (mobile only, sticky) ── -->
+<!-- ── TOP TAB BAR (sticky) ── -->
 <div class="sr-top-tabs-wrap">
 <div class="sr-top-tabs">
   <button class="sr-top-tab on" onclick="switchSrTab('study',this)">📝 Study</button>
   <button class="sr-top-tab" onclick="switchSrTab('help',this)">📚 Help</button>
   <button class="sr-top-tab" onclick="switchSrTab('master',this)">🎯 Master</button>
   <button class="sr-top-tab" onclick="switchSrTab('wordbook',this)">📖 단어장</button>
+</div>
+<div class="sr-level-bar" id="sr-level-bar">
+  <button class="lv-pill lv-s"    onclick="setLevel('Starter',this)">Seed</button>
+  <button class="lv-pill lv-b on" onclick="setLevel('Beginner',this)">Sprout</button>
+  <button class="lv-pill lv-i"    onclick="setLevel('Intermediate',this)">Tree</button>
+  <button class="lv-pill lv-a"    onclick="setLevel('Advanced',this)">Forest</button>
 </div>
 </div>
 
@@ -1748,15 +1763,8 @@ body { background: #0b1626 !important; }
 
 <div id="sr-mob-main">
 
-  <!-- HERO BLOCK: badge + headline + level selector + topic card -->
+  <!-- HERO BLOCK -->
   <div class="sr-hero-block">
-    <!-- LEVEL SELECTOR — inside hero -->
-    <div class="lv-row" style="margin-bottom:16px">
-      <button class="lv-btn lv-s"    onclick="setLevel('Starter',this)">🌱 Seed</button>
-      <button class="lv-btn lv-b on" onclick="setLevel('Beginner',this)">🌿 Sprout</button>
-      <button class="lv-btn lv-i"    onclick="setLevel('Intermediate',this)">🌳 Tree</button>
-      <button class="lv-btn lv-a"    onclick="setLevel('Advanced',this)">🌲 Forest</button>
-    </div>
     <div class="sr-lvbadge-pill" id="sr-lvbadge-pill">📖 STUDY ROOM / BEGINNER</div>
     <h1 class="sr-headline">Express yourself in Korean,<br>and watch yourself grow.</h1>
     <p class="sr-headline-sub">Write and speak on today's topic. Grammar and examples are available on the side for reference.</p>
@@ -2944,7 +2952,7 @@ function setLevel(level, btn) {
   level = normalizeLevelName(level);
   if (_currentLevel === level) return;
   _currentLevel = level;
-  document.querySelectorAll('.lv-btn').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelectorAll('.lv-btn,.lv-pill').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
   var pill = document.getElementById('sr-lvbadge-pill');
   if (pill) pill.textContent = '📖 STUDY ROOM / ' + level.toUpperCase();
@@ -5220,6 +5228,9 @@ function switchSrTab(tab, btn) {
   var panel = document.getElementById('sr-panel-' + tab);
   if (panel) panel.classList.add('active');
   if (tab === 'wordbook') loadWordBook();
+  // Show level bar only on Study tab
+  var lvBar = document.getElementById('sr-level-bar');
+  if (lvBar) lvBar.style.display = (tab === 'study') ? '' : 'none';
   // Mirror sidebar content to Help tab for mobile
   if (tab === 'help') {
     var src = document.getElementById('phrase-box-left');
