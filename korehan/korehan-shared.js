@@ -936,22 +936,30 @@ async function checkSession() {
     window.history.replaceState(null, '', window.location.pathname + window.location.search);
   }
 
-  var { data } = await sb.auth.getSession();
-  if (data && data.session && data.session.user) {
-    supaUser = data.session.user;
-    updateAuthUI();
-    updateCommentForm();
-    renderDailyMission();
-    window.dispatchEvent(new Event('kh-auth-signed-in'));
-    // DB 동기화는 화면 렌더와 무관 — idle 시점으로 지연 (연결 경쟁 방지)
-    var _deferAuth = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 200); };
-    _deferAuth(function() {
-      _syncSavedWordsFromDB();
-      _rehydrateUserState();
-      if (!window.location.pathname.includes('onboarding')) {
-        checkOnboardingStatus();
-      }
-    });
+  try {
+    var _getSessionResult = await Promise.race([
+      sb.auth.getSession(),
+      new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('getSession timeout')); }, 8000); })
+    ]);
+    var data = _getSessionResult.data;
+    if (data && data.session && data.session.user) {
+      supaUser = data.session.user;
+      updateAuthUI();
+      updateCommentForm();
+      renderDailyMission();
+      window.dispatchEvent(new Event('kh-auth-signed-in'));
+      // DB 동기화는 화면 렌더와 무관 — idle 시점으로 지연 (연결 경쟁 방지)
+      var _deferAuth = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 200); };
+      _deferAuth(function() {
+        _syncSavedWordsFromDB();
+        _rehydrateUserState();
+        if (!window.location.pathname.includes('onboarding')) {
+          checkOnboardingStatus();
+        }
+      });
+    }
+  } catch(e) {
+    console.warn('getSession failed or timed out:', e.message || e);
   }
   window._sessionChecked = true;
   updateAuthUI();
