@@ -62,7 +62,7 @@
 
   /* 토픽 카드 */
   #hero-topic-box { border-radius: 14px !important; padding: 18px !important; }
-  #hero-topic-ko  { font-size: 20px !important; }
+  #hero-topic-ko  { font-size: 26px !important; }
 
   /* writing card */
   .wcard { border-radius: 16px !important; padding: 18px 16px !important; }
@@ -1094,7 +1094,7 @@ body { background: #0b1626 !important; }
 }
 .sr-topic-q {
   font-family: 'Noto Serif KR', 'Playfair Display', serif;
-  font-size: clamp(20px, 2.8vw, 28px);
+  font-size: clamp(26px, 4vw, 36px);
   font-weight: 900;
   color: #fff;
   line-height: 1.3;
@@ -1759,7 +1759,7 @@ body { background: #0b1626 !important; }
 @media(max-width:640px) {
   #wcard-chips { display:none; }
   .sr-mobile-aids { display:flex;flex-direction:row;gap:6px;margin-top:6px;flex-wrap:wrap; }
-  .sr-topic-q { font-size:clamp(22px,4.5vw,30px); }
+  .sr-topic-q { font-size:clamp(26px,5.5vw,34px); }
   .sr-top-tabs-wrap { position:static;padding:0;margin-bottom:10px;border-bottom:none;background:transparent;border-radius:0;box-shadow:none; }
   .sr-top-tabs { gap:4px;background:rgba(255,255,255,.04);border-radius:10px;padding:3px; }
   .sr-top-tab { flex:1;border:none;border-radius:8px;padding:8px 4px;font-size:11px;background:transparent;color:rgba(255,255,255,.35);letter-spacing:.02em; }
@@ -2032,7 +2032,7 @@ body { background: #0b1626 !important; }
 
   <!-- ACTIVITY CARDS -->
   <div class="sr-activity-cards">
-    <button class="sr-act-card" onclick="openArticleStudy()">
+    <button class="sr-act-card" onclick="_canvasRipple(this,event);openArticleStudy()">
       <span class="srac-icon"><i data-lucide="newspaper" class="kh-ui-icon" style="width:26px;height:26px" aria-hidden="true"></i></span>
       <div class="srac-title">Article Study</div>
       <div class="srac-desc">Read real Korean news and complete 5 learning steps</div>
@@ -2041,7 +2041,7 @@ body { background: #0b1626 !important; }
         <span class="srac-arrow">→</span>
       </div>
     </button>
-    <button class="sr-act-card" onclick="openConvStudy()">
+    <button class="sr-act-card" onclick="_canvasRipple(this,event);openConvStudy()">
       <span class="srac-icon"><i data-lucide="messages-square" class="kh-ui-icon" style="width:26px;height:26px" aria-hidden="true"></i></span>
       <div class="srac-title">Conversations</div>
       <div class="srac-desc">Practice real Korean dialogue patterns</div>
@@ -2050,7 +2050,7 @@ body { background: #0b1626 !important; }
         <span class="srac-arrow">→</span>
       </div>
     </button>
-    <button class="sr-act-card" onclick="openStoryStudy && openStoryStudy() || window.location.assign('korehan-stories.html')">
+    <button class="sr-act-card" onclick="_canvasRipple(this,event);openStoryStudy && openStoryStudy() || window.location.assign('korehan-stories.html')">
       <span class="srac-icon"><i data-lucide="book-open" class="kh-ui-icon" style="width:26px;height:26px" aria-hidden="true"></i></span>
       <div class="srac-title">Stories</div>
       <div class="srac-desc">Learn through graded Korean short stories</div>
@@ -2685,6 +2685,9 @@ document.addEventListener('DOMContentLoaded', async function() {
   renderStudyChecklist();
   renderPhrase();
 
+  // ── START button idle canvas glow ──
+  _startBtnIdleGlow();
+
   // ── OPTIMIZED: Only 2 essential DB calls at page load ──
   // 1) Access gate (subscription check)
   // 2) Daily content (includes vocab, grammar, helpers — no separate calls)
@@ -3127,6 +3130,118 @@ function _startBtnRipple(e) {
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+}
+
+// ── START button idle glow canvas ──
+var _startGlowId = null;
+function _startBtnIdleGlow() {
+  var canvas = document.getElementById('sr-start-ripple');
+  if (!canvas || !canvas.getContext) return;
+  if (_startGlowId) return; // already running
+  var btn = canvas.parentElement;
+  function resize() {
+    var rect = btn.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    return { w: rect.width, h: rect.height, dpr: dpr };
+  }
+  var sz = resize();
+  var t = 0;
+  function frame() {
+    t += 0.012;
+    var w = sz.w, h = sz.h;
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(sz.dpr, 0, 0, sz.dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    // Aurora blobs
+    for (var i = 0; i < 3; i++) {
+      var bx = w * (0.3 + 0.4 * Math.sin(t * 0.7 + i * 2.1));
+      var by = h * (0.25 + 0.5 * Math.cos(t * 0.5 + i * 1.7));
+      var br = Math.max(w, h) * 0.55;
+      var grad = ctx.createRadialGradient(bx, by, 0, bx, by, br);
+      var a = 0.08 + 0.05 * Math.sin(t * 1.2 + i);
+      grad.addColorStop(0, 'rgba(122,184,245,' + a + ')');
+      grad.addColorStop(0.4, 'rgba(139,92,246,' + (a * 0.6) + ')');
+      grad.addColorStop(1, 'rgba(122,184,245,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // Shimmer sweep
+    var sx = (w + 120) * ((Math.sin(t * 0.35) + 1) / 2) - 60;
+    var sg = ctx.createLinearGradient(sx - 50, 0, sx + 50, 0);
+    sg.addColorStop(0, 'rgba(255,255,255,0)');
+    sg.addColorStop(0.5, 'rgba(255,255,255,0.09)');
+    sg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Breathing border glow
+    var ba = 0.12 + 0.08 * Math.sin(t * 1.5);
+    ctx.strokeStyle = 'rgba(122,184,245,' + ba + ')';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(12, 0); ctx.lineTo(w - 12, 0);
+    ctx.arcTo(w, 0, w, 12, 12); ctx.lineTo(w, h - 12);
+    ctx.arcTo(w, h, w - 12, h, 12); ctx.lineTo(12, h);
+    ctx.arcTo(0, h, 0, h - 12, 12); ctx.lineTo(0, 12);
+    ctx.arcTo(0, 0, 12, 0, 12);
+    ctx.stroke();
+
+    _startGlowId = requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  // Resize on window change
+  window.addEventListener('resize', function() { sz = resize(); });
+}
+
+// ── Universal canvas ripple (for activity cards, etc.) ──
+function _canvasRipple(el, e) {
+  var rect = el.getBoundingClientRect();
+  var c = document.createElement('canvas');
+  c.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:10;border-radius:inherit';
+  var dpr = window.devicePixelRatio || 1;
+  c.width = rect.width * dpr; c.height = rect.height * dpr;
+  el.appendChild(c);
+  var ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  var cx = e ? (e.clientX - rect.left) : rect.width / 2;
+  var cy = e ? (e.clientY - rect.top) : rect.height / 2;
+  var maxR = Math.sqrt(rect.width * rect.width + rect.height * rect.height);
+  var t = 0;
+  function frame() {
+    t += 0.028;
+    if (t > 1) { c.remove(); return; }
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    var r = maxR * t;
+    var alpha = 0.35 * (1 - t);
+    // Filled glow
+    var grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, 'rgba(122,184,245,' + (alpha * 0.4) + ')');
+    grad.addColorStop(0.6, 'rgba(122,184,245,' + (alpha * 0.15) + ')');
+    grad.addColorStop(1, 'rgba(122,184,245,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, rect.width, rect.height);
+    // Ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(122,184,245,' + (alpha * 0.8) + ')';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+// ── Fast Track node entry ripple ──
+function _ftNodeRipple(nodeId) {
+  var nodeEl = document.getElementById('ftn-' + nodeId);
+  if (!nodeEl) return;
+  var box = nodeEl.querySelector('.ft-node-box');
+  if (!box) return;
+  _canvasRipple(box, null);
 }
 
 function renderStudyRoomWordTracks() {
@@ -5614,7 +5729,7 @@ async function renderScenarioList() {
         + '<div style="height:100%;width:' + prog.completion_pct + '%;background:#2196F3;border-radius:2px"></div></div>'
         + '<div style="font-size:9px;color:#5a6a7a;margin-top:3px">' + prog.completion_pct + '% 탐색 · ' + (prog.play_count||1) + '회 플레이 · ' + (prog.phrases||[]).length + '개 표현</div>';
     }
-    return '<div onclick="startScenario(\'' + s.id + '\')" style="padding:20px;border-radius:14px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);border:2px solid transparent;transition:all .15s;' + lockStyle + '"'
+    return '<div onclick="_canvasRipple(this,event);startScenario(\'' + s.id + '\')" style="padding:20px;border-radius:14px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);border:2px solid transparent;transition:all .15s;position:relative;overflow:hidden;' + lockStyle + '"'
       + ' onmouseover="if(!' + s.locked + ')this.style.borderColor=\'#2196F3\'" onmouseout="this.style.borderColor=\'transparent\'">'
       + '<div style="font-size:28px;margin-bottom:8px">' + s.icon + '</div>'
       + '<div style="font-size:14px;font-weight:900;color:#1a2a3a">' + s.titleKo + '</div>'
@@ -5654,6 +5769,8 @@ function advanceToNode(nodeId) {
   if (_ftState.path[_ftState.path.length - 1] !== nodeId) _ftState.path.push(nodeId);
   updateFtPct();
   renderFlowchart(scenario, true); // animate the latest edge
+  // Canvas ripple on the new node
+  setTimeout(function(){ _ftNodeRipple(nodeId); }, 300);
   // Show player
   if (node.type === 'end') {
     showEndNode(node);
