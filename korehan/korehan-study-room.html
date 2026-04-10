@@ -2695,9 +2695,12 @@ document.addEventListener('DOMContentLoaded', async function() {
   await loadStudyAccessGate();
 
   // Wait for auth session, then load daily content (single call)
+  // checkSession() in shared.js guarantees _sessionChecked=true within 8s (timeout)
+  // We wait until it's actually set — no premature fallthrough.
   var waited = 0;
   function waitForSession() {
-    if (window._sessionChecked || waited >= 30) {
+    if (window._sessionChecked) {
+      // Session check completed — proceed with everything
       loadStudyDoneState();
       loadStudyDoneFromDB();
       loadDailyContent();       // ← THE main DB call: topic + vocab + grammar + helpers all-in-one
@@ -2713,6 +2716,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         loadWeakGrammarBanner();
         showReviewNotifications();
       }, 1500);
+    } else if (waited >= 120) {
+      // Hard limit: 12 seconds — session check truly failed, proceed anyway
+      console.error('[waitForSession] _sessionChecked never set after 12s');
+      window._sessionChecked = true; // Force it
+      loadDailyContent();
     } else {
       waited++;
       setTimeout(waitForSession, 100);
@@ -3400,7 +3408,6 @@ function getFallbackTopics() {
 // ═══════════════════════════════════════════════════════════════
 // LOAD DAILY CONTENT — from study_daily_content (AI-generated + admin-editable)
 // ═══════════════════════════════════════════════════════════════
-var _loadDailyRetries = 0;
 async function loadDailyContent() {
   var today = kstDateKey();
   console.log('[loadDailyContent] start — date:', today, 'level:', _currentLevel, 'user:', supaUser ? supaUser.id : 'none');
@@ -3414,14 +3421,8 @@ async function loadDailyContent() {
     }
   }
 
+  // _sessionChecked is guaranteed true before this function is called (waitForSession ensures it)
   if (!supaUser) {
-    // If session check isn't done yet, wait a bit more before showing login wall
-    if (!window._sessionChecked && _loadDailyRetries < 10) {
-      _loadDailyRetries++;
-      console.log('[loadDailyContent] session not checked yet, deferring... (attempt ' + _loadDailyRetries + ')');
-      setTimeout(loadDailyContent, 300);
-      return;
-    }
     console.log('[loadDailyContent] no user — showing login wall');
     var subEl = document.getElementById('wm-topic-sub');
     if (subEl) subEl.textContent = 'Today\'s Topic';
