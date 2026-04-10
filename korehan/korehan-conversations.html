@@ -30,31 +30,30 @@
 .conv-search input{border:none;background:none;outline:none;font-size:13px;color:#fff;font-family:inherit;width:100%;}
 .conv-search input::placeholder{color:rgba(255,255,255,.35);}
 
-/* ── Card — Chat Preview Style ── */
-.cc2{border-radius:16px;overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s,border-color .18s;border:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;background:rgba(255,255,255,.03);}
-.cc2:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.35);border-color:rgba(255,255,255,.18);}
-.cc2-head{padding:16px 16px 12px;position:relative;flex-shrink:0;}
-.cc2-tags{display:flex;gap:5px;margin-bottom:10px;}
-.cc2-tag{font-size:9px;font-weight:800;padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.03em;}
-.cc2-tag-cat{background:rgba(255,255,255,.18);color:#fff;}
-.cc2-tag-lvl{color:#fff;}
-.badge-b{background:rgba(34,197,94,.7);}
-.badge-i{background:rgba(234,179,8,.65);}
-.badge-a{background:rgba(239,68,68,.65);}
-.cc2-title{font-size:16px;font-weight:900;color:#fff;line-height:1.25;font-family:'Noto Sans KR',sans-serif;}
-.cc2-ctx{font-size:11px;color:rgba(255,255,255,.5);margin-top:5px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-
-/* Card chat preview lines */
-.cc2-preview{padding:0 16px 14px;flex:1;display:flex;flex-direction:column;gap:5px;}
-.cc2-preview-line{display:flex;gap:6px;align-items:flex-start;}
-.cc2-preview-who{font-size:10px;font-weight:800;color:rgba(255,255,255,.3);flex-shrink:0;min-width:18px;padding-top:2px;}
-.cc2-preview-txt{font-size:12px;color:rgba(255,255,255,.45);font-family:'Noto Sans KR',sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.5;}
-
-/* Card footer with speaker avatars */
-.cc2-footer{padding:10px 16px;display:flex;align-items:center;gap:8px;border-top:1px solid rgba(255,255,255,.06);}
-.cc2-footer .kh-char-av{border:1.5px solid rgba(255,255,255,.2);}
-.cc2-footer .kh-char-av+.kh-char-av{margin-left:-6px;}
-.cc2-msg-count{font-size:10px;color:rgba(255,255,255,.25);margin-left:auto;font-weight:600;}
+/* ── Card — KakaoTalk Chat Preview ── */
+.cc2{border-radius:18px;overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s;border:none;display:flex;flex-direction:column;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);}
+.cc2:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.15);}
+/* Card header: speakers + level badge */
+.cc2-head{padding:16px 16px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #f0f4fa;}
+.cc2-head-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden;}
+.cc2-head-avatar img{width:100%;height:100%;object-fit:cover;}
+.cc2-head-info{flex:1;min-width:0;}
+.cc2-title{font-size:15px;font-weight:900;color:#0f172a;line-height:1.25;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cc2-ctx{font-size:11px;color:#64748b;margin-top:3px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.cc2-tag{font-size:9px;font-weight:800;padding:3px 8px;border-radius:20px;flex-shrink:0;letter-spacing:.02em;}
+.badge-b{background:#dcfce7;color:#15803d;}
+.badge-i{background:#fef9c3;color:#92400e;}
+.badge-a{background:#fee2e2;color:#b91c1c;}
+/* Chat bubble previews */
+.cc2-bubbles{padding:12px 16px 14px;flex:1;display:flex;flex-direction:column;gap:8px;}
+.cc2-bub{padding:8px 12px;border-radius:14px;font-size:13px;font-family:'Noto Sans KR',sans-serif;line-height:1.5;max-width:85%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cc2-bub-l{background:#f1f5f9;color:#334155;border-bottom-left-radius:4px;align-self:flex-start;}
+.cc2-bub-r{background:#2563eb;color:#fff;border-bottom-right-radius:4px;align-self:flex-end;}
+/* Card footer */
+.cc2-footer{padding:10px 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f0f4fa;}
+.cc2-vocab-count{font-size:11px;color:#64748b;font-weight:600;}
+.cc2-study-btn{font-size:11px;font-weight:800;color:#2563eb;background:none;border:1.5px solid #bfdbfe;border-radius:20px;padding:4px 14px;cursor:pointer;font-family:inherit;transition:all .12s;}
+.cc2-study-btn:hover{background:#eff6ff;}
 
 /* ── DETAIL OVERLAY ── */
 .detail-overlay{position:fixed;inset:0;background:rgba(5,12,24,.72);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px 16px;overflow:hidden;}
@@ -161,7 +160,7 @@
 @media(max-width:900px){
   .conv-two-col{grid-template-columns:1fr!important;}
   #conv-sidebar{display:none!important;}
-  .conv-cards-grid{grid-template-columns:repeat(2,1fr)!important;gap:10px!important;}
+  .conv-cards-grid{grid-template-columns:1fr!important;gap:12px!important;max-width:500px!important;}
   /* Detail overlay */
   .detail-overlay{overflow-y:auto!important;align-items:flex-start!important;padding:10px!important;}
   .detail-panel{grid-template-columns:1fr;height:auto!important;max-height:none!important;border-radius:20px;}
@@ -196,12 +195,7 @@
 @media(max-width:600px){
   .conv-page-container{padding:0 16px 60px!important;}
   .conv-tab-bar{padding:0 16px!important;}
-  .conv-cards-grid{grid-template-columns:repeat(2,1fr)!important;gap:10px!important;}
-  .cc2-head{padding:14px 14px 10px!important;}
-  .cc2-title{font-size:14px!important;}
-  .cc2-ctx{font-size:10px!important;}
-  .cc2-preview{padding:0 14px 10px!important;}
-  .cc2-footer{padding:8px 14px!important;}
+  .conv-cards-grid{grid-template-columns:1fr!important;gap:12px!important;max-width:none!important;}
   .detail-panel{border-radius:16px;}
   /* Stack vocab items vertically on narrow screens */
   .dp-vocab-item{grid-template-columns:1fr!important;gap:2px!important;padding:14px 16px!important;position:relative!important;}
@@ -412,39 +406,47 @@ var CAT_EN = {everyday:'Everyday',work:'Work',friends:'Friends',family:'Family',
 
 function _renderOneCard(c) {
   var ri = CONVS.indexOf(c);
-  var catLabel = CAT_EN[c.cat] || c.cat || '';
   var title = escapeHtml(c.name || c.topic || '');
   var ctx = escapeHtml(c.ctx || '');
-  var grad = CAT_GRAD[c.cat] || CAT_GRAD.everyday;
 
-  // Chat preview lines (from cached preview data)
-  var previewHtml = '';
+  // Speakers from preview
+  var speakerA = '', speakerB = '';
   if (c.preview && c.preview.length) {
-    previewHtml = '<div class="cc2-preview">' + c.preview.map(function(p) {
-      return '<div class="cc2-preview-line">'
-        +'<span class="cc2-preview-who">'+escapeHtml(p.who||'')+'</span>'
-        +'<span class="cc2-preview-txt">'+escapeHtml(p.txt||'')+'</span>'
-        +'</div>';
-    }).join('') + '</div>';
+    speakerA = c.preview[0] ? c.preview[0].who : '';
+    speakerB = c.preview[1] ? c.preview[1].who : '';
+  }
+  var speakersText = speakerA && speakerB ? escapeHtml(speakerA) + ' & ' + escapeHtml(speakerB) : title;
+
+  // Chat bubble previews (max 3 lines alternating)
+  var bubblesHtml = '';
+  if (c.preview && c.preview.length) {
+    bubblesHtml = '<div class="cc2-bubbles">';
+    var allPrev = c.preview.slice(0, 3);
+    allPrev.forEach(function(p, i) {
+      var side = (i % 2 === 0) ? 'cc2-bub-l' : 'cc2-bub-r';
+      bubblesHtml += '<div class="cc2-bub '+side+'">'+escapeHtml(p.txt||'')+'</div>';
+    });
+    bubblesHtml += '</div>';
   }
 
-  // Footer with message count
-  var msgCount = c._msgCount || 0;
-  var footerHtml = msgCount
-    ? '<div class="cc2-footer"><span class="cc2-msg-count">💬 '+msgCount+'</span></div>'
-    : '';
+  // Vocab count
+  var vocabCount = c._vocabCount || 0;
+  var vocabLabel = vocabCount ? '📚 ' + vocabCount + ' key words' : '';
 
   return '<div class="cc2" onclick="openDetail('+ri+')">'
-    +'<div class="cc2-head" style="background:'+grad+'">'
-      +'<div class="cc2-tags">'
-        +'<span class="cc2-tag cc2-tag-cat">'+catLabel+'</span>'
-        +'<span class="cc2-tag '+LVL_CLS[c.lvl]+'">'+LVL_LABEL[c.lvl]+'</span>'
+    +'<div class="cc2-head">'
+      +'<div class="cc2-head-avatar" style="background:'+(_CHAR_PALETTE[ri % _CHAR_PALETTE.length])+'">👥</div>'
+      +'<div class="cc2-head-info">'
+        +'<div class="cc2-title">'+speakersText+'</div>'
+        +(ctx ? '<div class="cc2-ctx">'+ctx+'</div>' : '')
       +'</div>'
-      +'<div class="cc2-title">'+title+'</div>'
-      +(ctx ? '<div class="cc2-ctx">'+ctx+'</div>' : '')
+      +'<span class="cc2-tag '+LVL_CLS[c.lvl]+'">'+LVL_LABEL[c.lvl]+'</span>'
     +'</div>'
-    +previewHtml
-    +footerHtml
+    +bubblesHtml
+    +'<div class="cc2-footer">'
+      +'<span class="cc2-vocab-count">'+vocabLabel+'</span>'
+      +'<span class="cc2-study-btn">Study →</span>'
+    +'</div>'
   +'</div>';
 }
 
@@ -861,6 +863,7 @@ function _convRowToObj(row) {
     thumb: row.thumb || null,
     preview: row.preview || [],
     _msgCount: row._msgCount || 0,
+    _vocabCount: row._vocabCount || 0,
     msgs: [],
     vocab: [],
     grammar: [],
@@ -905,22 +908,24 @@ function _convRowToObj(row) {
         var freshConvs = res.data.map(function(row) {
           var d = row.data || {};
           var msgs = d.msgs || [];
-          // Extract preview: first 2 message lines
-          var preview = msgs.filter(function(m){ return m.s !== 'n'; }).slice(0,2).map(function(m) {
-            return { who: (m.who || m.name || (m.s === 'l' ? 'A' : 'B')).slice(0,4), txt: (m.txt || '').slice(0,50) };
+          // Extract preview: first 3 message lines for chat bubble preview
+          var talkMsgs = msgs.filter(function(m){ return m.s !== 'n'; });
+          var preview = talkMsgs.slice(0,3).map(function(m) {
+            return { who: (m.who || m.name || (m.s === 'l' ? 'A' : 'B')).slice(0,6), txt: (m.txt || '').slice(0,40) };
           });
+          var vocabCount = (d.vocab || []).length;
           return _convRowToObj({
             _id: row.id, name: row.name || d.name, ctx: row.ctx || d.ctx,
             cat: row.cat, lvl: row.lvl,
             topic: d.topic || '', thumb: d.thumb || null,
-            preview: preview, _msgCount: msgs.filter(function(m){ return m.s !== 'n'; }).length
+            preview: preview, _msgCount: talkMsgs.length, _vocabCount: vocabCount
           });
         });
 
         // localStorage 캐시 업데이트 (preview 포함)
         try {
           var toCache = freshConvs.map(function(c){
-            return {_id:c._id, name:c.name, ctx:c.ctx, cat:c.cat, lvl:c.lvl, topic:c.topic, thumb:c.thumb, preview:c.preview, _msgCount:c._msgCount};
+            return {_id:c._id, name:c.name, ctx:c.ctx, cat:c.cat, lvl:c.lvl, topic:c.topic, thumb:c.thumb, preview:c.preview, _msgCount:c._msgCount, _vocabCount:c._vocabCount};
           });
           localStorage.setItem(_CONV_CACHE_KEY, JSON.stringify(toCache));
         } catch(e) {}

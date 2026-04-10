@@ -2266,7 +2266,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   body.mobile-redesign .two-col,
   body.mobile-redesign .card-grid,
   body.mobile-redesign .st-grid{grid-template-columns:1fr !important;gap:14px !important;}
-  body.mobile-redesign .conv-cards-grid{grid-template-columns:repeat(2,1fr) !important;gap:10px !important;}
+  body.mobile-redesign .conv-cards-grid{grid-template-columns:1fr !important;gap:12px !important;}
 
   body.mobile-redesign #dyn-hero{display:block !important;border:none !important;box-shadow:none !important;background:transparent !important;overflow:visible !important;}
   body.mobile-redesign #dyn-hero > div:first-child{min-height:360px !important;border-radius:28px !important;overflow:hidden;box-shadow:0 24px 48px rgba(0,0,0,.28) !important;}
