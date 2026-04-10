@@ -610,6 +610,8 @@ function checkBadges(event, payload) {
     newBadges.forEach(function(b){ showBadgeToast(b); });
     // Server sync: save to user_badges table
     _syncBadgesToServer(newBadges);
+    // Auto-unlock room items for badges with roomItemId
+    _unlockBadgeRoomItems(newBadges);
   }
   return newBadges;
 }
@@ -626,6 +628,24 @@ async function _syncBadgesToServer(badges) {
         earned_at: new Date().toISOString()
       }, { onConflict: 'user_id,badge_id' });
     } catch(e) {}
+  }
+}
+
+// Auto-unlock room decoration items for badges that have a roomItemId
+function _unlockBadgeRoomItems(badges) {
+  var K_ROOM_OWNED = 'kh_room_owned';
+  var owned;
+  try { owned = JSON.parse(localStorage.getItem(K_ROOM_OWNED) || '[]'); } catch(e) { owned = []; }
+  var added = false;
+  badges.forEach(function(b) {
+    if (b.roomItemId && owned.indexOf(b.roomItemId) === -1) {
+      owned.push(b.roomItemId);
+      added = true;
+    }
+  });
+  if (added) {
+    localStorage.setItem(K_ROOM_OWNED, JSON.stringify(owned));
+    if (typeof _syncRoomToServer === 'function') _syncRoomToServer();
   }
 }
 

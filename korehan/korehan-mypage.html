@@ -772,7 +772,7 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
   <!-- Mini Room -->
   <div class="mp-section" id="mp-miniroom-section">
     <h3>My Room</h3>
-    <div id="miniroom-container" style="position:relative;width:100%;max-width:600px;aspect-ratio:10/9;margin:0 auto;background:url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover no-repeat;border-radius:16px;border:1px solid rgba(0,0,0,.12);overflow:hidden;touch-action:none">
+    <div id="miniroom-container" style="position:relative;width:100%;max-width:600px;aspect-ratio:10/9;margin:0 auto;background:url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover no-repeat;border-radius:16px;border:1px solid rgba(0,0,0,.12);overflow:hidden;touch-action:auto">
       <div id="miniroom-items"></div>
       <div id="room-light-switch" class="room-light-switch" onclick="toggleRoomLights()"
            style="background-image:url(assets/file_000000000f1c720bbe419c8601e6fb5e-removebg-preview.png)"
@@ -1744,7 +1744,10 @@ function toggleRoomEdit() {
   var container = document.getElementById('miniroom-container');
   if (btn) btn.textContent = _roomEditing ? 'Editing...' : 'Edit Room';
   if (saveBtn) saveBtn.style.display = _roomEditing ? '' : 'none';
-  if (container) container.classList.toggle('room-editing-active', _roomEditing);
+  if (container) {
+    container.classList.toggle('room-editing-active', _roomEditing);
+    container.style.touchAction = _roomEditing ? 'none' : 'auto';
+  }
   var sizeControls = document.getElementById('room-size-controls');
   if (sizeControls) sizeControls.style.display = _roomEditing ? '' : 'none';
 
