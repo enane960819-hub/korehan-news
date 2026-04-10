@@ -6554,7 +6554,7 @@ async function submitAllWritingsToday() {
     // Clear drafts
     localStorage.removeItem(_writingDraftKey());
     refreshSubmitBanner();
-    showToast('✅ ' + submitted + '개 글쓰기 제출 완료! 24시간 내 피드백이 도착합니다.');
+    showToast('✅ ' + submitted + ' writing(s) submitted! Feedback within 24 hours.');
     if (typeof awardXP === 'function') awardXP('writing_submit');
   }
   if (errors.length) console.warn('Submit errors:', errors);
@@ -6562,9 +6562,9 @@ async function submitAllWritingsToday() {
 
 async function _triggerUnifiedAIFeedback(submissionId, text, topicOrTitle) {
   try {
-    var prompt = '당신은 한국어 작문 첨삭 선생님입니다.\n\n학생 작문:\n"""\n' + text + '\n"""\n주제: ' + topicOrTitle + '\n\n'
-      + '다음 형식으로 첨삭해주세요 (JSON):\n'
-      + '{"overall":"전반적인 평가 1-2문장","corrections":[{"original":"원문","corrected":"수정문","reason":"이유","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB"}],"encouragement":"격려 한마디"}\nJSON만 반환하세요.';
+    var prompt = 'You are a Korean writing tutor giving feedback to an English-speaking student learning Korean.\n\nStudent\'s writing:\n"""\n' + text + '\n"""\nTopic: ' + topicOrTitle + '\n\n'
+      + 'Give feedback in ENGLISH. Return ONLY valid JSON:\n'
+      + '{"overall":"1-2 sentence overall assessment in English","corrections":[{"original":"original text","corrected":"corrected text","reason":"English explanation of why","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB"}],"encouragement":"short encouraging message in English"}\nReturn JSON only.';
     var data = await callClaude({ feature:'unified_writing_feedback', model:'claude-haiku-4-5-20251001', max_tokens:600, messages:[{role:'user',content:prompt}] });
     var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('').replace(/```json|```/g,'').trim();
     var parsed = JSON.parse(raw);
@@ -9686,7 +9686,7 @@ async function generateGFPatterns() {
     var res = await callClaude({
       feature: 'grammar-focus',
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2000,
+      max_tokens: 2500,
       messages: [{ role: 'user', content:
         'You are a Korean grammar teacher creating a structured grammar lesson.\n'
         + 'Topic: "' + topic + '"\n\n'
@@ -9697,9 +9697,10 @@ async function generateGFPatterns() {
         + '- structure: the grammatical formula (e.g. "Verb stem + 아요/어요")\n'
         + '- when_to_use: one short English bullet of when to use this\n'
         + '- watch_out: one short English tip about common mistakes\n'
-        + '- examples: exactly 3 [{ko, en}] sentences using the topic\n\n'
+        + '- examples: exactly 3 [{ko, en}] correct sentences using the topic\n'
+        + '- incorrect_examples: exactly 2 [{ko, en, error_type, correction}] — realistic sentences with a grammar mistake. The student must find which sentence is wrong. error_type: CONJUGATION|PARTICLE|TENSE|FORMALITY|WORD_ORDER. correction: the fixed Korean sentence.\n\n'
         + 'Return ONLY valid JSON:\n'
-        + '{"patterns":[{"name":"...","level":"...","exp":"...","structure":"...","when_to_use":"...","watch_out":"...","examples":[{"ko":"...","en":"..."}]}]}'
+        + '{"patterns":[{"name":"...","level":"...","exp":"...","structure":"...","when_to_use":"...","watch_out":"...","examples":[{"ko":"...","en":"..."}],"incorrect_examples":[{"ko":"...","en":"...","error_type":"...","correction":"..."}]}]}'
       }]
     });
     var raw = (res.content && res.content[0] && res.content[0].text) || res.text || '';
@@ -9708,10 +9709,10 @@ async function generateGFPatterns() {
     if (parsed.patterns && parsed.patterns.length) {
       loadGFPatterns(parsed.patterns);
     } else {
-      if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">생성에 실패했습니다. 다시 시도하세요.</div>';
+      if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Generation failed. Please try again.</div>';
     }
   } catch(e) {
-    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">로그인 후 이용 가능합니다.</div>';
+    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Please sign in to use Grammar Focus.</div>';
   }
 }
 
@@ -9835,52 +9836,34 @@ function _loadSpotItBonus() {
   var el = document.getElementById('gf-spotit-content');
   var p = _gfPattern;
   if (!el || !p) { _showSpotItComplete(); return; }
-  var examples = (p.examples || []).filter(function(e){ return e.ko; });
-  if (examples.length < 2) { _showSpotItComplete(); return; }
 
-  // Pick one sentence and create an incorrect version
-  var srcIdx = Math.floor(Math.random() * examples.length);
-  var src = examples[srcIdx];
-  var koTokens = (p.name || '').match(/[가-힣]+/g) || [];
+  var incorrects = (p.incorrect_examples || []).filter(function(e){ return e.ko && e.correction; });
+  var corrects = (p.examples || []).filter(function(e){ return e.ko; });
+  if (!incorrects.length || corrects.length < 1) { _showSpotItComplete(); return; }
 
-  // Find the grammar token in the sentence and corrupt it
-  var wrongSentence = src.ko;
-  var corrupted = false;
-  for (var ti = 0; ti < koTokens.length && !corrupted; ti++) {
-    var tok = koTokens[ti].replace(/^~/, '');
-    if (tok.length < 2) continue;
-    var words = wrongSentence.split(' ');
-    for (var wi = 0; wi < words.length && !corrupted; wi++) {
-      var clean = words[wi].replace(/[.,!?。]/g, '');
-      if (clean.indexOf(tok) >= 0 || tok.indexOf(clean) >= 0) {
-        // Corrupt: replace the ending with stem + 다 (dictionary form = wrong in context)
-        var stem = clean.slice(0, Math.max(1, clean.length - tok.length));
-        if (stem.length < 1) stem = clean.slice(0, -1);
-        words[wi] = stem + '다';
-        wrongSentence = words.join(' ');
-        corrupted = true;
-      }
-    }
-  }
-  if (!corrupted) { _showSpotItComplete(); return; }
+  // Pick 1 incorrect + 2 correct
+  var wrong = incorrects[Math.floor(Math.random() * incorrects.length)];
+  var rights = corrects.slice(0, 2);
 
-  // Pick 1-2 correct sentences (different from source)
-  var correctOthers = examples.filter(function(e, i){ return i !== srcIdx; }).slice(0, 2);
-  // Build the quiz: mix correct + incorrect
-  var options = correctOthers.map(function(e){ return { ko: e.ko, correct: true }; });
-  options.push({ ko: wrongSentence, correct: false });
+  var options = rights.map(function(e){ return { ko: e.ko, correct: true, correction: null, error_type: null }; });
+  options.push({ ko: wrong.ko, correct: false, correction: wrong.correction, error_type: wrong.error_type || '' });
   // Shuffle
   for (var si = options.length - 1; si > 0; si--) {
     var sj = Math.floor(Math.random() * (si + 1));
     var tmp = options[si]; options[si] = options[sj]; options[sj] = tmp;
   }
 
+  // Store for feedback
+  window._gfErrorWrong = wrong;
+
   el.innerHTML = '<div style="padding:20px">'
     + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#d97706;margin-bottom:8px">Bonus: Find the Error</div>'
     + '<div style="font-size:15px;font-weight:800;color:#0f172a;margin-bottom:4px">Which sentence has a grammar mistake?</div>'
     + '<div style="font-size:12px;color:#64748b;margin-bottom:16px">Tap the sentence that uses <strong>' + (p.name||'') + '</strong> incorrectly.</div>'
-    + '<div id="gf-error-options">' + options.map(function(o, i) {
-      return '<button onclick="_checkErrorOption(this,' + (o.correct ? 'false' : 'true') + ')" '
+    + '<div id="gf-error-options">' + options.map(function(o, oi) {
+      return '<button onclick="_checkErrorOption(this,' + (o.correct ? 'false' : 'true') + ',' + oi + ')" '
+        + 'data-correction="' + (o.correction||'').replace(/"/g,'&quot;') + '" '
+        + 'data-error-type="' + (o.error_type||'') + '" '
         + 'style="display:block;width:100%;text-align:left;padding:14px 16px;margin-bottom:8px;'
         + 'background:#f8faff;border:1.5px solid #dbeafe;border-radius:10px;font-size:15px;'
         + 'font-family:Noto Serif KR,serif;color:#0f172a;cursor:pointer;transition:all .15s;line-height:1.7"'
@@ -9891,20 +9874,25 @@ function _loadSpotItBonus() {
     + '</div>';
 }
 
-function _checkErrorOption(btn, isWrong) {
+function _checkErrorOption(btn, isWrong, idx) {
   var fb = document.getElementById('gf-error-fb');
-  // Disable all buttons
+  var w = window._gfErrorWrong || {};
   document.querySelectorAll('#gf-error-options button').forEach(function(b){ b.disabled = true; b.style.opacity = '.6'; });
   btn.style.opacity = '1';
   if (isWrong) {
     btn.style.borderColor = '#22c55e';
     btn.style.background = '#f0fdf4';
-    if (fb) fb.innerHTML = '<span style="color:#16a34a">✓ Correct! You found the grammar error.</span>'
+    var detail = '<div style="margin-top:10px;padding:12px;background:#f8faff;border:1px solid #dbeafe;border-radius:8px;font-size:12px;line-height:1.7">'
+      + (w.error_type ? '<div style="font-weight:800;color:#d97706;margin-bottom:4px">Error type: ' + w.error_type + '</div>' : '')
+      + '<div><span style="color:#dc2626;text-decoration:line-through">' + (w.ko||'') + '</span></div>'
+      + '<div style="color:#16a34a;font-weight:700">→ ' + (w.correction||'') + '</div>'
+      + '</div>';
+    if (fb) fb.innerHTML = '<span style="color:#16a34a">✓ Correct! You found the grammar error.</span>' + detail
       + '<div style="margin-top:16px"><button onclick="_showSpotItComplete()" style="padding:12px 32px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Continue to Practice →</button></div>';
   } else {
     btn.style.borderColor = '#ef4444';
     btn.style.background = '#fef2f2';
-    if (fb) fb.innerHTML = '<span style="color:#dc2626">✗ That sentence is actually correct. Look for unusual verb endings!</span>'
+    if (fb) fb.innerHTML = '<span style="color:#dc2626">✗ That sentence is correct. Look more carefully at the grammar endings!</span>'
       + '<div style="margin-top:16px"><button onclick="_showSpotItComplete()" style="padding:12px 32px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Continue to Practice →</button></div>';
   }
 }
