@@ -2695,21 +2695,23 @@ document.addEventListener('DOMContentLoaded', async function() {
   await loadStudyAccessGate();
 
   // Wait for auth session, then load daily content (single call)
-  // checkSession() in shared.js guarantees _sessionChecked=true within 8s (timeout)
-  // We wait until it's actually set — no premature fallthrough.
   var waited = 0;
+  var _dailyContentStarted = false;
   function waitForSession() {
     if (window._sessionChecked) {
-      // Session check completed — proceed with everything
+      if (_dailyContentStarted) return;
+      _dailyContentStarted = true;
       loadStudyDoneState();
       loadStudyDoneFromDB();
-      loadDailyContent();       // ← THE main DB call: topic + vocab + grammar + helpers all-in-one
+      loadDailyContent().catch(function(e){
+        console.error('[loadDailyContent] uncaught:', e);
+        _applyFallbackTopic(kstDateKey());
+      });
       loadFeedbackInbox();
       asAutoSubmitOldWork();
       _asRefreshSubmitBanner();
-      // Lazy load non-critical data
       setTimeout(function() {
-        loadVocabPool();        // conv+stories vocab for flashcards
+        loadVocabPool();
         renderFlashcardFilters();
         loadFlashcards('all', document.querySelector('#fc-filters-left .tpill'));
         loadWordBankPreview();
@@ -2717,16 +2719,24 @@ document.addEventListener('DOMContentLoaded', async function() {
         showReviewNotifications();
       }, 1500);
     } else if (waited >= 120) {
-      // Hard limit: 12 seconds — session check truly failed, proceed anyway
       console.error('[waitForSession] _sessionChecked never set after 12s');
-      window._sessionChecked = true; // Force it
-      loadDailyContent();
+      window._sessionChecked = true;
+      if (!_dailyContentStarted) { _dailyContentStarted = true; loadDailyContent().catch(function(){}); }
     } else {
       waited++;
       setTimeout(waitForSession, 100);
     }
   }
   waitForSession();
+
+  // HARD FALLBACK: If topic STILL shows "Loading" after 15 seconds, force fallback content
+  setTimeout(function() {
+    var heroKo = document.getElementById('hero-topic-ko');
+    if (heroKo && (heroKo.textContent === 'Loading…' || heroKo.textContent === 'Loading...')) {
+      console.warn('[HARD FALLBACK] Topic still loading after 15s — forcing fallback');
+      _applyFallbackTopic(kstDateKey());
+    }
+  }, 15000);
   // Removed: loadPicturePromptsFromDB, loadDBHelpers, loadDBGrammar, loadAllTopics, preloadSentenceArticles
   // These are now covered by loadDailyContent or deferred to when actually needed
   if (window._isAdmin) {
