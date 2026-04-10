@@ -1868,7 +1868,7 @@ body { background: #0b1626 !important; }
       <span style="font-size:22px">📖</span>
       <div style="flex:1">
         <div style="font-size:13px;font-weight:800;color:#c4b5fd">나의 단어장</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.4)">단어 · 표현 · 슬랭 · 뜻가리기 · 퀴즈</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4)">Vocab · Expressions · Slang · Flashcards · Quiz</div>
       </div>
       <span style="font-size:12px;color:rgba(255,255,255,.25)">→</span>
     </div>
@@ -2012,10 +2012,10 @@ body { background: #0b1626 !important; }
   <div class="as-submit-today" id="submit-today-banner">
     <span style="font-size:18px">📤</span>
     <div style="flex:1">
-      <div style="font-size:12px;font-weight:800;color:#22c55e;margin-bottom:2px">오늘의 글쓰기가 있어요!</div>
-      <div id="submit-today-count" style="font-size:11px;color:rgba(255,255,255,.6)">제출하면 24시간 내 피드백을 받을 수 있어요</div>
+      <div style="font-size:12px;font-weight:800;color:#22c55e;margin-bottom:2px">Today's writing is ready!</div>
+      <div id="submit-today-count" style="font-size:11px;color:rgba(255,255,255,.6)">Submit to receive feedback within 24 hours</div>
     </div>
-    <button class="btn btn-g" onclick="submitAllWritingsToday()" style="font-size:12px;padding:8px 16px;font-weight:800">📩 전부 제출하기</button>
+    <button class="btn btn-g" onclick="submitAllWritingsToday()" style="font-size:12px;padding:8px 16px;font-weight:800">📩 Submit All</button>
   </div>
 
   <!-- WEAK GRAMMAR BANNER -->
@@ -2065,18 +2065,18 @@ body { background: #0b1626 !important; }
   <div class="sr-desktop-master" style="display:none">
     <div class="master-card" style="background:linear-gradient(135deg,#1e3a5f,#0f766e);padding:16px;border-radius:14px;cursor:pointer" onclick="openFastTrack()">
       <div style="margin-bottom:6px;color:#5eead4"><i data-lucide="target" class="kh-ui-icon" style="width:22px;height:22px" aria-hidden="true"></i></div>
-      <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:3px">패스트트랙</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.4">실제 상황별 대화 시나리오</div>
+      <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:3px">Fast Track</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.4">Real-life conversation scenarios</div>
     </div>
     <div class="master-card" style="background:linear-gradient(135deg,#312e81,#7c3aed);padding:16px;border-radius:14px;cursor:pointer" onclick="openSlangModal()">
       <div style="margin-bottom:6px;color:#c4b5fd"><i data-lucide="flame" class="kh-ui-icon" style="width:22px;height:22px" aria-hidden="true"></i></div>
       <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:3px">Korean Slang</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.4">신조어 & 줄임말 학습</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.4">Neologisms & abbreviations</div>
     </div>
     <div class="master-card" style="background:linear-gradient(135deg,#064e3b,#047857);padding:16px;border-radius:14px;cursor:pointer" onclick="openPhoneModal()">
       <div style="margin-bottom:6px;color:#34d399"><i data-lucide="phone" class="kh-ui-icon" style="width:22px;height:22px" aria-hidden="true"></i></div>
       <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:3px">Phone Call</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.4">전화 통화 듣기 & 말하기</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.4">Listening & speaking practice</div>
     </div>
   </div>
 
@@ -2229,37 +2229,37 @@ body { background: #0b1626 !important; }
 <!-- ═══ TAB: Master ═══ -->
 <div class="sr-tab-panel" id="sr-panel-master">
   <div style="max-width:1160px;margin:0 auto;padding:24px">
-    <button onclick="switchSrTab('study')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:16px">← Study Room으로</button>
+    <button onclick="switchSrTab('study')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:16px">← Back to Study Room</button>
     <div style="margin-bottom:20px">
       <div style="font-size:20px;font-weight:900;color:#fff">🎯 Master Korean</div>
-      <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">실전 한국어 실력을 키우는 마스터 프로그램</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">Master programs to level up your Korean</div>
     </div>
     <div class="master-grid">
       <div class="master-card" style="background:linear-gradient(135deg,#1e3a5f,#0f766e)" onclick="openFastTrack()">
         <div class="master-card-icon">🎯</div>
-        <div class="master-card-title">패스트트랙</div>
-        <div class="master-card-desc">실제 상황별 대화 시나리오 · 카페, 택시, 편의점 등 8개 시나리오</div>
+        <div class="master-card-title">Fast Track</div>
+        <div class="master-card-desc">Real-life conversation scenarios · Cafe, taxi, convenience store & more</div>
         <div style="margin-top:12px;display:flex;gap:4px;flex-wrap:wrap">
-          <span style="padding:2px 8px;border-radius:10px;background:rgba(94,234,212,.15);color:#5eead4;font-size:9px;font-weight:700">8 시나리오</span>
-          <span style="padding:2px 8px;border-radius:10px;background:rgba(94,234,212,.15);color:#5eead4;font-size:9px;font-weight:700">분기 선택</span>
+          <span style="padding:2px 8px;border-radius:10px;background:rgba(94,234,212,.15);color:#5eead4;font-size:9px;font-weight:700">8 Scenarios</span>
+          <span style="padding:2px 8px;border-radius:10px;background:rgba(94,234,212,.15);color:#5eead4;font-size:9px;font-weight:700">Branching Choices</span>
         </div>
       </div>
       <div class="master-card" style="background:linear-gradient(135deg,#312e81,#7c3aed)" onclick="openSlangModal()">
         <div class="master-card-icon">🔥</div>
         <div class="master-card-title">Korean Slang</div>
-        <div class="master-card-desc">요즘 한국인이 실제로 쓰는 신조어 & 줄임말 · 카톡 대화 예문</div>
-        <div style="margin-top:12px"><span style="padding:2px 8px;border-radius:10px;background:rgba(196,181,253,.15);color:#c4b5fd;font-size:9px;font-weight:700">15 슬랭</span></div>
+        <div class="master-card-desc">Trendy slang & abbreviations · KakaoTalk chat examples</div>
+        <div style="margin-top:12px"><span style="padding:2px 8px;border-radius:10px;background:rgba(196,181,253,.15);color:#c4b5fd;font-size:9px;font-weight:700">15 Slang</span></div>
       </div>
       <div class="master-card" style="background:linear-gradient(135deg,#0c4a6e,#0369a1)" onclick="openAlphaModal()">
         <div class="master-card-icon">🇰🇷</div>
         <div class="master-card-title">Korean Alphabet</div>
-        <div class="master-card-desc">한글 자음 & 모음 조합 퀴즈 · 클릭하면 발음 재생</div>
-        <div style="margin-top:12px"><span style="padding:2px 8px;border-radius:10px;background:rgba(56,189,248,.15);color:#7dd3fc;font-size:9px;font-weight:700">30 퀴즈</span></div>
+        <div class="master-card-desc">Consonant & vowel combination quiz · Click to play pronunciation</div>
+        <div style="margin-top:12px"><span style="padding:2px 8px;border-radius:10px;background:rgba(56,189,248,.15);color:#7dd3fc;font-size:9px;font-weight:700">30 Quizzes</span></div>
       </div>
       <div class="master-card" style="background:linear-gradient(135deg,#064e3b,#047857)" onclick="openPhoneModal()">
         <div class="master-card-icon">📞</div>
         <div class="master-card-title">Phone Call Practice</div>
-        <div class="master-card-desc">실제 전화 통화로 듣기 & 말하기 연습</div>
+        <div class="master-card-desc">Listening & speaking with real phone calls</div>
         <div style="margin-top:12px"><span style="padding:2px 8px;border-radius:10px;background:rgba(52,211,153,.15);color:#34d399;font-size:9px;font-weight:700">Coming Soon</span></div>
       </div>
     </div>
@@ -2269,14 +2269,14 @@ body { background: #0b1626 !important; }
 <!-- ═══ TAB: Word Book (단어장) ═══ -->
 <div class="sr-tab-panel" id="sr-panel-wordbook">
   <div style="max-width:1160px;margin:0 auto;padding:24px">
-    <button onclick="switchSrTab('study')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:16px">← Study Room으로</button>
+    <button onclick="switchSrTab('study')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:16px">← Back to Study Room</button>
     <div class="wb-notebook">
       <div class="wb-header">
         <div class="wb-header-title">📖 나의 단어장</div>
         <div class="wb-header-sub">저장한 단어와 표현을 복습하세요</div>
         <div style="display:flex;gap:6px;margin-top:10px;justify-content:center">
           <button onclick="toggleWbHide()" id="wb-hide-btn" style="padding:5px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">👁️ 뜻 가리기</button>
-          <button onclick="startWbQuiz()" style="padding:5px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">🧪 퀴즈 모드</button>
+          <button onclick="startWbQuiz()" style="padding:5px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">🧪 Quiz Mode</button>
         </div>
       </div>
       <div class="wb-spine"></div>
@@ -2288,10 +2288,10 @@ body { background: #0b1626 !important; }
       </div>
       <input class="wb-search" type="text" placeholder="🔍 단어 검색..." oninput="filterWordBook(this.value)">
       <div id="wb-list">
-        <div class="wb-empty">로딩 중...</div>
+        <div class="wb-empty">Loading...</div>
       </div>
       <div style="padding:12px 20px;text-align:center;border-top:1px solid #ede9fe">
-        <button onclick="loadWordBook()" style="padding:8px 20px;border-radius:8px;border:1px solid #d8b4fe;background:#faf5ff;color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🔄 새로고침</button>
+        <button onclick="loadWordBook()" style="padding:8px 20px;border-radius:8px;border:1px solid #d8b4fe;background:#faf5ff;color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🔄 Refresh</button>
       </div>
     </div>
   </div>
@@ -2390,17 +2390,17 @@ body { background: #0b1626 !important; }
       <!-- Speaking practice section -->
       <div id="wm-speak-section" style="margin-bottom:12px;padding:14px;border-radius:12px;background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.12)">
         <div style="font-size:12px;font-weight:700;color:#7c3aed;margin-bottom:8px">🎙️ 말하기 연습 (Speaking Practice)</div>
-        <div style="font-size:11px;color:#6b7280;margin-bottom:10px;line-height:1.5">작성한 글을 소리내어 읽어보세요. 녹음해서 제출하면 AI가 발음 & 자연스러움을 분석해줍니다.</div>
+        <div style="font-size:11px;color:#6b7280;margin-bottom:10px;line-height:1.5">Read your writing out loud. Record and submit for AI pronunciation & fluency analysis.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button id="wm-speak-listen" onclick="speakMyWriting()" style="flex:1;min-width:120px;padding:10px;border-radius:10px;border:1px solid rgba(124,58,237,.2);background:rgba(124,58,237,.08);color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🔊 AI가 읽어주기</button>
           <button id="wm-speak-record" onclick="toggleSpeakRecord()" style="flex:1;min-width:120px;padding:10px;border-radius:10px;border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.08);color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🎙️ 내 목소리 녹음</button>
         </div>
         <div id="wm-speak-status" style="font-size:11px;color:#6b7280;margin-top:8px;min-height:18px"></div>
         <audio id="wm-speak-playback" style="width:100%;margin-top:8px;display:none" controls></audio>
-        <button id="wm-speak-submit" onclick="submitSpeaking()" style="display:none;width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📩 녹음 제출하기</button>
+        <button id="wm-speak-submit" onclick="submitSpeaking()" style="display:none;width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📩 Submit Recording</button>
       </div>
       <button class="submit-btn" onclick="submitWriting()">📩 Submit today’s Express Practice</button>
-      <div class="submit-note">Writing + Speaking 모두 제출 가능 · 하루 1회 (KST)</div>
+      <div class="submit-note">Writing + Speaking submissions available · Once per day (KST)</div>
     </div>
 
     <!-- RIGHT: helper sentences -->
@@ -3264,8 +3264,8 @@ function renderStudyRoomWordTracks() {
     return '<div class="vrow"><div><div class="vko">' + ko + '</div><div class="ven">' + en + '</div></div>'
       + '<button class="sr-pill" onclick="saveMustKnowWord(\'' + ko.replace(/'/g,"\\'") + '\',\'' + en.replace(/'/g,"\\'") + '\',\'' + rom.replace(/'/g,"\\'") + '\')">Save</button></div>';
   }
-  lvEl.innerHTML = lvWords.length ? lvWords.slice(0,10).map(row).join('') : '<div style="font-size:12px;color:#94a3b8">Growth Lab에서 오늘의 단어를 먼저 생성하면 여기서 바로 이어서 학습할 수 있어요.</div>';
-  inEl.innerHTML = intWords.length ? intWords.slice(0,10).map(row).join('') : '<div style="font-size:12px;color:#94a3b8">관심사 단어가 아직 없습니다. Growth Lab에서 관심사를 저장해 주세요.</div>';
+  lvEl.innerHTML = lvWords.length ? lvWords.slice(0,10).map(row).join('') : '<div style="font-size:12px;color:#94a3b8">Generate today's words in Growth Lab first to continue studying here.</div>';
+  inEl.innerHTML = intWords.length ? intWords.slice(0,10).map(row).join('') : '<div style="font-size:12px;color:#94a3b8">No interest words yet. Save your interests in Growth Lab first.</div>';
 }
 
 async function saveMustKnowWord(ko, en, rom) {
@@ -3400,6 +3400,7 @@ function getFallbackTopics() {
 // ═══════════════════════════════════════════════════════════════
 // LOAD DAILY CONTENT — from study_daily_content (AI-generated + admin-editable)
 // ═══════════════════════════════════════════════════════════════
+var _loadDailyRetries = 0;
 async function loadDailyContent() {
   var today = kstDateKey();
   console.log('[loadDailyContent] start — date:', today, 'level:', _currentLevel, 'user:', supaUser ? supaUser.id : 'none');
@@ -3415,18 +3416,19 @@ async function loadDailyContent() {
 
   if (!supaUser) {
     // If session check isn't done yet, wait a bit more before showing login wall
-    if (!window._sessionChecked) {
-      console.log('[loadDailyContent] session not checked yet, deferring...');
+    if (!window._sessionChecked && _loadDailyRetries < 10) {
+      _loadDailyRetries++;
+      console.log('[loadDailyContent] session not checked yet, deferring... (attempt ' + _loadDailyRetries + ')');
       setTimeout(loadDailyContent, 300);
       return;
     }
     console.log('[loadDailyContent] no user — showing login wall');
     var subEl = document.getElementById('wm-topic-sub');
-    if (subEl) subEl.textContent = '오늘의 주제 · Today\'s Topic';
+    if (subEl) subEl.textContent = 'Today\'s Topic';
     var heroKo = document.getElementById('hero-topic-ko');
     var heroEn = document.getElementById('hero-topic-en');
-    if (heroKo) heroKo.textContent = '오늘의 주제';
-    if (heroEn) heroEn.textContent = 'Today\'s Topic';
+    if (heroKo) heroKo.textContent = 'Today\'s Topic';
+    if (heroEn) heroEn.textContent = 'Sign in to start studying';
     showLoginWall();
     return;
   }
@@ -3508,7 +3510,7 @@ function _applyFallbackTopic(date) {
     });
   } catch(e) {
     console.error('[_applyFallbackTopic] failed:', e);
-    _setTopicLoadError('새로고침 해주세요');
+    _setTopicLoadError('Please refresh the page');
   }
 }
 
@@ -3517,7 +3519,7 @@ function _setTopicLoadError(msg) {
   var subEl = document.getElementById('wm-topic-sub');
   if (subEl) subEl.textContent = msg || '⚠ Topic unavailable — please refresh';
   var heroKo = document.getElementById('hero-topic-ko');
-  if (heroKo) heroKo.textContent = '⚠ 로딩 오류';
+  if (heroKo) heroKo.textContent = '⚠ Loading Error';
   var heroEn = document.getElementById('hero-topic-en');
   if (heroEn) heroEn.textContent = msg || 'Loading failed — please refresh the page';
 }
@@ -3724,11 +3726,11 @@ async function _generateAndSaveDailyContent(date) {
     console.error('[_generateAndSaveDailyContent] failed:', err && err.message ? err.message : err);
     // Hard fallback — use built-in content, don't save to DB
     try {
-      var fb = buildStudyRoomFallbackContent({ topic_ko:'오늘의 주제', topic_en:"Today's Topic" }, _currentLevel);
+      var fb = buildStudyRoomFallbackContent({ topic_ko:"Today's Topic", topic_en:"Today's Topic" }, _currentLevel);
       _applyDailyContent({
         scheduled_date:      date,
         level:               _currentLevel,
-        topic_ko:            '오늘의 주제',
+        topic_ko:            "Today's Topic",
         topic_en:            "Today's Topic",
         vocab:               fb.vocab,
         grammar:             fb.grammar,
@@ -3738,7 +3740,7 @@ async function _generateAndSaveDailyContent(date) {
       });
     } catch(fb_err) {
       console.error('[_generateAndSaveDailyContent] fallback also failed:', fb_err);
-      _setTopicLoadError('⚠ 로딩 실패 — 새로고침 해주세요');
+      _setTopicLoadError('⚠ Loading failed — please refresh');
     }
   }
 }
@@ -3839,7 +3841,7 @@ async function generateAIContent(topic) {
 }
 
 function buildStudyRoomFallbackContent(topic, level) {
-  var topicKo = (topic && (topic.topic_ko || topic.topic_en)) || '오늘의 주제';
+  var topicKo = (topic && (topic.topic_ko || topic.topic_en)) || "Today's Topic";
   var topicEn = (topic && topic.topic_en) || 'today\'s topic';
   var levelSets = {
     Starter: {
@@ -4546,7 +4548,7 @@ function openKeyExpressionsModal() {
   modal.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   var topicLabel = document.getElementById('ke-topic-label');
-  if (_todayTopic) topicLabel.textContent = _todayTopic.ko || _todayTopic.en || '오늘 주제 관련 핵심 표현';
+  if (_todayTopic) topicLabel.textContent = _todayTopic.ko || _todayTopic.en || 'Key expressions for today's topic';
   // Generate expressions via Claude
   var list = document.getElementById('ke-expressions-list');
   list.innerHTML = '<div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">AI가 핵심 표현을 생성 중...</div>';
@@ -5704,7 +5706,7 @@ function openFastTrack() {
   document.getElementById('ft-scenario-list').style.display = 'block';
   document.getElementById('ft-chart').parentElement.style.display = 'none';
   document.getElementById('ft-title').textContent = 'FAST TRACK';
-  document.getElementById('ft-sub').textContent = '한국어 마스터 패스트트랙';
+  document.getElementById('ft-sub').textContent = 'Korean Master Fast Track';
   document.getElementById('ft-pct').textContent = '';
   ov.classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -5727,7 +5729,7 @@ async function renderScenarioList() {
     if (prog && prog.completion_pct > 0) {
       pctBar = '<div style="margin-top:8px;height:4px;border-radius:2px;background:#e5e7eb;overflow:hidden">'
         + '<div style="height:100%;width:' + prog.completion_pct + '%;background:#2196F3;border-radius:2px"></div></div>'
-        + '<div style="font-size:9px;color:#5a6a7a;margin-top:3px">' + prog.completion_pct + '% 탐색 · ' + (prog.play_count||1) + '회 플레이 · ' + (prog.phrases||[]).length + '개 표현</div>';
+        + '<div style="font-size:9px;color:#5a6a7a;margin-top:3px">' + prog.completion_pct + '% explored · ' + (prog.play_count||1) + ' plays · ' + (prog.phrases||[]).length + ' phrases</div>';
     }
     return '<div onclick="_canvasRipple(this,event);startScenario(\'' + s.id + '\')" style="padding:20px;border-radius:14px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);border:2px solid transparent;transition:all .15s;position:relative;overflow:hidden;' + lockStyle + '"'
       + ' onmouseover="if(!' + s.locked + ')this.style.borderColor=\'#2196F3\'" onmouseout="this.style.borderColor=\'transparent\'">'
@@ -5844,7 +5846,7 @@ function showEndNode(node) {
   var pct = Math.round((visitedCount / totalNodes) * 100);
   choicesEl.innerHTML = '<div class="ft-result">'
     + '<div class="ft-result-icon">🎉</div>'
-    + '<div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:4px">시나리오 완료!</div>'
+    + '<div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:4px">Scenario Complete!</div>'
     + '<div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:6px">탐색률: ' + pct + '% (' + visitedCount + '/' + totalNodes + ' 노드)</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.35);margin-bottom:16px">다른 선택지를 골라 더 많은 경로를 탐색해보세요!</div>'
     + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
@@ -5973,7 +5975,7 @@ async function loadWordBook() {
   var list = document.getElementById('wb-list');
   if (!list) return;
   if (!supaUser) { list.innerHTML = '<div class="wb-empty">로그인하면 저장한 단어를 볼 수 있어요</div>'; return; }
-  list.innerHTML = '<div class="wb-empty">로딩 중...</div>';
+  list.innerHTML = '<div class="wb-empty">Loading...</div>';
   try {
     var sb = getSupa();
     if (!sb) return;
@@ -5997,7 +5999,7 @@ async function loadWordBook() {
     renderWbCounts();
   } catch(e) {
     console.warn('[WordBook]', e);
-    list.innerHTML = '<div class="wb-empty">단어를 불러올 수 없습니다</div>';
+    list.innerHTML = '<div class="wb-empty">Could not load words</div>';
   }
 }
 function setWbCategory(cat, btn) {
@@ -6068,7 +6070,7 @@ function toggleWbHide() {
 // ── Word Book: Quiz mode ──
 var _wbQuizIdx = 0, _wbQuizScore = 0, _wbQuizPool = [];
 function startWbQuiz() {
-  if (!_wbData || _wbData.length < 4) { showToast('단어 4개 이상 저장해야 퀴즈 가능해요'); return; }
+  if (!_wbData || _wbData.length < 4) { showToast('Save at least 4 words to start the quiz'); return; }
   _wbQuizPool = _wbData.slice().sort(function(){ return Math.random()-.5; }).slice(0, Math.min(10, _wbData.length));
   _wbQuizIdx = 0; _wbQuizScore = 0;
   renderWbQuizQ();
@@ -6078,7 +6080,7 @@ function renderWbQuizQ() {
   if (_wbQuizIdx >= _wbQuizPool.length) {
     list.innerHTML = '<div style="text-align:center;padding:40px 20px">'
       + '<div style="font-size:36px;margin-bottom:12px">🎉</div>'
-      + '<div style="font-size:18px;font-weight:900;color:#7c3aed">퀴즈 완료!</div>'
+      + '<div style="font-size:18px;font-weight:900;color:#7c3aed">Quiz Complete!</div>'
       + '<div style="font-size:14px;color:#6b7280;margin-top:8px">' + _wbQuizScore + ' / ' + _wbQuizPool.length + ' 정답</div>'
       + '<button onclick="renderWordBook(_wbData);renderWbCounts()" style="margin-top:16px;padding:10px 24px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">단어장으로 돌아가기</button>'
       + '</div>';
@@ -6395,7 +6397,7 @@ function toggleSpeakRecord() {
       audio.src = url;
       audio.style.display = 'block';
       document.getElementById('wm-speak-submit').style.display = 'block';
-      document.getElementById('wm-speak-status').textContent = '녹음 완료! 들어보고 제출하세요.';
+      document.getElementById('wm-speak-status').textContent = 'Recording done! Listen and submit.';
     };
     _speakRecorder.start();
     document.getElementById('wm-speak-record').innerHTML = '⏹️ 녹음 중... (누르면 정지)';
@@ -6427,11 +6429,11 @@ async function submitSpeaking() {
       status: 'submitted',
       context_data: JSON.stringify({ audio_path: fileName })
     });
-    showToast('🎙️ 녹음이 제출되었습니다! AI 피드백을 기다려주세요.');
+    showToast('🎙️ Recording submitted! Waiting for AI feedback.');
     document.getElementById('wm-speak-submit').style.display = 'none';
-    document.getElementById('wm-speak-status').textContent = '✅ 제출 완료!';
+    document.getElementById('wm-speak-status').textContent = '✅ Submitted!';
   } catch(e) {
-    showToast('제출 실패: ' + e.message);
+    showToast('Submit failed: ' + e.message);
   }
 }
 
@@ -6498,7 +6500,7 @@ function refreshSubmitBanner() {
   if (n > 0) {
     banner.classList.add('visible');
     var countEl = document.getElementById('submit-today-count');
-    if (countEl) countEl.textContent = n + '개 글쓰기 임시저장됨 · 제출하면 24시간 내 피드백';
+    if (countEl) countEl.textContent = n + ' writing drafts saved · Submit for feedback within 24h';
   } else {
     banner.classList.remove('visible');
   }
@@ -6509,7 +6511,7 @@ async function submitAllWritingsToday() {
   var sb = getSupa(); if (!sb) return;
   var all = getAllDrafts();
   var types = Object.keys(all);
-  if (!types.length) { showToast('제출할 글이 없습니다.'); return; }
+  if (!types.length) { showToast('No writing to submit.'); return; }
 
   var today = kstDateKey();
   var submitted = 0; var errors = [];
@@ -6638,7 +6640,7 @@ async function submitWriting() {
 
   // ── 제출 버튼 비활성화 ──
   var submitBtn = document.querySelector('.submit-btn');
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '제출 중...'; }
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Submitting...'; }
 
   try {
     // ── DB에 저장 ──
@@ -6700,7 +6702,7 @@ async function submitWriting() {
       showToast('✅ You already submitted today!', true);
       closeWritingModal();
     } else {
-      showToast('❌ 제출 오류: ' + (e.message || e), true);
+      showToast('❌ Submit error:' + (e.message || e), true);
       if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '📩 Submit for Feedback'; }
     }
   }
@@ -6969,7 +6971,7 @@ async function renderFeedbackInboxContent() {
     if (res.error) throw res.error;
     var items = res.data || [];
     if (!items.length) {
-      content.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,.4);padding:24px">아직 제출한 글이 없습니다.</div>';
+      content.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,.4);padding:24px">No submissions yet.</div>';
       return;
     }
 
@@ -7861,7 +7863,7 @@ async function switchModalSource(src, btn) {
   }
   // 선택 드롭다운 초기화
   var sel = document.getElementById('wm-src-select');
-  sel.innerHTML = '<option value="">로딩 중...</option>';
+  sel.innerHTML = '<option value="">Loading...</option>';
 
   if (src === 'article') await loadModalArticles(sel);
   if (src === 'conv')    await loadModalConvs(sel);
@@ -7961,9 +7963,9 @@ function showSelectedMaterial() {
   }
 
   var prompts = {
-    article: '• 이 기사를 읽고 느낀 점을 2-3문장으로 써보세요<br>• 기사에서 인상적인 부분을 소개해보세요<br>• 이 주제에 대한 여러분의 생각을 쓰세요',
-    conv:    '• 이 대화에서 배운 표현을 사용해 비슷한 대화를 만들어보세요<br>• 대화 상황을 당신의 경험으로 바꿔 써보세요<br>• 대화 속 단어 3개를 사용해 짧은 글을 쓰세요',
-    story:   '• 스토리를 읽고 줄거리를 간단히 요약해 보세요<br>• 주인공에게 하고 싶은 말을 써보세요<br>• 비슷한 경험이 있다면 한국어로 써보세요'
+    article: '• Write 2-3 sentences about your thoughts after reading this article<br>• Introduce a part of the article that impressed you<br>• Share your opinion on the topic',
+    conv:    '• Create a similar dialogue using expressions from this conversation<br>• Rewrite the situation using your own experience<br>• Write a short paragraph using 3 words from the dialogue',
+    story:   '• Summarize the story briefly after reading it<br>• Write what you would say to the main character<br>• Write about a similar experience in Korean if you have one'
   };
   if (promptsEl) promptsEl.innerHTML = prompts[srcType] || prompts.article;
 }
@@ -10170,7 +10172,7 @@ function _dctRenderListen() {
   var foot = document.getElementById('dct-foot');
   if (!body || !foot) return;
   if (!sents || !sents.length) {
-    body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">오늘의 듣기 문장이 없습니다.<br><span style="font-size:12px">관리자가 오늘의 주제를 생성하면 내용이 표시됩니다.</span></div>';
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">No listening sentences available today.<br><span style="font-size:12px">Content will appear once today's topic is generated.</span></div>';
     foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">닫기</button>';
     return;
   }
@@ -10267,7 +10269,7 @@ function dctNext() {
 async function _asLoadArticles() {
   var sb = getSupa(); if (!sb) return;
   var g = document.getElementById('as-article-grid'); if (!g) return;
-  g.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>기사 불러오는 중…</div></div>';
+  g.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Loading article…</div></div>';
   try {
     var r = await sb.from('articles').select('id,title,section,level,image,body')
       .eq('status','published').order('date',{ascending:false}).limit(24);
@@ -10275,7 +10277,7 @@ async function _asLoadArticles() {
     _asArticles = (r.data||[]).filter(function(a){ return a.title; });
     _asRenderGrid();
   } catch(e) {
-    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">기사를 불러올 수 없습니다.</div>';
+    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">Could not load the article.</div>';
   }
 }
 function _asRenderGrid() {
@@ -10646,7 +10648,7 @@ function asMarkDone() {
     +'<div style="font-size:13px;color:rgba(255,255,255,.75);margin-bottom:16px">이 기사의 모든 학습 단계를 마쳤습니다.</div>'
     +'<button class="btn btn-g" onclick="asSubmitWork()" style="min-width:200px;margin:0 auto;display:block;margin-bottom:8px">📤 학습 저장하기</button>'
     +'<button class="btn" onclick="returnToActivities(closeArticleStudy)" style="min-width:200px;margin:0 auto;display:block;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:12px">📚 다른 활동하기</button>'
-    +'<div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.45)">상단 제출 버튼으로 한번에 제출할 수 있어요</div>'
+    +'<div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.45)">Use the submit button above to submit all at once</div>'
     +'</div>';
   _asSetNav('none','none','none');
   _asRefreshSubmitBanner();
@@ -10709,14 +10711,14 @@ async function asSubmitWork() {
     if(step5.trim().length>10 && r.data && r.data[0] && r.data[0].id){
       triggerArticleAIFeedback(r.data[0].id, step5, _asCurrentArt.title||'');
     }
-    showToast('제출 완료! ✓');
+    showToast('Submitted! ✓');
     _asUpdateTmp({submitted:true});
     document.getElementById('as-activity-area').innerHTML=
       '<div class="as-done-banner"><div style="font-size:28px;margin-bottom:8px">✅</div>'
-      +'<div style="font-size:16px;font-weight:800;margin-bottom:6px">제출 완료!</div>'
-      +'<div style="font-size:13px;color:rgba(255,255,255,.75)">오늘의 학습이 성공적으로 제출되었습니다.</div></div>';
+      +'<div style="font-size:16px;font-weight:800;margin-bottom:6px">Submitted!</div>'
+      +'<div style="font-size:13px;color:rgba(255,255,255,.75)">Today's study has been submitted successfully.</div></div>';
     _asRefreshSubmitBanner();
-  } catch(err) { showToast('제출 실패: '+(err.message||'')); }
+  } catch(err) { showToast('Submit failed: '+(err.message||'')); }
 }
 
 // Submit all today's work at once (from banner button)
@@ -10739,9 +10741,9 @@ async function asSubmitTodayAll() {
       if(!r.error){item.submitted=true;submitted++;}
     }
     localStorage.setItem(key,JSON.stringify(d));
-    if(submitted) showToast(submitted+'개 제출 완료! ✓');
+    if(submitted) showToast(submitted+'개 Submitted! ✓');
     _asRefreshSubmitBanner();
-  } catch(e){ showToast('제출 실패'); }
+  } catch(e){ showToast('Submit failed'); }
 }
 
 // Auto-submit previous days' unsaved work on page load
@@ -10912,7 +10914,7 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
     <button onclick="closeKeyExpressionsModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:rgba(255,255,255,.4);font-size:20px;cursor:pointer">✕</button>
     <div style="font-size:24px;margin-bottom:6px">💡</div>
     <h2 style="margin:0 0 4px;font-size:18px;font-weight:900">Key Expressions</h2>
-    <p style="margin:0 0 18px;font-size:13px;color:rgba(255,255,255,.5)" id="ke-topic-label">오늘 주제 관련 핵심 표현</p>
+    <p style="margin:0 0 18px;font-size:13px;color:rgba(255,255,255,.5)" id="ke-topic-label">Key expressions for today's topic</p>
     <div id="ke-expressions-list" style="display:flex;flex-direction:column;gap:10px">
       <div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Loading expressions...</div>
     </div>
@@ -10937,7 +10939,7 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
       <div class="dct-pip" id="dct-pip-2"></div>
     </div>
     <div class="dct-body" id="dct-body">
-      <div class="as-loading"><div class="as-spinner"></div><div>로딩 중…</div></div>
+      <div class="as-loading"><div class="as-spinner"></div><div>Loading…</div></div>
     </div>
     <div class="dct-foot" id="dct-foot">
       <button class="btn btn-g" id="dct-next-btn" onclick="dctNext()" style="min-width:120px">다음 →</button>
@@ -10998,7 +11000,7 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
       </div>
       <div style="padding:16px;overflow-y:auto;flex:1">
         <div id="as-article-grid" class="as-article-grid">
-          <div class="as-loading"><div class="as-spinner"></div><div>기사 불러오는 중…</div></div>
+          <div class="as-loading"><div class="as-spinner"></div><div>Loading article…</div></div>
         </div>
       </div>
     </div>
@@ -11754,7 +11756,7 @@ function closeReviewModal() {
   </div>
   <!-- Scenario list (shown when no scenario is active) -->
   <div id="ft-scenario-list" style="position:relative;z-index:2;padding:0 28px 28px;display:none">
-    <div style="font-size:16px;font-weight:900;color:#1a2a3a;margin-bottom:16px">시나리오 선택</div>
+    <div style="font-size:16px;font-weight:900;color:#1a2a3a;margin-bottom:16px">Select Scenario</div>
     <div id="ft-scenarios" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px"></div>
   </div>
 </div>
@@ -11765,7 +11767,7 @@ function closeReviewModal() {
   <div class="ft-player-text" id="ftp-text"></div>
   <div class="ft-choices" id="ftp-choices"></div>
   <div class="ft-phrases" id="ftp-phrases" style="display:none">
-    <div class="ft-phrases-title">📝 배운 표현</div>
+    <div class="ft-phrases-title">📝 Phrases Learned</div>
     <div id="ftp-phrases-list"></div>
   </div>
 </div>
@@ -11834,7 +11836,7 @@ function closeReviewModal() {
       <span style="font-size:24px">📞</span>
       <div>
         <div style="font-size:20px;font-weight:900;color:#fff">Phone Call Practice</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.4)">실제 전화 통화로 듣기 & 말하기 연습</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.4)">Listening & speaking with real phone calls</div>
       </div>
     </div>
   </div>
@@ -11844,16 +11846,16 @@ function closeReviewModal() {
       <div style="font-size:48px;margin-bottom:12px">🎧</div>
       <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px">Coming Soon</div>
       <div style="font-size:13px;color:rgba(255,255,255,.4);line-height:1.6">
-        실제 한국어 전화 통화 녹음으로<br>듣기 연습 & 스크립트 따라 말하기<br>
-        <span style="color:#34d399;font-weight:600">스크립트가 하이라이트되면서 따라가요</span>
+        Practice listening with real Korean phone calls<br>Follow along with highlighted scripts<br>
+        <span style="color:#34d399;font-weight:600">Script highlights as you listen</span>
       </div>
       <div style="margin-top:20px;padding:16px;border-radius:12px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.15)">
-        <div style="font-size:11px;color:#34d399;font-weight:700;margin-bottom:6px">예정 기능</div>
+        <div style="font-size:11px;color:#34d399;font-weight:700;margin-bottom:6px">Planned Features</div>
         <div style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.8;text-align:left">
-          ✓ 전화 통화 오디오 재생 + 스크립트 실시간 하이라이트<br>
-          ✓ 섀도잉 모드 — 문장별 끊어듣고 따라하기<br>
-          ✓ 녹음 제출 → AI 피드백 (발음/자연스러움 분석)<br>
-          ✓ 난이도별 통화 (일상 / 비즈니스 / 긴급)
+          ✓ Phone call audio + real-time script highlighting<br>
+          ✓ Shadowing mode — listen & repeat sentence by sentence<br>
+          ✓ Record & submit → AI feedback (pronunciation analysis)<br>
+          ✓ Difficulty levels (Daily / Business / Emergency)
         </div>
       </div>
     </div>
