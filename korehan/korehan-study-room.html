@@ -3282,7 +3282,7 @@ function renderStudyRoomWordTracks() {
     return '<div class="vrow"><div><div class="vko">' + ko + '</div><div class="ven">' + en + '</div></div>'
       + '<button class="sr-pill" onclick="saveMustKnowWord(\'' + ko.replace(/'/g,"\\'") + '\',\'' + en.replace(/'/g,"\\'") + '\',\'' + rom.replace(/'/g,"\\'") + '\')">Save</button></div>';
   }
-  lvEl.innerHTML = lvWords.length ? lvWords.slice(0,10).map(row).join('') : '<div style="font-size:12px;color:#94a3b8">Generate today's words in Growth Lab first to continue studying here.</div>';
+  lvEl.innerHTML = lvWords.length ? lvWords.slice(0,10).map(row).join('') : '<div style="font-size:12px;color:#94a3b8">Generate today\'s words in Growth Lab first to continue studying here.</div>';
   inEl.innerHTML = intWords.length ? intWords.slice(0,10).map(row).join('') : '<div style="font-size:12px;color:#94a3b8">No interest words yet. Save your interests in Growth Lab first.</div>';
 }
 
@@ -4559,7 +4559,7 @@ function openKeyExpressionsModal() {
   modal.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   var topicLabel = document.getElementById('ke-topic-label');
-  if (_todayTopic) topicLabel.textContent = _todayTopic.ko || _todayTopic.en || 'Key expressions for today's topic';
+  if (_todayTopic) topicLabel.textContent = _todayTopic.ko || _todayTopic.en || 'Key expressions for today\'s topic';
   // Generate expressions via Claude
   var list = document.getElementById('ke-expressions-list');
   list.innerHTML = '<div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">AI가 핵심 표현을 생성 중...</div>';
@@ -9687,11 +9687,11 @@ function renderGFLearn(p) {
 
 async function generateGFPatterns() {
   var el = document.getElementById('gf-examples-content');
-  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">✨ Generating grammar patterns for today's topic…</div>';
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">✨ Generating grammar patterns for today\'s topic…</div>';
 
   var topic = (document.getElementById('wcard-topic-ko') || {}).textContent || '';
   if (!topic || topic === 'Loading…') {
-    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Please load today's topic first.</div>';
+    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Please load today\'s topic first.</div>';
     return;
   }
 
@@ -10183,7 +10183,7 @@ function _dctRenderListen() {
   var foot = document.getElementById('dct-foot');
   if (!body || !foot) return;
   if (!sents || !sents.length) {
-    body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">No listening sentences available today.<br><span style="font-size:12px">Content will appear once today's topic is generated.</span></div>';
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">No listening sentences available today.<br><span style="font-size:12px">Content will appear once today\'s topic is generated.</span></div>';
     foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">닫기</button>';
     return;
   }

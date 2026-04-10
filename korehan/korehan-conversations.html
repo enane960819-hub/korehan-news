@@ -409,15 +409,25 @@ function _renderOneCard(c) {
   var ri = CONVS.indexOf(c);
   var ctx = escapeHtml(c.ctx || '');
 
-  // Resolve characters for this conversation
-  var cast = resolveConversationCast(c);
-  var leftName = characterDisplayName(cast.left);
-  var rightName = characterDisplayName(cast.right);
-  var speakersText = escapeHtml(leftName) + ' & ' + escapeHtml(rightName);
+  // Extract speaker names from preview data (msgs aren't loaded yet for cards)
+  var leftName = (c.preview && c.preview[0]) ? c.preview[0].who : '';
+  var rightName = (c.preview && c.preview[1]) ? c.preview[1].who : '';
+  if (!leftName && !rightName) {
+    // Fallback to conversation name
+    leftName = c.name || 'Conversation';
+    rightName = '';
+  }
+  var speakersText = rightName
+    ? escapeHtml(leftName) + ' & ' + escapeHtml(rightName)
+    : escapeHtml(leftName);
 
-  // Render character avatars (small, for card header)
-  var leftAvatar = renderCharacterAvatar(cast.left, '', 36);
-  var rightAvatar = renderCharacterAvatar(cast.right, '', 36);
+  // Character avatars using initial colors from names
+  var leftColor = _charInitialColor(leftName);
+  var rightColor = _charInitialColor(rightName || 'B');
+  var leftIni = (leftName || '?').charAt(0);
+  var rightIni = (rightName || '?').charAt(0);
+  var leftAvatar = '<div class="kh-char-av" style="width:36px;height:36px;background:'+leftColor+';font-size:14px">'+leftIni+'</div>';
+  var rightAvatar = rightName ? '<div class="kh-char-av" style="width:36px;height:36px;background:'+rightColor+';font-size:14px">'+rightIni+'</div>' : '';
 
   // Chat bubble previews (max 3 lines from preview data)
   var bubblesHtml = '';
