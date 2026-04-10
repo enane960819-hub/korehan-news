@@ -9896,7 +9896,9 @@ function checkGFFill(idx, answer, total) {
   if (!inp || !res) return;
   var val = inp.value.trim();
   if (!val) return;
-  var correct = val === answer;
+  // Normalize: strip trailing punctuation (.!?。) for comparison
+  var norm = function(s){ return s.replace(/[\.\!\?\。\,\，]+$/g,'').trim(); };
+  var correct = norm(val) === norm(answer);
   res.style.color = correct ? '#16a34a' : '#dc2626';
   res.innerHTML = correct
     ? '<span>✓ 정답!</span>'
