@@ -11,36 +11,57 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
+/* ── Tab Bar ── */
 .conv-tab-bar{max-width:1280px;margin:0 auto;padding:0 24px;display:flex;gap:2px;border-bottom:2px solid rgba(255,255,255,.08);position:relative;z-index:2;background:var(--dark);}
 .cf-tab{padding:10px 16px;background:none;border:none;color:rgba(255,255,255,.45);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;border-bottom:2px solid transparent;margin-bottom:-2px;}
 .cf-tab.on{color:#fff;border-bottom-color:var(--bright);}
 .cf-tab:hover{color:rgba(255,255,255,.75);}
+
+/* ── Page Layout ── */
 .conv-page-container{max-width:1280px;margin:0 auto;padding:20px 24px 60px;}
 .conv-two-col{display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;}
 @media(max-width:980px){.conv-two-col{grid-template-columns:1fr;}}
-.conv-cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
-.conv-search{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 14px;margin-bottom:16px;}
+
+/* ── Card Grid ── */
+.conv-cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+
+/* ── Search ── */
+.conv-search{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 16px;margin-bottom:18px;}
 .conv-search input{border:none;background:none;outline:none;font-size:13px;color:#fff;font-family:inherit;width:100%;}
 .conv-search input::placeholder{color:rgba(255,255,255,.35);}
-.cc2{position:relative;border-radius:10px;overflow:hidden;cursor:pointer;aspect-ratio:4/3;transition:box-shadow .15s,transform .15s;border:1px solid rgba(255,255,255,.08);}
-.cc2:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.2);}
-.cc2-bg{position:absolute;inset:0;background-size:cover;background-position:center;}
-.cc2-overlay{position:absolute;inset:0;background:rgba(0,0,0,.38);}
-.cc2-body{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px;text-align:center;}
-.cc2-tags{display:flex;gap:5px;position:absolute;top:10px;left:10px;}
-.cc2-tag{font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;text-transform:uppercase;letter-spacing:.03em;}
+
+/* ── Card — Chat Preview Style ── */
+.cc2{border-radius:16px;overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s,border-color .18s;border:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;background:rgba(255,255,255,.03);}
+.cc2:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.35);border-color:rgba(255,255,255,.18);}
+.cc2-head{padding:16px 16px 12px;position:relative;flex-shrink:0;}
+.cc2-tags{display:flex;gap:5px;margin-bottom:10px;}
+.cc2-tag{font-size:9px;font-weight:800;padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.03em;}
 .cc2-tag-cat{background:rgba(255,255,255,.18);color:#fff;}
 .cc2-tag-lvl{color:#fff;}
 .badge-b{background:rgba(34,197,94,.7);}
 .badge-i{background:rgba(234,179,8,.65);}
 .badge-a{background:rgba(239,68,68,.65);}
-.cc2-title{font-size:15px;font-weight:900;color:#fff;line-height:1.3;text-shadow:0 2px 8px rgba(0,0,0,.5);}
+.cc2-title{font-size:16px;font-weight:900;color:#fff;line-height:1.25;font-family:'Noto Sans KR',sans-serif;}
+.cc2-ctx{font-size:11px;color:rgba(255,255,255,.5);margin-top:5px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 
-/* DETAIL OVERLAY */
+/* Card chat preview lines */
+.cc2-preview{padding:0 16px 14px;flex:1;display:flex;flex-direction:column;gap:5px;}
+.cc2-preview-line{display:flex;gap:6px;align-items:flex-start;}
+.cc2-preview-who{font-size:10px;font-weight:800;color:rgba(255,255,255,.3);flex-shrink:0;min-width:18px;padding-top:2px;}
+.cc2-preview-txt{font-size:12px;color:rgba(255,255,255,.45);font-family:'Noto Sans KR',sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.5;}
+
+/* Card footer with speaker avatars */
+.cc2-footer{padding:10px 16px;display:flex;align-items:center;gap:8px;border-top:1px solid rgba(255,255,255,.06);}
+.cc2-footer .kh-char-av{border:1.5px solid rgba(255,255,255,.2);}
+.cc2-footer .kh-char-av+.kh-char-av{margin-left:-6px;}
+.cc2-msg-count{font-size:10px;color:rgba(255,255,255,.25);margin-left:auto;font-weight:600;}
+
+/* ── DETAIL OVERLAY ── */
 .detail-overlay{position:fixed;inset:0;background:rgba(5,12,24,.72);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px 16px;overflow:hidden;}
 .detail-overlay.hidden{display:none;}
 .detail-panel{width:100%;max-width:1100px;height:90vh;background:#f8fafc;border-radius:28px;overflow:hidden;box-shadow:0 32px 80px rgba(5,12,24,.3);display:grid;grid-template-columns:1.2fr .85fr;animation:panelIn .22s cubic-bezier(.22,1,.36,1);}
 @keyframes panelIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
 .dp-left{background:#fff;display:flex;flex-direction:column;overflow:hidden;min-height:0;}
 .dp-left-head{background:linear-gradient(135deg,#1d4ed8 0%,#3b82f6 100%);padding:22px 24px 18px;position:relative;}
 .dp-left-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.7);margin-bottom:6px;}
@@ -64,11 +85,9 @@
 .dp-avatar{width:36px;height:36px;border-radius:12px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:2px solid #bfdbfe;}
 .dp-bubble-group{max-width:74%;}
 .dp-who{font-size:11px;font-weight:700;color:#64748b;margin-bottom:5px;}
-.dp-bubble{border-radius:20px;padding:11px 15px;font-size:14px;line-height:1.6;font-family:'Noto Sans KR',sans-serif;position:relative;}
+.dp-bubble{border-radius:20px;padding:11px 15px;font-size:14px;line-height:1.6;font-family:'Noto Sans KR',sans-serif;position:relative;cursor:pointer;}
 .dp-msg-row.left .dp-bubble{background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-bottom-left-radius:6px;box-shadow:0 4px 12px rgba(15,23,42,.06);}
 .dp-msg-row.right .dp-bubble{background:#2563eb;color:#fff;border-bottom-right-radius:6px;}
-/* bubble tails removed for cleaner look */
-.dp-bubble{cursor:pointer;}
 .dp-bubble-en{font-size:12px;color:#64748b;padding:4px 15px 0;line-height:1.5;display:none;}
 .dp-msg-row.right .dp-bubble-en{text-align:right;color:rgba(255,255,255,.55);}
 .dp-bubble-en.show{display:block;}
@@ -89,74 +108,110 @@
 .dp-cta-primary:hover{background:#1d4ed8;}
 .dp-cta-secondary{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;}
 .dp-cta-secondary:hover{background:#dbeafe;}
+
+/* ── Study Panel (Breakdown) — larger text, clear sections ── */
 .dp-right{background:#f8fafc;display:flex;flex-direction:column;border-left:1px solid #e8eef7;overflow-y:auto;overscroll-behavior:contain;}
 .dp-right-head{padding:22px 24px 16px;border-bottom:1px solid #e8eef7;background:#fff;}
 .dp-right-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#2563eb;margin-bottom:6px;}
 .dp-right-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#0f172a;margin:0;}
-.dp-study-sections{padding:18px 20px 90px;display:flex;flex-direction:column;gap:16px;}
-.dp-study-card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px;box-shadow:0 1px 4px rgba(15,23,42,.04);}
-.dp-study-card-title{font-size:13px;font-weight:800;color:#0f172a;margin:0 0 14px;display:flex;align-items:center;gap:7px;letter-spacing:-.01em;}
+.dp-study-sections{padding:18px 20px 90px;display:flex;flex-direction:column;gap:18px;}
+.dp-study-card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px;box-shadow:0 2px 6px rgba(15,23,42,.04);}
+.dp-study-card-title{font-size:15px;font-weight:800;color:#0f172a;margin:0 0 16px;display:flex;align-items:center;gap:8px;letter-spacing:-.01em;}
 .dp-study-card-title .admin-add-btn{margin-left:auto;font-size:11px;font-weight:700;color:#2563eb;background:none;border:1px solid #bfdbfe;border-radius:8px;padding:3px 10px;cursor:pointer;}
-.dp-vocab-list{display:flex;flex-direction:column;gap:6px;}
-.dp-vocab-item{display:grid;grid-template-columns:80px 70px 1fr auto;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:#fafbfc;transition:background .12s;}
-.dp-vocab-item:hover{background:#f0f5ff;}
-.dp-vi-ko{font-family:'Noto Sans KR',sans-serif;font-size:15px;font-weight:800;color:#1e3a5f;}
-.dp-vi-rom{font-size:11px;color:#94a3b8;font-style:italic;}
-.dp-vi-en{font-size:13px;color:#475569;font-weight:500;}
-.dp-vi-save{font-size:11px;font-weight:700;color:#2563eb;background:#eff6ff;border:none;border-radius:8px;padding:5px 12px;cursor:pointer;font-family:inherit;transition:all .12s;flex-shrink:0;}
+.dp-vocab-list{display:flex;flex-direction:column;gap:8px;}
+.dp-vocab-item{display:grid;grid-template-columns:90px 80px 1fr auto;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:#f8fafc;transition:background .12s;border:1px solid transparent;}
+.dp-vocab-item:hover{background:#f0f5ff;border-color:#dbeafe;}
+.dp-vi-ko{font-family:'Noto Sans KR',sans-serif;font-size:17px;font-weight:800;color:#1e3a5f;}
+.dp-vi-rom{font-size:12px;color:#94a3b8;font-style:italic;}
+.dp-vi-en{font-size:14px;color:#475569;font-weight:500;}
+.dp-vi-save{font-size:12px;font-weight:700;color:#2563eb;background:#eff6ff;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-family:inherit;transition:all .12s;flex-shrink:0;}
 .dp-vi-save:hover{background:#dbeafe;}
 .dp-vi-save.saved{background:#2563eb;color:#fff;}
 .dp-vi-del{font-size:11px;color:#94a3b8;background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px;}
 .dp-vi-del:hover{color:#dc2626;background:#fee2e2;}
 .dp-grammar-list{display:flex;flex-direction:column;gap:8px;}
-.dp-grammar-item{padding:12px 14px;border-radius:10px;background:#fafbfc;font-size:13px;line-height:1.65;color:#334155;position:relative;}
-.dp-grammar-item strong{color:#1e3a5f;font-weight:800;}
+.dp-grammar-item{padding:14px 16px;border-radius:12px;background:#f8fafc;font-size:14px;line-height:1.65;color:#334155;position:relative;border:1px solid transparent;}
+.dp-grammar-item:hover{border-color:#e2e8f0;}
+.dp-grammar-item strong{color:#1e3a5f;font-weight:800;font-size:15px;}
 .dp-grammar-item .dp-gi-del{position:absolute;right:8px;top:8px;font-size:10px;color:#94a3b8;background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px;display:none;}
 .dp-grammar-item:hover .dp-gi-del{display:block;}
-/* Key Expressions */
-.dp-keyexpr-card{background:linear-gradient(135deg,#fffbeb,#fef9c3);border:1px solid #fde68a;border-radius:16px;padding:20px;box-shadow:0 1px 4px rgba(146,64,14,.06);}
-.dp-keyexpr-item{display:flex;align-items:baseline;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.7);margin-bottom:6px;border:1px solid rgba(253,230,138,.5);}
-.dp-keyexpr-item:last-child{margin-bottom:0;}
-.dp-keyexpr-ko{font-family:'Noto Sans KR',sans-serif;font-size:15px;font-weight:800;color:#92400e;}
-.dp-keyexpr-en{font-size:13px;color:#a16207;font-weight:500;flex:1;}
-.dp-keyexpr-star{color:#f59e0b;font-size:14px;flex-shrink:0;}
 .dp-grammar-item .dp-gi-del:hover{color:#dc2626;background:#fee2e2;}
+
+/* ── Key Expressions — prominent amber highlight ── */
+.dp-keyexpr-card{background:linear-gradient(135deg,#fffbeb,#fef9c3);border:1.5px solid #fde68a;border-radius:16px;padding:20px;box-shadow:0 2px 8px rgba(146,64,14,.08);}
+.dp-keyexpr-item{display:flex;align-items:baseline;gap:10px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.8);margin-bottom:8px;border:1px solid rgba(253,230,138,.5);}
+.dp-keyexpr-item:last-child{margin-bottom:0;}
+.dp-keyexpr-ko{font-family:'Noto Sans KR',sans-serif;font-size:17px;font-weight:800;color:#92400e;}
+.dp-keyexpr-en{font-size:14px;color:#a16207;font-weight:500;flex:1;}
+.dp-keyexpr-star{color:#f59e0b;font-size:14px;flex-shrink:0;}
 .dp-keywords{display:flex;flex-wrap:wrap;gap:6px;}
 .dp-keyword{display:inline-block;padding:6px 12px;border-radius:8px;background:#f0f5ff;font-size:12px;font-weight:600;color:#2563eb;cursor:pointer;transition:all .12s;border:none;}
 .dp-keyword:hover{background:#dbeafe;}
-/* Character Avatar */
+
+/* ── Character Avatar ── */
 .kh-char-av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;flex-shrink:0;overflow:hidden;}
 .kh-char-av img{width:100%;height:100%;object-fit:cover;display:block;}
-/* dp-who right alignment */
 .dp-msg-row.right .dp-who{text-align:right;}
-/* SVG icon in study card title */
 .dp-study-card-title svg{width:15px;height:15px;flex-shrink:0;stroke:currentColor;}
-/* card cast avatars */
 .cc2-cast-avatars{display:flex;gap:4px;flex-shrink:0;}
 .cc2-cast-avatars .kh-char-av{border:2px solid #fff;}
 .cc2-cast-avatars .kh-char-av+.kh-char-av{margin-left:-8px;}
+
+/* ── Mobile ≤900px ── */
 @media(max-width:900px){
   .conv-two-col{grid-template-columns:1fr!important;}
   #conv-sidebar{display:none!important;}
-  .conv-cards-grid{grid-template-columns:repeat(3,1fr)!important;gap:8px!important;}
-  .cc2{aspect-ratio:1/1!important;}
-  .cc2-title{font-size:12px!important;}
+  .conv-cards-grid{grid-template-columns:repeat(2,1fr)!important;gap:10px!important;}
+  /* Detail overlay */
   .detail-overlay{overflow-y:auto!important;align-items:flex-start!important;padding:10px!important;}
   .detail-panel{grid-template-columns:1fr;height:auto!important;max-height:none!important;border-radius:20px;}
   .dp-left{max-height:none!important;overflow:visible!important;}
   .dp-chat-area{max-height:none!important;overflow:visible!important;min-height:auto!important;}
-  .dp-right{border-left:none;border-top:1px solid #e8eef7;overflow:visible!important;}
+  .dp-right{border-left:none;border-top:none;overflow:visible!important;}
+  /* Study panel → dark theme on mobile to match site */
+  .dp-right{background:#0b1628!important;}
+  .dp-right-head{background:#0b1628!important;border-bottom:1px solid rgba(255,255,255,.08)!important;}
+  .dp-right-label{color:#60a5fa!important;}
+  .dp-right-title{color:#f1f5f9!important;}
+  .dp-study-card{background:rgba(255,255,255,.05)!important;border-color:rgba(255,255,255,.08)!important;}
+  .dp-study-card-title{color:#e2e8f0!important;font-size:15px!important;}
+  .dp-study-card-title svg{stroke:#93c5fd!important;}
+  .dp-vocab-item{background:rgba(255,255,255,.04)!important;border-color:transparent!important;}
+  .dp-vocab-item:hover{background:rgba(255,255,255,.08)!important;}
+  .dp-vi-ko{color:#93c5fd!important;}
+  .dp-vi-rom{color:rgba(255,255,255,.3)!important;}
+  .dp-vi-en{color:rgba(255,255,255,.65)!important;}
+  .dp-vi-save{background:rgba(37,99,235,.2)!important;color:#93c5fd!important;}
+  .dp-vi-save.saved{background:#2563eb!important;color:#fff!important;}
+  .dp-grammar-item{background:rgba(255,255,255,.04)!important;color:rgba(255,255,255,.7)!important;}
+  .dp-grammar-item strong{color:#93c5fd!important;}
+  .dp-keyexpr-card{background:linear-gradient(135deg,rgba(120,80,0,.25),rgba(100,60,0,.15))!important;border-color:rgba(251,191,36,.2)!important;}
+  .dp-keyexpr-item{background:rgba(255,255,255,.06)!important;border-color:rgba(251,191,36,.12)!important;}
+  .dp-keyexpr-ko{color:#fbbf24!important;}
+  .dp-keyexpr-en{color:rgba(255,255,255,.55)!important;}
+  .dp-keyexpr-star{color:#fbbf24!important;}
 }
+
+/* ── Mobile ≤600px — stacked vocab, bigger text ── */
 @media(max-width:600px){
-  .conv-page-container{padding:0 8px 60px!important;}
-  .conv-cards-grid{grid-template-columns:repeat(3,1fr)!important;gap:6px!important;}
-  .cc2{border-radius:8px!important;aspect-ratio:1/1!important;}
-  .cc2-title{font-size:11px!important;}
-  .cc2-tag{font-size:7px!important;padding:1px 5px!important;}
-  .conv-hero{padding:20px 0 44px!important;margin-bottom:-30px!important;}
-  .conv-hero h1{font-size:24px!important;}
-  .conv-hero p{font-size:13px!important;}
+  .conv-page-container{padding:0 16px 60px!important;}
+  .conv-tab-bar{padding:0 16px!important;}
+  .conv-cards-grid{grid-template-columns:repeat(2,1fr)!important;gap:10px!important;}
+  .cc2-head{padding:14px 14px 10px!important;}
+  .cc2-title{font-size:14px!important;}
+  .cc2-ctx{font-size:10px!important;}
+  .cc2-preview{padding:0 14px 10px!important;}
+  .cc2-footer{padding:8px 14px!important;}
   .detail-panel{border-radius:16px;}
+  /* Stack vocab items vertically on narrow screens */
+  .dp-vocab-item{grid-template-columns:1fr!important;gap:2px!important;padding:14px 16px!important;position:relative!important;}
+  .dp-vi-save{position:absolute!important;top:12px!important;right:12px!important;}
+  .dp-vi-ko{font-size:18px!important;}
+  .dp-vi-en{font-size:14px!important;}
+  .dp-grammar-item{font-size:14px!important;padding:14px 16px!important;}
+  .dp-grammar-item strong{font-size:16px!important;}
+  .dp-keyexpr-ko{font-size:18px!important;}
+  .dp-keyexpr-en{font-size:14px!important;}
 }
 </style>
 </head>
@@ -357,29 +412,39 @@ var CAT_EN = {everyday:'Everyday',work:'Work',friends:'Friends',family:'Family',
 
 function _renderOneCard(c) {
   var ri = CONVS.indexOf(c);
-  var hasImg = c.thumb || c.image;
-  var bgStyle = hasImg
-    ? 'background-image:url('+escapeHtml(hasImg)+');'
-    : 'background:'+(CAT_GRAD[c.cat] || CAT_GRAD.everyday)+';';
   var catLabel = CAT_EN[c.cat] || c.cat || '';
-  var title = c.topic || '';
-  if (!title && c.ctx) {
-    var words = c.ctx.split(/\s+/);
-    title = words.slice(-3).join(' ');
-    title = title.charAt(0).toUpperCase() + title.slice(1);
+  var title = escapeHtml(c.name || c.topic || '');
+  var ctx = escapeHtml(c.ctx || '');
+  var grad = CAT_GRAD[c.cat] || CAT_GRAD.everyday;
+
+  // Chat preview lines (from cached preview data)
+  var previewHtml = '';
+  if (c.preview && c.preview.length) {
+    previewHtml = '<div class="cc2-preview">' + c.preview.map(function(p) {
+      return '<div class="cc2-preview-line">'
+        +'<span class="cc2-preview-who">'+escapeHtml(p.who||'')+'</span>'
+        +'<span class="cc2-preview-txt">'+escapeHtml(p.txt||'')+'</span>'
+        +'</div>';
+    }).join('') + '</div>';
   }
-  if (!title) title = c.name || '';
-  title = escapeHtml(title);
+
+  // Footer with message count
+  var msgCount = c._msgCount || 0;
+  var footerHtml = msgCount
+    ? '<div class="cc2-footer"><span class="cc2-msg-count">💬 '+msgCount+'</span></div>'
+    : '';
+
   return '<div class="cc2" onclick="openDetail('+ri+')">'
-    +'<div class="cc2-bg" style="'+bgStyle+'"></div>'
-    +'<div class="cc2-overlay"></div>'
-    +'<div class="cc2-body">'
+    +'<div class="cc2-head" style="background:'+grad+'">'
       +'<div class="cc2-tags">'
         +'<span class="cc2-tag cc2-tag-cat">'+catLabel+'</span>'
         +'<span class="cc2-tag '+LVL_CLS[c.lvl]+'">'+LVL_LABEL[c.lvl]+'</span>'
       +'</div>'
       +'<div class="cc2-title">'+title+'</div>'
+      +(ctx ? '<div class="cc2-ctx">'+ctx+'</div>' : '')
     +'</div>'
+    +previewHtml
+    +footerHtml
   +'</div>';
 }
 
@@ -423,6 +488,16 @@ async function openDetail(idx) {
     if (typeof _fjMarkDone === 'function') _fjMarkDone('convo');
   }
 
+  // Show loading overlay immediately
+  var overlay = document.getElementById('detail-overlay');
+  var panel = document.getElementById('detail-panel');
+  if (!c._loaded) {
+    panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:#fff;border-radius:28px"><div style="text-align:center;padding:40px"><div style="font-size:32px;margin-bottom:12px;animation:spin 1s linear infinite">⏳</div><div style="font-size:15px;font-weight:700;color:#334155">대화 불러오는 중...</div></div></div>';
+    overlay.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+  }
+
   // 상세 데이터 아직 안 로드됐으면 DB에서 가져오기
   if (!c._loaded && c._id) {
     try {
@@ -432,7 +507,6 @@ async function openDetail(idx) {
       var row = res.data;
       if (row && row.data) {
         var d = row.data;
-        // 기존 카드 정보 유지하면서 상세 데이터 병합
         c.msgs = d.msgs || [];
         c.vocab = d.vocab || [];
         c.grammar = d.grammar || [];
@@ -440,6 +514,8 @@ async function openDetail(idx) {
         c.key_expressions = d.key_expressions || [];
         c.thumb = d.thumb || c.thumb;
         c.topic = d.topic || c.topic;
+        c.name = d.name || c.name;
+        c.ctx = d.ctx || c.ctx;
         c.avi = d.avi || '💬';
         c.cast_left_slug = d.cast_left_slug;
         c.cast_right_slug = d.cast_right_slug;
@@ -449,7 +525,10 @@ async function openDetail(idx) {
   }
 
   if (!c.msgs || !c.msgs.length) {
-    alert('대화 내용을 불러올 수 없습니다.');
+    // Show a friendly message instead of alert
+    panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:#fff;border-radius:28px"><div style="text-align:center;padding:40px"><div style="font-size:32px;margin-bottom:12px">😅</div><div style="font-size:15px;font-weight:700;color:#334155;margin-bottom:6px">대화 내용을 불러올 수 없습니다</div><div style="font-size:13px;color:#64748b;margin-bottom:16px">This conversation hasn\'t been fully set up yet.</div><button onclick="closeDetail()" style="padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">← Back</button></div></div>';
+    overlay.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
     return;
   }
 
@@ -558,7 +637,7 @@ async function openDetail(idx) {
   var initKeyExprCard = initKeyExprs ? '<div class="dp-keyexpr-card"><div class="dp-study-card-title" style="color:#92400e">⭐ Key Expressions</div>'+initKeyExprs+'</div>' : '';
 
   var pills = '<span class="dp-pill dp-pill-blue">'+LVL_LABEL[c.lvl]+'</span>'
-    +'<span class="dp-pill '+(CAT_PILL[c.cat]||'dp-pill-gray')+'">'+c.catLabel+'</span>'
+    +'<span class="dp-pill '+(CAT_PILL[c.cat]||'dp-pill-gray')+'">'+(c.catLabel || CAT_EN[c.cat] || c.cat || '')+'</span>'
     +(c.topic ? '<span class="dp-pill dp-pill-gray">'+c.topic+'</span>' : '');
 
   document.getElementById('detail-panel').innerHTML =
@@ -592,12 +671,12 @@ async function openDetail(idx) {
       +'</div>'
     +'</div>'
     +'<div class="dp-right">'
-      +'<div class="dp-right-head"><div class="dp-right-label">Study Notes</div><div class="dp-right-title">Conversation Breakdown</div></div>'
+      +'<div class="dp-right-head"><div class="dp-right-label">학습 노트</div><div class="dp-right-title">Conversation Breakdown</div></div>'
       +'<div class="dp-study-sections" id="dp-study-sections">'
-        +initKeyExprCard
-        +'<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.book+' Key Vocabulary</div><div class="dp-vocab-list">'+vocab+'</div></div>'
-        +(grammar ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.pen+' Grammar Points</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
-        +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.target+' Practice Mission</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
+        +(initKeyExprCard ? initKeyExprCard : '')
+        +'<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.book+' 단어 · Vocabulary</div><div class="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
+        +(grammar ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.pen+' 문법 · Grammar</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
+        +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.target+' 연습 미션 · Practice</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
       +'</div>'
     +'</div>';
 
@@ -644,11 +723,11 @@ function renderStudyNotes(c) {
   }).join('') : '';
 
   el.innerHTML =
-    (keyExprHtml ? '<div class="dp-keyexpr-card"><div class="dp-study-card-title" style="color:#92400e">⭐ Key Expressions</div>'+keyExprHtml+'</div>' : '')
-    +'<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.book+' Key Vocabulary'+addVocabBtn+'</div><div class="dp-vocab-list" id="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">No vocabulary data</span>')+'</div></div>'
-    +(grammar||isAdm ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.pen+' Grammar Points'+addGrammarBtn+'</div><div class="dp-grammar-list" id="dp-grammar-list">'+(grammar||'')+'</div></div>' : '')
-    +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.target+' Practice Mission</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
-    +'<div class="dp-study-card"><div class="dp-study-card-title">🎧 Listening Quiz</div><div id="dp-listening-quiz"><button onclick="startConvListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div></div>'
+    (keyExprHtml ? '<div class="dp-keyexpr-card"><div class="dp-study-card-title" style="color:#92400e">⭐ 중요표현 · Key Expressions</div>'+keyExprHtml+'</div>' : '')
+    +'<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.book+' 단어 · Vocabulary'+addVocabBtn+'</div><div class="dp-vocab-list" id="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
+    +(grammar||isAdm ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.pen+' 문법 · Grammar'+addGrammarBtn+'</div><div class="dp-grammar-list" id="dp-grammar-list">'+(grammar||'')+'</div></div>' : '')
+    +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.target+' 연습 미션 · Practice</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
+    +'<div class="dp-study-card"><div class="dp-study-card-title">🎧 듣기 퀴즈 · Listening</div><div id="dp-listening-quiz"><button onclick="startConvListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div></div>'
     +'<div style="height:80px"></div>';
 }
 
@@ -780,6 +859,8 @@ function _convRowToObj(row) {
     catLabel: row.catLabel || '',
     topic: row.topic || '',
     thumb: row.thumb || null,
+    preview: row.preview || [],
+    _msgCount: row._msgCount || 0,
     msgs: [],
     vocab: [],
     grammar: [],
@@ -815,19 +896,32 @@ function _convRowToObj(row) {
     try {
       var sb = getSupa();
       var res = await sb.from('conversations_data')
-        .select('id,name,ctx,cat,lvl')
+        .select('id,name,ctx,cat,lvl,data')
         .order('created_at', {ascending: false});
 
       if (res.error) throw res.error;
 
       if (res.data && res.data.length) {
         var freshConvs = res.data.map(function(row) {
-          return _convRowToObj({_id: row.id, name: row.name, ctx: row.ctx, cat: row.cat, lvl: row.lvl});
+          var d = row.data || {};
+          var msgs = d.msgs || [];
+          // Extract preview: first 2 message lines
+          var preview = msgs.filter(function(m){ return m.s !== 'n'; }).slice(0,2).map(function(m) {
+            return { who: (m.who || m.name || (m.s === 'l' ? 'A' : 'B')).slice(0,4), txt: (m.txt || '').slice(0,50) };
+          });
+          return _convRowToObj({
+            _id: row.id, name: row.name || d.name, ctx: row.ctx || d.ctx,
+            cat: row.cat, lvl: row.lvl,
+            topic: d.topic || '', thumb: d.thumb || null,
+            preview: preview, _msgCount: msgs.filter(function(m){ return m.s !== 'n'; }).length
+          });
         });
 
-        // localStorage 캐시 업데이트
+        // localStorage 캐시 업데이트 (preview 포함)
         try {
-          var toCache = res.data.map(function(row){ return {_id:row.id, name:row.name||'', ctx:row.ctx||'', cat:row.cat||'everyday', lvl:row.lvl||'b'}; });
+          var toCache = freshConvs.map(function(c){
+            return {_id:c._id, name:c.name, ctx:c.ctx, cat:c.cat, lvl:c.lvl, topic:c.topic, thumb:c.thumb, preview:c.preview, _msgCount:c._msgCount};
+          });
           localStorage.setItem(_CONV_CACHE_KEY, JSON.stringify(toCache));
         } catch(e) {}
 
@@ -838,11 +932,9 @@ function _convRowToObj(row) {
           CONVS = freshConvs;
           renderCards(activeCat, activeLvl);
         } else {
-          // ID 순서 같아도 내용 변경 가능 — 조용히 교체
           CONVS = freshConvs;
         }
       } else if (!cached) {
-        // DB에 데이터 없고 캐시도 없으면 빈 상태 렌더
         renderCards(activeCat, activeLvl);
       }
     } catch(e) {
