@@ -5631,7 +5631,8 @@ async function goStudyRoomOps() {
     + '  <button class="btn btn-g" id="srt-topics"      onclick="srShowTab(\'topics\')"     >📅 오늘의 주제</button>'
     + '  <button class="btn"       id="srt-picture"     onclick="srShowTab(\'picture\')"    >🖼️ Picture</button>'
     + '  <button class="btn"       id="srt-tab-feedback" onclick="srShowTab(\'feedback\')"  >📬 피드백 관리</button>'
-    + '  <button class="btn"       id="srt-grammar-pdf" onclick="srShowTab(\'grammar-pdf\')">📄 문법 PDF 가져오기</button>'
+    + '  <button class="btn"       id="srt-grammar-pdf" onclick="srShowTab(\'grammar-pdf\')">📄 Grammar PDF</button>'
+    + '  <button class="btn"       id="srt-fasttrack"   onclick="srShowTab(\'fasttrack\')" >🎯 Fast Track</button>'
     + '</div>'
     + '<div id="sr-tab-body"></div>';
   await srShowTab('topics');
@@ -5663,6 +5664,7 @@ async function srShowTab(tab) {
   if (tab === 'picture')  { body.innerHTML = srPictureFormHTML(); await srLoadPictures(); }
   if (tab === 'feedback')     { body.innerHTML = srFeedbackDashboardHTML(); await srLoadFeedbackDashboard(); }
   if (tab === 'grammar-pdf')  { body.innerHTML = srGrammarPdfFormHTML(); }
+  if (tab === 'fasttrack')   { await ftAdminLoad(body); }
 }
 
 // ── TOPICS tab (daily content — AI-generated + admin-editable) ──────────────────────
@@ -8785,8 +8787,265 @@ async function syncVocabToDB() {
     }
   }
 
-  toast('동기화 완료! ' + ok + '/' + total + ' 성공' + (errors ? ', ' + errors + '개 실패' : ''));
+  toast('Sync done! ' + ok + '/' + total + ' OK' + (errors ? ', ' + errors + ' failed' : ''));
 }
+
+// ═══════════════════════════════════════════════════════════════
+// FAST TRACK ADMIN — CRUD + AI Generation
+// ═══════════════════════════════════════════════════════════════
+var _ftAdminData = [];
+
+async function ftAdminLoad(body) {
+  body.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">'
+    + '<div><h2 style="margin:0;font-size:18px">🎯 Fast Track Scenarios</h2><p style="margin:2px 0 0;font-size:12px;color:#888">Manage scenarios, nodes, and all dialogue text</p></div>'
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap">'
+    + '<button class="btn btn-g" onclick="ftAdminMigrate()" style="font-size:11px;padding:5px 10px">📥 Migrate Hardcoded</button>'
+    + '<input id="ft-gen-count" type="number" value="5" min="1" max="50" style="width:50px;padding:4px;border:1px solid #ddd;border-radius:4px;font-size:12px">'
+    + '<select id="ft-gen-diff" style="padding:4px;border:1px solid #ddd;border-radius:4px;font-size:12px"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select>'
+    + '<select id="ft-gen-cat" style="padding:4px;border:1px solid #ddd;border-radius:4px;font-size:12px"><option value="">All categories</option><option>cafe</option><option>restaurant</option><option>hospital</option><option>pharmacy</option><option>taxi</option><option>bus</option><option>subway</option><option>convenience</option><option>market</option><option>hotel</option><option>airport</option><option>bank</option><option>post-office</option><option>school</option><option>office</option><option>phone-shop</option><option>hair-salon</option><option>gym</option><option>library</option><option>cinema</option><option>karaoke</option><option>park</option><option>emergency</option><option>dating</option><option>neighbor</option><option>delivery</option><option>repair</option></select>'
+    + '<button class="btn" onclick="ftAdminAIGenerate()" style="font-size:11px;padding:5px 10px;background:#7c3aed;color:#fff;border:none;border-radius:4px;cursor:pointer">🤖 AI Generate</button>'
+    + '</div></div>'
+    + '<div id="ft-admin-status" style="display:none;padding:8px 12px;background:#f8fafc;border-radius:6px;font-size:12px;margin-bottom:10px"></div>'
+    + '<div id="ft-admin-list">Loading...</div>';
+  await ftAdminRefresh();
+}
+
+async function ftAdminRefresh() {
+  var sb = getSb(); if (!sb) return;
+  var res = await sb.from('fast_track_scenarios').select('*').order('sort_order');
+  if (res.error) { document.getElementById('ft-admin-list').textContent = 'Error: ' + res.error.message; return; }
+  _ftAdminData = res.data || [];
+  ftAdminRender();
+}
+
+function ftAdminRender() {
+  var el = document.getElementById('ft-admin-list');
+  if (!_ftAdminData.length) { el.innerHTML = '<div style="color:#888;font-size:13px;padding:12px">No scenarios. Click "Migrate Hardcoded" to import existing ones, or "AI Generate" to create new ones.</div>'; return; }
+  el.innerHTML = '<div style="font-size:12px;color:#888;margin-bottom:8px">' + _ftAdminData.length + ' scenarios</div>'
+    + _ftAdminData.map(function(s) {
+      var nodeCount = s.data && s.data.nodes ? Object.keys(s.data.nodes).length : 0;
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #e8e8e8;border-radius:8px;margin-bottom:6px">'
+        + '<span style="font-size:20px">' + (s.icon||'📍') + '</span>'
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="font-size:13px;font-weight:700">' + (s.title||s.id) + '</div>'
+        + '<div style="font-size:11px;color:#888">' + (s.sub||'') + ' · ' + (s.difficulty||'') + ' · ' + nodeCount + ' nodes</div>'
+        + '</div>'
+        + '<button onclick="ftAdminEdit(\'' + s.id + '\')" style="font-size:11px;padding:4px 10px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer">Edit</button>'
+        + '<button onclick="ftAdminDelete(\'' + s.id + '\')" style="font-size:11px;padding:4px 8px;border:1px solid #fca5a5;border-radius:4px;background:#fff;color:#dc2626;cursor:pointer">Del</button>'
+        + '</div>';
+    }).join('');
+}
+
+async function ftAdminMigrate() {
+  if (!confirm('Import hardcoded scenarios to DB? Existing DB scenarios with same ID will be updated.')) return;
+  var status = document.getElementById('ft-admin-status');
+  status.style.display = 'block';
+  var sb = getSb();
+  // Load hardcoded from study room
+  var hardcoded = null;
+  try {
+    var res = await fetch('korehan-study-room.html');
+    var text = await res.text();
+    var match = text.match(/var _FT_SCENARIOS = (\[[\s\S]*?\n\];)/);
+    if (!match) throw new Error('Could not find _FT_SCENARIOS');
+    hardcoded = eval(match[1]);
+  } catch(e) {
+    // Fallback: use known scenario IDs
+    status.innerHTML = 'Parsing failed. Please migrate manually.';
+    return;
+  }
+  var added = 0;
+  for (var i = 0; i < hardcoded.length; i++) {
+    var s = hardcoded[i];
+    status.innerHTML = 'Migrating ' + (i+1) + '/' + hardcoded.length + ': ' + s.id;
+    try {
+      await sb.from('fast_track_scenarios').upsert({
+        id: s.id, title: s.title, sub: s.sub, title_ko: s.titleKo,
+        difficulty: s.difficulty, icon: s.icon, category: s.id,
+        sort_order: i, is_active: true, locked: s.locked || false,
+        data: { nodes: s.nodes, edges: s.edges }
+      }, { onConflict: 'id' });
+      added++;
+    } catch(e) {}
+  }
+  status.innerHTML = '✅ Migrated ' + added + ' scenarios to DB';
+  await ftAdminRefresh();
+}
+
+function ftAdminEdit(id) {
+  var s = _ftAdminData.find(function(x){ return x.id === id; });
+  if (!s) return;
+  var d = s.data || {};
+  var nodes = d.nodes || {};
+  var nodeKeys = Object.keys(nodes);
+
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:12px;overflow-y:auto';
+  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
+
+  var html = '<div style="background:#fff;border-radius:14px;max-width:800px;width:100%;max-height:90vh;overflow-y:auto;padding:24px">'
+    + '<div style="display:flex;justify-content:space-between;margin-bottom:16px"><h3 style="margin:0;font-size:16px">' + (s.icon||'') + ' Edit: ' + s.title + '</h3><button onclick="this.closest(\'div[style*=fixed]\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer">✕</button></div>'
+    // Meta fields
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">'
+    + '<div><label style="font-size:11px;font-weight:600">Title</label><input id="fte-title" value="' + (s.title||'').replace(/"/g,'&quot;') + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:12px;box-sizing:border-box"></div>'
+    + '<div><label style="font-size:11px;font-weight:600">Korean</label><input id="fte-titleko" value="' + (s.title_ko||'').replace(/"/g,'&quot;') + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:12px;box-sizing:border-box"></div>'
+    + '<div><label style="font-size:11px;font-weight:600">Sub</label><input id="fte-sub" value="' + (s.sub||'').replace(/"/g,'&quot;') + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:12px;box-sizing:border-box"></div>'
+    + '</div>'
+    // Nodes
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:8px">' + nodeKeys.length + ' Nodes (click to edit text)</div>'
+    + '<div id="fte-nodes" style="display:flex;flex-direction:column;gap:6px">';
+
+  nodeKeys.forEach(function(key) {
+    var n = nodes[key];
+    var choiceRows = '';
+    if (n.choices) {
+      choiceRows = n.choices.map(function(c, ci) {
+        return '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:4px;margin-top:4px;padding-left:20px">'
+          + '<input data-nk="' + key + '" data-ci="' + ci + '" data-f="text" value="' + (c.text||'').replace(/"/g,'&quot;') + '" style="padding:4px 6px;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;font-family:Noto Sans KR,sans-serif">'
+          + '<input data-nk="' + key + '" data-ci="' + ci + '" data-f="textEn" value="' + (c.textEn||'').replace(/"/g,'&quot;') + '" style="padding:4px 6px;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;color:#666">'
+          + '<span style="font-size:10px;color:#888;padding-top:5px">pts:' + (c.pts||0) + '</span>'
+          + '</div>';
+      }).join('');
+    }
+    html += '<div style="border:1px solid #e8e8e8;border-radius:8px;padding:10px;background:#fafafa">'
+      + '<div style="font-size:11px;font-weight:700;color:#2563eb;margin-bottom:4px">[' + key + '] ' + (n.type||'npc') + (n.npc ? ' — ' + n.npc : '') + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+      + '<input data-nk="' + key + '" data-f="text" value="' + (n.text||'').replace(/"/g,'&quot;') + '" placeholder="Korean text" style="padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:12px;font-family:Noto Sans KR,sans-serif">'
+      + '<input data-nk="' + key + '" data-f="textEn" value="' + (n.textEn||'').replace(/"/g,'&quot;') + '" placeholder="English text" style="padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:12px;color:#666">'
+      + '</div>'
+      + choiceRows
+      + '</div>';
+  });
+
+  html += '</div>'
+    + '<div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">'
+    + '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:8px 16px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:12px">Cancel</button>'
+    + '<button onclick="ftAdminSaveEdit(\'' + id + '\')" style="padding:8px 16px;border:none;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer;font-size:12px;font-weight:700">Save All Changes</button>'
+    + '</div></div>';
+
+  overlay.innerHTML = html;
+  document.body.appendChild(overlay);
+}
+
+async function ftAdminSaveEdit(id) {
+  var s = _ftAdminData.find(function(x){ return x.id === id; });
+  if (!s) return;
+  var d = s.data || {};
+  var nodes = d.nodes || {};
+
+  // Read meta
+  var newTitle = document.getElementById('fte-title').value.trim();
+  var newTitleKo = document.getElementById('fte-titleko').value.trim();
+  var newSub = document.getElementById('fte-sub').value.trim();
+
+  // Read all node text edits
+  document.querySelectorAll('#fte-nodes input[data-nk]').forEach(function(inp) {
+    var nk = inp.dataset.nk, f = inp.dataset.f, ci = inp.dataset.ci;
+    if (!nodes[nk]) return;
+    if (ci !== undefined && ci !== '') {
+      // Choice field
+      if (nodes[nk].choices && nodes[nk].choices[parseInt(ci)]) {
+        nodes[nk].choices[parseInt(ci)][f] = inp.value;
+      }
+    } else {
+      // Node field
+      nodes[nk][f] = inp.value;
+    }
+  });
+
+  var sb = getSb();
+  var res = await sb.from('fast_track_scenarios').update({
+    title: newTitle, title_ko: newTitleKo, sub: newSub,
+    data: { nodes: nodes, edges: d.edges || [] },
+    updated_at: new Date().toISOString()
+  }).eq('id', id);
+  if (res.error) { alert('Save failed: ' + res.error.message); return; }
+  toast('Saved!');
+  document.querySelector('div[style*="fixed"]').remove();
+  await ftAdminRefresh();
+}
+
+async function ftAdminDelete(id) {
+  if (!confirm('Delete scenario "' + id + '"? This cannot be undone.')) return;
+  var sb = getSb();
+  await sb.from('fast_track_scenarios').delete().eq('id', id);
+  toast('Deleted');
+  await ftAdminRefresh();
+}
+
+async function ftAdminAIGenerate() {
+  var count = parseInt(document.getElementById('ft-gen-count').value) || 5;
+  var diff = document.getElementById('ft-gen-diff').value || 'Beginner';
+  var cat = document.getElementById('ft-gen-cat').value || '';
+  var status = document.getElementById('ft-admin-status');
+  status.style.display = 'block';
+  status.innerHTML = '🤖 Generating ' + count + ' scenarios (' + diff + ')...';
+
+  var existingIds = new Set(_ftAdminData.map(function(s){ return s.id; }));
+  var existingTitles = new Set(_ftAdminData.map(function(s){ return (s.title||'').toLowerCase(); }));
+  var sb = getSb(); if (!sb) return;
+  var added = 0, errors = 0;
+
+  for (var batch = 0; batch < Math.ceil(count / 3); batch++) {
+    var batchSize = Math.min(3, count - added);
+    if (added >= count) break;
+    status.innerHTML = '🤖 Generating batch ' + (batch+1) + '... (' + added + '/' + count + ' done)';
+
+    try {
+      var catHint = cat ? ' All scenarios must be set in: ' + cat + '.' : '';
+      var avoidList = Array.from(existingTitles).slice(0, 30).join(', ');
+      var res = await callClaude({
+        feature: 'ft-scenario-gen-admin',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4000,
+        messages: [{ role: 'user', content:
+          'Generate ' + batchSize + ' Korean conversation scenario(s) for a language learning app.' + catHint + '\n'
+          + 'Difficulty: ' + diff + '\n'
+          + 'AVOID duplicating these existing scenarios: ' + avoidList + '\n\n'
+          + 'Each scenario has branching dialogue nodes (6-12 nodes). Each node has NPC text (Korean + English) and 2-4 player choices (Korean + English) with point values.\n\n'
+          + 'Return JSON array of scenarios:\n'
+          + '[{"id":"unique_snake_id","title":"ENGLISH TITLE","sub":"Korean description","titleKo":"Korean title","difficulty":"' + diff + '","icon":"emoji","category":"category_name",'
+          + '"nodes":{"start":{"type":"start","x":5,"y":50,"label":"Start","next":"node1"},'
+          + '"node1":{"type":"npc","x":20,"y":50,"label":"Label","npc":"NPC name","scene":"Scene","text":"Korean dialogue","textEn":"English translation",'
+          + '"choices":[{"id":"c1","text":"Korean choice","textEn":"English","next":"node2","pts":3,"phrase":"key phrase"},{"id":"c2","text":"Korean","textEn":"English","next":"node3","pts":1}]},'
+          + '"end":{"type":"end","x":95,"y":50,"label":"Done"}},'
+          + '"edges":[["start","node1"],["node1","node2"],["node1","node3"],["node2","end"],["node3","end"]]}]\n\n'
+          + 'Make dialogues authentic and natural. Include 6-12 nodes per scenario with meaningful branching. Return JSON only.'
+        }]
+      });
+      var text = (res.content||[]).map(function(c){return c.text||'';}).join('').replace(/```json|```/g,'').trim();
+      var scenarios = JSON.parse(text);
+
+      for (var si = 0; si < scenarios.length; si++) {
+        var sc = scenarios[si];
+        if (!sc.id || !sc.nodes) { errors++; continue; }
+        if (existingIds.has(sc.id)) { sc.id = sc.id + '_' + Date.now().toString(36).slice(-4); }
+        if (existingTitles.has((sc.title||'').toLowerCase())) { errors++; continue; }
+
+        try {
+          await sb.from('fast_track_scenarios').insert({
+            id: sc.id, title: sc.title, sub: sc.sub, title_ko: sc.titleKo || sc.title_ko,
+            difficulty: sc.difficulty || diff, icon: sc.icon || '📍',
+            category: sc.category || cat || sc.id,
+            sort_order: _ftAdminData.length + added,
+            is_active: true, locked: false,
+            data: { nodes: sc.nodes, edges: sc.edges || [] }
+          });
+          added++;
+          existingIds.add(sc.id);
+          existingTitles.add((sc.title||'').toLowerCase());
+        } catch(e) { errors++; }
+      }
+    } catch(e) {
+      errors++;
+      status.innerHTML = '⚠️ Batch failed: ' + (e.message||'parse error') + '. Retrying...';
+    }
+  }
+
+  status.innerHTML = '✅ Generated ' + added + '/' + count + ' scenarios' + (errors ? ' (' + errors + ' errors/duplicates)' : '');
+  await ftAdminRefresh();
+}
+
 </script>
 </body>
 </html>
