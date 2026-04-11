@@ -6753,69 +6753,107 @@ function refreshSubmitBanner() {
 
 async function submitAllWritingsToday() {
   if (!supaUser) { openAuthModal('signin'); return; }
-  // Check if already submitted today
   var submitKey = 'kh_submitted_' + kstDateKey() + '_' + supaUser.id;
   if (localStorage.getItem(submitKey)) {
     showToast('Already submitted today. You can submit once per day (resets at midnight KST).');
     return;
   }
-  // Confirm before submitting
-  if (!confirm('Submit all writing for AI feedback?\n\nYou can only submit ONCE per day (resets at midnight KST). Make sure all your writing is complete before submitting.')) return;
+  if (!confirm('Submit all of today\'s work as a package?\n\nYou can only submit ONCE per day (resets at midnight KST). Make sure all your writing is complete.')) return;
 
   var sb = getSupa(); if (!sb) return;
   var all = getAllDrafts();
   var types = Object.keys(all);
-  if (!types.length) { showToast('No writing to submit.'); return; }
+  if (!types.length) { showToast('No work to submit.'); return; }
 
   var today = kstDateKey();
-  var submitted = 0; var errors = [];
 
+  // Build unified package — all activities combined
+  var packageItems = [];
+  var allTexts = [];
   for (var ti = 0; ti < types.length; ti++) {
     var type = types[ti];
     var items = all[type] || [];
     for (var ii = 0; ii < items.length; ii++) {
       var item = items[ii];
       if (!item.text || !item.text.trim()) continue;
-      try {
-        var contentType = (type === 'topic_writing' || type === 'writing') ? 'writing' : type;
-        var rec = {
-          user_id: supaUser.id,
-          content_type: contentType,
-          content_id: item.content_id || null,
-          content_title: item.content_title || '',
-          study_date: today,
-          writing_text: item.text.trim(),
-          word_count: item.text.trim().length,
-          topic_ko: item.topic_ko || '',
-          topic_en: item.topic_en || '',
-          writing_mode: item.writing_mode || type,
-          context_data: JSON.stringify(item.context || {}),
-          level: _currentLevel || '',
-          status: 'submitted'
-        };
-        var r = await sb.from('user_submissions').upsert(rec, {onConflict:'user_id,content_type,study_date,content_id'}).select('id');
-        if (r.error) throw r.error;
-        submitted++;
-        // Trigger AI feedback
-        if (r.data && r.data[0] && r.data[0].id && item.text.trim().length > 5) {
-          _triggerUnifiedAIFeedback(r.data[0].id, item.text.trim(), item.topic_ko || item.content_title || type);
-        }
-      } catch(e) {
-        errors.push(type + ': ' + (e.message||e));
-      }
+      packageItems.push({
+        type: type,
+        content_id: item.content_id || null,
+        content_title: item.content_title || '',
+        topic_ko: item.topic_ko || '',
+        topic_en: item.topic_en || '',
+        text: item.text.trim(),
+        word_count: item.text.trim().length,
+        writing_mode: item.writing_mode || type
+      });
+      allTexts.push('[' + (item.topic_ko || item.content_title || type) + ']\n' + item.text.trim());
     }
   }
 
-  if (submitted > 0) {
-    // Mark as submitted today (once per day)
+  if (!packageItems.length) { showToast('No work to submit.'); return; }
+
+  try {
+    // Save as single package row
+    var rec = {
+      user_id: supaUser.id,
+      content_type: 'daily_package',
+      content_id: today,
+      content_title: 'Daily Study Package — ' + today,
+      study_date: today,
+      writing_text: allTexts.join('\n\n---\n\n'),
+      word_count: packageItems.reduce(function(s,p){return s+p.word_count;},0),
+      topic_ko: packageItems[0].topic_ko || '',
+      topic_en: packageItems[0].topic_en || '',
+      writing_mode: 'daily_package',
+      context_data: JSON.stringify({ items: packageItems, item_count: packageItems.length, level: _currentLevel }),
+      level: _currentLevel || '',
+      status: 'submitted'
+    };
+    var r = await sb.from('user_submissions').upsert(rec, {onConflict:'user_id,content_type,study_date,content_id'}).select('id');
+    if (r.error) throw r.error;
+
+    // Trigger consolidated AI feedback for entire package
+    if (r.data && r.data[0] && r.data[0].id && allTexts.length) {
+      _triggerPackageFeedback(r.data[0].id, packageItems);
+    }
+
     localStorage.setItem(submitKey, 'true');
-    // Clear drafts
     localStorage.removeItem(_writingDraftKey());
     refreshSubmitBanner();
-    showToast('✅ ' + submitted + ' writing(s) submitted! Feedback within 24 hours.');
+    showToast('✅ Daily package submitted! (' + packageItems.length + ' items) Feedback within 24 hours.');
     if (typeof awardXP === 'function') awardXP('writing_submit');
+  } catch(e) {
+    showToast('Submit error: ' + (e.message||e));
   }
-  if (errors.length) console.warn('Submit errors:', errors);
+}
+
+async function _triggerPackageFeedback(submissionId, items) {
+  try {
+    var prompt = 'You are a Korean writing tutor giving CONSOLIDATED feedback on a student\'s daily study package.\n\n'
+      + 'The student completed ' + items.length + ' writing activities today. Review ALL of them together and give ONE unified feedback.\n\n';
+    items.forEach(function(item, i) {
+      prompt += '--- Activity ' + (i+1) + ': ' + (item.topic_ko || item.content_title || item.type) + ' ---\n'
+        + item.text + '\n\n';
+    });
+    prompt += 'Give feedback in ENGLISH. Return ONLY valid JSON:\n'
+      + '{"overall_assessment":"2-3 sentence summary of today\'s performance across ALL activities",'
+      + '"activity_scores":[{"activity":"activity name","score":0-100,"highlight":"best part","improvement":"one thing to improve"}],'
+      + '"common_patterns":["pattern 1 seen across writings","pattern 2"],'
+      + '"corrections":[{"original":"text","corrected":"text","reason":"why","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB"}],'
+      + '"daily_tip":"one actionable tip for tomorrow based on today\'s performance",'
+      + '"encouragement":"motivating closing message"}\nReturn JSON only.';
+
+    var data = await callClaude({ feature:'daily_package_feedback', model:'claude-haiku-4-5-20251001', max_tokens:1200, messages:[{role:'user',content:prompt}] });
+    var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('').replace(/```json|```/g,'').trim();
+    var parsed = JSON.parse(raw);
+    var sb = getSupa();
+    if (sb) {
+      await sb.from('user_submissions').update({
+        ai_feedback: parsed, ai_feedback_at: new Date().toISOString(),
+        ai_model: 'claude-haiku-4-5-20251001', status: 'ai_reviewed'
+      }).eq('id', submissionId);
+    }
+  } catch(e) { console.warn('Package feedback failed:', e); }
 }
 
 async function _triggerUnifiedAIFeedback(submissionId, text, topicOrTitle) {
@@ -7109,10 +7147,10 @@ function openFeedbackInbox() {
 
 // ── Feedback rendering helpers ──
 var _fbPatternIcons = { SPELLING:'✏️', PARTICLE:'🔗', TENSE:'⏰', WORD_ORDER:'🔀', VOCAB:'📖', NUANCE:'💬' };
-var _fbPatternLabels = { SPELLING:'맞춤법', PARTICLE:'조사', TENSE:'시제/어미', WORD_ORDER:'어순', VOCAB:'어휘 선택', NUANCE:'뉘앙스' };
+var _fbPatternLabels = { SPELLING:'Spelling', PARTICLE:'Particle', TENSE:'Tense', WORD_ORDER:'Word Order', VOCAB:'Vocabulary', NUANCE:'Nuance' };
 
 function renderDetailedFeedback(fb, writingText) {
-  if (!fb) return '<div style="color:rgba(255,255,255,.4)">피드백 데이터 없음</div>';
+  if (!fb) return '<div style="color:rgba(255,255,255,.4)">No feedback data available</div>';
   var h = '';
 
   // Score badge
@@ -7120,7 +7158,7 @@ function renderDetailedFeedback(fb, writingText) {
     var scoreColor = fb.score >= 80 ? '#4ade80' : fb.score >= 60 ? '#fbbf24' : '#f87171';
     h += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">'
       + '<div style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.06);border:3px solid ' + scoreColor + ';display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:' + scoreColor + '">' + fb.score + '</div>'
-      + '<div><div style="font-size:14px;font-weight:700">' + (fb.score >= 80 ? '잘 했어요!' : fb.score >= 60 ? '거의 다 왔어요!' : '조금 더 연습해요!') + '</div>'
+      + '<div><div style="font-size:14px;font-weight:700">' + (fb.score >= 80 ? 'Great job!' : fb.score >= 60 ? 'Almost there!' : 'Keep practicing!') + '</div>'
       + '<div style="font-size:13px;color:rgba(255,255,255,.5);line-height:1.5">' + (fb.overall || '') + '</div></div></div>';
   } else if (fb.overall) {
     h += '<div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.6;margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,.04);border-radius:8px">' + fb.overall + '</div>';
@@ -7128,13 +7166,13 @@ function renderDetailedFeedback(fb, writingText) {
 
   // Corrected full text
   if (fb.corrected_full) {
-    h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">교정된 전체 문장</div>'
+    h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Corrected Version</div>'
       + '<div style="font-size:14px;line-height:1.7;padding:12px 14px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15);border-radius:10px;font-family:\'Noto Sans KR\',sans-serif">' + fb.corrected_full + '</div></div>';
   }
 
   // Corrections (main)
   if (fb.corrections && fb.corrections.length) {
-    h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#f87171;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">수정 사항 (' + fb.corrections.length + ')</div>';
+    h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#f87171;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Corrections (' + fb.corrections.length + ')</div>';
     fb.corrections.forEach(function(c) {
       var icon = _fbPatternIcons[c.pattern] || '🔧';
       var label = _fbPatternLabels[c.pattern] || c.pattern;
@@ -7148,7 +7186,7 @@ function renderDetailedFeedback(fb, writingText) {
 
   // Spelling
   if (fb.spelling && fb.spelling.length) {
-    h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">✏️ 맞춤법</div>';
+    h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">✏️ Spelling</div>';
     fb.spelling.forEach(function(s) {
       h += '<div style="font-size:13px;padding:6px 10px;background:rgba(251,191,36,.06);border-left:3px solid #fbbf24;border-radius:0 6px 6px 0;margin-bottom:4px">'
         + '<span style="text-decoration:line-through;color:#fbbf24">' + (s.wrong||'') + '</span> → <span style="font-weight:700">' + (s.correct||'') + '</span>'
@@ -7234,11 +7272,14 @@ async function renderFeedbackInboxContent() {
     content.innerHTML = items.map(function(item, idx) {
       var fb = null;
       try { fb = typeof item.ai_feedback === 'string' ? JSON.parse(item.ai_feedback) : item.ai_feedback; } catch(e) {}
-      var hasFb = !!fb && (fb.corrections || fb.overall);
+      var hasFb = !!fb && (fb.corrections || fb.overall || fb.overall_assessment);
       var isOpen = idx === 0 && hasFb;
       var statusLabel = (item.status === 'admin_approved' || item.status === 'sent') ? 'Feedback ready' : (item.status === 'ai_reviewed' || hasFb) ? 'Review complete' : 'Under review';
       var statusColor = (item.status === 'admin_approved' || item.status === 'sent') ? '#4ade80' : hasFb ? '#60a5fa' : 'rgba(255,255,255,.35)';
-      var preview = (item.writing_text||'').slice(0,60) + ((item.writing_text||'').length > 60 ? '…' : '');
+      var isPackage = item.content_type === 'daily_package';
+      var preview = isPackage
+        ? ('Daily Package — ' + (function(){ try { var ctx=JSON.parse(item.context_data||'{}'); return (ctx.item_count||0)+' activities'; } catch(e){ return ''; } })())
+        : ((item.writing_text||'').slice(0,60) + ((item.writing_text||'').length > 60 ? '…' : ''));
 
       var h = '<div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:10px;overflow:hidden">';
       // Header (clickable)
