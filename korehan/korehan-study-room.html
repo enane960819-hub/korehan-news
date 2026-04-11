@@ -11366,7 +11366,7 @@ if (typeof openStoryStudy === 'undefined') {
 // ═══════════════════════════════════════════════════════════════
 // CONVERSATION STUDY — 4-step learning flow
 // ═══════════════════════════════════════════════════════════════
-var _csConvs = [], _csCurrentConv = null, _csStep = 1, _csStepLabels = ['Dialogue','Vocabulary','Choose Response','Build Sentence'];
+var _csConvs = [], _csCurrentConv = null, _csStep = 1, _csStepLabels = ['Dialogue + Quiz','Flashcards','Choose Response','Build Sentence'];
 
 window.openConvStudy = function() {
   if (!supaUser) { openAuthModal('signin'); return; }
@@ -11442,70 +11442,174 @@ function _csRenderStep() {
   else _csStep4();
 }
 
-// STEP 1: Read Dialogue
+// STEP 1: Interactive Dialogue — reveal line by line, translate quiz
 function _csStep1() {
   var c = _csCurrentConv, area = document.getElementById('cs-chat-area'), act = document.getElementById('cs-activity-area');
-  area.style.display = ''; // Restore chat area visibility
+  area.style.display = '';
   var msgs = (c.msgs||[]).filter(function(m){return m.s!=='n';});
-  area.innerHTML = msgs.map(function(m){
-    var isLeft = m.s==='l';
-    var who = m.who||m.name||(isLeft?'A':'B');
-    var side = isLeft ? 'left' : 'right';
-    return '<div style="display:flex;margin-bottom:10px;'+(isLeft?'':'justify-content:flex-end')+'">'
-      +'<div style="max-width:75%">'
-      +'<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:3px;'+(isLeft?'':'text-align:right')+'">'+escapeHtml(who)+'</div>'
-      +'<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'block\'?\'none\':\'block\'" style="cursor:pointer;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.6;font-family:\'Noto Sans KR\',sans-serif;'
-      +(isLeft?'background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-bottom-left-radius:4px':'background:#2563eb;color:#fff;border-bottom-right-radius:4px')+'">'+escapeHtml(m.txt||'')+'</div>'
-      +'<div style="display:none;font-size:11px;color:#94a3b8;padding:4px 14px">'+(m.en||'Tap Korean text to translate')+'</div>'
-      +'</div></div>';
-  }).join('');
-  act.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gray);font-size:13px">Read the dialogue above. Tap any message to see translation.</div>';
-  var nb = document.getElementById('cs-next-btn');
-  if (nb) { nb.style.display = ''; nb.textContent = 'Next Step →'; nb.style.cssText = 'display:block;padding:12px 28px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit'; }
+  if (!msgs.length) { csNextStep(); return; }
+  window._csDialogState = { msgs: msgs, revealed: 0, quizIdx: 0, score: 0 };
+  area.innerHTML = '';
+  act.innerHTML = '';
+  _csRevealNext();
+}
+function _csRevealNext() {
+  var st = window._csDialogState;
+  if (st.revealed >= st.msgs.length) {
+    // All revealed — show translation quiz
+    _csTranslationQuiz();
+    return;
+  }
+  var m = st.msgs[st.revealed];
+  var isLeft = m.s === 'l';
+  var who = m.who || m.name || (isLeft ? 'A' : 'B');
+  var area = document.getElementById('cs-chat-area');
+  var bubble = '<div style="display:flex;margin-bottom:12px;animation:srFadeIn .3s;'+(isLeft?'':'justify-content:flex-end')+'">'
+    +'<div style="max-width:78%">'
+    +'<div style="font-size:10px;font-weight:800;color:'+(isLeft?'#64748b':'#93c5fd')+';margin-bottom:4px;'+(isLeft?'':'text-align:right')+'">'+escapeHtml(who)+'</div>'
+    +'<div style="padding:12px 16px;border-radius:18px;font-size:15px;line-height:1.65;font-family:\'Noto Sans KR\',sans-serif;'
+    +(isLeft?'background:#fff;color:#0f172a;border:1.5px solid #e2e8f0;border-bottom-left-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.04)':'background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;border-bottom-right-radius:4px;box-shadow:0 2px 8px rgba(37,99,235,.2)')+'">'+escapeHtml(m.txt||'')+'</div>'
+    +'</div></div>';
+  area.insertAdjacentHTML('beforeend', bubble);
+  area.scrollTop = area.scrollHeight;
+  st.revealed++;
+
+  var act = document.getElementById('cs-activity-area');
+  if (st.revealed < st.msgs.length) {
+    act.innerHTML = '<div style="text-align:center;padding:16px;animation:srFadeIn .2s">'
+      +'<div style="font-size:12px;color:#94a3b8;margin-bottom:10px">' + st.revealed + ' / ' + st.msgs.length + ' messages</div>'
+      +'<button onclick="_csRevealNext()" style="padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(37,99,235,.25);transition:all .15s" onmouseover="this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.transform=\'none\'">Next Message →</button>'
+      +'</div>';
+  } else {
+    // Last message revealed — start translation quiz
+    setTimeout(_csTranslationQuiz, 600);
+  }
+}
+function _csTranslationQuiz() {
+  var st = window._csDialogState;
+  // Pick messages that have English translations
+  var withEn = st.msgs.filter(function(m){ return m.en && m.en.trim(); });
+  if (withEn.length < 3) {
+    // Not enough translations — just show Next button
+    var nb = document.getElementById('cs-next-btn');
+    if (nb) { nb.style.display = ''; nb.textContent = 'Next Step →'; nb.style.cssText = 'display:block;padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(37,99,235,.3)'; }
+    var act = document.getElementById('cs-activity-area');
+    act.innerHTML = '<div style="text-align:center;padding:16px;font-size:13px;color:#94a3b8">Dialogue complete! Tap Next Step to continue.</div>';
+    return;
+  }
+  st.quizPool = withEn.sort(function(){return Math.random()-.5;}).slice(0,3);
+  st.quizIdx = 0; st.score = 0;
+  _csRenderTransQ();
+}
+function _csRenderTransQ() {
+  var st = window._csDialogState, act = document.getElementById('cs-activity-area');
+  if (st.quizIdx >= st.quizPool.length) {
+    var nb = document.getElementById('cs-next-btn');
+    if (nb) { nb.style.display = ''; nb.textContent = 'Next Step →'; nb.style.cssText = 'display:block;padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(37,99,235,.3)'; }
+    act.innerHTML = '<div style="text-align:center;padding:20px;animation:srFadeIn .25s"><div style="font-size:28px;margin-bottom:6px">'+(st.score>=2?'🎉':'💪')+'</div><div style="font-size:16px;font-weight:800;color:var(--dark)">'+st.score+'/'+st.quizPool.length+' translations correct</div></div>';
+    return;
+  }
+  var q = st.quizPool[st.quizIdx];
+  var wrongPool = st.msgs.filter(function(m){return m.en && m.en!==q.en;}).map(function(m){return m.en;});
+  if (wrongPool.length < 3) wrongPool = wrongPool.concat(['Nice to meet you','I understand','Thank you very much']);
+  var choices = wrongPool.sort(function(){return Math.random()-.5;}).slice(0,3).concat([q.en]).sort(function(){return Math.random()-.5;});
+  act.innerHTML = '<div style="padding:4px 0;animation:srFadeIn .25s">'
+    +'<div style="font-size:11px;font-weight:800;color:var(--accent);margin-bottom:12px">'+(st.quizIdx+1)+'/'+st.quizPool.length+' — What does this mean?</div>'
+    +'<div style="padding:16px 20px;background:#f0f4ff;border:1.5px solid #dbeafe;border-radius:16px;margin-bottom:16px;font-size:18px;font-weight:800;color:#0f172a;font-family:\'Noto Sans KR\',sans-serif;line-height:1.6;text-align:center">'+escapeHtml(q.txt)+'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:10px">'
+    +choices.map(function(ch){
+      return '<button onclick="_csCheckTrans(this)" data-ans="'+ch.replace(/"/g,'&quot;')+'" data-correct="'+q.en.replace(/"/g,'&quot;')+'" style="padding:13px 18px;border-radius:14px;border:2px solid #e2e8f0;background:#fff;color:#0f172a;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s;line-height:1.4" onmouseover="this.style.borderColor=\'#93c5fd\';this.style.background=\'#f0f7ff\'" onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.background=\'#fff\'">'+escapeHtml(ch)+'</button>';
+    }).join('')
+    +'</div></div>';
+}
+function _csCheckTrans(btn) {
+  var st = window._csDialogState;
+  var picked = btn.dataset.ans, correct = btn.dataset.correct;
+  var btns = btn.parentElement.querySelectorAll('button');
+  btns.forEach(function(b){b.disabled=true;b.style.pointerEvents='none';b.style.opacity='.5';
+    if(b.dataset.ans===correct){b.style.borderColor='#22c55e';b.style.background='#f0fdf4';b.style.color='#166534';b.style.opacity='1';}});
+  if (picked===correct) { playCorrectSound(); st.score++; btn.style.opacity='1'; }
+  else { playWrongSound(); btn.style.borderColor='#ef4444';btn.style.background='#fef2f2';btn.style.color='#991b1b';btn.style.opacity='1'; }
+  setTimeout(function(){ st.quizIdx++; _csRenderTransQ(); },1200);
 }
 
-// STEP 2: Vocabulary Matching
+// STEP 2: Flashcard Vocabulary — flip cards with self-assessment
 function _csStep2() {
   var c = _csCurrentConv, area = document.getElementById('cs-chat-area'), act = document.getElementById('cs-activity-area');
   area.style.display = 'none';
   var vocab = (c.vocab||[]).slice(0,8);
-  if (!vocab.length) { act.innerHTML = '<div class="as-loading">No vocabulary data. <button class="btn" onclick="csNextStep()">Skip →</button></div>'; return; }
-  var pairs = vocab.map(function(v,i){return {i:i,ko:v.ko,en:v.en};});
-  var shuffledEn = pairs.slice().sort(function(){return Math.random()-.5;});
-  window._csMatchState = {pairs:pairs,eng:shuffledEn,sel:{l:null,r:null},matched:[]};
-  _csRenderMatch(act);
+  if (!vocab.length) { csNextStep(); return; }
+  window._csFlashState = { vocab: vocab, idx: 0, known: 0, learning: 0, flipped: false };
+  _csRenderFlash(act);
 }
-function _csRenderMatch(act) {
-  var m = window._csMatchState;
-  act.innerHTML = '<div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:12px">Match Korean ↔ English</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="cs-mg">'
-    + m.pairs.map(function(p){
-      var done = m.matched.indexOf(p.i)>=0;
-      return '<button data-li="'+p.i+'" onclick="_csSelectMatch(\'l\','+p.i+')" class="as-match-item as-match-ko'+(done?' matched':'')+(m.sel.l===p.i?' sel':'')+'" style="font-family:\'Noto Serif KR\',serif;font-weight:800;font-size:16px">'+escapeHtml(p.ko)+'</button>';
-    }).join('')
-    + m.eng.map(function(p,ri){
-      var done = m.matched.indexOf(p.i)>=0;
-      return '<button data-ri="'+ri+'" onclick="_csSelectMatch(\'r\','+ri+')" class="as-match-item'+(done?' matched':'')+(m.sel.r===ri?' sel':'')+'">'+escapeHtml(p.en)+'</button>';
-    }).join('')
-    +'</div><div id="cs-mm" style="text-align:center;margin-top:10px;min-height:20px"></div>';
-}
-function _csSelectMatch(side,idx) {
-  var m = window._csMatchState; if (!m) return;
-  m.sel[side] = idx;
-  if (m.sel.l!==null && m.sel.r!==null) {
-    if (m.eng[m.sel.r].i===m.sel.l) {
-      playCorrectSound(); m.matched.push(m.sel.l); m.sel={l:null,r:null};
-      var msg = document.getElementById('cs-mm');
-      if (msg) msg.innerHTML = '<span style="color:#16a34a;font-weight:800">✓ Matched! '+m.matched.length+'/'+m.pairs.length+'</span>';
-      if (m.matched.length===m.pairs.length) {
-        var nb = document.getElementById('cs-next-btn');
-        if (nb) { nb.style.display = ''; nb.textContent = 'Next Step →'; nb.style.cssText = 'display:block;padding:12px 28px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit'; }
-      }
-    } else {
-      playWrongSound(); m.sel={l:null,r:null};
-    }
+function _csRenderFlash(act) {
+  var st = window._csFlashState;
+  if (st.idx >= st.vocab.length) {
+    var nb = document.getElementById('cs-next-btn');
+    if (nb) { nb.style.display = ''; nb.textContent = 'Next Step →'; nb.style.cssText = 'display:block;padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(37,99,235,.3)'; }
+    act.innerHTML = '<div style="text-align:center;padding:24px;animation:srFadeIn .25s">'
+      +'<div style="font-size:28px;margin-bottom:8px">📖</div>'
+      +'<div style="font-size:18px;font-weight:800;color:var(--dark);margin-bottom:8px">Vocabulary Review Done</div>'
+      +'<div style="display:flex;gap:16px;justify-content:center;margin-top:12px">'
+      +'<div style="text-align:center"><div style="font-size:24px;font-weight:900;color:#22c55e">'+st.known+'</div><div style="font-size:11px;color:#94a3b8">I know this</div></div>'
+      +'<div style="text-align:center"><div style="font-size:24px;font-weight:900;color:#f59e0b">'+st.learning+'</div><div style="font-size:11px;color:#94a3b8">Still learning</div></div>'
+      +'</div></div>';
+    return;
   }
-  _csRenderMatch(document.getElementById('cs-activity-area'));
+  var v = st.vocab[st.idx];
+  st.flipped = false;
+  act.innerHTML = '<div style="padding:8px 0;animation:srFadeIn .25s">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'
+    +'<span style="font-size:11px;font-weight:800;color:var(--accent);background:rgba(37,99,235,.1);padding:4px 10px;border-radius:8px">'+(st.idx+1)+'/'+st.vocab.length+'</span>'
+    +'<span style="font-size:13px;font-weight:700;color:var(--dark)">Tap the card to flip</span></div>'
+    // Card
+    +'<div id="cs-flash-card" onclick="_csFlashFlip()" style="cursor:pointer;min-height:180px;border-radius:20px;border:2px solid #e2e8f0;background:linear-gradient(135deg,#f8fafc,#f0f4ff);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 24px;transition:all .2s;box-shadow:0 4px 16px rgba(0,0,0,.06)" onmouseover="this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.1)\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.06)\';this.style.transform=\'none\'">'
+    +'<div style="font-size:32px;font-weight:900;color:#0f172a;font-family:\'Noto Sans KR\',sans-serif;margin-bottom:8px">'+escapeHtml(v.ko||'')+'</div>'
+    +(v.rom?'<div style="font-size:14px;color:#7c3aed;font-style:italic">'+escapeHtml(v.rom)+'</div>':'')
+    +'<div style="font-size:12px;color:#94a3b8;margin-top:12px">tap to see meaning</div>'
+    +'</div>'
+    // Rating buttons (hidden until flipped)
+    +'<div id="cs-flash-btns" style="display:none;margin-top:16px;display:none;gap:12px;justify-content:center">'
+    +'<button onclick="_csFlashRate(false)" style="flex:1;max-width:180px;padding:14px;border-radius:14px;border:2px solid #fca5a5;background:#fef2f2;color:#dc2626;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.background=\'#fee2e2\'" onmouseout="this.style.background=\'#fef2f2\'">Still Learning</button>'
+    +'<button onclick="_csFlashRate(true)" style="flex:1;max-width:180px;padding:14px;border-radius:14px;border:2px solid #86efac;background:#f0fdf4;color:#16a34a;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.background=\'#dcfce7\'" onmouseout="this.style.background=\'#f0fdf4\'">I Know This!</button>'
+    +'</div></div>';
+}
+function _csFlashFlip() {
+  var st = window._csFlashState;
+  if (st.flipped) return;
+  st.flipped = true;
+  var v = st.vocab[st.idx];
+  var card = document.getElementById('cs-flash-card');
+  if (card) {
+    card.style.background = 'linear-gradient(135deg,#0f172a,#1e293b)';
+    card.style.borderColor = '#334155';
+    card.innerHTML = '<div style="font-size:28px;font-weight:900;color:#93c5fd;font-family:\'Noto Sans KR\',sans-serif;margin-bottom:6px">'+escapeHtml(v.ko||'')+'</div>'
+      +(v.rom?'<div style="font-size:13px;color:#7c3aed;font-style:italic;margin-bottom:10px">'+escapeHtml(v.rom)+'</div>':'')
+      +'<div style="width:40px;height:1px;background:#334155;margin:8px 0"></div>'
+      +'<div style="font-size:18px;font-weight:700;color:#fff;margin-top:8px">'+escapeHtml(v.en||'')+'</div>';
+  }
+  var btns = document.getElementById('cs-flash-btns');
+  if (btns) btns.style.display = 'flex';
+  playCorrectSound();
+}
+function _csFlashRate(known) {
+  var st = window._csFlashState;
+  if (known) st.known++; else st.learning++;
+  // Save to DB if user is logged in
+  if (supaUser && typeof getSupa === 'function') {
+    var v = st.vocab[st.idx];
+    try {
+      var sb = getSupa();
+      sb.rpc('save_or_update_word', {
+        p_word_key: v.ko, p_word_ko: v.ko, p_word_en: v.en||null, p_word_rom: v.rom||null,
+        p_source_kind: 'conversation', p_source_content_type: null, p_source_content_id: null,
+        p_interest_tag: null, p_review_delta: 1,
+        p_correct_delta: known ? 1 : 0, p_wrong_delta: known ? 0 : 1
+      }).catch(function(){});
+    } catch(e){}
+  }
+  st.idx++;
+  _csRenderFlash(document.getElementById('cs-activity-area'));
 }
 
 // STEP 3: Choose the Response — given context, pick the correct reply
