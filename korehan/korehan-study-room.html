@@ -2573,6 +2573,33 @@ body { background: #0b1626 !important; }
 <script src="korehan-shared.js?v=20260410b"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
+// SOUND EFFECTS (Web Audio API)
+// ═══════════════════════════════════════════════════════════════
+var _audioCtx = null;
+function _getAudioCtx() { if (!_audioCtx) try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} return _audioCtx; }
+function playCorrectSound() {
+  var ctx = _getAudioCtx(); if (!ctx) return;
+  var osc = ctx.createOscillator(), gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.type = 'sine'; gain.gain.value = 0.15;
+  osc.frequency.setValueAtTime(523, ctx.currentTime);      // C5
+  osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1); // E5
+  osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2); // G5
+  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+}
+function playWrongSound() {
+  var ctx = _getAudioCtx(); if (!ctx) return;
+  var osc = ctx.createOscillator(), gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.type = 'sine'; gain.gain.value = 0.12;
+  osc.frequency.setValueAtTime(330, ctx.currentTime);       // E4
+  osc.frequency.setValueAtTime(277, ctx.currentTime + 0.15); // C#4
+  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
+}
+
+// ═══════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════
 var _currentLevel   = 'Beginner';
@@ -10524,15 +10551,17 @@ function _asCheckMatchPair() {
       if(bl){ bl.classList.add('burst'); _asSpawnParticles(bl); }
       if(br){ br.classList.add('burst'); _asSpawnParticles(br); }
     }
+    playCorrectSound();
     m.matched.push(m.sel.l); m.sel={l:null,r:null};
     var msg=document.getElementById('as-mm');
     if(msg){
-      msg.innerHTML='<span style="color:#16a34a;font-weight:800;font-size:13px">✓ 맞았어요! '+m.matched.length+'/'+m.pairs.length+'</span>'
-        +(m.matched.length===m.pairs.length?' <span style="color:#7c3aed;font-weight:800">🎉 전부 완료!</span>':'');
+      msg.innerHTML='<span style="color:#16a34a;font-weight:800;font-size:13px">✓ Matched! '+m.matched.length+'/'+m.pairs.length+'</span>'
+        +(m.matched.length===m.pairs.length?' <span style="color:#7c3aed;font-weight:800">All done!</span>':'');
     }
     setTimeout(_asRenderMatch, 80);
     if (m.matched.length===m.pairs.length) setTimeout(function(){ _asSetNav('none',''); },500);
   } else {
+    playWrongSound();
     var g=document.getElementById('as-mg');
     if (g) {
       var wl=g.querySelector('[data-li="'+m.sel.l+'"]'), wr=g.querySelector('[data-ri="'+m.sel.r+'"]');
@@ -10708,6 +10737,7 @@ function _asCheckWO() {
   });
   if (allCorrect) {
     if(msg) msg.innerHTML='✅ Correct!';
+    playCorrectSound();
     document.querySelectorAll('.as-blank.filled').forEach(function(el){el.classList.add('correct');});
     _asSetNav('none','none','none');
     setTimeout(function(){
@@ -10716,6 +10746,7 @@ function _asCheckWO() {
       else _asSetNav('none','','');
     },800);
   } else {
+    playWrongSound();
     if(msg) msg.textContent='Not quite \u2014 incorrect blanks have been cleared.';
     // Clear only wrong blanks
     _asWOState.blankPositions.forEach(function(pos,bi){
@@ -10774,7 +10805,15 @@ function _asTmpStep5(t) {
   }
 }
 function _asTmpCompletion() { _asUpdateTmp({completed:true,completedAt:new Date().toISOString()}); }
-function _asSaveProgress() { _asUpdateTmp({step:_asStep,stepDone:_asStepDone.slice()}); }
+function _asSaveProgress() {
+  var patch = {step:_asStep, stepDone:_asStepDone.slice()};
+  // Persist fill-in-blank state so it survives refresh
+  if (_asWOState) {
+    patch.wo_idx = _asWOState.idx || 0;
+    patch.wo_filledBlanks = (_asWOState.filledBlanks || []).slice();
+  }
+  _asUpdateTmp(patch);
+}
 function _asRestoreProgress() {
   var saved = _asGetTmp();
   if (saved && saved.step && !saved.completed) { _asStep = saved.step; _asStepDone = saved.stepDone || [false,false,false,false,false]; return true; }
@@ -11418,7 +11457,7 @@ function drCheckTyped(){
   if(inp){inp.disabled=true;inp.style.borderColor=correct?'#16a34a':'#dc2626';}
   drShowFeedback(correct,q.correct); drEnableNext();
 }
-function drShowFeedback(correct,ans){var fb=document.getElementById('dr-feedback');if(!fb)return;fb.style.display='block';fb.className='dr-feedback-box '+(correct?'correct':'wrong');fb.textContent=correct?'Correct!':'Answer: '+ans;}
+function drShowFeedback(correct,ans){var fb=document.getElementById('dr-feedback');if(!fb)return;fb.style.display='block';fb.className='dr-feedback-box '+(correct?'correct':'wrong');fb.textContent=correct?'Correct!':'Answer: '+ans;if(correct)playCorrectSound();else playWrongSound();}
 function drEnableNext(){var b=document.getElementById('dr-next-btn');if(b){b.disabled=false;b.textContent=(_drIndex+1<_drQuestions.length)?'Next →':'See Results';}}
 function drNext(){_drIndex++;drShowQuestion();}
 
