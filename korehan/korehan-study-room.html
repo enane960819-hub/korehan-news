@@ -5742,6 +5742,26 @@ var _FT_SCENARIOS = [
 }
 ];
 
+// DB override: load scenarios from fast_track_scenarios table
+var _FT_HARDCODED = _FT_SCENARIOS.slice();
+async function _ftLoadFromDB() {
+  try {
+    var sb = getSupa(); if (!sb) return;
+    var res = await sb.from('fast_track_scenarios').select('id,title,sub,title_ko,difficulty,icon,category,sort_order,is_active,locked,data').eq('is_active', true).order('sort_order');
+    if (res.error) throw res.error;
+    if (res.data && res.data.length > 0) {
+      _FT_SCENARIOS = res.data.map(function(row) {
+        var d = row.data || {};
+        return {
+          id: row.id, title: row.title, sub: row.sub, titleKo: row.title_ko,
+          difficulty: row.difficulty, icon: row.icon, locked: row.locked || false,
+          nodes: d.nodes || {}, edges: d.edges || []
+        };
+      });
+    }
+  } catch(e) { console.warn('[FastTrack] DB load failed, using hardcoded'); }
+}
+
 // ── Flowchart Renderer ──
 function renderFlowchart(scenario, animateEdge) {
   var chart = document.getElementById('ft-chart');
@@ -5822,10 +5842,11 @@ function showNodeReplay(id) {
 }
 
 // ── Player Engine ──
-function openFastTrack() {
+async function openFastTrack() {
   var ov = document.getElementById('ft-overlay');
   if (!ov) return;
-  // Show scenario list
+  // Load from DB first (fallback to hardcoded)
+  await _ftLoadFromDB();
   renderScenarioList();
   document.getElementById('ft-scenario-list').style.display = 'block';
   document.getElementById('ft-chart').parentElement.style.display = 'none';
