@@ -11775,8 +11775,8 @@ async function drGenerateQuestions() {
     document.getElementById('dr-body').innerHTML =
       '<div style="text-align:center;padding:30px">'
       + '<div style="font-size:32px;margin-bottom:10px">📚</div>'
-      + '<div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:6px">리뷰할 데이터가 부족합니다</div>'
-      + '<div style="font-size:13px;color:#8b8b8b;line-height:1.6">기사를 읽고 단어를 저장하면<br>맞춤 복습 문제가 생성됩니다.</div>'
+      + '<div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:6px">Not enough review data yet</div>'
+      + '<div style="font-size:13px;color:#8b8b8b;line-height:1.6">Read articles and save words to<br>generate personalized review questions.</div>'
       + '</div>';
     return;
   }
@@ -11808,14 +11808,23 @@ async function drGenerateQuestions() {
     });
   }
 
-  // 2 word order (hardcoded — these are grammar exercises)
-  var orderSentences = [
-    {ko:['저는','학생','이에요'],en:'I am a student.'},{ko:['오늘','날씨가','좋아요'],en:'The weather is nice today.'},
-    {ko:['저는','한국어를','공부해요'],en:'I study Korean.'},{ko:['이것은','제','책이에요'],en:'This is my book.'},
-    {ko:['저는','밥을','먹었어요'],en:'I ate rice.'},{ko:['친구가','학교에','가요'],en:'My friend goes to school.'}
-  ];
-  _drShuffle(orderSentences).slice(0, 2).forEach(function(s) {
-    questions.push({ type:'order', words: _drShuffle(s.ko), correct: s.ko, en: s.en });
+  // 2 word order (from helpers/vocab sentences, not hardcoded)
+  var orderSources = ((_aiContent && _aiContent.helpers) || []).filter(function(h) {
+    return h.ko && h.ko.trim().split(/\s+/).length >= 3 && h.ko.trim().split(/\s+/).length <= 6;
+  });
+  if (orderSources.length < 2) {
+    // Fallback: basic sentences
+    orderSources = [
+      {ko:'저는 학생 이에요', en:'I am a student.'}, {ko:'오늘 날씨가 좋아요', en:'The weather is nice today.'},
+      {ko:'저는 한국어를 공부해요', en:'I study Korean.'}, {ko:'친구가 학교에 가요', en:'My friend goes to school.'}
+    ];
+  }
+  _drShuffle(orderSources).slice(0, 2).forEach(function(s) {
+    var ko = (s.ko||'').replace(/[.!?]/g,'').trim();
+    var words = ko.split(/\s+/);
+    if (words.length >= 3) {
+      questions.push({ type:'order', words: _drShuffle(words.slice()), correct: words, en: s.en||'' });
+    }
   });
 
   // 1 typed (from saved words)
@@ -12079,7 +12088,7 @@ function rvHandleClose() {
 
 function openWeeklyReview() {
   if (!supaUser) { openAuthModal('signin'); return; }
-  if (!isWeeklyReviewAvailable()) { showToast('Weekly Review는 매주 일요일에 열립니다!'); return; }
+  if (!isWeeklyReviewAvailable()) { showToast('Weekly Review opens every Sunday!'); return; }
   _rv.type = 'weekly'; _rv.timeLimit = 15;
   // Check for saved progress
   var saved = rvLoadSaved('weekly');
@@ -12089,7 +12098,7 @@ function openWeeklyReview() {
     _rv.scores = saved.scores;
     _rv.timeLimit = saved.timeLimit;
     rvClearSaved('weekly');
-    document.getElementById('rv-title').textContent = 'Weekly Review (이어서)';
+    document.getElementById('rv-title').textContent = 'Weekly Review (Continuing)';
     document.getElementById('rv-subtitle').textContent = (_rv.questions.length - _rv.current) + ' questions remaining · ' + _rv.timeLimit + 's per question';
     document.getElementById('review-modal-overlay').style.display = 'flex';
     document.getElementById('rv-timer').style.display = '';
@@ -12133,38 +12142,40 @@ function startReview(title, count) {
 }
 
 function generateReviewQuestions(count) {
-  // Pull from today's vocab cache + recently saved words
+  // Pull from DB-loaded word book data (already in _wbData from loadWordBook)
   var questions = [];
-  var vocabData = [];
-  try {
-    var keys = Object.keys(localStorage);
-    keys.forEach(function(k) {
-      if (k.indexOf('kh_vocab_') === 0 || k.indexOf('kh_bm_') === 0) {
-        try { var d = JSON.parse(localStorage.getItem(k)); if (d && d.vocab) vocabData = vocabData.concat(d.vocab); } catch(e) {}
-      }
-    });
-  } catch(e) {}
+  var vocabData = (_wbData || []).filter(function(w){ return w.ko && w.en; });
+
   // Also try AI content
   if (typeof _aiContent !== 'undefined' && _aiContent && _aiContent.vocab) {
-    vocabData = vocabData.concat(_aiContent.vocab);
+    _aiContent.vocab.forEach(function(v) {
+      if (v.ko && v.en && !vocabData.find(function(w){ return w.ko === v.ko; })) {
+        vocabData.push({ ko: v.ko, en: v.en, rom: v.rom || '', accuracy: -1 });
+      }
+    });
   }
-  // Deduplicate
-  var seen = new Set();
-  vocabData = vocabData.filter(function(v) {
-    if (!v || !v.ko || seen.has(v.ko)) return false;
-    seen.add(v.ko); return true;
+
+  // Prioritize: low accuracy first, then never-reviewed, then rest
+  vocabData.sort(function(a, b) {
+    var aScore = a.accuracy >= 0 ? a.accuracy : 50;
+    var bScore = b.accuracy >= 0 ? b.accuracy : 50;
+    return aScore - bScore; // worst accuracy first
   });
+
   // Generate MCQ questions
   for (var i = 0; i < Math.min(count, vocabData.length); i++) {
     var correct = vocabData[i];
     var wrongs = vocabData.filter(function(v) { return v.ko !== correct.ko; }).sort(function() { return Math.random() - .5; }).slice(0, 3);
-    var choices = [correct.en || correct.rom || ''].concat(wrongs.map(function(w) { return w.en || w.rom || ''; }));
+    if (wrongs.length < 3) continue;
+    var correctEn = correct.en || '';
+    var choices = [correctEn].concat(wrongs.map(function(w) { return w.en || ''; }));
     choices.sort(function() { return Math.random() - .5; });
-    questions.push({ type:'mcq', prompt: correct.ko, answer: correct.en || correct.rom || '', choices: choices });
+    questions.push({ type:'mcq', prompt: correct.ko, answer: correctEn, choices: choices });
   }
-  // Pad with fallback if not enough
-  while (questions.length < count) {
-    questions.push({ type:'mcq', prompt:'한국어', answer:'Korean language', choices:['Korean language','Korean food','Korean music','Korean drama'].sort(function(){return Math.random()-.5;}) });
+
+  if (questions.length < 4) {
+    // Not enough data — show message
+    return questions;
   }
   return questions.sort(function() { return Math.random() - .5; });
 }
