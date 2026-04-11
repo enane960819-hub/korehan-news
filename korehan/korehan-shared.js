@@ -163,15 +163,17 @@ var KH_LEVEL_GUIDE = {
     topik: 'Pre-TOPIK / TOPIK 0',
     label: 'Seed (Absolute Beginner)',
     rules: [
-      'Vocabulary: ONLY the 100 most basic Korean words (family: 엄마/아빠/형/누나, food: 밥/물/고기, body: 손/발/눈, numbers 1-10, colors)',
+      'Vocabulary: ONLY the 100 most basic Korean words (family: 엄마/아빠/형/누나, food: 밥/물/고기/과일, body: 손/발/눈, numbers 1-10, colors, animals: 고양이/강아지)',
       'Syllables: 1-2 syllable words ONLY. No 3+ syllable words.',
       'Grammar: ONLY 이에요/예요, 있어요/없어요, and 하다 verbs in dictionary form',
       'Particles: ONLY 은/는 (topic). NO 이/가, 을/를, 에, 에서 yet.',
-      'Sentence length: MAX 3-4 words per sentence',
+      'Sentence length: MAX 3-4 words per sentence. Total article: 5-8 sentences (very short).',
       'Tense: Present tense ONLY. No past/future.',
       'Script: Full Hangul. No abbreviations. Space between every word.',
-      'Topics: Self-introduction, family, food, colors, numbers, greetings',
-      'Example: 저는 학생이에요. 엄마는 선생님이에요.'
+      'ALLOWED TOPICS ONLY: Self-introduction, my family, my pet, favorite food, favorite color, weather today (sunny/rainy only), school, my room, fruits, animals, body parts, simple daily routine (wake up, eat, sleep)',
+      'FORBIDDEN TOPICS: Politics, economics, technology, science, society, culture analysis, history, business, health issues, crime, international affairs, abstract concepts — these are TOO COMPLEX for this level',
+      'Article style: NOT real news. Write as a simple diary entry, self-introduction, or picture description. Like a children\\'s reading passage.',
+      'Example: 저는 민수예요. 저는 학생이에요. 우리 가족은 네 명이에요. 엄마, 아빠, 형, 저.'
     ].join('\n')
   },
   Beginner: {
@@ -182,10 +184,12 @@ var KH_LEVEL_GUIDE = {
       'Grammar: Present tense 아요/어요, past tense 았/었어요, 고 싶어요 (want), basic negation 안/못',
       'Particles: 은/는, 이/가, 을/를, 에, 에서, 도, 와/과',
       'Connectors: 그리고 (and), 그래서 (so), 하지만 (but) — as separate sentences, NOT within sentences',
-      'Sentence length: 5-8 words per sentence',
+      'Sentence length: 5-8 words per sentence. Total article: 8-15 sentences (short and focused).',
       'Honorifics: 해요체 (informal polite) ONLY. No 합니다체.',
       'No Hanja-based vocabulary. Use pure Korean words when possible.',
-      'Topics: Daily routine, weather, hobbies, shopping, directions, time',
+      'ALLOWED TOPICS: Daily routine, weather, hobbies, shopping, simple travel, directions, time, food/cooking, school life, friends, weekends, K-pop (simple), sports (simple), holidays',
+      'AVOID TOPICS: Politics, economics, complex social issues, technology analysis, philosophy, business strategy',
+      'Article style: Simple personal story or easy news (celebrity, weather, food festival, new cafe). Like a blog post.',
       'Example: 어제 친구를 만났어요. 같이 영화를 봤어요. 재미있었어요.'
     ].join('\n')
   },
@@ -196,11 +200,14 @@ var KH_LEVEL_GUIDE = {
       'Vocabulary: Topic-specific terms allowed (2-4 syllable words). ~2000 word range. Some Sino-Korean OK.',
       'Grammar: Connectors within sentences (고, 지만, 서, 때문에, 니까), modals (ㄹ 수 있다, 아/어 보다, 고 싶다), quoted speech (다고, 라고)',
       'Tense: Present, past, future (ㄹ 거예요, 겠). Progressive (고 있다).',
-      'Sentence length: 8-15 words per sentence. Compound sentences allowed.',
+      'Sentence length: 8-15 words per sentence. Total article: 12-20 sentences MAX. Keep it digestible — not too long.',
       'Honorifics: 해요체 primarily. Some 합니다체 in formal contexts.',
       'Relative clauses: Simple ones (는/은/을 + noun). Example: 제가 좋아하는 음식',
       'Passive/Causative: Basic forms only (되다, 시키다)',
-      'Topics: Travel, culture, opinions, comparisons, plans, experiences',
+      'ALLOWED TOPICS: Travel, Korean culture, lifestyle, entertainment, food culture, fashion, K-drama/K-pop, health/fitness, environment (simple), technology (consumer level), education, relationships, career basics',
+      'CAN HANDLE: Opinions, comparisons, personal experiences, cause-effect, simple debate',
+      'STILL AVOID: Dense politics, complex economics, academic research, legal issues',
+      'Article style: Real news but simplified. Feature articles, lifestyle, entertainment news.',
       'Example: 한국에 처음 갔을 때 음식이 너무 매워서 힘들었지만, 지금은 매운 음식을 정말 좋아해요.'
     ].join('\n')
   },
@@ -211,12 +218,13 @@ var KH_LEVEL_GUIDE = {
       'Vocabulary: Abstract nouns, academic terms, idiomatic expressions. ~5000+ word range. Sino-Korean freely used.',
       'Grammar: Complex connectors (에도 불구하고, ㄹ수록, 는 반면에, 는 셈이다, 기 마련이다), nominalizations (는 것, 기, 음/ㅁ)',
       'Sentence structure: Multi-clause sentences (3+ clauses). Embedding, subordination.',
-      'Sentence length: 12-25+ words. Complex structures expected.',
+      'Sentence length: 12-25 words. Total article: 15-25 sentences MAX. Complex but not overwhelming — quality over quantity.',
       'Honorifics: Mix of 해요체 and 합니다체. Written/formal style (다/ㄴ다) for articles.',
       'Register: Ability to shift between formal/informal. Indirect speech, reported speech.',
       'Hanja: Sino-Korean vocabulary expected. Technical/academic terms OK.',
       'Cultural: Proverbs, idiomatic expressions (사자성어), nuanced politeness levels',
-      'Topics: Society, politics, economics, philosophy, abstract concepts, debate',
+      'ALL TOPICS ALLOWED: Society, politics, economics, technology, science, philosophy, international affairs, history, law, business, academic research, social issues, debate',
+      'Article style: Real news articles, editorials, analysis pieces. Full journalistic Korean.',
       'Example: 최근 들어 AI 기술의 급속한 발전이 노동 시장에 미치는 영향에 대한 논의가 활발해지고 있는데, 이에 대한 사회적 합의가 필요한 시점이라고 할 수 있다.'
     ].join('\n')
   }
