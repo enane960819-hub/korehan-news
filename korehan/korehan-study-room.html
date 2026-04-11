@@ -11129,6 +11129,15 @@ function _asShuffle(a) {
 }
 function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 
+// Stub declarations — actual implementations in later <script> blocks
+// These ensure the buttons work even if the later block hasn't loaded yet
+if (typeof openConvStudy === 'undefined') {
+  window.openConvStudy = function() { showToast('Loading Conversation Study...'); };
+}
+if (typeof openStoryStudy === 'undefined') {
+  window.openStoryStudy = function() { window.location.assign('korehan-stories.html'); };
+}
+
 </script>
 <!-- ══════════════════════════════════════════════════════
      BEGINNER 4-STEP MODAL
@@ -11338,7 +11347,7 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 // ═══════════════════════════════════════════════════════════════
 var _csConvs = [], _csCurrentConv = null, _csStep = 1, _csStepLabels = ['Dialogue','Vocabulary','Role Play','Expressions'];
 
-function openConvStudy() {
+window.openConvStudy = function() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
   var modal = document.getElementById('cs-modal');
