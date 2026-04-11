@@ -4551,45 +4551,95 @@ function lsStart(type) {
 }
 
 // ── Key Expressions Modal ──
+var _keCache = null;
 function openKeyExpressionsModal() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
-  // markStageDone('expressions') moved to "학습 완료" button
   var modal = document.getElementById('ke-modal');
   modal.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   var topicLabel = document.getElementById('ke-topic-label');
-  if (_todayTopic) topicLabel.textContent = _todayTopic.ko || _todayTopic.en || 'Key expressions for today\'s topic';
-  // Generate expressions via Claude
+  if (_todayTopic) topicLabel.textContent = (_todayTopic.topic_ko || _todayTopic.topic_en || 'Key expressions for today\'s topic');
   var list = document.getElementById('ke-expressions-list');
-  list.innerHTML = '<div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">AI가 핵심 표현을 생성 중...</div>';
-  var topicText = (_todayTopic && (_todayTopic.ko || _todayTopic.en)) || 'daily life';
+
+  // 1) Use cached expressions if available
+  if (_keCache) { _renderKeyExpressions(list, _keCache); return; }
+
+  // 2) Try from _aiContent.helpers (already loaded with daily content)
+  var helpers = (_aiContent && _aiContent.helpers) || [];
+  if (helpers.length >= 3) {
+    var mapped = helpers.slice(0, 6).map(function(h) {
+      return { ko: h.ko||'', rom: h.rom||'', en: h.en||'', example_ko: h.ex_ko||h.ko||'', example_en: h.ex_en||h.en||'' };
+    });
+    _keCache = mapped;
+    _renderKeyExpressions(list, mapped);
+    return;
+  }
+
+  // 3) Fallback: generate via API (with sessionStorage cache)
+  var cacheKey = 'ke_' + (_todayTopic && _todayTopic.id || 'default');
+  try {
+    var cached = sessionStorage.getItem(cacheKey);
+    if (cached) { var parsed = JSON.parse(cached); _keCache = parsed; _renderKeyExpressions(list, parsed); return; }
+  } catch(e) {}
+
+  list.innerHTML = '<div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Generating key expressions...</div>';
+  var topicText = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || 'daily life';
   var level = _currentLevel || 'Beginner';
   callClaude({
     feature: 'key-expressions',
-    model: 'claude-3-sonnet-20240229',
-    max_tokens: 1200,
-    messages: [{ role: 'user', content: 'You are a Korean language teacher. Generate 5 key Korean expressions/phrases related to the topic "' + topicText + '" for a ' + level + ' level learner. For each expression provide: the Korean phrase, romanization, English meaning, and one example sentence using it. Return as JSON array: [{"ko":"...","rom":"...","en":"...","example_ko":"...","example_en":"..."}]. Return ONLY the JSON array, no markdown.' }]
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1000,
+    messages: [{ role: 'user', content: 'Generate 5 key Korean expressions for topic "' + topicText + '" (' + level + ' level). Return JSON array: [{"ko":"Korean phrase","rom":"romanization","en":"English meaning","example_ko":"example sentence","example_en":"English translation"}]. JSON only.' }]
   }).then(function(res) {
     try {
       var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
       text = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
       var expressions = JSON.parse(text);
-      list.innerHTML = expressions.map(function(exp) {
-        return '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px">'
-          + '<div style="font-size:16px;font-weight:800;margin-bottom:3px">' + (exp.ko||'') + '</div>'
-          + '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:6px">' + (exp.rom||'') + '</div>'
-          + '<div style="font-size:13px;color:#7dd3fc;margin-bottom:8px">' + (exp.en||'') + '</div>'
-          + '<div style="font-size:12px;color:rgba(255,255,255,.55);border-top:1px solid rgba(255,255,255,.08);padding-top:8px">'
-          + '<span style="font-weight:700">예문:</span> ' + (exp.example_ko||'') + '<br><span style="color:rgba(255,255,255,.35)">' + (exp.example_en||'') + '</span></div>'
-          + '</div>';
-      }).join('');
+      _keCache = expressions;
+      try { sessionStorage.setItem(cacheKey, JSON.stringify(expressions)); } catch(e) {}
+      _renderKeyExpressions(list, expressions);
     } catch(e) {
-      list.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px 0">표현 생성에 실패했습니다. 다시 시도해주세요.</div>';
+      list.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px 0">Failed to generate. Please try again.</div>';
     }
   }).catch(function() {
-    list.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px 0">네트워크 오류. 다시 시도해주세요.</div>';
+    list.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px 0">Network error. Please try again.</div>';
   });
+}
+
+function _renderKeyExpressions(list, expressions) {
+  list.innerHTML = expressions.map(function(exp) {
+    var _sk = (exp.ko||'').replace(/"/g,'&quot;'), _sr = (exp.rom||'').replace(/"/g,'&quot;'), _se = (exp.en||'').replace(/"/g,'&quot;');
+    return '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;position:relative">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+      + '<div style="flex:1">'
+      + '<div style="font-size:16px;font-weight:800;margin-bottom:3px">' + (exp.ko||'') + '</div>'
+      + '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:6px">' + (exp.rom||'') + '</div>'
+      + '<div style="font-size:13px;color:#7dd3fc;margin-bottom:8px">' + (exp.en||'') + '</div>'
+      + '</div>'
+      + '<button class="dp-vi-save" data-ko="'+_sk+'" data-rom="'+_sr+'" data-en="'+_se+'" data-type="expression" onclick="saveKeyExpr(this)" style="font-size:11px;font-weight:700;color:#fbbf24;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.2);border-radius:8px;padding:5px 12px;cursor:pointer;font-family:inherit;flex-shrink:0">+ Save</button>'
+      + '</div>'
+      + '<div style="font-size:12px;color:rgba(255,255,255,.55);border-top:1px solid rgba(255,255,255,.08);padding-top:8px">'
+      + '<span style="font-weight:700">Ex:</span> ' + (exp.example_ko||'') + '<br><span style="color:rgba(255,255,255,.35)">' + (exp.example_en||'') + '</span></div>'
+      + '</div>';
+  }).join('');
+}
+
+async function saveKeyExpr(btn) {
+  var ko = btn.dataset.ko, rom = btn.dataset.rom, en = btn.dataset.en;
+  if (!ko) return;
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (btn.classList.contains('saved')) {
+    if (typeof dbRemoveWord === 'function') await dbRemoveWord(ko);
+    btn.classList.remove('saved');
+    btn.textContent = '+ Save';
+    btn.style.background = 'rgba(251,191,36,.12)';
+    return;
+  }
+  if (typeof dbSaveWord === 'function') await dbSaveWord(ko, rom, en, 'expression');
+  btn.classList.add('saved');
+  btn.textContent = '✓ Saved';
+  btn.style.background = 'rgba(251,191,36,.3)';
 }
 function closeKeyExpressionsModal() {
   var modal = document.getElementById('ke-modal');
@@ -6519,6 +6569,15 @@ function refreshSubmitBanner() {
 
 async function submitAllWritingsToday() {
   if (!supaUser) { openAuthModal('signin'); return; }
+  // Check if already submitted today
+  var submitKey = 'kh_submitted_' + kstDateKey() + '_' + supaUser.id;
+  if (localStorage.getItem(submitKey)) {
+    showToast('Already submitted today. You can submit once per day (resets at midnight KST).');
+    return;
+  }
+  // Confirm before submitting
+  if (!confirm('Submit all writing for AI feedback?\n\nYou can only submit ONCE per day (resets at midnight KST). Make sure all your writing is complete before submitting.')) return;
+
   var sb = getSupa(); if (!sb) return;
   var all = getAllDrafts();
   var types = Object.keys(all);
@@ -6564,6 +6623,8 @@ async function submitAllWritingsToday() {
   }
 
   if (submitted > 0) {
+    // Mark as submitted today (once per day)
+    localStorage.setItem(submitKey, 'true');
     // Clear drafts
     localStorage.removeItem(_writingDraftKey());
     refreshSubmitBanner();
