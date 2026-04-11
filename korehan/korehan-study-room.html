@@ -11366,7 +11366,7 @@ if (typeof openStoryStudy === 'undefined') {
 // ═══════════════════════════════════════════════════════════════
 // CONVERSATION STUDY — 4-step learning flow
 // ═══════════════════════════════════════════════════════════════
-var _csConvs = [], _csCurrentConv = null, _csStep = 1, _csStepLabels = ['Dialogue','Vocabulary','Role Play','Expressions'];
+var _csConvs = [], _csCurrentConv = null, _csStep = 1, _csStepLabels = ['Dialogue','Vocabulary','Choose Response','Build Sentence'];
 
 window.openConvStudy = function() {
   if (!supaUser) { openAuthModal('signin'); return; }
@@ -11508,111 +11508,178 @@ function _csSelectMatch(side,idx) {
   _csRenderMatch(document.getElementById('cs-activity-area'));
 }
 
-// STEP 3: Role Play — fill in one speaker's lines
+// STEP 3: Choose the Response — given context, pick the correct reply
 function _csStep3() {
   var c = _csCurrentConv, area = document.getElementById('cs-chat-area'), act = document.getElementById('cs-activity-area');
   area.style.display = 'none';
   var msgs = (c.msgs||[]).filter(function(m){return m.s!=='n';});
-  var hasRight = msgs.some(function(m){return m.s!=='l';});
-  if (msgs.length < 2 || !hasRight) { act.innerHTML = '<div class="as-loading" style="animation:srFadeIn .25s">Not enough dialogue for role play. <button onclick="csNextStep()" style="margin-top:10px;padding:10px 20px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-weight:700;cursor:pointer;font-family:inherit">Skip →</button></div>'; return; }
-  // Find first right speaker message
-  var firstRight = 0;
-  for (var fi=0; fi<msgs.length; fi++) { if (msgs[fi].s !== 'l') { firstRight = fi; break; } }
-  window._csRoleState = {msgs:msgs, current:firstRight, score:0};
-  _csRenderRole(act);
-}
-function _csRenderRole(act) {
-  var st = window._csRoleState, msgs = st.msgs;
-  var html = '<div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:12px">Role Play — Complete the conversation</div>';
-  html += msgs.map(function(m,i) {
-    var isLeft = m.s==='l';
-    var who = m.who||m.name||(isLeft?'A':'B');
-    if (!isLeft && i >= st.current) {
-      // Right speaker = user's turn
-      if (i === st.current) {
-        return '<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><div style="max-width:75%">'
-          +'<div style="font-size:10px;font-weight:700;color:#7c3aed;margin-bottom:3px;text-align:right">Your turn ('+who+')</div>'
-          +'<input id="cs-role-input" type="text" placeholder="Type in Korean..." style="padding:10px 14px;border-radius:16px;border:2px solid #7c3aed;background:rgba(124,58,237,.05);font-size:14px;font-family:\'Noto Sans KR\',sans-serif;width:100%;box-sizing:border-box;outline:none;color:#0f172a" onkeydown="if(event.key===\'Enter\')_csCheckRole()">'
-          +'<button onclick="_csCheckRole()" style="margin-top:6px;padding:6px 16px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Check</button>'
-          +'</div></div>';
-      }
-      return '<div style="display:flex;justify-content:flex-end;margin-bottom:10px;opacity:.3"><div style="max-width:75%;padding:10px 14px;border-radius:16px;background:#e2e8f0;color:#94a3b8;font-size:14px">...</div></div>';
+  if (msgs.length < 4) { csNextStep(); return; }
+
+  // Build questions: for each right-speaker msg, show the preceding left-speaker msg as context
+  var questions = [];
+  for (var qi=1; qi<msgs.length; qi++) {
+    if (msgs[qi].s !== 'l') {
+      var context = msgs[qi-1] ? msgs[qi-1].txt : '';
+      var correct = msgs[qi].txt;
+      // Wrong answers: other right-speaker lines
+      var wrongs = msgs.filter(function(m,mi){ return m.s !== 'l' && mi !== qi && m.txt !== correct; })
+        .map(function(m){ return m.txt; }).sort(function(){return Math.random()-.5;}).slice(0,3);
+      if (wrongs.length >= 2) questions.push({ context: context, contextWho: msgs[qi-1]?msgs[qi-1].who||'A':'A', correct: correct, wrongs: wrongs.slice(0,3) });
     }
-    return '<div style="display:flex;margin-bottom:10px;'+(isLeft?'':'justify-content:flex-end')+'">'
-      +'<div style="max-width:75%"><div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:3px;'+(isLeft?'':'text-align:right')+'">'+escapeHtml(who)+'</div>'
-      +'<div style="padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.6;font-family:\'Noto Sans KR\',sans-serif;'
-      +(isLeft?'background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-bottom-left-radius:4px':'background:#2563eb;color:#fff;border-bottom-right-radius:4px')+'">'+escapeHtml(m.txt||'')+'</div>'
-      +'</div></div>';
-  }).join('');
-  act.innerHTML = html;
-  var inp = document.getElementById('cs-role-input');
-  if (inp) inp.focus();
+  }
+  if (!questions.length) { csNextStep(); return; }
+  window._csQState = { questions: questions.slice(0,4), idx: 0, score: 0 };
+  _csRenderQ(act);
 }
-function _csCheckRole() {
-  var st = window._csRoleState, m = st.msgs[st.current];
-  var inp = document.getElementById('cs-role-input');
-  if (!inp) return;
-  var answer = inp.value.trim();
-  var correct = (m.txt||'').trim();
-  // Lenient check: remove punctuation
-  var aNorm = answer.replace(/[.!?,~]/g,'').trim();
-  var cNorm = correct.replace(/[.!?,~]/g,'').trim();
-  if (aNorm === cNorm) {
+function _csRenderQ(act) {
+  var st = window._csQState;
+  if (st.idx >= st.questions.length) {
+    // Show next button
+    var nb = document.getElementById('cs-next-btn');
+    if (nb) { nb.style.display = ''; nb.textContent = 'Next Step →'; nb.style.cssText = 'display:block;padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(37,99,235,.3)'; }
+    act.innerHTML = '<div style="text-align:center;padding:24px;animation:srFadeIn .25s">'
+      +'<div style="font-size:32px;margin-bottom:8px">' + (st.score >= st.questions.length * 0.7 ? '🎉' : '💪') + '</div>'
+      +'<div style="font-size:18px;font-weight:800;color:var(--dark)">' + st.score + ' / ' + st.questions.length + ' correct</div>'
+      +'<div style="font-size:13px;color:var(--gray);margin-top:6px">' + (st.score >= st.questions.length * 0.7 ? 'Great conversation skills!' : 'Keep practicing!') + '</div></div>';
+    return;
+  }
+  var q = st.questions[st.idx];
+  var choices = q.wrongs.slice(0,3).concat([q.correct]).sort(function(){return Math.random()-.5;});
+  act.innerHTML = '<div style="animation:srFadeIn .25s;padding:4px 0">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'
+    +'<span style="font-size:11px;font-weight:800;color:var(--accent);background:rgba(37,99,235,.1);padding:4px 10px;border-radius:8px">' + (st.idx+1) + ' / ' + st.questions.length + '</span>'
+    +'<span style="font-size:13px;font-weight:700;color:var(--dark)">Choose the best response</span></div>'
+    // Context bubble
+    +'<div style="margin-bottom:16px;padding:14px 18px;background:#f0f4ff;border:1.5px solid #dbeafe;border-radius:16px;border-bottom-left-radius:4px">'
+    +'<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:6px">' + escapeHtml(q.contextWho) + ' says:</div>'
+    +'<div style="font-size:16px;font-weight:700;color:#0f172a;font-family:\'Noto Sans KR\',sans-serif;line-height:1.6">' + escapeHtml(q.context) + '</div></div>'
+    // Choices
+    +'<div style="display:flex;flex-direction:column;gap:10px">'
+    + choices.map(function(ch) {
+      return '<button onclick="_csPickResponse(this,\'' + ch.replace(/'/g,"\\'").replace(/"/g,'&quot;') + '\')" style="padding:14px 18px;border-radius:14px;border:2px solid #e2e8f0;background:#fff;color:#0f172a;font-size:15px;font-weight:600;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif;text-align:left;transition:all .15s;line-height:1.5" onmouseover="this.style.borderColor=\'#93c5fd\';this.style.background=\'#f0f7ff\'" onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.background=\'#fff\'">' + escapeHtml(ch) + '</button>';
+    }).join('')
+    +'</div></div>';
+}
+function _csPickResponse(btn, picked) {
+  var st = window._csQState, q = st.questions[st.idx];
+  var btns = btn.parentElement.querySelectorAll('button');
+  btns.forEach(function(b){ b.disabled=true; b.style.pointerEvents='none'; b.style.opacity='.6';
+    if (b.textContent.trim() === q.correct.trim()) { b.style.borderColor='#22c55e'; b.style.background='#f0fdf4'; b.style.color='#166534'; b.style.opacity='1'; }
+  });
+  if (picked.trim() === q.correct.trim()) {
     playCorrectSound(); st.score++;
-    st.current++;
-    // Skip left speaker messages
-    while (st.current < st.msgs.length && st.msgs[st.current].s === 'l') st.current++;
-    if (st.current >= st.msgs.length) {
-      var nb = document.getElementById('cs-next-btn');
-      if (nb) { nb.style.display = ''; nb.textContent = 'Next Step →'; nb.style.cssText = 'display:block;padding:12px 28px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit'; }
-    }
+    btn.style.borderColor='#22c55e'; btn.style.background='#f0fdf4'; btn.style.opacity='1';
   } else {
     playWrongSound();
-    inp.style.borderColor = '#ef4444';
-    inp.insertAdjacentHTML('afterend','<div style="font-size:11px;color:#f87171;margin-top:4px">Answer: '+escapeHtml(correct)+'</div>');
-    st.current++;
-    while (st.current < st.msgs.length && st.msgs[st.current].s === 'l') st.current++;
+    btn.style.borderColor='#ef4444'; btn.style.background='#fef2f2'; btn.style.color='#991b1b'; btn.style.opacity='1';
   }
-  setTimeout(function(){ _csRenderRole(document.getElementById('cs-activity-area')); },800);
+  setTimeout(function(){ st.idx++; _csRenderQ(document.getElementById('cs-activity-area')); }, 1200);
 }
 
-// STEP 4: Key Expressions Quiz
+// STEP 4: Sentence Builder — arrange words from dialogue sentences
 function _csStep4() {
   var c = _csCurrentConv, area = document.getElementById('cs-chat-area'), act = document.getElementById('cs-activity-area');
   area.style.display = 'none';
-  var exprs = (c.key_expressions||[]).concat((c.vocab||[]).slice(0,3));
-  if (!exprs.length) { act.innerHTML = '<div style="text-align:center;padding:30px"><div style="font-size:28px;margin-bottom:8px">✅</div><div style="font-size:16px;font-weight:800;color:var(--dark)">Conversation Study Complete!</div><div style="font-size:13px;color:var(--gray);margin-top:6px">Great job practicing this dialogue.</div><button onclick="returnToActivities(closeConvStudy)" style="margin-top:16px;padding:12px 28px;border-radius:12px;border:none;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">📚 Next Activity</button></div>'; return; }
-  window._csExprIdx = 0; window._csExprs = exprs;
-  _csRenderExprQ(act);
-}
-function _csRenderExprQ(act) {
-  var exprs = window._csExprs, idx = window._csExprIdx;
-  if (idx >= Math.min(exprs.length, 5)) {
-    act.innerHTML = '<div style="text-align:center;padding:30px;animation:srFadeIn .25s ease-out"><div style="font-size:28px;margin-bottom:8px">✅</div><div style="font-size:16px;font-weight:800;color:var(--dark)">Conversation Study Complete!</div><div style="font-size:13px;color:var(--gray);margin-top:6px">Great job!</div><button onclick="returnToActivities(closeConvStudy)" style="margin-top:16px;padding:12px 28px;border-radius:12px;border:none;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">📚 Next Activity</button></div>';
+  var msgs = (c.msgs||[]).filter(function(m){ return m.s!=='n' && m.txt && m.txt.trim().split(/\s+/).length >= 3 && m.txt.trim().split(/\s+/).length <= 8; });
+  if (msgs.length < 2) {
+    // Fallback: completion screen
+    act.innerHTML = '<div style="text-align:center;padding:30px;animation:srFadeIn .25s"><div style="font-size:32px;margin-bottom:8px">✅</div><div style="font-size:18px;font-weight:800;color:var(--dark)">Conversation Study Complete!</div><div style="font-size:13px;color:var(--gray);margin-top:6px">Great job!</div><button onclick="returnToActivities(closeConvStudy)" style="margin-top:16px;padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(5,150,105,.3)">Next Activity</button></div>';
     return;
   }
-  var e = exprs[idx];
-  var allEn = exprs.map(function(x){return x.en;}).filter(function(x){return x!==e.en;});
-  var wrongs = allEn.sort(function(){return Math.random()-.5;}).slice(0,3);
-  if (wrongs.length < 3) wrongs.push('I don\'t know','Maybe later','Let\'s go');
-  var choices = wrongs.slice(0,3).concat([e.en]).sort(function(){return Math.random()-.5;});
-  act.innerHTML = '<div style="padding:20px;animation:srFadeIn .25s ease-out">'
-    +'<div style="font-size:11px;color:var(--accent);font-weight:700;margin-bottom:8px">'+(idx+1)+' / '+Math.min(exprs.length,5)+'</div>'
-    +'<div style="font-size:24px;font-weight:900;color:var(--dark);margin-bottom:4px;font-family:\'Noto Sans KR\',sans-serif">'+escapeHtml(e.ko||'')+'</div>'
-    +(e.rom?'<div style="font-size:12px;color:var(--gray);margin-bottom:16px;font-style:italic">'+escapeHtml(e.rom)+'</div>':'<div style="margin-bottom:16px"></div>')
-    +'<div style="display:flex;flex-direction:column;gap:8px">'
-    +choices.map(function(ch){
-      return '<button onclick="_csCheckExpr(this,\''+ch.replace(/'/g,"\\'")+'\',\''+e.en.replace(/'/g,"\\'")+'\',\''+e.ko.replace(/'/g,"\\'")+'\',\''+((e.rom||'').replace(/'/g,"\\'"))+'\')" style="padding:13px 16px;border-radius:12px;border:1.5px solid var(--border);background:#fff;color:var(--dark);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s">'+escapeHtml(ch)+'</button>';
-    }).join('')+'</div></div>';
+  var selected = msgs.sort(function(){return Math.random()-.5;}).slice(0,3);
+  window._csBuildState = { sentences: selected, idx: 0, score: 0, placed: [] };
+  _csRenderBuild(act);
 }
-function _csCheckExpr(btn, picked, correct, ko, rom) {
-  var btns = btn.parentElement.querySelectorAll('button');
-  btns.forEach(function(b){b.style.pointerEvents='none';if(b.textContent===correct){b.style.background='#dcfce7';b.style.borderColor='#22c55e';b.style.color='#166534';}});
-  if (picked===correct) { playCorrectSound(); btn.style.background='#dcfce7';btn.style.borderColor='#22c55e'; }
-  else { playWrongSound(); btn.style.background='#fee2e2';btn.style.borderColor='#ef4444';btn.style.color='#991b1b'; }
-  // Save button
-  btn.parentElement.insertAdjacentHTML('afterend','<div style="text-align:center;margin-top:12px"><button onclick="saveKeyExpr(this)" data-ko="'+ko.replace(/"/g,'&quot;')+'" data-rom="'+rom.replace(/"/g,'&quot;')+'" data-en="'+correct.replace(/"/g,'&quot;')+'" data-type="expression" style="font-size:11px;font-weight:700;color:#fbbf24;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.2);border-radius:8px;padding:5px 12px;cursor:pointer;font-family:inherit">+ Save to Word Book</button></div>');
-  setTimeout(function(){ window._csExprIdx++; _csRenderExprQ(document.getElementById('cs-activity-area')); },1500);
+function _csRenderBuild(act) {
+  var st = window._csBuildState;
+  if (st.idx >= st.sentences.length) {
+    act.innerHTML = '<div style="text-align:center;padding:30px;animation:srFadeIn .25s"><div style="font-size:32px;margin-bottom:8px">' + (st.score >= 2 ? '🎉' : '💪') + '</div>'
+      +'<div style="font-size:18px;font-weight:800;color:var(--dark)">' + st.score + ' / ' + st.sentences.length + ' correct</div>'
+      +'<div style="font-size:13px;color:var(--gray);margin-top:6px">Conversation Study Complete!</div>'
+      +'<button onclick="returnToActivities(closeConvStudy)" style="margin-top:16px;padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(5,150,105,.3)">Next Activity</button></div>';
+    return;
+  }
+  var m = st.sentences[st.idx];
+  var originalWords = m.txt.replace(/[.!?,~]/g,'').trim().split(/\s+/);
+  var shuffled = originalWords.slice().sort(function(){return Math.random()-.5;});
+  // Ensure shuffled != original
+  if (shuffled.join(' ') === originalWords.join(' ') && shuffled.length > 1) {
+    var t = shuffled[0]; shuffled[0] = shuffled[shuffled.length-1]; shuffled[shuffled.length-1] = t;
+  }
+  st.placed = [];
+  st._correct = originalWords;
+  st._pool = shuffled.map(function(w,i){return {text:w,idx:i,used:false};});
+
+  var who = m.who || m.name || (m.s==='l'?'A':'B');
+  var enHint = m.en || '';
+
+  act.innerHTML = '<div style="animation:srFadeIn .25s;padding:4px 0">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">'
+    +'<span style="font-size:11px;font-weight:800;color:var(--accent);background:rgba(37,99,235,.1);padding:4px 10px;border-radius:8px">' + (st.idx+1) + ' / ' + st.sentences.length + '</span>'
+    +'<span style="font-size:13px;font-weight:700;color:var(--dark)">Arrange the words</span></div>'
+    +(enHint ? '<div style="font-size:13px;color:#64748b;margin-bottom:14px;padding:10px 14px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0"><span style="font-weight:700">' + escapeHtml(who) + ':</span> ' + escapeHtml(enHint) + '</div>' : '')
+    // Answer zone
+    +'<div id="cs-build-answer" style="min-height:52px;border:2px dashed #bfdbfe;background:#f0f7ff;border-radius:14px;padding:10px 12px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">'
+    +'<span style="font-size:12px;color:#94a3b8">Tap words below to build the sentence</span></div>'
+    // Word pool
+    +'<div id="cs-build-pool" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">'
+    + shuffled.map(function(w,i){
+      return '<button id="csbw_'+i+'" onclick="_csBuildTap('+i+')" style="padding:10px 16px;border-radius:12px;border:2px solid #e2e8f0;background:#fff;color:#0f172a;font-size:15px;font-weight:700;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif;transition:all .15s" onmouseover="this.style.borderColor=\'#93c5fd\'" onmouseout="this.style.borderColor=\'#e2e8f0\'">' + escapeHtml(w) + '</button>';
+    }).join('')
+    +'</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button onclick="_csBuildReset()" style="padding:10px 18px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Reset</button>'
+    +'<button onclick="_csBuildCheck()" style="padding:10px 18px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Check</button>'
+    +'</div>'
+    +'<div id="cs-build-fb" style="margin-top:10px"></div>'
+    +'</div>';
+}
+function _csBuildTap(idx) {
+  var st = window._csBuildState;
+  if (st._pool[idx].used) return;
+  st._pool[idx].used = true;
+  st.placed.push(st._pool[idx].text);
+  // Update UI
+  var btn = document.getElementById('csbw_'+idx);
+  if (btn) { btn.disabled = true; btn.style.opacity = '.35'; }
+  var ans = document.getElementById('cs-build-answer');
+  if (ans) {
+    ans.innerHTML = st.placed.map(function(w,i){
+      return '<span onclick="_csBuildRemove('+i+')" style="display:inline-flex;padding:8px 14px;border-radius:10px;background:#dbeafe;color:#1d4ed8;font-size:15px;font-weight:700;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif;transition:all .12s" onmouseover="this.style.background=\'#bfdbfe\'" onmouseout="this.style.background=\'#dbeafe\'">' + escapeHtml(w) + '</span>';
+    }).join('');
+  }
+}
+function _csBuildRemove(placedIdx) {
+  var st = window._csBuildState;
+  var removed = st.placed.splice(placedIdx, 1)[0];
+  // Re-enable in pool
+  for (var pi=0; pi<st._pool.length; pi++) {
+    if (st._pool[pi].text === removed && st._pool[pi].used) { st._pool[pi].used = false; var btn = document.getElementById('csbw_'+pi); if (btn) { btn.disabled = false; btn.style.opacity = '1'; } break; }
+  }
+  var ans = document.getElementById('cs-build-answer');
+  if (ans) ans.innerHTML = st.placed.length ? st.placed.map(function(w,i){
+    return '<span onclick="_csBuildRemove('+i+')" style="display:inline-flex;padding:8px 14px;border-radius:10px;background:#dbeafe;color:#1d4ed8;font-size:15px;font-weight:700;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif">' + escapeHtml(w) + '</span>';
+  }).join('') : '<span style="font-size:12px;color:#94a3b8">Tap words below</span>';
+}
+function _csBuildReset() {
+  var st = window._csBuildState;
+  st.placed = [];
+  st._pool.forEach(function(p,i){ p.used = false; var btn = document.getElementById('csbw_'+i); if (btn) { btn.disabled = false; btn.style.opacity = '1'; } });
+  var ans = document.getElementById('cs-build-answer');
+  if (ans) ans.innerHTML = '<span style="font-size:12px;color:#94a3b8">Tap words below</span>';
+}
+function _csBuildCheck() {
+  var st = window._csBuildState, fb = document.getElementById('cs-build-fb');
+  if (st.placed.length !== st._correct.length) { if (fb) fb.innerHTML = '<div style="color:#f59e0b;font-size:13px">Place all words first!</div>'; return; }
+  var isCorrect = st.placed.join(' ') === st._correct.join(' ');
+  if (isCorrect) {
+    playCorrectSound(); st.score++;
+    if (fb) fb.innerHTML = '<div style="color:#16a34a;font-size:14px;font-weight:700;padding:10px;background:#f0fdf4;border-radius:10px">✅ Correct!</div>';
+  } else {
+    playWrongSound();
+    if (fb) fb.innerHTML = '<div style="color:#dc2626;font-size:13px;padding:10px;background:#fef2f2;border-radius:10px">Answer: <b style="color:#0f172a">' + escapeHtml(st._correct.join(' ')) + '</b></div>';
+  }
+  setTimeout(function(){ st.idx++; _csRenderBuild(document.getElementById('cs-activity-area')); }, 1500);
 }
 </script>
 
