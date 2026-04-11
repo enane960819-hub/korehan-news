@@ -11159,9 +11159,9 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
     <button onclick="closeWordBankModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:rgba(255,255,255,.4);font-size:20px;cursor:pointer">✕</button>
     <div style="font-size:24px;margin-bottom:6px">📚</div>
     <h2 style="margin:0 0 4px;font-size:18px;font-weight:900">내 단어장</h2>
-    <p style="margin:0 0 14px;font-size:13px;color:rgba(255,255,255,.5)">저장한 단어 목록 · 클릭하면 뜻을 확인할 수 있어요</p>
+    <p style="margin:0 0 14px;font-size:13px;color:rgba(255,255,255,.5)">Your saved words — tap any word to see its meaning</p>
     <div id="wb-search-wrap" style="margin-bottom:14px">
-      <input type="text" id="wb-search" placeholder="단어 검색..." oninput="filterWordBank()" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-family:inherit;outline:none">
+      <input type="text" id="wb-search" placeholder="Search words..." oninput="filterWordBank()" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-family:inherit;outline:none">
     </div>
     <div id="wb-full-list" style="display:flex;flex-direction:column;gap:6px">
       <div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Loading...</div>
@@ -12376,5 +12376,47 @@ function closeReviewModal() {
 </div>
 </div>
 
+<!-- ══════════════════════════════════════════
+     STUDY ROOM ONBOARDING
+═══════════════════════════════════════════ -->
+<div id="sr-onboarding" style="display:none;position:fixed;inset:0;background:rgba(5,12,24,.92);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="background:linear-gradient(135deg,#0f2040,#1a3a6b);border-radius:22px;max-width:480px;width:100%;padding:32px 28px;color:#fff;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.4);animation:srFadeIn .3s ease-out">
+    <div style="font-size:36px;margin-bottom:12px">🎯</div>
+    <h2 style="font-size:22px;font-weight:900;margin:0 0 8px">Welcome to Study Room</h2>
+    <p style="font-size:14px;color:rgba(255,255,255,.6);line-height:1.6;margin:0 0 24px">Your daily Korean learning hub. Complete activities to earn XP and build your streak.</p>
+    <div style="text-align:left;display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
+      <div style="display:flex;gap:12px;align-items:center;padding:10px 14px;background:rgba(255,255,255,.06);border-radius:12px;border:1px solid rgba(255,255,255,.08)">
+        <span style="font-size:20px;flex-shrink:0">📝</span>
+        <div><div style="font-size:13px;font-weight:800">Express Practice</div><div style="font-size:11px;color:rgba(255,255,255,.4)">Write and speak on today's topic</div></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;padding:10px 14px;background:rgba(255,255,255,.06);border-radius:12px;border:1px solid rgba(255,255,255,.08)">
+        <span style="font-size:20px;flex-shrink:0">📰</span>
+        <div><div style="font-size:13px;font-weight:800">Article / Conversation Study</div><div style="font-size:11px;color:rgba(255,255,255,.4)">5-step learning with real Korean content</div></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;padding:10px 14px;background:rgba(255,255,255,.06);border-radius:12px;border:1px solid rgba(255,255,255,.08)">
+        <span style="font-size:20px;flex-shrink:0">🎯</span>
+        <div><div style="font-size:13px;font-weight:800">Fast Track</div><div style="font-size:11px;color:rgba(255,255,255,.4)">Real-life scenarios: cafe, taxi, hospital & more</div></div>
+      </div>
+    </div>
+    <button onclick="dismissSrOnboarding()" style="width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(37,99,235,.4);transition:all .15s">Start Learning →</button>
+    <div style="font-size:11px;color:rgba(255,255,255,.25);margin-top:12px">Tap START on the main screen to begin</div>
+  </div>
+</div>
+<script>
+(function(){
+  var key = 'kh_sr_onboarded';
+  if (localStorage.getItem(key)) return;
+  // Show onboarding after a brief delay
+  setTimeout(function(){
+    var el = document.getElementById('sr-onboarding');
+    if (el) el.style.display = 'flex';
+  }, 2000);
+})();
+function dismissSrOnboarding() {
+  localStorage.setItem('kh_sr_onboarded', '1');
+  var el = document.getElementById('sr-onboarding');
+  if (el) el.style.display = 'none';
+}
+</script>
 </body>
 </html>
