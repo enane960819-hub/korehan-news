@@ -8521,10 +8521,12 @@ async function goVocabBankAdmin() {
     + '<div><label style="font-size:11px;font-weight:600;color:#555">레벨</label><select id="vb-level" class="sf-input" style="width:100%"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></div>'
     + '<div><label style="font-size:11px;font-weight:600;color:#555">관심사</label><select id="vb-tag" class="sf-input" style="width:100%"><option value="">없음</option><option>kpop</option><option>travel</option><option>food</option><option>business</option><option>daily</option><option>news</option><option>sports</option><option>drama</option><option>beauty</option></select></div>'
     + '</div>'
-    + '<div style="display:flex;gap:6px;margin-top:8px;align-items:center">'
-    + '<button class="btn btn-g" onclick="vbAddWord()" style="font-size:12px;padding:6px 14px">추가</button>'
+    + '<div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">'
+    + '<button class="btn btn-g" onclick="vbAddWord()" style="font-size:12px;padding:6px 14px">Add Word</button>'
+    + '<button class="btn" onclick="vbAIBulkGenerate()" style="font-size:12px;padding:6px 14px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer">🤖 AI Bulk Generate (50 words)</button>'
     + '<span id="vb-add-msg" style="font-size:12px;color:#555"></span>'
     + '</div>'
+    + '<div id="vb-ai-status" style="display:none;margin-top:8px;padding:10px 14px;background:#f8fafc;border-radius:8px;font-size:12px"></div>'
     + '</div>'
     // Filters
     + '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center">'
@@ -8627,6 +8629,66 @@ async function vbAddWord() {
   document.getElementById('vb-en').value = '';
   document.getElementById('vb-ko').focus();
   await vbLoadAll();
+}
+
+async function vbAIBulkGenerate() {
+  var level = document.getElementById('vb-level').value || 'Beginner';
+  var tag = document.getElementById('vb-tag').value || '';
+  var status = document.getElementById('vb-ai-status');
+  status.style.display = 'block';
+  status.innerHTML = '🤖 Generating 50 ' + level + ' vocabulary words' + (tag ? ' ('+tag+')' : '') + '...';
+
+  // Get existing words for dedup
+  var existingKeys = new Set(_vbAll.map(function(w){ return w.word_ko; }));
+
+  try {
+    var tagHint = tag ? ' Focus on the topic/interest: ' + tag + '.' : '';
+    var res = await callClaude({
+      feature: 'vocab-bank-bulk-admin',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 3000,
+      messages: [{ role: 'user', content:
+        'Generate 50 Korean vocabulary words for ' + level + ' level learners.' + tagHint + '\n\n'
+        + 'Return ONLY a JSON array. Each item:\n'
+        + '{"ko":"Korean word","rom":"romanization","en":"English meaning"}\n\n'
+        + 'Requirements:\n'
+        + '- All words must be real, commonly used Korean words\n'
+        + '- Appropriate difficulty for ' + level + ' level\n'
+        + '- Include mix of nouns, verbs, adjectives, adverbs\n'
+        + '- No duplicates within the list\n'
+        + 'Return JSON array only, no markdown.'
+      }]
+    });
+    var text = (res.content||[]).map(function(c){return c.text||'';}).join('').replace(/```json|```/g,'').trim();
+    var words = JSON.parse(text);
+
+    // Dedup against existing DB
+    var added = 0, skipped = 0, errors = 0;
+    var sb = getSb();
+    for (var i = 0; i < words.length; i++) {
+      var w = words[i];
+      if (!w.ko || !w.en) { errors++; continue; }
+      if (existingKeys.has(w.ko)) { skipped++; continue; }
+      try {
+        var r = await sb.from('vocabulary_bank').insert({
+          word_key: w.ko, word_ko: w.ko, word_rom: w.rom||'', word_en: w.en,
+          level: level, interest_tag: tag || null, is_active: true
+        });
+        if (r.error) {
+          if (r.error.code === '23505') skipped++;
+          else errors++;
+        } else {
+          added++;
+          existingKeys.add(w.ko);
+        }
+      } catch(e) { errors++; }
+      status.innerHTML = '🤖 Processing... ' + (i+1) + '/' + words.length + ' (added: ' + added + ', skipped: ' + skipped + ')';
+    }
+    status.innerHTML = '✅ Done! Added: <b>' + added + '</b>, Duplicates skipped: <b>' + skipped + '</b>, Errors: <b>' + errors + '</b>';
+    await vbLoadAll();
+  } catch(e) {
+    status.innerHTML = '❌ Generation failed: ' + (e.message||e);
+  }
 }
 
 function vbEdit(key) {
