@@ -3730,8 +3730,8 @@ async function _generateAndSaveDailyContent(date) {
     levelExtraInstructions = '\nformality_exercise: 1 item with casual, formal, and explanation fields. culture_note: 1-2 sentences about Korean culture related to the topic.';
   }
 
-  var prompt = 'You are a Korean language teacher creating complete daily study content for ' + _currentLevel + '-level students.\n\n'
-    + 'Level requirements: ' + (levelGuide[_currentLevel] || levelGuide.Beginner) + '\n'
+  var prompt = 'You are a Korean language teacher creating complete daily study content.\n\n'
+    + (typeof getLevelPrompt === 'function' ? getLevelPrompt(_currentLevel) : 'Level: ' + _currentLevel) + '\n\n'
     + topicHint + '\n\n'
     + 'Return ONLY valid JSON (no markdown, no extra text):\n'
     + '{\n'

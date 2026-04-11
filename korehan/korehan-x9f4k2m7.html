@@ -4398,7 +4398,8 @@ async function generateStories() {
 
   res.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b">⏳ AI generating...</div>';
 
-  var prompt = 'Generate ' + count + ' short Korean community-style stories for Korean learners.\nMood: ' + moodMap[mood] + '\nLevel: ' + lvlMap[lvl] + '\n\nReturn ONLY a valid JSON array, no markdown, no backticks.\n\nEach story object:\n{"title":"Korean title","title_en":"English","mood":"' + mood + '","lvl":"' + lvl + '","readTime":"X min","preview":"first 1-2 sentences","body":"full story in Korean with paragraphs","vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}\n\nRules: authentic Korean community post style, body 8-15 paragraphs, 6-8 vocab, 2-3 grammar, 3 comprehension questions.';
+  var levelPrompt = (typeof getLevelPrompt === 'function') ? getLevelPrompt(KH_LEVEL_MAP[lvl] || 'Beginner') : '';
+  var prompt = 'Generate ' + count + ' short Korean community-style stories for Korean learners.\nMood: ' + moodMap[mood] + '\n\n' + levelPrompt + '\n\nReturn ONLY a valid JSON array, no markdown, no backticks.\n\nEach story object:\n{"title":"Korean title","title_en":"English","mood":"' + mood + '","lvl":"' + lvl + '","readTime":"X min","preview":"first 1-2 sentences","body":"full story in Korean with paragraphs","vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}\n\nRules: authentic Korean community post style, body 8-15 paragraphs, 6-8 vocab, 2-3 grammar, 3 comprehension questions. ALL Korean text in the story MUST follow the difficulty level rules above.';
 
   try {
     var resp = await callClaude({
@@ -4905,8 +4906,9 @@ async function aiAnalyzeConv() {
   btn.disabled = true;
   btn.textContent = '⏳ 분석 중...';
 
-  var prompt = 'Korean language conversation (level: ' + lvlMap[lvl] + '):\n\n' + msgsText
-    + '\n\nExtract for learners AND translate each message. Return ONLY valid JSON, no markdown:\n'
+  var levelPrompt = (typeof getLevelPrompt === 'function') ? getLevelPrompt(KH_LEVEL_MAP[lvl] || 'Beginner') : '';
+  var prompt = 'Korean language conversation analysis.\n\n' + levelPrompt + '\n\nConversation:\n' + msgsText
+    + '\n\nExtract for learners AND translate each message. Vocab and grammar must match the difficulty level above. Return ONLY valid JSON, no markdown:\n'
     + '{\n  "translations": [{"txt":"original Korean","en":"English translation"}],\n'
     + '  "vocab": [{"ko":"단어","rom":"romanization","en":"meaning"}],\n'
     + '  "grammar": [{"point":"pattern","ex":"example in English"}],\n'
@@ -5968,7 +5970,7 @@ function _srBuildPrompt(level, topicHint) {
   }
 
   return 'Korean language teacher. Create daily study content for ' + level + ' level.\n'
-    + 'Level: ' + (levelGuide[level] || levelGuide.Beginner) + '\n'
+    + 'Level: ' + (((typeof getLevelPrompt==='function')?getLevelPrompt(level):(level)) || levelGuide.Beginner) + '\n'
     + topicHint + '\n\n'
     + 'Return ONLY valid JSON (strict RFC8259, no markdown, no comments, no trailing commas):\n'
     + '{"topic_ko":"...","topic_en":"...",'
@@ -6018,7 +6020,7 @@ async function srGenGrammar() {
     Advanced:'ADVANCED: Complex structures, formal style ~습니다, relative clauses, advanced connectors.'
   };
   var prompt = 'You are a Korean grammar teacher.\nTopic: "' + (ko||en) + '" | Level: ' + level + '\n'
-    + levelGuide[level] + '\n\n'
+    + ((typeof getLevelPrompt==='function')?getLevelPrompt(level):(level)) + '\n\n'
     + 'Create exactly 3 grammar patterns suitable for writing about this topic at ' + level + ' level.\n'
     + 'Return ONLY valid JSON (no markdown):\n'
     + '{"grammar":[{"pattern":"~pattern","explanation":"English explanation","example_ko":"Korean example","example_en":"English translation"}]}';
@@ -6050,7 +6052,7 @@ async function srGenHelpers() {
     Advanced:'12+ word sentences. Complex grammar, formal/written style.'
   };
   var prompt = 'You are a Korean language teacher.\nTopic: "' + (ko||en) + '" | Level: ' + level + '\n'
-    + 'Sentence length guideline: ' + levelGuide[level] + '\n\n'
+    + 'Sentence length guideline: ' + ((typeof getLevelPrompt==='function')?getLevelPrompt(level):(level)) + '\n\n'
     + 'Create exactly 4 useful example helper sentences a student could use or adapt when writing about this topic.\n'
     + 'Each sentence should demonstrate a different angle or expression.\n'
     + 'Return ONLY valid JSON (no markdown):\n'
@@ -6083,7 +6085,7 @@ async function srGenDictationSentences() {
     Advanced:'12+ word sentences. Complex grammar, formal style. Abstract vocabulary.'
   };
   var prompt = 'You are a Korean dictation teacher.\nTopic: "' + (ko||en) + '" | Level: ' + level + '\n'
-    + 'Sentence guideline: ' + levelGuide[level] + '\n\n'
+    + 'Sentence guideline: ' + ((typeof getLevelPrompt==='function')?getLevelPrompt(level):(level)) + '\n\n'
     + 'Create exactly 3 Korean sentences suitable for dictation practice about this topic.\n'
     + 'Each sentence should use different vocabulary and grammar patterns.\n'
     + 'Return ONLY valid JSON (no markdown):\n'
@@ -6116,7 +6118,7 @@ async function srGenDictationQuestions() {
     Advanced:'Complex Q&A. 12+ word answers. Formal style, advanced grammar.'
   };
   var prompt = 'You are a Korean dictation teacher.\nTopic: "' + (ko||en) + '" | Level: ' + level + '\n'
-    + 'Guideline: ' + levelGuide[level] + '\n\n'
+    + 'Guideline: ' + ((typeof getLevelPrompt==='function')?getLevelPrompt(level):(level)) + '\n\n'
     + 'Create exactly 3 Korean dictation questions. Each has a question, an answer, and an English hint.\n'
     + 'The question should prompt the student to write/speak a response about the topic.\n'
     + 'Return ONLY valid JSON (no markdown):\n'
@@ -6149,7 +6151,7 @@ async function srGenTopicWriting() {
     Advanced:'12+ word sentences. Complex structures, formal style.'
   };
   var prompt = 'You are a Korean writing teacher.\nTopic: "' + (ko||en) + '" | Level: ' + level + '\n'
-    + 'Sentence guideline: ' + levelGuide[level] + '\n\n'
+    + 'Sentence guideline: ' + ((typeof getLevelPrompt==='function')?getLevelPrompt(level):(level)) + '\n\n'
     + 'Create exactly 3 Korean sentences a student should be able to write about this topic.\n'
     + 'Each sentence should demonstrate different grammar and vocabulary.\n'
     + 'Return ONLY valid JSON (no markdown):\n'
@@ -7304,7 +7306,7 @@ async function srAIGeneratePicture() {
 
   var prompt = 'You are a Korean language teacher creating picture description study materials.\n'
     + 'Image description: "' + promptKo + '"\n'
-    + 'Level: ' + (levelGuide[level] || levelGuide.Beginner) + '\n\n'
+    + 'Level: ' + (((typeof getLevelPrompt==='function')?getLevelPrompt(level):(level)) || levelGuide.Beginner) + '\n\n'
     + 'Generate ALL of the following in ONE JSON response:\n\n'
     + '1. image_prompt: A detailed English description for searching/generating the image on stock photo sites (specific scene, setting, mood, objects, people, actions — 2-3 sentences)\n'
     + '2. vocab_items: 4-6 key vocabulary words related to the image\n'
@@ -7777,9 +7779,11 @@ function aseRemovePhrase(i) {
 async function aseGenFromAI() {
   var msgEl = document.getElementById('ase-msg');
   var art = _aseCurrentArt; if (!art) return;
-  msgEl.textContent = '🤖 AI 초안 생성 중… (약 10초)';
-  var prompt = 'Korean news article study content for language learners.\nTitle: ' + art.title + '\nBody:\n' + (art.body||'').slice(0,1600)
-    + '\n\nReturn ONLY valid JSON:\n{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],"phrases":[{"ko":"sentence from article","en":"translation"}],"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\nvocab:6 key words. phrases:5 key sentences. word_order:3 sentences. questions:3 comprehension questions.';
+  msgEl.textContent = '🤖 Generating AI draft...';
+  var artLevel = art.level || 'Beginner';
+  var levelPrompt = (typeof getLevelPrompt === 'function') ? getLevelPrompt(artLevel) : '';
+  var prompt = 'Korean news article study content for language learners.\n' + levelPrompt + '\n\nTitle: ' + art.title + '\nBody:\n' + (art.body||'').slice(0,1600)
+    + '\n\nReturn ONLY valid JSON:\n{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],"phrases":[{"ko":"sentence from article","en":"translation"}],"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\nvocab: 6 key words appropriate for the level. phrases: 5 key sentences. word_order: 3 sentences (chunks appropriate for level). questions: 3 comprehension questions (difficulty matching level).';
   try {
     var data = await callClaude({ feature:'article-study-admin', model:'claude-haiku-4-5-20251001', max_tokens:1500, messages:[{role:'user',content:prompt}] });
     var raw = ((data.content)||[]).map(function(c){return c.text||'';}).join('');
@@ -8999,8 +9003,8 @@ async function ftAdminAIGenerate() {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 4000,
         messages: [{ role: 'user', content:
-          'Generate ' + batchSize + ' Korean conversation scenario(s) for a language learning app.' + catHint + '\n'
-          + 'Difficulty: ' + diff + '\n'
+          'Generate ' + batchSize + ' Korean conversation scenario(s) for a language learning app.' + catHint + '\n\n'
+          + ((typeof getLevelPrompt === 'function') ? getLevelPrompt(diff) : 'Difficulty: ' + diff) + '\n\n'
           + 'AVOID duplicating these existing scenarios: ' + avoidList + '\n\n'
           + 'Each scenario has branching dialogue nodes (6-12 nodes). Each node has NPC text (Korean + English) and 2-4 player choices (Korean + English) with point values.\n\n'
           + 'Return JSON array of scenarios:\n'
