@@ -2604,7 +2604,16 @@ body { background: #0b1626 !important; }
 // SOUND EFFECTS (Web Audio API)
 // ═══════════════════════════════════════════════════════════════
 var _audioCtx = null;
-function _getAudioCtx() { if (!_audioCtx) try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} return _audioCtx; }
+function _getAudioCtx() {
+  if (!_audioCtx) try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  if (_audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume().catch(function(){});
+  return _audioCtx;
+}
+// Ensure AudioContext can play on mobile (requires user gesture)
+document.addEventListener('click', function _initAudio() {
+  _getAudioCtx();
+  document.removeEventListener('click', _initAudio);
+}, { once: true });
 function playCorrectSound() {
   var ctx = _getAudioCtx(); if (!ctx) return;
   var osc = ctx.createOscillator(), gain = ctx.createGain();
@@ -3697,6 +3706,10 @@ async function _generateAndSaveDailyContent(date) {
     }
   } catch(e) { console.warn('[_generateAndSaveDailyContent] writing_topics fetch failed:', e); }
 
+  // Growth Lab: load user interests for personalized topics
+  var userInterests = [];
+  try { userInterests = JSON.parse(localStorage.getItem('kh_user_interests') || '[]'); } catch(e) {}
+
   var topicHint = '';
   if (assignedTopic) {
     topicHint = 'Use EXACTLY this topic: "' + assignedTopic.topic_ko + '" (' + assignedTopic.topic_en + '). Category: ' + (assignedTopic.category || '') + '.';
@@ -3708,8 +3721,13 @@ async function _generateAndSaveDailyContent(date) {
       'friendship', 'work & career', 'nature & environment', 'festivals & holidays', 'shopping',
       'transportation in Korea', 'Korean language learning'
     ];
+    // Prefer user's interests if available
+    var interestMap = {kpop:'K-pop & music',travel:'travel in Korea',food:'food & cooking',business:'work & career',daily:'daily life',news:'Korean news & current events',sports:'sports & exercise',drama:'Korean cinema & dramas',beauty:'beauty & fashion'};
+    var personalCats = userInterests.map(function(t){return interestMap[t];}).filter(Boolean);
+    var allCats = personalCats.length >= 2 ? personalCats.concat(topicCategories) : topicCategories;
     var catHash = date.split('-').reduce(function(a,b){ return a + parseInt(b); }, 0);
-    topicHint = 'Pick an interesting, specific topic within the theme: "' + topicCategories[catHash % topicCategories.length] + '"';
+    topicHint = 'Pick an interesting, specific topic within the theme: "' + allCats[catHash % allCats.length] + '"';
+    if (personalCats.length) topicHint += '. The student is interested in: ' + personalCats.join(', ') + '.';
   }
 
   // Level-specific extra fields for the AI prompt
@@ -6195,7 +6213,20 @@ function toggleWbHide() {
 var _wbQuizIdx = 0, _wbQuizScore = 0, _wbQuizPool = [];
 function startWbQuiz() {
   if (!_wbData || _wbData.length < 4) { showToast('Save at least 4 words to start the quiz'); return; }
-  _wbQuizPool = _wbData.slice().sort(function(){ return Math.random()-.5; }).slice(0, Math.min(10, _wbData.length));
+  // SRS: prioritize words due for review
+  var today = new Date().toISOString().slice(0,10);
+  var srsData = {};
+  try { srsData = JSON.parse(localStorage.getItem('kh_srs') || '{}'); } catch(e) {}
+  var due = [], notDue = [];
+  _wbData.forEach(function(w) {
+    var srs = srsData[w.ko];
+    if (!srs || srs.next <= today) due.push(w);
+    else notDue.push(w);
+  });
+  // Due words first, then fill with random non-due
+  due.sort(function(){ return Math.random()-.5; });
+  notDue.sort(function(){ return Math.random()-.5; });
+  _wbQuizPool = due.concat(notDue).slice(0, Math.min(10, _wbData.length));
   _wbQuizIdx = 0; _wbQuizScore = 0;
   renderWbQuizQ();
 }
@@ -9924,13 +9955,25 @@ function renderGFLearn(p) {
 
 async function generateGFPatterns() {
   var el = document.getElementById('gf-examples-content');
-  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">✨ Generating grammar patterns for today\'s topic…</div>';
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">✨ Generating grammar patterns…</div>';
 
   var topic = (document.getElementById('wcard-topic-ko') || {}).textContent || '';
   if (!topic || topic === 'Loading…') {
     if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Please load today\'s topic first.</div>';
     return;
   }
+
+  // Growth Lab integration: include user's weak grammar points
+  var weakHint = '';
+  try {
+    var sb = getSupa();
+    if (sb && supaUser) {
+      var wg = await sb.from('user_grammar_stats').select('grammar_point,wrong_count').eq('user_id',supaUser.id).gt('wrong_count',2).order('wrong_count',{ascending:false}).limit(3);
+      if (wg.data && wg.data.length) {
+        weakHint = '\n\nIMPORTANT: The student struggles with these grammar points: ' + wg.data.map(function(g){return g.grammar_point;}).join(', ') + '. Include at least ONE of these in your 3 patterns if relevant to the topic.';
+      }
+    }
+  } catch(e){}
 
   try {
     var res = await callClaude({
@@ -9939,7 +9982,7 @@ async function generateGFPatterns() {
       max_tokens: 2500,
       messages: [{ role: 'user', content:
         'You are a Korean grammar teacher creating a structured grammar lesson.\n'
-        + 'Topic: "' + topic + '"\n\n'
+        + 'Topic: "' + topic + '"' + weakHint + '\n\n'
         + 'Create 3 key grammar patterns to study. For each pattern provide:\n'
         + '- name: pattern name with Korean and romanization (e.g. "~아요/어요 (a-yo/eo-yo)")\n'
         + '- level: Beginner | Intermediate | Advanced\n'
@@ -10948,7 +10991,17 @@ function _asSaveProgress() {
 }
 function _asRestoreProgress() {
   var saved = _asGetTmp();
-  if (saved && saved.step && !saved.completed) { _asStep = saved.step; _asStepDone = saved.stepDone || [false,false,false,false,false]; return true; }
+  if (saved && saved.step && !saved.completed) {
+    _asStep = saved.step;
+    _asStepDone = saved.stepDone || [false,false,false,false,false];
+    // Restore fill-in-blank state if available
+    if (saved.wo_filledBlanks && saved.wo_idx !== undefined) {
+      _asWOState = _asWOState || {};
+      _asWOState.idx = saved.wo_idx;
+      _asWOState.filledBlanks = saved.wo_filledBlanks;
+    }
+    return true;
+  }
   return false;
 }
 // alias
@@ -11329,6 +11382,7 @@ function _csRenderStep() {
 // STEP 1: Read Dialogue
 function _csStep1() {
   var c = _csCurrentConv, area = document.getElementById('cs-chat-area'), act = document.getElementById('cs-activity-area');
+  area.style.display = ''; // Restore chat area visibility
   var msgs = (c.msgs||[]).filter(function(m){return m.s!=='n';});
   area.innerHTML = msgs.map(function(m){
     var isLeft = m.s==='l';
@@ -11396,9 +11450,12 @@ function _csStep3() {
   var c = _csCurrentConv, area = document.getElementById('cs-chat-area'), act = document.getElementById('cs-activity-area');
   area.style.display = 'none';
   var msgs = (c.msgs||[]).filter(function(m){return m.s!=='n';});
-  if (msgs.length < 2) { act.innerHTML = '<div class="as-loading">Not enough dialogue. <button class="btn" onclick="csNextStep()">Skip →</button></div>'; return; }
-  // Hide right speaker's lines
-  window._csRoleState = {msgs:msgs, current:0, score:0};
+  var hasRight = msgs.some(function(m){return m.s!=='l';});
+  if (msgs.length < 2 || !hasRight) { act.innerHTML = '<div class="as-loading" style="animation:srFadeIn .25s">Not enough dialogue for role play. <button onclick="csNextStep()" style="margin-top:10px;padding:10px 20px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-weight:700;cursor:pointer;font-family:inherit">Skip →</button></div>'; return; }
+  // Find first right speaker message
+  var firstRight = 0;
+  for (var fi=0; fi<msgs.length; fi++) { if (msgs[fi].s !== 'l') { firstRight = fi; break; } }
+  window._csRoleState = {msgs:msgs, current:firstRight, score:0};
   _csRenderRole(act);
 }
 function _csRenderRole(act) {
@@ -12379,7 +12436,7 @@ function closeReviewModal() {
 <!-- ══════════════════════════════════════════
      STUDY ROOM ONBOARDING
 ═══════════════════════════════════════════ -->
-<div id="sr-onboarding" style="display:none;position:fixed;inset:0;background:rgba(5,12,24,.92);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px">
+<div id="sr-onboarding" style="display:none;position:fixed;inset:0;background:rgba(5,12,24,.92);z-index:9999;align-items:center;justify-content:center;padding:16px">
   <div style="background:linear-gradient(135deg,#0f2040,#1a3a6b);border-radius:22px;max-width:480px;width:100%;padding:32px 28px;color:#fff;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.4);animation:srFadeIn .3s ease-out">
     <div style="font-size:36px;margin-bottom:12px">🎯</div>
     <h2 style="font-size:22px;font-weight:900;margin:0 0 8px">Welcome to Study Room</h2>
