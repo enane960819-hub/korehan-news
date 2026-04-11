@@ -11205,7 +11205,7 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
       <div class="as-loading"><div class="as-spinner"></div><div>Loading…</div></div>
     </div>
     <div class="dct-foot" id="dct-foot">
-      <button class="btn btn-g" id="dct-next-btn" onclick="dctNext()" style="min-width:120px">다음 →</button>
+      <button class="btn btn-g" id="dct-next-btn" onclick="dctNext()" style="min-width:120px">Next →</button>
     </div>
   </div>
 </div>
@@ -11245,6 +11245,256 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
     </div>
   </div>
 </div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONVERSATION STUDY — 4-step learning flow
+// ═══════════════════════════════════════════════════════════════
+var _csConvs = [], _csCurrentConv = null, _csStep = 1, _csStepLabels = ['Dialogue','Vocabulary','Role Play','Expressions'];
+
+function openConvStudy() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  var modal = document.getElementById('cs-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('cs-list-view').style.display = '';
+  document.getElementById('cs-study-view').classList.add('as-hidden');
+  _csLoadConversations();
+}
+function closeConvStudy() {
+  var modal = document.getElementById('cs-modal');
+  if (modal) modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+async function _csLoadConversations() {
+  var grid = document.getElementById('cs-conv-grid');
+  grid.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Loading...</div></div>';
+  try {
+    var sb = getSupa();
+    var res = await sb.from('conversations_data').select('id,name,ctx,cat,lvl,data').order('created_at',{ascending:false}).limit(30);
+    if (res.error) throw res.error;
+    _csConvs = (res.data||[]).map(function(r){
+      var d = r.data||{};
+      return {id:r.id,name:r.name||d.name||'',ctx:r.ctx||d.ctx||'',cat:r.cat,lvl:r.lvl,
+        msgs:d.msgs||[],vocab:d.vocab||[],grammar:d.grammar||[],key_expressions:d.key_expressions||[]};
+    });
+    grid.innerHTML = _csConvs.length ? _csConvs.map(function(c,i){
+      var lvlColors = {b:'#dcfce7',i:'#fef9c3',a:'#fee2e2'};
+      var lvlNames = {b:'Beginner',i:'Intermediate',a:'Advanced'};
+      return '<div class="as-article-card" onclick="_csStartConv('+i+')">'
+        +'<div class="asc-img-ph" style="height:60px;font-size:20px">💬</div>'
+        +'<div class="asc-body"><div class="asc-cat">'+escapeHtml(c.cat||'')+'</div>'
+        +'<div class="asc-title">'+escapeHtml(c.name)+'</div>'
+        +'<div class="asc-meta">'+escapeHtml(c.ctx)+'</div></div></div>';
+    }).join('') : '<div class="as-loading">No conversations available</div>';
+  } catch(e) {
+    grid.innerHTML = '<div class="as-loading">Failed to load conversations</div>';
+  }
+}
+function _csStartConv(idx) {
+  _csCurrentConv = _csConvs[idx]; if (!_csCurrentConv) return;
+  _csStep = 1;
+  document.getElementById('cs-list-view').style.display = 'none';
+  document.getElementById('cs-study-view').classList.remove('as-hidden');
+  document.getElementById('cs-conv-title').textContent = _csCurrentConv.name;
+  _csRenderStep();
+}
+function csBackToList() {
+  document.getElementById('cs-list-view').style.display = '';
+  document.getElementById('cs-study-view').classList.add('as-hidden');
+}
+function csNextStep() {
+  _csStep = Math.min(_csStep+1, 4);
+  _csRenderStep();
+}
+function _csRenderStep() {
+  var c = _csCurrentConv; if (!c) return;
+  document.getElementById('cs-step-label').textContent = 'Step '+_csStep+' / 4 — '+_csStepLabels[_csStep-1];
+  // Pip bar
+  var pips = document.getElementById('cs-pip-bar');
+  pips.innerHTML = [1,2,3,4].map(function(s){
+    var cls = s<_csStep?'as-pip done':s===_csStep?'as-pip active':'as-pip';
+    return '<div class="'+cls+'"></div>';
+  }).join('');
+  var nextBtn = document.getElementById('cs-next-btn');
+  if (nextBtn) nextBtn.style.display = 'none';
+  if (_csStep===1) _csStep1();
+  else if (_csStep===2) _csStep2();
+  else if (_csStep===3) _csStep3();
+  else _csStep4();
+}
+
+// STEP 1: Read Dialogue
+function _csStep1() {
+  var c = _csCurrentConv, area = document.getElementById('cs-chat-area'), act = document.getElementById('cs-activity-area');
+  var msgs = (c.msgs||[]).filter(function(m){return m.s!=='n';});
+  area.innerHTML = msgs.map(function(m){
+    var isLeft = m.s==='l';
+    var who = m.who||m.name||(isLeft?'A':'B');
+    var side = isLeft ? 'left' : 'right';
+    return '<div style="display:flex;margin-bottom:10px;'+(isLeft?'':'justify-content:flex-end')+'">'
+      +'<div style="max-width:75%">'
+      +'<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:3px;'+(isLeft?'':'text-align:right')+'">'+escapeHtml(who)+'</div>'
+      +'<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'block\'?\'none\':\'block\'" style="cursor:pointer;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.6;font-family:\'Noto Sans KR\',sans-serif;'
+      +(isLeft?'background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-bottom-left-radius:4px':'background:#2563eb;color:#fff;border-bottom-right-radius:4px')+'">'+escapeHtml(m.txt||'')+'</div>'
+      +'<div style="display:none;font-size:11px;color:#94a3b8;padding:4px 14px">'+(m.en||'Tap Korean text to translate')+'</div>'
+      +'</div></div>';
+  }).join('');
+  act.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gray);font-size:13px">Read the dialogue above. Tap any message to see translation.</div>';
+  var nb = document.getElementById('cs-next-btn');
+  if (nb) { nb.style.display = ''; nb.textContent = 'Next Step →'; nb.style.cssText = 'display:block;padding:12px 28px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit'; }
+}
+
+// STEP 2: Vocabulary Matching
+function _csStep2() {
+  var c = _csCurrentConv, area = document.getElementById('cs-chat-area'), act = document.getElementById('cs-activity-area');
+  area.style.display = 'none';
+  var vocab = (c.vocab||[]).slice(0,8);
+  if (!vocab.length) { act.innerHTML = '<div class="as-loading">No vocabulary data. <button class="btn" onclick="csNextStep()">Skip →</button></div>'; return; }
+  var pairs = vocab.map(function(v,i){return {i:i,ko:v.ko,en:v.en};});
+  var shuffledEn = pairs.slice().sort(function(){return Math.random()-.5;});
+  window._csMatchState = {pairs:pairs,eng:shuffledEn,sel:{l:null,r:null},matched:[]};
+  _csRenderMatch(act);
+}
+function _csRenderMatch(act) {
+  var m = window._csMatchState;
+  act.innerHTML = '<div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:12px">Match Korean ↔ English</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="cs-mg">'
+    + m.pairs.map(function(p){
+      var done = m.matched.indexOf(p.i)>=0;
+      return '<button data-li="'+p.i+'" onclick="_csSelectMatch(\'l\','+p.i+')" class="as-match-item as-match-ko'+(done?' matched':'')+(m.sel.l===p.i?' sel':'')+'" style="font-family:\'Noto Serif KR\',serif;font-weight:800;font-size:16px">'+escapeHtml(p.ko)+'</button>';
+    }).join('')
+    + m.eng.map(function(p,ri){
+      var done = m.matched.indexOf(p.i)>=0;
+      return '<button data-ri="'+ri+'" onclick="_csSelectMatch(\'r\','+ri+')" class="as-match-item'+(done?' matched':'')+(m.sel.r===ri?' sel':'')+'">'+escapeHtml(p.en)+'</button>';
+    }).join('')
+    +'</div><div id="cs-mm" style="text-align:center;margin-top:10px;min-height:20px"></div>';
+}
+function _csSelectMatch(side,idx) {
+  var m = window._csMatchState; if (!m) return;
+  m.sel[side] = idx;
+  if (m.sel.l!==null && m.sel.r!==null) {
+    if (m.eng[m.sel.r].i===m.sel.l) {
+      playCorrectSound(); m.matched.push(m.sel.l); m.sel={l:null,r:null};
+      var msg = document.getElementById('cs-mm');
+      if (msg) msg.innerHTML = '<span style="color:#16a34a;font-weight:800">✓ Matched! '+m.matched.length+'/'+m.pairs.length+'</span>';
+      if (m.matched.length===m.pairs.length) {
+        var nb = document.getElementById('cs-next-btn');
+        if (nb) { nb.style.display = ''; nb.textContent = 'Next Step →'; nb.style.cssText = 'display:block;padding:12px 28px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit'; }
+      }
+    } else {
+      playWrongSound(); m.sel={l:null,r:null};
+    }
+  }
+  _csRenderMatch(document.getElementById('cs-activity-area'));
+}
+
+// STEP 3: Role Play — fill in one speaker's lines
+function _csStep3() {
+  var c = _csCurrentConv, area = document.getElementById('cs-chat-area'), act = document.getElementById('cs-activity-area');
+  area.style.display = 'none';
+  var msgs = (c.msgs||[]).filter(function(m){return m.s!=='n';});
+  if (msgs.length < 2) { act.innerHTML = '<div class="as-loading">Not enough dialogue. <button class="btn" onclick="csNextStep()">Skip →</button></div>'; return; }
+  // Hide right speaker's lines
+  window._csRoleState = {msgs:msgs, current:0, score:0};
+  _csRenderRole(act);
+}
+function _csRenderRole(act) {
+  var st = window._csRoleState, msgs = st.msgs;
+  var html = '<div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:12px">Role Play — Complete the conversation</div>';
+  html += msgs.map(function(m,i) {
+    var isLeft = m.s==='l';
+    var who = m.who||m.name||(isLeft?'A':'B');
+    if (!isLeft && i >= st.current) {
+      // Right speaker = user's turn
+      if (i === st.current) {
+        return '<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><div style="max-width:75%">'
+          +'<div style="font-size:10px;font-weight:700;color:#7c3aed;margin-bottom:3px;text-align:right">Your turn ('+who+')</div>'
+          +'<input id="cs-role-input" type="text" placeholder="Type in Korean..." style="padding:10px 14px;border-radius:16px;border:2px solid #7c3aed;background:rgba(124,58,237,.05);font-size:14px;font-family:\'Noto Sans KR\',sans-serif;width:100%;box-sizing:border-box;outline:none;color:#0f172a" onkeydown="if(event.key===\'Enter\')_csCheckRole()">'
+          +'<button onclick="_csCheckRole()" style="margin-top:6px;padding:6px 16px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Check</button>'
+          +'</div></div>';
+      }
+      return '<div style="display:flex;justify-content:flex-end;margin-bottom:10px;opacity:.3"><div style="max-width:75%;padding:10px 14px;border-radius:16px;background:#e2e8f0;color:#94a3b8;font-size:14px">...</div></div>';
+    }
+    return '<div style="display:flex;margin-bottom:10px;'+(isLeft?'':'justify-content:flex-end')+'">'
+      +'<div style="max-width:75%"><div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:3px;'+(isLeft?'':'text-align:right')+'">'+escapeHtml(who)+'</div>'
+      +'<div style="padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.6;font-family:\'Noto Sans KR\',sans-serif;'
+      +(isLeft?'background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-bottom-left-radius:4px':'background:#2563eb;color:#fff;border-bottom-right-radius:4px')+'">'+escapeHtml(m.txt||'')+'</div>'
+      +'</div></div>';
+  }).join('');
+  act.innerHTML = html;
+  var inp = document.getElementById('cs-role-input');
+  if (inp) inp.focus();
+}
+function _csCheckRole() {
+  var st = window._csRoleState, m = st.msgs[st.current];
+  var inp = document.getElementById('cs-role-input');
+  if (!inp) return;
+  var answer = inp.value.trim();
+  var correct = (m.txt||'').trim();
+  // Lenient check: remove punctuation
+  var aNorm = answer.replace(/[.!?,~]/g,'').trim();
+  var cNorm = correct.replace(/[.!?,~]/g,'').trim();
+  if (aNorm === cNorm) {
+    playCorrectSound(); st.score++;
+    st.current++;
+    // Skip left speaker messages
+    while (st.current < st.msgs.length && st.msgs[st.current].s === 'l') st.current++;
+    if (st.current >= st.msgs.length) {
+      var nb = document.getElementById('cs-next-btn');
+      if (nb) { nb.style.display = ''; nb.textContent = 'Next Step →'; nb.style.cssText = 'display:block;padding:12px 28px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit'; }
+    }
+  } else {
+    playWrongSound();
+    inp.style.borderColor = '#ef4444';
+    inp.insertAdjacentHTML('afterend','<div style="font-size:11px;color:#f87171;margin-top:4px">Answer: '+escapeHtml(correct)+'</div>');
+    st.current++;
+    while (st.current < st.msgs.length && st.msgs[st.current].s === 'l') st.current++;
+  }
+  setTimeout(function(){ _csRenderRole(document.getElementById('cs-activity-area')); },800);
+}
+
+// STEP 4: Key Expressions Quiz
+function _csStep4() {
+  var c = _csCurrentConv, area = document.getElementById('cs-chat-area'), act = document.getElementById('cs-activity-area');
+  area.style.display = 'none';
+  var exprs = (c.key_expressions||[]).concat((c.vocab||[]).slice(0,3));
+  if (!exprs.length) { act.innerHTML = '<div style="text-align:center;padding:30px"><div style="font-size:28px;margin-bottom:8px">✅</div><div style="font-size:16px;font-weight:800;color:var(--dark)">Conversation Study Complete!</div><div style="font-size:13px;color:var(--gray);margin-top:6px">Great job practicing this dialogue.</div><button onclick="returnToActivities(closeConvStudy)" style="margin-top:16px;padding:12px 28px;border-radius:12px;border:none;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">📚 Next Activity</button></div>'; return; }
+  window._csExprIdx = 0; window._csExprs = exprs;
+  _csRenderExprQ(act);
+}
+function _csRenderExprQ(act) {
+  var exprs = window._csExprs, idx = window._csExprIdx;
+  if (idx >= Math.min(exprs.length, 5)) {
+    act.innerHTML = '<div style="text-align:center;padding:30px;animation:srFadeIn .25s ease-out"><div style="font-size:28px;margin-bottom:8px">✅</div><div style="font-size:16px;font-weight:800;color:var(--dark)">Conversation Study Complete!</div><div style="font-size:13px;color:var(--gray);margin-top:6px">Great job!</div><button onclick="returnToActivities(closeConvStudy)" style="margin-top:16px;padding:12px 28px;border-radius:12px;border:none;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">📚 Next Activity</button></div>';
+    return;
+  }
+  var e = exprs[idx];
+  var allEn = exprs.map(function(x){return x.en;}).filter(function(x){return x!==e.en;});
+  var wrongs = allEn.sort(function(){return Math.random()-.5;}).slice(0,3);
+  if (wrongs.length < 3) wrongs.push('I don\'t know','Maybe later','Let\'s go');
+  var choices = wrongs.slice(0,3).concat([e.en]).sort(function(){return Math.random()-.5;});
+  act.innerHTML = '<div style="padding:20px;animation:srFadeIn .25s ease-out">'
+    +'<div style="font-size:11px;color:var(--accent);font-weight:700;margin-bottom:8px">'+(idx+1)+' / '+Math.min(exprs.length,5)+'</div>'
+    +'<div style="font-size:24px;font-weight:900;color:var(--dark);margin-bottom:4px;font-family:\'Noto Sans KR\',sans-serif">'+escapeHtml(e.ko||'')+'</div>'
+    +(e.rom?'<div style="font-size:12px;color:var(--gray);margin-bottom:16px;font-style:italic">'+escapeHtml(e.rom)+'</div>':'<div style="margin-bottom:16px"></div>')
+    +'<div style="display:flex;flex-direction:column;gap:8px">'
+    +choices.map(function(ch){
+      return '<button onclick="_csCheckExpr(this,\''+ch.replace(/'/g,"\\'")+'\',\''+e.en.replace(/'/g,"\\'")+'\',\''+e.ko.replace(/'/g,"\\'")+'\',\''+((e.rom||'').replace(/'/g,"\\'"))+'\')" style="padding:13px 16px;border-radius:12px;border:1.5px solid var(--border);background:#fff;color:var(--dark);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s">'+escapeHtml(ch)+'</button>';
+    }).join('')+'</div></div>';
+}
+function _csCheckExpr(btn, picked, correct, ko, rom) {
+  var btns = btn.parentElement.querySelectorAll('button');
+  btns.forEach(function(b){b.style.pointerEvents='none';if(b.textContent===correct){b.style.background='#dcfce7';b.style.borderColor='#22c55e';b.style.color='#166534';}});
+  if (picked===correct) { playCorrectSound(); btn.style.background='#dcfce7';btn.style.borderColor='#22c55e'; }
+  else { playWrongSound(); btn.style.background='#fee2e2';btn.style.borderColor='#ef4444';btn.style.color='#991b1b'; }
+  // Save button
+  btn.parentElement.insertAdjacentHTML('afterend','<div style="text-align:center;margin-top:12px"><button onclick="saveKeyExpr(this)" data-ko="'+ko.replace(/"/g,'&quot;')+'" data-rom="'+rom.replace(/"/g,'&quot;')+'" data-en="'+correct.replace(/"/g,'&quot;')+'" data-type="expression" style="font-size:11px;font-weight:700;color:#fbbf24;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.2);border-radius:8px;padding:5px 12px;cursor:pointer;font-family:inherit">+ Save to Word Book</button></div>');
+  setTimeout(function(){ window._csExprIdx++; _csRenderExprQ(document.getElementById('cs-activity-area')); },1500);
+}
+</script>
 
 <!-- ══════════════════════════════════════════
      ARTICLE STUDY MODAL
