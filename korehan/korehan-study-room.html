@@ -6122,15 +6122,18 @@ async function loadWordBook() {
     var sb = getSupa();
     if (!sb) return;
     var results = [];
-    // user_saved_words (primary word storage)
+    // user_saved_words (primary word storage) — include review stats for SRS
     try {
-      var { data: usw } = await sb.from('user_saved_words').select('word_ko, word_rom, word_en, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
+      var { data: usw } = await sb.from('user_saved_words').select('word_ko, word_rom, word_en, created_at, review_count, correct_count, wrong_count').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
       if (usw) usw.forEach(function(w) {
         var en = w.word_en || '';
         var cat = 'word';
         if (en.indexOf('[슬랭]') === 0) { cat = 'slang'; en = en.replace('[슬랭] ',''); }
         else if (en.indexOf('[표현]') === 0) { cat = 'expression'; en = en.replace('[표현] ',''); }
-        results.push({ ko:w.word_ko, rom:w.word_rom||'', en:en, date:w.created_at, cat:cat });
+        var total = (w.correct_count||0) + (w.wrong_count||0);
+        var accuracy = total > 0 ? Math.round((w.correct_count||0) / total * 100) : -1;
+        results.push({ ko:w.word_ko, rom:w.word_rom||'', en:en, date:w.created_at, cat:cat,
+          reviewCount:w.review_count||0, correctCount:w.correct_count||0, wrongCount:w.wrong_count||0, accuracy:accuracy });
       });
     } catch(e){}
     // Only user_saved_words — no vocabulary_bank or fast_track_progress
@@ -6173,7 +6176,9 @@ function renderWordBook(data) {
     return '<div class="wb-entry">'
       + '<div style="min-width:0"><div class="wb-entry-ko">' + escapeHtml(w.ko) + (catBadge[w.cat]||'') + '</div>'
       + (w.rom ? '<div class="wb-entry-rom">' + escapeHtml(w.rom) + '</div>' : '') + '</div>'
-      + '<div class="wb-entry-en">' + escapeHtml(w.en) + '</div>'
+      + '<div class="wb-entry-en">' + escapeHtml(w.en)
+      + (w.accuracy >= 0 ? '<div style="font-size:9px;margin-top:2px;color:'+(w.accuracy>=70?'#4ade80':w.accuracy>=40?'#fbbf24':'#f87171')+'">'+w.accuracy+'% accuracy</div>' : '')
+      + '</div>'
       + (dateStr ? '<div class="wb-entry-date">' + dateStr + '</div>' : '')
       + '</div>';
   }).join('');
@@ -6213,20 +6218,18 @@ function toggleWbHide() {
 var _wbQuizIdx = 0, _wbQuizScore = 0, _wbQuizPool = [];
 function startWbQuiz() {
   if (!_wbData || _wbData.length < 4) { showToast('Save at least 4 words to start the quiz'); return; }
-  // SRS: prioritize words due for review
-  var today = new Date().toISOString().slice(0,10);
-  var srsData = {};
-  try { srsData = JSON.parse(localStorage.getItem('kh_srs') || '{}'); } catch(e) {}
-  var due = [], notDue = [];
+  // SRS priority from DB accuracy data (no localStorage dependency)
+  // Priority: 1) never reviewed, 2) low accuracy (<70%), 3) rest random
+  var neverReviewed = [], lowAccuracy = [], rest = [];
   _wbData.forEach(function(w) {
-    var srs = srsData[w.ko];
-    if (!srs || srs.next <= today) due.push(w);
-    else notDue.push(w);
+    if (!w.reviewCount || w.reviewCount === 0) neverReviewed.push(w);
+    else if (w.accuracy >= 0 && w.accuracy < 70) lowAccuracy.push(w);
+    else rest.push(w);
   });
-  // Due words first, then fill with random non-due
-  due.sort(function(){ return Math.random()-.5; });
-  notDue.sort(function(){ return Math.random()-.5; });
-  _wbQuizPool = due.concat(notDue).slice(0, Math.min(10, _wbData.length));
+  neverReviewed.sort(function(){ return Math.random()-.5; });
+  lowAccuracy.sort(function(a,b){ return (a.accuracy||0) - (b.accuracy||0); }); // worst first
+  rest.sort(function(){ return Math.random()-.5; });
+  _wbQuizPool = neverReviewed.concat(lowAccuracy).concat(rest).slice(0, Math.min(10, _wbData.length));
   _wbQuizIdx = 0; _wbQuizScore = 0;
   renderWbQuizQ();
 }
@@ -6284,27 +6287,28 @@ function checkWbQuiz(btn, picked, correct) {
   btn.parentElement.insertAdjacentHTML('afterend', srsHtml);
 }
 function _wbSrsRate(ko, rating) {
-  // Save SRS rating to DB
+  // Save review result to DB (server-side, persists across devices)
   if (supaUser && typeof getSupa === 'function') {
     try {
       var sb = getSupa();
-      var delta = rating >= 3 ? { correct_delta: 1, review_delta: 1 } : { wrong_delta: 1, review_delta: 1 };
+      var isCorrect = rating >= 3;
       sb.rpc('save_or_update_word', {
         p_word_key: ko, p_word_ko: ko, p_word_en: null, p_word_rom: null,
         p_source_kind: 'review', p_source_content_type: null, p_source_content_id: null,
-        p_interest_tag: null, p_review_delta: delta.review_delta,
-        p_correct_delta: delta.correct_delta || 0, p_wrong_delta: delta.wrong_delta || 0
+        p_interest_tag: null, p_review_delta: 1,
+        p_correct_delta: isCorrect ? 1 : 0, p_wrong_delta: isCorrect ? 0 : 1
       }).catch(function(){});
     } catch(e) {}
   }
-  // Store next review date in localStorage
-  var intervals = { 1: 0, 2: 1, 3: 3, 4: 7 }; // days
-  var nextDate = new Date(); nextDate.setDate(nextDate.getDate() + intervals[rating]);
-  try {
-    var srsData = JSON.parse(localStorage.getItem('kh_srs') || '{}');
-    srsData[ko] = { next: nextDate.toISOString().slice(0,10), rating: rating, reviewed: new Date().toISOString().slice(0,10) };
-    localStorage.setItem('kh_srs', JSON.stringify(srsData));
-  } catch(e) {}
+  // Update local _wbData so next quiz reflects the change immediately
+  var w = _wbData.find(function(x){ return x.ko === ko; });
+  if (w) {
+    w.reviewCount = (w.reviewCount||0) + 1;
+    if (rating >= 3) w.correctCount = (w.correctCount||0) + 1;
+    else w.wrongCount = (w.wrongCount||0) + 1;
+    var total = (w.correctCount||0) + (w.wrongCount||0);
+    w.accuracy = total > 0 ? Math.round((w.correctCount||0) / total * 100) : -1;
+  }
   _wbQuizIdx++; renderWbQuizQ();
 }
 
