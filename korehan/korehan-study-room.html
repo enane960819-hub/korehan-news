@@ -2417,7 +2417,7 @@ body { background: #0b1626 !important; }
         <audio id="wm-speak-playback" style="width:100%;margin-top:8px;display:none" controls></audio>
         <button id="wm-speak-submit" onclick="submitSpeaking()" style="display:none;width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📩 Submit Recording</button>
       </div>
-      <button class="submit-btn" onclick="submitWriting()">📩 Submit today’s Express Practice</button>
+      <button class="submit-btn" onclick="submitWriting()">✓ Done — Save to daily package</button>
       <div class="submit-note">Writing + Speaking submissions available · Once per day (KST)</div>
     </div>
 
@@ -6894,50 +6894,37 @@ async function submitWriting() {
   if (!supaUser) { openAuthModal('signin'); closeWritingModal(); return; }
 
   var text = (document.getElementById('write-area').value || '').trim();
-  if (!text) { showToast('✏️ Write something first!'); return; }
+  if (!text) { showToast('Write something first!'); return; }
+
+  // Vocab usage check
+  var requiredVocab = (_aiContent && _aiContent.vocab || []).map(function(v){ return v.ko; }).filter(Boolean);
+  var usedVocab = requiredVocab.filter(function(w){ return text.includes(w); });
+  if (requiredVocab.length > 0 && usedVocab.length < 2) {
+    showToast('Include at least 2 vocab words in your writing. (' + usedVocab.length + '/2)');
+    return;
+  }
+
+  // Save to daily package draft (not individual DB submission)
+  saveDraft('express_practice', {
+    text: text,
+    topic_ko: (_todayTopic && _todayTopic.topic_ko) || '',
+    topic_en: (_todayTopic && _todayTopic.topic_en) || '',
+    writing_mode: _writingMode || 'topic',
+    context_key: 'express_' + kstDateKey(),
+    context: { used_vocab: usedVocab, required_vocab: requiredVocab }
+  });
+
+  markStageDone('topic');
+  playCorrectSound();
+  showToast('Saved! Use "Submit All" to send your daily package.');
+  refreshSubmitBanner();
+  closeWritingModal();
+  return; // Skip legacy individual submission below
 
   var sb = getSupa();
   if (!sb) return;
-
-  // ── KST 기준 오늘 날짜 ──
   var today = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
-
-  // ── 하루 1건 체크 ──
   try {
-    var existing = await sb.from('user_submissions')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', supaUser.id)
-      .eq('content_type', 'writing')
-      .eq('study_date', today);
-    if ((existing.count || 0) > 0) {
-      showToast('✅ You already submitted today. You can write again tomorrow!', true);
-      closeWritingModal();
-      return;
-    }
-  } catch(e) {}
-
-  // ── vocab/grammar 사용 체크 ──
-  var requiredVocab   = (_aiContent && _aiContent.vocab   || []).map(function(v){ return v.ko; }).filter(Boolean);
-  var requiredGrammar = (_aiContent && _aiContent.grammar || []).map(function(g){ return g.point; }).filter(Boolean);
-
-  var usedVocab = requiredVocab.filter(function(w){ return text.includes(w); });
-  var usedGrammar = []; // grammar 체크 없음 — 첨삭에서 판단
-
-  if (requiredVocab.length === 0) {
-    showToast('⚠️ AI vocab is still loading. Please try again shortly.');
-    return;
-  }
-  if (usedVocab.length < 2) {
-    showToast('⚠️ You must include at least 2 must-know vocab words in your writing. (' + usedVocab.length + '/2)');
-    return;
-  }
-
-  // ── 제출 버튼 비활성화 ──
-  var submitBtn = document.querySelector('.submit-btn');
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Submitting...'; }
-
-  try {
-    // ── DB에 저장 ──
     var insertRes = await sb.from('user_submissions').insert({
       user_id:          supaUser.id,
       content_type:     'writing',
@@ -6947,12 +6934,7 @@ async function submitWriting() {
       topic_ko:         (_todayTopic && _todayTopic.topic_ko) || '',
       topic_en:         (_todayTopic && _todayTopic.topic_en) || '',
       writing_mode:     _writingMode || 'topic',
-      context_data:     JSON.stringify({
-        used_vocab:       usedVocab,
-        used_grammar:     usedGrammar,
-        required_vocab:   requiredVocab,
-        required_grammar: requiredGrammar
-      }),
+      context_data:     JSON.stringify({ used_vocab: usedVocab }),
       level:            _currentLevel || '',
       status:           'submitted'
     });
@@ -8364,7 +8346,7 @@ function _pdRenderStep3(item) {
   if (!sents.length) {
     // No step 3 data — just mark done
     markStageDone('picture');
-    body.innerHTML = '<div style="text-align:center;padding:24px;background:rgba(34,197,94,.1);border-radius:12px;color:#86efac;font-weight:800;font-size:16px">🎉 모든 단계 완료!</div>';
+    body.innerHTML = '<div style="text-align:center;padding:24px;background:rgba(34,197,94,.1);border-radius:12px;color:#86efac;font-weight:800;font-size:16px">🎉 All steps complete!</div>';
     var nav = document.getElementById('pd-nav');
     if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="returnToActivities(closePictureDescription)">Done ✓ Next Activity</button>';
     return;
@@ -8396,7 +8378,7 @@ function checkIncorrectSentence(btn, isWrong) {
     if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="returnToActivities(closePictureDescription)">Done ✓ Next Activity</button>';
   } else {
     btn.style.cssText += ';background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.4);color:#fbbf24';
-    result.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,.1);border-radius:8px;color:#fca5a5">❌ 틀렸어요. 다른 문장을 선택해 보세요.</div>';
+    result.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,.1);border-radius:8px;color:#fca5a5">❌ Incorrect. Try another sentence.</div>';
     document.querySelectorAll('.pd-sent-btn').forEach(function(b) {
       if (b !== btn) b.disabled = false;
     });
@@ -8444,8 +8426,20 @@ async function checkPictureDescription() {
     + '<div><b>Clarity</b>: ' + escapeHTML(feedback.clarity) + '</div>'
     + (item.sample ? '<div style="margin-top:8px"><b>Sample answer</b>: ' + escapeHTML(item.sample) + '</div>' : '');
   if (typeof awardXP === 'function') awardXP('study_picture_description', { prompt_id:item.id });
+  // Save to daily package
+  var pdText = (document.getElementById('pd-write-area') || {}).value || userAnswer;
+  if (pdText && pdText.trim()) {
+    saveDraft('picture_description', {
+      text: pdText.trim(),
+      content_title: 'Picture Description',
+      topic_ko: item.prompt_ko || '',
+      topic_en: item.prompt_en || '',
+      writing_mode: 'picture_description'
+    });
+    refreshSubmitBanner();
+  }
   markStageDone('picture');
-  showToast('피드백이 준비됐어요!');
+  showToast('Feedback ready!');
 }
 
 async function preloadSentenceArticles() {
@@ -8572,6 +8566,18 @@ function checkSentenceWriting() {
     article_id: _sentencePractice.selected && _sentencePractice.selected.id,
     score: score
   });
+  // Save dictation result to daily package
+  var dctInput = (document.getElementById('dct-write-area') || document.getElementById('dct-input') || {}).value || '';
+  if (dctInput.trim()) {
+    saveDraft('dictation', {
+      text: dctInput.trim(),
+      content_title: 'Dictation Practice',
+      topic_ko: expected || '',
+      writing_mode: 'dictation',
+      context: { score: score, expected: expected }
+    });
+    refreshSubmitBanner();
+  }
   markStageDone('sentence');
 }
 function normalizeSentence(s) {
