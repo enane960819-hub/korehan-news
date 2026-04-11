@@ -1804,22 +1804,29 @@ body { background: #0b1626 !important; }
 .master-card-title { font-size:16px;font-weight:900;color:#fff;margin-bottom:4px; }
 .master-card-desc { font-size:12px;color:rgba(255,255,255,.45);line-height:1.5; }
 /* Word Book notebook style */
-.wb-notebook { max-width:800px;margin:24px auto;background:#f5f0ff;border-radius:16px;border:2px solid #e9d5ff;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.15); }
-.wb-header { background:linear-gradient(135deg,#7c3aed,#a855f7);padding:16px 20px;text-align:center; }
-.wb-header-title { font-size:18px;font-weight:900;color:#fff; }
-.wb-header-sub { font-size:11px;color:rgba(255,255,255,.6);margin-top:4px; }
-.wb-spine { position:relative;border-top:3px solid #d8b4fe; }
-.wb-spine::before { content:'';position:absolute;top:-8px;left:20px;right:20px;height:16px;background:repeating-linear-gradient(90deg,transparent,transparent 24px,#c084fc 24px,#c084fc 28px);opacity:.3; }
-.wb-entry { display:flex;border-bottom:1px solid #ede9fe;padding:12px 20px;align-items:center;transition:background .1s; }
-.wb-entry:hover { background:rgba(124,58,237,.04); }
-.wb-entry-ko { flex:1;font-size:15px;font-weight:700;color:#1a1a2e; }
-.wb-entry-rom { font-size:10px;color:#7c3aed;margin-top:2px; }
-.wb-entry-en { flex:1;font-size:13px;color:#6b7280;text-align:right; }
-.wb-entry-date { font-size:9px;color:#a78bfa;margin-left:8px; }
-.wb-empty { text-align:center;padding:40px 20px;color:#a78bfa;font-size:13px; }
-.wb-search { width:100%;padding:10px 16px;border:none;border-bottom:2px solid #ede9fe;font-size:13px;font-family:inherit;background:#faf5ff;outline:none; }
-.wb-search:focus { border-bottom-color:#7c3aed; }
-.wb-cat-btn.on { color:#7c3aed !important;border-bottom-color:#7c3aed !important; }
+/* Word Book — Dark theme, compact cards */
+.wb-notebook { max-width:900px;margin:20px auto;background:transparent;border-radius:0;border:none;overflow:visible; }
+.wb-header { background:linear-gradient(135deg,#1e1b4b,#312e81);padding:20px 24px;text-align:center;border-radius:16px;margin-bottom:16px; }
+.wb-header-title { font-size:20px;font-weight:900;color:#fff; }
+.wb-header-sub { font-size:12px;color:rgba(255,255,255,.5);margin-top:4px; }
+.wb-spine { display:none; }
+.wb-entry { display:grid;grid-template-columns:1fr auto;gap:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 16px;margin-bottom:8px;transition:all .15s;cursor:pointer;position:relative; }
+.wb-entry:hover { background:rgba(124,58,237,.08);border-color:rgba(139,92,246,.25);transform:translateY(-1px); }
+.wb-entry-ko { font-size:17px;font-weight:800;color:#e2e8f0;font-family:'Noto Sans KR',sans-serif; }
+.wb-entry-rom { font-size:11px;color:#a78bfa;margin-top:2px; }
+.wb-entry-en { font-size:13px;color:rgba(255,255,255,.5);text-align:right;align-self:center; }
+.wb-entry-date { font-size:9px;color:rgba(255,255,255,.2);position:absolute;top:6px;right:10px; }
+.wb-empty { text-align:center;padding:40px 20px;color:rgba(255,255,255,.3);font-size:14px; }
+.wb-search { width:100%;padding:12px 18px;border:1.5px solid rgba(255,255,255,.1);border-radius:12px;font-size:14px;font-family:inherit;background:rgba(255,255,255,.04);outline:none;color:#fff;margin-bottom:14px;box-sizing:border-box; }
+.wb-search::placeholder { color:rgba(255,255,255,.25); }
+.wb-search:focus { border-color:rgba(139,92,246,.4);background:rgba(255,255,255,.06); }
+.wb-cat-btn { padding:8px 14px;border:none;background:transparent;color:rgba(255,255,255,.35);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;transition:all .15s; }
+.wb-cat-btn:hover { color:rgba(255,255,255,.6); }
+.wb-cat-btn.on { color:#c4b5fd !important;border-bottom-color:#7c3aed !important; }
+.wb-stats-row { display:flex;gap:8px;margin-bottom:14px; }
+.wb-stat { flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px;text-align:center; }
+.wb-stat-num { font-size:22px;font-weight:900;color:#c4b5fd; }
+.wb-stat-label { font-size:10px;color:rgba(255,255,255,.3);margin-top:2px; }
 @media(max-width:600px) {
   .master-grid { grid-template-columns:1fr;padding:16px; }
 }
@@ -2291,32 +2298,36 @@ body { background: #0b1626 !important; }
   </div>
 </div>
 
-<!-- ═══ TAB: Word Book (단어장) ═══ -->
+<!-- ═══ TAB: Word Book ═══ -->
 <div class="sr-tab-panel" id="sr-panel-wordbook">
   <div style="max-width:1160px;margin:0 auto;padding:24px">
-    <button onclick="switchSrTab('study')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:16px">← Back to Study Room</button>
+    <button onclick="switchSrTab('study')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:16px">← Back to Study Room</button>
     <div class="wb-notebook">
       <div class="wb-header">
-        <div class="wb-header-title">📖 나의 단어장</div>
-        <div class="wb-header-sub">Review your saved words and expressions</div>
-        <div style="display:flex;gap:6px;margin-top:10px;justify-content:center">
-          <button onclick="toggleWbHide()" id="wb-hide-btn" style="padding:5px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">👁️ 뜻 가리기</button>
-          <button onclick="startWbQuiz()" style="padding:5px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">🧪 Quiz Mode</button>
+        <div class="wb-header-title">My Word Book</div>
+        <div class="wb-header-sub">Saved words, expressions & slang</div>
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:center">
+          <button onclick="toggleWbHide()" id="wb-hide-btn" style="padding:7px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">Hide Meanings</button>
+          <button onclick="startWbQuiz()" style="padding:7px 16px;border-radius:10px;border:1px solid rgba(139,92,246,.3);background:rgba(139,92,246,.15);color:#c4b5fd;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">Quiz Mode</button>
         </div>
       </div>
-      <div class="wb-spine"></div>
-      <div style="display:flex;gap:0;border-bottom:1px solid #ede9fe">
-        <button class="wb-cat-btn on" onclick="setWbCategory('all',this)" style="flex:1;padding:10px;border:none;background:transparent;font-size:12px;font-weight:700;color:#7c3aed;cursor:pointer;font-family:inherit;border-bottom:2px solid #7c3aed">전체 <span id="wb-cnt-all" style="font-size:10px;opacity:.6">0</span></button>
-        <button class="wb-cat-btn" onclick="setWbCategory('word',this)" style="flex:1;padding:10px;border:none;background:transparent;font-size:12px;font-weight:600;color:#9ca3af;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent">단어 <span id="wb-cnt-word" style="font-size:10px;opacity:.6">0</span></button>
-        <button class="wb-cat-btn" onclick="setWbCategory('slang',this)" style="flex:1;padding:10px;border:none;background:transparent;font-size:12px;font-weight:600;color:#9ca3af;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent">슬랭 <span id="wb-cnt-slang" style="font-size:10px;opacity:.6">0</span></button>
-        <button class="wb-cat-btn" onclick="setWbCategory('expression',this)" style="flex:1;padding:10px;border:none;background:transparent;font-size:12px;font-weight:600;color:#9ca3af;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent">표현 <span id="wb-cnt-expression" style="font-size:10px;opacity:.6">0</span></button>
+      <!-- Stats row -->
+      <div class="wb-stats-row">
+        <div class="wb-stat"><div class="wb-stat-num" id="wb-cnt-all">0</div><div class="wb-stat-label">Total</div></div>
+        <div class="wb-stat"><div class="wb-stat-num" id="wb-cnt-word">0</div><div class="wb-stat-label">Words</div></div>
+        <div class="wb-stat"><div class="wb-stat-num" id="wb-cnt-slang">0</div><div class="wb-stat-label">Slang</div></div>
+        <div class="wb-stat"><div class="wb-stat-num" id="wb-cnt-expression">0</div><div class="wb-stat-label">Expressions</div></div>
       </div>
-      <input class="wb-search" type="text" placeholder="🔍 단어 검색..." oninput="filterWordBook(this.value)">
-      <div id="wb-list">
+      <!-- Category tabs -->
+      <div style="display:flex;gap:0;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,.06)">
+        <button class="wb-cat-btn on" onclick="setWbCategory('all',this)">All</button>
+        <button class="wb-cat-btn" onclick="setWbCategory('word',this)">Words</button>
+        <button class="wb-cat-btn" onclick="setWbCategory('slang',this)">Slang</button>
+        <button class="wb-cat-btn" onclick="setWbCategory('expression',this)">Expressions</button>
+      </div>
+      <input class="wb-search" type="text" placeholder="Search words..." oninput="filterWordBook(this.value)">
+      <div id="wb-list" style="max-height:60vh;overflow-y:auto;padding-right:4px">
         <div class="wb-empty">Loading...</div>
-      </div>
-      <div style="padding:12px 20px;text-align:center;border-top:1px solid #ede9fe">
-        <button onclick="loadWordBook()" style="padding:8px 20px;border-radius:8px;border:1px solid #d8b4fe;background:#faf5ff;color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🔄 Refresh</button>
       </div>
     </div>
   </div>
@@ -3345,7 +3356,7 @@ async function saveMustKnowWord(ko, en, rom) {
 // Universal save to word book — works from anywhere
 async function saveToWordBook(ko, en, rom, category) {
   if (!ko) return;
-  if (!supaUser) { showToast('로그인하면 단어를 저장할 수 있어요'); return; }
+  if (!supaUser) { showToast('Sign in to save words'); return; }
   try {
     var sb = getSupa();
     if (!sb) return;
@@ -3358,7 +3369,7 @@ async function saveToWordBook(ko, en, rom, category) {
     await sb.from('user_saved_words').upsert({
       user_id: supaUser.id, word_key: ko, word_ko: ko, word_en: enWithCat, word_rom: rom || ''
     }, { onConflict: 'user_id,word_key' });
-    showToast('📖 단어장에 저장: ' + ko);
+    showToast('Saved to Word Book: ' + ko);
   } catch(e) {
     console.warn('[saveToWordBook]', e);
     showToast('저장 실패');
@@ -4859,7 +4870,7 @@ function showSlangDetail(idx) {
     + '<div class="slang-detail-hd">' + s.ko + '</div>'
     + '<div class="slang-detail-en">' + s.en + '</div>'
     + '<div class="slang-detail-desc">' + s.desc + '</div>'
-    + '<button onclick="saveToWordBook(\'' + s.ko.replace(/'/g,"\\'") + '\',\'' + s.en.replace(/'/g,"\\'") + '\',\'\',\'slang\')" style="padding:6px 16px;border-radius:8px;border:1px solid rgba(196,181,253,.3);background:rgba(196,181,253,.1);color:#c4b5fd;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:12px">📖 단어장에 저장</button>'
+    + '<button onclick="saveToWordBook(\'' + s.ko.replace(/'/g,"\\'") + '\',\'' + s.en.replace(/'/g,"\\'") + '\',\'\',\'slang\')" style="padding:6px 16px;border-radius:8px;border:1px solid rgba(196,181,253,.3);background:rgba(196,181,253,.1);color:#c4b5fd;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:12px">Save to Word Book</button>'
     + chatHtml
     + '</div>';
   det.style.display = 'block';
@@ -5912,7 +5923,7 @@ function showDialogue(node) {
   var phrasesEl = document.getElementById('ftp-phrases');
   var phrasesList = document.getElementById('ftp-phrases-list');
   if (_ftState.phrases.length) {
-    phrasesList.innerHTML = _ftState.phrases.map(function(p){ return '<span class="ft-phrase-chip" onclick="saveToWordBook(\'' + p.replace(/'/g,"\\'") + '\',\'패스트트랙 표현\',\'\',\'expression\')" style="cursor:pointer" title="탭하면 단어장에 저장">' + p + ' <span style="font-size:9px;opacity:.5">💾</span></span>'; }).join('');
+    phrasesList.innerHTML = _ftState.phrases.map(function(p){ return '<span class="ft-phrase-chip" onclick="saveToWordBook(\'' + p.replace(/'/g,"\\'") + '\',\'Fast Track expression\',\'\',\'expression\')" style="cursor:pointer" title="Tap to save">' + p + ' <span style="font-size:9px;opacity:.5">💾</span></span>'; }).join('');
     phrasesEl.style.display = 'block';
   } else {
     phrasesEl.style.display = 'none';
@@ -5970,7 +5981,7 @@ function showEndNode(node) {
   var phrasesEl = document.getElementById('ftp-phrases');
   var phrasesList = document.getElementById('ftp-phrases-list');
   if (_ftState.phrases.length) {
-    phrasesList.innerHTML = _ftState.phrases.map(function(p){ return '<span class="ft-phrase-chip" onclick="saveToWordBook(\'' + p.replace(/'/g,"\\'") + '\',\'패스트트랙 표현\',\'\',\'expression\')" style="cursor:pointer" title="탭하면 단어장에 저장">' + p + ' <span style="font-size:9px;opacity:.5">💾</span></span>'; }).join('');
+    phrasesList.innerHTML = _ftState.phrases.map(function(p){ return '<span class="ft-phrase-chip" onclick="saveToWordBook(\'' + p.replace(/'/g,"\\'") + '\',\'Fast Track expression\',\'\',\'expression\')" style="cursor:pointer" title="Tap to save">' + p + ' <span style="font-size:9px;opacity:.5">💾</span></span>'; }).join('');
     phrasesEl.style.display = 'block';
   }
   player.classList.add('open');
@@ -6087,7 +6098,7 @@ var _wbCategory = 'all';
 async function loadWordBook() {
   var list = document.getElementById('wb-list');
   if (!list) return;
-  if (!supaUser) { list.innerHTML = '<div class="wb-empty">로그인하면 저장한 단어를 볼 수 있어요</div>'; return; }
+  if (!supaUser) { list.innerHTML = '<div class="wb-empty">Sign in to view your saved words</div>'; return; }
   list.innerHTML = '<div class="wb-empty">Loading...</div>';
   try {
     var sb = getSupa();
@@ -6132,19 +6143,19 @@ function renderWbCounts() {
 }
 function renderWordBook(data) {
   var list = document.getElementById('wb-list');
-  // Filter by category
   var filtered = _wbCategory === 'all' ? data : data.filter(function(w){ return w.cat === _wbCategory; });
   if (!filtered.length) {
-    var emptyMsg = _wbCategory === 'all' ? '저장한 단어가 없습니다' : (_wbCategory === 'slang' ? '저장한 슬랭이 없습니다' : _wbCategory === 'expression' ? '저장한 중요표현이 없습니다' : '저장한 단어가 없습니다');
-    list.innerHTML = '<div class="wb-empty">📝 ' + emptyMsg + '<br><span style="font-size:11px;margin-top:8px;display:block">학습 중 단어를 탭하거나 패스트트랙에서 표현을 수집해보세요</span></div>';
+    var catNames = { all:'words', word:'words', slang:'slang', expression:'expressions' };
+    list.innerHTML = '<div class="wb-empty">No saved '+catNames[_wbCategory]+' yet<br><span style="font-size:12px;margin-top:8px;display:block;color:rgba(255,255,255,.2)">Tap words while studying to save them here</span></div>';
     return;
   }
-  var catBadge = { word:'', slang:'<span style="display:inline-block;padding:1px 6px;border-radius:8px;background:rgba(124,58,237,.1);color:#7c3aed;font-size:8px;font-weight:700;margin-left:6px">슬랭</span>', expression:'<span style="display:inline-block;padding:1px 6px;border-radius:8px;background:rgba(5,150,105,.1);color:#059669;font-size:8px;font-weight:700;margin-left:6px">표현</span>' };
+  var catBadge = { word:'', slang:'<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(139,92,246,.15);color:#c4b5fd;font-size:9px;font-weight:700;margin-left:6px">SLANG</span>', expression:'<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(5,150,105,.12);color:#34d399;font-size:9px;font-weight:700;margin-left:6px">EXPR</span>' };
   list.innerHTML = filtered.map(function(w) {
-    var dateStr = w.date ? new Date(w.date).toLocaleDateString('ko-KR', { month:'short', day:'numeric' }) : '';
+    var dateStr = w.date ? new Date(w.date).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
     return '<div class="wb-entry">'
-      + '<div style="flex:1;min-width:0"><div class="wb-entry-ko">' + w.ko + (catBadge[w.cat]||'') + '</div>' + (w.rom ? '<div class="wb-entry-rom">' + w.rom + '</div>' : '') + '</div>'
-      + '<div class="wb-entry-en">' + w.en + '</div>'
+      + '<div style="min-width:0"><div class="wb-entry-ko">' + escapeHtml(w.ko) + (catBadge[w.cat]||'') + '</div>'
+      + (w.rom ? '<div class="wb-entry-rom">' + escapeHtml(w.rom) + '</div>' : '') + '</div>'
+      + '<div class="wb-entry-en">' + escapeHtml(w.en) + '</div>'
       + (dateStr ? '<div class="wb-entry-date">' + dateStr + '</div>' : '')
       + '</div>';
   }).join('');
