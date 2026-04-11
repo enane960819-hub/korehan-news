@@ -454,7 +454,8 @@
 .bm-progress-track { height: 6px; background: #e2e8f0; }
 .bm-progress-bar   { height: 6px; background: linear-gradient(90deg, #4ade80, #22c55e);
   transition: width .4s ease; }
-.bm-body { flex: 1; overflow-y: auto; padding: 26px 24px; }
+.bm-body { flex: 1; overflow-y: auto; padding: 26px 24px; animation: srFadeIn .25s ease-out; }
+@keyframes srFadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
 .bm-footer { padding: 16px 24px; border-top: 1px solid #e8eef7;
   display: flex; gap: 10px; justify-content: flex-end; background: #f8fafc; }
 .bm-btn-next {
@@ -2026,13 +2027,29 @@ body { background: #0b1626 !important; }
     <button class="btn btn-g" onclick="submitAllWritingsToday()" style="font-size:12px;padding:8px 16px;font-weight:800">📩 Submit All</button>
   </div>
 
-  <!-- WEAK GRAMMAR BANNER -->
-  <div id="sr-weak-grammar-banner" style="display:none;background:linear-gradient(135deg,#1e1b4b,#312e81);border:1px solid rgba(139,92,246,.3);border-radius:14px;padding:14px 16px;margin-bottom:12px;cursor:pointer" onclick="window.location.assign('korehan-learning-overview.html#weak-grammar')">
+  <!-- LEARNING INSIGHTS PANEL -->
+  <div id="sr-insights-panel" style="display:none;background:linear-gradient(135deg,#0f172a,#1e293b);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px;margin-bottom:14px">
+    <div style="font-size:12px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px">Learning Insights</div>
+    <!-- Skill Bars -->
+    <div id="sr-skill-bars" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
+    <!-- Weak Grammar -->
+    <div id="sr-weak-grammar-section" style="display:none;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:#c4b5fd;margin-bottom:8px">Weak Grammar Points</div>
+      <div id="sr-weak-grammar-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+    <!-- Review Priority Words -->
+    <div id="sr-review-words-section" style="display:none">
+      <div style="font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:8px">Review Priority</div>
+      <div id="sr-review-words-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+  </div>
+  <!-- Legacy banner (hidden, kept for backward compat) -->
+  <div id="sr-weak-grammar-banner" style="display:none">
     <div style="display:flex;align-items:center;gap:12px">
       <div style="width:38px;height:38px;border-radius:10px;background:rgba(139,92,246,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#c4b5fd"><i data-lucide="pen-tool" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i></div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:800;color:#c4b5fd;margin-bottom:2px">Weak Grammar Practice</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.5)" id="sr-weak-grammar-desc">자주 틀리는 문법을 복습하세요</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5)" id="sr-weak-grammar-desc">Review your weak grammar points</div>
       </div>
       <span style="font-size:14px;color:rgba(255,255,255,.3)">→</span>
     </div>
@@ -6268,22 +6285,88 @@ function filterWordBank() {
 
 // ── Weak Grammar Banner ──
 async function loadWeakGrammarBanner() {
-  var banner = document.getElementById('sr-weak-grammar-banner');
-  if (!banner || !supaUser) return;
+  if (!supaUser) return;
+  var panel = document.getElementById('sr-insights-panel');
+  if (!panel) return;
+  var sb = getSupa(); if (!sb) return;
+
   try {
-    var sb = getSupa();
-    var { data } = await sb.from('user_grammar_stats')
-      .select('grammar_point, wrong_count')
-      .eq('user_id', supaUser.id)
-      .gt('wrong_count', 0)
-      .order('wrong_count', { ascending: false })
-      .limit(3);
-    if (data && data.length > 0) {
-      banner.style.display = '';
-      var desc = document.getElementById('sr-weak-grammar-desc');
-      if (desc) desc.textContent = data.map(function(d){ return d.grammar_point; }).join(', ') + ' — 복습이 필요해요';
+    // 1. Load skill scores from user_stats
+    var statsRes = await sb.from('user_stats').select('xp,streak,articles_read,words_saved,quizzes_done').eq('user_id', supaUser.id).maybeSingle();
+    var stats = statsRes.data || {};
+
+    // 2. Load weak grammar (top 5 by wrong_count)
+    var gramRes = await sb.from('user_grammar_stats')
+      .select('grammar_point,wrong_count,correct_count')
+      .eq('user_id', supaUser.id).gt('wrong_count', 0)
+      .order('wrong_count', { ascending: false }).limit(5);
+    var weakGrammar = gramRes.data || [];
+
+    // 3. Load words with low accuracy (review priority)
+    var wordRes = await sb.from('user_saved_words')
+      .select('word_ko,word_en,review_count,correct_count,wrong_count')
+      .eq('user_id', supaUser.id).gt('wrong_count', 0)
+      .order('wrong_count', { ascending: false }).limit(8);
+    var weakWords = (wordRes.data || []).filter(function(w) {
+      var total = (w.correct_count||0) + (w.wrong_count||0);
+      return total > 0 && (w.correct_count||0) / total < 0.7;
+    });
+
+    // 4. Calculate rough skill scores (simplified)
+    var reading = Math.min(100, (stats.articles_read || 0) * 3);
+    var vocab = Math.min(100, (stats.words_saved || 0) * 2);
+    var grammar = weakGrammar.length > 0
+      ? Math.round(weakGrammar.reduce(function(s,g){ return s + (g.correct_count||0) / Math.max(1,(g.correct_count||0)+(g.wrong_count||0)); },0) / weakGrammar.length * 100)
+      : 50;
+    var quizScore = Math.min(100, (stats.quizzes_done || 0) * 5);
+
+    // Render skill bars
+    var skillBars = document.getElementById('sr-skill-bars');
+    if (skillBars) {
+      var skills = [
+        { name:'Reading', score:reading, color:'#3b82f6' },
+        { name:'Vocabulary', score:vocab, color:'#8b5cf6' },
+        { name:'Grammar', score:grammar, color:'#f59e0b' },
+        { name:'Quizzes', score:quizScore, color:'#10b981' }
+      ];
+      skillBars.innerHTML = skills.map(function(s) {
+        return '<div style="display:flex;align-items:center;gap:10px">'
+          +'<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);width:70px">'+s.name+'</div>'
+          +'<div style="flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.08)">'
+          +'<div style="height:100%;width:'+s.score+'%;border-radius:3px;background:'+s.color+';transition:width .5s"></div></div>'
+          +'<div style="font-size:11px;font-weight:800;color:'+s.color+';width:30px;text-align:right">'+s.score+'</div>'
+          +'</div>';
+      }).join('');
     }
-  } catch(e) {}
+
+    // Render weak grammar chips
+    if (weakGrammar.length > 0) {
+      var wgSection = document.getElementById('sr-weak-grammar-section');
+      var wgList = document.getElementById('sr-weak-grammar-list');
+      if (wgSection) wgSection.style.display = '';
+      if (wgList) wgList.innerHTML = weakGrammar.map(function(g) {
+        var acc = Math.round((g.correct_count||0) / Math.max(1,(g.correct_count||0)+(g.wrong_count||0)) * 100);
+        return '<span style="padding:4px 10px;border-radius:8px;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.2);color:#c4b5fd;font-size:11px;font-weight:700;cursor:pointer" onclick="openGrammarFocusModal()" title="'+acc+'% accuracy">'+g.grammar_point+' <span style="color:rgba(255,255,255,.3)">'+acc+'%</span></span>';
+      }).join('');
+    }
+
+    // Render review priority words
+    if (weakWords.length > 0) {
+      var rwSection = document.getElementById('sr-review-words-section');
+      var rwList = document.getElementById('sr-review-words-list');
+      if (rwSection) rwSection.style.display = '';
+      if (rwList) rwList.innerHTML = weakWords.slice(0,6).map(function(w) {
+        return '<span style="padding:4px 10px;border-radius:8px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.15);color:#fbbf24;font-size:11px;font-weight:700" title="'+(w.word_en||'')+'">'+w.word_ko+'</span>';
+      }).join('');
+    }
+
+    // Show panel if we have any data
+    if (reading > 0 || weakGrammar.length > 0 || weakWords.length > 0) {
+      panel.style.display = '';
+    }
+  } catch(e) {
+    console.warn('[loadInsights]', e);
+  }
 }
 
 // ── Review Notification Banners ──
@@ -11153,7 +11236,7 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
       <!-- Scrollable content + activity -->
       <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column">
         <div id="as-article-content" style="padding:16px 20px;border-bottom:2px solid var(--border);background:#fff"></div>
-        <div id="as-activity-area" style="padding:16px 20px;flex:1;background:var(--bg)"></div>
+        <div id="as-activity-area" style="padding:16px 20px;flex:1;background:var(--bg);animation:srFadeIn .25s ease-out"></div>
       </div>
       <!-- Nav bar -->
       <div class="as-nav-bar">
@@ -11186,7 +11269,7 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 .dr-header p{margin:2px 0 0;font-size:12px;color:rgba(255,255,255,.45)}
 .dr-progress-track{height:6px;background:rgba(255,255,255,.12);flex:1;border-radius:3px;margin:0 14px}
 .dr-progress-fill{height:100%;border-radius:3px;background:#4ade80;transition:width .4s ease}
-.dr-body{flex:1;overflow-y:auto;padding:24px}
+.dr-body{flex:1;overflow-y:auto;padding:24px;animation:srFadeIn .25s ease-out}
 .dr-footer{padding:14px 24px;border-top:1px solid #f0f0f0;background:#fafafa;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0}
 .dr-q-label{font-size:11px;font-weight:700;color:var(--bright,#2563eb);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
 .dr-q-title{font-size:22px;font-weight:800;color:#1a1a1a;line-height:1.3;margin-bottom:8px;font-family:'Noto Serif KR',serif}
