@@ -10694,19 +10694,21 @@ function _asCheckWO() {
   var msg=document.getElementById('as-wo-msg');
   // Check each filled blank against its correct position
   var allCorrect=_asWOState.blankPositions.every(function(pos,bi){
-    return _asWOState.filledBlanks[bi]===s.chunks[pos];
+    var answer = (_asWOState.filledBlanks[bi]||'').trim();
+    var correct = (s.chunks[pos]||'').trim();
+    return answer === correct || answer.replace(/[.!?,]/g,'') === correct.replace(/[.!?,]/g,'');
   });
   if (allCorrect) {
-    if(msg) msg.innerHTML='✅ 정답!';
+    if(msg) msg.innerHTML='✅ Correct!';
     document.querySelectorAll('.as-blank.filled').forEach(function(el){el.classList.add('correct');});
     _asSetNav('none','none','none');
     setTimeout(function(){
       _asWOState.idx++;
       if(_asWOState.idx<_asWOState.sentences.length) _asRenderBlankUI();
-      else _asSetNav('none','');
+      else _asSetNav('none','','');
     },800);
   } else {
-    if(msg) msg.textContent='❌ 틀렸어요. 잘못된 칸은 비워집니다.';
+    if(msg) msg.textContent='Not quite \u2014 incorrect blanks have been cleared.';
     // Clear only wrong blanks
     _asWOState.blankPositions.forEach(function(pos,bi){
       var el=document.querySelector('.as-blank[data-bi="'+bi+'"]');
@@ -10726,7 +10728,7 @@ function asMarkDone() {
     '<div class="as-done-banner">'
     +'<div style="font-size:28px;margin-bottom:8px">✅</div>'
     +'<div style="font-size:16px;font-weight:800;margin-bottom:6px">Article Study Complete!</div>'
-    +'<div style="font-size:13px;color:rgba(255,255,255,.75);margin-bottom:16px">이 기사의 모든 학습 단계를 마쳤습니다.</div>'
+    +'<div style="font-size:13px;color:rgba(255,255,255,.75);margin-bottom:16px">You\'ve completed all learning steps for this article.</div>'
     +'<button class="btn btn-g" onclick="asSubmitWork()" style="min-width:200px;margin:0 auto;display:block;margin-bottom:8px">📤 Save Progress</button>'
     +'<button class="btn" onclick="returnToActivities(closeArticleStudy)" style="min-width:200px;margin:0 auto;display:block;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:12px">📚 Next Activity</button>'
     +'<div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.45)">Use the submit button above to submit all at once</div>'
@@ -11108,9 +11110,9 @@ function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
       </div>
       <!-- Nav bar -->
       <div class="as-nav-bar">
-        <button id="as-check-btn" class="btn" onclick="asCheckAnswer()">확인</button>
-        <button id="as-next-btn" class="btn btn-g" onclick="asNextStep()" style="display:none">Next Step →</button>
-        <button id="as-done-btn" class="btn btn-g" onclick="asMarkDone()" style="display:none">Done ✓</button>
+        <button id="as-check-btn" style="padding:12px 28px;border-radius:12px;border:none;background:#2563eb;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s" onclick="asCheckAnswer()">Check</button>
+        <button id="as-next-btn" style="display:none;padding:12px 28px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s" onclick="asNextStep()">Next Step →</button>
+        <button id="as-done-btn" style="display:none;padding:12px 28px;border-radius:12px;border:none;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s" onclick="asMarkDone()">Done ✓</button>
       </div>
     </div>
 
