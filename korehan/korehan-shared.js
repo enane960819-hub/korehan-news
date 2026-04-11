@@ -170,10 +170,9 @@ var KH_LEVEL_GUIDE = {
       'Sentence length: MAX 3-4 words per sentence. Total article: 5-8 sentences (very short).',
       'Tense: Present tense ONLY. No past/future.',
       'Script: Full Hangul. No abbreviations. Space between every word.',
-      'ALLOWED TOPICS ONLY: Self-introduction, my family, my pet, favorite food, favorite color, weather today (sunny/rainy only), school, my room, fruits, animals, body parts, simple daily routine (wake up, eat, sleep)',
-      'FORBIDDEN TOPICS: Politics, economics, technology, science, society, culture analysis, history, business, health issues, crime, international affairs, abstract concepts — these are TOO COMPLEX for this level',
-      'Article style: NOT real news. Write as a simple diary entry, self-introduction, or picture description. Like a children\\'s reading passage.',
-      'Example: 저는 민수예요. 저는 학생이에요. 우리 가족은 네 명이에요. 엄마, 아빠, 형, 저.'
+      'Topic: ANY topic is OK, but it must be SIMPLIFIED to match this level. Even complex news (politics, technology) should be rewritten using only the allowed vocabulary and grammar above.',
+      'Article style: Still a NEWS article, but written in extremely simple Korean. Short headline + 5-8 very simple sentences. Think of it as a news flash for absolute beginners.',
+      'Example headline: 서울에 눈이 왔어요 / Example: 오늘 서울에 눈이 있어요. 눈은 하얘요. 사람은 많아요.'
     ].join('\n')
   },
   Beginner: {
@@ -187,9 +186,8 @@ var KH_LEVEL_GUIDE = {
       'Sentence length: 5-8 words per sentence. Total article: 8-15 sentences (short and focused).',
       'Honorifics: 해요체 (informal polite) ONLY. No 합니다체.',
       'No Hanja-based vocabulary. Use pure Korean words when possible.',
-      'ALLOWED TOPICS: Daily routine, weather, hobbies, shopping, simple travel, directions, time, food/cooking, school life, friends, weekends, K-pop (simple), sports (simple), holidays',
-      'AVOID TOPICS: Politics, economics, complex social issues, technology analysis, philosophy, business strategy',
-      'Article style: Simple personal story or easy news (celebrity, weather, food festival, new cafe). Like a blog post.',
+      'Topic: ANY topic is OK. Rewrite/simplify the source headline to match this level. Complex topics should be explained in simple terms.',
+      'Article style: Real news, but simplified. Short sentences, common words. Like easy-read news.',
       'Example: 어제 친구를 만났어요. 같이 영화를 봤어요. 재미있었어요.'
     ].join('\n')
   },
@@ -204,10 +202,8 @@ var KH_LEVEL_GUIDE = {
       'Honorifics: 해요체 primarily. Some 합니다체 in formal contexts.',
       'Relative clauses: Simple ones (는/은/을 + noun). Example: 제가 좋아하는 음식',
       'Passive/Causative: Basic forms only (되다, 시키다)',
-      'ALLOWED TOPICS: Travel, Korean culture, lifestyle, entertainment, food culture, fashion, K-drama/K-pop, health/fitness, environment (simple), technology (consumer level), education, relationships, career basics',
-      'CAN HANDLE: Opinions, comparisons, personal experiences, cause-effect, simple debate',
-      'STILL AVOID: Dense politics, complex economics, academic research, legal issues',
-      'Article style: Real news but simplified. Feature articles, lifestyle, entertainment news.',
+      'Topic: ALL topics OK. Can handle opinions, comparisons, cause-effect, simple analysis.',
+      'Article style: Real news articles. Can include feature stories, analysis pieces with moderate complexity.',
       'Example: 한국에 처음 갔을 때 음식이 너무 매워서 힘들었지만, 지금은 매운 음식을 정말 좋아해요.'
     ].join('\n')
   },
@@ -223,8 +219,8 @@ var KH_LEVEL_GUIDE = {
       'Register: Ability to shift between formal/informal. Indirect speech, reported speech.',
       'Hanja: Sino-Korean vocabulary expected. Technical/academic terms OK.',
       'Cultural: Proverbs, idiomatic expressions (사자성어), nuanced politeness levels',
-      'ALL TOPICS ALLOWED: Society, politics, economics, technology, science, philosophy, international affairs, history, law, business, academic research, social issues, debate',
-      'Article style: Real news articles, editorials, analysis pieces. Full journalistic Korean.',
+      'Topic: ALL topics, no restrictions. Full complexity.',
+      'Article style: Real news, editorials, analysis, opinion pieces. Full journalistic Korean.',
       'Example: 최근 들어 AI 기술의 급속한 발전이 노동 시장에 미치는 영향에 대한 논의가 활발해지고 있는데, 이에 대한 사회적 합의가 필요한 시점이라고 할 수 있다.'
     ].join('\n')
   }
