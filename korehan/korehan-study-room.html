@@ -2093,22 +2093,16 @@ body { background: #0b1626 !important; }
     </button>
   </div>
 
-  <!-- Master cards (Fast Track, Slang, Phone Call) -->
+  <!-- Master cards (Fast Track, Slang, Phone Call) — image banners -->
   <div class="sr-desktop-master">
-    <div class="master-card" style="background:linear-gradient(135deg,#1e3a5f,#0f766e);padding:16px;border-radius:14px;cursor:pointer" onclick="openFastTrack()">
-      <div style="margin-bottom:6px;color:#5eead4"><i data-lucide="target" class="kh-ui-icon" style="width:22px;height:22px" aria-hidden="true"></i></div>
-      <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:3px">Fast Track</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.4">Real-life conversation scenarios</div>
+    <div class="master-card" style="padding:0;border-radius:14px;cursor:pointer;overflow:hidden;border:1px solid rgba(255,255,255,.1)" onclick="openFastTrack()">
+      <img src="assets/ChatGPT Image Apr 11, 2026, 11_08_30 PM.png" alt="Fast Track" style="width:100%;height:100%;object-fit:cover;display:block;min-height:90px">
     </div>
-    <div class="master-card" style="background:linear-gradient(135deg,#312e81,#7c3aed);padding:16px;border-radius:14px;cursor:pointer" onclick="openSlangModal()">
-      <div style="margin-bottom:6px;color:#c4b5fd"><i data-lucide="flame" class="kh-ui-icon" style="width:22px;height:22px" aria-hidden="true"></i></div>
-      <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:3px">Korean Slang</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.4">Neologisms & abbreviations</div>
+    <div class="master-card" style="padding:0;border-radius:14px;cursor:pointer;overflow:hidden;border:1px solid rgba(255,255,255,.1)" onclick="openSlangModal()">
+      <img src="assets/ChatGPT Image Apr 11, 2026, 11_09_44 PM.png" alt="Korean Slang" style="width:100%;height:100%;object-fit:cover;display:block;min-height:90px">
     </div>
-    <div class="master-card" style="background:linear-gradient(135deg,#064e3b,#047857);padding:16px;border-radius:14px;cursor:pointer" onclick="openPhoneModal()">
-      <div style="margin-bottom:6px;color:#34d399"><i data-lucide="phone" class="kh-ui-icon" style="width:22px;height:22px" aria-hidden="true"></i></div>
-      <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:3px">Phone Call</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.4">Listening & speaking practice</div>
+    <div class="master-card" style="padding:0;border-radius:14px;cursor:pointer;overflow:hidden;border:1px solid rgba(255,255,255,.1)" onclick="openPhoneModal()">
+      <img src="assets/ChatGPT Image Apr 11, 2026, 11_17_27 PM.png" alt="Phone Call" style="width:100%;height:100%;object-fit:cover;display:block;min-height:90px">
     </div>
   </div>
 
@@ -2267,20 +2261,11 @@ body { background: #0b1626 !important; }
       <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">Master programs to level up your Korean</div>
     </div>
     <div class="master-grid">
-      <div class="master-card" style="background:linear-gradient(135deg,#1e3a5f,#0f766e)" onclick="openFastTrack()">
-        <div class="master-card-icon">🎯</div>
-        <div class="master-card-title">Fast Track</div>
-        <div class="master-card-desc">Real-life conversation scenarios · Cafe, taxi, convenience store & more</div>
-        <div style="margin-top:12px;display:flex;gap:4px;flex-wrap:wrap">
-          <span style="padding:2px 8px;border-radius:10px;background:rgba(94,234,212,.15);color:#5eead4;font-size:9px;font-weight:700">8 Scenarios</span>
-          <span style="padding:2px 8px;border-radius:10px;background:rgba(94,234,212,.15);color:#5eead4;font-size:9px;font-weight:700">Branching Choices</span>
-        </div>
+      <div class="master-card" style="padding:0;overflow:hidden" onclick="openFastTrack()">
+        <img src="assets/ChatGPT Image Apr 11, 2026, 11_08_30 PM.png" alt="Fast Track" style="width:100%;height:160px;object-fit:cover;display:block">
       </div>
-      <div class="master-card" style="background:linear-gradient(135deg,#312e81,#7c3aed)" onclick="openSlangModal()">
-        <div class="master-card-icon">🔥</div>
-        <div class="master-card-title">Korean Slang</div>
-        <div class="master-card-desc">Trendy slang & abbreviations · KakaoTalk chat examples</div>
-        <div style="margin-top:12px"><span style="padding:2px 8px;border-radius:10px;background:rgba(196,181,253,.15);color:#c4b5fd;font-size:9px;font-weight:700">15 Slang</span></div>
+      <div class="master-card" style="padding:0;overflow:hidden" onclick="openSlangModal()">
+        <img src="assets/ChatGPT Image Apr 11, 2026, 11_09_44 PM.png" alt="Korean Slang" style="width:100%;height:160px;object-fit:cover;display:block">
       </div>
       <div class="master-card" style="background:linear-gradient(135deg,#0c4a6e,#0369a1)" onclick="openAlphaModal()">
         <div class="master-card-icon">🇰🇷</div>
@@ -2288,11 +2273,8 @@ body { background: #0b1626 !important; }
         <div class="master-card-desc">Consonant & vowel combination quiz · Click to play pronunciation</div>
         <div style="margin-top:12px"><span style="padding:2px 8px;border-radius:10px;background:rgba(56,189,248,.15);color:#7dd3fc;font-size:9px;font-weight:700">30 Quizzes</span></div>
       </div>
-      <div class="master-card" style="background:linear-gradient(135deg,#064e3b,#047857)" onclick="openPhoneModal()">
-        <div class="master-card-icon">📞</div>
-        <div class="master-card-title">Phone Call Practice</div>
-        <div class="master-card-desc">Listening & speaking with real phone calls</div>
-        <div style="margin-top:12px"><span style="padding:2px 8px;border-radius:10px;background:rgba(52,211,153,.15);color:#34d399;font-size:9px;font-weight:700">Coming Soon</span></div>
+      <div class="master-card" style="padding:0;overflow:hidden" onclick="openPhoneModal()">
+        <img src="assets/ChatGPT Image Apr 11, 2026, 11_17_27 PM.png" alt="Phone Call" style="width:100%;height:160px;object-fit:cover;display:block">
       </div>
     </div>
   </div>
