@@ -163,65 +163,61 @@ var KH_LEVEL_GUIDE = {
     topik: 'Pre-TOPIK / TOPIK 0',
     label: 'Seed (Absolute Beginner)',
     rules: [
-      'Vocabulary: ONLY the 100 most basic Korean words (family: 엄마/아빠/형/누나, food: 밥/물/고기/과일, body: 손/발/눈, numbers 1-10, colors, animals: 고양이/강아지)',
-      'Syllables: 1-2 syllable words ONLY. No 3+ syllable words.',
-      'Grammar: ONLY 이에요/예요, 있어요/없어요, and 하다 verbs in dictionary form',
-      'Particles: ONLY 은/는 (topic). NO 이/가, 을/를, 에, 에서 yet.',
-      'Sentence length: MAX 3-4 words per sentence. Total article: 5-8 sentences (very short).',
-      'Tense: Present tense ONLY. No past/future.',
-      'Script: Full Hangul. No abbreviations. Space between every word.',
-      'Topic: ANY topic is OK, but it must be SIMPLIFIED to match this level. Even complex news (politics, technology) should be rewritten using only the allowed vocabulary and grammar above.',
-      'Article style: Still a NEWS article, but written in extremely simple Korean. Short headline + 5-8 very simple sentences. Think of it as a news flash for absolute beginners.',
-      'Example headline: 서울에 눈이 왔어요 / Example: 오늘 서울에 눈이 있어요. 눈은 하얘요. 사람은 많아요.'
+      'KEY PRINCIPLE: Keep ALL proper nouns, names, and key terms from the original headline (대통령, 서울, etc). These are vocabulary learning opportunities. Only simplify the GRAMMAR and SENTENCE STRUCTURE around them.',
+      'Vocabulary: Use basic Korean words. Key terms from the news topic stay as-is (they become vocab items). Explain difficult key terms in parentheses if needed.',
+      'Grammar: ONLY 이에요/예요, 있어요/없어요, 하다 verbs. Very basic particles 은/는, 이/가.',
+      'Sentence length: MAX 4-5 words per sentence.',
+      'Tense: Present tense primarily. Simple past 았/었어요 OK for news.',
+      'Total article length: 10-15 sentences. Enough content to study vocabulary and do exercises.',
+      'Article style: Real news, simplified to the most basic Korean. Every sentence is short and clear.',
+      'Example: 미국 대통령이 한국에 왔어요. 대통령은 서울에 있어요. 한국 대통령을 만났어요. 두 사람은 이야기했어요.'
     ].join('\n')
   },
   Beginner: {
     topik: 'TOPIK I Level 1-2',
     label: 'Sprout (Beginner)',
     rules: [
-      'Vocabulary: Common everyday words (1-2 syllable preferred, some 3-syllable OK). ~500 word range.',
-      'Grammar: Present tense 아요/어요, past tense 았/었어요, 고 싶어요 (want), basic negation 안/못',
+      'KEY PRINCIPLE: Write the news naturally at this level. Do NOT artificially simplify proper nouns or key terms. Do NOT artificially make it harder either.',
+      'Vocabulary: Common everyday words + topic-specific key terms from the headline.',
+      'Grammar: Present tense 아요/어요, past tense 았/었어요, 고 싶어요, basic negation 안/못',
       'Particles: 은/는, 이/가, 을/를, 에, 에서, 도, 와/과',
-      'Connectors: 그리고 (and), 그래서 (so), 하지만 (but) — as separate sentences, NOT within sentences',
-      'Sentence length: 5-8 words per sentence. Total article: 8-15 sentences (short and focused).',
-      'Honorifics: 해요체 (informal polite) ONLY. No 합니다체.',
-      'No Hanja-based vocabulary. Use pure Korean words when possible.',
-      'Topic: ANY topic is OK. Rewrite/simplify the source headline to match this level. Complex topics should be explained in simple terms.',
-      'Article style: Real news, but simplified. Short sentences, common words. Like easy-read news.',
-      'Example: 어제 친구를 만났어요. 같이 영화를 봤어요. 재미있었어요.'
+      'Connectors: 그리고, 그래서, 하지만 — as separate sentences OK, within sentences also OK',
+      'Sentence length: 5-10 words per sentence.',
+      'Honorifics: 해요체 primarily.',
+      'Total article length: 15-25 sentences. Enough for Article Study 5-step exercises.',
+      'Article style: Real news, written clearly. A Korean learner at TOPIK 1-2 should be able to read with some dictionary help.',
+      'Example: 어제 서울에서 큰 행사가 있었어요. 많은 사람들이 왔어요. 음악도 있었고 음식도 있었어요.'
     ].join('\n')
   },
   Intermediate: {
     topik: 'TOPIK I Level 3-4',
     label: 'Tree (Intermediate)',
     rules: [
-      'Vocabulary: Topic-specific terms allowed (2-4 syllable words). ~2000 word range. Some Sino-Korean OK.',
-      'Grammar: Connectors within sentences (고, 지만, 서, 때문에, 니까), modals (ㄹ 수 있다, 아/어 보다, 고 싶다), quoted speech (다고, 라고)',
-      'Tense: Present, past, future (ㄹ 거예요, 겠). Progressive (고 있다).',
-      'Sentence length: 8-15 words per sentence. Total article: 12-20 sentences MAX. Keep it digestible — not too long.',
-      'Honorifics: 해요체 primarily. Some 합니다체 in formal contexts.',
-      'Relative clauses: Simple ones (는/은/을 + noun). Example: 제가 좋아하는 음식',
-      'Passive/Causative: Basic forms only (되다, 시키다)',
-      'Topic: ALL topics OK. Can handle opinions, comparisons, cause-effect, simple analysis.',
-      'Article style: Real news articles. Can include feature stories, analysis pieces with moderate complexity.',
-      'Example: 한국에 처음 갔을 때 음식이 너무 매워서 힘들었지만, 지금은 매운 음식을 정말 좋아해요.'
+      'KEY PRINCIPLE: Write naturally. The article should read like real Korean news at a moderate level. Do NOT dumb down or inflate.',
+      'Vocabulary: Topic-specific terms, some Sino-Korean. Natural word choices for the topic.',
+      'Grammar: Connectors within sentences (고, 지만, 서, 때문에, 니까), modals (ㄹ 수 있다, 아/어 보다), quoted speech (다고, 라고)',
+      'Tense: Present, past, future freely. Progressive (고 있다).',
+      'Sentence length: 8-15 words per sentence. Compound sentences OK.',
+      'Honorifics: 해요체 + 합니다체 mix.',
+      'Relative clauses: 는/은/을 + noun OK.',
+      'Total article length: 15-30 sentences. Full article with enough depth for comprehension questions.',
+      'Article style: Standard Korean news. Feature articles, reports, interviews.',
+      'Example: 최근 한국에서 외국인 관광객이 늘어나고 있는데, 특히 일본과 동남아시아에서 오는 관광객이 많아졌어요.'
     ].join('\n')
   },
   Advanced: {
     topik: 'TOPIK II Level 5-6',
     label: 'Forest (Advanced)',
     rules: [
-      'Vocabulary: Abstract nouns, academic terms, idiomatic expressions. ~5000+ word range. Sino-Korean freely used.',
-      'Grammar: Complex connectors (에도 불구하고, ㄹ수록, 는 반면에, 는 셈이다, 기 마련이다), nominalizations (는 것, 기, 음/ㅁ)',
-      'Sentence structure: Multi-clause sentences (3+ clauses). Embedding, subordination.',
-      'Sentence length: 12-25 words. Total article: 15-25 sentences MAX. Complex but not overwhelming — quality over quantity.',
-      'Honorifics: Mix of 해요체 and 합니다체. Written/formal style (다/ㄴ다) for articles.',
-      'Register: Ability to shift between formal/informal. Indirect speech, reported speech.',
-      'Hanja: Sino-Korean vocabulary expected. Technical/academic terms OK.',
-      'Cultural: Proverbs, idiomatic expressions (사자성어), nuanced politeness levels',
-      'Topic: ALL topics, no restrictions. Full complexity.',
-      'Article style: Real news, editorials, analysis, opinion pieces. Full journalistic Korean.',
-      'Example: 최근 들어 AI 기술의 급속한 발전이 노동 시장에 미치는 영향에 대한 논의가 활발해지고 있는데, 이에 대한 사회적 합의가 필요한 시점이라고 할 수 있다.'
+      'KEY PRINCIPLE: Write at NATURAL news article level. Do NOT artificially make it harder than real Korean journalism. The goal is authentic Korean, not academic papers.',
+      'Vocabulary: Full range including abstract nouns, Sino-Korean, idiomatic expressions.',
+      'Grammar: All patterns allowed. Complex connectors, nominalizations, formal/written style.',
+      'Sentence structure: Multi-clause sentences natural for Korean journalism.',
+      'Sentence length: Natural Korean news sentence length (varies).',
+      'Honorifics: 합니다체 for news, written style (다/ㄴ다) for articles.',
+      'Total article length: 20-35 sentences. Full-length article with analysis and context.',
+      'Article style: Real Korean journalism. Editorials, in-depth analysis, opinion pieces. Should read like 조선일보/한겨레 level.',
+      'Example: 정부가 발표한 새로운 경제 정책에 대해 전문가들 사이에서 엇갈린 반응이 나오고 있다. 일부에서는 단기적 효과를 기대하는 반면, 장기적인 부작용을 우려하는 목소리도 적지 않다.'
     ].join('\n')
   }
 };
