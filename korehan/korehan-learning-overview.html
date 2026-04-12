@@ -498,9 +498,14 @@
         <div style="display:flex;justify-content:center;margin-bottom:10px">
           <canvas id="radar-canvas" style="width:100%;max-width:320px;height:auto"></canvas>
         </div>
+        <div style="display:flex;gap:6px;justify-content:center;margin-bottom:10px;flex-wrap:wrap">
+          <button class="tpill radar-cmp on" onclick="_setRadarCompare(0,this)" style="font-size:10px;padding:4px 10px">vs 1주 전</button>
+          <button class="tpill radar-cmp" onclick="_setRadarCompare(1,this)" style="font-size:10px;padding:4px 10px">vs 2주 전</button>
+          <button class="tpill radar-cmp" onclick="_setRadarCompare(3,this)" style="font-size:10px;padding:4px 10px">vs 4주 전</button>
+        </div>
         <div style="display:flex;gap:12px;justify-content:center;margin-bottom:10px;font-size:10px;font-weight:700">
           <span style="color:var(--bright)">● 현재</span>
-          <span style="color:#cbd5e1">● 4주 전</span>
+          <span id="radar-cmp-label" style="color:#cbd5e1">● 1주 전</span>
         </div>
         <div class="skills" id="skills-list"></div>
       </div>
@@ -2368,6 +2373,9 @@
     requestAnimationFrame(frame);
   }
 
+  var _radarSnaps = [];
+  var _radarCompareIdx = 0; // 0=1w ago, 1=2w ago, 3=4w ago
+
   async function loadRadarChart() {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
     if (!sb || !supaUser) return;
@@ -2377,11 +2385,47 @@
         .eq('user_id', supaUser.id)
         .order('week_start', { ascending: false })
         .limit(5);
-      var snaps = r.data || [];
-      var current = snaps[0] || { skill_reading:0, skill_vocab:0, skill_grammar:0, skill_writing:0, skill_listening:0 };
-      var fourWeeksAgo = snaps[3] || snaps[snaps.length - 1] || null;
-      renderRadarChart(current, fourWeeksAgo);
+      _radarSnaps = r.data || [];
+      _renderRadarWithCompare();
     } catch(e) { console.warn('[radar]', e); }
+  }
+
+  function _renderRadarWithCompare() {
+    var snaps = _radarSnaps;
+    var current = snaps[0] || { skill_reading:0, skill_vocab:0, skill_grammar:0, skill_writing:0, skill_listening:0 };
+    var compareSnap = snaps[_radarCompareIdx + 1] || snaps[snaps.length - 1] || null;
+    renderRadarChart(current, compareSnap);
+
+    // Show delta summary under chart
+    if (compareSnap) {
+      var fields = ['skill_reading','skill_vocab','skill_grammar','skill_writing','skill_listening'];
+      var labels = ['Reading','Vocab','Grammar','Writing','Listening'];
+      var deltaHTML = fields.map(function(f, i) {
+        var diff = (current[f]||0) - (compareSnap[f]||0);
+        var color = diff > 0 ? '#4ade80' : diff < 0 ? '#f87171' : '#94a3b8';
+        var arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '→';
+        return '<span style="font-size:10px;color:' + color + ';font-weight:700">' + labels[i] + ' ' + arrow + (diff > 0 ? '+' : '') + diff + '</span>';
+      }).join(' · ');
+      var deltaEl = document.getElementById('radar-delta-summary');
+      if (!deltaEl) {
+        deltaEl = document.createElement('div');
+        deltaEl.id = 'radar-delta-summary';
+        deltaEl.style.cssText = 'text-align:center;margin-top:6px;line-height:1.8';
+        var canvas = document.getElementById('radar-canvas');
+        if (canvas && canvas.parentNode) canvas.parentNode.appendChild(deltaEl);
+      }
+      deltaEl.innerHTML = deltaHTML;
+    }
+  }
+
+  function _setRadarCompare(idx, btn) {
+    _radarCompareIdx = idx;
+    document.querySelectorAll('.radar-cmp').forEach(function(b){ b.classList.remove('on'); });
+    if (btn) btn.classList.add('on');
+    var labels = {0:'● 1주 전', 1:'● 2주 전', 3:'● 4주 전'};
+    var lbl = document.getElementById('radar-cmp-label');
+    if (lbl) lbl.textContent = labels[idx] || '● 이전';
+    _renderRadarWithCompare();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -2440,12 +2484,20 @@
           else if (change > 10) { trend = '↑ 주의'; trendColor = '#ef4444'; }
           else { trend = '→ 유지'; trendColor = '#64748b'; }
         }
+        var practiceLinks = {
+          PARTICLE: 'korehan-study-room.html?focus=particle&source=growth-lab',
+          TENSE: 'korehan-study-room.html?focus=tense&source=growth-lab',
+          WORD_ORDER: 'korehan-study-room.html?focus=word_order&source=growth-lab',
+          SPELLING: 'korehan-study-room.html?focus=spelling&source=growth-lab',
+          VOCAB: 'korehan-study-room.html?focus=vocab&source=growth-lab'
+        };
         return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
           + '<span style="font-size:12px;font-weight:600;min-width:90px;color:#555">' + (labels[k]||k) + '</span>'
           + '<div style="flex:1;height:4px;background:#f0f0f0;border-radius:2px;overflow:hidden">'
           + '<div style="width:' + pct + '%;height:100%;background:' + (colors[k]||'#ccc') + ';border-radius:2px"></div></div>'
           + '<span style="font-size:11px;font-weight:700;min-width:32px;text-align:right;color:#555">' + pct + '%</span>'
           + (trend ? '<span style="font-size:10px;font-weight:600;min-width:50px;color:' + trendColor + '">' + trend + '</span>' : '')
+          + (practiceLinks[k] ? '<a href="' + practiceLinks[k] + '" style="font-size:10px;font-weight:700;color:var(--bright);text-decoration:none;white-space:nowrap">연습→</a>' : '')
           + '</div>';
       }).join('');
     } catch(e) { console.warn('[error-patterns]', e); }

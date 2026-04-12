@@ -8066,6 +8066,7 @@ function renderFlashcardFilters() {
   if (!el) return;
   el.innerHTML =
     '<button class="tpill on" onclick="loadFlashcards(\'all\',this)">All</button>'
+    + '<button class="tpill" onclick="loadFlashcards(\'review\',this)">🔁 Review Due</button>'
     + '<button class="tpill" onclick="loadFlashcards(\'news\',this)">📚 Vocab Bank</button>'
     + '<button class="tpill" onclick="loadFlashcards(\'conv\',this)">💬 Conv</button>'
     + '<button class="tpill" onclick="loadFlashcards(\'story\',this)">📖 Story</button>';
@@ -8074,6 +8075,12 @@ function renderFlashcardFilters() {
 function loadFlashcards(cat, btn) {
   document.querySelectorAll('#fc-filters-left .tpill').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
+
+  // SRS review mode: show words due for review
+  if (cat === 'review') {
+    _loadSRSReviewCards();
+    return;
+  }
 
   var wb = typeof getWordBank === 'function' ? getWordBank() : [];
   var pool;
@@ -8108,6 +8115,129 @@ function loadFlashcards(cat, btn) {
       + '<div class="mcen">' + (w.rom ? '<em style="font-size:11px;color:#7ab8f5;display:block">' + w.rom + '</em>' : '') + (w.en||'') + '</div>'
       + '</div>';
   }).join('');
+}
+
+// ── SRS Review Cards (Leitner-inspired) ──
+var _srsReviewQueue = [];
+var _srsReviewIdx = 0;
+
+async function _loadSRSReviewCards() {
+  var fcGridEl = document.getElementById('fc-grid-left');
+  if (!fcGridEl) return;
+  fcGridEl.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:#94a3b8">Loading review queue...</div>';
+
+  if (!supaUser) {
+    fcGridEl.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:#94a3b8">Sign in to use SRS review</div>';
+    return;
+  }
+
+  try {
+    var sb = getSupa();
+    var today = new Date().toISOString().slice(0, 10);
+    var { data } = await sb.from('saved_words')
+      .select('word_ko,word_rom,word_en,srs_interval,srs_ease_factor,srs_next_review,review_count,correct_count,wrong_count')
+      .eq('user_id', supaUser.id)
+      .lte('srs_next_review', today)
+      .order('srs_next_review', { ascending: true })
+      .limit(20);
+
+    _srsReviewQueue = (data || []).map(function(w) {
+      var total = (w.correct_count || 0) + (w.wrong_count || 0);
+      return {
+        ko: w.word_ko, rom: w.word_rom || '', en: w.word_en || '',
+        interval: w.srs_interval || 1, ease: w.srs_ease_factor || 2.5,
+        accuracy: total > 0 ? Math.round((w.correct_count || 0) / total * 100) : -1,
+        reviewCount: w.review_count || 0
+      };
+    });
+    _srsReviewIdx = 0;
+
+    if (!_srsReviewQueue.length) {
+      fcGridEl.innerHTML = '<div style="text-align:center;padding:24px">'
+        + '<div style="font-size:28px;margin-bottom:8px">✅</div>'
+        + '<div style="font-size:13px;font-weight:700;color:#4ade80">All caught up!</div>'
+        + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">No words due for review today</div>'
+        + '</div>';
+      return;
+    }
+
+    _renderSRSCard();
+  } catch(e) {
+    fcGridEl.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:#f87171">Failed to load: ' + (e.message||'') + '</div>';
+  }
+}
+
+function _renderSRSCard() {
+  var fcGridEl = document.getElementById('fc-grid-left');
+  if (!fcGridEl || !_srsReviewQueue.length) return;
+  var w = _srsReviewQueue[_srsReviewIdx];
+  if (!w) {
+    fcGridEl.innerHTML = '<div style="text-align:center;padding:24px">'
+      + '<div style="font-size:28px;margin-bottom:8px">🎉</div>'
+      + '<div style="font-size:13px;font-weight:700;color:#4ade80">Review complete!</div>'
+      + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">' + _srsReviewIdx + ' words reviewed</div>'
+      + '</div>';
+    return;
+  }
+  var accColor = w.accuracy >= 70 ? '#4ade80' : w.accuracy >= 40 ? '#fbbf24' : '#f87171';
+  var accText = w.accuracy >= 0 ? w.accuracy + '%' : 'New';
+
+  fcGridEl.innerHTML =
+    '<div style="font-size:11px;color:#94a3b8;text-align:center;margin-bottom:8px">'
+    + (_srsReviewIdx + 1) + ' / ' + _srsReviewQueue.length + ' · '
+    + '<span style="color:' + accColor + '">' + accText + '</span>'
+    + '</div>'
+    + '<div class="mcard" id="srs-active-card" onclick="this.classList.toggle(\'flipped\')" style="margin:0 auto;max-width:260px">'
+    + '<div class="mcko" style="font-size:22px">' + w.ko + '</div>'
+    + '<div class="mcen">' + (w.rom ? '<em style="font-size:11px;color:#7ab8f5;display:block">' + w.rom + '</em>' : '') + w.en + '</div>'
+    + '</div>'
+    + '<div style="display:flex;gap:8px;justify-content:center;margin-top:10px">'
+    + '<button onclick="_srsRate(0)" style="flex:1;max-width:80px;padding:8px;border:1px solid #fca5a5;border-radius:8px;background:rgba(239,68,68,.08);color:#f87171;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Again</button>'
+    + '<button onclick="_srsRate(3)" style="flex:1;max-width:80px;padding:8px;border:1px solid #fde68a;border-radius:8px;background:rgba(251,191,36,.08);color:#f59e0b;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Hard</button>'
+    + '<button onclick="_srsRate(4)" style="flex:1;max-width:80px;padding:8px;border:1px solid #86efac;border-radius:8px;background:rgba(34,197,94,.08);color:#22c55e;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Good</button>'
+    + '<button onclick="_srsRate(5)" style="flex:1;max-width:80px;padding:8px;border:1px solid #93c5fd;border-radius:8px;background:rgba(59,130,246,.08);color:#3b82f6;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Easy</button>'
+    + '</div>';
+}
+
+async function _srsRate(grade) {
+  var w = _srsReviewQueue[_srsReviewIdx];
+  if (!w) return;
+
+  // SM-2 algorithm
+  var interval = w.interval || 1;
+  var ease = w.ease || 2.5;
+  var newInterval, newEase;
+  if (grade === 0) { newInterval = 1; newEase = Math.max(1.3, ease - 0.2); }
+  else if (grade === 3) { newInterval = Math.max(1, Math.round(interval * 1.2)); newEase = Math.max(1.3, ease - 0.15); }
+  else if (grade === 4) { newInterval = Math.round(interval * ease); newEase = ease; }
+  else { newInterval = Math.round(interval * ease * 1.3); newEase = Math.min(4.0, ease + 0.15); }
+
+  // Update DB
+  try {
+    var sb = getSupa();
+    var nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + newInterval);
+    await sb.from('saved_words').update({
+      srs_interval: newInterval,
+      srs_ease_factor: newEase,
+      srs_next_review: nextDate.toISOString().slice(0, 10),
+      srs_last_reviewed: new Date().toISOString()
+    }).eq('user_id', supaUser.id).eq('word_ko', w.ko);
+
+    // Track review via RPC
+    sb.rpc('save_or_update_word', {
+      p_word_key: w.ko, p_word_ko: w.ko, p_word_en: w.en, p_word_rom: w.rom,
+      p_source_kind: 'srs_review', p_review_delta: 1,
+      p_correct_delta: grade >= 3 ? 1 : 0, p_wrong_delta: grade < 3 ? 1 : 0
+    }).catch(function(){});
+  } catch(e) { console.warn('SRS update failed:', e); }
+
+  // If "Again", re-queue at end
+  if (grade === 0) {
+    _srsReviewQueue.push(w);
+  }
+  _srsReviewIdx++;
+  _renderSRSCard();
 }
 
 // ═══════════════════════════════════════════════════════════════
