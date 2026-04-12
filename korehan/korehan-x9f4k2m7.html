@@ -4378,14 +4378,25 @@ async function goStoriesEditor() {
       <p style="color:#64748b;font-size:13px;margin:0 0 20px">Generate short Korean story content with AI. After generation, save to stories_data table.</p>
 
       <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px;margin-bottom:20px">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:14px">
           <div>
-            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">MOOD</label>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">GENRE</label>
             <select id="st-mood" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
-              <option value="fun">😂 Fun</option>
-              <option value="touching">🥹 Touching</option>
-              <option value="scary">😱 Scary</option>
-              <option value="shocking">😮 Shocking</option>
+              <option value="slice_of_life">☕ Slice of Life</option>
+              <option value="romance">💕 Romance</option>
+              <option value="mystery">🔍 Mystery</option>
+              <option value="adventure">🌏 Adventure</option>
+              <option value="thriller">😱 Thriller</option>
+              <option value="essay">✍️ Essay</option>
+              <option value="workplace">💼 Workplace</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">PERSPECTIVE</label>
+            <select id="st-perspective" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+              <option value="first">👤 1st Person</option>
+              <option value="third" selected>👥 3rd Person</option>
+              <option value="omniscient">🔮 Omniscient</option>
             </select>
           </div>
           <div>
@@ -4403,6 +4414,28 @@ async function goStoriesEditor() {
               <option value="5">5개</option>
               <option value="10" selected>10개</option>
             </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">CHARACTER (optional)</label>
+            <select id="st-character" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
+              <option value="">Random / None</option>
+              <option value="cr1">박서진 (사회부)</option>
+              <option value="cr2">김지원 (국제부)</option>
+              <option value="cr3">이민준 (경제부)</option>
+              <option value="cr4">최유나 (문화부)</option>
+              <option value="cr5">정우성 (정치부)</option>
+              <option value="cr6">한소희 (뷰티/트래블)</option>
+              <option value="cr7">오지훈 (스포츠부)</option>
+              <option value="cr8">신지은 (환경)</option>
+              <option value="cr9">강태양 (외교)</option>
+              <option value="cr10">류하늘 (라이프)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">SERIES (optional)</label>
+            <input id="st-series" placeholder="Series ID (e.g. newsroom-secret)" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px;box-sizing:border-box">
           </div>
         </div>
         <button onclick="generateStories()" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
@@ -5583,17 +5616,24 @@ async function loadStoryList() {
     var d = row.data || {};
     var title = d.title || row.title || '(제목 없음)';
     var titleEn = d.title_en || row.title_en || '';
-    var mood = d.mood || row.mood || '—';
+    var genre = d.genre || row.genre || d.mood || row.mood || '—';
+    var persp = d.perspective || row.perspective || 'third';
     var lvl  = d.lvl  || row.lvl  || '—';
     var lvlMap = {s:'Seed', b:'Sprout', i:'Tree', a:'Forest'};
+    var genreLabels = {slice_of_life:'Slice of Life',romance:'Romance',mystery:'Mystery',adventure:'Adventure',thriller:'Thriller',essay:'Essay',workplace:'Workplace',fun:'Fun',touching:'Touching',scary:'Scary',shocking:'Shocking'};
+    var perspLabels = {first:'1st',third:'3rd',omniscient:'Omni'};
+    var seriesId = d.series_id || row.series_id || '';
+    var episode = d.episode || row.episode || 0;
     var preview = (d.preview || '').slice(0, 60);
     return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;gap:14px">'
       + '<div style="flex:1;min-width:0">'
-      + '<div style="font-size:14px;font-weight:700;color:#0f172a">' + title + (titleEn ? ' <span style="font-weight:400;color:#64748b;font-size:12px">/ ' + titleEn + '</span>' : '') + '</div>'
+      + '<div style="font-size:14px;font-weight:700;color:#0f172a">' + title + (titleEn ? ' <span style="font-weight:400;color:#64748b;font-size:12px">/ ' + titleEn + '</span>' : '') + (seriesId ? ' <span style="background:#ede9fe;color:#7c3aed;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px">EP' + episode + '</span>' : '') + '</div>'
       + '<div style="font-size:12px;color:#64748b;margin-top:2px">' + (preview || '(내용 없음)') + '</div>'
-      + '<div style="margin-top:6px;display:flex;gap:6px">'
+      + '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">'
       + '<span style="background:#f3e8ff;color:#7c3aed;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px">' + (lvlMap[lvl]||lvl) + '</span>'
-      + '<span style="background:#f0fdf4;color:#15803d;font-size:11px;padding:2px 8px;border-radius:999px">' + mood + '</span>'
+      + '<span style="background:#f0fdf4;color:#15803d;font-size:11px;padding:2px 8px;border-radius:999px">' + (genreLabels[genre]||genre) + '</span>'
+      + '<span style="background:#eff6ff;color:#1d4ed8;font-size:11px;padding:2px 8px;border-radius:999px">' + (perspLabels[persp]||persp) + '</span>'
+      + (seriesId ? '<span style="background:#fef3c7;color:#92400e;font-size:11px;padding:2px 8px;border-radius:999px">Series: ' + seriesId + '</span>' : '')
       + '</div></div>'
       + '<div style="display:flex;gap:8px;flex-shrink:0">'
       + '<button onclick="openStoryEditModal(' + row.id + ')" style="background:#f1f5f9;color:#334155;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ Edit</button>'
@@ -5608,6 +5648,8 @@ async function openStoryEditModal(rowId) {
   if (rowId) {
     var { data } = await sb.from('stories_data').select('*').eq('id', rowId).single();
     d = (data && data.data) ? data.data : {};
+    // Merge top-level DB columns into d
+    if (data) { d.genre = d.genre || data.genre; d.perspective = d.perspective || data.perspective; d.series_id = d.series_id || data.series_id; d.episode = d.episode || data.episode; d.character_slugs = d.character_slugs || data.character_slugs; }
   }
   var isNew = !rowId;
 
@@ -5623,13 +5665,17 @@ async function openStoryEditModal(rowId) {
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">'
     + ceField('se-title',    '제목 (한국어)', 'text', d.title||'', '예: 서울의 봄')
     + ceField('se-title-en', '제목 (영어)',   'text', d.title_en||'', 'e.g. Spring in Seoul')
-    + ceField('se-read-time','읽기 시간',     'text', d.read_time||'3 min', '예: 3 min')
-    + '<div>'
-    + ceSelect('se-lvl',  '레벨', ['s','b','i','a'], ['Seed','Sprout','Tree','Forest'], d.lvl||'b')
     + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px">'
+    + '<div>' + ceSelect('se-genre', 'Genre', ['slice_of_life','romance','mystery','adventure','thriller','essay','workplace'], ['Slice of Life','Romance','Mystery','Adventure','Thriller','Essay','Workplace'], d.genre||d.mood||'slice_of_life') + '</div>'
+    + '<div>' + ceSelect('se-perspective', 'Perspective', ['first','third','omniscient'], ['1st Person','3rd Person','Omniscient'], d.perspective||'third') + '</div>'
+    + '<div>' + ceSelect('se-lvl', 'Level', ['s','b','i','a'], ['Seed','Sprout','Tree','Forest'], d.lvl||'b') + '</div>'
+    + ceField('se-read-time','Read Time', 'text', d.read_time||d.readTime||'3 min', '3 min')
     + '</div>'
-    + '<div style="margin-bottom:12px">'
-    + ceField('se-mood', '분위기 (mood)', 'text', d.mood||'', '예: Heartwarming, Suspenseful, Funny')
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">'
+    + ceField('se-series', 'Series ID', 'text', d.series_id||'', 'e.g. newsroom-secret')
+    + ceField('se-episode', 'Episode #', 'number', d.episode||'0', '0')
+    + '<div>' + ceSelect('se-character', 'Character', ['','cr1','cr2','cr3','cr4','cr5','cr6','cr7','cr8','cr9','cr10'], ['None','박서진','김지원','이민준','최유나','정우성','한소희','오지훈','신지은','강태양','류하늘'], (d.character_slugs&&d.character_slugs[0])||'') + '</div>'
     + '</div>'
     + '<div style="margin-bottom:12px">'
     + '<label style="font-size:12px;font-weight:700;color:#374151;display:block">미리보기 (preview)<textarea id="se-preview" rows="2" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical">' + (d.preview||'').replace(/</g,'&lt;') + '</textarea></label>'
@@ -5652,18 +5698,28 @@ async function saveStoryEdit(rowId) {
   seErr.style.display = 'none';
   try {
     var lvlVal = document.getElementById('se-lvl').value;
+    var genreVal = document.getElementById('se-genre').value;
+    var perspVal = document.getElementById('se-perspective').value;
+    var charVal = document.getElementById('se-character').value;
+    var seriesVal = document.getElementById('se-series').value.trim();
+    var episodeVal = parseInt(document.getElementById('se-episode').value) || 0;
     var storyObj = {
       title:     document.getElementById('se-title').value.trim(),
       title_en:  document.getElementById('se-title-en').value.trim(),
       lvl:       lvlVal,
-      mood:      document.getElementById('se-mood').value.trim(),
+      genre:     genreVal,
+      mood:      genreVal,
+      perspective: perspVal,
+      series_id: seriesVal || null,
+      episode:   episodeVal,
+      character_slugs: charVal ? [charVal] : [],
       read_time: document.getElementById('se-read-time').value.trim() || '3 min',
       preview:   document.getElementById('se-preview').value.trim(),
       body:      document.getElementById('se-body').value.trim(),
     };
     if (!storyObj.title) throw new Error('제목을 입력해주세요');
     var sb = getSb();
-    var row = {data: storyObj, lvl: lvlVal, mood: storyObj.mood, title: storyObj.title, title_en: storyObj.title_en, preview: storyObj.preview, read_time: storyObj.read_time};
+    var row = {data: storyObj, lvl: lvlVal, mood: genreVal, genre: genreVal, perspective: perspVal, series_id: seriesVal||null, episode: episodeVal, character_slugs: charVal?[charVal]:[], title: storyObj.title, title_en: storyObj.title_en, preview: storyObj.preview, read_time: storyObj.read_time};
     if (rowId) {
       var { error } = await sb.from('stories_data').update(row).eq('id', rowId);
       if (error) throw error;
