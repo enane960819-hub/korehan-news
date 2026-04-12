@@ -11629,7 +11629,11 @@ function _asRenderBlankUI() {
     +'<div id="as-wo-msg" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8"></div>';
   // Auto-check
   var allFilled=bw.every(function(w,bi){return fb[bi]!==undefined&&fb[bi]!==null;});
-  if(allFilled) _asSetNav('none','');
+  if(allFilled) {
+    var allCorrect=bw.every(function(w,i){return fb[i]===w;});
+    if(allCorrect) _asStepDone[2]=true;
+    _asSetNav('none','');
+  }
   else _asSetNav('none','none','none');
 }
 function asBlankFill3(bi,text) {
@@ -11653,7 +11657,9 @@ function asBlankFill3(bi,text) {
     if(msg) msg.innerHTML=allCorrect
       ?'<span style="color:#059669;font-weight:700">모두 정답! 잘했어요 🎉</span>'
       :'<span style="color:#dc2626;font-weight:700">틀린 단어가 있어요. 빨간색을 터치해서 다시 시도하세요.</span>';
-    if(allCorrect) { _asStepDone[2]=true; setTimeout(function(){_asSetNav('none','');},500); }
+    if(allCorrect) { _asStepDone[2]=true; }
+    // Next always visible when all filled (correct or not)
+    _asSetNav('none','');
   }
 }
 function asBlankClear(bi) {
