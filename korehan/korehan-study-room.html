@@ -11152,7 +11152,7 @@ async function asSelectArticle(id) {
   document.getElementById('as-article-content').innerHTML =
     '<p class="as-section-label">📖 기사 읽기</p><div class="as-article-text">' + _asFormatBody(art.body||'') + '</div>';
   document.getElementById('as-activity-area').innerHTML =
-    '<div class="as-loading"><div class="as-spinner"></div><div>학습 콘텐츠 생성 중… (약 10초)</div></div>';
+    '<div class="as-loading"><div class="as-spinner"></div><div id="as-loading-msg">불러오는 중…</div></div>';
   _asSetNav('none','none','none');
   await _asLoadContent();
   _asRenderStep();
@@ -11189,6 +11189,8 @@ async function _asLoadContent() {
       return;
     }
   } catch(e) {}
+  var lm = document.getElementById('as-loading-msg');
+  if (lm) lm.textContent = 'AI 학습 콘텐츠 생성 중… (약 10초)';
   var prompt = 'Korean news article study content for language learners.\nTitle: ' + (_asCurrentArt.title||'') + '\nBody:\n' + (_asCurrentArt.body||'').slice(0,1600)
     + '\n\nReturn ONLY valid JSON:\n{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],"phrases":[{"ko":"sentence from article","en":"translation"}],"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\nvocab:6 key words from article. phrases:5 key sentences. word_order:3 sentences split into eojeol chunks in CORRECT order. questions:3 comprehension questions.';
   try {

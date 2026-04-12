@@ -5248,7 +5248,10 @@ async function goPhoneCallAdmin() {
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
     + '<div><h2 style="font-size:22px;font-weight:800;margin:0">📞 Phone Call 관리</h2>'
     + '<p style="color:#64748b;font-size:13px;margin:4px 0 0">phone_calls 테이블 — 스크립트/오디오/화자 관리</p></div>'
-    + '<button onclick="openPhoneCreateModal()" style="background:#059669;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">+ 새 Phone Call</button>'
+    + '<div style="display:flex;gap:8px">'
+    + '<button onclick="openPhoneCreateModal()" style="background:#059669;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">+ 수동 추가</button>'
+    + '<button onclick="phoneBulkGenerate()" id="phone-ai-btn" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🤖 AI 3개 생성</button>'
+    + '</div>'
     + '</div>'
     + '<div id="phone-admin-list">⏳ 불러오는 중...</div></div>';
   await loadPhoneAdminList();
@@ -5362,6 +5365,46 @@ async function deletePhoneCall(id) {
   if (error) { alert('삭제 오류: ' + error.message); return; }
   showToastAdmin('🗑 삭제됨');
   await loadPhoneAdminList();
+}
+
+async function phoneBulkGenerate() {
+  var btn = document.getElementById('phone-ai-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 생성 중...'; }
+  var existingTitles = _phoneAdminData.map(function(c){ return c.title; });
+  var maxOrder = _phoneAdminData.reduce(function(m, c){ return Math.max(m, c.sort_order||0); }, 0);
+  try {
+    var result = await callClaude({
+      feature: 'phone-call-generate',
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 6000,
+      messages: [{ role: 'user', content: '한국어 전화 통화 스크립트를 정확히 3개 생성해주세요. 실제 한국에서 일어나는 전화 상황으로 만들어주세요.\n\n이미 있는 제목 (중복 제외): ' + existingTitles.join(', ') + '\n\n각 Phone Call마다 다음 JSON 형식으로 반환:\n```json\n[\n  {\n    "title": "한국어 제목",\n    "title_en": "English Title",\n    "description": "상황 설명 (한국어)",\n    "category": "Daily 또는 Business 또는 Emergency",\n    "difficulty": "Beginner 또는 Intermediate 또는 Advanced",\n    "duration_seconds": 90,\n    "speakers": {"A":{"name":"화자A이름","color":"#34d399"},"B":{"name":"화자B이름","color":"#60a5fa"}},\n    "script": [\n      {"speaker":"A","start":0.0,"end":2.5,"ko":"한국어 대사","en":"English translation"},\n      {"speaker":"B","start":3.0,"end":5.5,"ko":"한국어 대사","en":"English translation"}\n    ]\n  }\n]\n```\n\n규칙:\n1. 각 통화는 6~10문장\n2. start/end 타임스탬프는 대사 길이에 맞게 자연스럽게\n3. 존댓말 위주 (비즈니스/공식), 반말 가능 (친구 간)\n4. 카테고리 다양하게: 일상(Daily), 비즈니스(Business), 긴급(Emergency)\n5. 난이도 다양하게 섞기\n6. 화자 이름은 한국 이름 (예: 민수, 지영) 또는 역할 (예: 직원, 의사)\n7. JSON만 반환 (설명 텍스트 없이)' }]
+    });
+    var text = result.content ? result.content[0].text : (result.text || '');
+    var jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) throw new Error('JSON not found in response');
+    var calls = JSON.parse(jsonMatch[0]);
+    calls = calls.filter(function(c) { return existingTitles.indexOf(c.title) === -1; });
+    if (calls.length === 0) { showToastAdmin('모든 Phone Call이 중복입니다.'); return; }
+    var rows = calls.map(function(c, i) {
+      return {
+        title: c.title, title_en: c.title_en||'', description: c.description||'',
+        category: c.category||'Daily', difficulty: c.difficulty||'Beginner',
+        duration_seconds: c.duration_seconds||90, audio_url: null,
+        speakers: c.speakers||{}, script: c.script||[],
+        is_active: true, sort_order: maxOrder + i + 1
+      };
+    });
+    var sb = getSb();
+    var { error } = await sb.from('phone_calls').insert(rows);
+    if (error) throw error;
+    showToastAdmin('✅ ' + rows.length + '개 Phone Call 추가됨!');
+    await loadPhoneAdminList();
+  } catch(e) {
+    console.error('[PhoneAI]', e);
+    alert('AI 생성 오류: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🤖 AI 3개 생성'; }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
