@@ -8246,6 +8246,24 @@ function lqNext() {
       + '<button class="lqbtn" onclick="startLQ()">🔄 New Quiz</button>'
       + '</div>';
     if (typeof dmTrackQuiz === 'function') dmTrackQuiz();
+    // Save listening quiz results to DB
+    if (typeof logQuizResult === 'function' && supaUser) {
+      try {
+        logQuizResult(getSupa(), {
+          p_skill_type: 'listening',
+          p_quiz_type: 'listening_quiz',
+          p_item_id: 'lq_' + kstDateKey(),
+          p_content_type: 'listening',
+          p_content_id: kstDateKey(),
+          p_grammar_point: '',
+          p_prompt: _lqMode === 'hear' ? 'Hear mode' : 'Meaning mode',
+          p_user_answer: _lqScore + '/' + _lqQ.length,
+          p_correct_answer: _lqQ.length + '/' + _lqQ.length,
+          p_is_correct: pct >= 80,
+          p_score: pct
+        });
+      } catch(e) { console.warn('LQ log failed:', e); }
+    }
   } else {
     renderLQQ();
   }

@@ -884,13 +884,6 @@ body.kh-neon-on .hero-dot {
   </div>
   <div class="home-pills" id="news-pills">
     <button class="sp on" data-filter="all">All</button>
-    <button class="sp" data-filter="society">Society</button>
-    <button class="sp" data-filter="world">World</button>
-    <button class="sp" data-filter="culture">Culture</button>
-    <button class="sp" data-filter="kpop">K-pop</button>
-    <button class="sp" data-filter="beauty">Beauty</button>
-    <button class="sp" data-filter="travel">Travel</button>
-    <button class="sp" data-filter="korea">🇰🇷 Korea</button>
   </div>
   <div class="home-news-grid" id="dyn-news-grid"></div>
 
@@ -1250,8 +1243,20 @@ document.addEventListener('DOMContentLoaded', async function() {
     applyGlobalDiffFilter();
   });
 
-  // News pills filter (topic/section only)
+  // Dynamically populate news pills from getSections()
   var newsPills = document.getElementById('news-pills');
+  if (newsPills && typeof getSections === 'function') {
+    var secs = getSections();
+    secs.forEach(function(s) {
+      var btn = document.createElement('button');
+      btn.className = 'sp';
+      btn.dataset.filter = s.key;
+      btn.textContent = s.label;
+      newsPills.appendChild(btn);
+    });
+  }
+
+  // News pills filter (topic/section only)
   if (newsPills) {
     newsPills.querySelectorAll('.sp').forEach(function(btn) {
       btn.addEventListener('click', function() {
