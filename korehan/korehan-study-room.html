@@ -11175,7 +11175,7 @@ function _asSetNav(check, next, done) {
 
 async function _asLoadContent() {
   if (!_asCurrentArt) return;
-  var key = 'as_c_' + _asCurrentArt.id;
+  var key = 'as_c2_' + _asCurrentArt.id;
   var c = sessionStorage.getItem(key);
   if (c) { try { _asStudyContent = JSON.parse(c); return; } catch(e) {} }
   if (!supaUser) return;
