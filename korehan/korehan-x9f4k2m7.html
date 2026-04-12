@@ -508,15 +508,20 @@ async function _refreshAndGetToken() {
 async function callClaude({ feature, model, max_tokens, messages }) {
   var payload = { feature, model, max_tokens, messages };
 
-  // Admin bypass: use service role key directly (no JWT needed)
+  // Send both: JWT for current proxy + x-admin-bypass for updated proxy
+  var token = _getAccessTokenFromStorage();
+  if (!token) token = await _refreshAndGetToken();
+
   async function _doFetch() {
+    var headers = {
+      'Content-Type': 'application/json',
+      'x-admin-bypass': SUPA_SERVICE_KEY,
+      'apikey': SUPA_KEY_ADMIN,
+    };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
     return fetch(ADMIN_CLAUDE_PROXY, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-admin-bypass': SUPA_SERVICE_KEY,
-        'apikey': SUPA_KEY_ADMIN,
-      },
+      headers: headers,
       body: JSON.stringify(payload),
     });
   }
@@ -8979,10 +8984,10 @@ async function ftAdminAIGenerate() {
   var sb = getSb(); if (!sb) return;
   var added = 0, errors = 0;
 
-  for (var batch = 0; batch < Math.ceil(count / 3); batch++) {
-    var batchSize = Math.min(3, count - added);
+  for (var batch = 0; batch < count; batch++) {
+    var batchSize = 1;
     if (added >= count) break;
-    status.innerHTML = '🤖 Generating batch ' + (batch+1) + '... (' + added + '/' + count + ' done)';
+    status.innerHTML = '🤖 Generating ' + (added+1) + '/' + count + '...';
 
     try {
       var catHint = cat ? ' All scenarios must be set in: ' + cat + '.' : '';
@@ -8991,7 +8996,7 @@ async function ftAdminAIGenerate() {
       var res = await callClaude({
         feature: 'ft-scenario-gen-admin',
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4000,
+        max_tokens: 8000,
         messages: [{ role: 'user', content:
           'Generate ' + batchSize + ' Korean conversation scenario(s) for a language learning app.' + catHint + topicHint + '\n\n'
           + ((typeof getLevelPrompt === 'function') ? getLevelPrompt(diff) : 'Difficulty: ' + diff) + '\n\n'
@@ -9032,7 +9037,8 @@ async function ftAdminAIGenerate() {
       }
     } catch(e) {
       errors++;
-      status.innerHTML = '⚠️ Batch failed: ' + (e.message||'parse error') + '. Retrying...';
+      console.error('FT gen error:', e);
+      status.innerHTML = '⚠️ Failed (' + (added+1) + '/' + count + '): ' + (e.message||'parse error') + ' — continuing...';
     }
   }
 
