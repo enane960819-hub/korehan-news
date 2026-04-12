@@ -11327,7 +11327,7 @@ async function asSelectArticle(id) {
   document.getElementById('as-article-content').innerHTML =
     '<p class="as-section-label">📖 기사 읽기</p><div class="as-article-text">' + _asFormatBody(art.body||'') + '</div>';
   document.getElementById('as-activity-area').innerHTML =
-    '<div class="as-loading"><div class="as-spinner"></div><div id="as-loading-msg">불러오는 중…</div></div>';
+    '<div class="su-loading"><div class="su-spinner"></div><div id="as-loading-msg">Loading...</div></div>';
   _asSetNav('none','none','none');
   await _asLoadContent();
   _asRenderStep();
@@ -11338,8 +11338,16 @@ function _asFormatBody(b) {
     .replace(/\n\n+/g,'</p><p style="margin-top:10px" class="as-article-text">').replace(/\n/g,'<br>');
 }
 function _asSetNav(check, next, done) {
-  var cb = document.getElementById('as-check-btn'), nb = document.getElementById('as-next-btn'), db = document.getElementById('as-done-btn');
-  if (cb) cb.style.display = check; if (nb) nb.style.display = next; if (db) db.style.display = done;
+  var nb = document.getElementById('as-next-btn'), db = document.getElementById('as-done-btn');
+  if (nb) nb.style.display = next; if (db) db.style.display = done;
+}
+function asGoToStep(step) {
+  // Only allow going to completed steps or current
+  if (step > _asStep && !_asStepDone[step-2]) return;
+  _asStep = step; _asRenderStep();
+}
+function asPrevStep() {
+  if (_asStep > 1) { _asStep--; _asSaveProgress(); _asRenderStep(); }
 }
 
 async function _asLoadContent() {
@@ -11365,7 +11373,7 @@ async function _asLoadContent() {
     }
   } catch(e) {}
   var lm = document.getElementById('as-loading-msg');
-  if (lm) lm.textContent = 'AI 학습 콘텐츠 생성 중… (약 10초)';
+  if (lm) lm.textContent = 'Generating study content... (~10s)';
   var prompt = 'Korean news article study content for language learners.\nTitle: ' + (_asCurrentArt.title||'') + '\nBody:\n' + (_asCurrentArt.body||'').slice(0,1600)
     + '\n\nReturn ONLY valid JSON:\n{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],"phrases":[{"ko":"sentence from article","en":"translation"}],"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\nvocab:6 key words from article. phrases:5 key sentences. word_order:3 sentences split into eojeol chunks in CORRECT order. questions:3 comprehension questions.';
   try {
@@ -11397,14 +11405,26 @@ async function _asSaveContentToDB(articleId, content) {
   } catch(e) { console.warn('[ArticleStudy] DB save failed', e); }
 }
 
-var _asStepLabels = ['Step 1 / 5 — Vocabulary','Step 2 / 5 — Phrases','Step 3 / 5 — Reading','Step 4 / 5 — Speaking','Step 5 / 5 — Writing (Optional)'];
+var _asStepLabels = ['Step 1 / 5 — Vocabulary','Step 2 / 5 — Phrases','Step 3 / 5 — Reading','Step 4 / 5 — Quiz','Step 5 / 5 — Writing'];
+var _asStepTabLabels = ['Vocab','Phrases','Reading','Quiz','Writing'];
 function _asRenderPips() {
-  var bar = document.getElementById('as-pip-bar'); if (!bar) return;
-  bar.innerHTML = [1,2,3,4,5].map(function(n){
-    var cls='as-pip'+(n<_asStep?' done':n===_asStep?' active':'');
-    return '<div class="'+cls+'"></div>';
-  }).join('');
-  var lbl = document.getElementById('as-step-label'); if (lbl) lbl.textContent = _asStepLabels[_asStep-1]||'';
+  // Update step tabs
+  var tabs = document.querySelectorAll('#as-step-tabs .su-step');
+  tabs.forEach(function(tab, i) {
+    tab.className = 'su-step';
+    if (i + 1 < _asStep) tab.classList.add('done');
+    else if (i + 1 === _asStep) tab.classList.add('active');
+  });
+  // Update step label
+  var lbl = document.getElementById('as-step-label');
+  if (lbl) lbl.textContent = _asStepLabels[_asStep-1] || '';
+  // Update progress bar
+  var pct = Math.round(((_asStep - 1) / 5) * 100);
+  var fill = document.getElementById('as-progress-fill');
+  if (fill) fill.style.width = pct + '%';
+  // Update nav
+  var prevBtn = document.getElementById('as-prev-btn');
+  if (prevBtn) prevBtn.style.display = _asStep > 1 ? '' : 'none';
 }
 function _asRenderStep() {
   _asRenderPips();
@@ -11426,33 +11446,48 @@ function _asStep1(art,act) {
     ? _asStudyContent.custom_highlights.vocab
     : vocab.map(function(v){return v.ko;});
   hlWords.forEach(function(w){ if(w) body=body.replace(new RegExp(_asEsc(w),'g'),'<mark>'+w+'</mark>'); });
-  art.innerHTML='<p class="as-section-label">📖 기사 읽기 — 형광펜 단어 확인</p><div class="as-article-text as-scrollable">'+body+'</div>';
-  if (!vocab.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px">어휘가 없습니다.</div>'; _asSetNav('none',''); return; }
+  // Article card (reference style)
+  var imgHtml = _asCurrentArt.image
+    ? '<img class="su-article-img" src="' + _asCurrentArt.image + '" alt="" onerror="this.className=\'su-article-img-ph\';this.innerHTML=\'📰\';this.removeAttribute(\'src\')">'
+    : '<div class="su-article-img-ph">📰</div>';
+  art.innerHTML = '<div class="su-instruction">Select the meaning of highlighted words</div>'
+    + '<div class="su-article-card">'
+    + '<div class="su-article-inner">' + imgHtml
+    + '<div class="su-article-body">'
+    + '<div class="su-article-title">' + (_asCurrentArt.title || '') + '</div>'
+    + '<div class="su-article-meta"><span class="su-article-cat">' + (_asCurrentArt.section || 'News') + '</span></div>'
+    + '<div class="su-article-text">' + body + '</div>'
+    + '</div></div>'
+    + '<div class="su-article-footer">'
+    + '<button onclick="speakHangul(_asCurrentArt.body.slice(0,200),\'female\')">🔊 Listen</button>'
+    + '<button onclick="this.nextSibling.style.display=this.nextSibling.style.display===\'block\'?\'none\':\'block\'">📋 Translation</button><div style="display:none;padding:8px 16px;font-size:12px;color:#64748b;border-top:1px solid #f1f5f9" id="as-translation"></div>'
+    + '</div></div>';
+  if (!vocab.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px;padding:20px">No vocabulary items.</div>'; _asSetNav('none',''); return; }
   var eng=_asShuffle(vocab.map(function(v,i){return{t:v.en,i:i};}));
   _asMatchState={pairs:vocab,eng:eng,matched:[],sel:{l:null,r:null}};
-  act.innerHTML='<p class="as-section-label">🔗 단어 매칭 — 한국어와 영어 뜻을 연결하세요</p><div class="as-match-wrap" id="as-mg"></div><div id="as-mm" style="margin-top:8px;font-size:12px;color:var(--gray)"></div>';
+  act.innerHTML='<div class="su-match-grid" id="as-mg"></div><div id="as-mm" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8"></div>';
   _asRenderMatch(); _asSetNav('none','none','none');
+  // Update nav counter
+  var cnt = document.getElementById('as-nav-counter');
+  if (cnt) cnt.textContent = _asMatchState.matched.length + ' / ' + vocab.length;
 }
 function _asRenderMatch() {
   var g=document.getElementById('as-mg'); if(!g||!_asMatchState) return;
   var m=_asMatchState;
   var lh=m.pairs.map(function(v,i){
     var isDone=m.matched.indexOf(i)>=0;
-    var cls='as-match-item as-match-ko'+(isDone?' matched':m.sel.l===i?' sel':'');
-    var inner = isDone
-      ? '<span style="font-size:18px;display:block;margin-bottom:2px">✓</span><span class="asmko" style="color:#15803d">'+v.ko+'</span>'
-      : '<span class="asmko">'+v.ko+'</span>';
-    return '<div class="'+cls+'" onclick="asML('+i+')" data-li="'+i+'">'+inner+'</div>';
+    var cls='su-match-item'+(isDone?' matched':m.sel.l===i?' sel':'');
+    return '<div class="'+cls+'" onclick="asML('+i+')"><div class="su-match-ko">'+(isDone?'✓ ':'')+v.ko+'</div></div>';
   }).join('');
   var rh=m.eng.map(function(item,ri){
     var isDone=m.matched.indexOf(item.i)>=0;
-    var cls='as-match-item'+(isDone?' matched':m.sel.r===ri?' sel':'');
-    var inner = isDone
-      ? '<span style="font-size:16px;display:block;margin-bottom:1px">✓</span><span style="font-size:13px;color:#15803d;font-weight:700">'+item.t+'</span>'
-      : '<span style="font-size:13px;color:#334155;font-weight:600">'+item.t+'</span>';
-    return '<div class="'+cls+'" onclick="asMR('+ri+')" data-ri="'+ri+'">'+inner+'</div>';
+    var cls='su-match-item'+(isDone?' matched':m.sel.r===ri?' sel':'');
+    return '<div class="'+cls+'" onclick="asMR('+ri+')"><div class="su-match-en">'+(isDone?'✓ ':'')+item.t+'</div></div>';
   }).join('');
-  g.innerHTML='<div style="display:flex;flex-direction:column;gap:8px">'+lh+'</div><div style="display:flex;flex-direction:column;gap:8px">'+rh+'</div>';
+  g.innerHTML=lh+rh;
+  // Update counter
+  var cnt=document.getElementById('as-nav-counter');
+  if(cnt) cnt.textContent=m.matched.length+' / '+m.pairs.length;
 }
 function asML(i) {
   if(!_asMatchState||_asMatchState.matched.indexOf(i)>=0) return;
@@ -11521,11 +11556,17 @@ function _asStep2(art,act) {
     ? _asStudyContent.custom_highlights.phrases
     : phrases.map(function(p){return p.ko&&p.ko.length>8?p.ko.slice(0,12):null;}).filter(Boolean);
   hlPhrases.forEach(function(s){ if(s) body=body.replace(new RegExp(_asEsc(s),'g'),'<mark class="ph-mark">'+s+'</mark>'); });
-  art.innerHTML='<p class="as-section-label">📖 기사 읽기 — 핵심 표현 확인</p><div class="as-article-text as-scrollable">'+body+'</div>';
-  if (!phrases.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px">표현이 없습니다.</div>'; _asSetNav('none',''); return; }
+  var imgHtml = _asCurrentArt.image
+    ? '<img class="su-article-img" src="' + _asCurrentArt.image + '" alt="" onerror="this.style.display=\'none\'">'
+    : '<div class="su-article-img-ph">📰</div>';
+  art.innerHTML = '<div class="su-instruction">Match phrases with their meanings</div>'
+    + '<div class="su-article-card"><div class="su-article-inner">' + imgHtml
+    + '<div class="su-article-body"><div class="su-article-title">' + (_asCurrentArt.title||'') + '</div>'
+    + '<div class="su-article-text">' + body + '</div></div></div></div>';
+  if (!phrases.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px;padding:20px">No phrases available.</div>'; _asSetNav('none',''); return; }
   var eng=_asShuffle(phrases.map(function(p,i){return{t:p.en,i:i};}));
   _asMatchState={pairs:phrases,eng:eng,matched:[],sel:{l:null,r:null}};
-  act.innerHTML='<p class="as-section-label">🔗 표현 매칭 — 한국어 문장과 영어 뜻을 연결하세요</p><div class="as-match-wrap" id="as-mg"></div><div id="as-mm" style="margin-top:8px;font-size:12px;color:var(--gray)"></div>';
+  act.innerHTML='<div class="su-match-grid" id="as-mg"></div><div id="as-mm" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8"></div>';
   _asRenderMatch(); _asSetNav('none','none','none');
 }
 
@@ -11563,29 +11604,27 @@ function _asRenderBlankUI() {
     var escaped=_asEsc(w);
     var filled=fb[bi];
     if(filled!==undefined&&filled!==null){
-      var cls=filled===w?'as-inline-blank filled correct':'as-inline-blank filled wrong';
+      var cls=filled===w?'su-blank filled correct':'su-blank filled wrong';
       formatted=formatted.replace(new RegExp(escaped),'<span class="'+cls+'" data-bi="'+bi+'" onclick="asBlankClear('+bi+')">'+filled+'</span>');
     } else {
-      formatted=formatted.replace(new RegExp(escaped),'<span class="as-inline-blank empty" data-bi="'+bi+'">____</span>');
+      formatted=formatted.replace(new RegExp(escaped),'<span class="su-blank" data-bi="'+bi+'">____</span>');
     }
   });
-  art.innerHTML='<p class="as-section-label">✏️ 빈칸 채우기 — 기사 본문에서 빠진 단어를 찾으세요</p>'
-    +'<div class="as-article-text">'+formatted+'</div>';
+  art.innerHTML='<div class="su-instruction">Fill in the missing words in the article</div>'
+    +'<div class="su-blank-article">'+formatted+'</div>';
   // Pool of words to choose from
   var pool=_asShuffle(bw.map(function(w,bi){return{text:w,bi:bi};}));
-  // Add 2-3 distractors
   var allEojeols=_asWOState.originalBody.split(/\s+/).filter(function(w){return w.length>=2&&bw.indexOf(w)<0;});
   var distractors=_asShuffle(allEojeols).slice(0,2);
   distractors.forEach(function(d){pool.push({text:d,bi:-1});});
   pool=_asShuffle(pool);
   var poolHTML=pool.map(function(item,pi){
     var isUsed=fb[item.bi]!==undefined&&fb[item.bi]!==null;
-    if(item.bi===-1) isUsed=false; // distractors never "used"
-    return '<div class="as-chunk'+(isUsed?' used':'')+'" '+(isUsed?'':'onclick="asBlankFill3('+item.bi+',\''+item.text.replace(/'/g,"\\'")+'\')"')+'>'+item.text+'</div>';
+    if(item.bi===-1) isUsed=false;
+    return '<div class="su-pool-word'+(isUsed?' used':'')+'" '+(isUsed?'':'onclick="asBlankFill3('+item.bi+',\''+item.text.replace(/'/g,"\\'")+'\')"')+'>'+item.text+'</div>';
   }).join('');
-  act.innerHTML='<p class="as-section-label" style="margin-bottom:8px">아래 단어를 골라 빈칸을 채우세요</p>'
-    +'<div class="as-chunk-pool" id="as-pool">'+poolHTML+'</div>'
-    +'<div id="as-wo-msg" style="margin-top:10px;font-size:12px;color:var(--gray)"></div>';
+  act.innerHTML='<div class="su-pool">'+poolHTML+'</div>'
+    +'<div id="as-wo-msg" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8"></div>';
   // Auto-check
   var allFilled=bw.every(function(w,bi){return fb[bi]!==undefined&&fb[bi]!==null;});
   if(allFilled) _asSetNav('none','');
@@ -11627,35 +11666,53 @@ function asWOAns(i) {}
 
 // ── Step 4: Comprehension questions ──
 function _asStep4(art,act) {
-  // Show article in a collapsible section — user should try from memory first
   var bodyHtml=_asCurrentArt?_asFormatBody(_asCurrentArt.body||''):'';
-  art.innerHTML='<details class="as-article-toggle"><summary style="cursor:pointer;font-size:12px;color:var(--gray);font-weight:700;padding:8px 0;user-select:none">📖 기사 다시 보기 (클릭해서 펼치기)</summary><div class="as-article-text" style="margin-top:8px">'+bodyHtml+'</div></details>';
+  art.innerHTML='<div class="su-instruction">Test your comprehension</div>'
+    +'<details style="margin:0 20px 16px"><summary style="cursor:pointer;font-size:13px;color:#7c3aed;font-weight:700;padding:8px 0;user-select:none">📖 Review article</summary>'
+    +'<div class="su-article-card" style="margin:8px 0 0"><div class="su-article-body"><div class="su-article-text">'+bodyHtml+'</div></div></div></details>';
   var qs=(_asStudyContent&&_asStudyContent.questions)||[];
-  if (!qs.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px">문제가 없습니다.</div>'; _asSetNav('none',''); return; }
-  _asQState={qs:qs,ans:new Array(qs.length).fill(null)};
-  act.innerHTML='<p class="as-section-label">❓ 이해 확인 — 객관식</p>'
-    +qs.map(function(q,qi){
-      return '<div style="margin-bottom:18px"><p style="font-weight:700;font-size:13px;margin-bottom:8px">'+(qi+1)+'. '+(q.q||'')+'</p>'
-        +(q.options||[]).map(function(opt,oi){
-          return '<div class="as-mc-opt" id="as-mc-'+qi+'-'+oi+'" onclick="asQAns('+qi+','+oi+')">'
-            +'<div class="as-mc-letter">'+['A','B','C','D'][oi]+'</div><div>'+opt+'</div></div>';
-        }).join('')+'</div>';
-    }).join('');
-  _asSetNav('none','none','none');
+  if (!qs.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px;padding:20px">No questions available.</div>'; _asSetNav('none',''); return; }
+  _asQState={qs:qs,ans:new Array(qs.length).fill(null),current:0};
+  _asRenderQuiz();
+}
+function _asRenderQuiz() {
+  var act=document.getElementById('as-activity-area'); if(!act||!_asQState) return;
+  var qi=_asQState.current; var q=_asQState.qs[qi]; if(!q) return;
+  var cnt=document.getElementById('as-nav-counter');
+  if(cnt) cnt.textContent=(qi+1)+' / '+_asQState.qs.length;
+  var html='<div class="su-instruction" style="font-size:16px;padding:16px 20px 8px">'+(q.q||'')+'</div><div class="su-mcq">';
+  (q.options||[]).forEach(function(opt,oi){
+    var state='';
+    if(_asQState.ans[qi]!==null){
+      if(oi===q.correct) state=' correct';
+      else if(oi===_asQState.ans[qi]) state=' wrong';
+      else state=' dim';
+    }
+    html+='<div class="su-mcq-opt'+state+'" id="as-mc-'+qi+'-'+oi+'" onclick="asQAns('+qi+','+oi+')">'
+      +'<div class="su-mcq-num">'+(oi+1)+'</div><div class="su-mcq-text">'+opt+'</div></div>';
+  });
+  html+='</div>';
+  if(_asQState.ans[qi]!==null){
+    html+='<div class="su-explain"><div class="su-explain-icon">💡</div><div class="su-explain-body">'
+      +'<div class="su-explain-title">Answer</div>'
+      +'<div class="su-explain-text"><b>'+(q.options[q.correct]||'')+'</b></div></div></div>';
+  }
+  act.innerHTML=html;
 }
 function asQAns(qi,oi) {
   if(!_asQState||_asQState.ans[qi]!==null) return;
-  _asQState.ans[qi]=oi; var q=_asQState.qs[qi];
-  [0,1,2,3].forEach(function(i){
-    var el=document.getElementById('as-mc-'+qi+'-'+i); if(!el) return;
-    if(i===q.correct) el.classList.add('right');
-    else if(i===oi) el.classList.add('wrong');
-    else el.classList.add('dim');
-  });
-  if(_asQState.ans.every(function(a){return a!==null;})) {
-    _asTempSaveStep4(_asQState.ans);
-    setTimeout(function(){ _asSetNav('none',''); }, 600);
-  }
+  _asQState.ans[qi]=oi;
+  _asRenderQuiz();
+  // Auto-advance to next question after delay
+  setTimeout(function(){
+    if(_asQState.current<_asQState.qs.length-1){
+      _asQState.current++;
+      _asRenderQuiz();
+    } else if(_asQState.ans.every(function(a){return a!==null;})) {
+      _asTempSaveStep4(_asQState.ans);
+      _asSetNav('none','');
+    }
+  },1200);
 }
 
 // ── Step 5: Free writing (optional) ──
@@ -11685,14 +11742,14 @@ function asNextStep() { _asStepDone[_asStep-1]=true; _asStep=Math.min(_asStep+1,
 function asMarkDone() {
   _asStepDone[_asStep-1]=true; _asSaveProgress(); _asTmpCompletion();
   _asTmpStep5((document.getElementById('as-write-ta')||{}).value||'');
+  document.getElementById('as-article-content').innerHTML='';
   document.getElementById('as-activity-area').innerHTML=
-    '<div class="as-done-banner">'
-    +'<div style="font-size:28px;margin-bottom:8px">✅</div>'
-    +'<div style="font-size:16px;font-weight:800;margin-bottom:6px">Article Study Complete!</div>'
-    +'<div style="font-size:13px;color:rgba(255,255,255,.75);margin-bottom:16px">You\'ve completed all learning steps for this article.</div>'
-    +'<button class="btn btn-g" onclick="asSubmitWork()" style="min-width:200px;margin:0 auto;display:block;margin-bottom:8px">📤 Save Progress</button>'
-    +'<button class="btn" onclick="returnToActivities(closeArticleStudy)" style="min-width:200px;margin:0 auto;display:block;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:12px">📚 Next Activity</button>'
-    +'<div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.45)">Use the submit button above to submit all at once</div>'
+    '<div class="su-complete">'
+    +'<div class="su-complete-icon">🎉</div>'
+    +'<div class="su-complete-title">Article Study Complete!</div>'
+    +'<div class="su-complete-sub">You\'ve completed all learning steps for this article.</div>'
+    +'<button class="su-nav-next" onclick="asSubmitWork()" style="margin:0 auto 10px;display:flex">Save Progress</button>'
+    +'<button class="su-nav-prev" onclick="returnToActivities(closeArticleStudy)" style="margin:0 auto;display:flex">Next Activity</button>'
     +'</div>';
   _asSetNav('none','none','none');
   _asRefreshSubmitBanner();
@@ -12541,17 +12598,17 @@ function _csBuildCheck() {
 <!-- ══════════════════════════════════════════
      ARTICLE STUDY MODAL
 ═══════════════════════════════════════════ -->
-<div class="woverlay hidden" id="as-modal" onclick="if(event.target===this)closeArticleStudy()">
-  <div class="as-panel">
+<div class="su-overlay hidden" id="as-modal" onclick="if(event.target===this)closeArticleStudy()">
+  <div class="su-panel">
 
     <!-- ── LIST VIEW ── -->
     <div id="as-list-view">
-      <div class="wm-header">
-        <div>
-          <div class="wmh-title">📰 Article Study</div>
-          <div class="wmh-sub">학습할 기사를 선택하세요</div>
+      <div class="su-header">
+        <div class="su-header-info">
+          <div class="su-header-eyebrow">Article Study</div>
+          <div class="su-header-title">Select an Article</div>
         </div>
-        <button class="wmh-close" onclick="closeArticleStudy()">✕</button>
+        <button class="su-close" onclick="closeArticleStudy()">&#10005;</button>
       </div>
       <div style="padding:16px;overflow-y:auto;flex:1">
         <div id="as-article-grid" class="as-article-grid">
@@ -12560,30 +12617,40 @@ function _csBuildCheck() {
       </div>
     </div>
 
-    <!-- ── STUDY VIEW ── -->
-    <div id="as-study-view" class="as-hidden">
-      <div class="wm-header">
-        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
-          <button onclick="asBackToList()" style="padding:4px 10px;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:12px;white-space:nowrap;flex-shrink:0">← 목록</button>
-          <div style="min-width:0">
-            <div class="wmh-title" id="as-article-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px">Article Study</div>
-            <div class="wmh-sub" id="as-step-label">Step 1 / 5</div>
-          </div>
+    <!-- ── STUDY VIEW (v2 UI) ── -->
+    <div id="as-study-view" class="as-hidden" style="display:flex;flex-direction:column;flex:1;min-height:0">
+      <!-- Header -->
+      <div class="su-header">
+        <button class="su-back" onclick="asBackToList()">&#8592;</button>
+        <div class="su-header-info">
+          <div class="su-header-eyebrow" id="as-step-label">Step 1 / 5 — Vocabulary</div>
+          <div class="su-header-title" id="as-article-title">Article Study</div>
         </div>
-        <button class="wmh-close" onclick="closeArticleStudy()">✕</button>
+        <button class="su-close" onclick="closeArticleStudy()">&#10005;</button>
       </div>
-      <!-- Step progress pips -->
-      <div id="as-pip-bar" style="display:flex;gap:5px;padding:8px 16px;flex-shrink:0;background:linear-gradient(180deg,#0f2040,#152d5a)"></div>
-      <!-- Scrollable content + activity -->
-      <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column">
-        <div id="as-article-content" style="padding:16px 20px;border-bottom:2px solid var(--border);background:#fff"></div>
-        <div id="as-activity-area" style="padding:16px 20px;flex:1;background:var(--bg);animation:srFadeIn .25s ease-out"></div>
+      <!-- Step tabs -->
+      <div class="su-steps" id="as-step-tabs">
+        <div class="su-step active" onclick="asGoToStep(1)"><span class="su-step-num">1</span><span class="su-step-label">Vocab</span></div>
+        <div class="su-step" onclick="asGoToStep(2)"><span class="su-step-num">2</span><span class="su-step-label">Phrases</span></div>
+        <div class="su-step" onclick="asGoToStep(3)"><span class="su-step-num">3</span><span class="su-step-label">Reading</span></div>
+        <div class="su-step" onclick="asGoToStep(4)"><span class="su-step-num">4</span><span class="su-step-label">Quiz</span></div>
+        <div class="su-step" onclick="asGoToStep(5)"><span class="su-step-num">5</span><span class="su-step-label">Writing</span></div>
       </div>
-      <!-- Nav bar -->
-      <div class="as-nav-bar">
-        <button id="as-check-btn" style="padding:12px 28px;border-radius:12px;border:none;background:#2563eb;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s" onclick="asCheckAnswer()">Check</button>
-        <button id="as-next-btn" style="display:none;padding:12px 28px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s" onclick="asNextStep()">Next Step →</button>
-        <button id="as-done-btn" style="display:none;padding:12px 28px;border-radius:12px;border:none;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s" onclick="asMarkDone()">Done ✓</button>
+      <!-- Progress bar -->
+      <div class="su-progress">
+        <div class="su-progress-fill" id="as-progress-fill" style="width:0%"></div>
+      </div>
+      <!-- Scrollable content -->
+      <div class="su-body" id="as-su-body">
+        <div id="as-article-content"></div>
+        <div id="as-activity-area"></div>
+      </div>
+      <!-- Bottom nav -->
+      <div class="su-nav" id="as-su-nav">
+        <button class="su-nav-prev" id="as-prev-btn" style="display:none" onclick="asPrevStep()">&#8592; Prev</button>
+        <div class="su-nav-counter" id="as-nav-counter"></div>
+        <button class="su-nav-next" id="as-next-btn" style="display:none" onclick="asNextStep()">Next &#8594;</button>
+        <button class="su-nav-done" id="as-done-btn" style="display:none" onclick="asMarkDone()">Complete &#10003;</button>
       </div>
     </div>
 
