@@ -1933,10 +1933,9 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   .lv-pill { padding:10px 20px;font-size:13px; }
   /* Help panel handled by sidebar (always hidden on desktop) */
   .sr-tab-panel#sr-panel-help { display:none !important; }
-  /* Hide hero text + credit banner on desktop */
+  /* Hide hero text on desktop */
   .sr-headline { display:none !important; }
   .sr-headline-sub { display:none !important; }
-  #sr-credit-banner { display:none !important; }
   /* Hero block: minimal padding, just topic card */
   .sr-hero-block { padding:0 !important;background:transparent !important;border:none !important;margin-bottom:10px !important; }
   /* Reorder main content: topic card first, then activity cards immediately */
@@ -1982,10 +1981,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   .sr-lvbadge-pill { margin-bottom:8px; }
   /* Reorder: topic card first, banners after */
   .sr-topic-card2 { order:-2; }
-  #sr-credit-banner { order:-1;margin-bottom:8px !important;margin-top:8px; }
   #sr-review-notifications { order:0;margin-bottom:8px !important; }
-  /* Compact credit banner */
-  #sr-credit-banner { padding:8px 12px !important;font-size:11px !important; }
   /* Compact activity cards */
   .sr-act-grid { gap:8px !important; }
   .sr-act-card { padding:14px !important; }
@@ -2893,9 +2889,7 @@ var _sentencePractice = {
   hideTimer:null,
   hidden:false
 };
-var _studyPass = { active:false, expires_kst:'', credits:0, warned:false };
 var _studyDone = { topic:false, grammar:false, picture:false, sentence:false, expressions:false };
-var _studyUnlocked = false;
 var _dailyDictationSentences = [];   // [{ko,en}]  from study_daily_content
 var _dailyDictationQuestions = [];   // [{question_ko,answer_ko,hint_en}]  from study_daily_content
 
@@ -3297,49 +3291,9 @@ function resetWordOrder() {
   }
 }
 
-async function loadStudyAccessGate() {
-  var banner = document.getElementById('sr-credit-banner');
-  if (window._isAdmin) {
-    _studyUnlocked = true;
-    if (banner) banner.innerHTML = '🔑 Admin mode — Study Room credits bypassed.';
-    return;
-  }
-  var now = kstNow();
-  var hour = now.getUTCHours();
-  var key = 'kh_study_pass_' + (supaUser ? supaUser.id : 'guest');
-  try { _studyPass = JSON.parse(localStorage.getItem(key) || '{"active":false,"expires_kst":"","credits":3}'); } catch(e) {}
-  if (!_studyPass.credits && _studyPass.credits !== 0) _studyPass.credits = 3;
-  if (!_studyPass.expires_kst || _studyPass.expires_kst !== kstDateKey()) _studyPass.active = false;
-  _studyPass.expires_kst = kstDateKey();
-  if (!_studyPass.active) {
-    if (_studyPass.credits > 0) {
-      _studyPass.credits -= 1;
-      _studyPass.active = true;
-      _studyUnlocked = true;
-    } else {
-      _studyUnlocked = false;
-    }
-  } else {
-    _studyUnlocked = true;
-  }
-  try { localStorage.setItem(key, JSON.stringify(_studyPass)); } catch(e) {}
-  if (!banner) return;
-  if (!_studyUnlocked) {
-    banner.innerHTML = '🚫 No Study Room credits available today.<br>Start a <b>$8.99/month</b> subscription for daily study access. <br><a href=\"korehan-courses.html\" style=\"color:#fff;text-decoration:underline;font-weight:800\">Go to course page →</a>';
-    return;
-  }
-  var left = _studyPass.credits || 0;
-  var warning = hour >= 23 ? '<br>Past 11 PM KST — available time may be limited.' : '';
-  banner.innerHTML = '✅ Study Room access is active today. (Resets at KST midnight) · Credits remaining: ' + left + warning;
-}
-
-function ensureStudyUnlocked() {
-  if (window._isAdmin) return true;
-  if (_studyUnlocked) return true;
-  showToast('No Study Room credits. Check the $8.99/month plan on the Courses page.');
-  window.location.href = 'korehan-courses.html';
-  return false;
-}
+// Credit system removed — plan system (requirePlan) handles access
+function loadStudyAccessGate() { /* no-op */ }
+function ensureStudyUnlocked() { return true; }
 
 function renderStudyChecklist() {
   var box = document.getElementById('sr-checklist-box');
