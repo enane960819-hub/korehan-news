@@ -1368,34 +1368,36 @@ body { background: #0b1626 !important; }
 .sr-activity-cards {
   display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px;
 }
-@media(max-width:680px) { .sr-activity-cards { grid-template-columns:repeat(3,1fr); gap:6px; } }
+@media(max-width:680px) { .sr-activity-cards { grid-template-columns:repeat(3,1fr); gap:8px; } }
 @media(max-width:680px) {
-  .sr-act-card { padding:12px 10px 10px; gap:6px; }
-  .srac-icon .kh-ui-icon { width:20px !important; height:20px !important; }
-  .srac-title { font-size:10px !important; letter-spacing:.5px; }
+  .sr-act-card { padding:16px 12px 12px; gap:8px; }
+  .srac-icon .kh-ui-icon { width:22px !important; height:22px !important; }
+  .srac-title { font-size:11px !important; letter-spacing:.5px; }
   .srac-desc { display:none; }
-  .srac-foot { padding-top:6px; }
+  .srac-foot { padding-top:8px; }
 }
 .sr-act-card {
   display:flex; flex-direction:column; align-items:flex-start; gap:10px;
-  padding:20px 18px 16px; background:linear-gradient(135deg,rgba(34,85,164,.12),rgba(122,184,245,.06));
-  border:1.5px solid rgba(122,184,245,.2); border-radius:18px;
+  padding:20px 18px 16px; background:linear-gradient(145deg,rgba(15,35,75,.8),rgba(20,50,100,.5));
+  border:1.5px solid rgba(122,184,245,.18); border-radius:18px;
   cursor:pointer; transition:all .2s; text-decoration:none; width:100%;
   font-family:inherit; text-align:left; position:relative; overflow:hidden; box-sizing:border-box;
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
 }
-.sr-act-card:hover { background:linear-gradient(135deg,rgba(34,85,164,.22),rgba(122,184,245,.12)); border-color:rgba(122,184,245,.55); transform:translateY(-3px) scale(1.01); box-shadow:0 8px 28px rgba(34,85,164,.3); }
-.sr-act-card:active { transform:translateY(0) scale(.99); }
+.sr-act-card::before { content:'';position:absolute;inset:0;border-radius:18px;padding:1.5px;background:linear-gradient(135deg,rgba(122,184,245,.25),rgba(122,184,245,.05));-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none; }
+.sr-act-card:hover { border-color:rgba(122,184,245,.45); transform:translateY(-3px) scale(1.01); box-shadow:0 8px 28px rgba(34,85,164,.3); }
+.sr-act-card:active { transform:translateY(0) scale(.98); }
 .sr-act-card.coming-soon { opacity:.42; cursor:default; pointer-events:none; }
 .srac-icon  { font-size:28px; color:#7ab8f5; }
 .srac-icon .kh-ui-icon { stroke:#7ab8f5; stroke-width:2.2; }
-.srac-title { font-size:13px; font-weight:900; text-transform:uppercase; letter-spacing:1px; color:#bdd7ff; margin-bottom:2px; }
+.srac-title { font-size:13px; font-weight:900; text-transform:uppercase; letter-spacing:1px; color:#c8e0ff; margin-bottom:2px; }
 .srac-desc  { font-size:12px; color:rgba(255,255,255,.55); line-height:1.55; }
 .srac-foot  { display:flex; align-items:center; justify-content:space-between; width:100%; margin-top:auto; padding-top:10px; border-top:1px solid rgba(255,255,255,.07); }
-.srac-badge { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.8px; padding:2px 7px; border-radius:99px; background:rgba(122,184,245,.18); color:#7ab8f5; border:1px solid rgba(122,184,245,.28); }
+.srac-badge { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.8px; padding:3px 9px; border-radius:99px; background:rgba(122,184,245,.15); color:#7ab8f5; border:1px solid rgba(122,184,245,.25); }
 .srac-badge.cs { background:rgba(148,163,184,.12); color:rgba(255,255,255,.35); border-color:rgba(255,255,255,.1); }
 .srac-badge.done { background:rgba(34,197,94,.2); color:#4ade80; border-color:rgba(34,197,94,.35); }
-.srac-arrow { font-size:14px; color:rgba(255,255,255,.25); transition:color .18s; }
-.sr-act-card:hover .srac-arrow { color:#7ab8f5; }
+.srac-arrow { font-size:16px; color:rgba(255,255,255,.2); transition:all .18s; }
+.sr-act-card:hover .srac-arrow { color:#7ab8f5; transform:translateX(3px); }
 /* submit-today banner (shows when there's unsaved work) */
 .as-submit-today { display:none; background:rgba(34,197,94,.1); border:1.5px solid rgba(34,197,94,.35);
   border-radius:12px; padding:12px 14px; margin-bottom:14px; }
@@ -1753,14 +1755,13 @@ body { background: #0b1626 !important; }
   #sr-review-notifications { order:-9; }
   .sr-activity-cards { order:-5;margin-top:14px; }
   /* Master cards inline on desktop (below activity cards) */
-  .sr-desktop-master { display:grid !important;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px; }
+  .sr-desktop-master { display:grid !important;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px; }
 }
 /* Mobile: show master cards as compact scrollable row */
 @media(max-width:860px) {
-  .sr-desktop-master { display:flex !important;gap:8px;margin-top:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px; }
-  .sr-desktop-master::-webkit-scrollbar{display:none}
-  .sr-desktop-master .master-card { min-width:110px;max-height:80px;flex-shrink:0; }
-  .sr-desktop-master .master-card img { min-height:60px !important;max-height:80px; }
+  .sr-desktop-master { display:flex !important;flex-direction:column;gap:10px;margin-top:14px; }
+  .sr-desktop-master .master-card { width:100%; }
+  .sr-desktop-master .mc-banner { height:100px; }
 }
 /* ─── TABLET (641–860px): tabs above activity cards, not sticky ─── */
 @media(min-width:641px) and (max-width:860px) {
@@ -1805,12 +1806,50 @@ body { background: #0b1626 !important; }
 .sr-tab-panel { display:none; }
 .sr-tab-panel.active { display:block; }
 /* Master tab grid */
-.master-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding:24px; }
-.master-card { padding:24px;border-radius:16px;cursor:pointer;transition:all .15s;border:1px solid rgba(255,255,255,.08); }
-.master-card:hover { transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.2); }
+/* ─── REVIEW CARDS ─── */
+.rv-card { display:flex;align-items:center;gap:12px;padding:16px 18px;background:linear-gradient(145deg,rgba(15,30,60,.7),rgba(20,40,80,.4));border:1.5px solid rgba(255,255,255,.08);border-radius:16px;color:#fff;cursor:pointer;font-family:inherit;transition:all .2s;text-align:left;position:relative;overflow:hidden; }
+.rv-card:hover { border-color:rgba(255,255,255,.18);background:linear-gradient(145deg,rgba(20,40,80,.8),rgba(25,50,100,.5));transform:translateY(-1px); }
+.rv-card:active { transform:translateY(0) scale(.98); }
+.rv-icon { width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px; }
+.rv-icon-daily { background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.15); }
+.rv-icon-daily .kh-ui-icon { stroke:#4ade80; }
+.rv-icon-weekly { background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.15); }
+.rv-icon-weekly .kh-ui-icon { stroke:#60a5fa; }
+.rv-icon-monthly { background:rgba(196,181,253,.1);border:1px solid rgba(196,181,253,.15); }
+.rv-icon-monthly .kh-ui-icon { stroke:#c4b5fd; }
+.rv-title { font-size:14px;font-weight:800; }
+.rv-sub { font-size:11px;color:rgba(255,255,255,.4);margin-top:2px; }
+.rv-status { margin-left:auto;flex-shrink:0; }
+/* Active review states */
+.rv-card.rv-open { border-color:rgba(96,165,250,.35); }
+.rv-card.rv-open::before { content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(96,165,250,.06),rgba(139,92,246,.04));pointer-events:none; }
+.rv-card.rv-open .rv-pulse { display:inline-block;width:8px;height:8px;border-radius:50%;animation:rvPulse 1.5s ease-in-out infinite; }
+.rv-card.rv-open.rv-weekly { border-color:rgba(96,165,250,.35); }
+.rv-card.rv-open.rv-weekly .rv-pulse { background:#60a5fa;box-shadow:0 0 8px rgba(96,165,250,.5); }
+.rv-card.rv-open.rv-monthly { border-color:rgba(196,181,253,.35); }
+.rv-card.rv-open.rv-monthly .rv-pulse { background:#c4b5fd;box-shadow:0 0 8px rgba(196,181,253,.5); }
+.rv-badge-live { display:none;padding:3px 8px;border-radius:20px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;animation:rvGlow 2s ease-in-out infinite; }
+.rv-card.rv-open .rv-badge-live { display:inline-block; }
+.rv-card.rv-open.rv-weekly .rv-badge-live { background:rgba(96,165,250,.15);color:#60a5fa;border:1px solid rgba(96,165,250,.3); }
+.rv-card.rv-open.rv-monthly .rv-badge-live { background:rgba(196,181,253,.15);color:#c4b5fd;border:1px solid rgba(196,181,253,.3); }
+@keyframes rvPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.3)} }
+@keyframes rvGlow { 0%,100%{box-shadow:0 0 0 0 currentColor} 50%{box-shadow:0 0 8px 0 currentColor} }
+
+.master-grid { display:grid;grid-template-columns:1fr;gap:12px;padding:24px; }
+.master-card { padding:24px;border-radius:18px;cursor:pointer;transition:all .2s;border:1.5px solid rgba(255,255,255,.1);position:relative;overflow:hidden; }
+.master-card::after { content:'';position:absolute;inset:0;border-radius:18px;padding:1.5px;background:linear-gradient(135deg,rgba(255,255,255,.15),rgba(255,255,255,.02));-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none; }
+.master-card:hover { transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.3);border-color:rgba(255,255,255,.18); }
+.master-card:active { transform:translateY(0);box-shadow:none; }
 .master-card-icon { font-size:36px;margin-bottom:12px; }
-.master-card-title { font-size:16px;font-weight:900;color:#fff;margin-bottom:4px; }
+.master-card-title { font-size:18px;font-weight:900;color:#fff;margin-bottom:4px;letter-spacing:-.01em; }
 .master-card-desc { font-size:12px;color:rgba(255,255,255,.45);line-height:1.5; }
+/* Master card image banner with text overlay */
+.mc-banner { position:relative;border-radius:18px;overflow:hidden;height:110px; }
+.mc-banner img { width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s; }
+.master-card:hover .mc-banner img { transform:scale(1.04); }
+.mc-banner-overlay { position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:16px 20px;background:linear-gradient(0deg,rgba(0,0,0,.7) 0%,rgba(0,0,0,.15) 60%,transparent 100%); }
+.mc-banner-title { font-size:18px;font-weight:900;color:#fff;letter-spacing:.5px;text-shadow:0 2px 8px rgba(0,0,0,.5); }
+.mc-banner-sub { font-size:11px;color:rgba(255,255,255,.6);margin-top:2px;font-weight:500; }
 /* Word Book notebook style */
 /* Word Book — Dark theme, compact cards */
 .wb-notebook { max-width:900px;margin:20px auto;background:transparent;border-radius:0;border:none;overflow:visible; }
@@ -2110,16 +2149,34 @@ body { background: #0b1626 !important; }
     </button>
   </div>
 
-  <!-- Master cards (Fast Track, Slang, Phone Call) — image banners -->
+  <!-- Master cards (Fast Track, Slang, Phone Call) — premium banners -->
   <div class="sr-desktop-master">
-    <div class="master-card" style="padding:0;border-radius:14px;cursor:pointer;overflow:hidden;border:1px solid rgba(255,255,255,.1)" onclick="openFastTrack()">
-      <img src="assets/ChatGPT Image Apr 11, 2026, 11_08_30 PM.png" alt="Fast Track" style="width:100%;height:100%;object-fit:cover;display:block;min-height:90px">
+    <div class="master-card" style="padding:0" onclick="openFastTrack()">
+      <div class="mc-banner">
+        <img src="assets/ChatGPT Image Apr 11, 2026, 11_08_30 PM.png" alt="Fast Track">
+        <div class="mc-banner-overlay">
+          <div class="mc-banner-title">FAST TRACK</div>
+          <div class="mc-banner-sub">Level up your Korean with real-life scenarios</div>
+        </div>
+      </div>
     </div>
-    <div class="master-card" style="padding:0;border-radius:14px;cursor:pointer;overflow:hidden;border:1px solid rgba(255,255,255,.1)" onclick="openSlangModal()">
-      <img src="assets/ChatGPT Image Apr 11, 2026, 11_09_44 PM.png" alt="Korean Slang" style="width:100%;height:100%;object-fit:cover;display:block;min-height:90px">
+    <div class="master-card" style="padding:0" onclick="openSlangModal()">
+      <div class="mc-banner">
+        <img src="assets/ChatGPT Image Apr 11, 2026, 11_09_44 PM.png" alt="Korean Slang">
+        <div class="mc-banner-overlay">
+          <div class="mc-banner-title">KOREAN SLANG</div>
+          <div class="mc-banner-sub">Speak like a native · Learn real MZ expressions</div>
+        </div>
+      </div>
     </div>
-    <div class="master-card" style="padding:0;border-radius:14px;cursor:pointer;overflow:hidden;border:1px solid rgba(255,255,255,.1)" onclick="openPhoneModal()">
-      <img src="assets/ChatGPT Image Apr 11, 2026, 11_17_27 PM.png" alt="Phone Call" style="width:100%;height:100%;object-fit:cover;display:block;min-height:90px">
+    <div class="master-card" style="padding:0" onclick="openPhoneModal()">
+      <div class="mc-banner">
+        <img src="assets/ChatGPT Image Apr 11, 2026, 11_17_27 PM.png" alt="Phone Call">
+        <div class="mc-banner-overlay">
+          <div class="mc-banner-title">PHONE CALL</div>
+          <div class="mc-banner-sub">Practice real Korean phone conversations</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2136,28 +2193,30 @@ body { background: #0b1626 !important; }
 
   <!-- ═══ REVIEW SECTION ═══ -->
   <div style="margin-top:14px">
-    <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Review</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
-      <button onclick="openDailyReview()" style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;cursor:pointer;font-family:inherit;transition:background .15s;text-align:left" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">
-        <span style="font-size:20px;display:flex;align-items:center;justify-content:center"><i data-lucide="clipboard-list" class="kh-ui-icon" style="width:20px;height:20px" aria-hidden="true"></i></span>
+    <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Review</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="rv-grid">
+      <button class="rv-card" onclick="openDailyReview()" id="rv-daily">
+        <div class="rv-icon rv-icon-daily"><i data-lucide="clipboard-list" class="kh-ui-icon" style="width:20px;height:20px" aria-hidden="true"></i></div>
         <div>
-          <div style="font-size:13px;font-weight:700">Daily Review</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.45)">10 questions</div>
+          <div class="rv-title">Daily Review</div>
+          <div class="rv-sub">10 questions</div>
         </div>
       </button>
-      <button onclick="openWeeklyReview()" style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;cursor:pointer;font-family:inherit;transition:background .15s;text-align:left" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">
-        <span style="font-size:20px;display:flex;align-items:center;justify-content:center"><i data-lucide="chart-column" class="kh-ui-icon" style="width:20px;height:20px" aria-hidden="true"></i></span>
-        <div>
-          <div style="font-size:13px;font-weight:700">Weekly Review</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.45)" id="weekly-review-sub">20 questions · 15s timer</div>
+      <button class="rv-card rv-weekly" onclick="openWeeklyReview()" id="rv-weekly">
+        <div class="rv-icon rv-icon-weekly"><i data-lucide="chart-column" class="kh-ui-icon" style="width:20px;height:20px" aria-hidden="true"></i></div>
+        <div style="flex:1">
+          <div class="rv-title">Weekly Review</div>
+          <div class="rv-sub" id="weekly-review-sub">20 questions · 15s timer</div>
         </div>
+        <div class="rv-status"><span class="rv-pulse"></span> <span class="rv-badge-live">OPEN</span></div>
       </button>
-      <button onclick="openMonthlyReview()" style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;cursor:pointer;font-family:inherit;transition:background .15s;text-align:left" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">
-        <span style="font-size:20px;display:flex;align-items:center;justify-content:center"><i data-lucide="trophy" class="kh-ui-icon" style="width:20px;height:20px" aria-hidden="true"></i></span>
-        <div>
-          <div style="font-size:13px;font-weight:700">Monthly Review</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.45)" id="monthly-review-sub">25 questions · 15s timer</div>
+      <button class="rv-card rv-monthly" onclick="openMonthlyReview()" id="rv-monthly" style="grid-column:span 2">
+        <div class="rv-icon rv-icon-monthly"><i data-lucide="trophy" class="kh-ui-icon" style="width:20px;height:20px" aria-hidden="true"></i></div>
+        <div style="flex:1">
+          <div class="rv-title">Monthly Review</div>
+          <div class="rv-sub" id="monthly-review-sub">매월 1~3일에 열림</div>
         </div>
+        <div class="rv-status"><span class="rv-pulse"></span> <span class="rv-badge-live">OPEN</span></div>
       </button>
     </div>
   </div>
@@ -2287,20 +2346,41 @@ body { background: #0b1626 !important; }
       <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">Master programs to level up your Korean</div>
     </div>
     <div class="master-grid">
-      <div class="master-card" style="padding:0;overflow:hidden" onclick="openFastTrack()">
-        <img src="assets/ChatGPT Image Apr 11, 2026, 11_08_30 PM.png" alt="Fast Track" style="width:100%;height:160px;object-fit:cover;display:block">
+      <div class="master-card" style="padding:0" onclick="openFastTrack()">
+        <div class="mc-banner" style="height:140px">
+          <img src="assets/ChatGPT Image Apr 11, 2026, 11_08_30 PM.png" alt="Fast Track">
+          <div class="mc-banner-overlay">
+            <div class="mc-banner-title">FAST TRACK</div>
+            <div class="mc-banner-sub">Level up your Korean with real-life scenarios</div>
+          </div>
+        </div>
       </div>
-      <div class="master-card" style="padding:0;overflow:hidden" onclick="openSlangModal()">
-        <img src="assets/ChatGPT Image Apr 11, 2026, 11_09_44 PM.png" alt="Korean Slang" style="width:100%;height:160px;object-fit:cover;display:block">
+      <div class="master-card" style="padding:0" onclick="openSlangModal()">
+        <div class="mc-banner" style="height:140px">
+          <img src="assets/ChatGPT Image Apr 11, 2026, 11_09_44 PM.png" alt="Korean Slang">
+          <div class="mc-banner-overlay">
+            <div class="mc-banner-title">KOREAN SLANG</div>
+            <div class="mc-banner-sub">Speak like a native · Learn real MZ expressions</div>
+          </div>
+        </div>
       </div>
-      <div class="master-card" style="background:linear-gradient(135deg,#0c4a6e,#0369a1)" onclick="openAlphaModal()">
-        <div class="master-card-icon">🇰🇷</div>
-        <div class="master-card-title">Korean Alphabet</div>
-        <div class="master-card-desc">Consonant & vowel combination quiz · Click to play pronunciation</div>
-        <div style="margin-top:12px"><span style="padding:2px 8px;border-radius:10px;background:rgba(56,189,248,.15);color:#7dd3fc;font-size:9px;font-weight:700">30 Quizzes</span></div>
+      <div class="master-card" style="padding:0" onclick="openAlphaModal()">
+        <div class="mc-banner" style="height:140px">
+          <img src="assets/korean-alphabet-bg.png" alt="Korean Alphabet" onerror="this.parentNode.style.background='linear-gradient(135deg,#0c4a6e,#0369a1)';this.style.display='none'">
+          <div class="mc-banner-overlay">
+            <div class="mc-banner-title">KOREAN ALPHABET</div>
+            <div class="mc-banner-sub">Consonant & vowel quiz · 30 interactive challenges</div>
+          </div>
+        </div>
       </div>
-      <div class="master-card" style="padding:0;overflow:hidden" onclick="openPhoneModal()">
-        <img src="assets/ChatGPT Image Apr 11, 2026, 11_17_27 PM.png" alt="Phone Call" style="width:100%;height:160px;object-fit:cover;display:block">
+      <div class="master-card" style="padding:0" onclick="openPhoneModal()">
+        <div class="mc-banner" style="height:140px">
+          <img src="assets/ChatGPT Image Apr 11, 2026, 11_17_27 PM.png" alt="Phone Call">
+          <div class="mc-banner-overlay">
+            <div class="mc-banner-title">PHONE CALL</div>
+            <div class="mc-banner-sub">Practice real Korean phone conversations</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -6774,6 +6854,39 @@ function showReviewNotifications() {
       }
       if (rvLoadSaved('monthly')) {
         monthlyEl.querySelector('div > div > div:nth-child(2) > div:first-child').textContent = 'Monthly Review Continue!';
+      }
+    }
+  }
+  // Activate review card badges
+  updateReviewCardStates();
+}
+
+function updateReviewCardStates() {
+  if (typeof kstNow !== 'function') return;
+  // Weekly
+  var rvWeekly = document.getElementById('rv-weekly');
+  if (rvWeekly) {
+    if (typeof isWeeklyReviewAvailable === 'function' && isWeeklyReviewAvailable()) {
+      var wk = 'kh_weekly_review_done_' + kstNow().toISOString().slice(0,10);
+      if (!localStorage.getItem(wk)) {
+        rvWeekly.classList.add('rv-open');
+        var ws = document.getElementById('weekly-review-sub');
+        if (ws) ws.textContent = '20 questions · Open today!';
+      }
+    }
+  }
+  // Monthly
+  var rvMonthly = document.getElementById('rv-monthly');
+  if (rvMonthly) {
+    if (typeof isMonthlyReviewAvailable === 'function' && isMonthlyReviewAvailable()) {
+      var mk = 'kh_monthly_review_done_' + kstNow().toISOString().slice(0,7);
+      if (!localStorage.getItem(mk)) {
+        rvMonthly.classList.add('rv-open');
+        var ms = document.getElementById('monthly-review-sub');
+        if (ms) {
+          var d = kstNow().getDate();
+          ms.textContent = '25 questions · ' + (3 - d + 1) + '일 남음';
+        }
       }
     }
   }
