@@ -1583,18 +1583,17 @@ body { background: #0b1626 !important; }
 .slang-tag-gen { background:rgba(251,191,36,.15);color:#fbbf24; }
 .slang-tag-warn { background:rgba(239,68,68,.15);color:#ef4444; }
 
-/* KakaoTalk chat */
-.kt-chat { background:#9bbbd4;border-radius:14px;padding:16px;margin-bottom:16px; }
-.kt-header { text-align:center;font-size:10px;color:rgba(0,0,0,.35);margin-bottom:12px; }
-.kt-row { display:flex;gap:8px;margin-bottom:10px;align-items:flex-end; }
-.kt-row.me { flex-direction:row-reverse; }
-.kt-avatar { width:36px;height:36px;border-radius:12px;background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px; }
-.kt-name { font-size:10px;color:rgba(0,0,0,.45);margin-bottom:3px;font-weight:600; }
-.kt-bubble { max-width:70%;padding:9px 14px;border-radius:14px;font-size:13px;line-height:1.5; }
-.kt-row:not(.me) .kt-bubble { background:#fff;color:#1a1a1a;border-top-left-radius:4px; }
-.kt-row.me .kt-bubble { background:#ffeb33;color:#1a1a1a;border-top-right-radius:4px; }
-.kt-time { font-size:9px;color:rgba(0,0,0,.3);align-self:flex-end;flex-shrink:0; }
-.kt-hl { background:rgba(124,58,237,.2);border-radius:4px;padding:1px 4px;font-weight:700;color:#5b21b6; }
+/* Dark Messenger chat (premium style) */
+.dm-chat { background:linear-gradient(135deg,#0c1222 0%,#131b2e 100%);border-radius:16px;padding:18px;margin-bottom:16px;border:1px solid rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.04); }
+.dm-header { text-align:center;font-size:10px;color:rgba(255,255,255,.2);margin-bottom:14px;letter-spacing:.5px;text-transform:uppercase; }
+.dm-row { display:flex;gap:10px;margin-bottom:12px;align-items:flex-end; }
+.dm-row.me { flex-direction:row-reverse; }
+.dm-avatar { width:34px;height:34px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;border:2px solid rgba(255,255,255,.08); }
+.dm-name { font-size:10px;color:rgba(255,255,255,.35);margin-bottom:4px;font-weight:700;letter-spacing:.02em; }
+.dm-bubble { max-width:75%;padding:10px 15px;border-radius:16px;font-size:13px;line-height:1.55;position:relative; }
+.dm-row:not(.me) .dm-bubble { background:rgba(255,255,255,.07);color:rgba(255,255,255,.88);border-bottom-left-radius:4px;border:1px solid rgba(255,255,255,.06); }
+.dm-row.me .dm-bubble { background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border-bottom-right-radius:4px;box-shadow:0 2px 12px rgba(124,58,237,.3); }
+.dm-hl { background:rgba(52,211,153,.2);border-radius:4px;padding:1px 5px;font-weight:800;color:#34d399;border:1px solid rgba(52,211,153,.15); }
 
 /* Alphabet Modal — full-screen quiz layout */
 .alpha-modal { max-width:780px !important;max-height:92vh !important; }
@@ -1840,21 +1839,58 @@ body { background: #0b1626 !important; }
   .master-grid { grid-template-columns:1fr;padding:16px; }
 }
 
-/* Phone Call banner + modal */
-.phone-wave { display:inline-block;width:3px;height:12px;background:#34d399;border-radius:2px;margin:0 1px;animation:phoneWave .6s ease-in-out infinite alternate; }
-.phone-wave:nth-child(2) { animation-delay:.1s;height:18px; }
-.phone-wave:nth-child(3) { animation-delay:.2s;height:10px; }
-.phone-wave:nth-child(4) { animation-delay:.3s;height:16px; }
-.phone-wave:nth-child(5) { animation-delay:.4s;height:8px; }
-@keyframes phoneWave { to { height:6px; } }
-.phone-script-line { padding:10px 14px;border-radius:10px;margin-bottom:6px;font-size:13px;line-height:1.6;transition:background .2s;cursor:pointer; }
-.phone-script-line:hover { background:rgba(255,255,255,.06); }
-.phone-script-line.highlight { background:rgba(52,211,153,.12);border-left:3px solid #34d399; }
-.phone-script-line .ps-ko { color:#fff;font-weight:600; }
-.phone-script-line .ps-en { color:rgba(255,255,255,.4);font-size:11px;margin-top:2px; }
-.phone-speaker { font-size:10px;font-weight:700;margin-bottom:3px; }
-.phone-speaker.a { color:#34d399; }
-.phone-speaker.b { color:#7dd3fc; }
+/* Phone Call — full UI */
+.pc-call-list { display:flex;flex-direction:column;gap:10px; }
+.pc-call-card { display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);cursor:pointer;transition:all .15s; }
+.pc-call-card:hover { background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.2); }
+.pc-call-icon { width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#059669,#34d399);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0; }
+.pc-call-info { flex:1;min-width:0; }
+.pc-call-title { font-size:14px;font-weight:800;color:#fff; }
+.pc-call-sub { font-size:11px;color:rgba(255,255,255,.4);margin-top:2px; }
+.pc-call-badge { font-size:9px;font-weight:800;padding:3px 8px;border-radius:20px;flex-shrink:0; }
+.pc-badge-beginner { background:rgba(52,211,153,.12);color:#34d399; }
+.pc-badge-intermediate { background:rgba(251,191,36,.12);color:#fbbf24; }
+.pc-badge-advanced { background:rgba(239,68,68,.12);color:#ef4444; }
+/* Phone Call Player (replaces call list when a call is selected) */
+.pc-player { display:none; }
+.pc-player.active { display:block; }
+.pc-player-head { display:flex;align-items:center;gap:12px;padding:0 20px 16px; }
+.pc-back-btn { width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center; }
+.pc-back-btn:hover { background:rgba(255,255,255,.12); }
+.pc-player-title { font-size:16px;font-weight:900;color:#fff; }
+.pc-player-desc { font-size:11px;color:rgba(255,255,255,.4); }
+/* Audio waveform area */
+.pc-audio-box { margin:0 20px 16px;padding:20px;border-radius:16px;background:linear-gradient(135deg,rgba(5,150,105,.08),rgba(52,211,153,.04));border:1px solid rgba(52,211,153,.12); }
+.pc-wave-visual { display:flex;align-items:center;gap:1px;height:40px;margin-bottom:12px;justify-content:center; }
+.pc-wave-bar { width:3px;border-radius:2px;background:#34d399;opacity:.4;transition:opacity .15s; }
+.pc-wave-bar.active { opacity:1;box-shadow:0 0 6px rgba(52,211,153,.5); }
+.pc-controls { display:flex;align-items:center;gap:14px; }
+.pc-play-btn { width:44px;height:44px;border-radius:50%;border:none;background:linear-gradient(135deg,#059669,#34d399);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(5,150,105,.3);transition:all .15s;flex-shrink:0; }
+.pc-play-btn:hover { transform:scale(1.05);box-shadow:0 6px 20px rgba(5,150,105,.4); }
+.pc-progress-wrap { flex:1;display:flex;align-items:center;gap:10px; }
+.pc-time { font-size:11px;color:rgba(255,255,255,.4);font-variant-numeric:tabular-nums;min-width:36px; }
+.pc-progress-bar { flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.1);position:relative;cursor:pointer; }
+.pc-progress-fill { height:100%;border-radius:2px;background:#34d399;position:absolute;left:0;top:0;transition:width .1s linear; }
+.pc-progress-dot { width:12px;height:12px;border-radius:50%;background:#34d399;position:absolute;top:-4px;box-shadow:0 0 8px rgba(52,211,153,.4);transition:left .1s linear; }
+/* Script area */
+.pc-script { padding:0 20px 20px; }
+.pc-script-header { font-size:12px;font-weight:700;color:rgba(255,255,255,.25);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:8px; }
+.pc-script-lines { display:flex;flex-direction:column;gap:8px; }
+.pc-line { display:flex;gap:10px;padding:10px 14px;border-radius:12px;transition:all .2s;border-left:3px solid transparent;cursor:pointer; }
+.pc-line:hover { background:rgba(255,255,255,.04); }
+.pc-line.active { background:rgba(52,211,153,.08);border-left-color:#34d399; }
+.pc-line.active .pc-line-ko { font-weight:900; }
+.pc-line-speaker { width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff;flex-shrink:0; }
+.pc-line-content { flex:1;min-width:0; }
+.pc-line-ko { font-size:14px;color:#fff;font-weight:600;line-height:1.5;font-family:'Noto Sans KR',sans-serif; }
+.pc-line-en { font-size:11px;color:rgba(255,255,255,.35);margin-top:3px;line-height:1.4; }
+.pc-speakers-legend { display:flex;gap:12px;padding:0 20px 12px; }
+.pc-speaker-tag { display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700; }
+.pc-speaker-dot { width:8px;height:8px;border-radius:50%; }
+/* No calls placeholder */
+.pc-empty { text-align:center;padding:40px 20px; }
+.pc-empty-icon { font-size:48px;margin-bottom:12px; }
+.pc-empty-title { font-size:16px;font-weight:700;color:#fff;margin-bottom:8px; }
 </style>
 </head>
 <body>
@@ -4772,8 +4808,13 @@ function renderHangulCard() {
   if (el('sr-hangul-example')) el('sr-hangul-example').textContent = h.ex;
 }
 
-// ── Korean Slang Data (with KakaoTalk conversation examples) ──
-var _KOREAN_SLANGS = [
+// ── Korean Slang Data (loaded from DB, hardcoded fallback) ──
+var _KOREAN_SLANGS = [];
+var _slangIdx = 0;
+var _slangsLoaded = false;
+
+// Hardcoded fallback (used if DB unavailable)
+var _SLANG_FALLBACK = [
   { ko:'갓생', en:'God-life', desc:'"신(God)" + "인생(life)". 매우 성실하고 생산적인 하루를 보내는 것', tag:'MZ세대', warn:false,
     chat:[{me:false,name:'수진',msg:'오늘 새벽 5시에 일어나서 운동하고 공부했어'},{me:true,msg:'와 진짜 <hl>갓생</hl> 사네 😱'},{me:false,name:'수진',msg:'ㅋㅋ 내일부터 같이 할래?'},{me:true,msg:'나는 갓생은 무리... 낮생이라도 할게'}]},
   { ko:'ㅋㅋㅋ', en:'hahaha', desc:'한국어 웃음소리. ㅋ이 많을수록 더 웃김. ㅋ 하나면 비꼬는 느낌일 수 있음', tag:'기본', warn:true, warnText:'ㅋ 하나만 쓰면 "재미없다/비꼬는" 느낌',
@@ -4805,16 +4846,41 @@ var _KOREAN_SLANGS = [
   { ko:'실화냐', en:'is this real?', desc:'"실화(real story)냐?" 믿기 어려울 때 쓰는 말', tag:'리액션',
     chat:[{me:false,name:'성민',msg:'나 복권 당첨됐어'},{me:true,msg:'....<hl>실화냐</hl>???'},{me:false,name:'성민',msg:'5000원 ㅋㅋ'},{me:true,msg:'ㅋㅋㅋㅋ 그것도 실화라고'}]}
 ];
-var _slangIdx = 0;
+
+// Load slangs from DB
+async function loadSlangsFromDB() {
+  try {
+    var sb = getSupa();
+    if (!sb) { _KOREAN_SLANGS = _SLANG_FALLBACK; return; }
+    var { data, error } = await sb.from('korean_slangs').select('*').eq('is_active', true).order('sort_order');
+    if (error || !data || data.length === 0) { _KOREAN_SLANGS = _SLANG_FALLBACK; return; }
+    _KOREAN_SLANGS = data.map(function(r) {
+      return { id:r.id, ko:r.ko, en:r.en, desc:r.desc_text||'', tag:r.tag||'일상', warn:!!r.warn, warnText:r.warn_text||'', chat:r.chat||[], difficulty:r.difficulty||'Beginner' };
+    });
+    _slangsLoaded = true;
+  } catch(e) {
+    console.warn('[Slang] DB load failed, using fallback', e);
+    _KOREAN_SLANGS = _SLANG_FALLBACK;
+  }
+  _slangIdx = Math.floor(Math.random() * _KOREAN_SLANGS.length);
+  renderSlang();
+}
+
 function loadNextSlang() { _slangIdx = (_slangIdx + 1) % _KOREAN_SLANGS.length; renderSlang(); }
 function renderSlang() {
+  if (_KOREAN_SLANGS.length === 0) return;
   var s = _KOREAN_SLANGS[_slangIdx];
   var pre = document.getElementById('sr-slang-preview');
   var mean = document.getElementById('sr-slang-meaning');
   if (pre) pre.textContent = s.ko + ' = ' + s.en;
   if (mean) mean.textContent = s.desc;
 }
-(function(){ _slangIdx = Math.floor(Math.random() * _KOREAN_SLANGS.length); setTimeout(renderSlang, 500); })();
+// Initial load — try DB first, fallback to hardcoded
+(function(){ _KOREAN_SLANGS = _SLANG_FALLBACK; _slangIdx = Math.floor(Math.random() * _SLANG_FALLBACK.length); setTimeout(renderSlang, 500); setTimeout(loadSlangsFromDB, 1000); })();
+
+// Avatar colors for dark messenger
+var _dmAvatarColors = ['#7c3aed','#059669','#dc2626','#0284c7','#d97706','#be185d','#4f46e5','#0d9488'];
+function getDmColor(name) { var h=0; for(var i=0;i<(name||'').length;i++) h=((h<<5)-h)+(name||'').charCodeAt(i); return _dmAvatarColors[Math.abs(h)%_dmAvatarColors.length]; }
 
 // ── Slang Modal ──
 function openSlangModal() {
@@ -4842,16 +4908,18 @@ function showSlangDetail(idx) {
   if (card) card.classList.add('active');
   var det = document.getElementById('slang-detail');
   var tags = '<span class="slang-tag slang-tag-gen">' + (s.tag||'일상') + '</span>';
-  if (s.warn) tags += '<span class="slang-tag slang-tag-warn">⚠ ' + (s.warnText||'친구 사이에서만') + '</span>';
-  var chatHtml = '<div class="kt-chat"><div class="kt-header">카카오톡 대화</div>';
+  if (s.warn) tags += '<span class="slang-tag slang-tag-warn">' + (s.warnText||'친구 사이에서만') + '</span>';
+  // Dark messenger chat
+  var chatHtml = '<div class="dm-chat"><div class="dm-header">Real Conversation</div>';
   (s.chat || []).forEach(function(m) {
-    var bubble = m.msg.replace(/<hl>/g, '<span class="kt-hl">').replace(/<\/hl>/g, '</span>');
+    var bubble = m.msg.replace(/<hl>/g, '<span class="dm-hl">').replace(/<\/hl>/g, '</span>');
     if (m.me) {
-      chatHtml += '<div class="kt-row me"><div class="kt-bubble">' + bubble + '</div></div>';
+      chatHtml += '<div class="dm-row me"><div class="dm-bubble">' + bubble + '</div></div>';
     } else {
-      chatHtml += '<div class="kt-row">'
-        + '<div class="kt-avatar">' + (m.name||'?')[0] + '</div>'
-        + '<div><div class="kt-name">' + (m.name||'친구') + '</div><div class="kt-bubble">' + bubble + '</div></div>'
+      var avColor = getDmColor(m.name||'');
+      chatHtml += '<div class="dm-row">'
+        + '<div class="dm-avatar" style="background:' + avColor + '">' + (m.name||'?')[0] + '</div>'
+        + '<div><div class="dm-name">' + (m.name||'친구') + '</div><div class="dm-bubble">' + bubble + '</div></div>'
         + '</div>';
     }
   });
@@ -6065,16 +6133,239 @@ async function loadAllFtProgress() {
 }
 
 // ── Phone Call Modal ──
+var _phoneCalls = [];
+var _pcCurrentCall = null;
+var _pcAudio = null;
+var _pcPlaying = false;
+var _pcAnimFrame = null;
+
+async function loadPhoneCalls() {
+  try {
+    var sb = getSupa();
+    if (!sb) return;
+    var { data, error } = await sb.from('phone_calls').select('*').eq('is_active', true).order('sort_order');
+    if (!error && data && data.length > 0) _phoneCalls = data;
+  } catch(e) { console.warn('[PhoneCall] load failed', e); }
+}
+
 function openPhoneModal() {
   var ov = document.getElementById('phone-overlay');
   if (!ov) return;
   ov.classList.add('open');
   document.body.style.overflow = 'hidden';
+  renderPhoneCallList();
+  if (_phoneCalls.length === 0) loadPhoneCalls().then(renderPhoneCallList);
 }
 function closePhoneModal() {
   document.getElementById('phone-overlay').classList.remove('open');
   document.body.style.overflow = '';
+  pcStop();
 }
+
+function renderPhoneCallList() {
+  var list = document.getElementById('phone-call-list');
+  var player = document.getElementById('phone-call-player');
+  if (!list) return;
+  if (player) player.classList.remove('active');
+  list.style.display = '';
+  if (_phoneCalls.length === 0) {
+    list.innerHTML = '<div class="pc-empty"><div class="pc-empty-icon">🎧</div>'
+      + '<div class="pc-empty-title">No calls yet</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.4)">Phone call lessons will appear here</div></div>';
+    return;
+  }
+  var html = '<div class="pc-call-list">';
+  _phoneCalls.forEach(function(c, i) {
+    var badgeCls = 'pc-badge-' + (c.difficulty||'Beginner').toLowerCase();
+    var dur = c.duration_seconds ? Math.floor(c.duration_seconds/60) + ':' + String(c.duration_seconds%60).padStart(2,'0') : '';
+    html += '<div class="pc-call-card" onclick="pcSelectCall(' + i + ')">'
+      + '<div class="pc-call-icon">📞</div>'
+      + '<div class="pc-call-info">'
+      + '<div class="pc-call-title">' + (c.title||'') + '</div>'
+      + '<div class="pc-call-sub">' + (c.description||c.title_en||'') + (dur ? ' · ' + dur : '') + '</div>'
+      + '</div>'
+      + '<span class="pc-call-badge ' + badgeCls + '">' + (c.difficulty||'Beginner') + '</span>'
+      + '</div>';
+  });
+  html += '</div>';
+  list.innerHTML = html;
+}
+
+function pcSelectCall(idx) {
+  _pcCurrentCall = _phoneCalls[idx];
+  if (!_pcCurrentCall) return;
+  pcStop();
+  document.getElementById('phone-call-list').style.display = 'none';
+  var player = document.getElementById('phone-call-player');
+  player.classList.add('active');
+  // Header
+  document.getElementById('pc-title').textContent = _pcCurrentCall.title || '';
+  document.getElementById('pc-desc').textContent = _pcCurrentCall.description || _pcCurrentCall.title_en || '';
+  // Speakers legend
+  var speakers = _pcCurrentCall.speakers || {};
+  var legendHtml = '';
+  Object.keys(speakers).forEach(function(k) {
+    var sp = speakers[k];
+    legendHtml += '<div class="pc-speaker-tag"><div class="pc-speaker-dot" style="background:' + sp.color + '"></div><span style="color:' + sp.color + '">' + sp.name + '</span></div>';
+  });
+  document.getElementById('pc-speakers').innerHTML = legendHtml;
+  // Waveform bars
+  var waveBox = document.getElementById('pc-wave-visual');
+  var barCount = 50;
+  var bars = '';
+  for (var i = 0; i < barCount; i++) {
+    var h = 8 + Math.random() * 28;
+    bars += '<div class="pc-wave-bar" style="height:' + h + 'px" data-idx="' + i + '"></div>';
+  }
+  waveBox.innerHTML = bars;
+  // Time
+  var dur = _pcCurrentCall.duration_seconds || 0;
+  document.getElementById('pc-time-end').textContent = Math.floor(dur/60) + ':' + String(dur%60).padStart(2,'0');
+  document.getElementById('pc-time-cur').textContent = '0:00';
+  document.getElementById('pc-progress-fill').style.width = '0%';
+  document.getElementById('pc-progress-dot').style.left = '0%';
+  // Script
+  var script = _pcCurrentCall.script || [];
+  var scriptHtml = '';
+  script.forEach(function(line, li) {
+    var spKey = line.speaker || 'A';
+    var sp = speakers[spKey] || { name: spKey, color: '#34d399' };
+    scriptHtml += '<div class="pc-line" data-idx="' + li + '" data-start="' + (line.start||0) + '" data-end="' + (line.end||0) + '" onclick="pcSeekTo(' + (line.start||0) + ')">'
+      + '<div class="pc-line-speaker" style="background:' + sp.color + '">' + spKey + '</div>'
+      + '<div class="pc-line-content">'
+      + '<div class="pc-line-ko">' + (line.ko||'') + '</div>'
+      + '<div class="pc-line-en">' + (line.en||'') + '</div>'
+      + '</div></div>';
+  });
+  document.getElementById('pc-script-lines').innerHTML = scriptHtml;
+  // Setup audio if URL exists
+  if (_pcCurrentCall.audio_url) {
+    _pcAudio = new Audio(_pcCurrentCall.audio_url);
+    _pcAudio.addEventListener('ended', function() { _pcPlaying = false; pcUpdatePlayBtn(); });
+  }
+}
+
+function pcBackToList() {
+  pcStop();
+  _pcCurrentCall = null;
+  renderPhoneCallList();
+}
+
+function pcTogglePlay() {
+  if (!_pcCurrentCall) return;
+  if (!_pcAudio && _pcCurrentCall.audio_url) {
+    _pcAudio = new Audio(_pcCurrentCall.audio_url);
+    _pcAudio.addEventListener('ended', function() { _pcPlaying = false; pcUpdatePlayBtn(); });
+  }
+  if (_pcAudio) {
+    if (_pcPlaying) { _pcAudio.pause(); _pcPlaying = false; }
+    else { _pcAudio.play(); _pcPlaying = true; pcAnimLoop(); }
+  } else {
+    // Demo mode (no audio file) — simulate playback
+    _pcPlaying = !_pcPlaying;
+    if (_pcPlaying) pcDemoPlay();
+  }
+  pcUpdatePlayBtn();
+}
+
+function pcUpdatePlayBtn() {
+  var btn = document.getElementById('pc-play-btn');
+  if (btn) btn.innerHTML = _pcPlaying ? '&#10074;&#10074;' : '&#9654;';
+}
+
+function pcStop() {
+  _pcPlaying = false;
+  if (_pcAudio) { _pcAudio.pause(); _pcAudio.currentTime = 0; _pcAudio = null; }
+  if (_pcAnimFrame) { cancelAnimationFrame(_pcAnimFrame); _pcAnimFrame = null; }
+  if (_pcDemoTimer) { clearInterval(_pcDemoTimer); _pcDemoTimer = null; }
+  pcUpdatePlayBtn();
+}
+
+// Real audio sync loop
+function pcAnimLoop() {
+  if (!_pcPlaying || !_pcAudio) return;
+  var ct = _pcAudio.currentTime;
+  var dur = _pcAudio.duration || (_pcCurrentCall.duration_seconds || 1);
+  var pct = (ct / dur) * 100;
+  document.getElementById('pc-progress-fill').style.width = pct + '%';
+  document.getElementById('pc-progress-dot').style.left = pct + '%';
+  document.getElementById('pc-time-cur').textContent = Math.floor(ct/60) + ':' + String(Math.floor(ct%60)).padStart(2,'0');
+  pcHighlightLine(ct);
+  pcUpdateWaveBars(pct);
+  _pcAnimFrame = requestAnimationFrame(pcAnimLoop);
+}
+
+// Demo playback (no real audio, simulates timeline)
+var _pcDemoTimer = null;
+var _pcDemoTime = 0;
+function pcDemoPlay() {
+  _pcDemoTime = 0;
+  var dur = _pcCurrentCall.duration_seconds || 30;
+  _pcDemoTimer = setInterval(function() {
+    if (!_pcPlaying) { clearInterval(_pcDemoTimer); return; }
+    _pcDemoTime += 0.1;
+    if (_pcDemoTime >= dur) { _pcPlaying = false; pcUpdatePlayBtn(); clearInterval(_pcDemoTimer); return; }
+    var pct = (_pcDemoTime / dur) * 100;
+    document.getElementById('pc-progress-fill').style.width = pct + '%';
+    document.getElementById('pc-progress-dot').style.left = pct + '%';
+    document.getElementById('pc-time-cur').textContent = Math.floor(_pcDemoTime/60) + ':' + String(Math.floor(_pcDemoTime%60)).padStart(2,'0');
+    pcHighlightLine(_pcDemoTime);
+    pcUpdateWaveBars(pct);
+  }, 100);
+}
+
+function pcSeekTo(t) {
+  if (_pcAudio) {
+    _pcAudio.currentTime = t;
+    if (!_pcPlaying) { _pcPlaying = true; _pcAudio.play(); pcAnimLoop(); pcUpdatePlayBtn(); }
+  } else if (_pcCurrentCall) {
+    _pcDemoTime = t;
+    var dur = _pcCurrentCall.duration_seconds || 30;
+    var pct = (t / dur) * 100;
+    document.getElementById('pc-progress-fill').style.width = pct + '%';
+    document.getElementById('pc-progress-dot').style.left = pct + '%';
+    document.getElementById('pc-time-cur').textContent = Math.floor(t/60) + ':' + String(Math.floor(t%60)).padStart(2,'0');
+    pcHighlightLine(t);
+    if (!_pcPlaying) { _pcPlaying = true; pcDemoPlay(); pcUpdatePlayBtn(); }
+  }
+}
+
+function pcHighlightLine(currentTime) {
+  var lines = document.querySelectorAll('#pc-script-lines .pc-line');
+  lines.forEach(function(el) {
+    var s = parseFloat(el.dataset.start);
+    var e = parseFloat(el.dataset.end);
+    if (currentTime >= s && currentTime < e) {
+      if (!el.classList.contains('active')) {
+        el.classList.add('active');
+        el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+      }
+    } else {
+      el.classList.remove('active');
+    }
+  });
+}
+
+function pcUpdateWaveBars(pct) {
+  var bars = document.querySelectorAll('#pc-wave-visual .pc-wave-bar');
+  bars.forEach(function(b) {
+    var idx = parseInt(b.dataset.idx);
+    var barPct = (idx / bars.length) * 100;
+    b.classList.toggle('active', barPct <= pct);
+  });
+}
+
+function pcProgressClick(e) {
+  var bar = document.getElementById('pc-progress-bar');
+  if (!bar || !_pcCurrentCall) return;
+  var rect = bar.getBoundingClientRect();
+  var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  var dur = (_pcAudio ? _pcAudio.duration : _pcCurrentCall.duration_seconds) || 30;
+  pcSeekTo(pct * dur);
+}
+
+// Init phone calls load
+setTimeout(loadPhoneCalls, 1500);
 
 // ── Study Room Tab Switching ──
 function switchSrTab(tab, btn) {
@@ -12717,28 +13008,42 @@ function closeReviewModal() {
       <span style="font-size:24px">📞</span>
       <div>
         <div style="font-size:20px;font-weight:900;color:#fff">Phone Call Practice</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.4)">Listening & speaking with real phone calls</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.4)">Listen & follow along with real Korean phone calls</div>
       </div>
     </div>
   </div>
   <!-- Call list -->
-  <div id="phone-call-list" style="padding:0 20px 20px">
-    <div style="text-align:center;padding:40px 20px">
-      <div style="font-size:48px;margin-bottom:12px">🎧</div>
-      <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px">Coming Soon</div>
-      <div style="font-size:13px;color:rgba(255,255,255,.4);line-height:1.6">
-        Practice listening with real Korean phone calls<br>Follow along with highlighted scripts<br>
-        <span style="color:#34d399;font-weight:600">Script highlights as you listen</span>
+  <div id="phone-call-list" style="padding:0 20px 20px"></div>
+  <!-- Player (shown when a call is selected) -->
+  <div class="pc-player" id="phone-call-player">
+    <div class="pc-player-head">
+      <button class="pc-back-btn" onclick="pcBackToList()">&#8592;</button>
+      <div style="flex:1">
+        <div class="pc-player-title" id="pc-title"></div>
+        <div class="pc-player-desc" id="pc-desc"></div>
       </div>
-      <div style="margin-top:20px;padding:16px;border-radius:12px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.15)">
-        <div style="font-size:11px;color:#34d399;font-weight:700;margin-bottom:6px">Planned Features</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.8;text-align:left">
-          ✓ Phone call audio + real-time script highlighting<br>
-          ✓ Shadowing mode — listen & repeat sentence by sentence<br>
-          ✓ Record & submit → AI feedback (pronunciation analysis)<br>
-          ✓ Difficulty levels (Daily / Business / Emergency)
+    </div>
+    <!-- Speakers -->
+    <div class="pc-speakers-legend" id="pc-speakers"></div>
+    <!-- Audio box -->
+    <div class="pc-audio-box">
+      <div class="pc-wave-visual" id="pc-wave-visual"></div>
+      <div class="pc-controls">
+        <button class="pc-play-btn" id="pc-play-btn" onclick="pcTogglePlay()">&#9654;</button>
+        <div class="pc-progress-wrap">
+          <span class="pc-time" id="pc-time-cur">0:00</span>
+          <div class="pc-progress-bar" id="pc-progress-bar" onclick="pcProgressClick(event)">
+            <div class="pc-progress-fill" id="pc-progress-fill"></div>
+            <div class="pc-progress-dot" id="pc-progress-dot" style="left:0%"></div>
+          </div>
+          <span class="pc-time" id="pc-time-end">0:00</span>
         </div>
       </div>
+    </div>
+    <!-- Script -->
+    <div class="pc-script">
+      <div class="pc-script-header">Script</div>
+      <div class="pc-script-lines" id="pc-script-lines" style="max-height:300px;overflow-y:auto"></div>
     </div>
   </div>
 </div>

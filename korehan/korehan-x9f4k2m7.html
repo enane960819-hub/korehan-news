@@ -188,6 +188,8 @@ a{color:inherit;text-decoration:none}
     <div class="sb-lbl">Learning Content</div>
     <button class="sb-btn" id="sb-conv" onclick="goConversations()"><span class="ico">💬</span>Conversations</button>
     <button class="sb-btn" id="sb-stor" onclick="goStories()"><span class="ico">📖</span>Stories</button>
+    <button class="sb-btn" id="sb-slang" onclick="goSlangAdmin()"><span class="ico">🔥</span>Korean Slang</button>
+    <button class="sb-btn" id="sb-phone" onclick="goPhoneCallAdmin()"><span class="ico">📞</span>Phone Calls</button>
     <button class="sb-btn" id="sb-study-room" onclick="goStudyRoomOps()"><span class="ico">🏫</span>Study Room</button>
     <button class="sb-btn" id="sb-vocab" onclick="goVocabContent()"><span class="ico">📚</span>단어 & 표현</button>
     <button class="sb-btn" onclick="goTopics()"><span class="ico">📝</span>작문 토픽</button>
@@ -5066,6 +5068,300 @@ function showToastAdmin(msg) {
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(function(){ t.remove(); }, 2500);
+}
+
+// ═══════════════════════════════════════════════════════════
+// KOREAN SLANG ADMIN (korean_slangs 테이블)
+// ═══════════════════════════════════════════════════════════
+var _slangAdminData = [];
+
+async function goSlangAdmin() {
+  setSbOn('sb-slang');
+  var main = document.getElementById('main');
+  main.innerHTML = '<div style="max-width:960px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    + '<div><h2 style="font-size:22px;font-weight:800;margin:0">🔥 Korean Slang 관리</h2>'
+    + '<p style="color:#64748b;font-size:13px;margin:4px 0 0">korean_slangs 테이블 — 조회/수정/삭제/추가/AI 벌크 생성</p></div>'
+    + '<div style="display:flex;gap:8px">'
+    + '<button onclick="openSlangCreateModal()" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">+ 수동 추가</button>'
+    + '<button onclick="slangBulkGenerate()" id="slang-ai-btn" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🤖 AI 10개 생성</button>'
+    + '</div></div>'
+    + '<div id="slang-admin-list">⏳ 불러오는 중...</div></div>';
+  await loadSlangAdminList();
+}
+
+async function loadSlangAdminList() {
+  var el = document.getElementById('slang-admin-list');
+  if (!el) return;
+  var sb = getSb();
+  var { data, error } = await sb.from('korean_slangs').select('*').order('sort_order');
+  if (error) { el.innerHTML = '<div style="color:#ef4444">Error: ' + error.message + '</div>'; return; }
+  _slangAdminData = data || [];
+  if (_slangAdminData.length === 0) { el.innerHTML = '<div style="color:#94a3b8;padding:40px;text-align:center">슬랭이 없습니다. 수동 추가하거나 AI로 생성하세요.</div>'; return; }
+  var html = '<div style="display:flex;flex-direction:column;gap:8px">';
+  _slangAdminData.forEach(function(s) {
+    var chatCount = Array.isArray(s.chat) ? s.chat.length : 0;
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fff;border-radius:12px;border:1px solid #e2e8f0">'
+      + '<div style="font-size:20px;font-weight:900;min-width:60px">' + s.ko + '</div>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-size:13px;font-weight:700;color:#1e293b">' + s.en + '</div>'
+      + '<div style="font-size:11px;color:#94a3b8;margin-top:2px">'
+      + '<span style="background:#f1f5f9;padding:2px 8px;border-radius:6px;margin-right:4px">' + (s.tag||'일상') + '</span>'
+      + '<span style="background:#f1f5f9;padding:2px 8px;border-radius:6px;margin-right:4px">' + (s.difficulty||'Beginner') + '</span>'
+      + (s.warn ? '<span style="background:#fef2f2;color:#dc2626;padding:2px 8px;border-radius:6px;margin-right:4px">⚠ warn</span>' : '')
+      + '<span style="color:#94a3b8">💬' + chatCount + '개</span>'
+      + (s.is_active ? '' : ' <span style="background:#fef2f2;color:#dc2626;padding:2px 8px;border-radius:6px">비활성</span>')
+      + '</div></div>'
+      + '<button onclick="openSlangEditModal(\'' + s.id + '\')" style="background:#eff6ff;color:#2563eb;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 편집</button>'
+      + '<button onclick="deleteSlang(\'' + s.id + '\')" style="background:#fef2f2;color:#dc2626;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">🗑</button>'
+      + '</div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function openSlangCreateModal() { openSlangEditModal(null); }
+
+function openSlangEditModal(id) {
+  var existing = id ? _slangAdminData.find(function(s){ return s.id === id; }) : null;
+  var chatJson = existing && existing.chat ? JSON.stringify(existing.chat, null, 2) : '[{"me":false,"name":"친구","msg":"예문을 입력하세요"},{"me":true,"msg":"<hl>슬랭</hl> 사용 예시"}]';
+  var ov = document.createElement('div');
+  ov.id = 'slang-edit-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML = '<div style="background:#fff;border-radius:20px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;padding:28px">'
+    + '<h3 style="margin:0 0 16px;font-size:20px">' + (existing ? '✏️ 슬랭 편집' : '+ 새 슬랭 추가') + '</h3>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
+    + '<div><label style="font-size:11px;font-weight:700;color:#64748b">한국어 (ko)</label><input id="se-ko" value="' + (existing ? existing.ko : '').replace(/"/g,'&quot;') + '" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;font-size:16px;font-weight:800;font-family:\'Noto Sans KR\',sans-serif" placeholder="갓생"></div>'
+    + '<div><label style="font-size:11px;font-weight:700;color:#64748b">영어 (en)</label><input id="se-en" value="' + (existing ? existing.en : '').replace(/"/g,'&quot;') + '" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;font-size:14px" placeholder="God-life"></div>'
+    + '</div>'
+    + '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:700;color:#64748b">설명 (desc)</label><textarea id="se-desc" rows="2" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px;resize:vertical" placeholder="신(God) + 인생(life)...">' + (existing ? (existing.desc_text||'') : '') + '</textarea></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">'
+    + '<div><label style="font-size:11px;font-weight:700;color:#64748b">태그</label><input id="se-tag" value="' + (existing ? (existing.tag||'일상') : '일상') + '" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px"></div>'
+    + '<div><label style="font-size:11px;font-weight:700;color:#64748b">난이도</label><select id="se-diff" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px"><option' + (existing && existing.difficulty==='Beginner' ? ' selected' : '') + '>Beginner</option><option' + (existing && existing.difficulty==='Intermediate' ? ' selected' : '') + '>Intermediate</option><option' + (existing && existing.difficulty==='Advanced' ? ' selected' : '') + '>Advanced</option></select></div>'
+    + '<div><label style="font-size:11px;font-weight:700;color:#64748b">정렬 순서</label><input id="se-order" type="number" value="' + (existing ? (existing.sort_order||0) : (_slangAdminData.length+1)) + '" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px"></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:12px;margin-bottom:12px">'
+    + '<label style="font-size:13px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="se-warn"' + (existing && existing.warn ? ' checked' : '') + '> ⚠ 주의 표시</label>'
+    + '<input id="se-warntext" value="' + (existing ? (existing.warn_text||'') : '').replace(/"/g,'&quot;') + '" placeholder="주의 문구 (예: 친구 사이에서만)" style="flex:1;padding:8px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px">'
+    + '<label style="font-size:13px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="se-active"' + (existing ? (existing.is_active ? ' checked' : '') : ' checked') + '> 활성</label>'
+    + '</div>'
+    + '<div style="margin-bottom:16px"><label style="font-size:11px;font-weight:700;color:#64748b">대화 예문 (JSON)</label><textarea id="se-chat" rows="8" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;font-family:monospace;resize:vertical">' + chatJson.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</textarea></div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+    + '<button onclick="document.getElementById(\'slang-edit-overlay\').remove()" style="padding:10px 20px;border-radius:10px;border:1px solid #e2e8f0;background:#fff;color:#64748b;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">취소</button>'
+    + '<button onclick="saveSlangFromModal(\'' + (id||'') + '\')" style="padding:10px 24px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">저장</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+  ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
+}
+
+async function saveSlangFromModal(id) {
+  var chatText = document.getElementById('se-chat').value;
+  var chatParsed;
+  try { chatParsed = JSON.parse(chatText); } catch(e) { alert('대화 JSON 파싱 오류: ' + e.message); return; }
+  var row = {
+    ko: document.getElementById('se-ko').value.trim(),
+    en: document.getElementById('se-en').value.trim(),
+    desc_text: document.getElementById('se-desc').value.trim(),
+    tag: document.getElementById('se-tag').value.trim() || '일상',
+    difficulty: document.getElementById('se-diff').value,
+    sort_order: parseInt(document.getElementById('se-order').value) || 0,
+    warn: document.getElementById('se-warn').checked,
+    warn_text: document.getElementById('se-warntext').value.trim(),
+    is_active: document.getElementById('se-active').checked,
+    chat: chatParsed
+  };
+  if (!row.ko || !row.en) { alert('한국어와 영어는 필수입니다'); return; }
+  var sb = getSb();
+  if (id) {
+    var { error } = await sb.from('korean_slangs').update(row).eq('id', id);
+    if (error) { alert('수정 오류: ' + error.message); return; }
+  } else {
+    var { error } = await sb.from('korean_slangs').insert(row);
+    if (error) { alert('추가 오류: ' + error.message); return; }
+  }
+  document.getElementById('slang-edit-overlay').remove();
+  showToastAdmin(id ? '✏️ 슬랭 수정됨' : '✅ 슬랭 추가됨');
+  await loadSlangAdminList();
+}
+
+async function deleteSlang(id) {
+  if (!confirm('이 슬랭을 삭제하시겠습니까?')) return;
+  var sb = getSb();
+  var { error } = await sb.from('korean_slangs').delete().eq('id', id);
+  if (error) { alert('삭제 오류: ' + error.message); return; }
+  showToastAdmin('🗑 삭제됨');
+  await loadSlangAdminList();
+}
+
+async function slangBulkGenerate() {
+  var btn = document.getElementById('slang-ai-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 생성 중...'; }
+  // Get existing slangs to avoid duplicates
+  var existingKo = _slangAdminData.map(function(s){ return s.ko; });
+  var maxOrder = _slangAdminData.reduce(function(m, s){ return Math.max(m, s.sort_order||0); }, 0);
+  try {
+    var result = await callClaude({
+      feature: 'slang-bulk-generate',
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: '한국어 슬랭/신조어를 정확히 10개 생성해주세요. 실제 한국 MZ세대가 사용하는 현재 유행하는 슬랭만 포함하세요.\n\n이미 있는 슬랭 (중복 제외): ' + existingKo.join(', ') + '\n\n각 슬랭마다 다음 JSON 형식으로 반환:\n```json\n[\n  {\n    "ko": "슬랭 한국어",\n    "en": "English translation",\n    "desc_text": "한국어로 상세 설명 (어원, 뉘앙스 포함)",\n    "tag": "카테고리 (일상/MZ세대/음식/사회생활/리액션/투자/혼족문화/귀여움/메타/소비문화 중 택1)",\n    "warn": false,\n    "warn_text": "",\n    "difficulty": "Beginner 또는 Intermediate 또는 Advanced",\n    "chat": [\n      {"me": false, "name": "친구이름", "msg": "대화 시작"},\n      {"me": true, "msg": "여기에 <hl>슬랭</hl> 사용"},\n      {"me": false, "name": "친구이름", "msg": "반응"},\n      {"me": true, "msg": "마무리"}\n    ]\n  }\n]\n```\n\n규칙:\n1. 실제 사용되는 진짜 슬랭만 (만들어내지 마세요)\n2. 대화 예문은 자연스러운 카톡 대화처럼\n3. <hl>태그</hl>로 슬랭 하이라이트\n4. 비속어 포함 시 warn: true + warn_text 추가\n5. JSON만 반환 (설명 텍스트 없이)' }]
+    });
+    var text = result.content ? result.content[0].text : (result.text || '');
+    // Extract JSON
+    var jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) throw new Error('JSON not found in response');
+    var slangs = JSON.parse(jsonMatch[0]);
+    // Filter out duplicates
+    slangs = slangs.filter(function(s) { return existingKo.indexOf(s.ko) === -1; });
+    if (slangs.length === 0) { showToastAdmin('모든 슬랭이 중복입니다. 다시 시도하세요.'); return; }
+    // Insert all
+    var rows = slangs.map(function(s, i) {
+      return {
+        ko: s.ko, en: s.en, desc_text: s.desc_text||'', tag: s.tag||'일상',
+        warn: !!s.warn, warn_text: s.warn_text||'',
+        difficulty: s.difficulty||'Beginner', chat: s.chat||[],
+        is_active: true, sort_order: maxOrder + i + 1
+      };
+    });
+    var sb = getSb();
+    var { error } = await sb.from('korean_slangs').insert(rows);
+    if (error) throw error;
+    showToastAdmin('✅ ' + rows.length + '개 슬랭 추가됨!');
+    await loadSlangAdminList();
+  } catch(e) {
+    console.error('[SlangAI]', e);
+    alert('AI 생성 오류: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🤖 AI 10개 생성'; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// PHONE CALL ADMIN (phone_calls 테이블)
+// ═══════════════════════════════════════════════════════════
+var _phoneAdminData = [];
+
+async function goPhoneCallAdmin() {
+  setSbOn('sb-phone');
+  var main = document.getElementById('main');
+  main.innerHTML = '<div style="max-width:960px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    + '<div><h2 style="font-size:22px;font-weight:800;margin:0">📞 Phone Call 관리</h2>'
+    + '<p style="color:#64748b;font-size:13px;margin:4px 0 0">phone_calls 테이블 — 스크립트/오디오/화자 관리</p></div>'
+    + '<button onclick="openPhoneCreateModal()" style="background:#059669;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">+ 새 Phone Call</button>'
+    + '</div>'
+    + '<div id="phone-admin-list">⏳ 불러오는 중...</div></div>';
+  await loadPhoneAdminList();
+}
+
+async function loadPhoneAdminList() {
+  var el = document.getElementById('phone-admin-list');
+  if (!el) return;
+  var sb = getSb();
+  var { data, error } = await sb.from('phone_calls').select('*').order('sort_order');
+  if (error) { el.innerHTML = '<div style="color:#ef4444">Error: ' + error.message + '</div>'; return; }
+  _phoneAdminData = data || [];
+  if (_phoneAdminData.length === 0) { el.innerHTML = '<div style="color:#94a3b8;padding:40px;text-align:center">Phone Call이 없습니다.</div>'; return; }
+  var html = '<div style="display:flex;flex-direction:column;gap:8px">';
+  _phoneAdminData.forEach(function(c) {
+    var scriptCount = Array.isArray(c.script) ? c.script.length : 0;
+    var speakers = c.speakers || {};
+    var spNames = Object.keys(speakers).map(function(k){ return speakers[k].name; }).join(', ');
+    var dur = c.duration_seconds ? Math.floor(c.duration_seconds/60) + ':' + String(c.duration_seconds%60).padStart(2,'0') : '-';
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fff;border-radius:12px;border:1px solid #e2e8f0">'
+      + '<div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#059669,#34d399);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📞</div>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-size:14px;font-weight:800;color:#1e293b">' + c.title + (c.title_en ? ' <span style="color:#94a3b8;font-weight:400">(' + c.title_en + ')</span>' : '') + '</div>'
+      + '<div style="font-size:11px;color:#94a3b8;margin-top:2px">'
+      + '<span style="background:#f1f5f9;padding:2px 8px;border-radius:6px;margin-right:4px">' + (c.category||'Daily') + '</span>'
+      + '<span style="background:#f1f5f9;padding:2px 8px;border-radius:6px;margin-right:4px">' + (c.difficulty||'Beginner') + '</span>'
+      + '<span>📝' + scriptCount + '문장</span> · <span>⏱' + dur + '</span>'
+      + (spNames ? ' · <span>🎭' + spNames + '</span>' : '')
+      + (c.audio_url ? ' · <span style="color:#059669">🔊 오디오 있음</span>' : '')
+      + (c.is_active ? '' : ' <span style="background:#fef2f2;color:#dc2626;padding:2px 8px;border-radius:6px">비활성</span>')
+      + '</div></div>'
+      + '<button onclick="openPhoneEditModal(\'' + c.id + '\')" style="background:#ecfdf5;color:#059669;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 편집</button>'
+      + '<button onclick="deletePhoneCall(\'' + c.id + '\')" style="background:#fef2f2;color:#dc2626;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">🗑</button>'
+      + '</div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function openPhoneCreateModal() { openPhoneEditModal(null); }
+
+function openPhoneEditModal(id) {
+  var existing = id ? _phoneAdminData.find(function(c){ return c.id === id; }) : null;
+  var scriptJson = existing && existing.script ? JSON.stringify(existing.script, null, 2) : '[\n  {"speaker":"A","start":0.0,"end":2.5,"ko":"여보세요?","en":"Hello?"},\n  {"speaker":"B","start":3.0,"end":5.0,"ko":"네, 말씀하세요.","en":"Yes, go ahead."}\n]';
+  var speakersJson = existing && existing.speakers ? JSON.stringify(existing.speakers, null, 2) : '{"A":{"name":"화자 A","color":"#34d399"},"B":{"name":"화자 B","color":"#60a5fa"}}';
+  var ov = document.createElement('div');
+  ov.id = 'phone-edit-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML = '<div style="background:#fff;border-radius:20px;max-width:700px;width:100%;max-height:92vh;overflow-y:auto;padding:28px">'
+    + '<h3 style="margin:0 0 16px;font-size:20px">' + (existing ? '✏️ Phone Call 편집' : '+ 새 Phone Call 추가') + '</h3>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
+    + '<div><label style="font-size:11px;font-weight:700;color:#64748b">제목 (한국어)</label><input id="pe-title" value="' + (existing ? (existing.title||'') : '').replace(/"/g,'&quot;') + '" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;font-size:15px;font-weight:700" placeholder="점심 약속"></div>'
+    + '<div><label style="font-size:11px;font-weight:700;color:#64748b">제목 (영어)</label><input id="pe-title-en" value="' + (existing ? (existing.title_en||'') : '').replace(/"/g,'&quot;') + '" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;font-size:14px" placeholder="Lunch Date"></div>'
+    + '</div>'
+    + '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:700;color:#64748b">설명</label><input id="pe-desc" value="' + (existing ? (existing.description||'') : '').replace(/"/g,'&quot;') + '" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px" placeholder="친구와 점심 약속을 잡는 전화"></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px">'
+    + '<div><label style="font-size:11px;font-weight:700;color:#64748b">카테고리</label><select id="pe-cat" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px"><option' + (existing && existing.category==='Daily' ? ' selected' : '') + '>Daily</option><option' + (existing && existing.category==='Business' ? ' selected' : '') + '>Business</option><option' + (existing && existing.category==='Emergency' ? ' selected' : '') + '>Emergency</option></select></div>'
+    + '<div><label style="font-size:11px;font-weight:700;color:#64748b">난이도</label><select id="pe-diff" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px"><option' + (existing && existing.difficulty==='Beginner' ? ' selected' : '') + '>Beginner</option><option' + (existing && existing.difficulty==='Intermediate' ? ' selected' : '') + '>Intermediate</option><option' + (existing && existing.difficulty==='Advanced' ? ' selected' : '') + '>Advanced</option></select></div>'
+    + '<div><label style="font-size:11px;font-weight:700;color:#64748b">길이 (초)</label><input id="pe-dur" type="number" value="' + (existing ? (existing.duration_seconds||0) : 60) + '" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px"></div>'
+    + '<div><label style="font-size:11px;font-weight:700;color:#64748b">정렬</label><input id="pe-order" type="number" value="' + (existing ? (existing.sort_order||0) : (_phoneAdminData.length+1)) + '" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px"></div>'
+    + '</div>'
+    + '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:700;color:#64748b">오디오 URL (선택사항)</label><input id="pe-audio" value="' + (existing ? (existing.audio_url||'') : '').replace(/"/g,'&quot;') + '" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px" placeholder="https://... 또는 assets/audio/filename.mp3"></div>'
+    + '<div style="display:flex;gap:12px;margin-bottom:12px"><label style="font-size:13px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="pe-active"' + (existing ? (existing.is_active ? ' checked' : '') : ' checked') + '> 활성</label></div>'
+    + '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:700;color:#64748b">화자 정보 (JSON) — 각 화자의 이름과 색상</label><textarea id="pe-speakers" rows="3" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;font-family:monospace;resize:vertical">' + speakersJson.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</textarea></div>'
+    + '<div style="margin-bottom:16px"><label style="font-size:11px;font-weight:700;color:#64748b">스크립트 (JSON) — 문장별 시작/끝 시간, 화자, 한국어, 영어</label><textarea id="pe-script" rows="12" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;font-family:monospace;resize:vertical">' + scriptJson.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</textarea></div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+    + '<button onclick="document.getElementById(\'phone-edit-overlay\').remove()" style="padding:10px 20px;border-radius:10px;border:1px solid #e2e8f0;background:#fff;color:#64748b;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">취소</button>'
+    + '<button onclick="savePhoneFromModal(\'' + (id||'') + '\')" style="padding:10px 24px;border-radius:10px;border:none;background:#059669;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">저장</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+  ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
+}
+
+async function savePhoneFromModal(id) {
+  var scriptText = document.getElementById('pe-script').value;
+  var speakersText = document.getElementById('pe-speakers').value;
+  var scriptParsed, speakersParsed;
+  try { scriptParsed = JSON.parse(scriptText); } catch(e) { alert('스크립트 JSON 파싱 오류: ' + e.message); return; }
+  try { speakersParsed = JSON.parse(speakersText); } catch(e) { alert('화자 JSON 파싱 오류: ' + e.message); return; }
+  var row = {
+    title: document.getElementById('pe-title').value.trim(),
+    title_en: document.getElementById('pe-title-en').value.trim(),
+    description: document.getElementById('pe-desc').value.trim(),
+    category: document.getElementById('pe-cat').value,
+    difficulty: document.getElementById('pe-diff').value,
+    duration_seconds: parseInt(document.getElementById('pe-dur').value) || 0,
+    audio_url: document.getElementById('pe-audio').value.trim() || null,
+    sort_order: parseInt(document.getElementById('pe-order').value) || 0,
+    is_active: document.getElementById('pe-active').checked,
+    speakers: speakersParsed,
+    script: scriptParsed
+  };
+  if (!row.title) { alert('제목은 필수입니다'); return; }
+  var sb = getSb();
+  if (id) {
+    var { error } = await sb.from('phone_calls').update(row).eq('id', id);
+    if (error) { alert('수정 오류: ' + error.message); return; }
+  } else {
+    var { error } = await sb.from('phone_calls').insert(row);
+    if (error) { alert('추가 오류: ' + error.message); return; }
+  }
+  document.getElementById('phone-edit-overlay').remove();
+  showToastAdmin(id ? '✏️ Phone Call 수정됨' : '✅ Phone Call 추가됨');
+  await loadPhoneAdminList();
+}
+
+async function deletePhoneCall(id) {
+  if (!confirm('이 Phone Call을 삭제하시겠습니까?')) return;
+  var sb = getSb();
+  var { error } = await sb.from('phone_calls').delete().eq('id', id);
+  if (error) { alert('삭제 오류: ' + error.message); return; }
+  showToastAdmin('🗑 삭제됨');
+  await loadPhoneAdminList();
 }
 
 // ═══════════════════════════════════════════════════════════
