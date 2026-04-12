@@ -9307,49 +9307,28 @@ async function ftAdminMigrate() {
 function ftAdminEdit(id) {
   var s = _ftAdminData.find(function(x){ return x.id === id; });
   if (!s) return;
-  var d = s.data || {};
-  var nodes = d.nodes || {};
-  var nodeKeys = Object.keys(nodes);
+  window._fteEditId = id;
+  window._fteData = JSON.parse(JSON.stringify(s.data || {}));
+  if (!window._fteData.nodes) window._fteData.nodes = {};
+  if (!window._fteData.edges) window._fteData.edges = [];
 
   var overlay = document.createElement('div');
+  overlay.id = 'fte-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:12px;overflow-y:auto';
   overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
 
-  var html = '<div style="background:#fff;border-radius:14px;max-width:800px;width:100%;max-height:90vh;overflow-y:auto;padding:24px">'
-    + '<div style="display:flex;justify-content:space-between;margin-bottom:16px"><h3 style="margin:0;font-size:16px">' + (s.icon||'') + ' Edit: ' + s.title + '</h3><button onclick="this.closest(\'div[style*=fixed]\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer">✕</button></div>'
-    // Meta fields
+  var html = '<div style="background:#fff;border-radius:14px;max-width:860px;width:100%;max-height:90vh;overflow-y:auto;padding:24px">'
+    + '<div style="display:flex;justify-content:space-between;margin-bottom:16px"><h3 style="margin:0;font-size:16px">' + (s.icon||'') + ' Edit: ' + s.title + '</h3><button onclick="this.closest(\'div[style*=fixed]\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer">\u2715</button></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">'
     + '<div><label style="font-size:11px;font-weight:600">Title</label><input id="fte-title" value="' + (s.title||'').replace(/"/g,'&quot;') + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:12px;box-sizing:border-box"></div>'
     + '<div><label style="font-size:11px;font-weight:600">Korean</label><input id="fte-titleko" value="' + (s.title_ko||'').replace(/"/g,'&quot;') + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:12px;box-sizing:border-box"></div>'
     + '<div><label style="font-size:11px;font-weight:600">Sub</label><input id="fte-sub" value="' + (s.sub||'').replace(/"/g,'&quot;') + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:12px;box-sizing:border-box"></div>'
     + '</div>'
-    // Nodes
-    + '<div style="font-size:13px;font-weight:700;margin-bottom:8px">' + nodeKeys.length + ' Nodes (click to edit text)</div>'
-    + '<div id="fte-nodes" style="display:flex;flex-direction:column;gap:6px">';
-
-  nodeKeys.forEach(function(key) {
-    var n = nodes[key];
-    var choiceRows = '';
-    if (n.choices) {
-      choiceRows = n.choices.map(function(c, ci) {
-        return '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:4px;margin-top:4px;padding-left:20px">'
-          + '<input data-nk="' + key + '" data-ci="' + ci + '" data-f="text" value="' + (c.text||'').replace(/"/g,'&quot;') + '" style="padding:4px 6px;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;font-family:Noto Sans KR,sans-serif">'
-          + '<input data-nk="' + key + '" data-ci="' + ci + '" data-f="textEn" value="' + (c.textEn||'').replace(/"/g,'&quot;') + '" style="padding:4px 6px;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;color:#666">'
-          + '<span style="font-size:10px;color:#888;padding-top:5px">pts:' + (c.pts||0) + '</span>'
-          + '</div>';
-      }).join('');
-    }
-    html += '<div style="border:1px solid #e8e8e8;border-radius:8px;padding:10px;background:#fafafa">'
-      + '<div style="font-size:11px;font-weight:700;color:#2563eb;margin-bottom:4px">[' + key + '] ' + (n.type||'npc') + (n.npc ? ' — ' + n.npc : '') + '</div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
-      + '<input data-nk="' + key + '" data-f="text" value="' + (n.text||'').replace(/"/g,'&quot;') + '" placeholder="Korean text" style="padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:12px;font-family:Noto Sans KR,sans-serif">'
-      + '<input data-nk="' + key + '" data-f="textEn" value="' + (n.textEn||'').replace(/"/g,'&quot;') + '" placeholder="English text" style="padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:12px;color:#666">'
-      + '</div>'
-      + choiceRows
-      + '</div>';
-  });
-
-  html += '</div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    + '<div style="font-size:13px;font-weight:700" id="fte-node-count"></div>'
+    + '<button onclick="fteAddNode()" style="font-size:11px;padding:5px 12px;border:none;border-radius:6px;background:#16a34a;color:#fff;cursor:pointer;font-weight:700">+ Add Node</button>'
+    + '</div>'
+    + '<div id="fte-nodes" style="display:flex;flex-direction:column;gap:6px"></div>'
     + '<div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">'
     + '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:8px 16px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:12px">Cancel</button>'
     + '<button onclick="ftAdminSaveEdit(\'' + id + '\')" style="padding:8px 16px;border:none;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer;font-size:12px;font-weight:700">Save All Changes</button>'
@@ -9357,43 +9336,142 @@ function ftAdminEdit(id) {
 
   overlay.innerHTML = html;
   document.body.appendChild(overlay);
+  fteRenderNodes();
 }
 
-async function ftAdminSaveEdit(id) {
-  var s = _ftAdminData.find(function(x){ return x.id === id; });
-  if (!s) return;
-  var d = s.data || {};
+function fteRenderNodes() {
+  var d = window._fteData;
   var nodes = d.nodes || {};
+  var nodeKeys = Object.keys(nodes);
+  var countEl = document.getElementById('fte-node-count');
+  if (countEl) countEl.textContent = nodeKeys.length + ' Nodes';
+  var container = document.getElementById('fte-nodes');
+  if (!container) return;
 
-  // Read meta
-  var newTitle = document.getElementById('fte-title').value.trim();
-  var newTitleKo = document.getElementById('fte-titleko').value.trim();
-  var newSub = document.getElementById('fte-sub').value.trim();
+  container.innerHTML = nodeKeys.map(function(key) {
+    var n = nodes[key];
+    var isSpecial = n.type === 'start' || n.type === 'end';
+    var choiceRows = '';
+    if (n.choices && n.choices.length) {
+      choiceRows = '<div style="margin-top:6px;padding-left:16px;border-left:2px solid #dbeafe">'
+        + '<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">Choices:</div>'
+        + n.choices.map(function(c, ci) {
+          return '<div style="display:grid;grid-template-columns:1fr 1fr 50px 50px auto;gap:4px;margin-bottom:3px;align-items:center">'
+            + '<input data-nk="' + key + '" data-ci="' + ci + '" data-f="text" value="' + (c.text||'').replace(/"/g,'&quot;') + '" placeholder="Korean" style="padding:4px 6px;border:1px solid #e2e8f0;border-radius:4px;font-size:11px">'
+            + '<input data-nk="' + key + '" data-ci="' + ci + '" data-f="textEn" value="' + (c.textEn||'').replace(/"/g,'&quot;') + '" placeholder="English" style="padding:4px 6px;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;color:#666">'
+            + '<input data-nk="' + key + '" data-ci="' + ci + '" data-f="next" value="' + (c.next||'').replace(/"/g,'&quot;') + '" placeholder="next" style="padding:4px 6px;border:1px solid #e2e8f0;border-radius:4px;font-size:10px;color:#2563eb">'
+            + '<input data-nk="' + key + '" data-ci="' + ci + '" data-f="pts" type="number" value="' + (c.pts||0) + '" style="padding:4px 4px;border:1px solid #e2e8f0;border-radius:4px;font-size:10px;width:100%;box-sizing:border-box">'
+            + '<button onclick="fteDeleteChoice(\'' + key + '\',' + ci + ')" style="font-size:10px;padding:2px 5px;border:1px solid #fca5a5;border-radius:3px;background:#fff;color:#dc2626;cursor:pointer">\u2715</button>'
+            + '</div>';
+        }).join('')
+        + '<button onclick="fteAddChoice(\'' + key + '\')" style="font-size:10px;padding:3px 8px;border:1px dashed #93c5fd;border-radius:4px;background:#eff6ff;color:#2563eb;cursor:pointer;margin-top:4px">+ Choice</button>'
+        + '</div>';
+    } else if (!isSpecial) {
+      choiceRows = '<div style="margin-top:6px;padding-left:16px">'
+        + '<button onclick="fteAddChoice(\'' + key + '\')" style="font-size:10px;padding:3px 8px;border:1px dashed #93c5fd;border-radius:4px;background:#eff6ff;color:#2563eb;cursor:pointer">+ Add Choice</button>'
+        + '</div>';
+    }
 
-  // Read all node text edits
+    return '<div style="border:1px solid #e8e8e8;border-radius:8px;padding:10px;background:' + (isSpecial ? '#f0f9ff' : '#fafafa') + '">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+      + '<div style="font-size:11px;font-weight:700;color:#2563eb">[' + key + '] ' + (n.type||'npc') + (n.npc ? ' \u2014 ' + n.npc : '') + '</div>'
+      + (isSpecial ? '' : '<button onclick="fteDeleteNode(\'' + key + '\')" style="font-size:10px;padding:2px 6px;border:1px solid #fca5a5;border-radius:3px;background:#fff;color:#dc2626;cursor:pointer">Delete</button>')
+      + '</div>'
+      + (isSpecial ? '<div style="font-size:11px;color:#888">Type: ' + n.type + (n.next ? ' \u2192 ' + n.next : '') + '</div>'
+        : '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+          + '<input data-nk="' + key + '" data-f="text" value="' + (n.text||'').replace(/"/g,'&quot;') + '" placeholder="Korean text" style="padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:12px">'
+          + '<input data-nk="' + key + '" data-f="textEn" value="' + (n.textEn||'').replace(/"/g,'&quot;') + '" placeholder="English text" style="padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:12px;color:#666">'
+          + '</div>'
+          + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:4px">'
+          + '<input data-nk="' + key + '" data-f="npc" value="' + (n.npc||'').replace(/"/g,'&quot;') + '" placeholder="NPC name" style="padding:4px 6px;border:1px solid #e8e8e8;border-radius:4px;font-size:11px;color:#555">'
+          + '<input data-nk="' + key + '" data-f="scene" value="' + (n.scene||'').replace(/"/g,'&quot;') + '" placeholder="Scene desc" style="padding:4px 6px;border:1px solid #e8e8e8;border-radius:4px;font-size:11px;color:#555">'
+          + '<input data-nk="' + key + '" data-f="label" value="' + (n.label||'').replace(/"/g,'&quot;') + '" placeholder="Label" style="padding:4px 6px;border:1px solid #e8e8e8;border-radius:4px;font-size:11px;color:#555">'
+          + '</div>'
+      )
+      + choiceRows
+      + '</div>';
+  }).join('');
+}
+
+function fteCollectNodeEdits() {
+  var d = window._fteData;
+  var nodes = d.nodes || {};
   document.querySelectorAll('#fte-nodes input[data-nk]').forEach(function(inp) {
     var nk = inp.dataset.nk, f = inp.dataset.f, ci = inp.dataset.ci;
     if (!nodes[nk]) return;
     if (ci !== undefined && ci !== '') {
-      // Choice field
       if (nodes[nk].choices && nodes[nk].choices[parseInt(ci)]) {
-        nodes[nk].choices[parseInt(ci)][f] = inp.value;
+        var val = f === 'pts' ? parseInt(inp.value)||0 : inp.value;
+        nodes[nk].choices[parseInt(ci)][f] = val;
       }
     } else {
-      // Node field
       nodes[nk][f] = inp.value;
     }
+  });
+}
+
+function fteAddNode() {
+  fteCollectNodeEdits();
+  var nodes = window._fteData.nodes;
+  var idx = Object.keys(nodes).length;
+  var newKey = 'node_' + Date.now().toString(36);
+  nodes[newKey] = { type:'npc', x:50, y:50, label:'New Node', npc:'', scene:'', text:'', textEn:'', choices:[] };
+  fteRenderNodes();
+  var container = document.getElementById('fte-nodes');
+  if (container) container.scrollTop = container.scrollHeight;
+}
+
+function fteDeleteNode(key) {
+  if (!confirm('Delete node [' + key + ']?')) return;
+  fteCollectNodeEdits();
+  delete window._fteData.nodes[key];
+  window._fteData.edges = (window._fteData.edges||[]).filter(function(e){ return e[0]!==key && e[1]!==key; });
+  fteRenderNodes();
+}
+
+function fteAddChoice(nodeKey) {
+  fteCollectNodeEdits();
+  var n = window._fteData.nodes[nodeKey];
+  if (!n) return;
+  if (!n.choices) n.choices = [];
+  n.choices.push({ id:'c'+Date.now().toString(36).slice(-4), text:'', textEn:'', next:'', pts:1, phrase:'' });
+  fteRenderNodes();
+}
+
+function fteDeleteChoice(nodeKey, ci) {
+  fteCollectNodeEdits();
+  var n = window._fteData.nodes[nodeKey];
+  if (!n || !n.choices) return;
+  n.choices.splice(ci, 1);
+  fteRenderNodes();
+}
+
+async function ftAdminSaveEdit(id) {
+  fteCollectNodeEdits();
+  var newTitle = document.getElementById('fte-title').value.trim();
+  var newTitleKo = document.getElementById('fte-titleko').value.trim();
+  var newSub = document.getElementById('fte-sub').value.trim();
+  var d = window._fteData;
+
+  // Rebuild edges from choices
+  var edges = [];
+  var nodes = d.nodes || {};
+  Object.keys(nodes).forEach(function(key) {
+    var n = nodes[key];
+    if (n.next) edges.push([key, n.next]);
+    if (n.choices) n.choices.forEach(function(c) { if (c.next) edges.push([key, c.next]); });
   });
 
   var sb = getSb();
   var res = await sb.from('fast_track_scenarios').update({
     title: newTitle, title_ko: newTitleKo, sub: newSub,
-    data: { nodes: nodes, edges: d.edges || [] },
+    data: { nodes: nodes, edges: edges },
     updated_at: new Date().toISOString()
   }).eq('id', id);
   if (res.error) { alert('Save failed: ' + res.error.message); return; }
-  toast('Saved!');
-  document.querySelector('div[style*="fixed"]').remove();
+  toast('Saved! (' + Object.keys(nodes).length + ' nodes)');
+  var overlay = document.getElementById('fte-overlay');
+  if (overlay) overlay.remove();
   await ftAdminRefresh();
 }
 
@@ -9448,7 +9526,19 @@ async function ftAdminAIGenerate() {
         }]
       });
       var text = (res.content||[]).map(function(c){return c.text||'';}).join('').replace(/```json|```/g,'').trim();
-      var scenarios = JSON.parse(text);
+      // Extract JSON array robustly
+      var arrStart = text.indexOf('[');
+      var arrEnd = text.lastIndexOf(']');
+      if (arrStart >= 0 && arrEnd > arrStart) text = text.slice(arrStart, arrEnd + 1);
+      var scenarios;
+      try { scenarios = JSON.parse(text); }
+      catch(pe) {
+        console.error('FT JSON parse error:', pe, 'raw:', text.slice(0,500));
+        status.innerHTML = '\u26A0\uFE0F JSON parse error at scenario ' + (added+1) + '. Retrying...';
+        errors++;
+        continue;
+      }
+      if (!Array.isArray(scenarios)) scenarios = [scenarios];
 
       for (var si = 0; si < scenarios.length; si++) {
         var sc = scenarios[si];
