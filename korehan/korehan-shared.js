@@ -5776,6 +5776,19 @@ var _PX = {
   // 📚 scroll — purple scroll
   scroll: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="3" y="2" width="8" height="1" fill="#a78bfa"/><rect x="2" y="3" width="1" height="1" fill="#8b5cf6"/><rect x="3" y="3" width="8" height="1" fill="#ede9fe"/><rect x="11" y="3" width="1" height="1" fill="#8b5cf6"/><rect x="2" y="4" width="1" height="7" fill="#7c3aed"/><rect x="3" y="4" width="8" height="7" fill="#f5f3ff"/><rect x="11" y="4" width="1" height="7" fill="#7c3aed"/><rect x="4" y="5" width="5" height="1" fill="#a78bfa"/><rect x="4" y="7" width="4" height="1" fill="#c4b5fd"/><rect x="4" y="9" width="5" height="1" fill="#c4b5fd"/><rect x="3" y="11" width="8" height="1" fill="#ede9fe"/><rect x="3" y="12" width="10" height="1" fill="#8b5cf6"/><rect x="12" y="11" width="1" height="1" fill="#8b5cf6"/><rect x="13" y="12" width="1" height="1" fill="#7c3aed"/></svg>',
 };
+  // 🌍 globe — world/travel
+  globe: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="5" y="2" width="6" height="1" fill="#34d399"/><rect x="3" y="3" width="3" height="1" fill="#6ee7b7"/><rect x="6" y="3" width="4" height="1" fill="#34d399"/><rect x="10" y="3" width="3" height="1" fill="#60a5fa"/><rect x="2" y="4" width="2" height="1" fill="#60a5fa"/><rect x="4" y="4" width="4" height="1" fill="#34d399"/><rect x="8" y="4" width="2" height="1" fill="#6ee7b7"/><rect x="10" y="4" width="2" height="1" fill="#60a5fa"/><rect x="12" y="4" width="1" height="1" fill="#3b82f6"/><rect x="2" y="5" width="1" height="4" fill="#3b82f6"/><rect x="3" y="5" width="3" height="1" fill="#60a5fa"/><rect x="6" y="5" width="2" height="1" fill="#34d399"/><rect x="8" y="5" width="3" height="1" fill="#60a5fa"/><rect x="11" y="5" width="2" height="1" fill="#34d399"/><rect x="13" y="5" width="1" height="4" fill="#3b82f6"/><rect x="3" y="6" width="4" height="3" fill="#60a5fa"/><rect x="7" y="6" width="3" height="3" fill="#34d399"/><rect x="10" y="6" width="3" height="3" fill="#60a5fa"/><rect x="3" y="9" width="10" height="1" fill="#3b82f6"/><rect x="5" y="10" width="6" height="1" fill="#60a5fa"/><rect x="5" y="11" width="6" height="1" fill="#3b82f6"/></svg>',
+  // 🌸 flower — beauty/culture
+  flower: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="7" y="2" width="2" height="1" fill="#f9a8d4"/><rect x="5" y="3" width="2" height="1" fill="#f472b6"/><rect x="9" y="3" width="2" height="1" fill="#f472b6"/><rect x="4" y="4" width="2" height="2" fill="#f9a8d4"/><rect x="10" y="4" width="2" height="2" fill="#f9a8d4"/><rect x="6" y="5" width="1" height="1" fill="#f472b6"/><rect x="9" y="5" width="1" height="1" fill="#f472b6"/><rect x="7" y="5" width="2" height="2" fill="#fbbf24"/><rect x="5" y="7" width="2" height="2" fill="#f472b6"/><rect x="9" y="7" width="2" height="2" fill="#f472b6"/><rect x="7" y="8" width="2" height="1" fill="#f9a8d4"/><rect x="7" y="9" width="2" height="1" fill="#22c55e"/><rect x="7" y="10" width="2" height="2" fill="#16a34a"/><rect x="6" y="11" width="1" height="1" fill="#22c55e"/><rect x="9" y="11" width="1" height="1" fill="#22c55e"/><rect x="7" y="12" width="2" height="1" fill="#15803d"/></svg>',
+  // ✈️ plane — travel
+  plane: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="11" y="2" width="2" height="1" fill="#60a5fa"/><rect x="10" y="3" width="2" height="1" fill="#3b82f6"/><rect x="9" y="4" width="2" height="1" fill="#3b82f6"/><rect x="8" y="5" width="2" height="1" fill="#93c5fd"/><rect x="3" y="6" width="8" height="1" fill="#60a5fa"/><rect x="7" y="7" width="2" height="1" fill="#3b82f6"/><rect x="6" y="8" width="2" height="1" fill="#3b82f6"/><rect x="5" y="9" width="2" height="1" fill="#93c5fd"/><rect x="4" y="10" width="2" height="1" fill="#60a5fa"/><rect x="7" y="10" width="5" height="1" fill="#60a5fa"/><rect x="3" y="11" width="2" height="1" fill="#3b82f6"/></svg>',
+  // ✏️ pen — writing/vocab
+  pen: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="11" y="2" width="2" height="1" fill="#f59e0b"/><rect x="10" y="3" width="2" height="1" fill="#fbbf24"/><rect x="12" y="3" width="1" height="1" fill="#92400e"/><rect x="9" y="4" width="2" height="1" fill="#fbbf24"/><rect x="8" y="5" width="2" height="1" fill="#fde68a"/><rect x="7" y="6" width="2" height="1" fill="#fde68a"/><rect x="6" y="7" width="2" height="1" fill="#fbbf24"/><rect x="5" y="8" width="2" height="1" fill="#fbbf24"/><rect x="4" y="9" width="2" height="1" fill="#f59e0b"/><rect x="3" y="10" width="2" height="1" fill="#d97706"/><rect x="2" y="11" width="2" height="1" fill="#92400e"/><rect x="2" y="12" width="1" height="1" fill="#475569"/></svg>',
+  // 🌙 moon — night/dawn
+  moon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="7" y="2" width="4" height="1" fill="#fbbf24"/><rect x="6" y="3" width="2" height="1" fill="#fde68a"/><rect x="10" y="3" width="2" height="1" fill="#fbbf24"/><rect x="5" y="4" width="2" height="1" fill="#fde68a"/><rect x="11" y="4" width="1" height="1" fill="#f59e0b"/><rect x="4" y="5" width="2" height="4" fill="#fde68a"/><rect x="4" y="9" width="2" height="1" fill="#fbbf24"/><rect x="5" y="10" width="2" height="1" fill="#fbbf24"/><rect x="6" y="11" width="2" height="1" fill="#f59e0b"/><rect x="7" y="12" width="4" height="1" fill="#f59e0b"/><rect x="3" y="3" width="1" height="1" fill="#e2e8f0"/><rect x="12" y="8" width="1" height="1" fill="#e2e8f0"/><rect x="10" y="11" width="1" height="1" fill="#cbd5e1"/></svg>',
+  // 🏅 medal — milestones
+  medal: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="28" height="28" style="image-rendering:pixelated"><rect x="5" y="1" width="3" height="1" fill="#3b82f6"/><rect x="8" y="1" width="3" height="1" fill="#ef4444"/><rect x="5" y="2" width="3" height="3" fill="#60a5fa"/><rect x="8" y="2" width="3" height="3" fill="#f87171"/><rect x="6" y="5" width="4" height="1" fill="#fbbf24"/><rect x="5" y="6" width="6" height="1" fill="#fde68a"/><rect x="4" y="7" width="2" height="1" fill="#f59e0b"/><rect x="6" y="7" width="4" height="1" fill="#ffd700"/><rect x="10" y="7" width="2" height="1" fill="#f59e0b"/><rect x="4" y="8" width="8" height="2" fill="#fbbf24"/><rect x="7" y="8" width="2" height="2" fill="#fde68a"/><rect x="4" y="10" width="2" height="1" fill="#d97706"/><rect x="6" y="10" width="4" height="1" fill="#f59e0b"/><rect x="10" y="10" width="2" height="1" fill="#d97706"/><rect x="5" y="11" width="6" height="1" fill="#d97706"/><rect x="6" y="12" width="4" height="1" fill="#b45309"/></svg>',
+};
 function pxBadge(name) { return _PX[name] || _PX.star; }
 var BADGE_DEFS = [
 
@@ -5817,11 +5830,11 @@ var BADGE_DEFS = [
     } },
 
   // 🔖 VOCAB
-  { id:'word_10',    cat:'vocab',     tier:'bronze',   icon:pxBadge('sparkle'), name:'Seed Vocab',      desc:'Save 10 words',
+  { id:'word_10',    cat:'vocab',     tier:'bronze',   icon:pxBadge('pen'), name:'Seed Vocab',      desc:'Save 10 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 10; } },
   { id:'word_50',    cat:'vocab',     tier:'silver',   icon:pxBadge('book'), name:'Word Sprout',     desc:'Save 50 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 50; } },
-  { id:'word_100',   cat:'vocab',     tier:'silver',   icon:pxBadge('scroll'), name:'Word Collector',  desc:'Save 100 words',
+  { id:'word_100',   cat:'vocab',     tier:'silver',   icon:pxBadge('pen'), name:'Word Collector',  desc:'Save 100 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 100; } },
   { id:'word_300',   cat:'vocab',     tier:'gold',     icon:pxBadge('shield'), name:'Vocab Tree',      desc:'Save 300 words',
     check: function(){ return lsGet(K_SAVED,[]).length >= 300; } },
@@ -5835,7 +5848,7 @@ var BADGE_DEFS = [
     check: function(){ return lsGet('kh_quiz_done_count',0) >= 1; } },
   { id:'quiz_perfect1',cat:'quiz',    tier:'silver',   icon:pxBadge('target'), name:'Daily Perfect',   desc:'Score 100% on a daily test',
     check: function(){ return getQuizPerfectCount() >= 1; } },
-  { id:'quiz_perfect3',cat:'quiz',    tier:'gold',     icon:pxBadge('sparkle'), name:'3x Perfect',      desc:'Score 100% on 3 daily tests in a row',
+  { id:'quiz_perfect3',cat:'quiz',    tier:'gold',     icon:pxBadge('target'), name:'3x Perfect',      desc:'Score 100% on 3 daily tests in a row',
     check: function(){ return lsGet('kh_quiz_perfect_streak',0) >= 3; } },
   { id:'quiz_14days',cat:'quiz',      tier:'diamond',  icon:pxBadge('clock'), name:'Daily Devotee',   desc:'Complete daily tests 14 days in a row',
     check: function(){ return getQuizStreakDays() >= 14; } },
@@ -5847,17 +5860,17 @@ var BADGE_DEFS = [
     check: function(){ return (getSectionReadCounts()['경제']||0) >= 20; } },
   { id:'sec_society', cat:'sections', tier:'gold', icon:pxBadge('heart'), name:'Society Master', desc:'Read 20 Society articles',
     check: function(){ return (getSectionReadCounts()['사회']||0) >= 20; } },
-  { id:'sec_world',   cat:'sections', tier:'gold', icon:pxBadge('scroll'), name:'World Master', desc:'Read 20 World articles',
+  { id:'sec_world',   cat:'sections', tier:'gold', icon:pxBadge('globe'), name:'World Master', desc:'Read 20 World articles',
     check: function(){ return (getSectionReadCounts()['국제']||0) >= 20; } },
-  { id:'sec_culture', cat:'sections', tier:'gold', icon:pxBadge('sparkle'), name:'Culture Master', desc:'Read 20 Culture articles',
+  { id:'sec_culture', cat:'sections', tier:'gold', icon:pxBadge('flower'), name:'Culture Master', desc:'Read 20 Culture articles',
     check: function(){ return (getSectionReadCounts()['문화']||0) >= 20; } },
   { id:'sec_sports',  cat:'sections', tier:'gold', icon:pxBadge('trophy'), name:'Sports Master',desc:'Read 20 Sports articles',
     check: function(){ return (getSectionReadCounts()['스포츠']||0) >= 20; } },
   { id:'sec_korea',   cat:'sections', tier:'gold', icon:pxBadge('gift'), name:'Korea Master',desc:'Read 20 Korea articles',
     check: function(){ return (getSectionReadCounts()['Korea']||0) >= 20; } },
-  { id:'sec_beauty',  cat:'sections', tier:'gold', icon:pxBadge('sparkle'), name:'Beauty Master',desc:'Read 20 Beauty articles',
+  { id:'sec_beauty',  cat:'sections', tier:'gold', icon:pxBadge('flower'), name:'Beauty Master',desc:'Read 20 Beauty articles',
     check: function(){ return (getSectionReadCounts()['beauty']||0) >= 20; } },
-  { id:'sec_travel',  cat:'sections', tier:'gold', icon:pxBadge('scroll'), name:'Travel Master',desc:'Read 20 Travel articles',
+  { id:'sec_travel',  cat:'sections', tier:'gold', icon:pxBadge('plane'), name:'Travel Master',desc:'Read 20 Travel articles',
     check: function(){ return (getSectionReadCounts()['travel']||0) >= 20; } },
   { id:'sec_opinion', cat:'sections', tier:'gold', icon:pxBadge('note'), name:'Opinion Master',desc:'Read 10 Opinion articles',
     check: function(){ return (getSectionReadCounts()['오피니언']||0) >= 10; } },
@@ -5865,7 +5878,7 @@ var BADGE_DEFS = [
   // 🔢 MILESTONE / XP
   { id:'xp_7500',    cat:'milestone', tier:'bronze',   icon:pxBadge('star'), name:'XP 7,500',    desc:'Earn 7,500 XP total',
     check: function(){ return getXP() >= 7500; } },
-  { id:'xp_30000',   cat:'milestone', tier:'silver',   icon:pxBadge('sparkle'), name:'XP 30,000',   desc:'Earn 30,000 XP total',
+  { id:'xp_30000',   cat:'milestone', tier:'silver',   icon:pxBadge('medal'), name:'XP 30,000',   desc:'Earn 30,000 XP total',
     check: function(){ return getXP() >= 30000; } },
   { id:'xp_75000',   cat:'milestone', tier:'gold',     icon:pxBadge('trophy'), name:'XP 75,000',   desc:'Earn 75,000 XP total',
     check: function(){ return getXP() >= 75000; } },
@@ -5881,13 +5894,13 @@ var BADGE_DEFS = [
   // ⏰ TIME
   { id:'time_midnight',cat:'time',    tier:'silver',   icon:pxBadge('clock'), name:'Night Owl',       desc:'Study after midnight',
     check: function(){ return lsGet('kh_badge_midnight', false); } },
-  { id:'time_dawn',    cat:'time',    tier:'gold',     icon:pxBadge('sparkle'), name:'Dawn Scholar',   desc:'Study before 6 AM',
+  { id:'time_dawn',    cat:'time',    tier:'gold',     icon:pxBadge('moon'), name:'Dawn Scholar',   desc:'Study before 6 AM',
     check: function(){ return lsGet('kh_badge_dawn', false); } },
   { id:'time_morning7',cat:'time',    tier:'bronze',   icon:pxBadge('zap'), name:'Morning Routine', desc:'Study before 7 AM, 7 times',
     check: function(){ return lsGet('kh_morning_count',0) >= 7; } },
   { id:'time_monday',  cat:'time',    tier:'bronze',   icon:pxBadge('clock'), name:'Monday Fighter',  desc:'Study on Mondays, 4 weeks in a row',
     check: function(){ return lsGet('kh_monday_streak',0) >= 4; } },
-  { id:'time_friday',  cat:'time',    tier:'silver',   icon:pxBadge('sparkle'), name:'Friday Learner',  desc:'Study on Friday night, 4 times',
+  { id:'time_friday',  cat:'time',    tier:'silver',   icon:pxBadge('moon'), name:'Friday Learner',  desc:'Study on Friday night, 4 times',
     check: function(){ return lsGet('kh_friday_night_count',0) >= 4; } },
   { id:'time_weekend', cat:'time',    tier:'gold',     icon:pxBadge('trophy'), name:'Weekend Champ',   desc:'Study on weekends, 8 weeks in a row',
     check: function(){ return lsGet('kh_weekend_streak',0) >= 8; } },
@@ -5897,7 +5910,7 @@ var BADGE_DEFS = [
     check: function(){ return lsGet('kh_cult_march1', false); } },
   { id:'cult_hangul',  cat:'cultural',tier:'legendary',icon:pxBadge('gift'),name:'Hangul Guardian', desc:'Study on Oct 9 (Hangul Day)',
     check: function(){ return lsGet('kh_cult_hangul', false); } },
-  { id:'cult_newyear', cat:'cultural',tier:'gold',     icon:pxBadge('sparkle'), name:'New Year\'s',     desc:'Study on January 1',
+  { id:'cult_newyear', cat:'cultural',tier:'gold',     icon:pxBadge('gift'), name:'New Year\'s',     desc:'Study on January 1',
     check: function(){ return lsGet('kh_cult_newyear', false); } },
   { id:'cult_chuseok', cat:'cultural',tier:'diamond',  icon:pxBadge('diamond'), name:'Chuseok Study',   desc:'Study on Chuseok day',
     check: function(){ return lsGet('kh_cult_chuseok', false); } },
