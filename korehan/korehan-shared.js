@@ -2528,14 +2528,14 @@ function renderArticlePage() {
     + '<a href="korehan-section.html?s=' + encodeURIComponent(a.section) + '">' + sectionLabel(a.section) + '</a>'
     + '</nav>'
 
-    // 통합 기사 카드: 이미지 → 뱃지 → 제목 → 메타 → 탭 → 본문
+    // 통합 기사 카드: 이미지(+뱃지 오버레이) → 제목 → 메타 → 탭 → 본문
     + '<div class="art-card">'
-    + '<div class="art-hero-img"><img src="' + img + '" alt=""></div>'
-    + '<div class="art-card-body">'
-    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+    + '<div class="art-hero-img" style="position:relative"><img src="' + img + '" alt="">'
+    + '<div class="art-badges-overlay">'
     + '<span class="art-section-badge">' + a.section + '</span>'
     + (a.level ? (function(lv){ var c={'Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828','Starter':'#f3e8ff;color:#6b21a8'}; var dn={'Starter':'Seed','Beginner':'Sprout','Intermediate':'Tree','Advanced':'Forest'}; return '<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:'+(c[lv]||'#f0f0f0;color:#666')+'">'+(dn[lv]||lv)+'</span>'; })(a.level) : '')
-    + '</div>'
+    + '</div></div>'
+    + '<div class="art-card-body">'
     + '<h1 class="art-title vocab-zone">' + a.title + ' ' + ttsBtn(a.title) + '</h1>'
     + '<div class="art-meta-row">'
     + getReporterProfileHTML(a)

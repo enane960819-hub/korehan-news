@@ -1293,8 +1293,24 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 }
 .art-card .art-hero-img { margin:0; border-radius:0; }
 .art-card .art-hero-img img { border-radius:0; }
+.art-badges-overlay {
+  position:absolute; bottom:12px; left:14px; display:flex; gap:6px; z-index:2;
+}
+.art-badges-overlay .art-section-badge { backdrop-filter:blur(8px); }
 .art-card-body { padding:20px 24px 24px; }
 @media(max-width:640px) { .art-card-body { padding:16px; } }
+
+/* Tabs — full-width pill bar */
+.art-tabs {
+  display:flex; gap:0; background:var(--light,#eef3f9); border-radius:12px;
+  padding:4px; margin-bottom:16px;
+}
+.art-tab {
+  flex:1; text-align:center; padding:10px 0; font-size:13px; font-weight:700;
+  border:none; background:transparent; border-radius:10px; cursor:pointer;
+  color:var(--gray,#666); font-family:inherit; transition:all .15s;
+}
+.art-tab.on { background:var(--w,#fff); color:var(--dark,#0d1b2e); box-shadow:0 2px 8px rgba(0,0,0,.08); }
 
 .art-section-badge {
   display:inline-block; background:var(--bright); color:#fff;
@@ -2389,8 +2405,9 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   body.mobile-redesign .art-action-icon{background:rgba(255,255,255,.08) !important;border-color:rgba(255,255,255,.15) !important;color:rgba(255,255,255,.7) !important;}
   body.mobile-redesign .art-action-icon:hover{background:rgba(255,255,255,.15) !important;color:#fff !important;}
   body.mobile-redesign .art-action-icon.active{background:rgba(255,200,50,.15) !important;border-color:rgba(255,200,50,.4) !important;color:#fcd34d !important;}
-  body.mobile-redesign .art-tab{background:rgba(255,255,255,.06) !important;border:1px solid rgba(255,255,255,.08) !important;color:#fff !important;border-radius:14px !important;}
-  body.mobile-redesign .art-tab.on{background:#fff !important;color:#08101f !important;}
+  body.mobile-redesign .art-tabs{background:rgba(255,255,255,.06) !important;border-radius:12px !important;padding:4px !important;margin-bottom:16px !important;}
+  body.mobile-redesign .art-tab{background:transparent !important;border:none !important;color:rgba(255,255,255,.6) !important;border-radius:10px !important;}
+  body.mobile-redesign .art-tab.on{background:rgba(255,255,255,.12) !important;color:#fff !important;}
   body.mobile-redesign .art-vocab-title,
   body.mobile-redesign .art-comments-title,
   body.mobile-redesign .art-related-title{color:#fff !important;}
