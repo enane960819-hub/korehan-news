@@ -111,24 +111,37 @@
 <div class="st-hero">
   <div class="st-hero-inner">
     <div class="st-hero-eyebrow">KoreHan News</div>
-    <h1>Korean Short Stories</h1>
-    <p>Real Korean community-style stories — funny, touching, scary, and shocking. Read authentic Korean and study grammar in context.</p>
+    <h1>Korean Stories</h1>
+    <p>Short stories, web novels, and character-driven series. Read authentic Korean in multiple genres and narrative styles.</p>
   </div>
   <div class="st-filter-bar" id="mood-pills">
-    <button class="sf-pill on" data-mood="all">All</button>
-    <button class="sf-pill" data-mood="fun">Fun</button>
-    <button class="sf-pill" data-mood="touching">Touching</button>
-    <button class="sf-pill" data-mood="scary">Scary</button>
-    <button class="sf-pill" data-mood="shocking">Shocking</button>
+    <button class="sf-pill on" data-genre="all">All</button>
+    <button class="sf-pill" data-genre="slice_of_life">Slice of Life</button>
+    <button class="sf-pill" data-genre="romance">Romance</button>
+    <button class="sf-pill" data-genre="mystery">Mystery</button>
+    <button class="sf-pill" data-genre="adventure">Adventure</button>
+    <button class="sf-pill" data-genre="thriller">Thriller</button>
+    <button class="sf-pill" data-genre="essay">Essay</button>
     <div class="sf-sep"></div>
     <button class="sf-pill on" data-lvl="all">All Levels</button>
     <button class="sf-pill" data-lvl="b">Sprout</button>
     <button class="sf-pill" data-lvl="i">Tree</button>
     <button class="sf-pill" data-lvl="a">Forest</button>
+    <div class="sf-sep"></div>
+    <button class="sf-pill on" data-perspective="all">All Views</button>
+    <button class="sf-pill" data-perspective="first">1st Person</button>
+    <button class="sf-pill" data-perspective="third">3rd Person</button>
+    <button class="sf-pill" data-perspective="omniscient">Omniscient</button>
   </div>
 </div>
 
 <div class="st-container">
+  <!-- Series section -->
+  <div id="st-series-section" style="margin-bottom:28px;display:none">
+    <div style="font-size:18px;font-weight:900;color:#0f172a;margin-bottom:14px;font-family:'DM Sans','Noto Sans KR',sans-serif">Ongoing Series</div>
+    <div id="st-series-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px"></div>
+  </div>
+  <!-- Story grid -->
   <div class="st-grid" id="st-grid"></div>
 </div>
 
@@ -654,8 +667,15 @@ const STORIES = [
 const MOOD_COLORS = {fun:'#d97706',touching:'#db2777',scary:'#7c3aed',shocking:'#dc2626'};
 const MOOD_BG     = {fun:'mood-fun',touching:'mood-touching',scary:'mood-scary',shocking:'mood-shocking'};
 const MOOD_PILL   = {fun:'st-pill-amber',touching:'st-pill-pink',scary:'st-pill-purple',shocking:'st-pill-red'};
-const LVL_LABEL   = {b:'Sprout',i:'Tree',a:'Forest'};
+const LVL_LABEL   = {b:'Sprout',i:'Tree',a:'Forest',s:'Seed'};
 const LVL_PILL    = {b:'st-pill-purple',i:'st-pill-gray',a:'st-pill-red'};
+
+// v2 genre/perspective system
+const GENRE_LABELS = {slice_of_life:'Slice of Life',romance:'Romance',mystery:'Mystery',adventure:'Adventure',thriller:'Thriller',essay:'Essay',workplace:'Workplace',fun:'Fun',touching:'Touching',scary:'Scary',shocking:'Shocking'};
+const GENRE_COLORS = {slice_of_life:'#059669',romance:'#db2777',mystery:'#7c3aed',adventure:'#0284c7',thriller:'#dc2626',essay:'#d97706',workplace:'#475569',fun:'#d97706',touching:'#db2777',scary:'#7c3aed',shocking:'#dc2626'};
+const GENRE_BG = {slice_of_life:'linear-gradient(135deg,#ecfdf5,#d1fae5)',romance:'linear-gradient(135deg,#fdf2f8,#fce7f3)',mystery:'linear-gradient(135deg,#f5f3ff,#ede9fe)',adventure:'linear-gradient(135deg,#f0f9ff,#e0f2fe)',thriller:'linear-gradient(135deg,#fef2f2,#fecaca)',essay:'linear-gradient(135deg,#fffbeb,#fef3c7)',workplace:'linear-gradient(135deg,#f8fafc,#e2e8f0)',fun:'linear-gradient(135deg,#fef9c3,#fde68a)',touching:'linear-gradient(135deg,#fce7f3,#fbcfe8)',scary:'linear-gradient(135deg,#f5f3ff,#ddd6fe)',shocking:'linear-gradient(135deg,#fee2e2,#fecaca)'};
+const PERSPECTIVE_LABELS = {first:'1st Person',third:'3rd Person',omniscient:'Omniscient'};
+const PERSPECTIVE_ICONS = {first:'👤',third:'👥',omniscient:'🔮'};
 // Banner icon map — edit here to change icons for each mood. Each story can also
 // override with its own banner_icon field (a Lucide icon name).
 const MOOD_ICONS  = {fun:'sparkles',touching:'heart',scary:'zap',shocking:'flame'};
@@ -712,36 +732,105 @@ function characterProfileUrl(slug) {
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
-function renderStories(moodF, lvlF) {
+var activeGenre = 'all', activeLvl = 'all', activePerspective = 'all';
+
+function renderStories() {
   var grid = document.getElementById('st-grid');
   var list = STORIES.filter(function(s) {
-    return (moodF === 'all' || s.mood === moodF) && (lvlF === 'all' || s.lvl === lvlF);
+    var genre = s.genre || s.mood || 'slice_of_life';
+    var persp = s.perspective || 'third';
+    var genreOk = activeGenre === 'all' || genre === activeGenre || s.mood === activeGenre;
+    var lvlOk = activeLvl === 'all' || s.lvl === activeLvl;
+    var perspOk = activePerspective === 'all' || persp === activePerspective;
+    return genreOk && lvlOk && perspOk;
   });
+
+  // Render series section
+  renderSeriesSection();
+
   if (!list.length) {
     grid.innerHTML = '<p style="color:#64748b;font-size:14px;grid-column:1/-1;padding:20px 0">No stories found.</p>';
     return;
   }
-  grid.innerHTML = list.map(function(s) {
-    var author = resolveStoryAuthor(s);
-    var iconName = s.banner_icon || MOOD_ICONS[s.mood] || 'book-open';
-    var iconColor = MOOD_COLORS[s.mood] || '#7c3aed';
-    return '<div class="sc" onclick="openStory(\'' + s.id + '\')">'
-      + '<div class="sc-thumb ' + MOOD_BG[s.mood] + '">'
-        + '<span class="sc-mood-badge" style="background:' + iconColor + '">' + s.mood.toUpperCase() + '</span>'
-        + '<span class="sc-icon-wrap"><i data-lucide="' + iconName + '" style="width:36px;height:36px;color:' + iconColor + ';opacity:.85" aria-hidden="true"></i></span>'
+
+  // Separate series episodes and standalone
+  var standalone = list.filter(function(s) { return !s.series_id; });
+  var seriesEps = list.filter(function(s) { return !!s.series_id; });
+
+  var html = '';
+
+  // Standalone stories
+  html += standalone.map(function(s) { return renderStoryCard(s); }).join('');
+
+  // Series episodes grouped
+  var seriesGroups = {};
+  seriesEps.forEach(function(s) {
+    if (!seriesGroups[s.series_id]) seriesGroups[s.series_id] = [];
+    seriesGroups[s.series_id].push(s);
+  });
+  Object.keys(seriesGroups).forEach(function(sid) {
+    var eps = seriesGroups[sid].sort(function(a,b) { return (a.episode||0) - (b.episode||0); });
+    html += eps.map(function(s) { return renderStoryCard(s); }).join('');
+  });
+
+  grid.innerHTML = html;
+  if (window.renderKhLucideIcons) renderKhLucideIcons();
+}
+
+function renderStoryCard(s) {
+  var author = resolveStoryAuthor(s);
+  var genre = s.genre || s.mood || 'slice_of_life';
+  var genreLabel = GENRE_LABELS[genre] || genre;
+  var genreColor = GENRE_COLORS[genre] || '#7c3aed';
+  var thumbBg = GENRE_BG[genre] || GENRE_BG[s.mood] || 'linear-gradient(135deg,#f5f3ff,#ede9fe)';
+  var persp = s.perspective || 'third';
+  var perspIcon = PERSPECTIVE_ICONS[persp] || '';
+  var perspLabel = PERSPECTIVE_LABELS[persp] || '';
+  var iconName = s.banner_icon || MOOD_ICONS[s.mood] || 'book-open';
+  var seriesBadge = s.series_id ? '<span style="display:inline-block;padding:2px 6px;border-radius:4px;background:rgba(124,58,237,.1);color:#7c3aed;font-size:9px;font-weight:800;margin-left:6px">EP ' + (s.episode||1) + '</span>' : '';
+
+  return '<div class="sc" onclick="openStory(\'' + s.id + '\')">'
+    + '<div class="sc-thumb" style="background:' + thumbBg + '">'
+      + '<span class="sc-mood-badge" style="background:' + genreColor + '">' + genreLabel + '</span>'
+      + '<span class="sc-icon-wrap"><i data-lucide="' + iconName + '" style="width:36px;height:36px;color:' + genreColor + ';opacity:.85" aria-hidden="true"></i></span>'
+    + '</div>'
+    + '<div class="sc-body">'
+      + '<div class="sc-title">' + escapeHtml(s.title || '') + seriesBadge + '</div>'
+      + '<div class="sc-title-en">' + escapeHtml(s.title_en || '') + '</div>'
+      + '<div class="sc-preview">' + escapeHtml(s.preview || '') + '</div>'
+      + (author ? '<div class="sc-author">' + renderCharacterAvatar(author, 'kh-character-avatar', 34) + '<div class="sc-author-copy"><strong>' + characterDisplayName(author) + '</strong><span>' + escapeHtml(author.role || '') + '</span></div></div>' : '')
+      + '<div class="sc-foot">'
+        + '<span class="sc-meta">' + (s.readTime||'3 min') + ' · ' + (LVL_LABEL[s.lvl]||'') + (perspLabel ? ' · ' + perspIcon + ' ' + perspLabel : '') + '</span>'
+        + '<button class="sc-open">Read →</button>'
       + '</div>'
-      + '<div class="sc-body">'
-        + '<div class="sc-title">' + escapeHtml(s.title || '') + '</div>'
-        + '<div class="sc-title-en">' + escapeHtml(s.title_en || '') + '</div>'
-        + '<div class="sc-preview">' + escapeHtml(s.preview || '') + '</div>'
-        + (author ? '<div class="sc-author">' + renderCharacterAvatar(author, 'kh-character-avatar', 34) + '<div class="sc-author-copy"><strong>' + characterDisplayName(author) + '</strong><span>' + escapeHtml(author.role || '') + '</span></div></div>' : '')
-        + '<div class="sc-foot">'
-          + '<span class="sc-meta">' + s.readTime + ' · ' + LVL_LABEL[s.lvl] + '</span>'
-          + '<button class="sc-open">Read →</button>'
-        + '</div>'
-      + '</div>'
-    + '</div>';
+    + '</div>'
+  + '</div>';
+}
+
+var _storySeries = [];
+function renderSeriesSection() {
+  var section = document.getElementById('st-series-section');
+  var grid = document.getElementById('st-series-grid');
+  if (!section || !grid || !_storySeries.length) { if (section) section.style.display = 'none'; return; }
+  section.style.display = '';
+  grid.innerHTML = _storySeries.map(function(sr) {
+    var genreColor = GENRE_COLORS[sr.genre] || '#7c3aed';
+    return '<div style="display:flex;gap:14px;padding:16px;background:#fff;border-radius:16px;border:1px solid #e8eef5;cursor:pointer;transition:all .15s" onclick="filterBySeries(\'' + sr.id + '\')" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.08)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\'">'
+      + '<div style="width:60px;height:60px;border-radius:12px;background:' + (GENRE_BG[sr.genre]||'#f5f3ff') + ';display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">' + (sr.genre==='mystery'?'🔍':sr.genre==='romance'?'💕':sr.genre==='adventure'?'🌏':'📖') + '</div>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-size:15px;font-weight:800;color:#0f172a">' + escapeHtml(sr.title||'') + '</div>'
+      + '<div style="font-size:12px;color:#64748b;margin-top:2px">' + escapeHtml(sr.title_en||'') + '</div>'
+      + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">' + (sr.total_episodes||0) + ' episodes · <span style="color:' + genreColor + ';font-weight:700">' + (sr.status==='completed'?'Completed':'Ongoing') + '</span></div>'
+      + '</div></div>';
   }).join('');
+}
+
+function filterBySeries(seriesId) {
+  activeGenre = 'all'; activeLvl = 'all'; activePerspective = 'all';
+  var grid = document.getElementById('st-grid');
+  var list = STORIES.filter(function(s) { return s.series_id === seriesId; })
+    .sort(function(a,b) { return (a.episode||0) - (b.episode||0); });
+  grid.innerHTML = list.length ? list.map(renderStoryCard).join('') : '<p style="color:#64748b">No episodes found.</p>';
   if (window.renderKhLucideIcons) renderKhLucideIcons();
 }
 
@@ -895,7 +984,7 @@ async function toggleStorySave(btn, ko, rom, en) {
   }
 }
 
-var activeMood = 'all', activeLvl = 'all';
+// activeMood replaced by activeGenre in renderStories()
 
 async function loadStoriesFromDB() {
   var grid = document.getElementById('st-grid');
@@ -916,6 +1005,13 @@ async function loadStoriesFromDB() {
         if (!story || !story.title) return null;
         return Object.assign({}, story, {
           id: story.id || row.id,
+          genre: row.genre || story.genre || story.mood || 'slice_of_life',
+          perspective: row.perspective || story.perspective || 'third',
+          series_id: row.series_id || story.series_id || null,
+          episode: row.episode || story.episode || 0,
+          episode_title: row.episode_title || story.episode_title || '',
+          character_slugs: row.character_slugs || story.character_slugs || [],
+          cliffhanger: row.cliffhanger || story.cliffhanger || '',
           author_slug: story.author_slug || (typeof pickCharacterSlug === 'function' ? pickCharacterSlug(String(story.id || story.title || row.id) + '-story') : '')
         });
       }).filter(Boolean);
@@ -927,37 +1023,58 @@ async function loadStoriesFromDB() {
       dbStories.forEach(function(s){ STORIES.push(s); });
       fallbacks.forEach(function(s){ STORIES.push(s); });
     }
-    renderStories(activeMood, activeLvl);
+    renderStories();
+    // Load series
+    _loadSeries();
   } catch(e) {
     console.warn('loadStoriesFromDB failed:', e.message || e);
-    // Fall back to hardcoded stories — show them without error for the user
-    renderStories(activeMood, activeLvl);
+    renderStories();
   }
 }
 
+async function _loadSeries() {
+  try {
+    var sb = typeof getSupa === 'function' ? getSupa() : null;
+    if (!sb) return;
+    var { data } = await sb.from('story_series').select('*').eq('is_active', true).order('sort_order');
+    _storySeries = data || [];
+    renderSeriesSection();
+  } catch(e) {}
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-  // Load from DB immediately (no artificial delay) — skeleton shows while loading
   loadStoriesFromDB();
   var pills = document.getElementById('mood-pills');
-  pills.querySelectorAll('.sf-pill[data-mood]').forEach(function(btn) {
+  // Genre filters
+  pills.querySelectorAll('.sf-pill[data-genre]').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      pills.querySelectorAll('.sf-pill[data-mood]').forEach(function(b){ b.classList.remove('on'); });
+      pills.querySelectorAll('.sf-pill[data-genre]').forEach(function(b){ b.classList.remove('on'); });
       btn.classList.add('on');
-      activeMood = btn.dataset.mood;
-      renderStories(activeMood, activeLvl);
+      activeGenre = btn.dataset.genre;
+      renderStories();
     });
   });
+  // Level filters
   pills.querySelectorAll('.sf-pill[data-lvl]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       pills.querySelectorAll('.sf-pill[data-lvl]').forEach(function(b){ b.classList.remove('on'); });
       btn.classList.add('on');
       activeLvl = btn.dataset.lvl;
-      renderStories(activeMood, activeLvl);
+      renderStories();
+    });
+  });
+  // Perspective filters
+  pills.querySelectorAll('.sf-pill[data-perspective]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      pills.querySelectorAll('.sf-pill[data-perspective]').forEach(function(b){ b.classList.remove('on'); });
+      btn.classList.add('on');
+      activePerspective = btn.dataset.perspective;
+      renderStories();
     });
   });
   var params = new URLSearchParams(window.location.search);
-  var mp = params.get('mood');
-  if (mp) { var t = pills.querySelector('[data-mood="'+mp+'"]'); if(t) t.click(); }
+  var gp = params.get('genre');
+  if (gp) { var t = pills.querySelector('[data-genre="'+gp+'"]'); if(t) t.click(); }
 });
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeSt(); });
 
