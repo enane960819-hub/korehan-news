@@ -3577,7 +3577,7 @@ function renderPhrase() {
   var phrases = typeof getPhrases === 'function' ? getPhrases() : [];
   var dailyPhraseIdx = phrases.length ? Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length : 0;
   var p = phrases[dailyPhraseIdx] || { ko:'오늘도 화이팅!', rom:'Oneuldo hwaiting!', en:"You've got this today!" };
-  var el = document.getElementById('phrase-box-left');
+  var el = document.getElementById('phrase-box-help') || document.getElementById('phrase-box-left');
   if (el) el.innerHTML =
     '<div class="pko">' + p.ko + '</div>'
     + '<div class="prom">' + p.rom + '</div>'
@@ -9282,7 +9282,7 @@ async function checkPictureDescription() {
     + (item.sample ? '<div style="margin-top:8px"><b>Sample answer</b>: ' + escapeHTML(item.sample) + '</div>' : '');
   if (typeof awardXP === 'function') awardXP('study_picture_description', { prompt_id:item.id });
   // Save to daily package
-  var pdText = (document.getElementById('pd-write-area') || {}).value || userAnswer;
+  var pdText = (document.getElementById('pd-write-area') || {}).value || text;
   if (pdText && pdText.trim()) {
     saveDraft('picture_description', {
       text: pdText.trim(),
@@ -10545,7 +10545,6 @@ function finishStarter() {
 var _sbState = { sentence: null, words: [], target: [], helperIdx: 0 };
 
 function initSentenceBuilder() {
-  if (_currentLevel !== 'Beginner') return;
   var box = document.getElementById('sentence-builder-box');
   if (!box) return;
   box.style.display = '';
@@ -11158,13 +11157,19 @@ function checkGFFill(idx, answer, total) {
   if (!inp || !res) return;
   var val = inp.value.trim();
   if (!val) return;
-  // Normalize: strip trailing punctuation (.!?。) for comparison
-  var norm = function(s){ return s.replace(/[\.\!\?\。\,\，]+$/g,'').trim(); };
+  // Normalize: strip punctuation, collapse spaces for fuzzy comparison
+  var norm = function(s){ return s.replace(/[\.\!\?\。\,\，\~]+/g,'').replace(/\s+/g,'').trim(); };
   var correct = norm(val) === norm(answer);
+  // Retry: also check if student wrote a valid variant (with/without spaces)
+  if (!correct) {
+    var valNoSpace = val.replace(/\s+/g,'');
+    var ansNoSpace = answer.replace(/\s+/g,'');
+    correct = valNoSpace === ansNoSpace;
+  }
   res.style.color = correct ? '#16a34a' : '#dc2626';
   res.innerHTML = correct
     ? '<span>✓ 정답!</span>'
-    : '<span>✗ 정답: <span style="font-family:Noto Serif KR,serif">' + answer + '</span></span>';
+    : '<span>✗ 정답: <span style="font-family:Noto Serif KR,serif">' + answer + '</span></span><br><span style="font-size:11px;color:#94a3b8;margin-top:4px;display:block">Tip: ' + answer + ' 를 입력하세요</span>';
   if (correct) {
     inp.style.borderColor = '#86efac';
     inp.style.background  = '#f0fdf4';
@@ -13341,7 +13346,7 @@ var _RV_REWARDS = {
 };
 
 // ── Review Schedule Helpers (KST) ──
-function kstNow() { return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' })); }
+// kstNow() is defined once at line ~2897 — do not reduplicate
 
 function isDailyReviewAvailable() {
   // Daily review for yesterday's learning: available until today 23:59:59 KST
@@ -13498,7 +13503,7 @@ function openMonthlyReview() {
     document.getElementById('rv-timer').style.display = '';
     renderReviewQuestion();
   } else {
-    startReview('Monthly Review', 25);
+    startReview('Monthly Review', 30);
   }
 }
 
@@ -13514,11 +13519,9 @@ function startReview(title, count) {
 }
 
 function generateReviewQuestions(count) {
-  // Pull from DB-loaded word book data (already in _wbData from loadWordBook)
   var questions = [];
   var vocabData = (_wbData || []).filter(function(w){ return w.ko && w.en; });
 
-  // Also try AI content
   if (typeof _aiContent !== 'undefined' && _aiContent && _aiContent.vocab) {
     _aiContent.vocab.forEach(function(v) {
       if (v.ko && v.en && !vocabData.find(function(w){ return w.ko === v.ko; })) {
@@ -13531,24 +13534,45 @@ function generateReviewQuestions(count) {
   vocabData.sort(function(a, b) {
     var aScore = a.accuracy >= 0 ? a.accuracy : 50;
     var bScore = b.accuracy >= 0 ? b.accuracy : 50;
-    return aScore - bScore; // worst accuracy first
+    return aScore - bScore;
   });
 
-  // Generate MCQ questions
-  for (var i = 0; i < Math.min(count, vocabData.length); i++) {
-    var correct = vocabData[i];
-    var wrongs = vocabData.filter(function(v) { return v.ko !== correct.ko; }).sort(function() { return Math.random() - .5; }).slice(0, 3);
-    if (wrongs.length < 3) continue;
-    var correctEn = correct.en || '';
-    var choices = [correctEn].concat(wrongs.map(function(w) { return w.en || ''; }));
-    choices.sort(function() { return Math.random() - .5; });
-    questions.push({ type:'mcq', prompt: correct.ko, answer: correctEn, choices: choices });
+  // Distribute question types:
+  // 50% Korean→English MCQ (easy), 30% English→Korean MCQ (medium), 20% typed recall (hard)
+  var easyCount = Math.round(count * 0.5);
+  var mediumCount = Math.round(count * 0.3);
+  var hardCount = count - easyCount - mediumCount;
+
+  function getWrongChoices(correct, field) {
+    return vocabData.filter(function(v) { return v.ko !== correct.ko; })
+      .sort(function() { return Math.random() - .5; })
+      .slice(0, 3).map(function(w) { return w[field] || ''; });
   }
 
-  if (questions.length < 4) {
-    // Not enough data — show message
-    return questions;
+  for (var i = 0; i < Math.min(easyCount, vocabData.length); i++) {
+    var w = vocabData[i];
+    var wrongs = getWrongChoices(w, 'en');
+    if (wrongs.length < 3) continue;
+    var choices = [w.en].concat(wrongs).sort(function() { return Math.random() - .5; });
+    questions.push({ type:'mcq', prompt: w.ko, answer: w.en, choices: choices, difficulty: 'easy' });
   }
+
+  for (var j = 0; j < Math.min(mediumCount, vocabData.length); j++) {
+    var idx = (easyCount + j) % vocabData.length;
+    var w2 = vocabData[idx];
+    var wrongs2 = getWrongChoices(w2, 'ko');
+    if (wrongs2.length < 3) continue;
+    var choices2 = [w2.ko].concat(wrongs2).sort(function() { return Math.random() - .5; });
+    questions.push({ type:'mcq_reverse', prompt: w2.en, answer: w2.ko, choices: choices2, difficulty: 'medium' });
+  }
+
+  for (var k = 0; k < Math.min(hardCount, vocabData.length); k++) {
+    var idx2 = k % vocabData.length;
+    var w3 = vocabData[idx2];
+    questions.push({ type:'typed', prompt: w3.en, answer: w3.ko, difficulty: 'hard' });
+  }
+
+  if (questions.length < 4) return questions;
   return questions.sort(function() { return Math.random() - .5; });
 }
 
@@ -13559,18 +13583,52 @@ function renderReviewQuestion() {
   document.getElementById('rv-progress').style.width = Math.round((_rv.current / _rv.questions.length) * 100) + '%';
 
   var body = document.getElementById('rv-body');
-  body.innerHTML = '<div style="text-align:center;margin-bottom:20px">'
-    + '<div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.4);margin-bottom:8px">What does this mean?</div>'
-    + '<div style="font-size:28px;font-weight:800;color:#fff;font-family:\'Noto Serif KR\',serif">' + q.prompt + '</div>'
-    + '</div>'
-    + '<div id="rv-choices" style="display:grid;gap:8px">'
-    + q.choices.map(function(c, i) {
-        return '<button class="rv-choice" onclick="rvAnswer(this,' + JSON.stringify(c === q.answer) + ')" style="padding:12px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;transition:background .15s">' + c + '</button>';
-      }).join('')
-    + '</div>';
+  var diffLabel = q.difficulty === 'hard' ? '⭐ Type the answer' : q.difficulty === 'medium' ? 'Pick the Korean' : 'What does this mean?';
+  var promptStyle = q.type === 'mcq_reverse' ? 'font-family:inherit' : "font-family:'Noto Serif KR',serif";
 
-  // Start timer
+  if (q.type === 'typed') {
+    body.innerHTML = '<div style="text-align:center;margin-bottom:20px">'
+      + '<div style="font-size:12px;font-weight:600;color:#fbbf24;margin-bottom:8px">' + diffLabel + '</div>'
+      + '<div style="font-size:24px;font-weight:800;color:#fff">' + q.prompt + '</div>'
+      + '</div>'
+      + '<div style="text-align:center">'
+      + '<input id="rv-typed-input" type="text" placeholder="한국어로 입력..." style="width:80%;max-width:300px;padding:12px 16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:10px;color:#fff;font-size:16px;font-family:\'Noto Sans KR\',sans-serif;text-align:center;outline:none" onkeydown="if(event.key===\'Enter\')rvCheckTyped()">'
+      + '<button onclick="rvCheckTyped()" style="display:block;margin:12px auto 0;padding:10px 24px;background:#2563eb;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Check</button>'
+      + '<div id="rv-typed-fb" style="margin-top:10px;font-size:13px"></div>'
+      + '</div>';
+    var inp = document.getElementById('rv-typed-input');
+    if (inp) setTimeout(function(){ inp.focus(); }, 100);
+  } else {
+    body.innerHTML = '<div style="text-align:center;margin-bottom:20px">'
+      + '<div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.4);margin-bottom:8px">' + diffLabel + '</div>'
+      + '<div style="font-size:28px;font-weight:800;color:#fff;' + promptStyle + '">' + q.prompt + '</div>'
+      + '</div>'
+      + '<div id="rv-choices" style="display:grid;gap:8px">'
+      + q.choices.map(function(c) {
+          return '<button class="rv-choice" onclick="rvAnswer(this,' + JSON.stringify(c === q.answer) + ')" style="padding:12px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;transition:background .15s">' + c + '</button>';
+        }).join('')
+      + '</div>';
+  }
+
   startQuestionTimer();
+}
+
+function rvCheckTyped() {
+  var q = _rv.questions[_rv.current];
+  if (!q) return;
+  var inp = document.getElementById('rv-typed-input');
+  var fb = document.getElementById('rv-typed-fb');
+  if (!inp || !fb) return;
+  var answer = (inp.value || '').trim().replace(/\s+/g, '');
+  var expected = (q.answer || '').trim().replace(/\s+/g, '');
+  var correct = answer === expected;
+  _rv.scores.push(correct ? 1 : 0);
+  inp.disabled = true;
+  fb.innerHTML = correct
+    ? '<span style="color:#4ade80;font-weight:700">✅ Correct!</span>'
+    : '<span style="color:#f87171;font-weight:700">❌ ' + q.answer + '</span>';
+  clearInterval(_rv.timer);
+  setTimeout(function() { _rv.current++; renderReviewQuestion(); }, 1500);
 }
 
 function startQuestionTimer() {
