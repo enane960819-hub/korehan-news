@@ -8623,7 +8623,7 @@ function escapeHTML(str) {
 }
 
 // ── 모바일 Writing 헬퍼 ────────────────────────────────────────────
-var WRITE_CHAR_LIMITS = { Starter:{min:40,max:300}, Beginner:{min:60,max:600}, Intermediate:{min:100,max:1000}, Advanced:{min:100,max:2000} };
+var WRITE_CHAR_LIMITS = { Starter:{min:20,max:300}, Beginner:{min:20,max:600}, Intermediate:{min:20,max:1000}, Advanced:{min:20,max:2000} };
 function getWriteCharLimit() { return WRITE_CHAR_LIMITS[_currentLevel] || WRITE_CHAR_LIMITS.Beginner; }
 
 function onWriteAreaInput() {

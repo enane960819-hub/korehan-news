@@ -161,7 +161,7 @@ const CLAUDE_PROXY_URL = SUPA_URL + '/functions/v1/claude-proxy';
 var KH_LEVEL_GUIDE = {
   Seed: {
     topik: 'Pre-TOPIK / TOPIK 0',
-    label: 'Seed (Absolute Beginner)',
+    label: 'Seed',
     rules: [
       'KEY PRINCIPLE: Keep ALL proper nouns, names, and key terms from the original headline (대통령, 서울, etc). These are vocabulary learning opportunities. Only simplify the GRAMMAR and SENTENCE STRUCTURE around them.',
       'Vocabulary: Use basic Korean words. Key terms from the news topic stay as-is (they become vocab items). Explain difficult key terms in parentheses if needed.',
@@ -173,9 +173,9 @@ var KH_LEVEL_GUIDE = {
       'Example: 미국 대통령이 한국에 왔어요. 대통령은 서울에 있어요. 한국 대통령을 만났어요. 두 사람은 이야기했어요.'
     ].join('\n')
   },
-  Beginner: {
+  Sprout: {
     topik: 'TOPIK I Level 1-2',
-    label: 'Sprout (Beginner)',
+    label: 'Sprout',
     rules: [
       'KEY PRINCIPLE: Write the news naturally at this level. Do NOT artificially simplify proper nouns or key terms. Do NOT artificially make it harder either.',
       'Vocabulary: Common everyday words + topic-specific key terms from the headline.',
@@ -189,9 +189,9 @@ var KH_LEVEL_GUIDE = {
       'Example: 어제 서울에서 큰 행사가 있었어요. 많은 사람들이 왔어요. 음악도 있었고 음식도 있었어요.'
     ].join('\n')
   },
-  Intermediate: {
+  Tree: {
     topik: 'TOPIK I Level 3-4',
-    label: 'Tree (Intermediate)',
+    label: 'Tree',
     rules: [
       'KEY PRINCIPLE: Write naturally. The article should read like real Korean news at a moderate level. Do NOT dumb down or inflate.',
       'Vocabulary: Topic-specific terms, some Sino-Korean. Natural word choices for the topic.',
@@ -205,9 +205,9 @@ var KH_LEVEL_GUIDE = {
       'Example: 최근 한국에서 외국인 관광객이 늘어나고 있는데, 특히 일본과 동남아시아에서 오는 관광객이 많아졌어요.'
     ].join('\n')
   },
-  Advanced: {
+  Forest: {
     topik: 'TOPIK II Level 5-6',
-    label: 'Forest (Advanced)',
+    label: 'Forest',
     rules: [
       'KEY PRINCIPLE: Write at NATURAL news article level. Do NOT artificially make it harder than real Korean journalism. The goal is authentic Korean, not academic papers.',
       'Vocabulary: Full range including abstract nouns, Sino-Korean, idiomatic expressions.',
@@ -223,7 +223,7 @@ var KH_LEVEL_GUIDE = {
 };
 
 // Map shortcodes to full level names
-var KH_LEVEL_MAP = { s:'Seed', b:'Beginner', i:'Intermediate', a:'Advanced', Starter:'Seed', Sprout:'Beginner', Tree:'Intermediate', Forest:'Advanced' };
+var KH_LEVEL_MAP = { s:'Seed', b:'Sprout', i:'Tree', a:'Forest', Starter:'Seed', Beginner:'Sprout', Intermediate:'Tree', Advanced:'Forest', Seed:'Seed', Sprout:'Sprout', Tree:'Tree', Forest:'Forest' };
 
 // Get formatted prompt string for any level
 function getLevelPrompt(level) {
