@@ -2173,25 +2173,25 @@ body { background: #0b1626 !important; }
   <!-- ═══ REVIEW SECTION ═══ -->
   <div style="margin-top:14px">
     <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Review</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="rv-grid">
+    <div style="display:flex;flex-direction:column;gap:8px" id="rv-grid">
       <button class="rv-card" onclick="openDailyReview()" id="rv-daily">
         <div class="rv-icon rv-icon-daily"><i data-lucide="clipboard-list" class="kh-ui-icon" style="width:20px;height:20px" aria-hidden="true"></i></div>
-        <div>
+        <div style="flex:1;min-width:0">
           <div class="rv-title">Daily Review</div>
           <div class="rv-sub">10 questions</div>
         </div>
       </button>
       <button class="rv-card rv-weekly" onclick="openWeeklyReview()" id="rv-weekly">
         <div class="rv-icon rv-icon-weekly"><i data-lucide="chart-column" class="kh-ui-icon" style="width:20px;height:20px" aria-hidden="true"></i></div>
-        <div style="flex:1">
+        <div style="flex:1;min-width:0">
           <div class="rv-title">Weekly Review</div>
           <div class="rv-sub" id="weekly-review-sub">20 questions · 15s timer</div>
         </div>
         <div class="rv-status"><span class="rv-pulse"></span> <span class="rv-badge-live">OPEN</span></div>
       </button>
-      <button class="rv-card rv-monthly" onclick="openMonthlyReview()" id="rv-monthly" style="grid-column:span 2">
+      <button class="rv-card rv-monthly" onclick="openMonthlyReview()" id="rv-monthly">
         <div class="rv-icon rv-icon-monthly"><i data-lucide="trophy" class="kh-ui-icon" style="width:20px;height:20px" aria-hidden="true"></i></div>
-        <div style="flex:1">
+        <div style="flex:1;min-width:0">
           <div class="rv-title">Monthly Review</div>
           <div class="rv-sub" id="monthly-review-sub">매월 1~3일에 열림</div>
         </div>
