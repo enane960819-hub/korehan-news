@@ -11179,11 +11179,11 @@ async function _asLoadContent() {
   var c = sessionStorage.getItem(key);
   if (c) { try { _asStudyContent = JSON.parse(c); return; } catch(e) {} }
   if (!supaUser) return;
-  // Check DB for admin-edited content first
+  // Check DB for saved content (admin-edited OR previously AI-generated)
   try {
     var sb = getSupa();
     var dr = await sb.from('article_study_content').select('*').eq('article_id', String(_asCurrentArt.id)).maybeSingle();
-    if (dr.data && (dr.data.admin_edited || dr.data.vocab)) {
+    if (dr.data && (dr.data.vocab && dr.data.vocab.length > 0)) {
       _asStudyContent = {
         vocab:       dr.data.vocab       || [],
         phrases:     dr.data.phrases     || [],
@@ -11206,7 +11206,26 @@ async function _asLoadContent() {
     var s=cl.indexOf('{'),e=cl.lastIndexOf('}'); if(s>=0&&e>s) cl=cl.slice(s,e+1);
     _asStudyContent = JSON.parse(cl);
     sessionStorage.setItem(key, JSON.stringify(_asStudyContent));
+    // Save to DB so next time it loads from DB (no AI needed)
+    _asSaveContentToDB(_asCurrentArt.id, _asStudyContent);
   } catch(err) { _asStudyContent = {vocab:[],phrases:[],word_order:[],questions:[{q:'이 기사의 내용을 잘 이해했나요?',options:['네, 잘 이해했어요','조금 이해했어요','어려웠어요','다시 읽을게요'],correct:0}]}; }
+}
+
+async function _asSaveContentToDB(articleId, content) {
+  try {
+    var sb = getSupa();
+    if (!sb) return;
+    var row = {
+      article_id: String(articleId),
+      vocab: content.vocab || [],
+      phrases: content.phrases || [],
+      word_order: content.word_order || [],
+      questions: content.questions || [],
+      admin_edited: false
+    };
+    // Upsert: insert or update if exists
+    await sb.from('article_study_content').upsert(row, { onConflict: 'article_id' });
+  } catch(e) { console.warn('[ArticleStudy] DB save failed', e); }
 }
 
 var _asStepLabels = ['Step 1 / 5 — Vocabulary','Step 2 / 5 — Phrases','Step 3 / 5 — Reading','Step 4 / 5 — Speaking','Step 5 / 5 — Writing (Optional)'];
