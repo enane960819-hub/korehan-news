@@ -11319,7 +11319,10 @@ async function asSelectArticle(id) {
   if (!art) return;
   _asCurrentArt = art; _asStep = 1; _asStepDone = [false,false,false,false,false];
   _asStudyContent = null; _asMatchState = null; _asWOState = null; _asQState = null;
-  _asRestoreProgress();
+  // Restore progress: localStorage first, then DB
+  if (!_asRestoreProgress()) {
+    await _asLoadProgressFromDB();
+  }
   document.getElementById('as-list-view').classList.add('as-hidden');
   document.getElementById('as-study-view').classList.remove('as-hidden');
   document.getElementById('as-article-title').textContent = art.title || 'Article Study';
@@ -11824,19 +11827,19 @@ function _asTmpStep5(t) {
 function _asTmpCompletion() { _asUpdateTmp({completed:true,completedAt:new Date().toISOString()}); }
 function _asSaveProgress() {
   var patch = {step:_asStep, stepDone:_asStepDone.slice()};
-  // Persist fill-in-blank state so it survives refresh
   if (_asWOState) {
     patch.wo_idx = _asWOState.idx || 0;
     patch.wo_filledBlanks = (_asWOState.filledBlanks || []).slice();
   }
   _asUpdateTmp(patch);
+  // Also save to DB for cross-device sync
+  _asSaveProgressToDB(patch);
 }
 function _asRestoreProgress() {
   var saved = _asGetTmp();
   if (saved && saved.step && !saved.completed) {
     _asStep = saved.step;
     _asStepDone = saved.stepDone || [false,false,false,false,false];
-    // Restore fill-in-blank state if available
     if (saved.wo_filledBlanks && saved.wo_idx !== undefined) {
       _asWOState = _asWOState || {};
       _asWOState.idx = saved.wo_idx;
@@ -11844,6 +11847,48 @@ function _asRestoreProgress() {
     }
     return true;
   }
+  return false;
+}
+// ── Cross-device sync: save/load progress from DB ──
+var _asDbSaveTimer = null;
+function _asSaveProgressToDB(patch) {
+  if (!supaUser || !_asCurrentArt) return;
+  // Debounce: save at most once per 3 seconds
+  clearTimeout(_asDbSaveTimer);
+  _asDbSaveTimer = setTimeout(function() {
+    var sb = getSupa(); if (!sb) return;
+    sb.from('user_read_history').upsert({
+      user_id: supaUser.id,
+      content_type: 'article_study',
+      content_id: String(_asCurrentArt.id),
+      progress_data: JSON.stringify(patch),
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id,content_type,content_id' }).then(function(r) {
+      if (r.error) console.warn('[AS] DB progress save failed:', r.error.message);
+    });
+  }, 3000);
+}
+async function _asLoadProgressFromDB() {
+  if (!supaUser || !_asCurrentArt) return false;
+  try {
+    var sb = getSupa(); if (!sb) return false;
+    var { data } = await sb.from('user_read_history')
+      .select('progress_data')
+      .eq('user_id', supaUser.id)
+      .eq('content_type', 'article_study')
+      .eq('content_id', String(_asCurrentArt.id))
+      .maybeSingle();
+    if (data && data.progress_data) {
+      var saved = typeof data.progress_data === 'string' ? JSON.parse(data.progress_data) : data.progress_data;
+      if (saved && saved.step && !saved.completed) {
+        _asStep = saved.step;
+        _asStepDone = saved.stepDone || [false,false,false,false,false];
+        // Also cache locally
+        _asUpdateTmp(saved);
+        return true;
+      }
+    }
+  } catch(e) { console.warn('[AS] DB progress load failed:', e); }
   return false;
 }
 // alias
