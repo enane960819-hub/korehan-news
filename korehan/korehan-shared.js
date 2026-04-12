@@ -202,6 +202,22 @@ function _updatePlanBadges() {
     el.textContent = plan === 'free' ? '' : (plan === 'pro' ? 'PRO' : 'STD');
     el.style.display = plan === 'free' ? 'none' : '';
   });
+  // Update lock icons on gated elements
+  document.querySelectorAll('[data-gate]').forEach(function(el) {
+    var feature = el.dataset.gate;
+    var locked = !canAccess(feature);
+    // Remove existing lock badge
+    var existing = el.querySelector('.kh-lock-badge');
+    if (existing) existing.remove();
+    if (locked) {
+      el.style.position = 'relative';
+      var badge = document.createElement('div');
+      badge.className = 'kh-lock-badge';
+      badge.innerHTML = '🔒';
+      badge.style.cssText = 'position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:12px;z-index:2;backdrop-filter:blur(4px)';
+      el.appendChild(badge);
+    }
+  });
 }
 
 // ── Upgrade Modal ──

@@ -3913,6 +3913,14 @@ async function loadUsers(){
     const authData = await authRes.json();
     const authUsers = authData.users || [];
 
+    // 구독 정보 조회
+    var subMap = {};
+    try {
+      var sb = getSb();
+      var { data: subs } = await sb.from('user_subscriptions').select('user_id, plan, status, expires_at');
+      (subs || []).forEach(function(s) { subMap[s.user_id] = s; });
+    } catch(e) {}
+
     // 활동 데이터 병렬 조회 (각 테이블 실패해도 계속)
     function safeArr(p){ return p.then(function(d){ return Array.isArray(d)?d:[]; }).catch(function(){return [];}); }
     const [words, articles, missions, writings, comments] = await Promise.all([
@@ -3953,9 +3961,14 @@ async function loadUsers(){
       +'<th style="padding:10px 12px">✍️쓰기</th>'
       +'<th style="padding:10px 12px">💬댓글</th>'
       +'<th style="padding:10px 12px">🔥연속</th>'
+      +'<th style="padding:10px 12px">플랜</th>'
       +'</tr></thead><tbody>'
       + authUsers.map(function(u){
           var a = act[u.id] || {words:0,articles:0,quizzes:0,streak:0};
+          var sub = subMap[u.id] || null;
+          var planVal = sub ? sub.plan : 'free';
+          var planColors = {free:'#94a3b8',standard:'#2563eb',pro:'#7c3aed'};
+          var planLabels = {free:'Free',standard:'Standard',pro:'Pro'};
           var email = u.email || u.user_metadata?.email || '(소셜 로그인)';
           var name  = u.user_metadata?.full_name || u.user_metadata?.name || '';
           var joined   = u.created_at   ? new Date(u.created_at).toLocaleDateString('ko-KR')   : '-';
@@ -3970,6 +3983,11 @@ async function loadUsers(){
             +'<td style="padding:10px 12px;font-weight:'+(a.writings?'700':'400')+';color:'+(a.writings?'#7c3aed':'#94a3b8')+'">'+a.writings+'</td>'
             +'<td style="padding:10px 12px">'+a.comments+'</td>'
             +'<td style="padding:10px 12px">'+(a.streak||0)+'</td>'
+            +'<td style="padding:10px 12px"><select onchange="adminChangePlan(\''+u.id+'\',this.value)" style="padding:4px 8px;border-radius:6px;border:1px solid #e2e8f0;font-size:11px;font-weight:700;color:'+planColors[planVal]+';background:#fff;cursor:pointer">'
+            +'<option value="free"'+(planVal==='free'?' selected':'')+'>Free</option>'
+            +'<option value="standard"'+(planVal==='standard'?' selected':'')+'>Standard</option>'
+            +'<option value="pro"'+(planVal==='pro'?' selected':'')+'>Pro</option>'
+            +'</select></td>'
             +'</tr>';
         }).join('')
       +'</tbody></table>';
@@ -3979,6 +3997,26 @@ async function loadUsers(){
   }
 }
 
+
+async function adminChangePlan(userId, plan) {
+  try {
+    var sb = getSb();
+    var row = {
+      user_id: userId,
+      plan: plan,
+      status: 'active',
+      started_at: new Date().toISOString(),
+      expires_at: null,
+      payment_provider: 'manual',
+      updated_at: new Date().toISOString()
+    };
+    var { error } = await sb.from('user_subscriptions').upsert(row, { onConflict: 'user_id' });
+    if (error) throw error;
+    showToastAdmin('Plan changed to ' + plan.toUpperCase());
+  } catch(e) {
+    alert('Plan change failed: ' + e.message);
+  }
+}
 
 // ════════════════════════════════════════════════════════════
 // 🎓 CLASSES MANAGEMENT (Admin)

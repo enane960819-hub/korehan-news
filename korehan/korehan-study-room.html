@@ -2288,7 +2288,7 @@ body.kh-neon-on .su-mcq-opt.selected .su-mcq-num { background:#00ffd5;color:#000
 
   <!-- ACTIVITY CARDS -->
   <div class="sr-activity-cards">
-    <button class="sr-act-card" onclick="_canvasRipple(this,event);openArticleStudy()">
+    <button class="sr-act-card" data-gate="article_study" onclick="_canvasRipple(this,event);openArticleStudy()">
       <span class="srac-icon"><i data-lucide="newspaper" class="kh-ui-icon" style="width:26px;height:26px" aria-hidden="true"></i></span>
       <div class="srac-title">Article Study</div>
       <div class="srac-desc">Read real Korean news and complete 5 learning steps</div>
@@ -2297,7 +2297,7 @@ body.kh-neon-on .su-mcq-opt.selected .su-mcq-num { background:#00ffd5;color:#000
         <span class="srac-arrow">→</span>
       </div>
     </button>
-    <button class="sr-act-card" onclick="_canvasRipple(this,event);openConvStudy()">
+    <button class="sr-act-card" data-gate="conversation_study" onclick="_canvasRipple(this,event);openConvStudy()">
       <span class="srac-icon"><i data-lucide="messages-square" class="kh-ui-icon" style="width:26px;height:26px" aria-hidden="true"></i></span>
       <div class="srac-title">Conversations</div>
       <div class="srac-desc">Practice real Korean dialogue patterns</div>
@@ -2306,7 +2306,7 @@ body.kh-neon-on .su-mcq-opt.selected .su-mcq-num { background:#00ffd5;color:#000
         <span class="srac-arrow">→</span>
       </div>
     </button>
-    <button class="sr-act-card" onclick="_canvasRipple(this,event);openStoryStudy && openStoryStudy() || window.location.assign('korehan-stories.html')">
+    <button class="sr-act-card" data-gate="story_study" onclick="_canvasRipple(this,event);openStoryStudy && openStoryStudy() || window.location.assign('korehan-stories.html')">
       <span class="srac-icon"><i data-lucide="book-open" class="kh-ui-icon" style="width:26px;height:26px" aria-hidden="true"></i></span>
       <div class="srac-title">Stories</div>
       <div class="srac-desc">Learn through graded Korean short stories</div>
@@ -2319,13 +2319,13 @@ body.kh-neon-on .su-mcq-opt.selected .su-mcq-num { background:#00ffd5;color:#000
 
   <!-- Master cards (Fast Track, Slang, Phone Call) — premium banners -->
   <div class="sr-desktop-master">
-    <div class="master-card" style="padding:0" onclick="openFastTrack()">
+    <div class="master-card" style="padding:0" data-gate="fast_track" onclick="openFastTrack()">
       <div class="mc-banner"><img src="assets/ChatGPT Image Apr 11, 2026, 11_08_30 PM.png" alt="Fast Track"></div>
     </div>
     <div class="master-card" style="padding:0" onclick="openSlangModal()">
       <div class="mc-banner"><img src="assets/ChatGPT Image Apr 11, 2026, 11_09_44 PM.png" alt="Korean Slang"></div>
     </div>
-    <div class="master-card" style="padding:0" onclick="openPhoneModal()">
+    <div class="master-card" style="padding:0" data-gate="phone_call" onclick="openPhoneModal()">
       <div class="mc-banner"><img src="assets/ChatGPT Image Apr 11, 2026, 11_17_27 PM.png" alt="Phone Call"></div>
     </div>
   </div>
@@ -12323,13 +12323,34 @@ async function _csLoadConversations() {
     grid.innerHTML = '<div class="as-loading">Failed to load conversations</div>';
   }
 }
-function _csStartConv(idx) {
+async function _csStartConv(idx) {
   _csCurrentConv = _csConvs[idx]; if (!_csCurrentConv) return;
   _csStep = 1; _csStepDone = [false,false,false,false];
+  // Restore progress from DB
+  await _csLoadProgressFromDB();
   document.getElementById('cs-list-view').style.display = 'none';
   document.getElementById('cs-study-view').classList.remove('as-hidden');
   document.getElementById('cs-conv-title').textContent = _csCurrentConv.name;
   _csRenderStep();
+}
+async function _csLoadProgressFromDB() {
+  if (!supaUser || !_csCurrentConv) return;
+  try {
+    var sb = getSupa(); if (!sb) return;
+    var { data } = await sb.from('user_read_history')
+      .select('progress_data')
+      .eq('user_id', supaUser.id)
+      .eq('content_type', 'conversation_study')
+      .eq('content_id', String(_csCurrentConv.id))
+      .maybeSingle();
+    if (data && data.progress_data) {
+      var saved = typeof data.progress_data === 'string' ? JSON.parse(data.progress_data) : data.progress_data;
+      if (saved && saved.step) {
+        _csStep = saved.step;
+        _csStepDone = saved.stepDone || [false,false,false,false];
+      }
+    }
+  } catch(e) {}
 }
 function csBackToList() {
   document.getElementById('cs-list-view').style.display = '';
