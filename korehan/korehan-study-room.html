@@ -3012,6 +3012,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         loadWordBankPreview();
         loadWeakGrammarBanner();
         showReviewNotifications();
+        loadPicturePromptsFromDB();
       }, 1500);
     } else if (waited >= 120) {
       console.error('[waitForSession] _sessionChecked never set after 12s');
