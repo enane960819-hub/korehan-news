@@ -4511,6 +4511,9 @@ function openLearningSelector() {
   if (!modal) return;
   _updateLSSelectorBadges();
   modal.classList.remove('hidden');
+  // Recalc line coordinates after modal is visible
+  setTimeout(_lsRecalcCoords, 150);
+  setTimeout(_lsRecalcCoords, 400);
 }
 
 function closeLearningSelector() {
@@ -4574,14 +4577,35 @@ var _lsOrbAnimId = null;
 var _lsLineDone = { topic:false, grammar:false, picture:false, sentence:false, expressions:false };
 
 // Node endpoint positions in viewBox coords (380×399)
-var _lsNodeCoords = {
-  topic:       { x:190, y:45  },
-  grammar:     { x:340, y:118 },
-  picture:     { x:318, y:330 },
-  sentence:    { x:62,  y:330 },
-  expressions: { x:40,  y:118 }
-};
+// Node coords computed dynamically from DOM positions
+var _lsNodeCoords = {};
 var _lsCenterCoord = { x:190, y:200 };
+
+function _lsRecalcCoords() {
+  var wrap = document.getElementById('ls-mindmap');
+  if (!wrap) return;
+  var rect = wrap.getBoundingClientRect();
+  var W = rect.width, H = rect.height;
+  // Center = orb center
+  var orb = document.querySelector('.ls-orb-wrap');
+  if (orb) {
+    var or = orb.getBoundingClientRect();
+    _lsCenterCoord = { x: (or.left + or.width/2 - rect.left) * (380/W), y: (or.top + or.height/2 - rect.top) * (399/H) };
+  }
+  // Each node
+  ['topic','grammar','picture','sentence','expressions'].forEach(function(key) {
+    var map = {topic:'ls-card-topic', grammar:'ls-card-grammar', picture:'ls-card-picture', sentence:'ls-card-sentence', expressions:'ls-card-expressions'};
+    var el = document.getElementById(map[key]);
+    if (!el) return;
+    var circle = el.querySelector('.ls-node-circle');
+    var target = circle || el;
+    var nr = target.getBoundingClientRect();
+    _lsNodeCoords[key] = {
+      x: (nr.left + nr.width/2 - rect.left) * (380/W),
+      y: (nr.top + nr.height/2 - rect.top) * (399/H)
+    };
+  });
+}
 
 // Particles for completed lines
 var _lsParticles = [];
@@ -4763,8 +4787,11 @@ function _lsInitLinesCanvas() {
       canvas.width / 380, 0, 0,
       canvas.height / 399, 0, 0
     );
+    _lsRecalcCoords();
   }
-  resizeCanvas();
+  // Delay initial calc so layout is settled
+  setTimeout(resizeCanvas, 100);
+  setTimeout(resizeCanvas, 500);
   window.addEventListener('resize', resizeCanvas);
 
   function drawLines() {
