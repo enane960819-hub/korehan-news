@@ -8995,21 +8995,21 @@ async function ftAdminAIGenerate() {
       var avoidList = Array.from(existingTitles).slice(0, 30).join(', ');
       var res = await callClaude({
         feature: 'ft-scenario-gen-admin',
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 8000,
+        model: 'claude-sonnet-4-6',
+        max_tokens: 16000,
         messages: [{ role: 'user', content:
           'Generate ' + batchSize + ' Korean conversation scenario(s) for a language learning app.' + catHint + topicHint + '\n\n'
           + ((typeof getLevelPrompt === 'function') ? getLevelPrompt(diff) : 'Difficulty: ' + diff) + '\n\n'
           + 'AVOID duplicating these existing scenarios: ' + avoidList + '\n\n'
-          + 'Each scenario has branching dialogue nodes (6-12 nodes). Each node has NPC text (Korean + English) and 2-4 player choices (Korean + English) with point values.\n\n'
+          + 'Each scenario MUST have at least 25 branching dialogue nodes (minimum 25, can be more). Create a rich, multi-path conversation with multiple decision points, scene changes, and meaningful consequences for choices. Each node has NPC text (Korean + English) and 2-4 player choices (Korean + English) with point values.\n\n'
           + 'Return JSON array of scenarios:\n'
           + '[{"id":"unique_snake_id","title":"ENGLISH TITLE","sub":"Korean description","titleKo":"Korean title","difficulty":"' + diff + '","icon":"emoji","category":"category_name",'
           + '"nodes":{"start":{"type":"start","x":5,"y":50,"label":"Start","next":"node1"},'
-          + '"node1":{"type":"npc","x":20,"y":50,"label":"Label","npc":"NPC name","scene":"Scene","text":"Korean dialogue","textEn":"English translation",'
+          + '"node1":{"type":"npc","x":20,"y":50,"label":"Label","npc":"NPC name","scene":"Scene description","text":"Korean dialogue","textEn":"English translation",'
           + '"choices":[{"id":"c1","text":"Korean choice","textEn":"English","next":"node2","pts":3,"phrase":"key phrase"},{"id":"c2","text":"Korean","textEn":"English","next":"node3","pts":1}]},'
           + '"end":{"type":"end","x":95,"y":50,"label":"Done"}},'
           + '"edges":[["start","node1"],["node1","node2"],["node1","node3"],["node2","end"],["node3","end"]]}]\n\n'
-          + 'Make dialogues authentic and natural. Include 6-12 nodes per scenario with meaningful branching. Return JSON only.'
+          + 'CRITICAL: You MUST include at least 25 nodes (not counting start/end). Create multiple branching paths, not just a linear chain. Make dialogues authentic and natural with scene changes. Return JSON only, no markdown.'
         }]
       });
       var text = (res.content||[]).map(function(c){return c.text||'';}).join('').replace(/```json|```/g,'').trim();
