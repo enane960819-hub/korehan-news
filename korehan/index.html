@@ -387,9 +387,9 @@
   #dyn-hero { grid-template-columns: 1fr !important; }
   /* News cards: 정사각형에 가깝게 */
   .home-news-grid .nc { flex: 0 0 210px; min-width: 210px; }
-  .home-news-grid .nc.nc-overlay { min-height: 0 !important; aspect-ratio: 4/3; }
+  .home-news-grid .nc.nc-overlay { min-height: 0 !important; aspect-ratio: 1/1; }
   .home-news-grid .nc.nc-overlay .nc-title { font-size: 14px !important; }
-  .home-conv-grid-wrap .hconv-card { flex: 0 0 220px; min-width: 220px; }
+  .home-conv-grid-wrap .hconv-card { flex: 0 0 220px; min-width: 220px; aspect-ratio: 1/1 !important; }
   .home-story-grid .story-card { flex: 0 0 180px; min-width: 180px; }
   .home-hero-loading { min-height: 340px !important; grid-template-columns: 1fr !important; }
   .home-hero-skeleton-main { min-height: 340px !important; }
@@ -821,7 +821,7 @@ body.kh-neon-on .hero-dot {
   <div id="dyn-hero" class="home-hero-loading"><div class="home-hero-skeleton-main"></div><div class="home-hero-skeleton-side"><span></span><span></span><span></span><span></span></div></div>
 
   <!-- REVIEW NOTIFICATIONS (home page) -->
-  <div id="home-review-banners" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"></div>
+  <div id="home-review-banners" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;margin-bottom:12px"></div>
   <script>
   (function(){
     function kstNow(){ return new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Seoul'})); }
@@ -997,17 +997,30 @@ function renderHomeConvs() {
   var CAT_LBL = {everyday:'Everyday',work:'Work',friends:'Friends',family:'Family',dating:'Dating'};
   grid.innerHTML = list.map(function(c) {
     var globalIdx = HOME_CONVS.indexOf(c);
-    var hasImg = c.thumb || c.image;
-    var bgStyle = hasImg ? 'background-image:url('+c.thumb+');background-size:cover;background-position:center;' : 'background:'+(CAT_GRAD[c.cat]||CAT_GRAD.everyday)+';';
-    return '<div class="hconv-card" onclick="location.href=\'korehan-conversations.html?id='+(c._id||'')+'\'" style="position:relative;border-radius:12px;overflow:hidden;aspect-ratio:4/3;cursor:pointer">'
-      + '<div style="position:absolute;inset:0;'+bgStyle+'"></div>'
-      + '<div style="position:absolute;inset:0;background:rgba(0,0,0,.38)"></div>'
-      + '<div style="position:absolute;top:8px;left:8px;display:flex;gap:4px">'
+    var grad = CAT_GRAD[c.cat]||CAT_GRAD.everyday;
+    // Extract first 2-3 messages for chat preview
+    var msgs = (c.data && c.data.messages) ? c.data.messages.slice(0,3) : [];
+    var chatPreview = '';
+    if (msgs.length) {
+      chatPreview = msgs.map(function(m,i){
+        var isLeft = i % 2 === 0;
+        var align = isLeft ? 'flex-start' : 'flex-end';
+        var bg = isLeft ? 'rgba(255,255,255,.15)' : 'rgba(96,165,250,.25)';
+        var txt = (m.ko || m.text || '').slice(0,30) + ((m.ko||m.text||'').length>30?'…':'');
+        return '<div style="display:flex;justify-content:'+align+'"><div style="background:'+bg+';padding:4px 8px;border-radius:8px;font-size:10px;color:rgba(255,255,255,.85);max-width:75%;line-height:1.3">'+txt+'</div></div>';
+      }).join('');
+    } else {
+      chatPreview = '<div style="display:flex;align-items:center;justify-content:center;flex:1"><div style="font-size:14px;font-weight:900;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5);line-height:1.3">'+(c.ctx||c.name)+'</div></div>';
+    }
+    return '<div class="hconv-card" onclick="location.href=\'korehan-conversations.html?id='+(c._id||'')+'\'" style="position:relative;border-radius:12px;overflow:hidden;aspect-ratio:1/1;cursor:pointer;display:flex;flex-direction:column">'
+      + '<div style="position:absolute;inset:0;'+grad+'"></div>'
+      + '<div style="position:relative;flex:1;display:flex;flex-direction:column;padding:10px;gap:4px;z-index:1">'
+      + '<div style="display:flex;gap:4px;margin-bottom:4px">'
       + '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.18);color:#fff">'+(CAT_LBL[c.cat]||c.cat)+'</span>'
       + '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:5px;background:rgba(34,197,94,.7);color:#fff">'+(LVL_LBL[c.lvl]||'')+'</span>'
       + '</div>'
-      + '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:10px;text-align:center">'
-      + '<div style="font-size:15px;font-weight:900;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5);line-height:1.3">'+(c.ctx||c.name)+'</div>'
+      + chatPreview
+      + '<div style="font-size:11px;font-weight:800;color:#fff;margin-top:auto;text-shadow:0 1px 4px rgba(0,0,0,.4)">'+(c.ctx||c.name)+'</div>'
       + '</div>'
       + '</div>';
   }).join('');
@@ -1151,7 +1164,28 @@ document.addEventListener('DOMContentLoaded', async function() {
   function renderTodaysPhrase() {
     var phrases = getPhrases();
     if (!phrases || !phrases.length) return;
-    var phraseIndex = Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length;
+    // Sequential non-repeating: track seen phrases, pick next unseen
+    var todayKey = new Date(Date.now() + 9*3600000).toISOString().slice(0,10);
+    var seenKey = 'kh_phrase_seen';
+    var todayCache = 'kh_phrase_today';
+    var cached = null;
+    try { cached = JSON.parse(localStorage.getItem(todayCache)); } catch(e){}
+    var phraseIndex;
+    if (cached && cached.date === todayKey && cached.idx < phrases.length) {
+      phraseIndex = cached.idx;
+    } else {
+      var seen = [];
+      try { seen = JSON.parse(localStorage.getItem(seenKey)) || []; } catch(e){ seen=[]; }
+      // Find first unseen phrase
+      var unseen = [];
+      for (var pi = 0; pi < phrases.length; pi++) { if (seen.indexOf(pi) < 0) unseen.push(pi); }
+      if (!unseen.length) { seen = []; unseen = []; for (var ri = 0; ri < phrases.length; ri++) unseen.push(ri); }
+      // Pick a deterministic daily phrase from unseen
+      var dayHash = Math.floor((Date.now() + 9*3600000) / 86400000);
+      phraseIndex = unseen[dayHash % unseen.length];
+      seen.push(phraseIndex);
+      try { localStorage.setItem(seenKey, JSON.stringify(seen)); localStorage.setItem(todayCache, JSON.stringify({date:todayKey,idx:phraseIndex})); } catch(e){}
+    }
     var p = phrases[phraseIndex];
     var ko = document.getElementById('pb-ko');
     var rom = document.getElementById('pb-rom');
@@ -1159,7 +1193,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (ko)  ko.textContent  = p.ko;
     if (rom) rom.textContent = p.rom;
     if (en)  en.textContent  = p.en;
-    // note/example는 축소된 배너에서 숨김 — phrase 상세 페이지에서 확인
     var pbBlock = document.getElementById('pb-phrase-block');
     if (pbBlock) pbBlock.href = 'korehan-phrase.html?i=' + phraseIndex;
   }

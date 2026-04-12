@@ -856,11 +856,42 @@ var TIER_COLORS = { bronze:'#cd7f32', silver:'#94a3b8', gold:'#f59e0b', plat:'#7
 function tierMark(cls, size, faded) {
   var c = TIER_COLORS[cls] || '#94a3b8';
   var opacity = faded ? 0.28 : 1;
-  // Hexagon path
   var s = size || 18;
-  return '<svg viewBox="0 0 24 24" width="' + s + '" height="' + s + '" style="opacity:' + opacity + '">'
-    + '<polygon points="12,2 20.5,7 20.5,17 12,22 3.5,17 3.5,7" fill="' + c + '" stroke="' + c + '" stroke-width="1" stroke-linejoin="round"/>'
-    + '</svg>';
+  // Tier-specific SVG icons
+  if (cls === 'bronze') {
+    return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" style="opacity:'+opacity+'">'
+      + '<circle cx="12" cy="12" r="9" fill="'+c+'" opacity=".2"/>'
+      + '<polygon points="12,3 20,8 20,16 12,21 4,16 4,8" fill="none" stroke="'+c+'" stroke-width="1.5" stroke-linejoin="round"/>'
+      + '<text x="12" y="15" text-anchor="middle" fill="'+c+'" font-size="8" font-weight="900">B</text></svg>';
+  }
+  if (cls === 'silver') {
+    return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" style="opacity:'+opacity+'">'
+      + '<defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c0c0c0"/><stop offset="100%" stop-color="#e8e8e8"/></linearGradient></defs>'
+      + '<polygon points="12,2 15.5,8.5 22,9.5 17,14.5 18.5,21 12,17.5 5.5,21 7,14.5 2,9.5 8.5,8.5" fill="url(#sg)" stroke="#94a3b8" stroke-width=".5"/></svg>';
+  }
+  if (cls === 'gold') {
+    return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" style="opacity:'+opacity+'">'
+      + '<defs><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fbbf24"/><stop offset="50%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#d97706"/></linearGradient></defs>'
+      + '<polygon points="12,1.5 15,8 22,9 17,14 18.5,21.5 12,17.5 5.5,21.5 7,14 2,9 9,8" fill="url(#gg)" stroke="#b45309" stroke-width=".5"/>'
+      + '<circle cx="12" cy="11" r="3" fill="none" stroke="#fff" stroke-width=".8" opacity=".6"/></svg>';
+  }
+  if (cls === 'plat') {
+    return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" style="opacity:'+opacity+'">'
+      + '<defs><linearGradient id="pg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#a78bfa"/><stop offset="50%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#6d28d9"/></linearGradient></defs>'
+      + '<path d="M12,1 L22,7 L22,17 L12,23 L2,17 L2,7 Z" fill="url(#pg)" stroke="#5b21b6" stroke-width=".5"/>'
+      + '<path d="M12,5 L17,8 L17,16 L12,19 L7,16 L7,8 Z" fill="none" stroke="rgba(255,255,255,.4)" stroke-width=".8"/>'
+      + '<circle cx="12" cy="12" r="2" fill="rgba(255,255,255,.5)"/></svg>';
+  }
+  if (cls === 'diamond') {
+    return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" style="opacity:'+opacity+'">'
+      + '<defs><linearGradient id="dg" x1="0" y1="0" x2=".5" y2="1"><stop offset="0%" stop-color="#93c5fd"/><stop offset="40%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient></defs>'
+      + '<polygon points="12,1 20,8 12,23 4,8" fill="url(#dg)" stroke="#1e40af" stroke-width=".5"/>'
+      + '<polygon points="12,1 8,8 12,23" fill="rgba(255,255,255,.15)"/>'
+      + '<line x1="4" y1="8" x2="20" y2="8" stroke="rgba(255,255,255,.3)" stroke-width=".5"/>'
+      + '<line x1="12" y1="1" x2="12" y2="8" stroke="rgba(255,255,255,.2)" stroke-width=".5"/></svg>';
+  }
+  return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" style="opacity:'+opacity+'">'
+    + '<polygon points="12,2 20.5,7 20.5,17 12,22 3.5,17 3.5,7" fill="'+c+'" stroke="'+c+'" stroke-width="1" stroke-linejoin="round"/></svg>';
 }
 
 // ── Stat card SVG icons ─────────────────────────────────────────
@@ -1025,6 +1056,13 @@ function renderTierGrid(xp) {
   var el = document.getElementById('mp-tier-grid');
   if (!el) return;
   var tier = getXPTier(xp);
+  var tierBarColors = {
+    bronze:'linear-gradient(90deg,#cd7f32,#daa06d)',
+    silver:'linear-gradient(90deg,#94a3b8,#cbd5e1)',
+    gold:'linear-gradient(90deg,#f59e0b,#fbbf24)',
+    plat:'linear-gradient(90deg,#7c3aed,#a78bfa)',
+    diamond:'linear-gradient(90deg,#1d4ed8,#60a5fa)'
+  };
   el.innerHTML = TIERS.map(function(t) {
     var active  = xp >= t.min;
     var current = tier.label === t.label;
@@ -1032,11 +1070,12 @@ function renderTierGrid(xp) {
     var bgColor = active ? (TIER_COLORS[t.cls] + '18') : '#f4f6fa';
     var remain = (t.max > t.min && active && t.max !== Infinity) ? (t.max - xp) : 0;
     var remainStr = remain > 0 ? '<div class="tier-remain">' + remain.toLocaleString() + ' XP left</div>' : '';
+    var barGrad = tierBarColors[t.cls] || 'linear-gradient(90deg,#2255a4,#3d7fd4)';
     return '<div class="tier-item' + (current ? ' current' : '') + '" data-tier="' + t.cls + '">'
-      + '<div class="tier-icon" style="background:' + bgColor + '">' + tierMark(t.cls, 18, !active) + '</div>'
-      + '<div class="tier-label" style="' + (active ? '' : 'color:#94a3b8') + '">' + t.label + '</div>'
+      + '<div class="tier-icon" style="background:' + bgColor + ';width:44px;height:44px">' + tierMark(t.cls, 26, !active) + '</div>'
+      + '<div class="tier-label" style="' + (active ? 'color:'+TIER_COLORS[t.cls] : 'color:#94a3b8') + '">' + t.label + '</div>'
       + '<div class="tier-xp">' + t.min.toLocaleString() + (t.max !== t.min ? '+' : '') + '</div>'
-      + (active && t.max !== t.min ? '<div class="tier-bar"><div class="tier-bar-fill" style="width:' + pct + '%"></div></div>' : '')
+      + (active && t.max !== t.min ? '<div class="tier-bar"><div class="tier-bar-fill" style="width:' + pct + '%;background:' + barGrad + '"></div></div>' : '')
       + remainStr
       + '</div>';
   }).join('');

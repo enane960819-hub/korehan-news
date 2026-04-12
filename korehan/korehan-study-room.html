@@ -1368,7 +1368,14 @@ body { background: #0b1626 !important; }
 .sr-activity-cards {
   display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px;
 }
-@media(max-width:680px) { .sr-activity-cards { grid-template-columns:1fr; gap:8px; } }
+@media(max-width:680px) { .sr-activity-cards { grid-template-columns:repeat(3,1fr); gap:6px; } }
+@media(max-width:680px) {
+  .sr-act-card { padding:12px 10px 10px; gap:6px; }
+  .srac-icon .kh-ui-icon { width:20px !important; height:20px !important; }
+  .srac-title { font-size:10px !important; letter-spacing:.5px; }
+  .srac-desc { display:none; }
+  .srac-foot { padding-top:6px; }
+}
 .sr-act-card {
   display:flex; flex-direction:column; align-items:flex-start; gap:10px;
   padding:20px 18px 16px; background:linear-gradient(135deg,rgba(34,85,164,.12),rgba(122,184,245,.06));
@@ -1379,8 +1386,9 @@ body { background: #0b1626 !important; }
 .sr-act-card:hover { background:linear-gradient(135deg,rgba(34,85,164,.22),rgba(122,184,245,.12)); border-color:rgba(122,184,245,.55); transform:translateY(-3px) scale(1.01); box-shadow:0 8px 28px rgba(34,85,164,.3); }
 .sr-act-card:active { transform:translateY(0) scale(.99); }
 .sr-act-card.coming-soon { opacity:.42; cursor:default; pointer-events:none; }
-.srac-icon  { font-size:28px; }
-.srac-title { font-size:13px; font-weight:900; text-transform:uppercase; letter-spacing:1px; color:#93c5fd; margin-bottom:2px; }
+.srac-icon  { font-size:28px; color:#7ab8f5; }
+.srac-icon .kh-ui-icon { stroke:#7ab8f5; stroke-width:2.2; }
+.srac-title { font-size:13px; font-weight:900; text-transform:uppercase; letter-spacing:1px; color:#bdd7ff; margin-bottom:2px; }
 .srac-desc  { font-size:12px; color:rgba(255,255,255,.55); line-height:1.55; }
 .srac-foot  { display:flex; align-items:center; justify-content:space-between; width:100%; margin-top:auto; padding-top:10px; border-top:1px solid rgba(255,255,255,.07); }
 .srac-badge { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.8px; padding:2px 7px; border-radius:99px; background:rgba(122,184,245,.18); color:#7ab8f5; border:1px solid rgba(122,184,245,.28); }
@@ -1748,11 +1756,12 @@ body { background: #0b1626 !important; }
   /* Master cards inline on desktop (below activity cards) */
   .sr-desktop-master { display:grid !important;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px; }
 }
-/* Mobile: show master cards as scrollable row */
+/* Mobile: show master cards as compact scrollable row */
 @media(max-width:860px) {
-  .sr-desktop-master { display:flex !important;gap:10px;margin-top:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px; }
+  .sr-desktop-master { display:flex !important;gap:8px;margin-top:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px; }
   .sr-desktop-master::-webkit-scrollbar{display:none}
-  .sr-desktop-master .master-card { min-width:160px;flex-shrink:0; }
+  .sr-desktop-master .master-card { min-width:110px;max-height:80px;flex-shrink:0; }
+  .sr-desktop-master .master-card img { min-height:60px !important;max-height:80px; }
 }
 /* ─── TABLET (641–860px): tabs above activity cards, not sticky ─── */
 @media(min-width:641px) and (max-width:860px) {
@@ -2034,34 +2043,6 @@ body { background: #0b1626 !important; }
     <button class="btn btn-g" onclick="submitAllWritingsToday()" style="font-size:12px;padding:8px 16px;font-weight:800">📩 Submit All</button>
   </div>
 
-  <!-- LEARNING INSIGHTS PANEL -->
-  <div id="sr-insights-panel" style="display:none;background:linear-gradient(135deg,#0f172a,#1e293b);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px;margin-bottom:14px">
-    <div style="font-size:12px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px">Learning Insights</div>
-    <!-- Skill Bars -->
-    <div id="sr-skill-bars" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
-    <!-- Weak Grammar -->
-    <div id="sr-weak-grammar-section" style="display:none;margin-bottom:14px">
-      <div style="font-size:12px;font-weight:700;color:#c4b5fd;margin-bottom:8px">Weak Grammar Points</div>
-      <div id="sr-weak-grammar-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-    </div>
-    <!-- Review Priority Words -->
-    <div id="sr-review-words-section" style="display:none">
-      <div style="font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:8px">Review Priority</div>
-      <div id="sr-review-words-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-    </div>
-  </div>
-  <!-- Legacy banner (hidden, kept for backward compat) -->
-  <div id="sr-weak-grammar-banner" style="display:none">
-    <div style="display:flex;align-items:center;gap:12px">
-      <div style="width:38px;height:38px;border-radius:10px;background:rgba(139,92,246,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#c4b5fd"><i data-lucide="pen-tool" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i></div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:800;color:#c4b5fd;margin-bottom:2px">Weak Grammar Practice</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.5)" id="sr-weak-grammar-desc">Review your weak grammar points</div>
-      </div>
-      <span style="font-size:14px;color:rgba(255,255,255,.3)">→</span>
-    </div>
-  </div>
-
   <!-- ACTIVITY CARDS -->
   <div class="sr-activity-cards">
     <button class="sr-act-card" onclick="_canvasRipple(this,event);openArticleStudy()">
@@ -2107,6 +2088,15 @@ body { background: #0b1626 !important; }
   </div>
 
   <!-- Word bank moved to left sidebar -->
+
+  <!-- ═══ COMPLETED STUDIES ═══ -->
+  <div id="sr-completed-section" style="margin-top:14px;display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px">Completed Studies</div>
+      <button onclick="toggleCompletedPanel()" style="font-size:11px;color:#7ab8f5;background:none;border:none;cursor:pointer;font-family:inherit;font-weight:700">Show all →</button>
+    </div>
+    <div id="sr-completed-list" style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px"></div>
+  </div>
 
   <!-- ═══ REVIEW SECTION ═══ -->
   <div style="margin-top:14px">
@@ -11158,6 +11148,64 @@ if (typeof openConvStudy === 'undefined') {
 if (typeof openStoryStudy === 'undefined') {
   window.openStoryStudy = function() { window.location.assign('korehan-stories.html'); };
 }
+
+// ═══ Completed Studies Tracker ═══════════════════════════════
+function renderCompletedStudies() {
+  var section = document.getElementById('sr-completed-section');
+  var list = document.getElementById('sr-completed-list');
+  if (!section || !list) return;
+  var items = [];
+  // Collect completed articles from localStorage
+  try {
+    var tmpKey = 'kh_sr_article_tmp';
+    var data = JSON.parse(localStorage.getItem(tmpKey) || '{}');
+    Object.keys(data).forEach(function(id) {
+      var d = data[id];
+      if (d && d.completed) {
+        items.push({ type:'article', id:id, title:d.article_title||'Article', date:d.completedAt||d.savedAt, data:d });
+      }
+    });
+  } catch(e){}
+  // Collect completed conversations
+  try {
+    var convKey = 'kh_sr_conv_tmp';
+    var cdata = JSON.parse(localStorage.getItem(convKey) || '{}');
+    Object.keys(cdata).forEach(function(id) {
+      var d = cdata[id];
+      if (d && d.completed) {
+        items.push({ type:'conv', id:id, title:d.title||'Conversation', date:d.completedAt||d.savedAt, data:d });
+      }
+    });
+  } catch(e){}
+  if (!items.length) { section.style.display = 'none'; return; }
+  items.sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); });
+  section.style.display = '';
+  list.innerHTML = items.slice(0,10).map(function(it) {
+    var icon = it.type === 'article' ? '📰' : '💬';
+    var ago = it.date ? timeSince(new Date(it.date)) : '';
+    return '<div style="flex-shrink:0;min-width:140px;padding:10px 12px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;cursor:pointer" onclick="'+(it.type==='article'?'openArticleStudy()':'openConvStudy()')+'">'
+      + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
+      + '<span style="font-size:14px">'+icon+'</span>'
+      + '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;background:rgba(34,197,94,.2);color:#4ade80">✓ Done</span>'
+      + '</div>'
+      + '<div style="font-size:11px;font-weight:700;color:#fff;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (it.title||'').slice(0,25) + '</div>'
+      + '<div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px">' + ago + '</div>'
+      + '</div>';
+  }).join('');
+}
+function timeSince(d) {
+  var s = Math.floor((Date.now()-d.getTime())/1000);
+  if(s<60) return 'just now'; if(s<3600) return Math.floor(s/60)+'m ago'; if(s<86400) return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago';
+}
+function toggleCompletedPanel() {
+  var list = document.getElementById('sr-completed-list');
+  if (!list) return;
+  var isExpanded = list.style.maxHeight && list.style.maxHeight !== 'none';
+  if (isExpanded) { list.style.maxHeight=''; list.style.flexWrap=''; }
+  else { list.style.maxHeight='none'; list.style.flexWrap='wrap'; }
+}
+// Render on page load
+setTimeout(renderCompletedStudies, 500);
 
 </script>
 <!-- ══════════════════════════════════════════════════════

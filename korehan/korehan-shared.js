@@ -2495,7 +2495,6 @@ function getReporterProfileHTML(article) {
   return '<a href="' + href + '" class="art-reporter-link"' + (rid ? ' data-rid="' + rid + '"' : '') + '>'
     + '<div class="art-reporter-avatar">' + avatar + '</div>'
     + '<span class="art-reporter-name">' + name + '</span>'
-    + (rep && rep.role ? '<span class="art-reporter-role">' + rep.role + '</span>' : '')
     + '</a>';
 }
 
@@ -2539,11 +2538,9 @@ function renderArticlePage() {
     + '<h1 class="art-title vocab-zone">' + a.title + ' ' + ttsBtn(a.title) + '</h1>'
     + '<div class="art-meta-row">'
     + getReporterProfileHTML(a)
-    + '<div class="art-meta-right">'
     + '<span class="art-date">' + dateStr + '</span>'
     + '<span class="art-dot">·</span>'
     + '<span class="art-readtime">' + Math.max(1, Math.ceil((a.full||a.body||'').length / 500)) + ' min read</span>'
-    + '</div>'
     + '<div class="art-actions-inline">'
     + '<button class="art-action-icon" id="art-bm-btn" onclick="toggleBookmark(\'' + a.id + '\',this)" title="Bookmark"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button>'
     + '<button class="art-action-icon" onclick="shareArticle()" title="Share"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>'
@@ -6698,7 +6695,9 @@ function khInjectSidebar() {
     '.kh-sb-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.4px;color:rgba(255,255,255,.25);padding:0 6px;margin-bottom:4px;}',
     '.kh-sb-a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:6px;font-size:13px;font-weight:500;color:rgba(255,255,255,.65);cursor:pointer;border:none;background:none;width:100%;text-align:left;font-family:inherit;transition:all .13s;text-decoration:none;}',
     '.kh-sb-a:hover,.kh-sb-a.on{background:rgba(255,255,255,.08);color:#fff;}',
-    '.kh-sb-ico{font-size:15px;width:20px;text-align:center;flex-shrink:0;}',
+    '.kh-sb-ico{font-size:15px;width:20px;text-align:center;flex-shrink:0;display:flex;align-items:center;justify-content:center;}',
+    '.kh-sb-ico .kh-ui-icon{width:16px;height:16px;stroke:currentColor;stroke-width:2;}',
+    '.kh-sb-sub-a .kh-ui-icon{width:14px;height:14px;stroke:currentColor;stroke-width:2;vertical-align:-2px;margin-right:2px;}',
     '.kh-sb-new{margin-left:auto;background:#e53e3e;color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:2px;flex-shrink:0;}',
     '.kh-sb-arrow{margin-left:auto;font-size:11px;color:rgba(255,255,255,.25);transition:transform .18s;flex-shrink:0;}',
     '.kh-sb-arrow.on{transform:rotate(90deg);}',
@@ -6729,22 +6728,22 @@ function khInjectSidebar() {
     + '</div>'
     + '<div class="kh-sb-sec">'
       + '<div class="kh-sb-lbl">Navigation</div>'
-      + '<a href="index.html" class="kh-sb-a' + (page==='index.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F3E0;</span>Home</a>'
+      + '<a href="index.html" class="kh-sb-a' + (page==='index.html'?' on':'') + '"><span class="kh-sb-ico">' + khIcon('home') + '</span>Home</a>'
     + '</div>'
     + '<div class="kh-sb-sec">'
       + '<div class="kh-sb-lbl">Read</div>'
-      + '<button class="kh-sb-a" onclick=\"khSbToggle(\'sb-news\',\'sb-arr-news\')\"><span class="kh-sb-ico">&#x1F4F0;</span>News<span class="kh-sb-arrow" id="sb-arr-news">&#x203A;</span></button>'
+      + '<button class="kh-sb-a" onclick=\"khSbToggle(\'sb-news\',\'sb-arr-news\')\"><span class="kh-sb-ico">' + khIcon('newspaper') + '</span>News<span class="kh-sb-arrow" id="sb-arr-news">&#x203A;</span></button>'
       + '<div class="kh-sb-sub" id="sb-news">'
         + '<a href="korehan-all.html" class="kh-sb-sub-a">All News</a>'
-        + '<a href="korehan-society.html" class="kh-sb-sub-a">&#x1F3DB;&#xFE0F; Society</a>'
-        + '<a href="korehan-world.html" class="kh-sb-sub-a">&#x1F310; World</a>'
-        + '<a href="korehan-culture.html" class="kh-sb-sub-a">&#x1F3AD; Culture</a>'
-        + '<a href="korehan-section.html?s=kpop" class="kh-sb-sub-a">&#x1F3B5; K-pop</a>'
-        + '<a href="korehan-section.html?s=beauty" class="kh-sb-sub-a">&#x1F484; Beauty</a>'
-        + '<a href="korehan-section.html?s=travel" class="kh-sb-sub-a">&#x2708;&#xFE0F; Travel</a>'
-        + '<a href="korehan-korea.html" class="kh-sb-sub-a">&#x1F1F0;&#x1F1F7; Korea</a>'
+        + '<a href="korehan-society.html" class="kh-sb-sub-a">' + khIcon('landmark') + ' Society</a>'
+        + '<a href="korehan-world.html" class="kh-sb-sub-a">' + khIcon('globe') + ' World</a>'
+        + '<a href="korehan-culture.html" class="kh-sb-sub-a">' + khIcon('palette') + ' Culture</a>'
+        + '<a href="korehan-section.html?s=kpop" class="kh-sb-sub-a">' + khIcon('music') + ' K-pop</a>'
+        + '<a href="korehan-section.html?s=beauty" class="kh-sb-sub-a">' + khIcon('sparkles') + ' Beauty</a>'
+        + '<a href="korehan-section.html?s=travel" class="kh-sb-sub-a">' + khIcon('plane') + ' Travel</a>'
+        + '<a href="korehan-korea.html" class="kh-sb-sub-a">' + khIcon('flag') + ' Korea</a>'
       + '</div>'
-      + '<button class="kh-sb-a" onclick=\"khSbToggle(\'sb-conv\',\'sb-arr-conv\')\"><span class="kh-sb-ico">&#x1F4AC;</span>Conversations<span class="kh-sb-new">New</span><span class="kh-sb-arrow" id="sb-arr-conv" style="margin-left:4px">&#x203A;</span></button>'
+      + '<button class="kh-sb-a" onclick=\"khSbToggle(\'sb-conv\',\'sb-arr-conv\')\"><span class="kh-sb-ico">' + khIcon('messages-square') + '</span>Conversations<span class="kh-sb-new">New</span><span class="kh-sb-arrow" id="sb-arr-conv" style="margin-left:4px">&#x203A;</span></button>'
       + '<div class="kh-sb-sub" id="sb-conv">'
         + '<a href="korehan-conversations.html" class="kh-sb-sub-a">All</a>'
         + '<a href="korehan-conversations.html?cat=everyday" class="kh-sb-sub-a">Everyday</a>'
@@ -6752,28 +6751,29 @@ function khInjectSidebar() {
         + '<a href="korehan-conversations.html?cat=friends" class="kh-sb-sub-a">Friends</a>'
         + '<a href="korehan-conversations.html?cat=dating" class="kh-sb-sub-a">Dating</a>'
       + '</div>'
-      + '<button class="kh-sb-a" onclick=\"khSbToggle(\'sb-stor\',\'sb-arr-stor\')\"><span class="kh-sb-ico">&#x1F4D6;</span>Stories<span class="kh-sb-new">New</span><span class="kh-sb-arrow" id="sb-arr-stor" style="margin-left:4px">&#x203A;</span></button>'
+      + '<button class="kh-sb-a" onclick=\"khSbToggle(\'sb-stor\',\'sb-arr-stor\')\"><span class="kh-sb-ico">' + khIcon('book-open') + '</span>Stories<span class="kh-sb-new">New</span><span class="kh-sb-arrow" id="sb-arr-stor" style="margin-left:4px">&#x203A;</span></button>'
       + '<div class="kh-sb-sub" id="sb-stor">'
         + '<a href="korehan-stories.html" class="kh-sb-sub-a">All</a>'
-        + '<a href="korehan-stories.html?mood=fun" class="kh-sb-sub-a">&#x1F602; Fun</a>'
-        + '<a href="korehan-stories.html?mood=touching" class="kh-sb-sub-a">&#x1F979; Touching</a>'
-        + '<a href="korehan-stories.html?mood=scary" class="kh-sb-sub-a">&#x1F631; Scary</a>'
-        + '<a href="korehan-stories.html?mood=shocking" class="kh-sb-sub-a">&#x1F62E; Shocking</a>'
+        + '<a href="korehan-stories.html?mood=fun" class="kh-sb-sub-a">' + khIcon('smile') + ' Fun</a>'
+        + '<a href="korehan-stories.html?mood=touching" class="kh-sb-sub-a">' + khIcon('heart') + ' Touching</a>'
+        + '<a href="korehan-stories.html?mood=scary" class="kh-sb-sub-a">' + khIcon('ghost') + ' Scary</a>'
+        + '<a href="korehan-stories.html?mood=shocking" class="kh-sb-sub-a">' + khIcon('zap') + ' Shocking</a>'
       + '</div>'
     + '</div>'
     + '<div class="kh-sb-sec">'
       + '<div class="kh-sb-lbl">Learn</div>'
-      + '<a href="korehan-study-room.html" class="kh-sb-a' + (page==='korehan-study-room.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F4D6;</span>Study Room</a>'
-      + '<a href="korehan-shop.html" class="kh-sb-a' + (page==='korehan-shop.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F6D2;</span>Shop</a>'
-      + '<a href="korehan-fun.html" class="kh-sb-a' + (page==='korehan-fun.html'?' on':'') + '"><span class="kh-sb-ico">🎮</span>Playground</a>'
-      + '<a href="korehan-learning-overview.html" class="kh-sb-a' + (page==='korehan-learning-overview.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F4CA;</span>Growth Lab</a>'
-      + '<a href="korehan-courses.html" class="kh-sb-a' + (page==='korehan-courses.html'?' on':'') + '"><span class="kh-sb-ico">&#x1F393;</span>Courses</a>'
+      + '<a href="korehan-study-room.html" class="kh-sb-a' + (page==='korehan-study-room.html'?' on':'') + '"><span class="kh-sb-ico">' + khIcon('notebook-pen') + '</span>Study Room</a>'
+      + '<a href="korehan-courses.html" class="kh-sb-a' + (page==='korehan-courses.html'?' on':'') + '"><span class="kh-sb-ico">' + khIcon('graduation-cap') + '</span>Courses</a>'
+      + '<a href="korehan-shop.html" class="kh-sb-a' + (page==='korehan-shop.html'?' on':'') + '"><span class="kh-sb-ico">' + khIcon('shopping-cart') + '</span>Shop</a>'
+      + '<a href="korehan-fun.html" class="kh-sb-a' + (page==='korehan-fun.html'?' on':'') + '"><span class="kh-sb-ico">' + khIcon('gamepad-2') + '</span>Playground</a>'
+      + '<a href="korehan-learning-overview.html" class="kh-sb-a' + (page==='korehan-learning-overview.html'?' on':'') + '"><span class="kh-sb-ico">' + khIcon('bar-chart-3') + '</span>Growth Lab</a>'
     + '</div>'
     + '<div class="kh-sb-sec" id="kh-sb-auth-sec" style="margin-top:auto;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;bottom:0;background:#0b1626;box-shadow:0 -10px 24px rgba(0,0,0,.18)">'
       + '<div id="kh-sb-auth-row"></div>'
     + '</div>';
   document.body.appendChild(sb);
   updateSidebarAuth();
+  renderKhLucideIcons();
 }
 
 function updateSidebarAuth() {
@@ -7061,7 +7061,7 @@ function injectMobileBottomNav() {
   var items = [
     ['index.html','home','Home','index'],
     ['korehan-all.html','newspaper','News','korehan-all'],
-    ['korehan-study-room.html','notebook-pen','Learn','korehan-study-room'],
+    ['korehan-study-room.html','notebook-pen','Study','korehan-study-room'],
     ['korehan-conversations.html','messages-square','CONVO','korehan-conversations'],
   ];
   if (supaUser) items.push(['#','circle-user-round','Account','account']);

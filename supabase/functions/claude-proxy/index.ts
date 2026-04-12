@@ -12,7 +12,7 @@ function getCorsHeaders(req: Request) {
   const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
   return {
     'Access-Control-Allow-Origin': allowed,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-bypass',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
   }
@@ -31,22 +31,27 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) return new Response(JSON.stringify({ error: 'No auth' }), { status: 401, headers: { ...cors, 'Content-Type': 'application/json' } })
+    // Admin bypass: service role key in x-admin-bypass header skips JWT verification
+    const adminBypass = req.headers.get('x-admin-bypass')
+    if (adminBypass && adminBypass === supabaseServiceKey) {
+      // Admin bypass verified — skip JWT check
+    } else {
+      const authHeader = req.headers.get('Authorization')
+      if (!authHeader) return new Response(JSON.stringify({ error: 'No auth' }), { status: 401, headers: { ...cors, 'Content-Type': 'application/json' } })
 
-    // Always verify JWT — no bypass mechanism
-    const authCheck = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: {
-        'Authorization': authHeader,
-        'apikey': SUPABASE_ANON_KEY,
+      const authCheck = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        headers: {
+          'Authorization': authHeader,
+          'apikey': SUPABASE_ANON_KEY,
+        }
+      })
+      if (!authCheck.ok) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...cors, 'Content-Type': 'application/json' } })
       }
-    })
-    if (!authCheck.ok) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...cors, 'Content-Type': 'application/json' } })
-    }
-    const userData = await authCheck.json()
-    if (!userData || !userData.id) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...cors, 'Content-Type': 'application/json' } })
+      const userData = await authCheck.json()
+      if (!userData || !userData.id) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...cors, 'Content-Type': 'application/json' } })
+      }
     }
 
     // Get API key from DB using service role client

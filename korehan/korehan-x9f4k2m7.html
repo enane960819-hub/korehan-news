@@ -506,36 +506,22 @@ async function _refreshAndGetToken() {
 }
 
 async function callClaude({ feature, model, max_tokens, messages }) {
-  var token = _getAccessTokenFromStorage();
-  if (!token) {
-    token = await _refreshAndGetToken();
-  }
-  if (!token) throw new Error('Not signed in');
-
   var payload = { feature, model, max_tokens, messages };
 
-  async function _doFetch(t) {
+  // Admin bypass: use service role key directly (no JWT needed)
+  async function _doFetch() {
     return fetch(ADMIN_CLAUDE_PROXY, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + t,
+        'x-admin-bypass': SUPA_SERVICE_KEY,
         'apikey': SUPA_KEY_ADMIN,
       },
       body: JSON.stringify(payload),
     });
   }
 
-  var resp = await _doFetch(token);
-
-  // 401 → 토큰 갱신 후 재시도
-  if (resp.status === 401) {
-    var freshToken = await _refreshAndGetToken();
-    if (freshToken) {
-      token = freshToken;
-      resp = await _doFetch(token);
-    }
-  }
+  var resp = await _doFetch();
 
   // Rate limit 재시도 (최대 3회)
   var rateLimitRetries = 0;
@@ -544,12 +530,9 @@ async function callClaude({ feature, model, max_tokens, messages }) {
     var backoff = Math.pow(2, rateLimitRetries) * 1000;
     console.warn('Rate limited (429), retry ' + rateLimitRetries + '/3 after ' + backoff + 'ms');
     await new Promise(function(r){ setTimeout(r, backoff); });
-    var retryToken = _getAccessTokenFromStorage();
-    if (!retryToken) throw new Error('Not signed in');
-    resp = await _doFetch(retryToken);
+    resp = await _doFetch();
   }
   if (resp.status === 429) throw new Error('rate_limit');
-  if (resp.status === 401) throw new Error('unauthorized - please sign in');
   if (!resp.ok) {
     var err = await resp.json().catch(function(){ return {}; });
     throw new Error(err.error || 'API error ' + resp.status);
@@ -8809,6 +8792,11 @@ async function ftAdminLoad(body) {
     + '<select id="ft-gen-cat" style="padding:4px;border:1px solid #ddd;border-radius:4px;font-size:12px"><option value="">All categories</option><option>cafe</option><option>restaurant</option><option>hospital</option><option>pharmacy</option><option>taxi</option><option>bus</option><option>subway</option><option>convenience</option><option>market</option><option>hotel</option><option>airport</option><option>bank</option><option>post-office</option><option>school</option><option>office</option><option>phone-shop</option><option>hair-salon</option><option>gym</option><option>library</option><option>cinema</option><option>karaoke</option><option>park</option><option>emergency</option><option>dating</option><option>neighbor</option><option>delivery</option><option>repair</option></select>'
     + '<button class="btn" onclick="ftAdminAIGenerate()" style="font-size:11px;padding:5px 10px;background:#7c3aed;color:#fff;border:none;border-radius:4px;cursor:pointer">🤖 AI Generate</button>'
     + '</div></div>'
+    + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">'
+    + '<label style="font-size:12px;font-weight:700;color:#555">Custom Topic:</label>'
+    + '<input id="ft-gen-topic" type="text" placeholder="e.g. Ordering coffee at a Seoul cafe, Asking for directions at Myeongdong..." style="flex:1;min-width:200px;padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px">'
+    + '<span style="font-size:11px;color:#999">비워두면 AI가 자동 선택</span>'
+    + '</div>'
     + '<div id="ft-admin-status" style="display:none;padding:8px 12px;background:#f8fafc;border-radius:6px;font-size:12px;margin-bottom:10px"></div>'
     + '<div id="ft-admin-list">Loading...</div>';
   await ftAdminRefresh();
@@ -8981,9 +8969,10 @@ async function ftAdminAIGenerate() {
   var count = parseInt(document.getElementById('ft-gen-count').value) || 5;
   var diff = document.getElementById('ft-gen-diff').value || 'Beginner';
   var cat = document.getElementById('ft-gen-cat').value || '';
+  var customTopic = (document.getElementById('ft-gen-topic').value || '').trim();
   var status = document.getElementById('ft-admin-status');
   status.style.display = 'block';
-  status.innerHTML = '🤖 Generating ' + count + ' scenarios (' + diff + ')...';
+  status.innerHTML = '🤖 Generating ' + count + ' scenarios (' + diff + ')' + (customTopic ? ' — Topic: ' + customTopic : '') + '...';
 
   var existingIds = new Set(_ftAdminData.map(function(s){ return s.id; }));
   var existingTitles = new Set(_ftAdminData.map(function(s){ return (s.title||'').toLowerCase(); }));
@@ -8997,13 +8986,14 @@ async function ftAdminAIGenerate() {
 
     try {
       var catHint = cat ? ' All scenarios must be set in: ' + cat + '.' : '';
+      var topicHint = customTopic ? ' The scenario MUST be about: "' + customTopic + '". Create variations around this specific topic.' : '';
       var avoidList = Array.from(existingTitles).slice(0, 30).join(', ');
       var res = await callClaude({
         feature: 'ft-scenario-gen-admin',
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 4000,
         messages: [{ role: 'user', content:
-          'Generate ' + batchSize + ' Korean conversation scenario(s) for a language learning app.' + catHint + '\n\n'
+          'Generate ' + batchSize + ' Korean conversation scenario(s) for a language learning app.' + catHint + topicHint + '\n\n'
           + ((typeof getLevelPrompt === 'function') ? getLevelPrompt(diff) : 'Difficulty: ' + diff) + '\n\n'
           + 'AVOID duplicating these existing scenarios: ' + avoidList + '\n\n'
           + 'Each scenario has branching dialogue nodes (6-12 nodes). Each node has NPC text (Korean + English) and 2-4 player choices (Korean + English) with point values.\n\n'

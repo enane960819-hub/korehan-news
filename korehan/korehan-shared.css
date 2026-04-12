@@ -465,7 +465,7 @@ body.kh-neon-on .kh-neon-toggle:hover { transform: translateY(-2px); box-shadow:
   flex-direction: column;
   justify-content: flex-end;
   padding: 20px;
-  background: linear-gradient(to top, rgba(5,12,25,0.88) 0%, rgba(5,12,25,0.3) 55%, transparent 100%);
+  background: linear-gradient(to top, rgba(5,12,25,0.72) 0%, rgba(5,12,25,0.18) 50%, transparent 100%);
   color: #fff;
   pointer-events: none;
 }
@@ -1289,7 +1289,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 .art-section-badge {
   display:inline-block; background:var(--bright); color:#fff;
   font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px;
-  padding:4px 12px; border-radius:999px; margin-bottom:14px;
+  padding:4px 12px; border-radius:999px;
 }
 
 .art-title {
