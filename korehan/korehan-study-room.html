@@ -3902,8 +3902,12 @@ function renderTopicUI() {
 // ═══════════════════════════════════════════════════════════════
 async function generateAIContent(topic) {
   if (!topic) return;
+  // Skip if content already loaded from DB
+  if (_aiContent && _aiContent.vocab && _aiContent.vocab.length > 0 && _dbHelpersLoaded) {
+    renderAIContent(); hideAILoading(); return;
+  }
   clearAIContentUI();
-  var cacheKey = 'sr_topic_' + topic.id + '_' + _currentLevel;
+  var cacheKey = 'sr_topic2_' + topic.id + '_' + _currentLevel;
 
   // 1. sessionStorage (즉시)
   var cached = sessionStorage.getItem(cacheKey);
