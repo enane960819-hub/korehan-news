@@ -6803,6 +6803,14 @@ async function submitAllWritingsToday() {
 
   if (!packageItems.length) { showToast('No work to submit.'); return; }
 
+  // Check minimum character count per level
+  var limit = getWriteCharLimit();
+  var tooShort = packageItems.filter(function(p){ return p.word_count < limit.min; });
+  if (tooShort.length) {
+    showToast('Writing too short. Minimum ' + limit.min + ' chars per entry. (' + tooShort[0].topic_ko + ': ' + tooShort[0].word_count + ' chars)');
+    return;
+  }
+
   try {
     // Save as single package row
     var rec = {
@@ -8615,11 +8623,21 @@ function escapeHTML(str) {
 }
 
 // ── 모바일 Writing 헬퍼 ────────────────────────────────────────────
+var WRITE_CHAR_LIMITS = { Starter:{min:40,max:300}, Beginner:{min:60,max:600}, Intermediate:{min:100,max:1000}, Advanced:{min:100,max:2000} };
+function getWriteCharLimit() { return WRITE_CHAR_LIMITS[_currentLevel] || WRITE_CHAR_LIMITS.Beginner; }
+
 function onWriteAreaInput() {
   var ta = document.getElementById('write-area');
   var val = ta ? ta.value : '';
+  var limit = getWriteCharLimit();
+  // Enforce max length
+  if (val.length > limit.max) { ta.value = val.slice(0, limit.max); val = ta.value; }
   var wc = document.getElementById('wc');
-  if (wc) wc.textContent = val.length + ' chars';
+  var remaining = limit.max - val.length;
+  if (wc) {
+    wc.textContent = val.length + ' / ' + limit.max + ' chars';
+    wc.style.color = val.length < limit.min ? '#f59e0b' : remaining < 50 ? '#ef4444' : 'var(--gray)';
+  }
 
   if (!_aiContent) { updateHighlight(); return; }
 
