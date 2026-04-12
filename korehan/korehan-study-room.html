@@ -1435,6 +1435,7 @@ body { background: #0b1626 !important; }
 .as-pip.active { background:#7ab8f5; }
 /* Article content */
 .as-article-text { font-family:'Noto Serif KR',serif; font-size:15px; line-height:1.9; color:var(--dark); }
+.as-article-text.as-scrollable { max-height:35vh; overflow-y:auto; padding-right:4px; border-bottom:1px solid rgba(0,0,0,.06); margin-bottom:8px; }
 .as-article-text mark          { background:#fff3b0; border-radius:2px; padding:1px 2px; }
 .as-article-text mark.ph-mark  { background:#d4edff; }
 /* Matching activity */
@@ -1502,7 +1503,12 @@ body { background: #0b1626 !important; }
 @keyframes as-spin { to { transform:rotate(360deg); } }
 /* Section label */
 .as-section-label { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:8px; }
-/* Inline blank fill (Step 3 word-order) */
+/* Inline blank fill (Step 3 — blanks in full article) */
+.as-inline-blank { display:inline-block;min-width:50px;text-align:center;padding:2px 10px;margin:0 2px;border-radius:8px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all .15s;vertical-align:baseline; }
+.as-inline-blank.empty { border:2px dashed #93c5fd;background:#eff6ff;color:#2563eb;font-size:13px; }
+.as-inline-blank.filled { border:2px solid transparent; }
+.as-inline-blank.filled.correct { background:#dcfce7;border-color:#16a34a;color:#15803d;cursor:default; }
+.as-inline-blank.filled.wrong { background:#fee2e2;border-color:#dc2626;color:#dc2626; }
 .as-blank { display:inline-block; padding:3px 8px; margin:0 3px; border-radius:7px; font-family:'Noto Serif KR',serif; font-weight:700; cursor:pointer; min-width:44px; text-align:center; transition:all .15s; vertical-align:baseline; }
 .as-blank.empty { background:#fff; border:2px dashed #bfdbfe; color:#94a3b8; }
 .as-blank.filled { background:#eaf5ff; border:2px solid #7ab8f5; color:#2255a4; }
@@ -11232,7 +11238,7 @@ function _asStep1(art,act) {
     ? _asStudyContent.custom_highlights.vocab
     : vocab.map(function(v){return v.ko;});
   hlWords.forEach(function(w){ if(w) body=body.replace(new RegExp(_asEsc(w),'g'),'<mark>'+w+'</mark>'); });
-  art.innerHTML='<p class="as-section-label">📖 기사 읽기 — 형광펜 단어 확인</p><div class="as-article-text">'+body+'</div>';
+  art.innerHTML='<p class="as-section-label">📖 기사 읽기 — 형광펜 단어 확인</p><div class="as-article-text as-scrollable">'+body+'</div>';
   if (!vocab.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px">어휘가 없습니다.</div>'; _asSetNav('none',''); return; }
   var eng=_asShuffle(vocab.map(function(v,i){return{t:v.en,i:i};}));
   _asMatchState={pairs:vocab,eng:eng,matched:[],sel:{l:null,r:null}};
@@ -11327,7 +11333,7 @@ function _asStep2(art,act) {
     ? _asStudyContent.custom_highlights.phrases
     : phrases.map(function(p){return p.ko&&p.ko.length>8?p.ko.slice(0,12):null;}).filter(Boolean);
   hlPhrases.forEach(function(s){ if(s) body=body.replace(new RegExp(_asEsc(s),'g'),'<mark class="ph-mark">'+s+'</mark>'); });
-  art.innerHTML='<p class="as-section-label">📖 기사 읽기 — 핵심 표현 확인</p><div class="as-article-text">'+body+'</div>';
+  art.innerHTML='<p class="as-section-label">📖 기사 읽기 — 핵심 표현 확인</p><div class="as-article-text as-scrollable">'+body+'</div>';
   if (!phrases.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px">표현이 없습니다.</div>'; _asSetNav('none',''); return; }
   var eng=_asShuffle(phrases.map(function(p,i){return{t:p.en,i:i};}));
   _asMatchState={pairs:phrases,eng:eng,matched:[],sel:{l:null,r:null}};
@@ -11335,71 +11341,101 @@ function _asStep2(art,act) {
   _asRenderMatch(); _asSetNav('none','none','none');
 }
 
-// ── Step 3: Fill-in-blank (words inside article sentence) ──
+// ── Step 3: Fill-in-blank (blanks inside full article text) ──
 function _asStep3(art,act) {
-  // Hide full article text during fill-in-blank so user can't copy answers
-  art.innerHTML='<p class="as-section-label">✏️ 빈칸 채우기</p>'
-    +'<p style="font-size:12px;color:var(--gray);margin:0">문장 속 빈칸에 알맞은 단어를 넣어보세요</p>';
-  var wo=(_asStudyContent&&_asStudyContent.word_order)||[];
-  if (!wo.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px">문장이 없습니다.</div>'; _asSetNav('none',''); return; }
-  _asWOState={sentences:wo,idx:0,filledBlanks:null,blankPositions:null,pool:null}; _asRenderBlankUI();
+  var vocab=(_asStudyContent&&_asStudyContent.vocab)||[];
+  var body=_asCurrentArt&&_asCurrentArt.body?_asCurrentArt.body:'';
+  if (!vocab.length||!body) { art.innerHTML=''; act.innerHTML='<div style="color:#94a3b8;font-size:13px">콘텐츠가 없습니다.</div>'; _asSetNav('none',''); return; }
+  // Pick words to blank out (use vocab words that appear in article)
+  var blankWords=[];
+  vocab.forEach(function(v){
+    if(v.ko && body.indexOf(v.ko)>=0 && blankWords.length<5) blankWords.push(v.ko);
+  });
+  if(blankWords.length<2){
+    // Fallback: pick random eojeols from article
+    var eojeols=body.split(/\s+/).filter(function(w){return w.length>=2;});
+    var shuffled=_asShuffle(eojeols.slice());
+    for(var i=0;i<shuffled.length&&blankWords.length<4;i++){
+      if(blankWords.indexOf(shuffled[i])<0) blankWords.push(shuffled[i]);
+    }
+  }
+  _asWOState={blankWords:blankWords,filledBlanks:{},originalBody:body};
+  _asRenderBlankUI();
 }
 function _asRenderBlankUI() {
-  var act=document.getElementById('as-activity-area'); if(!act||!_asWOState) return;
-  var s=_asWOState.sentences[_asWOState.idx]; if(!s||!s.chunks||!s.chunks.length){_asSetNav('none','');return;}
-  var chunks=s.chunks;
-  // Pick 2-3 positions to blank (never first or last to keep context)
-  var available=[]; for(var i=1;i<chunks.length-1;i++) available.push(i);
-  if(!available.length){ available=[0]; }
-  var numBlanks=Math.min(3,Math.max(2,Math.ceil(chunks.length/3)));
-  numBlanks=Math.min(numBlanks,available.length);
-  var shuffledAvail=_asShuffle(available.slice());
-  var blankPos=shuffledAvail.slice(0,numBlanks).sort(function(a,b){return a-b;});
-  _asWOState.blankPositions=blankPos;
-  _asWOState.filledBlanks=new Array(blankPos.length).fill(null);
-  _asWOState.pool=_asShuffle(blankPos.map(function(p,bi){return {text:chunks[p],bi:bi};}));
-  // Build sentence HTML with blanks
-  var sentHTML=chunks.map(function(c,i){
-    var bi=blankPos.indexOf(i);
-    if(bi>=0){
-      var filled=_asWOState.filledBlanks[bi];
-      if(filled!==null) return '<span class="as-blank filled" data-bi="'+bi+'" onclick="asBlankClear('+bi+')" title="클릭해서 취소">'+filled+'</span>';
-      return '<span class="as-blank empty" data-bi="'+bi+'">___</span>';
+  var art=document.getElementById('as-article-content');
+  var act=document.getElementById('as-activity-area');
+  if(!art||!act||!_asWOState) return;
+  var body=_asWOState.originalBody;
+  var bw=_asWOState.blankWords;
+  var fb=_asWOState.filledBlanks;
+  // Build article HTML with blanks
+  var formatted=_asFormatBody(body);
+  bw.forEach(function(w,bi){
+    var escaped=_asEsc(w);
+    var filled=fb[bi];
+    if(filled!==undefined&&filled!==null){
+      var cls=filled===w?'as-inline-blank filled correct':'as-inline-blank filled wrong';
+      formatted=formatted.replace(new RegExp(escaped),'<span class="'+cls+'" data-bi="'+bi+'" onclick="asBlankClear('+bi+')">'+filled+'</span>');
+    } else {
+      formatted=formatted.replace(new RegExp(escaped),'<span class="as-inline-blank empty" data-bi="'+bi+'">____</span>');
     }
-    return '<span class="as-given">'+c+'</span>';
-  }).join(' ');
-  var poolHTML=_asWOState.pool.map(function(item,pi){
-    var used=_asWOState.filledBlanks.indexOf(item.text)>=0&&_asWOState.filledBlanks[item.bi]===item.text;
-    return '<div class="as-chunk'+(used?' used':'')+'" '+(used?'':'onclick="asBlankFill('+pi+')"')+'>'+item.text+'</div>';
+  });
+  art.innerHTML='<p class="as-section-label">✏️ 빈칸 채우기 — 기사 본문에서 빠진 단어를 찾으세요</p>'
+    +'<div class="as-article-text">'+formatted+'</div>';
+  // Pool of words to choose from
+  var pool=_asShuffle(bw.map(function(w,bi){return{text:w,bi:bi};}));
+  // Add 2-3 distractors
+  var allEojeols=_asWOState.originalBody.split(/\s+/).filter(function(w){return w.length>=2&&bw.indexOf(w)<0;});
+  var distractors=_asShuffle(allEojeols).slice(0,2);
+  distractors.forEach(function(d){pool.push({text:d,bi:-1});});
+  pool=_asShuffle(pool);
+  var poolHTML=pool.map(function(item,pi){
+    var isUsed=fb[item.bi]!==undefined&&fb[item.bi]!==null;
+    if(item.bi===-1) isUsed=false; // distractors never "used"
+    return '<div class="as-chunk'+(isUsed?' used':'')+'" '+(isUsed?'':'onclick="asBlankFill3('+item.bi+',\''+item.text.replace(/'/g,"\\'")+'\')"')+'>'+item.text+'</div>';
   }).join('');
-  act.innerHTML='<p class="as-section-label">✏️ 빈칸 채우기 ('+(_asWOState.idx+1)+'/'+_asWOState.sentences.length+')</p>'
-    +'<p style="font-size:12px;color:var(--gray);margin-bottom:12px">단어 카드를 클릭해서 문장 안의 빈칸을 채우세요</p>'
-    +'<div class="dct-wo-zone" style="margin-bottom:14px">'+sentHTML+'</div>'
+  act.innerHTML='<p class="as-section-label" style="margin-bottom:8px">아래 단어를 골라 빈칸을 채우세요</p>'
     +'<div class="as-chunk-pool" id="as-pool">'+poolHTML+'</div>'
-    +'<div id="as-wo-msg" style="margin-top:8px;font-size:12px;color:var(--gray)"></div>';
-  // Show check only if all blanks filled
-  var allFilled=_asWOState.filledBlanks.every(function(v){return v!==null;});
-  _asSetNav(allFilled?'':'none','none','none');
+    +'<div id="as-wo-msg" style="margin-top:10px;font-size:12px;color:var(--gray)"></div>';
+  // Auto-check
+  var allFilled=bw.every(function(w,bi){return fb[bi]!==undefined&&fb[bi]!==null;});
+  if(allFilled) _asSetNav('none','');
+  else _asSetNav('none','none','none');
 }
-function asBlankFill(pi) {
-  if(!_asWOState||!_asWOState.pool) return;
-  var item=_asWOState.pool[pi]; if(!item) return;
-  var nextEmpty=_asWOState.filledBlanks.indexOf(null);
-  if(nextEmpty<0) return;
-  _asWOState.filledBlanks[nextEmpty]=item.text;
+function asBlankFill3(bi,text) {
+  if(!_asWOState) return;
+  if(bi===-1){
+    // Distractor: show feedback
+    var msg=document.getElementById('as-wo-msg');
+    if(msg) msg.innerHTML='<span style="color:#dc2626;font-weight:700">이 단어는 기사에 없어요!</span>';
+    setTimeout(function(){if(msg)msg.innerHTML='';},1500);
+    return;
+  }
+  if(_asWOState.filledBlanks[bi]!==undefined&&_asWOState.filledBlanks[bi]!==null) return;
+  _asWOState.filledBlanks[bi]=text;
   _asRenderBlankUI();
-  // Auto-check when all blanks filled
-  var allFilled=_asWOState.filledBlanks.every(function(v){return v!==null;});
-  if(allFilled) setTimeout(function(){ _asCheckWO(); }, 400);
+  // Check if all filled
+  var bw=_asWOState.blankWords;
+  var allFilled=bw.every(function(w,i){return _asWOState.filledBlanks[i]!==undefined&&_asWOState.filledBlanks[i]!==null;});
+  if(allFilled){
+    var allCorrect=bw.every(function(w,i){return _asWOState.filledBlanks[i]===w;});
+    var msg=document.getElementById('as-wo-msg');
+    if(msg) msg.innerHTML=allCorrect
+      ?'<span style="color:#059669;font-weight:700">모두 정답! 잘했어요 🎉</span>'
+      :'<span style="color:#dc2626;font-weight:700">틀린 단어가 있어요. 빨간색을 터치해서 다시 시도하세요.</span>';
+    if(allCorrect) { _asStepDone[2]=true; setTimeout(function(){_asSetNav('none','');},500); }
+  }
 }
 function asBlankClear(bi) {
   if(!_asWOState) return;
   _asWOState.filledBlanks[bi]=null;
+  var msg=document.getElementById('as-wo-msg'); if(msg) msg.innerHTML='';
   _asRenderBlankUI();
 }
-// Keep old names as aliases (used in checkAnswer path)
-function asWOPool(i) { asBlankFill(i); }
-function asWOAns(i)  { asBlankClear(i); }
+function asBlankFill(pi) { /* legacy compat */ }
+function asWOPool(i) {}
+function asWOAns(i) {}
 
 // ── Step 4: Comprehension questions ──
 function _asStep4(art,act) {
@@ -11454,38 +11490,8 @@ function asCheckAnswer() {
   else _asSetNav('none','');
 }
 function _asCheckWO() {
+  // Step 3 now auto-checks in asBlankFill3 — this is a no-op for compat
   if(!_asWOState) return;
-  var s=_asWOState.sentences[_asWOState.idx]; if(!s) return;
-  var msg=document.getElementById('as-wo-msg');
-  // Check each filled blank against its correct position
-  var allCorrect=_asWOState.blankPositions.every(function(pos,bi){
-    var answer = (_asWOState.filledBlanks[bi]||'').trim();
-    var correct = (s.chunks[pos]||'').trim();
-    return answer === correct || answer.replace(/[.!?,]/g,'') === correct.replace(/[.!?,]/g,'');
-  });
-  if (allCorrect) {
-    if(msg) msg.innerHTML='✅ Correct!';
-    playCorrectSound();
-    document.querySelectorAll('.as-blank.filled').forEach(function(el){el.classList.add('correct');});
-    _asSetNav('none','none','none');
-    setTimeout(function(){
-      _asWOState.idx++;
-      if(_asWOState.idx<_asWOState.sentences.length) _asRenderBlankUI();
-      else _asSetNav('none','','');
-    },800);
-  } else {
-    playWrongSound();
-    if(msg) msg.textContent='Not quite \u2014 incorrect blanks have been cleared.';
-    // Clear only wrong blanks
-    _asWOState.blankPositions.forEach(function(pos,bi){
-      var el=document.querySelector('.as-blank[data-bi="'+bi+'"]');
-      if(_asWOState.filledBlanks[bi]!==s.chunks[pos]){
-        if(el){el.classList.add('wrong');}
-        setTimeout(function(){_asWOState.filledBlanks[bi]=null;},500);
-      }
-    });
-    setTimeout(function(){ _asRenderBlankUI(); if(msg) msg.textContent=''; },600);
-  }
 }
 function asNextStep() { _asStepDone[_asStep-1]=true; _asStep=Math.min(_asStep+1,5); _asSaveProgress(); _asRenderStep(); }
 function asMarkDone() {
