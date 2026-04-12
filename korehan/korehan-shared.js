@@ -5170,10 +5170,56 @@ function renderFooter() {
     + '</div>'
 
     + '</div>'
+
+    + '<div>'
+    + '<div style="font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:14px">Newsletter</div>'
+    + '<p style="font-size:13px;line-height:1.6;color:rgba(255,255,255,.5);margin:0 0 12px;max-width:26ch">Get weekly Korean learning tips and new content updates.</p>'
+    + '<form id="kh-nl-form" onsubmit="return khSubscribeNewsletter(event)" style="display:flex;gap:6px;flex-wrap:wrap">'
+    + '<input id="kh-nl-email" type="email" required placeholder="your@email.com" style="flex:1;min-width:160px;padding:9px 12px;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:rgba(255,255,255,.07);color:#fff;font-size:13px;font-family:inherit;outline:none">'
+    + '<button type="submit" style="padding:9px 16px;border:none;border-radius:8px;background:#7dd3fc;color:#0c1a3a;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap">Subscribe</button>'
+    + '</form>'
+    + '<div id="kh-nl-msg" style="font-size:12px;margin-top:8px;color:rgba(255,255,255,.5);display:none"></div>'
+    + '</div>'
+
+    + '</div>'
     + '<div style="border-top:1px solid rgba(255,255,255,.07);padding:16px 22px;text-align:center;font-size:12px;color:rgba(255,255,255,.28);">'
     + '© 2026 KoreHan News · All rights reserved'
     + '</div>'
     + '</footer>';
+}
+
+async function khSubscribeNewsletter(e) {
+  e.preventDefault();
+  var emailEl = document.getElementById('kh-nl-email');
+  var msgEl = document.getElementById('kh-nl-msg');
+  var form = document.getElementById('kh-nl-form');
+  var email = (emailEl.value || '').trim().toLowerCase();
+  if (!email) return false;
+
+  msgEl.style.display = 'block';
+  msgEl.style.color = 'rgba(255,255,255,.5)';
+  msgEl.textContent = 'Subscribing...';
+
+  try {
+    var sb = getSupa();
+    var { error } = await sb.from('newsletter_subs').insert({ email: email });
+    if (error) {
+      if (error.code === '23505') {
+        msgEl.style.color = '#fbbf24';
+        msgEl.textContent = 'You are already subscribed!';
+      } else {
+        throw error;
+      }
+    } else {
+      msgEl.style.color = '#34d399';
+      msgEl.textContent = 'Subscribed! Welcome aboard.';
+      emailEl.value = '';
+    }
+  } catch (err) {
+    msgEl.style.color = '#f87171';
+    msgEl.textContent = 'Something went wrong. Please try again.';
+  }
+  return false;
 }
 
 function renderSharedSidebar() {

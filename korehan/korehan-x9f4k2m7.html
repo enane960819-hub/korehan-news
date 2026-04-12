@@ -8890,7 +8890,7 @@ async function goVocabBankAdmin() {
     + '<div><label style="font-size:11px;font-weight:600;color:#555">한국어</label><input id="vb-ko" class="sf-input" placeholder="한국어" style="width:100%"></div>'
     + '<div><label style="font-size:11px;font-weight:600;color:#555">로마자</label><input id="vb-rom" class="sf-input" placeholder="han-guk-eo" style="width:100%"></div>'
     + '<div><label style="font-size:11px;font-weight:600;color:#555">영어</label><input id="vb-en" class="sf-input" placeholder="Korean language" style="width:100%"></div>'
-    + '<div><label style="font-size:11px;font-weight:600;color:#555">레벨</label><select id="vb-level" class="sf-input" style="width:100%"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></div>'
+    + '<div><label style="font-size:11px;font-weight:600;color:#555">레벨</label><select id="vb-level" class="sf-input" style="width:100%"><option value="Starter">🌰 Seed (Pre-TOPIK)</option><option value="Beginner">🌱 Sprout (TOPIK 1-2)</option><option value="Intermediate">🌳 Tree (TOPIK 3-4)</option><option value="Advanced">🌲 Forest (TOPIK 5-6)</option></select></div>'
     + '<div><label style="font-size:11px;font-weight:600;color:#555">관심사</label><select id="vb-tag" class="sf-input" style="width:100%"><option value="">없음</option><option>kpop</option><option>travel</option><option>food</option><option>business</option><option>daily</option><option>news</option><option>sports</option><option>drama</option><option>beauty</option></select></div>'
     + '</div>'
     + '<div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">'
@@ -8903,7 +8903,7 @@ async function goVocabBankAdmin() {
     // Filters
     + '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center">'
     + '<input id="vb-search" class="sf-input" placeholder="검색..." oninput="vbRenderList()" style="width:160px;font-size:12px;padding:5px 8px">'
-    + '<select id="vb-filter-level" class="sf-input" onchange="vbRenderList()" style="font-size:12px;padding:5px 8px"><option value="">전체 레벨</option><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select>'
+    + '<select id="vb-filter-level" class="sf-input" onchange="vbRenderList()" style="font-size:12px;padding:5px 8px"><option value="">전체 레벨</option><option value="Starter">🌰 Seed</option><option value="Beginner">🌱 Sprout</option><option value="Intermediate">🌳 Tree</option><option value="Advanced">🌲 Forest</option></select>'
     + '<select id="vb-filter-tag" class="sf-input" onchange="vbRenderList()" style="font-size:12px;padding:5px 8px"><option value="">전체 관심사</option><option>kpop</option><option>travel</option><option>food</option><option>business</option><option>daily</option><option>news</option><option>sports</option><option>drama</option><option>beauty</option></select>'
     + '<span id="vb-count" style="font-size:12px;color:#8b8b8b;margin-left:auto"></span>'
     + '</div>'
@@ -8954,7 +8954,7 @@ function vbRenderList() {
           + '<td style="padding:5px 6px;font-weight:700">' + w.word_ko + '</td>'
           + '<td style="padding:5px 6px;color:#8b8b8b">' + (w.word_rom||'') + '</td>'
           + '<td style="padding:5px 6px">' + (w.word_en||'') + '</td>'
-          + '<td style="padding:5px 6px"><span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:#f5f5f5;color:#555">' + (w.level||'') + '</span></td>'
+          + '<td style="padding:5px 6px"><span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:#f5f5f5;color:#555">' + ({Starter:'🌰 Seed',Beginner:'🌱 Sprout',Intermediate:'🌳 Tree',Advanced:'🌲 Forest'}[w.level]||w.level||'') + '</span></td>'
           + '<td style="padding:5px 6px;font-size:11px;color:#8b8b8b">' + (w.interest_tag||'-') + '</td>'
           + '<td style="padding:5px 6px;white-space:nowrap">'
           + '<button onclick="vbEdit(\'' + safeKey + '\')" style="font-size:10px;padding:2px 6px;border:1px solid #cde;border-radius:3px;background:#f0f6ff;color:#2563eb;cursor:pointer;margin-right:4px">수정</button>'
@@ -9070,7 +9070,7 @@ function vbEdit(key) {
   if (newEn === null) return;
   var newRom = prompt('로마자 수정:', w.word_rom || '');
   if (newRom === null) return;
-  var newLevel = prompt('레벨 (Beginner/Intermediate/Advanced):', w.level || 'Beginner');
+  var newLevel = prompt('레벨 (Starter/Beginner/Intermediate/Advanced):', w.level || 'Beginner');
   if (newLevel === null) return;
   var newTag = prompt('관심사 태그 (kpop/travel/food/business/daily/news/sports/drama/beauty):', w.interest_tag || '');
   if (newTag === null) return;
@@ -9147,7 +9147,7 @@ async function syncVocabToDB() {
           word_ko: w2.word_ko,
           word_rom: w2.word_rom || '',
           word_en: w2.word_en || '',
-          level: 'Beginner',
+          level: w2.level || 'Beginner',
           interest_tag: tag,
           is_active: true
         }, { onConflict: 'word_key' });
