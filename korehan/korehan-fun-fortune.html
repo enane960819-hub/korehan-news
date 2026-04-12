@@ -1,16 +1,100 @@
 <!doctype html>
-<html lang="en"><head>
+<html lang="en">
+<head>
 <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Today's Fortune — FUN</title>
 <link rel="stylesheet" href="korehan-shared.css">
-<link rel="stylesheet" href="fun/fun-game.css">
-<style>body{margin:0;background:#f3f7fc;font-family:Inter,Pretendard,sans-serif;color:#0f172a}.wrap{max-width:960px;margin:0 auto;padding:22px 16px 56px}.panel{background:#fff;border:1px solid #dce8f5;border-radius:16px;padding:18px}.back{display:inline-flex;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid #dce8f5;color:#334155;text-decoration:none;font-size:13px;font-weight:700;margin-bottom:12px}</style>
-</head><body>
+<style>
+  body{margin:0;background:#f3f7fc;font-family:'DM Sans',Inter,Pretendard,sans-serif;color:#0f172a}
+  .wrap{max-width:960px;margin:0 auto;padding:22px 16px 56px}
+  .panel{background:#fff;border:1px solid #dce8f5;border-radius:16px;padding:18px}
+  .back{display:inline-flex;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid #dce8f5;color:#334155;text-decoration:none;font-size:13px;font-weight:700;margin-bottom:12px}
+  .back:hover{background:#f1f5f9}
+  .fun-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+  .fun-title h2{margin:0;font-size:20px}
+  .btn{border:none;border-radius:10px;background:linear-gradient(120deg,#2563eb,#7c3aed);color:#fff;font-weight:700;font-size:13px;padding:10px 14px;cursor:pointer;font-family:inherit}
+  .btn.ghost{background:#f1f5f9;color:#1e293b;border:1px solid #d7e2ef}
+  .fortune-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+  .fortune-card{padding:14px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0}
+  .fortune-card b{font-size:13px;display:block;margin-bottom:6px}
+  .fortune-score{font-size:22px;font-weight:900;color:#1d4ed8}
+  .fortune-msg{margin-top:14px;padding:14px;border-radius:12px;background:linear-gradient(145deg,#ecfeff,#f5f3ff);border:1px solid #ccfbf1;color:#334155;font-size:13px;line-height:1.65}
+
+  /* Neon */
+  body.kh-neon-on{background:#050b15 !important;color:#eefcff !important}
+  body.kh-neon-on .panel{background:#0d1b2a;border-color:rgba(255,255,255,.08)}
+  body.kh-neon-on .back{background:#0d1b2a;border-color:rgba(255,255,255,.1);color:#94a3b8}
+  body.kh-neon-on .fortune-card{background:#0a1325;border-color:rgba(255,255,255,.1)}
+  body.kh-neon-on .fortune-card b{color:#94a3b8}
+  body.kh-neon-on .fortune-score{color:#7dd3fc}
+  body.kh-neon-on .fortune-msg{background:linear-gradient(145deg,#0c1a35,#1a1040);border-color:rgba(99,102,241,.2);color:#cbd5e1}
+
+  /* Responsive */
+  @media(max-width:480px){
+    .fortune-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
 <div id="kh-header"></div>
-<main class="wrap"><a href="korehan-fun.html" class="back">← FUN Home</a><section class="panel" id="fun-page-root"></section></main>
+<main class="wrap">
+  <a href="korehan-fun.html" class="back">&larr; FUN Home</a>
+  <section class="panel" id="fun-page-root"></section>
+</main>
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260410b"></script>
-<script src="fun/daily-fortune.js"></script>
-<script>KHFunFortune.init(document.getElementById('fun-page-root'));</script>
-</body></html>
+<script src="korehan-shared.js?v=20260412"></script>
+<script>
+(function(){
+  var lines = [
+    'A small Korean phrase you review today will appear in a real conversation soon.',
+    'Your consistency beats intensity today. Ten focused minutes wins.',
+    'A lucky moment comes when you speak first instead of translating too long.',
+    'Today favors light practice: one article + one mini quiz + one sentence out loud.',
+    'Unexpected progress appears when you revisit old saved words.'
+  ];
+
+  function seedNum() {
+    var d = new Date();
+    return Number(String(d.getFullYear()) + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0'));
+  }
+
+  function score(base, mod) {
+    return 40 + ((base * mod) % 61);
+  }
+
+  function card(title, value) {
+    var emoji = value >= 80 ? '\uD83D\uDD25' : value >= 60 ? '\u2728' : '\uD83C\uDF3F';
+    return '<div class="fortune-card"><b>' + emoji + ' ' + title + '</b><div class="fortune-score">' + value + '%</div></div>';
+  }
+
+  var root = document.getElementById('fun-page-root');
+
+  function render() {
+    var s = seedNum();
+    var fortune = {
+      overall: score(s, 3),
+      love: score(s, 5),
+      study: score(s, 7),
+      money: score(s, 11),
+      line: lines[s % lines.length]
+    };
+    root.innerHTML = '<div class="fun-title"><h2>\uD83D\uDD2E Today\'s Fortune</h2><button class="btn ghost" id="fortune-refresh">Shuffle vibe</button></div>'
+      + '<div class="fortune-grid">'
+      + card('Overall luck', fortune.overall)
+      + card('Love', fortune.love)
+      + card('Study', fortune.study)
+      + card('Money', fortune.money)
+      + '</div>'
+      + '<div class="fortune-msg">\uD83D\uDCAC ' + fortune.line + '</div>';
+    root.querySelector('#fortune-refresh').addEventListener('click', function(){
+      lines.push(lines.shift());
+      render();
+    });
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

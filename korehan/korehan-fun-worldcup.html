@@ -1,16 +1,115 @@
 <!doctype html>
-<html lang="en"><head>
+<html lang="en">
+<head>
 <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Ideal Type World Cup — FUN</title>
 <link rel="stylesheet" href="korehan-shared.css">
-<link rel="stylesheet" href="fun/fun-game.css">
-<style>body{margin:0;background:#f3f7fc;font-family:Inter,Pretendard,sans-serif;color:#0f172a}.wrap{max-width:960px;margin:0 auto;padding:22px 16px 56px}.panel{background:#fff;border:1px solid #dce8f5;border-radius:16px;padding:18px}.back{display:inline-flex;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid #dce8f5;color:#334155;text-decoration:none;font-size:13px;font-weight:700;margin-bottom:12px}</style>
-</head><body>
+<style>
+  body{margin:0;background:#f3f7fc;font-family:'DM Sans',Inter,Pretendard,sans-serif;color:#0f172a}
+  .wrap{max-width:960px;margin:0 auto;padding:22px 16px 56px}
+  .panel{background:#fff;border:1px solid #dce8f5;border-radius:16px;padding:18px}
+  .back{display:inline-flex;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid #dce8f5;color:#334155;text-decoration:none;font-size:13px;font-weight:700;margin-bottom:12px}
+  .back:hover{background:#f1f5f9}
+  .fun-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+  .fun-title h2{margin:0;font-size:20px}
+  .muted{color:#64748b;font-size:13px}
+  .btn{border:none;border-radius:10px;background:linear-gradient(120deg,#2563eb,#7c3aed);color:#fff;font-weight:700;font-size:13px;padding:10px 14px;cursor:pointer;font-family:inherit}
+  .btn.ghost{background:#f1f5f9;color:#1e293b;border:1px solid #d7e2ef}
+  .wc-stage{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch}
+  .wc-option{border:1px solid #dbe7f3;border-radius:14px;padding:14px;background:#fff;cursor:pointer;transition:.18s transform,.18s box-shadow,.18s border-color;font-family:inherit;text-align:left;width:100%}
+  .wc-option:hover{transform:translateY(-2px);border-color:#93c5fd;box-shadow:0 10px 24px rgba(37,99,235,.12)}
+  .wc-option h4{margin:0 0 8px;font-size:16px}
+  .wc-option p{margin:0;color:#64748b;font-size:13px;line-height:1.45}
+  .wc-vs{display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#94a3b8}
+  .wc-progress{margin-bottom:12px;color:#475569;font-size:13px;font-weight:700}
+  .name-result{margin-top:14px;border:1px solid #dbeafe;background:linear-gradient(150deg,#eff6ff,#fdf4ff);border-radius:14px;padding:16px}
+  .name-ko{font-size:24px;font-weight:900;letter-spacing:.03em}
+  .name-meaning{margin-top:8px;font-size:13px;color:#475569;line-height:1.5}
+
+  /* Neon */
+  body.kh-neon-on{background:#050b15 !important;color:#eefcff !important}
+  body.kh-neon-on .panel{background:#0d1b2a;border-color:rgba(255,255,255,.08)}
+  body.kh-neon-on .back{background:#0d1b2a;border-color:rgba(255,255,255,.1);color:#94a3b8}
+  body.kh-neon-on .wc-option{background:#0a1325;border-color:rgba(255,255,255,.1);color:#e0f2fe}
+  body.kh-neon-on .wc-option:hover{border-color:rgba(99,102,241,.4);box-shadow:0 10px 24px rgba(99,102,241,.15)}
+  body.kh-neon-on .wc-option p{color:rgba(255,255,255,.5)}
+  body.kh-neon-on .name-result{background:linear-gradient(150deg,#0c1a35,#1a1040);border-color:rgba(99,102,241,.3)}
+
+  /* Responsive */
+  @media(max-width:640px){
+    .wc-stage{grid-template-columns:1fr}
+    .wc-vs{padding:4px 0}
+    .wc-option h4{font-size:14px}
+  }
+</style>
+</head>
+<body>
 <div id="kh-header"></div>
-<main class="wrap"><a href="korehan-fun.html" class="back">← FUN Home</a><section class="panel" id="fun-page-root"></section></main>
+<main class="wrap">
+  <a href="korehan-fun.html" class="back">&larr; FUN Home</a>
+  <section class="panel" id="fun-page-root"></section>
+</main>
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260410b"></script>
-<script src="fun/ideal-worldcup.js"></script>
-<script>KHFunWorldCup.init(document.getElementById('fun-page-root'));</script>
-</body></html>
+<script src="korehan-shared.js?v=20260412"></script>
+<script>
+(function(){
+  var CANDIDATES = [
+    { title:'Cafe date in Hongdae', desc:'Talk about music and daily life in Korean.' },
+    { title:'Han River night walk', desc:'Simple Korean phrases + chill vibe.' },
+    { title:'Bookstore browsing', desc:'Learn Korean words from covers and blurbs.' },
+    { title:'Street food challenge', desc:'Order snacks only in Korean.' },
+    { title:'Noraebang session', desc:'Sing + read Korean lyrics naturally.' },
+    { title:'Museum + photo walk', desc:'Describe artworks with new vocab.' },
+    { title:'Board game cafe', desc:'Fast conversation and reaction phrases.' },
+    { title:'Sunrise hike', desc:'Motivation energy + daily routine talk.' }
+  ];
+
+  function shuffled() {
+    var arr = CANDIDATES.slice();
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  var root = document.getElementById('fun-page-root');
+  var state = { round: 8, pool: shuffled(), next: [] };
+
+  function nextRound(choice) {
+    state.next.push(choice);
+    if (state.next.length >= state.round / 2) {
+      state.pool = state.next;
+      state.round = state.pool.length;
+      state.next = [];
+    }
+    render();
+  }
+
+  function renderWinner(item) {
+    root.innerHTML = '<div class="fun-title"><h2>\uD83C\uDFC6 Ideal Type World Cup</h2><button class="btn ghost" id="fun-wc-restart">Restart</button></div>'
+      + '<div class="name-result"><div class="name-ko">\uD83C\uDFC6 Winner: ' + item.title + '</div><div class="name-meaning">' + item.desc + '</div></div>';
+    root.querySelector('#fun-wc-restart').addEventListener('click', function(){ state = { round:8, pool:shuffled(), next:[] }; render(); });
+  }
+
+  function render() {
+    if (state.pool.length === 1) { renderWinner(state.pool[0]); return; }
+    var idx = state.next.length * 2;
+    var a = state.pool[idx], b = state.pool[idx + 1];
+    root.innerHTML = '<div class="fun-title"><h2>\uD83C\uDFC6 Ideal Type World Cup</h2><span class="muted">Pick your favorite!</span></div>'
+      + '<div class="wc-progress">Round of ' + state.round + ' \u2014 Match ' + (state.next.length + 1) + '/' + (state.round / 2) + '</div>'
+      + '<div class="wc-stage">'
+      + '<button class="wc-option" id="wc-a"><h4>' + a.title + '</h4><p>' + a.desc + '</p></button>'
+      + '<div class="wc-vs">VS</div>'
+      + '<button class="wc-option" id="wc-b"><h4>' + b.title + '</h4><p>' + b.desc + '</p></button>'
+      + '</div>';
+    root.querySelector('#wc-a').addEventListener('click', function(){ nextRound(a); });
+    root.querySelector('#wc-b').addEventListener('click', function(){ nextRound(b); });
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
