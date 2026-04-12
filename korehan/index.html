@@ -1236,7 +1236,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         + '<div class="nc-overlay-grad"></div>'
         + '<div class="nc-overlay-body">'
         + '<div class="nc-meta"><span class="nc-cat">' + (a.section || '') + '</span><span class="nc-lvl ' + lvlCls + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span></div>'
-        + '<div class="nc-title">' + (a.title_ko || a.title || '') + '</div>'
+        + '<div class="nc-title">' + (a.title_en || a.title || '') + '</div>'
         + '<div class="nc-foot"><span class="nc-date">' + (a.published_at ? new Date(a.published_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '') + '</span>'
         + '<button class="nc-study" onclick="event.stopPropagation();openStudyModal && openStudyModal(\'' + a.id + '\')">📚 Study</button></div>'
         + '</div>'
