@@ -1761,7 +1761,6 @@ body { background: #0b1626 !important; }
 @media(max-width:860px) {
   .sr-desktop-master { display:flex !important;flex-direction:column;gap:10px;margin-top:14px; }
   .sr-desktop-master .master-card { width:100%; }
-  .sr-desktop-master .mc-banner { height:100px; }
 }
 /* ─── TABLET (641–860px): tabs above activity cards, not sticky ─── */
 @media(min-width:641px) and (max-width:860px) {
@@ -1843,13 +1842,11 @@ body { background: #0b1626 !important; }
 .master-card-icon { font-size:36px;margin-bottom:12px; }
 .master-card-title { font-size:18px;font-weight:900;color:#fff;margin-bottom:4px;letter-spacing:-.01em; }
 .master-card-desc { font-size:12px;color:rgba(255,255,255,.45);line-height:1.5; }
-/* Master card image banner with text overlay */
-.mc-banner { position:relative;border-radius:18px;overflow:hidden;height:110px; }
+/* Master card image banner */
+.mc-banner { position:relative;border-radius:18px;overflow:hidden;height:150px; }
 .mc-banner img { width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s; }
 .master-card:hover .mc-banner img { transform:scale(1.04); }
-.mc-banner-overlay { position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:16px 20px;background:linear-gradient(0deg,rgba(0,0,0,.7) 0%,rgba(0,0,0,.15) 60%,transparent 100%); }
-.mc-banner-title { font-size:18px;font-weight:900;color:#fff;letter-spacing:.5px;text-shadow:0 2px 8px rgba(0,0,0,.5); }
-.mc-banner-sub { font-size:11px;color:rgba(255,255,255,.6);margin-top:2px;font-weight:500; }
+@media(max-width:680px) { .mc-banner { height:130px; } }
 /* Word Book notebook style */
 /* Word Book — Dark theme, compact cards */
 .wb-notebook { max-width:900px;margin:20px auto;background:transparent;border-radius:0;border:none;overflow:visible; }
@@ -2152,31 +2149,13 @@ body { background: #0b1626 !important; }
   <!-- Master cards (Fast Track, Slang, Phone Call) — premium banners -->
   <div class="sr-desktop-master">
     <div class="master-card" style="padding:0" onclick="openFastTrack()">
-      <div class="mc-banner">
-        <img src="assets/ChatGPT Image Apr 11, 2026, 11_08_30 PM.png" alt="Fast Track">
-        <div class="mc-banner-overlay">
-          <div class="mc-banner-title">FAST TRACK</div>
-          <div class="mc-banner-sub">Level up your Korean with real-life scenarios</div>
-        </div>
-      </div>
+      <div class="mc-banner"><img src="assets/ChatGPT Image Apr 11, 2026, 11_08_30 PM.png" alt="Fast Track"></div>
     </div>
     <div class="master-card" style="padding:0" onclick="openSlangModal()">
-      <div class="mc-banner">
-        <img src="assets/ChatGPT Image Apr 11, 2026, 11_09_44 PM.png" alt="Korean Slang">
-        <div class="mc-banner-overlay">
-          <div class="mc-banner-title">KOREAN SLANG</div>
-          <div class="mc-banner-sub">Speak like a native · Learn real MZ expressions</div>
-        </div>
-      </div>
+      <div class="mc-banner"><img src="assets/ChatGPT Image Apr 11, 2026, 11_09_44 PM.png" alt="Korean Slang"></div>
     </div>
     <div class="master-card" style="padding:0" onclick="openPhoneModal()">
-      <div class="mc-banner">
-        <img src="assets/ChatGPT Image Apr 11, 2026, 11_17_27 PM.png" alt="Phone Call">
-        <div class="mc-banner-overlay">
-          <div class="mc-banner-title">PHONE CALL</div>
-          <div class="mc-banner-sub">Practice real Korean phone conversations</div>
-        </div>
-      </div>
+      <div class="mc-banner"><img src="assets/ChatGPT Image Apr 11, 2026, 11_17_27 PM.png" alt="Phone Call"></div>
     </div>
   </div>
 
@@ -2347,40 +2326,16 @@ body { background: #0b1626 !important; }
     </div>
     <div class="master-grid">
       <div class="master-card" style="padding:0" onclick="openFastTrack()">
-        <div class="mc-banner" style="height:140px">
-          <img src="assets/ChatGPT Image Apr 11, 2026, 11_08_30 PM.png" alt="Fast Track">
-          <div class="mc-banner-overlay">
-            <div class="mc-banner-title">FAST TRACK</div>
-            <div class="mc-banner-sub">Level up your Korean with real-life scenarios</div>
-          </div>
-        </div>
+        <div class="mc-banner" style="height:160px"><img src="assets/ChatGPT Image Apr 11, 2026, 11_08_30 PM.png" alt="Fast Track"></div>
       </div>
       <div class="master-card" style="padding:0" onclick="openSlangModal()">
-        <div class="mc-banner" style="height:140px">
-          <img src="assets/ChatGPT Image Apr 11, 2026, 11_09_44 PM.png" alt="Korean Slang">
-          <div class="mc-banner-overlay">
-            <div class="mc-banner-title">KOREAN SLANG</div>
-            <div class="mc-banner-sub">Speak like a native · Learn real MZ expressions</div>
-          </div>
-        </div>
+        <div class="mc-banner" style="height:160px"><img src="assets/ChatGPT Image Apr 11, 2026, 11_09_44 PM.png" alt="Korean Slang"></div>
       </div>
       <div class="master-card" style="padding:0" onclick="openAlphaModal()">
-        <div class="mc-banner" style="height:140px">
-          <img src="assets/file_000000004d1c72098736e9b8d1ef65eb.png" alt="Korean Alphabet" onerror="this.parentNode.style.background='linear-gradient(135deg,#0c4a6e,#0369a1)';this.style.display='none'">
-          <div class="mc-banner-overlay">
-            <div class="mc-banner-title">KOREAN ALPHABET</div>
-            <div class="mc-banner-sub">Consonant & vowel quiz · 30 interactive challenges</div>
-          </div>
-        </div>
+        <div class="mc-banner" style="height:160px"><img src="assets/file_000000004d1c72098736e9b8d1ef65eb.png" alt="Korean Alphabet" onerror="this.parentNode.style.background='linear-gradient(135deg,#0c4a6e,#0369a1)';this.style.display='none'"></div>
       </div>
       <div class="master-card" style="padding:0" onclick="openPhoneModal()">
-        <div class="mc-banner" style="height:140px">
-          <img src="assets/ChatGPT Image Apr 11, 2026, 11_17_27 PM.png" alt="Phone Call">
-          <div class="mc-banner-overlay">
-            <div class="mc-banner-title">PHONE CALL</div>
-            <div class="mc-banner-sub">Practice real Korean phone conversations</div>
-          </div>
-        </div>
+        <div class="mc-banner" style="height:160px"><img src="assets/ChatGPT Image Apr 11, 2026, 11_17_27 PM.png" alt="Phone Call"></div>
       </div>
     </div>
   </div>
