@@ -2575,6 +2575,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
         <!-- 모달 내 모드 탭 -->
         <div class="wm-mode-toggle" id="wm-mode-toggle">
           <button class="wm-mode-btn active" id="mbtab-topic" onclick="switchModalMode('topic')">📝 Topic</button>
+          <button class="wm-mode-btn" id="mbtab-diary" onclick="switchModalMode('diary')">📓 Diary</button>
           <button class="wm-mode-btn" id="mbtab-reading" onclick="switchModalMode('reading')">📖 Reading</button>
         </div>
       </div>
@@ -7583,22 +7584,26 @@ async function submitWriting() {
   var text = (document.getElementById('write-area').value || '').trim();
   if (!text) { showToast('Write something first!'); return; }
 
-  // Vocab usage check
+  // Vocab usage check (skip for diary mode — free writing)
   var requiredVocab = (_aiContent && _aiContent.vocab || []).map(function(v){ return v.ko; }).filter(Boolean);
   var usedVocab = requiredVocab.filter(function(w){ return text.includes(w); });
-  if (requiredVocab.length > 0 && usedVocab.length < 2) {
+  if (_writingMode !== 'diary' && requiredVocab.length > 0 && usedVocab.length < 2) {
     showToast('Include at least 2 vocab words in your writing. (' + usedVocab.length + '/2)');
     return;
   }
 
+  var isDiary = _writingMode === 'diary';
+  var diaryPrompts = isDiary ? _getDiaryPrompts() : [];
+  var todayPrompt = isDiary ? diaryPrompts[new Date().getDate() % diaryPrompts.length] : null;
+
   // Save to daily package draft (not individual DB submission)
-  saveDraft('express_practice', {
+  saveDraft(isDiary ? 'diary' : 'express_practice', {
     text: text,
-    topic_ko: (_todayTopic && _todayTopic.topic_ko) || '',
-    topic_en: (_todayTopic && _todayTopic.topic_en) || '',
+    topic_ko: isDiary ? (todayPrompt ? todayPrompt.ko : '오늘의 일기') : ((_todayTopic && _todayTopic.topic_ko) || ''),
+    topic_en: isDiary ? (todayPrompt ? todayPrompt.en : 'Daily Diary') : ((_todayTopic && _todayTopic.topic_en) || ''),
     writing_mode: _writingMode || 'topic',
-    context_key: 'express_' + kstDateKey(),
-    context: { used_vocab: usedVocab, required_vocab: requiredVocab }
+    context_key: (isDiary ? 'diary_' : 'express_') + kstDateKey(),
+    context: isDiary ? { type: 'diary', prompt: todayPrompt } : { used_vocab: usedVocab, required_vocab: requiredVocab }
   });
 
   markStageDone('topic');
@@ -8459,7 +8464,96 @@ function updateHighlight() {
 // ═══════════════════════════════════════════════════════════
 // WRITING MODE SELECTION (Topic / Reading)
 // ═══════════════════════════════════════════════════════════
-var _writingMode = 'topic';  // 'topic' | 'reading'
+var _writingMode = 'topic';  // 'topic' | 'reading' | 'diary'
+
+function _getDiaryPrompts() {
+  return [
+    { ko:'오늘 가장 기억에 남는 일은?', en:'What was the most memorable thing today?' },
+    { ko:'오늘 뭘 먹었어요?', en:'What did you eat today?' },
+    { ko:'오늘 기분이 어땠어요?', en:'How did you feel today?' },
+    { ko:'오늘 새로 배운 것은?', en:'What did you learn today?' },
+    { ko:'주말에 뭐 할 거예요?', en:'What will you do this weekend?' },
+    { ko:'요즘 빠져있는 것은?', en:'What are you into these days?' },
+    { ko:'오늘 누구를 만났어요?', en:'Who did you meet today?' },
+    { ko:'좋아하는 한국 노래가 있어요?', en:'Do you have a favorite Korean song?' },
+    { ko:'오늘 날씨가 어땠어요?', en:'How was the weather today?' },
+    { ko:'스트레스 받을 때 뭐 해요?', en:'What do you do when you\'re stressed?' },
+    { ko:'최근에 본 드라마나 영화는?', en:'Any drama or movie you watched recently?' },
+    { ko:'한국어 공부하면서 어려운 점은?', en:'What\'s hard about studying Korean?' },
+    { ko:'오늘 감사한 일 3가지를 써보세요', en:'Write 3 things you\'re grateful for today' },
+    { ko:'어제 밤에 꿈을 꿨어요?', en:'Did you have a dream last night?' },
+    { ko:'가장 가고 싶은 한국 여행지는?', en:'Which place in Korea do you want to visit most?' },
+    { ko:'오늘 운동했어요?', en:'Did you exercise today?' },
+    { ko:'요즘 읽고 있는 책이 있어요?', en:'Are you reading any books these days?' },
+    { ko:'친구에게 추천하고 싶은 것은?', en:'What would you recommend to a friend?' },
+    { ko:'오늘 하루를 한 문장으로 표현하면?', en:'Describe your day in one sentence' },
+    { ko:'내일 꼭 하고 싶은 일은?', en:'What do you definitely want to do tomorrow?' },
+    { ko:'가장 좋아하는 한국 음식은?', en:'What\'s your favorite Korean food?' },
+    { ko:'지금 창밖을 보면 뭐가 보여요?', en:'What do you see when you look out the window?' },
+    { ko:'오늘 들은 가장 좋은 말은?', en:'What was the nicest thing someone said to you today?' },
+    { ko:'한국에서 살고 싶어요? 왜요?', en:'Do you want to live in Korea? Why?' },
+    { ko:'오늘 실수한 것이 있어요?', en:'Did you make any mistakes today?' },
+    { ko:'가장 행복했던 순간은 언제예요?', en:'When was your happiest moment?' },
+    { ko:'올해 꼭 이루고 싶은 목표는?', en:'What goal do you want to achieve this year?' },
+    { ko:'오늘 커피를 마셨어요? 차를 마셨어요?', en:'Did you have coffee or tea today?' },
+    { ko:'지금 듣고 있는 음악은?', en:'What music are you listening to right now?' },
+    { ko:'한국 친구가 있어요?', en:'Do you have any Korean friends?' },
+    { ko:'오늘 가장 재미있었던 일은?', en:'What was the funniest thing today?' },
+  ];
+}
+
+function _loadDiaryVocab() {
+  var level = _currentLevel || 'Beginner';
+  var diaryVocab = {
+    Starter: [
+      { ko:'오늘', en:'today' },{ ko:'어제', en:'yesterday' },{ ko:'내일', en:'tomorrow' },
+      { ko:'아침', en:'morning' },{ ko:'저녁', en:'evening' },{ ko:'좋아요', en:'good' },
+      { ko:'싫어요', en:'dislike' },{ ko:'먹었어요', en:'ate' },{ ko:'했어요', en:'did' },
+      { ko:'갔어요', en:'went' },
+    ],
+    Beginner: [
+      { ko:'기분이 좋았어요', en:'felt good' },{ ko:'피곤했어요', en:'was tired' },
+      { ko:'재미있었어요', en:'was fun' },{ ko:'맛있었어요', en:'was delicious' },
+      { ko:'~하고 싶어요', en:'want to~' },{ ko:'~때문에', en:'because of~' },
+      { ko:'그래서', en:'so/therefore' },{ ko:'그런데', en:'but/however' },
+      { ko:'처음으로', en:'for the first time' },{ ko:'같이', en:'together' },
+    ],
+    Intermediate: [
+      { ko:'~는 바람에', en:'because of~' },{ ko:'~(으)ㄹ 뻔했어요', en:'almost did~' },
+      { ko:'솔직히', en:'honestly' },{ ko:'갑자기', en:'suddenly' },
+      { ko:'~기로 했어요', en:'decided to~' },{ ko:'~는 중이에요', en:'in the middle of~' },
+      { ko:'예상외로', en:'unexpectedly' },{ ko:'결국', en:'eventually' },
+      { ko:'~덕분에', en:'thanks to~' },{ ko:'~에 비해', en:'compared to~' },
+    ],
+    Advanced: [
+      { ko:'~는 셈이다', en:'it amounts to~' },{ ko:'~(으)ㄹ 지경이다', en:'to the point of~' },
+      { ko:'뿌듯하다', en:'feel proud' },{ ko:'허무하다', en:'feel empty' },
+      { ko:'~고자', en:'in order to~' },{ ko:'~에 불과하다', en:'merely/only' },
+      { ko:'~할 수밖에 없다', en:'can\'t help but~' },{ ko:'한편으로는', en:'on the other hand' },
+      { ko:'~을/를 계기로', en:'as a catalyst/occasion' },{ ko:'돌이켜보면', en:'looking back' },
+    ]
+  };
+  var vocab = diaryVocab[level] || diaryVocab.Beginner;
+  var chipsEl = document.getElementById('wm-vocab-chips');
+  if (chipsEl) {
+    chipsEl.innerHTML = vocab.map(function(v) {
+      return '<span class="chip" title="' + v.en + '">' + v.ko + ' <span style="font-size:10px;color:#94a3b8">(' + v.en + ')</span></span>';
+    }).join('');
+  }
+  var grammarEl = document.getElementById('wm-grammar');
+  if (grammarEl) {
+    var tips = {
+      Starter: '~이에요/예요 (is), ~았/었어요 (past tense), ~고 (and)',
+      Beginner: '~아서/어서 (because), ~고 싶어요 (want to), ~(으)ㄹ 거예요 (will)',
+      Intermediate: '~는데 (but/context), ~(으)면서 (while), ~기 때문에 (because)',
+      Advanced: '~(으)ㄴ/는 반면에 (on the other hand), ~(으)ㄹ수록 (the more~), ~는 바람에 (because of~)'
+    };
+    grammarEl.innerHTML = '<div style="font-size:11px;color:#475569;line-height:1.7;padding:6px 8px;background:#f8fafc;border-radius:6px">'
+      + '<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">📓 Diary Grammar Tips</div>'
+      + (tips[level] || tips.Beginner)
+      + '</div>';
+  }
+}
 var _selectedArticle = null;
 
 function setWritingMode(mode) {
@@ -8797,8 +8891,10 @@ function openWritingModalWithMode() {
 function switchModalMode(mode) {
   _writingMode = mode;
   var tTopic   = document.getElementById('mbtab-topic');
+  var tDiary   = document.getElementById('mbtab-diary');
   var tReading = document.getElementById('mbtab-reading');
   if (tTopic)   tTopic.classList.toggle('active', mode === 'topic');
+  if (tDiary)   tDiary.classList.toggle('active', mode === 'diary');
   if (tReading) tReading.classList.toggle('active', mode === 'reading');
 
   var sourceBar    = document.getElementById('wm-source-bar');
@@ -8809,6 +8905,47 @@ function switchModalMode(mode) {
   var helpersBlock = document.getElementById('wm-helpers');
   var leftPanel    = document.querySelector('.wm-left');
   var placeholder  = document.getElementById('write-area');
+  var topicContent = document.getElementById('wm-topic-content');
+  var diaryPrompt  = document.getElementById('wm-diary-prompt');
+
+  // Hide diary prompt by default
+  if (diaryPrompt) diaryPrompt.style.display = 'none';
+
+  if (mode === 'diary') {
+    if (sourceBar) sourceBar.style.display = 'none';
+    var modalEl = document.querySelector('.wmodal');
+    if (modalEl) modalEl.classList.remove('reading-mode');
+    if (modeLabel) modeLabel.textContent = '📓 오늘의 일기';
+    if (subEl) subEl.textContent = 'Write about your day in Korean';
+    if (leftPanel) leftPanel.style.display = '';
+    if (contextBlock) contextBlock.style.display = 'none';
+    if (helpersBlock) helpersBlock.style.display = 'none';
+    if (readingBlock) readingBlock.style.display = 'none';
+    if (topicContent) topicContent.style.display = 'none';
+    if (placeholder) placeholder.placeholder = '오늘 하루를 한국어로 써보세요.\n\n예: 오늘 아침에 커피를 마셨어요. 날씨가 좋아서 산책했어요...\n\nTip: 어려운 부분은 영어로 써도 괜찮아요!';
+    // Show diary-specific prompt
+    if (!diaryPrompt) {
+      var dp = document.createElement('div');
+      dp.id = 'wm-diary-prompt';
+      dp.style.cssText = 'font-size:12px;color:#475569;line-height:1.7;background:linear-gradient(135deg,#fef9c3,#fef3c7);border:1px solid #fde68a;border-radius:10px;padding:12px 14px;margin-bottom:10px';
+      var prompts = _getDiaryPrompts();
+      var todayIdx = new Date().getDate() % prompts.length;
+      dp.innerHTML = '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#92400e;margin-bottom:6px">💡 Today\'s Diary Prompt</div>'
+        + '<div style="font-size:14px;font-weight:700;color:#78350f;margin-bottom:4px">' + prompts[todayIdx].ko + '</div>'
+        + '<div style="font-size:12px;color:#92400e">' + prompts[todayIdx].en + '</div>'
+        + '<div style="font-size:11px;color:#a16207;margin-top:8px;font-style:italic">프롬프트는 참고용이에요. 자유롭게 오늘 하루를 써보세요!</div>';
+      var writeAreaEl = document.getElementById('write-area');
+      if (writeAreaEl && writeAreaEl.parentNode) writeAreaEl.parentNode.insertBefore(dp, writeAreaEl);
+      diaryPrompt = dp;
+    }
+    if (diaryPrompt) diaryPrompt.style.display = '';
+    // Show diary-relevant vocab in left panel
+    _loadDiaryVocab();
+    return;
+  }
+
+  // Reset non-diary states
+  if (topicContent) topicContent.style.display = '';
 
   if (mode === 'reading') {
     if (sourceBar) { sourceBar.style.display = 'flex'; }
