@@ -8305,23 +8305,36 @@ async function startLQ() {
 }
 
 function buildLocalListeningQuiz(words) {
-  var pool = (words || []).slice(0, 5);
+  var pool = (words || []).slice(0, 8);
   if (!pool.length) {
     pool = [
-      { ko:'친구', en:'friend' },
-      { ko:'학교', en:'school' },
-      { ko:'음악', en:'music' },
-      { ko:'배우', en:'actor' },
-      { ko:'여행', en:'trip' }
+      { ko:'친구', en:'friend' },{ ko:'학교', en:'school' },{ ko:'음악', en:'music' },
+      { ko:'배우', en:'actor' },{ ko:'여행', en:'trip' },{ ko:'날씨', en:'weather' },
+      { ko:'가족', en:'family' },{ ko:'경제', en:'economy' }
     ];
   }
-  return pool.map(function(w, idx) {
-    var options = pool.map(function(item){ return item.en || item.ko; }).filter(function(_, optionIdx){ return optionIdx !== idx; }).slice(0, 2);
+  // Extended distractor pool for better wrong answers
+  var distractors = [
+    'friend','school','music','actor','trip','weather','family','economy',
+    'food','water','love','time','student','teacher','hospital','market',
+    'book','movie','coffee','phone','morning','night','beautiful','happy'
+  ];
+  var selected = pool.slice(0, 5);
+  return selected.map(function(w) {
+    var correct = w.en || w.ko;
+    // Build wrong choices from pool + distractors, avoiding the correct answer
+    var allWrong = pool.map(function(p){ return p.en; })
+      .concat(distractors)
+      .filter(function(d){ return d && d !== correct; });
+    // Shuffle and pick 2
+    var wrongs = allWrong.sort(function(){ return Math.random() - .5; }).slice(0, 2);
+    // Ensure we always have 3 choices
+    while (wrongs.length < 2) wrongs.push('(unknown)');
     return {
       sentence: w.ko,
-      correct: w.en || w.ko,
-      choices: [w.en || w.ko].concat(options).sort(function(){ return Math.random() - .5; }),
-      explanation: 'Fallback quiz item based on today\'s study vocabulary.'
+      correct: correct,
+      choices: [correct].concat(wrongs).sort(function(){ return Math.random() - .5; }),
+      explanation: w.ko + ' = ' + correct
     };
   });
 }
@@ -8363,6 +8376,16 @@ function lqAns(btn) {
     if (b.dataset.ans === q.correct) b.style.borderColor = '#16a34a';
   });
   if (!ok) btn.style.borderColor = '#dc2626';
+  // Track wrong words for SRS
+  if (!ok && supaUser && q.sentence) {
+    try {
+      var sb = getSupa();
+      if (sb) sb.rpc('save_or_update_word', {
+        p_word_key: q.sentence, p_word_ko: q.sentence, p_word_en: q.correct,
+        p_source_kind: 'listening_quiz', p_review_delta: 1, p_correct_delta: 0, p_wrong_delta: 1
+      }).catch(function(){});
+    } catch(e) {}
+  }
   document.getElementById('lq-fb').innerHTML =
     '<div style="margin-top:8px;padding:9px 11px;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;font-size:11px;color:#445566;line-height:1.5">'
     + '<strong style="color:#d97706">' + (ok?'✅ Correct!':'❌ Not quite') + '</strong><br>' + q.explanation + '</div>'
@@ -9271,7 +9294,7 @@ function renderPicturePrompt() {
 // ── 3-step navigation ──────────────────────────────────────────
 function _pdGoStep(step) {
   _pdStep = step;
-  var labels = ['Step 1 / 3 — Key Vocabulary', 'Step 2 / 3 — 어절 순서맞추기', 'Step 3 / 3 — 틀린 문장 찾기'];
+  var labels = ['Step 1 / 3 — Key Vocabulary', 'Step 2 / 3 — 어절 순서맞추기', 'Step 3 / 3 — 사진 묘사 글쓰기'];
   var lbl = document.getElementById('pd-step-label');
   if (lbl) lbl.textContent = labels[step - 1] || '';
   [1,2,3].forEach(function(n) {
@@ -9327,28 +9350,42 @@ function _pdRenderStep2(item) {
 
 function _pdRenderStep3(item) {
   var body = document.getElementById('pd-step3-body'); if (!body) return;
-  var sents = item.incorrect_sentences || [];
-  if (!sents.length) {
-    // No step 3 data — just mark done
-    markStageDone('picture');
-    body.innerHTML = '<div style="text-align:center;padding:24px;background:rgba(34,197,94,.1);border-radius:12px;color:#86efac;font-weight:800;font-size:16px">🎉 All steps complete!</div>';
-    var nav = document.getElementById('pd-nav');
-    if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="returnToActivities(closePictureDescription)">Done ✓ Next Activity</button>';
-    return;
-  }
-  // Shuffle for display
-  var shuffled = sents.slice().sort(function() { return Math.random() - 0.5; });
+  var level = _currentLevel || 'Beginner';
+  var guidedPrompts = {
+    Starter: '이 사진에 ___이/가 있어요. ___하고 있어요.',
+    Beginner: '이 사진을 보고 누가 무엇을 하고 있는지 2~3문장으로 써보세요.',
+    Intermediate: '이 사진의 상황을 묘사하고, 이 장면에서 어떤 느낌이 드는지 써보세요.',
+    Advanced: '이 사진을 보고 상황을 자세히 묘사한 후, 이 장면이 일어나게 된 배경을 상상해서 써보세요.'
+  };
   body.innerHTML =
-    '<div style="font-size:11px;font-weight:800;color:#7ab8f5;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">🔍 틀린 문장 찾기</div>'
-    + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:12px">아래 문장 중 문법·어순이 틀린 문장을 클릭하세요</div>'
-    + '<div id="pd-sent-list">'
-    + shuffled.map(function(s) {
-        var isWrong = !s.is_correct;
-        return '<button class="pd-sent-btn" onclick="checkIncorrectSentence(this,' + JSON.stringify(isWrong) + ')">'
-          + (s.sentence || '') + '</button>';
-      }).join('')
+    '<div style="font-size:11px;font-weight:800;color:#7ab8f5;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">✏️ 사진 묘사 글쓰기</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:10px">' + (guidedPrompts[level] || guidedPrompts.Beginner) + '</div>'
+    + '<textarea id="pd-input" style="width:100%;min-height:100px;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;padding:12px;font-size:14px;font-family:\'Noto Sans KR\',sans-serif;background:rgba(255,255,255,.06);color:#fff;resize:vertical;outline:none;box-sizing:border-box" placeholder="한국어로 써보세요..."></textarea>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">'
+    + '<span id="pd-char-count" style="font-size:11px;color:rgba(255,255,255,.4)">0 chars</span>'
     + '</div>'
-    + '<div id="pd-sent-result" style="margin-top:10px;display:none"></div>';
+    + '<div id="pd-result" style="display:none;margin-top:10px;padding:14px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)"></div>';
+
+  var textarea = document.getElementById('pd-input');
+  if (textarea) {
+    textarea.addEventListener('input', function() {
+      var cnt = document.getElementById('pd-char-count');
+      if (cnt) cnt.textContent = textarea.value.length + ' chars';
+    });
+  }
+
+  var nav = document.getElementById('pd-nav');
+  if (nav) nav.innerHTML =
+    '<button class="sr-activity-btn" onclick="checkPictureDescription()" style="margin-right:8px">🤖 AI 피드백 받기</button>'
+    + '<button class="sr-activity-btn" onclick="_pdSkipToFinish()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15)">건너뛰기</button>';
+}
+
+function _pdSkipToFinish() {
+  markStageDone('picture');
+  var body = document.getElementById('pd-step3-body');
+  if (body) body.innerHTML = '<div style="text-align:center;padding:24px;background:rgba(34,197,94,.1);border-radius:12px;color:#86efac;font-weight:800;font-size:16px">🎉 All steps complete!</div>';
+  var nav = document.getElementById('pd-nav');
+  if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="returnToActivities(closePictureDescription)">Done ✓ Next Activity</button>';
 }
 
 function checkIncorrectSentence(btn, isWrong) {
@@ -11480,16 +11517,26 @@ function closeDictationModal() {
   document.body.style.overflow = '';
 }
 function _dctSetPips(step) {
-  var p1=document.getElementById('dct-pip-1'), p2=document.getElementById('dct-pip-2');
+  var p1=document.getElementById('dct-pip-1'), p2=document.getElementById('dct-pip-2'), p3=document.getElementById('dct-pip-3');
   var sub=document.getElementById('dct-step-sub');
-  if(p1){ p1.className='dct-pip'+(step===1?' active':' done'); }
-  if(p2){ p2.className='dct-pip'+(step===2?' active':''); }
-  if(sub) sub.textContent = step===1 ? 'Step 1 of 2 — 듣기 연습' : 'Step 2 of 2 — 어절 배열하기';
+  if(p1){ p1.className='dct-pip'+(step===1?' active':step>1?' done':''); }
+  if(p2){ p2.className='dct-pip'+(step===2?' active':step>2?' done':''); }
+  if(p3){ p3.className='dct-pip'+(step===3?' active':''); }
+  var labels = {1:'Step 1 of 3 — 듣기 연습', 2:'Step 2 of 3 — 어절 배열하기', 3:'Step 3 of 3 — 받아쓰기'};
+  if(sub) sub.textContent = labels[step] || '';
+  // Auto-create pip 3 if missing
+  if(!p3 && p2 && p2.parentNode) {
+    var newPip = document.createElement('span');
+    newPip.id = 'dct-pip-3';
+    newPip.className = 'dct-pip';
+    p2.parentNode.appendChild(newPip);
+  }
 }
 function _dctRender() {
   _dctSetPips(_dctStep);
   if (_dctStep === 1) _dctRenderListen();
-  else _dctRenderArrange();
+  else if (_dctStep === 2) _dctRenderArrange();
+  else if (_dctStep === 3) _dctRenderTyping();
 }
 function _dctRenderListen() {
   var sents = _dailyDictationSentences;
@@ -11522,12 +11569,9 @@ function _dctRenderArrange() {
   if (!body || !foot || !sents || !sents.length) return;
   if (_dctWOIdx >= sents.length) {
     // All done
-    body.innerHTML = '<div style="text-align:center;padding:30px 20px">'
-      + '<div style="font-size:36px;margin-bottom:12px">🎉</div>'
-      + '<div style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:8px">Dictation 완료!</div>'
-      + '<div style="font-size:13px;color:#64748b">모든 문장 배열을 완료했습니다.</div>'
-      + '</div>';
-    foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done ✓ Next Activity</button>';
+    // Move to Step 3: typing dictation
+    _dctStep = 3; _dctTypingIdx = 0; _dctTypingScore = 0;
+    _dctRender();
     return;
   }
   var s = sents[_dctWOIdx];
@@ -11589,6 +11633,126 @@ function dctWOCheck() {
 function _dctWONext() { _dctWOIdx++; _dctWOState=null; _dctRenderArrange(); }
 function dctNext() {
   if (_dctStep===1) { _dctStep=2; _dctWOIdx=0; _dctWOState=null; _dctRender(); }
+}
+
+// ── Step 3: True Dictation (듣고 타이핑) ─────────────────
+var _dctTypingIdx = 0;
+var _dctTypingScore = 0;
+
+function _dctRenderTyping() {
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  if (!body || !foot) return;
+
+  // Use dictation_questions if available, otherwise use dictation_sentences
+  var questions = _dailyDictationQuestions || [];
+  var sentences = _dailyDictationSentences || [];
+  var pool = questions.length >= 3 ? questions.map(function(q) {
+    return { ko: q.question_ko || q.ko || '', en: q.hint_en || q.en || '' };
+  }) : sentences;
+
+  if (!pool.length) {
+    body.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8">No dictation content available.</div>';
+    foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done</button>';
+    return;
+  }
+
+  if (_dctTypingIdx >= pool.length) {
+    var pct = pool.length > 0 ? Math.round(_dctTypingScore / pool.length * 100) : 0;
+    body.innerHTML = '<div style="text-align:center;padding:30px 20px">'
+      + '<div style="font-size:36px;margin-bottom:12px">' + (pct >= 80 ? '🏆' : pct >= 50 ? '👍' : '💪') + '</div>'
+      + '<div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:4px">' + pct + '%</div>'
+      + '<div style="font-size:13px;color:#64748b;margin-bottom:8px">' + _dctTypingScore + ' / ' + pool.length + ' correct</div>'
+      + '<div style="font-size:12px;color:#94a3b8">받아쓰기 완료!</div>'
+      + '</div>';
+    foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done ✓ Next Activity</button>';
+    // Log to DB
+    if (typeof logQuizResult === 'function' && supaUser) {
+      try {
+        logQuizResult(getSupa(), {
+          p_skill_type: 'listening', p_quiz_type: 'dictation',
+          p_item_id: 'dct_' + kstDateKey(), p_content_type: 'dictation',
+          p_content_id: kstDateKey(), p_is_correct: pct >= 80, p_score: pct
+        });
+      } catch(e) {}
+    }
+    return;
+  }
+
+  var s = pool[_dctTypingIdx];
+  body.innerHTML =
+    '<div style="font-size:13px;color:#64748b;margin-bottom:16px">듣고 한국어로 타이핑하세요. (' + (_dctTypingIdx + 1) + '/' + pool.length + ')</div>'
+    + '<div style="text-align:center;margin-bottom:16px">'
+    + '<button onclick="_dctTypingSpeak()" style="width:70px;height:70px;border-radius:50%;background:#eff6ff;border:2px solid #bfdbfe;font-size:32px;cursor:pointer">🔊</button>'
+    + '<div style="font-size:11px;color:#94a3b8;margin-top:6px">클릭해서 듣기</div>'
+    + '</div>'
+    + '<input id="dct-typing-input" type="text" autocomplete="off" placeholder="들은 내용을 입력하세요..." style="width:100%;padding:12px 16px;border:2px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:\'Noto Sans KR\',sans-serif;box-sizing:border-box;text-align:center" onkeydown="if(event.key===\'Enter\')_dctTypingCheck()">'
+    + '<div id="dct-typing-fb" style="margin-top:10px;min-height:40px"></div>';
+  foot.innerHTML = '<button class="btn btn-g" onclick="_dctTypingCheck()">확인</button>';
+
+  // Auto-play
+  setTimeout(_dctTypingSpeak, 400);
+  setTimeout(function() { var inp = document.getElementById('dct-typing-input'); if (inp) inp.focus(); }, 500);
+}
+
+function _dctTypingSpeak() {
+  var questions = _dailyDictationQuestions || [];
+  var sentences = _dailyDictationSentences || [];
+  var pool = questions.length >= 3 ? questions.map(function(q) { return { ko: q.question_ko || q.ko || '' }; }) : sentences;
+  var s = pool[_dctTypingIdx];
+  if (!s) return;
+  window.speechSynthesis.cancel();
+  var u = new SpeechSynthesisUtterance(s.ko);
+  u.lang = 'ko-KR'; u.rate = 0.75;
+  window.speechSynthesis.speak(u);
+}
+
+function _dctTypingCheck() {
+  var inp = document.getElementById('dct-typing-input');
+  var fb = document.getElementById('dct-typing-fb');
+  if (!inp || !fb) return;
+  var questions = _dailyDictationQuestions || [];
+  var sentences = _dailyDictationSentences || [];
+  var pool = questions.length >= 3 ? questions.map(function(q) { return { ko: q.question_ko || q.ko || '', en: q.hint_en || q.en || '' }; }) : sentences;
+  var s = pool[_dctTypingIdx];
+  if (!s) return;
+
+  var userText = (inp.value || '').trim().replace(/[.!?。！？\s]/g, '');
+  var correctText = (s.ko || '').trim().replace(/[.!?。！？\s]/g, '');
+  var isCorrect = userText === correctText;
+
+  inp.disabled = true;
+  if (isCorrect) {
+    _dctTypingScore++;
+    inp.style.borderColor = '#86efac';
+    fb.innerHTML = '<div style="color:#16a34a;font-weight:700;font-size:14px">✅ 정답!</div>';
+  } else {
+    inp.style.borderColor = '#fca5a5';
+    // Show character-by-character diff
+    var original = (s.ko || '').trim();
+    var typed = (inp.value || '').trim();
+    var diffHTML = '';
+    for (var i = 0; i < Math.max(original.length, typed.length); i++) {
+      var oc = original[i] || '';
+      var tc = typed[i] || '';
+      if (oc === tc) {
+        diffHTML += '<span style="color:#16a34a">' + oc + '</span>';
+      } else {
+        diffHTML += '<span style="color:#ef4444;text-decoration:underline;font-weight:700">' + (oc || '·') + '</span>';
+      }
+    }
+    fb.innerHTML = '<div style="font-size:13px;color:#ef4444;font-weight:700;margin-bottom:6px">❌ 다시 확인해보세요</div>'
+      + '<div style="font-size:15px;font-family:\'Noto Sans KR\',sans-serif;letter-spacing:1px">' + diffHTML + '</div>'
+      + (s.en ? '<div style="font-size:11px;color:#94a3b8;margin-top:4px">' + s.en + '</div>' : '');
+  }
+
+  var foot = document.getElementById('dct-foot');
+  if (foot) foot.innerHTML = '<button class="btn btn-g" onclick="_dctTypingNext()">다음 →</button>';
+}
+
+function _dctTypingNext() {
+  _dctTypingIdx++;
+  _dctRenderTyping();
 }
 
 async function _asLoadArticles() {
