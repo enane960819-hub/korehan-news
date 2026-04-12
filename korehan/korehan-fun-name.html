@@ -5,36 +5,287 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Korean Name Generator — FUN</title>
   <link rel="stylesheet" href="korehan-shared.css">
-<link rel="stylesheet" href="fun/fun-game.css">
   <style>
-    body{margin:0;background:#f3f7fc;font-family:Inter,Pretendard,sans-serif;color:#0f172a}
+    body{margin:0;background:#f3f7fc;font-family:'DM Sans',Inter,Pretendard,sans-serif;color:#0f172a}
     .wrap{max-width:960px;margin:0 auto;padding:22px 16px 56px}
     .head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
     .head h1{margin:0;font-size:28px}
     .head p{margin:4px 0 0;color:#64748b}
     .panel{background:#fff;border:1px solid #dce8f5;border-radius:16px;padding:18px}
-    .back{display:inline-flex;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid #dce8f5;color:#334155;text-decoration:none;font-size:13px;font-weight:700}
+    .back{display:inline-flex;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid #dce8f5;color:#334155;text-decoration:none;font-size:13px;font-weight:700;margin-bottom:12px}
+    .back:hover{background:#f1f5f9}
+
+    /* Fun game shared styles */
+    .btn{border:none;border-radius:10px;background:linear-gradient(120deg,#2563eb,#7c3aed);color:#fff;font-weight:700;font-size:13px;padding:10px 14px;cursor:pointer}
+    .btn.ghost{background:#f1f5f9;color:#1e293b;border:1px solid #d7e2ef}
+    .ng-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .ng-input{width:100%;border:1px solid #dbe7f3;border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;box-sizing:border-box}
+    .ng-reveal{max-height:0;opacity:0;overflow:hidden;transform:translateY(4px);transition:max-height .35s ease,opacity .3s ease,transform .3s ease}
+    .ng-reveal.on{max-height:120px;opacity:1;transform:none}
+    .ng-choice-row{display:flex;gap:8px;flex-wrap:wrap}
+    .ng-chip{border:1px solid #dbe7f3;background:#fff;color:#334155;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;font-family:inherit}
+    .ng-chip.on{background:#dbeafe;border-color:#60a5fa;color:#1e40af}
+    .ng-primary-btn{border:none;border-radius:10px;padding:11px 14px;background:linear-gradient(120deg,#2563eb,#7c3aed);color:#fff;font-weight:800;cursor:pointer;transition:.2s;font-family:inherit;font-size:14px;width:100%}
+    .ng-primary-btn:disabled{opacity:.5;cursor:not-allowed}
+    .ng-quiz-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .ng-quiz-option{border:1px solid #e2e8f0;background:#fff;border-radius:11px;padding:11px 10px;text-align:left;font-size:13px;cursor:pointer;transition:.18s;font-family:inherit}
+    .ng-quiz-option:hover{border-color:#93c5fd;box-shadow:0 8px 16px rgba(37,99,235,.12)}
+    .ng-quiz-option.on{border-color:#60a5fa;background:#eff6ff;color:#1e3a8a;font-weight:700}
+    .ng-reveal-stage{margin-top:8px;background:#0f172a;color:#fff;border-radius:12px;padding:12px 14px;font-size:13px;letter-spacing:.02em;animation:ngPulse 1.2s ease-in-out infinite alternate}
+    .ng-hint-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .ng-hint-chip{display:inline-flex;padding:6px 10px;border-radius:999px;background:#eef2ff;color:#4338ca;font-size:12px;font-weight:700}
+    .ng-final-card{margin-top:12px;border:1px solid #bfdbfe;border-radius:16px;padding:18px;background:linear-gradient(150deg,#eff6ff,#fdf4ff);opacity:0;transform:translateY(8px) scale(.98);transition:.45s}
+    .ng-final-card.on{opacity:1;transform:none}
+    .ng-final-label{font-size:11px;font-weight:900;letter-spacing:.11em;text-transform:uppercase;color:#64748b}
+    .ng-final-hangul{font-size:38px;font-weight:900;margin-top:6px;color:#0f172a}
+    .ng-final-rom{font-size:16px;font-weight:700;color:#1d4ed8}
+    .ng-final-desc{font-size:13px;line-height:1.6;color:#475569;margin-top:8px}
+    .ng-secondary-btn,.ng-secondary-link{border:1px solid #dbe7f3;border-radius:10px;padding:10px 12px;background:#fff;color:#334155;font-weight:700;font-size:13px;text-decoration:none;cursor:pointer;font-family:inherit}
+    @keyframes ngPulse{from{box-shadow:0 0 0 rgba(59,130,246,0)}to{box-shadow:0 0 20px rgba(99,102,241,.18)}}
+
+    /* Neon */
+    body.kh-neon-on{background:#050b15 !important;color:#eefcff !important}
+    body.kh-neon-on .panel{background:#0d1b2a;border-color:rgba(255,255,255,.08)}
+    body.kh-neon-on .back{background:#0d1b2a;border-color:rgba(255,255,255,.1);color:#94a3b8}
+    body.kh-neon-on .ng-input{background:#0a1325;border-color:rgba(255,255,255,.12);color:#e0f2fe}
+    body.kh-neon-on .ng-chip{background:#0a1325;border-color:rgba(255,255,255,.12);color:#94a3b8}
+    body.kh-neon-on .ng-chip.on{background:#1e3a5f;border-color:#60a5fa;color:#7dd3fc}
+    body.kh-neon-on .ng-quiz-option{background:#0a1325;border-color:rgba(255,255,255,.1);color:#cbd5e1}
+    body.kh-neon-on .ng-quiz-option.on{background:#1e3a5f;border-color:#60a5fa;color:#7dd3fc}
+    body.kh-neon-on .ng-final-card{background:linear-gradient(150deg,#0c1a35,#1a1040);border-color:rgba(99,102,241,.3)}
+    body.kh-neon-on .ng-final-hangul{color:#e0f2fe}
+    body.kh-neon-on .ng-secondary-btn,.ng-secondary-link{background:#0d1b2a;border-color:rgba(255,255,255,.1);color:#94a3b8}
+
+    /* Responsive */
+    @media(max-width:640px){
+      .ng-row{grid-template-columns:1fr}
+      .ng-quiz-grid{grid-template-columns:1fr}
+      .ng-final-hangul{font-size:32px}
+      .head h1{font-size:22px}
+    }
   </style>
 </head>
 <body>
   <div id="kh-header"></div>
   <main class="wrap">
-    <a href="korehan-fun.html" class="back">← FUN Home</a>
-    <div class="head"><div><h1 id="fun-page-title">Korean Name Generator</h1><p id="fun-page-sub">Profile → Personality → Result</p></div></div>
+    <a href="korehan-fun.html" class="back">&larr; FUN Home</a>
+    <div class="head"><div><h1 id="fun-page-title">Korean Name Generator</h1><p id="fun-page-sub">Profile &rarr; Personality &rarr; Result</p></div></div>
     <section class="panel" id="fun-page-root"></section>
   </main>
   <div id="kh-footer"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="korehan-shared.js?v=20260410b"></script>
-  <script src="fun/fun-page.js"></script>
-  <script src="fun/data/korean-names.js"></script>
-  <script src="fun/name-generator.js"></script>
+  <script src="korehan-shared.js?v=20260412"></script>
   <script>
-    KHFunPage.mountPage({
-      title: '🪪 Korean Name Generator',
-      subtitle: 'Profile → Personality → Result',
-      mount: function(root){ KHFunNameGenerator.init(root); }
-    });
+  // ── Korean Name Dataset ──
+  var KH_KOREAN_NAME_DATASET = [
+    { hangul:'\uc9c0\ubbfc', romanization:'Ji-min', gender:'unisex', meaning:'wise and quick', tags:['calm','smart','balanced'], popularity:92 },
+    { hangul:'\uc11c\uc5f0', romanization:'Seo-yeon', gender:'female', meaning:'graceful connection', tags:['creative','gentle','social'], popularity:95 },
+    { hangul:'\ubbfc\uc900', romanization:'Min-jun', gender:'male', meaning:'talented and sharp', tags:['leader','active','smart'], popularity:94 },
+    { hangul:'\ud558\ub9b0', romanization:'Ha-rin', gender:'female', meaning:'summer clarity', tags:['bright','creative','calm'], popularity:78 },
+    { hangul:'\ub3c4\uc724', romanization:'Do-yun', gender:'male', meaning:'path of growth', tags:['leader','calm','ambitious'], popularity:84 },
+    { hangul:'\uc720\uc9c4', romanization:'Yu-jin', gender:'unisex', meaning:'flowing truth', tags:['balanced','social','smart'], popularity:88 },
+    { hangul:'\uc9c0\uc6b0', romanization:'Ji-u', gender:'unisex', meaning:'wisdom of universe', tags:['smart','creative','calm'], popularity:90 },
+    { hangul:'\uc608\ub9b0', romanization:'Ye-rin', gender:'female', meaning:'artful jade', tags:['creative','gentle','romantic'], popularity:80 },
+    { hangul:'\ud604\uc6b0', romanization:'Hyeon-u', gender:'male', meaning:'bright universe', tags:['leader','active','bold'], popularity:86 },
+    { hangul:'\uc218\uc544', romanization:'Su-a', gender:'female', meaning:'excellent elegance', tags:['social','gentle','bright'], popularity:82 },
+    { hangul:'\uc900\uc11c', romanization:'Jun-seo', gender:'male', meaning:'talented and calm', tags:['smart','balanced','calm'], popularity:83 },
+    { hangul:'\ub098\uc5f0', romanization:'Na-yeon', gender:'female', meaning:'elegant link', tags:['social','creative','romantic'], popularity:77 },
+    { hangul:'\ud0dc\uc724', romanization:'Tae-yun', gender:'male', meaning:'great harmony', tags:['leader','ambitious','active'], popularity:73 },
+    { hangul:'\uc740\uc11c', romanization:'Eun-seo', gender:'female', meaning:'kind omen', tags:['gentle','calm','smart'], popularity:79 },
+    { hangul:'\uc2dc\uc628', romanization:'Si-on', gender:'unisex', meaning:'poetic warmth', tags:['creative','calm','independent'], popularity:70 }
+  ];
+
+  // ── Name Generator Logic ──
+  (function(){
+    var QUESTIONS = [
+      { id:'scene', q:'Pick your K-drama scene.', options:[
+        { label:'\u2615 Calm caf\u00e9 in rain', tags:['calm','gentle','romantic'] },
+        { label:'\uD83C\uDF03 Neon city at midnight', tags:['bold','active','independent'] },
+        { label:'\uD83C\uDF38 Cherry blossom confession', tags:['dreamy','romantic','gentle'] },
+      ]},
+      { id:'role', q:'Your drama role is\u2026', options:[
+        { label:'\uD83C\uDFAC Main character', tags:['leader','bright','confident'] },
+        { label:'\u26A1 Chaotic best friend', tags:['playful','social','creative'] },
+        { label:'\uD83D\uDD76\uFE0F Mysterious stranger', tags:['independent','calm','rebellious'] },
+        { label:'\uD83D\uDC8E Rich villain', tags:['ambitious','strong','bold'] },
+      ]},
+      { id:'tone', q:'Which sounds like you most?', options:[
+        { label:'\uD83C\uDF24\uFE0F Soft & warm', tags:['gentle','calm','social'] },
+        { label:'\uD83D\uDDE1\uFE0F Sharp & confident', tags:['strong','confident','leader'] },
+        { label:'\uD83C\uDFB2 Playful & unpredictable', tags:['playful','creative','rebellious'] },
+      ]},
+      { id:'energy', q:'Choose your core energy.', options:[
+        { label:'Elegant', tags:['elegant','balanced','gentle'] },
+        { label:'Cute', tags:['cute','bright','social'] },
+        { label:'Strong', tags:['strong','ambitious','leader'] },
+        { label:'Dreamy', tags:['dreamy','romantic','creative'] },
+        { label:'Rebellious', tags:['rebellious','independent','bold'] },
+      ]}
+    ];
+
+    function hash(str) {
+      var h = 2166136261;
+      for (var i = 0; i < str.length; i++) h = (h ^ str.charCodeAt(i)) * 16777619;
+      return Math.abs(h >>> 0);
+    }
+
+    function computeMatch(profile, answers) {
+      var names = (KH_KOREAN_NAME_DATASET || []).slice();
+      var wantedGender = profile.gender || 'unisex';
+      var answerTags = [];
+      answers.forEach(function(a){ answerTags = answerTags.concat(a.tags || []); });
+      var birthMonth = Number((profile.birthDate || '').split('-')[1] || 0);
+      if ([3,4,5].includes(birthMonth)) answerTags.push('bright');
+      if ([6,7,8].includes(birthMonth)) answerTags.push('active');
+      if ([9,10,11].includes(birthMonth)) answerTags.push('calm');
+      if ([12,1,2].includes(birthMonth)) answerTags.push('smart');
+      var seed = hash((profile.firstName||'')+'|'+(profile.lastName||'')+'|'+(profile.birthDate||'')+'|'+wantedGender+'|'+answerTags.join(','));
+      var ranked = names.map(function(n){
+        var score = 0;
+        if (n.gender === wantedGender) score += 18;
+        else if (n.gender === 'unisex') score += 10;
+        (n.tags || []).forEach(function(tag){ if (answerTags.indexOf(tag) >= 0) score += 9; });
+        score += Number(n.popularity || 50) * 0.12;
+        score += (seed % 17) * 0.03;
+        return { name:n, score:score };
+      }).sort(function(a,b){ return b.score - a.score; });
+      return ranked[0] ? { picked: ranked[0].name, tags: answerTags } : null;
+    }
+
+    function field(label, type, id, placeholder) {
+      return '<div><label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:6px">' + label + '</label>'
+        + '<input id="' + id + '" type="' + type + '" placeholder="' + placeholder + '" class="ng-input"></div>';
+    }
+
+    var root = document.getElementById('fun-page-root');
+    var state = { step:1, profile:{}, answers:[] };
+
+    function renderStep1() {
+      root.innerHTML = '<h2 style="margin:0 0 8px;font-size:22px">Step 1 \u00b7 Build your profile</h2>'
+        + '<p style="margin:0 0 14px;color:#64748b;font-size:13px">Type your name first. More fields unlock automatically.</p>'
+        + '<div style="display:grid;gap:12px;max-width:560px">'
+        + '<div class="ng-row">'
+        + field('First name','text','ng-first','e.g. Emma')
+        + field('Last name','text','ng-last','e.g. Watson')
+        + '</div>'
+        + '<div id="ng-birth-wrap" class="ng-reveal">' + field('Birth date','date','ng-birth','') + '</div>'
+        + '<div id="ng-gender-wrap" class="ng-reveal"><label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:6px">Gender</label>'
+        + '<div class="ng-choice-row">'
+        + '<button type="button" class="ng-chip" data-gender="female">Female</button>'
+        + '<button type="button" class="ng-chip" data-gender="male">Male</button>'
+        + '<button type="button" class="ng-chip" data-gender="unisex">Neutral</button>'
+        + '</div></div>'
+        + '<button id="ng-next-1" class="ng-primary-btn" disabled>Next \u2192</button>'
+        + '</div>';
+
+      var firstEl = root.querySelector('#ng-first');
+      var lastEl = root.querySelector('#ng-last');
+      var birthEl = root.querySelector('#ng-birth');
+      var birthWrap = root.querySelector('#ng-birth-wrap');
+      var genderWrap = root.querySelector('#ng-gender-wrap');
+      var nextBtn = root.querySelector('#ng-next-1');
+      var pickedGender = '';
+
+      function refresh() {
+        var first = (firstEl.value||'').trim(), last = (lastEl.value||'').trim(), birth = (birthEl.value||'').trim();
+        if (first && last) birthWrap.classList.add('on'); else { birthWrap.classList.remove('on'); genderWrap.classList.remove('on'); pickedGender=''; root.querySelectorAll('.ng-chip').forEach(function(c){c.classList.remove('on');}); }
+        if (birthWrap.classList.contains('on') && birth) genderWrap.classList.add('on'); else { genderWrap.classList.remove('on'); pickedGender=''; root.querySelectorAll('.ng-chip').forEach(function(c){c.classList.remove('on');}); }
+        nextBtn.disabled = !(first && last && birth && pickedGender);
+      }
+
+      firstEl.addEventListener('input', refresh);
+      lastEl.addEventListener('input', refresh);
+      birthEl.addEventListener('input', refresh);
+      root.querySelectorAll('.ng-chip').forEach(function(chip){
+        chip.addEventListener('click', function(){
+          root.querySelectorAll('.ng-chip').forEach(function(c){c.classList.remove('on');});
+          chip.classList.add('on');
+          pickedGender = chip.getAttribute('data-gender')||'';
+          refresh();
+        });
+      });
+      nextBtn.addEventListener('click', function(){
+        state.profile = { firstName:(firstEl.value||'').trim(), lastName:(lastEl.value||'').trim(), birthDate:(birthEl.value||'').trim(), gender:pickedGender };
+        state.step = 2; render();
+      });
+    }
+
+    function renderStep2() {
+      var html = '<h2 style="margin:0 0 8px;font-size:22px">Step 2 \u00b7 Vibe quiz</h2>'
+        + '<p style="margin:0 0 14px;color:#64748b;font-size:13px">Choose what feels most like your aura.</p>';
+      QUESTIONS.forEach(function(q, qi){
+        html += '<div style="margin-bottom:16px"><div style="font-size:14px;font-weight:700;margin-bottom:8px">' + q.q + '</div>'
+          + '<div class="ng-quiz-grid">'
+          + q.options.map(function(opt, oi){ return '<button type="button" class="ng-quiz-option" data-q="'+qi+'" data-o="'+oi+'">'+opt.label+'</button>'; }).join('')
+          + '</div></div>';
+      });
+      html += '<button id="ng-next-2" class="ng-primary-btn" disabled>Generate my Korean name</button>';
+      root.innerHTML = html;
+
+      var picks = {};
+      var nextBtn = root.querySelector('#ng-next-2');
+      root.querySelectorAll('.ng-quiz-option').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var q = Number(btn.getAttribute('data-q')), o = Number(btn.getAttribute('data-o'));
+          picks[q] = o;
+          root.querySelectorAll('.ng-quiz-option[data-q="'+q+'"]').forEach(function(el){el.classList.remove('on');});
+          btn.classList.add('on');
+          nextBtn.disabled = Object.keys(picks).length !== QUESTIONS.length;
+        });
+      });
+      nextBtn.addEventListener('click', function(){
+        var selected = [];
+        for (var i = 0; i < QUESTIONS.length; i++) { if (typeof picks[i]!=='number') return; selected.push(QUESTIONS[i].options[picks[i]]); }
+        state.answers = selected; state.step = 3; renderReveal();
+      });
+    }
+
+    function renderReveal() {
+      var match = computeMatch(state.profile, state.answers);
+      if (!match || !match.picked) { root.innerHTML = '<p>No dataset available.</p>'; return; }
+      var picked = match.picked;
+      var leadTags = Array.from(new Set(match.tags)).slice(0, 3);
+      root.innerHTML = '<h2 style="margin:0 0 8px;font-size:22px">Step 3 \u00b7 Name reveal</h2>'
+        + '<div class="ng-reveal-stage" id="ng-reveal-stage">Analyzing your drama aura\u2026</div>'
+        + '<div class="ng-hint-row" id="ng-hint-row" style="display:none"></div>'
+        + '<div class="ng-final-card" id="ng-final-card" style="display:none">'
+        + '<div class="ng-final-label">Your Korean name</div>'
+        + '<div class="ng-final-hangul">' + picked.hangul + '</div>'
+        + '<div class="ng-final-rom">' + picked.romanization + '</div>'
+        + '<div class="ng-final-desc">Meaning: ' + picked.meaning + '. This match fits your selected vibe and profile energy.</div>'
+        + '</div>'
+        + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'
+        + '<button id="ng-restart" class="ng-secondary-btn">Try another run</button>'
+        + '<a href="korehan-fun.html" class="ng-secondary-link">Back to FUN Home</a>'
+        + '</div>';
+
+      var stage = root.querySelector('#ng-reveal-stage');
+      var hintRow = root.querySelector('#ng-hint-row');
+      var card = root.querySelector('#ng-final-card');
+      setTimeout(function(){ stage.textContent = 'Matching from Korean name archive\u2026'; }, 650);
+      setTimeout(function(){
+        stage.textContent = 'Found your vibe key';
+        hintRow.style.display = '';
+        hintRow.innerHTML = leadTags.map(function(t){ return '<span class="ng-hint-chip">'+t+'</span>'; }).join('');
+      }, 1500);
+      setTimeout(function(){
+        stage.textContent = 'Reveal complete \u2728';
+        card.style.display = '';
+        card.classList.add('on');
+      }, 2300);
+
+      root.querySelector('#ng-restart').addEventListener('click', function(){ state = { step:1, profile:{}, answers:[] }; render(); });
+    }
+
+    function render() {
+      if (state.step === 1) renderStep1();
+      else if (state.step === 2) renderStep2();
+      else renderReveal();
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
+    else render();
+  })();
   </script>
 </body>
 </html>
