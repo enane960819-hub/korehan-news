@@ -11460,8 +11460,10 @@ function _asStep1(art,act) {
     + '</div></div>'
     + '<div class="su-article-footer">'
     + '<button onclick="speakHangul(_asCurrentArt.body.slice(0,200),\'female\')">🔊 Listen</button>'
-    + '<button onclick="this.nextSibling.style.display=this.nextSibling.style.display===\'block\'?\'none\':\'block\'">📋 Translation</button><div style="display:none;padding:8px 16px;font-size:12px;color:#64748b;border-top:1px solid #f1f5f9" id="as-translation"></div>'
-    + '</div></div>';
+    + '<button onclick="asToggleTranslation()">📋 Translation</button>'
+    + '</div>'
+    + '<div id="as-translation" style="display:none;padding:12px 16px;font-size:13px;color:#475569;line-height:1.7;border-top:1px solid #f1f5f9;font-family:\'DM Sans\',sans-serif"></div>'
+    + '</div>';
   if (!vocab.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px;padding:20px">No vocabulary items.</div>'; _asSetNav('none',''); return; }
   var eng=_asShuffle(vocab.map(function(v,i){return{t:v.en,i:i};}));
   _asMatchState={pairs:vocab,eng:eng,matched:[],sel:{l:null,r:null}};
@@ -11739,6 +11741,36 @@ function _asCheckWO() {
   if(!_asWOState) return;
 }
 function asNextStep() { _asStepDone[_asStep-1]=true; _asStep=Math.min(_asStep+1,5); _asSaveProgress(); _asRenderStep(); }
+
+// ── Translation toggle (loads from article_cache DB) ──
+var _asTranslationCache = null;
+async function asToggleTranslation() {
+  var el = document.getElementById('as-translation');
+  if (!el) return;
+  if (el.style.display === 'block') { el.style.display = 'none'; return; }
+  if (_asTranslationCache) { el.innerHTML = _asTranslationCache; el.style.display = 'block'; return; }
+  el.innerHTML = '<span style="color:#94a3b8">Loading translation...</span>';
+  el.style.display = 'block';
+  try {
+    if (typeof getFromCache === 'function' && _asCurrentArt) {
+      var cached = await getFromCache('article', _asCurrentArt.id, 'translation_en');
+      if (cached && cached.translations && cached.translations.length) {
+        _asTranslationCache = cached.translations.join('<br><br>');
+        el.innerHTML = _asTranslationCache;
+        return;
+      }
+    }
+    // Fallback: generate via AI
+    if (!supaUser) { el.innerHTML = '<span style="color:#94a3b8">Sign in to translate</span>'; return; }
+    var body = _asCurrentArt.body || '';
+    var data = await callClaude({ feature:'translation', model:'claude-haiku-4-5-20251001', max_tokens:1000, messages:[{role:'user',content:'Translate to natural English. Return ONLY the translation, no explanations:\n\n'+body.slice(0,1500)}] });
+    var text = (data.content||[]).map(function(c){return c.text||'';}).join('');
+    _asTranslationCache = text.replace(/\n/g,'<br>');
+    el.innerHTML = _asTranslationCache;
+  } catch(e) {
+    el.innerHTML = '<span style="color:#ef4444">Translation failed</span>';
+  }
+}
 function asMarkDone() {
   _asStepDone[_asStep-1]=true; _asSaveProgress(); _asTmpCompletion();
   _asTmpStep5((document.getElementById('as-write-ta')||{}).value||'');
