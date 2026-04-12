@@ -4052,7 +4052,7 @@ async function callAdminClaude(prompt) {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + SUPA_KEY_ADMIN2,
         'apikey': SUPA_KEY_ADMIN2,
-        'x-admin-bypass': '1'
+        'x-admin-bypass': SUPA_SERVICE_KEY
       },
       body: JSON.stringify({
         feature: 'admin-ai-gen',
