@@ -7586,7 +7586,7 @@ async function _triggerPackageFeedback(submissionId, items) {
     if (sb) {
       await sb.from('user_submissions').update({
         ai_feedback: parsed, ai_feedback_at: new Date().toISOString(),
-        ai_model: 'claude-haiku-4-5-20251001', status: 'ai_reviewed'
+        ai_model: 'claude-haiku-4-5-20251001', status: 'ai_drafted'
       }).eq('id', submissionId);
     }
   } catch(e) { console.warn('Package feedback failed:', e); }
@@ -7604,7 +7604,7 @@ async function _triggerUnifiedAIFeedback(submissionId, text, topicOrTitle) {
     if (sb) {
       await sb.from('user_submissions').update({
         ai_feedback: parsed, ai_feedback_at: new Date().toISOString(),
-        ai_model: 'claude-haiku-4-5-20251001', status: 'ai_reviewed'
+        ai_model: 'claude-haiku-4-5-20251001', status: 'ai_drafted'
       }).eq('id', submissionId);
     }
     // Log wrong patterns to quiz_results for analytics
@@ -7833,7 +7833,7 @@ async function loadFeedbackInbox() {
       btnEl.querySelector('button').style.background = 'rgba(34,197,94,.1)';
       btnEl.querySelector('button').style.color = '#4ade80';
       if (labelEl) labelEl.textContent = 'New feedback arrived! Tap to view';
-    } else if (latest.status === 'submitted' || latest.status === 'ai_reviewed') {
+    } else if (latest.status === 'submitted' || latest.status === 'ai_drafted') {
       if (labelEl) labelEl.textContent = 'Under review · feedback within 24h';
     } else {
       if (labelEl) labelEl.textContent = 'View my writing feedback';
@@ -7990,10 +7990,15 @@ async function renderFeedbackInboxContent() {
     content.innerHTML = items.map(function(item, idx) {
       var fb = null;
       try { fb = typeof item.ai_feedback === 'string' ? JSON.parse(item.ai_feedback) : item.ai_feedback; } catch(e) {}
-      var hasFb = !!fb && (fb.corrections || fb.overall || fb.overall_assessment);
+      // Only show feedback content if admin has reviewed
+      var adminFb = null;
+      try { adminFb = typeof item.admin_feedback === 'string' ? JSON.parse(item.admin_feedback) : item.admin_feedback; } catch(e) {}
+      var isReviewed = item.status === 'reviewed' || item.status === 'admin_approved' || item.status === 'sent';
+      var hasFb = isReviewed && (adminFb || fb);
+      var displayFb = isReviewed ? (adminFb || fb) : null;
       var isOpen = idx === 0 && hasFb;
-      var statusLabel = (item.status === 'admin_approved' || item.status === 'sent') ? 'Feedback ready' : (item.status === 'ai_reviewed' || hasFb) ? 'Review complete' : 'Under review';
-      var statusColor = (item.status === 'admin_approved' || item.status === 'sent') ? '#4ade80' : hasFb ? '#60a5fa' : 'rgba(255,255,255,.35)';
+      var statusLabel = isReviewed ? 'Feedback ready!' : (item.status === 'ai_drafted') ? 'Under review' : 'Submitted';
+      var statusColor = isReviewed ? '#4ade80' : (item.status === 'ai_drafted') ? '#fbbf24' : 'rgba(255,255,255,.35)';
       var isPackage = item.content_type === 'daily_package';
       var preview = isPackage
         ? ('Daily Package — ' + (function(){ try { var ctx=JSON.parse(item.context_data||'{}'); return (ctx.item_count||0)+' activities'; } catch(e){ return ''; } })())
@@ -8017,18 +8022,25 @@ async function renderFeedbackInboxContent() {
       // Detail body
       h += '<div style="' + (isOpen ? '' : 'display:none;') + 'padding:14px;border-top:1px solid rgba(255,255,255,.06)">';
 
-      // Admin feedback (priority)
-      if (item.admin_feedback && (item.status === 'admin_approved' || item.status === 'sent')) {
-        h += '<div style="padding:10px 12px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15);border-radius:8px;margin-bottom:12px">'
-          + '<div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:4px">선생님 피드백</div>'
-          + '<div style="font-size:13px;color:rgba(255,255,255,.75);white-space:pre-wrap;line-height:1.6">' + item.admin_feedback + '</div></div>';
-      }
-
-      // AI detailed feedback
-      if (hasFb) {
-        h += renderDetailedFeedback(fb, item.writing_text);
+      if (isReviewed && displayFb) {
+        // Show admin-reviewed feedback (admin_feedback or AI feedback approved by admin)
+        if (adminFb && typeof adminFb === 'object') {
+          // Admin provided structured override
+          h += renderDetailedFeedback(adminFb, item.writing_text);
+        } else if (typeof item.admin_feedback === 'string' && item.admin_feedback.trim()) {
+          // Admin text comment
+          h += '<div style="padding:10px 12px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15);border-radius:8px;margin-bottom:12px">'
+            + '<div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:4px">Teacher Feedback</div>'
+            + '<div style="font-size:13px;color:rgba(255,255,255,.75);white-space:pre-wrap;line-height:1.6">' + item.admin_feedback + '</div></div>';
+          if (fb) h += renderDetailedFeedback(fb, item.writing_text);
+        } else {
+          // Admin approved AI feedback as-is
+          h += renderDetailedFeedback(displayFb, item.writing_text);
+        }
       } else {
-        h += '<div style="color:rgba(255,255,255,.3);text-align:center;padding:16px">피드백 생성 중...</div>';
+        h += '<div style="color:rgba(255,255,255,.3);text-align:center;padding:16px;font-size:13px">'
+          + (item.status === 'ai_drafted' ? 'Under review — feedback within 24h' : 'Submitted — processing...')
+          + '</div>';
       }
 
       h += '</div></div>';

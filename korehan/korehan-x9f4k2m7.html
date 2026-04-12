@@ -6919,7 +6919,8 @@ function srFeedbackDashboardHTML() {
     + '<option value="">전체</option>'
     + '<option value="ai_reviewed" selected>AI 완료 (검토 대기)</option>'
     + '<option value="submitted">AI 미완료</option>'
-    + '<option value="admin_approved">승인 완료</option>'
+    + '<option value="ai_drafted">AI 완료·검토대기</option>'
+    + '<option value="reviewed">승인 완료</option>'
     + '<option value="sent">전송 완료</option>'
     + '</select></div>'
     + '<div class="fg" style="margin:0"><label>유형</label>'
@@ -6954,13 +6955,13 @@ async function srLoadFeedbackDashboard() {
   try {
     var statsR = await sb.from('user_submissions').select('status', {count:'exact',head:false});
     if (!statsR.error && statsR.data) {
-      var counts = {submitted:0, ai_reviewed:0, admin_approved:0, sent:0, total:statsR.data.length};
+      var counts = {submitted:0, ai_drafted:0, ai_reviewed:0, reviewed:0, admin_approved:0, sent:0, total:statsR.data.length};
       statsR.data.forEach(function(r){ if(counts[r.status]!==undefined) counts[r.status]++; });
       var statsEl = document.getElementById('fb-stats');
       if (statsEl) statsEl.innerHTML =
         '<div style="padding:12px;border-radius:10px;background:#fef9c3;text-align:center"><div style="font-size:22px;font-weight:900;color:#854d0e">' + counts.submitted + '</div><div style="font-size:10px;color:#92400e;font-weight:700">미검토</div></div>'
-        + '<div style="padding:12px;border-radius:10px;background:#eff6ff;text-align:center"><div style="font-size:22px;font-weight:900;color:#1d4ed8">' + counts.ai_reviewed + '</div><div style="font-size:10px;color:#1e40af;font-weight:700">AI완료·검토대기</div></div>'
-        + '<div style="padding:12px;border-radius:10px;background:#f0fdf4;text-align:center"><div style="font-size:22px;font-weight:900;color:#15803d">' + counts.admin_approved + '</div><div style="font-size:10px;color:#166534;font-weight:700">승인 완료</div></div>'
+        + '<div style="padding:12px;border-radius:10px;background:#eff6ff;text-align:center"><div style="font-size:22px;font-weight:900;color:#1d4ed8">' + (counts.ai_drafted + counts.ai_reviewed) + '</div><div style="font-size:10px;color:#1e40af;font-weight:700">AI완료·검토대기</div></div>'
+        + '<div style="padding:12px;border-radius:10px;background:#f0fdf4;text-align:center"><div style="font-size:22px;font-weight:900;color:#15803d">' + (counts.reviewed + counts.admin_approved) + '</div><div style="font-size:10px;color:#166534;font-weight:700">승인 완료</div></div>'
         + '<div style="padding:12px;border-radius:10px;background:#f8fafc;text-align:center"><div style="font-size:22px;font-weight:900;color:#334155">' + counts.total + '</div><div style="font-size:10px;color:#64748b;font-weight:700">전체</div></div>';
     }
   } catch(e){}
@@ -7012,9 +7013,9 @@ function srRenderFeedbackPage() {
   if (!page.length) { el.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:12px">제출 내역이 없습니다.</div>'; return; }
 
   var typeIcons = {writing:'📝', article_study:'📰', conversation:'💬', story:'📖', picture:'🖼️', dictation:'🎧', grammar:'📖'};
-  var statusBg = {submitted:'#fef9c3', ai_reviewed:'#eff6ff', admin_approved:'#f0fdf4', sent:'#dcfce7'};
-  var statusColor = {submitted:'#854d0e', ai_reviewed:'#1d4ed8', admin_approved:'#15803d', sent:'#166534'};
-  var statusLabel = {submitted:'⏳ 대기', ai_reviewed:'🤖 AI완료', admin_approved:'✅ 승인', sent:'📨 전송됨'};
+  var statusBg = {submitted:'#fef9c3', ai_drafted:'#eff6ff', ai_reviewed:'#eff6ff', reviewed:'#f0fdf4', admin_approved:'#f0fdf4', sent:'#dcfce7'};
+  var statusColor = {submitted:'#854d0e', ai_drafted:'#1d4ed8', ai_reviewed:'#1d4ed8', reviewed:'#15803d', admin_approved:'#15803d', sent:'#166534'};
+  var statusLabel = {submitted:'⏳ 대기', ai_drafted:'🤖 AI완료·검토대기', ai_reviewed:'🤖 AI완료', reviewed:'✅ 승인', admin_approved:'✅ 승인', sent:'📨 전송됨'};
 
   el.innerHTML = page.map(function(row, idx) {
     var fb = null;
@@ -7210,7 +7211,7 @@ async function fbModalApprove() {
   var score = parseInt(document.getElementById('fb-modal-score').value) || null;
   var r = await sb.from('user_submissions').update({
     admin_feedback: fb || null, score: score,
-    status: 'admin_approved', reviewed_at: new Date().toISOString()
+    status: 'reviewed', reviewed_at: new Date().toISOString()
   }).eq('id', _fbModalRow.id);
   if (r.error) { toast('Error: ' + r.error.message); return; }
   toast('승인 완료');
@@ -7304,7 +7305,7 @@ async function srBulkApprove() {
       fb = (parsed.overall||'') + (parsed.encouragement ? '\n\n' + parsed.encouragement : '');
     } catch(e) { fb = String(row.ai_feedback); }
     var r = await sb.from('user_submissions').update({
-      admin_feedback: fb, status: 'admin_approved', reviewed_at: new Date().toISOString()
+      admin_feedback: fb, status: 'reviewed', reviewed_at: new Date().toISOString()
     }).eq('id', row.id);
     if (!r.error) ok++;
   }
