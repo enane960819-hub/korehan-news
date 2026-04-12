@@ -1286,6 +1286,16 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 .art-breadcrumb a:hover { text-decoration:underline; }
 .art-breadcrumb span { color:#bbb; }
 
+/* Unified article card */
+.art-card {
+  background:var(--w,#fff); border:1px solid var(--border); border-radius:18px;
+  overflow:hidden; box-shadow:0 4px 24px rgba(13,27,46,.06); margin-bottom:20px;
+}
+.art-card .art-hero-img { margin:0; border-radius:0; }
+.art-card .art-hero-img img { border-radius:0; }
+.art-card-body { padding:20px 24px 24px; }
+@media(max-width:640px) { .art-card-body { padding:16px; } }
+
 .art-section-badge {
   display:inline-block; background:var(--bright); color:#fff;
   font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px;
@@ -2362,14 +2372,15 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 
   body.mobile-redesign .kh-article-wrap{background:transparent !important;}
   body.mobile-redesign .art-breadcrumb{display:none !important;}
-  body.mobile-redesign .art-header,
-  body.mobile-redesign .art-hero-img,
-  body.mobile-redesign .art-tabs,
+  body.mobile-redesign .art-card{background:linear-gradient(180deg,rgba(17,24,39,.88),rgba(12,18,31,.96)) !important;border:1px solid rgba(255,255,255,.08) !important;border-radius:24px !important;margin-bottom:14px !important;}
+  body.mobile-redesign .art-card .art-hero-img{border:none !important;margin:0 !important;padding:0 !important;border-radius:0 !important;background:transparent !important;}
+  body.mobile-redesign .art-card .art-hero-img img{height:240px !important;border-radius:24px 24px 0 0 !important;object-fit:cover;width:100%;}
+  body.mobile-redesign .art-card-body{padding:16px !important;}
+  body.mobile-redesign .art-card .art-tabs{border:none !important;border-radius:0 !important;margin:0 !important;padding:0 !important;background:transparent !important;}
   body.mobile-redesign #art-tab-article,
   body.mobile-redesign #art-tab-grammar,
   body.mobile-redesign #art-tab-vocab,
-  body.mobile-redesign #art-tab-quiz{background:linear-gradient(180deg,rgba(17,24,39,.88),rgba(12,18,31,.96)) !important;border:1px solid rgba(255,255,255,.08) !important;border-radius:24px !important;padding:16px !important;margin-bottom:14px !important;}
-  body.mobile-redesign .art-hero-img img{height:240px !important;border-radius:18px !important;object-fit:cover;}
+  body.mobile-redesign #art-tab-quiz{background:transparent !important;border:none !important;border-radius:0 !important;padding:0 !important;margin:0 !important;}
   body.mobile-redesign .art-meta-row{display:flex;flex-wrap:wrap;gap:8px 10px !important;align-items:center;}
   body.mobile-redesign .art-date,
   body.mobile-redesign .art-readtime,

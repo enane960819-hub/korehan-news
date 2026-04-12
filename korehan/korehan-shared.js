@@ -2528,8 +2528,10 @@ function renderArticlePage() {
     + '<a href="korehan-section.html?s=' + encodeURIComponent(a.section) + '">' + sectionLabel(a.section) + '</a>'
     + '</nav>'
 
-    // 카테고리 + 제목
-    + '<div class="art-header">'
+    // 통합 기사 카드: 이미지 → 뱃지 → 제목 → 메타 → 탭 → 본문
+    + '<div class="art-card">'
+    + '<div class="art-hero-img"><img src="' + img + '" alt=""></div>'
+    + '<div class="art-card-body">'
     + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
     + '<span class="art-section-badge">' + a.section + '</span>'
     + (a.level ? (function(lv){ var c={'Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828','Starter':'#f3e8ff;color:#6b21a8'}; var dn={'Starter':'Seed','Beginner':'Sprout','Intermediate':'Tree','Advanced':'Forest'}; return '<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:'+(c[lv]||'#f0f0f0;color:#666')+'">'+(dn[lv]||lv)+'</span>'; })(a.level) : '')
@@ -2546,12 +2548,6 @@ function renderArticlePage() {
     + '<button class="art-action-icon" id="translate-btn" onclick="toggleTranslate()" title="Translate"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></button>'
     + '<button class="art-action-icon" id="analyze-btn" onclick="toggleAnalyze()" title="Analyze"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></button>'
     + '</div>'
-    + '</div>'
-    + '</div>'
-
-    // 히어로 이미지
-    + '<div class="art-hero-img">'
-    + '<img src="' + img + '" alt="">'
     + '</div>'
 
     // 4탭: Read / Grammar / Vocab / Quiz
@@ -2602,6 +2598,8 @@ function renderArticlePage() {
     + '<div id="art-listening-quiz"><button onclick="startArticleListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div>'
     + '</div>'
     + '</div>'
+
+    + '</div></div>' // close art-card-body + art-card
 
     // 구분선
     + '<hr class="art-divider">'
