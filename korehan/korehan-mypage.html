@@ -1056,29 +1056,181 @@ function renderTierGrid(xp) {
   var el = document.getElementById('mp-tier-grid');
   if (!el) return;
   var tier = getXPTier(xp);
-  var tierBarColors = {
-    bronze:'linear-gradient(90deg,#cd7f32,#daa06d)',
-    silver:'linear-gradient(90deg,#94a3b8,#cbd5e1)',
-    gold:'linear-gradient(90deg,#f59e0b,#fbbf24)',
-    plat:'linear-gradient(90deg,#7c3aed,#a78bfa)',
-    diamond:'linear-gradient(90deg,#1d4ed8,#60a5fa)'
-  };
-  el.innerHTML = TIERS.map(function(t) {
-    var active  = xp >= t.min;
+  el.innerHTML = '';
+  el.style.display = 'grid';
+  el.style.gridTemplateColumns = 'repeat(5,1fr)';
+  el.style.gap = '10px';
+
+  TIERS.forEach(function(t, idx) {
+    var active = xp >= t.min;
     var current = tier.label === t.label;
-    var pct = (t.max > t.min) ? Math.min(100, Math.round(Math.max(0, xp - t.min) / (t.max - t.min) * 100)) : 100;
-    var bgColor = active ? (TIER_COLORS[t.cls] + '18') : '#f4f6fa';
+    var pct = (t.max > t.min) ? Math.min(100, Math.round(Math.max(0, xp - t.min) / (t.max - t.min) * 100)) : (active ? 100 : 0);
     var remain = (t.max > t.min && active && t.max !== Infinity) ? (t.max - xp) : 0;
-    var remainStr = remain > 0 ? '<div class="tier-remain">' + remain.toLocaleString() + ' XP left</div>' : '';
-    var barGrad = tierBarColors[t.cls] || 'linear-gradient(90deg,#2255a4,#3d7fd4)';
-    return '<div class="tier-item' + (current ? ' current' : '') + '" data-tier="' + t.cls + '">'
-      + '<div class="tier-icon" style="background:' + bgColor + ';width:44px;height:44px">' + tierMark(t.cls, 26, !active) + '</div>'
-      + '<div class="tier-label" style="' + (active ? 'color:'+TIER_COLORS[t.cls] : 'color:#94a3b8') + '">' + t.label + '</div>'
+
+    var card = document.createElement('div');
+    card.className = 'tier-item' + (current ? ' current' : '');
+    card.dataset.tier = t.cls;
+    card.style.position = 'relative';
+    card.style.overflow = 'hidden';
+
+    // Canvas for particle effects
+    var canvas = document.createElement('canvas');
+    canvas.width = 160; canvas.height = 180;
+    canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0';
+    card.appendChild(canvas);
+
+    // Content overlay
+    var content = document.createElement('div');
+    content.style.cssText = 'position:relative;z-index:1;padding:14px 10px;text-align:center';
+    var iconBg = active ? (TIER_COLORS[t.cls] + '18') : '#f4f6fa';
+    content.innerHTML = '<div class="tier-icon" style="background:'+iconBg+';width:48px;height:48px">' + tierMark(t.cls, 30, !active) + '</div>'
+      + '<div class="tier-label" style="' + (active ? 'color:'+TIER_COLORS[t.cls] : 'color:#94a3b8') + ';font-weight:800">' + t.label + '</div>'
       + '<div class="tier-xp">' + t.min.toLocaleString() + (t.max !== t.min ? '+' : '') + '</div>'
-      + (active && t.max !== t.min ? '<div class="tier-bar"><div class="tier-bar-fill" style="width:' + pct + '%;background:' + barGrad + '"></div></div>' : '')
-      + remainStr
-      + '</div>';
-  }).join('');
+      + (active && t.max !== t.min ? '<div class="tier-bar" style="margin-top:8px"><div class="tier-bar-fill" style="width:'+pct+'%;background:linear-gradient(90deg,'+TIER_COLORS[t.cls]+','+TIER_COLORS[t.cls]+'88)"></div></div>' : '')
+      + (remain > 0 ? '<div class="tier-remain">' + remain.toLocaleString() + ' XP left</div>' : '');
+    card.appendChild(content);
+    el.appendChild(card);
+
+    // Start canvas animation for active tiers
+    if (active) _tierCanvasAnim(canvas, t.cls, current);
+  });
+}
+
+// ── Canvas 2D tier particle animations ──────────────────────
+function _tierCanvasAnim(canvas, cls, isCurrent) {
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height;
+  var particles = [];
+  var frameId;
+
+  var config = {
+    bronze: { count:6, colors:['#cd7f32','#b87333','#daa06d'], speed:0.3, size:[1.5,3], glow:0 },
+    silver: { count:10, colors:['#c0c0c0','#d4d4d8','#e8e8ee','#fff'], speed:0.5, size:[1.5,3], glow:4 },
+    gold:   { count:18, colors:['#fbbf24','#f59e0b','#fde68a','#fff7ed'], speed:0.6, size:[2,4], glow:8, shimmer:true },
+    plat:   { count:22, colors:['#a78bfa','#7c3aed','#c4b5fd','#e9d5ff','#fff'], speed:0.7, size:[2,4.5], glow:12, prism:true },
+    diamond:{ count:30, colors:['#60a5fa','#3b82f6','#93c5fd','#dbeafe','#fff','#e0f2fe'], speed:0.9, size:[2,5], glow:16, sparkle:true, rays:true }
+  };
+  var c = config[cls] || config.bronze;
+  var count = isCurrent ? c.count * 2 : c.count;
+
+  // Initialize particles
+  for (var i = 0; i < count; i++) {
+    particles.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - 0.5) * c.speed,
+      vy: -Math.random() * c.speed - 0.1,
+      size: c.size[0] + Math.random() * (c.size[1] - c.size[0]),
+      color: c.colors[Math.floor(Math.random() * c.colors.length)],
+      alpha: 0.3 + Math.random() * 0.7,
+      life: Math.random() * 200,
+      maxLife: 150 + Math.random() * 150
+    });
+  }
+
+  var time = 0;
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    time++;
+
+    // Diamond rays
+    if (c.rays && isCurrent) {
+      var rayAlpha = 0.03 + Math.sin(time * 0.02) * 0.02;
+      ctx.save();
+      ctx.translate(W/2, H/2);
+      for (var r = 0; r < 6; r++) {
+        ctx.rotate(Math.PI/3);
+        var grad = ctx.createLinearGradient(0, 0, 0, -H);
+        grad.addColorStop(0, 'rgba(96,165,250,' + rayAlpha + ')');
+        grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(-3, 0); ctx.lineTo(0, -H*0.7); ctx.lineTo(3, 0);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // Gold shimmer wave
+    if (c.shimmer) {
+      var shimX = (time * 1.5) % (W + 60) - 30;
+      var shimGrad = ctx.createLinearGradient(shimX - 30, 0, shimX + 30, 0);
+      shimGrad.addColorStop(0, 'transparent');
+      shimGrad.addColorStop(0.5, 'rgba(255,215,0,0.06)');
+      shimGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = shimGrad;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // Platinum prism
+    if (c.prism) {
+      var prismAlpha = 0.03 + Math.sin(time * 0.03) * 0.02;
+      var hue = (time * 0.5) % 360;
+      ctx.fillStyle = 'hsla(' + hue + ',70%,70%,' + prismAlpha + ')';
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // Draw particles
+    particles.forEach(function(p) {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life++;
+
+      // Fade lifecycle
+      var fadeIn = Math.min(p.life / 30, 1);
+      var fadeOut = Math.max(0, 1 - (p.life - p.maxLife + 30) / 30);
+      var alpha = p.alpha * fadeIn * fadeOut;
+
+      if (p.life > p.maxLife) {
+        p.x = Math.random() * W;
+        p.y = H + 5;
+        p.life = 0;
+        p.alpha = 0.3 + Math.random() * 0.7;
+      }
+      if (p.y < -10) { p.y = H + 5; p.life = 0; }
+      if (p.x < -10) p.x = W + 5;
+      if (p.x > W + 10) p.x = -5;
+
+      ctx.save();
+      if (c.glow > 0) {
+        ctx.shadowBlur = c.glow;
+        ctx.shadowColor = p.color;
+      }
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+
+      // Diamond sparkle: star shape
+      if (c.sparkle && Math.random() > 0.5) {
+        _drawStar(ctx, p.x, p.y, p.size);
+      } else {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    });
+
+    frameId = requestAnimationFrame(draw);
+  }
+  draw();
+
+  // Stop when not visible
+  var obs = new IntersectionObserver(function(entries) {
+    if (entries[0].isIntersecting) { if (!frameId) draw(); }
+    else { cancelAnimationFrame(frameId); frameId = null; }
+  });
+  obs.observe(canvas);
+}
+
+function _drawStar(ctx, x, y, r) {
+  ctx.beginPath();
+  for (var i = 0; i < 4; i++) {
+    var angle = (Math.PI / 2) * i;
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(angle) * r * 2, y + Math.sin(angle) * r * 2);
+  }
+  ctx.stroke = ctx.fill;
+  ctx.fill();
 }
 
 // ── Render XP log ──────────────────────────────────────────────
