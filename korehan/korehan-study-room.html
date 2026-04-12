@@ -12220,34 +12220,46 @@ setTimeout(renderCompletedStudies, 500);
 <!-- ══════════════════════════════════════════
      CONVERSATION STUDY MODAL
 ═══════════════════════════════════════════ -->
-<div class="woverlay hidden" id="cs-modal" onclick="if(event.target===this)closeConvStudy()">
-  <div class="as-panel">
+<div class="su-overlay hidden" id="cs-modal" onclick="if(event.target===this)closeConvStudy()">
+  <div class="su-panel">
     <!-- LIST VIEW -->
     <div id="cs-list-view">
-      <div class="wm-header">
-        <div><div class="wmh-title">Conversation Study</div><div class="wmh-sub">Pick a conversation to study</div></div>
-        <button class="wmh-close" onclick="closeConvStudy()">✕</button>
+      <div class="su-header">
+        <div class="su-header-info">
+          <div class="su-header-eyebrow">Conversation Study</div>
+          <div class="su-header-title">Select a Conversation</div>
+        </div>
+        <button class="su-close" onclick="closeConvStudy()">&#10005;</button>
       </div>
       <div style="padding:16px;overflow-y:auto;flex:1">
-        <div id="cs-conv-grid" class="as-article-grid"><div class="as-loading"><div class="as-spinner"></div><div>Loading conversations...</div></div></div>
+        <div id="cs-conv-grid" class="as-article-grid"><div class="su-loading"><div class="su-spinner"></div><div>Loading conversations...</div></div></div>
       </div>
     </div>
     <!-- STUDY VIEW -->
-    <div id="cs-study-view" class="as-hidden">
-      <div class="wm-header">
-        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
-          <button onclick="csBackToList()" style="padding:4px 10px;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:12px">← Back</button>
-          <div style="min-width:0"><div class="wmh-title" id="cs-conv-title">Conversation Study</div><div class="wmh-sub" id="cs-step-label">Step 1 / 5</div></div>
+    <div id="cs-study-view" class="as-hidden" style="display:flex;flex-direction:column;flex:1;min-height:0">
+      <div class="su-header">
+        <button class="su-back" onclick="csBackToList()">&#8592;</button>
+        <div class="su-header-info">
+          <div class="su-header-eyebrow" id="cs-step-label">Step 1 / 4 — Dialogue</div>
+          <div class="su-header-title" id="cs-conv-title">Conversation Study</div>
         </div>
-        <button class="wmh-close" onclick="closeConvStudy()">✕</button>
+        <button class="su-close" onclick="closeConvStudy()">&#10005;</button>
       </div>
-      <div id="cs-pip-bar" style="display:flex;gap:5px;padding:8px 16px;flex-shrink:0;background:linear-gradient(180deg,#0f2040,#152d5a)"></div>
-      <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column">
-        <div id="cs-chat-area" style="padding:16px 20px;border-bottom:2px solid var(--border);background:#f8fbff"></div>
-        <div id="cs-activity-area" style="padding:16px 20px;flex:1;background:var(--bg)"></div>
+      <div class="su-steps" id="cs-step-tabs">
+        <div class="su-step active" onclick="csGoToStep(1)"><span class="su-step-num">1</span><span class="su-step-label">Dialogue</span></div>
+        <div class="su-step" onclick="csGoToStep(2)"><span class="su-step-num">2</span><span class="su-step-label">Cards</span></div>
+        <div class="su-step" onclick="csGoToStep(3)"><span class="su-step-num">3</span><span class="su-step-label">Response</span></div>
+        <div class="su-step" onclick="csGoToStep(4)"><span class="su-step-num">4</span><span class="su-step-label">Build</span></div>
       </div>
-      <div class="as-nav-bar">
-        <button id="cs-next-btn" class="btn btn-g" onclick="csNextStep()" style="display:none">Next Step →</button>
+      <div class="su-progress"><div class="su-progress-fill" id="cs-progress-fill" style="width:0%"></div></div>
+      <div class="su-body">
+        <div id="cs-chat-area" style="padding:16px 20px"></div>
+        <div id="cs-activity-area"></div>
+      </div>
+      <div class="su-nav">
+        <button class="su-nav-prev" id="cs-prev-btn" style="display:none" onclick="csPrevStep()">&#8592; Prev</button>
+        <div class="su-nav-counter" id="cs-nav-counter"></div>
+        <button class="su-nav-next" id="cs-next-btn" style="display:none" onclick="csNextStep()">Next &#8594;</button>
       </div>
     </div>
   </div>
@@ -12257,7 +12269,8 @@ setTimeout(renderCompletedStudies, 500);
 // ═══════════════════════════════════════════════════════════════
 // CONVERSATION STUDY — 4-step learning flow
 // ═══════════════════════════════════════════════════════════════
-var _csConvs = [], _csCurrentConv = null, _csStep = 1, _csStepLabels = ['Dialogue + Quiz','Flashcards','Choose Response','Build Sentence'];
+var _csConvs = [], _csCurrentConv = null, _csStep = 1, _csStepDone = [false,false,false,false];
+var _csStepLabels = ['Dialogue + Quiz','Flashcards','Choose Response','Build Sentence'];
 
 window.openConvStudy = function() {
   if (!supaUser) { openAuthModal('signin'); return; }
@@ -12302,7 +12315,7 @@ async function _csLoadConversations() {
 }
 function _csStartConv(idx) {
   _csCurrentConv = _csConvs[idx]; if (!_csCurrentConv) return;
-  _csStep = 1;
+  _csStep = 1; _csStepDone = [false,false,false,false];
   document.getElementById('cs-list-view').style.display = 'none';
   document.getElementById('cs-study-view').classList.remove('as-hidden');
   document.getElementById('cs-conv-title').textContent = _csCurrentConv.name;
@@ -12312,21 +12325,50 @@ function csBackToList() {
   document.getElementById('cs-list-view').style.display = '';
   document.getElementById('cs-study-view').classList.add('as-hidden');
 }
+function csGoToStep(step) {
+  if (step > _csStep && !_csStepDone[step-2]) return;
+  _csStep = step; _csRenderStep();
+}
+function csPrevStep() { if (_csStep > 1) { _csStep--; _csRenderStep(); } }
 function csNextStep() {
+  _csStepDone[_csStep-1] = true;
   _csStep = Math.min(_csStep+1, 4);
   _csRenderStep();
+  // Save progress to DB
+  _csSaveProgressToDB();
+}
+function _csSetNav(next) {
+  var nb = document.getElementById('cs-next-btn');
+  if (nb) nb.style.display = next;
+}
+function _csSaveProgressToDB() {
+  if (!supaUser || !_csCurrentConv) return;
+  var sb = getSupa(); if (!sb) return;
+  sb.from('user_read_history').upsert({
+    user_id: supaUser.id, content_type: 'conversation_study',
+    content_id: String(_csCurrentConv.id),
+    progress_data: JSON.stringify({step:_csStep, stepDone:_csStepDone}),
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'user_id,content_type,content_id' }).then(function(){});
 }
 function _csRenderStep() {
   var c = _csCurrentConv; if (!c) return;
   document.getElementById('cs-step-label').textContent = 'Step '+_csStep+' / 4 — '+_csStepLabels[_csStep-1];
-  // Pip bar
-  var pips = document.getElementById('cs-pip-bar');
-  pips.innerHTML = [1,2,3,4].map(function(s){
-    var cls = s<_csStep?'as-pip done':s===_csStep?'as-pip active':'as-pip';
-    return '<div class="'+cls+'"></div>';
-  }).join('');
-  var nextBtn = document.getElementById('cs-next-btn');
-  if (nextBtn) nextBtn.style.display = 'none';
+  // Step tabs
+  var tabs = document.querySelectorAll('#cs-step-tabs .su-step');
+  tabs.forEach(function(tab, i) {
+    tab.className = 'su-step';
+    if (i + 1 < _csStep) tab.classList.add('done');
+    else if (i + 1 === _csStep) tab.classList.add('active');
+  });
+  // Progress
+  var pct = Math.round(((_csStep - 1) / 4) * 100);
+  var fill = document.getElementById('cs-progress-fill');
+  if (fill) fill.style.width = pct + '%';
+  // Prev button
+  var prevBtn = document.getElementById('cs-prev-btn');
+  if (prevBtn) prevBtn.style.display = _csStep > 1 ? '' : 'none';
+  _csSetNav('none');
   if (_csStep===1) _csStep1();
   else if (_csStep===2) _csStep2();
   else if (_csStep===3) _csStep3();
@@ -12366,10 +12408,12 @@ function _csRevealNext() {
   st.revealed++;
 
   var act = document.getElementById('cs-activity-area');
+  // Update nav counter
+  var cnt = document.getElementById('cs-nav-counter');
+  if (cnt) cnt.textContent = st.revealed + ' / ' + st.msgs.length;
   if (st.revealed < st.msgs.length) {
     act.innerHTML = '<div style="text-align:center;padding:16px;animation:srFadeIn .2s">'
-      +'<div style="font-size:12px;color:#94a3b8;margin-bottom:10px">' + st.revealed + ' / ' + st.msgs.length + ' messages</div>'
-      +'<button onclick="_csRevealNext()" style="padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(37,99,235,.25);transition:all .15s" onmouseover="this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.transform=\'none\'">Next Message →</button>'
+      +'<button onclick="_csRevealNext()" class="su-nav-next" style="margin:0 auto">Next Message &#8594;</button>'
       +'</div>';
   } else {
     // Last message revealed — start translation quiz
