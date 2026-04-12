@@ -156,6 +156,7 @@ var _userPlanLoaded = false;
 function getUserPlan() { return _userPlan; }
 
 function canAccess(feature) {
+  if (window._isAdmin) return true;
   var plan = KH_PLANS[_userPlan];
   return plan && plan.features && plan.features[feature] === true;
 }
