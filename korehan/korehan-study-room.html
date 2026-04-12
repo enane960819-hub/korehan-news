@@ -5155,7 +5155,12 @@ function renderSlangModal() {
   });
 }
 
-function switchSlangView(view) { _slangView = view; renderSlangModal(); }
+function switchSlangView(view) {
+  if ((view === 'all' || view === 'quiz') && !canAccess('slang_full')) {
+    closeSlangModal(); requirePlan('slang_full'); return;
+  }
+  _slangView = view; renderSlangModal();
+}
 
 function renderSlangDaily(el) {
   var daily = getDailySlang3();
@@ -6241,6 +6246,7 @@ function showNodeReplay(id) {
 
 // ── Player Engine ──
 async function openFastTrack() {
+  if (!requirePlan('fast_track')) return;
   var ov = document.getElementById('ft-overlay');
   if (!ov) return;
   // Load from DB first (fallback to hardcoded)
@@ -6489,6 +6495,7 @@ async function loadPhoneCalls() {
 }
 
 function openPhoneModal() {
+  if (!requirePlan('phone_call')) return;
   var ov = document.getElementById('phone-overlay');
   if (!ov) return;
   ov.classList.add('open');
@@ -8101,6 +8108,7 @@ function setLQMode(mode, btn) {
 }
 
 async function startLQ() {
+  if (!requirePlan('listening_quiz')) return;
   var box = document.getElementById('lq-mini');
   box.innerHTML = '<div class="ai-loading"><div class="spin">✨</div><div style="margin-top:8px;font-size:12px">AI가 문제를 만드는 중…</div></div>';
 
@@ -11132,6 +11140,7 @@ var _asQState        = null;
 
 function openArticleStudy() {
   if (!supaUser) { openAuthModal('signin'); return; }
+  if (!requirePlan('article_study')) return;
   var m = document.getElementById('as-modal');
   if (!m) return;
   m.classList.remove('hidden');
@@ -12274,6 +12283,7 @@ var _csStepLabels = ['Dialogue + Quiz','Flashcards','Choose Response','Build Sen
 
 window.openConvStudy = function() {
   if (!supaUser) { openAuthModal('signin'); return; }
+  if (!requirePlan('conversation_study')) return;
   if (!ensureStudyUnlocked()) return;
   var modal = document.getElementById('cs-modal');
   if (!modal) return;
@@ -13263,6 +13273,7 @@ function rvHandleClose() {
 
 function openWeeklyReview() {
   if (!supaUser) { openAuthModal('signin'); return; }
+  if (!requirePlan('weekly_monthly_review')) return;
   if (!isWeeklyReviewAvailable()) { showToast('Weekly Review opens every Sunday!'); return; }
   _rv.type = 'weekly'; _rv.timeLimit = 15;
   // Check for saved progress
@@ -13285,7 +13296,8 @@ function openWeeklyReview() {
 
 function openMonthlyReview() {
   if (!supaUser) { openAuthModal('signin'); return; }
-  if (!isMonthlyReviewAvailable()) { showToast('Monthly Review는 매월 1~3일에 열립니다!'); return; }
+  if (!requirePlan('weekly_monthly_review')) return;
+  if (!isMonthlyReviewAvailable()) { showToast('Monthly Review opens on the 1st~3rd of each month!'); return; }
   _rv.type = 'monthly'; _rv.timeLimit = 15;
   // Check for saved progress
   var saved = rvLoadSaved('monthly');
