@@ -3412,10 +3412,11 @@ async function runAutoGenerate(){
       const newArticle = {
         id: articleId, section: secKey,
         title: article.title, body: article.body,
+        title_en: h.title || '',
         date: today_date(), status: saveStatus,
         featured: false, level: diffInfo.level,
         source_url: h.link || '',
-        image: 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',
+        image: '',
       };
       await dbSaveArticle(newArticle);
       DB.unshift(newArticle); refreshCounts();

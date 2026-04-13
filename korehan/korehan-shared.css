@@ -1377,7 +1377,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 .kh-share-btn:hover { background:var(--light); }
 
 .art-hero-img { margin:0 0 28px; border-radius:16px; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,0.12); }
-.art-hero-img img { width:100%; max-height:500px; object-fit:cover; display:block; }
+.art-hero-img img { width:100%; max-height:500px; object-fit:contain; display:block; background:#f0f4fa; }
 
 .art-lead {
   font-size:18px; font-weight:500; line-height:2;

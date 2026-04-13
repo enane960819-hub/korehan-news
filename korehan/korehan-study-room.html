@@ -11933,7 +11933,8 @@ function _asFormatBody(b) {
 }
 function _asSetNav(check, next, done) {
   var nb = document.getElementById('as-next-btn'), db = document.getElementById('as-done-btn');
-  if (nb) nb.style.display = next; if (db) db.style.display = done;
+  if (nb) nb.style.display = (next === undefined || next === null) ? 'none' : next;
+  if (db) db.style.display = (done === undefined || done === null) ? 'none' : done;
 }
 function asGoToStep(step) {
   // Only allow going to completed steps or current
