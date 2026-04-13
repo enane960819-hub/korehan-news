@@ -6,56 +6,71 @@
   <title>Playground — KoreHan News</title>
   <link rel="stylesheet" href="korehan-shared.css">
   <style>
-    body{margin:0;background:#f3f7fc;color:#0f172a;font-family:'DM Sans',Inter,Pretendard,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+    body{margin:0;background:#f3f7fc;color:#0f172a;font-family:'DM Sans',Inter,Pretendard,-apple-system,sans-serif}
     .wrap{max-width:1160px;margin:0 auto;padding:22px 16px 56px}
-
-    /* Hero */
     .hero{background:linear-gradient(135deg,#0b1f3f,#1e3a8a 56%,#7c3aed);color:#fff;border-radius:18px;padding:32px 28px;box-shadow:0 20px 38px rgba(15,23,42,.18);position:relative;overflow:hidden}
     .hero::before{content:'';position:absolute;top:-40%;right:-10%;width:260px;height:260px;background:radial-gradient(circle,rgba(124,58,237,.35),transparent 70%);pointer-events:none}
     .hero h1{margin:0;font-size:32px;font-weight:900;display:flex;align-items:center;gap:10px}
     .hero p{margin:10px 0 0;color:rgba(255,255,255,.78);line-height:1.6;font-size:15px;max-width:480px}
 
-    /* Game grid */
     .fun-game-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:24px}
-    .fun-game-card{display:block;background:#fff;border:1px solid #dce8f5;border-radius:16px;overflow:hidden;text-decoration:none;color:inherit;transition:.2s transform,.2s box-shadow,.2s border-color}
-    .fun-game-card:hover{transform:translateY(-4px);border-color:#bfdbfe;box-shadow:0 16px 36px rgba(30,64,175,.14)}
-    .fun-game-cover{height:120px;display:flex;align-items:center;justify-content:center;font-size:42px;color:#fff;position:relative}
-    .fun-game-cover::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(0,0,0,.12))}
-    .fun-game-body{padding:16px 18px 20px}
-    .fun-game-sub{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px}
-    .fun-game-title{font-size:18px;font-weight:800;margin-bottom:8px;line-height:1.3;color:#0f172a}
-    .fun-game-desc{font-size:13px;color:#64748b;line-height:1.55}
-    .fun-game-arrow{display:flex;align-items:center;gap:4px;margin-top:12px;font-size:12px;font-weight:700;color:#2563eb}
+    .fun-game-card{display:block;border-radius:18px;overflow:hidden;text-decoration:none;color:#fff;transition:.25s transform,.25s box-shadow;position:relative;aspect-ratio:4/3}
+    .fun-game-card:hover{transform:translateY(-5px);box-shadow:0 20px 40px rgba(0,0,0,.25)}
 
-    /* Coming soon badge */
-    .fun-badge-soon{display:inline-block;padding:3px 8px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;margin-left:8px}
+    /* Cover = full card */
+    .fun-cover{position:absolute;inset:0;overflow:hidden}
+    /* Overlay gradient + text at bottom */
+    .fun-overlay{position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,.7) 100%);display:flex;flex-direction:column;justify-content:flex-end;padding:16px 18px;z-index:2}
+    .fun-title{font-size:18px;font-weight:900;line-height:1.2;margin-bottom:3px;text-shadow:0 2px 8px rgba(0,0,0,.4)}
+    .fun-sub{font-size:11px;font-weight:700;color:rgba(255,255,255,.7);text-shadow:0 1px 4px rgba(0,0,0,.3)}
 
-    /* Neon theme */
+    /* ── Animated covers ── */
+    /* Word Drop: falling letters */
+    .cv-worddrop{background:linear-gradient(135deg,#059669,#0d9488)}
+    .cv-worddrop .fl{position:absolute;font-size:20px;font-weight:900;color:rgba(255,255,255,.15);animation:fall linear infinite;font-family:'Noto Sans KR',sans-serif}
+    @keyframes fall{0%{transform:translateY(-30px)}100%{transform:translateY(300px)}}
+
+    /* Chosung: blinking consonants */
+    .cv-chosung{background:linear-gradient(135deg,#7c3aed,#ec4899)}
+    .cv-chosung .ch{position:absolute;font-size:32px;font-weight:900;color:rgba(255,255,255,.12);animation:choPulse 2s ease-in-out infinite;font-family:'Noto Sans KR',sans-serif}
+    @keyframes choPulse{0%,100%{opacity:.08;transform:scale(.9)}50%{opacity:.2;transform:scale(1.1)}}
+
+    /* Memory: flipping cards */
+    .cv-memory{background:linear-gradient(135deg,#0891b2,#6366f1)}
+    .cv-memory .mc{position:absolute;width:36px;height:48px;border-radius:6px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);animation:memFlip 3s ease-in-out infinite;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:rgba(255,255,255,.25)}
+    @keyframes memFlip{0%,100%{transform:rotateY(0)}50%{transform:rotateY(180deg)}}
+
+    /* Hangul Tetris: falling blocks */
+    .cv-tetris{background:linear-gradient(135deg,#d946ef,#f97316)}
+    .cv-tetris .tb{position:absolute;width:32px;height:32px;border-radius:6px;border:2px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);animation:tFall linear infinite;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:rgba(255,255,255,.2);font-family:'Noto Sans KR',sans-serif}
+    @keyframes tFall{0%{transform:translateY(-40px)}100%{transform:translateY(300px)}}
+
+    /* OX Quiz: floating O and X */
+    .cv-ox{background:linear-gradient(135deg,#dc2626,#2563eb)}
+    .cv-ox .oxf{position:absolute;font-size:28px;font-weight:900;animation:oxFloat 4s ease-in-out infinite}
+    @keyframes oxFloat{0%,100%{transform:translateY(0) rotate(0deg);opacity:.15}50%{transform:translateY(-15px) rotate(10deg);opacity:.3}}
+
+    /* Name Generator: sparkle */
+    .cv-name{background:linear-gradient(135deg,#1d4ed8,#7c3aed)}
+    .cv-name .sp{position:absolute;font-size:18px;animation:sparkle 2.5s ease-in-out infinite}
+    @keyframes sparkle{0%,100%{opacity:.1;transform:scale(.7)}50%{opacity:.35;transform:scale(1.2)}}
+
+    /* World Cup: pulsing */
+    .cv-worldcup{background:linear-gradient(135deg,#ea580c,#db2777)}
+    .cv-worldcup .wp{position:absolute;font-size:22px;animation:wpPulse 3s ease-in-out infinite}
+    @keyframes wpPulse{0%,100%{opacity:.12;transform:scale(.8) rotate(-5deg)}50%{opacity:.28;transform:scale(1.15) rotate(5deg)}}
+
+    /* Fortune: glow */
+    .cv-fortune{background:linear-gradient(135deg,#0f766e,#2563eb)}
+    .cv-fortune .fg{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.15),transparent 70%);animation:fGlow 3s ease-in-out infinite}
+    @keyframes fGlow{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:.6;transform:scale(1.3)}}
+
+    /* Neon overrides */
     body.kh-neon-on{background:#050b15 !important;color:#eefcff !important}
     body.kh-neon-on .hero{background:linear-gradient(135deg,#0c1a35,#1a2f6b 56%,#5b21b6);box-shadow:0 20px 38px rgba(0,0,0,.4)}
-    body.kh-neon-on .fun-game-card{background:#0d1b2a;border-color:rgba(255,255,255,.08)}
-    body.kh-neon-on .fun-game-card:hover{border-color:rgba(99,102,241,.3);box-shadow:0 16px 36px rgba(99,102,241,.15)}
-    body.kh-neon-on .fun-game-title{color:#e0f2fe}
-    body.kh-neon-on .fun-game-desc{color:rgba(255,255,255,.5)}
-    body.kh-neon-on .fun-game-sub{color:rgba(255,255,255,.35)}
-    body.kh-neon-on .fun-game-arrow{color:#7dd3fc}
 
-    /* Responsive */
-    @media(max-width:900px){
-      .fun-game-grid{grid-template-columns:repeat(2,1fr);gap:14px}
-      .hero{padding:24px 20px;border-radius:14px}
-      .hero h1{font-size:26px}
-    }
-    @media(max-width:560px){
-      .fun-game-grid{grid-template-columns:1fr;gap:12px}
-      .wrap{padding:14px 12px 40px}
-      .hero{padding:20px 16px;border-radius:12px}
-      .hero h1{font-size:22px}
-      .hero p{font-size:13px}
-      .fun-game-cover{height:100px;font-size:36px}
-      .fun-game-body{padding:14px 14px 16px}
-      .fun-game-title{font-size:16px}
-    }
+    @media(max-width:900px){.fun-game-grid{grid-template-columns:repeat(2,1fr);gap:14px}.hero{padding:24px 20px}.hero h1{font-size:26px}}
+    @media(max-width:560px){.fun-game-grid{grid-template-columns:1fr;gap:12px}.wrap{padding:14px 12px 40px}.hero{padding:20px 16px}.hero h1{font-size:22px}.hero p{font-size:13px}.fun-game-card{aspect-ratio:16/9}.fun-title{font-size:16px}}
   </style>
 </head>
 <body>
@@ -68,105 +83,43 @@
     <section id="fun-game-grid" class="fun-game-grid"></section>
   </main>
   <div id="kh-footer"></div>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="korehan-shared.js?v=20260412"></script>
+  <script src="korehan-shared.js?v=20260413"></script>
   <script>
-  (function(){
-    var games = [
-      {
-        id: 'name-generator',
-        title: 'Korean Name Generator',
-        subtitle: '3-step matching flow',
-        description: 'Enter profile info, answer quick personality questions, then get a Korean name match from our internal dataset.',
-        icon: '\uD83E\uDEAA',
-        href: 'korehan-fun-name.html',
-        accent: 'linear-gradient(135deg,#1d4ed8,#7c3aed)'
-      },
-      {
-        id: 'word-drop',
-        title: 'Word Drop',
-        subtitle: 'Canvas arcade game',
-        description: 'Korean words fall from the sky! Type the English meaning before they hit the ground. Speed increases as you level up.',
-        icon: '\uD83C\uDFAF',
-        href: 'korehan-fun-worddrop.html',
-        accent: 'linear-gradient(135deg,#059669,#0d9488)'
-      },
-      {
-        id: 'ideal-worldcup',
-        title: 'Ideal Type World Cup',
-        subtitle: 'Tournament game',
-        description: 'Choose between two options each round until one final winner remains.',
-        icon: '\uD83C\uDFC6',
-        href: 'korehan-fun-worldcup.html',
-        accent: 'linear-gradient(135deg,#ea580c,#db2777)'
-      },
-      {
-        id: 'daily-fortune',
-        title: "Today's Fortune",
-        subtitle: 'Daily playful card',
-        description: 'Check overall, love, study, and money luck with a short daily message.',
-        icon: '\uD83D\uDD2E',
-        href: 'korehan-fun-fortune.html',
-        accent: 'linear-gradient(135deg,#0f766e,#2563eb)'
-      },
-      {
-        id: 'chosung-quiz',
-        title: '\uCD08\uC131 Quiz',
-        subtitle: 'Initial consonant guessing',
-        description: 'See the first consonants + English hint, type the full Korean word. 20 questions, 10 seconds each.',
-        icon: '\uD83D\uDD24',
-        href: 'korehan-fun-chosung.html',
-        accent: 'linear-gradient(135deg,#7c3aed,#ec4899)'
-      },
-      {
-        id: 'memory-match',
-        title: 'Memory Match',
-        subtitle: 'Card flip matching',
-        description: 'Flip cards to match Korean words with English meanings. Three difficulty levels.',
-        icon: '\uD83C\uDFB4',
-        href: 'korehan-fun-memory.html',
-        accent: 'linear-gradient(135deg,#0891b2,#6366f1)'
-      },
-      {
-        id: 'hangul-tetris',
-        title: 'Hangul Tetris',
-        subtitle: 'Build Korean syllables',
-        description: 'Catch falling jamo blocks in order to build Korean syllables. Speed increases each level.',
-        icon: '\uD83E\uDDF1',
-        href: 'korehan-fun-hangul-tetris.html',
-        accent: 'linear-gradient(135deg,#d946ef,#f97316)'
-      },
-      {
-        id: 'ox-quiz',
-        title: 'Korea OX Quiz',
-        subtitle: 'True or false',
-        description: '60+ questions about Korean culture, food, etiquette, K-pop, and history. How much do you know?',
-        icon: '\uD83C\uDDF0\uD83C\uDDF7',
-        href: 'korehan-fun-ox.html',
-        accent: 'linear-gradient(135deg,#dc2626,#2563eb)'
-      }
-    ];
+(function(){
+  var games = [
+    {id:'word-drop',title:'Word Drop',sub:'Type before they fall',href:'korehan-fun-worddrop.html',cv:'cv-worddrop',
+     anim:function(){var w=['친구','학교','사랑','음식','여행','커피','영화','행복'];var h='';for(var i=0;i<8;i++)h+='<div class="fl" style="left:'+((i*13+5)%90)+'%;animation-duration:'+(2.5+i*.4)+'s;animation-delay:-'+(i*.6)+'s">'+w[i]+'</div>';return h;}},
+    {id:'chosung-quiz',title:'초성 Quiz',sub:'Guess from consonants',href:'korehan-fun-chosung.html',cv:'cv-chosung',
+     anim:function(){var c=['ㅎㄱ','ㅊㄱ','ㅅㄹ','ㅇㅅ','ㅎㅂ','ㄱㅈ','ㅇㅎ'];var h='';for(var i=0;i<7;i++)h+='<div class="ch" style="left:'+(8+i*13)+'%;top:'+(10+((i*17)%60))+'%;animation-delay:'+(i*.3)+'s;font-size:'+(24+i%3*6)+'px">'+c[i]+'</div>';return h;}},
+    {id:'memory-match',title:'Memory Match',sub:'Flip & match pairs',href:'korehan-fun-memory.html',cv:'cv-memory',
+     anim:function(){var t=['가','나','A','B','다','C','라','D','마','E','바','F'];var h='';for(var i=0;i<12;i++){var r=Math.floor(i/4),col=i%4;h+='<div class="mc" style="left:'+(12+col*22)+'%;top:'+(12+r*32)+'%;animation-delay:'+(i*.25)+'s">'+t[i]+'</div>';}return h;}},
+    {id:'hangul-tetris',title:'Hangul Tetris',sub:'Build Korean syllables',href:'korehan-fun-hangul-tetris.html',cv:'cv-tetris',
+     anim:function(){var j=['ㅎ','ㅏ','ㄴ','ㄱ','ㅜ','ㄹ','ㅁ','ㅣ'];var h='';for(var i=0;i<8;i++)h+='<div class="tb" style="left:'+((i*14+3)%85)+'%;animation-duration:'+(2+i*.3)+'s;animation-delay:-'+(i*.5)+'s">'+j[i]+'</div>';return h;}},
+    {id:'ox-quiz',title:'Korea OX Quiz',sub:'True or false?',href:'korehan-fun-ox.html',cv:'cv-ox',
+     anim:function(){var h='';for(var i=0;i<6;i++){var s=i%2===0?'⭕':'❌';h+='<div class="oxf" style="left:'+(8+i*16)+'%;top:'+(15+((i*20)%55))+'%;animation-delay:'+(i*.5)+'s;font-size:'+(22+i%3*8)+'px">'+s+'</div>';}return h;}},
+    {id:'name-generator',title:'Korean Name Generator',sub:'Get your Korean name',href:'korehan-fun-name.html',cv:'cv-name',
+     anim:function(){var e=['✨','🪪','가','나','🌟','한','💫','이'];var h='';for(var i=0;i<8;i++)h+='<div class="sp" style="left:'+(5+i*12)+'%;top:'+(10+((i*19)%65))+'%;animation-delay:'+(i*.35)+'s">'+e[i]+'</div>';return h;}},
+    {id:'ideal-worldcup',title:'Ideal Type World Cup',sub:'Tournament brackets',href:'korehan-fun-worldcup.html',cv:'cv-worldcup',
+     anim:function(){var e=['🏆','⚔️','👑','🎖️','🥇','💥'];var h='';for(var i=0;i<6;i++)h+='<div class="wp" style="left:'+(10+i*16)+'%;top:'+(12+((i*22)%55))+'%;animation-delay:'+(i*.4)+'s">'+e[i]+'</div>';return h;}},
+    {id:'daily-fortune',title:"Today's Fortune",sub:'Daily luck check',href:'korehan-fun-fortune.html',cv:'cv-fortune',
+     anim:function(){var h='';for(var i=0;i<4;i++)h+='<div class="fg" style="width:'+(60+i*20)+'px;height:'+(60+i*20)+'px;left:'+(10+i*22)+'%;top:'+(15+i*18)+'%;animation-delay:'+(i*.6)+'s"></div>';h+='<div style="position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);font-size:42px;opacity:.25;animation:fGlow 3s ease-in-out infinite">🔮</div>';return h;}}
+  ];
 
-    function render() {
-      var el = document.getElementById('fun-game-grid');
-      if (!el) return;
-      el.innerHTML = games.map(function(g){
-        return '<a class="fun-game-card" href="' + g.href + '">'
-          + '<div class="fun-game-cover" style="background:' + g.accent + '"><span>' + g.icon + '</span></div>'
-          + '<div class="fun-game-body">'
-          + '<div class="fun-game-sub">' + g.subtitle + '</div>'
-          + '<div class="fun-game-title">' + g.title + '</div>'
-          + '<div class="fun-game-desc">' + g.description + '</div>'
-          + '<div class="fun-game-arrow">Play now &rarr;</div>'
-          + '</div>'
-          + '</a>';
-      }).join('');
-    }
-
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
-    else render();
-  })();
-  </script>
+  function render(){
+    var el=document.getElementById('fun-game-grid');if(!el)return;
+    el.innerHTML=games.map(function(g){
+      return '<a class="fun-game-card" href="'+g.href+'">'
+        +'<div class="fun-cover '+g.cv+'">'+g.anim()+'</div>'
+        +'<div class="fun-overlay">'
+        +'<div class="fun-title">'+g.title+'</div>'
+        +'<div class="fun-sub">'+g.sub+'</div>'
+        +'</div></a>';
+    }).join('');
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',render);
+  else render();
+})();
+</script>
 </body>
 </html>
