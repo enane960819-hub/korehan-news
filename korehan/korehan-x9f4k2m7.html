@@ -2810,8 +2810,9 @@ function renderTopicsTable(list) {
     const bg = lvBg[t.level] || 'background:#eee;color:#555';
     const activeColor = t.active ? '#2e7d32' : '#c33';
     const usedLabel = t.used_date ? '<span style="font-size:10px;color:#94a3b8">📅 ' + t.used_date + '</span>' : '';
-    rows += '<tr style="border-bottom:1px solid var(--border)" data-idx="'+i+'">';
-    rows += '<td style="padding:7px 8px;text-align:center;font-size:12px;color:#94a3b8;width:30px">' + (i+1) + '</td>';
+    var isToday = (i === todayIdx);
+    rows += '<tr style="border-bottom:1px solid var(--border);'+(isToday?'background:#fffbeb;':'') +'" data-idx="'+i+'">';
+    rows += '<td style="padding:7px 8px;text-align:center;font-size:12px;color:'+(isToday?'#d97706':'#94a3b8')+';width:30px;font-weight:'+(isToday?'900':'400')+'">' + (i+1) + (isToday?' 📌':'') + '</td>';
     rows += '<td style="padding:7px 8px;white-space:nowrap;width:50px">'
       + '<button onclick="moveTopicUp(\''+t.id+'\')" style="border:none;background:none;cursor:pointer;font-size:11px;padding:2px" title="위로">⬆</button>'
       + '<button onclick="moveTopicDown(\''+t.id+'\')" style="border:none;background:none;cursor:pointer;font-size:11px;padding:2px" title="아래로">⬇</button></td>';
@@ -2821,10 +2822,20 @@ function renderTopicsTable(list) {
     rows += '<td style="padding:7px 8px">' + usedLabel + '</td>';
     rows += '<td style="padding:7px 8px;white-space:nowrap">';
     rows += '<button data-id="'+t.id+'" onclick="editTopicById(this.dataset.id)" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:#fff;cursor:pointer;margin-right:3px">Edit</button>';
+    rows += '<button data-id="'+t.id+'" onclick="pregenAI(\''+t.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid #c7d2fe;background:#eef2ff;color:#4f46e5;cursor:pointer;margin-right:3px">🤖 AI</button>';
     rows += '<button data-id="'+t.id+'" onclick="deleteTopic(this.dataset.id)" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid #fdd;background:#fff5f5;color:#c33;cursor:pointer">Del</button>';
     rows += '</td></tr>';
+    // AI preview row (hidden by default)
+    rows += '<tr id="ai-preview-'+t.id+'" style="display:none"><td colspan="7" style="padding:12px 16px;background:#fafbff;border-bottom:1px solid var(--border)">'
+      + '<div id="ai-content-'+t.id+'"><span style="color:#94a3b8;font-size:12px">AI 콘텐츠를 생성하려면 🤖 AI 버튼을 누르세요.</span></div>'
+      + '</td></tr>';
   }
-  el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개 · 순서대로 하루 1개씩 출제</div>'
+  // 오늘 인덱스 계산 (기준일 2026-04-14)
+  var epoch = new Date('2026-04-14T00:00:00+09:00').getTime();
+  var nowMs = Date.now() + 9*3600000;
+  var daysSince = Math.max(0, Math.floor((nowMs - epoch) / 86400000));
+  var todayIdx = list.length ? (daysSince % list.length) : 0;
+  el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개 · 오늘 #<b>' + (todayIdx+1) + '</b> · Day ' + daysSince + ' (기준일 2026-04-14)</div>'
     + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
     + '<thead><tr style="background:#f8faff;border-bottom:2px solid var(--border)">'
     + '<th style="padding:7px 8px;text-align:center">#</th>'
@@ -2898,6 +2909,82 @@ async function generateAITopics() {
     loadTopics();
   } catch(e){st.textContent='❌ Error: '+e.message;}
   btn.disabled=false;btn.textContent='Generate';
+}
+
+// ── AI Pre-generate content for a topic ──
+async function pregenAI(topicId) {
+  var t = (window._topicsAll||[]).find(function(x){return x.id===topicId;});
+  if (!t) return;
+  var row = document.getElementById('ai-preview-'+topicId);
+  var box = document.getElementById('ai-content-'+topicId);
+  if (!row||!box) return;
+  // Toggle visibility
+  row.style.display = row.style.display==='none' ? '' : 'none';
+  if (row.style.display==='none') return;
+  // Check if already has content in study_daily_content
+  box.innerHTML='<span style="color:#6366f1;font-size:12px">⏳ Checking existing content...</span>';
+  var sb=getSb();
+  // Find if this topic has been pre-generated
+  var existing = await sb.from('study_daily_content').select('*').eq('level',t.level).eq('topic_ko',t.topic_ko).maybeSingle();
+  if (existing.data && existing.data.vocab) {
+    renderAIPreview(box, existing.data, t);
+    return;
+  }
+  // Generate new
+  box.innerHTML='<span style="color:#6366f1;font-size:12px">🤖 AI generating vocab, grammar, dictation...</span>';
+  try {
+    var levelGuide = {Starter:'STARTER: Very basic. 가나다 level.',Beginner:'BEGINNER: Present tense, basic particles, everyday vocab.',Intermediate:'INTERMEDIATE: Past tense, conjunctions, topic-specific terms.',Advanced:'ADVANCED: Complex structures, formal style, abstract vocab.'};
+    var prompt = 'Korean language study content for topic: "'+t.topic_ko+'" ('+t.topic_en+')\nLevel: '+t.level+' — '+(levelGuide[t.level]||'')+'\n\n'
+      + 'Generate JSON:\n{"vocab":[{"ko":"word","rom":"romanization","en":"meaning"}] (8 items),'
+      + '"grammar":{"patterns":[{"name":"pattern name","level":"'+t.level+'","exp":"explanation","ex_ko":"example korean","ex_en":"example english"}] (3 items)},'
+      + '"helpers":["helper sentence 1","helper sentence 2"] (5 Korean sentences for writing practice),'
+      + '"dictation_sentences":["Korean sentence 1","sentence 2"] (4 sentences for dictation)}\n\nReturn ONLY valid JSON.';
+    var r = await callClaude({feature:'topic-pregen',model:'claude-haiku-4-5-20251001',max_tokens:1500,messages:[{role:'user',content:prompt}]});
+    var txt=(r.content&&r.content[0]&&r.content[0].text)||'';
+    var clean=txt.replace(/```json?|```/g,'').trim();
+    var oi=clean.indexOf('{'),ei=clean.lastIndexOf('}');
+    var parsed=JSON.parse(clean.slice(oi,ei+1));
+    // Save to study_daily_content (unscheduled, status=draft)
+    var rec={level:t.level, topic_ko:t.topic_ko, topic_en:t.topic_en,
+      vocab:JSON.stringify(parsed.vocab||[]), grammar:JSON.stringify(parsed.grammar||{}),
+      helpers:JSON.stringify(parsed.helpers||[]), dictation_sentences:JSON.stringify(parsed.dictation_sentences||[]),
+      status:'draft', scheduled_date:'2099-01-01', admin_edited:false};
+    await sb.from('study_daily_content').upsert(rec,{onConflict:'scheduled_date,level'});
+    // Re-read to get full row
+    var saved = await sb.from('study_daily_content').select('*').eq('level',t.level).eq('topic_ko',t.topic_ko).maybeSingle();
+    renderAIPreview(box, saved.data||rec, t);
+  } catch(e) {
+    box.innerHTML='<span style="color:#c33;font-size:12px">❌ Error: '+e.message+'</span>';
+  }
+}
+
+function renderAIPreview(box, data, topic) {
+  var vocab=[], grammar={patterns:[]}, helpers=[], dict=[];
+  try{vocab=typeof data.vocab==='string'?JSON.parse(data.vocab):data.vocab||[];}catch(e){}
+  try{grammar=typeof data.grammar==='string'?JSON.parse(data.grammar):data.grammar||{patterns:[]};}catch(e){}
+  try{helpers=typeof data.helpers==='string'?JSON.parse(data.helpers):data.helpers||[];}catch(e){}
+  try{dict=typeof data.dictation_sentences==='string'?JSON.parse(data.dictation_sentences):data.dictation_sentences||[];}catch(e){}
+  var h='<div style="font-size:12px">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="color:#4f46e5">🤖 AI Pre-generated Content</b>'
+    +'<button onclick="pregenAI(\''+topic.id+'\')" style="font-size:10px;padding:3px 10px;border:1px solid #c7d2fe;border-radius:5px;background:#eef2ff;color:#4f46e5;cursor:pointer">🔄 Regenerate</button></div>';
+  // Vocab
+  h+='<div style="margin-bottom:8px"><b>📚 Vocab ('+vocab.length+')</b><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+  vocab.forEach(function(v){h+='<span style="padding:3px 8px;background:#e0e7ff;border-radius:6px;font-size:11px">'+v.ko+' <span style="color:#64748b">'+v.en+'</span></span>';});
+  h+='</div></div>';
+  // Grammar
+  h+='<div style="margin-bottom:8px"><b>📐 Grammar ('+(grammar.patterns||[]).length+')</b><div style="margin-top:4px">';
+  (grammar.patterns||[]).forEach(function(p){h+='<div style="font-size:11px;margin-bottom:2px">• <b>'+p.name+'</b> — '+p.exp+'</div>';});
+  h+='</div></div>';
+  // Helpers
+  h+='<div style="margin-bottom:8px"><b>✍️ Helpers ('+helpers.length+')</b><div style="margin-top:4px">';
+  helpers.forEach(function(s){h+='<div style="font-size:11px;color:#475569">• '+s+'</div>';});
+  h+='</div></div>';
+  // Dictation
+  h+='<div><b>🎧 Dictation ('+dict.length+')</b><div style="margin-top:4px">';
+  dict.forEach(function(s){h+='<div style="font-size:11px;color:#475569">• '+s+'</div>';});
+  h+='</div></div>';
+  h+='</div>';
+  box.innerHTML=h;
 }
 
 function openTopicModal(topic) {

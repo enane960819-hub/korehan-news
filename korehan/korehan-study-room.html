@@ -3861,12 +3861,12 @@ async function _generateAndSaveDailyContent(date) {
     Intermediate: 'INTERMEDIATE: Past tense, conjunctions, modals. Sentences 8-12 words. Topic-specific terms.',
     Advanced:     'ADVANCED: Complex structures, formal style, advanced connectors. Sentences 12+ words. Abstract vocab.'
   };
-  // 작문 토픽 DB에서 오늘의 주제 가져오기 — 순서대로 하루 1개
+  // 작문 토픽 — 날짜 기반 순차 선택 (모든 유저 동일)
+  // 기준일(2026-04-14)부터 매일 1번씩 sort_order 순으로
   var assignedTopic = null;
   try {
     var sb = getSupa();
     if (sb) {
-      // writing_topics를 sort_order → created_at 순으로 가져오기
       var topicRes = await sb.from('writing_topics')
         .select('*')
         .eq('level', _currentLevel)
@@ -3875,14 +3875,11 @@ async function _generateAndSaveDailyContent(date) {
         .order('created_at');
       var allTopics = topicRes.data || [];
       if (allTopics.length) {
-        // 이미 사용된 토픽 수 = 오늘의 인덱스
-        var usedRes = await sb.from('study_daily_content')
-          .select('topic_ko')
-          .eq('level', _currentLevel)
-          .order('scheduled_date', { ascending: true });
-        var usedCount = (usedRes.data || []).length;
-        // 순서대로: 사용된 수 % 전체 토픽 수 = 오늘 인덱스
-        var todayIdx = usedCount % allTopics.length;
+        // 기준일로부터 며칠째인지 계산 → 인덱스
+        var epoch = new Date('2026-04-14T00:00:00+09:00').getTime();
+        var now = new Date(date + 'T00:00:00+09:00').getTime();
+        var daysSinceEpoch = Math.max(0, Math.floor((now - epoch) / 86400000));
+        var todayIdx = daysSinceEpoch % allTopics.length;
         assignedTopic = allTopics[todayIdx];
       }
     }
