@@ -6572,7 +6572,7 @@ async function srRegenDailyContent() {
 
     if (!topicKo) {
       if (msgEl) msgEl.textContent = 'writing_topics에서 토픽 가져오는 중…';
-      var picked = await _srPickTopicFromDB(sb, level);
+      var picked = await _srPickTopicFromDB(sb, level, date);
       topicKo = picked.topic_ko;
       topicEn = picked.topic_en;
     }
@@ -6602,26 +6602,25 @@ async function srRegenDailyContent() {
 }
 
 // ── Pick an unused topic from writing_topics DB ──
-async function _srPickTopicFromDB(sb, level) {
+async function _srPickTopicFromDB(sb, level, date) {
   if (!sb) sb = getSb();
-  // Fetch all active topics for this level
-  var topicsRes = await sb.from('writing_topics').select('topic_ko,topic_en').eq('level', level).eq('active', true);
+  // Fetch all active topics sorted by sort_order (same order as 작문 토픽 list)
+  var topicsRes = await sb.from('writing_topics').select('topic_ko,topic_en,category').eq('level', level).eq('active', true).order('sort_order').order('created_at');
   var allTopics = topicsRes.data || [];
   if (!allTopics.length) {
-    // Fallback: try without level filter
-    var fallbackRes = await sb.from('writing_topics').select('topic_ko,topic_en').eq('active', true);
+    var fallbackRes = await sb.from('writing_topics').select('topic_ko,topic_en,category').eq('active', true).order('sort_order').order('created_at');
     allTopics = fallbackRes.data || [];
   }
   if (!allTopics.length) return { topic_ko: '한국 음식', topic_en: 'Korean food' };
 
-  // Get recently used topics (past 365 days) to avoid duplicates
-  var usedRes = await sb.from('study_daily_content').select('topic_ko').eq('level', level).order('scheduled_date',{ascending:false}).limit(365);
-  var usedKo = (usedRes.data||[]).map(function(r){ return r.topic_ko; });
-  var available = allTopics.filter(function(t){ return usedKo.indexOf(t.topic_ko) < 0; });
-  if (!available.length) available = allTopics; // All used, recycle
-
-  // Random pick
-  var pick = available[Math.floor(Math.random() * available.length)];
+  // Deterministic date-based rotation: same logic as study room
+  // Day 0 (2026-04-14) = topic #1, Day 1 = topic #2, ...
+  if (!date) date = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+  var epoch = new Date('2026-04-14T00:00:00+09:00').getTime();
+  var now = new Date(date + 'T00:00:00+09:00').getTime();
+  var daysSinceEpoch = Math.max(0, Math.floor((now - epoch) / 86400000));
+  var todayIdx = daysSinceEpoch % allTopics.length;
+  var pick = allTopics[todayIdx];
   return { topic_ko: pick.topic_ko || '', topic_en: pick.topic_en || '' };
 }
 
@@ -6965,7 +6964,11 @@ async function srPregenerate10Days() {
       // Throttle: wait 1.5s between API calls to avoid rate limiting
       if (mi > 0) await new Promise(function(r){ setTimeout(r, 1500); });
       var date = missing[mi];
-      var topic = available.length ? available[mi % available.length] : null;
+      // Deterministic date-based rotation (same as study room + _srPickTopicFromDB)
+      var _epoch = new Date('2026-04-14T00:00:00+09:00').getTime();
+      var _now = new Date(date + 'T00:00:00+09:00').getTime();
+      var _dayIdx = Math.max(0, Math.floor((_now - _epoch) / 86400000)) % (allTopics.length || 1);
+      var topic = allTopics.length ? allTopics[_dayIdx] : null;
       var topicKo = topic ? topic.topic_ko : '';
       var topicEn = topic ? topic.topic_en : '';
       var topicHint = topic
@@ -6983,7 +6986,7 @@ async function srPregenerate10Days() {
           confusing_grammar: parsed.confusing_grammar||null,
           formality_exercise: parsed.formality_exercise||null,
           culture_note: parsed.culture_note||null,
-          admin_edited: false, updated_at: new Date().toISOString()
+          status: 'approved', admin_edited: false, updated_at: new Date().toISOString()
         };
         var upsertRes = await sb.from('study_daily_content').upsert(rec, {onConflict:'scheduled_date,level'});
         if (upsertRes.error) throw new Error('DB 저장 실패: ' + upsertRes.error.message);
@@ -7022,7 +7025,7 @@ async function srGenerate1Day1Level() {
 
   if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">' + date + ' ' + lvlDisplay + ' 생성 중… (5-10초)</div>';
   try {
-    var picked = await _srPickTopicFromDB(sb, level);
+    var picked = await _srPickTopicFromDB(sb, level, date);
     var topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
     var parsed = await _srGenerateContent(level, topicHint, picked.topic_ko, picked.topic_en);
     var rec = {
@@ -7033,7 +7036,7 @@ async function srGenerate1Day1Level() {
       confusing_grammar: parsed.confusing_grammar || null,
       formality_exercise: parsed.formality_exercise || null,
       culture_note: parsed.culture_note || null,
-      status: 'draft', admin_edited: false, updated_at: new Date().toISOString()
+      status: 'approved', admin_edited: false, updated_at: new Date().toISOString()
     };
     var upsertRes = await sb.from('study_daily_content').upsert(rec, {onConflict:'scheduled_date,level'});
     if (upsertRes.error) throw new Error('DB 저장 실패: ' + upsertRes.error.message);
@@ -7066,7 +7069,7 @@ async function srGenerate1DayAllLevels() {
 
     try {
       if (li > 0) await new Promise(function(r){ setTimeout(r, 1500); });
-      var picked = await _srPickTopicFromDB(sb, level);
+      var picked = await _srPickTopicFromDB(sb, level, date);
       var topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
       if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">' + date + ' ' + lvlNames[level] + ' 생성 중… (' + (generated+1) + '/4)</div>';
       var parsed = await _srGenerateContent(level, topicHint, picked.topic_ko, picked.topic_en);
@@ -7078,7 +7081,7 @@ async function srGenerate1DayAllLevels() {
         confusing_grammar: parsed.confusing_grammar || null,
         formality_exercise: parsed.formality_exercise || null,
         culture_note: parsed.culture_note || null,
-        status: 'draft', admin_edited: false, updated_at: new Date().toISOString()
+        status: 'approved', admin_edited: false, updated_at: new Date().toISOString()
       };
       var upsertRes = await sb.from('study_daily_content').upsert(rec, {onConflict:'scheduled_date,level'});
       if (upsertRes.error) throw new Error(upsertRes.error.message);
@@ -7123,8 +7126,8 @@ async function srAssign3Days() {
       try {
         // Throttle: wait 1.5s between API calls to avoid rate limiting
         if (apiCallCount > 0) await new Promise(function(r){ setTimeout(r, 1500); });
-        // Pick topic from DB
-        var picked = await _srPickTopicFromDB(sb, level);
+        // Pick topic from DB (date-based deterministic rotation)
+        var picked = await _srPickTopicFromDB(sb, level, date);
         var topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
         if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">' + date + ' ' + lvlNames[level] + ' 생성 중… (' + (generated+1) + '/12)</div>';
 
@@ -7138,7 +7141,7 @@ async function srAssign3Days() {
           confusing_grammar: parsed.confusing_grammar || null,
           formality_exercise: parsed.formality_exercise || null,
           culture_note: parsed.culture_note || null,
-          status: 'draft', admin_edited: false, updated_at: new Date().toISOString()
+          status: 'approved', admin_edited: false, updated_at: new Date().toISOString()
         };
         var upsertRes = await sb.from('study_daily_content').upsert(rec, {onConflict:'scheduled_date,level'});
         if (upsertRes.error) throw new Error(upsertRes.error.message);
