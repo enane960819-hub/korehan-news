@@ -3731,10 +3731,17 @@ async function loadDailyContent() {
       new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('db_timeout')); }, 8000); })
     ]);
     if (!r.error && r.data) {
-      console.log('[loadDailyContent] found approved content');
-      _applyDailyContent(r.data);
-      _pregenTomorrow();
-      return;
+      // Check if learning elements actually exist — if only topic is set but vocab/grammar are empty, trigger AI generation
+      var hasLearning = r.data.vocab && (Array.isArray(r.data.vocab) ? r.data.vocab.length > 0 : (typeof r.data.vocab === 'string' && r.data.vocab.length > 2));
+      if (hasLearning) {
+        console.log('[loadDailyContent] found approved content with learning elements');
+        _applyDailyContent(r.data);
+        _pregenTomorrow();
+        return;
+      }
+      // Topic exists but learning elements are empty — pass approved topic to AI generation
+      console.log('[loadDailyContent] approved topic found but learning elements empty — generating AI content');
+      _approvedTopicForGen = { topic_ko: r.data.topic_ko, topic_en: r.data.topic_en };
     }
     if (r.error) console.warn('[loadDailyContent] DB error:', r.error.message);
   } catch(e) {
@@ -3881,6 +3888,8 @@ function _showIdiomBanner() {
   } catch(e) { console.warn('[_showIdiomBanner]', e); }
 }
 
+var _approvedTopicForGen = null;
+
 async function _generateAndSaveDailyContent(date) {
   if (!supaUser) { showLoginWall(); return; }
   console.log('[_generateAndSaveDailyContent] generating for date:', date, 'level:', _currentLevel);
@@ -3921,7 +3930,12 @@ async function _generateAndSaveDailyContent(date) {
   try { userInterests = JSON.parse(localStorage.getItem('kh_user_interests') || '[]'); } catch(e) {}
 
   var topicHint = '';
-  if (assignedTopic) {
+  // Priority: approved topic from study_daily_content > writing_topics > random category
+  if (_approvedTopicForGen && _approvedTopicForGen.topic_ko) {
+    topicHint = 'Use EXACTLY this topic: "' + _approvedTopicForGen.topic_ko + '" (' + (_approvedTopicForGen.topic_en || '') + ').';
+    console.log('[_generateAndSaveDailyContent] using approved topic override:', _approvedTopicForGen.topic_ko);
+    _approvedTopicForGen = null;
+  } else if (assignedTopic) {
     topicHint = 'Use EXACTLY this topic: "' + assignedTopic.topic_ko + '" (' + assignedTopic.topic_en + '). Category: ' + (assignedTopic.category || '') + '.';
   } else {
     var topicCategories = [
