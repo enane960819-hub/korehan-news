@@ -6,64 +6,82 @@
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
 body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans',Inter,Pretendard,sans-serif;overflow:hidden}
-.wrap{max-width:700px;margin:0 auto;padding:12px 16px;position:relative;height:100dvh;height:100vh;display:flex;flex-direction:column}
+.wrap{max-width:700px;margin:0 auto;padding:10px 16px;position:relative;height:100dvh;height:100vh;display:flex;flex-direction:column}
 @supports(height:100dvh){.wrap{height:100dvh}}
-.game-header{display:flex;justify-content:space-between;align-items:center;padding:8px 0;flex-shrink:0}
-.game-title{font-size:18px;font-weight:900;display:flex;align-items:center;gap:8px}
-.stat{font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}
+.game-header{display:flex;justify-content:space-between;align-items:center;padding:6px 0;flex-shrink:0}
+.game-title{font-size:17px;font-weight:900;display:flex;align-items:center;gap:6px}
+.stat{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1)}
 .stat-val{color:#7dd3fc}
-#game-canvas{flex:1;width:100%;border-radius:14px;background:rgba(10,19,37,.6);border:1px solid rgba(255,255,255,.06)}
-.input-area{flex-shrink:0;padding:8px 0}
+.back{display:inline-flex;padding:5px 10px;border-radius:999px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);color:#94a3b8;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:4px}
+
+/* Game area — replaces canvas */
+.game-area{flex:1;position:relative;overflow:hidden;border-radius:14px}
+/* Danger zone */
+.game-area::after{content:'';position:absolute;bottom:0;left:0;right:0;height:40px;background:linear-gradient(transparent,rgba(239,68,68,.12));border-top:2px dashed rgba(239,68,68,.25);pointer-events:none;z-index:1}
+
+/* Falling word pill */
+.word-pill{position:absolute;padding:8px 16px;border-radius:10px;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);border:1.5px solid rgba(125,211,252,.2);color:#e0f2fe;font-size:18px;font-weight:800;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;pointer-events:none;transition:border-color .15s;z-index:2}
+.word-pill.danger{border-color:rgba(239,68,68,.5);color:#fca5a5}
+.word-pill.correct{animation:wpCorrect .4s ease forwards}
+@keyframes wpCorrect{0%{transform:scale(1);opacity:1}50%{transform:scale(1.3);border-color:#4ade80;color:#4ade80}100%{transform:scale(0);opacity:0}}
+.word-pill.missed{animation:wpMissed .3s ease forwards}
+@keyframes wpMissed{to{opacity:0;transform:translateY(20px)}}
+
+/* Input */
+.input-area{flex-shrink:0;padding:6px 0}
 .input-area form{display:flex;gap:8px}
-.input-area input{flex:1;padding:10px 14px;border:2px solid rgba(125,211,252,.3);border-radius:12px;background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:'Noto Sans KR',sans-serif;text-align:center;outline:none}
+.input-area input{flex:1;padding:10px 14px;border:2px solid rgba(125,211,252,.3);border-radius:12px;background:rgba(0,0,0,.4);backdrop-filter:blur(8px);color:#fff;font-size:16px;font-family:'Noto Sans KR',sans-serif;text-align:center;outline:none}
 .input-area input:focus{border-color:#7dd3fc;box-shadow:0 0 20px rgba(125,211,252,.15)}
-.input-area button{padding:10px 18px;border:none;border-radius:12px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap}
-.back{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:6px}
+.input-area button{padding:10px 18px;border:none;border-radius:12px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
+
 .combo-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:48px;font-weight:900;color:#fbbf24;text-shadow:0 0 40px rgba(251,191,36,.5);pointer-events:none;animation:comboIn .6s ease forwards;z-index:20}
 @keyframes comboIn{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
 
-/* ── Menu Screen ── */
-.menu-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,11,21,.96);z-index:10;padding:20px;overflow-y:auto}
+/* Particle */
+.particle{position:absolute;border-radius:50%;pointer-events:none;z-index:3}
+
+/* ── Menu ── */
+.menu-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(12px);z-index:10;padding:20px;overflow-y:auto}
 .menu-title{font-size:28px;font-weight:900;margin-bottom:4px}
-.menu-sub{font-size:13px;color:#94a3b8;margin-bottom:20px}
-.menu-section{width:100%;max-width:380px;margin-bottom:16px}
+.menu-sub{font-size:13px;color:#94a3b8;margin-bottom:18px}
+.menu-section{width:100%;max-width:380px;margin-bottom:14px}
 .menu-label{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#64748b;margin-bottom:8px}
-.mode-btns{display:flex;gap:8px}
-.mode-btn{flex:1;padding:14px 10px;border:2px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.03);color:#94a3b8;font-size:14px;font-weight:800;cursor:pointer;text-align:center;transition:.15s;font-family:inherit}
+.mode-btns,.speed-btns{display:flex;gap:8px}
+.mode-btn,.speed-btn{flex:1;padding:12px 8px;border:2px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.03);color:#94a3b8;font-size:13px;font-weight:800;cursor:pointer;text-align:center;transition:.15s;font-family:inherit}
 .mode-btn.on{border-color:#2563eb;background:rgba(37,99,235,.15);color:#7dd3fc}
+.speed-btn.on{border-color:#f59e0b;background:rgba(245,158,11,.12);color:#fbbf24}
 .topic-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .topic-btn{padding:10px 6px;border:2px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.03);color:#94a3b8;font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:.15s;font-family:inherit}
 .topic-btn.on{border-color:#7c3aed;background:rgba(124,58,237,.15);color:#c4b5fd}
 .topic-btn .ico{font-size:18px;display:block;margin-bottom:3px}
-.start-btn{width:100%;max-width:380px;padding:16px;border:none;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 8px 32px rgba(37,99,235,.4);margin-top:8px}
+.start-btn{width:100%;max-width:380px;padding:16px;border:none;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 8px 32px rgba(37,99,235,.4);margin-top:6px}
 
-/* ── End Screen ── */
-.end-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,11,21,.92);z-index:10}
+/* ── End ── */
+.end-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(12px);z-index:10}
 .end-btns{display:flex;gap:10px;margin-top:16px}
 .end-btn{padding:14px 28px;border:none;border-radius:14px;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit}
-.end-btn.primary{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;box-shadow:0 8px 24px rgba(37,99,235,.3)}
+.end-btn.primary{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff}
 .end-btn.ghost{background:rgba(255,255,255,.08);color:#94a3b8;border:1px solid rgba(255,255,255,.1)}
 
-@media(max-width:500px){.game-title{font-size:15px}.topic-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-height:500px){#game-canvas{min-height:100px}.game-header{padding:2px 0}.stat{font-size:10px;padding:2px 6px}}
+@media(max-width:500px){.game-title{font-size:14px}.topic-grid{grid-template-columns:repeat(2,1fr)}.word-pill{font-size:16px;padding:6px 12px}}
 </style>
 </head>
 <body>
-<video class="bg-video" autoplay muted loop playsinline style="position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:.3">
+<video autoplay muted loop playsinline style="position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:.55">
   <source src="assets/0.mp4" type="video/mp4">
 </video>
 <div class="wrap" style="position:relative;z-index:1">
   <a href="korehan-fun.html" class="back">&larr; Playground</a>
   <div class="game-header" id="game-header" style="display:none">
     <div class="game-title">🎯 Word Drop</div>
-    <div style="display:flex;gap:6px">
+    <div style="display:flex;gap:5px">
       <div class="stat">Score <span class="stat-val" id="g-score">0</span></div>
       <div class="stat">Combo <span class="stat-val" id="g-combo">x1</span></div>
       <div class="stat">&hearts; <span class="stat-val" id="g-lives">5</span></div>
       <div class="stat">Lv <span class="stat-val" id="g-level">1</span></div>
     </div>
   </div>
-  <canvas id="game-canvas" style="display:none"></canvas>
+  <div class="game-area" id="game-area" style="display:none"></div>
   <div class="input-area" id="input-area" style="display:none">
     <form onsubmit="event.preventDefault();checkAnswer()">
     <input id="g-input" type="text" placeholder="" autocomplete="off" autocapitalize="none" autocorrect="off" enterkeyhint="send">
@@ -71,16 +89,23 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans',Inter,Prete
     </form>
   </div>
 
-  <!-- MENU -->
   <div class="menu-screen" id="menu-screen">
-    <div style="font-size:52px;margin-bottom:12px">🎯</div>
+    <div style="font-size:52px;margin-bottom:10px">🎯</div>
     <div class="menu-title">Word Drop</div>
     <div class="menu-sub">단어가 떨어지기 전에 정답을 입력하세요!</div>
     <div class="menu-section">
       <div class="menu-label">Mode</div>
       <div class="mode-btns">
-        <div class="mode-btn on" data-mode="ko2en" onclick="setMode('ko2en')">🇰🇷→🇺🇸<br><span style="font-size:11px;font-weight:600">한→영</span></div>
-        <div class="mode-btn" data-mode="en2ko" onclick="setMode('en2ko')">🇺🇸→🇰🇷<br><span style="font-size:11px;font-weight:600">영→한</span></div>
+        <div class="mode-btn on" data-mode="ko2en" onclick="setMode('ko2en')">🇰🇷→🇺🇸<br><span style="font-size:11px">한→영</span></div>
+        <div class="mode-btn" data-mode="en2ko" onclick="setMode('en2ko')">🇺🇸→🇰🇷<br><span style="font-size:11px">영→한</span></div>
+      </div>
+    </div>
+    <div class="menu-section">
+      <div class="menu-label">Speed</div>
+      <div class="speed-btns">
+        <div class="speed-btn" data-spd="slow" onclick="setSpeed('slow')">🐢 Slow</div>
+        <div class="speed-btn on" data-spd="normal" onclick="setSpeed('normal')">🏃 Normal</div>
+        <div class="speed-btn" data-spd="fast" onclick="setSpeed('fast')">⚡ Fast</div>
       </div>
     </div>
     <div class="menu-section">
@@ -90,7 +115,6 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans',Inter,Prete
     <button class="start-btn" onclick="startGame()">START GAME</button>
   </div>
 
-  <!-- END -->
   <div class="end-screen" id="end-screen" style="display:none">
     <div style="font-size:64px;margin-bottom:12px" id="end-emoji">🏆</div>
     <div style="font-size:28px;font-weight:900;margin-bottom:4px">Game Over</div>
@@ -103,18 +127,16 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans',Inter,Prete
     </div>
   </div>
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js?v=20260413"></script>
 <script>
 (function(){
-// ── Topic Word Pools ──
-var TOPICS = {
+var TOPICS={
   daily:{icon:'🏠',label:'Daily',words:[
     {ko:'친구',en:'friend'},{ko:'가족',en:'family'},{ko:'학교',en:'school'},{ko:'회사',en:'company'},
     {ko:'집',en:'house'},{ko:'시간',en:'time'},{ko:'사람',en:'person'},{ko:'이름',en:'name'},
-    {ko:'약속',en:'promise'},{ko:'선물',en:'gift'},{ko:'생일',en:'birthday'},{ko:'기분',en:'mood'},
-    {ko:'학생',en:'student'},{ko:'선생님',en:'teacher'},{ko:'오늘',en:'today'},{ko:'내일',en:'tomorrow'}]},
+    {ko:'약속',en:'promise'},{ko:'선물',en:'gift'},{ko:'생일',en:'birthday'},{ko:'학생',en:'student'},
+    {ko:'선생님',en:'teacher'},{ko:'오늘',en:'today'},{ko:'내일',en:'tomorrow'},{ko:'주말',en:'weekend'}]},
   food:{icon:'🍜',label:'Food',words:[
     {ko:'음식',en:'food'},{ko:'김치',en:'kimchi'},{ko:'빵',en:'bread'},{ko:'커피',en:'coffee'},
     {ko:'물',en:'water'},{ko:'맛',en:'taste'},{ko:'밥',en:'rice'},{ko:'고기',en:'meat'},
@@ -127,9 +149,9 @@ var TOPICS = {
     {ko:'가을',en:'autumn'},{ko:'겨울',en:'winter'},{ko:'길',en:'road'},{ko:'강',en:'river'}]},
   emotion:{icon:'💜',label:'Emotion',words:[
     {ko:'사랑',en:'love'},{ko:'행복',en:'happiness'},{ko:'희망',en:'hope'},{ko:'꿈',en:'dream'},
-    {ko:'마음',en:'heart'},{ko:'기분',en:'mood'},{ko:'건강',en:'health'},{ko:'미래',en:'future'},
-    {ko:'자유',en:'freedom'},{ko:'평화',en:'peace'},{ko:'감사',en:'gratitude'},{ko:'노력',en:'effort'},
-    {ko:'성공',en:'success'},{ko:'실패',en:'failure'},{ko:'슬픔',en:'sadness'},{ko:'기쁨',en:'joy'}]},
+    {ko:'마음',en:'heart'},{ko:'건강',en:'health'},{ko:'미래',en:'future'},{ko:'자유',en:'freedom'},
+    {ko:'평화',en:'peace'},{ko:'감사',en:'gratitude'},{ko:'노력',en:'effort'},{ko:'성공',en:'success'},
+    {ko:'실패',en:'failure'},{ko:'슬픔',en:'sadness'},{ko:'기쁨',en:'joy'},{ko:'용기',en:'courage'}]},
   culture:{icon:'🎭',label:'Culture',words:[
     {ko:'영화',en:'movie'},{ko:'음악',en:'music'},{ko:'노래',en:'song'},{ko:'춤',en:'dance'},
     {ko:'예술',en:'art'},{ko:'문화',en:'culture'},{ko:'역사',en:'history'},{ko:'여행',en:'travel'},
@@ -141,150 +163,84 @@ var TOPICS = {
     {ko:'컴퓨터',en:'computer'},{ko:'인터넷',en:'internet'},{ko:'전화기',en:'telephone'},{ko:'도서관',en:'library'},
     {ko:'편의점',en:'convenience store'},{ko:'병원',en:'hospital'},{ko:'경찰',en:'police'},{ko:'의사',en:'doctor'}]}
 };
+var SPEED_CFG={slow:{base:.4,interval:4000},normal:{base:.7,interval:3000},fast:{base:1.2,interval:2000}};
+var _mode='ko2en',_speed='normal',_selectedTopics=['daily'];
 
-var _mode = 'ko2en'; // 'ko2en' or 'en2ko'
-var _selectedTopics = ['daily'];
-
-// Render topic buttons
 function renderTopics(){
   var el=document.getElementById('topic-grid');
-  var keys=Object.keys(TOPICS);
-  el.innerHTML=keys.map(function(k){
-    var t=TOPICS[k];
-    var on=_selectedTopics.indexOf(k)>=0?'on':'';
-    return '<div class="topic-btn '+on+'" data-topic="'+k+'" onclick="toggleTopic(\''+k+'\')"><span class="ico">'+t.icon+'</span>'+t.label+'</div>';
+  el.innerHTML=Object.keys(TOPICS).map(function(k){
+    var t=TOPICS[k],on=_selectedTopics.indexOf(k)>=0?' on':'';
+    return '<div class="topic-btn'+on+'" onclick="toggleTopic(\''+k+'\')"><span class="ico">'+t.icon+'</span>'+t.label+'</div>';
   }).join('');
 }
-
-window.setMode=function(m){
-  _mode=m;
-  document.querySelectorAll('.mode-btn').forEach(function(b){b.classList.toggle('on',b.dataset.mode===m);});
-};
-
-window.toggleTopic=function(k){
-  var idx=_selectedTopics.indexOf(k);
-  if(idx>=0)_selectedTopics.splice(idx,1); else _selectedTopics.push(k);
-  if(!_selectedTopics.length)_selectedTopics.push(k); // at least one
-  renderTopics();
-};
-
+window.setMode=function(m){_mode=m;document.querySelectorAll('.mode-btn').forEach(function(b){b.classList.toggle('on',b.dataset.mode===m);});};
+window.setSpeed=function(s){_speed=s;document.querySelectorAll('.speed-btn').forEach(function(b){b.classList.toggle('on',b.dataset.spd===s);});};
+window.toggleTopic=function(k){var i=_selectedTopics.indexOf(k);if(i>=0)_selectedTopics.splice(i,1);else _selectedTopics.push(k);if(!_selectedTopics.length)_selectedTopics.push(k);renderTopics();};
 window.showMenu=function(){
   document.getElementById('menu-screen').style.display='flex';
   document.getElementById('end-screen').style.display='none';
   document.getElementById('game-header').style.display='none';
-  document.getElementById('game-canvas').style.display='none';
+  document.getElementById('game-area').style.display='none';
   document.getElementById('input-area').style.display='none';
 };
+function getPool(){var p=[];_selectedTopics.forEach(function(k){if(TOPICS[k])p=p.concat(TOPICS[k].words);});return p.length?p:TOPICS.daily.words;}
 
-function getPool(){
-  var pool=[];
-  _selectedTopics.forEach(function(k){if(TOPICS[k])pool=pool.concat(TOPICS[k].words);});
-  if(!pool.length)pool=TOPICS.daily.words;
-  return pool;
-}
-
-// ── Game State ──
-var VOCAB_POOL=[];
-var canvas,ctx;
-var words=[],particles=[];
+// ── Game state ──
+var POOL=[],words=[],areaEl,areaH,areaW;
 var score=0,combo=0,maxCombo=0,lives=5,level=1,correctCount=0;
-var gameRunning=false,baseSpeed=0.3,spawnInterval=3000,lastSpawn=0,animFrame;
+var gameRunning=false,baseSpeed,spawnInterval,lastSpawn=0,animFrame;
 var bestScore=parseInt(localStorage.getItem('kh_worddrop_best')||'0');
 
-function init(){
-  canvas=document.getElementById('game-canvas');
-  ctx=canvas.getContext('2d');
-  resize();
-  window.addEventListener('resize',resize);
-  // visualViewport for mobile keyboard
-  if(window.visualViewport){
-    window.visualViewport.addEventListener('resize',function(){resize();});
-  }
-}
-
-function resize(){
-  if(!canvas)return;
-  var rect=canvas.getBoundingClientRect();
-  var dpr=window.devicePixelRatio||1;
-  canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;
-  ctx.scale(dpr,dpr);canvas._w=rect.width;canvas._h=rect.height;
-}
-
 window.startGame=function(){
-  VOCAB_POOL=getPool();
+  POOL=getPool();
+  var cfg=SPEED_CFG[_speed]||SPEED_CFG.normal;
+  baseSpeed=cfg.base;spawnInterval=cfg.interval;
   document.getElementById('menu-screen').style.display='none';
   document.getElementById('end-screen').style.display='none';
   document.getElementById('game-header').style.display='flex';
-  document.getElementById('game-canvas').style.display='block';
+  areaEl=document.getElementById('game-area');areaEl.style.display='block';areaEl.innerHTML='';
   document.getElementById('input-area').style.display='block';
-  // Set placeholder based on mode
   var inp=document.getElementById('g-input');
   inp.placeholder=_mode==='ko2en'?'Type English meaning...':'한국어로 입력...';
-  words=[];particles=[];
-  score=0;combo=0;maxCombo=0;lives=5;level=1;correctCount=0;
-  baseSpeed=0.3;spawnInterval=3000;lastSpawn=0;
+  words=[];score=0;combo=0;maxCombo=0;lives=5;level=1;correctCount=0;lastSpawn=0;
   updateUI();gameRunning=true;
-  init();
+  areaH=areaEl.offsetHeight;areaW=areaEl.offsetWidth;
   inp.focus();
   if(animFrame)cancelAnimationFrame(animFrame);
-  lastSpawn=performance.now();
-  loop(performance.now());
+  lastSpawn=performance.now();loop(performance.now());
 };
 
 function spawnWord(){
-  var pool=VOCAB_POOL.slice();
-  var activeKeys=words.map(function(w){return w.ko;});
-  pool=pool.filter(function(v){return activeKeys.indexOf(v.ko)<0;});
-  if(!pool.length)pool=VOCAB_POOL.slice();
+  var pool=POOL.filter(function(v){return!words.some(function(w){return w.ko===v.ko;});});
+  if(!pool.length)pool=POOL.slice();
   var w=pool[Math.floor(Math.random()*pool.length)];
-  var x=30+Math.random()*(canvas._w-60);
-  // Display text depends on mode
   var display=_mode==='ko2en'?w.ko:w.en;
-  words.push({ko:w.ko,en:w.en.toLowerCase(),display:display,x:x,y:-20,speed:baseSpeed+Math.random()*.15,size:18+Math.floor(Math.random()*4),glow:0});
+  var el=document.createElement('div');el.className='word-pill';el.textContent=display;
+  areaEl.appendChild(el);
+  var pw=el.offsetWidth||80;
+  var x=Math.random()*(areaW-pw);
+  el.style.left=x+'px';el.style.top='-50px';
+  words.push({ko:w.ko,en:w.en.toLowerCase(),display:display,el:el,x:x,y:-50,speed:baseSpeed+Math.random()*.2});
 }
 
 function loop(now){
   if(!gameRunning)return;
   animFrame=requestAnimationFrame(loop);
+  areaH=areaEl.offsetHeight;areaW=areaEl.offsetWidth;
   if(now-lastSpawn>spawnInterval&&words.length<6){spawnWord();lastSpawn=now;}
-  update();render();
-}
-
-function update(){
-  var h=canvas._h;
   for(var i=words.length-1;i>=0;i--){
     var w=words[i];w.y+=w.speed;
-    if(w.glow>0)w.glow-=.02;
-    if(w.y>h+10){words.splice(i,1);lives--;combo=0;updateUI();if(lives<=0)endGame();}
+    w.el.style.top=w.y+'px';
+    // Danger zone
+    if(w.y>areaH-80)w.el.classList.add('danger');
+    // Fell off
+    if(w.y>areaH+10){
+      w.el.classList.add('missed');
+      setTimeout((function(el){return function(){el.remove();};})(w.el),300);
+      words.splice(i,1);lives--;combo=0;updateUI();
+      if(lives<=0)endGame();
+    }
   }
-  for(var p=particles.length-1;p>=0;p--){
-    var pt=particles[p];pt.x+=pt.vx;pt.y+=pt.vy;pt.vy+=.1;pt.life-=.02;
-    if(pt.life<=0)particles.splice(p,1);
-  }
-}
-
-function render(){
-  var w=canvas._w,h=canvas._h;ctx.clearRect(0,0,w,h);
-  ctx.strokeStyle='rgba(255,255,255,0.03)';ctx.lineWidth=1;
-  for(var gy=0;gy<h;gy+=40){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(w,gy);ctx.stroke();}
-  ctx.fillStyle='rgba(239,68,68,0.05)';ctx.fillRect(0,h-40,w,40);
-  ctx.strokeStyle='rgba(239,68,68,0.2)';ctx.setLineDash([8,4]);
-  ctx.beginPath();ctx.moveTo(0,h-40);ctx.lineTo(w,h-40);ctx.stroke();ctx.setLineDash([]);
-  words.forEach(function(word){
-    ctx.save();
-    if(word.glow>0){ctx.shadowColor='#7dd3fc';ctx.shadowBlur=20*word.glow;}
-    ctx.font='bold '+word.size+'px "Noto Sans KR",sans-serif';
-    var tw=ctx.measureText(word.display).width;
-    var px=word.x-tw/2-14,py=word.y-word.size/2-8,pw=tw+28,ph=word.size+16;
-    ctx.fillStyle='rgba(13,27,42,0.85)';ctx.beginPath();ctx.roundRect(px,py,pw,ph,8);ctx.fill();
-    ctx.strokeStyle=word.y>h-80?'rgba(239,68,68,0.5)':'rgba(125,211,252,0.2)';ctx.lineWidth=1.5;ctx.stroke();
-    ctx.fillStyle=word.y>h-80?'#fca5a5':'#e0f2fe';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(word.display,word.x,word.y);ctx.restore();
-  });
-  particles.forEach(function(pt){
-    ctx.globalAlpha=pt.life;ctx.fillStyle=pt.color;ctx.beginPath();
-    ctx.arc(pt.x,pt.y,pt.size,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
-  });
 }
 
 window.checkAnswer=function(){
@@ -293,24 +249,33 @@ window.checkAnswer=function(){
   var ans=raw.toLowerCase();inp.value='';
   var matched=null,matchIdx=-1;
   words.forEach(function(w,i){
-    var hit=false;
-    if(_mode==='ko2en'){
-      // Falling=Korean, answer=English (or Korean accepted too)
-      hit=w.en===ans||w.en.split('/').indexOf(ans)>=0||w.en.split(',').map(function(s){return s.trim();}).indexOf(ans)>=0||w.ko===raw;
-    } else {
-      // Falling=English, answer=Korean
-      hit=w.ko===raw||w.en===ans;
-    }
+    var hit=_mode==='ko2en'
+      ?(w.en===ans||w.en.split('/').indexOf(ans)>=0||w.en.split(',').map(function(s){return s.trim();}).indexOf(ans)>=0||w.ko===raw)
+      :(w.ko===raw||w.en===ans);
     if(hit&&(!matched||w.y>matched.y)){matched=w;matchIdx=i;}
   });
   if(matched){
     combo++;if(combo>maxCombo)maxCombo=combo;correctCount++;
     score+=10*Math.min(combo,10);
+    // Particles
+    var rect=matched.el.getBoundingClientRect(),aRect=areaEl.getBoundingClientRect();
+    var cx=rect.left-aRect.left+rect.width/2,cy=rect.top-aRect.top+rect.height/2;
     var colors=['#7dd3fc','#60a5fa','#a78bfa','#34d399','#fbbf24'];
-    for(var p=0;p<12;p++){particles.push({x:matched.x,y:matched.y,vx:(Math.random()-.5)*6,vy:(Math.random()-.5)*6-2,size:2+Math.random()*3,life:1,color:colors[Math.floor(Math.random()*colors.length)]});}
+    for(var p=0;p<10;p++){
+      var dot=document.createElement('div');dot.className='particle';
+      var sz=3+Math.random()*4;dot.style.cssText='width:'+sz+'px;height:'+sz+'px;left:'+cx+'px;top:'+cy+'px;background:'+colors[p%5]+';opacity:1';
+      areaEl.appendChild(dot);
+      var vx=(Math.random()-.5)*120,vy=(Math.random()-.5)*120-40;
+      (function(d,vx,vy,cx,cy){var t=0;var iv=setInterval(function(){t+=16;var prog=t/500;
+        d.style.left=(cx+vx*prog)+'px';d.style.top=(cy+vy*prog+100*prog*prog)+'px';d.style.opacity=1-prog;
+        if(prog>=1){clearInterval(iv);d.remove();}
+      },16);})(dot,vx,vy,cx,cy);
+    }
+    matched.el.classList.add('correct');
+    setTimeout((function(el){return function(){el.remove();};})(matched.el),400);
     words.splice(matchIdx,1);
     if(combo>=3&&combo%3===0){var fl=document.createElement('div');fl.className='combo-flash';fl.textContent='x'+combo+' COMBO!';document.body.appendChild(fl);setTimeout(function(){fl.remove();},600);}
-    if(correctCount%5===0){level++;baseSpeed=Math.min(1.2,.3+level*.08);spawnInterval=Math.max(1200,3000-level*150);}
+    if(correctCount%5===0){level++;baseSpeed=Math.min(baseSpeed+.08,2.5);spawnInterval=Math.max(spawnInterval-120,800);}
     updateUI();
   } else {
     inp.style.borderColor='#ef4444';setTimeout(function(){inp.style.borderColor='rgba(125,211,252,.3)';},300);
@@ -324,20 +289,19 @@ function updateUI(){
   document.getElementById('g-lives').textContent=lives;
   document.getElementById('g-level').textContent=level;
 }
-
 function endGame(){
   gameRunning=false;if(animFrame)cancelAnimationFrame(animFrame);
+  words.forEach(function(w){w.el.remove();});words=[];
   if(score>bestScore){bestScore=score;localStorage.setItem('kh_worddrop_best',String(bestScore));}
   var emoji=score>=500?'🏆':score>=200?'⭐':score>=100?'👍':'💪';
   document.getElementById('end-emoji').textContent=emoji;
   document.getElementById('end-score').textContent=score+' pts';
-  document.getElementById('end-stats').textContent=correctCount+' words · max combo x'+maxCombo+' · level '+level;
+  document.getElementById('end-stats').textContent=correctCount+' words · combo x'+maxCombo+' · level '+level;
   document.getElementById('end-best').textContent='Best: '+bestScore+' pts';
   document.getElementById('end-screen').style.display='flex';
 }
-
 renderTopics();
-})();
+})()
 </script>
 </body>
 </html>
