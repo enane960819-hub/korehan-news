@@ -187,6 +187,7 @@
       alert((res.data && res.data.error) || (res.error && res.error.message) || 'Purchase failed.');
       return;
     }
+    if (typeof _fjMarkDone === 'function') _fjMarkDone('shop');
     alert('냥으로 구매 완료!');
     initShop();
   };
@@ -271,6 +272,16 @@
 
     owned.push(itemId);
     localStorage.setItem('kh_room_owned', JSON.stringify(owned));
+    // Sync to server so My Room page doesn't overwrite
+    try {
+      var sb2 = getSupa();
+      if (sb2 && supaUser) {
+        var layout = []; try { layout = JSON.parse(localStorage.getItem('kh_room_layout')||'[]'); } catch(e){}
+        var syncData = JSON.stringify({ room_layout: layout, room_owned: owned });
+        sb2.from('app_settings').upsert({ key: 'room_data_' + supaUser.id, value: syncData, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      }
+    } catch(e){}
+    if (typeof _fjMarkDone === 'function') _fjMarkDone('shop');
     alert('Purchased ' + item.name + '! Place it in My Room.');
     renderRoomShop();
     initShop();

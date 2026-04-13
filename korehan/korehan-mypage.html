@@ -1900,15 +1900,22 @@ function saveRoomLayout() {
   var items = [];
   document.querySelectorAll('.room-placed-item').forEach(function(el) {
     var saved = getPlacedState(el.dataset.itemId) || {};
-    // Convert current pixel position back to 400x360 base for storage
+    // Convert current position back to 400x360 base for storage
+    // Must undo the hitbox offset that renderRoomItems added
     var curLeft = parseFloat(el.style.left) || 0;
     var curTop  = parseFloat(el.style.top) || 0;
+    var sizePct = parseFloat(el.dataset.sizePct) || 0;
+    var hitboxRatio = parseFloat(el.dataset.hitboxRatio) || 0.7;
+    var hitboxPct = sizePct * hitboxRatio;
+    var offsetPct = (sizePct - hitboxPct) / 2;
+    // Undo the offset that was added during render
+    var rawLeftPct = curLeft - offsetPct;
+    var rawTopPct = curTop - offsetPct;
     var x, y;
     if (String(el.style.left).indexOf('%') >= 0) {
-      x = Math.round((curLeft / 100) * 400);
-      y = Math.round((curTop / 100) * 360);
+      x = Math.round((rawLeftPct / 100) * 400);
+      y = Math.round((rawTopPct / 100) * 360);
     } else {
-      // Pixel from drag — convert relative to current container size
       x = Math.round((curLeft / cW) * 400);
       y = Math.round((curTop / cH) * 360);
     }
@@ -2298,6 +2305,7 @@ async function buyRoomItem(itemId) {
   renderMiniStats({xp: _userXP, coin_balance: newCoin, mission_streak: 0, articles_read: 0, words_saved: 0, quizzes_done: 0});
 
   if (typeof toast === 'function') toast('Purchased ' + def.name + '!');
+  if (typeof _fjMarkDone === 'function') _fjMarkDone('shop');
 
   // Refresh shop
   closeRoomShop();
@@ -2321,6 +2329,7 @@ function placeRoomItem(itemId) {
   renderRoomItems();
   updateRoomSizeUI();
   if (typeof toast === 'function') toast(def.name + ' placed! Use Edit to move it.');
+  if (typeof _fjMarkDone === 'function') _fjMarkDone('room');
 
   // Refresh shop
   closeRoomShop();
