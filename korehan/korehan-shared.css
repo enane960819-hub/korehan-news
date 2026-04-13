@@ -2935,3 +2935,32 @@ body.kh-neon-on .grammar-pattern-card {
   border-color: rgba(255,255,255,.08) !important;
   color: #e2e8f0 !important;
 }
+body.kh-neon-on .grammar-pattern-card p,
+body.kh-neon-on .grammar-pattern-card span,
+body.kh-neon-on .grammar-pattern-card div { color: #d0e8f0 !important; }
+body.kh-neon-on .grammar-pattern-card .example-ko { color: #7dd3fc !important; }
+
+/* ── Neon: Conversations page ── */
+body.kh-neon-on .cc2-title { color: #eefcff !important; }
+body.kh-neon-on .cc2-ctx { color: rgba(255,255,255,.55) !important; }
+body.kh-neon-on .cc2-head { border-color: rgba(255,255,255,.08) !important; background: rgba(8,17,31,.96) !important; }
+body.kh-neon-on .cc2-footer { background: rgba(8,17,31,.96) !important; border-color: rgba(255,255,255,.08) !important; }
+body.kh-neon-on .cc2-footer span { color: rgba(255,255,255,.5) !important; }
+body.kh-neon-on .cc2-footer .cc2-study-btn { color: #7dd3fc !important; }
+
+/* ── Neon: Conversation detail panel ── */
+body.kh-neon-on .dp-chat-area { background: linear-gradient(180deg,#060e1a,#0a1628) !important; }
+body.kh-neon-on .dp-msg-row.left .dp-bubble { background: rgba(255,255,255,.08) !important; color: #eefcff !important; border-color: rgba(255,255,255,.1) !important; }
+body.kh-neon-on .dp-bubble-en { color: rgba(255,255,255,.4) !important; }
+body.kh-neon-on .dp-who { color: rgba(255,255,255,.4) !important; }
+body.kh-neon-on .dp-left { background: #080f1f !important; }
+body.kh-neon-on .dp-left-head { background: #0a1628 !important; border-color: rgba(255,255,255,.08) !important; }
+body.kh-neon-on .dp-left-title { color: #fff !important; }
+body.kh-neon-on .detail-panel { background: #060e1a !important; border-color: rgba(0,255,214,.12) !important; }
+
+/* ── Neon: Grammar Focus structure/examples ── */
+body.kh-neon-on .gf-section,
+body.kh-neon-on .gf-structure-box,
+body.kh-neon-on .gf-example-card { background: rgba(15,23,42,.7) !important; border-color: rgba(255,255,255,.08) !important; color: #d7f8fb !important; }
+body.kh-neon-on .gf-section h3,
+body.kh-neon-on .gf-structure-box h4 { color: #7dd3fc !important; }

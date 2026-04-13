@@ -7800,7 +7800,19 @@ if (typeof _origMarkArticleRead === 'function') {
   };
 }
 // 단어 저장 감지 — dbSaveWord 호출 시
+// Initialize from DB stats so cross-session saves count
 var _fjWordCount = 0;
+(function(){
+  try {
+    var sb = getSupa();
+    if (sb && supaUser) {
+      sb.from('user_stats').select('words_saved').eq('user_id',supaUser.id).maybeSingle().then(function(r){
+        if (r.data && r.data.words_saved) _fjWordCount = r.data.words_saved;
+        if (_fjWordCount >= 5 && !_fjIsComplete('save_words')) _fjMarkDone('save_words');
+      });
+    }
+  } catch(e){}
+})();
 var _origDbSaveWord = window.dbSaveWord;
 if (typeof _origDbSaveWord === 'function') {
   window.dbSaveWord = function() {
