@@ -13,7 +13,8 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans',Inter,Prete
 .stat{font-size:13px;font-weight:700;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}
 .stat-val{color:#7dd3fc}
 #game-canvas{flex:1;width:100%;border-radius:14px;background:#0a1325;border:1px solid rgba(255,255,255,.06);cursor:crosshair}
-.input-area{flex-shrink:0;padding:10px 0;display:flex;gap:8px}
+.input-area{flex-shrink:0;padding:10px 0}
+.input-area form{display:flex;gap:8px}
 .input-area input{flex:1;padding:12px 16px;border:2px solid rgba(125,211,252,.3);border-radius:12px;background:rgba(255,255,255,.06);color:#fff;font-size:18px;font-family:'Noto Sans KR',sans-serif;text-align:center;outline:none}
 .input-area input:focus{border-color:#7dd3fc;box-shadow:0 0 20px rgba(125,211,252,.15)}
 .input-area button{padding:12px 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap}
@@ -44,8 +45,10 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans',Inter,Prete
   </div>
   <canvas id="game-canvas"></canvas>
   <div class="input-area">
+    <form id="g-form" onsubmit="event.preventDefault();checkAnswer()">
     <input id="g-input" type="text" placeholder="Type the English meaning..." autocomplete="off" autocapitalize="none" autocorrect="off" enterkeyhint="send" autofocus>
-    <button onclick="checkAnswer()">Enter</button>
+    <button type="submit">Enter</button>
+    </form>
   </div>
 
   <div class="start-screen" id="start-screen">
@@ -272,14 +275,20 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans',Inter,Prete
 
   window.checkAnswer = function() {
     var inp = document.getElementById('g-input');
-    var ans = (inp.value || '').trim().toLowerCase();
+    var raw = (inp.value || '').trim();
+    var ans = raw.toLowerCase();
+    // For Korean input matching, keep original (Korean doesn't have case)
+    var ansKo = raw;
     if (!ans) return;
     inp.value = '';
 
     // Find matching word (closest to bottom = most urgent)
+    // Match both English meaning AND Korean word (for Korean keyboard users)
     var matched = null, matchIdx = -1;
     words.forEach(function(w, i) {
-      if (w.en === ans || w.en.split('/').indexOf(ans) >= 0 || w.en.split(',').map(function(s){return s.trim();}).indexOf(ans) >= 0) {
+      var enMatch = w.en === ans || w.en.split('/').indexOf(ans) >= 0 || w.en.split(',').map(function(s){return s.trim();}).indexOf(ans) >= 0;
+      var koMatch = w.ko === ansKo;
+      if (enMatch || koMatch) {
         if (!matched || w.y > matched.y) { matched = w; matchIdx = i; }
       }
     });
