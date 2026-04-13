@@ -332,8 +332,32 @@ const SUPA_KEY_ADMIN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmF
 const ADMIN_API_URL = SUPA_URL_ADMIN + '/functions/v1/admin-api';
 
 async function _getAdminToken() {
+  // 1. Try localStorage first (fastest, works before auth client init)
+  try {
+    var key = 'sb-samghztrdvtxmrmawneu-auth-token';
+    var raw = localStorage.getItem(key);
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      if (parsed && parsed.access_token) {
+        // Check if token is not expired (with 60s buffer)
+        var exp = parsed.expires_at || 0;
+        if (exp > Math.floor(Date.now() / 1000) + 60) {
+          return parsed.access_token;
+        }
+      }
+    }
+  } catch(e) {}
+
+  // 2. Try auth client (may not be initialized yet on first load)
   var authClient = window._adminAuthClient;
+  if (!authClient && typeof supabase !== 'undefined') {
+    authClient = supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN, {
+      auth: { persistSession: true }
+    });
+    window._adminAuthClient = authClient;
+  }
   if (!authClient) return null;
+
   try {
     var sess = await authClient.auth.getSession();
     var s = sess && sess.data && sess.data.session;
