@@ -3767,6 +3767,8 @@ async function loadDailyContent() {
 }
 
 // 다음날 콘텐츠 미리 생성 (백그라운드, 지연)
+// Daily content is generated server-side by daily-content-gen Edge Function (cron).
+// Client-side _pregenTomorrow kept as lightweight fallback only for current level.
 var _pregenDone = false;
 function _pregenTomorrow() {
   if (_pregenDone) return;
@@ -3776,10 +3778,11 @@ function _pregenTomorrow() {
       var todayMs = new Date(kstDateKey() + 'T00:00:00+09:00').getTime();
       var tomorrow = new Date(todayMs + 86400000).toISOString().slice(0,10);
       var sb = getSupa(); if (!sb || !supaUser) return;
-      sb.from('study_daily_content').select('id').eq('scheduled_date', tomorrow).eq('level', _currentLevel).maybeSingle()
+      sb.from('study_daily_content').select('id,vocab').eq('scheduled_date', tomorrow).eq('level', _currentLevel).maybeSingle()
         .then(function(r) {
-          if (!r.data) {
-            console.log('[pregenTomorrow] generating for', tomorrow);
+          var hasVocab = r.data && r.data.vocab && (Array.isArray(r.data.vocab) ? r.data.vocab.length > 0 : true);
+          if (!hasVocab) {
+            console.log('[pregenTomorrow] fallback — generating for', tomorrow, _currentLevel);
             _generateAndSaveDailyContent(tomorrow);
           }
         });
