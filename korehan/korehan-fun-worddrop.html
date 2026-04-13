@@ -1,71 +1,103 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,interactive-widget=resizes-content">
 <title>Word Drop — KoreHan Playground</title>
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
 body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans',Inter,Pretendard,sans-serif;overflow:hidden}
 .wrap{max-width:700px;margin:0 auto;padding:12px 16px;position:relative;height:100dvh;height:100vh;display:flex;flex-direction:column}
 @supports(height:100dvh){.wrap{height:100dvh}}
-.game-header{display:flex;justify-content:space-between;align-items:center;padding:10px 0;flex-shrink:0}
-.game-title{font-size:20px;font-weight:900;display:flex;align-items:center;gap:8px}
-.stat{font-size:13px;font-weight:700;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}
+.game-header{display:flex;justify-content:space-between;align-items:center;padding:8px 0;flex-shrink:0}
+.game-title{font-size:18px;font-weight:900;display:flex;align-items:center;gap:8px}
+.stat{font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}
 .stat-val{color:#7dd3fc}
-#game-canvas{flex:1;width:100%;border-radius:14px;background:#0a1325;border:1px solid rgba(255,255,255,.06);cursor:crosshair}
-.input-area{flex-shrink:0;padding:10px 0}
+#game-canvas{flex:1;width:100%;border-radius:14px;background:#0a1325;border:1px solid rgba(255,255,255,.06)}
+.input-area{flex-shrink:0;padding:8px 0}
 .input-area form{display:flex;gap:8px}
-.input-area input{flex:1;padding:12px 16px;border:2px solid rgba(125,211,252,.3);border-radius:12px;background:rgba(255,255,255,.06);color:#fff;font-size:18px;font-family:'Noto Sans KR',sans-serif;text-align:center;outline:none}
+.input-area input{flex:1;padding:10px 14px;border:2px solid rgba(125,211,252,.3);border-radius:12px;background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:'Noto Sans KR',sans-serif;text-align:center;outline:none}
 .input-area input:focus{border-color:#7dd3fc;box-shadow:0 0 20px rgba(125,211,252,.15)}
-.input-area button{padding:12px 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap}
-.start-screen,.end-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,11,21,.92);z-index:10;border-radius:14px}
-.start-btn,.restart-btn{padding:16px 40px;border:none;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:20px;box-shadow:0 8px 32px rgba(37,99,235,.4);transition:transform .15s}
-.start-btn:hover,.restart-btn:hover{transform:scale(1.05)}
-.back{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:8px}
+.input-area button{padding:10px 18px;border:none;border-radius:12px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap}
+.back{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:6px}
 .combo-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:48px;font-weight:900;color:#fbbf24;text-shadow:0 0 40px rgba(251,191,36,.5);pointer-events:none;animation:comboIn .6s ease forwards;z-index:20}
 @keyframes comboIn{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
-.explosion{position:absolute;pointer-events:none;animation:explode .5s ease forwards}
-@keyframes explode{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(2)}}
-@media(max-width:500px){.game-title{font-size:16px}.input-area input{font-size:16px;padding:10px 12px}}
-/* When virtual keyboard opens, shrink canvas to keep input visible */
-@media(max-height:450px){#game-canvas{min-height:120px}.game-header .stat{font-size:11px;padding:3px 8px}.game-header{padding:4px 0}}
+
+/* ── Menu Screen ── */
+.menu-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,11,21,.96);z-index:10;padding:20px;overflow-y:auto}
+.menu-title{font-size:28px;font-weight:900;margin-bottom:4px}
+.menu-sub{font-size:13px;color:#94a3b8;margin-bottom:20px}
+.menu-section{width:100%;max-width:380px;margin-bottom:16px}
+.menu-label{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#64748b;margin-bottom:8px}
+.mode-btns{display:flex;gap:8px}
+.mode-btn{flex:1;padding:14px 10px;border:2px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.03);color:#94a3b8;font-size:14px;font-weight:800;cursor:pointer;text-align:center;transition:.15s;font-family:inherit}
+.mode-btn.on{border-color:#2563eb;background:rgba(37,99,235,.15);color:#7dd3fc}
+.topic-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.topic-btn{padding:10px 6px;border:2px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.03);color:#94a3b8;font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:.15s;font-family:inherit}
+.topic-btn.on{border-color:#7c3aed;background:rgba(124,58,237,.15);color:#c4b5fd}
+.topic-btn .ico{font-size:18px;display:block;margin-bottom:3px}
+.start-btn{width:100%;max-width:380px;padding:16px;border:none;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 8px 32px rgba(37,99,235,.4);margin-top:8px}
+
+/* ── End Screen ── */
+.end-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,11,21,.92);z-index:10}
+.end-btns{display:flex;gap:10px;margin-top:16px}
+.end-btn{padding:14px 28px;border:none;border-radius:14px;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit}
+.end-btn.primary{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;box-shadow:0 8px 24px rgba(37,99,235,.3)}
+.end-btn.ghost{background:rgba(255,255,255,.08);color:#94a3b8;border:1px solid rgba(255,255,255,.1)}
+
+@media(max-width:500px){.game-title{font-size:15px}.topic-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-height:500px){#game-canvas{min-height:100px}.game-header{padding:2px 0}.stat{font-size:10px;padding:2px 6px}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <a href="korehan-fun.html" class="back">&larr; Playground</a>
-  <div class="game-header">
+  <div class="game-header" id="game-header" style="display:none">
     <div class="game-title">🎯 Word Drop</div>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:6px">
       <div class="stat">Score <span class="stat-val" id="g-score">0</span></div>
       <div class="stat">Combo <span class="stat-val" id="g-combo">x1</span></div>
       <div class="stat">&hearts; <span class="stat-val" id="g-lives">5</span></div>
       <div class="stat">Lv <span class="stat-val" id="g-level">1</span></div>
     </div>
   </div>
-  <canvas id="game-canvas"></canvas>
-  <div class="input-area">
-    <form id="g-form" onsubmit="event.preventDefault();checkAnswer()">
-    <input id="g-input" type="text" placeholder="Type the English meaning..." autocomplete="off" autocapitalize="none" autocorrect="off" enterkeyhint="send" autofocus>
+  <canvas id="game-canvas" style="display:none"></canvas>
+  <div class="input-area" id="input-area" style="display:none">
+    <form onsubmit="event.preventDefault();checkAnswer()">
+    <input id="g-input" type="text" placeholder="" autocomplete="off" autocapitalize="none" autocorrect="off" enterkeyhint="send">
     <button type="submit">Enter</button>
     </form>
   </div>
 
-  <div class="start-screen" id="start-screen">
-    <div style="font-size:64px;margin-bottom:16px">🎯</div>
-    <div style="font-size:28px;font-weight:900;margin-bottom:8px">Word Drop</div>
-    <div style="font-size:14px;color:#94a3b8;max-width:320px;text-align:center;line-height:1.6">Korean words fall from above. Type the correct English meaning before they hit the bottom!</div>
-    <div style="font-size:12px;color:#64748b;margin-top:12px">Speed increases every 5 correct answers</div>
+  <!-- MENU -->
+  <div class="menu-screen" id="menu-screen">
+    <div style="font-size:52px;margin-bottom:12px">🎯</div>
+    <div class="menu-title">Word Drop</div>
+    <div class="menu-sub">단어가 떨어지기 전에 정답을 입력하세요!</div>
+    <div class="menu-section">
+      <div class="menu-label">Mode</div>
+      <div class="mode-btns">
+        <div class="mode-btn on" data-mode="ko2en" onclick="setMode('ko2en')">🇰🇷→🇺🇸<br><span style="font-size:11px;font-weight:600">한→영</span></div>
+        <div class="mode-btn" data-mode="en2ko" onclick="setMode('en2ko')">🇺🇸→🇰🇷<br><span style="font-size:11px;font-weight:600">영→한</span></div>
+      </div>
+    </div>
+    <div class="menu-section">
+      <div class="menu-label">Topic</div>
+      <div class="topic-grid" id="topic-grid"></div>
+    </div>
     <button class="start-btn" onclick="startGame()">START GAME</button>
   </div>
 
+  <!-- END -->
   <div class="end-screen" id="end-screen" style="display:none">
-    <div style="font-size:64px;margin-bottom:16px" id="end-emoji">🏆</div>
+    <div style="font-size:64px;margin-bottom:12px" id="end-emoji">🏆</div>
     <div style="font-size:28px;font-weight:900;margin-bottom:4px">Game Over</div>
     <div style="font-size:36px;font-weight:900;color:#7dd3fc;margin-bottom:4px" id="end-score">0</div>
     <div style="font-size:14px;color:#94a3b8;margin-bottom:4px" id="end-stats"></div>
     <div style="font-size:13px;color:#64748b" id="end-best"></div>
-    <button class="restart-btn" onclick="startGame()">PLAY AGAIN</button>
+    <div class="end-btns">
+      <button class="end-btn ghost" onclick="showMenu()">Menu</button>
+      <button class="end-btn primary" onclick="startGame()">Play Again</button>
+    </div>
   </div>
 </div>
 
@@ -73,300 +105,235 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans',Inter,Prete
 <script src="korehan-shared.js?v=20260413"></script>
 <script>
 (function(){
-  // ── Vocabulary Pool ──
-  var VOCAB_POOL = [
-    {ko:'친구',en:'friend'},{ko:'학교',en:'school'},{ko:'음식',en:'food'},{ko:'날씨',en:'weather'},
-    {ko:'가족',en:'family'},{ko:'여행',en:'travel'},{ko:'사랑',en:'love'},{ko:'행복',en:'happiness'},
-    {ko:'시간',en:'time'},{ko:'공부',en:'study'},{ko:'영화',en:'movie'},{ko:'음악',en:'music'},
-    {ko:'커피',en:'coffee'},{ko:'병원',en:'hospital'},{ko:'회사',en:'company'},{ko:'학생',en:'student'},
-    {ko:'선생님',en:'teacher'},{ko:'물',en:'water'},{ko:'오늘',en:'today'},{ko:'내일',en:'tomorrow'},
-    {ko:'어제',en:'yesterday'},{ko:'아침',en:'morning'},{ko:'저녁',en:'evening'},{ko:'밤',en:'night'},
-    {ko:'빵',en:'bread'},{ko:'고양이',en:'cat'},{ko:'강아지',en:'dog'},{ko:'바다',en:'sea'},
-    {ko:'산',en:'mountain'},{ko:'꽃',en:'flower'},{ko:'비',en:'rain'},{ko:'눈',en:'snow'},
-    {ko:'책',en:'book'},{ko:'문',en:'door'},{ko:'집',en:'house'},{ko:'차',en:'car'},
-    {ko:'돈',en:'money'},{ko:'일',en:'work'},{ko:'마음',en:'heart'},{ko:'사람',en:'person'},
-    {ko:'나라',en:'country'},{ko:'도시',en:'city'},{ko:'길',en:'road'},{ko:'하늘',en:'sky'},
-    {ko:'별',en:'star'},{ko:'달',en:'moon'},{ko:'해',en:'sun'},{ko:'봄',en:'spring'},
-    {ko:'여름',en:'summer'},{ko:'가을',en:'autumn'},{ko:'겨울',en:'winter'},{ko:'맛',en:'taste'},
-    {ko:'색',en:'color'},{ko:'소리',en:'sound'},{ko:'말',en:'word'},{ko:'이름',en:'name'},
-    {ko:'생일',en:'birthday'},{ko:'선물',en:'gift'},{ko:'약속',en:'promise'},{ko:'기분',en:'mood'},
-    {ko:'미래',en:'future'},{ko:'과거',en:'past'},{ko:'건강',en:'health'},{ko:'희망',en:'hope'},
-    {ko:'경제',en:'economy'},{ko:'문화',en:'culture'},{ko:'역사',en:'history'},{ko:'정치',en:'politics'},
-    {ko:'과학',en:'science'},{ko:'기술',en:'technology'},{ko:'예술',en:'art'},{ko:'운동',en:'exercise'},
-    {ko:'노래',en:'song'},{ko:'춤',en:'dance'},{ko:'꿈',en:'dream'},{ko:'계획',en:'plan'},
-  ];
+// ── Topic Word Pools ──
+var TOPICS = {
+  daily:{icon:'🏠',label:'Daily',words:[
+    {ko:'친구',en:'friend'},{ko:'가족',en:'family'},{ko:'학교',en:'school'},{ko:'회사',en:'company'},
+    {ko:'집',en:'house'},{ko:'시간',en:'time'},{ko:'사람',en:'person'},{ko:'이름',en:'name'},
+    {ko:'약속',en:'promise'},{ko:'선물',en:'gift'},{ko:'생일',en:'birthday'},{ko:'기분',en:'mood'},
+    {ko:'학생',en:'student'},{ko:'선생님',en:'teacher'},{ko:'오늘',en:'today'},{ko:'내일',en:'tomorrow'}]},
+  food:{icon:'🍜',label:'Food',words:[
+    {ko:'음식',en:'food'},{ko:'김치',en:'kimchi'},{ko:'빵',en:'bread'},{ko:'커피',en:'coffee'},
+    {ko:'물',en:'water'},{ko:'맛',en:'taste'},{ko:'밥',en:'rice'},{ko:'고기',en:'meat'},
+    {ko:'과일',en:'fruit'},{ko:'라면',en:'ramen'},{ko:'치킨',en:'chicken'},{ko:'김밥',en:'kimbap'},
+    {ko:'떡볶이',en:'tteokbokki'},{ko:'삼겹살',en:'pork belly'},{ko:'소주',en:'soju'},{ko:'비빔밥',en:'bibimbap'}]},
+  nature:{icon:'🌿',label:'Nature',words:[
+    {ko:'바다',en:'sea'},{ko:'산',en:'mountain'},{ko:'꽃',en:'flower'},{ko:'하늘',en:'sky'},
+    {ko:'별',en:'star'},{ko:'달',en:'moon'},{ko:'해',en:'sun'},{ko:'비',en:'rain'},
+    {ko:'눈',en:'snow'},{ko:'날씨',en:'weather'},{ko:'봄',en:'spring'},{ko:'여름',en:'summer'},
+    {ko:'가을',en:'autumn'},{ko:'겨울',en:'winter'},{ko:'길',en:'road'},{ko:'강',en:'river'}]},
+  emotion:{icon:'💜',label:'Emotion',words:[
+    {ko:'사랑',en:'love'},{ko:'행복',en:'happiness'},{ko:'희망',en:'hope'},{ko:'꿈',en:'dream'},
+    {ko:'마음',en:'heart'},{ko:'기분',en:'mood'},{ko:'건강',en:'health'},{ko:'미래',en:'future'},
+    {ko:'자유',en:'freedom'},{ko:'평화',en:'peace'},{ko:'감사',en:'gratitude'},{ko:'노력',en:'effort'},
+    {ko:'성공',en:'success'},{ko:'실패',en:'failure'},{ko:'슬픔',en:'sadness'},{ko:'기쁨',en:'joy'}]},
+  culture:{icon:'🎭',label:'Culture',words:[
+    {ko:'영화',en:'movie'},{ko:'음악',en:'music'},{ko:'노래',en:'song'},{ko:'춤',en:'dance'},
+    {ko:'예술',en:'art'},{ko:'문화',en:'culture'},{ko:'역사',en:'history'},{ko:'여행',en:'travel'},
+    {ko:'운동',en:'exercise'},{ko:'공부',en:'study'},{ko:'책',en:'book'},{ko:'게임',en:'game'},
+    {ko:'한복',en:'hanbok'},{ko:'태권도',en:'taekwondo'},{ko:'불고기',en:'bulgogi'},{ko:'막걸리',en:'makgeolli'}]},
+  work:{icon:'💼',label:'Work',words:[
+    {ko:'경제',en:'economy'},{ko:'과학',en:'science'},{ko:'기술',en:'technology'},{ko:'정치',en:'politics'},
+    {ko:'돈',en:'money'},{ko:'일',en:'work'},{ko:'계획',en:'plan'},{ko:'회의',en:'meeting'},
+    {ko:'컴퓨터',en:'computer'},{ko:'인터넷',en:'internet'},{ko:'전화기',en:'telephone'},{ko:'도서관',en:'library'},
+    {ko:'편의점',en:'convenience store'},{ko:'병원',en:'hospital'},{ko:'경찰',en:'police'},{ko:'의사',en:'doctor'}]}
+};
 
-  // Try to load from vocabulary_bank
-  try {
-    if (typeof VOCAB !== 'undefined' && Object.keys(VOCAB).length > 20) {
-      var vkeys = Object.keys(VOCAB);
-      vkeys.forEach(function(k) {
-        if (VOCAB[k].en && !VOCAB_POOL.find(function(v){ return v.ko === k; })) {
-          VOCAB_POOL.push({ ko: k, en: VOCAB[k].en });
-        }
-      });
-    }
-  } catch(e) {}
+var _mode = 'ko2en'; // 'ko2en' or 'en2ko'
+var _selectedTopics = ['daily'];
 
-  // ── Game State ──
-  var canvas, ctx;
-  var words = []; // active falling words
-  var particles = [];
-  var score = 0, combo = 0, maxCombo = 0, lives = 5, level = 1, correctCount = 0;
-  var gameRunning = false;
-  var spawnTimer = 0;
-  var baseSpeed = 0.3;
-  var spawnInterval = 3000; // ms between spawns
-  var lastSpawn = 0;
-  var animFrame;
-  var bestScore = parseInt(localStorage.getItem('kh_worddrop_best') || '0');
+// Render topic buttons
+function renderTopics(){
+  var el=document.getElementById('topic-grid');
+  var keys=Object.keys(TOPICS);
+  el.innerHTML=keys.map(function(k){
+    var t=TOPICS[k];
+    var on=_selectedTopics.indexOf(k)>=0?'on':'';
+    return '<div class="topic-btn '+on+'" data-topic="'+k+'" onclick="toggleTopic(\''+k+'\')"><span class="ico">'+t.icon+'</span>'+t.label+'</div>';
+  }).join('');
+}
 
-  function init() {
-    canvas = document.getElementById('game-canvas');
-    ctx = canvas.getContext('2d');
-    resize();
-    window.addEventListener('resize', resize);
-    document.getElementById('g-input').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') checkAnswer();
-    });
+window.setMode=function(m){
+  _mode=m;
+  document.querySelectorAll('.mode-btn').forEach(function(b){b.classList.toggle('on',b.dataset.mode===m);});
+};
+
+window.toggleTopic=function(k){
+  var idx=_selectedTopics.indexOf(k);
+  if(idx>=0)_selectedTopics.splice(idx,1); else _selectedTopics.push(k);
+  if(!_selectedTopics.length)_selectedTopics.push(k); // at least one
+  renderTopics();
+};
+
+window.showMenu=function(){
+  document.getElementById('menu-screen').style.display='flex';
+  document.getElementById('end-screen').style.display='none';
+  document.getElementById('game-header').style.display='none';
+  document.getElementById('game-canvas').style.display='none';
+  document.getElementById('input-area').style.display='none';
+};
+
+function getPool(){
+  var pool=[];
+  _selectedTopics.forEach(function(k){if(TOPICS[k])pool=pool.concat(TOPICS[k].words);});
+  if(!pool.length)pool=TOPICS.daily.words;
+  return pool;
+}
+
+// ── Game State ──
+var VOCAB_POOL=[];
+var canvas,ctx;
+var words=[],particles=[];
+var score=0,combo=0,maxCombo=0,lives=5,level=1,correctCount=0;
+var gameRunning=false,baseSpeed=0.3,spawnInterval=3000,lastSpawn=0,animFrame;
+var bestScore=parseInt(localStorage.getItem('kh_worddrop_best')||'0');
+
+function init(){
+  canvas=document.getElementById('game-canvas');
+  ctx=canvas.getContext('2d');
+  resize();
+  window.addEventListener('resize',resize);
+  // visualViewport for mobile keyboard
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',function(){resize();});
   }
+}
 
-  function resize() {
-    var rect = canvas.getBoundingClientRect();
-    var dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-    canvas._w = rect.width;
-    canvas._h = rect.height;
+function resize(){
+  if(!canvas)return;
+  var rect=canvas.getBoundingClientRect();
+  var dpr=window.devicePixelRatio||1;
+  canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;
+  ctx.scale(dpr,dpr);canvas._w=rect.width;canvas._h=rect.height;
+}
+
+window.startGame=function(){
+  VOCAB_POOL=getPool();
+  document.getElementById('menu-screen').style.display='none';
+  document.getElementById('end-screen').style.display='none';
+  document.getElementById('game-header').style.display='flex';
+  document.getElementById('game-canvas').style.display='block';
+  document.getElementById('input-area').style.display='block';
+  // Set placeholder based on mode
+  var inp=document.getElementById('g-input');
+  inp.placeholder=_mode==='ko2en'?'Type English meaning...':'한국어로 입력...';
+  words=[];particles=[];
+  score=0;combo=0;maxCombo=0;lives=5;level=1;correctCount=0;
+  baseSpeed=0.3;spawnInterval=3000;lastSpawn=0;
+  updateUI();gameRunning=true;
+  init();
+  inp.focus();
+  if(animFrame)cancelAnimationFrame(animFrame);
+  lastSpawn=performance.now();
+  loop(performance.now());
+};
+
+function spawnWord(){
+  var pool=VOCAB_POOL.slice();
+  var activeKeys=words.map(function(w){return w.ko;});
+  pool=pool.filter(function(v){return activeKeys.indexOf(v.ko)<0;});
+  if(!pool.length)pool=VOCAB_POOL.slice();
+  var w=pool[Math.floor(Math.random()*pool.length)];
+  var x=30+Math.random()*(canvas._w-60);
+  // Display text depends on mode
+  var display=_mode==='ko2en'?w.ko:w.en;
+  words.push({ko:w.ko,en:w.en.toLowerCase(),display:display,x:x,y:-20,speed:baseSpeed+Math.random()*.15,size:18+Math.floor(Math.random()*4),glow:0});
+}
+
+function loop(now){
+  if(!gameRunning)return;
+  animFrame=requestAnimationFrame(loop);
+  if(now-lastSpawn>spawnInterval&&words.length<6){spawnWord();lastSpawn=now;}
+  update();render();
+}
+
+function update(){
+  var h=canvas._h;
+  for(var i=words.length-1;i>=0;i--){
+    var w=words[i];w.y+=w.speed;
+    if(w.glow>0)w.glow-=.02;
+    if(w.y>h+10){words.splice(i,1);lives--;combo=0;updateUI();if(lives<=0)endGame();}
   }
-
-  window.startGame = function() {
-    document.getElementById('start-screen').style.display = 'none';
-    document.getElementById('end-screen').style.display = 'none';
-    words = []; particles = [];
-    score = 0; combo = 0; maxCombo = 0; lives = 5; level = 1; correctCount = 0;
-    baseSpeed = 0.3; spawnInterval = 3000; lastSpawn = 0;
-    updateUI();
-    gameRunning = true;
-    document.getElementById('g-input').focus();
-    if (animFrame) cancelAnimationFrame(animFrame);
-    lastSpawn = performance.now();
-    loop(performance.now());
-  };
-
-  function spawnWord() {
-    var pool = VOCAB_POOL.slice();
-    // Avoid duplicates on screen
-    var activeKo = words.map(function(w){ return w.ko; });
-    pool = pool.filter(function(v){ return activeKo.indexOf(v.ko) < 0; });
-    if (!pool.length) pool = VOCAB_POOL.slice();
-    var w = pool[Math.floor(Math.random() * pool.length)];
-    var x = 30 + Math.random() * (canvas._w - 60);
-    words.push({
-      ko: w.ko, en: w.en.toLowerCase(),
-      x: x, y: -20,
-      speed: baseSpeed + Math.random() * 0.15,
-      size: 18 + Math.floor(Math.random() * 4),
-      alpha: 1,
-      glow: 0
-    });
+  for(var p=particles.length-1;p>=0;p--){
+    var pt=particles[p];pt.x+=pt.vx;pt.y+=pt.vy;pt.vy+=.1;pt.life-=.02;
+    if(pt.life<=0)particles.splice(p,1);
   }
+}
 
-  function loop(now) {
-    if (!gameRunning) return;
-    animFrame = requestAnimationFrame(loop);
+function render(){
+  var w=canvas._w,h=canvas._h;ctx.clearRect(0,0,w,h);
+  ctx.strokeStyle='rgba(255,255,255,0.03)';ctx.lineWidth=1;
+  for(var gy=0;gy<h;gy+=40){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(w,gy);ctx.stroke();}
+  ctx.fillStyle='rgba(239,68,68,0.05)';ctx.fillRect(0,h-40,w,40);
+  ctx.strokeStyle='rgba(239,68,68,0.2)';ctx.setLineDash([8,4]);
+  ctx.beginPath();ctx.moveTo(0,h-40);ctx.lineTo(w,h-40);ctx.stroke();ctx.setLineDash([]);
+  words.forEach(function(word){
+    ctx.save();
+    if(word.glow>0){ctx.shadowColor='#7dd3fc';ctx.shadowBlur=20*word.glow;}
+    ctx.font='bold '+word.size+'px "Noto Sans KR",sans-serif';
+    var tw=ctx.measureText(word.display).width;
+    var px=word.x-tw/2-14,py=word.y-word.size/2-8,pw=tw+28,ph=word.size+16;
+    ctx.fillStyle='rgba(13,27,42,0.85)';ctx.beginPath();ctx.roundRect(px,py,pw,ph,8);ctx.fill();
+    ctx.strokeStyle=word.y>h-80?'rgba(239,68,68,0.5)':'rgba(125,211,252,0.2)';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle=word.y>h-80?'#fca5a5':'#e0f2fe';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(word.display,word.x,word.y);ctx.restore();
+  });
+  particles.forEach(function(pt){
+    ctx.globalAlpha=pt.life;ctx.fillStyle=pt.color;ctx.beginPath();
+    ctx.arc(pt.x,pt.y,pt.size,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+  });
+}
 
-    // Spawn
-    if (now - lastSpawn > spawnInterval && words.length < 6) {
-      spawnWord();
-      lastSpawn = now;
-    }
-
-    update();
-    render();
-  }
-
-  function update() {
-    var h = canvas._h;
-    for (var i = words.length - 1; i >= 0; i--) {
-      var w = words[i];
-      w.y += w.speed;
-      if (w.glow > 0) w.glow -= 0.02;
-
-      if (w.y > h + 10) {
-        words.splice(i, 1);
-        lives--;
-        combo = 0;
-        updateUI();
-        if (lives <= 0) endGame();
-      }
-    }
-
-    // Particles
-    for (var p = particles.length - 1; p >= 0; p--) {
-      var pt = particles[p];
-      pt.x += pt.vx; pt.y += pt.vy;
-      pt.vy += 0.1;
-      pt.life -= 0.02;
-      if (pt.life <= 0) particles.splice(p, 1);
-    }
-  }
-
-  function render() {
-    var w = canvas._w, h = canvas._h;
-    ctx.clearRect(0, 0, w, h);
-
-    // Background grid
-    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-    ctx.lineWidth = 1;
-    for (var gy = 0; gy < h; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
-
-    // Danger zone
-    ctx.fillStyle = 'rgba(239,68,68,0.05)';
-    ctx.fillRect(0, h - 40, w, 40);
-    ctx.strokeStyle = 'rgba(239,68,68,0.2)';
-    ctx.setLineDash([8, 4]);
-    ctx.beginPath(); ctx.moveTo(0, h - 40); ctx.lineTo(w, h - 40); ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Words
-    words.forEach(function(word) {
-      ctx.save();
-      // Glow effect
-      if (word.glow > 0) {
-        ctx.shadowColor = '#7dd3fc';
-        ctx.shadowBlur = 20 * word.glow;
-      }
-      // Background pill
-      var textWidth = ctx.measureText(word.ko).width;
-      ctx.font = 'bold ' + word.size + 'px "Noto Sans KR", sans-serif';
-      textWidth = ctx.measureText(word.ko).width;
-      var px = word.x - textWidth / 2 - 14;
-      var py = word.y - word.size / 2 - 8;
-      var pw = textWidth + 28;
-      var ph = word.size + 16;
-      ctx.fillStyle = 'rgba(13,27,42,0.85)';
-      ctx.beginPath();
-      ctx.roundRect(px, py, pw, ph, 8);
-      ctx.fill();
-      ctx.strokeStyle = word.y > h - 80 ? 'rgba(239,68,68,0.5)' : 'rgba(125,211,252,0.2)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      // Text
-      ctx.fillStyle = word.y > h - 80 ? '#fca5a5' : '#e0f2fe';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(word.ko, word.x, word.y);
-      ctx.restore();
-    });
-
-    // Particles
-    particles.forEach(function(pt) {
-      ctx.globalAlpha = pt.life;
-      ctx.fillStyle = pt.color;
-      ctx.beginPath();
-      ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    });
-  }
-
-  window.checkAnswer = function() {
-    var inp = document.getElementById('g-input');
-    var raw = (inp.value || '').trim();
-    var ans = raw.toLowerCase();
-    // For Korean input matching, keep original (Korean doesn't have case)
-    var ansKo = raw;
-    if (!ans) return;
-    inp.value = '';
-
-    // Find matching word (closest to bottom = most urgent)
-    // Match both English meaning AND Korean word (for Korean keyboard users)
-    var matched = null, matchIdx = -1;
-    words.forEach(function(w, i) {
-      var enMatch = w.en === ans || w.en.split('/').indexOf(ans) >= 0 || w.en.split(',').map(function(s){return s.trim();}).indexOf(ans) >= 0;
-      var koMatch = w.ko === ansKo;
-      if (enMatch || koMatch) {
-        if (!matched || w.y > matched.y) { matched = w; matchIdx = i; }
-      }
-    });
-
-    if (matched) {
-      // Correct!
-      combo++;
-      if (combo > maxCombo) maxCombo = combo;
-      correctCount++;
-      var comboMult = Math.min(combo, 10);
-      score += 10 * comboMult;
-
-      // Explosion particles
-      var colors = ['#7dd3fc','#60a5fa','#a78bfa','#34d399','#fbbf24'];
-      for (var p = 0; p < 12; p++) {
-        particles.push({
-          x: matched.x, y: matched.y,
-          vx: (Math.random() - .5) * 6,
-          vy: (Math.random() - .5) * 6 - 2,
-          size: 2 + Math.random() * 3,
-          life: 1,
-          color: colors[Math.floor(Math.random() * colors.length)]
-        });
-      }
-
-      words.splice(matchIdx, 1);
-
-      // Combo flash
-      if (combo >= 3 && combo % 3 === 0) {
-        var flash = document.createElement('div');
-        flash.className = 'combo-flash';
-        flash.textContent = 'x' + combo + ' COMBO!';
-        document.body.appendChild(flash);
-        setTimeout(function(){ flash.remove(); }, 600);
-      }
-
-      // Level up every 5 correct
-      if (correctCount % 5 === 0) {
-        level++;
-        baseSpeed = Math.min(1.2, 0.3 + level * 0.08);
-        spawnInterval = Math.max(1200, 3000 - level * 150);
-      }
-
-      updateUI();
+window.checkAnswer=function(){
+  var inp=document.getElementById('g-input');
+  var raw=(inp.value||'').trim();if(!raw)return;
+  var ans=raw.toLowerCase();inp.value='';
+  var matched=null,matchIdx=-1;
+  words.forEach(function(w,i){
+    var hit=false;
+    if(_mode==='ko2en'){
+      // Falling=Korean, answer=English (or Korean accepted too)
+      hit=w.en===ans||w.en.split('/').indexOf(ans)>=0||w.en.split(',').map(function(s){return s.trim();}).indexOf(ans)>=0||w.ko===raw;
     } else {
-      // Wrong answer - shake input
-      inp.style.borderColor = '#ef4444';
-      setTimeout(function(){ inp.style.borderColor = 'rgba(125,211,252,.3)'; }, 300);
+      // Falling=English, answer=Korean
+      hit=w.ko===raw||w.en===ans;
     }
-    inp.focus();
-  };
-
-  function updateUI() {
-    document.getElementById('g-score').textContent = score;
-    document.getElementById('g-combo').textContent = 'x' + Math.max(1, combo);
-    document.getElementById('g-lives').textContent = lives;
-    document.getElementById('g-level').textContent = level;
+    if(hit&&(!matched||w.y>matched.y)){matched=w;matchIdx=i;}
+  });
+  if(matched){
+    combo++;if(combo>maxCombo)maxCombo=combo;correctCount++;
+    score+=10*Math.min(combo,10);
+    var colors=['#7dd3fc','#60a5fa','#a78bfa','#34d399','#fbbf24'];
+    for(var p=0;p<12;p++){particles.push({x:matched.x,y:matched.y,vx:(Math.random()-.5)*6,vy:(Math.random()-.5)*6-2,size:2+Math.random()*3,life:1,color:colors[Math.floor(Math.random()*colors.length)]});}
+    words.splice(matchIdx,1);
+    if(combo>=3&&combo%3===0){var fl=document.createElement('div');fl.className='combo-flash';fl.textContent='x'+combo+' COMBO!';document.body.appendChild(fl);setTimeout(function(){fl.remove();},600);}
+    if(correctCount%5===0){level++;baseSpeed=Math.min(1.2,.3+level*.08);spawnInterval=Math.max(1200,3000-level*150);}
+    updateUI();
+  } else {
+    inp.style.borderColor='#ef4444';setTimeout(function(){inp.style.borderColor='rgba(125,211,252,.3)';},300);
   }
+  inp.focus();
+};
 
-  function endGame() {
-    gameRunning = false;
-    if (animFrame) cancelAnimationFrame(animFrame);
+function updateUI(){
+  document.getElementById('g-score').textContent=score;
+  document.getElementById('g-combo').textContent='x'+Math.max(1,combo);
+  document.getElementById('g-lives').textContent=lives;
+  document.getElementById('g-level').textContent=level;
+}
 
-    if (score > bestScore) {
-      bestScore = score;
-      localStorage.setItem('kh_worddrop_best', String(bestScore));
-    }
+function endGame(){
+  gameRunning=false;if(animFrame)cancelAnimationFrame(animFrame);
+  if(score>bestScore){bestScore=score;localStorage.setItem('kh_worddrop_best',String(bestScore));}
+  var emoji=score>=500?'🏆':score>=200?'⭐':score>=100?'👍':'💪';
+  document.getElementById('end-emoji').textContent=emoji;
+  document.getElementById('end-score').textContent=score+' pts';
+  document.getElementById('end-stats').textContent=correctCount+' words · max combo x'+maxCombo+' · level '+level;
+  document.getElementById('end-best').textContent='Best: '+bestScore+' pts';
+  document.getElementById('end-screen').style.display='flex';
+}
 
-    var emoji = score >= 500 ? '🏆' : score >= 200 ? '⭐' : score >= 100 ? '👍' : '💪';
-    document.getElementById('end-emoji').textContent = emoji;
-    document.getElementById('end-score').textContent = score + ' pts';
-    document.getElementById('end-stats').textContent = correctCount + ' words · max combo x' + maxCombo + ' · level ' + level;
-    document.getElementById('end-best').textContent = 'Best: ' + bestScore + ' pts';
-    document.getElementById('end-screen').style.display = 'flex';
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+renderTopics();
 })();
 </script>
 </body>
