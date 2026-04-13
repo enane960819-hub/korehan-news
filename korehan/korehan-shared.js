@@ -6922,6 +6922,8 @@ function dmToggle() {
 }
 
 function injectDailyMission() {
+  // Skip on fullscreen game pages
+  if (pageName().indexOf('korehan-fun-') === 0) return;
   if (document.getElementById('kh-daily-mission')) return;
   var el = document.createElement('div');
   el.id = 'kh-daily-mission';
