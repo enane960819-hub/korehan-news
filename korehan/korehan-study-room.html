@@ -3595,10 +3595,10 @@ function renderPhrase() {
 
 function normalizeLevelName(level) {
   var v = String(level || '').toLowerCase().trim();
-  if (v === 'starter') return 'Starter';
-  if (v === 'beginner') return 'Beginner';
-  if (v === 'intermediate') return 'Intermediate';
-  if (v === 'advanced') return 'Advanced';
+  if (v === 'starter' || v === 'seed') return 'Starter';
+  if (v === 'beginner' || v === 'sprout') return 'Beginner';
+  if (v === 'intermediate' || v === 'tree') return 'Intermediate';
+  if (v === 'advanced' || v === 'forest') return 'Advanced';
   return level || 'Beginner';
 }
 
@@ -3723,24 +3723,24 @@ async function loadDailyContent() {
     return;
   }
 
-  // Step 1: Try loading from study_daily_content (approved by admin)
+  // Step 1: Try loading from study_daily_content (admin-generated or auto-generated, any status)
   try {
     console.log('[loadDailyContent] querying study_daily_content');
     var r = await Promise.race([
-      sb.from('study_daily_content').select('*').eq('scheduled_date', today).eq('level', _currentLevel).eq('status', 'approved').maybeSingle(),
+      sb.from('study_daily_content').select('*').eq('scheduled_date', today).eq('level', _currentLevel).maybeSingle(),
       new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('db_timeout')); }, 8000); })
     ]);
     if (!r.error && r.data) {
       // Check if learning elements actually exist — if only topic is set but vocab/grammar are empty, trigger AI generation
       var hasLearning = r.data.vocab && (Array.isArray(r.data.vocab) ? r.data.vocab.length > 0 : (typeof r.data.vocab === 'string' && r.data.vocab.length > 2));
       if (hasLearning) {
-        console.log('[loadDailyContent] found approved content with learning elements');
+        console.log('[loadDailyContent] found content with learning elements, status:', r.data.status);
         _applyDailyContent(r.data);
         _pregenTomorrow();
         return;
       }
-      // Topic exists but learning elements are empty — pass approved topic to AI generation
-      console.log('[loadDailyContent] approved topic found but learning elements empty — generating AI content');
+      // Topic exists but learning elements are empty — pass topic to AI generation
+      console.log('[loadDailyContent] topic found but learning elements empty — generating AI content');
       _approvedTopicForGen = { topic_ko: r.data.topic_ko, topic_en: r.data.topic_en };
     }
     if (r.error) console.warn('[loadDailyContent] DB error:', r.error.message);
@@ -4024,6 +4024,7 @@ async function _generateAndSaveDailyContent(date) {
       confusing_grammar:   parsed.confusing_grammar   || [],
       formality_exercise:  parsed.formality_exercise  || null,
       culture_note:        parsed.culture_note        || '',
+      status:              'approved',
       admin_edited:        false,
       updated_at:          new Date().toISOString()
     };
