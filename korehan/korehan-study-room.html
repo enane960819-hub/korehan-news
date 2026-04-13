@@ -2339,7 +2339,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
     <div class="master-card" style="padding:0" data-gate="phone_call" onclick="openPhoneModal()">
       <div class="mc-banner"><img src="assets/ChatGPT Image Apr 11, 2026, 11_17_27 PM.png" alt="Phone Call"></div>
     </div>
-    <div class="master-card" style="padding:0" data-gate="diary" onclick="switchModalMode('diary')">
+    <div class="master-card" style="padding:0" data-gate="diary" onclick="openDiaryDirect()">
       <div class="mc-banner" style="background:linear-gradient(135deg,#1e1b4b,#312e81);display:flex;align-items:center;justify-content:center;height:100%;min-height:160px;border-radius:14px">
         <div style="text-align:center;color:#fff">
           <div style="font-size:36px;margin-bottom:8px">📓</div>
@@ -9179,6 +9179,12 @@ function openWritingModalWithMode() {
     if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
     renderModalContent();
   }
+}
+
+function openDiaryDirect() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  openWritingModal();
+  setTimeout(function(){ switchModalMode('diary'); }, 300);
 }
 
 function switchModalMode(mode) {
