@@ -3759,21 +3759,25 @@ async function loadDailyContent() {
   _applyFallbackTopic(today);
 }
 
-// 다음날 콘텐츠 미리 생성 (백그라운드)
+// 다음날 콘텐츠 미리 생성 (백그라운드, 지연)
+var _pregenDone = false;
 function _pregenTomorrow() {
-  try {
-    var todayMs = new Date(kstDateKey() + 'T00:00:00+09:00').getTime();
-    var tomorrow = new Date(todayMs + 86400000).toISOString().slice(0,10);
-    var sb = getSupa(); if (!sb || !supaUser) return;
-    // 내일 콘텐츠 이미 있는지 확인
-    sb.from('study_daily_content').select('id').eq('scheduled_date', tomorrow).eq('level', _currentLevel).maybeSingle()
-      .then(function(r) {
-        if (!r.data) {
-          console.log('[pregenTomorrow] generating for', tomorrow);
-          _generateAndSaveDailyContent(tomorrow);
-        }
-      });
-  } catch(e) {}
+  if (_pregenDone) return;
+  _pregenDone = true;
+  setTimeout(function() {
+    try {
+      var todayMs = new Date(kstDateKey() + 'T00:00:00+09:00').getTime();
+      var tomorrow = new Date(todayMs + 86400000).toISOString().slice(0,10);
+      var sb = getSupa(); if (!sb || !supaUser) return;
+      sb.from('study_daily_content').select('id').eq('scheduled_date', tomorrow).eq('level', _currentLevel).maybeSingle()
+        .then(function(r) {
+          if (!r.data) {
+            console.log('[pregenTomorrow] generating for', tomorrow);
+            _generateAndSaveDailyContent(tomorrow);
+          }
+        });
+    } catch(e) {}
+  }, 10000);
 }
 
 function _applyFallbackTopic(date) {
