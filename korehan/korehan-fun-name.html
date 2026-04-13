@@ -6,55 +6,45 @@
   <title>Korean Name Generator — FUN</title>
   <link rel="stylesheet" href="korehan-shared.css">
   <style>
-    body{margin:0;background:#f3f7fc;font-family:'DM Sans',Inter,Pretendard,sans-serif;color:#0f172a}
-    .wrap{max-width:960px;margin:0 auto;padding:22px 16px 56px}
+    body{margin:0;background:#050b15;font-family:'DM Sans',Inter,Pretendard,sans-serif;color:#e0f2fe}
+    .wrap{max-width:700px;margin:0 auto;padding:16px 16px 56px}
     .head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
-    .head h1{margin:0;font-size:28px}
+    .head h1{margin:0;font-size:24px;background:linear-gradient(135deg,#c084fc,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
     .head p{margin:4px 0 0;color:#64748b}
-    .panel{background:#fff;border:1px solid #dce8f5;border-radius:16px;padding:18px}
-    .back{display:inline-flex;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid #dce8f5;color:#334155;text-decoration:none;font-size:13px;font-weight:700;margin-bottom:12px}
-    .back:hover{background:#f1f5f9}
+    .panel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:20px}
+    .back{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:10px}
 
-    /* Fun game shared styles */
-    .btn{border:none;border-radius:10px;background:linear-gradient(120deg,#2563eb,#7c3aed);color:#fff;font-weight:700;font-size:13px;padding:10px 14px;cursor:pointer}
-    .btn.ghost{background:#f1f5f9;color:#1e293b;border:1px solid #d7e2ef}
+    .btn{border:none;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#6366f1);color:#fff;font-weight:800;font-size:14px;padding:12px 18px;cursor:pointer;font-family:inherit}
+    .btn.ghost{background:rgba(255,255,255,.06);color:#94a3b8;border:1px solid rgba(255,255,255,.1)}
     .ng-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .ng-input{width:100%;border:1px solid #dbe7f3;border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;box-sizing:border-box}
+    .ng-input{width:100%;border:1.5px solid rgba(255,255,255,.15);border-radius:12px;padding:12px 14px;font-size:14px;font-family:inherit;box-sizing:border-box;background:rgba(255,255,255,.05);color:#e0f2fe;outline:none}
+    .ng-input:focus{border-color:#7c3aed;box-shadow:0 0 16px rgba(124,58,237,.2)}
+    .ng-input::placeholder{color:rgba(255,255,255,.3)}
     .ng-reveal{max-height:0;opacity:0;overflow:hidden;transform:translateY(4px);transition:max-height .35s ease,opacity .3s ease,transform .3s ease}
     .ng-reveal.on{max-height:120px;opacity:1;transform:none}
     .ng-choice-row{display:flex;gap:8px;flex-wrap:wrap}
-    .ng-chip{border:1px solid #dbe7f3;background:#fff;color:#334155;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;font-family:inherit}
-    .ng-chip.on{background:#dbeafe;border-color:#60a5fa;color:#1e40af}
-    .ng-primary-btn{border:none;border-radius:10px;padding:11px 14px;background:linear-gradient(120deg,#2563eb,#7c3aed);color:#fff;font-weight:800;cursor:pointer;transition:.2s;font-family:inherit;font-size:14px;width:100%}
-    .ng-primary-btn:disabled{opacity:.5;cursor:not-allowed}
+    .ng-chip{border:1.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#94a3b8;border-radius:999px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;font-family:inherit}
+    .ng-chip.on{background:rgba(124,58,237,.2);border-color:#7c3aed;color:#c4b5fd}
+    .ng-primary-btn{border:none;border-radius:12px;padding:14px;background:linear-gradient(135deg,#7c3aed,#6366f1);color:#fff;font-weight:900;cursor:pointer;font-family:inherit;font-size:15px;width:100%;box-shadow:0 8px 24px rgba(124,58,237,.3)}
+    .ng-primary-btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
     .ng-quiz-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-    .ng-quiz-option{border:1px solid #e2e8f0;background:#fff;border-radius:11px;padding:11px 10px;text-align:left;font-size:13px;cursor:pointer;transition:.18s;font-family:inherit}
-    .ng-quiz-option:hover{border-color:#93c5fd;box-shadow:0 8px 16px rgba(37,99,235,.12)}
-    .ng-quiz-option.on{border-color:#60a5fa;background:#eff6ff;color:#1e3a8a;font-weight:700}
-    .ng-reveal-stage{margin-top:8px;background:#0f172a;color:#fff;border-radius:12px;padding:12px 14px;font-size:13px;letter-spacing:.02em;animation:ngPulse 1.2s ease-in-out infinite alternate}
+    .ng-quiz-option{border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);border-radius:12px;padding:12px;text-align:left;font-size:13px;cursor:pointer;transition:.18s;font-family:inherit;color:#cbd5e1}
+    .ng-quiz-option:hover{border-color:rgba(124,58,237,.4);box-shadow:0 8px 20px rgba(124,58,237,.15)}
+    .ng-quiz-option.on{border-color:#7c3aed;background:rgba(124,58,237,.15);color:#c4b5fd;font-weight:700}
+    .ng-reveal-stage{margin-top:8px;background:linear-gradient(135deg,#1e1b4b,#312e81);color:#c4b5fd;border-radius:12px;padding:12px 14px;font-size:13px;animation:ngPulse 1.2s ease-in-out infinite alternate}
     .ng-hint-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-    .ng-hint-chip{display:inline-flex;padding:6px 10px;border-radius:999px;background:#eef2ff;color:#4338ca;font-size:12px;font-weight:700}
-    .ng-final-card{margin-top:12px;border:1px solid #bfdbfe;border-radius:16px;padding:18px;background:linear-gradient(150deg,#eff6ff,#fdf4ff);opacity:0;transform:translateY(8px) scale(.98);transition:.45s}
+    .ng-hint-chip{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:12px;font-weight:700}
+    .ng-final-card{margin-top:16px;border:2px solid rgba(124,58,237,.3);border-radius:20px;padding:24px;background:linear-gradient(150deg,#1e1b4b,#0f0a2e);opacity:0;transform:translateY(8px) scale(.98);transition:.45s;box-shadow:0 20px 40px rgba(124,58,237,.2)}
     .ng-final-card.on{opacity:1;transform:none}
-    .ng-final-label{font-size:11px;font-weight:900;letter-spacing:.11em;text-transform:uppercase;color:#64748b}
-    .ng-final-hangul{font-size:38px;font-weight:900;margin-top:6px;color:#0f172a}
+    .ng-final-label{font-size:11px;font-weight:900;letter-spacing:.15em;text-transform:uppercase;color:#7c3aed}
+    .ng-final-hangul{font-size:42px;font-weight:900;margin-top:8px;color:#c084fc;text-shadow:0 0 30px rgba(192,132,252,.4)}
     .ng-final-rom{font-size:16px;font-weight:700;color:#1d4ed8}
     .ng-final-desc{font-size:13px;line-height:1.6;color:#475569;margin-top:8px}
     .ng-secondary-btn,.ng-secondary-link{border:1px solid #dbe7f3;border-radius:10px;padding:10px 12px;background:#fff;color:#334155;font-weight:700;font-size:13px;text-decoration:none;cursor:pointer;font-family:inherit}
     @keyframes ngPulse{from{box-shadow:0 0 0 rgba(59,130,246,0)}to{box-shadow:0 0 20px rgba(99,102,241,.18)}}
 
     /* Neon */
-    body.kh-neon-on{background:#050b15 !important;color:#eefcff !important}
-    body.kh-neon-on .panel{background:#0d1b2a;border-color:rgba(255,255,255,.08)}
-    body.kh-neon-on .back{background:#0d1b2a;border-color:rgba(255,255,255,.1);color:#94a3b8}
-    body.kh-neon-on .ng-input{background:#0a1325;border-color:rgba(255,255,255,.12);color:#e0f2fe}
-    body.kh-neon-on .ng-chip{background:#0a1325;border-color:rgba(255,255,255,.12);color:#94a3b8}
-    body.kh-neon-on .ng-chip.on{background:#1e3a5f;border-color:#60a5fa;color:#7dd3fc}
-    body.kh-neon-on .ng-quiz-option{background:#0a1325;border-color:rgba(255,255,255,.1);color:#cbd5e1}
-    body.kh-neon-on .ng-quiz-option.on{background:#1e3a5f;border-color:#60a5fa;color:#7dd3fc}
-    body.kh-neon-on .ng-final-card{background:linear-gradient(150deg,#0c1a35,#1a1040);border-color:rgba(99,102,241,.3)}
-    body.kh-neon-on .ng-final-hangul{color:#e0f2fe}
-    body.kh-neon-on .ng-secondary-btn,.ng-secondary-link{background:#0d1b2a;border-color:rgba(255,255,255,.1);color:#94a3b8}
+    #kh-daily-mission,#vocab-admin-bar,.mobile-bottom-nav,#kh-header,#kh-footer{display:none!important}
 
     /* Responsive */
     @media(max-width:640px){

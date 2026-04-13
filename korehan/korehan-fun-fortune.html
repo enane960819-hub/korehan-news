@@ -1,99 +1,145 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Today's Fortune — FUN</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Today's Fortune — KoreHan Playground</title>
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
-  body{margin:0;background:#f3f7fc;font-family:'DM Sans',Inter,Pretendard,sans-serif;color:#0f172a}
-  .wrap{max-width:960px;margin:0 auto;padding:22px 16px 56px}
-  .panel{background:#fff;border:1px solid #dce8f5;border-radius:16px;padding:18px}
-  .back{display:inline-flex;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid #dce8f5;color:#334155;text-decoration:none;font-size:13px;font-weight:700;margin-bottom:12px}
-  .back:hover{background:#f1f5f9}
-  .fun-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
-  .fun-title h2{margin:0;font-size:20px}
-  .btn{border:none;border-radius:10px;background:linear-gradient(120deg,#2563eb,#7c3aed);color:#fff;font-weight:700;font-size:13px;padding:10px 14px;cursor:pointer;font-family:inherit}
-  .btn.ghost{background:#f1f5f9;color:#1e293b;border:1px solid #d7e2ef}
-  .fortune-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
-  .fortune-card{padding:14px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0}
-  .fortune-card b{font-size:13px;display:block;margin-bottom:6px}
-  .fortune-score{font-size:22px;font-weight:900;color:#1d4ed8}
-  .fortune-msg{margin-top:14px;padding:14px;border-radius:12px;background:linear-gradient(145deg,#ecfeff,#f5f3ff);border:1px solid #ccfbf1;color:#334155;font-size:13px;line-height:1.65}
+body{margin:0;background:#0a0118;color:#e0d4ff;font-family:'DM Sans',Inter,sans-serif;overflow-x:hidden;min-height:100vh}
+.wrap{max-width:500px;margin:0 auto;padding:16px 16px 60px;text-align:center}
+.back{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:12px}
+h1{font-size:28px;font-weight:900;margin:0 0 4px;background:linear-gradient(135deg,#c084fc,#818cf8,#67e8f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sub{font-size:13px;color:rgba(255,255,255,.4);margin-bottom:24px}
 
-  /* Neon */
-  body.kh-neon-on{background:#050b15 !important;color:#eefcff !important}
-  body.kh-neon-on .panel{background:#0d1b2a;border-color:rgba(255,255,255,.08)}
-  body.kh-neon-on .back{background:#0d1b2a;border-color:rgba(255,255,255,.1);color:#94a3b8}
-  body.kh-neon-on .fortune-card{background:#0a1325;border-color:rgba(255,255,255,.1)}
-  body.kh-neon-on .fortune-card b{color:#94a3b8}
-  body.kh-neon-on .fortune-score{color:#7dd3fc}
-  body.kh-neon-on .fortune-msg{background:linear-gradient(145deg,#0c1a35,#1a1040);border-color:rgba(99,102,241,.2);color:#cbd5e1}
+/* Tarot card */
+.tarot{width:200px;height:300px;margin:0 auto 24px;perspective:800px;cursor:pointer}
+.tarot-inner{width:100%;height:100%;transition:transform .8s cubic-bezier(.4,0,.2,1);transform-style:preserve-3d;position:relative}
+.tarot.flipped .tarot-inner{transform:rotateY(180deg)}
+.tarot-face{position:absolute;inset:0;border-radius:18px;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.tarot-back{background:linear-gradient(135deg,#1e1b4b,#312e81);border:2px solid rgba(167,139,250,.3);box-shadow:0 0 40px rgba(139,92,246,.2),inset 0 0 60px rgba(139,92,246,.1)}
+.tarot-back::before{content:'🔮';font-size:48px;animation:tbFloat 3s ease-in-out infinite}
+@keyframes tbFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.tarot-back .hint{font-size:12px;color:rgba(167,139,250,.6);margin-top:12px}
+.tarot-front{background:linear-gradient(180deg,#1e1b4b,#0f0a2e);border:2px solid rgba(167,139,250,.4);transform:rotateY(180deg);box-shadow:0 0 60px rgba(139,92,246,.3)}
+.tarot-emoji{font-size:64px;margin-bottom:8px}
+.tarot-label{font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:rgba(167,139,250,.7)}
+.tarot-msg{font-size:14px;color:#c4b5fd;line-height:1.6;margin-top:8px}
 
-  /* Responsive */
-  @media(max-width:480px){
-    .fortune-grid{grid-template-columns:1fr}
-  }
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
+.stat-card{background:rgba(255,255,255,.04);border:1px solid rgba(167,139,250,.15);border-radius:14px;padding:14px;opacity:0;transform:translateY(20px);transition:all .4s ease}
+.stat-card.show{opacity:1;transform:none}
+.stat-icon{font-size:24px;margin-bottom:4px}
+.stat-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:4px}
+.stat-bar{height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin-bottom:4px}
+.stat-fill{height:100%;border-radius:999px;width:0;transition:width 1s ease .5s}
+.stat-val{font-size:20px;font-weight:900}
+
+/* Lucky word */
+.lucky-word{background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(99,102,241,.1));border:1px solid rgba(139,92,246,.25);border-radius:16px;padding:18px;margin-bottom:16px;opacity:0;transform:scale(.9);transition:all .5s ease 1s}
+.lucky-word.show{opacity:1;transform:none}
+.lucky-ko{font-size:32px;font-weight:900;font-family:'Noto Sans KR',sans-serif;color:#c084fc}
+.lucky-en{font-size:13px;color:rgba(255,255,255,.5);margin-top:4px}
+
+/* Message */
+.fortune-msg{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px;font-size:13px;line-height:1.7;color:rgba(255,255,255,.6);margin-bottom:16px;opacity:0;transition:opacity .5s ease 1.2s}
+.fortune-msg.show{opacity:1}
+
+.restart-btn{padding:12px 28px;border:none;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#6366f1);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;opacity:0;transition:opacity .3s ease 1.5s}
+.restart-btn.show{opacity:1}
+
+/* Sparkle particles */
+.sparkle{position:fixed;pointer-events:none;z-index:0}
+.sparkle span{position:absolute;width:3px;height:3px;background:#c084fc;border-radius:50%;animation:drift 4s linear infinite}
+@keyframes drift{0%{transform:translateY(0);opacity:0}10%{opacity:.6}90%{opacity:.6}100%{transform:translateY(-100vh);opacity:0}}
+#kh-daily-mission,#vocab-admin-bar,.mobile-bottom-nav,#kh-header,#kh-footer{display:none!important}
+@media(max-width:400px){.tarot{width:160px;height:240px}.stats-grid{grid-template-columns:1fr 1fr;gap:8px}}
 </style>
 </head>
 <body>
-<div id="kh-header"></div>
-<main class="wrap">
-  <a href="korehan-fun.html" class="back">&larr; FUN Home</a>
-  <section class="panel" id="fun-page-root"></section>
-</main>
-<div id="kh-footer"></div>
+<div class="sparkle" id="sparkles"></div>
+<div class="wrap">
+  <a href="korehan-fun.html" class="back">&larr; Playground</a>
+  <h1>🔮 Today's Fortune</h1>
+  <div class="sub">Tap the card to reveal your destiny</div>
+  <div class="tarot" id="tarot" onclick="revealFortune()">
+    <div class="tarot-inner">
+      <div class="tarot-face tarot-back"><span>🔮</span><div class="hint">Tap to reveal</div></div>
+      <div class="tarot-face tarot-front"><div class="tarot-emoji" id="t-emoji">✨</div><div class="tarot-label" id="t-label">Overall</div><div class="tarot-msg" id="t-msg"></div></div>
+    </div>
+  </div>
+  <div class="stats-grid" id="stats-grid"></div>
+  <div class="lucky-word" id="lucky-word"></div>
+  <div class="fortune-msg" id="fortune-msg"></div>
+  <button class="restart-btn" id="restart-btn" onclick="resetFortune()">🔄 New Reading</button>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260412"></script>
+<script src="korehan-shared.js?v=20260413"></script>
 <script>
 (function(){
-  var lines = [
-    'A small Korean phrase you review today will appear in a real conversation soon.',
-    'Your consistency beats intensity today. Ten focused minutes wins.',
-    'A lucky moment comes when you speak first instead of translating too long.',
-    'Today favors light practice: one article + one mini quiz + one sentence out loud.',
-    'Unexpected progress appears when you revisit old saved words.'
-  ];
+var MSGS=[
+  'A small Korean phrase you practice today will appear in a real conversation soon.','Your consistency beats intensity. Ten focused minutes wins today.',
+  'Luck favors those who speak first instead of overthinking grammar.','Today is perfect for light practice: one article + one quiz + one sentence out loud.',
+  'Revisit old saved words — unexpected progress awaits.','The universe rewards learners who study with joy, not obligation.',
+  'A Korean drama scene will make more sense after today\'s session.','Your vocabulary is about to have a breakthrough moment.',
+  'Someone will compliment your Korean pronunciation this week.','Today\'s effort compounds into next month\'s fluency.'
+];
+var LUCKY=[
+  {ko:'행운',en:'luck'},{ko:'용기',en:'courage'},{ko:'희망',en:'hope'},{ko:'사랑',en:'love'},
+  {ko:'지혜',en:'wisdom'},{ko:'평화',en:'peace'},{ko:'감사',en:'gratitude'},{ko:'성장',en:'growth'},
+  {ko:'도전',en:'challenge'},{ko:'인연',en:'destiny'},{ko:'기쁨',en:'joy'},{ko:'자유',en:'freedom'}
+];
+var CATS=[
+  {key:'overall',icon:'✨',label:'Overall',color:'#c084fc'},
+  {key:'study',icon:'📚',label:'Study Luck',color:'#60a5fa'},
+  {key:'social',icon:'💜',label:'Social',color:'#f472b6'},
+  {key:'money',icon:'💰',label:'Fortune',color:'#fbbf24'}
+];
+function seed(){var d=new Date();return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();}
+function rng(s,m){return 35+((s*m+7)%66);}
+var _revealed=false;
 
-  function seedNum() {
-    var d = new Date();
-    return Number(String(d.getFullYear()) + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0'));
-  }
+// Sparkles
+(function(){var el=document.getElementById('sparkles');for(var i=0;i<20;i++){var s=document.createElement('span');s.style.cssText='left:'+Math.random()*100+'vw;top:'+Math.random()*100+'vh;animation-delay:-'+(Math.random()*4)+'s;width:'+(2+Math.random()*3)+'px;height:'+(2+Math.random()*3)+'px;opacity:'+(0.2+Math.random()*0.4);el.appendChild(s);}})();
 
-  function score(base, mod) {
-    return 40 + ((base * mod) % 61);
-  }
-
-  function card(title, value) {
-    var emoji = value >= 80 ? '\uD83D\uDD25' : value >= 60 ? '\u2728' : '\uD83C\uDF3F';
-    return '<div class="fortune-card"><b>' + emoji + ' ' + title + '</b><div class="fortune-score">' + value + '%</div></div>';
-  }
-
-  var root = document.getElementById('fun-page-root');
-
-  function render() {
-    var s = seedNum();
-    var fortune = {
-      overall: score(s, 3),
-      love: score(s, 5),
-      study: score(s, 7),
-      money: score(s, 11),
-      line: lines[s % lines.length]
-    };
-    root.innerHTML = '<div class="fun-title"><h2>\uD83D\uDD2E Today\'s Fortune</h2><button class="btn ghost" id="fortune-refresh">Shuffle vibe</button></div>'
-      + '<div class="fortune-grid">'
-      + card('Overall luck', fortune.overall)
-      + card('Love', fortune.love)
-      + card('Study', fortune.study)
-      + card('Money', fortune.money)
-      + '</div>'
-      + '<div class="fortune-msg">\uD83D\uDCAC ' + fortune.line + '</div>';
-    root.querySelector('#fortune-refresh').addEventListener('click', function(){
-      lines.push(lines.shift());
-      render();
-    });
-  }
-
-  render();
+window.revealFortune=function(){
+  if(_revealed)return;_revealed=true;
+  document.getElementById('tarot').classList.add('flipped');
+  var s=seed();
+  var scores=CATS.map(function(c,i){return{cat:c,val:rng(s,i*3+2)};});
+  var best=scores.reduce(function(a,b){return a.val>b.val?a:b;});
+  var emoji=best.val>=80?'🌟':best.val>=60?'✨':'🌙';
+  document.getElementById('t-emoji').textContent=emoji;
+  document.getElementById('t-label').textContent=best.cat.label+' is strongest';
+  document.getElementById('t-msg').textContent=best.val+'% energy today';
+  // Stats
+  var grid=document.getElementById('stats-grid');
+  grid.innerHTML=scores.map(function(sc){
+    return '<div class="stat-card"><div class="stat-icon">'+sc.cat.icon+'</div><div class="stat-label">'+sc.cat.label+'</div><div class="stat-bar"><div class="stat-fill" data-w="'+sc.val+'" style="background:'+sc.cat.color+'"></div></div><div class="stat-val" style="color:'+sc.cat.color+'">'+sc.val+'%</div></div>';
+  }).join('');
+  setTimeout(function(){
+    grid.querySelectorAll('.stat-card').forEach(function(c,i){setTimeout(function(){c.classList.add('show');},i*150);});
+    setTimeout(function(){grid.querySelectorAll('.stat-fill').forEach(function(f){f.style.width=f.dataset.w+'%';});},300);
+  },800);
+  // Lucky word
+  var lw=LUCKY[s%LUCKY.length];
+  var lwEl=document.getElementById('lucky-word');
+  lwEl.innerHTML='<div class="stat-label">Lucky Korean Word</div><div class="lucky-ko">'+lw.ko+'</div><div class="lucky-en">'+lw.en+'</div>';
+  setTimeout(function(){lwEl.classList.add('show');},1200);
+  // Message
+  var msgEl=document.getElementById('fortune-msg');
+  msgEl.textContent='💬 '+MSGS[s%MSGS.length];
+  setTimeout(function(){msgEl.classList.add('show');document.getElementById('restart-btn').classList.add('show');},1500);
+};
+window.resetFortune=function(){
+  _revealed=false;
+  document.getElementById('tarot').classList.remove('flipped');
+  document.getElementById('stats-grid').innerHTML='';
+  document.getElementById('lucky-word').className='lucky-word';document.getElementById('lucky-word').innerHTML='';
+  document.getElementById('fortune-msg').className='fortune-msg';document.getElementById('fortune-msg').textContent='';
+  document.getElementById('restart-btn').className='restart-btn';
+  MSGS.push(MSGS.shift());LUCKY.push(LUCKY.shift());
+};
 })();
 </script>
 </body>

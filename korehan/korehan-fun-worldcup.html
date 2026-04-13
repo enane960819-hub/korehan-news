@@ -1,114 +1,146 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Ideal Type World Cup — FUN</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ideal Type World Cup — KoreHan Playground</title>
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
-  body{margin:0;background:#f3f7fc;font-family:'DM Sans',Inter,Pretendard,sans-serif;color:#0f172a}
-  .wrap{max-width:960px;margin:0 auto;padding:22px 16px 56px}
-  .panel{background:#fff;border:1px solid #dce8f5;border-radius:16px;padding:18px}
-  .back{display:inline-flex;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid #dce8f5;color:#334155;text-decoration:none;font-size:13px;font-weight:700;margin-bottom:12px}
-  .back:hover{background:#f1f5f9}
-  .fun-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
-  .fun-title h2{margin:0;font-size:20px}
-  .muted{color:#64748b;font-size:13px}
-  .btn{border:none;border-radius:10px;background:linear-gradient(120deg,#2563eb,#7c3aed);color:#fff;font-weight:700;font-size:13px;padding:10px 14px;cursor:pointer;font-family:inherit}
-  .btn.ghost{background:#f1f5f9;color:#1e293b;border:1px solid #d7e2ef}
-  .wc-stage{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch}
-  .wc-option{border:1px solid #dbe7f3;border-radius:14px;padding:14px;background:#fff;cursor:pointer;transition:.18s transform,.18s box-shadow,.18s border-color;font-family:inherit;text-align:left;width:100%}
-  .wc-option:hover{transform:translateY(-2px);border-color:#93c5fd;box-shadow:0 10px 24px rgba(37,99,235,.12)}
-  .wc-option h4{margin:0 0 8px;font-size:16px}
-  .wc-option p{margin:0;color:#64748b;font-size:13px;line-height:1.45}
-  .wc-vs{display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#94a3b8}
-  .wc-progress{margin-bottom:12px;color:#475569;font-size:13px;font-weight:700}
-  .name-result{margin-top:14px;border:1px solid #dbeafe;background:linear-gradient(150deg,#eff6ff,#fdf4ff);border-radius:14px;padding:16px}
-  .name-ko{font-size:24px;font-weight:900;letter-spacing:.03em}
-  .name-meaning{margin-top:8px;font-size:13px;color:#475569;line-height:1.5}
+body{margin:0;background:#0b0f1a;color:#e0f2fe;font-family:'DM Sans',Inter,sans-serif;overflow-x:hidden;min-height:100vh}
+.wrap{max-width:600px;margin:0 auto;padding:12px 16px 50px}
+.back{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:8px}
+.header{text-align:center;margin-bottom:16px}
+.header h1{font-size:24px;font-weight:900;margin:0;background:linear-gradient(135deg,#f97316,#ef4444,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.round-info{font-size:13px;color:#94a3b8;margin-top:4px}
+.progress{height:4px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden;margin-bottom:20px}
+.progress-fill{height:100%;background:linear-gradient(90deg,#f97316,#ec4899);border-radius:999px;transition:width .4s}
 
-  /* Neon */
-  body.kh-neon-on{background:#050b15 !important;color:#eefcff !important}
-  body.kh-neon-on .panel{background:#0d1b2a;border-color:rgba(255,255,255,.08)}
-  body.kh-neon-on .back{background:#0d1b2a;border-color:rgba(255,255,255,.1);color:#94a3b8}
-  body.kh-neon-on .wc-option{background:#0a1325;border-color:rgba(255,255,255,.1);color:#e0f2fe}
-  body.kh-neon-on .wc-option:hover{border-color:rgba(99,102,241,.4);box-shadow:0 10px 24px rgba(99,102,241,.15)}
-  body.kh-neon-on .wc-option p{color:rgba(255,255,255,.5)}
-  body.kh-neon-on .name-result{background:linear-gradient(150deg,#0c1a35,#1a1040);border-color:rgba(99,102,241,.3)}
+/* VS Battle */
+.battle{display:flex;gap:12px;align-items:stretch;min-height:280px}
+.fighter{flex:1;border-radius:18px;cursor:pointer;padding:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transition:all .2s;border:2px solid transparent;position:relative;overflow:hidden}
+.fighter:hover{transform:scale(1.03);z-index:1}
+.fighter.left{background:linear-gradient(135deg,#1e3a8a,#1d4ed8)}
+.fighter.left:hover{border-color:#3b82f6;box-shadow:0 0 30px rgba(59,130,246,.3)}
+.fighter.right{background:linear-gradient(135deg,#7f1d1d,#dc2626)}
+.fighter.right:hover{border-color:#ef4444;box-shadow:0 0 30px rgba(239,68,68,.3)}
+.fighter.win{animation:winPop .5s ease}
+.fighter.lose{opacity:.3;transform:scale(.9);pointer-events:none}
+@keyframes winPop{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+.fighter-emoji{font-size:48px;margin-bottom:12px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.3))}
+.fighter-title{font-size:17px;font-weight:900;margin-bottom:6px;line-height:1.3}
+.fighter-desc{font-size:12px;color:rgba(255,255,255,.6);line-height:1.5}
+.fighter-ko{font-size:13px;font-weight:700;color:rgba(255,255,255,.4);margin-top:8px;font-family:'Noto Sans KR',sans-serif}
 
-  /* Responsive */
-  @media(max-width:640px){
-    .wc-stage{grid-template-columns:1fr}
-    .wc-vs{padding:4px 0}
-    .wc-option h4{font-size:14px}
-  }
+.vs-badge{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;font-size:28px;font-weight:900;color:#fff;text-shadow:0 0 20px rgba(255,255,255,.5);pointer-events:none}
+
+/* Winner screen */
+.winner{text-align:center;padding:30px 0}
+.winner-emoji{font-size:80px;animation:winBounce 1s ease infinite}
+@keyframes winBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.winner h2{font-size:24px;font-weight:900;margin:12px 0 4px}
+.winner-title{font-size:20px;font-weight:900;color:#fbbf24;margin-bottom:8px}
+.winner-desc{font-size:14px;color:rgba(255,255,255,.5);margin-bottom:20px}
+.winner-ko{font-size:16px;font-weight:700;color:rgba(255,255,255,.4);font-family:'Noto Sans KR',sans-serif;margin-bottom:20px}
+.btn-row{display:flex;gap:10px;justify-content:center}
+.btn{padding:14px 28px;border:none;border-radius:14px;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit}
+.btn-primary{background:linear-gradient(135deg,#f97316,#ec4899);color:#fff;box-shadow:0 8px 24px rgba(249,115,22,.3)}
+.btn-ghost{background:rgba(255,255,255,.08);color:#94a3b8;border:1px solid rgba(255,255,255,.1)}
+
+/* Start */
+.start{text-align:center;padding:40px 0}
+.start-emoji{font-size:72px;margin-bottom:16px}
+.start h2{font-size:28px;font-weight:900;margin-bottom:8px}
+.start p{font-size:14px;color:#94a3b8;max-width:320px;margin:0 auto 20px;line-height:1.6}
+.category-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:20px}
+.cat-btn{padding:10px 16px;border-radius:12px;border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#94a3b8;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit}
+.cat-btn.on{border-color:#f97316;background:rgba(249,115,22,.15);color:#fb923c}
+#kh-daily-mission,#vocab-admin-bar,.mobile-bottom-nav,#kh-header,#kh-footer{display:none!important}
+@media(max-width:480px){.battle{flex-direction:column;min-height:auto}.fighter{min-height:140px}.fighter-emoji{font-size:36px}}
 </style>
 </head>
 <body>
-<div id="kh-header"></div>
-<main class="wrap">
-  <a href="korehan-fun.html" class="back">&larr; FUN Home</a>
-  <section class="panel" id="fun-page-root"></section>
-</main>
-<div id="kh-footer"></div>
+<div class="wrap">
+  <a href="korehan-fun.html" class="back">&larr; Playground</a>
+  <div id="game"></div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260412"></script>
+<script src="korehan-shared.js?v=20260413"></script>
 <script>
 (function(){
-  var CANDIDATES = [
-    { title:'Cafe date in Hongdae', desc:'Talk about music and daily life in Korean.' },
-    { title:'Han River night walk', desc:'Simple Korean phrases + chill vibe.' },
-    { title:'Bookstore browsing', desc:'Learn Korean words from covers and blurbs.' },
-    { title:'Street food challenge', desc:'Order snacks only in Korean.' },
-    { title:'Noraebang session', desc:'Sing + read Korean lyrics naturally.' },
-    { title:'Museum + photo walk', desc:'Describe artworks with new vocab.' },
-    { title:'Board game cafe', desc:'Fast conversation and reaction phrases.' },
-    { title:'Sunrise hike', desc:'Motivation energy + daily routine talk.' }
-  ];
+var CATS={
+  date:{label:'🫶 Date Ideas',items:[
+    {emoji:'☕',title:'Cafe in Hongdae',desc:'Chill vibes, Korean music BGM',ko:'홍대 카페 데이트'},
+    {emoji:'🌉',title:'Han River Night Walk',desc:'City lights + deep talk',ko:'한강 야경 산책'},
+    {emoji:'🎤',title:'Noraebang Session',desc:'Sing K-pop duets together',ko:'노래방'},
+    {emoji:'🛍️',title:'Myeongdong Shopping',desc:'Try on hanbok + street food',ko:'명동 쇼핑'},
+    {emoji:'🎬',title:'Korean Movie Night',desc:'Watch with Korean subs',ko:'한국 영화 감상'},
+    {emoji:'🍜',title:'Cooking Korean Food',desc:'Make bibimbap together',ko:'한식 요리'},
+    {emoji:'📸',title:'Photo Booth Tour',desc:'Cute photos at every stop',ko:'인생네컷 투어'},
+    {emoji:'🎡',title:'Lotte World',desc:'Theme park thrill date',ko:'롯데월드'}]},
+  food:{label:'🍜 Korean Food',items:[
+    {emoji:'🥩',title:'Samgyeopsal',desc:'Grilled pork belly + soju',ko:'삼겹살'},
+    {emoji:'🍲',title:'Kimchi Jjigae',desc:'Spicy, warm, comfort food',ko:'김치찌개'},
+    {emoji:'🍛',title:'Bibimbap',desc:'Colorful mixed rice bowl',ko:'비빔밥'},
+    {emoji:'🍗',title:'Korean Fried Chicken',desc:'Crispy + yangnyeom sauce',ko:'치킨'},
+    {emoji:'🍜',title:'Budae Jjigae',desc:'Army stew with everything',ko:'부대찌개'},
+    {emoji:'🥟',title:'Mandu',desc:'Handmade Korean dumplings',ko:'만두'},
+    {emoji:'🧊',title:'Bingsu',desc:'Shaved ice dessert heaven',ko:'빙수'},
+    {emoji:'🌮',title:'Tteokbokki',desc:'Spicy rice cakes street style',ko:'떡볶이'}]},
+  kpop:{label:'🎵 K-pop Vibes',items:[
+    {emoji:'🎤',title:'BTS Concert',desc:'Army vibes, lightstick ready',ko:'BTS 콘서트'},
+    {emoji:'🖤',title:'BLACKPINK Stage',desc:'Pink venom energy',ko:'블랙핑크'},
+    {emoji:'💫',title:'NewJeans Music Video',desc:'Y2K aesthetic, catchy hooks',ko:'뉴진스 뮤비'},
+    {emoji:'👑',title:'BIGBANG Reunion',desc:'Legendary comeback moment',ko:'빅뱅 컴백'},
+    {emoji:'🌸',title:'IU Solo Concert',desc:'Emotional ballad queen',ko:'아이유 콘서트'},
+    {emoji:'🔥',title:'Stray Kids Performance',desc:'Intense dance + rap',ko:'스트레이 키즈'},
+    {emoji:'✨',title:'aespa AI Stage',desc:'Futuristic virtual world',ko:'에스파'},
+    {emoji:'🎭',title:'SEVENTEEN Show',desc:'13 members, endless energy',ko:'세븐틴 공연'}]}
+};
+var _cat='date',_pool=[],_next=[],_round=8,_total=0,_done=0;
 
-  function shuffled() {
-    var arr = CANDIDATES.slice();
-    for (var i = arr.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
-    }
-    return arr;
-  }
+function shuffle(a){var b=a.slice();for(var i=b.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=b[i];b[i]=b[j];b[j]=t;}return b;}
 
-  var root = document.getElementById('fun-page-root');
-  var state = { round: 8, pool: shuffled(), next: [] };
-
-  function nextRound(choice) {
-    state.next.push(choice);
-    if (state.next.length >= state.round / 2) {
-      state.pool = state.next;
-      state.round = state.pool.length;
-      state.next = [];
-    }
-    render();
-  }
-
-  function renderWinner(item) {
-    root.innerHTML = '<div class="fun-title"><h2>\uD83C\uDFC6 Ideal Type World Cup</h2><button class="btn ghost" id="fun-wc-restart">Restart</button></div>'
-      + '<div class="name-result"><div class="name-ko">\uD83C\uDFC6 Winner: ' + item.title + '</div><div class="name-meaning">' + item.desc + '</div></div>';
-    root.querySelector('#fun-wc-restart').addEventListener('click', function(){ state = { round:8, pool:shuffled(), next:[] }; render(); });
-  }
-
-  function render() {
-    if (state.pool.length === 1) { renderWinner(state.pool[0]); return; }
-    var idx = state.next.length * 2;
-    var a = state.pool[idx], b = state.pool[idx + 1];
-    root.innerHTML = '<div class="fun-title"><h2>\uD83C\uDFC6 Ideal Type World Cup</h2><span class="muted">Pick your favorite!</span></div>'
-      + '<div class="wc-progress">Round of ' + state.round + ' \u2014 Match ' + (state.next.length + 1) + '/' + (state.round / 2) + '</div>'
-      + '<div class="wc-stage">'
-      + '<button class="wc-option" id="wc-a"><h4>' + a.title + '</h4><p>' + a.desc + '</p></button>'
-      + '<div class="wc-vs">VS</div>'
-      + '<button class="wc-option" id="wc-b"><h4>' + b.title + '</h4><p>' + b.desc + '</p></button>'
-      + '</div>';
-    root.querySelector('#wc-a').addEventListener('click', function(){ nextRound(a); });
-    root.querySelector('#wc-b').addEventListener('click', function(){ nextRound(b); });
-  }
-
-  render();
+function showStart(){
+  var el=document.getElementById('game');
+  el.innerHTML='<div class="start"><a href="korehan-fun.html" class="back" style="position:absolute;top:16px;left:16px">&larr; Playground</a><div class="start-emoji">⚔️</div><h2>Ideal Type World Cup</h2><p>Pick your favorite in each matchup! Tournament bracket until one winner remains.</p>'
+    +'<div class="category-btns">'+Object.keys(CATS).map(function(k){return '<div class="cat-btn'+(k===_cat?' on':'')+'" onclick="setCat(\''+k+'\')">'+CATS[k].label+'</div>';}).join('')+'</div>'
+    +'<button class="btn btn-primary" onclick="startWC()">START ⚔️</button></div>';
+}
+window.setCat=function(c){_cat=c;showStart();};
+window.startWC=function(){
+  _pool=shuffle(CATS[_cat].items);_next=[];_round=_pool.length;_total=0;_done=0;
+  // Count total matches
+  var r=_round;while(r>1){_total+=r/2;r/=2;}_done=0;
+  showMatch();
+};
+function showMatch(){
+  if(_pool.length===1){showWinner(_pool[0]);return;}
+  var idx=_next.length*2;
+  var a=_pool[idx],b=_pool[idx+1];
+  var matchNum=_next.length+1,matchTotal=_round/2;
+  var pct=Math.round(_done/_total*100);
+  var el=document.getElementById('game');
+  el.innerHTML='<div class="header"><h1>⚔️ Ideal Type World Cup</h1><div class="round-info">Round of '+_round+' — Match '+matchNum+'/'+matchTotal+'</div></div>'
+    +'<div class="progress"><div class="progress-fill" style="width:'+pct+'%"></div></div>'
+    +'<div style="position:relative"><div class="battle">'
+    +'<div class="fighter left" id="fa" onclick="pick(0)"><div class="fighter-emoji">'+a.emoji+'</div><div class="fighter-title">'+a.title+'</div><div class="fighter-desc">'+a.desc+'</div><div class="fighter-ko">'+a.ko+'</div></div>'
+    +'<div class="fighter right" id="fb" onclick="pick(1)"><div class="fighter-emoji">'+b.emoji+'</div><div class="fighter-title">'+b.title+'</div><div class="fighter-desc">'+b.desc+'</div><div class="fighter-ko">'+b.ko+'</div></div>'
+    +'</div><div class="vs-badge">VS</div></div>';
+}
+window.pick=function(idx){
+  var fa=document.getElementById('fa'),fb=document.getElementById('fb');
+  if(idx===0){fa.classList.add('win');fb.classList.add('lose');_next.push(_pool[_next.length*2]);}
+  else{fb.classList.add('win');fa.classList.add('lose');_next.push(_pool[_next.length*2+1]);}
+  _done++;
+  setTimeout(function(){
+    if(_next.length>=_round/2){_pool=_next;_round=_pool.length;_next=[];}
+    showMatch();
+  },600);
+};
+function showWinner(item){
+  document.getElementById('game').innerHTML='<div class="winner"><div class="winner-emoji">🏆</div><h2>Champion!</h2><div class="winner-title">'+item.emoji+' '+item.title+'</div><div class="winner-ko">'+item.ko+'</div><div class="winner-desc">'+item.desc+'</div>'
+    +'<div class="btn-row"><button class="btn btn-ghost" onclick="showStart()">Menu</button><button class="btn btn-primary" onclick="startWC()">Play Again ⚔️</button></div></div>';
+}
+showStart();
 })();
 </script>
 </body>
