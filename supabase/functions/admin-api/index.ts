@@ -1,0 +1,197 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const ADMIN_EMAILS = ['enane960819@gmail.com']
+
+const ALLOWED_TABLES = new Set([
+  'articles','sections','app_settings','user_stats','daily_missions',
+  'article_views','character_reporters','user_subscriptions',
+  'conversations_data','stories_data','korean_slangs','phone_calls',
+  'shop_items','study_daily_content','writing_topics','vocab_overrides',
+  'article_cache','comments','newsletter_subs','page_views',
+  'saved_words','read_articles','writing_submissions','coin_adjustments',
+  'study_picture_prompts','study_room_grammar','study_room_helpers',
+  'vocabulary_bank','fast_track_scenarios','user_submissions',
+  'room_items','badges','hover_vocab_master','article_study_content'
+])
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('Origin') || ''
+  const allowed = ['https://korehannews.com','https://www.korehannews.com','http://localhost:3000','http://localhost:8888']
+  const matched = allowed.includes(origin) ? origin : allowed[0]
+  return {
+    'Access-Control-Allow-Origin': matched,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  }
+}
+
+Deno.serve(async (req) => {
+  const cors = getCorsHeaders(req)
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
+
+    // 1. Verify JWT and admin status
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return json({ error: 'No authorization header' }, 401, cors)
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey || serviceKey }
+    })
+    if (!userRes.ok) return json({ error: 'Invalid token' }, 401, cors)
+
+    const user = await userRes.json()
+    if (!user?.email || !ADMIN_EMAILS.includes(user.email)) {
+      return json({ error: 'Not an admin' }, 403, cors)
+    }
+
+    // 2. Parse request
+    const body = await req.json()
+    const { action } = body
+
+    // 3. Execute with service role
+    const sb = createClient(supabaseUrl, serviceKey)
+
+    // ── DB Operations ──
+    if (action === 'db') {
+      const { table, method, params } = body
+      if (!table || !ALLOWED_TABLES.has(table)) {
+        return json({ error: 'Table not allowed: ' + table }, 400, cors)
+      }
+
+      let query = sb.from(table)
+
+      if (method === 'select') {
+        query = query.select(params.columns || '*')
+        query = applyFilters(query, params)
+        const result = await query
+        return json(result, result.error ? 400 : 200, cors)
+      }
+
+      if (method === 'insert') {
+        const result = await query.insert(params.data)
+        return json(result, result.error ? 400 : 200, cors)
+      }
+
+      if (method === 'update') {
+        query = query.update(params.data)
+        query = applyFilters(query, params)
+        const result = await query
+        return json(result, result.error ? 400 : 200, cors)
+      }
+
+      if (method === 'upsert') {
+        const opts = params.onConflict ? { onConflict: params.onConflict } : undefined
+        const result = await query.upsert(params.data, opts)
+        return json(result, result.error ? 400 : 200, cors)
+      }
+
+      if (method === 'delete') {
+        query = query.delete()
+        query = applyFilters(query, params)
+        const result = await query
+        return json(result, result.error ? 400 : 200, cors)
+      }
+
+      if (method === 'rpc') {
+        const result = await sb.rpc(params.fn, params.args || {})
+        return json(result, result.error ? 400 : 200, cors)
+      }
+
+      return json({ error: 'Unknown method: ' + method }, 400, cors)
+    }
+
+    // ── Auth: list users ──
+    if (action === 'auth_users') {
+      const perPage = body.per_page || 500
+      const res = await fetch(`${supabaseUrl}/auth/v1/admin/users?per_page=${perPage}`, {
+        headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` }
+      })
+      const data = await res.json()
+      return json(data, res.ok ? 200 : 400, cors)
+    }
+
+    // ── Storage: upload ──
+    if (action === 'storage_upload') {
+      const { bucket, path: filePath, fileBase64, contentType } = body
+      if (!bucket || !filePath || !fileBase64) {
+        return json({ error: 'Missing bucket, path, or fileBase64' }, 400, cors)
+      }
+      const fileBytes = Uint8Array.from(atob(fileBase64), c => c.charCodeAt(0))
+      const res = await fetch(`${supabaseUrl}/storage/v1/object/${bucket}/${filePath}`, {
+        method: 'POST',
+        headers: {
+          'apikey': serviceKey,
+          'Authorization': `Bearer ${serviceKey}`,
+          'Content-Type': contentType || 'application/octet-stream',
+          'x-upsert': 'true'
+        },
+        body: fileBytes
+      })
+      const data = await res.json()
+      return json({ ...data, publicUrl: `${supabaseUrl}/storage/v1/object/public/${bucket}/${filePath}` }, res.ok ? 200 : 400, cors)
+    }
+
+    // ── REST passthrough (for complex queries) ──
+    if (action === 'rest') {
+      const { path: restPath, method: restMethod, restBody } = body
+      if (!restPath || !restPath.startsWith('/rest/v1/')) {
+        return json({ error: 'Invalid REST path' }, 400, cors)
+      }
+      // Verify table name from path is allowed
+      const tableName = restPath.split('/rest/v1/')[1]?.split('?')[0]
+      if (!tableName || !ALLOWED_TABLES.has(tableName)) {
+        return json({ error: 'Table not allowed' }, 400, cors)
+      }
+      const res = await fetch(`${supabaseUrl}${restPath}`, {
+        method: restMethod || 'GET',
+        headers: {
+          'apikey': serviceKey,
+          'Authorization': `Bearer ${serviceKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        ...(restBody ? { body: JSON.stringify(restBody) } : {})
+      })
+      const data = await res.json()
+      return json(data, res.ok ? 200 : 400, cors)
+    }
+
+    return json({ error: 'Unknown action: ' + action }, 400, cors)
+
+  } catch (e) {
+    return json({ error: e.message }, 500, getCorsHeaders(req))
+  }
+})
+
+function applyFilters(query: any, params: any) {
+  if (!params) return query
+  if (params.eq) params.eq.forEach((f: any) => { query = query.eq(f.col, f.val) })
+  if (params.neq) params.neq.forEach((f: any) => { query = query.neq(f.col, f.val) })
+  if (params.gte) params.gte.forEach((f: any) => { query = query.gte(f.col, f.val) })
+  if (params.lte) params.lte.forEach((f: any) => { query = query.lte(f.col, f.val) })
+  if (params.like) params.like.forEach((f: any) => { query = query.like(f.col, f.val) })
+  if (params.is) params.is.forEach((f: any) => { query = query.is(f.col, f.val) })
+  if (params.not) params.not.forEach((f: any) => { query = query.not(f.col, f.op || 'is', f.val) })
+  if (params.in) params.in.forEach((f: any) => { query = query.in(f.col, f.val) })
+  if (params.order) params.order.forEach((o: any) => { query = query.order(o.col, { ascending: o.asc !== false }) })
+  if (params.limit) query = query.limit(params.limit)
+  if (params.maybeSingle) query = query.maybeSingle()
+  if (params.single) query = query.single()
+  if (params.count) query = query.select('*', { count: 'exact', head: true })
+  return query
+}
+
+function json(data: any, status: number, cors: Record<string, string>) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...cors, 'Content-Type': 'application/json' }
+  })
+}

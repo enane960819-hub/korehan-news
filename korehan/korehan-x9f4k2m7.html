@@ -328,16 +328,60 @@ const K_WORDBANK   = 'korehan_wordbank';
 const K_SENTENCES  = 'korehan_sentences';
 const SUPA_URL_ADMIN = 'https://samghztrdvtxmrmawneu.supabase.co';
 const SUPA_KEY_ADMIN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs';
-const SUPA_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjQzNDc1MiwiZXhwIjoyMDg4MDEwNzUyfQ.npCvblrbeRiqwW76_23kYznrRuFHIKCD24JN3da--3c';
-function supaAdminGet(path){
-  return fetch(SUPA_URL_ADMIN + path, {
-    headers: {
-      'apikey': SUPA_SERVICE_KEY,
-      'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
-      'Content-Type': 'application/json'
-    }
-  }).then(function(r){ return r.json(); });
+// Service role key REMOVED from client — all admin ops go through admin-api Edge Function
+const ADMIN_API_URL = SUPA_URL_ADMIN + '/functions/v1/admin-api';
+
+async function _getAdminToken() {
+  var authClient = window._adminAuthClient;
+  if (!authClient) return null;
+  try {
+    var sess = await authClient.auth.getSession();
+    var s = sess && sess.data && sess.data.session;
+    if (s && s.access_token) return s.access_token;
+    var refreshed = await authClient.auth.refreshSession();
+    s = refreshed && refreshed.data && refreshed.data.session;
+    return s ? s.access_token : null;
+  } catch(e) { return null; }
 }
+
+async function adminAPI(body) {
+  var token = await _getAdminToken();
+  if (!token) throw new Error('Admin not authenticated');
+  var resp = await fetch(ADMIN_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token,
+      'apikey': SUPA_KEY_ADMIN
+    },
+    body: JSON.stringify(body)
+  });
+  if (!resp.ok) {
+    var err = await resp.json().catch(function(){ return {}; });
+    throw new Error(err.error || 'Admin API error ' + resp.status);
+  }
+  return resp.json();
+}
+
+// Proxy all REST calls through Edge Function — NO service key in client
+function supaAdminGet(path){
+  return adminAPI({ action: 'rest', path: path, method: 'GET' });
+}
+function supaAdminPost(path, body){
+  return adminAPI({ action: 'rest', path: path, method: 'POST', restBody: body });
+}
+function supaAdminPatch(path, body){
+  return adminAPI({ action: 'rest', path: path, method: 'PATCH', restBody: body });
+}
+function supaAdminDelete(path){
+  return adminAPI({ action: 'rest', path: path, method: 'DELETE' });
+}
+function supaAdminAuthUsers(perPage){
+  return adminAPI({ action: 'auth_users', per_page: perPage || 500 });
+}
+// Legacy compat: SUPA_SERVICE_KEY is no longer used for direct calls.
+// Kept as empty string so any unreachable reference doesn't crash.
+const SUPA_SERVICE_KEY = '(removed-use-admin-api)';
 const K_SITECONF = 'korehan_siteconf';
 const K_ONBOARDING_CONF = 'korehan_onboarding_conf';
 const K_OPINIONS = 'korehan_opinions';
@@ -517,7 +561,6 @@ async function callClaude({ feature, model, max_tokens, messages }) {
   async function _doFetch() {
     var headers = {
       'Content-Type': 'application/json',
-      'x-admin-bypass': SUPA_SERVICE_KEY,
       'apikey': SUPA_KEY_ADMIN,
     };
     if (token) headers['Authorization'] = 'Bearer ' + token;
@@ -550,17 +593,103 @@ async function callClaude({ feature, model, max_tokens, messages }) {
 
 function getSb() {
   if (_sbAdmin) return _sbAdmin;
-  var url = SUPA_URL_ADMIN;
-  // Prefer service_role key for admin operations (bypasses RLS)
-  var svcKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjQzNDc1MiwiZXhwIjoyMDg4MDEwNzUyfQ.npCvblrbeRiqwW76_23kYznrRuFHIKCD24JN3da--3c';
-  var key = svcKey || SUPA_KEY_ADMIN;
-  if (typeof supabase !== 'undefined' && url && key) {
-    _sbAdmin = supabase.createClient(url, key, {
-      auth: { detectSessionInUrl: false, persistSession: false, storageKey: 'sb-admin-svc' }
-    });
-    return _sbAdmin;
+  // Create proxy client that routes all DB operations through admin-api Edge Function
+  // This maintains the same .from().select().eq() chain API
+  _sbAdmin = _createAdminProxy();
+  return _sbAdmin;
+}
+
+function _createAdminProxy() {
+  function QueryBuilder(table) {
+    this._table = table;
+    this._method = 'select';
+    this._params = {};
+    this._data = null;
   }
-  return null;
+  QueryBuilder.prototype._addFilter = function(type, col, val) {
+    if (!this._params[type]) this._params[type] = [];
+    this._params[type].push({col:col, val:val});
+    return this;
+  };
+  QueryBuilder.prototype.select = function(cols, opts) {
+    this._method = 'select';
+    this._params.columns = cols || '*';
+    if (opts && opts.count) this._params.count = true;
+    if (opts && opts.head) this._params.head = true;
+    return this;
+  };
+  QueryBuilder.prototype.insert = function(data) { this._method = 'insert'; this._data = data; return this; };
+  QueryBuilder.prototype.update = function(data) { this._method = 'update'; this._data = data; return this; };
+  QueryBuilder.prototype.upsert = function(data, opts) {
+    this._method = 'upsert'; this._data = data;
+    if (opts && opts.onConflict) this._params.onConflict = opts.onConflict;
+    return this;
+  };
+  QueryBuilder.prototype.delete = function() { this._method = 'delete'; return this; };
+  QueryBuilder.prototype.eq = function(col, val) { return this._addFilter('eq', col, val); };
+  QueryBuilder.prototype.neq = function(col, val) { return this._addFilter('neq', col, val); };
+  QueryBuilder.prototype.gte = function(col, val) { return this._addFilter('gte', col, val); };
+  QueryBuilder.prototype.lte = function(col, val) { return this._addFilter('lte', col, val); };
+  QueryBuilder.prototype.like = function(col, val) { return this._addFilter('like', col, val); };
+  QueryBuilder.prototype.is = function(col, val) { return this._addFilter('is', col, val); };
+  QueryBuilder.prototype.not = function(col, op, val) {
+    if (!this._params.not) this._params.not = [];
+    this._params.not.push({col:col, op:op, val:val});
+    return this;
+  };
+  QueryBuilder.prototype.in = function(col, val) { return this._addFilter('in', col, val); };
+  QueryBuilder.prototype.order = function(col, opts) {
+    if (!this._params.order) this._params.order = [];
+    this._params.order.push({col:col, asc: opts ? opts.ascending !== false : true});
+    return this;
+  };
+  QueryBuilder.prototype.limit = function(n) { this._params.limit = n; return this; };
+  QueryBuilder.prototype.maybeSingle = function() { this._params.maybeSingle = true; return this; };
+  QueryBuilder.prototype.single = function() { this._params.single = true; return this; };
+  // Terminal: when awaited, sends to Edge Function
+  QueryBuilder.prototype.then = function(resolve, reject) {
+    var self = this;
+    var body = {
+      action: 'db',
+      table: self._table,
+      method: self._method,
+      params: Object.assign({}, self._params)
+    };
+    if (self._data) body.params.data = self._data;
+    return adminAPI(body).then(resolve, reject);
+  };
+
+  return {
+    from: function(table) { return new QueryBuilder(table); },
+    rpc: function(fn, args) {
+      return adminAPI({ action: 'db', table: '_rpc', method: 'rpc', params: { fn: fn, args: args || {} } });
+    },
+    storage: {
+      from: function(bucket) {
+        return {
+          upload: function(path, file) {
+            return new Promise(function(resolve, reject) {
+              var reader = new FileReader();
+              reader.onload = function() {
+                var base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(reader.result)));
+                adminAPI({
+                  action: 'storage_upload',
+                  bucket: bucket, path: path,
+                  fileBase64: base64,
+                  contentType: file.type || 'application/octet-stream'
+                }).then(resolve).catch(reject);
+              };
+              reader.onerror = reject;
+              reader.readAsArrayBuffer(file);
+            });
+          },
+          getPublicUrl: function(path) {
+            return { data: { publicUrl: SUPA_URL_ADMIN + '/storage/v1/object/public/' + bucket + '/' + path } };
+          }
+        };
+      }
+    }
+  };
 }
 
 function normalizeNewsSection(section) {
@@ -3902,15 +4031,8 @@ function goUsers(){
 async function loadUsers(){
   const el = document.getElementById('users-wrap');
   try {
-    // auth.users 직접 조회 (service_role 필요)
-    const authRes = await fetch(SUPA_URL_ADMIN + '/auth/v1/admin/users?per_page=500', {
-      headers: {
-        'apikey': SUPA_SERVICE_KEY,
-        'Authorization': 'Bearer ' + SUPA_SERVICE_KEY
-      }
-    });
-    if (!authRes.ok) throw new Error('auth.users 조회 실패: ' + authRes.status);
-    const authData = await authRes.json();
+    // auth.users via admin-api Edge Function (no service key in client)
+    const authData = await supaAdminAuthUsers(500);
     const authUsers = authData.users || [];
 
     // 구독 정보 조회
@@ -4035,12 +4157,10 @@ var ADMIN_CUR_LESSONS = {
 // article_cache 테이블에 캐시 (content_id, content_type, key, value)
 // ════════════════════════════════════════════════════════════
 
-const SUPA_URL_ADMIN2 = 'https://samghztrdvtxmrmawneu.supabase.co';
-const SUPA_KEY_ADMIN2 = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjQzNDc1MiwiZXhwIjoyMDg4MDEwNzUyfQ.npCvblrbeRiqwW76_23kYznrRuFHIKCD24JN3da--3c';
-
+// Service role key removed — callAdminClaude now uses JWT auth
 async function callAdminClaude(prompt) {
+  var token = await _getAdminToken();
   var proxies = [
-    SUPA_URL_ADMIN2 + '/functions/v1/claude-proxy',
     SUPA_URL_ADMIN + '/functions/v1/claude-proxy'
   ];
   var lastErr = null;
@@ -4050,9 +4170,8 @@ async function callAdminClaude(prompt) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + SUPA_KEY_ADMIN2,
-        'apikey': SUPA_KEY_ADMIN2,
-        'x-admin-bypass': SUPA_SERVICE_KEY
+        'Authorization': 'Bearer ' + (token || ''),
+        'apikey': SUPA_KEY_ADMIN
       },
       body: JSON.stringify({
         feature: 'admin-ai-gen',
