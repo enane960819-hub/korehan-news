@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Korea OX Quiz — KoreHan Playground</title>
+<link rel="stylesheet" href="korehan-shared.css">
+<style>
+body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans','Noto Sans KR',Inter,sans-serif;overflow-x:hidden}
+.wrap{max-width:560px;margin:0 auto;padding:12px 16px 40px;min-height:100vh;display:flex;flex-direction:column}
+.back{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:8px}
+.game-header{display:flex;justify-content:space-between;align-items:center;padding:8px 0;flex-shrink:0}
+.game-title{font-size:18px;font-weight:900;display:flex;align-items:center;gap:8px}
+.stat{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}
+.stat-val{color:#7dd3fc}
+.game-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+.cat-badge{font-size:11px;font-weight:800;padding:4px 12px;border-radius:999px;background:rgba(96,165,250,.15);color:#60a5fa;text-transform:uppercase;letter-spacing:.08em}
+.q-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:28px 24px;text-align:center;width:100%;max-width:460px}
+.q-text{font-size:20px;font-weight:800;line-height:1.5;color:#fff;font-family:'Noto Sans KR',sans-serif}
+.timer-wrap{width:100%;max-width:460px;height:5px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden}
+.timer-bar{height:100%;border-radius:999px;background:linear-gradient(90deg,#2563eb,#7dd3fc);transition:width .1s linear}
+.timer-bar.danger{background:linear-gradient(90deg,#ef4444,#fbbf24)}
+.ox-btns{display:flex;gap:16px;width:100%;max-width:460px}
+.ox-btn{flex:1;padding:20px;border:3px solid rgba(255,255,255,.1);border-radius:18px;background:rgba(255,255,255,.03);font-size:48px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.ox-btn:active{transform:scale(.95)}
+.ox-btn.o:hover{border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.08)}
+.ox-btn.x:hover{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08)}
+.ox-btn.correct{border-color:#4ade80;background:rgba(74,222,128,.2);animation:btnPop .3s ease}
+.ox-btn.wrong{border-color:#ef4444;background:rgba(239,68,68,.2);animation:btnShake .3s ease}
+@keyframes btnPop{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+@keyframes btnShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.exp-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 18px;width:100%;max-width:460px;text-align:center;font-size:13px;color:#94a3b8;line-height:1.5;display:none}
+.exp-card .answer{font-size:16px;font-weight:900;margin-bottom:6px}
+.exp-card .answer.yes{color:#4ade80}
+.exp-card .answer.no{color:#ef4444}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,11,21,.95);z-index:10;padding:20px}
+.big-btn{padding:16px 40px;border:none;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:20px;box-shadow:0 8px 32px rgba(37,99,235,.4)}
+@media(max-width:500px){.q-text{font-size:17px}.ox-btn{font-size:36px;padding:16px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="korehan-fun.html" class="back">&larr; Playground</a>
+  <div class="game-header">
+    <div class="game-title">🇰🇷 OX Quiz</div>
+    <div style="display:flex;gap:6px">
+      <div class="stat">Score <span class="stat-val" id="g-score">0</span></div>
+      <div class="stat">🔥 <span class="stat-val" id="g-streak">0</span></div>
+      <div class="stat">&hearts; <span class="stat-val" id="g-lives">3</span></div>
+    </div>
+  </div>
+  <div class="game-area">
+    <div class="cat-badge" id="g-cat">FOOD</div>
+    <div class="q-card"><div class="q-text" id="g-question">Loading...</div></div>
+    <div class="timer-wrap"><div class="timer-bar" id="timer-bar"></div></div>
+    <div class="ox-btns">
+      <div class="ox-btn o" id="btn-o" onclick="answer(true)">⭕</div>
+      <div class="ox-btn x" id="btn-x" onclick="answer(false)">❌</div>
+    </div>
+    <div class="exp-card" id="exp-card"></div>
+  </div>
+  <div class="screen" id="start-screen">
+    <div style="font-size:64px;margin-bottom:16px">🇰🇷</div>
+    <div style="font-size:26px;font-weight:900;margin-bottom:6px">Korea Culture OX Quiz</div>
+    <div style="font-size:14px;color:#94a3b8;max-width:300px;text-align:center;line-height:1.6">한국 문화, 음식, 예절, K-pop, 역사에 대해 얼마나 알고 있나요?</div>
+    <div style="font-size:12px;color:#64748b;margin-top:10px">3 lives · 15 seconds per question</div>
+    <button class="big-btn" onclick="startGame()">START</button>
+  </div>
+  <div class="screen" id="end-screen" style="display:none">
+    <div style="font-size:64px;margin-bottom:16px" id="end-emoji">🏆</div>
+    <div style="font-size:26px;font-weight:900;margin-bottom:4px">Quiz Over!</div>
+    <div style="font-size:38px;font-weight:900;color:#7dd3fc;margin:8px 0" id="end-score">0</div>
+    <div style="font-size:14px;color:#94a3b8" id="end-stats"></div>
+    <div style="font-size:13px;color:#64748b;margin-top:4px" id="end-best"></div>
+    <button class="big-btn" onclick="startGame()">PLAY AGAIN</button>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js?v=20260413"></script>
+<script>
+(function(){
+var Q = [
+{q:'김치는 발효 음식이다',a:true,cat:'food',exp:'Kimchi is fermented with lactic acid bacteria.'},
+{q:'비빔밥에는 보통 날달걀을 넣는다',a:false,cat:'food',exp:'Bibimbap uses a fried egg (계란 프라이), not raw.'},
+{q:'떡볶이의 주재료는 쌀떡이다',a:true,cat:'food',exp:'Tteokbokki is made with rice cakes (떡).'},
+{q:'소주는 일본에서 유래한 술이다',a:false,cat:'food',exp:'Soju originated in Korea during the Goryeo dynasty.'},
+{q:'삼겹살은 돼지고기 부위이다',a:true,cat:'food',exp:'Samgyeopsal is pork belly.'},
+{q:'냉면은 원래 여름 음식이었다',a:false,cat:'food',exp:'Naengmyeon was originally a winter dish from North Korea.'},
+{q:'한국에서 밥을 먹을 때 그릇을 들고 먹는 것이 예의이다',a:false,cat:'etiquette',exp:'In Korea, bowls stay on the table. Lifting is Japanese custom.'},
+{q:'어른에게 두 손으로 물건을 드리는 것이 예의이다',a:true,cat:'etiquette',exp:'Using two hands shows respect.'},
+{q:'한국에서 이름을 빨간색으로 쓰면 안 된다',a:true,cat:'etiquette',exp:'Red ink for names is associated with death.'},
+{q:'한국 나이는 만 나이보다 1~2살 많다',a:true,cat:'culture',exp:'Korean age adds 1 at birth (changed to international age in 2023 legally).'},
+{q:'한글은 15세기에 세종대왕이 만들었다',a:true,cat:'history',exp:'Hangul was created by King Sejong in 1443.'},
+{q:'한국의 수도는 부산이다',a:false,cat:'geography',exp:'The capital of South Korea is Seoul (서울).'},
+{q:'한글 자음은 총 14개이다',a:true,cat:'language',exp:'Korean has 14 basic consonants (ㄱ~ㅎ).'},
+{q:'한글 모음은 총 12개이다',a:false,cat:'language',exp:'Korean has 10 basic vowels (+ 11 compound vowels = 21 total).'},
+{q:'한국에서 4는 불길한 숫자이다',a:true,cat:'culture',exp:'4 (사) sounds like 死 (death). Many buildings skip 4th floor.'},
+{q:'BTS는 YG 엔터테인먼트 소속이다',a:false,cat:'kpop',exp:'BTS belongs to HYBE (formerly Big Hit Entertainment).'},
+{q:'K-pop 아이돌 그룹에는 보통 리더가 있다',a:true,cat:'kpop',exp:'Most K-pop groups have a designated leader.'},
+{q:'한국의 법정 음주 나이는 만 19세이다',a:true,cat:'daily',exp:'Legal drinking age in Korea is 19 (international age).'},
+{q:'한국 학교는 3월에 새 학년이 시작된다',a:true,cat:'daily',exp:'Korean school year starts in March.'},
+{q:'제주도는 한국에서 가장 큰 섬이다',a:true,cat:'geography',exp:'Jeju Island is the largest island in South Korea.'},
+{q:'태권도는 중국에서 유래했다',a:false,cat:'culture',exp:'Taekwondo originated in Korea.'},
+{q:'한복은 한국의 전통 의상이다',a:true,cat:'culture',exp:'Hanbok is the traditional Korean clothing.'},
+{q:'한국 전쟁은 1960년에 시작되었다',a:false,cat:'history',exp:'The Korean War began on June 25, 1950.'},
+{q:'독도는 한국 영토이다',a:true,cat:'geography',exp:'Dokdo is Korean territory in the East Sea.'},
+{q:'한국에서 택시는 기본요금이 없다',a:false,cat:'daily',exp:'Korean taxis have a base fare (약 4,800원 in Seoul).'},
+{q:'BLACKPINK는 4인조 걸그룹이다',a:true,cat:'kpop',exp:'BLACKPINK has 4 members: Jisoo, Jennie, Rosé, Lisa.'},
+{q:'한국어에서 존댓말은 나이가 같으면 안 써도 된다',a:true,cat:'language',exp:'Same-age peers typically use 반말 after agreeing to.'},
+{q:'한국의 국기 이름은 태극기이다',a:true,cat:'culture',exp:'The Korean flag is called Taegeukgi (태극기).'},
+{q:'서울의 인구는 약 1000만 명이다',a:true,cat:'geography',exp:'Seoul has approximately 9.7 million people.'},
+{q:'한국에서 설날에는 떡국을 먹는다',a:true,cat:'food',exp:'Tteokguk (rice cake soup) is eaten on Lunar New Year.'},
+];
+{q:'추석에는 송편을 만들어 먹는다',a:true,cat:'food',exp:'Songpyeon (rice cakes) are made during Chuseok.'},
+{q:'김밥에는 보통 식초밥을 사용한다',a:false,cat:'food',exp:'Kimbap uses sesame oil rice, not vinegared rice like sushi.'},
+{q:'한국에서 술을 따를 때 한 손으로 따라도 된다',a:false,cat:'etiquette',exp:'Pour with two hands or support your pouring arm for elders.'},
+{q:'한국에서 어른 앞에서 고개를 돌려 술을 마시는 것이 예의이다',a:true,cat:'etiquette',exp:'Turn away from elders when drinking as a sign of respect.'},
+{q:'한국어의 어순은 주어-동사-목적어(SVO)이다',a:false,cat:'language',exp:'Korean word order is SOV (Subject-Object-Verb).'},
+{q:'한국어에는 높임말 단계가 7개 있다',a:true,cat:'language',exp:'Korean has 7 speech levels (격식/비격식 합쳐서).'},
+{q:'경복궁은 서울에 있다',a:true,cat:'geography',exp:'Gyeongbokgung Palace is located in Seoul.'},
+{q:'한라산은 한국에서 가장 높은 산이다',a:true,cat:'geography',exp:'Hallasan on Jeju Island is the tallest mountain in South Korea (1,947m).'},
+{q:'한국의 화폐 단위는 엔이다',a:false,cat:'daily',exp:'Korean currency is Won (원). Yen is Japanese.'},
+{q:'한국 지하철에서는 음식을 먹을 수 있다',a:false,cat:'daily',exp:'Eating on the subway is generally prohibited and frowned upon.'},
+{q:'K-pop 연습생 기간은 보통 1개월 정도이다',a:false,cat:'kpop',exp:'K-pop trainees typically train for 2-7 years before debut.'},
+{q:'한국 드라마는 보통 16부작이다',a:true,cat:'kpop',exp:'Most K-dramas are 16 episodes (some 12 or 20).'},
+{q:'조선 시대는 약 500년간 지속되었다',a:true,cat:'history',exp:'Joseon dynasty lasted from 1392-1897 (505 years).'},
+{q:'한글날은 10월 9일이다',a:true,cat:'history',exp:'Hangul Day celebrates the creation of the Korean alphabet.'},
+{q:'한국에서 선배에게 반말을 써도 괜찮다',a:false,cat:'etiquette',exp:'You must use 존댓말 with seniors unless they give permission.'},
+{q:'불고기는 구운 고기라는 뜻이다',a:true,cat:'food',exp:'불 (fire) + 고기 (meat) = grilled/fire meat.'},
+{q:'한국에서 집에 들어갈 때 신발을 벗는다',a:true,cat:'etiquette',exp:'Shoes are always removed before entering a Korean home.'},
+{q:'한국의 인터넷 속도는 세계 최하위이다',a:false,cat:'daily',exp:'South Korea consistently ranks among the fastest internet speeds globally.'},
+{q:'한국에서 혈액형으로 성격을 판단하는 문화가 있다',a:true,cat:'culture',exp:'Blood type personality theory is popular in Korea.'},
+{q:'세종대왕은 조선의 3대 왕이다',a:false,cat:'history',exp:'Sejong the Great was the 4th king of Joseon.'},
+{q:'한국에서 찜질방은 대중목욕탕이다',a:true,cat:'culture',exp:'Jjimjilbang is a Korean bathhouse/spa.'},
+{q:'한국어에서 "감사합니다"는 반말이다',a:false,cat:'language',exp:'"감사합니다" is formal/polite speech (존댓말).'},
+{q:'한국에서 생일에 미역국을 먹는다',a:true,cat:'food',exp:'Koreans eat seaweed soup (미역국) on birthdays.'},
+{q:'한국은 OECD 회원국이다',a:true,cat:'daily',exp:'South Korea joined the OECD in 1996.'},
+{q:'한국의 전통 난방 시스템은 온돌이다',a:true,cat:'culture',exp:'Ondol is the traditional underfloor heating system.'},
+{q:'한국에서 가위바위보를 할 때 "가위바위보"라고 외친다',a:true,cat:'culture',exp:'The Korean version is called 가위바위보.'},
+{q:'BTS의 팬덤 이름은 BLINK이다',a:false,cat:'kpop',exp:'BTS fans are called ARMY. BLINK is BLACKPINK\'s fandom.'},
+{q:'한국에서 번호 없는 소주잔으로 건배할 때 어른보다 낮게 잔을 부딪혀야 한다',a:true,cat:'etiquette',exp:'Clink your glass lower than an elder\'s as a sign of respect.'},
+{q:'대한민국의 공식 영어 이름은 Republic of Korea이다',a:true,cat:'daily',exp:'The official name is Republic of Korea (ROK).'},
+{q:'한국에서 빼빼로 데이는 12월 11일이다',a:false,cat:'culture',exp:'Pepero Day is November 11 (11/11 — sticks look like Pepero).'},
+var CAT_LABEL={food:'Food',etiquette:'Etiquette',culture:'Culture',history:'History',language:'Language',kpop:'K-pop',geography:'Geography',daily:'Daily Life'};
+var score=0,streak=0,maxStreak=0,lives=3,qIdx=0,correctCount=0,totalAnswered=0;
+var timer=null,timerStart=0,timeLimit=15000,locked=false;
+var shuffled=[];
+var bestScore=parseInt(localStorage.getItem('kh_ox_best')||'0');
+
+function shuffle(a){var b=a.slice();for(var i=b.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=b[i];b[i]=b[j];b[j]=t;}return b;}
+
+window.startGame=function(){
+  document.getElementById('start-screen').style.display='none';
+  document.getElementById('end-screen').style.display='none';
+  score=0;streak=0;maxStreak=0;lives=3;qIdx=0;correctCount=0;totalAnswered=0;locked=false;
+  shuffled=shuffle(Q);
+  updateUI();
+  showQuestion();
+};
+
+function showQuestion(){
+  if(qIdx>=shuffled.length||lives<=0){endGame();return;}
+  var q=shuffled[qIdx];
+  document.getElementById('g-question').textContent=q.q;
+  document.getElementById('g-cat').textContent=CAT_LABEL[q.cat]||q.cat;
+  document.getElementById('exp-card').style.display='none';
+  document.getElementById('btn-o').className='ox-btn o';
+  document.getElementById('btn-x').className='ox-btn x';
+  locked=false;
+  startTimer();
+}
+
+function startTimer(){
+  timerStart=Date.now();
+  var bar=document.getElementById('timer-bar');
+  bar.style.width='100%';bar.className='timer-bar';
+  if(timer)clearInterval(timer);
+  timer=setInterval(function(){
+    var e=Date.now()-timerStart;var pct=Math.max(0,100-(e/timeLimit*100));
+    bar.style.width=pct+'%';
+    if(pct<30)bar.className='timer-bar danger';
+    if(e>=timeLimit){clearInterval(timer);if(!locked)answer(null);}
+  },50);
+}
+
+window.answer=function(picked){
+  if(locked)return;
+  locked=true;
+  clearInterval(timer);
+  var q=shuffled[qIdx];
+  var isCorrect=picked===q.a;
+  totalAnswered++;
+  var btnO=document.getElementById('btn-o');
+  var btnX=document.getElementById('btn-x');
+
+  if(picked===null){
+    // timeout
+    isCorrect=false;
+    btnO.className='ox-btn o';btnX.className='ox-btn x';
+  } else if(picked===true){
+    btnO.className='ox-btn o '+(isCorrect?'correct':'wrong');
+  } else {
+    btnX.className='ox-btn x '+(isCorrect?'correct':'wrong');
+  }
+  // highlight correct
+  if(q.a===true)btnO.className='ox-btn o correct';
+  else btnX.className='ox-btn x correct';
+
+  if(isCorrect){
+    correctCount++;streak++;
+    if(streak>maxStreak)maxStreak=streak;
+    score+=10+Math.min(streak*5,50);
+  } else {
+    streak=0;lives--;
+  }
+  updateUI();
+  showExp(q,isCorrect);
+  qIdx++;
+  setTimeout(showQuestion,2200);
+};
+
+function showExp(q,isCorrect){
+  var el=document.getElementById('exp-card');
+  el.style.display='block';
+  el.innerHTML='<div class="answer '+(isCorrect?'yes':'no')+'">'+(isCorrect?'✅ Correct!':'❌ Wrong!')+'</div>'+q.exp;
+}
+
+function updateUI(){
+  document.getElementById('g-score').textContent=score;
+  document.getElementById('g-streak').textContent=streak;
+  document.getElementById('g-lives').textContent=lives;
+}
+
+function endGame(){
+  clearInterval(timer);
+  if(score>bestScore){bestScore=score;localStorage.setItem('kh_ox_best',String(bestScore));}
+  var pct=totalAnswered?Math.round(correctCount/totalAnswered*100):0;
+  var emoji=pct>=80?'🏆':pct>=60?'⭐':pct>=40?'👍':'💪';
+  document.getElementById('end-emoji').textContent=emoji;
+  document.getElementById('end-score').textContent=score+' pts';
+  document.getElementById('end-stats').textContent=correctCount+'/'+totalAnswered+' correct · max streak '+maxStreak+' · '+pct+'%';
+  document.getElementById('end-best').textContent='Best: '+bestScore+' pts';
+  document.getElementById('end-screen').style.display='flex';
+}
+})();
+</script>
+</body>
+</html>
