@@ -597,11 +597,12 @@ function renderSelfSelectHTML() {
 }
 
 function renderTestIntroHTML() {
+  var m = state.testMode || 'balanced';
   return '<div style="margin-top:18px">'
     + '<div class="ob-helper"><span>🧪</span><div><b>Fresh every time:</b> the quiz now randomizes both questions and answer order, so the correct answer is no longer always the first option.</div></div>'
     + '<div class="ob-link-grid">'
-    + '<div class="ob-link-card"><span>20 questions</span><h3>Balanced mix</h3><p>5 Seed, 5 Sprout, 5 Tree, and 5 Forest items.</p></div>'
-    + '<div class="ob-link-card"><span>Fast result</span><h3>Recommended level</h3><p>You will still be able to override the suggested level after the test.</p></div>'
+    + '<div class="ob-link-card' + (m==='balanced'?' selected':'') + '" onclick="state.testMode=\'balanced\';renderStep3Choice()" style="cursor:pointer"><span>20 questions</span><h3>Balanced mix</h3><p>5 Seed, 5 Sprout, 5 Tree, and 5 Forest items.</p></div>'
+    + '<div class="ob-link-card' + (m==='recommended'?' selected':'') + '" onclick="state.testMode=\'recommended\';renderStep3Choice()" style="cursor:pointer"><span>Fast result</span><h3>Recommended level</h3><p>You will still be able to override the suggested level after the test.</p></div>'
     + '</div>'
     + '</div>';
 }
@@ -755,6 +756,7 @@ function showTestResult() {
 
 function selectRecommendedLevel(level) {
   state.level = level;
+  state.levelChoice = 'self'; // User overrode the recommendation
   showTestResult();
 }
 
@@ -780,8 +782,8 @@ function goStep4() {
       + '</div>'
       + '</div>'
       + '<div class="ob-link-grid">'
-      + '<a class="ob-link-card" href="beginner-guide.html"><span>Tip page</span><h3>Beginner Guide</h3><p>See how News, Study Room, Growth Lab, Stories, and Conversations fit together.</p></a>'
-      + '<a class="ob-link-card" href="korehan-study-room.html"><span>Practice page</span><h3>Study Room</h3><p>Use your reading to review words, grammar, and active practice right away.</p></a>'
+      + '<a class="ob-link-card" href="beginner-guide.html" onclick="saveOnboardingLocal(true);persistOnboardingState()"><span>Tip page</span><h3>Beginner Guide</h3><p>See how News, Study Room, Growth Lab, Stories, and Conversations fit together.</p></a>'
+      + '<a class="ob-link-card" href="korehan-study-room.html" onclick="saveOnboardingLocal(true);persistOnboardingState()"><span>Practice page</span><h3>Study Room</h3><p>Use your reading to review words, grammar, and active practice right away.</p></a>'
       + '</div>'
       + '<div class="ob-footer-note">Your onboarding state is also saved locally so you do not get bounced back into onboarding again if the database response is slow.</div>'
     + '</div>'

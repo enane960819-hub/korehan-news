@@ -6184,7 +6184,7 @@ var BADGE_DEFS = [
 
 // ── 날짜/시간 기반 문화 뱃지 체크 ──────────────────────────────────────────
 function checkCulturalDateBadges() {
-  var now = new Date(Date.now() + 9*60*60*1000); // KST
+  var now = new Date(); // Use user's local timezone
   var m = now.getMonth()+1, d = now.getDate(), h = now.getHours();
   if (m===3 && d===1)   lsSet('kh_cult_march1',   true);
   if (m===10 && d===9)  lsSet('kh_cult_hangul',    true);
