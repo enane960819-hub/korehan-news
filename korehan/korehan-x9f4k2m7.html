@@ -2728,16 +2728,34 @@ function goTopics() {
   setSbOn(null);
   const main = document.getElementById('main');
   main.innerHTML =
-    '<div class="pg-hd"><div><h1>📝 Writing Topic Management</h1><p>Manage topics used in Writing Practice.</p></div>'
-    + '<button onclick="openTopicModal()" class="btn-primary" style="margin-left:auto;white-space:nowrap">+ Add Topic</button></div>'
-    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
+    '<div class="pg-hd"><div><h1>📝 Writing Topic Management</h1><p>순서대로 하루 1개씩 나갑니다. 드래그하거나 ↑↓ 버튼으로 순서 변경.</p></div>'
+    + '<div style="display:flex;gap:8px">'
+    + '<button onclick="openTopicModal()" class="btn-primary" style="white-space:nowrap">+ Add Topic</button>'
+    + '<button onclick="openAITopicModal()" class="btn btn-g" style="white-space:nowrap">🤖 AI Add</button>'
+    + '</div></div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">'
     + '<button class="sf-tag on" onclick="filterTopics(&apos;all&apos;,this)">전체</button>'
     + '<button class="sf-tag" onclick="filterTopics(&apos;Starter&apos;,this)">🌱 Seed</button>'
     + '<button class="sf-tag" onclick="filterTopics(&apos;Beginner&apos;,this)">🌿 Sprout</button>'
     + '<button class="sf-tag" onclick="filterTopics(&apos;Intermediate&apos;,this)">🌳 Tree</button>'
     + '<button class="sf-tag" onclick="filterTopics(&apos;Advanced&apos;,this)">🌲 Forest</button>'
+    + '<input id="topic-search" class="sf-input" placeholder="🔍 검색..." oninput="searchTopics(this.value)" style="margin-left:auto;max-width:220px;font-size:13px">'
     + '</div>'
     + '<div id="topics-wrap"><div style="padding:24px;color:var(--gray);text-align:center">⏳ Loading...</div></div>'
+    + '<div id="ai-topic-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">'
+    + '<div style="background:#fff;border-radius:14px;padding:28px;width:100%;max-width:520px;box-shadow:0 24px 80px rgba(0,0,0,0.3)">'
+    + '<h2 style="font-size:18px;margin-bottom:12px">🤖 AI 토픽 자동 생성</h2>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">'
+    + '<div><label style="font-size:12px;font-weight:700;color:#445;display:block;margin-bottom:4px">레벨</label>'
+    + '<select id="ai-tm-level" class="sf-input" style="width:100%"><option value="Starter">Seed</option><option value="Beginner">Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select></div>'
+    + '<div><label style="font-size:12px;font-weight:700;color:#445;display:block;margin-bottom:4px">개수</label>'
+    + '<select id="ai-tm-count" class="sf-input" style="width:100%"><option value="5">5개</option><option value="10" selected>10개</option><option value="20">20개</option></select></div>'
+    + '</div>'
+    + '<div id="ai-tm-status" style="font-size:13px;color:var(--gray);margin-bottom:12px"></div>'
+    + '<div style="display:flex;gap:10px;justify-content:flex-end">'
+    + '<button onclick="document.getElementById(\'ai-topic-modal\').style.display=\'none\'" style="padding:9px 20px;border-radius:8px;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-weight:600">취소</button>'
+    + '<button onclick="generateAITopics()" class="btn-primary" id="ai-tm-btn">Generate</button>'
+    + '</div></div></div>'
     + '<div id="topic-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">'
     + '<div style="background:#fff;border-radius:14px;padding:28px;width:100%;max-width:520px;box-shadow:0 24px 80px rgba(0,0,0,0.3)">'
     + '<h2 style="font-size:18px;margin-bottom:18px" id="topic-modal-title">Add Topic</h2>'
@@ -2764,7 +2782,7 @@ function goTopics() {
 async function loadTopics() {
   try {
     const sb = getSb();
-    const res = await sb.from('writing_topics').select('*').order('category').order('level').order('created_at');
+    const res = await sb.from('writing_topics').select('*').order('sort_order').order('created_at');
     if (res.error) throw res.error;
     window._topicsAll = res.data || [];
     renderTopicsTable(window._topicsAll);
@@ -2790,30 +2808,88 @@ function renderTopicsTable(list) {
     const t = list[i];
     const bg = lvBg[t.level] || 'background:#eee;color:#555';
     const activeColor = t.active ? '#2e7d32' : '#c33';
-    const activeLabel = t.active ? '활성' : '비활성';
-    const toggleLabel = t.active ? '비활성화' : '활성화';
-    rows += '<tr style="border-bottom:1px solid var(--border)">';
-    rows += '<td style="padding:9px 12px;font-weight:600">' + t.category + '</td>';
-    rows += '<td style="padding:9px 12px"><span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;' + bg + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[t.level]||t.level) + '</span></td>';
-    rows += '<td style="padding:9px 12px">' + t.topic_ko + '</td>';
-    rows += '<td style="padding:9px 12px;color:var(--gray);font-size:12px">' + t.topic_en + '</td>';
-    rows += '<td style="padding:9px 12px"><span style="font-size:11px;font-weight:700;color:' + activeColor + '">' + activeLabel + '</span></td>';
-    rows += '<td style="padding:9px 12px;white-space:nowrap">';
-    rows += '<button data-id="' + t.id + '" onclick="editTopicById(this.dataset.id)" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;margin-right:4px">Edit</button>';
-    rows += '<button data-id="' + t.id + '" data-active="' + t.active + '" onclick="toggleTopicActive(this.dataset.id,this.dataset.active===\'true\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;margin-right:4px">' + toggleLabel + '</button>';
-    rows += '<button data-id="' + t.id + '" onclick="deleteTopic(this.dataset.id)" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #fdd;background:#fff5f5;color:#c33;cursor:pointer">Delete</button>';
+    const usedLabel = t.used_date ? '<span style="font-size:10px;color:#94a3b8">📅 ' + t.used_date + '</span>' : '';
+    rows += '<tr style="border-bottom:1px solid var(--border)" data-idx="'+i+'">';
+    rows += '<td style="padding:7px 8px;text-align:center;font-size:12px;color:#94a3b8;width:30px">' + (i+1) + '</td>';
+    rows += '<td style="padding:7px 8px;white-space:nowrap;width:50px">'
+      + '<button onclick="moveTopicUp('+i+')" style="border:none;background:none;cursor:pointer;font-size:11px;padding:2px" title="위로">⬆</button>'
+      + '<button onclick="moveTopicDown('+i+')" style="border:none;background:none;cursor:pointer;font-size:11px;padding:2px" title="아래로">⬇</button></td>';
+    rows += '<td style="padding:7px 8px"><span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;' + bg + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[t.level]||t.level) + '</span></td>';
+    rows += '<td style="padding:7px 8px;font-weight:600">' + t.topic_ko + '</td>';
+    rows += '<td style="padding:7px 8px;color:var(--gray);font-size:12px">' + t.topic_en + '</td>';
+    rows += '<td style="padding:7px 8px">' + usedLabel + '</td>';
+    rows += '<td style="padding:7px 8px;white-space:nowrap">';
+    rows += '<button data-id="'+t.id+'" onclick="editTopicById(this.dataset.id)" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:#fff;cursor:pointer;margin-right:3px">Edit</button>';
+    rows += '<button data-id="'+t.id+'" onclick="deleteTopic(this.dataset.id)" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid #fdd;background:#fff5f5;color:#c33;cursor:pointer">Del</button>';
     rows += '</td></tr>';
   }
-  el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개</div>'
+  el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개 · 순서대로 하루 1개씩 출제</div>'
     + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
     + '<thead><tr style="background:#f8faff;border-bottom:2px solid var(--border)">'
-    + '<th style="padding:9px 12px;text-align:left">카테고리</th>'
-    + '<th style="padding:9px 12px;text-align:left">레벨</th>'
-    + '<th style="padding:9px 12px;text-align:left">토픽 (한국어)</th>'
-    + '<th style="padding:9px 12px;text-align:left">토픽 (영어)</th>'
-    + '<th style="padding:9px 12px;text-align:left">상태</th>'
-    + '<th style="padding:9px 12px"></th>'
+    + '<th style="padding:7px 8px;text-align:center">#</th>'
+    + '<th style="padding:7px 8px">순서</th>'
+    + '<th style="padding:7px 8px;text-align:left">레벨</th>'
+    + '<th style="padding:7px 8px;text-align:left">토픽 (한국어)</th>'
+    + '<th style="padding:7px 8px;text-align:left">토픽 (영어)</th>'
+    + '<th style="padding:7px 8px">사용일</th>'
+    + '<th style="padding:7px 8px"></th>'
     + '</tr></thead><tbody>' + rows + '</tbody></table>';
+}
+function searchTopics(q) {
+  q = q.toLowerCase().trim();
+  var list = q ? (window._topicsAll||[]).filter(function(t){
+    return t.topic_ko.indexOf(q)>=0 || t.topic_en.toLowerCase().indexOf(q)>=0 || (t.category||'').toLowerCase().indexOf(q)>=0;
+  }) : (window._topicsFilter==='all' ? window._topicsAll : window._topicsAll.filter(function(t){return t.level===window._topicsFilter;}));
+  renderTopicsTable(list);
+}
+async function moveTopicUp(idx) {
+  var list = window._topicsAll; if(idx<=0||idx>=list.length) return;
+  var a=list[idx], b=list[idx-1];
+  var tmpSort=a.sort_order; a.sort_order=b.sort_order; b.sort_order=tmpSort;
+  list[idx]=b; list[idx-1]=a;
+  var sb=getSb();
+  await sb.from('writing_topics').update({sort_order:a.sort_order}).eq('id',a.id);
+  await sb.from('writing_topics').update({sort_order:b.sort_order}).eq('id',b.id);
+  renderTopicsTable(list);
+}
+async function moveTopicDown(idx) {
+  var list = window._topicsAll; if(idx<0||idx>=list.length-1) return;
+  var a=list[idx], b=list[idx+1];
+  var tmpSort=a.sort_order; a.sort_order=b.sort_order; b.sort_order=tmpSort;
+  list[idx]=b; list[idx+1]=a;
+  var sb=getSb();
+  await sb.from('writing_topics').update({sort_order:a.sort_order}).eq('id',a.id);
+  await sb.from('writing_topics').update({sort_order:b.sort_order}).eq('id',b.id);
+  renderTopicsTable(list);
+}
+function openAITopicModal() { document.getElementById('ai-topic-modal').style.display='flex'; document.getElementById('ai-tm-status').textContent=''; }
+async function generateAITopics() {
+  var level=document.getElementById('ai-tm-level').value;
+  var count=parseInt(document.getElementById('ai-tm-count').value);
+  var btn=document.getElementById('ai-tm-btn'); btn.disabled=true; btn.textContent='Generating...';
+  var st=document.getElementById('ai-tm-status'); st.textContent='⏳ AI generating '+count+' topics...';
+  var existing=(window._topicsAll||[]).filter(function(t){return t.level===level;}).map(function(t){return t.topic_ko;});
+  try {
+    var r=await callClaude({feature:'topic-gen',model:'claude-haiku-4-5-20251001',max_tokens:1200,
+      messages:[{role:'user',content:'Generate '+count+' unique Korean writing topics for level: '+level+'.\n\nExisting topics to AVOID duplicates:\n'+existing.join('\n')+'\n\nReturn ONLY a JSON array of objects: [{"topic_ko":"한국어 토픽","topic_en":"English topic","category":"카테고리"}]\nCategories: 일상, 음식, 여행, 문화, 의견, 감정, 학교, 직장, 건강, 기술\nNo markdown, no extra text.'}]});
+    var txt=(r.content&&r.content[0]&&r.content[0].text)||'';
+    var clean=txt.replace(/```json?|```/g,'').trim();
+    var ai=clean.indexOf('[')>=0?JSON.parse(clean.slice(clean.indexOf('['),clean.lastIndexOf(']')+1)):[];
+    if(!ai.length){st.textContent='❌ 생성 실패';btn.disabled=false;btn.textContent='Generate';return;}
+    // 중복 제거
+    var added=0;
+    var sb=getSb();
+    var maxSort=(window._topicsAll||[]).reduce(function(m,t){return Math.max(m,t.sort_order||0);},0);
+    for(var i=0;i<ai.length;i++){
+      if(existing.indexOf(ai[i].topic_ko)>=0) continue;
+      maxSort++;
+      await sb.from('writing_topics').insert({topic_ko:ai[i].topic_ko,topic_en:ai[i].topic_en,category:ai[i].category||'일상',level:level,active:true,sort_order:maxSort});
+      added++;
+    }
+    st.textContent='✅ '+added+'개 추가 (중복 '+(ai.length-added)+'개 제외)';
+    loadTopics();
+  } catch(e){st.textContent='❌ Error: '+e.message;}
+  btn.disabled=false;btn.textContent='Generate';
 }
 
 function openTopicModal(topic) {
@@ -2844,7 +2920,12 @@ async function saveTopic() {
   const sb = getSb();
   let res;
   if (id) { res = await sb.from('writing_topics').update(body).eq('id', id); }
-  else { res = await sb.from('writing_topics').insert(body); }
+  else {
+    // 새 토픽은 맨 뒤에 추가 (sort_order = max + 1)
+    var maxS = (window._topicsAll||[]).reduce(function(m,t){return Math.max(m,t.sort_order||0);},0);
+    body.sort_order = maxS + 1;
+    res = await sb.from('writing_topics').insert(body);
+  }
   if (!res.error) { toast('✅ 저장됨'); closeTopicModal(); loadTopics(); }
   else { toast('⚠️ 저장 실패: ' + res.error.message, true); }
 }

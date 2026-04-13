@@ -3861,32 +3861,29 @@ async function _generateAndSaveDailyContent(date) {
     Intermediate: 'INTERMEDIATE: Past tense, conjunctions, modals. Sentences 8-12 words. Topic-specific terms.',
     Advanced:     'ADVANCED: Complex structures, formal style, advanced connectors. Sentences 12+ words. Abstract vocab.'
   };
-  // 작문 토픽 DB에서 오늘의 주제 가져오기 (중복 방지)
+  // 작문 토픽 DB에서 오늘의 주제 가져오기 — 순서대로 하루 1개
   var assignedTopic = null;
   try {
     var sb = getSupa();
     if (sb) {
-      // 최근 1년 사용된 토픽 조회 (중복 방지)
-      var usedRes = await sb.from('study_daily_content')
-        .select('topic_ko')
-        .eq('level', _currentLevel)
-        .order('scheduled_date', { ascending: false })
-        .limit(365);
-      var usedTopics = (usedRes.data || []).map(function(r){ return r.topic_ko; });
-      // writing_topics에서 미사용 토픽 가져오기
+      // writing_topics를 sort_order → created_at 순으로 가져오기
       var topicRes = await sb.from('writing_topics')
         .select('*')
         .eq('level', _currentLevel)
-        .eq('active', true);
-      var available = (topicRes.data || []).filter(function(t){
-        return usedTopics.indexOf(t.topic_ko) < 0;
-      });
-      // 사용 가능한 토픽이 없으면 전체에서 선택
-      if (!available.length) available = topicRes.data || [];
-      if (available.length) {
-        // 날짜 기반 결정적 선택 (같은 날 같은 토픽)
-        var dateHash = date.split('-').reduce(function(a,b){ return a + parseInt(b); }, 0);
-        assignedTopic = available[dateHash % available.length];
+        .eq('active', true)
+        .order('sort_order')
+        .order('created_at');
+      var allTopics = topicRes.data || [];
+      if (allTopics.length) {
+        // 이미 사용된 토픽 수 = 오늘의 인덱스
+        var usedRes = await sb.from('study_daily_content')
+          .select('topic_ko')
+          .eq('level', _currentLevel)
+          .order('scheduled_date', { ascending: true });
+        var usedCount = (usedRes.data || []).length;
+        // 순서대로: 사용된 수 % 전체 토픽 수 = 오늘 인덱스
+        var todayIdx = usedCount % allTopics.length;
+        assignedTopic = allTopics[todayIdx];
       }
     }
   } catch(e) { console.warn('[_generateAndSaveDailyContent] writing_topics fetch failed:', e); }
