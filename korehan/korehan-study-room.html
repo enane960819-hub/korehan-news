@@ -3724,7 +3724,7 @@ async function loadDailyContent() {
     if (!r.error && r.data) {
       console.log('[loadDailyContent] found approved content');
       _applyDailyContent(r.data);
-      setTimeout(_pregenTomorrow, 3000);
+      _pregenTomorrow();
       return;
     }
     if (r.error) console.warn('[loadDailyContent] DB error:', r.error.message);
@@ -3740,7 +3740,7 @@ async function loadDailyContent() {
       new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('gen_timeout')); }, 20000); })
     ]);
     // If _generateAndSaveDailyContent succeeded, _applyDailyContent was already called
-    if (_todayTopic && _todayTopic.topic_ko) { setTimeout(_pregenTomorrow, 3000); return; }
+    if (_todayTopic && _todayTopic.topic_ko) { _pregenTomorrow(); return; }
   } catch(e) {
     console.warn('[loadDailyContent] AI generation failed:', e.message);
   }
