@@ -63,6 +63,15 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans',Inter,Prete
 .end-btn.primary{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff}
 .end-btn.ghost{background:rgba(255,255,255,.08);color:#94a3b8;border:1px solid rgba(255,255,255,.1)}
 
+/* Hint row */
+.hint-row{flex-shrink:0;display:flex;gap:6px;padding:6px 0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.hint-row::-webkit-scrollbar{display:none}
+.hint-chip{flex-shrink:0;padding:7px 14px;border-radius:10px;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);border:1.5px solid rgba(255,255,255,.1);color:#cbd5e1;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:.15s;user-select:none;-webkit-user-select:none}
+.hint-chip:active{transform:scale(.95);border-color:#7dd3fc;color:#fff}
+
+/* Bottom panel — sticks above keyboard */
+.bottom-panel{flex-shrink:0;z-index:5}
+
 @media(max-width:500px){.game-title{font-size:14px}.topic-grid{grid-template-columns:repeat(2,1fr)}.word-pill{font-size:16px;padding:6px 12px}}
 </style>
 </head>
@@ -82,11 +91,14 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans',Inter,Prete
     </div>
   </div>
   <div class="game-area" id="game-area" style="display:none"></div>
-  <div class="input-area" id="input-area" style="display:none">
-    <form onsubmit="event.preventDefault();checkAnswer()">
-    <input id="g-input" type="text" placeholder="" autocomplete="off" autocapitalize="none" autocorrect="off" enterkeyhint="send">
-    <button type="submit">Enter</button>
-    </form>
+  <div class="bottom-panel" id="bottom-panel" style="display:none">
+    <div class="hint-row" id="hint-row"></div>
+    <div class="input-area">
+      <form onsubmit="event.preventDefault();checkAnswer()">
+      <input id="g-input" type="text" placeholder="" autocomplete="off" autocapitalize="none" autocorrect="off" enterkeyhint="send">
+      <button type="submit">Enter</button>
+      </form>
+    </div>
   </div>
 
   <div class="menu-screen" id="menu-screen">
@@ -181,7 +193,7 @@ window.showMenu=function(){
   document.getElementById('end-screen').style.display='none';
   document.getElementById('game-header').style.display='none';
   document.getElementById('game-area').style.display='none';
-  document.getElementById('input-area').style.display='none';
+  document.getElementById('bottom-panel').style.display='none';
 };
 function getPool(){var p=[];_selectedTopics.forEach(function(k){if(TOPICS[k])p=p.concat(TOPICS[k].words);});return p.length?p:TOPICS.daily.words;}
 
@@ -199,7 +211,7 @@ window.startGame=function(){
   document.getElementById('end-screen').style.display='none';
   document.getElementById('game-header').style.display='flex';
   areaEl=document.getElementById('game-area');areaEl.style.display='block';areaEl.innerHTML='';
-  document.getElementById('input-area').style.display='block';
+  document.getElementById('bottom-panel').style.display='block';
   var inp=document.getElementById('g-input');
   inp.placeholder=_mode==='ko2en'?'Type English meaning...':'한국어로 입력...';
   words=[];score=0;combo=0;maxCombo=0;lives=5;level=1;correctCount=0;lastSpawn=0;
@@ -241,6 +253,7 @@ function loop(now){
       if(lives<=0)endGame();
     }
   }
+  updateHints();
 }
 
 window.checkAnswer=function(){
@@ -274,6 +287,7 @@ window.checkAnswer=function(){
     matched.el.classList.add('correct');
     setTimeout((function(el){return function(){el.remove();};})(matched.el),400);
     words.splice(matchIdx,1);
+    _lastHintWord=null;
     if(combo>=3&&combo%3===0){var fl=document.createElement('div');fl.className='combo-flash';fl.textContent='x'+combo+' COMBO!';document.body.appendChild(fl);setTimeout(function(){fl.remove();},600);}
     if(correctCount%5===0){level++;baseSpeed=Math.min(baseSpeed+.08,2.5);spawnInterval=Math.max(spawnInterval-120,800);}
     updateUI();
@@ -300,6 +314,67 @@ function endGame(){
   document.getElementById('end-best').textContent='Best: '+bestScore+' pts';
   document.getElementById('end-screen').style.display='flex';
 }
+// ── Hint row ──
+var _lastHintWord=null;
+function updateHints(){
+  var row=document.getElementById('hint-row');if(!row)return;
+  // Find bottom-most word
+  var bottom=null;
+  words.forEach(function(w){if(!bottom||w.y>bottom.y)bottom=w;});
+  if(!bottom||bottom===_lastHintWord&&row.children.length>0)return;
+  _lastHintWord=bottom;
+  // Correct answer(s)
+  var correctVal=_mode==='ko2en'?bottom.en:bottom.ko;
+  // Build wrong options from pool
+  var wrongs=[];
+  POOL.forEach(function(p){
+    var v=_mode==='ko2en'?p.en.toLowerCase():p.ko;
+    if(v!==correctVal&&wrongs.indexOf(v)<0)wrongs.push(v);
+  });
+  // Shuffle wrongs, take 4-5
+  wrongs.sort(function(){return Math.random()-.5;});
+  var opts=[correctVal].concat(wrongs.slice(0,5));
+  opts.sort(function(){return Math.random()-.5;});
+  row.innerHTML=opts.map(function(o){
+    return '<div class="hint-chip" onclick="pickHint(\''+o.replace(/'/g,"\\'")+'\')">'+ o+'</div>';
+  }).join('');
+}
+
+window.pickHint=function(val){
+  var inp=document.getElementById('g-input');
+  inp.value=val;
+  checkAnswer();
+};
+
+// ── Keyboard position ──
+function setupKeyboardHandler(){
+  if(!window.visualViewport)return;
+  var panel=document.getElementById('bottom-panel');
+  window.visualViewport.addEventListener('resize',function(){
+    var vv=window.visualViewport;
+    var diff=window.innerHeight-vv.height;
+    if(diff>100){
+      // Keyboard open
+      panel.style.position='fixed';
+      panel.style.bottom='0';
+      panel.style.left='0';
+      panel.style.right='0';
+      panel.style.padding='4px 16px';
+      panel.style.background='rgba(5,11,21,.92)';
+      panel.style.zIndex='50';
+    } else {
+      panel.style.position='';
+      panel.style.bottom='';
+      panel.style.left='';
+      panel.style.right='';
+      panel.style.padding='';
+      panel.style.background='';
+      panel.style.zIndex='';
+    }
+  });
+}
+
+setupKeyboardHandler();
 renderTopics();
 })()
 </script>
