@@ -3171,7 +3171,7 @@ function goAutoArticle(){
    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:14px">'
    + NEWS_SOURCES.map(function(s){
        return '<label style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#f8faff;border:1.5px solid var(--bo);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">'
-         +'<input type="checkbox" class="ns-chk" value="'+s.id+'" checked style="width:15px;height:15px"> '+s.icon+' '+s.label+'</label>';
+         +'<input type="checkbox" class="ns-chk" value="'+s.id+'" style="width:15px;height:15px"> '+s.icon+' '+s.label+'</label>';
      }).join('')
    +'</div>'
    +'<button class="btn btn-g" onclick="fetchHeadlines()" id="btn-fetch">📥 Headline 가져오기</button>'
@@ -3415,7 +3415,7 @@ async function runAutoGenerate(){
         date: today_date(), status: saveStatus,
         featured: false, level: diffInfo.level,
         source_url: h.link || '',
-        image: 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='+Math.random().toString(36).slice(2,8)+'/600/400',
+        image: 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',
       };
       await dbSaveArticle(newArticle);
       DB.unshift(newArticle); refreshCounts();
@@ -3486,20 +3486,8 @@ async function runAutoGenerate(){
 
       if (_ok > 0) {
         try {
-          const _res = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?on_conflict=article_id', {
-            method: 'POST',
-            headers: {
-              'apikey': SUPA_SERVICE_KEY,
-              'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
-              'Content-Type': 'application/json',
-              'Prefer': 'resolution=merge-duplicates,return=minimal'
-            },
-            body: JSON.stringify(_row)
-          });
-          if (!_res.ok) {
-            const _err = await _res.text();
-            console.warn('cache upsert failed:', _res.status, _err);
-          }
+          const _cacheRes = await getSb().from('article_cache').upsert(_row, { onConflict: 'article_id' });
+          if (_cacheRes.error) console.warn('cache upsert failed:', _cacheRes.error.message);
         } catch(e) { console.warn('upsert failed', e); }
       }
 

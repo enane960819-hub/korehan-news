@@ -992,14 +992,14 @@ function renderHomeConvs() {
     var globalIdx = HOME_CONVS.indexOf(c);
     var grad = CAT_GRAD[c.cat]||CAT_GRAD.everyday;
     // Extract first 2-3 messages for chat preview
-    var msgs = (c.data && c.data.messages) ? c.data.messages.slice(0,3) : [];
+    var msgs = c.msgs ? c.msgs.slice(0,3) : [];
     var chatPreview = '';
     if (msgs.length) {
-      chatPreview = msgs.map(function(m,i){
-        var isLeft = i % 2 === 0;
+      chatPreview = msgs.map(function(m){
+        var isLeft = m.s === 'l';
         var align = isLeft ? 'flex-start' : 'flex-end';
         var bg = isLeft ? 'rgba(255,255,255,.15)' : 'rgba(96,165,250,.25)';
-        var txt = (m.ko || m.text || '').slice(0,30) + ((m.ko||m.text||'').length>30?'…':'');
+        var txt = (m.txt || '').slice(0,30) + ((m.txt||'').length>30?'…':'');
         return '<div style="display:flex;justify-content:'+align+'"><div style="background:'+bg+';padding:4px 8px;border-radius:8px;font-size:10px;color:rgba(255,255,255,.85);max-width:75%;line-height:1.3">'+txt+'</div></div>';
       }).join('');
     } else {

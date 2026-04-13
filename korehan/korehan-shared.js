@@ -3232,6 +3232,8 @@ function renderFillNoKey() {
 }
 
 // ── 빈칸 문제 렌더링 ──────────────────────────────────────────────────────
+var _fillLoaded = false;
+var _fillArticleId = null;
 var _fillState = {}; // { qIdx: { selected, correct, mode } }
 var _fillQuestions = [];
 
@@ -7297,7 +7299,10 @@ async function renderHomeLearningPreview() {
 window.renderHomeLearningPreview = renderHomeLearningPreview;
 
 function isMobileRedesign() {
-  return window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
+  // Use smallest screen dimension to distinguish phones from tablets.
+  // Tablets in portrait (≥768px min) should NOT trigger mobile redesign.
+  var minDim = Math.min(window.screen.width || 9999, window.screen.height || 9999);
+  return minDim < 768 && window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
 }
 
 function pageName() {
@@ -7312,6 +7317,8 @@ function markMobileBody() {
 function injectMobileBottomNav() {
   if (!isMobileRedesign()) return;
   var page = pageName();
+  // Hide bottom nav on fullscreen game pages to avoid blocking input
+  if (page.indexOf('korehan-fun-') === 0) return;
   var nav = document.querySelector('.mobile-bottom-nav');
   if (!nav) {
     nav = document.createElement('nav');
@@ -7614,6 +7621,10 @@ window.addEventListener('resize', function(){
   if (isMobileRedesign()) {
     markMobileBody();
     injectMobileBottomNav();
+  } else {
+    document.body.classList.remove('mobile-redesign');
+    var nav = document.querySelector('.mobile-bottom-nav');
+    if (nav) nav.remove();
   }
 });
 

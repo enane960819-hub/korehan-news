@@ -1989,7 +1989,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 
 /* conversations 목록 페이지 모바일 */
 @media (max-width: 640px) {
-  #conv-cards-grid { grid-template-columns: repeat(3,1fr) !important; gap:6px !important; }
+  #conv-cards-grid { grid-template-columns: 1fr !important; gap:12px !important; }
   .cc2 { border-radius: 10px; }
   .cc2-preview { display: none; }
 }
