@@ -66,8 +66,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans',Inter,Prete
 /* Hint row */
 .hint-row{flex-shrink:0;display:flex;gap:6px;padding:6px 0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .hint-row::-webkit-scrollbar{display:none}
-.hint-chip{flex-shrink:0;padding:7px 14px;border-radius:10px;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);border:1.5px solid rgba(255,255,255,.1);color:#cbd5e1;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:.15s;user-select:none;-webkit-user-select:none}
-.hint-chip:active{transform:scale(.95);border-color:#7dd3fc;color:#fff}
+.hint-chip{flex-shrink:0;padding:7px 14px;border-radius:10px;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);border:1.5px solid rgba(255,255,255,.1);color:#cbd5e1;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;pointer-events:none}
 
 /* Bottom panel — sticks above keyboard */
 .bottom-panel{flex-shrink:0;z-index:5}
@@ -331,20 +330,13 @@ function updateHints(){
     var v=_mode==='ko2en'?p.en.toLowerCase():p.ko;
     if(v!==correctVal&&wrongs.indexOf(v)<0)wrongs.push(v);
   });
-  // Shuffle wrongs, take 4-5
   wrongs.sort(function(){return Math.random()-.5;});
-  var opts=[correctVal].concat(wrongs.slice(0,5));
+  var opts=[correctVal].concat(wrongs.slice(0,3));
   opts.sort(function(){return Math.random()-.5;});
   row.innerHTML=opts.map(function(o){
-    return '<div class="hint-chip" onclick="pickHint(\''+o.replace(/'/g,"\\'")+'\')">'+ o+'</div>';
+    return '<div class="hint-chip">'+o+'</div>';
   }).join('');
 }
-
-window.pickHint=function(val){
-  var inp=document.getElementById('g-input');
-  inp.value=val;
-  checkAnswer();
-};
 
 // ── Keyboard position ──
 function setupKeyboardHandler(){
