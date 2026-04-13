@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Memory Match — KoreHan Playground</title>
+<link rel="stylesheet" href="korehan-shared.css">
+<style>
+body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans','Noto Sans KR',Inter,Pretendard,sans-serif;min-height:100vh}
+*,*::before,*::after{box-sizing:border-box}
+.wrap{max-width:860px;margin:0 auto;padding:12px 16px 40px;position:relative}
+.back{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:8px;transition:background .15s}
+.back:hover{background:rgba(255,255,255,.12)}
+.game-header{display:flex;justify-content:space-between;align-items:center;padding:8px 0 12px;flex-wrap:wrap;gap:8px}
+.game-title{font-size:20px;font-weight:900;display:flex;align-items:center;gap:8px}
+.stats-row{display:flex;gap:8px;flex-wrap:wrap}
+.stat{font-size:13px;font-weight:700;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}
+.stat-val{color:#7dd3fc}
+
+/* ── Card Grid ── */
+.card-grid{display:grid;gap:10px;justify-content:center;margin:0 auto;padding:8px 0}
+.card-grid.easy{grid-template-columns:repeat(4,1fr);max-width:480px}
+.card-grid.normal{grid-template-columns:repeat(5,1fr);max-width:560px}
+.card-grid.hard{grid-template-columns:repeat(6,1fr);max-width:660px}
+
+/* ── Card ── */
+.card{perspective:600px;cursor:pointer;aspect-ratio:3/4;position:relative}
+.card-inner{width:100%;height:100%;transition:transform 0.4s cubic-bezier(.4,.0,.2,1);transform-style:preserve-3d;position:relative}
+.card.flipped .card-inner{transform:rotateY(180deg)}
+.card-front,.card-back{backface-visibility:hidden;-webkit-backface-visibility:hidden;position:absolute;inset:0;border-radius:12px;display:flex;align-items:center;justify-content:center;padding:6px;text-align:center;font-weight:700;border:2px solid transparent;overflow:hidden}
+
+/* face-down front */
+.card-front{background:linear-gradient(145deg,#0f1e3a,#162040);border-color:rgba(125,211,252,.15);font-size:28px;color:rgba(125,211,252,.35)}
+.card-front::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(125,211,252,.03) 8px,rgba(125,211,252,.03) 16px)}
+
+/* face-up back */
+.card-back{transform:rotateY(180deg);font-size:15px;line-height:1.3;word-break:keep-all}
+.card-back.ko{background:linear-gradient(145deg,#0c2461,#1a3a7a);border-color:rgba(59,130,246,.5);color:#bfdbfe;font-family:'Noto Sans KR','DM Sans',sans-serif;font-size:17px}
+.card-back.en{background:linear-gradient(145deg,#2d1066,#4c1d95);border-color:rgba(139,92,246,.5);color:#ddd6fe}
+
+/* Matched */
+.card.matched .card-back{border-color:rgba(34,197,94,.6);box-shadow:0 0 18px rgba(34,197,94,.25)}
+.card.matched .card-back.ko{background:linear-gradient(145deg,#064e3b,#065f46)}
+.card.matched .card-back.en{background:linear-gradient(145deg,#064e3b,#065f46)}
+.card.matched{transform:scale(.95);pointer-events:none;transition:transform .3s}
+
+/* No-match shake */
+.card.no-match .card-back{animation:shake .4s ease}
+@keyframes shake{0%,100%{transform:rotateY(180deg) translateX(0)}25%{transform:rotateY(180deg) translateX(-4px)}50%{transform:rotateY(180deg) translateX(4px)}75%{transform:rotateY(180deg) translateX(-4px)}}
+
+/* Match flash */
+.card.match-flash .card-back{animation:matchGlow .5s ease}
+@keyframes matchGlow{0%{box-shadow:0 0 0 rgba(34,197,94,0)}50%{box-shadow:0 0 30px rgba(34,197,94,.6)}100%{box-shadow:0 0 18px rgba(34,197,94,.25)}}
+
+/* Hover */
+.card:not(.flipped):not(.matched):hover .card-front{border-color:rgba(125,211,252,.35);background:linear-gradient(145deg,#132744,#1c2d55)}
+
+/* ── Screens ── */
+.overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,11,21,.94);z-index:50;padding:20px;opacity:0;transition:opacity .35s ease}
+.overlay.visible{opacity:1}
+.overlay.hidden{pointer-events:none;opacity:0}
+
+.screen-icon{font-size:64px;margin-bottom:16px}
+.screen-title{font-size:28px;font-weight:900;margin-bottom:8px}
+.screen-sub{font-size:14px;color:#94a3b8;max-width:360px;text-align:center;line-height:1.6;margin-bottom:24px}
+
+.diff-btns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px}
+.diff-btn{border:none;border-radius:14px;padding:18px 20px;cursor:pointer;font-family:inherit;text-align:left;transition:transform .15s,box-shadow .15s}
+.diff-btn:hover{transform:translateY(-2px)}
+.diff-btn .db-label{font-size:16px;font-weight:800;margin-bottom:4px}
+.diff-btn .db-desc{font-size:12px;opacity:.7;line-height:1.4}
+
+.diff-btn.easy{background:linear-gradient(135deg,#065f46,#047857);color:#a7f3d0;box-shadow:0 8px 24px rgba(4,120,87,.3)}
+.diff-btn.easy:hover{box-shadow:0 12px 32px rgba(4,120,87,.45)}
+.diff-btn.normal{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#bfdbfe;box-shadow:0 8px 24px rgba(37,99,235,.3)}
+.diff-btn.normal:hover{box-shadow:0 12px 32px rgba(37,99,235,.45)}
+.diff-btn.hard{background:linear-gradient(135deg,#581c87,#7c3aed);color:#ddd6fe;box-shadow:0 8px 24px rgba(124,58,237,.3)}
+.diff-btn.hard:hover{box-shadow:0 12px 32px rgba(124,58,237,.45)}
+
+/* End screen */
+.end-stars{font-size:48px;margin:12px 0 8px;letter-spacing:6px}
+.end-stat{font-size:15px;color:#94a3b8;margin:4px 0}
+.end-stat strong{color:#7dd3fc}
+.end-best{font-size:12px;color:#64748b;margin-top:8px}
+.play-btn{padding:16px 40px;border:none;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:24px;box-shadow:0 8px 32px rgba(37,99,235,.4);transition:transform .15s}
+.play-btn:hover{transform:scale(1.05)}
+
+/* ── Responsive ── */
+@media(max-width:600px){
+  .card-grid.easy{grid-template-columns:repeat(3,1fr);max-width:340px}
+  .card-grid.normal{grid-template-columns:repeat(4,1fr);max-width:380px}
+  .card-grid.hard{grid-template-columns:repeat(5,1fr);max-width:420px}
+  .card-back{font-size:13px}
+  .card-back.ko{font-size:14px}
+  .game-title{font-size:16px}
+  .stat{font-size:11px;padding:3px 8px}
+  .screen-title{font-size:24px}
+}
+@media(max-width:400px){
+  .card-grid.hard{grid-template-columns:repeat(5,1fr);max-width:360px;gap:6px}
+  .card{border-radius:8px}
+  .card-front,.card-back{border-radius:8px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="korehan-fun.html" class="back">&larr; Playground</a>
+  <div class="game-header">
+    <div class="game-title">🃏 Memory Match</div>
+    <div class="stats-row">
+      <div class="stat">Flips <span class="stat-val" id="g-flips">0</span></div>
+      <div class="stat">Pairs <span class="stat-val" id="g-pairs">0/0</span></div>
+      <div class="stat">⏱ <span class="stat-val" id="g-timer">0:00</span></div>
+    </div>
+  </div>
+  <div class="card-grid" id="card-grid"></div>
+</div>
+
+<!-- Start Screen -->
+<div class="overlay visible" id="start-screen">
+  <div class="screen-icon">🃏</div>
+  <div class="screen-title">Memory Match</div>
+  <div class="screen-sub">Match Korean words with their English meanings. Flip two cards at a time and find all pairs!</div>
+  <div class="diff-btns">
+    <button class="diff-btn easy" onclick="MEM.start('easy')">
+      <div class="db-label">Easy — 6 Pairs</div>
+      <div class="db-desc">12 cards &middot; Great for beginners</div>
+    </button>
+    <button class="diff-btn normal" onclick="MEM.start('normal')">
+      <div class="db-label">Normal — 10 Pairs</div>
+      <div class="db-desc">20 cards &middot; A solid challenge</div>
+    </button>
+    <button class="diff-btn hard" onclick="MEM.start('hard')">
+      <div class="db-label">Hard — 15 Pairs</div>
+      <div class="db-desc">30 cards &middot; Test your memory!</div>
+    </button>
+  </div>
+</div>
+
+<!-- End Screen -->
+<div class="overlay hidden" id="end-screen">
+  <div class="screen-icon" id="end-icon">🏆</div>
+  <div class="screen-title">Well Done!</div>
+  <div class="end-stars" id="end-stars"></div>
+  <div class="end-stat">Flips: <strong id="end-flips">0</strong></div>
+  <div class="end-stat">Time: <strong id="end-time">0:00</strong></div>
+  <div class="end-stat">Pairs: <strong id="end-pairs">0</strong></div>
+  <div class="end-best" id="end-best"></div>
+  <button class="play-btn" onclick="MEM.showStart()">PLAY AGAIN</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js?v=20260413"></script>
+<script>
+var MEM = (function(){
+  'use strict';
+
+  // ── Word Pool ──
+  var WORDS = [
+    {ko:'사랑',en:'love'},{ko:'친구',en:'friend'},{ko:'음식',en:'food'},
+    {ko:'행복',en:'happiness'},{ko:'여행',en:'travel'},{ko:'학교',en:'school'},
+    {ko:'가족',en:'family'},{ko:'날씨',en:'weather'},{ko:'영화',en:'movie'},
+    {ko:'음악',en:'music'},{ko:'커피',en:'coffee'},{ko:'병원',en:'hospital'},
+    {ko:'회사',en:'company'},{ko:'고양이',en:'cat'},{ko:'강아지',en:'dog'},
+    {ko:'바다',en:'sea'},{ko:'하늘',en:'sky'},{ko:'꽃',en:'flower'},
+    {ko:'별',en:'star'},{ko:'달',en:'moon'},{ko:'책',en:'book'},
+    {ko:'집',en:'house'},{ko:'돈',en:'money'},{ko:'건강',en:'health'},
+    {ko:'꿈',en:'dream'},{ko:'미래',en:'future'},{ko:'노래',en:'song'},
+    {ko:'춤',en:'dance'},{ko:'맛',en:'taste'},{ko:'마음',en:'heart'}
+  ];
+
+  var DIFFICULTY = {
+    easy:   { pairs: 6,  cols: 'easy' },
+    normal: { pairs: 10, cols: 'normal' },
+    hard:   { pairs: 15, cols: 'hard' }
+  };
+
+  var STAR_THRESHOLDS = {
+    easy:   [12, 18],
+    normal: [25, 35],
+    hard:   [40, 55]
+  };
+
+  // ── State ──
+  var cards = [];
+  var firstCard = null;
+  var secondCard = null;
+  var lockBoard = false;
+  var flips = 0;
+  var matchedPairs = 0;
+  var totalPairs = 0;
+  var difficulty = 'easy';
+  var timerInterval = null;
+  var startTime = 0;
+  var elapsed = 0;
+
+  // ── DOM refs ──
+  var grid = document.getElementById('card-grid');
+  var startScreen = document.getElementById('start-screen');
+  var endScreen = document.getElementById('end-screen');
+  var elFlips = document.getElementById('g-flips');
+  var elPairs = document.getElementById('g-pairs');
+  var elTimer = document.getElementById('g-timer');
+
+  // ── Helpers ──
+  function shuffle(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  function fmtTime(sec) {
+    var m = Math.floor(sec / 60);
+    var s = sec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function updateStats() {
+    elFlips.textContent = flips;
+    elPairs.textContent = matchedPairs + '/' + totalPairs;
+  }
+
+  function startTimer() {
+    stopTimer();
+    startTime = Date.now();
+    elapsed = 0;
+    elTimer.textContent = '0:00';
+    timerInterval = setInterval(function() {
+      elapsed = Math.floor((Date.now() - startTime) / 1000);
+      elTimer.textContent = fmtTime(elapsed);
+    }, 500);
+  }
+
+  function stopTimer() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+  }
+
+  function getStars(diff, f) {
+    var t = STAR_THRESHOLDS[diff];
+    if (f <= t[0]) return 3;
+    if (f <= t[1]) return 2;
+    return 1;
+  }
+
+  function renderStars(n) {
+    var s = '';
+    for (var i = 0; i < 3; i++) s += (i < n ? '⭐' : '☆');
+    return s;
+  }
+
+  // ── localStorage best score ──
+  function getBest(diff) {
+    try {
+      var raw = localStorage.getItem('kh_memory_best');
+      if (!raw) return null;
+      var obj = JSON.parse(raw);
+      return obj[diff] || null;
+    } catch(e) { return null; }
+  }
+
+  function saveBest(diff, f) {
+    try {
+      var raw = localStorage.getItem('kh_memory_best');
+      var obj = raw ? JSON.parse(raw) : {};
+      if (!obj[diff] || f < obj[diff]) {
+        obj[diff] = f;
+        localStorage.setItem('kh_memory_best', JSON.stringify(obj));
+        return true;
+      }
+      return false;
+    } catch(e) { return false; }
+  }
+
+  // ── Build Cards ──
+  function buildCards(diff) {
+    var cfg = DIFFICULTY[diff];
+    var pool = shuffle(WORDS.slice()).slice(0, cfg.pairs);
+    var deck = [];
+    pool.forEach(function(w, i) {
+      deck.push({ id: i, type: 'ko', text: w.ko, pairId: i });
+      deck.push({ id: i, type: 'en', text: w.en, pairId: i });
+    });
+    return shuffle(deck);
+  }
+
+  function createCardEl(data, idx) {
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.idx = idx;
+    card.dataset.pairId = data.pairId;
+    card.dataset.type = data.type;
+
+    var inner = document.createElement('div');
+    inner.className = 'card-inner';
+
+    var front = document.createElement('div');
+    front.className = 'card-front';
+    front.textContent = '?';
+
+    var back = document.createElement('div');
+    back.className = 'card-back ' + data.type;
+    back.textContent = data.text;
+
+    inner.appendChild(front);
+    inner.appendChild(back);
+    card.appendChild(inner);
+
+    card.addEventListener('click', function() { onCardClick(card); });
+    return card;
+  }
+
+  // ── Card Click Logic ──
+  function onCardClick(card) {
+    if (lockBoard) return;
+    if (card.classList.contains('flipped')) return;
+    if (card.classList.contains('matched')) return;
+
+    card.classList.add('flipped');
+    flips++;
+    updateStats();
+
+    if (!firstCard) {
+      firstCard = card;
+      return;
+    }
+
+    secondCard = card;
+    lockBoard = true;
+    checkForMatch();
+  }
+
+  function checkForMatch() {
+    var isMatch = firstCard.dataset.pairId === secondCard.dataset.pairId;
+
+    if (isMatch) {
+      handleMatch();
+    } else {
+      handleNoMatch();
+    }
+  }
+
+  function handleMatch() {
+    firstCard.classList.add('match-flash', 'matched');
+    secondCard.classList.add('match-flash', 'matched');
+    matchedPairs++;
+    updateStats();
+
+    setTimeout(function() {
+      firstCard.classList.remove('match-flash');
+      secondCard.classList.remove('match-flash');
+    }, 500);
+
+    resetTurn();
+
+    if (matchedPairs === totalPairs) {
+      setTimeout(endGame, 400);
+    }
+  }
+
+  function handleNoMatch() {
+    firstCard.classList.add('no-match');
+    secondCard.classList.add('no-match');
+
+    setTimeout(function() {
+      firstCard.classList.remove('flipped', 'no-match');
+      secondCard.classList.remove('flipped', 'no-match');
+      resetTurn();
+    }, 800);
+  }
+
+  function resetTurn() {
+    firstCard = null;
+    secondCard = null;
+    lockBoard = false;
+  }
+
+  // ── Screen Management ──
+  function showOverlay(el) {
+    el.classList.remove('hidden');
+    // force reflow for transition
+    void el.offsetWidth;
+    el.classList.add('visible');
+  }
+
+  function hideOverlay(el) {
+    el.classList.remove('visible');
+    setTimeout(function() { el.classList.add('hidden'); }, 350);
+  }
+
+  // ── Start Game ──
+  function startGame(diff) {
+    difficulty = diff;
+    var cfg = DIFFICULTY[diff];
+    totalPairs = cfg.pairs;
+    matchedPairs = 0;
+    flips = 0;
+    firstCard = null;
+    secondCard = null;
+    lockBoard = false;
+
+    updateStats();
+    hideOverlay(startScreen);
+    hideOverlay(endScreen);
+
+    // Build grid
+    grid.innerHTML = '';
+    grid.className = 'card-grid ' + cfg.cols;
+    cards = buildCards(diff);
+
+    cards.forEach(function(data, idx) {
+      var el = createCardEl(data, idx);
+      grid.appendChild(el);
+    });
+
+    // Brief peek: show all cards for a quick moment then hide
+    var allCards = grid.querySelectorAll('.card');
+    allCards.forEach(function(c) { c.classList.add('flipped'); });
+    lockBoard = true;
+
+    setTimeout(function() {
+      allCards.forEach(function(c) { c.classList.remove('flipped'); });
+      lockBoard = false;
+      startTimer();
+    }, 1200);
+  }
+
+  // ── End Game ──
+  function endGame() {
+    stopTimer();
+    elapsed = Math.floor((Date.now() - startTime) / 1000);
+
+    var stars = getStars(difficulty, flips);
+    var isNew = saveBest(difficulty, flips);
+    var best = getBest(difficulty);
+
+    document.getElementById('end-icon').textContent = stars === 3 ? '🏆' : stars === 2 ? '🎉' : '👏';
+    document.getElementById('end-stars').textContent = renderStars(stars);
+    document.getElementById('end-flips').textContent = flips;
+    document.getElementById('end-time').textContent = fmtTime(elapsed);
+    document.getElementById('end-pairs').textContent = totalPairs;
+
+    var bestEl = document.getElementById('end-best');
+    if (isNew) {
+      bestEl.textContent = '🎊 New best score!';
+      bestEl.style.color = '#fbbf24';
+    } else if (best) {
+      bestEl.textContent = 'Best: ' + best + ' flips';
+      bestEl.style.color = '#64748b';
+    } else {
+      bestEl.textContent = '';
+    }
+
+    showOverlay(endScreen);
+  }
+
+  // ── Show Start ──
+  function showStart() {
+    stopTimer();
+    hideOverlay(endScreen);
+    grid.innerHTML = '';
+    elFlips.textContent = '0';
+    elPairs.textContent = '0/0';
+    elTimer.textContent = '0:00';
+    setTimeout(function() { showOverlay(startScreen); }, 100);
+  }
+
+  // Public API
+  return {
+    start: startGame,
+    showStart: showStart
+  };
+})();
+</script>
+</body>
+</html>

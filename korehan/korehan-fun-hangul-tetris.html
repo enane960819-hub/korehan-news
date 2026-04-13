@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hangul Tetris — KoreHan Playground</title>
+<link rel="stylesheet" href="korehan-shared.css">
+<style>
+body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans',Inter,Pretendard,sans-serif;overflow:hidden}
+.wrap{max-width:600px;margin:0 auto;padding:12px 16px;position:relative;height:100dvh;height:100vh;display:flex;flex-direction:column}
+@supports(height:100dvh){.wrap{height:100dvh}}
+.back{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:6px}
+.game-header{display:flex;justify-content:space-between;align-items:center;padding:6px 0;flex-shrink:0}
+.game-title{font-size:18px;font-weight:900;display:flex;align-items:center;gap:8px}
+.stat{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}
+.stat-val{color:#7dd3fc}
+
+/* Target display */
+.target-area{display:flex;align-items:center;justify-content:center;gap:16px;padding:10px 0;flex-shrink:0}
+.target-char{font-size:52px;font-weight:900;color:#fff;text-shadow:0 0 30px rgba(125,211,252,.5),0 0 60px rgba(125,211,252,.2);font-family:'Noto Sans KR',sans-serif;transition:all .3s}
+.target-char.done{animation:targetPop .5s ease;color:#4ade80;text-shadow:0 0 30px rgba(74,222,128,.6)}
+@keyframes targetPop{0%{transform:scale(1)}50%{transform:scale(1.3)}100%{transform:scale(1)}}
+.build-progress{display:flex;gap:6px;align-items:center;font-size:22px;font-weight:900;font-family:'Noto Sans KR',sans-serif}
+.bp-slot{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:2px solid rgba(125,211,252,.3);color:#7dd3fc;font-size:20px;transition:all .2s}
+.bp-slot.filled{background:rgba(125,211,252,.15);border-color:#7dd3fc;color:#fff}
+.bp-slot.empty{color:rgba(255,255,255,.2)}
+
+/* Canvas */
+#game-canvas{flex:1;width:100%;border-radius:12px;background:#0a1325;border:1px solid rgba(255,255,255,.06)}
+
+/* Touch controls */
+.touch-controls{display:none;padding:8px 0;gap:10px;flex-shrink:0}
+.touch-btn{flex:1;padding:14px;border:2px solid rgba(125,211,252,.2);border-radius:14px;background:rgba(255,255,255,.04);color:#7dd3fc;font-size:20px;font-weight:900;cursor:pointer;text-align:center;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.touch-btn:active{background:rgba(125,211,252,.15);border-color:#7dd3fc}
+@media(max-width:768px){.touch-controls{display:flex}}
+
+/* Screens */
+.start-screen,.end-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,11,21,.94);z-index:10;border-radius:12px}
+.big-btn{padding:16px 40px;border:none;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:20px;box-shadow:0 8px 32px rgba(37,99,235,.4);transition:transform .15s}
+.big-btn:hover{transform:scale(1.05)}
+
+/* Combo flash */
+.combo-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:42px;font-weight:900;color:#fbbf24;text-shadow:0 0 40px rgba(251,191,36,.5);pointer-events:none;animation:comboIn .7s ease forwards;z-index:20}
+@keyframes comboIn{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
+
+@media(max-width:500px){.game-title{font-size:15px}.target-char{font-size:40px}.bp-slot{width:30px;height:30px;font-size:17px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="korehan-fun.html" class="back">&larr; Playground</a>
+  <div class="game-header">
+    <div class="game-title">🧱 Hangul Tetris</div>
+    <div style="display:flex;gap:6px">
+      <div class="stat">Score <span class="stat-val" id="g-score">0</span></div>
+      <div class="stat">Lv <span class="stat-val" id="g-level">1</span></div>
+      <div class="stat">&hearts; <span class="stat-val" id="g-lives">5</span></div>
+    </div>
+  </div>
+
+  <div class="target-area">
+    <div class="target-char" id="target-char">한</div>
+    <div class="build-progress" id="build-progress">
+      <div class="bp-slot empty" id="bp-0">?</div>
+      <div class="bp-slot empty" id="bp-1">?</div>
+      <div class="bp-slot empty" id="bp-2">?</div>
+    </div>
+  </div>
+
+  <canvas id="game-canvas"></canvas>
+
+  <div class="touch-controls">
+    <div class="touch-btn" id="btn-left">◀</div>
+    <div class="touch-btn" id="btn-right">▶</div>
+  </div>
+
+  <div class="start-screen" id="start-screen">
+    <div style="font-size:64px;margin-bottom:16px">🧱</div>
+    <div style="font-size:26px;font-weight:900;margin-bottom:8px">Hangul Tetris</div>
+    <div style="font-size:14px;color:#94a3b8;max-width:300px;text-align:center;line-height:1.6">자모 블록을 캐치해서 한글을 완성하세요! 초성→중성→종성 순서대로 잡아야 합니다.</div>
+    <div style="font-size:12px;color:#64748b;margin-top:10px">← → or touch to move</div>
+    <button class="big-btn" onclick="startGame()">START</button>
+  </div>
+
+  <div class="end-screen" id="end-screen" style="display:none">
+    <div style="font-size:64px;margin-bottom:16px" id="end-emoji">🏆</div>
+    <div style="font-size:26px;font-weight:900;margin-bottom:4px">Game Over</div>
+    <div style="font-size:38px;font-weight:900;color:#7dd3fc;margin:8px 0" id="end-score">0</div>
+    <div style="font-size:14px;color:#94a3b8;margin-bottom:4px" id="end-stats"></div>
+    <div style="font-size:13px;color:#64748b" id="end-best"></div>
+    <button class="big-btn" onclick="startGame()">PLAY AGAIN</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js?v=20260413"></script>
+<script>
+(function(){
+  var CHO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+  var JUNG = ['ㅏ','ㅐ','ㅑ','ㅓ','ㅔ','ㅕ','ㅗ','ㅘ','ㅛ','ㅜ','ㅝ','ㅠ','ㅡ','ㅣ'];
+  var JONG = ['','ㄱ','ㄴ','ㄷ','ㄹ','ㅁ','ㅂ','ㅅ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+  var JONG_MAP = {'':0,'ㄱ':1,'ㄲ':2,'ㄴ':4,'ㄷ':7,'ㄹ':8,'ㅁ':16,'ㅂ':17,'ㅅ':19,'ㅆ':20,'ㅇ':21,'ㅈ':22,'ㅊ':23,'ㅋ':24,'ㅌ':25,'ㅍ':26,'ㅎ':27};
+  var JUNG_FULL = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
+
+  function decompose(ch) {
+    var code = ch.charCodeAt(0) - 0xAC00;
+    if (code < 0 || code > 11171) return null;
+    var cho = Math.floor(code / 588);
+    var jung = Math.floor((code % 588) / 28);
+    var jong = code % 28;
+    return { cho: CHO[cho], jung: JUNG_FULL[jung], jong: JONG[jong] || '' };
+  }
+
+  // Target syllables by difficulty
+  var TARGETS_EASY = ['가','나','다','마','바','사','하','고','노','두','모','소','우','주','두','기','니','비','시','히','오','요','아','야','무','수','구','누','부','로'];
+  var TARGETS_MED = ['한','국','말','집','밥','물','산','강','달','별','꽃','눈','돈','문','길','손','곰','팔','발','볼','줄','솔','반','잔','전','몸','봄','놈','남','공'];
+  var TARGETS_HARD = ['학','읽','삶','넓','높','깊','맑','젊','삼','둘','셋','빛','꿈','값','숲','밝','흙','닭','넋','삶','옳','있','없','많','같'];
+
+  var canvas, ctx;
+  var blocks = [];
+  var paddle = { x: 0, w: 80 };
+  var score = 0, lives = 5, level = 1, completed = 0;
+  var gameRunning = false, animFrame;
+  var currentTarget = null, targetParts = [], buildIdx = 0;
+  var baseSpeed = 1.2, spawnInterval = 1800, lastSpawn = 0;
+  var bestScore = parseInt(localStorage.getItem('kh_hangul_tetris_best') || '0');
+
+  function init() {
+    canvas = document.getElementById('game-canvas');
+    ctx = canvas.getContext('2d');
+    resize();
+    window.addEventListener('resize', resize);
+    document.addEventListener('keydown', function(e) {
+      if (!gameRunning) return;
+      if (e.key === 'ArrowLeft') paddle.x = Math.max(0, paddle.x - 40);
+      if (e.key === 'ArrowRight') paddle.x = Math.min(canvas._w - paddle.w, paddle.x + 40);
+    });
+    // Touch
+    var holdL = null, holdR = null;
+    function moveL(){ paddle.x = Math.max(0, paddle.x - 6); }
+    function moveR(){ paddle.x = Math.min(canvas._w - paddle.w, paddle.x + 6); }
+    document.getElementById('btn-left').addEventListener('touchstart', function(e){ e.preventDefault(); holdL = setInterval(moveL, 30); moveL(); });
+    document.getElementById('btn-left').addEventListener('touchend', function(){ clearInterval(holdL); });
+    document.getElementById('btn-right').addEventListener('touchstart', function(e){ e.preventDefault(); holdR = setInterval(moveR, 30); moveR(); });
+    document.getElementById('btn-right').addEventListener('touchend', function(){ clearInterval(holdR); });
+  }
+
+  function resize() {
+    var rect = canvas.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    canvas._w = rect.width;
+    canvas._h = rect.height;
+    paddle.x = (rect.width - paddle.w) / 2;
+  }
+
+  function pickTarget() {
+    var pool = level <= 3 ? TARGETS_EASY : level <= 7 ? TARGETS_MED : TARGETS_HARD;
+    var ch = pool[Math.floor(Math.random() * pool.length)];
+    currentTarget = ch;
+    var d = decompose(ch);
+    if (!d) { pickTarget(); return; }
+    targetParts = [d.cho, d.jung];
+    if (d.jong) targetParts.push(d.jong);
+    buildIdx = 0;
+    updateTargetUI();
+  }
+
+  function updateTargetUI() {
+    document.getElementById('target-char').textContent = currentTarget;
+    document.getElementById('target-char').className = 'target-char';
+    for (var i = 0; i < 3; i++) {
+      var el = document.getElementById('bp-' + i);
+      if (i < targetParts.length) {
+        if (i < buildIdx) {
+          el.textContent = targetParts[i];
+          el.className = 'bp-slot filled';
+        } else {
+          el.textContent = '?';
+          el.className = 'bp-slot empty';
+        }
+        el.style.display = 'flex';
+      } else {
+        el.style.display = i < 2 ? 'flex' : 'none';
+      }
+    }
+  }
+
+  function spawnBlock() {
+    var needed = targetParts[buildIdx];
+    // Spawn 3-4 blocks: 1 correct + distractors
+    var count = Math.min(4, 2 + Math.floor(level / 3));
+    var jamos = [needed];
+    var allJamo = buildIdx === 0 ? CHO : buildIdx === 1 ? JUNG : JONG.filter(function(j){return j;});
+    while (jamos.length < count) {
+      var rj = allJamo[Math.floor(Math.random() * allJamo.length)];
+      if (jamos.indexOf(rj) < 0) jamos.push(rj);
+    }
+    // Shuffle and spawn
+    jamos.sort(function(){ return Math.random() - .5; });
+    var spacing = canvas._w / (jamos.length + 1);
+    jamos.forEach(function(j, i) {
+      blocks.push({
+        jamo: j,
+        isCorrect: j === needed,
+        x: spacing * (i + 1) - 20,
+        y: -30 - Math.random() * 40,
+        w: 44, h: 44,
+        speed: baseSpeed + Math.random() * 0.4
+      });
+    });
+  }
+
+  window.startGame = function() {
+    document.getElementById('start-screen').style.display = 'none';
+    document.getElementById('end-screen').style.display = 'none';
+    blocks = [];
+    score = 0; lives = 5; level = 1; completed = 0;
+    baseSpeed = 1.2; spawnInterval = 1800; lastSpawn = 0;
+    gameRunning = true;
+    updateUI();
+    pickTarget();
+    if (animFrame) cancelAnimationFrame(animFrame);
+    lastSpawn = performance.now();
+    loop(performance.now());
+  };
+
+  function loop(now) {
+    if (!gameRunning) return;
+    animFrame = requestAnimationFrame(loop);
+    if (now - lastSpawn > spawnInterval && blocks.length < 8) {
+      spawnBlock();
+      lastSpawn = now;
+    }
+    update();
+    render();
+  }
+
+  function update() {
+    var h = canvas._h;
+    var px = paddle.x, pw = paddle.w, py = h - 20;
+    for (var i = blocks.length - 1; i >= 0; i--) {
+      var b = blocks[i];
+      b.y += b.speed;
+      // Check paddle collision
+      if (b.y + b.h >= py && b.y + b.h <= py + 20 && b.x + b.w > px && b.x < px + pw) {
+        blocks.splice(i, 1);
+        if (b.isCorrect) {
+          // Correct catch
+          buildIdx++;
+          score += 10;
+          updateTargetUI();
+          if (buildIdx >= targetParts.length) {
+            // Syllable complete!
+            score += 50;
+            completed++;
+            document.getElementById('target-char').className = 'target-char done';
+            var fl = document.createElement('div');
+            fl.className = 'combo-flash';
+            fl.textContent = currentTarget + ' ✨';
+            document.body.appendChild(fl);
+            setTimeout(function(){ fl.remove(); }, 700);
+            blocks = [];
+            if (completed % 5 === 0) {
+              level++;
+              baseSpeed = Math.min(3, 1.2 + level * 0.2);
+              spawnInterval = Math.max(800, 1800 - level * 100);
+            }
+            updateUI();
+            setTimeout(function(){ pickTarget(); }, 600);
+          }
+        } else {
+          // Wrong catch
+          lives--;
+          updateUI();
+          if (lives <= 0) endGame();
+        }
+        continue;
+      }
+      // Fell off screen
+      if (b.y > h + 20) {
+        blocks.splice(i, 1);
+      }
+    }
+  }
+
+  function render() {
+    var w = canvas._w, h = canvas._h;
+    ctx.clearRect(0, 0, w, h);
+    // Grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 1;
+    for (var gy = 0; gy < h; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
+    // Paddle
+    ctx.fillStyle = 'rgba(125,211,252,0.3)';
+    ctx.beginPath();
+    ctx.roundRect(paddle.x, h - 20, paddle.w, 12, 6);
+    ctx.fill();
+    ctx.strokeStyle = '#7dd3fc';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Blocks
+    blocks.forEach(function(b) {
+      ctx.save();
+      var glow = b.isCorrect ? 'rgba(125,211,252,.15)' : 'rgba(255,255,255,.05)';
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.roundRect(b.x, b.y, b.w, b.h, 10);
+      ctx.fill();
+      ctx.strokeStyle = b.isCorrect ? 'rgba(125,211,252,.4)' : 'rgba(255,255,255,.12)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.font = 'bold 22px "Noto Sans KR", sans-serif';
+      ctx.fillStyle = '#e0f2fe';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(b.jamo, b.x + b.w/2, b.y + b.h/2);
+      ctx.restore();
+    });
+  }
+
+  function updateUI() {
+    document.getElementById('g-score').textContent = score;
+    document.getElementById('g-level').textContent = level;
+    document.getElementById('g-lives').textContent = lives;
+  }
+
+  function endGame() {
+    gameRunning = false;
+    if (animFrame) cancelAnimationFrame(animFrame);
+    if (score > bestScore) {
+      bestScore = score;
+      localStorage.setItem('kh_hangul_tetris_best', String(bestScore));
+    }
+    var emoji = score >= 500 ? '🏆' : score >= 200 ? '⭐' : score >= 100 ? '👍' : '💪';
+    document.getElementById('end-emoji').textContent = emoji;
+    document.getElementById('end-score').textContent = score + ' pts';
+    document.getElementById('end-stats').textContent = completed + ' syllables completed · level ' + level;
+    document.getElementById('end-best').textContent = 'Best: ' + bestScore + ' pts';
+    document.getElementById('end-screen').style.display = 'flex';
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+</body>
+</html>
