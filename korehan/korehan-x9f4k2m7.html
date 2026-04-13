@@ -2792,10 +2792,11 @@ async function loadTopics() {
 }
 
 function filterTopics(level, btn) {
-  window._topicsFilter = level;
-  document.querySelectorAll('.sf-tag').forEach(b => b.classList.remove('on'));
+  window._topicsFilter = level || window._topicsFilter || 'all';
+  document.querySelectorAll('.sf-tag').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
-  const list = level === 'all' ? window._topicsAll : window._topicsAll.filter(t => t.level === level);
+  else { document.querySelectorAll('.sf-tag').forEach(function(b){ if(b.textContent.indexOf(window._topicsFilter)>=0||(window._topicsFilter==='all'&&b.textContent.indexOf('전체')>=0)) b.classList.add('on'); }); }
+  const list = window._topicsFilter === 'all' ? window._topicsAll : window._topicsAll.filter(function(t){return t.level === window._topicsFilter;});
   renderTopicsTable(list);
 }
 
@@ -2812,8 +2813,8 @@ function renderTopicsTable(list) {
     rows += '<tr style="border-bottom:1px solid var(--border)" data-idx="'+i+'">';
     rows += '<td style="padding:7px 8px;text-align:center;font-size:12px;color:#94a3b8;width:30px">' + (i+1) + '</td>';
     rows += '<td style="padding:7px 8px;white-space:nowrap;width:50px">'
-      + '<button onclick="moveTopicUp('+i+')" style="border:none;background:none;cursor:pointer;font-size:11px;padding:2px" title="위로">⬆</button>'
-      + '<button onclick="moveTopicDown('+i+')" style="border:none;background:none;cursor:pointer;font-size:11px;padding:2px" title="아래로">⬇</button></td>';
+      + '<button onclick="moveTopicUp(\''+t.id+'\')" style="border:none;background:none;cursor:pointer;font-size:11px;padding:2px" title="위로">⬆</button>'
+      + '<button onclick="moveTopicDown(\''+t.id+'\')" style="border:none;background:none;cursor:pointer;font-size:11px;padding:2px" title="아래로">⬇</button></td>';
     rows += '<td style="padding:7px 8px"><span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;' + bg + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[t.level]||t.level) + '</span></td>';
     rows += '<td style="padding:7px 8px;font-weight:600">' + t.topic_ko + '</td>';
     rows += '<td style="padding:7px 8px;color:var(--gray);font-size:12px">' + t.topic_en + '</td>';
@@ -2842,25 +2843,32 @@ function searchTopics(q) {
   }) : (window._topicsFilter==='all' ? window._topicsAll : window._topicsAll.filter(function(t){return t.level===window._topicsFilter;}));
   renderTopicsTable(list);
 }
-async function moveTopicUp(idx) {
-  var list = window._topicsAll; if(idx<=0||idx>=list.length) return;
+async function moveTopicUp(id) {
+  var list = window._topicsAll;
+  var idx = list.findIndex(function(t){return t.id===id;});
+  if(idx<=0) return;
   var a=list[idx], b=list[idx-1];
-  var tmpSort=a.sort_order; a.sort_order=b.sort_order; b.sort_order=tmpSort;
+  // Swap sort_order values
+  var tmpSort=a.sort_order||idx; var bSort=b.sort_order||(idx-1);
+  a.sort_order=bSort; b.sort_order=tmpSort;
   list[idx]=b; list[idx-1]=a;
   var sb=getSb();
   await sb.from('writing_topics').update({sort_order:a.sort_order}).eq('id',a.id);
   await sb.from('writing_topics').update({sort_order:b.sort_order}).eq('id',b.id);
-  renderTopicsTable(list);
+  filterTopics(window._topicsFilter);
 }
-async function moveTopicDown(idx) {
-  var list = window._topicsAll; if(idx<0||idx>=list.length-1) return;
+async function moveTopicDown(id) {
+  var list = window._topicsAll;
+  var idx = list.findIndex(function(t){return t.id===id;});
+  if(idx<0||idx>=list.length-1) return;
   var a=list[idx], b=list[idx+1];
-  var tmpSort=a.sort_order; a.sort_order=b.sort_order; b.sort_order=tmpSort;
+  var tmpSort=a.sort_order||idx; var bSort=b.sort_order||(idx+1);
+  a.sort_order=bSort; b.sort_order=tmpSort;
   list[idx]=b; list[idx+1]=a;
   var sb=getSb();
   await sb.from('writing_topics').update({sort_order:a.sort_order}).eq('id',a.id);
   await sb.from('writing_topics').update({sort_order:b.sort_order}).eq('id',b.id);
-  renderTopicsTable(list);
+  filterTopics(window._topicsFilter);
 }
 function openAITopicModal() { document.getElementById('ai-topic-modal').style.display='flex'; document.getElementById('ai-tm-status').textContent=''; }
 async function generateAITopics() {
