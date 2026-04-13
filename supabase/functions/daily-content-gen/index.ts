@@ -130,26 +130,57 @@ Deno.serve(async (req) => {
     const tomorrow = addDays(today, 1)
     const dates = [today, tomorrow]
 
-    // Check existing content
-    const { data: existing } = await sb
-      .from('study_daily_content')
-      .select('scheduled_date,level,vocab')
-      .in('scheduled_date', dates)
-
-    const hasContent: Record<string, boolean> = {}
-    for (const r of existing || []) {
-      const hasVocab = r.vocab && (Array.isArray(r.vocab) ? r.vocab.length > 0 : typeof r.vocab === 'string' && r.vocab.length > 2)
-      if (hasVocab) hasContent[`${r.scheduled_date}_${r.level}`] = true
-    }
-
-    // Build missing list
-    const missing: Array<{ date: string; level: Level }> = []
+    // Build full generation list: today + tomorrow × all levels
+    // Always generate — upsert overwrites stale/wrong topics
+    const toGenerate: Array<{ date: string; level: Level }> = []
     for (const date of dates) {
       for (const level of ALL_LEVELS) {
-        if (!hasContent[`${date}_${level}`]) {
-          missing.push({ date, level })
+        toGenerate.push({ date, level })
+      }
+    }
+
+    // Check existing content to skip only if topic matches expected rotation
+    const { data: existing } = await sb
+      .from('study_daily_content')
+      .select('scheduled_date,level,vocab,topic_ko')
+      .in('scheduled_date', dates)
+
+    const existingMap: Record<string, { hasVocab: boolean; topic_ko: string }> = {}
+    for (const r of existing || []) {
+      const hasVocab = r.vocab && (Array.isArray(r.vocab) ? r.vocab.length > 0 : typeof r.vocab === 'string' && r.vocab.length > 2)
+      existingMap[`${r.scheduled_date}_${r.level}`] = { hasVocab: !!hasVocab, topic_ko: r.topic_ko || '' }
+    }
+
+    // Pre-fetch expected topics per level to check correctness
+    const expectedTopics: Record<string, Record<string, string>> = {}
+    for (const level of ALL_LEVELS) {
+      const { data: topics } = await sb
+        .from('writing_topics')
+        .select('topic_ko')
+        .eq('level', level)
+        .eq('active', true)
+        .order('sort_order')
+        .order('created_at')
+      const allTopics = topics || []
+      for (const date of dates) {
+        if (allTopics.length) {
+          const epoch = new Date('2026-04-14T00:00:00+09:00').getTime()
+          const now = new Date(date + 'T00:00:00+09:00').getTime()
+          const idx = Math.max(0, Math.floor((now - epoch) / 86400_000)) % allTopics.length
+          expectedTopics[`${date}_${level}`] = allTopics[idx].topic_ko
         }
       }
+    }
+
+    // Filter: skip only if content exists with correct topic AND has vocab
+    const missing = toGenerate.filter(item => {
+      const key = `${item.date}_${item.level}`
+      const ex = existingMap[key]
+      const expected = expectedTopics[key]
+      if (!ex || !ex.hasVocab) return true // no content or no vocab → generate
+      if (expected && ex.topic_ko !== expected) return true // wrong topic → regenerate
+      return false // correct topic with vocab → skip
+    })
     }
 
     if (!missing.length) {

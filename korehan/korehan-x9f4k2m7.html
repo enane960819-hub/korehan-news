@@ -7057,15 +7057,12 @@ async function srGenerate1DayAllLevels() {
   if (!date) { toast('날짜를 선택하세요.'); return; }
   var allLevels = ['Starter','Beginner','Intermediate','Advanced'];
   var lvlNames = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'};
-  if (!confirm(date + ' 전체 4레벨 생성합니다. 계속?')) return;
+  if (!confirm(date + ' 전체 4레벨 생성합니다. 기존 데이터는 덮어씌워집니다. 계속?')) return;
   if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">' + date + ' 4레벨 생성 중… (20-30초)</div>';
 
   var generated = 0; var errors = [];
   for (var li = 0; li < allLevels.length; li++) {
     var level = allLevels[li];
-    // Skip if already exists
-    var existing = await sb.from('study_daily_content').select('id').eq('scheduled_date', date).eq('level', level).maybeSingle();
-    if (existing.data) { generated++; continue; }
 
     try {
       if (li > 0) await new Promise(function(r){ setTimeout(r, 1500); });
