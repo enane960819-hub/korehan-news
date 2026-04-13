@@ -408,11 +408,11 @@ var BADGE_DEFS = [
   // 🔥 STREAK
   { id:'streak_3',   cat:'streak',    tier:'bronze',   icon:pxBadge('fire'), name:'First Spark',      desc:'3-day study streak',
     check: function(s){ return getCurrentStreak() >= 3; } },
-  { id:'streak_7',   cat:'streak',    tier:'silver',   icon:pxBadge('medal'), name:'Week Warrior',    desc:'7-day study streak',
+  { id:'streak_7',   cat:'streak',    tier:'silver',   icon:pxBadge('runner'), name:'Week Warrior',    desc:'7-day study streak',
     check: function(s){ return getCurrentStreak() >= 7; } },
   { id:'streak_30',  cat:'streak',    tier:'gold',     icon:pxBadge('trophy'), name:'30-Day Power',    desc:'30-day study streak',
     check: function(s){ return getCurrentStreak() >= 30; } },
-  { id:'streak_50',  cat:'streak',    tier:'gold',     icon:pxBadge('shield'), name:'50-Day Milestone', desc:'50-day study streak',
+  { id:'streak_50',  cat:'streak',    tier:'gold',     icon:pxBadge('castle'), name:'50-Day Milestone', desc:'50-day study streak',
     check: function(s){ return getCurrentStreak() >= 50; } },
   { id:'streak_100', cat:'streak',    tier:'diamond',  icon:pxBadge('diamond'), name:'100-Day Champion', desc:'100-day study streak',
     check: function(s){ return getCurrentStreak() >= 100; } },
@@ -424,18 +424,18 @@ var BADGE_DEFS = [
     check: function(){ return getTotalArticlesRead() >= 1; } },
   { id:'read_10',    cat:'reading',   tier:'bronze',   icon:pxBadge('pen'), name:'News Beginner',    desc:'Read 10 articles',
     check: function(){ return getTotalArticlesRead() >= 10; } },
-  { id:'read_50',    cat:'reading',   tier:'silver',   icon:pxBadge('scroll'), name:'News Explorer',    desc:'Read 50 articles',
+  { id:'read_50',    cat:'reading',   tier:'silver',   icon:pxBadge('newspaper'), name:'News Explorer',    desc:'Read 50 articles',
     check: function(){ return getTotalArticlesRead() >= 50; } },
   { id:'read_100',   cat:'reading',   tier:'gold',     icon:pxBadge('scroll'), name:'Aspiring Reporter', desc:'Read 100 articles',
     check: function(){ return getTotalArticlesRead() >= 100; } },
-  { id:'read_500',   cat:'reading',   tier:'legendary',icon:pxBadge('globe'), name:'Korean Scholar',   desc:'Read 500 articles',
+  { id:'read_500',   cat:'reading',   tier:'legendary',icon:pxBadge('wave'), name:'Korean Scholar',   desc:'Read 500 articles',
     check: function(){ return getTotalArticlesRead() >= 500; } },
   { id:'read_daily10',cat:'reading',  tier:'gold',     icon:pxBadge('zap'), name:'10 in a Day',      desc:'Read 10 articles in one day',
     check: function(){
       var log = lsGet('kh_read_log', {});
       return Object.values(log).some(function(arr){ return arr.length >= 10; });
     } },
-  { id:'read_allsec',cat:'reading',   tier:'diamond',  icon:pxBadge('target'), name:'All-Rounder',     desc:'Read from every section',
+  { id:'read_allsec',cat:'reading',   tier:'diamond',  icon:pxBadge('rainbow'), name:'All-Rounder',     desc:'Read from every section',
     check: function(){
       var sc = getSectionReadCounts();
       var secs = ['사회','국제','문화','스포츠','Korea','beauty','travel','오피니언','정치','경제'];
@@ -461,7 +461,7 @@ var BADGE_DEFS = [
     check: function(){ return lsGet('kh_quiz_done_count',0) >= 1; } },
   { id:'quiz_perfect1',cat:'quiz',    tier:'silver',   icon:pxBadge('target'), name:'Daily Perfect',   desc:'Score 100% on a daily test',
     check: function(){ return getQuizPerfectCount() >= 1; } },
-  { id:'quiz_perfect3',cat:'quiz',    tier:'gold',     icon:pxBadge('medal'), name:'3x Perfect',      desc:'Score 100% on 3 daily tests in a row',
+  { id:'quiz_perfect3',cat:'quiz',    tier:'gold',     icon:pxBadge('brain'), name:'3x Perfect',      desc:'Score 100% on 3 daily tests in a row',
     check: function(){ return lsGet('kh_quiz_perfect_streak',0) >= 3; } },
   { id:'quiz_14days',cat:'quiz',      tier:'diamond',  icon:pxBadge('shield'), name:'Daily Devotee',   desc:'Complete daily tests 14 days in a row',
     check: function(){ return getQuizStreakDays() >= 14; } },
@@ -475,7 +475,7 @@ var BADGE_DEFS = [
     check: function(){ return (getSectionReadCounts()['사회']||0) >= 20; } },
   { id:'sec_world',   cat:'sections', tier:'gold', icon:pxBadge('globe'), name:'World Master', desc:'Read 20 World articles',
     check: function(){ return (getSectionReadCounts()['국제']||0) >= 20; } },
-  { id:'sec_culture', cat:'sections', tier:'gold', icon:pxBadge('pen'), name:'Culture Master', desc:'Read 20 Culture articles',
+  { id:'sec_culture', cat:'sections', tier:'gold', icon:pxBadge('music'), name:'Culture Master', desc:'Read 20 Culture articles',
     check: function(){ return (getSectionReadCounts()['문화']||0) >= 20; } },
   { id:'sec_sports',  cat:'sections', tier:'gold', icon:pxBadge('trophy'), name:'Sports Master',desc:'Read 20 Sports articles',
     check: function(){ return (getSectionReadCounts()['스포츠']||0) >= 20; } },
@@ -507,7 +507,7 @@ var BADGE_DEFS = [
   // ⏰ TIME
   { id:'time_midnight',cat:'time',    tier:'silver',   icon:pxBadge('clock'), name:'Night Owl',       desc:'Study after midnight',
     check: function(){ return lsGet('kh_badge_midnight', false); } },
-  { id:'time_dawn',    cat:'time',    tier:'gold',     icon:pxBadge('moon'), name:'Dawn Scholar',   desc:'Study before 6 AM',
+  { id:'time_dawn',    cat:'time',    tier:'gold',     icon:pxBadge('sunrise'), name:'Dawn Scholar',   desc:'Study before 6 AM',
     check: function(){ return lsGet('kh_badge_dawn', false); } },
   { id:'time_morning7',cat:'time',    tier:'bronze',   icon:pxBadge('zap'), name:'Morning Routine', desc:'Study before 7 AM, 7 times',
     check: function(){ return lsGet('kh_morning_count',0) >= 7; } },
@@ -523,7 +523,7 @@ var BADGE_DEFS = [
     check: function(){ return lsGet('kh_cult_march1', false); } },
   { id:'cult_hangul',  cat:'cultural',tier:'legendary',icon:pxBadge('gift'),name:'Hangul Guardian', desc:'Study on Oct 9 (Hangul Day)',
     check: function(){ return lsGet('kh_cult_hangul', false); } },
-  { id:'cult_newyear', cat:'cultural',tier:'gold',     icon:pxBadge('fire'), name:'New Year\'s',     desc:'Study on January 1',
+  { id:'cult_newyear', cat:'cultural',tier:'gold',     icon:pxBadge('clover'), name:'New Year\'s',     desc:'Study on January 1',
     check: function(){ return lsGet('kh_cult_newyear', false); } },
   { id:'cult_chuseok', cat:'cultural',tier:'diamond',  icon:pxBadge('diamond'), name:'Chuseok Study',   desc:'Study on Chuseok day',
     check: function(){ return lsGet('kh_cult_chuseok', false); } },
@@ -537,7 +537,7 @@ var BADGE_DEFS = [
     check: function(){ return lsGet('kh_cult_valentine', false); } },
   { id:'cult_christmas',cat:'cultural',tier:'gold',    icon:pxBadge('star'), name:'Christmas',       desc:'Study on December 25',
     check: function(){ return lsGet('kh_cult_christmas', false); } },
-  { id:'cult_collector',cat:'cultural',tier:'legendary',icon:pxBadge('trophy'),name:'Holiday Collector',desc:'Earn 7 cultural date badges',
+  { id:'cult_collector',cat:'cultural',tier:'legendary',icon:pxBadge('circus'),name:'Holiday Collector',desc:'Earn 7 cultural date badges',
     check: function(){
       var earned = getEarnedBadges();
       var cultIds = ['cult_march1','cult_hangul','cult_newyear','cult_chuseok','cult_seollal','cult_gwangbok','cult_pepero','cult_valentine','cult_christmas'];
