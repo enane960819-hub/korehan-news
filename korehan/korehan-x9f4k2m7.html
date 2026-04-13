@@ -2878,10 +2878,9 @@ async function goVocabEditor() {
   // DB에서 overrides 로드
   let overrides = [];
   try {
-    const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/vocab_overrides?select=id,word,en,rom&order=word.asc', {
-      headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
-    });
-    if (res.ok) overrides = await res.json();
+    const sb=getSb();
+    const vr=await sb.from('vocab_overrides').select('id,word,en,rom').order('word');
+    if(vr.data) overrides=vr.data;
   } catch(e) {}
 
   window._veData = overrides;
@@ -2931,10 +2930,7 @@ function veDelete(idx) {
   const row = (window._veData||[])[idx];
   if (!row) return;
   if (row.id) {
-    fetch(SUPA_URL_ADMIN + '/rest/v1/vocab_overrides?id=eq.' + row.id, {
-      method: 'DELETE',
-      headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
-    });
+    getSb().from('vocab_overrides').delete().eq('id',row.id);
   }
   window._veData.splice(idx, 1);
   veRender(window._veData);
@@ -2956,16 +2952,13 @@ async function veSaveAll() {
   }).filter(function(r){ return r.word; });
 
   try {
-    const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/vocab_overrides?on_conflict=word', {
-      method: 'POST',
-      headers: {
-        'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
-        'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal'
-      },
-      body: JSON.stringify(data.map(function(r){ return { word: r.word, en: r.en, rom: r.rom }; }))
-    });
-    if (res.ok) { toast('✅ 저장됨! 기사 페이지에 즉시 반영돼요.'); goVocabEditor(); }
-    else { const e = await res.text(); toast('Save failed: ' + e, true); }
+    var sb=getSb();
+    var upsertData=data.map(function(r){return{word:r.word,en:r.en,rom:r.rom};});
+    for(var vi=0;vi<upsertData.length;vi++){
+      await sb.from('vocab_overrides').upsert(upsertData[vi],{onConflict:'word'});
+    }
+    toast('✅ 저장됨! 기사 페이지에 즉시 반영돼요.'); goVocabEditor();
+    if(false) { toast('placeholder',true); }
   } catch(e) { toast('Error: ' + e.message, true); }
 }
 
@@ -3508,7 +3501,8 @@ async function goAICache() {
   main.innerHTML = '<div class="pg-hd"><div><h1>🧠 AI Cache Management</h1><p>View and generate translation, vocab, grammar, and quiz cache for each article.</p></div></div>'
     + '<div id="cache-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ 스키마 확인 중…</div></div>';
 
-  const H = { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY };
+  const _cacheSb = getSb();
+  const H = { 'apikey': SUPA_KEY_ADMIN, 'Authorization': 'Bearer ' + (_getAccessTokenFromStorage()||SUPA_KEY_ADMIN) };
 
   // ── 1. 실제 컬럼 감지 ─────────────────────────────────────────────
   let _schema = null; // 'kv' | 'wide' | null
@@ -3683,17 +3677,12 @@ async function saveExpressions(articleId) {
   });
   if (status) status.textContent = 'Saving…';
   try {
-    const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?on_conflict=content_type,content_id,cache_key', {
-      method: 'POST',
-      headers: {
-        'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY,
-        'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal'
-      },
-      body: JSON.stringify({ content_type: 'article', content_id: String(articleId), cache_key: 'expressions', cache_value: JSON.stringify(exprs) })
-    });
-    if (!res.ok) {
-      const t = await res.text();
-      if (status) status.textContent = '❌ ' + t.slice(0,80);
+    const eRes = await getSb().from('article_cache').upsert(
+      { content_type: 'article', content_id: String(articleId), cache_key: 'expressions', cache_value: JSON.stringify(exprs) },
+      { onConflict: 'content_type,content_id,cache_key' }
+    );
+    if (eRes.error) {
+      if (status) status.textContent = '❌ ' + (eRes.error.message||'').slice(0,80);
     } else {
       if (status) status.textContent = '✅ Saved (' + exprs.length + ' expressions)';
       setTimeout(function(){ if(status) status.textContent=''; }, 3000);
@@ -3830,8 +3819,9 @@ function goComments() {
 async function loadAllComments() {
   var wrap = document.getElementById('comments-admin-wrap');
   try {
-    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?order=created_at.desc&limit=100', { headers: { 'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY } });
-    var rows = res.ok ? await res.json() : [];
+    var sb = getSb();
+    var res = await sb.from('comments').select('*').order('created_at', {ascending:false}).limit(100);
+    var rows = (res.data && res.data.length) ? res.data : [];
     if(!rows.length) { wrap.innerHTML='<div class="infobox">아직 댓글이 없어요.</div>'; return; }
 
     wrap.innerHTML = '<div style="font-size:13px;color:var(--gr);margin-bottom:12px">총 '+rows.length+'개 댓글</div>'
@@ -3869,21 +3859,16 @@ async function adminReplyComment(id, btn) {
   var reply = ta.value.trim();
   if(!reply) return;
   btn.disabled = true; btn.textContent = '저장 중…';
-  await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?id=eq.'+id, {
-    method:'PATCH',
-    headers:{ 'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=minimal' },
-    body: JSON.stringify({ reply:reply, replied_at:new Date().toISOString() })
-  });
+  var sb = getSb();
+  await sb.from('comments').update({ reply:reply, replied_at:new Date().toISOString() }).eq('id',id);
   btn.disabled = false; btn.textContent = '답변 저장';
   toast('✅ 답변이 저장됐어요!');
 }
 
 async function adminDeleteComment(id) {
   if(!confirm('Delete this comment?')) return;
-  await fetch(SUPA_URL_ADMIN+'/rest/v1/comments?id=eq.'+id, {
-    method:'DELETE',
-    headers:{ 'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY }
-  });
+  var sb = getSb();
+  await sb.from('comments').delete().eq('id',id);
   loadAllComments();
   toast('🗑 삭제됐어요.');
 }
@@ -3900,8 +3885,9 @@ function goNewsletter() {
 async function loadNewsletter() {
   var wrap = document.getElementById('nl-admin-wrap');
   try {
-    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/newsletter_subs?order=subscribed_at.desc', { headers: { 'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY } });
-    var rows = res.ok ? await res.json() : [];
+    var sb = getSb();
+    var r = await sb.from('newsletter_subs').select('*').order('subscribed_at',{ascending:false});
+    var rows = (r.data||[]);
     if(!rows.length) { wrap.innerHTML='<div class="infobox">아직 구독자가 없어요.</div>'; return; }
     wrap.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
@@ -3956,8 +3942,9 @@ async function loadStats() {
   var wrap = document.getElementById('stats-admin-wrap');
   try {
     var since = new Date(Date.now()-30*86400000).toISOString();
-    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/page_views?viewed_at=gte.'+since+'&order=viewed_at.desc&limit=2000', { headers: { 'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY } });
-    var rows = res.ok ? await res.json() : [];
+    var sb = getSb();
+    var r = await sb.from('page_views').select('*').gte('viewed_at',since).order('viewed_at',{ascending:false}).limit(2000);
+    var rows = (r.data||[]);
 
     var totalViews = rows.length;
     var todayStr   = new Date().toISOString().split('T')[0];
@@ -6120,10 +6107,8 @@ async function applyCoinAdjustment() {
   msg.innerHTML = '✅ 완료: 신규 잔액 <b>' + res.data.coin_balance + '</b> 냥';
   // Log to coin_adjustments table
   try {
-    await fetch(SUPA_URL_ADMIN+'/rest/v1/coin_adjustments', {
-      method:'POST', headers:{'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({user_id:uid, delta:delta, reason:reason, new_balance:res.data.coin_balance, admin_by:'admin'})
-    });
+    var sb2=getSb();
+    await sb2.from('coin_adjustments').insert({user_id:uid, delta:delta, reason:reason, new_balance:res.data.coin_balance, admin_by:'admin'});
   } catch(e){}
   // Also log locally as fallback
   var history = JSON.parse(localStorage.getItem('kh_coin_history')||'[]');
@@ -6138,9 +6123,9 @@ async function loadCoinHistory() {
   var rows = [];
   // Try DB first
   try {
-    var res = await fetch(SUPA_URL_ADMIN+'/rest/v1/coin_adjustments?order=created_at.desc&limit=100',
-      {headers:{'apikey':SUPA_SERVICE_KEY,'Authorization':'Bearer '+SUPA_SERVICE_KEY}});
-    if (res.ok) rows = await res.json();
+    var sb3=getSb();
+    var cr=await sb3.from('coin_adjustments').select('*').order('created_at',{ascending:false}).limit(100);
+    if(cr.data) rows=cr.data;
   } catch(e){}
   // Fallback to localStorage
   if (!rows.length) rows = JSON.parse(localStorage.getItem('kh_coin_history')||'[]');
