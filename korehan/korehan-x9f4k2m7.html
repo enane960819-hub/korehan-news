@@ -2763,14 +2763,13 @@ function goTopics() {
 
 async function loadTopics() {
   try {
-    const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/writing_topics?select=*&order=category.asc,level.asc,created_at.asc', {
-      headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    window._topicsAll = await res.json();
+    const sb = getSb();
+    const res = await sb.from('writing_topics').select('*').order('category').order('level').order('created_at');
+    if (res.error) throw res.error;
+    window._topicsAll = res.data || [];
     renderTopicsTable(window._topicsAll);
   } catch(e) {
-    document.getElementById('topics-wrap').innerHTML = '<div class="infobox" style="color:#c33">⚠️ ' + e.message + '</div>';
+    document.getElementById('topics-wrap').innerHTML = '<div class="infobox" style="color:#c33">⚠️ ' + (e.message||e) + '</div>';
   }
 }
 
@@ -2842,35 +2841,26 @@ async function saveTopic() {
     level:    document.getElementById('tm-level').value,
   };
   if (!body.category || !body.topic_ko || !body.topic_en) { toast('모든 항목을 입력하세요.', true); return; }
-  const url = id
-    ? SUPA_URL_ADMIN + '/rest/v1/writing_topics?id=eq.' + id
-    : SUPA_URL_ADMIN + '/rest/v1/writing_topics';
-  const res = await fetch(url, {
-    method: id ? 'PATCH' : 'POST',
-    headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-    body: JSON.stringify(body)
-  });
-  if (res.ok) { toast('✅ 저장됨'); closeTopicModal(); loadTopics(); }
-  else { toast('⚠️ 저장 실패', true); }
+  const sb = getSb();
+  let res;
+  if (id) { res = await sb.from('writing_topics').update(body).eq('id', id); }
+  else { res = await sb.from('writing_topics').insert(body); }
+  if (!res.error) { toast('✅ 저장됨'); closeTopicModal(); loadTopics(); }
+  else { toast('⚠️ 저장 실패: ' + res.error.message, true); }
 }
 
 async function deleteTopic(id) {
   if (!confirm('Are you sure you want to delete?')) return;
-  const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/writing_topics?id=eq.' + id, {
-    method: 'DELETE',
-    headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY }
-  });
-  if (res.ok) { toast('🗑️ 삭제됨'); loadTopics(); }
+  const sb = getSb();
+  const res = await sb.from('writing_topics').delete().eq('id', id);
+  if (!res.error) { toast('🗑️ 삭제됨'); loadTopics(); }
   else toast('⚠️ 삭제 실패', true);
 }
 
 async function toggleTopicActive(id, current) {
-  const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/writing_topics?id=eq.' + id, {
-    method: 'PATCH',
-    headers: { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ active: !current })
-  });
-  if (res.ok) loadTopics();
+  const sb = getSb();
+  await sb.from('writing_topics').update({ active: !current }).eq('id', id);
+  loadTopics();
 }
 
 async function goVocabEditor() {
