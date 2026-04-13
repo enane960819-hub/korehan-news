@@ -3724,6 +3724,7 @@ async function loadDailyContent() {
     if (!r.error && r.data) {
       console.log('[loadDailyContent] found approved content');
       _applyDailyContent(r.data);
+      setTimeout(_pregenTomorrow, 3000);
       return;
     }
     if (r.error) console.warn('[loadDailyContent] DB error:', r.error.message);
@@ -3739,7 +3740,7 @@ async function loadDailyContent() {
       new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('gen_timeout')); }, 20000); })
     ]);
     // If _generateAndSaveDailyContent succeeded, _applyDailyContent was already called
-    if (_todayTopic && _todayTopic.topic_ko) return;
+    if (_todayTopic && _todayTopic.topic_ko) { setTimeout(_pregenTomorrow, 3000); return; }
   } catch(e) {
     console.warn('[loadDailyContent] AI generation failed:', e.message);
   }
@@ -3747,6 +3748,23 @@ async function loadDailyContent() {
   // Step 3: Last resort — local fallback content (no DB, no AI needed)
   console.log('[loadDailyContent] applying local fallback');
   _applyFallbackTopic(today);
+}
+
+// 다음날 콘텐츠 미리 생성 (백그라운드)
+function _pregenTomorrow() {
+  try {
+    var todayMs = new Date(kstDateKey() + 'T00:00:00+09:00').getTime();
+    var tomorrow = new Date(todayMs + 86400000).toISOString().slice(0,10);
+    var sb = getSupa(); if (!sb || !supaUser) return;
+    // 내일 콘텐츠 이미 있는지 확인
+    sb.from('study_daily_content').select('id').eq('scheduled_date', tomorrow).eq('level', _currentLevel).maybeSingle()
+      .then(function(r) {
+        if (!r.data) {
+          console.log('[pregenTomorrow] generating for', tomorrow);
+          _generateAndSaveDailyContent(tomorrow);
+        }
+      });
+  } catch(e) {}
 }
 
 function _applyFallbackTopic(date) {
