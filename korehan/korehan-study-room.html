@@ -4905,21 +4905,114 @@ function openKeyExpressionsModal() {
 }
 
 function _renderKeyExpressions(list, expressions) {
-  list.innerHTML = expressions.map(function(exp) {
-    var _sk = (exp.ko||'').replace(/"/g,'&quot;'), _sr = (exp.rom||'').replace(/"/g,'&quot;'), _se = (exp.en||'').replace(/"/g,'&quot;');
-    return '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;position:relative">'
-      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
-      + '<div style="flex:1">'
-      + '<div style="font-size:16px;font-weight:800;margin-bottom:3px">' + (exp.ko||'') + '</div>'
-      + '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:6px">' + (exp.rom||'') + '</div>'
-      + '<div style="font-size:13px;color:#7dd3fc;margin-bottom:8px">' + (exp.en||'') + '</div>'
-      + '</div>'
-      + '<button class="dp-vi-save" data-ko="'+_sk+'" data-rom="'+_sr+'" data-en="'+_se+'" data-type="expression" onclick="saveKeyExpr(this)" style="font-size:11px;font-weight:700;color:#fbbf24;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.2);border-radius:8px;padding:5px 12px;cursor:pointer;font-family:inherit;flex-shrink:0">+ Save</button>'
-      + '</div>'
-      + '<div style="font-size:12px;color:rgba(255,255,255,.55);border-top:1px solid rgba(255,255,255,.08);padding-top:8px">'
-      + '<span style="font-weight:700">Ex:</span> ' + (exp.example_ko||'') + '<br><span style="color:rgba(255,255,255,.35)">' + (exp.example_en||'') + '</span></div>'
-      + '</div>';
-  }).join('');
+  // Phase 1: Study the expressions first
+  window._keExpressions = expressions;
+  window._kePhase = 'study';
+  window._keStudyIdx = 0;
+  _keRenderStudyPhase(list);
+}
+
+function _keRenderStudyPhase(list) {
+  var exps = window._keExpressions || [];
+  if (!exps.length) { list.innerHTML = '<div style="color:#94a3b8;text-align:center;padding:20px">No expressions available.</div>'; return; }
+  var idx = window._keStudyIdx || 0;
+  var exp = exps[idx];
+
+  list.innerHTML =
+    '<div style="text-align:center;margin-bottom:12px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:4px">STEP 1: Study</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
+    + '</div>'
+    + '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:20px;text-align:center;margin-bottom:12px">'
+    + '<div style="font-size:24px;font-weight:900;margin-bottom:6px">' + (exp.ko||'') + '</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:8px">' + (exp.rom||'') + '</div>'
+    + '<div style="font-size:15px;color:#7dd3fc;font-weight:700;margin-bottom:12px">' + (exp.en||'') + '</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.55);border-top:1px solid rgba(255,255,255,.08);padding-top:10px;text-align:left">'
+    + '<div style="font-weight:700;margin-bottom:4px">Example:</div>'
+    + '<div>' + (exp.example_ko||'') + '</div>'
+    + '<div style="color:rgba(255,255,255,.35);margin-top:2px">' + (exp.example_en||'') + '</div>'
+    + '</div>'
+    + '<button onclick="ttsSpeak(\'' + (exp.ko||'').replace(/'/g,"\\'") + '\')" style="padding:8px 16px;border:1px solid rgba(125,211,252,.3);border-radius:8px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🔊 Listen</button>'
+    + ' ' + renderSaveWordBtn(exp.ko, exp.en, exp.rom, 'key_expression')
+    + '</div>'
+    + '<div style="display:flex;gap:8px;justify-content:center">'
+    + (idx > 0 ? '<button onclick="window._keStudyIdx--;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&larr; Prev</button>' : '')
+    + (idx < exps.length - 1
+      ? '<button onclick="window._keStudyIdx++;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Next &rarr;</button>'
+      : '<button onclick="_keStartQuiz()" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Start Quiz &rarr;</button>')
+    + '</div>';
+}
+
+function _keStartQuiz() {
+  window._kePhase = 'quiz';
+  window._keQuizIdx = 0;
+  window._keQuizScore = 0;
+  _keRenderQuiz();
+}
+
+function _keRenderQuiz() {
+  var list = document.getElementById('ke-expressions-list'); if (!list) return;
+  var exps = window._keExpressions || [];
+  var idx = window._keQuizIdx || 0;
+
+  if (idx >= exps.length) {
+    // Quiz complete
+    var pct = exps.length > 0 ? Math.round((window._keQuizScore || 0) / exps.length * 100) : 0;
+    list.innerHTML = '<div style="text-align:center;padding:24px">'
+      + '<div style="font-size:36px;margin-bottom:8px">' + (pct >= 80 ? '🎉' : pct >= 60 ? '👍' : '💪') + '</div>'
+      + '<div style="font-size:24px;font-weight:900;color:#fff;margin-bottom:4px">' + pct + '%</div>'
+      + '<div style="font-size:13px;color:#94a3b8;margin-bottom:12px">' + (window._keQuizScore||0) + ' / ' + exps.length + ' correct</div>'
+      + '<div style="display:flex;gap:8px;justify-content:center">'
+      + '<button onclick="window._keStudyIdx=0;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 16px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Review Again</button>'
+      + '<button onclick="markStageDone(\'topic\');closeKeyExpressionsModal()" style="padding:10px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">Done &check;</button>'
+      + '</div></div>';
+    return;
+  }
+
+  var correct = exps[idx];
+  // Build wrong choices from other expressions
+  var wrongs = exps.filter(function(_, i){ return i !== idx; }).sort(function(){ return Math.random() - .5; }).slice(0, 2);
+  var choices = [correct].concat(wrongs).sort(function(){ return Math.random() - .5; });
+
+  // Show example context sentence with the expression blanked out
+  var contextSentence = correct.example_ko || (correct.ko + '을/를 사용하세요');
+  var blanked = contextSentence.replace(correct.ko, '<span style="display:inline-block;min-width:60px;border-bottom:2px solid #7dd3fc;padding:0 4px;color:#7dd3fc;font-weight:800">______</span>');
+
+  list.innerHTML =
+    '<div style="text-align:center;margin-bottom:12px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#fbbf24;margin-bottom:4px">STEP 2: Context Quiz</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
+    + '</div>'
+    + '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;margin-bottom:12px">'
+    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">Which expression fits this context?</div>'
+    + '<div style="font-size:14px;color:#e0f2fe;line-height:1.6">' + blanked + '</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.3);margin-top:4px">' + (correct.example_en||correct.en||'') + '</div>'
+    + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px">'
+    + choices.map(function(c) {
+      return '<button class="ke-quiz-btn" onclick="_keQuizAnswer(this,\'' + (correct.ko||'').replace(/'/g,"\\'") + '\',\'' + (c.ko||'').replace(/'/g,"\\'") + '\')" style="padding:12px 16px;border:1.5px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.04);color:#e0f2fe;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left;transition:.15s">'
+        + (c.ko||'') + ' <span style="font-size:11px;color:rgba(255,255,255,.3);margin-left:8px">' + (c.en||'') + '</span></button>';
+    }).join('')
+    + '</div>'
+    + '<div id="ke-quiz-fb" style="margin-top:10px"></div>';
+}
+
+function _keQuizAnswer(btn, correctKo, chosenKo) {
+  document.querySelectorAll('.ke-quiz-btn').forEach(function(b){ b.disabled = true; });
+  var isCorrect = chosenKo === correctKo;
+  if (isCorrect) {
+    window._keQuizScore = (window._keQuizScore||0) + 1;
+    btn.style.borderColor = '#86efac'; btn.style.background = 'rgba(34,197,94,.15)'; btn.style.color = '#4ade80';
+  } else {
+    btn.style.borderColor = '#fca5a5'; btn.style.background = 'rgba(239,68,68,.1)'; btn.style.color = '#fca5a5';
+    // Highlight correct
+    document.querySelectorAll('.ke-quiz-btn').forEach(function(b){
+      if (b.textContent.indexOf(correctKo) === 0) { b.style.borderColor = '#86efac'; b.style.background = 'rgba(34,197,94,.15)'; }
+    });
+  }
+  var fb = document.getElementById('ke-quiz-fb');
+  if (fb) fb.innerHTML = '<div style="font-size:12px;color:' + (isCorrect ? '#4ade80' : '#fca5a5') + ';font-weight:700">' + (isCorrect ? '✅ 정답!' : '❌ 오답 — 정답: ' + correctKo) + '</div>';
+  setTimeout(function(){ window._keQuizIdx = (window._keQuizIdx||0) + 1; _keRenderQuiz(); }, 1300);
 }
 
 async function saveKeyExpr(btn) {
