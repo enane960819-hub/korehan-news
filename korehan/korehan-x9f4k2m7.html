@@ -9528,64 +9528,55 @@ async function syncVocabToDB() {
   var data = (typeof getLearningHubVocabData === 'function') ? getLearningHubVocabData() : null;
   if (!data) { toast('getLearningHubVocabData 없음 — learning_hub_vocab_data.js 로드 확인'); return; }
 
-  var total = 0, ok = 0, errors = 0;
+  var batch = [];
 
   // Level words
   var levels = data.levels || {};
-  var levelKeys = Object.keys(levels);
-  for (var li = 0; li < levelKeys.length; li++) {
-    var level = levelKeys[li];
-    var words = levels[level] || [];
-    for (var wi = 0; wi < words.length; wi++) {
-      var w = words[wi];
-      if (!w.word_ko) continue;
-      total++;
-      try {
-        var r = await sb.from('vocabulary_bank').upsert({
-          word_key: w.word_ko,
-          word_ko: w.word_ko,
-          word_rom: w.word_rom || '',
-          word_en: w.word_en || '',
-          level: level,
-          interest_tag: null,
-          is_active: true
-        }, { onConflict: 'word_key' });
-        if (r.error) throw r.error;
-        ok++;
-      } catch(e) { errors++; }
-      // Throttle every 50
-      if (total % 50 === 0) toast(total + '개 처리 중...');
-    }
-  }
+  Object.keys(levels).forEach(function(level) {
+    (levels[level] || []).forEach(function(w) {
+      if (w.word_ko) batch.push({
+        word_key: w.word_ko, word_ko: w.word_ko, word_rom: w.word_rom || '',
+        word_en: w.word_en || '', level: level, interest_tag: null, is_active: true
+      });
+    });
+  });
 
   // Interest words
   var interests = data.interests || {};
-  var intKeys = Object.keys(interests);
-  for (var ii = 0; ii < intKeys.length; ii++) {
-    var tag = intKeys[ii];
-    var iwords = interests[tag] || [];
-    for (var iw = 0; iw < iwords.length; iw++) {
-      var w2 = iwords[iw];
-      if (!w2.word_ko) continue;
-      total++;
-      try {
-        var r2 = await sb.from('vocabulary_bank').upsert({
-          word_key: w2.word_ko,
-          word_ko: w2.word_ko,
-          word_rom: w2.word_rom || '',
-          word_en: w2.word_en || '',
-          level: w2.level || 'Beginner',
-          interest_tag: tag,
-          is_active: true
-        }, { onConflict: 'word_key' });
-        if (r2.error) throw r2.error;
-        ok++;
-      } catch(e) { errors++; }
-    }
+  Object.keys(interests).forEach(function(tag) {
+    (interests[tag] || []).forEach(function(w) {
+      if (w.word_ko) batch.push({
+        word_key: w.word_ko, word_ko: w.word_ko, word_rom: w.word_rom || '',
+        word_en: w.word_en || '', level: w.level || 'Beginner', interest_tag: tag, is_active: true
+      });
+    });
+  });
+
+  if (!batch.length) { toast('동기화할 단어 없음'); return; }
+
+  var ok = 0, errors = 0;
+  for (var i = 0; i < batch.length; i += 50) {
+    try {
+      var chunk = batch.slice(i, i + 50);
+      var r = await sb.from('vocabulary_bank').upsert(chunk, { onConflict: 'word_key' });
+      if (r.error) throw r.error;
+      ok += chunk.length;
+    } catch(e) { errors += 50; }
+    if ((i + 50) % 200 === 0) toast(Math.min(i + 50, batch.length) + '/' + batch.length + ' 처리 중...');
   }
 
-  toast('Sync done! ' + ok + '/' + total + ' OK' + (errors ? ', ' + errors + ' failed' : ''));
+  toast('✅ Sync done! ' + ok + '/' + batch.length + (errors ? ', ' + errors + ' failed' : ''));
+  localStorage.setItem('kh_vocab_sync_date', new Date().toISOString().slice(0, 10));
 }
+
+// Auto-sync on admin page load (once per day)
+(function() {
+  var today = new Date().toISOString().slice(0, 10);
+  if (localStorage.getItem('kh_vocab_sync_date') === today) return;
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() { syncVocabToDB(); }, 3000);
+  });
+})();
 
 // ═══════════════════════════════════════════════════════════════
 // FAST TRACK ADMIN — CRUD + AI Generation
