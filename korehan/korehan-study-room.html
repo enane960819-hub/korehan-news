@@ -3745,6 +3745,20 @@ async function loadDailyContent() {
   var today = kstDateKey();
   console.log('[loadDailyContent] start — date:', today, 'level:', _currentLevel, 'user:', supaUser ? supaUser.id : 'none');
 
+  // Fast path: check localStorage cache first (instant, no network)
+  var lsCacheKey = 'sr_daily_' + today + '_' + _currentLevel;
+  try {
+    var lsCached = localStorage.getItem(lsCacheKey);
+    if (lsCached) {
+      var cachedRec = JSON.parse(lsCached);
+      if (cachedRec && cachedRec.topic_ko && cachedRec.vocab && cachedRec.vocab.length > 0) {
+        console.log('[loadDailyContent] instant load from localStorage cache');
+        _applyDailyContent(cachedRec);
+        return;
+      }
+    }
+  } catch(e) {}
+
   // Admin preview: ?preview_date=YYYY-MM-DD (up to +6 days)
   if (window._isAdmin) {
     var p = new URLSearchParams(window.location.search).get('preview_date');
