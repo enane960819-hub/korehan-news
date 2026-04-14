@@ -978,7 +978,7 @@ async function toggleStorySave(btn, ko, rom, en) {
     btn.textContent = '+ Save';
   } else {
     if (typeof dbSaveWord === 'function') await dbSaveWord(ko, rom, en);
-    if (typeof dmTrackWord === 'function') dmTrackWord();
+    // dmTrackWord() is already called inside dbSaveWord → trackActivityOnWordSave chain
     btn.classList.add('saved');
     btn.textContent = '✓ Saved';
   }

@@ -3050,9 +3050,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (adminBtn) adminBtn.style.display = '';
   }
 
-  // Grammar Focus from article grammar guide link
+  // Grammar Focus from article grammar guide link or homepage weak grammar
   var _urlParams = new URLSearchParams(window.location.search);
-  if (_urlParams.get('focus') && _urlParams.get('source') === 'grammar-guide') {
+  var _focusSource = _urlParams.get('source') || '';
+  var _hasFocusGrammar = _urlParams.get('focus') && (
+    _focusSource === 'grammar-guide' ||
+    _focusSource === 'home-weak-grammar' ||
+    _focusSource === 'growth-lab'
+  );
+  if (_hasFocusGrammar) {
     var _focusName = decodeURIComponent(_urlParams.get('focus') || '');
     // Wait for content to load then auto-open grammar focus modal
     var _focusWaited = 0;
@@ -3060,15 +3066,25 @@ document.addEventListener('DOMContentLoaded', async function() {
       if (window._sessionChecked || _focusWaited >= 30) {
         setTimeout(function() {
           // Build a single-pattern object from the focus name
-          var pattern = { name: _focusName, level: 'Intermediate', exp: 'Practice this grammar pattern from the article you were reading.', examples: [{ ko: '이 문법으로 직접 문장을 만들어 보세요.', en: 'Try making your own sentence with this grammar pattern.' }] };
+          var pattern = { name: _focusName, level: 'Intermediate', exp: 'Practice this grammar pattern.', examples: [{ ko: '이 문법으로 직접 문장을 만들어 보세요.', en: 'Try making your own sentence with this grammar pattern.' }] };
           // Check if _aiContent already has this pattern loaded
           var rawG = (_aiContent && _aiContent.grammar) || [];
           var found = rawG.map(function(g){ return { name:g.pattern||g.name||'', level:g.level||'Intermediate', exp:g.explanation||g.exp||'', examples:[{ko:g.example_ko||'',en:g.example_en||''}] }; });
           if (found.length) {
-            var match = found.find(function(p){ return p.name === _focusName; });
-            if (match) found = [match].concat(found.filter(function(p){ return p.name !== _focusName; }));
-          } else {
+            // Fuzzy match: check if focus name is contained in pattern name or vice versa
+            var match = found.find(function(p){ return p.name === _focusName; })
+              || found.find(function(p){ return p.name.indexOf(_focusName) !== -1 || _focusName.indexOf(p.name) !== -1; });
+            if (match) found = [match].concat(found.filter(function(p){ return p !== match; }));
+          }
+          // If no AI content patterns matched, generate focused patterns via AI
+          if (!found.length || (found.length === 1 && found[0] === pattern)) {
             found = [pattern];
+            // Auto-generate patterns for this specific grammar point
+            var modal = document.getElementById('gf-modal');
+            if (modal) { modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+            loadGFPatterns(found);
+            generateGFPatternsForFocus(_focusName);
+            return;
           }
           var modal = document.getElementById('gf-modal');
           if (modal) { modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
@@ -11238,6 +11254,46 @@ async function generateGFPatterns() {
     }
   } catch(e) {
     if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Please sign in to use Grammar Focus.</div>';
+  }
+}
+
+// ─── Generate grammar patterns for a specific focus point ───
+async function generateGFPatternsForFocus(focusName) {
+  var el = document.getElementById('gf-examples-content');
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">✨ Generating grammar patterns for <b>' + focusName + '</b>…</div>';
+
+  try {
+    var res = await callClaude({
+      feature: 'grammar-focus',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2500,
+      messages: [{ role: 'user', content:
+        'You are a Korean grammar teacher creating a structured grammar lesson.\n'
+        + 'The student wants to practice this specific grammar point: "' + focusName + '"\n\n'
+        + 'Create 3 grammar patterns to study. The FIRST pattern MUST be "' + focusName + '". The other 2 should be closely related or commonly confused patterns.\n\n'
+        + 'For each pattern provide:\n'
+        + '- name: pattern name with Korean and romanization (e.g. "~아요/어요 (a-yo/eo-yo)")\n'
+        + '- level: Beginner | Intermediate | Advanced\n'
+        + '- exp: clear English explanation of meaning and usage (2-3 sentences)\n'
+        + '- structure: the grammatical formula (e.g. "Verb stem + 아요/어요")\n'
+        + '- when_to_use: one short English bullet of when to use this\n'
+        + '- watch_out: one short English tip about common mistakes\n'
+        + '- examples: exactly 3 [{ko, en}] correct sentences\n'
+        + '- incorrect_examples: exactly 2 [{ko, en, error_type, correction}] — realistic sentences with a grammar mistake. error_type: CONJUGATION|PARTICLE|TENSE|FORMALITY|WORD_ORDER. correction: the fixed Korean sentence.\n\n'
+        + 'Return ONLY valid JSON:\n'
+        + '{"patterns":[{"name":"...","level":"...","exp":"...","structure":"...","when_to_use":"...","watch_out":"...","examples":[{"ko":"...","en":"..."}],"incorrect_examples":[{"ko":"...","en":"...","error_type":"...","correction":"..."}]}]}'
+      }]
+    });
+    var raw = (res.content && res.content[0] && res.content[0].text) || res.text || '';
+    var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+    var parsed = JSON.parse(raw.slice(oi, ei+1));
+    if (parsed.patterns && parsed.patterns.length) {
+      loadGFPatterns(parsed.patterns);
+    } else {
+      if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Generation failed. Please try again.</div>';
+    }
+  } catch(e) {
+    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Failed to generate. Please sign in and try again.</div>';
   }
 }
 
