@@ -213,7 +213,6 @@ a{color:inherit;text-decoration:none}
 
     <div class="section-sep" style="margin-top:8px"></div>
     <div class="sb-lbl">데이터</div>
-    <button class="sb-btn" onclick="syncVocabToDB()"><span class="ico">🔄</span>단어 DB 동기화</button>
     <button class="sb-btn" onclick="doExport()"><span class="ico">💾</span>내보내기</button>
     <button class="sb-btn" onclick="document.getElementById('imp').click()"><span class="ico">📂</span>가져오기</button>
     <button class="sb-btn" onclick="resetAll()" style="color:#cc2200"><span class="ico">⚠️</span>전체 초기화</button>
@@ -9568,15 +9567,6 @@ async function syncVocabToDB() {
   toast('✅ Sync done! ' + ok + '/' + batch.length + (errors ? ', ' + errors + ' failed' : ''));
   localStorage.setItem('kh_vocab_sync_date', new Date().toISOString().slice(0, 10));
 }
-
-// Auto-sync on admin page load (once per day)
-(function() {
-  var today = new Date().toISOString().slice(0, 10);
-  if (localStorage.getItem('kh_vocab_sync_date') === today) return;
-  document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(function() { syncVocabToDB(); }, 3000);
-  });
-})();
 
 // ═══════════════════════════════════════════════════════════════
 // FAST TRACK ADMIN — CRUD + AI Generation
