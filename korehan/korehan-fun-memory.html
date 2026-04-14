@@ -158,7 +158,7 @@ var MEM = (function(){
   'use strict';
 
   // ── Word Pool ──
-  var WORDS = [
+  var _FALLBACK_WORDS = [
     {ko:'사랑',en:'love'},{ko:'친구',en:'friend'},{ko:'음식',en:'food'},
     {ko:'행복',en:'happiness'},{ko:'여행',en:'travel'},{ko:'학교',en:'school'},
     {ko:'가족',en:'family'},{ko:'날씨',en:'weather'},{ko:'영화',en:'movie'},
@@ -170,6 +170,24 @@ var MEM = (function(){
     {ko:'꿈',en:'dream'},{ko:'미래',en:'future'},{ko:'노래',en:'song'},
     {ko:'춤',en:'dance'},{ko:'맛',en:'taste'},{ko:'마음',en:'heart'}
   ];
+  var WORDS = _FALLBACK_WORDS.slice();
+
+  // Load live vocabulary from DB; silently fall back to hardcoded if unavailable
+  (async function loadVocabFromDB() {
+    try {
+      var sb = typeof getSupa === 'function' ? getSupa() : null;
+      if (!sb) return;
+      var result = await sb.from('vocabulary_bank')
+        .select('word_ko,word_en')
+        .eq('is_active', true)
+        .limit(60);
+      if (result.error || !result.data || !result.data.length) return;
+      var mapped = result.data
+        .filter(function(r) { return r.word_ko && r.word_en; })
+        .map(function(r) { return { ko: r.word_ko, en: r.word_en }; });
+      if (mapped.length >= 15) WORDS = mapped;
+    } catch(e) { /* silently fall back to hardcoded */ }
+  })();
 
   var DIFFICULTY = {
     easy:   { pairs: 6,  cols: 'easy' },

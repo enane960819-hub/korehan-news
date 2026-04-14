@@ -146,7 +146,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans',Inter,Prete
 <script src="korehan-shared.js?v=20260413"></script>
 <script>
 (function(){
-var TOPICS={
+var _FALLBACK_TOPICS={
   daily:{icon:'🏠',label:'Daily',words:[
     {ko:'친구',en:'friend'},{ko:'가족',en:'family'},{ko:'학교',en:'school'},{ko:'회사',en:'company'},
     {ko:'집',en:'house'},{ko:'시간',en:'time'},{ko:'사람',en:'person'},{ko:'이름',en:'name'},
@@ -178,6 +178,54 @@ var TOPICS={
     {ko:'컴퓨터',en:'computer'},{ko:'인터넷',en:'internet'},{ko:'전화기',en:'telephone'},{ko:'도서관',en:'library'},
     {ko:'편의점',en:'convenience store'},{ko:'병원',en:'hospital'},{ko:'경찰',en:'police'},{ko:'의사',en:'doctor'}]}
 };
+// Deep-copy fallback into working TOPICS so DB words can be merged in
+var TOPICS=(function(){
+  var t={};
+  Object.keys(_FALLBACK_TOPICS).forEach(function(k){
+    var src=_FALLBACK_TOPICS[k];
+    t[k]={icon:src.icon,label:src.label,words:src.words.slice()};
+  });
+  return t;
+})();
+
+// Map interest_tag values from vocabulary_bank to TOPICS keys
+var _TAG_TO_TOPIC={
+  daily:'daily',everyday:'daily',general:'daily',
+  food:'food',cooking:'food',restaurant:'food',drink:'food',drinks:'food',
+  nature:'nature',weather:'nature',environment:'nature',outdoors:'nature',
+  emotion:'emotion',feelings:'emotion',emotions:'emotion',health:'emotion',wellness:'emotion',
+  culture:'culture',entertainment:'culture',arts:'culture',art:'culture',travel:'culture',sport:'culture',sports:'culture',
+  work:'work',business:'work',technology:'work',tech:'work',education:'work',politics:'work',economy:'work'
+};
+
+// Load live vocabulary from DB and merge into TOPICS; silently fall back if unavailable
+(async function loadWordDropVocabFromDB(){
+  try {
+    var sb=typeof getSupa==='function'?getSupa():null;
+    if(!sb)return;
+    var result=await sb.from('vocabulary_bank')
+      .select('word_ko,word_en,interest_tag')
+      .eq('is_active',true)
+      .limit(200);
+    if(result.error||!result.data||!result.data.length)return;
+    // Track which ko words already exist per topic to avoid duplicates
+    var existing={};
+    Object.keys(TOPICS).forEach(function(k){
+      existing[k]={};
+      TOPICS[k].words.forEach(function(w){existing[k][w.ko]=1;});
+    });
+    // Overflow bucket for untagged or unmatched words — goes into 'daily'
+    result.data.forEach(function(r){
+      if(!r.word_ko||!r.word_en)return;
+      var tag=(r.interest_tag||'').toLowerCase().trim();
+      var topicKey=_TAG_TO_TOPIC[tag]||'daily';
+      if(!existing[topicKey][r.word_ko]){
+        TOPICS[topicKey].words.push({ko:r.word_ko,en:r.word_en});
+        existing[topicKey][r.word_ko]=1;
+      }
+    });
+  }catch(e){/* silently fall back to hardcoded */}
+})();
 var SPEED_CFG={slow:{base:.4,interval:4000},normal:{base:.7,interval:3000},fast:{base:1.2,interval:2000}};
 var _mode='ko2en',_speed='normal',_selectedTopics=['daily'];
 

@@ -112,10 +112,82 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans',Inter,Prete
     return { cho: CHO[cho], jung: JUNG_FULL[jung], jong: JONG[jong] || '' };
   }
 
-  // Target syllables by difficulty
-  var TARGETS_EASY = ['가','나','다','마','바','사','하','고','노','두','모','소','우','주','두','기','니','비','시','히','오','요','아','야','무','수','구','누','부','로'];
-  var TARGETS_MED = ['한','국','말','집','밥','물','산','강','달','별','꽃','눈','돈','문','길','손','곰','팔','발','볼','줄','솔','반','잔','전','몸','봄','놈','남','공'];
-  var TARGETS_HARD = ['학','읽','삶','넓','높','깊','맑','젊','삼','둘','셋','빛','꿈','값','숲','밝','흙','닭','넋','삶','옳','있','없','많','같'];
+  // Target syllables by difficulty (hardcoded fallback)
+  var _FALLBACK_EASY = ['가','나','다','마','바','사','하','고','노','두','모','소','우','주','두','기','니','비','시','히','오','요','아','야','무','수','구','누','부','로'];
+  var _FALLBACK_MED  = ['한','국','말','집','밥','물','산','강','달','별','꽃','눈','돈','문','길','손','곰','팔','발','볼','줄','솔','반','잔','전','몸','봄','놈','남','공'];
+  var _FALLBACK_HARD = ['학','읽','삶','넓','높','깊','맑','젊','삼','둘','셋','빛','꿈','값','숲','밝','흙','닭','넋','삶','옳','있','없','많','같'];
+  var TARGETS_EASY = _FALLBACK_EASY.slice();
+  var TARGETS_MED  = _FALLBACK_MED.slice();
+  var TARGETS_HARD = _FALLBACK_HARD.slice();
+
+  // Extract individual Hangul syllables from a Korean word string
+  function _extractSyllables(word) {
+    var syllables = [];
+    for (var i = 0; i < word.length; i++) {
+      var code = word.charCodeAt(i);
+      if (code >= 0xAC00 && code <= 0xD7A3) syllables.push(word[i]);
+    }
+    return syllables;
+  }
+
+  // Detect whether a syllable has a 받침 (final consonant)
+  function _hasBatchim(ch) {
+    var code = ch.charCodeAt(0) - 0xAC00;
+    return code >= 0 && (code % 28) !== 0;
+  }
+
+  // Detect whether a syllable has a complex 받침 (code % 28 maps to a compound jongseong)
+  // Compound jongseong indices: 3(ㄳ),5(ㄵ),6(ㄶ),9(ㄺ),10(ㄻ),11(ㄼ),12(ㄽ),13(ㄾ),14(ㄿ),15(ㅀ),18(ㅄ)
+  var _COMPOUND_JONG = {3:1,5:1,6:1,9:1,10:1,11:1,12:1,13:1,14:1,15:1,18:1};
+  function _hasComplexBatchim(ch) {
+    var code = ch.charCodeAt(0) - 0xAC00;
+    if (code < 0) return false;
+    return !!_COMPOUND_JONG[code % 28];
+  }
+
+  // Load live vocabulary from DB; silently fall back to hardcoded if unavailable
+  (async function loadTetrisVocabFromDB() {
+    try {
+      var sb = typeof getSupa === 'function' ? getSupa() : null;
+      if (!sb) return;
+      var result = await sb.from('vocabulary_bank')
+        .select('word_ko,level')
+        .eq('is_active', true)
+        .limit(200);
+      if (result.error || !result.data || !result.data.length) return;
+
+      var easy = [], med = [], hard = [];
+      result.data.forEach(function(r) {
+        if (!r.word_ko) return;
+        var syls = _extractSyllables(r.word_ko);
+        var lv = (r.level || '').toLowerCase();
+        syls.forEach(function(s) {
+          if (lv === 'advanced') {
+            if (_hasComplexBatchim(s)) hard.push(s);
+            else if (_hasBatchim(s)) med.push(s);
+            else easy.push(s);
+          } else if (lv === 'intermediate') {
+            if (_hasBatchim(s)) med.push(s);
+            else easy.push(s);
+          } else {
+            // Starter or Beginner
+            easy.push(s);
+          }
+        });
+      });
+
+      // Deduplicate helper
+      function dedup(arr) {
+        var seen = {}, out = [];
+        arr.forEach(function(s) { if (!seen[s]) { seen[s] = 1; out.push(s); } });
+        return out;
+      }
+
+      if (easy.length >= 10)  TARGETS_EASY = dedup(easy);
+      if (med.length  >= 10)  TARGETS_MED  = dedup(med);
+      if (hard.length >= 5)   TARGETS_HARD = dedup(hard);
+    } catch(e) { /* silently fall back to hardcoded */ }
+  })();
 
   var canvas, ctx;
   var blocks = [];
