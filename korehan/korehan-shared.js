@@ -4691,30 +4691,56 @@ async function loadXPConfig() {
 var _XP_ACTION_AMOUNTS = {
   article_read: 10,
   word_save: 5,
+  word_saved: 5,
   conv_quiz_complete: 20,
   fill_complete: 5,
   daily_mission_complete: 50,
   story_read: 10,
   conversation_read: 10,
-  first_journey_step: 5
+  first_journey_step: 5,
+  writing_submit: 15,
+  study_picture_description: 10,
+  study_sentence_writing: 10,
+  quiz_complete: 15,
+  daily_review_complete: 20,
+  weekly_review_complete: 30,
+  monthly_review_complete: 50
 };
 var _COIN_ACTION_AMOUNTS = {
   article_read: 3,
   word_save: 2,
+  word_saved: 2,
   conv_quiz_complete: 5,
   fill_complete: 2,
-  daily_mission_complete: 20,   // 12 → 20 (밸런스 상향)
+  daily_mission_complete: 20,
   story_read: 3,
-  conversation_read: 3
+  conversation_read: 3,
+  first_journey_step: 2,
+  writing_submit: 5,
+  study_picture_description: 3,
+  study_sentence_writing: 3,
+  quiz_complete: 5,
+  daily_review_complete: 8,
+  weekly_review_complete: 12,
+  monthly_review_complete: 20
 };
 var _XP_ACTION_LABELS = {
   article_read: 'Read Article',
   word_save: 'Save Word',
+  word_saved: 'Save Word',
   conv_quiz_complete: 'Quiz Complete',
   fill_complete: 'Fill in the Blank',
   daily_mission_complete: 'Daily Mission Complete',
   story_read: 'Read Story',
-  conversation_read: 'Read Conversation'
+  conversation_read: 'Read Conversation',
+  first_journey_step: 'First Journey Step',
+  writing_submit: 'Writing Practice',
+  study_picture_description: 'Picture Description',
+  study_sentence_writing: 'Sentence Writing',
+  quiz_complete: 'Quiz Complete',
+  daily_review_complete: 'Daily Review',
+  weekly_review_complete: 'Weekly Review',
+  monthly_review_complete: 'Monthly Review'
 };
 
 // ── xp_log 컬럼명 감지 (세션당 1회) ─────────────────────────────

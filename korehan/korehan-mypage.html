@@ -935,7 +935,7 @@ async function dbGetUserStats() {
   // Load user_stats and all daily_missions in parallel
   var results = await Promise.allSettled([
     sb.from('user_stats')
-      .select('quizzes_done, articles_read, words_saved, coin_balance')
+      .select('xp, quizzes_done, articles_read, words_saved, coin_balance')
       .eq('user_id', supaUser.id).maybeSingle(),
     sb.from('daily_missions')
       .select('date, articles, words, quizzes, fill')
@@ -945,13 +945,17 @@ async function dbGetUserStats() {
 
   if (results[0].status === 'fulfilled' && results[0].value.data) {
     statsData = results[0].value.data;
+    // Use xp from user_stats as the single source of truth (matches profile dropdown)
+    computedXP = Number(statsData.xp || 0);
   }
   if (results[1].status === 'fulfilled' && results[1].value.data) {
     var rows = results[1].value.data;
-    // XP
-    computedXP = rows.reduce(function(sum, d) {
-      return sum + (d.articles||0)*10 + (d.words||0)*2 + (d.quizzes||0)*5 + (d.fill||0)*5;
-    }, 0);
+    // If user_stats.xp is 0 or missing, fall back to daily_missions calculation
+    if (!computedXP) {
+      computedXP = rows.reduce(function(sum, d) {
+        return sum + (d.articles||0)*10 + (d.words||0)*2 + (d.quizzes||0)*5 + (d.fill||0)*5;
+      }, 0);
+    }
     // Streak: consecutive days with any activity (KST)
     var activeDates = {};
     rows.forEach(function(d) {
