@@ -5040,16 +5040,8 @@ function _keRenderQuiz() {
   var idx = window._keQuizIdx || 0;
 
   if (idx >= exps.length) {
-    // Quiz complete
-    var pct = exps.length > 0 ? Math.round((window._keQuizScore || 0) / exps.length * 100) : 0;
-    list.innerHTML = '<div style="text-align:center;padding:24px">'
-      + '<div style="font-size:36px;margin-bottom:8px">' + (pct >= 80 ? '🎉' : pct >= 60 ? '👍' : '💪') + '</div>'
-      + '<div style="font-size:24px;font-weight:900;color:#fff;margin-bottom:4px">' + pct + '%</div>'
-      + '<div style="font-size:13px;color:#94a3b8;margin-bottom:12px">' + (window._keQuizScore||0) + ' / ' + exps.length + ' correct</div>'
-      + '<div style="display:flex;gap:8px;justify-content:center">'
-      + '<button onclick="window._keStudyIdx=0;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 16px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Review Again</button>'
-      + '<button onclick="markStageDone(\'topic\');closeKeyExpressionsModal()" style="padding:10px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">Done &check;</button>'
-      + '</div></div>';
+    // MCQ quiz complete — transition to Phase 2: Sentence Completion
+    _keStartFillQuiz();
     return;
   }
 
@@ -5097,6 +5089,260 @@ function _keQuizAnswer(btn, correctKo, chosenKo) {
   var fb = document.getElementById('ke-quiz-fb');
   if (fb) fb.innerHTML = '<div style="font-size:12px;color:' + (isCorrect ? '#4ade80' : '#fca5a5') + ';font-weight:700">' + (isCorrect ? '✅ 정답!' : '❌ 오답 — 정답: ' + correctKo) + '</div>';
   setTimeout(function(){ window._keQuizIdx = (window._keQuizIdx||0) + 1; _keRenderQuiz(); }, 1300);
+}
+
+// ── Phase 2: Sentence Completion (Fill-in-the-blank) ──
+function _keStartFillQuiz() {
+  window._kePhase = 'fill';
+  window._keFillIdx = 0;
+  window._keFillScore = 0;
+  _keRenderFillQuiz();
+}
+
+function _keRenderFillQuiz() {
+  var list = document.getElementById('ke-expressions-list'); if (!list) return;
+  var exps = window._keExpressions || [];
+  var idx = window._keFillIdx || 0;
+
+  if (idx >= exps.length) {
+    // Fill phase complete — transition to Phase 3: Situational Mapping
+    _keStartSituationQuiz();
+    return;
+  }
+
+  var exp = exps[idx];
+  // Replace the expression in the example sentence with a blank
+  var exampleKo = exp.example_ko || exp.ko;
+  var blankedDisplay = exampleKo;
+  if (exp.ko && exampleKo.indexOf(exp.ko) !== -1) {
+    blankedDisplay = exampleKo.replace(exp.ko, '<span style="display:inline-block;min-width:80px;border-bottom:2px solid #a78bfa;padding:0 4px;color:#a78bfa;font-weight:800">___</span>');
+  }
+
+  list.innerHTML =
+    '<div style="text-align:center;margin-bottom:14px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">STEP 3: Production \u2014 Fill in the Blank</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
+    + '</div>'
+    + '<div style="background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.2);border-radius:12px;padding:16px;margin-bottom:14px">'
+    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">Type the missing Korean expression:</div>'
+    + '<div style="font-size:15px;color:#e0f2fe;line-height:1.7;margin-bottom:6px">' + blankedDisplay + '</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.35)">' + (exp.example_en||exp.en||'') + '</div>'
+    + '</div>'
+    + '<div style="margin-bottom:12px">'
+    + '<input type="text" id="ke-fill-input" placeholder="Type the expression in Korean..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"'
+    + ' style="width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(167,139,250,.35);background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:inherit;outline:none;box-sizing:border-box"'
+    + ' onkeydown="if(event.key===\'Enter\')_keCheckFillAnswer()">'
+    + '</div>'
+    + '<div style="display:flex;gap:8px;justify-content:center">'
+    + '<button onclick="_keCheckFillAnswer()" style="padding:11px 28px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Check &#10003;</button>'
+    + '</div>'
+    + '<div id="ke-fill-fb" style="margin-top:12px;min-height:28px"></div>';
+
+  // Auto-focus the input
+  setTimeout(function() {
+    var inp = document.getElementById('ke-fill-input');
+    if (inp) inp.focus();
+  }, 80);
+}
+
+function _keCheckFillAnswer() {
+  var inp = document.getElementById('ke-fill-input');
+  var fb = document.getElementById('ke-fill-fb');
+  if (!inp || !fb) return;
+
+  var exps = window._keExpressions || [];
+  var idx = window._keFillIdx || 0;
+  var exp = exps[idx];
+  if (!exp) return;
+
+  var typed = inp.value.trim();
+  if (!typed) return; // require non-empty answer
+  var correct = (exp.ko || '').trim();
+
+  // Flexible match: ignore whitespace and punctuation
+  function normalizeKo(s) {
+    return s.replace(/[.,!?\u007e\s]/g, '').toLowerCase();
+  }
+  var isCorrect = normalizeKo(typed) === normalizeKo(correct);
+
+  // Disable input and check button
+  inp.disabled = true;
+  document.querySelectorAll('#ke-expressions-list button').forEach(function(b){ b.disabled = true; });
+
+  if (isCorrect) {
+    window._keFillScore = (window._keFillScore || 0) + 1;
+    inp.style.borderColor = '#4ade80';
+    inp.style.background = 'rgba(34,197,94,.1)';
+    fb.innerHTML = '<div style="padding:10px 12px;background:rgba(34,197,94,.12);border-radius:8px;color:#4ade80;font-weight:800;font-size:13px">&#9989; \uc815\ub2f5! Well done!</div>';
+  } else {
+    inp.style.borderColor = '#f87171';
+    inp.style.background = 'rgba(239,68,68,.08)';
+    fb.innerHTML = '<div style="padding:10px 12px;background:rgba(239,68,68,.1);border-radius:8px;font-size:13px">'
+      + '<div style="color:#fca5a5;font-weight:800;margin-bottom:4px">&#10060; Not quite</div>'
+      + '<div style="color:rgba(255,255,255,.6)">Correct: <span style="color:#a78bfa;font-weight:800;font-size:15px">' + correct + '</span></div>'
+      + '</div>';
+  }
+
+  fb.innerHTML += '<button onclick="window._keFillIdx=(window._keFillIdx||0)+1;_keRenderFillQuiz()" style="display:block;width:100%;margin-top:10px;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Next &#8594;</button>';
+}
+
+// ── Phase 3: Situational Mapping ──
+var _keSituations = null;
+
+function _keStartSituationQuiz() {
+  window._kePhase = 'situation';
+  window._keSitIdx = 0;
+  window._keSitScore = 0;
+  _keSituations = null;
+
+  var list = document.getElementById('ke-expressions-list'); if (!list) return;
+  list.innerHTML = '<div style="text-align:center;padding:24px;color:rgba(255,255,255,.4)">Generating situational exercises...</div>';
+
+  var exps = window._keExpressions || [];
+  var expList = exps.map(function(e, i) { return (i+1) + '. ' + e.ko + ' \u2014 ' + e.en; }).join('\n');
+
+  callClaude({
+    feature: 'ke-situations',
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 800,
+    messages: [{ role: 'user', content: 'Given these Korean expressions:\n' + expList + '\n\nCreate exactly 3 real-life situational questions. For each, return JSON with: situation (1-2 sentence English description of a real-life moment), correct_index (0-based index from the list above of the best expression), why (brief English reason). Return a JSON array only, no markdown.' }]
+  }).then(function(res) {
+    try {
+      var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+      text = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+      var situations = JSON.parse(text);
+      if (!Array.isArray(situations) || !situations.length) throw new Error('empty');
+      _keSituations = situations;
+    } catch(e) {
+      // Fallback: generate situations from expression meanings
+      _keSituations = exps.slice(0, 3).map(function(exp, i) {
+        return { situation: 'You want to say: "' + exp.en + '"', correct_index: i, why: 'This expression means: ' + exp.en };
+      });
+    }
+    _keRenderSituationQuiz();
+  }).catch(function() {
+    // Fallback on network error
+    _keSituations = exps.slice(0, 3).map(function(exp, i) {
+      return { situation: 'You want to say: "' + exp.en + '"', correct_index: i, why: 'This expression means: ' + exp.en };
+    });
+    _keRenderSituationQuiz();
+  });
+}
+
+function _keRenderSituationQuiz() {
+  var list = document.getElementById('ke-expressions-list'); if (!list) return;
+  var exps = window._keExpressions || [];
+  var situations = _keSituations || [];
+  var idx = window._keSitIdx || 0;
+
+  if (idx >= situations.length) {
+    // All phases complete \u2014 show final combined score
+    _keShowFinalScore();
+    return;
+  }
+
+  var sit = situations[idx];
+  var correctIdx = sit.correct_index;
+  if (correctIdx == null || correctIdx < 0 || correctIdx >= exps.length) correctIdx = 0;
+  var correctExp = exps[correctIdx];
+
+  // Build choices: correct + up to 3 wrongs
+  var wrongExps = exps.filter(function(_, i) { return i !== correctIdx; }).sort(function() { return Math.random() - .5; }).slice(0, 3);
+  var choices = [correctExp].concat(wrongExps).sort(function() { return Math.random() - .5; });
+
+  list.innerHTML =
+    '<div style="text-align:center;margin-bottom:14px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#fb923c;margin-bottom:4px">STEP 4: Situational Mapping</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + situations.length + '</div>'
+    + '</div>'
+    + '<div style="background:rgba(251,146,60,.07);border:1px solid rgba(251,146,60,.2);border-radius:12px;padding:16px;margin-bottom:14px">'
+    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">Which expression would you use in this situation?</div>'
+    + '<div style="font-size:14px;color:#fff;line-height:1.6;font-weight:600">' + (sit.situation||'') + '</div>'
+    + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px">'
+    + choices.map(function(c) {
+      var cIdx = exps.indexOf(c);
+      return '<button class="ke-sit-btn" onclick="_keSituationAnswer(this,' + cIdx + ',' + correctIdx + ',\'' + (sit.why||'').replace(/'/g,"\\'") + '\')"'
+        + ' style="padding:12px 16px;border:1.5px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.04);color:#e0f2fe;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left;transition:.15s">'
+        + (c.ko||'') + ' <span style="font-size:11px;color:rgba(255,255,255,.3);margin-left:8px">' + (c.en||'') + '</span></button>';
+    }).join('')
+    + '</div>'
+    + '<div id="ke-sit-fb" style="margin-top:10px"></div>';
+}
+
+function _keSituationAnswer(btn, chosenIdx, correctIdx, why) {
+  document.querySelectorAll('.ke-sit-btn').forEach(function(b){ b.disabled = true; });
+  var isCorrect = chosenIdx === correctIdx;
+  var exps = window._keExpressions || [];
+  var correctExp = exps[correctIdx];
+
+  if (isCorrect) {
+    window._keSitScore = (window._keSitScore || 0) + 1;
+    btn.style.borderColor = '#86efac'; btn.style.background = 'rgba(34,197,94,.15)'; btn.style.color = '#4ade80';
+  } else {
+    btn.style.borderColor = '#fca5a5'; btn.style.background = 'rgba(239,68,68,.1)'; btn.style.color = '#fca5a5';
+    document.querySelectorAll('.ke-sit-btn').forEach(function(b) {
+      if (correctExp && b.textContent.trim().indexOf(correctExp.ko) === 0) {
+        b.style.borderColor = '#86efac'; b.style.background = 'rgba(34,197,94,.15)';
+      }
+    });
+  }
+
+  var fb = document.getElementById('ke-sit-fb');
+  if (fb) {
+    fb.innerHTML = '<div style="padding:10px 12px;background:' + (isCorrect ? 'rgba(34,197,94,.1)' : 'rgba(239,68,68,.08)') + ';border-radius:8px;font-size:12px">'
+      + '<div style="font-weight:800;color:' + (isCorrect ? '#4ade80' : '#fca5a5') + ';margin-bottom:4px">' + (isCorrect ? '&#9989; \uc815\ub2f5!' : '&#10060; \uc624\ub2f5 \u2014 Correct: ' + (correctExp&&correctExp.ko||'')) + '</div>'
+      + (why ? '<div style="color:rgba(255,255,255,.5)">' + why + '</div>' : '')
+      + '</div>'
+      + '<button onclick="window._keSitIdx=(window._keSitIdx||0)+1;_keRenderSituationQuiz()" style="display:block;width:100%;margin-top:10px;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Next &#8594;</button>';
+  }
+}
+
+// ── Final Combined Score Screen ──
+function _keShowFinalScore() {
+  var list = document.getElementById('ke-expressions-list'); if (!list) return;
+  var exps = window._keExpressions || [];
+  var situations = _keSituations || [];
+
+  var recogScore = window._keQuizScore || 0;
+  var fillScore = window._keFillScore || 0;
+  var sitScore = window._keSitScore || 0;
+  var recogTotal = exps.length;
+  var fillTotal = exps.length;
+  var sitTotal = situations.length;
+
+  var totalScore = recogScore + fillScore + sitScore;
+  var totalMax = recogTotal + fillTotal + sitTotal;
+  var totalPct = totalMax > 0 ? Math.round(totalScore / totalMax * 100) : 0;
+
+  list.innerHTML =
+    '<div style="text-align:center;padding:20px 0 8px">'
+    + '<div style="font-size:36px;margin-bottom:8px">' + (totalPct >= 80 ? '\ud83c\udf89' : totalPct >= 60 ? '\ud83d\udc4d' : '\ud83d\udcaa') + '</div>'
+    + '<div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:2px">Session Complete!</div>'
+    + '<div style="font-size:13px;color:#94a3b8;margin-bottom:18px">Here\'s how you did:</div>'
+    + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">'
+    + '<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
+    + '<div><div style="font-size:11px;font-weight:800;color:#fbbf24;text-transform:uppercase;letter-spacing:.5px">Recognition (MCQ)</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Pick the right expression</div></div>'
+    + '<div style="font-size:18px;font-weight:900;color:#fbbf24">' + recogScore + '/' + recogTotal + '</div>'
+    + '</div>'
+    + '<div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
+    + '<div><div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.5px">Production Score</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Fill in the blank</div></div>'
+    + '<div style="font-size:18px;font-weight:900;color:#a78bfa">' + fillScore + '/' + fillTotal + '</div>'
+    + '</div>'
+    + '<div style="background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
+    + '<div><div style="font-size:11px;font-weight:800;color:#fb923c;text-transform:uppercase;letter-spacing:.5px">Situational Mapping</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Match expression to context</div></div>'
+    + '<div style="font-size:18px;font-weight:900;color:#fb923c">' + sitScore + '/' + sitTotal + '</div>'
+    + '</div>'
+    + '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
+    + '<div><div style="font-size:11px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.5px">Overall</div></div>'
+    + '<div style="font-size:22px;font-weight:900;color:#fff">' + totalPct + '%</div>'
+    + '</div>'
+    + '</div>'
+    + '<div style="display:flex;gap:8px;justify-content:center">'
+    + '<button onclick="window._keStudyIdx=0;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 16px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Review Again</button>'
+    + '<button onclick="markStageDone(\'topic\');closeKeyExpressionsModal()" style="padding:10px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">Done &#10003;</button>'
+    + '</div>';
 }
 
 async function saveKeyExpr(btn) {
@@ -11890,6 +12136,9 @@ function asBackToList() {
 var _dctStep = 1;   // 1=listen, 2=arrange
 var _dctWOIdx = 0;  // current sentence in arrangement step
 var _dctWOState = null;
+var _dctSpeed = 1.0;          // TTS playback rate: 0.7 | 1.0 | 1.2
+var _dctArticleMode = false;  // true when using article sentences instead of daily
+var _dctArticleSentences = []; // extracted sentences for article dictation
 
 function openDictationModal() {
   if (!supaUser) { openAuthModal('signin'); return; }
@@ -11898,6 +12147,7 @@ function openDictationModal() {
   m.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   _dctStep = 1; _dctWOIdx = 0; _dctWOState = null;
+  _dctArticleMode = false; _dctArticleSentences = [];
   _dctRender();
 }
 function closeDictationModal() {
@@ -11928,16 +12178,31 @@ function _dctRender() {
   else if (_dctStep === 3) _dctRenderTyping();
 }
 function _dctRenderListen() {
-  var sents = _dailyDictationSentences;
+  var sents = _dctArticleMode ? _dctArticleSentences : _dailyDictationSentences;
   var body = document.getElementById('dct-body');
   var foot = document.getElementById('dct-foot');
   if (!body || !foot) return;
   if (!sents || !sents.length) {
-    body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">No listening sentences available today.<br><span style="font-size:12px">Content will appear once today\'s topic is generated.</span></div>';
+    var artBtn = _dctGetArticleBtnHTML();
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">No listening sentences available today.<br><span style="font-size:12px">Content will appear once today\'s topic is generated.</span></div>'
+      + artBtn;
     foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">닫기</button>';
     return;
   }
-  var html = '<div style="font-size:13px;color:#64748b;margin-bottom:16px">각 문장을 듣고 소리 내어 따라 읽어보세요.</div>';
+  // Speed control bar
+  var speeds = [{v:0.7,label:'🐢 Slow'},{v:1.0,label:'🚶 Normal'},{v:1.2,label:'🏃 Fast'}];
+  var speedHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">'
+    + '<span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;white-space:nowrap">Speed:</span>';
+  speeds.forEach(function(sp) {
+    var active = Math.abs(_dctSpeed - sp.v) < 0.05;
+    speedHTML += '<button id="dct-speed-'+sp.v+'" onclick="_dctSetSpeed('+sp.v+')" style="padding:4px 12px;font-size:12px;font-weight:700;border-radius:20px;cursor:pointer;transition:all .15s;border:1.5px solid '+(active?'#7c3aed':'#e2e8f0')+';background:'+(active?'#7c3aed':'#fff')+';color:'+(active?'#fff':'#64748b')+'">'+sp.label+'</button>';
+  });
+  speedHTML += '</div>';
+
+  var modeLabel = _dctArticleMode
+    ? '<div style="display:inline-block;padding:3px 10px;background:#fef3c7;border:1px solid #fcd34d;border-radius:20px;font-size:11px;font-weight:700;color:#92400e;margin-bottom:12px">📰 Article Dictation</div>'
+    : '';
+  var html = modeLabel + speedHTML + '<div style="font-size:13px;color:#64748b;margin-bottom:16px">각 문장을 듣고 소리 내어 따라 읽어보세요.</div>';
   sents.forEach(function(s, i) {
     var safeKo = (s.ko||'').replace(/'/g,"&#39;");
     html += '<div class="dct-sent-card">'
@@ -11945,14 +12210,98 @@ function _dctRenderListen() {
       + '<div style="flex:1"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:6px">Sentence '+(i+1)+'</div>'
       + '<div class="dct-sent-ko">'+escapeHTML(s.ko||'')+'</div>'
       + '<div class="dct-sent-en">'+escapeHTML(s.en||'')+'</div></div>'
-      + '<button class="dct-listen-btn" onclick="speakKorean(\''+safeKo+'\')">🔊</button>'
+      + '<button class="dct-listen-btn" onclick="_dctSpeakSentence(\''+safeKo+'\')">🔊</button>'
       + '</div></div>';
   });
+  if (!_dctArticleMode) {
+    html += _dctGetArticleBtnHTML();
+  }
   body.innerHTML = html;
   foot.innerHTML = '<button class="btn btn-g" onclick="dctNext()" style="min-width:140px">어절 배열하기 →</button>';
 }
+
+// Set TTS speed and update speed button styles without full re-render
+function _dctSetSpeed(rate) {
+  _dctSpeed = rate;
+  var speeds = [0.7, 1.0, 1.2];
+  speeds.forEach(function(sp) {
+    var btn = document.getElementById('dct-speed-' + sp);
+    if (!btn) return;
+    var active = Math.abs(_dctSpeed - sp) < 0.05;
+    btn.style.borderColor = active ? '#7c3aed' : '#e2e8f0';
+    btn.style.background  = active ? '#7c3aed' : '#fff';
+    btn.style.color       = active ? '#fff'    : '#64748b';
+  });
+}
+
+// Speak using Web Speech API at selected speed (Edge TTS doesn't support rate control)
+function _dctSpeakSentence(text) {
+  if (!text || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  var u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ko-KR';
+  u.rate = _dctSpeed;
+  var voices = window.speechSynthesis.getVoices();
+  var kr = voices.find(function(v){ return v.lang && v.lang.indexOf('ko') === 0; });
+  if (kr) u.voice = kr;
+  window.speechSynthesis.speak(u);
+}
+
+// Build HTML for the article dictation offer button
+function _dctGetArticleBtnHTML() {
+  if (!_asCurrentArt || !_asCurrentArt.body) return '';
+  return '<div style="margin-top:20px;padding:14px 16px;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:12px">'
+    + '<div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:6px">📰 Article Dictation Available</div>'
+    + '<div style="font-size:12px;color:#78350f;margin-bottom:10px">Practice dictation using sentences from: <b>' + escapeHTML(_asCurrentArt.title||'') + '</b></div>'
+    + '<button onclick="startArticleDictation()" style="padding:6px 16px;background:#d97706;color:#fff;border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">Try Article Dictation →</button>'
+    + '</div>';
+}
+
+// Extract 5-7 key sentences from article body for dictation
+function _dctExtractArticleSentences(body) {
+  if (!body) return [];
+  var plain = body.replace(/<[^>]+>/g, ' ').replace(/&[a-zA-Z0-9#]+;/g, ' ');
+  var raw = plain.split(/[.。!！?？\n]+/).map(function(s){ return s.trim(); });
+  var sentences = [];
+  raw.forEach(function(s) {
+    var words = s.split(/\s+/).filter(Boolean);
+    var hasKorean = /[\uAC00-\uD7A3]/.test(s);
+    if (hasKorean && words.length >= 4 && words.length <= 20 && s.length >= 10) {
+      sentences.push({ ko: s, en: '' });
+    }
+  });
+  var seen = {};
+  var unique = [];
+  sentences.forEach(function(s) {
+    if (!seen[s.ko]) { seen[s.ko] = true; unique.push(s); }
+  });
+  if (unique.length <= 7) return unique;
+  var picked = [];
+  var step = unique.length / 6;
+  for (var i = 0; i < 7 && Math.round(i * step) < unique.length; i++) {
+    picked.push(unique[Math.round(i * step)]);
+  }
+  return picked;
+}
+
+// Start article dictation mode — opens modal and loads extracted sentences
+function startArticleDictation() {
+  if (!_asCurrentArt || !_asCurrentArt.body) { showToast('먼저 기사를 읽어주세요'); return; }
+  var sents = _dctExtractArticleSentences(_asCurrentArt.body);
+  if (!sents.length) { showToast('기사에서 문장을 찾을 수 없습니다'); return; }
+  _dctArticleMode = true;
+  _dctArticleSentences = sents;
+  _dctStep = 1; _dctWOIdx = 0; _dctWOState = null;
+  _dctTypingIdx = 0; _dctTypingScore = 0;
+  var m = document.getElementById('dct-modal');
+  if (m) {
+    m.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+  _dctRender();
+}
 function _dctRenderArrange() {
-  var sents = _dailyDictationSentences;
+  var sents = _dctArticleMode ? _dctArticleSentences : _dailyDictationSentences;
   var body = document.getElementById('dct-body');
   var foot = document.getElementById('dct-foot');
   if (!body || !foot || !sents || !sents.length) return;
@@ -12033,12 +12382,17 @@ function _dctRenderTyping() {
   var foot = document.getElementById('dct-foot');
   if (!body || !foot) return;
 
-  // Use dictation_questions if available, otherwise use dictation_sentences
-  var questions = _dailyDictationQuestions || [];
-  var sentences = _dailyDictationSentences || [];
-  var pool = questions.length >= 3 ? questions.map(function(q) {
-    return { ko: q.question_ko || q.ko || '', en: q.hint_en || q.en || '' };
-  }) : sentences;
+  // In article mode use article sentences; daily mode uses questions (or sentences fallback)
+  var pool;
+  if (_dctArticleMode) {
+    pool = _dctArticleSentences || [];
+  } else {
+    var questions = _dailyDictationQuestions || [];
+    var sentences = _dailyDictationSentences || [];
+    pool = questions.length >= 3 ? questions.map(function(q) {
+      return { ko: q.question_ko || q.ko || '', en: q.hint_en || q.en || '' };
+    }) : sentences;
+  }
 
   if (!pool.length) {
     body.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8">No dictation content available.</div>';
@@ -12048,15 +12402,19 @@ function _dctRenderTyping() {
 
   if (_dctTypingIdx >= pool.length) {
     var pct = pool.length > 0 ? Math.round(_dctTypingScore / pool.length * 100) : 0;
+    // Save score to localStorage
+    _dctSaveScore(pct, pool.length);
+    var modeTag = _dctArticleMode ? '<div style="font-size:11px;color:#d97706;margin-bottom:8px">📰 Article Dictation</div>' : '';
     body.innerHTML = '<div style="text-align:center;padding:30px 20px">'
       + '<div style="font-size:36px;margin-bottom:12px">' + (pct >= 80 ? '🏆' : pct >= 50 ? '👍' : '💪') + '</div>'
       + '<div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:4px">' + pct + '%</div>'
       + '<div style="font-size:13px;color:#64748b;margin-bottom:8px">' + _dctTypingScore + ' / ' + pool.length + ' correct</div>'
+      + modeTag
       + '<div style="font-size:12px;color:#94a3b8">받아쓰기 완료!</div>'
       + '</div>';
     foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done ✓ Next Activity</button>';
-    // Log to DB
-    if (typeof logQuizResult === 'function' && supaUser) {
+    // Log to DB (only for daily dictation)
+    if (!_dctArticleMode && typeof logQuizResult === 'function' && supaUser) {
       try {
         logQuizResult(getSupa(), {
           p_skill_type: 'listening', p_quiz_type: 'dictation',
@@ -12069,8 +12427,9 @@ function _dctRenderTyping() {
   }
 
   var s = pool[_dctTypingIdx];
+  var speedLabel = _dctSpeed < 0.9 ? ' 🐢' : _dctSpeed > 1.1 ? ' 🏃' : ' 🚶';
   body.innerHTML =
-    '<div style="font-size:13px;color:#64748b;margin-bottom:16px">듣고 한국어로 타이핑하세요. (' + (_dctTypingIdx + 1) + '/' + pool.length + ')</div>'
+    '<div style="font-size:13px;color:#64748b;margin-bottom:16px">듣고 한국어로 타이핑하세요. (' + (_dctTypingIdx + 1) + '/' + pool.length + ')' + speedLabel + '</div>'
     + '<div style="text-align:center;margin-bottom:16px">'
     + '<button onclick="_dctTypingSpeak()" style="width:70px;height:70px;border-radius:50%;background:#eff6ff;border:2px solid #bfdbfe;font-size:32px;cursor:pointer">🔊</button>'
     + '<div style="font-size:11px;color:#94a3b8;margin-top:6px">클릭해서 듣기</div>'
@@ -12085,39 +12444,72 @@ function _dctRenderTyping() {
 }
 
 function _dctTypingSpeak() {
-  var questions = _dailyDictationQuestions || [];
-  var sentences = _dailyDictationSentences || [];
-  var pool = questions.length >= 3 ? questions.map(function(q) { return { ko: q.question_ko || q.ko || '' }; }) : sentences;
+  var pool;
+  if (_dctArticleMode) {
+    pool = _dctArticleSentences || [];
+  } else {
+    var questions = _dailyDictationQuestions || [];
+    var sentences = _dailyDictationSentences || [];
+    pool = questions.length >= 3 ? questions.map(function(q) { return { ko: q.question_ko || q.ko || '' }; }) : sentences;
+  }
   var s = pool[_dctTypingIdx];
   if (!s) return;
-  window.speechSynthesis.cancel();
-  var u = new SpeechSynthesisUtterance(s.ko);
-  u.lang = 'ko-KR'; u.rate = 0.75;
-  window.speechSynthesis.speak(u);
+  _dctSpeakSentence(s.ko);
+}
+
+// Save dictation score to localStorage history
+function _dctSaveScore(pct, sentenceCount) {
+  try {
+    var key = 'kh_dictation_scores';
+    var existing = [];
+    try { existing = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) {}
+    if (!Array.isArray(existing)) existing = [];
+    existing.push({
+      date: kstDateKey(),
+      score: pct,
+      sentenceCount: sentenceCount,
+      mode: _dctArticleMode ? 'article' : 'daily'
+    });
+    // Keep last 90 entries
+    if (existing.length > 90) existing = existing.slice(existing.length - 90);
+    localStorage.setItem(key, JSON.stringify(existing));
+  } catch(e) {}
 }
 
 function _dctTypingCheck() {
   var inp = document.getElementById('dct-typing-input');
   var fb = document.getElementById('dct-typing-fb');
   if (!inp || !fb) return;
-  var questions = _dailyDictationQuestions || [];
-  var sentences = _dailyDictationSentences || [];
-  var pool = questions.length >= 3 ? questions.map(function(q) { return { ko: q.question_ko || q.ko || '', en: q.hint_en || q.en || '' }; }) : sentences;
+  var pool;
+  if (_dctArticleMode) {
+    pool = _dctArticleSentences || [];
+  } else {
+    var questions = _dailyDictationQuestions || [];
+    var sentences = _dailyDictationSentences || [];
+    pool = questions.length >= 3 ? questions.map(function(q) { return { ko: q.question_ko || q.ko || '', en: q.hint_en || q.en || '' }; }) : sentences;
+  }
   var s = pool[_dctTypingIdx];
   if (!s) return;
 
   var userText = (inp.value || '').trim().replace(/[.!?。！？\s]/g, '');
   var correctText = (s.ko || '').trim().replace(/[.!?。！？\s]/g, '');
+  // Calculate character-level accuracy percentage
+  var maxLen = Math.max(correctText.length, userText.length);
+  var matchCount = 0;
+  for (var ci = 0; ci < correctText.length; ci++) {
+    if (correctText[ci] === userText[ci]) matchCount++;
+  }
+  var charAccuracy = maxLen > 0 ? Math.round(matchCount / correctText.length * 100) : 100;
   var isCorrect = userText === correctText;
 
   inp.disabled = true;
   if (isCorrect) {
     _dctTypingScore++;
     inp.style.borderColor = '#86efac';
-    fb.innerHTML = '<div style="color:#16a34a;font-weight:700;font-size:14px">✅ 정답!</div>';
+    fb.innerHTML = '<div style="color:#16a34a;font-weight:700;font-size:14px">✅ 정답! (100%)</div>';
   } else {
     inp.style.borderColor = '#fca5a5';
-    // Show character-by-character diff
+    // Character-by-character diff using correct answer as reference
     var original = (s.ko || '').trim();
     var typed = (inp.value || '').trim();
     var diffHTML = '';
@@ -12125,14 +12517,16 @@ function _dctTypingCheck() {
       var oc = original[i] || '';
       var tc = typed[i] || '';
       if (oc === tc) {
-        diffHTML += '<span style="color:#16a34a">' + oc + '</span>';
+        diffHTML += '<span style="color:#16a34a">' + escapeHTML(oc) + '</span>';
+      } else if (!oc) {
+        diffHTML += '<span style="color:#f59e0b;text-decoration:underline">·</span>';
       } else {
-        diffHTML += '<span style="color:#ef4444;text-decoration:underline;font-weight:700">' + (oc || '·') + '</span>';
+        diffHTML += '<span style="color:#ef4444;text-decoration:underline;font-weight:700">' + escapeHTML(oc) + '</span>';
       }
     }
-    fb.innerHTML = '<div style="font-size:13px;color:#ef4444;font-weight:700;margin-bottom:6px">❌ 다시 확인해보세요</div>'
-      + '<div style="font-size:15px;font-family:\'Noto Sans KR\',sans-serif;letter-spacing:1px">' + diffHTML + '</div>'
-      + (s.en ? '<div style="font-size:11px;color:#94a3b8;margin-top:4px">' + s.en + '</div>' : '');
+    fb.innerHTML = '<div style="font-size:13px;color:#ef4444;font-weight:700;margin-bottom:6px">❌ 다시 확인해보세요 <span style="font-size:12px;color:#f59e0b;font-weight:600">(정확도: ' + charAccuracy + '%)</span></div>'
+      + '<div style="font-size:15px;font-family:\'Noto Sans KR\',sans-serif;letter-spacing:1px;line-height:2">' + diffHTML + '</div>'
+      + (s.en ? '<div style="font-size:11px;color:#94a3b8;margin-top:6px">' + escapeHTML(s.en) + '</div>' : '');
   }
 
   var foot = document.getElementById('dct-foot');
