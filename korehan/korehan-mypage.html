@@ -1621,17 +1621,65 @@ function renderOwnedAndGiftSections(coin, data) {
     var shopHtml = owned.length
       ? '<div class="inv-grid">' + owned.map(function(o){
           var it = o.shop_items || {};
+          var applyBtn = '';
+          if (it.item_type === 'profile_frame' || (it.name && it.name.toLowerCase().indexOf('frame') !== -1)) {
+            var isActive = document.body.classList.contains('kh-neon-on') || localStorage.getItem('kh_profile_frame') === o.item_id;
+            applyBtn = '<button onclick="applyProfileFrame(\'' + o.item_id + '\',this)" style="margin-top:8px;padding:6px 14px;border:none;border-radius:8px;background:' + (isActive ? '#dcfce7;color:#166534' : '#2563eb;color:#fff') + ';font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">' + (isActive ? '✓ Applied' : 'Apply') + '</button>';
+          } else if (it.item_type === 'theme' || (it.name && it.name.toLowerCase().indexOf('theme') !== -1)) {
+            applyBtn = '<button onclick="applyThemeItem(\'' + o.item_id + '\',this)" style="margin-top:8px;padding:6px 14px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">Apply</button>';
+          }
           return '<div class="inv-card">'
             + '<div class="inv-thumb" style="background-image:url(\'' + (it.image_url || 'https://picsum.photos/seed/' + o.item_id + '/480/280') + '\')"></div>'
             + '<div class="inv-name">' + (it.name || o.item_id) + '</div>'
             + '<div class="inv-desc">' + (it.description || '-') + '</div>'
             + '<div class="inv-meta">Qty: ' + (o.quantity || 0) + (it.item_type ? ' · ' + it.item_type : '') + '</div>'
+            + applyBtn
             + '</div>';
         }).join('') + '</div>'
       : '';
     ownedEl.innerHTML = roomHtml + shopHtml || '<div style="color:#94a3b8;font-size:13px">No items owned.</div>';
   }
 
+}
+
+// ── Apply inventory items ────────────────────────────────────
+function applyProfileFrame(itemId, btn) {
+  var current = localStorage.getItem('kh_profile_frame');
+  if (current === itemId) {
+    // Remove
+    localStorage.removeItem('kh_profile_frame');
+    document.body.classList.remove('kh-neon-on');
+    localStorage.removeItem('kh_neon');
+    btn.textContent = 'Apply';
+    btn.style.background = '#2563eb'; btn.style.color = '#fff';
+    if (typeof toast === 'function') toast('Frame removed');
+  } else {
+    // Apply
+    localStorage.setItem('kh_profile_frame', itemId);
+    document.body.classList.add('kh-neon-on');
+    localStorage.setItem('kh_neon', '1');
+    btn.textContent = '✓ Applied';
+    btn.style.background = '#dcfce7'; btn.style.color = '#166534';
+    if (typeof toast === 'function') toast('Neon Profile Frame applied!');
+  }
+  // Update avatar visual
+  var avatar = document.querySelector('.mp-avatar-img, .mp-initials');
+  if (avatar) {
+    if (localStorage.getItem('kh_profile_frame')) {
+      avatar.style.boxShadow = '0 0 16px rgba(0,255,214,.5), 0 0 32px rgba(0,255,214,.2)';
+      avatar.style.borderColor = '#00ffd6';
+    } else {
+      avatar.style.boxShadow = '';
+      avatar.style.borderColor = '';
+    }
+  }
+}
+
+function applyThemeItem(itemId, btn) {
+  localStorage.setItem('kh_theme_item', itemId);
+  btn.textContent = '✓ Applied';
+  btn.style.background = '#dcfce7'; btn.style.color = '#166534';
+  if (typeof toast === 'function') toast('Theme applied!');
 }
 
 // ══════════════════════════════════════════════════════════════

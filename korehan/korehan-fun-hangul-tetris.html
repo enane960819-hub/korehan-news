@@ -191,6 +191,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans',Inter,Prete
 
   function spawnBlock() {
     var needed = targetParts[buildIdx];
+    if (needed === undefined || needed === null) return; // No more parts to build
     // Spawn 3-4 blocks: 1 correct + distractors
     var count = Math.min(4, 2 + Math.floor(level / 3));
     var jamos = [needed];

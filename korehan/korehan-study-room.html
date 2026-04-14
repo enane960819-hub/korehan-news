@@ -12499,7 +12499,7 @@ function _asRenderBlankUI() {
     if(allCorrect) _asStepDone[2]=true;
     _asSetNav('none','');
   }
-  else _asSetNav('none','none','none');
+  else _asSetNav('none','');
 }
 function asBlankFill3(bi,text) {
   if(!_asWOState) return;
@@ -12606,35 +12606,53 @@ function _asShowSentenceQuiz() {
   // Use AI content grammar if available
   if (_asStudyContent && _asStudyContent.questions && _asStudyContent.questions.length) {
     var q = _asStudyContent.questions[0];
-    correct = [{ text: q.options[q.correct] || '이 문장은 맞습니다.', isCorrect: true }];
-    incorrect = (q.options || []).filter(function(_,i){ return i !== q.correct; }).slice(0,2).map(function(opt){
+    var cIdx = Number(q.correct) || 0;
+    correct = [{ text: (q.options && q.options[cIdx]) || '이 문장은 맞습니다.', isCorrect: true }];
+    incorrect = (q.options || []).filter(function(_,i){ return i !== cIdx; }).slice(0,2).map(function(opt){
       return { text: opt, isCorrect: false };
     });
   }
 
   var all = correct.concat(incorrect).sort(function(){ return Math.random() - .5; });
+  // Store correct count for completion check
+  var _asSentCorrectCount = correct.length;
+  window._asSentState = { total: all.length, correctTotal: _asSentCorrectCount, picked: 0, correctPicked: 0 };
 
   act.innerHTML = '<div class="su-instruction" style="font-size:14px;padding:16px 20px 8px">🔍 Bonus: 맞는 문장을 모두 골라보세요</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px;padding:0 20px">'
     + all.map(function(s, i){
-      return '<button class="as-sent-btn" onclick="_asCheckSentence(this,' + JSON.stringify(s.isCorrect) + ')" style="padding:12px 16px;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit;transition:.2s">' + s.text + '</button>';
+      return '<button class="as-sent-btn" data-correct="' + (s.isCorrect ? '1' : '0') + '" onclick="_asCheckSentence(this)" style="padding:12px 16px;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit;transition:.2s">' + s.text + '</button>';
     }).join('')
     + '</div>'
     + '<div id="as-sent-fb" style="padding:0 20px;margin-top:10px"></div>';
 }
 
-function _asCheckSentence(btn, isCorrect) {
+function _asCheckSentence(btn) {
   btn.disabled = true;
+  var isCorrect = btn.getAttribute('data-correct') === '1';
   if (isCorrect) {
     btn.style.borderColor = '#86efac'; btn.style.background = '#f0fdf4'; btn.style.color = '#166534';
     btn.innerHTML = '✅ ' + btn.textContent;
+    if (window._asSentState) window._asSentState.correctPicked++;
   } else {
     btn.style.borderColor = '#fca5a5'; btn.style.background = '#fef2f2'; btn.style.color = '#991b1b';
     btn.innerHTML = '❌ ' + btn.textContent;
   }
-  // Check if all answered
+  if (window._asSentState) window._asSentState.picked++;
+  // Complete when user has picked all correct ones OR clicked all buttons
+  var st = window._asSentState;
   var remaining = document.querySelectorAll('.as-sent-btn:not([disabled])');
-  if (!remaining.length) {
+  if (!remaining.length || (st && st.correctPicked >= st.correctTotal)) {
+    // Disable remaining buttons and show their state
+    remaining.forEach(function(b) {
+      b.disabled = true;
+      if (b.getAttribute('data-correct') === '1') {
+        b.style.borderColor = '#86efac'; b.style.background = '#f0fdf4'; b.style.color = '#166534';
+        b.innerHTML = '✅ ' + b.textContent;
+      } else {
+        b.style.opacity = '0.5';
+      }
+    });
     var fb = document.getElementById('as-sent-fb');
     if (fb) fb.innerHTML = '<div style="text-align:center;padding:12px;background:#f0fdf4;border-radius:8px;color:#166534;font-weight:700;font-size:13px">🎉 Bonus complete!</div>';
     _asSetNav('none','');
@@ -12696,8 +12714,10 @@ async function asToggleTranslation() {
   }
 }
 function asMarkDone() {
+  try {
   _asStepDone[_asStep-1]=true; _asSaveProgress(); _asTmpCompletion();
   _asTmpStep5((document.getElementById('as-write-ta')||{}).value||'');
+  } catch(e) { console.warn('asMarkDone save error:', e); }
   document.getElementById('as-article-content').innerHTML='';
   document.getElementById('as-activity-area').innerHTML=
     '<div class="su-complete">'
