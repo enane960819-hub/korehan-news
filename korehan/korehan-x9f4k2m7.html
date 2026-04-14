@@ -7304,6 +7304,8 @@ async function srLoadFeedbackDashboard() {
 var _fbPatternIconsAdmin = { SPELLING:'✏️', PARTICLE:'🔗', TENSE:'⏰', WORD_ORDER:'🔀', VOCAB:'📖', NUANCE:'💬' };
 var _fbPatternLabelsAdmin = { SPELLING:'맞춤법', PARTICLE:'조사', TENSE:'시제', WORD_ORDER:'어순', VOCAB:'어휘', NUANCE:'뉘앙스' };
 var _fbModalRow = null; // currently open row in modal
+var _fbModalGroupRows = []; // all same-user-same-day rows
+var _fbModalGroupIdx = 0;  // which tab is active
 
 function _buildAdminFeedbackDraft(fb) {
   if (!fb) return '';
@@ -7373,10 +7375,14 @@ function srRenderFeedbackPage() {
 function openFbModal(idx) {
   var row = _fbAllRows[idx];
   if (!row) return;
-  _fbModalRow = row;
-  var fb = null;
-  try { fb = typeof row.ai_feedback === 'string' ? JSON.parse(row.ai_feedback) : row.ai_feedback; } catch(e) {}
-  var adminDraft = row.admin_feedback || (fb ? _buildAdminFeedbackDraft(fb) : '');
+
+  // Find all same-user-same-day rows
+  _fbModalGroupRows = _fbAllRows.filter(function(r) {
+    return r.user_id === row.user_id && r.study_date === row.study_date;
+  });
+  _fbModalGroupIdx = _fbModalGroupRows.findIndex(function(r) { return r.id === row.id; });
+  if (_fbModalGroupIdx < 0) _fbModalGroupIdx = 0;
+  _fbModalRow = _fbModalGroupRows[_fbModalGroupIdx];
 
   var old = document.getElementById('fb-detail-modal');
   if (old) old.remove();
@@ -7386,20 +7392,75 @@ function openFbModal(idx) {
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
   overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
 
-  var typeLabels = {writing:'Writing Practice', article_study:'Article Study', conversation:'Conversation', story:'Story', picture:'Picture Description', dictation:'Dictation', grammar:'Grammar Focus'};
   var m = '<div style="background:#fff;border-radius:16px;max-width:900px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.2);margin:10px 0">';
 
-  // Header
-  m += '<div style="padding:16px 20px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between">'
+  // Header: user info + date
+  m += '<div style="padding:16px 20px;border-bottom:1px solid #f0f0f0">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
     + '<div><div style="font-size:16px;font-weight:900">📋 피드백 상세</div>'
-    + '<div style="font-size:12px;color:#64748b">' + (typeLabels[row.content_type]||row.content_type) + ' · ' + (row.study_date||'') + ' · ' + (row.topic_ko||'') + '</div></div>'
+    + '<div style="font-size:12px;color:#64748b">' + (row.study_date||'') + (row.user_id ? ' · ' + row.user_id.slice(0,8) + '…' : '') + '</div></div>'
     + '<button onclick="document.getElementById(\'fb-detail-modal\').remove()" style="background:#f1f5f9;border:none;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px">✕</button></div>';
 
-  // Body: student writing + AI sections as tabs
-  m += '<div style="display:grid;grid-template-columns:1fr 1.2fr;min-height:0" id="fb-modal-body">';
+  // Submission tabs (one per same-user-same-day row)
+  if (_fbModalGroupRows.length > 1) {
+    var typeIcons2 = {writing:'📝', article_study:'📰', conversation:'💬', story:'📖', picture:'🖼️', dictation:'🎧', grammar:'📖'};
+    var typeLabels2 = {writing:'Writing Practice', article_study:'Article Study', conversation:'Conversation', story:'Story', picture:'Picture Description', dictation:'Dictation', grammar:'Grammar Focus'};
+    m += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+    _fbModalGroupRows.forEach(function(gr, gi) {
+      var isActive = gi === _fbModalGroupIdx;
+      m += '<button onclick="switchFbTab(' + gi + ')" style="font-size:11px;font-weight:' + (isActive?'800':'500') + ';padding:5px 12px;border-radius:20px;border:1px solid ' + (isActive?'#3b82f6':'#e2e8f0') + ';background:' + (isActive?'#eff6ff':'#f8fafc') + ';color:' + (isActive?'#1d4ed8':'#64748b') + ';cursor:pointer;font-family:inherit">'
+        + (typeIcons2[gr.content_type]||'📄') + ' ' + (typeLabels2[gr.content_type]||gr.content_type) + '</button>';
+    });
+    m += '</div>';
+  }
+  m += '</div>'; // end header
+
+  // Changeable body + bottom — rendered into a dedicated container
+  m += '<div id="fb-modal-inner">' + _buildFbModalInner(_fbModalGroupIdx) + '</div>';
+
+  m += '</div>';
+  overlay.innerHTML = m;
+  document.body.appendChild(overlay);
+}
+
+function switchFbTab(groupIdx) {
+  _fbModalGroupIdx = groupIdx;
+  _fbModalRow = _fbModalGroupRows[groupIdx];
+  // Re-render inner body
+  var inner = document.getElementById('fb-modal-inner');
+  if (inner) inner.innerHTML = _buildFbModalInner(groupIdx);
+  // Update tab pill styles
+  var modal = document.getElementById('fb-detail-modal');
+  if (!modal) return;
+  var btns = modal.querySelectorAll('button[onclick^="switchFbTab"]');
+  btns.forEach(function(btn, bi) {
+    var isActive = bi === groupIdx;
+    btn.style.fontWeight = isActive ? '800' : '500';
+    btn.style.border = '1px solid ' + (isActive ? '#3b82f6' : '#e2e8f0');
+    btn.style.background = isActive ? '#eff6ff' : '#f8fafc';
+    btn.style.color = isActive ? '#1d4ed8' : '#64748b';
+  });
+}
+
+function _buildFbModalInner(groupIdx) {
+  var row = _fbModalGroupRows[groupIdx];
+  if (!row) return '';
+  var fb = null;
+  try { fb = typeof row.ai_feedback === 'string' ? JSON.parse(row.ai_feedback) : row.ai_feedback; } catch(e) {}
+  var adminDraft = row.admin_feedback || (fb ? _buildAdminFeedbackDraft(fb) : '');
+  var typeLabels = {writing:'Writing Practice', article_study:'Article Study', conversation:'Conversation', story:'Story', picture:'Picture Description', dictation:'Dictation', grammar:'Grammar Focus'};
+
+  var m = '';
+
+  // Sub-header for this submission (content type + topic)
+  m += '<div style="padding:8px 20px 0;font-size:12px;color:#64748b;border-bottom:1px solid #f8fafc">'
+    + (typeLabels[row.content_type]||row.content_type) + (row.topic_ko ? ' · ' + row.topic_ko : '') + '</div>';
+
+  // Body grid: student writing (left) + AI analysis (right)
+  m += '<div style="display:grid;grid-template-columns:1fr 1.2fr;min-height:0">';
 
   // LEFT: Student writing
-  m += '<div style="padding:16px 20px;border-right:1px solid #f0f0f0;overflow-y:auto;max-height:70vh">'
+  m += '<div style="padding:16px 20px;border-right:1px solid #f0f0f0;overflow-y:auto;max-height:65vh">'
     + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:8px">학생 원문</div>'
     + '<div style="font-size:14px;color:#1e293b;line-height:1.8;white-space:pre-wrap;font-family:\'Noto Sans KR\',sans-serif">' + (row.writing_text || '(없음)') + '</div>';
   if (fb && fb.corrected_full) {
@@ -7409,21 +7470,28 @@ function openFbModal(idx) {
   }
   m += '</div>';
 
-  // RIGHT: AI analysis sections as banners
-  m += '<div style="padding:16px 20px;overflow-y:auto;max-height:70vh">'
+  // RIGHT: AI analysis
+  m += '<div style="padding:16px 20px;overflow-y:auto;max-height:65vh">'
     + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:10px">🤖 AI 분석 (평가 요소별)</div>';
 
   if (fb) {
-    // Score banner
-    if (fb.score !== undefined) {
-      var sc = Number(fb.score);
-      var sCol = sc >= 80 ? '#15803d' : sc >= 60 ? '#a16207' : '#dc2626';
-      var sBg = sc >= 80 ? '#f0fdf4' : sc >= 60 ? '#fefce8' : '#fef2f2';
-      m += '<div style="padding:12px 14px;background:' + sBg + ';border:1px solid ' + sCol + '33;border-radius:10px;margin-bottom:8px;display:flex;align-items:center;gap:10px">'
-        + '<div style="width:44px;height:44px;border-radius:50%;border:3px solid ' + sCol + ';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:' + sCol + '">' + sc + '</div>'
-        + '<div style="flex:1"><div style="font-size:11px;font-weight:700;color:' + sCol + '">종합 점수</div>'
-        + '<div style="font-size:13px;color:#475569;line-height:1.5">' + (fb.overall||'') + '</div></div></div>';
-    }
+    // Score banner — editable score + overall
+    var sc = fb.score !== undefined ? Number(fb.score) : null;
+    var sCol = sc !== null ? (sc >= 80 ? '#15803d' : sc >= 60 ? '#a16207' : '#dc2626') : '#64748b';
+    var sBg = sc !== null ? (sc >= 80 ? '#f0fdf4' : sc >= 60 ? '#fefce8' : '#fef2f2') : '#f8fafc';
+    m += '<div style="padding:12px 14px;background:' + sBg + ';border:1px solid ' + sCol + '33;border-radius:10px;margin-bottom:8px">'
+      + '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">'
+      + '<div style="display:flex;flex-direction:column;align-items:center;gap:4px">'
+      + '<div style="font-size:10px;font-weight:700;color:' + sCol + ';white-space:nowrap">종합 점수</div>'
+      + '<input type="number" id="fb-modal-ai-score" min="0" max="100" value="' + (sc !== null ? sc : '') + '" style="width:56px;height:44px;border-radius:50%;border:3px solid ' + sCol + ';text-align:center;font-size:17px;font-weight:900;color:' + sCol + ';background:transparent;outline:none;-moz-appearance:textfield;appearance:textfield">'
+      + '</div>'
+      + '<div style="flex:1">'
+      + '<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">전반적 평가 (편집 가능)</div>'
+      + '<textarea id="fb-modal-ai-overall" rows="3" style="width:100%;font-size:12px;color:#475569;line-height:1.5;border:1px solid #e2e8f0;border-radius:8px;padding:6px 8px;font-family:\'Noto Sans KR\',sans-serif;resize:vertical">' + (fb.overall||'') + '</textarea>'
+      + '</div></div>'
+      + '<div style="text-align:right">'
+      + '<button onclick="fbModalSaveAIEdits()" style="font-size:11px;font-weight:700;padding:5px 12px;background:#f0fdf4;color:#15803d;border:1px solid #86efac;border-radius:6px;cursor:pointer;font-family:inherit">💾 AI 수정 저장</button>'
+      + '</div></div>';
 
     // Corrections banner
     if (fb.corrections && fb.corrections.length) {
@@ -7512,14 +7580,32 @@ function openFbModal(idx) {
     + (row.status === 'submitted' ? '<button onclick="fbModalRetriggerAI()" style="font-size:12px;padding:8px 16px;background:#fefce8;color:#a16207;border:1px solid #fde047;border-radius:8px;cursor:pointer;font-family:inherit">🤖 AI 재생성</button>' : '')
     + '</div></div>';
 
-  m += '</div>';
-  overlay.innerHTML = m;
-  document.body.appendChild(overlay);
+  return m;
 }
 
 function _fbModalFb() {
   if (!_fbModalRow || !_fbModalRow.ai_feedback) return null;
   try { return typeof _fbModalRow.ai_feedback === 'string' ? JSON.parse(_fbModalRow.ai_feedback) : _fbModalRow.ai_feedback; } catch(e) { return null; }
+}
+
+async function fbModalSaveAIEdits() {
+  if (!_fbModalRow) return;
+  var sb = getSb(); if (!sb) return;
+  var scoreEl = document.getElementById('fb-modal-ai-score');
+  var overallEl = document.getElementById('fb-modal-ai-overall');
+  if (!scoreEl || !overallEl) { toast('편집 필드를 찾을 수 없습니다.'); return; }
+  var newScore = parseInt(scoreEl.value);
+  var newOverall = overallEl.value.trim();
+  if (isNaN(newScore) || newScore < 0 || newScore > 100) { toast('유효한 점수(0-100)를 입력하세요.'); return; }
+  var existing = _fbModalFb() || {};
+  var updated = Object.assign({}, existing, { score: newScore, overall: newOverall });
+  var r = await sb.from('user_submissions').update({ ai_feedback: updated }).eq('id', _fbModalRow.id);
+  if (r.error) { toast('저장 실패: ' + r.error.message); return; }
+  // Update local cache
+  _fbModalRow.ai_feedback = updated;
+  var allIdx = _fbAllRows.findIndex(function(r2) { return r2.id === _fbModalRow.id; });
+  if (allIdx >= 0) _fbAllRows[allIdx].ai_feedback = updated;
+  toast('AI 피드백 저장 완료');
 }
 
 async function fbModalApprove() {
