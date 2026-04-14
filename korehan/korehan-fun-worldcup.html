@@ -99,9 +99,9 @@ var _cat='date',_pool=[],_next=[],_round=8,_total=0,_done=0;
 
 function shuffle(a){var b=a.slice();for(var i=b.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=b[i];b[i]=b[j];b[j]=t;}return b;}
 
-function showStart(){
+window.showStart=function(){
   var el=document.getElementById('game');
-  el.innerHTML='<div class="start"><a href="korehan-fun.html" class="back" style="position:absolute;top:16px;left:16px">&larr; Playground</a><div class="start-emoji">⚔️</div><h2>Ideal Type World Cup</h2><p>Pick your favorite in each matchup! Tournament bracket until one winner remains.</p>'
+  el.innerHTML='<div class="start"><div class="start-emoji">⚔️</div><h2>Ideal Type World Cup</h2><p>Pick your favorite in each matchup! Tournament bracket until one winner remains.</p>'
     +'<div class="category-btns">'+Object.keys(CATS).map(function(k){return '<div class="cat-btn'+(k===_cat?' on':'')+'" onclick="setCat(\''+k+'\')">'+CATS[k].label+'</div>';}).join('')+'</div>'
     +'<button class="btn btn-primary" onclick="startWC()">START ⚔️</button></div>';
 }

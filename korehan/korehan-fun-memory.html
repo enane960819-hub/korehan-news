@@ -23,9 +23,9 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'DM Sans','Noto Sans 
 .card-grid.hard{grid-template-columns:repeat(6,1fr);max-width:660px}
 
 /* ── Card ── */
-.card{perspective:600px;cursor:pointer;aspect-ratio:3/4;position:relative}
-.card-inner{width:100%;height:100%;transition:transform 0.4s cubic-bezier(.4,.0,.2,1);transform-style:preserve-3d;position:relative}
-.card.flipped .card-inner{transform:rotateY(180deg)}
+.card{-webkit-perspective:600px;perspective:600px;cursor:pointer;aspect-ratio:3/4;position:relative}
+.card-inner{width:100%;height:100%;transition:transform 0.4s cubic-bezier(.4,.0,.2,1);transform-style:preserve-3d;-webkit-transform-style:preserve-3d;position:relative}
+.card.flipped .card-inner{transform:rotateY(180deg);-webkit-transform:rotateY(180deg)}
 .card-front,.card-back{backface-visibility:hidden;-webkit-backface-visibility:hidden;position:absolute;inset:0;border-radius:12px;display:flex;align-items:center;justify-content:center;padding:6px;text-align:center;font-weight:700;border:2px solid transparent;overflow:hidden}
 
 /* face-down front */
