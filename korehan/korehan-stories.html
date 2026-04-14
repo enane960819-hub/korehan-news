@@ -863,7 +863,7 @@ function openStory(id) {
   }
 
   var vocab = (s.vocab||[]).map(function(v) {
-    return '<div class="st-vocab-item">'
+    return '<div class="st-vocab-item" data-ko="' + String(v.ko||'').replace(/"/g,'&quot;') + '">'
       + '<span class="st-vi-ko">' + v.ko + '</span>'
       + '<span class="st-vi-rom">' + v.rom + '</span>'
       + '<span class="st-vi-en">' + v.en + '</span>'
@@ -928,6 +928,27 @@ function openStory(id) {
   if (typeof restoreSaveButtons === 'function') restoreSaveButtons('st-overlay');
 }
 
+function stPlayAudio(text) {
+  if (!text) return;
+  // Try Web Speech API with Korean voice
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+    var utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'ko-KR';
+    utter.rate = 0.85;
+    // Find Korean voice
+    var voices = window.speechSynthesis.getVoices();
+    var koVoice = voices.find(function(v){ return v.lang && v.lang.indexOf('ko') === 0; });
+    if (koVoice) utter.voice = koVoice;
+    window.speechSynthesis.speak(utter);
+  }
+}
+// Preload voices (some browsers need this)
+if (window.speechSynthesis) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = function(){ window.speechSynthesis.getVoices(); };
+}
+
 function startStoryListeningQuiz() {
   var el = document.getElementById('st-listening-quiz');
   if (!el) return;
@@ -949,7 +970,7 @@ function startStoryListeningQuiz() {
     var opts = items.map(function(x){return x.en;}).sort(function(){return Math.random()-.5;}).slice(0,3);
     if (opts.indexOf(v.en)<0) opts[Math.floor(Math.random()*3)] = v.en;
     el.innerHTML='<div style="text-align:center;margin-bottom:12px"><div style="font-size:12px;color:#64748b;margin-bottom:8px">Listen and pick the meaning ('+(qi+1)+'/'+items.length+')</div>'
-      +'<button onclick="if(typeof ttsSpeak===\'function\')ttsSpeak(\''+v.ko.replace(/'/g,"\\'")+'\')" style="padding:12px 24px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;font-size:16px;cursor:pointer;font-family:inherit">🔊 Play</button></div>'
+      +'<button onclick="stPlayAudio(\''+v.ko.replace(/'/g,"\\'")+'\')" style="padding:12px 24px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;font-size:16px;cursor:pointer;font-family:inherit">🔊 Play</button></div>'
       +'<div style="display:flex;flex-direction:column;gap:6px">'+opts.map(function(o){
         return '<button onclick="stListenPick(this,\''+o.replace(/'/g,"\\'")+'\',\''+v.en.replace(/'/g,"\\'")+'\')" style="padding:10px 14px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;cursor:pointer;font-family:inherit;text-align:left">'+o+'</button>';
       }).join('')+'</div>';
@@ -1015,13 +1036,9 @@ async function loadStoriesFromDB() {
           author_slug: story.author_slug || (typeof pickCharacterSlug === 'function' ? pickCharacterSlug(String(story.id || story.title || row.id) + '-story') : '')
         });
       }).filter(Boolean);
-      // DB stories replace hardcoded ones; keep hardcoded only if title not in DB
-      var dbTitles = new Set(dbStories.map(function(s){ return s.title; }));
-      var fallbacks = STORIES.filter(function(s){ return !dbTitles.has(s.title); });
-      // Rebuild STORIES: DB first, then any hardcoded not covered
+      // Use DB stories only — hardcoded fallbacks removed (they lack proper IDs and don't open)
       STORIES.length = 0;
       dbStories.forEach(function(s){ STORIES.push(s); });
-      fallbacks.forEach(function(s){ STORIES.push(s); });
     }
     renderStories();
     // Load series

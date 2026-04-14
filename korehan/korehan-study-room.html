@@ -2764,6 +2764,20 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   </div>
 </div>
 
+<!-- ═══ WEAK GRAMMAR DRILL MODAL ═══════════════════════════════ -->
+<div class="woverlay hidden" id="wg-drill-modal" onclick="if(event.target===this)closeWGDrill()">
+  <div style="background:#fff;border-radius:22px;width:min(560px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.25)">
+    <div style="background:linear-gradient(135deg,#92400e,#b45309);padding:20px 24px;border-radius:22px 22px 0 0;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.5);margin-bottom:4px">WEAK GRAMMAR DRILL</div>
+        <div style="font-size:18px;font-weight:900;color:#fff;font-family:'Noto Serif KR',serif" id="wg-drill-title"></div>
+      </div>
+      <button onclick="closeWGDrill()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer">&times;</button>
+    </div>
+    <div id="wg-drill-body" style="padding:20px 24px"></div>
+  </div>
+</div>
+
 <!-- ═══ GRAMMAR FOCUS MODAL ══════════════════════════════════════ -->
 <div class="woverlay hidden" id="gf-modal" onclick="if(event.target===this)closeGrammarFocusModal()">
   <div class="gf-modal-panel" style="background:#fff;border-radius:22px;width:min(680px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.25);display:flex;flex-direction:column">
@@ -3055,7 +3069,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   var _focusSource = _urlParams.get('source') || '';
   var _hasFocusGrammar = _urlParams.get('focus') && (
     _focusSource === 'grammar-guide' ||
-    _focusSource === 'home-weak-grammar' ||
     _focusSource === 'growth-lab'
   );
   if (_hasFocusGrammar) {
@@ -3093,6 +3106,18 @@ document.addEventListener('DOMContentLoaded', async function() {
       } else { _focusWaited++; setTimeout(waitAndOpenGFModal, 150); }
     }
     setTimeout(waitAndOpenGFModal, 400);
+  }
+
+  // Weak Grammar Drill from homepage or Growth Lab
+  if (_urlParams.get('focus') && _focusSource === 'home-weak-grammar') {
+    var _wgFocusName = decodeURIComponent(_urlParams.get('focus') || '');
+    var _wgWaited = 0;
+    function waitAndOpenWGDrill() {
+      if (window._sessionChecked || _wgWaited >= 30) {
+        setTimeout(function() { openWeakGrammarDrill(_wgFocusName); }, 500);
+      } else { _wgWaited++; setTimeout(waitAndOpenWGDrill, 150); }
+    }
+    setTimeout(waitAndOpenWGDrill, 400);
   }
 
   // URL 파라미터로 conversations/stories에서 넘어온 경우
@@ -5717,14 +5742,17 @@ var _FT_SCENARIOS = [
     size_q:   { type:'npc', x:56, y:50, label:'사이즈 선택', npc:'바리스타', scene:'카페 카운터',
                 text:'사이즈 어떤 걸로 하시겠어요? 톨, 그란데, 벤티 있어요.', textEn:'What size? We have Tall, Grande, Venti.',
                 choices:[
-                  { id:'s1', text:'톨 사이즈로 주세요', textEn:'Tall size please', next:'pay_q', pts:3, phrase:'톨 사이즈로 주세요' },
-                  { id:'s2', text:'제일 큰 거로 주세요', textEn:'The biggest one please', next:'pay_q', pts:2, phrase:'제일 큰 거로 주세요' },
-                  { id:'s3', text:'사이즈가 뭐예요?', textEn:'What are the sizes?', next:'size_explain', pts:1, phrase:'사이즈가 뭐예요?' }
+                  { id:'s1', text:'톨로 주세요', textEn:'Tall please', next:'pay_q', pts:3, phrase:'톨로 주세요' },
+                  { id:'s2', text:'그란데로 주세요', textEn:'Grande please', next:'pay_q', pts:3, phrase:'그란데로 주세요' },
+                  { id:'s3', text:'벤티로 주세요', textEn:'Venti please', next:'pay_q', pts:3, phrase:'벤티로 주세요' },
+                  { id:'s4', text:'사이즈가 뭐예요?', textEn:'What are the sizes?', next:'size_explain', pts:1, phrase:'사이즈가 뭐예요?' }
                 ]},
     size_explain:{ type:'npc', x:68, y:25, label:'사이즈 설명', npc:'바리스타', scene:'카페 카운터',
                 text:'톨이 제일 작고요, 그란데가 중간, 벤티가 제일 커요!', textEn:'Tall is the smallest, Grande is medium, Venti is the largest!',
                 choices:[
-                  { id:'se1', text:'그란데로 할게요', textEn:'I\'ll have Grande', next:'pay_q', pts:2, phrase:'그란데로 할게요' }
+                  { id:'se1', text:'그란데로 할게요', textEn:'I\'ll have Grande', next:'pay_q', pts:2, phrase:'그란데로 할게요' },
+                  { id:'se2', text:'벤티로 할게요', textEn:'I\'ll have Venti', next:'pay_q', pts:2, phrase:'벤티로 할게요' },
+                  { id:'se3', text:'톨로 할게요', textEn:'I\'ll have Tall', next:'pay_q', pts:2, phrase:'톨로 할게요' }
                 ]},
     pay_q:    { type:'npc', x:76, y:50, label:'결제', npc:'바리스타', scene:'카페 카운터',
                 text:'결제는 어떻게 하시겠어요?', textEn:'How would you like to pay?',
@@ -11255,6 +11283,143 @@ async function generateGFPatterns() {
   } catch(e) {
     if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Please sign in to use Grammar Focus.</div>';
   }
+}
+
+// ─── Weak Grammar Drill (separate from Grammar Focus) ───────
+var _wgDrillState = { questions:[], idx:0, score:0, grammar:'' };
+
+function openWeakGrammarDrill(grammarName) {
+  _wgDrillState = { questions:[], idx:0, score:0, grammar:grammarName };
+  var modal = document.getElementById('wg-drill-modal');
+  var title = document.getElementById('wg-drill-title');
+  var body  = document.getElementById('wg-drill-body');
+  if (!modal || !body) return;
+  if (title) title.textContent = grammarName;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:28px;margin-bottom:10px">✨</div><div style="font-size:14px;color:#64748b">Generating 5 drill questions for <b>' + grammarName + '</b>…</div></div>';
+  generateWGDrillQuestions(grammarName);
+}
+
+function closeWGDrill() {
+  var modal = document.getElementById('wg-drill-modal');
+  if (modal) modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+async function generateWGDrillQuestions(grammarName) {
+  var body = document.getElementById('wg-drill-body');
+  try {
+    var res = await callClaude({
+      feature: 'weak-grammar-drill',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content:
+        'Korean grammar drill generator.\n'
+        + 'Grammar point: "' + grammarName + '"\n\n'
+        + 'Create exactly 5 multiple-choice questions testing this grammar point.\n'
+        + 'Mix question types: fill-in-blank, error correction, sentence completion, choose correct usage.\n'
+        + 'Each question must have 1 correct answer and 2 wrong answers.\n\n'
+        + 'Return ONLY valid JSON:\n'
+        + '{"explanation":"Brief English explanation of this grammar (2 sentences max)","questions":[{"q":"question text (use ___ for blanks)","choices":["A","B","C"],"correct":0,"hint":"short English hint why correct"}]}'
+      }]
+    });
+    var raw = (res.content && res.content[0] && res.content[0].text) || '';
+    var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+    var parsed = JSON.parse(raw.slice(oi, ei + 1));
+    if (parsed.questions && parsed.questions.length) {
+      _wgDrillState.questions = parsed.questions;
+      _wgDrillState.explanation = parsed.explanation || '';
+      _wgDrillState.idx = 0;
+      _wgDrillState.score = 0;
+      renderWGDrillIntro();
+    } else {
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Failed to generate. Please try again.</div>';
+    }
+  } catch(e) {
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Error: ' + (e.message||'unknown') + '</div>';
+  }
+}
+
+function renderWGDrillIntro() {
+  var body = document.getElementById('wg-drill-body');
+  if (!body) return;
+  var st = _wgDrillState;
+  body.innerHTML =
+    '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:14px 16px;margin-bottom:16px">'
+    + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#92400e;margin-bottom:4px">About this grammar</div>'
+    + '<div style="font-size:14px;color:#78350f;line-height:1.6">' + (st.explanation || st.grammar) + '</div>'
+    + '</div>'
+    + '<div style="text-align:center">'
+    + '<div style="font-size:14px;color:#64748b;margin-bottom:12px">' + st.questions.length + ' questions · Fill-in, correction, completion</div>'
+    + '<button onclick="renderWGDrillQuestion()" style="padding:12px 28px;background:linear-gradient(135deg,#b45309,#d97706);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Start Drill →</button>'
+    + '</div>';
+}
+
+function renderWGDrillQuestion() {
+  var body = document.getElementById('wg-drill-body');
+  if (!body) return;
+  var st = _wgDrillState;
+  if (st.idx >= st.questions.length) { renderWGDrillResult(); return; }
+  var q = st.questions[st.idx];
+  var shuffled = (q.choices || []).map(function(c, i){ return { text:c, origIdx:i }; }).sort(function(){ return Math.random()-.5; });
+  body.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+    + '<span style="font-size:11px;font-weight:800;color:#94a3b8">QUESTION ' + (st.idx+1) + ' / ' + st.questions.length + '</span>'
+    + '<span style="font-size:11px;font-weight:700;color:#b45309">' + st.score + ' correct</span>'
+    + '</div>'
+    + '<div style="font-size:16px;font-weight:700;color:#0f172a;line-height:1.6;margin-bottom:16px;font-family:\'Noto Sans KR\',sans-serif">' + (q.q||'') + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px" id="wg-choices">'
+    + shuffled.map(function(c) {
+      return '<button class="wg-choice-btn" onclick="pickWGDrillAnswer(this,' + c.origIdx + ',' + (q.correct||0) + ')" style="padding:12px 16px;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;color:#0f172a;font-size:14px;font-weight:600;cursor:pointer;text-align:left;font-family:\'Noto Sans KR\',sans-serif;transition:.15s">' + c.text + '</button>';
+    }).join('')
+    + '</div>'
+    + '<div id="wg-feedback" style="margin-top:12px"></div>';
+}
+
+function pickWGDrillAnswer(btn, chosenIdx, correctIdx) {
+  var buttons = document.querySelectorAll('.wg-choice-btn');
+  buttons.forEach(function(b){ b.disabled = true; b.style.cursor = 'default'; });
+  var isCorrect = chosenIdx === correctIdx;
+  if (isCorrect) {
+    _wgDrillState.score++;
+    btn.style.borderColor = '#86efac'; btn.style.background = '#f0fdf4'; btn.style.color = '#15803d';
+  } else {
+    btn.style.borderColor = '#fca5a5'; btn.style.background = '#fff1f2'; btn.style.color = '#b91c1c';
+    buttons.forEach(function(b) {
+      var bIdx = parseInt(b.getAttribute('onclick').match(/pickWGDrillAnswer\(this,(\d+)/)[1]);
+      if (bIdx === correctIdx) { b.style.borderColor = '#86efac'; b.style.background = '#f0fdf4'; b.style.color = '#15803d'; }
+    });
+  }
+  var fb = document.getElementById('wg-feedback');
+  var q = _wgDrillState.questions[_wgDrillState.idx];
+  if (fb) fb.innerHTML =
+    '<div style="padding:10px 14px;border-radius:10px;background:' + (isCorrect ? '#f0fdf4;border:1px solid #bbf7d0' : '#fff1f2;border:1px solid #fecaca') + ';font-size:13px;color:' + (isCorrect ? '#166534' : '#991b1b') + '">'
+    + (isCorrect ? '✅ Correct!' : '❌ Incorrect') + (q.hint ? ' — ' + q.hint : '')
+    + '</div>';
+  _wgDrillState.idx++;
+  setTimeout(renderWGDrillQuestion, 1500);
+}
+
+function renderWGDrillResult() {
+  var body = document.getElementById('wg-drill-body');
+  if (!body) return;
+  var st = _wgDrillState;
+  var pct = st.questions.length > 0 ? Math.round(st.score / st.questions.length * 100) : 0;
+  var emoji = pct >= 80 ? '🎉' : pct >= 60 ? '👍' : '💪';
+  var msg = pct >= 80 ? 'Great job! This grammar is getting solid.' : pct >= 60 ? 'Good effort! A bit more practice will help.' : 'Keep practicing — you\'ll get there!';
+  body.innerHTML =
+    '<div style="text-align:center;padding:20px">'
+    + '<div style="font-size:40px;margin-bottom:8px">' + emoji + '</div>'
+    + '<div style="font-size:32px;font-weight:900;color:#0f172a;margin-bottom:4px">' + pct + '%</div>'
+    + '<div style="font-size:14px;color:#64748b;margin-bottom:4px">' + st.score + ' / ' + st.questions.length + ' correct</div>'
+    + '<div style="font-size:13px;color:#78350f;background:#fffbeb;border-radius:8px;padding:8px 12px;display:inline-block;margin-bottom:16px">' + msg + '</div>'
+    + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
+    + '<button onclick="_wgDrillState.idx=0;_wgDrillState.score=0;renderWGDrillIntro()" style="padding:10px 18px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;color:#475569;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Try Again</button>'
+    + '<button onclick="closeWGDrill()" style="padding:10px 18px;border:none;border-radius:10px;background:linear-gradient(135deg,#b45309,#d97706);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Done ✓</button>'
+    + '</div></div>';
+  // Track result
+  if (typeof dmTrackQuiz === 'function') dmTrackQuiz();
 }
 
 // ─── Generate grammar patterns for a specific focus point ───
