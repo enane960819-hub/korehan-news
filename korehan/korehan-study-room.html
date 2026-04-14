@@ -2409,6 +2409,21 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
     <div id="sr-checklist-box"></div>
   </div>
 
+  <!-- GRAMMAR PATH BANNER -->
+  <div class="sr-sb-panel" style="padding:12px 14px">
+    <div id="grammar-path-banner">
+      <div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openGrammarFocusForCurriculum()">
+        <span style="font-size:18px">📐</span>
+        <div style="flex:1;min-width:0;overflow:hidden">
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.5);margin-bottom:1px">Grammar Path</div>
+          <div style="font-size:12px;font-weight:700;color:#fff">0/45 mastered</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:1px">Next: <span style="color:#86efac;font-weight:700">은/는 vs 이/가</span> <span style="font-size:10px;opacity:.65">(Beginner)</span></div>
+        </div>
+        <span style="font-size:12px;color:rgba(255,255,255,.3);flex-shrink:0">&#8250;</span>
+      </div>
+    </div>
+  </div>
+
   <!-- ② FLASHCARDS -->
   <div class="sr-sb-panel" style="padding:0;overflow:hidden">
     <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
@@ -3002,6 +3017,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   loadStudyDoneState();
   renderStudyChecklist();
+  renderGrammarPathBanner();
   renderPhrase();
 
   // ── START button idle canvas glow ──
@@ -11284,6 +11300,233 @@ function sbNextSentence() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// GRAMMAR CURRICULUM SYSTEM
+// ═══════════════════════════════════════════════════════════════
+
+var GRAMMAR_CURRICULUM = [
+  // -- Beginner (order 1-15) -----------------------------------
+  { pattern: '은/는 vs 이/가', level: 'Beginner', order: 1, desc: 'Topic marker (은/는) vs Subject marker (이/가) — one of the most common sources of confusion.' },
+  { pattern: 'Verb endings: 아요 / 어요', level: 'Beginner', order: 2, desc: 'Standard polite present-tense ending. Every Korean verb needs a conjugated ending.' },
+  { pattern: '을/를 — Object marker', level: 'Beginner', order: 3, desc: 'Marks the direct object of a verb. Essential for basic sentence construction.' },
+  { pattern: '에 vs 에서', level: 'Beginner', order: 4, desc: '에 = location/destination. 에서 = location where an action takes place.' },
+  { pattern: '도 — Also/Too', level: 'Beginner', order: 5, desc: 'Particle meaning "also". 나도 = me too, 여기도 = here too.' },
+  { pattern: '부터 ~ 까지 — From ~ To', level: 'Beginner', order: 6, desc: 'Time/place range. 9시부터 6시까지 = from 9 to 6.' },
+  { pattern: '고 — And (connecting)', level: 'Beginner', order: 7, desc: 'Connects two actions/states. 먹고 마시다 = eat and drink.' },
+  { pattern: '았/었/였 — Past tense', level: 'Beginner', order: 8, desc: 'Add 았/었 to verb stems to express past tense. 했다 = did.' },
+  { pattern: '(으)ㄹ 거예요 — Future tense', level: 'Beginner', order: 9, desc: 'Expresses future plans or predictions. 갈 거예요 = will go.' },
+  { pattern: '고 싶다 — Want to', level: 'Beginner', order: 10, desc: 'Verb stem + 고 싶다 = "I want to ___". Core expression of desire.' },
+  { pattern: '지 마세요 — Don\'t', level: 'Beginner', order: 11, desc: 'Negative imperative. 걱정하지 마세요 = don\'t worry.' },
+  { pattern: '(으)세요 — Honorific imperative', level: 'Beginner', order: 12, desc: 'Polite request or description of someone respected. 앉으세요 = please sit.' },
+  { pattern: '(으)ㄹ 수 있다/없다 — Can/Cannot', level: 'Beginner', order: 13, desc: 'Express ability or possibility. 할 수 있다 = can do.' },
+  { pattern: '(이)나 — Or / As many as', level: 'Beginner', order: 14, desc: 'Choice or emphasis on amount. 커피나 차 = coffee or tea.' },
+  { pattern: '마다 — Every/Each', level: 'Beginner', order: 15, desc: 'Distribution particle. 날마다 = every day. 사람마다 = each person.' },
+
+  // -- Intermediate (order 1-15) --------------------------------
+  { pattern: '아/어서 — So/Because', level: 'Intermediate', order: 1, desc: 'Cause-and-effect or sequential. 배고파서 밥을 먹었어요 = I was hungry so I ate.' },
+  { pattern: '(으)니까 — Because/Since', level: 'Intermediate', order: 2, desc: 'Cause-reason connector. 추우니까 = because it\'s cold.' },
+  { pattern: '때문에 — Because of', level: 'Intermediate', order: 3, desc: 'Noun + 때문에 or V-기 때문에 for reasons/causes.' },
+  { pattern: '지만 — But/However', level: 'Intermediate', order: 4, desc: 'Contrast connector. 비싸지만 맛있어요 = it\'s expensive but delicious.' },
+  { pattern: '(으)면 — If/When', level: 'Intermediate', order: 5, desc: 'Conditional "if". 비가 오면 = if it rains.' },
+  { pattern: '(으)ㄹ 때 — When', level: 'Intermediate', order: 6, desc: 'Time clause. 어릴 때 = when (I was) young.' },
+  { pattern: '(으)ㄴ/는데 — Background/Contrast', level: 'Intermediate', order: 7, desc: 'Sets up context or soft contrast. 날씨가 좋은데 산책할까요? = the weather is nice, shall we walk?' },
+  { pattern: '(으)면서 — While doing', level: 'Intermediate', order: 8, desc: 'Simultaneous actions. 음악을 들으면서 공부해요 = I study while listening to music.' },
+  { pattern: '아/어 보다 — Try doing', level: 'Intermediate', order: 9, desc: 'Verb + 아/어 보다 = try doing. 먹어 보다 = try eating.' },
+  { pattern: '아/어 주다 — Do for someone', level: 'Intermediate', order: 10, desc: 'Helping verb. 도와주다 = help (do for someone). 사 주다 = buy for someone.' },
+  { pattern: '는 것 — Nominalization', level: 'Intermediate', order: 11, desc: 'Turns verbs into nouns. 먹는 것 = eating (the act of).' },
+  { pattern: '(으)려고 — In order to', level: 'Intermediate', order: 12, desc: 'Purpose clause. 한국어를 배우려고 = in order to learn Korean.' },
+  { pattern: '(으)ㄹ래요 — Shall/Want to', level: 'Intermediate', order: 13, desc: 'Casual intention/suggestion. 갈래요? = shall we go?' },
+  { pattern: '(으)ㄹ까요? — Shall we?', level: 'Intermediate', order: 14, desc: 'Polite suggestion or question about plans. 같이 갈까요? = shall we go together?' },
+  { pattern: '밖에 + negative — Only/Nothing but', level: 'Intermediate', order: 15, desc: 'Used with negatives. 하나밖에 없어요 = there\'s only one.' },
+
+  // -- Advanced (order 1-15) ------------------------------------
+  { pattern: '겠 — Intention/Guess', level: 'Advanced', order: 1, desc: 'Express intention or conjecture. 맛있겠다 = it looks delicious.' },
+  { pattern: '잖아(요) — You know / Obviously', level: 'Advanced', order: 2, desc: 'Implies shared knowledge. 알잖아 = you know, right?' },
+  { pattern: '네요 — Surprise/Realization', level: 'Advanced', order: 3, desc: 'Expresses mild surprise. 맛있네요! = oh, this is delicious!' },
+  { pattern: '(으)ㄴ 적이 있다/없다 — Have done / Never done', level: 'Advanced', order: 4, desc: 'Experience marker. 한국에 간 적이 있어요 = I\'ve been to Korea.' },
+  { pattern: '처럼 / 같이 — Like/As', level: 'Advanced', order: 5, desc: 'Comparison particles. 배우처럼 = like an actor. 나같이 = like me.' },
+  { pattern: '(으)ㄹ 줄 알다/모르다 — Know how to / Don\'t know how to', level: 'Advanced', order: 6, desc: 'Ability from learned skill. 수영할 줄 알아요 = I know how to swim.' },
+  { pattern: '기로 하다 — Decide to', level: 'Advanced', order: 7, desc: 'Making decisions. 유학 가기로 했어요 = I decided to study abroad.' },
+  { pattern: '(이)라서 — Because it is', level: 'Advanced', order: 8, desc: 'Noun + reason. 학생이라서 할인돼요 = because I\'m a student, I get a discount.' },
+  { pattern: '든지 — Whatever/Whenever', level: 'Advanced', order: 9, desc: 'Indifference or any-choice. 언제든지 = whenever. 뭐든지 = whatever.' },
+  { pattern: '말고 — Not that, but', level: 'Advanced', order: 10, desc: 'Rejection/alternative. 이거 말고 저거 = not this, that one.' },
+  { pattern: '(으)ㄹ 뻔하다 — Almost did', level: 'Advanced', order: 11, desc: 'Near-miss situations. 넘어질 뻔했어요 = I almost fell.' },
+  { pattern: '더라(고요) — I noticed that', level: 'Advanced', order: 12, desc: 'Recounting personal observation. 맛있더라고요 = I found it was tasty.' },
+  { pattern: '(으)ㄴ/는 편이다 — Tend to', level: 'Advanced', order: 13, desc: 'Moderate tendency. 매운 걸 잘 먹는 편이에요 = I tend to eat spicy food well.' },
+  { pattern: '(으)ㄹ 텐데 — Probably / I expect', level: 'Advanced', order: 14, desc: 'Expectation or concern. 힘들 텐데 = it must be hard.' },
+  { pattern: '게 되다 — End up / Come to', level: 'Advanced', order: 15, desc: 'Unplanned result. 한국에 살게 되었어요 = I ended up living in Korea.' }
+];
+
+// -- Curriculum localStorage key ------------------------------
+var _GC_STORAGE_KEY = 'kh_grammar_curriculum_progress';
+var _GC_MASTERY_ATTEMPTS = 3;   // min attempts before mastery can be granted
+var _GC_MASTERY_ACCURACY = 0.8; // 80% accuracy required
+
+function _loadGrammarProgress() {
+  try { return JSON.parse(localStorage.getItem(_GC_STORAGE_KEY) || '{}'); } catch(e) { return {}; }
+}
+
+function _saveGrammarProgress(prog) {
+  try { localStorage.setItem(_GC_STORAGE_KEY, JSON.stringify(prog)); } catch(e) {}
+}
+
+// Call this after each grammar exercise to record result
+function updateGrammarMastery(patternName, wasCorrect) {
+  if (!patternName) return;
+  var prog = _loadGrammarProgress();
+  if (!prog[patternName]) {
+    prog[patternName] = { attempts: 0, correct: 0, mastered: false, lastPracticed: null };
+  }
+  var entry = prog[patternName];
+  entry.attempts++;
+  if (wasCorrect) entry.correct++;
+  entry.lastPracticed = new Date().toISOString();
+  // Check mastery threshold
+  if (!entry.mastered && entry.attempts >= _GC_MASTERY_ATTEMPTS) {
+    var accuracy = entry.correct / entry.attempts;
+    if (accuracy >= _GC_MASTERY_ACCURACY) {
+      entry.mastered = true;
+    }
+  }
+  prog[patternName] = entry;
+  _saveGrammarProgress(prog);
+  // Refresh banner if visible
+  renderGrammarPathBanner();
+}
+
+// Returns {total, mastered, inProgress, notStarted}
+function getGrammarMasteryStats() {
+  var prog = _loadGrammarProgress();
+  var total = GRAMMAR_CURRICULUM.length;
+  var mastered = 0, inProgress = 0, notStarted = 0;
+  GRAMMAR_CURRICULUM.forEach(function(item) {
+    var entry = prog[item.pattern];
+    if (!entry || entry.attempts === 0) {
+      notStarted++;
+    } else if (entry.mastered) {
+      mastered++;
+    } else {
+      inProgress++;
+    }
+  });
+  return { total: total, mastered: mastered, inProgress: inProgress, notStarted: notStarted };
+}
+
+// Returns the next unmastered pattern in curriculum order, or null if all mastered
+function getNextCurriculumPattern() {
+  var prog = _loadGrammarProgress();
+  var levelOrder = ['Beginner', 'Intermediate', 'Advanced'];
+  for (var li = 0; li < levelOrder.length; li++) {
+    var level = levelOrder[li];
+    var inLevel = GRAMMAR_CURRICULUM.filter(function(p) { return p.level === level; });
+    inLevel.sort(function(a, b) { return a.order - b.order; });
+    for (var pi = 0; pi < inLevel.length; pi++) {
+      var item = inLevel[pi];
+      var entry = prog[item.pattern];
+      if (!entry || !entry.mastered) return item;
+    }
+  }
+  return null; // All mastered
+}
+
+// Render the Grammar Path banner into #grammar-path-banner
+function renderGrammarPathBanner() {
+  var banner = document.getElementById('grammar-path-banner');
+  if (!banner) return;
+  var stats = getGrammarMasteryStats();
+  var next  = getNextCurriculumPattern();
+  var allDone = stats.mastered >= stats.total;
+
+  if (allDone) {
+    banner.innerHTML = '<div style="display:flex;align-items:center;gap:10px">'
+      + '<span style="font-size:18px">🏆</span>'
+      + '<div><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#15803d">Grammar Path</div>'
+      + '<div style="font-size:12px;font-weight:700;color:#166534">All 45 patterns mastered!</div>'
+      + '</div></div>';
+    return;
+  }
+
+  var nextLabel = next ? next.pattern : '—';
+  var levelTag  = next ? next.level   : '';
+  var levelColors = { Beginner:'#86efac', Intermediate:'#fde68a', Advanced:'#fca5a5' };
+  var lc = levelColors[levelTag] || '#7ab8f5';
+
+  banner.innerHTML = '<div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openGrammarFocusForCurriculum()">'
+    + '<span style="font-size:18px">📐</span>'
+    + '<div style="flex:1;min-width:0;overflow:hidden">'
+    + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.5);margin-bottom:1px">Grammar Path</div>'
+    + '<div style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
+    + stats.mastered + '/' + stats.total + ' mastered'
+    + (stats.inProgress ? ' &middot; <span style="color:#facc15">' + stats.inProgress + ' in progress</span>' : '')
+    + '</div>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
+    + 'Next: <span style="color:' + lc + ';font-weight:700">' + nextLabel + '</span>'
+    + (levelTag ? ' <span style="font-size:10px;opacity:.65">(' + levelTag + ')</span>' : '')
+    + '</div>'
+    + '</div>'
+    + '<span style="font-size:12px;color:rgba(255,255,255,.3);flex-shrink:0">&#8250;</span>'
+    + '</div>';
+}
+
+// Open Grammar Focus modal pre-loaded with the next curriculum pattern
+function openGrammarFocusForCurriculum() {
+  var next = getNextCurriculumPattern();
+  if (!next) { openGrammarFocusModal(); return; }
+
+  if (!ensureStudyUnlocked()) return;
+  var modal = document.getElementById('gf-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  switchGFTab('learn', document.getElementById('gft-learn'));
+
+  var el = document.getElementById('gf-examples-content');
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">&#10024; Loading grammar…</div>';
+
+  // Remember which curriculum pattern we are studying
+  window._gcCurrentPattern = next.pattern;
+
+  _generateGrammarForCurriculumPattern(next);
+}
+
+async function _generateGrammarForCurriculumPattern(item) {
+  var el = document.getElementById('gf-examples-content');
+  try {
+    var res = await callClaude({
+      feature: 'grammar-curriculum',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1800,
+      messages: [{ role: 'user', content:
+        'You are a Korean grammar teacher. Create a structured lesson for ONE specific grammar pattern.\n'
+        + 'Grammar point: "' + item.pattern + '" (Level: ' + item.level + ')\n'
+        + 'Description: ' + item.desc + '\n\n'
+        + 'Provide:\n'
+        + '- name: "' + item.pattern + '" (exactly as given)\n'
+        + '- level: "' + item.level + '"\n'
+        + '- exp: clear English explanation (2-3 sentences)\n'
+        + '- structure: grammatical formula\n'
+        + '- when_to_use: one short English tip\n'
+        + '- watch_out: one common mistake to avoid\n'
+        + '- examples: exactly 3 [{ko, en}] sentences\n'
+        + '- incorrect_examples: exactly 2 [{ko, en, error_type, correction}]\n\n'
+        + 'Return ONLY valid JSON:\n'
+        + '{"patterns":[{"name":"...","level":"...","exp":"...","structure":"...","when_to_use":"...","watch_out":"...","examples":[{"ko":"...","en":"..."}],"incorrect_examples":[{"ko":"...","en":"...","error_type":"...","correction":"..."}]}]}'
+      }]
+    });
+    var raw = (res.content && res.content[0] && res.content[0].text) || res.text || '';
+    var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+    var parsed = JSON.parse(raw.slice(oi, ei + 1));
+    if (parsed.patterns && parsed.patterns.length) {
+      loadGFPatterns(parsed.patterns);
+    } else {
+      if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Generation failed. Please try again.</div>';
+    }
+  } catch(e) {
+    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Please sign in to use Grammar Focus.</div>';
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════
 // GRAMMAR FOCUS MODAL
 // ═══════════════════════════════════════════════════════════════
 var _gfPattern = null;
@@ -11978,6 +12221,9 @@ function checkGFFill(idx, answer, total) {
   } else {
     inp.style.borderColor = '#fca5a5';
   }
+  // Track mastery for curriculum
+  var _gffPatternName = (_gfPattern && _gfPattern.name) || (window._gcCurrentPattern) || null;
+  if (_gffPatternName) updateGrammarMastery(_gffPatternName, correct);
   inp.disabled = true;
   window._gffAnswered[idx] = true;
   // Show "Next" once all questions have been attempted
@@ -12087,6 +12333,9 @@ function checkGFBuild() {
     context: { pattern: patternName, sentences: filled }
   });
   markStageDone('grammar');
+  // Track mastery: completing Build phase counts as a correct attempt
+  var _gcBuildPattern = patternName !== 'grammar' ? patternName : (window._gcCurrentPattern || null);
+  if (_gcBuildPattern) updateGrammarMastery(_gcBuildPattern, true);
   if (fb) fb.innerHTML = '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 14px">'
     + '<div style="font-size:14px;font-weight:800;color:#15803d;margin-bottom:4px">✅ Grammar practice complete!</div>'
     + '<div style="font-size:12px;color:#166534;margin-bottom:10px">' + filled.length + ' sentence(s) saved · Submit above for feedback</div>'
