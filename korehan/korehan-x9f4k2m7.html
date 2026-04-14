@@ -9523,7 +9523,7 @@ async function vbDelete(key) {
 // ═══════════════════════════════════════════════════════════════
 async function syncVocabToDB() {
   var sb = getSb(); if (!sb) { toast('Supabase 연결 실패'); return; }
-  if (!confirm('JS 단어 데이터 1044개를 vocabulary_bank DB에 동기화합니다. 계속?')) return;
+  // No confirm — just run
 
   var data = (typeof getLearningHubVocabData === 'function') ? getLearningHubVocabData() : null;
   if (!data) { toast('getLearningHubVocabData 없음 — learning_hub_vocab_data.js 로드 확인'); return; }

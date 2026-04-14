@@ -7972,8 +7972,8 @@ document.addEventListener('DOMContentLoaded', function() {
   document.addEventListener('DOMContentLoaded', function() {
     setTimeout(async function() {
       if (typeof getLearningHubVocabData !== 'function') return;
-      if (!supaUser) return;
       var sb = getSupa(); if (!sb) return;
+      // Works for both regular users (supaUser) and admin (service role)
 
       var data = getLearningHubVocabData();
       if (!data) return;
