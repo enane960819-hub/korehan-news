@@ -9436,13 +9436,9 @@ async function vbAIBulkGenerate() {
   status.style.display = 'block';
   status.innerHTML = '🤖 Generating 50 ' + level + ' vocabulary words' + (tag ? ' ('+tag+')' : '') + '...';
 
-  // Get existing words for dedup — send to AI so it avoids them
-  var existingKeys = new Set(_vbAll.map(function(w){ return w.word_ko; }));
-  var existingSample = _vbAll
-    .filter(function(w){ return w.level === level; })
-    .map(function(w){ return w.word_ko; })
-    .slice(0, 200)
-    .join(', ');
+  // Send ALL existing words to Claude so it can avoid every one of them
+  var existingKeys = new Set(_vbAll.map(function(w){ return (w.word_ko||'').trim(); }));
+  var allExisting = Array.from(existingKeys).join(', ');
 
   try {
     var tagHint = tag ? ' Focus on the topic/interest: ' + tag + '.' : '';
@@ -9452,8 +9448,8 @@ async function vbAIBulkGenerate() {
       max_tokens: 4000,
       messages: [{ role: 'user', content:
         'Generate 50 Korean vocabulary words for ' + level + ' level learners.' + tagHint + '\n\n'
-        + 'IMPORTANT: Do NOT include any of these words (already in our database):\n'
-        + existingSample + '\n\n'
+        + 'CRITICAL: The following ' + existingKeys.size + ' words already exist in our database. Do NOT generate ANY of them:\n'
+        + allExisting + '\n\n'
         + 'Return ONLY a JSON array. Each item:\n'
         + '{"ko":"Korean word","rom":"romanization","en":"English meaning"}\n\n'
         + 'Requirements:\n'
@@ -9461,7 +9457,7 @@ async function vbAIBulkGenerate() {
         + '- Appropriate difficulty for ' + level + ' level\n'
         + '- Include mix of nouns, verbs, adjectives, adverbs\n'
         + '- No duplicates within the list\n'
-        + '- Generate UNCOMMON words that are NOT in the exclude list above\n'
+        + '- EVERY word must be different from the exclude list above\n'
         + 'Return JSON array only, no markdown.'
       }]
     });
@@ -9470,12 +9466,12 @@ async function vbAIBulkGenerate() {
     if (s >= 0 && e > s) text = text.slice(s, e + 1);
     var words = JSON.parse(text);
 
-    // Batch insert new words only
+    // Double-check client-side dedup (trim whitespace)
     var newWords = words.filter(function(w) {
-      return w.ko && w.en && !existingKeys.has(w.ko);
+      return w.ko && w.en && !existingKeys.has((w.ko||'').trim());
     }).map(function(w) {
       return {
-        word_key: w.ko, word_ko: w.ko, word_rom: w.rom || '', word_en: w.en,
+        word_key: w.ko.trim(), word_ko: w.ko.trim(), word_rom: (w.rom || '').trim(), word_en: w.en.trim(),
         level: level, interest_tag: tag || null, is_active: true
       };
     });
