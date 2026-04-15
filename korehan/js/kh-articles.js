@@ -412,7 +412,7 @@ async function renderSectionPage(section) {
   // 페이지 타이틀/배너
   var secInfo = getSections().find(function(s){ return s.key === section; });
   if (secInfo) {
-    document.title = secInfo.label + ' — KoreHan News';
+    document.title = secInfo.label + ' — KoreHani';
     var bannerH = document.querySelector('.page-banner h1');
     var bannerP = document.querySelector('.page-banner p');
     if (bannerH) bannerH.textContent = secInfo.label;

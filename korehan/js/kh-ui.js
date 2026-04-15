@@ -314,7 +314,7 @@ function renderFooter() {
 
     + '</div>'
     + '<div style="border-top:1px solid rgba(255,255,255,.07);padding:16px 22px;text-align:center;font-size:12px;color:rgba(255,255,255,.28);">'
-    + '© 2026 KoreHan News · All rights reserved'
+    + '© 2026 KoreHani · All rights reserved'
     + '</div>'
     + '</footer>';
 }
