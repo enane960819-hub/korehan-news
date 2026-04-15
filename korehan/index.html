@@ -986,33 +986,28 @@ function renderHomeConvs() {
   var CAT_GRAD = {everyday:'linear-gradient(135deg,#1e40af,#3b82f6)',work:'linear-gradient(135deg,#334155,#64748b)',friends:'linear-gradient(135deg,#065f46,#10b981)',family:'linear-gradient(135deg,#92400e,#f59e0b)',dating:'linear-gradient(135deg,#9d174d,#ec4899)'};
   var LVL_LBL = {b:'Sprout',i:'Tree',a:'Forest'};
   var CAT_LBL = {everyday:'Everyday',work:'Work',friends:'Friends',family:'Family',dating:'Dating'};
-  grid.innerHTML = list.map(function(c) {
-    var globalIdx = HOME_CONVS.indexOf(c);
+  var LVL_CLR = {b:'#22c55e',i:'#f59e0b',a:'#ef4444'};
+  grid.innerHTML = list.slice(0,4).map(function(c) {
     var grad = CAT_GRAD[c.cat]||CAT_GRAD.everyday;
-    // Extract first 2-3 messages for chat preview
+    var ini = (c.name||'C').charAt(0);
     var msgs = c.msgs ? c.msgs.slice(0,3) : [];
-    var chatPreview = '';
+    var bubblesHtml = '';
     if (msgs.length) {
-      chatPreview = msgs.map(function(m){
-        var isLeft = m.s === 'l';
-        var align = isLeft ? 'flex-start' : 'flex-end';
-        var bg = isLeft ? 'rgba(255,255,255,.15)' : 'rgba(96,165,250,.25)';
-        var txt = (m.txt || '').slice(0,30) + ((m.txt||'').length>30?'…':'');
-        return '<div style="display:flex;justify-content:'+align+'"><div style="background:'+bg+';padding:4px 8px;border-radius:8px;font-size:10px;color:rgba(255,255,255,.85);max-width:75%;line-height:1.3">'+txt+'</div></div>';
+      bubblesHtml = msgs.map(function(m){
+        var isL = m.s === 'l';
+        return '<div style="align-self:'+(isL?'flex-start':'flex-end')+';background:'+(isL?'#f1f5f9':'#eff6ff')+';color:#334155;padding:5px 9px;border-radius:10px;font-size:11px;max-width:85%;line-height:1.4">'+(m.txt||'').slice(0,40)+'</div>';
       }).join('');
-    } else {
-      chatPreview = '<div style="display:flex;align-items:center;justify-content:center;flex:1"><div style="font-size:14px;font-weight:900;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5);line-height:1.3">'+(c.ctx||c.name)+'</div></div>';
     }
-    return '<div class="hconv-card" onclick="location.href=\'korehan-conversations.html?id='+(c._id||'')+'\'" style="position:relative;border-radius:12px;overflow:hidden;aspect-ratio:1/1;cursor:pointer;display:flex;flex-direction:column">'
-      + '<div style="position:absolute;inset:0;'+grad+'"></div>'
-      + '<div style="position:relative;flex:1;display:flex;flex-direction:column;padding:10px;gap:4px;z-index:1">'
-      + '<div style="display:flex;gap:4px;margin-bottom:4px">'
-      + '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.18);color:#fff">'+(CAT_LBL[c.cat]||c.cat)+'</span>'
-      + '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:5px;background:rgba(34,197,94,.7);color:#fff">'+(LVL_LBL[c.lvl]||'')+'</span>'
+    return '<div onclick="location.href=\'korehan-conversations.html?id='+(c._id||'')+'\'" style="border-radius:14px;overflow:hidden;cursor:pointer;border:1px solid #e2e8f0;background:#fff;display:flex;flex-direction:column">'
+      + '<div style="'+grad+';padding:14px 14px 12px;display:flex;align-items:center;gap:10px">'
+      + '<div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#fff;flex-shrink:0">'+ini+'</div>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-size:13px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.name||'Conversation')+'</div>'
+      + '<div style="font-size:11px;color:rgba(255,255,255,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.ctx||'')+'</div>'
       + '</div>'
-      + chatPreview
-      + '<div style="font-size:11px;font-weight:800;color:#fff;margin-top:auto;text-shadow:0 1px 4px rgba(0,0,0,.4)">'+(c.ctx||c.name)+'</div>'
+      + '<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;background:'+(LVL_CLR[c.lvl]||'#22c55e')+';color:#fff">'+(LVL_LBL[c.lvl]||'Sprout')+'</span>'
       + '</div>'
+      + (bubblesHtml ? '<div style="padding:10px 12px;display:flex;flex-direction:column;gap:4px;flex:1">'+bubblesHtml+'</div>' : '<div style="padding:14px 12px;font-size:12px;color:#64748b;flex:1">'+(c.ctx||c.name)+'</div>')
       + '</div>';
   }).join('');
   if (window.renderKhLucideIcons) renderKhLucideIcons();
