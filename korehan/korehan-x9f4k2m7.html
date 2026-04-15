@@ -2803,6 +2803,11 @@ function renderTopicsTable(list) {
   const el = document.getElementById('topics-wrap');
   if (!list.length) { el.innerHTML = '<div class="infobox">토픽이 없습니다.</div>'; return; }
   const lvBg = { Starter:'background:#f3e8ff;color:#7c3aed', Beginner:'background:#e8f5e9;color:#2e7d32', Intermediate:'background:#fff8e1;color:#f57f17', Advanced:'background:#fce4ec;color:#c62828' };
+  // 오늘 인덱스 계산 (기준일 2026-04-14) — must be before the loop
+  var epoch = new Date('2026-04-14T00:00:00+09:00').getTime();
+  var nowMs = Date.now() + 9*3600000;
+  var daysSince = Math.max(0, Math.floor((nowMs - epoch) / 86400000));
+  var todayIdx = list.length ? (daysSince % list.length) : 0;
   let rows = '';
   for (let i=0; i<list.length; i++) {
     const t = list[i];
@@ -2825,11 +2830,6 @@ function renderTopicsTable(list) {
     rows += '<button data-id="'+t.id+'" onclick="deleteTopic(this.dataset.id)" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid #fdd;background:#fff5f5;color:#c33;cursor:pointer">Del</button>';
     rows += '</td></tr>';
   }
-  // 오늘 인덱스 계산 (기준일 2026-04-14)
-  var epoch = new Date('2026-04-14T00:00:00+09:00').getTime();
-  var nowMs = Date.now() + 9*3600000;
-  var daysSince = Math.max(0, Math.floor((nowMs - epoch) / 86400000));
-  var todayIdx = list.length ? (daysSince % list.length) : 0;
   el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개 · 오늘 #<b>' + (todayIdx+1) + '</b> · Day ' + daysSince + ' (기준일 2026-04-14)</div>'
     + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
     + '<thead><tr style="background:#f8faff;border-bottom:2px solid var(--border)">'
@@ -6607,10 +6607,15 @@ async function _srPickTopicFromDB(sb, level, date) {
   var topicsRes = await sb.from('writing_topics').select('topic_ko,topic_en,category').eq('level', level).eq('active', true).order('sort_order').order('created_at');
   var allTopics = topicsRes.data || [];
   if (!allTopics.length) {
-    var fallbackRes = await sb.from('writing_topics').select('topic_ko,topic_en,category').eq('active', true).order('sort_order').order('created_at');
-    allTopics = fallbackRes.data || [];
+    // Level-appropriate fallback topics (don't pull from other levels)
+    var fallbacks = {
+      Starter:      { topic_ko: '내 하루', topic_en: 'My Day' },
+      Beginner:     { topic_ko: '좋아하는 음식', topic_en: 'My Favorite Food' },
+      Intermediate: { topic_ko: '여행 경험', topic_en: 'Travel Experience' },
+      Advanced:     { topic_ko: '현대 사회와 기술', topic_en: 'Modern Society and Technology' }
+    };
+    return fallbacks[level] || { topic_ko: '한국 음식', topic_en: 'Korean food' };
   }
-  if (!allTopics.length) return { topic_ko: '한국 음식', topic_en: 'Korean food' };
 
   // Deterministic date-based rotation: same logic as study room
   // Day 0 (2026-04-14) = topic #1, Day 1 = topic #2, ...
