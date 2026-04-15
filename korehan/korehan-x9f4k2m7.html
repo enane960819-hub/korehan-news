@@ -6719,7 +6719,7 @@ async function _srGenerateContent(level, topicHint, forceTopicKo, forceTopicEn) 
   var prompt = _srBuildPrompt(level, topicHint);
   var parsed = null;
   for (var attempt = 1; attempt <= 3; attempt++) {
-    var resp = await callClaude({ feature:'study-room-daily-admin', model:'claude-haiku-4-5-20251001', max_tokens:2500, messages:[{role:'user',content:prompt}] });
+    var resp = await callClaude({ feature:'study-room-daily-admin', model:'claude-haiku-4-5-20251001', max_tokens:(level==='Advanced'||level==='Intermediate'?4000:2500), messages:[{role:'user',content:prompt}] });
     var raw = (resp.content || []).map(function(c){ return c.text||''; }).join('');
     try {
       parsed = srParseStrictJsonObject(raw);
