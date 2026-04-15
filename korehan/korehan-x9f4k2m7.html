@@ -2804,8 +2804,8 @@ function renderTopicsTable(list) {
   const el = document.getElementById('topics-wrap');
   if (!list.length) { el.innerHTML = '<div class="infobox">토픽이 없습니다.</div>'; return; }
   const lvBg = { Starter:'background:#f3e8ff;color:#7c3aed', Beginner:'background:#e8f5e9;color:#2e7d32', Intermediate:'background:#fff8e1;color:#f57f17', Advanced:'background:#fce4ec;color:#c62828' };
-  // 오늘 인덱스 계산 (기준일 2026-04-14) — must be before the loop
-  var epoch = new Date('2026-04-14T00:00:00+09:00').getTime();
+  // 오늘 인덱스 계산 (기준일 2026-04-15) — must be before the loop
+  var epoch = new Date('2026-04-15T00:00:00+09:00').getTime();
   var nowMs = Date.now() + 9*3600000;
   var daysSince = Math.max(0, Math.floor((nowMs - epoch) / 86400000));
   var todayIdx = list.length ? (daysSince % list.length) : 0;
@@ -2831,7 +2831,7 @@ function renderTopicsTable(list) {
     rows += '<button data-id="'+t.id+'" onclick="deleteTopic(this.dataset.id)" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid #fdd;background:#fff5f5;color:#c33;cursor:pointer">Del</button>';
     rows += '</td></tr>';
   }
-  el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개 · 오늘 #<b>' + (todayIdx+1) + '</b> · Day ' + daysSince + ' (기준일 2026-04-14)</div>'
+  el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개 · 오늘 #<b>' + (todayIdx+1) + '</b> · Day ' + daysSince + ' (기준일 2026-04-15)</div>'
     + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
     + '<thead><tr style="background:#f8faff;border-bottom:2px solid var(--border)">'
     + '<th style="padding:7px 8px;text-align:center">#</th>'
@@ -2922,7 +2922,7 @@ async function pregenAI(topicId) {
     for (var ti=0; ti<levelTopics.length; ti++) { if (levelTopics[ti].id===topicId) { topicIdx=ti; break; } }
     if (topicIdx < 0) topicIdx = 0;
 
-    var epoch = new Date('2026-04-14T00:00:00+09:00').getTime();
+    var epoch = new Date('2026-04-15T00:00:00+09:00').getTime();
     var kstNow = new Date(Date.now() + 9*3600000);
     var todayStr = kstNow.toISOString().slice(0,10);
     var todayMs = new Date(todayStr + 'T00:00:00+09:00').getTime();
@@ -6359,11 +6359,7 @@ function srTopicsFormHTML() {
     + '<div class="fg" style="margin:0"><label>레벨</label>'
     + '<select id="srt-level"><option value="Starter">Seed</option><option value="Beginner" selected>Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select></div>'
     + '<button class="btn btn-g" onclick="srLoadDailyContent()">Load</button>'
-    + '<button class="btn" onclick="srAutoGenMissing()" style="background:#dc2626;color:#fff;border:1px solid #dc2626;font-weight:800">🚀 오늘 빠진 레벨 생성</button>'
-    + '<button class="btn" onclick="srGenerate1Day1Level()" style="background:#fefce8;color:#a16207;border:1px solid #fde047">🎲 선택레벨 1일 생성</button>'
-    + '<button class="btn" onclick="srGenerate1DayAllLevels()" style="background:#fdf2f8;color:#be185d;border:1px solid #f9a8d4">🎯 전체레벨 1일 생성</button>'
-    + '<button class="btn" onclick="srAssign3Days()" style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd">📅 3일치 전체 배정</button>'
-    + '<button class="btn" onclick="srPregenerate10Days()" style="background:#f0fdf4;color:#15803d;border:1px solid #86efac">🤖 Pre-generate 10 days</button>'
+    + '<button class="btn" id="srt-regen-btn" onclick="srRegenerate()" style="display:none;background:#fefce8;color:#a16207;border:1px solid #fde047">🔄 AI 재생성</button>'
     + '</div>'
     + '<div id="srt-editor" style="display:none">'
     + '<div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
@@ -6445,7 +6441,7 @@ async function srLoadDailyContent() {
   }
 
   // 해당 날짜에 어떤 토픽이 배정되는지 계산
-  var epoch = new Date('2026-04-14T00:00:00+09:00').getTime();
+  var epoch = new Date('2026-04-15T00:00:00+09:00').getTime();
   var selMs = new Date(date + 'T00:00:00+09:00').getTime();
   var daysSince = Math.max(0, Math.floor((selMs - epoch) / 86400000));
   var topicRes2 = await sb.from('writing_topics').select('*').eq('level',level).eq('active',true).order('sort_order').order('created_at');
@@ -6453,23 +6449,40 @@ async function srLoadDailyContent() {
   var scheduledTopic = allTopics.length ? allTopics[daysSince % allTopics.length] : null;
 
   if (!r.data) {
-    if (editorEl) editorEl.style.display = '';
-    if (emptyEl)  emptyEl.style.display  = '';
-    // 배정 토픽 표시
-    document.getElementById('srt-topic-ko').value = scheduledTopic ? scheduledTopic.topic_ko : '';
-    document.getElementById('srt-topic-en').value = scheduledTopic ? scheduledTopic.topic_en : '';
-    document.getElementById('srt-vocab').value = '';
-    document.getElementById('srt-grammar').value = '';
-    document.getElementById('srt-helpers').value = '';
-    document.getElementById('srt-dictation-sentences').value = '';
-    document.getElementById('srt-dictation-questions').value = '';
-    var twEl2 = document.getElementById('srt-tw-sentences'); if (twEl2) twEl2.value = '';
-    if (msgEl) msgEl.textContent = scheduledTopic ? '📌 Day '+daysSince+' 배정 토픽: '+scheduledTopic.topic_ko+' (아직 AI 콘텐츠 없음)' : '토픽 없음';
-    return;
+    if (!scheduledTopic) {
+      if (msgEl) msgEl.textContent = '이 레벨에 배정된 토픽이 없습니다. 작문토픽에서 추가하세요.';
+      if (emptyEl) emptyEl.style.display = '';
+      return;
+    }
+    // 자동 AI 생성
+    if (msgEl) msgEl.textContent = '⏳ ' + scheduledTopic.topic_ko + ' AI 학습요소 생성 중...';
+    try {
+      var topicHint = 'Use EXACTLY this topic: "' + scheduledTopic.topic_ko + '" (' + scheduledTopic.topic_en + '). Do NOT change the topic.';
+      var parsed = await _srGenerateContent(level, topicHint, scheduledTopic.topic_ko, scheduledTopic.topic_en);
+      var newRec = {
+        scheduled_date: date, level: level,
+        topic_ko: scheduledTopic.topic_ko, topic_en: scheduledTopic.topic_en,
+        vocab: parsed.vocab||[], grammar: parsed.grammar||[], helpers: parsed.helpers||[],
+        dictation_sentences: parsed.dictation_sentences||[], dictation_questions: parsed.dictation_questions||[],
+        topic_writing_sentences: parsed.topic_writing_sentences||[],
+        confusing_grammar: parsed.confusing_grammar||null,
+        formality_exercise: parsed.formality_exercise||null,
+        culture_note: parsed.culture_note||null,
+        status: 'approved', admin_edited: false, updated_at: new Date().toISOString()
+      };
+      await sb.from('study_daily_content').upsert(newRec, {onConflict:'scheduled_date,level'});
+      r = await sb.from('study_daily_content').select('*').eq('scheduled_date', date).eq('level', level).maybeSingle();
+      if (msgEl) msgEl.textContent = '✅ AI 생성 완료';
+    } catch(e) {
+      if (msgEl) msgEl.textContent = '❌ AI 생성 실패: ' + (e.message||e);
+      return;
+    }
   }
 
   var rec = r.data;
   if (msgEl) msgEl.textContent = '✅ Loaded (Day '+daysSince+')';
+  var regenBtn = document.getElementById('srt-regen-btn');
+  if (regenBtn) regenBtn.style.display = '';
   function _jp(v){try{return typeof v==='string'?JSON.parse(v):(v||[]);}catch(e){return [];}}
   document.getElementById('srt-topic-ko').value = rec.topic_ko || '';
   document.getElementById('srt-topic-en').value = rec.topic_en || '';
@@ -6577,6 +6590,19 @@ async function srSaveDailyContent() {
   await srLoadTopicSchedule();
 }
 
+// 상단 재생성 버튼: 현재 날짜+레벨 삭제 후 다시 Load (자동 AI 생성)
+async function srRegenerate() {
+  var sb = getSb();
+  var date  = (document.getElementById('srt-date').value  || '').trim();
+  var level = (document.getElementById('srt-level').value || '').trim();
+  if (!date || !level) return;
+  if (!confirm('현재 콘텐츠를 삭제하고 AI로 재생성합니다. 계속?')) return;
+  await sb.from('study_daily_content').delete().eq('scheduled_date', date).eq('level', level);
+  var regenBtn = document.getElementById('srt-regen-btn');
+  if (regenBtn) regenBtn.style.display = 'none';
+  await srLoadDailyContent();
+}
+
 async function srRegenDailyContent() {
   var sb = getSb();
   var msgEl = document.getElementById('srt-msg');
@@ -6641,7 +6667,7 @@ async function _srPickTopicFromDB(sb, level, date) {
   // Deterministic date-based rotation: same logic as study room
   // Day 0 (2026-04-14) = topic #1, Day 1 = topic #2, ...
   if (!date) date = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
-  var epoch = new Date('2026-04-14T00:00:00+09:00').getTime();
+  var epoch = new Date('2026-04-15T00:00:00+09:00').getTime();
   var now = new Date(date + 'T00:00:00+09:00').getTime();
   var daysSinceEpoch = Math.max(0, Math.floor((now - epoch) / 86400000));
   var todayIdx = daysSinceEpoch % allTopics.length;
@@ -7083,7 +7109,7 @@ async function srPregenerate10Days() {
       if (mi > 0) await new Promise(function(r){ setTimeout(r, 1500); });
       var date = missing[mi];
       // Deterministic date-based rotation (same as study room + _srPickTopicFromDB)
-      var _epoch = new Date('2026-04-14T00:00:00+09:00').getTime();
+      var _epoch = new Date('2026-04-15T00:00:00+09:00').getTime();
       var _now = new Date(date + 'T00:00:00+09:00').getTime();
       var _dayIdx = Math.max(0, Math.floor((_now - _epoch) / 86400000)) % (allTopics.length || 1);
       var topic = allTopics.length ? allTopics[_dayIdx] : null;
