@@ -5072,7 +5072,7 @@ function renderHeader() {
     + '<div class="kh-header-inner">'
     + '<button class="kh-ham" onclick="khSbOpen()" aria-label="Menu">&#9776;</button>'
     + '<a class="kh-logo" href="index.html">'
-    + '<span class="kh-logo-text">KoreHan<span class="kh-logo-i">i</span></span>'
+    + '<span class="kh-logo-text">KoreHan<span class="kh-logo-i">ı</span></span>'
     + '</a>'
     + '<div class="kh-hright">'
     + '<span class="kh-hdate" id="date-str"></span>'
@@ -5163,7 +5163,7 @@ function renderFooter() {
 
     + '<div>'
     + '<div style="font-family:\'DM Sans\',\'Noto Sans KR\',sans-serif;font-size:24px;font-weight:800;color:#fff;margin-bottom:10px;letter-spacing:-0.5px">'
-    + '<span class="kh-logo-text" style="color:#fff;font-size:24px">KoreHan<span class="kh-logo-i">i</span></span>'
+    + '<span class="kh-logo-text" style="color:#fff;font-size:24px">KoreHan<span class="kh-logo-i">ı</span></span>'
     + '</div>'
     + '<p style="font-size:13px;line-height:1.7;color:rgba(255,255,255,.55);margin:0 0 16px;max-width:28ch">Learn Korean naturally through real news, stories, and conversations.</p>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
@@ -7037,7 +7037,7 @@ function khInjectSidebar() {
   sb.className = 'kh-sidebar';
   sb.innerHTML =
     '<div class="kh-sb-top">'
-      + '<div class="kh-sb-brand"><span class="kh-logo-text" style="font-size:28px">KoreHan<span class="kh-logo-i">i</span></span></div>'
+      + '<div class="kh-sb-brand"><span class="kh-logo-text" style="font-size:28px">KoreHan<span class="kh-logo-i">ı</span></span></div>'
       + '<button class="kh-sb-x" onclick="khSbClose()">&#x2715;</button>'
     + '</div>'
     + '<div class="kh-sb-sec">'
