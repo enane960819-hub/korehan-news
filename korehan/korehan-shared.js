@@ -2296,9 +2296,9 @@ function renderHeroSlide(heroEl) {
           var url = articleUrl(item.id);
           return '<article class="kh-home-hero-slide" style="min-width:100%;position:relative;min-height:460px;overflow:hidden;cursor:pointer" onclick="location.href=\'' + url + '\'">'
             + '<img src="' + featImg + '" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;pointer-events:none;">'
-            + '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,15,35,.88) 0%,rgba(5,15,35,.55) 38%,rgba(5,15,35,.16) 100%),linear-gradient(to top,rgba(5,15,35,.92) 0%,rgba(5,15,35,.1) 58%,transparent 100%);pointer-events:none;"></div>'
+            + '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,15,35,.92) 0%,rgba(5,15,35,.65) 42%,rgba(5,15,35,.22) 100%),linear-gradient(to top,rgba(5,15,35,.95) 0%,rgba(5,15,35,.4) 40%,rgba(5,15,35,.08) 70%,transparent 100%);pointer-events:none;"></div>'
             + '<div style="position:absolute;left:0;right:0;bottom:0;padding:34px 30px 30px;max-width:760px;z-index:2;pointer-events:none;">'
-            + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span class="category-tag" style="display:inline-block">' + item.section + '</span><span style="font-size:12px;color:rgba(255,255,255,.65)">' + relTime(item.date) + '</span></div>'
+            + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span class="category-tag" style="display:inline-block">' + item.section + '</span><span style="font-size:12px;color:rgba(255,255,255,.72)">' + relTime(item.date) + '</span></div>'
             + '<h1 style="font-family:\'Playfair Display\',serif;font-size:clamp(26px,3vw,42px);font-weight:900;line-height:1.18;margin:0;color:#fff">' + (item.title_en || item.title) + '</h1>'
             + '</div></article>';
         }).join('') + '</div>'
@@ -5162,8 +5162,8 @@ function renderFooter() {
     + '<div class="kh-foot-inner">'
 
     + '<div>'
-    + '<div style="font-family:\'Happy Monkey\',sans-serif;font-size:22px;font-weight:400;color:#fff;margin-bottom:10px">'
-    + '<span class="kh-logo-text" style="color:#fff;font-size:22px">KoreHan<span class="kh-logo-i">i</span></span>'
+    + '<div style="font-family:\'DM Sans\',\'Noto Sans KR\',sans-serif;font-size:24px;font-weight:800;color:#fff;margin-bottom:10px;letter-spacing:-0.5px">'
+    + '<span class="kh-logo-text" style="color:#fff;font-size:24px">KoreHan<span class="kh-logo-i">i</span></span>'
     + '</div>'
     + '<p style="font-size:13px;line-height:1.7;color:rgba(255,255,255,.55);margin:0 0 16px;max-width:28ch">Learn Korean naturally through real news, stories, and conversations.</p>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
@@ -7037,7 +7037,7 @@ function khInjectSidebar() {
   sb.className = 'kh-sidebar';
   sb.innerHTML =
     '<div class="kh-sb-top">'
-      + '<div class="kh-sb-brand"><span class="kh-logo-text" style="font-size:24px">KoreHan<span class="kh-logo-i">i</span></span></div>'
+      + '<div class="kh-sb-brand"><span class="kh-logo-text" style="font-size:28px">KoreHan<span class="kh-logo-i">i</span></span></div>'
       + '<button class="kh-sb-x" onclick="khSbClose()">&#x2715;</button>'
     + '</div>'
     + '<div class="kh-sb-sec">'
@@ -7385,7 +7385,7 @@ function injectMobileBottomNav() {
     ['index.html','home','Home','index'],
     ['korehan-all.html','newspaper','News','korehan-all'],
     ['korehan-study-room.html','notebook-pen','Study','korehan-study-room'],
-    ['korehan-conversations.html','messages-square','CONVO','korehan-conversations'],
+    ['korehan-conversations.html','messages-square','Talk','korehan-conversations'],
   ];
   if (supaUser) items.push(['#','circle-user-round','Account','account']);
   else items.push(['#','log-in','Sign In','signin']);

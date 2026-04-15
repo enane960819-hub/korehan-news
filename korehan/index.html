@@ -6,7 +6,7 @@
 <title>KoreHani — Learn Korean Through Real News</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="korehan-shared.css?v=20260324b">
 <style>
 /* ── HOME REDESIGN ─────────────────────────────────────── */
@@ -31,7 +31,7 @@
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 24px;
   overflow: hidden;
-  margin: 20px 0 0;
+  margin: 28px 0 0;
   box-shadow: 0 18px 42px rgba(11,22,38,.18);
 }
 
@@ -211,10 +211,13 @@
   display: flex;
   align-items: baseline;
   gap: 10px;
-  margin: 36px 0 14px;
-  padding-bottom: 10px;
+  margin: 44px 0 16px;
+  padding-top: 20px;
+  padding-bottom: 12px;
+  border-top: 1px solid var(--border);
   border-bottom: 2px solid var(--dark);
 }
+.home-sec:first-of-type { border-top: none; padding-top: 0; }
 .home-sec-title {
   display: inline-flex;
   align-items: center;
@@ -249,7 +252,7 @@
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   padding-bottom: 10px;
-  margin-bottom: 32px;
+  margin-bottom: 16px;
   align-items: stretch;
 }
 .home-news-grid::-webkit-scrollbar,
@@ -727,16 +730,16 @@ body.kh-neon-on .hero-dot {
 </style>
 <div id="kh-loader" style="position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#0b1626 0%,#1a3a6b 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .4s ease-out">
   <div style="text-align:center;margin-bottom:28px">
-    <div style="font-family:'Happy Monkey',sans-serif;font-size:28px;font-weight:400;color:#fff;letter-spacing:-.02em">
-      <span class="kh-logo-text" style="color:#fff;font-size:28px">KoreHan<span class="kh-logo-i">i</span></span>
+    <div style="font-family:'DM Sans','Noto Sans KR',sans-serif;font-size:48px;font-weight:800;color:#fff;letter-spacing:-1.5px">
+      <span class="kh-logo-text" style="color:#fff;font-size:48px">KoreHan<span class="kh-logo-i">i</span></span>
     </div>
-    <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:6px;letter-spacing:.08em;text-transform:uppercase">Learn Korean, Naturally</div>
+    <div style="font-size:13px;color:rgba(255,255,255,.6);margin-top:10px;letter-spacing:.1em;text-transform:uppercase;font-family:'DM Sans',sans-serif;font-weight:600">Learn Korean, Naturally</div>
   </div>
-  <div style="width:220px;height:5px;background:rgba(255,255,255,.08);border-radius:5px;overflow:hidden">
-    <div id="kh-loader-bar" style="width:5%;height:100%;border-radius:5px;background:linear-gradient(90deg,#38bdf8,#2563eb,#38bdf8);background-size:400px 100%;animation:kh-shimmer 1.5s linear infinite;transition:width .4s ease-out"></div>
+  <div style="width:min(60%,320px);height:7px;background:rgba(255,255,255,.1);border-radius:8px;overflow:hidden">
+    <div id="kh-loader-bar" style="width:5%;height:100%;border-radius:8px;background:linear-gradient(90deg,#38bdf8,#2563eb,#38bdf8);background-size:400px 100%;animation:kh-shimmer 1.5s linear infinite;transition:width .4s ease-out"></div>
   </div>
   <div id="kh-loader-pct" style="font-size:12px;color:rgba(255,255,255,.5);margin-top:10px;font-weight:700;font-family:monospace">5%</div>
-  <div id="kh-loader-tip" style="font-size:11px;color:rgba(255,255,255,.35);margin-top:16px;max-width:260px;text-align:center;line-height:1.5;animation:kh-pulse 2s ease-in-out infinite"></div>
+  <div id="kh-loader-tip" style="font-size:12px;color:rgba(255,255,255,.5);margin-top:18px;max-width:280px;text-align:center;line-height:1.5;font-family:'DM Sans',sans-serif;animation:kh-pulse 2s ease-in-out infinite"></div>
 </div>
 <script>
 (function(){
@@ -794,20 +797,20 @@ body.kh-neon-on .hero-dot {
   (function(){
     var el = document.getElementById('kh-welcome-action-banner');
     if (!el) return;
-    var glowStyle = 'display:flex;align-items:center;gap:14px;margin:0 0 14px;padding:16px 20px;border-radius:16px;text-decoration:none;transition:box-shadow .3s,background .2s;position:relative;overflow:hidden;';
+    var glowStyle = 'display:flex;align-items:center;gap:16px;margin:0 0 18px;padding:18px 22px;border-radius:16px;text-decoration:none;transition:box-shadow .3s,background .2s,transform .2s;position:relative;overflow:hidden;';
     function renderBanner() {
       if (window.supaUser) {
-        el.innerHTML = '<a href="beginner-guide.html" style="' + glowStyle + 'background:linear-gradient(135deg,rgba(56,189,248,.06),rgba(37,99,235,.06));border:1.5px solid rgba(56,189,248,.25);box-shadow:0 0 20px rgba(56,189,248,.1),inset 0 0 20px rgba(56,189,248,.03)">'
-          + '<div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,rgba(56,189,248,.15),rgba(37,99,235,.15));display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📘</div>'
-          + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:#fff">Beginner\'s Guide</div>'
-          + '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:3px">Learn how all the features work together</div></div>'
-          + '<span style="font-size:12px;font-weight:800;color:#38bdf8;white-space:nowrap;padding:6px 14px;border-radius:999px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.2)">Open →</span></a>';
+        el.innerHTML = '<a href="beginner-guide.html" style="' + glowStyle + 'background:linear-gradient(135deg,#1e3a5f,#1a3a6b);border:1.5px solid rgba(96,165,250,.3);box-shadow:0 8px 24px rgba(15,23,42,.18)">'
+          + '<div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#2563eb,#38bdf8);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;box-shadow:0 4px 12px rgba(37,99,235,.3)">📘</div>'
+          + '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:800;color:#fff">Beginner\'s Guide</div>'
+          + '<div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">Learn how all the features work together</div></div>'
+          + '<span style="font-size:13px;font-weight:800;color:#fff;white-space:nowrap;padding:8px 18px;border-radius:999px;background:linear-gradient(135deg,#2563eb,#1d4ed8);box-shadow:0 4px 12px rgba(37,99,235,.3)">Open →</span></a>';
       } else {
-        el.innerHTML = '<a href="korehan-onboarding.html" style="' + glowStyle + 'background:linear-gradient(135deg,rgba(37,99,235,.08),rgba(56,189,248,.05));border:1.5px solid rgba(37,99,235,.3);box-shadow:0 0 24px rgba(37,99,235,.15),inset 0 0 20px rgba(37,99,235,.04);animation:khBannerGlow 3s ease-in-out infinite">'
-          + '<div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#2563eb,#38bdf8);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 4px 14px rgba(37,99,235,.3)">🚀</div>'
-          + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:#fff">New here? Set up your profile in 1 minute</div>'
-          + '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:3px">Choose your level, set goals, and start learning</div></div>'
-          + '<span style="font-size:12px;font-weight:800;color:#fff;white-space:nowrap;padding:6px 14px;border-radius:999px;background:linear-gradient(135deg,#2563eb,#38bdf8);box-shadow:0 4px 12px rgba(37,99,235,.25)">Start →</span></a>';
+        el.innerHTML = '<a href="korehan-onboarding.html" style="' + glowStyle + 'background:linear-gradient(135deg,#1e3a5f,#1a3a6b);border:1.5px solid rgba(96,165,250,.3);box-shadow:0 8px 24px rgba(15,23,42,.18);animation:khBannerGlow 3s ease-in-out infinite">'
+          + '<div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#2563eb,#38bdf8);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;box-shadow:0 4px 14px rgba(37,99,235,.35)">🚀</div>'
+          + '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:800;color:#fff">New here? Set up your profile in 1 minute</div>'
+          + '<div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">Choose your level, set goals, and start learning</div></div>'
+          + '<span style="font-size:13px;font-weight:800;color:#fff;white-space:nowrap;padding:8px 18px;border-radius:999px;background:linear-gradient(135deg,#2563eb,#38bdf8);box-shadow:0 4px 12px rgba(37,99,235,.3)">Start →</span></a>';
       }
     }
     renderBanner();
