@@ -9342,9 +9342,18 @@ async function goVocabBankAdmin() {
 
 async function vbLoadAll() {
   var sb = getSb(); if (!sb) return;
-  var r = await sb.from('vocabulary_bank').select('word_key,word_ko,word_rom,word_en,level,interest_tag,is_active').order('word_ko').limit(10000);
-  if (r.error) { document.getElementById('vb-list').textContent = 'Error: ' + r.error.message; return; }
-  _vbAll = r.data || [];
+  var all = [];
+  var batchSize = 1000;
+  var from = 0;
+  while (true) {
+    var r = await sb.from('vocabulary_bank').select('word_key,word_ko,word_rom,word_en,level,interest_tag,is_active').order('word_ko').range(from, from + batchSize - 1);
+    if (r.error) { document.getElementById('vb-list').textContent = 'Error: ' + r.error.message; return; }
+    var batch = r.data || [];
+    all = all.concat(batch);
+    if (batch.length < batchSize) break;
+    from += batchSize;
+  }
+  _vbAll = all;
   vbRenderList();
 }
 
