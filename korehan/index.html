@@ -983,31 +983,42 @@ function renderHomeConvs() {
   if (!grid) return;
   var list = HOME_CONVS.filter(function(c){ return _activeHomeCat === 'all' || c.cat === _activeHomeCat; });
   grid.innerHTML = '';
-  var CAT_GRAD = {everyday:'linear-gradient(135deg,#1e40af,#3b82f6)',work:'linear-gradient(135deg,#334155,#64748b)',friends:'linear-gradient(135deg,#065f46,#10b981)',family:'linear-gradient(135deg,#92400e,#f59e0b)',dating:'linear-gradient(135deg,#9d174d,#ec4899)'};
+  var BADGE_CLS = {b:'background:#dcfce7;color:#15803d',i:'background:#fef9c3;color:#92400e',a:'background:#fee2e2;color:#b91c1c'};
   var LVL_LBL = {b:'Sprout',i:'Tree',a:'Forest'};
-  var CAT_LBL = {everyday:'Everyday',work:'Work',friends:'Friends',family:'Family',dating:'Dating'};
-  var LVL_CLR = {b:'#22c55e',i:'#f59e0b',a:'#ef4444'};
+  var _PALETTE = ['#2563eb','#7c3aed','#059669','#db2777','#dc2626','#0891b2','#ea580c','#0d9488','#4f46e5','#c026d3'];
+  function _iniColor(n){var h=0;for(var i=0;i<(n||'').length;i++)h=n.charCodeAt(i)+((h<<5)-h);return _PALETTE[Math.abs(h)%_PALETTE.length];}
+
   grid.innerHTML = list.slice(0,4).map(function(c) {
-    var grad = CAT_GRAD[c.cat]||CAT_GRAD.everyday;
-    var ini = (c.name||'C').charAt(0);
+    var leftName = c.name || 'Conversation';
+    var leftIni = leftName.charAt(0);
+    var leftColor = _iniColor(leftName);
+    var ctx = c.ctx || '';
+    // Chat bubble previews
     var msgs = c.msgs ? c.msgs.slice(0,3) : [];
     var bubblesHtml = '';
     if (msgs.length) {
-      bubblesHtml = msgs.map(function(m){
+      bubblesHtml = '<div style="padding:12px 16px 14px;flex:1;display:flex;flex-direction:column;gap:8px">';
+      msgs.forEach(function(m){
         var isL = m.s === 'l';
-        return '<div style="align-self:'+(isL?'flex-start':'flex-end')+';background:'+(isL?'#f1f5f9':'#eff6ff')+';color:#334155;padding:5px 9px;border-radius:10px;font-size:11px;max-width:85%;line-height:1.4">'+(m.txt||'').slice(0,40)+'</div>';
-      }).join('');
+        bubblesHtml += '<div style="padding:8px 12px;border-radius:14px;font-size:13px;font-family:Noto Sans KR,sans-serif;line-height:1.5;max-width:85%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
+          + (isL ? 'background:#f1f5f9;color:#334155;border-bottom-left-radius:4px;align-self:flex-start' : 'background:#2563eb;color:#fff;border-bottom-right-radius:4px;align-self:flex-end')
+          + '">'+(m.txt||'')+'</div>';
+      });
+      bubblesHtml += '</div>';
     }
-    return '<div onclick="location.href=\'korehan-conversations.html?id='+(c._id||'')+'\'" style="border-radius:14px;overflow:hidden;cursor:pointer;border:1px solid #e2e8f0;background:#fff;display:flex;flex-direction:column">'
-      + '<div style="background:'+grad+';padding:14px 14px 12px;display:flex;align-items:center;gap:10px">'
-      + '<div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#fff;flex-shrink:0">'+ini+'</div>'
+    return '<div onclick="location.href=\'korehan-conversations.html?id='+(c._id||'')+'\'" style="border-radius:18px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);transition:transform .18s,box-shadow .18s">'
+      + '<div style="padding:16px 16px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #f0f4fa">'
+      + '<div style="width:36px;height:36px;border-radius:50%;background:'+leftColor+';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;flex-shrink:0">'+leftIni+'</div>'
       + '<div style="flex:1;min-width:0">'
-      + '<div style="font-size:13px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.name||'Conversation')+'</div>'
-      + '<div style="font-size:11px;color:rgba(255,255,255,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(c.ctx||'')+'</div>'
+      + '<div style="font-size:15px;font-weight:900;color:#0f172a;line-height:1.25;font-family:Noto Sans KR,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+leftName+'</div>'
+      + (ctx ? '<div style="font-size:11px;color:#64748b;margin-top:3px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+ctx+'</div>' : '')
       + '</div>'
-      + '<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;background:'+(LVL_CLR[c.lvl]||'#22c55e')+';color:#fff">'+(LVL_LBL[c.lvl]||'Sprout')+'</span>'
+      + '<span style="font-size:9px;font-weight:800;padding:3px 8px;border-radius:20px;flex-shrink:0;'+(BADGE_CLS[c.lvl]||BADGE_CLS.b)+'">'+(LVL_LBL[c.lvl]||'Sprout')+'</span>'
       + '</div>'
-      + (bubblesHtml ? '<div style="padding:10px 12px;display:flex;flex-direction:column;gap:4px;flex:1">'+bubblesHtml+'</div>' : '<div style="padding:14px 12px;font-size:12px;color:#64748b;flex:1">'+(c.ctx||c.name)+'</div>')
+      + (bubblesHtml || '<div style="padding:16px;flex:1;font-size:13px;color:#64748b;line-height:1.5">'+(ctx||leftName)+'</div>')
+      + '<div style="padding:10px 16px;display:flex;align-items:center;justify-content:flex-end;border-top:1px solid #f0f4fa">'
+      + '<span style="font-size:11px;font-weight:800;color:#2563eb;border:1.5px solid #bfdbfe;border-radius:20px;padding:4px 14px">Study →</span>'
+      + '</div>'
       + '</div>';
   }).join('');
   if (window.renderKhLucideIcons) renderKhLucideIcons();
