@@ -16,7 +16,7 @@ class _NewsListScreenState extends State<NewsListScreen> {
   List<Article> _articles = [];
   bool _loading = true;
   String _selectedSection = 'All';
-  final List<String> _sections = ['All'];
+  List<String> _sections = ['All'];
 
   @override
   void initState() {
