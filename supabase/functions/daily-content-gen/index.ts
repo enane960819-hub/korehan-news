@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
       const allTopics = topics || []
       for (const date of dates) {
         if (allTopics.length) {
-          const epoch = new Date('2026-04-14T00:00:00+09:00').getTime()
+          const epoch = new Date('2026-04-15T00:00:00+09:00').getTime()
           const now = new Date(date + 'T00:00:00+09:00').getTime()
           const idx = Math.max(0, Math.floor((now - epoch) / 86400_000)) % allTopics.length
           expectedTopics[`${date}_${level}`] = allTopics[idx].topic_ko
@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
 
         const allTopics = topics || []
         if (allTopics.length) {
-          const epoch = new Date('2026-04-14T00:00:00+09:00').getTime()
+          const epoch = new Date('2026-04-15T00:00:00+09:00').getTime()
           const now = new Date(item.date + 'T00:00:00+09:00').getTime()
           const idx = Math.max(0, Math.floor((now - epoch) / 86400_000)) % allTopics.length
           const t = allTopics[idx]
