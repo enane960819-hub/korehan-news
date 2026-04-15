@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
     }
 
     // Pre-fetch expected topics per level to check correctness
-    const expectedTopics: Record<string, Record<string, string>> = {}
+    const expectedTopics: Record<string, string> = {}
     for (const level of ALL_LEVELS) {
       const { data: topics } = await sb
         .from('writing_topics')
@@ -181,7 +181,6 @@ Deno.serve(async (req) => {
       if (expected && ex.topic_ko !== expected) return true // wrong topic → regenerate
       return false // correct topic with vocab → skip
     })
-    }
 
     if (!missing.length) {
       return new Response(JSON.stringify({ ok: true, message: 'All content exists', dates }), {

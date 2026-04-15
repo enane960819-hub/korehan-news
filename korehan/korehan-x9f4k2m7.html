@@ -2803,6 +2803,11 @@ function renderTopicsTable(list) {
   const el = document.getElementById('topics-wrap');
   if (!list.length) { el.innerHTML = '<div class="infobox">토픽이 없습니다.</div>'; return; }
   const lvBg = { Starter:'background:#f3e8ff;color:#7c3aed', Beginner:'background:#e8f5e9;color:#2e7d32', Intermediate:'background:#fff8e1;color:#f57f17', Advanced:'background:#fce4ec;color:#c62828' };
+  // 오늘 인덱스 계산 (기준일 2026-04-14) — must be before the loop
+  var epoch = new Date('2026-04-14T00:00:00+09:00').getTime();
+  var nowMs = Date.now() + 9*3600000;
+  var daysSince = Math.max(0, Math.floor((nowMs - epoch) / 86400000));
+  var todayIdx = list.length ? (daysSince % list.length) : 0;
   let rows = '';
   for (let i=0; i<list.length; i++) {
     const t = list[i];
@@ -2825,11 +2830,6 @@ function renderTopicsTable(list) {
     rows += '<button data-id="'+t.id+'" onclick="deleteTopic(this.dataset.id)" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid #fdd;background:#fff5f5;color:#c33;cursor:pointer">Del</button>';
     rows += '</td></tr>';
   }
-  // 오늘 인덱스 계산 (기준일 2026-04-14)
-  var epoch = new Date('2026-04-14T00:00:00+09:00').getTime();
-  var nowMs = Date.now() + 9*3600000;
-  var daysSince = Math.max(0, Math.floor((nowMs - epoch) / 86400000));
-  var todayIdx = list.length ? (daysSince % list.length) : 0;
   el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개 · 오늘 #<b>' + (todayIdx+1) + '</b> · Day ' + daysSince + ' (기준일 2026-04-14)</div>'
     + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
     + '<thead><tr style="background:#f8faff;border-bottom:2px solid var(--border)">'
@@ -6572,14 +6572,22 @@ async function srRegenDailyContent() {
     if (!topicKo) {
       if (msgEl) msgEl.textContent = 'writing_topics에서 토픽 가져오는 중…';
       var picked = await _srPickTopicFromDB(sb, level, date);
-      topicKo = picked.topic_ko;
-      topicEn = picked.topic_en;
+      if (picked) {
+        topicKo = picked.topic_ko;
+        topicEn = picked.topic_en;
+      }
     }
 
-    if (msgEl) msgEl.textContent = 'AI 생성 중… 토픽: ' + topicKo + ' (' + topicEn + ')';
-
     // 2) Generate content for this topic
-    var topicHint = 'Use EXACTLY this topic: "' + topicKo + '" (' + topicEn + '). Do NOT change the topic.';
+    var topicHint;
+    if (topicKo) {
+      if (msgEl) msgEl.textContent = 'AI 생성 중… 토픽: ' + topicKo + ' (' + topicEn + ')';
+      topicHint = 'Use EXACTLY this topic: "' + topicKo + '" (' + topicEn + '). Do NOT change the topic.';
+    } else {
+      var lvlDisplay = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]||level;
+      if (msgEl) msgEl.textContent = 'AI가 ' + lvlDisplay + ' 레벨 토픽을 자동 생성 중…';
+      topicHint = 'Pick an interesting, specific Korean writing topic appropriate for ' + lvlDisplay + ' level learners.';
+    }
     var parsed = await _srGenerateContent(level, topicHint, topicKo, topicEn);
 
     document.getElementById('srt-topic-ko').value = parsed.topic_ko || topicKo;
@@ -6606,11 +6614,7 @@ async function _srPickTopicFromDB(sb, level, date) {
   // Fetch all active topics sorted by sort_order (same order as 작문 토픽 list)
   var topicsRes = await sb.from('writing_topics').select('topic_ko,topic_en,category').eq('level', level).eq('active', true).order('sort_order').order('created_at');
   var allTopics = topicsRes.data || [];
-  if (!allTopics.length) {
-    var fallbackRes = await sb.from('writing_topics').select('topic_ko,topic_en,category').eq('active', true).order('sort_order').order('created_at');
-    allTopics = fallbackRes.data || [];
-  }
-  if (!allTopics.length) return { topic_ko: '한국 음식', topic_en: 'Korean food' };
+  if (!allTopics.length) return null;
 
   // Deterministic date-based rotation: same logic as study room
   // Day 0 (2026-04-14) = topic #1, Day 1 = topic #2, ...
@@ -6863,9 +6867,9 @@ async function srDeleteDailyContent() {
 async function srLoadTopicSchedule() {
   var sb = getSb();
   var el = document.getElementById('srt-list'); if (!sb || !el) return;
-  var today = new Date().toISOString().slice(0, 10);
-  var past   = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
-  var future = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+  var today = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+  var past   = new Date(Date.now() + 9 * 3600000 - 3 * 86400000).toISOString().slice(0, 10);
+  var future = new Date(Date.now() + 9 * 3600000 + 14 * 86400000).toISOString().slice(0, 10);
   var r = await sb.from('study_daily_content')
     .select('scheduled_date,level,topic_ko,topic_en,admin_edited,status')
     .gte('scheduled_date', past)
@@ -6918,6 +6922,66 @@ async function srLoadTopicSchedule() {
     html += '</div>';
   });
   el.innerHTML = html;
+
+  // 오늘 + 내일 빠진 레벨 자동 생성 (페이지 로드 시 1회)
+  if (window._srAutoGenDone) return;
+  window._srAutoGenDone = true;
+  var kstNow = new Date(Date.now() + 9 * 3600000);
+  var todayKST = kstNow.toISOString().slice(0, 10);
+  var tomorrowKST = new Date(new Date(todayKST + 'T00:00:00+09:00').getTime() + 86400000).toISOString().slice(0, 10);
+  var autoGenDates = [todayKST, tomorrowKST];
+  var autoGenItems = [];
+  autoGenDates.forEach(function(d) {
+    var existing = dateMap[d] || {};
+    allLevels.forEach(function(lvl) {
+      if (!existing[lvl]) autoGenItems.push({ date: d, level: lvl });
+    });
+  });
+  if (!autoGenItems.length) return;
+  var statusBanner = document.createElement('div');
+  statusBanner.id = 'srt-autogen-banner';
+  statusBanner.style.cssText = 'padding:10px 14px;background:#eff6ff;border:1px solid #3b82f6;border-radius:8px;margin-bottom:10px;font-size:12px;color:#1e40af;font-weight:600';
+  statusBanner.textContent = '⏳ 빠진 콘텐츠 자동 생성 중… (' + autoGenItems.length + '개)';
+  el.parentNode.insertBefore(statusBanner, el);
+  var genOk = 0, genFail = 0;
+  for (var gi = 0; gi < autoGenItems.length; gi++) {
+    var item = autoGenItems[gi];
+    try {
+      if (gi > 0) await new Promise(function(r){ setTimeout(r, 1500); });
+      var picked = await _srPickTopicFromDB(sb, item.level, item.date);
+      var topicHint, forceTopic;
+      if (picked) {
+        topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
+        forceTopic = picked;
+      } else {
+        topicHint = 'Pick an interesting, specific Korean writing topic appropriate for ' + (lvlNames[item.level]||item.level) + ' level learners.';
+        forceTopic = null;
+      }
+      var parsed = await _srGenerateContent(item.level, topicHint, forceTopic ? forceTopic.topic_ko : null, forceTopic ? forceTopic.topic_en : null);
+      var rec = {
+        scheduled_date: item.date, level: item.level,
+        topic_ko: parsed.topic_ko || (forceTopic ? forceTopic.topic_ko : ''), topic_en: parsed.topic_en || (forceTopic ? forceTopic.topic_en : ''),
+        vocab: parsed.vocab || [], grammar: parsed.grammar || [], helpers: parsed.helpers || [],
+        dictation_sentences: parsed.dictation_sentences || [], dictation_questions: parsed.dictation_questions || [], topic_writing_sentences: parsed.topic_writing_sentences || [],
+        confusing_grammar: parsed.confusing_grammar || null,
+        formality_exercise: parsed.formality_exercise || null,
+        culture_note: parsed.culture_note || null,
+        status: 'approved', admin_edited: false, updated_at: new Date().toISOString()
+      };
+      await sb.from('study_daily_content').upsert(rec, {onConflict:'scheduled_date,level'});
+      genOk++;
+      statusBanner.textContent = '⏳ 자동 생성 중… ' + (genOk + genFail) + '/' + autoGenItems.length + ' (' + (lvlNames[item.level]||item.level) + ' ' + item.date + ' ✅)';
+    } catch(e) {
+      genFail++;
+      statusBanner.textContent = '⏳ 자동 생성 중… ' + (genOk + genFail) + '/' + autoGenItems.length + ' (' + (lvlNames[item.level]||item.level) + ' ❌)';
+      console.warn('[autoGen] failed:', item.date, item.level, e);
+    }
+  }
+  statusBanner.style.background = genFail ? '#fef3c7' : '#dcfce7';
+  statusBanner.style.borderColor = genFail ? '#f59e0b' : '#22c55e';
+  statusBanner.style.color = genFail ? '#92400e' : '#15803d';
+  statusBanner.textContent = '✅ 자동 생성 완료! 성공: ' + genOk + ', 실패: ' + genFail;
+  await srLoadTopicSchedule();
 }
 
 async function srPregenerate10Days() {
@@ -7025,11 +7089,18 @@ async function srGenerate1Day1Level() {
   if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">' + date + ' ' + lvlDisplay + ' 생성 중… (5-10초)</div>';
   try {
     var picked = await _srPickTopicFromDB(sb, level, date);
-    var topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
-    var parsed = await _srGenerateContent(level, topicHint, picked.topic_ko, picked.topic_en);
+    var topicHint, forceTopic;
+    if (picked) {
+      topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
+      forceTopic = picked;
+    } else {
+      topicHint = 'Pick an interesting, specific Korean writing topic appropriate for ' + lvlDisplay + ' level learners.';
+      forceTopic = null;
+    }
+    var parsed = await _srGenerateContent(level, topicHint, forceTopic ? forceTopic.topic_ko : null, forceTopic ? forceTopic.topic_en : null);
     var rec = {
       scheduled_date: date, level: level,
-      topic_ko: parsed.topic_ko || picked.topic_ko, topic_en: parsed.topic_en || picked.topic_en,
+      topic_ko: parsed.topic_ko || (forceTopic ? forceTopic.topic_ko : ''), topic_en: parsed.topic_en || (forceTopic ? forceTopic.topic_en : ''),
       vocab: parsed.vocab || [], grammar: parsed.grammar || [], helpers: parsed.helpers || [],
       dictation_sentences: parsed.dictation_sentences || [], dictation_questions: parsed.dictation_questions || [], topic_writing_sentences: parsed.topic_writing_sentences || [],
       confusing_grammar: parsed.confusing_grammar || null,
@@ -7066,12 +7137,19 @@ async function srGenerate1DayAllLevels() {
     try {
       if (li > 0) await new Promise(function(r){ setTimeout(r, 1500); });
       var picked = await _srPickTopicFromDB(sb, level, date);
-      var topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
+      var topicHint, forceTopic;
+      if (picked) {
+        topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
+        forceTopic = picked;
+      } else {
+        topicHint = 'Pick an interesting, specific Korean writing topic appropriate for ' + lvlNames[level] + ' level learners.';
+        forceTopic = null;
+      }
       if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">' + date + ' ' + lvlNames[level] + ' 생성 중… (' + (generated+1) + '/4)</div>';
-      var parsed = await _srGenerateContent(level, topicHint, picked.topic_ko, picked.topic_en);
+      var parsed = await _srGenerateContent(level, topicHint, forceTopic ? forceTopic.topic_ko : null, forceTopic ? forceTopic.topic_en : null);
       var rec = {
         scheduled_date: date, level: level,
-        topic_ko: parsed.topic_ko || picked.topic_ko, topic_en: parsed.topic_en || picked.topic_en,
+        topic_ko: parsed.topic_ko || (forceTopic ? forceTopic.topic_ko : ''), topic_en: parsed.topic_en || (forceTopic ? forceTopic.topic_en : ''),
         vocab: parsed.vocab || [], grammar: parsed.grammar || [], helpers: parsed.helpers || [],
         dictation_sentences: parsed.dictation_sentences || [], dictation_questions: parsed.dictation_questions || [], topic_writing_sentences: parsed.topic_writing_sentences || [],
         confusing_grammar: parsed.confusing_grammar || null,
@@ -7124,14 +7202,21 @@ async function srAssign3Days() {
         if (apiCallCount > 0) await new Promise(function(r){ setTimeout(r, 1500); });
         // Pick topic from DB (date-based deterministic rotation)
         var picked = await _srPickTopicFromDB(sb, level, date);
-        var topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
+        var topicHint, forceTopic;
+        if (picked) {
+          topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
+          forceTopic = picked;
+        } else {
+          topicHint = 'Pick an interesting, specific Korean writing topic appropriate for ' + lvlNames[level] + ' level learners.';
+          forceTopic = null;
+        }
         if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">' + date + ' ' + lvlNames[level] + ' 생성 중… (' + (generated+1) + '/12)</div>';
 
-        var parsed = await _srGenerateContent(level, topicHint, picked.topic_ko, picked.topic_en);
+        var parsed = await _srGenerateContent(level, topicHint, forceTopic ? forceTopic.topic_ko : null, forceTopic ? forceTopic.topic_en : null);
         apiCallCount++;
         var rec = {
           scheduled_date: date, level: level,
-          topic_ko: parsed.topic_ko || picked.topic_ko, topic_en: parsed.topic_en || picked.topic_en,
+          topic_ko: parsed.topic_ko || (forceTopic ? forceTopic.topic_ko : ''), topic_en: parsed.topic_en || (forceTopic ? forceTopic.topic_en : ''),
           vocab: parsed.vocab || [], grammar: parsed.grammar || [], helpers: parsed.helpers || [],
           dictation_sentences: parsed.dictation_sentences || [], dictation_questions: parsed.dictation_questions || [], topic_writing_sentences: parsed.topic_writing_sentences || [],
           confusing_grammar: parsed.confusing_grammar || null,
@@ -9342,9 +9427,18 @@ async function goVocabBankAdmin() {
 
 async function vbLoadAll() {
   var sb = getSb(); if (!sb) return;
-  var r = await sb.from('vocabulary_bank').select('word_key,word_ko,word_rom,word_en,level,interest_tag,is_active').order('word_ko').limit(10000);
-  if (r.error) { document.getElementById('vb-list').textContent = 'Error: ' + r.error.message; return; }
-  _vbAll = r.data || [];
+  var all = [];
+  var batchSize = 1000;
+  var from = 0;
+  while (true) {
+    var r = await sb.from('vocabulary_bank').select('word_key,word_ko,word_rom,word_en,level,interest_tag,is_active').order('word_ko').range(from, from + batchSize - 1);
+    if (r.error) { document.getElementById('vb-list').textContent = 'Error: ' + r.error.message; return; }
+    var batch = r.data || [];
+    all = all.concat(batch);
+    if (batch.length < batchSize) break;
+    from += batchSize;
+  }
+  _vbAll = all;
   vbRenderList();
 }
 
