@@ -61,7 +61,7 @@ h1, h2, h3, h4 { word-break: keep-all; overflow-wrap: break-word; }
 .kh-logo { display: flex; align-items: center; text-decoration: none; line-height: 1; }
 .kh-logo-text { font-family: 'DM Sans', 'Noto Sans KR', sans-serif; font-size: 36px; font-weight: 800; color: #6B8DD6; letter-spacing: -1px; line-height: 1; }
 .kh-logo-i { position: relative; display: inline-block; }
-.kh-logo-i::after { content: ''; position: absolute; top: 0.12em; left: 50%; transform: translateX(-50%); width: 0.22em; height: 0.22em; border-radius: 50%; background: #E8635A; }
+.kh-logo-i::after { content: ''; position: absolute; top: 0.12em; left: 58%; transform: translateX(-50%); width: 0.22em; height: 0.22em; border-radius: 50%; background: #E8635A; }
 .kh-hright { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 .kh-hdate { font-size: 12px; color: var(--gray); white-space: nowrap; }
 .kh-hsearch {
