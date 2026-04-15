@@ -1006,7 +1006,7 @@ function renderHomeConvs() {
       });
       bubblesHtml += '</div>';
     }
-    return '<div onclick="location.href=\'korehan-conversations.html?id='+(c._id||'')+'\'" style="border-radius:18px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);transition:transform .18s,box-shadow .18s">'
+    return '<div class="hconv-card" onclick="location.href=\'korehan-conversations.html?id='+(c._id||'')+'\'" style="border-radius:18px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);transition:transform .18s,box-shadow .18s">'
       + '<div style="padding:16px 16px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #f0f4fa">'
       + '<div style="width:36px;height:36px;border-radius:50%;background:'+leftColor+';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;flex-shrink:0">'+leftIni+'</div>'
       + '<div style="flex:1;min-width:0">'
