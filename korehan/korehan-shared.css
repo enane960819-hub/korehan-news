@@ -2964,3 +2964,339 @@ body.kh-neon-on .gf-structure-box,
 body.kh-neon-on .gf-example-card { background: rgba(15,23,42,.7) !important; border-color: rgba(255,255,255,.08) !important; color: #d7f8fb !important; }
 body.kh-neon-on .gf-section h3,
 body.kh-neon-on .gf-structure-box h4 { color: #7dd3fc !important; }
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE LIGHT MODE — 라이트 모드일 때 데스크탑과 동일한 밝은 테마
+   (스터디룸 제외 — JS에서 mobile-light 클래스 제어)
+══════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+
+  /* ── Body & background ── */
+  body.mobile-light,
+  .mobile-light body {
+    background: #f0f2f7 !important;
+    color: #0d1b2e !important;
+  }
+
+  /* ── Header bar ── */
+  body.mobile-light .kh-header-bar {
+    background: rgba(255,255,255,.96) !important;
+    border-bottom: 1px solid #d4dce8 !important;
+  }
+  body.mobile-light .kh-logo-news {
+    color: #0d1b2e !important;
+  }
+
+  /* ── Page banners / hero headings ── */
+  body.mobile-light .page-banner h1,
+  body.mobile-light .conv-hero h1,
+  body.mobile-light .st-hero h1,
+  body.mobile-light .learn-hero h1 {
+    color: #0d1b2e !important;
+  }
+  body.mobile-light .page-banner p,
+  body.mobile-light .conv-hero p,
+  body.mobile-light .st-hero p,
+  body.mobile-light .learn-hero p {
+    color: #64748b !important;
+  }
+
+  /* ── Filter pills ── */
+  body.mobile-light .cf-pill,
+  body.mobile-light .sf-pill,
+  body.mobile-light .sp {
+    background: #fff !important;
+    border: 1px solid #d4dce8 !important;
+    color: #445566 !important;
+  }
+  body.mobile-light .cf-pill.on,
+  body.mobile-light .sf-pill.on,
+  body.mobile-light .sp.on {
+    background: #1a3a6b !important;
+    color: #fff !important;
+    border-color: #1a3a6b !important;
+  }
+
+  /* ── Cards (all variants) ── */
+  body.mobile-light .cc2,
+  body.mobile-light .st-card,
+  body.mobile-light .pod-section,
+  body.mobile-light .sentence-box,
+  body.mobile-light .quiz-wrap2,
+  body.mobile-light .goal-card,
+  body.mobile-light .stat-card,
+  body.mobile-light .sidebar-box,
+  body.mobile-light .article-row,
+  body.mobile-light .art-vocab-box,
+  body.mobile-light .art-comments,
+  body.mobile-light .art-related,
+  body.mobile-light .lq-wrap,
+  body.mobile-light .lv-q-wrap,
+  body.mobile-light .vocab-card,
+  body.mobile-light .plan-card,
+  body.mobile-light .course-hero,
+  body.mobile-light .mini-panel,
+  body.mobile-light .mobile-learn-card,
+  body.mobile-light .mobile-quick-start,
+  body.mobile-light .mobile-learn-strip,
+  body.mobile-light .mobile-section-shell,
+  body.mobile-light .mobile-tier-card {
+    background: #fff !important;
+    border: 1px solid #e8eef7 !important;
+    color: #0d1b2e !important;
+    box-shadow: 0 8px 32px rgba(15,23,42,.07) !important;
+  }
+
+  /* ── Section headers ── */
+  body.mobile-light .sec-hd {
+    border-bottom-color: #d4dce8 !important;
+  }
+  body.mobile-light .sec-hd-title,
+  body.mobile-light .section-title {
+    color: #0d1b2e !important;
+  }
+  body.mobile-light .sec-hd-sub,
+  body.mobile-light .sec-more {
+    color: #64748b !important;
+  }
+  body.mobile-light .home-sec-title,
+  body.mobile-light .home-sec-title span {
+    color: #0d1b2e !important;
+  }
+  body.mobile-light .home-sec-sub {
+    color: #64748b !important;
+  }
+  body.mobile-light .home-sec-more {
+    color: #2255a4 !important;
+  }
+  body.mobile-light .home-sec {
+    border-bottom-color: #e8eef7 !important;
+  }
+
+  /* ── Story cards ── */
+  body.mobile-light .story-card {
+    background: #fff !important;
+    border-color: #e8eef7 !important;
+  }
+  body.mobile-light .story-title {
+    color: #0d1b2e !important;
+  }
+  body.mobile-light .story-preview,
+  body.mobile-light .story-foot {
+    color: #64748b !important;
+  }
+  body.mobile-light .ds-label {
+    color: #94a3b8 !important;
+  }
+
+  /* ── Article titles & text ── */
+  body.mobile-light .article-title,
+  body.mobile-light .art-title {
+    color: #0d1b2e !important;
+  }
+  body.mobile-light .article-excerpt,
+  body.mobile-light .art-lead,
+  body.mobile-light .art-full,
+  body.mobile-light .st-body-text {
+    color: #334155 !important;
+  }
+
+  /* ── Article card ── */
+  body.mobile-light .art-card {
+    background: #fff !important;
+    border: 1px solid #e8eef7 !important;
+  }
+  body.mobile-light .art-date,
+  body.mobile-light .art-readtime,
+  body.mobile-light .art-dot {
+    color: #64748b !important;
+  }
+
+  /* ── Article action icons ── */
+  body.mobile-light .art-action-icon {
+    background: #f0f2f7 !important;
+    border-color: #d4dce8 !important;
+    color: #445566 !important;
+  }
+  body.mobile-light .art-action-icon:hover {
+    background: #e8eef7 !important;
+    color: #1a3a6b !important;
+  }
+  body.mobile-light .art-action-icon.active {
+    background: rgba(255,200,50,.15) !important;
+    border-color: rgba(255,200,50,.5) !important;
+    color: #b8860b !important;
+  }
+
+  /* ── Article tabs ── */
+  body.mobile-light .art-tabs {
+    background: #f0f2f7 !important;
+  }
+  body.mobile-light .art-tab {
+    color: #64748b !important;
+  }
+  body.mobile-light .art-tab.on {
+    background: #fff !important;
+    color: #0d1b2e !important;
+  }
+  body.mobile-light .art-vocab-title,
+  body.mobile-light .art-comments-title,
+  body.mobile-light .art-related-title {
+    color: #0d1b2e !important;
+  }
+
+  /* ── Conversation / Story detail panels ── */
+  body.mobile-light .dp-right,
+  body.mobile-light .st-right {
+    border-top: 1px solid #d4dce8 !important;
+    background: #fff !important;
+  }
+  body.mobile-light .dp-left,
+  body.mobile-light .st-left {
+    background: #fff !important;
+  }
+  body.mobile-light .dp-left-head,
+  body.mobile-light .dp-right-head,
+  body.mobile-light .st-right-head {
+    background: #f8fafc !important;
+    border-color: #d4dce8 !important;
+  }
+  body.mobile-light .dp-left-title,
+  body.mobile-light .dp-right-title,
+  body.mobile-light .st-right-title,
+  body.mobile-light .st-head-title {
+    color: #0d1b2e !important;
+  }
+  body.mobile-light .dp-chat-area,
+  body.mobile-light .st-body-scroll {
+    background: #fff !important;
+  }
+  body.mobile-light .dp-msg-row.left .dp-bubble {
+    background: #f0f4ff !important;
+    color: #0d1b2e !important;
+    border-color: #d4dce8 !important;
+  }
+  body.mobile-light .dp-study-card {
+    background: #f8fafc !important;
+    border-color: #d4dce8 !important;
+    color: #0d1b2e !important;
+  }
+
+  /* ── Bottom nav ── */
+  body.mobile-light .mobile-bottom-nav {
+    background: rgba(255,255,255,.92) !important;
+    border: 1px solid #d4dce8 !important;
+    box-shadow: 0 -4px 24px rgba(15,23,42,.1) !important;
+  }
+  body.mobile-light .mobile-bottom-nav a {
+    color: #64748b !important;
+  }
+  body.mobile-light .mobile-bottom-nav a.on {
+    background: #eef4ff !important;
+    color: #1a3a6b !important;
+  }
+
+  /* ── Mobile-specific components ── */
+  body.mobile-light .mobile-eyebrow {
+    color: #2255a4 !important;
+  }
+  body.mobile-light .mobile-quick-title {
+    color: #0d1b2e !important;
+  }
+  body.mobile-light .mobile-quick-sub {
+    color: #64748b !important;
+  }
+  body.mobile-light .mobile-mini-card {
+    background: #f0f2f7 !important;
+    border: 1px solid #d4dce8 !important;
+  }
+  body.mobile-light .mobile-mini-card .label {
+    color: #2255a4 !important;
+  }
+  body.mobile-light .mobile-mini-card .value {
+    color: #0d1b2e !important;
+  }
+  body.mobile-light .mobile-secondary-btn {
+    background: #f0f2f7 !important;
+    color: #0d1b2e !important;
+    border: 1px solid #d4dce8 !important;
+  }
+  body.mobile-light .mobile-study-tabs button {
+    border: 1px solid #d4dce8 !important;
+    background: #fff !important;
+    color: #0d1b2e !important;
+  }
+  body.mobile-light .mobile-study-tabs button.on {
+    background: #1a3a6b !important;
+    color: #fff !important;
+  }
+
+  /* ── Hero shadow lighter ── */
+  body.mobile-light #dyn-hero > div:first-child {
+    box-shadow: 0 24px 48px rgba(15,23,42,.12) !important;
+  }
+
+  /* ── Grammar section ── */
+  body.mobile-light .grammar-point {
+    background: #fff !important;
+    border: 1px solid #d4dce8 !important;
+    border-left: 1px solid #d4dce8 !important;
+  }
+  body.mobile-light .grammar-name,
+  body.mobile-light .grammar-explanation,
+  body.mobile-light .grammar-example,
+  body.mobile-light .grammar-intro {
+    color: #0d1b2e !important;
+  }
+  body.mobile-light .grammar-example {
+    background: #f8fafc !important;
+    border-left: 3px solid #2255a4 !important;
+  }
+  body.mobile-light .grammar-example span,
+  body.mobile-light .grammar-example strong {
+    color: #64748b !important;
+  }
+
+  /* ── Conversation card details (cc2) ── */
+  body.mobile-light .cc2-title {
+    color: #0d1b2e !important;
+  }
+  body.mobile-light .cc2-ctx {
+    color: #64748b !important;
+  }
+  body.mobile-light .cc2-head {
+    border-color: #e8eef7 !important;
+    background: #fff !important;
+  }
+  body.mobile-light .cc2-footer {
+    background: #fff !important;
+    border-color: #e8eef7 !important;
+  }
+  body.mobile-light .cc2-footer span {
+    color: #64748b !important;
+  }
+  body.mobile-light .cc2-footer .cc2-study-btn {
+    color: #2255a4 !important;
+  }
+  body.mobile-light .cc2-bub.left {
+    background: #f0f4ff !important;
+    color: #0d1b2e !important;
+    border-color: #d4dce8 !important;
+  }
+
+  /* ── User dropdown ── */
+  body.mobile-light .kh-user-dropdown {
+    background: rgba(255,255,255,.98) !important;
+    border-color: #d4dce8 !important;
+  }
+  body.mobile-light .kh-user-dropdown-name {
+    color: #0d1b2e !important;
+  }
+  body.mobile-light .kh-user-dropdown-link {
+    color: #0d1b2e !important;
+  }
+  body.mobile-light .kh-user-dropdown-link:hover {
+    background: #eef4ff !important;
+    color: #2255a4 !important;
+  }
+}

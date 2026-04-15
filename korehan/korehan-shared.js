@@ -1380,6 +1380,11 @@ function syncNeonToggleButtons() {
 function applyKhNeon(on) {
   if (!document.body) return;
   document.body.classList.toggle('kh-neon-on', !!on);
+  // Toggle mobile light mode when neon changes
+  if (document.body.classList.contains('mobile-redesign')) {
+    var isStudyRoom = pageName() === 'korehan-study-room';
+    document.body.classList.toggle('mobile-light', !on && !isStudyRoom);
+  }
   syncNeonToggleButtons();
 }
 
@@ -7361,6 +7366,10 @@ function pageName() {
 function markMobileBody() {
   if (!isMobileRedesign()) return;
   document.body.classList.add('mobile-redesign');
+  // Light mode on mobile: apply unless neon is active or on study room
+  var isStudyRoom = pageName() === 'korehan-study-room';
+  var isNeon = document.body.classList.contains('kh-neon-on');
+  document.body.classList.toggle('mobile-light', !isNeon && !isStudyRoom);
 }
 
 function injectMobileBottomNav() {
@@ -7463,7 +7472,7 @@ function enhanceStoriesMobile() {
       box.style.margin = '0 24px 14px';
       box.innerHTML = ''
         + '<div class="mobile-eyebrow">Story study</div>'
-        + '<h3 style="font-size:22px;line-height:1.08;font-weight:900;color:#fff;margin:0 0 8px">Read → Vocabulary → Quiz → Discussion</h3>'
+        + '<h3 class="mobile-quick-title" style="font-size:22px;margin:0 0 8px">Read → Vocabulary → Quiz → Discussion</h3>'
         + '<p class="mobile-quick-sub">Stories work best when the reading screen is calm and the study actions are obvious.</p>'
         + '<div class="mobile-action-row">'
         + '<a class="mobile-primary-btn" href="javascript:void(0)">' + khIcon('book-marked', 'Vocabulary', 'kh-ui-icon-sm') + '</a>'
@@ -7672,6 +7681,7 @@ window.addEventListener('resize', function(){
     injectMobileBottomNav();
   } else {
     document.body.classList.remove('mobile-redesign');
+    document.body.classList.remove('mobile-light');
     var nav = document.querySelector('.mobile-bottom-nav');
     if (nav) nav.remove();
   }
