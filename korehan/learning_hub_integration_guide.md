@@ -1,5 +1,5 @@
 <!-- sync marker -->
-# KoreHan Learning Hub integration guide
+# KoreHani Learning Hub integration guide
 
 ## What this gives you
 - weak grammar tracking

@@ -1,5 +1,5 @@
 /* ============================================================
-   KoreHan News — Shared JS
+   KoreHani — Shared JS
    ============================================================ */
 
 // ── Neon/dark mode + auth flash prevention: apply IMMEDIATELY ──
@@ -732,7 +732,7 @@ async function getArticleCacheSentences() {
           id: 'art-' + art.id + '-' + idx,
           level: art.level || 'Intermediate',
           ko: sentence.trim(),
-          en: art.title || art.section || 'From KoreHan News'
+          en: art.title || art.section || 'From KoreHani'
         });
       });
     }
@@ -1783,7 +1783,7 @@ var ARTICLES_STORAGE_MAX_AGE = 60 * 60 * 1000; // 1시간 (localStorage — stal
 var HOME_ARTICLE_SELECT = '*';
 
 // 이미지 없는 기사용 placeholder — SVG inline data URI (깨지지 않음)
-var KH_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' fill='%231e293b'%3E%3Crect width='600' height='400'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.35em' font-family='sans-serif' font-size='18' fill='%2364748b'%3EKoreHan News%3C/text%3E%3C/svg%3E";
+var KH_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' fill='%231e293b'%3E%3Crect width='600' height='400'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.35em' font-family='sans-serif' font-size='18' fill='%2364748b'%3EKoreHani%3C/text%3E%3C/svg%3E";
 
 (function hydrateArticlesCacheFromStorage() {
   try {
@@ -2418,7 +2418,7 @@ async function renderSectionPage(section) {
   // 페이지 타이틀/배너
   var secInfo = getSections().find(function(s){ return s.key === section; });
   if (secInfo) {
-    document.title = secInfo.label + ' — KoreHan News';
+    document.title = secInfo.label + ' — KoreHani';
     var bannerH = document.querySelector('.page-banner h1');
     var bannerP = document.querySelector('.page-banner p');
     if (bannerH) bannerH.textContent = secInfo.label;
@@ -2693,7 +2693,7 @@ document.addEventListener('DOMContentLoaded', function() { _loadReportersIntoKHM
 function getReporterProfileHTML(article) {
   var rid = article.reporter_id || article.reporter || null;
   var rep = rid ? KH_REPORTERS[rid] : null;
-  var name  = (rep && rep.name)  ? rep.name  : 'KoreHan Reporter';
+  var name  = (rep && rep.name)  ? rep.name  : 'KoreHani Reporter';
   var img   = (rep && rep.img)   ? rep.img   : null;
   var href  = (rep && rep.href && rep.href !== 'korehan-reporters.html') ? rep.href : (rid ? 'korehan-reporter.html?id=' + rid : 'korehan-reporters.html');
   var color = (rep && rep.color) ? rep.color : '#2563eb';
@@ -5191,7 +5191,7 @@ function renderFooter() {
     + '<div>'
     + '<div style="font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:14px">Company</div>'
     + '<div style="display:flex;flex-direction:column;gap:9px">'
-    + '<a href="landing.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">About KoreHan News</a>'
+    + '<a href="landing.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">About KoreHani</a>'
     + '<a href="mailto:hello@korehannews.com" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Contact</a>'
     + '</div>'
     + '</div>'
@@ -5218,7 +5218,7 @@ function renderFooter() {
 
     + '</div>'
     + '<div style="border-top:1px solid rgba(255,255,255,.07);padding:16px 22px;text-align:center;font-size:12px;color:rgba(255,255,255,.28);">'
-    + '© 2026 KoreHan News · All rights reserved'
+    + '© 2026 KoreHani · All rights reserved'
     + '</div>'
     + '</footer>';
 }
@@ -5640,11 +5640,11 @@ function sectionLabel(key) {
 var _appSettings = {};
 var _appSettingsPromise = null;
 var DEFAULT_SITE_CONFIG = {
-  siteName: 'KoreHan News',
+  siteName: 'KoreHani',
   siteTagline: 'Learn Korean, Naturally',
-  footerDesc: 'KoreHan News delivers real Korean news — paired with vocabulary tooltips so you learn Korean naturally through stories that matter.',
+  footerDesc: 'KoreHani delivers real Korean news — paired with vocabulary tooltips so you learn Korean naturally through stories that matter.',
   learnBannerTitle: 'Simplified Korean news for learners',
-  learnBannerDesc: 'KoreHan News is written in easy Korean for foreign learners. Hover any underlined word to instantly see its meaning and pronunciation.'
+  learnBannerDesc: 'KoreHani is written in easy Korean for foreign learners. Hover any underlined word to instantly see its meaning and pronunciation.'
 };
 
 function getSiteConfig() {

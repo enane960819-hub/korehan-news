@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KoreHan Admin CMS</title>
+<title>KoreHani Admin CMS</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -476,11 +476,11 @@ const SEED = [
 ];
 
 const DEF_SITECONF = {
-  siteName:'KoreHan News',
+  siteName:'KoreHani',
   siteTagline:'쉬운 뉴스로 배우는 한국어',
-  footerDesc:'KoreHan News는 한국어를 배우는 외국인을 위한 뉴스 사이트입니다.\n유치원~중학교 수준의 쉬운 한국어로 쓴 뉴스를 제공합니다.\n단어에 마우스를 올리면 영어 뜻과 발음을 확인할 수 있어요.',
+  footerDesc:'KoreHani는 한국어를 배우는 외국인을 위한 뉴스 사이트입니다.\n유치원~중학교 수준의 쉬운 한국어로 쓴 뉴스를 제공합니다.\n단어에 마우스를 올리면 영어 뜻과 발음을 확인할 수 있어요.',
   learnBannerTitle:'유치원~중학교 수준의 쉬운 한국어 뉴스',
-  learnBannerDesc:'KoreHan News는 한국어를 배우는 외국인을 위한 사이트예요. 뉴스 기사를 읽으면서 자연스럽게 한국어를 익힐 수 있어요.',
+  learnBannerDesc:'KoreHani는 한국어를 배우는 외국인을 위한 사이트예요. 뉴스 기사를 읽으면서 자연스럽게 한국어를 익힐 수 있어요.',
 };
 const DEF_ONBOARDING_COPY = {
   heroTitle:'Build a Korean routine that actually fits your day.',
@@ -2098,7 +2098,7 @@ function saveOpinions(){
 
 // ══ CHARACTER REPORTERS ══════════════════════════════════════
 var DEF_CHAR_REPORTERS = [
-  { id:'cr1',  name:'박서진',   role:'사회부 기자',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'KoreHan News 사회부 기자. 복잡한 사회 이슈를 쉬운 한국어로 전달합니다.',             personality:'친근하고 따뜻한 어조. 독자에게 설명하듯이 씁니다.',    tone:'Friendly and approachable',  tags:['사회','오피니언'], profilePage:'', color:'#2563eb' },
+  { id:'cr1',  name:'박서진',   role:'사회부 기자',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'KoreHani 사회부 기자. 복잡한 사회 이슈를 쉬운 한국어로 전달합니다.',             personality:'친근하고 따뜻한 어조. 독자에게 설명하듯이 씁니다.',    tone:'Friendly and approachable',  tags:['사회','오피니언'], profilePage:'', color:'#2563eb' },
   { id:'cr2',  name:'김지원',   role:'국제부 특파원',     image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'전 세계 뉴스를 한국어로 쉽게 풀어드립니다. 국제 정세 전문.',                          personality:'분석적이고 논리적. 데이터와 사실 중심.',               tone:'Analytical and precise',     tags:['국제','travel'],  profilePage:'', color:'#7c3aed' },
   { id:'cr3',  name:'이민준',   role:'경제부 에디터',     image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'경제 지표와 금융 시장을 알기 쉽게 분석합니다. 10년 경력의 경제 전문 기자.',             personality:'명확하고 숫자 중심. 배경 설명을 충실히 합니다.',       tone:'Clear and data-driven',      tags:['경제'],           profilePage:'', color:'#059669' },
   { id:'cr4',  name:'최유나',   role:'문화부 기자',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'K-팝, 영화, 드라마 등 한국 대중문화 전문 기자. 트렌드를 누구보다 빠르게 전달합니다.', personality:'활기차고 트렌디. 젊은 독자층을 고려합니다.',          tone:'Energetic and trendy',       tags:['문화','스포츠'],  profilePage:'', color:'#db2777' },
@@ -4546,7 +4546,7 @@ async function generateConvs() {
   if (genBtn) { genBtn.disabled = true; genBtn.textContent = '⏳ Generating…'; }
   res.innerHTML = '<div style="padding:28px;text-align:center;color:#64748b;background:#fff;border-radius:16px;border:1px solid #e2e8f0"><div style="font-size:32px;margin-bottom:10px">⏳</div><div style="font-size:14px;font-weight:600">Generating ' + count + ' conversation' + (count>1?'s':'') + '…</div><div style="font-size:12px;margin-top:6px;color:#94a3b8">This may take 10–30 seconds</div></div>';
 
-  var prompt = 'You are creating Korean language learning content for KoreHan News.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nLevel guidance: ' + ({s:'STARTER: 아주 짧은 2~4단어 문장만. 기초 인사/숫자. ~이에요/예요 체만.',b:'BEGINNER: 짧고 쉬운 문장. 기본 조사. 현재형 위주.',i:'INTERMEDIATE: 연결어미, 과거형 자연스럽게.',a:'ADVANCED: 복잡한 문장, 격식체, 고급 문법.'}[lvl]||'') + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","en":"English translation of txt"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3 missions. EVERY msg MUST have "en" field with natural English translation. ' + lvlMap[lvl] + ' level Korean.';
+  var prompt = 'You are creating Korean language learning content for KoreHani.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nLevel guidance: ' + ({s:'STARTER: 아주 짧은 2~4단어 문장만. 기초 인사/숫자. ~이에요/예요 체만.',b:'BEGINNER: 짧고 쉬운 문장. 기본 조사. 현재형 위주.',i:'INTERMEDIATE: 연결어미, 과거형 자연스럽게.',a:'ADVANCED: 복잡한 문장, 격식체, 고급 문법.'}[lvl]||'') + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","en":"English translation of txt"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3 missions. EVERY msg MUST have "en" field with natural English translation. ' + lvlMap[lvl] + ' level Korean.';
 
   try {
     var resp = await callClaude({

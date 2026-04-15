@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function() { _loadReportersIntoKHM
 function getReporterProfileHTML(article) {
   var rid = article.reporter_id || article.reporter || null;
   var rep = rid ? KH_REPORTERS[rid] : null;
-  var name  = (rep && rep.name)  ? rep.name  : 'KoreHan Reporter';
+  var name  = (rep && rep.name)  ? rep.name  : 'KoreHani Reporter';
   var img   = (rep && rep.img)   ? rep.img   : null;
   var href  = (rep && rep.href && rep.href !== 'korehan-reporters.html') ? rep.href : (rid ? 'korehan-reporter.html?id=' + rid : 'korehan-reporters.html');
   var color = (rep && rep.color) ? rep.color : '#2563eb';

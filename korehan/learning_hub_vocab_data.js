@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// KoreHan Vocabulary Bank — Real TOPIK-based words
+// KoreHani Vocabulary Bank — Real TOPIK-based words
 // 375 words: 125 Beginner + 125 Intermediate + 125 Advanced
 // ═══════════════════════════════════════════════════════════════
 (function() {

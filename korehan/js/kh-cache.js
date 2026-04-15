@@ -236,7 +236,7 @@ async function getArticleCacheSentences() {
           id: 'art-' + art.id + '-' + idx,
           level: art.level || 'Intermediate',
           ko: sentence.trim(),
-          en: art.title || art.section || 'From KoreHan News'
+          en: art.title || art.section || 'From KoreHani'
         });
       });
     }

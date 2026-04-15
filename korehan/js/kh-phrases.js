@@ -82,11 +82,11 @@ function toast(msg, typeOrBool) {
 var _appSettings = {};
 var _appSettingsPromise = null;
 var DEFAULT_SITE_CONFIG = {
-  siteName: 'KoreHan News',
+  siteName: 'KoreHani',
   siteTagline: 'Learn Korean, Naturally',
-  footerDesc: 'KoreHan News delivers real Korean news — paired with vocabulary tooltips so you learn Korean naturally through stories that matter.',
+  footerDesc: 'KoreHani delivers real Korean news — paired with vocabulary tooltips so you learn Korean naturally through stories that matter.',
   learnBannerTitle: 'Simplified Korean news for learners',
-  learnBannerDesc: 'KoreHan News is written in easy Korean for foreign learners. Hover any underlined word to instantly see its meaning and pronunciation.'
+  learnBannerDesc: 'KoreHani is written in easy Korean for foreign learners. Hover any underlined word to instantly see its meaning and pronunciation.'
 };
 
 function getSiteConfig() {
