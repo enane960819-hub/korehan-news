@@ -6867,9 +6867,9 @@ async function srDeleteDailyContent() {
 async function srLoadTopicSchedule() {
   var sb = getSb();
   var el = document.getElementById('srt-list'); if (!sb || !el) return;
-  var today = new Date().toISOString().slice(0, 10);
-  var past   = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
-  var future = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+  var today = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+  var past   = new Date(Date.now() + 9 * 3600000 - 3 * 86400000).toISOString().slice(0, 10);
+  var future = new Date(Date.now() + 9 * 3600000 + 14 * 86400000).toISOString().slice(0, 10);
   var r = await sb.from('study_daily_content')
     .select('scheduled_date,level,topic_ko,topic_en,admin_edited,status')
     .gte('scheduled_date', past)
@@ -6922,6 +6922,66 @@ async function srLoadTopicSchedule() {
     html += '</div>';
   });
   el.innerHTML = html;
+
+  // 오늘 + 내일 빠진 레벨 자동 생성 (페이지 로드 시 1회)
+  if (window._srAutoGenDone) return;
+  window._srAutoGenDone = true;
+  var kstNow = new Date(Date.now() + 9 * 3600000);
+  var todayKST = kstNow.toISOString().slice(0, 10);
+  var tomorrowKST = new Date(new Date(todayKST + 'T00:00:00+09:00').getTime() + 86400000).toISOString().slice(0, 10);
+  var autoGenDates = [todayKST, tomorrowKST];
+  var autoGenItems = [];
+  autoGenDates.forEach(function(d) {
+    var existing = dateMap[d] || {};
+    allLevels.forEach(function(lvl) {
+      if (!existing[lvl]) autoGenItems.push({ date: d, level: lvl });
+    });
+  });
+  if (!autoGenItems.length) return;
+  var statusBanner = document.createElement('div');
+  statusBanner.id = 'srt-autogen-banner';
+  statusBanner.style.cssText = 'padding:10px 14px;background:#eff6ff;border:1px solid #3b82f6;border-radius:8px;margin-bottom:10px;font-size:12px;color:#1e40af;font-weight:600';
+  statusBanner.textContent = '⏳ 빠진 콘텐츠 자동 생성 중… (' + autoGenItems.length + '개)';
+  el.parentNode.insertBefore(statusBanner, el);
+  var genOk = 0, genFail = 0;
+  for (var gi = 0; gi < autoGenItems.length; gi++) {
+    var item = autoGenItems[gi];
+    try {
+      if (gi > 0) await new Promise(function(r){ setTimeout(r, 1500); });
+      var picked = await _srPickTopicFromDB(sb, item.level, item.date);
+      var topicHint, forceTopic;
+      if (picked) {
+        topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
+        forceTopic = picked;
+      } else {
+        topicHint = 'Pick an interesting, specific Korean writing topic appropriate for ' + (lvlNames[item.level]||item.level) + ' level learners.';
+        forceTopic = null;
+      }
+      var parsed = await _srGenerateContent(item.level, topicHint, forceTopic ? forceTopic.topic_ko : null, forceTopic ? forceTopic.topic_en : null);
+      var rec = {
+        scheduled_date: item.date, level: item.level,
+        topic_ko: parsed.topic_ko || (forceTopic ? forceTopic.topic_ko : ''), topic_en: parsed.topic_en || (forceTopic ? forceTopic.topic_en : ''),
+        vocab: parsed.vocab || [], grammar: parsed.grammar || [], helpers: parsed.helpers || [],
+        dictation_sentences: parsed.dictation_sentences || [], dictation_questions: parsed.dictation_questions || [], topic_writing_sentences: parsed.topic_writing_sentences || [],
+        confusing_grammar: parsed.confusing_grammar || null,
+        formality_exercise: parsed.formality_exercise || null,
+        culture_note: parsed.culture_note || null,
+        status: 'approved', admin_edited: false, updated_at: new Date().toISOString()
+      };
+      await sb.from('study_daily_content').upsert(rec, {onConflict:'scheduled_date,level'});
+      genOk++;
+      statusBanner.textContent = '⏳ 자동 생성 중… ' + (genOk + genFail) + '/' + autoGenItems.length + ' (' + (lvlNames[item.level]||item.level) + ' ' + item.date + ' ✅)';
+    } catch(e) {
+      genFail++;
+      statusBanner.textContent = '⏳ 자동 생성 중… ' + (genOk + genFail) + '/' + autoGenItems.length + ' (' + (lvlNames[item.level]||item.level) + ' ❌)';
+      console.warn('[autoGen] failed:', item.date, item.level, e);
+    }
+  }
+  statusBanner.style.background = genFail ? '#fef3c7' : '#dcfce7';
+  statusBanner.style.borderColor = genFail ? '#f59e0b' : '#22c55e';
+  statusBanner.style.color = genFail ? '#92400e' : '#15803d';
+  statusBanner.textContent = '✅ 자동 생성 완료! 성공: ' + genOk + ', 실패: ' + genFail;
+  await srLoadTopicSchedule();
 }
 
 async function srPregenerate10Days() {
