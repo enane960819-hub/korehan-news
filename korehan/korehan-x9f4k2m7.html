@@ -667,6 +667,7 @@ function _createAdminProxy() {
     return this;
   };
   QueryBuilder.prototype.limit = function(n) { this._params.limit = n; return this; };
+  QueryBuilder.prototype.range = function(from, to) { this._params.range = {from:from, to:to}; return this; };
   QueryBuilder.prototype.maybeSingle = function() { this._params.maybeSingle = true; return this; };
   QueryBuilder.prototype.single = function() { this._params.single = true; return this; };
   // Terminal: when awaited, sends to Edge Function
@@ -2914,31 +2915,51 @@ async function pregenAI(topicId) {
   if (btn) { btn.disabled=true; btn.textContent='⏳ 생성중...'; }
   var sb=getSb();
   try {
-    var levelGuide = {Starter:'STARTER: Very basic.',Beginner:'BEGINNER: Present tense, basic particles.',Intermediate:'INTERMEDIATE: Past tense, conjunctions.',Advanced:'ADVANCED: Complex structures, formal style.'};
-    var prompt = 'Korean study content for topic: "'+t.topic_ko+'" ('+t.topic_en+')\nLevel: '+t.level+' — '+(levelGuide[t.level]||'')+'\n\n'
-      + 'Return ONLY JSON:\n{"vocab":[{"ko":"word","rom":"romanization","en":"meaning"}] (8),'
-      + '"grammar":{"patterns":[{"name":"name","level":"'+t.level+'","exp":"explanation","ex_ko":"example","ex_en":"translation"}] (3)},'
-      + '"helpers":["sentence1","sentence2"] (5 Korean sentences),'
-      + '"dictation_sentences":["sentence1","sentence2"] (4 Korean sentences)}';
-    var r = await callClaude({feature:'topic-pregen',model:'claude-haiku-4-5-20251001',max_tokens:1500,messages:[{role:'user',content:prompt}]});
-    var txt=(r.content&&r.content[0]&&r.content[0].text)||'';
-    var clean=txt.replace(/```json?|```/g,'').trim();
-    var oi=clean.indexOf('{'),ei=clean.lastIndexOf('}');
-    var parsed=JSON.parse(clean.slice(oi,ei+1));
-    // study_daily_content에 topic_ko 기준으로 저장 (날짜 미정)
-    await sb.from('study_daily_content').upsert({
-      level:t.level, topic_ko:t.topic_ko, topic_en:t.topic_en,
-      vocab:JSON.stringify(parsed.vocab||[]), grammar:JSON.stringify(parsed.grammar||{}),
-      helpers:JSON.stringify(parsed.helpers||[]), dictation_sentences:JSON.stringify(parsed.dictation_sentences||[]),
-      status:'draft', scheduled_date:'2099-01-01'
-    },{onConflict:'scheduled_date,level'});
-    if (btn) { btn.textContent='✅ 생성됨'; btn.style.background='#dcfce7'; btn.style.color='#16a34a'; btn.style.borderColor='#86efac'; }
-    toast('✅ '+t.topic_ko+' AI 콘텐츠 생성 완료');
+    // 이 토픽이 출제될 날짜 계산
+    var levelTopics = (window._topicsAll||[]).filter(function(x){return x.level===t.level && x.active;});
+    levelTopics.sort(function(a,b){ return (a.sort_order||0)-(b.sort_order||0) || new Date(a.created_at)-new Date(b.created_at); });
+    var topicIdx = -1;
+    for (var ti=0; ti<levelTopics.length; ti++) { if (levelTopics[ti].id===topicId) { topicIdx=ti; break; } }
+    if (topicIdx < 0) topicIdx = 0;
+
+    var epoch = new Date('2026-04-14T00:00:00+09:00').getTime();
+    var kstNow = new Date(Date.now() + 9*3600000);
+    var todayStr = kstNow.toISOString().slice(0,10);
+    var todayMs = new Date(todayStr + 'T00:00:00+09:00').getTime();
+    var daysSince = Math.max(0, Math.floor((todayMs - epoch) / 86400000));
+    var todayIdx = levelTopics.length ? (daysSince % levelTopics.length) : 0;
+    var daysUntil = (topicIdx - todayIdx + levelTopics.length) % levelTopics.length;
+    var targetDate = new Date(todayMs + daysUntil * 86400000).toISOString().slice(0,10);
+
+    if (btn) btn.textContent = '⏳ ' + targetDate + ' 생성중...';
+
+    // 동일 프롬프트 사용 (_srGenerateContent)
+    var topicHint = 'Use EXACTLY this topic: "' + t.topic_ko + '" (' + t.topic_en + '). Do NOT change the topic.';
+    var parsed = await _srGenerateContent(t.level, topicHint, t.topic_ko, t.topic_en);
+
+    var rec = {
+      scheduled_date: targetDate, level: t.level,
+      topic_ko: t.topic_ko, topic_en: t.topic_en,
+      vocab: parsed.vocab||[], grammar: parsed.grammar||[], helpers: parsed.helpers||[],
+      dictation_sentences: parsed.dictation_sentences||[], dictation_questions: parsed.dictation_questions||[],
+      topic_writing_sentences: parsed.topic_writing_sentences||[],
+      confusing_grammar: parsed.confusing_grammar||null,
+      formality_exercise: parsed.formality_exercise||null,
+      culture_note: parsed.culture_note||null,
+      status: 'approved', admin_edited: false, updated_at: new Date().toISOString()
+    };
+    await sb.from('study_daily_content').upsert(rec, {onConflict:'scheduled_date,level'});
+
+    // writing_topics에 used_date 기록
+    await sb.from('writing_topics').update({used_date: targetDate}).eq('id', topicId);
+
+    if (btn) { btn.textContent='✅ ' + targetDate; btn.style.background='#dcfce7'; btn.style.color='#16a34a'; btn.style.borderColor='#86efac'; }
+    toast('✅ '+t.topic_ko+' → '+targetDate+' 학습요소 생성 완료');
   } catch(e) {
     if (btn) { btn.textContent='❌ 실패'; btn.style.background='#fee2e2'; btn.style.color='#dc2626'; }
     toast('❌ Error: '+e.message, true);
   }
-  if (btn) btn.disabled=false;
+  if (btn) setTimeout(function(){ btn.disabled=false; }, 2000);
 }
 
 function openTopicModal(topic) {
@@ -6338,7 +6359,7 @@ function srTopicsFormHTML() {
     + '<div class="fg" style="margin:0"><label>레벨</label>'
     + '<select id="srt-level"><option value="Starter">Seed</option><option value="Beginner" selected>Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select></div>'
     + '<button class="btn btn-g" onclick="srLoadDailyContent()">Load</button>'
-    + '<button class="btn" onclick="srAutoGenMissing()" style="background:#dc2626;color:#fff;border:1px solid #dc2626;font-weight:800">🚀 빠진 콘텐츠 자동 생성 (오늘~모레)</button>'
+    + '<button class="btn" onclick="srAutoGenMissing()" style="background:#dc2626;color:#fff;border:1px solid #dc2626;font-weight:800">🚀 오늘 빠진 레벨 생성</button>'
     + '<button class="btn" onclick="srGenerate1Day1Level()" style="background:#fefce8;color:#a16207;border:1px solid #fde047">🎲 선택레벨 1일 생성</button>'
     + '<button class="btn" onclick="srGenerate1DayAllLevels()" style="background:#fdf2f8;color:#be185d;border:1px solid #f9a8d4">🎯 전체레벨 1일 생성</button>'
     + '<button class="btn" onclick="srAssign3Days()" style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd">📅 3일치 전체 배정</button>'
@@ -6924,11 +6945,6 @@ async function srLoadTopicSchedule() {
   });
   el.innerHTML = html;
 
-  // 오늘 + 내일 빠진 레벨 자동 생성 (페이지 로드 시 1회)
-  if (!window._srAutoGenDone) {
-    window._srAutoGenDone = true;
-    _srRunAutoGen(sb, dateMap, allLevels, lvlNames, el, 3);
-  }
 }
 
 // 빠진 콘텐츠 자동 생성 (오늘~N일 후, 4레벨)
@@ -7018,9 +7034,9 @@ async function _srRunAutoGen(sb, dateMap, allLevels, lvlNames, listEl, days) {
   await srLoadTopicSchedule();
 }
 
-// 수동 트리거: 빠진 콘텐츠 자동 생성 (오늘~모레, 3일 × 4레벨)
+// 수동 트리거: 오늘 빠진 레벨만 생성 (오늘 × 4레벨)
 async function srAutoGenMissing() {
-  await _srRunAutoGen(null, null, null, null, null, 3);
+  await _srRunAutoGen(null, null, null, null, null, 1);
 }
 
 async function srPregenerate10Days() {
