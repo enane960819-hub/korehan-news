@@ -48,7 +48,7 @@ korehan-news/
 | Layer | Technology |
 |-------|------------|
 | Frontend | Vanilla HTML5, JavaScript (ES6), CSS3 — **no framework** |
-| Fonts | Google Fonts: Noto Serif KR, Noto Sans KR, Playfair Display, DM Sans, Source Sans 3 |
+| Fonts | Google Fonts: Happy Monkey (English), Jua (Korean), Noto Serif KR, Noto Sans KR, Playfair Display, DM Sans, Source Sans 3 |
 | Database | Supabase (PostgreSQL) |
 | Auth | Supabase Auth + Google OAuth 2.0 |
 | Edge Functions | Deno (TypeScript) via Supabase |

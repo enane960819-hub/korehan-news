@@ -143,7 +143,7 @@ function renderHeader() {
     var fl = document.createElement('link');
     fl.id   = 'kh-font-link';
     fl.rel  = 'stylesheet';
-    fl.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&display=swap';
+    fl.href = 'https://fonts.googleapis.com/css2?family=Happy+Monkey&family=Jua&family=Playfair+Display:wght@700;900&family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&display=swap';
     // Pretendard (한국어 + 영문 최적화, OFL 라이선스)
     if (!document.getElementById('kh-pretendard')) {
       var pf = document.createElement('link');
@@ -168,9 +168,7 @@ function renderHeader() {
     + '<div class="kh-header-inner">'
     + '<button class="kh-ham" onclick="khSbOpen()" aria-label="Menu">&#9776;</button>'
     + '<a class="kh-logo" href="index.html">'
-    + '<span class="kh-logo-kore">Kore</span>'
-    + '<span class="kh-logo-han">Han</span>'
-    + '<span class="kh-logo-news"> News</span>'
+    + '<span class="kh-logo-text">KoreHan<span class="kh-logo-i">i</span></span>'
     + '</a>'
     + '<div class="kh-hright">'
     + '<span class="kh-hdate" id="date-str"></span>'
@@ -260,8 +258,8 @@ function renderFooter() {
     + '<div class="kh-foot-inner">'
 
     + '<div>'
-    + '<div style="font-family:\'Playfair Display\',serif;font-size:22px;font-weight:900;color:#fff;margin-bottom:10px">'
-    + '<span style="color:rgba(255,255,255,.85)">Kore</span><span style="color:#7dd3fc">Han</span><span style="color:rgba(255,255,255,.7)"> News</span>'
+    + '<div style="font-family:\'Happy Monkey\',sans-serif;font-size:22px;font-weight:400;color:#fff;margin-bottom:10px">'
+    + '<span class="kh-logo-text" style="color:#fff;font-size:22px">KoreHan<span class="kh-logo-i">i</span></span>'
     + '</div>'
     + '<p style="font-size:13px;line-height:1.7;color:rgba(255,255,255,.55);margin:0 0 16px;max-width:28ch">Learn Korean naturally through real news, stories, and conversations.</p>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
@@ -700,7 +698,7 @@ function khInjectSidebar() {
   sb.className = 'kh-sidebar';
   sb.innerHTML =
     '<div class="kh-sb-top">'
-      + '<div class="kh-sb-brand"><span class="sb-kore">Kore</span><span class="sb-han">Han</span><span class="sb-news">News</span></div>'
+      + '<div class="kh-sb-brand"><span class="kh-logo-text" style="font-size:24px">KoreHan<span class="kh-logo-i">i</span></span></div>'
       + '<button class="kh-sb-x" onclick="khSbClose()">&#x2715;</button>'
     + '</div>'
     + '<div class="kh-sb-sec">'

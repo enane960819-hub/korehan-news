@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Happy+Monkey&family=Jua&display=swap');
+
 /* ============================================================
    KoreHani — Shared CSS  v6  (clean rewrite)
    ============================================================ */
@@ -25,7 +27,7 @@ html {
   overflow-x: hidden;
 }
 body {
-  font-family: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: 'Happy Monkey', 'Jua', 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   background: #f0f2f7 !important;
   background-color: #f0f2f7 !important;
   color: #0d1b2e !important;
@@ -57,9 +59,9 @@ h1, h2, h3, h4 { word-break: keep-all; overflow-wrap: break-word; }
   display: flex; align-items: center; gap: 16px; height: 92px;
 }
 .kh-logo { display: flex; align-items: center; text-decoration: none; line-height: 1; }
-.kh-logo-kore { font-family: 'Playfair Display', serif; font-size: 54px; font-weight: 900; color: #1a3a6b; letter-spacing: -0.5px; }
-.kh-logo-han  { font-family: 'Playfair Display', serif; font-size: 54px; font-weight: 900; color: #c0392b; letter-spacing: -0.5px; }
-.kh-logo-news { font-family: 'DM Sans', sans-serif; font-size: 33px; font-weight: 600; color: #0d1b2e; }
+.kh-logo-text { font-family: 'Happy Monkey', sans-serif; font-size: 48px; font-weight: 400; color: #5B86E5; letter-spacing: -0.5px; line-height: 1; }
+.kh-logo-i { position: relative; display: inline-block; }
+.kh-logo-i::after { content: ''; position: absolute; top: 0.06em; left: 50%; transform: translateX(-50%); width: 0.2em; height: 0.2em; border-radius: 50%; background: #E8635A; }
 .kh-hright { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 .kh-hdate { font-size: 12px; color: var(--gray); white-space: nowrap; }
 .kh-hsearch {
@@ -238,8 +240,7 @@ body.kh-neon-on #kh-sb-auth-sec {
 }
 body.kh-neon-on .kh-header-bar,
 body.kh-neon-on .kh-topnav { box-shadow: 0 0 24px rgba(0,255,214,.08), inset 0 -1px 0 rgba(0,255,214,.08); }
-body.kh-neon-on .kh-logo-kore,
-body.kh-neon-on .kh-logo-news,
+body.kh-neon-on .kh-logo-text,
 body.kh-neon-on .kh-hdate,
 body.kh-neon-on .tn-item,
 body.kh-neon-on .tn-arr,
@@ -247,7 +248,7 @@ body.kh-neon-on .kh-footer,
 body.kh-neon-on .kh-footer a,
 body.kh-neon-on .kh-footer p,
 body.kh-neon-on .kh-footer h4 { color:#f4ffff !important; }
-body.kh-neon-on .kh-logo-han { color:#97fbff !important; text-shadow:0 0 18px rgba(0,255,214,.34), 0 0 36px rgba(0,255,214,.2); }
+body.kh-neon-on .kh-logo-text { text-shadow:0 0 18px rgba(0,255,214,.34), 0 0 36px rgba(0,255,214,.2); }
 body.kh-neon-on .kh-hsearch,
 body.kh-neon-on .kh-user-dropdown,
 body.kh-neon-on .page-banner,
@@ -1575,7 +1576,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 }
 
 @media (max-width: 480px) {
-  .kh-logo-news { font-size: 13px; }
+  .kh-logo-text { font-size: 32px; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .stat-num { font-size: 30px; }
 }
@@ -2152,8 +2153,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 @media (max-width: 640px) {
 
   /* 로고 모바일 크기 */
-  .kh-logo-kore, .kh-logo-han { font-size: 38px !important; }
-  .kh-logo-news { font-size: 22px !important; }
+  .kh-logo-text { font-size: 36px !important; }
   .kh-header-inner { height: 72px !important; padding: 0 14px !important; }
 
   /* 9번: 글자 overflow 방지 */
@@ -2241,8 +2241,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 }
 
 /* 모바일 로고 사이드바 */
-.kh-sb-brand .sb-kore,
-.kh-sb-brand .sb-han { font-size: 28px !important; }
+.kh-sb-brand .kh-logo-text { font-size: 24px !important; }
 /* ===== Mobile redesign patch v3 ===== */
 @media (max-width: 900px) {
   :root{
@@ -2271,9 +2270,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   body.mobile-redesign .mypage-body{padding:14px 16px 110px !important;max-width:100% !important;}
   body.mobile-redesign .kh-header-bar{position:sticky;top:0;z-index:1200;background:rgba(5,12,24,.88) !important;backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,.06) !important;}
   body.mobile-redesign .kh-header-inner{height:auto;padding:12px 16px !important;gap:10px;}
-  body.mobile-redesign .kh-logo-kore,
-  body.mobile-redesign .kh-logo-han{font-size:31px !important;}
-  body.mobile-redesign .kh-logo-news{font-size:18px !important;color:#dbe5f7 !important;}
+  body.mobile-redesign .kh-logo-text{font-size:31px !important;}
   body.mobile-redesign .kh-hright{gap:8px;}
   body.mobile-redesign .kh-hsearch,
   body.mobile-redesign .kh-hdate,
@@ -2983,8 +2980,8 @@ body.kh-neon-on .gf-structure-box h4 { color: #7dd3fc !important; }
     background: rgba(255,255,255,.96) !important;
     border-bottom: 1px solid #d4dce8 !important;
   }
-  body.mobile-light .kh-logo-news {
-    color: #0d1b2e !important;
+  body.mobile-light .kh-logo-text {
+    color: #5B86E5 !important;
   }
 
   /* ── Page banners / hero headings ── */
