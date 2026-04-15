@@ -6572,14 +6572,22 @@ async function srRegenDailyContent() {
     if (!topicKo) {
       if (msgEl) msgEl.textContent = 'writing_topics에서 토픽 가져오는 중…';
       var picked = await _srPickTopicFromDB(sb, level, date);
-      topicKo = picked.topic_ko;
-      topicEn = picked.topic_en;
+      if (picked) {
+        topicKo = picked.topic_ko;
+        topicEn = picked.topic_en;
+      }
     }
 
-    if (msgEl) msgEl.textContent = 'AI 생성 중… 토픽: ' + topicKo + ' (' + topicEn + ')';
-
     // 2) Generate content for this topic
-    var topicHint = 'Use EXACTLY this topic: "' + topicKo + '" (' + topicEn + '). Do NOT change the topic.';
+    var topicHint;
+    if (topicKo) {
+      if (msgEl) msgEl.textContent = 'AI 생성 중… 토픽: ' + topicKo + ' (' + topicEn + ')';
+      topicHint = 'Use EXACTLY this topic: "' + topicKo + '" (' + topicEn + '). Do NOT change the topic.';
+    } else {
+      var lvlDisplay = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]||level;
+      if (msgEl) msgEl.textContent = 'AI가 ' + lvlDisplay + ' 레벨 토픽을 자동 생성 중…';
+      topicHint = 'Pick an interesting, specific Korean writing topic appropriate for ' + lvlDisplay + ' level learners.';
+    }
     var parsed = await _srGenerateContent(level, topicHint, topicKo, topicEn);
 
     document.getElementById('srt-topic-ko').value = parsed.topic_ko || topicKo;
@@ -6606,16 +6614,7 @@ async function _srPickTopicFromDB(sb, level, date) {
   // Fetch all active topics sorted by sort_order (same order as 작문 토픽 list)
   var topicsRes = await sb.from('writing_topics').select('topic_ko,topic_en,category').eq('level', level).eq('active', true).order('sort_order').order('created_at');
   var allTopics = topicsRes.data || [];
-  if (!allTopics.length) {
-    // Level-appropriate fallback topics (don't pull from other levels)
-    var fallbacks = {
-      Starter:      { topic_ko: '내 하루', topic_en: 'My Day' },
-      Beginner:     { topic_ko: '좋아하는 음식', topic_en: 'My Favorite Food' },
-      Intermediate: { topic_ko: '여행 경험', topic_en: 'Travel Experience' },
-      Advanced:     { topic_ko: '현대 사회와 기술', topic_en: 'Modern Society and Technology' }
-    };
-    return fallbacks[level] || { topic_ko: '한국 음식', topic_en: 'Korean food' };
-  }
+  if (!allTopics.length) return null;
 
   // Deterministic date-based rotation: same logic as study room
   // Day 0 (2026-04-14) = topic #1, Day 1 = topic #2, ...
@@ -7030,11 +7029,18 @@ async function srGenerate1Day1Level() {
   if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">' + date + ' ' + lvlDisplay + ' 생성 중… (5-10초)</div>';
   try {
     var picked = await _srPickTopicFromDB(sb, level, date);
-    var topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
-    var parsed = await _srGenerateContent(level, topicHint, picked.topic_ko, picked.topic_en);
+    var topicHint, forceTopic;
+    if (picked) {
+      topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
+      forceTopic = picked;
+    } else {
+      topicHint = 'Pick an interesting, specific Korean writing topic appropriate for ' + lvlDisplay + ' level learners.';
+      forceTopic = null;
+    }
+    var parsed = await _srGenerateContent(level, topicHint, forceTopic ? forceTopic.topic_ko : null, forceTopic ? forceTopic.topic_en : null);
     var rec = {
       scheduled_date: date, level: level,
-      topic_ko: parsed.topic_ko || picked.topic_ko, topic_en: parsed.topic_en || picked.topic_en,
+      topic_ko: parsed.topic_ko || (forceTopic ? forceTopic.topic_ko : ''), topic_en: parsed.topic_en || (forceTopic ? forceTopic.topic_en : ''),
       vocab: parsed.vocab || [], grammar: parsed.grammar || [], helpers: parsed.helpers || [],
       dictation_sentences: parsed.dictation_sentences || [], dictation_questions: parsed.dictation_questions || [], topic_writing_sentences: parsed.topic_writing_sentences || [],
       confusing_grammar: parsed.confusing_grammar || null,
@@ -7071,12 +7077,19 @@ async function srGenerate1DayAllLevels() {
     try {
       if (li > 0) await new Promise(function(r){ setTimeout(r, 1500); });
       var picked = await _srPickTopicFromDB(sb, level, date);
-      var topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
+      var topicHint, forceTopic;
+      if (picked) {
+        topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
+        forceTopic = picked;
+      } else {
+        topicHint = 'Pick an interesting, specific Korean writing topic appropriate for ' + lvlNames[level] + ' level learners.';
+        forceTopic = null;
+      }
       if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">' + date + ' ' + lvlNames[level] + ' 생성 중… (' + (generated+1) + '/4)</div>';
-      var parsed = await _srGenerateContent(level, topicHint, picked.topic_ko, picked.topic_en);
+      var parsed = await _srGenerateContent(level, topicHint, forceTopic ? forceTopic.topic_ko : null, forceTopic ? forceTopic.topic_en : null);
       var rec = {
         scheduled_date: date, level: level,
-        topic_ko: parsed.topic_ko || picked.topic_ko, topic_en: parsed.topic_en || picked.topic_en,
+        topic_ko: parsed.topic_ko || (forceTopic ? forceTopic.topic_ko : ''), topic_en: parsed.topic_en || (forceTopic ? forceTopic.topic_en : ''),
         vocab: parsed.vocab || [], grammar: parsed.grammar || [], helpers: parsed.helpers || [],
         dictation_sentences: parsed.dictation_sentences || [], dictation_questions: parsed.dictation_questions || [], topic_writing_sentences: parsed.topic_writing_sentences || [],
         confusing_grammar: parsed.confusing_grammar || null,
@@ -7129,14 +7142,21 @@ async function srAssign3Days() {
         if (apiCallCount > 0) await new Promise(function(r){ setTimeout(r, 1500); });
         // Pick topic from DB (date-based deterministic rotation)
         var picked = await _srPickTopicFromDB(sb, level, date);
-        var topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
+        var topicHint, forceTopic;
+        if (picked) {
+          topicHint = 'Use EXACTLY this topic: "' + picked.topic_ko + '" (' + picked.topic_en + '). Do NOT change the topic.';
+          forceTopic = picked;
+        } else {
+          topicHint = 'Pick an interesting, specific Korean writing topic appropriate for ' + lvlNames[level] + ' level learners.';
+          forceTopic = null;
+        }
         if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">' + date + ' ' + lvlNames[level] + ' 생성 중… (' + (generated+1) + '/12)</div>';
 
-        var parsed = await _srGenerateContent(level, topicHint, picked.topic_ko, picked.topic_en);
+        var parsed = await _srGenerateContent(level, topicHint, forceTopic ? forceTopic.topic_ko : null, forceTopic ? forceTopic.topic_en : null);
         apiCallCount++;
         var rec = {
           scheduled_date: date, level: level,
-          topic_ko: parsed.topic_ko || picked.topic_ko, topic_en: parsed.topic_en || picked.topic_en,
+          topic_ko: parsed.topic_ko || (forceTopic ? forceTopic.topic_ko : ''), topic_en: parsed.topic_en || (forceTopic ? forceTopic.topic_en : ''),
           vocab: parsed.vocab || [], grammar: parsed.grammar || [], helpers: parsed.helpers || [],
           dictation_sentences: parsed.dictation_sentences || [], dictation_questions: parsed.dictation_questions || [], topic_writing_sentences: parsed.topic_writing_sentences || [],
           confusing_grammar: parsed.confusing_grammar || null,
