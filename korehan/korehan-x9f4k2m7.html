@@ -9436,17 +9436,24 @@ async function vbAIBulkGenerate() {
   status.style.display = 'block';
   status.innerHTML = '🤖 Generating 50 ' + level + ' vocabulary words' + (tag ? ' ('+tag+')' : '') + '...';
 
-  // Get existing words for dedup
+  // Get existing words for dedup — send to AI so it avoids them
   var existingKeys = new Set(_vbAll.map(function(w){ return w.word_ko; }));
+  var existingSample = _vbAll
+    .filter(function(w){ return w.level === level; })
+    .map(function(w){ return w.word_ko; })
+    .slice(0, 200)
+    .join(', ');
 
   try {
     var tagHint = tag ? ' Focus on the topic/interest: ' + tag + '.' : '';
     var res = await callClaude({
       feature: 'vocab-bank-bulk-admin',
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 3000,
+      max_tokens: 4000,
       messages: [{ role: 'user', content:
         'Generate 50 Korean vocabulary words for ' + level + ' level learners.' + tagHint + '\n\n'
+        + 'IMPORTANT: Do NOT include any of these words (already in our database):\n'
+        + existingSample + '\n\n'
         + 'Return ONLY a JSON array. Each item:\n'
         + '{"ko":"Korean word","rom":"romanization","en":"English meaning"}\n\n'
         + 'Requirements:\n'
@@ -9454,34 +9461,38 @@ async function vbAIBulkGenerate() {
         + '- Appropriate difficulty for ' + level + ' level\n'
         + '- Include mix of nouns, verbs, adjectives, adverbs\n'
         + '- No duplicates within the list\n'
+        + '- Generate UNCOMMON words that are NOT in the exclude list above\n'
         + 'Return JSON array only, no markdown.'
       }]
     });
     var text = (res.content||[]).map(function(c){return c.text||'';}).join('').replace(/```json|```/g,'').trim();
+    var s = text.indexOf('['), e = text.lastIndexOf(']');
+    if (s >= 0 && e > s) text = text.slice(s, e + 1);
     var words = JSON.parse(text);
 
-    // Dedup against existing DB
-    var added = 0, skipped = 0, errors = 0;
-    var sb = getSb();
-    for (var i = 0; i < words.length; i++) {
-      var w = words[i];
-      if (!w.ko || !w.en) { errors++; continue; }
-      if (existingKeys.has(w.ko)) { skipped++; continue; }
+    // Batch insert new words only
+    var newWords = words.filter(function(w) {
+      return w.ko && w.en && !existingKeys.has(w.ko);
+    }).map(function(w) {
+      return {
+        word_key: w.ko, word_ko: w.ko, word_rom: w.rom || '', word_en: w.en,
+        level: level, interest_tag: tag || null, is_active: true
+      };
+    });
+
+    var added = 0, skipped = words.length - newWords.length, errors = 0;
+
+    // Batch upsert in chunks of 25
+    for (var i = 0; i < newWords.length; i += 25) {
       try {
-        var r = await sb.from('vocabulary_bank').insert({
-          word_key: w.ko, word_ko: w.ko, word_rom: w.rom||'', word_en: w.en,
-          level: level, interest_tag: tag || null, is_active: true
-        });
-        if (r.error) {
-          if (r.error.code === '23505') skipped++;
-          else errors++;
-        } else {
-          added++;
-          existingKeys.add(w.ko);
-        }
-      } catch(e) { errors++; }
-      status.innerHTML = '🤖 Processing... ' + (i+1) + '/' + words.length + ' (added: ' + added + ', skipped: ' + skipped + ')';
+        var chunk = newWords.slice(i, i + 25);
+        var r = await getSb().from('vocabulary_bank').upsert(chunk, { onConflict: 'word_key' });
+        if (r.error) throw r.error;
+        added += chunk.length;
+      } catch(e2) { errors += Math.min(25, newWords.length - i); }
+      status.innerHTML = '🤖 Processing... ' + Math.min(i + 25, newWords.length) + '/' + newWords.length + ' new words';
     }
+
     status.innerHTML = '✅ Done! Added: <b>' + added + '</b>, Duplicates skipped: <b>' + skipped + '</b>, Errors: <b>' + errors + '</b>';
     await vbLoadAll();
   } catch(e) {
