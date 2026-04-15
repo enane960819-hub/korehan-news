@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Happy+Monkey&family=Jua&display=swap');
+
 /* ============================================================
    KoreHani — Shared CSS  v6  (clean rewrite)
    ============================================================ */
@@ -25,7 +27,7 @@ html {
   overflow-x: hidden;
 }
 body {
-  font-family: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: 'Happy Monkey', 'Jua', 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   background: #f0f2f7 !important;
   background-color: #f0f2f7 !important;
   color: #0d1b2e !important;
