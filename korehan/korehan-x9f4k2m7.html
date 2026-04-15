@@ -9322,7 +9322,8 @@ async function goVocabBankAdmin() {
     + '<div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">'
     + '<button class="btn btn-g" onclick="vbAddWord()" style="font-size:12px;padding:6px 14px">Add Word</button>'
     + '<button class="btn" onclick="vbAIBulkGenerate()" style="font-size:12px;padding:6px 14px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer">🤖 AI Bulk Generate (50 words)</button>'
-    + '<button class="btn" onclick="vbPDFImport()" style="font-size:12px;padding:6px 14px;background:#0369a1;color:#fff;border:none;border-radius:6px;cursor:pointer">📄 PDF Import (3763 words)</button>'
+    + '<button class="btn" onclick="vbPDFImport()" style="font-size:12px;padding:6px 14px;background:#0369a1;color:#fff;border:none;border-radius:6px;cursor:pointer">📄 PDF Import (3762 words)</button>'
+    + '<button class="btn" onclick="vbFixNumberPrefixes()" style="font-size:12px;padding:6px 14px;background:#dc2626;color:#fff;border:none;border-radius:6px;cursor:pointer">🔧 Fix Number Prefixes</button>'
     + '<span id="vb-add-msg" style="font-size:12px;color:#555"></span>'
     + '</div>'
     + '<div id="vb-ai-status" style="display:none;margin-top:8px;padding:10px 14px;background:#f8fafc;border-radius:8px;font-size:12px"></div>'
@@ -9495,6 +9496,39 @@ async function vbAIBulkGenerate() {
   } catch(e) {
     status.innerHTML = '❌ Generation failed: ' + (e.message||e);
   }
+}
+
+// One-time fix: remove leading numbers from word_ko/word_key already in DB
+async function vbFixNumberPrefixes() {
+  var status = document.getElementById('vb-ai-status');
+  status.style.display = 'block';
+  status.innerHTML = '🔧 Scanning for words with number prefixes...';
+
+  var bad = _vbAll.filter(function(w){ return /^\d/.test(w.word_ko); });
+  if (!bad.length) { status.innerHTML = '✅ No words with number prefixes found.'; return; }
+
+  status.innerHTML = '🔧 Found ' + bad.length + ' words with number prefixes. Fixing...';
+  var fixed = 0, errors = 0;
+
+  for (var i = 0; i < bad.length; i++) {
+    var w = bad[i];
+    var oldKey = w.word_key || w.word_ko;
+    var cleanKo = w.word_ko.replace(/^\d+\s*/, '').trim();
+    if (!cleanKo) { errors++; continue; }
+    try {
+      // Delete old entry, insert cleaned one
+      await getSb().from('vocabulary_bank').delete().eq('word_key', oldKey);
+      var r = await getSb().from('vocabulary_bank').upsert([{
+        word_key: cleanKo, word_ko: cleanKo, word_rom: w.word_rom || '',
+        word_en: w.word_en || '', level: w.level, interest_tag: w.interest_tag, is_active: true
+      }], { onConflict: 'word_key' });
+      if (r.error) throw r.error;
+      fixed++;
+    } catch(e) { errors++; }
+  }
+
+  status.innerHTML = '✅ Fixed ' + fixed + ' words. Errors: ' + errors;
+  await vbLoadAll();
 }
 
 async function vbPDFImport() {
