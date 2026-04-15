@@ -9322,6 +9322,7 @@ async function goVocabBankAdmin() {
     + '<div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">'
     + '<button class="btn btn-g" onclick="vbAddWord()" style="font-size:12px;padding:6px 14px">Add Word</button>'
     + '<button class="btn" onclick="vbAIBulkGenerate()" style="font-size:12px;padding:6px 14px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer">🤖 AI Bulk Generate (50 words)</button>'
+    + '<button class="btn" onclick="vbPDFImport()" style="font-size:12px;padding:6px 14px;background:#0369a1;color:#fff;border:none;border-radius:6px;cursor:pointer">📄 PDF Import (3763 words)</button>'
     + '<span id="vb-add-msg" style="font-size:12px;color:#555"></span>'
     + '</div>'
     + '<div id="vb-ai-status" style="display:none;margin-top:8px;padding:10px 14px;background:#f8fafc;border-radius:8px;font-size:12px"></div>'
@@ -9494,6 +9495,69 @@ async function vbAIBulkGenerate() {
   } catch(e) {
     status.innerHTML = '❌ Generation failed: ' + (e.message||e);
   }
+}
+
+async function vbPDFImport() {
+  var status = document.getElementById('vb-ai-status');
+  status.style.display = 'block';
+  status.innerHTML = '📄 Loading PDF vocabulary data...';
+
+  // Load the data file if not already loaded
+  if (typeof _PDF_VOCAB_DATA === 'undefined') {
+    try {
+      await new Promise(function(resolve, reject) {
+        var s = document.createElement('script');
+        s.src = 'js/pdf-vocab-data.js';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    } catch(e) {
+      status.innerHTML = '❌ Failed to load pdf-vocab-data.js';
+      return;
+    }
+  }
+
+  var words = _PDF_VOCAB_DATA;
+  if (!words || !words.length) { status.innerHTML = '❌ No data found'; return; }
+
+  // Dedup against existing DB words
+  var existingKeys = new Set(_vbAll.map(function(w){ return (w.word_ko||'').trim(); }));
+  var newWords = words.filter(function(w){ return !existingKeys.has(w.word_ko); });
+  var skipped = words.length - newWords.length;
+
+  status.innerHTML = '📄 Total: ' + words.length + ' | New: ' + newWords.length + ' | Already in DB: ' + skipped + '<br>Importing...';
+
+  if (!newWords.length) {
+    status.innerHTML = '✅ All ' + words.length + ' words already exist in DB. Nothing to import.';
+    return;
+  }
+
+  var added = 0, errors = 0;
+  var chunkSize = 50;
+
+  for (var i = 0; i < newWords.length; i += chunkSize) {
+    try {
+      var chunk = newWords.slice(i, i + chunkSize);
+      var r = await getSb().from('vocabulary_bank').upsert(chunk, { onConflict: 'word_key' });
+      if (r.error) throw r.error;
+      added += chunk.length;
+    } catch(e2) {
+      // Try one by one for failed chunks
+      var chunk2 = newWords.slice(i, i + chunkSize);
+      for (var j = 0; j < chunk2.length; j++) {
+        try {
+          var r2 = await getSb().from('vocabulary_bank').upsert([chunk2[j]], { onConflict: 'word_key' });
+          if (r2.error) throw r2.error;
+          added++;
+        } catch(e3) { errors++; }
+      }
+    }
+    status.innerHTML = '📄 Importing... ' + Math.min(i + chunkSize, newWords.length) + '/' + newWords.length + ' (added: ' + added + ', errors: ' + errors + ')';
+  }
+
+  status.innerHTML = '✅ PDF Import complete! Added: <b>' + added + '</b>, Already existed: <b>' + skipped + '</b>, Errors: <b>' + errors + '</b>';
+  await vbLoadAll();
 }
 
 function vbEdit(key) {
