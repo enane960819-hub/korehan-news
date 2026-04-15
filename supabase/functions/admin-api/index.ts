@@ -184,6 +184,7 @@ function applyFilters(query: any, params: any) {
   if (params.in) params.in.forEach((f: any) => { query = query.in(f.col, f.val) })
   if (params.order) params.order.forEach((o: any) => { query = query.order(o.col, { ascending: o.asc !== false }) })
   if (params.limit) query = query.limit(params.limit)
+  if (params.range) query = query.range(params.range.from, params.range.to)
   if (params.maybeSingle) query = query.maybeSingle()
   if (params.single) query = query.single()
   if (params.count) query = query.select('*', { count: 'exact', head: true })
