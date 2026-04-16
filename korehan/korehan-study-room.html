@@ -8507,7 +8507,11 @@ async function submitWriting() {
   playCorrectSound();
   showToast('Saved! Use "Submit All" to send your daily package.');
   refreshSubmitBanner();
-  closeWritingModal();
+
+  // ── 3D Envelope + Celebration animation ──
+  _playSubmitEnvelopeAnimation(function() {
+    closeWritingModal();
+  });
   return; // Skip legacy individual submission below
 
   var sb = getSupa();
@@ -10692,6 +10696,45 @@ function _resetWritingTrackerRings() {
   if (_wmRingVocab) { _wmRingVocab.setProgress(0); _wmRingVocab.setText('0'); _wmRingVocab._celebrated = false; }
   if (_wmRingGrammar) { _wmRingGrammar.setProgress(0); _wmRingGrammar.setText('0'); }
   if (_wmRingChars) { _wmRingChars.setProgress(0); }
+}
+
+// ── 3D Envelope Submit Animation ──────────────────────────────
+function _playSubmitEnvelopeAnimation(onComplete) {
+  var modal = document.querySelector('#wmodal .wmodal');
+  var center = modal ? modal.querySelector('.wm-center') : null;
+  if (!center || !window.KHCanvas) {
+    if (onComplete) onComplete();
+    return;
+  }
+
+  // 1) Add envelope fold class to center area
+  center.classList.add('kh-envelope-seal');
+
+  // 2) Create particle overlay on the modal
+  var overlay = KHCanvas.createOverlay(modal);
+  if (overlay) {
+    var w = overlay.canvas._khW || 400;
+    var h = overlay.canvas._khH || 300;
+    // Celebration burst from center
+    setTimeout(function() {
+      overlay.ps.burstAt(w / 2, h / 2, 'CELEBRATION', 50);
+      overlay.ps.burstAt(w * 0.3, h * 0.4, 'GOLD_BURST', 20);
+      overlay.ps.burstAt(w * 0.7, h * 0.4, 'GOLD_BURST', 20);
+    }, 300);
+  }
+
+  // 3) Wait for animation to finish, then clean up and close
+  setTimeout(function() {
+    center.classList.remove('kh-envelope-seal');
+    // Reset envelope transform
+    center.style.transform = '';
+    center.style.opacity = '';
+    if (overlay) {
+      overlay.ps.destroy();
+      overlay.canvas.remove();
+    }
+    if (onComplete) onComplete();
+  }, 1100);
 }
 
 function insertVocabChip(word) {
