@@ -12737,8 +12737,39 @@ function renderWGDrillResult() {
 }
 
 // ─── Generate grammar patterns for a specific focus point ───
+// Uses grammar_examples_cache table. DB hit = free. DB miss = AI generate + save.
+/*
+  Table: grammar_examples_cache
+  Columns:
+    id            uuid PK default gen_random_uuid()
+    pattern_name  text UNIQUE
+    patterns_json text (JSON string of patterns array)
+    created_at    timestamptz default now()
+    updated_at    timestamptz default now()
+*/
 async function generateGFPatternsForFocus(focusName) {
   var el = document.getElementById('gf-examples-content');
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Loading grammar patterns…</div>';
+
+  // 1) Try DB cache first
+  var sb = getSupa();
+  if (sb) {
+    try {
+      var cached = await sb.from('grammar_examples_cache')
+        .select('patterns_json')
+        .eq('pattern_name', focusName)
+        .maybeSingle();
+      if (cached.data && cached.data.patterns_json) {
+        var patterns = JSON.parse(cached.data.patterns_json);
+        if (patterns && patterns.length) {
+          loadGFPatterns(patterns);
+          return;
+        }
+      }
+    } catch(e) { console.warn('[GF cache] DB miss or error:', e.message); }
+  }
+
+  // 2) DB miss → AI generate
   if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">✨ Generating grammar patterns for <b>' + focusName + '</b>…</div>';
 
   try {
@@ -12768,6 +12799,16 @@ async function generateGFPatternsForFocus(focusName) {
     var parsed = JSON.parse(raw.slice(oi, ei+1));
     if (parsed.patterns && parsed.patterns.length) {
       loadGFPatterns(parsed.patterns);
+      // 3) Save to DB cache
+      if (sb) {
+        try {
+          await sb.from('grammar_examples_cache').upsert({
+            pattern_name: focusName,
+            patterns_json: JSON.stringify(parsed.patterns),
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'pattern_name' });
+        } catch(e) { console.warn('[GF cache] Save failed:', e.message); }
+      }
     } else {
       if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Generation failed. Please try again.</div>';
     }
