@@ -4606,13 +4606,9 @@ function openWritingModal() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
   if (!canEnterWritingRoom()) return;
-  // Starter → 3-step modal
-  if (_currentLevel === 'Starter') {
-    openStarterModal();
-    return;
-  }
-  // Beginner → 4단계 듀오링고 스타일
-  if (_currentLevel === 'Beginner') {
+  // Starter (Seed) + Beginner both use the 4-step writing flow — Starter vocab-only
+  // learning lives in its own entry, not the Writing / Topic Writing path.
+  if (_currentLevel === 'Starter' || _currentLevel === 'Beginner') {
     openBeginnerModal();
     return;
   }
@@ -5163,8 +5159,8 @@ function _keRenderQuiz() {
     + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px">'
     + choices.map(function(c) {
-      return '<button class="ke-quiz-btn" onclick="_keQuizAnswer(this,\'' + (correct.ko||'').replace(/'/g,"\\'") + '\',\'' + (c.ko||'').replace(/'/g,"\\'") + '\')" style="padding:12px 16px;border:1.5px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.04);color:#e0f2fe;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left;transition:.15s">'
-        + (c.ko||'') + ' <span style="font-size:11px;color:rgba(255,255,255,.3);margin-left:8px">' + (c.en||'') + '</span></button>';
+      return '<button class="ke-quiz-btn" onclick="_keQuizAnswer(this,\'' + (correct.ko||'').replace(/'/g,"\\'") + '\',\'' + (c.ko||'').replace(/'/g,"\\'") + '\')" style="padding:12px 16px;border:1.5px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.04);color:#e0f2fe;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left;transition:.15s">'
+        + (c.ko||'') + '</button>';
     }).join('')
     + '</div>'
     + '<div id="ke-quiz-fb" style="margin-top:10px"></div>';
@@ -5438,7 +5434,7 @@ function _keShowFinalScore() {
     + '</div>'
     + '<div style="display:flex;gap:8px;justify-content:center">'
     + '<button onclick="window._keStudyIdx=0;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 16px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Review Again</button>'
-    + '<button onclick="markStageDone(\'topic\');closeKeyExpressionsModal()" style="padding:10px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">Done &#10003;</button>'
+    + '<button onclick="markStageDone(\'expressions\');returnToActivities(closeKeyExpressionsModal)" style="padding:10px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">완료 &#10003;</button>'
     + '</div>';
 }
 
@@ -8098,11 +8094,9 @@ function openWritingModalForLearning() {
   if (!ensureStudyUnlocked()) return;
   _writingMode = 'topic';
   // markStageDone('topic') moved to actual submit/finish functions
-  if (_currentLevel === 'Starter') {
-    openStarterModal();
-    return;
-  }
-  if (_currentLevel === 'Beginner') {
+  // Starter (Seed) + Beginner both use the 4-step writing flow so the activity is actually
+  // about writing. The Starter vocab-only modal is a separate entry point.
+  if (_currentLevel === 'Starter' || _currentLevel === 'Beginner') {
     openBeginnerModal();
     return;
   }
@@ -12397,7 +12391,24 @@ function closeGrammarFocusModal() {
   document.body.style.overflow = '';
 }
 
+var _GF_STEP_DONE = {learn:false, spotit:false, fill:false, translate:false, build:false};
+
 function switchGFTab(tabId, btn) {
+  // Enforce sequential completion — block jumping to steps whose prerequisites aren't done
+  var targetIdx = _GF_TABS.indexOf(tabId);
+  if (targetIdx > 0) {
+    for (var gi = 0; gi < targetIdx; gi++) {
+      if (!_GF_STEP_DONE[_GF_TABS[gi]]) {
+        var bar = document.getElementById('gf-step-bar');
+        var msg = document.createElement('div');
+        msg.textContent = '🔒 Complete Step ' + (gi+1) + ' first';
+        msg.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#dc2626;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:700;z-index:10000;box-shadow:0 8px 24px rgba(0,0,0,.25)';
+        document.body.appendChild(msg);
+        setTimeout(function(){ if(msg.parentNode) msg.parentNode.removeChild(msg); }, 1400);
+        return;
+      }
+    }
+  }
   _GF_TABS.forEach(function(t) {
     var pane = document.getElementById('gf-tab-' + t);
     if (pane) pane.style.display = t === tabId ? 'block' : 'none';
@@ -12414,6 +12425,9 @@ function switchGFTab(tabId, btn) {
 }
 
 function gfAdvanceTo(tabId) {
+  // Mark the prerequisite step as done so the user can now freely navigate back/forward
+  var idx = _GF_TABS.indexOf(tabId);
+  if (idx > 0) _GF_STEP_DONE[_GF_TABS[idx-1]] = true;
   switchGFTab(tabId, document.getElementById('gft-' + tabId));
 }
 
@@ -12422,6 +12436,8 @@ function loadGFPatterns(patterns) {
   var first = patterns[0];
   _gfPattern = first;
   window._gfPatternList = patterns;
+  // Reset step progression so each new session starts locked beyond Learn
+  _GF_STEP_DONE = {learn:false, spotit:false, fill:false, translate:false, build:false};
 
   var titleEl = document.getElementById('gf-title');
   if (titleEl) titleEl.textContent = first.name || 'Grammar Pattern';
@@ -12908,12 +12924,14 @@ function _renderSpotItSentence() {
   var ex = st.examples[st.idx];
   if (!ex) return;
 
-  // Extract grammar tokens from pattern name (e.g. "~았/었어요" → ["았어요","었어요"])
+  // Extract grammar tokens from pattern name (e.g. "~았/었어요" → ["았어요","었어요"], "은/는 vs 이/가" → ["은","는","이","가"])
   var koTokens = [];
-  (st.p.name || '').split(/[\/\s]/).forEach(function(part) {
+  (st.p.name || '').split(/[\/\s()]/).forEach(function(part) {
     var k = part.replace(/~/g,'').replace(/[^가-힣]/g,'');
-    if (k.length >= 2) koTokens.push(k);
+    if (k.length >= 1) koTokens.push(k);
   });
+  // Sort by length DESC so longer tokens match first (e.g. "았어요" before "요")
+  koTokens.sort(function(a,b){ return b.length - a.length; });
   var targetWord = '';
   var words = ex.ko.replace(/[.,!?。]/g,'').split(' ').filter(Boolean);
   // Priority 1: word that ENDS WITH a grammar token (most reliable)
@@ -13287,8 +13305,7 @@ function _renderGFBuild(el) {
       + '<div style="font-size:16px;font-weight:800;color:#0f172a">' + st.score + '/' + st.sentences.length + ' correct</div>'
       + '<div style="font-size:13px;color:#94a3b8;margin-top:6px">Grammar Focus Complete!</div>'
       + '<div style="display:flex;gap:10px;justify-content:center;margin-top:20px">'
-      + '<button onclick="closeGrammarFocusModal()" style="padding:12px 28px;border-radius:10px;border:1px solid #e2e8f0;background:#fff;color:#334155;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">닫기</button>'
-      + '<button onclick="closeGrammarFocusModal();setTimeout(function(){if(typeof KHGrammarTree!==\'undefined\')KHGrammarTree.open();},300)" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#2255a4,#1e4fa3);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">다음 문법 →</button>'
+      + '<button onclick="returnToActivities(closeGrammarFocusModal)" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#2255a4,#1e4fa3);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">완료 ✓</button>'
       + '</div>'
       + '</div>';
     var _gfbPatternName = (window._gcCurrentPattern) || (_gfPattern && _gfPattern.name) || null;
@@ -13950,6 +13967,8 @@ async function _asLoadContent() {
   var key = 'as_c2_' + _asCurrentArt.id;
   var c = sessionStorage.getItem(key);
   if (c) { try { _asStudyContent = JSON.parse(c); return; } catch(e) {} }
+  var lm0 = document.getElementById('as-loading-msg');
+  if (lm0) lm0.textContent = 'Loading saved content…';
   if (!supaUser) return;
   // Check DB for saved content (admin-edited OR previously AI-generated)
   try {
@@ -13966,9 +13985,9 @@ async function _asLoadContent() {
       sessionStorage.setItem(key, JSON.stringify(_asStudyContent));
       return;
     }
-  } catch(e) {}
+  } catch(e) { console.warn('[AS] Cache read failed:', e && e.message); }
   var lm = document.getElementById('as-loading-msg');
-  if (lm) lm.textContent = 'Generating study content... (~10s)';
+  if (lm) lm.textContent = 'First-time setup: generating study content… (~10s)';
   var prompt = 'Korean news article study content for language learners.\nTitle: ' + (_asCurrentArt.title||'') + '\nBody:\n' + (_asCurrentArt.body||'').slice(0,1600)
     + '\n\nReturn ONLY valid JSON:\n{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],"phrases":[{"ko":"short sentence from article (max 8 words)","en":"translation"}],"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\nvocab:6 key words from article. phrases:5 SHORT key sentences (each max 8 Korean words, pick simple ones). word_order:3 sentences split into eojeol chunks in CORRECT order (each max 5 chunks). questions:3 comprehension questions with clear correct answers.';
   try {
@@ -14196,18 +14215,28 @@ function _asRenderBlankUI() {
   var bw=_asWOState.blankWords;
   var fb=_asWOState.filledBlanks;
   var sel=_asWOState.selectedBlank;
-  // Build article HTML with blanks
+  // Build article HTML with blanks.
+  // Two-pass: (1) substitute each blank word with a unique placeholder token,
+  // longest words first so a shorter blank word doesn't steal a match inside a longer one
+  // (e.g. "학생" vs "대학생"). (2) expand tokens into the real span HTML. Avoids the regex
+  // matching inside already-inserted span attributes.
   var formatted=_asFormatBody(body);
+  var sortedBi=bw.map(function(_,i){return i;}).sort(function(a,b){return bw[b].length-bw[a].length;});
+  sortedBi.forEach(function(bi){
+    var escaped=_asEsc(bw[bi]);
+    formatted=formatted.replace(new RegExp(escaped),'\u0000GFB'+bi+'\u0000');
+  });
   bw.forEach(function(w,bi){
-    var escaped=_asEsc(w);
     var filled=fb[bi];
+    var html;
     if(filled!==undefined&&filled!==null){
       var cls=filled===w?'su-blank filled correct':'su-blank filled wrong';
-      formatted=formatted.replace(new RegExp(escaped),'<span class="'+cls+'" data-bi="'+bi+'" onclick="asBlankClear('+bi+')">'+filled+'</span>');
+      html='<span class="'+cls+'" data-bi="'+bi+'" onclick="asBlankClear('+bi+')">'+filled+'</span>';
     } else {
       var selCls=sel===bi?'su-blank selected':'su-blank';
-      formatted=formatted.replace(new RegExp(escaped),'<span class="'+selCls+'" data-bi="'+bi+'" onclick="asBlankSelect('+bi+')" style="'+(sel===bi?'border-color:#2563eb;background:#eff6ff;':'')+'cursor:pointer">____</span>');
+      html='<span class="'+selCls+'" data-bi="'+bi+'" onclick="asBlankSelect('+bi+')" style="'+(sel===bi?'border-color:#2563eb;background:#eff6ff;':'')+'cursor:pointer">____</span>';
     }
+    formatted=formatted.split('\u0000GFB'+bi+'\u0000').join(html);
   });
   art.innerHTML='<div class="su-instruction">빈칸을 먼저 클릭하고, 아래에서 단어를 선택하세요</div>'
     +'<div class="su-blank-article">'+formatted+'</div>';
@@ -14578,8 +14607,12 @@ var _asTempSaveStep4=_asTmpStep4;
 
 // ── Submit ──
 async function asSubmitWork() {
-  if(!_asCurrentArt||!supaUser) return;
-  var sb=getSupa(); if(!sb) return;
+  if(!_asCurrentArt){ showToast('No article loaded'); return; }
+  if(!supaUser){ showToast('Please sign in to save progress'); openAuthModal('signin'); return; }
+  var sb=getSupa(); if(!sb){ showToast('Connection error. Try again.'); return; }
+  // Show loading state on the Save button so the user gets immediate feedback
+  var saveBtn=document.querySelector('#as-activity-area button.su-nav-next');
+  if(saveBtn){ saveBtn.disabled=true; saveBtn.style.opacity='.6'; saveBtn.textContent='Saving…'; }
   var saved=_asGetTmp()||{};
   try {
     var step5 = saved.step5_text||'';
@@ -14589,7 +14622,7 @@ async function asSubmitWork() {
       study_date:kstDateKey(), writing_text:step5, word_count:step5.length,
       context_data:JSON.stringify({step4_answers:saved.step4_answers||[]}),
       level:_currentLevel||'', status:'submitted'
-    },{onConflict:'user_id,content_type,study_date,content_id'});
+    },{onConflict:'user_id,content_type,study_date,content_id'}).select();
     if(r.error) throw r.error;
     // Trigger AI feedback if there's writing
     if(step5.trim().length>10 && r.data && r.data[0] && r.data[0].id){
@@ -14600,9 +14633,13 @@ async function asSubmitWork() {
     document.getElementById('as-activity-area').innerHTML=
       '<div class="as-done-banner"><div style="font-size:28px;margin-bottom:8px">✅</div>'
       +'<div style="font-size:16px;font-weight:800;margin-bottom:6px">Submitted!</div>'
-      +'<div style="font-size:13px;color:rgba(255,255,255,.75)">Today\'s study has been submitted successfully.</div></div>';
+      +'<div style="font-size:13px;color:rgba(255,255,255,.75)">Today\'s study has been submitted successfully.</div>'
+      +'<button onclick="returnToActivities(closeArticleStudy)" style="margin-top:14px;padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">완료 ✓</button></div>';
     _asRefreshSubmitBanner();
-  } catch(err) { showToast('Submit failed: '+(err.message||'')); }
+  } catch(err) {
+    if(saveBtn){ saveBtn.disabled=false; saveBtn.style.opacity='1'; saveBtn.textContent='Save Progress'; }
+    showToast('Submit failed: '+(err.message||''));
+  }
 }
 
 // Submit all today's work at once (from banner button)
@@ -14870,7 +14907,7 @@ setTimeout(renderCompletedStudies, 500);
     <div id="ke-expressions-list" style="display:flex;flex-direction:column;gap:10px">
       <div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Loading expressions...</div>
     </div>
-    <button onclick="markStageDone('expressions');closeKeyExpressionsModal()" style="display:block;width:100%;margin-top:18px;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer">Done ✓</button>
+    <button onclick="markStageDone('expressions');returnToActivities(closeKeyExpressionsModal)" style="display:block;width:100%;margin-top:18px;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer">완료 ✓</button>
   </div>
 </div>
 
