@@ -10560,7 +10560,7 @@ async function currAdminLoad() {
   list.innerHTML = '<div style="color:#94a3b8;padding:20px;text-align:center">Loading...</div>';
   var sb = getSb();
   if (!sb) { list.innerHTML = '<div style="color:#dc2626;padding:20px;text-align:center">Supabase not ready. Refresh.</div>'; return; }
-  var q = sb.from('grammar_curriculum').select('id,pattern,level,sort_order,description,active').order('level').order('sort_order');
+  var q = sb.from('grammar_curriculum').select('id,pattern,level,sort_order,description,active,examples_json').order('level').order('sort_order');
   var level = (document.getElementById('curr-level') || {}).value;
   if (level) q = q.eq('level', level);
   try {
@@ -10577,13 +10577,17 @@ async function currAdminLoad() {
     if (!_currData.length) { list.innerHTML = '<div style="color:#94a3b8;padding:20px;text-align:center">No patterns. Use migrate or add.</div>'; return; }
     var lvlColor = {Beginner:'#22c55e',Intermediate:'#f59e0b',Advanced:'#ef4444'};
     list.innerHTML = _currData.map(function(p) {
-      return '<div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:6px;background:#fff;display:flex;align-items:center;gap:10px">'
+      var exCount = 0;
+      try { exCount = (JSON.parse(p.examples_json || '[]') || []).length; } catch(e) {}
+      var exColor = exCount >= 15 ? '#16a34a' : exCount > 0 ? '#f59e0b' : '#94a3b8';
+      return '<div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:6px;background:#fff;display:flex;align-items:center;gap:8px">'
         + '<div style="width:28px;height:28px;border-radius:50%;background:' + (lvlColor[p.level]||'#94a3b8') + '22;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:' + (lvlColor[p.level]||'#94a3b8') + ';flex-shrink:0">' + p.sort_order + '</div>'
         + '<div style="flex:1;min-width:0">'
         + '<div style="font-size:13px;font-weight:800;color:#0f172a">' + esc(p.pattern) + '</div>'
         + '<div style="font-size:10px;color:#64748b;margin-top:1px">' + esc(p.description || '') + '</div>'
         + '</div>'
         + '<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:' + (lvlColor[p.level]||'#94a3b8') + '22;color:' + (lvlColor[p.level]||'#94a3b8') + '">' + p.level + '</span>'
+        + '<button onclick="currAdminExamples(\'' + p.id + '\')" style="font-size:10px;padding:3px 8px;border:1px solid ' + exColor + ';border-radius:4px;background:#fff;color:' + exColor + ';cursor:pointer;font-weight:700">📝 ' + exCount + '</button>'
         + '<button onclick="currAdminEdit(\'' + p.id + '\')" style="font-size:10px;padding:3px 8px;border:1px solid #e2e8f0;border-radius:4px;background:#fff;cursor:pointer">✏️</button>'
         + '<button onclick="currAdminDel(\'' + p.id + '\')" style="font-size:10px;padding:3px 8px;border:1px solid #fca5a5;border-radius:4px;background:#fff;color:#dc2626;cursor:pointer">🗑</button>'
         + '</div>';
@@ -10703,6 +10707,134 @@ async function currMigrate45() {
   }
   if (stats) stats.textContent = '✅ Migrated: ' + added + ', Skipped: ' + skipped;
   await currAdminLoad();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXAMPLES EDITOR — per-pattern examples (target: 15 per pattern)
+// ═══════════════════════════════════════════════════════════════
+var _currExState = null;
+
+async function currAdminExamples(patternId) {
+  var pattern = _currData.find(function(p) { return p.id === patternId; });
+  if (!pattern) { toast('Pattern not found'); return; }
+  var examples = [];
+  try { examples = JSON.parse(pattern.examples_json || '[]') || []; } catch(e) {}
+  _currExState = { patternId: patternId, pattern: pattern, examples: examples };
+  _currExRender();
+}
+
+function _currExRender() {
+  var st = _currExState;
+  if (!st) return;
+
+  // Remove old modal
+  var old = document.getElementById('curr-ex-modal');
+  if (old) old.remove();
+
+  var modal = document.createElement('div');
+  modal.id = 'curr-ex-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
+
+  var exHtml = st.examples.map(function(ex, i) {
+    var isIncorrect = ex.type === 'incorrect';
+    return '<div style="border:1px solid ' + (isIncorrect ? '#fca5a5' : '#e2e8f0') + ';border-radius:8px;padding:10px;margin-bottom:6px;background:' + (isIncorrect ? '#fef2f2' : '#fff') + '">'
+      + '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">'
+      + '<span style="font-size:10px;font-weight:900;color:#64748b;width:22px">#' + (i+1) + '</span>'
+      + '<select onchange="_currExType(' + i + ',this.value)" style="font-size:10px;padding:2px 6px;border:1px solid #e2e8f0;border-radius:4px">'
+      + '<option value="correct"' + (!isIncorrect ? ' selected' : '') + '>✓ 정답</option>'
+      + '<option value="incorrect"' + (isIncorrect ? ' selected' : '') + '>✗ 오답</option>'
+      + '</select>'
+      + '<button onclick="_currExDel(' + i + ')" style="margin-left:auto;font-size:10px;padding:2px 8px;border:1px solid #fca5a5;border-radius:4px;background:#fff;color:#dc2626;cursor:pointer">🗑</button>'
+      + '</div>'
+      + '<input type="text" value="' + esc(ex.ko || '') + '" onchange="_currExField(' + i + ',\'ko\',this.value)" placeholder="Korean sentence" style="width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:4px;font-size:13px;font-family:\'Noto Sans KR\',sans-serif;margin-bottom:4px">'
+      + '<input type="text" value="' + esc(ex.en || '') + '" onchange="_currExField(' + i + ',\'en\',this.value)" placeholder="English translation" style="width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:4px;font-size:12px;margin-bottom:4px">'
+      + (isIncorrect ? '<input type="text" value="' + esc(ex.correction || '') + '" onchange="_currExField(' + i + ',\'correction\',this.value)" placeholder="Correction (fixed sentence)" style="width:100%;padding:6px 8px;border:1px solid #fca5a5;border-radius:4px;font-size:12px;font-family:\'Noto Sans KR\',sans-serif;margin-bottom:4px">' : '')
+      + '<input type="text" value="' + esc(ex.note || '') + '" onchange="_currExField(' + i + ',\'note\',this.value)" placeholder="Note (optional)" style="width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;color:#64748b">'
+      + '</div>';
+  }).join('');
+
+  modal.innerHTML = '<div style="background:#fff;border-radius:12px;width:100%;max-width:640px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden">'
+    + '<div style="padding:14px 18px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:10px">'
+    + '<div style="flex:1;min-width:0">'
+    + '<div style="font-size:15px;font-weight:800;color:#0f172a">📝 ' + esc(st.pattern.pattern) + '</div>'
+    + '<div style="font-size:11px;color:#64748b">' + st.examples.length + ' examples (target: 15)</div>'
+    + '</div>'
+    + '<button onclick="document.getElementById(\'curr-ex-modal\').remove()" style="background:#f1f5f9;border:none;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px">✕</button>'
+    + '</div>'
+    + '<div style="padding:14px 18px;overflow-y:auto;flex:1" id="curr-ex-list">' + (exHtml || '<div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No examples yet. Add or AI generate.</div>') + '</div>'
+    + '<div style="padding:14px 18px;border-top:1px solid #e2e8f0;display:flex;gap:8px;flex-wrap:wrap">'
+    + '<button onclick="_currExAdd()" class="btn">+ 예문 추가</button>'
+    + '<button onclick="_currExGenAI()" class="btn">🤖 AI 생성 (15개)</button>'
+    + '<button onclick="_currExSave()" class="btn btn-g" style="margin-left:auto">💾 Save</button>'
+    + '</div>'
+    + '</div>';
+  document.body.appendChild(modal);
+}
+
+function _currExType(idx, val) { if (_currExState) _currExState.examples[idx].type = val; _currExRender(); }
+function _currExField(idx, field, val) { if (_currExState) _currExState.examples[idx][field] = val; }
+function _currExDel(idx) {
+  if (!_currExState || !confirm('Delete this example?')) return;
+  _currExState.examples.splice(idx, 1);
+  _currExRender();
+}
+function _currExAdd() {
+  if (!_currExState) return;
+  _currExState.examples.push({ ko: '', en: '', note: '', type: 'correct' });
+  _currExRender();
+}
+
+async function _currExSave() {
+  if (!_currExState) return;
+  var sb = getSb(); if (!sb) return;
+  // Clean empty ones
+  var clean = _currExState.examples.filter(function(ex) { return (ex.ko||'').trim(); });
+  try {
+    await sb.from('grammar_curriculum').update({
+      examples_json: JSON.stringify(clean),
+      updated_at: new Date().toISOString()
+    }).eq('id', _currExState.patternId);
+    toast('✅ Saved ' + clean.length + ' examples');
+    document.getElementById('curr-ex-modal').remove();
+    await currAdminLoad();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+async function _currExGenAI() {
+  if (!_currExState) return;
+  if (!confirm('AI 예문 15개 생성? 기존 예문은 유지됩니다.')) return;
+  var p = _currExState.pattern;
+  toast('AI generating 15 examples for ' + p.pattern + '...');
+
+  try {
+    var res = await callClaude({
+      feature: 'grammar-examples-gen', model: 'claude-haiku-4-5-20251001', max_tokens: 2500,
+      messages: [{ role: 'user', content:
+        'Generate 15 Korean example sentences for the grammar pattern: "' + p.pattern + '"\n'
+        + 'Level: ' + p.level + '\n'
+        + (p.description ? 'Context: ' + p.description + '\n' : '')
+        + '\nRules:\n'
+        + '- 12 correct examples using this exact pattern\n'
+        + '- 3 incorrect examples (common mistakes learners make) with corrections\n'
+        + '- Short, natural, varied contexts (daily life, work, school, food, weather, etc.)\n'
+        + '- Each example must clearly demonstrate the pattern\n\n'
+        + 'Return ONLY valid JSON:\n'
+        + '{"examples":['
+        + '{"ko":"...","en":"...","note":"brief usage note","type":"correct"},'
+        + '{"ko":"...","en":"...","correction":"fixed sentence","note":"why wrong","type":"incorrect"}'
+        + ']}'
+      }]
+    });
+    var raw = (res.content && res.content[0] && res.content[0].text) || '';
+    var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+    var parsed = JSON.parse(raw.slice(oi, ei + 1));
+    var newEx = (parsed.examples || []).filter(function(e) { return e.ko; });
+    if (!newEx.length) { toast('AI 생성 실패'); return; }
+    _currExState.examples = _currExState.examples.concat(newEx);
+    toast('✅ Added ' + newEx.length + ' examples. Review and Save.');
+    _currExRender();
+  } catch(e) { toast('AI failed: ' + e.message); }
 }
 
 // AI generate additional patterns for a level
