@@ -11,7 +11,8 @@ const ALLOWED_TABLES = new Set([
   'saved_words','read_articles','writing_submissions','coin_adjustments',
   'study_picture_prompts','study_room_grammar','study_room_helpers',
   'vocabulary_bank','fast_track_scenarios','user_submissions',
-  'room_items','badges','hover_vocab_master','article_study_content'
+  'room_items','badges','hover_vocab_master','article_study_content',
+  'listening_quiz_bank','grammar_examples_cache','grammar_curriculum'
 ])
 
 function getCorsHeaders(req: Request) {
