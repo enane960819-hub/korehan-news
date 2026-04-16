@@ -4009,8 +4009,7 @@ function _applyDailyContent(rec) {
   renderTopicUI();
   renderAIContent();
   hideAILoading();
-  // Populate idiom/expression banner
-  _showIdiomBanner();
+  // idiom banner removed (duplicate of Home "Today's Phrase")
   // Cache in localStorage so topic stays consistent across reloads
   try {
     var lsKey = 'sr_daily_' + (rec.scheduled_date || kstDateKey()) + '_' + (rec.level || _currentLevel);
@@ -4018,29 +4017,7 @@ function _applyDailyContent(rec) {
   } catch(e) {}
 }
 
-function _showIdiomBanner() {
-  var banner = document.getElementById('sr-idiom-banner');
-  if (!banner) return;
-  try {
-    // Try getTodaysPhrase from korehan-shared.js first
-    if (typeof getTodaysPhrase === 'function') {
-      var phrase = getTodaysPhrase();
-      if (phrase && phrase.ko) {
-        document.getElementById('sr-idiom-ko').textContent = phrase.ko;
-        document.getElementById('sr-idiom-en').textContent = phrase.en || '';
-        banner.style.display = 'block';
-        return;
-      }
-    }
-    // Fallback: pick a random helper from today's AI content
-    if (_aiContent && _aiContent.helpers && _aiContent.helpers.length > 0) {
-      var h = _aiContent.helpers[Math.floor(Math.random() * _aiContent.helpers.length)];
-      document.getElementById('sr-idiom-ko').textContent = h.ko || '';
-      document.getElementById('sr-idiom-en').textContent = h.en || '';
-      banner.style.display = 'block';
-    }
-  } catch(e) { console.warn('[_showIdiomBanner]', e); }
-}
+// _showIdiomBanner removed — duplicate of Home "Today's Phrase"
 
 var _approvedTopicForGen = null;
 
@@ -15446,13 +15423,7 @@ function _csBuildCheck() {
   </div>
 </div>
 
-<!-- ── IDIOM/PROVERB BANNER ── -->
-<div id="sr-idiom-banner" style="position:fixed;bottom:80px;right:16px;max-width:280px;background:linear-gradient(135deg,#1e1b4b,#312e81);border:1px solid rgba(139,92,246,.3);border-radius:16px;padding:14px 16px;color:#fff;box-shadow:0 8px 32px rgba(0,0,0,.3);z-index:900;display:none;cursor:pointer" onclick="this.style.display='none'">
-  <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#a78bfa;margin-bottom:6px">💎 TODAY'S EXPRESSION</div>
-  <div id="sr-idiom-ko" style="font-size:16px;font-weight:800;margin-bottom:4px"></div>
-  <div id="sr-idiom-en" style="font-size:12px;color:rgba(255,255,255,.65)"></div>
-  <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:8px">Tap to dismiss</div>
-</div>
+<!-- idiom banner removed — same content as Home "Today's Phrase" -->
 
 <!-- ═══════════════════════════════════════════════════════
      DAILY REVIEW MODAL
