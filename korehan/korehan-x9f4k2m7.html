@@ -6317,6 +6317,7 @@ async function goStudyRoomOps() {
     + '  <button class="btn"       id="srt-fasttrack"   onclick="srShowTab(\'fasttrack\')" >🎯 Fast Track</button>'
     + '  <button class="btn"       id="srt-tab-listening" onclick="srShowTab(\'listening\')">🎧 Listening Quiz</button>'
     + '  <button class="btn"       id="srt-tab-grammar-cache" onclick="srShowTab(\'grammar-cache\')">📐 Grammar Cache</button>'
+    + '  <button class="btn"       id="srt-tab-curriculum" onclick="srShowTab(\'curriculum\')">📋 Curriculum (100)</button>'
     + '</div>'
     + '<div id="sr-tab-body"></div>';
   await srShowTab('topics');
@@ -6351,6 +6352,7 @@ async function srShowTab(tab) {
   if (tab === 'fasttrack')   { await ftAdminLoad(body); }
   if (tab === 'listening')      { body.innerHTML = lqAdminHTML(); await lqAdminLoad(); }
   if (tab === 'grammar-cache') { body.innerHTML = gcAdminHTML(); await gcAdminLoad(); }
+  if (tab === 'curriculum')    { body.innerHTML = currAdminHTML(); await currAdminLoad(); }
 }
 
 // ── TOPICS tab (daily content — AI-generated + admin-editable) ──────────────────────
@@ -10525,6 +10527,222 @@ async function gcAdminPregenAll() {
   }
   if (status) status.textContent = '✅ Done! Generated: ' + generated + ', Skipped (already cached): ' + skipped;
   await gcAdminLoad();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GRAMMAR CURRICULUM ADMIN (DB-based, 100 patterns)
+// ═══════════════════════════════════════════════════════════════
+var _currData = [];
+
+function currAdminHTML() {
+  return '<div class="sf-card">'
+    + '<div style="font-weight:800;font-size:15px;margin-bottom:6px">📋 Grammar Curriculum (DB)</div>'
+    + '<div style="font-size:12px;color:#64748b;margin-bottom:14px">100개 문법 패턴 관리. 패턴 추가/수정/삭제 + AI 배치 생성.</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
+    + '<select id="curr-level" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"><option value="">전체</option><option value="Beginner">Beginner</option><option value="Intermediate">Intermediate</option><option value="Advanced">Advanced</option></select>'
+    + '<button class="btn" onclick="currAdminLoad()">🔄 Load</button>'
+    + '<button class="btn btn-g" onclick="currAdminShowAdd()">+ 패턴 추가</button>'
+    + '<button class="btn" onclick="currMigrate45()">📦 기존 45개 마이그레이션</button>'
+    + '<button class="btn" onclick="currGenExtra(\\'Beginner\\')">🤖 +Beginner</button>'
+    + '<button class="btn" onclick="currGenExtra(\\'Intermediate\\')">🤖 +Intermediate</button>'
+    + '<button class="btn" onclick="currGenExtra(\\'Advanced\\')">🤖 +Advanced</button>'
+    + '</div>'
+    + '<div id="curr-add-form" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:14px"></div>'
+    + '<div id="curr-stats" style="font-size:12px;color:#64748b;margin-bottom:10px"></div>'
+    + '<div id="curr-list"></div>'
+    + '</div>';
+}
+
+async function currAdminLoad() {
+  var list = document.getElementById('curr-list');
+  var stats = document.getElementById('curr-stats');
+  if (!list) return;
+  list.innerHTML = '<div style="color:#94a3b8;padding:20px;text-align:center">Loading...</div>';
+  var sb = getSupa(); if (!sb) return;
+  var q = sb.from('grammar_curriculum').select('*').order('level').order('sort_order');
+  var level = (document.getElementById('curr-level') || {}).value;
+  if (level) q = q.eq('level', level);
+  try {
+    var r = await q.limit(200);
+    if (r.error) throw r.error;
+    _currData = r.data || [];
+    var beg = _currData.filter(function(p){return p.level==='Beginner';}).length;
+    var intm = _currData.filter(function(p){return p.level==='Intermediate';}).length;
+    var adv = _currData.filter(function(p){return p.level==='Advanced';}).length;
+    if (stats) stats.textContent = _currData.length + ' patterns (B:' + beg + ' I:' + intm + ' A:' + adv + ')';
+    if (!_currData.length) { list.innerHTML = '<div style="color:#94a3b8;padding:20px;text-align:center">No patterns. Use migrate or add.</div>'; return; }
+    var lvlColor = {Beginner:'#22c55e',Intermediate:'#f59e0b',Advanced:'#ef4444'};
+    list.innerHTML = _currData.map(function(p) {
+      return '<div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:6px;background:#fff;display:flex;align-items:center;gap:10px">'
+        + '<div style="width:28px;height:28px;border-radius:50%;background:' + (lvlColor[p.level]||'#94a3b8') + '22;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:' + (lvlColor[p.level]||'#94a3b8') + ';flex-shrink:0">' + p.sort_order + '</div>'
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="font-size:13px;font-weight:800;color:#0f172a">' + esc(p.pattern) + '</div>'
+        + '<div style="font-size:10px;color:#64748b;margin-top:1px">' + esc(p.description || '') + '</div>'
+        + '</div>'
+        + '<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:' + (lvlColor[p.level]||'#94a3b8') + '22;color:' + (lvlColor[p.level]||'#94a3b8') + '">' + p.level + '</span>'
+        + '<button onclick="currAdminEdit(\'' + p.id + '\')" style="font-size:10px;padding:3px 8px;border:1px solid #e2e8f0;border-radius:4px;background:#fff;cursor:pointer">✏️</button>'
+        + '<button onclick="currAdminDel(\'' + p.id + '\')" style="font-size:10px;padding:3px 8px;border:1px solid #fca5a5;border-radius:4px;background:#fff;color:#dc2626;cursor:pointer">🗑</button>'
+        + '</div>';
+    }).join('');
+  } catch(e) { list.innerHTML = '<div style="color:#dc2626;padding:20px">Error: ' + e.message + '</div>'; }
+}
+
+function currAdminShowAdd(editData) {
+  var form = document.getElementById('curr-add-form');
+  if (!form) return;
+  var d = editData || {};
+  form.style.display = '';
+  form.innerHTML = '<div style="font-weight:700;margin-bottom:10px">' + (d.id ? 'Edit' : 'Add') + ' Pattern</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 80px;gap:8px;margin-bottom:8px">'
+    + '<div class="fg" style="margin:0"><label>Level</label><select id="curr-f-level" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px"><option value="Beginner"' + (d.level==='Beginner'?' selected':'') + '>Beginner</option><option value="Intermediate"' + (d.level==='Intermediate'?' selected':'') + '>Intermediate</option><option value="Advanced"' + (d.level==='Advanced'?' selected':'') + '>Advanced</option></select></div>'
+    + '<div class="fg" style="margin:0"><label>Pattern</label><input id="curr-f-pattern" value="' + esc(d.pattern||'') + '" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px"></div>'
+    + '<div class="fg" style="margin:0"><label>Order</label><input id="curr-f-order" type="number" value="' + (d.sort_order||0) + '" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px"></div>'
+    + '</div>'
+    + '<div class="fg"><label>Description</label><input id="curr-f-desc" value="' + esc(d.description||'') + '" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px"></div>'
+    + '<div style="display:flex;gap:8px;margin-top:8px">'
+    + '<button class="btn btn-g" onclick="currAdminSave(\'' + (d.id||'') + '\')">' + (d.id?'Update':'Save') + '</button>'
+    + '<button class="btn" onclick="document.getElementById(\'curr-add-form\').style.display=\'none\'">Cancel</button>'
+    + '</div>';
+}
+
+async function currAdminSave(editId) {
+  var data = {
+    level: document.getElementById('curr-f-level').value,
+    pattern: document.getElementById('curr-f-pattern').value.trim(),
+    sort_order: parseInt(document.getElementById('curr-f-order').value) || 0,
+    description: document.getElementById('curr-f-desc').value.trim(),
+    active: true, updated_at: new Date().toISOString()
+  };
+  if (!data.pattern) { toast('Pattern required'); return; }
+  var sb = getSupa(); if (!sb) return;
+  try {
+    if (editId) { await sb.from('grammar_curriculum').update(data).eq('id', editId); }
+    else { await sb.from('grammar_curriculum').insert(data); }
+    toast(editId ? 'Updated!' : 'Saved!');
+    document.getElementById('curr-add-form').style.display = 'none';
+    await currAdminLoad();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+function currAdminEdit(id) {
+  var item = _currData.find(function(p){return p.id===id;});
+  if (item) currAdminShowAdd(item);
+}
+
+async function currAdminDel(id) {
+  if (!confirm('Delete?')) return;
+  var sb = getSupa(); if (!sb) return;
+  await sb.from('grammar_curriculum').delete().eq('id', id);
+  toast('Deleted'); await currAdminLoad();
+}
+
+async function currMigrate45() {
+  var patterns = [
+    {p:'은/는 vs 이/가',l:'Beginner',o:1,d:'Topic vs Subject marker'},
+    {p:'아요/어요 — Polite present',l:'Beginner',o:2,d:'Standard polite present-tense ending'},
+    {p:'을/를 — Object marker',l:'Beginner',o:3,d:'Marks the direct object'},
+    {p:'에 vs 에서',l:'Beginner',o:4,d:'Location/destination vs action location'},
+    {p:'도 — Also/Too',l:'Beginner',o:5,d:'Particle meaning also'},
+    {p:'부터 ~ 까지',l:'Beginner',o:6,d:'From ~ To (time/place range)'},
+    {p:'고 — And (connecting)',l:'Beginner',o:7,d:'Connects two actions/states'},
+    {p:'았/었 — Past tense',l:'Beginner',o:8,d:'Past tense verb endings'},
+    {p:'(으)ㄹ 거예요 — Future',l:'Beginner',o:9,d:'Future plans or predictions'},
+    {p:'고 싶다 — Want to',l:'Beginner',o:10,d:'Expression of desire'},
+    {p:'지 마세요 — Don\'t',l:'Beginner',o:11,d:'Negative imperative'},
+    {p:'(으)세요 — Honorific',l:'Beginner',o:12,d:'Polite request or description'},
+    {p:'(으)ㄹ 수 있다/없다',l:'Beginner',o:13,d:'Can/Cannot — ability'},
+    {p:'(이)나 — Or',l:'Beginner',o:14,d:'Choice between options'},
+    {p:'마다 — Every/Each',l:'Beginner',o:15,d:'Distribution particle'},
+    {p:'아/어서 — So/Because',l:'Intermediate',o:1,d:'Cause-effect or sequential'},
+    {p:'(으)니까 — Because',l:'Intermediate',o:2,d:'Cause-reason connector'},
+    {p:'때문에 — Because of',l:'Intermediate',o:3,d:'Noun + reason'},
+    {p:'지만 — But/However',l:'Intermediate',o:4,d:'Contrast connector'},
+    {p:'(으)면 — If/When',l:'Intermediate',o:5,d:'Conditional'},
+    {p:'(으)ㄹ 때 — When',l:'Intermediate',o:6,d:'Time clause'},
+    {p:'(으)ㄴ/는데 — Context',l:'Intermediate',o:7,d:'Background or soft contrast'},
+    {p:'(으)면서 — While',l:'Intermediate',o:8,d:'Simultaneous actions'},
+    {p:'아/어 보다 — Try',l:'Intermediate',o:9,d:'Try doing something'},
+    {p:'아/어 주다 — Do for',l:'Intermediate',o:10,d:'Do something for someone'},
+    {p:'는 것 — Nominalization',l:'Intermediate',o:11,d:'Turns verbs into nouns'},
+    {p:'(으)려고 — In order to',l:'Intermediate',o:12,d:'Purpose clause'},
+    {p:'(으)ㄹ래요 — Shall',l:'Intermediate',o:13,d:'Casual intention'},
+    {p:'(으)ㄹ까요? — Shall we?',l:'Intermediate',o:14,d:'Polite suggestion'},
+    {p:'밖에 — Only',l:'Intermediate',o:15,d:'Used with negatives, meaning only'},
+    {p:'겠 — Intention/Guess',l:'Advanced',o:1,d:'Intention or conjecture'},
+    {p:'잖아(요) — You know',l:'Advanced',o:2,d:'Implies shared knowledge'},
+    {p:'네요 — Surprise',l:'Advanced',o:3,d:'Mild surprise or realization'},
+    {p:'(으)ㄴ 적 있다 — Have done',l:'Advanced',o:4,d:'Experience marker'},
+    {p:'처럼/같이 — Like/As',l:'Advanced',o:5,d:'Comparison particles'},
+    {p:'(으)ㄹ 줄 알다 — Know how',l:'Advanced',o:6,d:'Learned skill ability'},
+    {p:'기로 하다 — Decide to',l:'Advanced',o:7,d:'Making decisions'},
+    {p:'(이)라서 — Because it is',l:'Advanced',o:8,d:'Noun + reason'},
+    {p:'든지 — Whatever',l:'Advanced',o:9,d:'Indifference or any-choice'},
+    {p:'말고 — Not that, but',l:'Advanced',o:10,d:'Rejection/alternative'},
+    {p:'(으)ㄹ 뻔하다 — Almost',l:'Advanced',o:11,d:'Near-miss situations'},
+    {p:'더라고요 — I noticed',l:'Advanced',o:12,d:'Recounting observation'},
+    {p:'(으)ㄴ/는 편이다 — Tend to',l:'Advanced',o:13,d:'Moderate tendency'},
+    {p:'(으)ㄹ 텐데 — Probably',l:'Advanced',o:14,d:'Expectation or concern'},
+    {p:'게 되다 — End up',l:'Advanced',o:15,d:'Unplanned result'}
+  ];
+  var sb = getSupa(); if (!sb) return;
+  var added = 0, skipped = 0;
+  var stats = document.getElementById('curr-stats');
+  for (var i = 0; i < patterns.length; i++) {
+    if (stats) stats.textContent = 'Migrating ' + (i+1) + '/' + patterns.length;
+    try {
+      await sb.from('grammar_curriculum').upsert({
+        pattern: patterns[i].p, level: patterns[i].l, sort_order: patterns[i].o,
+        description: patterns[i].d, active: true, tags: [], updated_at: new Date().toISOString()
+      }, { onConflict: 'pattern' });
+      added++;
+    } catch(e) { skipped++; }
+  }
+  if (stats) stats.textContent = '✅ Migrated: ' + added + ', Skipped: ' + skipped;
+  await currAdminLoad();
+}
+
+// AI generate additional patterns for a level
+async function currGenExtra(level) {
+  var sb = getSupa(); if (!sb) return;
+  var stats = document.getElementById('curr-stats');
+  // Get existing patterns for this level
+  var existing = await sb.from('grammar_curriculum').select('pattern').eq('level', level);
+  var existingNames = (existing.data || []).map(function(p) { return p.pattern; });
+  var currentMax = existingNames.length;
+  var needed = (level === 'Advanced' ? 30 : 35) - currentMax;
+  if (needed <= 0) { toast(level + ' already has enough patterns (' + currentMax + ')'); return; }
+  if (stats) stats.textContent = 'AI generating ' + needed + ' more ' + level + ' patterns...';
+
+  try {
+    var res = await callClaude({
+      feature: 'grammar-curriculum-gen', model: 'claude-haiku-4-5-20251001', max_tokens: 3000,
+      messages: [{ role: 'user', content:
+        'Generate ' + needed + ' Korean grammar patterns for ' + level + ' level learners.\n'
+        + 'These patterns already exist (do NOT duplicate): ' + existingNames.join(', ') + '\n\n'
+        + 'For each pattern provide:\n- pattern: short name with Korean (e.g. "~ㄹ게요 — I will")\n- description: 1-sentence English explanation\n\n'
+        + 'Return ONLY JSON:\n{"patterns":[{"pattern":"...","description":"..."}]}'
+      }]
+    });
+    var raw = (res.content && res.content[0] && res.content[0].text) || '';
+    var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+    var parsed = JSON.parse(raw.slice(oi, ei + 1));
+    var newPatterns = parsed.patterns || [];
+    var added = 0;
+    for (var i = 0; i < newPatterns.length; i++) {
+      var np = newPatterns[i];
+      if (!np.pattern || existingNames.indexOf(np.pattern) >= 0) continue;
+      try {
+        await sb.from('grammar_curriculum').insert({
+          pattern: np.pattern, level: level, sort_order: currentMax + i + 1,
+          description: np.description || '', active: true, tags: []
+        });
+        added++;
+        existingNames.push(np.pattern);
+      } catch(e) {}
+    }
+    if (stats) stats.textContent = '✅ Added ' + added + ' ' + level + ' patterns';
+    await currAdminLoad();
+  } catch(e) { toast('AI generation failed: ' + e.message); }
 }
 
 </script>
