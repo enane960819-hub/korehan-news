@@ -410,14 +410,15 @@
       if (window.KHCanvas) KHCanvas.hideBottomNav();
     }
 
-    // Setup canvas
+    // Setup canvas — delay to ensure overlay has rendered
     setTimeout(function() {
       _canvas = document.getElementById('sb2-canvas');
-      if (!_canvas) return;
+      if (!_canvas || !window.KHCanvas) return;
       var wrap = document.getElementById('sb2-canvas-wrap');
       var rect = wrap ? wrap.getBoundingClientRect() : _canvas.getBoundingClientRect();
-      _w = rect.width || 480;
-      _h = rect.height || 320;
+      _w = rect.width || window.innerWidth - 40;
+      _h = rect.height || (window.innerHeight - 200);
+      if (_h < 200) _h = window.innerHeight - 200;
       _ctx = KHCanvas.DPR.setup(_canvas, _w, _h);
 
       // Events
@@ -430,7 +431,7 @@
       _canvas.addEventListener('touchend', _onUp);
 
       _loadCurrentSentence();
-    }, 100);
+    }, 200);
   };
 
   SB.close = function() {

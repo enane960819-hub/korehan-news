@@ -1028,10 +1028,16 @@
   KHC.hideBottomNav = function() {
     var nav = document.querySelector('.mobile-bottom-nav');
     if (nav) nav.style.display = 'none';
+    var dm = document.getElementById('kh-daily-mission');
+    if (dm) dm.style.display = 'none';
+    var idiom = document.getElementById('sr-idiom-banner');
+    if (idiom) idiom.style.display = 'none';
   };
   KHC.showBottomNav = function() {
     var nav = document.querySelector('.mobile-bottom-nav');
     if (nav) nav.style.display = '';
+    var dm = document.getElementById('kh-daily-mission');
+    if (dm) dm.style.display = '';
   };
 
 })();
