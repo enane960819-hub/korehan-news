@@ -10558,7 +10558,8 @@ async function currAdminLoad() {
   var stats = document.getElementById('curr-stats');
   if (!list) return;
   list.innerHTML = '<div style="color:#94a3b8;padding:20px;text-align:center">Loading...</div>';
-  var sb = getSupa(); if (!sb) return;
+  var sb = getSupa();
+  if (!sb) { list.innerHTML = '<div style="color:#dc2626;padding:20px;text-align:center">Supabase not ready. Refresh.</div>'; return; }
   var q = sb.from('grammar_curriculum').select('*').order('level').order('sort_order');
   var level = (document.getElementById('curr-level') || {}).value;
   if (level) q = q.eq('level', level);
