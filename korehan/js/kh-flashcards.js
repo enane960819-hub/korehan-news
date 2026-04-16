@@ -149,13 +149,17 @@
       card.style.transform = '';
     }
 
-    // Front: Korean
+    // Front: Korean + mastery ring
     if (front) {
       var srcBadge = c.src === 'conv' ? '💬' : c.src === 'story' ? '📖' : '📰';
+      var masteryLevel = _getMasteryLevel(c);
       front.innerHTML =
-        '<div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:12px">' + srcBadge + ' TAP TO FLIP</div>'
+        '<div style="position:absolute;top:12px;right:12px"><canvas id="fc-mastery-ring"></canvas></div>'
+        + '<div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:12px">' + srcBadge + ' TAP TO FLIP</div>'
         + '<div style="font-family:\'Noto Serif KR\',serif;font-size:32px;font-weight:900;color:#fff;line-height:1.3">' + _esc(c.ko) + '</div>'
         + (c.rom ? '<div style="font-size:14px;color:rgba(255,255,255,.4);margin-top:8px">' + _esc(c.rom) + '</div>' : '');
+      // Draw mastery ring
+      _drawMasteryRing(masteryLevel);
     }
 
     // Back: English
@@ -208,7 +212,14 @@
         ? '<button onclick="KHFlashcards.reviewUnknown()" style="padding:12px 28px;border-radius:12px;border:none;background:#2563eb;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;margin-bottom:8px">Review ' + _unknown.length + ' unknown cards →</button><br>'
         : '')
       + '<button onclick="KHFlashcards.close()" style="padding:10px 24px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:none;color:rgba(255,255,255,.6);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Close</button>'
+      + '<div id="fc-constellation-wrap" style="width:100%"></div>'
       + '</div>';
+
+    // Constellation word map
+    var cWrap = document.getElementById('fc-constellation-wrap');
+    if (cWrap && _cards.length >= 2) {
+      setTimeout(function() { _drawConstellation(cWrap); }, 100);
+    }
 
     // Celebration particles
     if (knownPct >= 50 && window.KHCanvas) {
@@ -337,6 +348,114 @@
     }
     _isOpen = false;
   };
+
+  // ── Mastery Ring ──────────────────────────────────────────
+  // SRS interval → mastery level (0-1)
+  // interval 1 = new (0), 3 = learning (0.25), 7 = familiar (0.5),
+  // 14 = good (0.75), 30+ = mastered (1.0)
+  function _getMasteryLevel(card) {
+    var interval = card.srs_interval || card.interval || 0;
+    if (interval >= 30) return 1.0;
+    if (interval >= 14) return 0.75;
+    if (interval >= 7) return 0.5;
+    if (interval >= 3) return 0.25;
+    return 0.05; // show tiny ring for new words
+  }
+
+  function _drawMasteryRing(level) {
+    var canvas = document.getElementById('fc-mastery-ring');
+    if (!canvas || !window.KHCanvas) return;
+    var ring = new KHCanvas.Ring(canvas, {
+      radius: 14, lineWidth: 3,
+      colors: level < 0.5 ? ['#f87171', '#ef4444'] : level < 0.75 ? ['#fbbf24', '#f59e0b'] : ['#34d399', '#22c55e'],
+      completeColors: ['#34d399', '#22c55e'],
+      showText: false,
+      bgColor: 'rgba(255,255,255,.06)'
+    });
+    ring.setProgress(level, level >= 1 ? 'complete' : 'normal');
+  }
+
+
+  // ── Constellation Word Map ─────────────────────────────────
+  // Shows all session words as stars on a canvas.
+  // Known = bright, unknown = dim. Lines connect nearby words.
+  function _drawConstellation(parentEl) {
+    if (!parentEl || !window.KHCanvas || _cards.length < 2) return;
+
+    var canvas = document.createElement('canvas');
+    canvas.style.cssText = 'width:100%;height:200px;border-radius:12px;margin-top:16px';
+    parentEl.appendChild(canvas);
+
+    var rect = canvas.getBoundingClientRect();
+    var w = rect.width || 320;
+    var h = 200;
+    var ctx = KHCanvas.DPR.setup(canvas, w, h);
+    if (!ctx) return;
+
+    // Place words in a grid-like pattern with slight randomness
+    var positions = [];
+    var cols = Math.ceil(Math.sqrt(_cards.length * (w / h)));
+    var rows = Math.ceil(_cards.length / cols);
+    var cellW = w / (cols + 1);
+    var cellH = h / (rows + 1);
+
+    for (var i = 0; i < _cards.length; i++) {
+      var col = i % cols;
+      var row = Math.floor(i / cols);
+      positions.push({
+        x: cellW * (col + 1) + (Math.random() - 0.5) * cellW * 0.5,
+        y: cellH * (row + 1) + (Math.random() - 0.5) * cellH * 0.4,
+        known: _known.indexOf(i) >= 0,
+        word: _cards[i].ko
+      });
+    }
+
+    // Draw connections between nearby words
+    ctx.strokeStyle = 'rgba(122,184,245,.12)';
+    ctx.lineWidth = 1;
+    for (var i = 0; i < positions.length; i++) {
+      for (var j = i + 1; j < positions.length; j++) {
+        var dx = positions[j].x - positions[i].x;
+        var dy = positions[j].y - positions[i].y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < cellW * 1.8) {
+          var alpha = (positions[i].known && positions[j].known) ? 0.2 : 0.06;
+          ctx.strokeStyle = 'rgba(122,184,245,' + alpha + ')';
+          ctx.beginPath();
+          ctx.moveTo(positions[i].x, positions[i].y);
+          ctx.lineTo(positions[j].x, positions[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Draw stars (words)
+    for (var i = 0; i < positions.length; i++) {
+      var p = positions[i];
+      var bright = p.known;
+
+      // Glow
+      if (bright) {
+        var grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 16);
+        grd.addColorStop(0, 'rgba(122,184,245,.2)');
+        grd.addColorStop(1, 'rgba(122,184,245,0)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(p.x - 16, p.y - 16, 32, 32);
+      }
+
+      // Dot
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, bright ? 4 : 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = bright ? '#7ab8f5' : 'rgba(255,255,255,.2)';
+      ctx.fill();
+
+      // Label
+      ctx.font = (bright ? '700' : '400') + ' 9px sans-serif';
+      ctx.fillStyle = bright ? 'rgba(122,184,245,.8)' : 'rgba(255,255,255,.2)';
+      ctx.textAlign = 'center';
+      ctx.fillText(p.word, p.x, p.y + 14);
+    }
+  }
 
   // ── Utility ──
   function _esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
