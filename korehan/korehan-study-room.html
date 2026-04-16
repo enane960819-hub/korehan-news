@@ -2906,6 +2906,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js?v=20260410b"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
+<script src="js/kh-quiz-arena.js?v=20260416"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // SOUND EFFECTS (Web Audio API)
@@ -15400,6 +15401,24 @@ async function drGenerateQuestions() {
 
   _drQuestions = _drShuffle(questions);
   _drIndex = 0; _drScores = []; _drAnswered = false;
+
+  // ── Route to Quiz Arena (new fullscreen UI) ──
+  if (window.KHQuizArena) {
+    closeDailyReview(); // close old modal
+    KHQuizArena.open({
+      questions: _drQuestions,
+      title: 'Daily Review',
+      timer: 0,
+      mode: 'daily',
+      onFinish: function(correct, total, pct) {
+        if (typeof logQuizResult === 'function') logQuizResult('daily_review', { score: correct, max_score: total, accuracy_pct: pct });
+        if (typeof logActivity === 'function') logActivity('quiz', { content_type: 'daily_review', score: correct, max_score: total });
+        try { localStorage.setItem('kh_daily_review_done_' + kstNow().toISOString().slice(0, 10), '1'); } catch(e) {}
+      }
+    });
+    return;
+  }
+
   drShowQuestion();
 }
 
