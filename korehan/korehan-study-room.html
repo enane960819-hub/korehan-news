@@ -12937,7 +12937,7 @@ function _showSpotItComplete() {
     + '</div>';
 }
 
-// ─── Practice (Fill-in-Blank) ────────────────────────────────
+// ─── Practice (Multiple Choice — was Fill-in-Blank) ──────────
 function loadGFFill(p) {
   var el = document.getElementById('gf-fill-content');
   if (!el || !p) return;
@@ -12947,11 +12947,11 @@ function loadGFFill(p) {
   // Extract Korean grammar tokens from pattern name for blanking
   var koTokens = (p.name || '').match(/[가-힣~\/]+/g) || [];
 
-  var qs = examples.map(function(ex, i) {
-    var koText = ex.ko;
+  // Build all blanked words first (for distractor pool)
+  var allBlanks = [];
+  examples.forEach(function(ex) {
+    var words = ex.ko.split(' ');
     var blank = '';
-    // Try to find the grammar ending in the sentence
-    var words = koText.split(' ');
     for (var ti = 0; ti < koTokens.length && !blank; ti++) {
       var tok = koTokens[ti].replace(/~/g, '');
       if (!tok) continue;
@@ -12962,25 +12962,53 @@ function loadGFFill(p) {
       }
     }
     if (!blank) blank = words[words.length - 1];
+    allBlanks.push(blank);
+  });
+
+  // Common Korean distractors by type
+  var commonDistractors = ['입니다','이에요','해요','합니다','있어요','없어요','가요','와요','했어요','하고','에서','부터','까지','지만','그래서','그런데','때문에','같이','처럼','보다'];
+
+  var qs = examples.map(function(ex, i) {
+    var koText = ex.ko;
+    var blank = allBlanks[i];
     var blanked = koText.replace(blank, '<span style="display:inline-block;min-width:70px;border-bottom:2.5px solid #2255a4;color:#94a3b8;text-align:center">______</span>');
+
+    // Build 4 choices: correct + 3 distractors
+    var distractors = [];
+    // First try other blanks from the same pattern
+    allBlanks.forEach(function(b, j) { if (j !== i && distractors.indexOf(b) < 0 && b !== blank) distractors.push(b); });
+    // Add common distractors
+    commonDistractors.forEach(function(d) { if (distractors.indexOf(d) < 0 && d !== blank) distractors.push(d); });
+    // Shuffle and pick 3
+    distractors.sort(function() { return Math.random() - 0.5; });
+    distractors = distractors.slice(0, 3);
+    // Build choices and shuffle
+    var choices = [blank].concat(distractors);
+    for (var ci = choices.length - 1; ci > 0; ci--) {
+      var cj = Math.floor(Math.random() * (ci + 1));
+      var ct = choices[ci]; choices[ci] = choices[cj]; choices[cj] = ct;
+    }
 
     return '<div style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:12px;padding:16px 18px;margin-bottom:14px" id="gff-card-' + i + '">'
       + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">Question ' + (i+1) + ' / ' + total + '</div>'
       + '<p style="font-size:14px;font-weight:600;color:#334155;margin:0 0 10px;line-height:1.65;background:#fffbeb;border-radius:8px;padding:8px 12px">' + ex.en + '</p>'
       + '<p style="font-family:Noto Serif KR,serif;font-size:17px;font-weight:700;color:#0f172a;margin:0 0 14px;line-height:1.8">' + blanked + '</p>'
-      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-      + '<input id="gff-inp-' + i + '" type="text" placeholder="Fill in the blank…" '
-      + 'style="flex:1;min-width:140px;padding:9px 14px;border:1.5px solid #e2e8f2;border-radius:8px;font-size:15px;font-family:Noto Serif KR,serif;outline:none" '
-      + 'onkeydown="if(event.key===\'Enter\')checkGFFill(' + i + ',\'' + blank.replace(/'/g,"\\'") + '\',' + total + ')">'
-      + '<button onclick="checkGFFill(' + i + ',\'' + blank.replace(/'/g,"\\'") + '\',' + total + ')" '
-      + 'style="padding:9px 18px;background:#2255a4;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Check</button>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      + choices.map(function(c) {
+          return '<button onclick="checkGFFillMCQ(this,' + i + ',\'' + c.replace(/'/g,"\\'") + '\',\'' + blank.replace(/'/g,"\\'") + '\',' + total + ')" '
+            + 'style="padding:12px 14px;border:1.5px solid #e2e8f2;border-radius:10px;background:#fff;font-size:15px;font-weight:700;'
+            + 'font-family:Noto Serif KR,serif;cursor:pointer;transition:all .15s;color:#0f172a"'
+            + ' onmouseover="this.style.borderColor=\'#93c5fd\';this.style.background=\'#f0f7ff\'"'
+            + ' onmouseout="this.style.borderColor=\'#e2e8f2\';this.style.background=\'#fff\'"'
+            + '>' + c + '</button>';
+        }).join('')
       + '</div>'
       + '<div id="gff-res-' + i + '" style="margin-top:10px;font-size:13px;font-weight:700"></div>'
       + '</div>';
   }).join('');
 
   el.innerHTML = '<div style="margin-bottom:14px;font-size:13px;color:#475569;line-height:1.7">'
-    + 'Read the English meaning and fill in the correct grammar form. '
+    + 'Choose the correct word to fill in the blank. '
     + '<span style="font-size:12px;background:#eff6ff;color:#2255a4;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span>'
     + '</div>'
     + qs
@@ -12991,37 +13019,40 @@ function loadGFFill(p) {
   window._gffAnswered = {};
 }
 
-function checkGFFill(idx, answer, total) {
-  var inp = document.getElementById('gff-inp-' + idx);
+function checkGFFillMCQ(btn, idx, answer, correct, total) {
   var res = document.getElementById('gff-res-' + idx);
-  if (!inp || !res) return;
-  var val = inp.value.trim();
-  if (!val) return;
-  // Normalize: strip punctuation, collapse spaces for fuzzy comparison
-  var norm = function(s){ return s.replace(/[\.\!\?\。\,\，\~]+/g,'').replace(/\s+/g,'').trim(); };
-  var correct = norm(val) === norm(answer);
-  // Retry: also check if student wrote a valid variant (with/without spaces)
-  if (!correct) {
-    var valNoSpace = val.replace(/\s+/g,'');
-    var ansNoSpace = answer.replace(/\s+/g,'');
-    correct = valNoSpace === ansNoSpace;
-  }
-  res.style.color = correct ? '#16a34a' : '#dc2626';
-  res.innerHTML = correct
-    ? '<span>✓ 정답!</span>'
-    : '<span>✗ 정답: <span style="font-family:Noto Serif KR,serif">' + answer + '</span></span><br><span style="font-size:11px;color:#94a3b8;margin-top:4px;display:block">Tip: ' + answer + ' 를 입력하세요</span>';
-  if (correct) {
-    inp.style.borderColor = '#86efac';
-    inp.style.background  = '#f0fdf4';
-  } else {
-    inp.style.borderColor = '#fca5a5';
-  }
-  // Track mastery for curriculum
-  var _gffPatternName = (_gfPattern && _gfPattern.name) || (window._gcCurrentPattern) || null;
-  if (_gffPatternName) updateGrammarMastery(_gffPatternName, correct);
-  inp.disabled = true;
+  if (!res || window._gffAnswered[idx]) return;
+
+  var isCorrect = answer === correct;
   window._gffAnswered[idx] = true;
-  // Show "Next" once all questions have been attempted
+
+  // Disable all buttons in this card
+  var card = document.getElementById('gff-card-' + idx);
+  if (card) {
+    card.querySelectorAll('button').forEach(function(b) {
+      b.style.pointerEvents = 'none';
+      if (b.textContent.trim() === correct) {
+        b.style.background = '#f0fdf4';
+        b.style.borderColor = '#86efac';
+        b.style.color = '#166534';
+      } else if (b === btn && !isCorrect) {
+        b.style.background = '#fef2f2';
+        b.style.borderColor = '#fca5a5';
+        b.style.color = '#dc2626';
+      } else {
+        b.style.opacity = '.4';
+      }
+    });
+  }
+
+  res.style.color = isCorrect ? '#16a34a' : '#dc2626';
+  res.innerHTML = isCorrect ? '✓ 정답!' : '✗ 정답: <span style="font-family:Noto Serif KR,serif">' + correct + '</span>';
+
+  // Track mastery
+  var _gffPatternName = (_gfPattern && _gfPattern.name) || (window._gcCurrentPattern) || null;
+  if (_gffPatternName) updateGrammarMastery(_gffPatternName, isCorrect);
+
+  // Show "Next" once all answered
   if (Object.keys(window._gffAnswered).length >= total) {
     var nw = document.getElementById('gff-next-wrap');
     if (nw) nw.style.display = 'block';
