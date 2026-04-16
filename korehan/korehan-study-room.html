@@ -15656,6 +15656,11 @@ async function drGenerateQuestions() {
         if (typeof logQuizResult === 'function') logQuizResult('daily_review', { score: correct, max_score: total, accuracy_pct: pct });
         if (typeof logActivity === 'function') logActivity('quiz', { content_type: 'daily_review', score: correct, max_score: total });
         try { localStorage.setItem('kh_daily_review_done_' + kstNow().toISOString().slice(0, 10), '1'); } catch(e) {}
+        // Hide Daily Review banner after completion
+        var notif = document.getElementById('sr-notif-daily');
+        if (notif) notif.style.display = 'none';
+        var rvDaily = document.getElementById('rv-daily');
+        if (rvDaily) { rvDaily.style.opacity = '.5'; rvDaily.style.pointerEvents = 'none'; }
       }
     });
     return;
@@ -15974,6 +15979,11 @@ function startReview(title, count) {
         if (typeof logQuizResult === 'function') logQuizResult(_rv.type + '_review', { score: correct, max_score: total, accuracy_pct: pct });
         if (typeof logActivity === 'function') logActivity('quiz', { content_type: _rv.type + '_review', score: correct, max_score: total });
         try { localStorage.setItem('kh_' + _rv.type + '_review_done_' + kstNow().toISOString().slice(0, 10), '1'); } catch(e) {}
+        // Hide review banner after completion
+        var rvBtn = document.getElementById('rv-' + _rv.type);
+        if (rvBtn) { rvBtn.style.opacity = '.5'; rvBtn.style.pointerEvents = 'none'; }
+        var notif = document.getElementById('sr-notif-' + _rv.type);
+        if (notif) notif.style.display = 'none';
       }
     });
     return;

@@ -247,9 +247,19 @@
     var q = _questions[_index];
     if (_orderSelected.length !== q.correct.length) return;
     _answered = true;
-    var correct = _orderSelected.join(' ') === q.correct.join(' ');
+    var userAnswer = _orderSelected.join(' ');
+    var correctAnswer = q.correct.join(' ');
+    var correct = userAnswer === correctAnswer;
+
+    // Alternative order check: if all words present AND last word (verb/ending) matches → accept
+    if (!correct && q.correct.length >= 3) {
+      var lastWordMatch = _orderSelected[_orderSelected.length - 1] === q.correct[q.correct.length - 1];
+      var allWordsPresent = q.correct.every(function(w) { return _orderSelected.indexOf(w) >= 0; });
+      if (lastWordMatch && allWordsPresent) correct = true;
+    }
+
     _recordAnswer(correct);
-    _showFeedback(correct, q.correct.join(' '));
+    _showFeedback(correct, correctAnswer);
   };
 
   QA._checkTyped = function() {
