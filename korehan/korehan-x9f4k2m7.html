@@ -10547,6 +10547,14 @@ function currAdminHTML() {
     + '<button class="btn" onclick="currGenExtra(\'Intermediate\')">🤖 +Intermediate</button>'
     + '<button class="btn" onclick="currGenExtra(\'Advanced\')">🤖 +Advanced</button>'
     + '</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px">'
+    + '<div style="font-size:11px;color:#92400e;font-weight:700;margin-right:8px;align-self:center">📝 예문 배치 생성 (없는 패턴만):</div>'
+    + '<button class="btn" onclick="currGenExamples(\'Beginner\')">Beginner</button>'
+    + '<button class="btn" onclick="currGenExamples(\'Intermediate\')">Intermediate</button>'
+    + '<button class="btn" onclick="currGenExamples(\'Advanced\')">Advanced</button>'
+    + '<button class="btn btn-g" onclick="currGenExamples(\'all\')">🚀 전체</button>'
+    + '<button class="btn" onclick="currStopGen()" id="curr-stop-btn" style="display:none;background:#fca5a5;color:#991b1b">⏸ 중단</button>'
+    + '</div>'
     + '<div id="curr-add-form" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:14px"></div>'
     + '<div id="curr-stats" style="font-size:12px;color:#64748b;margin-bottom:10px"></div>'
     + '<div id="curr-list"></div>'
@@ -10835,6 +10843,96 @@ async function _currExGenAI() {
     toast('✅ Added ' + newEx.length + ' examples. Review and Save.');
     _currExRender();
   } catch(e) { toast('AI failed: ' + e.message); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BATCH EXAMPLES GENERATION — loop through patterns, AI-gen 15 each
+// ═══════════════════════════════════════════════════════════════
+var _currGenStop = false;
+
+function currStopGen() {
+  _currGenStop = true;
+  toast('⏸ 다음 패턴 후 중단됩니다');
+}
+
+async function currGenExamples(scope) {
+  var sb = getSb(); if (!sb) { toast('Supabase not ready'); return; }
+  var stats = document.getElementById('curr-stats');
+  var stopBtn = document.getElementById('curr-stop-btn');
+
+  // Filter patterns: only those without examples
+  var target = _currData.filter(function(p) {
+    if (scope !== 'all' && p.level !== scope) return false;
+    var count = 0;
+    try { count = (JSON.parse(p.examples_json || '[]') || []).length; } catch(e) {}
+    return count < 12; // treat <12 as needing generation
+  });
+
+  if (!target.length) {
+    toast('이미 모든 ' + (scope === 'all' ? '' : scope) + ' 패턴에 예문이 있습니다');
+    return;
+  }
+
+  if (!confirm('AI로 ' + target.length + '개 패턴에 예문 15개씩 생성합니다.\n\n'
+    + '비용: 대략 $' + (target.length * 0.01).toFixed(2) + ' 예상\n'
+    + '시간: 패턴당 약 5초\n\n계속?')) return;
+
+  _currGenStop = false;
+  if (stopBtn) stopBtn.style.display = '';
+
+  var done = 0, failed = 0;
+  for (var i = 0; i < target.length; i++) {
+    if (_currGenStop) break;
+    var p = target[i];
+    if (stats) stats.innerHTML = '🤖 생성 중 <b>' + (i+1) + '/' + target.length + '</b>: ' + esc(p.pattern) + ' (완료: ' + done + ', 실패: ' + failed + ')';
+
+    try {
+      var res = await callClaude({
+        feature: 'grammar-examples-batch', model: 'claude-haiku-4-5-20251001', max_tokens: 2500,
+        messages: [{ role: 'user', content:
+          'Generate 15 Korean example sentences for the grammar pattern: "' + p.pattern + '"\n'
+          + 'Level: ' + p.level + '\n'
+          + (p.description ? 'Context: ' + p.description + '\n' : '')
+          + '\nRules:\n'
+          + '- 12 correct examples using this exact pattern\n'
+          + '- 3 incorrect examples (common learner mistakes) with corrections\n'
+          + '- Short, natural, varied contexts (daily life, work, school, food, weather, family, travel, etc.)\n'
+          + '- Each example must clearly demonstrate the pattern\n\n'
+          + 'Return ONLY valid JSON:\n'
+          + '{"examples":['
+          + '{"ko":"...","en":"...","note":"brief usage note","type":"correct"},'
+          + '{"ko":"...","en":"...","correction":"fixed sentence","note":"why wrong","type":"incorrect"}'
+          + ']}'
+        }]
+      });
+      var raw = (res.content && res.content[0] && res.content[0].text) || '';
+      var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+      var parsed = JSON.parse(raw.slice(oi, ei + 1));
+      var examples = (parsed.examples || []).filter(function(e) { return e.ko; });
+      if (examples.length) {
+        await sb.from('grammar_curriculum').update({
+          examples_json: JSON.stringify(examples),
+          updated_at: new Date().toISOString()
+        }).eq('id', p.id);
+        done++;
+        p.examples_json = JSON.stringify(examples); // update local
+      } else {
+        failed++;
+      }
+    } catch(e) {
+      console.warn('Gen failed for', p.pattern, e.message);
+      failed++;
+    }
+
+    // Rate limit: delay between requests
+    await new Promise(function(r) { setTimeout(r, 600); });
+  }
+
+  if (stopBtn) stopBtn.style.display = 'none';
+  var stopMsg = _currGenStop ? ' (중단됨)' : '';
+  if (stats) stats.innerHTML = '✅ 완료' + stopMsg + ': <b>' + done + '</b>개 생성, ' + failed + '개 실패';
+  toast('✅ ' + done + '개 생성 완료');
+  await currAdminLoad();
 }
 
 // AI generate additional patterns for a level
