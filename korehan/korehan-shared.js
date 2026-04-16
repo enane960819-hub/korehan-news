@@ -3670,7 +3670,9 @@ function renderArticleVocab(a) {
   var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
   var found = [];
   Object.keys(VOCAB).forEach(function(k) {
-    if (text.indexOf(k) !== -1 && found.length < 10) found.push(k);
+    if (k.length < 2) return; // skip single syllables
+    var re = new RegExp('(?<![가-힣])' + k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '(?![가-힣])');
+    if (re.test(text) && found.length < 10) found.push(k);
   });
   if (!found.length) { var box = el.closest('.art-vocab-box'); if(box) box.style.display = 'none'; return; }
 
@@ -5029,8 +5031,12 @@ async function saveVocabToDB(word, rom, en, isDelete) {
 }
 
 function wrapVocab(el) {
-  var keys  = Object.keys(VOCAB).sort(function(a, b){ return b.length - a.length; });
-  var regex = new RegExp('(' + keys.map(function(k){ return k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).join('|') + ')', 'g');
+  // Filter out single-syllable keys — too ambiguous for matching (e.g. 해, 다, 가)
+  var keys  = Object.keys(VOCAB).filter(function(k){ return k.length >= 2; }).sort(function(a, b){ return b.length - a.length; });
+  if (!keys.length) return;
+  // Build regex with Korean word boundaries: must not be preceded/followed by Hangul
+  var escaped = keys.map(function(k){ return k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).join('|');
+  var regex = new RegExp('(?<![가-힣])(' + escaped + ')(?![가-힣])', 'g');
   var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
     acceptNode: function(n) {
       if (!n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
@@ -5050,8 +5056,8 @@ function wrapVocab(el) {
       if (m.index > last) frag.appendChild(document.createTextNode(node.nodeValue.slice(last, m.index)));
       var span = document.createElement('span');
       span.className = 'kh-word';
-      span.dataset.word = m[0];
-      span.textContent = m[0];
+      span.dataset.word = m[1];
+      span.textContent = m[1];
       frag.appendChild(span);
       last = regex.lastIndex;
     }
