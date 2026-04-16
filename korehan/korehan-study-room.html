@@ -15991,6 +15991,23 @@ function startReview(title, count) {
   _rv.questions = generateReviewQuestions(count);
   _rv.current = 0;
   _rv.scores = [];
+
+  // Route to Quiz Arena if available
+  if (window.KHQuizArena && _rv.questions.length) {
+    KHQuizArena.open({
+      questions: _rv.questions,
+      title: title,
+      timer: _rv.timeLimit || 15,
+      mode: _rv.type || 'weekly',
+      onFinish: function(correct, total, pct) {
+        if (typeof logQuizResult === 'function') logQuizResult(_rv.type + '_review', { score: correct, max_score: total, accuracy_pct: pct });
+        if (typeof logActivity === 'function') logActivity('quiz', { content_type: _rv.type + '_review', score: correct, max_score: total });
+        try { localStorage.setItem('kh_' + _rv.type + '_review_done_' + kstNow().toISOString().slice(0, 10), '1'); } catch(e) {}
+      }
+    });
+    return;
+  }
+
   document.getElementById('rv-title').textContent = title;
   document.getElementById('rv-subtitle').textContent = _rv.questions.length + ' questions · ' + _rv.timeLimit + 's per question';
   document.getElementById('review-modal-overlay').style.display = 'flex';

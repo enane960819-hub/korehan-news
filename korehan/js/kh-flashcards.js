@@ -231,6 +231,11 @@
         setTimeout(function() { po.canvas.remove(); po.ps.destroy(); }, 3000);
       }
     }
+
+    // Log activity for Growth Lab
+    if (typeof logActivity === 'function') {
+      logActivity('flashcard_review', { score: _known.length, max_score: total, accuracy_pct: knownPct });
+    }
   }
 
   // ── Public API ──
@@ -277,7 +282,9 @@
 
   FC.swipeRight = function() {
     if (_index >= _cards.length) return;
+    var card = _cards[_index];
     _known.push(_index);
+    _trackSRS(card, true);
     // Sparkle particle
     if (window.KHCanvas) {
       var body = document.querySelector('#' + OVERLAY_ID + ' .kh-fs-body');
@@ -294,9 +301,32 @@
 
   FC.swipeLeft = function() {
     if (_index >= _cards.length) return;
+    var card = _cards[_index];
     _unknown.push(_index);
+    _trackSRS(card, false);
     _animateSwipe('left', function() { _index++; _renderCard(); });
   };
+
+  /** Save swipe result to Supabase via save_or_update_word RPC */
+  function _trackSRS(card, known) {
+    if (!card || !card.ko) return;
+    if (typeof supaUser === 'undefined' || !supaUser) return;
+    if (typeof getSupa !== 'function') return;
+    try {
+      var sb = getSupa();
+      if (!sb) return;
+      sb.rpc('save_or_update_word', {
+        p_word_key: card.ko,
+        p_word_ko: card.ko,
+        p_word_en: card.en || null,
+        p_word_rom: card.rom || null,
+        p_source_kind: 'flashcard_3d',
+        p_review_delta: 1,
+        p_correct_delta: known ? 1 : 0,
+        p_wrong_delta: known ? 0 : 1
+      }).catch(function() {});
+    } catch(e) {}
+  }
 
   FC.reviewUnknown = function() {
     var unknownCards = _unknown.map(function(i) { return _cards[i]; });
