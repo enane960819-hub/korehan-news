@@ -821,4 +821,183 @@
   KHC.lerpColor = _lerpColor;
   KHC.hexToRgba = _hexToRgba;
 
+
+  /* ──────────────────────────────────────────────────────────
+     Radar — 5-axis radar chart (pentagon)
+     Used for: Speaking practice scores
+
+     Usage:
+       var radar = new KHCanvas.Radar(canvas, {
+         axes: ['Accuracy','Fluency','Intonation','Speed','Pronunciation'],
+         size: 120,
+         fillColor: 'rgba(124,58,237,.25)',
+         strokeColor: '#7c3aed',
+         gridColor: 'rgba(255,255,255,.1)',
+         labelColor: 'rgba(255,255,255,.7)'
+       });
+       radar.setValues([85, 72, 60, 90, 78]);  // 0-100 per axis
+     ────────────────────────────────────────────────────────── */
+
+  function Radar(canvas, opts) {
+    opts = opts || {};
+    this.canvas = canvas;
+    this.ctx = null;
+    this.axes = opts.axes || ['Accuracy', 'Fluency', 'Intonation', 'Speed', 'Pronunciation'];
+    this.size = opts.size || 100;           // radius of outer ring
+    this.fillColor = opts.fillColor || 'rgba(124,58,237,.2)';
+    this.strokeColor = opts.strokeColor || '#7c3aed';
+    this.strokeWidth = opts.strokeWidth || 2;
+    this.gridColor = opts.gridColor || 'rgba(255,255,255,.1)';
+    this.gridLevels = opts.gridLevels || 4; // number of concentric rings
+    this.labelColor = opts.labelColor || 'rgba(255,255,255,.7)';
+    this.labelFont = opts.labelFont || '700 11px sans-serif';
+    this.valueColor = opts.valueColor || '#fff';
+    this.valueFont = opts.valueFont || '900 12px sans-serif';
+    this.dotColor = opts.dotColor || '#a78bfa';
+    this.dotRadius = opts.dotRadius || 4;
+    this.showValues = opts.showValues !== undefined ? opts.showValues : true;
+    this.values = [];      // current animated values 0-100
+    this.targets = [];     // target values 0-100
+    this._animId = 'radar-' + (++_psCounter);
+    this._padding = opts.padding || 40;
+    this._setup();
+  }
+
+  Radar.prototype._setup = function() {
+    if (!this.canvas) return;
+    var totalSize = (this.size + this._padding) * 2;
+    this.ctx = KHC.DPR.setup(this.canvas, totalSize, totalSize);
+    this.values = new Array(this.axes.length).fill(0);
+    this.targets = new Array(this.axes.length).fill(0);
+    this._draw();
+  };
+
+  Radar.prototype.setValues = function(vals) {
+    var self = this;
+    for (var i = 0; i < this.axes.length; i++) {
+      this.targets[i] = Math.max(0, Math.min(100, vals[i] || 0));
+    }
+
+    if (!KHC.AnimLoop.has(this._animId)) {
+      KHC.AnimLoop.register(this._animId, function(dt) {
+        var done = true;
+        for (var i = 0; i < self.axes.length; i++) {
+          self.values[i] += (self.targets[i] - self.values[i]) * Math.min(1, dt * 6);
+          if (Math.abs(self.values[i] - self.targets[i]) > 0.5) done = false;
+          else self.values[i] = self.targets[i];
+        }
+        self._draw();
+        if (done) KHC.AnimLoop.unregister(self._animId);
+      });
+    }
+  };
+
+  /** Get current values (for reading/saving) */
+  Radar.prototype.getValues = function() {
+    return this.targets.slice();
+  };
+
+  Radar.prototype._draw = function() {
+    var ctx = this.ctx;
+    if (!ctx) return;
+    var n = this.axes.length;
+    var cx = this.size + this._padding;
+    var cy = cx;
+    var r = this.size;
+
+    // Clear
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.restore();
+
+    // Helper: get point on polygon
+    function pt(axis, dist) {
+      var angle = (Math.PI * 2 * axis) / n - Math.PI / 2;
+      return { x: cx + Math.cos(angle) * dist, y: cy + Math.sin(angle) * dist };
+    }
+
+    // Draw grid rings
+    for (var lvl = 1; lvl <= this.gridLevels; lvl++) {
+      var gr = r * (lvl / this.gridLevels);
+      ctx.beginPath();
+      for (var i = 0; i < n; i++) {
+        var gp = pt(i, gr);
+        i === 0 ? ctx.moveTo(gp.x, gp.y) : ctx.lineTo(gp.x, gp.y);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = this.gridColor;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Draw axis lines
+    for (var i = 0; i < n; i++) {
+      var ep = pt(i, r);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(ep.x, ep.y);
+      ctx.strokeStyle = this.gridColor;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Draw filled value area
+    ctx.beginPath();
+    for (var i = 0; i < n; i++) {
+      var vr = r * (this.values[i] / 100);
+      var vp = pt(i, vr);
+      i === 0 ? ctx.moveTo(vp.x, vp.y) : ctx.lineTo(vp.x, vp.y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = this.fillColor;
+    ctx.fill();
+    ctx.strokeStyle = this.strokeColor;
+    ctx.lineWidth = this.strokeWidth;
+    ctx.stroke();
+
+    // Draw dots at each value point
+    for (var i = 0; i < n; i++) {
+      var vr = r * (this.values[i] / 100);
+      var vp = pt(i, vr);
+      ctx.beginPath();
+      ctx.arc(vp.x, vp.y, this.dotRadius, 0, Math.PI * 2);
+      ctx.fillStyle = this.dotColor;
+      ctx.fill();
+    }
+
+    // Draw labels + values
+    for (var i = 0; i < n; i++) {
+      var lp = pt(i, r + 18);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Adjust alignment for left/right labels
+      var angle = (Math.PI * 2 * i) / n - Math.PI / 2;
+      if (Math.cos(angle) < -0.3) ctx.textAlign = 'right';
+      else if (Math.cos(angle) > 0.3) ctx.textAlign = 'left';
+      if (Math.sin(angle) < -0.3) ctx.textBaseline = 'bottom';
+      else if (Math.sin(angle) > 0.3) ctx.textBaseline = 'top';
+
+      // Axis label
+      ctx.font = this.labelFont;
+      ctx.fillStyle = this.labelColor;
+      ctx.fillText(this.axes[i], lp.x, lp.y);
+
+      // Value number
+      if (this.showValues) {
+        var vp2 = pt(i, r + 30);
+        ctx.font = this.valueFont;
+        ctx.fillStyle = this.valueColor;
+        ctx.fillText(Math.round(this.values[i]), vp2.x, vp2.y);
+      }
+    }
+  };
+
+  Radar.prototype.destroy = function() {
+    KHC.AnimLoop.unregister(this._animId);
+  };
+
+  KHC.Radar = Radar;
+
 })();

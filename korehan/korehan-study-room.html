@@ -2710,6 +2710,22 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
         <div id="wm-speak-status" style="font-size:11px;color:#6b7280;margin-top:8px;min-height:18px"></div>
         <audio id="wm-speak-playback" style="width:100%;margin-top:8px;display:none" controls></audio>
         <button id="wm-speak-submit" onclick="submitSpeaking()" style="display:none;width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📩 Submit Recording</button>
+
+        <!-- Speaking Radar Chart (shown after feedback) -->
+        <div id="wm-speak-radar-wrap" style="display:none;margin-top:14px;border-top:1px solid rgba(124,58,237,.15);padding-top:14px">
+          <div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Speaking Analysis</div>
+          <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+            <canvas id="wm-speak-radar-canvas" style="flex-shrink:0"></canvas>
+            <!-- Admin edit panel (hidden by default) -->
+            <div id="wm-speak-admin-edit" style="display:none;flex:1;min-width:180px">
+              <div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Admin: Edit Scores</div>
+              <div id="wm-speak-admin-inputs" style="display:flex;flex-direction:column;gap:6px"></div>
+              <button onclick="_saveRadarScores()" style="margin-top:8px;width:100%;padding:8px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Save Scores</button>
+            </div>
+          </div>
+          <!-- Sentence-by-sentence highlighting -->
+          <div id="wm-speak-sentences" style="margin-top:12px"></div>
+        </div>
       </div>
       <button class="submit-btn" onclick="submitWriting()">✓ Done — Save to daily package</button>
       <div class="submit-note">Writing + Speaking submissions available · Once per day (KST)</div>
@@ -10735,6 +10751,140 @@ function _playSubmitEnvelopeAnimation(onComplete) {
     }
     if (onComplete) onComplete();
   }, 1100);
+}
+
+// ── Speaking Radar Chart ───────────────────────────────────────
+var _speakRadar = null;
+var _speakRadarAxes = ['Accuracy', 'Fluency', 'Intonation', 'Speed', 'Pronunciation'];
+
+/**
+ * Show the radar chart with scores.
+ * @param {number[]} scores — 5 values (0-100)
+ * @param {object[]} [sentences] — [{text, score}] for highlighting
+ */
+function showSpeakingRadar(scores, sentences) {
+  var wrap = document.getElementById('wm-speak-radar-wrap');
+  if (!wrap || !window.KHCanvas) return;
+  wrap.style.display = '';
+
+  // Init radar if needed
+  if (!_speakRadar) {
+    var cv = document.getElementById('wm-speak-radar-canvas');
+    if (!cv) return;
+    _speakRadar = new KHCanvas.Radar(cv, {
+      axes: _speakRadarAxes,
+      size: 80,
+      padding: 36,
+      fillColor: 'rgba(124,58,237,.2)',
+      strokeColor: '#7c3aed',
+      dotColor: '#a78bfa',
+      gridColor: 'rgba(124,58,237,.12)',
+      labelColor: 'rgba(124,58,237,.7)',
+      valueColor: '#7c3aed'
+    });
+  }
+
+  _speakRadar.setValues(scores || [0, 0, 0, 0, 0]);
+
+  // Admin edit panel — show only for admins
+  var adminPanel = document.getElementById('wm-speak-admin-edit');
+  var isAdmin = window.supaUser && window.supaUser.app_metadata && window.supaUser.app_metadata.role === 'admin';
+  if (!isAdmin) {
+    // Also check email-based admin (existing pattern in codebase)
+    var adminEmails = ['enane960819@gmail.com'];
+    isAdmin = window.supaUser && adminEmails.indexOf(window.supaUser.email) >= 0;
+  }
+  if (adminPanel && isAdmin) {
+    adminPanel.style.display = '';
+    var inputsWrap = document.getElementById('wm-speak-admin-inputs');
+    if (inputsWrap) {
+      inputsWrap.innerHTML = _speakRadarAxes.map(function(axis, i) {
+        var val = scores ? Math.round(scores[i] || 0) : 0;
+        return '<div style="display:flex;align-items:center;gap:8px">'
+          + '<label style="font-size:11px;color:rgba(255,255,255,.6);min-width:80px">' + axis + '</label>'
+          + '<input type="range" min="0" max="100" value="' + val + '" '
+          + 'oninput="_onRadarSliderChange()" '
+          + 'data-axis="' + i + '" '
+          + 'style="flex:1;accent-color:#7c3aed">'
+          + '<span style="font-size:11px;color:#a78bfa;font-weight:700;min-width:28px;text-align:right" id="radar-val-' + i + '">' + val + '</span>'
+          + '</div>';
+      }).join('');
+    }
+  }
+
+  // Sentence highlighting
+  if (sentences && sentences.length) {
+    renderSentenceHighlighting(sentences);
+  }
+}
+
+/** Admin slider change → update radar in real-time */
+function _onRadarSliderChange() {
+  if (!_speakRadar) return;
+  var inputs = document.querySelectorAll('#wm-speak-admin-inputs input[type="range"]');
+  var vals = [];
+  inputs.forEach(function(inp) {
+    var idx = parseInt(inp.dataset.axis);
+    var val = parseInt(inp.value);
+    vals[idx] = val;
+    var lbl = document.getElementById('radar-val-' + idx);
+    if (lbl) lbl.textContent = val;
+  });
+  _speakRadar.setValues(vals);
+}
+
+/** Save admin-edited radar scores (placeholder — integrate with your feedback system) */
+function _saveRadarScores() {
+  if (!_speakRadar) return;
+  var scores = _speakRadar.getValues();
+  // Store on the current feedback data so it gets included when feedback is sent
+  window._lastSpeakingRadarScores = scores;
+  showToast('Radar scores saved: ' + scores.map(Math.round).join(', '));
+}
+
+/**
+ * Render sentence-by-sentence color highlighting.
+ * @param {object[]} sentences — [{text, score}] score: 0-100
+ *   score >= 70 = green, 40-69 = yellow, < 40 = red
+ *   Admin can click to cycle colors.
+ */
+function renderSentenceHighlighting(sentences) {
+  var wrap = document.getElementById('wm-speak-sentences');
+  if (!wrap) return;
+
+  var isAdmin = window.supaUser && (
+    (window.supaUser.app_metadata && window.supaUser.app_metadata.role === 'admin') ||
+    window.supaUser.email === 'enane960819@gmail.com'
+  );
+
+  wrap.innerHTML = '<div style="font-size:10px;font-weight:800;color:rgba(124,58,237,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Sentence Analysis' + (isAdmin ? ' <span style="font-size:9px;color:rgba(255,255,255,.3)">(click to edit)</span>' : '') + '</div>'
+    + sentences.map(function(s, i) {
+      var score = s.score || 0;
+      var color = score >= 70 ? '#22c55e' : score >= 40 ? '#eab308' : '#ef4444';
+      var bg = score >= 70 ? 'rgba(34,197,94,.08)' : score >= 40 ? 'rgba(234,179,8,.08)' : 'rgba(239,68,68,.08)';
+      var border = score >= 70 ? 'rgba(34,197,94,.2)' : score >= 40 ? 'rgba(234,179,8,.2)' : 'rgba(239,68,68,.2)';
+      return '<div class="speak-sent" data-idx="' + i + '" data-score="' + score + '" '
+        + 'style="padding:8px 10px;border-radius:8px;margin-bottom:4px;font-size:13px;line-height:1.6;'
+        + 'background:' + bg + ';border-left:3px solid ' + color + ';border:1px solid ' + border + ';'
+        + 'color:' + color + ';cursor:' + (isAdmin ? 'pointer' : 'default') + '"'
+        + (isAdmin ? ' onclick="_cycleSentenceScore(this,' + i + ')"' : '')
+        + '>' + (s.text || '') + '</div>';
+    }).join('');
+
+  // Store for saving
+  window._lastSentenceScores = sentences;
+}
+
+/** Admin: cycle sentence score (green → yellow → red → green) */
+function _cycleSentenceScore(el, idx) {
+  if (!window._lastSentenceScores || !window._lastSentenceScores[idx]) return;
+  var s = window._lastSentenceScores[idx];
+  // Cycle: 80 → 50 → 20 → 80
+  if (s.score >= 70) s.score = 50;
+  else if (s.score >= 40) s.score = 20;
+  else s.score = 80;
+  // Re-render
+  renderSentenceHighlighting(window._lastSentenceScores);
 }
 
 function insertVocabChip(word) {
