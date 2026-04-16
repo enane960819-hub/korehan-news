@@ -2437,7 +2437,10 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   <!-- ② FLASHCARDS -->
   <div class="sr-sb-panel" style="padding:0;overflow:hidden">
     <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
-      <div class="ct" style="color:rgba(255,255,255,.45)">📇 Flashcards</div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="ct" style="color:rgba(255,255,255,.45)">📇 Flashcards</div>
+        <button onclick="KHFlashcards&&KHFlashcards.open({title:'Flashcards'})" style="font-size:10px;font-weight:800;color:#60a5fa;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.2);border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit">3D Mode →</button>
+      </div>
     </div>
     <div style="padding:8px 14px 0;display:flex;gap:6px;flex-wrap:wrap" id="fc-filters-left">
       <button class="tpill on" onclick="loadFlashcards('all',this)">All</button>
@@ -2907,6 +2910,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <script src="korehan-shared.js?v=20260410b"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
 <script src="js/kh-quiz-arena.js?v=20260416"></script>
+<script src="js/kh-flashcards.js?v=20260416"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // SOUND EFFECTS (Web Audio API)
