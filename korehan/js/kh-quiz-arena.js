@@ -269,15 +269,49 @@
 
   // ── Shared logic ──
 
+  /** Ensure particle overlay exists on the quiz body */
+  function _ensureParticles() {
+    if (_particleOverlay) return _particleOverlay;
+    var body = document.getElementById('qa-body');
+    if (!body || !window.KHCanvas) return null;
+    _particleOverlay = KHCanvas.createOverlay(body);
+    return _particleOverlay;
+  }
+
   function _recordAnswer(correct) {
     _scores[_index] = correct;
     if (correct) {
       _combo++;
       if (_combo > _maxCombo) _maxCombo = _combo;
       if (typeof playCorrectSound === 'function') playCorrectSound();
+
+      // ── Particles: correct answer ──
+      var po = _ensureParticles();
+      if (po) {
+        var w = po.canvas._khW || 300;
+        var h = po.canvas._khH || 200;
+        po.ps.burstAt(w / 2, h / 2, 'GOLD_BURST', 25);
+
+        // Combo fire at 3+
+        if (_combo >= 3) {
+          po.ps.trail({ x: w / 2, y: h, duration: 0.6, rate: 4, preset: 'COMBO_FIRE' });
+        }
+      }
+
+      // ── Combo badge ──
+      _showComboBadge();
     } else {
       _combo = 0;
       if (typeof playWrongSound === 'function') playWrongSound();
+
+      // ── Particles: wrong answer ──
+      var po2 = _ensureParticles();
+      if (po2) {
+        var w2 = po2.canvas._khW || 300;
+        po2.ps.burstAt(w2 / 2, 60, 'WRONG', 12);
+      }
+
+      _hideComboBadge();
     }
     if (_gauge) _gauge.pause();
 
@@ -289,6 +323,23 @@
       nextBtn.textContent = _index >= _questions.length - 1 ? 'Finish' : 'Next →';
     }
     _renderProgressPath();
+  }
+
+  function _showComboBadge() {
+    var el = document.getElementById('qa-combo');
+    if (!el || _combo < 2) return;
+    el.style.display = '';
+    el.className = 'kh-combo-badge' + (_combo >= 3 ? ' fire' : '');
+    el.innerHTML = '🔥 ' + _combo + 'x';
+    // Re-trigger animation
+    el.style.animation = 'none';
+    void el.offsetWidth;
+    el.style.animation = '';
+  }
+
+  function _hideComboBadge() {
+    var el = document.getElementById('qa-combo');
+    if (el) el.style.display = 'none';
   }
 
   function _showFeedback(correct, answer) {
@@ -334,6 +385,26 @@
       nextBtn.disabled = false;
       nextBtn.style.opacity = '1';
       nextBtn.onclick = function() { QA.close(); };
+    }
+
+    // Celebration particles
+    if (pct >= 50) {
+      var po = _ensureParticles();
+      if (po) {
+        var w = po.canvas._khW || 300;
+        var h = po.canvas._khH || 200;
+        setTimeout(function() {
+          po.ps.burstAt(w / 2, h * 0.3, 'CELEBRATION', 60);
+          po.ps.burstAt(w * 0.2, h * 0.4, 'GOLD_BURST', 15);
+          po.ps.burstAt(w * 0.8, h * 0.4, 'GOLD_BURST', 15);
+        }, 200);
+        if (pct >= 80) {
+          setTimeout(function() {
+            po.ps.burstAt(w * 0.3, h * 0.5, 'MASTERY', 20);
+            po.ps.burstAt(w * 0.7, h * 0.5, 'MASTERY', 20);
+          }, 600);
+        }
+      }
     }
 
     // Log results
@@ -407,6 +478,12 @@
       setTimeout(function() { overlay.classList.add('hidden'); }, 250);
     }
     if (_gauge) { _gauge.destroy(); _gauge = null; }
+    if (_particleOverlay) {
+      _particleOverlay.ps.destroy();
+      _particleOverlay.canvas.remove();
+      _particleOverlay = null;
+    }
+    _hideComboBadge();
   };
 
   // ── Utility ──
