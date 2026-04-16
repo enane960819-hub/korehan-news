@@ -10252,7 +10252,7 @@ async function lqAdminLoad() {
   if (!list) return;
   list.innerHTML = '<div style="color:#94a3b8;padding:20px;text-align:center">Loading...</div>';
 
-  var sb = getSupa(); if (!sb) return;
+  var sb = getSb(); if (!sb) return;
   var q = sb.from('listening_quiz_bank').select('*').order('created_at', { ascending: false });
 
   var level = document.getElementById('lqa-level');
@@ -10334,7 +10334,7 @@ async function lqAdminSave(editId) {
   };
   if (!data.sentence || !data.correct) { toast('Sentence and Correct answer are required'); return; }
 
-  var sb = getSupa(); if (!sb) return;
+  var sb = getSb(); if (!sb) return;
   try {
     if (editId) {
       await sb.from('listening_quiz_bank').update(data).eq('id', editId);
@@ -10354,7 +10354,7 @@ function lqAdminEdit(id) {
 }
 
 async function lqAdminToggle(id, active) {
-  var sb = getSupa(); if (!sb) return;
+  var sb = getSb(); if (!sb) return;
   await sb.from('listening_quiz_bank').update({ active: active, updated_at: new Date().toISOString() }).eq('id', id);
   toast(active ? 'Activated' : 'Deactivated');
   await lqAdminLoad();
@@ -10362,7 +10362,7 @@ async function lqAdminToggle(id, active) {
 
 async function lqAdminDelete(id) {
   if (!confirm('Delete this question?')) return;
-  var sb = getSupa(); if (!sb) return;
+  var sb = getSb(); if (!sb) return;
   await sb.from('listening_quiz_bank').delete().eq('id', id);
   toast('Deleted');
   await lqAdminLoad();
@@ -10393,7 +10393,7 @@ async function lqAdminAIGenerate() {
     var parsed = JSON.parse(clean.slice(s, e + 1));
     var questions = parsed.questions || [];
 
-    var sb = getSupa(); if (!sb) return;
+    var sb = getSb(); if (!sb) return;
     var added = 0;
     for (var i = 0; i < questions.length; i++) {
       var q = questions[i];
@@ -10436,7 +10436,7 @@ async function gcAdminLoad() {
   var stats = document.getElementById('gc-stats');
   if (!list) return;
   list.innerHTML = '<div style="color:#94a3b8;padding:20px;text-align:center">Loading...</div>';
-  var sb = getSupa(); if (!sb) return;
+  var sb = getSb(); if (!sb) return;
   try {
     var r = await sb.from('grammar_examples_cache').select('*').order('pattern_name');
     if (r.error) throw r.error;
@@ -10466,14 +10466,14 @@ async function gcAdminLoad() {
 
 async function gcAdminDeletePattern(name) {
   if (!confirm('Delete cache for "' + name + '"? Will be re-generated on next user access.')) return;
-  var sb = getSupa(); if (!sb) return;
+  var sb = getSb(); if (!sb) return;
   await sb.from('grammar_examples_cache').delete().eq('pattern_name', name);
   toast('Deleted: ' + name);
   await gcAdminLoad();
 }
 
 async function gcAdminEditPattern(name) {
-  var sb = getSupa(); if (!sb) return;
+  var sb = getSb(); if (!sb) return;
   var r = await sb.from('grammar_examples_cache').select('patterns_json').eq('pattern_name', name).maybeSingle();
   if (!r.data) { toast('Not found'); return; }
   var json = r.data.patterns_json;
@@ -10499,7 +10499,7 @@ async function gcAdminPregenAll() {
     '(으)ㄹ 줄 알다/모르다 — Know how to','기로 하다 — Decide to','(이)라서 — Because it is','든지 — Whatever/Whenever','말고 — Not that, but',
     '(으)ㄹ 뻔하다 — Almost did','더라(고요) — I noticed that','(으)ㄴ/는 편이다 — Tend to','(으)ㄹ 텐데 — Probably / I expect','게 되다 — End up / Come to'
   ];
-  var sb = getSupa(); if (!sb) return;
+  var sb = getSb(); if (!sb) return;
   var status = document.getElementById('gc-stats');
   var generated = 0, skipped = 0;
 
@@ -10558,7 +10558,7 @@ async function currAdminLoad() {
   var stats = document.getElementById('curr-stats');
   if (!list) return;
   list.innerHTML = '<div style="color:#94a3b8;padding:20px;text-align:center">Loading...</div>';
-  var sb = getSupa();
+  var sb = getSb();
   if (!sb) { list.innerHTML = '<div style="color:#dc2626;padding:20px;text-align:center">Supabase not ready. Refresh.</div>'; return; }
   var q = sb.from('grammar_curriculum').select('id,pattern,level,sort_order,description,active').order('level').order('sort_order');
   var level = (document.getElementById('curr-level') || {}).value;
@@ -10618,7 +10618,7 @@ async function currAdminSave(editId) {
     active: true, updated_at: new Date().toISOString()
   };
   if (!data.pattern) { toast('Pattern required'); return; }
-  var sb = getSupa(); if (!sb) return;
+  var sb = getSb(); if (!sb) return;
   try {
     if (editId) { await sb.from('grammar_curriculum').update(data).eq('id', editId); }
     else { await sb.from('grammar_curriculum').insert(data); }
@@ -10635,7 +10635,7 @@ function currAdminEdit(id) {
 
 async function currAdminDel(id) {
   if (!confirm('Delete?')) return;
-  var sb = getSupa(); if (!sb) return;
+  var sb = getSb(); if (!sb) return;
   await sb.from('grammar_curriculum').delete().eq('id', id);
   toast('Deleted'); await currAdminLoad();
 }
@@ -10688,7 +10688,7 @@ async function currMigrate45() {
     {p:'(으)ㄹ 텐데 — Probably',l:'Advanced',o:14,d:'Expectation or concern'},
     {p:'게 되다 — End up',l:'Advanced',o:15,d:'Unplanned result'}
   ];
-  var sb = getSupa(); if (!sb) return;
+  var sb = getSb(); if (!sb) return;
   var added = 0, skipped = 0;
   var stats = document.getElementById('curr-stats');
   for (var i = 0; i < patterns.length; i++) {
@@ -10707,7 +10707,7 @@ async function currMigrate45() {
 
 // AI generate additional patterns for a level
 async function currGenExtra(level) {
-  var sb = getSupa(); if (!sb) return;
+  var sb = getSb(); if (!sb) return;
   var stats = document.getElementById('curr-stats');
   // Get existing patterns for this level
   var existing = await sb.from('grammar_curriculum').select('pattern').eq('level', level);
