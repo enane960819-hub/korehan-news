@@ -2664,6 +2664,22 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
         <div class="plabel">🧾 Today’s Topic Content</div>
         <div id="wm-topic-content" style="font-size:12px;color:#475569;line-height:1.7;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:11px 12px;margin-bottom:10px">Loading topic content…</div>
         <div class="plabel">✏️ Your Writing</div>
+        <!-- Tracker Rings (Canvas) -->
+        <div class="kh-tracker-row" id="wm-tracker-row">
+          <div class="kh-tracker-item">
+            <canvas id="wm-ring-vocab" width="0" height="0"></canvas>
+            <div class="kh-tracker-label" id="wm-ring-vocab-label">Vocab 0/0</div>
+          </div>
+          <div class="kh-tracker-item">
+            <canvas id="wm-ring-grammar" width="0" height="0"></canvas>
+            <div class="kh-tracker-label" id="wm-ring-grammar-label">Grammar 0/0</div>
+          </div>
+          <div class="kh-tracker-item">
+            <canvas id="wm-ring-chars" width="0" height="0"></canvas>
+            <div class="kh-tracker-label" id="wm-ring-chars-label">0 chars</div>
+          </div>
+        </div>
+
         <textarea class="write-area" id="write-area"
           placeholder="Write in Korean here…&#10;&#10;Try to use the vocab and grammar chips."
           oninput="onWriteAreaInput()"></textarea>
@@ -4567,6 +4583,8 @@ function openWritingModal() {
   document.body.style.overflow = 'hidden';
   if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
   renderModalContent();
+  // Canvas tracker rings 초기화
+  setTimeout(function() { _initWritingTrackerRings(); _resetWritingTrackerRings(); }, 100);
   // 모바일 탭 초기화
   wmMobileInit();
 }
@@ -8054,6 +8072,7 @@ function openWritingModalForLearning() {
   document.body.style.overflow = 'hidden';
   if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
   if (typeof renderModalContent === 'function') renderModalContent();
+  setTimeout(function() { _initWritingTrackerRings(); _resetWritingTrackerRings(); }, 100);
   wmMobileInit();
 }
 
@@ -10552,7 +10571,7 @@ function onWriteAreaInput() {
     wc.style.color = val.length < limit.min ? '#f59e0b' : remaining < 50 ? '#ef4444' : 'var(--gray)';
   }
 
-  if (!_aiContent) { updateHighlight(); return; }
+  if (!_aiContent) { _updateWritingTrackerRings(val, 0, 0); updateHighlight(); return; }
 
   // ── vocab 사용 카운트 + 칩 하이라이트 ──
   var usedEl = document.getElementById('wm-vocab-used-count');
@@ -10578,7 +10597,101 @@ function onWriteAreaInput() {
 
   // grammar 체크 없음 — 칩은 참고용 표시만
 
+  // ── Canvas tracker ring 업데이트 ──
+  _updateWritingTrackerRings(val, usedVocab.length, vocabList.length);
+
   updateHighlight();
+}
+
+// ── Writing Tracker Rings (Canvas) ──────────────────────────────
+var _wmRingVocab = null, _wmRingGrammar = null, _wmRingChars = null;
+var _wmRingsInitialized = false;
+
+function _initWritingTrackerRings() {
+  if (_wmRingsInitialized || !window.KHCanvas) return;
+  var cv = document.getElementById('wm-ring-vocab');
+  var cg = document.getElementById('wm-ring-grammar');
+  var cc = document.getElementById('wm-ring-chars');
+  if (!cv || !cg || !cc) return;
+
+  _wmRingVocab = new KHCanvas.Ring(cv, {
+    radius: 20, lineWidth: 5,
+    colors: ['#38bdf8', '#2563eb'],
+    completeColors: ['#34d399', '#22c55e'],
+    showText: true, textFont: 'sans-serif'
+  });
+  _wmRingGrammar = new KHCanvas.Ring(cg, {
+    radius: 20, lineWidth: 5,
+    colors: ['#fbbf24', '#f59e0b'],
+    completeColors: ['#34d399', '#22c55e'],
+    showText: true, textFont: 'sans-serif'
+  });
+  _wmRingChars = new KHCanvas.Ring(cc, {
+    radius: 20, lineWidth: 5,
+    colors: ['#a78bfa', '#7c3aed'],
+    completeColors: ['#34d399', '#22c55e'],
+    showText: false
+  });
+
+  _wmRingVocab.setText('0');
+  _wmRingGrammar.setText('0');
+  _wmRingsInitialized = true;
+}
+
+function _updateWritingTrackerRings(text, vocabUsed, vocabTotal) {
+  if (!_wmRingsInitialized) _initWritingTrackerRings();
+  if (!_wmRingVocab) return;
+
+  var limit = getWriteCharLimit();
+  var charPct = Math.min(1, (text || '').length / limit.min);
+
+  // Vocab ring: target is 2 minimum
+  var vocabTarget = Math.max(2, vocabTotal);
+  var vocabPct = Math.min(1, vocabUsed / vocabTarget);
+  _wmRingVocab.setProgress(vocabPct, vocabUsed >= 2 ? 'complete' : 'normal');
+  _wmRingVocab.setText(vocabUsed + '');
+
+  // Grammar ring: count grammar patterns found in text
+  var grammarUsed = 0;
+  var grammarList = (_aiContent && _aiContent.grammar) ? _aiContent.grammar : [];
+  var grammarTotal = grammarList.length;
+  if (grammarTotal > 0 && text) {
+    grammarList.forEach(function(g) {
+      var pattern = g.pattern || g.ko || '';
+      if (pattern && text.indexOf(pattern) >= 0) grammarUsed++;
+    });
+  }
+  var grammarTarget = Math.max(1, grammarTotal);
+  var grammarPct = grammarTotal > 0 ? Math.min(1, grammarUsed / grammarTarget) : 0;
+  _wmRingGrammar.setProgress(grammarPct, grammarUsed >= grammarTarget ? 'complete' : 'normal');
+  _wmRingGrammar.setText(grammarUsed + '');
+
+  // Chars ring: progress toward minimum
+  _wmRingChars.setProgress(charPct, charPct >= 1 ? 'complete' : 'normal');
+
+  // Update labels
+  var vl = document.getElementById('wm-ring-vocab-label');
+  var gl = document.getElementById('wm-ring-grammar-label');
+  var cl = document.getElementById('wm-ring-chars-label');
+  if (vl) vl.textContent = 'Vocab ' + vocabUsed + '/' + vocabTarget;
+  if (gl) gl.textContent = 'Grammar ' + grammarUsed + '/' + grammarTotal;
+  if (cl) cl.textContent = (text || '').length + '/' + limit.min + ' min';
+
+  // Fire particle on reaching vocab goal for the first time
+  if (vocabUsed >= 2 && !_wmRingVocab._celebrated) {
+    _wmRingVocab._celebrated = true;
+    var overlay = KHCanvas.createOverlay(document.getElementById('wm-tracker-row'));
+    if (overlay) {
+      overlay.ps.burstAt(overlay.canvas._khW * 0.15, overlay.canvas._khH / 2, 'SPARKLE', 15);
+      setTimeout(function() { overlay.canvas.remove(); }, 1500);
+    }
+  }
+}
+
+function _resetWritingTrackerRings() {
+  if (_wmRingVocab) { _wmRingVocab.setProgress(0); _wmRingVocab.setText('0'); _wmRingVocab._celebrated = false; }
+  if (_wmRingGrammar) { _wmRingGrammar.setProgress(0); _wmRingGrammar.setText('0'); }
+  if (_wmRingChars) { _wmRingChars.setProgress(0); }
 }
 
 function insertVocabChip(word) {
