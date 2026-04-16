@@ -27,23 +27,20 @@
   var _pinchDist = 0;
 
   // Node layout
-  var _nodes = []; // [{x, y, pattern, level, order, state, desc}]
-  var NODE_R = 22;
+  var _nodes = [];
+  var NODE_W = 200, NODE_H = 56;
   var _selectedNode = null;
+  var _isMobile = false;
 
   // Colors per level
   var LEVEL_COLORS = {
-    Beginner:     { fill: '#22c55e', border: '#16a34a', bg: 'rgba(34,197,94,.15)', text: '#4ade80' },
-    Intermediate: { fill: '#f59e0b', border: '#d97706', bg: 'rgba(245,158,11,.15)', text: '#fbbf24' },
-    Advanced:     { fill: '#ef4444', border: '#dc2626', bg: 'rgba(239,68,68,.15)', text: '#f87171' }
+    Beginner:     { fill: '#22c55e', border: '#16a34a', bg: 'rgba(34,197,94,.1)',  text: '#4ade80', grad1: '#134e4a', grad2: '#064e3b' },
+    Intermediate: { fill: '#f59e0b', border: '#d97706', bg: 'rgba(245,158,11,.1)', text: '#fbbf24', grad1: '#451a03', grad2: '#78350f' },
+    Advanced:     { fill: '#ef4444', border: '#dc2626', bg: 'rgba(239,68,68,.1)',  text: '#f87171', grad1: '#450a0a', grad2: '#7f1d1d' }
   };
 
-  // State colors
-  var STATE = {
-    locked:   { fill: 'rgba(255,255,255,.06)', border: 'rgba(255,255,255,.12)', text: 'rgba(255,255,255,.25)' },
-    available:{ fill: 'rgba(37,99,235,.15)',    border: '#2563eb',               text: '#60a5fa' },
-    progress: { fill: 'rgba(37,99,235,.3)',     border: '#3b82f6',               text: '#93c5fd' },
-    mastered: { fill: 'rgba(34,197,94,.2)',     border: '#22c55e',               text: '#4ade80' }
+  var STATE_ICONS = {
+    locked: '🔒', available: '🔓', progress: '📝', mastered: '✅'
   };
 
   // ── Build node positions ──
@@ -51,45 +48,69 @@
     if (typeof GRAMMAR_CURRICULUM === 'undefined') return;
     var progress = typeof _loadGrammarProgress === 'function' ? _loadGrammarProgress() : {};
     _nodes = [];
+    _isMobile = _w < 600;
 
     var levels = ['Beginner', 'Intermediate', 'Advanced'];
-    var colWidth = 280;
-    var rowHeight = 60;
-    var startY = 60;
 
-    levels.forEach(function(level, li) {
-      var items = GRAMMAR_CURRICULUM.filter(function(g) { return g.level === level; }).sort(function(a, b) { return a.order - b.order; });
-      var startX = 80 + li * colWidth;
+    if (_isMobile) {
+      // Mobile: single column, all levels stacked
+      var py = 20;
+      levels.forEach(function(level, li) {
+        var items = GRAMMAR_CURRICULUM.filter(function(g) { return g.level === level; }).sort(function(a, b) { return a.order - b.order; });
+        // Level header node
+        py += 10;
+        items.forEach(function(item, i) {
+          var p = progress[item.pattern] || { attempts: 0, correct: 0, mastered: false };
+          var state = _getState(p, i, items, progress);
+          var nw = _w - 40;
+          _nodes.push({
+            x: 20, y: py, w: nw, h: NODE_H,
+            pattern: item.pattern, level: level, order: item.order,
+            desc: item.desc, state: state, attempts: p.attempts, correct: p.correct,
+            levelIdx: li, orderIdx: i, isHeader: false
+          });
+          py += NODE_H + 12;
+        });
+        py += 20; // gap between levels
+      });
+    } else {
+      // Desktop: 3 columns
+      var colW = 220, colGap = 30;
+      var totalW = colW * 3 + colGap * 2;
+      var startX = Math.max(20, (_w - totalW) / 2);
 
-      items.forEach(function(item, i) {
-        var p = progress[item.pattern] || { attempts: 0, correct: 0, mastered: false };
-        var state = 'locked';
-        if (p.mastered) state = 'mastered';
-        else if (p.attempts > 0) state = 'progress';
-        else if (i === 0 || (progress[items[Math.max(0, i - 1)].pattern] || {}).attempts > 0) state = 'available';
-
-        _nodes.push({
-          x: startX,
-          y: startY + i * rowHeight,
-          pattern: item.pattern,
-          level: level,
-          order: item.order,
-          desc: item.desc,
-          state: state,
-          attempts: p.attempts,
-          correct: p.correct,
-          levelIdx: li,
-          orderIdx: i
+      levels.forEach(function(level, li) {
+        var items = GRAMMAR_CURRICULUM.filter(function(g) { return g.level === level; }).sort(function(a, b) { return a.order - b.order; });
+        var cx = startX + li * (colW + colGap);
+        items.forEach(function(item, i) {
+          var p = progress[item.pattern] || { attempts: 0, correct: 0, mastered: false };
+          var state = _getState(p, i, items, progress);
+          _nodes.push({
+            x: cx, y: 70 + i * (NODE_H + 14), w: colW, h: NODE_H,
+            pattern: item.pattern, level: level, order: item.order,
+            desc: item.desc, state: state, attempts: p.attempts, correct: p.correct,
+            levelIdx: li, orderIdx: i, isHeader: false
+          });
         });
       });
-    });
+    }
 
-    // Center view on first available or last mastered
+    // Center view
     var first = _nodes.find(function(n) { return n.state === 'available' || n.state === 'progress'; });
     if (first) {
-      _offsetX = _w / 2 - first.x;
-      _offsetY = _h / 3 - first.y;
+      _offsetX = _isMobile ? 0 : (_w / 2 - first.x - first.w / 2);
+      _offsetY = _isMobile ? -first.y + _h * 0.3 : (_h / 3 - first.y);
+    } else {
+      _offsetX = 0;
+      _offsetY = 0;
     }
+  }
+
+  function _getState(p, i, items, progress) {
+    if (p.mastered) return 'mastered';
+    if (p.attempts > 0) return 'progress';
+    if (i === 0 || (progress[items[Math.max(0, i - 1)].pattern] || {}).attempts > 0) return 'available';
+    return 'locked';
   }
 
   // ── Draw ──
@@ -108,77 +129,131 @@
     // Draw level headers
     var levels = ['Beginner', 'Intermediate', 'Advanced'];
     var emojis = ['🌱', '🌳', '🌲'];
-    levels.forEach(function(level, li) {
-      var x = 80 + li * 280;
-      var col = LEVEL_COLORS[level];
-      _ctx.font = '800 14px sans-serif';
-      _ctx.fillStyle = col.text;
-      _ctx.textAlign = 'center';
-      _ctx.fillText(emojis[li] + ' ' + level, x, 35);
-    });
 
-    // Draw connections
-    for (var i = 0; i < _nodes.length - 1; i++) {
-      var a = _nodes[i], b = _nodes[i + 1];
-      if (a.level !== b.level) continue; // no cross-level lines
-      var both = a.state === 'mastered' && (b.state === 'mastered' || b.state === 'progress' || b.state === 'available');
-      _ctx.strokeStyle = both ? 'rgba(34,197,94,.3)' : 'rgba(255,255,255,.06)';
-      _ctx.lineWidth = 2;
-      _ctx.beginPath();
-      _ctx.moveTo(a.x, a.y + NODE_R);
-      _ctx.lineTo(b.x, b.y - NODE_R);
-      _ctx.stroke();
+    if (!_isMobile) {
+      var colW = 220, colGap = 30;
+      var totalW = colW * 3 + colGap * 2;
+      var startX = Math.max(20, (_w - totalW) / 2);
+      levels.forEach(function(level, li) {
+        var cx = startX + li * (colW + colGap) + colW / 2;
+        var col = LEVEL_COLORS[level];
+        _ctx.font = '900 15px sans-serif';
+        _ctx.fillStyle = col.text;
+        _ctx.textAlign = 'center';
+        _ctx.fillText(emojis[li] + ' ' + level, cx, 45);
+      });
     }
 
-    // Draw nodes
-    _nodes.forEach(function(n) {
-      var s = STATE[n.state] || STATE.locked;
-      var isSelected = _selectedNode === n;
-
-      // Glow for mastered
-      if (n.state === 'mastered') {
-        _ctx.beginPath();
-        _ctx.arc(n.x, n.y, NODE_R + 6, 0, Math.PI * 2);
-        _ctx.fillStyle = 'rgba(34,197,94,.08)';
-        _ctx.fill();
-      }
-
-      // Selected highlight
-      if (isSelected) {
-        _ctx.beginPath();
-        _ctx.arc(n.x, n.y, NODE_R + 4, 0, Math.PI * 2);
-        _ctx.strokeStyle = '#60a5fa';
-        _ctx.lineWidth = 2;
+    // Draw connection lines (curved)
+    for (var i = 0; i < _nodes.length - 1; i++) {
+      var a = _nodes[i], b = _nodes[i + 1];
+      if (a.level !== b.level) continue;
+      var active = a.state === 'mastered';
+      _ctx.strokeStyle = active ? 'rgba(34,197,94,.35)' : 'rgba(255,255,255,.06)';
+      _ctx.lineWidth = active ? 2.5 : 1.5;
+      _ctx.beginPath();
+      var ax = a.x + a.w / 2, ay = a.y + a.h;
+      var bx = b.x + b.w / 2, by = b.y;
+      var cpOffset = (by - ay) * 0.35;
+      _ctx.moveTo(ax, ay);
+      _ctx.bezierCurveTo(ax, ay + cpOffset, bx, by - cpOffset, bx, by);
+      _ctx.stroke();
+      // Glow on active connections
+      if (active) {
+        _ctx.strokeStyle = 'rgba(34,197,94,.1)';
+        _ctx.lineWidth = 6;
         _ctx.stroke();
       }
+    }
 
-      // Node circle
-      _ctx.beginPath();
-      _ctx.arc(n.x, n.y, NODE_R, 0, Math.PI * 2);
-      _ctx.fillStyle = s.fill;
-      _ctx.fill();
-      _ctx.strokeStyle = s.border;
-      _ctx.lineWidth = 2;
-      _ctx.stroke();
-
-      // Order number
-      _ctx.font = '900 12px sans-serif';
-      _ctx.fillStyle = s.text;
-      _ctx.textAlign = 'center';
-      _ctx.textBaseline = 'middle';
-      _ctx.fillText(n.order, n.x, n.y);
-
-      // Mastered check
-      if (n.state === 'mastered') {
-        _ctx.font = '10px sans-serif';
-        _ctx.fillText('✓', n.x, n.y + NODE_R + 10);
-      }
-    });
+    // Draw nodes (rounded rect cards)
+    _nodes.forEach(function(n) { _drawNode(n); });
 
     _ctx.restore();
 
-    // Draw selected node info panel (fixed position, not scaled)
+    // Info panel for selected
     if (_selectedNode) _drawInfoPanel();
+  }
+
+  function _drawNode(n) {
+    var lc = LEVEL_COLORS[n.level] || LEVEL_COLORS.Beginner;
+    var isSelected = _selectedNode === n;
+    var isLocked = n.state === 'locked';
+
+    // Card background
+    var grad = _ctx.createLinearGradient(n.x, n.y, n.x + n.w, n.y + n.h);
+    if (isLocked) {
+      grad.addColorStop(0, 'rgba(255,255,255,.02)');
+      grad.addColorStop(1, 'rgba(255,255,255,.04)');
+    } else {
+      grad.addColorStop(0, lc.grad1);
+      grad.addColorStop(1, lc.grad2);
+    }
+    _ctx.fillStyle = grad;
+    _ctx.beginPath();
+    _ctx.roundRect(n.x, n.y, n.w, n.h, 14);
+    _ctx.fill();
+
+    // Border
+    _ctx.strokeStyle = isSelected ? '#60a5fa' : (isLocked ? 'rgba(255,255,255,.06)' : lc.border + '44');
+    _ctx.lineWidth = isSelected ? 2 : 1;
+    _ctx.stroke();
+
+    // Mastered glow
+    if (n.state === 'mastered') {
+      _ctx.shadowColor = lc.fill;
+      _ctx.shadowBlur = 12;
+      _ctx.beginPath();
+      _ctx.roundRect(n.x, n.y, n.w, n.h, 14);
+      _ctx.strokeStyle = lc.fill + '55';
+      _ctx.lineWidth = 1;
+      _ctx.stroke();
+      _ctx.shadowBlur = 0;
+    }
+
+    // Left: order badge circle
+    var badgeR = 16;
+    var bx = n.x + 18 + badgeR;
+    var by = n.y + n.h / 2;
+    _ctx.beginPath();
+    _ctx.arc(bx, by, badgeR, 0, Math.PI * 2);
+    _ctx.fillStyle = isLocked ? 'rgba(255,255,255,.05)' : lc.fill + '33';
+    _ctx.fill();
+    _ctx.strokeStyle = isLocked ? 'rgba(255,255,255,.1)' : lc.fill + '66';
+    _ctx.lineWidth = 1.5;
+    _ctx.stroke();
+
+    // Order number
+    _ctx.font = '900 13px sans-serif';
+    _ctx.fillStyle = isLocked ? 'rgba(255,255,255,.2)' : lc.text;
+    _ctx.textAlign = 'center';
+    _ctx.textBaseline = 'middle';
+    _ctx.fillText(n.order, bx, by);
+
+    // Pattern text
+    var textX = bx + badgeR + 12;
+    _ctx.textAlign = 'left';
+    _ctx.font = '800 13px sans-serif';
+    _ctx.fillStyle = isLocked ? 'rgba(255,255,255,.2)' : '#fff';
+    var maxTextW = n.w - (textX - n.x) - 40;
+    _ctx.fillText(_truncate(n.pattern, _ctx, maxTextW), textX, n.y + n.h / 2 - 7);
+
+    // Description (truncated)
+    _ctx.font = '400 10px sans-serif';
+    _ctx.fillStyle = isLocked ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.45)';
+    _ctx.fillText(_truncate(n.desc || '', _ctx, maxTextW), textX, n.y + n.h / 2 + 9);
+
+    // Right: state icon
+    _ctx.textAlign = 'center';
+    _ctx.font = '14px sans-serif';
+    _ctx.fillText(STATE_ICONS[n.state] || '', n.x + n.w - 22, n.y + n.h / 2);
+  }
+
+  function _truncate(text, ctx, maxW) {
+    if (!text) return '';
+    if (ctx.measureText(text).width <= maxW) return text;
+    while (text.length > 3 && ctx.measureText(text + '…').width > maxW) text = text.slice(0, -1);
+    return text + '…';
   }
 
   function _drawInfoPanel() {
@@ -228,7 +303,7 @@
     }
   }
 
-  // ── Hit test ──
+  // ── Hit test (rectangular nodes) ──
   function _hitTest(clientX, clientY) {
     var rect = _canvas.getBoundingClientRect();
     var mx = (clientX - rect.left - _offsetX) / _scale;
@@ -236,8 +311,7 @@
 
     for (var i = 0; i < _nodes.length; i++) {
       var n = _nodes[i];
-      var dx = mx - n.x, dy = my - n.y;
-      if (dx * dx + dy * dy <= NODE_R * NODE_R * 1.5) return n;
+      if (mx >= n.x && mx <= n.x + n.w && my >= n.y && my <= n.y + n.h) return n;
     }
     return null;
   }
@@ -386,12 +460,15 @@
     _offsetX = 0;
     _offsetY = 0;
 
-    // Setup canvas
-    _canvas = document.getElementById('gt-canvas');
-    if (_canvas) {
-      var rect = _canvas.parentElement.getBoundingClientRect();
-      _w = rect.width || 800;
-      _h = rect.height || 500;
+    // Setup canvas — delay to ensure overlay has rendered with dimensions
+    setTimeout(function() {
+      _canvas = document.getElementById('gt-canvas');
+      if (!_canvas) return;
+      var parent = _canvas.parentElement;
+      var rect = parent.getBoundingClientRect();
+      _w = rect.width || window.innerWidth;
+      _h = rect.height || (window.innerHeight - 100);
+      if (_h < 200) _h = window.innerHeight - 100; // fallback
       _ctx = KHCanvas.DPR.setup(_canvas, _w, _h);
 
       _canvas.addEventListener('mousedown', _onMouseDown);
@@ -401,18 +478,17 @@
       _canvas.addEventListener('touchstart', _onTouchStart, { passive: false });
       _canvas.addEventListener('touchmove', _onTouchMove, { passive: false });
       _canvas.addEventListener('touchend', _onTouchEnd);
-    }
 
-    _buildNodes();
+      _buildNodes();
+      _draw();
 
-    // Stats
-    var stats = document.getElementById('gt-stats');
-    if (stats) {
-      var mastered = _nodes.filter(function(n) { return n.state === 'mastered'; }).length;
-      stats.textContent = mastered + '/' + _nodes.length + ' mastered';
-    }
-
-    _draw();
+      // Stats
+      var stats = document.getElementById('gt-stats');
+      if (stats) {
+        var mastered = _nodes.filter(function(n) { return n.state === 'mastered'; }).length;
+        stats.textContent = mastered + '/' + _nodes.length + ' mastered';
+      }
+    }, 150);
   };
 
   GT.close = function() {
