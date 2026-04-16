@@ -12752,8 +12752,70 @@ async function generateGFPatternsForFocus(focusName) {
   var el = document.getElementById('gf-examples-content');
   if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Loading grammar patterns…</div>';
 
-  // 1) Try DB cache first
   var sb = getSupa();
+
+  // 1) Try grammar_curriculum (new: per-pattern examples_json)
+  if (sb) {
+    try {
+      var r = await sb.from('grammar_curriculum')
+        .select('id,pattern,level,description,examples_json')
+        .eq('pattern', focusName)
+        .maybeSingle();
+      if (r.data && r.data.examples_json) {
+        var examples = JSON.parse(r.data.examples_json || '[]');
+        if (examples.length >= 5) {
+          // Build main pattern object
+          var correctEx = examples.filter(function(e) { return e.type !== 'incorrect'; });
+          var incorrectEx = examples.filter(function(e) { return e.type === 'incorrect'; });
+          var mainPattern = {
+            name: r.data.pattern,
+            level: r.data.level,
+            exp: r.data.description || '',
+            structure: '',
+            when_to_use: '',
+            watch_out: '',
+            examples: correctEx.map(function(e) { return { ko: e.ko, en: e.en || '' }; }),
+            incorrect_examples: incorrectEx.map(function(e) { return { ko: e.ko, en: e.en || '', correction: e.correction || '', error_type: e.error_type || 'GRAMMAR' }; })
+          };
+
+          // Fetch 2 related patterns (same level)
+          var relatedRes = await sb.from('grammar_curriculum')
+            .select('id,pattern,level,description,examples_json')
+            .eq('level', r.data.level)
+            .neq('id', r.data.id)
+            .limit(5);
+          var allPatterns = [mainPattern];
+          if (relatedRes.data && relatedRes.data.length) {
+            // Pick 2 random ones with examples
+            var withEx = relatedRes.data.filter(function(row) {
+              try { return (JSON.parse(row.examples_json || '[]') || []).length >= 3; } catch(e) { return false; }
+            });
+            withEx.sort(function() { return Math.random() - 0.5; });
+            withEx.slice(0, 2).forEach(function(row) {
+              var exs = JSON.parse(row.examples_json || '[]');
+              var ce = exs.filter(function(e) { return e.type !== 'incorrect'; });
+              var ie = exs.filter(function(e) { return e.type === 'incorrect'; });
+              allPatterns.push({
+                name: row.pattern,
+                level: row.level,
+                exp: row.description || '',
+                structure: '',
+                when_to_use: '',
+                watch_out: '',
+                examples: ce.map(function(e) { return { ko: e.ko, en: e.en || '' }; }),
+                incorrect_examples: ie.map(function(e) { return { ko: e.ko, en: e.en || '', correction: e.correction || '', error_type: e.error_type || 'GRAMMAR' }; })
+              });
+            });
+          }
+
+          loadGFPatterns(allPatterns);
+          return;
+        }
+      }
+    } catch(e) { console.warn('[GF curriculum] miss:', e.message); }
+  }
+
+  // 2) Fallback: old grammar_examples_cache
   if (sb) {
     try {
       var cached = await sb.from('grammar_examples_cache')
@@ -12770,7 +12832,7 @@ async function generateGFPatternsForFocus(focusName) {
     } catch(e) { console.warn('[GF cache] DB miss or error:', e.message); }
   }
 
-  // 2) DB miss → AI generate
+  // 3) DB miss → AI generate
   if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">✨ Generating grammar patterns for <b>' + focusName + '</b>…</div>';
 
   try {
