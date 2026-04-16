@@ -25,6 +25,8 @@
   var _dragStartX = 0, _dragStartY = 0;
   var _dragOffsetX = 0, _dragOffsetY = 0;
   var _pinchDist = 0;
+  var _dragMoved = false;    // true if finger moved more than threshold
+  var _DRAG_THRESHOLD = 8;   // px before drag starts (prevents accidental drag on tap)
 
   // Node layout
   var _nodes = [];
@@ -53,25 +55,31 @@
     var levels = ['Beginner', 'Intermediate', 'Advanced'];
 
     if (_isMobile) {
-      // Mobile: single column, all levels stacked
+      // Mobile: zigzag path (alternating left/right)
       var py = 20;
+      var nw = _w * 0.7;
+      var leftX = 16;
+      var rightX = _w - nw - 16;
+      var globalIdx = 0;
+
       levels.forEach(function(level, li) {
         var items = GRAMMAR_CURRICULUM.filter(function(g) { return g.level === level; }).sort(function(a, b) { return a.order - b.order; });
-        // Level header node
-        py += 10;
+        // Level separator
+        if (li > 0) py += 10;
         items.forEach(function(item, i) {
           var p = progress[item.pattern] || { attempts: 0, correct: 0, mastered: false };
           var state = _getState(p, i, items, progress);
-          var nw = _w - 40;
+          var isLeft = globalIdx % 2 === 0;
           _nodes.push({
-            x: 20, y: py, w: nw, h: NODE_H,
+            x: isLeft ? leftX : rightX, y: py, w: nw, h: NODE_H,
             pattern: item.pattern, level: level, order: item.order,
             desc: item.desc, state: state, attempts: p.attempts, correct: p.correct,
-            levelIdx: li, orderIdx: i, isHeader: false
+            levelIdx: li, orderIdx: i, isHeader: false, globalIdx: globalIdx
           });
-          py += NODE_H + 12;
+          py += NODE_H + 18;
+          globalIdx++;
         });
-        py += 20; // gap between levels
+        py += 8;
       });
     } else {
       // Desktop: 3 columns
@@ -95,14 +103,16 @@
       });
     }
 
-    // Center view
+    // Center view: scroll to first available node
+    _offsetX = 0;
+    _offsetY = 0;
     var first = _nodes.find(function(n) { return n.state === 'available' || n.state === 'progress'; });
-    if (first) {
-      _offsetX = _isMobile ? 0 : (_w / 2 - first.x - first.w / 2);
-      _offsetY = _isMobile ? -first.y + _h * 0.3 : (_h / 3 - first.y);
-    } else {
-      _offsetX = 0;
-      _offsetY = 0;
+    if (first && !_isMobile) {
+      _offsetX = _w / 2 - first.x - first.w / 2;
+      _offsetY = Math.max(0, _h / 3 - first.y);
+    } else if (first && _isMobile) {
+      // On mobile, just scroll to the first available (small offset from top)
+      _offsetY = Math.min(0, -first.y + 80);
     }
   }
 
@@ -359,25 +369,21 @@
     _draw();
   }
 
-  // Touch
+  // Touch — with drag threshold to separate tap from scroll
   function _onTouchStart(e) {
     if (e.touches.length === 2) {
       _pinchDist = _getPinchDist(e);
+      _dragging = false;
       return;
     }
     if (e.touches.length === 1) {
       var t = e.touches[0];
-      var node = _hitTest(t.clientX, t.clientY);
-      if (node) {
-        _selectedNode = node;
-        _draw();
-        return;
-      }
-      _dragging = true;
       _dragStartX = t.clientX;
       _dragStartY = t.clientY;
       _dragOffsetX = _offsetX;
       _dragOffsetY = _offsetY;
+      _dragging = true;
+      _dragMoved = false;
     }
   }
 
@@ -391,19 +397,42 @@
       _draw();
       return;
     }
-    if (_dragging && e.touches.length === 1) {
-      var t = e.touches[0];
-      _offsetX = _dragOffsetX + (t.clientX - _dragStartX);
-      _offsetY = _dragOffsetY + (t.clientY - _dragStartY);
-      _draw();
+    if (!_dragging || e.touches.length !== 1) return;
+    var t = e.touches[0];
+    var dx = t.clientX - _dragStartX;
+    var dy = t.clientY - _dragStartY;
+
+    // Only start real drag after threshold
+    if (!_dragMoved && Math.abs(dx) + Math.abs(dy) < _DRAG_THRESHOLD) return;
+    _dragMoved = true;
+    e.preventDefault();
+
+    // Mobile: only vertical scroll (lock X)
+    if (_isMobile) {
+      _offsetY = _dragOffsetY + dy;
+    } else {
+      _offsetX = _dragOffsetX + dx;
+      _offsetY = _dragOffsetY + dy;
     }
+    _draw();
   }
 
   function _onTouchEnd(e) {
     _dragging = false;
-    if (e.changedTouches && e.changedTouches.length === 1 && _selectedNode) {
-      if (_selectedNode.state === 'available' || _selectedNode.state === 'progress') {
-        _openNodePractice(_selectedNode);
+    // If finger didn't move = TAP → select node or open practice
+    if (!_dragMoved && e.changedTouches && e.changedTouches.length === 1) {
+      var t = e.changedTouches[0];
+      var node = _hitTest(t.clientX, t.clientY);
+      if (node) {
+        if (node.state === 'available' || node.state === 'progress') {
+          _selectedNode = node;
+          _draw();
+          // Open practice after brief visual feedback
+          setTimeout(function() { _openNodePractice(node); }, 200);
+        } else {
+          _selectedNode = node;
+          _draw();
+        }
       }
     }
   }
