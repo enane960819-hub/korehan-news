@@ -10560,11 +10560,14 @@ async function currAdminLoad() {
   list.innerHTML = '<div style="color:#94a3b8;padding:20px;text-align:center">Loading...</div>';
   var sb = getSupa();
   if (!sb) { list.innerHTML = '<div style="color:#dc2626;padding:20px;text-align:center">Supabase not ready. Refresh.</div>'; return; }
-  var q = sb.from('grammar_curriculum').select('*').order('level').order('sort_order');
+  var q = sb.from('grammar_curriculum').select('id,pattern,level,sort_order,description,active').order('level').order('sort_order');
   var level = (document.getElementById('curr-level') || {}).value;
   if (level) q = q.eq('level', level);
   try {
-    var r = await q.limit(200);
+    var r = await Promise.race([
+      q.limit(200),
+      new Promise(function(_, reject) { setTimeout(function() { reject(new Error('Timeout: grammar_curriculum 테이블 접근 불가. RLS 또는 컬럼 확인 필요.')); }, 8000); })
+    ]);
     if (r.error) throw r.error;
     _currData = r.data || [];
     var beg = _currData.filter(function(p){return p.level==='Beginner';}).length;
