@@ -2683,7 +2683,7 @@
     if (!el) return;
     try {
       var res = await sb.from('user_submissions')
-        .select('id, study_date, status, admin_feedback, ai_feedback, writing_text, topic_ko, content_type, score')
+        .select('id, study_date, status, admin_feedback, ai_feedback, writing_text, topic_ko, content_type, score, submitted_at')
         .eq('user_id', supaUser.id)
         .order('submitted_at', { ascending: false })
         .limit(20);
@@ -2694,39 +2694,101 @@
         el.innerHTML = '<div style="font-size:13px;color:#8b8b8b;padding:8px 0">아직 제출한 글이 없습니다. Study Room에서 글쓰기를 시작해보세요.</div>';
         return;
       }
-      var statusLabel = { submitted:'검토 중', ai_reviewed:'검토 중', admin_approved:'피드백 도착', sent:'피드백 도착' };
-      var statusColor = { submitted:'#8b8b8b', ai_reviewed:'#8b8b8b', admin_approved:'#00c471', sent:'#00c471' };
-      var typeLabel = { writing:'Writing', article_study:'Article', conversation:'Conversation', story:'Story' };
 
-      el.innerHTML = items.map(function(item) {
-        var preview = (item.writing_text||'').slice(0,80) + ((item.writing_text||'').length > 80 ? '…' : '');
-        var html = '<div style="padding:12px 0;border-bottom:1px solid #f0f0f0">';
-        // Header row
-        html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">';
-        html += '<span style="font-size:11px;font-weight:700;color:' + (statusColor[item.status]||'#8b8b8b') + '">' + (statusLabel[item.status]||item.status) + '</span>';
-        html += '<span style="font-size:11px;color:#8b8b8b">' + (item.study_date||'') + '</span>';
-        html += '<span style="font-size:10px;font-weight:600;color:#8b8b8b;padding:1px 6px;border:1px solid #e8e8e8;border-radius:3px">' + (typeLabel[item.content_type]||item.content_type) + '</span>';
-        if (item.topic_ko) html += '<span style="font-size:11px;color:#555;font-weight:600">' + item.topic_ko + '</span>';
-        if (typeof item.score === 'number') html += '<span style="font-size:11px;font-weight:700;color:var(--bright)">' + item.score + '점</span>';
+      var TYPE_LABELS = {
+        daily_package: { icon: '📦', label: 'Package', color: '#2563eb' },
+        topic: { icon: '✍️', label: 'Writing', color: '#7c3aed' },
+        writing: { icon: '✍️', label: 'Writing', color: '#7c3aed' },
+        diary: { icon: '📓', label: 'Diary', color: '#ec4899' },
+        reading: { icon: '📖', label: 'Reading', color: '#10b981' },
+        article: { icon: '📰', label: 'Article', color: '#f59e0b' },
+        article_study: { icon: '📰', label: 'Article', color: '#f59e0b' },
+        conversation: { icon: '💬', label: 'Convo', color: '#0ea5e9' },
+        story: { icon: '📚', label: 'Story', color: '#a855f7' }
+      };
+
+      // Group by date
+      var grouped = {};
+      items.forEach(function(item) {
+        var date = item.study_date || (item.submitted_at ? item.submitted_at.slice(0,10) : '?');
+        if (!grouped[date]) grouped[date] = [];
+        grouped[date].push(item);
+      });
+
+      var html = '';
+      Object.keys(grouped).sort(function(a,b){return b.localeCompare(a);}).forEach(function(date) {
+        var dayItems = grouped[date];
+        var fbReady = dayItems.filter(function(i){return i.status==='admin_approved'||i.status==='sent';}).length;
+
+        html += '<div style="margin-bottom:16px">';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">';
+        html += '<span style="font-size:13px;font-weight:900;color:#0f172a">' + date + '</span>';
+        html += '<span style="font-size:10px;color:#94a3b8">' + dayItems.length + '건' + (fbReady ? ' · ' + fbReady + ' feedback' : '') + '</span>';
         html += '</div>';
-        // Writing preview
-        html += '<div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:8px">' + preview + '</div>';
-        // Feedback (admin or sent)
-        var feedbackText = item.admin_feedback || '';
-        if (!feedbackText && item.ai_feedback) {
-          try {
-            var fb = typeof item.ai_feedback === 'string' ? JSON.parse(item.ai_feedback) : item.ai_feedback;
-            if (fb && fb.overall) feedbackText = fb.overall;
-          } catch(e) {}
-        }
-        if (feedbackText && (item.status === 'admin_approved' || item.status === 'sent')) {
-          html += '<div style="background:#f8faf8;border-left:3px solid #00c471;padding:10px 12px;border-radius:4px;margin-bottom:6px">';
-          html += '<div style="font-size:13px;color:#1a1a1a;white-space:pre-wrap;line-height:1.6">' + feedbackText + '</div>';
+
+        dayItems.forEach(function(item) {
+          var t = TYPE_LABELS[item.content_type] || TYPE_LABELS.writing;
+          var isReviewed = item.status === 'admin_approved' || item.status === 'sent';
+          var statusText = isReviewed ? '✅ 피드백 도착' : item.status === 'ai_reviewed' ? '⏳ 검토 중' : '📨 제출됨';
+          var statusColor = isReviewed ? '#16a34a' : '#94a3b8';
+          var preview = (item.writing_text||'').slice(0,60);
+          if ((item.writing_text||'').length > 60) preview += '…';
+
+          html += '<div style="border:1px solid #e2e8f0;border-radius:10px;margin-bottom:6px;overflow:hidden">';
+          // Header
+          html += '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'\':\'none\';var a=this.querySelector(\'.gl-fb-arrow\');if(a)a.textContent=this.nextElementSibling.style.display===\'none\'?\'▼\':\'▲\'" style="padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;background:#fafbfc;transition:background .1s" onmouseover="this.style.background=\'#f0f4ff\'" onmouseout="this.style.background=\'#fafbfc\'">';
+          html += '<div style="width:30px;height:30px;border-radius:8px;background:' + t.color + '15;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">' + t.icon + '</div>';
+          html += '<div style="flex:1;min-width:0">';
+          html += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">';
+          html += '<span style="font-size:11px;font-weight:800;color:' + t.color + '">' + t.label + '</span>';
+          html += '<span style="font-size:10px;color:' + statusColor + ';font-weight:700">' + statusText + '</span>';
+          if (item.score != null) html += '<span style="font-size:10px;font-weight:800;color:#2563eb">' + item.score + '점</span>';
           html += '</div>';
-        }
+          if (item.topic_ko) html += '<div style="font-size:10px;color:#64748b;margin-top:1px">' + item.topic_ko + '</div>';
+          if (preview) html += '<div style="font-size:10px;color:#94a3b8;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + preview + '</div>';
+          html += '</div>';
+          html += '<span class="gl-fb-arrow" style="font-size:10px;color:#cbd5e1">▼</span>';
+          html += '</div>';
+
+          // Detail body
+          html += '<div style="display:none;padding:12px;border-top:1px solid #e2e8f0">';
+          if (item.writing_text) {
+            html += '<div style="margin-bottom:10px"><div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">My Writing</div>';
+            html += '<div style="font-size:12px;color:#334155;line-height:1.7;padding:8px 10px;background:#f8fafc;border-radius:6px;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + item.writing_text + '</div></div>';
+          }
+          // Feedback
+          var fbData = null;
+          if (isReviewed) {
+            try { fbData = item.admin_feedback ? (typeof item.admin_feedback === 'string' ? JSON.parse(item.admin_feedback) : item.admin_feedback) : null; } catch(e) {}
+            if (!fbData) { try { fbData = item.ai_feedback ? (typeof item.ai_feedback === 'string' ? JSON.parse(item.ai_feedback) : item.ai_feedback) : null; } catch(e) {} }
+          }
+          if (fbData && fbData.overall) {
+            html += '<div style="padding:8px 10px;background:#f0fdf4;border-left:3px solid #22c55e;border-radius:0 6px 6px 0;margin-bottom:6px">';
+            html += '<div style="font-size:9px;font-weight:700;color:#16a34a;margin-bottom:3px">FEEDBACK</div>';
+            if (fbData.score != null) html += '<div style="font-size:12px;font-weight:800;color:#16a34a;margin-bottom:4px">Score: ' + fbData.score + '/100</div>';
+            html += '<div style="font-size:12px;color:#334155;line-height:1.6;white-space:pre-wrap">' + (fbData.overall || '') + '</div>';
+            html += '</div>';
+            if (fbData.corrected_full) {
+              html += '<div style="padding:8px 10px;background:#eff6ff;border-left:3px solid #3b82f6;border-radius:0 6px 6px 0;margin-bottom:6px">';
+              html += '<div style="font-size:9px;font-weight:700;color:#2563eb;margin-bottom:3px">CORRECTED</div>';
+              html += '<div style="font-size:12px;color:#334155;line-height:1.7;font-family:\'Noto Sans KR\',sans-serif">' + fbData.corrected_full + '</div></div>';
+            }
+            if (fbData.corrections && fbData.corrections.length) {
+              html += '<div style="margin-top:6px">';
+              fbData.corrections.forEach(function(c) {
+                html += '<div style="font-size:11px;padding:4px 0;color:#475569"><span style="text-decoration:line-through;color:#ef4444">' + (c.original||'') + '</span> → <span style="color:#16a34a;font-weight:700">' + (c.corrected||'') + '</span> <span style="color:#94a3b8">(' + (c.reason||'') + ')</span></div>';
+              });
+              html += '</div>';
+            }
+          } else if (!isReviewed) {
+            html += '<div style="text-align:center;padding:12px;font-size:12px;color:#94a3b8">' + (item.status === 'ai_reviewed' ? '⏳ 검토 중 — 24시간 내 피드백 도착' : '📨 제출 완료 — 처리 중') + '</div>';
+          }
+          html += '</div></div>';
+        });
         html += '</div>';
-        return html;
-      }).join('');
+      });
+
+      el.innerHTML = html;
     } catch(e) { el.innerHTML = '<div style="color:#e53e3e;font-size:12px">오류: ' + (e.message||e) + '</div>'; }
   }
 
