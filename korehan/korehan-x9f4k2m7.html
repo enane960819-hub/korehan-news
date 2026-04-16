@@ -10239,6 +10239,7 @@ function lqAdminHTML() {
     + '<button class="btn" onclick="lqAdminLoad()">🔄 Load</button>'
     + '<button class="btn btn-g" onclick="lqAdminShowAdd()">+ 문제 추가</button>'
     + '<button class="btn" onclick="lqAdminAIGenerate()">🤖 AI 자동 생성 (5문제)</button>'
+    + '<button class="btn" onclick="lqAdminRemoveDuplicates()" style="background:#fef2f2;color:#dc2626;border-color:#fca5a5">🗑 중복 제거</button>'
     + '</div>'
     + '<div id="lqa-add-form" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:14px"></div>'
     + '<div id="lqa-stats" style="font-size:12px;color:#64748b;margin-bottom:10px"></div>'
@@ -10382,9 +10383,20 @@ async function lqAdminAIGenerate() {
   var level = (document.getElementById('lqa-level') || {}).value || 'Beginner';
   toast('AI 생성 중... (5문제)');
   try {
+    var sb = getSb(); if (!sb) return;
+
+    // Fetch existing sentences to avoid duplicates
+    var existing = await sb.from('listening_quiz_bank').select('sentence').eq('level', level);
+    var existingSentences = (existing.data || []).map(function(r) { return r.sentence; });
+
+    var avoidList = existingSentences.length > 0
+      ? '\n\nIMPORTANT: Do NOT generate any of these sentences (already exist):\n' + existingSentences.map(function(s) { return '- ' + s; }).join('\n')
+      : '';
+
     var prompt = 'Generate 5 Korean listening quiz questions for ' + level + ' level.\n'
       + 'For each question: a Korean sentence, the correct answer (what the sentence means or a key word), 2 wrong options that sound similar, and a brief explanation.\n'
-      + 'Return ONLY JSON:\n{"questions":[{"sentence":"Korean","correct":"answer","wrong1":"wrong","wrong2":"wrong","explanation":"note","mode":"hear"}]}';
+      + 'Return ONLY JSON:\n{"questions":[{"sentence":"Korean","correct":"answer","wrong1":"wrong","wrong2":"wrong","explanation":"note","mode":"hear"}]}'
+      + avoidList;
 
     var data = await callClaude({ feature: 'admin-lq-gen', model: 'claude-haiku-4-5-20251001', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] });
     var raw = (data.content || []).map(function(c) { return c.text || ''; }).join('');
@@ -10393,22 +10405,51 @@ async function lqAdminAIGenerate() {
     var parsed = JSON.parse(clean.slice(s, e + 1));
     var questions = parsed.questions || [];
 
-    var sb = getSb(); if (!sb) return;
-    var added = 0;
+    var added = 0, skipped = 0;
     for (var i = 0; i < questions.length; i++) {
       var q = questions[i];
       if (!q.sentence || !q.correct) continue;
+      // Double-check: skip if sentence already exists in DB
+      if (existingSentences.indexOf(q.sentence) !== -1) { skipped++; continue; }
       await sb.from('listening_quiz_bank').insert({
         level: level, mode: q.mode || 'hear',
         sentence: q.sentence, correct: q.correct,
         wrong1: q.wrong1 || '', wrong2: q.wrong2 || '',
         explanation: q.explanation || '', active: true
       });
+      existingSentences.push(q.sentence);
       added++;
     }
-    toast('✅ ' + added + ' questions generated and saved!');
+    toast('✅ ' + added + ' questions added' + (skipped ? ' (' + skipped + ' duplicates skipped)' : ''));
     await lqAdminLoad();
   } catch(e) { toast('AI generation failed: ' + e.message); }
+}
+
+async function lqAdminRemoveDuplicates() {
+  var sb = getSb(); if (!sb) return;
+  toast('중복 검사 중...');
+  try {
+    var r = await sb.from('listening_quiz_bank').select('id, sentence, created_at').order('created_at', { ascending: true });
+    if (r.error) throw r.error;
+    var rows = r.data || [];
+    var seen = {};
+    var dupeIds = [];
+    for (var i = 0; i < rows.length; i++) {
+      var key = rows[i].sentence;
+      if (seen[key]) {
+        dupeIds.push(rows[i].id);
+      } else {
+        seen[key] = true;
+      }
+    }
+    if (!dupeIds.length) { toast('중복 없음!'); return; }
+    if (!confirm(dupeIds.length + '개 중복 문제 발견. 삭제할까요? (원본은 유지)')) return;
+    for (var j = 0; j < dupeIds.length; j++) {
+      await sb.from('listening_quiz_bank').delete().eq('id', dupeIds[j]);
+    }
+    toast('✅ ' + dupeIds.length + '개 중복 삭제 완료');
+    await lqAdminLoad();
+  } catch(e) { toast('Error: ' + e.message); }
 }
 
 // ═══════════════════════════════════════════════════════════════
