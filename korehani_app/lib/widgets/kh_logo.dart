@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../theme/kh_theme.dart';
 
 class KhLogo extends StatelessWidget {
@@ -13,9 +12,10 @@ class KhLogo extends StatelessWidget {
     final textColor = color ?? KhColors.logoBLue;
     return RichText(
       text: TextSpan(
-        style: GoogleFonts.happyMonkey(
+        style: TextStyle(
           fontSize: fontSize,
           color: textColor,
+          fontWeight: FontWeight.w700,
         ),
         children: [
           const TextSpan(text: 'KoreHan'),
@@ -44,9 +44,10 @@ class _LogoI extends StatelessWidget {
       children: [
         Text(
           'i',
-          style: GoogleFonts.happyMonkey(
+          style: TextStyle(
             fontSize: fontSize,
             color: textColor,
+            fontWeight: FontWeight.w700,
           ),
         ),
         Positioned(

@@ -24,11 +24,9 @@ dependencies:
   riverpod_annotation: ^2.6.1
 
   # UI
-  google_fonts: ^6.2.1
   cached_network_image: ^3.4.1
   shimmer: ^3.0.0
   fl_chart: ^0.71.0
-  flutter_svg: ^2.0.17
 
   # Utilities
   http: ^1.3.0

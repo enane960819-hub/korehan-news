@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class KhColors {
   static const Color navy = Color(0xFF0b1626);
@@ -20,9 +19,12 @@ class KhColors {
 
 class KhTheme {
   static ThemeData get light {
+    const fontFamily = 'sans-serif';
+
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
+      fontFamily: fontFamily,
       scaffoldBackgroundColor: KhColors.bg,
       colorScheme: ColorScheme.light(
         primary: KhColors.blue,
@@ -31,24 +33,6 @@ class KhTheme {
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         onSurface: KhColors.text,
-      ),
-      textTheme: GoogleFonts.happyMonkeyTextTheme().copyWith(
-        // Korean text falls back to Jua automatically via Google Fonts
-        bodyLarge: GoogleFonts.jua(fontSize: 16, color: KhColors.text),
-        bodyMedium: GoogleFonts.jua(fontSize: 14, color: KhColors.text),
-        bodySmall: GoogleFonts.jua(fontSize: 12, color: KhColors.gray),
-        titleLarge: GoogleFonts.happyMonkey(
-            fontSize: 24, fontWeight: FontWeight.w400, color: KhColors.text),
-        titleMedium: GoogleFonts.happyMonkey(
-            fontSize: 18, fontWeight: FontWeight.w400, color: KhColors.text),
-        titleSmall: GoogleFonts.happyMonkey(
-            fontSize: 14, fontWeight: FontWeight.w400, color: KhColors.text),
-        headlineLarge: GoogleFonts.happyMonkey(
-            fontSize: 32, fontWeight: FontWeight.w400, color: KhColors.text),
-        headlineMedium: GoogleFonts.happyMonkey(
-            fontSize: 28, fontWeight: FontWeight.w400, color: KhColors.text),
-        labelLarge: GoogleFonts.happyMonkey(
-            fontSize: 14, fontWeight: FontWeight.w400, color: KhColors.text),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: KhColors.white,
@@ -68,8 +52,7 @@ class KhTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: KhColors.bright,
           foregroundColor: Colors.white,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         ),
       ),
