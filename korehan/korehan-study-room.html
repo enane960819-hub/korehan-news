@@ -13970,7 +13970,7 @@ async function _asLoadContent() {
   var lm = document.getElementById('as-loading-msg');
   if (lm) lm.textContent = 'Generating study content... (~10s)';
   var prompt = 'Korean news article study content for language learners.\nTitle: ' + (_asCurrentArt.title||'') + '\nBody:\n' + (_asCurrentArt.body||'').slice(0,1600)
-    + '\n\nReturn ONLY valid JSON:\n{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],"phrases":[{"ko":"sentence from article","en":"translation"}],"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\nvocab:6 key words from article. phrases:5 key sentences. word_order:3 sentences split into eojeol chunks in CORRECT order. questions:3 comprehension questions.';
+    + '\n\nReturn ONLY valid JSON:\n{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],"phrases":[{"ko":"short sentence from article (max 8 words)","en":"translation"}],"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\nvocab:6 key words from article. phrases:5 SHORT key sentences (each max 8 Korean words, pick simple ones). word_order:3 sentences split into eojeol chunks in CORRECT order (each max 5 chunks). questions:3 comprehension questions with clear correct answers.';
   try {
     var data = await callClaude({ feature:'article-study', model:'claude-haiku-4-5-20251001', max_tokens:1500, messages:[{role:'user',content:prompt}] });
     var raw = (data.content||[]).map(function(c){return c.text||'';}).join('');
