@@ -2472,7 +2472,10 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
   <!-- SENTENCE BUILDER (Beginner only) -->
   <div class="sr-sb-panel" id="sentence-builder-box" style="display:none">
-    <div class="sr-sb-hd" style="font-size:13px;font-weight:900;color:#fff;margin-bottom:10px">&#129513; Sentence Builder</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="sr-sb-hd" style="font-size:13px;font-weight:900;color:#fff;margin:0">&#129513; Sentence Builder</div>
+      <button onclick="KHSentenceBuilder&&KHSentenceBuilder.open()" style="font-size:10px;font-weight:800;color:#c084fc;background:rgba(192,132,252,.1);border:1px solid rgba(192,132,252,.2);border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit">Canvas Mode →</button>
+    </div>
     <div id="sb-content">
       <p style="font-size:12px;color:rgba(255,255,255,.6);margin-bottom:10px">Arrange the words to make a correct sentence</p>
       <div id="sb-target" style="min-height:40px;border:2px dashed rgba(255,255,255,.2);border-radius:10px;padding:8px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px"></div>
@@ -2914,6 +2917,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <script src="js/kh-flashcards.js?v=20260416"></script>
 <script src="js/kh-listening.js?v=20260416"></script>
 <script src="js/kh-grammar-tree.js?v=20260416"></script>
+<script src="js/kh-sentence-builder.js?v=20260416"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // SOUND EFFECTS (Web Audio API)
