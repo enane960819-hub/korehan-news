@@ -8886,10 +8886,10 @@ async function renderFeedbackInboxContent() {
   var sb = getSupa(); if (!sb) return;
   try {
     var res = await sb.from('user_submissions')
-      .select('id, study_date, status, admin_feedback, ai_feedback, writing_text, topic_ko, content_type')
+      .select('id, study_date, status, admin_feedback, ai_feedback, writing_text, topic_ko, content_type, submitted_at, context_data')
       .eq('user_id', supaUser.id)
       .order('submitted_at', { ascending: false })
-      .limit(5);
+      .limit(20);
     if (res.error) throw res.error;
     var items = res.data || [];
     if (!items.length) {
@@ -8897,65 +8897,112 @@ async function renderFeedbackInboxContent() {
       return;
     }
 
-    content.innerHTML = items.map(function(item, idx) {
-      var fb = null;
-      try { fb = typeof item.ai_feedback === 'string' ? JSON.parse(item.ai_feedback) : item.ai_feedback; } catch(e) {}
-      // Only show feedback content if admin has reviewed
-      var adminFb = null;
-      try { adminFb = typeof item.admin_feedback === 'string' ? JSON.parse(item.admin_feedback) : item.admin_feedback; } catch(e) {}
-      var isReviewed = item.status === 'reviewed' || item.status === 'admin_approved' || item.status === 'sent';
-      var hasFb = isReviewed && (adminFb || fb);
-      var displayFb = isReviewed ? (adminFb || fb) : null;
-      var isOpen = idx === 0 && hasFb;
-      var statusLabel = isReviewed ? 'Feedback ready!' : (item.status === 'ai_drafted') ? 'Under review' : 'Submitted';
-      var statusColor = isReviewed ? '#4ade80' : (item.status === 'ai_drafted') ? '#fbbf24' : 'rgba(255,255,255,.35)';
-      var isPackage = item.content_type === 'daily_package';
-      var preview = isPackage
-        ? ('Daily Package — ' + (function(){ try { var ctx=JSON.parse(item.context_data||'{}'); return (ctx.item_count||0)+' activities'; } catch(e){ return ''; } })())
-        : ((item.writing_text||'').slice(0,60) + ((item.writing_text||'').length > 60 ? '…' : ''));
+    // Group by date
+    var grouped = {};
+    items.forEach(function(item) {
+      var date = item.study_date || (item.submitted_at ? item.submitted_at.slice(0, 10) : 'Unknown');
+      if (!grouped[date]) grouped[date] = [];
+      grouped[date].push(item);
+    });
 
-      var h = '<div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:10px;overflow:hidden">';
-      // Header (clickable)
-      h += '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'\':\'none\'" style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03)">';
-      h += '<div style="flex:1;min-width:0">';
-      h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">';
-      h += '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + statusColor + '"></span>';
-      h += '<span style="font-size:11px;font-weight:700;color:' + statusColor + '">' + statusLabel + '</span>';
-      h += '<span style="font-size:11px;color:rgba(255,255,255,.3)">' + (item.study_date||'') + '</span>';
-      if (item.topic_ko) h += '<span style="font-size:11px;color:rgba(255,255,255,.4)">' + item.topic_ko + '</span>';
-      h += '</div>';
-      h += '<div style="font-size:12px;color:rgba(255,255,255,.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + preview + '</div>';
-      h += '</div>';
-      h += '<span style="font-size:12px;color:rgba(255,255,255,.2)">' + (isOpen ? '▲' : '▼') + '</span>';
-      h += '</div>';
+    var TYPE_LABELS = {
+      daily_package: { icon: '📦', label: 'Daily Package', color: '#60a5fa' },
+      topic: { icon: '✍️', label: 'Topic Writing', color: '#a78bfa' },
+      diary: { icon: '📓', label: 'Diary', color: '#f472b6' },
+      reading: { icon: '📖', label: 'Reading Response', color: '#34d399' },
+      article: { icon: '📰', label: 'Article Writing', color: '#fbbf24' },
+      conversation: { icon: '💬', label: 'Conversation', color: '#38bdf8' },
+      story: { icon: '📚', label: 'Story Writing', color: '#c084fc' }
+    };
 
-      // Detail body
-      h += '<div style="' + (isOpen ? '' : 'display:none;') + 'padding:14px;border-top:1px solid rgba(255,255,255,.06)">';
+    var STATUS_LABELS = {
+      submitted: { label: 'Submitted', color: 'rgba(255,255,255,.35)', bg: 'rgba(255,255,255,.06)' },
+      ai_drafted: { label: 'Under review', color: '#fbbf24', bg: 'rgba(251,191,36,.1)' },
+      reviewed: { label: '✅ Feedback ready', color: '#4ade80', bg: 'rgba(74,222,128,.1)' },
+      admin_approved: { label: '✅ Feedback ready', color: '#4ade80', bg: 'rgba(74,222,128,.1)' },
+      sent: { label: '✅ Feedback ready', color: '#4ade80', bg: 'rgba(74,222,128,.1)' }
+    };
 
-      if (isReviewed && displayFb) {
-        // Show admin-reviewed feedback (admin_feedback or AI feedback approved by admin)
-        if (adminFb && typeof adminFb === 'object') {
-          // Admin provided structured override
-          h += renderDetailedFeedback(adminFb, item.writing_text);
-        } else if (typeof item.admin_feedback === 'string' && item.admin_feedback.trim()) {
-          // Admin text comment
-          h += '<div style="padding:10px 12px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15);border-radius:8px;margin-bottom:12px">'
-            + '<div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:4px">Teacher Feedback</div>'
-            + '<div style="font-size:13px;color:rgba(255,255,255,.75);white-space:pre-wrap;line-height:1.6">' + item.admin_feedback + '</div></div>';
-          if (fb) h += renderDetailedFeedback(fb, item.writing_text);
-        } else {
-          // Admin approved AI feedback as-is
-          h += renderDetailedFeedback(displayFb, item.writing_text);
+    var html = '';
+    var dates = Object.keys(grouped).sort(function(a, b) { return b.localeCompare(a); });
+
+    dates.forEach(function(date) {
+      var dayItems = grouped[date];
+      var reviewed = dayItems.filter(function(i) { return i.status === 'reviewed' || i.status === 'admin_approved' || i.status === 'sent'; }).length;
+
+      // Date header
+      html += '<div style="margin-bottom:16px">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+        + '<div style="font-size:14px;font-weight:900;color:#fff">' + date + '</div>'
+        + '<div style="font-size:11px;color:rgba(255,255,255,.35)">' + dayItems.length + ' submitted' + (reviewed > 0 ? ' · ' + reviewed + ' feedback' : '') + '</div>'
+        + '</div>';
+
+      // Submission cards for this date
+      dayItems.forEach(function(item, idx) {
+        var type = TYPE_LABELS[item.content_type] || TYPE_LABELS.topic;
+        var status = STATUS_LABELS[item.status] || STATUS_LABELS.submitted;
+        var fb = null;
+        try { fb = typeof item.ai_feedback === 'string' ? JSON.parse(item.ai_feedback) : item.ai_feedback; } catch(e) {}
+        var adminFb = null;
+        try { adminFb = typeof item.admin_feedback === 'string' ? JSON.parse(item.admin_feedback) : item.admin_feedback; } catch(e) {}
+        var isReviewed = item.status === 'reviewed' || item.status === 'admin_approved' || item.status === 'sent';
+        var displayFb = isReviewed ? (adminFb || fb) : null;
+        var preview = (item.writing_text || '').slice(0, 50);
+        if ((item.writing_text || '').length > 50) preview += '…';
+        var topicLabel = item.topic_ko || '';
+
+        // Card
+        html += '<div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:8px;overflow:hidden">'
+          // Banner header
+          + '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'\':\'none\';var a=this.querySelector(\'.fb-arrow\');if(a)a.textContent=this.nextElementSibling.style.display===\'none\'?\'▼\':\'▲\'" style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03);transition:background .15s" onmouseover="this.style.background=\'rgba(255,255,255,.06)\'" onmouseout="this.style.background=\'rgba(255,255,255,.03)\'">'
+          // Type icon
+          + '<div style="width:36px;height:36px;border-radius:10px;background:' + type.color + '22;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">' + type.icon + '</div>'
+          // Info
+          + '<div style="flex:1;min-width:0">'
+          + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+          + '<span style="font-size:12px;font-weight:800;color:' + type.color + '">' + type.label + '</span>'
+          + '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:' + status.bg + ';color:' + status.color + ';font-weight:700">' + status.label + '</span>'
+          + '</div>'
+          + (topicLabel ? '<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">' + topicLabel + '</div>' : '')
+          + (preview ? '<div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + preview + '</div>' : '')
+          + '</div>'
+          // Arrow
+          + '<span class="fb-arrow" style="font-size:12px;color:rgba(255,255,255,.2)">▼</span>'
+          + '</div>'
+
+          // Detail body (collapsed by default)
+          + '<div style="display:none;padding:14px;border-top:1px solid rgba(255,255,255,.06)">';
+
+        // Show writing text
+        if (item.writing_text) {
+          html += '<div style="margin-bottom:12px"><div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Your Writing</div>'
+            + '<div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.7;padding:10px 12px;background:rgba(255,255,255,.03);border-radius:8px;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + item.writing_text + '</div></div>';
         }
-      } else {
-        h += '<div style="color:rgba(255,255,255,.3);text-align:center;padding:16px;font-size:13px">'
-          + (item.status === 'ai_drafted' ? 'Under review — feedback within 24h' : 'Submitted — processing...')
-          + '</div>';
-      }
 
-      h += '</div></div>';
-      return h;
-    }).join('');
+        if (isReviewed && displayFb) {
+          if (adminFb && typeof adminFb === 'object') {
+            html += renderDetailedFeedback(adminFb, item.writing_text);
+          } else if (typeof item.admin_feedback === 'string' && item.admin_feedback.trim()) {
+            html += '<div style="padding:10px 12px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15);border-radius:8px;margin-bottom:12px">'
+              + '<div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:4px">Teacher Feedback</div>'
+              + '<div style="font-size:13px;color:rgba(255,255,255,.75);white-space:pre-wrap;line-height:1.6">' + item.admin_feedback + '</div></div>';
+            if (fb) html += renderDetailedFeedback(fb, item.writing_text);
+          } else {
+            html += renderDetailedFeedback(displayFb, item.writing_text);
+          }
+        } else {
+          html += '<div style="color:rgba(255,255,255,.3);text-align:center;padding:16px;font-size:13px">'
+            + (item.status === 'ai_drafted' ? '⏳ Under review — feedback within 24h' : '📨 Submitted — processing...')
+            + '</div>';
+        }
+
+        html += '</div></div>'; // close detail + card
+      });
+
+      html += '</div>'; // close date group
+    });
+
+    content.innerHTML = html;
   } catch(e) {
     content.innerHTML = '<div style="text-align:center;color:#f87171;padding:24px">오류: ' + e.message + '</div>';
   }
