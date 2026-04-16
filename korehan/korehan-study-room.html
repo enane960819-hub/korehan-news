@@ -2911,6 +2911,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
 <script src="js/kh-quiz-arena.js?v=20260416"></script>
 <script src="js/kh-flashcards.js?v=20260416"></script>
+<script src="js/kh-listening.js?v=20260416"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // SOUND EFFECTS (Web Audio API)
@@ -9264,6 +9265,11 @@ function buildLocalListeningQuiz(words) {
 }
 
 function renderLQQ() {
+  // Route to fullscreen Listening Quiz if available
+  if (window.KHListening && _lqQ && _lqQ.length) {
+    KHListening.open({ questions: _lqQ });
+    return;
+  }
   var q = _lqQ[_lqIdx];
   var box = document.getElementById('lq-mini');
   _lqAnswered = false;
