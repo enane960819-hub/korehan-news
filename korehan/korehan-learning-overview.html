@@ -2376,6 +2376,144 @@
   var _radarSnaps = [];
   var _radarCompareIdx = 0; // 0=1w ago, 1=2w ago, 3=4w ago
 
+  // ═══════════════════════════════════════════════════════════════
+  // WEEKLY SNAPSHOT GENERATOR
+  // Aggregates learning data into 5 skill scores (0-100)
+  // Called on Growth Lab load — generates/updates current week's snapshot
+  // ═══════════════════════════════════════════════════════════════
+  /*
+    Table: user_weekly_snapshot
+    user_id, week_start, skill_reading, skill_vocab, skill_grammar,
+    skill_writing, skill_listening, created_at, updated_at
+  */
+  async function generateWeeklySnapshot() {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb || !supaUser) return;
+
+    // Current week start (Monday)
+    var now = new Date();
+    var day = now.getDay();
+    var monday = new Date(now);
+    monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    var weekStart = monday.toISOString().slice(0, 10);
+
+    // Date range for this week
+    var weekEnd = new Date(monday);
+    weekEnd.setDate(monday.getDate() + 7);
+    var startISO = weekStart + 'T00:00:00';
+    var endISO = weekEnd.toISOString().slice(0, 10) + 'T00:00:00';
+
+    try {
+      // ── READING: quiz scores from article/conv/story study ──
+      var readingScore = 0;
+      var readRes = await sb.from('user_quiz_results')
+        .select('score, max_score')
+        .eq('user_id', supaUser.id)
+        .gte('created_at', startISO).lt('created_at', endISO)
+        .in('quiz_type', ['article_study', 'conversation_study', 'story_study', 'article_quiz', 'reading']);
+      if (readRes.data && readRes.data.length) {
+        var totalScore = 0, totalMax = 0;
+        readRes.data.forEach(function(r) { totalScore += (r.score || 0); totalMax += (r.max_score || 1); });
+        readingScore = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
+      }
+
+      // ── VOCAB: flashcard accuracy + daily review vocab + wordbook quiz ──
+      var vocabScore = 0;
+      var vocabRes = await sb.from('user_saved_words')
+        .select('correct_count, wrong_count')
+        .eq('user_id', supaUser.id)
+        .gte('updated_at', startISO);
+      if (vocabRes.data && vocabRes.data.length) {
+        var totalC = 0, totalW = 0;
+        vocabRes.data.forEach(function(w) { totalC += (w.correct_count || 0); totalW += (w.wrong_count || 0); });
+        var totalAttempts = totalC + totalW;
+        vocabScore = totalAttempts > 0 ? Math.round((totalC / totalAttempts) * 100) : 0;
+      }
+      // Boost from daily review vocab questions
+      var drVocab = await sb.from('user_quiz_results')
+        .select('score, max_score')
+        .eq('user_id', supaUser.id)
+        .gte('created_at', startISO).lt('created_at', endISO)
+        .in('quiz_type', ['daily_review', 'vocab_quiz']);
+      if (drVocab.data && drVocab.data.length) {
+        var drTotal = 0, drMax = 0;
+        drVocab.data.forEach(function(r) { drTotal += (r.score || 0); drMax += (r.max_score || 1); });
+        var drPct = drMax > 0 ? Math.round((drTotal / drMax) * 100) : 0;
+        vocabScore = vocabScore > 0 ? Math.round((vocabScore + drPct) / 2) : drPct;
+      }
+
+      // ── GRAMMAR: mastery % (from localStorage) + grammar quiz scores ──
+      var grammarScore = 0;
+      // Mastery from curriculum progress
+      var gcProgress = {};
+      try { gcProgress = JSON.parse(localStorage.getItem('kh_grammar_curriculum_progress') || '{}'); } catch(e) {}
+      var gcTotal = 45;
+      var gcMastered = Object.keys(gcProgress).filter(function(k) { return gcProgress[k] && gcProgress[k].mastered; }).length;
+      var masteryPct = Math.round((gcMastered / gcTotal) * 100);
+      // Grammar quiz scores
+      var gramRes = await sb.from('user_quiz_results')
+        .select('score, max_score')
+        .eq('user_id', supaUser.id)
+        .gte('created_at', startISO).lt('created_at', endISO)
+        .in('quiz_type', ['grammar_focus', 'grammar_quiz', 'weekly_review', 'monthly_review']);
+      var gramQuizPct = 0;
+      if (gramRes.data && gramRes.data.length) {
+        var gTotal = 0, gMax = 0;
+        gramRes.data.forEach(function(r) { gTotal += (r.score || 0); gMax += (r.max_score || 1); });
+        gramQuizPct = gMax > 0 ? Math.round((gTotal / gMax) * 100) : 0;
+      }
+      grammarScore = Math.round(masteryPct * 0.4 + gramQuizPct * 0.6);
+
+      // ── WRITING: feedback scores from submissions ──
+      var writingScore = 0;
+      var writeRes = await sb.from('user_submissions')
+        .select('score')
+        .eq('user_id', supaUser.id)
+        .gte('submitted_at', startISO).lt('submitted_at', endISO)
+        .not('score', 'is', null);
+      if (writeRes.data && writeRes.data.length) {
+        var wSum = 0;
+        writeRes.data.forEach(function(s) { wSum += (s.score || 0); });
+        writingScore = Math.round(wSum / writeRes.data.length);
+      }
+
+      // ── LISTENING: listening quiz scores ──
+      var listeningScore = 0;
+      var listenRes = await sb.from('user_quiz_results')
+        .select('score, max_score')
+        .eq('user_id', supaUser.id)
+        .gte('created_at', startISO).lt('created_at', endISO)
+        .in('quiz_type', ['listening_quiz', 'dictation']);
+      if (listenRes.data && listenRes.data.length) {
+        var lTotal = 0, lMax = 0;
+        listenRes.data.forEach(function(r) { lTotal += (r.score || 0); lMax += (r.max_score || 1); });
+        listeningScore = lMax > 0 ? Math.round((lTotal / lMax) * 100) : 0;
+      }
+
+      // ── Clamp all to 0-100 ──
+      readingScore = Math.max(0, Math.min(100, readingScore));
+      vocabScore = Math.max(0, Math.min(100, vocabScore));
+      grammarScore = Math.max(0, Math.min(100, grammarScore));
+      writingScore = Math.max(0, Math.min(100, writingScore));
+      listeningScore = Math.max(0, Math.min(100, listeningScore));
+
+      // ── Upsert to user_weekly_snapshot ──
+      await sb.from('user_weekly_snapshot').upsert({
+        user_id: supaUser.id,
+        week_start: weekStart,
+        skill_reading: readingScore,
+        skill_vocab: vocabScore,
+        skill_grammar: grammarScore,
+        skill_writing: writingScore,
+        skill_listening: listeningScore,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id,week_start' });
+
+    } catch(e) {
+      console.warn('[generateWeeklySnapshot]', e.message);
+    }
+  }
+
   async function loadRadarChart() {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
     if (!sb || !supaUser) return;
@@ -2628,7 +2766,7 @@
     loadWeeklyComparison();
     loadWeeklyGoals();
     loadCalendarData();
-    loadRadarChart();
+    generateWeeklySnapshot().then(function() { loadRadarChart(); });
     loadErrorPatterns();
     loadReviewHistory();
     loadFeedbackHistory();
