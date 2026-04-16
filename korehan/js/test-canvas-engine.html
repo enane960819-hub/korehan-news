@@ -34,9 +34,14 @@ button:hover { background: #3b82f6; }
 <div class="test-box" id="particle-box">
   <canvas id="test-particles"></canvas>
 </div>
-<button onclick="testBurst()">Gold Burst</button>
+<button onclick="testPreset('GOLD_BURST')">Gold Burst</button>
+<button onclick="testPreset('COMBO_FIRE')">Combo Fire</button>
+<button onclick="testPreset('CELEBRATION')">Celebration</button>
+<button onclick="testPreset('MASTERY')">Mastery</button>
+<button onclick="testPreset('SPARKLE')">Sparkle</button>
+<button onclick="testPreset('WRONG')">Wrong</button>
 <button onclick="testTrail()">Trail Effect</button>
-<button onclick="testMultiBurst()">Multi Burst</button>
+<button onclick="testBurstAtEl()">Burst at Element</button>
 <div class="log" id="log-particle"></div>
 
 <!-- Test 4: Overlay -->
@@ -90,23 +95,22 @@ var _pCtx = KHCanvas.DPR.setup(_pCanvas, 400, 300);
 var _ps = new KHCanvas.ParticleSystem(_pCanvas);
 var _pLog = document.getElementById('log-particle');
 
-function testBurst() {
-  _ps.spawn({ x: 200, y: 150, count: 40 });
-  _pLog.innerHTML = '<span class="pass">Spawned 40 particles at center. Active: ' + _ps.particles.length + '</span>';
+function testPreset(name) {
+  var x = 80 + Math.random() * 240;
+  var y = 60 + Math.random() * 180;
+  _ps.burstAt(x, y, name, 35);
+  _pLog.innerHTML = '<span class="pass">' + name + ' at (' + Math.round(x) + ',' + Math.round(y) + '). Active: ' + _ps.particles.length + '</span>';
 }
 
 function testTrail() {
-  _ps.trail({ x: 100, y: 100, duration: 1, rate: 8 });
-  _pLog.innerHTML = '<span class="pass">Trail started at (100,100) for 1s</span>';
+  _ps.trail({ x: 200, y: 280, duration: 1.2, rate: 6, preset: 'COMBO_FIRE' });
+  _pLog.innerHTML = '<span class="pass">COMBO_FIRE trail at bottom center for 1.2s</span>';
 }
 
-function testMultiBurst() {
-  for (var i = 0; i < 5; i++) {
-    var x = 50 + Math.random() * 300;
-    var y = 50 + Math.random() * 200;
-    _ps.spawn({ x: x, y: y, count: 15 });
-  }
-  _pLog.innerHTML = '<span class="pass">5 bursts spawned. Total particles: ' + _ps.particles.length + '</span>';
+function testBurstAtEl() {
+  var btn = document.querySelector('button');
+  _ps.burstAtElement(btn, 'SPARKLE', 20);
+  _pLog.innerHTML = '<span class="pass">SPARKLE burst at first button element</span>';
 }
 
 // ── Test 4: Overlay ──

@@ -343,22 +343,115 @@
   };
 
   /* ── Particle Presets ─────────────────────────────────────
-     Presets define spawn parameters for different effects.
-     Actual preset DATA will be added in session 2.
-     For now, a default fallback is provided.
+     Each preset defines spawn parameters for a specific effect.
+     Use: ps.spawn({ x, y, count, preset: 'GOLD_BURST' })
      ──────────────────────────────────────────────────────── */
   ParticleSystem.presets = {
-    /* Default fallback */
-    DEFAULT: {
-      colors: ['#FFD700', '#FFA500', '#FF6B35'],
-      shapes: ['circle'],
-      speedMin: 60, speedMax: 200,
+
+    /* ── GOLD_BURST ──────────────────────────────────────────
+       Correct answer celebration. Gold/amber particles burst
+       outward with gravity pulling them down like confetti.   */
+    GOLD_BURST: {
+      colors: ['#FFD700', '#FFC233', '#FFA500', '#FFE066', '#F59E0B'],
+      shapes: ['circle', 'circle', 'star'],
+      speedMin: 80, speedMax: 260,
+      sizeMin: 2, sizeMax: 6,
+      lifeMin: 0.6, lifeMax: 1.4,
+      gravity: 180,
+      friction: 0.4,
+      spread: 6
+    },
+
+    /* ── COMBO_FIRE ──────────────────────────────────────────
+       Streak/combo effect. Orange-red particles shoot upward
+       like flames. Negative gravity = floats up.              */
+    COMBO_FIRE: {
+      colors: ['#FF6B35', '#EF4444', '#F97316', '#FBBF24', '#FF4500'],
+      shapes: ['circle', 'square'],
+      speedMin: 40, speedMax: 160,
       sizeMin: 2, sizeMax: 5,
-      lifeMin: 0.5, lifeMax: 1.2,
-      gravity: 120,
-      friction: 0.3,
-      spread: 8
+      lifeMin: 0.3, lifeMax: 0.8,
+      gravity: -200,
+      friction: 0.6,
+      spread: 12
+    },
+
+    /* ── CELEBRATION ─────────────────────────────────────────
+       Quiz/task completion. Multicolor confetti shower.
+       Large spread, mixed shapes, slow gravity.               */
+    CELEBRATION: {
+      colors: ['#FFD700', '#4ADE80', '#60A5FA', '#F472B6', '#A78BFA', '#FB923C', '#34D399'],
+      shapes: ['circle', 'square', 'star'],
+      speedMin: 100, speedMax: 320,
+      sizeMin: 3, sizeMax: 7,
+      lifeMin: 1.0, lifeMax: 2.2,
+      gravity: 100,
+      friction: 0.25,
+      spread: 16
+    },
+
+    /* ── MASTERY ─────────────────────────────────────────────
+       Grammar/vocab mastery. Purple-blue stars float upward
+       gently, with slow rotation. Ethereal feel.              */
+    MASTERY: {
+      colors: ['#A78BFA', '#818CF8', '#7C3AED', '#C4B5FD', '#6366F1'],
+      shapes: ['star', 'star', 'circle'],
+      speedMin: 30, speedMax: 100,
+      sizeMin: 3, sizeMax: 7,
+      lifeMin: 1.0, lifeMax: 2.0,
+      gravity: -60,
+      friction: 0.5,
+      spread: 20
+    },
+
+    /* ── SPARKLE ─────────────────────────────────────────────
+       Subtle sparkle for UI feedback (button press, save).
+       Tiny white/blue particles, short-lived, minimal spread. */
+    SPARKLE: {
+      colors: ['#fff', '#E0F2FE', '#BAE6FD', '#7DD3FC', '#38BDF8'],
+      shapes: ['circle'],
+      speedMin: 30, speedMax: 80,
+      sizeMin: 1, sizeMax: 3,
+      lifeMin: 0.2, lifeMax: 0.6,
+      gravity: 40,
+      friction: 0.8,
+      spread: 4
+    },
+
+    /* ── WRONG ───────────────────────────────────────────────
+       Wrong answer. Red particles drip/fall downward quickly.
+       Short-lived, heavy gravity.                             */
+    WRONG: {
+      colors: ['#EF4444', '#DC2626', '#F87171', '#991B1B'],
+      shapes: ['circle'],
+      speedMin: 20, speedMax: 80,
+      sizeMin: 2, sizeMax: 4,
+      lifeMin: 0.3, lifeMax: 0.7,
+      gravity: 300,
+      friction: 0.2,
+      spread: 10
     }
+  };
+
+  /* ── Convenience spawn methods on ParticleSystem ────────── */
+
+  /** Burst preset at element center (relative to canvas) */
+  ParticleSystem.prototype.burstAt = function(x, y, presetName, count) {
+    this.spawn({
+      x: x, y: y,
+      count: count || 30,
+      preset: presetName || 'GOLD_BURST'
+    });
+  };
+
+  /** Burst at a DOM element's center (calculates position relative to canvas parent) */
+  ParticleSystem.prototype.burstAtElement = function(el, presetName, count) {
+    if (!el || !this.canvas) return;
+    var cRect = this.canvas.getBoundingClientRect();
+    var eRect = el.getBoundingClientRect();
+    var x = eRect.left + eRect.width / 2 - cRect.left;
+    var y = eRect.top + eRect.height / 2 - cRect.top;
+    this.burstAt(x, y, presetName, count);
   };
 
   KHC.ParticleSystem = ParticleSystem;
