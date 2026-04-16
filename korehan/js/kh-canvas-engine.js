@@ -3,10 +3,14 @@
    KoreHani Study Room interactive learning utilities
    ============================================================
    Modules:
-     KHCanvas.DPR          — HiDPI canvas setup
-     KHCanvas.AnimLoop     — Central requestAnimationFrame manager
-     KHCanvas.Particle     — Single particle data
+     KHCanvas.DPR            — HiDPI canvas setup
+     KHCanvas.AnimLoop       — Central requestAnimationFrame manager
+     KHCanvas.Particle       — Single particle data
      KHCanvas.ParticleSystem — Spawn, update, draw particle pools
+     KHCanvas.Ring           — Animated progress ring (vocab/grammar tracker)
+     KHCanvas.Gauge          — Timer countdown ring (green→yellow→red)
+     KHCanvas.lerpColor      — Hex color interpolation
+     KHCanvas.hexToRgba      — Hex to rgba conversion
    ============================================================ */
 
 (function() {
@@ -476,5 +480,345 @@
 
     return { canvas: canvas, ctx: ctx, ps: ps };
   };
+
+
+  /* ──────────────────────────────────────────────────────────
+     Ring — Animated progress ring (donut)
+     Used for: vocab/grammar tracker, quest progress, mastery
+
+     Usage:
+       var ring = new KHCanvas.Ring(canvas, {
+         radius: 30, lineWidth: 6,
+         bgColor: 'rgba(255,255,255,.08)',
+         colors: ['#a78bfa','#7c3aed'],  // gradient stops
+         textColor: '#fff', showText: true
+       });
+       ring.setProgress(0.75);           // animate to 75%
+       ring.setProgress(1, 'complete');   // uses complete colors
+     ────────────────────────────────────────────────────────── */
+
+  function Ring(canvas, opts) {
+    opts = opts || {};
+    this.canvas = canvas;
+    this.ctx = null;
+    this.w = 0;
+    this.h = 0;
+    this.radius = opts.radius || 30;
+    this.lineWidth = opts.lineWidth || 6;
+    this.bgColor = opts.bgColor || 'rgba(255,255,255,.08)';
+    this.colors = opts.colors || ['#a78bfa', '#7c3aed'];
+    this.completeColors = opts.completeColors || ['#34d399', '#22c55e'];
+    this.glowColor = opts.glowColor || 'rgba(124,58,237,.3)';
+    this.completeGlowColor = opts.completeGlowColor || 'rgba(52,211,153,.3)';
+    this.textColor = opts.textColor || '#fff';
+    this.textFont = opts.textFont || '900 sans-serif';
+    this.showText = opts.showText !== undefined ? opts.showText : true;
+    this.textValue = opts.textValue || '';     // custom text; if empty, shows percentage
+    this.current = 0;     // current animated value 0-1
+    this.target = 0;      // target value 0-1
+    this._mode = 'normal';
+    this._animId = 'ring-' + (++_psCounter);
+    this._setup();
+  }
+
+  Ring.prototype._setup = function() {
+    if (!this.canvas) return;
+    var size = this.radius * 2 + this.lineWidth * 2 + 4;
+    this.w = size;
+    this.h = size;
+    this.ctx = KHC.DPR.setup(this.canvas, size, size);
+    this._draw();
+  };
+
+  Ring.prototype.resize = function(radius) {
+    if (radius) this.radius = radius;
+    this._setup();
+  };
+
+  Ring.prototype.setProgress = function(value, mode) {
+    this.target = Math.max(0, Math.min(1, value));
+    this._mode = mode || (this.target >= 1 ? 'complete' : 'normal');
+    var self = this;
+
+    if (!KHC.AnimLoop.has(this._animId)) {
+      KHC.AnimLoop.register(this._animId, function(dt) {
+        self.current += (self.target - self.current) * Math.min(1, dt * 8);
+        if (Math.abs(self.current - self.target) < 0.003) {
+          self.current = self.target;
+          KHC.AnimLoop.unregister(self._animId);
+        }
+        self._draw();
+      });
+    }
+  };
+
+  /** Set custom center text (overrides percentage) */
+  Ring.prototype.setText = function(txt) {
+    this.textValue = txt;
+    this._draw();
+  };
+
+  Ring.prototype._draw = function() {
+    var ctx = this.ctx;
+    if (!ctx) return;
+    var cx = this.w / 2;
+    var cy = this.h / 2;
+    var r = this.radius;
+    var lw = this.lineWidth;
+
+    // Clear
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.restore();
+
+    // Background ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = this.bgColor;
+    ctx.lineWidth = lw;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Progress arc
+    if (this.current > 0.001) {
+      var startAngle = -Math.PI / 2;
+      var endAngle = startAngle + Math.PI * 2 * this.current;
+      var isComplete = this._mode === 'complete';
+      var cols = isComplete ? this.completeColors : this.colors;
+
+      // Gradient
+      var g = ctx.createLinearGradient(0, 0, this.w, this.h);
+      g.addColorStop(0, cols[0]);
+      g.addColorStop(1, cols[cols.length - 1]);
+
+      // Glow layer
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, startAngle, endAngle);
+      ctx.strokeStyle = isComplete ? this.completeGlowColor : this.glowColor;
+      ctx.lineWidth = lw + 4;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Main arc
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, startAngle, endAngle);
+      ctx.strokeStyle = g;
+      ctx.lineWidth = lw;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    // Center text
+    if (this.showText) {
+      var txt = this.textValue || Math.round(this.current * 100) + '%';
+      var fontSize = Math.round(r * 0.55);
+      ctx.fillStyle = this.textColor;
+      ctx.font = '900 ' + fontSize + 'px ' + this.textFont;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(txt, cx, cy);
+    }
+  };
+
+  /** Destroy and stop animation */
+  Ring.prototype.destroy = function() {
+    KHC.AnimLoop.unregister(this._animId);
+  };
+
+  KHC.Ring = Ring;
+
+
+  /* ──────────────────────────────────────────────────────────
+     Gauge — Timer countdown ring with color transitions
+     Used for: quiz timer (green→yellow→red)
+
+     Usage:
+       var gauge = new KHCanvas.Gauge(canvas, {
+         radius: 40, lineWidth: 8, duration: 15
+       });
+       gauge.start(function onExpire() { console.log('time up!'); });
+       gauge.pause(); gauge.resume(); gauge.reset();
+     ────────────────────────────────────────────────────────── */
+
+  function Gauge(canvas, opts) {
+    opts = opts || {};
+    this.canvas = canvas;
+    this.ctx = null;
+    this.w = 0;
+    this.h = 0;
+    this.radius = opts.radius || 40;
+    this.lineWidth = opts.lineWidth || 8;
+    this.bgColor = opts.bgColor || 'rgba(255,255,255,.08)';
+    this.duration = opts.duration || 15;  // seconds
+    this.textColor = opts.textColor || '#fff';
+    this.textFont = opts.textFont || '700 sans-serif';
+    this.showText = opts.showText !== undefined ? opts.showText : true;
+    this.colorStops = opts.colorStops || [
+      { at: 1.0, color: '#4ade80' },   // green (full)
+      { at: 0.6, color: '#facc15' },   // yellow (60%)
+      { at: 0.3, color: '#f97316' },   // orange (30%)
+      { at: 0.0, color: '#ef4444' }    // red (empty)
+    ];
+    this._remaining = this.duration;
+    this._running = false;
+    this._paused = false;
+    this._onExpire = null;
+    this._animId = 'gauge-' + (++_psCounter);
+    this._pulsePhase = 0;
+    this._setup();
+  }
+
+  Gauge.prototype._setup = function() {
+    if (!this.canvas) return;
+    var size = this.radius * 2 + this.lineWidth * 2 + 4;
+    this.w = size;
+    this.h = size;
+    this.ctx = KHC.DPR.setup(this.canvas, size, size);
+    this._draw();
+  };
+
+  /** Start the countdown */
+  Gauge.prototype.start = function(onExpire) {
+    this._remaining = this.duration;
+    this._onExpire = onExpire || null;
+    this._running = true;
+    this._paused = false;
+    var self = this;
+
+    KHC.AnimLoop.register(this._animId, function(dt) {
+      if (!self._running || self._paused) return;
+      self._remaining -= dt;
+      self._pulsePhase += dt * 6;
+      if (self._remaining <= 0) {
+        self._remaining = 0;
+        self._running = false;
+        KHC.AnimLoop.unregister(self._animId);
+        self._draw();
+        if (self._onExpire) self._onExpire();
+        return;
+      }
+      self._draw();
+    });
+  };
+
+  Gauge.prototype.pause = function() { this._paused = true; };
+  Gauge.prototype.resume = function() { this._paused = false; };
+
+  Gauge.prototype.reset = function(newDuration) {
+    this._running = false;
+    this._paused = false;
+    KHC.AnimLoop.unregister(this._animId);
+    if (newDuration) this.duration = newDuration;
+    this._remaining = this.duration;
+    this._draw();
+  };
+
+  /** Get current color based on percentage remaining */
+  Gauge.prototype._getColor = function(pct) {
+    var stops = this.colorStops;
+    for (var i = 0; i < stops.length - 1; i++) {
+      if (pct <= stops[i].at && pct >= stops[i + 1].at) {
+        var range = stops[i].at - stops[i + 1].at;
+        var t = range > 0 ? (pct - stops[i + 1].at) / range : 0;
+        return _lerpColor(stops[i + 1].color, stops[i].color, t);
+      }
+    }
+    return stops[stops.length - 1].color;
+  };
+
+  Gauge.prototype._draw = function() {
+    var ctx = this.ctx;
+    if (!ctx) return;
+    var cx = this.w / 2;
+    var cy = this.h / 2;
+    var r = this.radius;
+    var lw = this.lineWidth;
+    var pct = this._remaining / Math.max(0.001, this.duration);
+
+    // Clear
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.restore();
+
+    // Background ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = this.bgColor;
+    ctx.lineWidth = lw;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Progress arc
+    if (pct > 0.001) {
+      var startAngle = -Math.PI / 2;
+      var endAngle = startAngle + Math.PI * 2 * pct;
+      var color = this._getColor(pct);
+
+      // Pulse glow when low (< 30%)
+      var glowAlpha = pct < 0.3 ? 0.15 + 0.1 * Math.sin(this._pulsePhase) : 0.12;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, startAngle, endAngle);
+      ctx.strokeStyle = _hexToRgba(color, glowAlpha);
+      ctx.lineWidth = lw + 6;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Main arc
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, startAngle, endAngle);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lw;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    // Center text (seconds remaining)
+    if (this.showText) {
+      var secs = Math.ceil(this._remaining);
+      var fontSize = Math.round(r * 0.55);
+      ctx.fillStyle = this.textColor;
+      ctx.font = '700 ' + fontSize + 'px ' + this.textFont;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(secs + 's', cx, cy);
+    }
+  };
+
+  Gauge.prototype.destroy = function() {
+    this._running = false;
+    KHC.AnimLoop.unregister(this._animId);
+  };
+
+  /** Get remaining seconds */
+  Gauge.prototype.getRemaining = function() { return this._remaining; };
+
+  KHC.Gauge = Gauge;
+
+
+  /* ── Color utility helpers ──────────────────────────────── */
+
+  /** Linearly interpolate between two hex colors */
+  function _lerpColor(c1, c2, t) {
+    var r1 = parseInt(c1.slice(1, 3), 16), g1 = parseInt(c1.slice(3, 5), 16), b1 = parseInt(c1.slice(5, 7), 16);
+    var r2 = parseInt(c2.slice(1, 3), 16), g2 = parseInt(c2.slice(3, 5), 16), b2 = parseInt(c2.slice(5, 7), 16);
+    var r = Math.round(r1 + (r2 - r1) * t);
+    var g = Math.round(g1 + (g2 - g1) * t);
+    var b = Math.round(b1 + (b2 - b1) * t);
+    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  }
+
+  /** Convert hex color to rgba string */
+  function _hexToRgba(hex, alpha) {
+    var r = parseInt(hex.slice(1, 3), 16);
+    var g = parseInt(hex.slice(3, 5), 16);
+    var b = parseInt(hex.slice(5, 7), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+  }
+
+  // Expose color utils for external use
+  KHC.lerpColor = _lerpColor;
+  KHC.hexToRgba = _hexToRgba;
 
 })();
