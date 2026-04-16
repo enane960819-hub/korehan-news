@@ -51,14 +51,7 @@
       +   '<div style="display:flex;justify-content:center;margin-bottom:16px">'
       +     '<canvas id="qa-timer-canvas"></canvas>'
       +   '</div>'
-      +   '<div id="qa-card-wrap" style="position:relative;min-height:200px">'
-      +     '<div id="qa-card" class="kh-flip-card">'
-      +       '<div class="kh-flip-inner">'
-      +         '<div class="kh-flip-front" id="qa-card-front" style="background:#15243a;border-radius:18px;padding:24px;border:1px solid rgba(255,255,255,.08)"></div>'
-      +         '<div class="kh-flip-back" id="qa-card-back" style="background:#15243a;border-radius:18px;padding:24px;border:1px solid rgba(255,255,255,.08)"></div>'
-      +       '</div>'
-      +     '</div>'
-      +   '</div>'
+      +   '<div id="qa-card-front" style="background:#15243a;border-radius:18px;padding:24px;border:1px solid rgba(255,255,255,.08)"></div>'
       + '</div>'
       // Footer
       + '<div class="kh-fs-footer" style="display:flex;justify-content:flex-end;gap:8px">'
@@ -97,14 +90,10 @@
     var counter = document.getElementById('qa-counter');
     if (counter) counter.textContent = (_index + 1) + '/' + _questions.length;
 
-    // Card entrance animation
-    var card = document.getElementById('qa-card');
-    if (card) {
-      card.classList.remove('flipped');
-      card.classList.remove('kh-card-enter');
-      void card.offsetWidth; // reflow
-      card.classList.add('kh-card-enter');
-    }
+    // Entrance animation
+    front.style.animation = 'none';
+    void front.offsetWidth;
+    front.style.animation = 'khCardIn 0.4s ease forwards';
 
     _answered = false;
     var nextBtn = document.getElementById('qa-next-btn');
