@@ -14390,11 +14390,21 @@ function _asStep5(art,act) {
   var bodyHtml=_asCurrentArt?_asFormatBody(_asCurrentArt.body||''):'';
   art.innerHTML='<details class="as-article-toggle"><summary style="cursor:pointer;font-size:12px;color:var(--gray);font-weight:700;padding:8px 0;user-select:none">📖 기사 다시 보기 (클릭해서 펼치기)</summary><div class="as-article-text" style="margin-top:8px">'+bodyHtml+'</div></details>';
   var saved=_asGetTmp(); var txt=(saved&&saved.step5_text)||'';
+  var vocabHints = '';
+  if (_asCurrentArt && _asCurrentArt._vocab && _asCurrentArt._vocab.length) {
+    var hints = _asCurrentArt._vocab.slice(0,6);
+    vocabHints = '<div style="margin-bottom:10px;padding:10px 12px;background:#f0f7ff;border:1px solid #bfdbfe;border-radius:8px">'
+      + '<div style="font-size:10px;font-weight:800;color:#2563eb;margin-bottom:6px">💡 이 단어들을 사용해보세요:</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
+      + hints.map(function(v) { return '<span style="font-size:12px;padding:3px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:20px;color:#1d4ed8;font-weight:700">' + (v.ko||v) + '</span>'; }).join('')
+      + '</div></div>';
+  }
   act.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
     +'<p class="as-section-label" style="margin:0">✍️ 자유 글쓰기</p>'
     +'<span style="font-size:10px;background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:999px;font-weight:700">선택사항</span></div>'
-    +'<p style="font-size:12px;color:var(--gray);margin-bottom:10px">Write freely in Korean about your thoughts on this article or a similar experience.</p>'
-    +'<textarea id="as-write-ta" style="width:100%;height:120px;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-family:\'Noto Sans KR\',sans-serif;font-size:13px;resize:vertical;box-sizing:border-box" placeholder="Write freely in Korean here..." oninput="_asTmpStep5(this.value)">'+txt+'</textarea>'
+    +'<p style="font-size:12px;color:var(--gray);margin-bottom:10px">이 기사를 읽고 느낀 점이나 비슷한 경험을 한국어로 써보세요.</p>'
+    + vocabHints
+    +'<textarea id="as-write-ta" style="width:100%;height:120px;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-family:\'Noto Sans KR\',sans-serif;font-size:13px;resize:vertical;box-sizing:border-box" placeholder="예: 이 기사가 흥미로웠어요. 저도 비슷한 경험이 있어요..." oninput="_asTmpStep5(this.value)">'+txt+'</textarea>'
     +'<div style="margin-top:6px;font-size:11px;color:var(--gray)">💾 자동 저장됩니다.</div>';
   _asSetNav('none','none','');
 }
@@ -14490,7 +14500,7 @@ function _asSaveProgress() {
   var patch = {step:_asStep, stepDone:_asStepDone.slice()};
   if (_asWOState) {
     patch.wo_idx = _asWOState.idx || 0;
-    patch.wo_filledBlanks = (_asWOState.filledBlanks || []).slice();
+    patch.wo_filledBlanks = Array.isArray(_asWOState.filledBlanks) ? _asWOState.filledBlanks.slice() : [];
   }
   _asUpdateTmp(patch);
   // Also save to DB for cross-device sync
