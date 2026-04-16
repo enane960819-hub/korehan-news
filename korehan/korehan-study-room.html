@@ -12190,8 +12190,8 @@ async function _loadGrammarCurriculumFromDB() {
 
 // -- Curriculum localStorage key ------------------------------
 var _GC_STORAGE_KEY = 'kh_grammar_curriculum_progress';
-var _GC_MASTERY_ATTEMPTS = 3;   // min attempts before mastery can be granted
-var _GC_MASTERY_ACCURACY = 0.8; // 80% accuracy required
+var _GC_MASTERY_ATTEMPTS = 1;   // min attempts before mastery can be granted
+var _GC_MASTERY_ACCURACY = 0.5; // 50% accuracy required (at least tried)
 
 function _loadGrammarProgress() {
   try { return JSON.parse(localStorage.getItem(_GC_STORAGE_KEY) || '{}'); } catch(e) { return {}; }
@@ -13189,7 +13189,7 @@ function checkGFFillMCQ(btn, idx, answer, correct, total) {
   res.innerHTML = isCorrect ? '✓ 정답!' : '✗ 정답: <span style="font-family:Noto Serif KR,serif">' + correct + '</span>';
 
   // Track mastery
-  var _gffPatternName = (_gfPattern && _gfPattern.name) || (window._gcCurrentPattern) || null;
+  var _gffPatternName = (window._gcCurrentPattern) || (_gfPattern && _gfPattern.name) || null;
   if (_gffPatternName) updateGrammarMastery(_gffPatternName, isCorrect);
 
   // Show "Next" once all answered
@@ -13261,7 +13261,7 @@ function checkGFTranslateMCQ(btn, idx, answer, correct, total) {
   }
   var res = document.getElementById('gft-res-' + idx);
   if (res) { res.style.color = isCorrect ? '#16a34a' : '#dc2626'; res.innerHTML = isCorrect ? '✓ 정답!' : '✗ 정답: <span style="font-family:Noto Serif KR,serif">' + correct + '</span>'; }
-  var _gftPatternName = (_gfPattern && _gfPattern.name) || (window._gcCurrentPattern) || null;
+  var _gftPatternName = (window._gcCurrentPattern) || (_gfPattern && _gfPattern.name) || null;
   if (_gftPatternName) updateGrammarMastery(_gftPatternName, isCorrect);
   if (Object.keys(window._gftAnswered).length >= total) { var nw = document.getElementById('gft-next-wrap'); if (nw) nw.style.display = 'block'; }
 }
@@ -13286,8 +13286,12 @@ function _renderGFBuild(el) {
       + '<div style="font-size:32px;margin-bottom:10px">' + (st.score >= 2 ? '🎉' : '💪') + '</div>'
       + '<div style="font-size:16px;font-weight:800;color:#0f172a">' + st.score + '/' + st.sentences.length + ' correct</div>'
       + '<div style="font-size:13px;color:#94a3b8;margin-top:6px">Grammar Focus Complete!</div>'
+      + '<div style="display:flex;gap:10px;justify-content:center;margin-top:20px">'
+      + '<button onclick="closeGrammarFocusModal()" style="padding:12px 28px;border-radius:10px;border:1px solid #e2e8f0;background:#fff;color:#334155;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">닫기</button>'
+      + '<button onclick="closeGrammarFocusModal();setTimeout(function(){if(typeof KHGrammarTree!==\'undefined\')KHGrammarTree.open();},300)" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#2255a4,#1e4fa3);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">다음 문법 →</button>'
+      + '</div>'
       + '</div>';
-    var _gfbPatternName = (_gfPattern && _gfPattern.name) || (window._gcCurrentPattern) || null;
+    var _gfbPatternName = (window._gcCurrentPattern) || (_gfPattern && _gfPattern.name) || null;
     if (_gfbPatternName) updateGrammarMastery(_gfbPatternName, st.score > 0);
     return;
   }
@@ -13385,7 +13389,7 @@ function _gfBuildCheck() {
     if (fb) fb.innerHTML = '<span style="color:#dc2626">✗ 정답: ' + st._correct.join(' ') + '</span>';
     if (typeof playWrongSound === 'function') playWrongSound();
   }
-  var _gfbPatternName = (_gfPattern && _gfPattern.name) || (window._gcCurrentPattern) || null;
+  var _gfbPatternName = (window._gcCurrentPattern) || (_gfPattern && _gfPattern.name) || null;
   if (_gfbPatternName) updateGrammarMastery(_gfbPatternName, isCorrect);
   setTimeout(function() { st.idx++; _renderGFBuild(document.getElementById('gf-build-content')); }, 1200);
 }
@@ -14181,7 +14185,7 @@ function _asStep3(art,act) {
       if(blankWords.indexOf(shuffled[i])<0) blankWords.push(shuffled[i]);
     }
   }
-  _asWOState={blankWords:blankWords,filledBlanks:{},originalBody:body};
+  _asWOState={blankWords:blankWords,filledBlanks:{},originalBody:body,selectedBlank:null};
   _asRenderBlankUI();
 }
 function _asRenderBlankUI() {
@@ -14191,6 +14195,7 @@ function _asRenderBlankUI() {
   var body=_asWOState.originalBody;
   var bw=_asWOState.blankWords;
   var fb=_asWOState.filledBlanks;
+  var sel=_asWOState.selectedBlank;
   // Build article HTML with blanks
   var formatted=_asFormatBody(body);
   bw.forEach(function(w,bi){
@@ -14200,24 +14205,24 @@ function _asRenderBlankUI() {
       var cls=filled===w?'su-blank filled correct':'su-blank filled wrong';
       formatted=formatted.replace(new RegExp(escaped),'<span class="'+cls+'" data-bi="'+bi+'" onclick="asBlankClear('+bi+')">'+filled+'</span>');
     } else {
-      formatted=formatted.replace(new RegExp(escaped),'<span class="su-blank" data-bi="'+bi+'">____</span>');
+      var selCls=sel===bi?'su-blank selected':'su-blank';
+      formatted=formatted.replace(new RegExp(escaped),'<span class="'+selCls+'" data-bi="'+bi+'" onclick="asBlankSelect('+bi+')" style="'+(sel===bi?'border-color:#2563eb;background:#eff6ff;':'')+'cursor:pointer">____</span>');
     }
   });
-  art.innerHTML='<div class="su-instruction">Fill in the missing words in the article</div>'
+  art.innerHTML='<div class="su-instruction">빈칸을 먼저 클릭하고, 아래에서 단어를 선택하세요</div>'
     +'<div class="su-blank-article">'+formatted+'</div>';
-  // Pool of words to choose from
+  // Pool of words
   var pool=_asShuffle(bw.map(function(w,bi){return{text:w,bi:bi};}));
   var allEojeols=_asWOState.originalBody.split(/\s+/).filter(function(w){return w.length>=2&&bw.indexOf(w)<0;});
   var distractors=_asShuffle(allEojeols).slice(0,2);
   distractors.forEach(function(d){pool.push({text:d,bi:-1});});
   pool=_asShuffle(pool);
-  var poolHTML=pool.map(function(item,pi){
-    var isUsed=fb[item.bi]!==undefined&&fb[item.bi]!==null;
-    if(item.bi===-1) isUsed=false;
-    return '<div class="su-pool-word'+(isUsed?' used':'')+'" '+(isUsed?'':'onclick="asBlankFill3('+item.bi+',\''+item.text.replace(/'/g,"\\'")+'\')"')+'>'+item.text+'</div>';
+  var poolHTML=pool.map(function(item){
+    var isUsed=Object.values(fb).indexOf(item.text)>=0;
+    return '<div class="su-pool-word'+(isUsed?' used':'')+'" '+(isUsed?'':'onclick="asBlankFillWord(\''+item.text.replace(/'/g,"\\'")+'\')"')+'>'+item.text+'</div>';
   }).join('');
   act.innerHTML='<div class="su-pool">'+poolHTML+'</div>'
-    +'<div id="as-wo-msg" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8"></div>';
+    +'<div id="as-wo-msg" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8">'+(sel!==null?'✅ 빈칸 #'+(sel+1)+' 선택됨 — 아래에서 단어를 고르세요':'👆 위 문장에서 빈칸을 먼저 클릭하세요')+'</div>';
   // Auto-check
   var allFilled=bw.every(function(w,bi){return fb[bi]!==undefined&&fb[bi]!==null;});
   if(allFilled) {
@@ -14227,19 +14232,30 @@ function _asRenderBlankUI() {
   }
   else _asSetNav('none','');
 }
-function asBlankFill3(bi,text) {
+function asBlankSelect(bi) {
   if(!_asWOState) return;
-  if(bi===-1){
-    // Distractor: show feedback
+  _asWOState.selectedBlank=bi;
+  _asRenderBlankUI();
+}
+function asBlankFillWord(text) {
+  if(!_asWOState) return;
+  var sel=_asWOState.selectedBlank;
+  if(sel===null||sel===undefined){
     var msg=document.getElementById('as-wo-msg');
-    if(msg) msg.innerHTML='<span style="color:#dc2626;font-weight:700">이 단어는 기사에 없어요!</span>';
+    if(msg) msg.innerHTML='<span style="color:#f59e0b;font-weight:700">먼저 위에서 빈칸을 클릭하세요!</span>';
     setTimeout(function(){if(msg)msg.innerHTML='';},1500);
     return;
   }
-  if(_asWOState.filledBlanks[bi]!==undefined&&_asWOState.filledBlanks[bi]!==null) return;
-  _asWOState.filledBlanks[bi]=text;
+  // Check if distractor
+  if(_asWOState.blankWords.indexOf(text)<0){
+    var msg=document.getElementById('as-wo-msg');
+    if(msg) msg.innerHTML='<span style="color:#dc2626;font-weight:700">이 단어는 정답이 아니에요!</span>';
+    setTimeout(function(){if(msg)msg.innerHTML='';},1500);
+    return;
+  }
+  _asWOState.filledBlanks[sel]=text;
+  _asWOState.selectedBlank=null;
   _asRenderBlankUI();
-  // Check if all filled
   var bw=_asWOState.blankWords;
   var allFilled=bw.every(function(w,i){return _asWOState.filledBlanks[i]!==undefined&&_asWOState.filledBlanks[i]!==null;});
   if(allFilled){
@@ -14321,22 +14337,17 @@ function _asShowSentenceQuiz() {
   var phrases = (_asStudyContent && _asStudyContent.phrases) || [];
   if (!vocab.length && !phrases.length) { _asSetNav('none',''); return; }
 
-  // Generate correct sentences from vocab/phrases
-  var correct = vocab.slice(0,2).map(function(v){ return { text: v.ko + '을/를 사용해서 문장을 만들 수 있어요.', isCorrect: true }; });
-  // Generate incorrect by swapping particles
-  var incorrect = vocab.slice(0,2).map(function(v){
-    var wrong = v.ko + '이/가 사용해서 문장을 만들 수 있어요.';
-    return { text: wrong, isCorrect: false, correction: v.ko + '을/를 사용해서 문장을 만들 수 있어요.' };
+  // Use actual phrases from article content as correct sentences
+  var correct = phrases.slice(0,2).map(function(p){ return { text: p.ko || p, isCorrect: true }; });
+  if (!correct.length) {
+    correct = vocab.slice(0,2).map(function(v){ return { text: v.example || (v.ko + ' — ' + v.en), isCorrect: true }; });
+  }
+  // Generate plausible-looking but wrong sentences by scrambling
+  var incorrect = vocab.slice(2,4).map(function(v){
+    return { text: (v.ko || '') + '를 ' + (vocab[0] ? vocab[0].ko : '') + ' 했어요', isCorrect: false };
   });
-
-  // Use AI content grammar if available
-  if (_asStudyContent && _asStudyContent.questions && _asStudyContent.questions.length) {
-    var q = _asStudyContent.questions[0];
-    var cIdx = Number(q.correct) || 0;
-    correct = [{ text: (q.options && q.options[cIdx]) || '이 문장은 맞습니다.', isCorrect: true }];
-    incorrect = (q.options || []).filter(function(_,i){ return i !== cIdx; }).slice(0,2).map(function(opt){
-      return { text: opt, isCorrect: false };
-    });
+  if (!incorrect.length) {
+    incorrect = [{ text: '이 문장은 기사와 관련이 없어요', isCorrect: false }];
   }
 
   var all = correct.concat(incorrect).sort(function(){ return Math.random() - .5; });
