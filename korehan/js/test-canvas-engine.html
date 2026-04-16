@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KHCanvas Engine Test</title>
+<style>
+body { background: #0b1626; color: #fff; font-family: sans-serif; padding: 20px; }
+h2 { font-size: 16px; margin: 20px 0 8px; color: #7ab8f5; }
+.test-box { position: relative; width: 400px; height: 300px; background: #1a2a44; border-radius: 12px; border: 1px solid rgba(255,255,255,.1); overflow: hidden; }
+canvas { display: block; }
+button { padding: 8px 16px; border: none; border-radius: 8px; background: #2563eb; color: #fff; font-weight: 700; cursor: pointer; margin: 4px; }
+button:hover { background: #3b82f6; }
+.log { font-size: 12px; color: rgba(255,255,255,.6); margin-top: 4px; }
+.pass { color: #4ade80; }
+.fail { color: #f87171; }
+</style>
+</head>
+<body>
+
+<h1>KHCanvas Engine — Unit Tests</h1>
+
+<!-- Test 1: DPR -->
+<h2>1. DPR Setup</h2>
+<canvas id="test-dpr" style="border:1px solid rgba(255,255,255,.2);border-radius:8px"></canvas>
+<div class="log" id="log-dpr"></div>
+
+<!-- Test 2: AnimLoop -->
+<h2>2. AnimLoop</h2>
+<div class="log" id="log-anim"></div>
+<button onclick="testAnimStop()">Stop AnimLoop Test</button>
+
+<!-- Test 3: Particle -->
+<h2>3. Particle System</h2>
+<div class="test-box" id="particle-box">
+  <canvas id="test-particles"></canvas>
+</div>
+<button onclick="testBurst()">Gold Burst</button>
+<button onclick="testTrail()">Trail Effect</button>
+<button onclick="testMultiBurst()">Multi Burst</button>
+<div class="log" id="log-particle"></div>
+
+<!-- Test 4: Overlay -->
+<h2>4. Overlay on DOM Element</h2>
+<div class="test-box" id="overlay-box" style="display:flex;align-items:center;justify-content:center;">
+  <span style="font-size:24px;font-weight:900;">Click anywhere in this box</span>
+</div>
+<div class="log" id="log-overlay"></div>
+
+<script src="kh-canvas-engine.js"></script>
+<script>
+// ── Test 1: DPR ──
+(function() {
+  var canvas = document.getElementById('test-dpr');
+  var ctx = KHCanvas.DPR.setup(canvas, 300, 60);
+  var log = document.getElementById('log-dpr');
+
+  if (!ctx) { log.innerHTML = '<span class="fail">FAIL: ctx is null</span>'; return; }
+
+  var dpr = KHCanvas.DPR.ratio();
+  var ok = canvas.width === 300 * dpr && canvas.height === 60 * dpr;
+  log.innerHTML = '<span class="' + (ok ? 'pass' : 'fail') + '">' +
+    (ok ? 'PASS' : 'FAIL') + ': canvas=' + canvas.width + 'x' + canvas.height +
+    ' (CSS 300x60, DPR=' + dpr + ')</span>';
+
+  // Draw test text
+  ctx.fillStyle = '#4ade80';
+  ctx.font = '700 18px sans-serif';
+  ctx.fillText('DPR=' + dpr + ' — Crisp text rendering', 10, 35);
+})();
+
+// ── Test 2: AnimLoop ──
+var _animFrames = 0;
+var _animLog = document.getElementById('log-anim');
+
+KHCanvas.AnimLoop.register('test-anim', function(dt) {
+  _animFrames++;
+  if (_animFrames <= 5 || _animFrames % 60 === 0) {
+    _animLog.innerHTML = '<span class="pass">AnimLoop running: frame ' + _animFrames + ', dt=' + dt.toFixed(4) + 's, callbacks=' + KHCanvas.AnimLoop.count() + '</span>';
+  }
+});
+
+function testAnimStop() {
+  KHCanvas.AnimLoop.unregister('test-anim');
+  _animLog.innerHTML += '<br><span class="pass">Stopped. Final frame: ' + _animFrames + ', remaining callbacks: ' + KHCanvas.AnimLoop.count() + '</span>';
+}
+
+// ── Test 3: Particles ──
+var _pCanvas = document.getElementById('test-particles');
+var _pCtx = KHCanvas.DPR.setup(_pCanvas, 400, 300);
+var _ps = new KHCanvas.ParticleSystem(_pCanvas);
+var _pLog = document.getElementById('log-particle');
+
+function testBurst() {
+  _ps.spawn({ x: 200, y: 150, count: 40 });
+  _pLog.innerHTML = '<span class="pass">Spawned 40 particles at center. Active: ' + _ps.particles.length + '</span>';
+}
+
+function testTrail() {
+  _ps.trail({ x: 100, y: 100, duration: 1, rate: 8 });
+  _pLog.innerHTML = '<span class="pass">Trail started at (100,100) for 1s</span>';
+}
+
+function testMultiBurst() {
+  for (var i = 0; i < 5; i++) {
+    var x = 50 + Math.random() * 300;
+    var y = 50 + Math.random() * 200;
+    _ps.spawn({ x: x, y: y, count: 15 });
+  }
+  _pLog.innerHTML = '<span class="pass">5 bursts spawned. Total particles: ' + _ps.particles.length + '</span>';
+}
+
+// ── Test 4: Overlay ──
+var _overlayBox = document.getElementById('overlay-box');
+var _overlayData = KHCanvas.createOverlay(_overlayBox);
+var _oLog = document.getElementById('log-overlay');
+
+if (_overlayData) {
+  _oLog.innerHTML = '<span class="pass">Overlay canvas created: ' + _overlayData.canvas.width + 'x' + _overlayData.canvas.height + '</span>';
+
+  _overlayBox.addEventListener('click', function(e) {
+    var rect = _overlayBox.getBoundingClientRect();
+    var x = e.clientX - rect.left;
+    var y = e.clientY - rect.top;
+    _overlayData.ps.spawn({ x: x, y: y, count: 25 });
+    _oLog.innerHTML = '<span class="pass">Burst at (' + Math.round(x) + ',' + Math.round(y) + '). Active: ' + _overlayData.ps.particles.length + '</span>';
+  });
+} else {
+  _oLog.innerHTML = '<span class="fail">FAIL: overlay creation returned null</span>';
+}
+</script>
+</body>
+</html>
