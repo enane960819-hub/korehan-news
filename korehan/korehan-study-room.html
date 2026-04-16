@@ -3097,6 +3097,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   loadStudyDoneState();
   renderStudyChecklist();
+  // Load grammar curriculum from DB (then refresh banner)
+  _loadGrammarCurriculumFromDB().then(function() { renderGrammarPathBanner(); }).catch(function() { renderGrammarPathBanner(); });
   renderGrammarPathBanner();
   renderPhrase();
 
@@ -12157,6 +12159,28 @@ var GRAMMAR_CURRICULUM = [
   { pattern: '(으)ㄹ 텐데 — Probably / I expect', level: 'Advanced', order: 14, desc: 'Expectation or concern. 힘들 텐데 = it must be hard.' },
   { pattern: '게 되다 — End up / Come to', level: 'Advanced', order: 15, desc: 'Unplanned result. 한국에 살게 되었어요 = I ended up living in Korea.' }
 ];
+
+// -- Load curriculum from DB (overrides hardcoded fallback) -----
+var _gcDbLoaded = false;
+async function _loadGrammarCurriculumFromDB() {
+  if (_gcDbLoaded) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return;
+  try {
+    var r = await sb.from('grammar_curriculum')
+      .select('pattern, level, sort_order, description, active')
+      .eq('active', true)
+      .order('level').order('sort_order');
+    if (r.data && r.data.length >= 10) {
+      GRAMMAR_CURRICULUM = r.data.map(function(row) {
+        return { pattern: row.pattern, level: row.level, order: row.sort_order, desc: row.description || '' };
+      });
+      _gcDbLoaded = true;
+      // Refresh Grammar Path banner if visible
+      if (typeof renderGrammarPathBanner === 'function') renderGrammarPathBanner();
+    }
+  } catch(e) { console.warn('[Grammar Curriculum] DB load failed, using fallback:', e.message); }
+}
 
 // -- Curriculum localStorage key ------------------------------
 var _GC_STORAGE_KEY = 'kh_grammar_curriculum_progress';
