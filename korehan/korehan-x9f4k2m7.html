@@ -6315,6 +6315,7 @@ async function goStudyRoomOps() {
     + '  <button class="btn"       id="srt-tab-feedback" onclick="srShowTab(\'feedback\')"  >📬 피드백 관리</button>'
     + '  <button class="btn"       id="srt-grammar-pdf" onclick="srShowTab(\'grammar-pdf\')">📄 Grammar PDF</button>'
     + '  <button class="btn"       id="srt-fasttrack"   onclick="srShowTab(\'fasttrack\')" >🎯 Fast Track</button>'
+    + '  <button class="btn"       id="srt-tab-listening" onclick="srShowTab(\'listening\')">🎧 Listening Quiz</button>'
     + '</div>'
     + '<div id="sr-tab-body"></div>';
   await srShowTab('topics');
@@ -6347,6 +6348,7 @@ async function srShowTab(tab) {
   if (tab === 'feedback')     { body.innerHTML = srFeedbackDashboardHTML(); await srLoadFeedbackDashboard(); }
   if (tab === 'grammar-pdf')  { body.innerHTML = srGrammarPdfFormHTML(); }
   if (tab === 'fasttrack')   { await ftAdminLoad(body); }
+  if (tab === 'listening')   { body.innerHTML = lqAdminHTML(); await lqAdminLoad(); }
 }
 
 // ── TOPICS tab (daily content — AI-generated + admin-editable) ──────────────────────
@@ -10200,6 +10202,209 @@ async function ftAdminAIGenerate() {
 
   status.innerHTML = '✅ Generated ' + added + '/' + count + ' scenarios' + (errors ? ' (' + errors + ' errors/duplicates)' : '');
   await ftAdminRefresh();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LISTENING QUIZ ADMIN (CRUD for listening_quiz_bank table)
+// ═══════════════════════════════════════════════════════════════
+/*
+  Table: listening_quiz_bank
+  Columns:
+    id          uuid PK default gen_random_uuid()
+    level       text ('Beginner','Intermediate','Advanced')
+    mode        text ('hear','mean')
+    sentence    text (Korean sentence — what TTS reads)
+    correct     text (correct answer)
+    wrong1      text (distractor 1)
+    wrong2      text (distractor 2)
+    explanation text (brief grammar/vocab note)
+    created_at  timestamptz default now()
+    updated_at  timestamptz default now()
+    active      boolean default true
+*/
+
+var _lqAdminData = [];
+
+function lqAdminHTML() {
+  return '<div class="sf-card" style="margin-bottom:12px">'
+    + '<div style="font-weight:800;font-size:15px;margin-bottom:6px">🎧 Listening Quiz 문제 관리</div>'
+    + '<div style="font-size:12px;color:#64748b;margin-bottom:14px">DB에 저장된 문제를 모든 유저가 동일하게 봅니다. AI 생성 또는 직접 입력.</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
+    + '<select id="lqa-level" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"><option value="">전체 레벨</option><option value="Beginner">Beginner</option><option value="Intermediate">Intermediate</option><option value="Advanced">Advanced</option></select>'
+    + '<select id="lqa-mode" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"><option value="">전체 모드</option><option value="hear">🔊 Hear</option><option value="mean">💬 Meaning</option></select>'
+    + '<button class="btn" onclick="lqAdminLoad()">🔄 Load</button>'
+    + '<button class="btn btn-g" onclick="lqAdminShowAdd()">+ 문제 추가</button>'
+    + '<button class="btn" onclick="lqAdminAIGenerate()">🤖 AI 자동 생성 (5문제)</button>'
+    + '</div>'
+    + '<div id="lqa-add-form" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:14px"></div>'
+    + '<div id="lqa-stats" style="font-size:12px;color:#64748b;margin-bottom:10px"></div>'
+    + '<div id="lqa-list"></div>'
+    + '</div>';
+}
+
+async function lqAdminLoad() {
+  var list = document.getElementById('lqa-list');
+  var stats = document.getElementById('lqa-stats');
+  if (!list) return;
+  list.innerHTML = '<div style="color:#94a3b8;padding:20px;text-align:center">Loading...</div>';
+
+  var sb = getSupa(); if (!sb) return;
+  var q = sb.from('listening_quiz_bank').select('*').order('created_at', { ascending: false });
+
+  var level = document.getElementById('lqa-level');
+  if (level && level.value) q = q.eq('level', level.value);
+  var mode = document.getElementById('lqa-mode');
+  if (mode && mode.value) q = q.eq('mode', mode.value);
+
+  try {
+    var r = await q.limit(50);
+    if (r.error) throw r.error;
+    _lqAdminData = r.data || [];
+
+    if (stats) stats.textContent = _lqAdminData.length + ' questions loaded';
+
+    if (!_lqAdminData.length) {
+      list.innerHTML = '<div style="color:#94a3b8;padding:20px;text-align:center">No questions yet. Add or AI-generate.</div>';
+      return;
+    }
+
+    list.innerHTML = _lqAdminData.map(function(q, i) {
+      var lvlColor = q.level === 'Beginner' ? '#22c55e' : q.level === 'Intermediate' ? '#f59e0b' : '#ef4444';
+      return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;background:#fff" id="lqa-row-' + q.id + '">'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+        + '<span style="font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px;background:' + lvlColor + '22;color:' + lvlColor + '">' + (q.level || '?') + '</span>'
+        + '<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#e0f2fe;color:#0369a1">' + (q.mode === 'hear' ? '🔊 Hear' : '💬 Mean') + '</span>'
+        + '<span style="font-size:10px;color:#94a3b8;margin-left:auto">' + (q.active !== false ? '✅ Active' : '⛔ Inactive') + '</span>'
+        + '</div>'
+        + '<div style="font-size:14px;font-weight:700;margin-bottom:4px;font-family:\'Noto Sans KR\',sans-serif">' + esc(q.sentence || '') + '</div>'
+        + '<div style="font-size:12px;color:#16a34a;margin-bottom:2px">✓ ' + esc(q.correct || '') + '</div>'
+        + '<div style="font-size:12px;color:#dc2626;margin-bottom:2px">✗ ' + esc(q.wrong1 || '') + ' / ' + esc(q.wrong2 || '') + '</div>'
+        + (q.explanation ? '<div style="font-size:11px;color:#64748b;margin-top:4px">' + esc(q.explanation) + '</div>' : '')
+        + '<div style="display:flex;gap:6px;margin-top:8px">'
+        + '<button onclick="lqAdminEdit(\'' + q.id + '\')" style="font-size:11px;padding:4px 10px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-family:inherit">✏️ Edit</button>'
+        + '<button onclick="lqAdminToggle(\'' + q.id + '\',' + (q.active !== false ? 'false' : 'true') + ')" style="font-size:11px;padding:4px 10px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-family:inherit">' + (q.active !== false ? '⛔ Deactivate' : '✅ Activate') + '</button>'
+        + '<button onclick="lqAdminDelete(\'' + q.id + '\')" style="font-size:11px;padding:4px 10px;border:1px solid #fca5a5;border-radius:6px;background:#fff;color:#dc2626;cursor:pointer;font-family:inherit">🗑 Delete</button>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="color:#dc2626;padding:20px;text-align:center">Error: ' + e.message + '<br><br><span style="font-size:11px;color:#94a3b8">listening_quiz_bank 테이블이 Supabase에 없을 수 있습니다.<br>Supabase Dashboard에서 테이블을 먼저 생성하세요.</span></div>';
+  }
+}
+
+function lqAdminShowAdd(editData) {
+  var form = document.getElementById('lqa-add-form');
+  if (!form) return;
+  var d = editData || {};
+  form.style.display = '';
+  form.innerHTML = '<div style="font-weight:700;margin-bottom:10px">' + (d.id ? '✏️ Edit Question' : '+ Add New Question') + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+    + '<div class="fg" style="margin:0"><label>Level</label><select id="lqa-f-level" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px"><option value="Beginner"' + (d.level === 'Beginner' ? ' selected' : '') + '>Beginner</option><option value="Intermediate"' + (d.level === 'Intermediate' ? ' selected' : '') + '>Intermediate</option><option value="Advanced"' + (d.level === 'Advanced' ? ' selected' : '') + '>Advanced</option></select></div>'
+    + '<div class="fg" style="margin:0"><label>Mode</label><select id="lqa-f-mode" style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:6px"><option value="hear"' + (d.mode === 'hear' ? ' selected' : '') + '>🔊 Hear</option><option value="mean"' + (d.mode === 'mean' ? ' selected' : '') + '>💬 Meaning</option></select></div>'
+    + '</div>'
+    + '<div class="fg"><label>Sentence (Korean — TTS가 읽는 문장)</label><input id="lqa-f-sentence" value="' + esc(d.sentence || '') + '" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-family:\'Noto Sans KR\',sans-serif"></div>'
+    + '<div class="fg"><label>Correct Answer (정답)</label><input id="lqa-f-correct" value="' + esc(d.correct || '') + '" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px"></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    + '<div class="fg"><label>Wrong 1 (오답1)</label><input id="lqa-f-wrong1" value="' + esc(d.wrong1 || '') + '" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px"></div>'
+    + '<div class="fg"><label>Wrong 2 (오답2)</label><input id="lqa-f-wrong2" value="' + esc(d.wrong2 || '') + '" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px"></div>'
+    + '</div>'
+    + '<div class="fg"><label>Explanation (해설)</label><input id="lqa-f-explanation" value="' + esc(d.explanation || '') + '" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px"></div>'
+    + '<div style="display:flex;gap:8px;margin-top:8px">'
+    + '<button class="btn btn-g" onclick="lqAdminSave(\'' + (d.id || '') + '\')">' + (d.id ? 'Update' : 'Save') + '</button>'
+    + '<button class="btn" onclick="document.getElementById(\'lqa-add-form\').style.display=\'none\'">Cancel</button>'
+    + (d.sentence ? '<button class="btn" onclick="lqAdminPreviewTTS()" style="margin-left:auto">🔊 Preview TTS</button>' : '')
+    + '</div>';
+}
+
+async function lqAdminSave(editId) {
+  var data = {
+    level: document.getElementById('lqa-f-level').value,
+    mode: document.getElementById('lqa-f-mode').value,
+    sentence: document.getElementById('lqa-f-sentence').value.trim(),
+    correct: document.getElementById('lqa-f-correct').value.trim(),
+    wrong1: document.getElementById('lqa-f-wrong1').value.trim(),
+    wrong2: document.getElementById('lqa-f-wrong2').value.trim(),
+    explanation: document.getElementById('lqa-f-explanation').value.trim(),
+    active: true,
+    updated_at: new Date().toISOString()
+  };
+  if (!data.sentence || !data.correct) { toast('Sentence and Correct answer are required'); return; }
+
+  var sb = getSupa(); if (!sb) return;
+  try {
+    if (editId) {
+      await sb.from('listening_quiz_bank').update(data).eq('id', editId);
+      toast('Updated!');
+    } else {
+      await sb.from('listening_quiz_bank').insert(data);
+      toast('Saved!');
+    }
+    document.getElementById('lqa-add-form').style.display = 'none';
+    await lqAdminLoad();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+function lqAdminEdit(id) {
+  var item = _lqAdminData.find(function(q) { return q.id === id; });
+  if (item) lqAdminShowAdd(item);
+}
+
+async function lqAdminToggle(id, active) {
+  var sb = getSupa(); if (!sb) return;
+  await sb.from('listening_quiz_bank').update({ active: active, updated_at: new Date().toISOString() }).eq('id', id);
+  toast(active ? 'Activated' : 'Deactivated');
+  await lqAdminLoad();
+}
+
+async function lqAdminDelete(id) {
+  if (!confirm('Delete this question?')) return;
+  var sb = getSupa(); if (!sb) return;
+  await sb.from('listening_quiz_bank').delete().eq('id', id);
+  toast('Deleted');
+  await lqAdminLoad();
+}
+
+function lqAdminPreviewTTS() {
+  var sentence = document.getElementById('lqa-f-sentence').value;
+  if (!sentence || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  var utt = new SpeechSynthesisUtterance(sentence);
+  utt.lang = 'ko-KR';
+  utt.rate = 1.0;
+  window.speechSynthesis.speak(utt);
+}
+
+async function lqAdminAIGenerate() {
+  var level = (document.getElementById('lqa-level') || {}).value || 'Beginner';
+  toast('AI 생성 중... (5문제)');
+  try {
+    var prompt = 'Generate 5 Korean listening quiz questions for ' + level + ' level.\n'
+      + 'For each question: a Korean sentence, the correct answer (what the sentence means or a key word), 2 wrong options that sound similar, and a brief explanation.\n'
+      + 'Return ONLY JSON:\n{"questions":[{"sentence":"Korean","correct":"answer","wrong1":"wrong","wrong2":"wrong","explanation":"note","mode":"hear"}]}';
+
+    var data = await callClaude({ feature: 'admin-lq-gen', model: 'claude-haiku-4-5-20251001', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] });
+    var raw = (data.content || []).map(function(c) { return c.text || ''; }).join('');
+    var clean = raw.replace(/```json|```/g, '').trim();
+    var s = clean.indexOf('{'), e = clean.lastIndexOf('}');
+    var parsed = JSON.parse(clean.slice(s, e + 1));
+    var questions = parsed.questions || [];
+
+    var sb = getSupa(); if (!sb) return;
+    var added = 0;
+    for (var i = 0; i < questions.length; i++) {
+      var q = questions[i];
+      if (!q.sentence || !q.correct) continue;
+      await sb.from('listening_quiz_bank').insert({
+        level: level, mode: q.mode || 'hear',
+        sentence: q.sentence, correct: q.correct,
+        wrong1: q.wrong1 || '', wrong2: q.wrong2 || '',
+        explanation: q.explanation || '', active: true
+      });
+      added++;
+    }
+    toast('✅ ' + added + ' questions generated and saved!');
+    await lqAdminLoad();
+  } catch(e) { toast('AI generation failed: ' + e.message); }
 }
 
 </script>

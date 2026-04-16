@@ -9257,54 +9257,48 @@ function setLQMode(mode, btn) {
 async function startLQ() {
   if (!requirePlan('listening_quiz')) return;
   var box = document.getElementById('lq-mini');
-  box.innerHTML = '<div class="ai-loading"><div class="spin">✨</div><div style="margin-top:8px;font-size:12px">AI가 문제를 만드는 중…</div></div>';
+  if (box) box.innerHTML = '<div class="ai-loading"><div class="spin">✨</div><div style="margin-top:8px;font-size:12px">Loading quiz…</div></div>';
 
-  // vocab pool: 현재 AI content + conv + stories 통합
-  var pool = getAllVocabPool();
-  if (_aiContent && _aiContent.vocab) {
-    pool = _aiContent.vocab.concat(pool);
+  _lqIdx = 0; _lqScore = 0; _lqQ = [];
+
+  // 1) Try loading from DB (listening_quiz_bank)
+  var sb = getSupa();
+  if (sb) {
+    try {
+      var level = (typeof _currentLevel !== 'undefined') ? _currentLevel : 'Beginner';
+      var q = sb.from('listening_quiz_bank')
+        .select('sentence,correct,wrong1,wrong2,explanation')
+        .eq('active', true)
+        .eq('level', level);
+      if (_lqMode) q = q.eq('mode', _lqMode);
+      var r = await q.limit(20);
+      if (r.data && r.data.length >= 3) {
+        // Shuffle and pick 5
+        var dbQuestions = r.data.sort(function() { return Math.random() - 0.5; }).slice(0, 5);
+        _lqQ = dbQuestions.map(function(q) {
+          return {
+            sentence: q.sentence, correct: q.correct,
+            choices: [q.correct, q.wrong1, q.wrong2].filter(Boolean).sort(function() { return Math.random() - 0.5; }),
+            explanation: q.explanation || ''
+          };
+        });
+        renderLQQ();
+        return;
+      }
+    } catch(e) { console.warn('[LQ] DB load failed, falling back:', e.message); }
   }
-  // 중복 제거 후 랜덤 8개
+
+  // 2) Fallback: local quiz from vocab pool (no API call)
+  var pool = getAllVocabPool();
+  if (_aiContent && _aiContent.vocab) pool = _aiContent.vocab.concat(pool);
   var seen = new Set();
   var uniq = pool.filter(function(w) {
     if (!w || !w.ko || seen.has(w.ko)) return false;
     seen.add(w.ko); return true;
   });
-  var sample = uniq.slice().sort(function(){ return Math.random()-.5; }).slice(0, 8);
-  var words = sample.map(function(w){ return w.ko + '(' + w.en + ')'; }).join(', ')
-    || '경제, 친구, 음식, 날씨, 학교, 여행, 가족, 행복';
-
-  var modeInstr = _lqMode === 'hear'
-    ? 'For each question: provide a correct Korean sentence using one of the words, and 2 wrong Korean sentences that sound similar. User listens and picks correct.'
-    : 'For each question: provide a correct English meaning and 2 wrong English meanings for a Korean word or sentence.';
-
-  var prompt = 'Korean listening quiz generator.\nWords: ' + words + '\n' + modeInstr
-    + '\nReturn ONLY JSON (no markdown):\n{"questions":[{"sentence":"Korean","correct":"answer","wrong1":"wrong","wrong2":"wrong","explanation":"brief grammar note"}]}\nGenerate exactly 5 questions.';
-
-  if (!supaUser) {
-    _lqQ = buildLocalListeningQuiz(sample);
-    _lqIdx = 0; _lqScore = 0;
-    renderLQQ();
-    return;
-  }
-
-  try {
-    var data = await callClaude({ feature:'quiz', model:'claude-haiku-4-5-20251001', max_tokens:1000, messages:[{role:'user',content:prompt}] });
-    var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('');
-    var clean = raw.replace(/```json|```/g,'').trim();
-    var s = clean.indexOf('{'), e = clean.lastIndexOf('}');
-    clean = clean.slice(s, e+1);
-    var parsed = JSON.parse(clean);
-    _lqQ = parsed.questions.map(function(q){
-      return { sentence:q.sentence, correct:q.correct, choices:[q.correct,q.wrong1,q.wrong2].sort(function(){ return Math.random()-.5; }), explanation:q.explanation };
-    });
-    _lqIdx = 0; _lqScore = 0;
-    renderLQQ();
-  } catch(err) {
-    _lqQ = buildLocalListeningQuiz(sample);
-    _lqIdx = 0; _lqScore = 0;
-    renderLQQ();
-  }
+  var sample = uniq.sort(function() { return Math.random() - 0.5; }).slice(0, 8);
+  _lqQ = buildLocalListeningQuiz(sample);
+  renderLQQ();
 }
 
 function buildLocalListeningQuiz(words) {
