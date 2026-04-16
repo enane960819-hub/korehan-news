@@ -3672,8 +3672,10 @@ function renderArticleVocab(a) {
   Object.keys(VOCAB).forEach(function(k) {
     if (k.length < 2) return; // skip single syllables
     var re = new RegExp('(?<![가-힣])' + k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '(?![가-힣])');
-    if (re.test(text) && found.length < 10) found.push(k);
+    if (re.test(text)) found.push(k);
   });
+  // Sort: longer words first for better readability
+  found.sort(function(a, b) { return b.length - a.length; });
   if (!found.length) { var box = el.closest('.art-vocab-box'); if(box) box.style.display = 'none'; return; }
 
   el.innerHTML = found.map(function(k) {
