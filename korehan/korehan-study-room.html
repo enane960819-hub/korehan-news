@@ -13059,78 +13059,195 @@ function checkGFFillMCQ(btn, idx, answer, correct, total) {
   }
 }
 
+// ④ Translate — MCQ: pick the correct Korean translation
 function loadGFTranslate(p) {
   var el = document.getElementById('gf-translate-content');
   if (!el || !p) return;
-  var examples = (p.examples || [{ ko: p.ex_ko||'', en: p.ex_en||'' }]).filter(function(e){ return e.en; });
+  var examples = (p.examples || [{ ko: p.ex_ko||'', en: p.ex_en||'' }]).filter(function(e){ return e.en && e.ko; });
   var total = examples.length;
-  window._gftRevealed = 0;
+  window._gftAnswered = {};
 
   var qs = examples.map(function(ex, i) {
-    return '<div style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:12px;padding:16px 18px;margin-bottom:14px">'
+    // Build 4 choices: correct Korean + 3 distractors from other examples
+    var correct = ex.ko;
+    var distractors = examples.filter(function(e,j){ return j !== i && e.ko !== correct; }).map(function(e){ return e.ko; });
+    var fallbackKo = ['저는 학생이에요','날씨가 좋아요','한국어를 배워요','친구가 왔어요','커피를 마셔요','영화를 봐요'];
+    distractors = distractors.concat(fallbackKo).filter(function(d){ return d !== correct; });
+    distractors.sort(function(){ return Math.random() - 0.5; });
+    var choices = [correct].concat(distractors.slice(0,3));
+    for (var ci = choices.length - 1; ci > 0; ci--) {
+      var cj = Math.floor(Math.random() * (ci + 1));
+      var ct = choices[ci]; choices[ci] = choices[cj]; choices[cj] = ct;
+    }
+
+    return '<div style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:12px;padding:16px 18px;margin-bottom:14px" id="gft-card-' + i + '">'
       + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">문장 ' + (i+1) + ' / ' + total + '</div>'
       + '<p style="font-size:15px;font-weight:700;color:#0f172a;margin:0 0 14px;line-height:1.7;background:#fffbeb;border-radius:8px;padding:10px 12px">' + ex.en + '</p>'
-      + '<textarea id="gft-inp-' + i + '" placeholder="Translate into Korean… (use the grammar pattern)" '
-      + 'style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f2;border-radius:8px;font-size:15px;font-family:Noto Serif KR,serif;resize:vertical;min-height:62px;box-sizing:border-box;outline:none"></textarea>'
-      + '<div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">'
-      + '<button onclick="revealGFTranslate(' + i + ',\'' + ex.ko.replace(/'/g,"\\'") + '\',' + total + ')" id="gft-revbtn-' + i + '" '
-      + 'style="padding:8px 16px;background:#f1f5f9;border:1.5px solid #e2e8f2;border-radius:8px;font-size:12px;font-weight:700;color:#475569;cursor:pointer;font-family:inherit">Show Answer</button>'
+      + '<div style="display:flex;flex-direction:column;gap:8px">'
+      + choices.map(function(c) {
+          return '<button onclick="checkGFTranslateMCQ(this,' + i + ',\'' + c.replace(/'/g,"\\'") + '\',\'' + correct.replace(/'/g,"\\'") + '\',' + total + ')" '
+            + 'style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f2;border-radius:10px;background:#fff;font-size:14px;font-weight:700;'
+            + 'font-family:Noto Serif KR,serif;cursor:pointer;text-align:left;transition:all .15s;color:#0f172a"'
+            + ' onmouseover="this.style.borderColor=\'#93c5fd\'" onmouseout="this.style.borderColor=\'#e2e8f2\'"'
+            + '>' + c + '</button>';
+        }).join('')
       + '</div>'
-      + '<div id="gft-ans-' + i + '" style="display:none;margin-top:10px;padding:12px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;font-family:Noto Serif KR,serif;font-size:15px;color:#166534;font-weight:700;line-height:1.7">'
-      + ex.ko + '</div>'
+      + '<div id="gft-res-' + i + '" style="margin-top:10px;font-size:13px;font-weight:700"></div>'
       + '</div>';
   }).join('');
 
   el.innerHTML = '<div style="margin-bottom:14px;font-size:13px;color:#475569;line-height:1.7">'
-    + 'Translate the English sentence into Korean using the grammar pattern <span style="background:#eff6ff;color:#2255a4;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span>.'
+    + 'Choose the correct Korean translation. <span style="background:#eff6ff;color:#2255a4;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span>'
     + '</div>'
     + qs
     + '<div id="gft-next-wrap" style="display:none;text-align:center;margin-top:8px">'
-    + '<button onclick="gfAdvanceTo(\'build\')" style="padding:12px 32px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Build Your Sentence →</button>'
+    + '<button onclick="gfAdvanceTo(\'build\')" style="padding:12px 32px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">어순 배열 →</button>'
     + '</div>';
 }
 
-function revealGFTranslate(idx, answer, total) {
-  var ans = document.getElementById('gft-ans-' + idx);
-  var btn = document.getElementById('gft-revbtn-' + idx);
-  if (ans) ans.style.display = 'block';
-  if (btn) { btn.disabled = true; btn.style.opacity = '.45'; }
-  window._gftRevealed = (window._gftRevealed || 0) + 1;
-  if (window._gftRevealed >= total) {
-    var nw = document.getElementById('gft-next-wrap');
-    if (nw) nw.style.display = 'block';
+function checkGFTranslateMCQ(btn, idx, answer, correct, total) {
+  if (window._gftAnswered && window._gftAnswered[idx]) return;
+  window._gftAnswered = window._gftAnswered || {};
+  window._gftAnswered[idx] = true;
+  var isCorrect = answer === correct;
+  var card = document.getElementById('gft-card-' + idx);
+  if (card) {
+    card.querySelectorAll('button').forEach(function(b) {
+      b.style.pointerEvents = 'none';
+      if (b.textContent.trim() === correct) { b.style.background = '#f0fdf4'; b.style.borderColor = '#86efac'; b.style.color = '#166534'; }
+      else if (b === btn && !isCorrect) { b.style.background = '#fef2f2'; b.style.borderColor = '#fca5a5'; b.style.color = '#dc2626'; }
+      else { b.style.opacity = '.4'; }
+    });
   }
+  var res = document.getElementById('gft-res-' + idx);
+  if (res) { res.style.color = isCorrect ? '#16a34a' : '#dc2626'; res.innerHTML = isCorrect ? '✓ 정답!' : '✗ 정답: <span style="font-family:Noto Serif KR,serif">' + correct + '</span>'; }
+  var _gftPatternName = (_gfPattern && _gfPattern.name) || (window._gcCurrentPattern) || null;
+  if (_gftPatternName) updateGrammarMastery(_gftPatternName, isCorrect);
+  if (Object.keys(window._gftAnswered).length >= total) { var nw = document.getElementById('gft-next-wrap'); if (nw) nw.style.display = 'block'; }
 }
 
+// ⑤ Build — Word order arrangement (tap-to-build, not free-form textarea)
 function loadGFBuild(p) {
   var el = document.getElementById('gf-build-content');
   if (!el || !p) return;
+  var examples = (p.examples || [{ ko: p.ex_ko||'', en: p.ex_en||'' }]).filter(function(e){ return e.ko && e.ko.split(/\s+/).length >= 3; });
+  if (!examples.length) { el.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8">No examples available for word ordering.</div>'; return; }
+  // Pick up to 3 sentences
+  var selected = examples.sort(function(){ return Math.random()-0.5; }).slice(0, 3);
+  window._gfBuildState = { sentences: selected, idx: 0, score: 0, placed: [] };
+  _renderGFBuild(el);
+}
 
-  var topic = (document.getElementById('wcard-topic-ko') || {}).textContent || 'Today\'s Topic';
-  var prompts = [
-    'Write a sentence about today\'s topic (<em>' + topic + '</em>) using <strong style="color:#2255a4">' + (p.name||'this pattern') + '</strong>.',
-    'Describe your daily life or experience using <strong style="color:#2255a4">' + (p.name||'this pattern') + '</strong>.',
-    'Write about a favorite place or person using <strong style="color:#2255a4">' + (p.name||'this pattern') + '</strong>.'
-  ];
-
-  var refBox = '<div style="background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border-radius:12px;padding:14px 16px;margin-bottom:20px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#6b7db8;margin-bottom:6px">Reference Pattern</div>'
-    + '<p style="font-size:15px;font-weight:800;color:#2255a4;margin:0;font-family:Noto Serif KR,serif">' + (p.name||'') + '</p>'
-    + (p.structure ? '<p style="font-size:12px;color:#475569;margin:4px 0 0">' + p.structure + '</p>' : '')
-    + '</div>';
-
-  var qs = prompts.map(function(prompt, i) {
-    return '<div style="margin-bottom:16px">'
-      + '<p style="font-size:13px;color:#0f172a;margin:0 0 8px;line-height:1.7">' + prompt + '</p>'
-      + '<textarea id="gfb-inp-' + i + '" placeholder="Write your own sentence…" '
-      + 'style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f2;border-radius:8px;font-size:15px;font-family:Noto Serif KR,serif;resize:vertical;min-height:62px;box-sizing:border-box;outline:none"></textarea>'
+function _renderGFBuild(el) {
+  var st = window._gfBuildState;
+  if (!st || st.idx >= st.sentences.length) {
+    // Done
+    el.innerHTML = '<div style="text-align:center;padding:30px">'
+      + '<div style="font-size:32px;margin-bottom:10px">' + (st.score >= 2 ? '🎉' : '💪') + '</div>'
+      + '<div style="font-size:16px;font-weight:800;color:#0f172a">' + st.score + '/' + st.sentences.length + ' correct</div>'
+      + '<div style="font-size:13px;color:#94a3b8;margin-top:6px">Grammar Focus Complete!</div>'
       + '</div>';
-  }).join('');
+    var _gfbPatternName = (_gfPattern && _gfPattern.name) || (window._gcCurrentPattern) || null;
+    if (_gfbPatternName) updateGrammarMastery(_gfbPatternName, st.score > 0);
+    return;
+  }
+  var ex = st.sentences[st.idx];
+  var words = ex.ko.replace(/[.!?~]/g,'').trim().split(/\s+/);
+  var shuffled = words.slice();
+  for (var i = shuffled.length - 1; i > 0; i--) { var j = Math.floor(Math.random()*(i+1)); var t=shuffled[i]; shuffled[i]=shuffled[j]; shuffled[j]=t; }
+  if (shuffled.join(' ') === words.join(' ') && shuffled.length > 1) { var tmp=shuffled[0]; shuffled[0]=shuffled[shuffled.length-1]; shuffled[shuffled.length-1]=tmp; }
+  st.placed = [];
+  st._correct = words;
+  st._pool = shuffled.map(function(w,i){ return {text:w,idx:i,used:false}; });
 
-  el.innerHTML = '<div style="margin-bottom:14px;font-size:13px;color:#475569">Now write your own sentences! Complete at least 1 to finish Grammar Focus.</div>'
-    + refBox + qs
-    + '<button onclick="checkGFBuild()" style="width:100%;padding:13px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:4px">Done ✓ Save</button>'
-    + '<div id="gfb-feedback" style="margin-top:12px;font-size:13px;color:#475569"></div>';
+  el.innerHTML = '<div style="margin-bottom:14px">'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
+    + '<span style="font-size:11px;font-weight:800;color:#2255a4;background:rgba(37,99,235,.1);padding:4px 10px;border-radius:8px">' + (st.idx+1) + '/' + st.sentences.length + '</span>'
+    + '<span style="font-size:13px;font-weight:700;color:#0f172a">Arrange the words</span></div>'
+    + (ex.en ? '<div style="font-size:13px;color:#64748b;margin-bottom:12px;padding:8px 12px;background:#fffbeb;border-radius:8px">' + ex.en + '</div>' : '')
+    + '<div id="gfb-target" style="min-height:48px;border:2px dashed #bfdbfe;background:#f0f7ff;border-radius:14px;padding:10px 12px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">'
+    + '<span style="font-size:12px;color:#94a3b8">Tap words below</span></div>'
+    + '<div id="gfb-pool" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">'
+    + shuffled.map(function(w,i) {
+        return '<button id="gfbw_'+i+'" onclick="_gfBuildTap('+i+')" style="padding:10px 16px;border-radius:12px;border:2px solid #e2e8f0;background:#fff;color:#0f172a;font-size:15px;font-weight:700;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif;transition:all .15s">' + w + '</button>';
+      }).join('')
+    + '</div>'
+    + '<div style="display:flex;gap:8px">'
+    + '<button onclick="_gfBuildCheck()" style="flex:1;padding:10px;background:#2255a4;border:none;border-radius:10px;color:#fff;font-weight:700;cursor:pointer;font-family:inherit">Check</button>'
+    + '<button onclick="_gfBuildReset()" style="padding:10px 16px;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:10px;color:#64748b;font-weight:700;cursor:pointer;font-family:inherit">Reset</button>'
+    + '</div>'
+    + '<div id="gfb-feedback" style="margin-top:10px;font-size:13px;font-weight:700"></div>'
+    + '</div>';
+}
+
+function _gfBuildTap(idx) {
+  var st = window._gfBuildState;
+  if (!st) return;
+  var item = st._pool[idx];
+  if (item.used) return;
+  item.used = true;
+  st.placed.push(item.text);
+  var btn = document.getElementById('gfbw_' + idx);
+  if (btn) { btn.disabled = true; btn.style.opacity = '.3'; }
+  var target = document.getElementById('gfb-target');
+  if (target) {
+    target.innerHTML = st.placed.map(function(w,i) {
+      return '<span onclick="_gfBuildRemove('+i+')" style="padding:8px 14px;border-radius:10px;background:#dbeafe;border:1px solid #93c5fd;color:#1d4ed8;font-size:14px;font-weight:700;cursor:pointer">' + w + '</span>';
+    }).join('');
+  }
+}
+
+function _gfBuildRemove(idx) {
+  var st = window._gfBuildState;
+  if (!st) return;
+  st.placed.splice(idx, 1);
+  st._pool.forEach(function(p) { p.used = false; });
+  st.placed.forEach(function(w) {
+    for (var i = 0; i < st._pool.length; i++) { if (!st._pool[i].used && st._pool[i].text === w) { st._pool[i].used = true; break; } }
+  });
+  st._pool.forEach(function(p, i) {
+    var btn = document.getElementById('gfbw_' + i);
+    if (btn) { btn.disabled = p.used; btn.style.opacity = p.used ? '.3' : '1'; }
+  });
+  var target = document.getElementById('gfb-target');
+  if (target) {
+    target.innerHTML = st.placed.length ? st.placed.map(function(w,i) {
+      return '<span onclick="_gfBuildRemove('+i+')" style="padding:8px 14px;border-radius:10px;background:#dbeafe;border:1px solid #93c5fd;color:#1d4ed8;font-size:14px;font-weight:700;cursor:pointer">' + w + '</span>';
+    }).join('') : '<span style="font-size:12px;color:#94a3b8">Tap words below</span>';
+  }
+}
+
+function _gfBuildReset() {
+  var st = window._gfBuildState;
+  if (!st) return;
+  st.placed = [];
+  st._pool.forEach(function(p,i) { p.used = false; var btn = document.getElementById('gfbw_'+i); if(btn){btn.disabled=false;btn.style.opacity='1';} });
+  var target = document.getElementById('gfb-target');
+  if (target) target.innerHTML = '<span style="font-size:12px;color:#94a3b8">Tap words below</span>';
+  var fb = document.getElementById('gfb-feedback');
+  if (fb) fb.innerHTML = '';
+}
+
+function _gfBuildCheck() {
+  var st = window._gfBuildState;
+  if (!st || st.placed.length !== st._correct.length) {
+    var fb = document.getElementById('gfb-feedback');
+    if (fb) fb.innerHTML = '<span style="color:#f59e0b">Place all words first!</span>';
+    return;
+  }
+  var isCorrect = st.placed.join(' ') === st._correct.join(' ');
+  var fb = document.getElementById('gfb-feedback');
+  if (isCorrect) {
+    st.score++;
+    if (fb) fb.innerHTML = '<span style="color:#16a34a">✅ Correct!</span>';
+    if (typeof playCorrectSound === 'function') playCorrectSound();
+  } else {
+    if (fb) fb.innerHTML = '<span style="color:#dc2626">✗ 정답: ' + st._correct.join(' ') + '</span>';
+    if (typeof playWrongSound === 'function') playWrongSound();
+  }
+  var _gfbPatternName = (_gfPattern && _gfPattern.name) || (window._gcCurrentPattern) || null;
+  if (_gfbPatternName) updateGrammarMastery(_gfbPatternName, isCorrect);
+  setTimeout(function() { st.idx++; _renderGFBuild(document.getElementById('gf-build-content')); }, 1200);
 }
 
 function checkGFBuild() {

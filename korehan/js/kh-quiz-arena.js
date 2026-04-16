@@ -128,11 +128,28 @@
         + '</div>'
         + '<button onclick="KHQuizArena._checkOrder()" style="width:100%;padding:12px;border-radius:12px;border:none;background:#2563eb;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Check</button>';
     } else if (q.type === 'typed') {
-      html = '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Write in Korean</div>'
+      // Convert typed to MCQ: show English, pick correct Korean
+      var typedChoices = q.choices || [q.correct];
+      // Build distractors if not provided
+      if (typedChoices.length < 4) {
+        var pool = _questions.filter(function(qq) { return qq.word_ko && qq.word_ko !== q.correct; }).map(function(qq) { return qq.word_ko; });
+        var fallback = ['학생','친구','음식','날씨','학교','여행','가족','행복','경제','시간'];
+        pool = pool.concat(fallback).filter(function(w) { return w !== q.correct; });
+        pool.sort(function() { return Math.random() - 0.5; });
+        typedChoices = [q.correct].concat(pool.slice(0, 3));
+        for (var ti = typedChoices.length - 1; ti > 0; ti--) {
+          var tj = Math.floor(Math.random() * (ti + 1));
+          var tt = typedChoices[ti]; typedChoices[ti] = typedChoices[tj]; typedChoices[tj] = tt;
+        }
+      }
+      html = '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Choose the Korean word</div>'
         + '<div style="font-size:22px;font-weight:800;color:#fff;text-align:center;margin:16px 0">' + _esc(q.word_en) + '</div>'
         + (q.word_rom ? '<div style="font-size:13px;color:rgba(255,255,255,.35);text-align:center;margin-bottom:16px">Hint: ' + _esc(q.word_rom) + '</div>' : '')
-        + '<input id="qa-typed-input" type="text" placeholder="한국어로 입력..." style="width:100%;padding:14px 16px;border-radius:12px;border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:\'Noto Sans KR\',sans-serif;outline:none;margin-bottom:12px" onkeydown="if(event.key===\'Enter\')KHQuizArena._checkTyped()">'
-        + '<button onclick="KHQuizArena._checkTyped()" style="width:100%;padding:12px;border-radius:12px;border:none;background:#2563eb;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Check</button>';
+        + '<div style="display:flex;flex-direction:column;gap:8px" id="qa-choices">'
+        + typedChoices.map(function(c) {
+            return '<button class="qa-choice-btn" onclick="KHQuizArena._selectMC(this,\'' + _escAttr(c) + '\')" style="width:100%;padding:14px 16px;border-radius:12px;border:1.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;font-size:16px;font-weight:700;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif;text-align:center;transition:all .15s">' + _esc(c) + '</button>';
+          }).join('')
+        + '</div>';
     }
 
     html += '<div id="qa-feedback" style="margin-top:14px;display:none"></div>';
@@ -444,7 +461,7 @@
     if (overlay) {
       overlay.classList.remove('hidden');
       requestAnimationFrame(function() { overlay.classList.add('active'); });
-      KHCanvas.hideBottomNav();
+      if (window.KHCanvas) KHCanvas.hideBottomNav();
     }
 
     if (_questions.length > 0) {
@@ -466,7 +483,7 @@
     if (overlay) {
       overlay.classList.remove('active');
       setTimeout(function() { overlay.classList.add('hidden'); }, 250);
-    KHCanvas.showBottomNav();
+    if (window.KHCanvas) KHCanvas.showBottomNav();
     }
     if (_gauge) { _gauge.destroy(); _gauge = null; }
     if (_particleOverlay) {

@@ -16,6 +16,26 @@
 (function() {
   'use strict';
 
+  // roundRect polyfill for older browsers (iOS <15.4, Android Chrome <94)
+  if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+      if (typeof r === 'number') r = [r, r, r, r];
+      if (!Array.isArray(r)) r = [0, 0, 0, 0];
+      var tl = r[0] || 0, tr = r[1] || r[0] || 0, br = r[2] || r[0] || 0, bl = r[3] || r[1] || r[0] || 0;
+      this.moveTo(x + tl, y);
+      this.lineTo(x + w - tr, y);
+      this.arcTo(x + w, y, x + w, y + tr, tr);
+      this.lineTo(x + w, y + h - br);
+      this.arcTo(x + w, y + h, x + w - br, y + h, br);
+      this.lineTo(x + bl, y + h);
+      this.arcTo(x, y + h, x, y + h - bl, bl);
+      this.lineTo(x, y + tl);
+      this.arcTo(x, y, x + tl, y, tl);
+      this.closePath();
+      return this;
+    };
+  }
+
   var KHC = window.KHCanvas = {};
 
   /* ──────────────────────────────────────────────────────────

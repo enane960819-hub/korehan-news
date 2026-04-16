@@ -199,7 +199,7 @@
     if (!body) return;
 
     // Stop waveform
-    KHCanvas.AnimLoop.unregister(_waveAnimId);
+    if (window.KHCanvas) KHCanvas.AnimLoop.unregister(_waveAnimId);
 
     body.innerHTML =
       '<div style="text-align:center;padding:24px 0">'
@@ -266,7 +266,7 @@
     if (overlay) {
       overlay.classList.remove('hidden');
       requestAnimationFrame(function() { overlay.classList.add('active'); });
-      KHCanvas.hideBottomNav();
+      if (window.KHCanvas) KHCanvas.hideBottomNav();
     }
 
     // Setup waveform canvas
@@ -294,10 +294,10 @@
     if (overlay) {
       overlay.classList.remove('active');
       setTimeout(function() { overlay.classList.add('hidden'); }, 250);
-    KHCanvas.showBottomNav();
+    if (window.KHCanvas) KHCanvas.showBottomNav();
     }
     window.speechSynthesis && window.speechSynthesis.cancel();
-    KHCanvas.AnimLoop.unregister(_waveAnimId);
+    if (window.KHCanvas) KHCanvas.AnimLoop.unregister(_waveAnimId);
     _isPlaying = false;
   };
 
