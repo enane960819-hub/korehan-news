@@ -1023,6 +1023,29 @@ function formHTML(a){
       <div id="f-img-uploading" style="display:none;font-size:12px;color:#0ea5e9;margin-top:4px">⏳ Uploading...</div>
       <img id="f-imgprev" style="${v.image?'':'display:none'};max-width:100%;max-height:160px;border-radius:4px;margin-top:8px;object-fit:cover" src="${esc(v.image||'')}">
     </div>
+    <div class="fg">
+      <label>썸네일 <span style="font-weight:400;text-transform:none;letter-spacing:0">(목록/카드용 별도 이미지 — 비워두면 기사 이미지 사용)</span></label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="text" id="f-thumbnail" value="${esc(v.thumbnail||'')}" placeholder="https://… (선택사항)" style="flex:1;min-width:160px" oninput="livePreviewThumb()">
+        <label style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;background:#8b5cf6;color:#fff;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;border:none">
+          <span id="f-thumb-upload-lbl">📁 업로드</span>
+          <input type="file" id="f-thumb-file" accept="image/*" style="display:none" onchange="adminHandleThumbFile(this)">
+        </label>
+      </div>
+      <img id="f-thumbprev" style="${v.thumbnail?'':'display:none'};max-width:100%;max-height:120px;border-radius:4px;margin-top:8px;object-fit:cover" src="${esc(v.thumbnail||'')}">
+    </div>
+    <div class="fg">
+      <label>영상 <span style="font-weight:400;text-transform:none;letter-spacing:0">(mp4/webm 업로드 — 있으면 기사 페이지에서 이미지 대신 영상 표시)</span></label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="text" id="f-video" value="${esc(v.video_url||'')}" placeholder="https://… (선택사항)" style="flex:1;min-width:160px">
+        <label style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;background:#ef4444;color:#fff;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;border:none">
+          <span id="f-vid-upload-lbl">🎬 업로드</span>
+          <input type="file" id="f-vid-file" accept="video/mp4,video/webm,video/quicktime" style="display:none" onchange="adminHandleVideoFile(this)">
+        </label>
+      </div>
+      <div id="f-vid-uploading" style="display:none;font-size:12px;color:#ef4444;margin-top:4px">⏳ Uploading video...</div>
+      <video id="f-vidprev" style="${v.video_url?'':'display:none'};max-width:100%;max-height:160px;border-radius:4px;margin-top:8px" src="${esc(v.video_url||'')}" controls></video>
+    </div>
     <div class="fg" style="flex-direction:row;align-items:center;gap:10px">
       <input type="checkbox" id="f-feat" ${v.featured?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0">
       <label for="f-feat" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:600;cursor:pointer;color:var(--dk)">⭐ Featured (메인 히어로에 표시)</label>
@@ -1089,6 +1112,59 @@ async function adminHandleImgFile(input) {
   }
 }
 
+function livePreviewThumb() {
+  var url = document.getElementById('f-thumbnail')?.value || '';
+  var p = document.getElementById('f-thumbprev');
+  if (!p) return;
+  if (url) { p.src = url; p.style.display = 'block'; } else { p.style.display = 'none'; }
+}
+
+async function adminHandleThumbFile(input) {
+  if (!input.files || !input.files[0]) return;
+  var lbl = document.getElementById('f-thumb-upload-lbl');
+  if (lbl) lbl.textContent = '⏳';
+  try {
+    var url = await adminUploadArticleImage(input.files[0]);
+    var urlInput = document.getElementById('f-thumbnail');
+    if (urlInput) { urlInput.value = url; livePreviewThumb(); }
+  } catch(e) {
+    toast('Thumbnail upload failed: ' + e.message, true);
+  } finally {
+    if (lbl) lbl.textContent = '📁 업로드';
+    input.value = '';
+  }
+}
+
+async function adminHandleVideoFile(input) {
+  if (!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  if (file.size > 100 * 1024 * 1024) { toast('영상 파일 100MB 초과!', true); input.value = ''; return; }
+  var lbl = document.getElementById('f-vid-upload-lbl');
+  var spinner = document.getElementById('f-vid-uploading');
+  if (lbl) lbl.textContent = '⏳';
+  if (spinner) spinner.style.display = '';
+  try {
+    var sb = getSb();
+    if (!sb) throw new Error('Admin client not available');
+    var ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
+    var path = 'videos/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + ext;
+    var up = await sb.storage.from('article-images').upload(path, file, { upsert: true, contentType: file.type });
+    if (up.error) throw up.error;
+    var url = sb.storage.from('article-images').getPublicUrl(path).data.publicUrl;
+    var urlInput = document.getElementById('f-video');
+    if (urlInput) urlInput.value = url;
+    var prev = document.getElementById('f-vidprev');
+    if (prev) { prev.src = url; prev.style.display = 'block'; }
+    toast('✅ 영상 업로드 완료');
+  } catch(e) {
+    toast('Video upload failed: ' + e.message, true);
+  } finally {
+    if (lbl) lbl.textContent = '🎬 업로드';
+    if (spinner) spinner.style.display = 'none';
+    input.value = '';
+  }
+}
+
 async function adminHandleImgUploadForArticle(input, articleId) {
   // Called from the 기사 Image Management upload button per article
   if (!input.files || !input.files[0]) return;
@@ -1113,6 +1189,8 @@ async function submitForm(status){
   const sec  = document.getElementById('f-sec')?.value||'사회';
   const date = document.getElementById('f-date')?.value||today();
   const image=(document.getElementById('f-image')?.value||'').trim();
+  const thumbnail=(document.getElementById('f-thumbnail')?.value||'').trim();
+  const video_url=(document.getElementById('f-video')?.value||'').trim();
   const feat    = document.getElementById('f-feat')?.checked||false;
   const breaking = document.getElementById('f-break')?.checked||false;
   const level      = document.getElementById('f-level')?.value||'';
@@ -1124,6 +1202,8 @@ async function submitForm(status){
   const article = {
     id: eid || uid(),
     title, body, section: sec, date, image,
+    thumbnail: thumbnail || null,
+    video_url: video_url || null,
     featured: feat, breaking: breaking, level,
     reporter_id: reporterId || null,
     status

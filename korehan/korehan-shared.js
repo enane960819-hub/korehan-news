@@ -2551,9 +2551,10 @@ function renderAllList(listEl, articles) {
     var lvl = a.level || '';
     var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : lvl === 'Starter' ? 'lvl-s' : 'lvl-b';
     var cat = (a.section || '').toLowerCase();
-    var hasImg = a.image && a.image.length > 10 && a.image.indexOf('data:image/gif') !== 0;
+    var cardSrc = a.thumbnail || a.image;
+    var hasImg = cardSrc && cardSrc.length > 10 && cardSrc.indexOf('data:image/gif') !== 0;
     var img = hasImg
-      ? '<img class="nc-img" src="' + a.image + '" alt="" loading="lazy" onerror="this.outerHTML=\'<div class=\\\'nc-img nc-img-fallback\\\'></div>\'">'
+      ? '<img class="nc-img" src="' + cardSrc + '" alt="" loading="lazy" onerror="this.outerHTML=\'<div class=\\\'nc-img nc-img-fallback\\\'></div>\'">'
       : '<div class="nc-img nc-img-fallback"></div>';
     var dateStr = a.date ? new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
     return '<div class="nc nc-overlay" data-section="' + escapeHtml(cat) + '" data-level="' + escapeHtml(lvl) + '" onclick="location.href=\'' + articleUrl(a.id) + '\'">'
@@ -2729,6 +2730,11 @@ function renderArticlePage() {
   var img = a.image || KH_IMG_PLACEHOLDER;
   var dateStr = a.date ? new Date(a.date).toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'}) : '';
 
+  // Hero media: video if available, otherwise image
+  var heroMedia = a.video_url
+    ? '<div class="art-hero-img" style="position:relative"><video src="' + a.video_url + '" controls playsinline preload="metadata" style="width:100%;display:block;border-radius:inherit" poster="' + img + '"></video>'
+    : '<div class="art-hero-img" style="position:relative"><img src="' + img + '" alt="" onerror="this.style.display=\'none\'">';
+
   wrap.innerHTML =
     '<article class="kh-article-wrap">'
 
@@ -2739,9 +2745,9 @@ function renderArticlePage() {
     + '<a href="korehan-section.html?s=' + encodeURIComponent(a.section) + '">' + sectionLabel(a.section) + '</a>'
     + '</nav>'
 
-    // 통합 기사 카드: 이미지(+뱃지 오버레이) → 제목 → 메타 → 탭 → 본문
+    // 통합 기사 카드: 미디어(+뱃지 오버레이) → 제목 → 메타 → 탭 → 본문
     + '<div class="art-card">'
-    + '<div class="art-hero-img" style="position:relative"><img src="' + img + '" alt="" onerror="this.style.display=\'none\'">'
+    + heroMedia
     + '<div class="art-badges-overlay">'
     + '<span class="art-section-badge">' + a.section + '</span>'
     + (a.level ? (function(lv){ var c={'Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828','Starter':'#f3e8ff;color:#6b21a8'}; var dn={'Starter':'Seed','Beginner':'Sprout','Intermediate':'Tree','Advanced':'Forest'}; return '<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:'+(c[lv]||'#f0f0f0;color:#666')+'">'+(dn[lv]||lv)+'</span>'; })(a.level) : '')
