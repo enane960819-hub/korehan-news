@@ -407,6 +407,7 @@
     if (overlay) {
       overlay.classList.remove('hidden');
       requestAnimationFrame(function() { overlay.classList.add('active'); });
+      KHCanvas.hideBottomNav();
     }
 
     // Setup canvas
@@ -437,6 +438,7 @@
     if (overlay) {
       overlay.classList.remove('active');
       setTimeout(function() { overlay.classList.add('hidden'); }, 250);
+    KHCanvas.showBottomNav();
     }
     if (_canvas) {
       _canvas.removeEventListener('mousedown', _onDown);

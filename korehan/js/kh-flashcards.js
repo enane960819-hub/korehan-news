@@ -263,6 +263,7 @@
     if (overlay) {
       overlay.classList.remove('hidden');
       requestAnimationFrame(function() { overlay.classList.add('active'); });
+      KHCanvas.hideBottomNav();
     }
     _isOpen = true;
 
@@ -345,6 +346,7 @@
     if (overlay) {
       overlay.classList.remove('active');
       setTimeout(function() { overlay.classList.add('hidden'); }, 250);
+    KHCanvas.showBottomNav();
     }
     _isOpen = false;
   };

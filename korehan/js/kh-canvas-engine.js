@@ -1000,4 +1000,18 @@
 
   KHC.Radar = Radar;
 
+
+  /* ──────────────────────────────────────────────────────────
+     hideBottomNav / showBottomNav
+     Hide the mobile bottom nav when a fullscreen overlay is open
+     ────────────────────────────────────────────────────────── */
+  KHC.hideBottomNav = function() {
+    var nav = document.querySelector('.mobile-bottom-nav');
+    if (nav) nav.style.display = 'none';
+  };
+  KHC.showBottomNav = function() {
+    var nav = document.querySelector('.mobile-bottom-nav');
+    if (nav) nav.style.display = '';
+  };
+
 })();

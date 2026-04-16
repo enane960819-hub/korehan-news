@@ -306,17 +306,22 @@
 }
 
 
-/* ── MOBILE: FULLSCREEN BOTTOM SHEET ─────────────────────── */
+/* ── MOBILE: FULLSCREEN ───────────────────────────────────── */
 @media (max-width: 640px) {
   .kh-fs-panel {
     max-width: 100%;
-    max-height: 97dvh;
-    border-radius: 20px 20px 0 0;
-    margin-top: auto;
-    border-bottom: none;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: none;
   }
   .kh-fs-overlay {
-    align-items: flex-end;
+    align-items: stretch;
+  }
+
+  /* Hide mobile bottom nav when fullscreen overlay is open */
+  .kh-fs-overlay.active ~ .mobile-bottom-nav,
+  body:has(.kh-fs-overlay.active) .mobile-bottom-nav {
+    display: none !important;
   }
 
   /* Progress path: scroll horizontal */
