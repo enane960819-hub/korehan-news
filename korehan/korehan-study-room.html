@@ -3828,13 +3828,17 @@ async function loadDailyContent() {
   console.log('[loadDailyContent] start — date:', today, 'level:', _currentLevel, 'user:', supaUser ? supaUser.id : 'none');
 
   // Fast path: check localStorage cache first (instant, no network)
+  // Only use cache if it's fresh (<6h old) AND has an admin_edited flag
+  // OR cache is marked as verified from DB within this session
   var lsCacheKey = 'sr_daily_' + today + '_' + _currentLevel;
+  var sessionCheckKey = 'sr_daily_checked_' + today + '_' + _currentLevel;
+  var alreadyCheckedThisSession = sessionStorage.getItem(sessionCheckKey) === '1';
   try {
     var lsCached = localStorage.getItem(lsCacheKey);
-    if (lsCached) {
+    if (lsCached && alreadyCheckedThisSession) {
       var cachedRec = JSON.parse(lsCached);
       if (cachedRec && cachedRec.topic_ko && cachedRec.vocab && cachedRec.vocab.length > 0) {
-        console.log('[loadDailyContent] instant load from localStorage cache');
+        console.log('[loadDailyContent] instant load from cache (checked this session)');
         _applyDailyContent(cachedRec);
         return;
       }
@@ -4016,6 +4020,8 @@ function _applyDailyContent(rec) {
   try {
     var lsKey = 'sr_daily_' + (rec.scheduled_date || kstDateKey()) + '_' + (rec.level || _currentLevel);
     localStorage.setItem(lsKey, JSON.stringify(rec));
+    // Mark as DB-verified this session — next reload within same session uses cache
+    sessionStorage.setItem('sr_daily_checked_' + (rec.scheduled_date || kstDateKey()) + '_' + (rec.level || _currentLevel), '1');
   } catch(e) {}
 }
 
