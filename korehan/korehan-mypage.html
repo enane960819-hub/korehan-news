@@ -1922,7 +1922,57 @@ async function loadRoomItemsFromDB() {
       _roomItemsLoaded = true;
     }
   } catch(e) { console.warn('room_items load failed, using fallback'); }
+  // Always merge in earned-badge trophies so they appear as placeable items.
+  _mergeEarnedBadgeItems();
   return ROOM_ITEMS;
+}
+
+// Turn each earned badge into a virtual ROOM_ITEMS entry so it can be placed
+// in My Room just like purchased decorations. Badge icons are pixel-art SVG
+// strings (from pxBadge); we convert them to data URLs on demand so the
+// normal room sprite pipeline can render them.
+function _badgeSvgToDataURL(svg) {
+  if (!svg) return '';
+  try {
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  } catch(e) { return ''; }
+}
+
+function _mergeEarnedBadgeItems() {
+  if (typeof BADGE_DEFS === 'undefined' || typeof getEarnedBadges !== 'function') return;
+  var earned = getEarnedBadges();
+  var have = {};
+  ROOM_ITEMS.forEach(function(it) { have[it.id] = true; });
+  var ownedChanged = false;
+  var owned = getRoomOwned();
+  var ownedSet = {}; owned.forEach(function(id){ ownedSet[id] = true; });
+  BADGE_DEFS.forEach(function(b) {
+    if (!earned[b.id]) return; // Only earned badges
+    var id = 'badge_' + b.id;
+    if (!have[id]) {
+      var img = _badgeSvgToDataURL(b.icon);
+      if (!img) return;
+      ROOM_ITEMS.push({
+        id: id,
+        name: b.name + ' Badge',
+        price: 0,
+        img: img,
+        thumbnail: img,
+        size: 90,
+        category: 'badge',
+        effect: 'none',
+        isBadge: true,
+        badgeDesc: b.desc || '',
+        badgeTier: b.tier || 'bronze'
+      });
+      have[id] = true;
+    }
+    // Earned badges are automatically "owned" as room items — no purchase.
+    if (!ownedSet[id]) { owned.push(id); ownedSet[id] = true; ownedChanged = true; }
+  });
+  if (ownedChanged) {
+    try { localStorage.setItem(K_ROOM_OWNED, JSON.stringify(owned)); } catch(e) {}
+  }
 }
 
 var K_ROOM_LAYOUT = 'kh_room_layout';
@@ -2053,6 +2103,7 @@ function renderRoomItems() {
     var s = (scale / 100) * spriteCompensate;
     sprite.setAttribute('style', roomItemBgStyle(def)
       + 'width:100%;height:100%;position:absolute;inset:0;'
+      + (def.isBadge ? 'image-rendering:pixelated;' : '')
       + 'transform:scale(' + (sx * s) + ',' + s + ');');
     if (flipped) sprite.dataset.flipped = '1';
     div.appendChild(sprite);
@@ -2449,6 +2500,8 @@ function applySelectedItemScale(scaleValue) {
 // ── Item Shop ────────────────────────────────────────────────
 async function openRoomShop() {
   await loadRoomItemsFromDB();
+  // Pick up any badges earned since the last shop open.
+  _mergeEarnedBadgeItems();
   var existing = document.querySelector('.room-shop-overlay');
   if (existing) existing.remove();
 
@@ -2459,8 +2512,8 @@ async function openRoomShop() {
   overlay.className = 'room-shop-overlay';
   overlay.addEventListener('click', function(e) { if (e.target === overlay) closeRoomShop(); });
 
-  var catLabels = { all:'All', character:'Characters', pet:'Pets', furniture:'Furniture', deco:'Deco' };
-  var cats = ['all','character','pet','furniture','deco'];
+  var catLabels = { all:'All', character:'Characters', pet:'Pets', furniture:'Furniture', deco:'Deco', badge:'Badges' };
+  var cats = ['all','character','pet','furniture','deco','badge'];
 
   var html = '<div class="room-shop-modal">'
     + '<div class="room-shop-header">'
@@ -2481,11 +2534,13 @@ async function openRoomShop() {
     var canBuy = coin >= item.price;
     var s = 60;
     var cat = item.category || 'deco';
+    var isBadge = !!item.isBadge;
+    var priceLabel = isBadge ? '🏆 Earned' : (isOwned ? 'Owned' : item.price + ' nyang');
 
     html += '<div class="room-shop-card" data-item-id="' + item.id + '" data-cat="' + cat + '">'
-      + '<div class="room-shop-sprite" style="width:' + s + 'px;height:' + s + 'px;' + roomItemThumbBgStyle(item) + '"></div>'
+      + '<div class="room-shop-sprite" style="width:' + s + 'px;height:' + s + 'px;' + roomItemThumbBgStyle(item) + (isBadge ? ';image-rendering:pixelated' : '') + '"></div>'
       + '<div class="room-shop-name">' + item.name + '</div>'
-      + '<div class="room-shop-price">' + (isOwned ? 'Owned' : item.price + ' nyang') + '</div>';
+      + '<div class="room-shop-price">' + priceLabel + '</div>';
 
     if (!isOwned) {
       html += '<button class="room-shop-btn buy" onclick="buyRoomItem(\'' + item.id + '\')"'
@@ -2710,12 +2765,47 @@ function renderMyPageBadges() {
       + '<div class="badge-name-mp" style="color:#cbd5e1">' + b.name + '</div></div>';
   });
   if (lockedBadges.length > 8) {
-    html += '<div class="badge-item-mp" style="display:flex;align-items:center;justify-content:center;width:54px;height:54px">'
-      + '<div style="font-size:12px;font-weight:700;color:#94a3b8">+' + (lockedBadges.length - 8) + '</div></div>';
+    // Clickable chip that opens the full badges modal — previously a static
+    // div with no handler, so tapping did nothing.
+    html += '<div class="badge-item-mp" onclick="openAllBadgesModal()" role="button" tabindex="0"'
+      + ' style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:54px;height:54px;cursor:pointer;border:1.5px dashed #cbd5e1;border-radius:50%;transition:all .15s"'
+      + ' onmouseover="this.style.borderColor=\'#2563eb\';this.style.background=\'#eff6ff\'"'
+      + ' onmouseout="this.style.borderColor=\'#cbd5e1\';this.style.background=\'transparent\'"'
+      + ' title="Show all badges">'
+      + '<div style="font-size:13px;font-weight:900;color:#2563eb;line-height:1">+' + (lockedBadges.length - 8) + '</div>'
+      + '<div style="font-size:8px;font-weight:700;color:#64748b;margin-top:2px;text-transform:uppercase;letter-spacing:.05em">View all</div>'
+      + '</div>';
   }
   html += '</div>';
 
   el.innerHTML = html;
+}
+
+// ── Full-badges modal ─────────────────────────────────────────
+function openAllBadgesModal() {
+  var existing = document.getElementById('all-badges-overlay');
+  if (existing) existing.remove();
+  var overlay = document.createElement('div');
+  overlay.id = 'all-badges-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.78);display:flex;align-items:center;justify-content:center;z-index:3500;padding:14px';
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+  var modal = document.createElement('div');
+  modal.style.cssText = 'background:#fff;border-radius:18px;width:min(760px,96vw);max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden';
+  modal.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #eef2f7;flex-shrink:0">'
+    +   '<h3 style="margin:0;font-size:16px;font-weight:900;color:#0b1626;letter-spacing:.02em">All Badges</h3>'
+    +   '<button onclick="document.getElementById(\'all-badges-overlay\').remove()" aria-label="Close" style="border:none;background:#f1f5f9;color:#475569;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;line-height:1">&times;</button>'
+    + '</div>'
+    + '<div id="all-badges-body" style="flex:1;overflow-y:auto;padding:20px 22px"></div>';
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  var body = document.getElementById('all-badges-body');
+  if (typeof renderBadgePage === 'function' && body) {
+    try { renderBadgePage(body); } catch(e) { body.innerHTML = '<div style="text-align:center;padding:20px;color:#ef4444">Failed to load: ' + (e.message||'') + '</div>'; }
+  } else if (body) {
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Badge system is still loading — try again in a moment.</div>';
+  }
 }
 
 // ── Friends section rendering ──────────────────────────��─────
