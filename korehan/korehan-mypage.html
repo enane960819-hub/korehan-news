@@ -59,16 +59,77 @@ body { font-family: 'Happy Monkey', 'Jua', 'Inter', 'Noto Sans KR', sans-serif; 
 .stat-n { font-family:'Inter',sans-serif; font-size:18px; font-weight:800; color:#0b1626; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
 .stat-lbl { font-size:12px; color:#64748b; font-weight:500; white-space:nowrap; }
 
-/* Tier grid */
-.tier-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:24px; }
-.tier-item { background:#fff; border:1px solid var(--border); border-radius:14px; padding:14px 10px; text-align:center; }
-.tier-item.current { border-color:#2255a4; border-width:2px; background:#f0f6ff; }
-.tier-icon  { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 8px; }
-.tier-icon svg { display:block; }
-.tier-label { font-size:11px; font-weight:700; color:#0b1626; margin-bottom:3px; font-family:'Inter',sans-serif; letter-spacing:.01em; }
-.tier-xp    { font-size:10px; color:#94a3b8; font-family:'Inter',sans-serif; font-weight:500; }
-.tier-bar   { height:5px; background:#eef0f5; border-radius:99px; overflow:hidden; margin-top:7px; }
-.tier-bar-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#2255a4,#3d7fd4); }
+/* Tier journey — replaces the old 5-column grid that wrapped "Bro/nze" on mobile.
+   Single wide canvas draws a path with 5 stations, the user's marker, and tier
+   particles; station labels live in a DOM overlay so they stay crisp. */
+.tier-journey {
+  position:relative; border-radius:18px;
+  background:linear-gradient(160deg,#0b1a33 0%,#132448 45%,#1a2c57 100%);
+  padding:0; margin-bottom:24px; overflow:hidden;
+  box-shadow:0 10px 28px rgba(11,26,51,.22);
+  border:1px solid rgba(125,211,252,.12);
+}
+.tier-journey-header {
+  position:relative; z-index:2; padding:18px 20px 6px;
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+}
+.tier-journey-now {
+  display:inline-flex; align-items:center; gap:10px;
+  padding:7px 14px 7px 8px; border-radius:999px;
+  background:rgba(255,255,255,.08); backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.1);
+}
+.tier-journey-now .tj-mark {
+  width:30px; height:30px; border-radius:50%;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.12);
+}
+.tier-journey-now .tj-label { font-size:13px; font-weight:800; color:#fff; letter-spacing:.02em; }
+.tier-journey-now .tj-xp { font-size:11px; color:rgba(255,255,255,.55); margin-left:2px; }
+.tier-journey-next { font-size:11px; font-weight:700; color:rgba(125,211,252,.85); letter-spacing:.02em; }
+.tier-journey-next b { color:#7dd3fc; }
+.tier-journey-canvas-wrap {
+  position:relative; width:100%; height:180px;
+}
+#tier-path-canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+.tier-stations {
+  position:absolute; inset:auto 0 0 0; height:64px;
+  display:flex; align-items:flex-start; justify-content:space-between;
+  padding:0 8px 10px; pointer-events:none;
+}
+.tier-station {
+  flex:1 1 0; min-width:0; text-align:center;
+  padding:4px 2px; color:rgba(255,255,255,.45);
+  transition:all .25s;
+}
+.tier-station.active { color:#fff; }
+.tier-station.current { color:#fff; transform:translateY(-2px); }
+.tier-station .ts-name {
+  font-size:11px; font-weight:800; letter-spacing:.02em;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.tier-station .ts-xp {
+  font-size:10px; font-weight:600; color:rgba(255,255,255,.45);
+  margin-top:2px; font-variant-numeric:tabular-nums;
+}
+.tier-station.current .ts-name { color:#fff; text-shadow:0 0 10px currentColor; }
+.tier-journey-bar {
+  position:relative; z-index:2; margin:0 20px 16px;
+  height:6px; border-radius:99px; background:rgba(255,255,255,.08); overflow:hidden;
+}
+.tier-journey-bar .tj-fill {
+  height:100%; border-radius:99px;
+  background:linear-gradient(90deg,#fbbf24,#f59e0b,#f97316,#c084fc,#60a5fa);
+  box-shadow:0 0 14px rgba(125,211,252,.5);
+  transition:width .6s cubic-bezier(.4,.2,.2,1);
+}
+@media (max-width:520px) {
+  .tier-journey-canvas-wrap { height:160px; }
+  .tier-station .ts-name { font-size:10px; }
+  .tier-station .ts-xp { font-size:9px; }
+}
+/* Hide the legacy grid rules in case the class lingers somewhere */
+.tier-grid { grid-template-columns:none !important; }
 
 /* Stat card SVG icons */
 /* stat icons handled by .stat-icon img above */
@@ -187,11 +248,7 @@ body.kh-neon-on #mp-xp-log button { background:rgba(9,18,33,.7) !important; bord
 
 @media (max-width:700px) {
   .mini-stats { grid-template-columns:repeat(2,1fr); }
-  .tier-grid  { grid-template-columns:repeat(5,1fr); gap:6px; }
-  .tier-item  { padding:10px 6px; }
-  .tier-icon  { font-size:20px; }
 }
-@media (max-width:480px) { .tier-grid { grid-template-columns:repeat(3,1fr); } }
 
 /* ═══ Animations & visual life ═══ */
 
@@ -1055,185 +1112,330 @@ async function syncRealWordCount() {
   } catch(e) {}
 }
 
-// ── Render tier grid ───────────────────────────────────────────
+// ── Tier journey ──────────────────────────────────────────────
+// Single canvas draws a stylized horizontal path with 5 stations (tiers),
+// a travelling light for the user's position, and tier-themed particles on
+// each achieved station. Station labels are DOM siblings of the canvas so
+// Korean/English text stays crisp regardless of DPR.
+
+var TIER_JOURNEY_STYLES = {
+  bronze:  { accent:'#f0a664', glow:'#fbbf24', particles:['#f0a664','#b87333','#fde68a'], count:6,  speed:0.25, size:[1.2,2.6] },
+  silver:  { accent:'#cbd5e1', glow:'#e2e8f0', particles:['#d4d4d8','#e8e8ee','#fff'],    count:10, speed:0.45, size:[1.2,2.8] },
+  gold:    { accent:'#fbbf24', glow:'#fde68a', particles:['#fbbf24','#f59e0b','#fde68a','#fff7ed'], count:14, speed:0.6, size:[1.4,3.2], shimmer:true },
+  plat:    { accent:'#a78bfa', glow:'#c4b5fd', particles:['#a78bfa','#7c3aed','#c4b5fd','#e9d5ff'], count:16, speed:0.65, size:[1.6,3.4], prism:true },
+  diamond: { accent:'#60a5fa', glow:'#93c5fd', particles:['#60a5fa','#93c5fd','#dbeafe','#fff','#e0f2fe'], count:22, speed:0.8,  size:[1.8,3.8], sparkle:true, rays:true }
+};
+
+var _tierJourneyRAF = null;
+var _tierJourneyObs = null;
+
 function renderTierGrid(xp) {
-  var el = document.getElementById('mp-tier-grid');
-  if (!el) return;
+  var root = document.getElementById('mp-tier-grid');
+  if (!root) return;
   var tier = getXPTier(xp);
-  el.innerHTML = '';
-  el.style.display = 'grid';
-  el.style.gridTemplateColumns = 'repeat(5,1fr)';
-  el.style.gap = '10px';
+  var tierIdx = TIERS.findIndex(function(t){ return t.label === tier.label; });
 
-  TIERS.forEach(function(t, idx) {
-    var active = xp >= t.min;
-    var current = tier.label === t.label;
-    var pct = (t.max > t.min) ? Math.min(100, Math.round(Math.max(0, xp - t.min) / (t.max - t.min) * 100)) : (active ? 100 : 0);
-    var remain = (t.max > t.min && active && t.max !== Infinity) ? (t.max - xp) : 0;
+  // Build the shell once per render so live XP updates redraw cleanly.
+  root.className = 'tier-journey';
+  root.removeAttribute('style');
+  root.innerHTML = ''
+    + '<div class="tier-journey-header">'
+    +   '<div class="tier-journey-now">'
+    +     '<span class="tj-mark" style="background:' + TIER_COLORS[tier.cls] + '22">' + tierMark(tier.cls, 20) + '</span>'
+    +     '<span class="tj-label">' + tier.label + '<span class="tj-xp"> · ' + (xp||0).toLocaleString() + ' XP</span></span>'
+    +   '</div>'
+    +   (tier.next
+          ? '<div class="tier-journey-next">Next · <b>' + Math.max(0, tier.to - xp).toLocaleString() + ' XP</b> to ' + tier.next + '</div>'
+          : '<div class="tier-journey-next">최고 등급 달성 🎉</div>')
+    + '</div>'
+    + '<div class="tier-journey-canvas-wrap">'
+    +   '<canvas id="tier-path-canvas"></canvas>'
+    +   '<div class="tier-stations" id="tier-stations"></div>'
+    + '</div>'
+    + '<div class="tier-journey-bar"><div class="tj-fill" id="tier-journey-fill"></div></div>';
 
-    var card = document.createElement('div');
-    card.className = 'tier-item' + (current ? ' current' : '');
-    card.dataset.tier = t.cls;
-    card.style.position = 'relative';
-    card.style.overflow = 'hidden';
+  // Station labels — DOM overlay keeps text outside the canvas bitmap.
+  var stations = document.getElementById('tier-stations');
+  stations.innerHTML = TIERS.map(function(t, i) {
+    var reached = xp >= t.min;
+    var current = i === tierIdx;
+    var xpTxt = t.min >= 1000 ? (Math.round(t.min/100)/10).toString().replace(/\.0$/,'') + 'k' : t.min.toLocaleString();
+    return '<div class="tier-station' + (reached ? ' active' : '') + (current ? ' current' : '') + '"'
+      + ' style="' + (reached ? 'color:' + TIER_COLORS[t.cls] : '') + '">'
+      + '<div class="ts-name">' + t.label + '</div>'
+      + '<div class="ts-xp">' + xpTxt + '</div>'
+      + '</div>';
+  }).join('');
 
-    // Canvas for particle effects
-    var canvas = document.createElement('canvas');
-    canvas.width = 160; canvas.height = 180;
-    canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0';
-    card.appendChild(canvas);
+  // Overall progress bar from Bronze 0 to Diamond 75,000.
+  var overallPct = Math.min(100, Math.round(xp / TIERS[TIERS.length-1].min * 100));
+  var fill = document.getElementById('tier-journey-fill');
+  if (fill) fill.style.width = overallPct + '%';
 
-    // Content overlay
-    var content = document.createElement('div');
-    content.style.cssText = 'position:relative;z-index:1;padding:14px 10px;text-align:center';
-    var iconBg = active ? (TIER_COLORS[t.cls] + '18') : '#f4f6fa';
-    content.innerHTML = '<div class="tier-icon" style="background:'+iconBg+';width:48px;height:48px">' + tierMark(t.cls, 30, !active) + '</div>'
-      + '<div class="tier-label" style="' + (active ? 'color:'+TIER_COLORS[t.cls] : 'color:#94a3b8') + ';font-weight:800">' + t.label + '</div>'
-      + '<div class="tier-xp">' + t.min.toLocaleString() + (t.max !== t.min ? '+' : '') + '</div>'
-      + (active && t.max !== t.min ? '<div class="tier-bar" style="margin-top:8px"><div class="tier-bar-fill" style="width:'+pct+'%;background:linear-gradient(90deg,'+TIER_COLORS[t.cls]+','+TIER_COLORS[t.cls]+'88)"></div></div>' : '')
-      + (remain > 0 ? '<div class="tier-remain">' + remain.toLocaleString() + ' XP left</div>' : '');
-    card.appendChild(content);
-    el.appendChild(card);
+  // Stop any previous animation before starting a new one.
+  if (_tierJourneyRAF) { cancelAnimationFrame(_tierJourneyRAF); _tierJourneyRAF = null; }
+  if (_tierJourneyObs) { try { _tierJourneyObs.disconnect(); } catch(e) {} _tierJourneyObs = null; }
 
-    // Start canvas animation for active tiers
-    if (active) _tierCanvasAnim(canvas, t.cls, current);
-  });
+  var canvas = document.getElementById('tier-path-canvas');
+  if (!canvas) return;
+
+  _tierJourneyAnimate(canvas, xp, tierIdx);
 }
 
-// ── Canvas 2D tier particle animations ──────────────────────
-function _tierCanvasAnim(canvas, cls, isCurrent) {
+function _tierJourneyAnimate(canvas, xp, currentIdx) {
   var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height;
-  var particles = [];
-  var frameId;
+  var dpr = window.devicePixelRatio || 1;
+  var W = 0, H = 0;
 
-  var config = {
-    bronze: { count:6, colors:['#cd7f32','#b87333','#daa06d'], speed:0.3, size:[1.5,3], glow:0 },
-    silver: { count:10, colors:['#c0c0c0','#d4d4d8','#e8e8ee','#fff'], speed:0.5, size:[1.5,3], glow:4 },
-    gold:   { count:18, colors:['#fbbf24','#f59e0b','#fde68a','#fff7ed'], speed:0.6, size:[2,4], glow:8, shimmer:true },
-    plat:   { count:22, colors:['#a78bfa','#7c3aed','#c4b5fd','#e9d5ff','#fff'], speed:0.7, size:[2,4.5], glow:12, prism:true },
-    diamond:{ count:30, colors:['#60a5fa','#3b82f6','#93c5fd','#dbeafe','#fff','#e0f2fe'], speed:0.9, size:[2,5], glow:16, sparkle:true, rays:true }
-  };
-  var c = config[cls] || config.bronze;
-  var count = isCurrent ? c.count * 2 : c.count;
-
-  // Initialize particles
-  for (var i = 0; i < count; i++) {
-    particles.push({
-      x: Math.random() * W,
-      y: Math.random() * H,
-      vx: (Math.random() - 0.5) * c.speed,
-      vy: -Math.random() * c.speed - 0.1,
-      size: c.size[0] + Math.random() * (c.size[1] - c.size[0]),
-      color: c.colors[Math.floor(Math.random() * c.colors.length)],
-      alpha: 0.3 + Math.random() * 0.7,
-      life: Math.random() * 200,
-      maxLife: 150 + Math.random() * 150
-    });
+  function resize() {
+    var rect = canvas.getBoundingClientRect();
+    if (!rect.width) return;
+    W = rect.width; H = rect.height;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
+  resize();
+  window.addEventListener('resize', resize, { passive:true });
+
+  // Station X positions — evenly distributed across the drawable width with a
+  // little padding so the first/last markers don't kiss the edges.
+  function stationX(i) {
+    var pad = 36;
+    return pad + (W - pad*2) * (i / (TIERS.length - 1));
+  }
+  function pathY() { return H * 0.48; }
+
+  // Interpolate the marker's X from XP.
+  function markerX() {
+    if (xp <= 0) return stationX(0);
+    for (var i = 1; i < TIERS.length; i++) {
+      if (xp < TIERS[i].min) {
+        var prev = TIERS[i-1], next = TIERS[i];
+        var frac = Math.min(1, Math.max(0, (xp - prev.min) / (next.min - prev.min)));
+        return stationX(i-1) + (stationX(i) - stationX(i-1)) * frac;
+      }
+    }
+    return stationX(TIERS.length - 1);
+  }
+
+  // Particles, keyed by station index
+  var stationParticles = TIERS.map(function(t, i) {
+    if (xp < t.min) return [];
+    var style = TIER_JOURNEY_STYLES[t.cls];
+    var arr = [];
+    for (var k = 0; k < style.count; k++) {
+      arr.push({
+        angle: Math.random() * Math.PI * 2,
+        radius: 6 + Math.random() * 22,
+        speed: 0.005 + Math.random() * style.speed * 0.02,
+        size: style.size[0] + Math.random() * (style.size[1] - style.size[0]),
+        color: style.particles[Math.floor(Math.random() * style.particles.length)],
+        alpha: 0.35 + Math.random() * 0.55,
+        life: Math.random() * 120,
+        maxLife: 90 + Math.random() * 80,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+    return arr;
+  });
 
   var time = 0;
-  function draw() {
-    ctx.clearRect(0, 0, W, H);
+
+  function frame() {
+    if (!W) { resize(); _tierJourneyRAF = requestAnimationFrame(frame); return; }
     time++;
+    ctx.clearRect(0, 0, W, H);
 
-    // Diamond rays
-    if (c.rays && isCurrent) {
-      var rayAlpha = 0.03 + Math.sin(time * 0.02) * 0.02;
-      ctx.save();
-      ctx.translate(W/2, H/2);
-      for (var r = 0; r < 6; r++) {
-        ctx.rotate(Math.PI/3);
-        var grad = ctx.createLinearGradient(0, 0, 0, -H);
-        grad.addColorStop(0, 'rgba(96,165,250,' + rayAlpha + ')');
-        grad.addColorStop(1, 'transparent');
-        ctx.fillStyle = grad;
+    var y = pathY();
+    var mx = markerX();
+
+    // 1) Star-field backdrop
+    for (var s = 0; s < 26; s++) {
+      var sx = ((s * 73) + time * 0.25) % W;
+      var sy = (s * 37) % (H - 60) + 10;
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.05 + (s % 3) * 0.05) + ')';
+      ctx.beginPath();
+      ctx.arc(sx, sy, (s % 3) * 0.6 + 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 2) Base path (unreached portion)
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(255,255,255,.09)';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(stationX(0), y);
+    ctx.lineTo(stationX(TIERS.length-1), y);
+    ctx.stroke();
+
+    // 3) Achieved path (gradient, up to marker)
+    var grad = ctx.createLinearGradient(stationX(0), y, stationX(TIERS.length-1), y);
+    grad.addColorStop(0.00, '#fbbf24');
+    grad.addColorStop(0.28, '#f59e0b');
+    grad.addColorStop(0.52, '#c084fc');
+    grad.addColorStop(0.80, '#60a5fa');
+    grad.addColorStop(1.00, '#a5f3fc');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 6;
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = 'rgba(96,165,250,.7)';
+    ctx.beginPath();
+    ctx.moveTo(stationX(0), y);
+    ctx.lineTo(mx, y);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // 4) Station nodes
+    TIERS.forEach(function(t, i) {
+      var sx2 = stationX(i);
+      var reached = xp >= t.min;
+      var isCurrent = i === currentIdx;
+      var style = TIER_JOURNEY_STYLES[t.cls];
+
+      // Outer glow ring for reached stations
+      if (reached) {
+        var ringRadius = isCurrent ? 22 + Math.sin(time * 0.08) * 2 : 17;
+        var ringGrad = ctx.createRadialGradient(sx2, y, 4, sx2, y, ringRadius + 4);
+        ringGrad.addColorStop(0, style.accent + 'cc');
+        ringGrad.addColorStop(1, style.accent + '00');
+        ctx.fillStyle = ringGrad;
         ctx.beginPath();
-        ctx.moveTo(-3, 0); ctx.lineTo(0, -H*0.7); ctx.lineTo(3, 0);
+        ctx.arc(sx2, y, ringRadius + 4, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.restore();
-    }
 
-    // Gold shimmer wave
-    if (c.shimmer) {
-      var shimX = (time * 1.5) % (W + 60) - 30;
-      var shimGrad = ctx.createLinearGradient(shimX - 30, 0, shimX + 30, 0);
-      shimGrad.addColorStop(0, 'transparent');
-      shimGrad.addColorStop(0.5, 'rgba(255,215,0,0.06)');
-      shimGrad.addColorStop(1, 'transparent');
-      ctx.fillStyle = shimGrad;
-      ctx.fillRect(0, 0, W, H);
-    }
-
-    // Platinum prism
-    if (c.prism) {
-      var prismAlpha = 0.03 + Math.sin(time * 0.03) * 0.02;
-      var hue = (time * 0.5) % 360;
-      ctx.fillStyle = 'hsla(' + hue + ',70%,70%,' + prismAlpha + ')';
-      ctx.fillRect(0, 0, W, H);
-    }
-
-    // Draw particles
-    particles.forEach(function(p) {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.life++;
-
-      // Fade lifecycle
-      var fadeIn = Math.min(p.life / 30, 1);
-      var fadeOut = Math.max(0, 1 - (p.life - p.maxLife + 30) / 30);
-      var alpha = p.alpha * fadeIn * fadeOut;
-
-      if (p.life > p.maxLife) {
-        p.x = Math.random() * W;
-        p.y = H + 5;
-        p.life = 0;
-        p.alpha = 0.3 + Math.random() * 0.7;
+      // Orbiting particles on reached stations
+      if (reached) {
+        var particles = stationParticles[i];
+        particles.forEach(function(p) {
+          p.angle += p.speed * (isCurrent ? 1.3 : 0.8);
+          p.life++;
+          var wob = Math.sin(time * 0.04 + p.phase) * 2;
+          var px = sx2 + Math.cos(p.angle) * (p.radius + wob);
+          var py = y + Math.sin(p.angle) * (p.radius + wob) * 0.6;
+          var fadeIn = Math.min(p.life / 20, 1);
+          var fadeOut = Math.max(0, 1 - (p.life - p.maxLife + 30) / 30);
+          var alpha = p.alpha * fadeIn * fadeOut;
+          if (p.life > p.maxLife) {
+            p.life = 0;
+            p.alpha = 0.35 + Math.random() * 0.55;
+            p.radius = 6 + Math.random() * 22;
+          }
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = p.color;
+          ctx.shadowBlur = isCurrent ? 10 : 6;
+          ctx.shadowColor = style.glow;
+          if (style.sparkle && ((time + Math.floor(p.phase*4)) % 8 === 0)) {
+            _tjDrawStar(ctx, px, py, p.size * 1.4);
+          } else {
+            ctx.beginPath();
+            ctx.arc(px, py, p.size, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        });
       }
-      if (p.y < -10) { p.y = H + 5; p.life = 0; }
-      if (p.x < -10) p.x = W + 5;
-      if (p.x > W + 10) p.x = -5;
 
-      ctx.save();
-      if (c.glow > 0) {
-        ctx.shadowBlur = c.glow;
-        ctx.shadowColor = p.color;
+      // Diamond prismatic rays for the top tier when reached
+      if (t.cls === 'diamond' && reached) {
+        ctx.save();
+        ctx.translate(sx2, y);
+        for (var r = 0; r < 8; r++) {
+          ctx.rotate(Math.PI / 4);
+          var rayG = ctx.createLinearGradient(0, 0, 0, -36);
+          rayG.addColorStop(0, 'rgba(147,197,253,' + (0.25 + Math.sin(time*0.04)*0.1) + ')');
+          rayG.addColorStop(1, 'transparent');
+          ctx.fillStyle = rayG;
+          ctx.beginPath();
+          ctx.moveTo(-2, 0); ctx.lineTo(0, -34); ctx.lineTo(2, 0);
+          ctx.fill();
+        }
+        ctx.restore();
       }
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = p.color;
 
-      // Diamond sparkle: star shape
-      if (c.sparkle && Math.random() > 0.5) {
-        _drawStar(ctx, p.x, p.y, p.size);
+      // Core node
+      var nodeR = isCurrent ? 12 : reached ? 10 : 7;
+      var nodeGrad = ctx.createRadialGradient(sx2 - 2, y - 2, 1, sx2, y, nodeR);
+      if (reached) {
+        nodeGrad.addColorStop(0, '#fff');
+        nodeGrad.addColorStop(0.55, style.accent);
+        nodeGrad.addColorStop(1, style.glow);
       } else {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
+        nodeGrad.addColorStop(0, 'rgba(255,255,255,.2)');
+        nodeGrad.addColorStop(1, 'rgba(255,255,255,.04)');
       }
-      ctx.restore();
+      ctx.fillStyle = nodeGrad;
+      ctx.beginPath();
+      ctx.arc(sx2, y, nodeR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Current-node highlight ring
+      if (isCurrent) {
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(sx2, y, nodeR + 2, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (!reached) {
+        ctx.strokeStyle = 'rgba(255,255,255,.22)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(sx2, y, nodeR, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     });
 
-    frameId = requestAnimationFrame(draw);
-  }
-  draw();
+    // 5) Travelling marker (user position) — sits on top of everything,
+    //    with a pulsing halo so the current XP is unmistakable.
+    var pulse = 10 + Math.sin(time * 0.1) * 2;
+    ctx.save();
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = '#7dd3fc';
+    var markerGrad = ctx.createRadialGradient(mx, y, 1, mx, y, pulse);
+    markerGrad.addColorStop(0, '#fff');
+    markerGrad.addColorStop(0.55, '#7dd3fc');
+    markerGrad.addColorStop(1, 'rgba(125,211,252,0)');
+    ctx.fillStyle = markerGrad;
+    ctx.beginPath();
+    ctx.arc(mx, y, pulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(mx, y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    // "You are here" mini flag above the marker
+    ctx.fillStyle = 'rgba(125,211,252,.85)';
+    ctx.font = '700 10px "Inter",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('YOU', mx, y - 16);
+    ctx.restore();
 
-  // Stop when not visible
-  var obs = new IntersectionObserver(function(entries) {
-    if (entries[0].isIntersecting) { if (!frameId) draw(); }
-    else { cancelAnimationFrame(frameId); frameId = null; }
+    _tierJourneyRAF = requestAnimationFrame(frame);
+  }
+
+  frame();
+
+  _tierJourneyObs = new IntersectionObserver(function(entries) {
+    if (entries[0].isIntersecting) {
+      if (!_tierJourneyRAF) _tierJourneyRAF = requestAnimationFrame(frame);
+    } else {
+      if (_tierJourneyRAF) { cancelAnimationFrame(_tierJourneyRAF); _tierJourneyRAF = null; }
+    }
   });
-  obs.observe(canvas);
+  _tierJourneyObs.observe(canvas);
 }
 
-function _drawStar(ctx, x, y, r) {
+function _tjDrawStar(ctx, x, y, r) {
   ctx.beginPath();
   for (var i = 0; i < 4; i++) {
-    var angle = (Math.PI / 2) * i;
+    var a = (Math.PI / 2) * i;
     ctx.moveTo(x, y);
-    ctx.lineTo(x + Math.cos(angle) * r * 2, y + Math.sin(angle) * r * 2);
+    ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
   }
-  ctx.stroke = ctx.fill;
+  ctx.stroke();
   ctx.fill();
 }
 
