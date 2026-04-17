@@ -3816,6 +3816,23 @@ async function reassignTopicForLevel(level) {
   _todayTopic = null;
   _aiContent = null;
   clearAIContentUI();
+
+  // Fast path: if we already have valid cached content for the target level, apply it
+  // instantly. This keeps the topic stable across level toggles and avoids the
+  // "잠시만 기다려주세요" spinner / placeholder fallback when the DB query is slow.
+  try {
+    var today = kstDateKey();
+    var lsCached = localStorage.getItem('sr_daily_' + today + '_' + level);
+    if (lsCached) {
+      var cachedRec = JSON.parse(lsCached);
+      if (cachedRec && cachedRec.topic_ko && cachedRec.topic_ko !== "Today's Topic"
+          && Array.isArray(cachedRec.vocab) && cachedRec.vocab.length > 0) {
+        _applyDailyContent(cachedRec);
+        return;
+      }
+    }
+  } catch(e) {}
+
   var subEl = document.getElementById('wm-topic-sub');
   if (subEl) subEl.textContent = 'Loading…';
   await loadDailyContent();
@@ -4051,10 +4068,18 @@ function _applyDailyContent(rec) {
   // idiom banner removed (duplicate of Home "Today's Phrase")
   // Cache in localStorage so topic stays consistent across reloads
   try {
-    var lsKey = 'sr_daily_' + (rec.scheduled_date || kstDateKey()) + '_' + (rec.level || _currentLevel);
-    localStorage.setItem(lsKey, JSON.stringify(rec));
-    // Mark as DB-verified this session — next reload within same session uses cache
-    sessionStorage.setItem('sr_daily_checked_' + (rec.scheduled_date || kstDateKey()) + '_' + (rec.level || _currentLevel), '1');
+    // Only persist real content — never cache the "Today's Topic" placeholder, otherwise
+    // the next loadDailyContent() in the same session will reapply that placeholder on top
+    // of a previously-good topic (e.g. after a level toggle or AI timeout).
+    var isPlaceholder = !rec.topic_ko
+      || rec.topic_ko === "Today's Topic"
+      || !Array.isArray(rec.vocab) || rec.vocab.length === 0;
+    if (!isPlaceholder) {
+      var lsKey = 'sr_daily_' + (rec.scheduled_date || kstDateKey()) + '_' + (rec.level || _currentLevel);
+      localStorage.setItem(lsKey, JSON.stringify(rec));
+      // Mark as DB-verified this session — next reload within same session uses cache
+      sessionStorage.setItem('sr_daily_checked_' + (rec.scheduled_date || kstDateKey()) + '_' + (rec.level || _currentLevel), '1');
+    }
   } catch(e) {}
 }
 
@@ -4065,6 +4090,24 @@ var _approvedTopicForGen = null;
 async function _generateAndSaveDailyContent(date) {
   if (!supaUser) { showLoginWall(); return; }
   console.log('[_generateAndSaveDailyContent] generating for date:', date, 'level:', _currentLevel);
+
+  // Safety net: if a valid (non-placeholder) cache already exists for this date+level,
+  // reuse it instead of blowing the UI away with an AI-loading spinner. Prevents
+  // "잠시만 기다려주세요 → Today's Topic" resets when loadDailyContent is re-entered
+  // (e.g. from a level toggle) and the DB query is slow.
+  try {
+    var lsCached = localStorage.getItem('sr_daily_' + date + '_' + _currentLevel);
+    if (lsCached) {
+      var cachedRec = JSON.parse(lsCached);
+      if (cachedRec && cachedRec.topic_ko && cachedRec.topic_ko !== "Today's Topic"
+          && Array.isArray(cachedRec.vocab) && cachedRec.vocab.length > 0) {
+        console.log('[_generateAndSaveDailyContent] cache hit — skipping AI regen');
+        _applyDailyContent(cachedRec);
+        return;
+      }
+    }
+  } catch(e) {}
+
   showAILoading();
 
   var levelGuide = {
