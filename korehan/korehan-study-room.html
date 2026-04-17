@@ -3696,7 +3696,19 @@ async function saveMustKnowWord(ko, en, rom) {
   await saveToWordBook(ko, en, rom);
 }
 // Universal save to word book — works from anywhere
-async function saveToWordBook(ko, en, rom, category) {
+// Delimiter used to attach an example sentence inside word_en.
+// Format: "<English>  ||EX|<exampleKo>|<exampleEn>"
+// Consumers that only want the translation should call splitWordEnMeaning().
+var WORDBOOK_EX_DELIM = '||EX|';
+function splitWordEnMeaning(en) {
+  if (!en) return { meaning: '', exKo: '', exEn: '' };
+  var i = en.indexOf(WORDBOOK_EX_DELIM);
+  if (i < 0) return { meaning: en, exKo: '', exEn: '' };
+  var parts = en.slice(i + WORDBOOK_EX_DELIM.length).split('|');
+  return { meaning: en.slice(0, i).trim(), exKo: parts[0] || '', exEn: parts[1] || '' };
+}
+
+async function saveToWordBook(ko, en, rom, category, opts) {
   if (!ko) return;
   if (!supaUser) { showToast('Sign in to save words'); return; }
   try {
@@ -3708,6 +3720,12 @@ async function saveToWordBook(ko, en, rom, category) {
     // Prefix category marker if not already present
     if (cat === 'slang' && enWithCat.indexOf('[슬랭]') < 0) enWithCat = '[슬랭] ' + enWithCat;
     if (cat === 'expression' && enWithCat.indexOf('[표현]') < 0) enWithCat = '[표현] ' + enWithCat;
+    // Attach example sentence, if any, so the vocab notebook can offer contextual practice
+    if (opts && (opts.exampleKo || opts.exampleEn)) {
+      enWithCat = enWithCat + '  ' + WORDBOOK_EX_DELIM
+        + (opts.exampleKo || '').replace(/\|/g,'／') + '|'
+        + (opts.exampleEn || '').replace(/\|/g,'／');
+    }
     await sb.from('user_saved_words').upsert({
       user_id: supaUser.id, word_key: ko, word_ko: ko, word_en: enWithCat, word_rom: rom || ''
     }, { onConflict: 'user_id,word_key' });
@@ -4606,13 +4624,9 @@ function openWritingModal() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
   if (!canEnterWritingRoom()) return;
-  // Starter → 3-step modal
-  if (_currentLevel === 'Starter') {
-    openStarterModal();
-    return;
-  }
-  // Beginner → 4단계 듀오링고 스타일
-  if (_currentLevel === 'Beginner') {
+  // Starter (Seed) + Beginner both use the 4-step writing flow — Starter vocab-only
+  // learning lives in its own entry, not the Writing / Topic Writing path.
+  if (_currentLevel === 'Starter' || _currentLevel === 'Beginner') {
     openBeginnerModal();
     return;
   }
@@ -5163,8 +5177,8 @@ function _keRenderQuiz() {
     + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px">'
     + choices.map(function(c) {
-      return '<button class="ke-quiz-btn" onclick="_keQuizAnswer(this,\'' + (correct.ko||'').replace(/'/g,"\\'") + '\',\'' + (c.ko||'').replace(/'/g,"\\'") + '\')" style="padding:12px 16px;border:1.5px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.04);color:#e0f2fe;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left;transition:.15s">'
-        + (c.ko||'') + ' <span style="font-size:11px;color:rgba(255,255,255,.3);margin-left:8px">' + (c.en||'') + '</span></button>';
+      return '<button class="ke-quiz-btn" onclick="_keQuizAnswer(this,\'' + (correct.ko||'').replace(/'/g,"\\'") + '\',\'' + (c.ko||'').replace(/'/g,"\\'") + '\')" style="padding:12px 16px;border:1.5px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.04);color:#e0f2fe;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left;transition:.15s">'
+        + (c.ko||'') + '</button>';
     }).join('')
     + '</div>'
     + '<div id="ke-quiz-fb" style="margin-top:10px"></div>';
@@ -5438,7 +5452,7 @@ function _keShowFinalScore() {
     + '</div>'
     + '<div style="display:flex;gap:8px;justify-content:center">'
     + '<button onclick="window._keStudyIdx=0;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 16px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Review Again</button>'
-    + '<button onclick="markStageDone(\'topic\');closeKeyExpressionsModal()" style="padding:10px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">Done &#10003;</button>'
+    + '<button onclick="markStageDone(\'expressions\');returnToActivities(closeKeyExpressionsModal)" style="padding:10px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">완료 &#10003;</button>'
     + '</div>';
 }
 
@@ -6152,11 +6166,14 @@ function openAlphaModal() {
   if (!ov) return;
   ov.classList.add('open');
   document.body.style.overflow = 'hidden';
-  // Init canvas on next frame so layout is computed
+  // Init canvas on next frame so layout is computed, then auto-start the round
+  // — the old idle screen required an extra click that frequently left users
+  // confused when the "단어 연습 시작" button area wasn't visible on small screens.
   setTimeout(function() {
     initAlphaCanvas();
     _awPhase = 'idle';
     _renderAlphaUI();
+    try { startAlphaWordRound(); } catch(e) { console.warn('[AlphaWord] start failed:', e); }
   }, 60);
 }
 function closeAlphaModal() {
@@ -6167,6 +6184,12 @@ function closeAlphaModal() {
 
 function startAlphaWordRound() {
   _awWords = _awPickRoundWords();
+  // Defensive: if the word pool filter produced nothing (e.g. _HANGUL shape
+  // changed or a word uses vowels outside the simplified panel), fall back to
+  // the raw pool so the game is always playable.
+  if (!_awWords.length && _AW_WORD_POOL && _AW_WORD_POOL.length) {
+    _awWords = _AW_WORD_POOL.slice(0, Math.min(5, _AW_WORD_POOL.length));
+  }
   _awIdx = 0; _awSylIdx = 0; _awScore = 0;
   _awParticles = [];
   _awSelCon = null; _awSelVow = null;
@@ -6291,11 +6314,22 @@ function resetAwSel() {
 function checkSyllable() {
   if (!_awWords.length || _awPhase !== 'playing') return;
   var word = _awWords[_awIdx];
+  if (!word || !word.word) return;
   var syls = decomposeWord(word.word);
+  if (!syls.length) { // data mismatch — advance to skip unrenderable word
+    _awIdx++;
+    if (_awIdx >= _awWords.length) { _awPhase = 'round-complete'; _renderAlphaUI(); return; }
+    _awSylIdx = 0; _awSelCon = null; _awSelVow = null;
+    _renderAlphaUI();
+    return;
+  }
   if (_awSylIdx >= syls.length) return;
   var tgt = syls[_awSylIdx];
-  var selCon = _ALL_CON[_awSelCon].char;
-  var selVow = _ALL_VOW[_awSelVow].char;
+  if (_awSelCon === null || _awSelVow === null) return;
+  var conEntry = _ALL_CON[_awSelCon], vowEntry = _ALL_VOW[_awSelVow];
+  if (!conEntry || !vowEntry) { resetAwSel(); return; }
+  var selCon = conEntry.char;
+  var selVow = vowEntry.char;
   var correct = (selCon === tgt.con && selVow === tgt.vow);
 
   if (correct) {
@@ -7156,7 +7190,7 @@ function renderFlowchart(scenario, animateEdge) {
     div.style.left = n.x + '%';
     div.style.top = n.y + '%';
     div.setAttribute('id', 'ftn-' + id);
-    div.innerHTML = '<div class="ft-node-box"><div class="ft-node-label">' + n.label + '</div>'
+    div.innerHTML = '<div class="ft-node-box"><div class="ft-node-label">' + (n.label || '') + '</div>'
       + (n.npc ? '<div class="ft-node-sub">' + n.npc + '</div>' : '') + '</div>';
     div.onclick = function() {
       if (isVisited && n.type !== 'start') showNodeReplay(id);
@@ -7214,11 +7248,11 @@ async function renderScenarioList() {
     }
     return '<div onclick="_canvasRipple(this,event);startScenario(\'' + s.id + '\')" style="padding:20px;border-radius:14px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);border:2px solid transparent;transition:all .15s;position:relative;overflow:hidden;' + lockStyle + '"'
       + ' onmouseover="if(!' + s.locked + ')this.style.borderColor=\'#2196F3\'" onmouseout="this.style.borderColor=\'transparent\'">'
-      + '<div style="font-size:28px;margin-bottom:8px">' + s.icon + '</div>'
-      + '<div style="font-size:14px;font-weight:900;color:#1a2a3a">' + s.titleKo + '</div>'
-      + '<div style="font-size:11px;color:#5a6a7a;margin-top:2px">' + s.sub + '</div>'
+      + '<div style="font-size:28px;margin-bottom:8px">' + (s.icon || '📘') + '</div>'
+      + '<div style="font-size:14px;font-weight:900;color:#1a2a3a">' + (s.titleKo || s.title || 'Scenario') + '</div>'
+      + '<div style="font-size:11px;color:#5a6a7a;margin-top:2px">' + (s.sub || '') + '</div>'
       + '<div style="margin-top:8px;display:flex;align-items:center;gap:6px">'
-      + '<span style="padding:2px 8px;border-radius:10px;background:' + (s.locked ? '#e5e7eb' : '#dbeafe') + ';color:' + (s.locked ? '#9ca3af' : '#2563eb') + ';font-size:10px;font-weight:700">' + s.difficulty + '</span>'
+      + '<span style="padding:2px 8px;border-radius:10px;background:' + (s.locked ? '#e5e7eb' : '#dbeafe') + ';color:' + (s.locked ? '#9ca3af' : '#2563eb') + ';font-size:10px;font-weight:700">' + (s.difficulty || 'Beginner') + '</span>'
       + (s.locked ? '<span style="font-size:10px;color:#9ca3af">🔒 Locked</span>' : '')
       + '</div>' + pctBar + '</div>';
   }).join('');
@@ -7280,7 +7314,7 @@ function showDialogue(node) {
   var phrasesEl = document.getElementById('ftp-phrases');
   var phrasesList = document.getElementById('ftp-phrases-list');
   if (_ftState.phrases.length) {
-    phrasesList.innerHTML = _ftState.phrases.map(function(p){ return '<span class="ft-phrase-chip" onclick="saveToWordBook(\'' + p.replace(/'/g,"\\'") + '\',\'Fast Track expression\',\'\',\'expression\')" style="cursor:pointer" title="Tap to save">' + p + ' <span style="font-size:9px;opacity:.5">💾</span></span>'; }).join('');
+    phrasesList.innerHTML = _ftState.phrases.map(function(p,pi){ return _renderFtPhraseChip(p,pi); }).join('');
     phrasesEl.style.display = 'block';
   } else {
     phrasesEl.style.display = 'none';
@@ -7288,6 +7322,22 @@ function showDialogue(node) {
   player.classList.add('open');
   // Speak NPC line
   speakHangul(node.text);
+}
+
+function _ftPhraseObj(p) {
+  // Migrate legacy string-shaped phrases in-place
+  return typeof p === 'string' ? { ko: p, en: '', sceneKo: '', sceneEn: '' } : (p || {});
+}
+function _renderFtPhraseChip(p, pi) {
+  var obj = _ftPhraseObj(p);
+  var ko = obj.ko || '';
+  return '<span class="ft-phrase-chip" onclick="saveFtPhraseAt(' + pi + ')" style="cursor:pointer" title="Tap to save">'
+    + ko + ' <span style="font-size:9px;opacity:.5">💾</span></span>';
+}
+function saveFtPhraseAt(idx) {
+  var p = _ftPhraseObj(_ftState.phrases[idx]);
+  if (!p.ko) return;
+  saveToWordBook(p.ko, p.en || '', '', 'expression', { exampleKo: p.sceneKo || '', exampleEn: p.sceneEn || '' });
 }
 
 function pickChoice(nodeId, idx) {
@@ -7301,9 +7351,19 @@ function pickChoice(nodeId, idx) {
     if (i === idx) b.classList.add('picked');
     else b.style.opacity = '.3';
   });
-  // Collect phrase
-  if (choice.phrase && _ftState.phrases.indexOf(choice.phrase) < 0) {
-    _ftState.phrases.push(choice.phrase);
+  // Collect phrase with its English translation + scene context for Word Book
+  if (choice.phrase) {
+    var already = _ftState.phrases.some(function(p){
+      return (typeof p === 'string' ? p : (p && p.ko)) === choice.phrase;
+    });
+    if (!already) {
+      _ftState.phrases.push({
+        ko: choice.phrase,
+        en: choice.textEn || choice.text || '',
+        sceneKo: node.text || '',
+        sceneEn: node.textEn || ''
+      });
+    }
   }
   // Advance after short delay
   setTimeout(function(){
@@ -7338,7 +7398,7 @@ function showEndNode(node) {
   var phrasesEl = document.getElementById('ftp-phrases');
   var phrasesList = document.getElementById('ftp-phrases-list');
   if (_ftState.phrases.length) {
-    phrasesList.innerHTML = _ftState.phrases.map(function(p){ return '<span class="ft-phrase-chip" onclick="saveToWordBook(\'' + p.replace(/'/g,"\\'") + '\',\'Fast Track expression\',\'\',\'expression\')" style="cursor:pointer" title="Tap to save">' + p + ' <span style="font-size:9px;opacity:.5">💾</span></span>'; }).join('');
+    phrasesList.innerHTML = _ftState.phrases.map(function(p,pi){ return _renderFtPhraseChip(p,pi); }).join('');
     phrasesEl.style.display = 'block';
   }
   player.classList.add('open');
@@ -7910,14 +7970,74 @@ function renderWordBankList(words) {
     list.innerHTML = '<div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">저장한 단어가 없습니다</div>';
     return;
   }
-  list.innerHTML = words.map(function(w) {
-    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px">'
-      + '<div style="flex:1;min-width:0">'
+  list.innerHTML = words.map(function(w, wi) {
+    var parsed = (typeof splitWordEnMeaning === 'function') ? splitWordEnMeaning(w.word_en) : { meaning: w.word_en||'', exKo:'', exEn:'' };
+    var meaning = (parsed.meaning || '').replace(/^\s*\[(표현|슬랭)\]\s*/,'');
+    var hasExample = !!(parsed.exKo || parsed.exEn);
+    var exampleBlock = hasExample
+      ? '<div style="margin-top:6px;padding:8px 10px;background:rgba(125,211,252,.06);border-left:2px solid rgba(125,211,252,.4);border-radius:4px;font-size:11px;line-height:1.5">'
+        + (parsed.exKo ? '<div style="color:rgba(255,255,255,.75)">' + parsed.exKo + '</div>' : '')
+        + (parsed.exEn ? '<div style="color:rgba(255,255,255,.4);margin-top:2px">' + parsed.exEn + '</div>' : '')
+        + '<button onclick="wbPracticeExample(' + wi + ')" style="margin-top:6px;padding:4px 10px;border:none;border-radius:6px;background:rgba(125,211,252,.15);color:#7dd3fc;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">예문으로 연습하기 →</button>'
+        + '</div>'
+      : '';
+    return '<div style="padding:10px 14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px">'
       + '<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:15px;font-weight:800">' + (w.word_ko||'') + '</span><span style="font-size:11px;color:rgba(255,255,255,.35)">' + (w.word_rom||'') + '</span></div>'
-      + '<div style="font-size:12px;color:#7dd3fc;margin-top:2px">' + (w.word_en||'') + '</div>'
-      + '</div>'
+      + '<div style="font-size:12px;color:#7dd3fc;margin-top:2px">' + meaning + '</div>'
+      + exampleBlock
       + '</div>';
   }).join('');
+}
+
+// Minimal fill-in-the-blank practice using the saved expression's example sentence
+function wbPracticeExample(idx) {
+  var w = (_wbAllWords || [])[idx];
+  if (!w) return;
+  var parsed = (typeof splitWordEnMeaning === 'function') ? splitWordEnMeaning(w.word_en) : { meaning:'', exKo:'', exEn:'' };
+  if (!parsed.exKo) { showToast('이 항목엔 예문이 없어요'); return; }
+  var ko = w.word_ko || '';
+  var blanked = parsed.exKo.indexOf(ko) >= 0
+    ? parsed.exKo.split(ko).join('<span style="display:inline-block;min-width:60px;border-bottom:2px solid #7dd3fc;padding:0 4px;color:#7dd3fc;font-weight:800">______</span>')
+    : parsed.exKo;
+  var html = '<div style="padding:20px">'
+    + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Practice · 빈칸 채우기</div>'
+    + '<div style="font-size:17px;font-weight:800;color:#fff;line-height:1.6;margin-bottom:6px">' + blanked + '</div>'
+    + (parsed.exEn ? '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px">' + parsed.exEn + '</div>' : '')
+    + '<input id="wb-prac-input" type="text" placeholder="한국어로 입력" style="width:100%;padding:12px;border-radius:10px;border:1.5px solid rgba(125,211,252,.4);background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:inherit;outline:none;box-sizing:border-box" autofocus>'
+    + '<div id="wb-prac-fb" style="margin-top:10px;min-height:28px;font-size:13px;font-weight:700"></div>'
+    + '<div style="display:flex;gap:8px;margin-top:10px">'
+    + '<button onclick="_wbCheckPractice(\'' + ko.replace(/\\/g,"\\\\").replace(/'/g,"\\'") + '\')" style="flex:1;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-weight:800;cursor:pointer;font-family:inherit">Check</button>'
+    + '<button onclick="_wbClosePractice()" style="padding:11px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.05);color:#fff;font-weight:700;cursor:pointer;font-family:inherit">닫기</button>'
+    + '</div></div>';
+  var modal = document.getElementById('wb-practice-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'wb-practice-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.88);display:flex;align-items:center;justify-content:center;z-index:9999;padding:14px';
+    modal.onclick = function(e){ if(e.target===modal) _wbClosePractice(); };
+    modal.innerHTML = '<div style="background:#0d1b2e;border-radius:18px;max-width:500px;width:95%;color:#fff;box-shadow:0 20px 50px rgba(0,0,0,.4)" id="wb-practice-body"></div>';
+    document.body.appendChild(modal);
+  }
+  document.getElementById('wb-practice-body').innerHTML = html;
+  modal.style.display = 'flex';
+  setTimeout(function(){ var i=document.getElementById('wb-prac-input'); if(i) i.focus(); }, 60);
+}
+function _wbCheckPractice(correctKo) {
+  var inp = document.getElementById('wb-prac-input');
+  var fb = document.getElementById('wb-prac-fb');
+  if (!inp || !fb) return;
+  var typed = (inp.value || '').trim();
+  if (!typed) return;
+  var norm = function(s){ return s.replace(/[\s.,!?~]/g,'').toLowerCase(); };
+  var ok = norm(typed) === norm(correctKo);
+  fb.innerHTML = ok
+    ? '<span style="color:#4ade80">✓ 정답! (' + correctKo + ')</span>'
+    : '<span style="color:#fca5a5">✗ 정답: ' + correctKo + '</span>';
+  inp.disabled = true;
+}
+function _wbClosePractice() {
+  var modal = document.getElementById('wb-practice-modal');
+  if (modal) modal.style.display = 'none';
 }
 function filterWordBank() {
   var q = (document.getElementById('wb-search').value || '').toLowerCase().trim();
@@ -8098,11 +8218,9 @@ function openWritingModalForLearning() {
   if (!ensureStudyUnlocked()) return;
   _writingMode = 'topic';
   // markStageDone('topic') moved to actual submit/finish functions
-  if (_currentLevel === 'Starter') {
-    openStarterModal();
-    return;
-  }
-  if (_currentLevel === 'Beginner') {
+  // Starter (Seed) + Beginner both use the 4-step writing flow so the activity is actually
+  // about writing. The Starter vocab-only modal is a separate entry point.
+  if (_currentLevel === 'Starter' || _currentLevel === 'Beginner') {
     openBeginnerModal();
     return;
   }
@@ -12397,7 +12515,24 @@ function closeGrammarFocusModal() {
   document.body.style.overflow = '';
 }
 
+var _GF_STEP_DONE = {learn:false, spotit:false, fill:false, translate:false, build:false};
+
 function switchGFTab(tabId, btn) {
+  // Enforce sequential completion — block jumping to steps whose prerequisites aren't done
+  var targetIdx = _GF_TABS.indexOf(tabId);
+  if (targetIdx > 0) {
+    for (var gi = 0; gi < targetIdx; gi++) {
+      if (!_GF_STEP_DONE[_GF_TABS[gi]]) {
+        var bar = document.getElementById('gf-step-bar');
+        var msg = document.createElement('div');
+        msg.textContent = '🔒 Complete Step ' + (gi+1) + ' first';
+        msg.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#dc2626;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:700;z-index:10000;box-shadow:0 8px 24px rgba(0,0,0,.25)';
+        document.body.appendChild(msg);
+        setTimeout(function(){ if(msg.parentNode) msg.parentNode.removeChild(msg); }, 1400);
+        return;
+      }
+    }
+  }
   _GF_TABS.forEach(function(t) {
     var pane = document.getElementById('gf-tab-' + t);
     if (pane) pane.style.display = t === tabId ? 'block' : 'none';
@@ -12414,6 +12549,9 @@ function switchGFTab(tabId, btn) {
 }
 
 function gfAdvanceTo(tabId) {
+  // Mark the prerequisite step as done so the user can now freely navigate back/forward
+  var idx = _GF_TABS.indexOf(tabId);
+  if (idx > 0) _GF_STEP_DONE[_GF_TABS[idx-1]] = true;
   switchGFTab(tabId, document.getElementById('gft-' + tabId));
 }
 
@@ -12422,6 +12560,8 @@ function loadGFPatterns(patterns) {
   var first = patterns[0];
   _gfPattern = first;
   window._gfPatternList = patterns;
+  // Reset step progression so each new session starts locked beyond Learn
+  _GF_STEP_DONE = {learn:false, spotit:false, fill:false, translate:false, build:false};
 
   var titleEl = document.getElementById('gf-title');
   if (titleEl) titleEl.textContent = first.name || 'Grammar Pattern';
@@ -12908,12 +13048,14 @@ function _renderSpotItSentence() {
   var ex = st.examples[st.idx];
   if (!ex) return;
 
-  // Extract grammar tokens from pattern name (e.g. "~았/었어요" → ["았어요","었어요"])
+  // Extract grammar tokens from pattern name (e.g. "~았/었어요" → ["았어요","었어요"], "은/는 vs 이/가" → ["은","는","이","가"])
   var koTokens = [];
-  (st.p.name || '').split(/[\/\s]/).forEach(function(part) {
+  (st.p.name || '').split(/[\/\s()]/).forEach(function(part) {
     var k = part.replace(/~/g,'').replace(/[^가-힣]/g,'');
-    if (k.length >= 2) koTokens.push(k);
+    if (k.length >= 1) koTokens.push(k);
   });
+  // Sort by length DESC so longer tokens match first (e.g. "았어요" before "요")
+  koTokens.sort(function(a,b){ return b.length - a.length; });
   var targetWord = '';
   var words = ex.ko.replace(/[.,!?。]/g,'').split(' ').filter(Boolean);
   // Priority 1: word that ENDS WITH a grammar token (most reliable)
@@ -13287,8 +13429,7 @@ function _renderGFBuild(el) {
       + '<div style="font-size:16px;font-weight:800;color:#0f172a">' + st.score + '/' + st.sentences.length + ' correct</div>'
       + '<div style="font-size:13px;color:#94a3b8;margin-top:6px">Grammar Focus Complete!</div>'
       + '<div style="display:flex;gap:10px;justify-content:center;margin-top:20px">'
-      + '<button onclick="closeGrammarFocusModal()" style="padding:12px 28px;border-radius:10px;border:1px solid #e2e8f0;background:#fff;color:#334155;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">닫기</button>'
-      + '<button onclick="closeGrammarFocusModal();setTimeout(function(){if(typeof KHGrammarTree!==\'undefined\')KHGrammarTree.open();},300)" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#2255a4,#1e4fa3);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">다음 문법 →</button>'
+      + '<button onclick="returnToActivities(closeGrammarFocusModal)" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#2255a4,#1e4fa3);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">완료 ✓</button>'
       + '</div>'
       + '</div>';
     var _gfbPatternName = (window._gcCurrentPattern) || (_gfPattern && _gfPattern.name) || null;
@@ -13950,6 +14091,8 @@ async function _asLoadContent() {
   var key = 'as_c2_' + _asCurrentArt.id;
   var c = sessionStorage.getItem(key);
   if (c) { try { _asStudyContent = JSON.parse(c); return; } catch(e) {} }
+  var lm0 = document.getElementById('as-loading-msg');
+  if (lm0) lm0.textContent = 'Loading saved content…';
   if (!supaUser) return;
   // Check DB for saved content (admin-edited OR previously AI-generated)
   try {
@@ -13966,9 +14109,9 @@ async function _asLoadContent() {
       sessionStorage.setItem(key, JSON.stringify(_asStudyContent));
       return;
     }
-  } catch(e) {}
+  } catch(e) { console.warn('[AS] Cache read failed:', e && e.message); }
   var lm = document.getElementById('as-loading-msg');
-  if (lm) lm.textContent = 'Generating study content... (~10s)';
+  if (lm) lm.textContent = 'First-time setup: generating study content… (~10s)';
   var prompt = 'Korean news article study content for language learners.\nTitle: ' + (_asCurrentArt.title||'') + '\nBody:\n' + (_asCurrentArt.body||'').slice(0,1600)
     + '\n\nReturn ONLY valid JSON:\n{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],"phrases":[{"ko":"short sentence from article (max 8 words)","en":"translation"}],"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\nvocab:6 key words from article. phrases:5 SHORT key sentences (each max 8 Korean words, pick simple ones). word_order:3 sentences split into eojeol chunks in CORRECT order (each max 5 chunks). questions:3 comprehension questions with clear correct answers.';
   try {
@@ -14196,18 +14339,28 @@ function _asRenderBlankUI() {
   var bw=_asWOState.blankWords;
   var fb=_asWOState.filledBlanks;
   var sel=_asWOState.selectedBlank;
-  // Build article HTML with blanks
+  // Build article HTML with blanks.
+  // Two-pass: (1) substitute each blank word with a unique placeholder token,
+  // longest words first so a shorter blank word doesn't steal a match inside a longer one
+  // (e.g. "학생" vs "대학생"). (2) expand tokens into the real span HTML. Avoids the regex
+  // matching inside already-inserted span attributes.
   var formatted=_asFormatBody(body);
+  var sortedBi=bw.map(function(_,i){return i;}).sort(function(a,b){return bw[b].length-bw[a].length;});
+  sortedBi.forEach(function(bi){
+    var escaped=_asEsc(bw[bi]);
+    formatted=formatted.replace(new RegExp(escaped),'\u0000GFB'+bi+'\u0000');
+  });
   bw.forEach(function(w,bi){
-    var escaped=_asEsc(w);
     var filled=fb[bi];
+    var html;
     if(filled!==undefined&&filled!==null){
       var cls=filled===w?'su-blank filled correct':'su-blank filled wrong';
-      formatted=formatted.replace(new RegExp(escaped),'<span class="'+cls+'" data-bi="'+bi+'" onclick="asBlankClear('+bi+')">'+filled+'</span>');
+      html='<span class="'+cls+'" data-bi="'+bi+'" onclick="asBlankClear('+bi+')">'+filled+'</span>';
     } else {
       var selCls=sel===bi?'su-blank selected':'su-blank';
-      formatted=formatted.replace(new RegExp(escaped),'<span class="'+selCls+'" data-bi="'+bi+'" onclick="asBlankSelect('+bi+')" style="'+(sel===bi?'border-color:#2563eb;background:#eff6ff;':'')+'cursor:pointer">____</span>');
+      html='<span class="'+selCls+'" data-bi="'+bi+'" onclick="asBlankSelect('+bi+')" style="'+(sel===bi?'border-color:#2563eb;background:#eff6ff;':'')+'cursor:pointer">____</span>';
     }
+    formatted=formatted.split('\u0000GFB'+bi+'\u0000').join(html);
   });
   art.innerHTML='<div class="su-instruction">빈칸을 먼저 클릭하고, 아래에서 단어를 선택하세요</div>'
     +'<div class="su-blank-article">'+formatted+'</div>';
@@ -14578,8 +14731,12 @@ var _asTempSaveStep4=_asTmpStep4;
 
 // ── Submit ──
 async function asSubmitWork() {
-  if(!_asCurrentArt||!supaUser) return;
-  var sb=getSupa(); if(!sb) return;
+  if(!_asCurrentArt){ showToast('No article loaded'); return; }
+  if(!supaUser){ showToast('Please sign in to save progress'); openAuthModal('signin'); return; }
+  var sb=getSupa(); if(!sb){ showToast('Connection error. Try again.'); return; }
+  // Show loading state on the Save button so the user gets immediate feedback
+  var saveBtn=document.querySelector('#as-activity-area button.su-nav-next');
+  if(saveBtn){ saveBtn.disabled=true; saveBtn.style.opacity='.6'; saveBtn.textContent='Saving…'; }
   var saved=_asGetTmp()||{};
   try {
     var step5 = saved.step5_text||'';
@@ -14589,7 +14746,7 @@ async function asSubmitWork() {
       study_date:kstDateKey(), writing_text:step5, word_count:step5.length,
       context_data:JSON.stringify({step4_answers:saved.step4_answers||[]}),
       level:_currentLevel||'', status:'submitted'
-    },{onConflict:'user_id,content_type,study_date,content_id'});
+    },{onConflict:'user_id,content_type,study_date,content_id'}).select();
     if(r.error) throw r.error;
     // Trigger AI feedback if there's writing
     if(step5.trim().length>10 && r.data && r.data[0] && r.data[0].id){
@@ -14600,9 +14757,13 @@ async function asSubmitWork() {
     document.getElementById('as-activity-area').innerHTML=
       '<div class="as-done-banner"><div style="font-size:28px;margin-bottom:8px">✅</div>'
       +'<div style="font-size:16px;font-weight:800;margin-bottom:6px">Submitted!</div>'
-      +'<div style="font-size:13px;color:rgba(255,255,255,.75)">Today\'s study has been submitted successfully.</div></div>';
+      +'<div style="font-size:13px;color:rgba(255,255,255,.75)">Today\'s study has been submitted successfully.</div>'
+      +'<button onclick="returnToActivities(closeArticleStudy)" style="margin-top:14px;padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">완료 ✓</button></div>';
     _asRefreshSubmitBanner();
-  } catch(err) { showToast('Submit failed: '+(err.message||'')); }
+  } catch(err) {
+    if(saveBtn){ saveBtn.disabled=false; saveBtn.style.opacity='1'; saveBtn.textContent='Save Progress'; }
+    showToast('Submit failed: '+(err.message||''));
+  }
 }
 
 // Submit all today's work at once (from banner button)
@@ -14870,7 +15031,7 @@ setTimeout(renderCompletedStudies, 500);
     <div id="ke-expressions-list" style="display:flex;flex-direction:column;gap:10px">
       <div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Loading expressions...</div>
     </div>
-    <button onclick="markStageDone('expressions');closeKeyExpressionsModal()" style="display:block;width:100%;margin-top:18px;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer">Done ✓</button>
+    <button onclick="markStageDone('expressions');returnToActivities(closeKeyExpressionsModal)" style="display:block;width:100%;margin-top:18px;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer">완료 ✓</button>
   </div>
 </div>
 
@@ -15544,6 +15705,12 @@ function _csBuildCheck() {
 <style>
 .dr-overlay{position:fixed;inset:0;background:rgba(5,12,24,.88);display:flex;align-items:center;justify-content:center;z-index:2500;padding:14px}
 .dr-overlay.hidden{display:none}
+/* Hide Daily Quest / mission panel while Daily Review is active so it doesn't
+   bleed through or compete for attention. */
+body.kh-dr-active #sr-quest-ring,
+body.kh-dr-active #sr-checklist-box,
+body.kh-dr-active .sr-mission-item,
+body.kh-dr-active #sr-notif-daily { display:none !important; }
 .dr-modal{background:#fff;border-radius:20px;width:min(680px,96vw);max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden}
 .dr-header{background:linear-gradient(135deg,#0b1626,#1a3a6b);padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .dr-header h2{margin:0;font-size:18px;font-weight:800;color:#fff}
@@ -15601,6 +15768,7 @@ var _drScores = [];
 
 function openDailyReview() {
   if (!supaUser) { openAuthModal('signin'); return; }
+  document.body.classList.add('kh-dr-active'); // hides Daily Quest / mission panel via CSS
   var overlay = document.getElementById('dr-overlay');
   if (overlay) overlay.classList.remove('hidden');
   _drQuestions = []; _drIndex = 0; _drScores = []; _drAnswered = false;
@@ -15609,6 +15777,7 @@ function openDailyReview() {
 }
 
 function closeDailyReview() {
+  document.body.classList.remove('kh-dr-active');
   var overlay = document.getElementById('dr-overlay');
   if (overlay) overlay.classList.add('hidden');
 }
@@ -15635,7 +15804,13 @@ async function drGenerateQuestions() {
         .limit(50);
       if (swRes.data) {
         swRes.data.forEach(function(w) {
-          if (w.word_ko && w.word_en) vocabPool.push({ word_ko: w.word_ko, word_en: w.word_en, word_rom: w.word_rom || '' });
+          // Strip embedded example + legacy [표현]/[슬랭] markers so MCQ choices
+          // show the actual English meaning, not "Fast Track expression"-style labels.
+          var en = (typeof splitWordEnMeaning === 'function') ? splitWordEnMeaning(w.word_en).meaning : w.word_en;
+          en = (en || '').replace(/^\s*\[(표현|슬랭)\]\s*/,'').trim();
+          // Skip stale rows that only had the placeholder label
+          if (!en || /^fast track expression$/i.test(en)) return;
+          if (w.word_ko) vocabPool.push({ word_ko: w.word_ko, word_en: en, word_rom: w.word_rom || '' });
         });
       }
     } catch(e) {}

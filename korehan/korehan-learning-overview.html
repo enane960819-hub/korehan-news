@@ -2186,13 +2186,30 @@
   // ═══════════════════════════════════════════════════════════════
   // LEARNING CALENDAR (Duolingo-style)
   // ═══════════════════════════════════════════════════════════════
-  var _calMonth = new Date().getMonth();
-  var _calYear = new Date().getFullYear();
+  // Activity dates in the DB are stamped with KST (Asia/Seoul) via kstDateKey(),
+  // so the calendar must use KST for today/month/year comparisons too; otherwise
+  // late-night / early-morning sessions straddle the UTC boundary and show up as
+  // "missed" days on users' calendars.
+  function _kstNow() { return new Date(Date.now() + 9 * 3600000); }
+  function _kstDateStr() { return _kstNow().toISOString().slice(0,10); }
+  var _calMonth = _kstNow().getUTCMonth();
+  var _calYear = _kstNow().getUTCFullYear();
   var _calActivityDays = {};
 
   async function loadCalendarData() {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
     if (!sb || !supaUser) return;
+    // Best-effort: record today's visit so simply opening Growth Lab counts as
+    // a study day on the calendar. De-duped per (user, activity_type, study_date)
+    // client-side via localStorage to avoid flooding the activity log.
+    try {
+      var todayKey = _kstDateStr();
+      var visitFlag = 'kh_visit_logged_' + supaUser.id + '_' + todayKey;
+      if (!localStorage.getItem(visitFlag) && typeof logActivity === 'function') {
+        logActivity('visit', { content_type: 'growth_lab', content_title: 'Daily visit' });
+        localStorage.setItem(visitFlag, '1');
+      }
+    } catch(e) {}
     // Load 90 days of activity
     var since = new Date(Date.now() - 90*86400000).toISOString().slice(0,10);
     try {
@@ -2226,7 +2243,7 @@
     var firstDay = new Date(_calYear, _calMonth, 1).getDay(); // 0=Sun
     var mondayFirst = firstDay === 0 ? 6 : firstDay - 1; // Convert to Mon=0
     var daysInMonth = new Date(_calYear, _calMonth + 1, 0).getDate();
-    var today = new Date().toISOString().slice(0,10);
+    var today = _kstDateStr();
 
     var html = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(function(d) {
       return '<div style="font-size:11px;font-weight:800;color:#94a3b8;padding:6px 0">' + d + '</div>';
@@ -2268,7 +2285,9 @@
   }
 
   function updateStreakLabel() {
-    var today = new Date();
+    // Streak in KST so the current-day boundary matches how activity_log rows
+    // are stamped.
+    var today = _kstNow();
     var streak = 0;
     for (var i = 0; i < 365; i++) {
       var d = new Date(today.getTime() - i * 86400000).toISOString().slice(0,10);
