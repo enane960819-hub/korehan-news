@@ -502,6 +502,7 @@
       _particleOverlay = null;
     }
     _hideComboBadge();
+    document.body.classList.remove('kh-dr-active');
   };
 
   // ── Utility ──
