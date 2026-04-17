@@ -47,10 +47,61 @@
     _mk({ id:'reporter_gift_box',    name:'Holiday Gift Box',      description:'Seasonal gift box with assorted Korean treats.',         item_type:'reporter_item', coin_price:180, is_repeatable:true, sort_order:40 }),
 
     // ── Cash-only premium items ───────────────────────────────
-    _mk({ id:'cash_nyang_pack_sm',   name:'Nyang Pack · Small',    description:'Adds 500 냥 to your balance instantly.',                 item_type:'currency_pack', coin_price:0, cash_price:2.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:90 }),
-    _mk({ id:'cash_nyang_pack_md',   name:'Nyang Pack · Medium',   description:'Adds 1,200 냥 + 10% bonus to your balance.',             item_type:'currency_pack', coin_price:0, cash_price:5.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:91 }),
-    _mk({ id:'cash_nyang_pack_lg',   name:'Nyang Pack · Large',    description:'Adds 3,000 냥 + 20% bonus to your balance.',             item_type:'currency_pack', coin_price:0, cash_price:12.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:92 }),
-    _mk({ id:'cash_supporter_month', name:'Supporter (1 Month)',   description:'Support development + get the Supporter badge + 1,000 냥.', item_type:'subscription', coin_price:0, cash_price:4.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:93 })
+    // Helper to keep cash entries short
+    // (is_repeatable defaults to true for consumables; one-time unlocks opt out)
+    // Nyang currency packs
+    _mk({ id:'cash_nyang_pack_sm',   name:'Nyang Pack · Small',    description:'Adds 500 냥 to your balance instantly.',                         item_type:'currency_pack', coin_price:0, cash_price:2.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:90 }),
+    _mk({ id:'cash_nyang_pack_md',   name:'Nyang Pack · Medium',   description:'Adds 1,200 냥 + 10% bonus to your balance.',                     item_type:'currency_pack', coin_price:0, cash_price:5.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:91 }),
+    _mk({ id:'cash_nyang_pack_lg',   name:'Nyang Pack · Large',    description:'Adds 3,000 냥 + 20% bonus to your balance.',                     item_type:'currency_pack', coin_price:0, cash_price:12.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:92 }),
+    _mk({ id:'cash_nyang_pack_xl',   name:'Nyang Pack · Mega',     description:'Adds 7,000 냥 + 30% bonus — best value for power learners.',      item_type:'currency_pack', coin_price:0, cash_price:24.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:93 }),
+    _mk({ id:'cash_nyang_pack_ultra',name:'Nyang Pack · Ultra',    description:'Adds 20,000 냥 + 40% bonus. The whole vault.',                    item_type:'currency_pack', coin_price:0, cash_price:59.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:94 }),
+
+    // Supporter tiers
+    _mk({ id:'cash_supporter_month', name:'Supporter · 1 Month',   description:'Supporter badge + 1,000 냥/mo + ad-free reading.',               item_type:'subscription',  coin_price:0, cash_price:4.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:100 }),
+    _mk({ id:'cash_supporter_3mo',   name:'Supporter · 3 Months',  description:'Supporter badge + 3,500 냥 + ad-free — save 20% vs monthly.',    item_type:'subscription',  coin_price:0, cash_price:11.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:101 }),
+    _mk({ id:'cash_supporter_6mo',   name:'Supporter · 6 Months',  description:'Supporter badge + 7,500 냥 + ad-free + priority AI queue.',       item_type:'subscription',  coin_price:0, cash_price:22.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:102 }),
+    _mk({ id:'cash_supporter_year',  name:'Supporter · 1 Year',    description:'Supporter Gold badge + 18,000 냥 + all perks. Save 35%.',         item_type:'subscription',  coin_price:0, cash_price:39.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:103 }),
+    _mk({ id:'cash_supporter_lifetime', name:'Supporter · Lifetime', description:'Lifetime Supporter — one-time unlock, all future perks included.', item_type:'subscription', coin_price:0, cash_price:149.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:104 }),
+
+    // Boosts & passes (consumable)
+    _mk({ id:'cash_xp_boost_24h',    name:'XP Boost · 24 Hours',   description:'2× XP on every activity for 24 hours.',                           item_type:'boost',         coin_price:0, cash_price:1.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:110 }),
+    _mk({ id:'cash_xp_boost_7d',     name:'XP Boost · 7 Days',     description:'2× XP for a full week — best for weekly review season.',          item_type:'boost',         coin_price:0, cash_price:7.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:111 }),
+    _mk({ id:'cash_streak_freeze',   name:'Streak Freeze · 3-pack',description:'Protects your study streak on 3 missed days.',                    item_type:'boost',         coin_price:0, cash_price:2.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:112 }),
+    _mk({ id:'cash_streak_saver',    name:'Streak Saver · 10-pack',description:'10 freezes — carry a long streak worry-free.',                   item_type:'boost',         coin_price:0, cash_price:8.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:113 }),
+    _mk({ id:'cash_ad_free_month',   name:'Ad-Free · 1 Month',     description:'Removes all ad placements for 30 days.',                          item_type:'subscription',  coin_price:0, cash_price:2.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:114 }),
+    _mk({ id:'cash_ai_boost',        name:'AI Tutor Boost',        description:'Extra 100 Claude AI conversations this month.',                   item_type:'boost',         coin_price:0, cash_price:6.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:115 }),
+    _mk({ id:'cash_fast_track_pass', name:'Fast Track All-Access', description:'Unlock every Fast Track scenario for 30 days.',                   item_type:'subscription',  coin_price:0, cash_price:4.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:116 }),
+
+    // Exclusive cosmetics (cash-only, one-time)
+    _mk({ id:'cash_frame_holographic', name:'Holographic Frame',   description:'Animated holo shimmer profile frame. Cash-exclusive.',            item_type:'profile_cosmetic', coin_price:0, cash_price:3.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:120 }),
+    _mk({ id:'cash_frame_rainbow',     name:'Rainbow Aura Frame',  description:'Flowing rainbow aura around your profile picture.',               item_type:'profile_cosmetic', coin_price:0, cash_price:3.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:121 }),
+    _mk({ id:'cash_frame_galaxy',      name:'Galaxy Frame',        description:'Swirling galaxy animation frame for your profile.',               item_type:'profile_cosmetic', coin_price:0, cash_price:4.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:122 }),
+    _mk({ id:'cash_frame_ink',         name:'Sumi Ink Frame',      description:'Hand-painted traditional ink brush frame.',                       item_type:'profile_cosmetic', coin_price:0, cash_price:2.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:123 }),
+    _mk({ id:'cash_theme_midnight',    name:'Midnight Theme',      description:'Deep navy + neon accents — cash-exclusive UI theme.',             item_type:'profile_cosmetic', coin_price:0, cash_price:3.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:124 }),
+    _mk({ id:'cash_theme_hanok',       name:'Hanok Theme',         description:'Warm woods + traditional palette inspired by 한옥.',               item_type:'profile_cosmetic', coin_price:0, cash_price:3.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:125 }),
+    _mk({ id:'cash_theme_sunset',      name:'Sunset Theme',        description:'Warm orange/pink gradient UI theme.',                             item_type:'profile_cosmetic', coin_price:0, cash_price:3.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:126 }),
+
+    // Limited-edition badges (cash-only)
+    _mk({ id:'cash_badge_founder_plus', name:'Founder+ Badge',     description:'Exclusive platinum Founder+ badge. Limited edition.',             item_type:'profile_badge',    coin_price:0, cash_price:9.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:130 }),
+    _mk({ id:'cash_badge_og_member',    name:'OG Member Badge',    description:'Show you were here from the start. One-time unlock.',              item_type:'profile_badge',    coin_price:0, cash_price:7.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:131 }),
+    _mk({ id:'cash_badge_patron',       name:'Patron of Hangul',   description:'For patrons of the Korean learning community.',                    item_type:'profile_badge',    coin_price:0, cash_price:14.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:132 }),
+
+    // Bundles (cash-only, one-time)
+    _mk({ id:'cash_bundle_starter',   name:'Starter Boost Bundle',  description:'2,000 냥 + 7-day XP boost + 3 streak freezes. New learner pack.',  item_type:'bundle', coin_price:0, cash_price:9.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:140 }),
+    _mk({ id:'cash_bundle_kpop',      name:'K-Pop Fan Bundle',      description:'K-Pop poster + light stick + neon sign + 1,500 냥.',               item_type:'bundle', coin_price:0, cash_price:7.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:141 }),
+    _mk({ id:'cash_bundle_traditional', name:'Traditional Korea Bundle', description:'Hanbok doll + Joseon scholar + mini temple + calligraphy.', item_type:'bundle', coin_price:0, cash_price:12.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:142 }),
+    _mk({ id:'cash_bundle_cozy',      name:'Cozy Study Bundle',     description:'Desk + chair + piano + bonsai + tea set. Full study setup.',      item_type:'bundle', coin_price:0, cash_price:14.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:143 }),
+    _mk({ id:'cash_bundle_premium',   name:'Premium Everything',    description:'1-month Supporter + Galaxy frame + 5,000 냥 + XP boost.',          item_type:'bundle', coin_price:0, cash_price:19.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:144 }),
+
+    // Exclusive pets / characters (cash-only, one-time)
+    _mk({ id:'cash_pet_dragon',       name:'Mini Korean Dragon',    description:'Legendary room pet. Cash-exclusive, one per account.',            item_type:'room_item',  coin_price:0, cash_price:6.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:150 }),
+    _mk({ id:'cash_pet_phoenix',      name:'Fire Phoenix',          description:'Glowing phoenix pet that hovers in your room.',                   item_type:'room_item',  coin_price:0, cash_price:8.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:151 }),
+    _mk({ id:'cash_pet_jindo',        name:'Jindo Dog',             description:'Loyal Jindo companion for your room. Cash-exclusive.',            item_type:'room_item',  coin_price:0, cash_price:5.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:152 }),
+    _mk({ id:'cash_room_throne',      name:'Royal Throne',          description:'Gilded Joseon-style throne. Cash-exclusive furniture.',           item_type:'room_item',  coin_price:0, cash_price:6.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:153 }),
+
+    // Gifting (send premium items to friends)
+    _mk({ id:'cash_gift_nyang_500',   name:'Gift · 500 냥 to Friend', description:'Send 500 냥 directly to a friend\'s account.',                  item_type:'gift_token', coin_price:0, cash_price:2.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:160 }),
+    _mk({ id:'cash_gift_supporter',   name:'Gift · Supporter 1mo',  description:'Gift a friend one month of Supporter perks.',                      item_type:'gift_token', coin_price:0, cash_price:4.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:161 })
   ];
   function isShopTableMissingErr(err) {
     var msg = (err && err.message) ? String(err.message) : '';
@@ -125,7 +176,9 @@
       var notEnough = !!it.can_buy_with_coin && Number((stats && stats.coin_balance) || 0) < Number(it.coin_price || 0);
       var oneTimeOwned = !!ownedQty && !it.is_repeatable;
       var disabledByFallback = usingFallback ? 'disabled title="DB에 저장된 아이템이 없어 구매할 수 없습니다"' : '';
-      var tabType = it.item_type === 'reporter_item' ? 'gift' : (it.item_type === 'profile_badge' || it.item_type === 'profile_cosmetic') ? 'profile' : it.can_buy_with_cash ? 'cash' : 'all';
+      var tabType = (it.item_type === 'reporter_item' || it.item_type === 'gift_token') ? 'gift'
+        : (it.item_type === 'profile_badge' || it.item_type === 'profile_cosmetic') ? 'profile'
+        : it.can_buy_with_cash ? 'cash' : 'all';
       return '<article class="card" data-tab-type="' + tabType + '">'
         + '<div class="thumb"><img src="' + (it.image_url || 'https://picsum.photos/seed/shop-'+it.id+'/640/360') + '" alt="' + (it.name||'') + '"></div>'
         + '<div class="body">'
@@ -323,7 +376,7 @@
   var _currentTab = 'all';
   function itemMatchesTab(item, tab) {
     if (tab === 'all') return true;
-    if (tab === 'gift') return item.item_type === 'reporter_item';
+    if (tab === 'gift') return item.item_type === 'reporter_item' || item.item_type === 'gift_token';
     if (tab === 'profile') return item.item_type === 'profile_badge' || item.item_type === 'profile_cosmetic';
     if (tab === 'cash') return !!item.can_buy_with_cash;
     return false; // room handled separately
