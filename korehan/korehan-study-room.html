@@ -1788,54 +1788,69 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 .dm-row.me .dm-bubble { background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border-bottom-right-radius:4px;box-shadow:0 2px 12px rgba(124,58,237,.3); }
 .dm-hl { background:rgba(52,211,153,.2);border-radius:4px;padding:1px 5px;font-weight:800;color:#34d399;border:1px solid rgba(52,211,153,.15); }
 
-/* ─── ALPHABET MODAL — Canvas 2.0 Word Builder ─── */
-.alpha-modal { max-width:820px !important;max-height:94vh !important; }
-/* Canvas stage */
-.aw-canvas-wrap { margin:0 20px 0;border-radius:16px;overflow:hidden;position:relative;background:#07111f; }
-#alpha-canvas { display:block;width:100%;height:260px; }
-/* Info strip below canvas */
-.aw-info { padding:10px 20px 0;text-align:center; }
-.aw-syl-prompt { font-size:13px;color:rgba(255,255,255,.45);margin-bottom:6px; }
-.aw-syl-slots { display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px; }
-.aw-syl-slot { display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;border:2px dashed rgba(56,189,248,.28);font-size:24px;font-weight:900;color:rgba(56,189,248,.6);font-family:'Noto Serif KR',serif;transition:all .18s; }
-.aw-syl-slot.filled { border-style:solid;border-color:#38bdf8;background:rgba(56,189,248,.1);color:#e0f2fe; }
-.aw-syl-op { font-size:18px;color:rgba(255,255,255,.2);user-select:none; }
-.aw-fb { min-height:20px;font-size:13px;font-weight:700;text-align:center;margin:4px 20px 0;transition:all .18s; }
-.aw-score-row { display:flex;align-items:center;justify-content:space-between;padding:6px 20px 8px; }
-.aw-score-txt { font-size:12px;color:rgba(255,255,255,.3);font-weight:700; }
-.aw-progress-bar { flex:1;height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin:0 12px;overflow:hidden; }
+/* ─── WORD BUILDER MODAL ─── */
+.alpha-modal { max-width:560px !important;max-height:94vh !important; }
+.aw-score-row { display:flex;align-items:center;gap:10px; }
+.aw-score-txt { font-size:12px;color:rgba(255,255,255,.4);font-weight:700;white-space:nowrap; }
+.aw-progress-bar { width:100px;height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden; }
 .aw-progress-fill { height:100%;background:linear-gradient(90deg,#38bdf8,#818cf8);border-radius:2px;transition:width .4s ease; }
-/* Button row */
-.aw-btn-row { display:flex;gap:8px;justify-content:center;padding:0 20px 14px; }
-.aw-btn { padding:8px 20px;border-radius:10px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s; }
-.aw-btn-reset { background:rgba(255,255,255,.08);color:rgba(255,255,255,.5); }
+/* Target word card */
+.aw-word-stage {
+  margin:0 20px 14px;padding:28px 20px 22px;border-radius:18px;
+  background:linear-gradient(180deg,rgba(56,189,248,.08),rgba(79,70,229,.05));
+  border:1px solid rgba(125,211,252,.18);text-align:center;position:relative;
+}
+.aw-word-meaning { font-size:22px;font-weight:800;color:#e0f2fe;margin-bottom:4px;line-height:1.2; }
+.aw-word-rom { font-size:12px;color:rgba(125,211,252,.6);margin-bottom:12px;letter-spacing:.05em; }
+.aw-listen-btn {
+  display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;
+  border:1px solid rgba(125,211,252,.3);background:rgba(125,211,252,.1);color:#7dd3fc;
+  font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:18px;transition:.15s;
+}
+.aw-listen-btn:hover { background:rgba(125,211,252,.18); }
+.aw-slots { display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;min-height:62px; }
+.aw-slot {
+  display:inline-flex;align-items:center;justify-content:center;
+  width:52px;height:60px;border-radius:12px;
+  border:2px dashed rgba(125,211,252,.35);font-size:26px;font-weight:900;
+  color:rgba(125,211,252,.55);font-family:'Noto Serif KR',serif;
+  transition:all .18s;cursor:pointer;
+}
+.aw-slot.filled { border-style:solid;border-color:#38bdf8;background:rgba(56,189,248,.14);color:#fff; }
+.aw-slot.correct { border-color:#34d399;background:rgba(52,211,153,.18);color:#d1fae5; }
+.aw-slot.wrong   { border-color:#ef4444;background:rgba(239,68,68,.14);color:#fecaca; }
+/* Feedback */
+.aw-fb { min-height:22px;font-size:13px;font-weight:700;text-align:center;margin:0 20px 10px;transition:.18s; }
+.aw-fb.ok   { color:#34d399; }
+.aw-fb.no   { color:#f87171; }
+/* Tile pool */
+.aw-tile-pool {
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
+  gap:10px;padding:4px 20px 14px;min-height:72px;
+}
+.aw-tile {
+  min-width:56px;height:56px;padding:0 14px;border-radius:14px;
+  background:#fff;border:2px solid #e2e8f0;color:#0f172a;
+  font-size:22px;font-weight:900;font-family:'Noto Serif KR',serif;
+  cursor:pointer;transition:all .15s;box-shadow:0 2px 8px rgba(0,0,0,.35);
+}
+.aw-tile:hover { transform:translateY(-2px);border-color:#38bdf8; }
+.aw-tile:active { transform:translateY(1px); }
+.aw-tile.used { opacity:.15;pointer-events:none;transform:scale(.9); }
+/* Buttons */
+.aw-btn-row { display:flex;gap:10px;justify-content:center;padding:0 20px 20px; }
+.aw-btn { padding:10px 22px;border-radius:12px;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s; }
+.aw-btn-reset { background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.1); }
 .aw-btn-reset:hover { background:rgba(255,255,255,.14); }
-.aw-btn-next { background:#059669;color:#fff; }
-.aw-btn-next:hover { background:#047857; }
-.aw-btn-start { background:linear-gradient(135deg,#0369a1,#4f46e5);color:#fff; }
-.aw-btn-start:hover { filter:brightness(1.1); }
-/* Panels */
-.alpha-panels { display:flex;gap:10px;padding:0 20px 20px; }
-.alpha-panel { flex:1;min-width:0; }
-.alpha-panel-title { font-size:11px;font-weight:700;color:rgba(255,255,255,.35);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px; }
-.alpha-grid { display:flex;flex-wrap:wrap;gap:5px; }
-.alpha-card { width:42px;height:42px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0; }
-.alpha-card:hover { background:rgba(56,189,248,.15);border-color:rgba(56,189,248,.3);transform:scale(1.08); }
-.alpha-card.selected { background:rgba(56,189,248,.3);border-color:#38bdf8;box-shadow:0 0 10px rgba(56,189,248,.3); }
-.alpha-card.correct { background:rgba(5,150,105,.3);border-color:#34d399 !important;box-shadow:0 0 10px rgba(52,211,153,.3); }
-.alpha-card.wrong { background:rgba(239,68,68,.2);border-color:#ef4444 !important; }
-.alpha-card.dimmed { opacity:.3;pointer-events:none; }
-.alpha-card-char { font-size:20px;font-weight:900;color:#fff;font-family:'Noto Serif KR',serif;line-height:1; }
-.alpha-card-rom { font-size:8px;color:rgba(255,255,255,.35);margin-top:1px; }
+.aw-btn-skip { background:linear-gradient(135deg,#0369a1,#4f46e5);color:#fff; }
+.aw-btn-skip:hover { filter:brightness(1.12); }
 @keyframes awShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
 .aw-shake { animation:awShake .35s ease; }
 @keyframes awPop { 0%{transform:scale(1)} 50%{transform:scale(1.18)} 100%{transform:scale(1)} }
 .aw-pop { animation:awPop .25s ease; }
 @media(max-width:600px) {
-  .alpha-panels { flex-direction:column;gap:12px; }
-  .alpha-card { width:38px;height:38px; }
-  .alpha-card-char { font-size:17px; }
-  #alpha-canvas { height:220px; }
+  .aw-slot { width:46px;height:54px;font-size:23px; }
+  .aw-tile { min-width:48px;height:50px;font-size:20px;padding:0 12px; }
 }
 
 /* ─── FAST TRACK: Detroit-style Flowchart + Player ─── */
@@ -5812,19 +5827,11 @@ function slangQuizAnswer(optIdx) {
   }
 }
 
-// ── Alphabet Modal — Canvas 2.0 Word Builder ──
-// All consonants (basic + double) for the left panel
-var _ALL_CON = [].concat(_HANGUL.consonant, _HANGUL.double);
-var _ALL_VOW = _HANGUL.vowel;
-
-// Full medial vowel string (matches Unicode Hangul syllable decomposition order)
-var _AW_MEDIALS = 'ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ';
-// Full initial consonant string (matches Unicode Hangul syllable decomposition order)
-var _AW_INITIALS = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
-
-// Word pool — easy (2-syllable) and medium (3-syllable)
+// ── Word Builder Modal ──
+// Users tap syllable tiles in the correct order to assemble a Korean word.
+// Replaces the older consonant + vowel → single-syllable canvas game.
 var _AW_WORD_POOL = [
-  // easy words (2 syllables, basic consonants + basic vowels only)
+  // 2-syllable words
   { word:'가방', rom:'ga-bang', en:'bag',       syllables:['가','방'] },
   { word:'나라', rom:'na-ra',   en:'country',   syllables:['나','라'] },
   { word:'다리', rom:'da-ri',   en:'bridge',    syllables:['다','리'] },
@@ -5837,328 +5844,50 @@ var _AW_WORD_POOL = [
   { word:'노래', rom:'no-rae',  en:'song',      syllables:['노','래'] },
   { word:'하늘', rom:'ha-neul', en:'sky',       syllables:['하','늘'] },
   { word:'커피', rom:'keo-pi',  en:'coffee',    syllables:['커','피'] },
-  { word:'머리', rom:'meo-ri',  en:'head/hair', syllables:['머','리'] },
+  { word:'머리', rom:'meo-ri',  en:'head / hair', syllables:['머','리'] },
   { word:'서울', rom:'seo-ul',  en:'Seoul',     syllables:['서','울'] },
   { word:'사랑', rom:'sa-rang', en:'love',      syllables:['사','랑'] },
-  // medium words (3 syllables)
   { word:'라면', rom:'ra-myeon', en:'ramen',    syllables:['라','면'] },
   { word:'포도', rom:'po-do',   en:'grape',     syllables:['포','도'] },
   { word:'토끼', rom:'to-kki',  en:'rabbit',    syllables:['토','끼'] },
-  { word:'고양이', rom:'go-yang-i', en:'cat',   syllables:['고','양','이'] },
-  { word:'바나나', rom:'ba-na-na', en:'banana', syllables:['바','나','나'] },
   { word:'시간', rom:'si-gan',  en:'time',      syllables:['시','간'] },
   { word:'여름', rom:'yeo-reum', en:'summer',   syllables:['여','름'] },
   { word:'소리', rom:'so-ri',   en:'sound',     syllables:['소','리'] },
   { word:'기차', rom:'gi-cha',  en:'train',     syllables:['기','차'] },
-  { word:'아버지', rom:'a-beo-ji', en:'father', syllables:['아','버','지'] }
+  { word:'학교', rom:'hak-gyo', en:'school',    syllables:['학','교'] },
+  { word:'친구', rom:'chin-gu', en:'friend',    syllables:['친','구'] },
+  { word:'가족', rom:'ga-jok',  en:'family',    syllables:['가','족'] },
+  { word:'음식', rom:'eum-sik', en:'food',      syllables:['음','식'] },
+  { word:'공부', rom:'gong-bu', en:'studying',  syllables:['공','부'] },
+  { word:'주말', rom:'ju-mal',  en:'weekend',   syllables:['주','말'] },
+  // 3-syllable words
+  { word:'고양이', rom:'go-yang-i', en:'cat',        syllables:['고','양','이'] },
+  { word:'바나나', rom:'ba-na-na',  en:'banana',     syllables:['바','나','나'] },
+  { word:'아버지', rom:'a-beo-ji',  en:'father',     syllables:['아','버','지'] },
+  { word:'어머니', rom:'eo-meo-ni', en:'mother',     syllables:['어','머','니'] },
+  { word:'도서관', rom:'do-seo-gwan', en:'library',  syllables:['도','서','관'] },
+  { word:'한국어', rom:'han-guk-eo',  en:'Korean (language)', syllables:['한','국','어'] },
+  { word:'자전거', rom:'ja-jeon-geo', en:'bicycle',  syllables:['자','전','거'] },
+  { word:'비행기', rom:'bi-haeng-gi', en:'airplane', syllables:['비','행','기'] }
 ];
 
-// Canvas word builder state
-var _awWords = [];
-var _awIdx = 0;
-var _awSylIdx = 0;
-var _awScore = 0;
+// Word Builder state
+var _awWords = [];       // 5 words picked for this round
+var _awIdx = 0;          // index of current word inside _awWords
+var _awScore = 0;        // words completed correctly this round
 var _awRoundTotal = 5;
-var _awCanvas = null, _awCtx = null;
-var _awRAF = null;
-var _awPhase = 'idle'; // idle | playing | word-complete | round-complete
-var _awSelCon = null;  // index into _ALL_CON
-var _awSelVow = null;  // index into _ALL_VOW
-var _awParticles = [];
-var _awWordAnim = { scale:1, alpha:1, offsetY:0, shake:0, glowWord:-1 };
-var _awFeedbackMsg = '';
-var _awFeedbackColor = '';
-var _awFeedbackTimer = 0;
-var _awHue = 220; // for background gradient hue shift
-var _awGradientT = 0;
-var _awCompletedWord = false;
-var _awProgressFill = 0; // 0-1 for progress bar
+var _awPool = [];        // [{syl, placed}] scrambled tiles for current word
+var _awPlaced = [];      // tile indices in the order they were tapped
+var _awPhase = 'idle';   // idle | playing | round-complete
+var _awLockInput = false;
 
-// Decompose a Hangul syllable char into {con, vow}
-function decomposeHangulSyl(ch) {
-  var code = ch.charCodeAt(0) - 0xAC00;
-  if (code < 0 || code > 11171) return null;
-  var cho  = Math.floor(code / 588);
-  var jung = Math.floor((code % 588) / 28);
-  return { char: ch, con: _AW_INITIALS[cho], vow: _AW_MEDIALS[jung] };
-}
-
-// Fully decompose a word — skip syllables whose vowel is not in _ALL_VOW (compound vowels)
-function decomposeWord(word) {
-  var result = [];
-  for (var i = 0; i < word.length; i++) {
-    var d = decomposeHangulSyl(word[i]);
-    if (!d) continue;
-    // Only include syllables whose vowel is in our simplified vowel panel
-    var vowInPanel = _ALL_VOW.some(function(v){ return v.char === d.vow; });
-    var conInPanel = _ALL_CON.some(function(c){ return c.char === d.con; });
-    if (vowInPanel && conInPanel) result.push(d);
+function _awShuffle(arr) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
   }
-  return result;
-}
-
-// Pick 5 words for a round — filter to only words we can fully decompose with our panels
-function _awPickRoundWords() {
-  var pool = _AW_WORD_POOL.filter(function(w) {
-    return decomposeWord(w.word).length === w.syllables.length;
-  });
-  // shuffle
-  var shuffled = pool.slice().sort(function(){ return Math.random() - 0.5; });
-  return shuffled.slice(0, _awRoundTotal);
-}
-
-// Spawn particle burst
-function spawnParticles(x, y, color, count) {
-  for (var i = 0; i < count; i++) {
-    var angle = Math.random() * Math.PI * 2;
-    var speed = 1.5 + Math.random() * 3.5;
-    _awParticles.push({
-      x: x, y: y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 1.5,
-      r: 2 + Math.random() * 3,
-      color: color,
-      alpha: 1,
-      gravity: 0.12
-    });
-  }
-}
-
-// ── Canvas render ──
-function renderAlphaCanvas() {
-  var cv = _awCanvas, ctx = _awCtx;
-  if (!cv || !ctx) return;
-  var W = cv.width, H = cv.height;
-
-  // Animated gradient background
-  _awGradientT += 0.003;
-  var h1 = 215 + Math.sin(_awGradientT) * 15;
-  var h2 = 240 + Math.cos(_awGradientT * 0.7) * 20;
-  var grad = ctx.createLinearGradient(0, 0, W, H);
-  grad.addColorStop(0, 'hsl(' + h1 + ',55%,8%)');
-  grad.addColorStop(1, 'hsl(' + h2 + ',60%,5%)');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
-
-  if (_awPhase === 'idle') {
-    _renderAwIdle(ctx, W, H);
-  } else {
-    _renderAwPlaying(ctx, W, H);
-  }
-
-  // Particles
-  _awParticles = _awParticles.filter(function(p){ return p.alpha > 0.05; });
-  _awParticles.forEach(function(p) {
-    p.x += p.vx; p.y += p.vy; p.vy += p.gravity;
-    p.alpha -= 0.022;
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, p.alpha);
-    ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  });
-
-  // Feedback message overlay
-  if (_awFeedbackTimer > 0) {
-    _awFeedbackTimer--;
-    var fAlpha = Math.min(1, _awFeedbackTimer / 15);
-    ctx.save();
-    ctx.globalAlpha = fAlpha;
-    ctx.font = 'bold 16px "DM Sans", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = _awFeedbackColor;
-    ctx.shadowColor = _awFeedbackColor;
-    ctx.shadowBlur = 10;
-    ctx.fillText(_awFeedbackMsg, W / 2, H - 22);
-    ctx.restore();
-  }
-}
-
-function _renderAwIdle(ctx, W, H) {
-  ctx.save();
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = 'bold 22px "Noto Serif KR", serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.7)';
-  ctx.shadowColor = 'rgba(56,189,248,0.4)';
-  ctx.shadowBlur = 20;
-  ctx.fillText('한국어 단어 만들기', W / 2, H / 2 - 22);
-  ctx.shadowBlur = 0;
-  ctx.font = '13px "DM Sans", sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.35)';
-  ctx.fillText('Build Korean words syllable by syllable', W / 2, H / 2 + 14);
-  ctx.restore();
-}
-
-function _renderAwPlaying(ctx, W, H) {
-  if (!_awWords.length) return;
-  var word = _awWords[_awIdx];
-  var syls = decomposeWord(word.word);
-  var totalWords = _awWords.length;
-
-  // Progress dots at top
-  var dotR = 5, dotGap = 16, dotY = 18;
-  var dotsW = totalWords * (dotR * 2) + (totalWords - 1) * (dotGap - dotR * 2);
-  var dotStartX = W / 2 - dotsW / 2;
-  for (var d = 0; d < totalWords; d++) {
-    var dx = dotStartX + d * dotGap;
-    ctx.beginPath();
-    ctx.arc(dx, dotY, dotR, 0, Math.PI * 2);
-    if (d < _awIdx) {
-      ctx.fillStyle = '#34d399';
-      ctx.shadowColor = '#34d399'; ctx.shadowBlur = 8;
-    } else if (d === _awIdx) {
-      ctx.fillStyle = '#38bdf8';
-      ctx.shadowColor = '#38bdf8'; ctx.shadowBlur = 10;
-    } else {
-      ctx.fillStyle = 'rgba(255,255,255,0.15)';
-      ctx.shadowBlur = 0;
-    }
-    ctx.fill();
-    ctx.shadowBlur = 0;
-  }
-
-  // Target word — large Korean text with per-syllable glow
-  var fontSize = H > 200 ? 52 : 44;
-  ctx.font = '900 ' + fontSize + 'px "Noto Serif KR", serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-
-  // Measure total word width to position each syllable
-  var charW = [];
-  var totalW = 0;
-  for (var i = 0; i < word.word.length; i++) {
-    var cw = ctx.measureText(word.word[i]).width;
-    charW.push(cw);
-    totalW += cw;
-  }
-  var gap = 8;
-  totalW += gap * (word.word.length - 1);
-
-  // Shake offset for wrong answer
-  var shakeX = _awWordAnim.shake > 0
-    ? Math.sin(_awWordAnim.shake * 1.5) * 6 * (_awWordAnim.shake / 10)
-    : 0;
-  if (_awWordAnim.shake > 0) _awWordAnim.shake--;
-
-  var wordStartX = W / 2 - totalW / 2 + shakeX;
-  var wordY = H / 2 - 8;
-  var cx = wordStartX;
-  for (var j = 0; j < word.word.length; j++) {
-    var isCurrent = (j === _awSylIdx);
-    var isCompleted = (j < _awSylIdx);
-    // Highlight box behind active syllable
-    if (isCurrent && _awPhase === 'playing') {
-      var boxW = charW[j] + 16, boxH = fontSize + 14;
-      var boxX = cx - 8, boxY = wordY - boxH / 2;
-      ctx.save();
-      ctx.strokeStyle = 'rgba(56,189,248,0.7)';
-      ctx.lineWidth = 2;
-      ctx.shadowColor = 'rgba(56,189,248,0.5)';
-      ctx.shadowBlur = 16;
-      _roundRect(ctx, boxX, boxY, boxW, boxH, 10);
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(56,189,248,0.1)';
-      ctx.fill();
-      ctx.restore();
-    }
-    // Character color
-    if (isCompleted) {
-      ctx.fillStyle = '#34d399';
-      ctx.shadowColor = 'rgba(52,211,153,0.6)';
-      ctx.shadowBlur = 14;
-    } else if (isCurrent) {
-      ctx.fillStyle = '#e0f2fe';
-      ctx.shadowColor = 'rgba(56,189,248,0.8)';
-      ctx.shadowBlur = 18;
-    } else {
-      ctx.fillStyle = 'rgba(255,255,255,0.25)';
-      ctx.shadowBlur = 0;
-    }
-    ctx.fillText(word.word[j], cx + charW[j] / 2, wordY);
-    cx += charW[j] + gap;
-    ctx.shadowBlur = 0;
-  }
-
-  // Romanization + meaning below word
-  var infoY = wordY + fontSize / 2 + 16;
-  ctx.font = '13px "DM Sans", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  ctx.fillText(word.rom + '  ·  ' + word.en, W / 2, infoY);
-
-  // Current syllable prompt
-  if (_awPhase === 'playing' && _awSylIdx < syls.length) {
-    var tgt = syls[_awSylIdx];
-    var promptY = infoY + 26;
-    ctx.font = 'bold 11px "DM Sans", sans-serif';
-    ctx.fillStyle = 'rgba(56,189,248,0.6)';
-    ctx.fillText('Syllable ' + (_awSylIdx + 1) + ' of ' + syls.length + ':  ' + tgt.char + '  (' + tgt.con + ' + ' + tgt.vow + '?)', W / 2, promptY);
-  }
-
-  // Word-complete celebration bar
-  if (_awPhase === 'word-complete') {
-    ctx.save();
-    ctx.font = 'bold 18px "Noto Serif KR", serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#fbbf24';
-    ctx.shadowColor = '#fbbf24';
-    ctx.shadowBlur = 20;
-    ctx.fillText('완벽해요! ✨', W / 2, infoY + 32);
-    ctx.restore();
-  }
-}
-
-// Rounded rectangle helper
-function _roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-}
-
-// RAF loop
-function _awLoop() {
-  renderAlphaCanvas();
-  _awRAF = requestAnimationFrame(_awLoop);
-}
-
-function initAlphaCanvas() {
-  _awCanvas = document.getElementById('alpha-canvas');
-  if (!_awCanvas) return;
-  _awCtx = _awCanvas.getContext('2d');
-  // Handle DPR for crisp text
-  function resizeCanvas() {
-    var dpr = window.devicePixelRatio || 1;
-    var rect = _awCanvas.getBoundingClientRect();
-    _awCanvas.width = Math.round(rect.width * dpr);
-    _awCanvas.height = Math.round(rect.height * dpr);
-    _awCtx.scale(dpr, dpr);
-  }
-  resizeCanvas();
-  window.addEventListener('resize', function() {
-    if (_awCanvas) {
-      var dpr = window.devicePixelRatio || 1;
-      var rect = _awCanvas.getBoundingClientRect();
-      _awCanvas.width = Math.round(rect.width * dpr);
-      _awCanvas.height = Math.round(rect.height * dpr);
-      _awCtx = _awCanvas.getContext('2d');
-      _awCtx.scale(dpr, dpr);
-    }
-  });
-  if (_awRAF) cancelAnimationFrame(_awRAF);
-  _awLoop();
+  return a;
 }
 
 function openAlphaModal() {
@@ -6166,265 +5895,168 @@ function openAlphaModal() {
   if (!ov) return;
   ov.classList.add('open');
   document.body.style.overflow = 'hidden';
-  // Init canvas on next frame so layout is computed, then auto-start the round
-  // — the old idle screen required an extra click that frequently left users
-  // confused when the "단어 연습 시작" button area wasn't visible on small screens.
-  setTimeout(function() {
-    initAlphaCanvas();
-    _awPhase = 'idle';
-    _renderAlphaUI();
-    try { startAlphaWordRound(); } catch(e) { console.warn('[AlphaWord] start failed:', e); }
-  }, 60);
+  startAlphaWordRound();
 }
+
 function closeAlphaModal() {
-  document.getElementById('alpha-overlay').classList.remove('open');
+  var ov = document.getElementById('alpha-overlay');
+  if (ov) ov.classList.remove('open');
   document.body.style.overflow = '';
-  if (_awRAF) { cancelAnimationFrame(_awRAF); _awRAF = null; }
 }
 
 function startAlphaWordRound() {
-  _awWords = _awPickRoundWords();
-  // Defensive: if the word pool filter produced nothing (e.g. _HANGUL shape
-  // changed or a word uses vowels outside the simplified panel), fall back to
-  // the raw pool so the game is always playable.
-  if (!_awWords.length && _AW_WORD_POOL && _AW_WORD_POOL.length) {
-    _awWords = _AW_WORD_POOL.slice(0, Math.min(5, _AW_WORD_POOL.length));
-  }
-  _awIdx = 0; _awSylIdx = 0; _awScore = 0;
-  _awParticles = [];
-  _awSelCon = null; _awSelVow = null;
   _awPhase = 'playing';
-  _awProgressFill = 0;
-  _renderAlphaUI();
-  _awUpdateProgress();
-  if (_awWords.length) speakHangul(_awWords[0].word);
+  _awScore = 0;
+  _awIdx = 0;
+  _awLockInput = false;
+  _awWords = _awShuffle(_AW_WORD_POOL).slice(0, Math.min(_awRoundTotal, _AW_WORD_POOL.length));
+  if (!_awWords.length) return;
+  _renderAwWord();
 }
 
-// Update the DOM UI (syllable slots, buttons, score)
-function _renderAlphaUI() {
+// Build scrambled tiles for the current word, render slots + pool + meta.
+function _renderAwWord() {
+  var stage = document.getElementById('aw-word-stage');
+  var fb = document.getElementById('aw-fb');
+  if (fb) { fb.textContent = ''; fb.className = 'aw-fb'; }
+  if (_awPhase === 'round-complete') { _renderAwRoundComplete(); return; }
+  var w = _awWords[_awIdx];
+  if (!w) { _awPhase = 'round-complete'; _renderAwRoundComplete(); return; }
+  _awLockInput = false;
+  _awPlaced = [];
+  // Shuffle syllables; ensure not already in order when possible
+  var tiles = w.syllables.map(function(s, i){ return { syl: s, originalIdx: i, placed: false }; });
+  _awPool = _awShuffle(tiles);
+  if (_awPool.length > 1 && _awPool.every(function(t,i){ return t.originalIdx === i; })) {
+    var tmp = _awPool[0]; _awPool[0] = _awPool[_awPool.length-1]; _awPool[_awPool.length-1] = tmp;
+  }
+  // Score + progress
   var scoreEl = document.getElementById('aw-score-txt');
-  if (scoreEl) scoreEl.textContent = _awPhase === 'idle' ? '' : (_awScore + ' / ' + _awRoundTotal);
-  _renderAlphaGrids();
-  _renderAwSylSlots();
-  _renderAwBtns();
-}
-
-function _renderAlphaGrids() {
-  var conGrid = document.getElementById('ag-con');
-  var vowGrid = document.getElementById('ag-vow');
-  if (!conGrid || !vowGrid) return;
-  conGrid.innerHTML = _ALL_CON.map(function(h, i) {
-    var dimmed = _awPhase !== 'playing' ? ' dimmed' : '';
-    return '<div class="alpha-card' + dimmed + '" id="ac-c' + i + '" onclick="pickAlphaCon(' + i + ')">'
-      + '<div class="alpha-card-char">' + h.char + '</div>'
-      + '<div class="alpha-card-rom">' + h.rom + '</div></div>';
-  }).join('');
-  vowGrid.innerHTML = _ALL_VOW.map(function(h, i) {
-    var dimmed = _awPhase !== 'playing' ? ' dimmed' : '';
-    return '<div class="alpha-card' + dimmed + '" id="ac-v' + i + '" onclick="pickAlphaVow(' + i + ')">'
-      + '<div class="alpha-card-char">' + h.char + '</div>'
-      + '<div class="alpha-card-rom">' + h.rom + '</div></div>';
-  }).join('');
-}
-
-function _renderAwSylSlots() {
-  var slotCon = document.getElementById('aw-slot-con');
-  var slotVow = document.getElementById('aw-slot-vow');
-  var slotRes = document.getElementById('aw-slot-res');
-  if (!slotCon) return;
-  if (_awSelCon !== null) {
-    slotCon.textContent = _ALL_CON[_awSelCon].char;
-    slotCon.classList.add('filled');
-  } else {
-    slotCon.textContent = '';
-    slotCon.classList.remove('filled');
-  }
-  if (_awSelVow !== null) {
-    slotVow.textContent = _ALL_VOW[_awSelVow].char;
-    slotVow.classList.add('filled');
-  } else {
-    slotVow.textContent = '';
-    slotVow.classList.remove('filled');
-  }
-  if (_awSelCon !== null && _awSelVow !== null) {
-    var combined = combineHangul(_ALL_CON[_awSelCon].char, _ALL_VOW[_awSelVow].char);
-    slotRes.textContent = combined || '?';
-    if (combined) slotRes.classList.add('filled');
-  } else {
-    slotRes.textContent = '';
-    slotRes.classList.remove('filled');
-  }
-}
-
-function _renderAwBtns() {
-  var row = document.getElementById('aw-btn-row');
-  if (!row) return;
-  if (_awPhase === 'idle') {
-    row.innerHTML = '<button class="aw-btn aw-btn-start" onclick="startAlphaWordRound()">단어 연습 시작 →</button>';
-  } else if (_awPhase === 'word-complete') {
-    var isLast = (_awIdx >= _awWords.length - 1);
-    row.innerHTML = isLast
-      ? '<button class="aw-btn aw-btn-start" onclick="startAlphaWordRound()">다시 시작 ↺</button>'
-      : '<button class="aw-btn aw-btn-next" onclick="advanceSyllable()">다음 단어 →</button>';
-  } else if (_awPhase === 'round-complete') {
-    row.innerHTML = '<button class="aw-btn aw-btn-start" onclick="startAlphaWordRound()">새 라운드 ↺</button>';
-  } else {
-    row.innerHTML = '<button class="aw-btn aw-btn-reset" onclick="resetAwSel()">리셋</button>';
-  }
-}
-
-function _awUpdateProgress() {
+  if (scoreEl) scoreEl.textContent = _awScore + ' / ' + _awRoundTotal;
   var fill = document.getElementById('aw-progress-fill');
-  if (!fill) return;
-  _awProgressFill = _awWords.length ? (_awIdx / _awWords.length) : 0;
-  fill.style.width = Math.round(_awProgressFill * 100) + '%';
-}
-
-// User picks consonant
-function pickAlphaCon(idx) {
-  if (_awPhase !== 'playing') return;
-  speakHangul(_ALL_CON[idx].char);
-  _awSelCon = idx;
-  document.querySelectorAll('#ag-con .alpha-card').forEach(function(c){ c.classList.remove('selected'); });
-  var el = document.getElementById('ac-c' + idx);
-  if (el) el.classList.add('selected');
-  _renderAwSylSlots();
-  if (_awSelCon !== null && _awSelVow !== null) checkSyllable();
-}
-
-// User picks vowel
-function pickAlphaVow(idx) {
-  if (_awPhase !== 'playing') return;
-  speakHangul(_ALL_VOW[idx].char);
-  _awSelVow = idx;
-  document.querySelectorAll('#ag-vow .alpha-card').forEach(function(c){ c.classList.remove('selected'); });
-  var el = document.getElementById('ac-v' + idx);
-  if (el) el.classList.add('selected');
-  _renderAwSylSlots();
-  if (_awSelCon !== null && _awSelVow !== null) checkSyllable();
-}
-
-function resetAwSel() {
-  _awSelCon = null; _awSelVow = null;
-  document.querySelectorAll('.alpha-card').forEach(function(c){ c.classList.remove('selected','correct','wrong'); });
-  _renderAwSylSlots();
-}
-
-// Check if the selected con+vow matches the current target syllable
-function checkSyllable() {
-  if (!_awWords.length || _awPhase !== 'playing') return;
-  var word = _awWords[_awIdx];
-  if (!word || !word.word) return;
-  var syls = decomposeWord(word.word);
-  if (!syls.length) { // data mismatch — advance to skip unrenderable word
-    _awIdx++;
-    if (_awIdx >= _awWords.length) { _awPhase = 'round-complete'; _renderAlphaUI(); return; }
-    _awSylIdx = 0; _awSelCon = null; _awSelVow = null;
-    _renderAlphaUI();
-    return;
+  if (fill) fill.style.width = Math.round((_awIdx / _awRoundTotal) * 100) + '%';
+  // Meaning + rom
+  var meaning = document.getElementById('aw-word-meaning');
+  if (meaning) meaning.textContent = w.en || '';
+  var rom = document.getElementById('aw-word-rom');
+  if (rom) rom.textContent = w.rom || '';
+  // Empty slots (one per target syllable)
+  var slots = document.getElementById('aw-slots');
+  if (slots) {
+    slots.innerHTML = w.syllables.map(function(_, i){
+      return '<div class="aw-slot" data-slot="' + i + '" onclick="awUnplace(' + i + ')"></div>';
+    }).join('');
   }
-  if (_awSylIdx >= syls.length) return;
-  var tgt = syls[_awSylIdx];
-  if (_awSelCon === null || _awSelVow === null) return;
-  var conEntry = _ALL_CON[_awSelCon], vowEntry = _ALL_VOW[_awSelVow];
-  if (!conEntry || !vowEntry) { resetAwSel(); return; }
-  var selCon = conEntry.char;
-  var selVow = vowEntry.char;
-  var correct = (selCon === tgt.con && selVow === tgt.vow);
+  // Pool tiles
+  _renderAwPool();
+  if (stage) { stage.classList.remove('aw-shake'); }
+}
 
-  if (correct) {
-    speakHangul(tgt.char);
-    // Mark cards correct
-    document.getElementById('ac-c' + _awSelCon).classList.add('correct');
-    document.getElementById('ac-v' + _awSelVow).classList.add('correct');
-    // Green particle burst from canvas center
-    if (_awCanvas) {
-      var dpr = window.devicePixelRatio || 1;
-      var rect = _awCanvas.getBoundingClientRect();
-      spawnParticles(
-        rect.width / 2, rect.height * 0.55,
-        '#34d399', 18
-      );
-      spawnParticles(rect.width / 2, rect.height * 0.55, '#6ee7b7', 10);
-    }
-    _awFeedbackMsg = '맞아요! ✓  ' + tgt.char;
-    _awFeedbackColor = '#34d399';
-    _awFeedbackTimer = 45;
-    _awSylIdx++;
-    if (_awSylIdx >= syls.length) {
-      // Word complete!
-      _awScore++;
-      _awPhase = 'word-complete';
-      speakHangul(word.word);
-      if (_awCanvas) {
-        var cx2 = (_awCanvas.getBoundingClientRect().width / 2);
-        var cy2 = (_awCanvas.getBoundingClientRect().height * 0.45);
-        spawnParticles(cx2, cy2, '#fbbf24', 30);
-        spawnParticles(cx2, cy2, '#f59e0b', 20);
-        spawnParticles(cx2 - 40, cy2, '#818cf8', 15);
-        spawnParticles(cx2 + 40, cy2, '#f472b6', 15);
-      }
-      _awFeedbackMsg = '완벽해요! 🎉  ' + word.word + ' = ' + word.en;
-      _awFeedbackColor = '#fbbf24';
-      _awFeedbackTimer = 80;
-      _awUpdateProgress();
-      _renderAlphaUI();
-    } else {
-      // Next syllable — reset selection
-      setTimeout(function() {
-        resetAwSel();
-      }, 400);
-    }
+function _renderAwPool() {
+  var pool = document.getElementById('aw-tile-pool');
+  if (!pool) return;
+  pool.innerHTML = _awPool.map(function(t, i){
+    return '<button class="aw-tile' + (t.placed ? ' used' : '') + '" onclick="awTapTile(' + i + ')" type="button">'
+      + t.syl + '</button>';
+  }).join('');
+}
+
+function awTapTile(poolIdx) {
+  if (_awLockInput) return;
+  var t = _awPool[poolIdx];
+  if (!t || t.placed) return;
+  var w = _awWords[_awIdx];
+  if (!w) return;
+  var nextSlot = _awPlaced.length;
+  if (nextSlot >= w.syllables.length) return;
+  t.placed = true;
+  _awPlaced.push(poolIdx);
+  // Update slot DOM
+  var slotEl = document.querySelector('#aw-slots .aw-slot[data-slot="' + nextSlot + '"]');
+  if (slotEl) { slotEl.textContent = t.syl; slotEl.classList.add('filled', 'aw-pop'); }
+  // Fade used tile
+  var btn = document.querySelectorAll('#aw-tile-pool .aw-tile')[poolIdx];
+  if (btn) btn.classList.add('used');
+  // Complete?
+  if (_awPlaced.length === w.syllables.length) _awCheckAnswer();
+}
+
+function awUnplace(slotIdx) {
+  if (_awLockInput) return;
+  if (slotIdx >= _awPlaced.length) return;
+  // Only allow removing the last placed tile to keep the order predictable
+  if (slotIdx !== _awPlaced.length - 1) return;
+  var poolIdx = _awPlaced.pop();
+  if (typeof poolIdx === 'number' && _awPool[poolIdx]) _awPool[poolIdx].placed = false;
+  var slotEl = document.querySelector('#aw-slots .aw-slot[data-slot="' + slotIdx + '"]');
+  if (slotEl) { slotEl.textContent = ''; slotEl.classList.remove('filled','correct','wrong','aw-pop'); }
+  _renderAwPool();
+}
+
+function _awCheckAnswer() {
+  var w = _awWords[_awIdx];
+  if (!w) return;
+  var assembled = _awPlaced.map(function(pi){ return _awPool[pi].syl; }).join('');
+  var fb = document.getElementById('aw-fb');
+  var stage = document.getElementById('aw-word-stage');
+  _awLockInput = true;
+  if (assembled === w.word) {
+    _awScore++;
+    var slotEls = document.querySelectorAll('#aw-slots .aw-slot');
+    slotEls.forEach(function(el){ el.classList.add('correct'); });
+    if (fb) { fb.textContent = '완벽해요! 🎉  ' + w.word + ' = ' + w.en; fb.className = 'aw-fb ok'; }
+    if (typeof speakHangul === 'function') speakHangul(w.word);
+    var scoreEl = document.getElementById('aw-score-txt');
+    if (scoreEl) scoreEl.textContent = _awScore + ' / ' + _awRoundTotal;
+    setTimeout(function(){
+      _awIdx++;
+      if (_awIdx >= _awRoundTotal || _awIdx >= _awWords.length) { _awPhase = 'round-complete'; _renderAwRoundComplete(); }
+      else _renderAwWord();
+    }, 1400);
   } else {
-    // Wrong
-    _awWordAnim.shake = 10;
-    document.getElementById('ac-c' + _awSelCon).classList.add('wrong');
-    document.getElementById('ac-v' + _awSelVow).classList.add('wrong');
-    if (_awCanvas) {
-      var dpr2 = window.devicePixelRatio || 1;
-      var r2 = _awCanvas.getBoundingClientRect();
-      spawnParticles(r2.width / 2, r2.height * 0.55, '#ef4444', 12);
-    }
-    _awFeedbackMsg = '틀렸어요. 다시 해봐요!  ' + tgt.con + ' + ' + tgt.vow + ' = ' + tgt.char;
-    _awFeedbackColor = '#ef4444';
-    _awFeedbackTimer = 60;
-    // Reset selection after a moment
-    setTimeout(function() {
-      resetAwSel();
-    }, 500);
+    var slotEls2 = document.querySelectorAll('#aw-slots .aw-slot');
+    slotEls2.forEach(function(el){ el.classList.add('wrong'); });
+    if (stage) stage.classList.add('aw-shake');
+    if (fb) { fb.textContent = '틀렸어요. 다시 시도하세요 — 정답: ' + w.word; fb.className = 'aw-fb no'; }
+    setTimeout(function(){
+      // Auto-reset so user can try again
+      awResetRound();
+    }, 1500);
   }
 }
 
-function combineHangul(con, vow) {
-  var initials = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
-  var medials = 'ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ';
-  var ci = initials.indexOf(con);
-  var mi = medials.indexOf(vow);
-  if (ci < 0 || mi < 0) return '';
-  return String.fromCharCode(0xAC00 + (ci * 21 + mi) * 28);
+function awResetRound() {
+  _awLockInput = false;
+  _renderAwWord();
 }
 
-// Move to next word (called when word-complete or from button)
-function advanceSyllable() {
-  if (_awPhase !== 'word-complete') return;
+function awSkip() {
+  if (_awPhase !== 'playing') return;
   _awIdx++;
-  if (_awIdx >= _awWords.length) {
-    _awPhase = 'round-complete';
-    _awFeedbackMsg = '라운드 완료! 점수: ' + _awScore + ' / ' + _awRoundTotal;
-    _awFeedbackColor = '#fbbf24';
-    _awFeedbackTimer = 120;
-    // Update progress to full
-    var fill = document.getElementById('aw-progress-fill');
-    if (fill) fill.style.width = '100%';
-    _renderAlphaUI();
-    return;
-  }
-  _awSylIdx = 0;
-  _awSelCon = null; _awSelVow = null;
-  _awPhase = 'playing';
-  _awUpdateProgress();
-  _renderAlphaUI();
-  speakHangul(_awWords[_awIdx].word);
+  if (_awIdx >= _awRoundTotal || _awIdx >= _awWords.length) { _awPhase = 'round-complete'; _renderAwRoundComplete(); }
+  else _renderAwWord();
+}
+
+function awSpeakTarget() {
+  var w = _awWords[_awIdx];
+  if (w && typeof speakHangul === 'function') speakHangul(w.word);
+}
+
+function _renderAwRoundComplete() {
+  var pool = document.getElementById('aw-tile-pool');
+  var slots = document.getElementById('aw-slots');
+  var meaning = document.getElementById('aw-word-meaning');
+  var rom = document.getElementById('aw-word-rom');
+  var fb = document.getElementById('aw-fb');
+  if (meaning) meaning.textContent = 'Round complete!';
+  if (rom) rom.textContent = _awScore + ' / ' + _awRoundTotal + ' 정답';
+  if (slots) slots.innerHTML = '';
+  if (pool) pool.innerHTML = '<button class="aw-btn aw-btn-skip" onclick="startAlphaWordRound()" type="button">새 라운드 ↺</button>';
+  if (fb) { fb.textContent = _awScore === _awRoundTotal ? '완벽합니다! 🎉' : '좋아요! 다시 도전해보세요.'; fb.className = 'aw-fb ok'; }
+  var fill = document.getElementById('aw-progress-fill');
+  if (fill) fill.style.width = '100%';
+  var scoreEl = document.getElementById('aw-score-txt');
+  if (scoreEl) scoreEl.textContent = _awScore + ' / ' + _awRoundTotal;
 }
 
 var _ttsAudio = null;
@@ -16569,14 +16201,14 @@ function closeReviewModal() {
 </div>
 </div>
 
-<!-- ═══ ALPHABET MODAL ═══ -->
+<!-- ═══ WORD BUILDER MODAL ═══ -->
 <div class="feat-overlay" id="alpha-overlay" onclick="if(event.target===this)closeAlphaModal()">
 <div class="feat-modal alpha-modal">
   <button class="feat-close" onclick="closeAlphaModal()">&times;</button>
   <div style="padding:20px 20px 10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
     <div>
-      <div style="font-size:20px;font-weight:900;color:#fff">🇰🇷 단어 만들기</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:3px">자음과 모음을 선택해 한국어 단어를 완성하세요</div>
+      <div style="font-size:20px;font-weight:900;color:#fff">단어 만들기</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:3px">음절을 순서대로 탭해서 단어를 완성하세요</div>
     </div>
     <div class="aw-score-row" style="padding:0;gap:10px">
       <span class="aw-score-txt" id="aw-score-txt"></span>
@@ -16585,36 +16217,20 @@ function closeReviewModal() {
       </div>
     </div>
   </div>
-  <!-- Canvas stage -->
-  <div class="aw-canvas-wrap">
-    <canvas id="alpha-canvas"></canvas>
+  <div class="aw-word-stage" id="aw-word-stage">
+    <div class="aw-word-meaning" id="aw-word-meaning">—</div>
+    <div class="aw-word-rom" id="aw-word-rom"></div>
+    <button class="aw-listen-btn" id="aw-listen-btn" onclick="awSpeakTarget()" type="button">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      Listen
+    </button>
+    <div class="aw-slots" id="aw-slots"></div>
   </div>
-  <!-- Syllable build slots + feedback -->
-  <div class="aw-info">
-    <div class="aw-syl-prompt" id="aw-syl-prompt">자음과 모음을 선택하세요</div>
-    <div class="aw-syl-slots">
-      <div class="aw-syl-slot" id="aw-slot-con" title="자음"></div>
-      <div class="aw-syl-op">+</div>
-      <div class="aw-syl-slot" id="aw-slot-vow" title="모음"></div>
-      <div class="aw-syl-op">=</div>
-      <div class="aw-syl-slot" id="aw-slot-res" title="음절"></div>
-    </div>
-    <div class="aw-fb" id="aw-fb"></div>
-  </div>
-  <!-- Action buttons -->
+  <div class="aw-fb" id="aw-fb"></div>
+  <div class="aw-tile-pool" id="aw-tile-pool"></div>
   <div class="aw-btn-row" id="aw-btn-row">
-    <button class="aw-btn aw-btn-start" onclick="startAlphaWordRound()">단어 연습 시작 →</button>
-  </div>
-  <!-- Two-column: consonants + vowels side by side -->
-  <div class="alpha-panels">
-    <div class="alpha-panel">
-      <div class="alpha-panel-title">자음 Consonants</div>
-      <div class="alpha-grid" id="ag-con"></div>
-    </div>
-    <div class="alpha-panel">
-      <div class="alpha-panel-title">모음 Vowels</div>
-      <div class="alpha-grid" id="ag-vow"></div>
-    </div>
+    <button class="aw-btn aw-btn-reset" onclick="awResetRound()" type="button">리셋</button>
+    <button class="aw-btn aw-btn-skip" onclick="awSkip()" type="button">Skip →</button>
   </div>
 </div>
 </div>
