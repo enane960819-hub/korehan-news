@@ -637,7 +637,7 @@
     { grammar_point: '(으)ㄹ 텐데 — Probably / I expect', desc: 'Expectation or concern. 힘들 텐데 = it must be hard.' },
     { grammar_point: '게 되다 — End up / Come to', desc: 'Unplanned result. 한국에 살게 됐어요 = I ended up living in Korea.' },
   ];
-  // Randomly pick 5 each time page loads
+  // Randomly pick N each time page loads
   function getRandomGrammar(n) {
     var pool = _ALL_DEFAULT_GRAMMAR.slice();
     for (var i = pool.length - 1; i > 0; i--) {
@@ -647,6 +647,40 @@
     return pool.slice(0, n || 5);
   }
   var DEFAULT_GRAMMAR_ITEMS = getRandomGrammar(5);
+
+  // Pull the shared grammar_curriculum (used by Study Room's Grammar Skill Tree)
+  // so Growth Lab shows the same items admins maintain in one place. Merged
+  // in by `pattern` — DB rows win over the hardcoded fallback. Runs once on
+  // page load; if the DB query fails we just keep the hardcoded list.
+  async function _mergeGrammarCurriculumFromDB() {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb) return;
+    try {
+      var r = await sb.from('grammar_curriculum')
+        .select('pattern, level, sort_order, description, active')
+        .eq('active', true)
+        .order('level').order('sort_order');
+      if (!r.data || !r.data.length) return;
+      var byPoint = {};
+      _ALL_DEFAULT_GRAMMAR.forEach(function(g){ byPoint[g.grammar_point] = g; });
+      r.data.forEach(function(row) {
+        byPoint[row.pattern] = {
+          grammar_point: row.pattern,
+          desc: row.description || (byPoint[row.pattern] && byPoint[row.pattern].desc) || '',
+          level: row.level,
+          order: row.sort_order
+        };
+      });
+      _ALL_DEFAULT_GRAMMAR = Object.keys(byPoint).map(function(k){ return byPoint[k]; });
+      // Refresh the currently-displayed 5-item sample so it reflects the
+      // authoritative curriculum without a page reload.
+      DEFAULT_GRAMMAR_ITEMS = getRandomGrammar(5);
+      var box = document.getElementById('weak-grammar-list');
+      if (box && box.dataset.showingDefaults === '1') {
+        renderWeakGrammar({ weak_grammar: [] });
+      }
+    } catch(e) { console.warn('[Grammar Curriculum merge]', e.message || e); }
+  }
 
   const SKILL_META = [
     { key:'reading',    label:'Reading',    color:'#2563eb',
@@ -698,6 +732,13 @@
     return               ['Almost there','green',  acc];
   }
 
+  function _practiceUrl(pattern) {
+    // Study Room only auto-opens Grammar Focus when source=growth-lab or
+    // grammar-guide is present. Without it the user lands on the main page
+    // and nothing happens, which is what the Practice button was doing.
+    return 'korehan-study-room.html?focus=' + encodeURIComponent(pattern || '') + '&source=growth-lab';
+  }
+
   function renderWeakGrammar(data) {
     var box = document.getElementById('weak-grammar-list');
     var items = data.weak_grammar || [];
@@ -705,6 +746,7 @@
     if (banner) banner.style.display = items.length ? '' : 'none';
     if (!items.length) {
       // No quiz data yet — show foundational grammar as starting points
+      if (box) box.dataset.showingDefaults = '1';
       box.innerHTML = '<div style="margin-bottom:14px;padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;font-size:13px;color:#92400e;">'
         + '📚 Complete a few quizzes and your real weak grammar will appear here. Until then, here are the foundational patterns every learner needs.'
         + '</div>'
@@ -714,20 +756,20 @@
             +   '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">'
             +     '<div class="grammar-title" style="font-size:16px;">' + item.grammar_point + '</div>'
             +   '</div>'
-            +   '<div class="tag amber" style="flex-shrink:0;">Foundational</div>'
+            +   '<div class="tag amber" style="flex-shrink:0;">' + (item.level || 'Foundational') + '</div>'
             + '</div>'
             + '<div style="font-size:13px;color:#64748b;margin-bottom:10px;">' + item.desc + '</div>'
             + '<div class="grammar-actions" style="gap:6px;">'
-            +   '<a class="solid-btn" style="padding:7px 12px;font-size:12px;" href="korehan-study-room.html?focus=' + encodeURIComponent(item.grammar_point) + '">Practice →</a>'
+            +   '<a class="solid-btn" style="padding:7px 12px;font-size:12px;" href="' + _practiceUrl(item.grammar_point) + '">Practice →</a>'
             + '</div>'
             + '</div>';
         }).join('');
       return;
     }
+    if (box) box.dataset.showingDefaults = '0';
     box.innerHTML = items.map(function(item) {
       var total = (item.wrong_count||0) + (item.correct_count||0);
       var cfg   = weakTag(item.wrong_count||0, total);
-      var q     = encodeURIComponent(item.grammar_point);
       var tagColor = cfg[0]==='Weak'?'red':cfg[0]==='Needs review'?'amber':'green';
       var tagLabel = cfg[0] === 'Weak' ? 'Weak Grammar' : cfg[0];
       return '<div class="grammar-item" style="padding:12px 14px;">'
@@ -740,7 +782,7 @@
         + '</div>'
         + '<div class="progress" style="margin-bottom:10px;"><div class="fill ' + tagColor + '" style="width:' + cfg[2] + '%"></div></div>'
         + '<div class="grammar-actions" style="gap:6px;">'
-        +   '<a class="solid-btn" style="padding:7px 12px;font-size:12px;" href="korehan-study-room.html?focus=' + q + '">Practice →</a>'
+        +   '<a class="solid-btn" style="padding:7px 12px;font-size:12px;" href="' + _practiceUrl(item.grammar_point) + '">Practice →</a>'
         + '</div>'
         + '</div>';
     }).join('');
@@ -1470,6 +1512,7 @@
       renderTopStats(demoSnap);
       renderWeakGrammar(demoSnap);
       renderSkills(demoSnap);
+      renderRadarFromSnap(demoSnap);
       renderReview(demoSnap);
       renderGrowthLineChart(demoSnap);
       renderWeeklyImprovements(demoSnap);
@@ -1504,6 +1547,7 @@
       renderTopStats(snap);
       renderWeakGrammar(snap);
       renderSkills(snap);
+      renderRadarFromSnap(snap);
       renderReview(snap);
       renderGrowthLineChart(snap);
       renderWeeklyImprovements(snap);
@@ -2394,6 +2438,23 @@
 
   var _radarSnaps = [];
   var _radarCompareIdx = 0; // 0=1w ago, 1=2w ago, 3=4w ago
+  var _radarCurrentOverride = null; // when set, radar plots this instead of DB snapshot
+
+  // Maps snap.scores (reading/grammar/vocabulary/writing/listening) onto the
+  // skill_* keys the radar chart expects. Without this the radar reads from
+  // user_weekly_snapshot which is 0 on first load even when the score cards
+  // below it show real numbers.
+  function renderRadarFromSnap(snap) {
+    var s = (snap && snap.scores) || {};
+    _radarCurrentOverride = {
+      skill_reading:   s.reading    || 0,
+      skill_vocab:     s.vocabulary || 0,
+      skill_grammar:   s.grammar    || 0,
+      skill_writing:   s.writing    || 0,
+      skill_listening: s.listening  || 0
+    };
+    _renderRadarWithCompare();
+  }
 
   // ═══════════════════════════════════════════════════════════════
   // WEEKLY SNAPSHOT GENERATOR
@@ -2549,7 +2610,7 @@
 
   function _renderRadarWithCompare() {
     var snaps = _radarSnaps;
-    var current = snaps[0] || { skill_reading:0, skill_vocab:0, skill_grammar:0, skill_writing:0, skill_listening:0 };
+    var current = _radarCurrentOverride || snaps[0] || { skill_reading:0, skill_vocab:0, skill_grammar:0, skill_writing:0, skill_listening:0 };
     var compareSnap = snaps[_radarCompareIdx + 1] || snaps[snaps.length - 1] || null;
     renderRadarChart(current, compareSnap);
 
@@ -2847,6 +2908,7 @@
     loadWeeklyComparison();
     loadWeeklyGoals();
     loadCalendarData();
+    _mergeGrammarCurriculumFromDB();
     generateWeeklySnapshot().then(function() { loadRadarChart(); });
     loadErrorPatterns();
     loadReviewHistory();
