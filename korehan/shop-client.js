@@ -1,82 +1,56 @@
 (function(){
   var K_SHOP_ITEMS_FALLBACK = 'kh_shop_items_fallback';
   var K_SHOP_ITEMS_FALLBACK_DB = 'shop_items_fallback';
+  // Image convention: assets/shop/<slug>.png — drop files with those names in
+  // /korehan/assets/shop/ and they'll show up automatically. Missing images
+  // fall back to picsum placeholders.
+  function shopImg(slug) { return 'assets/shop/' + slug + '.png'; }
+  function _mk(o) {
+    return Object.assign({
+      slug: o.id.replace(/_/g, '-'),
+      image_url: o.image_url || shopImg(o.id.replace(/_/g, '-')),
+      cash_price: 0,
+      is_active: true,
+      can_buy_with_coin: true,
+      can_buy_with_cash: false,
+      is_repeatable: false
+    }, o);
+  }
   var DEFAULT_SHOP_ITEMS = [
-    {
-      id: 'badge_founder',
-      name: 'Founder Badge',
-      slug: 'founder-badge',
-      description: 'Display an exclusive Founder profile badge.',
-      image_url: 'https://picsum.photos/seed/shop-founder-badge/640/360',
-      item_type: 'profile_badge',
-      coin_price: 120,
-      cash_price: 0,
-      is_active: true,
-      can_buy_with_coin: true,
-      can_buy_with_cash: false,
-      is_repeatable: false,
-      sort_order: 10
-    },
-    {
-      id: 'cosmetic_neon_frame',
-      name: 'Neon Profile Frame',
-      slug: 'neon-profile-frame',
-      description: 'Cosmetic frame for your profile image.',
-      image_url: 'https://picsum.photos/seed/shop-neon-frame/640/360',
-      item_type: 'profile_cosmetic',
-      coin_price: 180,
-      cash_price: 0,
-      is_active: true,
-      can_buy_with_coin: true,
-      can_buy_with_cash: false,
-      is_repeatable: false,
-      sort_order: 20
-    },
-    {
-      id: 'reporter_coffee',
-      name: 'Reporter Coffee Treat',
-      slug: 'reporter-coffee-treat',
-      description: 'Give your favorite reporter a coffee boost.',
-      image_url: 'https://picsum.photos/seed/shop-reporter-coffee/640/360',
-      item_type: 'reporter_item',
-      coin_price: 60,
-      cash_price: 0,
-      is_active: true,
-      can_buy_with_coin: true,
-      can_buy_with_cash: false,
-      is_repeatable: true,
-      sort_order: 30
-    },
-    {
-      id: 'reporter_bubble_tea',
-      name: 'Reporter Bubble Tea',
-      slug: 'reporter-bubble-tea',
-      description: 'A sweet bubble tea gift for your favorite reporter.',
-      image_url: 'https://picsum.photos/seed/shop-reporter-bubble-tea/640/360',
-      item_type: 'reporter_item',
-      coin_price: 75,
-      cash_price: 0,
-      is_active: true,
-      can_buy_with_coin: true,
-      can_buy_with_cash: false,
-      is_repeatable: true,
-      sort_order: 40
-    },
-    {
-      id: 'reporter_flower',
-      name: 'Reporter Flower Bouquet',
-      slug: 'reporter-flower-bouquet',
-      description: 'A bouquet gift for reporter affinity moments.',
-      image_url: 'https://picsum.photos/seed/shop-reporter-flower/640/360',
-      item_type: 'reporter_item',
-      coin_price: 95,
-      cash_price: 0,
-      is_active: true,
-      can_buy_with_coin: true,
-      can_buy_with_cash: false,
-      is_repeatable: true,
-      sort_order: 50
-    }
+    // ── Profile badges ────────────────────────────────────────
+    _mk({ id:'badge_founder',        name:'Founder Badge',         description:'Display an exclusive Founder profile badge.',             item_type:'profile_badge', coin_price:120, sort_order:10 }),
+    _mk({ id:'badge_early_bird',     name:'Early Bird Badge',      description:'For learners who study before 8 AM.',                     item_type:'profile_badge', coin_price:90,  sort_order:11 }),
+    _mk({ id:'badge_night_owl',      name:'Night Owl Badge',       description:'For learners who study after midnight.',                  item_type:'profile_badge', coin_price:90,  sort_order:12 }),
+    _mk({ id:'badge_verified',       name:'Verified Learner Badge',description:'A blue verified check for your profile.',                 item_type:'profile_badge', coin_price:200, sort_order:13 }),
+    _mk({ id:'badge_polyglot',       name:'Polyglot Badge',        description:'Show off that Korean isn\'t your first non-native language.', item_type:'profile_badge', coin_price:160, sort_order:14 }),
+    _mk({ id:'badge_vip',            name:'VIP Star Badge',        description:'A shining gold star for VIP supporters.',                 item_type:'profile_badge', coin_price:0,   cash_price:4.99, can_buy_with_coin:false, can_buy_with_cash:true, sort_order:15 }),
+
+    // ── Profile cosmetics (frames, themes) ────────────────────
+    _mk({ id:'cosmetic_neon_frame',  name:'Neon Profile Frame',    description:'Cosmetic frame for your profile image.',                  item_type:'profile_cosmetic', coin_price:180, sort_order:20 }),
+    _mk({ id:'cosmetic_sakura_frame',name:'Sakura Profile Frame',  description:'Pink cherry blossom frame for spring vibes.',             item_type:'profile_cosmetic', coin_price:160, sort_order:21 }),
+    _mk({ id:'cosmetic_hanbok_frame',name:'Hanbok Profile Frame',  description:'Traditional Korean hanbok-inspired frame.',               item_type:'profile_cosmetic', coin_price:220, sort_order:22 }),
+    _mk({ id:'cosmetic_gold_frame',  name:'Gold Profile Frame',    description:'Luxe gold border for the showoffs.',                      item_type:'profile_cosmetic', coin_price:260, sort_order:23 }),
+    _mk({ id:'cosmetic_pastel_theme',name:'Pastel Theme',          description:'Soft pastel UI theme for the whole site.',                item_type:'profile_cosmetic', coin_price:300, sort_order:24 }),
+    _mk({ id:'cosmetic_retro_theme', name:'Retro Pixel Theme',     description:'8-bit pixel aesthetic for the whole UI.',                 item_type:'profile_cosmetic', coin_price:320, sort_order:25 }),
+
+    // ── Reporter gifts ────────────────────────────────────────
+    _mk({ id:'reporter_coffee',      name:'Reporter Coffee Treat', description:'Give your favorite reporter a coffee boost.',            item_type:'reporter_item', coin_price:60,  is_repeatable:true, sort_order:30 }),
+    _mk({ id:'reporter_bubble_tea',  name:'Reporter Bubble Tea',   description:'A sweet bubble tea gift for your favorite reporter.',    item_type:'reporter_item', coin_price:75,  is_repeatable:true, sort_order:31 }),
+    _mk({ id:'reporter_flower',      name:'Reporter Flower Bouquet', description:'A bouquet gift for reporter affinity moments.',       item_type:'reporter_item', coin_price:95,  is_repeatable:true, sort_order:32 }),
+    _mk({ id:'reporter_macaron',     name:'Macaron Set',           description:'A colorful box of French macarons.',                     item_type:'reporter_item', coin_price:80,  is_repeatable:true, sort_order:33 }),
+    _mk({ id:'reporter_kimbap',      name:'Kimbap Lunch',          description:'Hand-rolled kimbap to fuel the newsroom.',               item_type:'reporter_item', coin_price:55,  is_repeatable:true, sort_order:34 }),
+    _mk({ id:'reporter_ramen',       name:'Spicy Ramen',           description:'A steaming bowl of spicy ramen for late nights.',        item_type:'reporter_item', coin_price:50,  is_repeatable:true, sort_order:35 }),
+    _mk({ id:'reporter_samgyetang',  name:'Samgyetang',            description:'Warming ginseng chicken soup — perfect for rainy days.', item_type:'reporter_item', coin_price:140, is_repeatable:true, sort_order:36 }),
+    _mk({ id:'reporter_bingsu',      name:'Mango Bingsu',          description:'Icy mango bingsu to beat the summer heat.',              item_type:'reporter_item', coin_price:110, is_repeatable:true, sort_order:37 }),
+    _mk({ id:'reporter_cake',        name:'Birthday Cake',         description:'A slice of strawberry shortcake — birthdays only.',      item_type:'reporter_item', coin_price:200, is_repeatable:true, sort_order:38 }),
+    _mk({ id:'reporter_concert',     name:'Concert Tickets',       description:'Premium concert tickets for a special thanks.',          item_type:'reporter_item', coin_price:450, is_repeatable:true, sort_order:39 }),
+    _mk({ id:'reporter_gift_box',    name:'Holiday Gift Box',      description:'Seasonal gift box with assorted Korean treats.',         item_type:'reporter_item', coin_price:180, is_repeatable:true, sort_order:40 }),
+
+    // ── Cash-only premium items ───────────────────────────────
+    _mk({ id:'cash_nyang_pack_sm',   name:'Nyang Pack · Small',    description:'Adds 500 냥 to your balance instantly.',                 item_type:'currency_pack', coin_price:0, cash_price:2.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:90 }),
+    _mk({ id:'cash_nyang_pack_md',   name:'Nyang Pack · Medium',   description:'Adds 1,200 냥 + 10% bonus to your balance.',             item_type:'currency_pack', coin_price:0, cash_price:5.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:91 }),
+    _mk({ id:'cash_nyang_pack_lg',   name:'Nyang Pack · Large',    description:'Adds 3,000 냥 + 20% bonus to your balance.',             item_type:'currency_pack', coin_price:0, cash_price:12.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:92 }),
+    _mk({ id:'cash_supporter_month', name:'Supporter (1 Month)',   description:'Support development + get the Supporter badge + 1,000 냥.', item_type:'subscription', coin_price:0, cash_price:4.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:93 })
   ];
   function isShopTableMissingErr(err) {
     var msg = (err && err.message) ? String(err.message) : '';
@@ -203,17 +177,75 @@
   };
 
   // ── Room Items in Shop (loaded from DB, fallback hardcoded) ──
+  // New items use the assets/room/<id>.png convention — drop files with those
+  // names into /korehan/assets/room/ and they'll render automatically.
   var ROOM_ITEMS_FALLBACK = [
-    {id:'character',  name:'Character',        price:0,   img:'assets/file_000000000570720694038be799df9f21-removebg-preview.png'},
-    {id:'cat',        name:'Sleeping Cat',     price:15,  img:'assets/file_000000003a7c7209a3877df863e15fd9-removebg-preview.png'},
-    {id:'poop',       name:'Happy Poop',       price:3,   img:'assets/file_000000004b247206b900dba933600c46-removebg-preview.png'},
-    {id:'cushion',    name:'Reading Cushion',  price:10,  img:'assets/file_0000000064f872098fc13437d998de5a-removebg-preview.png'},
-    {id:'lamp',       name:'Korean Lamp',      price:12,  img:'assets/file_00000000a2287209b632ccc0519de0e7-removebg-preview.png'},
-    {id:'bookshelf',  name:'Bookshelf',        price:25,  img:'assets/file_00000000a66472069f5c058b95fd2322-removebg-preview.png'},
-    {id:'plant',      name:'Potted Plant',     price:8,   img:'assets/file_00000000f734720691f7289c1f8a5e3c-removebg-preview.png'},
-    {id:'fennec',     name:'Fennec Fox',       price:20,  img:'assets/file_0000000097387206868da2533972ee90-removebg-preview.png'},
-    {id:'char_silver',name:'Silver Character', price:0,   img:'assets/file_00000000b8bc72069bc7877f36aaf27f-removebg-preview.png'},
-    {id:'char_thumbs',name:'Thumbs Up Guy',    price:0,   img:'assets/file_00000000d40c7206bb289cd92deab487-removebg-preview.png'},
+    // Existing items (keep their original asset paths so nobody's saved room breaks)
+    {id:'character',  name:'Character',        price:0,   img:'assets/file_000000000570720694038be799df9f21-removebg-preview.png', category:'character'},
+    {id:'cat',        name:'Sleeping Cat',     price:15,  img:'assets/file_000000003a7c7209a3877df863e15fd9-removebg-preview.png', category:'pet'},
+    {id:'poop',       name:'Happy Poop',       price:3,   img:'assets/file_000000004b247206b900dba933600c46-removebg-preview.png', category:'deco'},
+    {id:'cushion',    name:'Reading Cushion',  price:10,  img:'assets/file_0000000064f872098fc13437d998de5a-removebg-preview.png', category:'furniture'},
+    {id:'lamp',       name:'Korean Lamp',      price:12,  img:'assets/file_00000000a2287209b632ccc0519de0e7-removebg-preview.png', category:'furniture'},
+    {id:'bookshelf',  name:'Bookshelf',        price:25,  img:'assets/file_00000000a66472069f5c058b95fd2322-removebg-preview.png', category:'furniture'},
+    {id:'plant',      name:'Potted Plant',     price:8,   img:'assets/file_00000000f734720691f7289c1f8a5e3c-removebg-preview.png', category:'deco'},
+    {id:'fennec',     name:'Fennec Fox',       price:20,  img:'assets/file_0000000097387206868da2533972ee90-removebg-preview.png', category:'pet'},
+    {id:'char_silver',name:'Silver Character', price:0,   img:'assets/file_00000000b8bc72069bc7877f36aaf27f-removebg-preview.png', category:'character'},
+    {id:'char_thumbs',name:'Thumbs Up Guy',    price:0,   img:'assets/file_00000000d40c7206bb289cd92deab487-removebg-preview.png', category:'character'},
+    // ── NEW · Furniture ──
+    {id:'desk',             name:'Study Desk',          price:30,  img:'assets/room/desk.png',             category:'furniture'},
+    {id:'chair',            name:'Ergo Chair',          price:22,  img:'assets/room/chair.png',            category:'furniture'},
+    {id:'rug',              name:'Hanji Rug',           price:18,  img:'assets/room/rug.png',              category:'furniture'},
+    {id:'bed',              name:'Cozy Bed',            price:45,  img:'assets/room/bed.png',              category:'furniture'},
+    {id:'wardrobe',         name:'Wardrobe',            price:35,  img:'assets/room/wardrobe.png',         category:'furniture'},
+    {id:'coffee_table',     name:'Coffee Table',        price:20,  img:'assets/room/coffee-table.png',     category:'furniture'},
+    {id:'tv_unit',          name:'TV Unit',             price:40,  img:'assets/room/tv-unit.png',          category:'furniture'},
+    {id:'mini_fridge',      name:'Mini Fridge',         price:38,  img:'assets/room/mini-fridge.png',      category:'furniture'},
+    {id:'piano',            name:'Upright Piano',       price:120, img:'assets/room/piano.png',            category:'furniture'},
+    {id:'gaming_chair',     name:'Gaming Chair',        price:55,  img:'assets/room/gaming-chair.png',     category:'furniture'},
+    {id:'floor_pillow',     name:'Floor Pillow',        price:9,   img:'assets/room/floor-pillow.png',     category:'furniture'},
+    {id:'tea_table',        name:'Korean Tea Table',    price:28,  img:'assets/room/tea-table.png',        category:'furniture'},
+    // ── NEW · Deco ──
+    {id:'window_city',      name:'City Window',         price:50,  img:'assets/room/window-city.png',      category:'deco'},
+    {id:'window_sunrise',   name:'Sunrise Window',      price:55,  img:'assets/room/window-sunrise.png',   category:'deco'},
+    {id:'window_rain',      name:'Rainy Window',        price:55,  img:'assets/room/window-rain.png',      category:'deco'},
+    {id:'wall_clock',       name:'Wall Clock',          price:14,  img:'assets/room/wall-clock.png',       category:'deco'},
+    {id:'poster_kpop',      name:'K-Pop Poster',        price:12,  img:'assets/room/poster-kpop.png',      category:'deco'},
+    {id:'poster_hangul',    name:'Hangul Poster',       price:12,  img:'assets/room/poster-hangul.png',    category:'deco'},
+    {id:'calligraphy',      name:'Korean Calligraphy',  price:30,  img:'assets/room/calligraphy.png',      category:'deco'},
+    {id:'lantern',          name:'Paper Lantern',       price:16,  img:'assets/room/lantern.png',          category:'deco'},
+    {id:'fairy_lights',     name:'Fairy Lights',        price:22,  img:'assets/room/fairy-lights.png',     category:'deco'},
+    {id:'neon_sign',        name:'Hangul Neon Sign',    price:48,  img:'assets/room/neon-sign.png',        category:'deco'},
+    {id:'rain_cloud',       name:'Rain Cloud',          price:25,  img:'assets/room/rain-cloud.png',       category:'deco'},
+    {id:'star_lamp',        name:'Star Projector',      price:32,  img:'assets/room/star-lamp.png',        category:'deco'},
+    {id:'light_stick',      name:'K-Pop Light Stick',   price:24,  img:'assets/room/light-stick.png',      category:'deco'},
+    {id:'tea_set',          name:'Tea Set',             price:18,  img:'assets/room/tea-set.png',          category:'deco'},
+    {id:'cup_noodles',      name:'Cup Noodles',         price:6,   img:'assets/room/cup-noodles.png',      category:'deco'},
+    {id:'rice_cooker',      name:'Rice Cooker',         price:28,  img:'assets/room/rice-cooker.png',      category:'deco'},
+    {id:'globe',            name:'Desk Globe',          price:15,  img:'assets/room/globe.png',            category:'deco'},
+    {id:'books_stack',      name:'Stack of Books',      price:10,  img:'assets/room/books-stack.png',      category:'deco'},
+    {id:'pencil_holder',    name:'Pencil Holder',       price:5,   img:'assets/room/pencil-holder.png',    category:'deco'},
+    {id:'backpack',         name:'Student Backpack',    price:12,  img:'assets/room/backpack.png',         category:'deco'},
+    {id:'bicycle',          name:'City Bicycle',        price:40,  img:'assets/room/bicycle.png',          category:'deco'},
+    {id:'skateboard',       name:'Skateboard',          price:28,  img:'assets/room/skateboard.png',       category:'deco'},
+    {id:'guitar',           name:'Acoustic Guitar',     price:45,  img:'assets/room/guitar.png',           category:'deco'},
+    {id:'camera',           name:'Vintage Camera',      price:26,  img:'assets/room/camera.png',           category:'deco'},
+    {id:'radio',            name:'Vintage Radio',       price:22,  img:'assets/room/radio.png',            category:'deco'},
+    {id:'temple_mini',      name:'Mini Temple',         price:65,  img:'assets/room/temple-mini.png',      category:'deco'},
+    {id:'bonsai',           name:'Bonsai Tree',         price:28,  img:'assets/room/bonsai.png',           category:'deco'},
+    {id:'cherry_blossom',   name:'Cherry Blossom Branch', price:24, img:'assets/room/cherry-blossom.png', category:'deco'},
+    {id:'study_buddy_bear', name:'Study Buddy Bear',    price:18,  img:'assets/room/study-buddy-bear.png', category:'deco'},
+    // ── NEW · Pets ──
+    {id:'hamster',          name:'Hamster in Wheel',    price:28,  img:'assets/room/hamster.png',          category:'pet'},
+    {id:'aquarium',         name:'Aquarium',            price:50,  img:'assets/room/aquarium.png',         category:'pet'},
+    {id:'dog_shiba',        name:'Shiba Inu',           price:35,  img:'assets/room/dog-shiba.png',        category:'pet'},
+    {id:'parrot',           name:'Green Parrot',        price:30,  img:'assets/room/parrot.png',           category:'pet'},
+    {id:'turtle',           name:'Pet Turtle',          price:22,  img:'assets/room/turtle.png',           category:'pet'},
+    {id:'bunny',            name:'Lop Bunny',           price:28,  img:'assets/room/bunny.png',            category:'pet'},
+    // ── NEW · Characters ──
+    {id:'char_hanbok',      name:'Hanbok Doll',         price:40,  img:'assets/room/char-hanbok.png',      category:'character'},
+    {id:'char_scholar',     name:'Joseon Scholar',      price:55,  img:'assets/room/char-scholar.png',     category:'character'},
+    {id:'char_tiger',       name:'Korean Tiger',        price:65,  img:'assets/room/char-tiger.png',       category:'character'},
+    {id:'char_dokkaebi',    name:'Dokkaebi (도깨비)',   price:70,  img:'assets/room/char-dokkaebi.png',    category:'character'}
   ];
   var ROOM_ITEMS_SHOP = ROOM_ITEMS_FALLBACK.slice();
   var _shopRoomItemsLoaded = false;

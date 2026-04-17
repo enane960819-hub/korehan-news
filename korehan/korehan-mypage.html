@@ -837,8 +837,9 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
     </div>
     <!-- Controls -->
     <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
-      <button onclick="openRoomShop()" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Item Shop</button>
+      <button onclick="openRoomShop(true)" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">My Items</button>
       <button onclick="toggleRoomEdit()" id="room-edit-btn" style="padding:8px 18px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Edit Room</button>
+      <a href="korehan-shop.html" style="padding:8px 18px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;font-family:inherit">Shop →</a>
       <button onclick="saveRoomLayout()" id="room-save-btn" style="padding:8px 18px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:none">Save</button>
     </div>
     <div id="room-size-controls" style="margin-top:10px;text-align:center;display:none">
@@ -1892,18 +1893,75 @@ function applyThemeItem(itemId, btn) {
 // ── Mini Room System ─────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════
 
-// Hardcoded fallback — used only if DB fetch fails
+// Hardcoded fallback — used only if DB fetch fails.
+// New additions use the assets/room/<id>.png convention. Drop images with
+// those names into /korehan/assets/room/ and they render automatically.
 var ROOM_ITEMS_FALLBACK = [
-  {id:'character',  name:'Character',        price:0,   img:'assets/file_000000000570720694038be799df9f21-removebg-preview.png', size:160},
-  {id:'cat',        name:'Sleeping Cat',     price:15,  img:'assets/file_000000003a7c7209a3877df863e15fd9-removebg-preview.png', size:130},
-  {id:'poop',       name:'Happy Poop',       price:3,   img:'assets/file_000000004b247206b900dba933600c46-removebg-preview.png', size:100},
-  {id:'cushion',    name:'Reading Cushion',  price:10,  img:'assets/file_0000000064f872098fc13437d998de5a-removebg-preview.png', size:140},
-  {id:'lamp',       name:'Korean Lamp',      price:12,  img:'assets/file_00000000a2287209b632ccc0519de0e7-removebg-preview.png', size:110},
-  {id:'bookshelf',  name:'Bookshelf',        price:25,  img:'assets/file_00000000a66472069f5c058b95fd2322-removebg-preview.png', size:150},
-  {id:'plant',      name:'Potted Plant',     price:8,   img:'assets/file_00000000f734720691f7289c1f8a5e3c-removebg-preview.png', size:110},
-  {id:'fennec',     name:'Fennec Fox',       price:20,  img:'assets/file_0000000097387206868da2533972ee90-removebg-preview.png', size:120},
-  {id:'char_silver',name:'Silver Character', price:0,   img:'assets/file_00000000b8bc72069bc7877f36aaf27f-removebg-preview.png', size:192},
-  {id:'char_thumbs',name:'Thumbs Up Guy',    price:0,   img:'assets/file_00000000d40c7206bb289cd92deab487-removebg-preview.png', size:192},
+  {id:'character',  name:'Character',        price:0,   img:'assets/file_000000000570720694038be799df9f21-removebg-preview.png', size:160, category:'character'},
+  {id:'cat',        name:'Sleeping Cat',     price:15,  img:'assets/file_000000003a7c7209a3877df863e15fd9-removebg-preview.png', size:130, category:'pet'},
+  {id:'poop',       name:'Happy Poop',       price:3,   img:'assets/file_000000004b247206b900dba933600c46-removebg-preview.png', size:100, category:'deco'},
+  {id:'cushion',    name:'Reading Cushion',  price:10,  img:'assets/file_0000000064f872098fc13437d998de5a-removebg-preview.png', size:140, category:'furniture'},
+  {id:'lamp',       name:'Korean Lamp',      price:12,  img:'assets/file_00000000a2287209b632ccc0519de0e7-removebg-preview.png', size:110, category:'furniture'},
+  {id:'bookshelf',  name:'Bookshelf',        price:25,  img:'assets/file_00000000a66472069f5c058b95fd2322-removebg-preview.png', size:150, category:'furniture'},
+  {id:'plant',      name:'Potted Plant',     price:8,   img:'assets/file_00000000f734720691f7289c1f8a5e3c-removebg-preview.png', size:110, category:'deco'},
+  {id:'fennec',     name:'Fennec Fox',       price:20,  img:'assets/file_0000000097387206868da2533972ee90-removebg-preview.png', size:120, category:'pet'},
+  {id:'char_silver',name:'Silver Character', price:0,   img:'assets/file_00000000b8bc72069bc7877f36aaf27f-removebg-preview.png', size:192, category:'character'},
+  {id:'char_thumbs',name:'Thumbs Up Guy',    price:0,   img:'assets/file_00000000d40c7206bb289cd92deab487-removebg-preview.png', size:192, category:'character'},
+  // ── NEW · Furniture (images to be added at assets/room/<id>.png) ──
+  {id:'desk',             name:'Study Desk',          price:30,  img:'assets/room/desk.png',             size:140, category:'furniture'},
+  {id:'chair',            name:'Ergo Chair',          price:22,  img:'assets/room/chair.png',            size:120, category:'furniture'},
+  {id:'rug',              name:'Hanji Rug',           price:18,  img:'assets/room/rug.png',              size:170, category:'furniture'},
+  {id:'bed',              name:'Cozy Bed',            price:45,  img:'assets/room/bed.png',              size:180, category:'furniture'},
+  {id:'wardrobe',         name:'Wardrobe',            price:35,  img:'assets/room/wardrobe.png',         size:150, category:'furniture'},
+  {id:'coffee_table',     name:'Coffee Table',        price:20,  img:'assets/room/coffee-table.png',     size:140, category:'furniture'},
+  {id:'tv_unit',          name:'TV Unit',             price:40,  img:'assets/room/tv-unit.png',          size:160, category:'furniture'},
+  {id:'mini_fridge',      name:'Mini Fridge',         price:38,  img:'assets/room/mini-fridge.png',      size:120, category:'furniture'},
+  {id:'piano',            name:'Upright Piano',       price:120, img:'assets/room/piano.png',            size:170, category:'furniture'},
+  {id:'gaming_chair',     name:'Gaming Chair',        price:55,  img:'assets/room/gaming-chair.png',     size:140, category:'furniture'},
+  {id:'floor_pillow',     name:'Floor Pillow',        price:9,   img:'assets/room/floor-pillow.png',     size:120, category:'furniture'},
+  {id:'tea_table',        name:'Korean Tea Table',    price:28,  img:'assets/room/tea-table.png',        size:140, category:'furniture'},
+  // ── NEW · Deco ──
+  {id:'window_city',      name:'City Window',         price:50,  img:'assets/room/window-city.png',      size:180, category:'deco'},
+  {id:'window_sunrise',   name:'Sunrise Window',      price:55,  img:'assets/room/window-sunrise.png',   size:180, category:'deco'},
+  {id:'window_rain',      name:'Rainy Window',        price:55,  img:'assets/room/window-rain.png',      size:180, category:'deco'},
+  {id:'wall_clock',       name:'Wall Clock',          price:14,  img:'assets/room/wall-clock.png',       size:90,  category:'deco'},
+  {id:'poster_kpop',      name:'K-Pop Poster',        price:12,  img:'assets/room/poster-kpop.png',      size:110, category:'deco'},
+  {id:'poster_hangul',    name:'Hangul Poster',       price:12,  img:'assets/room/poster-hangul.png',    size:110, category:'deco'},
+  {id:'calligraphy',      name:'Korean Calligraphy',  price:30,  img:'assets/room/calligraphy.png',      size:130, category:'deco'},
+  {id:'lantern',          name:'Paper Lantern',       price:16,  img:'assets/room/lantern.png',          size:110, category:'deco'},
+  {id:'fairy_lights',     name:'Fairy Lights',        price:22,  img:'assets/room/fairy-lights.png',     size:200, category:'deco'},
+  {id:'neon_sign',        name:'Hangul Neon Sign',    price:48,  img:'assets/room/neon-sign.png',        size:150, category:'deco'},
+  {id:'rain_cloud',       name:'Rain Cloud',          price:25,  img:'assets/room/rain-cloud.png',       size:120, category:'deco'},
+  {id:'star_lamp',        name:'Star Projector',      price:32,  img:'assets/room/star-lamp.png',        size:110, category:'deco'},
+  {id:'light_stick',      name:'K-Pop Light Stick',   price:24,  img:'assets/room/light-stick.png',      size:100, category:'deco'},
+  {id:'tea_set',          name:'Tea Set',             price:18,  img:'assets/room/tea-set.png',          size:110, category:'deco'},
+  {id:'cup_noodles',      name:'Cup Noodles',         price:6,   img:'assets/room/cup-noodles.png',      size:90,  category:'deco'},
+  {id:'rice_cooker',      name:'Rice Cooker',         price:28,  img:'assets/room/rice-cooker.png',      size:110, category:'deco'},
+  {id:'globe',            name:'Desk Globe',          price:15,  img:'assets/room/globe.png',            size:100, category:'deco'},
+  {id:'books_stack',      name:'Stack of Books',      price:10,  img:'assets/room/books-stack.png',      size:100, category:'deco'},
+  {id:'pencil_holder',    name:'Pencil Holder',       price:5,   img:'assets/room/pencil-holder.png',    size:80,  category:'deco'},
+  {id:'backpack',         name:'Student Backpack',    price:12,  img:'assets/room/backpack.png',         size:110, category:'deco'},
+  {id:'bicycle',          name:'City Bicycle',        price:40,  img:'assets/room/bicycle.png',          size:160, category:'deco'},
+  {id:'skateboard',       name:'Skateboard',          price:28,  img:'assets/room/skateboard.png',       size:130, category:'deco'},
+  {id:'guitar',           name:'Acoustic Guitar',     price:45,  img:'assets/room/guitar.png',           size:150, category:'deco'},
+  {id:'camera',           name:'Vintage Camera',      price:26,  img:'assets/room/camera.png',           size:100, category:'deco'},
+  {id:'radio',            name:'Vintage Radio',       price:22,  img:'assets/room/radio.png',            size:110, category:'deco'},
+  {id:'temple_mini',      name:'Mini Temple',         price:65,  img:'assets/room/temple-mini.png',      size:150, category:'deco'},
+  {id:'bonsai',           name:'Bonsai Tree',         price:28,  img:'assets/room/bonsai.png',           size:110, category:'deco'},
+  {id:'cherry_blossom',   name:'Cherry Blossom Branch', price:24, img:'assets/room/cherry-blossom.png', size:150, category:'deco'},
+  {id:'study_buddy_bear', name:'Study Buddy Bear',    price:18,  img:'assets/room/study-buddy-bear.png', size:120, category:'deco'},
+  // ── NEW · Pets ──
+  {id:'hamster',          name:'Hamster in Wheel',    price:28,  img:'assets/room/hamster.png',          size:110, category:'pet'},
+  {id:'aquarium',         name:'Aquarium',            price:50,  img:'assets/room/aquarium.png',         size:160, category:'pet'},
+  {id:'dog_shiba',        name:'Shiba Inu',           price:35,  img:'assets/room/dog-shiba.png',        size:130, category:'pet'},
+  {id:'parrot',           name:'Green Parrot',        price:30,  img:'assets/room/parrot.png',           size:110, category:'pet'},
+  {id:'turtle',           name:'Pet Turtle',          price:22,  img:'assets/room/turtle.png',           size:100, category:'pet'},
+  {id:'bunny',            name:'Lop Bunny',           price:28,  img:'assets/room/bunny.png',            size:110, category:'pet'},
+  // ── NEW · Characters ──
+  {id:'char_hanbok',      name:'Hanbok Doll',         price:40,  img:'assets/room/char-hanbok.png',      size:180, category:'character'},
+  {id:'char_scholar',     name:'Joseon Scholar',      price:55,  img:'assets/room/char-scholar.png',     size:190, category:'character'},
+  {id:'char_tiger',       name:'Korean Tiger',        price:65,  img:'assets/room/char-tiger.png',       size:180, category:'character'},
+  {id:'char_dokkaebi',    name:'Dokkaebi (도깨비)',   price:70,  img:'assets/room/char-dokkaebi.png',    size:190, category:'character'}
 ];
 var ROOM_ITEMS = ROOM_ITEMS_FALLBACK.slice(); // will be replaced by DB data
 var _roomItemsLoaded = false;
@@ -2497,8 +2555,11 @@ function applySelectedItemScale(scaleValue) {
   updateRoomSizeUI();
 }
 
-// ── Item Shop ────────────────────────────────────────────────
-async function openRoomShop() {
+// ── Item Shop / My Items ─────────────────────────────────────
+// ownedOnly = true → "My Items" drawer (only items the user owns, for placing
+//              into the room). Triggered from the MY ROOM controls.
+// ownedOnly = false → full Item Shop (kept around for backwards-compat links).
+async function openRoomShop(ownedOnly) {
   await loadRoomItemsFromDB();
   // Pick up any badges earned since the last shop open.
   _mergeEarnedBadgeItems();
@@ -2507,6 +2568,10 @@ async function openRoomShop() {
 
   var coin = _userCoin || 0;
   var owned = getRoomOwned();
+  // Filter to owned-only when invoked from MY ROOM controls.
+  var items = ownedOnly
+    ? ROOM_ITEMS.filter(function(it){ return owned.indexOf(it.id) !== -1; })
+    : ROOM_ITEMS;
 
   var overlay = document.createElement('div');
   overlay.className = 'room-shop-overlay';
@@ -2515,10 +2580,15 @@ async function openRoomShop() {
   var catLabels = { all:'All', character:'Characters', pet:'Pets', furniture:'Furniture', deco:'Deco', badge:'Badges' };
   var cats = ['all','character','pet','furniture','deco','badge'];
 
+  var headerTitle = ownedOnly ? 'My Items' : 'Item Shop';
+  var headerRight = ownedOnly
+    ? '<a href="korehan-shop.html" class="room-shop-bal" style="text-decoration:none;color:#2563eb;font-weight:800">Shop →</a>'
+    : '<div class="room-shop-bal" id="room-shop-bal">' + coin.toLocaleString() + ' nyang</div>';
+
   var html = '<div class="room-shop-modal">'
     + '<div class="room-shop-header">'
-    + '<h3>Item Shop</h3>'
-    + '<div class="room-shop-bal" id="room-shop-bal">' + coin.toLocaleString() + ' nyang</div>'
+    + '<h3>' + headerTitle + '</h3>'
+    + headerRight
     + '<button class="room-shop-close" onclick="closeRoomShop()">&times;</button>'
     + '</div>'
     + '<div style="display:flex;gap:6px;padding:10px 24px 0;flex-wrap:wrap">'
@@ -2528,7 +2598,15 @@ async function openRoomShop() {
     + '</div>'
     + '<div class="room-shop-grid">';
 
-  ROOM_ITEMS.forEach(function(item) {
+  if (!items.length) {
+    html += '<div style="grid-column:1/-1;padding:30px 20px;text-align:center;color:#94a3b8;font-size:13px">'
+      + (ownedOnly
+          ? 'You don\'t own any items yet. Visit the <a href="korehan-shop.html" style="color:#2563eb;font-weight:700">Shop</a> to get some.'
+          : 'No items yet.')
+      + '</div>';
+  }
+
+  items.forEach(function(item) {
     var isOwned = owned.indexOf(item.id) !== -1;
     var placed = isItemPlaced(item.id);
     var canBuy = coin >= item.price;
