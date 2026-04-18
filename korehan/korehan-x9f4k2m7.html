@@ -5062,6 +5062,17 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
   try { article = JSON.parse(clean); } catch(e) { throw new Error('invalid adaptation JSON'); }
   if (!article.title || !article.body) throw new Error('adaptation missing title/body');
 
+  // Semantic dedup — catches paraphrases normalised-hash would miss
+  if (typeof bulkCheckSemanticDup === 'function') {
+    var dupCheck = await bulkCheckSemanticDup('article', article.title + ' ' + String(article.body||'').slice(0, 600));
+    if (dupCheck.dup) {
+      var semErr = new Error('semantic-dup (Jaccard ' + dupCheck.overlap.toFixed(2) + ')');
+      semErr.isSemanticDup = true;
+      throw semErr;
+    }
+    article._tags = dupCheck.tags;
+  }
+
   var articleId = uid();
   var newArticle = {
     id: articleId, section: section,
@@ -5075,7 +5086,7 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
   var ok = await dbSaveArticle(newArticle);
   if (!ok) throw new Error('dbSaveArticle failed');
   if (typeof DB !== 'undefined' && DB.unshift) { DB.unshift(newArticle); if (typeof refreshCounts === 'function') refreshCounts(); }
-  return { articleId: articleId, title: article.title, body: article.body, level: diff.level };
+  return { articleId: articleId, title: article.title, body: article.body, level: diff.level, tags: article._tags || [] };
 }
 
 // Fill article_cache (translation / vocab / grammar / quiz) via Haiku.
@@ -5186,16 +5197,17 @@ async function bulkSeedArticles(count) {
       bulkLog('(' + (i+1) + '/' + picks.length + ') [' + p._section + '] [' + lvl + '] ' + p.title.slice(0, 70));
       try {
         var out = await _bulkGenerateOneArticle(p, p._section, lvl);
-        bulkMarkSeen = bulkMarkSeen || bulkRememberHash;
         bulkRememberHash('article', p.title);
         bulkRememberHash('article', out.title);
+        if (out.tags && out.tags.length) _bulkPushTagHistory('article', out.tags);
         _bulkBumpCounter('article', lvl);
         bulkLog('  ✔ saved "' + out.title + '" — now generating cache…', 'ok');
         var cok = await _bulkGenerateArticleCache(out.articleId, out.title, out.body, lvl);
         bulkLog('  ✔ cache ' + cok + '/4 done', 'ok');
         success++;
       } catch(err) {
-        bulkLog('  ✘ ' + err.message, 'err');
+        if (err && err.isSemanticDup) bulkLog('  ↳ ' + err.message + ' — skipped', 'warn');
+        else bulkLog('  ✘ ' + err.message, 'err');
       }
     }
 
@@ -5423,6 +5435,13 @@ async function bulkSeedConvos(count) {
           bulkLog('  ↳ duplicate ctx/name — skip', 'warn');
           continue;
         }
+        // Semantic dedup — look at the situation + first couple of message texts
+        var convSig = (conv.ctx || '') + ' ' + (conv.topic || seed.topic) + ' ' + (conv.msgs||[]).slice(0,3).map(function(m){ return m.txt||''; }).join(' ');
+        var convDup = await bulkCheckSemanticDup('conv', convSig);
+        if (convDup.dup) {
+          bulkLog('  ↳ semantic-dup (Jaccard ' + convDup.overlap.toFixed(2) + ') — skip', 'warn');
+          continue;
+        }
         var row = {
           data:    conv,
           cat:     conv.cat,
@@ -5436,6 +5455,7 @@ async function bulkSeedConvos(count) {
         bulkRememberHash('conv', seed.topic);
         bulkRememberHash('conv', conv.ctx || '');
         bulkRememberHash('conv', conv.name || '');
+        if (convDup.tags && convDup.tags.length) _bulkPushTagHistory('conv', convDup.tags);
         if (ctxHash)  seenDb[ctxHash]  = 1;
         if (nameHash) seenDb[nameHash] = 1;
         _bulkBumpCounter('conv', lvl);
@@ -5662,6 +5682,13 @@ async function bulkSeedStories(count) {
           bulkLog('  ↳ duplicate title/preview — skip', 'warn');
           continue;
         }
+        // Semantic dedup — title + preview + first body paragraph
+        var storySig = (story.title || '') + ' ' + (story.preview || '') + ' ' + String(story.body||'').split('\n\n')[0].slice(0, 400);
+        var storyDup = await bulkCheckSemanticDup('story', storySig);
+        if (storyDup.dup) {
+          bulkLog('  ↳ semantic-dup (Jaccard ' + storyDup.overlap.toFixed(2) + ') — skip', 'warn');
+          continue;
+        }
         var row = {
           data:      story,
           mood:      story.mood,
@@ -5677,6 +5704,7 @@ async function bulkSeedStories(count) {
         bulkRememberHash('story', seed.premise);
         bulkRememberHash('story', story.title);
         bulkRememberHash('story', story.preview || '');
+        if (storyDup.tags && storyDup.tags.length) _bulkPushTagHistory('story', storyDup.tags);
         if (titleHash)   seenDb[titleHash]   = 1;
         if (previewHash) seenDb[previewHash] = 1;
         _bulkBumpCounter('story', lvl);
@@ -5722,6 +5750,78 @@ async function bulkSeedAll(count) {
 
   var elapsed = Math.round((Date.now() - startTs) / 1000);
   bulkLog('✨ Run complete in ' + elapsed + 's.', 'ok');
+}
+
+// ═══════════════════════════════════════════════════════════
+// Bulk Seed · 1f — Tag-based Jaccard semantic dedup
+// ═══════════════════════════════════════════════════════════
+
+// After generation, a Haiku call pulls ~8 semantic tags from the content.
+// We keep the last N tag sets per content type in localStorage and reject
+// anything whose Jaccard overlap with an existing set is ≥ BULK_TAG_JACCARD_REJECT.
+// Catches paraphrases that the normalised-title hash missed.
+var BULK_TAG_CACHE_LIMIT = 2000;
+var BULK_TAG_JACCARD_REJECT = 0.7;
+
+function _bulkTagsKey(type) { return 'kh_bulk_tags_' + type; }
+function _bulkGetTagHistory(type) {
+  try { return JSON.parse(localStorage.getItem(_bulkTagsKey(type)) || '[]'); }
+  catch(e) { return []; }
+}
+function _bulkPushTagHistory(type, tags) {
+  if (!tags || !tags.length) return;
+  var arr = _bulkGetTagHistory(type);
+  arr.push({ ts: Date.now(), tags: tags });
+  if (arr.length > BULK_TAG_CACHE_LIMIT) arr = arr.slice(arr.length - BULK_TAG_CACHE_LIMIT);
+  try { localStorage.setItem(_bulkTagsKey(type), JSON.stringify(arr)); } catch(e) {}
+}
+
+async function bulkExtractTags(text) {
+  if (!text) return [];
+  var snippet = String(text).slice(0, 900);
+  var prompt =
+      'Extract exactly 8 short semantic tag keywords (1-3 words each) capturing the topic, setting, characters, and key concepts of this Korean content. Tags can be Korean or English. Keep them generic enough to collide on near-duplicates (e.g. "카페 알바" not "오늘 카페에서 있었던 일").\n'
+    + 'Return ONLY a valid JSON array of strings, no markdown, no commentary:\n\n' + snippet;
+  try {
+    var r = await callClaude({
+      feature: 'bulk-seed-tags',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 200,
+      messages: [{ role:'user', content: prompt }]
+    });
+    var raw = (r && r.content && r.content[0] && r.content[0].text) || '';
+    var ai = raw.indexOf('['), bi = raw.lastIndexOf(']');
+    if (ai < 0 || bi <= ai) return [];
+    var tags;
+    try { tags = JSON.parse(raw.slice(ai, bi+1)); } catch(e) { return []; }
+    if (!Array.isArray(tags)) return [];
+    return tags.map(function(t){ return String(t||'').toLowerCase().trim(); }).filter(Boolean);
+  } catch(e) { return []; }
+}
+
+function bulkJaccard(a, b) {
+  if (!a || !b || !a.length || !b.length) return 0;
+  var setA = Object.create(null), setB = Object.create(null);
+  a.forEach(function(t){ setA[t] = 1; });
+  b.forEach(function(t){ setB[t] = 1; });
+  var inter = 0, union = 0;
+  Object.keys(setA).forEach(function(t){ if (setB[t]) inter++; union++; });
+  Object.keys(setB).forEach(function(t){ if (!setA[t]) union++; });
+  return union ? inter / union : 0;
+}
+
+// Returns { dup, overlap, tags } — safe fallback {dup:false} if tag extraction fails
+async function bulkCheckSemanticDup(type, text) {
+  var tags = await bulkExtractTags(text);
+  if (!tags.length) return { dup:false, overlap:0, tags:[] };
+  var history = _bulkGetTagHistory(type);
+  var maxOverlap = 0;
+  for (var i = 0; i < history.length; i++) {
+    var j = bulkJaccard(tags, history[i].tags);
+    if (j > maxOverlap) maxOverlap = j;
+    if (maxOverlap >= BULK_TAG_JACCARD_REJECT) break;
+  }
+  return { dup: maxOverlap >= BULK_TAG_JACCARD_REJECT, overlap: maxOverlap, tags: tags };
 }
 
 function setSidebarActive(id) {
