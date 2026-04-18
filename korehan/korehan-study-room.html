@@ -4102,13 +4102,19 @@ async function _generateAndSaveDailyContent(date) {
   try { userInterests = JSON.parse(localStorage.getItem('kh_user_interests') || '[]'); } catch(e) {}
 
   var topicHint = '';
+  var fallbackTopicKo = '';
+  var fallbackTopicEn = '';
   // Priority: approved topic from study_daily_content > writing_topics > random category
   if (_approvedTopicForGen && _approvedTopicForGen.topic_ko) {
-    topicHint = 'Use EXACTLY this topic: "' + _approvedTopicForGen.topic_ko + '" (' + (_approvedTopicForGen.topic_en || '') + ').';
-    console.log('[_generateAndSaveDailyContent] using approved topic override:', _approvedTopicForGen.topic_ko);
+    fallbackTopicKo = _approvedTopicForGen.topic_ko;
+    fallbackTopicEn = _approvedTopicForGen.topic_en || '';
+    topicHint = 'Use EXACTLY this topic: "' + fallbackTopicKo + '" (' + fallbackTopicEn + ').';
+    console.log('[_generateAndSaveDailyContent] using approved topic override:', fallbackTopicKo);
     _approvedTopicForGen = null;
   } else if (assignedTopic) {
-    topicHint = 'Use EXACTLY this topic: "' + assignedTopic.topic_ko + '" (' + assignedTopic.topic_en + '). Category: ' + (assignedTopic.category || '') + '.';
+    fallbackTopicKo = assignedTopic.topic_ko || '';
+    fallbackTopicEn = assignedTopic.topic_en || '';
+    topicHint = 'Use EXACTLY this topic: "' + fallbackTopicKo + '" (' + fallbackTopicEn + '). Category: ' + (assignedTopic.category || '') + '.';
   } else {
     var topicCategories = [
       'daily life', 'food & cooking', 'K-pop & music', 'travel in Korea', 'Korean seasons & weather',
@@ -4213,14 +4219,17 @@ async function _generateAndSaveDailyContent(date) {
 
   } catch(err) {
     console.error('[_generateAndSaveDailyContent] failed:', err && err.message ? err.message : err);
-    // Hard fallback — use built-in content, don't save to DB
+    // If no assigned topic is available, rethrow so loadDailyContent's _applyFallbackTopic
+    // picks a proper built-in topic instead of showing a placeholder.
+    if (!fallbackTopicKo) throw err;
+    // Hard fallback — preserve the assigned writing topic, use built-in vocab/grammar.
     try {
-      var fb = buildStudyRoomFallbackContent({ topic_ko:"Today's Topic", topic_en:"Today's Topic" }, _currentLevel);
+      var fb = buildStudyRoomFallbackContent({ topic_ko: fallbackTopicKo, topic_en: fallbackTopicEn }, _currentLevel);
       _applyDailyContent({
         scheduled_date:      date,
         level:               _currentLevel,
-        topic_ko:            "Today's Topic",
-        topic_en:            "Today's Topic",
+        topic_ko:            fallbackTopicKo,
+        topic_en:            fallbackTopicEn,
         vocab:               fb.vocab,
         grammar:             fb.grammar,
         helpers:             fb.helpers,
