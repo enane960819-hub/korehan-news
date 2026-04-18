@@ -4903,7 +4903,7 @@ function goBulkSeed() {
     +   '<p style="font-size:12px;color:#64748b;margin:0 0 12px;line-height:1.6">One press picks fresh headlines / prompts, rotates levels (30/40/25/5) and sections (8 categories), runs Claude, saves to the DB. Generators roll out one content type at a time.</p>'
     +   '<div style="display:flex;gap:10px;flex-wrap:wrap">'
     +     '<button data-bulk-btn class="btn btn-g" onclick="bulkSeedArticles(3)" style="padding:10px 18px;font-size:13px;font-weight:800">📰 +3 Articles</button>'
-    +     '<button data-bulk-btn disabled class="btn" onclick="alert(\'Micro 1c — rolling out next\')" style="padding:10px 18px;font-size:13px;font-weight:800;background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;cursor:not-allowed">💬 +3 Convos (1c)</button>'
+    +     '<button data-bulk-btn class="btn btn-g" onclick="bulkSeedConvos(3)" style="padding:10px 18px;font-size:13px;font-weight:800">💬 +3 Convos</button>'
     +     '<button data-bulk-btn disabled class="btn" onclick="alert(\'Micro 1d — rolling out next\')" style="padding:10px 18px;font-size:13px;font-weight:800;background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;cursor:not-allowed">📖 +3 Stories (1d)</button>'
     +     '<button data-bulk-btn disabled class="btn" onclick="alert(\'Micro 1e — unified runner rolls out after 1d\')" style="padding:10px 18px;font-size:13px;font-weight:800;background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;cursor:not-allowed">✨ +3×3 All (1e)</button>'
     +   '</div>'
@@ -5204,6 +5204,252 @@ async function bulkSeedArticles(count) {
     var artC = _bulkGetCounter('article');
     var el = document.querySelector('#bulk-distribution-articles');
     if (el) el.textContent = _bulkRenderProgressLine('articles', artC);
+  } finally {
+    btns.forEach(function(b) { b.disabled = false; });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Bulk Seed · 1c — Conversation seeder
+// ═══════════════════════════════════════════════════════════
+
+// Curated seed pool — short situation hooks across 5 categories with built-in
+// "non-boring" angles (small twists, conflicts, awkward moments, surprises).
+// Generators get one seed per call so output stays varied.
+var BULK_CONV_SEED_POOL = [
+  // ── everyday ──
+  { cat:'everyday', topic:'카페 줄에서 앞사람이 메뉴 30개 시킴' },
+  { cat:'everyday', topic:'엘리베이터에서 모르는 이웃과 정전으로 갇힘' },
+  { cat:'everyday', topic:'편의점 알바생이 알고 보니 초등학교 동창' },
+  { cat:'everyday', topic:'배달이 30분째 안 옴, 라이더는 길 잃음' },
+  { cat:'everyday', topic:'산책 중 갑자기 비, 우산 가진 사람한테 부탁' },
+  { cat:'everyday', topic:'새벽 2시 옆집에서 노래 부르는 소리, 인터폰' },
+  { cat:'everyday', topic:'택배가 박스째 찌그러져 도착, 고객센터 통화' },
+  { cat:'everyday', topic:'카페에서 노트북 두고 화장실, 옆자리에 부탁' },
+  { cat:'everyday', topic:'지하철에서 자다가 종점까지 감, 직원과 대화' },
+  { cat:'everyday', topic:'미용실에서 머리 망함, 거울 보고 첫 반응' },
+  { cat:'everyday', topic:'헬스장 첫날 PT 권유에 거절하기' },
+  { cat:'everyday', topic:'룸메이트가 내 음식 다 먹음, 따지기' },
+  { cat:'everyday', topic:'마트에서 신상 라면 사이로 진열 사고' },
+  { cat:'everyday', topic:'동네 새 빵집 첫 방문, 주인과 수다' },
+  { cat:'everyday', topic:'키오스크 못 다루는 어르신을 도와줌' },
+  { cat:'everyday', topic:'택시에서 미터기 의심스러움, 기사와 대화' },
+  // ── work ──
+  { cat:'work', topic:'월요일 9시 회의에서 졸음, 옆 동료와 속닥' },
+  { cat:'work', topic:'금요일 6시 직전 상사가 갑자기 야근 부탁' },
+  { cat:'work', topic:'신입사원이 점심 메뉴 결정권을 받음' },
+  { cat:'work', topic:'회식 자리에서 술 안 마시고 싶다고 말하기' },
+  { cat:'work', topic:'사무실 동료의 강한 향수에 두통, 돌려 말하기' },
+  { cat:'work', topic:'휴가 신청 거절당함, 팀장과 협상' },
+  { cat:'work', topic:'프로젝트 데드라인 하루 전 변경, 팀 카톡' },
+  { cat:'work', topic:'회사 단톡방에 잘못된 메시지 보냄, 수습' },
+  { cat:'work', topic:'팀장이 갑자기 발표 시킴, 화장실에서 동료에게 부탁' },
+  { cat:'work', topic:'점심시간 혼자 도시락 먹다가 신입에게 합류 권유' },
+  { cat:'work', topic:'출근길 지하철 멈춤, 회사에 늦는다고 연락' },
+  { cat:'work', topic:'재택근무 중 택배 받아야 함, 동료와 영상회의 중' },
+  { cat:'work', topic:'연봉 협상 첫 경험, 친구에게 조언 구하기' },
+  { cat:'work', topic:'프린터 종이 떨어짐, 상사 맞은편 자리' },
+  { cat:'work', topic:'동료가 내 자리에 무단으로 가방 둠' },
+  { cat:'work', topic:'회사 화장실에서 사장님과 마주침' },
+  // ── friends ──
+  { cat:'friends', topic:'친구가 결혼식 청첩장 줌, 축의금 고민' },
+  { cat:'friends', topic:'술자리에서 친구가 비밀 털어놓음' },
+  { cat:'friends', topic:'10년 만에 만난 친구, 서로 못 알아봄' },
+  { cat:'friends', topic:'친구가 빌려간 책 1년째 안 돌려줌, 카톡' },
+  { cat:'friends', topic:'친구 생일 선물 뭐 살지 단톡에서 의논' },
+  { cat:'friends', topic:'친구 SNS에서 파혼 소식, 위로 메시지' },
+  { cat:'friends', topic:'친구가 새 직장 자랑, 묘하게 부러움' },
+  { cat:'friends', topic:'같이 여행 가려는데 일정 안 맞음, 조율' },
+  { cat:'friends', topic:'친구가 다단계 권유, 거절하기' },
+  { cat:'friends', topic:'단톡방 의견 충돌, 중재' },
+  { cat:'friends', topic:'친구가 다이어트 도움 요청, 같이 운동' },
+  { cat:'friends', topic:'술 취한 친구를 집에 데려다주기' },
+  { cat:'friends', topic:'친구가 갑자기 잠수, 일주일 만에 카톡' },
+  { cat:'friends', topic:'어릴 때 친구를 길에서 우연히 만남' },
+  { cat:'friends', topic:'친구가 비건 시작, 고깃집 약속에 당황' },
+  { cat:'friends', topic:'친구가 갑자기 SNS에서 연애 공개' },
+  // ── family ──
+  { cat:'family', topic:'엄마가 갑자기 결혼 압박, 명절 식탁' },
+  { cat:'family', topic:'아빠가 SNS 시작, 친구 신청 받기 곤란' },
+  { cat:'family', topic:'동생이 내 옷 몰래 입고 나감' },
+  { cat:'family', topic:'명절에 친척의 잔소리, 부드럽게 받아치기' },
+  { cat:'family', topic:'부모님께 첫 월급으로 선물, 가게에서 고민' },
+  { cat:'family', topic:'할머니께 스마트폰 가르치기' },
+  { cat:'family', topic:'가족 여행지 의견 충돌, 단톡방 토론' },
+  { cat:'family', topic:'동생 입대 환송, 부대 앞에서 마지막 인사' },
+  { cat:'family', topic:'엄마가 새 강아지 입양, 첫 산책' },
+  { cat:'family', topic:'아빠와 처음 같이 헬스장' },
+  { cat:'family', topic:'가족 단톡방에서 정치 얘기 시작됨' },
+  { cat:'family', topic:'시댁/처가 첫 방문 전날 밤' },
+  { cat:'family', topic:'엄마가 만든 음식이 너무 짜다고 말하기' },
+  { cat:'family', topic:'아이가 갑자기 학원 그만두고 싶다고 함' },
+  // ── dating ──
+  { cat:'dating', topic:'첫 데이트 카페에서 어색한 침묵' },
+  { cat:'dating', topic:'소개팅 나갔는데 알고 보니 같은 회사' },
+  { cat:'dating', topic:'사귀자고 고백할 타이밍 재기' },
+  { cat:'dating', topic:'비싼 식당에서 계산 누가 할지' },
+  { cat:'dating', topic:'연인의 친구들과 처음 만나는 자리' },
+  { cat:'dating', topic:'장거리 연애 시작 결정' },
+  { cat:'dating', topic:'헤어진 전 애인을 길에서 마주침' },
+  { cat:'dating', topic:'데이트 앱에서 만난 사람과 첫 통화' },
+  { cat:'dating', topic:'기념일 잊어버림, 사과하기' },
+  { cat:'dating', topic:'결혼 얘기 처음 꺼내기' },
+  { cat:'dating', topic:'부모님께 연인 처음 소개' },
+  { cat:'dating', topic:'연인이 갑자기 이상한 친구 소개' },
+  { cat:'dating', topic:'썸 타는 사람과 영화관에서 손잡기 망설임' },
+  { cat:'dating', topic:'데이트 도중 친구한테 잡혀 합석' }
+];
+
+var BULK_CONV_LEVEL_GUIDE = {
+  Starter:      'STARTER: 아주 짧은 2~4단어 문장만. 기초 인사/숫자. ~이에요/예요 체만.',
+  Beginner:     'BEGINNER: 짧고 쉬운 문장. 기본 조사. 현재형 위주.',
+  Intermediate: 'INTERMEDIATE: 연결어미·과거형 자연스럽게.',
+  Advanced:     'ADVANCED: 복잡한 문장, 격식체, 고급 문법.'
+};
+var BULK_CONV_LEVEL_TO_KEY = { Starter:'s', Beginner:'b', Intermediate:'i', Advanced:'a' };
+var BULK_CONV_CAT_LABELS   = { everyday:'Everyday', work:'Workplace', friends:'Friends', family:'Family', dating:'Dating' };
+
+// Pull recent conversation signatures so paraphrased seeds get rejected even
+// across browser sessions. Conversations don't have a single canonical title —
+// we hash both `name` (participants) and `ctx` (situation).
+async function _bulkFetchRecentConvHashes() {
+  var sb = getSb();
+  if (!sb) return {};
+  try {
+    var r = await sb.from('conversations_data').select('name,ctx').order('created_at', { ascending:false }).limit(1500);
+    if (r.error) throw r.error;
+    var set = {};
+    (r.data||[]).forEach(function(row) {
+      if (row.ctx)  set[bulkTitleHash(row.ctx)] = 1;
+      if (row.name) set[bulkTitleHash(row.name)] = 1;
+    });
+    return set;
+  } catch(e) { bulkLog('Recent-conv hash fetch failed: ' + e.message, 'warn'); return {}; }
+}
+
+// Pick `count` seeds across distinct categories, skipping seeds whose hash
+// is in the seen set.
+function _bulkPickConvSeeds(count, seenSet) {
+  var pool = _bulkShuffle(BULK_CONV_SEED_POOL).filter(function(s) {
+    if (seenSet[bulkTitleHash(s.topic)]) return false;
+    if (bulkIsHashSeenLocally('conv', s.topic)) return false;
+    return true;
+  });
+  // Prefer category variety
+  var picked = [];
+  var byCat = {};
+  pool.forEach(function(s) { (byCat[s.cat] = byCat[s.cat] || []).push(s); });
+  var cats = _bulkShuffle(Object.keys(byCat));
+  var round = 0;
+  while (picked.length < count) {
+    var added = false;
+    for (var i = 0; i < cats.length && picked.length < count; i++) {
+      var bucket = byCat[cats[i]];
+      if (bucket && bucket[round]) { picked.push(bucket[round]); added = true; }
+    }
+    round++;
+    if (!added) break;
+  }
+  return picked;
+}
+
+async function _bulkGenerateOneConv(seed, levelKey) {
+  var lvlCode = BULK_CONV_LEVEL_TO_KEY[levelKey] || 'b';
+  var prompt =
+      'You are creating Korean language learning content for KoreHani.\n\n'
+    + 'Generate 1 KakaoTalk-style Korean conversation.\n'
+    + 'Category: ' + (BULK_CONV_CAT_LABELS[seed.cat] || seed.cat) + '\n'
+    + 'Level: ' + levelKey + '\n'
+    + 'Level guidance: ' + (BULK_CONV_LEVEL_GUIDE[levelKey] || '') + '\n'
+    + 'Situation (must drive the dialogue, do not change the premise): ' + seed.topic + '\n\n'
+    + 'Quality rules:\n'
+    + '- Open with a hook in the first message (specific detail, surprise, or strong emotion).\n'
+    + '- 6–9 messages total, alternating left/right naturally.\n'
+    + '- Realistic spoken Korean — slang/abbreviations okay if level allows.\n'
+    + '- Avoid textbook phrases like "오늘 날씨가 좋아요".\n'
+    + '- EVERY msg MUST have an "en" field with a natural English translation.\n'
+    + '- 5–7 vocab, 2–3 grammar, 3 missions.\n\n'
+    + 'Return ONLY a single valid JSON object (no markdown, no array wrapper):\n'
+    + '{"name":"두 사람 이름","ctx":"한 줄 상황 설명","cat":"' + seed.cat + '","lvl":"' + lvlCode + '","catLabel":"' + (BULK_CONV_CAT_LABELS[seed.cat] || seed.cat) + '","topic":"' + seed.topic.replace(/"/g,'\\"') + '","avi":"💬","msgs":[{"s":"l or r","who":"name","txt":"Korean","en":"English"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"mission":["","",""]}';
+
+  var resp = await callClaude({
+    feature: 'bulk-seed-conv',
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 3500,
+    messages: [{ role:'user', content: prompt }]
+  });
+  var raw = (resp && resp.content || []).map(function(b){ return b.text||''; }).join('');
+  raw = raw.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+  // Tolerate stray array wrapping
+  var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+  if (oi < 0 || ei <= oi) throw new Error('no JSON in response');
+  var conv = JSON.parse(raw.slice(oi, ei+1));
+  if (!conv.msgs || !conv.msgs.length) throw new Error('conv missing msgs');
+  // Patch any missing metadata
+  conv.cat = conv.cat || seed.cat;
+  conv.lvl = conv.lvl || lvlCode;
+  conv.catLabel = conv.catLabel || BULK_CONV_CAT_LABELS[seed.cat];
+  conv.topic = conv.topic || seed.topic;
+  conv.avi = conv.avi || '💬';
+  return conv;
+}
+
+async function bulkSeedConvos(count) {
+  count = Math.max(1, Math.min(10, Number(count) || 3));
+  bulkLog('💬 Starting conversation seed (' + count + ')…');
+  var btns = document.querySelectorAll('[data-bulk-btn]');
+  btns.forEach(function(b) { b.disabled = true; });
+
+  try {
+    var seenDb = await _bulkFetchRecentConvHashes();
+    var seeds  = _bulkPickConvSeeds(count, seenDb);
+    if (!seeds.length) { bulkLog('No fresh seeds — pool exhausted, expand BULK_CONV_SEED_POOL.', 'warn'); return; }
+    bulkLog(seeds.length + ' seeds selected, generating…');
+
+    var success = 0;
+    var sb = getSb();
+    if (!sb) { bulkLog('Supabase unavailable, abort.', 'err'); return; }
+
+    for (var i = 0; i < seeds.length; i++) {
+      var seed = seeds[i];
+      var lvl  = bulkPickNextLevel('conv');
+      bulkLog('(' + (i+1) + '/' + seeds.length + ') [' + seed.cat + '] [' + lvl + '] ' + seed.topic);
+      try {
+        var conv = await _bulkGenerateOneConv(seed, lvl);
+        // Skip if the model regurgitated something whose ctx/name was already saved
+        var ctxHash  = bulkTitleHash(conv.ctx || '');
+        var nameHash = bulkTitleHash(conv.name || '');
+        if ((ctxHash && seenDb[ctxHash]) || (nameHash && seenDb[nameHash])) {
+          bulkLog('  ↳ duplicate ctx/name — skip', 'warn');
+          continue;
+        }
+        var row = {
+          data:    conv,
+          cat:     conv.cat,
+          lvl:     conv.lvl,
+          name:    conv.name,
+          ctx:     conv.ctx,
+          created_at: new Date().toISOString()
+        };
+        var ins = await sb.from('conversations_data').insert(row);
+        if (ins.error) throw new Error(ins.error.message);
+        bulkRememberHash('conv', seed.topic);
+        bulkRememberHash('conv', conv.ctx || '');
+        bulkRememberHash('conv', conv.name || '');
+        if (ctxHash)  seenDb[ctxHash]  = 1;
+        if (nameHash) seenDb[nameHash] = 1;
+        _bulkBumpCounter('conv', lvl);
+        bulkLog('  ✔ saved "' + (conv.name || conv.ctx || '?') + '"', 'ok');
+        success++;
+      } catch(err) {
+        bulkLog('  ✘ ' + err.message, 'err');
+      }
+    }
+
+    bulkLog('💬 Conversations done: ' + success + '/' + seeds.length + ' saved.', success ? 'ok' : 'warn');
+    var convC = _bulkGetCounter('conv');
+    var el = document.querySelector('#bulk-distribution-convs');
+    if (el) el.textContent = _bulkRenderProgressLine('convs', convC);
   } finally {
     btns.forEach(function(b) { b.disabled = false; });
   }
