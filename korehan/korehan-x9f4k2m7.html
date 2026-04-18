@@ -381,8 +381,17 @@ async function adminAPI(body) {
     body: JSON.stringify(body)
   });
   if (!resp.ok) {
-    var err = await resp.json().catch(function(){ return {}; });
-    throw new Error(err.error || 'Admin API error ' + resp.status);
+    // Edge function can return the error in multiple shapes. Unpack all of
+    // them so callers see an actionable message instead of "[object Object]".
+    var errBody = {};
+    try { errBody = await resp.json(); } catch(_) { try { errBody = { raw: await resp.text() }; } catch(__) {} }
+    var msg = '';
+    if (typeof errBody.error === 'string') msg = errBody.error;
+    else if (errBody.error && typeof errBody.error === 'object') msg = errBody.error.message || errBody.error.details || JSON.stringify(errBody.error);
+    else if (errBody.message) msg = errBody.message;
+    else if (errBody.raw) msg = String(errBody.raw).slice(0, 300);
+    else { try { msg = JSON.stringify(errBody); } catch(_) { msg = ''; } }
+    throw new Error('Admin API ' + resp.status + (msg ? ': ' + msg : ''));
   }
   return resp.json();
 }
@@ -4990,7 +4999,7 @@ async function _bulkFetchRecentArticleHashes() {
   var sb = getSb();
   if (!sb) return {};
   try {
-    var r = await sb.from('articles').select('title,source_url').order('date', { ascending:false }).limit(3000);
+    var r = await sb.from('articles').select('title,source_url').order('date', { ascending:false }).limit(500);
     if (r.error) throw r.error;
     var set = {};
     (r.data||[]).forEach(function(row) {
@@ -5362,7 +5371,7 @@ async function _bulkFetchRecentConvHashes() {
   var sb = getSb();
   if (!sb) return {};
   try {
-    var r = await sb.from('conversations_data').select('name,ctx').order('created_at', { ascending:false }).limit(1500);
+    var r = await sb.from('conversations_data').select('name,ctx').order('created_at', { ascending:false }).limit(500);
     if (r.error) throw r.error;
     var set = {};
     (r.data||[]).forEach(function(row) {
@@ -5611,7 +5620,7 @@ async function _bulkFetchRecentStoryHashes() {
   var sb = getSb();
   if (!sb) return {};
   try {
-    var r = await sb.from('stories_data').select('title,preview').order('created_at', { ascending:false }).limit(1500);
+    var r = await sb.from('stories_data').select('title,preview').order('created_at', { ascending:false }).limit(500);
     if (r.error) throw r.error;
     var set = {};
     (r.data||[]).forEach(function(row) {
