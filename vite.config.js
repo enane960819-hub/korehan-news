@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import { readdirSync, copyFileSync, mkdirSync, existsSync } from 'fs';
+import { readdirSync, copyFileSync, mkdirSync, existsSync, cpSync } from 'fs';
 import { resolve } from 'path';
 
 // Collect all HTML files in korehan/ as entry points (multi-page app)
@@ -27,22 +27,25 @@ function copyStaticPlugin() {
       // Copy _headers for Cloudflare
       if (existsSync(resolve(src, '_headers')))
         copyFileSync(resolve(src, '_headers'), resolve(dist, '_headers'));
-      // Copy assets directory
+      // Copy assets directory — use cpSync with recursive so subdirectories
+      // (e.g. assets/room/, assets/shop/) copy cleanly. copyFileSync would
+      // throw EISDIR the moment anyone adds a subfolder.
       const assetsDir = resolve(src, 'assets');
       const distAssets = resolve(dist, 'assets');
       if (existsSync(assetsDir)) {
         if (!existsSync(distAssets)) mkdirSync(distAssets, { recursive: true });
         readdirSync(assetsDir).forEach(f =>
-          copyFileSync(resolve(assetsDir, f), resolve(distAssets, f))
+          cpSync(resolve(assetsDir, f), resolve(distAssets, f), { recursive: true })
         );
       }
-      // Copy js/ directory (split modules — kept for reference)
+      // Copy js/ directory (split modules — kept for reference). Recursive
+      // copy here too so any future js subfolder doesn't break the build.
       const jsDir = resolve(src, 'js');
       const distJs = resolve(dist, 'js');
       if (existsSync(jsDir)) {
         if (!existsSync(distJs)) mkdirSync(distJs, { recursive: true });
         readdirSync(jsDir).forEach(f =>
-          copyFileSync(resolve(jsDir, f), resolve(distJs, f))
+          cpSync(resolve(jsDir, f), resolve(distJs, f), { recursive: true })
         );
       }
     }
