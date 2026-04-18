@@ -188,6 +188,7 @@ a{color:inherit;text-decoration:none}
     <div class="sb-lbl">Learning Content</div>
     <button class="sb-btn" id="sb-conv" onclick="goConversations()"><span class="ico">💬</span>Conversations</button>
     <button class="sb-btn" id="sb-stor" onclick="goStories()"><span class="ico">📖</span>Stories</button>
+    <button class="sb-btn" id="sb-bulk-seed" onclick="goBulkSeed()"><span class="ico">🌱</span>Bulk Seed (AI)</button>
     <button class="sb-btn" id="sb-slang" onclick="goSlangAdmin()"><span class="ico">🔥</span>Korean Slang</button>
     <button class="sb-btn" id="sb-phone" onclick="goPhoneCallAdmin()"><span class="ico">📞</span>Phone Calls</button>
     <button class="sb-btn" id="sb-study-room" onclick="goStudyRoomOps()"><span class="ico">🏫</span>Study Room</button>
@@ -4789,6 +4790,147 @@ async function saveAllStories() {
     window._generatedStories = [];
     goStoriesManager();
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// BULK SEED (AI) — Micro 1a: shell + helpers only.
+// Next micro-sessions will plug in the article / conv / story generators.
+// ═══════════════════════════════════════════════════════════
+
+// Target level distribution for all three content types. Rotator below picks
+// whichever level is furthest below its target share as the next one to seed,
+// so a few hundred presses naturally converge on these ratios.
+var BULK_LEVEL_WEIGHTS = { Starter: 30, Beginner: 40, Intermediate: 25, Advanced: 5 };
+var BULK_LEVEL_KEYS = Object.keys(BULK_LEVEL_WEIGHTS);
+
+function _bulkCounterKey(type) { return 'kh_bulk_count_' + type; }
+function _bulkGetCounter(type) {
+  try {
+    var raw = localStorage.getItem(_bulkCounterKey(type));
+    var obj = raw ? JSON.parse(raw) : {};
+    BULK_LEVEL_KEYS.forEach(function(k){ if (typeof obj[k] !== 'number') obj[k] = 0; });
+    return obj;
+  } catch(e) { return { Starter:0, Beginner:0, Intermediate:0, Advanced:0 }; }
+}
+function _bulkBumpCounter(type, level) {
+  var c = _bulkGetCounter(type);
+  c[level] = (c[level] || 0) + 1;
+  localStorage.setItem(_bulkCounterKey(type), JSON.stringify(c));
+}
+// Pick the level whose actual share is furthest below its target share.
+// Tie-break favours levels with higher target weight so untouched slots fill first.
+function bulkPickNextLevel(type) {
+  var c = _bulkGetCounter(type);
+  var total = BULK_LEVEL_KEYS.reduce(function(s,k){ return s + c[k]; }, 0);
+  var bestKey = BULK_LEVEL_KEYS[0];
+  var bestScore = -Infinity;
+  BULK_LEVEL_KEYS.forEach(function(k) {
+    var target = BULK_LEVEL_WEIGHTS[k] / 100;
+    var actual = total > 0 ? c[k] / total : 0;
+    var score = (target - actual) + BULK_LEVEL_WEIGHTS[k] * 1e-6;
+    if (score > bestScore) { bestScore = score; bestKey = k; }
+  });
+  return bestKey;
+}
+
+// Normalise a title so paraphrases collide with the original. Drops punctuation,
+// common Korean particles, and whitespace; lowercases English. Not perfect
+// semantic dedup — tag-based Jaccard arrives in micro-1f.
+function bulkNormalizeTitle(s) {
+  if (!s) return '';
+  return String(s)
+    .toLowerCase()
+    .replace(/[.,!?\-—_/()"'\[\]{}:;#@*&^%$+=<>|\\`~]/g, ' ')
+    .replace(/[은는이가을를에의도만와과하고랑야아어요]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function bulkTitleHash(s) {
+  var t = bulkNormalizeTitle(s);
+  var h = 2166136261;
+  for (var i = 0; i < t.length; i++) { h = Math.imul(h ^ t.charCodeAt(i), 16777619); }
+  return (h >>> 0).toString(16);
+}
+
+// Per-session seen cache so repeated presses don't waste API calls on the
+// same hashes. DB-backed checks still happen inside each seeder.
+var _bulkSeenHashes = { article: {}, conv: {}, story: {} };
+function bulkRememberHash(type, title) {
+  var h = bulkTitleHash(title);
+  (_bulkSeenHashes[type] = _bulkSeenHashes[type] || {})[h] = 1;
+  return h;
+}
+function bulkIsHashSeenLocally(type, title) {
+  var h = bulkTitleHash(title);
+  return !!(_bulkSeenHashes[type] && _bulkSeenHashes[type][h]);
+}
+
+function _bulkRenderProgressLine(label, c) {
+  var total = BULK_LEVEL_KEYS.reduce(function(s,k){ return s + c[k]; }, 0);
+  var parts = BULK_LEVEL_KEYS.map(function(k) {
+    var pct = total > 0 ? Math.round(c[k] / total * 100) : 0;
+    return k + ':' + c[k] + ' (' + pct + '%)';
+  }).join(' · ');
+  return label + ' — Σ ' + total + ' | ' + parts;
+}
+
+function goBulkSeed() {
+  if (typeof setSbOn === 'function') setSbOn(null);
+  var artC  = _bulkGetCounter('article');
+  var convC = _bulkGetCounter('conv');
+  var storC = _bulkGetCounter('story');
+  var weightStr = BULK_LEVEL_KEYS.map(function(k) { return k + ' ' + BULK_LEVEL_WEIGHTS[k] + '%'; }).join(' · ');
+
+  document.getElementById('main').innerHTML =
+      '<div class="pg-hd"><div>'
+    +   '<h1>🌱 Bulk Seed (AI)</h1>'
+    +   '<p>Incrementally grow the content library in small, safe batches. Each press will add a few articles / conversations / stories with automatic level rotation and duplicate protection.</p>'
+    + '</div></div>'
+
+    + '<div class="sf-card" style="margin-bottom:16px">'
+    +   '<h3 style="margin-bottom:8px">Current distribution</h3>'
+    +   '<div style="font-size:13px;color:#475569;line-height:1.9">'
+    +     '<div>🎯 Target: <b>' + weightStr + '</b></div>'
+    +     '<div>📰 ' + _bulkRenderProgressLine('articles', artC) + '</div>'
+    +     '<div>💬 ' + _bulkRenderProgressLine('convs',    convC) + '</div>'
+    +     '<div>📖 ' + _bulkRenderProgressLine('stories',  storC) + '</div>'
+    +   '</div>'
+    +   '<button onclick="bulkResetCounters()" style="margin-top:10px;background:#fff;border:1px solid #e2e8f0;color:#64748b;font-size:12px;padding:6px 12px;border-radius:8px;cursor:pointer;font-family:inherit">Reset counters</button>'
+    + '</div>'
+
+    + '<div class="sf-card" style="margin-bottom:16px;background:#fffbeb;border-color:#fde68a">'
+    +   '<h3 style="margin-bottom:6px;color:#92400e">Status — Session 1a ready</h3>'
+    +   '<p style="font-size:13px;color:#78350f;line-height:1.6;margin:0">'
+    +     'Infrastructure is live: sidebar button, panel, level rotator, normalised title hash. '
+    +     'The actual article / conversation / story generators land in the next micro-sessions (1b → 1d). '
+    +     'Check back after the Articles runner (1b) is deployed to start filling content.'
+    +   '</p>'
+    + '</div>'
+
+    + '<div class="sf-card">'
+    +   '<h3 style="margin-bottom:8px">Live log</h3>'
+    +   '<div id="bulk-log" style="background:#0b1626;color:#e2e8f0;border-radius:10px;padding:14px;font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.6;min-height:120px;max-height:320px;overflow:auto">'
+    +     '<div style="color:#94a3b8">[idle] Waiting for generator rollout…</div>'
+    +   '</div>'
+    + '</div>';
+}
+
+function bulkLog(msg, tone) {
+  var el = document.getElementById('bulk-log');
+  if (!el) return;
+  var color = tone === 'err' ? '#f87171' : tone === 'ok' ? '#86efac' : tone === 'warn' ? '#fbbf24' : '#e2e8f0';
+  var ts = new Date().toLocaleTimeString('en-GB', { hour12:false });
+  var line = document.createElement('div');
+  line.style.color = color;
+  line.textContent = '[' + ts + '] ' + msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function bulkResetCounters() {
+  if (!confirm('Reset all bulk-seed distribution counters? This only clears the UI counter — already-saved content stays in the DB.')) return;
+  ['article','conv','story'].forEach(function(t) { localStorage.removeItem(_bulkCounterKey(t)); });
+  goBulkSeed();
 }
 
 function setSidebarActive(id) {
