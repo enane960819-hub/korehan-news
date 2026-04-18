@@ -4999,12 +4999,14 @@ async function _bulkFetchRecentArticleHashes() {
   var sb = getSb();
   if (!sb) return {};
   try {
-    var r = await sb.from('articles').select('title,source_url').order('date', { ascending:false }).limit(500);
-    if (r.error) throw r.error;
+    // Only hash by title — source_url column may not exist in this deployment
+    // and asking for it will 400 the whole SELECT via admin-api's schema cache.
+    var r = await sb.from('articles').select('title').order('date', { ascending:false }).limit(500);
+    if (r && r.error) throw r.error;
+    var rows = (r && r.data) || r || [];
     var set = {};
-    (r.data||[]).forEach(function(row) {
-      if (row.title)      set[bulkTitleHash(row.title)] = 1;
-      if (row.source_url) set[bulkTitleHash(row.source_url)] = 1;
+    (Array.isArray(rows) ? rows : []).forEach(function(row) {
+      if (row && row.title) set[bulkTitleHash(row.title)] = 1;
     });
     return set;
   } catch(e) { bulkLog('Recent-article hash fetch failed: ' + _bulkErrStr(e), 'warn'); return {}; }
@@ -5109,25 +5111,33 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
     source_url: headline.url || '',
     image: headline.image || ''
   };
-  // Inline upsert so the real Supabase error surfaces in the bulk log.
-  // dbSaveArticle swallows the message into a toast that disappears.
+  // Inline upsert that tolerates schema drift. admin-api now throws on 4xx,
+  // so we catch the throw, extract the missing column name from the error
+  // text, drop it from the payload, and retry. Up to 4 drops before giving up.
   var sbSave = getSb();
   if (!sbSave) throw new Error('supabase unavailable');
   var payload = Object.assign({}, newArticle);
   Object.keys(payload).forEach(function(k){ if (payload[k] === undefined) delete payload[k]; });
-  var ins = await sbSave.from('articles').upsert(payload, { onConflict: 'id' });
-  if (ins.error) {
-    // Retry once by dropping the offending column if the schema complains about one
-    var emsg = String(ins.error.message || '');
-    var m = emsg.match(/column\s+"([^"]+)"/i) || emsg.match(/Could not find the '([^']+)' column/i);
-    if (m && m[1] && payload[m[1]] !== undefined) {
-      delete payload[m[1]];
-      var retry = await sbSave.from('articles').upsert(payload, { onConflict: 'id' });
-      if (retry.error) throw new Error('db insert failed: ' + _bulkErrStr(retry.error));
-    } else {
-      throw new Error('db insert failed: ' + _bulkErrStr(ins.error));
-    }
+
+  async function _tryArticleUpsert() {
+    try { await sbSave.from('articles').upsert(payload, { onConflict: 'id' }); return { ok:true }; }
+    catch(e) { return { ok:false, message: _bulkErrStr(e) }; }
   }
+
+  var r = await _tryArticleUpsert();
+  var drops = 0;
+  while (!r.ok && drops < 4) {
+    var em = r.message || '';
+    var m = em.match(/Could not find the '([^']+)' column/i)
+         || em.match(/column\s+(?:[a-z0-9_]+\.)?"?([a-zA-Z_]+)"?\s+does not exist/i);
+    if (!m || !m[1] || payload[m[1]] === undefined) break;
+    delete payload[m[1]];
+    bulkLog('  ↳ dropping unknown column "' + m[1] + '", retrying', 'warn');
+    r = await _tryArticleUpsert();
+    drops++;
+  }
+  if (!r.ok) throw new Error('db insert failed: ' + r.message);
+
   if (typeof DB !== 'undefined' && DB.unshift) { DB.unshift(newArticle); if (typeof refreshCounts === 'function') refreshCounts(); }
   return { articleId: articleId, title: article.title, body: article.body, level: diff.level, tags: article._tags || [] };
 }
@@ -5493,8 +5503,23 @@ async function bulkSeedConvos(count) {
           ctx:     conv.ctx,
           created_at: new Date().toISOString()
         };
-        var ins = await sb.from('conversations_data').insert(row);
-        if (ins.error) throw new Error(_bulkErrStr(ins.error));
+        // Catch-and-drop loop — tolerate schema drift in conversations_data
+        async function _tryConvInsert() {
+          try { await sb.from('conversations_data').insert(row); return { ok:true }; }
+          catch(e) { return { ok:false, message: _bulkErrStr(e) }; }
+        }
+        var rr = await _tryConvInsert();
+        var dropN = 0;
+        while (!rr.ok && dropN < 4) {
+          var m = (rr.message||'').match(/Could not find the '([^']+)' column/i)
+               || (rr.message||'').match(/column\s+(?:[a-z0-9_]+\.)?"?([a-zA-Z_]+)"?\s+does not exist/i);
+          if (!m || !m[1] || row[m[1]] === undefined) break;
+          delete row[m[1]];
+          bulkLog('  ↳ dropping unknown column "' + m[1] + '", retrying', 'warn');
+          rr = await _tryConvInsert();
+          dropN++;
+        }
+        if (!rr.ok) throw new Error('conv insert failed: ' + rr.message);
         bulkRememberHash('conv', seed.topic);
         bulkRememberHash('conv', conv.ctx || '');
         bulkRememberHash('conv', conv.name || '');
@@ -5742,8 +5767,23 @@ async function bulkSeedStories(count) {
           read_time: story.readTime,
           created_at: new Date().toISOString()
         };
-        var ins = await sb.from('stories_data').insert(row);
-        if (ins.error) throw new Error(_bulkErrStr(ins.error));
+        // Catch-and-drop loop — tolerate schema drift in stories_data
+        async function _tryStoryInsert() {
+          try { await sb.from('stories_data').insert(row); return { ok:true }; }
+          catch(e) { return { ok:false, message: _bulkErrStr(e) }; }
+        }
+        var rs = await _tryStoryInsert();
+        var dropS = 0;
+        while (!rs.ok && dropS < 4) {
+          var ms = (rs.message||'').match(/Could not find the '([^']+)' column/i)
+                || (rs.message||'').match(/column\s+(?:[a-z0-9_]+\.)?"?([a-zA-Z_]+)"?\s+does not exist/i);
+          if (!ms || !ms[1] || row[ms[1]] === undefined) break;
+          delete row[ms[1]];
+          bulkLog('  ↳ dropping unknown column "' + ms[1] + '", retrying', 'warn');
+          rs = await _tryStoryInsert();
+          dropS++;
+        }
+        if (!rs.ok) throw new Error('story insert failed: ' + rs.message);
         bulkRememberHash('story', seed.premise);
         bulkRememberHash('story', story.title);
         bulkRememberHash('story', story.preview || '');
