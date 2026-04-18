@@ -437,6 +437,22 @@ const CATEGORIES = [
 function ls(k,d){ try{const r=localStorage.getItem(k);if(r!=null)return JSON.parse(r);}catch(e){}return d; }
 function lsSet(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Article thumbnail URL. Treat the legacy 1x1 placeholder data URI and empty
+// string as "no image" and fall back to a deterministic picsum.photos image
+// seeded by the article id — so new articles without a real thumbnail still
+// render a sensible random picture instead of a broken-image icon.
+function khArticleThumb(article, w, h) {
+  w = w || 200; h = h || 140;
+  var url = article && article.image;
+  var bad = !url || (typeof url === 'string' && (
+    url === '' ||
+    url.indexOf('data:image/gif;base64,R0lGODlhAQABA') === 0
+  ));
+  if (!bad) return url;
+  var seed = (article && article.id) ? String(article.id) : 'kh-' + Math.random().toString(36).slice(2, 8);
+  return 'https://picsum.photos/seed/' + encodeURIComponent(seed) + '/' + w + '/' + h;
+}
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function today(){ return new Date().toISOString().slice(0,10); }
 function fdate(d){ try{return new Date(d+'T00:00:00').toLocaleDateString('ko-KR',{year:'numeric',month:'short',day:'numeric'});}catch(e){return d||'';} }
@@ -925,7 +941,7 @@ function renderRows(){
   rows.forEach(a=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`
-      <td><img class="thumb" src="${esc(a.image||'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='+a.id+'/200/140')}"></td>
+      <td><img class="thumb" src="${esc(khArticleThumb(a, 200, 140))}" onerror="this.onerror=null;this.src='https://picsum.photos/seed/'+(this.dataset.fb||'kh-fallback')+'/200/140'" data-fb="${esc(a.id || 'kh-fallback')}"></td>
       <td>
         <div class="art-t">${esc(a.title)}</div>
         <div class="art-b">${esc(a.body||'')}</div>
@@ -9687,7 +9703,7 @@ function aseRenderList(arts) {
     var edited = _aseEditedIds.has(String(a.id));
     var badge = edited ? '<span style="background:#dcfce7;color:#15803d;font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;margin-left:6px">편집됨</span>' : '';
     return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">'
-      + (a.image_url ? '<img src="'+a.image_url+'" style="width:60px;height:42px;object-fit:cover;border-radius:6px;flex-shrink:0">' : '<div style="width:60px;height:42px;background:#f1f5f9;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px">📰</div>')
+      + '<img src="' + esc(khArticleThumb({ image: a.image_url, id: a.id }, 60, 42)) + '" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/\'+(this.dataset.fb||\'kh-fallback\')+\'/60/42\'" data-fb="' + esc(a.id || 'kh-fallback') + '" style="width:60px;height:42px;object-fit:cover;border-radius:6px;flex-shrink:0">'
       + '<div style="flex:1;min-width:0">'
       + '<div style="font-weight:700;font-size:13px;color:#0f172a;display:flex;align-items:center;gap:4px">'
       + '<span style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis">' + (a.title||'제목없음') + '</span>' + badge + '</div>'
