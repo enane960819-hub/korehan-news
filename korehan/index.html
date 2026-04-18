@@ -1230,7 +1230,10 @@ document.addEventListener('DOMContentLoaded', async function() {
       var lvl = a.level || 'Beginner';
       var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : 'lvl-b';
       var cat = (a.section || '').toLowerCase();
-      var img = a.image ? '<img class="nc-img" src="' + a.image + '" alt="">' : '<div class="nc-img nc-img-fallback"></div>';
+      var thumbUrl = (typeof khArticleThumb === 'function') ? khArticleThumb(a, 600, 400) : (a.image || '');
+      var img = thumbUrl
+        ? '<img class="nc-img" src="' + thumbUrl + '" alt="" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/kh-fallback/600/400\'">'
+        : '<div class="nc-img nc-img-fallback"></div>';
       return '<div class="nc nc-overlay" data-section="' + cat + '" data-level="' + lvl + '" onclick="location.href=\'korehan-article.html?id=' + a.id + '\'">'
         + img
         + '<div class="nc-overlay-grad"></div>'

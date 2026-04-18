@@ -1785,6 +1785,39 @@ var HOME_ARTICLE_SELECT = '*';
 // 이미지 없는 기사용 placeholder — SVG inline data URI (깨지지 않음)
 var KH_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' fill='%231e293b'%3E%3Crect width='600' height='400'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.35em' font-family='sans-serif' font-size='18' fill='%2364748b'%3EKoreHani%3C/text%3E%3C/svg%3E";
 
+// Hosts the site's CSP (_headers) allows for <img src>. Keep in sync with _headers.
+var KH_IMG_CSP_HOSTS = [
+  'images.unsplash.com', 'source.unsplash.com',
+  'picsum.photos', 'samghztrdvtxmrmawneu.supabase.co',
+  'lh3.googleusercontent.com'
+];
+function _khImgHostAllowed(url) {
+  if (!url || typeof url !== 'string') return false;
+  if (url.charAt(0) === '/' || url.indexOf('./') === 0) return true;
+  if (url.indexOf('data:') === 0 || url.indexOf('blob:') === 0) return true;
+  try {
+    var u = new URL(url, (typeof window !== 'undefined' && window.location ? window.location.origin : 'https://korehannews.com'));
+    if (typeof window !== 'undefined' && window.location && u.origin === window.location.origin) return true;
+    return KH_IMG_CSP_HOSTS.some(function(h){ return u.hostname === h || u.hostname.endsWith('.' + h); });
+  } catch(e) { return false; }
+}
+
+// Article thumbnail URL. Treat empty, the legacy 1x1 transparent-GIF data URI,
+// AND any URL whose host the site CSP blocks (preview.redd.it, ctfassets.net,
+// etc.) as "no image" and fall back to a deterministic picsum.photos image
+// seeded by the article id — so cards always show a real picture.
+function khArticleThumb(article, w, h) {
+  w = w || 600; h = h || 400;
+  var url = article && article.image;
+  var bad = !url || typeof url !== 'string'
+    || url === ''
+    || url.indexOf('data:image/gif;base64,R0lGODlhAQABA') === 0
+    || !_khImgHostAllowed(url);
+  if (!bad) return url;
+  var seed = (article && article.id) ? String(article.id) : 'kh-' + Math.random().toString(36).slice(2, 8);
+  return 'https://picsum.photos/seed/' + encodeURIComponent(seed) + '/' + w + '/' + h;
+}
+
 (function hydrateArticlesCacheFromStorage() {
   try {
     var raw = localStorage.getItem(ARTICLES_STORAGE_KEY);
@@ -2150,7 +2183,7 @@ function relTime(dateStr) {
 }
 
 function cardHTML(a, extraTagClass) {
-  var img = a.image || KH_IMG_PLACEHOLDER;
+  var img = khArticleThumb(a, 600, 400);
   var tc  = extraTagClass || '';
   var levelColors = { 'Starter':'#f3e8ff;color:#6b21a8', 'Beginner':'#e8f5e9;color:#2e7d32', 'Intermediate':'#fff8e1;color:#f57f17', 'Advanced':'#fce4ec;color:#c62828' };
   var levelBadge = a.level ? '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + (levelColors[a.level] || '#f0f0f0;color:#666') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) + '</span>' : '';
@@ -2180,7 +2213,7 @@ function filterByLevel(level, btn) {
 }
 
 function storyItemHTML(a) {
-  var img = a.image || KH_IMG_PLACEHOLDER;
+  var img = khArticleThumb(a, 600, 400);
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
     + '<div class="story-item">'
     + '<img src="' + img + '" alt="" loading="lazy">'
@@ -2191,7 +2224,7 @@ function storyItemHTML(a) {
 }
 
 function heroSideItemHTML(a) {
-  var img = a.image || KH_IMG_PLACEHOLDER;
+  var img = khArticleThumb(a, 600, 400);
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;display:block;">'
     + '<div class="hero-side-item">'
     + '<img src="' + img + '" alt="" loading="lazy">'
@@ -2291,7 +2324,7 @@ function renderHeroSlide(heroEl) {
     heroEl.innerHTML =
       '<div class="kh-home-hero-main-shell" style="position:relative;min-height:460px;overflow:hidden;background:#0b1626;touch-action:pan-y">'
       + '<div class="kh-home-hero-track" style="display:flex;height:100%;will-change:transform;transition:transform .72s cubic-bezier(.22,1,.36,1)">' + _heroSlides.map(function(item){
-          var featImg = item.image || KH_IMG_PLACEHOLDER;
+          var featImg = khArticleThumb(item, 900, 500);
           var featBody = (item.body || '').replace(/<[^>]*>/g, '').slice(0, 150);
           var url = articleUrl(item.id);
           return '<article class="kh-home-hero-slide" style="min-width:100%;position:relative;min-height:460px;overflow:hidden;cursor:pointer" onclick="location.href=\'' + url + '\'">'
@@ -2350,7 +2383,7 @@ function updateHeroSlideUI(heroEl) {
   if (sideWrap) {
     var sideItems = (window._heroStaticSide && window._heroStaticSide.length ? window._heroStaticSide : _heroSlides.filter(function(a, i){ return i !== _heroIdx; })).slice(0, 4);
     sideWrap.innerHTML = sideItems.map(function(a) {
-      var img = a.image || KH_IMG_PLACEHOLDER;
+      var img = khArticleThumb(a, 600, 400);
       return '<a href="' + articleUrl(a.id) + '" style="display:flex;gap:12px;padding:14px 16px;text-decoration:none;color:inherit;border-bottom:1px solid #edf2f7;transition:background .15s" onmouseover="this.style.background=\'#f2f7ff\'" onmouseout="this.style.background=\'\'">'
         + '<img src="' + img + '" alt="" style="width:98px;height:78px;object-fit:cover;border-radius:14px;flex-shrink:0;box-shadow:0 6px 18px rgba(15,23,42,.08)">'
         + '<div style="min-width:0;flex:1">'
@@ -2385,7 +2418,7 @@ function attachHeroInteractions(heroEl) {
 function buildArticleRowHTML(a) {
   var levelColors = {Starter:'background:#f3e8ff;color:#6b21a8',Beginner:'background:#e8f5e9;color:#2e7d32',Intermediate:'background:#fff8e1;color:#f57f17',Advanced:'background:#fce4ec;color:#c62828'};
   var lvlStyle = levelColors[a.level] || 'background:#f0f4ff;color:#1a3a6b';
-  var aImg = a.image || KH_IMG_PLACEHOLDER;
+  var aImg = khArticleThumb(a, 600, 400);
   var fallback = KH_IMG_PLACEHOLDER;
   var aBody = (a.body || '').replace(/<[^>]*>/g, '').slice(0, 90);
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;display:block;margin-bottom:20px;">'
@@ -2401,7 +2434,7 @@ function buildArticleRowHTML(a) {
 
 function buildHeroHTML(featured, rest) {
   var fallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
-  var img = featured.image || KH_IMG_PLACEHOLDER;
+  var img = khArticleThumb(featured, 900, 500);
   var body = (featured.body || '').replace(/<[^>]*>/g, '').slice(0, 120);
   return '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;">'
     + '<div class="hero-main">'
@@ -2726,7 +2759,7 @@ function renderArticlePage() {
     return;
   }
 
-  var img = a.image || KH_IMG_PLACEHOLDER;
+  var img = khArticleThumb(a, 600, 400);
   var dateStr = a.date ? new Date(a.date).toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'}) : '';
 
   wrap.innerHTML =
@@ -2847,7 +2880,7 @@ function renderArticlePage() {
           + related.map(function(r){
               var levelColors = {'Starter':'#f3e8ff;color:#6b21a8','Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'};
               return '<a href="' + articleUrl(r.id) + '" class="art-related-card">'
-                + '<img src="' + (r.image || KH_IMG_PLACEHOLDER) + '" alt="">'
+                + '<img src="' + khArticleThumb(r, 300, 200) + '" alt="">'
                 + '<div class="art-related-info">'
                 + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'
                 + '<span style="font-size:10px;font-weight:800;text-transform:uppercase;color:#2255a4">' + r.section + '</span>'

@@ -143,7 +143,7 @@ function relTime(dateStr) {
 }
 
 function cardHTML(a, extraTagClass) {
-  var img = a.image || ('https://picsum.photos/seed/' + a.id + '/600/400');
+  var img = khArticleThumb(a, 600, 400);
   var tc  = extraTagClass || '';
   var levelColors = { 'Starter':'#f3e8ff;color:#6b21a8', 'Beginner':'#e8f5e9;color:#2e7d32', 'Intermediate':'#fff8e1;color:#f57f17', 'Advanced':'#fce4ec;color:#c62828' };
   var levelBadge = a.level ? '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + (levelColors[a.level] || '#f0f0f0;color:#666') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) + '</span>' : '';
@@ -173,7 +173,7 @@ function filterByLevel(level, btn) {
 }
 
 function storyItemHTML(a) {
-  var img = a.image || ('https://picsum.photos/seed/' + a.id + '/300/200');
+  var img = khArticleThumb(a, 300, 200);
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
     + '<div class="story-item">'
     + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/300/200\'">'
@@ -184,7 +184,7 @@ function storyItemHTML(a) {
 }
 
 function heroSideItemHTML(a) {
-  var img = a.image || ('https://picsum.photos/seed/' + a.id + '/400/200');
+  var img = khArticleThumb(a, 400, 200);
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;display:block;">'
     + '<div class="hero-side-item">'
     + '<img src="' + img + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/400/200\'">'
@@ -284,7 +284,7 @@ function renderHeroSlide(heroEl) {
     heroEl.innerHTML =
       '<div class="kh-home-hero-main-shell" style="position:relative;min-height:460px;overflow:hidden;background:#0b1626;touch-action:pan-y">'
       + '<div class="kh-home-hero-track" style="display:flex;height:100%;will-change:transform;transition:transform .72s cubic-bezier(.22,1,.36,1)">' + _heroSlides.map(function(item){
-          var featImg = item.image || ('https://picsum.photos/seed/' + item.id + '/900/500');
+          var featImg = khArticleThumb(item, 900, 500);
           var featBody = (item.body || '').replace(/<[^>]*>/g, '').slice(0, 150);
           var url = articleUrl(item.id);
           return '<article class="kh-home-hero-slide" style="min-width:100%;position:relative;min-height:460px;overflow:hidden;cursor:pointer" onclick="location.href=\'' + url + '\'">'
@@ -344,7 +344,7 @@ function updateHeroSlideUI(heroEl) {
   if (sideWrap) {
     var sideItems = (window._heroStaticSide && window._heroStaticSide.length ? window._heroStaticSide : _heroSlides.filter(function(a, i){ return i !== _heroIdx; })).slice(0, 4);
     sideWrap.innerHTML = sideItems.map(function(a) {
-      var img = a.image || ('https://picsum.photos/seed/' + a.id + '/400/200');
+      var img = khArticleThumb(a, 400, 200);
       return '<a href="' + articleUrl(a.id) + '" style="display:flex;gap:12px;padding:14px 16px;text-decoration:none;color:inherit;border-bottom:1px solid #edf2f7;transition:background .15s" onmouseover="this.style.background=\'#f2f7ff\'" onmouseout="this.style.background=\'\'">'
         + '<img src="' + img + '" alt="" onerror="this.src=\'https://picsum.photos/seed/fallback/200/120\'" style="width:98px;height:78px;object-fit:cover;border-radius:14px;flex-shrink:0;box-shadow:0 6px 18px rgba(15,23,42,.08)">'
         + '<div style="min-width:0;flex:1">'
@@ -379,7 +379,7 @@ function attachHeroInteractions(heroEl) {
 function buildArticleRowHTML(a) {
   var levelColors = {Starter:'background:#f3e8ff;color:#6b21a8',Beginner:'background:#e8f5e9;color:#2e7d32',Intermediate:'background:#fff8e1;color:#f57f17',Advanced:'background:#fce4ec;color:#c62828'};
   var lvlStyle = levelColors[a.level] || 'background:#f0f4ff;color:#1a3a6b';
-  var aImg = a.image || ('https://picsum.photos/seed/' + a.id + '/400/220');
+  var aImg = khArticleThumb(a, 400, 220);
   var fallback = 'https://picsum.photos/seed/' + a.id + 'x/400/220';
   var aBody = (a.body || '').replace(/<[^>]*>/g, '').slice(0, 90);
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;display:block;margin-bottom:20px;">'
@@ -395,7 +395,7 @@ function buildArticleRowHTML(a) {
 
 function buildHeroHTML(featured, rest) {
   var fallback = 'https://picsum.photos/seed/fallback/900/500';
-  var img = featured.image || ('https://picsum.photos/seed/' + featured.id + '/900/500');
+  var img = khArticleThumb(featured, 900, 500);
   var body = (featured.body || '').replace(/<[^>]*>/g, '').slice(0, 120);
   return '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;">'
     + '<div class="hero-main">'
