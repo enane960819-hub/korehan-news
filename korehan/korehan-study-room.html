@@ -432,6 +432,123 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 
 
 /* ══════════════════════════════════════════════════════════
+   WRITING MODAL — dark theme override (Int/Adv unified design)
+══════════════════════════════════════════════════════════ */
+.wmodal {
+  background: linear-gradient(160deg, #0d1f4a 0%, #152d6e 100%);
+  box-shadow: 0 40px 100px rgba(5,12,28,.65), 0 0 0 1px rgba(255,255,255,.08);
+}
+.wmodal .wm-header {
+  background: transparent;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.wmodal .wmh-title { color: #fff; letter-spacing: -.01em; }
+.wmodal .wmh-sub   { color: rgba(255,255,255,.45); }
+.wmodal .wmh-close {
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+  color: rgba(255,255,255,.7); transition: background .15s;
+}
+.wmodal .wmh-close:hover { background: rgba(255,255,255,.16); color: #fff; }
+
+/* Mode toggle — match bmodal accent */
+.wmodal .wm-mode-btn {
+  background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.14);
+  color: rgba(255,255,255,.6);
+}
+.wmodal .wm-mode-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
+.wmodal .wm-mode-btn.active {
+  background: linear-gradient(135deg, #14cbb0, #0ea88f);
+  border-color: transparent; color: #fff;
+  box-shadow: 0 4px 12px rgba(14,168,143,.35);
+}
+
+/* Panels */
+.wmodal .wm-left,
+.wmodal .wm-right {
+  background: rgba(255,255,255,.03);
+  border-color: rgba(255,255,255,.06);
+}
+.wmodal .wm-left { border-right: 1px solid rgba(255,255,255,.06); }
+.wmodal .wm-right { border-left: 1px solid rgba(255,255,255,.06); }
+.wmodal .plabel { color: rgba(255,255,255,.45); }
+
+/* Grammar cards in left panel */
+.wmodal .mgrb {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+}
+.wmodal .mgrname { color: #fff; }
+.wmodal .mgrexp  { color: rgba(255,255,255,.55); }
+.wmodal .mgrex {
+  background: rgba(0,0,0,.2);
+  border-left-color: #14cbb0;
+  border-radius: 0 8px 8px 0;
+}
+.wmodal .mgrko { color: #14cbb0; }
+.wmodal .mgr-en { color: rgba(255,255,255,.5); }
+
+/* Vocab chips */
+.wmodal .chip {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.14);
+  color: #fff;
+  transition: all .15s;
+}
+.wmodal .chip:hover {
+  background: rgba(20,203,176,.18); border-color: rgba(20,203,176,.45); color: #14cbb0;
+}
+.wmodal .chip.gc {
+  background: rgba(251,191,36,.12);
+  border-color: rgba(251,191,36,.35);
+  color: #fbbf24;
+}
+.wmodal .chip.gc:hover { background: rgba(251,191,36,.22); }
+
+/* Writing area */
+.wmodal .write-area {
+  background: rgba(255,255,255,.05);
+  border: 1.5px solid rgba(255,255,255,.12);
+  color: #fff;
+  border-radius: 14px;
+  transition: border-color .15s, background .15s;
+}
+.wmodal .write-area::placeholder { color: rgba(255,255,255,.3); }
+.wmodal .write-area:focus { border-color: #14cbb0; background: rgba(255,255,255,.08); }
+
+/* Submit button — match bmodal CTA */
+.wmodal .submit-btn {
+  background: linear-gradient(135deg, #14cbb0, #0ea88f);
+  border-radius: 14px; padding: 14px 0;
+  box-shadow: 0 6px 20px rgba(14,168,143,.38);
+  transition: transform .15s, box-shadow .15s;
+}
+.wmodal .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(14,168,143,.48); opacity: 1; }
+.wmodal .submit-note { color: rgba(255,255,255,.45); }
+
+/* Helper sentences in right panel */
+.wmodal .mhrow { border-bottom-color: rgba(255,255,255,.08); }
+.wmodal .mhko  { color: #fff; }
+.wmodal .mhen  { color: rgba(255,255,255,.5); }
+.wmodal .mhbtn { color: #14cbb0; }
+
+/* AI loading state inside modal */
+.wmodal .ai-loading { color: rgba(255,255,255,.55); }
+
+/* Source bar (Reading mode article selector) */
+.wmodal #wm-source-bar {
+  background: rgba(0,0,0,.2);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+/* Mobile tabs inside wmodal */
+.wmodal .wm-mobile-tabs {
+  background: rgba(0,0,0,.15);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+
+/* ══════════════════════════════════════════════════════════
    BEGINNER 4-STEP MODAL — Duolingo-style
 ══════════════════════════════════════════════════════════ */
 /* ── BEGINNER MODAL — dark immersive theme ─────────────────────── */
