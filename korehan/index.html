@@ -910,40 +910,7 @@ body.kh-neon-on .hero-dot {
     <div class="home-sec-sub">Fun · Touching · Scary · Shocking</div>
     <a href="korehan-stories.html" class="home-sec-more" style="color:#7c3aed;">All stories →</a>
   </div>
-  <div class="home-story-grid">
-    <div class="story-card" onclick="location.href='korehan-stories.html?mood=fun'">
-      <div class="story-cover fun"><i data-lucide="sparkles" style="width:36px;height:36px;color:#d97706;opacity:.85" aria-hidden="true"></i><span class="story-mood-tag fun">Fun</span></div>
-      <div class="story-body">
-        <div class="story-title">편의점 알바생의 황당한 하루</div>
-        <div class="story-preview">오늘 손님이 들어오더니 갑자기 "여기 커피 파나요?" 하고 물어봤다...</div>
-      </div>
-      <div class="story-foot"><span class="story-lvl lvl-b">Sprout</span><span class="story-time">3 min</span></div>
-    </div>
-    <div class="story-card" onclick="location.href='korehan-stories.html?mood=touching'">
-      <div class="story-cover touching"><i data-lucide="heart" style="width:36px;height:36px;color:#db2777;opacity:.85" aria-hidden="true"></i><span class="story-mood-tag touching">Touching</span></div>
-      <div class="story-body">
-        <div class="story-title">할머니의 마지막 선물</div>
-        <div class="story-preview">돌아가시기 전 날, 할머니는 내 손을 꼭 잡고 작은 봉투를 건네셨다...</div>
-      </div>
-      <div class="story-foot"><span class="story-lvl lvl-i">Tree</span><span class="story-time">5 min</span></div>
-    </div>
-    <div class="story-card" onclick="location.href='korehan-stories.html?mood=scary'">
-      <div class="story-cover scary"><i data-lucide="zap" style="width:36px;height:36px;color:#7c3aed;opacity:.85" aria-hidden="true"></i><span class="story-mood-tag scary">Scary</span></div>
-      <div class="story-body">
-        <div class="story-title">혼자 살면서 겪은 이상한 일</div>
-        <div class="story-preview">분명히 혼자 사는데, 매일 아침 냉장고 속 음식이 조금씩 없어지고 있었다...</div>
-      </div>
-      <div class="story-foot"><span class="story-lvl lvl-i">Tree</span><span class="story-time">4 min</span></div>
-    </div>
-    <div class="story-card" onclick="location.href='korehan-stories.html?mood=shocking'">
-      <div class="story-cover shocking"><i data-lucide="flame" style="width:36px;height:36px;color:#dc2626;opacity:.85" aria-hidden="true"></i><span class="story-mood-tag shocking">Shocking</span></div>
-      <div class="story-body">
-        <div class="story-title">10년 만에 알게 된 진실</div>
-        <div class="story-preview">어릴 때 나를 버린 줄만 알았던 아버지가 사실 10년 동안 매달 학비를 보내고 있었다...</div>
-      </div>
-      <div class="story-foot"><span class="story-lvl lvl-a">Forest</span><span class="story-time">6 min</span></div>
-    </div>
-  </div>
+  <div class="home-story-grid" id="home-story-grid"></div>
 
 </div>
 
@@ -1159,6 +1126,59 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.warn('conv DB load failed, using fallback:', e.message);
   }
   renderHomeConvs();
+
+  // ── Stories: DB-driven home grid (matches Stories page) ──
+  (async function loadHomeStories() {
+    var grid = document.getElementById('home-story-grid');
+    if (!grid) return;
+    var LVL_LABEL = { s:'Seed', b:'Sprout', i:'Tree', a:'Forest' };
+    var LVL_CLASS = { s:'lvl-b', b:'lvl-b', i:'lvl-i', a:'lvl-a' };
+    var GENRE_LABEL = { slice_of_life:'Life', romance:'Romance', mystery:'Mystery', adventure:'Adventure', thriller:'Thriller', essay:'Essay', workplace:'Work', fun:'Fun', touching:'Touching', scary:'Scary', shocking:'Shocking' };
+    var MOOD_ICON = { fun:'sparkles', touching:'heart', scary:'zap', shocking:'flame', slice_of_life:'book-open', romance:'heart', mystery:'search', adventure:'compass', thriller:'zap', essay:'feather', workplace:'briefcase' };
+    var MOOD_CLASS = { fun:'fun', touching:'touching', scary:'scary', shocking:'shocking', slice_of_life:'fun', romance:'touching', mystery:'scary', adventure:'fun', thriller:'scary', essay:'touching', workplace:'fun' };
+    var esc = function(s){ return String(s||'').replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+
+    function renderHomeStory(s) {
+      var d   = s.data || s;
+      var mood = s.mood || d.mood || s.genre || d.genre || 'slice_of_life';
+      var moodClass = MOOD_CLASS[mood] || 'fun';
+      var iconName  = MOOD_ICON[mood] || 'book-open';
+      var lvl       = s.lvl || d.lvl || 'b';
+      var title     = d.title || s.title || '';
+      var preview   = d.preview || s.preview || '';
+      var readTime  = d.read_time || d.readTime || s.read_time || '3 min';
+      var thumbUrl  = d.thumbnail_url || d.thumbnail || d.image_url || '';
+      var coverInner = thumbUrl
+        ? '<img src="' + esc(thumbUrl) + '" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">'
+          + '<span class="story-mood-tag ' + moodClass + '">' + (GENRE_LABEL[mood] || mood) + '</span>'
+        : '<i data-lucide="' + iconName + '" style="width:36px;height:36px;opacity:.85" aria-hidden="true"></i>'
+          + '<span class="story-mood-tag ' + moodClass + '">' + (GENRE_LABEL[mood] || mood) + '</span>';
+      return '<div class="story-card" onclick="location.href=\'korehan-stories.html?id=' + encodeURIComponent(s.id) + '\'">'
+        + '<div class="story-cover ' + moodClass + '"' + (thumbUrl ? ' style="background:#0f172a"' : '') + '>' + coverInner + '</div>'
+        + '<div class="story-body">'
+          + '<div class="story-title">' + esc(title) + '</div>'
+          + '<div class="story-preview">' + esc(preview) + '</div>'
+        + '</div>'
+        + '<div class="story-foot"><span class="story-lvl ' + (LVL_CLASS[lvl]||'lvl-b') + '">' + (LVL_LABEL[lvl]||'Sprout') + '</span><span class="story-time">' + esc(readTime) + '</span></div>'
+        + '</div>';
+    }
+
+    try {
+      var sb = getSupa();
+      var res = await sb.from('stories_data')
+        .select('id, mood, lvl, genre, title, title_en, preview, read_time, data')
+        .order('created_at', {ascending: false})
+        .limit(8);
+      var rows = (res && res.data) || [];
+      if (!rows.length) { grid.innerHTML = '<div style="color:#64748b;font-size:13px;padding:16px">아직 스토리가 없어요.</div>'; return; }
+      grid.innerHTML = rows.map(renderHomeStory).join('');
+      if (window.renderKhLucideIcons) renderKhLucideIcons();
+      else if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+    } catch(e) {
+      console.warn('home stories load failed:', e.message || e);
+      grid.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:16px">Unable to load stories.</div>';
+    }
+  })();
 
   // Today's Phrase
   function renderTodaysPhrase() {

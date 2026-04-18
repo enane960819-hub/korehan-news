@@ -152,6 +152,7 @@
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js?v=20260410b"></script>
+<script src="korehan-hover-tooltips.js?v=20260418"></script>
 <script>
 const STORIES = [
   {
@@ -789,10 +790,16 @@ function renderStoryCard(s) {
   var iconName = s.banner_icon || MOOD_ICONS[s.mood] || 'book-open';
   var seriesBadge = s.series_id ? '<span style="display:inline-block;padding:2px 6px;border-radius:4px;background:rgba(124,58,237,.1);color:#7c3aed;font-size:9px;font-weight:800;margin-left:6px">EP ' + (s.episode||1) + '</span>' : '';
 
-  return '<div class="sc" onclick="openStory(\'' + s.id + '\')">'
-    + '<div class="sc-thumb" style="background:' + thumbBg + '">'
+  var thumbUrl = s.thumbnail_url || s.thumbnail || s.image_url || '';
+  var thumbInner = thumbUrl
+    ? '<img src="' + escapeHtml(thumbUrl) + '" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">'
       + '<span class="sc-mood-badge" style="background:' + genreColor + '">' + genreLabel + '</span>'
-      + '<span class="sc-icon-wrap"><i data-lucide="' + iconName + '" style="width:36px;height:36px;color:' + genreColor + ';opacity:.85" aria-hidden="true"></i></span>'
+    : '<span class="sc-mood-badge" style="background:' + genreColor + '">' + genreLabel + '</span>'
+      + '<span class="sc-icon-wrap"><i data-lucide="' + iconName + '" style="width:36px;height:36px;color:' + genreColor + ';opacity:.85" aria-hidden="true"></i></span>';
+
+  return '<div class="sc" onclick="openStory(\'' + s.id + '\')">'
+    + '<div class="sc-thumb" style="background:' + (thumbUrl ? '#0f172a' : thumbBg) + '">'
+      + thumbInner
     + '</div>'
     + '<div class="sc-body">'
       + '<div class="sc-title">' + escapeHtml(s.title || '') + seriesBadge + '</div>'
@@ -879,15 +886,30 @@ function openStory(id) {
     return '<div class="st-q-item"><div class="st-q-q">Q: ' + escapeHtml(q.q || '') + '</div><div class="st-q-a">A: ' + escapeHtml(q.a || '') + '</div></div>';
   }).join('');
 
+  var keyExpressions = (s.key_expressions||[]).map(function(k) {
+    var ko = escapeHtml(k.ko || k.expression || '');
+    var en = escapeHtml(k.en || k.meaning || '');
+    var usage = escapeHtml(k.usage || k.note || '');
+    return '<div class="st-keyexp-item" style="padding:10px 12px;background:#fef3c7;border-left:3px solid #f59e0b;border-radius:8px;margin-bottom:8px">'
+      + '<div style="font-family:Noto Serif KR,serif;font-size:14px;font-weight:800;color:#0f172a;margin-bottom:2px">' + ko + '</div>'
+      + '<div style="font-size:12px;color:#78350f">' + en + '</div>'
+      + (usage ? '<div style="font-size:11px;color:#92400e;margin-top:4px;font-style:italic">' + usage + '</div>' : '')
+      + '</div>';
+  }).join('');
+
   var headBannerClass = MOOD_BG[s.mood];
   var moodPillClass   = MOOD_PILL[s.mood];
+  var storyThumb      = s.thumbnail_url || s.thumbnail || s.image_url || '';
+  var hasEnBody       = !!(s.body_en || s.body_english || s.translation);
+  var enBody          = s.body_en || s.body_english || s.translation || '';
 
   document.getElementById('st-panel').innerHTML =
     '<div class="st-left">'
       + '<div class="st-left-head">'
-        + '<div class="st-head-banner ' + headBannerClass + '">'
+        + '<div class="st-head-banner ' + headBannerClass + '"' + (storyThumb ? ' style="background:#0f172a;background-image:url(\'' + String(storyThumb).replace(/'/g, '%27') + '\');background-size:cover;background-position:center"' : '') + '>'
           + '<button class="st-close" onclick="closeSt()">✕</button>'
-          + '<span class="st-head-icon"><i data-lucide="' + (s.banner_icon || MOOD_ICONS[s.mood] || 'book-open') + '" style="width:44px;height:44px;color:#fff;opacity:.92" aria-hidden="true"></i></span>'
+          + (storyThumb ? '<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,23,42,.1),rgba(15,23,42,.45))"></div>' : '')
+          + (storyThumb ? '' : '<span class="st-head-icon"><i data-lucide="' + (s.banner_icon || MOOD_ICONS[s.mood] || 'book-open') + '" style="width:44px;height:44px;color:#fff;opacity:.92" aria-hidden="true"></i></span>')
         + '</div>'
         + '<div class="st-head-info">'
           + '<div class="st-head-label" style="color:' + MOOD_COLORS[s.mood] + '">' + s.mood.toUpperCase() + ' STORY</div>'
@@ -901,8 +923,10 @@ function openStory(id) {
           + (author ? '<a class="st-author-inline" href="' + characterProfileUrl(author.slug) + '">' + renderCharacterAvatar(author, 'kh-character-avatar', 40) + '<div class="st-author-inline-copy"><strong>' + characterDisplayName(author) + '</strong><span>' + escapeHtml(author.role || '') + '</span></div></a>' : '')
         + '</div>'
       + '</div>'
-      + '<div class="st-body-scroll">'
-        + '<div class="st-body-text">' + escapeHtml(s.body || '') + '</div>'
+      + '<div class="st-body-scroll st-container">'
+        + (hasEnBody ? '<div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px"><button id="st-body-lang-ko" onclick="stToggleBodyLang(\'ko\')" style="padding:6px 14px;border-radius:999px;border:1.5px solid #2255a4;background:#2255a4;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🇰🇷 한국어</button><button id="st-body-lang-en" onclick="stToggleBodyLang(\'en\')" style="padding:6px 14px;border-radius:999px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🇺🇸 English</button></div>' : '')
+        + '<div class="st-body-text" id="st-body-ko" data-hover-scan="1">' + escapeHtml(s.body || '') + '</div>'
+        + (hasEnBody ? '<div class="st-body-text" id="st-body-en" style="display:none;white-space:pre-line;color:#334155">' + escapeHtml(enBody) + '</div>' : '')
       + '</div>'
       + '<div class="st-cta-row">'
         + '<button class="st-cta-btn st-cta-sec" onclick="closeSt()">← All Stories</button>'
@@ -913,7 +937,8 @@ function openStory(id) {
     + '<div class="st-right">'
       + '<div class="st-right-head"><div class="st-right-label">Study Notes</div><div class="st-right-title">Story Breakdown</div></div>'
       + '<div class="st-sections">'
-        + '<div class="st-card"><div class="st-card-title"><span>📚</span> Key Vocabulary</div><div class="st-vocab-list">' + vocab + '</div></div>'
+        + '<div class="st-card"><div class="st-card-title"><span>📚</span> Key Vocabulary <span style="font-size:11px;font-weight:700;color:#94a3b8;margin-left:auto">' + (s.vocab||[]).length + '</span></div><div class="st-vocab-list">' + vocab + '</div></div>'
+        + (keyExpressions ? '<div class="st-card"><div class="st-card-title"><span>💡</span> Key Expressions</div><div class="st-keyexp-list">' + keyExpressions + '</div></div>' : '')
         + (grammar ? '<div class="st-card"><div class="st-card-title"><span>✏️</span> Grammar Points</div><div class="st-grammar-list">' + grammar + '</div></div>' : '')
         + (comprehension ? '<div class="st-card"><div class="st-card-title"><span>🎯</span> Comprehension</div><div class="st-q-list">' + comprehension + '</div></div>' : '')
         + '<div class="st-card"><div class="st-card-title"><span>🎧</span> Listening Quiz</div><div id="st-listening-quiz"><button onclick="startStoryListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div></div>'
@@ -926,6 +951,31 @@ function openStory(id) {
   if (window.renderKhLucideIcons) renderKhLucideIcons();
   // 저장된 단어 상태 복원
   if (typeof restoreSaveButtons === 'function') restoreSaveButtons('st-overlay');
+  // Rescan body for hover vocabulary tooltips
+  if (typeof window.korehanHoverRefresh === 'function') {
+    setTimeout(window.korehanHoverRefresh, 80);
+  }
+}
+
+function stToggleBodyLang(lang) {
+  var ko = document.getElementById('st-body-ko');
+  var en = document.getElementById('st-body-en');
+  var btnKo = document.getElementById('st-body-lang-ko');
+  var btnEn = document.getElementById('st-body-lang-en');
+  if (!ko || !en) return;
+  var showEn = lang === 'en';
+  ko.style.display = showEn ? 'none' : '';
+  en.style.display = showEn ? '' : 'none';
+  if (btnKo) {
+    btnKo.style.background   = showEn ? '#fff'      : '#2255a4';
+    btnKo.style.color        = showEn ? '#64748b'   : '#fff';
+    btnKo.style.borderColor  = showEn ? '#e2e8f0'   : '#2255a4';
+  }
+  if (btnEn) {
+    btnEn.style.background   = showEn ? '#2255a4'   : '#fff';
+    btnEn.style.color        = showEn ? '#fff'      : '#64748b';
+    btnEn.style.borderColor  = showEn ? '#2255a4'   : '#e2e8f0';
+  }
 }
 
 function stPlayAudio(text) {
@@ -1092,6 +1142,20 @@ document.addEventListener('DOMContentLoaded', function() {
   var params = new URLSearchParams(window.location.search);
   var gp = params.get('genre');
   if (gp) { var t = pills.querySelector('[data-genre="'+gp+'"]'); if(t) t.click(); }
+  // Deep-link: ?id=<storyId> auto-opens the story detail once data is loaded
+  var idParam = params.get('id');
+  if (idParam) {
+    var tries = 0;
+    var iv = setInterval(function() {
+      tries++;
+      if (STORIES && STORIES.length && STORIES.find(function(x){ return String(x.id) === String(idParam); })) {
+        clearInterval(iv);
+        openStory(idParam);
+      } else if (tries > 40) {
+        clearInterval(iv);
+      }
+    }, 150);
+  }
 });
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeSt(); });
 
