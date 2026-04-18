@@ -4872,9 +4872,9 @@ function openWritingModal() {
 }
 
 function canEnterWritingRoom() {
-  var hasDoneStep = !!(_studyDone.topic || _studyDone.grammar || _studyDone.picture || _studyDone.sentence);
+  var hasDoneStep = !!(_studyDone.topic || _studyDone.grammar || _studyDone.picture || _studyDone.sentence || _studyDone.expressions);
   if (hasDoneStep) return true;
-  alert('Please complete at least 1 learning step before entering the Express Practice.\\n(Topic Writing / Grammar Focus / Picture Description / Sentence Writing)');
+  alert('Please complete at least 1 learning step before entering the Express Practice.\n(Topic Writing / Grammar Focus / Picture Description / Dictation / Key Expressions)');
   return false;
 }
 
@@ -13590,6 +13590,40 @@ function _dctRenderListen() {
   var foot = document.getElementById('dct-foot');
   if (!body || !foot) return;
   if (!sents || !sents.length) {
+    var topicText = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || '';
+    var helperFallback = (_aiContent && _aiContent.helpers && _aiContent.helpers.length) ? _aiContent.helpers : null;
+    if (topicText || helperFallback) {
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">Preparing listening sentences…</div>';
+      foot.innerHTML = '';
+      if (helperFallback) {
+        _dailyDictationSentences = helperFallback.slice(0, 3).map(function(h){ return { ko: h.ko, en: h.en }; });
+        _dctRender(); return;
+      }
+      callClaude({
+        feature: 'dictation-gen',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 400,
+        messages: [{ role: 'user', content:
+          'Generate 3 short Korean sentences for listening/dictation practice. Topic: "' + topicText + '". Level: ' + (_currentLevel || 'Beginner') + '.\n'
+          + 'Return ONLY a JSON array: [{"ko":"Korean sentence","en":"English translation"}]\nNo markdown. Sentences must be about the topic and natural to speak aloud.'
+        }]
+      }).then(function(res) {
+        try {
+          var txt = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+          txt = txt.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+          var si = txt.indexOf('['), ei = txt.lastIndexOf(']');
+          if (si >= 0 && ei > si) txt = txt.slice(si, ei+1);
+          var gen = JSON.parse(txt);
+          if (Array.isArray(gen) && gen.length) { _dailyDictationSentences = gen; _dctRender(); return; }
+        } catch(e) {}
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Could not load sentences. Try again later.</div>';
+        foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">닫기</button>';
+      }).catch(function() {
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Could not load sentences. Try again later.</div>';
+        foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">닫기</button>';
+      });
+      return;
+    }
     var artBtn = _dctGetArticleBtnHTML();
     body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">No listening sentences available today.<br><span style="font-size:12px">Content will appear once today\'s topic is generated.</span></div>'
       + artBtn;
