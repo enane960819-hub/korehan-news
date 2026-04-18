@@ -4354,21 +4354,23 @@ async function _generateAndSaveDailyContent(date) {
     levelExtraInstructions = '\nformality_exercise: 1 item with casual, formal, and explanation fields. culture_note: 1-2 sentences about Korean culture related to the topic.';
   }
 
+  var topicForPrompt = fallbackTopicKo || (assignedTopic && assignedTopic.topic_ko) || '';
   var prompt = 'You are a Korean language teacher creating complete daily study content.\n\n'
     + (typeof getLevelPrompt === 'function' ? getLevelPrompt(_currentLevel) : 'Level: ' + _currentLevel) + '\n\n'
     + topicHint + '\n\n'
+    + 'CRITICAL: Every vocab word, grammar example, helper sentence, and dictation item MUST be directly about the topic' + (topicForPrompt ? ' "' + topicForPrompt + '"' : '') + '. Do NOT return generic vocabulary (배우, 가수, 드라마, 학생) unless the topic literally is about that. Words must be ones a learner would actually need to write or talk about this specific topic.\n\n'
     + 'Return ONLY valid JSON (no markdown, no extra text):\n'
     + '{\n'
     + '  "topic_ko": "주제 한국어 (2-5 words)",\n'
     + '  "topic_en": "Topic in English",\n'
-    + '  "vocab": [{"ko":"word","rom":"romanization","en":"meaning","level":"' + _currentLevel + '"}],\n'
-    + '  "grammar": [{"level":"' + _currentLevel + '","pattern":"pattern","explanation":"English explanation","example_ko":"example sentence","example_en":"translation"}],\n'
-    + '  "helpers": [{"ko":"Korean sentence","en":"translation"}],\n'
-    + '  "dictation_sentences": [{"ko":"Korean sentence","en":"English meaning"}],\n'
-    + '  "dictation_questions": [{"question_ko":"question","answer_ko":"short answer","hint_en":"hint in English"}]\n'
+    + '  "vocab": [{"ko":"topic-specific Korean word","rom":"romanization","en":"meaning","level":"' + _currentLevel + '"}],\n'
+    + '  "grammar": [{"level":"' + _currentLevel + '","pattern":"pattern","explanation":"English explanation","example_ko":"example sentence about today\'s topic","example_en":"translation"}],\n'
+    + '  "helpers": [{"ko":"Korean sentence about the topic","en":"translation"}],\n'
+    + '  "dictation_sentences": [{"ko":"Korean sentence about the topic","en":"English meaning"}],\n'
+    + '  "dictation_questions": [{"question_ko":"question about the topic","answer_ko":"short answer","hint_en":"hint in English"}]\n'
     + levelExtraFields
     + '}\n'
-    + 'vocab: exactly 5 items. grammar: exactly 3 items. helpers: exactly 4 items. dictation_sentences: exactly 3 items. dictation_questions: exactly 3 items.'
+    + 'vocab: exactly 5 items — each word must be a noun/verb/adjective naturally used when discussing today\'s topic. grammar: exactly 3 items, example_ko must be a sentence about today\'s topic. helpers: exactly 4 items, all about today\'s topic. dictation_sentences: exactly 3 items about today\'s topic. dictation_questions: exactly 3 items about today\'s topic.'
     + levelExtraInstructions;
 
   try {
@@ -5306,12 +5308,16 @@ function openKeyExpressionsModal() {
   callClaude({
     feature: 'key-expressions',
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1000,
+    max_tokens: 1200,
     messages: [{ role: 'user', content:
-      'You are a Korean language teacher. Generate 5 key Korean expressions that a student would naturally USE when speaking or writing about the topic: "' + topicText + '" (' + topicEn + '). Level: ' + level + '.\n\n'
-      + 'Each expression must be a phrase, verb, or collocation that directly relates to this specific topic — not generic phrases.\n'
-      + 'Return ONLY a JSON array:\n'
-      + '[{"ko":"Korean phrase","rom":"romanization","en":"English meaning","example_ko":"natural Korean sentence about the topic using this phrase","example_en":"English translation of the example"}]'
+      'You are a Korean language teacher. Generate EXACTLY 6 key Korean EXPRESSIONS (multi-word phrases, collocations, or fixed sentence patterns) that a student would naturally USE when speaking or writing about the topic: "' + topicText + '" (' + topicEn + '). Level: ' + level + '.\n\n'
+      + 'STRICT RULES:\n'
+      + '1. Each "ko" MUST be a multi-word phrase of at least 2 words — NOT a single word. Examples of GOOD expressions: "오랜만에 만나다", "기분이 좋아지다", "~에 대해 이야기하다", "시간 가는 줄 모르다".\n'
+      + '2. DO NOT return single nouns or single verbs (e.g., "배우", "음식", "좋아해요" alone is NOT acceptable).\n'
+      + '3. Each expression must be directly usable when talking about this specific topic — not generic filler.\n'
+      + '4. Mix grammar patterns (~고 싶다, ~는 편이다, ~(으)ㄴ/는 것 같다), collocations (손이 크다, 발이 넓다), and common phrasal verbs.\n\n'
+      + 'Return ONLY a JSON array of 6 items, no markdown:\n'
+      + '[{"ko":"multi-word Korean phrase","rom":"romanization","en":"English meaning","example_ko":"natural Korean sentence about the topic using this exact phrase","example_en":"English translation of the example"}]'
     }]
   }).then(function(res) {
     try {
@@ -5320,6 +5326,14 @@ function openKeyExpressionsModal() {
       var s = text.indexOf('['), e = text.lastIndexOf(']');
       if (s >= 0 && e > s) text = text.slice(s, e+1);
       var expressions = JSON.parse(text);
+      // Filter out single-word items — require at least 2 characters AND a space/connective
+      expressions = (expressions || []).filter(function(x) {
+        if (!x || !x.ko) return false;
+        var ko = String(x.ko).trim();
+        // Reject single word: must contain space OR be at least 4 chars AND end with a grammar marker
+        return ko.indexOf(' ') !== -1 || ko.length >= 4;
+      });
+      if (!expressions.length) throw new Error('no valid expressions');
       _keCache = expressions;
       try { sessionStorage.setItem(cacheKey, JSON.stringify(expressions)); } catch(e) {}
       _renderKeyExpressions(list, expressions);
@@ -8515,7 +8529,7 @@ async function submitWriting() {
 
   // ── 3D Envelope + Celebration animation ──
   _playSubmitEnvelopeAnimation(function() {
-    closeWritingModal();
+    returnToActivities(closeWritingModal);
   });
   return; // Skip legacy individual submission below
 
