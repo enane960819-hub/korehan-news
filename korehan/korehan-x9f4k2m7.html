@@ -4905,7 +4905,7 @@ function goBulkSeed() {
     +     '<button data-bulk-btn class="btn btn-g" onclick="bulkSeedArticles(3)" style="padding:10px 18px;font-size:13px;font-weight:800">📰 +3 Articles</button>'
     +     '<button data-bulk-btn class="btn btn-g" onclick="bulkSeedConvos(3)" style="padding:10px 18px;font-size:13px;font-weight:800">💬 +3 Convos</button>'
     +     '<button data-bulk-btn class="btn btn-g" onclick="bulkSeedStories(3)" style="padding:10px 18px;font-size:13px;font-weight:800">📖 +3 Stories</button>'
-    +     '<button data-bulk-btn disabled class="btn" onclick="alert(\'Micro 1e — unified runner rolls out after 1d\')" style="padding:10px 18px;font-size:13px;font-weight:800;background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;cursor:not-allowed">✨ +3×3 All (1e)</button>'
+    +     '<button data-bulk-btn class="btn btn-b" onclick="bulkSeedAll(3)" style="padding:10px 18px;font-size:13px;font-weight:800;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none">✨ +3×3 All</button>'
     +   '</div>'
     + '</div>'
 
@@ -5694,6 +5694,34 @@ async function bulkSeedStories(count) {
   } finally {
     btns.forEach(function(b) { b.disabled = false; });
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Bulk Seed · 1e — Unified +3×3 runner
+// ═══════════════════════════════════════════════════════════
+
+function _bulkSection(emoji, title) {
+  bulkLog('────────── ' + emoji + ' ' + title + ' ──────────');
+}
+
+// Run all three seeders back-to-back. Each seeder already guards its own
+// errors in try/finally, so a failure in one type never blocks the next.
+async function bulkSeedAll(count) {
+  count = Math.max(1, Math.min(10, Number(count) || 3));
+  var startTs = Date.now();
+  bulkLog('✨ Bulk +' + count + '×3 run starting at ' + new Date().toLocaleTimeString('en-GB', { hour12:false }));
+
+  _bulkSection('📰', 'Articles (' + count + ')');
+  try { await bulkSeedArticles(count); } catch(e) { bulkLog('Articles step blew up: ' + e.message, 'err'); }
+
+  _bulkSection('💬', 'Conversations (' + count + ')');
+  try { await bulkSeedConvos(count); }   catch(e) { bulkLog('Convos step blew up: ' + e.message, 'err'); }
+
+  _bulkSection('📖', 'Stories (' + count + ')');
+  try { await bulkSeedStories(count); }  catch(e) { bulkLog('Stories step blew up: ' + e.message, 'err'); }
+
+  var elapsed = Math.round((Date.now() - startTs) / 1000);
+  bulkLog('✨ Run complete in ' + elapsed + 's.', 'ok');
 }
 
 function setSidebarActive(id) {
