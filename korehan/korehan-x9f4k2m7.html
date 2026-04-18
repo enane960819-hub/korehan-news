@@ -4429,11 +4429,20 @@ async function autoGenConvAI(convId, convObj) {
 async function autoGenStoryAI(storyId, storyObj) {
   showToastAdmin('🤖 스토리 AI 분석 중…');
   try {
-    var bodyText = (storyObj.body || '').replace(/<[^>]*>/g, '').slice(0, 1500);
-    var prompt = '다음 한국어 스토리를 분석해서 JSON으로만 답해줘. 다른 말 하지 마.\n\n스토리 제목: '
-      + storyObj.title + '\n내용: ' + bodyText
-      + '\n\n형식:\n{"vocab":[{"ko":"단어","rom":"로마자","en":"영어뜻","note":"간단한 설명"}],"grammar":[{"point":"문법 포인트","ex":"예문","en":"설명"}],"summary_en":"영어 요약 1-2문장"}'
-      + '\n\nvocab 6개, grammar 3개. JSON만 출력.';
+    var bodyText = (storyObj.body || '').replace(/<[^>]*>/g, '').slice(0, 2500);
+    var prompt = 'Analyze the Korean story below and return ONLY valid JSON. No explanation text.\n\n'
+      + 'Title: ' + storyObj.title + '\nBody: ' + bodyText
+      + '\n\nReturn this exact JSON schema:\n'
+      + '{\n'
+      + '  "vocab": [{"ko":"단어","rom":"romanization","en":"English meaning","note":"short usage tip"}],\n'
+      + '  "grammar": [{"point":"grammar pattern","ex":"example sentence","en":"English explanation"}],\n'
+      + '  "key_expressions": [{"ko":"expression","en":"English meaning","usage":"when to use this phrase"}],\n'
+      + '  "comprehension": [{"q":"question","a":"answer"}],\n'
+      + '  "body_en": "full English translation of the story",\n'
+      + '  "summary_en": "1-2 sentence English summary"\n'
+      + '}\n\n'
+      + 'Counts: vocab MUST contain 15 to 20 items (pick the most useful content words). grammar 3-5. key_expressions 5-8 idioms/collocations that go beyond single-word vocab. comprehension 3. body_en must be a natural full translation.\n'
+      + 'JSON only.';
 
     var result = await callAdminClaude(prompt);
     var clean = result.replace(/```json[\s\S]*?```/g, function(m){ return m.slice(7,-3); }).replace(/```/g,'').trim();
@@ -4443,15 +4452,18 @@ async function autoGenStoryAI(storyId, storyObj) {
     var res = await sb.from('stories_data').select('data').eq('id', storyId).single();
     var currentData = (res.data && res.data.data) ? res.data.data : (storyObj || {});
     var updated = Object.assign({}, currentData, {
-      vocab:      parsed.vocab      || [],
-      grammar:    parsed.grammar    || [],
-      summary_en: parsed.summary_en || '',
+      vocab:           (parsed.vocab || []).slice(0, 20),
+      grammar:         parsed.grammar         || currentData.grammar         || [],
+      key_expressions: parsed.key_expressions || currentData.key_expressions || [],
+      comprehension:   parsed.comprehension   || currentData.comprehension   || [],
+      body_en:         parsed.body_en         || currentData.body_en         || '',
+      summary_en:      parsed.summary_en      || currentData.summary_en      || '',
     });
     var { error: updateErr } = await sb.from('stories_data').update({ data: updated }).eq('id', storyId);
     if (updateErr) throw updateErr;
 
     await saveToCache('story', storyId, 'ai_analysis', parsed);
-    showToastAdmin('🤖 완료! vocab ' + (parsed.vocab||[]).length + '개 · grammar ' + (parsed.grammar||[]).length + '개');
+    showToastAdmin('🤖 완료! vocab ' + updated.vocab.length + '개 · expr ' + updated.key_expressions.length + '개');
     await loadStoryList();
   } catch(e) {
     console.error('autoGenStoryAI failed:', e);
@@ -7091,10 +7103,16 @@ async function openStoryEditModal(rowId) {
     + '<div>' + ceSelect('se-character', 'Character', ['','cr1','cr2','cr3','cr4','cr5','cr6','cr7','cr8','cr9','cr10'], ['None','박서진','김지원','이민준','최유나','정우성','한소희','오지훈','신지은','강태양','류하늘'], (d.character_slugs&&d.character_slugs[0])||'') + '</div>'
     + '</div>'
     + '<div style="margin-bottom:12px">'
+    + ceField('se-thumb', '썸네일 이미지 URL', 'text', d.thumbnail_url||d.thumbnail||'', 'https://... (비워두면 무드 아이콘 표시)')
+    + '</div>'
+    + '<div style="margin-bottom:12px">'
     + '<label style="font-size:12px;font-weight:700;color:#374151;display:block">미리보기 (preview)<textarea id="se-preview" rows="2" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical">' + (d.preview||'').replace(/</g,'&lt;') + '</textarea></label>'
     + '</div>'
     + '<div style="margin-bottom:12px">'
-    + '<label style="font-size:12px;font-weight:700;color:#374151;display:block">스토리 본문 (HTML 가능)<textarea id="se-body" rows="10" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;font-family:monospace;box-sizing:border-box;resize:vertical">' + (d.body||'').replace(/</g,'&lt;') + '</textarea></label>'
+    + '<label style="font-size:12px;font-weight:700;color:#374151;display:block">스토리 본문 (한국어, HTML 가능)<textarea id="se-body" rows="10" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;font-family:monospace;box-sizing:border-box;resize:vertical">' + (d.body||'').replace(/</g,'&lt;') + '</textarea></label>'
+    + '</div>'
+    + '<div style="margin-bottom:12px">'
+    + '<label style="font-size:12px;font-weight:700;color:#374151;display:block">스토리 영문 번역 (선택 — 비워두면 AI가 자동 생성)<textarea id="se-body-en" rows="6" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;font-family:inherit;box-sizing:border-box;resize:vertical">' + (d.body_en||d.body_english||d.translation||'').replace(/</g,'&lt;') + '</textarea></label>'
     + '</div>'
     + '<div id="se-error" style="background:#fee2e2;border-radius:8px;padding:10px;color:#b91c1c;font-size:13px;display:none;margin-bottom:12px"></div>'
     + '<div style="display:flex;gap:10px;justify-content:flex-end">'
@@ -7116,6 +7134,8 @@ async function saveStoryEdit(rowId) {
     var charVal = document.getElementById('se-character').value;
     var seriesVal = document.getElementById('se-series').value.trim();
     var episodeVal = parseInt(document.getElementById('se-episode').value) || 0;
+    // Preserve existing vocab / grammar / key_expressions on edit (they're AI-generated)
+    var existing = d || {};
     var storyObj = {
       title:     document.getElementById('se-title').value.trim(),
       title_en:  document.getElementById('se-title-en').value.trim(),
@@ -7129,6 +7149,13 @@ async function saveStoryEdit(rowId) {
       read_time: document.getElementById('se-read-time').value.trim() || '3 min',
       preview:   document.getElementById('se-preview').value.trim(),
       body:      document.getElementById('se-body').value.trim(),
+      body_en:   (document.getElementById('se-body-en') || {}).value ? document.getElementById('se-body-en').value.trim() : (existing.body_en||''),
+      thumbnail_url: (document.getElementById('se-thumb') || {}).value ? document.getElementById('se-thumb').value.trim() : (existing.thumbnail_url||''),
+      vocab:           existing.vocab           || [],
+      grammar:         existing.grammar         || [],
+      key_expressions: existing.key_expressions || [],
+      comprehension:   existing.comprehension   || [],
+      summary_en:      existing.summary_en      || '',
     };
     if (!storyObj.title) throw new Error('제목을 입력해주세요');
     var sb = getSb();
@@ -7144,11 +7171,14 @@ async function saveStoryEdit(rowId) {
     showToastAdmin('✅ 저장 완료! AI 분석 생성 중…');
     await loadStoryList();
 
-    // 10번: AI 자동으로 vocab/grammar 생성 후 article_cache에 저장
+    // AI 자동 생성: vocab/grammar/key_expressions/body_en 부족하면 재생성
     try {
       var savedRes2 = await sb.from('stories_data').select('id').order('created_at', {ascending:false}).limit(1);
       var savedId2 = rowId || (savedRes2.data && savedRes2.data[0] && savedRes2.data[0].id);
-      if (savedId2 && (!storyObj.vocab || !storyObj.vocab.length)) {
+      var needsAI = !storyObj.vocab || storyObj.vocab.length < 10
+                 || !storyObj.key_expressions || !storyObj.key_expressions.length
+                 || !storyObj.body_en;
+      if (savedId2 && needsAI) {
         autoGenStoryAI(savedId2, storyObj);
       }
     } catch(aiErr2) { console.warn('AI gen skip:', aiErr2); }
