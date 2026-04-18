@@ -4891,26 +4891,28 @@ function goBulkSeed() {
     +   '<h3 style="margin-bottom:8px">Current distribution</h3>'
     +   '<div style="font-size:13px;color:#475569;line-height:1.9">'
     +     '<div>🎯 Target: <b>' + weightStr + '</b></div>'
-    +     '<div>📰 ' + _bulkRenderProgressLine('articles', artC) + '</div>'
-    +     '<div>💬 ' + _bulkRenderProgressLine('convs',    convC) + '</div>'
-    +     '<div>📖 ' + _bulkRenderProgressLine('stories',  storC) + '</div>'
+    +     '<div id="bulk-distribution-articles">📰 ' + _bulkRenderProgressLine('articles', artC) + '</div>'
+    +     '<div id="bulk-distribution-convs">💬 ' + _bulkRenderProgressLine('convs',    convC) + '</div>'
+    +     '<div id="bulk-distribution-stories">📖 ' + _bulkRenderProgressLine('stories',  storC) + '</div>'
     +   '</div>'
     +   '<button onclick="bulkResetCounters()" style="margin-top:10px;background:#fff;border:1px solid #e2e8f0;color:#64748b;font-size:12px;padding:6px 12px;border-radius:8px;cursor:pointer;font-family:inherit">Reset counters</button>'
     + '</div>'
 
-    + '<div class="sf-card" style="margin-bottom:16px;background:#fffbeb;border-color:#fde68a">'
-    +   '<h3 style="margin-bottom:6px;color:#92400e">Status — Session 1a ready</h3>'
-    +   '<p style="font-size:13px;color:#78350f;line-height:1.6;margin:0">'
-    +     'Infrastructure is live: sidebar button, panel, level rotator, normalised title hash. '
-    +     'The actual article / conversation / story generators land in the next micro-sessions (1b → 1d). '
-    +     'Check back after the Articles runner (1b) is deployed to start filling content.'
-    +   '</p>'
+    + '<div class="sf-card" style="margin-bottom:16px">'
+    +   '<h3 style="margin-bottom:8px">Seed in small batches</h3>'
+    +   '<p style="font-size:12px;color:#64748b;margin:0 0 12px;line-height:1.6">One press picks fresh headlines / prompts, rotates levels (30/40/25/5) and sections (8 categories), runs Claude, saves to the DB. Generators roll out one content type at a time.</p>'
+    +   '<div style="display:flex;gap:10px;flex-wrap:wrap">'
+    +     '<button data-bulk-btn class="btn btn-g" onclick="bulkSeedArticles(3)" style="padding:10px 18px;font-size:13px;font-weight:800">📰 +3 Articles</button>'
+    +     '<button data-bulk-btn disabled class="btn" onclick="alert(\'Micro 1c — rolling out next\')" style="padding:10px 18px;font-size:13px;font-weight:800;background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;cursor:not-allowed">💬 +3 Convos (1c)</button>'
+    +     '<button data-bulk-btn disabled class="btn" onclick="alert(\'Micro 1d — rolling out next\')" style="padding:10px 18px;font-size:13px;font-weight:800;background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;cursor:not-allowed">📖 +3 Stories (1d)</button>'
+    +     '<button data-bulk-btn disabled class="btn" onclick="alert(\'Micro 1e — unified runner rolls out after 1d\')" style="padding:10px 18px;font-size:13px;font-weight:800;background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;cursor:not-allowed">✨ +3×3 All (1e)</button>'
+    +   '</div>'
     + '</div>'
 
     + '<div class="sf-card">'
     +   '<h3 style="margin-bottom:8px">Live log</h3>'
     +   '<div id="bulk-log" style="background:#0b1626;color:#e2e8f0;border-radius:10px;padding:14px;font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.6;min-height:120px;max-height:320px;overflow:auto">'
-    +     '<div style="color:#94a3b8">[idle] Waiting for generator rollout…</div>'
+    +     '<div style="color:#94a3b8">[idle] Press a button above to start seeding.</div>'
     +   '</div>'
     + '</div>';
 }
@@ -4931,6 +4933,280 @@ function bulkResetCounters() {
   if (!confirm('Reset all bulk-seed distribution counters? This only clears the UI counter — already-saved content stays in the DB.')) return;
   ['article','conv','story'].forEach(function(t) { localStorage.removeItem(_bulkCounterKey(t)); });
   goBulkSeed();
+}
+
+// ═══════════════════════════════════════════════════════════
+// Bulk Seed · 1b — Article seeder
+// ═══════════════════════════════════════════════════════════
+
+// Sources bucketed per target section so we can enforce section variety
+// within a single press. The canonical catalog lives in admin-source-fetch.js.
+var BULK_ART_SOURCES_BY_SECTION = {
+  '사회':      ['yonhap'],
+  '국제':      ['bbc-world','reddit-world','gtrends-us','hn','bbc-tech','techcrunch'],
+  '문화':      ['gn-viral','reddit-til','reddit-interesting','reddit-oddly','reddit-noway','reddit-mildly','gn-clickbait','gn-listicle','boredpanda'],
+  'K-pop':     ['reddit-kpop'],
+  'Korea':     ['reddit-korea'],
+  'beauty':    ['gn-beauty','allure'],
+  'travel':    ['gn-travel','cnet-travel'],
+  '오피니언':  []  // Opinion pieces are adapted from viral / op-ed-ish feeds on demand
+};
+var BULK_ART_ALL_SOURCES = Object.keys(BULK_ART_SOURCES_BY_SECTION).reduce(function(a,k){ return a.concat(BULK_ART_SOURCES_BY_SECTION[k]); }, []);
+
+var BULK_ART_DIFF_MAP = {
+  'Starter':      { ko:'입문 (초등 1~2학년 수준)', vocab:'기초 낱말, 아주 짧은 문장', level:'Starter' },
+  'Beginner':     { ko:'초급 (TOPIK 1~2급)',      vocab:'쉬운 일상 어휘, ~해요/~이에요 체', level:'Beginner' },
+  'Intermediate': { ko:'중급 (TOPIK 3~4급)',      vocab:'일반 뉴스 어휘, 중간 난이도 문장', level:'Intermediate' },
+  'Advanced':     { ko:'고급 (TOPIK 5~6급)',      vocab:'고급 한자어, 복잡한 문장 구조', level:'Advanced' }
+};
+
+function _bulkShuffle(arr) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; }
+  return a;
+}
+
+// Fetch recent title hashes from the DB so we can reject paraphrases the backend
+// might have let through (backend dedup is exact-title + exact-url against last
+// 1000; ours uses normalised-title hash against the last 3000).
+async function _bulkFetchRecentArticleHashes() {
+  var sb = getSb();
+  if (!sb) return {};
+  try {
+    var r = await sb.from('articles').select('title,source_url').order('date', { ascending:false }).limit(3000);
+    if (r.error) throw r.error;
+    var set = {};
+    (r.data||[]).forEach(function(row) {
+      if (row.title)      set[bulkTitleHash(row.title)] = 1;
+      if (row.source_url) set[bulkTitleHash(row.source_url)] = 1;
+    });
+    return set;
+  } catch(e) { bulkLog('Recent-article hash fetch failed: ' + e.message, 'warn'); return {}; }
+}
+
+// Given an item returned by admin-source-fetch, figure out which of our
+// 8 CATEGORIES it belongs in. Default to the backend's suggestion; fall back
+// to "문화" since that's the catch-all for the viral feeds.
+function _bulkItemSection(item, sourceId) {
+  for (var sec in BULK_ART_SOURCES_BY_SECTION) {
+    if (BULK_ART_SOURCES_BY_SECTION[sec].indexOf(sourceId) >= 0) return sec;
+  }
+  return item.category || '문화';
+}
+
+// Pull one item per desired section, rotating through the candidate pool.
+// Ensures a single press gives section variety instead of 3 Reddit-world items.
+function _bulkPickSectionVariedItems(items, count) {
+  var picked = [];
+  var bySection = {};
+  items.forEach(function(it) {
+    var sec = it._section;
+    (bySection[sec] = bySection[sec] || []).push(it);
+  });
+  var sections = _bulkShuffle(Object.keys(bySection));
+  var round = 0;
+  while (picked.length < count) {
+    var added = false;
+    for (var i = 0; i < sections.length && picked.length < count; i++) {
+      var bucket = bySection[sections[i]];
+      if (bucket && bucket[round]) { picked.push(bucket[round]); added = true; }
+    }
+    round++;
+    if (!added) break;
+  }
+  return picked;
+}
+
+// Generate + save one article from a fetched headline. Returns the id on
+// success, throws on failure. Mirrors runAutoGenerate but headless.
+async function _bulkGenerateOneArticle(headline, section, levelKey) {
+  var diff = BULK_ART_DIFF_MAP[levelKey] || BULK_ART_DIFF_MAP.Intermediate;
+  var today = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
+  var prompt =
+      '당신은 외국인 한국어 학습자를 위한 뉴스 기사를 각색하는 편집자입니다.\n\n'
+    + '[원본 뉴스]\n'
+    + '제목: ' + headline.title + '\n'
+    + '내용: ' + (headline.summary || headline.desc || '(요약 없음)') + '\n'
+    + '출처: ' + (headline.source || '') + '\n\n'
+    + '[지시사항]\n'
+    + '위 실제 뉴스를 바탕으로 한국어 학습자용 기사를 작성하세요.\n'
+    + '- 원본의 핵심 사실과 주제를 유지하세요\n'
+    + '- 출처가 영어라면 한국어로 완전히 번역·각색하세요\n'
+    + '- 한국 독자 시각으로 관련성 있게 풀어주세요\n\n'
+    + '[섹션: ' + section + ']\n'
+    + '[난이도: ' + diff.ko + ']\n'
+    + '[어휘 수준: ' + diff.vocab + ']\n'
+    + '[오늘 날짜: ' + today + ']\n\n'
+    + '[문체]\n'
+    + '- 짧고 명확한 문장 (20~35자)\n'
+    + '- 정중체 (~했어요, ~입니다, ~예요)\n'
+    + '- 어려운 용어는 괄호로 설명\n'
+    + '- 영어 단어는 원어 병기: 인공지능(AI)\n'
+    + '- 4~6개 단락, 단락당 2~3문장\n'
+    + '- 제목: 15~25자\n\n'
+    + '[금지]\n'
+    + '- 실존 인물 비방, 미검증 주장 금지\n'
+    + '- 원본에 없는 사실 추가 금지\n\n'
+    + '응답은 JSON만: {"title":"제목","body":"본문 (단락 구분 \\n\\n)"}';
+
+  var res = await callClaude({
+    feature: 'bulk-seed-article',
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2000,
+    messages: [{ role:'user', content: prompt }]
+  });
+  var text = (res && res.content && res.content[0] && res.content[0].text) || '';
+  if (!text) throw new Error('empty adaptation response');
+  var clean = text.replace(/^```json?/,'').replace(/^```/,'').replace(/```$/,'').trim();
+  var article;
+  try { article = JSON.parse(clean); } catch(e) { throw new Error('invalid adaptation JSON'); }
+  if (!article.title || !article.body) throw new Error('adaptation missing title/body');
+
+  var articleId = uid();
+  var newArticle = {
+    id: articleId, section: section,
+    title: article.title, body: article.body,
+    title_en: headline.title || '',
+    date: today_date(), status: 'published',
+    featured: false, level: diff.level,
+    source_url: headline.url || '',
+    image: headline.image || ''
+  };
+  var ok = await dbSaveArticle(newArticle);
+  if (!ok) throw new Error('dbSaveArticle failed');
+  if (typeof DB !== 'undefined' && DB.unshift) { DB.unshift(newArticle); if (typeof refreshCounts === 'function') refreshCounts(); }
+  return { articleId: articleId, title: article.title, body: article.body, level: diff.level };
+}
+
+// Fill article_cache (translation / vocab / grammar / quiz) via Haiku.
+// Fire-and-forget per section — partial caches are fine; the reader pages
+// regenerate whatever's missing on demand.
+async function _bulkGenerateArticleCache(articleId, title, body, levelKey) {
+  var sb = getSb();
+  if (!sb) return 0;
+  var row = { article_id: String(articleId), updated_at: new Date().toISOString() };
+  var ok = 0;
+
+  async function _call(instruction, maxTok) {
+    var r = await callClaude({
+      feature: 'bulk-seed-article-cache',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: maxTok,
+      messages: [{ role:'user', content:
+        'Korean article (level: ' + levelKey + ')\nTitle: ' + title + '\n\n' + body.slice(0,1200) + '\n\n---\n' + instruction
+      }]
+    });
+    return (r && r.content && r.content[0] && r.content[0].text) || '';
+  }
+  function _json(text) {
+    var ai = text.indexOf('['), bi = text.lastIndexOf(']');
+    var oi = text.indexOf('{'), ei = text.lastIndexOf('}');
+    if (ai >= 0 && bi > ai && (oi < 0 || ai < oi)) return JSON.parse(text.slice(ai, bi+1));
+    if (oi >= 0 && ei > oi) return JSON.parse(text.slice(oi, ei+1));
+    throw new Error('no JSON');
+  }
+
+  try {
+    var t = await _call('Translate each paragraph into English. Return ONLY a JSON array of strings, one per paragraph. No other text.', 800);
+    var ta = _json(t);
+    row.translation = JSON.stringify({ texts: Array.isArray(ta) ? ta : [ta] });
+    ok++;
+  } catch(e) {}
+  try {
+    var v = await _call('List 8 key vocabulary words. Return ONLY a JSON array of {word (Korean), reading (romanization), meaning (English)}. No other text.', 800);
+    row.vocab = JSON.stringify(_json(v));
+    ok++;
+  } catch(e) {}
+  try {
+    var g = await _call('Find 3 grammar patterns used in this article. Return ONLY {"patterns":[{"name","level","exp","ex_ko","ex_en"}]}. No other text.', 900);
+    row.grammar = JSON.stringify(_json(g));
+    ok++;
+  } catch(e) {}
+  try {
+    var q = await _call('Create 5 fill-in-the-blank questions. Return ONLY {"questions":[{"sentence":"Korean with _____","sentence_en":"English with _____","blank":"","blank_en":"","choices":["","","",""]}]}. No other text.', 1200);
+    row.quiz = JSON.stringify(_json(q));
+    ok++;
+  } catch(e) {}
+
+  if (ok > 0) {
+    try { await sb.from('article_cache').upsert(row, { onConflict:'article_id' }); }
+    catch(e) { bulkLog('cache upsert failed: ' + e.message, 'warn'); }
+  }
+  return ok;
+}
+
+// Public entry point — seed N articles. Ignores its own output on failure
+// so a partial batch still counts.
+async function bulkSeedArticles(count) {
+  count = Math.max(1, Math.min(10, Number(count) || 3));
+  bulkLog('📰 Starting article seed (' + count + ')…');
+  var btns = document.querySelectorAll('[data-bulk-btn]');
+  btns.forEach(function(b) { b.disabled = true; });
+
+  try {
+    // 1) Fetch headlines from every non-empty source, request generous limit
+    bulkLog('Fetching headlines from ' + BULK_ART_ALL_SOURCES.length + ' sources…');
+    var fetched;
+    try {
+      fetched = await _fetchHeadlinesFromBackend(BULK_ART_ALL_SOURCES);
+    } catch(e) { bulkLog('Headline fetch failed: ' + e.message, 'err'); return; }
+    var rawItems = (fetched && fetched.items) || [];
+    if (!rawItems.length) { bulkLog('No fresh headlines returned.', 'warn'); return; }
+
+    // 2) Assign each item a target section + filter against local session hashes
+    var seenDb = await _bulkFetchRecentArticleHashes();
+    var sourceIdBySourceLabel = {};
+    // The backend returns `source` as the label; we need to reverse-lookup to id
+    var NEWS_SOURCES_LABELS = typeof NEWS_SOURCES !== 'undefined' ? NEWS_SOURCES : [];
+    NEWS_SOURCES_LABELS.forEach(function(s) { sourceIdBySourceLabel[s.label] = s.id; });
+
+    var usable = [];
+    rawItems.forEach(function(it) {
+      var srcId = sourceIdBySourceLabel[it.source] || '';
+      var sec = _bulkItemSection(it, srcId);
+      var h = bulkTitleHash(it.title);
+      var hu = bulkTitleHash(it.url || '');
+      if (seenDb[h] || seenDb[hu]) return;
+      if (bulkIsHashSeenLocally('article', it.title)) return;
+      it._section = sec;
+      it._sourceId = srcId;
+      usable.push(it);
+    });
+    bulkLog(rawItems.length + ' fetched → ' + usable.length + ' after dedup.');
+    if (!usable.length) { bulkLog('Everything was duplicate — try again later.', 'warn'); return; }
+
+    // 3) Pick `count` with section variety
+    var picks = _bulkPickSectionVariedItems(_bulkShuffle(usable), count);
+
+    // 4) Generate + save each
+    var success = 0;
+    for (var i = 0; i < picks.length; i++) {
+      var p = picks[i];
+      var lvl = bulkPickNextLevel('article');
+      bulkLog('(' + (i+1) + '/' + picks.length + ') [' + p._section + '] [' + lvl + '] ' + p.title.slice(0, 70));
+      try {
+        var out = await _bulkGenerateOneArticle(p, p._section, lvl);
+        bulkMarkSeen = bulkMarkSeen || bulkRememberHash;
+        bulkRememberHash('article', p.title);
+        bulkRememberHash('article', out.title);
+        _bulkBumpCounter('article', lvl);
+        bulkLog('  ✔ saved "' + out.title + '" — now generating cache…', 'ok');
+        var cok = await _bulkGenerateArticleCache(out.articleId, out.title, out.body, lvl);
+        bulkLog('  ✔ cache ' + cok + '/4 done', 'ok');
+        success++;
+      } catch(err) {
+        bulkLog('  ✘ ' + err.message, 'err');
+      }
+    }
+
+    bulkLog('📰 Articles done: ' + success + '/' + picks.length + ' saved.', success ? 'ok' : 'warn');
+    // Refresh distribution readout in-place
+    var artC = _bulkGetCounter('article');
+    var el = document.querySelector('#bulk-distribution-articles');
+    if (el) el.textContent = _bulkRenderProgressLine('articles', artC);
+  } finally {
+    btns.forEach(function(b) { b.disabled = false; });
+  }
 }
 
 function setSidebarActive(id) {
