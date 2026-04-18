@@ -438,17 +438,34 @@ function ls(k,d){ try{const r=localStorage.getItem(k);if(r!=null)return JSON.par
 function lsSet(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-// Article thumbnail URL. Treat the legacy 1x1 placeholder data URI and empty
-// string as "no image" and fall back to a deterministic picsum.photos image
-// seeded by the article id — so new articles without a real thumbnail still
-// render a sensible random picture instead of a broken-image icon.
+// Hosts the site's CSP allows for <img src>. Keep in sync with _headers.
+var KH_IMG_CSP_HOSTS = [
+  'images.unsplash.com', 'source.unsplash.com',
+  'picsum.photos', 'samghztrdvtxmrmawneu.supabase.co',
+  'lh3.googleusercontent.com'
+];
+function _khImgHostAllowed(url) {
+  if (!url || typeof url !== 'string') return false;
+  if (url.charAt(0) === '/' || url.indexOf('./') === 0) return true;          // same-origin path
+  if (url.indexOf('data:') === 0 || url.indexOf('blob:') === 0) return true;  // inline
+  try {
+    var u = new URL(url, window.location.origin);
+    if (u.origin === window.location.origin) return true;                      // self
+    return KH_IMG_CSP_HOSTS.some(function(h){ return u.hostname === h || u.hostname.endsWith('.' + h); });
+  } catch(e) { return false; }
+}
+
+// Article thumbnail URL. Treat empty, the legacy 1x1 placeholder data URI,
+// AND any URL whose host the site CSP blocks (preview.redd.it, ctfassets.net,
+// etc.) as "no image" and fall back to a deterministic picsum.photos image
+// seeded by the article id.
 function khArticleThumb(article, w, h) {
   w = w || 200; h = h || 140;
   var url = article && article.image;
-  var bad = !url || (typeof url === 'string' && (
-    url === '' ||
-    url.indexOf('data:image/gif;base64,R0lGODlhAQABA') === 0
-  ));
+  var bad = !url || typeof url !== 'string'
+    || url === ''
+    || url.indexOf('data:image/gif;base64,R0lGODlhAQABA') === 0
+    || !_khImgHostAllowed(url);
   if (!bad) return url;
   var seed = (article && article.id) ? String(article.id) : 'kh-' + Math.random().toString(36).slice(2, 8);
   return 'https://picsum.photos/seed/' + encodeURIComponent(seed) + '/' + w + '/' + h;
@@ -5125,7 +5142,11 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
     date: today_date(), status: 'published',
     featured: false, level: diff.level,
     source_url: headline.url || '',
-    image: headline.image || ''
+    // Don't save the upstream image URL — it's almost always from a domain
+    // the site CSP doesn't allow (preview.redd.it, ctfassets.net, etc.), so
+    // it would be blocked and render as a broken icon. khArticleThumb falls
+    // back to a stable picsum.photos image keyed by the article id.
+    image: ''
   };
   // Inline upsert that tolerates schema drift. admin-api now throws on 4xx,
   // so we catch the throw, extract the missing column name from the error
