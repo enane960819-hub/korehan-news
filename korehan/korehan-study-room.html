@@ -432,162 +432,366 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 
 
 /* ══════════════════════════════════════════════════════════
+   WRITING MODAL — dark theme override (Int/Adv unified design)
+══════════════════════════════════════════════════════════ */
+.wmodal {
+  background: linear-gradient(160deg, #0d1f4a 0%, #152d6e 100%);
+  box-shadow: 0 40px 100px rgba(5,12,28,.65), 0 0 0 1px rgba(255,255,255,.08);
+}
+.wmodal .wm-header {
+  background: transparent;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.wmodal .wmh-title { color: #fff; letter-spacing: -.01em; }
+.wmodal .wmh-sub   { color: rgba(255,255,255,.45); }
+.wmodal .wmh-close {
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+  color: rgba(255,255,255,.7); transition: background .15s;
+}
+.wmodal .wmh-close:hover { background: rgba(255,255,255,.16); color: #fff; }
+
+/* Mode toggle — match bmodal accent */
+.wmodal .wm-mode-btn {
+  background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.14);
+  color: rgba(255,255,255,.6);
+}
+.wmodal .wm-mode-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
+.wmodal .wm-mode-btn.active {
+  background: linear-gradient(135deg, #14cbb0, #0ea88f);
+  border-color: transparent; color: #fff;
+  box-shadow: 0 4px 12px rgba(14,168,143,.35);
+}
+
+/* Panels */
+.wmodal .wm-left,
+.wmodal .wm-right {
+  background: rgba(255,255,255,.03);
+  border-color: rgba(255,255,255,.06);
+}
+.wmodal .wm-left { border-right: 1px solid rgba(255,255,255,.06); }
+.wmodal .wm-right { border-left: 1px solid rgba(255,255,255,.06); }
+.wmodal .plabel { color: rgba(255,255,255,.45); }
+
+/* Grammar cards in left panel */
+.wmodal .mgrb {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+}
+.wmodal .mgrname { color: #fff; }
+.wmodal .mgrexp  { color: rgba(255,255,255,.55); }
+.wmodal .mgrex {
+  background: rgba(0,0,0,.2);
+  border-left-color: #14cbb0;
+  border-radius: 0 8px 8px 0;
+}
+.wmodal .mgrko { color: #14cbb0; }
+.wmodal .mgr-en { color: rgba(255,255,255,.5); }
+
+/* Vocab chips */
+.wmodal .chip {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.14);
+  color: #fff;
+  transition: all .15s;
+}
+.wmodal .chip:hover {
+  background: rgba(20,203,176,.18); border-color: rgba(20,203,176,.45); color: #14cbb0;
+}
+.wmodal .chip.gc {
+  background: rgba(251,191,36,.12);
+  border-color: rgba(251,191,36,.35);
+  color: #fbbf24;
+}
+.wmodal .chip.gc:hover { background: rgba(251,191,36,.22); }
+
+/* Writing area */
+.wmodal .write-area {
+  background: rgba(255,255,255,.05);
+  border: 1.5px solid rgba(255,255,255,.12);
+  color: #fff;
+  border-radius: 14px;
+  transition: border-color .15s, background .15s;
+}
+.wmodal .write-area::placeholder { color: rgba(255,255,255,.3); }
+.wmodal .write-area:focus { border-color: #14cbb0; background: rgba(255,255,255,.08); }
+
+/* Submit button — match bmodal CTA */
+.wmodal .submit-btn {
+  background: linear-gradient(135deg, #14cbb0, #0ea88f);
+  border-radius: 14px; padding: 14px 0;
+  box-shadow: 0 6px 20px rgba(14,168,143,.38);
+  transition: transform .15s, box-shadow .15s;
+}
+.wmodal .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(14,168,143,.48); opacity: 1; }
+.wmodal .submit-note { color: rgba(255,255,255,.45); }
+
+/* Helper sentences in right panel */
+.wmodal .mhrow { border-bottom-color: rgba(255,255,255,.08); }
+.wmodal .mhko  { color: #fff; }
+.wmodal .mhen  { color: rgba(255,255,255,.5); }
+.wmodal .mhbtn { color: #14cbb0; }
+
+/* AI loading state inside modal */
+.wmodal .ai-loading { color: rgba(255,255,255,.55); }
+
+/* Source bar (Reading mode article selector) */
+.wmodal #wm-source-bar {
+  background: rgba(0,0,0,.2);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+/* Mobile tabs inside wmodal */
+.wmodal .wm-mobile-tabs {
+  background: rgba(0,0,0,.15);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+
+/* ══════════════════════════════════════════════════════════
    BEGINNER 4-STEP MODAL — Duolingo-style
 ══════════════════════════════════════════════════════════ */
+/* ── BEGINNER MODAL — dark immersive theme ─────────────────────── */
 .bmodal-overlay {
-  position: fixed; inset: 0; background: rgba(10,20,40,.85);
+  position: fixed; inset: 0; background: rgba(5,12,28,.93);
   z-index: 2000; display: flex; align-items: center; justify-content: center;
   padding: 16px;
 }
 .bmodal-overlay.hidden { display: none !important; }
 .bmodal {
-  background: #fff; border-radius: 24px; width: 100%; max-width: 620px;
-  max-height: 92vh; display: flex; flex-direction: column;
-  box-shadow: 0 32px 80px rgba(10,20,40,.35); overflow: hidden;
+  background: linear-gradient(160deg, #0d1f4a 0%, #152d6e 100%);
+  border-radius: 28px; width: 100%; max-width: 620px;
+  max-height: 92vh; display: flex; flex-direction: column; position: relative;
+  box-shadow: 0 40px 100px rgba(5,12,28,.65), 0 0 0 1px rgba(255,255,255,.08);
+  overflow: hidden;
 }
 .bm-header {
-  background: linear-gradient(135deg, #1a3a6b 0%, #2255a4 100%);
-  padding: 16px 20px 14px; display: flex; align-items: center; gap: 12px;
+  padding: 18px 20px 14px; display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.07); flex-shrink: 0;
 }
-.bm-step-pills { display: flex; gap: 6px; flex-shrink: 0; }
+.bm-step-pills { display: flex; gap: 8px; flex-shrink: 0; }
 .bm-pill {
-  width: 32px; height: 32px; border-radius: 50%;
+  width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 800; transition: all .2s;
+  font-size: 14px; font-weight: 800; transition: all .25s;
 }
-.bm-pill.done  { background: #4ade80; color: #14532d; }
-.bm-pill.active{ background: #fff; color: #1a3a6b; box-shadow: 0 0 0 3px rgba(255,255,255,.4); }
-.bm-pill.todo  { background: rgba(255,255,255,.15); color: rgba(255,255,255,.5); }
-.bm-topic { flex: 1; font-size: 13px; font-weight: 700; color: rgba(255,255,255,.9); min-width: 0;
+.bm-pill.done   { background: #14cbb0; color: #022c22; }
+.bm-pill.active { background: #fff; color: #0d1f4a;
+  box-shadow: 0 0 0 4px rgba(255,255,255,.2), 0 8px 20px rgba(255,255,255,.12); }
+.bm-pill.todo   { background: rgba(255,255,255,.1); color: rgba(255,255,255,.3); }
+.bm-topic { flex: 1; font-size: 13px; font-weight: 700; color: rgba(255,255,255,.7); min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bm-close { background: none; border: none; color: rgba(255,255,255,.7);
-  font-size: 20px; cursor: pointer; padding: 4px 8px; line-height: 1; flex-shrink: 0; }
-.bm-progress-track { height: 6px; background: #e2e8f0; }
-.bm-progress-bar   { height: 6px; background: linear-gradient(90deg, #4ade80, #22c55e);
-  transition: width .4s ease; }
-.bm-body { flex: 1; overflow-y: auto; padding: 26px 24px; animation: srFadeIn .25s ease-out; }
-@keyframes srFadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
-.bm-footer { padding: 16px 24px; border-top: 1px solid #e8eef7;
-  display: flex; gap: 10px; justify-content: flex-end; background: #f8fafc; }
+.bm-close { background: none; border: none; color: rgba(255,255,255,.45);
+  font-size: 20px; cursor: pointer; padding: 4px 8px; line-height: 1; flex-shrink: 0;
+  transition: color .15s; }
+.bm-close:hover { color: #fff; }
+.bm-progress-track { height: 3px; background: rgba(255,255,255,.08); flex-shrink: 0; }
+.bm-progress-bar   { height: 3px; background: linear-gradient(90deg, #14cbb0, #0ea88f);
+  transition: width .5s cubic-bezier(.4,0,.2,1); }
+.bm-body { flex: 1; overflow-y: auto; padding: 24px 22px;
+  animation: bmFadeIn .22s ease-out; color: #fff; }
+@keyframes bmFadeIn { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:none; } }
+.bm-footer { padding: 14px 22px; border-top: 1px solid rgba(255,255,255,.07);
+  display: flex; gap: 10px; align-items: center;
+  background: rgba(0,0,0,.18); flex-shrink: 0; }
 .bm-btn-next {
-  padding: 14px 36px; border-radius: 14px; border: none;
-  background: linear-gradient(135deg, #1a3a6b, #2255a4); color: #fff;
-  font-size: 16px; font-weight: 800; cursor: pointer; font-family: inherit;
-  transition: transform .15s, box-shadow .15s;
-  box-shadow: 0 4px 16px rgba(34,85,164,.35);
+  padding: 13px 30px; border-radius: 14px; border: none;
+  background: linear-gradient(135deg, #14cbb0, #0ea88f); color: #fff;
+  font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit;
+  transition: transform .15s, box-shadow .15s, opacity .15s;
+  box-shadow: 0 6px 20px rgba(14,168,143,.38); letter-spacing: -.01em;
 }
-.bm-btn-next:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(34,85,164,.45); }
-.bm-btn-next:disabled { opacity: .45; transform: none; cursor: not-allowed; }
-.bm-btn-back { padding: 13px 20px; border-radius: 14px; border: 2px solid #e2e8f0;
-  background: #fff; color: #64748b; font-size: 15px; font-weight: 700;
-  cursor: pointer; font-family: inherit; }
+.bm-btn-next:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(14,168,143,.48); }
+.bm-btn-next:disabled { opacity: .3; cursor: not-allowed; transform: none; box-shadow: none; }
+.bm-btn-back { padding: 12px 18px; border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.07);
+  color: rgba(255,255,255,.65); font-size: 14px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: background .15s; flex-shrink: 0; }
+.bm-btn-back:hover { background: rgba(255,255,255,.13); }
 
-/* Step 1 — Read sentences */
-.bm-sentences { display: flex; flex-direction: column; gap: 12px; }
-.bm-sentence {
-  background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 16px;
-  padding: 16px 18px; transition: all .2s;
+/* Step header */
+.bm-step-label { font-size: 11px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .1em; color: #14cbb0; margin-bottom: 8px; }
+.bm-step-title { font-size: 22px; font-weight: 900; color: #fff;
+  margin-bottom: 6px; line-height: 1.3; letter-spacing: -.02em; }
+.bm-step-desc { font-size: 13px; color: rgba(255,255,255,.48); margin-bottom: 20px; line-height: 1.6; }
+
+/* Step 1 — Listen & Read */
+.bm-listen-progress { font-size: 12px; color: rgba(255,255,255,.5); margin-bottom: 16px;
+  display: flex; align-items: center; gap: 10px; }
+.bm-listen-bar { flex: 1; height: 4px; background: rgba(255,255,255,.1); border-radius: 99px; overflow: hidden; }
+.bm-listen-bar-fill { height: 100%; background: #14cbb0; border-radius: 99px; transition: width .4s ease; }
+.bm-listen-cards { display: flex; flex-direction: column; gap: 12px; }
+.bm-listen-card {
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 18px; padding: 16px; transition: border-color .25s, background .25s;
 }
-.bm-sentence.highlight { border-color: #2255a4; background: #eff6ff; }
-.bm-sent-ko { font-family: 'Noto Sans KR', sans-serif; font-size: 18px;
-  font-weight: 700; color: #0f172a; line-height: 1.6; margin-bottom: 4px; }
-.bm-sent-en { font-size: 13px; color: #64748b; line-height: 1.5; }
-.bm-sent-num { display: inline-flex; align-items: center; justify-content: center;
-  width: 24px; height: 24px; border-radius: 50%; background: #2255a4; color: #fff;
-  font-size: 11px; font-weight: 800; margin-right: 8px; flex-shrink: 0; }
+.bm-listen-card.listened { border-color: rgba(20,203,176,.4); background: rgba(20,203,176,.07); }
+.bm-listen-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.bm-listen-num {
+  width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,.12);
+  color: rgba(255,255,255,.6); display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; flex-shrink: 0; transition: background .25s, color .25s;
+}
+.bm-listen-num.done { background: #14cbb0; color: #022c22; }
+.bm-listen-tts {
+  flex: 1; background: rgba(255,255,255,.09); border: none; border-radius: 10px;
+  padding: 9px 14px; color: rgba(255,255,255,.85); font-size: 13px; font-weight: 700;
+  text-align: left; cursor: pointer; font-family: inherit; transition: background .15s;
+}
+.bm-listen-tts:hover { background: rgba(255,255,255,.15); }
+.bm-listen-tts.played { background: rgba(20,203,176,.18); color: #14cbb0; }
+.bm-listen-ko {
+  font-family: 'Noto Sans KR', sans-serif; font-size: 18px; font-weight: 700;
+  color: #fff; line-height: 1.6;
+}
+.bm-listen-toggle {
+  background: none; border: none; color: rgba(255,255,255,.38); font-size: 12px;
+  font-weight: 700; cursor: pointer; padding: 6px 0 0; margin-top: 6px;
+  font-family: inherit; transition: color .15s; display: block;
+}
+.bm-listen-toggle:hover { color: rgba(255,255,255,.7); }
+.bm-listen-en-wrap { overflow: hidden; max-height: 0; transition: max-height .3s ease; }
+.bm-listen-en-wrap.open { max-height: 80px; }
+.bm-listen-en {
+  font-size: 13px; color: rgba(255,255,255,.42); margin-top: 8px;
+  padding-top: 8px; border-top: 1px solid rgba(255,255,255,.07); line-height: 1.6;
+}
 
-/* Step 2 — Word order chips */
+/* Step 2 — Build It */
+.bm-build-hint {
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 14px; padding: 12px 16px; margin-bottom: 16px;
+  font-size: 13px; color: rgba(255,255,255,.6); line-height: 1.6;
+}
+.bm-answer-zone {
+  min-height: 52px; border: 2px dashed rgba(255,255,255,.2); border-radius: 14px;
+  padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  background: rgba(255,255,255,.03); margin-bottom: 14px;
+  transition: border-color .2s, background .2s;
+}
+.bm-answer-zone.correct { border-color: #14cbb0; border-style: solid; background: rgba(20,203,176,.08); }
+.bm-answer-zone.wrong   { border-color: #f87171; border-style: solid; background: rgba(248,113,113,.06); }
+.bm-answer-zone.partial { border-color: #fbbf24; border-style: solid; background: rgba(251,191,36,.05); }
+.bm-answer-empty { font-size: 12px; color: rgba(255,255,255,.25); }
 .bm-word-chip {
-  padding: 11px 16px; border-radius: 12px;
-  border: 2px solid #e2e8f0; background: #fff;
+  padding: 10px 16px; border-radius: 12px;
+  border: 1.5px solid rgba(255,255,255,.18); background: rgba(255,255,255,.1);
   font-family: 'Noto Sans KR', sans-serif; font-size: 15px; font-weight: 700;
-  color: #0f172a; cursor: pointer; transition: all .15s;
+  color: #fff; cursor: pointer; transition: all .15s;
 }
-.bm-word-chip:hover:not(:disabled) { border-color: #2255a4; color: #2255a4; background: #eff6ff; }
-.bm-word-chip.bm-word-used { opacity: .3; cursor: not-allowed; }
+.bm-word-chip:hover:not(:disabled) { border-color: rgba(20,203,176,.55); background: rgba(20,203,176,.14); color: #14cbb0; }
+.bm-word-chip.bm-word-used { opacity: .2; cursor: not-allowed; }
 .bm-word-selected {
-  background: #2255a4; color: #fff; border-color: #2255a4; cursor: pointer;
+  background: linear-gradient(135deg, #14cbb0, #0ea88f); color: #fff;
+  border-color: transparent; box-shadow: 0 4px 12px rgba(14,168,143,.3);
 }
-.bm-word-selected:hover { background: #1a3a6b; border-color: #1a3a6b; }
+.bm-word-selected:hover { filter: brightness(1.1); }
 
-/* Step 3 — Blanks */
-.bm-blank-list { display: flex; flex-direction: column; gap: 16px; }
-.bm-blank-item { background: #f8fafc; border-radius: 14px; padding: 16px 18px; }
-.bm-blank-sent { font-family: 'Noto Sans KR', sans-serif; font-size: 16px;
-  line-height: 1.9; color: #0f172a; margin-bottom: 10px; }
+/* Step 3 — Fill In */
+.bm-blank-list { display: flex; flex-direction: column; gap: 14px; }
+.bm-blank-item {
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 16px; padding: 16px;
+}
+.bm-blank-sent {
+  font-family: 'Noto Sans KR', sans-serif; font-size: 16px;
+  line-height: 2; color: #fff; margin-bottom: 10px;
+}
 .bm-blank-btn {
   display: inline-block; min-width: 80px; text-align: center;
-  padding: 5px 14px; margin: 0 2px; border-radius: 10px;
-  border: 2px dashed #2255a4; background: #eff6ff; color: #2255a4;
+  padding: 3px 14px; margin: 0 2px; border-radius: 10px;
+  border: 2px dashed rgba(20,203,176,.5); background: rgba(20,203,176,.08); color: #14cbb0;
   font-size: 15px; font-weight: 700; font-family: 'Noto Sans KR', sans-serif;
-  cursor: pointer; transition: all .15s;
+  cursor: default; transition: all .15s;
 }
-.bm-blank-btn.filled { border-style: solid; background: #2255a4; color: #fff; cursor: default; }
-.bm-blank-btn.correct { background: #dcfce7; border-color: #16a34a; color: #15803d; }
-.bm-blank-btn.wrong   { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
+.bm-blank-btn.filled  { border-style: solid; border-color: rgba(255,255,255,.25); background: rgba(255,255,255,.12); color: #fff; }
+.bm-blank-btn.correct { background: rgba(20,203,176,.2); border-color: #14cbb0; color: #14cbb0; border-style: solid; }
+.bm-blank-btn.wrong   { background: rgba(248,113,113,.15); border-color: #f87171; color: #f87171; border-style: solid; }
 .bm-choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .bm-choice-btn {
-  padding: 8px 16px; border-radius: 10px; border: 2px solid #e2e8f0;
-  background: #fff; font-family: 'Noto Sans KR', sans-serif; font-size: 14px;
-  font-weight: 700; color: #0f172a; cursor: pointer; transition: all .15s;
+  padding: 9px 18px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.08); font-family: 'Noto Sans KR', sans-serif; font-size: 14px;
+  font-weight: 700; color: #fff; cursor: pointer; transition: all .15s;
 }
-.bm-choice-btn:hover { border-color: #2255a4; color: #2255a4; background: #eff6ff; }
-.bm-choice-btn.used { opacity: .3; cursor: not-allowed; }
+.bm-choice-btn:hover:not(:disabled) { border-color: rgba(20,203,176,.5); background: rgba(20,203,176,.12); color: #14cbb0; }
+.bm-choice-btn:disabled { cursor: not-allowed; }
 
-/* Step 4 — Free write */
-.bm-step4-ref {
-  background: #f0f7ff; border: 1px solid #bfdbfe; border-radius: 14px;
-  padding: 14px 16px; margin-bottom: 16px;
+/* Step 4 — Word Snap */
+.bm-snap-card { perspective: 1000px; cursor: pointer; height: 168px; margin-bottom: 14px; }
+.bm-snap-inner {
+  width: 100%; height: 100%; position: relative;
+  transform-style: preserve-3d; transition: transform .45s cubic-bezier(.4,0,.2,1);
 }
-.bm-step4-ref-title { font-size: 11px; font-weight: 800; color: #2255a4;
-  text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
-.bm-ref-sent { font-family: 'Noto Sans KR', sans-serif; font-size: 14px;
-  color: #1e3a5f; line-height: 1.8; border-bottom: 1px solid #dbeafe;
-  padding: 4px 0; }
-.bm-ref-sent:last-child { border-bottom: none; }
-.bm-write-area {
-  width: 100%; min-height: 160px; border: 2px solid #e2e8f0; border-radius: 14px;
-  padding: 14px 16px; font-family: 'Noto Sans KR', sans-serif; font-size: 16px;
-  line-height: 1.8; color: #0f172a; resize: vertical; outline: none;
-  transition: border-color .15s;
+.bm-snap-inner.flipped { transform: rotateY(180deg); }
+.bm-snap-front, .bm-snap-back {
+  position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  border-radius: 20px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 22px;
 }
-.bm-write-area:focus { border-color: #2255a4; }
-.bm-wc { font-size: 12px; color: #94a3b8; text-align: right; margin-top: 4px; }
+.bm-snap-front {
+  background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.15);
+}
+.bm-snap-back {
+  background: linear-gradient(135deg, rgba(20,203,176,.2), rgba(14,168,143,.1));
+  border: 1px solid rgba(20,203,176,.35); transform: rotateY(180deg);
+}
+.bm-snap-ko  { font-family: 'Noto Sans KR', sans-serif; font-size: 28px; font-weight: 900; color: #fff; text-align: center; }
+.bm-snap-rom { font-size: 13px; color: rgba(255,255,255,.38); margin-top: 4px; }
+.bm-snap-hint{ font-size: 11px; color: rgba(255,255,255,.3); margin-top: 14px; letter-spacing: .03em; }
+.bm-snap-en  { font-size: 20px; font-weight: 800; color: #14cbb0; text-align: center; }
+.bm-snap-save {
+  margin-top: 14px; padding: 7px 18px; border-radius: 20px;
+  background: rgba(20,203,176,.18); border: 1px solid rgba(20,203,176,.4);
+  color: #14cbb0; font-size: 12px; font-weight: 800;
+  cursor: pointer; font-family: inherit; transition: all .15s;
+}
+.bm-snap-save:hover:not(.saved) { background: rgba(20,203,176,.3); }
+.bm-snap-save.saved { background: rgba(20,203,176,.4); color: #fff; cursor: default; }
+.bm-snap-nav { display: flex; align-items: center; justify-content: center; gap: 16px; }
+.bm-snap-dots { display: flex; gap: 7px; align-items: center; }
+.bm-snap-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.2); transition: all .25s; }
+.bm-snap-dot.active { background: #14cbb0; transform: scale(1.4); }
+.bm-snap-dot.seen   { background: rgba(20,203,176,.45); }
+.bm-snap-arr {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+  color: #fff; font-size: 20px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .15s; line-height: 1;
+}
+.bm-snap-arr:hover:not(:disabled) { background: rgba(255,255,255,.15); }
+.bm-snap-arr:disabled { opacity: .3; cursor: default; }
 
-/* Feedback overlay */
-.bm-feedback {
-  margin-top: 14px; padding: 16px 20px; border-radius: 14px; text-align: center;
-}
-.bm-feedback.correct { background: #f0fdf4; border: 2px solid #bbf7d0; }
-.bm-feedback.wrong   { background: #fef2f2; border: 2px solid #fecaca; }
-.bm-feedback-emoji { font-size: 32px; margin-bottom: 6px; }
-.bm-feedback-msg  { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+/* Feedback */
+.bm-feedback { margin-top: 14px; padding: 14px 18px; border-radius: 14px; text-align: center; }
+.bm-feedback.correct { background: rgba(20,203,176,.1);  border: 1px solid rgba(20,203,176,.3); }
+.bm-feedback.wrong   { background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.25); }
+.bm-feedback.partial { background: rgba(251,191,36,.07); border: 1px solid rgba(251,191,36,.25); }
+.bm-feedback-emoji { font-size: 28px; margin-bottom: 6px; }
+.bm-feedback-msg   { font-size: 15px; font-weight: 800; margin-bottom: 4px; }
 
-/* Step indicator label */
-.bm-step-label {
-  font-size: 12px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .1em; color: #2255a4; margin-bottom: 10px;
+/* Result */
+.bm-result { text-align: center; padding: 14px 0; }
+.bm-result-emoji { font-size: 58px; margin-bottom: 14px; }
+.bm-result-score { font-size: 44px; font-weight: 900; color: #fff; margin-bottom: 6px; letter-spacing: -.03em; }
+.bm-result-msg   { font-size: 14px; color: rgba(255,255,255,.55); margin-bottom: 22px; line-height: 1.6; }
+.bm-result-stat  {
+  text-align: center; background: rgba(255,255,255,.08);
+  border-radius: 14px; padding: 14px 20px; flex: 1;
 }
-.bm-step-title {
-  font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 900;
-  color: #0f172a; margin-bottom: 8px; line-height: 1.3;
-}
-.bm-step-desc { font-size: 14px; color: #64748b; margin-bottom: 20px; line-height: 1.6; }
-
-/* Result screen */
-.bm-result { text-align: center; padding: 20px 0; }
-.bm-result-emoji { font-size: 64px; margin-bottom: 16px; }
-.bm-result-score { font-size: 36px; font-weight: 900; color: #0f172a; margin-bottom: 8px; }
-.bm-result-msg { font-size: 15px; color: #64748b; margin-bottom: 24px; line-height: 1.6; }
+.bm-result-stat-val { font-size: 22px; font-weight: 900; }
+.bm-result-stat-lbl { font-size: 11px; color: rgba(255,255,255,.45); margin-top: 2px; }
 
 /* Mobile */
 @media (max-width: 640px) {
-  .bmodal { border-radius: 20px 20px 0 0; max-height: 97dvh; }
+  .bmodal { border-radius: 24px 24px 0 0; max-height: 96dvh; }
   .bmodal-overlay { align-items: flex-end; padding: 0; }
-  .bm-body { padding: 16px 14px; }
-  .bm-footer { padding: 12px 14px; }
-  .bm-sent-ko { font-size: 16px; }
-  .bm-step-title { font-size: 18px; }
+  .bm-body { padding: 18px 16px; }
+  .bm-footer { padding: 12px 16px; }
+  .bm-listen-ko { font-size: 16px; }
+  .bm-step-title { font-size: 19px; }
+  .bm-snap-ko { font-size: 24px; }
+  .bm-snap-en { font-size: 18px; }
 }
 
 /* ── STARTER 3-STEP MODAL ─────────────────────────────── */
@@ -5068,6 +5272,7 @@ function lsStart(type) {
 
 // ── Key Expressions Modal ──
 var _keCache = null;
+var _keCacheKey = null; // topic+level+date — invalidate when any changes
 function openKeyExpressionsModal() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
@@ -5078,39 +5283,42 @@ function openKeyExpressionsModal() {
   if (_todayTopic) topicLabel.textContent = (_todayTopic.topic_ko || _todayTopic.topic_en || 'Key expressions for today\'s topic');
   var list = document.getElementById('ke-expressions-list');
 
-  // 1) Use cached expressions if available
+  // Scope cache by topic + level + date so stale data is never reused
+  var topicKey = ((_todayTopic && (_todayTopic.id || _todayTopic.topic_ko)) || 'default')
+    + '_' + (_currentLevel || 'Beginner') + '_' + kstDateKey();
+  if (_keCacheKey !== topicKey) { _keCache = null; _keCacheKey = topicKey; }
+
+  // 1) In-memory cache (same session, same topic/level/date)
   if (_keCache) { _renderKeyExpressions(list, _keCache); return; }
 
-  // 2) Try from _aiContent.helpers (already loaded with daily content)
-  var helpers = (_aiContent && _aiContent.helpers) || [];
-  if (helpers.length >= 3) {
-    var mapped = helpers.slice(0, 6).map(function(h) {
-      return { ko: h.ko||'', rom: h.rom||'', en: h.en||'', example_ko: h.ex_ko||h.ko||'', example_en: h.ex_en||h.en||'' };
-    });
-    _keCache = mapped;
-    _renderKeyExpressions(list, mapped);
-    return;
-  }
-
-  // 3) Fallback: generate via API (with sessionStorage cache)
-  var cacheKey = 'ke_' + (_todayTopic && _todayTopic.id || 'default');
+  // 2) sessionStorage cache (survives reload within same day)
+  var cacheKey = 'ke_' + topicKey;
   try {
     var cached = sessionStorage.getItem(cacheKey);
     if (cached) { var parsed = JSON.parse(cached); _keCache = parsed; _renderKeyExpressions(list, parsed); return; }
   } catch(e) {}
 
+  // 3) Generate via Claude — expressions must be directly usable for today's topic
   list.innerHTML = '<div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Generating key expressions...</div>';
   var topicText = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || 'daily life';
+  var topicEn   = (_todayTopic && _todayTopic.topic_en) || topicText;
   var level = _currentLevel || 'Beginner';
   callClaude({
     feature: 'key-expressions',
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1000,
-    messages: [{ role: 'user', content: 'Generate 5 key Korean expressions for topic "' + topicText + '" (' + level + ' level). Return JSON array: [{"ko":"Korean phrase","rom":"romanization","en":"English meaning","example_ko":"example sentence","example_en":"English translation"}]. JSON only.' }]
+    messages: [{ role: 'user', content:
+      'You are a Korean language teacher. Generate 5 key Korean expressions that a student would naturally USE when speaking or writing about the topic: "' + topicText + '" (' + topicEn + '). Level: ' + level + '.\n\n'
+      + 'Each expression must be a phrase, verb, or collocation that directly relates to this specific topic — not generic phrases.\n'
+      + 'Return ONLY a JSON array:\n'
+      + '[{"ko":"Korean phrase","rom":"romanization","en":"English meaning","example_ko":"natural Korean sentence about the topic using this phrase","example_en":"English translation of the example"}]'
+    }]
   }).then(function(res) {
     try {
       var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
       text = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+      var s = text.indexOf('['), e = text.lastIndexOf(']');
+      if (s >= 0 && e > s) text = text.slice(s, e+1);
       var expressions = JSON.parse(text);
       _keCache = expressions;
       try { sessionStorage.setItem(cacheKey, JSON.stringify(expressions)); } catch(e) {}
@@ -10784,7 +10992,7 @@ function openBeginnerModal() {
     if (_bm.step === 4) { goToBMStep4(); return; }
   }
 
-  _bm = { step:1, sentences:[], shuffled:[], blanks:[], score:{order:0,blank:0}, writing:'', generating:false };
+  _bm = { step:1, sentences:[], shuffled:[], blanks:[], score:{order:0,blank:0}, writing:'', generating:false, listened:[], snapIdx:0, snapSeen:[], snapSaved:[], snapCards:[] };
   updateBMHeader();
   renderBMStep1Loading();
   generateBeginnerSentences();
@@ -10796,10 +11004,9 @@ function closeBModal() {
 }
 
 function updateBMHeader() {
-  // step pills
   var pills = document.getElementById('bm-step-pills');
-  var steps = ['📖','🔀','✏️','📝'];
-  var labels = ['Read','Order','Fill','Write'];
+  var steps = ['🎧','🔀','✏️','💡'];
+  var labels = ['Listen','Build','Fill','Snap'];
   pills.innerHTML = steps.map(function(icon, i) {
     var stepNum = i + 1;
     var cls = stepNum < _bm.step ? 'done' : stepNum === _bm.step ? 'active' : 'todo';
@@ -10807,15 +11014,56 @@ function updateBMHeader() {
       (stepNum < _bm.step ? '✓' : icon) + '</div>';
   }).join('');
 
-  // topic label
   var topicEl = document.getElementById('bm-topic-label');
   if (topicEl && _todayTopic) {
     topicEl.textContent = '📌 ' + (_todayTopic.topic_ko || _todayTopic.topic_en || 'Today\'s Topic');
   }
 
-  // progress bar
   var bar = document.getElementById('bm-progress-bar');
   if (bar) bar.style.width = ((_bm.step - 1) / 4 * 100) + '%';
+}
+
+// Canvas confetti burst inside the modal
+function bmFireConfetti() {
+  var modal = document.getElementById('bmodal');
+  if (!modal) return;
+  var canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:100;border-radius:28px;width:100%;height:100%';
+  modal.appendChild(canvas);
+  canvas.width = modal.offsetWidth || 400;
+  canvas.height = modal.offsetHeight || 600;
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height;
+  var colors = ['#14cbb0','#7c3aed','#f59e0b','#60a5fa','#f472b6','#34d399'];
+  var pieces = [];
+  for (var i = 0; i < 55; i++) {
+    pieces.push({
+      x: Math.random() * W, y: -10,
+      vx: (Math.random() - 0.5) * 6, vy: Math.random() * 3 + 1.5,
+      r: Math.random() * 6 + 3, color: colors[i % colors.length],
+      rot: Math.random() * 360, rv: (Math.random() - 0.5) * 10, life: 1
+    });
+  }
+  var frame = 0;
+  function tick() {
+    ctx.clearRect(0, 0, W, H);
+    var alive = false;
+    pieces.forEach(function(p) {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.rot += p.rv; p.life -= 0.013;
+      if (p.life > 0 && p.y < H + 20) alive = true;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.r, -p.r / 2, p.r * 2, p.r);
+      ctx.restore();
+    });
+    frame++;
+    if (alive && frame < 160) requestAnimationFrame(tick);
+    else canvas.remove();
+  }
+  tick();
 }
 
 async function generateBeginnerSentences() {
@@ -10899,52 +11147,99 @@ function getFallbackSentences() {
   ];
 }
 
-// ── STEP 1: READ ─────────────────────────────────────────────────
+// ── STEP 1: LISTEN & READ ──────────────────────────────────────────
 function renderBMStep1Loading() {
   document.getElementById('bm-body').innerHTML =
     '<div class="bm-step-label">Step 1 of 4</div>'
-    + '<div class="bm-step-title">Read the Sentences</div>'
-    + '<div class="bm-step-desc">AI is building your learning sentences ✨</div>'
-    + '<div style="text-align:center;padding:40px 0;font-size:32px;">⏳</div>';
+    + '<div class="bm-step-title">🎧 Listen & Read</div>'
+    + '<div class="bm-step-desc">Generating your sentences...</div>'
+    + '<div style="text-align:center;padding:48px 0;font-size:38px;opacity:.6">⏳</div>';
   document.getElementById('bm-footer').innerHTML =
-    '<button class="bm-btn-next" disabled>Next Step →</button>';
+    '<button class="bm-btn-next" disabled>Build It →</button>';
 }
 
 function renderBMStep1() {
   var sents = _bm.sentences;
+  if (!_bm.listened || _bm.listened.length !== sents.length) {
+    _bm.listened = sents.map(function() { return false; });
+  }
+  var listenedCount = _bm.listened.filter(function(v) { return v; }).length;
+  var allListened = listenedCount === sents.length;
+  var pct = sents.length ? (listenedCount / sents.length * 100) : 0;
+
   var bodyHTML =
     '<div class="bm-step-label">Step 1 of 4</div>'
-    + '<div class="bm-step-title">📖 Read the Sentences</div>'
-    + '<div class="bm-step-desc">Read each Korean sentence aloud. You\'ll need to remember them in the next step!</div>'
-    + '<div class="bm-sentences">';
+    + '<div class="bm-step-title">🎧 Listen & Read</div>'
+    + '<div class="bm-step-desc">Tap each sentence to hear it. Follow along and read the Korean aloud.</div>'
+    + '<div class="bm-listen-progress">'
+    + '<span id="bm-listen-prog-text">' + listenedCount + ' / ' + sents.length + ' listened</span>'
+    + '<div class="bm-listen-bar"><div class="bm-listen-bar-fill" id="bm-listen-prog-fill" style="width:' + pct + '%"></div></div>'
+    + '</div>'
+    + '<div class="bm-listen-cards">';
 
   sents.forEach(function(s, i) {
-    var safeKo = s.ko.replace(/'/g,"&#39;");
-    bodyHTML += '<div class="bm-sentence" id="bm-s' + i + '">'
-      + '<div style="display:flex;align-items:flex-start;gap:8px">'
-      + '<div style="flex:1"><div class="bm-sent-ko"><span class="bm-sent-num">' + (i+1) + '</span>' + s.ko + '</div>'
-      + '<div class="bm-sent-en">' + s.en + '</div></div>'
-      + '<button onclick="speakKorean(\'' + safeKo + '\')" style="background:none;border:1px solid #e2e8f0;border-radius:8px;padding:5px 9px;cursor:pointer;font-size:16px;flex-shrink:0;color:#64748b;margin-top:2px" aria-label="Read aloud">🔊</button>'
+    var listened = _bm.listened[i];
+    bodyHTML +=
+      '<div class="bm-listen-card' + (listened ? ' listened' : '') + '" id="bm-lc-' + i + '">'
+      + '<div class="bm-listen-card-top">'
+      + '<div class="bm-listen-num' + (listened ? ' done' : '') + '" id="bm-num-' + i + '">' + (i+1) + '</div>'
+      + '<button class="bm-listen-tts' + (listened ? ' played' : '') + '" id="bm-tts-' + i + '" onclick="bmListenSentence(' + i + ')">'
+      + (listened ? '✓ Listened' : '▶ Tap to Listen')
+      + '</button>'
+      + '</div>'
+      + '<div class="bm-listen-ko">' + s.ko + '</div>'
+      + '<button class="bm-listen-toggle" id="bm-toggle-' + i + '" onclick="bmToggleMeaning(' + i + ')">Show Meaning</button>'
+      + '<div class="bm-listen-en-wrap" id="bm-en-' + i + '">'
+      + '<div class="bm-listen-en">' + s.en + '</div>'
       + '</div>'
       + '</div>';
   });
-  bodyHTML += '</div>';
 
+  bodyHTML += '</div>';
   document.getElementById('bm-body').innerHTML = bodyHTML;
   document.getElementById('bm-footer').innerHTML =
-    '<span style="font-size:13px;color:#94a3b8;flex:1">Read through and remember the sentences</span>'
-    + '<button class="bm-btn-next" onclick="goToBMStep2()">Build Order →</button>';
+    '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1">Listen to all sentences to continue</span>'
+    + '<button class="bm-btn-next" ' + (allListened ? '' : 'disabled') + ' onclick="goToBMStep2()">Build It →</button>';
+}
 
-  // Highlight each sentence briefly
-  sents.forEach(function(_, i) {
-    setTimeout(function(){
-      var el = document.getElementById('bm-s'+i);
-      if (el) {
-        el.classList.add('highlight');
-        setTimeout(function(){ el.classList.remove('highlight'); }, 1200);
-      }
-    }, i * 400);
-  });
+function bmListenSentence(idx) {
+  var s = _bm.sentences[idx];
+  if (!s) return;
+  speakKorean(s.ko);
+  if (_bm.listened[idx]) return;
+  _bm.listened[idx] = true;
+
+  var ttsBtn = document.getElementById('bm-tts-' + idx);
+  if (ttsBtn) { ttsBtn.textContent = '✓ Listened'; ttsBtn.classList.add('played'); }
+  var numEl = document.getElementById('bm-num-' + idx);
+  if (numEl) numEl.classList.add('done');
+  var card = document.getElementById('bm-lc-' + idx);
+  if (card) card.classList.add('listened');
+
+  var listenedCount = _bm.listened.filter(function(v) { return v; }).length;
+  var total = _bm.sentences.length;
+  var progText = document.getElementById('bm-listen-prog-text');
+  var progFill = document.getElementById('bm-listen-prog-fill');
+  if (progText) progText.textContent = listenedCount + ' / ' + total + ' listened';
+  if (progFill) progFill.style.width = (listenedCount / total * 100) + '%';
+
+  if (listenedCount === total) {
+    var footerEl = document.getElementById('bm-footer');
+    if (footerEl) {
+      var span = footerEl.querySelector('span');
+      if (span) span.textContent = 'All sentences heard — ready for the next step!';
+      var btn = footerEl.querySelector('.bm-btn-next');
+      if (btn) btn.disabled = false;
+    }
+  }
+}
+
+function bmToggleMeaning(idx) {
+  var wrap = document.getElementById('bm-en-' + idx);
+  var btn  = document.getElementById('bm-toggle-' + idx);
+  if (!wrap || !btn) return;
+  var open = wrap.classList.toggle('open');
+  btn.textContent = open ? 'Hide Meaning' : 'Show Meaning';
 }
 
 // ── STEP 2: ORDER ─────────────────────────────────────────────────
@@ -10974,37 +11269,33 @@ function goToBMStep2() {
 function goToBMStep1Back() { _bm.step = 1; updateBMHeader(); renderBMStep1(); }
 
 function renderBMStep2() {
-  var idx = _bm.wordOrderIdx;
+  var idx   = _bm.wordOrderIdx;
   var total = _bm.wordOrders.length;
-  var wo = _bm.wordOrders[idx];
-  var s  = _bm.sentences[idx];
+  var wo    = _bm.wordOrders[idx];
+  var s     = _bm.sentences[idx];
 
   var bodyHTML =
     '<div class="bm-step-label">Step 2 of 4 · Sentence ' + (idx+1) + ' / ' + total + '</div>'
     + '<div class="bm-step-title">🔀 Build the Sentence</div>'
-    + '<div class="bm-step-desc">Use the English hint to put the Korean words in the correct order.</div>'
+    + '<div class="bm-step-desc">Tap words in the correct Korean order. Subject → Object → Verb.</div>'
 
-    // 영어 해석 힌트
-    + '<div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#1e3a5f;line-height:1.6">'
-    + '💡 ' + s.en + '</div>'
+    + '<div class="bm-build-hint">💡 ' + s.en + '</div>'
 
-    // 선택된 어절 (답안 영역)
     + '<div style="margin-bottom:16px">'
-    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Your Answer</div>'
-    + '<div id="bm-answer-zone" style="min-height:52px;border:2px dashed #bfdbfe;border-radius:14px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#f8fbff;">'
-    + (wo.selected.length ? wo.selected.map(function(w, i) {
-        return '<button class="bm-word-chip bm-word-selected" onclick="bmDeselectWord(' + idx + ',' + i + ')">' + w + ' ×</button>';
-      }).join('') : '<span style="font-size:12px;color:#cbd5e1">Select words from below to build the sentence</span>')
+    + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Your Answer</div>'
+    + '<div id="bm-answer-zone" class="bm-answer-zone">'
+    + (wo.selected.length
+        ? wo.selected.map(function(w, i) {
+            return '<button class="bm-word-chip bm-word-selected" onclick="bmDeselectWord(' + idx + ',' + i + ')">' + w + ' ×</button>';
+          }).join('')
+        : '<span class="bm-answer-empty">Tap words below to build the sentence</span>')
     + '</div></div>'
 
-    // 섞인 어절 선택지
     + '<div>'
-    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Word Choices</div>'
+    + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Words</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:8px;">'
     + wo.shuffled.map(function(w, i) {
-        var used = wo.selected.indexOf(w) !== -1;
-        // 같은 단어 중복 처리: selected에서 몇 번 사용됐는지
-        var usedCount = wo.selected.filter(function(x){ return x === w; }).length;
+        var usedCount  = wo.selected.filter(function(x){ return x === w; }).length;
         var totalCount = wo.shuffled.filter(function(x){ return x === w; }).length;
         var isUsed = usedCount >= totalCount;
         return '<button class="bm-word-chip' + (isUsed ? ' bm-word-used' : '') + '" onclick="bmSelectWord(' + idx + ',' + i + ')" ' + (isUsed ? 'disabled' : '') + '>' + w + '</button>';
@@ -11015,7 +11306,7 @@ function renderBMStep2() {
 
   var allSelected = wo.selected.length === wo.original.length;
   document.getElementById('bm-footer').innerHTML =
-    '<button class="bm-btn-back" onclick="goToBMStep1Back()">← Read</button>'
+    '<button class="bm-btn-back" onclick="goToBMStep1Back()">← Listen</button>'
     + '<button class="bm-btn-back" onclick="bmClearAnswer(' + idx + ')" style="margin-right:auto">🔄 Reset</button>'
     + '<button class="bm-btn-next" ' + (allSelected ? '' : 'disabled') + ' onclick="checkBMWordOrder()">Check ✓</button>';
 }
@@ -11058,51 +11349,46 @@ function checkBMWordOrder() {
 
   var bodyEl = document.getElementById('bm-body');
 
-  // 정답 표시
-  var borderColor = isCorrect ? '#16a34a' : isPartial ? '#d97706' : '#dc2626';
-  var bgColor     = isCorrect ? '#f0fdf4' : isPartial ? '#fffbeb' : '#fef2f2';
   var ansZone = document.getElementById('bm-answer-zone');
   if (ansZone) {
-    ansZone.style.border = '2px solid ' + borderColor;
-    ansZone.style.background = bgColor;
+    ansZone.classList.remove('correct','wrong','partial');
+    ansZone.classList.add(isCorrect ? 'correct' : isPartial ? 'partial' : 'wrong');
   }
+  if (isCorrect) bmFireConfetti();
 
-  // Smart feedback
   var fb = document.createElement('div');
   fb.className = 'bm-feedback ' + wo.result;
   if (isCorrect) {
     fb.innerHTML = '<div class="bm-feedback-emoji">🎉</div>'
-      + '<div class="bm-feedback-msg" style="color:#15803d">Perfect!</div>'
-      + '<div style="font-size:13px;color:#15803d;margin-top:4px">Great job — the word order is exactly right.</div>';
+      + '<div class="bm-feedback-msg" style="color:#14cbb0">Perfect!</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.6);margin-top:4px">Great — the word order is exactly right.</div>';
   } else if (isPartial) {
     var customExp = (s && s.explanation) || '';
     fb.innerHTML = '<div class="bm-feedback-emoji">🔶</div>'
-      + '<div class="bm-feedback-msg" style="color:#92400e">Acceptable — but there\'s a more natural order</div>'
-      + '<div style="font-size:13px;color:#92400e;margin-top:4px;line-height:1.6">' + (customExp || 'This order works, but the standard order below sounds more natural in Korean.') + '</div>'
-      + '<div style="font-size:12px;font-weight:700;color:#92400e;margin-top:6px">Most natural: <span style="font-family:\'Noto Sans KR\',sans-serif">' + wo.original.join(' ') + '</span></div>';
+      + '<div class="bm-feedback-msg" style="color:#fbbf24">Acceptable — but a more natural order exists</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:4px;line-height:1.6">' + (customExp || 'This order works, but the standard order below sounds more natural in Korean.') + '</div>'
+      + '<div style="font-size:12px;font-weight:700;color:#fbbf24;margin-top:6px">Most natural: <span style="font-family:\'Noto Sans KR\',sans-serif">' + wo.original.join(' ') + '</span></div>';
   } else {
     var sel = wo.selected;
     var orig = wo.original;
     var hint = '';
-    // Detect common mistake types
     var lastOrig = orig[orig.length - 1];
     var lastSel  = sel[sel.length - 1];
     var verbEndings = ['요','다','어','아','죠','네','해','가','나'];
     var isVerbEnd = lastOrig && verbEndings.some(function(e){ return lastOrig.endsWith(e); });
     if (isVerbEnd && lastSel !== lastOrig) {
-      hint = 'In Korean, the verb always comes at the end of the sentence. Make sure ' + lastOrig + ' is placed last.';
+      hint = 'In Korean, the verb always comes at the end. Make sure <b>' + lastOrig + '</b> is placed last.';
     } else if (orig[0] !== sel[0]) {
       hint = 'The topic or subject usually comes first. Try starting with "' + orig[0] + '".';
     } else if (sel.length === orig.length) {
-      // Same words, wrong middle order
       var firstWrong = orig.findIndex(function(w, i){ return w !== sel[i]; });
-      if (firstWrong >= 0) hint = 'Your first ' + firstWrong + ' word' + (firstWrong===1?'':'s') + ' ' + (firstWrong===1?'is':'are') + ' correct — the order breaks at position ' + (firstWrong+1) + '. In Korean, time expressions and adverbs come before the verb.';
+      if (firstWrong >= 0) hint = 'First ' + firstWrong + ' word' + (firstWrong===1?'':'s') + ' correct — order breaks at position ' + (firstWrong+1) + '. Time expressions and adverbs come before the verb.';
     }
-    if (!hint) hint = 'Remember: Korean sentence order is Subject → Object → Verb. Particles (은/는/이/가/을/를) stay attached to their word.';
+    if (!hint) hint = 'Korean order: Subject → Object → Verb. Particles stay attached to their word.';
     fb.innerHTML = '<div class="bm-feedback-emoji">🔍</div>'
-      + '<div class="bm-feedback-msg" style="color:#dc2626">Not quite — let\'s see why</div>'
-      + '<div style="font-size:13px;color:#7f1d1d;margin:6px 0 4px;line-height:1.6">' + hint + '</div>'
-      + '<div style="font-size:12px;font-weight:700;color:#dc2626;margin-top:6px">Correct order: <span style="font-family:\'Noto Sans KR\',sans-serif">' + orig.join(' ') + '</span></div>';
+      + '<div class="bm-feedback-msg" style="color:#f87171">Not quite</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin:6px 0 4px;line-height:1.6">' + hint + '</div>'
+      + '<div style="font-size:12px;font-weight:700;color:#f87171;margin-top:6px">Correct order: <span style="font-family:\'Noto Sans KR\',sans-serif">' + orig.join(' ') + '</span></div>';
   }
   bodyEl.appendChild(fb);
 
@@ -11200,8 +11486,8 @@ function renderBMStep3() {
 
   document.getElementById('bm-body').innerHTML = bodyHTML;
   document.getElementById('bm-footer').innerHTML =
-    '<span style="font-size:13px;color:#94a3b8;flex:1" id="bm-blank-progress">0 / ' + _bm.blanks.filter(function(b){return b.answer;}).length + ' done</span>'
-    + '<button class="bm-btn-next" id="bm-blank-next-btn" disabled onclick="goToBMStep4()">Write →</button>';
+    '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1" id="bm-blank-progress">0 / ' + _bm.blanks.filter(function(b){return b.answer;}).length + ' done</span>'
+    + '<button class="bm-btn-next" id="bm-blank-next-btn" disabled onclick="goToBMStep4()">Word Snap →</button>';
 }
 
 function selectBMChoice(sentIdx, word) {
@@ -11255,188 +11541,177 @@ function selectBMChoice(sentIdx, word) {
   }
 }
 
-// ── STEP 4: FREE WRITE ────────────────────────────────────────────
+// ── STEP 4: WORD SNAP ─────────────────────────────────────────────
 function goToBMStep4() {
   _bm.step = 4;
   updateBMHeader();
   _bmSaveProgress();
-  renderBMStep4();
+  renderBMWordSnap();
 }
 
-function renderBMStep4(mode) {
-  // mode: undefined = pick screen, 'free' = free write, 'transform' = sentence transformation
-  if (!mode) {
-    // Show mode selection screen
-    document.getElementById('bm-body').innerHTML =
-      '<div class="bm-step-label">Step 4 of 4</div>'
-      + '<div class="bm-step-title">📝 Writing Practice</div>'
-      + '<div class="bm-step-desc" style="margin-bottom:24px">How would you like to write today? Choose a path:</div>'
-      + '<div style="display:flex;flex-direction:column;gap:12px">'
-      + '<div onclick="renderBMStep4(\'free\')" style="border:2px solid #e2e8f0;border-radius:16px;padding:18px 20px;cursor:pointer;transition:all .15s;background:#fff" onmouseover="this.style.borderColor=\'#2255a4\';this.style.background=\'#eff6ff\'" onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.background=\'#fff\'">'
-      + '<div style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:4px">✍️ Free Writing</div>'
-      + '<div style="font-size:13px;color:#64748b">Write freely about today\'s topic using the sentences as inspiration.</div>'
-      + '</div>'
-      + '<div onclick="renderBMStep4(\'transform\')" style="border:2px solid #e2e8f0;border-radius:16px;padding:18px 20px;cursor:pointer;transition:all .15s;background:#fff" onmouseover="this.style.borderColor=\'#7c3aed\';this.style.background=\'#faf5ff\'" onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.background=\'#fff\'">'
-      + '<div style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:4px">🔄 Sentence Transformation</div>'
-      + '<div style="font-size:13px;color:#64748b">Click a sentence to load it, then rewrite it in your own way using the word bank.</div>'
-      + '</div>'
-      + '</div>';
-    document.getElementById('bm-footer').innerHTML =
-      '<button class="bm-btn-back" onclick="goToBMStep3Back()">← Fill Blanks</button>'
-      + '<span style="font-size:13px;color:#94a3b8;flex:1;text-align:right">Choose a writing style above</span>';
-    return;
-  }
-
-  var refHTML = _bm.sentences.map(function(s, i) {
-    if (mode === 'transform') {
-      var safeKo = s.ko.replace(/'/g,"&#39;");
-      return '<div class="bm-ref-sent" onclick="bmLoadTransform(\'' + safeKo + '\')" style="cursor:pointer;padding:8px 10px;border-radius:10px;border:1.5px solid #e2e8f0;margin-bottom:6px;transition:all .15s" onmouseover="this.style.borderColor=\'#7c3aed\';this.style.background=\'#faf5ff\'" onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.background=\'\'"><span style="font-size:11px;font-weight:800;color:#7c3aed;margin-right:6px">Click to use</span><b>' + (i+1) + '.</b> ' + s.ko + ' <span style="color:#94a3b8;font-size:12px">(' + s.en + ')</span></div>';
-    }
-    return '<div class="bm-ref-sent"><b>' + (i+1) + '.</b> ' + s.ko + ' <span style="color:#94a3b8;font-size:12px">(' + s.en + ')</span></div>';
-  }).join('');
-
-  // Build a word bank from all sentence words for transformation mode
-  var wordBankHTML = '';
-  if (mode === 'transform') {
-    var allWords = [];
+function renderBMWordSnap() {
+  // Build card list from AI vocab; fall back to key words from sentences
+  var vocab = (_aiContent && Array.isArray(_aiContent.vocab) ? _aiContent.vocab : []).slice(0, 5);
+  if (vocab.length < 2) {
+    var seen = {};
     _bm.sentences.forEach(function(s) {
       s.ko.replace(/[.!?]/g,'').split(/\s+/).forEach(function(w) {
-        if (w && allWords.indexOf(w) === -1) allWords.push(w);
+        if (w.length >= 2 && !seen[w]) { seen[w] = true; vocab.push({ ko:w, rom:'', en:'' }); }
       });
     });
-    wordBankHTML = '<div style="margin-bottom:14px">'
-      + '<div class="bm-step4-ref-title" style="color:#7c3aed">🗂 Word Bank — click to insert</div>'
-      + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
-      + allWords.map(function(w) {
-          return '<button onclick="bmInsertWord(\'' + w.replace(/'/g,"&#39;") + '\')" style="padding:5px 12px;border:1.5px solid #e9d5ff;border-radius:20px;background:#faf5ff;color:#7c3aed;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.background=\'#ede9fe\'" onmouseout="this.style.background=\'#faf5ff\'">' + w + '</button>';
-        }).join('')
-      + '</div></div>';
+    vocab = vocab.slice(0, 5);
   }
+  _bm.snapCards = vocab;
+  _bm.snapIdx   = 0;
+  _bm.snapSeen  = [];
+  _bm.snapSaved = [];
+  bmRenderSnapCard();
+}
 
-  var title  = mode === 'free' ? '✍️ Free Writing' : '🔄 Sentence Transformation';
-  var desc   = mode === 'free'
-    ? 'Write freely about today\'s topic: <b>' + (_todayTopic ? (_todayTopic.topic_en || _todayTopic.topic_ko || '') : '') + '</b>'
-    : 'Click a sentence above to load it into the editor, then rewrite it in your own way.';
-  var ph     = mode === 'free'
-    ? 'Write in Korean freely…\n\nYou can use the sentences above as inspiration.'
-    : 'Click a sentence above to load it here, then transform it in your own style…';
+function bmRenderSnapCard() {
+  var cards = _bm.snapCards || [];
+  var idx   = _bm.snapIdx || 0;
+  var card  = cards[idx];
+  if (!card) return;
+
+  var seen     = _bm.snapSeen || [];
+  var saved    = _bm.snapSaved || [];
+  var isFlipped = seen.indexOf(idx) >= 0;
+  var isSaved   = saved.indexOf(idx) >= 0;
+  var allSeen   = cards.every(function(_, i) { return seen.indexOf(i) >= 0; });
+
+  var dotsHTML = cards.map(function(_, i) {
+    var cls = i === idx ? 'active' : seen.indexOf(i) >= 0 ? 'seen' : '';
+    return '<div class="bm-snap-dot ' + cls + '"></div>';
+  }).join('');
 
   var bodyHTML =
-    '<div class="bm-step-label">Step 4 of 4 · ' + (mode === 'free' ? 'Free Writing' : 'Sentence Transformation') + '</div>'
-    + '<div class="bm-step-title">' + title + '</div>'
-    + '<div class="bm-step-desc">' + desc + '</div>'
-    + '<div class="bm-step4-ref">'
-    + '<div class="bm-step4-ref-title">📖 Reference Sentences' + (mode === 'transform' ? ' — tap to load' : '') + '</div>'
-    + refHTML
+    '<div class="bm-step-label">Step 4 of 4 · ' + (idx+1) + ' / ' + cards.length + '</div>'
+    + '<div class="bm-step-title">💡 Word Snap</div>'
+    + '<div class="bm-step-desc">Tap each card to reveal the meaning. Save the ones you want to remember.</div>'
+
+    + '<div class="bm-snap-card" onclick="bmFlipSnapCard(' + idx + ')">'
+    + '<div class="bm-snap-inner' + (isFlipped ? ' flipped' : '') + '" id="bm-snap-inner">'
+    + '<div class="bm-snap-front">'
+    + '<div class="bm-snap-ko">' + (card.ko||'') + '</div>'
+    + (card.rom ? '<div class="bm-snap-rom">' + card.rom + '</div>' : '')
+    + '<div class="bm-snap-hint">Tap to reveal →</div>'
     + '</div>'
-    + wordBankHTML
-    + '<textarea class="bm-write-area" id="bm-write-area" placeholder="' + ph + '" oninput="document.getElementById(\'bm-wc\').textContent=this.value.length+\' chars\'"></textarea>'
-    + '<div class="bm-wc" id="bm-wc">0 chars</div>'
-    + '<div style="margin-top:10px;padding:10px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;font-size:12px;color:#0369a1;line-height:1.6">'
-    + '📬 Your writing will be reviewed within 24 hours by <b>Han</b>, your personal Korean tutor. Feedback will appear in your inbox.'
+    + '<div class="bm-snap-back">'
+    + '<div class="bm-snap-en">' + (card.en || card.ko) + '</div>'
+    + (card.rom ? '<div class="bm-snap-rom" style="color:rgba(20,203,176,.55);margin-top:6px">' + card.rom + '</div>' : '')
+    + '<button class="bm-snap-save' + (isSaved ? ' saved' : '') + '" onclick="event.stopPropagation();bmSnapSave(' + idx + ')">'
+    + (isSaved ? '✓ Saved' : '+ Save to 단어장')
+    + '</button>'
+    + '</div>'
+    + '</div></div>'
+
+    + '<div class="bm-snap-nav">'
+    + '<button class="bm-snap-arr" onclick="bmSnapPrev()" ' + (idx === 0 ? 'disabled' : '') + '>‹</button>'
+    + '<div class="bm-snap-dots">' + dotsHTML + '</div>'
+    + '<button class="bm-snap-arr" onclick="bmSnapNext()" ' + (idx >= cards.length-1 ? 'disabled' : '') + '>›</button>'
     + '</div>';
 
   document.getElementById('bm-body').innerHTML = bodyHTML;
   document.getElementById('bm-footer').innerHTML =
-    '<button class="bm-btn-back" onclick="renderBMStep4()">← Back</button>'
-    + '<button class="bm-btn-next" onclick="finishBeginner()">Finish 🎉</button>';
+    '<button class="bm-btn-back" onclick="goToBMStep3Back()">← Fill In</button>'
+    + '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1;text-align:center">'
+    + (allSeen ? '✓ All words revealed!' : 'Flip all cards to finish')
+    + '</span>'
+    + '<button class="bm-btn-next" ' + (allSeen ? '' : 'disabled') + ' onclick="finishBeginner()">Complete →</button>';
+}
+
+function bmFlipSnapCard(idx) {
+  var inner = document.getElementById('bm-snap-inner');
+  if (!inner) return;
+  inner.classList.toggle('flipped');
+  if (!_bm.snapSeen) _bm.snapSeen = [];
+  if (_bm.snapSeen.indexOf(idx) === -1) {
+    _bm.snapSeen.push(idx);
+    var allSeen = (_bm.snapCards||[]).every(function(_, i) { return _bm.snapSeen.indexOf(i) >= 0; });
+    if (allSeen) {
+      bmFireConfetti();
+      var footerEl = document.getElementById('bm-footer');
+      if (footerEl) {
+        var span = footerEl.querySelector('span');
+        if (span) span.textContent = '✓ All words revealed!';
+        var btn = footerEl.querySelector('.bm-btn-next');
+        if (btn) btn.disabled = false;
+      }
+    }
+  }
+}
+
+function bmSnapNext() {
+  if (_bm.snapIdx < (_bm.snapCards||[]).length - 1) { _bm.snapIdx++; bmRenderSnapCard(); }
+}
+function bmSnapPrev() {
+  if (_bm.snapIdx > 0) { _bm.snapIdx--; bmRenderSnapCard(); }
+}
+
+function bmSnapSave(idx) {
+  var card = (_bm.snapCards||[])[idx];
+  if (!card || !card.ko) return;
+  if (!_bm.snapSaved) _bm.snapSaved = [];
+  if (_bm.snapSaved.indexOf(idx) >= 0) return;
+  _bm.snapSaved.push(idx);
+  try {
+    if (typeof saveOrUpdateWord === 'function') {
+      saveOrUpdateWord(card.ko, card.en, card.rom, _currentLevel || 'Beginner', 'word_snap');
+    }
+  } catch(e) {}
+  var btn = document.querySelector('.bm-snap-save');
+  if (btn) { btn.textContent = '✓ Saved'; btn.classList.add('saved'); }
 }
 
 function goToBMStep3Back() { _bm.step = 3; updateBMHeader(); renderBMStep3(); }
 
-function bmLoadTransform(koText) {
-  var ta = document.getElementById('bm-write-area');
-  if (!ta) return;
-  ta.value = koText;
-  ta.focus();
-  ta.setSelectionRange(ta.value.length, ta.value.length);
-  var wc = document.getElementById('bm-wc');
-  if (wc) wc.textContent = ta.value.length + ' chars';
-}
-
-function bmInsertWord(word) {
-  var ta = document.getElementById('bm-write-area');
-  if (!ta) return;
-  var pos = ta.selectionStart || ta.value.length;
-  var before = ta.value.slice(0, pos);
-  var after  = ta.value.slice(pos);
-  var sep = before && !before.endsWith(' ') ? ' ' : '';
-  ta.value = before + sep + word + ' ' + after;
-  var newPos = pos + sep.length + word.length + 1;
-  ta.focus();
-  ta.setSelectionRange(newPos, newPos);
-  var wc = document.getElementById('bm-wc');
-  if (wc) wc.textContent = ta.value.length + ' chars';
-}
-
 function finishBeginner() {
   markStageDone('topic');
-  var writeArea = document.getElementById('bm-write-area');
-  _bm.writing = writeArea ? writeArea.value : '';
-  var charCount = _bm.writing.trim().length;
 
-  // Save writing to unified drafts for batch submission
-  if (_bm.writing.trim().length > 2) {
-    saveDraft('topic_writing', {
-      text: _bm.writing.trim(),
-      topic_ko: (_todayTopic && _todayTopic.topic_ko) || '',
-      topic_en: (_todayTopic && _todayTopic.topic_en) || '',
-      writing_mode: 'topic_writing',
-      context_key: 'topic_writing_' + kstDateKey()
-    });
-  }
-
-  // Score excludes writing — only word order + fill blanks count
   var totalScore = Math.round((_bm.score.order + _bm.score.blank) / 2);
+  var savedCount = (_bm.snapSaved || []).length;
   var emoji, headline, sub;
   if (totalScore >= 90) {
-    emoji = '🌟'; headline = 'Excellent — impressive work!';
-    sub = 'You really nailed it. Your accuracy is outstanding.';
+    emoji = '🌟'; headline = 'Excellent work!';
+    sub = 'Your accuracy is outstanding — you really nailed it.';
   } else if (totalScore >= 80) {
     emoji = '🏆'; headline = 'Well done!';
-    sub = 'Strong performance. A little more practice and you\'ll ace it every time.';
+    sub = 'Strong performance. Keep practicing to ace it every time.';
   } else if (totalScore >= 50) {
-    emoji = '⭐'; headline = 'Not bad at all!';
-    sub = 'Solid effort — you got more than half right. Keep going and it\'ll click.';
+    emoji = '⭐'; headline = 'Not bad!';
+    sub = 'Solid effort — more than half right. Keep going!';
   } else {
     emoji = '💪'; headline = 'Keep at it!';
-    sub = 'Every attempt makes you stronger. Try again to improve your score.';
+    sub = 'Every attempt makes you stronger. Try again to improve.';
   }
 
   document.getElementById('bm-body').innerHTML =
     '<div class="bm-result">'
     + '<div class="bm-result-emoji">' + emoji + '</div>'
     + '<div class="bm-result-score">' + totalScore + '%</div>'
-    + '<div style="font-size:17px;font-weight:800;color:#0f172a;margin-bottom:6px">' + headline + '</div>'
+    + '<div style="font-size:17px;font-weight:800;color:#fff;margin-bottom:8px">' + headline + '</div>'
     + '<div class="bm-result-msg">' + sub + '</div>'
-    + '<div style="display:flex;gap:16px;justify-content:center;margin:16px 0">'
-    + '<div style="text-align:center;background:#f0f7ff;border-radius:12px;padding:12px 18px">'
-    + '<div style="font-size:22px;font-weight:900;color:#2255a4">' + _bm.score.order + '%</div>'
-    + '<div style="font-size:11px;color:#94a3b8;margin-top:2px">Word Order</div></div>'
-    + '<div style="text-align:center;background:#faf5ff;border-radius:12px;padding:12px 18px">'
-    + '<div style="font-size:22px;font-weight:900;color:#7c3aed">' + _bm.score.blank + '%</div>'
-    + '<div style="font-size:11px;color:#94a3b8;margin-top:2px">Fill Blanks</div></div>'
-    + '</div>'
-    + (_bm.writing.trim()
-        ? '<div style="text-align:left;margin-top:4px">'
-          + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px">Your Writing</div>'
-          + '<div style="background:#f8fafc;border-radius:12px;padding:14px 16px;border:1px solid #e2e8f0;font-family:\'Noto Sans KR\',sans-serif;font-size:14px;line-height:1.8;color:#0f172a">' + _bm.writing.replace(/\n/g,'<br>') + '</div>'
-          + '<div style="margin-top:8px;font-size:12px;color:#0369a1;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px 12px">📬 Han will review your writing and send feedback within 24 hours.</div>'
-          + '</div>'
+    + '<div style="display:flex;gap:10px;justify-content:center;margin:20px 0">'
+    + '<div class="bm-result-stat"><div class="bm-result-stat-val" style="color:#14cbb0">' + _bm.score.order + '%</div><div class="bm-result-stat-lbl">Word Order</div></div>'
+    + '<div class="bm-result-stat"><div class="bm-result-stat-val" style="color:#a78bfa">' + _bm.score.blank + '%</div><div class="bm-result-stat-lbl">Fill In</div></div>'
+    + (savedCount > 0
+        ? '<div class="bm-result-stat"><div class="bm-result-stat-val" style="color:#fbbf24">' + savedCount + '</div><div class="bm-result-stat-lbl">Words Saved</div></div>'
         : '')
+    + '</div>'
     + '</div>';
 
   document.getElementById('bm-footer').innerHTML =
     '<button class="bm-btn-back" onclick="retryBeginner()">🔄 Try Again</button>'
-    + '<button class="bm-btn-next" onclick="returnToActivities(closeBModal)">📚 Next Activity</button>';
+    + '<button class="bm-btn-next" onclick="returnToActivities(closeBModal)">Next Activity</button>';
 
-  // XP 적립
+  bmFireConfetti();
   if (typeof addXP === 'function') addXP(30);
   if (typeof dmTrackFill === 'function') dmTrackFill();
 }
 
 function retryBeginner() {
-  _bm = { step:1, sentences:[], shuffled:[], blanks:[], score:{order:0,blank:0}, writing:'', generating:false };
+  _bm = { step:1, sentences:[], shuffled:[], blanks:[], score:{order:0,blank:0}, writing:'', generating:false, listened:[], snapIdx:0, snapSeen:[], snapSaved:[], snapCards:[] };
   updateBMHeader();
   renderBMStep1Loading();
   generateBeginnerSentences();
