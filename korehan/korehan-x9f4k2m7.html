@@ -4904,7 +4904,7 @@ function goBulkSeed() {
     +   '<div style="display:flex;gap:10px;flex-wrap:wrap">'
     +     '<button data-bulk-btn class="btn btn-g" onclick="bulkSeedArticles(3)" style="padding:10px 18px;font-size:13px;font-weight:800">📰 +3 Articles</button>'
     +     '<button data-bulk-btn class="btn btn-g" onclick="bulkSeedConvos(3)" style="padding:10px 18px;font-size:13px;font-weight:800">💬 +3 Convos</button>'
-    +     '<button data-bulk-btn disabled class="btn" onclick="alert(\'Micro 1d — rolling out next\')" style="padding:10px 18px;font-size:13px;font-weight:800;background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;cursor:not-allowed">📖 +3 Stories (1d)</button>'
+    +     '<button data-bulk-btn class="btn btn-g" onclick="bulkSeedStories(3)" style="padding:10px 18px;font-size:13px;font-weight:800">📖 +3 Stories</button>'
     +     '<button data-bulk-btn disabled class="btn" onclick="alert(\'Micro 1e — unified runner rolls out after 1d\')" style="padding:10px 18px;font-size:13px;font-weight:800;background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;cursor:not-allowed">✨ +3×3 All (1e)</button>'
     +   '</div>'
     + '</div>'
@@ -5450,6 +5450,247 @@ async function bulkSeedConvos(count) {
     var convC = _bulkGetCounter('conv');
     var el = document.querySelector('#bulk-distribution-convs');
     if (el) el.textContent = _bulkRenderProgressLine('convs', convC);
+  } finally {
+    btns.forEach(function(b) { b.disabled = false; });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Bulk Seed · 1d — Story seeder
+// ═══════════════════════════════════════════════════════════
+
+// Curated story seed pool — one-line premises with strong hooks, split
+// across the four supported moods so Claude has a specific angle to adapt
+// instead of inventing generic "my day" prose. Session 2 will append real
+// Reddit-sourced seeds on top of this.
+var BULK_STORY_SEED_POOL = [
+  // ── fun ─────────────────────────────────────────────────
+  { mood:'fun', premise:'엄마가 김치 냉장고에 현금을 숨겼는데, 김치와 함께 통째로 버려졌다.' },
+  { mood:'fun', premise:'직장 상사가 실수로 본인 뒷담화 단톡에 본인 메시지를 남김.' },
+  { mood:'fun', premise:'소개팅 상대가 알고 보니 사촌언니 친구의 남동생.' },
+  { mood:'fun', premise:'우리 집 고양이가 매일 새벽 3시 문을 열고 집을 나간다.' },
+  { mood:'fun', premise:'지하철 옆자리 할아버지 주머니에서 햄스터가 튀어나왔다.' },
+  { mood:'fun', premise:'회사 엘리베이터에서 CEO와 단둘이 10층까지 올라가게 됐다.' },
+  { mood:'fun', premise:'편의점 알바 중 새벽에 경찰이 숨 헐떡이며 "커피 한 잔만"이라고 했다.' },
+  { mood:'fun', premise:'배달 기사가 음식을 바꿔 갔는데, 먹어보니 원래 내 것보다 훨씬 맛있었다.' },
+  { mood:'fun', premise:'택시에서 졸다가 깼는데 기사님이 본인 집 앞에 세워놓고 라면을 끓이고 있었다.' },
+  { mood:'fun', premise:'학원에서 졸다가 침을 흘렸는데, 옆자리가 크러쉬였다.' },
+  { mood:'fun', premise:'친구 결혼식 축가가 너무 잘돼서 신부가 감정에 북받쳐 울어버렸다.' },
+  { mood:'fun', premise:'어릴 때 묻어둔 타임캡슐을 10년 뒤 파보니 엄마가 다른 걸 넣어둠.' },
+  { mood:'fun', premise:'반려견이 산책 중 옆집 강아지와 몰래 사귀고 있었다.' },
+  { mood:'fun', premise:'회식 자리에서 무서운 부장님이 알고 보니 BTS 광팬이었다.' },
+  { mood:'fun', premise:'중고거래 하러 나갔는데 구매자가 초등학교 1학년 때 짝꿍이었다.' },
+  { mood:'fun', premise:'노래방에서 고음 도전하다가 천장 등이 실제로 떨어졌다.' },
+  { mood:'fun', premise:'카페 바리스타가 내 이름을 10번째 잘못 쓰는데 나도 모른 척했다.' },
+  { mood:'fun', premise:'지하철에서 신발 한쪽이 벗겨져 끝까지 모른 척하고 내렸다.' },
+
+  // ── touching ────────────────────────────────────────────
+  { mood:'touching', premise:'할머니가 돌아가시기 전 몰래 남긴 편지를 1년 만에 발견했다.' },
+  { mood:'touching', premise:'10년간 연락 끊긴 친구에게서 결혼식 초대장이 왔다.' },
+  { mood:'touching', premise:'아빠가 몰래 내 월세를 매달 보내주고 계셨던 걸 알게 됐다.' },
+  { mood:'touching', premise:'어릴 적 우리집 도우미 아주머니가 TV에 성공한 기업인으로 나왔다.' },
+  { mood:'touching', premise:'엄마가 돈 없어 못 사줬던 장난감을, 내가 내 아이에게 선물했다.' },
+  { mood:'touching', premise:'첫 월급으로 예약한 부모님 건강검진에서 아빠의 심근경색이 조기 발견됐다.' },
+  { mood:'touching', premise:'군대 간 동생이 편지에 처음으로 "형 미안해"라고 적어 보냈다.' },
+  { mood:'touching', premise:'지하철에서 울던 낯선 사람에게 건넨 초콜릿 하나, 1년 뒤 감사 편지가 왔다.' },
+  { mood:'touching', premise:'반려견이 병으로 떠나기 전날, 처음으로 내 베개 위에 올라와 잠들었다.' },
+  { mood:'touching', premise:'길 잃은 할아버지를 모셔다드렸는데 아빠의 어린 시절 담임 선생님이었다.' },
+  { mood:'touching', premise:'친구가 내 몰래 내 글을 모아 출판사에 보내 책이 되었다.' },
+  { mood:'touching', premise:'엄마의 오래된 일기장이 전부 나에 대한 이야기로 가득했다.' },
+  { mood:'touching', premise:'치매 걸린 할머니가 유일하게 나를 이름으로 불러주셨다.' },
+  { mood:'touching', premise:'이민 가는 친구가 공항에서 차마 인사 못하고 돌아서는 걸 봤다.' },
+  { mood:'touching', premise:'버스 기사 아저씨가 매일 같은 시간 나를 위해 30초를 기다려주셨다.' },
+  { mood:'touching', premise:'초등학교 선생님이 20년 만에 나를 기억하고 직접 연락을 주셨다.' },
+  { mood:'touching', premise:'아이가 유치원에서 "우리 엄마는 슈퍼 히어로예요"라고 발표했다.' },
+  { mood:'touching', premise:'헤어진 전 애인이 내 결혼식 전날 "행복해야 해" 한마디만 보냈다.' },
+
+  // ── scary ───────────────────────────────────────────────
+  { mood:'scary', premise:'새벽 3시, 혼자 사는 집에 누군가 초인종을 반복해서 눌렀다.' },
+  { mood:'scary', premise:'주차장에서 내 차 뒷좌석에 모르는 신발이 놓여 있었다.' },
+  { mood:'scary', premise:'블랙박스에 찍힌 영상, 주차된 내 차 옆을 오래도록 서성이는 사람.' },
+  { mood:'scary', premise:'새 집 이사 첫날 밤, 벽 안에서 규칙적인 소리가 들렸다.' },
+  { mood:'scary', premise:'분명 잠그고 나간 문이 CCTV 확인 결과 저절로 열렸다.' },
+  { mood:'scary', premise:'친구 결혼식 사진에 낯선 여자가 찍혀 있는데 친구는 모른다고 한다.' },
+  { mood:'scary', premise:'한밤중 스마트폰 갤러리에 내가 찍은 적 없는 사진이 나타났다.' },
+  { mood:'scary', premise:'회사 엘리베이터가 없는 13층에서 멈췄다.' },
+  { mood:'scary', premise:'길에서 우연히 만난 낯선 사람이 내 이름을 정확히 알고 있었다.' },
+  { mood:'scary', premise:'엄마에게서 온 전화 — "나 집인데 너는 어디니?" 나는 집 거실에 있었다.' },
+  { mood:'scary', premise:'반복해서 꾸던 꿈 속 낡은 골목을 현실에서 발견했다.' },
+  { mood:'scary', premise:'어릴 적 가족 사진 속 인물 중 한 명이, 내가 전혀 모르는 사람이었다.' },
+  { mood:'scary', premise:'새벽에 택시를 탔는데 기사님의 대답이 녹음처럼 똑같이 반복됐다.' },
+  { mood:'scary', premise:'오래된 일기장에 내가 쓰지 않은 글씨가 추가되어 있었다.' },
+  { mood:'scary', premise:'휴대폰 녹음기에 내가 기억 못 하는 대화가 녹음돼 있었다.' },
+  { mood:'scary', premise:'나 혼자 있는 건물 계단에서 누군가의 발소리가 들려왔다.' },
+  { mood:'scary', premise:'꿈에서 본 낯선 사람과 다음 날 지하철에서 정말로 마주쳤다.' },
+  { mood:'scary', premise:'새로 산 중고 스마트폰 사진첩에 내가 사는 동네 골목 사진이 있었다.' },
+
+  // ── shocking ───────────────────────────────────────────
+  { mood:'shocking', premise:'10년간 친했던 친구가 알고 보니 가짜 신분으로 살고 있었다.' },
+  { mood:'shocking', premise:'남편이 매일 출근한다고 했는데 사실 3년째 실직 상태였다.' },
+  { mood:'shocking', premise:'돌아가신 줄 알았던 삼촌이 다른 도시에서 살아계신 걸 알게 됐다.' },
+  { mood:'shocking', premise:'회사 동료가 알고 보니 내 초등학교 동창, 성형 때문에 몰라봤다.' },
+  { mood:'shocking', premise:'유산 분배 자리에서 처음 알게 된, 친형의 또 다른 가족.' },
+  { mood:'shocking', premise:'중고차 구매 한 달 뒤, 전 차주의 끔찍한 사고 이력을 알게 됐다.' },
+  { mood:'shocking', premise:'엄마의 오래된 편지함에서 발견한, 또 다른 자식의 이름.' },
+  { mood:'shocking', premise:'내 SNS를 10년간 몰래 지켜본 사람이 남긴 첫 댓글.' },
+  { mood:'shocking', premise:'유치원 담임 선생님이 사실 엄마가 임신 중이던 시절의 절친이었다.' },
+  { mood:'shocking', premise:'회사 공금을 임원이 빼돌리던 사건을 내가 처음 발견했다.' },
+  { mood:'shocking', premise:'친오빠 결혼식 신부가 사실 내 초등학교 괴롭힘 가해자였다.' },
+  { mood:'shocking', premise:'보이스피싱 용의자로 구속된 사람이 작년 우리 회사 동료였다.' },
+  { mood:'shocking', premise:'내 고양이가 사실은 옆집 할머니가 5년째 찾던 실종묘였다.' },
+  { mood:'shocking', premise:'유튜브에서 우연히 본 옛날 영상에 돌아가신 할머니 모습이 찍혀 있었다.' },
+  { mood:'shocking', premise:'중고거래에서 산 책 속에 낯선 사람이 10년 전 쓴 러브레터가 끼어 있었다.' },
+  { mood:'shocking', premise:'어릴 적 친구 집 마당 타임캡슐에서, 내가 쓴 적 없는 내 이름의 편지가 나왔다.' },
+  { mood:'shocking', premise:'택배 기사로 온 사람이 20년 전 헤어진 친아빠였다.' },
+  { mood:'shocking', premise:'유산 정리하다 엄마의 오래된 가명 계좌를 발견했다.' }
+];
+
+var BULK_STORY_LEVEL_GUIDE = {
+  Starter:      'STARTER: very short simple sentences. Basic vocab. ~이에요/예요 style only.',
+  Beginner:     'BEGINNER: short easy sentences. Basic particles. Present tense mostly.',
+  Intermediate: 'INTERMEDIATE: connectors, past tense, natural flow.',
+  Advanced:     'ADVANCED: complex sentences, literary phrasing, nuanced vocab.'
+};
+var BULK_STORY_LEVEL_TO_KEY = { Starter:'s', Beginner:'b', Intermediate:'i', Advanced:'a' };
+
+async function _bulkFetchRecentStoryHashes() {
+  var sb = getSb();
+  if (!sb) return {};
+  try {
+    var r = await sb.from('stories_data').select('title,preview').order('created_at', { ascending:false }).limit(1500);
+    if (r.error) throw r.error;
+    var set = {};
+    (r.data||[]).forEach(function(row) {
+      if (row.title)   set[bulkTitleHash(row.title)]   = 1;
+      if (row.preview) set[bulkTitleHash(row.preview)] = 1;
+    });
+    return set;
+  } catch(e) { bulkLog('Recent-story hash fetch failed: ' + e.message, 'warn'); return {}; }
+}
+
+function _bulkPickStorySeeds(count, seenSet) {
+  var pool = _bulkShuffle(BULK_STORY_SEED_POOL).filter(function(s) {
+    if (seenSet[bulkTitleHash(s.premise)]) return false;
+    if (bulkIsHashSeenLocally('story', s.premise)) return false;
+    return true;
+  });
+  // Mood variety within a single press
+  var picked = [];
+  var byMood = {};
+  pool.forEach(function(s) { (byMood[s.mood] = byMood[s.mood] || []).push(s); });
+  var moods = _bulkShuffle(Object.keys(byMood));
+  var round = 0;
+  while (picked.length < count) {
+    var added = false;
+    for (var i = 0; i < moods.length && picked.length < count; i++) {
+      var bucket = byMood[moods[i]];
+      if (bucket && bucket[round]) { picked.push(bucket[round]); added = true; }
+    }
+    round++;
+    if (!added) break;
+  }
+  return picked;
+}
+
+async function _bulkGenerateOneStory(seed, levelKey) {
+  var lvlCode = BULK_STORY_LEVEL_TO_KEY[levelKey] || 'b';
+  var prompt =
+      'You are writing a short Korean community-style story for a Korean learner.\n\n'
+    + 'MOOD: ' + seed.mood + '\n'
+    + 'LEVEL: ' + levelKey + '\n'
+    + 'LEVEL GUIDANCE: ' + (BULK_STORY_LEVEL_GUIDE[levelKey] || '') + '\n'
+    + 'PREMISE (must be the story\'s core, do not soften it): ' + seed.premise + '\n\n'
+    + 'QUALITY RULES:\n'
+    + '- First sentence = strong hook (concrete detail / surprise / strong emotion).\n'
+    + '- 8–12 Korean paragraphs, each 2–4 sentences. Tight pacing.\n'
+    + '- Must read like a real community post (Nate Pann / 네이버 카페 style), not a textbook.\n'
+    + '- Keep the mood consistent throughout.\n'
+    + '- 6–8 vocab, 2–3 grammar patterns, 3 comprehension questions.\n'
+    + '- Entire Korean text must follow the LEVEL GUIDANCE above.\n\n'
+    + 'Return ONLY a single valid JSON object (no markdown, no array wrapper):\n'
+    + '{"title":"Korean title","title_en":"English","mood":"' + seed.mood + '","lvl":"' + lvlCode + '","readTime":"X min",'
+    + '"preview":"first 1-2 sentences","body":"full story in Korean with \\n\\n paragraph breaks",'
+    + '"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}';
+
+  var resp = await callClaude({
+    feature: 'bulk-seed-story',
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 4500,
+    messages: [{ role:'user', content: prompt }]
+  });
+  var raw = (resp && resp.content || []).map(function(b){ return b.text||''; }).join('');
+  raw = raw.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+  var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+  if (oi < 0 || ei <= oi) throw new Error('no JSON in response');
+  var story = JSON.parse(raw.slice(oi, ei+1));
+  if (!story.title || !story.body) throw new Error('story missing title/body');
+  story.mood = story.mood || seed.mood;
+  story.lvl  = story.lvl  || lvlCode;
+  if (!story.preview) story.preview = String(story.body).split('\n\n')[0].slice(0, 180);
+  if (!story.readTime) {
+    var wc = String(story.body).split(/\s+/).length;
+    story.readTime = Math.max(1, Math.round(wc / 250)) + ' min';
+  }
+  return story;
+}
+
+async function bulkSeedStories(count) {
+  count = Math.max(1, Math.min(10, Number(count) || 3));
+  bulkLog('📖 Starting story seed (' + count + ')…');
+  var btns = document.querySelectorAll('[data-bulk-btn]');
+  btns.forEach(function(b) { b.disabled = true; });
+
+  try {
+    var seenDb = await _bulkFetchRecentStoryHashes();
+    var seeds  = _bulkPickStorySeeds(count, seenDb);
+    if (!seeds.length) { bulkLog('No fresh story seeds — pool exhausted, expand BULK_STORY_SEED_POOL.', 'warn'); return; }
+    bulkLog(seeds.length + ' story seeds selected, generating…');
+
+    var success = 0;
+    var sb = getSb();
+    if (!sb) { bulkLog('Supabase unavailable, abort.', 'err'); return; }
+
+    for (var i = 0; i < seeds.length; i++) {
+      var seed = seeds[i];
+      var lvl  = bulkPickNextLevel('story');
+      bulkLog('(' + (i+1) + '/' + seeds.length + ') [' + seed.mood + '] [' + lvl + '] ' + seed.premise.slice(0, 70));
+      try {
+        var story = await _bulkGenerateOneStory(seed, lvl);
+        var titleHash   = bulkTitleHash(story.title);
+        var previewHash = bulkTitleHash(story.preview || '');
+        if ((titleHash && seenDb[titleHash]) || (previewHash && seenDb[previewHash])) {
+          bulkLog('  ↳ duplicate title/preview — skip', 'warn');
+          continue;
+        }
+        var row = {
+          data:      story,
+          mood:      story.mood,
+          lvl:       story.lvl,
+          title:     story.title,
+          title_en:  story.title_en || '',
+          preview:   story.preview,
+          read_time: story.readTime,
+          created_at: new Date().toISOString()
+        };
+        var ins = await sb.from('stories_data').insert(row);
+        if (ins.error) throw new Error(ins.error.message);
+        bulkRememberHash('story', seed.premise);
+        bulkRememberHash('story', story.title);
+        bulkRememberHash('story', story.preview || '');
+        if (titleHash)   seenDb[titleHash]   = 1;
+        if (previewHash) seenDb[previewHash] = 1;
+        _bulkBumpCounter('story', lvl);
+        bulkLog('  ✔ saved "' + story.title + '"', 'ok');
+        success++;
+      } catch(err) {
+        bulkLog('  ✘ ' + err.message, 'err');
+      }
+    }
+
+    bulkLog('📖 Stories done: ' + success + '/' + seeds.length + ' saved.', success ? 'ok' : 'warn');
+    var storC = _bulkGetCounter('story');
+    var el = document.querySelector('#bulk-distribution-stories');
+    if (el) el.textContent = _bulkRenderProgressLine('stories', storC);
   } finally {
     btns.forEach(function(b) { b.disabled = false; });
   }
