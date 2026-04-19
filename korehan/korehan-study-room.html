@@ -782,11 +782,15 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 .bm-result-stat-val { font-size: 22px; font-weight: 900; }
 .bm-result-stat-lbl { font-size: 11px; color: rgba(255,255,255,.45); margin-top: 2px; }
 
-/* Mobile */
+/* Mobile — true fullscreen so every step has room */
 @media (max-width: 640px) {
-  .bmodal { border-radius: 24px 24px 0 0; max-height: 96dvh; }
-  .bmodal-overlay { align-items: flex-end; padding: 0; }
-  .bm-body { padding: 18px 16px; }
+  .bmodal-overlay { align-items: stretch; padding: 0; }
+  .bmodal {
+    border-radius: 0;
+    max-width: 100vw; width: 100vw;
+    height: 100dvh; max-height: 100dvh;
+  }
+  .bm-body { padding: 18px 16px; min-height: 0; }
   .bm-footer { padding: 12px 16px; }
   .bm-listen-ko { font-size: 16px; }
   .bm-step-title { font-size: 19px; }
@@ -11434,42 +11438,51 @@ function goToBMStep3() {
 }
 
 function buildBMBlanks() {
-  // 각 문장에서 1개 단어를 빈칸으로 만들기
+  // Common Korean particles / short fillers that make terrible distractors
+  var BAD_DISTRACTORS = {'은':1,'는':1,'이':1,'가':1,'을':1,'를':1,'의':1,'에':1,'도':1,'만':1,'과':1,'와':1,'나':1};
+
   _bm.blanks = _bm.sentences.map(function(s, sentIdx) {
     var words = s.ko.replace(/[.!?]/g, '').split(/\s+/);
     if (words.length < 2) return { sent: s.ko, en: s.en, blanks: [], filled: {} };
 
-    // 2번째 이후 단어 중 랜덤 선택 (조사 제외하려고 긴 단어 우선)
-    var candidates = words.map(function(w, i){ return {w:w, i:i}; })
-      .filter(function(x){ return x.i > 0 && x.w.length >= 2; });
-    if (!candidates.length) candidates = [{ w: words[1], i: 1 }];
-    var pick = candidates[Math.floor(Math.random() * candidates.length)];
+    // Admin-override path: sentence carries its own BLANK answer + DISTRACT list
+    var pickWord;
+    if (s.blank_answer && s.ko.indexOf(s.blank_answer) !== -1) {
+      pickWord = s.blank_answer;
+    } else {
+      var candidates = words.map(function(w, i){ return {w:w, i:i}; })
+        .filter(function(x){ return x.i > 0 && x.w.length >= 2; });
+      if (!candidates.length) candidates = [{ w: words[1], i: 1 }];
+      pickWord = candidates[Math.floor(Math.random() * candidates.length)].w;
+    }
 
-    // 오답 후보: 다른 문장들의 단어
-    var wrongPool = [];
-    _bm.sentences.forEach(function(os, oi) {
-      if (oi === sentIdx) return;
-      os.ko.replace(/[.!?]/g, '').split(/\s+/).forEach(function(w){
-        if (w.length >= 2 && w !== pick.w) wrongPool.push(w);
+    var wrongs;
+    if (Array.isArray(s.distractors) && s.distractors.length >= 2) {
+      wrongs = s.distractors.slice(0, 2);
+    } else {
+      var wrongPool = [];
+      _bm.sentences.forEach(function(os, oi) {
+        if (oi === sentIdx) return;
+        (os.ko || '').replace(/[.!?]/g, '').split(/\s+/).forEach(function(w){
+          if (w.length >= 2 && w !== pickWord && !BAD_DISTRACTORS[w]) wrongPool.push(w);
+        });
       });
-    });
-    // 중복 제거
-    wrongPool = wrongPool.filter(function(w, i, a){ return a.indexOf(w) === i; });
-    var wrongs = wrongPool.sort(function(){ return Math.random()-.5; }).slice(0, 2);
-    while (wrongs.length < 2) wrongs.push('그리고');
-    var choices = [pick.w].concat(wrongs).sort(function(){ return Math.random()-.5; });
-
-    // 문장에서 해당 단어를 ___로 교체
-    var displaySent = s.ko.replace(pick.w, '___');
+      wrongPool = wrongPool.filter(function(w, i, a){ return a.indexOf(w) === i; });
+      wrongs = wrongPool.sort(function(){ return Math.random()-.5; }).slice(0, 2);
+      var fallback = ['있어요', '없어요', '해요', '가요'];
+      var fi = 0;
+      while (wrongs.length < 2 && fi < fallback.length) {
+        if (fallback[fi] !== pickWord && wrongs.indexOf(fallback[fi]) < 0) wrongs.push(fallback[fi]);
+        fi++;
+      }
+    }
+    var choices = [pickWord].concat(wrongs).sort(function(){ return Math.random()-.5; });
+    var displaySent = s.ko.replace(pickWord, '___');
 
     return {
-      sent: s.ko,
-      display: displaySent,
-      en: s.en,
-      answer: pick.w,
-      choices: choices,
-      filled: null,
-      correct: null,
+      sent: s.ko, display: displaySent, en: s.en,
+      answer: pickWord, choices: choices,
+      filled: null, correct: null,
     };
   });
 }
@@ -11564,13 +11577,25 @@ function goToBMStep4() {
 }
 
 function renderBMWordSnap() {
-  // Build card list from AI vocab; fall back to key words from sentences
-  var vocab = (_aiContent && Array.isArray(_aiContent.vocab) ? _aiContent.vocab : []).slice(0, 5);
-  if (vocab.length < 2) {
-    var seen = {};
-    _bm.sentences.forEach(function(s) {
-      s.ko.replace(/[.!?]/g,'').split(/\s+/).forEach(function(w) {
-        if (w.length >= 2 && !seen[w]) { seen[w] = true; vocab.push({ ko:w, rom:'', en:'' }); }
+  // Build card list strictly from today's topic: prefer AI vocab entries that
+  // actually appear in the topic sentences (guarantees topic relevance even if
+  // the DB cache drifted from the currently-displayed topic), then fall back
+  // to keywords extracted directly from the sentences.
+  var sentenceJoin = (_bm.sentences || []).map(function(s){ return s.ko || ''; }).join(' ');
+  var aiVocab = (_aiContent && Array.isArray(_aiContent.vocab)) ? _aiContent.vocab : [];
+  var topicRelevant = aiVocab.filter(function(v) {
+    if (!v || !v.ko) return false;
+    var stem = v.ko.replace(/[을를이가는도에서의하다요]$/g, '');
+    return sentenceJoin.indexOf(stem || v.ko) !== -1 || sentenceJoin.indexOf(v.ko) !== -1;
+  });
+
+  var vocab = topicRelevant.slice(0, 5);
+  if (vocab.length < 3) {
+    var existing = {};
+    vocab.forEach(function(v){ existing[v.ko] = true; });
+    (_bm.sentences || []).forEach(function(s) {
+      (s.ko || '').replace(/[.,!?。]/g,'').split(/\s+/).forEach(function(w) {
+        if (w.length >= 2 && !existing[w]) { existing[w] = true; vocab.push({ ko:w, rom:'', en:'' }); }
       });
     });
     vocab = vocab.slice(0, 5);
@@ -13545,13 +13570,37 @@ function _dctRender() {
   else if (_dctStep === 3) _dctRenderTyping();
 }
 function _dctRenderListen() {
-  var sents = _dctArticleMode ? _dctArticleSentences : _dailyDictationSentences;
   var body = document.getElementById('dct-body');
   var foot = document.getElementById('dct-foot');
   if (!body || !foot) return;
+
+  // Topic-staleness check: if the cached dictation sentences don't mention any
+  // keyword from today's topic, treat them as stale and regenerate.
+  if (!_dctArticleMode && Array.isArray(_dailyDictationSentences) && _dailyDictationSentences.length && _todayTopic) {
+    var _topicKo = String(_todayTopic.topic_ko || '').replace(/[.,!?~]/g, '');
+    var _topicKws = _topicKo.split(/\s+/).filter(function(w){ return w.length >= 2; });
+    if (_topicKws.length) {
+      var _sentJoin = _dailyDictationSentences.map(function(s){ return s && (s.ko || ''); }).join(' ');
+      var _anyMatch = _topicKws.some(function(kw){ return _sentJoin.indexOf(kw) !== -1; });
+      if (!_anyMatch) {
+        console.log('[dictation] cached sentences unrelated to today\'s topic — regenerating');
+        _dailyDictationSentences = [];
+      }
+    }
+  }
+
+  var sents = _dctArticleMode ? _dctArticleSentences : _dailyDictationSentences;
   if (!sents || !sents.length) {
     var topicText = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || '';
-    var helperFallback = (_aiContent && _aiContent.helpers && _aiContent.helpers.length) ? _aiContent.helpers : null;
+    // Verify helpers are topic-relevant before using them as a fallback
+    var helperFallback = null;
+    if (_aiContent && Array.isArray(_aiContent.helpers) && _aiContent.helpers.length && _todayTopic) {
+      var _topicKoShort = String(_todayTopic.topic_ko || '').replace(/[.,!?~]/g,'');
+      var _topicKws2 = _topicKoShort.split(/\s+/).filter(function(w){ return w.length >= 2; });
+      var _helperJoin = _aiContent.helpers.map(function(h){ return h && (h.ko || ''); }).join(' ');
+      var _helperMatch = _topicKws2.some(function(kw){ return _helperJoin.indexOf(kw) !== -1; });
+      if (_helperMatch) helperFallback = _aiContent.helpers;
+    }
     if (topicText || helperFallback) {
       body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">Preparing listening sentences…</div>';
       foot.innerHTML = '';

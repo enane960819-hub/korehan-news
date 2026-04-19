@@ -7831,6 +7831,8 @@ async function srLoadDailyContent() {
         s.acceptable_orders.forEach(function(ao){ parts.push(Array.isArray(ao)?ao.join(' '):String(ao)); });
       }
       if (s.explanation) parts.push(s.explanation);
+      if (s.blank_answer) parts.push('BLANK:' + s.blank_answer);
+      if (s.distractors && s.distractors.length) parts.push('DISTRACT:' + s.distractors.join(','));
       return parts.join('|');
     }).join('\n');
   }
@@ -7881,15 +7883,19 @@ async function srSaveDailyContent() {
     var p = line.split('|');
     var ko = (p[0]||'').trim(); var en = (p[1]||'').trim();
     if (!ko) return null;
-    var acceptable_orders = []; var explanation = '';
-    // p[2]+ are alternative orders or explanation
+    var acceptable_orders = []; var explanation = ''; var blank_answer = ''; var distractors = [];
+    // p[2]+ can be: alternative orders, explanation, BLANK:<word>, DISTRACT:w1,w2,w3
     for (var i = 2; i < p.length; i++) {
       var v = (p[i]||'').trim(); if (!v) continue;
-      // If it contains Korean characters and spaces it's likely an alternative order
+      if (/^BLANK:/i.test(v)) { blank_answer = v.replace(/^BLANK:\s*/i, '').trim(); continue; }
+      if (/^DISTRACT:/i.test(v)) { distractors = v.replace(/^DISTRACT:\s*/i, '').split(',').map(function(x){ return x.trim(); }).filter(Boolean); continue; }
       if (/[가-힣]/.test(v) && v.indexOf(' ') >= 0) acceptable_orders.push(v.split(' '));
-      else explanation = v; // last non-korean string is explanation
+      else explanation = v;
     }
-    return { ko: ko, en: en, acceptable_orders: acceptable_orders, explanation: explanation };
+    var entry = { ko: ko, en: en, acceptable_orders: acceptable_orders, explanation: explanation };
+    if (blank_answer) entry.blank_answer = blank_answer;
+    if (distractors.length) entry.distractors = distractors;
+    return entry;
   }).filter(Boolean);
 
   var r = await sb.from('study_daily_content').upsert({
