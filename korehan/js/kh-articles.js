@@ -545,8 +545,9 @@ function renderAllList(listEl, articles) {
     var lvl = a.level || '';
     var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : lvl === 'Starter' ? 'lvl-s' : 'lvl-b';
     var cat = (a.section || '').toLowerCase();
-    var img = a.image
-      ? '<img class="nc-img" src="' + a.image + '" alt="" loading="lazy" onerror="this.src=\'https://picsum.photos/seed/fallback/600/400\'">'
+    var thumbSrc = (typeof khArticleThumb === 'function') ? khArticleThumb(a, 600, 400) : (a.image || '');
+    var img = thumbSrc
+      ? '<img class="nc-img" src="' + thumbSrc + '" alt="" loading="lazy" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/\'+encodeURIComponent(this.dataset.fb||\'kh\')+\'/600/400\'" data-fb="' + escapeHtml(a.id || 'kh') + '">'
       : '<div class="nc-img nc-img-fallback"></div>';
     var dateStr = a.date ? new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
     return '<div class="nc nc-overlay" data-section="' + escapeHtml(cat) + '" data-level="' + escapeHtml(lvl) + '" onclick="location.href=\'' + articleUrl(a.id) + '\'">'
