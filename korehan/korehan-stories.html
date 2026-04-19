@@ -50,7 +50,7 @@
 .badge-shocking{background:#dc2626;}
 
 /* DETAIL OVERLAY */
-.st-overlay{position:fixed;inset:0;background:rgba(5,12,24,.65);backdrop-filter:blur(5px);z-index:400;display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto;}
+.st-overlay{position:fixed;inset:0;background:rgba(5,12,24,.65);backdrop-filter:blur(5px);z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto;}
 .st-overlay.hidden{display:none;}
 .st-panel{width:100%;max-width:1080px;background:#f8fafc;border-radius:28px;overflow:hidden;box-shadow:0 32px 80px rgba(5,12,24,.3);display:grid;grid-template-columns:1.3fr .75fr;animation:stIn .22s cubic-bezier(.22,1,.36,1);}
 @keyframes stIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
@@ -80,8 +80,10 @@
 .st-cta-pri:hover{background:#6d28d9;}
 .st-cta-sec{background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;}
 .st-cta-sec:hover{background:#ede9fe;}
-.st-close{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.15);border:none;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;font-family:inherit;line-height:1;}
-.st-close:hover{background:rgba(0,0,0,.28);}
+.st-close{position:absolute;top:12px;right:12px;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.5);border:none;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;font-family:inherit;line-height:1;}
+.st-close:hover{background:rgba(0,0,0,.68);}
+.st-back{position:absolute;top:12px;left:12px;display:flex;align-items:center;gap:6px;padding:8px 14px 8px 10px;border-radius:999px;background:rgba(0,0,0,.5);border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;z-index:5;font-family:inherit;}
+.st-back:hover{background:rgba(0,0,0,.68);}
 /* right study panel */
 .st-right{background:#f8fafc;border-left:1px solid #e8eef7;overflow-y:auto;}
 .st-right-head{padding:20px 22px 14px;border-bottom:1px solid #e8eef7;background:#fff;}
@@ -962,11 +964,18 @@ function filterBySeries(seriesId) {
   if (window.renderKhLucideIcons) renderKhLucideIcons();
 }
 
+var _stOverlayOpen = false;
 function openStory(id) {
   var s = STORIES.find(function(x){ return String(x.id) === String(id); });
   if (!s) return;
   var author = resolveStoryAuthor(s);
   window._currentStory = s;  // 전역 저장
+  // Push a history entry so the browser/OS back button closes the overlay
+  // instead of navigating away from the stories page.
+  if (!_stOverlayOpen) {
+    _stOverlayOpen = true;
+    try { history.pushState({ storyOverlay: true }, '', window.location.pathname + window.location.search + '#story=' + encodeURIComponent(s.id)); } catch(e) {}
+  }
 
   // ── 데일리 미션 + 읽기 기록 추적 ──────────────────────
   if (typeof dmTrackArticle === 'function') dmTrackArticle();
@@ -1028,7 +1037,8 @@ function openStory(id) {
     '<div class="st-left">'
       + '<div class="st-left-head">'
         + '<div class="st-head-banner ' + headBannerClass + '"' + (storyThumb ? ' style="background:#0f172a;background-image:url(\'' + String(storyThumb).replace(/'/g, '%27') + '\');background-size:cover;background-position:center"' : '') + '>'
-          + '<button class="st-close" onclick="closeSt()">✕</button>'
+          + '<button class="st-back" onclick="closeSt()" aria-label="Back to stories">← Back</button>'
+          + '<button class="st-close" onclick="closeSt()" aria-label="Close">✕</button>'
           + (storyThumb ? '<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,23,42,.1),rgba(15,23,42,.45))"></div>' : '')
           + (storyThumb ? '' : '<span class="st-head-icon"><i data-lucide="' + (s.banner_icon || MOOD_ICONS[s.mood] || 'book-open') + '" style="width:44px;height:44px;color:#fff;opacity:.92" aria-hidden="true"></i></span>')
         + '</div>'
@@ -1171,12 +1181,24 @@ function startStoryListeningQuiz() {
   renderQ();
 }
 
-function closeSt() {
+function closeSt(fromPop) {
   document.getElementById('st-overlay').classList.add('hidden');
   var q = document.getElementById('st-quiz-overlay'); if (q) q.style.display='none';
   var panel = document.getElementById('st-panel'); if (panel) panel.style.filter='';
   document.body.style.overflow = '';
+  if (_stOverlayOpen) {
+    _stOverlayOpen = false;
+    // If the user hit our X/Back button, pop the history entry we pushed
+    // so the URL hash is cleaned up; if this close came from popstate, the
+    // browser has already done that for us.
+    if (!fromPop && history.state && history.state.storyOverlay) {
+      try { history.back(); } catch(e) {}
+    }
+  }
 }
+window.addEventListener('popstate', function() {
+  if (_stOverlayOpen) closeSt(true);
+});
 
 async function toggleStorySave(btn, ko, rom, en) {
   if (!supaUser) { openAuthModal('signin'); return; }
