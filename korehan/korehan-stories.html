@@ -951,7 +951,12 @@ function openStory(id) {
   if (window.renderKhLucideIcons) renderKhLucideIcons();
   // 저장된 단어 상태 복원
   if (typeof restoreSaveButtons === 'function') restoreSaveButtons('st-overlay');
-  // Rescan body for hover vocabulary tooltips
+  // Inject this story's own vocab into the hover tooltip system so every
+  // vocab word in the body gets a hover tip even if it isn't in hover_vocab_master
+  if (typeof window.korehanHoverRegisterExtras === 'function' && Array.isArray(s.vocab)) {
+    window.korehanHoverRegisterExtras(s.vocab);
+  }
+  // Also refresh in case the body was added after the initial scan
   if (typeof window.korehanHoverRefresh === 'function') {
     setTimeout(window.korehanHoverRefresh, 80);
   }

@@ -1100,6 +1100,28 @@ function livePreview(){
   if(url){p.src=url;p.style.display='block';}else{p.style.display='none';}
 }
 
+// ── Story thumbnail upload ───────────────────────────────────
+async function seThumbUpload(input) {
+  if (!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  var urlInput = document.getElementById('se-thumb');
+  var preview  = document.getElementById('se-thumb-preview');
+  if (preview) preview.innerHTML = '<span style="font-size:12px;color:#64748b">⏳ 업로드 중…</span>';
+  try {
+    var sb = getSb();
+    if (!sb) throw new Error('Admin client not available');
+    var ext  = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    var path = 'stories/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + ext;
+    var up   = await sb.storage.from('article-images').upload(path, file, { upsert: true, contentType: file.type });
+    if (up.error) throw up.error;
+    var publicUrl = sb.storage.from('article-images').getPublicUrl(path).data.publicUrl;
+    if (urlInput) urlInput.value = publicUrl;
+    if (preview) preview.innerHTML = '<img src="' + publicUrl + '" style="max-height:100px;border-radius:8px;border:1px solid #e2e8f0">';
+  } catch (e) {
+    if (preview) preview.innerHTML = '<span style="font-size:12px;color:#dc2626">❌ 업로드 실패: ' + (e.message || e) + '</span>';
+  }
+}
+
 // ── Article image upload helpers ──────────────────────────────
 async function adminUploadArticleImage(file) {
   var sb = getSb();
@@ -7103,7 +7125,13 @@ async function openStoryEditModal(rowId) {
     + '<div>' + ceSelect('se-character', 'Character', ['','cr1','cr2','cr3','cr4','cr5','cr6','cr7','cr8','cr9','cr10'], ['None','박서진','김지원','이민준','최유나','정우성','한소희','오지훈','신지은','강태양','류하늘'], (d.character_slugs&&d.character_slugs[0])||'') + '</div>'
     + '</div>'
     + '<div style="margin-bottom:12px">'
-    + ceField('se-thumb', '썸네일 이미지 URL', 'text', d.thumbnail_url||d.thumbnail||'', 'https://... (비워두면 무드 아이콘 표시)')
+    + '<label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:4px">썸네일 이미지</label>'
+    + '<div style="display:flex;gap:8px;align-items:center">'
+    +   '<input id="se-thumb" type="text" value="' + (d.thumbnail_url||d.thumbnail||'').replace(/"/g,'&quot;') + '" placeholder="https://... (URL 직접 입력 또는 파일 업로드)" style="flex:1;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'
+    +   '<input id="se-thumb-file" type="file" accept="image/*" style="display:none" onchange="seThumbUpload(this)">'
+    +   '<button type="button" onclick="document.getElementById(\'se-thumb-file\').click()" style="padding:8px 14px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">📷 Upload</button>'
+    + '</div>'
+    + '<div id="se-thumb-preview" style="margin-top:8px">' + (d.thumbnail_url||d.thumbnail ? '<img src="' + (d.thumbnail_url||d.thumbnail) + '" style="max-height:100px;border-radius:8px;border:1px solid #e2e8f0">' : '') + '</div>'
     + '</div>'
     + '<div style="margin-bottom:12px">'
     + '<label style="font-size:12px;font-weight:700;color:#374151;display:block">미리보기 (preview)<textarea id="se-preview" rows="2" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical">' + (d.preview||'').replace(/</g,'&lt;') + '</textarea></label>'
