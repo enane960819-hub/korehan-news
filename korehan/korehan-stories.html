@@ -965,9 +965,81 @@ function filterBySeries(seriesId) {
 }
 
 var _stOverlayOpen = false;
+function _storyAiCacheKey(id) { return 'kh_story_ai_v1_' + id; }
+function _hydrateStoryAiFromCache(s) {
+  if (!s || s.id == null) return;
+  try {
+    var raw = localStorage.getItem(_storyAiCacheKey(s.id));
+    if (!raw) return;
+    var c = JSON.parse(raw);
+    if (!c || typeof c !== 'object') return;
+    if ((!s.vocab || !s.vocab.length) && Array.isArray(c.vocab)) s.vocab = c.vocab;
+    if ((!s.grammar || !s.grammar.length) && Array.isArray(c.grammar)) s.grammar = c.grammar;
+    if ((!s.key_expressions || !s.key_expressions.length) && Array.isArray(c.key_expressions)) s.key_expressions = c.key_expressions;
+    if ((!s.comprehension || !s.comprehension.length) && Array.isArray(c.comprehension)) s.comprehension = c.comprehension;
+  } catch(e) {}
+}
+
+async function generateStoryAI(id) {
+  var s = STORIES.find(function(x){ return String(x.id) === String(id); });
+  if (!s) return;
+  var btn = document.getElementById('st-gen-ai-btn');
+  var msg = document.getElementById('st-gen-ai-msg');
+  if (btn) { btn.disabled = true; btn.style.opacity = '.7'; btn.textContent = '🤖 AI 분석 중… (15-25초)'; }
+  if (msg) msg.textContent = '';
+  try {
+    if (typeof callClaude !== 'function') throw new Error('callClaude 사용 불가 (로그인 필요)');
+    var body = (s.body || '').replace(/<[^>]*>/g, '').slice(0, 2500);
+    if (!body || body.length < 40) throw new Error('본문이 너무 짧습니다');
+    var prompt = 'Analyze the Korean story below and return ONLY valid JSON (no markdown, no "json" label).\n\n'
+      + 'Title: ' + (s.title || '') + '\nBody: ' + body
+      + '\n\nSchema:\n{\n'
+      + '  "vocab": [{"ko":"단어","rom":"romanization","en":"English meaning","note":"short usage tip"}],\n'
+      + '  "grammar": [{"point":"grammar pattern","ex":"example sentence from the story","en":"English explanation"}],\n'
+      + '  "key_expressions": [{"ko":"multi-word expression","rom":"romanization","en":"English meaning","usage":"when to use it"}],\n'
+      + '  "comprehension": [{"q":"question","a":"answer"}]\n'
+      + '}\n\n'
+      + 'Rules: vocab 10-15 SINGLE words in dictionary form, every entry stem must appear in the body. key_expressions 4-6 MULTI-word idioms/phrases. grammar 3 items. comprehension 3 items. JSON only.';
+    var res = await callClaude({
+      feature: 'story-user-analysis',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1800,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var txt = (res && res.content || []).map(function(b){ return b.text || ''; }).join('');
+    txt = txt.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+    txt = txt.replace(/^\s*json\b[:\s]*/i, '').trim();
+    var si = txt.indexOf('{'), ei = txt.lastIndexOf('}');
+    if (si >= 0 && ei > si) txt = txt.slice(si, ei + 1);
+    var parsed = JSON.parse(txt);
+    s.vocab = Array.isArray(parsed.vocab) ? parsed.vocab : [];
+    s.grammar = Array.isArray(parsed.grammar) ? parsed.grammar : [];
+    s.key_expressions = Array.isArray(parsed.key_expressions) ? parsed.key_expressions : [];
+    s.comprehension = Array.isArray(parsed.comprehension) ? parsed.comprehension : [];
+    try {
+      localStorage.setItem(_storyAiCacheKey(s.id), JSON.stringify({
+        vocab: s.vocab, grammar: s.grammar,
+        key_expressions: s.key_expressions, comprehension: s.comprehension
+      }));
+    } catch(e) {}
+    // Close the history entry we pushed so re-opening doesn't double-stack
+    if (_stOverlayOpen && history.state && history.state.storyOverlay) {
+      _stOverlayOpen = false;
+      try { history.back(); } catch(e) {}
+      setTimeout(function(){ openStory(s.id); }, 50);
+    } else {
+      openStory(s.id);
+    }
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.textContent = '🤖 다시 시도'; }
+    if (msg) msg.textContent = '실패: ' + (e.message || e);
+  }
+}
+
 function openStory(id) {
   var s = STORIES.find(function(x){ return String(x.id) === String(id); });
   if (!s) return;
+  _hydrateStoryAiFromCache(s);
   var author = resolveStoryAuthor(s);
   window._currentStory = s;  // 전역 저장
   // Push a history entry so the browser/OS back button closes the overlay
@@ -1033,6 +1105,17 @@ function openStory(id) {
   var hasEnBody       = !!(s.body_en || s.body_english || s.translation);
   var enBody          = s.body_en || s.body_english || s.translation || '';
 
+  var vocabCount = (s.vocab || []).length;
+  var hasAnyAI = vocabCount || (s.grammar || []).length || (s.key_expressions || []).length || (s.comprehension || []).length;
+  var vocabCard = hasAnyAI
+    ? '<div class="st-card"><div class="st-card-title"><span>📚</span> Key Vocabulary <span style="font-size:11px;font-weight:700;color:#94a3b8;margin-left:auto">' + vocabCount + '</span></div><div class="st-vocab-list">' + vocab + '</div></div>'
+    : '<div class="st-card" style="text-align:center">'
+      + '<div style="font-size:13px;color:#64748b;margin-bottom:4px;font-weight:700">AI 학습 노트 아직 없음</div>'
+      + '<div style="font-size:11px;color:#94a3b8;margin-bottom:12px">Claude 가 vocab · grammar · 표현을 만들어줍니다 (15-25초)</div>'
+      + '<button id="st-gen-ai-btn" onclick="generateStoryAI(\'' + String(s.id).replace(/\\/g,"\\\\").replace(/\'/g,"\\\'") + '\')" style="width:100%;padding:12px;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">🤖 AI 학습 노트 생성</button>'
+      + '<div id="st-gen-ai-msg" style="margin-top:8px;font-size:11px;color:#dc2626"></div>'
+    + '</div>';
+
   document.getElementById('st-panel').innerHTML =
     '<div class="st-left">'
       + '<div class="st-left-head">'
@@ -1068,7 +1151,7 @@ function openStory(id) {
     + '<div class="st-right">'
       + '<div class="st-right-head"><div class="st-right-label">Study Notes</div><div class="st-right-title">Story Breakdown</div></div>'
       + '<div class="st-sections">'
-        + '<div class="st-card"><div class="st-card-title"><span>📚</span> Key Vocabulary <span style="font-size:11px;font-weight:700;color:#94a3b8;margin-left:auto">' + (s.vocab||[]).length + '</span></div><div class="st-vocab-list">' + vocab + '</div></div>'
+        + vocabCard
         + (keyExpressions ? '<div class="st-card"><div class="st-card-title"><span>💡</span> Key Expressions</div><div class="st-keyexp-list">' + keyExpressions + '</div></div>' : '')
         + (grammar ? '<div class="st-card"><div class="st-card-title"><span>✏️</span> Grammar Points</div><div class="st-grammar-list">' + grammar + '</div></div>' : '')
         + (comprehension ? '<div class="st-card"><div class="st-card-title"><span>🎯</span> Comprehension</div><div class="st-q-list">' + comprehension + '</div></div>' : '')
