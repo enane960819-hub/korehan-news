@@ -4458,28 +4458,53 @@ async function autoGenStoryAI(storyId, storyObj) {
       + '{\n'
       + '  "vocab": [{"ko":"단어","rom":"romanization","en":"English meaning","note":"short usage tip"}],\n'
       + '  "grammar": [{"point":"grammar pattern","ex":"example sentence","en":"English explanation"}],\n'
-      + '  "key_expressions": [{"ko":"expression","en":"English meaning","usage":"when to use this phrase"}],\n'
+      + '  "key_expressions": [{"ko":"expression","rom":"romanization","en":"English meaning","usage":"when to use this phrase"}],\n'
       + '  "comprehension": [{"q":"question","a":"answer"}],\n'
       + '  "body_en": "full English translation of the story",\n'
       + '  "summary_en": "1-2 sentence English summary"\n'
       + '}\n\n'
-      + 'Counts: vocab MUST contain 15 to 20 items (pick the most useful content words). grammar 3-5. key_expressions 5-8 idioms/collocations that go beyond single-word vocab. comprehension 3. body_en must be a natural full translation.\n'
+      + 'STRICT RULES:\n'
+      + '- vocab: 15-20 items. Each entry MUST be a SINGLE WORD only (one noun, verb, or adjective). Never include phrases or multi-word units. List words in dictionary form (e.g., 갔다 → 가다).\n'
+      + '- key_expressions: 5-8 items. Each entry MUST be a multi-word phrase, idiom, fixed expression, or collocation (2+ words). Never include single words.\n'
+      + '- Words and expressions must actually appear in the story body.\n'
+      + '- grammar: 3-5 items. comprehension: 3 items. body_en: natural full translation.\n'
       + 'JSON only.';
 
     var result = await callAdminClaude(prompt);
     var clean = result.replace(/```json[\s\S]*?```/g, function(m){ return m.slice(7,-3); }).replace(/```/g,'').trim();
     var parsed = JSON.parse(clean);
 
+    // Defensive split: AI may put a phrase into "vocab" or a single word
+    // into "key_expressions". Auto-route them to the correct bucket.
+    var rawVocab = parsed.vocab || [];
+    var rawExpr  = parsed.key_expressions || [];
+    var isMultiWord = function(s){ return typeof s === 'string' && /\s/.test(s.trim()); };
+    var keptVocab = [], movedToExpr = [];
+    rawVocab.forEach(function(v){
+      if (!v || !v.ko) return;
+      if (isMultiWord(v.ko)) movedToExpr.push({ ko: v.ko, rom: v.rom||'', en: v.en||'', usage: v.note||'' });
+      else keptVocab.push(v);
+    });
+    var keptExpr = [], movedToVocab = [];
+    rawExpr.forEach(function(k){
+      var ko = k && (k.ko || k.expression);
+      if (!ko) return;
+      if (!isMultiWord(ko)) movedToVocab.push({ ko: ko, rom: k.rom||'', en: k.en||k.meaning||'', note: k.usage||'' });
+      else keptExpr.push(k);
+    });
+    var finalVocab = keptVocab.concat(movedToVocab).slice(0, 20);
+    var finalExpr  = keptExpr.concat(movedToExpr);
+
     const sb = getSb();
     var res = await sb.from('stories_data').select('data').eq('id', storyId).single();
     var currentData = (res.data && res.data.data) ? res.data.data : (storyObj || {});
     var updated = Object.assign({}, currentData, {
-      vocab:           (parsed.vocab || []).slice(0, 20),
-      grammar:         parsed.grammar         || currentData.grammar         || [],
-      key_expressions: parsed.key_expressions || currentData.key_expressions || [],
-      comprehension:   parsed.comprehension   || currentData.comprehension   || [],
-      body_en:         parsed.body_en         || currentData.body_en         || '',
-      summary_en:      parsed.summary_en      || currentData.summary_en      || '',
+      vocab:           finalVocab,
+      grammar:         parsed.grammar       || currentData.grammar         || [],
+      key_expressions: finalExpr.length ? finalExpr : (currentData.key_expressions || []),
+      comprehension:   parsed.comprehension || currentData.comprehension   || [],
+      body_en:         parsed.body_en       || currentData.body_en         || '',
+      summary_en:      parsed.summary_en    || currentData.summary_en      || '',
     });
     var { error: updateErr } = await sb.from('stories_data').update({ data: updated }).eq('id', storyId);
     if (updateErr) throw updateErr;

@@ -951,12 +951,24 @@ function openStory(id) {
   if (window.renderKhLucideIcons) renderKhLucideIcons();
   // 저장된 단어 상태 복원
   if (typeof restoreSaveButtons === 'function') restoreSaveButtons('st-overlay');
-  // Inject this story's own vocab into the hover tooltip system so every
-  // vocab word in the body gets a hover tip even if it isn't in hover_vocab_master
-  if (typeof window.korehanHoverRegisterExtras === 'function' && Array.isArray(s.vocab)) {
-    window.korehanHoverRegisterExtras(s.vocab);
+  // Inject this story's own vocab + key expressions into the hover tooltip
+  // system so every term in the body gets an inline hover tooltip even if
+  // it isn't in hover_vocab_master.
+  if (typeof window.korehanHoverRegisterExtras === 'function') {
+    var hoverEntries = [];
+    if (Array.isArray(s.vocab)) {
+      s.vocab.forEach(function(v){
+        if (v && v.ko) hoverEntries.push({ ko: v.ko, en: v.en, rom: v.rom, note: v.note });
+      });
+    }
+    if (Array.isArray(s.key_expressions)) {
+      s.key_expressions.forEach(function(k){
+        var ko = k && (k.ko || k.expression);
+        if (ko) hoverEntries.push({ ko: ko, en: k.en || k.meaning, rom: k.rom || '', note: k.usage || k.note || '' });
+      });
+    }
+    if (hoverEntries.length) window.korehanHoverRegisterExtras(hoverEntries);
   }
-  // Also refresh in case the body was added after the initial scan
   if (typeof window.korehanHoverRefresh === 'function') {
     setTimeout(window.korehanHoverRefresh, 80);
   }
@@ -1080,7 +1092,7 @@ async function loadStoriesFromDB() {
         var story = d || row;
         if (!story || !story.title) return null;
         return Object.assign({}, story, {
-          id: story.id || row.id,
+          id: row.id,  // SQL PK only — guarantees home → story deep links match
           genre: row.genre || story.genre || story.mood || 'slice_of_life',
           perspective: row.perspective || story.perspective || 'third',
           series_id: row.series_id || story.series_id || null,
@@ -1088,7 +1100,7 @@ async function loadStoriesFromDB() {
           episode_title: row.episode_title || story.episode_title || '',
           character_slugs: row.character_slugs || story.character_slugs || [],
           cliffhanger: row.cliffhanger || story.cliffhanger || '',
-          author_slug: story.author_slug || (typeof pickCharacterSlug === 'function' ? pickCharacterSlug(String(story.id || story.title || row.id) + '-story') : '')
+          author_slug: story.author_slug || (typeof pickCharacterSlug === 'function' ? pickCharacterSlug(String(row.id) + '-story') : '')
         });
       }).filter(Boolean);
       // Use DB stories only — hardcoded fallbacks removed (they lack proper IDs and don't open)
