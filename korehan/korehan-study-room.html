@@ -1926,7 +1926,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 .dct-listen-btn { background:none; border:1.5px solid #bfdbfe; border-radius:10px; padding:8px 14px; cursor:pointer; font-size:16px; color:#2255a4; float:right; transition:all .15s; }
 .dct-listen-btn:hover { background:#eff6ff; border-color:#7ab8f5; }
 .dct-wo-zone { background:#f0f7ff; border:1.5px solid #bfdbfe; border-radius:12px; padding:16px; margin-bottom:14px; font-family:'Noto Serif KR',serif; font-size:16px; line-height:2.4; min-height:56px; }
-@media(max-width:640px) { #dct-modal { padding:0 !important; align-items:stretch !important; } .dct-panel { max-height:100dvh; height:100dvh; max-width:100%; width:100%; border-radius:0; } }
+@media(max-width:640px) { #dct-modal, #nq-modal { padding:0 !important; align-items:stretch !important; } #dct-modal .dct-panel, #nq-modal .dct-panel { max-height:100dvh; height:100dvh; max-width:100%; width:100%; border-radius:0; } }
 
 /* ── Mobile fixes ─────────────────────────────────────── */
 @media(max-width:640px) {
@@ -3671,10 +3671,13 @@ function ensureStudyUnlocked() { return true; }
 function renderStudyChecklist() {
   var box = document.getElementById('sr-checklist-box');
   if (!box) return;
+  var isAdvanced = _currentLevel === 'Advanced';
   var items = [
     { k:'topic',    label:'Express Practice',  sub:'Write & speak on today\'s topic',     pts:'+20 냥' },
     { k:'grammar',  label:'Review grammar points',     sub:'Quick, light review',       pts:'+10 냥' },
-    { k:'picture',  label:'Picture description',        sub:'Just 1-2 minutes',          pts:'+15 냥' },
+    isAdvanced
+      ? { k:'picture',  label:'Nuance Quiz',              sub:'유의어 구별 (고급)',        pts:'+15 냥' }
+      : { k:'picture',  label:'Picture description',      sub:'Just 1-2 minutes',          pts:'+15 냥' },
     { k:'sentence', label:'Dictation practice',         sub:'Accuracy training',         pts:'+10 냥' }
   ];
   var doneCnt = items.filter(function(i){ return !!_studyDone[i.k]; }).length;
@@ -5268,7 +5271,11 @@ function lsStart(type) {
   } else if (type === 'grammar') {
     if (typeof openGrammarFocusModal === 'function') openGrammarFocusModal();
   } else if (type === 'picture') {
-    if (typeof openPictureDescription === 'function') openPictureDescription();
+    if (_currentLevel === 'Advanced') {
+      if (typeof openNuanceQuiz === 'function') openNuanceQuiz();
+    } else if (typeof openPictureDescription === 'function') {
+      openPictureDescription();
+    }
   } else if (type === 'sentence') {
     openDictationModal();
   } else if (type === 'expressions') {
@@ -14101,6 +14108,165 @@ function _dctLpNext() {
   _dctRenderListenPick();
 }
 
+// ═══════════════════════════════════════════════════════════
+// NUANCE QUIZ (Forest only) — replaces Picture Description
+// ═══════════════════════════════════════════════════════════
+var _nqQuestions = [];
+var _nqIdx = 0;
+var _nqScore = 0;
+var _nqState = null;
+
+function _nqCacheKey() {
+  var topicId = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en || '')).slice(0, 32);
+  return 'kh_nuance_' + kstDateKey() + '_' + (_currentLevel || 'Advanced') + '_' + topicId;
+}
+
+function openNuanceQuiz() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  var m = document.getElementById('nq-modal');
+  if (!m) return;
+  m.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  _nqIdx = 0; _nqScore = 0; _nqState = null;
+  _nqLoadOrGenerate();
+}
+
+function closeNuanceQuiz() {
+  var m = document.getElementById('nq-modal');
+  if (m) m.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+async function _nqLoadOrGenerate() {
+  var body = document.getElementById('nq-body');
+  var foot = document.getElementById('nq-foot');
+  if (!body || !foot) return;
+
+  try {
+    var cached = JSON.parse(localStorage.getItem(_nqCacheKey()) || 'null');
+    if (cached && Array.isArray(cached.questions) && cached.questions.length >= 3) {
+      _nqQuestions = cached.questions.slice(0, 3);
+      _nqRender();
+      return;
+    }
+  } catch(e) {}
+
+  body.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Nuance 퀴즈 생성 중…</div></div>';
+  foot.innerHTML = '';
+  var topic = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || '한국 사회';
+  var prompt = 'You are a Korean TOPIK 5-6 instructor. Create a 3-question nuance-discrimination quiz on topic "' + topic + '".\n\n'
+    + 'Each question MUST test discrimination between NEAR-SYNONYMS — e.g. 추진하다 vs 진행하다 vs 실행하다 vs 수행하다, or 초래하다 vs 야기하다 vs 유발하다 vs 불러일으키다. Never test beginner-level vocabulary.\n\n'
+    + 'All four choices must be real, Advanced-register Korean words in dictionary/base form, all plausible at first glance, but only ONE is the most natural given collocation / nuance / register.\n\n'
+    + 'Return ONLY JSON (no markdown, no preamble):\n{\n'
+    + '  "questions": [\n'
+    + '    {\n'
+    + '      "sentence_ko": "Korean sentence (formal/~습니다 or written register) with one word replaced by _____ ",\n'
+    + '      "sentence_en": "Natural English translation",\n'
+    + '      "choices": ["word1","word2","word3","word4"],\n'
+    + '      "correct_index": 0,\n'
+    + '      "explanation_ko": "왜 정답이 가장 자연스러운지 1-2문장 (collocation, nuance, register 중심으로)"\n'
+    + '    }\n'
+    + '  ]\n'
+    + '}\n\nExactly 3 questions. correct_index is 0-3.';
+
+  try {
+    var res = await callClaude({
+      feature: 'nuance-quiz-gen',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1400,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var txt = (res && res.content || []).map(function(b){ return b.text||''; }).join('');
+    txt = txt.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+    txt = txt.replace(/^\s*json\b[:\s]*/i, '').trim();
+    var si = txt.indexOf('{'), ei = txt.lastIndexOf('}');
+    if (si >= 0 && ei > si) txt = txt.slice(si, ei + 1);
+    var parsed = JSON.parse(txt);
+    if (!parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length < 3) {
+      throw new Error('Quiz data invalid');
+    }
+    _nqQuestions = parsed.questions.slice(0, 3);
+    try { localStorage.setItem(_nqCacheKey(), JSON.stringify({ questions: _nqQuestions })); } catch(e) {}
+    _nqRender();
+  } catch(e) {
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">퀴즈를 불러올 수 없습니다.<br><span style="font-size:12px">' + escapeHTML(e.message || '') + '</span></div>';
+    foot.innerHTML = '<button class="btn" onclick="closeNuanceQuiz()">닫기</button>';
+  }
+}
+
+function _nqRender() {
+  var body = document.getElementById('nq-body');
+  var foot = document.getElementById('nq-foot');
+  var sub = document.getElementById('nq-step-sub');
+  if (!body || !foot) return;
+
+  if (_nqIdx >= _nqQuestions.length) {
+    var pct = _nqQuestions.length > 0 ? Math.round(_nqScore / _nqQuestions.length * 100) : 0;
+    body.innerHTML = '<div style="text-align:center;padding:30px 20px">'
+      + '<div style="font-size:36px;margin-bottom:12px">' + (pct >= 80 ? '🏆' : pct >= 50 ? '👍' : '💪') + '</div>'
+      + '<div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:4px">' + pct + '%</div>'
+      + '<div style="font-size:13px;color:#64748b;margin-bottom:6px">' + _nqScore + ' / ' + _nqQuestions.length + ' correct</div>'
+      + '<div style="font-size:12px;color:#94a3b8">Nuance Quiz 완료!</div>'
+      + '</div>';
+    foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'picture\');returnToActivities(closeNuanceQuiz)">Done ✓ Next Activity</button>';
+    if (sub) sub.textContent = 'Complete';
+    if (typeof logQuizResult === 'function' && supaUser) {
+      try {
+        logQuizResult(getSupa(), {
+          p_skill_type: 'vocabulary', p_quiz_type: 'nuance',
+          p_item_id: 'nq_' + kstDateKey(), p_content_type: 'nuance',
+          p_content_id: kstDateKey(), p_is_correct: pct >= 80, p_score: pct
+        });
+      } catch(e) {}
+    }
+    return;
+  }
+
+  if (sub) sub.textContent = 'Question ' + (_nqIdx + 1) + ' of ' + _nqQuestions.length;
+  if (!_nqState) _nqState = { picked: null, answered: false };
+  var q = _nqQuestions[_nqIdx] || {};
+  var rawSent = (q.sentence_ko || '').replace(/_+/g, '_____');
+  var sentenceHTML = escapeHTML(rawSent).replace(/_____/g, '<span style="display:inline-block;padding:2px 14px;margin:0 3px;border:2px dashed #7c3aed;border-radius:8px;background:#faf5ff;color:#7c3aed;font-weight:800">___</span>');
+  var enHTML = q.sentence_en ? '<div style="text-align:center;margin:0 0 12px;padding:8px 14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;font-size:12px;color:#78350f;font-style:italic">💡 ' + escapeHTML(q.sentence_en) + '</div>' : '';
+  var choicesHTML = (q.choices || []).map(function(c, ci){
+    var disabled = _nqState.answered ? 'disabled' : '';
+    var bg = '#fff', color = '#0f172a', border = '#e2e8f0';
+    if (_nqState.answered) {
+      if (ci === q.correct_index) { bg = '#dcfce7'; color = '#15803d'; border = '#22c55e'; }
+      else if (_nqState.picked === ci) { bg = '#fee2e2'; color = '#dc2626'; border = '#f87171'; }
+    }
+    return '<button ' + disabled + ' onclick="_nqPick(' + ci + ')" style="padding:12px 18px;border:2px solid ' + border + ';background:' + bg + ';color:' + color + ';border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:\'Noto Serif KR\',serif;min-width:110px">' + escapeHTML(c) + '</button>';
+  }).join('');
+  var explHTML = (_nqState.answered && q.explanation_ko)
+    ? '<div style="margin-top:14px;padding:12px 14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;font-size:13px;color:#0c4a6e;line-height:1.6">📘 ' + escapeHTML(q.explanation_ko) + '</div>'
+    : '';
+  body.innerHTML =
+      '<div style="font-size:13px;color:#64748b;margin-bottom:12px">문맥에 가장 어울리는 단어를 고르세요. (' + (_nqIdx + 1) + '/' + _nqQuestions.length + ')</div>'
+    + enHTML
+    + '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px;margin-bottom:18px;font-family:\'Noto Serif KR\',serif;font-size:17px;text-align:center;line-height:2;word-break:keep-all">' + sentenceHTML + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center">' + choicesHTML + '</div>'
+    + explHTML;
+  foot.innerHTML = _nqState.answered
+    ? '<button class="btn btn-g" onclick="_nqNext()">' + (_nqIdx + 1 >= _nqQuestions.length ? '완료 →' : '다음 →') + '</button>'
+    : '<div style="font-size:12px;color:#94a3b8;padding:6px 0">단어를 골라주세요</div>';
+}
+
+function _nqPick(ci) {
+  if (!_nqState || _nqState.answered) return;
+  var q = _nqQuestions[_nqIdx] || {};
+  _nqState.picked = ci;
+  _nqState.answered = true;
+  if (ci === q.correct_index) _nqScore++;
+  _nqRender();
+}
+
+function _nqNext() {
+  _nqIdx++;
+  _nqState = null;
+  _nqRender();
+}
+
 async function _asLoadArticles() {
   var sb = getSupa(); if (!sb) return;
   var g = document.getElementById('as-article-grid'); if (!g) return;
@@ -15118,6 +15284,25 @@ setTimeout(renderCompletedStudies, 500);
       <div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Loading expressions...</div>
     </div>
     <button onclick="markStageDone('expressions');returnToActivities(closeKeyExpressionsModal)" style="display:block;width:100%;margin-top:18px;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer">완료 ✓</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     NUANCE QUIZ MODAL (Forest only)
+═══════════════════════════════════════════ -->
+<div class="woverlay hidden" id="nq-modal" onclick="if(event.target===this)closeNuanceQuiz()">
+  <div class="dct-panel">
+    <div class="dct-header">
+      <div>
+        <div style="font-size:13px;font-weight:800;letter-spacing:.5px">🎯 Nuance Quiz</div>
+        <div style="font-size:11px;opacity:.65;margin-top:2px" id="nq-step-sub">유의어 구별 · Forest</div>
+      </div>
+      <button onclick="closeNuanceQuiz()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:14px">✕</button>
+    </div>
+    <div class="dct-body" id="nq-body">
+      <div class="as-loading"><div class="as-spinner"></div><div>Loading…</div></div>
+    </div>
+    <div class="dct-foot" id="nq-foot"></div>
   </div>
 </div>
 
