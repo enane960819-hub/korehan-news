@@ -790,16 +790,38 @@ function renderStories() {
     return;
   }
 
-  // Netflix-style genre rails when no filter is active
+  // Netflix-style genre rails when no filter is active.
+  // Each story appears in exactly ONE rail — priority order:
+  //   1) ⚡ Quick Reads  →  2) its genre rail  →  3) its level rail
   var noFilter = activeGenre === 'all' && activeLvl === 'all' && activePerspective === 'all';
   if (noFilter) {
     grid.className = 'st-rails';
     grid.style.display = 'block';
+    var placed = {};
+    var storyKey = function(s) { return s && (s.id != null ? String(s.id) : (s.title || '')); };
+
+    // 1) Quick Reads — claim ≤3-min stories first
+    var quickReads = [];
+    list.forEach(function(s) {
+      var m = String(s.readTime || s.read_time || '').match(/\d+/);
+      if (m && parseInt(m[0], 10) <= 3 && quickReads.length < 12) {
+        quickReads.push(s);
+        placed[storyKey(s)] = true;
+      }
+    });
+    var quickHTML = quickReads.length
+      ? '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title">⚡ Quick Reads</div></div>'
+        + '<div class="st-rail-scroll">' + quickReads.map(renderStoryCard).join('') + '</div></div>'
+      : '';
+
+    // 2) Genre rails — only stories not yet placed
     var byGenre = {};
     list.forEach(function(s) {
+      if (placed[storyKey(s)]) return;
       var g = s.genre || s.mood || 'slice_of_life';
       if (!byGenre[g]) byGenre[g] = [];
       byGenre[g].push(s);
+      placed[storyKey(s)] = true;
     });
     var order = ['slice_of_life','romance','mystery','adventure','thriller','essay','workplace','fun','touching','scary','shocking'];
     var keys = Object.keys(byGenre).sort(function(a, b) {
@@ -819,19 +841,12 @@ function renderStories() {
       + '</div>';
     }).join('');
 
-    // "⚡ Quick Reads" — stories with readTime <= 3 min
-    var quickReads = list.filter(function(s) {
-      var m = String(s.readTime || s.read_time || '').match(/\d+/);
-      return m && parseInt(m[0], 10) <= 3;
-    }).slice(0, 12);
-    var quickHTML = quickReads.length
-      ? '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title">⚡ Quick Reads</div></div>'
-        + '<div class="st-rail-scroll">' + quickReads.map(renderStoryCard).join('') + '</div></div>'
-      : '';
-
-    // "By Level" rails — Sprout / Tree / Forest
+    // 3) Level rails — catch anything that slipped past (genreless stories)
     var byLevel = { b: [], i: [], a: [] };
-    list.forEach(function(s){ if (byLevel[s.lvl]) byLevel[s.lvl].push(s); });
+    list.forEach(function(s) {
+      if (placed[storyKey(s)]) return;
+      if (byLevel[s.lvl]) { byLevel[s.lvl].push(s); placed[storyKey(s)] = true; }
+    });
     var LVL_RAIL_LABEL = { b: '🌱 Sprout Stories', i: '🌳 Tree Stories', a: '🌲 Forest Stories' };
     var lvlRailsHTML = ['b','i','a'].map(function(lv) {
       if (!byLevel[lv].length) return '';
