@@ -3839,6 +3839,29 @@ function renderArticleVocab(a) {
     return out;
   }
 
+  function syncIntoHover(items) {
+    // Surface the vocab list into the body hover system so the same words
+    // are clickable / underlined in the article. We extend the global VOCAB
+    // (used by wrapVocab → .kh-word) and re-wrap the article body.
+    if (typeof VOCAB !== 'object' || !VOCAB) return;
+    var added = 0;
+    items.forEach(function(it) {
+      if (!it || !it.ko) return;
+      if (!VOCAB[it.ko] || !VOCAB[it.ko].en) {
+        VOCAB[it.ko] = { rom: it.rom || '', en: it.en || '' };
+        added++;
+      }
+    });
+    if (added > 0) {
+      try {
+        var artEl = document.getElementById('art-tab-article');
+        if (artEl) {
+          artEl.querySelectorAll('.vocab-zone').forEach(function(z){ wrapVocab(z); });
+        }
+      } catch(e) {}
+    }
+  }
+
   function finalize(items) {
     // The box itself stays visible — keep the Vocab tab useful even when
     // we're falling back to body-scanned common vocabulary.
@@ -3852,6 +3875,7 @@ function renderArticleVocab(a) {
       return;
     }
     _renderArticleVocabItems(el, items);
+    syncIntoHover(items);
   }
 
   var inline = normalize(a && a.vocab);
@@ -3861,8 +3885,65 @@ function renderArticleVocab(a) {
   var artId = a && a.id;
   if (!artId || typeof getFromCache !== 'function') { finalize([]); return; }
   getFromCache('article', artId, 'ai_analysis').then(function(cached) {
-    finalize(normalize(cached && cached.vocab));
+    var cachedItems = normalize(cached && cached.vocab);
+    if (cachedItems.length) { finalize(cachedItems); return; }
+    // No cached AI vocab → render the body-scanned fallback immediately so
+    // the panel isn't empty, then quietly ask Claude for proper article-
+    // specific vocab in the background. When that returns we re-render.
+    finalize([]);
+    _autoGenerateArticleVocab(a);
   }).catch(function() { finalize([]); });
+}
+
+// Per-article in-flight guard so opening the Vocab tab repeatedly doesn't
+// spawn duplicate Claude calls.
+var _articleVocabGenInFlight = {};
+async function _autoGenerateArticleVocab(a) {
+  if (!a || !a.id) return;
+  if (_articleVocabGenInFlight[a.id]) return;
+  if (typeof callClaude !== 'function') return;
+  var bodyText = (a.body || '').replace(/<[^>]*>/g, '').slice(0, 1800);
+  if (!bodyText || bodyText.length < 40) return;
+  _articleVocabGenInFlight[a.id] = true;
+  try {
+    var res = await callClaude({
+      feature: 'article-vocab',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      messages: [{ role: 'user', content:
+        'Pick 8-12 key Korean vocabulary words from the article below for an intermediate language learner. Return ONLY a JSON array. No prose, no markdown.\n\n'
+        + 'Schema: [{"ko":"단어","rom":"romanization","en":"English meaning (1-3 words)","note":"optional brief usage tip"}]\n\n'
+        + 'Rules:\n'
+        + '- Every "ko" must literally appear in the article (or its dictionary form must appear conjugated, e.g. include 재미있다 if 재미있는 is in body).\n'
+        + '- Prefer content words (nouns / verbs / adjectives). Avoid particles, single-syllable function words, and proper names that are obvious (e.g. 한국, 미국).\n'
+        + '- 2+ Korean characters per entry. Dictionary form for verbs/adjectives.\n'
+        + '- "en" must be the actual English meaning, concise. No fake or placeholder definitions.\n\n'
+        + 'Article:\n' + bodyText
+      }]
+    });
+    var raw = (res && res.content || []).map(function(b){ return b.text || ''; }).join('');
+    raw = raw.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+    var si = raw.indexOf('['), ei = raw.lastIndexOf(']');
+    if (si >= 0 && ei > si) raw = raw.slice(si, ei + 1);
+    var parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || !parsed.length) return;
+    // Persist so future loads skip the Claude call.
+    try {
+      if (typeof upsertArticleCacheRow === 'function') {
+        upsertArticleCacheRow(a.id, { vocab: parsed });
+      }
+    } catch(e) {}
+    // Re-render the panel with the fresh AI vocab.
+    a.vocab = parsed;
+    if (window._currentArticle && window._currentArticle.id === a.id) {
+      window._currentArticle.vocab = parsed;
+    }
+    renderArticleVocab(a);
+  } catch(e) {
+    // Silent — fallback rendering already shown.
+  } finally {
+    _articleVocabGenInFlight[a.id] = false;
+  }
 }
 
 function _addWordToKeyVocabList(ko, rom, en) {
@@ -5203,11 +5284,30 @@ function wrapVocab(el) {
   var keys  = Object.keys(VOCAB).filter(function(k){ return k && k.length >= 2; })
                                 .sort(function(a, b){ return b.length - a.length; });
   if (!keys.length) return;
-  // Korean word boundary: must NOT be preceded or followed by another Korean syllable.
-  // This keeps "국제" from matching inside "국제형사경찰기구" and prevents the
-  // partial-match fragmentation that looks like per-character highlighting.
-  var alternation = keys.map(function(k){ return k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).join('|');
-  var regex = new RegExp('(?:^|[^\\uAC00-\\uD7A3])(' + alternation + ')(?![\\uAC00-\\uD7A3])', 'g');
+  // Build two parallel lists:
+  //   directKeys  — exact-match vocab (regular words, plus stems)
+  //   stemMap     — { stem -> dictionary form }, so when we match the stem +
+  //                 conjugation in the body we can resolve back to the
+  //                 dictionary entry the vocab list uses (재미있는 → 재미있다).
+  var directKeys = keys.slice();
+  var stemMap = {};
+  keys.forEach(function(k) {
+    if (k.length >= 3 && /[다요]$/.test(k)) {
+      var stem = k.slice(0, -1);
+      if (stem.length >= 2 && !stemMap[stem]) stemMap[stem] = k;
+    }
+  });
+  var stems = Object.keys(stemMap).sort(function(a,b){ return b.length - a.length; });
+
+  function esc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+
+  // Direct match: exact word with Korean word-boundary on both sides.
+  var directRe = new RegExp('(?:^|[^\\uAC00-\\uD7A3])(' + directKeys.map(esc).join('|') + ')(?![\\uAC00-\\uD7A3])', 'g');
+  // Stem match: stem followed by 1-4 Korean chars (conjugation).
+  var stemRe = stems.length
+    ? new RegExp('(?:^|[^\\uAC00-\\uD7A3])((?:' + stems.map(esc).join('|') + ')[\\uAC00-\\uD7A3]{1,4})(?![\\uAC00-\\uD7A3])', 'g')
+    : null;
+
   var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
     acceptNode: function(n) {
       if (!n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
@@ -5218,26 +5318,55 @@ function wrapVocab(el) {
   });
   var nodes = [];
   while (walker.nextNode()) nodes.push(walker.currentNode);
+
+  // Collect all match spans across both regexes, then resolve overlaps —
+  // longer / direct matches win.
   nodes.forEach(function(node) {
-    regex.lastIndex = 0;
-    if (!regex.test(node.nodeValue)) return;
-    regex.lastIndex = 0;
+    var text = node.nodeValue;
+    var spans = [];
+    function pushMatches(re, isStem) {
+      if (!re) return;
+      re.lastIndex = 0;
+      var m;
+      while ((m = re.exec(text)) !== null) {
+        var matched = m[1];
+        var wordStart = m.index + (m[0].length - matched.length);
+        var wordEnd = wordStart + matched.length;
+        var dictForm = matched;
+        if (isStem) {
+          // Find which stem prefix matched and resolve back to dictionary form.
+          for (var i = 0; i < stems.length; i++) {
+            if (matched.indexOf(stems[i]) === 0) { dictForm = stemMap[stems[i]]; break; }
+          }
+        }
+        spans.push({ start: wordStart, end: wordEnd, text: matched, dict: dictForm });
+        if (re.lastIndex <= wordEnd) re.lastIndex = wordEnd; // skip past trailing boundary
+      }
+    }
+    pushMatches(directRe, false);
+    pushMatches(stemRe, true);
+    if (!spans.length) return;
+    // Sort by start asc, then by length desc — longer claims overlapping range.
+    spans.sort(function(a,b){ return a.start - b.start || (b.end - b.start) - (a.end - a.start); });
+    var picked = [];
+    var cursor = 0;
+    spans.forEach(function(s) {
+      if (s.start < cursor) return; // overlaps previously-picked span
+      picked.push(s); cursor = s.end;
+    });
+    if (!picked.length) return;
     var frag = document.createDocumentFragment();
-    var last = 0, m;
-    while ((m = regex.exec(node.nodeValue)) !== null) {
-      // m[1] is the vocab word; m.index points to the char before it (or start).
-      var wordStart = m.index + (m[0].length - m[1].length);
-      if (wordStart > last) frag.appendChild(document.createTextNode(node.nodeValue.slice(last, wordStart)));
+    var last = 0;
+    picked.forEach(function(s) {
+      if (s.start > last) frag.appendChild(document.createTextNode(text.slice(last, s.start)));
       var span = document.createElement('span');
       span.className = 'kh-word';
-      span.dataset.word = m[1];
-      span.textContent = m[1];
+      span.dataset.word = s.dict; // dictionary form so tooltip lookup works
+      span.textContent = s.text;
       frag.appendChild(span);
-      last = wordStart + m[1].length;
-      // Back up so the trailing boundary char can anchor the next match.
-      if (regex.lastIndex > last) regex.lastIndex = last;
-    }
-    if (last < node.nodeValue.length) frag.appendChild(document.createTextNode(node.nodeValue.slice(last)));
+      last = s.end;
+    });
+    if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
     node.parentNode.replaceChild(frag, node);
   });
 }
