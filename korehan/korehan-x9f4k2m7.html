@@ -1269,7 +1269,22 @@ async function submitForm(status){
   if (idx !== -1) DB[idx] = article;
   else DB.unshift(article);
 
-  if(status==='published') adminExtractVocab({title,body});
+  if(status==='published') {
+    adminExtractVocab({title,body});
+    // Fire-and-forget: generate the full learning-content cache (translation
+    // + vocab + grammar + quiz) in the background so readers never see an
+    // empty Vocab/Grammar/Quiz tab. Schema-aware, silent, no navigation.
+    (async function(){
+      try {
+        var schema = await _detectCacheSchemaSimple();
+        if (!schema) { console.warn('[auto-genCache] schema undetected, skipping'); return; }
+        console.log('[auto-genCache] starting for', article.id, 'schema:', schema);
+        var ok = await genCache(article.id, schema, { silent: true });
+        console.log('[auto-genCache] done:', ok, '/4 steps succeeded');
+        if (typeof toast === 'function' && ok) toast('📚 AI learning cache generated (' + ok + '/4)');
+      } catch(e) { console.warn('[auto-genCache] failed:', e); }
+    })();
+  }
   closeModal(); goList();
   toast(status==='published' ? '✓ Published!' : 'Draft saved');
 }
@@ -3975,11 +3990,13 @@ async function saveExpressions(articleId) {
   }
 }
 
-async function genCache(articleId, schema) {
+async function genCache(articleId, schema, opts) {
+  opts = opts || {};
+  const silent = !!opts.silent;
   const a = DB.find(function(x){ return String(x.id) === String(articleId); });
   if (!a) return;
-  const st  = document.getElementById('cst-' + articleId);
-  const btn = document.getElementById('cbtn-' + articleId);
+  const st  = silent ? null : document.getElementById('cst-' + articleId);
+  const btn = silent ? null : document.getElementById('cbtn-' + articleId);
   if (btn) btn.disabled = true;
 
   const _body  = a.body  || '';
@@ -4086,7 +4103,31 @@ async function genCache(articleId, schema) {
   }
 
   if (st) st.textContent = '✅ 완료 (' + _ok + '/4)';
-  setTimeout(function(){ goAICache(); }, 1200);
+  if (!silent) setTimeout(function(){ goAICache(); }, 1200);
+  return _ok;
+}
+
+// Cached detected schema so we don't re-probe on every publish.
+var _cacheSchemaCached = null;
+async function _detectCacheSchemaSimple() {
+  if (_cacheSchemaCached) return _cacheSchemaCached;
+  const H = { 'apikey': SUPA_KEY_ADMIN, 'Authorization': 'Bearer ' + (_getAccessTokenFromStorage()||SUPA_KEY_ADMIN) };
+  try {
+    const r0 = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?select=*&limit=1', { headers: H });
+    if (r0.ok) {
+      const d0 = await r0.json();
+      if (Array.isArray(d0) && d0.length > 0) {
+        const cols = Object.keys(d0[0]);
+        if (cols.indexOf('cache_key') !== -1 && cols.indexOf('content_type') !== -1) { _cacheSchemaCached = 'kv'; return 'kv'; }
+        if (cols.indexOf('article_id') !== -1 && (cols.indexOf('vocab') !== -1 || cols.indexOf('grammar') !== -1)) { _cacheSchemaCached = 'wide'; return 'wide'; }
+      }
+    }
+    const r1 = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?select=content_type,content_id,cache_key,cache_value&limit=0', { headers: H });
+    if (r1.ok) { _cacheSchemaCached = 'kv'; return 'kv'; }
+    const r2 = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?select=article_id,vocab,grammar&limit=0', { headers: H });
+    if (r2.ok) { _cacheSchemaCached = 'wide'; return 'wide'; }
+  } catch(e) { console.warn('[cacheSchema] probe failed:', e); }
+  return null;
 }
 
 
