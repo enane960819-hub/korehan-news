@@ -737,7 +737,16 @@ function _createAdminProxy() {
             return new Promise(function(resolve, reject) {
               var reader = new FileReader();
               reader.onload = function() {
-                var base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(reader.result)));
+                // Chunked base64: String.fromCharCode.apply has a ~100K argument
+                // limit so encoding anything over a few hundred KB in one call
+                // stack-overflows. Encode 8KB at a time.
+                var bytes = new Uint8Array(reader.result);
+                var binary = '';
+                var CHUNK = 8192;
+                for (var i = 0; i < bytes.length; i += CHUNK) {
+                  binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + CHUNK, bytes.length)));
+                }
+                var base64 = btoa(binary);
                 adminAPI({
                   action: 'storage_upload',
                   bucket: bucket, path: path,
@@ -1101,16 +1110,17 @@ function livePreview(){
 }
 
 // ── Story thumbnail upload ───────────────────────────────────
-function _seCompressImage(file) {
+function _seCompressImage(file, maxDim, quality) {
   return new Promise(function(resolve, reject) {
     if (!file.type || !file.type.startsWith('image/')) return reject(new Error('이미지 파일이 아닙니다'));
-    var MAX_W = 1200, MAX_H = 1200, QUALITY = 0.85;
+    var MAX = maxDim || 900;
+    var Q   = quality || 0.8;
     var url = URL.createObjectURL(file);
     var img = new Image();
     img.onload = function() {
       var w = img.naturalWidth || img.width;
       var h = img.naturalHeight || img.height;
-      var scale = Math.min(1, MAX_W / w, MAX_H / h);
+      var scale = Math.min(1, MAX / w, MAX / h);
       var tw = Math.round(w * scale), th = Math.round(h * scale);
       var canvas = document.createElement('canvas');
       canvas.width = tw; canvas.height = th;
@@ -1119,7 +1129,7 @@ function _seCompressImage(file) {
       canvas.toBlob(function(blob) {
         if (!blob) return reject(new Error('compression failed'));
         resolve(new File([blob], (file.name || 'thumb').replace(/\.[^.]+$/,'') + '.jpg', { type: 'image/jpeg' }));
-      }, 'image/jpeg', QUALITY);
+      }, 'image/jpeg', Q);
     };
     img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error('이미지 로드 실패')); };
     img.src = url;
@@ -1133,6 +1143,15 @@ function _seUploadWithTimeout(promise, ms) {
   });
 }
 
+// Direct SDK upload — multipart streaming, much faster than admin-proxy base64
+async function _seDirectUpload(bucket, path, file) {
+  if (!window.supabase || !window.supabase.createClient) throw new Error('supabase-js not loaded');
+  var client = window.supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN);
+  var up = await client.storage.from(bucket).upload(path, file, { upsert: true, contentType: 'image/jpeg' });
+  if (up && up.error) throw up.error;
+  return client.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
+
 async function seThumbUpload(input) {
   if (!input.files || !input.files[0]) return;
   var file = input.files[0];
@@ -1140,20 +1159,29 @@ async function seThumbUpload(input) {
   var preview  = document.getElementById('se-thumb-preview');
   if (preview) preview.innerHTML = '<span style="font-size:12px;color:#64748b">⏳ 이미지 압축 중 (' + Math.round(file.size/1024) + ' KB)…</span>';
   try {
-    // Mobile photos are often 3–10MB → the admin-proxy base64 encoder crashes
-    // with stack overflow on large files. Compress client-side first.
+    // Mobile photos are 3–10MB. Aggressive compression keeps payloads small on LTE.
     var compressed = file;
-    if (file.size > 500 * 1024) compressed = await _seCompressImage(file);
+    if (file.size > 300 * 1024 || !/image\/jpeg/i.test(file.type)) {
+      compressed = await _seCompressImage(file, 900, 0.8);
+    }
     if (preview) preview.innerHTML = '<span style="font-size:12px;color:#64748b">⏳ 업로드 중 (' + Math.round(compressed.size/1024) + ' KB)…</span>';
-    var sb = getSb();
-    if (!sb) throw new Error('Admin client not available');
     var path = 'stories/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.jpg';
-    var up = await _seUploadWithTimeout(
-      sb.storage.from('article-images').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' }),
-      30000
-    );
-    if (up && up.error) throw up.error;
-    var publicUrl = sb.storage.from('article-images').getPublicUrl(path).data.publicUrl;
+    var publicUrl = '';
+    // Fast path: direct Supabase SDK upload (multipart streaming)
+    try {
+      publicUrl = await _seUploadWithTimeout(_seDirectUpload('article-images', path, compressed), 45000);
+    } catch (directErr) {
+      console.warn('direct upload failed, falling back to admin proxy:', directErr);
+      // Fallback: admin proxy (chunked base64)
+      var sb = getSb();
+      if (!sb) throw directErr;
+      var up = await _seUploadWithTimeout(
+        sb.storage.from('article-images').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' }),
+        60000
+      );
+      if (up && up.error) throw up.error;
+      publicUrl = sb.storage.from('article-images').getPublicUrl(path).data.publicUrl;
+    }
     if (urlInput) urlInput.value = publicUrl;
     if (preview) preview.innerHTML = '<img src="' + publicUrl + '" style="max-height:100px;border-radius:8px;border:1px solid #e2e8f0"><div style="font-size:11px;color:#16a34a;margin-top:4px">✅ 업로드 완료</div>';
   } catch (e) {
