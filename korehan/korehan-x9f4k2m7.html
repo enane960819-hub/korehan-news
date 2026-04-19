@@ -4430,6 +4430,20 @@ var ADMIN_CUR_LESSONS = {
 // article_cache 테이블에 캐시 (content_id, content_type, key, value)
 // ════════════════════════════════════════════════════════════
 
+// Extract a JSON object from a Claude response that may include a ```json fence,
+// a bare "json" label, or prose around the payload. Throws if no object is found.
+function extractAdminJson(raw) {
+  var s = String(raw || '');
+  s = s.replace(/```json\s*([\s\S]*?)```/gi, '$1').replace(/```/g, '').trim();
+  s = s.replace(/^\s*json\b[:\s]*/i, '').trim();
+  var first = s.indexOf('{');
+  var last  = s.lastIndexOf('}');
+  if (first === -1 || last === -1 || last <= first) {
+    throw new Error('No JSON object in AI response: ' + s.slice(0, 120));
+  }
+  return JSON.parse(s.slice(first, last + 1));
+}
+
 // Service role key removed — callAdminClaude now uses JWT auth
 async function callAdminClaude(prompt) {
   var token = await _getAdminToken();
@@ -4490,8 +4504,7 @@ async function autoGenConvAI(convId, convObj) {
       + '\n\nvocab 5개, grammar 2개, mission 2개. JSON만 출력.';
 
     var result = await callAdminClaude(prompt);
-    var clean = result.replace(/```json[\s\S]*?```/g, function(m){ return m.slice(7,-3); }).replace(/```/g,'').trim();
-    var parsed = JSON.parse(clean);
+    var parsed = extractAdminJson(result);
 
     // DB: 현재 row 읽어서 data 컬럼 병합 후 update
     const sb = getSb();
@@ -4540,8 +4553,7 @@ async function autoGenStoryAI(storyId, storyObj) {
       + 'JSON only.';
 
     var result = await callAdminClaude(prompt);
-    var clean = result.replace(/```json[\s\S]*?```/g, function(m){ return m.slice(7,-3); }).replace(/```/g,'').trim();
-    var parsed = JSON.parse(clean);
+    var parsed = extractAdminJson(result);
 
     // Helpers for post-validation
     var cleanBody = bodyText;
