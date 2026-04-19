@@ -138,13 +138,30 @@
   function findFirstMatch(text) {
     for (var i = 0; i < vocabWords.length; i++) {
       var word = vocabWords[i];
+      // 1) Exact match with word boundary
       var regex = new RegExp('(^|[^가-힣])(' + escapeRegExp(word) + ')(?![가-힣])');
       var m = text.match(regex);
       if (m) {
         var full = m[0];
         var matchedWord = m[2];
         var index = text.indexOf(full) + full.indexOf(matchedWord);
-        return { word: matchedWord, index: index };
+        return { word: word, matched: matchedWord, index: index };
+      }
+      // 2) Stem match for dictionary-form verbs / adjectives: allow the stem
+      //    to match followed by up to 4 Korean chars (conjugation endings).
+      //    e.g. vocab '첨벙거리다' → matches '첨벙거리는' / '첨벙거렸어요' in body.
+      if (word.length >= 3 && /[다요]$/.test(word)) {
+        var stem = word.slice(0, -1);
+        if (stem.length >= 2) {
+          var stemRe = new RegExp('(^|[^가-힣])(' + escapeRegExp(stem) + '[가-힣]{1,4})');
+          var m2 = text.match(stemRe);
+          if (m2) {
+            var full2 = m2[0];
+            var mword2 = m2[2];
+            var idx2 = text.indexOf(full2) + full2.indexOf(mword2);
+            return { word: word, matched: mword2, index: idx2 };
+          }
+        }
       }
     }
     return null;
@@ -156,12 +173,15 @@
     var match = findFirstMatch(text);
     if (!match) return;
 
+    // Vocab lookup uses the dictionary form; visible text uses the actual
+    // matched string (may be a conjugated form longer than the dictionary entry).
     var vocab = getVocab(match.word);
     if (!vocab) return;
 
+    var matchedLen = (match.matched || match.word).length;
     var before = text.slice(0, match.index);
-    var target = text.slice(match.index, match.index + match.word.length);
-    var after = text.slice(match.index + match.word.length);
+    var target = text.slice(match.index, match.index + matchedLen);
+    var after  = text.slice(match.index + matchedLen);
 
     var frag = document.createDocumentFragment();
     if (before) frag.appendChild(document.createTextNode(before));
