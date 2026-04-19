@@ -7255,8 +7255,16 @@ async function saveStoryEdit(rowId) {
     var charVal = document.getElementById('se-character').value;
     var seriesVal = document.getElementById('se-series').value.trim();
     var episodeVal = parseInt(document.getElementById('se-episode').value) || 0;
-    // Preserve existing vocab / grammar / key_expressions on edit (they're AI-generated)
-    var existing = d || {};
+    // Fetch existing story data so AI-generated fields (vocab / grammar /
+    // key_expressions / body_en / comprehension) are preserved across edits
+    var existing = {};
+    if (rowId) {
+      try {
+        var sbRead = getSb();
+        var rr = await sbRead.from('stories_data').select('data').eq('id', rowId).single();
+        if (rr && rr.data && rr.data.data) existing = rr.data.data;
+      } catch(_) {}
+    }
     var storyObj = {
       title:     document.getElementById('se-title').value.trim(),
       title_en:  document.getElementById('se-title-en').value.trim(),
