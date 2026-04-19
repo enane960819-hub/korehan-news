@@ -3775,23 +3775,29 @@ function renderArticleVocab(a) {
   var el = document.getElementById('art-vocab-list');
   if (!el) return;
 
-  // Article Vocab MUST come from the article itself — never the global VOCAB
-  // dictionary. We strictly use:
-  //   1) a.vocab (AI-curated vocab attached to the article object), or
-  //   2) article_cache.ai_analysis.vocab (Claude-picked from the article body).
-  // Both of those are generated against the article body, so every entry is
-  // guaranteed to appear in the article. Each entry is validated against the
-  // body text as a second safety net.
+  // Article Vocab MUST come from the article itself. Source order:
+  //   1) a.vocab (AI-curated vocab attached to the article object)
+  //   2) article_cache.ai_analysis.vocab (Claude-picked from the article body)
+  //   3) Global VOCAB entries that appear in the body AS STANDALONE words
+  //      (length>=2, Korean word-boundary — so we never surface 집 just
+  //      because "집중" is in the body). Every surfaced entry is guaranteed
+  //      to appear in the article text.
   var body = (a && (a.body || a.full || a.title)) || '';
 
   function inArticleBody(ko) {
     if (!ko) return false;
-    if (body.indexOf(ko) !== -1) return true;
-    // Dictionary-form verbs/adjectives (ending in 다) often appear conjugated
-    // in the body; accept the stem as an article match.
+    // Korean word boundary: the entry must NOT be sandwiched between other
+    // Korean syllables — that would be a partial match inside a compound.
+    var re = new RegExp('(^|[^\\uAC00-\\uD7A3])' + ko.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '(?![\\uAC00-\\uD7A3])');
+    if (re.test(body)) return true;
+    // Dictionary-form verbs/adjectives (ending in 다/요) often appear
+    // conjugated in the body; accept the stem as an article match.
     if (ko.length >= 3 && /[다요]$/.test(ko)) {
       var stem = ko.slice(0, -1);
-      if (stem.length >= 2 && body.indexOf(stem) !== -1) return true;
+      if (stem.length >= 2) {
+        var sre = new RegExp('(^|[^\\uAC00-\\uD7A3])' + stem.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '[\\uAC00-\\uD7A3]{0,4}(?![\\uAC00-\\uD7A3])');
+        if (sre.test(body)) return true;
+      }
     }
     return false;
   }
@@ -3804,7 +3810,7 @@ function renderArticleVocab(a) {
       if (!v) return;
       var ko = v.ko || v.word || v.word_ko || '';
       if (!ko || ko.length < 2 || seen[ko]) return;
-      if (!inArticleBody(ko)) return; // must literally appear in the article
+      if (!inArticleBody(ko)) return;
       seen[ko] = true;
       out.push({
         ko: ko,
@@ -3815,15 +3821,36 @@ function renderArticleVocab(a) {
     return out.slice(0, 12);
   }
 
+  function fromGlobalVocab() {
+    if (!body || typeof VOCAB !== 'object' || !VOCAB) return [];
+    // Try longest first so compound nouns beat single roots.
+    var keys = Object.keys(VOCAB).filter(function(k){ return k && k.length >= 2; })
+                                 .sort(function(a,b){ return b.length - a.length; });
+    var out = [];
+    var seen = {};
+    for (var i = 0; i < keys.length && out.length < 10; i++) {
+      var k = keys[i];
+      if (seen[k]) continue;
+      if (!inArticleBody(k)) continue;
+      seen[k] = true;
+      var v = VOCAB[k] || {};
+      out.push({ ko: k, rom: v.rom || '', en: v.en || '' });
+    }
+    return out;
+  }
+
   function finalize(items) {
+    // The box itself stays visible — keep the Vocab tab useful even when
+    // we're falling back to body-scanned common vocabulary.
+    var box = el.closest('.art-vocab-box');
+    if (box) box.style.display = '';
     if (!items || !items.length) {
-      var box = el.closest('.art-vocab-box');
-      if (box) box.style.display = 'none';
-      el.innerHTML = '';
+      items = fromGlobalVocab();
+    }
+    if (!items.length) {
+      el.innerHTML = '<div style="padding:20px;color:#94a3b8;font-size:13px;text-align:center">No vocabulary available for this article yet.</div>';
       return;
     }
-    var box2 = el.closest('.art-vocab-box');
-    if (box2) box2.style.display = '';
     _renderArticleVocabItems(el, items);
   }
 
