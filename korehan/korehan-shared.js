@@ -3744,27 +3744,21 @@ function isWordSaved(ko) {
   return saved.some(function(w){ return (w.ko || w.word_ko || '') === ko; });
 }
 
-function renderArticleVocab(a) {
-  var el = document.getElementById('art-vocab-list');
-  if (!el) return;
-  var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
-  var found = [];
-  Object.keys(VOCAB).forEach(function(k) {
-    if (text.indexOf(k) !== -1 && found.length < 10) found.push(k);
-  });
-  if (!found.length) { var box = el.closest('.art-vocab-box'); if(box) box.style.display = 'none'; return; }
-
-  el.innerHTML = found.map(function(k) {
-    var v = VOCAB[k];
+function _renderArticleVocabItems(el, items) {
+  el.innerHTML = items.map(function(it) {
+    var k = it.ko;
+    var rom = it.rom || '';
+    var en = it.en || '';
     var saved = isWordSaved(k);
     var safeK  = k.replace(/'/g, "\\'");
-    var safeR  = (v.rom||'').replace(/'/g, "\\'");
-    var safeE  = (v.en||'').replace(/'/g, "\\'");
-    return '<div class="art-vocab-item" id="avi-' + k + '">'
+    var safeR  = rom.replace(/'/g, "\\'");
+    var safeE  = en.replace(/'/g, "\\'");
+    // Use a stable data attribute instead of interpolating Korean into an id.
+    return '<div class="art-vocab-item" data-avi-ko="' + escapeHtml(k) + '">'
       + '<div class="avi-main">'
-      + '<span class="art-vocab-ko">' + k + '</span>'
-      + '<span class="art-vocab-rom">' + (v.rom||'') + '</span>'
-      + '<span class="art-vocab-en">' + (v.en||'') + '</span>'
+      + '<span class="art-vocab-ko">' + escapeHtml(k) + '</span>'
+      + '<span class="art-vocab-rom">' + escapeHtml(rom) + '</span>'
+      + '<span class="art-vocab-en">' + escapeHtml(en) + '</span>'
       + '</div>'
       + '<div class="avi-actions">'
       + ttsBtn(k)
@@ -3777,11 +3771,80 @@ function renderArticleVocab(a) {
   }).join('');
 }
 
+function renderArticleVocab(a) {
+  var el = document.getElementById('art-vocab-list');
+  if (!el) return;
+
+  // 1) Prefer AI-generated article-specific vocab from article_cache. These
+  //    are picked by Claude to match the article topic (beauty / economy /
+  //    politics / etc.) — far better than scanning the global VOCAB for any
+  //    common word that happens to appear in the body (e.g. 집, 일, 단).
+  var inlineVocab = (a && Array.isArray(a.vocab)) ? a.vocab : null;
+
+  function normalize(list) {
+    if (!Array.isArray(list)) return [];
+    var out = [];
+    var seen = {};
+    list.forEach(function(v) {
+      if (!v) return;
+      var ko = v.ko || v.word || v.word_ko || '';
+      if (!ko || ko.length < 2 || seen[ko]) return;
+      seen[ko] = true;
+      out.push({
+        ko: ko,
+        rom: v.rom || v.reading || v.word_rom || '',
+        en:  v.en  || v.meaning || v.word_en  || ''
+      });
+    });
+    return out.slice(0, 12);
+  }
+
+  function fallbackFromStaticVocab() {
+    var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
+    var found = [];
+    Object.keys(VOCAB).forEach(function(k) {
+      // Skip 1-char entries (single particles/syllables) — they're noise.
+      if (k.length < 2) return;
+      if (text.indexOf(k) !== -1 && found.length < 10) {
+        var v = VOCAB[k] || {};
+        found.push({ ko: k, rom: v.rom || '', en: v.en || '' });
+      }
+    });
+    return found;
+  }
+
+  function finalize(items) {
+    if (!items || !items.length) {
+      // Last resort: static dictionary match so the panel isn't empty.
+      items = fallbackFromStaticVocab();
+    }
+    if (!items.length) {
+      var box = el.closest('.art-vocab-box');
+      if (box) box.style.display = 'none';
+      return;
+    }
+    _renderArticleVocabItems(el, items);
+  }
+
+  var inline = normalize(inlineVocab);
+  if (inline.length) { finalize(inline); return; }
+
+  // 2) Async: fetch from article_cache. Show a light placeholder immediately
+  //    so the panel isn't blank while we wait.
+  el.innerHTML = '<div style="padding:16px;color:#94a3b8;font-size:13px;text-align:center">Loading vocabulary…</div>';
+  var artId = a && a.id;
+  if (!artId || typeof getFromCache !== 'function') { finalize([]); return; }
+  getFromCache('article', artId, 'ai_analysis').then(function(cached) {
+    var items = normalize(cached && cached.vocab);
+    finalize(items);
+  }).catch(function() { finalize([]); });
+}
+
 function _addWordToKeyVocabList(ko, rom, en) {
   var el = document.getElementById('art-vocab-list');
   if (!el) return;
   // 이미 있으면 스킵
-  if (document.getElementById('avi-' + ko)) return;
+  if (el.querySelector('.art-vocab-item[data-avi-ko="' + (ko || '').replace(/"/g, '&quot;') + '"]')) return;
   // 박스 보이게
   var box = el.closest('.art-vocab-box');
   if (box) box.style.display = '';
@@ -3790,7 +3853,7 @@ function _addWordToKeyVocabList(ko, rom, en) {
   var safeE = (en||'').replace(/'/g, "\\'");
   var item = document.createElement('div');
   item.className = 'art-vocab-item';
-  item.id = 'avi-' + ko;
+  item.setAttribute('data-avi-ko', ko);
   item.innerHTML =
     '<div class="avi-main">'
     + '<span class="art-vocab-ko">' + ko + '</span>'
