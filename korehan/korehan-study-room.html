@@ -4158,7 +4158,7 @@ async function loadDailyContent() {
     console.log('[loadDailyContent] auto-generating via AI');
     await Promise.race([
       _generateAndSaveDailyContent(today),
-      new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('gen_timeout')); }, 20000); })
+      new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('gen_timeout')); }, 35000); })
     ]);
     // If _generateAndSaveDailyContent succeeded, _applyDailyContent was already called
     if (_todayTopic && _todayTopic.topic_ko) { _pregenTomorrow(); return; }
@@ -4220,7 +4220,8 @@ function _applyFallbackTopic(date) {
       grammar: fb.grammar,
       helpers: fb.helpers,
       dictation_sentences: [],
-      dictation_questions: []
+      dictation_questions: [],
+      __fallback: true
     });
   } catch(e) {
     console.error('[_applyFallbackTopic] failed:', e);
@@ -4239,7 +4240,7 @@ function _setTopicLoadError(msg) {
 }
 
 function _applyDailyContent(rec) {
-  console.log('[_applyDailyContent] applying topic:', rec.topic_ko, '/', rec.topic_en, '| admin_edited:', rec.admin_edited);
+  console.log('[_applyDailyContent] applying topic:', rec.topic_ko, '/', rec.topic_en, '| admin_edited:', rec.admin_edited, rec.__fallback ? '| FALLBACK' : '');
   _todayTopic = {
     id:       (rec.scheduled_date || '') + '_' + (rec.level || ''),
     topic_ko: rec.topic_ko || '',
@@ -4264,12 +4265,16 @@ function _applyDailyContent(rec) {
   renderAIContent();
   hideAILoading();
   // idiom banner removed (duplicate of Home "Today's Phrase")
-  // Cache in localStorage so topic stays consistent across reloads
+  // Cache in localStorage so topic stays consistent across reloads — but ONLY
+  // when the content came from DB or a successful AI generation. Fallback
+  // records would otherwise lock the user onto the generic actor/singer set
+  // because next session would re-serve the cached fallback without retrying.
   try {
-    var lsKey = 'sr_daily_' + (rec.scheduled_date || kstDateKey()) + '_' + (rec.level || _currentLevel);
-    localStorage.setItem(lsKey, JSON.stringify(rec));
-    // Mark as DB-verified this session — next reload within same session uses cache
-    sessionStorage.setItem('sr_daily_checked_' + (rec.scheduled_date || kstDateKey()) + '_' + (rec.level || _currentLevel), '1');
+    if (!rec.__fallback) {
+      var lsKey = 'sr_daily_' + (rec.scheduled_date || kstDateKey()) + '_' + (rec.level || _currentLevel);
+      localStorage.setItem(lsKey, JSON.stringify(rec));
+      sessionStorage.setItem('sr_daily_checked_' + (rec.scheduled_date || kstDateKey()) + '_' + (rec.level || _currentLevel), '1');
+    }
   } catch(e) {}
 }
 
@@ -4386,8 +4391,11 @@ async function _generateAndSaveDailyContent(date) {
 
   try {
     var _aiGenTimeout;
+    // 30s — Claude Haiku on Supabase Edge Function can sometimes take 15-25s
+    // under load. The previous 15s cap caused generation to time out often,
+    // dropping users onto the generic actor/singer fallback content.
     var timeoutPromise = new Promise(function(_, reject) {
-      _aiGenTimeout = setTimeout(function() { reject(new Error('timeout')); }, 15000);
+      _aiGenTimeout = setTimeout(function() { reject(new Error('timeout')); }, 30000);
     });
     var data = await Promise.race([
       callClaude({
@@ -4451,7 +4459,8 @@ async function _generateAndSaveDailyContent(date) {
         grammar:             fb.grammar,
         helpers:             fb.helpers,
         dictation_sentences: [],
-        dictation_questions: []
+        dictation_questions: [],
+        __fallback:          true
       });
     } catch(fb_err) {
       console.error('[_generateAndSaveDailyContent] fallback also failed:', fb_err);
@@ -4490,8 +4499,8 @@ async function generateAIContent(topic) {
   }
 
   if (!supaUser) {
+    // Don't cache the fallback — let the next load retry a real generation.
     _aiContent = buildStudyRoomFallbackContent(topic, _currentLevel);
-    sessionStorage.setItem(cacheKey, JSON.stringify(_aiContent));
     renderAIContent();
     hideAILoading();
     return;
@@ -4552,16 +4561,184 @@ async function generateAIContent(topic) {
     renderAIContent();
     hideAILoading();
   } catch(err) {
+    // Don't cache the fallback — let the next load retry a real generation.
     _aiContent = buildStudyRoomFallbackContent(topic, _currentLevel);
-    sessionStorage.setItem(cacheKey, JSON.stringify(_aiContent));
     renderAIContent();
     hideAILoading();
   }
 }
 
+// Topic-keyword → vocab/grammar/helper packs. When Claude generation fails
+// we match the day's topic against these keywords so the fallback content is
+// at least in the same thematic ballpark (time-of-day topic → time vocab, not
+// generic actor/singer).
+var STUDY_TOPIC_PACKS = [
+  {
+    keys: ['시간','하루','아침','점심','저녁','오전','오후','밤','새벽','time of day','time','morning','evening','afternoon','night'],
+    vocab: {
+      Starter:      [{ko:'아침',rom:'a-chim',en:'morning'},{ko:'점심',rom:'jeom-sim',en:'lunch / noon'},{ko:'저녁',rom:'jeo-nyeok',en:'evening'},{ko:'시간',rom:'si-gan',en:'time'},{ko:'하루',rom:'ha-ru',en:'a day'}],
+      Beginner:     [{ko:'아침',rom:'a-chim',en:'morning'},{ko:'저녁',rom:'jeo-nyeok',en:'evening'},{ko:'오전',rom:'o-jeon',en:'a.m.'},{ko:'오후',rom:'o-hu',en:'p.m.'},{ko:'가장',rom:'ga-jang',en:'the most'}],
+      Intermediate: [{ko:'여유',rom:'yeo-yu',en:'leisure / breathing room'},{ko:'집중',rom:'jip-jung',en:'focus'},{ko:'상쾌하다',rom:'sang-kwae-ha-da',en:'to feel refreshed'},{ko:'고요하다',rom:'go-yo-ha-da',en:'to be quiet / calm'},{ko:'피곤하다',rom:'pi-gon-ha-da',en:'to be tired'}],
+      Advanced:     [{ko:'생체 리듬',rom:'saeng-che ri-deum',en:'biorhythm'},{ko:'활력',rom:'hwal-ryeok',en:'vitality / energy'},{ko:'해질녘',rom:'hae-jil-nyeok',en:'dusk / sundown'},{ko:'여명',rom:'yeo-myeong',en:'dawn'},{ko:'정적',rom:'jeong-jeok',en:'stillness'}]
+    },
+    helpers: [
+      {ko:'저는 아침이 가장 좋아요.',en:'I like mornings the most.'},
+      {ko:'제 가장 좋아하는 시간은 저녁이에요.',en:'My favorite time is evening.'},
+      {ko:'조용한 새벽이 제일 편해요.',en:'The quiet dawn is the most comfortable.'},
+      {ko:'하루 중 점심 시간을 제일 기다려요.',en:'I look forward to lunch the most each day.'}
+    ]
+  },
+  {
+    keys: ['음식','요리','식당','밥','먹','food','cooking','eat','meal','cuisine'],
+    vocab: {
+      Starter:      [{ko:'밥',rom:'bap',en:'rice / meal'},{ko:'김치',rom:'gim-chi',en:'kimchi'},{ko:'음식',rom:'eum-sik',en:'food'},{ko:'맛있어요',rom:'ma-si-sseo-yo',en:'delicious'},{ko:'좋아해요',rom:'jo-a-hae-yo',en:'I like'}],
+      Beginner:     [{ko:'음식',rom:'eum-sik',en:'food'},{ko:'요리',rom:'yo-ri',en:'cooking / dish'},{ko:'식당',rom:'sik-dang',en:'restaurant'},{ko:'맛',rom:'mat',en:'taste'},{ko:'재료',rom:'jae-ryo',en:'ingredient'}],
+      Intermediate: [{ko:'식감',rom:'sik-gam',en:'texture (mouthfeel)'},{ko:'풍미',rom:'pung-mi',en:'flavor / aroma'},{ko:'담백하다',rom:'dam-baek-ha-da',en:'light / clean-tasting'},{ko:'얼큰하다',rom:'eol-keun-ha-da',en:'spicy and warming'},{ko:'보양식',rom:'bo-yang-sik',en:'restorative dish'}],
+      Advanced:     [{ko:'식문화',rom:'sik-mun-hwa',en:'food culture'},{ko:'조리법',rom:'jo-ri-beop',en:'cooking method'},{ko:'향토 음식',rom:'hyang-to eum-sik',en:'regional cuisine'},{ko:'발효',rom:'bal-hyo',en:'fermentation'},{ko:'계승하다',rom:'gye-seung-ha-da',en:'to pass down'}]
+    },
+    helpers: [
+      {ko:'저는 한식을 가장 좋아해요.',en:'I like Korean food the most.'},
+      {ko:'김치찌개는 제가 자주 만드는 요리예요.',en:'Kimchi stew is a dish I often make.'},
+      {ko:'이 식당은 맛이 깊어요.',en:'This restaurant has deep flavors.'},
+      {ko:'재료가 신선해서 더 맛있어요.',en:'It tastes better because the ingredients are fresh.'}
+    ]
+  },
+  {
+    keys: ['주말','계획','휴일','weekend','plan'],
+    vocab: {
+      Starter:      [{ko:'주말',rom:'ju-mal',en:'weekend'},{ko:'친구',rom:'chin-gu',en:'friend'},{ko:'영화',rom:'yeong-hwa',en:'movie'},{ko:'집',rom:'jip',en:'home'},{ko:'쉬어요',rom:'swi-eo-yo',en:'I rest'}],
+      Beginner:     [{ko:'주말',rom:'ju-mal',en:'weekend'},{ko:'계획',rom:'gye-hoek',en:'plan'},{ko:'약속',rom:'yak-sok',en:'appointment / plan'},{ko:'만나요',rom:'man-na-yo',en:'to meet'},{ko:'쇼핑',rom:'syo-ping',en:'shopping'}],
+      Intermediate: [{ko:'여유롭다',rom:'yeo-yu-rop-da',en:'to be relaxed'},{ko:'재충전',rom:'jae-chung-jeon',en:'recharging'},{ko:'약속을 잡다',rom:'yak-so-geul jap-da',en:'to set up plans'},{ko:'알차다',rom:'al-cha-da',en:'to be fulfilling / productive'},{ko:'미루다',rom:'mi-ru-da',en:'to postpone'}],
+      Advanced:     [{ko:'휴식의 질',rom:'hyu-sik-ui jil',en:'quality of rest'},{ko:'자기 계발',rom:'ja-gi gye-bal',en:'self-development'},{ko:'루틴',rom:'ru-tin',en:'routine'},{ko:'몰입',rom:'mol-ip',en:'immersion'},{ko:'삶의 균형',rom:'sal-mui gyun-hyeong',en:'life balance'}]
+    },
+    helpers: [
+      {ko:'이번 주말에는 친구를 만날 거예요.',en:'This weekend I will meet a friend.'},
+      {ko:'저는 주말에 보통 집에서 쉬어요.',en:'I usually rest at home on weekends.'},
+      {ko:'주말 계획을 미리 세우는 편이에요.',en:'I tend to plan my weekends in advance.'},
+      {ko:'재충전할 시간이 꼭 필요해요.',en:'I really need time to recharge.'}
+    ]
+  },
+  {
+    keys: ['여행','관광','travel','trip','tour','vacation'],
+    vocab: {
+      Starter:      [{ko:'여행',rom:'yeo-haeng',en:'trip / travel'},{ko:'가요',rom:'ga-yo',en:'I go'},{ko:'사진',rom:'sa-jin',en:'photo'},{ko:'바다',rom:'ba-da',en:'sea'},{ko:'산',rom:'san',en:'mountain'}],
+      Beginner:     [{ko:'여행',rom:'yeo-haeng',en:'travel'},{ko:'비행기',rom:'bi-haeng-gi',en:'airplane'},{ko:'호텔',rom:'ho-tel',en:'hotel'},{ko:'관광',rom:'gwan-gwang',en:'sightseeing'},{ko:'숙소',rom:'suk-so',en:'lodging'}],
+      Intermediate: [{ko:'여정',rom:'yeo-jeong',en:'itinerary / journey'},{ko:'현지',rom:'hyeon-ji',en:'local (place)'},{ko:'예약하다',rom:'ye-yak-ha-da',en:'to reserve'},{ko:'명소',rom:'myeong-so',en:'famous spot'},{ko:'인상적이다',rom:'in-sang-jeo-gi-da',en:'to be impressive'}],
+      Advanced:     [{ko:'이색적이다',rom:'i-saek-jeo-gi-da',en:'to be unique / exotic'},{ko:'체류',rom:'che-ryu',en:'sojourn / stay'},{ko:'문화 교류',rom:'mun-hwa gyo-ryu',en:'cultural exchange'},{ko:'관광 명소',rom:'gwan-gwang myeong-so',en:'tourist attraction'},{ko:'여독',rom:'yeo-dok',en:'travel fatigue'}]
+    },
+    helpers: [
+      {ko:'저는 제주도로 여행을 가고 싶어요.',en:'I want to travel to Jeju Island.'},
+      {ko:'여행하면서 사진을 많이 찍어요.',en:'I take a lot of photos while traveling.'},
+      {ko:'현지 음식을 꼭 먹어 봐요.',en:'Be sure to try the local food.'},
+      {ko:'숙소를 미리 예약하는 게 좋아요.',en:'It is good to book lodging in advance.'}
+    ]
+  },
+  {
+    keys: ['계절','봄','여름','가을','겨울','season','spring','summer','autumn','fall','winter','weather','날씨'],
+    vocab: {
+      Starter:      [{ko:'봄',rom:'bom',en:'spring'},{ko:'여름',rom:'yeo-reum',en:'summer'},{ko:'가을',rom:'ga-eul',en:'autumn'},{ko:'겨울',rom:'gyeo-ul',en:'winter'},{ko:'날씨',rom:'nal-ssi',en:'weather'}],
+      Beginner:     [{ko:'계절',rom:'gye-jeol',en:'season'},{ko:'덥다',rom:'deop-da',en:'to be hot'},{ko:'춥다',rom:'chup-da',en:'to be cold'},{ko:'따뜻하다',rom:'tta-tteut-ha-da',en:'to be warm'},{ko:'시원하다',rom:'si-won-ha-da',en:'to be cool'}],
+      Intermediate: [{ko:'일교차',rom:'il-gyo-cha',en:'daily temp range'},{ko:'단풍',rom:'dan-pung',en:'autumn foliage'},{ko:'장마',rom:'jang-ma',en:'rainy season'},{ko:'영상/영하',rom:'yeong-sang/yeong-ha',en:'above/below zero'},{ko:'포근하다',rom:'po-geun-ha-da',en:'to be mild / cozy-warm'}],
+      Advanced:     [{ko:'이상 기후',rom:'i-sang gi-hu',en:'abnormal climate'},{ko:'한파',rom:'han-pa',en:'cold wave'},{ko:'폭염',rom:'po-gyeom',en:'heatwave'},{ko:'강수량',rom:'gang-su-ryang',en:'precipitation'},{ko:'계절성',rom:'gye-jeol-seong',en:'seasonality'}]
+    },
+    helpers: [
+      {ko:'저는 가을을 제일 좋아해요.',en:'I like autumn the most.'},
+      {ko:'여름에는 바다에 자주 가요.',en:'In summer I often go to the sea.'},
+      {ko:'겨울은 춥지만 눈이 예뻐요.',en:'Winter is cold but the snow is pretty.'},
+      {ko:'봄에는 날씨가 따뜻해져요.',en:'In spring the weather gets warmer.'}
+    ]
+  },
+  {
+    keys: ['가족','부모','형제','family','parent','brother','sister'],
+    vocab: {
+      Starter:      [{ko:'가족',rom:'ga-jok',en:'family'},{ko:'엄마',rom:'eom-ma',en:'mom'},{ko:'아빠',rom:'a-ppa',en:'dad'},{ko:'동생',rom:'dong-saeng',en:'younger sibling'},{ko:'사랑해요',rom:'sa-rang-hae-yo',en:'I love you'}],
+      Beginner:     [{ko:'가족',rom:'ga-jok',en:'family'},{ko:'부모님',rom:'bu-mo-nim',en:'parents'},{ko:'형',rom:'hyeong',en:'older brother (male speaker)'},{ko:'누나',rom:'nu-na',en:'older sister (male speaker)'},{ko:'함께',rom:'ham-kke',en:'together'}],
+      Intermediate: [{ko:'유대감',rom:'yu-dae-gam',en:'bond / connection'},{ko:'가풍',rom:'ga-pung',en:'family tradition / atmosphere'},{ko:'서로 닮다',rom:'seo-ro dal-da',en:'to resemble each other'},{ko:'친해지다',rom:'chin-hae-ji-da',en:'to grow close'},{ko:'화목하다',rom:'hwa-mok-ha-da',en:'to be harmonious'}],
+      Advanced:     [{ko:'세대 차이',rom:'se-dae cha-i',en:'generation gap'},{ko:'가족애',rom:'ga-jo-gae',en:'family love'},{ko:'돌봄',rom:'dol-bom',en:'care-giving'},{ko:'유산',rom:'yu-san',en:'legacy / inheritance'},{ko:'소통하다',rom:'so-tong-ha-da',en:'to communicate'}]
+    },
+    helpers: [
+      {ko:'제 가족은 네 명이에요.',en:'My family has four people.'},
+      {ko:'부모님과 자주 통화해요.',en:'I often call my parents.'},
+      {ko:'우리 가족은 함께 저녁을 먹어요.',en:'My family eats dinner together.'},
+      {ko:'가족과 함께 있을 때 가장 행복해요.',en:'I am happiest when I am with my family.'}
+    ]
+  },
+  {
+    keys: ['취미','hobby','hobbies','pastime','leisure'],
+    vocab: {
+      Starter:      [{ko:'취미',rom:'chwi-mi',en:'hobby'},{ko:'독서',rom:'dok-seo',en:'reading'},{ko:'운동',rom:'un-dong',en:'exercise'},{ko:'음악',rom:'eu-mak',en:'music'},{ko:'게임',rom:'ge-im',en:'game'}],
+      Beginner:     [{ko:'취미',rom:'chwi-mi',en:'hobby'},{ko:'자주',rom:'ja-ju',en:'often'},{ko:'스트레스',rom:'seu-teu-re-seu',en:'stress'},{ko:'관심',rom:'gwan-sim',en:'interest'},{ko:'재미있다',rom:'jae-mi-it-da',en:'to be fun'}],
+      Intermediate: [{ko:'몰두하다',rom:'mol-du-ha-da',en:'to be absorbed in'},{ko:'성취감',rom:'seong-chwi-gam',en:'sense of accomplishment'},{ko:'소질',rom:'so-jil',en:'knack / talent'},{ko:'꾸준히',rom:'kku-jun-hi',en:'steadily'},{ko:'여가',rom:'yeo-ga',en:'leisure time'}],
+      Advanced:     [{ko:'자기만족',rom:'ja-gi-man-jok',en:'self-satisfaction'},{ko:'몰입감',rom:'mol-ip-gam',en:'sense of immersion'},{ko:'정서적 안정',rom:'jeong-seo-jeo-gin an-jeong',en:'emotional stability'},{ko:'장르',rom:'jang-reu',en:'genre'},{ko:'깊이 있다',rom:'gi-pi it-da',en:'to have depth'}]
+    },
+    helpers: [
+      {ko:'제 취미는 책을 읽는 거예요.',en:'My hobby is reading books.'},
+      {ko:'운동을 하면 기분이 좋아져요.',en:'Exercising makes me feel better.'},
+      {ko:'주말마다 새로운 취미를 시도해요.',en:'I try a new hobby every weekend.'},
+      {ko:'음악을 들으면서 스트레스를 풀어요.',en:'I relieve stress by listening to music.'}
+    ]
+  }
+];
+
+function _matchTopicPack(topicKo, topicEn) {
+  var hay = ((topicKo || '') + ' ' + (topicEn || '')).toLowerCase();
+  for (var i = 0; i < STUDY_TOPIC_PACKS.length; i++) {
+    var pack = STUDY_TOPIC_PACKS[i];
+    for (var j = 0; j < pack.keys.length; j++) {
+      if (hay.indexOf(String(pack.keys[j]).toLowerCase()) !== -1) return pack;
+    }
+  }
+  return null;
+}
+
+// Level-appropriate grammar fallback. Example sentences try to reference the
+// matched pack's first vocab word so the grammar at least reads on-topic.
+function _fallbackGrammarFor(level, topicKo, topicEn, vocab) {
+  var sample = (vocab && vocab[0] && vocab[0].ko) || '';
+  var sample2 = (vocab && vocab[1] && vocab[1].ko) || sample;
+  if (level === 'Starter') {
+    return [
+      { level:'Starter', pattern:'~이에요/예요', explanation:'Use this to say what something is.', example_ko: (sample ? sample + '이에요.' : '학생이에요.'), example_en:'It is ' + (sample ? sample : 'a student') + '.' },
+      { level:'Starter', pattern:'~을/를 좋아해요', explanation:'Use this to say what you like.', example_ko: (sample ? '저는 ' + sample + '을/를 좋아해요.' : '저는 음악을 좋아해요.'), example_en:'I like ' + (sample ? sample : 'music') + '.' },
+      { level:'Starter', pattern:'~이/가 있어요', explanation:'Use this to say something exists or that you have it.', example_ko: (sample2 ? sample2 + '이/가 있어요.' : '시간이 있어요.'), example_en:'There is ' + (sample2 ? sample2 : 'time') + '.' }
+    ];
+  }
+  if (level === 'Intermediate') {
+    return [
+      { level:'Intermediate', pattern:'~아서/어서', explanation:'Use this to connect a reason with a result.', example_ko: (sample ? sample + '이/가 좋아서 자주 생각나요.' : '이 주제가 좋아서 자주 생각나요.'), example_en:'Because ' + (sample ? sample : 'this topic') + ' is nice, I think of it often.' },
+      { level:'Intermediate', pattern:'~(으)ㄹ 것 같아요', explanation:'Use this to give an opinion or guess politely.', example_ko: '앞으로도 자주 ' + (sample ? sample + '을/를 ' : '') + '생각할 것 같아요.', example_en:'I think I will keep thinking about ' + (sample ? sample : 'it') + '.' },
+      { level:'Intermediate', pattern:'~지만', explanation:'Use this to show contrast.', example_ko: (sample ? sample + '은/는 간단하지만 의미가 커요.' : '간단하지만 의미가 커요.'), example_en:'It is simple, but the meaning is big.' }
+    ];
+  }
+  if (level === 'Advanced') {
+    return [
+      { level:'Advanced', pattern:'~는 반면에', explanation:'Use this to compare two contrasting facts.', example_ko: (sample ? sample + '에는 장점이 많은 반면에 아쉬운 점도 있어요.' : '장점이 많은 반면에 아쉬운 점도 있어요.'), example_en:'There are many strengths, while there are also regrettable points.' },
+      { level:'Advanced', pattern:'~(으)ㄹ수록', explanation:'Use this to say one thing changes as another increases.', example_ko: (sample ? '생각하면 할수록 ' + sample + '의 가치를 느껴요.' : '생각하면 할수록 가치를 느껴요.'), example_en:'The more I think, the more I feel its value.' },
+      { level:'Advanced', pattern:'~다는 점에서', explanation:'Use this to explain in what respect something matters.', example_ko: (sample ? sample + '이/가 일상과 맞닿아 있다는 점에서 의미가 있어요.' : '일상과 맞닿아 있다는 점에서 의미가 있어요.'), example_en:'It is meaningful in that it is connected to daily life.' }
+    ];
+  }
+  // Beginner default
+  return [
+    { level:'Beginner', pattern:'~이/가 있어요', explanation:'Use this to say someone or something exists.', example_ko: (sample ? '좋아하는 ' + sample + '이/가 있어요.' : '좋아하는 주제가 있어요.'), example_en:'There is ' + (sample ? sample : 'a topic') + ' I like.' },
+    { level:'Beginner', pattern:'~을/를 좋아해요', explanation:'Use this to say what you like.', example_ko: (sample ? '저는 ' + sample + '을/를 좋아해요.' : '저는 이 주제를 좋아해요.'), example_en:'I like ' + (sample ? sample : 'this topic') + '.' },
+    { level:'Beginner', pattern:'~고 싶어요', explanation:'Use this to say what you want to do.', example_ko: (sample ? sample + '에 대해 이야기하고 싶어요.' : '이야기하고 싶어요.'), example_en:'I want to talk about ' + (sample ? sample : 'it') + '.' }
+  ];
+}
+
 function buildStudyRoomFallbackContent(topic, level) {
   var topicKo = (topic && (topic.topic_ko || topic.topic_en)) || "Today's Topic";
   var topicEn = (topic && topic.topic_en) || 'today\'s topic';
+
+  // Topic-specific pack first — matches keyword families so a "time of day"
+  // topic does NOT silently fall back to the generic actor/singer set.
+  var pack = _matchTopicPack(topic && topic.topic_ko, topic && topic.topic_en);
+  if (pack) {
+    var packLevel = pack.vocab[level] || pack.vocab.Beginner || pack.vocab.Starter;
+    var vocab = (packLevel || []).map(function(v){ return Object.assign({ level: level }, v); });
+    var helpers = (pack.helpers || []).slice(0, 4);
+    return { vocab: vocab, grammar: _fallbackGrammarFor(level, topicKo, topicEn, vocab), helpers: helpers };
+  }
+
   var levelSets = {
     Starter: {
       vocab: [
