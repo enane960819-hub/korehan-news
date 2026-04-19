@@ -2570,35 +2570,87 @@ function renderAllPage() {
     });
   }
 
-  renderAllList(listEl, articles);
+  // Rails layout when browsing freely; flat grid when searching so results
+  // stay in relevance-ranked order instead of being re-grouped by section.
+  renderAllList(listEl, articles, { flat: !!searchQ });
 }
 
-function renderAllList(listEl, articles) {
+function _buildNewsCardHTML(a) {
+  var lvl = a.level || '';
+  var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : lvl === 'Starter' ? 'lvl-s' : 'lvl-b';
+  var cat = (a.section || '').toLowerCase();
+  var thumbSrc = (typeof khArticleThumb === 'function') ? khArticleThumb(a, 600, 400) : (a.image || '');
+  var img = thumbSrc
+    ? '<img class="nc-img" src="' + thumbSrc + '" alt="" loading="lazy" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/\'+encodeURIComponent(this.dataset.fb||\'kh\')+\'/600/400\'" data-fb="' + escapeHtml(a.id || 'kh') + '">'
+    : '<div class="nc-img nc-img-fallback"></div>';
+  var dateStr = a.date ? new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+  return '<div class="nc nc-overlay" data-section="' + escapeHtml(cat) + '" data-level="' + escapeHtml(lvl) + '" onclick="location.href=\'' + articleUrl(a.id) + '\'">'
+    + img
+    + '<div class="nc-overlay-grad"></div>'
+    + '<div class="nc-overlay-body">'
+    + '<div class="nc-meta"><span class="nc-cat">' + escapeHtml(a.section || '') + '</span>' + (lvl ? '<span class="nc-lvl ' + lvlCls + '">' + escapeHtml({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span>' : '') + '</div>'
+    + '<div class="nc-title">' + escapeHtml(a.title_en || a.title || '') + '</div>'
+    + '<div class="nc-foot"><span class="nc-date">' + dateStr + '</span></div>'
+    + '</div>'
+    + '</div>';
+}
+
+function renderAllList(listEl, articles, opts) {
   if (!articles.length) {
     listEl.className = '';
     listEl.innerHTML = '<div class="all-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;margin-bottom:10px;opacity:.4"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><div>No articles found.</div></div>';
     return;
   }
-  listEl.className = 'all-card-grid';
-  listEl.innerHTML = articles.map(function(a){
-    var lvl = a.level || '';
-    var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : lvl === 'Starter' ? 'lvl-s' : 'lvl-b';
-    var cat = (a.section || '').toLowerCase();
-    var thumbSrc = (typeof khArticleThumb === 'function') ? khArticleThumb(a, 600, 400) : (a.image || '');
-    var img = thumbSrc
-      ? '<img class="nc-img" src="' + thumbSrc + '" alt="" loading="lazy" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/\'+encodeURIComponent(this.dataset.fb||\'kh\')+\'/600/400\'" data-fb="' + escapeHtml(a.id || 'kh') + '">'
-      : '<div class="nc-img nc-img-fallback"></div>';
-    var dateStr = a.date ? new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-    return '<div class="nc nc-overlay" data-section="' + escapeHtml(cat) + '" data-level="' + escapeHtml(lvl) + '" onclick="location.href=\'' + articleUrl(a.id) + '\'">'
-      + img
-      + '<div class="nc-overlay-grad"></div>'
-      + '<div class="nc-overlay-body">'
-      + '<div class="nc-meta"><span class="nc-cat">' + escapeHtml(a.section || '') + '</span>' + (lvl ? '<span class="nc-lvl ' + lvlCls + '">' + escapeHtml({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span>' : '') + '</div>'
-      + '<div class="nc-title">' + escapeHtml(a.title_en || a.title || '') + '</div>'
-      + '<div class="nc-foot"><span class="nc-date">' + dateStr + '</span></div>'
-      + '</div>'
+
+  // Rails mode: Netflix-style — group by section when there is no active
+  // filter (no search query, no non-All level filter). Falls back to the
+  // flat grid for filtered/searched views so results stay scannable.
+  var useRails = !(opts && opts.flat);
+  if (useRails) {
+    var bySection = {};
+    articles.forEach(function(a) {
+      var key = a.section || 'Other';
+      if (!bySection[key]) bySection[key] = [];
+      bySection[key].push(a);
+    });
+
+    // Rail order follows the configured section catalog, then anything left.
+    var ordered = [];
+    var seen = {};
+    try {
+      (typeof getSections === 'function' ? getSections() : []).forEach(function(s) {
+        if (bySection[s.key]) { ordered.push({ key: s.key, label: s.label, icon: s.icon || '', items: bySection[s.key] }); seen[s.key] = true; }
+      });
+    } catch(e) {}
+    Object.keys(bySection).forEach(function(k) {
+      if (!seen[k]) ordered.push({ key: k, label: k, icon: '', items: bySection[k] });
+    });
+
+    if (!ordered.length) {
+      listEl.className = 'all-card-grid';
+      listEl.innerHTML = articles.map(_buildNewsCardHTML).join('');
+      return;
+    }
+
+    listEl.className = 'all-rails';
+    listEl.innerHTML = ordered.map(function(rail) {
+      var items = rail.items.slice(0, 12);
+      return '<div class="nr-rail" data-section="' + escapeHtml(rail.key) + '">'
+        + '<div class="nr-rail-head">'
+          + '<div class="nr-rail-title">'
+            + (rail.icon ? '<span class="nr-icon">' + rail.icon + '</span>' : '')
+            + escapeHtml(rail.label || rail.key)
+          + '</div>'
+          + '<button class="nr-rail-more" onclick="location.href=\'korehan-section.html?s=' + encodeURIComponent(rail.key) + '\'">See all &rsaquo;</button>'
+        + '</div>'
+        + '<div class="nr-rail-scroll">' + items.map(_buildNewsCardHTML).join('') + '</div>'
       + '</div>';
-  }).join('');
+    }).join('');
+    return;
+  }
+
+  listEl.className = 'all-card-grid';
+  listEl.innerHTML = articles.map(_buildNewsCardHTML).join('');
 }
 
 function filterAllLevel(level, btn) {
@@ -2606,7 +2658,8 @@ function filterAllLevel(level, btn) {
   if (btn) btn.classList.add('on');
   var base = window._allArticlesCache || published();
   var filtered = level === 'All' ? base : base.filter(function(a){ return a.level === level; });
-  renderAllList(document.getElementById('dyn-article-list'), filtered);
+  // Level filter = flat grid so users can compare same-level articles easily.
+  renderAllList(document.getElementById('dyn-article-list'), filtered, { flat: level !== 'All' });
 }
 
 // ── Character Reporter Profiles ───────────────────────────────

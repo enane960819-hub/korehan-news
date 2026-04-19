@@ -721,6 +721,61 @@ body.kh-neon-on .kh-neon-toggle:hover { transform: translateY(-2px); box-shadow:
   .all-card-grid .nc.nc-overlay .nc-date { display: none; }
   .all-card-grid .nc.nc-overlay .nc-meta { margin-bottom: 4px; gap: 4px; }
 }
+
+/* ── Netflix-style News rails ─────────────────────────────── */
+.all-rails { display: flex; flex-direction: column; gap: 32px; margin-top: 4px; }
+.nr-rail { min-width: 0; }
+.nr-rail-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 14px; padding: 0 2px;
+}
+.nr-rail-title {
+  font-size: 20px; font-weight: 900; color: #0f172a;
+  letter-spacing: -0.01em; font-family: 'DM Sans', 'Noto Sans KR', sans-serif;
+  display: flex; align-items: center; gap: 8px;
+}
+.nr-rail-title .nr-icon { font-size: 20px; }
+.nr-rail-more {
+  font-size: 12px; font-weight: 700; color: #64748b; cursor: pointer;
+  background: none; border: none; padding: 4px 0; font-family: inherit;
+}
+.nr-rail-more:hover { color: #0f172a; }
+.nr-rail-scroll {
+  display: flex; gap: 14px;
+  overflow-x: auto; overflow-y: hidden;
+  padding: 4px 4px 16px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.nr-rail-scroll::-webkit-scrollbar { height: 6px; }
+.nr-rail-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.nr-rail-scroll > .nc.nc-overlay {
+  flex: 0 0 200px; scroll-snap-align: start;
+  min-height: 0; aspect-ratio: 3/4; border-radius: 14px;
+}
+.nr-rail-scroll > .nc.nc-overlay .nc-overlay-body { padding: 12px 14px; }
+.nr-rail-scroll > .nc.nc-overlay .nc-title {
+  font-size: 14px; line-height: 1.3; margin-bottom: 6px;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.nr-rail-scroll > .nc.nc-overlay .nc-cat { font-size: 9px; }
+.nr-rail-scroll > .nc.nc-overlay .nc-lvl { font-size: 9px; padding: 1px 6px; }
+.nr-rail-scroll > .nc.nc-overlay .nc-date { font-size: 10px; }
+.nr-rail-scroll > .nc.nc-overlay .nc-overlay-grad {
+  background: linear-gradient(180deg, rgba(5,15,35,0) 0%, rgba(5,15,35,.55) 55%, rgba(5,15,35,.98) 100%);
+}
+@media (max-width: 760px) {
+  .all-rails { gap: 22px; }
+  .nr-rail-head { margin-bottom: 10px; }
+  .nr-rail-title { font-size: 15px; }
+  .nr-rail-scroll { gap: 10px; padding: 2px 2px 12px; }
+  .nr-rail-scroll > .nc.nc-overlay { flex: 0 0 150px; border-radius: 12px; }
+  .nr-rail-scroll > .nc.nc-overlay .nc-title { font-size: 12px; -webkit-line-clamp: 2; }
+  .nr-rail-scroll > .nc.nc-overlay .nc-overlay-body { padding: 10px 11px; }
+  .nr-rail-scroll > .nc.nc-overlay .nc-date { display: none; }
+}
+
 /* Ensure the two-col first child doesn't expand past its grid track on mobile */
 body.mobile-redesign .two-col > div:first-child { min-width: 0; }
 .all-empty {
@@ -1753,27 +1808,11 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 .cc-study:hover { background: #2563eb; color: #fff; border-color: #2563eb; }
 
 /* ── STORY CARDS ────────────────────────────────────────── */
+/* Story card rules live inline in korehan-stories.html (full-bleed image
+   cards with white-on-gradient titles). Global .sc / .sc-title / .sc-body
+   rules were removed because they collided with those page-local styles
+   and turned user-uploaded card titles dark. */
 .story-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; margin-bottom: 32px; }
-.sc { cursor: pointer; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; transition: opacity .15s; background: #fff; }
-.sc:hover { opacity: .8; }
-.sc-cover { height: 100px; display: flex; align-items: center; justify-content: center; font-size: 38px; position: relative; }
-.sc-cover.fun      { background: linear-gradient(135deg,#fef9c3,#fde68a); }
-.sc-cover.touching { background: linear-gradient(135deg,#fce7f3,#fbcfe8); }
-.sc-cover.scary    { background: linear-gradient(135deg,#ede9fe,#c4b5fd); }
-.sc-cover.shocking { background: linear-gradient(135deg,#fee2e2,#fca5a5); }
-.sc-mood { position: absolute; top: 7px; left: 7px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; padding: 2px 8px; border-radius: 2px; }
-.sc-mood.fun      { background: #f59e0b; color: #fff; }
-.sc-mood.touching { background: #ec4899; color: #fff; }
-.sc-mood.scary    { background: #7c3aed; color: #fff; }
-.sc-mood.shocking { background: #ef4444; color: #fff; }
-.sc-body    { padding: 10px 12px; }
-.sc-title   { font-family: 'Playfair Display', 'Noto Serif KR', serif; font-size: 13px; font-weight: 700; color: var(--dark); line-height: 1.4; margin-bottom: 4px; }
-.sc-preview { font-size: 11px; color: var(--gray); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.sc-foot    { padding: 6px 12px 9px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); }
-.sc-lvl     { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 2px; }
-.sc-time    { font-size: 10px; color: var(--gray); }
-.sc-study   { font-size: 10px; font-weight: 700; color: var(--bright); background: none; border: 1px solid var(--border); border-radius: 3px; padding: 2px 7px; cursor: pointer; font-family: inherit; transition: all .12s; }
-.sc-study:hover { background: var(--bright); color: #fff; border-color: var(--bright); }
 
 /* ── RESPONSIVE UPDATES ─────────────────────────────────── */
 @media (max-width: 900px) {
