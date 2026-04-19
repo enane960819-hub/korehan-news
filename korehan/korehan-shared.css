@@ -712,14 +712,15 @@ body.kh-neon-on .kh-neon-toggle:hover { transform: translateY(-2px); box-shadow:
 @media (max-width: 760px)  { .all-card-grid .nc.nc-overlay { aspect-ratio: 4 / 3; } }
 .all-card-grid .nc.nc-overlay .nc-title { font-size: 15px; line-height: 1.35; margin-bottom: 6px; }
 
-/* Portrait mobile — 2-column square cards, same shape as landscape just smaller */
+/* Portrait mobile — 1 full-width landscape card per row (much more readable
+   than the previous 2-col squeeze). Titles and thumbnails get real space. */
 @media (max-width: 480px) {
-  /* min-width:0 prevents grid tracks from expanding beyond their 1fr size */
-  .all-card-grid { min-width: 0; }
-  .all-card-grid .nc.nc-overlay { min-width: 0; border-radius: 14px; }
-  .all-card-grid .nc.nc-overlay .nc-title { font-size: 13px; line-height: 1.35; margin-bottom: 4px; }
-  .all-card-grid .nc.nc-overlay .nc-cat  { font-size: 9px; }
-  .all-card-grid .nc.nc-overlay .nc-date { font-size: 10px; }
+  .all-card-grid { grid-template-columns: 1fr !important; gap: 14px; min-width: 0; }
+  .all-card-grid .nc.nc-overlay { min-width: 0; border-radius: 16px; aspect-ratio: 16 / 10; min-height: 200px; }
+  .all-card-grid .nc.nc-overlay .nc-title { font-size: 18px; line-height: 1.3; margin-bottom: 6px; }
+  .all-card-grid .nc.nc-overlay .nc-cat  { font-size: 10px; }
+  .all-card-grid .nc.nc-overlay .nc-date { font-size: 11px; }
+  .all-card-grid .nc.nc-overlay .nc-overlay-body { padding: 16px; }
 }
 /* Ensure the two-col first child doesn't expand past its grid track on mobile */
 body.mobile-redesign .two-col > div:first-child { min-width: 0; }
