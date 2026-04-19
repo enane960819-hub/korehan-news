@@ -4531,25 +4531,40 @@ async function autoGenStoryAI(storyId, storyObj) {
       + '  "body_en": "full English translation of the story",\n'
       + '  "summary_en": "1-2 sentence English summary"\n'
       + '}\n\n'
-      + 'STRICT RULES:\n'
-      + '- vocab: 15-20 items. Each entry MUST be a SINGLE WORD only (one noun, verb, or adjective). Never include phrases or multi-word units. List words in dictionary form (e.g., 갔다 → 가다).\n'
-      + '- key_expressions: 5-8 items. Each entry MUST be a multi-word phrase, idiom, fixed expression, or collocation (2+ words). Never include single words.\n'
-      + '- Words and expressions must actually appear in the story body.\n'
-      + '- grammar: 3-5 items. comprehension: 3 items. body_en: natural full translation.\n'
+      + 'ABSOLUTE RULES (violations will be rejected):\n'
+      + '1. Every vocab and key_expressions entry MUST literally appear in the story body above (in conjugated or inflected form is fine, but the stem/lemma must match text in the body).\n'
+      + '2. vocab: 15-20 items. Each entry MUST be a SINGLE WORD (one noun, verb, or adjective) in dictionary form. No phrases, no multi-word units, no particles attached. Example: if body has "갔어요", list it as 가다.\n'
+      + '3. key_expressions: 5-8 items. Each entry MUST be a multi-word phrase or idiom (2+ words with a space). No single words. Example: "정신이 없다", "손이 가다".\n'
+      + '4. vocab and key_expressions must NOT overlap.\n'
+      + '5. grammar: 3-5 items. comprehension: 3 items. body_en: natural full translation.\n'
       + 'JSON only.';
 
     var result = await callAdminClaude(prompt);
     var clean = result.replace(/```json[\s\S]*?```/g, function(m){ return m.slice(7,-3); }).replace(/```/g,'').trim();
     var parsed = JSON.parse(clean);
 
-    // Defensive split: AI may put a phrase into "vocab" or a single word
-    // into "key_expressions". Auto-route them to the correct bucket.
+    // Helpers for post-validation
+    var cleanBody = bodyText;
+    var isMultiWord = function(s){ return typeof s === 'string' && /\s/.test(s.trim()); };
+    // A vocab entry "appears" in the body if its stem (word minus final 다/요)
+    // is a substring of the body — catches all conjugated forms.
+    var appearsInBody = function(ko) {
+      if (!ko) return false;
+      if (cleanBody.indexOf(ko) !== -1) return true;
+      var stem = ko.replace(/[다요]$/, '');
+      if (stem.length >= 2 && cleanBody.indexOf(stem) !== -1) return true;
+      // For noun chunks, try last char trimmed as well
+      if (ko.length >= 2 && cleanBody.indexOf(ko.slice(0, -1)) !== -1) return true;
+      return false;
+    };
+
+    // Defensive split + body validation
     var rawVocab = parsed.vocab || [];
     var rawExpr  = parsed.key_expressions || [];
-    var isMultiWord = function(s){ return typeof s === 'string' && /\s/.test(s.trim()); };
     var keptVocab = [], movedToExpr = [];
     rawVocab.forEach(function(v){
       if (!v || !v.ko) return;
+      if (!appearsInBody(v.ko)) return; // drop — not in body
       if (isMultiWord(v.ko)) movedToExpr.push({ ko: v.ko, rom: v.rom||'', en: v.en||'', usage: v.note||'' });
       else keptVocab.push(v);
     });
@@ -4557,11 +4572,20 @@ async function autoGenStoryAI(storyId, storyObj) {
     rawExpr.forEach(function(k){
       var ko = k && (k.ko || k.expression);
       if (!ko) return;
+      if (!appearsInBody(ko)) return; // drop — not in body
       if (!isMultiWord(ko)) movedToVocab.push({ ko: ko, rom: k.rom||'', en: k.en||k.meaning||'', note: k.usage||'' });
       else keptExpr.push(k);
     });
-    var finalVocab = keptVocab.concat(movedToVocab).slice(0, 20);
-    var finalExpr  = keptExpr.concat(movedToExpr);
+    // Deduplicate by Korean text (one word shouldn't appear in both buckets)
+    var expKeys = {}; keptExpr.forEach(function(e){ expKeys[e.ko || e.expression] = 1; });
+    var finalVocab = keptVocab.concat(movedToVocab)
+      .filter(function(v, i, a){ return a.findIndex(function(x){ return x.ko === v.ko; }) === i; })
+      .slice(0, 20);
+    var finalExpr  = keptExpr.concat(movedToExpr)
+      .filter(function(e, i, a){ return a.findIndex(function(x){ return (x.ko||x.expression) === (e.ko||e.expression); }) === i; });
+    // Final sanity: strip any expression that is just a single vocab word
+    var vocabSet = {}; finalVocab.forEach(function(v){ vocabSet[v.ko] = 1; });
+    finalExpr = finalExpr.filter(function(e){ return !vocabSet[e.ko || e.expression]; });
 
     const sb = getSb();
     var res = await sb.from('stories_data').select('data').eq('id', storyId).single();
@@ -4600,6 +4624,37 @@ async function regenStoryAI(storyId) {
   const sb = getSb();
   const res = await sb.from('stories_data').select('*').eq('id', storyId).single();
   if (res.data) await autoGenStoryAI(storyId, res.data.data);
+  await loadStoryList();
+}
+
+// Bulk regenerate: iterate every story and re-run autoGenStoryAI so old rows
+// pick up the new vocab/expressions/body_en rules.
+async function regenAllStoriesAI() {
+  if (!confirm('모든 스토리의 vocab / key_expressions / 영문 번역을 다시 생성합니다.\n스토리 1개당 약 5-10초 걸려요. 계속할까요?')) return;
+  const sb = getSb();
+  const progress = document.getElementById('regen-all-progress');
+  if (progress) { progress.style.display = 'block'; progress.textContent = '⏳ 스토리 목록 불러오는 중…'; }
+  const res = await sb.from('stories_data').select('id, data').order('created_at', {ascending:true});
+  if (res.error || !res.data || !res.data.length) {
+    if (progress) progress.textContent = '❌ 스토리가 없습니다';
+    return;
+  }
+  const rows = res.data;
+  let okCount = 0, failCount = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (progress) progress.textContent = '🤖 재생성 중 ' + (i+1) + ' / ' + rows.length + ' — ' + ((row.data && row.data.title) || row.id);
+    try {
+      await autoGenStoryAI(row.id, row.data || {});
+      okCount++;
+    } catch (e) {
+      console.error('regenAllStoriesAI failed for', row.id, e);
+      failCount++;
+    }
+    await new Promise(function(r){ setTimeout(r, 600); });
+  }
+  if (progress) progress.textContent = '✅ 완료! 성공 ' + okCount + '개 · 실패 ' + failCount + '개';
+  setTimeout(function(){ if (progress) progress.style.display = 'none'; }, 6000);
   await loadStoryList();
 }
 
@@ -7136,8 +7191,12 @@ async function goStoriesManager() {
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
     + '<div><h2 style="font-size:22px;font-weight:800;margin:0">📖 Stories 관리</h2>'
     + '<p style="color:#64748b;font-size:13px;margin:4px 0 0">stories_data 테이블 — 조회/수정/삭제/추가</p></div>'
-    + '<button onclick="openStoryEditModal(null)" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">+ 새 스토리 추가</button>'
+    + '<div style="display:flex;gap:8px">'
+    +   '<button onclick="regenAllStoriesAI()" style="background:#f0fdf4;color:#15803d;border:1px solid #86efac;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit" title="모든 스토리의 vocab/expressions/영문번역 재생성">🤖 전체 AI 재생성</button>'
+    +   '<button onclick="openStoryEditModal(null)" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">+ 새 스토리 추가</button>'
     + '</div>'
+    + '</div>'
+    + '<div id="regen-all-progress" style="display:none;margin-bottom:12px;padding:10px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;font-size:13px;color:#1e40af"></div>'
     + '<div id="stor-mgr-list">⏳ 불러오는 중...</div>'
     + '</div>';
   await loadStoryList();
@@ -7176,6 +7235,7 @@ async function loadStoryList() {
       + (seriesId ? '<span style="background:#fef3c7;color:#92400e;font-size:11px;padding:2px 8px;border-radius:999px">Series: ' + seriesId + '</span>' : '')
       + '</div></div>'
       + '<div style="display:flex;gap:8px;flex-shrink:0">'
+      + '<button onclick="regenStoryAI(' + row.id + ')" style="background:#f0fdf4;color:#15803d;border:1px solid #86efac;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit" title="vocab / key_expressions / body_en 재생성">🤖 AI 재생성</button>'
       + '<button onclick="openStoryEditModal(' + row.id + ')" style="background:#f1f5f9;color:#334155;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ Edit</button>'
       + '<button onclick="deleteStory(' + row.id + ')" style="background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑 Delete</button>'
       + '</div></div>';
