@@ -13567,7 +13567,7 @@ function asBackToList() {
 // ═══════════════════════════════════════════════════════════════
 // DICTATION MODAL — listening + word arrangement from daily content
 // ═══════════════════════════════════════════════════════════════
-var _dctStep = 1;   // 1=listen, 2=arrange
+var _dctStep = 1;   // 1=listen, 2=arrange words, 3=fill blank, 4=listen-pick sentence
 var _dctWOIdx = 0;  // current sentence in arrangement step
 var _dctWOState = null;
 var _dctSpeed = 1.0;          // TTS playback rate: 0.7 | 1.0 | 1.2
@@ -13581,6 +13581,8 @@ function openDictationModal() {
   m.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   _dctStep = 1; _dctWOIdx = 0; _dctWOState = null;
+  _dctFbIdx = 0; _dctFbState = null; _dctFbScore = 0;
+  _dctLpIdx = 0; _dctLpState = null; _dctLpScore = 0;
   _dctArticleMode = false; _dctArticleSentences = [];
   _dctRender();
 }
@@ -13590,26 +13592,34 @@ function closeDictationModal() {
   document.body.style.overflow = '';
 }
 function _dctSetPips(step) {
-  var p1=document.getElementById('dct-pip-1'), p2=document.getElementById('dct-pip-2'), p3=document.getElementById('dct-pip-3');
-  var sub=document.getElementById('dct-step-sub');
-  if(p1){ p1.className='dct-pip'+(step===1?' active':step>1?' done':''); }
-  if(p2){ p2.className='dct-pip'+(step===2?' active':step>2?' done':''); }
-  if(p3){ p3.className='dct-pip'+(step===3?' active':''); }
-  var labels = {1:'Step 1 of 3 — 듣기 연습', 2:'Step 2 of 3 — 어절 배열하기', 3:'Step 3 of 3 — 받아쓰기'};
-  if(sub) sub.textContent = labels[step] || '';
-  // Auto-create pip 3 if missing
-  if(!p3 && p2 && p2.parentNode) {
-    var newPip = document.createElement('span');
-    newPip.id = 'dct-pip-3';
-    newPip.className = 'dct-pip';
-    p2.parentNode.appendChild(newPip);
-  }
+  [1,2,3,4].forEach(function(n){
+    var el = document.getElementById('dct-pip-'+n);
+    if (!el) {
+      var prev = document.getElementById('dct-pip-'+(n-1));
+      if (prev && prev.parentNode) {
+        el = document.createElement('span');
+        el.id = 'dct-pip-'+n;
+        el.className = 'dct-pip';
+        prev.parentNode.appendChild(el);
+      }
+    }
+    if (el) el.className = 'dct-pip' + (step===n ? ' active' : step>n ? ' done' : '');
+  });
+  var labels = {
+    1: 'Step 1 of 4 — 듣기 연습',
+    2: 'Step 2 of 4 — 어절 배열하기',
+    3: 'Step 3 of 4 — 빈칸 채우기',
+    4: 'Step 4 of 4 — 맞는 문장 찾기'
+  };
+  var sub = document.getElementById('dct-step-sub');
+  if (sub) sub.textContent = labels[step] || '';
 }
 function _dctRender() {
   _dctSetPips(_dctStep);
   if (_dctStep === 1) _dctRenderListen();
   else if (_dctStep === 2) _dctRenderArrange();
-  else if (_dctStep === 3) _dctRenderTyping();
+  else if (_dctStep === 3) _dctRenderFillBlank();
+  else if (_dctStep === 4) _dctRenderListenPick();
 }
 function _dctRenderListen() {
   var body = document.getElementById('dct-body');
@@ -13780,7 +13790,8 @@ function startArticleDictation() {
   _dctArticleMode = true;
   _dctArticleSentences = sents;
   _dctStep = 1; _dctWOIdx = 0; _dctWOState = null;
-  _dctTypingIdx = 0; _dctTypingScore = 0;
+  _dctFbIdx = 0; _dctFbState = null; _dctFbScore = 0;
+  _dctLpIdx = 0; _dctLpState = null; _dctLpScore = 0;
   var m = document.getElementById('dct-modal');
   if (m) {
     m.classList.remove('hidden');
@@ -13794,9 +13805,10 @@ function _dctRenderArrange() {
   var foot = document.getElementById('dct-foot');
   if (!body || !foot || !sents || !sents.length) return;
   if (_dctWOIdx >= sents.length) {
-    // All done
-    // Move to Step 3: typing dictation
-    _dctStep = 3; _dctTypingIdx = 0; _dctTypingScore = 0;
+    // Move to Step 3: fill-in-the-blank
+    _dctStep = 3;
+    _dctFbIdx = 0; _dctFbState = null; _dctFbScore = 0;
+    _dctLpIdx = 0; _dctLpState = null; _dctLpScore = 0;
     _dctRender();
     return;
   }
@@ -13867,94 +13879,22 @@ function dctNext() {
   if (_dctStep===1) { _dctStep=2; _dctWOIdx=0; _dctWOState=null; _dctRender(); }
 }
 
-// ── Step 3: True Dictation (듣고 타이핑) ─────────────────
-var _dctTypingIdx = 0;
-var _dctTypingScore = 0;
+// ── Step 3 & 4: Fill-in-blank + Listen-and-pick ─────────────
+var _dctFbIdx = 0, _dctFbScore = 0, _dctFbState = null;
+var _dctLpIdx = 0, _dctLpScore = 0, _dctLpState = null;
 
-function _dctRenderTyping() {
-  var body = document.getElementById('dct-body');
-  var foot = document.getElementById('dct-foot');
-  if (!body || !foot) return;
-
-  // In article mode use article sentences; daily mode uses questions (or sentences fallback)
-  var pool;
-  if (_dctArticleMode) {
-    pool = _dctArticleSentences || [];
-  } else {
-    var questions = _dailyDictationQuestions || [];
-    var sentences = _dailyDictationSentences || [];
-    pool = questions.length >= 3 ? questions.map(function(q) {
-      return { ko: q.question_ko || q.ko || '', en: q.hint_en || q.en || '' };
-    }) : sentences;
-  }
-
-  if (!pool.length) {
-    body.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8">No dictation content available.</div>';
-    foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done</button>';
-    return;
-  }
-
-  if (_dctTypingIdx >= pool.length) {
-    var pct = pool.length > 0 ? Math.round(_dctTypingScore / pool.length * 100) : 0;
-    // Save score to localStorage
-    _dctSaveScore(pct, pool.length);
-    var modeTag = _dctArticleMode ? '<div style="font-size:11px;color:#d97706;margin-bottom:8px">📰 Article Dictation</div>' : '';
-    body.innerHTML = '<div style="text-align:center;padding:30px 20px">'
-      + '<div style="font-size:36px;margin-bottom:12px">' + (pct >= 80 ? '🏆' : pct >= 50 ? '👍' : '💪') + '</div>'
-      + '<div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:4px">' + pct + '%</div>'
-      + '<div style="font-size:13px;color:#64748b;margin-bottom:8px">' + _dctTypingScore + ' / ' + pool.length + ' correct</div>'
-      + modeTag
-      + '<div style="font-size:12px;color:#94a3b8">받아쓰기 완료!</div>'
-      + '</div>';
-    foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done ✓ Next Activity</button>';
-    // Log to DB (only for daily dictation)
-    if (!_dctArticleMode && typeof logQuizResult === 'function' && supaUser) {
-      try {
-        logQuizResult(getSupa(), {
-          p_skill_type: 'listening', p_quiz_type: 'dictation',
-          p_item_id: 'dct_' + kstDateKey(), p_content_type: 'dictation',
-          p_content_id: kstDateKey(), p_is_correct: pct >= 80, p_score: pct
-        });
-      } catch(e) {}
-    }
-    return;
-  }
-
-  var s = pool[_dctTypingIdx];
-  var speedLabel = _dctSpeed < 0.9 ? ' 🐢' : _dctSpeed > 1.1 ? ' 🏃' : ' 🚶';
-  var hintEn = s.en ? '<div style="text-align:center;margin:0 0 14px;padding:10px 14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;font-size:13px;color:#78350f;font-style:italic">💡 ' + escapeHTML(s.en) + '</div>' : '';
-  var wordCount = (s.ko || '').trim().split(/\s+/).filter(Boolean).length;
-  var charCount = (s.ko || '').replace(/\s/g, '').length;
-  var metaHint = '<div style="text-align:center;font-size:11px;color:#94a3b8;margin-bottom:12px">' + wordCount + ' words · ' + charCount + ' chars</div>';
-  body.innerHTML =
-    '<div style="font-size:13px;color:#64748b;margin-bottom:16px">듣고 한국어로 타이핑하세요. (' + (_dctTypingIdx + 1) + '/' + pool.length + ')' + speedLabel + '</div>'
-    + '<div style="text-align:center;margin-bottom:14px">'
-    + '<button onclick="_dctTypingSpeak()" style="width:70px;height:70px;border-radius:50%;background:#eff6ff;border:2px solid #bfdbfe;font-size:32px;cursor:pointer">🔊</button>'
-    + '<div style="font-size:11px;color:#94a3b8;margin-top:6px">클릭해서 듣기</div>'
-    + '</div>'
-    + hintEn
-    + metaHint
-    + '<input id="dct-typing-input" type="text" autocomplete="off" placeholder="들은 내용을 입력하세요..." style="width:100%;padding:12px 16px;border:2px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:\'Noto Sans KR\',sans-serif;box-sizing:border-box;text-align:center" onkeydown="if(event.key===\'Enter\')_dctTypingCheck()">'
-    + '<div id="dct-typing-fb" style="margin-top:10px;min-height:40px"></div>';
-  foot.innerHTML = '<button class="btn btn-g" onclick="_dctTypingCheck()">확인</button>';
-
-  // Auto-play
-  setTimeout(_dctTypingSpeak, 400);
-  setTimeout(function() { var inp = document.getElementById('dct-typing-input'); if (inp) inp.focus(); }, 500);
+function _dctPool() {
+  if (_dctArticleMode) return _dctArticleSentences || [];
+  var questions = _dailyDictationQuestions || [];
+  var sentences = _dailyDictationSentences || [];
+  return questions.length >= 3
+    ? questions.map(function(q){ return { ko: q.question_ko || q.ko || '', en: q.hint_en || q.en || '' }; })
+    : (sentences || []);
 }
 
-function _dctTypingSpeak() {
-  var pool;
-  if (_dctArticleMode) {
-    pool = _dctArticleSentences || [];
-  } else {
-    var questions = _dailyDictationQuestions || [];
-    var sentences = _dailyDictationSentences || [];
-    pool = questions.length >= 3 ? questions.map(function(q) { return { ko: q.question_ko || q.ko || '' }; }) : sentences;
-  }
-  var s = pool[_dctTypingIdx];
-  if (!s) return;
-  _dctSpeakSentence(s.ko);
+function _dctEmptyState(body, foot) {
+  body.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8">No dictation content available.</div>';
+  foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done</button>';
 }
 
 // Save dictation score to localStorage history
@@ -13970,72 +13910,195 @@ function _dctSaveScore(pct, sentenceCount) {
       sentenceCount: sentenceCount,
       mode: _dctArticleMode ? 'article' : 'daily'
     });
-    // Keep last 90 entries
     if (existing.length > 90) existing = existing.slice(existing.length - 90);
     localStorage.setItem(key, JSON.stringify(existing));
   } catch(e) {}
 }
 
-function _dctTypingCheck() {
-  var inp = document.getElementById('dct-typing-input');
-  var fb = document.getElementById('dct-typing-fb');
-  if (!inp || !fb) return;
-  var pool;
-  if (_dctArticleMode) {
-    pool = _dctArticleSentences || [];
-  } else {
-    var questions = _dailyDictationQuestions || [];
-    var sentences = _dailyDictationSentences || [];
-    pool = questions.length >= 3 ? questions.map(function(q) { return { ko: q.question_ko || q.ko || '', en: q.hint_en || q.en || '' }; }) : sentences;
+// ── Step 3: 빈칸 채우기 (fill in the missing word) ────────────
+function _buildFbState(idx, pool) {
+  var s = pool[idx] || {};
+  var words = (s.ko || '').replace(/[.!?。！？]/g, '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) words = [s.ko || ''];
+  // Blank the longest content word — avoids blanking tiny particles
+  var blankIdx = 0, maxLen = 0;
+  for (var i = 0; i < words.length; i++) {
+    if (words[i].length > maxLen) { maxLen = words[i].length; blankIdx = i; }
   }
-  var s = pool[_dctTypingIdx];
-  if (!s) return;
-
-  var userText = (inp.value || '').trim().replace(/[.!?。！？\s]/g, '');
-  var correctText = (s.ko || '').trim().replace(/[.!?。！？\s]/g, '');
-  // Calculate character-level accuracy percentage
-  var maxLen = Math.max(correctText.length, userText.length);
-  var matchCount = 0;
-  for (var ci = 0; ci < correctText.length; ci++) {
-    if (correctText[ci] === userText[ci]) matchCount++;
-  }
-  var charAccuracy = maxLen > 0 ? Math.round(matchCount / correctText.length * 100) : 100;
-  var isCorrect = userText === correctText;
-
-  inp.disabled = true;
-  if (isCorrect) {
-    _dctTypingScore++;
-    inp.style.borderColor = '#86efac';
-    fb.innerHTML = '<div style="color:#16a34a;font-weight:700;font-size:14px">✅ 정답! (100%)</div>';
-  } else {
-    inp.style.borderColor = '#fca5a5';
-    // Character-by-character diff using correct answer as reference
-    var original = (s.ko || '').trim();
-    var typed = (inp.value || '').trim();
-    var diffHTML = '';
-    for (var i = 0; i < Math.max(original.length, typed.length); i++) {
-      var oc = original[i] || '';
-      var tc = typed[i] || '';
-      if (oc === tc) {
-        diffHTML += '<span style="color:#16a34a">' + escapeHTML(oc) + '</span>';
-      } else if (!oc) {
-        diffHTML += '<span style="color:#f59e0b;text-decoration:underline">·</span>';
-      } else {
-        diffHTML += '<span style="color:#ef4444;text-decoration:underline;font-weight:700">' + escapeHTML(oc) + '</span>';
-      }
-    }
-    fb.innerHTML = '<div style="font-size:13px;color:#ef4444;font-weight:700;margin-bottom:6px">❌ 다시 확인해보세요 <span style="font-size:12px;color:#f59e0b;font-weight:600">(정확도: ' + charAccuracy + '%)</span></div>'
-      + '<div style="font-size:15px;font-family:\'Noto Sans KR\',sans-serif;letter-spacing:1px;line-height:2">' + diffHTML + '</div>'
-      + (s.en ? '<div style="font-size:11px;color:#94a3b8;margin-top:6px">' + escapeHTML(s.en) + '</div>' : '');
-  }
-
-  var foot = document.getElementById('dct-foot');
-  if (foot) foot.innerHTML = '<button class="btn btn-g" onclick="_dctTypingNext()">다음 →</button>';
+  var answer = words[blankIdx];
+  // Distractor pool: words from other sentences, dedupe, exclude answer
+  var bag = {};
+  pool.forEach(function(x, xi){
+    if (xi === idx) return;
+    (x.ko || '').replace(/[.!?。！？]/g, '').trim().split(/\s+/).filter(Boolean).forEach(function(w){
+      if (w && w !== answer) bag[w] = 1;
+    });
+  });
+  var dists = Object.keys(bag).sort(function(){ return Math.random() - 0.5; });
+  var picked = [];
+  // Prefer distractors close in length first
+  dists.sort(function(a,b){ return Math.abs(a.length - answer.length) - Math.abs(b.length - answer.length); });
+  for (var k = 0; k < dists.length && picked.length < 3; k++) picked.push(dists[k]);
+  while (picked.length < 3) picked.push(answer.slice(0, Math.max(1, answer.length - 1)) + '요');
+  var choices = [answer].concat(picked).sort(function(){ return Math.random() - 0.5; });
+  return { sentIdx: idx, words: words, blankIdx: blankIdx, answer: answer, choices: choices, picked: null, answered: false };
 }
 
-function _dctTypingNext() {
-  _dctTypingIdx++;
-  _dctRenderTyping();
+function _dctRenderFillBlank() {
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  if (!body || !foot) return;
+  var pool = _dctPool();
+  if (!pool.length) { _dctEmptyState(body, foot); return; }
+  if (_dctFbIdx >= pool.length) {
+    _dctStep = 4; _dctLpIdx = 0; _dctLpState = null;
+    _dctRender();
+    return;
+  }
+  if (!_dctFbState || _dctFbState.sentIdx !== _dctFbIdx) _dctFbState = _buildFbState(_dctFbIdx, pool);
+  var st = _dctFbState;
+  var s = pool[_dctFbIdx];
+  var sentHTML = st.words.map(function(w, i){
+    if (i === st.blankIdx) {
+      var blankBg = '#faf5ff', blankColor = '#7c3aed', blankText = '___';
+      if (st.answered) {
+        blankBg = '#dcfce7'; blankColor = '#15803d'; blankText = st.answer;
+      }
+      return '<span style="display:inline-block;padding:3px 14px;margin:0 3px;border:2px dashed ' + blankColor + ';border-radius:8px;background:' + blankBg + ';color:' + blankColor + ';font-weight:800;min-width:60px;text-align:center">' + escapeHTML(blankText) + '</span>';
+    }
+    return '<span style="margin:0 2px">' + escapeHTML(w) + '</span>';
+  }).join(' ');
+  var choicesHTML = st.choices.map(function(c, ci){
+    var disabled = st.answered ? 'disabled' : '';
+    var bg = '#fff', color = '#0f172a', border = '#e2e8f0';
+    if (st.answered) {
+      if (c === st.answer) { bg = '#dcfce7'; color = '#15803d'; border = '#22c55e'; }
+      else if (st.picked === c) { bg = '#fee2e2'; color = '#dc2626'; border = '#f87171'; }
+    }
+    return '<button ' + disabled + ' onclick="_dctFbPick(' + ci + ')" style="padding:12px 18px;border:2px solid ' + border + ';background:' + bg + ';color:' + color + ';border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:\'Noto Serif KR\',serif">' + escapeHTML(c) + '</button>';
+  }).join('');
+  var hintEn = s.en ? '<div style="text-align:center;margin:0 0 12px;padding:8px 14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;font-size:12px;color:#78350f;font-style:italic">💡 ' + escapeHTML(s.en) + '</div>' : '';
+  body.innerHTML =
+      '<div style="font-size:13px;color:#64748b;margin-bottom:12px">듣고 빈칸에 알맞은 단어를 고르세요. (' + (_dctFbIdx + 1) + '/' + pool.length + ')</div>'
+    + '<div style="text-align:center;margin-bottom:14px">'
+    + '<button onclick="_dctFbSpeak()" style="width:66px;height:66px;border-radius:50%;background:#eff6ff;border:2px solid #bfdbfe;font-size:28px;cursor:pointer">🔊</button>'
+    + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">클릭해서 듣기</div>'
+    + '</div>'
+    + hintEn
+    + '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:16px;font-family:\'Noto Serif KR\',serif;font-size:17px;text-align:center;line-height:2;word-break:keep-all">' + sentHTML + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center">' + choicesHTML + '</div>';
+  foot.innerHTML = st.answered
+    ? '<button class="btn btn-g" onclick="_dctFbNext()">다음 →</button>'
+    : '<div style="font-size:12px;color:#94a3b8;padding:6px 0">단어를 골라주세요</div>';
+  if (!st.answered) setTimeout(_dctFbSpeak, 300);
+}
+
+function _dctFbSpeak() {
+  var pool = _dctPool();
+  var s = pool[_dctFbIdx];
+  if (s) _dctSpeakSentence(s.ko);
+}
+
+function _dctFbPick(ci) {
+  if (!_dctFbState || _dctFbState.answered) return;
+  _dctFbState.picked = _dctFbState.choices[ci];
+  _dctFbState.answered = true;
+  if (_dctFbState.picked === _dctFbState.answer) _dctFbScore++;
+  _dctRenderFillBlank();
+}
+
+function _dctFbNext() {
+  _dctFbIdx++;
+  _dctFbState = null;
+  _dctRenderFillBlank();
+}
+
+// ── Step 4: 듣고 맞는 문장 찾기 ─────────────────────────────
+function _buildLpState(idx, pool) {
+  var correct = pool[idx];
+  var others = pool.filter(function(_, i){ return i !== idx; }).slice();
+  others.sort(function(){ return Math.random() - 0.5; });
+  var choices = [correct].concat(others.slice(0, 3));
+  choices.sort(function(){ return Math.random() - 0.5; });
+  return { sentIdx: idx, choices: choices, picked: null, answered: false };
+}
+
+function _dctRenderListenPick() {
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  if (!body || !foot) return;
+  var pool = _dctPool();
+  if (!pool.length) { _dctEmptyState(body, foot); return; }
+  if (_dctLpIdx >= pool.length) {
+    var total = pool.length * 2;
+    var score = _dctFbScore + _dctLpScore;
+    var pct = total > 0 ? Math.round(score / total * 100) : 0;
+    _dctSaveScore(pct, total);
+    var modeTag = _dctArticleMode ? '<div style="font-size:11px;color:#d97706;margin-bottom:8px">📰 Article Dictation</div>' : '';
+    body.innerHTML = '<div style="text-align:center;padding:30px 20px">'
+      + '<div style="font-size:36px;margin-bottom:12px">' + (pct >= 80 ? '🏆' : pct >= 50 ? '👍' : '💪') + '</div>'
+      + '<div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:4px">' + pct + '%</div>'
+      + '<div style="font-size:13px;color:#64748b;margin-bottom:6px">빈칸 ' + _dctFbScore + '/' + pool.length + ' · 문장 ' + _dctLpScore + '/' + pool.length + '</div>'
+      + modeTag
+      + '<div style="font-size:12px;color:#94a3b8">받아쓰기 완료!</div>'
+      + '</div>';
+    foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done ✓ Next Activity</button>';
+    if (!_dctArticleMode && typeof logQuizResult === 'function' && supaUser) {
+      try {
+        logQuizResult(getSupa(), {
+          p_skill_type: 'listening', p_quiz_type: 'dictation',
+          p_item_id: 'dct_' + kstDateKey(), p_content_type: 'dictation',
+          p_content_id: kstDateKey(), p_is_correct: pct >= 80, p_score: pct
+        });
+      } catch(e) {}
+    }
+    return;
+  }
+  if (!_dctLpState || _dctLpState.sentIdx !== _dctLpIdx) _dctLpState = _buildLpState(_dctLpIdx, pool);
+  var st = _dctLpState;
+  var correctKo = pool[_dctLpIdx].ko;
+  var choicesHTML = st.choices.map(function(c, ci){
+    var isCorrect = c.ko === correctKo;
+    var disabled = st.answered ? 'disabled' : '';
+    var bg = '#fff', color = '#0f172a', border = '#e2e8f0';
+    if (st.answered) {
+      if (isCorrect) { bg = '#dcfce7'; color = '#15803d'; border = '#22c55e'; }
+      else if (st.picked && st.picked.ko === c.ko) { bg = '#fee2e2'; color = '#dc2626'; border = '#f87171'; }
+    }
+    return '<button ' + disabled + ' onclick="_dctLpPick(' + ci + ')" style="width:100%;text-align:left;padding:14px 16px;margin-bottom:10px;border:2px solid ' + border + ';background:' + bg + ';color:' + color + ';border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:\'Noto Serif KR\',serif;line-height:1.5">' + escapeHTML(c.ko || '') + '</button>';
+  }).join('');
+  body.innerHTML =
+      '<div style="font-size:13px;color:#64748b;margin-bottom:16px">듣고 맞는 문장을 고르세요. (' + (_dctLpIdx + 1) + '/' + pool.length + ')</div>'
+    + '<div style="text-align:center;margin-bottom:18px">'
+    + '<button onclick="_dctLpSpeak()" style="width:80px;height:80px;border-radius:50%;background:#eff6ff;border:2px solid #bfdbfe;font-size:34px;cursor:pointer">🔊</button>'
+    + '<div style="font-size:11px;color:#94a3b8;margin-top:6px">클릭해서 듣기</div>'
+    + '</div>'
+    + choicesHTML;
+  foot.innerHTML = st.answered
+    ? '<button class="btn btn-g" onclick="_dctLpNext()">다음 →</button>'
+    : '<div style="font-size:12px;color:#94a3b8;padding:6px 0">소리를 듣고 맞는 문장을 고르세요</div>';
+  if (!st.answered) setTimeout(_dctLpSpeak, 300);
+}
+
+function _dctLpSpeak() {
+  var pool = _dctPool();
+  var s = pool[_dctLpIdx];
+  if (s) _dctSpeakSentence(s.ko);
+}
+
+function _dctLpPick(ci) {
+  if (!_dctLpState || _dctLpState.answered) return;
+  var pool = _dctPool();
+  _dctLpState.picked = _dctLpState.choices[ci];
+  _dctLpState.answered = true;
+  if (_dctLpState.picked && _dctLpState.picked.ko === pool[_dctLpIdx].ko) _dctLpScore++;
+  _dctRenderListenPick();
+}
+
+function _dctLpNext() {
+  _dctLpIdx++;
+  _dctLpState = null;
+  _dctRenderListenPick();
 }
 
 async function _asLoadArticles() {
@@ -15073,6 +15136,8 @@ setTimeout(renderCompletedStudies, 500);
     <div class="dct-step-pips" id="dct-pips">
       <div class="dct-pip active" id="dct-pip-1"></div>
       <div class="dct-pip" id="dct-pip-2"></div>
+      <div class="dct-pip" id="dct-pip-3"></div>
+      <div class="dct-pip" id="dct-pip-4"></div>
     </div>
     <div class="dct-body" id="dct-body">
       <div class="as-loading"><div class="as-spinner"></div><div>Loading…</div></div>
