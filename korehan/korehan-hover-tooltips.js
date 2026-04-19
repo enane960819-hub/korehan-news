@@ -353,4 +353,30 @@
     await loadHoverVocab();
     applyHoverTooltips();
   };
+
+  // Register story/article-specific vocab in-memory so hover works for words
+  // that aren't in hover_vocab_master. Accepts array of {ko, en, rom, note} or
+  // {word_ko, meaning_en, reading, note}. Merged and re-applied immediately.
+  window.korehanHoverRegisterExtras = function(extras) {
+    if (!Array.isArray(extras) || !extras.length) return;
+    var existing = {};
+    vocabList.forEach(function(v){ existing[v.word_ko] = true; });
+    extras.forEach(function(x) {
+      var ko = x.word_ko || x.ko;
+      if (!ko || existing[ko]) return;
+      var entry = {
+        word_ko:    ko,
+        meaning_en: x.meaning_en || x.en || '',
+        reading:    x.reading    || x.rom || '',
+        note:       x.note       || ''
+      };
+      if (!entry.meaning_en) return;
+      vocabList.push(entry);
+      existing[ko] = true;
+    });
+    // Rebuild sorted vocab word list (longest first)
+    vocabWords = vocabList.map(function(x){ return x.word_ko; })
+      .sort(function(a,b){ return b.length - a.length; });
+    applyHoverTooltips();
+  };
 })();
