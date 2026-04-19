@@ -11577,17 +11577,17 @@ function goToBMStep4() {
 }
 
 function renderBMWordSnap() {
-  // Build card list strictly from today's topic: prefer AI vocab entries that
-  // actually appear in the topic sentences (guarantees topic relevance even if
-  // the DB cache drifted from the currently-displayed topic), then fall back
-  // to keywords extracted directly from the sentences.
   var sentenceJoin = (_bm.sentences || []).map(function(s){ return s.ko || ''; }).join(' ');
   var aiVocab = (_aiContent && Array.isArray(_aiContent.vocab)) ? _aiContent.vocab : [];
   var topicRelevant = aiVocab.filter(function(v) {
-    if (!v || !v.ko) return false;
+    if (!v || !v.ko || !v.en) return false;
     var stem = v.ko.replace(/[을를이가는도에서의하다요]$/g, '');
     return sentenceJoin.indexOf(stem || v.ko) !== -1 || sentenceJoin.indexOf(v.ko) !== -1;
   });
+
+  function trimParticle(w) {
+    return w.replace(/(은|는|이|가|을|를|의|에|도|만|과|와|나|께|부터|까지|로|으로|라고|이라고)$/g, '');
+  }
 
   var vocab = topicRelevant.slice(0, 5);
   if (vocab.length < 3) {
@@ -11595,7 +11595,8 @@ function renderBMWordSnap() {
     vocab.forEach(function(v){ existing[v.ko] = true; });
     (_bm.sentences || []).forEach(function(s) {
       (s.ko || '').replace(/[.,!?。]/g,'').split(/\s+/).forEach(function(w) {
-        if (w.length >= 2 && !existing[w]) { existing[w] = true; vocab.push({ ko:w, rom:'', en:'' }); }
+        var base = trimParticle(w);
+        if (base.length >= 2 && !existing[base]) { existing[base] = true; vocab.push({ ko: base, rom:'', en:'' }); }
       });
     });
     vocab = vocab.slice(0, 5);
@@ -11604,6 +11605,47 @@ function renderBMWordSnap() {
   _bm.snapIdx   = 0;
   _bm.snapSeen  = [];
   _bm.snapSaved = [];
+
+  // Any card missing EN meaning? Batch-translate via Claude so the back of
+  // the card never matches the front (the original bug: front & back both
+  // showed just the Korean word because en was an empty string).
+  var needsTranslation = vocab.some(function(v){ return !v.en; });
+  if (needsTranslation) {
+    document.getElementById('bm-body').innerHTML = '<div style="padding:40px;text-align:center;color:rgba(255,255,255,.6);font-size:14px">✨ Preparing word cards…</div>';
+    var words = vocab.map(function(v){ return v.ko; });
+    callClaude({
+      feature: 'word-snap-translate',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      messages: [{ role: 'user', content:
+        'Give short English meanings + romanization for these Korean words:\n'
+        + words.map(function(w){ return '- ' + w; }).join('\n')
+        + '\nReturn ONLY a JSON array: [{"ko":"word","rom":"romanization","en":"English meaning (1-4 words)"}]'
+      }]
+    }).then(function(res){
+      try {
+        var txt = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+        txt = txt.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+        var si = txt.indexOf('['), ei = txt.lastIndexOf(']');
+        if (si >= 0 && ei > si) txt = txt.slice(si, ei+1);
+        var gen = JSON.parse(txt);
+        if (Array.isArray(gen)) {
+          var byKo = {};
+          gen.forEach(function(g){ if (g && g.ko) byKo[g.ko] = g; });
+          _bm.snapCards = vocab.map(function(v){
+            var hit = byKo[v.ko];
+            return {
+              ko: v.ko,
+              rom: v.rom || (hit && hit.rom) || '',
+              en:  v.en  || (hit && hit.en)  || ''
+            };
+          }).filter(function(v){ return v.en; });
+        }
+      } catch(e){}
+      bmRenderSnapCard();
+    }).catch(function(){ bmRenderSnapCard(); });
+    return;
+  }
   bmRenderSnapCard();
 }
 
@@ -13592,29 +13634,25 @@ function _dctRenderListen() {
   var sents = _dctArticleMode ? _dctArticleSentences : _dailyDictationSentences;
   if (!sents || !sents.length) {
     var topicText = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || '';
-    // Verify helpers are topic-relevant before using them as a fallback
-    var helperFallback = null;
-    if (_aiContent && Array.isArray(_aiContent.helpers) && _aiContent.helpers.length && _todayTopic) {
-      var _topicKoShort = String(_todayTopic.topic_ko || '').replace(/[.,!?~]/g,'');
-      var _topicKws2 = _topicKoShort.split(/\s+/).filter(function(w){ return w.length >= 2; });
-      var _helperJoin = _aiContent.helpers.map(function(h){ return h && (h.ko || ''); }).join(' ');
-      var _helperMatch = _topicKws2.some(function(kw){ return _helperJoin.indexOf(kw) !== -1; });
-      if (_helperMatch) helperFallback = _aiContent.helpers;
-    }
-    if (topicText || helperFallback) {
+    if (topicText) {
+      // Skip helpers as fallback — they are response templates like
+      // "저는 [topic]에 대해 이야기하고 싶어요" which produce mangled
+      // dictation prompts. Go straight to Claude for natural sentences.
       body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">Preparing listening sentences…</div>';
       foot.innerHTML = '';
-      if (helperFallback) {
-        _dailyDictationSentences = helperFallback.slice(0, 3).map(function(h){ return { ko: h.ko, en: h.en }; });
-        _dctRender(); return;
-      }
       callClaude({
         feature: 'dictation-gen',
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 400,
+        max_tokens: 500,
         messages: [{ role: 'user', content:
-          'Generate 3 short Korean sentences for listening/dictation practice. Topic: "' + topicText + '". Level: ' + (_currentLevel || 'Beginner') + '.\n'
-          + 'Return ONLY a JSON array: [{"ko":"Korean sentence","en":"English translation"}]\nNo markdown. Sentences must be about the topic and natural to speak aloud.'
+          'Generate 3 natural Korean sentences for listening/dictation practice about the topic: "' + topicText + '".\n'
+          + 'Level: ' + (_currentLevel || 'Beginner') + '.\n\n'
+          + 'Requirements:\n'
+          + '- Each sentence must be a short, natural-sounding standalone statement (not a response template).\n'
+          + '- Do NOT use filler phrases like "저는 ~에 대해 이야기하고 싶어요" or "오늘은 ~에 대해 말해볼게요".\n'
+          + '- Mix declarative / question / descriptive forms across the 3 sentences.\n'
+          + '- 5-10 words each.\n\n'
+          + 'Return ONLY a JSON array: [{"ko":"Korean sentence","en":"English translation"}]\nNo markdown.'
         }]
       }).then(function(res) {
         try {
@@ -13771,15 +13809,21 @@ function _dctRenderArrange() {
     _dctWOState = { sentIdx:_dctWOIdx, original:words, pool:shuffled, selected:[], result:null };
   }
   var wo = _dctWOState;
+  // Dictation modal uses a LIGHT theme; the shared .bm-word-chip class is
+  // dark-themed (white text on transparent white bg) so chips rendered
+  // invisible on the white dictation background. Inline light-theme styles:
+  var poolChipBase = 'padding:10px 16px;border-radius:12px;border:1.5px solid #cbd5e1;background:#fff;color:#0f172a;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .15s';
+  var poolChipUsed = poolChipBase + ';opacity:.25;cursor:not-allowed';
+  var selChip      = 'padding:10px 16px;border-radius:12px;border:none;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(14,168,143,.3)';
+
   var poolHTML = wo.pool.map(function(w,pi){
-    var used=wo.selected.indexOf(w)>=0;
     var usedCount=wo.selected.filter(function(x){return x===w;}).length;
     var totalCount=wo.pool.filter(function(x){return x===w;}).length;
     var isUsed=usedCount>=totalCount;
-    return '<button class="bm-word-chip'+(isUsed?' bm-word-used':'')+'" '+(isUsed?'disabled':'')+' onclick="dctWOPick('+pi+')" style="font-family:\'Noto Serif KR\',serif">'+escapeHTML(w)+'</button>';
+    return '<button '+(isUsed?'disabled':'')+' onclick="dctWOPick('+pi+')" style="'+(isUsed?poolChipUsed:poolChipBase)+'">'+escapeHTML(w)+'</button>';
   }).join('');
   var ansHTML = wo.selected.length
-    ? wo.selected.map(function(w,si){return '<button class="bm-word-chip bm-word-selected" onclick="dctWORemove('+si+')" style="font-family:\'Noto Serif KR\',serif">'+escapeHTML(w)+' ×</button>';}).join('')
+    ? wo.selected.map(function(w,si){return '<button onclick="dctWORemove('+si+')" style="'+selChip+'">'+escapeHTML(w)+' ×</button>';}).join('')
     : '<span style="font-size:12px;color:#94a3b8">단어를 선택해서 문장을 만드세요</span>';
   var allSel = wo.selected.length === wo.original.length;
   body.innerHTML = '<div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">문장 '+(_dctWOIdx+1)+' / '+sents.length+'</div>'
