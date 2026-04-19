@@ -7476,24 +7476,9 @@ function enhanceConversationsMobile() {
 }
 
 function enhanceStoriesMobile() {
-  if (!isMobileRedesign() || pageName() !== 'korehan-stories') return;
-  var root = document.querySelector('.st-container') || document.body;
-  if (root && !document.querySelector('.mobile-section-shell[data-mobile="story"]')) {
-    var shell = document.createElement('section');
-    shell.className = 'mobile-section-shell';
-    shell.setAttribute('data-mobile','story');
-    shell.innerHTML = ''
-      + '<div class="mobile-eyebrow">Story reading</div>'
-      + '<h2 class="mobile-quick-title" style="font-size:28px">Short stories should feel easy to finish on mobile.</h2>'
-      + '<p class="mobile-quick-sub">Pick a mood, read one story, then review the key words and discuss what happened.</p>'
-      + '<div class="mobile-action-row">'
-      + '<a class="mobile-primary-btn" href="korehan-stories.html?mood=fun">' + khIcon('sparkles', 'Fun stories', 'kh-ui-icon-sm') + '</a>'
-      + '<a class="mobile-secondary-btn" href="korehan-stories.html?mood=touching">' + khIcon('heart', 'Touching', 'kh-ui-icon-sm') + '</a>'
-      + '</div>';
-    root.insertAdjacentElement('afterbegin', shell);
-  }
-
-  // Removed mobile Story-Study banner between title and body (redundant with sidebar cards).
+  // Mobile banner removed — the Stories page now has genre rails (Netflix-style)
+  // so the intro banner is redundant.
+  return;
 }
 
 function enhanceCollectionPagesMobile() {

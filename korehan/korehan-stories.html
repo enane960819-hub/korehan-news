@@ -102,6 +102,17 @@
 .st-q-a{font-size:12px;color:#475569;line-height:1.5;}
 @media(max-width:900px){.st-grid{grid-template-columns:repeat(2,1fr)}.st-panel{grid-template-columns:1fr}.st-right{border-left:none;border-top:1px solid #e8eef7}}
 @media(max-width:600px){.st-grid{grid-template-columns:1fr}.st-hero h1{font-size:28px}.st-panel{border-radius:20px}}
+/* Netflix-style genre rails */
+.st-rail{margin-bottom:36px;}
+.st-rail-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;padding:0 4px;}
+.st-rail-title{font-size:20px;font-weight:900;color:#0f172a;letter-spacing:-0.01em;font-family:'DM Sans','Noto Sans KR',sans-serif;}
+.st-rail-more{font-size:12px;font-weight:700;color:#64748b;cursor:pointer;background:none;border:none;padding:4px 0;font-family:inherit;}
+.st-rail-more:hover{color:#0f172a;}
+.st-rail-scroll{display:flex;gap:14px;overflow-x:auto;overflow-y:hidden;padding:4px 4px 16px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}
+.st-rail-scroll::-webkit-scrollbar{height:6px;}
+.st-rail-scroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px;}
+.st-rail-scroll > .sc{flex:0 0 260px;scroll-snap-align:start;}
+@media(max-width:600px){.st-rail-scroll > .sc{flex:0 0 78%;}}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
@@ -746,24 +757,54 @@ function renderStories() {
     return genreOk && lvlOk && perspOk;
   });
 
-  // Render series section
   renderSeriesSection();
 
   if (!list.length) {
+    grid.className = 'st-grid';
+    grid.style.display = '';
     grid.innerHTML = '<p style="color:#64748b;font-size:14px;grid-column:1/-1;padding:20px 0">No stories found.</p>';
     return;
   }
 
-  // Separate series episodes and standalone
+  // Netflix-style genre rails when no filter is active
+  var noFilter = activeGenre === 'all' && activeLvl === 'all' && activePerspective === 'all';
+  if (noFilter) {
+    grid.className = 'st-rails';
+    grid.style.display = 'block';
+    var byGenre = {};
+    list.forEach(function(s) {
+      var g = s.genre || s.mood || 'slice_of_life';
+      if (!byGenre[g]) byGenre[g] = [];
+      byGenre[g].push(s);
+    });
+    var order = ['slice_of_life','romance','mystery','adventure','thriller','essay','workplace','fun','touching','scary','shocking'];
+    var keys = Object.keys(byGenre).sort(function(a, b) {
+      var ai = order.indexOf(a); var bi = order.indexOf(b);
+      if (ai < 0) ai = 999; if (bi < 0) bi = 999;
+      return ai - bi;
+    });
+    grid.innerHTML = keys.map(function(g) {
+      var label = GENRE_LABELS[g] || g;
+      var stories = byGenre[g].slice(0, 12);
+      return '<div class="st-rail">'
+        + '<div class="st-rail-head">'
+          + '<div class="st-rail-title">' + label + '</div>'
+          + '<button class="st-rail-more" onclick="stFilterGenre(\'' + g + '\')">See all &rsaquo;</button>'
+        + '</div>'
+        + '<div class="st-rail-scroll">' + stories.map(renderStoryCard).join('') + '</div>'
+      + '</div>';
+    }).join('');
+    if (window.renderKhLucideIcons) renderKhLucideIcons();
+    return;
+  }
+
+  // Filtered view — flat grid (current behaviour)
+  grid.className = 'st-grid';
+  grid.style.display = '';
   var standalone = list.filter(function(s) { return !s.series_id; });
   var seriesEps = list.filter(function(s) { return !!s.series_id; });
 
-  var html = '';
-
-  // Standalone stories
-  html += standalone.map(function(s) { return renderStoryCard(s); }).join('');
-
-  // Series episodes grouped
+  var html = standalone.map(renderStoryCard).join('');
   var seriesGroups = {};
   seriesEps.forEach(function(s) {
     if (!seriesGroups[s.series_id]) seriesGroups[s.series_id] = [];
@@ -771,11 +812,18 @@ function renderStories() {
   });
   Object.keys(seriesGroups).forEach(function(sid) {
     var eps = seriesGroups[sid].sort(function(a,b) { return (a.episode||0) - (b.episode||0); });
-    html += eps.map(function(s) { return renderStoryCard(s); }).join('');
+    html += eps.map(renderStoryCard).join('');
   });
 
   grid.innerHTML = html;
   if (window.renderKhLucideIcons) renderKhLucideIcons();
+}
+
+function stFilterGenre(genre) {
+  var pill = document.querySelector('#mood-pills .sf-pill[data-genre="' + genre + '"]');
+  if (pill) { pill.click(); return; }
+  activeGenre = genre;
+  renderStories();
 }
 
 function renderStoryCard(s) {
