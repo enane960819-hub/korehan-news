@@ -5056,8 +5056,17 @@ async function saveVocabToDB(word, rom, en, isDelete) {
 }
 
 function wrapVocab(el) {
-  var keys  = Object.keys(VOCAB).sort(function(a, b){ return b.length - a.length; });
-  var regex = new RegExp('(' + keys.map(function(k){ return k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).join('|') + ')', 'g');
+  // Require at least 2 Korean chars — 1-char entries (particles, single-syllable
+  // verbs/nouns) match inside every compound word and fragment the underline
+  // character-by-character.
+  var keys  = Object.keys(VOCAB).filter(function(k){ return k && k.length >= 2; })
+                                .sort(function(a, b){ return b.length - a.length; });
+  if (!keys.length) return;
+  // Korean word boundary: must NOT be preceded or followed by another Korean syllable.
+  // This keeps "국제" from matching inside "국제형사경찰기구" and prevents the
+  // partial-match fragmentation that looks like per-character highlighting.
+  var alternation = keys.map(function(k){ return k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).join('|');
+  var regex = new RegExp('(?:^|[^\\uAC00-\\uD7A3])(' + alternation + ')(?![\\uAC00-\\uD7A3])', 'g');
   var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
     acceptNode: function(n) {
       if (!n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
@@ -5069,18 +5078,23 @@ function wrapVocab(el) {
   var nodes = [];
   while (walker.nextNode()) nodes.push(walker.currentNode);
   nodes.forEach(function(node) {
+    regex.lastIndex = 0;
     if (!regex.test(node.nodeValue)) return;
     regex.lastIndex = 0;
     var frag = document.createDocumentFragment();
     var last = 0, m;
     while ((m = regex.exec(node.nodeValue)) !== null) {
-      if (m.index > last) frag.appendChild(document.createTextNode(node.nodeValue.slice(last, m.index)));
+      // m[1] is the vocab word; m.index points to the char before it (or start).
+      var wordStart = m.index + (m[0].length - m[1].length);
+      if (wordStart > last) frag.appendChild(document.createTextNode(node.nodeValue.slice(last, wordStart)));
       var span = document.createElement('span');
       span.className = 'kh-word';
-      span.dataset.word = m[0];
-      span.textContent = m[0];
+      span.dataset.word = m[1];
+      span.textContent = m[1];
       frag.appendChild(span);
-      last = regex.lastIndex;
+      last = wordStart + m[1].length;
+      // Back up so the trailing boundary char can anchor the next match.
+      if (regex.lastIndex > last) regex.lastIndex = last;
     }
     if (last < node.nodeValue.length) frag.appendChild(document.createTextNode(node.nodeValue.slice(last)));
     node.parentNode.replaceChild(frag, node);

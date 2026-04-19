@@ -17,13 +17,17 @@
     style.textContent = `
       .kh-hover-word{
         position:relative;
-        border-bottom:1.5px dashed #7ab8f5;
         cursor:help;
-        transition:background .15s,border-color .15s;
+        text-decoration:underline;
+        text-decoration-style:dotted;
+        text-decoration-color:rgba(122,184,245,.75);
+        text-decoration-thickness:1.5px;
+        text-underline-offset:4px;
+        transition:background .15s,text-decoration-color .15s;
       }
       .kh-hover-word:hover{
-        background:rgba(122,184,245,.12);
-        border-bottom-color:#2255a4;
+        background:rgba(122,184,245,.14);
+        text-decoration-color:#2255a4;
       }
       .kh-hover-tip{
         position:fixed;
@@ -111,7 +115,12 @@
         .order('sort_order', { ascending: true })
         .order('word_ko', { ascending: true });
 
-      vocabList = (res.data || []).filter(function(x){ return x.word_ko && x.meaning_en; });
+      vocabList = (res.data || []).filter(function(x){
+        // Require a meaning AND at least 2 characters — 1-char entries are
+        // usually particles/morphemes that would match inside compound words
+        // and produce the "한글자씩" highlighting problem.
+        return x.word_ko && x.meaning_en && x.word_ko.length >= 2;
+      });
       vocabWords = vocabList.map(function(x){ return x.word_ko; }).sort(function(a,b){ return b.length - a.length; });
     } catch (e) {
       console.warn('hover vocab load failed', e);
@@ -419,6 +428,9 @@
     extras.forEach(function(x) {
       var ko = x.word_ko || x.ko;
       if (!ko || existing[ko]) return;
+      // Skip single-character entries — they would auto-match inside compound
+      // words and fragment the underline character-by-character.
+      if (ko.length < 2) return;
       var entry = {
         word_ko:    ko,
         meaning_en: x.meaning_en || x.en || '',
