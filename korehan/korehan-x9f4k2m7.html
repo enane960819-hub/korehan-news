@@ -7712,12 +7712,14 @@ function srTopicsFormHTML() {
     + '<textarea id="srt-dictation-questions" rows="3" style="width:100%;font-family:monospace;font-size:12px" placeholder="좋아하는 음식이 있어요?|네, 비빔밥을 좋아해요|Yes, I like bibimbap"></textarea>'
     + '<div id="srt-dictation-questions-msg" style="font-size:11px;color:#475569;margin-top:3px"></div></div>'
     + '<div class="fg"><label style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
-    + '<span>📝 Topic Writing 문장 <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|en|alternative1|alternative2|explanation (최소 3개). alternative와 explanation은 선택사항.</span></span>'
+    + '<span>📝 Topic Writing 문장 <span style="font-weight:400;font-size:11px;color:#94a3b8">단어 클릭 → 빈칸 지정 · 오답 2개 입력 · + 로 문장 추가</span></span>'
     + '<button type="button" onclick="srGenTopicWriting()" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 문장 생성</button>'
     + '</label>'
-    + '<textarea id="srt-tw-sentences" rows="5" style="width:100%;font-family:monospace;font-size:12px" placeholder="저는 한국 음식을 좋아해요|I like Korean food\n한국 음식은 정말 맛있어요|Korean food is really delicious"></textarea>'
+    + '<div id="srt-tw-cards" style="display:flex;flex-direction:column;gap:10px;margin-top:6px"></div>'
+    + '<button type="button" onclick="twAddCard()" style="margin-top:8px;padding:8px 14px;border-radius:8px;border:1.5px dashed #cbd5e1;background:#fff;color:#475569;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;width:100%">+ 문장 추가</button>'
+    + '<textarea id="srt-tw-sentences" style="display:none"></textarea>'
     + '<div id="srt-tw-msg" style="font-size:11px;color:#475569;margin-top:3px"></div>'
-    + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">이 문장들이 학습자의 "문장 만들기" 단계에 사용됩니다. AI 재생성 시 자동 생성됩니다.</div></div>'
+    + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">AI 재생성 시 자동 생성됩니다. 단어 클릭 = 빈칸 / 오답 미입력 시 자동 생성.</div></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
     + '<button class="btn btn-g" onclick="srSaveDailyContent()">💾 Save (Draft)</button>'
     + '<button class="btn" onclick="srApproveDailyContent()" style="background:#dcfce7;color:#15803d;border:1px solid #86efac">✅ Approve (유저 공개)</button>'
@@ -7754,6 +7756,8 @@ async function srLoadDailyContent() {
     document.getElementById('srt-dictation-sentences').value = '';
     document.getElementById('srt-dictation-questions').value = '';
     if (document.getElementById('srt-tw-sentences')) document.getElementById('srt-tw-sentences').value = '';
+    window._twCards = [];
+    if (typeof twRenderCards === 'function') twRenderCards();
     document.getElementById('srt-admin-badge').style.display = 'none';
   }
 
@@ -7823,19 +7827,17 @@ async function srLoadDailyContent() {
   document.getElementById('srt-dictation-questions').value = dq.map(function(d) {
     return (d.question_ko||'') + '|' + (d.answer_ko||'') + '|' + (d.hint_en||'');
   }).join('\n');
-  var twEl = document.getElementById('srt-tw-sentences');
-  if (twEl) {
-    twEl.value = (rec.topic_writing_sentences || []).map(function(s) {
-      var parts = [(s.ko||''), (s.en||'')];
-      if (s.acceptable_orders && s.acceptable_orders.length) {
-        s.acceptable_orders.forEach(function(ao){ parts.push(Array.isArray(ao)?ao.join(' '):String(ao)); });
-      }
-      if (s.explanation) parts.push(s.explanation);
-      if (s.blank_answer) parts.push('BLANK:' + s.blank_answer);
-      if (s.distractors && s.distractors.length) parts.push('DISTRACT:' + s.distractors.join(','));
-      return parts.join('|');
-    }).join('\n');
-  }
+  // Load into rich card editor
+  window._twCards = (rec.topic_writing_sentences || []).map(function(s) {
+    return {
+      ko: s.ko || '',
+      en: s.en || '',
+      blank_answer: s.blank_answer || '',
+      distractors: (s.distractors && s.distractors.length) ? s.distractors.slice(0, 2) : ['', ''],
+      explanation: s.explanation || ''
+    };
+  });
+  twRenderCards();
   var badge = document.getElementById('srt-admin-badge');
   if (badge) badge.style.display = rec.admin_edited ? '' : 'none';
   var statusBadge = document.getElementById('srt-status-badge');
@@ -7850,6 +7852,79 @@ async function srLoadDailyContent() {
   if (editorEl) editorEl.style.display = '';
   if (emptyEl)  emptyEl.style.display  = 'none';
   if (msgEl)    msgEl.textContent = '불러왔습니다.';
+}
+
+// ── Topic-Writing card editor ────────────────────────────────────
+// Tap-to-pick blank + inline distractor inputs. Replaces the old
+// pipe-delimited textarea.
+window._twCards = window._twCards || [];
+
+function twAddCard() {
+  window._twCards = window._twCards || [];
+  window._twCards.push({ ko:'', en:'', blank_answer:'', distractors:['',''], explanation:'' });
+  twRenderCards();
+}
+
+function twRemoveCard(i) {
+  window._twCards.splice(i, 1);
+  twRenderCards();
+}
+
+function twRenderCards() {
+  var host = document.getElementById('srt-tw-cards');
+  if (!host) return;
+  var cards = window._twCards || [];
+  if (!cards.length) {
+    host.innerHTML = '<div style="padding:16px;text-align:center;color:#94a3b8;font-size:12px;border:1px dashed #e2e8f0;border-radius:10px">아직 문장이 없습니다. "🤖 문장 생성" 또는 "+ 문장 추가" 로 시작하세요.</div>';
+    return;
+  }
+  host.innerHTML = cards.map(function(c, i) {
+    var words = (c.ko || '').replace(/[.,!?。]/g,'').split(/\s+/).filter(Boolean);
+    var wordChips = words.map(function(w) {
+      var on = c.blank_answer === w;
+      return '<button type="button" onclick="twPickBlank(' + i + ',\'' + w.replace(/\\/g,'\\\\').replace(/\'/g,"\\'") + '\')" '
+        + 'style="padding:4px 10px;border-radius:999px;border:1.5px solid ' + (on ? '#2563eb' : '#e2e8f0')
+        + ';background:' + (on ? '#2563eb' : '#fff')
+        + ';color:' + (on ? '#fff' : '#334155')
+        + ';font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;font-family:Noto Sans KR,sans-serif">' + w + '</button>';
+    }).join(' ');
+    var d1 = (c.distractors && c.distractors[0]) || '';
+    var d2 = (c.distractors && c.distractors[1]) || '';
+    return '<div style="padding:12px 14px;border:1px solid #e2e8f0;border-radius:12px;background:#fff">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:800;color:#94a3b8">#' + (i+1) + '</span>'
+      + '<input type="text" value="' + String(c.ko||'').replace(/"/g,'&quot;') + '" oninput="twUpdate(' + i + ',\'ko\',this.value)" placeholder="한국어 문장" style="flex:1;padding:7px 10px;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;font-family:Noto Sans KR,sans-serif">'
+      + '<button type="button" onclick="twRemoveCard(' + i + ')" title="삭제" style="padding:6px 10px;border:none;background:#fef2f2;color:#dc2626;border-radius:7px;cursor:pointer;font-family:inherit;font-size:12px">✕</button>'
+      + '</div>'
+      + '<input type="text" value="' + String(c.en||'').replace(/"/g,'&quot;') + '" oninput="twUpdate(' + i + ',\'en\',this.value)" placeholder="English translation" style="width:100%;padding:6px 10px;border:1px solid #e2e8f0;border-radius:7px;font-size:12px;margin-bottom:8px;box-sizing:border-box">'
+      + '<div style="font-size:11px;color:#64748b;margin-bottom:4px">빈칸으로 쓸 단어를 선택하세요 ' + (c.blank_answer ? '· <b style="color:#2563eb">' + c.blank_answer + '</b>' : '<span style="color:#94a3b8">(미선택 시 자동)</span>') + '</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">' + (wordChips || '<span style="font-size:11px;color:#cbd5e1">한국어 문장 입력 후 단어 선택</span>') + '</div>'
+      + '<div style="font-size:11px;color:#64748b;margin-bottom:4px">오답 2개 <span style="color:#94a3b8">(비우면 자동 생성)</span></div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+      +   '<input type="text" value="' + String(d1).replace(/"/g,'&quot;') + '" oninput="twUpdateDistract(' + i + ',0,this.value)" placeholder="오답 1" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;font-family:Noto Sans KR,sans-serif">'
+      +   '<input type="text" value="' + String(d2).replace(/"/g,'&quot;') + '" oninput="twUpdateDistract(' + i + ',1,this.value)" placeholder="오답 2" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;font-family:Noto Sans KR,sans-serif">'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function twUpdate(i, field, value) {
+  if (!window._twCards[i]) return;
+  window._twCards[i][field] = value;
+  // Live re-render only when ko changes (word chips depend on it)
+  if (field === 'ko') twRenderCards();
+}
+
+function twUpdateDistract(i, slot, value) {
+  if (!window._twCards[i]) return;
+  if (!Array.isArray(window._twCards[i].distractors)) window._twCards[i].distractors = ['',''];
+  window._twCards[i].distractors[slot] = value;
+}
+
+function twPickBlank(i, word) {
+  if (!window._twCards[i]) return;
+  // Toggle off if already selected
+  window._twCards[i].blank_answer = (window._twCards[i].blank_answer === word) ? '' : word;
+  twRenderCards();
 }
 
 async function srSaveDailyContent() {
@@ -7879,22 +7954,14 @@ async function srSaveDailyContent() {
     var p = line.split('|'); return { question_ko:(p[0]||'').trim(), answer_ko:(p[1]||'').trim(), hint_en:(p[2]||'').trim() };
   });
 
-  var topic_writing_sentences = parseLines('srt-tw-sentences', function(line) {
-    var p = line.split('|');
-    var ko = (p[0]||'').trim(); var en = (p[1]||'').trim();
+  // Serialize card editor → topic_writing_sentences JSON
+  var topic_writing_sentences = (window._twCards || []).map(function(c) {
+    var ko = (c.ko || '').trim();
     if (!ko) return null;
-    var acceptable_orders = []; var explanation = ''; var blank_answer = ''; var distractors = [];
-    // p[2]+ can be: alternative orders, explanation, BLANK:<word>, DISTRACT:w1,w2,w3
-    for (var i = 2; i < p.length; i++) {
-      var v = (p[i]||'').trim(); if (!v) continue;
-      if (/^BLANK:/i.test(v)) { blank_answer = v.replace(/^BLANK:\s*/i, '').trim(); continue; }
-      if (/^DISTRACT:/i.test(v)) { distractors = v.replace(/^DISTRACT:\s*/i, '').split(',').map(function(x){ return x.trim(); }).filter(Boolean); continue; }
-      if (/[가-힣]/.test(v) && v.indexOf(' ') >= 0) acceptable_orders.push(v.split(' '));
-      else explanation = v;
-    }
-    var entry = { ko: ko, en: en, acceptable_orders: acceptable_orders, explanation: explanation };
-    if (blank_answer) entry.blank_answer = blank_answer;
-    if (distractors.length) entry.distractors = distractors;
+    var entry = { ko: ko, en: (c.en || '').trim(), acceptable_orders: [], explanation: (c.explanation || '').trim() };
+    if (c.blank_answer && ko.indexOf(c.blank_answer) !== -1) entry.blank_answer = c.blank_answer;
+    var ds = (c.distractors || []).map(function(x){ return String(x || '').trim(); }).filter(Boolean);
+    if (ds.length >= 2) entry.distractors = ds.slice(0, 2);
     return entry;
   }).filter(Boolean);
 
@@ -8215,7 +8282,10 @@ async function srGenTopicWriting() {
     var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
     var parsed = JSON.parse(raw.slice(s, e+1));
     if (parsed.topic_writing_sentences && parsed.topic_writing_sentences.length) {
-      if (ta) ta.value = parsed.topic_writing_sentences.map(function(s){ return (s.ko||'')+'|'+(s.en||''); }).join('\n');
+      window._twCards = parsed.topic_writing_sentences.map(function(s) {
+        return { ko: s.ko || '', en: s.en || '', blank_answer: '', distractors: ['', ''], explanation: '' };
+      });
+      twRenderCards();
       if (msgEl) msgEl.textContent = '✅ 문장 ' + parsed.topic_writing_sentences.length + '개 생성됨. 수정 후 저장하세요.';
     } else { if (msgEl) msgEl.textContent = '생성 실패 — 다시 시도하세요.'; }
   } catch(err) { if (msgEl) msgEl.textContent = 'Error: ' + (err.message||err); }
