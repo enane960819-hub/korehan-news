@@ -205,16 +205,20 @@
   }
 
   function getTargets() {
-    return [
+    // Include story detail modal panel explicitly (it sits outside the
+    // outer .st-container and would otherwise never be scanned).
+    var list = [
       document.getElementById('dyn-article'),
       document.getElementById('sentences-list'),
       document.getElementById('dyn-article-list'),
-      document.querySelector('.conv-page-container'),
-      document.querySelector('.st-container'),
-      document.querySelector('.sr-body'),
-      document.querySelector('.learn-body'),
-      document.querySelector('.container')
-    ].filter(Boolean);
+      document.getElementById('st-panel')
+    ];
+    // querySelectorAll because stories.html has two .st-container instances
+    // (outer page wrapper + inner modal body) — we must scan both.
+    ['.conv-page-container', '.st-container', '.sr-body', '.learn-body'].forEach(function(sel) {
+      document.querySelectorAll(sel).forEach(function(el){ list.push(el); });
+    });
+    return list.filter(Boolean);
   }
 
   var tip = null;
