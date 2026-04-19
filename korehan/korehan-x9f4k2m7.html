@@ -1101,23 +1101,63 @@ function livePreview(){
 }
 
 // ── Story thumbnail upload ───────────────────────────────────
+function _seCompressImage(file) {
+  return new Promise(function(resolve, reject) {
+    if (!file.type || !file.type.startsWith('image/')) return reject(new Error('이미지 파일이 아닙니다'));
+    var MAX_W = 1200, MAX_H = 1200, QUALITY = 0.85;
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function() {
+      var w = img.naturalWidth || img.width;
+      var h = img.naturalHeight || img.height;
+      var scale = Math.min(1, MAX_W / w, MAX_H / h);
+      var tw = Math.round(w * scale), th = Math.round(h * scale);
+      var canvas = document.createElement('canvas');
+      canvas.width = tw; canvas.height = th;
+      canvas.getContext('2d').drawImage(img, 0, 0, tw, th);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(function(blob) {
+        if (!blob) return reject(new Error('compression failed'));
+        resolve(new File([blob], (file.name || 'thumb').replace(/\.[^.]+$/,'') + '.jpg', { type: 'image/jpeg' }));
+      }, 'image/jpeg', QUALITY);
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error('이미지 로드 실패')); };
+    img.src = url;
+  });
+}
+
+function _seUploadWithTimeout(promise, ms) {
+  return new Promise(function(resolve, reject) {
+    var to = setTimeout(function(){ reject(new Error('업로드 타임아웃 (' + Math.round(ms/1000) + '초)')); }, ms);
+    promise.then(function(r){ clearTimeout(to); resolve(r); }, function(e){ clearTimeout(to); reject(e); });
+  });
+}
+
 async function seThumbUpload(input) {
   if (!input.files || !input.files[0]) return;
   var file = input.files[0];
   var urlInput = document.getElementById('se-thumb');
   var preview  = document.getElementById('se-thumb-preview');
-  if (preview) preview.innerHTML = '<span style="font-size:12px;color:#64748b">⏳ 업로드 중…</span>';
+  if (preview) preview.innerHTML = '<span style="font-size:12px;color:#64748b">⏳ 이미지 압축 중 (' + Math.round(file.size/1024) + ' KB)…</span>';
   try {
+    // Mobile photos are often 3–10MB → the admin-proxy base64 encoder crashes
+    // with stack overflow on large files. Compress client-side first.
+    var compressed = file;
+    if (file.size > 500 * 1024) compressed = await _seCompressImage(file);
+    if (preview) preview.innerHTML = '<span style="font-size:12px;color:#64748b">⏳ 업로드 중 (' + Math.round(compressed.size/1024) + ' KB)…</span>';
     var sb = getSb();
     if (!sb) throw new Error('Admin client not available');
-    var ext  = (file.name.split('.').pop() || 'jpg').toLowerCase();
-    var path = 'stories/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + ext;
-    var up   = await sb.storage.from('article-images').upload(path, file, { upsert: true, contentType: file.type });
-    if (up.error) throw up.error;
+    var path = 'stories/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.jpg';
+    var up = await _seUploadWithTimeout(
+      sb.storage.from('article-images').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' }),
+      30000
+    );
+    if (up && up.error) throw up.error;
     var publicUrl = sb.storage.from('article-images').getPublicUrl(path).data.publicUrl;
     if (urlInput) urlInput.value = publicUrl;
-    if (preview) preview.innerHTML = '<img src="' + publicUrl + '" style="max-height:100px;border-radius:8px;border:1px solid #e2e8f0">';
+    if (preview) preview.innerHTML = '<img src="' + publicUrl + '" style="max-height:100px;border-radius:8px;border:1px solid #e2e8f0"><div style="font-size:11px;color:#16a34a;margin-top:4px">✅ 업로드 완료</div>';
   } catch (e) {
+    console.error('seThumbUpload failed:', e);
     if (preview) preview.innerHTML = '<span style="font-size:12px;color:#dc2626">❌ 업로드 실패: ' + (e.message || e) + '</span>';
   }
 }
