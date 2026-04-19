@@ -3775,11 +3775,26 @@ function renderArticleVocab(a) {
   var el = document.getElementById('art-vocab-list');
   if (!el) return;
 
-  // 1) Prefer AI-generated article-specific vocab from article_cache. These
-  //    are picked by Claude to match the article topic (beauty / economy /
-  //    politics / etc.) — far better than scanning the global VOCAB for any
-  //    common word that happens to appear in the body (e.g. 집, 일, 단).
-  var inlineVocab = (a && Array.isArray(a.vocab)) ? a.vocab : null;
+  // Article Vocab MUST come from the article itself — never the global VOCAB
+  // dictionary. We strictly use:
+  //   1) a.vocab (AI-curated vocab attached to the article object), or
+  //   2) article_cache.ai_analysis.vocab (Claude-picked from the article body).
+  // Both of those are generated against the article body, so every entry is
+  // guaranteed to appear in the article. Each entry is validated against the
+  // body text as a second safety net.
+  var body = (a && (a.body || a.full || a.title)) || '';
+
+  function inArticleBody(ko) {
+    if (!ko) return false;
+    if (body.indexOf(ko) !== -1) return true;
+    // Dictionary-form verbs/adjectives (ending in 다) often appear conjugated
+    // in the body; accept the stem as an article match.
+    if (ko.length >= 3 && /[다요]$/.test(ko)) {
+      var stem = ko.slice(0, -1);
+      if (stem.length >= 2 && body.indexOf(stem) !== -1) return true;
+    }
+    return false;
+  }
 
   function normalize(list) {
     if (!Array.isArray(list)) return [];
@@ -3789,6 +3804,7 @@ function renderArticleVocab(a) {
       if (!v) return;
       var ko = v.ko || v.word || v.word_ko || '';
       if (!ko || ko.length < 2 || seen[ko]) return;
+      if (!inArticleBody(ko)) return; // must literally appear in the article
       seen[ko] = true;
       out.push({
         ko: ko,
@@ -3799,44 +3815,26 @@ function renderArticleVocab(a) {
     return out.slice(0, 12);
   }
 
-  function fallbackFromStaticVocab() {
-    var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '');
-    var found = [];
-    Object.keys(VOCAB).forEach(function(k) {
-      // Skip 1-char entries (single particles/syllables) — they're noise.
-      if (k.length < 2) return;
-      if (text.indexOf(k) !== -1 && found.length < 10) {
-        var v = VOCAB[k] || {};
-        found.push({ ko: k, rom: v.rom || '', en: v.en || '' });
-      }
-    });
-    return found;
-  }
-
   function finalize(items) {
     if (!items || !items.length) {
-      // Last resort: static dictionary match so the panel isn't empty.
-      items = fallbackFromStaticVocab();
-    }
-    if (!items.length) {
       var box = el.closest('.art-vocab-box');
       if (box) box.style.display = 'none';
+      el.innerHTML = '';
       return;
     }
+    var box2 = el.closest('.art-vocab-box');
+    if (box2) box2.style.display = '';
     _renderArticleVocabItems(el, items);
   }
 
-  var inline = normalize(inlineVocab);
+  var inline = normalize(a && a.vocab);
   if (inline.length) { finalize(inline); return; }
 
-  // 2) Async: fetch from article_cache. Show a light placeholder immediately
-  //    so the panel isn't blank while we wait.
   el.innerHTML = '<div style="padding:16px;color:#94a3b8;font-size:13px;text-align:center">Loading vocabulary…</div>';
   var artId = a && a.id;
   if (!artId || typeof getFromCache !== 'function') { finalize([]); return; }
   getFromCache('article', artId, 'ai_analysis').then(function(cached) {
-    var items = normalize(cached && cached.vocab);
-    finalize(items);
+    finalize(normalize(cached && cached.vocab));
   }).catch(function() { finalize([]); });
 }
 
