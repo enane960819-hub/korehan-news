@@ -7493,36 +7493,7 @@ function enhanceStoriesMobile() {
     root.insertAdjacentElement('afterbegin', shell);
   }
 
-  var observer = new MutationObserver(function(){
-    var panel = document.querySelector('.st-panel');
-    if (!panel || panel.querySelector('.mobile-tier-card')) return;
-    var head = panel.querySelector('.st-head-info');
-    if (head) {
-      var box = document.createElement('div');
-      box.className = 'mobile-tier-card';
-      box.style.margin = '0 24px 14px';
-      box.innerHTML = ''
-        + '<div class="mobile-eyebrow">Story study</div>'
-        + '<h3 class="mobile-quick-title" style="font-size:22px;margin:0 0 8px">Read → Vocabulary → Quiz → Discussion</h3>'
-        + '<p class="mobile-quick-sub">Stories work best when the reading screen is calm and the study actions are obvious.</p>'
-        + '<div class="mobile-action-row">'
-        + '<a class="mobile-primary-btn" href="javascript:void(0)">' + khIcon('book-marked', 'Vocabulary', 'kh-ui-icon-sm') + '</a>'
-        + '<a class="mobile-secondary-btn" href="korehan-study-room.html">' + khIcon('message-circle', 'Discussion', 'kh-ui-icon-sm') + '</a>'
-        + '</div>';
-      head.insertAdjacentElement('afterend', box);
-    }
-    var cta = panel.querySelector('.st-cta-row');
-    if (cta && !cta.dataset.mobileEnhanced) {
-      cta.dataset.mobileEnhanced = '1';
-      cta.innerHTML = ''
-        + '<button class="st-cta-btn st-cta-pri">Vocabulary</button>'
-        + '<button class="st-cta-btn st-cta-sec">Quiz</button>'
-        + '<button class="st-cta-btn st-cta-sec">Discussion</button>'
-        + '<button class="st-cta-btn st-cta-sec">Practice</button>';
-      cta.style.gridTemplateColumns = '1fr 1fr';
-    }
-  });
-  observer.observe(document.body, { childList:true, subtree:true });
+  // Removed mobile Story-Study banner between title and body (redundant with sidebar cards).
 }
 
 function enhanceCollectionPagesMobile() {
