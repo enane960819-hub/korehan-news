@@ -13580,6 +13580,20 @@ var _dctWOState = null;
 var _dctSpeed = 1.0;          // TTS playback rate: 0.7 | 1.0 | 1.2
 var _dctArticleMode = false;  // true when using article sentences instead of daily
 var _dctArticleSentences = []; // extracted sentences for article dictation
+var _dctListenIdx = 0;         // which sentence is showing in Step 1
+
+function dctGoBack() {
+  // Back arrow: within a step, stay put; between steps, rewind; on step 1, close.
+  if (_dctStep === 4) { _dctStep = 3; _dctFbState = null; _dctRender(); return; }
+  if (_dctStep === 3) { _dctStep = 2; _dctWOIdx = 0; _dctWOState = null; _dctRender(); return; }
+  if (_dctStep === 2) {
+    if (_dctWOIdx > 0) { _dctWOIdx--; _dctWOState = null; _dctRender(); return; }
+    _dctStep = 1; _dctRender(); return;
+  }
+  // Step 1
+  if (_dctListenIdx > 0) { _dctListenIdx--; _dctRender(); return; }
+  closeDictationModal();
+}
 
 function openDictationModal() {
   if (!supaUser) { openAuthModal('signin'); return; }
@@ -13591,6 +13605,7 @@ function openDictationModal() {
   _dctFbIdx = 0; _dctFbState = null; _dctFbScore = 0;
   _dctLpIdx = 0; _dctLpState = null; _dctLpScore = 0;
   _dctArticleMode = false; _dctArticleSentences = [];
+  _dctListenIdx = 0;
   _dctRender();
 }
 function closeDictationModal() {
@@ -13704,25 +13719,50 @@ function _dctRenderListen() {
   });
   speedHTML += '</div>';
 
+  // Clamp index in case sentence count changed
+  if (_dctListenIdx >= sents.length) _dctListenIdx = sents.length - 1;
+  if (_dctListenIdx < 0) _dctListenIdx = 0;
+  var curIdx = _dctListenIdx;
+  var s = sents[curIdx] || {};
+  var safeKo = (s.ko||'').replace(/'/g,"&#39;");
+
   var modeLabel = _dctArticleMode
     ? '<div style="display:inline-block;padding:3px 10px;background:#fef3c7;border:1px solid #fcd34d;border-radius:20px;font-size:11px;font-weight:700;color:#92400e;margin-bottom:12px">📰 Article Dictation</div>'
     : '';
-  var html = modeLabel + speedHTML + '<div style="font-size:13px;color:#64748b;margin-bottom:16px">각 문장을 듣고 소리 내어 따라 읽어보세요.</div>';
-  sents.forEach(function(s, i) {
-    var safeKo = (s.ko||'').replace(/'/g,"&#39;");
-    html += '<div class="dct-sent-card">'
+  var progress = '<div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">문장 '+(curIdx+1)+' / '+sents.length+'</div>';
+  var html = modeLabel + speedHTML + progress
+    + '<div style="font-size:13px;color:#64748b;margin-bottom:16px">문장을 듣고 소리 내어 따라 읽어보세요.</div>'
+    + '<div class="dct-sent-card" style="padding:22px 20px">'
       + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'
-      + '<div style="flex:1"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:6px">Sentence '+(i+1)+'</div>'
-      + '<div class="dct-sent-ko">'+escapeHTML(s.ko||'')+'</div>'
-      + '<div class="dct-sent-en">'+escapeHTML(s.en||'')+'</div></div>'
-      + '<button class="dct-listen-btn" onclick="_dctSpeakSentence(\''+safeKo+'\')">🔊</button>'
-      + '</div></div>';
-  });
-  if (!_dctArticleMode) {
+      + '<div style="flex:1">'
+        + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:8px">Sentence '+(curIdx+1)+'</div>'
+        + '<div class="dct-sent-ko" style="font-size:18px;line-height:1.5;margin-bottom:8px">'+escapeHTML(s.ko||'')+'</div>'
+        + '<div class="dct-sent-en" style="font-size:14px">'+escapeHTML(s.en||'')+'</div>'
+      + '</div>'
+      + '<button class="dct-listen-btn" onclick="_dctSpeakSentence(\''+safeKo+'\')" style="font-size:20px;padding:12px 16px">🔊</button>'
+      + '</div>'
+    + '</div>';
+  if (!_dctArticleMode && curIdx === sents.length - 1) {
     html += _dctGetArticleBtnHTML();
   }
   body.innerHTML = html;
-  foot.innerHTML = '<button class="btn btn-g" onclick="dctNext()" style="min-width:140px">어절 배열하기 →</button>';
+
+  var prevBtn = curIdx > 0
+    ? '<button class="btn" onclick="_dctListenPrev()" style="margin-right:auto">← 이전</button>'
+    : '<button class="btn" disabled style="margin-right:auto;opacity:.4;cursor:not-allowed">← 이전</button>';
+  var nextLabel = curIdx < sents.length - 1 ? '다음 →' : '어절 배열하기 →';
+  var nextAction = curIdx < sents.length - 1 ? '_dctListenNext()' : 'dctNext()';
+  foot.innerHTML = prevBtn
+    + '<button class="btn btn-g" onclick="'+nextAction+'" style="min-width:140px">'+nextLabel+'</button>';
+}
+
+function _dctListenNext() {
+  var sents = _dctArticleMode ? _dctArticleSentences : _dailyDictationSentences;
+  if (!sents || !sents.length) return;
+  if (_dctListenIdx < sents.length - 1) { _dctListenIdx++; _dctRender(); }
+}
+function _dctListenPrev() {
+  if (_dctListenIdx > 0) { _dctListenIdx--; _dctRender(); }
 }
 
 // Set TTS speed and update speed button styles without full re-render
@@ -13799,6 +13839,7 @@ function startArticleDictation() {
   _dctStep = 1; _dctWOIdx = 0; _dctWOState = null;
   _dctFbIdx = 0; _dctFbState = null; _dctFbScore = 0;
   _dctLpIdx = 0; _dctLpState = null; _dctLpScore = 0;
+  _dctListenIdx = 0;
   var m = document.getElementById('dct-modal');
   if (m) {
     m.classList.remove('hidden');
@@ -15312,11 +15353,14 @@ setTimeout(renderCompletedStudies, 500);
 <div class="woverlay hidden" id="dct-modal" onclick="if(event.target===this)closeDictationModal()">
   <div class="dct-panel">
     <div class="dct-header">
-      <div>
-        <div style="font-size:13px;font-weight:800;letter-spacing:.5px">🎧 Dictation</div>
-        <div style="font-size:11px;opacity:.65;margin-top:2px" id="dct-step-sub">Step 1 of 2 — Listen</div>
+      <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+        <button onclick="dctGoBack()" aria-label="Back" style="background:#f1f5f9;border:none;color:#0f172a;border-radius:10px;width:34px;height:34px;cursor:pointer;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">←</button>
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:800;letter-spacing:.5px">🎧 Dictation</div>
+          <div style="font-size:11px;opacity:.65;margin-top:2px" id="dct-step-sub">Step 1 of 4 — Listen</div>
+        </div>
       </div>
-      <button onclick="closeDictationModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:14px">✕</button>
+      <button onclick="closeDictationModal()" aria-label="Close" style="background:#f1f5f9;border:none;color:#0f172a;border-radius:10px;width:34px;height:34px;cursor:pointer;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
     </div>
     <div class="dct-step-pips" id="dct-pips">
       <div class="dct-pip active" id="dct-pip-1"></div>
