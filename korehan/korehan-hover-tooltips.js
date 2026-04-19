@@ -176,6 +176,7 @@
     span.addEventListener('mouseenter', onWordEnter);
     span.addEventListener('mouseleave', onWordLeave);
     span.addEventListener('mousemove', moveTooltip);
+    span.addEventListener('click', onWordTap);
     frag.appendChild(span);
 
     if (after) frag.appendChild(document.createTextNode(after));
@@ -295,6 +296,36 @@
   }
   function onWordLeave() {
     scheduleHide();
+  }
+  function onWordTap(e) {
+    // Mobile: tap a word to show its tooltip (mouse events don't fire on touch)
+    e.stopPropagation();
+    clearTimeout(_hideTimer);
+    showTooltip(e);
+    // Position near the tapped word (mousemove won't fire on touch)
+    var rect = e.currentTarget.getBoundingClientRect();
+    var t = ensureTooltip();
+    var x = Math.min(rect.left, window.innerWidth - 320);
+    var y = rect.bottom + 8;
+    if (y + 160 > window.innerHeight) y = Math.max(10, rect.top - 160);
+    t.style.left = Math.max(10, x) + 'px';
+    t.style.top  = Math.max(10, y) + 'px';
+    _installOutsideTapCloser();
+  }
+
+  var _outsideTapInstalled = false;
+  function _installOutsideTapCloser() {
+    if (_outsideTapInstalled) return;
+    _outsideTapInstalled = true;
+    var handler = function(ev) {
+      if (!tip) return;
+      if (tip.contains(ev.target)) return;
+      if (ev.target && ev.target.closest && ev.target.closest('.kh-hover-word')) return;
+      hideTooltip();
+      document.removeEventListener('click', handler, true);
+      _outsideTapInstalled = false;
+    };
+    setTimeout(function(){ document.addEventListener('click', handler, true); }, 0);
   }
 
   function moveTooltip(e) {
