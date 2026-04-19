@@ -7484,7 +7484,7 @@ function enhanceStoriesMobile() {
 function enhanceCollectionPagesMobile() {
   if (!isMobileRedesign()) return;
   var p = pageName();
-  if (['korehan-all','korehan-world','korehan-society','korehan-culture','korehan-korea','korehan-section'].indexOf(p) >= 0) {
+  if (['korehan-world','korehan-society','korehan-culture','korehan-korea','korehan-section'].indexOf(p) >= 0) {
     var list = document.getElementById('dyn-article-list');
     if (list && !document.querySelector('.mobile-section-shell[data-mobile="news"]')) {
       var shell = document.createElement('section');
