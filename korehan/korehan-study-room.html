@@ -1926,7 +1926,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 .dct-listen-btn { background:none; border:1.5px solid #bfdbfe; border-radius:10px; padding:8px 14px; cursor:pointer; font-size:16px; color:#2255a4; float:right; transition:all .15s; }
 .dct-listen-btn:hover { background:#eff6ff; border-color:#7ab8f5; }
 .dct-wo-zone { background:#f0f7ff; border:1.5px solid #bfdbfe; border-radius:12px; padding:16px; margin-bottom:14px; font-family:'Noto Serif KR',serif; font-size:16px; line-height:2.4; min-height:56px; }
-@media(max-width:640px) { .dct-panel { max-height:100vh; border-radius:0; } }
+@media(max-width:640px) { #dct-modal { padding:0 !important; align-items:stretch !important; } .dct-panel { max-height:100dvh; height:100dvh; max-width:100%; width:100%; border-radius:0; } }
 
 /* ── Mobile fixes ─────────────────────────────────────── */
 @media(max-width:640px) {
@@ -13878,12 +13878,18 @@ function _dctRenderTyping() {
 
   var s = pool[_dctTypingIdx];
   var speedLabel = _dctSpeed < 0.9 ? ' 🐢' : _dctSpeed > 1.1 ? ' 🏃' : ' 🚶';
+  var hintEn = s.en ? '<div style="text-align:center;margin:0 0 14px;padding:10px 14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;font-size:13px;color:#78350f;font-style:italic">💡 ' + escapeHTML(s.en) + '</div>' : '';
+  var wordCount = (s.ko || '').trim().split(/\s+/).filter(Boolean).length;
+  var charCount = (s.ko || '').replace(/\s/g, '').length;
+  var metaHint = '<div style="text-align:center;font-size:11px;color:#94a3b8;margin-bottom:12px">' + wordCount + ' words · ' + charCount + ' chars</div>';
   body.innerHTML =
     '<div style="font-size:13px;color:#64748b;margin-bottom:16px">듣고 한국어로 타이핑하세요. (' + (_dctTypingIdx + 1) + '/' + pool.length + ')' + speedLabel + '</div>'
-    + '<div style="text-align:center;margin-bottom:16px">'
+    + '<div style="text-align:center;margin-bottom:14px">'
     + '<button onclick="_dctTypingSpeak()" style="width:70px;height:70px;border-radius:50%;background:#eff6ff;border:2px solid #bfdbfe;font-size:32px;cursor:pointer">🔊</button>'
     + '<div style="font-size:11px;color:#94a3b8;margin-top:6px">클릭해서 듣기</div>'
     + '</div>'
+    + hintEn
+    + metaHint
     + '<input id="dct-typing-input" type="text" autocomplete="off" placeholder="들은 내용을 입력하세요..." style="width:100%;padding:12px 16px;border:2px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:\'Noto Sans KR\',sans-serif;box-sizing:border-box;text-align:center" onkeydown="if(event.key===\'Enter\')_dctTypingCheck()">'
     + '<div id="dct-typing-fb" style="margin-top:10px;min-height:40px"></div>';
   foot.innerHTML = '<button class="btn btn-g" onclick="_dctTypingCheck()">확인</button>';
