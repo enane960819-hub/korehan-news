@@ -114,8 +114,29 @@
 .st-rail-scroll{display:flex;gap:14px;overflow-x:auto;overflow-y:hidden;padding:4px 4px 16px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}
 .st-rail-scroll::-webkit-scrollbar{height:6px;}
 .st-rail-scroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px;}
-.st-rail-scroll > .sc{flex:0 0 260px;scroll-snap-align:start;}
-@media(max-width:600px){.st-rail-scroll > .sc{flex:0 0 78%;}}
+.st-rail-scroll > .sc{flex:0 0 168px;scroll-snap-align:start;min-height:224px;}
+.st-rail-scroll > .sc .sc-preview,
+.st-rail-scroll > .sc .sc-author,
+.st-rail-scroll > .sc .sc-foot{display:none;}
+.st-rail-scroll > .sc .sc-body{padding:10px 12px;}
+.st-rail-scroll > .sc .sc-title{font-size:13px;margin-bottom:2px;line-height:1.3;}
+.st-rail-scroll > .sc .sc-title-en{font-size:10px;margin-bottom:0;}
+.st-rail-scroll > .sc .sc-mood-badge{font-size:9px;padding:2px 6px;top:8px;left:8px;}
+@media(max-width:600px){
+  .st-rail-scroll > .sc{flex:0 0 136px;min-height:182px;}
+  .st-rail-scroll{gap:8px;padding:2px 2px 12px;}
+  .st-rail{margin-bottom:22px;}
+  .st-rail-head{margin-bottom:8px;padding:0 2px;}
+  .st-rail-title{font-size:15px;}
+  .st-rail-scroll > .sc .sc-title{font-size:12px;}
+  .st-rail-scroll > .sc .sc-body{padding:8px 10px;}
+  .st-hero{padding:22px 0 50px;margin-bottom:-34px;}
+  .st-hero h1{font-size:24px;margin-bottom:6px;}
+  .st-hero p{font-size:12px;line-height:1.5;}
+  .st-filter-bar{padding:12px 16px 16px;gap:6px;}
+  .sf-pill{padding:6px 12px;font-size:12px;}
+  .st-container{padding:0 14px 48px;}
+}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
@@ -786,7 +807,7 @@ function renderStories() {
       if (ai < 0) ai = 999; if (bi < 0) bi = 999;
       return ai - bi;
     });
-    grid.innerHTML = keys.map(function(g) {
+    var genreRailsHTML = keys.map(function(g) {
       var label = GENRE_LABELS[g] || g;
       var stories = byGenre[g].slice(0, 12);
       return '<div class="st-rail">'
@@ -797,6 +818,33 @@ function renderStories() {
         + '<div class="st-rail-scroll">' + stories.map(renderStoryCard).join('') + '</div>'
       + '</div>';
     }).join('');
+
+    // "⚡ Quick Reads" — stories with readTime <= 3 min
+    var quickReads = list.filter(function(s) {
+      var m = String(s.readTime || s.read_time || '').match(/\d+/);
+      return m && parseInt(m[0], 10) <= 3;
+    }).slice(0, 12);
+    var quickHTML = quickReads.length
+      ? '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title">⚡ Quick Reads</div></div>'
+        + '<div class="st-rail-scroll">' + quickReads.map(renderStoryCard).join('') + '</div></div>'
+      : '';
+
+    // "By Level" rails — Sprout / Tree / Forest
+    var byLevel = { b: [], i: [], a: [] };
+    list.forEach(function(s){ if (byLevel[s.lvl]) byLevel[s.lvl].push(s); });
+    var LVL_RAIL_LABEL = { b: '🌱 Sprout Stories', i: '🌳 Tree Stories', a: '🌲 Forest Stories' };
+    var lvlRailsHTML = ['b','i','a'].map(function(lv) {
+      if (!byLevel[lv].length) return '';
+      return '<div class="st-rail">'
+        + '<div class="st-rail-head">'
+          + '<div class="st-rail-title">' + LVL_RAIL_LABEL[lv] + '</div>'
+          + '<button class="st-rail-more" onclick="stFilterLevel(\'' + lv + '\')">See all &rsaquo;</button>'
+        + '</div>'
+        + '<div class="st-rail-scroll">' + byLevel[lv].slice(0, 12).map(renderStoryCard).join('') + '</div>'
+      + '</div>';
+    }).join('');
+
+    grid.innerHTML = quickHTML + genreRailsHTML + lvlRailsHTML;
     if (window.renderKhLucideIcons) renderKhLucideIcons();
     return;
   }
@@ -820,6 +868,13 @@ function renderStories() {
 
   grid.innerHTML = html;
   if (window.renderKhLucideIcons) renderKhLucideIcons();
+}
+
+function stFilterLevel(lv) {
+  var pill = document.querySelector('#mood-pills .sf-pill[data-lvl="' + lv + '"]');
+  if (pill) { pill.click(); return; }
+  activeLvl = lv;
+  renderStories();
 }
 
 function stFilterGenre(genre) {
