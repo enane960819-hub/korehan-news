@@ -1910,6 +1910,21 @@ body.kh-neon-on .su-mcq-opt.selected .su-mcq-num { background:#00ffd5;color:#000
 .dct-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; background:#fff; color:#0f172a; flex-shrink:0; border-bottom:1px solid #f1f5f9; }
 .dct-header div:first-child div:first-child { color:#7c3aed !important; }
 .dct-step-pips { display:flex; gap:6px; padding:10px 20px; background:#faf5ff; border-bottom:1px solid #ede9fe; flex-shrink:0; }
+/* Phase 5 — mode switcher tabs */
+.dct-mode-tab {
+  font-family:inherit; font-size:12px; font-weight:700; letter-spacing:.01em;
+  padding:7px 13px; border-radius:999px;
+  border:1.5px solid #e2e8f0; background:#fff; color:#64748b;
+  cursor:pointer; transition:all .18s ease;
+}
+.dct-mode-tab:hover { border-color:#c4b5fd; color:#7c3aed; background:#faf5ff; }
+.dct-mode-tab.on {
+  background:linear-gradient(135deg,#7c3aed,#6d28d9);
+  border-color:#6d28d9; color:#fff;
+  box-shadow:0 6px 16px -6px rgba(124,58,237,.6);
+}
+body.kh-dark .dct-mode-tab { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.1); color:rgba(255,255,255,.7); }
+body.kh-dark .dct-mode-tab:hover { background:rgba(124,58,237,.15); color:#fff; }
 .dct-pip.active { background:#7c3aed !important; }
 body.kh-dark .dct-header { background:linear-gradient(135deg,#0f2040,#152d5a); color:#fff; border-bottom-color:rgba(255,255,255,.06); }
 body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important; }
@@ -14636,6 +14651,11 @@ var _dctListenIdx = 0;         // which sentence is showing in Step 1
 
 function dctGoBack() {
   // Back arrow: within a step, stay put; between steps, rewind; on step 1, close.
+  // In Phoneme / Connected modes, Back exits to the Topic drill first, then closes.
+  if (_dctMode === 'phoneme' || _dctMode === 'connected') {
+    _dctSwitchMode('topic');
+    return;
+  }
   if (_dctStep === 4) { _dctStep = 3; _dctFbState = null; _dctRender(); return; }
   if (_dctStep === 3) { _dctStep = 2; _dctWOIdx = 0; _dctWOState = null; _dctRender(); return; }
   if (_dctStep === 2) {
@@ -14646,6 +14666,8 @@ function dctGoBack() {
   if (_dctListenIdx > 0) { _dctListenIdx--; _dctRender(); return; }
   closeDictationModal();
 }
+
+var _dctMode = 'topic'; // 'topic' | 'phoneme' | 'connected'
 
 function openDictationModal() {
   if (!supaUser) { openAuthModal('signin'); return; }
@@ -14658,7 +14680,29 @@ function openDictationModal() {
   _dctLpIdx = 0; _dctLpState = null; _dctLpScore = 0;
   _dctArticleMode = false; _dctArticleSentences = [];
   _dctListenIdx = 0;
-  _dctRender();
+  _dctMode = 'topic';
+  _dctSwitchMode('topic');
+}
+
+// Switch between Topic-drill (existing 4-step) / Phoneme / Connected speech.
+function _dctSwitchMode(mode) {
+  _dctMode = mode;
+  // Highlight the active tab
+  document.querySelectorAll('.dct-mode-tab').forEach(function(b) {
+    b.classList.toggle('on', b.getAttribute('data-mode') === mode);
+  });
+  // Pips only make sense for the 4-step Topic drill
+  var pips = document.getElementById('dct-pips');
+  if (pips) pips.style.display = (mode === 'topic') ? 'flex' : 'none';
+
+  if (mode === 'topic') {
+    _dctStep = 1;
+    _dctRender();
+  } else if (mode === 'phoneme') {
+    _dctPhonemeStart();
+  } else if (mode === 'connected') {
+    _dctConnectedStart();
+  }
 }
 function closeDictationModal() {
   var m = document.getElementById('dct-modal');
@@ -15011,6 +15055,397 @@ function _dctSaveScore(pct, sentenceCount) {
     if (existing.length > 90) existing = existing.slice(existing.length - 90);
     localStorage.setItem(key, JSON.stringify(existing));
   } catch(e) {}
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Phase 5 — Phoneme discrimination mini-drill
+// ════════════════════════════════════════════════════════════════════
+// Each pair is the trickiest contrast for the "left" vowel/consonant.
+// `words` are minimal pairs — when played, user picks which side was said.
+var PHONEME_PAIRS = [
+  { a: 'ㅓ', b: 'ㅗ', colorA: '#60a5fa', colorB: '#f472b6',
+    words: [
+      { a: '너 (you)',       b: '노 (no)' },
+      { a: '허리 (waist)',   b: '호리 (slim)' },
+      { a: '거기 (there)',   b: '고기 (meat)' },
+      { a: '서 (stand)',     b: '소 (cow)' }
+    ] },
+  { a: 'ㅡ', b: 'ㅜ', colorA: '#a78bfa', colorB: '#34d399',
+    words: [
+      { a: '드 (particle)',  b: '두 (two)' },
+      { a: '금 (gold)',      b: '굼 (cave)' },
+      { a: '블 (block)',     b: '불 (fire)' },
+      { a: '크다 (big)',     b: '쿠다 (none)' }
+    ] },
+  { a: 'ㅅ', b: 'ㅆ', colorA: '#fbbf24', colorB: '#ef4444',
+    words: [
+      { a: '사다 (buy)',     b: '싸다 (cheap)' },
+      { a: '살 (flesh)',     b: '쌀 (rice)' },
+      { a: '손 (hand)',      b: '쏜 (shot)' },
+      { a: '세다 (count)',   b: '쎄다 (strong)' }
+    ] },
+  { a: 'ㄱ', b: 'ㄲ', colorA: '#06b6d4', colorB: '#8b5cf6',
+    words: [
+      { a: '가 (go)',        b: '까 (peel)' },
+      { a: '개 (dog)',       b: '깨 (sesame)' },
+      { a: '기 (energy)',    b: '끼 (talent)' },
+      { a: '길 (road)',      b: '낄 (wedge)' }
+    ] },
+  { a: 'ㄷ', b: 'ㄸ', colorA: '#10b981', colorB: '#f97316',
+    words: [
+      { a: '다 (all)',       b: '따 (pluck)' },
+      { a: '덕 (virtue)',    b: '떡 (rice cake)' },
+      { a: '달 (moon)',      b: '딸 (daughter)' },
+      { a: '더 (more)',      b: '떠 (rise)' }
+    ] }
+];
+
+var _dctPhState = null; // { pairIdx, wordIdx, answer, round, correct, total, picks[] }
+
+function _dctPhonemeStart() {
+  // Build a 10-round sequence: random pair + random word per round
+  var rounds = [];
+  var poolPairs = PHONEME_PAIRS.slice();
+  for (var i = 0; i < 10; i++) {
+    var pair = poolPairs[Math.floor(Math.random() * poolPairs.length)];
+    var word = pair.words[Math.floor(Math.random() * pair.words.length)];
+    var answerIsA = Math.random() < 0.5;
+    rounds.push({ pair: pair, word: word, answerIsA: answerIsA });
+  }
+  _dctPhState = { rounds: rounds, idx: 0, correct: 0, picks: [] };
+  _dctPhRender();
+}
+
+function _dctPhRender() {
+  if (!_dctPhState) return;
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  var sub  = document.getElementById('dct-step-sub');
+  if (sub) sub.textContent = 'Phoneme discrimination · ear training';
+
+  var st = _dctPhState;
+  if (st.idx >= st.rounds.length) { _dctPhFinish(); return; }
+
+  var r = st.rounds[st.idx];
+  var currentWord = r.answerIsA ? r.word.a : r.word.b;
+  var currentWordKo = currentWord.split(' ')[0]; // "너 (you)" → "너"
+  var safeKo = currentWordKo.replace(/'/g, "&#39;");
+
+  // Score dots — filled for completed rounds, colored for correct/wrong
+  var dotsHTML = '';
+  for (var i = 0; i < st.rounds.length; i++) {
+    var state = i < st.idx ? (st.picks[i] ? 'ok' : 'no') : (i === st.idx ? 'cur' : 'up');
+    var bg = state === 'ok' ? '#22c55e' : state === 'no' ? '#f87171' : state === 'cur' ? '#7c3aed' : '#e2e8f0';
+    var ring = state === 'cur' ? 'box-shadow:0 0 0 3px rgba(124,58,237,.2);' : '';
+    dotsHTML += '<div style="width:8px;height:8px;border-radius:50%;background:' + bg + ';' + ring + 'transition:all .2s"></div>';
+  }
+
+  body.innerHTML =
+    '<style>@keyframes kh-ph-chip-in{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}</style>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
+      + '<div>'
+        + '<div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em">Round ' + (st.idx+1) + ' / ' + st.rounds.length + '</div>'
+        + '<div style="font-size:12px;color:#64748b;margin-top:2px">Which one did you hear?</div>'
+      + '</div>'
+      + '<div style="display:flex;gap:5px;align-items:center">' + dotsHTML + '</div>'
+    + '</div>'
+    // Phoneme contrast visual — two big chars with vs.
+    + '<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin:10px 0 18px">'
+      + '<div style="font-family:\'Noto Serif KR\',serif;font-size:56px;font-weight:900;color:' + r.pair.colorA + ';line-height:1;animation:kh-ph-chip-in .25s ease-out">' + r.pair.a + '</div>'
+      + '<div style="font-size:13px;font-weight:700;color:#94a3b8;letter-spacing:.2em">VS</div>'
+      + '<div style="font-family:\'Noto Serif KR\',serif;font-size:56px;font-weight:900;color:' + r.pair.colorB + ';line-height:1;animation:kh-ph-chip-in .35s ease-out">' + r.pair.b + '</div>'
+    + '</div>'
+    // Big Play button
+    + '<div style="display:flex;justify-content:center;margin-bottom:22px">'
+      + '<button onclick="_dctSpeakSentence(\'' + safeKo + '\')" style="display:inline-flex;align-items:center;gap:10px;padding:14px 28px;border-radius:999px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 12px 28px -8px rgba(124,58,237,.55);transition:transform .15s" onmouseover="this.style.transform=\'scale(1.04)\'" onmouseout="this.style.transform=\'scale(1)\'">'
+        + '<span style="font-size:18px">🔊</span><span>Play</span>'
+      + '</button>'
+    + '</div>'
+    // Two choice cards
+    + '<div id="dct-ph-choices" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      + '<button id="dct-ph-a" onclick="_dctPhPick(true)" style="padding:16px 14px;border-radius:14px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-family:\'Noto Serif KR\',serif;font-size:18px;font-weight:800;color:#0f172a;transition:all .18s;text-align:center">'
+        + r.word.a
+      + '</button>'
+      + '<button id="dct-ph-b" onclick="_dctPhPick(false)" style="padding:16px 14px;border-radius:14px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-family:\'Noto Serif KR\',serif;font-size:18px;font-weight:800;color:#0f172a;transition:all .18s;text-align:center">'
+        + r.word.b
+      + '</button>'
+    + '</div>';
+
+  foot.innerHTML = '<button class="btn" style="margin-right:auto" onclick="_dctPhRender()">🔄 다시 듣기</button>';
+
+  // Auto-play once on landing
+  setTimeout(function(){ _dctSpeakSentence(currentWordKo); }, 300);
+}
+
+function _dctPhPick(pickedA) {
+  if (!_dctPhState) return;
+  var st = _dctPhState;
+  var r  = st.rounds[st.idx];
+  var correct = pickedA === r.answerIsA;
+  st.picks.push(correct);
+  if (correct) st.correct++;
+
+  var pickedBtn = document.getElementById(pickedA ? 'dct-ph-a' : 'dct-ph-b');
+  var otherBtn  = document.getElementById(pickedA ? 'dct-ph-b' : 'dct-ph-a');
+  var correctBtn = document.getElementById(r.answerIsA ? 'dct-ph-a' : 'dct-ph-b');
+  if (pickedBtn) {
+    pickedBtn.style.borderColor = correct ? '#22c55e' : '#ef4444';
+    pickedBtn.style.background  = correct ? 'rgba(34,197,94,.08)' : 'rgba(239,68,68,.08)';
+    pickedBtn.style.color       = correct ? '#166534' : '#991b1b';
+  }
+  if (!correct && correctBtn) {
+    correctBtn.style.borderColor = '#22c55e';
+    correctBtn.style.background  = 'rgba(34,197,94,.08)';
+    correctBtn.style.color       = '#166534';
+  }
+  if (pickedBtn) pickedBtn.style.transform = 'scale(1.03)';
+  document.querySelectorAll('#dct-ph-choices button').forEach(function(b){ b.disabled = true; });
+
+  var foot = document.getElementById('dct-foot');
+  foot.innerHTML = '<button class="btn btn-g" style="min-width:140px" onclick="_dctPhNext()">'
+    + (st.idx + 1 >= st.rounds.length ? 'See result →' : 'Next →') + '</button>';
+}
+
+function _dctPhNext() {
+  if (!_dctPhState) return;
+  _dctPhState.idx++;
+  _dctPhRender();
+}
+
+function _dctPhFinish() {
+  var st = _dctPhState;
+  if (!st) return;
+  var pct = Math.round(st.correct / st.rounds.length * 100);
+  var color = pct >= 80 ? '#22c55e' : pct >= 60 ? '#2563eb' : pct >= 40 ? '#d97706' : '#dc2626';
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  body.innerHTML =
+    '<div style="text-align:center;padding:24px 12px">'
+      + '<div style="font-size:48px;margin-bottom:10px">' + (pct >= 80 ? '🎉' : pct >= 60 ? '👏' : '💪') + '</div>'
+      + '<div style="font-family:\'DM Sans\',sans-serif;font-size:56px;font-weight:900;color:' + color + ';line-height:1;margin-bottom:6px">' + pct + '</div>'
+      + '<div style="font-size:13px;color:#64748b;font-weight:700;margin-bottom:18px">Phoneme accuracy · ' + st.correct + ' / ' + st.rounds.length + '</div>'
+      + '<div style="font-size:13px;color:#475569;line-height:1.6;max-width:340px;margin:0 auto">'
+        + (pct >= 80 ? 'Great ear! You caught the subtle contrasts.'
+         : pct >= 60 ? 'Solid — keep practicing the tricky pairs.'
+         : 'These phoneme contrasts are hard. Try slowing down and playing each pair a few times.')
+      + '</div>'
+    + '</div>';
+  foot.innerHTML = '<button class="btn" onclick="_dctSwitchMode(\'topic\')">← Topic drill</button>'
+    + '<button class="btn btn-g" onclick="_dctPhonemeStart()">🔁 Try again</button>';
+
+  // Persist for Listening axis (reuses existing quiz_results table)
+  if (typeof supaUser !== 'undefined' && supaUser) {
+    try {
+      var sb = getSupa();
+      if (sb) sb.from('user_quiz_results').insert({
+        user_id:   supaUser.id,
+        quiz_type: 'phoneme',
+        score:     st.correct,
+        max_score: st.rounds.length,
+        metadata:  { pct: pct, picks: st.picks }
+      });
+    } catch(e) {}
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Phase 5 — Connected-speech dictation
+// ════════════════════════════════════════════════════════════════════
+// Each entry: textbook (full form) and spoken (how a native actually
+// says it — contracted/elided). TTS reads the spoken form; user types
+// what they hear; reveal shows both side-by-side.
+var CONNECTED_SPEECH_BANK = [
+  { textbook:'그것은 무엇이에요?', spoken:'그건 뭐예요?',    hint:'그것은→그건, 무엇→뭐' },
+  { textbook:'이것이 뭐예요?',     spoken:'이게 뭐야?',      hint:'이것이→이게, 뭐예요→뭐야' },
+  { textbook:'나는 학교에 가요.',  spoken:'난 학교 가.',      hint:'나는→난, dropped particle/ending' },
+  { textbook:'지금 뭐 하고 있어요?', spoken:'지금 뭐 해?',    hint:'하고 있어요→해 (contracted)' },
+  { textbook:'이것을 주세요.',     spoken:'이거 주세요.',     hint:'이것을→이거 (object particle drop)' },
+  { textbook:'저것은 무엇입니까?', spoken:'저건 뭐예요?',     hint:'저것은→저건, formal→polite' },
+  { textbook:'그 사람이 누구예요?', spoken:'그 사람 누구야?', hint:'subject particle drop, 예요→야' },
+  { textbook:'무엇을 먹었어요?',   spoken:'뭐 먹었어?',       hint:'무엇을→뭐, -어요→-어' }
+];
+
+var _dctCsState = null; // { rounds[], idx, correct, picks[] }
+
+function _dctConnectedStart() {
+  var rounds = CONNECTED_SPEECH_BANK.slice();
+  // Shuffle + take 6
+  for (var i = rounds.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = rounds[i]; rounds[i] = rounds[j]; rounds[j] = tmp;
+  }
+  rounds = rounds.slice(0, 6);
+  _dctCsState = { rounds: rounds, idx: 0, correct: 0, picks: [] };
+  _dctCsRender();
+}
+
+function _dctCsRender() {
+  if (!_dctCsState) return;
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  var sub  = document.getElementById('dct-step-sub');
+  if (sub) sub.textContent = 'Connected speech · contractions & elisions';
+
+  var st = _dctCsState;
+  if (st.idx >= st.rounds.length) { _dctCsFinish(); return; }
+  var r = st.rounds[st.idx];
+  var safeKo = r.spoken.replace(/'/g, "&#39;");
+
+  // Progress dots
+  var dotsHTML = '';
+  for (var i = 0; i < st.rounds.length; i++) {
+    var state = i < st.idx ? (st.picks[i] >= 60 ? 'ok' : 'no') : (i === st.idx ? 'cur' : 'up');
+    var bg = state === 'ok' ? '#22c55e' : state === 'no' ? '#f87171' : state === 'cur' ? '#7c3aed' : '#e2e8f0';
+    var ring = state === 'cur' ? 'box-shadow:0 0 0 3px rgba(124,58,237,.2);' : '';
+    dotsHTML += '<div style="width:8px;height:8px;border-radius:50%;background:' + bg + ';' + ring + 'transition:all .2s"></div>';
+  }
+
+  body.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
+      + '<div>'
+        + '<div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em">Sentence ' + (st.idx+1) + ' / ' + st.rounds.length + '</div>'
+        + '<div style="font-size:12px;color:#64748b;margin-top:2px">Type what you hear (casual / contracted form)</div>'
+      + '</div>'
+      + '<div style="display:flex;gap:5px;align-items:center">' + dotsHTML + '</div>'
+    + '</div>'
+    // Big play button + waveform accent
+    + '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin:10px 0 18px;padding:22px 16px;border-radius:18px;background:linear-gradient(145deg,#f8fafc,#eef2ff);border:1px solid #e0e7ff">'
+      + '<div style="display:flex;align-items:center;gap:6px">'
+        + '<div style="width:3px;height:12px;background:#7c3aed;border-radius:2px;opacity:.4"></div>'
+        + '<div style="width:3px;height:20px;background:#7c3aed;border-radius:2px;opacity:.6"></div>'
+        + '<div style="width:3px;height:28px;background:#7c3aed;border-radius:2px;opacity:.85"></div>'
+        + '<div style="width:3px;height:18px;background:#7c3aed;border-radius:2px;opacity:.55"></div>'
+        + '<div style="width:3px;height:24px;background:#7c3aed;border-radius:2px;opacity:.75"></div>'
+        + '<div style="width:3px;height:14px;background:#7c3aed;border-radius:2px;opacity:.45"></div>'
+        + '<div style="width:3px;height:22px;background:#7c3aed;border-radius:2px;opacity:.7"></div>'
+      + '</div>'
+      + '<button onclick="_dctSpeakSentence(\'' + safeKo + '\')" style="display:inline-flex;align-items:center;gap:10px;padding:12px 24px;border-radius:999px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 10px 24px -8px rgba(124,58,237,.5);transition:transform .15s" onmouseover="this.style.transform=\'scale(1.03)\'" onmouseout="this.style.transform=\'scale(1)\'">'
+        + '<span>🔊</span><span>Play</span><span style="font-size:10px;opacity:.7;font-weight:700">· normal speed</span>'
+      + '</button>'
+    + '</div>'
+    // Input
+    + '<input type="text" id="dct-cs-input" placeholder="여기에 받아쓰기…" autocomplete="off"'
+      + ' style="width:100%;padding:14px 16px;border:1.5px solid #e2e8f0;border-radius:14px;font-family:\'Noto Sans KR\',sans-serif;font-size:16px;font-weight:600;color:#0f172a;box-sizing:border-box;outline:none;transition:border-color .15s"'
+      + ' onfocus="this.style.borderColor=\'#7c3aed\'" onblur="this.style.borderColor=\'#e2e8f0\'"'
+      + ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();_dctCsCheck()}">'
+    + '<div id="dct-cs-result" style="margin-top:14px"></div>';
+
+  foot.innerHTML = '<button class="btn" style="margin-right:auto" onclick="_dctSpeakSentence(\'' + safeKo + '\')">🔄 다시 듣기</button>'
+    + '<button class="btn btn-g" style="min-width:120px" onclick="_dctCsCheck()">Check ✓</button>';
+
+  // Auto-play + focus input
+  setTimeout(function(){ _dctSpeakSentence(r.spoken); }, 250);
+  setTimeout(function(){ var ip = document.getElementById('dct-cs-input'); if (ip) ip.focus(); }, 400);
+}
+
+// Lightweight similarity for Korean text: Levenshtein on normalized chars.
+function _dctCsSimilarity(a, b) {
+  function norm(s) { return (s || '').replace(/[\s.,?!~。！？]/g, '').toLowerCase(); }
+  a = norm(a); b = norm(b);
+  if (!a || !b) return 0;
+  if (a.length > 200) a = a.slice(0, 200);
+  if (b.length > 200) b = b.slice(0, 200);
+  var prev = new Array(b.length + 1), curr = new Array(b.length + 1);
+  for (var j = 0; j <= b.length; j++) prev[j] = j;
+  for (var i = 1; i <= a.length; i++) {
+    curr[0] = i;
+    for (var k = 1; k <= b.length; k++) {
+      var cost = a.charCodeAt(i-1) === b.charCodeAt(k-1) ? 0 : 1;
+      curr[k] = Math.min(curr[k-1]+1, prev[k]+1, prev[k-1]+cost);
+    }
+    var tmp = prev; prev = curr; curr = tmp;
+  }
+  var d = prev[b.length];
+  return Math.max(0, Math.round((1 - d / Math.max(a.length, b.length)) * 100));
+}
+
+function _dctCsCheck() {
+  if (!_dctCsState) return;
+  var st = _dctCsState;
+  var r  = st.rounds[st.idx];
+  var ip = document.getElementById('dct-cs-input');
+  if (!ip) return;
+  var typed = ip.value.trim();
+  if (!typed) { showToast('Type what you heard first'); return; }
+
+  // Accept either spoken or textbook form — both are "correct".
+  var simSpoken   = _dctCsSimilarity(typed, r.spoken);
+  var simTextbook = _dctCsSimilarity(typed, r.textbook);
+  var sim = Math.max(simSpoken, simTextbook);
+  st.picks.push(sim);
+  if (sim >= 60) st.correct++;
+
+  var icon = sim >= 90 ? '🎯' : sim >= 60 ? '✅' : '❌';
+  var banner = sim >= 90 ? 'Near-perfect!' : sim >= 60 ? 'Got the gist.' : 'Close — listen for these parts.';
+  var bannerColor = sim >= 90 ? '#16a34a' : sim >= 60 ? '#2563eb' : '#dc2626';
+
+  var result = document.getElementById('dct-cs-result');
+  result.innerHTML =
+    '<div style="padding:14px 16px;border-radius:14px;background:' + (sim >= 60 ? 'linear-gradient(145deg,#f0fdf4,#dcfce7)' : 'linear-gradient(145deg,#fef2f2,#fee2e2)') + ';border:1px solid ' + (sim >= 60 ? 'rgba(34,197,94,.3)' : 'rgba(239,68,68,.3)') + '">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+        + '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">' + icon + '</span><span style="font-size:14px;font-weight:800;color:' + bannerColor + '">' + banner + '</span></div>'
+        + '<div style="font-family:\'DM Sans\',sans-serif;font-size:20px;font-weight:900;color:' + bannerColor + '">' + sim + '%</div>'
+      + '</div>'
+      + '<div style="display:grid;gap:8px">'
+        + '<div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.6);border:1px solid rgba(15,23,42,.06)">'
+          + '<div style="font-size:10px;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">🗣️ Spoken (what you heard)</div>'
+          + '<div style="font-family:\'Noto Serif KR\',serif;font-size:16px;font-weight:700;color:#0f172a">' + r.spoken + '</div>'
+        + '</div>'
+        + '<div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.6);border:1px solid rgba(15,23,42,.06)">'
+          + '<div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">📖 Textbook (full form)</div>'
+          + '<div style="font-family:\'Noto Serif KR\',serif;font-size:16px;font-weight:700;color:#334155">' + r.textbook + '</div>'
+        + '</div>'
+        + (r.hint ? '<div style="padding:8px 12px;border-radius:10px;background:rgba(251,191,36,.12);font-size:11px;color:#92400e;font-weight:600">💡 ' + r.hint + '</div>' : '')
+      + '</div>'
+    + '</div>';
+
+  ip.disabled = true;
+  ip.style.opacity = '.6';
+  var foot = document.getElementById('dct-foot');
+  foot.innerHTML = '<button class="btn btn-g" style="min-width:140px" onclick="_dctCsNext()">'
+    + (st.idx + 1 >= st.rounds.length ? 'See result →' : 'Next sentence →') + '</button>';
+}
+
+function _dctCsNext() {
+  if (!_dctCsState) return;
+  _dctCsState.idx++;
+  _dctCsRender();
+}
+
+function _dctCsFinish() {
+  var st = _dctCsState;
+  if (!st) return;
+  var avg = Math.round(st.picks.reduce(function(a,b){return a+b;},0) / (st.picks.length || 1));
+  var color = avg >= 80 ? '#22c55e' : avg >= 60 ? '#2563eb' : avg >= 40 ? '#d97706' : '#dc2626';
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  body.innerHTML =
+    '<div style="text-align:center;padding:24px 12px">'
+      + '<div style="font-size:48px;margin-bottom:10px">' + (avg >= 80 ? '🎉' : avg >= 60 ? '👏' : '💪') + '</div>'
+      + '<div style="font-family:\'DM Sans\',sans-serif;font-size:56px;font-weight:900;color:' + color + ';line-height:1;margin-bottom:6px">' + avg + '</div>'
+      + '<div style="font-size:13px;color:#64748b;font-weight:700;margin-bottom:18px">Connected-speech accuracy · avg over ' + st.picks.length + ' sentences</div>'
+      + '<div style="font-size:13px;color:#475569;line-height:1.6;max-width:360px;margin:0 auto">'
+        + (avg >= 80 ? 'Impressive! Your ear is tuned to natural Korean speed.'
+         : avg >= 60 ? 'Good progress. Contractions are half of natural Korean.'
+         : 'Contractions take reps. Try the same sentences again slowly.')
+      + '</div>'
+    + '</div>';
+  foot.innerHTML = '<button class="btn" onclick="_dctSwitchMode(\'topic\')">← Topic drill</button>'
+    + '<button class="btn btn-g" onclick="_dctConnectedStart()">🔁 Try again</button>';
+
+  // Persist
+  if (typeof supaUser !== 'undefined' && supaUser) {
+    try {
+      var sb = getSupa();
+      if (sb) sb.from('user_quiz_results').insert({
+        user_id:   supaUser.id,
+        quiz_type: 'connected_speech',
+        score:     st.correct,
+        max_score: st.picks.length,
+        metadata:  { avg_similarity: avg, picks: st.picks }
+      });
+    } catch(e) {}
+  }
 }
 
 // ── Step 3: 빈칸 채우기 (fill in the missing word) ────────────
@@ -16417,6 +16852,12 @@ setTimeout(renderCompletedStudies, 500);
       <div class="dct-pip" id="dct-pip-2"></div>
       <div class="dct-pip" id="dct-pip-3"></div>
       <div class="dct-pip" id="dct-pip-4"></div>
+    </div>
+    <!-- Mode switcher (Phase 5) — Topic drill / Phoneme / Connected speech -->
+    <div id="dct-mode-tabs" style="display:flex;gap:6px;padding:10px 20px 0;flex-wrap:wrap">
+      <button type="button" onclick="_dctSwitchMode('topic')"    data-mode="topic"     class="dct-mode-tab">🎯 Topic <span style="opacity:.7">· 4 steps</span></button>
+      <button type="button" onclick="_dctSwitchMode('phoneme')"  data-mode="phoneme"   class="dct-mode-tab">🔊 Phoneme</button>
+      <button type="button" onclick="_dctSwitchMode('connected')" data-mode="connected" class="dct-mode-tab">🔗 Connected</button>
     </div>
     <div class="dct-body" id="dct-body">
       <div class="as-loading"><div class="as-spinner"></div><div>Loading…</div></div>
