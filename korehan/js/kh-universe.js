@@ -175,7 +175,7 @@
       '.kh-universe-overlay{position:fixed;inset:0;z-index:9500;background:radial-gradient(ellipse at center,#0a0e22 0%,#04060f 70%,#02030a 100%);display:none;opacity:0;transition:opacity .35s ease;}',
       '.kh-universe-overlay.open{display:block;opacity:1;}',
       '.khu-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;}',
-      '.khu-header{position:absolute;top:0;left:0;right:0;z-index:2;display:flex;align-items:center;gap:14px;padding:18px 20px;pointer-events:none;}',
+      '.khu-header{position:absolute;top:0;left:0;right:0;z-index:2;display:flex;align-items:center;gap:14px;padding:calc(env(safe-area-inset-top,0px) + 18px) calc(env(safe-area-inset-right,0px) + 20px) 14px calc(env(safe-area-inset-left,0px) + 20px);pointer-events:none;}',
       '.khu-header > *{pointer-events:auto;}',
       '.khu-header-info{flex:1;min-width:0;}',
       '.khu-eyebrow{font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(180,200,255,.55);}',
@@ -561,24 +561,25 @@
         var pos = (catOrder.length > 1)
           ? clusterWordPosition(center, idxInCluster, bucket.length, m)
           : galaxyPosition(i, words.length, m);
-        // Blend mastery colour with category tint so both readable
-        var master = masteryColor(m);
+        // Category tint carries the identity; mastery bumps brightness so
+        // the colour stays punchy instead of washing out into neutral grey.
+        var brightness = 0.85 + m * 0.35;
         var blend = {
-          r: master.r * 0.55 + catTint.r * 0.45,
-          g: master.g * 0.55 + catTint.g * 0.45,
-          b: master.b * 0.55 + catTint.b * 0.45
+          r: Math.min(1, catTint.r * brightness),
+          g: Math.min(1, catTint.g * brightness),
+          b: Math.min(1, catTint.b * brightness)
         };
         var mat = new three.SpriteMaterial({
           map: state.glowTex,
           color: new three.Color(blend.r, blend.g, blend.b),
           transparent: true,
-          opacity: 0.55 + m * 0.4,
+          opacity: 0.9 + m * 0.1,
           blending: three.AdditiveBlending,
           depthWrite: false,
         });
         var sprite = new three.Sprite(mat);
         sprite.position.set(pos.x, pos.y, pos.z);
-        var size = 1.1 + m * 1.6;
+        var size = 1.6 + m * 1.8;
         sprite.scale.set(size, size, 1);
         sprite.userData = { word: w, mastery: m, idx: i, isStar: true, category: cat };
         group.add(sprite);
@@ -865,6 +866,34 @@
         }
       }
     }
+    // Screen-space fallback: raycasting sprites at distance gets flaky
+    // because their billboard rect in NDC is tiny. Walk every star, project
+    // to screen, pick the one closest to the tap within a generous radius.
+    var nearest = null, nearestDist = Infinity;
+    var threshold = 48; // px
+    var v = new THREE.Vector3();
+    function checkChild(child) {
+      if (!child.userData || !child.userData.isStar) return;
+      child.getWorldPosition(v);
+      v.project(state.camera);
+      if (v.z > 1) return; // behind camera
+      var sx = (v.x + 1) / 2 * rect.width;
+      var sy = (-v.y + 1) / 2 * rect.height;
+      var dx = (clientX - rect.left) - sx;
+      var dy = (clientY - rect.top) - sy;
+      var d = Math.sqrt(dx * dx + dy * dy);
+      if (d < threshold && d < nearestDist) {
+        nearest = child;
+        nearestDist = d;
+      }
+    }
+    if (state.satellites) state.satellites.children.forEach(checkChild);
+    state.stars.children.forEach(checkChild);
+    if (nearest) {
+      if (nearest.userData.isSatellite) _onSatelliteTap(nearest);
+      else selectStar(nearest);
+      return;
+    }
     clearSelection();
   }
 
@@ -1020,14 +1049,7 @@
     } catch(_) {}
     if (typeof saveRelatedWord === 'function') {
       saveRelatedWord(rel).then(function(ok) {
-        if (ok) {
-          // Fire a brush-stroke celebration over the word card for
-          // a calligraphic "saved" moment.
-          try {
-            var card = document.getElementById('khu-card');
-            if (card && window.khInkBrush) khInkBrush(card, { tint: '#c4b5fd', label: rel.ko || '저장' });
-          } catch(_) {}
-        } else if (sprite.material) {
+        if (!ok && sprite.material) {
           sprite.material.color = new THREE.Color(0.96, 0.42, 0.42); // error red flash
           setTimeout(function(){
             if (sprite.material) sprite.material.color = new THREE.Color(0.66, 0.55, 0.98);
@@ -1169,24 +1191,28 @@
     var sb = getSupa();
     if (!sb) return false;
     try {
-      // Prefer the RPC path used elsewhere (sets SRS interval, respects dedupe)
+      // Match the signature used by quickSaveWord elsewhere in the app.
       if (sb.rpc) {
         var r = await sb.rpc('save_or_update_word', {
-          p_word_key: rel.ko,
-          p_word_ko:  rel.ko,
-          p_word_rom: rel.rom || '',
-          p_word_en:  rel.en  || '',
-          p_source:   'universe'
+          p_word_key:       rel.ko,
+          p_word_ko:        rel.ko,
+          p_word_en:        rel.en  || null,
+          p_word_rom:       rel.rom || null,
+          p_source_kind:    'universe',
+          p_review_delta:   0,
+          p_correct_delta:  0,
+          p_wrong_delta:    0
         });
-        if (!r.error) return true;
+        if (r && !r.error) return true;
+        if (r && r.error) console.warn('[KHUniverse] save_or_update_word error', r.error);
       }
       // Fallback direct upsert
       var up = await sb.from('user_saved_words').upsert({
         user_id: supaUser.id,
         word_ko: rel.ko, word_rom: rel.rom || '', word_en: rel.en || ''
-      });
+      }, { onConflict: 'user_id,word_ko' });
       return !up.error;
-    } catch(_) { return false; }
+    } catch(e) { console.warn('[KHUniverse] saveRelatedWord', e); return false; }
   }
 
   // ── Render related chips into the open card ────────────────
@@ -1215,8 +1241,6 @@
         var rel = relatedList[i];
         if (!rel) return;
         btn.classList.add('saving');
-        // Brush stroke right on the chip — optimistic, reverts only on error
-        try { if (window.khInkBrush) khInkBrush(btn, { tint: '#c4b5fd', label: rel.ko }); } catch(_) {}
         saveRelatedWord(rel).then(function(ok) {
           btn.classList.remove('saving');
           if (ok) {
