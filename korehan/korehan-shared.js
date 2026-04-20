@@ -4631,6 +4631,44 @@ async function deleteComment(commentId) {
 // Alias for escapeHTML (defined earlier) — single entry point for all HTML escaping
 var escapeHtml = escapeHTML;
 
+// ── VOCAB EDIT FAB VISIBILITY ─────────────────────────────────
+// FAB should only appear for admin when viewing actual Korean content:
+//   • Article page (korehan-article.html) — always
+//   • Conversations page — only while the detail modal (#detail-overlay) is open
+//   • Stories page — only while the story modal (#st-overlay) is open
+function _shouldShowVocabFab() {
+  if (!window._isAdmin) return false;
+  var path = (location.pathname || '').toLowerCase();
+  if (path.indexOf('korehan-article') !== -1) return true;
+  if (path.indexOf('korehan-conversations') !== -1) {
+    var o = document.getElementById('detail-overlay');
+    return !!(o && !o.classList.contains('hidden'));
+  }
+  if (path.indexOf('korehan-stories') !== -1) {
+    var o = document.getElementById('st-overlay');
+    return !!(o && !o.classList.contains('hidden'));
+  }
+  return false;
+}
+function _updateVocabFabVisibility() {
+  var bar = document.getElementById('vocab-admin-bar');
+  if (!bar) return;
+  var show = _shouldShowVocabFab();
+  bar.style.display = show ? '' : 'none';
+  if (!show && window._vocabEditMode) toggleVocabEditMode();
+}
+function _setupVocabFabVisibility() {
+  _updateVocabFabVisibility();
+  ['detail-overlay', 'st-overlay'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    try {
+      new MutationObserver(_updateVocabFabVisibility)
+        .observe(el, { attributes: true, attributeFilter: ['class'] });
+    } catch (e) {}
+  });
+}
+
 // ── TOOLTIP ───────────────────────────────────────────────────
 function initTooltips() {
   var tip = document.createElement('div');
@@ -4650,14 +4688,15 @@ function initTooltips() {
 
   document.querySelectorAll('.vocab-zone').forEach(function(el){ wrapVocab(el); });
 
-  // 어드민 전용 편집 버튼 표시 (로그인 체크 후)
+  // 어드민 전용 편집 버튼 — 기사 페이지 / conversations 모달 / stories 모달 안에서만 노출
   if (window._isAdmin) {
     var adminBar = document.createElement('div');
     adminBar.id = 'vocab-admin-bar';
-    adminBar.style.cssText = 'position:fixed;bottom:70px;right:16px;z-index:8000;background:#0b1626;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);';
+    adminBar.style.cssText = 'position:fixed;bottom:70px;right:16px;z-index:8000;background:#0b1626;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);display:none;';
     adminBar.textContent = '✏️ Vocab Edit Mode';
     adminBar.onclick = function() { toggleVocabEditMode(); };
     document.body.appendChild(adminBar);
+    _setupVocabFabVisibility();
   }
 
   document.addEventListener('mouseover', function(e) {
