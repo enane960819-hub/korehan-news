@@ -1236,7 +1236,7 @@
       today: { xp_earned:0, words_learned:0, articles_read:0, conversations_read:0, stories_read:0, quizzes_done:0 },
       streak: 0,
       weak_grammar: [],
-      scores: { reading:0, grammar:0, vocabulary:0, writing:0, listening:0 },
+      scores: { reading:0, grammar:0, vocabulary:0, writing:0, listening:0, speaking:0 },
       review_queue: [],
       read_history: [],
       weekly_progress: [],
@@ -1390,6 +1390,16 @@
       }
     } catch(wErr) {}
 
+    // Speaking axis — ground in Web-Speech-API STT scores from recent
+    // 'speaking' submissions. Blends pronunciation + fluency.
+    try {
+      var { data: spk } = await sb.rpc('get_recent_speaking_scores', { p_days: 14 });
+      if (spk && spk.samples > 0 && spk.overall > 0) {
+        snap.scores.speaking = Math.round(spk.overall);
+        snap.speaking_scores = spk;
+      }
+    } catch(spkErr) {}
+
     // read_articles + user_read_history → review queue + read history (last 30 days)
     try {
       var cutoff = new Date(Date.now() - 30*86400000).toISOString();
@@ -1522,7 +1532,7 @@
           { grammar_point: '(으)면', wrong_count: 2, correct_count: 9 },
           { grammar_point: '고 싶다', wrong_count: 1, correct_count: 10 }
         ],
-        scores: { reading: 72, grammar: 55, vocabulary: 68, writing: 40, listening: 30 },
+        scores: { reading: 72, grammar: 55, vocabulary: 68, writing: 40, listening: 30, speaking: 35 },
         review_queue: [
           { content_type:'article', content_id:'demo1', title:'서울 지하철 이용법', level:'Beginner', read_at: new Date().toISOString() },
           { content_type:'conversation', content_id:'demo2', title:'카페에서 주문하기', level:'Beginner', read_at: new Date(Date.now()-3600000).toISOString() },
@@ -2398,9 +2408,9 @@
     var ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
     var W = 320, cx = W/2, cy = W/2, maxR = 120;
-    var axes = ['Reading','Vocab','Grammar','Writing','Listening'];
-    var keys = ['skill_reading','skill_vocab','skill_grammar','skill_writing','skill_listening'];
-    var n = 5, step = (2*Math.PI)/n, sa = -Math.PI/2;
+    var axes = ['Reading','Vocab','Grammar','Writing','Listening','Speaking'];
+    var keys = ['skill_reading','skill_vocab','skill_grammar','skill_writing','skill_listening','skill_speaking'];
+    var n = 6, step = (2*Math.PI)/n, sa = -Math.PI/2;
     _radarAnimTarget = { current:current, previous:previous };
     _radarAnimProgress = 0;
 
@@ -2475,20 +2485,21 @@
       skill_vocab:     s.vocabulary || 0,
       skill_grammar:   s.grammar    || 0,
       skill_writing:   s.writing    || 0,
-      skill_listening: s.listening  || 0
+      skill_listening: s.listening  || 0,
+      skill_speaking:  s.speaking   || 0
     };
     _renderRadarWithCompare();
   }
 
   // ═══════════════════════════════════════════════════════════════
   // WEEKLY SNAPSHOT GENERATOR
-  // Aggregates learning data into 5 skill scores (0-100)
+  // Aggregates learning data into 6 skill scores (0-100)
   // Called on Growth Lab load — generates/updates current week's snapshot
   // ═══════════════════════════════════════════════════════════════
   /*
     Table: user_weekly_snapshot
     user_id, week_start, skill_reading, skill_vocab, skill_grammar,
-    skill_writing, skill_listening, created_at, updated_at
+    skill_writing, skill_listening, skill_speaking, created_at, updated_at
   */
   async function generateWeeklySnapshot() {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
@@ -2594,12 +2605,20 @@
         listeningScore = lMax > 0 ? Math.round((lTotal / lMax) * 100) : 0;
       }
 
+      // ── Speaking — pull from RPC (Web-Speech-API STT scores) ──
+      var speakingScore = 0;
+      try {
+        var spkRes = await sb.rpc('get_recent_speaking_scores', { p_days: 7 });
+        if (spkRes.data && spkRes.data.samples > 0) speakingScore = Number(spkRes.data.overall) || 0;
+      } catch(spkErr) {}
+
       // ── Clamp all to 0-100 ──
-      readingScore = Math.max(0, Math.min(100, readingScore));
-      vocabScore = Math.max(0, Math.min(100, vocabScore));
-      grammarScore = Math.max(0, Math.min(100, grammarScore));
-      writingScore = Math.max(0, Math.min(100, writingScore));
+      readingScore   = Math.max(0, Math.min(100, readingScore));
+      vocabScore     = Math.max(0, Math.min(100, vocabScore));
+      grammarScore   = Math.max(0, Math.min(100, grammarScore));
+      writingScore   = Math.max(0, Math.min(100, writingScore));
       listeningScore = Math.max(0, Math.min(100, listeningScore));
+      speakingScore  = Math.max(0, Math.min(100, speakingScore));
 
       // ── Upsert to user_weekly_snapshot ──
       await sb.from('user_weekly_snapshot').upsert({
@@ -2610,6 +2629,7 @@
         skill_grammar: grammarScore,
         skill_writing: writingScore,
         skill_listening: listeningScore,
+        skill_speaking: speakingScore,
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id,week_start' });
 
@@ -2623,7 +2643,7 @@
     if (!sb || !supaUser) return;
     try {
       var r = await sb.from('user_weekly_snapshot')
-        .select('week_start,skill_reading,skill_vocab,skill_grammar,skill_writing,skill_listening')
+        .select('week_start,skill_reading,skill_vocab,skill_grammar,skill_writing,skill_listening,skill_speaking')
         .eq('user_id', supaUser.id)
         .order('week_start', { ascending: false })
         .limit(5);
@@ -2634,14 +2654,14 @@
 
   function _renderRadarWithCompare() {
     var snaps = _radarSnaps;
-    var current = _radarCurrentOverride || snaps[0] || { skill_reading:0, skill_vocab:0, skill_grammar:0, skill_writing:0, skill_listening:0 };
+    var current = _radarCurrentOverride || snaps[0] || { skill_reading:0, skill_vocab:0, skill_grammar:0, skill_writing:0, skill_listening:0, skill_speaking:0 };
     var compareSnap = snaps[_radarCompareIdx + 1] || snaps[snaps.length - 1] || null;
     renderRadarChart(current, compareSnap);
 
     // Show delta summary under chart
     if (compareSnap) {
-      var fields = ['skill_reading','skill_vocab','skill_grammar','skill_writing','skill_listening'];
-      var labels = ['Reading','Vocab','Grammar','Writing','Listening'];
+      var fields = ['skill_reading','skill_vocab','skill_grammar','skill_writing','skill_listening','skill_speaking'];
+      var labels = ['Reading','Vocab','Grammar','Writing','Listening','Speaking'];
       var deltaHTML = fields.map(function(f, i) {
         var diff = (current[f]||0) - (compareSnap[f]||0);
         var color = diff > 0 ? '#4ade80' : diff < 0 ? '#f87171' : '#94a3b8';
