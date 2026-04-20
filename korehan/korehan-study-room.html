@@ -2971,6 +2971,8 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
         </div>
         <div id="wm-speak-status" style="font-size:11px;color:#6b7280;margin-top:8px;min-height:18px"></div>
         <audio id="wm-speak-playback" style="width:100%;margin-top:8px;display:none" controls></audio>
+        <!-- Auto-generated score card from Web Speech API STT (Phase 2) -->
+        <div id="wm-speak-score-card" style="display:none;margin-top:10px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:12px;background:#fff"></div>
         <div id="wm-speak-submit-row" style="display:none;margin-top:8px;gap:8px;flex-direction:column">
           <button id="wm-speak-submit" onclick="submitSpeaking()" style="width:100%;padding:10px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📩 Submit for AI Feedback (free)</button>
           <button id="wm-speak-coach-submit" onclick="submitSpeakingToCoach()" style="width:100%;padding:10px;border-radius:10px;border:1.5px solid #f59e0b;background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">👤 Send to Human Coach <span style="font-weight:700;opacity:.85">· 1 coin</span></button>
@@ -8415,6 +8417,171 @@ function speakKorean(text) {
 
 // ── Express Practice: Speaking ──
 var _speakRecorder = null, _speakChunks = [], _speakBlob = null;
+var _speakRecognition = null;     // Web Speech API SpeechRecognition instance
+var _speakSttTranscript = '';     // accumulated final transcript
+var _speakStartedAt = 0;          // ms — for fluency calculation
+var _speakScores = null;          // { pronunciation, fluency_wpm, fluency_score, transcript, target, duration_ms, filler_count, model }
+
+function _SpeechRecognitionCtor() {
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+// Start STT in parallel with MediaRecorder. Returns the recognition
+// instance (or null if the browser doesn't support it — we still
+// happily record audio in that case).
+function _startSpeakingSTT() {
+  var Ctor = _SpeechRecognitionCtor();
+  if (!Ctor) return null;
+  try {
+    var r = new Ctor();
+    r.lang = 'ko-KR';
+    r.continuous = true;
+    r.interimResults = false;
+    r.maxAlternatives = 1;
+    _speakSttTranscript = '';
+    r.onresult = function(e) {
+      for (var i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          _speakSttTranscript += (_speakSttTranscript ? ' ' : '') + e.results[i][0].transcript;
+        }
+      }
+    };
+    r.onerror = function(err) { console.warn('[Speaking STT] error:', err && err.error); };
+    r.start();
+    return r;
+  } catch(e) {
+    console.warn('[Speaking STT] start failed:', e);
+    return null;
+  }
+}
+
+// ── Pronunciation / fluency scoring (client-side) ──────────────────
+// Strip whitespace and punctuation, lowercase Latin → compare on the
+// remaining "comparable string". For Korean we just keep Hangul +
+// numerals; punctuation/spaces are noise from the speech engine.
+function _normalizeForScore(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/[.,!?~""''""""·…\-—\(\)\[\]{}<>\/\\:;`@#$%^&*+=|]/g, '')
+    .replace(/\s+/g, '')
+    .toLowerCase();
+}
+
+// Levenshtein distance — char-level. For long inputs (>400 chars) we
+// chunk to keep the DP table bounded.
+function _levenshtein(a, b) {
+  if (a === b) return 0;
+  if (!a) return b.length;
+  if (!b) return a.length;
+  // Limit explosion: speech is rarely >400 chars per recording.
+  if (a.length > 400) a = a.slice(0, 400);
+  if (b.length > 400) b = b.slice(0, 400);
+  var prev = new Array(b.length + 1);
+  var curr = new Array(b.length + 1);
+  for (var j = 0; j <= b.length; j++) prev[j] = j;
+  for (var i = 1; i <= a.length; i++) {
+    curr[0] = i;
+    for (var k = 1; k <= b.length; k++) {
+      var cost = a.charCodeAt(i - 1) === b.charCodeAt(k - 1) ? 0 : 1;
+      curr[k] = Math.min(curr[k - 1] + 1, prev[k] + 1, prev[k - 1] + cost);
+    }
+    var tmp = prev; prev = curr; curr = tmp;
+  }
+  return prev[b.length];
+}
+
+function _scoreSpeaking(targetText, transcript, durationMs) {
+  var target = _normalizeForScore(targetText);
+  var said   = _normalizeForScore(transcript);
+  var pronunciation = 0;
+  if (target.length) {
+    var dist = _levenshtein(target, said);
+    var maxLen = Math.max(target.length, said.length);
+    pronunciation = Math.max(0, Math.round((1 - dist / maxLen) * 100));
+  }
+
+  var wordsInTranscript = String(transcript || '').trim().split(/\s+/).filter(Boolean).length;
+  var minutes = Math.max(durationMs, 1) / 60000;
+  var wpm = wordsInTranscript > 0 ? Math.round(wordsInTranscript / minutes) : 0;
+
+  // Korean conversational baseline: ~140-180 WPM is comfortable.
+  // Score curve: 0-220 WPM maps roughly to 0-100, with a sweet spot
+  // around 160. Going too fast or too slow both reduce the score.
+  var fluency_score;
+  if (wpm <= 0)              fluency_score = 0;
+  else if (wpm < 80)         fluency_score = Math.round(wpm * 60 / 80);            // 0-60 below 80
+  else if (wpm <= 180)       fluency_score = Math.round(60 + (wpm - 80) * 40 / 100); // 60-100 between 80-180
+  else if (wpm <= 250)       fluency_score = Math.max(60, Math.round(100 - (wpm - 180) * 20 / 70));
+  else                       fluency_score = 60;
+
+  // Filler penalty (어/음/그/저)
+  var fillers = (String(transcript || '').match(/\b(어|음|그|저)\b/g) || []).length;
+  var filler_penalty = Math.min(15, fillers * 3);
+  pronunciation = Math.max(0, pronunciation - filler_penalty);
+
+  return {
+    pronunciation:  pronunciation,
+    fluency_wpm:    wpm,
+    fluency_score:  fluency_score,
+    transcript:     String(transcript || ''),
+    target:         String(targetText || ''),
+    duration_ms:    Math.round(durationMs),
+    filler_count:   fillers,
+    model:          'web-speech-api'
+  };
+}
+
+function _renderSpeakingScoreCard(s) {
+  var el = document.getElementById('wm-speak-score-card');
+  if (!el) return;
+  if (!s) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+  var pron = s.pronunciation;
+  var fluS = s.fluency_score;
+  var pronColor = pron >= 80 ? '#16a34a' : pron >= 60 ? '#d97706' : '#dc2626';
+  var fluColor  = fluS >= 80 ? '#16a34a' : fluS >= 60 ? '#d97706' : '#dc2626';
+
+  // Word-by-word diff highlighting (target side, normalized space-split)
+  var targetWords = (s.target || '').trim().split(/\s+/).filter(Boolean);
+  var saidNorm    = _normalizeForScore(s.transcript || '');
+  var diffHTML = targetWords.map(function(w) {
+    var n = _normalizeForScore(w);
+    var hit = n && saidNorm.indexOf(n) !== -1;
+    var bg  = hit ? 'rgba(22,163,74,.10)' : 'rgba(220,38,38,.10)';
+    var fg  = hit ? '#166534' : '#991b1b';
+    return '<span style="display:inline-block;padding:2px 6px;margin:2px;border-radius:6px;background:' + bg + ';color:' + fg + ';font-size:13px;font-family:\'Noto Sans KR\',sans-serif">' + w.replace(/[<>]/g, '') + '</span>';
+  }).join(' ');
+
+  var sttUnsupported = !_SpeechRecognitionCtor();
+  var unsupported = sttUnsupported
+    ? '<div style="font-size:11px;color:#94a3b8;margin-top:6px">⚠️ Pronunciation scoring needs Chrome / Edge / Safari. Audio still recorded.</div>'
+    : '';
+
+  el.style.display = 'block';
+  el.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+      + '<div style="font-size:11px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.06em">🎙️ Speaking Analysis</div>'
+      + '<div style="font-size:10px;color:#94a3b8">' + (s.duration_ms / 1000).toFixed(1) + 's · ' + (s.transcript ? s.transcript.split(/\s+/).filter(Boolean).length : 0) + ' words</div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
+      + '<div style="padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px">'
+        + '<div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:4px">Pronunciation</div>'
+        + '<div style="font-size:22px;font-weight:900;color:' + pronColor + '">' + pron + '</div>'
+        + '<div style="font-size:10px;color:#94a3b8">vs. target text</div>'
+      + '</div>'
+      + '<div style="padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px">'
+        + '<div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:4px">Fluency</div>'
+        + '<div style="font-size:22px;font-weight:900;color:' + fluColor + '">' + fluS + '</div>'
+        + '<div style="font-size:10px;color:#94a3b8">' + s.fluency_wpm + ' WPM' + (s.filler_count ? ' · ' + s.filler_count + ' filler' + (s.filler_count > 1 ? 's' : '') : '') + '</div>'
+      + '</div>'
+    + '</div>'
+    + (targetWords.length
+        ? '<div style="font-size:10px;font-weight:700;color:#94a3b8;margin-bottom:4px;text-transform:uppercase">Word match</div>'
+          + '<div>' + diffHTML + '</div>'
+        : '')
+    + unsupported;
+}
+
 function speakMyWriting() {
   var ta = document.getElementById('write-area');
   if (!ta || !ta.value.trim()) { showToast('먼저 글을 작성하세요'); return; }
@@ -8423,12 +8590,16 @@ function speakMyWriting() {
 function toggleSpeakRecord() {
   if (_speakRecorder && _speakRecorder.state === 'recording') {
     _speakRecorder.stop();
+    if (_speakRecognition) { try { _speakRecognition.stop(); } catch(e) {} }
     document.getElementById('wm-speak-record').innerHTML = '🎙️ 내 목소리 녹음';
     document.getElementById('wm-speak-record').style.background = 'rgba(239,68,68,.08)';
     return;
   }
   navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
     _speakChunks = [];
+    _speakScores = null;
+    _speakStartedAt = Date.now();
+    _speakRecognition = _startSpeakingSTT();   // null if browser unsupported — we still record
     _speakRecorder = new MediaRecorder(stream);
     _speakRecorder.ondataavailable = function(e) { if (e.data.size > 0) _speakChunks.push(e.data); };
     _speakRecorder.onstop = function() {
@@ -8442,6 +8613,17 @@ function toggleSpeakRecord() {
       if (row) row.style.display = 'flex';
       document.getElementById('wm-speak-status').textContent = 'Recording done! Listen and submit.';
       _refreshSpeakingCoinBadge();
+
+      // Compute and render speaking scores. STT may finish slightly
+      // after onstop on some engines — give it 500ms.
+      setTimeout(function() {
+        var ta = document.getElementById('write-area');
+        var target = ta ? (ta.value || '').trim() : '';
+        var transcript = (_speakSttTranscript || '').trim();
+        if (!target) return;
+        _speakScores = _scoreSpeaking(target, transcript, Date.now() - _speakStartedAt);
+        _renderSpeakingScoreCard(_speakScores);
+      }, 500);
     };
     _speakRecorder.start();
     document.getElementById('wm-speak-record').innerHTML = '⏹️ 녹음 중... (누르면 정지)';
@@ -8471,6 +8653,7 @@ async function submitSpeaking() {
       topic_en: _todayTopic ? _todayTopic.topic_en : '',
       level: _currentLevel,
       status: 'submitted',
+      speaking_scores: _speakScores || null,
       context_data: JSON.stringify({ audio_path: fileName })
     });
     showToast('🎙️ Recording submitted! Waiting for AI feedback.');
@@ -8546,6 +8729,7 @@ async function submitSpeakingToCoach() {
       level:       _currentLevel,
       status:      'submitted',
       speaking_coach_review: true,
+      speaking_scores: _speakScores || null,
       context_data: JSON.stringify({ audio_path: fileName, char_count: text.length })
     });
     if (ins.error) { showToast('제출 실패: ' + ins.error.message); return; }
