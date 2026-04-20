@@ -357,6 +357,38 @@ var state = {
 var _testIdx = 0;
 var _testAnswered = false;
 
+// ── Count-up animation helpers for placement result bars ────────────
+(function(){
+  // Inject the keyframe once
+  var styleId = 'kh-ob-anims';
+  if (!document.getElementById(styleId)) {
+    var s = document.createElement('style');
+    s.id = styleId;
+    s.textContent =
+      '@keyframes kh-area-in { to { opacity:1; transform:translateY(0) } }\n'
+      + '@keyframes kh-coin-pack-in { from { opacity:0; transform:translateY(12px) scale(.96) } to { opacity:1; transform:translateY(0) scale(1) } }\n';
+    document.head.appendChild(s);
+  }
+  // Poll + animate any fresh [data-kh-count] nodes
+  if (!window._khObCountTimer) {
+    window._khObCountTimer = setInterval(function() {
+      document.querySelectorAll('[data-kh-count]:not([data-kh-counted])').forEach(function(node) {
+        node.setAttribute('data-kh-counted', '1');
+        var target = parseInt(node.getAttribute('data-kh-count') || node.textContent, 10);
+        if (!Number.isFinite(target)) return;
+        var start = performance.now();
+        var dur = 900;
+        (function step(t) {
+          var p = Math.min(1, (t - start) / dur);
+          var ease = 1 - Math.pow(1 - p, 3);
+          node.textContent = Math.round(target * ease);
+          if (p < 1) requestAnimationFrame(step);
+        })(start);
+      });
+    }, 120);
+  }
+})();
+
 function shuffle(arr) {
   var copy = arr.slice();
   for (var i = copy.length - 1; i > 0; i--) {
@@ -855,24 +887,55 @@ function showTestResult() {
   var recommended = result.recommended;
 
   var areaMeta = {
-    reading:   { emoji:'📖', label:'Reading'   },
-    listening: { emoji:'🎧', label:'Listening' },
-    grammar:   { emoji:'🧩', label:'Grammar'   },
-    vocab:     { emoji:'📚', label:'Vocab'     }
+    reading:   { emoji:'📖', label:'Reading',   accent:'#60a5fa', gradient:'linear-gradient(135deg,#60a5fa,#3b82f6)' },
+    listening: { emoji:'🎧', label:'Listening', accent:'#a78bfa', gradient:'linear-gradient(135deg,#a78bfa,#7c3aed)' },
+    grammar:   { emoji:'🧩', label:'Grammar',   accent:'#34d399', gradient:'linear-gradient(135deg,#34d399,#059669)' },
+    vocab:     { emoji:'📚', label:'Vocab',     accent:'#fbbf24', gradient:'linear-gradient(135deg,#fbbf24,#d97706)' }
   };
-  var areaBarsHTML = ['reading','listening','grammar','vocab'].map(function(a) {
-    var s = result.scores[a] || 0;
-    var lvl = result.areaLevels[a];
-    var lvlKorean = ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]) || lvl;
-    var color = s >= 75 ? '#4ade80' : s >= 55 ? '#60a5fa' : s >= 30 ? '#fbbf24' : '#f87171';
-    return '<div style="padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:8px">'
-      + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">'
-        + '<span style="font-size:13px;font-weight:700;color:rgba(255,255,255,.85)">' + areaMeta[a].emoji + ' ' + areaMeta[a].label + '</span>'
-        + '<span style="font-size:12px;font-weight:800;color:' + color + '">' + s + ' · ' + lvlKorean + '</span>'
+  var TIER_ORDER = ['Starter','Beginner','Intermediate','Advanced'];
+  var TIER_META  = {
+    Starter:      { ko:'Seed',   emoji:'🌱' },
+    Beginner:     { ko:'Sprout', emoji:'🌿' },
+    Intermediate: { ko:'Tree',   emoji:'🌳' },
+    Advanced:     { ko:'Forest', emoji:'🌲' }
+  };
+  var areaBarsHTML = ['reading','listening','grammar','vocab'].map(function(a, idx) {
+    var s      = result.scores[a] || 0;
+    var lvl    = result.areaLevels[a];
+    var meta   = areaMeta[a];
+    var tierIdx = TIER_ORDER.indexOf(lvl);
+    var lvlKorean = TIER_META[lvl] ? TIER_META[lvl].ko : lvl;
+
+    // Tier stepper: 4 dots, filled up to (and including) the achieved tier.
+    var stepper = TIER_ORDER.map(function(t, ti) {
+      var reached = ti <= tierIdx;
+      var current = ti === tierIdx;
+      return '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;position:relative">'
+        + (ti > 0
+            ? '<div style="position:absolute;left:-50%;right:50%;top:8px;height:2px;background:' + (reached ? meta.gradient : 'rgba(255,255,255,.08)') + ';z-index:0"></div>'
+            : '')
+        + '<div style="width:18px;height:18px;border-radius:50%;' + (reached ? 'background:' + meta.gradient + ';box-shadow:0 2px 8px ' + meta.accent + '55;' : 'background:rgba(255,255,255,.06);') + 'border:2px solid ' + (reached ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.15)') + ';position:relative;z-index:1;' + (current ? 'transform:scale(1.18);' : '') + 'transition:all .3s ease"></div>'
+        + '<div style="font-size:9px;font-weight:' + (current ? '800' : '600') + ';color:' + (current ? '#fff' : 'rgba(255,255,255,.45)') + ';letter-spacing:.04em">' + TIER_META[t].ko + '</div>'
+      + '</div>';
+    }).join('');
+
+    return '<div style="padding:14px 16px 16px;background:linear-gradient(145deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);border-radius:14px;margin-bottom:10px;opacity:0;transform:translateY(8px);animation:kh-area-in .42s cubic-bezier(.22,1,.36,1) ' + (100 + idx * 90) + 'ms forwards">'
+      // Top row — icon, label, score
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
+        + '<div style="display:flex;align-items:center;gap:10px">'
+          + '<div style="width:34px;height:34px;border-radius:10px;background:' + meta.gradient + ';display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 4px 14px ' + meta.accent + '44">' + meta.emoji + '</div>'
+          + '<div>'
+            + '<div style="font-size:14px;font-weight:800;color:#fff;line-height:1.2">' + meta.label + '</div>'
+            + '<div style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);margin-top:1px">Achieved ' + TIER_META[lvl].emoji + ' ' + lvlKorean + '</div>'
+          + '</div>'
+        + '</div>'
+        + '<div style="text-align:right">'
+          + '<div style="font-family:\'DM Sans\',sans-serif;font-size:24px;font-weight:900;color:' + meta.accent + ';line-height:1" data-kh-count="' + s + '">0</div>'
+          + '<div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em">score</div>'
+        + '</div>'
       + '</div>'
-      + '<div style="height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden">'
-        + '<div style="height:100%;width:' + s + '%;background:' + color + ';border-radius:999px"></div>'
-      + '</div>'
+      // Tier stepper
+      + '<div style="display:flex;align-items:flex-start;justify-content:space-between;position:relative">' + stepper + '</div>'
     + '</div>';
   }).join('');
 
