@@ -30,6 +30,10 @@
     nebula: null,          // background points
     glowTex: null,
     words: [],
+    raycaster: null,       // THREE.Raycaster for picking
+    pointerNDC: { x: 0, y: 0 },
+    selected: null,        // { sprite, word, baseScale }
+    hovered: null,         // { sprite, baseScale }
     // Orbit camera state
     cam: { theta: 0, phi: Math.PI * 0.42, radius: 52, target: { x: 0, y: 0, z: 0 } },
     drag: null,            // { startX, startY, theta, phi } while dragging
@@ -64,7 +68,15 @@
       '  <button class="khu-close" onclick="KHUniverse.close()" aria-label="Close">✕</button>',
       '</div>',
       '<canvas class="khu-canvas" id="khu-canvas"></canvas>',
-      '<div class="khu-hint" id="khu-hint">Drag to orbit · Scroll to zoom</div>',
+      '<div class="khu-hint" id="khu-hint">Drag to orbit · Scroll to zoom · Tap a star</div>',
+      '<div class="khu-card" id="khu-card" aria-hidden="true">',
+      '  <button class="khu-card-close" aria-label="Close" onclick="KHUniverse._clearSelection()">✕</button>',
+      '  <div class="khu-card-badge" id="khu-card-badge">—</div>',
+      '  <div class="khu-card-ko" id="khu-card-ko"></div>',
+      '  <div class="khu-card-rom" id="khu-card-rom"></div>',
+      '  <div class="khu-card-en"  id="khu-card-en"></div>',
+      '  <div class="khu-card-related" id="khu-card-related"></div>',
+      '</div>',
       '<div class="khu-loading" id="khu-loading"><div class="khu-spin"></div><div>Loading your galaxy…</div></div>'
     ].join('');
     document.body.appendChild(ov);
@@ -94,6 +106,25 @@
       '.khu-loading.hidden{opacity:0;pointer-events:none;}',
       '.khu-spin{width:28px;height:28px;border-radius:50%;border:2px solid rgba(180,200,255,.18);border-top-color:#a78bfa;animation:khuSpin .9s linear infinite;}',
       '@keyframes khuSpin{to{transform:rotate(360deg);}}',
+      /* Word card */
+      '.khu-card{position:absolute;left:50%;bottom:24px;transform:translate(-50%,12px);z-index:4;width:min(420px,calc(100vw - 28px));background:linear-gradient(180deg,rgba(20,24,44,.92),rgba(10,12,28,.96));border:1px solid rgba(167,139,250,.3);border-radius:18px;padding:20px 22px 16px;color:#fff;-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);box-shadow:0 24px 60px rgba(80,60,200,.25),0 0 0 1px rgba(255,255,255,.04) inset;opacity:0;pointer-events:none;transition:opacity .22s ease,transform .22s cubic-bezier(.22,1,.36,1);}',
+      '.khu-card.show{opacity:1;transform:translate(-50%,0);pointer-events:auto;}',
+      '.khu-card-close{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);font-size:12px;cursor:pointer;font-family:inherit;transition:background .15s,color .15s;}',
+      '.khu-card-close:hover{background:rgba(255,255,255,.16);color:#fff;}',
+      '.khu-card-badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;padding:3px 10px;border-radius:999px;margin-bottom:10px;}',
+      '.khu-card-badge.lvl-new{background:rgba(167,139,250,.2);color:#c4b5fd;border:1px solid rgba(167,139,250,.35);}',
+      '.khu-card-badge.lvl-learning{background:rgba(78,205,196,.2);color:#7ee9e0;border:1px solid rgba(78,205,196,.4);}',
+      '.khu-card-badge.lvl-mastered{background:rgba(244,169,60,.2);color:#ffd089;border:1px solid rgba(244,169,60,.45);}',
+      '.khu-card-ko{font-family:\'Noto Serif KR\',serif;font-size:26px;font-weight:900;line-height:1.15;letter-spacing:-.01em;margin-bottom:2px;text-shadow:0 2px 10px rgba(120,100,255,.3);}',
+      '.khu-card-rom{font-size:12px;font-style:italic;color:rgba(200,210,255,.5);margin-bottom:6px;}',
+      '.khu-card-en{font-size:14px;font-weight:700;color:#a8c4ff;line-height:1.4;margin-bottom:12px;}',
+      '.khu-card-related{display:flex;flex-wrap:wrap;gap:6px;min-height:0;}',
+      '.khu-card-related:empty{display:none;}',
+      '.khu-related-label{flex:0 0 100%;font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(200,210,255,.5);margin:4px 0 4px;}',
+      '.khu-related-chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:#e0e4ff;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);border-radius:999px;padding:5px 11px;cursor:pointer;font-family:inherit;transition:background .12s,transform .12s,border-color .12s;}',
+      '.khu-related-chip:hover{background:rgba(167,139,250,.25);border-color:rgba(196,181,253,.6);transform:translateY(-1px);}',
+      '.khu-related-chip-loading{font-size:11px;color:rgba(200,210,255,.4);font-style:italic;padding:4px 0;}',
+      '@media(max-width:560px){.khu-card{left:12px;right:12px;bottom:12px;transform:translate(0,12px);width:auto;}.khu-card.show{transform:translate(0,0);}}',
     ].join('\n');
     document.head.appendChild(s);
   }
@@ -273,7 +304,8 @@
     state.drag = {
       startX: e.clientX, startY: e.clientY,
       theta: state.cam.theta, phi: state.cam.phi,
-      id: e.pointerId
+      id: e.pointerId, moved: 0,
+      downTime: Date.now()
     };
     state.autoRotate = false;
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch(_) {}
@@ -282,18 +314,129 @@
     if (!state.drag) return;
     var dx = e.clientX - state.drag.startX;
     var dy = e.clientY - state.drag.startY;
+    state.drag.moved = Math.max(state.drag.moved, Math.abs(dx) + Math.abs(dy));
     state.cam.theta = state.drag.theta - dx * 0.006;
     state.cam.phi   = Math.max(0.15, Math.min(Math.PI - 0.15, state.drag.phi - dy * 0.005));
     updateCameraFromOrbit(state.camera);
   }
   function onPointerUp(e) {
+    var d = state.drag;
     state.drag = null;
+    // Treat as a tap if pointer didn't travel much and was brief
+    if (d && d.moved < 6 && (Date.now() - d.downTime) < 400) {
+      handleTap(e.clientX, e.clientY, e.currentTarget || state.renderer.domElement);
+    }
   }
   function onWheel(e) {
     e.preventDefault();
     var next = state.cam.radius * (e.deltaY > 0 ? 1.12 : 0.89);
     state.cam.radius = Math.max(14, Math.min(120, next));
     updateCameraFromOrbit(state.camera);
+  }
+
+  // ── Raycast picking ────────────────────────────────────────
+  function handleTap(clientX, clientY, canvas) {
+    if (!THREE || !state.stars || !state.camera) return;
+    if (!state.raycaster) state.raycaster = new THREE.Raycaster();
+    // Make the pick radius forgiving for sprite/finger targets
+    if ('params' in state.raycaster && state.raycaster.params && state.raycaster.params.Sprite === undefined) {
+      state.raycaster.params.Sprite = {};
+    }
+    var rect = canvas.getBoundingClientRect();
+    state.pointerNDC.x = ((clientX - rect.left) / rect.width)  * 2 - 1;
+    state.pointerNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    state.raycaster.setFromCamera(state.pointerNDC, state.camera);
+    var hits = state.raycaster.intersectObjects(state.stars.children, false);
+    if (hits && hits.length) {
+      selectStar(hits[0].object);
+    } else {
+      clearSelection();
+    }
+  }
+
+  function selectStar(sprite) {
+    if (!sprite || !sprite.userData || !sprite.userData.word) return;
+    // Restore previous
+    if (state.selected && state.selected.sprite && state.selected.sprite !== sprite) {
+      var prev = state.selected.sprite;
+      prev.scale.set(state.selected.baseScale, state.selected.baseScale, 1);
+      if (prev.material) prev.material.opacity = state.selected.baseOpacity;
+    }
+    var base = sprite.scale.x;
+    state.selected = {
+      sprite: sprite,
+      word: sprite.userData.word,
+      baseScale: base,
+      baseOpacity: sprite.material ? sprite.material.opacity : 1,
+    };
+    // Emphasize selected
+    var boost = base * 1.6;
+    sprite.scale.set(boost, boost, 1);
+    if (sprite.material) sprite.material.opacity = 1;
+    renderWordCard(sprite.userData.word, sprite.userData.mastery || 0);
+    // Glide camera toward the star (smooth target shift, no radius change)
+    var p = sprite.position;
+    animateTarget(p.x * 0.45, p.y * 0.45, p.z * 0.45);
+  }
+
+  function clearSelection() {
+    if (!state.selected) return;
+    var s = state.selected.sprite;
+    if (s) {
+      s.scale.set(state.selected.baseScale, state.selected.baseScale, 1);
+      if (s.material) s.material.opacity = state.selected.baseOpacity;
+    }
+    state.selected = null;
+    hideWordCard();
+    animateTarget(0, 0, 0);
+  }
+
+  function animateTarget(tx, ty, tz) {
+    // Simple interpolated shift of camera target over ~24 frames
+    var start = { x: state.cam.target.x, y: state.cam.target.y, z: state.cam.target.z };
+    var steps = 24, i = 0;
+    function step() {
+      if (!state.open || !state.camera) return;
+      i++;
+      var t = Math.min(1, i / steps);
+      // ease-out cubic
+      var e = 1 - Math.pow(1 - t, 3);
+      state.cam.target.x = start.x + (tx - start.x) * e;
+      state.cam.target.y = start.y + (ty - start.y) * e;
+      state.cam.target.z = start.z + (tz - start.z) * e;
+      updateCameraFromOrbit(state.camera);
+      if (t < 1) requestAnimationFrame(step);
+    }
+    step();
+  }
+
+  // ── Word card render ───────────────────────────────────────
+  function renderWordCard(word, mastery) {
+    var card = document.getElementById('khu-card');
+    if (!card) return;
+    var badgeCls, badgeLbl;
+    if (mastery < 0.4)      { badgeCls = 'lvl-new';       badgeLbl = 'New'; }
+    else if (mastery < 0.75){ badgeCls = 'lvl-learning';  badgeLbl = 'Learning'; }
+    else                    { badgeCls = 'lvl-mastered';  badgeLbl = 'Mastered'; }
+    var badge = document.getElementById('khu-card-badge');
+    var ko    = document.getElementById('khu-card-ko');
+    var rom   = document.getElementById('khu-card-rom');
+    var en    = document.getElementById('khu-card-en');
+    var related = document.getElementById('khu-card-related');
+    if (badge) { badge.className = 'khu-card-badge ' + badgeCls; badge.textContent = badgeLbl; }
+    if (ko)  ko.textContent  = word.word_ko || word.ko || '';
+    if (rom) rom.textContent = word.word_rom || word.rom || '';
+    if (en)  en.textContent  = word.word_en || word.en || '';
+    if (related) related.innerHTML = '<span class="khu-related-chip-loading">· Related words coming in Step 3 ·</span>';
+    card.classList.add('show');
+    card.setAttribute('aria-hidden', 'false');
+  }
+
+  function hideWordCard() {
+    var card = document.getElementById('khu-card');
+    if (!card) return;
+    card.classList.remove('show');
+    card.setAttribute('aria-hidden', 'true');
   }
 
   function onResize() {
@@ -366,8 +509,12 @@
     if (overlay) overlay.classList.remove('open');
     if (state.animId) { cancelAnimationFrame(state.animId); state.animId = null; }
     if (state.renderer) unbindControls(state.renderer.domElement);
+    clearSelection();
     document.body.style.overflow = '';
   };
+
+  // Exposed for the in-card close button
+  KHUniverse._clearSelection = clearSelection;
 
   window.KHUniverse = KHUniverse;
 })();
