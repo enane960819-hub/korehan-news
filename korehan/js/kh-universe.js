@@ -28,6 +28,7 @@
     animId: null,
     stars: null,           // THREE.Group of word sprites
     satellites: null,      // THREE.Group of related-word satellite sprites (per selection)
+    categories: null,      // THREE.Group of category label pills + weakness hints
     nebula: null,          // background points
     glowTex: null,
     words: [],
@@ -35,11 +36,70 @@
     pointerNDC: { x: 0, y: 0 },
     selected: null,        // { sprite, word, baseScale }
     hovered: null,         // { sprite, baseScale }
+    clusterCenters: null,  // { [cat]: { x,y,z, words:[], avgMastery, color } }
     // Orbit camera state
-    cam: { theta: 0, phi: Math.PI * 0.42, radius: 52, target: { x: 0, y: 0, z: 0 } },
+    cam: { theta: 0, phi: Math.PI * 0.42, radius: 62, target: { x: 0, y: 0, z: 0 } },
     drag: null,            // { startX, startY, theta, phi } while dragging
     autoRotate: true,
   };
+
+  // Category palette: each interest_tag in vocabulary_bank maps to a tint.
+  // Unknowns land in 'misc' (a desaturated lavender/gray).
+  var CAT_COLORS = {
+    everyday:    { r: 0.31, g: 0.80, b: 0.77 }, // mint
+    food:        { r: 1.00, g: 0.45, b: 0.45 }, // coral
+    travel:      { r: 0.96, g: 0.66, b: 0.24 }, // gold
+    business:    { r: 0.55, g: 0.72, b: 0.96 }, // soft blue
+    work:        { r: 0.55, g: 0.72, b: 0.96 },
+    kpop:        { r: 1.00, g: 0.40, b: 0.70 }, // pink
+    music:       { r: 1.00, g: 0.40, b: 0.70 },
+    news:        { r: 0.36, g: 0.56, b: 0.95 }, // blue
+    politics:    { r: 0.36, g: 0.56, b: 0.95 },
+    economy:     { r: 0.36, g: 0.56, b: 0.95 },
+    culture:     { r: 0.66, g: 0.55, b: 0.98 }, // lavender
+    society:     { r: 0.66, g: 0.55, b: 0.98 },
+    tech:        { r: 0.20, g: 0.80, b: 0.93 }, // cyan
+    sports:      { r: 0.22, g: 0.85, b: 0.45 }, // green
+    health:      { r: 0.22, g: 0.85, b: 0.45 },
+    nature:      { r: 0.45, g: 0.88, b: 0.55 },
+    drama:       { r: 0.90, g: 0.50, b: 0.90 }, // magenta
+    movie:       { r: 0.90, g: 0.50, b: 0.90 },
+    entertainment:{r: 0.90, g: 0.50, b: 0.90 },
+    family:      { r: 0.98, g: 0.72, b: 0.55 }, // peach
+    friends:     { r: 0.98, g: 0.72, b: 0.55 },
+    dating:      { r: 1.00, g: 0.55, b: 0.75 }, // rose
+    study:       { r: 0.60, g: 0.75, b: 0.95 },
+    education:   { r: 0.60, g: 0.75, b: 0.95 },
+    misc:        { r: 0.60, g: 0.60, b: 0.75 }  // neutral lavender-grey
+  };
+
+  function catColor(cat) {
+    return CAT_COLORS[cat] || CAT_COLORS.misc;
+  }
+
+  function normCategory(tag) {
+    if (!tag) return 'misc';
+    tag = String(tag).toLowerCase().trim();
+    // Map common aliases so we don't end up with look-alike clusters
+    var aliases = {
+      '일상': 'everyday', 'daily': 'everyday',
+      '음식': 'food', 'cooking': 'food',
+      '여행': 'travel', 'trip': 'travel',
+      '비즈니스': 'business', '업무': 'business', '회사': 'work',
+      '뉴스': 'news',
+      '문화': 'culture',
+      '사회': 'society',
+      '기술': 'tech', 'technology': 'tech', 'it': 'tech',
+      '스포츠': 'sports',
+      '음악': 'music', 'song': 'music',
+      '드라마': 'drama', '영화': 'movie',
+      '건강': 'health', '의료': 'health',
+      '공부': 'study', '학습': 'study', '교육': 'education'
+    };
+    if (aliases[tag]) return aliases[tag];
+    if (CAT_COLORS[tag]) return tag;
+    return 'misc';
+  }
 
   // ── Three.js lazy load — jsdelivr (whitelisted by site CSP) ─
   // Tries the /+esm bundle first, then falls back to the raw module
@@ -165,25 +225,113 @@
     document.head.appendChild(s);
   }
 
-  // ── Galaxy geometry ────────────────────────────────────────
-  // Arrange N words in a 4-arm spiral galaxy. Mastery (0..1) → shift
-  // closer to the galactic core + brighter.
+  // ── Cluster geometry ────────────────────────────────────────
+  // Compute cluster centers for a set of categories using the
+  // Fibonacci-sphere distribution (evenly spaced directions). Each
+  // cluster gets a position on a 30-unit sphere around origin, plus
+  // a mini-galaxy radius for its words.
+  function computeClusterCenters(categories) {
+    var centers = {};
+    var n = categories.length;
+    if (n === 0) return centers;
+    // Single category → center it at origin
+    if (n === 1) {
+      centers[categories[0]] = { x: 0, y: 0, z: 0 };
+      return centers;
+    }
+    var sphereR = 30;
+    // Fibonacci sphere direction
+    var golden = Math.PI * (3 - Math.sqrt(5));
+    for (var i = 0; i < n; i++) {
+      var y = 1 - (i / (n - 1)) * 2;   // -1..1
+      y *= 0.65;                        // flatten a bit so clusters aren't too polar
+      var r = Math.sqrt(1 - y * y);
+      var t = golden * i;
+      centers[categories[i]] = {
+        x: Math.cos(t) * r * sphereR,
+        y: y * sphereR,
+        z: Math.sin(t) * r * sphereR
+      };
+    }
+    return centers;
+  }
+
+  // Within a cluster, lay words in a mini 2-arm spiral around the center.
+  function clusterWordPosition(center, idx, total, mastery) {
+    var arms = total > 4 ? 2 : 1;
+    var t = total ? idx / total : 0;
+    var dist = 2 + Math.pow(t, 0.6) * Math.min(8, 3 + total * 0.25);
+    dist *= (1 - mastery * 0.22);
+    var armAngle = ((idx % arms) / arms) * Math.PI * 2;
+    var twist = dist * 0.22;
+    var jitter = (Math.random() - 0.5) * 0.9;
+    var angle = armAngle + twist + jitter + (idx * 0.37);
+    var yOff = (Math.random() - 0.5) * (0.8 + dist * 0.05);
+    return {
+      x: center.x + Math.cos(angle) * dist,
+      y: center.y + yOff,
+      z: center.z + Math.sin(angle) * dist
+    };
+  }
+
+  // Kept for fallback: old 4-arm spiral when clustering info is absent.
   function galaxyPosition(i, total, mastery) {
     var arms = 4;
     var t = i / Math.max(1, total);
     var arm = i % arms;
-    var distance = Math.pow(t, 0.65) * 38 + 3;   // outer radius ~41
-    distance *= (1 - mastery * 0.28);            // mastered words drift in
+    var distance = Math.pow(t, 0.65) * 38 + 3;
+    distance *= (1 - mastery * 0.28);
     var armAngle = (arm / arms) * Math.PI * 2;
     var twist = distance * 0.18;
     var jitter = (Math.random() - 0.5) * 2.2;
     var angle = armAngle + twist + jitter;
     var y = (Math.random() - 0.5) * (1.5 + distance * 0.05);
-    return {
-      x: Math.cos(angle) * distance,
-      y: y,
-      z: Math.sin(angle) * distance
-    };
+    return { x: Math.cos(angle) * distance, y: y, z: Math.sin(angle) * distance };
+  }
+
+  // ── Category enrichment (async Supabase lookup) ─────────────
+  // For each input word, look up its interest_tag in vocabulary_bank.
+  // Missing words default to 'misc'. Results are merged back onto the
+  // original word objects so subsequent rebuilds stay category-aware.
+  async function enrichWithCategories(words) {
+    if (!Array.isArray(words) || !words.length) return;
+    // Skip if already enriched
+    var needsLookup = words.filter(function(w) {
+      return w && (w.word_ko || w.ko) && !w._cat;
+    });
+    if (!needsLookup.length) return;
+    if (typeof getSupa !== 'function') {
+      needsLookup.forEach(function(w){ w._cat = 'misc'; });
+      return;
+    }
+    var sb; try { sb = getSupa(); } catch(_) {}
+    if (!sb) {
+      needsLookup.forEach(function(w){ w._cat = 'misc'; });
+      return;
+    }
+    var kos = needsLookup.map(function(w){ return w.word_ko || w.ko; });
+    try {
+      // Chunk to avoid huge `in` queries
+      var chunkSize = 200;
+      var found = {};
+      for (var i = 0; i < kos.length; i += chunkSize) {
+        var chunk = kos.slice(i, i + chunkSize);
+        var r = await sb.from('vocabulary_bank')
+          .select('word_ko, interest_tag')
+          .in('word_ko', chunk);
+        if (r && r.data) {
+          r.data.forEach(function(row) {
+            if (row && row.word_ko) found[row.word_ko] = row.interest_tag || 'misc';
+          });
+        }
+      }
+      needsLookup.forEach(function(w) {
+        var ko = w.word_ko || w.ko;
+        w._cat = normCategory(found[ko] || 'misc');
+      });
+    } catch(_) {
+      needsLookup.forEach(function(w){ w._cat = 'misc'; });
+    }
   }
 
   function wordMastery(w) {
@@ -318,6 +466,11 @@
     scene.add(satGroup);
     state.satellites = satGroup;
 
+    // Category label group — big floating pills at each cluster center
+    var catGroup = new three.Group();
+    scene.add(catGroup);
+    state.categories = catGroup;
+
     rebuildWordStars(three, starsGroup);
 
     // Soft ambient glow at the core
@@ -334,7 +487,7 @@
   }
 
   function rebuildWordStars(three, group) {
-    // Clear existing — dispose label textures too
+    // Clear word-star group — dispose label textures too
     while (group.children.length) {
       var c = group.children.pop();
       if (c.material) {
@@ -344,55 +497,174 @@
         c.material.dispose();
       }
     }
-    var words = state.words || [];
-    // Only draw labels for a manageable count so huge saved-word lists
-    // don't blow the texture budget. For > MAX_LABELS we skip labels
-    // on deeper stars (far from the camera) and keep them on the front.
-    var MAX_LABELS = 200;
-    var labelLimit = Math.min(words.length, MAX_LABELS);
-    for (var i = 0; i < words.length; i++) {
-      var w = words[i];
-      var m = wordMastery(w);
-      var pos = galaxyPosition(i, words.length, m);
-      var col = masteryColor(m);
-      var mat = new three.SpriteMaterial({
-        map: state.glowTex,
-        color: new three.Color(col.r, col.g, col.b),
-        transparent: true,
-        opacity: 0.55 + m * 0.4,
-        blending: three.AdditiveBlending,
-        depthWrite: false,
-      });
-      var sprite = new three.Sprite(mat);
-      sprite.position.set(pos.x, pos.y, pos.z);
-      var size = 1.1 + m * 1.6;
-      sprite.scale.set(size, size, 1);
-      sprite.userData = { word: w, mastery: m, idx: i, isStar: true };
-      group.add(sprite);
-
-      // Label sprite — tiny pill under the star
-      if (i < labelLimit) {
-        var ko = w.word_ko || w.ko || '';
-        if (ko) {
-          // Tint the label border by mastery colour (hex computed from col)
-          var hexBorder = 'rgba(' + Math.round(col.r * 255) + ',' + Math.round(col.g * 255) + ',' + Math.round(col.b * 255) + ',0.52)';
-          var lbl = makeLabelTexture(ko, three, hexBorder);
-          var lblMat = new three.SpriteMaterial({
-            map: lbl.tex, transparent: true, depthWrite: false, opacity: 0.92
-          });
-          var lblSprite = new three.Sprite(lblMat);
-          // Scale: height ~1.2 world units; width derived from text aspect
-          var lblH = 1.25;
-          var lblW = lblH * lbl.aspect;
-          lblSprite.scale.set(lblW, lblH, 1);
-          // Offset below star based on star size
-          lblSprite.position.set(pos.x, pos.y - size * 0.8 - lblH * 0.55, pos.z);
-          lblSprite.renderOrder = 1;
-          lblSprite.userData = { isLabel: true, forStarIdx: i };
-          group.add(lblSprite);
+    // Also clear the categories group (rebuilt alongside stars)
+    if (state.categories) {
+      while (state.categories.children.length) {
+        var cc = state.categories.children.pop();
+        if (cc.material) {
+          if (cc.material.map) { try { cc.material.map.dispose(); } catch(_) {} }
+          cc.material.dispose();
         }
       }
     }
+
+    var words = state.words || [];
+    var MAX_LABELS = 200;
+    var labelLimit = Math.min(words.length, MAX_LABELS);
+
+    // Group words by category and compute cluster centers
+    var byCat = {};
+    var catOrder = [];
+    for (var wi = 0; wi < words.length; wi++) {
+      var ww = words[wi];
+      var cat = ww._cat || 'misc';
+      if (!byCat[cat]) { byCat[cat] = []; catOrder.push(cat); }
+      byCat[cat].push({ w: ww, originalIdx: wi });
+    }
+    var centers = computeClusterCenters(catOrder);
+    state.clusterCenters = {};
+    catOrder.forEach(function(cat) {
+      var center = centers[cat] || { x: 0, y: 0, z: 0 };
+      var bucket = byCat[cat];
+      var mastSum = 0;
+      bucket.forEach(function(b){ mastSum += wordMastery(b.w); });
+      var avgMast = bucket.length ? mastSum / bucket.length : 0;
+      state.clusterCenters[cat] = {
+        x: center.x, y: center.y, z: center.z,
+        count: bucket.length, avgMastery: avgMast,
+        color: catColor(cat)
+      };
+    });
+
+    // Render stars cluster by cluster
+    catOrder.forEach(function(cat) {
+      var bucket = byCat[cat];
+      var center = state.clusterCenters[cat];
+      var catTint = catColor(cat);
+      bucket.forEach(function(b, idxInCluster) {
+        var w = b.w;
+        var i = b.originalIdx;
+        var m = wordMastery(w);
+        var pos = (catOrder.length > 1)
+          ? clusterWordPosition(center, idxInCluster, bucket.length, m)
+          : galaxyPosition(i, words.length, m);
+        // Blend mastery colour with category tint so both readable
+        var master = masteryColor(m);
+        var blend = {
+          r: master.r * 0.55 + catTint.r * 0.45,
+          g: master.g * 0.55 + catTint.g * 0.45,
+          b: master.b * 0.55 + catTint.b * 0.45
+        };
+        var mat = new three.SpriteMaterial({
+          map: state.glowTex,
+          color: new three.Color(blend.r, blend.g, blend.b),
+          transparent: true,
+          opacity: 0.55 + m * 0.4,
+          blending: three.AdditiveBlending,
+          depthWrite: false,
+        });
+        var sprite = new three.Sprite(mat);
+        sprite.position.set(pos.x, pos.y, pos.z);
+        var size = 1.1 + m * 1.6;
+        sprite.scale.set(size, size, 1);
+        sprite.userData = { word: w, mastery: m, idx: i, isStar: true, category: cat };
+        group.add(sprite);
+
+        // Word label pill
+        if (i < labelLimit) {
+          var ko = w.word_ko || w.ko || '';
+          if (ko) {
+            var hexBorder = 'rgba(' + Math.round(blend.r * 255) + ',' + Math.round(blend.g * 255) + ',' + Math.round(blend.b * 255) + ',0.52)';
+            var lbl = makeLabelTexture(ko, three, hexBorder);
+            var lblMat = new three.SpriteMaterial({
+              map: lbl.tex, transparent: true, depthWrite: false, opacity: 0.92
+            });
+            var lblSprite = new three.Sprite(lblMat);
+            var lblH = 1.2;
+            var lblW = lblH * lbl.aspect;
+            lblSprite.scale.set(lblW, lblH, 1);
+            lblSprite.position.set(pos.x, pos.y - size * 0.8 - lblH * 0.55, pos.z);
+            lblSprite.renderOrder = 1;
+            lblSprite.userData = { isLabel: true, forStarIdx: i };
+            group.add(lblSprite);
+          }
+        }
+      });
+    });
+
+    // Render one big label at each cluster center (skip when only 1 cluster)
+    if (catOrder.length > 1 && state.categories) {
+      catOrder.forEach(function(cat) {
+        var c = state.clusterCenters[cat];
+        if (!c) return;
+        var catLabelText = cat.toUpperCase();
+        // Weakness hint suffix — count + tiny indicator
+        var hintSuffix = '  ·  ' + c.count;
+        var labelColor = catColor(cat);
+        var hexBorder = 'rgba(' + Math.round(labelColor.r * 255) + ',' + Math.round(labelColor.g * 255) + ',' + Math.round(labelColor.b * 255) + ',0.9)';
+        var lbl = makeCategoryLabelTexture(catLabelText + hintSuffix, three, hexBorder, c.avgMastery, c.count);
+        var mat = new three.SpriteMaterial({
+          map: lbl.tex, transparent: true, depthWrite: false, opacity: 0.94
+        });
+        var sp = new three.Sprite(mat);
+        var lblH = 2.0;
+        var lblW = lblH * lbl.aspect;
+        sp.scale.set(lblW, lblH, 1);
+        // Float the label a bit above the cluster
+        sp.position.set(c.x, c.y + 7.5, c.z);
+        sp.renderOrder = 3;
+        sp.userData = { isCategoryLabel: true, category: cat };
+        state.categories.add(sp);
+      });
+    }
+  }
+
+  // Build a thicker, brighter label for category headers. Shows category
+  // name + count; if < 3 words OR low mastery, appends a 💡 "expand here"
+  // hint in the pill so weak areas stand out.
+  function makeCategoryLabelTexture(text, three, borderHex, avgMastery, count) {
+    var fontSize = 48;
+    var weak = (count < 3) || (avgMastery < 0.35);
+    var hintEmoji = weak ? '  💡' : '';
+    var fullText = text + hintEmoji;
+    var c = document.createElement('canvas');
+    var ctx = c.getContext('2d');
+    ctx.font = '900 ' + fontSize + 'px "DM Sans", "Noto Sans KR", sans-serif';
+    var tw = Math.ceil(ctx.measureText(fullText).width);
+    var padX = 36, padY = 20;
+    c.width = Math.max(180, tw + padX * 2);
+    c.height = fontSize + padY * 2;
+    ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.font = '900 ' + fontSize + 'px "DM Sans", "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    var r = c.height / 2;
+    // Background: more saturated for strong clusters
+    var bgAlpha = weak ? 0.45 : 0.82;
+    ctx.fillStyle = 'rgba(12,16,36,' + bgAlpha + ')';
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(c.width - r, 0);
+    ctx.quadraticCurveTo(c.width, 0, c.width, r);
+    ctx.lineTo(c.width, c.height - r);
+    ctx.quadraticCurveTo(c.width, c.height, c.width - r, c.height);
+    ctx.lineTo(r, c.height);
+    ctx.quadraticCurveTo(0, c.height, 0, c.height - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = borderHex;
+    ctx.lineWidth = weak ? 2 : 3;
+    ctx.stroke();
+    ctx.fillStyle = weak ? 'rgba(255,255,255,0.82)' : '#fff';
+    ctx.shadowColor = 'rgba(0,0,0,0.7)';
+    ctx.shadowBlur = 6;
+    ctx.fillText(fullText, c.width / 2, c.height / 2);
+    var tex = new three.CanvasTexture(c);
+    tex.colorSpace = three.SRGBColorSpace || three.sRGBEncoding;
+    return { tex: tex, aspect: c.width / c.height };
   }
 
   function updateCameraFromOrbit(camera) {
@@ -978,7 +1250,6 @@
       canvas.width  = canvas.clientWidth  * (window.devicePixelRatio || 1);
       canvas.height = canvas.clientHeight * (window.devicePixelRatio || 1);
       if (state.renderer) {
-        // Re-entry: rebuild stars only
         state.words && rebuildWordStars(three, state.stars);
       } else {
         buildScene(three, canvas);
@@ -986,6 +1257,11 @@
       }
       if (loading) loading.classList.add('hidden');
       if (!state.animId) tick();
+      // Kick off category enrichment and rebuild the galaxy once tags arrive.
+      enrichWithCategories(state.words).then(function() {
+        if (!state.open || !state.stars) return;
+        rebuildWordStars(three, state.stars);
+      });
     }).catch(function(err) {
       if (loading) loading.innerHTML = '<div style="color:#fca5a5">Could not load the galaxy engine.</div>';
       console.warn('[KHUniverse] three load failed', err);
