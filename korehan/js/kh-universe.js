@@ -151,7 +151,7 @@
       '  <button class="khu-zoom-btn" aria-label="Zoom out" onclick="KHUniverse._zoom(1.25)">−</button>',
       '  <button class="khu-zoom-btn khu-zoom-reset" aria-label="Reset view" onclick="KHUniverse._resetView()">⤾</button>',
       '</div>',
-      '<div class="khu-hint" id="khu-hint">Drag to orbit · Pinch / scroll to zoom · Tap a star</div>',
+      '<div class="khu-hint" id="khu-hint">Drag to orbit · Two-finger / Shift-drag to pan · Pinch / scroll to zoom</div>',
       '<div class="khu-card" id="khu-card" aria-hidden="true">',
       '  <button class="khu-card-close" aria-label="Close" onclick="KHUniverse._clearSelection()">✕</button>',
       '  <div class="khu-card-badge" id="khu-card-badge">—</div>',
@@ -723,20 +723,54 @@
     var dx = arr[0].x - arr[1].x, dy = arr[0].y - arr[1].y;
     return Math.sqrt(dx * dx + dy * dy);
   }
+  function _pinchMidpoint() {
+    var arr = Array.from(_pointers.values());
+    if (arr.length < 2) return { x: 0, y: 0 };
+    return { x: (arr[0].x + arr[1].x) / 2, y: (arr[0].y + arr[1].y) / 2 };
+  }
+
+  // Pan the orbit target in the camera's view plane.
+  // dx/dy are screen-pixel deltas (positive dx = finger moved right).
+  function _panCameraTarget(dx, dy) {
+    if (!state.camera || !state.renderer || !THREE) return;
+    var rect = state.renderer.domElement.getBoundingClientRect();
+    if (!rect.height) return;
+    // World units per screen pixel at current distance
+    var fov = state.camera.fov * Math.PI / 180;
+    var scale = state.cam.radius * 2 * Math.tan(fov / 2) / rect.height;
+    var fwd = new THREE.Vector3(
+      state.cam.target.x - state.camera.position.x,
+      state.cam.target.y - state.camera.position.y,
+      state.cam.target.z - state.camera.position.z
+    ).normalize();
+    var right = new THREE.Vector3().crossVectors(fwd, state.camera.up).normalize();
+    var up    = new THREE.Vector3().crossVectors(right, fwd).normalize();
+    // Drag right → move content right → move target left (invert dx)
+    state.cam.target.x += (-right.x * dx + up.x * dy) * scale;
+    state.cam.target.y += (-right.y * dx + up.y * dy) * scale;
+    state.cam.target.z += (-right.z * dx + up.z * dy) * scale;
+  }
 
   function onPointerDown(e) {
     _pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     state.autoRotate = false;
     if (_pointers.size === 2) {
-      // Start pinch: exit any in-progress drag so orbit doesn't also move.
+      // Start pinch + pan; stop any in-progress drag so orbit doesn't also move.
       state.drag = null;
-      _pinch = { startDist: _pinchDistance(), startRadius: state.cam.radius };
+      _pinch = {
+        startDist: _pinchDistance(),
+        startRadius: state.cam.radius,
+        prevMid: _pinchMidpoint()
+      };
     } else if (_pointers.size === 1) {
       state.drag = {
         startX: e.clientX, startY: e.clientY,
         theta: state.cam.theta, phi: state.cam.phi,
         id: e.pointerId, moved: 0,
-        downTime: Date.now()
+        downTime: Date.now(),
+        // Desktop: Shift held at pointerdown → pan instead of orbit for this drag
+        mode: (e.shiftKey || e.ctrlKey || e.button === 1) ? 'pan' : 'orbit',
+        lastX: e.clientX, lastY: e.clientY
       };
     }
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch(_) {}
@@ -746,18 +780,36 @@
       _pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     }
     if (_pinch && _pointers.size === 2) {
+      // Zoom from distance ratio, pan from midpoint delta.
       var d = _pinchDistance();
       if (d > 0 && _pinch.startDist > 0) {
         var ratio = _pinch.startDist / d;
-        state.cam.radius = Math.max(14, Math.min(120, _pinch.startRadius * ratio));
-        updateCameraFromOrbit(state.camera);
+        state.cam.radius = Math.max(14, Math.min(140, _pinch.startRadius * ratio));
       }
+      var mid = _pinchMidpoint();
+      if (_pinch.prevMid) {
+        var mdx = mid.x - _pinch.prevMid.x;
+        var mdy = mid.y - _pinch.prevMid.y;
+        if (Math.abs(mdx) + Math.abs(mdy) > 0.1) _panCameraTarget(mdx, mdy);
+      }
+      _pinch.prevMid = mid;
+      updateCameraFromOrbit(state.camera);
       return;
     }
     if (!state.drag) return;
     var dx = e.clientX - state.drag.startX;
     var dy = e.clientY - state.drag.startY;
     state.drag.moved = Math.max(state.drag.moved, Math.abs(dx) + Math.abs(dy));
+    if (state.drag.mode === 'pan') {
+      // Incremental pan using last-frame position
+      var sdx = e.clientX - (state.drag.lastX || state.drag.startX);
+      var sdy = e.clientY - (state.drag.lastY || state.drag.startY);
+      _panCameraTarget(sdx, sdy);
+      state.drag.lastX = e.clientX;
+      state.drag.lastY = e.clientY;
+      updateCameraFromOrbit(state.camera);
+      return;
+    }
     state.cam.theta = state.drag.theta - dx * 0.006;
     state.cam.phi   = Math.max(0.15, Math.min(Math.PI - 0.15, state.drag.phi - dy * 0.005));
     updateCameraFromOrbit(state.camera);
@@ -775,7 +827,7 @@
   function onWheel(e) {
     e.preventDefault();
     var next = state.cam.radius * (e.deltaY > 0 ? 1.12 : 0.89);
-    state.cam.radius = Math.max(14, Math.min(120, next));
+    state.cam.radius = Math.max(8, Math.min(140,next));
     updateCameraFromOrbit(state.camera);
   }
 
@@ -837,9 +889,10 @@
     sprite.scale.set(boost, boost, 1);
     if (sprite.material) sprite.material.opacity = 1;
     renderWordCard(sprite.userData.word, sprite.userData.mastery || 0);
-    // Glide camera toward the star (smooth target shift, no radius change)
+    // Recenter the orbit target on the tapped star so subsequent zoom
+    // zooms into that star, not the galaxy origin.
     var p = sprite.position;
-    animateTarget(p.x * 0.45, p.y * 0.45, p.z * 0.45);
+    animateTarget(p.x, p.y, p.z);
   }
 
   function clearSelection() {
@@ -1298,7 +1351,7 @@
   // Zoom controls (called from the overlay buttons)
   KHUniverse._zoom = function(factor) {
     if (!state.camera) return;
-    state.cam.radius = Math.max(14, Math.min(120, state.cam.radius * factor));
+    state.cam.radius = Math.max(8, Math.min(140,state.cam.radius * factor));
     updateCameraFromOrbit(state.camera);
   };
   KHUniverse._resetView = function() {
