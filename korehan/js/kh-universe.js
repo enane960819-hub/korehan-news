@@ -85,7 +85,12 @@
       '  <button class="khu-close" onclick="KHUniverse.close()" aria-label="Close">✕</button>',
       '</div>',
       '<canvas class="khu-canvas" id="khu-canvas"></canvas>',
-      '<div class="khu-hint" id="khu-hint">Drag to orbit · Scroll to zoom · Tap a star</div>',
+      '<div class="khu-zoom">',
+      '  <button class="khu-zoom-btn" aria-label="Zoom in" onclick="KHUniverse._zoom(0.8)">+</button>',
+      '  <button class="khu-zoom-btn" aria-label="Zoom out" onclick="KHUniverse._zoom(1.25)">−</button>',
+      '  <button class="khu-zoom-btn khu-zoom-reset" aria-label="Reset view" onclick="KHUniverse._resetView()">⤾</button>',
+      '</div>',
+      '<div class="khu-hint" id="khu-hint">Drag to orbit · Pinch / scroll to zoom · Tap a star</div>',
       '<div class="khu-card" id="khu-card" aria-hidden="true">',
       '  <button class="khu-card-close" aria-label="Close" onclick="KHUniverse._clearSelection()">✕</button>',
       '  <div class="khu-card-badge" id="khu-card-badge">—</div>',
@@ -117,6 +122,13 @@
       '.khu-stats{font-size:11px;font-weight:800;letter-spacing:.06em;color:rgba(200,210,255,.7);padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);white-space:nowrap;}',
       '.khu-close{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(15,20,40,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fff;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,transform .12s;}',
       '.khu-close:hover{background:rgba(255,255,255,.15);transform:scale(1.06);}',
+      /* Zoom controls */
+      '.khu-zoom{position:absolute;right:18px;bottom:92px;z-index:3;display:flex;flex-direction:column;gap:8px;}',
+      '.khu-zoom-btn{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(15,20,40,.6);color:#fff;font-size:18px;font-weight:700;line-height:1;cursor:pointer;font-family:inherit;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:background .15s,transform .12s,border-color .15s;display:flex;align-items:center;justify-content:center;}',
+      '.khu-zoom-btn:hover{background:rgba(167,139,250,.22);border-color:rgba(196,181,253,.55);transform:scale(1.06);}',
+      '.khu-zoom-btn:active{transform:scale(.94);}',
+      '.khu-zoom-btn.khu-zoom-reset{font-size:16px;opacity:.85;}',
+      '@media(max-width:560px){.khu-zoom{right:12px;bottom:26vh;}.khu-zoom-btn{width:44px;height:44px;font-size:20px;}}',
       '.khu-hint{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);z-index:2;font-size:11px;letter-spacing:.08em;color:rgba(180,200,255,.45);pointer-events:none;animation:khuHintFade 6s ease-in-out 1s forwards;}',
       '@keyframes khuHintFade{0%,60%{opacity:1;}100%{opacity:0;}}',
       '.khu-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:rgba(200,210,255,.75);font-size:13px;letter-spacing:.04em;z-index:3;pointer-events:none;transition:opacity .3s;}',
@@ -205,6 +217,52 @@
     return tex;
   }
 
+  // Build a pill-shaped text label canvas for a word. Returns
+  // { tex, aspect } where aspect = canvas.width/canvas.height so
+  // the resulting sprite keeps correct proportions.
+  function makeLabelTexture(text, three, tintHex) {
+    var fontSize = 44; // internal canvas px; sprite scale controls visual size
+    var c = document.createElement('canvas');
+    var ctx = c.getContext('2d');
+    ctx.font = 'bold ' + fontSize + 'px "Noto Sans KR", "DM Sans", sans-serif';
+    var tw = Math.ceil(ctx.measureText(text || '').width);
+    var padX = 28, padY = 14;
+    c.width  = Math.max(140, tw + padX * 2);
+    c.height = fontSize + padY * 2;
+    ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.font = 'bold ' + fontSize + 'px "Noto Sans KR", "DM Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // Dark pill backdrop
+    var r = c.height / 2;
+    ctx.fillStyle = 'rgba(12,16,36,0.78)';
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(c.width - r, 0);
+    ctx.quadraticCurveTo(c.width, 0, c.width, r);
+    ctx.lineTo(c.width, c.height - r);
+    ctx.quadraticCurveTo(c.width, c.height, c.width - r, c.height);
+    ctx.lineTo(r, c.height);
+    ctx.quadraticCurveTo(0, c.height, 0, c.height - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.fill();
+    // Accent border
+    ctx.strokeStyle = tintHex || 'rgba(196,181,253,0.45)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Text
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(text || '', c.width / 2, c.height / 2);
+    var tex = new three.CanvasTexture(c);
+    tex.colorSpace = three.SRGBColorSpace || three.sRGBEncoding;
+    return { tex: tex, aspect: c.width / c.height };
+  }
+
   // ── Build scene ─────────────────────────────────────────────
   function buildScene(three, canvas) {
     var scene = new three.Scene();
@@ -270,12 +328,22 @@
   }
 
   function rebuildWordStars(three, group) {
-    // Clear existing
+    // Clear existing — dispose label textures too
     while (group.children.length) {
       var c = group.children.pop();
-      if (c.material) c.material.dispose();
+      if (c.material) {
+        if (c.material.map && c.userData && c.userData.isLabel) {
+          try { c.material.map.dispose(); } catch(_) {}
+        }
+        c.material.dispose();
+      }
     }
     var words = state.words || [];
+    // Only draw labels for a manageable count so huge saved-word lists
+    // don't blow the texture budget. For > MAX_LABELS we skip labels
+    // on deeper stars (far from the camera) and keep them on the front.
+    var MAX_LABELS = 200;
+    var labelLimit = Math.min(words.length, MAX_LABELS);
     for (var i = 0; i < words.length; i++) {
       var w = words[i];
       var m = wordMastery(w);
@@ -293,8 +361,31 @@
       sprite.position.set(pos.x, pos.y, pos.z);
       var size = 1.1 + m * 1.6;
       sprite.scale.set(size, size, 1);
-      sprite.userData = { word: w, mastery: m, idx: i };
+      sprite.userData = { word: w, mastery: m, idx: i, isStar: true };
       group.add(sprite);
+
+      // Label sprite — tiny pill under the star
+      if (i < labelLimit) {
+        var ko = w.word_ko || w.ko || '';
+        if (ko) {
+          // Tint the label border by mastery colour (hex computed from col)
+          var hexBorder = 'rgba(' + Math.round(col.r * 255) + ',' + Math.round(col.g * 255) + ',' + Math.round(col.b * 255) + ',0.52)';
+          var lbl = makeLabelTexture(ko, three, hexBorder);
+          var lblMat = new three.SpriteMaterial({
+            map: lbl.tex, transparent: true, depthWrite: false, opacity: 0.92
+          });
+          var lblSprite = new three.Sprite(lblMat);
+          // Scale: height ~1.2 world units; width derived from text aspect
+          var lblH = 1.25;
+          var lblW = lblH * lbl.aspect;
+          lblSprite.scale.set(lblW, lblH, 1);
+          // Offset below star based on star size
+          lblSprite.position.set(pos.x, pos.y - size * 0.8 - lblH * 0.55, pos.z);
+          lblSprite.renderOrder = 1;
+          lblSprite.userData = { isLabel: true, forStarIdx: i };
+          group.add(lblSprite);
+        }
+      }
     }
   }
 
@@ -307,12 +398,19 @@
   }
 
   // ── Orbit controls (custom, lightweight) ────────────────────
+  // Multi-pointer aware: 1 pointer = orbit drag, 2 pointers = pinch zoom.
+  var _pointers = new Map();   // pointerId → { x, y }
+  var _pinch = null;           // { startDist, startRadius }
   function bindControls(canvas) {
     canvas.addEventListener('pointerdown', onPointerDown);
     canvas.addEventListener('pointermove', onPointerMove);
     canvas.addEventListener('pointerup',   onPointerUp);
     canvas.addEventListener('pointercancel', onPointerUp);
     canvas.addEventListener('wheel', onWheel, { passive: false });
+    // Some browsers (iOS Safari) fire gesturestart for pinch — swallow
+    // so the page doesn't zoom behind our modal.
+    canvas.addEventListener('gesturestart', _preventDefault, { passive: false });
+    canvas.addEventListener('gesturechange', _preventDefault, { passive: false });
   }
   function unbindControls(canvas) {
     if (!canvas) return;
@@ -321,19 +419,50 @@
     canvas.removeEventListener('pointerup',   onPointerUp);
     canvas.removeEventListener('pointercancel', onPointerUp);
     canvas.removeEventListener('wheel', onWheel);
+    canvas.removeEventListener('gesturestart', _preventDefault);
+    canvas.removeEventListener('gesturechange', _preventDefault);
+    _pointers.clear();
+    _pinch = null;
+  }
+  function _preventDefault(e) { try { e.preventDefault(); } catch(_) {} }
+
+  function _pinchDistance() {
+    var arr = Array.from(_pointers.values());
+    if (arr.length < 2) return 0;
+    var dx = arr[0].x - arr[1].x, dy = arr[0].y - arr[1].y;
+    return Math.sqrt(dx * dx + dy * dy);
   }
 
   function onPointerDown(e) {
-    state.drag = {
-      startX: e.clientX, startY: e.clientY,
-      theta: state.cam.theta, phi: state.cam.phi,
-      id: e.pointerId, moved: 0,
-      downTime: Date.now()
-    };
+    _pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     state.autoRotate = false;
+    if (_pointers.size === 2) {
+      // Start pinch: exit any in-progress drag so orbit doesn't also move.
+      state.drag = null;
+      _pinch = { startDist: _pinchDistance(), startRadius: state.cam.radius };
+    } else if (_pointers.size === 1) {
+      state.drag = {
+        startX: e.clientX, startY: e.clientY,
+        theta: state.cam.theta, phi: state.cam.phi,
+        id: e.pointerId, moved: 0,
+        downTime: Date.now()
+      };
+    }
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch(_) {}
   }
   function onPointerMove(e) {
+    if (_pointers.has(e.pointerId)) {
+      _pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+    if (_pinch && _pointers.size === 2) {
+      var d = _pinchDistance();
+      if (d > 0 && _pinch.startDist > 0) {
+        var ratio = _pinch.startDist / d;
+        state.cam.radius = Math.max(14, Math.min(120, _pinch.startRadius * ratio));
+        updateCameraFromOrbit(state.camera);
+      }
+      return;
+    }
     if (!state.drag) return;
     var dx = e.clientX - state.drag.startX;
     var dy = e.clientY - state.drag.startY;
@@ -343,10 +472,12 @@
     updateCameraFromOrbit(state.camera);
   }
   function onPointerUp(e) {
-    var d = state.drag;
-    state.drag = null;
-    // Treat as a tap if pointer didn't travel much and was brief
-    if (d && d.moved < 6 && (Date.now() - d.downTime) < 400) {
+    var wasDrag = state.drag;
+    _pointers.delete(e.pointerId);
+    if (_pointers.size < 2) _pinch = null;
+    if (_pointers.size === 0) state.drag = null;
+    // Tap detection — only if we were single-pointer and barely moved
+    if (wasDrag && wasDrag.id === e.pointerId && !_pinch && wasDrag.moved < 6 && (Date.now() - wasDrag.downTime) < 400) {
       handleTap(e.clientX, e.clientY, e.currentTarget || state.renderer.domElement);
     }
   }
@@ -371,10 +502,16 @@
     state.raycaster.setFromCamera(state.pointerNDC, state.camera);
     var hits = state.raycaster.intersectObjects(state.stars.children, false);
     if (hits && hits.length) {
-      selectStar(hits[0].object);
-    } else {
-      clearSelection();
+      // Walk hits and prefer the first actual star (skip label pills).
+      for (var h = 0; h < hits.length; h++) {
+        var obj = hits[h].object;
+        if (obj && obj.userData && obj.userData.isStar) {
+          selectStar(obj);
+          return;
+        }
+      }
     }
+    clearSelection();
   }
 
   function selectStar(sprite) {
@@ -691,6 +828,23 @@
 
   // Exposed for the in-card close button
   KHUniverse._clearSelection = clearSelection;
+
+  // Zoom controls (called from the overlay buttons)
+  KHUniverse._zoom = function(factor) {
+    if (!state.camera) return;
+    state.cam.radius = Math.max(14, Math.min(120, state.cam.radius * factor));
+    updateCameraFromOrbit(state.camera);
+  };
+  KHUniverse._resetView = function() {
+    if (!state.camera) return;
+    state.cam.radius = 52;
+    state.cam.theta = 0;
+    state.cam.phi = Math.PI * 0.42;
+    state.cam.target.x = state.cam.target.y = state.cam.target.z = 0;
+    state.autoRotate = true;
+    clearSelection();
+    updateCameraFromOrbit(state.camera);
+  };
 
   window.KHUniverse = KHUniverse;
 })();
