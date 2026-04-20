@@ -2233,6 +2233,77 @@ function heroSideItemHTML(a) {
     + '</div></a>';
 }
 
+// ── EN TITLE HYDRATION ────────────────────────────────────────
+// Articles sometimes ship without a title_en (admin didn't fill it in).
+// We never want to show a Korean headline on an EN-first thumbnail, so:
+//   1) Hydrate from localStorage synchronously before the first paint.
+//   2) After the initial render, batch any still-missing titles through
+//      Claude (haiku) once, cache to localStorage, and swap the text.
+function _khHydrateTitlesEnFromCache(articles) {
+  if (!Array.isArray(articles)) return;
+  articles.forEach(function(a) {
+    if (!a || !a.id) return;
+    if (a.title_en && String(a.title_en).trim()) return;
+    try {
+      var cached = localStorage.getItem('kh_title_en_' + a.id);
+      if (cached) a.title_en = cached;
+    } catch(e) {}
+  });
+}
+function _khApplyTitlesEnToDOM() {
+  var nodes = document.querySelectorAll('[data-kh-title-id]');
+  nodes.forEach(function(el) {
+    var id = el.getAttribute('data-kh-title-id');
+    if (!id) return;
+    var t;
+    try { t = localStorage.getItem('kh_title_en_' + id); } catch(e) {}
+    if (!t) {
+      // fall back to an article object in memory
+      var a = (typeof published === 'function') ? published().find(function(x){ return String(x.id) === String(id); }) : null;
+      if (a && a.title_en) t = a.title_en;
+    }
+    if (t && el.textContent !== t) el.textContent = t;
+  });
+}
+async function _khEnsureTitlesEn(articles) {
+  if (!Array.isArray(articles) || !articles.length) return;
+  _khHydrateTitlesEnFromCache(articles);
+  var needed = articles.filter(function(a) {
+    if (!a || !a.id) return false;
+    if (a.title_en && String(a.title_en).trim()) return false;
+    return a.title && /[\u3131-\uD79D]/.test(a.title);
+  });
+  if (!needed.length) return;
+  // Batch in chunks of 15 headlines per Claude call
+  for (var i = 0; i < needed.length; i += 15) {
+    var chunk = needed.slice(i, i + 15);
+    var prompt = 'Translate each Korean news headline into natural, concise English (journalistic tone, ≤70 chars, no surrounding quotes). Return ONLY a JSON array of strings in the same order as the input. No commentary, no numbering in the output.\n\nHeadlines:\n'
+      + chunk.map(function(a, idx){ return (idx + 1) + '. ' + a.title; }).join('\n');
+    try {
+      var res = await callClaude({
+        feature: 'title-en',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 900,
+        messages: [{ role: 'user', content: prompt }]
+      });
+      var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+      var ai = text.indexOf('['), bi = text.lastIndexOf(']');
+      if (ai >= 0 && bi > ai) text = text.slice(ai, bi + 1);
+      var arr = JSON.parse(text);
+      if (Array.isArray(arr)) {
+        chunk.forEach(function(a, idx) {
+          var t = arr[idx];
+          if (typeof t === 'string' && t.trim()) {
+            a.title_en = t.trim();
+            try { localStorage.setItem('kh_title_en_' + a.id, a.title_en); } catch(e) {}
+          }
+        });
+      }
+    } catch(e) { /* silent; Korean fallback stays */ }
+  }
+  _khApplyTitlesEnToDOM();
+}
+
 // ── 페이지 렌더러 ─────────────────────────────────────────────
 
 var _heroSlides = [];
@@ -2243,6 +2314,9 @@ var _heroTouchDeltaX = 0;
 
 function renderHomePage() {
   var all      = published();
+  // Hydrate any title_en from local cache *before* we build cards so
+  // the first paint already shows English where we've seen it before.
+  _khHydrateTitlesEnFromCache(all);
   // featured 기사 (최대 7개 - featured 먼저, 나머지 최신순)
   var featured = all.filter(function(a){ return a.featured; });
   if (!featured.length) featured = all.slice(0, 7);
@@ -2312,6 +2386,9 @@ function renderHomePage() {
       }).join('');
     }
   }
+
+  // Async: translate any still-missing titles → updates DOM in place
+  try { _khEnsureTitlesEn(all); } catch(e) {}
 }
 
 function renderHeroSlide(heroEl) {
@@ -2349,7 +2426,7 @@ function renderHeroSlide(heroEl) {
             + '<div style="position:absolute;left:0;right:0;bottom:0;height:72%;background:linear-gradient(to top,rgba(5,15,35,.94) 0%,rgba(5,15,35,.7) 30%,rgba(5,15,35,.28) 70%,rgba(5,15,35,0) 100%);pointer-events:none;"></div>'
             + '<div class="kh-hero-top-meta" style="position:absolute;top:16px;left:18px;right:18px;z-index:2;display:flex;align-items:center;flex-wrap:wrap;gap:6px;pointer-events:none">' + catChip + lvlChip + timeChip + '</div>'
             + '<div style="position:absolute;left:0;right:0;bottom:0;padding:20px 22px 22px;max-width:760px;z-index:2;pointer-events:none;">'
-            + '<h1 style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:clamp(22px,3vw,42px);font-weight:900;line-height:1.2;margin:0 0 8px;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.5)">' + (item.title_en || item.title) + '</h1>'
+            + '<h1 data-kh-title-id="' + escapeHtml(item.id || '') + '" style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:clamp(22px,3vw,42px);font-weight:900;line-height:1.2;margin:0 0 8px;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.5)">' + (item.title_en || item.title) + '</h1>'
             + (excerpt ? '<p style="margin:0 0 10px;font-size:13px;line-height:1.55;color:rgba(255,255,255,.85);font-family:\'Noto Sans KR\',sans-serif;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-shadow:0 1px 6px rgba(0,0,0,.4)">' + excerpt + '</p>' : '')
             + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">'
             +   '<span class="kh-hero-chip-when">' + relTime(item.date) + '</span>'
@@ -2410,7 +2487,7 @@ function updateHeroSlideUI(heroEl) {
         + '<img src="' + img + '" alt="" style="width:98px;height:78px;object-fit:cover;border-radius:14px;flex-shrink:0;box-shadow:0 6px 18px rgba(15,23,42,.08)">'
         + '<div style="min-width:0;flex:1">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:800;color:#2255a4;letter-spacing:.06em;text-transform:uppercase">' + a.section + '</span><span style="font-size:10px;color:#94a3b8">' + relTime(a.date) + '</span></div>'
-        + '<div style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + (a.title_en || a.title) + '</div>'
+        + '<div data-kh-title-id="' + escapeHtml(a.id || '') + '" style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + (a.title_en || a.title) + '</div>'
         + '</div></a>';
     }).join('');
   }
@@ -2611,7 +2688,7 @@ function _buildNewsCardHTML(a) {
     + '<div class="nc-overlay-grad"></div>'
     + '<div class="nc-overlay-body">'
     + '<div class="nc-meta"><span class="nc-cat">' + escapeHtml(a.section || '') + '</span>' + (lvl ? '<span class="nc-lvl ' + lvlCls + '">' + escapeHtml({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span>' : '') + '</div>'
-    + '<div class="nc-title">' + escapeHtml(a.title_en || a.title || '') + '</div>'
+    + '<div class="nc-title" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + escapeHtml(a.title_en || a.title || '') + '</div>'
     + '<div class="nc-foot"><span class="nc-date">' + dateStr + '</span></div>'
     + '</div>'
     + '</div>';
