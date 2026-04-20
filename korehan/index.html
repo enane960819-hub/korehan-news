@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="korehan-shared.css?v=20260420b">
+<link rel="stylesheet" href="korehan-shared.css?v=20260420c">
 <style>
 /* ── HOME REDESIGN ─────────────────────────────────────── */
 
@@ -27,13 +27,32 @@
   grid-template-columns: minmax(320px,1.1fr) minmax(300px,.95fr) 320px;
   grid-template-areas: "phrase progress actions";
   align-items: stretch;
-  background: var(--navy);
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(167,139,250,.22), transparent 55%),
+    radial-gradient(ellipse at 0% 100%, rgba(244,169,60,.10), transparent 50%),
+    linear-gradient(135deg, #0d1b2e 0%, #14163a 55%, #1f1f47 100%);
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 24px;
   overflow: hidden;
   margin: 28px 0 0;
   box-shadow: 0 18px 42px rgba(11,22,38,.18);
+  position: relative;
 }
+/* Korean ornamental watermark — subtle hangul accent in top-right corner */
+.daily-strip::after {
+  content: '한';
+  position: absolute;
+  top: -22px; right: 14px;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 130px;
+  font-weight: 900;
+  color: rgba(255,255,255,.025);
+  pointer-events: none;
+  line-height: 1;
+  letter-spacing: -8px;
+  z-index: 0;
+}
+.daily-strip > * { position: relative; z-index: 1; }
 
 .ds-phrase {
   grid-area: phrase;
@@ -442,19 +461,38 @@
   background: rgba(255,255,255,.22); color: #fff; transform: scale(1.06);
 }
 
-/* Hero meta row: level pill + read-time */
-.kh-hero-meta-pill {
+/* Hero — unified chip system (consistent height/radius/typography) */
+.kh-hero-chip {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 10px; border-radius: 999px;
+  height: 24px; padding: 0 10px;
+  border-radius: 999px;
   font-size: 11px; font-weight: 800;
-  letter-spacing: .04em;
-  color: #fff;
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,.18);
+  letter-spacing: .03em;
+  line-height: 1; white-space: nowrap;
 }
-.kh-hero-meta-pill svg { width: 12px; height: 12px; }
-.kh-hero-meta-time {
-  background: rgba(15,23,42,.45);
+.kh-hero-chip svg { width: 12px; height: 12px; flex-shrink: 0; }
+.kh-hero-chip-cat {
+  background: #5B86E5;
+  color: #fff;
+  letter-spacing: 0;
+}
+.kh-hero-chip-lvl-Starter      { background: #A78BFA; color: #fff; }
+.kh-hero-chip-lvl-Beginner     { background: #4ECDC4; color: #053b39; }
+.kh-hero-chip-lvl-Intermediate { background: #F4A93C; color: #4a2c00; }
+.kh-hero-chip-lvl-Advanced     { background: #FF6B6B; color: #fff; }
+.kh-hero-chip-time {
+  background: rgba(255,255,255,.16);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.32);
+  -webkit-backdrop-filter: blur(8px);
+          backdrop-filter: blur(8px);
+}
+.kh-hero-chip-when {
+  font-size: 11px; font-weight: 700;
+  color: rgba(255,255,255,.78);
+  letter-spacing: .03em;
+  line-height: 1;
+  margin-left: 2px;
 }
 
 @media (max-width: 640px) {
@@ -976,7 +1014,7 @@ body.kh-neon-on .hero-dot {
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260420b"></script>
+<script src="korehan-shared.js?v=20260420c"></script>
 <script>
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},

@@ -20,6 +20,17 @@
   --light:   #e8eef7;
   --korea:   #cc2200;
   --shadow:  0 4px 18px rgba(0,0,0,0.07);
+  /* Editorial × friendly Korean tutor accent palette */
+  --cream:    #FAF6F0;
+  --cream-2:  #F4EEE3;
+  --coral:    #FF6B6B;
+  --coral-2:  #FFE4E4;
+  --mint:     #4ECDC4;
+  --mint-2:   #DEFBF7;
+  --gold:     #F4A93C;
+  --gold-2:   #FFF1D6;
+  --lavender: #A78BFA;
+  --lavender-2:#EFEBFE;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -3013,23 +3024,25 @@ body.kh-neon-on .gf-structure-box h4 { color: #7dd3fc !important; }
 ══════════════════════════════════════════════════════════════ */
 @media (max-width: 900px) {
 
-  /* ── Body & background ── */
+  /* ── Body & background — warm cream (한지 톤) ── */
   body.mobile-light,
   .mobile-light body {
-    background: #f0f2f7 !important;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(255,235,205,.45), transparent 50%),
+      #FAF6F0 !important;
     color: #0d1b2e !important;
   }
 
-  /* ── Header bar — sticky glass that blends with body bg ── */
+  /* ── Header bar — sticky glass over cream ── */
   body.mobile-light .kh-header-bar {
     position: sticky !important;
     top: 0 !important;
     z-index: 1200 !important;
-    background: rgba(248,250,252,.78) !important;
+    background: rgba(250,246,240,.82) !important;
     -webkit-backdrop-filter: blur(14px) saturate(1.4);
             backdrop-filter: blur(14px) saturate(1.4);
-    border-bottom: 1px solid rgba(15,23,42,.06) !important;
-    box-shadow: 0 1px 0 rgba(15,23,42,.02);
+    border-bottom: 1px solid rgba(120,80,40,.08) !important;
+    box-shadow: 0 1px 0 rgba(120,80,40,.02);
   }
   body.mobile-light .kh-logo-text {
     color: #5B86E5 !important;

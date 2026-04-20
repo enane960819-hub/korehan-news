@@ -2326,24 +2326,25 @@ function renderHeroSlide(heroEl) {
       + '<div class="kh-home-hero-track" style="display:flex;height:100%;will-change:transform;transition:transform .72s cubic-bezier(.22,1,.36,1)">' + _heroSlides.map(function(item){
           var featImg = khArticleThumb(item, 900, 500);
           var url = articleUrl(item.id);
-          // Level pill (Korean reading-level meta)
+          // Level chip (Korean reading-level meta)
           var LVL_LBL = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'};
-          var LVL_BG  = {Starter:'rgba(126,34,206,.85)',Beginner:'rgba(21,128,61,.85)',Intermediate:'rgba(180,83,9,.85)',Advanced:'rgba(185,28,28,.85)'};
-          var lvlPill = item.level
-            ? '<span class="kh-hero-meta-pill" style="background:' + (LVL_BG[item.level]||'rgba(37,99,235,.85)') + '">' + (LVL_LBL[item.level]||item.level) + '</span>'
+          var LVL_ICON = {Starter:'🌰',Beginner:'🌱',Intermediate:'🌳',Advanced:'🌲'};
+          var lvlChip = item.level
+            ? '<span class="kh-hero-chip kh-hero-chip-lvl-' + item.level + '">' + (LVL_ICON[item.level]||'') + ' ' + (LVL_LBL[item.level]||item.level) + '</span>'
             : '';
           // Korean character count → reading-time estimate (~350 chars/min)
           var koChars = (item.body || '').replace(/<[^>]*>/g,'').replace(/[^\u3131-\uD79D]/g,'').length;
           var readMin = koChars ? Math.max(1, Math.round(koChars / 350)) : 0;
-          var timePill = readMin
-            ? '<span class="kh-hero-meta-pill kh-hero-meta-time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>' + readMin + ' min</span>'
+          var timeChip = readMin
+            ? '<span class="kh-hero-chip kh-hero-chip-time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>' + readMin + ' min</span>'
             : '';
+          var catChip = '<span class="kh-hero-chip kh-hero-chip-cat">' + item.section + '</span>';
           return '<article class="kh-home-hero-slide" style="min-width:100%;position:relative;min-height:460px;overflow:hidden;cursor:pointer" onclick="location.href=\'' + url + '\'">'
             + '<img src="' + featImg + '" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;pointer-events:none;">'
-            + '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,15,35,.92) 0%,rgba(5,15,35,.65) 42%,rgba(5,15,35,.22) 100%),linear-gradient(to top,rgba(5,15,35,.98) 0%,rgba(5,15,35,.6) 35%,rgba(5,15,35,.2) 60%,transparent 100%);pointer-events:none;"></div>'
-            + '<div style="position:absolute;left:0;right:0;bottom:0;padding:28px 26px 28px;max-width:760px;z-index:2;pointer-events:none;">'
-            + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px"><span class="category-tag" style="display:inline-block">' + item.section + '</span>' + lvlPill + timePill + '<span style="font-size:11px;color:rgba(255,255,255,.62)">' + relTime(item.date) + '</span></div>'
-            + '<h1 style="font-family:\'Playfair Display\',serif;font-size:clamp(22px,3vw,42px);font-weight:900;line-height:1.2;margin:0;color:#fff">' + (item.title_en || item.title) + '</h1>'
+            + '<div style="position:absolute;left:0;right:0;bottom:0;height:60%;background:linear-gradient(to top,rgba(5,15,35,.85) 0%,rgba(5,15,35,.5) 50%,rgba(5,15,35,0) 100%);pointer-events:none;"></div>'
+            + '<div style="position:absolute;left:0;right:0;bottom:0;padding:24px 22px 22px;max-width:760px;z-index:2;pointer-events:none;">'
+            + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:12px">' + catChip + lvlChip + timeChip + '<span class="kh-hero-chip-when">· ' + relTime(item.date) + '</span></div>'
+            + '<h1 style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:clamp(22px,3vw,42px);font-weight:900;line-height:1.2;margin:0;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.4)">' + (item.title_en || item.title) + '</h1>'
             + '</div></article>';
         }).join('') + '</div>'
       + (_heroSlides.length > 1 ? '<button type="button" class="kh-hero-nav prev" onclick="event.stopPropagation();heroPrev()" aria-label="Previous hero article" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);z-index:4;width:46px;height:46px;border:none;border-radius:999px;background:rgba(7,14,28,.44);backdrop-filter:blur(12px);color:#fff;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px rgba(0,0,0,.24);transition:transform .18s,background .18s">‹</button><button type="button" class="kh-hero-nav next" onclick="event.stopPropagation();heroNext()" aria-label="Next hero article" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);z-index:4;width:46px;height:46px;border:none;border-radius:999px;background:rgba(7,14,28,.44);backdrop-filter:blur(12px);color:#fff;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px rgba(0,0,0,.24);transition:transform .18s,background .18s">›</button>' : '')
@@ -7684,11 +7685,21 @@ async function renderHomeLearningPreview() {
   // Update review button state based on today's articles read
   if (window._updateReviewBtn) window._updateReviewBtn((dm.articles || 0) > 0);
 
-  function _progCard(val, goal, label, done) {
-    var bg   = done ? 'rgba(74,222,128,.14)'    : 'rgba(255,255,255,.06)';
-    var bord = done ? 'rgba(74,222,128,.35)'    : 'rgba(255,255,255,.08)';
-    var valC = done ? '#4ade80'                 : '#fff';
-    var lblC = done ? 'rgba(74,222,128,.75)'    : 'rgba(255,255,255,.58)';
+  function _progCard(val, goal, label, done, accent) {
+    // accent: 'mint' | 'blue' | 'gold' (defaults to mint)
+    var ACC = {
+      mint:  { tint:'rgba(78,205,196,.14)',  border:'rgba(78,205,196,.32)',  text:'#7ee9e0', label:'rgba(206,250,247,.7)' },
+      blue:  { tint:'rgba(91,134,229,.16)',  border:'rgba(91,134,229,.34)',  text:'#a8c4ff', label:'rgba(200,220,255,.7)' },
+      gold:  { tint:'rgba(244,169,60,.16)',  border:'rgba(244,169,60,.36)',  text:'#ffd089', label:'rgba(255,232,200,.7)' },
+      coral: { tint:'rgba(255,107,107,.14)', border:'rgba(255,107,107,.32)', text:'#ffb3b3', label:'rgba(255,220,220,.7)' }
+    };
+    var a = ACC[accent] || ACC.mint;
+    var doneTint = 'rgba(74,222,128,.16)';
+    var doneBord = 'rgba(74,222,128,.45)';
+    var bg   = done ? doneTint : a.tint;
+    var bord = done ? doneBord : a.border;
+    var valC = done ? '#86efac' : a.text;
+    var lblC = done ? 'rgba(134,239,172,.8)' : a.label;
     var tick = done ? ' ✓' : '';
     return '<div style="flex:1;background:' + bg + ';border:1px solid ' + bord + ';border-radius:12px;padding:9px 10px;text-align:center;transition:background .2s,border-color .2s;">'
       + '<div style="font-size:16px;font-weight:900;color:' + valC + ';">' + val
@@ -7701,13 +7712,13 @@ async function renderHomeLearningPreview() {
   box.innerHTML =
     // streak badge + stats row
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">'
-    + '<div style="font-size:12px;font-weight:800;color:#fff">Today\'s Progress</div>'
-    + '<div style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(255,179,71,.14);border:1px solid rgba(255,179,71,.24);color:#ffd089;">🔥 ' + streak + ' day streak</div>'
+    + '<div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.5)">Today\'s Progress</div>'
+    + '<div class="kh-streak-pill" style="font-size:11px;font-weight:900;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#5b3500;display:inline-flex;align-items:center;gap:4px;box-shadow:0 4px 12px rgba(245,158,11,.35),inset 0 1px 0 rgba(255,255,255,.4);">🔥 ' + streak + ' day streak</div>'
     + '</div>'
     + '<div style="display:flex;gap:6px;margin-bottom:12px;">'
-    + _progCard(dm.words||0, 20, 'Words', wordsDone)
-    + _progCard(dm.articles||0, 3, 'Articles', artsDone)
-    + _progCard(xp, null, 'XP', false)
+    + _progCard(dm.words||0, 20, 'Words', wordsDone, 'mint')
+    + _progCard(dm.articles||0, 3, 'Articles', artsDone, 'blue')
+    + _progCard(xp, null, 'XP', false, 'gold')
     + '</div>'
     // weak grammar
     + '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">'
