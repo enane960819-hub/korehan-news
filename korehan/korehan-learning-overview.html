@@ -365,6 +365,185 @@
       </div>
     </div>
 
+    <!-- ═══ VOCABULARY UNIVERSE HERO (R4) ═══ -->
+    <div id="gl-universe-hero" class="gl-uh" style="position:relative;overflow:hidden;border-radius:18px;margin-bottom:14px;background:radial-gradient(ellipse at 80% 0%,rgba(167,139,250,.28),transparent 55%),radial-gradient(ellipse at 0% 100%,rgba(244,169,60,.12),transparent 50%),linear-gradient(135deg,#0b1228 0%,#141a40 55%,#1e1848 100%);border:1px solid rgba(167,139,250,.22);box-shadow:0 16px 36px rgba(40,20,100,.22);min-height:158px">
+      <canvas id="gl-uh-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
+      <div style="position:relative;z-index:2;display:flex;align-items:center;gap:16px;padding:20px 22px;flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,181,253,.72);margin-bottom:4px">Vocabulary</div>
+          <div style="font-family:'Playfair Display','Noto Serif KR',serif;font-size:22px;font-weight:900;line-height:1.15;color:#fff;letter-spacing:-.01em;margin-bottom:4px;text-shadow:0 2px 12px rgba(120,100,255,.35)">Your Universe</div>
+          <div style="font-size:12px;color:rgba(220,210,255,.75);line-height:1.5;max-width:38ch">Every saved word is a star. Tap below to orbit your galaxy and discover neighbors.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;min-width:130px">
+          <div id="gl-uh-count" style="font-size:28px;font-weight:900;font-family:'Playfair Display',serif;background:linear-gradient(135deg,#fff2c0 0%,#fbbf24 70%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 18px rgba(251,191,36,.3);line-height:1">0</div>
+          <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(220,210,255,.55)">stars</div>
+          <button type="button" id="gl-uh-btn" onclick="glOpenUniverse()" disabled
+            style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:999px;border:1px solid rgba(167,139,250,.48);background:linear-gradient(135deg,rgba(124,58,237,.38),rgba(56,189,248,.26));color:#fff;font-size:12px;font-weight:900;letter-spacing:.04em;cursor:pointer;font-family:inherit;box-shadow:0 8px 22px rgba(124,58,237,.28),inset 0 1px 0 rgba(255,255,255,.12);transition:transform .14s,box-shadow .14s,opacity .2s;opacity:.55">
+            <span style="font-size:14px;filter:drop-shadow(0 0 5px rgba(196,181,253,.7))">🌌</span>
+            Explore
+          </button>
+        </div>
+      </div>
+    </div>
+    <script>
+    // ── Growth Lab universe hero: pull saved words + paint constellation ──
+    (function(){
+      var _glWords = [];
+      window.glOpenUniverse = function() {
+        if (!window.KHUniverse || !KHUniverse.open) return;
+        if (!_glWords.length) return;
+        KHUniverse.open({ words: _glWords.slice(), title: 'Your Vocabulary Universe' });
+      };
+
+      async function loadUniverseStars() {
+        var canvas = document.getElementById('gl-uh-canvas');
+        var countEl = document.getElementById('gl-uh-count');
+        var btn = document.getElementById('gl-uh-btn');
+        if (!canvas || typeof getSupa !== 'function' || typeof supaUser === 'undefined' || !supaUser) return;
+        try {
+          var sb = getSupa(); if (!sb) return;
+          var r = await sb.from('user_saved_words')
+            .select('word_ko, word_rom, word_en, review_count, correct_count')
+            .eq('user_id', supaUser.id)
+            .order('created_at', { ascending: false })
+            .limit(300);
+          if (r.error) return;
+          _glWords = (r.data || []).filter(function(w){ return w && w.word_ko; });
+          if (countEl) countEl.textContent = _glWords.length;
+          if (btn) {
+            btn.disabled = _glWords.length === 0;
+            btn.style.opacity = _glWords.length ? '1' : '.55';
+          }
+          renderConstellation(canvas, _glWords);
+        } catch(e) { console.warn('[gl-universe-hero]', e); }
+      }
+
+      function renderConstellation(canvas, words) {
+        if (!canvas.getContext) return;
+        var parent = canvas.parentElement;
+        var DPR = Math.min(window.devicePixelRatio || 1, 2);
+        function resize() {
+          var r = parent.getBoundingClientRect();
+          var W = Math.max(320, Math.round(r.width));
+          var H = Math.max(158, Math.round(r.height));
+          canvas.width  = Math.round(W * DPR);
+          canvas.height = Math.round(H * DPR);
+          canvas.style.width = W + 'px';
+          canvas.style.height = H + 'px';
+          return { W: W, H: H };
+        }
+        var size = resize();
+        var W = size.W, H = size.H;
+        var ctx = canvas.getContext('2d');
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+        // Pick up to 45 stars for the hero background
+        var sample = words.slice(0, 45);
+        if (!sample.length) return;
+        var stars = sample.map(function(w, i) {
+          var reviews = w.review_count || 0;
+          var correct = w.correct_count || 0;
+          var mastery = reviews > 0 ? Math.min(1, correct / Math.max(3, reviews)) : 0.1;
+          // Random distribution but biased toward right half (where text isn't)
+          var xBias = 0.25 + Math.random() * 0.7;
+          return {
+            x: xBias * W,
+            y: (0.12 + Math.random() * 0.76) * H,
+            vx: (Math.random() - 0.5) * 0.06,
+            vy: (Math.random() - 0.5) * 0.03,
+            tw: Math.random() * Math.PI * 2,
+            tws: 0.4 + Math.random() * 1.1,
+            r: 0.9 + Math.random() * 1.6,
+            mastery: mastery
+          };
+        });
+
+        function color(m, a) {
+          if (m > 0.75) return 'rgba(251,191,36,' + a + ')';   // gold
+          if (m > 0.4)  return 'rgba(126,233,224,' + a + ')';  // mint
+          return 'rgba(196,181,253,' + a + ')';                // lavender
+        }
+
+        var running = true, last = 0;
+        function tick(t) {
+          if (!running) return;
+          var dt = last ? Math.min(0.05, (t - last) / 1000) : 0.016;
+          last = t;
+          ctx.clearRect(0, 0, W, H);
+
+          // Proximity lines
+          for (var i = 0; i < stars.length; i++) {
+            for (var j = i + 1; j < stars.length; j++) {
+              var dx = stars[j].x - stars[i].x;
+              var dy = stars[j].y - stars[i].y;
+              var d = Math.sqrt(dx * dx + dy * dy);
+              if (d < 65) {
+                var alpha = 0.16 * (1 - d / 65);
+                ctx.strokeStyle = 'rgba(196,181,253,' + alpha + ')';
+                ctx.lineWidth = 0.8;
+                ctx.beginPath();
+                ctx.moveTo(stars[i].x, stars[i].y);
+                ctx.lineTo(stars[j].x, stars[j].y);
+                ctx.stroke();
+              }
+            }
+          }
+
+          // Stars
+          for (var k = 0; k < stars.length; k++) {
+            var s = stars[k];
+            s.x += s.vx * dt * 60;
+            s.y += s.vy * dt * 60;
+            s.tw += s.tws * dt;
+            if (s.x < 10) s.x = W - 10;
+            if (s.x > W - 10) s.x = 10;
+            if (s.y < 10) s.y = H - 10;
+            if (s.y > H - 10) s.y = 10;
+            var twinkle = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(s.tw));
+            var a = (0.35 + s.mastery * 0.55) * twinkle;
+            // Glow halo
+            var glow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 8);
+            glow.addColorStop(0, color(s.mastery, a * 0.6));
+            glow.addColorStop(1, color(s.mastery, 0));
+            ctx.fillStyle = glow;
+            ctx.fillRect(s.x - s.r * 8, s.y - s.r * 8, s.r * 16, s.r * 16);
+            // Core
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+            ctx.fillStyle = color(s.mastery, Math.min(1, a * 1.4));
+            ctx.fill();
+          }
+          requestAnimationFrame(tick);
+        }
+        // Pause off-screen
+        if ('IntersectionObserver' in window) {
+          var io = new IntersectionObserver(function(entries){
+            entries.forEach(function(e){
+              if (e.isIntersecting && !running) { running = true; requestAnimationFrame(tick); }
+              else if (!e.isIntersecting) { running = false; }
+            });
+          });
+          io.observe(canvas);
+        }
+        requestAnimationFrame(tick);
+
+        // Debounced resize
+        var rt = 0;
+        window.addEventListener('resize', function(){
+          clearTimeout(rt);
+          rt = setTimeout(function(){ var s2 = resize(); W = s2.W; H = s2.H; }, 120);
+        });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function(){ setTimeout(loadUniverseStars, 800); });
+      } else {
+        setTimeout(loadUniverseStars, 800);
+      }
+      window.addEventListener('kh-auth-signed-in', function(){ setTimeout(loadUniverseStars, 400); });
+    })();
+    </script>
+
     <!-- Inline stats bar -->
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
       <div style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center">
@@ -579,6 +758,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="korehan-shared.js?v=20260420h"></script>
+  <script src="js/kh-universe.js?v=20260420h"></script>
   <script src="learning_hub_vocab_data.js"></script>
   <script>
   // ── helpers ────────────────────────────────────────────────
