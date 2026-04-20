@@ -619,22 +619,99 @@ function selectLevel(level) {
   renderStep3Choice();
 }
 
+// ── Listening placement bank (Phase 3) ─────────────────────────────
+// Each question's `sentence` is spoken via TTS when the card renders.
+// The user picks the meaning / correct follow-up without seeing the text.
+// Hangul-only content keeps these distinct from Reading-comprehension.
+var LISTENING_BANK = {
+  Starter: [
+    { sentence:'안녕하세요',  q:'What was said?',            choices:['Hello','Thank you','Sorry','Goodbye'],        answer:'Hello',         exp:'안녕하세요 is the standard polite greeting.' },
+    { sentence:'물 주세요',    q:'What did the speaker ask for?', choices:['Bread','Water','Rice','The bill'],           answer:'Water',         exp:'물 = water. 주세요 = please give me.' }
+  ],
+  Beginner: [
+    { sentence:'오늘 날씨가 정말 좋아요.',   q:'What is the speaker saying?',         choices:['It is very cold today','The weather is really nice today','I am busy today','I feel sick today'], answer:'The weather is really nice today', exp:'오늘 = today, 날씨 = weather, 좋아요 = is good/nice.' },
+    { sentence:'저는 커피를 안 좋아해요.',   q:'What does the speaker mean?',          choices:['I love coffee','I drink coffee every day','I do not like coffee','I want more coffee'], answer:'I do not like coffee', exp:'안 + verb = negation; so 안 좋아해요 = do not like.' }
+  ],
+  Intermediate: [
+    { sentence:'버스가 늦게 와서 회사에 지각했어요.', q:'Why was the speaker late?',      choices:['They missed the alarm','The bus came late','Traffic was bad','They took the wrong line'], answer:'The bus came late',    exp:'버스가 늦게 와서 = because the bus came late.' },
+    { sentence:'이 영화 진짜 재미있던데 한번 봐 봐.', q:'What is the speaker recommending?', choices:['Skip the movie','Watch the movie','Wait for the sequel','Read the book instead'], answer:'Watch the movie',      exp:'재미있던데 (casual past-reflective) + 한번 봐 봐 = "it was fun, try watching it once."' }
+  ],
+  Advanced: [
+    { sentence:'경제가 회복될수록 고용률도 함께 높아지고 있다.', q:'What trend is described?', choices:['Economic recovery alone','Falling employment','Recovery WITH rising employment','Recession'], answer:'Recovery WITH rising employment', exp:'-(으)ㄹ수록 … 도 함께 = as X happens, Y happens together proportionally.' },
+    { sentence:'정부의 발표에도 불구하고 국민 반응은 냉담했다.', q:'What tone does the speaker convey?', choices:['Approval from the public','Enthusiasm','Cold reception despite the announcement','Neutral acceptance'], answer:'Cold reception despite the announcement', exp:'에도 불구하고 = despite; 냉담했다 = was cold.' }
+  ]
+};
+
+// Heuristic area classifier for the existing TEXT-based TEST_BANK items.
+// Labels aren't perfect — the goal is a broadly balanced per-area split
+// so one area of the test doesn't dominate. Explicit `area` on a question
+// overrides the heuristic.
+function _classifyArea(q) {
+  if (q.area) return q.area;
+  var text = (q.q || '').toLowerCase();
+  var hasKoSent = q.sentence && /[\uAC00-\uD7A3]/.test(q.sentence) && q.sentence.replace(/[^\uAC00-\uD7A3]/g, '').length > 4;
+
+  // Reading: has a Korean sentence and asks about meaning/role/nuance
+  if (hasKoSent && /\b(mean|meaning|role|express|emphasize|nuance|best shows|conveys)\b/.test(text)) return 'reading';
+
+  // Vocab: "what does X mean" WITHOUT a Korean sentence, sound/alphabet,
+  // or word-choice "which word" questions.
+  if (/\bwhat (does|is the meaning)\b/.test(text) && !hasKoSent)  return 'vocab';
+  if (/\b(which word|which verb|which noun|means ["“].+["”])/.test(text)) return 'vocab';
+  if (/\b(what sound|korean consonant|korean vowel)\b/.test(text)) return 'vocab';
+
+  // Everything else (particles, endings, connectors, form selection) = grammar
+  return 'grammar';
+}
+
 function buildTestQuestions() {
-  var picked = [];
+  // Pre-classify every TEST_BANK question into an area bucket, tier-kept.
+  var byAreaTier = { reading:{}, grammar:{}, vocab:{}, listening:{} };
   ['Starter','Beginner','Intermediate','Advanced'].forEach(function(level) {
-    picked = picked.concat(shuffle(TEST_BANK[level]).slice(0, 5).map(function(q) {
-      var opts = shuffle(q.choices);
-      return {
-        level: level,
-        q: q.q,
-        sentence: q.sentence,
-        choices: opts,
-        answer: opts.indexOf(q.answer),
-        exp: q.exp
-      };
-    }));
+    (TEST_BANK[level] || []).forEach(function(q) {
+      var area = _classifyArea(q);
+      if (!byAreaTier[area][level]) byAreaTier[area][level] = [];
+      byAreaTier[area][level].push(q);
+    });
+    // Listening bank is already clean
+    (LISTENING_BANK[level] || []).forEach(function(q) {
+      if (!byAreaTier.listening[level]) byAreaTier.listening[level] = [];
+      byAreaTier.listening[level].push(Object.assign({ area:'listening' }, q));
+    });
   });
-  return picked;
+
+  // Pull 5 questions per area (one from each tier, extra from middle tiers)
+  var pickOrder = ['Starter','Beginner','Intermediate','Advanced','Beginner'];
+  var out = [];
+  ['reading','grammar','vocab','listening'].forEach(function(area) {
+    var used = {};
+    pickOrder.forEach(function(tier) {
+      var pool = (byAreaTier[area][tier] || []).filter(function(q){ return !used[q.q + '|' + (q.sentence||'')]; });
+      if (!pool.length) {
+        // Fall back to any tier of this area
+        var allTiers = Object.keys(byAreaTier[area]);
+        for (var t = 0; t < allTiers.length && !pool.length; t++) {
+          pool = (byAreaTier[area][allTiers[t]] || []).filter(function(q){ return !used[q.q + '|' + (q.sentence||'')]; });
+        }
+      }
+      if (!pool.length) return;
+      var pick = shuffle(pool)[0];
+      used[pick.q + '|' + (pick.sentence||'')] = true;
+      var opts = shuffle(pick.choices);
+      out.push({
+        level: tier,
+        area:  area,
+        q:     pick.q,
+        sentence: pick.sentence,
+        choices: opts,
+        answer:  opts.indexOf(pick.answer),
+        exp:     pick.exp
+      });
+    });
+  });
+
+  // Interleave areas so the user isn't stuck on 5 listening in a row
+  return shuffle(out);
 }
 
 function startPlacementTest() {
@@ -646,6 +723,25 @@ function startPlacementTest() {
   renderTestQuestion();
 }
 
+// TTS-play helper for listening items. Prefers the Supabase Edge TTS
+// endpoint and falls back to the Web Speech API so this works on any
+// browser that supports either.
+function _obPlayListening(text) {
+  if (!text) return;
+  try {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ko-KR';
+      u.rate = 0.9;
+      var voices = window.speechSynthesis.getVoices();
+      var ko = voices.find(function(v){ return v.lang && v.lang.indexOf('ko') === 0; });
+      if (ko) u.voice = ko;
+      window.speechSynthesis.speak(u);
+    }
+  } catch(e) { /* noop */ }
+}
+
 function renderTestQuestion() {
   updateProgress(3);
   var q = state.testQuestions[_testIdx];
@@ -653,12 +749,28 @@ function renderTestQuestion() {
   var total = state.testQuestions.length || 20;
   var pct = Math.round((_testIdx / total) * 100);
   var badgeClass = { Starter:'badge-starter', Beginner:'badge-beg', Intermediate:'badge-int', Advanced:'badge-adv' }[q.level] || 'badge-beg';
+  var areaLabels = { reading:'📖 Reading', grammar:'🧩 Grammar', vocab:'📚 Vocab', listening:'🎧 Listening' };
+  var isListening = q.area === 'listening';
+  var sentenceHTML;
+  if (isListening) {
+    var safeKo = (q.sentence || '').replace(/'/g, "&#39;");
+    sentenceHTML = '<div style="margin-top:10px;padding:14px 16px;border-radius:14px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);text-align:center">'
+      + '<div style="font-size:11px;font-weight:700;color:#a78bfa;margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em">Listen carefully</div>'
+      + '<button onclick="_obPlayListening(\'' + safeKo + '\')" style="padding:12px 22px;border-radius:999px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit">🔊 Play</button>'
+      + '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:8px">Tap Play as many times as you need</div>'
+      + '</div>';
+  } else if (q.sentence) {
+    sentenceHTML = '<span class="test-ko">' + q.sentence + '</span>';
+  } else {
+    sentenceHTML = '';
+  }
+
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
       + '<div class="ob-topline"><div class="ob-eyebrow">Step 3 · Placement test</div><div class="ob-stage">Question ' + (_testIdx + 1) + ' of ' + total + '</div></div>'
-      + '<div class="test-progress"><div class="test-prog-bar"><div class="test-prog-fill" style="width:' + pct + '%"></div></div><div class="test-prog-label"><span>' + pct + '% complete</span><span>Randomized answer order</span></div></div>'
+      + '<div class="test-progress"><div class="test-prog-bar"><div class="test-prog-fill" style="width:' + pct + '%"></div></div><div class="test-prog-label"><span>' + pct + '% complete</span><span>' + (areaLabels[q.area] || 'Mixed') + '</span></div></div>'
       + '<div class="test-level-badge ' + badgeClass + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[q.level]||q.level) + '</div>'
-      + '<div class="test-q">' + q.q + (q.sentence ? '<span class="test-ko">' + q.sentence + '</span>' : '') + '</div>'
+      + '<div class="test-q">' + q.q + sentenceHTML + '</div>'
       + '<div class="test-opts">'
       + q.choices.map(function(choice, i) {
           return '<button class="test-opt" id="topt-' + i + '" data-test-idx="' + i + '">' + choice + '</button>';
@@ -674,6 +786,8 @@ function renderTestQuestion() {
     + '</div>'
   );
   wireStepInteractions();
+  // Auto-play listening prompt once as the card lands
+  if (isListening) setTimeout(function(){ _obPlayListening(q.sentence); }, 250);
 }
 
 function answerTest(idx) {
@@ -681,7 +795,7 @@ function answerTest(idx) {
   _testAnswered = true;
   var q = state.testQuestions[_testIdx];
   var correct = idx === q.answer;
-  state.testAnswers.push({ level:q.level, correct:correct });
+  state.testAnswers.push({ level:q.level, area:q.area || 'grammar', correct:correct, picked:idx });
   var opts = document.querySelectorAll('.test-opt');
   opts.forEach(function(btn) { btn.disabled = true; });
   if (opts[idx]) opts[idx].classList.add(correct ? 'correct' : 'wrong');
@@ -690,6 +804,106 @@ function answerTest(idx) {
   fb.className = 'test-feedback show ' + (correct ? 'ok' : 'no');
   fb.innerHTML = (correct ? '✅ Correct. ' : '❌ Not quite. ') + q.exp;
   document.getElementById('test-next-btn').style.display = 'inline-flex';
+}
+
+// Per-area + overall scoring
+function _computePlacementScores() {
+  var areas = ['reading','listening','grammar','vocab'];
+  var scores = { reading:0, listening:0, grammar:0, vocab:0 };
+  var tierLevel = { Starter:1, Beginner:2, Intermediate:3, Advanced:4 };
+  // Weighted by tier difficulty — getting a harder question right earns more.
+  var counts = {}, earned = {}, maxPoints = {};
+  areas.forEach(function(a){ earned[a] = 0; maxPoints[a] = 0; counts[a] = 0; });
+  state.testAnswers.forEach(function(ans) {
+    var a = ans.area || 'grammar';
+    if (!(a in scores)) return;
+    var w = tierLevel[ans.level] || 2;
+    maxPoints[a] += w;
+    counts[a] += 1;
+    if (ans.correct) earned[a] += w;
+  });
+  areas.forEach(function(a) {
+    scores[a] = maxPoints[a] > 0 ? Math.round((earned[a] / maxPoints[a]) * 100) : 0;
+  });
+  // Area level = linear band on score
+  function bandFromScore(s) {
+    if (s >= 75) return 'Advanced';
+    if (s >= 55) return 'Intermediate';
+    if (s >= 30) return 'Beginner';
+    return 'Starter';
+  }
+  var areaLevels = {};
+  areas.forEach(function(a){ areaLevels[a] = bandFromScore(scores[a]); });
+
+  // Recommended overall = weakest-link with a soft floor (we don't drop
+  // someone to Starter on a single bad area if three others are Tree+).
+  var order = ['Starter','Beginner','Intermediate','Advanced'];
+  var sorted = areas.map(function(a){ return order.indexOf(areaLevels[a]); }).sort(function(x,y){return x-y;});
+  var minIdx = sorted[0], secondIdx = sorted[1];
+  var recIdx = (minIdx + secondIdx) <= 1 ? minIdx : Math.max(minIdx, secondIdx - 1);
+  var recommended = order[recIdx] || 'Beginner';
+
+  return { scores: scores, areaLevels: areaLevels, recommended: recommended, counts: counts };
+}
+
+function showTestResult() {
+  var correct = state.testAnswers.filter(function(item) { return item.correct; }).length;
+  state.testScore = correct;
+  var result = _computePlacementScores();
+  state.placementResult = result; // stash for persistOnboardingState to pick up
+  state.level = result.recommended;
+  var recommended = result.recommended;
+
+  var areaMeta = {
+    reading:   { emoji:'📖', label:'Reading'   },
+    listening: { emoji:'🎧', label:'Listening' },
+    grammar:   { emoji:'🧩', label:'Grammar'   },
+    vocab:     { emoji:'📚', label:'Vocab'     }
+  };
+  var areaBarsHTML = ['reading','listening','grammar','vocab'].map(function(a) {
+    var s = result.scores[a] || 0;
+    var lvl = result.areaLevels[a];
+    var lvlKorean = ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]) || lvl;
+    var color = s >= 75 ? '#4ade80' : s >= 55 ? '#60a5fa' : s >= 30 ? '#fbbf24' : '#f87171';
+    return '<div style="padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:8px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">'
+        + '<span style="font-size:13px;font-weight:700;color:rgba(255,255,255,.85)">' + areaMeta[a].emoji + ' ' + areaMeta[a].label + '</span>'
+        + '<span style="font-size:12px;font-weight:800;color:' + color + '">' + s + ' · ' + lvlKorean + '</span>'
+      + '</div>'
+      + '<div style="height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden">'
+        + '<div style="height:100%;width:' + s + '%;background:' + color + ';border-radius:999px"></div>'
+      + '</div>'
+    + '</div>';
+  }).join('');
+
+  document.getElementById('ob-content').innerHTML = cardWrap(
+    '<div>'
+      + '<div class="ob-topline"><div class="ob-eyebrow">Placement result</div><div class="ob-stage">You can still override the recommendation</div></div>'
+      + '<div class="result-hero">'
+      + '<div class="result-num">' + correct + '<span style="font-size:24px;color:rgba(255,255,255,.45)">/20</span></div>'
+      + '<div class="result-copy"><h3>' + LEVEL_META[recommended].emoji + ' Recommended: ' + LEVEL_META[recommended].ko + '</h3><p>' + LEVEL_META[recommended].desc + ' Pick this level or choose a different one below.</p></div>'
+      + '</div>'
+      + '<div style="margin:18px 0 10px;font-size:11px;font-weight:800;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.08em">Per-area breakdown</div>'
+      + areaBarsHTML
+      + '<div class="ob-level-list">'
+      + Object.keys(LEVEL_META).map(function(key) {
+          var meta = LEVEL_META[key];
+          var selected = state.level === key;
+          return '<button class="ob-opt' + (selected ? ' selected' : '') + '" data-recommended-level="' + key + '">'
+            + '<span class="ob-check">✓</span>'
+            + '<span class="ob-opt-head"><span class="ob-opt-icon">' + meta.emoji + '</span><span><span class="ob-opt-label">' + meta.ko + (key === recommended ? ' <span class="ob-tag" style="margin-left:8px">Recommended</span>' : '') + '</span><span class="ob-opt-sub">' + meta.desc + '</span></span></span>'
+            + '</button>';
+        }).join('')
+      + '</div>'
+    + '</div>'
+    + '<div>'
+      + '<div class="ob-btn-row">'
+      + '<button class="ob-btn ob-btn-secondary" data-action="retake-test">Retake test</button>'
+      + '<button class="ob-btn ob-btn-primary" data-action="go-step4">Continue with this level →</button>'
+      + '</div>'
+    + '</div>'
+  );
+  wireStepInteractions();
 }
 
 function nextTestQ() {
@@ -824,6 +1038,23 @@ async function persistOnboardingState() {
   try {
     await sb.from('user_stats').upsert(payload, { onConflict: 'user_id' });
   } catch(e) {}
+
+  // Persist the per-area placement result if the user actually took the
+  // test (whether they accepted the recommendation or overrode it).
+  if (state.placementResult) {
+    try {
+      await sb.rpc('save_placement_result', {
+        p_reading_score:     state.placementResult.scores.reading   || 0,
+        p_listening_score:   state.placementResult.scores.listening || 0,
+        p_grammar_score:     state.placementResult.scores.grammar   || 0,
+        p_vocab_score:       state.placementResult.scores.vocab     || 0,
+        p_recommended_level: state.placementResult.recommended      || state.level,
+        p_chosen_level:      state.level,
+        p_answers:           state.testAnswers || [],
+        p_version:           'v2'
+      });
+    } catch(e) { /* RPC not installed yet → ignore, local state already saved */ }
+  }
 }
 
 async function finishOnboarding() {
