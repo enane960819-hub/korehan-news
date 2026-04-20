@@ -3331,6 +3331,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <script src="js/kh-flashcards.js?v=20260416"></script>
 <script src="js/kh-listening.js?v=20260416"></script>
 <script src="js/kh-grammar-tree.js?v=20260416"></script>
+<script src="js/kh-universe.js?v=20260420f"></script>
 <script src="js/kh-sentence-builder.js?v=20260416"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
@@ -16925,6 +16926,15 @@ setTimeout(renderCompletedStudies, 500);
     <div style="font-size:24px;margin-bottom:6px">📚</div>
     <h2 style="margin:0 0 4px;font-size:18px;font-weight:900">내 단어장</h2>
     <p style="margin:0 0 14px;font-size:13px;color:rgba(255,255,255,.5)">Your saved words — tap any word to see its meaning</p>
+    <button type="button" onclick="openUniverseView()" id="wb-universe-btn"
+      style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 16px;margin-bottom:14px;border:1px solid rgba(167,139,250,.4);border-radius:14px;background:linear-gradient(135deg,rgba(124,58,237,.22),rgba(56,189,248,.14));color:#fff;font-size:13px;font-weight:900;letter-spacing:.02em;cursor:pointer;font-family:inherit;box-shadow:0 8px 24px rgba(124,58,237,.22),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .15s,box-shadow .15s,border-color .15s;position:relative;overflow:hidden">
+      <span style="font-size:18px;filter:drop-shadow(0 0 6px rgba(196,181,253,.6))">🌌</span>
+      <span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.2">
+        <span style="font-size:14px;font-weight:900;letter-spacing:.01em">Universe View</span>
+        <span style="font-size:10px;font-weight:700;color:rgba(196,181,253,.85);letter-spacing:.1em;text-transform:uppercase">3D galaxy of your vocabulary</span>
+      </span>
+      <span style="margin-left:auto;font-size:14px;color:rgba(255,255,255,.6)">→</span>
+    </button>
     <div id="wb-search-wrap" style="margin-bottom:14px">
       <input type="text" id="wb-search" placeholder="Search words..." oninput="filterWordBank()" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-family:inherit;outline:none">
     </div>
@@ -16933,6 +16943,24 @@ setTimeout(renderCompletedStudies, 500);
     </div>
   </div>
 </div>
+
+<script>
+// Open the 3D vocabulary galaxy from the Word Bank modal.
+// Pulls from _wbAllWords which is loaded on Study Room init.
+function openUniverseView() {
+  if (typeof KHUniverse === 'undefined' || !KHUniverse.open) {
+    if (typeof toast === 'function') toast('Universe engine not ready', true);
+    return;
+  }
+  var words = (typeof _wbAllWords !== 'undefined' && _wbAllWords) ? _wbAllWords.slice() : [];
+  if (!words.length) {
+    if (typeof toast === 'function') toast('Save some words first to build your galaxy', true);
+    else alert('Save some words first to build your galaxy');
+    return;
+  }
+  KHUniverse.open({ words: words, title: 'Your Vocabulary Universe' });
+}
+</script>
 
 <!-- ══════════════════════════════════════════
      KEY EXPRESSIONS MODAL

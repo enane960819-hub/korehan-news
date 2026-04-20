@@ -614,6 +614,14 @@
   // ── Public API ──────────────────────────────────────────────
   var KHUniverse = {};
 
+  function onKeydown(e) {
+    if (!state.open) return;
+    if (e.key === 'Escape' || e.key === 'Esc') {
+      if (state.selected) clearSelection();
+      else KHUniverse.close();
+    }
+  }
+
   KHUniverse.open = function(opts) {
     opts = opts || {};
     var overlay = ensureOverlay();
@@ -621,6 +629,7 @@
     overlay.classList.add('open');
     state.open = true;
     state.words = (opts.words || []).slice(0, 600);
+    document.addEventListener('keydown', onKeydown);
 
     // Header
     var titleEl = document.getElementById('khu-title');
@@ -659,6 +668,7 @@
     if (state.animId) { cancelAnimationFrame(state.animId); state.animId = null; }
     if (state.renderer) unbindControls(state.renderer.domElement);
     clearSelection();
+    document.removeEventListener('keydown', onKeydown);
     document.body.style.overflow = '';
   };
 
