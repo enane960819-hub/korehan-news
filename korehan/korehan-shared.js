@@ -7447,6 +7447,142 @@ function injectDailyMission() {
 // ══ END TTS ENGINE ═════════════════════════════════════════════════════════════
 
 
+// ══ BRUSH INK SAVE ANIMATION ══════════════════════════════════════════════
+// Plays a Korean calligraphy brush stroke over a given element or point.
+// Usage:
+//   khInkBrush(targetEl);                 // pick default tint
+//   khInkBrush({ x, y, width, height }); // at a point/rect
+//   khInkBrush(el, { tint: '#1a1340', label: '저장' });
+(function(){
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+  // Roughly organic horizontal brush stroke as a cubic bezier. We draw
+  // three overlapping paths at slightly different widths + offsets so
+  // the edge has ink-bleed feel. Path is defined in a 200x60 viewBox.
+  var STROKE_PATH = 'M 6 34 C 26 20, 52 48, 82 30 S 134 20, 160 36 S 188 32, 196 28';
+
+  function ensureStyles() {
+    if (document.getElementById('kh-ink-styles')) return;
+    var s = document.createElement('style');
+    s.id = 'kh-ink-styles';
+    s.textContent = [
+      '.kh-ink-overlay{position:absolute;pointer-events:none;z-index:99998;}',
+      '.kh-ink-overlay svg{overflow:visible;display:block;}',
+      '.kh-ink-label{position:absolute;left:50%;top:58%;transform:translate(-50%,0);font-family:"Noto Serif KR",serif;font-weight:900;font-size:11px;letter-spacing:.14em;color:var(--kh-ink,#1a1340);opacity:0;animation:khInkLabel 1.1s ease-out forwards .15s;pointer-events:none;white-space:nowrap;text-transform:uppercase}',
+      '@keyframes khInkLabel{0%{opacity:0;transform:translate(-50%,6px) scale(.95);}30%{opacity:1;transform:translate(-50%,0) scale(1);}70%{opacity:1;}100%{opacity:0;transform:translate(-50%,-4px) scale(1);}}'
+    ].join('\n');
+    document.head.appendChild(s);
+  }
+
+  window.khInkBrush = function(target, opts) {
+    try { ensureStyles(); } catch(_) {}
+    opts = opts || {};
+    var tint = opts.tint || '#1a1340';
+    var label = opts.label || '';
+    var rect;
+    if (target && target.nodeType === 1 && target.getBoundingClientRect) {
+      var r = target.getBoundingClientRect();
+      rect = { left: r.left + window.scrollX, top: r.top + window.scrollY, width: r.width, height: r.height };
+    } else if (target && typeof target.x === 'number') {
+      var w = target.width || 80, h = target.height || 28;
+      rect = { left: (target.x + window.scrollX) - w / 2, top: (target.y + window.scrollY) - h / 2, width: w, height: h };
+    } else {
+      return;
+    }
+    // Pad sideways so the stroke extends past the text and arcs over the top
+    var pad = Math.max(14, rect.width * 0.22);
+    var W = rect.width + pad * 2;
+    var H = Math.max(34, rect.height * 1.6);
+    var overlay = document.createElement('div');
+    overlay.className = 'kh-ink-overlay';
+    overlay.style.left  = (rect.left - pad) + 'px';
+    overlay.style.top   = (rect.top - (H - rect.height) / 2) + 'px';
+    overlay.style.width = W + 'px';
+    overlay.style.height = H + 'px';
+    overlay.style.setProperty('--kh-ink', tint);
+
+    var svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('width',  W);
+    svg.setAttribute('height', H);
+    svg.setAttribute('viewBox', '0 0 200 60');
+    svg.setAttribute('preserveAspectRatio', 'none');
+
+    // Three overlapping stroke layers for ink-bleed feel
+    var strokes = [
+      { w: 11, alpha: 0.95, dy: 0,     dur: 520, delay: 0 },
+      { w: 7,  alpha: 0.78, dy: -0.6,  dur: 560, delay: 40 },
+      { w: 3.2, alpha: 0.55, dy: 0.7,  dur: 620, delay: 80 }
+    ];
+    strokes.forEach(function(s, i) {
+      var p = document.createElementNS(SVG_NS, 'path');
+      p.setAttribute('d', STROKE_PATH);
+      p.setAttribute('fill', 'none');
+      p.setAttribute('stroke', tint);
+      p.setAttribute('stroke-width', String(s.w));
+      p.setAttribute('stroke-linecap', 'round');
+      p.setAttribute('stroke-linejoin', 'round');
+      p.setAttribute('stroke-opacity', String(s.alpha));
+      if (s.dy) p.setAttribute('transform', 'translate(0 ' + s.dy + ')');
+      // Use SMIL animation so it works without extra JS ticking
+      // Path length is about 230 in 200x60 viewbox — overestimate to cover.
+      var len = 260;
+      p.setAttribute('stroke-dasharray', len);
+      p.setAttribute('stroke-dashoffset', len);
+      var anim = document.createElementNS(SVG_NS, 'animate');
+      anim.setAttribute('attributeName', 'stroke-dashoffset');
+      anim.setAttribute('from', len);
+      anim.setAttribute('to', 0);
+      anim.setAttribute('dur', (s.dur / 1000) + 's');
+      anim.setAttribute('begin', (s.delay / 1000) + 's');
+      anim.setAttribute('fill', 'freeze');
+      anim.setAttribute('calcMode', 'spline');
+      anim.setAttribute('keySplines', '.15 .8 .25 1');
+      p.appendChild(anim);
+      // Fade out toward the end
+      var fade = document.createElementNS(SVG_NS, 'animate');
+      fade.setAttribute('attributeName', 'stroke-opacity');
+      fade.setAttribute('from', s.alpha);
+      fade.setAttribute('to', 0);
+      fade.setAttribute('dur', '0.5s');
+      fade.setAttribute('begin', (0.75 + s.delay / 1000) + 's');
+      fade.setAttribute('fill', 'freeze');
+      p.appendChild(fade);
+      svg.appendChild(p);
+    });
+
+    // A couple of ink splatter dots (random)
+    for (var k = 0; k < 4; k++) {
+      var cx = 8 + Math.random() * 184;
+      var cy = 22 + Math.random() * 22;
+      var r2 = 0.7 + Math.random() * 1.4;
+      var dot = document.createElementNS(SVG_NS, 'circle');
+      dot.setAttribute('cx', cx);
+      dot.setAttribute('cy', cy);
+      dot.setAttribute('r',  r2);
+      dot.setAttribute('fill', tint);
+      dot.setAttribute('fill-opacity', '0');
+      var dAnim = document.createElementNS(SVG_NS, 'animate');
+      dAnim.setAttribute('attributeName', 'fill-opacity');
+      dAnim.setAttribute('values', '0; ' + (0.3 + Math.random() * 0.4) + '; 0');
+      dAnim.setAttribute('dur', '0.9s');
+      dAnim.setAttribute('begin', (0.1 + Math.random() * 0.4) + 's');
+      dAnim.setAttribute('fill', 'freeze');
+      dot.appendChild(dAnim);
+      svg.appendChild(dot);
+    }
+
+    overlay.appendChild(svg);
+
+    if (label) {
+      var lbl = document.createElement('div');
+      lbl.className = 'kh-ink-label';
+      lbl.textContent = label;
+      overlay.appendChild(lbl);
+    }
+    document.body.appendChild(overlay);
+    setTimeout(function(){ try { overlay.remove(); } catch(_) {} }, 1400);
+  };
+})();
+
 // ══ STREAK MILESTONE — cosmic burst celebration ═══════════════════════════
 // Fires once per milestone the first time a user crosses it. Gated by
 // localStorage so repeated 7-day streaks after a break only celebrate once.

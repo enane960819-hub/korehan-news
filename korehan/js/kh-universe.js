@@ -1020,7 +1020,14 @@
     } catch(_) {}
     if (typeof saveRelatedWord === 'function') {
       saveRelatedWord(rel).then(function(ok) {
-        if (!ok && sprite.material) {
+        if (ok) {
+          // Fire a brush-stroke celebration over the word card for
+          // a calligraphic "saved" moment.
+          try {
+            var card = document.getElementById('khu-card');
+            if (card && window.khInkBrush) khInkBrush(card, { tint: '#c4b5fd', label: rel.ko || '저장' });
+          } catch(_) {}
+        } else if (sprite.material) {
           sprite.material.color = new THREE.Color(0.96, 0.42, 0.42); // error red flash
           setTimeout(function(){
             if (sprite.material) sprite.material.color = new THREE.Color(0.66, 0.55, 0.98);
@@ -1208,6 +1215,8 @@
         var rel = relatedList[i];
         if (!rel) return;
         btn.classList.add('saving');
+        // Brush stroke right on the chip — optimistic, reverts only on error
+        try { if (window.khInkBrush) khInkBrush(btn, { tint: '#c4b5fd', label: rel.ko }); } catch(_) {}
         saveRelatedWord(rel).then(function(ok) {
           btn.classList.remove('saving');
           if (ok) {

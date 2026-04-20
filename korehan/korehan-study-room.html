@@ -3332,13 +3332,13 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260420n"></script>
+<script src="korehan-shared.js?v=20260420o"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
 <script src="js/kh-quiz-arena.js?v=20260416"></script>
 <script src="js/kh-flashcards.js?v=20260416"></script>
 <script src="js/kh-listening.js?v=20260416"></script>
 <script src="js/kh-grammar-tree.js?v=20260416"></script>
-<script src="js/kh-universe.js?v=20260420m"></script>
+<script src="js/kh-universe.js?v=20260420o"></script>
 <script src="js/kh-sentence-builder.js?v=20260416"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
@@ -10478,6 +10478,12 @@ function lqNext() {
 function quickSaveWord(ko, en, rom, source) {
   if (!supaUser) { showToast('Sign in to save words'); return; }
   var sb = getSupa(); if (!sb) return;
+  // Brush stroke right away on whichever button was clicked (optimistic)
+  try {
+    if (window.khInkBrush && window.event && window.event.target) {
+      khInkBrush(window.event.target.closest('button') || window.event.target, { label: ko });
+    }
+  } catch(_) {}
   sb.rpc('save_or_update_word', {
     p_word_key: ko, p_word_ko: ko, p_word_en: en || null, p_word_rom: rom || null,
     p_source_kind: source || 'study_activity',
