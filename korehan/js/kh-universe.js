@@ -27,6 +27,7 @@
     clock: null,
     animId: null,
     stars: null,           // THREE.Group of word sprites
+    satellites: null,      // THREE.Group of related-word satellite sprites (per selection)
     nebula: null,          // background points
     glowTex: null,
     words: [],
@@ -312,6 +313,11 @@
     scene.add(starsGroup);
     state.stars = starsGroup;
 
+    // Satellites — related words orbiting the selected star (rebuilt per selection)
+    var satGroup = new three.Group();
+    scene.add(satGroup);
+    state.satellites = satGroup;
+
     rebuildWordStars(three, starsGroup);
 
     // Soft ambient glow at the core
@@ -500,12 +506,23 @@
     state.pointerNDC.x = ((clientX - rect.left) / rect.width)  * 2 - 1;
     state.pointerNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
     state.raycaster.setFromCamera(state.pointerNDC, state.camera);
-    var hits = state.raycaster.intersectObjects(state.stars.children, false);
+    // Check satellites first so they take priority over the main stars
+    // behind them when a selection is active.
+    var pool = [];
+    if (state.satellites && state.satellites.children.length) {
+      pool = pool.concat(state.satellites.children);
+    }
+    pool = pool.concat(state.stars.children);
+    var hits = state.raycaster.intersectObjects(pool, false);
     if (hits && hits.length) {
-      // Walk hits and prefer the first actual star (skip label pills).
       for (var h = 0; h < hits.length; h++) {
         var obj = hits[h].object;
-        if (obj && obj.userData && obj.userData.isStar) {
+        if (!obj || !obj.userData) continue;
+        if (obj.userData.isSatellite && obj.userData.isStar) {
+          _onSatelliteTap(obj);
+          return;
+        }
+        if (obj.userData.isStar) {
           selectStar(obj);
           return;
         }
@@ -522,6 +539,7 @@
       prev.scale.set(state.selected.baseScale, state.selected.baseScale, 1);
       if (prev.material) prev.material.opacity = state.selected.baseOpacity;
     }
+    _clearSatellites(); // remove satellites from any previous selection
     var base = sprite.scale.x;
     state.selected = {
       sprite: sprite,
@@ -540,6 +558,7 @@
   }
 
   function clearSelection() {
+    _clearSatellites();
     if (!state.selected) return;
     var s = state.selected.sprite;
     if (s) {
@@ -549,6 +568,129 @@
     state.selected = null;
     hideWordCard();
     animateTarget(0, 0, 0);
+  }
+
+  // ── Satellite orbit: related words around the selected star ────
+  function _clearSatellites() {
+    if (!state.satellites) return;
+    while (state.satellites.children.length) {
+      var c = state.satellites.children.pop();
+      if (c.material) {
+        if (c.material.map) { try { c.material.map.dispose(); } catch(_) {} }
+        c.material.dispose();
+      }
+      if (c.geometry) { try { c.geometry.dispose(); } catch(_) {} }
+    }
+  }
+
+  function _spawnSatellites(parentSprite, list) {
+    if (!THREE || !parentSprite || !list || !list.length) return;
+    if (!state.satellites || !state.glowTex) return;
+    _clearSatellites();
+    var parentPos = parentSprite.position;
+    var n = Math.min(list.length, 6);
+    var orbitR = 3.2 + Math.min(1.4, n * 0.18);
+    var tiltY  = (Math.random() - 0.5) * 0.4;
+    // Lavender is the "new/suggested" tint used across the app
+    var tint = new THREE.Color(0.66, 0.55, 0.98);
+
+    // Build a mesh-line parent marker (tiny invisible sprite) just to
+    // anchor orbit — optional. Main work: each satellite.
+    for (var i = 0; i < n; i++) {
+      var rel = list[i];
+      if (!rel || !rel.ko) continue;
+      var angle = (i / n) * Math.PI * 2 + Math.random() * 0.15;
+      var px = parentPos.x + Math.cos(angle) * orbitR;
+      var pz = parentPos.z + Math.sin(angle) * orbitR;
+      var py = parentPos.y + tiltY + (Math.random() - 0.5) * 0.8;
+
+      // Star sprite
+      var sMat = new THREE.SpriteMaterial({
+        map: state.glowTex,
+        color: tint.clone(),
+        transparent: true,
+        opacity: 0.95,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      var sSprite = new THREE.Sprite(sMat);
+      sSprite.position.set(px, py, pz);
+      sSprite.scale.set(1.0, 1.0, 1);
+      sSprite.userData = {
+        isStar: true,
+        isSatellite: true,
+        word: { ko: rel.ko, rom: rel.rom || '', en: rel.en || '', word_ko: rel.ko, word_rom: rel.rom || '', word_en: rel.en || '' },
+        mastery: 0.1,
+        related: rel,
+        saved: false,
+        idx: -1
+      };
+      state.satellites.add(sSprite);
+
+      // Label pill
+      var lblBorder = 'rgba(196,181,253,0.6)';
+      var lbl = makeLabelTexture(rel.ko, THREE, lblBorder);
+      var lblMat = new THREE.SpriteMaterial({
+        map: lbl.tex, transparent: true, depthWrite: false, opacity: 0.92
+      });
+      var lblSprite = new THREE.Sprite(lblMat);
+      var lblH = 1.05;
+      var lblW = lblH * lbl.aspect;
+      lblSprite.scale.set(lblW, lblH, 1);
+      lblSprite.position.set(px, py - 0.85, pz);
+      lblSprite.renderOrder = 2;
+      lblSprite.userData = { isLabel: true, isSatellite: true };
+      state.satellites.add(lblSprite);
+
+      // Connector line parent→satellite (thin, lavender)
+      var lineGeo = new THREE.BufferGeometry();
+      lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+        parentPos.x, parentPos.y, parentPos.z,
+        px, py, pz
+      ]), 3));
+      var lineMat = new THREE.LineBasicMaterial({
+        color: 0xa78bfa, transparent: true, opacity: 0.35, depthWrite: false
+      });
+      var line = new THREE.Line(lineGeo, lineMat);
+      line.userData = { isSatelliteLine: true };
+      state.satellites.add(line);
+    }
+  }
+
+  // Called when a satellite sprite is tapped: save + flip it green.
+  function _onSatelliteTap(sprite) {
+    if (!sprite || !sprite.userData) return;
+    if (sprite.userData.saved) return; // already saved
+    var rel = sprite.userData.related;
+    if (!rel) return;
+    // Optimistic UI: flip to mint green
+    if (sprite.material) {
+      sprite.material.color = new THREE.Color(0.31, 0.80, 0.77); // mint
+    }
+    sprite.scale.set(1.3, 1.3, 1);
+    sprite.userData.saved = true;
+    // Update the matching chip in the word card if present
+    try {
+      var chips = document.querySelectorAll('.khu-related-chip');
+      chips.forEach(function(btn, idx){
+        if ((btn.querySelector('.khu-related-chip-ko') || {}).textContent === rel.ko) {
+          btn.classList.add('saved');
+          var plus = btn.querySelector('.khu-related-chip-plus');
+          if (plus) plus.textContent = '✓';
+        }
+      });
+    } catch(_) {}
+    if (typeof saveRelatedWord === 'function') {
+      saveRelatedWord(rel).then(function(ok) {
+        if (!ok && sprite.material) {
+          sprite.material.color = new THREE.Color(0.96, 0.42, 0.42); // error red flash
+          setTimeout(function(){
+            if (sprite.material) sprite.material.color = new THREE.Color(0.66, 0.55, 0.98);
+          }, 700);
+          sprite.userData.saved = false;
+        }
+      });
+    }
   }
 
   function animateTarget(tx, ty, tz) {
@@ -598,6 +740,7 @@
       var activeKey = state.selected.word.word_ko || state.selected.word.ko;
       if (activeKey !== wordKey) return;
       renderRelatedChips(list);
+      _spawnSatellites(state.selected.sprite, list);
     });
   }
 
@@ -762,6 +905,40 @@
     }
     if (state.nebula) state.nebula.rotation.y += dt * 0.008;
     if (state.stars)  state.stars.rotation.y  += dt * 0.015;
+    // Satellites orbit around the selected star — spin the group gently,
+    // pivoted on the parent position.
+    if (state.satellites && state.selected && state.selected.sprite) {
+      var px = state.selected.sprite.position.x;
+      var py = state.selected.sprite.position.y;
+      var pz = state.selected.sprite.position.z;
+      var a  = dt * 0.35;
+      var cosA = Math.cos(a), sinA = Math.sin(a);
+      state.satellites.children.forEach(function(child) {
+        // Only rotate the sprites (stars + labels); refresh lines after.
+        if (!child.userData || (!child.userData.isStar && !child.userData.isLabel)) return;
+        var dx = child.position.x - px;
+        var dz = child.position.z - pz;
+        child.position.x = px + dx * cosA - dz * sinA;
+        child.position.z = pz + dx * sinA + dz * cosA;
+      });
+      // Rebuild connector line endpoints so they track the orbiting stars.
+      state.satellites.children.forEach(function(child, i) {
+        if (!child.userData || !child.userData.isSatelliteLine) return;
+        // Find the star immediately before this line (we pushed in order
+        // star, label, line per satellite).
+        var starChild = null;
+        for (var j = i - 1; j >= 0; j--) {
+          var cc = state.satellites.children[j];
+          if (cc.userData && cc.userData.isStar && cc.userData.isSatellite) { starChild = cc; break; }
+        }
+        if (!starChild || !child.geometry) return;
+        var pa = child.geometry.getAttribute('position');
+        if (!pa) return;
+        pa.array[0] = px; pa.array[1] = py; pa.array[2] = pz;
+        pa.array[3] = starChild.position.x; pa.array[4] = starChild.position.y; pa.array[5] = starChild.position.z;
+        pa.needsUpdate = true;
+      });
+    }
     state.renderer.render(state.scene, state.camera);
   }
 
