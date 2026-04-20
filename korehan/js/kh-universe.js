@@ -121,9 +121,15 @@
       '.khu-card-related{display:flex;flex-wrap:wrap;gap:6px;min-height:0;}',
       '.khu-card-related:empty{display:none;}',
       '.khu-related-label{flex:0 0 100%;font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(200,210,255,.5);margin:4px 0 4px;}',
-      '.khu-related-chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:#e0e4ff;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);border-radius:999px;padding:5px 11px;cursor:pointer;font-family:inherit;transition:background .12s,transform .12s,border-color .12s;}',
+      '.khu-related-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#e0e4ff;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);border-radius:999px;padding:5px 10px 5px 11px;cursor:pointer;font-family:inherit;transition:background .12s,transform .12s,border-color .12s,color .15s;}',
+      '.khu-related-chip-ko{font-family:\'Noto Sans KR\',sans-serif;}',
+      '.khu-related-chip-plus{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.14);font-size:11px;font-weight:900;line-height:1;color:rgba(255,255,255,.72);}',
       '.khu-related-chip:hover{background:rgba(167,139,250,.25);border-color:rgba(196,181,253,.6);transform:translateY(-1px);}',
-      '.khu-related-chip-loading{font-size:11px;color:rgba(200,210,255,.4);font-style:italic;padding:4px 0;}',
+      '.khu-related-chip.saving{opacity:.6;pointer-events:none;}',
+      '.khu-related-chip.saved{background:linear-gradient(135deg,rgba(78,205,196,.28),rgba(167,139,250,.2));border-color:rgba(78,205,196,.55);color:#c7fff7;cursor:default;}',
+      '.khu-related-chip.saved .khu-related-chip-plus{background:rgba(78,205,196,.8);color:#053b39;}',
+      '.khu-related-chip.error{background:rgba(244,63,94,.25);border-color:rgba(244,63,94,.55);}',
+      '.khu-related-chip-loading{font-size:11px;color:rgba(200,210,255,.4);font-style:italic;padding:4px 0;flex:0 0 100%;}',
       '@media(max-width:560px){.khu-card{left:12px;right:12px;bottom:12px;transform:translate(0,12px);width:auto;}.khu-card.show{transform:translate(0,0);}}',
     ].join('\n');
     document.head.appendChild(s);
@@ -427,9 +433,18 @@
     if (ko)  ko.textContent  = word.word_ko || word.ko || '';
     if (rom) rom.textContent = word.word_rom || word.rom || '';
     if (en)  en.textContent  = word.word_en || word.en || '';
-    if (related) related.innerHTML = '<span class="khu-related-chip-loading">· Related words coming in Step 3 ·</span>';
+    if (related) related.innerHTML = '<span class="khu-related-chip-loading">Finding related words…</span>';
     card.classList.add('show');
     card.setAttribute('aria-hidden', 'false');
+    // Async: related words (cached after first fetch per word)
+    var wordKey = word.word_ko || word.ko;
+    fetchRelatedWords(word).then(function(list) {
+      // Only render if this word is still the active selection
+      if (!state.selected || !state.selected.word) return;
+      var activeKey = state.selected.word.word_ko || state.selected.word.ko;
+      if (activeKey !== wordKey) return;
+      renderRelatedChips(list);
+    });
   }
 
   function hideWordCard() {
@@ -437,6 +452,140 @@
     if (!card) return;
     card.classList.remove('show');
     card.setAttribute('aria-hidden', 'true');
+  }
+
+  // ── Related words (cached forever in localStorage) ─────────
+  var RELATED_KEY = function(ko) { return 'kh_related_' + ko; };
+
+  function readRelatedFromCache(ko) {
+    try {
+      var raw = localStorage.getItem(RELATED_KEY(ko));
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch(_) { return null; }
+  }
+  function writeRelatedToCache(ko, list) {
+    try { localStorage.setItem(RELATED_KEY(ko), JSON.stringify(list)); } catch(_) {}
+  }
+
+  // Enrich any related word with rom/en from the in-memory VOCAB map if
+  // we have it (populated by loadVocabFromDB on pages that include it).
+  function enrichFromVocabBank(list) {
+    if (!window.VOCAB) return list;
+    return list.map(function(w) {
+      if (w.en && w.rom) return w;
+      var v = window.VOCAB[w.ko];
+      if (v) {
+        return { ko: w.ko, rom: w.rom || v.rom || '', en: w.en || v.en || '' };
+      }
+      return w;
+    });
+  }
+
+  async function fetchRelatedWords(word) {
+    var ko = word.word_ko || word.ko || '';
+    if (!ko) return [];
+    // 1) localStorage cache
+    var cached = readRelatedFromCache(ko);
+    if (cached && cached.length) return enrichFromVocabBank(cached);
+    // 2) Ask Claude Haiku — returns 5 semantically related items
+    if (typeof callClaude !== 'function') return [];
+    var en = word.word_en || word.en || '';
+    var prompt = 'Generate exactly 5 Korean vocabulary words that are semantically related to "' + ko + '"'
+      + (en ? ' (meaning: ' + en + ')' : '')
+      + '. Rules:\n'
+      + '- Related by topic, category, or meaning family (synonyms, antonyms, same domain, common collocations).\n'
+      + '- Use the DICTIONARY FORM for verbs and adjectives (ending in -다).\n'
+      + '- Avoid trivial high-frequency words (정말, 많이, 너무, 진짜, 아주, 매우, 조금, 좀, 잘, 또, 다, 더, 그냥, 그리고, 그래서, 한국, 사람, 것, 수, 거, 때, 말).\n'
+      + '- Include at least 2 intermediate-difficulty words.\n'
+      + 'Return ONLY a JSON array of 5 items, each: {"ko":"Korean","rom":"romanization","en":"concise English gloss"}. No other text.';
+    try {
+      var res = await callClaude({
+        feature: 'related-words',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 600,
+        messages: [{ role: 'user', content: prompt }]
+      });
+      var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+      var ai = text.indexOf('['), bi = text.lastIndexOf(']');
+      if (ai >= 0 && bi > ai) text = text.slice(ai, bi + 1);
+      var arr = JSON.parse(text);
+      if (!Array.isArray(arr)) return [];
+      arr = arr.filter(function(x) { return x && x.ko; }).slice(0, 5);
+      writeRelatedToCache(ko, arr);
+      return enrichFromVocabBank(arr);
+    } catch(_) {
+      return [];
+    }
+  }
+
+  // ── Save a related word into the user's word bank ──────────
+  async function saveRelatedWord(rel) {
+    if (!rel || !rel.ko) return false;
+    if (typeof supaUser === 'undefined' || !supaUser || typeof getSupa !== 'function') return false;
+    var sb = getSupa();
+    if (!sb) return false;
+    try {
+      // Prefer the RPC path used elsewhere (sets SRS interval, respects dedupe)
+      if (sb.rpc) {
+        var r = await sb.rpc('save_or_update_word', {
+          p_word_key: rel.ko,
+          p_word_ko:  rel.ko,
+          p_word_rom: rel.rom || '',
+          p_word_en:  rel.en  || '',
+          p_source:   'universe'
+        });
+        if (!r.error) return true;
+      }
+      // Fallback direct upsert
+      var up = await sb.from('user_saved_words').upsert({
+        user_id: supaUser.id,
+        word_ko: rel.ko, word_rom: rel.rom || '', word_en: rel.en || ''
+      });
+      return !up.error;
+    } catch(_) { return false; }
+  }
+
+  // ── Render related chips into the open card ────────────────
+  function renderRelatedChips(relatedList) {
+    var wrap = document.getElementById('khu-card-related');
+    if (!wrap) return;
+    if (!relatedList || !relatedList.length) {
+      wrap.innerHTML = '<span class="khu-related-chip-loading">No related words found.</span>';
+      return;
+    }
+    var html = '<div class="khu-related-label">Related Words</div>';
+    html += relatedList.map(function(r, idx) {
+      var ko  = (r.ko || '').replace(/</g,'&lt;');
+      var en  = (r.en || '').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+      return '<button class="khu-related-chip" data-idx="' + idx + '" title="' + en + '">'
+        + '<span class="khu-related-chip-ko">' + ko + '</span>'
+        + '<span class="khu-related-chip-plus" aria-hidden="true">＋</span>'
+        + '</button>';
+    }).join('');
+    wrap.innerHTML = html;
+    // Bind save-on-click
+    var chips = wrap.querySelectorAll('.khu-related-chip');
+    chips.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var i = parseInt(btn.getAttribute('data-idx'), 10);
+        var rel = relatedList[i];
+        if (!rel) return;
+        btn.classList.add('saving');
+        saveRelatedWord(rel).then(function(ok) {
+          btn.classList.remove('saving');
+          if (ok) {
+            btn.classList.add('saved');
+            btn.querySelector('.khu-related-chip-plus').textContent = '✓';
+            btn.setAttribute('aria-disabled', 'true');
+          } else {
+            btn.classList.add('error');
+            setTimeout(function(){ btn.classList.remove('error'); }, 900);
+          }
+        });
+      });
+    });
   }
 
   function onResize() {
