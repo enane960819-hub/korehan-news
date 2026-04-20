@@ -759,8 +759,7 @@
       // Start pinch + pan; stop any in-progress drag so orbit doesn't also move.
       state.drag = null;
       _pinch = {
-        startDist: _pinchDistance(),
-        startRadius: state.cam.radius,
+        prevDist: _pinchDistance(),
         prevMid: _pinchMidpoint()
       };
     } else if (_pointers.size === 1) {
@@ -781,18 +780,20 @@
       _pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     }
     if (_pinch && _pointers.size === 2) {
-      // Zoom from distance ratio, pan from midpoint delta.
+      // Incremental zoom + pan anchored on the pinch midpoint so zooming
+      // follows the fingers the same way pinching a map does.
       var d = _pinchDistance();
-      if (d > 0 && _pinch.startDist > 0) {
-        var ratio = _pinch.startDist / d;
-        state.cam.radius = Math.max(14, Math.min(140, _pinch.startRadius * ratio));
-      }
       var mid = _pinchMidpoint();
+      if (_pinch.prevDist && d > 0) {
+        var factor = _pinch.prevDist / d; // finger spread → radius shrinks
+        if (factor !== 1) _zoomTowardPoint(mid.x, mid.y, factor);
+      }
       if (_pinch.prevMid) {
         var mdx = mid.x - _pinch.prevMid.x;
         var mdy = mid.y - _pinch.prevMid.y;
         if (Math.abs(mdx) + Math.abs(mdy) > 0.1) _panCameraTarget(mdx, mdy);
       }
+      _pinch.prevDist = d;
       _pinch.prevMid = mid;
       updateCameraFromOrbit(state.camera);
       return;
@@ -825,11 +826,50 @@
       handleTap(e.clientX, e.clientY, e.currentTarget || state.renderer.domElement);
     }
   }
+  // ── Zoom anchored to a screen point ────────────────────────
+  // Keeps the world point under (clientX,clientY) fixed while zooming:
+  //   1) find the world point on the target-plane under the cursor
+  //   2) scale (cam.radius, cam.target) around that anchor
+  // Used by both wheel zoom and pinch zoom so both feel like map zoom.
+  function _zoomTowardPoint(clientX, clientY, factor) {
+    if (!THREE || !state.camera || !state.renderer) return;
+    var canvas = state.renderer.domElement;
+    var rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    var ndcX = ((clientX - rect.left) / rect.width)  * 2 - 1;
+    var ndcY = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+    var camPos = state.camera.position.clone();
+    var targetPos = new THREE.Vector3(state.cam.target.x, state.cam.target.y, state.cam.target.z);
+    var viewNormal = targetPos.clone().sub(camPos).normalize();
+
+    var far = new THREE.Vector3(ndcX, ndcY, 0.5).unproject(state.camera);
+    var rayDir = far.sub(camPos).normalize();
+    var denom = rayDir.dot(viewNormal);
+    var anchor;
+    if (Math.abs(denom) < 1e-6) {
+      anchor = targetPos;
+    } else {
+      var t = targetPos.clone().sub(camPos).dot(viewNormal) / denom;
+      anchor = camPos.clone().add(rayDir.multiplyScalar(t));
+    }
+
+    var desiredRadius = state.cam.radius * factor;
+    var newRadius = Math.max(8, Math.min(140, desiredRadius));
+    var actualFactor = state.cam.radius === 0 ? 1 : (newRadius / state.cam.radius);
+    state.cam.radius = newRadius;
+
+    state.cam.target.x = anchor.x + (state.cam.target.x - anchor.x) * actualFactor;
+    state.cam.target.y = anchor.y + (state.cam.target.y - anchor.y) * actualFactor;
+    state.cam.target.z = anchor.z + (state.cam.target.z - anchor.z) * actualFactor;
+    updateCameraFromOrbit(state.camera);
+  }
+
   function onWheel(e) {
     e.preventDefault();
-    var next = state.cam.radius * (e.deltaY > 0 ? 1.12 : 0.89);
-    state.cam.radius = Math.max(8, Math.min(140,next));
-    updateCameraFromOrbit(state.camera);
+    var factor = e.deltaY > 0 ? 1.12 : 0.89;
+    _zoomTowardPoint(e.clientX, e.clientY, factor);
   }
 
   // ── Raycast picking ────────────────────────────────────────
