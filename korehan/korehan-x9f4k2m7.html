@@ -3749,7 +3749,7 @@ async function runAutoGenerate(){
       try {
         document.getElementById(rowId+'-status').innerHTML = '🧠 (2/4) 단어 중…';
         const v = await _call(window.KH_VOCAB.promptText(_level, _body), 1600);
-        const _vCleaned = window.KH_VOCAB.validate(_json(v), _body || '');
+        const _vCleaned = window.KH_VOCAB.validateBest(_json(v), _body || '');
         if (_vCleaned && _vCleaned.length) { _row.vocab = JSON.stringify(_vCleaned); _ok++; }
       } catch(e) { console.warn('vocab failed', e.message); }
 
@@ -4033,7 +4033,7 @@ async function genCache(articleId, schema, opts) {
   try {
     if (st) st.textContent = '(2/4) 단어 중…';
     const v = await _call(window.KH_VOCAB.promptText(_level, _body), 1600);
-    const _vCleaned2 = window.KH_VOCAB.validate(_json(v), _body || '');
+    const _vCleaned2 = window.KH_VOCAB.validateBest(_json(v), _body || '');
     if (_vCleaned2 && _vCleaned2.length) { _row.vocab = JSON.stringify(_vCleaned2); _ok++; }
   } catch(e) { console.warn('vocab failed', e.message); }
 
@@ -5568,7 +5568,7 @@ async function _bulkGenerateArticleCache(articleId, title, body, levelKey) {
   } catch(e) {}
   try {
     var v = await _call(window.KH_VOCAB.promptText(levelKey, body), 1600);
-    var cleaned = window.KH_VOCAB.validate(_json(v), body || '');
+    var cleaned = window.KH_VOCAB.validateBest(_json(v), body || '');
     if (cleaned && cleaned.length) { row.vocab = JSON.stringify(cleaned); ok++; }
   } catch(e) {}
   try {

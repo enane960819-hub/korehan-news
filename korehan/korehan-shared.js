@@ -3138,7 +3138,7 @@ async function _bgPregenArticleCache(a) {
   try {
     var v = await _call(window.KH_VOCAB.promptText(_level, _body), 1600);
     var va = _json(v);
-    var cleaned = window.KH_VOCAB.validate(va, _body || '');
+    var cleaned = window.KH_VOCAB.validateBest(va, _body || '');
     if (cleaned && cleaned.length) _patch.vocab = JSON.stringify(cleaned);
   } catch(e) {}
 
@@ -7523,11 +7523,16 @@ function injectDailyMission() {
   }
 
   // Filter AI output against blacklist + in-body evidence + context match.
-  // Returns a cleaned, deduplicated list of up to 12 items.
+  // Returns { items, strict } — items is always ≥ raw length of AI (minus
+  // blacklist/dedup). strict is the fully validated subset.
+  // Callers should prefer strict, but fall back to items so the cache never
+  // ends up empty while translation/grammar/quiz succeeded.
   function validate(items, body) {
-    if (!Array.isArray(items) || !body) return [];
-    var out = [];
+    if (!Array.isArray(items)) return { items: [], strict: [] };
+    var lenient = [];   // blacklist + dedup only
+    var strict  = [];   // + in-body + context match
     var seen = {};
+    var bodyNoSpace = (body || '').replace(/\s+/g, '');
     items.forEach(function(x) {
       if (!x) return;
       var ko  = (x.word || x.ko || x.word_ko || '').trim();
@@ -7538,25 +7543,44 @@ function injectDailyMission() {
       if (ko.length < 2) return;
       if (BLACKLIST[ko]) return;
       if (seen[ko]) return;
-      // Word must appear in body (or its stem for -다 forms)
+      seen[ko] = true;
+      var entry = { word: ko, reading: rom, meaning: en, context: ctx };
+      lenient.push(entry);
+      if (!body) { strict.push(entry); return; }
       if (!stemMatch(body, ko)) return;
-      // If AI returned a context, it must be a real substring of the body.
-      // This catches hallucinated context → hallucinated word pairs.
       if (ctx) {
-        var ctxClip = ctx.length > 50 ? ctx.slice(0, 50) : ctx;
-        var bodyHasCtx = body.indexOf(ctxClip) !== -1
-                     || body.indexOf(ctx) !== -1
-                     || body.indexOf(ctx.replace(/\s+/g,'')) !== -1;
+        var ctxNoSpace = ctx.replace(/\s+/g, '');
+        var ctxClip = ctxNoSpace.length > 40 ? ctxNoSpace.slice(0, 40) : ctxNoSpace;
+        // Any of: exact substring, space-normalised substring, or first-40 clip
+        var bodyHasCtx = body.indexOf(ctx) !== -1
+                     || bodyNoSpace.indexOf(ctxNoSpace) !== -1
+                     || bodyNoSpace.indexOf(ctxClip) !== -1;
         if (!bodyHasCtx) return;
       }
-      seen[ko] = true;
-      out.push({ word: ko, reading: rom, meaning: en, context: ctx });
-      if (out.length >= 12) return;
+      strict.push(entry);
     });
-    return out;
+    // Respect the 10–12 cap on the final list
+    return {
+      items: lenient.slice(0, 12),
+      strict: strict.slice(0, 12)
+    };
   }
 
-  window.KH_VOCAB = { promptText: promptText, validate: validate, BLACKLIST: BLACKLIST };
+  // Convenience: return the best-available list (strict if ≥4, else lenient)
+  // Callers that used the old `validate` can switch to `validateBest`.
+  function validateBest(items, body) {
+    var r = validate(items, body);
+    if (r.strict.length >= 4) return r.strict;
+    // Prefer a merged list: strict first (verified) then any lenient items
+    // that aren't already in strict. This keeps the fallback as clean as
+    // possible while ensuring the cache always has something to show.
+    var seen = {};
+    r.strict.forEach(function(x){ seen[x.word] = true; });
+    var extra = r.items.filter(function(x){ return !seen[x.word]; });
+    return r.strict.concat(extra).slice(0, 12);
+  }
+
+  window.KH_VOCAB = { promptText: promptText, validate: validate, validateBest: validateBest, BLACKLIST: BLACKLIST };
 })();
 
 // ══ BRUSH INK SAVE ANIMATION ══════════════════════════════════════════════
