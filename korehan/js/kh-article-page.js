@@ -372,7 +372,7 @@ async function _bgPregenArticleCache(a) {
   try {
     var v = await _call(window.KH_VOCAB.promptText(_level, _body), 1600);
     var va = _json(v);
-    var cleaned = window.KH_VOCAB.validate(va, _body || '');
+    var cleaned = window.KH_VOCAB.validateBest(va, _body || '');
     if (cleaned && cleaned.length) _patch.vocab = JSON.stringify(cleaned);
   } catch(e) {}
 
