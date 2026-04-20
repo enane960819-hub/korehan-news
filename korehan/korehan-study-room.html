@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Study Room — KoreHani</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260420g">
+<link rel="stylesheet" href="korehan-shared.css?v=20260420h">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260416">
 <style>
 /* ─── LAYOUT ─────────────────────────────── */
@@ -3332,13 +3332,13 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260420g"></script>
+<script src="korehan-shared.js?v=20260420h"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
 <script src="js/kh-quiz-arena.js?v=20260416"></script>
 <script src="js/kh-flashcards.js?v=20260416"></script>
 <script src="js/kh-listening.js?v=20260416"></script>
 <script src="js/kh-grammar-tree.js?v=20260416"></script>
-<script src="js/kh-universe.js?v=20260420g"></script>
+<script src="js/kh-universe.js?v=20260420h"></script>
 <script src="js/kh-sentence-builder.js?v=20260416"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
@@ -18544,15 +18544,24 @@ function finishReview() {
   var emoji = pct >= 90 ? '🌟' : pct >= 80 ? '🏆' : pct >= 70 ? '⭐' : '💪';
 
   var body = document.getElementById('rv-body');
-  body.innerHTML = '<div style="text-align:center;padding:20px 0">'
-    + '<div style="font-size:48px;margin-bottom:12px">' + emoji + '</div>'
-    + '<div style="font-size:36px;font-weight:800;color:#fff;margin-bottom:4px">' + pct + '%</div>'
-    + '<div style="font-size:14px;color:rgba(255,255,255,.5);margin-bottom:16px">' + correct + ' / ' + total + ' correct</div>'
-    + (xpEarned > 0
-      ? '<div style="padding:12px 20px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:8px;display:inline-block">'
-        + '<span style="font-size:14px;font-weight:700;color:#4ade80">+' + xpEarned + ' XP · +' + xpEarned + ' 냥</span></div>'
-      : '<div style="font-size:13px;color:rgba(255,255,255,.4)">70% 이상 달성 시 보상 지급</div>')
+  body.innerHTML = '<div style="text-align:center;padding:20px 0;position:relative;overflow:visible">'
+    + '<canvas id="rv-ribbon-canvas" style="position:absolute;left:0;right:0;top:-10px;height:200px;width:100%;pointer-events:none;z-index:0"></canvas>'
+    + '<div style="position:relative;z-index:1">'
+    +   '<div style="font-size:48px;margin-bottom:12px;animation:rvPop .55s cubic-bezier(.22,1.4,.36,1) both">' + emoji + '</div>'
+    +   '<div id="rv-pct-display" style="font-size:36px;font-weight:800;color:#fff;margin-bottom:4px" data-target="' + pct + '">0%</div>'
+    +   '<div style="font-size:14px;color:rgba(255,255,255,.5);margin-bottom:16px">' + correct + ' / ' + total + ' correct</div>'
+    +   (xpEarned > 0
+        ? '<div id="rv-xp-box" style="padding:12px 22px;background:linear-gradient(135deg,rgba(251,191,36,.18),rgba(34,197,94,.14));border:1px solid rgba(244,209,132,.45);border-radius:10px;display:inline-flex;align-items:center;gap:12px;box-shadow:0 10px 28px rgba(251,191,36,.25),inset 0 1px 0 rgba(255,255,255,.12)">'
+          + '<span style="font-size:22px;filter:drop-shadow(0 0 8px rgba(251,191,36,.7))">✨</span>'
+          + '<span id="rv-xp-count" data-target="' + xpEarned + '" style="font-size:18px;font-weight:900;color:#ffd089;font-family:\'Playfair Display\',serif;letter-spacing:.02em">+0 XP</span>'
+          + '<span style="font-size:12px;font-weight:800;color:rgba(255,231,176,.75)">· +' + xpEarned + ' 냥</span>'
+          + '</div>'
+        : '<div style="font-size:13px;color:rgba(255,255,255,.4)">70% 이상 달성 시 보상 지급</div>')
+    + '</div>'
+    + '<style>@keyframes rvPop{0%{transform:scale(.55);opacity:0;}65%{transform:scale(1.12);opacity:1;}100%{transform:scale(1);}}</style>'
     + '</div>';
+  // Count-up + ribbon particle animation
+  setTimeout(function(){ _rvAnimateReward(pct, xpEarned); }, 80);
 
   document.getElementById('rv-footer').innerHTML =
     '<button onclick="closeReviewModal()" style="padding:10px 20px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px">Close</button>';
@@ -18580,6 +18589,121 @@ function finishReview() {
   // Hide the notification banner
   var notifEl = document.getElementById('sr-notif-' + _rv.type);
   if (notifEl) notifEl.style.display = 'none';
+}
+
+// ── Count-up + ribbon particle shower on review complete ──
+function _rvAnimateReward(pct, xp) {
+  var pctEl = document.getElementById('rv-pct-display');
+  var xpEl  = document.getElementById('rv-xp-count');
+  var canvas = document.getElementById('rv-ribbon-canvas');
+
+  function countUp(el, target, suffix, dur) {
+    if (!el) return;
+    target = parseFloat(target) || 0;
+    dur = dur || 800;
+    var start = performance.now();
+    function step(t) {
+      var p = Math.min(1, (t - start) / dur);
+      // ease-out cubic
+      var e = 1 - Math.pow(1 - p, 3);
+      var v = Math.round(target * e);
+      el.textContent = (suffix === 'xp' ? '+' + v + ' XP' : v + '%');
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  countUp(pctEl, pct, 'pct', 750);
+  if (xp > 0) countUp(xpEl, xp, 'xp', 900);
+
+  // Ribbon particle shower — only if there's reward worth celebrating
+  if (!canvas || !canvas.getContext || xp <= 0) return;
+  var DPR = Math.min(window.devicePixelRatio || 1, 2);
+  var rect = canvas.getBoundingClientRect();
+  var W = Math.max(280, rect.width || 280);
+  var H = 200;
+  canvas.width  = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  canvas.style.height = H + 'px';
+  var ctx = canvas.getContext('2d');
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  var parts = [];
+  // Emission origin: bottom-center where the XP box sits
+  var ox = W / 2, oy = H - 8;
+  var spawnTotal = Math.min(70, 28 + Math.floor(xp * 0.9));
+  var spawnIdx = 0;
+  var t0 = performance.now();
+  var running = true;
+
+  function spawnOne() {
+    // Slight horizontal spread, mostly upward drift
+    var angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.9;
+    var speed = 80 + Math.random() * 110;
+    var palette = Math.random() < 0.65 ? 'gold' : (Math.random() < 0.5 ? 'mint' : 'lavender');
+    parts.push({
+      x: ox + (Math.random() - 0.5) * 60,
+      y: oy - Math.random() * 18,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 0,
+      maxLife: 0.9 + Math.random() * 0.7,
+      size: 1.4 + Math.random() * 2.2,
+      palette: palette,
+      rot: Math.random() * Math.PI
+    });
+  }
+
+  function paletteColor(p, a) {
+    if (p === 'gold')   return 'rgba(251,191,36,' + a + ')';
+    if (p === 'mint')   return 'rgba(140,235,220,' + a + ')';
+    return 'rgba(196,181,253,' + a + ')';
+  }
+
+  function tick(now) {
+    if (!running) return;
+    var dt = 0.016;
+    ctx.clearRect(0, 0, W, H);
+
+    // Staggered spawn over ~900ms
+    var spawnPhase = Math.min(1, (now - t0) / 900);
+    var expectedSpawned = Math.floor(spawnPhase * spawnTotal);
+    while (spawnIdx < expectedSpawned) { spawnOne(); spawnIdx++; }
+
+    for (var i = parts.length - 1; i >= 0; i--) {
+      var p = parts[i];
+      p.life += dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 10 * dt; // very slight gravity so they arc
+      p.rot += 0.1;
+      var ratio = p.life / p.maxLife;
+      if (ratio >= 1) { parts.splice(i, 1); continue; }
+      var alpha = 1 - ratio;
+
+      // Glow halo
+      var glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 6);
+      glow.addColorStop(0, paletteColor(p.palette, 0.55 * alpha));
+      glow.addColorStop(1, paletteColor(p.palette, 0));
+      ctx.fillStyle = glow;
+      ctx.fillRect(p.x - p.size * 6, p.y - p.size * 6, p.size * 12, p.size * 12);
+
+      // Core sparkle (rotating cross)
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = paletteColor(p.palette, alpha);
+      ctx.fillRect(-p.size, -p.size * 0.28, p.size * 2, p.size * 0.56);
+      ctx.fillRect(-p.size * 0.28, -p.size, p.size * 0.56, p.size * 2);
+      ctx.restore();
+    }
+    if (parts.length > 0 || spawnIdx < spawnTotal) {
+      requestAnimationFrame(tick);
+    } else {
+      running = false;
+    }
+  }
+  requestAnimationFrame(tick);
 }
 
 function closeReviewModal() {

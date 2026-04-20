@@ -40,14 +40,31 @@
     autoRotate: true,
   };
 
-  // ── Three.js lazy load (ESM from esm.sh) ────────────────────
+  // ── Three.js lazy load — jsdelivr (whitelisted by site CSP) ─
+  // Tries the /+esm bundle first, then falls back to the raw module
+  // file; both live on cdn.jsdelivr.net so CSP's script-src is happy.
+  function _tryImport(url) {
+    return new Promise(function(resolve, reject) {
+      import(/* @vite-ignore */ url).then(resolve, reject);
+    });
+  }
   function loadThree() {
     if (THREE) return Promise.resolve(THREE);
     if (_threeLoading) return _threeLoading;
-    _threeLoading = import('https://esm.sh/three@0.160.0').then(function(m) {
-      THREE = m;
-      return THREE;
-    });
+    var urls = [
+      'https://cdn.jsdelivr.net/npm/three@0.160.0/+esm',
+      'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js'
+    ];
+    _threeLoading = (function tryNext(i) {
+      if (i >= urls.length) return Promise.reject(new Error('all three CDNs failed'));
+      return _tryImport(urls[i]).then(function(m) {
+        THREE = m;
+        return THREE;
+      }, function(err) {
+        console.warn('[KHUniverse] three import failed for', urls[i], err);
+        return tryNext(i + 1);
+      });
+    })(0);
     return _threeLoading;
   }
 
