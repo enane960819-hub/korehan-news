@@ -2325,14 +2325,25 @@ function renderHeroSlide(heroEl) {
       '<div class="kh-home-hero-main-shell" style="position:relative;min-height:460px;overflow:hidden;background:#0b1626;touch-action:pan-y">'
       + '<div class="kh-home-hero-track" style="display:flex;height:100%;will-change:transform;transition:transform .72s cubic-bezier(.22,1,.36,1)">' + _heroSlides.map(function(item){
           var featImg = khArticleThumb(item, 900, 500);
-          var featBody = (item.body || '').replace(/<[^>]*>/g, '').slice(0, 150);
           var url = articleUrl(item.id);
+          // Level pill (Korean reading-level meta)
+          var LVL_LBL = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'};
+          var LVL_BG  = {Starter:'rgba(126,34,206,.85)',Beginner:'rgba(21,128,61,.85)',Intermediate:'rgba(180,83,9,.85)',Advanced:'rgba(185,28,28,.85)'};
+          var lvlPill = item.level
+            ? '<span class="kh-hero-meta-pill" style="background:' + (LVL_BG[item.level]||'rgba(37,99,235,.85)') + '">' + (LVL_LBL[item.level]||item.level) + '</span>'
+            : '';
+          // Korean character count → reading-time estimate (~350 chars/min)
+          var koChars = (item.body || '').replace(/<[^>]*>/g,'').replace(/[^\u3131-\uD79D]/g,'').length;
+          var readMin = koChars ? Math.max(1, Math.round(koChars / 350)) : 0;
+          var timePill = readMin
+            ? '<span class="kh-hero-meta-pill kh-hero-meta-time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>' + readMin + ' min</span>'
+            : '';
           return '<article class="kh-home-hero-slide" style="min-width:100%;position:relative;min-height:460px;overflow:hidden;cursor:pointer" onclick="location.href=\'' + url + '\'">'
             + '<img src="' + featImg + '" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;pointer-events:none;">'
-            + '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,15,35,.92) 0%,rgba(5,15,35,.65) 42%,rgba(5,15,35,.22) 100%),linear-gradient(to top,rgba(5,15,35,.95) 0%,rgba(5,15,35,.4) 40%,rgba(5,15,35,.08) 70%,transparent 100%);pointer-events:none;"></div>'
-            + '<div style="position:absolute;left:0;right:0;bottom:0;padding:34px 30px 30px;max-width:760px;z-index:2;pointer-events:none;">'
-            + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span class="category-tag" style="display:inline-block">' + item.section + '</span><span style="font-size:12px;color:rgba(255,255,255,.72)">' + relTime(item.date) + '</span></div>'
-            + '<h1 style="font-family:\'Playfair Display\',serif;font-size:clamp(26px,3vw,42px);font-weight:900;line-height:1.18;margin:0;color:#fff">' + (item.title_en || item.title) + '</h1>'
+            + '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,15,35,.92) 0%,rgba(5,15,35,.65) 42%,rgba(5,15,35,.22) 100%),linear-gradient(to top,rgba(5,15,35,.98) 0%,rgba(5,15,35,.6) 35%,rgba(5,15,35,.2) 60%,transparent 100%);pointer-events:none;"></div>'
+            + '<div style="position:absolute;left:0;right:0;bottom:0;padding:28px 26px 28px;max-width:760px;z-index:2;pointer-events:none;">'
+            + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px"><span class="category-tag" style="display:inline-block">' + item.section + '</span>' + lvlPill + timePill + '<span style="font-size:11px;color:rgba(255,255,255,.62)">' + relTime(item.date) + '</span></div>'
+            + '<h1 style="font-family:\'Playfair Display\',serif;font-size:clamp(22px,3vw,42px);font-weight:900;line-height:1.2;margin:0;color:#fff">' + (item.title_en || item.title) + '</h1>'
             + '</div></article>';
         }).join('') + '</div>'
       + (_heroSlides.length > 1 ? '<button type="button" class="kh-hero-nav prev" onclick="event.stopPropagation();heroPrev()" aria-label="Previous hero article" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);z-index:4;width:46px;height:46px;border:none;border-radius:999px;background:rgba(7,14,28,.44);backdrop-filter:blur(12px);color:#fff;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px rgba(0,0,0,.24);transition:transform .18s,background .18s">‹</button><button type="button" class="kh-hero-nav next" onclick="event.stopPropagation();heroNext()" aria-label="Next hero article" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);z-index:4;width:46px;height:46px;border:none;border-radius:999px;background:rgba(7,14,28,.44);backdrop-filter:blur(12px);color:#fff;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px rgba(0,0,0,.24);transition:transform .18s,background .18s">›</button>' : '')
@@ -4631,6 +4642,44 @@ async function deleteComment(commentId) {
 // Alias for escapeHTML (defined earlier) — single entry point for all HTML escaping
 var escapeHtml = escapeHTML;
 
+// ── VOCAB EDIT FAB VISIBILITY ─────────────────────────────────
+// FAB should only appear for admin when viewing actual Korean content:
+//   • Article page (korehan-article.html) — always
+//   • Conversations page — only while the detail modal (#detail-overlay) is open
+//   • Stories page — only while the story modal (#st-overlay) is open
+function _shouldShowVocabFab() {
+  if (!window._isAdmin) return false;
+  var path = (location.pathname || '').toLowerCase();
+  if (path.indexOf('korehan-article') !== -1) return true;
+  if (path.indexOf('korehan-conversations') !== -1) {
+    var o = document.getElementById('detail-overlay');
+    return !!(o && !o.classList.contains('hidden'));
+  }
+  if (path.indexOf('korehan-stories') !== -1) {
+    var o = document.getElementById('st-overlay');
+    return !!(o && !o.classList.contains('hidden'));
+  }
+  return false;
+}
+function _updateVocabFabVisibility() {
+  var bar = document.getElementById('vocab-admin-bar');
+  if (!bar) return;
+  var show = _shouldShowVocabFab();
+  bar.style.display = show ? '' : 'none';
+  if (!show && window._vocabEditMode) toggleVocabEditMode();
+}
+function _setupVocabFabVisibility() {
+  _updateVocabFabVisibility();
+  ['detail-overlay', 'st-overlay'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    try {
+      new MutationObserver(_updateVocabFabVisibility)
+        .observe(el, { attributes: true, attributeFilter: ['class'] });
+    } catch (e) {}
+  });
+}
+
 // ── TOOLTIP ───────────────────────────────────────────────────
 function initTooltips() {
   var tip = document.createElement('div');
@@ -4650,14 +4699,15 @@ function initTooltips() {
 
   document.querySelectorAll('.vocab-zone').forEach(function(el){ wrapVocab(el); });
 
-  // 어드민 전용 편집 버튼 표시 (로그인 체크 후)
+  // 어드민 전용 편집 버튼 — 기사 페이지 / conversations 모달 / stories 모달 안에서만 노출
   if (window._isAdmin) {
     var adminBar = document.createElement('div');
     adminBar.id = 'vocab-admin-bar';
-    adminBar.style.cssText = 'position:fixed;bottom:70px;right:16px;z-index:8000;background:#0b1626;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);';
+    adminBar.style.cssText = 'position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 92px);right:16px;z-index:8000;background:#0b1626;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);display:none;';
     adminBar.textContent = '✏️ Vocab Edit Mode';
     adminBar.onclick = function() { toggleVocabEditMode(); };
     document.body.appendChild(adminBar);
+    _setupVocabFabVisibility();
   }
 
   document.addEventListener('mouseover', function(e) {
