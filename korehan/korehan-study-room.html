@@ -2960,15 +2960,22 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
       <!-- Speaking practice section -->
       <div id="wm-speak-section" style="margin-bottom:12px;padding:14px;border-radius:12px;background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.12)">
-        <div style="font-size:12px;font-weight:700;color:#7c3aed;margin-bottom:8px">🎙️ 말하기 연습 (Speaking Practice)</div>
-        <div style="font-size:11px;color:#6b7280;margin-bottom:10px;line-height:1.5">Read your writing out loud. Record and submit for AI pronunciation & fluency analysis.</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+          <div style="font-size:12px;font-weight:700;color:#7c3aed">🎙️ 말하기 연습 (Speaking Practice)</div>
+          <div id="wm-speak-coin-badge" style="display:none;font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#b45309"></div>
+        </div>
+        <div style="font-size:11px;color:#6b7280;margin-bottom:10px;line-height:1.5">Read your writing out loud. Submit for AI feedback (free) or send to a human coach (Pro · uses 1 coin).</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button id="wm-speak-listen" onclick="speakMyWriting()" style="flex:1;min-width:120px;padding:10px;border-radius:10px;border:1px solid rgba(124,58,237,.2);background:rgba(124,58,237,.08);color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🔊 AI가 읽어주기</button>
           <button id="wm-speak-record" onclick="toggleSpeakRecord()" style="flex:1;min-width:120px;padding:10px;border-radius:10px;border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.08);color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🎙️ 내 목소리 녹음</button>
         </div>
         <div id="wm-speak-status" style="font-size:11px;color:#6b7280;margin-top:8px;min-height:18px"></div>
         <audio id="wm-speak-playback" style="width:100%;margin-top:8px;display:none" controls></audio>
-        <button id="wm-speak-submit" onclick="submitSpeaking()" style="display:none;width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📩 Submit Recording</button>
+        <div id="wm-speak-submit-row" style="display:none;margin-top:8px;gap:8px;flex-direction:column">
+          <button id="wm-speak-submit" onclick="submitSpeaking()" style="width:100%;padding:10px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📩 Submit for AI Feedback (free)</button>
+          <button id="wm-speak-coach-submit" onclick="submitSpeakingToCoach()" style="width:100%;padding:10px;border-radius:10px;border:1.5px solid #f59e0b;background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">👤 Send to Human Coach <span style="font-weight:700;opacity:.85">· 1 coin</span></button>
+          <div style="font-size:10px;color:#94a3b8;text-align:center;line-height:1.4">Coach feedback within 24 hours · Pro plan only</div>
+        </div>
 
         <!-- Speaking Radar Chart (shown after feedback) -->
         <div id="wm-speak-radar-wrap" style="display:none;margin-top:14px;border-top:1px solid rgba(124,58,237,.15);padding-top:14px">
@@ -5057,6 +5064,8 @@ function openWritingModal() {
   setTimeout(function() { _initWritingTrackerRings(); _resetWritingTrackerRings(); }, 100);
   // 모바일 탭 초기화
   wmMobileInit();
+  // Pro: load coach-coin balance for the speaking section badge
+  if (typeof _refreshSpeakingCoinBadge === 'function') _refreshSpeakingCoinBadge();
 }
 
 function canEnterWritingRoom() {
@@ -8429,8 +8438,10 @@ function toggleSpeakRecord() {
       var audio = document.getElementById('wm-speak-playback');
       audio.src = url;
       audio.style.display = 'block';
-      document.getElementById('wm-speak-submit').style.display = 'block';
+      var row = document.getElementById('wm-speak-submit-row');
+      if (row) row.style.display = 'flex';
       document.getElementById('wm-speak-status').textContent = 'Recording done! Listen and submit.';
+      _refreshSpeakingCoinBadge();
     };
     _speakRecorder.start();
     document.getElementById('wm-speak-record').innerHTML = '⏹️ 녹음 중... (누르면 정지)';
@@ -8463,10 +8474,138 @@ async function submitSpeaking() {
       context_data: JSON.stringify({ audio_path: fileName })
     });
     showToast('🎙️ Recording submitted! Waiting for AI feedback.');
-    document.getElementById('wm-speak-submit').style.display = 'none';
+    var row = document.getElementById('wm-speak-submit-row');
+    if (row) row.style.display = 'none';
     document.getElementById('wm-speak-status').textContent = '✅ Submitted!';
   } catch(e) {
     showToast('Submit failed: ' + e.message);
+  }
+}
+
+// ── Coach review submit (Pro tier, daily coin economy) ────────────
+// Char-cap by level: Seed/Sprout 250, Tree 500, Forest → 1:1 redirect.
+var SPEAKING_CHAR_LIMITS = { Starter: 250, Beginner: 250, Intermediate: 500, Advanced: 0 };
+
+function _speakingCharLimit() {
+  return SPEAKING_CHAR_LIMITS[_currentLevel] != null ? SPEAKING_CHAR_LIMITS[_currentLevel] : 250;
+}
+
+async function submitSpeakingToCoach() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!_speakBlob) { showToast('먼저 녹음하세요'); return; }
+
+  // Pro plan gate
+  if (typeof requirePlan === 'function' && !requirePlan('speaking_feedback')) return;
+
+  // Forest → 1:1 tutoring redirect (no coin flow)
+  if (_currentLevel === 'Advanced') { _showForestTutoringModal(); return; }
+
+  // Per-level character cap (writing text the user is reading aloud)
+  var ta   = document.getElementById('write-area');
+  var text = ta ? (ta.value || '').trim() : '';
+  var cap  = _speakingCharLimit();
+  if (text.length > cap) {
+    showToast('글자 수 한도를 초과했어요 (' + text.length + ' / ' + cap + ')');
+    return;
+  }
+
+  var sb = getSupa();
+  if (!sb) return;
+
+  var btn = document.getElementById('wm-speak-coach-submit');
+  if (btn) { btn.disabled = true; btn.style.opacity = '.6'; btn.textContent = '👤 Sending to coach…'; }
+
+  try {
+    // 1) Atomic refresh + consume one coin
+    var coinRes = await sb.rpc('consume_speaking_coin', { p_level: _currentLevel });
+    var coin    = coinRes && coinRes.data;
+    if (coinRes.error || !coin || !coin.ok) {
+      var reason = coin && coin.reason;
+      if (reason === 'forest_redirect') { _showForestTutoringModal(); return; }
+      if (reason === 'no_coins') {
+        showToast('오늘 코치 리뷰 코인을 다 썼어요. 내일 다시 갱신됩니다.');
+        return;
+      }
+      showToast('코인 처리 실패: ' + (coinRes.error && coinRes.error.message || 'unknown'));
+      return;
+    }
+
+    // 2) Upload audio
+    var fileName = 'speaking/' + supaUser.id + '/' + kstDateKey() + '_coach_' + Date.now() + '.webm';
+    var up = await sb.storage.from('avatars').upload(fileName, _speakBlob, { contentType:'audio/webm', upsert:true });
+    if (up.error) { showToast('업로드 실패: ' + up.error.message); return; }
+
+    // 3) Insert submission marked for coach review
+    var ins = await sb.from('user_submissions').insert({
+      user_id:     supaUser.id,
+      content_type:'speaking',
+      study_date:  kstDateKey(),
+      writing_text: text,
+      topic_ko:    _todayTopic ? _todayTopic.topic_ko : '',
+      topic_en:    _todayTopic ? _todayTopic.topic_en : '',
+      level:       _currentLevel,
+      status:      'submitted',
+      speaking_coach_review: true,
+      context_data: JSON.stringify({ audio_path: fileName, char_count: text.length })
+    });
+    if (ins.error) { showToast('제출 실패: ' + ins.error.message); return; }
+
+    showToast('👤 코치에게 보냈어요! 24시간 내 피드백이 도착합니다. (남은 코인: ' + coin.remaining + ')');
+    var row = document.getElementById('wm-speak-submit-row');
+    if (row) row.style.display = 'none';
+    var statusEl = document.getElementById('wm-speak-status');
+    if (statusEl) statusEl.textContent = '✅ 코치에게 전송 완료';
+    _refreshSpeakingCoinBadge();
+  } catch(e) {
+    showToast('Submit failed: ' + (e.message || e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = '👤 Send to Human Coach <span style="font-weight:700;opacity:.85">· 1 coin</span>'; }
+  }
+}
+
+function _showForestTutoringModal() {
+  var existing = document.getElementById('forest-tutor-modal');
+  if (existing) existing.remove();
+  var m = document.createElement('div');
+  m.id = 'forest-tutor-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.78);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px;';
+  m.onclick = function(e){ if (e.target === m) m.remove(); };
+  m.innerHTML =
+    '<div style="background:#fff;border-radius:18px;max-width:420px;width:100%;padding:26px 24px;box-shadow:0 24px 60px rgba(0,0,0,.4);font-family:inherit">'
+    + '<div style="font-size:32px;text-align:center;margin-bottom:8px">🌲</div>'
+    + '<div style="font-size:18px;font-weight:900;color:#0f172a;text-align:center;margin-bottom:6px">Forest Level — 1:1 Tutoring</div>'
+    + '<div style="font-size:13px;color:#64748b;line-height:1.55;text-align:center;margin-bottom:18px">Advanced 레벨은 짧은 코치 피드백보다 1:1 튜터링이 효과적이에요. 원어민 한국어 튜터와 직접 세션을 잡아보세요.</div>'
+    + '<a href="mailto:tutor@korehannews.com?subject=Forest%201:1%20Tutoring%20Request" style="display:block;text-align:center;padding:12px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;text-decoration:none;border-radius:12px;font-weight:800;font-size:14px;margin-bottom:8px">📅 튜터 세션 신청하기</a>'
+    + '<button onclick="document.getElementById(\'forest-tutor-modal\').remove()" style="display:block;width:100%;padding:10px;background:#f1f5f9;border:none;border-radius:10px;color:#475569;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">닫기</button>'
+    + '</div>';
+  document.body.appendChild(m);
+}
+
+async function _refreshSpeakingCoinBadge() {
+  var badge = document.getElementById('wm-speak-coin-badge');
+  if (!badge) return;
+  if (!supaUser) { badge.style.display = 'none'; return; }
+  // Only show for Pro users
+  if (typeof canAccess === 'function' && !canAccess('speaking_feedback')) {
+    badge.style.display = 'none';
+    return;
+  }
+  if (_currentLevel === 'Advanced') {
+    badge.style.display = 'inline-block';
+    badge.textContent = '🌲 Forest · 1:1 튜터링';
+    return;
+  }
+  try {
+    var sb = getSupa();
+    if (!sb) return;
+    var r = await sb.rpc('get_speaking_coin_balance', { p_level: _currentLevel });
+    if (r.error || !r.data) { badge.style.display = 'none'; return; }
+    var rem = r.data.remaining != null ? r.data.remaining : 0;
+    var quota = r.data.quota != null ? r.data.quota : 0;
+    badge.style.display = 'inline-block';
+    badge.textContent = '🪙 Coach coins: ' + rem + ' / ' + quota + '/day';
+  } catch(e) {
+    badge.style.display = 'none';
   }
 }
 
