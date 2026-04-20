@@ -347,7 +347,7 @@ async function _bgPregenArticleCache(a) {
     try {
       var r = await callClaude({
         feature: 'bg-cache', model: 'claude-haiku-4-5-20251001', max_tokens: maxTok,
-        messages: [{ role: 'user', content: 'Korean article (level: ' + _level + ')\nTitle: ' + _title + '\n\n' + _body.slice(0, 1200) + '\n\n---\n' + instr }]
+        messages: [{ role: 'user', content: 'Korean article (level: ' + _level + ')\nTitle: ' + _title + '\n\nBODY START\n' + _body.slice(0, 3000) + '\nBODY END\n\n---\n' + instr }]
       });
       return (r && r.content && r.content[0] && r.content[0].text) || '';
     } catch(e) { return ''; }
@@ -370,9 +370,10 @@ async function _bgPregenArticleCache(a) {
   } catch(e) {}
 
   try {
-    var v = await _call('Extract exactly 8 key vocabulary items from this article that will BEST help a Korean learner at the target level.\n\nPRIORITIZE (in this order):\n1. Topic-specific content words that carry the article\'s meaning — domain nouns, action verbs, descriptive adjectives.\n2. Intermediate-difficulty words the learner likely does not know yet.\n3. Useful collocations or multi-word expressions taken verbatim from the article (e.g., "관심을 갖다", "덕분에", "~는 편이다").\n4. Words with cultural or contextual significance to THIS article.\n\nHARD EXCLUSIONS (do NOT pick these even if frequent):\n- Trivial high-frequency words every learner already knows: 정말, 많이, 너무, 진짜, 아주, 매우, 조금, 좀, 잘, 또, 다, 더, 이미, 그냥, 그리고, 그래서, 하지만, 근데, 만약, 물론, 아마, 특히.\n- Basic nouns: 한국, 사람, 것, 수, 거, 때, 일, 곳, 말, 집, 나, 너, 우리, 저, 제.\n- Bare auxiliary/copula verbs: 있다, 없다, 하다, 되다, 가다, 오다 (these are fine ONLY as part of a multi-word collocation).\n- Particles, postpositions, pronouns, pure numerals, simple dates.\n- Proper nouns unless they are cultural landmarks worth explaining.\n\nFor each item return the DICTIONARY FORM (not a conjugated form). Return ONLY a JSON array of exactly 8 items, each: {"word":"Korean dictionary form","reading":"romanization","meaning":"concise English gloss"}. No other text.', 1200);
+    var v = await _call(window.KH_VOCAB.promptText(_level, _body), 1600);
     var va = _json(v);
-    if (va) _patch.vocab = JSON.stringify(va);
+    var cleaned = window.KH_VOCAB.validate(va, _body || '');
+    if (cleaned && cleaned.length) _patch.vocab = JSON.stringify(cleaned);
   } catch(e) {}
 
   try {
