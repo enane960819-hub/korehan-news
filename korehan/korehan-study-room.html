@@ -9059,7 +9059,19 @@ async function triggerAIFeedback(submissionId, text, vocab, grammar) {
       + 'Required grammar: ' + grammar.join(', ') + '\n\n'
       + 'Return ONLY JSON in this format:\n'
       + '{\n'
-      + '  "score": 0-100 (integer),\n'
+      + '  "score": 0-100 (integer, overall — MUST equal round(rubric average)),\n'
+      + '  "rubric": {\n'
+      + '    "accuracy":      0-100,    // Grammar & spelling correctness (조사/어미/시제/맞춤법). 95+ = native-clean, 70-80 = mostly fine with a few slips, <50 = frequent basic errors.\n'
+      + '    "lexical_range": 0-100,    // Vocabulary diversity & appropriateness (approximate TTR × appropriateness). 80+ = varied & level-appropriate, 50-70 = repetitive or overly simple.\n'
+      + '    "cohesion":      0-100,    // Sentence-to-sentence connectors (그러나/따라서/반면에 etc.) and referential consistency.\n'
+      + '    "coherence":     0-100     // Whole-text logical flow, paragraph structure, staying on topic.\n'
+      + '  },\n'
+      + '  "rubric_notes": {\n'
+      + '    "accuracy":      "1 sentence in English — what drove the accuracy score",\n'
+      + '    "lexical_range": "1 sentence in English",\n'
+      + '    "cohesion":      "1 sentence in English",\n'
+      + '    "coherence":     "1 sentence in English"\n'
+      + '  },\n'
       + '  "overall": "2-3 sentence overall evaluation in English (praise first, then improvements)",\n'
       + '  "corrected_full": "Full corrected version of the student\'s text (fix errors while keeping their style)",\n'
       + '  "corrections": [\n'
@@ -9076,7 +9088,7 @@ async function triggerAIFeedback(submissionId, text, vocab, grammar) {
       + '  "encouragement": "A short encouraging message in English"'
       + (isTooShort ? ',\n  "example_answer": "Example answer for this topic (3-5 sentences, matched to student level)"' : '')
       + '\n}\n'
-      + 'ALL feedback text must be in English. Korean only appears in corrected_full, corrections.original/corrected, spelling fields. Return ONLY valid JSON.';
+      + 'IMPORTANT: rubric values are integers 0-100. score must equal round((accuracy+lexical_range+cohesion+coherence)/4). ALL feedback text must be in English. Korean only appears in corrected_full, corrections.original/corrected, spelling fields. Return ONLY valid JSON.';
 
     var data = await callClaude({
       feature: 'writing_feedback',
@@ -9207,6 +9219,35 @@ function renderDetailedFeedback(fb, writingText) {
       + '<div style="font-size:13px;color:rgba(255,255,255,.5);line-height:1.5">' + (fb.overall || '') + '</div></div></div>';
   } else if (fb.overall) {
     h += '<div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.6;margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,.04);border-radius:8px">' + fb.overall + '</div>';
+  }
+
+  // 4-axis rubric (accuracy / lexical range / cohesion / coherence)
+  if (fb.rubric && typeof fb.rubric === 'object') {
+    var RUBRIC_ROWS = [
+      { k: 'accuracy',      label: 'Grammar accuracy', color: '#60a5fa' },
+      { k: 'lexical_range', label: 'Lexical range',    color: '#a78bfa' },
+      { k: 'cohesion',      label: 'Cohesion',         color: '#34d399' },
+      { k: 'coherence',     label: 'Coherence',        color: '#fbbf24' }
+    ];
+    h += '<div style="margin-bottom:16px;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px">'
+      + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Writing Rubric</div>';
+    RUBRIC_ROWS.forEach(function(r) {
+      var v = Number(fb.rubric[r.k]);
+      if (!Number.isFinite(v)) v = 0;
+      v = Math.max(0, Math.min(100, Math.round(v)));
+      var note = fb.rubric_notes && fb.rubric_notes[r.k] ? String(fb.rubric_notes[r.k]) : '';
+      h += '<div style="margin-bottom:8px">'
+        + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">'
+          + '<span style="font-size:12px;color:rgba(255,255,255,.8);font-weight:600">' + r.label + '</span>'
+          + '<span style="font-size:12px;font-weight:800;color:' + r.color + '">' + v + '</span>'
+        + '</div>'
+        + '<div style="height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden">'
+          + '<div style="height:100%;width:' + v + '%;background:' + r.color + ';border-radius:999px"></div>'
+        + '</div>'
+        + (note ? '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:4px;line-height:1.5">' + note + '</div>' : '')
+      + '</div>';
+    });
+    h += '</div>';
   }
 
   // Corrected full text
