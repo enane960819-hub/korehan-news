@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Study Room — KoreHani</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260420a">
+<link rel="stylesheet" href="korehan-shared.css?v=20260420b">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260416">
 <style>
 /* ─── LAYOUT ─────────────────────────────── */
@@ -1743,19 +1743,38 @@ body { background: #0b1626 !important; }
 .su-close:hover { background:#f1f5f9;color:#64748b; }
 /* Step tabs */
 .su-steps { display:flex;gap:0;padding:0 20px;flex-shrink:0; }
-.su-step { flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 4px;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;position:relative; }
+.su-step { flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 4px;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;position:relative;min-width:0; }
 .su-step-num { width:24px;height:24px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#94a3b8;transition:all .15s;flex-shrink:0; }
-.su-step-label { font-size:12px;font-weight:700;color:#94a3b8;transition:color .15s; }
+.su-step-label { font-size:12px;font-weight:700;color:#94a3b8;transition:color .15s,max-width .25s,opacity .2s;white-space:nowrap;overflow:hidden;max-width:120px; }
 .su-step.active .su-step-num { background:#7c3aed;color:#fff; }
 .su-step.active .su-step-label { color:#7c3aed; }
 .su-step.active { border-bottom-color:#7c3aed; }
 .su-step.done .su-step-num { background:#22c55e;color:#fff; }
 .su-step.done .su-step-label { color:#22c55e; }
-@media(max-width:400px) { .su-step-label { font-size:10px; } }
+/* Mobile segment style: show label only on the active step */
+@media (max-width:560px) {
+  .su-steps { padding:0 10px; gap:2px; }
+  .su-step { gap:0; padding:10px 2px; flex:0 0 auto; }
+  .su-step.active { flex:1 1 auto; padding:10px 8px; gap:6px; }
+  .su-step-label { max-width:0; opacity:0; margin:0; }
+  .su-step.active .su-step-label { max-width:120px; opacity:1; margin-left:6px; }
+}
+@media(max-width:400px) { .su-step-label { font-size:11px; } }
 /* Progress bar */
-.su-progress { height:4px;background:#f1f5f9;flex-shrink:0;position:relative; }
-.su-progress-fill { height:100%;background:linear-gradient(90deg,#7c3aed,#a78bfa);border-radius:0 2px 2px 0;transition:width .3s ease; }
+.su-progress { height:6px;background:#f1f5f9;flex-shrink:0;position:relative; }
+.su-progress-fill { height:100%;background:linear-gradient(90deg,#7c3aed,#a78bfa);border-radius:0 4px 4px 0;transition:width .3s ease;box-shadow:0 0 8px rgba(167,139,250,.4); }
 .su-progress-text { position:absolute;right:16px;top:-18px;font-size:11px;color:#a78bfa;font-weight:700; }
+/* Sub-step progress bar (within a single step e.g. matched 2/6) */
+.su-substep { height:3px;background:rgba(167,139,250,.1);flex-shrink:0;position:relative; }
+.su-substep-fill { height:100%;background:linear-gradient(90deg,#22c55e,#4ade80);border-radius:0 3px 3px 0;transition:width .3s ease; }
+/* Article passage — collapsible */
+.su-article-card { transition:max-height .25s ease, opacity .2s; overflow:hidden; }
+.su-article-card.collapsed .su-article-text,
+.su-article-card.collapsed .su-article-footer { display:none; }
+.su-article-toggle { display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:8px 12px;border:none;border-top:1px solid #f1f5f9;background:#faf5ff;color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s; }
+.su-article-toggle:hover { background:#f3e8ff; }
+.su-article-toggle .su-art-tog-arrow { transition:transform .25s; }
+.su-article-card.collapsed .su-art-tog-arrow { transform:rotate(180deg); }
 /* Scrollable content area */
 .su-body { flex:1;overflow-y:auto;overscroll-behavior:contain; }
 /* Instruction */
@@ -1797,15 +1816,18 @@ body { background: #0b1626 !important; }
 .su-explain-title { font-size:12px;font-weight:700;color:#7c3aed;margin-bottom:2px; }
 .su-explain-text { font-size:13px;color:#475569;line-height:1.5; }
 .su-explain-text b { color:#0f172a; }
-/* Matching grid */
-.su-match-grid { padding:0 20px 20px;display:grid;grid-template-columns:1fr 1fr;gap:10px; }
-.su-match-item { padding:14px;border:1.5px solid #e8eef5;border-radius:14px;cursor:pointer;text-align:center;background:#fff;transition:all .2s; }
-.su-match-item:hover { border-color:#c4b5fd;background:#faf5ff; }
-.su-match-item.sel { border-color:#7c3aed;background:#faf5ff;box-shadow:0 0 0 3px rgba(124,58,237,.12); }
-.su-match-item.matched { border-color:#22c55e;background:#f0fdf4;pointer-events:none; }
+/* Matching grid — Korean column (left) | English column (right) */
+.su-match-grid { padding:0 16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start; }
+.su-match-col { display:flex;flex-direction:column;gap:8px;min-width:0; }
+.su-match-col-head { font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;padding:0 4px 4px;border-bottom:1px solid #f1f5f9;margin-bottom:2px; }
+.su-match-item { padding:12px 14px;border:1.5px solid #e8eef5;border-radius:12px;cursor:pointer;text-align:center;background:#fff;transition:all .2s;display:flex;align-items:center;justify-content:center;min-height:46px;position:relative; }
+.su-match-item:hover { border-color:#c4b5fd;background:#faf5ff; transform:translateY(-1px); }
+.su-match-item.sel { border-color:#7c3aed;background:#faf5ff;box-shadow:0 0 0 3px rgba(124,58,237,.18); transform:translateY(-1px); }
+.su-match-item.matched { border-color:#22c55e;background:#f0fdf4;pointer-events:none;opacity:.85; }
+.su-match-item.matched::before { content:'✓';position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#22c55e;color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(34,197,94,.4); }
 .su-match-item.wrong { border-color:#ef4444;background:#fef2f2;animation:suShake .35s; }
-.su-match-ko { font-family:'Noto Sans KR',sans-serif;font-size:16px;font-weight:800;color:#1e293b; }
-.su-match-en { font-size:13px;font-weight:600;color:#475569; }
+.su-match-ko { font-family:'Noto Sans KR',sans-serif;font-size:15px;font-weight:800;color:#1e293b;line-height:1.3; }
+.su-match-en { font-size:13px;font-weight:600;color:#475569;line-height:1.3; }
 @keyframes suShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
 /* Fill-in-blank article */
 .su-blank-article { margin:0 20px;padding:16px 18px;border:1.5px solid #e8eef5;border-radius:16px;background:#fff;font-family:'Noto Serif KR',serif;font-size:15px;line-height:2;color:#334155;margin-bottom:16px; }
@@ -3303,7 +3325,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260420a"></script>
+<script src="korehan-shared.js?v=20260420b"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
 <script src="js/kh-quiz-arena.js?v=20260416"></script>
 <script src="js/kh-flashcards.js?v=20260416"></script>
@@ -16074,7 +16096,7 @@ function _asStep1(art,act) {
     ? '<img class="su-article-img" src="' + _asCurrentArt.image + '" alt="" onerror="this.className=\'su-article-img-ph\';this.innerHTML=\'📰\';this.removeAttribute(\'src\')">'
     : '<div class="su-article-img-ph">📰</div>';
   art.innerHTML = '<div class="su-instruction">Select the meaning of highlighted words</div>'
-    + '<div class="su-article-card">'
+    + '<div class="su-article-card" id="as-article-passage">'
     + '<div class="su-article-inner">' + imgHtml
     + '<div class="su-article-body">'
     + '<div class="su-article-title">' + (_asCurrentArt.title || '') + '</div>'
@@ -16086,15 +16108,25 @@ function _asStep1(art,act) {
     + '<button onclick="asToggleTranslation()">📋 Translation</button>'
     + '</div>'
     + '<div id="as-translation" style="display:none;padding:12px 16px;font-size:13px;color:#475569;line-height:1.7;border-top:1px solid #f1f5f9;font-family:\'DM Sans\',sans-serif"></div>'
+    + '<button class="su-article-toggle" onclick="asTogglePassage()" type="button"><span class="su-art-tog-arrow">▲</span><span id="as-art-tog-label">접기</span></button>'
     + '</div>';
   if (!vocab.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px;padding:20px">No vocabulary items.</div>'; _asSetNav('none',''); return; }
   var eng=_asShuffle(vocab.map(function(v,i){return{t:v.en,i:i};}));
   _asMatchState={pairs:vocab,eng:eng,matched:[],sel:{l:null,r:null}};
-  act.innerHTML='<div class="su-match-grid" id="as-mg"></div><div id="as-mm" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8"></div>';
+  act.innerHTML='<div class="su-substep"><div class="su-substep-fill" id="as-substep-fill" style="width:0%"></div></div>'
+    + '<div class="su-match-grid" id="as-mg"></div>'
+    + '<div id="as-mm" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8;text-align:center"></div>';
   _asRenderMatch(); _asSetNav('none','none','none');
   // Update nav counter
   var cnt = document.getElementById('as-nav-counter');
   if (cnt) cnt.textContent = _asMatchState.matched.length + ' / ' + vocab.length;
+}
+function asTogglePassage() {
+  var card = document.getElementById('as-article-passage');
+  if (!card) return;
+  card.classList.toggle('collapsed');
+  var lbl = document.getElementById('as-art-tog-label');
+  if (lbl) lbl.textContent = card.classList.contains('collapsed') ? '펼치기' : '접기';
 }
 function _asRenderMatch() {
   var g=document.getElementById('as-mg'); if(!g||!_asMatchState) return;
@@ -16102,17 +16134,20 @@ function _asRenderMatch() {
   var lh=m.pairs.map(function(v,i){
     var isDone=m.matched.indexOf(i)>=0;
     var cls='su-match-item'+(isDone?' matched':m.sel.l===i?' sel':'');
-    return '<div class="'+cls+'" onclick="asML('+i+')"><div class="su-match-ko">'+(isDone?'✓ ':'')+v.ko+'</div></div>';
+    return '<div class="'+cls+'" data-li="'+i+'" onclick="asML('+i+')"><div class="su-match-ko">'+v.ko+'</div></div>';
   }).join('');
   var rh=m.eng.map(function(item,ri){
     var isDone=m.matched.indexOf(item.i)>=0;
     var cls='su-match-item'+(isDone?' matched':m.sel.r===ri?' sel':'');
-    return '<div class="'+cls+'" onclick="asMR('+ri+')"><div class="su-match-en">'+(isDone?'✓ ':'')+item.t+'</div></div>';
+    return '<div class="'+cls+'" data-ri="'+ri+'" onclick="asMR('+ri+')"><div class="su-match-en">'+item.t+'</div></div>';
   }).join('');
-  g.innerHTML=lh+rh;
-  // Update counter
+  g.innerHTML = '<div class="su-match-col"><div class="su-match-col-head">한국어</div>' + lh + '</div>'
+              + '<div class="su-match-col"><div class="su-match-col-head">English</div>' + rh + '</div>';
+  // Update counter + sub-step progress bar
   var cnt=document.getElementById('as-nav-counter');
   if(cnt) cnt.textContent=m.matched.length+' / '+m.pairs.length;
+  var bar=document.getElementById('as-substep-fill');
+  if(bar) bar.style.width = (m.pairs.length ? (m.matched.length/m.pairs.length*100) : 0) + '%';
 }
 function asML(i) {
   if(!_asMatchState||_asMatchState.matched.indexOf(i)>=0) return;
