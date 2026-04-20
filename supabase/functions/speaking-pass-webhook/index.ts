@@ -1,19 +1,18 @@
 // ══════════════════════════════════════════════════════════════════════
-// speaking-pass-webhook — receive Stripe `checkout.session.completed`
-// and grant today's Speaking Coach pass to the user.
+// speaking-pass-webhook — Stripe `checkout.session.completed` handler
+// for Speaking Coach coin top-ups. Grants `coins` to the user wallet
+// via the service-role RPC `grant_speaking_coins`.
 //
-// This function must be deployed with `verify_jwt=false` (Stripe does
-// not send a Supabase JWT — we verify the Stripe-Signature header).
+// Deploy with `--no-verify-jwt` (Stripe signs the payload, we verify
+// the Stripe-Signature header manually).
 //
-// ── Secrets (Supabase → Edge Functions → Secrets) ────────────────────
+// ── Secrets ──────────────────────────────────────────────────────────
 //   STRIPE_SECRET_KEY            sk_...
 //   STRIPE_WEBHOOK_SECRET        whsec_...
 //   SUPABASE_SERVICE_ROLE_KEY    (auto-injected)
 //   SUPABASE_URL                 (auto-injected)
 //
-// ── Stripe dashboard config ──────────────────────────────────────────
-//   Webhook URL:  https://<project>.functions.supabase.co/speaking-pass-webhook
-//   Events:       checkout.session.completed
+// Stripe dashboard endpoint events: `checkout.session.completed`.
 // ══════════════════════════════════════════════════════════════════════
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
@@ -49,22 +48,19 @@ serve(async (req) => {
   }
 
   const session = event.data.object as Stripe.Checkout.Session;
-
-  // Only our speaking-coach-pass product flow.
-  if (session.metadata?.product !== 'speaking-coach-pass') {
+  if (session.metadata?.product !== 'speaking-coach-coins') {
     return new Response('not our product', { status: 200 });
   }
   if (session.payment_status !== 'paid') {
     return new Response('not paid', { status: 200 });
   }
 
-  const user_id    = session.metadata?.user_id;
-  const level      = session.metadata?.level;
-  const valid_date = session.metadata?.valid_date;
-  const amount     = session.amount_total ?? 0;
+  const user_id = session.metadata?.user_id;
+  const coins   = parseInt(session.metadata?.coins || '0', 10);
+  const amount  = session.amount_total ?? 0;
 
-  if (!user_id || !level || !valid_date) {
-    console.error('[speaking-pass-webhook] missing metadata', session.metadata);
+  if (!user_id || !Number.isFinite(coins) || coins <= 0) {
+    console.error('[speaking-pass-webhook] missing/invalid metadata', session.metadata);
     return new Response('missing metadata', { status: 400 });
   }
 
@@ -73,21 +69,20 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
-  const { data, error } = await sb.rpc('create_speaking_pass', {
+  const { data, error } = await sb.rpc('grant_speaking_coins', {
     p_user_id:           user_id,
-    p_level:             level,
-    p_stripe_session_id: session.id,
+    p_coins:             coins,
     p_amount_cents:      amount,
-    p_valid_date:        valid_date,
+    p_stripe_session_id: session.id,
   });
 
   if (error) {
-    console.error('[speaking-pass-webhook] create_speaking_pass error', error);
+    console.error('[speaking-pass-webhook] grant error', error);
     return new Response('rpc error: ' + error.message, { status: 500 });
   }
 
-  console.log('[speaking-pass-webhook] pass granted', { user_id, level, valid_date, data });
-  return new Response(JSON.stringify({ ok: true, pass: data }), {
+  console.log('[speaking-pass-webhook] granted', { user_id, coins, data });
+  return new Response(JSON.stringify({ ok: true, grant: data }), {
     status: 200,
     headers: { 'content-type': 'application/json' },
   });

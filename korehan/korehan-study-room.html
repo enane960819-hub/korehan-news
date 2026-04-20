@@ -2964,7 +2964,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
           <div style="font-size:12px;font-weight:700;color:#7c3aed">🎙️ 말하기 연습 (Speaking Practice)</div>
           <div id="wm-speak-coin-badge" style="display:none;font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#b45309"></div>
         </div>
-        <div style="font-size:11px;color:#6b7280;margin-bottom:10px;line-height:1.5">Read your writing out loud. Submit for AI feedback (free) or send to a human coach (Pro · uses 1 coin).</div>
+        <div style="font-size:11px;color:#6b7280;margin-bottom:10px;line-height:1.5">Read your writing out loud. Submit for AI feedback (free) or spend 1 coach coin ($1) for human feedback within 24h.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button id="wm-speak-listen" onclick="speakMyWriting()" style="flex:1;min-width:120px;padding:10px;border-radius:10px;border:1px solid rgba(124,58,237,.2);background:rgba(124,58,237,.08);color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🔊 AI가 읽어주기</button>
           <button id="wm-speak-record" onclick="toggleSpeakRecord()" style="flex:1;min-width:120px;padding:10px;border-radius:10px;border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.08);color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🎙️ 내 목소리 녹음</button>
@@ -8516,19 +8516,14 @@ async function submitSpeakingToCoach() {
   if (btn) { btn.disabled = true; btn.style.opacity = '.6'; btn.textContent = '👤 Sending to coach…'; }
 
   try {
-    // 1) Atomic refresh + consume one coin
+    // 1) Atomic wallet decrement
     var coinRes = await sb.rpc('consume_speaking_coin', { p_level: _currentLevel });
     var coin    = coinRes && coinRes.data;
     if (coinRes.error || !coin || !coin.ok) {
       var reason = coin && coin.reason;
       if (reason === 'forest_redirect') { _showForestTutoringModal(); return; }
-      if (reason === 'no_pass') {
-        _showBuyPassPrompt();
-        return;
-      }
-      if (reason === 'pass_exhausted') {
-        showToast('오늘 패스 코인을 다 썼어요. 내일 다시 구매 가능합니다.');
-        _refreshSpeakingCoinBadge();
+      if (reason === 'no_coins') {
+        _showBuySpeakingCoinsModal();
         return;
       }
       showToast('코인 처리 실패: ' + (coinRes.error && coinRes.error.message || 'unknown'));
@@ -8555,7 +8550,7 @@ async function submitSpeakingToCoach() {
     });
     if (ins.error) { showToast('제출 실패: ' + ins.error.message); return; }
 
-    showToast('👤 코치에게 보냈어요! 24시간 내 피드백이 도착합니다. (남은 코인: ' + coin.remaining + ')');
+    showToast('👤 코치에게 보냈어요! 24시간 내 피드백이 도착합니다. (남은 코인: ' + (coin.balance != null ? coin.balance : coin.remaining) + ')');
     var row = document.getElementById('wm-speak-submit-row');
     if (row) row.style.display = 'none';
     var statusEl = document.getElementById('wm-speak-status');
@@ -8566,27 +8561,6 @@ async function submitSpeakingToCoach() {
   } finally {
     if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = '👤 Send to Human Coach <span style="font-weight:700;opacity:.85">· 1 coin</span>'; }
   }
-}
-
-function _showBuyPassPrompt() {
-  var existing = document.getElementById('buy-pass-modal');
-  if (existing) existing.remove();
-  var price = _currentLevel === 'Intermediate' ? 3 : 1;
-  var coins = _currentLevel === 'Intermediate' ? 10 : 5;
-  var m = document.createElement('div');
-  m.id = 'buy-pass-modal';
-  m.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.78);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px;';
-  m.onclick = function(e){ if (e.target === m) m.remove(); };
-  m.innerHTML =
-    '<div style="background:#fff;border-radius:18px;max-width:420px;width:100%;padding:26px 24px;box-shadow:0 24px 60px rgba(0,0,0,.4);font-family:inherit">'
-    + '<div style="font-size:32px;text-align:center;margin-bottom:8px">👤</div>'
-    + '<div style="font-size:18px;font-weight:900;color:#0f172a;text-align:center;margin-bottom:6px">Today\'s Coach Pass</div>'
-    + '<div style="font-size:13px;color:#64748b;line-height:1.55;text-align:center;margin-bottom:18px">오늘 하루 <b>' + coins + '개의 말하기 제출</b>에 대해 한국어 원어민 코치가 24시간 내 피드백을 드립니다.</div>'
-    + '<div style="display:flex;align-items:baseline;justify-content:center;gap:6px;margin-bottom:16px"><span style="font-size:32px;font-weight:900;color:#0f172a">$' + price + '</span><span style="font-size:13px;color:#64748b">/ today</span></div>'
-    + '<button onclick="_buySpeakingPass();document.getElementById(\'buy-pass-modal\').remove()" style="display:block;width:100%;padding:13px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;border-radius:12px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;margin-bottom:8px">💳 Buy today\'s pass · $' + price + '</button>'
-    + '<button onclick="document.getElementById(\'buy-pass-modal\').remove()" style="display:block;width:100%;padding:10px;background:#f1f5f9;border:none;border-radius:10px;color:#475569;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">나중에</button>'
-    + '</div>';
-  document.body.appendChild(m);
 }
 
 function _showForestTutoringModal() {
@@ -8626,52 +8600,90 @@ async function _refreshSpeakingCoinBadge() {
   try {
     var sb = getSupa();
     if (!sb) return;
-    var r = await sb.rpc('get_speaking_pass_status', { p_level: _currentLevel });
+    var r = await sb.rpc('get_speaking_wallet_status', { p_level: _currentLevel });
     if (r.error || !r.data) { badge.style.display = 'none'; return; }
     var s = r.data;
+    var bal = s.balance || 0;
     badge.style.display = 'inline-block';
-    if (s.has_pass) {
+    badge.style.cursor = 'pointer';
+    badge.onclick = _showBuySpeakingCoinsModal;
+    if (bal > 0) {
       badge.style.background = 'rgba(34,197,94,.12)';
       badge.style.borderColor = 'rgba(34,197,94,.35)';
       badge.style.color       = '#166534';
-      badge.style.cursor      = 'default';
-      badge.onclick           = null;
-      badge.textContent = '🪙 Today\'s pass · ' + (s.remaining||0) + ' / ' + (s.granted||0) + ' coins';
+      badge.textContent = '🪙 ' + bal + ' coach coin' + (bal === 1 ? '' : 's') + ' · +buy';
     } else {
-      var price = (s.price_cents || 100) / 100;
       badge.style.background = 'rgba(245,158,11,.12)';
       badge.style.borderColor = 'rgba(245,158,11,.35)';
       badge.style.color       = '#b45309';
-      badge.style.cursor      = 'pointer';
-      badge.onclick           = _buySpeakingPass;
-      badge.textContent = '💳 Buy today\'s coach pass · $' + price.toFixed(price % 1 === 0 ? 0 : 2);
+      badge.textContent = '💳 Buy coach coins · $1 / coin';
     }
   } catch(e) {
     badge.style.display = 'none';
   }
 }
 
-// Redirect to Stripe Checkout for today's Speaking Coach pass.
-async function _buySpeakingPass() {
+// Open the coin-pack purchase modal.
+function _showBuySpeakingCoinsModal() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (_currentLevel === 'Advanced') { _showForestTutoringModal(); return; }
+  if (typeof requirePlan === 'function' && !requirePlan('speaking_feedback')) return;
+
+  var existing = document.getElementById('buy-coins-modal');
+  if (existing) existing.remove();
+
+  var packs = [
+    { coins: 5,  label: '5 coins',  price: 5,  tag: 'Minimum' },
+    { coins: 10, label: '10 coins', price: 10, tag: 'Most popular' },
+    { coins: 20, label: '20 coins', price: 20, tag: 'Best value' }
+  ];
+
+  var packHTML = packs.map(function(p) {
+    return '<button onclick="_startCoinCheckout(' + p.coins + ')"'
+      + ' style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:14px 16px;margin-bottom:10px;border:1.5px solid #e2e8f0;border-radius:14px;background:#fff;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s"'
+      + ' onmouseover="this.style.borderColor=\'#7c3aed\';this.style.background=\'#faf5ff\'"'
+      + ' onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.background=\'#fff\'">'
+        + '<div>'
+          + '<div style="font-size:16px;font-weight:900;color:#0f172a">🪙 ' + p.label + '</div>'
+          + '<div style="font-size:11px;color:#7c3aed;font-weight:700;margin-top:2px">' + p.tag + '</div>'
+        + '</div>'
+        + '<div style="font-size:18px;font-weight:900;color:#7c3aed">$' + p.price + '</div>'
+      + '</button>';
+  }).join('');
+
+  var m = document.createElement('div');
+  m.id = 'buy-coins-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.78);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px;';
+  m.onclick = function(e){ if (e.target === m) m.remove(); };
+  m.innerHTML =
+    '<div style="background:#fff;border-radius:18px;max-width:440px;width:100%;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.4);font-family:inherit">'
+    + '<div style="font-size:28px;text-align:center;margin-bottom:6px">👤</div>'
+    + '<div style="font-size:18px;font-weight:900;color:#0f172a;text-align:center;margin-bottom:4px">Coach Coins</div>'
+    + '<div style="font-size:12px;color:#64748b;line-height:1.55;text-align:center;margin-bottom:18px">1 coin = 1 submission · $1 per coin · 24h coach feedback</div>'
+    + packHTML
+    + '<button onclick="document.getElementById(\'buy-coins-modal\').remove()" style="display:block;width:100%;padding:10px;margin-top:4px;background:#f1f5f9;border:none;border-radius:10px;color:#475569;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">닫기</button>'
+    + '</div>';
+  document.body.appendChild(m);
+}
+
+// Kick off Stripe Checkout for a specific coin count.
+async function _startCoinCheckout(coins) {
+  coins = parseInt(coins, 10);
+  if (!coins || coins < 5) { showToast('최소 5코인부터 구매 가능합니다'); return; }
+  if (!supaUser) { openAuthModal('signin'); return; }
   if (typeof requirePlan === 'function' && !requirePlan('speaking_feedback')) return;
   showToast('💳 Opening secure checkout…');
   try {
     var sb = getSupa();
     if (!sb) { showToast('Checkout unavailable'); return; }
-    // Need current session JWT for the Edge Function auth header
     var { data: sessData } = await sb.auth.getSession();
     var token = sessData && sessData.session && sessData.session.access_token;
     if (!token) { showToast('Please sign in again'); return; }
 
     var res = await fetch((SUPA_URL || window.SUPA_URL || '') + '/functions/v1/speaking-pass-checkout', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-      },
-      body: JSON.stringify({ level: _currentLevel })
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ coins: coins })
     });
     var data = await res.json().catch(function(){ return {}; });
     if (!res.ok || !data.url) {
@@ -8679,31 +8691,34 @@ async function _buySpeakingPass() {
       if (reason === 'pro_plan_required') {
         if (typeof showUpgradeModal === 'function') showUpgradeModal('speaking_feedback', 'pro');
         else showToast('Pro 플랜이 필요합니다');
+      } else if (reason === 'min_coins_5') {
+        showToast('최소 5코인부터 구매 가능합니다');
       } else {
         showToast('Checkout 생성 실패: ' + reason);
       }
       return;
     }
-    // Redirect to Stripe Checkout
     window.location.href = data.url;
   } catch(e) {
     showToast('Checkout error: ' + (e.message || e));
   }
 }
 
-// Handle the ?coach_pass=ok redirect back from Stripe — show a toast
-// and refresh the badge so newly-granted coins appear right away.
-(function _handleCoachPassRedirect(){
+// Back-compat alias — older code paths call _buySpeakingPass()
+function _buySpeakingPass() { _showBuySpeakingCoinsModal(); }
+
+// Handle the ?coach_coins=ok redirect back from Stripe.
+(function _handleCoachCoinsRedirect(){
   try {
     var p = new URLSearchParams(window.location.search);
-    var r = p.get('coach_pass');
+    var r = p.get('coach_coins') || p.get('coach_pass');   // accept both v2 + v3 param names
     if (!r) return;
-    p.delete('coach_pass');
+    p.delete('coach_coins'); p.delete('coach_pass');
     var newUrl = window.location.pathname + (p.toString() ? '?' + p.toString() : '') + window.location.hash;
     window.history.replaceState({}, '', newUrl);
     if (r === 'ok') {
       setTimeout(function(){
-        if (typeof showToast === 'function') showToast('✅ Coach pass activated! Submit your recording to the coach.');
+        if (typeof showToast === 'function') showToast('✅ Coach coins added to your wallet!');
         if (typeof _refreshSpeakingCoinBadge === 'function') _refreshSpeakingCoinBadge();
       }, 600);
     } else if (r === 'cancel') {
