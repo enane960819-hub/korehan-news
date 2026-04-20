@@ -2939,6 +2939,20 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
           </div>
         </div>
 
+        <!-- Genre picker (Phase 4) — selects writing style + shows a scaffold -->
+        <div id="wm-genre-section" style="margin:2px 0 12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em">Writing style</div>
+            <div id="wm-genre-sub" style="font-size:10px;color:#94a3b8;font-weight:600"></div>
+          </div>
+          <div id="wm-genre-pills" style="display:flex;gap:6px;flex-wrap:wrap">
+            <!-- _renderGenrePills() fills this -->
+          </div>
+          <div id="wm-genre-scaffold" style="display:none;margin-top:10px">
+            <!-- _renderGenreScaffold() fills this when non-free -->
+          </div>
+        </div>
+
         <textarea class="write-area" id="write-area"
           placeholder="Write in Korean here…&#10;&#10;Try to use the vocab and grammar chips."
           oninput="onWriteAreaInput()"></textarea>
@@ -5068,6 +5082,9 @@ function openWritingModal() {
   wmMobileInit();
   // Pro: load coach-coin balance for the speaking section badge
   if (typeof _refreshSpeakingCoinBadge === 'function') _refreshSpeakingCoinBadge();
+  // Paint the genre pills + scaffold for this session
+  if (typeof _renderGenrePills === 'function')    _renderGenrePills();
+  if (typeof _renderGenreScaffold === 'function') _renderGenreScaffold();
 }
 
 function canEnterWritingRoom() {
@@ -9304,13 +9321,17 @@ async function submitWriting() {
   var todayPrompt = isDiary ? diaryPrompts[new Date().getDate() % diaryPrompts.length] : null;
 
   // Save to daily package draft (not individual DB submission)
+  // writing_mode is compounded with the genre when non-free so the Claude
+  // prompt and Learning Hub know the format (e.g. 'express_practice:essay').
+  var genreSuffix = (_wmGenre && _wmGenre !== 'free') ? (':' + _wmGenre) : '';
   saveDraft(isDiary ? 'diary' : 'express_practice', {
     text: text,
     topic_ko: isDiary ? (todayPrompt ? todayPrompt.ko : '오늘의 일기') : ((_todayTopic && _todayTopic.topic_ko) || ''),
     topic_en: isDiary ? (todayPrompt ? todayPrompt.en : 'Daily Diary') : ((_todayTopic && _todayTopic.topic_en) || ''),
-    writing_mode: _writingMode || 'topic',
+    writing_mode: (_writingMode || 'topic') + genreSuffix,
+    writing_genre: _wmGenre || 'free',
     context_key: (isDiary ? 'diary_' : 'express_') + kstDateKey(),
-    context: isDiary ? { type: 'diary', prompt: todayPrompt } : { used_vocab: usedVocab, required_vocab: requiredVocab }
+    context: isDiary ? { type: 'diary', prompt: todayPrompt, genre: _wmGenre || 'free' } : { used_vocab: usedVocab, required_vocab: requiredVocab, genre: _wmGenre || 'free' }
   });
 
   markStageDone('topic');
@@ -9393,29 +9414,54 @@ async function triggerAIFeedback(submissionId, text, vocab, grammar) {
     var wordCount = text.replace(/\s+/g,' ').trim().split(' ').length;
     var isTooShort = wordCount < 8;
 
+    // Phase 4: genre + register context pulled from the writing modal
+    var genreMeta   = (typeof WRITING_GENRES !== 'undefined' && WRITING_GENRES[_wmGenre || 'free']) || null;
+    var genreLabel  = genreMeta ? genreMeta.label   : 'Free';
+    var genreId     = genreMeta ? genreMeta.id      : 'free';
+    var conventions = genreMeta && genreMeta.conventions ? genreMeta.conventions : null;
+    var registerHint = genreMeta && genreMeta.registerHint ? genreMeta.registerHint : '';
+
+    var genreBlock = conventions
+      ? 'Genre: ' + genreLabel + ' (' + genreId + ')\n'
+        + 'Genre conventions: ' + conventions + '\n'
+        + 'Register note: ' + registerHint + '\n\n'
+      : 'Genre: Free (no genre constraints — just register consistency)\n'
+        + 'Register note: ' + (registerHint || 'Score register on whether the student keeps a consistent style throughout.') + '\n\n';
+
     var prompt = 'You are an expert Korean writing tutor. Analyze the student\'s Korean writing in detail and provide feedback IN ENGLISH.\n\n'
+      + genreBlock
       + 'Student writing:\n"""\n' + text + '\n"""\n\n'
       + 'Required vocab: ' + vocab.join(', ') + '\n'
       + 'Required grammar: ' + grammar.join(', ') + '\n\n'
       + 'Return ONLY JSON in this format:\n'
       + '{\n'
       + '  "score": 0-100 (integer, overall — MUST equal round(rubric average)),\n'
+      + '  "genre": "' + genreId + '",\n'
       + '  "rubric": {\n'
       + '    "accuracy":      0-100,    // Grammar & spelling correctness (조사/어미/시제/맞춤법). 95+ = native-clean, 70-80 = mostly fine with a few slips, <50 = frequent basic errors.\n'
       + '    "lexical_range": 0-100,    // Vocabulary diversity & appropriateness (approximate TTR × appropriateness). 80+ = varied & level-appropriate, 50-70 = repetitive or overly simple.\n'
       + '    "cohesion":      0-100,    // Sentence-to-sentence connectors (그러나/따라서/반면에 etc.) and referential consistency.\n'
-      + '    "coherence":     0-100     // Whole-text logical flow, paragraph structure, staying on topic.\n'
+      + '    "coherence":     0-100,    // Whole-text logical flow, paragraph structure, staying on topic.\n'
+      + '    "register":      0-100     // Consistency of speech level (-습니다 vs -아/어요 vs -다). 90+ = clean single register fitting the genre; <60 = noticeable mixing or wrong register for the genre.\n'
       + '  },\n'
       + '  "rubric_notes": {\n'
       + '    "accuracy":      "1 sentence in English — what drove the accuracy score",\n'
       + '    "lexical_range": "1 sentence in English",\n'
       + '    "cohesion":      "1 sentence in English",\n'
-      + '    "coherence":     "1 sentence in English"\n'
+      + '    "coherence":     "1 sentence in English",\n'
+      + '    "register":      "1 sentence in English — note the register used and any mixing (e.g. \'Mostly 습니다-style but switches to 아/어요 in line 2\')"\n'
       + '  },\n'
+      + (conventions
+          ? '  "genre_conventions": {\n'
+            + '    "score":    0-100,         // How well the writing follows the genre format above.\n'
+            + '    "met":      ["bullet 1","bullet 2"],   // conventions the student DID meet\n'
+            + '    "missing":  ["bullet 1","bullet 2"]    // conventions the student should add\n'
+            + '  },\n'
+          : '')
       + '  "overall": "2-3 sentence overall evaluation in English (praise first, then improvements)",\n'
       + '  "corrected_full": "Full corrected version of the student\'s text (fix errors while keeping their style)",\n'
       + '  "corrections": [\n'
-      + '    {"original":"incorrect expression","corrected":"corrected expression","reason":"English explanation of why it\'s wrong","pattern":"SPELLING|PARTICLE|TENSE|WORD_ORDER|VOCAB|NUANCE"}\n'
+      + '    {"original":"incorrect expression","corrected":"corrected expression","reason":"English explanation of why it\'s wrong","pattern":"SPELLING|PARTICLE|TENSE|WORD_ORDER|VOCAB|NUANCE|REGISTER"}\n'
       + '  ],\n'
       + '  "spelling": [{"wrong":"misspelled word","correct":"correct spelling","tip":"easy way to remember"}],\n'
       + '  "naturalness": {"score":0-10,"comment":"How natural it sounds from a native perspective","suggestions":["more natural alternative 1","alternative 2"]},\n'
@@ -9424,11 +9470,11 @@ async function triggerAIFeedback(submissionId, text, vocab, grammar) {
       + '  "vocab_feedback": "Vocabulary usage evaluation + recommended additional words",\n'
       + '  "grammar_feedback": "Grammar usage evaluation + things to watch out for",\n'
       + '  "extra_content": "2-3 ideas for extending this topic in writing",\n'
-      + '  "mistake_patterns": {"SPELLING":0,"PARTICLE":0,"TENSE":0,"WORD_ORDER":0,"VOCAB":0,"NUANCE":0},\n'
+      + '  "mistake_patterns": {"SPELLING":0,"PARTICLE":0,"TENSE":0,"WORD_ORDER":0,"VOCAB":0,"NUANCE":0,"REGISTER":0},\n'
       + '  "encouragement": "A short encouraging message in English"'
       + (isTooShort ? ',\n  "example_answer": "Example answer for this topic (3-5 sentences, matched to student level)"' : '')
       + '\n}\n'
-      + 'IMPORTANT: rubric values are integers 0-100. score must equal round((accuracy+lexical_range+cohesion+coherence)/4). ALL feedback text must be in English. Korean only appears in corrected_full, corrections.original/corrected, spelling fields. Return ONLY valid JSON.';
+      + 'IMPORTANT: rubric values are integers 0-100. score must equal round((accuracy+lexical_range+cohesion+coherence+register)/5). ALL feedback text must be in English. Korean only appears in corrected_full, corrections.original/corrected, spelling fields. Return ONLY valid JSON.';
 
     var data = await callClaude({
       feature: 'writing_feedback',
@@ -9561,36 +9607,77 @@ function renderDetailedFeedback(fb, writingText) {
     h += '<div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.6;margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,.04);border-radius:8px">' + fb.overall + '</div>';
   }
 
-  // 4-axis rubric (accuracy / lexical range / cohesion / coherence)
+  // 5-axis rubric (accuracy / lexical range / cohesion / coherence / register)
   if (fb.rubric && typeof fb.rubric === 'object') {
     var RUBRIC_ROWS = [
-      { k: 'accuracy',      label: 'Grammar accuracy', icon: '✍️', color: '#60a5fa' },
-      { k: 'lexical_range', label: 'Lexical range',    icon: '📚', color: '#a78bfa' },
-      { k: 'cohesion',      label: 'Cohesion',         icon: '🔗', color: '#34d399' },
-      { k: 'coherence',     label: 'Coherence',        icon: '🧭', color: '#fbbf24' }
+      { k: 'accuracy',      label: 'Accuracy',      icon: '✍️', color: '#60a5fa' },
+      { k: 'lexical_range', label: 'Lexical range', icon: '📚', color: '#a78bfa' },
+      { k: 'cohesion',      label: 'Cohesion',      icon: '🔗', color: '#34d399' },
+      { k: 'coherence',     label: 'Coherence',     icon: '🧭', color: '#fbbf24' },
+      { k: 'register',      label: 'Register',      icon: '🎭', color: '#f472b6' }
     ];
-    // Compute overall for the header pill
+    // Back-compat: rubrics saved before Phase 4 don't have `register` — hide
+    // that gauge gracefully instead of showing a 0.
+    RUBRIC_ROWS = RUBRIC_ROWS.filter(function(r) { return fb.rubric[r.k] != null; });
     var rubVals = RUBRIC_ROWS.map(function(r){ var v = Number(fb.rubric[r.k]); return Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : 0; });
-    var rubAvg = Math.round(rubVals.reduce(function(a,b){return a+b;},0) / rubVals.length);
+    var rubAvg  = rubVals.length ? Math.round(rubVals.reduce(function(a,b){return a+b;},0) / rubVals.length) : 0;
+
+    // Genre label derived from fb.genre id (matches WRITING_GENRES)
+    var GENRE_LABELS = { free:'Free writing', email:'Email ✉️', essay:'Essay 📝', diary:'Diary 📓', news:'News summary 📰' };
+    var genreChip = (fb.genre && GENRE_LABELS[fb.genre])
+      ? '<span style="margin-left:10px;padding:3px 10px;border-radius:999px;background:rgba(167,139,250,.18);color:#c4b5fd;font-size:10px;font-weight:700;letter-spacing:.04em">' + GENRE_LABELS[fb.genre] + '</span>'
+      : '';
 
     h += '<div style="margin-bottom:18px;padding:16px 16px 14px;background:linear-gradient(145deg,rgba(37,99,235,.08),rgba(124,58,237,.06));border:1px solid rgba(255,255,255,.08);border-radius:14px;backdrop-filter:blur(6px)">'
-      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
-        + '<div style="display:flex;align-items:center;gap:8px">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:6px">'
+        + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
           + '<div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#60a5fa,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 4px 12px rgba(124,58,237,.3)">📊</div>'
           + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.85);text-transform:uppercase;letter-spacing:.08em">Writing Rubric</div>'
+          + genreChip
         + '</div>'
         + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.55)">Avg ' + rubAvg + '</div>'
       + '</div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+      // Auto-flow grid: 2 cols on mobile, 3 cols when there's room.
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">';
     RUBRIC_ROWS.forEach(function(r, i) {
       var v = rubVals[i];
       var note = fb.rubric_notes && fb.rubric_notes[r.k] ? String(fb.rubric_notes[r.k]) : '';
-      h += '<div style="padding:12px 12px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:8px">'
-        + _khRadialGauge({ value: v, accent: r.color, track: 'rgba(255,255,255,.08)', label: r.icon + ' ' + r.label, size: 76, stroke: 7, dark: true })
+      h += '<div style="padding:12px 10px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:8px">'
+        + _khRadialGauge({ value: v, accent: r.color, track: 'rgba(255,255,255,.08)', label: r.icon + ' ' + r.label, size: 72, stroke: 7, dark: true })
         + (note ? '<div style="font-size:10.5px;color:rgba(255,255,255,.5);line-height:1.5;text-align:center;padding:0 2px">' + note + '</div>' : '')
       + '</div>';
     });
     h += '</div></div>';
+
+    // Genre-conventions card (only when Claude returned it)
+    if (fb.genre_conventions && typeof fb.genre_conventions === 'object') {
+      var gc = fb.genre_conventions;
+      var gcScore = Math.max(0, Math.min(100, Math.round(Number(gc.score) || 0)));
+      var metList    = Array.isArray(gc.met)     ? gc.met.filter(Boolean).slice(0, 5) : [];
+      var missingList= Array.isArray(gc.missing) ? gc.missing.filter(Boolean).slice(0, 5) : [];
+      var gcColor = gcScore >= 80 ? '#4ade80' : gcScore >= 60 ? '#60a5fa' : gcScore >= 40 ? '#fbbf24' : '#f87171';
+      h += '<div style="margin-bottom:18px;padding:14px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+          + '<div style="display:flex;align-items:center;gap:8px">'
+            + '<div style="width:22px;height:22px;border-radius:7px;background:rgba(167,139,250,.18);display:flex;align-items:center;justify-content:center;font-size:11px">📐</div>'
+            + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.85);text-transform:uppercase;letter-spacing:.06em">Genre conventions</div>'
+          + '</div>'
+          + '<div style="font-size:13px;font-weight:900;color:' + gcColor + '">' + gcScore + '</div>'
+        + '</div>'
+        + (metList.length
+            ? '<div style="margin-bottom:' + (missingList.length ? '8px' : '0') + '">'
+                + '<div style="font-size:10px;font-weight:700;color:#4ade80;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">✓ Met</div>'
+                + metList.map(function(m){ return '<div style="font-size:12px;color:rgba(255,255,255,.72);padding:2px 0">• ' + m + '</div>'; }).join('')
+              + '</div>'
+            : '')
+        + (missingList.length
+            ? '<div>'
+                + '<div style="font-size:10px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">⚠ Missing</div>'
+                + missingList.map(function(m){ return '<div style="font-size:12px;color:rgba(255,255,255,.72);padding:2px 0">• ' + m + '</div>'; }).join('')
+              + '</div>'
+            : '')
+      + '</div>';
+    }
   }
 
   // Corrected full text
@@ -11461,6 +11548,147 @@ function escapeHTML(str) {
 // ── 모바일 Writing 헬퍼 ────────────────────────────────────────────
 var WRITE_CHAR_LIMITS = { Starter:{min:20,max:300}, Beginner:{min:20,max:600}, Intermediate:{min:20,max:1000}, Advanced:{min:20,max:2000} };
 function getWriteCharLimit() { return WRITE_CHAR_LIMITS[_currentLevel] || WRITE_CHAR_LIMITS.Beginner; }
+
+// ── Writing genres (Phase 4) ────────────────────────────────────────
+// Each genre adds a scaffold card + a template the user can insert, and
+// tells the Claude prompt what rubric conventions to score against.
+var WRITING_GENRES = {
+  free: {
+    id: 'free', label: 'Free', emoji: '✍️',
+    sub: 'No format constraints',
+    accent: '#64748b',
+    steps: null, template: '',
+    registerHint: 'Pick the register that matches your audience.',
+    conventions: null
+  },
+  email: {
+    id: 'email', label: 'Email', emoji: '✉️',
+    sub: 'Greeting · Body · Closing',
+    accent: '#2563eb',
+    steps: [
+      'Greeting line (받는 사람 / 인사)',
+      'Main message (1-3 sentences, one thing per paragraph)',
+      'Closing + your name (맺음말, 이름)'
+    ],
+    template: '안녕하세요, ○○님.\n\n(여기에 하고 싶은 말을 써보세요)\n\n감사합니다.\n○○ 드림',
+    registerHint: 'Email defaults to formal (-습니다 / -세요).',
+    conventions: 'Has a greeting line, single main message, and a closing + name.'
+  },
+  essay: {
+    id: 'essay', label: 'Essay', emoji: '📝',
+    sub: 'Intro · Body · Conclusion',
+    accent: '#7c3aed',
+    steps: [
+      'Intro — state your thesis in one sentence',
+      'Body — 2-3 supporting points, one per paragraph, with examples',
+      'Conclusion — restate the thesis or call to action'
+    ],
+    template: '요즘 ○○에 대해 생각이 많아졌다. 나는 ○○이 중요하다고 생각한다.\n\n첫째, ...\n둘째, ...\n\n결론적으로, ...',
+    registerHint: 'Essays use consistent formal written style (-다 / -(는)ㄴ다).',
+    conventions: 'Clear thesis, 2+ supporting paragraphs, a conclusion that echoes the intro.'
+  },
+  diary: {
+    id: 'diary', label: 'Diary', emoji: '📓',
+    sub: 'Today · Feelings · Next',
+    accent: '#d97706',
+    steps: [
+      'Today (오늘) — what happened',
+      'Feelings (느낌) — how it felt',
+      'Next (내일) — what you\'ll do tomorrow'
+    ],
+    template: '오늘은 ○○을/를 했다.\n\n느낌은 ○○이었다.\n\n내일은 ○○ 해볼 생각이다.',
+    registerHint: 'Diary entries use plain style (-다 / -았/었다) — casual is fine.',
+    conventions: 'Written in first person, describes events + feelings + a forward-looking line.'
+  },
+  news: {
+    id: 'news', label: 'News summary', emoji: '📰',
+    sub: '5W1H · Neutral tone',
+    accent: '#059669',
+    steps: [
+      'Lead — who / what / when / where in one sentence',
+      'Why / How — add context in 1-2 sentences',
+      'So what — why it matters / what happens next'
+    ],
+    template: '○○년 ○월 ○일, ○○에서 ○○이/가 발생했다.\n\n이유는 ○○ 때문이다.\n\n이로 인해 ○○이 예상된다.',
+    registerHint: 'News writing uses impersonal formal style (-다 / 되다).',
+    conventions: 'Covers 5W1H, neutral tone, no personal pronouns, complete dates/numbers when relevant.'
+  }
+};
+
+var _wmGenre = 'free';
+
+function _renderGenrePills() {
+  var pills = document.getElementById('wm-genre-pills');
+  var sub   = document.getElementById('wm-genre-sub');
+  if (!pills) return;
+  var genres = ['free', 'email', 'essay', 'diary', 'news'];
+  pills.innerHTML = genres.map(function(g) {
+    var meta = WRITING_GENRES[g];
+    var on = _wmGenre === g;
+    return '<button onclick="_setWritingGenre(\'' + g + '\')" data-genre="' + g + '"'
+      + ' style="padding:7px 13px;border-radius:999px;border:1.5px solid ' + (on ? meta.accent : '#e2e8f0') + ';'
+      + 'background:' + (on ? meta.accent : '#fff') + ';color:' + (on ? '#fff' : '#475569') + ';'
+      + 'font-size:12px;font-weight:' + (on ? '800' : '700') + ';cursor:pointer;font-family:inherit;'
+      + 'display:inline-flex;align-items:center;gap:5px;transition:all .15s;'
+      + (on ? 'box-shadow:0 6px 16px -6px ' + meta.accent + '80;' : '')
+      + '">'
+      + '<span>' + meta.emoji + '</span><span>' + meta.label + '</span>'
+    + '</button>';
+  }).join('');
+  if (sub) sub.textContent = WRITING_GENRES[_wmGenre] ? WRITING_GENRES[_wmGenre].sub : '';
+}
+
+function _renderGenreScaffold() {
+  var wrap = document.getElementById('wm-genre-scaffold');
+  if (!wrap) return;
+  var meta = WRITING_GENRES[_wmGenre];
+  if (!meta || !meta.steps) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  wrap.style.display = 'block';
+  var stepsHTML = meta.steps.map(function(s, i) {
+    return '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">'
+      + '<div style="width:18px;height:18px;border-radius:50%;background:' + meta.accent + ';color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">' + (i+1) + '</div>'
+      + '<div style="font-size:12px;line-height:1.55;color:#334155">' + s + '</div>'
+    + '</div>';
+  }).join('');
+  var safeTpl = meta.template.replace(/'/g,'&#39;').replace(/\n/g,'\\n');
+  wrap.innerHTML =
+    '<div style="padding:14px 14px 12px;border-radius:14px;background:' + meta.accent + '0F;border:1px dashed ' + meta.accent + '66">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+        + '<div style="display:flex;align-items:center;gap:8px">'
+          + '<div style="width:26px;height:26px;border-radius:8px;background:' + meta.accent + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px">' + meta.emoji + '</div>'
+          + '<div>'
+            + '<div style="font-size:12px;font-weight:800;color:' + meta.accent + '">' + meta.label + ' structure</div>'
+            + '<div style="font-size:10px;color:#64748b;margin-top:1px">' + meta.registerHint + '</div>'
+          + '</div>'
+        + '</div>'
+        + '<button onclick="_insertGenreTemplate()" style="padding:6px 12px;border-radius:999px;background:#fff;border:1.5px solid ' + meta.accent + ';color:' + meta.accent + ';font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px" title="Paste a starter template into your writing">'
+          + '<span>⚡</span>Insert template'
+        + '</button>'
+      + '</div>'
+      + '<div style="padding-top:2px">' + stepsHTML + '</div>'
+    + '</div>';
+}
+
+function _setWritingGenre(g) {
+  if (!WRITING_GENRES[g]) return;
+  _wmGenre = g;
+  _renderGenrePills();
+  _renderGenreScaffold();
+}
+
+function _insertGenreTemplate() {
+  var meta = WRITING_GENRES[_wmGenre];
+  if (!meta || !meta.template) return;
+  var ta = document.getElementById('write-area');
+  if (!ta) return;
+  if (ta.value.trim() && !confirm('Replace your current writing with the ' + meta.label + ' template?')) return;
+  ta.value = meta.template;
+  if (typeof onWriteAreaInput === 'function') onWriteAreaInput();
+  ta.focus();
+  // Scroll cursor to the first placeholder
+  var firstPlaceholder = meta.template.indexOf('○○');
+  if (firstPlaceholder >= 0) ta.setSelectionRange(firstPlaceholder, firstPlaceholder + 2);
+}
 
 function onWriteAreaInput() {
   var ta = document.getElementById('write-area');
