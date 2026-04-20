@@ -2333,18 +2333,28 @@ function renderHeroSlide(heroEl) {
             ? '<span class="kh-hero-chip kh-hero-chip-lvl-' + item.level + '">' + (LVL_ICON[item.level]||'') + ' ' + (LVL_LBL[item.level]||item.level) + '</span>'
             : '';
           // Korean character count → reading-time estimate (~350 chars/min)
-          var koChars = (item.body || '').replace(/<[^>]*>/g,'').replace(/[^\u3131-\uD79D]/g,'').length;
+          var bodyPlain = (item.body || '').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
+          var koChars = bodyPlain.replace(/[^\u3131-\uD79D]/g,'').length;
           var readMin = koChars ? Math.max(1, Math.round(koChars / 350)) : 0;
           var timeChip = readMin
             ? '<span class="kh-hero-chip kh-hero-chip-time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>' + readMin + ' min</span>'
             : '';
           var catChip = '<span class="kh-hero-chip kh-hero-chip-cat">' + item.section + '</span>';
+          // Short excerpt — first ~90 Korean chars to fill the dead space below title
+          var excerpt = bodyPlain.slice(0, 110);
+          if (bodyPlain.length > 110) excerpt += '…';
           return '<article class="kh-home-hero-slide" style="min-width:100%;position:relative;min-height:460px;overflow:hidden;cursor:pointer" onclick="location.href=\'' + url + '\'">'
             + '<img src="' + featImg + '" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;pointer-events:none;">'
-            + '<div style="position:absolute;left:0;right:0;bottom:0;height:60%;background:linear-gradient(to top,rgba(5,15,35,.85) 0%,rgba(5,15,35,.5) 50%,rgba(5,15,35,0) 100%);pointer-events:none;"></div>'
-            + '<div style="position:absolute;left:0;right:0;bottom:0;padding:24px 22px 22px;max-width:760px;z-index:2;pointer-events:none;">'
-            + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:12px">' + catChip + lvlChip + timeChip + '<span class="kh-hero-chip-when">· ' + relTime(item.date) + '</span></div>'
-            + '<h1 style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:clamp(22px,3vw,42px);font-weight:900;line-height:1.2;margin:0;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.4)">' + (item.title_en || item.title) + '</h1>'
+            + '<div style="position:absolute;left:0;right:0;top:0;height:40%;background:linear-gradient(to bottom,rgba(5,15,35,.55) 0%,rgba(5,15,35,0) 100%);pointer-events:none;"></div>'
+            + '<div style="position:absolute;left:0;right:0;bottom:0;height:72%;background:linear-gradient(to top,rgba(5,15,35,.94) 0%,rgba(5,15,35,.7) 30%,rgba(5,15,35,.28) 70%,rgba(5,15,35,0) 100%);pointer-events:none;"></div>'
+            + '<div class="kh-hero-top-meta" style="position:absolute;top:16px;left:18px;right:18px;z-index:2;display:flex;align-items:center;flex-wrap:wrap;gap:6px;pointer-events:none">' + catChip + lvlChip + timeChip + '</div>'
+            + '<div style="position:absolute;left:0;right:0;bottom:0;padding:20px 22px 22px;max-width:760px;z-index:2;pointer-events:none;">'
+            + '<h1 style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:clamp(22px,3vw,42px);font-weight:900;line-height:1.2;margin:0 0 8px;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.5)">' + (item.title_en || item.title) + '</h1>'
+            + (excerpt ? '<p style="margin:0 0 10px;font-size:13px;line-height:1.55;color:rgba(255,255,255,.85);font-family:\'Noto Sans KR\',sans-serif;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-shadow:0 1px 6px rgba(0,0,0,.4)">' + excerpt + '</p>' : '')
+            + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">'
+            +   '<span class="kh-hero-chip-when">' + relTime(item.date) + '</span>'
+            +   '<span style="font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#fff;display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.32);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)">Read <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>'
+            + '</div>'
             + '</div></article>';
         }).join('') + '</div>'
       + (_heroSlides.length > 1 ? '<button type="button" class="kh-hero-nav prev" onclick="event.stopPropagation();heroPrev()" aria-label="Previous hero article" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);z-index:4;width:46px;height:46px;border:none;border-radius:999px;background:rgba(7,14,28,.44);backdrop-filter:blur(12px);color:#fff;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px rgba(0,0,0,.24);transition:transform .18s,background .18s">‹</button><button type="button" class="kh-hero-nav next" onclick="event.stopPropagation();heroNext()" aria-label="Next hero article" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);z-index:4;width:46px;height:46px;border:none;border-radius:999px;background:rgba(7,14,28,.44);backdrop-filter:blur(12px);color:#fff;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px rgba(0,0,0,.24);transition:transform .18s,background .18s">›</button>' : '')
@@ -3049,7 +3059,7 @@ async function _bgPregenArticleCache(a) {
   } catch(e) {}
 
   try {
-    var v = await _call('List 8 key vocabulary words. Return ONLY a JSON array. Each: {"word":"Korean","reading":"romanization","meaning":"English"}. No other text.', 800);
+    var v = await _call('Extract exactly 8 key vocabulary items from this article that will BEST help a Korean learner at the target level.\n\nPRIORITIZE (in this order):\n1. Topic-specific content words that carry the article\'s meaning — domain nouns, action verbs, descriptive adjectives.\n2. Intermediate-difficulty words the learner likely does not know yet.\n3. Useful collocations or multi-word expressions taken verbatim from the article (e.g., "관심을 갖다", "덕분에", "~는 편이다").\n4. Words with cultural or contextual significance to THIS article.\n\nHARD EXCLUSIONS (do NOT pick these even if frequent):\n- Trivial high-frequency words every learner already knows: 정말, 많이, 너무, 진짜, 아주, 매우, 조금, 좀, 잘, 또, 다, 더, 이미, 그냥, 그리고, 그래서, 하지만, 근데, 만약, 물론, 아마, 특히.\n- Basic nouns: 한국, 사람, 것, 수, 거, 때, 일, 곳, 말, 집, 나, 너, 우리, 저, 제.\n- Bare auxiliary/copula verbs: 있다, 없다, 하다, 되다, 가다, 오다 (these are fine ONLY as part of a multi-word collocation).\n- Particles, postpositions, pronouns, pure numerals, simple dates.\n- Proper nouns unless they are cultural landmarks worth explaining.\n\nFor each item return the DICTIONARY FORM (not a conjugated form). Return ONLY a JSON array of exactly 8 items, each: {"word":"Korean dictionary form","reading":"romanization","meaning":"concise English gloss"}. No other text.', 1200);
     var va = _json(v);
     if (va) _patch.vocab = JSON.stringify(va);
   } catch(e) {}
