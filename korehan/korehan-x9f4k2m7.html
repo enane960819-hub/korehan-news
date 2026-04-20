@@ -202,6 +202,7 @@ a{color:inherit;text-decoration:none}
     <div class="sb-lbl">운영</div>
     <button class="sb-btn" onclick="goUsers()"><span class="ico">👥</span>User Management</button>
     <button class="sb-btn" onclick="goComments()"><span class="ico">🗨️</span>Comment Management</button>
+    <button class="sb-btn" id="sb-speaking" onclick="goSpeakingReviews()"><span class="ico">🎙️</span>Speaking Reviews</button>
     <button class="sb-btn" onclick="goNewsletter()"><span class="ico">📬</span>뉴스레터</button>
     <button class="sb-btn" id="sb-analytics" onclick="goAnalytics()"><span class="ico">📊</span>통계</button>
 
@@ -4138,6 +4139,123 @@ function goComments() {
     '<div class="pg-hd"><div><h1>💬 Comment Management</h1><p>View and reply to comments on all articles.</p></div></div>'
    +'<div id="comments-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ Loading...</div></div>';
   loadAllComments();
+}
+
+// ══ SPEAKING COACH REVIEW QUEUE ══════════════════════════════════════
+// Pro 유저가 보낸 말하기 제출물(speaking_coach_review = true)을
+// 코치/어드민이 검토하고 피드백을 작성. 작성된 피드백은
+// user_submissions.admin_feedback 으로 저장되어 기존 Writing Inbox에서
+// 유저가 그대로 받아봅니다.
+async function goSpeakingReviews() {
+  setSbOn('sb-speaking');
+  var main = document.getElementById('main');
+  main.innerHTML =
+    '<div class="pg-hd"><div><h1>🎙️ Speaking Reviews</h1><p>Pro 유저 말하기 제출물 — 오디오 듣고 24시간 내 피드백 작성.</p></div>'
+    + '<div style="display:flex;gap:8px"><button class="btn" style="font-size:12px;padding:6px 14px;background:#f1f5f9;color:#374151;border:1px solid var(--bo)" onclick="goSpeakingReviews()">🔄 새로고침</button></div></div>'
+    + '<div id="speaking-review-filter" style="padding:12px 0;display:flex;gap:8px;flex-wrap:wrap">'
+      + '<button class="srf-tab on" data-status="submitted" onclick="_speakingFilterTab(this,\'submitted\')" style="padding:6px 14px;border-radius:999px;background:#0d1b2e;color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer">Pending</button>'
+      + '<button class="srf-tab" data-status="admin_approved" onclick="_speakingFilterTab(this,\'admin_approved\')" style="padding:6px 14px;border-radius:999px;background:#fff;color:#374151;border:1px solid var(--bo);font-size:12px;font-weight:700;cursor:pointer">Sent</button>'
+      + '<button class="srf-tab" data-status="all" onclick="_speakingFilterTab(this,\'all\')" style="padding:6px 14px;border-radius:999px;background:#fff;color:#374151;border:1px solid var(--bo);font-size:12px;font-weight:700;cursor:pointer">All</button>'
+    + '</div>'
+    + '<div id="speaking-review-list"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ Loading...</div></div>';
+  await _loadSpeakingReviewQueue('submitted');
+}
+
+var _speakingReviewStatus = 'submitted';
+function _speakingFilterTab(btn, status) {
+  document.querySelectorAll('#speaking-review-filter .srf-tab').forEach(function(b){
+    b.classList.remove('on');
+    b.style.background = '#fff'; b.style.color = '#374151';
+    b.style.border = '1px solid var(--bo)';
+  });
+  btn.classList.add('on');
+  btn.style.background = '#0d1b2e'; btn.style.color = '#fff'; btn.style.border = 'none';
+  _speakingReviewStatus = status;
+  _loadSpeakingReviewQueue(status);
+}
+
+async function _loadSpeakingReviewQueue(status) {
+  var listEl = document.getElementById('speaking-review-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--gr)">⏳ Loading...</div>';
+
+  var path = '/rest/v1/user_submissions'
+    + '?content_type=eq.speaking'
+    + '&speaking_coach_review=eq.true'
+    + (status && status !== 'all' ? '&status=eq.' + encodeURIComponent(status) : '')
+    + '&order=created_at.desc&limit=80';
+  try {
+    var rows = await supaAdminGet(path);
+    if (!Array.isArray(rows) || !rows.length) {
+      listEl.innerHTML = '<div style="padding:48px 24px;text-align:center;color:var(--gr);font-size:14px">대기 중인 제출물이 없습니다.</div>';
+      return;
+    }
+    listEl.innerHTML = rows.map(_renderSpeakingReviewRow).join('');
+  } catch(e) {
+    listEl.innerHTML = '<div style="padding:24px;color:#dc2626">에러: ' + (e.message||e) + '</div>';
+  }
+}
+
+function _renderSpeakingReviewRow(row) {
+  var ctx = {};
+  try { ctx = JSON.parse(row.context_data || '{}'); } catch(e) {}
+  var audioPath = ctx.audio_path || '';
+  // Public URL via signed URL pattern. The avatars bucket is publicly readable
+  // for served avatar files but speaking/* paths inherit the same bucket policy.
+  var audioUrl = audioPath
+    ? SUPA_URL_ADMIN + '/storage/v1/object/public/avatars/' + encodeURI(audioPath)
+    : '';
+  var charCount = ctx.char_count || (row.writing_text || '').length;
+  var levelBadgeColor = { Starter:'#a78bfa', Beginner:'#34d399', Intermediate:'#fbbf24', Advanced:'#f87171' }[row.level] || '#94a3b8';
+  var statusBadge = row.status === 'submitted'
+    ? '<span style="padding:2px 8px;border-radius:6px;background:#fef3c7;color:#92400e;font-size:10px;font-weight:800">PENDING</span>'
+    : (row.status === 'admin_approved' || row.status === 'sent')
+      ? '<span style="padding:2px 8px;border-radius:6px;background:#dcfce7;color:#166534;font-size:10px;font-weight:800">SENT</span>'
+      : '<span style="padding:2px 8px;border-radius:6px;background:#e0e7ff;color:#4338ca;font-size:10px;font-weight:800">' + (row.status||'').toUpperCase() + '</span>';
+  var d = new Date(row.created_at);
+  var when = d.toLocaleString('ko-KR', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
+
+  var existingFb = (row.admin_feedback || '').replace(/"/g,'&quot;');
+  var topicLine = row.topic_ko ? '<div style="font-size:12px;color:#64748b;margin-bottom:4px">📚 ' + escapeHTML(row.topic_ko) + (row.topic_en ? ' · ' + escapeHTML(row.topic_en) : '') + '</div>' : '';
+
+  return '<div class="speaking-review-card" id="srv-' + row.id + '" style="background:#fff;border:1px solid var(--bo);border-radius:14px;padding:18px;margin-bottom:14px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap">'
+      + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+        + statusBadge
+        + '<span style="padding:2px 8px;border-radius:6px;background:' + levelBadgeColor + '20;color:' + levelBadgeColor + ';font-size:10px;font-weight:800">' + (row.level||'?') + '</span>'
+        + '<span style="font-size:11px;color:#64748b">' + when + '</span>'
+        + '<span style="font-size:11px;color:#64748b">' + charCount + ' chars</span>'
+      + '</div>'
+      + '<div style="font-size:10px;color:#94a3b8;font-family:monospace">user: ' + (row.user_id||'').slice(0,8) + '…</div>'
+    + '</div>'
+    + topicLine
+    + (audioUrl ? '<audio controls preload="metadata" src="' + audioUrl + '" style="width:100%;margin-bottom:10px;border-radius:8px"></audio>' : '<div style="color:#dc2626;font-size:12px;margin-bottom:10px">⚠ Audio path missing</div>')
+    + '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;font-size:13px;color:#0f172a;line-height:1.6;margin-bottom:12px;white-space:pre-wrap;font-family:\'Noto Serif KR\',serif">' + (row.writing_text ? escapeHTML(row.writing_text) : '<span style="color:#94a3b8;font-style:italic">(no transcript)</span>') + '</div>'
+    + '<div style="font-size:11px;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">코치 피드백</div>'
+    + '<textarea id="srv-fb-' + row.id + '" placeholder="발음/억양/유창성/자연스러움 한 줄씩 피드백 작성…" style="width:100%;min-height:120px;padding:10px 12px;border:1px solid var(--bo);border-radius:10px;font-family:inherit;font-size:13px;line-height:1.6;resize:vertical;box-sizing:border-box">' + existingFb + '</textarea>'
+    + '<div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">'
+      + '<button onclick="_saveSpeakingFeedback(\'' + row.id + '\', false)" style="padding:8px 16px;border-radius:10px;background:#fff;border:1px solid var(--bo);color:#475569;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit">💾 Draft</button>'
+      + '<button onclick="_saveSpeakingFeedback(\'' + row.id + '\', true)" style="padding:8px 18px;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(124,58,237,.25)">✓ Send to user</button>'
+    + '</div>'
+  + '</div>';
+}
+
+async function _saveSpeakingFeedback(submissionId, sendToUser) {
+  var ta = document.getElementById('srv-fb-' + submissionId);
+  if (!ta) return;
+  var text = (ta.value || '').trim();
+  if (!text) { toast('피드백을 입력하세요', true); return; }
+
+  var patch = { admin_feedback: text };
+  if (sendToUser) patch.status = 'admin_approved';
+  try {
+    await supaAdminPatch('/rest/v1/user_submissions?id=eq.' + encodeURIComponent(submissionId), patch);
+    toast(sendToUser ? '✓ 유저에게 전송됨' : '✓ 임시 저장됨');
+    if (sendToUser) {
+      var card = document.getElementById('srv-' + submissionId);
+      if (card && _speakingReviewStatus === 'submitted') card.style.display = 'none';
+    }
+  } catch(e) { toast('Error: ' + (e.message||e), true); }
 }
 
 async function loadAllComments() {
