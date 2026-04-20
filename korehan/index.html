@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="korehan-shared.css?v=20260324b">
+<link rel="stylesheet" href="korehan-shared.css?v=20260420a">
 <style>
 /* ── HOME REDESIGN ─────────────────────────────────────── */
 
@@ -206,18 +206,28 @@
   .ds-actions { border-left: 0; border-top: 1px solid rgba(255,255,255,.1); }
 }
 
-/* Section header */
+/* Section header — tighter rhythm with accent bar */
 .home-sec {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  margin: 24px 0 10px;
-  padding-top: 12px;
-  padding-bottom: 8px;
-  border-top: 1px solid var(--border);
-  border-bottom: 2px solid var(--dark);
+  margin: 32px 0 12px;
+  padding: 0 0 10px;
+  border-top: none;
+  border-bottom: 1px solid rgba(15,23,42,.08);
+  position: relative;
 }
-.home-sec:first-of-type { border-top: none; padding-top: 0; }
+.home-sec::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 36px;
+  height: 2px;
+  background: var(--bright, #2563eb);
+  border-radius: 2px;
+}
+.home-sec:first-of-type { margin-top: 24px; }
 .home-sec-title {
   display: inline-flex;
   align-items: center;
@@ -226,16 +236,24 @@
   font-size: 20px;
   font-weight: 900;
   color: var(--dark);
+  letter-spacing: -.01em;
 }
 .home-sec-sub { font-size: 12px; color: var(--gray); font-style: italic; }
 .home-sec-more {
   margin-left: auto;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
   color: var(--bright);
   text-decoration: none;
 }
 .home-sec-more:hover { text-decoration: underline; }
+@media (max-width: 640px) {
+  .home-sec { margin: 26px 0 10px; }
+  .home-sec-title { font-size: 17px; }
+  .home-sec-more { font-size: 10px; }
+}
 
 /* Pills */
 .home-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
@@ -958,7 +976,7 @@ body.kh-neon-on .hero-dot {
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260410b"></script>
+<script src="korehan-shared.js?v=20260420a"></script>
 <script>
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},
