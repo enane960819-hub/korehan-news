@@ -1355,16 +1355,40 @@
           snap.scores.vocabulary = Math.min(100, Math.round(snap.scores.vocabulary * 0.6 + reviewVocab * 0.4));
         }
 
-        // Writing: based on review participation + accuracy
-        var reviewWriting = weightedAvg(writingScores);
-        var writingBase = Math.min(30, reviews.length * 2); // participation score
-        snap.scores.writing = Math.min(100, writingBase + Math.round(reviewWriting * 0.7));
+        // Writing: rubric-based (replaces old count-based heuristic).
+        // We pull the AI-graded rubric averages via RPC; if a user has
+        // no AI-reviewed writings yet we fall back to participation.
+        try {
+          var { data: rub } = await sb.rpc('get_recent_writing_rubric', { p_days: 14 });
+          if (rub && rub.samples > 0 && rub.overall > 0) {
+            snap.scores.writing = Math.round(rub.overall);
+            snap.writing_rubric = rub; // surfaced to the UI for a per-axis mini-chart
+          } else {
+            // Fallback: light participation-only signal so the axis isn't 0 for new users
+            snap.scores.writing = Math.min(60, reviews.length * 3);
+          }
+        } catch(rubErr) {
+          snap.scores.writing = Math.min(60, reviews.length * 3);
+        }
 
         // Listening: review-based for now
         var reviewListening = weightedAvg(listeningScores);
         snap.scores.listening = Math.min(100, Math.max(snap.scores.listening, reviewListening));
       }
     } catch(e) {}
+
+    // Reading axis — ground in actual WPM (from finish_read_event).
+    // 0-250 WPM maps linearly to 0-100; 250+ wpm caps at 100.
+    try {
+      var { data: wpmData } = await sb.rpc('get_recent_wpm', { p_days: 14 });
+      if (wpmData && wpmData.samples > 0) {
+        var wpm = Number(wpmData.wpm) || 0;
+        var wpmScore = Math.max(0, Math.min(100, Math.round(wpm / 2.5)));
+        // Blend: 60% WPM + 40% original engagement-based reading score.
+        snap.scores.reading = Math.max(snap.scores.reading, Math.round(snap.scores.reading * 0.4 + wpmScore * 0.6));
+        snap.reading_wpm = wpmData;
+      }
+    } catch(wErr) {}
 
     // read_articles + user_read_history → review queue + read history (last 30 days)
     try {
