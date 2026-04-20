@@ -462,13 +462,16 @@
     state.stars = starsGroup;
 
     // Satellites — related words orbiting the selected star (rebuilt per selection)
+    // Parented to starsGroup so the whole satellite cluster rides the same
+    // rotation as the parent star (no coordinate-frame drift).
     var satGroup = new three.Group();
-    scene.add(satGroup);
+    starsGroup.add(satGroup);
     state.satellites = satGroup;
 
-    // Category label group — big floating pills at each cluster center
+    // Category label group — big floating pills at each cluster center.
+    // Lives under starsGroup too so labels hover with their clusters.
     var catGroup = new three.Group();
-    scene.add(catGroup);
+    starsGroup.add(catGroup);
     state.categories = catGroup;
 
     rebuildWordStars(three, starsGroup);
@@ -487,17 +490,27 @@
   }
 
   function rebuildWordStars(three, group) {
-    // Clear word-star group — dispose label textures too
-    while (group.children.length) {
-      var c = group.children.pop();
+    // Clear word-star group — dispose label textures too. Preserve sub-groups
+    // (satellites, categories) by reparenting them back after the wipe.
+    var preserved = [];
+    var kids = group.children.slice();
+    kids.forEach(function(c) {
+      if (c === state.satellites || c === state.categories) {
+        preserved.push(c);
+        group.remove(c);
+        return;
+      }
+      group.remove(c);
       if (c.material) {
         if (c.material.map && c.userData && c.userData.isLabel) {
           try { c.material.map.dispose(); } catch(_) {}
         }
         c.material.dispose();
       }
-    }
-    // Also clear the categories group (rebuilt alongside stars)
+    });
+    preserved.forEach(function(g){ group.add(g); });
+
+    // Clear the categories group (rebuilt alongside stars)
     if (state.categories) {
       while (state.categories.children.length) {
         var cc = state.categories.children.pop();
