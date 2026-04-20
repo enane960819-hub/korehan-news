@@ -1,6 +1,16 @@
-# Speaking Coach — Daily Pass Setup
+# Speaking Coach — Coin Wallet Setup
 
-End-to-end steps to wire up the $1/$3 daily coach pass for Pro users.
+End-to-end steps to wire up the $1-per-coin human coach review wallet
+for Pro users.
+
+**Model (v3):**
+- 1 coin = $1 = 1 submission to a human coach
+- Minimum purchase 5 coins ($5), max 200
+- Coins persist in the user's wallet (no daily expiry)
+- Level still controls char cap:
+  - Seed/Sprout → 250 char cap
+  - Tree → 500 char cap
+  - Forest → Not sold (1:1 tutoring upsell)
 
 ---
 
@@ -9,33 +19,37 @@ End-to-end steps to wire up the $1/$3 daily coach pass for Pro users.
 Supabase dashboard → **SQL Editor** → paste and run:
 
 ```
-supabase/migrations/20260421_speaking_coach_daily_pass.sql
+supabase/migrations/20260422_speaking_coach_wallet.sql
 ```
 
 This creates:
 
-- `speaking_coach_passes` table (one pass per user per KST day)
-- `get_speaking_pass_status(level)` — RPC for the UI badge
+- `user_speaking_coins` (persistent wallet: `coins_remaining`,
+  `total_purchased`, `total_submitted`)
+- `speaking_coin_purchases` (Stripe checkout history with UNIQUE
+  constraint on `stripe_session_id` for idempotency)
+- `get_speaking_wallet_status(level)` — RPC for the UI badge
 - `consume_speaking_coin(level)` — atomic decrement at submit time
-- `create_speaking_pass(...)` — service-role RPC called by the webhook
+- `grant_speaking_coins(...)` — service-role RPC called by the webhook
 
-It also drops the old v1 free-quota RPCs. The `user_speaking_coins`
-table from v1 is left in place (no longer used for gating, kept for
-lifetime-submit analytics).
+It drops the v2 pass RPCs but does NOT delete the `speaking_coach_passes`
+table — left for historical audit.
 
 ---
 
-## 2. Create the two Stripe products
+## 2. Create ONE Stripe product — `Coach Coin`
 
 **Stripe dashboard → Products → Add product.**
 
-| Name                           | Price     | Currency | Type       |
-|--------------------------------|-----------|----------|------------|
-| Speaking Coach Pass — Seed/Sprout | **$1**  | USD      | One-time   |
-| Speaking Coach Pass — Tree        | **$3**  | USD      | One-time   |
+| Name         | Price | Currency | Type     |
+|--------------|-------|----------|----------|
+| Coach Coin   | **$1** | USD     | One-time |
 
-Open each product, click the price row, and copy its **Price ID**
-(`price_…`). You'll paste these into Supabase secrets below.
+Open the product, click the price row, copy the **Price ID** (`price_…`).
+
+> Why just one? The checkout Edge Function uses Stripe's line-item
+> `quantity` field to scale, so `qty=5` charges $5, `qty=20` charges $20.
+> One price → any pack size with zero extra Stripe config.
 
 ---
 
@@ -47,12 +61,11 @@ Open each product, click the price row, and copy its **Price ID**
 |-----------------------------|--------------------------------------------|
 | `STRIPE_SECRET_KEY`         | `sk_test_…` (test) or `sk_live_…` (prod)   |
 | `STRIPE_WEBHOOK_SECRET`     | `whsec_…` (set after step 5)               |
-| `STRIPE_PRICE_SEED_SPROUT`  | `price_…` from the $1 product              |
-| `STRIPE_PRICE_TREE`         | `price_…` from the $3 product              |
+| `STRIPE_PRICE_COACH_COIN`   | `price_…` from the $1 product              |
 | `APP_BASE_URL`              | `https://korehannews.com` (or your domain) |
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` are
-injected automatically.
+injected automatically by Supabase.
 
 ---
 
@@ -65,9 +78,9 @@ supabase functions deploy speaking-pass-checkout
 supabase functions deploy speaking-pass-webhook --no-verify-jwt
 ```
 
-The webhook MUST be deployed with `--no-verify-jwt` because Stripe does
-not send a Supabase JWT — the function verifies the Stripe signature
-header instead.
+The webhook MUST use `--no-verify-jwt` because Stripe does not send a
+Supabase JWT — the function verifies the `Stripe-Signature` header
+itself.
 
 ---
 
@@ -78,46 +91,45 @@ Stripe dashboard → **Developers → Webhooks → Add endpoint**.
 - **Endpoint URL**: `https://<your-project-ref>.functions.supabase.co/speaking-pass-webhook`
 - **Events**: `checkout.session.completed`
 
-Click the endpoint after creating, reveal the **signing secret**
-(`whsec_…`), and paste it into the `STRIPE_WEBHOOK_SECRET` Supabase
-secret from step 3. Redeploy the webhook function after updating the
-secret so the new value is picked up.
+Reveal the **signing secret** (`whsec_…`), paste it into the
+`STRIPE_WEBHOOK_SECRET` secret from step 3, and **redeploy** the
+webhook function so the new value is picked up.
 
 ---
 
 ## 6. End-to-end test (Stripe test mode)
 
-1. Use a card like `4242 4242 4242 4242`, any future expiry, any CVC.
-2. Log into the app as a user whose `user_subscriptions.plan = 'pro'`
-   and `status = 'active'` (toggle via the admin user-management page).
-3. Open the writing modal → Speaking section → tap the `💳 Buy today's
-   coach pass · $1` badge.
-4. Complete Stripe Checkout.
-5. You should be redirected back to the Study Room with `?coach_pass=ok`;
-   the badge flips to `🪙 Today's pass · 5 / 5 coins`.
-6. Record + click **Send to Human Coach** → coin decrements to 4.
-7. In the admin `🎙️ Speaking Reviews` page you should see the pending
-   submission. Write feedback, click **Send to user** → status flips to
-   `admin_approved` and the user sees it in the Writing Feedback inbox.
+1. Test card: `4242 4242 4242 4242`, any future expiry, any CVC.
+2. Log in as a user with `user_subscriptions.plan = 'pro'` (toggle via
+   admin user-management if needed).
+3. Open Study Room → Writing modal → Speaking section → tap the badge
+   (`💳 Buy coach coins · $1 / coin`) → the purchase modal opens.
+4. Pick a pack (5, 10, or 20 coins) → complete Stripe Checkout.
+5. Redirect back to Study Room with `?coach_coins=ok`. Badge flips to
+   green: `🪙 5 coach coins · +buy`.
+6. Record + **Send to Human Coach** → balance decrements by 1.
+7. Admin `🎙️ Speaking Reviews` page shows the pending submission.
+   Write feedback → **Send to user** → user sees it in the Writing
+   Feedback inbox.
 
 ---
 
 ## 7. Going live
 
-- Replace `sk_test_…` / `whsec_…` / `price_…` with live values.
-- Update the Stripe webhook endpoint to the live signing secret.
-- Everything else is identical.
+- Swap `sk_test_…` → `sk_live_…`
+- Create the product in live mode and update `STRIPE_PRICE_COACH_COIN`
+- Re-register the webhook for live mode, update
+  `STRIPE_WEBHOOK_SECRET`, redeploy the webhook function.
 
 ---
 
-## Runtime gates (defence in depth)
+## Defence-in-depth recap
 
-- `user_subscriptions.plan = 'pro'` — checked in the checkout Edge
-  Function BEFORE creating the Stripe session, and in the client via
-  `requirePlan('speaking_feedback')`.
-- `create_speaking_pass` — RPC refuses to run unless the caller's JWT
-  role is `service_role` (Edge Function uses the service key).
-- `consume_speaking_coin` — row-level lock on the active pass row;
-  cannot over-consume even under concurrent submissions.
-- `speaking_coach_passes.stripe_session_id` is `UNIQUE`, so a replayed
-  webhook cannot double-grant.
+| Control | Where |
+|---|---|
+| Pro-only purchase | `requirePlan('speaking_feedback')` FE + `user_subscriptions` check in Edge Function |
+| Min/max coins enforced | Checkout Edge Function (`MIN_COINS=5`, `MAX_COINS=200`) |
+| Wallet writes | `grant_speaking_coins` refuses unless JWT role is `service_role` (webhook only) |
+| Idempotent grants | `speaking_coin_purchases.stripe_session_id UNIQUE` — replayed webhooks no-op |
+| No over-consume | `consume_speaking_coin` uses `FOR UPDATE` row lock |
+| Forest never sold | `_speaking_level_meta('Advanced').sellable = false` + FE redirect modal |
