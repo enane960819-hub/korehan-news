@@ -7445,6 +7445,84 @@ function injectDailyMission() {
 // ══ END TTS ENGINE ═════════════════════════════════════════════════════════════
 
 
+// ══ CARD TILT — desktop 3D hover polish ═══════════════════════════════════
+// Gives `.story-card`, `.sc`, and `.hconv-card` a subtle mouse-tracked
+// perspective tilt on desktop pointers only. No-ops on touch so scrolling
+// and taps stay fast. Delegation at body level → new cards (rail rebuilds,
+// infinite scroll, etc.) pick it up automatically.
+(function() {
+  if (typeof window === 'undefined' || !window.matchMedia) return;
+  if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+  var TILT_SELECTOR = '.story-card, .sc, .hconv-card';
+  var MAX_DEG = 6;          // edge-of-card tilt in either axis
+  var LIFT = 4;              // px translateZ lift on hover
+  var TRANS_DUR = '.18s';
+
+  function ensureStyles() {
+    if (document.getElementById('kh-tilt-styles')) return;
+    var s = document.createElement('style');
+    s.id = 'kh-tilt-styles';
+    s.textContent = [
+      /* Parent rails need perspective so children tilt in 3D */
+      '.home-story-grid,.home-conv-grid-wrap,.st-grid,.st-rail-scroll{perspective:1100px;}',
+      '.story-card,.sc,.hconv-card{transform-style:preserve-3d;will-change:transform;}',
+      '.story-card.kh-tilt,.sc.kh-tilt,.hconv-card.kh-tilt{transition:transform ' + TRANS_DUR + ' cubic-bezier(.22,1,.36,1),box-shadow ' + TRANS_DUR + ';}',
+      /* Subtle specular highlight follows cursor via --kh-tx / --kh-ty */
+      '.story-card.kh-tilt::before,.sc.kh-tilt::before,.hconv-card.kh-tilt::before{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle at var(--kh-tx,50%) var(--kh-ty,50%),rgba(255,255,255,.18),rgba(255,255,255,0) 42%);opacity:0;transition:opacity ' + TRANS_DUR + ';pointer-events:none;z-index:3;mix-blend-mode:soft-light;}',
+      '.story-card.kh-tilting::before,.sc.kh-tilting::before,.hconv-card.kh-tilting::before{opacity:1;}'
+    ].join('');
+    document.head.appendChild(s);
+  }
+
+  var activeCard = null;
+
+  function onMove(e) {
+    var card = e.target && e.target.closest ? e.target.closest(TILT_SELECTOR) : null;
+    if (!card) { if (activeCard) reset(activeCard); return; }
+    if (card !== activeCard) {
+      if (activeCard) reset(activeCard);
+      activeCard = card;
+      card.classList.add('kh-tilt');
+    }
+    var rect = card.getBoundingClientRect();
+    var relX = (e.clientX - rect.left) / rect.width;   // 0..1
+    var relY = (e.clientY - rect.top)  / rect.height;
+    var rotY = (relX - 0.5) * 2 * MAX_DEG;             // left-right → Y axis
+    var rotX = -(relY - 0.5) * 2 * MAX_DEG;            // up-down → X axis
+    card.style.transform =
+      'translate3d(0,-' + LIFT + 'px,0) rotateX(' + rotX.toFixed(2) + 'deg) rotateY(' + rotY.toFixed(2) + 'deg)';
+    card.style.setProperty('--kh-tx', (relX * 100).toFixed(1) + '%');
+    card.style.setProperty('--kh-ty', (relY * 100).toFixed(1) + '%');
+    card.classList.add('kh-tilting');
+  }
+
+  function reset(card) {
+    if (!card) return;
+    card.style.transform = '';
+    card.classList.remove('kh-tilting');
+    if (card === activeCard) activeCard = null;
+  }
+
+  function onLeave(e) {
+    var card = e.target && e.target.closest ? e.target.closest(TILT_SELECTOR) : null;
+    if (card) reset(card);
+  }
+
+  function init() {
+    ensureStyles();
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerleave', onLeave, true);
+    document.addEventListener('pointercancel', onLeave, true);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+
 // ══ MOBILE SIDEBAR ══════════════════════════════════════════════════════════
 
 function khInjectSidebar() {

@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Study Room — KoreHani</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260420e">
+<link rel="stylesheet" href="korehan-shared.css?v=20260420g">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260416">
 <style>
 /* ─── LAYOUT ─────────────────────────────── */
@@ -1857,6 +1857,9 @@ body { background: #0b1626 !important; }
 .su-complete-icon { font-size:48px;margin-bottom:12px; }
 .su-complete-title { font-size:22px;font-weight:900;color:#0f172a;margin-bottom:4px; }
 .su-complete-sub { font-size:14px;color:#64748b;margin-bottom:20px; }
+.su-complete-stars { max-width:380px;margin:0 auto 24px;padding:18px 16px 14px;border-radius:16px;background:linear-gradient(180deg,rgba(15,23,42,.96),rgba(24,15,48,.96));border:1px solid rgba(167,139,250,.28);box-shadow:0 10px 28px rgba(80,60,160,.18),inset 0 1px 0 rgba(255,255,255,.05); }
+.su-complete-stars-label { font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(244,209,132,.82);margin-bottom:10px; }
+.su-complete-canvas { display:block;width:100%;height:180px; }
 
 /* ── Dark mode overrides ── */
 body.kh-dark .su-panel { background:#0f172a; }
@@ -3325,12 +3328,13 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260420e"></script>
+<script src="korehan-shared.js?v=20260420g"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
 <script src="js/kh-quiz-arena.js?v=20260416"></script>
 <script src="js/kh-flashcards.js?v=20260416"></script>
 <script src="js/kh-listening.js?v=20260416"></script>
 <script src="js/kh-grammar-tree.js?v=20260416"></script>
+<script src="js/kh-universe.js?v=20260420g"></script>
 <script src="js/kh-sentence-builder.js?v=20260416"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
@@ -16544,11 +16548,108 @@ function asMarkDone() {
     +'<div class="su-complete-icon">🎉</div>'
     +'<div class="su-complete-title">Article Study Complete!</div>'
     +'<div class="su-complete-sub">You\'ve completed all learning steps for this article.</div>'
+    +'<div class="su-complete-stars"><div class="su-complete-stars-label">✨ Words you just reviewed</div><canvas id="as-complete-canvas" class="su-complete-canvas"></canvas></div>'
     +'<button class="su-nav-next" onclick="asSubmitWork()" style="margin:0 auto 10px;display:flex">Save Progress</button>'
     +'<button class="su-nav-prev" onclick="returnToActivities(closeArticleStudy)" style="margin:0 auto;display:flex">Next Activity</button>'
     +'</div>';
   _asSetNav('none','none','none');
   _asRefreshSubmitBanner();
+  setTimeout(_asDrawCompleteConstellation, 50);
+}
+
+// ── Mini vocab constellation on completion screen ──
+function _asDrawCompleteConstellation() {
+  var canvas = document.getElementById('as-complete-canvas');
+  if (!canvas || !canvas.getContext) return;
+  var vocab = (_asStudyContent && _asStudyContent.vocab) || [];
+  if (!vocab.length) { canvas.style.display='none'; return; }
+
+  var DPR = Math.min(window.devicePixelRatio || 1, 2);
+  var W = canvas.clientWidth || 320;
+  var H = 180;
+  canvas.width = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  canvas.style.height = H + 'px';
+  var ctx = canvas.getContext('2d');
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  // Layout — jittered grid
+  var count = Math.min(vocab.length, 12);
+  var cols  = Math.ceil(Math.sqrt(count * (W / H)));
+  var rows  = Math.ceil(count / cols);
+  var cellW = W / (cols + 1);
+  var cellH = H / (rows + 1);
+  var positions = [];
+  for (var i = 0; i < count; i++) {
+    var col = i % cols, row = Math.floor(i / cols);
+    positions.push({
+      x: cellW * (col + 1) + (Math.random() - 0.5) * cellW * 0.45,
+      y: cellH * (row + 1) + (Math.random() - 0.5) * cellH * 0.35,
+      label: vocab[i].ko || vocab[i].word || ''
+    });
+  }
+
+  var state = { t: 0, running: true };
+  function draw() {
+    if (!state.running) return;
+    state.t += 0.02;
+    ctx.clearRect(0, 0, W, H);
+
+    // Connections between nearby stars
+    var threshold = Math.max(cellW, cellH) * 1.6;
+    for (var i = 0; i < positions.length; i++) {
+      for (var j = i + 1; j < positions.length; j++) {
+        var dx = positions[j].x - positions[i].x;
+        var dy = positions[j].y - positions[i].y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < threshold) {
+          var alpha = 0.18 * (1 - dist / threshold);
+          ctx.strokeStyle = 'rgba(167,139,250,' + alpha + ')';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(positions[i].x, positions[i].y);
+          ctx.lineTo(positions[j].x, positions[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Stars with gold twinkle (all considered "learned")
+    for (var k = 0; k < positions.length; k++) {
+      var p = positions[k];
+      var twinkle = 0.65 + 0.35 * (0.5 + 0.5 * Math.sin(state.t * 1.2 + k * 0.7));
+      // Glow halo
+      var glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 20);
+      glow.addColorStop(0, 'rgba(244,209,132,' + (0.55 * twinkle) + ')');
+      glow.addColorStop(0.5, 'rgba(244,169,60,' + (0.15 * twinkle) + ')');
+      glow.addColorStop(1, 'rgba(244,169,60,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(p.x - 20, p.y - 20, 40, 40);
+      // Core dot
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3 + twinkle * 0.8, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,231,176,' + (0.85 * twinkle) + ')';
+      ctx.fill();
+      // Label
+      ctx.font = '700 10px "Noto Sans KR",sans-serif';
+      ctx.fillStyle = 'rgba(244,209,132,' + (0.78 * twinkle) + ')';
+      ctx.textAlign = 'center';
+      ctx.fillText(p.label, p.x, p.y + 18);
+    }
+    requestAnimationFrame(draw);
+  }
+
+  // Pause animation when the completion card leaves the viewport
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (e.isIntersecting && !state.running) { state.running = true; draw(); }
+        else if (!e.isIntersecting) { state.running = false; }
+      });
+    });
+    io.observe(canvas);
+  }
+  draw();
 }
 
 // ── Temp save ──
@@ -16925,6 +17026,15 @@ setTimeout(renderCompletedStudies, 500);
     <div style="font-size:24px;margin-bottom:6px">📚</div>
     <h2 style="margin:0 0 4px;font-size:18px;font-weight:900">내 단어장</h2>
     <p style="margin:0 0 14px;font-size:13px;color:rgba(255,255,255,.5)">Your saved words — tap any word to see its meaning</p>
+    <button type="button" onclick="openUniverseView()" id="wb-universe-btn"
+      style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 16px;margin-bottom:14px;border:1px solid rgba(167,139,250,.4);border-radius:14px;background:linear-gradient(135deg,rgba(124,58,237,.22),rgba(56,189,248,.14));color:#fff;font-size:13px;font-weight:900;letter-spacing:.02em;cursor:pointer;font-family:inherit;box-shadow:0 8px 24px rgba(124,58,237,.22),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .15s,box-shadow .15s,border-color .15s;position:relative;overflow:hidden">
+      <span style="font-size:18px;filter:drop-shadow(0 0 6px rgba(196,181,253,.6))">🌌</span>
+      <span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.2">
+        <span style="font-size:14px;font-weight:900;letter-spacing:.01em">Universe View</span>
+        <span style="font-size:10px;font-weight:700;color:rgba(196,181,253,.85);letter-spacing:.1em;text-transform:uppercase">3D galaxy of your vocabulary</span>
+      </span>
+      <span style="margin-left:auto;font-size:14px;color:rgba(255,255,255,.6)">→</span>
+    </button>
     <div id="wb-search-wrap" style="margin-bottom:14px">
       <input type="text" id="wb-search" placeholder="Search words..." oninput="filterWordBank()" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-family:inherit;outline:none">
     </div>
@@ -16933,6 +17043,24 @@ setTimeout(renderCompletedStudies, 500);
     </div>
   </div>
 </div>
+
+<script>
+// Open the 3D vocabulary galaxy from the Word Bank modal.
+// Pulls from _wbAllWords which is loaded on Study Room init.
+function openUniverseView() {
+  if (typeof KHUniverse === 'undefined' || !KHUniverse.open) {
+    if (typeof toast === 'function') toast('Universe engine not ready', true);
+    return;
+  }
+  var words = (typeof _wbAllWords !== 'undefined' && _wbAllWords) ? _wbAllWords.slice() : [];
+  if (!words.length) {
+    if (typeof toast === 'function') toast('Save some words first to build your galaxy', true);
+    else alert('Save some words first to build your galaxy');
+    return;
+  }
+  KHUniverse.open({ words: words, title: 'Your Vocabulary Universe' });
+}
+</script>
 
 <!-- ══════════════════════════════════════════
      KEY EXPRESSIONS MODAL

@@ -1,0 +1,679 @@
+/* ────────────────────────────────────────────────────────────
+ * KHUniverse — 3D vocabulary galaxy (Three.js)
+ *
+ * Lazy-loads three.js via ESM dynamic import on first open so the
+ * ~150KB payload never touches users who don't open the view.
+ *
+ * Public API (set on window.KHUniverse):
+ *   open(opts)   — opens the fullscreen modal
+ *     opts.words       : Array<{ko, en, rom, review_count?, correct_count?}>
+ *     opts.title?      : string   (header title)
+ *   close()      — closes the modal, disposes GL resources
+ *
+ * This step (S1) renders a placeholder galaxy from the provided words
+ * with orbit camera + nebula background. Click interactions, related
+ * words, and the Universe button come in later steps.
+ * ──────────────────────────────────────────────────────────── */
+(function() {
+  var OVERLAY_ID = 'kh-universe-overlay';
+  var THREE = null;          // cached Three module
+  var _threeLoading = null;  // promise during first load
+
+  var state = {
+    open: false,
+    renderer: null,
+    scene: null,
+    camera: null,
+    clock: null,
+    animId: null,
+    stars: null,           // THREE.Group of word sprites
+    nebula: null,          // background points
+    glowTex: null,
+    words: [],
+    raycaster: null,       // THREE.Raycaster for picking
+    pointerNDC: { x: 0, y: 0 },
+    selected: null,        // { sprite, word, baseScale }
+    hovered: null,         // { sprite, baseScale }
+    // Orbit camera state
+    cam: { theta: 0, phi: Math.PI * 0.42, radius: 52, target: { x: 0, y: 0, z: 0 } },
+    drag: null,            // { startX, startY, theta, phi } while dragging
+    autoRotate: true,
+  };
+
+  // ── Three.js lazy load (ESM from esm.sh) ────────────────────
+  function loadThree() {
+    if (THREE) return Promise.resolve(THREE);
+    if (_threeLoading) return _threeLoading;
+    _threeLoading = import('https://esm.sh/three@0.160.0').then(function(m) {
+      THREE = m;
+      return THREE;
+    });
+    return _threeLoading;
+  }
+
+  // ── DOM helpers ─────────────────────────────────────────────
+  function ensureOverlay() {
+    var ov = document.getElementById(OVERLAY_ID);
+    if (ov) return ov;
+    ov = document.createElement('div');
+    ov.id = OVERLAY_ID;
+    ov.className = 'kh-universe-overlay';
+    ov.innerHTML = [
+      '<div class="khu-header">',
+      '  <div class="khu-header-info">',
+      '    <div class="khu-eyebrow">Vocabulary</div>',
+      '    <div class="khu-title" id="khu-title">Your Universe</div>',
+      '  </div>',
+      '  <div class="khu-stats" id="khu-stats"></div>',
+      '  <button class="khu-close" onclick="KHUniverse.close()" aria-label="Close">✕</button>',
+      '</div>',
+      '<canvas class="khu-canvas" id="khu-canvas"></canvas>',
+      '<div class="khu-hint" id="khu-hint">Drag to orbit · Scroll to zoom · Tap a star</div>',
+      '<div class="khu-card" id="khu-card" aria-hidden="true">',
+      '  <button class="khu-card-close" aria-label="Close" onclick="KHUniverse._clearSelection()">✕</button>',
+      '  <div class="khu-card-badge" id="khu-card-badge">—</div>',
+      '  <div class="khu-card-ko" id="khu-card-ko"></div>',
+      '  <div class="khu-card-rom" id="khu-card-rom"></div>',
+      '  <div class="khu-card-en"  id="khu-card-en"></div>',
+      '  <div class="khu-card-related" id="khu-card-related"></div>',
+      '</div>',
+      '<div class="khu-loading" id="khu-loading"><div class="khu-spin"></div><div>Loading your galaxy…</div></div>'
+    ].join('');
+    document.body.appendChild(ov);
+    injectStyles();
+    return ov;
+  }
+
+  function injectStyles() {
+    if (document.getElementById('kh-universe-styles')) return;
+    var s = document.createElement('style');
+    s.id = 'kh-universe-styles';
+    s.textContent = [
+      '.kh-universe-overlay{position:fixed;inset:0;z-index:9500;background:radial-gradient(ellipse at center,#0a0e22 0%,#04060f 70%,#02030a 100%);display:none;opacity:0;transition:opacity .35s ease;}',
+      '.kh-universe-overlay.open{display:block;opacity:1;}',
+      '.khu-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;}',
+      '.khu-header{position:absolute;top:0;left:0;right:0;z-index:2;display:flex;align-items:center;gap:14px;padding:18px 20px;pointer-events:none;}',
+      '.khu-header > *{pointer-events:auto;}',
+      '.khu-header-info{flex:1;min-width:0;}',
+      '.khu-eyebrow{font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(180,200,255,.55);}',
+      '.khu-title{font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:22px;font-weight:900;color:#fff;line-height:1.1;margin-top:2px;text-shadow:0 2px 14px rgba(120,100,255,.35);}',
+      '.khu-stats{font-size:11px;font-weight:800;letter-spacing:.06em;color:rgba(200,210,255,.7);padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);white-space:nowrap;}',
+      '.khu-close{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(15,20,40,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fff;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,transform .12s;}',
+      '.khu-close:hover{background:rgba(255,255,255,.15);transform:scale(1.06);}',
+      '.khu-hint{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);z-index:2;font-size:11px;letter-spacing:.08em;color:rgba(180,200,255,.45);pointer-events:none;animation:khuHintFade 6s ease-in-out 1s forwards;}',
+      '@keyframes khuHintFade{0%,60%{opacity:1;}100%{opacity:0;}}',
+      '.khu-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:rgba(200,210,255,.75);font-size:13px;letter-spacing:.04em;z-index:3;pointer-events:none;transition:opacity .3s;}',
+      '.khu-loading.hidden{opacity:0;pointer-events:none;}',
+      '.khu-spin{width:28px;height:28px;border-radius:50%;border:2px solid rgba(180,200,255,.18);border-top-color:#a78bfa;animation:khuSpin .9s linear infinite;}',
+      '@keyframes khuSpin{to{transform:rotate(360deg);}}',
+      /* Word card */
+      '.khu-card{position:absolute;left:50%;bottom:24px;transform:translate(-50%,12px);z-index:4;width:min(420px,calc(100vw - 28px));background:linear-gradient(180deg,rgba(20,24,44,.92),rgba(10,12,28,.96));border:1px solid rgba(167,139,250,.3);border-radius:18px;padding:20px 22px 16px;color:#fff;-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);box-shadow:0 24px 60px rgba(80,60,200,.25),0 0 0 1px rgba(255,255,255,.04) inset;opacity:0;pointer-events:none;transition:opacity .22s ease,transform .22s cubic-bezier(.22,1,.36,1);}',
+      '.khu-card.show{opacity:1;transform:translate(-50%,0);pointer-events:auto;}',
+      '.khu-card-close{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);font-size:12px;cursor:pointer;font-family:inherit;transition:background .15s,color .15s;}',
+      '.khu-card-close:hover{background:rgba(255,255,255,.16);color:#fff;}',
+      '.khu-card-badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;padding:3px 10px;border-radius:999px;margin-bottom:10px;}',
+      '.khu-card-badge.lvl-new{background:rgba(167,139,250,.2);color:#c4b5fd;border:1px solid rgba(167,139,250,.35);}',
+      '.khu-card-badge.lvl-learning{background:rgba(78,205,196,.2);color:#7ee9e0;border:1px solid rgba(78,205,196,.4);}',
+      '.khu-card-badge.lvl-mastered{background:rgba(244,169,60,.2);color:#ffd089;border:1px solid rgba(244,169,60,.45);}',
+      '.khu-card-ko{font-family:\'Noto Serif KR\',serif;font-size:26px;font-weight:900;line-height:1.15;letter-spacing:-.01em;margin-bottom:2px;text-shadow:0 2px 10px rgba(120,100,255,.3);}',
+      '.khu-card-rom{font-size:12px;font-style:italic;color:rgba(200,210,255,.5);margin-bottom:6px;}',
+      '.khu-card-en{font-size:14px;font-weight:700;color:#a8c4ff;line-height:1.4;margin-bottom:12px;}',
+      '.khu-card-related{display:flex;flex-wrap:wrap;gap:6px;min-height:0;}',
+      '.khu-card-related:empty{display:none;}',
+      '.khu-related-label{flex:0 0 100%;font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(200,210,255,.5);margin:4px 0 4px;}',
+      '.khu-related-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#e0e4ff;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);border-radius:999px;padding:5px 10px 5px 11px;cursor:pointer;font-family:inherit;transition:background .12s,transform .12s,border-color .12s,color .15s;}',
+      '.khu-related-chip-ko{font-family:\'Noto Sans KR\',sans-serif;}',
+      '.khu-related-chip-plus{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.14);font-size:11px;font-weight:900;line-height:1;color:rgba(255,255,255,.72);}',
+      '.khu-related-chip:hover{background:rgba(167,139,250,.25);border-color:rgba(196,181,253,.6);transform:translateY(-1px);}',
+      '.khu-related-chip.saving{opacity:.6;pointer-events:none;}',
+      '.khu-related-chip.saved{background:linear-gradient(135deg,rgba(78,205,196,.28),rgba(167,139,250,.2));border-color:rgba(78,205,196,.55);color:#c7fff7;cursor:default;}',
+      '.khu-related-chip.saved .khu-related-chip-plus{background:rgba(78,205,196,.8);color:#053b39;}',
+      '.khu-related-chip.error{background:rgba(244,63,94,.25);border-color:rgba(244,63,94,.55);}',
+      '.khu-related-chip-loading{font-size:11px;color:rgba(200,210,255,.4);font-style:italic;padding:4px 0;flex:0 0 100%;}',
+      '@media(max-width:560px){.khu-card{left:12px;right:12px;bottom:12px;transform:translate(0,12px);width:auto;}.khu-card.show{transform:translate(0,0);}}',
+    ].join('\n');
+    document.head.appendChild(s);
+  }
+
+  // ── Galaxy geometry ────────────────────────────────────────
+  // Arrange N words in a 4-arm spiral galaxy. Mastery (0..1) → shift
+  // closer to the galactic core + brighter.
+  function galaxyPosition(i, total, mastery) {
+    var arms = 4;
+    var t = i / Math.max(1, total);
+    var arm = i % arms;
+    var distance = Math.pow(t, 0.65) * 38 + 3;   // outer radius ~41
+    distance *= (1 - mastery * 0.28);            // mastered words drift in
+    var armAngle = (arm / arms) * Math.PI * 2;
+    var twist = distance * 0.18;
+    var jitter = (Math.random() - 0.5) * 2.2;
+    var angle = armAngle + twist + jitter;
+    var y = (Math.random() - 0.5) * (1.5 + distance * 0.05);
+    return {
+      x: Math.cos(angle) * distance,
+      y: y,
+      z: Math.sin(angle) * distance
+    };
+  }
+
+  function wordMastery(w) {
+    // Use SRS review counts if present; otherwise fall back to a mid value.
+    var c = (w && w.correct_count) || 0;
+    var r = (w && w.review_count)  || 0;
+    if (r <= 0) return 0.1;
+    return Math.max(0, Math.min(1, c / Math.max(r, 3)));
+  }
+
+  function masteryColor(m) {
+    // m in [0..1] → lavender → mint → gold
+    if (m < 0.4) return { r: 0.66, g: 0.55, b: 0.98 };   // lavender
+    if (m < 0.75) return { r: 0.31, g: 0.80, b: 0.77 };  // mint
+    return { r: 0.96, g: 0.66, b: 0.24 };                // gold
+  }
+
+  // ── Textures ────────────────────────────────────────────────
+  function makeGlowTexture(three) {
+    var c = document.createElement('canvas');
+    c.width = c.height = 128;
+    var ctx = c.getContext('2d');
+    var g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0.00, 'rgba(255,255,255,1)');
+    g.addColorStop(0.18, 'rgba(255,255,255,0.85)');
+    g.addColorStop(0.45, 'rgba(200,180,255,0.28)');
+    g.addColorStop(1.00, 'rgba(100,80,200,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 128, 128);
+    var tex = new three.CanvasTexture(c);
+    tex.colorSpace = three.SRGBColorSpace || three.sRGBEncoding;
+    return tex;
+  }
+
+  // ── Build scene ─────────────────────────────────────────────
+  function buildScene(three, canvas) {
+    var scene = new three.Scene();
+    scene.background = null;
+    scene.fog = new three.FogExp2(0x040612, 0.012);
+
+    var w = canvas.clientWidth, h = canvas.clientHeight;
+    var camera = new three.PerspectiveCamera(55, w / h, 0.1, 500);
+    updateCameraFromOrbit(camera);
+
+    var renderer = new three.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(w, h, false);
+    renderer.setClearColor(0x000000, 0);
+
+    state.glowTex = makeGlowTexture(three);
+
+    // Background nebula — 1200 tiny dim stars in a sphere
+    var nebGeo = new three.BufferGeometry();
+    var nebCount = 1200;
+    var nebPos = new Float32Array(nebCount * 3);
+    var nebCol = new Float32Array(nebCount * 3);
+    for (var i = 0; i < nebCount; i++) {
+      var r = 80 + Math.random() * 140;
+      var a = Math.random() * Math.PI * 2;
+      var b = Math.acos(2 * Math.random() - 1);
+      nebPos[i * 3 + 0] = r * Math.sin(b) * Math.cos(a);
+      nebPos[i * 3 + 1] = r * Math.cos(b) * 0.5;
+      nebPos[i * 3 + 2] = r * Math.sin(b) * Math.sin(a);
+      var bri = 0.35 + Math.random() * 0.45;
+      var tint = Math.random();
+      nebCol[i * 3 + 0] = bri * (tint < 0.5 ? 0.75 : 1.0);
+      nebCol[i * 3 + 1] = bri * 0.85;
+      nebCol[i * 3 + 2] = bri * (tint > 0.5 ? 1.0 : 0.85);
+    }
+    nebGeo.setAttribute('position', new three.BufferAttribute(nebPos, 3));
+    nebGeo.setAttribute('color',    new three.BufferAttribute(nebCol, 3));
+    var nebMat = new three.PointsMaterial({
+      size: 0.55, vertexColors: true, transparent: true, opacity: 0.9,
+      blending: three.AdditiveBlending, depthWrite: false, sizeAttenuation: true
+    });
+    state.nebula = new three.Points(nebGeo, nebMat);
+    scene.add(state.nebula);
+
+    // Word stars — individual Sprites so each is clickable later
+    var starsGroup = new three.Group();
+    scene.add(starsGroup);
+    state.stars = starsGroup;
+
+    rebuildWordStars(three, starsGroup);
+
+    // Soft ambient glow at the core
+    var core = new three.PointLight(0x9080ff, 1.4, 60, 1.6);
+    core.position.set(0, 0, 0);
+    scene.add(core);
+
+    state.scene = scene;
+    state.camera = camera;
+    state.renderer = renderer;
+    state.clock = new three.Clock();
+
+    window.addEventListener('resize', onResize);
+  }
+
+  function rebuildWordStars(three, group) {
+    // Clear existing
+    while (group.children.length) {
+      var c = group.children.pop();
+      if (c.material) c.material.dispose();
+    }
+    var words = state.words || [];
+    for (var i = 0; i < words.length; i++) {
+      var w = words[i];
+      var m = wordMastery(w);
+      var pos = galaxyPosition(i, words.length, m);
+      var col = masteryColor(m);
+      var mat = new three.SpriteMaterial({
+        map: state.glowTex,
+        color: new three.Color(col.r, col.g, col.b),
+        transparent: true,
+        opacity: 0.55 + m * 0.4,
+        blending: three.AdditiveBlending,
+        depthWrite: false,
+      });
+      var sprite = new three.Sprite(mat);
+      sprite.position.set(pos.x, pos.y, pos.z);
+      var size = 1.1 + m * 1.6;
+      sprite.scale.set(size, size, 1);
+      sprite.userData = { word: w, mastery: m, idx: i };
+      group.add(sprite);
+    }
+  }
+
+  function updateCameraFromOrbit(camera) {
+    var c = state.cam;
+    camera.position.x = c.target.x + c.radius * Math.sin(c.phi) * Math.cos(c.theta);
+    camera.position.y = c.target.y + c.radius * Math.cos(c.phi);
+    camera.position.z = c.target.z + c.radius * Math.sin(c.phi) * Math.sin(c.theta);
+    camera.lookAt(c.target.x, c.target.y, c.target.z);
+  }
+
+  // ── Orbit controls (custom, lightweight) ────────────────────
+  function bindControls(canvas) {
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
+    canvas.addEventListener('pointerup',   onPointerUp);
+    canvas.addEventListener('pointercancel', onPointerUp);
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+  }
+  function unbindControls(canvas) {
+    if (!canvas) return;
+    canvas.removeEventListener('pointerdown', onPointerDown);
+    canvas.removeEventListener('pointermove', onPointerMove);
+    canvas.removeEventListener('pointerup',   onPointerUp);
+    canvas.removeEventListener('pointercancel', onPointerUp);
+    canvas.removeEventListener('wheel', onWheel);
+  }
+
+  function onPointerDown(e) {
+    state.drag = {
+      startX: e.clientX, startY: e.clientY,
+      theta: state.cam.theta, phi: state.cam.phi,
+      id: e.pointerId, moved: 0,
+      downTime: Date.now()
+    };
+    state.autoRotate = false;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch(_) {}
+  }
+  function onPointerMove(e) {
+    if (!state.drag) return;
+    var dx = e.clientX - state.drag.startX;
+    var dy = e.clientY - state.drag.startY;
+    state.drag.moved = Math.max(state.drag.moved, Math.abs(dx) + Math.abs(dy));
+    state.cam.theta = state.drag.theta - dx * 0.006;
+    state.cam.phi   = Math.max(0.15, Math.min(Math.PI - 0.15, state.drag.phi - dy * 0.005));
+    updateCameraFromOrbit(state.camera);
+  }
+  function onPointerUp(e) {
+    var d = state.drag;
+    state.drag = null;
+    // Treat as a tap if pointer didn't travel much and was brief
+    if (d && d.moved < 6 && (Date.now() - d.downTime) < 400) {
+      handleTap(e.clientX, e.clientY, e.currentTarget || state.renderer.domElement);
+    }
+  }
+  function onWheel(e) {
+    e.preventDefault();
+    var next = state.cam.radius * (e.deltaY > 0 ? 1.12 : 0.89);
+    state.cam.radius = Math.max(14, Math.min(120, next));
+    updateCameraFromOrbit(state.camera);
+  }
+
+  // ── Raycast picking ────────────────────────────────────────
+  function handleTap(clientX, clientY, canvas) {
+    if (!THREE || !state.stars || !state.camera) return;
+    if (!state.raycaster) state.raycaster = new THREE.Raycaster();
+    // Make the pick radius forgiving for sprite/finger targets
+    if ('params' in state.raycaster && state.raycaster.params && state.raycaster.params.Sprite === undefined) {
+      state.raycaster.params.Sprite = {};
+    }
+    var rect = canvas.getBoundingClientRect();
+    state.pointerNDC.x = ((clientX - rect.left) / rect.width)  * 2 - 1;
+    state.pointerNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    state.raycaster.setFromCamera(state.pointerNDC, state.camera);
+    var hits = state.raycaster.intersectObjects(state.stars.children, false);
+    if (hits && hits.length) {
+      selectStar(hits[0].object);
+    } else {
+      clearSelection();
+    }
+  }
+
+  function selectStar(sprite) {
+    if (!sprite || !sprite.userData || !sprite.userData.word) return;
+    // Restore previous
+    if (state.selected && state.selected.sprite && state.selected.sprite !== sprite) {
+      var prev = state.selected.sprite;
+      prev.scale.set(state.selected.baseScale, state.selected.baseScale, 1);
+      if (prev.material) prev.material.opacity = state.selected.baseOpacity;
+    }
+    var base = sprite.scale.x;
+    state.selected = {
+      sprite: sprite,
+      word: sprite.userData.word,
+      baseScale: base,
+      baseOpacity: sprite.material ? sprite.material.opacity : 1,
+    };
+    // Emphasize selected
+    var boost = base * 1.6;
+    sprite.scale.set(boost, boost, 1);
+    if (sprite.material) sprite.material.opacity = 1;
+    renderWordCard(sprite.userData.word, sprite.userData.mastery || 0);
+    // Glide camera toward the star (smooth target shift, no radius change)
+    var p = sprite.position;
+    animateTarget(p.x * 0.45, p.y * 0.45, p.z * 0.45);
+  }
+
+  function clearSelection() {
+    if (!state.selected) return;
+    var s = state.selected.sprite;
+    if (s) {
+      s.scale.set(state.selected.baseScale, state.selected.baseScale, 1);
+      if (s.material) s.material.opacity = state.selected.baseOpacity;
+    }
+    state.selected = null;
+    hideWordCard();
+    animateTarget(0, 0, 0);
+  }
+
+  function animateTarget(tx, ty, tz) {
+    // Simple interpolated shift of camera target over ~24 frames
+    var start = { x: state.cam.target.x, y: state.cam.target.y, z: state.cam.target.z };
+    var steps = 24, i = 0;
+    function step() {
+      if (!state.open || !state.camera) return;
+      i++;
+      var t = Math.min(1, i / steps);
+      // ease-out cubic
+      var e = 1 - Math.pow(1 - t, 3);
+      state.cam.target.x = start.x + (tx - start.x) * e;
+      state.cam.target.y = start.y + (ty - start.y) * e;
+      state.cam.target.z = start.z + (tz - start.z) * e;
+      updateCameraFromOrbit(state.camera);
+      if (t < 1) requestAnimationFrame(step);
+    }
+    step();
+  }
+
+  // ── Word card render ───────────────────────────────────────
+  function renderWordCard(word, mastery) {
+    var card = document.getElementById('khu-card');
+    if (!card) return;
+    var badgeCls, badgeLbl;
+    if (mastery < 0.4)      { badgeCls = 'lvl-new';       badgeLbl = 'New'; }
+    else if (mastery < 0.75){ badgeCls = 'lvl-learning';  badgeLbl = 'Learning'; }
+    else                    { badgeCls = 'lvl-mastered';  badgeLbl = 'Mastered'; }
+    var badge = document.getElementById('khu-card-badge');
+    var ko    = document.getElementById('khu-card-ko');
+    var rom   = document.getElementById('khu-card-rom');
+    var en    = document.getElementById('khu-card-en');
+    var related = document.getElementById('khu-card-related');
+    if (badge) { badge.className = 'khu-card-badge ' + badgeCls; badge.textContent = badgeLbl; }
+    if (ko)  ko.textContent  = word.word_ko || word.ko || '';
+    if (rom) rom.textContent = word.word_rom || word.rom || '';
+    if (en)  en.textContent  = word.word_en || word.en || '';
+    if (related) related.innerHTML = '<span class="khu-related-chip-loading">Finding related words…</span>';
+    card.classList.add('show');
+    card.setAttribute('aria-hidden', 'false');
+    // Async: related words (cached after first fetch per word)
+    var wordKey = word.word_ko || word.ko;
+    fetchRelatedWords(word).then(function(list) {
+      // Only render if this word is still the active selection
+      if (!state.selected || !state.selected.word) return;
+      var activeKey = state.selected.word.word_ko || state.selected.word.ko;
+      if (activeKey !== wordKey) return;
+      renderRelatedChips(list);
+    });
+  }
+
+  function hideWordCard() {
+    var card = document.getElementById('khu-card');
+    if (!card) return;
+    card.classList.remove('show');
+    card.setAttribute('aria-hidden', 'true');
+  }
+
+  // ── Related words (cached forever in localStorage) ─────────
+  var RELATED_KEY = function(ko) { return 'kh_related_' + ko; };
+
+  function readRelatedFromCache(ko) {
+    try {
+      var raw = localStorage.getItem(RELATED_KEY(ko));
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch(_) { return null; }
+  }
+  function writeRelatedToCache(ko, list) {
+    try { localStorage.setItem(RELATED_KEY(ko), JSON.stringify(list)); } catch(_) {}
+  }
+
+  // Enrich any related word with rom/en from the in-memory VOCAB map if
+  // we have it (populated by loadVocabFromDB on pages that include it).
+  function enrichFromVocabBank(list) {
+    if (!window.VOCAB) return list;
+    return list.map(function(w) {
+      if (w.en && w.rom) return w;
+      var v = window.VOCAB[w.ko];
+      if (v) {
+        return { ko: w.ko, rom: w.rom || v.rom || '', en: w.en || v.en || '' };
+      }
+      return w;
+    });
+  }
+
+  async function fetchRelatedWords(word) {
+    var ko = word.word_ko || word.ko || '';
+    if (!ko) return [];
+    // 1) localStorage cache
+    var cached = readRelatedFromCache(ko);
+    if (cached && cached.length) return enrichFromVocabBank(cached);
+    // 2) Ask Claude Haiku — returns 5 semantically related items
+    if (typeof callClaude !== 'function') return [];
+    var en = word.word_en || word.en || '';
+    var prompt = 'Generate exactly 5 Korean vocabulary words that are semantically related to "' + ko + '"'
+      + (en ? ' (meaning: ' + en + ')' : '')
+      + '. Rules:\n'
+      + '- Related by topic, category, or meaning family (synonyms, antonyms, same domain, common collocations).\n'
+      + '- Use the DICTIONARY FORM for verbs and adjectives (ending in -다).\n'
+      + '- Avoid trivial high-frequency words (정말, 많이, 너무, 진짜, 아주, 매우, 조금, 좀, 잘, 또, 다, 더, 그냥, 그리고, 그래서, 한국, 사람, 것, 수, 거, 때, 말).\n'
+      + '- Include at least 2 intermediate-difficulty words.\n'
+      + 'Return ONLY a JSON array of 5 items, each: {"ko":"Korean","rom":"romanization","en":"concise English gloss"}. No other text.';
+    try {
+      var res = await callClaude({
+        feature: 'related-words',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 600,
+        messages: [{ role: 'user', content: prompt }]
+      });
+      var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+      var ai = text.indexOf('['), bi = text.lastIndexOf(']');
+      if (ai >= 0 && bi > ai) text = text.slice(ai, bi + 1);
+      var arr = JSON.parse(text);
+      if (!Array.isArray(arr)) return [];
+      arr = arr.filter(function(x) { return x && x.ko; }).slice(0, 5);
+      writeRelatedToCache(ko, arr);
+      return enrichFromVocabBank(arr);
+    } catch(_) {
+      return [];
+    }
+  }
+
+  // ── Save a related word into the user's word bank ──────────
+  async function saveRelatedWord(rel) {
+    if (!rel || !rel.ko) return false;
+    if (typeof supaUser === 'undefined' || !supaUser || typeof getSupa !== 'function') return false;
+    var sb = getSupa();
+    if (!sb) return false;
+    try {
+      // Prefer the RPC path used elsewhere (sets SRS interval, respects dedupe)
+      if (sb.rpc) {
+        var r = await sb.rpc('save_or_update_word', {
+          p_word_key: rel.ko,
+          p_word_ko:  rel.ko,
+          p_word_rom: rel.rom || '',
+          p_word_en:  rel.en  || '',
+          p_source:   'universe'
+        });
+        if (!r.error) return true;
+      }
+      // Fallback direct upsert
+      var up = await sb.from('user_saved_words').upsert({
+        user_id: supaUser.id,
+        word_ko: rel.ko, word_rom: rel.rom || '', word_en: rel.en || ''
+      });
+      return !up.error;
+    } catch(_) { return false; }
+  }
+
+  // ── Render related chips into the open card ────────────────
+  function renderRelatedChips(relatedList) {
+    var wrap = document.getElementById('khu-card-related');
+    if (!wrap) return;
+    if (!relatedList || !relatedList.length) {
+      wrap.innerHTML = '<span class="khu-related-chip-loading">No related words found.</span>';
+      return;
+    }
+    var html = '<div class="khu-related-label">Related Words</div>';
+    html += relatedList.map(function(r, idx) {
+      var ko  = (r.ko || '').replace(/</g,'&lt;');
+      var en  = (r.en || '').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+      return '<button class="khu-related-chip" data-idx="' + idx + '" title="' + en + '">'
+        + '<span class="khu-related-chip-ko">' + ko + '</span>'
+        + '<span class="khu-related-chip-plus" aria-hidden="true">＋</span>'
+        + '</button>';
+    }).join('');
+    wrap.innerHTML = html;
+    // Bind save-on-click
+    var chips = wrap.querySelectorAll('.khu-related-chip');
+    chips.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var i = parseInt(btn.getAttribute('data-idx'), 10);
+        var rel = relatedList[i];
+        if (!rel) return;
+        btn.classList.add('saving');
+        saveRelatedWord(rel).then(function(ok) {
+          btn.classList.remove('saving');
+          if (ok) {
+            btn.classList.add('saved');
+            btn.querySelector('.khu-related-chip-plus').textContent = '✓';
+            btn.setAttribute('aria-disabled', 'true');
+          } else {
+            btn.classList.add('error');
+            setTimeout(function(){ btn.classList.remove('error'); }, 900);
+          }
+        });
+      });
+    });
+  }
+
+  function onResize() {
+    var r = state.renderer, cam = state.camera;
+    if (!r || !cam) return;
+    var canvas = r.domElement;
+    var w = canvas.clientWidth, h = canvas.clientHeight;
+    cam.aspect = w / h;
+    cam.updateProjectionMatrix();
+    r.setSize(w, h, false);
+  }
+
+  // ── Render loop ─────────────────────────────────────────────
+  function tick() {
+    state.animId = requestAnimationFrame(tick);
+    var dt = state.clock ? state.clock.getDelta() : 0.016;
+    if (state.autoRotate) {
+      state.cam.theta += dt * 0.06;
+      updateCameraFromOrbit(state.camera);
+    }
+    if (state.nebula) state.nebula.rotation.y += dt * 0.008;
+    if (state.stars)  state.stars.rotation.y  += dt * 0.015;
+    state.renderer.render(state.scene, state.camera);
+  }
+
+  // ── Public API ──────────────────────────────────────────────
+  var KHUniverse = {};
+
+  function onKeydown(e) {
+    if (!state.open) return;
+    if (e.key === 'Escape' || e.key === 'Esc') {
+      if (state.selected) clearSelection();
+      else KHUniverse.close();
+    }
+  }
+
+  KHUniverse.open = function(opts) {
+    opts = opts || {};
+    var overlay = ensureOverlay();
+    var loading = document.getElementById('khu-loading');
+    overlay.classList.add('open');
+    state.open = true;
+    state.words = (opts.words || []).slice(0, 600);
+    document.addEventListener('keydown', onKeydown);
+
+    // Header
+    var titleEl = document.getElementById('khu-title');
+    if (titleEl) titleEl.textContent = opts.title || 'Your Vocabulary Universe';
+    var statsEl = document.getElementById('khu-stats');
+    if (statsEl) statsEl.textContent = '⭐ ' + state.words.length + ' stars';
+
+    // Lock body scroll
+    document.body.style.overflow = 'hidden';
+
+    loadThree().then(function(three) {
+      if (!state.open) return; // closed before load finished
+      var canvas = document.getElementById('khu-canvas');
+      // Size canvas to overlay
+      canvas.width  = canvas.clientWidth  * (window.devicePixelRatio || 1);
+      canvas.height = canvas.clientHeight * (window.devicePixelRatio || 1);
+      if (state.renderer) {
+        // Re-entry: rebuild stars only
+        state.words && rebuildWordStars(three, state.stars);
+      } else {
+        buildScene(three, canvas);
+        bindControls(canvas);
+      }
+      if (loading) loading.classList.add('hidden');
+      if (!state.animId) tick();
+    }).catch(function(err) {
+      if (loading) loading.innerHTML = '<div style="color:#fca5a5">Could not load the galaxy engine.</div>';
+      console.warn('[KHUniverse] three load failed', err);
+    });
+  };
+
+  KHUniverse.close = function() {
+    state.open = false;
+    var overlay = document.getElementById(OVERLAY_ID);
+    if (overlay) overlay.classList.remove('open');
+    if (state.animId) { cancelAnimationFrame(state.animId); state.animId = null; }
+    if (state.renderer) unbindControls(state.renderer.domElement);
+    clearSelection();
+    document.removeEventListener('keydown', onKeydown);
+    document.body.style.overflow = '';
+  };
+
+  // Exposed for the in-card close button
+  KHUniverse._clearSelection = clearSelection;
+
+  window.KHUniverse = KHUniverse;
+})();

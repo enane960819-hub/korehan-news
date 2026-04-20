@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="korehan-shared.css?v=20260420e">
+<link rel="stylesheet" href="korehan-shared.css?v=20260420g">
 <style>
 /* ── HOME REDESIGN ─────────────────────────────────────── */
 
@@ -51,6 +51,16 @@
   line-height: 1;
   letter-spacing: -8px;
   z-index: 0;
+}
+/* Ambient starfield canvas — sits under the daily-strip content */
+.daily-strip .ds-starfield {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: .9;
 }
 .daily-strip > * { position: relative; z-index: 1; }
 
@@ -981,6 +991,176 @@ body.kh-neon-on .hero-dot {
     </div>
   </div>
 
+  <script>
+  /* ───────────────────────────────────────────────────────────
+     Daily-strip ambient starfield
+     Drifting stars + occasional twinkles under the phrase card.
+     Pauses when off-screen and respects prefers-reduced-motion.
+     ─────────────────────────────────────────────────────────── */
+  (function(){
+    var strip = document.querySelector('.daily-strip');
+    if (!strip) return;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+
+    var canvas = document.createElement('canvas');
+    canvas.className = 'ds-starfield';
+    strip.insertBefore(canvas, strip.firstChild);
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    var DPR = Math.min(window.devicePixelRatio || 1, 2);
+    var W = 0, H = 0;
+    var stars = [];
+    var shooters = [];
+    var active = true;
+    var raf = 0;
+    var lastT = 0;
+
+    function sizeCanvas() {
+      var r = strip.getBoundingClientRect();
+      W = Math.max(320, Math.round(r.width));
+      H = Math.max(180, Math.round(r.height));
+      canvas.width  = Math.round(W * DPR);
+      canvas.height = Math.round(H * DPR);
+      canvas.style.width  = W + 'px';
+      canvas.style.height = H + 'px';
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+
+    function makeStars() {
+      stars = [];
+      // Scale count to card size, between 55 and 120
+      var count = Math.max(55, Math.min(120, Math.round(W * H / 2200)));
+      for (var i = 0; i < count; i++) {
+        stars.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          z: 0.25 + Math.random() * 0.95,      // depth → size + drift speed
+          r: Math.random() * 1.2 + 0.25,
+          tw: Math.random() * Math.PI * 2,     // twinkle phase
+          tws: 0.4 + Math.random() * 1.2,      // twinkle speed
+          vx: (Math.random() - 0.5) * 0.015,   // horizontal drift (tiny)
+          tint: Math.random() < 0.18 ? 'gold' : (Math.random() < 0.33 ? 'mint' : 'lavender')
+        });
+      }
+    }
+
+    function colorFor(tint, alpha) {
+      if (tint === 'gold')     return 'rgba(244,209,132,' + alpha + ')';
+      if (tint === 'mint')     return 'rgba(140,235,220,' + alpha + ')';
+      return 'rgba(196,181,253,' + alpha + ')';
+    }
+
+    function spawnShooter() {
+      // Occasional gentle shooting star
+      var y0 = Math.random() * H * 0.7;
+      var dir = Math.random() < 0.5 ? 1 : -1;
+      shooters.push({
+        x: dir > 0 ? -30 : W + 30,
+        y: y0,
+        vx: dir * (120 + Math.random() * 140),
+        vy: 18 + Math.random() * 28,
+        life: 0,
+        maxLife: 0.9 + Math.random() * 0.5,
+        tint: Math.random() < 0.5 ? 'gold' : 'lavender'
+      });
+    }
+
+    function tick(t) {
+      if (!active) { raf = 0; return; }
+      var dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 0.016;
+      lastT = t;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // Drift + twinkle stars
+      for (var i = 0; i < stars.length; i++) {
+        var s = stars[i];
+        s.x += s.vx * s.z * dt * 60;
+        s.tw += s.tws * dt;
+        if (s.x < -5)     s.x = W + 5;
+        if (s.x > W + 5)  s.x = -5;
+        var twinkle = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(s.tw));
+        var alpha   = (0.28 + s.z * 0.55) * twinkle;
+        var rad     = s.r * (0.85 + s.z * 0.9);
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, rad, 0, Math.PI * 2);
+        ctx.fillStyle = colorFor(s.tint, alpha);
+        ctx.fill();
+        // Subtle halo for brighter/foreground stars
+        if (s.z > 0.7) {
+          var glow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, rad * 5);
+          glow.addColorStop(0, colorFor(s.tint, alpha * 0.35));
+          glow.addColorStop(1, colorFor(s.tint, 0));
+          ctx.fillStyle = glow;
+          ctx.fillRect(s.x - rad * 5, s.y - rad * 5, rad * 10, rad * 10);
+        }
+      }
+
+      // Shooting stars
+      if (Math.random() < dt * 0.18) spawnShooter();
+      for (var j = shooters.length - 1; j >= 0; j--) {
+        var sh = shooters[j];
+        sh.life += dt;
+        sh.x += sh.vx * dt;
+        sh.y += sh.vy * dt;
+        var ratio = sh.life / sh.maxLife;
+        if (ratio >= 1 || sh.x < -60 || sh.x > W + 60) { shooters.splice(j, 1); continue; }
+        var a = Math.sin(ratio * Math.PI);
+        var tailX = sh.x - sh.vx * 0.16;
+        var tailY = sh.y - sh.vy * 0.16;
+        var grad = ctx.createLinearGradient(tailX, tailY, sh.x, sh.y);
+        grad.addColorStop(0, colorFor(sh.tint, 0));
+        grad.addColorStop(1, colorFor(sh.tint, 0.85 * a));
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(tailX, tailY);
+        ctx.lineTo(sh.x, sh.y);
+        ctx.stroke();
+      }
+
+      raf = requestAnimationFrame(tick);
+    }
+
+    function start() {
+      if (raf) return;
+      lastT = 0;
+      raf = requestAnimationFrame(tick);
+    }
+    function stop() {
+      active = false;
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    }
+    function resume() {
+      active = true;
+      start();
+    }
+
+    sizeCanvas(); makeStars();
+    start();
+
+    // Pause when out of view or when tab hidden
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){ e.isIntersecting ? resume() : stop(); });
+      });
+      io.observe(strip);
+    }
+    document.addEventListener('visibilitychange', function(){
+      document.hidden ? stop() : resume();
+    });
+
+    // Resize handling — debounced
+    var resizeT = 0;
+    window.addEventListener('resize', function(){
+      clearTimeout(resizeT);
+      resizeT = setTimeout(function(){ sizeCanvas(); makeStars(); }, 120);
+    });
+  })();
+  </script>
+
   <!-- NEWS -->
   <div class="home-sec">
     <div class="home-sec-title"><i data-lucide="newspaper" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>News</span></div>
@@ -1017,7 +1197,7 @@ body.kh-neon-on .hero-dot {
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260420e"></script>
+<script src="korehan-shared.js?v=20260420g"></script>
 <script>
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},
