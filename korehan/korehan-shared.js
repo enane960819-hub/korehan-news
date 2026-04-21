@@ -3974,10 +3974,12 @@ function renderArticleVocab(a) {
     }
     if (!items.length) {
       el.innerHTML = '<div style="padding:20px;color:#94a3b8;font-size:13px;text-align:center">No vocabulary available for this article yet.</div>';
+      _appendAdminAddVocabButton(el, a);
       return;
     }
     _renderArticleVocabItems(el, items);
     syncIntoHover(items);
+    _appendAdminAddVocabButton(el, a);
   }
 
   var inline = normalize(a && a.vocab);
@@ -3993,6 +3995,132 @@ function renderArticleVocab(a) {
   getFromCache('article', artId, 'ai_analysis').then(function(cached) {
     finalize(normalize(cached && cached.vocab));
   }).catch(function() { finalize([]); });
+}
+
+// ── Admin-only "+ Add Word" button on the article Vocab tab ──────────────
+// Lets an admin append a word to THIS article's article_cache.vocab (not
+// the sitewide VOCAB / vocabulary_bank — that's what openVocabEditModal
+// handles). Shown only when window._isAdmin is truthy.
+function _appendAdminAddVocabButton(listEl, article) {
+  if (!listEl || !article || !article.id) return;
+  if (!window._isAdmin) return;
+  // Don't duplicate if already present
+  if (listEl.querySelector('[data-admin-add-vocab]')) return;
+  var btn = document.createElement('button');
+  btn.setAttribute('data-admin-add-vocab', '1');
+  btn.type = 'button';
+  btn.textContent = '+ Add word to this article';
+  btn.style.cssText = 'margin-top:10px;width:100%;padding:10px 14px;border:1.5px dashed #a78bfa;border-radius:10px;background:rgba(167,139,250,.08);color:#6d28d9;font-size:12px;font-weight:800;letter-spacing:.02em;cursor:pointer;font-family:inherit;transition:background .15s,border-color .15s';
+  btn.onmouseover = function(){ btn.style.background = 'rgba(167,139,250,.18)'; btn.style.borderColor = '#7c3aed'; };
+  btn.onmouseout  = function(){ btn.style.background = 'rgba(167,139,250,.08)'; btn.style.borderColor = '#a78bfa'; };
+  btn.onclick = function(){ openArticleVocabAddModal(article); };
+  listEl.appendChild(btn);
+}
+
+function openArticleVocabAddModal(article) {
+  if (!article || !article.id) return;
+  var old = document.getElementById('kh-article-vocab-add');
+  if (old) old.remove();
+  var modal = document.createElement('div');
+  modal.id = 'kh-article-vocab-add';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.65);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML =
+      '<div style="background:#fff;border-radius:16px;padding:22px;max-width:440px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.3);">'
+    + '<div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#a78bfa;margin-bottom:4px">Article Vocabulary</div>'
+    + '<div style="font-size:16px;font-weight:900;color:#0f172a;margin-bottom:14px;">Add word to <span style="color:#6d28d9">' + (article.title || 'this article').slice(0, 48) + '</span></div>'
+    + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">Korean word <span style="color:#e53e3e">*</span></label>'
+    + '<input id="avm-ko" placeholder="예: 갖추다" style="width:100%;padding:10px 12px;border:2px solid #a78bfa;border-radius:8px;font-size:16px;font-family:\'Noto Serif KR\',serif;margin-bottom:10px;box-sizing:border-box;" autofocus>'
+    + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">Romanization</label>'
+    + '<input id="avm-rom" placeholder="gatchuda" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:10px;box-sizing:border-box;">'
+    + '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">English meaning <span style="color:#e53e3e">*</span></label>'
+    + '<input id="avm-en" placeholder="to equip / have ready" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:6px;box-sizing:border-box;">'
+    + '<div id="avm-err" style="font-size:12px;color:#e53e3e;margin-bottom:10px;display:none;"></div>'
+    + '<div style="display:flex;gap:8px;margin-top:12px;">'
+    +   '<button id="avm-save" style="flex:1;padding:11px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:800;cursor:pointer;">Add to article</button>'
+    +   '<button id="avm-cancel" style="padding:11px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Cancel</button>'
+    + '</div></div>';
+  document.body.appendChild(modal);
+  var koInput = modal.querySelector('#avm-ko');
+  var romInput = modal.querySelector('#avm-rom');
+  var enInput = modal.querySelector('#avm-en');
+  var errEl = modal.querySelector('#avm-err');
+  modal.onclick = function(e){ if (e.target === modal) modal.remove(); };
+  modal.querySelector('#avm-cancel').onclick = function(){ modal.remove(); };
+  modal.querySelector('#avm-save').onclick = async function() {
+    var ko = (koInput.value || '').trim();
+    var rom = (romInput.value || '').trim();
+    var en = (enInput.value || '').trim();
+    if (!ko || !/[가-힣]/.test(ko)) {
+      errEl.textContent = 'Please enter a Korean word.'; errEl.style.display = 'block'; return;
+    }
+    if (!en) { errEl.textContent = 'Please enter the English meaning.'; errEl.style.display = 'block'; return; }
+    var saveBtn = modal.querySelector('#avm-save');
+    saveBtn.textContent = 'Saving…'; saveBtn.disabled = true;
+    try {
+      var ok = await _saveArticleVocabAppend(article, { ko: ko, rom: rom, en: en });
+      if (!ok) {
+        errEl.textContent = 'Save failed. Check console.'; errEl.style.display = 'block';
+        saveBtn.textContent = 'Add to article'; saveBtn.disabled = false;
+        return;
+      }
+      modal.remove();
+      if (typeof showToast === 'function') showToast('📚 "' + ko + '" added');
+      // Re-render the Vocab tab so the new word appears immediately
+      try { renderArticleVocab(article); } catch(_) {}
+    } catch (e) {
+      errEl.textContent = (e && e.message) || 'Save failed.'; errEl.style.display = 'block';
+      saveBtn.textContent = 'Add to article'; saveBtn.disabled = false;
+    }
+  };
+}
+
+async function _saveArticleVocabAppend(article, entry) {
+  if (!article || !article.id || !entry || !entry.ko) return false;
+  if (typeof getSupa !== 'function') return false;
+  var sb = getSupa();
+  if (!sb) return false;
+  try {
+    // 1) Fetch current article_cache.vocab via getFromCache so we handle
+    // both "wide" and "kv" schemas the same way downstream code does.
+    var cached = (typeof getFromCache === 'function')
+      ? await getFromCache('article', article.id, 'ai_analysis')
+      : null;
+    var current = (cached && Array.isArray(cached.vocab)) ? cached.vocab.slice() : [];
+    // 2) Dedup on dictionary form
+    var has = current.some(function(v){
+      var key = (v.word || v.ko || v.word_ko || '');
+      return key === entry.ko;
+    });
+    if (has) {
+      if (typeof showToast === 'function') showToast('"' + entry.ko + '" already in the list');
+      return true;
+    }
+    // 3) Append in the shape the renderer + validator expect
+    current.push({ word: entry.ko, reading: entry.rom || '', meaning: entry.en || '', context: '' });
+    // 4) Persist via shared upsertArticleCacheRow (handles both schemas)
+    if (typeof upsertArticleCacheRow === 'function') {
+      await upsertArticleCacheRow(article.id, { vocab: JSON.stringify(current) });
+    } else {
+      await sb.from('article_cache').upsert({
+        article_id: String(article.id),
+        vocab: JSON.stringify(current),
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'article_id' });
+    }
+    // 5) Update in-memory article object so the renderer's first-pass
+    // inline path (a.vocab) shows the new word on next render.
+    if (Array.isArray(article.vocab)) {
+      article.vocab.push({ ko: entry.ko, rom: entry.rom || '', en: entry.en || '' });
+    }
+    // 6) Also drop into sitewide VOCAB so hover tooltips catch it.
+    if (typeof VOCAB === 'object' && VOCAB && !VOCAB[entry.ko]) {
+      VOCAB[entry.ko] = { rom: entry.rom || '', en: entry.en || '' };
+    }
+    return true;
+  } catch (e) {
+    console.warn('[_saveArticleVocabAppend]', e);
+    return false;
+  }
 }
 
 function _addWordToKeyVocabList(ko, rom, en) {
