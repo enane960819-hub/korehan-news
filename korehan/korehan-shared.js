@@ -3957,6 +3957,9 @@ function renderArticleVocab(a) {
     // Try longest first so compound nouns beat single roots.
     var keys = Object.keys(VOCAB).filter(function(k){ return k && k.length >= 2; })
                                  .sort(function(a,b){ return b.length - a.length; });
+    // Apply the same noun filter as normalize(): ~하다 → stem, drop
+    // other -다 forms. Keeps the Vocab tab consistent regardless of
+    // whether a word came from the AI cache or a sitewide Edit Mode add.
     var out = [];
     var seen = {};
     for (var i = 0; i < keys.length && out.length < 10; i++) {
@@ -3965,7 +3968,15 @@ function renderArticleVocab(a) {
       if (!inArticleBody(k)) continue;
       seen[k] = true;
       var v = VOCAB[k] || {};
-      out.push({ ko: k, rom: v.rom || '', en: v.en || '' });
+      var ko = k, rom = v.rom || '', en = v.en || '';
+      if (/하다$/.test(ko) && ko.length >= 3) {
+        ko = ko.replace(/하다$/, '');
+        rom = rom.replace(/[-\s]*hada$/i, '');
+        en = en.replace(/^to\s+/i, '');
+      } else if (/다$/.test(ko)) {
+        continue;
+      }
+      out.push({ ko: ko, rom: rom, en: en });
     }
     return out;
   }
@@ -3998,16 +4009,27 @@ function renderArticleVocab(a) {
     // we're falling back to body-scanned common vocabulary.
     var box = el.closest('.art-vocab-box');
     if (box) box.style.display = '';
-    if (!items || !items.length) {
-      items = fromGlobalVocab();
-    }
-    if (!items.length) {
+    // Merge: AI cache list + any sitewide VOCAB entries that actually
+    // appear in this body. Without the merge, words an admin adds via
+    // Vocab Edit Mode (+ New Word / drag-select / edit existing — all
+    // three write to vocabulary_bank → sitewide VOCAB, not to
+    // article_cache) would never surface here once the AI cache has
+    // been populated. Cache items take priority so the AI picks lead;
+    // sitewide matches fill the remainder, capped at 12.
+    var merged = (items && items.length) ? items.slice() : [];
+    var seen = {};
+    merged.forEach(function(v){ if (v && v.ko) seen[v.ko] = true; });
+    fromGlobalVocab().forEach(function(v){
+      if (v && v.ko && !seen[v.ko]) { merged.push(v); seen[v.ko] = true; }
+    });
+    merged = merged.slice(0, 12);
+    if (!merged.length) {
       el.innerHTML = '<div style="padding:20px;color:#94a3b8;font-size:13px;text-align:center">No vocabulary available for this article yet.</div>';
       _appendAdminAddVocabButton(el, a);
       return;
     }
-    _renderArticleVocabItems(el, items);
-    syncIntoHover(items);
+    _renderArticleVocabItems(el, merged);
+    syncIntoHover(merged);
     _appendAdminAddVocabButton(el, a);
   }
 
