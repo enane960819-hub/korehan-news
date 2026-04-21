@@ -3927,14 +3927,27 @@ function renderArticleVocab(a) {
     list.forEach(function(v) {
       if (!v) return;
       var ko = v.ko || v.word || v.word_ko || '';
-      if (!ko || ko.length < 2 || seen[ko]) return;
+      var rom = v.rom || v.reading || v.word_rom || '';
+      var en  = v.en  || v.meaning || v.word_en  || '';
+      if (!ko || ko.length < 2) return;
+      // Match against the ORIGINAL form (dictionary-form stem match handles
+      // conjugated verbs in the body) before we rewrite ko for display.
       if (!inArticleBody(ko)) return;
+      // Learners want nouns in the Key Vocabulary list, not verb dictionary
+      // forms. Convert ~하다 action verbs to their noun stem (노력하다 →
+      // 노력) and strip the matching suffix from rom / "to " from en so
+      // the card reads cleanly. Drop other -다 entries (돌아오다, 예쁘다)
+      // since they have no clean noun surface.
+      if (/하다$/.test(ko) && ko.length >= 3) {
+        ko = ko.replace(/하다$/, '');
+        rom = rom.replace(/[-\s]*hada$/i, '');
+        en = en.replace(/^to\s+/i, '');
+      } else if (/다$/.test(ko)) {
+        return;
+      }
+      if (ko.length < 2 || seen[ko]) return;
       seen[ko] = true;
-      out.push({
-        ko: ko,
-        rom: v.rom || v.reading || v.word_rom || '',
-        en:  v.en  || v.meaning || v.word_en  || ''
-      });
+      out.push({ ko: ko, rom: rom, en: en });
     });
     return out.slice(0, 12);
   }
