@@ -5681,19 +5681,27 @@ async function bulkRegenerateVocab(limit) {
               else bulkLog('  wide upsert err: ' + upWide.error.message, 'warn');
             } catch (e3) { bulkLog('  wide upsert threw: ' + (e3 && e3.message || e3), 'warn'); }
           }
-          // Also update the inline articles.data.vocab so the public renderer
-          // (which prefers inline over cache) picks the new list up on the
-          // next article load — without this, users kept seeing the old
-          // list even after a successful regenerate.
+          // The reader (renderArticleVocab in korehan-shared.js) reads
+          // `a.vocab` inline first and falls back to article_cache. The
+          // `articles` table has no JSONB `data` column (that pattern is
+          // only on conversations_data / stories_data), so V4.3's
+          // articles.data write was a dead end — it always 400'd with
+          // "column articles.data does not exist".
+          //
+          // Best-effort: if this deployment added a flat `vocab` column
+          // on articles, keep it in sync so the inline path shows fresh
+          // data. If the column doesn't exist, swallow quietly — the
+          // cache upsert above is enough; the reader's cache fallback
+          // will surface the new list.
           try {
-            var dataRes = await sb.from('articles').select('data').eq('id', a.id).maybeSingle();
-            var dataObj = (dataRes && dataRes.data && dataRes.data.data) || {};
-            dataObj.vocab = cleaned.map(function(it) {
+            var inlineVocab = cleaned.map(function(it) {
               return { ko: it.word, rom: it.reading || '', en: it.meaning || '' };
             });
-            var upArt = await sb.from('articles').update({ data: dataObj }).eq('id', a.id);
-            if (upArt.error) bulkLog('  articles.data update err: ' + upArt.error.message, 'warn');
-          } catch (e4) { bulkLog('  articles.data update threw: ' + (e4 && e4.message || e4), 'warn'); }
+            var upArt = await sb.from('articles').update({ vocab: inlineVocab }).eq('id', a.id);
+            if (upArt.error && !/column|does not exist|schema cache/i.test(upArt.error.message || '')) {
+              bulkLog('  articles.vocab update warn: ' + upArt.error.message, 'warn');
+            }
+          } catch (_e4) { /* column missing — cache path already wrote */ }
 
           if (savedKv || savedWide) {
             ok++;
