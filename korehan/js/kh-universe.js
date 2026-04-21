@@ -31,6 +31,10 @@
     categories: null,      // THREE.Group of category label pills + weakness hints
     nebula: null,          // background points
     corpus: null,          // THREE.Points of vocabulary_bank entries not saved by user
+    corpusMeta: null,      // parallel array of { ko, rom, en, cat, x, y, z } per corpus point
+    corpusLabels: null,    // THREE.Group of on-demand label sprites for the nearest corpus words
+    corpusLabelsActive: {},// idx → sprite, so we can skip already-labeled points
+    corpusLabelsTickAt: 0, // throttle timestamp
     glowTex: null,
     words: [],
     corpusWords: [],       // raw vocab_bank entries used to build corpus points
@@ -153,7 +157,7 @@
       '  <button class="khu-zoom-btn" aria-label="Zoom out" onclick="KHUniverse._zoom(1.25)">−</button>',
       '  <button class="khu-zoom-btn khu-zoom-reset" aria-label="Reset view" onclick="KHUniverse._resetView()">⤾</button>',
       '</div>',
-      '<div class="khu-hint" id="khu-hint">Drag to orbit · Two-finger / Shift-drag to pan · Pinch / scroll to zoom</div>',
+      '<div class="khu-hint" id="khu-hint">Drag to orbit · Pan with two fingers / Shift-drag · Pinch / scroll to zoom · Zoom in to reveal more words</div>',
       '<div class="khu-card" id="khu-card" aria-hidden="true">',
       '  <button class="khu-card-close" aria-label="Close" onclick="KHUniverse._clearSelection()">✕</button>',
       '  <div class="khu-card-badge" id="khu-card-badge">—</div>',
@@ -512,6 +516,13 @@
     starsGroup.add(catGroup);
     state.categories = catGroup;
 
+    // Corpus on-demand labels — filled lazily as the camera zooms in
+    // so we never build 2000+ text sprites at once.
+    var corpusLabelsGroup = new three.Group();
+    starsGroup.add(corpusLabelsGroup);
+    state.corpusLabels = corpusLabelsGroup;
+    state.corpusLabelsActive = {};
+
     rebuildWordStars(three, starsGroup);
     // Corpus backdrop (vocab_bank entries the user hasn't saved) is built
     // once corpusWords is loaded; buildScene runs first with whatever is
@@ -575,6 +586,7 @@
     var N = Math.min(corpus.length, 2500);
     var positions = new Float32Array(N * 3);
     var colors    = new Float32Array(N * 3);
+    var meta = new Array(N);
     // Group by category and spread around the cluster
     var byCat = {};
     for (var i = 0; i < N; i++) {
@@ -590,7 +602,6 @@
       var members = byCat[cat];
       var m = members.length;
       for (var j = 0; j < m; j++) {
-        var t = m ? j / m : 0;
         // Spread in a cloud around the cluster center; radius grows for
         // larger clusters so dense areas don't clump tighter than sparse.
         var dist = 3 + Math.pow(Math.random(), 0.55) * (6 + Math.min(18, m * 0.25));
@@ -599,10 +610,13 @@
         var jx = dist * Math.cos(phi) * Math.cos(theta);
         var jy = dist * Math.sin(phi) * 0.5;
         var jz = dist * Math.cos(phi) * Math.sin(theta);
+        var px = center.x + jx;
+        var py = center.y + jy;
+        var pz = center.z + jz;
         var p = idx * 3;
-        positions[p + 0] = center.x + jx;
-        positions[p + 1] = center.y + jy;
-        positions[p + 2] = center.z + jz;
+        positions[p + 0] = px;
+        positions[p + 1] = py;
+        positions[p + 2] = pz;
         // Dim corpus colour — 18-30% of category tint, additive blend.
         // We intentionally keep this low so the user's saved stars read as
         // the "main characters" of their galaxy.
@@ -610,9 +624,17 @@
         colors[p + 0] = tint.r * dim;
         colors[p + 1] = tint.g * dim;
         colors[p + 2] = tint.b * dim;
+        var corpusWord = corpus[members[j]];
+        meta[idx] = {
+          ko: corpusWord.ko, rom: corpusWord.rom || '', en: corpusWord.en || '',
+          cat: cat, x: px, y: py, z: pz
+        };
         idx++;
       }
     });
+    state.corpusMeta = meta;
+    // Reset any active labels since the geometry just changed
+    _clearCorpusLabels();
 
     var geom = new three.BufferGeometry();
     geom.setAttribute('position', new three.BufferAttribute(positions, 3));
@@ -629,6 +651,116 @@
     state.corpus = new three.Points(geom, mat);
     state.corpus.renderOrder = -1; // behind sprites
     state.stars.add(state.corpus);
+  }
+
+  // ── Corpus LOD labels ─────────────────────────────────────
+  // When zoomed in (cam.radius below ZOOM_IN_THRESHOLD), show the nearest
+  // ~30 corpus word labels to the orbit target. Zoom back out and they
+  // disappear — keeps the scene readable without rendering 2k labels.
+  var CORPUS_ZOOM_THRESHOLD = 30;
+  var CORPUS_LABEL_LIMIT    = 30;
+  var CORPUS_TICK_INTERVAL  = 0.2; // seconds
+
+  function _clearCorpusLabels() {
+    if (!state.corpusLabels) return;
+    while (state.corpusLabels.children.length) {
+      var c = state.corpusLabels.children.pop();
+      if (c.material) {
+        if (c.material.map) { try { c.material.map.dispose(); } catch(_) {} }
+        c.material.dispose();
+      }
+    }
+    state.corpusLabelsActive = {};
+  }
+
+  function updateCorpusLabels() {
+    if (!state.corpusLabels || !state.corpusMeta || !THREE) return;
+    // Zoomed out → tear everything down
+    if (state.cam.radius > CORPUS_ZOOM_THRESHOLD) {
+      if (state.corpusLabels.children.length) _clearCorpusLabels();
+      return;
+    }
+    // Find the N closest corpus points to the current target
+    var tx = state.cam.target.x, ty = state.cam.target.y, tz = state.cam.target.z;
+    var candidates = [];
+    var meta = state.corpusMeta;
+    for (var i = 0; i < meta.length; i++) {
+      var m = meta[i];
+      var dx = m.x - tx, dy = m.y - ty, dz = m.z - tz;
+      var d2 = dx * dx + dy * dy + dz * dz;
+      // Only consider a generous sphere around the target so sorting stays cheap
+      if (d2 > 400) continue;
+      candidates.push({ idx: i, d2: d2 });
+    }
+    candidates.sort(function(a, b){ return a.d2 - b.d2; });
+    candidates = candidates.slice(0, CORPUS_LABEL_LIMIT);
+
+    var wantedKeys = {};
+    candidates.forEach(function(c){ wantedKeys[c.idx] = true; });
+
+    // Drop labels that are no longer in the nearest set
+    Object.keys(state.corpusLabelsActive).forEach(function(k) {
+      if (!wantedKeys[k]) {
+        var spr = state.corpusLabelsActive[k];
+        state.corpusLabels.remove(spr);
+        if (spr.material) {
+          if (spr.material.map) { try { spr.material.map.dispose(); } catch(_) {} }
+          spr.material.dispose();
+        }
+        delete state.corpusLabelsActive[k];
+      }
+    });
+
+    // Add labels for newcomers
+    candidates.forEach(function(c) {
+      if (state.corpusLabelsActive[c.idx]) return;
+      var m = state.corpusMeta[c.idx];
+      if (!m || !m.ko) return;
+      var tint = catColor(m.cat);
+      var hexBorder = 'rgba(' + Math.round(tint.r * 255) + ',' + Math.round(tint.g * 255) + ',' + Math.round(tint.b * 255) + ',0.4)';
+      var lbl = makeLabelTexture(m.ko, THREE, hexBorder);
+      var lblMat = new THREE.SpriteMaterial({
+        map: lbl.tex, transparent: true, depthWrite: false, opacity: 0.68
+      });
+      var sprite = new THREE.Sprite(lblMat);
+      var lblH = 0.85;
+      var lblW = lblH * lbl.aspect;
+      sprite.scale.set(lblW, lblH, 1);
+      sprite.position.set(m.x, m.y - 0.7, m.z);
+      sprite.userData = {
+        isStar: true,          // pickable by raycaster
+        isCorpusLabel: true,
+        corpusIdx: c.idx,
+        word: { ko: m.ko, word_ko: m.ko, rom: m.rom, word_rom: m.rom, en: m.en, word_en: m.en }
+      };
+      sprite.renderOrder = 2;
+      state.corpusLabels.add(sprite);
+      state.corpusLabelsActive[c.idx] = sprite;
+    });
+  }
+
+  // Tap on a corpus label → treat it like a one-tap save (corpus words
+  // aren't in the user's set yet; the intent is "I want this one").
+  function _onCorpusLabelTap(sprite) {
+    if (!sprite || !sprite.userData || !sprite.userData.word) return;
+    var w = sprite.userData.word;
+    // Reuse the related-word save helper — same shape, same RPC.
+    if (typeof saveRelatedWord !== 'function') return;
+    sprite.material.opacity = 0.35;
+    saveRelatedWord({ ko: w.ko, rom: w.rom || '', en: w.en || '' }).then(function(ok) {
+      if (ok) {
+        // Flip this label to the mastered tone and bigger
+        if (sprite.material) {
+          sprite.material.color = new THREE.Color(0.31, 0.80, 0.77); // mint
+          sprite.material.opacity = 1;
+        }
+        sprite.scale.multiplyScalar(1.2);
+        if (typeof showToast === 'function') showToast('📚 "' + w.ko + '" saved');
+      } else {
+        sprite.material.opacity = 0.68;
+        if (typeof showToast === 'function') showToast('Save failed', true);
+      }
+    });
   }
 
   function rebuildWordStars(three, group) {
@@ -1061,6 +1193,9 @@
     if (state.satellites && state.satellites.children.length) {
       pool = pool.concat(state.satellites.children);
     }
+    if (state.corpusLabels && state.corpusLabels.children.length) {
+      pool = pool.concat(state.corpusLabels.children);
+    }
     pool = pool.concat(state.stars.children);
     var hits = state.raycaster.intersectObjects(pool, false);
     if (hits && hits.length) {
@@ -1069,6 +1204,10 @@
         if (!obj || !obj.userData) continue;
         if (obj.userData.isSatellite && obj.userData.isStar) {
           _onSatelliteTap(obj);
+          return;
+        }
+        if (obj.userData.isCorpusLabel) {
+          _onCorpusLabelTap(obj);
           return;
         }
         if (obj.userData.isStar) {
@@ -1099,9 +1238,11 @@
       }
     }
     if (state.satellites) state.satellites.children.forEach(checkChild);
+    if (state.corpusLabels) state.corpusLabels.children.forEach(checkChild);
     state.stars.children.forEach(checkChild);
     if (nearest) {
       if (nearest.userData.isSatellite) _onSatelliteTap(nearest);
+      else if (nearest.userData.isCorpusLabel) _onCorpusLabelTap(nearest);
       else selectStar(nearest);
       return;
     }
@@ -1487,6 +1628,12 @@
     }
     if (state.nebula) state.nebula.rotation.y += dt * 0.008;
     if (state.stars)  state.stars.rotation.y  += dt * 0.015;
+    // Throttled corpus label LOD update
+    state.corpusLabelsTickAt = (state.corpusLabelsTickAt || 0) + dt;
+    if (state.corpusLabelsTickAt > CORPUS_TICK_INTERVAL) {
+      state.corpusLabelsTickAt = 0;
+      updateCorpusLabels();
+    }
     // Gentle pulse on mastery aura sprites so mastered words feel alive.
     if (state.stars) {
       var now = state.clock ? state.clock.elapsedTime : performance.now() / 1000;
