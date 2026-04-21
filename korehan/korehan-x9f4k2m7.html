@@ -5681,27 +5681,11 @@ async function bulkRegenerateVocab(limit) {
               else bulkLog('  wide upsert err: ' + upWide.error.message, 'warn');
             } catch (e3) { bulkLog('  wide upsert threw: ' + (e3 && e3.message || e3), 'warn'); }
           }
-          // The reader (renderArticleVocab in korehan-shared.js) reads
-          // `a.vocab` inline first and falls back to article_cache. The
-          // `articles` table has no JSONB `data` column (that pattern is
-          // only on conversations_data / stories_data), so V4.3's
-          // articles.data write was a dead end — it always 400'd with
-          // "column articles.data does not exist".
-          //
-          // Best-effort: if this deployment added a flat `vocab` column
-          // on articles, keep it in sync so the inline path shows fresh
-          // data. If the column doesn't exist, swallow quietly — the
-          // cache upsert above is enough; the reader's cache fallback
-          // will surface the new list.
-          try {
-            var inlineVocab = cleaned.map(function(it) {
-              return { ko: it.word, rom: it.reading || '', en: it.meaning || '' };
-            });
-            var upArt = await sb.from('articles').update({ vocab: inlineVocab }).eq('id', a.id);
-            if (upArt.error && !/column|does not exist|schema cache/i.test(upArt.error.message || '')) {
-              bulkLog('  articles.vocab update warn: ' + upArt.error.message, 'warn');
-            }
-          } catch (_e4) { /* column missing — cache path already wrote */ }
+          // article_cache is the single source of truth for article vocab.
+          // V4.3 tried to also write articles.data / V4.4 tried articles.vocab —
+          // neither column exists on the articles table in this deployment,
+          // and V4.5 changed the reader to prefer cache anyway, so both
+          // writes were dead weight. Dropped in the cleanup pass.
 
           if (savedKv || savedWide) {
             ok++;
