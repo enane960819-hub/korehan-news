@@ -3375,18 +3375,18 @@ function saveSentences(){
 const AUTO_SECTIONS = CATEGORIES;
 
 // ── News & trending sources ───────────────────────────────────
+// NOTE: We don't have an IT / tech section on the site, so BBC Tech,
+// TechCrunch, Hacker News, and CNET Travel (whose output is mostly
+// consumer-tech listicles, not actual travel) are deliberately NOT in
+// this list. If you add them back, add a matching section first.
 const NEWS_SOURCES = [
   { id:'yonhap',       label:'연합뉴스',          icon:'🇰🇷' },
   { id:'bbc-world',    label:'BBC World',        icon:'🌍' },
-  { id:'bbc-tech',     label:'BBC Tech',         icon:'💻' },
-  { id:'techcrunch',   label:'TechCrunch',       icon:'🚀' },
   { id:'gtrends-us',   label:'Google Trends US', icon:'📈' },
   { id:'gn-viral',     label:'Google News Viral',icon:'🔥' },
   { id:'gn-beauty',    label:'Beauty Trends',    icon:'💄' },
   { id:'gn-travel',    label:'Travel Trends',    icon:'✈️' },
-  { id:'cnet-travel',  label:'CNET Travel',      icon:'🧳' },
   { id:'allure',       label:'Allure Beauty',    icon:'🪞' },
-  { id:'hn',           label:'Hacker News',      icon:'🟠' },
   { id:'reddit-world', label:'r/worldnews',      icon:'🌐' },
   { id:'reddit-korea', label:'r/korea',          icon:'🇰🇷' },
   { id:'reddit-kpop',  label:'r/kpop',           icon:'🎵' },
@@ -5347,12 +5347,12 @@ function bulkResetCounters() {
 // within a single press. The canonical catalog lives in admin-source-fetch.js.
 var BULK_ART_SOURCES_BY_SECTION = {
   '사회':      ['yonhap'],
-  '국제':      ['bbc-world','reddit-world','gtrends-us','hn','bbc-tech','techcrunch'],
+  '국제':      ['bbc-world','reddit-world','gtrends-us'],
   '문화':      ['gn-viral','reddit-til','reddit-interesting','reddit-oddly','reddit-noway','reddit-mildly','gn-clickbait','gn-listicle','boredpanda'],
   'K-pop':     ['reddit-kpop'],
   'Korea':     ['reddit-korea'],
   'beauty':    ['gn-beauty','allure'],
-  'travel':    ['gn-travel','cnet-travel'],
+  'travel':    ['gn-travel'],
   '오피니언':  []  // Opinion pieces are adapted from viral / op-ed-ish feeds on demand
 };
 var BULK_ART_ALL_SOURCES = Object.keys(BULK_ART_SOURCES_BY_SECTION).reduce(function(a,k){ return a.concat(BULK_ART_SOURCES_BY_SECTION[k]); }, []);
@@ -5501,7 +5501,11 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
     id: articleId, section: section,
     title: article.title, body: article.body,
     title_en: headline.title || '',
-    date: today_date(), status: 'published',
+    // Default to draft. The live site skews toward CNET-ish clickbait
+    // (puzzle answers, "best fiber internet 2026", etc.) that don't
+    // serve Korean learners, so auto-ingest is quality-gated by hand in
+    // the admin list rather than being an LLM relevance score.
+    date: today_date(), status: 'draft',
     featured: false, level: diff.level,
     source_url: headline.url || '',
     // Don't save the upstream image URL — it's almost always from a domain
