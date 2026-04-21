@@ -30,8 +30,10 @@
     satellites: null,      // THREE.Group of related-word satellite sprites (per selection)
     categories: null,      // THREE.Group of category label pills + weakness hints
     nebula: null,          // background points
+    corpus: null,          // THREE.Points of vocabulary_bank entries not saved by user
     glowTex: null,
     words: [],
+    corpusWords: [],       // raw vocab_bank entries used to build corpus points
     raycaster: null,       // THREE.Raycaster for picking
     pointerNDC: { x: 0, y: 0 },
     selected: null,        // { sprite, word, baseScale }
@@ -290,6 +292,42 @@
   }
 
   // ── Category enrichment (async Supabase lookup) ─────────────
+  // ── Corpus loader: load the whole vocabulary_bank so we can paint
+  //    every site vocab as a dim background star. User's saved words
+  //    (state.words) overshadow any duplicates in this set.
+  // Returns an array of { ko, rom, en, _cat } objects.
+  async function loadCorpusWords(savedWords) {
+    if (typeof getSupa !== 'function') return [];
+    var sb; try { sb = getSupa(); } catch(_) { return []; }
+    if (!sb) return [];
+    try {
+      var r = await sb.from('vocabulary_bank')
+        .select('word_ko, word_rom, word_en, interest_tag')
+        .eq('is_active', true)
+        .limit(3000);
+      if (r.error || !r.data) return [];
+      // Dedup against user's saved set so we never double-render
+      var savedSet = {};
+      (savedWords || []).forEach(function(w) {
+        var k = w && (w.word_ko || w.ko);
+        if (k) savedSet[k] = true;
+      });
+      var out = [];
+      for (var i = 0; i < r.data.length; i++) {
+        var row = r.data[i];
+        if (!row || !row.word_ko) continue;
+        if (savedSet[row.word_ko]) continue;
+        out.push({
+          ko:   row.word_ko,
+          rom:  row.word_rom || '',
+          en:   row.word_en  || '',
+          _cat: normCategory(row.interest_tag || 'misc')
+        });
+      }
+      return out;
+    } catch (e) { return []; }
+  }
+
   // For each input word, look up its interest_tag in vocabulary_bank.
   // Missing words default to 'misc'. Results are merged back onto the
   // original word objects so subsequent rebuilds stay category-aware.
@@ -475,6 +513,10 @@
     state.categories = catGroup;
 
     rebuildWordStars(three, starsGroup);
+    // Corpus backdrop (vocab_bank entries the user hasn't saved) is built
+    // once corpusWords is loaded; buildScene runs first with whatever is
+    // already cached, and a re-build fires once the load completes.
+    rebuildCorpusPoints(three);
 
     // Soft ambient glow at the core
     var core = new three.PointLight(0x9080ff, 1.4, 60, 1.6);
@@ -487,6 +529,104 @@
     state.clock = new three.Clock();
 
     window.addEventListener('resize', onResize);
+  }
+
+  // ── Build the corpus backdrop as a single THREE.Points cloud ─────
+  // One geometry, one draw call → handles 2k+ vocab_bank entries
+  // without per-sprite overhead. Non-interactive; purely ambient.
+  function rebuildCorpusPoints(three) {
+    if (!state.scene || !state.stars) return;
+    // Dispose existing
+    if (state.corpus) {
+      state.stars.remove(state.corpus);
+      try { state.corpus.geometry.dispose(); } catch(_) {}
+      try { state.corpus.material.dispose(); } catch(_) {}
+      state.corpus = null;
+    }
+    var corpus = state.corpusWords || [];
+    if (!corpus.length) return;
+
+    // Build cluster centers for the UNION of user categories + corpus.
+    // If user stars already have clusterCenters, we reuse them so corpus
+    // entries land in the same neighborhood as their category.
+    var centers = state.clusterCenters || {};
+    var catOrder = Object.keys(centers);
+    // Add any cats present in corpus but missing from user data
+    var extraCats = {};
+    corpus.forEach(function(w) {
+      if (!centers[w._cat] && !extraCats[w._cat]) {
+        extraCats[w._cat] = true;
+        catOrder.push(w._cat);
+      }
+    });
+    if (catOrder.length && Object.keys(extraCats).length) {
+      var extraCenters = computeClusterCenters(catOrder.filter(function(c){ return extraCats[c]; }));
+      Object.keys(extraCenters).forEach(function(c) {
+        centers[c] = extraCenters[c];
+        if (state.clusterCenters) {
+          state.clusterCenters[c] = {
+            x: extraCenters[c].x, y: extraCenters[c].y, z: extraCenters[c].z,
+            count: 0, avgMastery: 0, color: catColor(c)
+          };
+        }
+      });
+    }
+
+    var N = Math.min(corpus.length, 2500);
+    var positions = new Float32Array(N * 3);
+    var colors    = new Float32Array(N * 3);
+    // Group by category and spread around the cluster
+    var byCat = {};
+    for (var i = 0; i < N; i++) {
+      var w = corpus[i];
+      var cat = w._cat || 'misc';
+      if (!byCat[cat]) byCat[cat] = [];
+      byCat[cat].push(i);
+    }
+    var idx = 0;
+    Object.keys(byCat).forEach(function(cat) {
+      var center = centers[cat] || { x: 0, y: 0, z: 0 };
+      var tint = catColor(cat);
+      var members = byCat[cat];
+      var m = members.length;
+      for (var j = 0; j < m; j++) {
+        var t = m ? j / m : 0;
+        // Spread in a cloud around the cluster center; radius grows for
+        // larger clusters so dense areas don't clump tighter than sparse.
+        var dist = 3 + Math.pow(Math.random(), 0.55) * (6 + Math.min(18, m * 0.25));
+        var theta = Math.random() * Math.PI * 2;
+        var phi = (Math.random() - 0.5) * Math.PI;
+        var jx = dist * Math.cos(phi) * Math.cos(theta);
+        var jy = dist * Math.sin(phi) * 0.5;
+        var jz = dist * Math.cos(phi) * Math.sin(theta);
+        var p = idx * 3;
+        positions[p + 0] = center.x + jx;
+        positions[p + 1] = center.y + jy;
+        positions[p + 2] = center.z + jz;
+        // Dim corpus colour — 30-45% of category tint, additive blend
+        var dim = 0.32 + Math.random() * 0.18;
+        colors[p + 0] = tint.r * dim;
+        colors[p + 1] = tint.g * dim;
+        colors[p + 2] = tint.b * dim;
+        idx++;
+      }
+    });
+
+    var geom = new three.BufferGeometry();
+    geom.setAttribute('position', new three.BufferAttribute(positions, 3));
+    geom.setAttribute('color',    new three.BufferAttribute(colors, 3));
+    var mat = new three.PointsMaterial({
+      size: 0.7,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.85,
+      blending: three.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true
+    });
+    state.corpus = new three.Points(geom, mat);
+    state.corpus.renderOrder = -1; // behind sprites
+    state.stars.add(state.corpus);
   }
 
   function rebuildWordStars(three, group) {
@@ -1396,10 +1536,16 @@
       }
       if (loading) loading.classList.add('hidden');
       if (!state.animId) tick();
-      // Kick off category enrichment and rebuild the galaxy once tags arrive.
+      // Kick off category enrichment + corpus load in parallel.
       enrichWithCategories(state.words).then(function() {
         if (!state.open || !state.stars) return;
         rebuildWordStars(three, state.stars);
+        rebuildCorpusPoints(three);
+      });
+      loadCorpusWords(state.words).then(function(corpus) {
+        state.corpusWords = corpus || [];
+        if (!state.open || !state.stars) return;
+        rebuildCorpusPoints(three);
       });
     }).catch(function(err) {
       if (loading) loading.innerHTML = '<div style="color:#fca5a5">Could not load the galaxy engine.</div>';
