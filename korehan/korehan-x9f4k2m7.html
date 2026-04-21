@@ -5653,13 +5653,55 @@ async function bulkRegenerateVocab(limit) {
         var parsed = (ai >= 0 && bi > ai) ? JSON.parse(raw.slice(ai, bi + 1)) : null;
         var cleaned = window.KH_VOCAB.validateBest(parsed, a.body || '');
         if (cleaned && cleaned.length) {
-          var up = await sb.from('article_cache').upsert({
-            article_id: String(a.id),
-            vocab: JSON.stringify(cleaned),
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'article_id' });
-          if (up.error) { fail++; bulkLog('  upsert failed: ' + up.error.message, 'warn'); }
-          else { ok++; bulkLog('  ✓ ' + cleaned.length + ' words saved', 'ok'); }
+          // Write to article_cache — try both schemas (kv vs wide) so we
+          // work regardless of which one production is actually on.
+          var savedKv = false, savedWide = false;
+          // kv schema: (content_type, content_id, cache_key, cache_value)
+          try {
+            var upKv = await sb.from('article_cache').upsert({
+              content_type: 'article',
+              content_id:   String(a.id),
+              cache_key:    'vocab',
+              cache_value:  JSON.stringify(cleaned)
+            }, { onConflict: 'content_type,content_id,cache_key' });
+            if (!upKv.error) savedKv = true;
+            else if (!/column|cache_key|cache_value|does not exist/i.test(upKv.error.message || '')) {
+              bulkLog('  kv upsert warn: ' + upKv.error.message, 'warn');
+            }
+          } catch (_) {}
+          // wide schema: (article_id, vocab column)
+          if (!savedKv) {
+            try {
+              var upWide = await sb.from('article_cache').upsert({
+                article_id: String(a.id),
+                vocab: JSON.stringify(cleaned),
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'article_id' });
+              if (!upWide.error) savedWide = true;
+              else bulkLog('  wide upsert err: ' + upWide.error.message, 'warn');
+            } catch (e3) { bulkLog('  wide upsert threw: ' + (e3 && e3.message || e3), 'warn'); }
+          }
+          // Also update the inline articles.data.vocab so the public renderer
+          // (which prefers inline over cache) picks the new list up on the
+          // next article load — without this, users kept seeing the old
+          // list even after a successful regenerate.
+          try {
+            var dataRes = await sb.from('articles').select('data').eq('id', a.id).maybeSingle();
+            var dataObj = (dataRes && dataRes.data && dataRes.data.data) || {};
+            dataObj.vocab = cleaned.map(function(it) {
+              return { ko: it.word, rom: it.reading || '', en: it.meaning || '' };
+            });
+            var upArt = await sb.from('articles').update({ data: dataObj }).eq('id', a.id);
+            if (upArt.error) bulkLog('  articles.data update err: ' + upArt.error.message, 'warn');
+          } catch (e4) { bulkLog('  articles.data update threw: ' + (e4 && e4.message || e4), 'warn'); }
+
+          if (savedKv || savedWide) {
+            ok++;
+            bulkLog('  ✓ ' + cleaned.length + ' words saved (' + (savedKv ? 'kv' : 'wide') + ')', 'ok');
+          } else {
+            fail++;
+            bulkLog('  ✗ both schemas failed — cache not saved', 'warn');
+          }
         } else {
           fail++;
           bulkLog('  ✗ empty output, skipped', 'warn');
