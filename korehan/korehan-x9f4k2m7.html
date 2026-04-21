@@ -5302,6 +5302,14 @@ function goBulkSeed() {
     +     '<button data-bulk-btn class="btn btn-g" onclick="bulkSeedStories(3)" style="padding:10px 18px;font-size:13px;font-weight:800">📖 +3 Stories</button>'
     +     '<button data-bulk-btn class="btn btn-b" onclick="bulkSeedAll(3)" style="padding:10px 18px;font-size:13px;font-weight:800;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none">✨ +3×3 All</button>'
     +   '</div>'
+    +   '<hr style="margin:16px 0;border:none;border-top:1px solid #e2e8f0">'
+    +   '<h3 style="margin-bottom:4px;font-size:14px">🩺 Fix: regenerate stale vocab</h3>'
+    +   '<p style="font-size:12px;color:#64748b;margin:0 0 10px;line-height:1.55">Old cache may have hallucinated meanings (e.g. 갖추다 → "victim"). This re-runs the hardened vocab prompt on every article and overwrites article_cache.vocab. Rate-limited at ~1 article/sec to stay under Claude limits.</p>'
+    +   '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
+    +     '<button data-bulk-btn class="btn" onclick="bulkRegenerateVocab(20)" style="padding:8px 14px;font-size:12px;font-weight:800;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:8px">🔄 Latest 20</button>'
+    +     '<button data-bulk-btn class="btn" onclick="bulkRegenerateVocab(100)" style="padding:8px 14px;font-size:12px;font-weight:800;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:8px">🔄 Latest 100</button>'
+    +     '<button data-bulk-btn class="btn" onclick="bulkRegenerateVocab(9999)" style="padding:8px 14px;font-size:12px;font-weight:800;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:8px">🔄 ALL articles</button>'
+    +   '</div>'
     + '</div>'
 
     + '<div class="sf-card">'
@@ -5587,6 +5595,74 @@ async function _bulkGenerateArticleCache(articleId, title, body, levelKey) {
     catch(e) { bulkLog('cache upsert failed: ' + e.message, 'warn'); }
   }
   return ok;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Bulk REGENERATE only article_cache.vocab using the hardened
+// prompt + validator. Does NOT touch translation / grammar / quiz
+// so existing good output isn't wasted. Rate-limited to 1 article
+// per second to stay polite to Claude.
+// ─────────────────────────────────────────────────────────────
+async function bulkRegenerateVocab(limit) {
+  limit = Math.max(1, Math.min(9999, Number(limit) || 20));
+  if (!confirm('Regenerate vocab for up to ' + (limit === 9999 ? 'ALL' : limit) + ' articles?\nThis overwrites article_cache.vocab for each article hit. Expect ~1s per article.')) return;
+  bulkLog('🩺 Starting vocab regenerate (up to ' + limit + ' articles)…');
+  var btns = document.querySelectorAll('[data-bulk-btn]');
+  btns.forEach(function(b){ b.disabled = true; });
+  try {
+    var sb = getSb();
+    if (!sb) { bulkLog('Supabase client missing', 'err'); return; }
+    var q = sb.from('articles_data')
+      .select('id, title, body, level, status')
+      .eq('status', 'published')
+      .order('date', { ascending: false });
+    if (limit < 9999) q = q.limit(limit);
+    var r = await q;
+    if (r.error) { bulkLog('articles_data fetch failed: ' + r.error.message, 'err'); return; }
+    var rows = r.data || [];
+    bulkLog('Fetched ' + rows.length + ' articles.');
+    var ok = 0, skip = 0, fail = 0;
+    for (var i = 0; i < rows.length; i++) {
+      var a = rows[i];
+      if (!a || !a.body || a.body.length < 40) { skip++; continue; }
+      bulkLog('[' + (i + 1) + '/' + rows.length + '] ' + (a.title || '').slice(0, 40) + '…');
+      try {
+        var r2 = await callClaude({
+          feature: 'bulk-vocab-regen',
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1600,
+          messages: [{ role:'user', content:
+            'Korean article (level: ' + (a.level || 'Intermediate') + ')\nTitle: ' + a.title + '\n\nBODY START\n' + String(a.body).slice(0, 3000) + '\nBODY END\n\n---\n'
+            + window.KH_VOCAB.promptText(a.level || 'Intermediate', a.body)
+          }]
+        });
+        var raw = (r2 && r2.content && r2.content[0] && r2.content[0].text) || '';
+        var ai = raw.indexOf('['), bi = raw.lastIndexOf(']');
+        var parsed = (ai >= 0 && bi > ai) ? JSON.parse(raw.slice(ai, bi + 1)) : null;
+        var cleaned = window.KH_VOCAB.validateBest(parsed, a.body || '');
+        if (cleaned && cleaned.length) {
+          var up = await sb.from('article_cache').upsert({
+            article_id: String(a.id),
+            vocab: JSON.stringify(cleaned),
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'article_id' });
+          if (up.error) { fail++; bulkLog('  upsert failed: ' + up.error.message, 'warn'); }
+          else { ok++; bulkLog('  ✓ ' + cleaned.length + ' words saved', 'ok'); }
+        } else {
+          fail++;
+          bulkLog('  ✗ empty output, skipped', 'warn');
+        }
+      } catch (e) {
+        fail++;
+        bulkLog('  ✗ error: ' + (e && e.message || e), 'warn');
+      }
+      // Rate limit
+      await new Promise(function(res){ setTimeout(res, 900); });
+    }
+    bulkLog('Done. ok=' + ok + ' / skip=' + skip + ' / fail=' + fail, ok > 0 ? 'ok' : 'warn');
+  } finally {
+    btns.forEach(function(b){ b.disabled = false; });
+  }
 }
 
 // Public entry point — seed N articles. Ignores its own output on failure
