@@ -3332,7 +3332,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260421f"></script>
+<script src="korehan-shared.js?v=20260421g"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
 <script src="js/kh-quiz-arena.js?v=20260416"></script>
 <script src="js/kh-flashcards.js?v=20260416"></script>
@@ -4358,7 +4358,7 @@ function _pregenTomorrow() {
           var hasVocab = r.data && r.data.vocab && (Array.isArray(r.data.vocab) ? r.data.vocab.length > 0 : true);
           if (!hasVocab) {
             console.log('[pregenTomorrow] fallback — generating for', tomorrow, _currentLevel);
-            _generateAndSaveDailyContent(tomorrow);
+            _generateAndSaveDailyContent(tomorrow, { silent: true });
           }
         });
     } catch(e) {}
@@ -4452,10 +4452,15 @@ function _applyDailyContent(rec) {
 
 var _approvedTopicForGen = null;
 
-async function _generateAndSaveDailyContent(date) {
+async function _generateAndSaveDailyContent(date, opts) {
   if (!supaUser) { showLoginWall(); return; }
-  console.log('[_generateAndSaveDailyContent] generating for date:', date, 'level:', _currentLevel);
-  showAILoading();
+  var silent = !!(opts && opts.silent);
+  console.log('[_generateAndSaveDailyContent] generating for date:', date, 'level:', _currentLevel, 'silent:', silent);
+  // Only show the full-screen "잠시만 기다려주세요" overlay when the user
+  // is actively waiting for TODAY's content. Background pregen of
+  // tomorrow's content must never block the current UI — the page is
+  // already rendered and the user isn't waiting on this.
+  if (!silent) showAILoading();
 
   var levelGuide = {
     Starter:      'STARTER: Ultra-basic. Daily life, family, food. Vocab: 1-2 syllable words. Grammar: ~이에요/예요, ~있어요/없어요. Sentences max 4 words.',

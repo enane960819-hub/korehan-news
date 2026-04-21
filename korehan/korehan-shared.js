@@ -2457,13 +2457,7 @@ function renderHeroSlide(heroEl) {
           var lvlChip = item.level
             ? '<span class="kh-hero-chip kh-hero-chip-lvl-' + item.level + '">' + (LVL_ICON[item.level]||'') + ' ' + (LVL_LBL[item.level]||item.level) + '</span>'
             : '';
-          // Korean character count → reading-time estimate (~350 chars/min)
           var bodyPlain = (item.body || '').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
-          var koChars = bodyPlain.replace(/[^\u3131-\uD79D]/g,'').length;
-          var readMin = koChars ? Math.max(1, Math.round(koChars / 350)) : 0;
-          var timeChip = readMin
-            ? '<span class="kh-hero-chip kh-hero-chip-time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>' + readMin + ' min</span>'
-            : '';
           var catChip = '<span class="kh-hero-chip kh-hero-chip-cat">' + item.section + '</span>';
           // Short excerpt — first ~90 Korean chars to fill the dead space below title
           var excerpt = bodyPlain.slice(0, 110);
@@ -2472,7 +2466,7 @@ function renderHeroSlide(heroEl) {
             + '<img src="' + featImg + '" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;pointer-events:none;">'
             + '<div style="position:absolute;left:0;right:0;top:0;height:40%;background:linear-gradient(to bottom,rgba(5,15,35,.55) 0%,rgba(5,15,35,0) 100%);pointer-events:none;"></div>'
             + '<div style="position:absolute;left:0;right:0;bottom:0;height:72%;background:linear-gradient(to top,rgba(5,15,35,.94) 0%,rgba(5,15,35,.7) 30%,rgba(5,15,35,.28) 70%,rgba(5,15,35,0) 100%);pointer-events:none;"></div>'
-            + '<div class="kh-hero-top-meta" style="position:absolute;top:16px;left:18px;right:18px;z-index:2;display:flex;align-items:center;flex-wrap:wrap;gap:6px;pointer-events:none">' + catChip + lvlChip + timeChip + '</div>'
+            + '<div class="kh-hero-top-meta" style="position:absolute;top:16px;left:18px;right:18px;z-index:2;display:flex;align-items:center;flex-wrap:wrap;gap:6px;pointer-events:none">' + catChip + lvlChip + '</div>'
             + '<div style="position:absolute;left:0;right:0;bottom:0;padding:20px 22px 22px;max-width:760px;z-index:2;pointer-events:none;">'
             + '<h1 data-kh-title-id="' + escapeHtml(item.id || '') + '" style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:clamp(22px,3vw,42px);font-weight:900;line-height:1.2;margin:0 0 8px;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.5)">' + (item.title_en || item.title) + '</h1>'
             + (excerpt ? '<p style="margin:0 0 10px;font-size:13px;line-height:1.55;color:rgba(255,255,255,.85);font-family:\'Noto Sans KR\',sans-serif;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-shadow:0 1px 6px rgba(0,0,0,.4)">' + excerpt + '</p>' : '')
@@ -2984,8 +2978,6 @@ function renderArticlePage() {
     + '<div class="art-meta-row">'
     + getReporterProfileHTML(a)
     + '<span class="art-date">' + dateStr + '</span>'
-    + '<span class="art-dot">·</span>'
-    + '<span class="art-readtime">' + Math.max(1, Math.ceil((a.full||a.body||'').length / 500)) + ' min read</span>'
     + '<div class="art-actions-inline">'
     + '<button class="art-action-icon" id="art-bm-btn" onclick="toggleBookmark(\'' + a.id + '\',this)" title="Bookmark"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button>'
     + '<button class="art-action-icon" onclick="shareArticle()" title="Share"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>'
@@ -6225,8 +6217,6 @@ function startClock() {
 var _sectionsCache = null;
 
 var DEFAULT_SECTIONS = [
-  { key:'정치',   label:'Politics',  icon:'🏛️', sort_order:1 },
-  { key:'경제',   label:'Economy',   icon:'📈', sort_order:2 },
   { key:'사회',   label:'Society',   icon:'🏙️', sort_order:3 },
   { key:'국제',   label:'World',     icon:'🌍', sort_order:4 },
   { key:'문화',   label:'Culture',   icon:'🎭', sort_order:5 },
@@ -6240,7 +6230,12 @@ var DEFAULT_SECTIONS = [
 
 function normalizeSectionCatalog(list) {
   var items = Array.isArray(list) ? list.slice() : [];
-  var blocked = new Set(['tech', 'it과학', 'technology', 'tech/science']);
+  // Politics / Economy were dropped from the site — ensure they don't
+  // sneak back in via the Supabase `sections` table cache.
+  var blocked = new Set([
+    'tech', 'it과학', 'technology', 'tech/science',
+    'politics', '정치', 'economy', '경제'
+  ]);
   items = items.filter(function(row) {
     var k = String((row && row.key) || '').trim().toLowerCase();
     return k && !blocked.has(k);
@@ -6791,7 +6786,7 @@ var BADGE_DEFS = [
   { id:'read_allsec',cat:'reading',   tier:'diamond',  icon:pxBadge('target'), name:'All-Rounder',     desc:'Read from every section',
     check: function(){
       var sc = getSectionReadCounts();
-      var secs = ['사회','국제','문화','스포츠','Korea','beauty','travel','오피니언','정치','경제'];
+      var secs = ['사회','국제','문화','스포츠','Korea','beauty','travel','오피니언'];
       return secs.every(function(s){ return (sc[s]||0) >= 1; });
     } },
 
@@ -6820,10 +6815,6 @@ var BADGE_DEFS = [
     check: function(){ return getQuizStreakDays() >= 14; } },
 
   // 🌍 SECTIONS
-  { id:'sec_politics',cat:'sections', tier:'gold', icon:pxBadge('shield'), name:'Politics Master', desc:'Read 20 Politics articles',
-    check: function(){ return (getSectionReadCounts()['정치']||0) >= 20; } },
-  { id:'sec_economy', cat:'sections', tier:'gold', icon:pxBadge('coin'), name:'Economy Master', desc:'Read 20 Economy articles',
-    check: function(){ return (getSectionReadCounts()['경제']||0) >= 20; } },
   { id:'sec_society', cat:'sections', tier:'gold', icon:pxBadge('heart'), name:'Society Master', desc:'Read 20 Society articles',
     check: function(){ return (getSectionReadCounts()['사회']||0) >= 20; } },
   { id:'sec_world',   cat:'sections', tier:'gold', icon:pxBadge('globe'), name:'World Master', desc:'Read 20 World articles',
@@ -7155,8 +7146,8 @@ function getBadgeProgress(b) {
       'time_friday':  { cur: function(){ return lsGet('kh_friday_night_count',0); }, max: 4 },
       'time_weekend': { cur: function(){ return lsGet('kh_weekend_streak',0); }, max: 8 },
     };
-    var section_badge_max = { sec_politics:20,sec_economy:20,sec_society:20,sec_world:20,sec_culture:20,sec_sports:20,sec_korea:20,sec_it:20,sec_opinion:10 };
-    var section_badge_sec = { sec_politics:'정치',sec_economy:'경제',sec_society:'사회',sec_world:'국제',sec_culture:'문화',sec_sports:'스포츠',sec_korea:'Korea',sec_it:'IT-과학',sec_opinion:'오피니언' };
+    var section_badge_max = { sec_society:20,sec_world:20,sec_culture:20,sec_sports:20,sec_korea:20,sec_it:20,sec_opinion:10 };
+    var section_badge_sec = { sec_society:'사회',sec_world:'국제',sec_culture:'문화',sec_sports:'스포츠',sec_korea:'Korea',sec_it:'IT-과학',sec_opinion:'오피니언' };
     if (section_badge_max[b.id] !== undefined) {
       var sc = getSectionReadCounts();
       var cur = sc[section_badge_sec[b.id]] || 0;
