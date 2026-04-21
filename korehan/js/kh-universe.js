@@ -603,8 +603,10 @@
         positions[p + 0] = center.x + jx;
         positions[p + 1] = center.y + jy;
         positions[p + 2] = center.z + jz;
-        // Dim corpus colour — 30-45% of category tint, additive blend
-        var dim = 0.32 + Math.random() * 0.18;
+        // Dim corpus colour — 18-30% of category tint, additive blend.
+        // We intentionally keep this low so the user's saved stars read as
+        // the "main characters" of their galaxy.
+        var dim = 0.18 + Math.random() * 0.12;
         colors[p + 0] = tint.r * dim;
         colors[p + 1] = tint.g * dim;
         colors[p + 2] = tint.b * dim;
@@ -616,10 +618,10 @@
     geom.setAttribute('position', new three.BufferAttribute(positions, 3));
     geom.setAttribute('color',    new three.BufferAttribute(colors, 3));
     var mat = new three.PointsMaterial({
-      size: 0.7,
+      size: 0.55,
       vertexColors: true,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.5,
       blending: three.AdditiveBlending,
       depthWrite: false,
       sizeAttenuation: true
@@ -703,7 +705,9 @@
           : galaxyPosition(i, words.length, m);
         // Category tint carries the identity; mastery bumps brightness so
         // the colour stays punchy instead of washing out into neutral grey.
-        var brightness = 0.85 + m * 0.35;
+        // Quiz-accuracy-driven brightness: new/unstudied = lavender tint of
+        // category, mastered = near full saturation + larger.
+        var brightness = 0.95 + m * 0.45;
         var blend = {
           r: Math.min(1, catTint.r * brightness),
           g: Math.min(1, catTint.g * brightness),
@@ -713,16 +717,43 @@
           map: state.glowTex,
           color: new three.Color(blend.r, blend.g, blend.b),
           transparent: true,
-          opacity: 0.9 + m * 0.1,
+          opacity: 1.0,
           blending: three.AdditiveBlending,
           depthWrite: false,
         });
         var sprite = new three.Sprite(mat);
         sprite.position.set(pos.x, pos.y, pos.z);
-        var size = 1.6 + m * 1.8;
+        var size = 1.8 + m * 2.6;
         sprite.scale.set(size, size, 1);
         sprite.userData = { word: w, mastery: m, idx: i, isStar: true, category: cat };
         group.add(sprite);
+
+        // Mastery aura: for words the user actually knows (m >= 0.4),
+        // paint a soft larger halo behind the star. Gold for mastered
+        // (>=0.75), mint for learning (0.4-0.75). This is what makes
+        // "my saved stars shine" vs the dim backdrop.
+        if (m >= 0.4) {
+          var aura = {
+            r: m >= 0.75 ? 0.96 : 0.31,
+            g: m >= 0.75 ? 0.66 : 0.80,
+            b: m >= 0.75 ? 0.24 : 0.77
+          };
+          var auraMat = new three.SpriteMaterial({
+            map: state.glowTex,
+            color: new three.Color(aura.r, aura.g, aura.b),
+            transparent: true,
+            opacity: 0.32 + m * 0.28,
+            blending: three.AdditiveBlending,
+            depthWrite: false,
+          });
+          var auraSprite = new three.Sprite(auraMat);
+          auraSprite.position.set(pos.x, pos.y, pos.z);
+          var auraSize = size * (1.9 + m * 0.8);
+          auraSprite.scale.set(auraSize, auraSize, 1);
+          auraSprite.userData = { isAura: true, forStarIdx: i, baseScale: auraSize, phase: Math.random() * Math.PI * 2 };
+          auraSprite.renderOrder = -0.5; // behind the star sprite but above corpus
+          group.add(auraSprite);
+        }
 
         // Word label pill
         if (i < labelLimit) {
@@ -1456,6 +1487,18 @@
     }
     if (state.nebula) state.nebula.rotation.y += dt * 0.008;
     if (state.stars)  state.stars.rotation.y  += dt * 0.015;
+    // Gentle pulse on mastery aura sprites so mastered words feel alive.
+    if (state.stars) {
+      var now = state.clock ? state.clock.elapsedTime : performance.now() / 1000;
+      for (var auraI = 0; auraI < state.stars.children.length; auraI++) {
+        var child = state.stars.children[auraI];
+        if (!child.userData || !child.userData.isAura) continue;
+        var base = child.userData.baseScale || 1;
+        var phase = child.userData.phase || 0;
+        var scale = base * (1 + 0.06 * Math.sin(now * 1.4 + phase));
+        child.scale.set(scale, scale, 1);
+      }
+    }
     // Satellites orbit around the selected star — spin the group gently,
     // pivoted on the parent position.
     if (state.satellites && state.selected && state.selected.sprite) {
