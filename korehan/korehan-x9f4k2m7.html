@@ -5612,15 +5612,26 @@ async function bulkRegenerateVocab(limit) {
   try {
     var sb = getSb();
     if (!sb) { bulkLog('Supabase client missing', 'err'); return; }
-    var q = sb.from('articles_data')
-      .select('id, title, body, level, status')
-      .eq('status', 'published')
-      .order('date', { ascending: false });
-    if (limit < 9999) q = q.limit(limit);
-    var r = await q;
-    if (r.error) { bulkLog('articles_data fetch failed: ' + r.error.message, 'err'); return; }
-    var rows = r.data || [];
-    bulkLog('Fetched ' + rows.length + ' articles.');
+    // The canonical table is `articles` (not articles_data — that was a
+    // copy-paste error). Status can be null on older rows, so we don't
+    // filter by it in the query; instead drop unpublished rows after fetch.
+    var r;
+    try {
+      var q = sb.from('articles')
+        .select('id, title, body, level, status')
+        .order('created_at', { ascending: false });
+      if (limit < 9999) q = q.limit(Math.min(limit * 2, 500));
+      r = await q;
+    } catch (queryErr) {
+      bulkLog('Fetch threw: ' + (queryErr && queryErr.message || queryErr), 'err');
+      return;
+    }
+    if (!r) { bulkLog('articles fetch returned nothing (admin proxy issue?)', 'err'); return; }
+    if (r.error) { bulkLog('articles fetch failed: ' + (r.error.message || JSON.stringify(r.error)), 'err'); return; }
+    var rows = (r.data || []).filter(function(a){ return a && (!a.status || a.status === 'published'); });
+    if (limit < 9999) rows = rows.slice(0, limit);
+    bulkLog('Fetched ' + rows.length + ' articles (filtered published).');
+    if (!rows.length) { bulkLog('No articles matched. Raw data length: ' + ((r.data || []).length), 'warn'); return; }
     var ok = 0, skip = 0, fail = 0;
     for (var i = 0; i < rows.length; i++) {
       var a = rows[i];
