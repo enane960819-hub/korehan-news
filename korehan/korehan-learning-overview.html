@@ -564,80 +564,34 @@
       </div>
     </div>
 
-    <!-- ═══ JOURNEY SUBWAY MAP ═══ -->
+    <!-- ═══ K-EXPRESS CURRICULUM PREVIEW ═══ -->
     <section id="gl-journey" style="margin-bottom:14px;padding:22px 18px 18px;border-radius:20px;background:radial-gradient(ellipse at 15% 0%,rgba(167,139,250,.16),transparent 50%),radial-gradient(ellipse at 85% 100%,rgba(244,169,60,.14),transparent 55%),linear-gradient(180deg,#0b1228 0%,#141a3a 100%);border:1px solid rgba(167,139,250,.22);box-shadow:0 12px 30px rgba(20,24,48,.22);position:relative;overflow:hidden;color:#fff">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:4px;flex-wrap:wrap">
         <div>
           <div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,181,253,.75)">Your Journey</div>
-          <div style="font-family:'Playfair Display','Noto Serif KR',serif;font-size:22px;font-weight:900;letter-spacing:-.01em;line-height:1.1;margin-top:2px">The Road to Fluency</div>
+          <div style="font-family:'Playfair Display','Noto Serif KR',serif;font-size:22px;font-weight:900;letter-spacing:-.01em;line-height:1.1;margin-top:2px">K-Express · 한국어 노선도</div>
         </div>
         <div id="gl-journey-stage" style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,231,176,.85);padding:5px 12px;border-radius:999px;background:rgba(244,169,60,.15);border:1px solid rgba(244,169,60,.35)">— / 100%</div>
       </div>
-      <div id="gl-journey-tagline" style="font-size:12px;color:rgba(220,210,255,.7);margin-bottom:12px;line-height:1.5;max-width:60ch"></div>
-      <svg id="gl-journey-svg" viewBox="0 0 900 300" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;font-family:'DM Sans','Noto Sans KR',sans-serif;overflow:visible"></svg>
-      <div id="gl-journey-next" style="margin-top:12px;padding:12px 14px;border-radius:12px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);font-size:12px;color:rgba(220,210,255,.85);line-height:1.55;min-height:16px"></div>
-      <div id="gl-journey-tooltip" style="position:absolute;pointer-events:none;background:rgba(7,10,26,.96);color:#fff;padding:10px 14px;border-radius:10px;font-size:12px;font-weight:700;max-width:220px;box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;transition:opacity .15s;z-index:5;line-height:1.45;border:1px solid rgba(167,139,250,.3)"></div>
+      <div id="gl-journey-tagline" style="font-size:12px;color:rgba(220,210,255,.7);margin-bottom:14px;line-height:1.5;max-width:60ch"></div>
+      <svg id="gl-journey-svg" viewBox="0 0 920 140" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;font-family:'DM Sans','Noto Sans KR',sans-serif;overflow:visible"></svg>
+      <div id="gl-journey-next" style="margin:12px 0 0;padding:12px 14px;border-radius:12px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);font-size:12px;color:rgba(220,210,255,.85);line-height:1.55;min-height:16px"></div>
+      <button id="gl-journey-fullmap" type="button" onclick="KH_CURRICULUM_openFullMap()"
+        style="margin-top:12px;width:100%;padding:11px 14px;border:1px solid rgba(167,139,250,.35);border-radius:12px;background:linear-gradient(135deg,rgba(124,58,237,.28),rgba(56,189,248,.2));color:#fff;font-size:12px;font-weight:900;letter-spacing:.04em;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s,transform .12s">
+        <span style="font-size:14px">🗺️</span>
+        View full K-Express map · 50개 역 전체보기
+        <span style="margin-left:auto;font-size:13px">→</span>
+      </button>
+      <div id="gl-journey-tooltip" style="position:absolute;pointer-events:none;background:rgba(7,10,26,.96);color:#fff;padding:10px 14px;border-radius:10px;font-size:12px;font-weight:700;max-width:260px;box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;transition:opacity .15s;z-index:5;line-height:1.45;border:1px solid rgba(167,139,250,.3)"></div>
     </section>
+
+    <!-- Full map modal (shell — filled by KH_CURRICULUM_openFullMap in next iteration) -->
+    <div id="gl-fullmap-overlay" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(4,6,18,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);overflow-y:auto;color:#fff;padding:24px 16px;"></div>
+
     <script>
-    // ── "Road to Fluency" — a single winding path with stamped milestones.
-    //    Replaces the old flat 5-line subway with something that actually
-    //    reads as a journey: weighted overall progress, a traveler pip that
-    //    sits at your current % along the path, and what's next spelled out.
+    // ── K-Express preview — renders the 6 major stations as a horizontal
+    // subway line. Full 50-station modal is opened by the CTA button.
     (function() {
-      // Stations are *overall* milestones (weighted across all skills), not
-      // per-skill ones. Each row declares thresholds for vocab / articles /
-      // quizzes / streak / xp. A station unlocks once the user meets all of
-      // them. Weighted overall progress is the average of each skill's
-      // progress toward the NEXT milestone.
-      var STATIONS = [
-        { pct: 0.00, label: '시작',   en: 'Start',      emoji: '🚩', tagline: 'Your journey begins.' },
-        { pct: 0.18, label: '새싹',   en: 'Sprout',     emoji: '🌱',
-          thresholds: { words: 10,  articles: 1,  quizzes: 1,  streak: 3,  xp: 50 },
-          tagline: 'First dozen words. Habit forming.' },
-        { pct: 0.36, label: '뿌리',   en: 'Roots',      emoji: '🪴',
-          thresholds: { words: 50,  articles: 10, quizzes: 10, streak: 7,  xp: 250 },
-          tagline: 'One week strong. Your Korean is taking root.' },
-        { pct: 0.55, label: '나무',   en: 'Tree',       emoji: '🌳',
-          thresholds: { words: 150, articles: 30, quizzes: 30, streak: 14, xp: 1000 },
-          tagline: 'Two weeks, 150+ words. A real reader.' },
-        { pct: 0.78, label: '숲',     en: 'Forest',     emoji: '🌲',
-          thresholds: { words: 300, articles: 60, quizzes: 75, streak: 30, xp: 3000 },
-          tagline: 'A month in. The forest is yours.' },
-        { pct: 1.00, label: '산',     en: 'Mountain',   emoji: '🗻',
-          thresholds: { words: 500, articles: 120, quizzes: 150, streak: 100, xp: 7500 },
-          tagline: 'Summit reached. Fluency country.' }
-      ];
-
-      // Cubic bezier that curves gently from left to right, dipping and rising
-      // like a real trail. (x1,y1) start, (cp1), (cp2), (x2,y2) end.
-      // We'll sample it to place stations + the "you are here" pip.
-      var PATH_D = 'M60 230 C 180 120, 260 300, 410 190 S 620 60, 760 180 S 870 170, 860 90';
-      function cubicAt(t, P0, P1, P2, P3) {
-        var u = 1 - t;
-        return {
-          x: u*u*u*P0.x + 3*u*u*t*P1.x + 3*u*t*t*P2.x + t*t*t*P3.x,
-          y: u*u*u*P0.y + 3*u*u*t*P1.y + 3*u*t*t*P2.y + t*t*t*P3.y
-        };
-      }
-      // The browser already parses the path when we set d=, but we need JS
-      // sampling too; mirror the control points for cubicAt().
-      var SEGMENTS = [
-        { P0:{x:60,y:230},  P1:{x:180,y:120}, P2:{x:260,y:300}, P3:{x:410,y:190} },
-        // S x,y1 x,y2 → reflect previous cp2 for new cp1
-        { P0:{x:410,y:190}, P1:{x:560,y:80},  P2:{x:620,y:60},  P3:{x:760,y:180} },
-        { P0:{x:760,y:180}, P1:{x:900,y:300}, P2:{x:870,y:170}, P3:{x:860,y:90}  }
-      ];
-      function samplePath(t) {
-        // t in 0..1 over the combined path; segments are equal-t thirds.
-        var segIdx = Math.min(2, Math.floor(t * 3));
-        var tt = (t * 3) - segIdx;
-        var s = SEGMENTS[segIdx];
-        return cubicAt(tt, s.P0, s.P1, s.P2, s.P3);
-      }
-
-      // Weights + normalisation per skill
-      var SKILL_CAP = { words: 500, articles: 120, quizzes: 150, streak: 100, xp: 7500 };
-
       async function loadStats() {
         if (typeof getSupa !== 'function' || !supaUser) return null;
         try {
@@ -658,47 +612,40 @@
         } catch (e) { return null; }
       }
 
-      // Overall progress = average of each skill's min(value/cap, 1).
-      // This stays fair when someone lopsides one axis (e.g. tons of words,
-      // no quizzes) — they'll move forward but won't teleport to Mountain.
-      function computeOverall(stats) {
-        if (!stats) return 0;
-        var keys = ['words','articles','quizzes','streak','xp'];
-        var sum = 0;
-        keys.forEach(function(k){ sum += Math.min(1, (stats[k] || 0) / SKILL_CAP[k]); });
-        return sum / keys.length;
-      }
-
-      function pickCurrentStation(overall) {
-        // Current = last station whose pct <= overall
+      function pickCurrentMajor(majors, overall) {
         var idx = 0;
-        for (var i = 0; i < STATIONS.length; i++) {
-          if (STATIONS[i].pct <= overall) idx = i;
-        }
+        for (var i = 0; i < majors.length; i++) if (majors[i].pct <= overall) idx = i;
         return idx;
       }
-      function pickNextStation(overall) {
-        for (var i = 0; i < STATIONS.length; i++) {
-          if (STATIONS[i].pct > overall) return i;
-        }
-        return STATIONS.length - 1;
+      function pickNextMajor(majors, overall) {
+        for (var i = 0; i < majors.length; i++) if (majors[i].pct > overall) return i;
+        return majors.length - 1;
       }
 
-      function nextNeededCopy(stats, nextIdx) {
-        if (!stats || nextIdx >= STATIONS.length) return '';
-        var t = STATIONS[nextIdx].thresholds;
-        if (!t) return '';
-        var parts = [];
+      function nextNeededCopy(stats, nextMajor) {
+        if (!stats || !nextMajor) return '';
+        // Estimate requirements based on pct — 6 majors ≈ thresholds at 18/36/55/78/100
+        var caps = window.KH_CURRICULUM.SKILL_CAP;
+        var pct = nextMajor.pct;
+        var target = {
+          words:    Math.round(caps.words    * pct),
+          articles: Math.round(caps.articles * pct),
+          quizzes:  Math.round(caps.quizzes  * pct),
+          streak:   Math.round(caps.streak   * pct),
+          xp:       Math.round(caps.xp       * pct)
+        };
         var labels = { words: '단어', articles: '기사', quizzes: '퀴즈', streak: '연속 일', xp: 'XP' };
-        Object.keys(t).forEach(function(k) {
-          var need = t[k] - (stats[k] || 0);
+        var parts = [];
+        Object.keys(target).forEach(function(k) {
+          var need = target[k] - (stats[k] || 0);
           if (need > 0) parts.push('<b style="color:#fde68a">' + need + '</b> ' + labels[k]);
         });
-        if (!parts.length) return 'All requirements met — next station unlocking soon!';
-        return 'To reach <b>' + STATIONS[nextIdx].label + ' (' + STATIONS[nextIdx].en + ')</b>: ' + parts.join(', ') + ' 남음';
+        if (!parts.length) return '<b>' + nextMajor.name + '</b> 역 조건 모두 충족! 곧 해금됩니다.';
+        return '다음 역 <b>' + nextMajor.name + ' (' + nextMajor.en + ')</b> 까지 — ' + parts.join(', ') + ' 남음';
       }
 
-      function render(stats, overall) {
+      function renderPreview(stats, overall) {
+        var majors = window.KH_CURRICULUM.majors();
         var svg = document.getElementById('gl-journey-svg');
         var tooltip = document.getElementById('gl-journey-tooltip');
         var stageEl = document.getElementById('gl-journey-stage');
@@ -706,117 +653,93 @@
         var nextEl = document.getElementById('gl-journey-next');
         if (!svg) return;
 
-        var currentIdx = pickCurrentStation(overall);
-        var nextIdx = pickNextStation(overall);
+        var currentIdx = pickCurrentMajor(majors, overall);
+        var nextIdx = pickNextMajor(majors, overall);
         var pctLabel = Math.round(overall * 100);
-        if (stageEl) stageEl.textContent = STATIONS[currentIdx].label + ' · ' + pctLabel + '%';
-        if (taglineEl) taglineEl.textContent = STATIONS[currentIdx].tagline || '';
-        if (nextEl) nextEl.innerHTML = nextNeededCopy(stats, nextIdx);
+        if (stageEl) stageEl.textContent = majors[currentIdx].name + ' · ' + pctLabel + '%';
+        if (taglineEl) {
+          var cd = (majors[currentIdx].can_do || [])[0] || '';
+          taglineEl.textContent = '현재: ' + cd;
+        }
+        if (nextEl) nextEl.innerHTML = nextNeededCopy(stats, majors[nextIdx]);
 
-        // ── SVG build ────────────────────────────────────────
+        // SVG layout: horizontal subway line at y=80, 6 major stops at fixed x
+        var W = 920, H = 140;
+        var leftPad = 60, rightPad = 40;
+        var usable = W - leftPad - rightPad;
         var parts = [];
-        // Defs: gradient along the path (violet → mint → gold at 100%)
+
         parts.push('<defs>'
-          + '<linearGradient id="glPathGrad" x1="0" y1="0" x2="1" y2="0">'
+          + '<linearGradient id="glPreviewGrad" x1="0" y1="0" x2="1" y2="0">'
           +   '<stop offset="0%"   stop-color="#a78bfa"/>'
-          +   '<stop offset="40%"  stop-color="#4ECDC4"/>'
-          +   '<stop offset="72%"  stop-color="#f4a93c"/>'
+          +   '<stop offset="45%"  stop-color="#4ECDC4"/>'
+          +   '<stop offset="80%"  stop-color="#f4a93c"/>'
           +   '<stop offset="100%" stop-color="#fbbf24"/>'
           + '</linearGradient>'
-          + '<filter id="glGlow" x="-30%" y="-30%" width="160%" height="160%">'
-          +   '<feGaussianBlur stdDeviation="4" result="b"/>'
+          + '<filter id="glPreviewGlow" x="-30%" y="-30%" width="160%" height="160%">'
+          +   '<feGaussianBlur stdDeviation="3.5" result="b"/>'
           +   '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>'
           + '</filter>'
           + '</defs>');
 
-        // Soft horizon ambient — subtle striations that fade toward the top
-        for (var hy = 0; hy < 6; hy++) {
-          parts.push('<line x1="0" y1="' + (50 + hy * 18) + '" x2="900" y2="' + (50 + hy * 18) + '" stroke="rgba(167,139,250,' + (0.03 + hy * 0.01) + ')" stroke-width="1"/>');
-        }
-
-        // Path outline (full route, faded) + completed portion (gradient,
-        // stroke-dasharray trick to reveal up to overall%).
-        parts.push('<path d="' + PATH_D + '" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>');
-        // Completed portion — draw the same path with a dasharray that
-        // reveals up to overall. We don't know exact length, use getTotalLength
-        // after render; for now use 1200 as estimate (close for our bezier).
-        var estLen = 1200;
-        var revealLen = Math.max(2, overall * estLen);
-        parts.push('<path id="gl-journey-path-done" d="' + PATH_D + '" fill="none" stroke="url(#glPathGrad)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="' + revealLen + ' ' + (estLen - revealLen + 10) + '" filter="url(#glGlow)"/>');
+        // Full route (faded)
+        parts.push('<line x1="' + leftPad + '" y1="80" x2="' + (W - rightPad) + '" y2="80" stroke="rgba(255,255,255,.15)" stroke-width="6" stroke-linecap="round"/>');
+        // Completed portion up to overall%
+        var endX = leftPad + usable * overall;
+        parts.push('<line x1="' + leftPad + '" y1="80" x2="' + endX + '" y2="80" stroke="url(#glPreviewGrad)" stroke-width="7" stroke-linecap="round" filter="url(#glPreviewGlow)"/>');
 
         // Stations
-        STATIONS.forEach(function(st, si) {
-          var p = samplePath(st.pct);
+        majors.forEach(function(st, si) {
+          var cx = leftPad + usable * st.pct;
           var done = st.pct <= overall;
           var current = si === currentIdx;
-          // Glow ring for the current station
           if (current) {
-            parts.push('<circle cx="' + p.x + '" cy="' + p.y + '" r="16" fill="none" stroke="#fbbf24" stroke-width="2" opacity=".55">'
-              + '<animate attributeName="r" from="14" to="28" dur="1.8s" repeatCount="indefinite"/>'
-              + '<animate attributeName="opacity" from=".75" to="0" dur="1.8s" repeatCount="indefinite"/>'
+            parts.push('<circle cx="' + cx + '" cy="80" r="18" fill="none" stroke="#fbbf24" stroke-width="2" opacity=".5">'
+              + '<animate attributeName="r" from="15" to="28" dur="1.8s" repeatCount="indefinite"/>'
+              + '<animate attributeName="opacity" from=".7" to="0" dur="1.8s" repeatCount="indefinite"/>'
               + '</circle>');
           }
           var stroke = done ? '#fde68a' : 'rgba(220,210,255,.35)';
-          var fill   = done ? '#fff' : 'rgba(20,24,48,.9)';
-          var r = done ? 11 : 8;
+          var fill = done ? '#fff' : 'rgba(20,24,48,.95)';
+          var r = done ? 12 : 9;
           parts.push('<g class="gl-st" data-idx="' + si + '" style="cursor:pointer">');
-          parts.push('<circle cx="' + p.x + '" cy="' + p.y + '" r="' + r + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + (done ? 2.5 : 1.8) + '"/>');
-          // Emoji as a foreignObject isn't reliable; use text
-          parts.push('<text x="' + p.x + '" y="' + (p.y + 4.5) + '" text-anchor="middle" font-size="13">' + st.emoji + '</text>');
+          parts.push('<circle cx="' + cx + '" cy="80" r="' + r + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + (done ? 2.8 : 1.8) + '"/>');
+          parts.push('<text x="' + cx + '" y="85" text-anchor="middle" font-size="14">' + st.emoji + '</text>');
           parts.push('</g>');
-          // Name above/below alternating, staying inside viewBox
-          var isAbove = si % 2 === 0;
-          var nameY = p.y + (isAbove ? -22 : 28);
-          parts.push('<text x="' + p.x + '" y="' + nameY + '" text-anchor="middle" font-size="12" font-weight="900" fill="' + (done ? '#fff' : 'rgba(220,210,255,.55)') + '">' + st.label + '</text>');
-          parts.push('<text x="' + p.x + '" y="' + (nameY + 12) + '" text-anchor="middle" font-size="9" font-weight="700" fill="' + (done ? 'rgba(255,231,176,.75)' : 'rgba(220,210,255,.38)') + '">' + st.en + '</text>');
+          // Station label below the line
+          var nameColor = done ? '#fff' : 'rgba(220,210,255,.55)';
+          var enColor   = done ? 'rgba(255,231,176,.7)' : 'rgba(220,210,255,.35)';
+          parts.push('<text x="' + cx + '" y="115" text-anchor="middle" font-size="12" font-weight="900" fill="' + nameColor + '">' + st.name + '</text>');
+          parts.push('<text x="' + cx + '" y="128" text-anchor="middle" font-size="9" font-weight="700" fill="' + enColor + '">' + st.en + '</text>');
         });
 
-        // "You are here" traveler pip
+        // "You are here" traveler pip (train icon)
         if (stats) {
-          var travP = samplePath(overall);
-          parts.push('<circle cx="' + travP.x + '" cy="' + travP.y + '" r="22" fill="none" stroke="#fff" stroke-width="2.5" opacity=".7">'
-            + '<animate attributeName="r" from="18" to="30" dur="2.2s" repeatCount="indefinite"/>'
-            + '<animate attributeName="opacity" from=".9" to="0" dur="2.2s" repeatCount="indefinite"/>'
+          var travX = leftPad + usable * overall;
+          parts.push('<circle cx="' + travX + '" cy="80" r="22" fill="none" stroke="#fff" stroke-width="2.4" opacity=".6">'
+            + '<animate attributeName="r" from="16" to="28" dur="2.2s" repeatCount="indefinite"/>'
+            + '<animate attributeName="opacity" from=".85" to="0" dur="2.2s" repeatCount="indefinite"/>'
             + '</circle>');
-          parts.push('<circle cx="' + travP.x + '" cy="' + travP.y + '" r="9" fill="#fff" filter="url(#glGlow)"/>');
-          parts.push('<text x="' + travP.x + '" y="' + (travP.y + 4) + '" text-anchor="middle" font-size="11" font-weight="900" fill="#0b1228">ME</text>');
+          parts.push('<circle cx="' + travX + '" cy="80" r="9" fill="#fff" filter="url(#glPreviewGlow)"/>');
+          parts.push('<text x="' + travX + '" y="84" text-anchor="middle" font-size="10" font-weight="900" fill="#0b1228">ME</text>');
+          parts.push('<text x="' + travX + '" y="45" text-anchor="middle" font-size="9" font-weight="800" fill="rgba(255,231,176,.9)">YOU ARE HERE</text>');
         }
 
         svg.innerHTML = parts.join('');
 
-        // Precise path length correction — overwrite dash now that layout is real
-        try {
-          var donePath = document.getElementById('gl-journey-path-done');
-          if (donePath && donePath.getTotalLength) {
-            var L = donePath.getTotalLength();
-            var reveal = Math.max(2, overall * L);
-            donePath.setAttribute('stroke-dasharray', reveal + ' ' + (L - reveal + 10));
-          }
-        } catch (e) {}
-
-        // Tooltip wiring
+        // Hover tooltip
         svg.addEventListener('mousemove', function(e) {
           var g = e.target.closest ? e.target.closest('.gl-st') : null;
           if (!g) { tooltip.style.opacity = '0'; return; }
           var idx = parseInt(g.getAttribute('data-idx'), 10);
-          var st = STATIONS[idx];
+          var st = majors[idx];
           if (!st) return;
           var done = st.pct <= overall;
-          var body = '<div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(196,181,253,.7);margin-bottom:3px">Station ' + (idx + 1) + '</div>'
-            + '<div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:2px">' + st.emoji + ' ' + st.label + ' · ' + st.en + '</div>'
-            + '<div style="font-size:11px;color:rgba(220,210,255,.7);margin-bottom:5px">' + (st.tagline || '') + '</div>'
-            + '<div style="font-size:11px;font-weight:800;color:' + (done ? '#86efac' : '#fde68a') + '">' + (done ? '✓ Unlocked' : 'Locked · need all thresholds') + '</div>';
-          if (st.thresholds) {
-            var labels = { words: '단어', articles: '기사', quizzes: '퀴즈', streak: '연속', xp: 'XP' };
-            body += '<div style="margin-top:6px;font-size:11px;line-height:1.5;color:rgba(220,210,255,.7)">'
-              + Object.keys(st.thresholds).map(function(k) {
-                var cur = (stats && stats[k]) || 0;
-                var need = st.thresholds[k];
-                var ok = cur >= need;
-                return (ok ? '✓' : '·') + ' ' + labels[k] + ': ' + cur + '/' + need;
-              }).join('<br>')
-              + '</div>';
-          }
+          var cdStr = (st.can_do || []).slice(0, 3).map(function(s){ return '· ' + s; }).join('<br>');
+          var body = '<div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(196,181,253,.75);margin-bottom:3px">' + (done ? 'UNLOCKED' : 'LOCKED') + ' · ' + (idx + 1) + '/' + majors.length + '</div>'
+            + '<div style="font-size:15px;font-weight:900;color:#fff;margin-bottom:2px">' + st.emoji + ' ' + st.name + '</div>'
+            + '<div style="font-size:11px;color:rgba(196,181,253,.75);margin-bottom:6px">' + st.en + '</div>'
+            + '<div style="font-size:11px;color:rgba(220,210,255,.85);line-height:1.5">' + cdStr + '</div>';
           tooltip.innerHTML = body;
           var rect = svg.getBoundingClientRect();
           tooltip.style.left = (e.clientX - rect.left + 14) + 'px';
@@ -824,12 +747,17 @@
           tooltip.style.opacity = '1';
         });
         svg.addEventListener('mouseleave', function() { tooltip.style.opacity = '0'; });
+
+        // Store overall so the full-map modal can read it
+        window._KH_CURRICULUM_STATS = stats;
+        window._KH_CURRICULUM_OVERALL = overall;
       }
 
       async function init() {
+        if (!window.KH_CURRICULUM) return;
         var stats = await loadStats();
-        var overall = computeOverall(stats);
-        render(stats, overall);
+        var overall = window.KH_CURRICULUM.computeOverall(stats);
+        renderPreview(stats, overall);
       }
 
       if (document.readyState === 'loading') {
@@ -839,6 +767,34 @@
       }
       window.addEventListener('kh-auth-signed-in', function(){ setTimeout(init, 400); });
     })();
+
+    // ── Full-map modal opener. Placeholder for now; next turn fills in
+    //    scrollable 50-station detail view with per-station panels.
+    window.KH_CURRICULUM_openFullMap = function() {
+      var ov = document.getElementById('gl-fullmap-overlay');
+      if (!ov || !window.KH_CURRICULUM) return;
+      var all = window.KH_CURRICULUM.STATIONS;
+      var overall = window._KH_CURRICULUM_OVERALL || 0;
+      ov.innerHTML =
+        '<div style="max-width:1080px;margin:0 auto;padding-bottom:80px">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 18px;flex-wrap:wrap">'
+        +   '<div>'
+        +     '<div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,181,253,.75)">K-Express</div>'
+        +     '<div style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:26px;font-weight:900">한국어 노선도 (전체 ' + all.length + '개 역)</div>'
+        +   '</div>'
+        +   '<button onclick="this.parentElement.parentElement.parentElement.style.display=\'none\';" style="width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(20,24,48,.8);color:#fff;font-size:16px;cursor:pointer">✕</button>'
+        + '</div>'
+        + '<div id="gl-fullmap-body" style="color:rgba(220,210,255,.8);font-size:14px;line-height:1.6;padding:32px 12px;text-align:center">'
+        +   '<div style="font-size:40px;margin-bottom:10px">🚧</div>'
+        +   '<div style="font-weight:800;color:#fff;font-size:16px;margin-bottom:4px">Full map coming in the next build</div>'
+        +   '<div>Next iteration will render every station (starter → fluency) with per-station can-do statements, grammar points, and content unlocks.</div>'
+        + '</div></div>';
+      ov.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+      ov.addEventListener('click', function(e){
+        if (e.target === ov) { ov.style.display = 'none'; document.body.style.overflow = ''; }
+      });
+    };
     </script>
 
     <!-- ═══ TABBED WEEKLY SECTION (비교 | 목표 | 캘린더) ═══ -->
@@ -1036,6 +992,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="korehan-shared.js?v=20260420x"></script>
   <script src="js/kh-universe.js?v=20260420w"></script>
+  <script src="js/kh-curriculum.js?v=20260420y"></script>
   <script src="learning_hub_vocab_data.js"></script>
   <script>
   // ── helpers ────────────────────────────────────────────────
