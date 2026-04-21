@@ -3903,17 +3903,23 @@ function renderArticleVocab(a) {
   var body = (a && (a.body || a.full || a.title)) || '';
 
   function inArticleBody(ko) {
-    if (!ko) return false;
-    // Korean word boundary: the entry must NOT be sandwiched between other
-    // Korean syllables — that would be a partial match inside a compound.
-    var re = new RegExp('(^|[^\\uAC00-\\uD7A3])' + ko.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '(?![\\uAC00-\\uD7A3])');
+    if (!ko || ko.length < 2) return false;
+    var esc = ko.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    // Left boundary only: the word must not be preceded by a Korean
+    // syllable (so 집 doesn't match inside 집중). We deliberately do NOT
+    // require a non-Korean char on the right — in Korean, nouns are
+    // almost always followed by a particle (을/를/이/가/에/에서/은/는/의
+    // /으로…) which is itself Korean. The old strict-right check dropped
+    // every noun with a particle, leaving only stem-matched verbs like
+    // 노력하다 / 돌아오다 / 기억하다 in the Vocab tab.
+    var re = new RegExp('(^|[^\\uAC00-\\uD7A3])' + esc);
     if (re.test(body)) return true;
-    // Dictionary-form verbs/adjectives (ending in 다/요) often appear
-    // conjugated in the body; accept the stem as an article match.
+    // Dictionary-form verbs/adjectives that only appear conjugated —
+    // match the stem (drop trailing 다/요).
     if (ko.length >= 3 && /[다요]$/.test(ko)) {
       var stem = ko.slice(0, -1);
       if (stem.length >= 2) {
-        var sre = new RegExp('(^|[^\\uAC00-\\uD7A3])' + stem.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '[\\uAC00-\\uD7A3]{0,4}(?![\\uAC00-\\uD7A3])');
+        var sre = new RegExp('(^|[^\\uAC00-\\uD7A3])' + stem.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
         if (sre.test(body)) return true;
       }
     }
