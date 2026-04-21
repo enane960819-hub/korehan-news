@@ -503,6 +503,22 @@ var _remoteCacheDisabled = false;
 var _artCacheSchema = null;     // 'kv' | 'wide' | 'none'
 var _artCacheSchemaDone = false;
 
+// cache_value / wide-row JSON columns can be either a string (text column)
+// or an already-parsed object/array (jsonb column — PostgREST auto-parses).
+// JSON.parse on an object throws, so handle both shapes. Without this,
+// getFromCache silently returned null and the article Vocab tab always
+// fell through to the body-scan fallback.
+function safeParseJSON(v, fallback) {
+  if (v === null || v === undefined || v === '') return fallback;
+  if (typeof v === 'object') return v;
+  if (typeof v !== 'string') return fallback;
+  try { return JSON.parse(v); }
+  catch (_) {
+    try { return JSON.parse(decodeURIComponent(v)); }
+    catch (_) { return fallback; }
+  }
+}
+
 async function _detectArtCacheSchema() {
   if (_artCacheSchemaDone) return _artCacheSchema;
   var sb = getSupa();
