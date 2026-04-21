@@ -519,6 +519,38 @@ function safeParseJSON(v, fallback) {
   }
 }
 
+// Noun-form filter for learner-facing vocab lists. Used by the article
+// Vocab tab (renderArticleVocab) and the sidebar Word Bank so the same
+// entry renders the same way everywhere — a site-wide 노력하다 entry
+// should show up as 노력 in both places, not as a verb in one and a
+// noun in the other.
+//
+// - `~하다` action verbs -> noun stem (노력하다 -> 노력), strip "hada"
+//   from rom and "to " from en
+// - Other `~다` dictionary forms (돌아오다, 예쁘다) have no clean noun
+//   surface -> return null so the caller can drop them
+// - Everything else passes through unchanged
+//
+// NOT applied in: hover tooltips (needs dict form for conjugation
+// lookup), Universe related-words (intentionally dictionary-form for
+// recognition learning), Study-Room external practice chips (writing
+// drills need the conjugable form).
+function khNormalizeVocabNoun(ko, rom, en) {
+  ko = ko || '';
+  rom = rom || '';
+  en = en || '';
+  if (!ko || ko.length < 2) return null;
+  if (/하다$/.test(ko) && ko.length >= 3) {
+    return {
+      ko: ko.replace(/하다$/, ''),
+      rom: rom.replace(/[-\s]*hada$/i, ''),
+      en: en.replace(/^to\s+/i, '')
+    };
+  }
+  if (/다$/.test(ko)) return null;
+  return { ko: ko, rom: rom, en: en };
+}
+
 async function _detectArtCacheSchema() {
   if (_artCacheSchemaDone) return _artCacheSchema;
   var sb = getSupa();
@@ -3932,28 +3964,17 @@ function renderArticleVocab(a) {
     var seen = {};
     list.forEach(function(v) {
       if (!v) return;
-      var ko = v.ko || v.word || v.word_ko || '';
-      var rom = v.rom || v.reading || v.word_rom || '';
-      var en  = v.en  || v.meaning || v.word_en  || '';
-      if (!ko || ko.length < 2) return;
-      // Match against the ORIGINAL form (dictionary-form stem match handles
-      // conjugated verbs in the body) before we rewrite ko for display.
-      if (!inArticleBody(ko)) return;
-      // Learners want nouns in the Key Vocabulary list, not verb dictionary
-      // forms. Convert ~하다 action verbs to their noun stem (노력하다 →
-      // 노력) and strip the matching suffix from rom / "to " from en so
-      // the card reads cleanly. Drop other -다 entries (돌아오다, 예쁘다)
-      // since they have no clean noun surface.
-      if (/하다$/.test(ko) && ko.length >= 3) {
-        ko = ko.replace(/하다$/, '');
-        rom = rom.replace(/[-\s]*hada$/i, '');
-        en = en.replace(/^to\s+/i, '');
-      } else if (/다$/.test(ko)) {
-        return;
-      }
-      if (ko.length < 2 || seen[ko]) return;
-      seen[ko] = true;
-      out.push({ ko: ko, rom: rom, en: en });
+      var rawKo = v.ko || v.word || v.word_ko || '';
+      var rawRom = v.rom || v.reading || v.word_rom || '';
+      var rawEn  = v.en  || v.meaning || v.word_en  || '';
+      // Match against the ORIGINAL form — the stem regex inside
+      // inArticleBody catches conjugated verbs. Normalize for display
+      // only after the body check passes.
+      if (!inArticleBody(rawKo)) return;
+      var norm = khNormalizeVocabNoun(rawKo, rawRom, rawEn);
+      if (!norm || seen[norm.ko]) return;
+      seen[norm.ko] = true;
+      out.push(norm);
     });
     return out.slice(0, 12);
   }
@@ -3963,26 +3984,16 @@ function renderArticleVocab(a) {
     // Try longest first so compound nouns beat single roots.
     var keys = Object.keys(VOCAB).filter(function(k){ return k && k.length >= 2; })
                                  .sort(function(a,b){ return b.length - a.length; });
-    // Apply the same noun filter as normalize(): ~하다 → stem, drop
-    // other -다 forms. Keeps the Vocab tab consistent regardless of
-    // whether a word came from the AI cache or a sitewide Edit Mode add.
     var out = [];
     var seen = {};
     for (var i = 0; i < keys.length && out.length < 10; i++) {
       var k = keys[i];
-      if (seen[k]) continue;
       if (!inArticleBody(k)) continue;
-      seen[k] = true;
       var v = VOCAB[k] || {};
-      var ko = k, rom = v.rom || '', en = v.en || '';
-      if (/하다$/.test(ko) && ko.length >= 3) {
-        ko = ko.replace(/하다$/, '');
-        rom = rom.replace(/[-\s]*hada$/i, '');
-        en = en.replace(/^to\s+/i, '');
-      } else if (/다$/.test(ko)) {
-        continue;
-      }
-      out.push({ ko: ko, rom: rom, en: en });
+      var norm = khNormalizeVocabNoun(k, v.rom || '', v.en || '');
+      if (!norm || seen[norm.ko]) continue;
+      seen[norm.ko] = true;
+      out.push(norm);
     }
     return out;
   }
@@ -5911,15 +5922,24 @@ function renderSharedSidebar() {
       + '</div></a>';
   }).join('');
 
-  // Word Bank - VOCAB에서 랜덤 6개
-  var vocabKeys = Object.keys(VOCAB);
+  // Word Bank — 랜덤 6개. Apply the same ~하다 → noun filter as the
+  // article Vocab tab so the same sitewide entry shows up identically
+  // in both places (and gets saved under the same word_key if the user
+  // clicks to save).
   var seed = Math.floor(Date.now() / 60000);
-  var shuffled = vocabKeys.slice().sort(function(a,b){
+  var shuffled = Object.keys(VOCAB).slice().sort(function(a,b){
     return Math.sin(seed * a.charCodeAt(0)) - Math.sin(seed * b.charCodeAt(0));
   });
-  var wbWords = shuffled.slice(0, 6).map(function(k){
-    return { ko: k, rom: VOCAB[k].rom, en: VOCAB[k].en };
-  });
+  var wbWords = [];
+  var wbSeen = {};
+  for (var _wi = 0; _wi < shuffled.length && wbWords.length < 6; _wi++) {
+    var _wk = shuffled[_wi];
+    var _wv = VOCAB[_wk] || {};
+    var _wn = khNormalizeVocabNoun(_wk, _wv.rom || '', _wv.en || '');
+    if (!_wn || wbSeen[_wn.ko]) continue;
+    wbSeen[_wn.ko] = true;
+    wbWords.push(_wn);
+  }
 
   return '<div class="sidebar">'
     + '<div class="sidebar-box">'
