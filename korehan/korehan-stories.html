@@ -1328,20 +1328,39 @@ window.addEventListener('popstate', function() {
 
 // Feed-style swipe nav between stories — mirror of conversations.
 // Swipe up near bottom of the scrollable story panel → next story;
-// swipe down near top → previous. Guards: magnitude > 100px, panel
-// at the corresponding edge, overlay actually open.
+// swipe down near top → previous. Guards: must be a one-finger flick
+// (no pinch), fast enough, clearly vertical, panel at the edge, and
+// overlay actually open.
 var _stSwipeStartY = 0;
+var _stSwipeStartX = 0;
+var _stSwipeStartT = 0;
+var _stSwipeValid  = false;
 (function hookStoryFeedSwipe() {
   document.addEventListener('touchstart', function(e) {
-    if (!_stOverlayOpen) return;
-    if (!e.touches || !e.touches.length) return;
+    if (!_stOverlayOpen) { _stSwipeValid = false; return; }
+    // Pinch-to-zoom uses two fingers and each drifts vertically while
+    // just resizing — treating that as a swipe was causing iPhone
+    // users to keep jumping stories accidentally.
+    if (!e.touches || e.touches.length !== 1) { _stSwipeValid = false; return; }
     _stSwipeStartY = e.touches[0].clientY;
+    _stSwipeStartX = e.touches[0].clientX;
+    _stSwipeStartT = Date.now();
+    _stSwipeValid  = true;
   }, { passive: true });
   document.addEventListener('touchend', function(e) {
+    if (!_stSwipeValid) return;
+    _stSwipeValid = false;
     if (!_stOverlayOpen) return;
     if (!window._currentStory) return;
     if (!e.changedTouches || !e.changedTouches.length) return;
+    // Other fingers still down? Mid-pinch, skip.
+    if (e.touches && e.touches.length > 0) return;
     var dy = _stSwipeStartY - e.changedTouches[0].clientY;
+    var dx = e.changedTouches[0].clientX - _stSwipeStartX;
+    var dt = Date.now() - _stSwipeStartT;
+    if (dt > 600) return;
+    if (Math.abs(dx) > Math.abs(dy) * 0.5) return;
+    if (Math.abs(dy) < 140) return;
     var panel = document.getElementById('st-panel');
     if (!panel) return;
     var atTop    = panel.scrollTop < 60;
@@ -1363,10 +1382,10 @@ var _stSwipeStartY = 0;
     if (!pool.length) pool = STORIES.slice();
     var curId = String(window._currentStory.id);
     var curPos = pool.findIndex(function(x){ return String(x.id) === curId; });
-    if (dy >= 100 && atBottom) {
+    if (dy > 0 && atBottom) {
       var nx = pool[curPos + 1];
       if (nx) openStory(nx.id);
-    } else if (dy <= -100 && atTop) {
+    } else if (dy < 0 && atTop) {
       var pv = pool[curPos - 1];
       if (pv) openStory(pv.id);
     }
