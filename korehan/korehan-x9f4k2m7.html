@@ -3717,7 +3717,11 @@ async function runAutoGenerate(){
         date: today_date(), status: saveStatus,
         featured: false, level: diffInfo.level,
         source_url: h.link || '',
-        image: '',
+        // Reuse the upstream image when the admin didn't opt-in to video.
+        // Only CSP-allowed hosts (i.redd.it / preview.redd.it / existing
+        // whitelisted ones) actually render — others fall through to the
+        // picsum fallback via khArticleThumb.
+        image: hasSrcVideo ? '' : (h.image || ''),
         // Always persist the source video URL when we have one, even if the
         // admin unchecked 'Use video' at creation time — that way an article
         // can be flipped to video later by setting use_video=true, without
@@ -5545,7 +5549,11 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
     // the site CSP doesn't allow (preview.redd.it, ctfassets.net, etc.), so
     // it would be blocked and render as a broken icon. khArticleThumb falls
     // back to a stable picsum.photos image keyed by the article id.
-    image: '',
+    // Carry the upstream image through so articles without a usable video
+    // still have a topical hero instead of a random picsum. Only i.redd.it
+    // and preview.redd.it hosts are CSP-allowed (see _headers); the
+    // backend extractor already filters to those + direct-image URLs.
+    image: hasSrcVideo ? '' : (headline.image || ''),
     video_url: hasSrcVideo ? headline.video_url : '',
     video_kind: hasSrcVideo ? headline.video_kind : '',
     use_video: useVideoNow,

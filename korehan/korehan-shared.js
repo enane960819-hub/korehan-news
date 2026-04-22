@@ -1838,7 +1838,14 @@ var KH_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/200
 var KH_IMG_CSP_HOSTS = [
   'images.unsplash.com', 'source.unsplash.com',
   'picsum.photos', 'samghztrdvtxmrmawneu.supabase.co',
-  'lh3.googleusercontent.com'
+  'lh3.googleusercontent.com', 'i.ytimg.com',
+  // Reddit image hosts — kept in sync with _headers img-src. i.redd.it is
+  // for direct image posts (i.redd.it/abc.jpg), preview.redd.it is the
+  // signed-URL CDN used by d.preview.images[0].source.url, external-
+  // preview is the same but for non-image link posts. b.thumbs is the
+  // tiny default thumbnail CDN.
+  'i.redd.it', 'preview.redd.it', 'external-preview.redd.it',
+  'b.thumbs.redditmedia.com'
 ];
 function _khImgHostAllowed(url) {
   if (!url || typeof url !== 'string') return false;
@@ -4948,40 +4955,55 @@ async function toggleTranslate() {
     return;
   }
 
-  // 번역할 텍스트 수집 - 원본 텍스트만 추출
+  // Collect body segments (title is already handled separately via
+  // title_en swap — see above). If title_en was missing we fall back to
+  // translating the title too by pushing it at the front and remembering
+  // its index.
   var texts = [];
+  var titleIdx = -1;
+  if (titleEl && !titleEn) {
+    var titleClone = titleEl.cloneNode(true);
+    titleClone.querySelectorAll('.tts-btn,.kh-hover-word,.kh-word').forEach(function(s){ s.replaceWith(s.textContent || ''); });
+    var tkt = titleClone.textContent.trim();
+    if (tkt) { texts.push(tkt); titleIdx = 0; }
+  }
   zones.forEach(function(z) {
     if (!z.dataset.original) z.dataset.original = z.innerHTML;
-    // kh-word span 제거하고 순수 텍스트만
     var clone = z.cloneNode(true);
     clone.querySelectorAll('.kh-hover-word,.kh-word').forEach(function(s){ s.replaceWith(s.textContent); });
     texts.push(clone.textContent.trim());
   });
 
-  // Pin segment count in the prompt so Claude returns exactly one
-  // translation per input segment even when a segment contains multiple
-  // paragraphs (splitting by \n\n was what caused title-slot ↔ body
-  // paragraph misalignment before the title was excluded above).
+  // Use explicit delimiters instead of a JSON array. The prior JSON array
+  // prompt caused Claude to return only the first paragraph — likely
+  // because it interpreted "JSON array of strings" as one short string
+  // per input and summarized the rest. Delimiters give Claude a clear
+  // start/end for each segment so it can't "helpfully" truncate.
+  var DELIM_OPEN  = '⟦SEG ';
+  var DELIM_CLOSE = '⟧';
+  var END_MARKER  = '⟦/SEG⟧';
+  var joined = texts.map(function(t, i) {
+    return DELIM_OPEN + (i+1) + DELIM_CLOSE + '\n' + t + '\n' + END_MARKER;
+  }).join('\n\n');
+
   var prompt =
-      'You are a Korean-to-English translator.\n'
-    + 'You will receive ' + texts.length + ' Korean text segment(s).\n'
-    + 'Translate each one into natural, fluent English.\n'
-    + 'PRESERVE paragraph structure inside a segment — do NOT split a segment that contains multiple paragraphs into multiple array items.\n'
-    + 'Return ONLY a JSON array of exactly ' + texts.length + ' string(s), in the same order as the input.\n'
-    + 'No markdown, no explanations, no numbering in the output.\n\n'
-    + 'Input segments (JSON):\n'
-    + JSON.stringify(texts);
+      'You are a Korean-to-English translator for a language learning site.\n'
+    + 'Below are ' + texts.length + ' text segment(s), each wrapped with ⟦SEG n⟧ ... ⟦/SEG⟧ markers.\n'
+    + 'Translate EVERY segment COMPLETELY into natural, fluent English. Do NOT summarize, do NOT skip any sentence.\n'
+    + 'Preserve paragraph breaks (blank lines) inside each segment.\n'
+    + 'Return the translations using the SAME marker format: ⟦SEG 1⟧\\n<translation>\\n⟦/SEG⟧, one block per segment, in the same order.\n'
+    + 'No preamble, no commentary, no code fences — just the marked blocks.\n\n'
+    + joined;
 
   try {
     var res = await callClaude({
       feature: 'translate',
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4096,
+      max_tokens: 8192,
       messages: [{ role: 'user', content: prompt }]
     });
     var data = res;
 
-    // 응답 파싱 (Workers vs 직접 API 둘 다 대응)
     var raw = '';
     if (data.content && data.content[0] && data.content[0].text) raw = data.content[0].text;
     else if (data.text) raw = data.text;
@@ -4989,17 +5011,33 @@ async function toggleTranslate() {
 
     if (!raw) throw new Error('empty response');
 
-    var clean = raw.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
-    // JSON 배열만 추출
-    var arrStart = clean.indexOf('[');
-    var arrEnd   = clean.lastIndexOf(']');
-    if (arrStart >= 0 && arrEnd > arrStart) clean = clean.slice(arrStart, arrEnd + 1);
+    // Parse the marker-delimited response. Regex uses /s (dotAll) so the
+    // translation body can contain its own newlines.
+    var segRe = /⟦SEG\s*(\d+)\s*⟧\s*([\s\S]*?)\s*⟦\/SEG⟧/g;
+    var allSegs = [];
+    var mSeg;
+    while ((mSeg = segRe.exec(raw)) !== null) {
+      var idx = parseInt(mSeg[1], 10) - 1;
+      var body = (mSeg[2] || '').trim();
+      if (idx >= 0 && body) allSegs[idx] = body;
+    }
+    if (!allSegs.length) throw new Error('no segments in response');
 
-    var translations = JSON.parse(clean);
-    if (!Array.isArray(translations)) throw new Error('not array');
+    // Split title off from the body translations if we put it up-front.
+    var bodyTranslations;
+    if (titleIdx === 0) {
+      var titleTrans = allSegs[0] || '';
+      bodyTranslations = allSegs.slice(1);
+      if (titleEl && titleTrans) {
+        var ttsSafe2 = titleTrans.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        titleEl.innerHTML = titleTrans + ' <button class="tts-btn" title="Listen to pronunciation" onclick="event.stopPropagation();ttsSpeak(\'' + ttsSafe2 + '\',this)">🔊</button>';
+      }
+    } else {
+      bodyTranslations = allSegs;
+    }
 
-    translateCache[cacheKey] = translations;
-    applyTranslation(zones, translations);
+    translateCache[cacheKey] = bodyTranslations;
+    applyTranslation(zones, bodyTranslations);
     translateActive = true;
     _translateMarkActive(btn);
 
