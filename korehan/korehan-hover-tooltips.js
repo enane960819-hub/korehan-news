@@ -162,13 +162,23 @@
       if (word.length >= 3 && /[다요]$/.test(word)) {
         var stem = word.slice(0, -1);
         if (stem.length >= 2) {
-          var stemRe = new RegExp('(^|[^가-힣])(' + escapeRegExp(stem) + '[가-힣]{1,4})');
+          var stemRe = new RegExp('(^|[^가-힣])(' + escapeRegExp(stem) + ')([가-힣]{1,4})');
           var m2 = text.match(stemRe);
           if (m2) {
-            var full2 = m2[0];
-            var mword2 = m2[2];
-            var idx2 = text.indexOf(full2) + full2.indexOf(mword2);
-            return { word: word, matched: mword2, index: idx2 };
+            var trailer = m2[3];
+            // Reject false positives where the "conjugation" is actually a
+            // noun particle attached to a homograph noun — e.g. vocab
+            // '사이다' (cider, a noun that happens to end in 다) should NOT
+            // match '사이에서' (between + locative). Particle-initial
+            // trailers like 에, 의, 을, 부터, 처럼 never appear at the
+            // start of a verb / adjective ending, so we can safely skip.
+            var isParticleTrailer = /^(에|의|을|를|이|가|도|만|과|와|로|부터|까지|보다|마저|조차|처럼|만큼|랑|하고|이라|라는|라고)/.test(trailer);
+            if (!isParticleTrailer) {
+              var full2 = m2[0];
+              var mword2 = m2[2] + trailer;
+              var idx2 = text.indexOf(full2) + full2.indexOf(mword2);
+              return { word: word, matched: mword2, index: idx2 };
+            }
           }
         }
       }
