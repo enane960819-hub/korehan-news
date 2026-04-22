@@ -1080,6 +1080,7 @@ function formHTML(a){
       <div id="f-img-uploading" style="display:none;font-size:12px;color:#0ea5e9;margin-top:4px">⏳ Uploading...</div>
       <img id="f-imgprev" style="${v.image?'':'display:none'};max-width:100%;max-height:160px;border-radius:4px;margin-top:8px;object-fit:cover" src="${esc(v.image||'')}">
     </div>
+    ${_articleVideoBlockHTML(v)}
     <div class="fg" style="flex-direction:row;align-items:center;gap:10px">
       <input type="checkbox" id="f-feat" ${v.featured?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0">
       <label for="f-feat" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:600;cursor:pointer;color:var(--dk)">⭐ Featured (메인 히어로에 표시)</label>
@@ -1113,6 +1114,61 @@ function livePreview(){
   const p=document.getElementById('f-imgprev');
   if(!p) return;
   if(url){p.src=url;p.style.display='block';}else{p.style.display='none';}
+}
+
+// Video hero block for the article edit modal. Two states:
+//   - video_url present: show a summary of what's stored + a "Use video
+//     as hero" checkbox bound to use_video. Admin can flip the toggle
+//     without touching URLs. This is the path for the "we saved the
+//     URL earlier but didn't enable the video — turn it on now" case.
+//   - no video_url: show a collapsed paste-URL area. Admin types a
+//     YouTube embed URL (youtube-nocookie.com/embed/ID) or a v.redd.it
+//     HLS / fallback MP4 URL and picks the kind. For most articles this
+//     stays collapsed.
+// Output fields consumed by submitForm():
+//   #f-video-url, #f-video-kind, #f-video-fallback, #f-use-video
+function _articleVideoBlockHTML(v){
+  const has = !!(v.video_url);
+  const kind = v.video_kind || '';
+  const fallback = v.video_fallback_url || '';
+  const useVideo = v.use_video === true;
+  const kindOptions = [
+    ['', '없음 (이미지 사용)'],
+    ['youtube', 'YouTube embed (youtube-nocookie.com/embed/…)'],
+    ['reddit-hls', 'Reddit (HLS .m3u8 — 오디오 포함, 실패시 fallback으로 자동 저하)'],
+    ['reddit', 'Reddit (무음 MP4 직접)'],
+  ].map(o => `<option value="${o[0]}"${kind===o[0]?' selected':''}>${o[1]}</option>`).join('');
+  const summary = has
+    ? `🎥 비디오 저장됨 · <span style="color:#7c3aed;font-weight:600">${esc(kind||'(kind 없음)')}</span>`
+    : '🖼️ 비디오 없음 · 현재 이미지 사용';
+  return `
+    <details ${has?'open':''} class="fg" style="background:#f8fafc;border:1px solid var(--bo);border-radius:10px;padding:12px 14px;margin:0">
+      <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--dk);list-style:none">
+        ${summary}
+        <span style="float:right;font-size:11px;color:var(--gr);font-weight:500">클릭해서 설정 ▾</span>
+      </summary>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--dk);text-transform:none;letter-spacing:0">
+          <input type="checkbox" id="f-use-video" ${useVideo?'checked':''} style="width:16px;height:16px;cursor:pointer;flex-shrink:0">
+          히어로 자리에 비디오 사용 (끄면 이미지로 대체)
+        </label>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:700;color:var(--gr);text-transform:uppercase;letter-spacing:0.03em">Video URL</label>
+          <input type="text" id="f-video-url" value="${esc(v.video_url||'')}" placeholder="https://www.youtube-nocookie.com/embed/… 또는 https://v.redd.it/…/HLSPlaylist.m3u8" style="width:100%;padding:8px 10px;border:1px solid var(--bo);border-radius:6px;font-size:13px;font-family:monospace">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:700;color:var(--gr);text-transform:uppercase;letter-spacing:0.03em">Video Kind</label>
+          <select id="f-video-kind" style="width:100%;padding:8px 10px;border:1px solid var(--bo);border-radius:6px;font-size:13px;background:#fff">
+            ${kindOptions}
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:700;color:var(--gr);text-transform:uppercase;letter-spacing:0.03em">Fallback MP4 URL (reddit-hls 용, 비우면 자동 추정)</label>
+          <input type="text" id="f-video-fallback" value="${esc(fallback)}" placeholder="https://v.redd.it/…/DASH_720.mp4?source=fallback" style="width:100%;padding:8px 10px;border:1px solid var(--bo);border-radius:6px;font-size:13px;font-family:monospace">
+        </div>
+      </div>
+    </details>
+  `;
 }
 
 // ── Story thumbnail upload ───────────────────────────────────
@@ -1255,6 +1311,10 @@ async function submitForm(status){
   const breaking = document.getElementById('f-break')?.checked||false;
   const level      = document.getElementById('f-level')?.value||'';
   const reporterId = document.getElementById('f-reporter')?.value||'';
+  const videoUrl   = (document.getElementById('f-video-url')?.value||'').trim();
+  const videoKind  = (document.getElementById('f-video-kind')?.value||'').trim();
+  const videoFb    = (document.getElementById('f-video-fallback')?.value||'').trim();
+  const useVideo   = document.getElementById('f-use-video')?.checked||false;
   const eid  = document.getElementById('f-id')?.value||'';
   if(!title){toast('Please enter a title',true);return;}
   if(!body) {toast('Please enter the body text',true);return;}
@@ -1264,6 +1324,14 @@ async function submitForm(status){
     title, body, section: sec, date, image,
     featured: feat, breaking: breaking, level,
     reporter_id: reporterId || null,
+    // Persist even when video_url is empty so the admin can clear a
+    // previously-attached video by emptying the URL and saving. Setting
+    // use_video=false with a URL still present also works — the renderer
+    // gates on use_video so image takes over.
+    video_url: videoUrl,
+    video_kind: videoUrl ? (videoKind || 'youtube') : '',
+    video_fallback_url: videoFb,
+    use_video: !!(useVideo && videoUrl),
     status
   };
 
