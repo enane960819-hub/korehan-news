@@ -1895,15 +1895,19 @@ function khArticleHeroMedia(article) {
       return '<iframe src="' + _khEsc(src) + '" title="Article video" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>';
     }
     if (kind === 'reddit-hls') {
-      // Reddit stores audio on a separate track; the HLS manifest is the
-      // only v.redd.it URL that carries both video and audio. Safari plays
-      // HLS natively via <video src=".m3u8">; Chrome/Firefox need hls.js
-      // to attach the manifest. _khAttachHls() is called on DOMContentLoaded.
-      return '<video data-kh-hls="' + _khEsc(src) + '" controls playsinline preload="metadata"></video>';
+      // Reddit stores audio on a separate track. The HLS manifest
+      // multiplexes both, giving audio when it loads — but Reddit's
+      // v.redd.it CDN is picky about CORS and signed URLs expire, so
+      // HLS frequently fails for ordinary article viewers. The fallback
+      // URL (silent MP4) is passed alongside so _khAttachHls() can
+      // swap to it on any HLS load error, keeping video playback
+      // reliable even when audio isn't reachable.
+      var fb = (article && article.video_fallback_url) || _khDeriveRedditMp4(src);
+      return '<video data-kh-hls="' + _khEsc(src) + '" data-kh-fallback="' + _khEsc(fb || '') + '" controls playsinline preload="metadata"></video>';
     }
     if (kind === 'reddit') {
-      // Legacy fallback — mp4-only, no audio track. Kept for rows saved
-      // before the hls_url pathway landed.
+      // Silent MP4 direct (no HLS attempt). Kept for older rows and for
+      // posts where hls_url wasn't available upstream.
       return '<video src="' + _khEsc(src) + '" controls playsinline preload="metadata"></video>';
     }
   }
@@ -1936,25 +1940,60 @@ function _khAttachHls(root) {
     if (v.dataset.khHlsAttached === '1') return;
     v.dataset.khHlsAttached = '1';
     var src = v.getAttribute('data-kh-hls');
-    if (!src) return;
+    var fallback = v.getAttribute('data-kh-fallback') || '';
+    if (!src && !fallback) return;
+
+    // Swap the <video> element to the plain fallback MP4 (silent but
+    // always plays). Called whenever HLS loading fails at any layer:
+    // CORS, expired signature, hls.js error, library load failure.
+    // We lose audio but the video still renders — user's expectation
+    // ("audio can fail, but video should load like before").
+    function degrade(reason) {
+      if (v.dataset.khHlsDegraded === '1') return;
+      v.dataset.khHlsDegraded = '1';
+      try { if (window._khHlsInstances && window._khHlsInstances.get(v)) { window._khHlsInstances.get(v).destroy(); window._khHlsInstances.delete(v); } } catch(e) {}
+      v.removeAttribute('src');
+      if (fallback) {
+        v.src = fallback;
+        v.load();
+      }
+      console.warn('[hero-video] HLS failed, using silent MP4 fallback:', reason || 'unknown');
+    }
+
+    if (!src && fallback) { v.src = fallback; v.load(); return; }
+
     // Safari / iOS — native HLS support, no library needed.
     if (v.canPlayType && v.canPlayType('application/vnd.apple.mpegurl')) {
+      v.addEventListener('error', function onErr(){ v.removeEventListener('error', onErr); degrade('native-hls-error'); }, { once: true });
       v.src = src;
       return;
     }
     _khLoadHlsJs().then(function(Hls) {
-      if (!Hls || !Hls.isSupported || !Hls.isSupported()) {
-        // Last-ditch fallback — let the browser try anyway.
-        v.src = src;
-        return;
-      }
-      var hls = new Hls();
+      if (!Hls || !Hls.isSupported || !Hls.isSupported()) { degrade('hls-not-supported'); return; }
+      var hls = new Hls({ xhrSetup: function(xhr){ /* no auth needed, but hook is required for future CORS proxy */ } });
+      if (!window._khHlsInstances) window._khHlsInstances = new WeakMap();
+      window._khHlsInstances.set(v, hls);
+      hls.on(Hls.Events.ERROR, function(_, data){
+        if (data && data.fatal) degrade('hls-fatal:' + (data.type || '') + '/' + (data.details || ''));
+      });
       hls.loadSource(src);
       hls.attachMedia(v);
-    }).catch(function() {
-      v.src = src;
+    }).catch(function(e) {
+      degrade('hls-load-failed:' + (e && e.message || ''));
     });
   });
+}
+
+// Best-effort fallback URL for existing rows saved as 'reddit-hls' before
+// video_fallback_url was added. v.redd.it URLs share the same /{ID}/ path,
+// and the most commonly-present rendition is DASH_720.mp4?source=fallback.
+// If the derived URL doesn't exist, the <video> tag just stays empty —
+// same outcome as the HLS failure we're trying to recover from.
+function _khDeriveRedditMp4(hlsUrl) {
+  if (!hlsUrl || typeof hlsUrl !== 'string') return '';
+  var m = hlsUrl.match(/^(https?:\/\/v\.redd\.it\/[^/?#]+)\//);
+  if (!m) return '';
+  return m[1] + '/DASH_720.mp4?source=fallback';
 }
 
 function _khEsc(s) {

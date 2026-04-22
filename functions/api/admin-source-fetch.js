@@ -123,6 +123,7 @@ async function fetchReddit(source) {
       image: extractRedditImage(d),
       video_url: video.url,
       video_kind: video.kind,
+      video_fallback_url: video.fallback || '',
     }
   })
 }
@@ -158,23 +159,31 @@ function extractRedditImage(d) {
 function extractRedditVideo(d) {
   const rv = d?.secure_media?.reddit_video || d?.media?.reddit_video
   if (d?.is_video && rv?.hls_url) {
-    return { url: String(rv.hls_url), kind: 'reddit-hls' }
+    // Return the HLS manifest (primary) AND the silent MP4 fallback so
+    // the frontend can degrade to silent playback when HLS is blocked
+    // by CORS / expired signatures / hls.js load failure. The pair is
+    // persisted in video_url + video_fallback_url.
+    return {
+      url: String(rv.hls_url),
+      kind: 'reddit-hls',
+      fallback: rv.fallback_url ? String(rv.fallback_url) : ''
+    }
   }
   if (d?.is_video && rv?.fallback_url) {
-    return { url: String(rv.fallback_url), kind: 'reddit' }
+    return { url: String(rv.fallback_url), kind: 'reddit', fallback: '' }
   }
   const url = d?.url_overridden_by_dest || d?.url || ''
   const ytId = extractYoutubeId(url)
-  if (ytId) return { url: 'https://www.youtube-nocookie.com/embed/' + ytId, kind: 'youtube' }
+  if (ytId) return { url: 'https://www.youtube-nocookie.com/embed/' + ytId, kind: 'youtube', fallback: '' }
   // secure_media.oembed.html sometimes carries a YouTube iframe for link posts
   // that point at non-youtube domains but embed youtube (rare but cheap to try).
   const oembedHtml = d?.secure_media?.oembed?.html || d?.media?.oembed?.html || ''
   if (oembedHtml) {
     const srcMatch = oembedHtml.match(/src="([^"]+)"/i)
     const ytId2 = srcMatch ? extractYoutubeId(srcMatch[1]) : ''
-    if (ytId2) return { url: 'https://www.youtube-nocookie.com/embed/' + ytId2, kind: 'youtube' }
+    if (ytId2) return { url: 'https://www.youtube-nocookie.com/embed/' + ytId2, kind: 'youtube', fallback: '' }
   }
-  return { url: '', kind: '' }
+  return { url: '', kind: '', fallback: '' }
 }
 
 function extractYoutubeId(url) {

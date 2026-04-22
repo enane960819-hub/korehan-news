@@ -12,3 +12,8 @@
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS video_url text;
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS video_kind text;
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS use_video boolean;
+-- Silent MP4 fallback for Reddit HLS videos. HLS on v.redd.it frequently
+-- fails (CORS / expired signatures), so when the renderer can't load the
+-- HLS manifest it degrades to this URL and keeps video playing without
+-- audio. Null for YouTube embeds and for rows created before this column.
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS video_fallback_url text;

@@ -3729,6 +3729,9 @@ async function runAutoGenerate(){
         // reads; video_url alone is not enough to swap the hero.
         video_url: hasSrcVideo ? h.video_url : '',
         video_kind: hasSrcVideo ? h.video_kind : '',
+        // Silent MP4 fallback — paired with HLS so the frontend can keep
+        // video playing when HLS loading is blocked (CORS / expired URL).
+        video_fallback_url: hasSrcVideo ? (h.video_fallback_url || '') : '',
         use_video: hasSrcVideo ? !!h._useVideo : false,
       };
       await dbSaveArticle(newArticle);
@@ -5556,6 +5559,7 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
     image: hasSrcVideo ? '' : (headline.image || ''),
     video_url: hasSrcVideo ? headline.video_url : '',
     video_kind: hasSrcVideo ? headline.video_kind : '',
+    video_fallback_url: hasSrcVideo ? (headline.video_fallback_url || '') : '',
     use_video: useVideoNow,
   };
   // Inline upsert that tolerates schema drift. admin-api now throws on 4xx,
