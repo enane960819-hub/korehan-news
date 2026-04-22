@@ -801,24 +801,28 @@ async function dbSaveArticle(article) {
   Object.keys(payload).forEach(function(k){
     if (payload[k] === undefined) delete payload[k];
   });
-  try {
-    const res = await sb.from('articles').upsert(payload, { onConflict: 'id' });
-    if (res.error) throw res.error;
-    return true;
-  } catch(e) {
-    // Retry by removing unknown columns when schema differs
-    var emsg = String(e?.message || '');
-    var m = emsg.match(/column\\s+\"([^\"]+)\"/i) || emsg.match(/Could not find the '([^']+)' column/i);
-    if (m && m[1] && payload[m[1]] !== undefined) {
+  // Loop-retry so a payload with several new columns (e.g. video_url +
+  // video_kind + use_video before the migration is applied) can be
+  // trimmed one column per round instead of giving up after the first.
+  // Up to 6 drops — beyond that something else is wrong and we surface it.
+  var lastErr = null;
+  for (var attempt = 0; attempt < 6; attempt++) {
+    try {
+      var res = await sb.from('articles').upsert(payload, { onConflict: 'id' });
+      if (res.error) throw res.error;
+      return true;
+    } catch (e) {
+      lastErr = e;
+      var emsg = String(e && e.message || '');
+      var m = emsg.match(/column\s+"([^"]+)"/i)
+           || emsg.match(/Could not find the '([^']+)' column/i);
+      if (!m || !m[1] || payload[m[1]] === undefined) break;
       delete payload[m[1]];
-      try {
-        const res2 = await sb.from('articles').upsert(payload, { onConflict: 'id' });
-        if (!res2.error) return true;
-      } catch(e2) {}
+      console.warn('[dbSaveArticle] dropping unknown column "' + m[1] + '" and retrying');
     }
-    toast('Save error: ' + e.message, true);
-    return false;
   }
+  toast('Save error: ' + (lastErr && lastErr.message || 'unknown'), true);
+  return false;
 }
 
 async function dbDeleteArticle(id) {
