@@ -3396,14 +3396,11 @@ body.kh-reading-page #kh-reading-back:active { transform: scale(.95); }
 /* The breadcrumb is redundant with the floating back button. */
 body.kh-reading-page .art-breadcrumb { display: none; }
 
-/* Mobile bottom nav slides off-screen on scroll-down while reading. */
-body.mobile-redesign .mobile-bottom-nav {
-  transition: transform .28s cubic-bezier(.22,1,.36,1);
-}
-body.kh-reading-page.mobile-redesign.kh-reading-nav-hidden .mobile-bottom-nav {
-  transform: translateY(calc(100% + 20px));
-  pointer-events: none;
-}
+/* Mobile bottom nav is hidden entirely on reading pages — no longer
+   a scroll-direction toggle. The floating back button covers exit,
+   the right sidebar covers actions, the Next-article pill covers
+   forward; the nav doesn't earn its screen real estate here. */
+body.kh-reading-page .mobile-bottom-nav { display: none !important; }
 
 /* Related Articles footer only competes with the next-article swipe
    on mobile — hide there, keep on desktop as a discovery surface. */
@@ -3431,17 +3428,12 @@ body.kh-reading-page .kh-topnav { display: none !important; }
 body.kh-reading-page #kh-reading-sidebar {
   position: fixed;
   right: 12px;
-  bottom: 110px;
+  bottom: 28px;
   z-index: 1650;
   display: flex;
   flex-direction: column;
   gap: 12px;
   pointer-events: none;  /* children re-enable */
-}
-body.kh-reading-page.kh-reading-nav-hidden #kh-reading-sidebar {
-  /* When the bottom nav is hidden the sidebar can sit lower. */
-  bottom: 28px;
-  transition: bottom .28s cubic-bezier(.22,1,.36,1);
 }
 body.kh-reading-page #kh-reading-sidebar .kh-rs-btn {
   pointer-events: auto;
@@ -3570,7 +3562,7 @@ body.kh-cdr-open { overflow: hidden; }
 body.kh-reading-page #kh-feed-next-pill {
   position: fixed;
   left: 50%;
-  bottom: 96px;
+  bottom: 20px;
   transform: translate(-50%, 30px);
   z-index: 1640;
   display: inline-flex;
@@ -3597,9 +3589,6 @@ body.kh-reading-page.kh-feed-pill-on #kh-feed-next-pill {
   opacity: 1;
   transform: translate(-50%, 0);
   pointer-events: auto;
-}
-body.kh-reading-page.kh-reading-nav-hidden #kh-feed-next-pill {
-  bottom: 20px;
 }
 body.kh-reading-page #kh-feed-next-pill:hover { background: rgba(8,16,31,.95); }
 body.kh-reading-page #kh-feed-next-pill svg { opacity: .9; }

@@ -8534,20 +8534,17 @@ function injectMobileBottomNav() {
 
 // ── Immersive reading mode ──────────────────────────────────────
 // On learning-content pages (article body, conv/story detail) the
-// chrome fights with the content — the mobile bottom nav covers the
-// last line of text, the breadcrumb is redundant with browser back,
-// and the Related Articles footer adds distance to the next session.
-// This function:
-//   - marks body.kh-reading-page so CSS can scope overrides
+// chrome fights with the content — the mobile bottom nav, the site
+// header, the footer, and the inline Comments + Related Articles
+// tail all break the TikTok-style continuous flow. This function:
+//   - marks body.kh-reading-page so CSS can scope overrides that
+//     hide the header, footer, bottom nav, and Daily Mission chip
 //   - injects a fixed top-left back button (always visible)
-//   - auto-hides the bottom nav on scroll-down, shows on scroll-up
-//   - injects an Instagram-style right-side action sidebar (bookmark
-//     / comment / study) and a bottom-sheet comment drawer
+//   - sets up the right-side action sidebar (Save / Talk / Study)
+//   - sets up the feed navigation (Next-article pill + swipe)
 // Currently gated to korehan-article. Conv/story use a modal pattern
 // on list pages; the same `.kh-reading-page` class can be toggled
 // from those modal open/close handlers later to reuse the chrome.
-var _khReadingScrollLast = 0;
-var _khReadingNavHidden = false;
 function setupImmersiveReading() {
   if (pageName() !== 'korehan-article') return;
   document.body.classList.add('kh-reading-page');
@@ -8570,26 +8567,6 @@ function setupImmersiveReading() {
 
   setupReadingSidebar();
   setupFeedNavigation();
-
-  if (window._khReadingScrollHooked) return;
-  window._khReadingScrollHooked = true;
-  function setNavHidden(hidden) {
-    if (hidden === _khReadingNavHidden) return;
-    _khReadingNavHidden = hidden;
-    document.body.classList.toggle('kh-reading-nav-hidden', hidden);
-  }
-  function onScroll() {
-    var y = window.scrollY || document.documentElement.scrollTop || 0;
-    var delta = y - _khReadingScrollLast;
-    // Jitter threshold — iOS scroll inertia fires tiny deltas that
-    // would otherwise flip the nav every frame.
-    if (Math.abs(delta) < 4) return;
-    if (y < 80) setNavHidden(false);
-    else if (delta > 0) setNavHidden(true);
-    else setNavHidden(false);
-    _khReadingScrollLast = y;
-  }
-  window.addEventListener('scroll', onScroll, { passive: true });
 }
 
 // Right-side Instagram-style action sidebar: Bookmark / Comment /
@@ -8775,9 +8752,6 @@ function _khSpaLoadArticle(nextId) {
     var rb = document.getElementById('kh-rs-bookmark');
     if (rb) rb.classList.remove('active');
     document.body.classList.remove('kh-feed-pill-on');
-    _khReadingScrollLast = 0;
-    _khReadingNavHidden = false;
-    document.body.classList.remove('kh-reading-nav-hidden');
 
     // Rebuild article content from the cached article object.
     window.scrollTo(0, 0);
