@@ -3411,6 +3411,16 @@ body.kh-reading-page.mobile-redesign.kh-reading-nav-hidden .mobile-bottom-nav {
   body.kh-reading-page .art-related { display: none; }
 }
 
+/* True immersive flow on reading pages: the site footer (nav links,
+   legal, newsletter) hard-stops the TikTok-style continuous flow to
+   the next article. Hide it entirely. Same for the floating Daily
+   Mission chip, which was covering the corner of the article. The
+   right-side action sidebar, top-left back button, and Next-article
+   pill remain. */
+body.kh-reading-page #kh-footer,
+body.kh-reading-page .kh-footer { display: none !important; }
+body.kh-reading-page #kh-daily-mission { display: none !important; }
+
 /* ── Right-side action sidebar (bookmark / comment / study) ─────── */
 body.kh-reading-page #kh-reading-sidebar {
   position: fixed;

@@ -8765,15 +8765,17 @@ function setupFeedNavigation() {
     document.body.appendChild(pill);
   }
 
-  // Reveal the pill after the user has scrolled past 60% of the page.
-  // Cheaper than an IntersectionObserver + a single flag flip.
+  // Reveal the pill after the user has scrolled past 80% of the page.
+  // With the footer + Related Articles + inline Comments now hidden
+  // on reading pages, the scrollable height is basically just the
+  // article body — a lower threshold would pop the pill mid-read.
   if (!window._khFeedPillHooked) {
     window._khFeedPillHooked = true;
     window.addEventListener('scroll', function() {
       var scrolled = (window.scrollY || document.documentElement.scrollTop) + window.innerHeight;
       var total = document.documentElement.scrollHeight || 1;
       var pct = scrolled / total;
-      document.body.classList.toggle('kh-feed-pill-on', pct > 0.6);
+      document.body.classList.toggle('kh-feed-pill-on', pct > 0.8);
     }, { passive: true });
   }
 
