@@ -1868,15 +1868,19 @@ function khArticleThumb(article, w, h) {
 }
 
 // Hero media HTML for the article detail page. Prefers the article's upstream
-// video (YouTube embed or v.redd.it hosted MP4) when present — otherwise falls
-// back to khArticleThumb. Kept to the same 600x400-ish aspect as the image hero
-// via CSS on .art-hero-img so the surrounding badge overlay still positions.
-// Grid/card renderers keep using khArticleThumb directly since a full-size
-// video in every card would destroy scroll performance.
+// video (YouTube embed or v.redd.it hosted MP4) when present AND the admin
+// has opted in via use_video — otherwise falls back to khArticleThumb. The
+// use_video gate matters because video_url is persisted even when the admin
+// left 'Use video' unchecked, so an article can be flipped to video later
+// by toggling use_video. Kept to the same 600x400-ish aspect as the image
+// hero via CSS on .art-hero-img so the surrounding badge overlay still
+// positions. Grid/card renderers keep using khArticleThumb directly since
+// a full-size video in every card would destroy scroll performance.
 function khArticleHeroMedia(article) {
   var kind = article && article.video_kind;
   var src  = article && article.video_url;
-  if (src && typeof src === 'string') {
+  var show = article && article.use_video !== false && article.use_video != null;
+  if (show && src && typeof src === 'string') {
     if (kind === 'youtube') {
       // aspect-ratio matches a 16:9 video; max-height mirrors .art-hero-img img
       // so the hero occupies the same vertical slot whether it's an image,
