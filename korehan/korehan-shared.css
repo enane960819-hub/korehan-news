@@ -1415,6 +1415,12 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 }
 .art-action-icon:hover { background:var(--light); border-color:#93c5fd; color:var(--bright); }
 .art-action-icon.active { background:#fff8e1; border-color:#f0c040; color:#b8860b; }
+/* Translate button loading state — fades the icon and spins the border
+   instead of swapping the SVG for text, so the tap target stays 28/34px
+   and doesn't overflow the single-line meta row. */
+.art-action-icon.loading { opacity:.6; cursor:wait; }
+.art-action-icon.loading svg { animation:kh-spin .9s linear infinite; }
+@keyframes kh-spin { to { transform:rotate(360deg); } }
 
 /* Reporter profile chip */
 .art-reporter-link {
