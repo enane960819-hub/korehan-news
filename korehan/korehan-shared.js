@@ -8569,6 +8569,7 @@ function setupImmersiveReading() {
   }
 
   setupReadingSidebar();
+  setupFeedNavigation();
 
   if (window._khReadingScrollHooked) return;
   window._khReadingScrollHooked = true;
@@ -8692,6 +8693,112 @@ function closeCommentDrawer() {
   if (!drawer) return;
   drawer.classList.remove('open');
   document.body.classList.remove('kh-cdr-open');
+}
+
+// Vertical feed navigation — "swipe up for next article" pattern.
+// Keeps the current page as a single-article render; we don't stack
+// multiple articles in DOM (would fight the existing reader layout
+// and double the bookmark / comment / vocab wiring). Instead we:
+//   - show a floating pill near the bottom after 60% scroll depth
+//   - listen for a strong upward swipe (>100px) near the viewport
+//     bottom and trigger the same navigation
+// Picks a random published article the user hasn't just seen, then
+// animates the current page out before changing window.location.
+var _khFeedRecentKey = 'kh_feed_recent_seen';
+var _khFeedRecentMax = 20;
+
+function _khFeedRememberSeen(id) {
+  try {
+    var arr = JSON.parse(localStorage.getItem(_khFeedRecentKey) || '[]');
+    arr = arr.filter(function(x){ return x !== id; });
+    arr.unshift(id);
+    if (arr.length > _khFeedRecentMax) arr = arr.slice(0, _khFeedRecentMax);
+    localStorage.setItem(_khFeedRecentKey, JSON.stringify(arr));
+  } catch(e) {}
+}
+function _khFeedRecentSet() {
+  try { return new Set(JSON.parse(localStorage.getItem(_khFeedRecentKey) || '[]')); }
+  catch(e) { return new Set(); }
+}
+
+function pickNextFeedArticle(currentId) {
+  var pool = (typeof getCachedArticles === 'function' ? getCachedArticles() : []).filter(function(a){
+    return a && a.id && String(a.id) !== String(currentId) && (a.status === 'published' || !a.status);
+  });
+  if (!pool.length) return null;
+  var recent = _khFeedRecentSet();
+  recent.add(String(currentId));
+  var fresh = pool.filter(function(a){ return !recent.has(String(a.id)); });
+  // If everything's been seen recently, fall back to the full pool
+  // rather than getting stuck.
+  var from = fresh.length ? fresh : pool;
+  return from[Math.floor(Math.random() * from.length)];
+}
+
+function goToNextArticle() {
+  var currentId = (new URLSearchParams(window.location.search)).get('id');
+  if (!currentId) return;
+  var next = pickNextFeedArticle(currentId);
+  if (!next) { if (typeof toast === 'function') toast('No more articles to show', false); return; }
+  _khFeedRememberSeen(currentId);
+  // Slide the current page up+out, then navigate. The destination
+  // page will render from scratch — this is just a visual cue that a
+  // transition is happening, not a real SPA hand-off.
+  document.body.classList.add('kh-feed-leaving');
+  setTimeout(function(){ location.href = 'korehan-article.html?id=' + encodeURIComponent(next.id); }, 260);
+}
+
+function setupFeedNavigation() {
+  if (pageName() !== 'korehan-article') return;
+  var currentId = (new URLSearchParams(window.location.search)).get('id');
+  if (!currentId) return;
+
+  if (!document.getElementById('kh-feed-next-pill')) {
+    var pill = document.createElement('button');
+    pill.id = 'kh-feed-next-pill';
+    pill.type = 'button';
+    pill.setAttribute('aria-label', 'Next article');
+    pill.innerHTML =
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>'
+      + '<span>Next article</span>';
+    pill.onclick = function(e) { e.preventDefault(); goToNextArticle(); };
+    document.body.appendChild(pill);
+  }
+
+  // Reveal the pill after the user has scrolled past 60% of the page.
+  // Cheaper than an IntersectionObserver + a single flag flip.
+  if (!window._khFeedPillHooked) {
+    window._khFeedPillHooked = true;
+    window.addEventListener('scroll', function() {
+      var scrolled = (window.scrollY || document.documentElement.scrollTop) + window.innerHeight;
+      var total = document.documentElement.scrollHeight || 1;
+      var pct = scrolled / total;
+      document.body.classList.toggle('kh-feed-pill-on', pct > 0.6);
+    }, { passive: true });
+  }
+
+  // Swipe-up gesture near the bottom = next article. Guarded by:
+  //   - swipe >100px upward
+  //   - viewport within 120px of content end (so mid-page scrolls
+  //     don't accidentally trigger)
+  //   - comment drawer not open
+  if (!window._khFeedSwipeHooked) {
+    window._khFeedSwipeHooked = true;
+    var startY = 0;
+    window.addEventListener('touchstart', function(e) {
+      if (!e.touches || !e.touches.length) return;
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+    window.addEventListener('touchend', function(e) {
+      if (document.body.classList.contains('kh-cdr-open')) return;
+      if (!e.changedTouches || !e.changedTouches.length) return;
+      var dy = startY - e.changedTouches[0].clientY;
+      if (dy < 100) return;
+      var nearBottom = (window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 120;
+      if (!nearBottom) return;
+      goToNextArticle();
+    }, { passive: true });
+  }
 }
 
 function openMobileAccountMenu() {
