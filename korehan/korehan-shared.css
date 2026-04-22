@@ -3410,3 +3410,142 @@ body.kh-reading-page.mobile-redesign.kh-reading-nav-hidden .mobile-bottom-nav {
 @media (max-width: 768px) {
   body.kh-reading-page .art-related { display: none; }
 }
+
+/* ── Right-side action sidebar (bookmark / comment / study) ─────── */
+body.kh-reading-page #kh-reading-sidebar {
+  position: fixed;
+  right: 12px;
+  bottom: 110px;
+  z-index: 1650;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;  /* children re-enable */
+}
+body.kh-reading-page.kh-reading-nav-hidden #kh-reading-sidebar {
+  /* When the bottom nav is hidden the sidebar can sit lower. */
+  bottom: 28px;
+  transition: bottom .28s cubic-bezier(.22,1,.36,1);
+}
+body.kh-reading-page #kh-reading-sidebar .kh-rs-btn {
+  pointer-events: auto;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: rgba(8,16,31,.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,.14);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0,0,0,.28);
+  font-family: inherit;
+  padding: 0;
+  transition: transform .12s, background .15s;
+}
+body.kh-reading-page #kh-reading-sidebar .kh-rs-btn:hover { background: rgba(8,16,31,.92); transform: scale(1.04); }
+body.kh-reading-page #kh-reading-sidebar .kh-rs-btn:active { transform: scale(.93); }
+body.kh-reading-page #kh-reading-sidebar .kh-rs-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: rgba(255,255,255,.78);
+}
+body.kh-reading-page #kh-rs-bookmark .kh-rs-ico { width: 22px; height: 22px; }
+body.kh-reading-page #kh-rs-bookmark .kh-rs-ico.on  { display: none; color: #fbbf24; }
+body.kh-reading-page #kh-rs-bookmark.active .kh-rs-ico.off { display: none; }
+body.kh-reading-page #kh-rs-bookmark.active .kh-rs-ico.on  { display: block; }
+body.kh-reading-page #kh-rs-bookmark.active .kh-rs-label { color: #fbbf24; }
+body.kh-reading-page #kh-rs-comment svg,
+body.kh-reading-page #kh-rs-study svg { width: 22px; height: 22px; }
+
+/* Inline Comments section is hidden on reading pages — the drawer
+   picks it up on demand. Override takes effect after setupImmersive
+   Reading adds the body class. */
+body.kh-reading-page #art-comments { display: none; }
+body.kh-reading-page #kh-comment-drawer #art-comments { display: block; }
+
+/* ── Bottom-sheet comment drawer ─────────────────────────────────── */
+#kh-comment-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 1800;
+  pointer-events: none;
+}
+#kh-comment-drawer .kh-cdr-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(5,12,24,0);
+  transition: background .28s ease;
+  pointer-events: none;
+}
+#kh-comment-drawer .kh-cdr-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 85vh;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  transform: translateY(100%);
+  transition: transform .32s cubic-bezier(.22,1,.36,1);
+  box-shadow: 0 -20px 48px rgba(0,0,0,.25);
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+}
+#kh-comment-drawer.open { pointer-events: auto; }
+#kh-comment-drawer.open .kh-cdr-scrim { background: rgba(5,12,24,.45); pointer-events: auto; }
+#kh-comment-drawer.open .kh-cdr-panel { transform: translateY(0); }
+#kh-comment-drawer .kh-cdr-handle {
+  width: 44px;
+  height: 5px;
+  background: #cbd5e1;
+  border-radius: 999px;
+  margin: 10px auto 4px;
+  cursor: pointer;
+}
+#kh-comment-drawer .kh-cdr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 20px 10px;
+  border-bottom: 1px solid #e5e7eb;
+}
+#kh-comment-drawer .kh-cdr-title {
+  font-size: 15px;
+  font-weight: 900;
+  color: #0f172a;
+}
+#kh-comment-drawer .kh-cdr-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f1f5f9;
+  border-radius: 999px;
+  font-size: 22px;
+  line-height: 1;
+  color: #475569;
+  cursor: pointer;
+  font-family: inherit;
+}
+#kh-comment-drawer .kh-cdr-close:hover { background: #e2e8f0; color: #0f172a; }
+#kh-comment-drawer .kh-cdr-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 20px 28px;
+  -webkit-overflow-scrolling: touch;
+}
+/* When the drawer has swallowed #art-comments, suppress the now-
+   redundant inline title inside it — the drawer header already says
+   "Comments". */
+#kh-comment-drawer #art-comments .art-comments-title { display: none; }
+/* Lock body scroll while drawer is open so the sheet feels modal. */
+body.kh-cdr-open { overflow: hidden; }

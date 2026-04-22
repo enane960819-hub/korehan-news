@@ -8541,6 +8541,8 @@ function injectMobileBottomNav() {
 //   - marks body.kh-reading-page so CSS can scope overrides
 //   - injects a fixed top-left back button (always visible)
 //   - auto-hides the bottom nav on scroll-down, shows on scroll-up
+//   - injects an Instagram-style right-side action sidebar (bookmark
+//     / comment / study) and a bottom-sheet comment drawer
 // Currently gated to korehan-article. Conv/story use a modal pattern
 // on list pages; the same `.kh-reading-page` class can be toggled
 // from those modal open/close handlers later to reuse the chrome.
@@ -8566,6 +8568,8 @@ function setupImmersiveReading() {
     document.body.appendChild(btn);
   }
 
+  setupReadingSidebar();
+
   if (window._khReadingScrollHooked) return;
   window._khReadingScrollHooked = true;
   function setNavHidden(hidden) {
@@ -8585,6 +8589,109 @@ function setupImmersiveReading() {
     _khReadingScrollLast = y;
   }
   window.addEventListener('scroll', onScroll, { passive: true });
+}
+
+// Right-side Instagram-style action sidebar: Bookmark / Comment /
+// Study. Rendered as a separate fixed element rather than inside the
+// article flow so it stays pinned as the user scrolls.
+function setupReadingSidebar() {
+  if (document.getElementById('kh-reading-sidebar')) return;
+  var artId = (new URLSearchParams(window.location.search)).get('id');
+  if (!artId) return;
+  var bar = document.createElement('div');
+  bar.id = 'kh-reading-sidebar';
+  // Two bookmark SVGs stacked; .active on the button toggles which
+  // one is visible (CSS), so we don't rely on innerHTML-swap syncing
+  // between the meta-row button and the sidebar button.
+  bar.innerHTML =
+      '<button class="kh-rs-btn" id="kh-rs-bookmark" aria-label="Bookmark">'
+    +   '<svg class="kh-rs-ico off" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>'
+    +   '<svg class="kh-rs-ico on"  viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>'
+    +   '<span class="kh-rs-label">Save</span>'
+    + '</button>'
+    + '<button class="kh-rs-btn" id="kh-rs-comment" aria-label="Comments">'
+    +   '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'
+    +   '<span class="kh-rs-label">Talk</span>'
+    + '</button>'
+    + '<button class="kh-rs-btn" id="kh-rs-study" aria-label="Study">'
+    +   '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>'
+    +   '<span class="kh-rs-label">Study</span>'
+    + '</button>';
+  document.body.appendChild(bar);
+
+  document.getElementById('kh-rs-bookmark').onclick = function() {
+    var side = this;
+    var meta = document.getElementById('art-bm-btn');
+    if (!meta) {
+      // Meta button hasn't rendered yet (article page still loading).
+      // Fire toggleBookmark directly against the sidebar button.
+      toggleBookmark(artId, side);
+      return;
+    }
+    meta.click();
+    // toggleBookmark is async (DB roundtrip). Poll briefly so the
+    // sidebar's active state lands once the meta button settles.
+    var tries = 0;
+    (function syncLoop() {
+      if (tries++ > 20) return;
+      side.classList.toggle('active', meta.classList.contains('active'));
+      setTimeout(syncLoop, 150);
+    })();
+  };
+  document.getElementById('kh-rs-comment').onclick = openCommentDrawer;
+  document.getElementById('kh-rs-study').onclick = function() {
+    if (!supaUser) { openAuthModal('signin'); return; }
+    location.href = 'korehan-study-room.html?mode=article&id=' + encodeURIComponent(artId);
+  };
+
+  // Initial sync: once checkBookmarkState has marked the meta btn,
+  // mirror it to the sidebar. Try a few times since the article
+  // renderer waits for supaUser before calling checkBookmarkState.
+  var initTries = 0;
+  (function initSync() {
+    if (initTries++ > 40) return;
+    var meta = document.getElementById('art-bm-btn');
+    if (meta && meta.classList.contains('active')) {
+      document.getElementById('kh-rs-bookmark').classList.add('active');
+      return;
+    }
+    setTimeout(initSync, 300);
+  })();
+}
+
+function openCommentDrawer() {
+  var drawer = document.getElementById('kh-comment-drawer');
+  if (!drawer) {
+    drawer = document.createElement('div');
+    drawer.id = 'kh-comment-drawer';
+    drawer.innerHTML =
+        '<div class="kh-cdr-scrim" onclick="closeCommentDrawer()"></div>'
+      + '<div class="kh-cdr-panel" role="dialog" aria-label="Comments">'
+      +   '<div class="kh-cdr-handle" onclick="closeCommentDrawer()"></div>'
+      +   '<div class="kh-cdr-header">'
+      +     '<span class="kh-cdr-title">💬 Comments</span>'
+      +     '<button class="kh-cdr-close" onclick="closeCommentDrawer()" aria-label="Close">&times;</button>'
+      +   '</div>'
+      +   '<div class="kh-cdr-body" id="kh-comment-drawer-body"></div>'
+      + '</div>';
+    document.body.appendChild(drawer);
+  }
+  // Re-parent the existing #art-comments into the drawer body. Keeps
+  // all the submitComment / loadComments event handlers intact — we
+  // only move the DOM, we don't re-render.
+  var body = document.getElementById('kh-comment-drawer-body');
+  var cmt = document.getElementById('art-comments');
+  if (cmt && cmt.parentNode !== body) body.appendChild(cmt);
+  // rAF so the CSS transition fires from the off-screen state.
+  requestAnimationFrame(function() { drawer.classList.add('open'); });
+  document.body.classList.add('kh-cdr-open');
+}
+
+function closeCommentDrawer() {
+  var drawer = document.getElementById('kh-comment-drawer');
+  if (!drawer) return;
+  drawer.classList.remove('open');
+  document.body.classList.remove('kh-cdr-open');
 }
 
 function openMobileAccountMenu() {
