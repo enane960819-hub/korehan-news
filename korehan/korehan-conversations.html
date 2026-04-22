@@ -875,7 +875,7 @@ var _convSwipeValid  = false;
     var dt = Date.now() - _convSwipeStartT;
     if (dt > 600) return;
     if (Math.abs(dx) > Math.abs(dy) * 0.5) return;
-    if (Math.abs(dy) < 140) return;
+    if (Math.abs(dy) < 100) return;
     var panel = document.getElementById('detail-panel');
     if (!panel) return;
     var atTop    = panel.scrollTop < 60;

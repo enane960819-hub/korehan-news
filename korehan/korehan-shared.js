@@ -9066,11 +9066,12 @@ function setupFeedNavigation() {
       var dt = Date.now() - startT;
       // Only honor an actual flick: fast enough (< 600ms) and clearly
       // vertical (horizontal travel must be less than half the vertical).
-      // Threshold bumped 100 → 140 to keep soft touches / selection
-      // drags / double-tap zoom overshoots from flipping articles.
+      // 100px keeps next-article swipes light; pinch-zoom and selection
+      // drags are already ruled out by the single-finger / duration /
+      // horizontal checks above.
       if (dt > 600) return;
       if (Math.abs(dx) > Math.abs(dy) * 0.5) return;
-      if (Math.abs(dy) < 140) return;
+      if (Math.abs(dy) < 100) return;
       var y = window.scrollY || document.documentElement.scrollTop || 0;
       if (dy > 0) {
         // Upward swipe → next. Only fire near the bottom of the
