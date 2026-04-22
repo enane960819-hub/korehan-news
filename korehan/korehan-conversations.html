@@ -243,7 +243,7 @@
 </div>
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260421q"></script>
+<script src="korehan-shared.js?v=20260421r"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // KoreHani Character System
@@ -497,6 +497,12 @@ function highlightKeyExprs(text, keyExprs) {
 async function openDetail(idx) {
   var c = CONVS[idx];
   if (!c) return;
+  // Remember which conversation is active for feed-style swipe nav.
+  _convDetailIdx = idx;
+  // Reuse the article reader's immersive chrome (header/footer/bottom
+  // nav hide) — shared.js CSS rules on body.kh-reading-page cover the
+  // whole page, not just the article route.
+  document.body.classList.add('kh-reading-page');
   // First Journey: 대화 읽기 퀘스트 체크
   if (typeof _fjIsComplete === 'function' && !_fjIsComplete('convo')) {
     if (typeof _fjMarkDone === 'function') _fjMarkDone('convo');
@@ -828,7 +834,52 @@ function closeDetail() {
   document.getElementById('detail-overlay').classList.add('hidden');
   document.body.style.overflow = '';
   document.documentElement.style.overflow = '';
+  document.body.classList.remove('kh-reading-page');
+  _convDetailIdx = -1;
 }
+
+// TikTok / Reels style swipe navigation between conversations. Swipe
+// up near the bottom of the detail panel → next conv in the currently
+// filtered list; swipe down near the top → previous. Guards:
+//   - swipe magnitude > 100px
+//   - panel must be scrolled to the corresponding edge so a mid-
+//     read flick doesn't yank you away
+//   - only fires when a detail is open (body.kh-reading-page)
+var _convDetailIdx = -1;
+var _convSwipeStartY = 0;
+(function hookConvFeedSwipe() {
+  document.addEventListener('touchstart', function(e) {
+    if (!document.body.classList.contains('kh-reading-page')) return;
+    if (!e.touches || !e.touches.length) return;
+    _convSwipeStartY = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', function(e) {
+    if (!document.body.classList.contains('kh-reading-page')) return;
+    if (_convDetailIdx < 0) return;
+    if (!e.changedTouches || !e.changedTouches.length) return;
+    var dy = _convSwipeStartY - e.changedTouches[0].clientY;
+    var panel = document.getElementById('detail-panel');
+    if (!panel) return;
+    var atTop    = panel.scrollTop < 60;
+    var atBottom = (panel.scrollTop + panel.clientHeight) >= panel.scrollHeight - 120;
+    var list = (_convFilteredList && _convFilteredList.length) ? _convFilteredList : CONVS;
+    var current = CONVS[_convDetailIdx];
+    var posInList = list.indexOf(current);
+    if (dy >= 100 && atBottom) {
+      var nextConv = list[posInList + 1];
+      if (nextConv) {
+        var realIdx = CONVS.indexOf(nextConv);
+        if (realIdx >= 0) openDetail(realIdx);
+      }
+    } else if (dy <= -100 && atTop) {
+      var prevConv = list[posInList - 1];
+      if (prevConv) {
+        var realIdx = CONVS.indexOf(prevConv);
+        if (realIdx >= 0) openDetail(realIdx);
+      }
+    }
+  }, { passive: true });
+})();
 async function toggleSave(btn) {
   var isSaved = btn.classList.contains('saved');
   // 단어 정보는 부모 .dp-vocab-item에서 읽음
