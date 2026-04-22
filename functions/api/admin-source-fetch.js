@@ -120,11 +120,29 @@ async function fetchReddit(source) {
       published_at: d.created_utc ? new Date(d.created_utc * 1000).toISOString() : '',
       summary: stripHtml(d.selftext || '').slice(0, 280),
       category: source.category,
-      image: d.thumbnail && /^https?:\/\//.test(d.thumbnail) ? d.thumbnail : null,
+      image: extractRedditImage(d),
       video_url: video.url,
       video_kind: video.kind,
     }
   })
+}
+
+// Pull a usable full-size image out of a Reddit post. Priority:
+//   1. Direct i.redd.it URL (post_hint='image' or d.url ends in an image
+//      extension) — these are stable, public, CORS-friendly.
+//   2. preview.images[0].source.url — larger than d.thumbnail, but comes
+//      HTML-escaped with signed query params. Unescape before returning.
+//   3. d.thumbnail — fall back if it's a full URL.
+// Skips videos entirely (image means "still image hero"); skips self posts
+// (no usable image) and gallery posts (multiple images, too complex here).
+function extractRedditImage(d) {
+  if (!d || d.is_video || d.is_self || d.is_gallery) return null
+  if (d.url && /^https?:\/\/i\.redd\.it\//.test(d.url)) return d.url
+  if (d.url && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(d.url)) return d.url
+  const preview = d?.preview?.images?.[0]?.source?.url
+  if (preview) return decodeEntities(String(preview))
+  if (d.thumbnail && /^https?:\/\//.test(d.thumbnail) && d.thumbnail !== 'self') return d.thumbnail
+  return null
 }
 
 // Pull a playable video out of a Reddit post record. We prefer formats
