@@ -9035,26 +9035,49 @@ function setupFeedNavigation() {
   // Vertical swipe gestures for feed navigation, Reels / Shorts style:
   //   - swipe UP   near the bottom = next article
   //   - swipe DOWN near the top    = previous article
-  // Guards keep mid-paragraph scrolls and the comment drawer from
-  // accidentally triggering a navigation.
+  // Guards keep mid-paragraph scrolls, pinch-to-zoom on iOS Safari, and
+  // the comment drawer from accidentally triggering a navigation.
   if (!window._khFeedSwipeHooked) {
     window._khFeedSwipeHooked = true;
     var startY = 0;
+    var startX = 0;
+    var startT = 0;
+    var validSwipe = false;
     window.addEventListener('touchstart', function(e) {
-      if (!e.touches || !e.touches.length) return;
+      // Only track single-finger gestures. On iPhone, pinch-to-zoom uses
+      // two fingers and each can drift well past 100px vertically while
+      // the user is just resizing text — we'd otherwise treat the pinch
+      // as a swipe when the first finger lifts.
+      if (!e.touches || e.touches.length !== 1) { validSwipe = false; return; }
       startY = e.touches[0].clientY;
+      startX = e.touches[0].clientX;
+      startT = Date.now();
+      validSwipe = true;
     }, { passive: true });
     window.addEventListener('touchend', function(e) {
+      if (!validSwipe) return;
+      validSwipe = false;
       if (document.body.classList.contains('kh-cdr-open')) return;
       if (!e.changedTouches || !e.changedTouches.length) return;
-      var dy = startY - e.changedTouches[0].clientY;  // + = up, - = down
+      // Other fingers still on the screen? Mid-pinch, skip.
+      if (e.touches && e.touches.length > 0) return;
+      var dy = startY - e.changedTouches[0].clientY;
+      var dx = e.changedTouches[0].clientX - startX;
+      var dt = Date.now() - startT;
+      // Only honor an actual flick: fast enough (< 600ms) and clearly
+      // vertical (horizontal travel must be less than half the vertical).
+      // Threshold bumped 100 → 140 to keep soft touches / selection
+      // drags / double-tap zoom overshoots from flipping articles.
+      if (dt > 600) return;
+      if (Math.abs(dx) > Math.abs(dy) * 0.5) return;
+      if (Math.abs(dy) < 140) return;
       var y = window.scrollY || document.documentElement.scrollTop || 0;
-      if (dy >= 100) {
+      if (dy > 0) {
         // Upward swipe → next. Only fire near the bottom of the
         // article so a mid-read quick flick doesn't jump away.
         var nearBottom = (window.innerHeight + y) >= document.documentElement.scrollHeight - 120;
         if (nearBottom) goToNextArticle('forward');
-      } else if (dy <= -100) {
+      } else {
         // Downward swipe → previous. Only fire near the top so a
         // mid-read pull-down to re-read doesn't yank the article.
         if (y < 60) goToPrevArticle();
