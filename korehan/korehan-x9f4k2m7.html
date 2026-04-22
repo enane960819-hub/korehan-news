@@ -3705,6 +3705,7 @@ async function runAutoGenerate(){
       if (!article.title || !article.body) throw new Error('Invalid format');
 
       const articleId = uid();
+      const hasSrcVideo = !!(h.video_url && h.video_kind);
       const newArticle = {
         id: articleId, section: secKey,
         title: article.title, body: article.body,
@@ -3713,12 +3714,14 @@ async function runAutoGenerate(){
         featured: false, level: diffInfo.level,
         source_url: h.link || '',
         image: '',
-        // When the admin toggled "Use video" for this headline, carry the source
-        // video URL through. The detail page renders <iframe>/<video> in the
-        // hero slot instead of the picsum fallback image. dbSaveArticle drops
-        // these columns on retry if the DB migration hasn't been run yet.
-        video_url: h._useVideo ? (h.video_url || '') : '',
-        video_kind: h._useVideo ? (h.video_kind || '') : '',
+        // Always persist the source video URL when we have one, even if the
+        // admin unchecked 'Use video' at creation time — that way an article
+        // can be flipped to video later by setting use_video=true, without
+        // losing the upstream link. use_video is what the renderer actually
+        // reads; video_url alone is not enough to swap the hero.
+        video_url: hasSrcVideo ? h.video_url : '',
+        video_kind: hasSrcVideo ? h.video_kind : '',
+        use_video: hasSrcVideo ? !!h._useVideo : false,
       };
       await dbSaveArticle(newArticle);
       DB.unshift(newArticle); refreshCounts();
@@ -5516,11 +5519,13 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
   }
 
   var articleId = uid();
-  // Fully-automated ingest: if the source fetch gave us a video URL, keep it.
-  // Admin can still flip an article back to image via the editor. Only YouTube
-  // embeds and v.redd.it hosted clips are extracted upstream, so both kinds
-  // are CSP-allowed.
-  var autoVideoOk = headline._useVideo !== false && !!(headline.video_url && headline.video_kind);
+  // Always persist the source video URL when one exists, regardless of
+  // whether the admin opted in to showing it. use_video is the knob that
+  // actually flips the hero — keeping video_url around means an image
+  // article can be converted to video later (flip use_video=true) without
+  // needing to re-fetch the original source.
+  var hasSrcVideo = !!(headline.video_url && headline.video_kind);
+  var useVideoNow = hasSrcVideo && headline._useVideo !== false;
   var newArticle = {
     id: articleId, section: section,
     title: article.title, body: article.body,
@@ -5537,8 +5542,9 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
     // it would be blocked and render as a broken icon. khArticleThumb falls
     // back to a stable picsum.photos image keyed by the article id.
     image: '',
-    video_url: autoVideoOk ? headline.video_url : '',
-    video_kind: autoVideoOk ? headline.video_kind : '',
+    video_url: hasSrcVideo ? headline.video_url : '',
+    video_kind: hasSrcVideo ? headline.video_kind : '',
+    use_video: useVideoNow,
   };
   // Inline upsert that tolerates schema drift. admin-api now throws on 4xx,
   // so we catch the throw, extract the missing column name from the error
