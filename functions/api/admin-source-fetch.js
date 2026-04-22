@@ -127,17 +127,23 @@ async function fetchReddit(source) {
   })
 }
 
-// Pull a playable video out of a Reddit post record. We handle two cases:
-//   1. Self-hosted v.redd.it — d.media.reddit_video.fallback_url gives a DASH
-//      MP4. Audio is on a separate track (Reddit quirk), but the muxed file
-//      plays silently in <video> which is acceptable for a hero preview.
-//   2. YouTube cross-post — d.url is a youtube.com/watch?v= or youtu.be/ link.
-//      We extract the 11-char id and return the privacy-friendly nocookie
-//      embed URL so the admin can render it in an <iframe>.
+// Pull a playable video out of a Reddit post record. We prefer formats
+// that carry audio alongside video:
+//   1. Self-hosted v.redd.it — Reddit stores video and audio on separate
+//      tracks. The fallback_url MP4 is video-only (silent), but hls_url is
+//      an HLS manifest (.m3u8) that multiplexes both. We return the HLS URL
+//      under kind 'reddit-hls' so the frontend can play it with hls.js
+//      (or native HLS on Safari). fallback_url is kept as a last resort
+//      under kind 'reddit' — silent, but better than nothing.
+//   2. YouTube cross-post — embed URL, always carries audio.
 // Returns {url:'', kind:''} when nothing usable is found.
 function extractRedditVideo(d) {
-  if (d?.is_video && d?.media?.reddit_video?.fallback_url) {
-    return { url: String(d.media.reddit_video.fallback_url), kind: 'reddit' }
+  const rv = d?.secure_media?.reddit_video || d?.media?.reddit_video
+  if (d?.is_video && rv?.hls_url) {
+    return { url: String(rv.hls_url), kind: 'reddit-hls' }
+  }
+  if (d?.is_video && rv?.fallback_url) {
+    return { url: String(rv.fallback_url), kind: 'reddit' }
   }
   const url = d?.url_overridden_by_dest || d?.url || ''
   const ytId = extractYoutubeId(url)

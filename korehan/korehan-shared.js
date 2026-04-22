@@ -1887,12 +1887,67 @@ function khArticleHeroMedia(article) {
     if (kind === 'youtube') {
       return '<iframe src="' + _khEsc(src) + '" title="Article video" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>';
     }
+    if (kind === 'reddit-hls') {
+      // Reddit stores audio on a separate track; the HLS manifest is the
+      // only v.redd.it URL that carries both video and audio. Safari plays
+      // HLS natively via <video src=".m3u8">; Chrome/Firefox need hls.js
+      // to attach the manifest. _khAttachHls() is called on DOMContentLoaded.
+      return '<video data-kh-hls="' + _khEsc(src) + '" controls playsinline preload="metadata"></video>';
+    }
     if (kind === 'reddit') {
-      return '<video src="' + _khEsc(src) + '" controls muted playsinline preload="metadata"></video>';
+      // Legacy fallback — mp4-only, no audio track. Kept for rows saved
+      // before the hls_url pathway landed.
+      return '<video src="' + _khEsc(src) + '" controls playsinline preload="metadata"></video>';
     }
   }
   var img = khArticleThumb(article, 600, 400);
   return '<img src="' + _khEsc(img) + '" alt="" onerror="this.style.display=\'none\'">';
+}
+
+// Attach hls.js (or native HLS on Safari) to any <video data-kh-hls=".m3u8">
+// present in the DOM. Call after renderArticlePage injects the hero. Loads
+// hls.js lazily from jsdelivr the first time it's needed so the main bundle
+// stays small.
+var _khHlsLoadPromise = null;
+function _khLoadHlsJs() {
+  if (_khHlsLoadPromise) return _khHlsLoadPromise;
+  _khHlsLoadPromise = new Promise(function(resolve, reject) {
+    if (typeof window.Hls !== 'undefined') { resolve(window.Hls); return; }
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js';
+    s.onload = function(){ resolve(window.Hls); };
+    s.onerror = function(e){ _khHlsLoadPromise = null; reject(e); };
+    document.head.appendChild(s);
+  });
+  return _khHlsLoadPromise;
+}
+function _khAttachHls(root) {
+  var scope = root || document;
+  var videos = scope.querySelectorAll('video[data-kh-hls]');
+  if (!videos.length) return;
+  videos.forEach(function(v) {
+    if (v.dataset.khHlsAttached === '1') return;
+    v.dataset.khHlsAttached = '1';
+    var src = v.getAttribute('data-kh-hls');
+    if (!src) return;
+    // Safari / iOS — native HLS support, no library needed.
+    if (v.canPlayType && v.canPlayType('application/vnd.apple.mpegurl')) {
+      v.src = src;
+      return;
+    }
+    _khLoadHlsJs().then(function(Hls) {
+      if (!Hls || !Hls.isSupported || !Hls.isSupported()) {
+        // Last-ditch fallback — let the browser try anyway.
+        v.src = src;
+        return;
+      }
+      var hls = new Hls();
+      hls.loadSource(src);
+      hls.attachMedia(v);
+    }).catch(function() {
+      v.src = src;
+    });
+  });
 }
 
 function _khEsc(s) {
@@ -2277,7 +2332,7 @@ function cardHTML(a, extraTagClass) {
     + '<div class="tag' + (tc ? ' ' + tc : '') + '">' + a.section + '</div>'
     + levelBadge
     + '</div>'
-    + '<h3 class="vocab-zone">' + a.title + '</h3>'
+    + '<h3 class="vocab-zone" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + (a.title_en || a.title) + '</h3>'
     + '<p class="vocab-zone">' + (a.body || '') + '</p>'
     + '<div class="meta">' + relTime(a.date) + '</div>'
     + '</div></a>';
@@ -2311,7 +2366,7 @@ function heroSideItemHTML(a) {
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;display:block;">'
     + '<div class="hero-side-item">'
     + '<img src="' + img + '" alt="" loading="lazy">'
-    + '<h3 class="vocab-zone">' + a.title + '</h3>'
+    + '<h3 class="vocab-zone" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + (a.title_en || a.title) + '</h3>'
     + '<p class="meta">' + a.section + ' · ' + relTime(a.date) + '</p>'
     + '</div></a>';
 }
@@ -3152,6 +3207,10 @@ function renderArticlePage() {
   window._currentArticle = a;
   _analyzeOn = false;
   _analyzeData = null;
+
+  // Wire up the HLS player for Reddit hosted videos (fires only when the
+  // hero is a <video data-kh-hls="...">; no-op otherwise).
+  if (typeof _khAttachHls === 'function') _khAttachHls(wrap);
 
   // 핵심 단어 추출
   renderArticleVocab(a);
