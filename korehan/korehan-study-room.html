@@ -3332,7 +3332,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260421g"></script>
+<script src="korehan-shared.js?v=20260421h"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
 <script src="js/kh-quiz-arena.js?v=20260416"></script>
 <script src="js/kh-flashcards.js?v=20260416"></script>
@@ -3638,6 +3638,33 @@ document.addEventListener('DOMContentLoaded', async function() {
       }
     }
     setTimeout(waitAndOpenModal, 400);
+  }
+
+  // Article 페이지 우측 사이드바 Study 버튼에서 넘어온 경우.
+  // mode=article&id=<articleId>  →  세션 대기 후 article-study 모달 오픈,
+  // 목록 로드되면 해당 기사 자동 선택.
+  if (_urlParams.get('mode') === 'article' && _urlParams.get('id')) {
+    var _asTargetId = _urlParams.get('id');
+    function waitAndOpenArticleStudy() {
+      if (!(window._sessionChecked || waited >= 30)) {
+        setTimeout(waitAndOpenArticleStudy, 120);
+        return;
+      }
+      if (!supaUser) { openAuthModal('signin'); return; }
+      openArticleStudy();
+      // _asLoadArticles 는 async. 목록 세팅 기다렸다가 자동 선택.
+      var listTries = 0;
+      function waitForListThenSelect() {
+        listTries++;
+        if (typeof _asArticles !== 'undefined' && _asArticles.length) {
+          asSelectArticle(_asTargetId);
+        } else if (listTries < 50) {
+          setTimeout(waitForListThenSelect, 200);
+        }
+      }
+      setTimeout(waitForListThenSelect, 300);
+    }
+    setTimeout(waitAndOpenArticleStudy, 400);
   }
 });
 

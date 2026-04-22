@@ -3368,3 +3368,45 @@ body.kh-neon-on .gf-structure-box h4 { color: #7dd3fc !important; }
     color: #2255a4 !important;
   }
 }
+
+/* ── Immersive reading chrome (setupImmersiveReading in shared.js) ── */
+body.kh-reading-page #kh-reading-back {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 1700;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: rgba(8,16,31,.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 8px 20px rgba(0,0,0,.25);
+  transition: background .15s, transform .15s;
+}
+body.kh-reading-page #kh-reading-back:hover { background: rgba(8,16,31,.88); transform: scale(1.04); }
+body.kh-reading-page #kh-reading-back:active { transform: scale(.95); }
+
+/* The breadcrumb is redundant with the floating back button. */
+body.kh-reading-page .art-breadcrumb { display: none; }
+
+/* Mobile bottom nav slides off-screen on scroll-down while reading. */
+body.mobile-redesign .mobile-bottom-nav {
+  transition: transform .28s cubic-bezier(.22,1,.36,1);
+}
+body.kh-reading-page.mobile-redesign.kh-reading-nav-hidden .mobile-bottom-nav {
+  transform: translateY(calc(100% + 20px));
+  pointer-events: none;
+}
+
+/* Related Articles footer only competes with the next-article swipe
+   on mobile — hide there, keep on desktop as a discovery surface. */
+@media (max-width: 768px) {
+  body.kh-reading-page .art-related { display: none; }
+}

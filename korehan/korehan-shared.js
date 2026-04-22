@@ -1368,6 +1368,7 @@ function updateAuthUI() {
   if (joinBtn) joinBtn.style.display = supaUser ? 'none' : (window._sessionChecked ? '' : 'none');
   updateSidebarAuth();
   injectMobileBottomNav();
+  setupImmersiveReading();
   renderKhLucideIcons();
 }
 
@@ -8531,6 +8532,61 @@ function injectMobileBottomNav() {
   renderKhLucideIcons();
 }
 
+// ── Immersive reading mode ──────────────────────────────────────
+// On learning-content pages (article body, conv/story detail) the
+// chrome fights with the content — the mobile bottom nav covers the
+// last line of text, the breadcrumb is redundant with browser back,
+// and the Related Articles footer adds distance to the next session.
+// This function:
+//   - marks body.kh-reading-page so CSS can scope overrides
+//   - injects a fixed top-left back button (always visible)
+//   - auto-hides the bottom nav on scroll-down, shows on scroll-up
+// Currently gated to korehan-article. Conv/story use a modal pattern
+// on list pages; the same `.kh-reading-page` class can be toggled
+// from those modal open/close handlers later to reuse the chrome.
+var _khReadingScrollLast = 0;
+var _khReadingNavHidden = false;
+function setupImmersiveReading() {
+  if (pageName() !== 'korehan-article') return;
+  document.body.classList.add('kh-reading-page');
+
+  if (!document.getElementById('kh-reading-back')) {
+    var btn = document.createElement('a');
+    btn.id = 'kh-reading-back';
+    btn.href = '#';
+    btn.setAttribute('aria-label', 'Back');
+    btn.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>';
+    btn.onclick = function(e) {
+      e.preventDefault();
+      // Prefer browser history so the user returns to the previous
+      // list/section; fall back to home if this is a direct entry.
+      if (window.history.length > 1) window.history.back();
+      else location.href = 'index.html';
+    };
+    document.body.appendChild(btn);
+  }
+
+  if (window._khReadingScrollHooked) return;
+  window._khReadingScrollHooked = true;
+  function setNavHidden(hidden) {
+    if (hidden === _khReadingNavHidden) return;
+    _khReadingNavHidden = hidden;
+    document.body.classList.toggle('kh-reading-nav-hidden', hidden);
+  }
+  function onScroll() {
+    var y = window.scrollY || document.documentElement.scrollTop || 0;
+    var delta = y - _khReadingScrollLast;
+    // Jitter threshold — iOS scroll inertia fires tiny deltas that
+    // would otherwise flip the nav every frame.
+    if (Math.abs(delta) < 4) return;
+    if (y < 80) setNavHidden(false);
+    else if (delta > 0) setNavHidden(true);
+    else setNavHidden(false);
+    _khReadingScrollLast = y;
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+}
+
 function openMobileAccountMenu() {
   if (!supaUser) { openAuthModal('signin'); return; }
   // Open the sidebar — it has My Page + Sign Out for logged-in users
@@ -8750,6 +8806,7 @@ function runMobileRedesign() {
   markMobileBody();
   if (!isMobileRedesign()) return;
   injectMobileBottomNav();
+  setupImmersiveReading();
   enhanceHomeMobile();
   enhanceCollectionPagesMobile();
   enhanceArticleMobile();
@@ -8765,6 +8822,7 @@ window.addEventListener('resize', function(){
   if (isMobileRedesign()) {
     markMobileBody();
     injectMobileBottomNav();
+    setupImmersiveReading();
   } else {
     document.body.classList.remove('mobile-redesign');
     document.body.classList.remove('mobile-light');
