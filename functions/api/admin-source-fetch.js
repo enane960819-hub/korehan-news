@@ -117,6 +117,40 @@ function extractRssImage(block) {
   return first || ''
 }
 
+// Last-ditch image fallback when both RSS and og:image came up empty
+// (Reddit self posts, HN stories with dead target pages, Google Trends
+// headlines that link to a search result, etc.). Searches Google News
+// for the headline's title, grabs the top matching article's URL,
+// follows Google's redirect, and extracts og:image from the real page.
+// Not perfect (image may be thematically adjacent rather than exact)
+// but consistently beats picsum for a learning-platform thumbnail.
+async function fetchTopicImage(title, timeoutMs = 4000) {
+  if (!title || title.length < 4) return ''
+  const q = encodeURIComponent(title)
+  const rssUrl = 'https://news.google.com/rss/search?q=' + q + '&hl=en-US&gl=US&ceid=US:en'
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(rssUrl, {
+      signal: controller.signal,
+      headers: { 'user-agent': 'KoreHanNewsBot/1.0', 'accept': 'application/rss+xml,application/xml,text/xml' },
+    })
+    if (!res.ok) return ''
+    const xml = await res.text()
+    const first = xml.match(/<item[^>]*>([\s\S]*?)<\/item>/i)
+    if (!first) return ''
+    // Google News RSS now ships a redirector link; fetchOgImage with
+    // redirect:'follow' resolves it to the real article URL.
+    const link = pickTag(first[1], 'link')
+    if (!link || !/^https?:\/\//i.test(link)) return ''
+    return await fetchOgImage(link, timeoutMs)
+  } catch {
+    return ''
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 // Fetch og:image (or twitter:image) from a target article URL. Used as
 // a fallback when a source's RSS feed didn't ship an image — Google
 // News search feeds, Hacker News, and TechCrunch RSS are the usual
@@ -361,6 +395,24 @@ export async function onRequest({ request }) {
         await Promise.all(slice.map(async (it) => {
           const og = await fetchOgImage(it.url)
           if (og) it.image = og
+        }))
+      }
+    }
+
+    // Third-pass: Google News search by title for items that STILL have
+    // no image (Reddit self-posts, dead target pages, etc.). Finds an
+    // adjacent-topic news article and steals its og:image. Capped at
+    // 12 items and 4-concurrent so a bad batch doesn't stall the whole
+    // response — anything still image-less after this falls through to
+    // the picsum fallback on the frontend.
+    const stillNeedImage = items.filter((it) => !it.image && it.title && !it.video_url).slice(0, 12)
+    if (stillNeedImage.length) {
+      const concurrency = 4
+      for (let i = 0; i < stillNeedImage.length; i += concurrency) {
+        const slice = stillNeedImage.slice(i, i + concurrency)
+        await Promise.all(slice.map(async (it) => {
+          const img = await fetchTopicImage(it.title)
+          if (img) it.image = img
         }))
       }
     }
