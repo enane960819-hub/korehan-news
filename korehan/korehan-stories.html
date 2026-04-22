@@ -191,7 +191,7 @@
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260421r"></script>
+<script src="korehan-shared.js?v=20260421s"></script>
 <script src="korehan-hover-tooltips.js?v=20260418"></script>
 <script>
 const STORIES = [
@@ -1164,15 +1164,26 @@ function openStory(id) {
   // it isn't in hover_vocab_master.
   if (typeof window.korehanHoverRegisterExtras === 'function') {
     var hoverEntries = [];
+    // Accept both shapes: {ko, rom, en} (legacy / manual) and
+    // {word, reading, meaning} (AI bulk-gen format). Without this
+    // the hover layer saw an empty registration and nothing got
+    // underlined in the body even though the Vocab panel was full.
     if (Array.isArray(s.vocab)) {
       s.vocab.forEach(function(v){
-        if (v && v.ko) hoverEntries.push({ ko: v.ko, en: v.en, rom: v.rom, note: v.note });
+        if (!v) return;
+        var ko  = v.ko  || v.word    || '';
+        var en  = v.en  || v.meaning || '';
+        var rom = v.rom || v.reading || '';
+        if (ko && en) hoverEntries.push({ ko: ko, en: en, rom: rom, note: v.note || v.context || '' });
       });
     }
     if (Array.isArray(s.key_expressions)) {
       s.key_expressions.forEach(function(k){
-        var ko = k && (k.ko || k.expression);
-        if (ko) hoverEntries.push({ ko: ko, en: k.en || k.meaning, rom: k.rom || '', note: k.usage || k.note || '' });
+        if (!k) return;
+        var ko  = k.ko  || k.expression || k.word    || '';
+        var en  = k.en  || k.meaning    || '';
+        var rom = k.rom || k.reading    || '';
+        if (ko && en) hoverEntries.push({ ko: ko, en: en, rom: rom, note: k.usage || k.note || '' });
       });
     }
     if (hoverEntries.length) window.korehanHoverRegisterExtras(hoverEntries);
@@ -1317,13 +1328,25 @@ var _stSwipeStartY = 0;
     var curPos = pool.findIndex(function(x){ return String(x.id) === curId; });
     if (dy >= 100 && atBottom) {
       var nx = pool[curPos + 1];
-      if (nx) openStory(nx.id);
+      if (nx) { openStory(nx.id); _stPanelScrollReset(); }
     } else if (dy <= -100 && atTop) {
       var pv = pool[curPos - 1];
-      if (pv) openStory(pv.id);
+      if (pv) { openStory(pv.id); _stPanelScrollReset(); }
     }
   }, { passive: true });
 })();
+
+// After a feed-style swipe re-renders #st-panel for a different
+// story, the scroll position is still wherever the user released
+// their finger — which means they land mid-body or on the learning
+// elements of the new story. Jump to the top so every nav feels
+// like a fresh story open, not a continuation of the previous
+// scroll.
+function _stPanelScrollReset() {
+  var panel = document.getElementById('st-panel');
+  if (panel) panel.scrollTop = 0;
+  window.scrollTo(0, 0);
+}
 
 async function toggleStorySave(btn, ko, rom, en) {
   if (!supaUser) { openAuthModal('signin'); return; }

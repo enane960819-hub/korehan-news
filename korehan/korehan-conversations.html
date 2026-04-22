@@ -243,7 +243,7 @@
 </div>
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260421r"></script>
+<script src="korehan-shared.js?v=20260421s"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // KoreHani Character System
@@ -865,17 +865,22 @@ var _convSwipeStartY = 0;
     var list = (_convFilteredList && _convFilteredList.length) ? _convFilteredList : CONVS;
     var current = CONVS[_convDetailIdx];
     var posInList = list.indexOf(current);
+    function resetScroll() {
+      var p = document.getElementById('detail-panel');
+      if (p) p.scrollTop = 0;
+      window.scrollTo(0, 0);
+    }
     if (dy >= 100 && atBottom) {
       var nextConv = list[posInList + 1];
       if (nextConv) {
         var realIdx = CONVS.indexOf(nextConv);
-        if (realIdx >= 0) openDetail(realIdx);
+        if (realIdx >= 0) { openDetail(realIdx); resetScroll(); }
       }
     } else if (dy <= -100 && atTop) {
       var prevConv = list[posInList - 1];
       if (prevConv) {
         var realIdx = CONVS.indexOf(prevConv);
-        if (realIdx >= 0) openDetail(realIdx);
+        if (realIdx >= 0) { openDetail(realIdx); resetScroll(); }
       }
     }
   }, { passive: true });
