@@ -156,21 +156,22 @@ function extractRedditImage(d) {
 //      under kind 'reddit' — silent, but better than nothing.
 //   2. YouTube cross-post — embed URL, always carries audio.
 // Returns {url:'', kind:''} when nothing usable is found.
+// Pull a playable video out of a Reddit post. Two strategies:
+//   1. Reddit hosted video (is_video) — use Reddit's own iframe embed
+//      (redditmedia.com) rather than scraping HLS/MP4 tracks ourselves.
+//      Their player handles audio/video muxing, codec quirks, CORS,
+//      signed URL expiry, and mobile platform differences out of the
+//      box. Downside is a small bit of Reddit branding inside the
+//      frame; upside is it Just Works on every device we care about.
+//   2. YouTube cross-post — our own privacy-friendly youtube-nocookie
+//      embed (d.url is the youtube.com / youtu.be link).
+// Returns {url, kind, fallback} where kind is:
+//   'reddit-embed' | 'youtube' | '' (nothing usable)
 function extractRedditVideo(d) {
-  const rv = d?.secure_media?.reddit_video || d?.media?.reddit_video
-  if (d?.is_video && rv?.hls_url) {
-    // Return the HLS manifest (primary) AND the silent MP4 fallback so
-    // the frontend can degrade to silent playback when HLS is blocked
-    // by CORS / expired signatures / hls.js load failure. The pair is
-    // persisted in video_url + video_fallback_url.
-    return {
-      url: String(rv.hls_url),
-      kind: 'reddit-hls',
-      fallback: rv.fallback_url ? String(rv.fallback_url) : ''
-    }
-  }
-  if (d?.is_video && rv?.fallback_url) {
-    return { url: String(rv.fallback_url), kind: 'reddit', fallback: '' }
+  if (d?.is_video && d?.permalink) {
+    const embed = 'https://www.redditmedia.com' + d.permalink
+      + '?ref_source=embed&ref=share&embed=true'
+    return { url: embed, kind: 'reddit-embed', fallback: '' }
   }
   const url = d?.url_overridden_by_dest || d?.url || ''
   const ytId = extractYoutubeId(url)

@@ -1894,6 +1894,15 @@ function khArticleHeroMedia(article) {
     if (kind === 'youtube') {
       return '<iframe src="' + _khEsc(src) + '" title="Article video" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>';
     }
+    if (kind === 'reddit-embed') {
+      // Reddit's own embed player — carries audio reliably across every
+      // device (mobile Chrome / Samsung Internet / iOS Safari / desktop).
+      // sandbox keeps scripts inside the iframe from touching our origin;
+      // allow-scripts + allow-same-origin are Reddit's own requirements
+      // for their player to initialise; allow-popups so 'open comments'
+      // opens a new tab rather than navigating out of the article.
+      return '<iframe src="' + _khEsc(src) + '" title="Article video" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" allow="encrypted-media" referrerpolicy="no-referrer-when-downgrade" scrolling="no"></iframe>';
+    }
     if (kind === 'reddit-hls') {
       // Reddit stores audio on a separate track. The HLS manifest
       // multiplexes both, giving audio when it loads — but Reddit's
