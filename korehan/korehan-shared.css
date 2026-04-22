@@ -1449,6 +1449,16 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 
 .art-hero-img { margin:0 0 28px; border-radius:16px; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,0.12); }
 .art-hero-img img { width:100%; max-height:500px; object-fit:contain; display:block; background:#f0f4fa; }
+/* Video hero — bigger than the image hero because YouTube/Reddit players need
+   room for controls. Desktop uses a 16:9 ratio capped at 70vh; mobile uses a
+   56vw min (full-bleed 16:9) with a 65vh ceiling so portrait phones get a
+   proper-sized player instead of the 240px crop the image hero uses. */
+.art-hero-img.art-hero-video { background:#000; max-height:none; }
+.art-hero-img.art-hero-video iframe,
+.art-hero-img.art-hero-video video {
+  width:100%; height:auto; aspect-ratio:16/9; max-height:70vh;
+  display:block; border:0; background:#000; object-fit:contain;
+}
 
 .art-lead {
   font-size:18px; font-weight:500; line-height:2;
@@ -2442,6 +2452,17 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   body.mobile-redesign .art-card{background:linear-gradient(180deg,rgba(17,24,39,.88),rgba(12,18,31,.96)) !important;border:1px solid rgba(255,255,255,.08) !important;border-radius:24px !important;margin-bottom:14px !important;}
   body.mobile-redesign .art-card .art-hero-img{border:none !important;margin:0 !important;padding:0 !important;border-radius:0 !important;background:transparent !important;}
   body.mobile-redesign .art-card .art-hero-img img{height:240px !important;border-radius:24px 24px 0 0 !important;object-fit:cover;width:100%;}
+  /* Video hero on mobile — overrides the image 240px crop. 56vw is 16:9 of
+     full-bleed viewport width; min-height ensures the player never squishes
+     below that; max-height 65vh keeps tall Reddit vertical clips from eating
+     the whole screen. Rounded top corners match the image hero. */
+  body.mobile-redesign .art-card .art-hero-img.art-hero-video{background:#000 !important;}
+  body.mobile-redesign .art-card .art-hero-img.art-hero-video iframe,
+  body.mobile-redesign .art-card .art-hero-img.art-hero-video video{
+    width:100% !important; height:auto !important;
+    aspect-ratio:16/9; min-height:56vw; max-height:65vh;
+    border-radius:24px 24px 0 0 !important; object-fit:contain;
+  }
   body.mobile-redesign .art-card-body{padding:16px !important;}
   body.mobile-redesign .art-card .art-tabs{border:none !important;border-radius:0 !important;margin:0 !important;padding:0 !important;background:transparent !important;}
   body.mobile-redesign #art-tab-article,
