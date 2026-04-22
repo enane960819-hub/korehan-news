@@ -847,17 +847,35 @@ function closeDetail() {
 //   - only fires when a detail is open (body.kh-reading-page)
 var _convDetailIdx = -1;
 var _convSwipeStartY = 0;
+var _convSwipeStartX = 0;
+var _convSwipeStartT = 0;
+var _convSwipeValid  = false;
 (function hookConvFeedSwipe() {
   document.addEventListener('touchstart', function(e) {
-    if (!document.body.classList.contains('kh-reading-page')) return;
-    if (!e.touches || !e.touches.length) return;
+    if (!document.body.classList.contains('kh-reading-page')) { _convSwipeValid = false; return; }
+    // Track single-finger gestures only. Pinch-to-zoom on iPhone would
+    // otherwise register 100+px of vertical drift as a swipe when one
+    // finger lifts.
+    if (!e.touches || e.touches.length !== 1) { _convSwipeValid = false; return; }
     _convSwipeStartY = e.touches[0].clientY;
+    _convSwipeStartX = e.touches[0].clientX;
+    _convSwipeStartT = Date.now();
+    _convSwipeValid  = true;
   }, { passive: true });
   document.addEventListener('touchend', function(e) {
+    if (!_convSwipeValid) return;
+    _convSwipeValid = false;
     if (!document.body.classList.contains('kh-reading-page')) return;
     if (_convDetailIdx < 0) return;
     if (!e.changedTouches || !e.changedTouches.length) return;
+    // Other fingers still on screen? Mid-pinch, skip.
+    if (e.touches && e.touches.length > 0) return;
     var dy = _convSwipeStartY - e.changedTouches[0].clientY;
+    var dx = e.changedTouches[0].clientX - _convSwipeStartX;
+    var dt = Date.now() - _convSwipeStartT;
+    if (dt > 600) return;
+    if (Math.abs(dx) > Math.abs(dy) * 0.5) return;
+    if (Math.abs(dy) < 140) return;
     var panel = document.getElementById('detail-panel');
     if (!panel) return;
     var atTop    = panel.scrollTop < 60;
@@ -870,13 +888,13 @@ var _convSwipeStartY = 0;
       if (p) p.scrollTop = 0;
       window.scrollTo(0, 0);
     }
-    if (dy >= 100 && atBottom) {
+    if (dy > 0 && atBottom) {
       var nextConv = list[posInList + 1];
       if (nextConv) {
         var realIdx = CONVS.indexOf(nextConv);
         if (realIdx >= 0) { openDetail(realIdx); resetScroll(); }
       }
-    } else if (dy <= -100 && atTop) {
+    } else if (dy < 0 && atTop) {
       var prevConv = list[posInList - 1];
       if (prevConv) {
         var realIdx = CONVS.indexOf(prevConv);
