@@ -1854,6 +1854,11 @@ function _khImgHostAllowed(url) {
   try {
     var u = new URL(url, (typeof window !== 'undefined' && window.location ? window.location.origin : 'https://korehannews.com'));
     if (typeof window !== 'undefined' && window.location && u.origin === window.location.origin) return true;
+    // Any https image host is CSP-allowed (img-src 'self' data: blob:
+    // https:) — og:image backfill from arbitrary news sites needs this.
+    // KH_IMG_CSP_HOSTS kept as a short-list of "known safe" hosts so
+    // legacy callers that want stricter filtering still can.
+    if (u.protocol === 'https:') return true;
     return KH_IMG_CSP_HOSTS.some(function(h){ return u.hostname === h || u.hostname.endsWith('.' + h); });
   } catch(e) { return false; }
 }

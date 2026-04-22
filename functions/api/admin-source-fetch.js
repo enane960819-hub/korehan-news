@@ -76,7 +76,6 @@ async function fetchRss(source) {
     const summary = pickTag(block, 'description') || pickTag(block, 'summary') || pickTag(block, 'content')
     const url = pickTag(block, 'link') || pickAttr(block, 'link', 'href')
     const published_at = toIso(pickTag(block, 'pubDate') || pickTag(block, 'published') || pickTag(block, 'updated'))
-    const image = pickTag(block, 'media:thumbnail') || pickTag(block, 'media:content')
     return {
       title,
       source: source.label,
@@ -84,9 +83,86 @@ async function fetchRss(source) {
       published_at,
       summary: summary.slice(0, 280),
       category: source.category,
-      image: image || null,
+      image: extractRssImage(block) || null,
     }
   })
+}
+
+// Pull a usable thumbnail URL out of an RSS <item>. Sources encode it
+// five different ways and the old implementation only tried <media:thumbnail>
+// text content — but these elements are self-closing and carry the URL in
+// the `url=` attribute, so text extraction was always empty. Cover the
+// real formats:
+//   <media:thumbnail url="..."/>
+//   <media:content  url="..." medium="image"/>
+//   <enclosure url="..." type="image/*"/>
+//   <image><url>...</url></image>    (RSS 2.0 channel-level, rare inside item)
+//   <description><![CDATA[<img src="..."/>...]]></description>   (WordPress, BoredPanda)
+function extractRssImage(block) {
+  const candidates = [
+    pickAttr(block, 'media:thumbnail', 'url'),
+    pickAttr(block, 'media:content', 'url'),
+  ]
+  // <enclosure url="..." type="image/jpeg"/> — only take when type starts with image/
+  const encMatch = block.match(/<enclosure[^>]+url="([^"]+)"[^>]*type="image\/[^"]+"[^>]*>/i)
+    || block.match(/<enclosure[^>]+type="image\/[^"]+"[^>]*url="([^"]+)"[^>]*>/i)
+  if (encMatch) candidates.push(decodeEntities(encMatch[1]))
+  // Nested <image><url>…</url></image>
+  const imgBlock = block.match(/<image[^>]*>([\s\S]*?)<\/image>/i)
+  if (imgBlock) candidates.push(pickTag(imgBlock[1], 'url'))
+  // First <img src="…"> inside description/content HTML
+  const htmlImg = block.match(/<img[^>]+src="([^"]+)"/i)
+  if (htmlImg) candidates.push(decodeEntities(htmlImg[1]))
+  const first = candidates.find((u) => u && /^https?:\/\//i.test(u))
+  return first || ''
+}
+
+// Fetch og:image (or twitter:image) from a target article URL. Used as
+// a fallback when a source's RSS feed didn't ship an image — Google
+// News search feeds, Hacker News, and TechCrunch RSS are the usual
+// offenders. Capped head read + head-only match keeps this cheap.
+async function fetchOgImage(url, timeoutMs = 3000) {
+  if (!url || !/^https?:\/\//i.test(url)) return ''
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; KoreHanNewsBot/1.0)',
+        'Accept': 'text/html,application/xhtml+xml',
+      },
+    })
+    if (!res.ok) return ''
+    const ct = res.headers.get('content-type') || ''
+    if (!/html/i.test(ct)) return ''
+    // Read only the head slice — most og tags are in the first ~50 KB.
+    const html = await res.text()
+    const headSlice = (html.match(/<head[^>]*>([\s\S]{0,80000})<\/head>/i) || [null, html.slice(0, 80000)])[1]
+    const patterns = [
+      /<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url)?["']/i,
+      /<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i,
+    ]
+    for (const re of patterns) {
+      const m = headSlice.match(re)
+      if (m && m[1]) {
+        let abs = decodeEntities(m[1].trim())
+        // Resolve relative og:image against the page URL
+        if (!/^https?:\/\//i.test(abs)) {
+          try { abs = new URL(abs, url).toString() } catch { continue }
+        }
+        return abs
+      }
+    }
+    return ''
+  } catch {
+    return ''
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 async function fetchHn(source) {
@@ -271,6 +347,24 @@ export async function onRequest({ request }) {
     }))
 
     const items = normalizeAndFilter(merged, dbSet).slice(0, limit)
+
+    // Second-pass: for items that still have no image (HN, Google News
+    // RSS search feeds, some clickbait feeds), hit the target URL's
+    // <head> and extract og:image. 8 concurrent fetches with a 3s
+    // per-request timeout keeps the whole pass under ~6s even with
+    // 40 targets.
+    const needImage = items.filter((it) => !it.image && it.url && !it.video_url)
+    if (needImage.length) {
+      const concurrency = 8
+      for (let i = 0; i < needImage.length; i += concurrency) {
+        const slice = needImage.slice(i, i + concurrency)
+        await Promise.all(slice.map(async (it) => {
+          const og = await fetchOgImage(it.url)
+          if (og) it.image = og
+        }))
+      }
+    }
+
     return new Response(JSON.stringify({ ok: true, items, by_source: bySource }), {
       status: 200,
       headers: cors({ 'content-type': 'application/json' }),
