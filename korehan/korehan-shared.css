@@ -3677,17 +3677,31 @@ body.kh-reading-page #kh-feed-next-pill svg { opacity: .9; }
 .rv-deeper-btn:hover { background: #e2e8f0; }
 
 /* TikTok-style transition between articles. Swap is SPA-backed
-   (history.pushState + renderArticlePage) so this animation is the
-   entire user-visible hand-off — no page reload, no header flash. */
+   (history.replaceState + renderArticlePage) so this animation is
+   the entire user-visible hand-off — no page reload, no header
+   flash. Direction is directional: forward = next article slides
+   up from below, back = prev article slides down from above. */
 body.kh-feed-leaving {
   transition: transform .22s cubic-bezier(.55,0,.55,.2), opacity .22s ease;
   transform: translateY(-28px);
   opacity: 0;
 }
+body.kh-feed-leaving-back {
+  transition: transform .22s cubic-bezier(.55,0,.55,.2), opacity .22s ease;
+  transform: translateY(28px);
+  opacity: 0;
+}
 body.kh-feed-entering {
   animation: khFeedEnterIn .32s cubic-bezier(.22,1,.36,1);
 }
+body.kh-feed-entering-back {
+  animation: khFeedEnterInBack .32s cubic-bezier(.22,1,.36,1);
+}
 @keyframes khFeedEnterIn {
   from { transform: translateY(36px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+@keyframes khFeedEnterInBack {
+  from { transform: translateY(-36px); opacity: 0; }
   to   { transform: none; opacity: 1; }
 }

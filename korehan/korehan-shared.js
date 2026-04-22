@@ -8727,10 +8727,11 @@ function setupImmersiveReading() {
     btn.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>';
     btn.onclick = function(e) {
       e.preventDefault();
-      // Prefer browser history so the user returns to the previous
-      // list/section; fall back to home if this is a direct entry.
-      if (window.history.length > 1) window.history.back();
-      else location.href = 'index.html';
+      // Back = exit to home. SPA-navigated articles don't pile up in
+      // history (we use replaceState), and "previous article" is
+      // handled separately by swipe-down / goToPrevArticle. So the
+      // top-left arrow always means "leave the reader".
+      location.href = 'index.html';
     };
     document.body.appendChild(btn);
   }
@@ -8888,29 +8889,55 @@ function pickNextFeedArticle(currentId) {
   return from[Math.floor(Math.random() * from.length)];
 }
 
-function goToNextArticle() {
+function goToNextArticle(direction) {
   if (document.body.classList.contains('kh-feed-leaving')) return;
   var currentId = _khCurrentArtId();
   if (!currentId) return;
   var next = pickNextFeedArticle(currentId);
   if (!next) { if (typeof toast === 'function') toast('No more articles to show', false); return; }
   _khFeedRememberSeen(currentId);
-  _khSpaLoadArticle(next.id);
+  _khSpaLoadArticle(next.id, direction || 'forward');
+}
+
+// Previous-article pattern: swipe DOWN from near the top of the
+// viewport (mirrors swipe-up for next). Pops the most recent seen
+// article off the _khFeedRecentKey stack and navigates to it. The
+// intentionally-simple mental model: "recent" doubles as the
+// back-stack. No forward stack yet — if the user wants to re-see
+// the article they just came from, a swipe-up picks a fresh random
+// one (which might happen to be it, might not).
+function goToPrevArticle() {
+  if (document.body.classList.contains('kh-feed-leaving')) return;
+  var recent = [];
+  try { recent = JSON.parse(localStorage.getItem(_khFeedRecentKey) || '[]'); } catch(e) {}
+  if (!recent.length) { if (typeof toast === 'function') toast('No previous article', false); return; }
+  var prevId = recent.shift();
+  try { localStorage.setItem(_khFeedRecentKey, JSON.stringify(recent)); } catch(e) {}
+  _khSpaLoadArticle(prevId, 'back');
 }
 
 // SPA-style swap to another article. Instead of location.href (which
 // reloads the whole page — visible flash, header/scripts re-init,
 // articles cache re-hydrate, breaks the TikTok flow), we update the
-// URL via history.pushState and call renderArticlePage() which reads
-// from the in-memory articles cache we already have. The comment
-// drawer is emptied so the NEXT article's #art-comments is what gets
-// re-parented when the user opens Talk. The sidebar bookmark resets
-// and re-syncs once the new article's meta bookmark button renders.
-function _khSpaLoadArticle(nextId) {
-  document.body.classList.add('kh-feed-leaving');
+// URL via history.replaceState and call renderArticlePage() which
+// reads from the in-memory articles cache we already have.
+//
+// replaceState (not pushState): feed swipes shouldn't pile up in
+// history — tapping the OS/browser back button while reading should
+// exit the reader, not step back through every article the user
+// swiped past. The in-page "Back" arrow goes straight to home,
+// swipe-down goes to previous article — explicit and predictable.
+//
+// `direction` ('forward' | 'back') decides which way the transition
+// animates: forward = new content slides up, back = slides down.
+function _khSpaLoadArticle(nextId, direction) {
+  direction = direction === 'back' ? 'back' : 'forward';
+  var leaveClass  = direction === 'back' ? 'kh-feed-leaving-back'  : 'kh-feed-leaving';
+  var enterClass  = direction === 'back' ? 'kh-feed-entering-back' : 'kh-feed-entering';
+  document.body.classList.add(leaveClass);
   setTimeout(function() {
     var newUrl = 'korehan-article.html?id=' + encodeURIComponent(nextId);
-    try { history.pushState({ articleId: nextId }, '', newUrl); } catch(e) {}
+    try { history.replaceState({ articleId: nextId }, '', newUrl); } catch(e) {}
 
     // Drop stale #art-comments (from previous article) out of the
     // drawer so we don't end up with two duplicate IDs in the DOM.
@@ -8938,23 +8965,11 @@ function _khSpaLoadArticle(nextId) {
     })();
 
     // Animate in.
-    document.body.classList.remove('kh-feed-leaving');
-    document.body.classList.add('kh-feed-entering');
-    setTimeout(function(){ document.body.classList.remove('kh-feed-entering'); }, 340);
+    document.body.classList.remove(leaveClass);
+    document.body.classList.add(enterClass);
+    setTimeout(function(){ document.body.classList.remove(enterClass); }, 340);
   }, 220);
 }
-
-// Browser back / forward inside the article reader. The user pressed
-// the chrome back button after SPA-navigating forward — the URL just
-// flipped to the previous article, so re-render from it. Use
-// replaceState-like behaviour (no new history frame) since the stack
-// is already in the right shape.
-window.addEventListener('popstate', function() {
-  if (pageName() !== 'korehan-article') return;
-  if (typeof renderArticlePage === 'function') renderArticlePage();
-  window.scrollTo(0, 0);
-  document.body.classList.remove('kh-feed-pill-on');
-});
 
 function setupFeedNavigation() {
   if (pageName() !== 'korehan-article') return;
@@ -8987,11 +9002,11 @@ function setupFeedNavigation() {
     }, { passive: true });
   }
 
-  // Swipe-up gesture near the bottom = next article. Guarded by:
-  //   - swipe >100px upward
-  //   - viewport within 120px of content end (so mid-page scrolls
-  //     don't accidentally trigger)
-  //   - comment drawer not open
+  // Vertical swipe gestures for feed navigation, Reels / Shorts style:
+  //   - swipe UP   near the bottom = next article
+  //   - swipe DOWN near the top    = previous article
+  // Guards keep mid-paragraph scrolls and the comment drawer from
+  // accidentally triggering a navigation.
   if (!window._khFeedSwipeHooked) {
     window._khFeedSwipeHooked = true;
     var startY = 0;
@@ -9002,11 +9017,18 @@ function setupFeedNavigation() {
     window.addEventListener('touchend', function(e) {
       if (document.body.classList.contains('kh-cdr-open')) return;
       if (!e.changedTouches || !e.changedTouches.length) return;
-      var dy = startY - e.changedTouches[0].clientY;
-      if (dy < 100) return;
-      var nearBottom = (window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 120;
-      if (!nearBottom) return;
-      goToNextArticle();
+      var dy = startY - e.changedTouches[0].clientY;  // + = up, - = down
+      var y = window.scrollY || document.documentElement.scrollTop || 0;
+      if (dy >= 100) {
+        // Upward swipe → next. Only fire near the bottom of the
+        // article so a mid-read quick flick doesn't jump away.
+        var nearBottom = (window.innerHeight + y) >= document.documentElement.scrollHeight - 120;
+        if (nearBottom) goToNextArticle('forward');
+      } else if (dy <= -100) {
+        // Downward swipe → previous. Only fire near the top so a
+        // mid-read pull-down to re-read doesn't yank the article.
+        if (y < 60) goToPrevArticle();
+      }
     }, { passive: true });
   }
 }
