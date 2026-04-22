@@ -1881,14 +1881,15 @@ function khArticleHeroMedia(article) {
   var src  = article && article.video_url;
   var show = article && article.use_video !== false && article.use_video != null;
   if (show && src && typeof src === 'string') {
+    // Sizing comes from the .art-hero-video CSS class applied by
+    // renderArticlePage to the wrapping .art-hero-img div — see
+    // korehan-shared.css. Keeping sizing in one place means media-query
+    // overrides (mobile 56vw min-height, etc.) stay consistent.
     if (kind === 'youtube') {
-      // aspect-ratio matches a 16:9 video; max-height mirrors .art-hero-img img
-      // so the hero occupies the same vertical slot whether it's an image,
-      // embed, or hosted clip.
-      return '<iframe src="' + _khEsc(src) + '" title="Article video" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" style="width:100%;aspect-ratio:16/9;max-height:500px;border:0;display:block;background:#000"></iframe>';
+      return '<iframe src="' + _khEsc(src) + '" title="Article video" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>';
     }
     if (kind === 'reddit') {
-      return '<video src="' + _khEsc(src) + '" controls muted playsinline preload="metadata" style="width:100%;max-height:500px;object-fit:contain;display:block;background:#000"></video>';
+      return '<video src="' + _khEsc(src) + '" controls muted playsinline preload="metadata"></video>';
     }
   }
   var img = khArticleThumb(article, 600, 400);
@@ -2989,6 +2990,8 @@ function renderArticlePage() {
   }
 
   var heroMedia = khArticleHeroMedia(a);
+  var heroIsVideo = !!(a && a.use_video && a.video_url && a.video_kind);
+  var heroWrapCls = 'art-hero-img' + (heroIsVideo ? ' art-hero-video' : '');
   var dateStr = a.date ? new Date(a.date).toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'}) : '';
 
   wrap.innerHTML =
@@ -3003,7 +3006,7 @@ function renderArticlePage() {
 
     // 통합 기사 카드: 이미지(+뱃지 오버레이) → 제목 → 메타 → 탭 → 본문
     + '<div class="art-card">'
-    + '<div class="art-hero-img" style="position:relative">' + heroMedia
+    + '<div class="' + heroWrapCls + '" style="position:relative">' + heroMedia
     + '<div class="art-badges-overlay">'
     + '<span class="art-section-badge">' + a.section + '</span>'
     + (a.level ? (function(lv){ var c={'Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828','Starter':'#f3e8ff;color:#6b21a8'}; var dn={'Starter':'Seed','Beginner':'Sprout','Intermediate':'Tree','Advanced':'Forest'}; return '<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:'+(c[lv]||'#f0f0f0;color:#666')+'">'+(dn[lv]||lv)+'</span>'; })(a.level) : '')
