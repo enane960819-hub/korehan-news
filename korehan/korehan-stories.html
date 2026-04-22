@@ -107,6 +107,29 @@
 .st-q-a{font-size:12px;color:#475569;line-height:1.5;}
 @media(max-width:900px){.st-grid{grid-template-columns:repeat(2,1fr)}.st-panel{grid-template-columns:1fr}.st-right{border-left:none;border-top:1px solid #e8eef7}}
 @media(max-width:600px){.st-grid{grid-template-columns:1fr}.st-hero h1{font-size:28px}.st-panel{border-radius:20px}}
+
+/* Mobile-only Read / Learn tab strip on the story detail. Desktop
+   keeps the 2-column layout (body + right panel side-by-side) so
+   the tab strip is display:none. On mobile the right panel was
+   stacked below the body — too much learning-element noise under
+   each story — so we gate one or the other via the active tab. */
+.st-tab-strip{display:none;}
+@media(max-width:900px){
+  .st-tab-strip{
+    display:flex;gap:8px;padding:10px 20px 0;background:#fff;
+    border-bottom:1px solid #eef2f7;position:sticky;top:0;z-index:5;
+  }
+  .st-tab-btn{
+    flex:1;padding:10px 0;border:none;background:transparent;
+    color:#64748b;font-size:13px;font-weight:800;cursor:pointer;
+    font-family:inherit;border-bottom:2px solid transparent;
+    transition:color .15s,border-color .15s;
+  }
+  .st-tab-btn.on{color:#0f172a;border-bottom-color:#2563eb;}
+  .st-panel.st-mobile-tab-read .st-right{display:none;}
+  .st-panel.st-mobile-tab-learn .st-body-scroll,
+  .st-panel.st-mobile-tab-learn .st-cta-row{display:none;}
+}
 /* Netflix-style genre rails */
 .st-rail{margin-bottom:36px;}
 .st-rail-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;padding:0 4px;}
@@ -191,7 +214,7 @@
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260421s"></script>
+<script src="korehan-shared.js?v=20260421t"></script>
 <script src="korehan-hover-tooltips.js?v=20260418"></script>
 <script>
 const STORIES = [
@@ -1110,7 +1133,12 @@ function openStory(id) {
       + '<div id="st-gen-ai-msg" style="margin-top:8px;font-size:11px;color:#dc2626"></div>'
     + '</div>';
 
-  document.getElementById('st-panel').innerHTML =
+  // Default to Read tab on every open so a freshly-navigated story
+  // always starts on the body, never on the learning panel.
+  var _stPanelEl = document.getElementById('st-panel');
+  _stPanelEl.classList.remove('st-mobile-tab-learn');
+  _stPanelEl.classList.add('st-mobile-tab-read');
+  _stPanelEl.innerHTML =
     '<div class="st-left">'
       + '<div class="st-left-head">'
         + '<div class="st-head-banner ' + headBannerClass + '"' + (storyThumb ? ' style="background:#0f172a;background-image:url(\'' + String(storyThumb).replace(/'/g, '%27') + '\');background-size:cover;background-position:center"' : '') + '>'
@@ -1130,6 +1158,10 @@ function openStory(id) {
           + '</div>'
           + (author ? '<a class="st-author-inline" href="' + characterProfileUrl(author.slug) + '">' + renderCharacterAvatar(author, 'kh-character-avatar', 40) + '<div class="st-author-inline-copy"><strong>' + characterDisplayName(author) + '</strong><span>' + escapeHtml(author.role || '') + '</span></div></a>' : '')
         + '</div>'
+      + '</div>'
+      + '<div class="st-tab-strip" role="tablist" aria-label="Story sections">'
+        + '<button class="st-tab-btn on" data-tab="read" onclick="stSwitchTab(\'read\')">📖 Read</button>'
+        + '<button class="st-tab-btn" data-tab="learn" onclick="stSwitchTab(\'learn\')">📚 Learn</button>'
       + '</div>'
       + '<div class="st-body-scroll st-container">'
         + (hasEnBody ? '<div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px"><button id="st-body-lang-ko" onclick="stToggleBodyLang(\'ko\')" style="padding:6px 14px;border-radius:999px;border:1.5px solid #2255a4;background:#2255a4;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🇰🇷 한국어</button><button id="st-body-lang-en" onclick="stToggleBodyLang(\'en\')" style="padding:6px 14px;border-radius:999px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🇺🇸 English</button></div>' : '')
@@ -1345,6 +1377,22 @@ var _stSwipeStartY = 0;
 function _stPanelScrollReset() {
   var panel = document.getElementById('st-panel');
   if (panel) panel.scrollTop = 0;
+  window.scrollTo(0, 0);
+}
+
+// Mobile-only Read / Learn tabs for the story detail. Desktop keeps
+// its 2-column layout untouched. Toggles a body class on #st-panel;
+// the CSS (stories.html style block) uses it to hide either the
+// story body or the study-notes panel under the 900px breakpoint.
+function stSwitchTab(tab) {
+  var panel = document.getElementById('st-panel');
+  if (!panel) return;
+  panel.classList.remove('st-mobile-tab-read', 'st-mobile-tab-learn');
+  panel.classList.add('st-mobile-tab-' + tab);
+  panel.querySelectorAll('.st-tab-btn').forEach(function(b) {
+    b.classList.toggle('on', b.dataset.tab === tab);
+  });
+  panel.scrollTop = 0;
   window.scrollTo(0, 0);
 }
 
