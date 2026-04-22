@@ -1867,6 +1867,36 @@ function khArticleThumb(article, w, h) {
   return 'https://picsum.photos/seed/' + encodeURIComponent(seed) + '/' + w + '/' + h;
 }
 
+// Hero media HTML for the article detail page. Prefers the article's upstream
+// video (YouTube embed or v.redd.it hosted MP4) when present — otherwise falls
+// back to khArticleThumb. Kept to the same 600x400-ish aspect as the image hero
+// via CSS on .art-hero-img so the surrounding badge overlay still positions.
+// Grid/card renderers keep using khArticleThumb directly since a full-size
+// video in every card would destroy scroll performance.
+function khArticleHeroMedia(article) {
+  var kind = article && article.video_kind;
+  var src  = article && article.video_url;
+  if (src && typeof src === 'string') {
+    if (kind === 'youtube') {
+      // aspect-ratio matches a 16:9 video; max-height mirrors .art-hero-img img
+      // so the hero occupies the same vertical slot whether it's an image,
+      // embed, or hosted clip.
+      return '<iframe src="' + _khEsc(src) + '" title="Article video" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" style="width:100%;aspect-ratio:16/9;max-height:500px;border:0;display:block;background:#000"></iframe>';
+    }
+    if (kind === 'reddit') {
+      return '<video src="' + _khEsc(src) + '" controls muted playsinline preload="metadata" style="width:100%;max-height:500px;object-fit:contain;display:block;background:#000"></video>';
+    }
+  }
+  var img = khArticleThumb(article, 600, 400);
+  return '<img src="' + _khEsc(img) + '" alt="" onerror="this.style.display=\'none\'">';
+}
+
+function _khEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 (function hydrateArticlesCacheFromStorage() {
   try {
     var raw = localStorage.getItem(ARTICLES_STORAGE_KEY);
@@ -2954,7 +2984,7 @@ function renderArticlePage() {
     return;
   }
 
-  var img = khArticleThumb(a, 600, 400);
+  var heroMedia = khArticleHeroMedia(a);
   var dateStr = a.date ? new Date(a.date).toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'}) : '';
 
   wrap.innerHTML =
@@ -2969,7 +2999,7 @@ function renderArticlePage() {
 
     // 통합 기사 카드: 이미지(+뱃지 오버레이) → 제목 → 메타 → 탭 → 본문
     + '<div class="art-card">'
-    + '<div class="art-hero-img" style="position:relative"><img src="' + img + '" alt="" onerror="this.style.display=\'none\'">'
+    + '<div class="art-hero-img" style="position:relative">' + heroMedia
     + '<div class="art-badges-overlay">'
     + '<span class="art-section-badge">' + a.section + '</span>'
     + (a.level ? (function(lv){ var c={'Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828','Starter':'#f3e8ff;color:#6b21a8'}; var dn={'Starter':'Seed','Beginner':'Sprout','Intermediate':'Tree','Advanced':'Forest'}; return '<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:'+(c[lv]||'#f0f0f0;color:#666')+'">'+(dn[lv]||lv)+'</span>'; })(a.level) : '')

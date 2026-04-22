@@ -112,6 +112,7 @@ async function fetchReddit(source) {
   const json = await res.json()
   return (json?.data?.children || []).map((c) => {
     const d = c?.data || {}
+    const video = extractRedditVideo(d)
     return {
       title: stripHtml(d.title || ''),
       source: source.label,
@@ -120,8 +121,44 @@ async function fetchReddit(source) {
       summary: stripHtml(d.selftext || '').slice(0, 280),
       category: source.category,
       image: d.thumbnail && /^https?:\/\//.test(d.thumbnail) ? d.thumbnail : null,
+      video_url: video.url,
+      video_kind: video.kind,
     }
   })
+}
+
+// Pull a playable video out of a Reddit post record. We handle two cases:
+//   1. Self-hosted v.redd.it — d.media.reddit_video.fallback_url gives a DASH
+//      MP4. Audio is on a separate track (Reddit quirk), but the muxed file
+//      plays silently in <video> which is acceptable for a hero preview.
+//   2. YouTube cross-post — d.url is a youtube.com/watch?v= or youtu.be/ link.
+//      We extract the 11-char id and return the privacy-friendly nocookie
+//      embed URL so the admin can render it in an <iframe>.
+// Returns {url:'', kind:''} when nothing usable is found.
+function extractRedditVideo(d) {
+  if (d?.is_video && d?.media?.reddit_video?.fallback_url) {
+    return { url: String(d.media.reddit_video.fallback_url), kind: 'reddit' }
+  }
+  const url = d?.url_overridden_by_dest || d?.url || ''
+  const ytId = extractYoutubeId(url)
+  if (ytId) return { url: 'https://www.youtube-nocookie.com/embed/' + ytId, kind: 'youtube' }
+  // secure_media.oembed.html sometimes carries a YouTube iframe for link posts
+  // that point at non-youtube domains but embed youtube (rare but cheap to try).
+  const oembedHtml = d?.secure_media?.oembed?.html || d?.media?.oembed?.html || ''
+  if (oembedHtml) {
+    const srcMatch = oembedHtml.match(/src="([^"]+)"/i)
+    const ytId2 = srcMatch ? extractYoutubeId(srcMatch[1]) : ''
+    if (ytId2) return { url: 'https://www.youtube-nocookie.com/embed/' + ytId2, kind: 'youtube' }
+  }
+  return { url: '', kind: '' }
+}
+
+function extractYoutubeId(url) {
+  if (!url || typeof url !== 'string') return ''
+  // youtu.be/ID, youtube.com/watch?v=ID, youtube.com/embed/ID,
+  // youtube.com/shorts/ID, youtube-nocookie.com/embed/ID
+  const m = url.match(/(?:youtube\.com\/(?:watch\?[^#]*\bv=|embed\/|shorts\/|v\/)|youtu\.be\/|youtube-nocookie\.com\/embed\/)([A-Za-z0-9_-]{11})/)
+  return m ? m[1] : ''
 }
 
 async function loadExistingDedupSet(supaUrl, headers) {
