@@ -2992,7 +2992,7 @@ function renderArticlePage() {
     + '<button class="art-tab on" onclick="switchArtTab(\'article\',this)">Read</button>'
     + '<button class="art-tab" onclick="switchArtTab(\'grammar\',this)">Grammar</button>'
     + '<button class="art-tab" onclick="switchArtTab(\'vocab\',this)">Vocab</button>'
-    + '<button class="art-tab" onclick="switchArtTab(\'quiz\',this)">Quiz</button>'
+    + '<button class="art-tab" onclick="switchArtTab(\'quiz\',this)">Review</button>'
     + '</div>'
 
     // Read 탭
@@ -3016,23 +3016,40 @@ function renderArticlePage() {
     + '</div>'
 
     // Quiz 탭
+    // Review 탭 — 가벼운 4종 리뷰 세트. Summarize는 article-study 모달의
+    // Step 5 (Writing)로 이관. 더 깊이 공부하고 싶으면 하단 CTA로 스터디룸.
     + '<div id="art-tab-quiz" style="display:none">'
-    + '<div id="fill-wrap">'
-    + '<div id="fill-content"><div id="fill-teaser"></div></div>'
-    + '</div>'
-    + '<div style="margin-top:24px;padding-top:20px;border-top:2px solid var(--border)">'
-    + '<div style="font-size:14px;font-weight:800;margin-bottom:8px">📝 Article Summary</div>'
-    + '<p style="font-size:12px;color:var(--gray);margin-bottom:10px">Summarize this article in 3-5 Korean sentences. AI will check your summary.</p>'
-    + '<textarea id="art-summary-ta" style="width:100%;min-height:100px;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:\'Noto Sans KR\',sans-serif;font-size:13px;resize:vertical;box-sizing:border-box" placeholder="Write your summary in Korean..."></textarea>'
-    + '<div style="display:flex;gap:8px;margin-top:8px">'
-    + '<button onclick="checkArticleSummary()" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Check Summary</button>'
-    + '</div>'
-    + '<div id="art-summary-feedback" style="margin-top:10px;font-size:13px;line-height:1.6"></div>'
-    + '</div>'
-    + '<div style="margin-top:24px;padding-top:20px;border-top:2px solid var(--border)">'
-    + '<div style="font-size:14px;font-weight:800;margin-bottom:8px">🎧 Listening Quiz</div>'
-    + '<p style="font-size:12px;color:var(--gray);margin-bottom:10px">Listen to key vocabulary from this article and identify the meaning.</p>'
-    + '<div id="art-listening-quiz"><button onclick="startArticleListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div>'
+    + '<div class="rv-wrap">'
+    +   '<div class="rv-intro">'
+    +     '<div class="rv-intro-title">📝 Review</div>'
+    +     '<div class="rv-intro-sub">Light practice before moving on — four quick checks.</div>'
+    +   '</div>'
+
+    +   '<div class="rv-card">'
+    +     '<div class="rv-card-head"><span class="rv-card-icon">🧠</span><span>단어 체크</span><span class="rv-card-hint">Tap to reveal</span></div>'
+    +     '<div id="rv-vocab-check" class="rv-card-body"></div>'
+    +   '</div>'
+
+    +   '<div class="rv-card">'
+    +     '<div class="rv-card-head"><span class="rv-card-icon">✓</span><span>기사 이해</span><span class="rv-card-hint">True or False</span></div>'
+    +     '<div id="rv-tf-check" class="rv-card-body"></div>'
+    +   '</div>'
+
+    +   '<div class="rv-card">'
+    +     '<div class="rv-card-head"><span class="rv-card-icon">🔤</span><span>빈칸 채우기</span><span class="rv-card-hint">Fill in the blank</span></div>'
+    +     '<div class="rv-card-body"><div id="fill-wrap"><div id="fill-content"><div id="fill-teaser"></div></div></div></div>'
+    +   '</div>'
+
+    +   '<div class="rv-card">'
+    +     '<div class="rv-card-head"><span class="rv-card-icon">🎧</span><span>듣기</span><span class="rv-card-hint">Listening</span></div>'
+    +     '<div class="rv-card-body"><div id="art-listening-quiz"><button onclick="startArticleListeningQuiz()" class="rv-start-btn">Start Listening Quiz</button></div></div>'
+    +   '</div>'
+
+    +   '<div class="rv-deeper">'
+    +     '<div class="rv-deeper-title">더 깊이 공부하고 싶다면</div>'
+    +     '<div class="rv-deeper-sub">스터디룸의 Article Study 모달에서 단어 → 표현 → 정독 → 퀴즈 → 쓰기까지 5단계로 학습하세요.</div>'
+    +     '<button class="rv-deeper-btn" onclick="openArticleStudyFromReader()">📖 Open in Study Room →</button>'
+    +   '</div>'
     + '</div>'
     + '</div>'
 
@@ -3231,7 +3248,152 @@ function switchArtTab(tab, btn) {
   var active = document.getElementById('art-tab-' + tab);
   if (active) active.style.display = 'block';
   if (tab === 'grammar') loadGrammarGuide();
-  if (tab === 'quiz') { var teaser = document.getElementById('fill-teaser'); if (teaser && !teaser.innerHTML) initFillTeaser(window._currentArticle); }
+  if (tab === 'quiz') {
+    var teaser = document.getElementById('fill-teaser');
+    if (teaser && !teaser.innerHTML) initFillTeaser(window._currentArticle);
+    renderReviewVocabCheck(window._currentArticle);
+    renderReviewTF(window._currentArticle);
+  }
+}
+
+// ── Review tab mini-activities ──────────────────────────────────
+// Both are client-side so the Review tab is instant even before the
+// article_cache roundtrip. Vocab cards flash-card style (tap to
+// reveal) are a "did you remember" pass; T/F is 3 sentences where
+// one swaps a noun out for a random site-wide VOCAB noun so the
+// learner has to notice the mismatch.
+
+function renderReviewVocabCheck(a) {
+  var el = document.getElementById('rv-vocab-check');
+  if (!el || !a) return;
+  if (el.dataset.builtFor === String(a.id)) return;
+  el.dataset.builtFor = String(a.id);
+  // Pull from whatever vocab source the Vocab tab is already showing.
+  // Quick fetch: getFromCache → ai_analysis.vocab; fall back to
+  // body-matched global VOCAB if cache is empty.
+  function paint(items) {
+    items = (items || []).slice(0, 5);
+    if (!items.length) { el.innerHTML = '<div class="rv-empty">No vocab yet for this article.</div>'; return; }
+    el.innerHTML = items.map(function(v, i) {
+      var ko = v.ko || v.word || '';
+      var rom = v.rom || v.reading || '';
+      var en  = v.en || v.meaning || '';
+      return '<div class="rv-vocab-card" data-i="' + i + '" onclick="this.classList.toggle(\'open\')">'
+        +   '<div class="rv-vocab-face">'
+        +     '<span class="rv-vocab-ko">' + ko + '</span>'
+        +     (rom ? '<span class="rv-vocab-rom">' + rom + '</span>' : '')
+        +   '</div>'
+        +   '<div class="rv-vocab-back">' + (en || '—') + '</div>'
+        + '</div>';
+    }).join('');
+  }
+  if (typeof getFromCache === 'function') {
+    getFromCache('article', a.id, 'ai_analysis').then(function(c) {
+      var src = (c && c.vocab) ? c.vocab : [];
+      if (!src.length) src = _reviewVocabFromGlobal(a);
+      paint(src);
+    }).catch(function(){ paint(_reviewVocabFromGlobal(a)); });
+  } else {
+    paint(_reviewVocabFromGlobal(a));
+  }
+}
+
+function _reviewVocabFromGlobal(a) {
+  if (typeof VOCAB !== 'object' || !VOCAB) return [];
+  var body = ((a && a.body) || '') + ' ' + ((a && a.title) || '');
+  var out = [];
+  Object.keys(VOCAB).forEach(function(k) {
+    if (!k || k.length < 2) return;
+    if (body.indexOf(k) === -1) return;
+    var v = VOCAB[k] || {};
+    out.push({ ko: k, rom: v.rom || '', en: v.en || '' });
+  });
+  return out.slice(0, 5);
+}
+
+function renderReviewTF(a) {
+  var el = document.getElementById('rv-tf-check');
+  if (!el || !a) return;
+  if (el.dataset.builtFor === String(a.id)) return;
+  el.dataset.builtFor = String(a.id);
+
+  var body = String((a.body || '') + '\n' + (a.full || '')).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  var sents = body.split(/(?<=[.!?。])\s+/).filter(function(s){ return s.length >= 14 && s.length <= 120 && /[가-힣]/.test(s); });
+  if (sents.length < 2) { el.innerHTML = '<div class="rv-empty">Too short to build T/F.</div>'; return; }
+
+  // Pick 3 sentences (shuffle, first 3)
+  var pick = sents.slice().sort(function(){ return Math.random() - 0.5; }).slice(0, 3);
+  // For each: coin flip — keep TRUE, or swap one Korean noun with a
+  // random sitewide VOCAB noun to make FALSE. Gives a light "is this
+  // exactly what the article says?" check without an AI call.
+  var vocabPool = (typeof VOCAB === 'object' && VOCAB) ? Object.keys(VOCAB).filter(function(k){
+    return k && k.length >= 2 && !/[다요]$/.test(k);
+  }) : [];
+
+  var items = pick.map(function(s, i) {
+    var isTrue = vocabPool.length === 0 || Math.random() < 0.5;
+    var shown = s, swapped = '';
+    if (!isTrue) {
+      // Find a 2-char Korean noun inside the sentence we can swap.
+      var candidates = [];
+      for (var p = 0; p < s.length - 1; p++) {
+        var ch2 = s.slice(p, p + 2);
+        if (/^[가-힣]{2}$/.test(ch2) && (p === 0 || !/[가-힣]/.test(s[p-1])) && (p+2 >= s.length || !/[가-힣]/.test(s[p+2]))) {
+          candidates.push({ at: p, word: ch2 });
+        }
+      }
+      if (candidates.length) {
+        var target = candidates[Math.floor(Math.random() * candidates.length)];
+        // Pick a replacement that's different from the target and
+        // isn't in the sentence.
+        var rep = '';
+        for (var t = 0; t < 8; t++) {
+          var cand = vocabPool[Math.floor(Math.random() * vocabPool.length)];
+          if (cand && cand !== target.word && s.indexOf(cand) === -1 && cand.length === 2) { rep = cand; break; }
+        }
+        if (rep) {
+          shown = s.slice(0, target.at) + rep + s.slice(target.at + 2);
+          swapped = rep;
+        } else {
+          isTrue = true; // couldn't make a swap — leave as true
+        }
+      } else {
+        isTrue = true;
+      }
+    }
+    return { sentence: shown, truth: isTrue, idx: i };
+  });
+
+  el.innerHTML = items.map(function(it, i) {
+    return '<div class="rv-tf-q" data-i="' + i + '" data-truth="' + (it.truth ? '1' : '0') + '">'
+      +   '<div class="rv-tf-text">' + it.sentence + '</div>'
+      +   '<div class="rv-tf-btns">'
+      +     '<button class="rv-tf-btn" data-ans="1" onclick="_reviewTFAnswer(this)">✓ True</button>'
+      +     '<button class="rv-tf-btn" data-ans="0" onclick="_reviewTFAnswer(this)">✗ False</button>'
+      +   '</div>'
+      +   '<div class="rv-tf-feedback"></div>'
+      + '</div>';
+  }).join('');
+}
+
+function _reviewTFAnswer(btn) {
+  var q = btn.closest('.rv-tf-q');
+  if (!q || q.classList.contains('answered')) return;
+  var truth = q.dataset.truth === '1';
+  var ans = btn.dataset.ans === '1';
+  q.classList.add('answered');
+  q.classList.add(ans === truth ? 'correct' : 'wrong');
+  var fb = q.querySelector('.rv-tf-feedback');
+  if (fb) fb.textContent = (ans === truth)
+    ? (truth ? '✓ 맞아요 — 기사에 있는 문장이에요.' : '✓ 맞아요 — 이 문장은 기사에 없어요.')
+    : (truth ? '✗ 사실은 기사에 있는 문장이었어요.' : '✗ 이 문장은 기사에 없는 문장이에요.');
+}
+
+function openArticleStudyFromReader() {
+  var id = (new URLSearchParams(window.location.search)).get('id');
+  if (!id) return;
+  if (!supaUser) { if (typeof openAuthModal === 'function') openAuthModal('signin'); return; }
+  location.href = 'korehan-study-room.html?mode=article&id=' + encodeURIComponent(id);
 }
 
 
@@ -3830,8 +3992,10 @@ async function loadGrammarGuide() {
 }
 
 function renderGrammarGuideHTML(el, guides) {
-  el.innerHTML = '<p class="grammar-intro">Grammar patterns found in this article</p>'
-    + guides.map(function(g, i){ return renderGrammarGuideCard(g, i); }).join('');
+  // The cards already carry a numbered header + level badge; the
+  // "Grammar patterns found in this article" prose was redundant
+  // chrome the user asked us to drop.
+  el.innerHTML = guides.map(function(g, i){ return renderGrammarGuideCard(g, i); }).join('');
 }
 
 function renderGrammarGuideCard(g, idx) {
@@ -3875,8 +4039,7 @@ function renderStaticGrammar(el, a) {
   var guides = patterns.filter(function(p){ return p.pattern.test(text); }).slice(0, 4);
   if (guides.length < 3) guides = patterns.slice(0, 4);
 
-  el.innerHTML = '<p class="grammar-intro">Grammar patterns in this article:</p>'
-    + guides.map(renderGrammarGuideCard).join('');
+  el.innerHTML = guides.map(renderGrammarGuideCard).join('');
 }
 
 function isWordSaved(ko) {
@@ -5635,8 +5798,15 @@ function wrapVocab(el) {
 
   function esc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 
-  // Direct match: exact word with Korean word-boundary on both sides.
-  var directRe = new RegExp('(?:^|[^\\uAC00-\\uD7A3])(' + directKeys.map(esc).join('|') + ')(?![\\uAC00-\\uD7A3])', 'g');
+  // Direct match: exact word with Korean word-boundary on the LEFT
+  // side only. Dropping the right-side boundary matches the same
+  // lenient rule as inArticleBody (V4.9) — without it "중요" in
+  // VOCAB never highlighted inside body "중요한" because 한 is
+  // Korean. Length>=2 filter above prevents single-char false
+  // positives; stems (from ~다/요 entries) keep their own longer
+  // regex below and still outrank direct matches via the overlap
+  // resolver.
+  var directRe = new RegExp('(?:^|[^\\uAC00-\\uD7A3])(' + directKeys.map(esc).join('|') + ')', 'g');
   // Stem match: stem followed by 1-4 Korean chars (conjugation).
   var stemRe = stems.length
     ? new RegExp('(?:^|[^\\uAC00-\\uD7A3])((?:' + stems.map(esc).join('|') + ')[\\uAC00-\\uD7A3]{1,4})(?![\\uAC00-\\uD7A3])', 'g')

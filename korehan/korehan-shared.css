@@ -3593,6 +3593,89 @@ body.kh-reading-page.kh-feed-pill-on #kh-feed-next-pill {
 body.kh-reading-page #kh-feed-next-pill:hover { background: rgba(8,16,31,.95); }
 body.kh-reading-page #kh-feed-next-pill svg { opacity: .9; }
 
+/* ── Review tab (was Quiz) — light practice bundle ─────────────── */
+.rv-wrap { display: flex; flex-direction: column; gap: 18px; padding: 6px 0; }
+.rv-intro { padding: 4px 2px 0; }
+.rv-intro-title { font-size: 17px; font-weight: 900; color: #0f172a; letter-spacing: -.01em; }
+.rv-intro-sub { font-size: 12px; color: #64748b; margin-top: 3px; }
+.rv-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; overflow: hidden; }
+.rv-card-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px; background: #f8fafc; border-bottom: 1px solid #eef2f7;
+  font-size: 13px; font-weight: 800; color: #0f172a;
+}
+.rv-card-icon { font-size: 15px; }
+.rv-card-hint {
+  margin-left: auto; font-size: 10px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: #94a3b8;
+}
+.rv-card-body { padding: 14px; }
+.rv-empty { color: #94a3b8; font-size: 13px; padding: 6px 2px; }
+.rv-start-btn {
+  width: 100%; padding: 12px; background: #2563eb; color: #fff;
+  border: none; border-radius: 10px; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.rv-start-btn:hover { background: #1d4ed8; }
+
+/* Vocab flash-card: Korean on top, English revealed on tap. */
+.rv-vocab-card {
+  border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px;
+  margin-bottom: 8px; cursor: pointer; transition: background .15s;
+  user-select: none;
+}
+.rv-vocab-card:hover { background: #f8fafc; }
+.rv-vocab-card:last-child { margin-bottom: 0; }
+.rv-vocab-face { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.rv-vocab-ko { font-size: 18px; font-weight: 900; color: #0f172a; font-family: 'Noto Serif KR', serif; }
+.rv-vocab-rom { font-size: 12px; color: #94a3b8; font-style: italic; }
+.rv-vocab-back {
+  font-size: 13px; color: #2563eb; font-weight: 700; margin-top: 8px;
+  padding-top: 8px; border-top: 1px dashed #e5e7eb;
+  max-height: 0; overflow: hidden; opacity: 0; transition: max-height .2s, opacity .18s, padding .18s, margin .18s;
+  padding-top: 0; margin-top: 0; border-top: 0;
+}
+.rv-vocab-card.open .rv-vocab-back {
+  max-height: 120px; opacity: 1;
+  padding-top: 8px; margin-top: 8px; border-top: 1px dashed #e5e7eb;
+}
+
+/* True/False: show sentence, two buttons, color-coded feedback. */
+.rv-tf-q { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+.rv-tf-q:last-child { margin-bottom: 0; }
+.rv-tf-text { font-size: 14px; line-height: 1.6; color: #0f172a; font-family: 'Noto Sans KR', sans-serif; margin-bottom: 10px; }
+.rv-tf-btns { display: flex; gap: 8px; }
+.rv-tf-btn {
+  flex: 1; padding: 9px 0; background: #f1f5f9; color: #0f172a;
+  border: 1.5px solid transparent; border-radius: 8px;
+  font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit;
+  transition: background .15s, border-color .15s;
+}
+.rv-tf-btn:hover { background: #e2e8f0; }
+.rv-tf-q.answered .rv-tf-btn { cursor: default; opacity: .55; }
+.rv-tf-q.correct .rv-tf-btn[data-ans].selected,
+.rv-tf-q.correct.answered .rv-tf-btn[data-ans] { /* no-op baseline */ }
+.rv-tf-q.answered .rv-tf-btn { pointer-events: none; }
+.rv-tf-q.correct { background: #f0fdf4; border-color: #bbf7d0; }
+.rv-tf-q.wrong { background: #fef2f2; border-color: #fecaca; }
+.rv-tf-feedback { font-size: 12px; color: #475569; margin-top: 8px; min-height: 0; }
+.rv-tf-q.answered .rv-tf-feedback { padding-top: 4px; }
+
+/* Deeper-study CTA at the foot of Review. */
+.rv-deeper {
+  margin-top: 6px; padding: 18px 16px; border-radius: 14px;
+  background: linear-gradient(135deg, #0b1626, #1a3a6b); color: #fff;
+  text-align: center;
+}
+.rv-deeper-title { font-size: 14px; font-weight: 900; }
+.rv-deeper-sub { font-size: 12px; color: rgba(255,255,255,.7); margin: 6px 0 14px; line-height: 1.5; }
+.rv-deeper-btn {
+  display: inline-block; padding: 10px 22px; background: #fff; color: #0b1626;
+  border: none; border-radius: 999px; font-size: 13px; font-weight: 800;
+  cursor: pointer; font-family: inherit; letter-spacing: .01em;
+}
+.rv-deeper-btn:hover { background: #e2e8f0; }
+
 /* TikTok-style transition between articles. Swap is SPA-backed
    (history.pushState + renderArticlePage) so this animation is the
    entire user-visible hand-off — no page reload, no header flash. */
