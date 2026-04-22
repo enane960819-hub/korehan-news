@@ -113,10 +113,17 @@ async function fetchReddit(source) {
   return (json?.data?.children || []).map((c) => {
     const d = c?.data || {}
     const video = extractRedditVideo(d)
+    // For video posts, prefer the permalink (reddit.com/r/.../comments/ID/)
+    // over d.url (which is the bare v.redd.it/VIDEOID for hosted videos).
+    // The permalink is what the 'Upgrade to Reddit embed' admin action
+    // converts into a redditmedia.com embed URL — keeping source_url on
+    // the permalink makes that conversion a pure string rewrite.
+    const permalink = d.permalink ? 'https://www.reddit.com' + d.permalink : ''
+    const sourceUrl = d.is_video && permalink ? permalink : (d.url || permalink)
     return {
       title: stripHtml(d.title || ''),
       source: source.label,
-      url: d.url || ('https://www.reddit.com' + (d.permalink || '')),
+      url: sourceUrl,
       published_at: d.created_utc ? new Date(d.created_utc * 1000).toISOString() : '',
       summary: stripHtml(d.selftext || '').slice(0, 280),
       category: source.category,
