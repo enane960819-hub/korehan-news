@@ -1135,8 +1135,9 @@ function _articleVideoBlockHTML(v){
   const kindOptions = [
     ['', '없음 (이미지 사용)'],
     ['youtube', 'YouTube embed (youtube-nocookie.com/embed/…)'],
-    ['reddit-hls', 'Reddit (HLS .m3u8 — 오디오 포함, 실패시 fallback으로 자동 저하)'],
-    ['reddit', 'Reddit (무음 MP4 직접)'],
+    ['reddit-embed', 'Reddit embed (redditmedia.com — 오디오 포함, 모바일 OK)'],
+    ['reddit-hls', '[레거시] Reddit HLS (m3u8)'],
+    ['reddit', '[레거시] Reddit 무음 MP4'],
   ].map(o => `<option value="${o[0]}"${kind===o[0]?' selected':''}>${o[1]}</option>`).join('');
   const summary = has
     ? `🎥 비디오 저장됨 · <span style="color:#7c3aed;font-weight:600">${esc(kind||'(kind 없음)')}</span>`
