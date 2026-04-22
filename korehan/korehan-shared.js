@@ -1939,15 +1939,25 @@ function _khAttachHls(root) {
   videos.forEach(function(v) {
     if (v.dataset.khHlsAttached === '1') return;
     v.dataset.khHlsAttached = '1';
-    var src = v.getAttribute('data-kh-hls');
+    var rawSrc = v.getAttribute('data-kh-hls');
     var fallback = v.getAttribute('data-kh-fallback') || '';
-    if (!src && !fallback) return;
+    if (!rawSrc && !fallback) return;
+
+    // Route Reddit HLS through our same-origin proxy (/api/hls-proxy).
+    // v.redd.it's CORS stalls hls.js on Android Chrome / Samsung
+    // Internet / some iOS Safari builds even though desktop Chrome
+    // tolerates it. Proxying makes the manifest + segments same-origin,
+    // so mobile hls.js behaves like desktop and audio plays on phones.
+    var src = rawSrc;
+    if (rawSrc && /^https:\/\/(v\.redd\.it|packaged-media\.redd\.it|dash\.redd\.it)\//.test(rawSrc)) {
+      src = '/api/hls-proxy?url=' + encodeURIComponent(rawSrc);
+    }
 
     // Swap the <video> element to the plain fallback MP4 (silent but
     // always plays). Called whenever HLS loading fails at any layer:
-    // CORS, expired signature, hls.js error, library load failure.
-    // We lose audio but the video still renders — user's expectation
-    // ("audio can fail, but video should load like before").
+    // proxy unreachable, hls.js error, library load failure, unsupported
+    // environment. We lose audio on the failure path but the video
+    // still renders.
     function degrade(reason) {
       if (v.dataset.khHlsDegraded === '1') return;
       v.dataset.khHlsDegraded = '1';
@@ -1970,7 +1980,7 @@ function _khAttachHls(root) {
     }
     _khLoadHlsJs().then(function(Hls) {
       if (!Hls || !Hls.isSupported || !Hls.isSupported()) { degrade('hls-not-supported'); return; }
-      var hls = new Hls({ xhrSetup: function(xhr){ /* no auth needed, but hook is required for future CORS proxy */ } });
+      var hls = new Hls();
       if (!window._khHlsInstances) window._khHlsInstances = new WeakMap();
       window._khHlsInstances.set(v, hls);
       hls.on(Hls.Events.ERROR, function(_, data){
