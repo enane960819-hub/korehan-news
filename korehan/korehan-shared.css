@@ -1447,18 +1447,24 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 }
 .kh-share-btn:hover { background:var(--light); }
 
-.art-hero-img { margin:0 0 28px; border-radius:16px; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,0.12); }
-.art-hero-img img { width:100%; max-height:500px; object-fit:contain; display:block; background:#f0f4fa; }
-/* Video hero — bigger than the image hero because YouTube/Reddit players need
-   room for controls. Desktop uses a 16:9 ratio capped at 70vh; mobile uses a
-   56vw min (full-bleed 16:9) with a 65vh ceiling so portrait phones get a
-   proper-sized player instead of the 240px crop the image hero uses. */
-.art-hero-img.art-hero-video { background:#000; max-height:none; }
-.art-hero-img.art-hero-video iframe,
-.art-hero-img.art-hero-video video {
-  width:100%; height:auto; aspect-ratio:16/9; max-height:70vh;
-  display:block; border:0; background:#000; object-fit:contain;
+/* Hero — unified 16:9 slot for both image and video so the feed-swipe
+   between articles doesn't jitter between two different hero heights.
+   Image uses object-fit:cover (mild crop is better than letterbox for
+   news photos); video uses object-fit:contain (YouTube/Reddit clips
+   need the full frame visible). */
+.art-hero-img {
+  margin:0 0 28px; border-radius:16px; overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,0.12);
+  aspect-ratio:16/9; max-height:500px; background:#0f172a;
 }
+.art-hero-img img,
+.art-hero-img iframe,
+.art-hero-img video {
+  width:100%; height:100%; display:block; border:0;
+}
+.art-hero-img img { object-fit:cover; background:#f0f4fa; }
+.art-hero-img iframe { background:#000; }
+.art-hero-img video { object-fit:contain; background:#000; }
 
 .art-lead {
   font-size:18px; font-weight:500; line-height:2;
@@ -2450,31 +2456,42 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   body.mobile-redesign .kh-article-wrap{background:transparent !important;}
   body.mobile-redesign .art-breadcrumb{display:none !important;}
   body.mobile-redesign .art-card{background:linear-gradient(180deg,rgba(17,24,39,.88),rgba(12,18,31,.96)) !important;border:1px solid rgba(255,255,255,.08) !important;border-radius:24px !important;margin-bottom:14px !important;}
-  body.mobile-redesign .art-card .art-hero-img{border:none !important;margin:0 !important;padding:0 !important;border-radius:0 !important;background:transparent !important;}
-  body.mobile-redesign .art-card .art-hero-img img{height:240px !important;border-radius:24px 24px 0 0 !important;object-fit:cover;width:100%;}
-  /* Video hero on mobile — overrides the image 240px crop. 56vw is 16:9 of
-     full-bleed viewport width; min-height ensures the player never squishes
-     below that; max-height 65vh keeps tall Reddit vertical clips from eating
-     the whole screen. Rounded top corners match the image hero. */
-  body.mobile-redesign .art-card .art-hero-img.art-hero-video{background:#000 !important;}
-  body.mobile-redesign .art-card .art-hero-img.art-hero-video iframe,
-  body.mobile-redesign .art-card .art-hero-img.art-hero-video video{
-    width:100% !important; height:auto !important;
-    aspect-ratio:16/9; min-height:56vw; max-height:65vh;
-    border-radius:24px 24px 0 0 !important; object-fit:contain;
+  /* Mobile hero — same 16:9 slot for image and video. Rounded top corners
+     only, flush-right/left with the card. No fixed 240px height: 16:9 at
+     full viewport width is ~56vw (e.g. 225px at 400px wide) and both
+     heroes match, so feed-swiping doesn't bounce between sizes. */
+  body.mobile-redesign .art-card .art-hero-img{
+    border:none !important; margin:0 !important; padding:0 !important;
+    border-radius:24px 24px 0 0 !important; background:#0f172a !important;
+    aspect-ratio:16/9; max-height:none;
   }
+  body.mobile-redesign .art-card .art-hero-img img,
+  body.mobile-redesign .art-card .art-hero-img iframe,
+  body.mobile-redesign .art-card .art-hero-img video{
+    width:100% !important; height:100% !important;
+    border-radius:24px 24px 0 0 !important; display:block;
+  }
+  body.mobile-redesign .art-card .art-hero-img img{object-fit:cover;}
+  body.mobile-redesign .art-card .art-hero-img video{object-fit:contain; background:#000;}
   body.mobile-redesign .art-card-body{padding:16px !important;}
   body.mobile-redesign .art-card .art-tabs{border:none !important;border-radius:0 !important;margin:0 !important;padding:0 !important;background:transparent !important;}
   body.mobile-redesign #art-tab-article,
   body.mobile-redesign #art-tab-grammar,
   body.mobile-redesign #art-tab-vocab,
   body.mobile-redesign #art-tab-quiz{background:transparent !important;border:none !important;border-radius:0 !important;padding:0 !important;margin:0 !important;}
-  body.mobile-redesign .art-meta-row{display:flex;flex-wrap:wrap;gap:8px 10px !important;align-items:center;}
-  body.mobile-redesign .art-date,
+  /* Single-line meta row on mobile: reporter chip | date | 4 action icons.
+     nowrap keeps it on one line even on narrow phones; reporter name
+     truncates with ellipsis if it overflows; action icons shrink to 28px
+     with a tight 2px gap so all four fit. */
+  body.mobile-redesign .art-meta-row{display:flex;flex-wrap:nowrap !important;gap:6px !important;align-items:center;overflow:hidden;}
+  body.mobile-redesign .art-reporter-link{min-width:0;flex-shrink:1;}
+  body.mobile-redesign .art-reporter-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;}
+  body.mobile-redesign .art-date{white-space:nowrap;font-size:11px;flex-shrink:0;}
   body.mobile-redesign .art-readtime,
   body.mobile-redesign .art-dot{color:var(--m-muted) !important;}
-  body.mobile-redesign .art-actions-inline{margin-left:auto;}
-  body.mobile-redesign .art-action-icon{background:rgba(255,255,255,.08) !important;border-color:rgba(255,255,255,.15) !important;color:rgba(255,255,255,.7) !important;}
+  body.mobile-redesign .art-actions-inline{margin-left:auto;gap:2px !important;flex-shrink:0;}
+  body.mobile-redesign .art-action-icon{width:28px !important;height:28px !important;background:rgba(255,255,255,.08) !important;border-color:rgba(255,255,255,.15) !important;color:rgba(255,255,255,.7) !important;}
+  body.mobile-redesign .art-action-icon svg{width:14px;height:14px;}
   body.mobile-redesign .art-action-icon:hover{background:rgba(255,255,255,.15) !important;color:#fff !important;}
   body.mobile-redesign .art-action-icon.active{background:rgba(255,200,50,.15) !important;border-color:rgba(255,200,50,.4) !important;color:#fcd34d !important;}
   body.mobile-redesign .art-tabs{background:rgba(255,255,255,.06) !important;border-radius:12px !important;padding:4px !important;margin-bottom:16px !important;}
