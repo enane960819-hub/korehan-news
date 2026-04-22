@@ -3073,7 +3073,7 @@ function renderArticlePage() {
     + (a.level ? (function(lv){ var c={'Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828','Starter':'#f3e8ff;color:#6b21a8'}; var dn={'Starter':'Seed','Beginner':'Sprout','Intermediate':'Tree','Advanced':'Forest'}; return '<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:'+(c[lv]||'#f0f0f0;color:#666')+'">'+(dn[lv]||lv)+'</span>'; })(a.level) : '')
     + '</div></div>'
     + '<div class="art-card-body">'
-    + '<h1 class="art-title vocab-zone">' + a.title + ' ' + ttsBtn(a.title) + '</h1>'
+    + '<h1 class="art-title vocab-zone" data-kh-translate-title="1" data-kh-title-ko="' + escapeHtml(a.title || '') + '" data-kh-title-en="' + escapeHtml(a.title_en || '') + '">' + a.title + ' ' + ttsBtn(a.title) + '</h1>'
     + '<div class="art-meta-row">'
     + getReporterProfileHTML(a)
     + '<span class="art-date">' + dateStr + '</span>'
@@ -4885,22 +4885,40 @@ var translateCache = {};
 
 async function toggleTranslate() {
   var btn = document.getElementById('translate-btn');
-  var zones = document.querySelectorAll('.vocab-zone');
-  if (!btn || !zones.length) return;
+  // Exclude the article title from the translated zones — it already has
+  // a curated English headline in a.title_en (written by the admin or
+  // back-filled by _khEnsureTitlesEn). Claude translating the title along
+  // with the body was producing misaligned output (title slot got the
+  // first body paragraph because Claude split by \n\n).
+  var zones = document.querySelectorAll('.vocab-zone:not([data-kh-translate-title])');
+  var titleEl = document.querySelector('[data-kh-translate-title="1"]');
+  if (!btn || (!zones.length && !titleEl)) return;
 
   if (translateActive) {
     // 원문으로 복원
     zones.forEach(function(z) {
       if (z.dataset.original) z.innerHTML = z.dataset.original;
     });
+    if (titleEl && titleEl.dataset.original) titleEl.innerHTML = titleEl.dataset.original;
     translateActive = false;
-    btn.textContent = '🌐 Translate';
     btn.classList.remove('active');
+    btn.title = 'Translate';
     return;
   }
 
-  btn.textContent = '⏳ Translating...';
+  btn.classList.add('loading');
   btn.disabled = true;
+  btn.title = 'Translating…';
+
+  // Swap the title to English up-front — doesn't require the Claude call
+  // since title_en is stored per-article. If it's missing we leave the
+  // Korean title in place.
+  if (titleEl && !titleEl.dataset.original) titleEl.dataset.original = titleEl.innerHTML;
+  var titleEn = titleEl ? titleEl.getAttribute('data-kh-title-en') : '';
+  if (titleEl && titleEn) {
+    var ttsSafe = (titleEn || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    titleEl.innerHTML = titleEn + ' <button class="tts-btn" title="Listen to pronunciation" onclick="event.stopPropagation();ttsSpeak(\'' + ttsSafe + '\',this)">🔊</button>';
+  }
 
   var params = new URLSearchParams(window.location.search);
   var id = params.get('id');
@@ -4911,9 +4929,7 @@ async function toggleTranslate() {
     if (sharedCached && sharedCached.translations && sharedCached.translations.length) {
       translateCache[cacheKey] = sharedCached.translations;
       applyTranslation(zones, sharedCached.translations);
-      btn.textContent = '🇰🇷 Back to Korean';
-      btn.disabled = false;
-      btn.classList.add('active');
+      _translateMarkActive(btn);
       translateActive = true;
       return;
     }
@@ -4921,16 +4937,13 @@ async function toggleTranslate() {
 
   if (translateCache[cacheKey]) {
     applyTranslation(zones, translateCache[cacheKey]);
-    btn.textContent = '🇰🇷 Back to Korean';
-    btn.disabled = false;
-    btn.classList.add('active');
+    _translateMarkActive(btn);
     translateActive = true;
     return;
   }
 
   if (!supaUser) {
-    btn.textContent = '🌐 Translate';
-    btn.disabled = false;
+    _translateMarkIdle(btn);
     if (typeof toast === 'function') toast('Please sign in to create a new translation when no shared cache exists.', true);
     return;
   }
@@ -4945,8 +4958,18 @@ async function toggleTranslate() {
     texts.push(clone.textContent.trim());
   });
 
-  // 빈 존 제거 (인덱스 매핑 보존용으로 빈 문자열 유지)
-  var prompt = 'You are a Korean-to-English translator. Translate each numbered Korean text segment below into natural English. Translate the COMPLETE text without any truncation. Return ONLY a JSON array of translated strings in the exact same order. No markdown, no explanations, just the JSON array.\n\nSegments:\n'
+  // Pin segment count in the prompt so Claude returns exactly one
+  // translation per input segment even when a segment contains multiple
+  // paragraphs (splitting by \n\n was what caused title-slot ↔ body
+  // paragraph misalignment before the title was excluded above).
+  var prompt =
+      'You are a Korean-to-English translator.\n'
+    + 'You will receive ' + texts.length + ' Korean text segment(s).\n'
+    + 'Translate each one into natural, fluent English.\n'
+    + 'PRESERVE paragraph structure inside a segment — do NOT split a segment that contains multiple paragraphs into multiple array items.\n'
+    + 'Return ONLY a JSON array of exactly ' + texts.length + ' string(s), in the same order as the input.\n'
+    + 'No markdown, no explanations, no numbering in the output.\n\n'
+    + 'Input segments (JSON):\n'
     + JSON.stringify(texts);
 
   try {
@@ -4978,8 +5001,7 @@ async function toggleTranslate() {
     translateCache[cacheKey] = translations;
     applyTranslation(zones, translations);
     translateActive = true;
-    btn.textContent = '🇰🇷 Back to Korean';
-    btn.classList.add('active');
+    _translateMarkActive(btn);
 
     try {
       if (translations.length) {
@@ -4987,8 +5009,9 @@ async function toggleTranslate() {
       }
     } catch(e) {}
   } catch(e) {
-    btn.textContent = '🌐 Translate';
-    btn.classList.remove('active');
+    _translateMarkIdle(btn);
+    // Restore the Korean title if we had optimistically swapped it in.
+    if (titleEl && titleEl.dataset.original) titleEl.innerHTML = titleEl.dataset.original;
     translateActive = false;
     if (e && (e.message === 'unauthorized' || e.message === 'Not signed in')) {
       if (!supaUser) {
@@ -5008,6 +5031,25 @@ function applyTranslation(zones, translations) {
   zones.forEach(function(z, i) {
     if (translations[i]) z.innerHTML = '<p>' + translations[i] + '</p>';
   });
+}
+
+// Toggle visual state on the translate button without mutating its
+// innerHTML — the icon stays in place so the click-target (28px square
+// on mobile) doesn't expand into text and shove itself out of reach.
+// CSS styles .art-action-icon.active + .loading to communicate state.
+function _translateMarkActive(btn) {
+  if (!btn) return;
+  btn.disabled = false;
+  btn.classList.remove('loading');
+  btn.classList.add('active');
+  btn.title = 'Back to Korean';
+}
+function _translateMarkIdle(btn) {
+  if (!btn) return;
+  btn.disabled = false;
+  btn.classList.remove('loading');
+  btn.classList.remove('active');
+  btn.title = 'Translate';
 }
 
 function shareArticle() {
