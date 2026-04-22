@@ -1187,6 +1187,11 @@ function openStory(id) {
 
   document.getElementById('st-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
+  // Jump to the top of the freshly-rendered story. Critical for
+  // feed-style swipe nav: without this the user lands wherever
+  // they released their finger on the previous story (usually the
+  // bottom), so the next story appears to "open from the bottom".
+  _stPanelScrollReset();
 
   if (window.renderKhLucideIcons) renderKhLucideIcons();
   // 저장된 단어 상태 복원
@@ -1360,10 +1365,10 @@ var _stSwipeStartY = 0;
     var curPos = pool.findIndex(function(x){ return String(x.id) === curId; });
     if (dy >= 100 && atBottom) {
       var nx = pool[curPos + 1];
-      if (nx) { openStory(nx.id); _stPanelScrollReset(); }
+      if (nx) openStory(nx.id);
     } else if (dy <= -100 && atTop) {
       var pv = pool[curPos - 1];
-      if (pv) { openStory(pv.id); _stPanelScrollReset(); }
+      if (pv) openStory(pv.id);
     }
   }, { passive: true });
 })();
@@ -1373,11 +1378,27 @@ var _stSwipeStartY = 0;
 // their finger — which means they land mid-body or on the learning
 // elements of the new story. Jump to the top so every nav feels
 // like a fresh story open, not a continuation of the previous
-// scroll.
+// scroll. On mobile the actual scroll container is #st-overlay
+// (overflow-y:auto) because #st-panel itself has overflow:hidden,
+// so resetting only panel.scrollTop had no visible effect. We also
+// run the reset on the next frame because browsers try to preserve
+// scroll position across innerHTML replacement.
 function _stPanelScrollReset() {
-  var panel = document.getElementById('st-panel');
-  if (panel) panel.scrollTop = 0;
-  window.scrollTo(0, 0);
+  function reset() {
+    var overlay = document.getElementById('st-overlay');
+    var panel = document.getElementById('st-panel');
+    if (overlay) overlay.scrollTop = 0;
+    if (panel) {
+      panel.scrollTop = 0;
+      var bodyScroll = panel.querySelector('.st-body-scroll');
+      if (bodyScroll) bodyScroll.scrollTop = 0;
+      var right = panel.querySelector('.st-right');
+      if (right) right.scrollTop = 0;
+    }
+    window.scrollTo(0, 0);
+  }
+  reset();
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(reset);
 }
 
 // Mobile-only Read / Learn tabs for the story detail. Desktop keeps
