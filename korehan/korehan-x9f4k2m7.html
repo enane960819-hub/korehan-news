@@ -185,6 +185,7 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" id="sb-cache" onclick="goAICache()"><span class="ico">🧠</span>AI Cache Management</button>
     <button class="sb-btn" id="sb-img" onclick="goArticleImages()"><span class="ico">🖼️</span>Image Management</button>
     <button class="sb-btn" id="sb-video-upgrade" onclick="goVideoUpgrade()"><span class="ico">🔄</span>Reddit Video Upgrade</button>
+    <button class="sb-btn" id="sb-img-persist" onclick="goImagePersist()"><span class="ico">🗄️</span>Image Persistence</button>
 
     <div class="section-sep" style="margin-top:8px"></div>
     <div class="sb-lbl">Learning Content</div>
@@ -1211,9 +1212,43 @@ function _seUploadWithTimeout(promise, ms) {
 async function _seDirectUpload(bucket, path, file) {
   if (!window.supabase || !window.supabase.createClient) throw new Error('supabase-js not loaded');
   var client = window.supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN);
-  var up = await client.storage.from(bucket).upload(path, file, { upsert: true, contentType: 'image/jpeg' });
+  var ct = (file && file.type) || 'image/jpeg';
+  var up = await client.storage.from(bucket).upload(path, file, { upsert: true, contentType: ct });
   if (up && up.error) throw up.error;
   return client.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
+
+// Persist a remote source image into our Supabase article-images bucket.
+// Returns the Supabase public URL on success, or the original external
+// URL on failure (so the article still has *something* to render — the
+// frontend khArticleThumb will picsum-fallback if even that breaks).
+//
+// Pipeline: /api/image-proxy fetches the upstream bytes server-side
+// (bypassing the CORS wall most news CDNs put up), the browser turns
+// the response into a Blob, and _seDirectUpload pushes it into the
+// article-images bucket with a stable per-article path. Same-origin
+// throughout so no CORS surprises during upload either.
+async function _khPersistImage(externalUrl, articleId) {
+  if (!externalUrl || typeof externalUrl !== 'string') return externalUrl || '';
+  if (!/^https?:\/\//i.test(externalUrl)) return externalUrl;
+  // Already on our Supabase bucket → nothing to do.
+  if (externalUrl.indexOf(SUPA_URL_ADMIN + '/storage/') === 0) return externalUrl;
+  if (/samghztrdvtxmrmawneu\.supabase\.co\/storage\//.test(externalUrl)) return externalUrl;
+  try {
+    var res = await fetch('/api/image-proxy?url=' + encodeURIComponent(externalUrl));
+    if (!res.ok) throw new Error('proxy ' + res.status);
+    var blob = await res.blob();
+    if (!blob || blob.size < 800) throw new Error('blob too small: ' + (blob && blob.size));
+    var ct = blob.type || 'image/jpeg';
+    var ext = (ct.split('/')[1] || 'jpg').split(';')[0].replace(/[^a-z0-9]/gi, '').slice(0, 5) || 'jpg';
+    if (ext === 'jpeg') ext = 'jpg';
+    var path = 'sourced/' + (articleId || 'misc') + '-' + Date.now() + '.' + ext;
+    var publicUrl = await _seDirectUpload('article-images', path, blob);
+    return publicUrl;
+  } catch (e) {
+    console.warn('[persist-image] failed for', externalUrl, e);
+    return externalUrl;
+  }
 }
 
 async function seThumbUpload(input) {
@@ -1321,9 +1356,17 @@ async function submitForm(status){
   if(!title){toast('Please enter a title',true);return;}
   if(!body) {toast('Please enter the body text',true);return;}
 
+  // Persist any external image URL into our Supabase bucket so article
+  // thumbnails survive upstream CDN expiry / link rot. No-op when the
+  // image is already on the bucket or empty.
+  var persistedImage = image;
+  if (image && !/samghztrdvtxmrmawneu\.supabase\.co\/storage\//.test(image)) {
+    persistedImage = await _khPersistImage(image, eid || 'draft');
+  }
+
   const article = {
     id: eid || uid(),
-    title, body, section: sec, date, image,
+    title, body, section: sec, date, image: persistedImage,
     featured: feat, breaking: breaking, level,
     reporter_id: reporterId || null,
     // Persist even when video_url is empty so the admin can clear a
@@ -3780,6 +3823,13 @@ async function runAutoGenerate(){
 
       const articleId = uid();
       const hasSrcVideo = !!(h.video_url && h.video_kind);
+      // Persist the source image into our bucket so the thumbnail
+      // survives when the upstream CDN expires or blocks hotlinks.
+      // Runs per-article at creation time — one network round-trip +
+      // one Supabase upload. No-op when there's no source image or
+      // we're using a video hero.
+      var _srcImgRaw = hasSrcVideo ? '' : (h.image || '');
+      var _srcImgFinal = _srcImgRaw ? (await _khPersistImage(_srcImgRaw, articleId)) : '';
       const newArticle = {
         id: articleId, section: secKey,
         title: article.title, body: article.body,
@@ -3787,11 +3837,7 @@ async function runAutoGenerate(){
         date: today_date(), status: saveStatus,
         featured: false, level: diffInfo.level,
         source_url: h.link || '',
-        // Reuse the upstream image when the admin didn't opt-in to video.
-        // Only CSP-allowed hosts (i.redd.it / preview.redd.it / existing
-        // whitelisted ones) actually render — others fall through to the
-        // picsum fallback via khArticleThumb.
-        image: hasSrcVideo ? '' : (h.image || ''),
+        image: _srcImgFinal,
         // Always persist the source video URL when we have one, even if the
         // admin unchecked 'Use video' at creation time — that way an article
         // can be flipped to video later by setting use_video=true, without
@@ -5607,6 +5653,13 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
   // needing to re-fetch the original source.
   var hasSrcVideo = !!(headline.video_url && headline.video_kind);
   var useVideoNow = hasSrcVideo && headline._useVideo !== false;
+  // Persist source image into our Supabase bucket so thumbnails survive
+  // upstream CDN expiry / hotlink blocks. No-op when video is the hero
+  // or there's no source image to begin with.
+  var _bulkSrcImg = '';
+  if (!hasSrcVideo && headline.image) {
+    _bulkSrcImg = await _khPersistImage(headline.image, articleId);
+  }
   var newArticle = {
     id: articleId, section: section,
     title: article.title, body: article.body,
@@ -5618,15 +5671,7 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
     date: today_date(), status: 'draft',
     featured: false, level: diff.level,
     source_url: headline.url || '',
-    // Don't save the upstream image URL — it's almost always from a domain
-    // the site CSP doesn't allow (preview.redd.it, ctfassets.net, etc.), so
-    // it would be blocked and render as a broken icon. khArticleThumb falls
-    // back to a stable picsum.photos image keyed by the article id.
-    // Carry the upstream image through so articles without a usable video
-    // still have a topical hero instead of a random picsum. Only i.redd.it
-    // and preview.redd.it hosts are CSP-allowed (see _headers); the
-    // backend extractor already filters to those + direct-image URLs.
-    image: hasSrcVideo ? '' : (headline.image || ''),
+    image: _bulkSrcImg,
     video_url: hasSrcVideo ? headline.video_url : '',
     video_kind: hasSrcVideo ? headline.video_kind : '',
     video_fallback_url: hasSrcVideo ? (headline.video_fallback_url || '') : '',
@@ -7550,6 +7595,84 @@ function _vuLog(line, color) {
   span.textContent = line;
   el.appendChild(span);
   el.scrollTop = el.scrollHeight;
+}
+
+// ── Image Persistence (migration page) ──────────────────────────
+// One-shot migration for articles whose image column still points at
+// an external URL (Reddit preview, Google News og:image, etc.). For
+// each, downloads via /api/image-proxy → uploads to our article-
+// images bucket → PATCHes the row. Safe to re-run; already-persisted
+// articles (URL on samghztrdvtxmrmawneu.supabase.co) are skipped.
+async function goImagePersist() {
+  try { setSidebarActive('img-persist'); } catch(e) {}
+  var main = document.getElementById('main');
+  main.innerHTML = '<div style="max-width:960px">'
+    + '<h2 style="font-size:22px;font-weight:800;margin:0 0 6px">🗄 Image Persistence</h2>'
+    + '<p style="color:#64748b;font-size:13px;margin:0 0 16px">외부 호스트 이미지(Reddit / 뉴스 사이트 CDN / og:image)를 Supabase 스토리지로 복사 → 링크 만료에도 썸네일 유지. 앞으로 생성되는 기사는 자동 영속화, 이 페이지는 기존 기사용.</p>'
+    + '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">'
+    + '<button class="btn btn-g" onclick="runImagePersist(false)">🔍 Dry Run</button>'
+    + '<button class="btn" style="background:#16a34a;color:#fff" onclick="runImagePersist(true)">✅ 영속화 실행</button>'
+    + '<span style="font-size:12px;color:#94a3b8">한 번에 최대 30건 처리 (Supabase 스토리지 요청 속도 제한)</span>'
+    + '</div>'
+    + '<div id="ip-log" style="font-family:ui-monospace,monospace;font-size:12px;background:#0f172a;color:#e2e8f0;padding:14px;border-radius:8px;min-height:240px;max-height:560px;overflow:auto;white-space:pre-wrap"></div>'
+    + '</div>';
+}
+function _ipLog(line, color) {
+  var el = document.getElementById('ip-log');
+  if (!el) return;
+  var span = document.createElement('div');
+  if (color) span.style.color = color;
+  span.textContent = line;
+  el.appendChild(span);
+  el.scrollTop = el.scrollHeight;
+}
+async function runImagePersist(commit) {
+  var log = document.getElementById('ip-log');
+  if (log) log.innerHTML = '';
+  _ipLog('[start] ' + (commit ? 'LIVE' : 'DRY RUN') + ' @ ' + new Date().toISOString(), '#60a5fa');
+
+  var rows;
+  try {
+    rows = await supaAdminGet('articles?select=id,title,image&image=not.is.null&image=neq.&order=date.desc&limit=500');
+  } catch (e) { _ipLog('[error] fetch failed: ' + (e && e.message || e), '#f87171'); return; }
+
+  var external = (Array.isArray(rows) ? rows : []).filter(function(a){
+    var img = String(a.image || '');
+    if (!img) return false;
+    if (img.indexOf(SUPA_URL_ADMIN + '/storage/') === 0) return false;
+    if (/samghztrdvtxmrmawneu\.supabase\.co\/storage\//.test(img)) return false;
+    return /^https?:\/\//i.test(img);
+  });
+  _ipLog('[scan] 외부 이미지 기사 ' + external.length + '건 / 전체 스캔 ' + (rows?.length || 0));
+
+  var batch = external.slice(0, 30);
+  if (!batch.length) { _ipLog('[done] 영속화 필요한 기사 없음', '#34d399'); return; }
+  _ipLog('[plan] 이번 배치 ' + batch.length + '건 처리');
+
+  var ok = 0, fail = 0, skip = 0;
+  for (var i = 0; i < batch.length; i++) {
+    var a = batch[i];
+    var short = (a.title || '').slice(0, 50);
+    _ipLog((commit ? '[persist] ' : '[dryrun] ') + (i+1) + '/' + batch.length + ' ' + a.id + ' — ' + short);
+    _ipLog('          src: ' + a.image);
+    if (!commit) { ok++; continue; }
+    try {
+      var newUrl = await _khPersistImage(a.image, a.id);
+      if (newUrl === a.image) {
+        skip++;
+        _ipLog('          ⚠ unchanged (fetch/upload failed, URL 유지)', '#fbbf24');
+        continue;
+      }
+      await supaAdminPatch('articles?id=eq.' + encodeURIComponent(a.id), { image: newUrl });
+      _ipLog('          → ' + newUrl, '#34d399');
+      ok++;
+    } catch (e) {
+      fail++;
+      _ipLog('          ✗ ' + (e && e.message || e), '#f87171');
+    }
+  }
+  _ipLog('[done] ' + (commit ? 'persisted' : 'would-persist') + ' ' + ok + ' / skipped ' + skip + ' / failed ' + fail, '#34d399');
+  if (external.length > batch.length) _ipLog('[note] ' + (external.length - batch.length) + '건 더 남음 — 다시 실행해서 이어서 처리', '#60a5fa');
 }
 
 async function runVideoUpgrade(commit) {
