@@ -8595,10 +8595,18 @@ function setupImmersiveReading() {
 // Right-side Instagram-style action sidebar: Bookmark / Comment /
 // Study. Rendered as a separate fixed element rather than inside the
 // article flow so it stays pinned as the user scrolls.
+// Read the current article id freshly from the URL. The sidebar and
+// feed handlers can outlive a single article because SPA-style
+// navigation (goToNextArticle -> _khSpaLoadArticle) updates the URL
+// via history.pushState without rebinding event listeners. Closure-
+// captured ids would stick to the first-loaded article.
+function _khCurrentArtId() {
+  return (new URLSearchParams(window.location.search)).get('id');
+}
+
 function setupReadingSidebar() {
   if (document.getElementById('kh-reading-sidebar')) return;
-  var artId = (new URLSearchParams(window.location.search)).get('id');
-  if (!artId) return;
+  if (!_khCurrentArtId()) return;
   var bar = document.createElement('div');
   bar.id = 'kh-reading-sidebar';
   // Two bookmark SVGs stacked; .active on the button toggles which
@@ -8624,9 +8632,7 @@ function setupReadingSidebar() {
     var side = this;
     var meta = document.getElementById('art-bm-btn');
     if (!meta) {
-      // Meta button hasn't rendered yet (article page still loading).
-      // Fire toggleBookmark directly against the sidebar button.
-      toggleBookmark(artId, side);
+      toggleBookmark(_khCurrentArtId(), side);
       return;
     }
     meta.click();
@@ -8642,7 +8648,7 @@ function setupReadingSidebar() {
   document.getElementById('kh-rs-comment').onclick = openCommentDrawer;
   document.getElementById('kh-rs-study').onclick = function() {
     if (!supaUser) { openAuthModal('signin'); return; }
-    location.href = 'korehan-study-room.html?mode=article&id=' + encodeURIComponent(artId);
+    location.href = 'korehan-study-room.html?mode=article&id=' + encodeURIComponent(_khCurrentArtId());
   };
 
   // Initial sync: once checkBookmarkState has marked the meta btn,
@@ -8736,17 +8742,75 @@ function pickNextFeedArticle(currentId) {
 }
 
 function goToNextArticle() {
-  var currentId = (new URLSearchParams(window.location.search)).get('id');
+  if (document.body.classList.contains('kh-feed-leaving')) return;
+  var currentId = _khCurrentArtId();
   if (!currentId) return;
   var next = pickNextFeedArticle(currentId);
   if (!next) { if (typeof toast === 'function') toast('No more articles to show', false); return; }
   _khFeedRememberSeen(currentId);
-  // Slide the current page up+out, then navigate. The destination
-  // page will render from scratch — this is just a visual cue that a
-  // transition is happening, not a real SPA hand-off.
-  document.body.classList.add('kh-feed-leaving');
-  setTimeout(function(){ location.href = 'korehan-article.html?id=' + encodeURIComponent(next.id); }, 260);
+  _khSpaLoadArticle(next.id);
 }
+
+// SPA-style swap to another article. Instead of location.href (which
+// reloads the whole page — visible flash, header/scripts re-init,
+// articles cache re-hydrate, breaks the TikTok flow), we update the
+// URL via history.pushState and call renderArticlePage() which reads
+// from the in-memory articles cache we already have. The comment
+// drawer is emptied so the NEXT article's #art-comments is what gets
+// re-parented when the user opens Talk. The sidebar bookmark resets
+// and re-syncs once the new article's meta bookmark button renders.
+function _khSpaLoadArticle(nextId) {
+  document.body.classList.add('kh-feed-leaving');
+  setTimeout(function() {
+    var newUrl = 'korehan-article.html?id=' + encodeURIComponent(nextId);
+    try { history.pushState({ articleId: nextId }, '', newUrl); } catch(e) {}
+
+    // Drop stale #art-comments (from previous article) out of the
+    // drawer so we don't end up with two duplicate IDs in the DOM.
+    var dbody = document.getElementById('kh-comment-drawer-body');
+    if (dbody) dbody.innerHTML = '';
+    closeCommentDrawer();
+
+    // Reset sidebar chrome that was tied to the previous article.
+    var rb = document.getElementById('kh-rs-bookmark');
+    if (rb) rb.classList.remove('active');
+    document.body.classList.remove('kh-feed-pill-on');
+    _khReadingScrollLast = 0;
+    _khReadingNavHidden = false;
+    document.body.classList.remove('kh-reading-nav-hidden');
+
+    // Rebuild article content from the cached article object.
+    window.scrollTo(0, 0);
+    if (typeof renderArticlePage === 'function') renderArticlePage();
+
+    // Re-sync sidebar bookmark state to the new article.
+    var initTries = 0;
+    (function initSync() {
+      if (initTries++ > 30) return;
+      var meta = document.getElementById('art-bm-btn');
+      var side = document.getElementById('kh-rs-bookmark');
+      if (meta && side) side.classList.toggle('active', meta.classList.contains('active'));
+      setTimeout(initSync, 300);
+    })();
+
+    // Animate in.
+    document.body.classList.remove('kh-feed-leaving');
+    document.body.classList.add('kh-feed-entering');
+    setTimeout(function(){ document.body.classList.remove('kh-feed-entering'); }, 340);
+  }, 220);
+}
+
+// Browser back / forward inside the article reader. The user pressed
+// the chrome back button after SPA-navigating forward — the URL just
+// flipped to the previous article, so re-render from it. Use
+// replaceState-like behaviour (no new history frame) since the stack
+// is already in the right shape.
+window.addEventListener('popstate', function() {
+  if (pageName() !== 'korehan-article') return;
+  if (typeof renderArticlePage === 'function') renderArticlePage();
+  window.scrollTo(0, 0);
+  document.body.classList.remove('kh-feed-pill-on');
+});
 
 function setupFeedNavigation() {
   if (pageName() !== 'korehan-article') return;

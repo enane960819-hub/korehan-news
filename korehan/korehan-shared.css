@@ -3421,6 +3421,12 @@ body.kh-reading-page #kh-footer,
 body.kh-reading-page .kh-footer { display: none !important; }
 body.kh-reading-page #kh-daily-mission { display: none !important; }
 
+/* Top site header is redundant with the floating back button and
+   eats 60–80px of precious vertical space on the reader. Hide on
+   all viewports while in reading mode. */
+body.kh-reading-page #kh-header,
+body.kh-reading-page .kh-topnav { display: none !important; }
+
 /* ── Right-side action sidebar (bookmark / comment / study) ─────── */
 body.kh-reading-page #kh-reading-sidebar {
   position: fixed;
@@ -3598,10 +3604,18 @@ body.kh-reading-page.kh-reading-nav-hidden #kh-feed-next-pill {
 body.kh-reading-page #kh-feed-next-pill:hover { background: rgba(8,16,31,.95); }
 body.kh-reading-page #kh-feed-next-pill svg { opacity: .9; }
 
-/* Slide-up + fade transition when jumping to the next article. The
-   destination page reloads fresh — this is a visual cue, not SPA. */
+/* TikTok-style transition between articles. Swap is SPA-backed
+   (history.pushState + renderArticlePage) so this animation is the
+   entire user-visible hand-off — no page reload, no header flash. */
 body.kh-feed-leaving {
-  transition: transform .24s cubic-bezier(.55,0,.55,.2), opacity .24s ease;
+  transition: transform .22s cubic-bezier(.55,0,.55,.2), opacity .22s ease;
   transform: translateY(-28px);
   opacity: 0;
+}
+body.kh-feed-entering {
+  animation: khFeedEnterIn .32s cubic-bezier(.22,1,.36,1);
+}
+@keyframes khFeedEnterIn {
+  from { transform: translateY(36px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
 }
