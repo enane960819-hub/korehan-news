@@ -3879,3 +3879,72 @@ body.kh-reading-page.kh-feed-pill-on .kh-next-pill {
 }
 body.kh-reading-page .kh-next-pill:hover { background: rgba(8,16,31,.95); }
 body.kh-reading-page .kh-next-pill svg { opacity: .9; }
+
+/* ── Shared loading / empty / error states ─────────────────────
+   Dropped into every learning surface so the "Loading…" plain-gray
+   text that used to show (and sometimes stayed frozen when an API
+   stalled) is replaced with something that communicates progress,
+   clearly says what's happening, and — when something goes wrong
+   — offers a retry button instead of asking the user to reload. */
+.kh-loading {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 32px 16px; text-align: center;
+}
+.kh-loading-spinner {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2.5px solid #e5e7eb;
+  border-top-color: #2563eb;
+  animation: kh-spin .9s linear infinite;
+}
+.kh-loading-text {
+  font-size: 13px; font-weight: 700; color: #475569;
+  letter-spacing: -.01em;
+}
+.kh-loading-sub {
+  font-size: 11px; color: #94a3b8; max-width: 280px; line-height: 1.5;
+}
+@keyframes kh-spin { to { transform: rotate(360deg); } }
+
+/* Skeleton blocks for when we want shape-based loading rather than
+   a spinner (lists, cards). Inline width/height via style="" at the
+   callsite. */
+.kh-skeleton {
+  background: linear-gradient(90deg, #eef2f7 0%, #f8fafc 50%, #eef2f7 100%);
+  background-size: 200% 100%;
+  animation: kh-skel-shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+@keyframes kh-skel-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Empty / error states — same frame, different copy. The retry CTA
+   is the crucial part the audit flagged missing across the app. */
+.kh-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; padding: 32px 20px; text-align: center;
+}
+.kh-empty-title {
+  font-size: 14px; font-weight: 800; color: #0f172a;
+  letter-spacing: -.01em;
+}
+.kh-empty-sub {
+  font-size: 12px; color: #64748b; line-height: 1.5; max-width: 320px;
+  margin: 0 0 8px;
+}
+.kh-empty-action {
+  margin-top: 6px; padding: 9px 20px;
+  border: 0; border-radius: 999px;
+  background: #0f172a; color: #fff;
+  font-size: 12px; font-weight: 800; font-family: inherit;
+  cursor: pointer;
+}
+.kh-empty-action:hover { background: #1e293b; }
+.kh-empty-action.secondary {
+  background: #fff; color: #0f172a;
+  border: 1.5px solid #e2e8f0;
+}
+.kh-empty-action.secondary:hover { background: #f8fafc; }
+.kh-empty.error .kh-empty-title { color: #b91c1c; }

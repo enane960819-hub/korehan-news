@@ -1800,6 +1800,82 @@ function khPrompt(title, message, opts) {
   });
 }
 
+// ── Shared loading / empty / error state HTML builders ─────────
+// Call-sites used to scatter ad-hoc "Loading..." markup everywhere
+// which meant bare gray text when an API stalled and no retry path
+// when it failed. These helpers produce the same visual everywhere
+// so a skeleton here looks like a skeleton there, and the error
+// state always offers the user an explicit retry instead of asking
+// them to refresh the whole page.
+
+function khLoadingHTML(label, sub) {
+  return '<div class="kh-loading">'
+    +   '<div class="kh-loading-spinner" aria-hidden="true"></div>'
+    +   '<div class="kh-loading-text">' + _khEsc(label || 'Loading…') + '</div>'
+    +   (sub ? '<div class="kh-loading-sub">' + _khEsc(sub) + '</div>' : '')
+    + '</div>';
+}
+
+function khSkeletonHTML(opts) {
+  opts = opts || {};
+  var rows = opts.rows || 3;
+  var gap = opts.gap || 10;
+  var h = opts.lineHeight || 14;
+  var parts = ['<div style="padding:' + (opts.padding || '12px 4px') + '">'];
+  for (var i = 0; i < rows; i++) {
+    var w = i === rows - 1 ? '60%' : '100%';
+    parts.push('<div class="kh-skeleton" style="height:' + h + 'px;width:' + w + ';margin-bottom:' + gap + 'px"></div>');
+  }
+  parts.push('</div>');
+  return parts.join('');
+}
+
+// Render an empty-or-error state. Usage:
+//   el.innerHTML = khEmptyState({
+//     title: 'Nothing to show yet',
+//     sub:   'Read an article to see your vocabulary here.',
+//     action: { label: 'Browse articles', onClick: 'location.href=\'/\'' },
+//   });
+// onClick is an inline attribute string so this works cleanly when
+// injected via innerHTML without needing to re-wire event listeners
+// on re-render. Pass { error: true } to style it red for failure.
+// Opt-in debug logging. Production console gets noisy fast (audit
+// counted 26+ console.log in Study Room alone, plus every cache /
+// resolver path emits debug lines). A learner opening DevTools to
+// inspect the page shouldn't see a wall of [hero-video], [cache],
+// [fj] traces — that reads as "unfinished" for a paid product.
+//
+// Toggle on from the console:  localStorage.kh_debug = '1'
+// Toggle off: localStorage.removeItem('kh_debug')
+var _khDebug = (function() {
+  try { return localStorage.getItem('kh_debug') === '1'; } catch (_) { return false; }
+})();
+function khLog() {
+  if (!_khDebug) return;
+  try { console.log.apply(console, arguments); } catch (_) {}
+}
+function khDebugEnabled() { return _khDebug; }
+
+function khEmptyState(opts) {
+  opts = opts || {};
+  var html = '<div class="kh-empty' + (opts.error ? ' error' : '') + '">';
+  if (opts.title) html += '<div class="kh-empty-title">' + _khEsc(opts.title) + '</div>';
+  if (opts.sub)   html += '<div class="kh-empty-sub">'   + _khEsc(opts.sub)   + '</div>';
+  if (opts.action) {
+    var cls = opts.action.variant === 'secondary' ? 'kh-empty-action secondary' : 'kh-empty-action';
+    html += '<button class="' + cls + '" onclick="' + _khEsc(opts.action.onClick || '') + '">'
+         + _khEsc(opts.action.label || 'Try again')
+         + '</button>';
+  }
+  if (opts.secondaryAction) {
+    html += '<button class="kh-empty-action secondary" style="margin-top:4px" onclick="' + _khEsc(opts.secondaryAction.onClick || '') + '">'
+         + _khEsc(opts.secondaryAction.label || '')
+         + '</button>';
+  }
+  html += '</div>';
+  return html;
+}
+
 // ── 저장 단어 ─────────────────────────────────────────────────
 var K_SAVED = 'korehan_saved_words';
 var _savedWordsSet = null; // Set of ko strings, populated from DB on auth
@@ -2150,7 +2226,7 @@ function _khResolveReddit(permalink) {
   }).catch(function(e) {
     // Don't cache failures — next caller may succeed if it was a blip.
     delete _khRedditResolveCache[permalink];
-    console.warn('[hero-video] reddit-video-resolve failed:', e && e.message || e);
+    khLog('[hero-video] reddit-video-resolve failed:', e && e.message || e);
     return null;
   });
   _khRedditResolveCache[permalink] = p;
@@ -2204,7 +2280,7 @@ function _khAttachAudioCompanion(video, audioUrl) {
   video.addEventListener('timeupdate', syncTime);
   // If the audio fails to load we just stay silent — video keeps playing.
   audio.addEventListener('error', function(){
-    console.warn('[hero-video] audio companion failed; staying silent');
+    khLog('[hero-video] audio companion failed; staying silent');
   });
   return audio;
 }
@@ -2266,15 +2342,15 @@ function _khAttachHls(root) {
         // Without this, every HLS failure = silent video, defeating the
         // whole point of the resolver.
         if (freshAudio) _khAttachAudioCompanion(v, freshAudio);
-        console.warn('[hero-video] HLS failed, using silent MP4 + audio companion:', reason || 'unknown');
+        khLog('[hero-video] HLS failed, using silent MP4 + audio companion:', reason || 'unknown');
         return;
       }
       // No MP4 fallback either — last-resort image swap.
       if (swapToImageFallback()) {
-        console.warn('[hero-video] HLS + resolver failed, swapped to thumbnail image:', reason || 'unknown');
+        khLog('[hero-video] HLS + resolver failed, swapped to thumbnail image:', reason || 'unknown');
         return;
       }
-      console.warn('[hero-video] HLS failed with no recoverable source:', reason || 'unknown');
+      khLog('[hero-video] HLS failed with no recoverable source:', reason || 'unknown');
     }
 
     function attachWithSrc(src) {
@@ -2334,7 +2410,7 @@ function _khAttachHls(root) {
         disarm();
         if (v.readyState >= 2) return; // already playing — don't swap
         if (!swapToImageFallback()) {
-          console.warn('[hero-video] MP4 fallback failed and no iframe fallback available');
+          khLog('[hero-video] MP4 fallback failed and no iframe fallback available');
         }
       }
       v.addEventListener('error', onErr);
@@ -2357,7 +2433,7 @@ function _khAttachHls(root) {
         // (typical for legacy reddit-embed rows). Fall back to the
         // original iframe embed so the video is at least visible.
         if (!swapToImageFallback()) {
-          console.warn('[hero-video] no playable source and no iframe fallback');
+          khLog('[hero-video] no playable source and no iframe fallback');
         }
         return;
       }
@@ -3556,7 +3632,7 @@ function renderArticlePage() {
 
     // Grammar 탭
     + '<div id="art-tab-grammar" style="display:none">'
-    + '<div id="grammar-content"><div style="color:#aaa;padding:20px 0;text-align:center">Loading grammar guide...</div></div>'
+    + '<div id="grammar-content">' + khLoadingHTML('Loading grammar guide', 'Pulling the key patterns out of this article.') + '</div>'
     + '</div>'
 
     // Vocab 탭
@@ -3835,7 +3911,7 @@ function renderReviewVocabCheck(a) {
       return (v.ko || v.word) && (v.en || v.meaning);
     });
     if (items.length < 2) {
-      el.innerHTML = '<div class="rv-empty">Not enough vocab for this article yet.</div>';
+      el.innerHTML = '<div class="rv-empty" style="padding:18px 8px;text-align:center"><div style="font-size:13px;font-weight:700;color:#334155;margin-bottom:4px">Not enough vocabulary yet</div><div style="font-size:12px;color:#64748b">Open the Vocab tab above to see words, or try a longer article.</div></div>';
       return;
     }
     _rvVocabQuizState = {
@@ -3982,7 +4058,7 @@ function renderReviewTF(a) {
 
   var body = String((a.body || '') + '\n' + (a.full || '')).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   var sents = body.split(/(?<=[.!?。])\s+/).filter(function(s){ return s.length >= 14 && s.length <= 120 && /[가-힣]/.test(s); });
-  if (sents.length < 2) { el.innerHTML = '<div class="rv-empty">Too short to build T/F.</div>'; return; }
+  if (sents.length < 2) { el.innerHTML = '<div class="rv-empty" style="padding:18px 8px;text-align:center;font-size:12px;color:#64748b">This article is too short for a comprehension check.</div>'; return; }
 
   // Pick 3 sentences (shuffle, first 3)
   var pick = sents.slice().sort(function(){ return Math.random() - 0.5; }).slice(0, 3);
@@ -4248,26 +4324,28 @@ Respond ONLY with this JSON (no markdown, no extra text):
       }
       return;
     }
-    el.innerHTML = '<div style="padding:24px;text-align:center;color:#e53e3e">⚠️ Failed to generate exercise. Please try again.<br><button onclick="loadFillExercise()" style="margin-top:12px;padding:8px 20px;background:#2255a4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">🔄 Retry</button></div>';
+    el.innerHTML = khEmptyState({
+      error: true,
+      title: 'Could not generate exercise',
+      sub: 'Something went wrong while building the questions for this article.',
+      action: { label: 'Try again', onClick: 'loadFillExercise()' },
+    });
   }
 }
 
 function renderFillLoading() {
-  return '<div style="padding:40px;text-align:center">'
-    + '<div style="font-size:32px;margin-bottom:16px;animation:spin 1s linear infinite;display:inline-block">✨</div>'
-    + '<div style="font-size:15px;font-weight:700;color:#2255a4;margin-bottom:6px">Generating fill-in-the-blank exercise...</div>'
-    + '<div style="font-size:12px;color:#94a3b8">Analyzing key vocabulary and grammar from this article</div>'
-    + '</div>'
-    + '<style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>';
+  return khLoadingHTML(
+    'Generating fill-in-the-blank',
+    'Analyzing key vocabulary and grammar from this article — takes a few seconds.'
+  );
 }
 
 function renderFillNoKey() {
-  return '<div style="padding:32px;text-align:center;background:#f8faff;border-radius:16px;margin:16px 0">'
-    + '<div style="font-size:36px;margin-bottom:12px">🔒</div>'
-    + '<div style="font-size:15px;font-weight:800;color:#0b1626;margin-bottom:8px">Sign in required</div>'
-    + '<div style="font-size:13px;color:#64748b;margin-bottom:20px">Fill-in-the-Blank is available for signed-in users.</div>'
-    + '<button onclick="openAuthModal(\'signin\')" style="padding:10px 24px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
-    + '</div>';
+  return khEmptyState({
+    title: 'Sign in for Fill-in-the-Blank',
+    sub: 'AI-generated practice is available for signed-in users.',
+    action: { label: 'Sign in', onClick: "openAuthModal('signin')" },
+  });
 }
 
 // ── 빈칸 문제 렌더링 ──────────────────────────────────────────────────────
@@ -4613,19 +4691,19 @@ async function loadGrammarGuide() {
       el.dataset.source = ''; // allow retry
       if (supaUser) {
         // User is logged in but got a token error — don't show sign-in prompt
-        el.innerHTML = '<div style="text-align:center;padding:28px 16px">'
-          + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:8px">Grammar Guide unavailable</div>'
-          + '<div style="font-size:13px;color:#64748b;margin-bottom:20px">A session error occurred. Please reload the page and try again.</div>'
-          + '<button onclick="loadGrammarGuide()" style="padding:10px 28px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Retry</button>'
-          + '</div>';
-        if (typeof toast === 'function') toast('Session error — please reload and try again.', true);
+        el.innerHTML = khEmptyState({
+          error: true,
+          title: 'Grammar Guide unavailable',
+          sub: 'A session error occurred. Please reload and try again.',
+          action: { label: 'Retry', onClick: 'loadGrammarGuide()' },
+        });
+        toast('Session error — please reload and try again.', 'error');
       } else {
-        el.innerHTML = '<div style="text-align:center;padding:28px 16px">'
-          + '<div style="font-size:32px;margin-bottom:12px">🔒</div>'
-          + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:8px">Sign in to use Grammar Guide</div>'
-          + '<div style="font-size:13px;color:#64748b;margin-bottom:20px">AI-powered grammar analysis is available for signed-in users.</div>'
-          + '<button onclick="openAuthModal(&apos;signin&apos;)" style="padding:10px 28px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">Sign In →</button>'
-          + '</div>';
+        el.innerHTML = khEmptyState({
+          title: 'Sign in for Grammar Guide',
+          sub: 'AI-powered grammar analysis is available for signed-in users.',
+          action: { label: 'Sign in', onClick: "openAuthModal('signin')" },
+        });
       }
     } else {
       renderStaticGrammar(el, a);
@@ -4858,7 +4936,7 @@ function renderArticleVocab(a) {
   var artId = a && a.id;
   if (!artId || typeof getFromCache !== 'function') { finalize(inline); return; }
 
-  el.innerHTML = '<div style="padding:16px;color:#94a3b8;font-size:13px;text-align:center">Loading vocabulary…</div>';
+  el.innerHTML = khLoadingHTML('Loading vocabulary', 'Analyzing the key words from this article.');
   getFromCache('article', artId, 'ai_analysis').then(function(cached) {
     var fromCache = normalize(cached && cached.vocab);
     finalize(fromCache.length ? fromCache : inline);

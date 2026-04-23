@@ -2991,7 +2991,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
       </div>
       <input class="wb-search" type="text" placeholder="Search words..." oninput="filterWordBook(this.value)">
       <div id="wb-list" style="max-height:60vh;overflow-y:auto;padding-right:4px">
-        <div class="wb-empty">Loading...</div>
+        <div class="wb-empty">Loading your saved words…</div>
       </div>
     </div>
   </div>
@@ -4224,7 +4224,7 @@ function setLevel(level, btn) {
 async function reassignTopicForLevel(level) {
   // Level changed — reload daily content for the new level from study_daily_content (DB-first, AI-fallback).
   // This is the same flow as the initial load, so we just delegate to loadDailyContent.
-  console.log('[reassignTopicForLevel] level changed to', level, '— reloading daily content');
+  khLog('[reassignTopicForLevel] level changed to', level, '— reloading daily content');
   _todayTopic = null;
   _aiContent = null;
   clearAIContentUI();
@@ -4270,7 +4270,7 @@ function getFallbackTopics() {
 // ═══════════════════════════════════════════════════════════════
 async function loadDailyContent() {
   var today = kstDateKey();
-  console.log('[loadDailyContent] start — date:', today, 'level:', _currentLevel, 'user:', supaUser ? supaUser.id : 'none');
+  khLog('[loadDailyContent] start — date:', today, 'level:', _currentLevel, 'user:', supaUser ? supaUser.id : 'none');
 
   // Fast path: check localStorage cache first (instant, no network)
   // Only use cache if it's fresh (<6h old) AND has an admin_edited flag
@@ -4283,7 +4283,7 @@ async function loadDailyContent() {
     if (lsCached && alreadyCheckedThisSession) {
       var cachedRec = JSON.parse(lsCached);
       if (cachedRec && cachedRec.topic_ko && cachedRec.vocab && cachedRec.vocab.length > 0) {
-        console.log('[loadDailyContent] instant load from cache (checked this session)');
+        khLog('[loadDailyContent] instant load from cache (checked this session)');
         _applyDailyContent(cachedRec);
         return;
       }
@@ -4301,7 +4301,7 @@ async function loadDailyContent() {
 
   // _sessionChecked is guaranteed true before this function is called (waitForSession ensures it)
   if (!supaUser) {
-    console.log('[loadDailyContent] no user — showing login wall');
+    khLog('[loadDailyContent] no user — showing login wall');
     var subEl = document.getElementById('wm-topic-sub');
     if (subEl) subEl.textContent = 'Today\'s Topic';
     var heroKo = document.getElementById('hero-topic-ko');
@@ -4327,7 +4327,7 @@ async function loadDailyContent() {
 
   // Step 1: Try loading from study_daily_content (admin-generated or auto-generated, any status)
   try {
-    console.log('[loadDailyContent] querying study_daily_content');
+    khLog('[loadDailyContent] querying study_daily_content');
     var r = await Promise.race([
       sb.from('study_daily_content').select('*').eq('scheduled_date', today).eq('level', _currentLevel).maybeSingle(),
       new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('db_timeout')); }, 8000); })
@@ -4336,13 +4336,13 @@ async function loadDailyContent() {
       // Check if learning elements actually exist — if only topic is set but vocab/grammar are empty, trigger AI generation
       var hasLearning = r.data.vocab && (Array.isArray(r.data.vocab) ? r.data.vocab.length > 0 : (typeof r.data.vocab === 'string' && r.data.vocab.length > 2));
       if (hasLearning) {
-        console.log('[loadDailyContent] found content with learning elements, status:', r.data.status);
+        khLog('[loadDailyContent] found content with learning elements, status:', r.data.status);
         _applyDailyContent(r.data);
         _pregenTomorrow();
         return;
       }
       // Topic exists but learning elements are empty — pass topic to AI generation
-      console.log('[loadDailyContent] topic found but learning elements empty — generating AI content');
+      khLog('[loadDailyContent] topic found but learning elements empty — generating AI content');
       _approvedTopicForGen = { topic_ko: r.data.topic_ko, topic_en: r.data.topic_en };
     }
     if (r.error) console.warn('[loadDailyContent] DB error:', r.error.message);
@@ -4352,7 +4352,7 @@ async function loadDailyContent() {
 
   // Step 2: Try auto-generating via AI
   try {
-    console.log('[loadDailyContent] auto-generating via AI');
+    khLog('[loadDailyContent] auto-generating via AI');
     await Promise.race([
       _generateAndSaveDailyContent(today),
       new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('gen_timeout')); }, 35000); })
@@ -4364,7 +4364,7 @@ async function loadDailyContent() {
   }
 
   // Step 3: Last resort — local fallback content (no DB, no AI needed)
-  console.log('[loadDailyContent] applying local fallback');
+  khLog('[loadDailyContent] applying local fallback');
   _applyFallbackTopic(today);
 }
 
@@ -4384,7 +4384,7 @@ function _pregenTomorrow() {
         .then(function(r) {
           var hasVocab = r.data && r.data.vocab && (Array.isArray(r.data.vocab) ? r.data.vocab.length > 0 : true);
           if (!hasVocab) {
-            console.log('[pregenTomorrow] fallback — generating for', tomorrow, _currentLevel);
+            khLog('[pregenTomorrow] fallback — generating for', tomorrow, _currentLevel);
             _generateAndSaveDailyContent(tomorrow, { silent: true });
           }
         });
@@ -4437,7 +4437,7 @@ function _setTopicLoadError(msg) {
 }
 
 function _applyDailyContent(rec) {
-  console.log('[_applyDailyContent] applying topic:', rec.topic_ko, '/', rec.topic_en, '| admin_edited:', rec.admin_edited, rec.__fallback ? '| FALLBACK' : '');
+  khLog('[_applyDailyContent] applying topic:', rec.topic_ko, '/', rec.topic_en, '| admin_edited:', rec.admin_edited, rec.__fallback ? '| FALLBACK' : '');
   _todayTopic = {
     id:       (rec.scheduled_date || '') + '_' + (rec.level || ''),
     topic_ko: rec.topic_ko || '',
@@ -4482,7 +4482,7 @@ var _approvedTopicForGen = null;
 async function _generateAndSaveDailyContent(date, opts) {
   if (!supaUser) { showLoginWall(); return; }
   var silent = !!(opts && opts.silent);
-  console.log('[_generateAndSaveDailyContent] generating for date:', date, 'level:', _currentLevel, 'silent:', silent);
+  khLog('[_generateAndSaveDailyContent] generating for date:', date, 'level:', _currentLevel, 'silent:', silent);
   // Only show the full-screen "잠시만 기다려주세요" overlay when the user
   // is actively waiting for TODAY's content. Background pregen of
   // tomorrow's content must never block the current UI — the page is
@@ -4531,7 +4531,7 @@ async function _generateAndSaveDailyContent(date, opts) {
     fallbackTopicKo = _approvedTopicForGen.topic_ko;
     fallbackTopicEn = _approvedTopicForGen.topic_en || '';
     topicHint = 'Use EXACTLY this topic: "' + fallbackTopicKo + '" (' + fallbackTopicEn + ').';
-    console.log('[_generateAndSaveDailyContent] using approved topic override:', fallbackTopicKo);
+    khLog('[_generateAndSaveDailyContent] using approved topic override:', fallbackTopicKo);
     _approvedTopicForGen = null;
   } else if (assignedTopic) {
     fallbackTopicKo = assignedTopic.topic_ko || '';
@@ -4641,7 +4641,7 @@ async function _generateAndSaveDailyContent(date, opts) {
         .then(function(r) { if (r.error) console.warn('study_daily_content save:', r.error.message); });
     }
 
-    console.log('[_generateAndSaveDailyContent] AI succeeded — topic:', parsed.topic_ko);
+    khLog('[_generateAndSaveDailyContent] AI succeeded — topic:', parsed.topic_ko);
     _applyDailyContent(rec);
 
   } catch(err) {
@@ -8010,7 +8010,7 @@ async function loadWordBook() {
   var list = document.getElementById('wb-list');
   if (!list) return;
   if (!supaUser) { list.innerHTML = '<div class="wb-empty">Sign in to view your saved words</div>'; return; }
-  list.innerHTML = '<div class="wb-empty">Loading...</div>';
+  list.innerHTML = '<div class="wb-empty">Loading your saved words…</div>';
   try {
     var sb = getSupa();
     if (!sb) return;
@@ -8037,7 +8037,7 @@ async function loadWordBook() {
     renderWbCounts();
   } catch(e) {
     console.warn('[WordBook]', e);
-    list.innerHTML = '<div class="wb-empty">Could not load words</div>';
+    list.innerHTML = '<div class="wb-empty">Couldn\'t load your words. <button onclick="loadWordBook&&loadWordBook()" style="margin-top:10px;padding:7px 16px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Retry</button></div>';
   }
 }
 function setWbCategory(cat, btn) {
@@ -12356,7 +12356,7 @@ async function generateBeginnerSentences() {
   // ── Priority 1: DB-loaded pre-generated sentences (admin-reviewed) ──
   var dbSents = _aiContent && Array.isArray(_aiContent.topic_writing_sentences) && _aiContent.topic_writing_sentences;
   if (dbSents && dbSents.length >= 3) {
-    console.log('[generateBeginnerSentences] using pre-generated DB sentences:', dbSents.length);
+    khLog('[generateBeginnerSentences] using pre-generated DB sentences:', dbSents.length);
     _bm.sentences = dbSents;
     _bm.generating = false;
     renderBMStep1();
@@ -12384,7 +12384,7 @@ async function generateBeginnerSentences() {
   }
 
   // ── Priority 3: AI generation (no pre-generated content in DB) ──
-  console.log('[generateBeginnerSentences] no pre-generated sentences in DB — generating live');
+  khLog('[generateBeginnerSentences] no pre-generated sentences in DB — generating live');
   try {
     var prompt = '다음 토픽으로 초보자용 한국어 문장 5개를 만들어줘. JSON만 출력해. 다른 말 하지 마.\n\n'
       + '토픽: ' + (topic.topic_ko || topic.topic_en) + '\n\n'
@@ -14937,7 +14937,7 @@ function _dctRenderListen() {
       var _sentJoin = _dailyDictationSentences.map(function(s){ return s && (s.ko || ''); }).join(' ');
       var _anyMatch = _topicKws.some(function(kw){ return _sentJoin.indexOf(kw) !== -1; });
       if (!_anyMatch) {
-        console.log('[dictation] cached sentences unrelated to today\'s topic — regenerating');
+        khLog('[dictation] cached sentences unrelated to today\'s topic — regenerating');
         _dailyDictationSentences = [];
       }
     }
@@ -15862,7 +15862,7 @@ async function _nqLoadOrGenerate() {
     }
   } catch(e) {}
 
-  body.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Nuance 퀴즈 생성 중…</div></div>';
+  body.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Generating nuance quiz…</div></div>';
   foot.innerHTML = '';
   var topic = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || '한국 사회';
   var prompt = 'You are a Korean TOPIK 5-6 instructor. Create a 3-question nuance-discrimination quiz on topic "' + topic + '".\n\n'
@@ -16024,7 +16024,7 @@ async function asSelectArticle(id) {
   document.getElementById('as-article-content').innerHTML =
     '<p class="as-section-label">📖 기사 읽기</p><div class="as-article-text">' + _asFormatBody(art.body||'') + '</div>';
   document.getElementById('as-activity-area').innerHTML =
-    '<div class="su-loading"><div class="su-spinner"></div><div id="as-loading-msg">Loading...</div></div>';
+    '<div class="su-loading"><div class="su-spinner"></div><div id="as-loading-msg">Preparing your study session…</div></div>';
   _asSetNav('none','none','none');
   await _asLoadContent();
   _asRenderStep();
@@ -17262,7 +17262,7 @@ function closeConvStudy() {
 }
 async function _csLoadConversations() {
   var grid = document.getElementById('cs-conv-grid');
-  grid.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Loading...</div></div>';
+  grid.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Loading conversations…</div></div>';
   try {
     var sb = getSupa();
     var res = await sb.from('conversations_data').select('id,name,ctx,cat,lvl,data').order('created_at',{ascending:false}).limit(30);
