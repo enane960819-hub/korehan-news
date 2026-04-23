@@ -1908,20 +1908,21 @@ function khArticleHeroMedia(article) {
       // or from the stored redditmedia.com URL itself, since its path
       // mirrors the permalink path), hand it to _khAttachHls, and play
       // the bare video via a <video> element with synced audio.
-      // The iframe fallback is kept as data-kh-iframe-fallback so
-      // resolver/playback failure can swap back to the legacy embed
-      // rather than showing a blank slot.
+      // The image fallback is the article thumbnail so if every
+      // playback path fails (post removed, CDN outage, resolver down)
+      // the slot shows the thumbnail rather than the Reddit embed
+      // with its post chrome.
       var perma3 = (article && article.source_url) || '';
       if (!perma3) {
         var m = String(src || '').match(/redditmedia\.com(\/r\/[^?#]+\/comments\/[^?#]+)/i);
         if (m) perma3 = 'https://www.reddit.com' + m[1].replace(/\/$/, '') + '/';
       }
+      var img3 = khArticleThumb(article, 600, 400);
       if (perma3) {
-        return '<video data-kh-hls="" data-kh-fallback="" data-kh-permalink="' + _khEsc(perma3) + '" data-kh-iframe-fallback="' + _khEsc(src || '') + '" controls playsinline preload="metadata"></video>';
+        return '<video data-kh-hls="" data-kh-fallback="" data-kh-permalink="' + _khEsc(perma3) + '" data-kh-image-fallback="' + _khEsc(img3) + '" controls playsinline preload="metadata"></video>';
       }
-      // No permalink recoverable — fall back to the legacy iframe so
-      // at least the video is visible, even with the Reddit chrome.
-      return '<iframe src="' + _khEsc(src) + '" title="Article video" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" allow="encrypted-media" referrerpolicy="no-referrer-when-downgrade" scrolling="no"></iframe>';
+      // No permalink recoverable → render the thumbnail directly.
+      return '<img src="' + _khEsc(img3) + '" alt="" onerror="this.style.display=\'none\'">';
     }
     if (kind === 'reddit-hls') {
       // Reddit stores audio on a separate track. The HLS manifest
@@ -1934,23 +1935,27 @@ function khArticleHeroMedia(article) {
       // The permalink (when known) lets _khAttachHls call /api/reddit-
       // video-resolve to fetch fresh signed URLs at playback time —
       // this is what makes audio reliable even on year-old articles.
-      // iframe fallback (derived from permalink) is a *last* resort for
-      // the case where both HLS and the persisted silent MP4 URLs have
-      // expired and the resolver is unreachable.
+      // data-kh-image-fallback lets the player show the article's
+      // thumbnail image when every playback path has failed — without
+      // this we used to substitute the redditmedia.com iframe, which
+      // dragged in the Reddit post chrome (subreddit banner, Join
+      // button, etc.) and looked like a regression, especially on
+      // removed posts where the iframe renders "Removed by moderator".
       var fb = (article && article.video_fallback_url) || _khDeriveRedditMp4(src);
       var perma = (article && article.source_url) || '';
-      var ifb = _khBuildRedditIframeFallback(perma);
-      return '<video data-kh-hls="' + _khEsc(src) + '" data-kh-fallback="' + _khEsc(fb || '') + '" data-kh-permalink="' + _khEsc(perma) + '" data-kh-iframe-fallback="' + _khEsc(ifb) + '" controls playsinline preload="metadata"></video>';
+      var img = khArticleThumb(article, 600, 400);
+      return '<video data-kh-hls="' + _khEsc(src) + '" data-kh-fallback="' + _khEsc(fb || '') + '" data-kh-permalink="' + _khEsc(perma) + '" data-kh-image-fallback="' + _khEsc(img) + '" controls playsinline preload="metadata"></video>';
     }
     if (kind === 'reddit') {
       // Silent MP4 baseline. Routed through _khAttachHls so the resolver
       // can layer a synced <audio> companion on top — recovers audio on
       // legacy 'reddit' kind articles that were saved without hls_url.
-      // If both the persisted MP4 and the resolver fail (signed URL
-      // expiry + resolver outage), the derived iframe takes over.
+      // If both the persisted MP4 and the resolver fail, the article
+      // thumbnail takes over (see note on reddit-hls for why we
+      // dropped the iframe fallback in favor of an image).
       var perma2 = (article && article.source_url) || '';
-      var ifb2 = _khBuildRedditIframeFallback(perma2);
-      return '<video data-kh-hls="" data-kh-fallback="' + _khEsc(src) + '" data-kh-permalink="' + _khEsc(perma2) + '" data-kh-iframe-fallback="' + _khEsc(ifb2) + '" controls playsinline preload="metadata"></video>';
+      var img2 = khArticleThumb(article, 600, 400);
+      return '<video data-kh-hls="" data-kh-fallback="' + _khEsc(src) + '" data-kh-permalink="' + _khEsc(perma2) + '" data-kh-image-fallback="' + _khEsc(img2) + '" controls playsinline preload="metadata"></video>';
     }
   }
   var img = khArticleThumb(article, 600, 400);
@@ -1974,19 +1979,6 @@ function _khLoadHlsJs() {
   });
   return _khHlsLoadPromise;
 }
-// Derive the redditmedia.com embed iframe URL from any reddit permalink.
-// Used as the absolute last-resort fallback for every reddit-kind hero
-// video: if the resolver + HLS + persisted silent MP4 all fail, at
-// least the iframe still renders the clip (with chrome, but visible).
-function _khBuildRedditIframeFallback(permalink) {
-  if (!permalink) return '';
-  var m = String(permalink).match(/^https?:\/\/(?:www\.|old\.|new\.)?reddit\.com(\/r\/[^?#]+\/comments\/[^?#]+)/i);
-  if (!m) return '';
-  var path = m[1];
-  if (!path.endsWith('/')) path += '/';
-  return 'https://www.redditmedia.com' + path + '?ref_source=embed&ref=share&embed=true';
-}
-
 // Cache of resolver responses keyed by permalink, scoped to the page
 // load. Multiple <video> elements pointing at the same post (rare, but
 // possible in feeds) share one fetch.
@@ -2076,7 +2068,7 @@ function _khAttachHls(root) {
     var staleSrc = v.getAttribute('data-kh-hls');
     var fallback = v.getAttribute('data-kh-fallback') || '';
     var permalink = v.getAttribute('data-kh-permalink') || '';
-    var iframeFallback = v.getAttribute('data-kh-iframe-fallback') || '';
+    var imageFallback = v.getAttribute('data-kh-image-fallback') || '';
     if (!staleSrc && !fallback && !permalink) return;
 
     // Resolved-URL holders. Populated by _khResolveReddit when permalink
@@ -2086,20 +2078,19 @@ function _khAttachHls(root) {
     var freshFallback = fallback;
 
     // Last-resort escape hatch: when nothing else is playable, swap the
-    // <video> element for the legacy iframe (redditmedia.com embed).
-    // Only triggered for reddit-embed rows where the resolver failed
-    // AND the row has no persisted HLS/fallback — without this, users
-    // would see a blank video slot on a dead resolver.
-    function swapToIframeFallback() {
-      if (!iframeFallback || !v.parentNode) return false;
-      var f = document.createElement('iframe');
-      f.src = iframeFallback;
-      f.title = 'Article video';
-      f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox');
-      f.setAttribute('allow', 'encrypted-media');
-      f.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
-      f.setAttribute('scrolling', 'no');
-      v.parentNode.replaceChild(f, v);
+    // <video> element for the article's thumbnail image. We used to
+    // swap in a redditmedia.com iframe here, but that brought Reddit's
+    // full post chrome (subreddit banner, Join button, author line,
+    // Reddit logo) and on deleted posts renders "Removed by moderator"
+    // — worse than no video at all. A quiet image feels like a
+    // normal image-only article and blends into the reader.
+    function swapToImageFallback() {
+      if (!imageFallback || !v.parentNode) return false;
+      var img = document.createElement('img');
+      img.src = imageFallback;
+      img.alt = '';
+      img.onerror = function(){ this.style.display = 'none'; };
+      v.parentNode.replaceChild(img, v);
       return true;
     }
 
@@ -2127,9 +2118,9 @@ function _khAttachHls(root) {
         console.warn('[hero-video] HLS failed, using silent MP4 + audio companion:', reason || 'unknown');
         return;
       }
-      // No MP4 fallback either — last-resort iframe swap.
-      if (swapToIframeFallback()) {
-        console.warn('[hero-video] HLS + resolver failed, swapped to iframe fallback:', reason || 'unknown');
+      // No MP4 fallback either — last-resort image swap.
+      if (swapToImageFallback()) {
+        console.warn('[hero-video] HLS + resolver failed, swapped to thumbnail image:', reason || 'unknown');
         return;
       }
       console.warn('[hero-video] HLS failed with no recoverable source:', reason || 'unknown');
@@ -2191,7 +2182,7 @@ function _khAttachHls(root) {
       function onErr() {
         disarm();
         if (v.readyState >= 2) return; // already playing — don't swap
-        if (!swapToIframeFallback()) {
+        if (!swapToImageFallback()) {
           console.warn('[hero-video] MP4 fallback failed and no iframe fallback available');
         }
       }
@@ -2214,7 +2205,7 @@ function _khAttachHls(root) {
         // Resolver returned nothing and we had no persisted URLs either
         // (typical for legacy reddit-embed rows). Fall back to the
         // original iframe embed so the video is at least visible.
-        if (!swapToIframeFallback()) {
+        if (!swapToImageFallback()) {
           console.warn('[hero-video] no playable source and no iframe fallback');
         }
         return;
