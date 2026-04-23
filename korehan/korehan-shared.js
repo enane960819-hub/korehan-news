@@ -3418,28 +3418,28 @@ function renderArticlePage() {
     +   '</div>'
 
     +   '<div class="rv-card">'
-    +     '<div class="rv-card-head"><span class="rv-card-icon">🧠</span><span>단어 체크</span><span class="rv-card-hint">Tap to reveal</span></div>'
+    +     '<div class="rv-card-head"><span class="rv-card-icon">🧠</span><span>Vocabulary</span><span class="rv-card-hint">Multiple choice</span></div>'
     +     '<div id="rv-vocab-check" class="rv-card-body"></div>'
     +   '</div>'
 
     +   '<div class="rv-card">'
-    +     '<div class="rv-card-head"><span class="rv-card-icon">✓</span><span>기사 이해</span><span class="rv-card-hint">True or False</span></div>'
+    +     '<div class="rv-card-head"><span class="rv-card-icon">✓</span><span>Comprehension</span><span class="rv-card-hint">True or False</span></div>'
     +     '<div id="rv-tf-check" class="rv-card-body"></div>'
     +   '</div>'
 
     +   '<div class="rv-card">'
-    +     '<div class="rv-card-head"><span class="rv-card-icon">🔤</span><span>빈칸 채우기</span><span class="rv-card-hint">Fill in the blank</span></div>'
+    +     '<div class="rv-card-head"><span class="rv-card-icon">🔤</span><span>Fill in the Blank</span><span class="rv-card-hint">AI-generated</span></div>'
     +     '<div class="rv-card-body"><div id="fill-wrap"><div id="fill-content"><div id="fill-teaser"></div></div></div></div>'
     +   '</div>'
 
     +   '<div class="rv-card">'
-    +     '<div class="rv-card-head"><span class="rv-card-icon">🎧</span><span>듣기</span><span class="rv-card-hint">Listening</span></div>'
+    +     '<div class="rv-card-head"><span class="rv-card-icon">🎧</span><span>Listening</span><span class="rv-card-hint">Audio quiz</span></div>'
     +     '<div class="rv-card-body"><div id="art-listening-quiz"><button onclick="startArticleListeningQuiz()" class="rv-start-btn">Start Listening Quiz</button></div></div>'
     +   '</div>'
 
     +   '<div class="rv-deeper">'
-    +     '<div class="rv-deeper-title">더 깊이 공부하고 싶다면</div>'
-    +     '<div class="rv-deeper-sub">스터디룸의 Article Study 모달에서 단어 → 표현 → 정독 → 퀴즈 → 쓰기까지 5단계로 학습하세요.</div>'
+    +     '<div class="rv-deeper-title">Want to go deeper?</div>'
+    +     '<div class="rv-deeper-sub">Open this article in the Study Room for a full 5-step session: Vocab → Phrases → Read → Quiz → Writing.</div>'
     +     '<button class="rv-deeper-btn" onclick="openArticleStudyFromReader()">📖 Open in Study Room →</button>'
     +   '</div>'
     + '</div>'
@@ -3659,39 +3659,146 @@ function switchArtTab(tab, btn) {
 // one swaps a noun out for a random site-wide VOCAB noun so the
 // learner has to notice the mismatch.
 
+// Multiple-choice vocab quiz: pick a word from the article, show 4
+// English meanings, user clicks the right one. Distractors are drawn
+// from other words in the same article's vocab set (preferred) or from
+// the site-wide VOCAB pool as a fallback. Matches the Word Quiz pattern
+// on korehan-learn.html so Review feels consistent across the site.
 function renderReviewVocabCheck(a) {
   var el = document.getElementById('rv-vocab-check');
   if (!el || !a) return;
   if (el.dataset.builtFor === String(a.id)) return;
   el.dataset.builtFor = String(a.id);
-  // Pull from whatever vocab source the Vocab tab is already showing.
-  // Quick fetch: getFromCache → ai_analysis.vocab; fall back to
-  // body-matched global VOCAB if cache is empty.
+
   function paint(items) {
-    items = (items || []).slice(0, 5);
-    if (!items.length) { el.innerHTML = '<div class="rv-empty">No vocab yet for this article.</div>'; return; }
-    el.innerHTML = items.map(function(v, i) {
-      var ko = v.ko || v.word || '';
-      var rom = v.rom || v.reading || '';
-      var en  = v.en || v.meaning || '';
-      return '<div class="rv-vocab-card" data-i="' + i + '" onclick="this.classList.toggle(\'open\')">'
-        +   '<div class="rv-vocab-face">'
-        +     '<span class="rv-vocab-ko">' + ko + '</span>'
-        +     (rom ? '<span class="rv-vocab-rom">' + rom + '</span>' : '')
-        +   '</div>'
-        +   '<div class="rv-vocab-back">' + (en || '—') + '</div>'
-        + '</div>';
-    }).join('');
+    items = (items || []).filter(function(v){
+      return (v.ko || v.word) && (v.en || v.meaning);
+    });
+    if (items.length < 2) {
+      el.innerHTML = '<div class="rv-empty">Not enough vocab for this article yet.</div>';
+      return;
+    }
+    _rvVocabQuizState = {
+      items: items.slice(0, 8),           // cap pool size
+      idx: 0,
+      answered: 0,
+      correct: 0,
+    };
+    el.innerHTML =
+        '<div class="rv-vq-card">'
+      +   '<div class="rv-vq-progress" id="rv-vq-progress"></div>'
+      +   '<div class="rv-vq-ko" id="rv-vq-ko"></div>'
+      +   '<div class="rv-vq-rom" id="rv-vq-rom"></div>'
+      +   '<div class="rv-vq-prompt">Choose the correct meaning</div>'
+      +   '<div class="rv-vq-options" id="rv-vq-options"></div>'
+      +   '<div class="rv-vq-feedback" id="rv-vq-feedback"></div>'
+      +   '<button class="rv-vq-next" id="rv-vq-next" style="display:none" onclick="_rvVocabQuizNext()">Next →</button>'
+      + '</div>';
+    _rvVocabQuizPaint();
   }
   if (typeof getFromCache === 'function') {
     getFromCache('article', a.id, 'ai_analysis').then(function(c) {
       var src = (c && c.vocab) ? c.vocab : [];
-      if (!src.length) src = _reviewVocabFromGlobal(a);
+      if (src.length < 2) src = _reviewVocabFromGlobal(a);
       paint(src);
     }).catch(function(){ paint(_reviewVocabFromGlobal(a)); });
   } else {
     paint(_reviewVocabFromGlobal(a));
   }
+}
+
+var _rvVocabQuizState = null;
+
+function _rvVocabQuizPaint() {
+  var s = _rvVocabQuizState;
+  if (!s) return;
+  var total = Math.min(s.items.length, 5);
+  if (s.idx >= total) {
+    var el = document.getElementById('rv-vocab-check');
+    if (el) {
+      el.innerHTML =
+          '<div class="rv-vq-done">'
+        +   '<div class="rv-vq-done-title">Nice work</div>'
+        +   '<div class="rv-vq-done-score">' + s.correct + ' / ' + total + ' correct</div>'
+        +   '<button class="rv-vq-retry" onclick="_rvVocabQuizRetry()">Try again</button>'
+        + '</div>';
+    }
+    return;
+  }
+  var prog = document.getElementById('rv-vq-progress');
+  if (prog) prog.textContent = 'Question ' + (s.idx + 1) + ' of ' + total;
+  var q = s.items[s.idx];
+  var ko = q.ko || q.word || '';
+  var rom = q.rom || q.reading || '';
+  var correct = q.en || q.meaning || '';
+
+  // Build 3 distractors from the remaining pool (same article preferred).
+  var pool = s.items.filter(function(x, i){ return i !== s.idx; })
+    .map(function(x){ return x.en || x.meaning || ''; })
+    .filter(function(m){ return m && m !== correct; });
+  // Pad with site-wide VOCAB if the article pool is too small.
+  if (pool.length < 3 && typeof VOCAB === 'object' && VOCAB) {
+    Object.keys(VOCAB).forEach(function(k){
+      var en = (VOCAB[k] && VOCAB[k].en) || '';
+      if (!en || en === correct || pool.indexOf(en) !== -1) return;
+      pool.push(en);
+    });
+  }
+  pool = pool.sort(function(){ return Math.random() - 0.5; }).slice(0, 3);
+  var choices = [correct].concat(pool).sort(function(){ return Math.random() - 0.5; });
+
+  var koEl  = document.getElementById('rv-vq-ko');
+  var romEl = document.getElementById('rv-vq-rom');
+  var optsEl = document.getElementById('rv-vq-options');
+  var fbEl   = document.getElementById('rv-vq-feedback');
+  var nextEl = document.getElementById('rv-vq-next');
+  if (koEl)  koEl.textContent = ko;
+  if (romEl) romEl.textContent = rom;
+  if (fbEl)  { fbEl.textContent = ''; fbEl.className = 'rv-vq-feedback'; }
+  if (nextEl) nextEl.style.display = 'none';
+  if (optsEl) {
+    optsEl.innerHTML = choices.map(function(c){
+      var isCorrect = c === correct ? '1' : '0';
+      return '<button class="rv-vq-opt" data-correct="' + isCorrect + '" onclick="_rvVocabQuizPick(this)">' + _khEsc(c) + '</button>';
+    }).join('');
+  }
+}
+
+function _rvVocabQuizPick(btn) {
+  var s = _rvVocabQuizState;
+  if (!s) return;
+  var opts = document.querySelectorAll('#rv-vq-options .rv-vq-opt');
+  if (!opts.length || opts[0].disabled) return;
+  var correct = btn.dataset.correct === '1';
+  opts.forEach(function(o){
+    o.disabled = true;
+    if (o.dataset.correct === '1') o.classList.add('correct');
+    else if (o === btn) o.classList.add('wrong');
+  });
+  s.answered++;
+  if (correct) s.correct++;
+  var fb = document.getElementById('rv-vq-feedback');
+  if (fb) {
+    fb.textContent = correct ? '✓ Correct' : '✗ Not quite';
+    fb.className = 'rv-vq-feedback ' + (correct ? 'ok' : 'no');
+  }
+  var next = document.getElementById('rv-vq-next');
+  if (next) next.style.display = '';
+}
+
+function _rvVocabQuizNext() {
+  var s = _rvVocabQuizState;
+  if (!s) return;
+  s.idx++;
+  _rvVocabQuizPaint();
+}
+
+function _rvVocabQuizRetry() {
+  var a = window._currentArticle;
+  var el = document.getElementById('rv-vocab-check');
+  if (el) el.dataset.builtFor = '';
+  _rvVocabQuizState = null;
+  renderReviewVocabCheck(a);
 }
 
 function _reviewVocabFromGlobal(a) {
@@ -3781,8 +3888,8 @@ function _reviewTFAnswer(btn) {
   q.classList.add(ans === truth ? 'correct' : 'wrong');
   var fb = q.querySelector('.rv-tf-feedback');
   if (fb) fb.textContent = (ans === truth)
-    ? (truth ? '✓ 맞아요 — 기사에 있는 문장이에요.' : '✓ 맞아요 — 이 문장은 기사에 없어요.')
-    : (truth ? '✗ 사실은 기사에 있는 문장이었어요.' : '✗ 이 문장은 기사에 없는 문장이에요.');
+    ? (truth ? '✓ Correct — this sentence is from the article.' : "✓ Correct — this sentence isn't in the article.")
+    : (truth ? '✗ Actually this sentence was from the article.' : "✗ Actually this sentence isn't in the article.");
 }
 
 function openArticleStudyFromReader() {
@@ -3794,44 +3901,23 @@ function openArticleStudyFromReader() {
 
 
 // ── Fill-in-the-Blank Teaser (기사 하단) ─────────────────────────────────────
+// Rendered inside the Review tab's .rv-card shell, so the teaser should
+// match that card's clean "intro line + start button" pattern (same as
+// the Listening card). The previous teaser's dark navy gradient /
+// decorative emojis / bespoke pill made this one card look like it
+// belonged to a different section.
 function initFillTeaser(article) {
   var teaser = document.getElementById('fill-teaser');
   if (!teaser) return;
 
-  var level = article.level || 'Beginner';
-  var levelColor = level === 'Beginner' ? '#2e7d32' : level === 'Advanced' ? '#c62828' : '#d97706';
-  var levelBg    = level === 'Beginner' ? '#e8f5e9' : level === 'Advanced' ? '#fce4ec' : '#fff8e1';
+  var level = (article && article.level) || 'Beginner';
+  var levelLabel = ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]) || level;
 
   teaser.innerHTML =
-    '<div style="background:linear-gradient(135deg,#0b1626 0%,#1a3a6b 100%);border-radius:20px;padding:28px 28px 24px;position:relative;overflow:hidden">'
-    // 배경 데코
-    + '<div style="position:absolute;right:-20px;top:-20px;font-size:100px;opacity:.06;line-height:1">✏️</div>'
-    + '<div style="position:absolute;left:-10px;bottom:-15px;font-size:80px;opacity:.04;line-height:1">📝</div>'
-    // 내용
-    + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">'
-    + '<div style="flex:1;min-width:200px">'
-    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-    + '<span style="font-size:22px">✏️</span>'
-    + '<span style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:2px">Review Practice</span>'
-    + '</div>'
-    + '<div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:6px;line-height:1.3">Fill-in-the-Blank</div>'
-    + '<div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.5;margin-bottom:16px">'
-    + 'Test your vocabulary and grammar from this article.<br>6 AI-generated questions, automatically.'
-    + '</div>'
-    + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-    + '<span style="font-size:11px;font-weight:800;padding:4px 12px;border-radius:999px;background:' + levelBg + ';color:' + levelColor + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]||level) + '</span>'
-    + '<span style="font-size:11px;color:rgba(255,255,255,.4)">· 6 questions · vocab + grammar</span>'
-    + '</div>'
-    + '</div>'
-    + '<div style="flex-shrink:0;display:flex;flex-direction:column;gap:8px;align-items:flex-end">'
-    + '<button id="fill-start-btn" onclick="startFillExercise()" '
-    + 'style="padding:13px 28px;background:#fff;color:#0b1626;border:none;border-radius:999px;'
-    + 'font-size:14px;font-weight:900;cursor:pointer;white-space:nowrap;'
-    + 'box-shadow:0 4px 20px rgba(0,0,0,.2);transition:transform .15s"'
-    + 'onmouseover="this.style.transform=\'scale(1.04)\'" onmouseout="this.style.transform=\'scale(1)\'">'
-    + "Let's Go →</button>"
-    + '</div>'
-    + '</div>'
+      '<div class="rv-fill-teaser">'
+    +   '<div class="rv-fill-teaser-copy">6 AI-generated questions mixing vocabulary and grammar from this article.</div>'
+    +   '<div class="rv-fill-teaser-meta"><span class="rv-fill-level">' + _khEsc(levelLabel) + '</span><span>· 6 questions · vocab + grammar</span></div>'
+    +   '<button id="fill-start-btn" class="rv-start-btn" onclick="startFillExercise()">Start Fill-in-the-Blank</button>'
     + '</div>';
 }
 

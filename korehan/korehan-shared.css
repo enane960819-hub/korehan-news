@@ -3705,6 +3705,64 @@ body.kh-reading-page #kh-feed-next-pill svg { opacity: .9; }
 .rv-tf-feedback { font-size: 12px; color: #475569; margin-top: 8px; min-height: 0; }
 .rv-tf-q.answered .rv-tf-feedback { padding-top: 4px; }
 
+/* Multiple-choice vocab quiz — mirrors the Word Quiz pattern on
+   korehan-learn.html so learners see a consistent "click the meaning"
+   format across the site instead of a flashcard here and an MCQ there. */
+.rv-vq-card { display: flex; flex-direction: column; gap: 10px; }
+.rv-vq-progress {
+  font-size: 11px; font-weight: 800; color: #94a3b8;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.rv-vq-ko {
+  font-size: 26px; font-weight: 900; color: #0f172a;
+  font-family: 'Noto Serif KR', serif; line-height: 1.2;
+}
+.rv-vq-rom { font-size: 12px; color: #94a3b8; font-style: italic; margin-top: -4px; }
+.rv-vq-prompt { font-size: 12px; color: #475569; margin-top: 4px; }
+.rv-vq-options { display: flex; flex-direction: column; gap: 8px; }
+.rv-vq-opt {
+  text-align: left; padding: 11px 14px; border-radius: 10px;
+  border: 1.5px solid #e5e7eb; background: #fff; color: #0f172a;
+  font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.rv-vq-opt:hover:not(:disabled) { background: #f8fafc; border-color: #cbd5e1; }
+.rv-vq-opt:disabled { cursor: default; opacity: .85; }
+.rv-vq-opt.correct { background: #f0fdf4; border-color: #86efac; color: #166534; }
+.rv-vq-opt.wrong { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+.rv-vq-feedback { font-size: 13px; font-weight: 800; min-height: 18px; }
+.rv-vq-feedback.ok { color: #16a34a; }
+.rv-vq-feedback.no { color: #dc2626; }
+.rv-vq-next {
+  align-self: flex-end; padding: 8px 18px; border: none;
+  background: #0f172a; color: #fff; border-radius: 999px;
+  font-size: 12px; font-weight: 800; cursor: pointer; font-family: inherit;
+}
+.rv-vq-next:hover { background: #1e293b; }
+.rv-vq-done { text-align: center; padding: 8px 0; }
+.rv-vq-done-title { font-size: 15px; font-weight: 900; color: #0f172a; }
+.rv-vq-done-score { font-size: 13px; color: #475569; margin: 6px 0 14px; }
+.rv-vq-retry {
+  padding: 9px 20px; border: 1.5px solid #0f172a; background: #fff;
+  color: #0f172a; border-radius: 999px; font-size: 12px; font-weight: 800;
+  cursor: pointer; font-family: inherit;
+}
+.rv-vq-retry:hover { background: #0f172a; color: #fff; }
+
+/* Fill-in-the-Blank teaser — clean version that matches the other
+   rv-cards. Previously rendered a dark-navy gradient box that stood
+   out as the only card with its own visual language. */
+.rv-fill-teaser { display: flex; flex-direction: column; gap: 10px; }
+.rv-fill-teaser-copy { font-size: 13px; color: #475569; line-height: 1.5; }
+.rv-fill-teaser-meta {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-size: 11px; color: #94a3b8;
+}
+.rv-fill-level {
+  font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px;
+  background: #eff6ff; color: #2563eb;
+}
+
 /* Deeper-study CTA at the foot of Review. */
 .rv-deeper {
   margin-top: 6px; padding: 18px 16px; border-radius: 14px;
