@@ -454,7 +454,11 @@ function _khImgHostAllowed(url) {
   if (url.indexOf('data:') === 0 || url.indexOf('blob:') === 0) return true;  // inline
   try {
     var u = new URL(url, window.location.origin);
-    if (u.origin === window.location.origin) return true;                      // self
+    if (u.origin === window.location.origin) return true;                     // self
+    // Matches the frontend policy in korehan-shared.js: any https source
+    // is CSP-allowed (img-src 'self' data: blob: https:), so og:image
+    // backfill and Supabase-bucket URLs both pass.
+    if (u.protocol === 'https:') return true;
     return KH_IMG_CSP_HOSTS.some(function(h){ return u.hostname === h || u.hostname.endsWith('.' + h); });
   } catch(e) { return false; }
 }
@@ -975,7 +979,7 @@ function renderRows(){
   rows.forEach(a=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`
-      <td><img class="thumb" src="${esc(khArticleThumb(a, 200, 140))}" onerror="this.onerror=null;this.src='https://picsum.photos/seed/'+(this.dataset.fb||'kh-fallback')+'/200/140'" data-fb="${esc(a.id || 'kh-fallback')}"></td>
+      <td><img class="thumb" src="${esc(khArticleThumb(a, 200, 140))}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='https://picsum.photos/seed/'+(this.dataset.fb||'kh-fallback')+'/200/140'" data-fb="${esc(a.id || 'kh-fallback')}"></td>
       <td>
         <div class="art-t">${esc(a.title)}</div>
         <div class="art-b">${esc(a.body||'')}</div>
