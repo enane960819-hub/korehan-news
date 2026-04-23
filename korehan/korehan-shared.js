@@ -2169,17 +2169,35 @@ function _khAttachHls(root) {
     }
 
     // Attach a one-shot <video> error listener that swaps to the iframe
-    // fallback if the MP4 we just set as src fails to load — typically
-    // happens when both the resolver and the persisted URLs point at
-    // expired signed v.redd.it URLs. Without this, the player just
-    // shows the browser's broken-video icon.
+    // fallback ONLY when the MP4 fails to even start loading — signed
+    // URL expired, CDN 403, etc. A transient error that fires while
+    // the video is already playing is not a reason to swap: mobile
+    // networks routinely drop packets and recover. Without the
+    // readyState guard we were swapping on every blip, so viewers on
+    // articles that had been working fine suddenly saw the iframe
+    // (or a broken embed) instead of their video.
+    //
+    // readyState >= 2 means HAVE_CURRENT_DATA — the browser has at
+    // least one frame decoded, so the MP4 source IS reachable; the
+    // error is mid-playback and the browser's own buffering handles it.
+    // We also remove our error hook once loadeddata / canplay fires
+    // to prevent any later error from accidentally swapping.
     function armMp4ErrorSwap() {
-      v.addEventListener('error', function onErr() {
+      function disarm() {
         v.removeEventListener('error', onErr);
+        v.removeEventListener('loadeddata', disarm);
+        v.removeEventListener('canplay', disarm);
+      }
+      function onErr() {
+        disarm();
+        if (v.readyState >= 2) return; // already playing — don't swap
         if (!swapToIframeFallback()) {
           console.warn('[hero-video] MP4 fallback failed and no iframe fallback available');
         }
-      }, { once: true });
+      }
+      v.addEventListener('error', onErr);
+      v.addEventListener('loadeddata', disarm, { once: true });
+      v.addEventListener('canplay', disarm, { once: true });
     }
 
     function startWithFreshUrls() {
