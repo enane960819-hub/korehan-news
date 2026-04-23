@@ -1916,13 +1916,19 @@ function khArticleHeroMedia(article) {
       // URL (silent MP4) is passed alongside so _khAttachHls() can
       // swap to it on any HLS load error, keeping video playback
       // reliable even when audio isn't reachable.
+      // The permalink (when known) lets _khAttachHls call /api/reddit-
+      // video-resolve to fetch fresh signed URLs at playback time —
+      // this is what makes audio reliable even on year-old articles.
       var fb = (article && article.video_fallback_url) || _khDeriveRedditMp4(src);
-      return '<video data-kh-hls="' + _khEsc(src) + '" data-kh-fallback="' + _khEsc(fb || '') + '" controls playsinline preload="metadata"></video>';
+      var perma = (article && article.source_url) || '';
+      return '<video data-kh-hls="' + _khEsc(src) + '" data-kh-fallback="' + _khEsc(fb || '') + '" data-kh-permalink="' + _khEsc(perma) + '" controls playsinline preload="metadata"></video>';
     }
     if (kind === 'reddit') {
-      // Silent MP4 direct (no HLS attempt). Kept for older rows and for
-      // posts where hls_url wasn't available upstream.
-      return '<video src="' + _khEsc(src) + '" controls playsinline preload="metadata"></video>';
+      // Silent MP4 baseline. Routed through _khAttachHls so the resolver
+      // can layer a synced <audio> companion on top — recovers audio on
+      // legacy 'reddit' kind articles that were saved without hls_url.
+      var perma2 = (article && article.source_url) || '';
+      return '<video data-kh-hls="" data-kh-fallback="' + _khEsc(src) + '" data-kh-permalink="' + _khEsc(perma2) + '" controls playsinline preload="metadata"></video>';
     }
   }
   var img = khArticleThumb(article, 600, 400);
@@ -1946,6 +1952,85 @@ function _khLoadHlsJs() {
   });
   return _khHlsLoadPromise;
 }
+// Cache of resolver responses keyed by permalink, scoped to the page
+// load. Multiple <video> elements pointing at the same post (rare, but
+// possible in feeds) share one fetch.
+var _khRedditResolveCache = Object.create(null);
+function _khResolveReddit(permalink) {
+  if (!permalink) return Promise.resolve(null);
+  if (_khRedditResolveCache[permalink]) return _khRedditResolveCache[permalink];
+  var p = fetch('/api/reddit-video-resolve', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ permalink: permalink }),
+  }).then(function(r) {
+    if (!r.ok) throw new Error('resolve http ' + r.status);
+    return r.json();
+  }).then(function(j) {
+    if (!j || !j.ok) throw new Error('resolve not ok: ' + (j && j.message || ''));
+    return j;
+  }).catch(function(e) {
+    // Don't cache failures — next caller may succeed if it was a blip.
+    delete _khRedditResolveCache[permalink];
+    console.warn('[hero-video] reddit-video-resolve failed:', e && e.message || e);
+    return null;
+  });
+  _khRedditResolveCache[permalink] = p;
+  return p;
+}
+
+// Wrap a v.redd.it URL through our /api/hls-proxy for same-origin
+// delivery. Non-Reddit URLs pass through unchanged.
+function _khProxyRedditUrl(u) {
+  if (!u) return u;
+  if (/^https:\/\/(v\.redd\.it|packaged-media\.redd\.it|dash\.redd\.it)\//.test(u)) {
+    return '/api/hls-proxy?url=' + encodeURIComponent(u);
+  }
+  return u;
+}
+
+// Build a hidden <audio> element synced to the <video>. The video is the
+// source of truth for play/pause/seek/rate/volume; audio just follows.
+// This recovers audio when HLS itself failed but the separate
+// DASH_AUDIO_128 track is still reachable. Returns the audio element so
+// callers can clean it up if needed.
+function _khAttachAudioCompanion(video, audioUrl) {
+  if (!video || !audioUrl) return null;
+  if (video._khAudioCompanion) return video._khAudioCompanion;
+  var audio = document.createElement('audio');
+  audio.preload = 'auto';
+  audio.crossOrigin = 'anonymous';
+  audio.src = _khProxyRedditUrl(audioUrl);
+  audio.style.display = 'none';
+  document.body.appendChild(audio);
+  video._khAudioCompanion = audio;
+
+  var SEEK_THRESHOLD = 0.25; // seconds — keep tracks tightly aligned
+  function syncTime() {
+    if (!isFinite(video.currentTime) || !isFinite(audio.duration)) return;
+    if (Math.abs(audio.currentTime - video.currentTime) > SEEK_THRESHOLD) {
+      try { audio.currentTime = video.currentTime; } catch(e) {}
+    }
+  }
+  video.addEventListener('play',     function(){ syncTime(); audio.play().catch(function(){}); });
+  video.addEventListener('pause',    function(){ audio.pause(); });
+  video.addEventListener('seeking',  function(){ try { audio.currentTime = video.currentTime; } catch(e) {} });
+  video.addEventListener('ratechange', function(){ try { audio.playbackRate = video.playbackRate; } catch(e) {} });
+  video.addEventListener('volumechange', function(){
+    try { audio.volume = video.volume; audio.muted = video.muted; } catch(e) {}
+  });
+  // If video buffers/stalls, pause audio to stay in lockstep.
+  video.addEventListener('waiting', function(){ audio.pause(); });
+  video.addEventListener('playing', function(){ if (!video.paused) audio.play().catch(function(){}); });
+  // Periodic drift correction — rate clocks aren't perfectly identical.
+  video.addEventListener('timeupdate', syncTime);
+  // If the audio fails to load we just stay silent — video keeps playing.
+  audio.addEventListener('error', function(){
+    console.warn('[hero-video] audio companion failed; staying silent');
+  });
+  return audio;
+}
+
 function _khAttachHls(root) {
   var scope = root || document;
   var videos = scope.querySelectorAll('video[data-kh-hls]');
@@ -1953,58 +2038,98 @@ function _khAttachHls(root) {
   videos.forEach(function(v) {
     if (v.dataset.khHlsAttached === '1') return;
     v.dataset.khHlsAttached = '1';
-    var rawSrc = v.getAttribute('data-kh-hls');
+    var staleSrc = v.getAttribute('data-kh-hls');
     var fallback = v.getAttribute('data-kh-fallback') || '';
-    if (!rawSrc && !fallback) return;
+    var permalink = v.getAttribute('data-kh-permalink') || '';
+    if (!staleSrc && !fallback && !permalink) return;
 
-    // Route Reddit HLS through our same-origin proxy (/api/hls-proxy).
-    // v.redd.it's CORS stalls hls.js on Android Chrome / Samsung
-    // Internet / some iOS Safari builds even though desktop Chrome
-    // tolerates it. Proxying makes the manifest + segments same-origin,
-    // so mobile hls.js behaves like desktop and audio plays on phones.
-    var src = rawSrc;
-    if (rawSrc && /^https:\/\/(v\.redd\.it|packaged-media\.redd\.it|dash\.redd\.it)\//.test(rawSrc)) {
-      src = '/api/hls-proxy?url=' + encodeURIComponent(rawSrc);
-    }
+    // Resolved-URL holders. Populated by _khResolveReddit when permalink
+    // is known; otherwise fall back to the stale persisted URLs.
+    var freshHls = '';
+    var freshAudio = '';
+    var freshFallback = fallback;
 
-    // Swap the <video> element to the plain fallback MP4 (silent but
-    // always plays). Called whenever HLS loading fails at any layer:
-    // proxy unreachable, hls.js error, library load failure, unsupported
-    // environment. We lose audio on the failure path but the video
-    // still renders.
+    // Final degrade path: video survives via silent MP4, audio is
+    // attempted via the resolver's separate audio track if available.
+    // This is the *last* layer of the playback funnel: HLS resolve →
+    // HLS playback → degrade(silent MP4 + companion audio).
     function degrade(reason) {
       if (v.dataset.khHlsDegraded === '1') return;
       v.dataset.khHlsDegraded = '1';
       try { if (window._khHlsInstances && window._khHlsInstances.get(v)) { window._khHlsInstances.get(v).destroy(); window._khHlsInstances.delete(v); } } catch(e) {}
       v.removeAttribute('src');
-      if (fallback) {
-        v.src = fallback;
+      var fbSrc = freshFallback || fallback;
+      if (fbSrc) {
+        v.src = _khProxyRedditUrl(fbSrc);
         v.load();
       }
-      console.warn('[hero-video] HLS failed, using silent MP4 fallback:', reason || 'unknown');
+      // Layer audio back on so the "degraded" path keeps audio alive.
+      // Without this, every HLS failure = silent video, defeating the
+      // whole point of the resolver.
+      if (freshAudio) _khAttachAudioCompanion(v, freshAudio);
+      console.warn('[hero-video] HLS failed, using silent MP4 + audio companion:', reason || 'unknown');
     }
 
-    if (!src && fallback) { v.src = fallback; v.load(); return; }
-
-    // Safari / iOS — native HLS support, no library needed.
-    if (v.canPlayType && v.canPlayType('application/vnd.apple.mpegurl')) {
-      v.addEventListener('error', function onErr(){ v.removeEventListener('error', onErr); degrade('native-hls-error'); }, { once: true });
-      v.src = src;
-      return;
-    }
-    _khLoadHlsJs().then(function(Hls) {
-      if (!Hls || !Hls.isSupported || !Hls.isSupported()) { degrade('hls-not-supported'); return; }
-      var hls = new Hls();
-      if (!window._khHlsInstances) window._khHlsInstances = new WeakMap();
-      window._khHlsInstances.set(v, hls);
-      hls.on(Hls.Events.ERROR, function(_, data){
-        if (data && data.fatal) degrade('hls-fatal:' + (data.type || '') + '/' + (data.details || ''));
+    function attachWithSrc(src) {
+      // Safari / iOS — native HLS support, no library needed.
+      if (v.canPlayType && v.canPlayType('application/vnd.apple.mpegurl')) {
+        v.addEventListener('error', function onErr(){ v.removeEventListener('error', onErr); degrade('native-hls-error'); }, { once: true });
+        v.src = src;
+        return;
+      }
+      _khLoadHlsJs().then(function(Hls) {
+        if (!Hls || !Hls.isSupported || !Hls.isSupported()) { degrade('hls-not-supported'); return; }
+        // Generous retry budget — Reddit segments occasionally 503 on
+        // first hit and succeed on retry. Defaults bail out too early.
+        var hls = new Hls({
+          manifestLoadingMaxRetry: 4,
+          manifestLoadingRetryDelay: 500,
+          manifestLoadingMaxRetryTimeout: 8000,
+          levelLoadingMaxRetry: 4,
+          levelLoadingRetryDelay: 500,
+          fragLoadingMaxRetry: 6,
+          fragLoadingRetryDelay: 500,
+          fragLoadingMaxRetryTimeout: 8000,
+        });
+        if (!window._khHlsInstances) window._khHlsInstances = new WeakMap();
+        window._khHlsInstances.set(v, hls);
+        hls.on(Hls.Events.ERROR, function(_, data){
+          if (data && data.fatal) degrade('hls-fatal:' + (data.type || '') + '/' + (data.details || ''));
+        });
+        hls.loadSource(src);
+        hls.attachMedia(v);
+      }).catch(function(e) {
+        degrade('hls-load-failed:' + (e && e.message || ''));
       });
-      hls.loadSource(src);
-      hls.attachMedia(v);
-    }).catch(function(e) {
-      degrade('hls-load-failed:' + (e && e.message || ''));
-    });
+    }
+
+    function startWithFreshUrls() {
+      var hls = freshHls || staleSrc;
+      if (!hls && (freshFallback || fallback)) {
+        // No HLS at all → straight to silent MP4 + companion audio.
+        v.src = _khProxyRedditUrl(freshFallback || fallback); v.load();
+        if (freshAudio) _khAttachAudioCompanion(v, freshAudio);
+        return;
+      }
+      attachWithSrc(_khProxyRedditUrl(hls));
+    }
+
+    // Try to refresh URLs via the resolver before initialising the
+    // player. Falls back to stale persisted URLs on resolver failure
+    // (offline, function down, etc.) — same behaviour as before this
+    // patch for those cases.
+    if (permalink) {
+      _khResolveReddit(permalink).then(function(r) {
+        if (r) {
+          freshHls      = r.hls_url      || '';
+          freshAudio    = r.audio_url    || '';
+          freshFallback = r.video_url    || fallback;
+        }
+        startWithFreshUrls();
+      });
+    } else {
+      startWithFreshUrls();
+    }
   });
 }
 
