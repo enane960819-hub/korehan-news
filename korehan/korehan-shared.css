@@ -3807,3 +3807,75 @@ body.kh-feed-entering-back {
   from { transform: translateY(-36px); opacity: 0; }
   to   { transform: none; opacity: 1; }
 }
+
+/* ── Modal-scoped feed transitions ──────────────────────────────
+   Conversations (#detail-panel) and Stories (#st-panel) mirror the
+   article reader's TikTok-style hand-off, but the panel element is
+   the thing that animates instead of <body> — the rest of the
+   overlay chrome (backdrop, close button) stays put so the user
+   perceives only the content swapping out. Durations match the
+   body-level animation so swipe ergonomics feel identical. */
+.kh-modal-leaving {
+  transition: transform .22s cubic-bezier(.55,0,.55,.2), opacity .22s ease;
+  transform: translateY(-28px);
+  opacity: 0;
+}
+.kh-modal-leaving-back {
+  transition: transform .22s cubic-bezier(.55,0,.55,.2), opacity .22s ease;
+  transform: translateY(28px);
+  opacity: 0;
+}
+.kh-modal-entering {
+  animation: khModalEnterIn .32s cubic-bezier(.22,1,.36,1);
+}
+.kh-modal-entering-back {
+  animation: khModalEnterInBack .32s cubic-bezier(.22,1,.36,1);
+}
+@keyframes khModalEnterIn {
+  from { transform: translateY(36px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+@keyframes khModalEnterInBack {
+  from { transform: translateY(-36px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+/* Generic "next content" pill — same glass-pill look as
+   #kh-feed-next-pill but built as a class so conversations and
+   stories can instantiate their own without fighting the
+   article-only setupFeedNavigation(). Reuses body.kh-feed-pill-on
+   as the reveal trigger, which each page toggles from its own
+   scroll handler on the modal's scroll container. */
+body.kh-reading-page .kh-next-pill {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translate(-50%, 30px);
+  z-index: 1640;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(8,16,31,.8);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(0,0,0,.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .28s cubic-bezier(.22,1,.36,1), opacity .22s, bottom .28s cubic-bezier(.22,1,.36,1);
+}
+body.kh-reading-page.kh-feed-pill-on .kh-next-pill {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+body.kh-reading-page .kh-next-pill:hover { background: rgba(8,16,31,.95); }
+body.kh-reading-page .kh-next-pill svg { opacity: .9; }

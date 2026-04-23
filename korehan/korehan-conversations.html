@@ -503,6 +503,9 @@ async function openDetail(idx) {
   // nav hide) — shared.js CSS rules on body.kh-reading-page cover the
   // whole page, not just the article route.
   document.body.classList.add('kh-reading-page');
+  // Make sure the "Next conversation" pill exists once the reader
+  // chrome is active — its CSS selector is body.kh-reading-page scoped.
+  if (typeof _ensureConvNextPill === 'function') _ensureConvNextPill();
   // First Journey: 대화 읽기 퀘스트 체크
   if (typeof _fjIsComplete === 'function' && !_fjIsComplete('convo')) {
     if (typeof _fjMarkDone === 'function') _fjMarkDone('convo');
@@ -835,8 +838,100 @@ function closeDetail() {
   document.body.style.overflow = '';
   document.documentElement.style.overflow = '';
   document.body.classList.remove('kh-reading-page');
+  document.body.classList.remove('kh-feed-pill-on');
   _convDetailIdx = -1;
 }
+
+// Animated hand-off between conversations — mirrors _khSpaLoadArticle
+// for the article reader. openDetail() handles loading + innerHTML, we
+// just wrap it in a slide-out / slide-in pass so the modal visibly
+// swaps content instead of flickering into the next one. Direction
+// mirrors the article reader: 'forward' = new slides up from below,
+// 'back' = slides down from above.
+function _convNavigateTo(idx, direction) {
+  var panel = document.getElementById('detail-panel');
+  if (!panel) { openDetail(idx); return; }
+  if (panel.classList.contains('kh-modal-leaving') || panel.classList.contains('kh-modal-leaving-back')) return;
+  direction = direction === 'back' ? 'back' : 'forward';
+  var leaveClass = direction === 'back' ? 'kh-modal-leaving-back' : 'kh-modal-leaving';
+  var enterClass = direction === 'back' ? 'kh-modal-entering-back' : 'kh-modal-entering';
+  panel.classList.add(leaveClass);
+  setTimeout(function() {
+    Promise.resolve(openDetail(idx)).then(function() {
+      var p = document.getElementById('detail-panel');
+      if (!p) return;
+      p.classList.remove(leaveClass);
+      p.classList.add(enterClass);
+      setTimeout(function(){ p.classList.remove(enterClass); }, 340);
+      // Reset the scroll container so the new conv starts at the top.
+      p.scrollTop = 0;
+      window.scrollTo(0, 0);
+      // Pill starts hidden on new content until the user scrolls
+      // through it; otherwise it'd linger from the previous conv.
+      document.body.classList.remove('kh-feed-pill-on');
+    });
+  }, 220);
+}
+
+// Bottom-centered "Next" pill, same visual as the article reader's.
+// Created once per session and reused — openDetail only needs to make
+// sure it's mounted. Reveal is handled by the scroll listener below.
+function _ensureConvNextPill() {
+  if (document.getElementById('kh-conv-next-pill')) return;
+  var pill = document.createElement('button');
+  pill.id = 'kh-conv-next-pill';
+  pill.type = 'button';
+  pill.className = 'kh-next-pill';
+  pill.setAttribute('aria-label', 'Next conversation');
+  pill.innerHTML =
+      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>'
+    + '<span>Next conversation</span>';
+  pill.onclick = function(e) {
+    e.preventDefault();
+    if (_convDetailIdx < 0) return;
+    var list = (_convFilteredList && _convFilteredList.length) ? _convFilteredList : CONVS;
+    var current = CONVS[_convDetailIdx];
+    var posInList = list.indexOf(current);
+    var nextConv = list[posInList + 1];
+    if (!nextConv) return;
+    var realIdx = CONVS.indexOf(nextConv);
+    if (realIdx >= 0) _convNavigateTo(realIdx, 'forward');
+  };
+  document.body.appendChild(pill);
+}
+
+// Reveal the pill once the user has scrolled 80% through the modal's
+// scroll container. #detail-overlay is the overflowing ancestor on
+// mobile (panel itself is fixed-height on desktop); we listen on both
+// so the threshold fires in either layout.
+(function hookConvPillReveal() {
+  function update() {
+    if (_convDetailIdx < 0) { document.body.classList.remove('kh-feed-pill-on'); return; }
+    var panel = document.getElementById('detail-panel');
+    var overlay = document.getElementById('detail-overlay');
+    var ratio = 0;
+    if (overlay && overlay.scrollHeight > overlay.clientHeight + 10) {
+      ratio = (overlay.scrollTop + overlay.clientHeight) / overlay.scrollHeight;
+    } else if (panel && panel.scrollHeight > panel.clientHeight + 10) {
+      ratio = (panel.scrollTop + panel.clientHeight) / panel.scrollHeight;
+    } else {
+      // No scrollable content (short conversation) — just show the pill.
+      ratio = 1;
+    }
+    document.body.classList.toggle('kh-feed-pill-on', ratio > 0.8);
+  }
+  ['scroll', 'touchmove'].forEach(function(ev) {
+    document.addEventListener(ev, function(e) {
+      if (_convDetailIdx < 0) return;
+      var t = e.target;
+      if (!t || !(t === document || t.id === 'detail-overlay' || t.id === 'detail-panel' || (t.closest && t.closest('#detail-panel')))) return;
+      update();
+    }, { passive: true });
+  });
+  // Also run once after a nav so pill visibility reflects the new
+  // scroll state immediately rather than waiting for the user to flick.
+  window._convPillSync = update;
+})();
 
 // TikTok / Reels style swipe navigation between conversations. Swipe
 // up near the bottom of the detail panel → next conv in the currently
@@ -883,22 +978,17 @@ var _convSwipeValid  = false;
     var list = (_convFilteredList && _convFilteredList.length) ? _convFilteredList : CONVS;
     var current = CONVS[_convDetailIdx];
     var posInList = list.indexOf(current);
-    function resetScroll() {
-      var p = document.getElementById('detail-panel');
-      if (p) p.scrollTop = 0;
-      window.scrollTo(0, 0);
-    }
     if (dy > 0 && atBottom) {
       var nextConv = list[posInList + 1];
       if (nextConv) {
         var realIdx = CONVS.indexOf(nextConv);
-        if (realIdx >= 0) { openDetail(realIdx); resetScroll(); }
+        if (realIdx >= 0) _convNavigateTo(realIdx, 'forward');
       }
     } else if (dy < 0 && atTop) {
       var prevConv = list[posInList - 1];
       if (prevConv) {
         var realIdx = CONVS.indexOf(prevConv);
-        if (realIdx >= 0) { openDetail(realIdx); resetScroll(); }
+        if (realIdx >= 0) _convNavigateTo(realIdx, 'back');
       }
     }
   }, { passive: true });

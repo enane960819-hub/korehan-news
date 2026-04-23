@@ -1059,6 +1059,9 @@ function openStory(id) {
   // nav hide) while a story is open — shared.js CSS targets
   // body.kh-reading-page regardless of which page it's on.
   document.body.classList.add('kh-reading-page');
+  // Mount the "Next story" pill once per session so it's visible as
+  // soon as the reader chrome kicks in.
+  if (typeof _ensureStoryNextPill === 'function') _ensureStoryNextPill();
   // Push a history entry so the browser/OS back button closes the overlay
   // instead of navigating away from the stories page.
   if (!_stOverlayOpen) {
@@ -1312,6 +1315,7 @@ function closeSt(fromPop) {
   var panel = document.getElementById('st-panel'); if (panel) panel.style.filter='';
   document.body.style.overflow = '';
   document.body.classList.remove('kh-reading-page');
+  document.body.classList.remove('kh-feed-pill-on');
   if (_stOverlayOpen) {
     _stOverlayOpen = false;
     // If the user hit our X/Back button, pop the history entry we pushed
@@ -1384,12 +1388,107 @@ var _stSwipeValid  = false;
     var curPos = pool.findIndex(function(x){ return String(x.id) === curId; });
     if (dy > 0 && atBottom) {
       var nx = pool[curPos + 1];
-      if (nx) openStory(nx.id);
+      if (nx) _stNavigateTo(nx.id, 'forward');
     } else if (dy < 0 && atTop) {
       var pv = pool[curPos - 1];
-      if (pv) openStory(pv.id);
+      if (pv) _stNavigateTo(pv.id, 'back');
     }
   }, { passive: true });
+})();
+
+// Animated hand-off between stories — mirrors _convNavigateTo /
+// _khSpaLoadArticle. openStory() continues to handle loading +
+// rendering; this just wraps it in a leave/enter animation so the
+// swap is visible instead of feeling like a stutter.
+function _stNavigateTo(id, direction) {
+  var panel = document.getElementById('st-panel');
+  if (!panel) { openStory(id); return; }
+  if (panel.classList.contains('kh-modal-leaving') || panel.classList.contains('kh-modal-leaving-back')) return;
+  direction = direction === 'back' ? 'back' : 'forward';
+  var leaveClass = direction === 'back' ? 'kh-modal-leaving-back' : 'kh-modal-leaving';
+  var enterClass = direction === 'back' ? 'kh-modal-entering-back' : 'kh-modal-entering';
+  panel.classList.add(leaveClass);
+  setTimeout(function() {
+    openStory(id);
+    _stPanelScrollReset();
+    document.body.classList.remove('kh-feed-pill-on');
+    var p = document.getElementById('st-panel');
+    if (!p) return;
+    p.classList.remove(leaveClass);
+    p.classList.add(enterClass);
+    setTimeout(function(){ p.classList.remove(enterClass); }, 340);
+  }, 220);
+}
+
+// Bottom-centered "Next story" pill, same chrome as the article and
+// conversations variants. Reveal is wired below via the overlay's
+// scroll listener.
+function _ensureStoryNextPill() {
+  if (document.getElementById('kh-story-next-pill')) return;
+  var pill = document.createElement('button');
+  pill.id = 'kh-story-next-pill';
+  pill.type = 'button';
+  pill.className = 'kh-next-pill';
+  pill.setAttribute('aria-label', 'Next story');
+  pill.innerHTML =
+      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>'
+    + '<span>Next story</span>';
+  pill.onclick = function(e) {
+    e.preventDefault();
+    if (!window._currentStory) return;
+    // Rebuild the same pool the swipe handler uses so pill-next and
+    // swipe-next agree on what "next" means (respects active filters).
+    var pool = [];
+    try {
+      var cards = document.querySelectorAll('.sc[data-story-id], .sc[onclick*="openStory"]');
+      cards.forEach(function(el) {
+        var m = (el.getAttribute('onclick') || '').match(/openStory\(['"]([^'"]+)['"]\)/);
+        if (m) {
+          var s = STORIES.find(function(x){ return String(x.id) === m[1]; });
+          if (s) pool.push(s);
+        }
+      });
+    } catch(e) {}
+    if (!pool.length) pool = STORIES.slice();
+    var curId = String(window._currentStory.id);
+    var curPos = pool.findIndex(function(x){ return String(x.id) === curId; });
+    var nx = pool[curPos + 1];
+    if (nx) _stNavigateTo(nx.id, 'forward');
+  };
+  document.body.appendChild(pill);
+}
+
+// Reveal the pill once the user has scrolled 80% through the story.
+// On mobile the scroll container is #st-overlay (panel itself is
+// overflow:hidden); on desktop the body column inside the panel
+// scrolls. Checking both keeps the threshold reliable across layouts.
+(function hookStoryPillReveal() {
+  function update() {
+    if (!_stOverlayOpen) { document.body.classList.remove('kh-feed-pill-on'); return; }
+    var overlay = document.getElementById('st-overlay');
+    var panel = document.getElementById('st-panel');
+    var bodyScroll = panel ? panel.querySelector('.st-body-scroll') : null;
+    var ratio = 0;
+    if (overlay && overlay.scrollHeight > overlay.clientHeight + 10) {
+      ratio = (overlay.scrollTop + overlay.clientHeight) / overlay.scrollHeight;
+    } else if (bodyScroll && bodyScroll.scrollHeight > bodyScroll.clientHeight + 10) {
+      ratio = (bodyScroll.scrollTop + bodyScroll.clientHeight) / bodyScroll.scrollHeight;
+    } else if (panel && panel.scrollHeight > panel.clientHeight + 10) {
+      ratio = (panel.scrollTop + panel.clientHeight) / panel.scrollHeight;
+    } else {
+      ratio = 1;
+    }
+    document.body.classList.toggle('kh-feed-pill-on', ratio > 0.8);
+  }
+  ['scroll', 'touchmove'].forEach(function(ev) {
+    document.addEventListener(ev, function(e) {
+      if (!_stOverlayOpen) return;
+      var t = e.target;
+      if (!t || !(t === document || t.id === 'st-overlay' || t.id === 'st-panel' || (t.closest && t.closest('#st-panel')))) return;
+      update();
+    }, { passive: true });
+  });
+  window._stPillSync = update;
 })();
 
 // After a feed-style swipe re-renders #st-panel for a different
