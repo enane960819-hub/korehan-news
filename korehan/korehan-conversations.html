@@ -167,12 +167,47 @@
   .conv-two-col{grid-template-columns:1fr!important;}
   #conv-sidebar{display:none!important;}
   .conv-cards-grid{grid-template-columns:1fr!important;gap:12px!important;max-width:500px!important;}
-  /* Detail overlay */
-  .detail-overlay{overflow-y:auto!important;align-items:flex-start!important;padding:10px!important;}
-  .detail-panel{grid-template-columns:1fr;height:auto!important;max-height:none!important;border-radius:20px;position:relative;}
+
+  /* Article-style immersive reader on mobile. The modal chrome
+     (dark backdrop, padded card with rounded corners, shadow) felt
+     like a popup instead of the full-screen content a learner
+     expects after tapping a conversation. Here we remove the
+     backdrop, drop the border radius, and let the panel fill the
+     viewport edge-to-edge so it reads like the article page. */
+  .detail-overlay{
+    overflow-y:auto!important;
+    align-items:flex-start!important;
+    padding:0!important;
+    background:#fff!important;
+  }
+  .detail-panel{
+    grid-template-columns:1fr;
+    height:auto!important; max-height:none!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+    background:#fff!important;
+    position:relative;
+  }
   .dp-left{max-height:none!important;overflow:visible!important;}
   .dp-chat-area{max-height:none!important;overflow:visible!important;min-height:auto!important;}
-  .dp-right{border-left:none;border-top:none;overflow:visible!important;}
+  .dp-right{
+    border-left:none;border-top:none;overflow:visible!important;
+    background:#fff!important;
+  }
+  /* Close button → article-style back arrow, top-left, pill
+     shaped with blur backdrop (matches .kh-article-back on article
+     page). */
+  .detail-close{
+    position:fixed!important; top:16px; left:16px; right:auto!important;
+    width:40px; height:40px;
+    border-radius:999px!important;
+    background:rgba(15,23,42,.8)!important;
+    color:#fff!important;
+    font-size:18px!important;
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    z-index:20;
+  }
 
   /* Mobile tab strip — sticky so it stays reachable while the user
      scrolls through a long conversation / study list. Matches the
@@ -207,28 +242,32 @@
   .detail-panel.dp-mobile-tab-vocab    .dp-right [data-study]:not([data-study="vocab"]):not([data-study="keyexpr"]){display:none!important;}
   .detail-panel.dp-mobile-tab-grammar  .dp-right [data-study]:not([data-study="grammar"]){display:none!important;}
   .detail-panel.dp-mobile-tab-practice .dp-right [data-study]:not([data-study="practice"]){display:none!important;}
-  /* Study panel → dark theme on mobile to match site */
-  .dp-right{background:#0b1628!important;}
-  .dp-right-head{background:#0b1628!important;border-bottom:1px solid rgba(255,255,255,.08)!important;}
-  .dp-right-label{color:#60a5fa!important;}
-  .dp-right-title{color:#f1f5f9!important;}
-  .dp-study-card{background:rgba(255,255,255,.05)!important;border-color:rgba(255,255,255,.08)!important;}
-  .dp-study-card-title{color:#e2e8f0!important;font-size:15px!important;}
-  .dp-study-card-title svg{stroke:#93c5fd!important;}
-  .dp-vocab-item{background:rgba(255,255,255,.04)!important;border-color:transparent!important;}
-  .dp-vocab-item:hover{background:rgba(255,255,255,.08)!important;}
-  .dp-vi-ko{color:#93c5fd!important;}
-  .dp-vi-rom{color:rgba(255,255,255,.3)!important;}
-  .dp-vi-en{color:rgba(255,255,255,.65)!important;}
-  .dp-vi-save{background:rgba(37,99,235,.2)!important;color:#93c5fd!important;}
+
+  /* Light-theme study cards on mobile. The previous navy-background
+     variant inherited text colors from a dark design (rgba(255,255,
+     255,.3) for romanization, .65 for English) — those became
+     invisible once the mobile layout ended up on a white panel.
+     Reset to the desktop-style light palette. */
+  .dp-right-head{background:#fff!important;border-bottom:1px solid #e5e7eb!important;}
+  .dp-right-label{color:#2563eb!important;}
+  .dp-right-title{color:#0f172a!important;}
+  .dp-study-card{background:#fff!important;border:1px solid #e5e7eb!important;}
+  .dp-study-card-title{color:#0f172a!important;}
+  .dp-study-card-title svg{stroke:#2563eb!important;}
+  .dp-vocab-item{background:#f8fafc!important;border:1px solid #e5e7eb!important;}
+  .dp-vocab-item:hover{background:#eef2f7!important;}
+  .dp-vi-ko{color:#0b1628!important;}
+  .dp-vi-rom{color:#64748b!important;}
+  .dp-vi-en{color:#334155!important;}
+  .dp-vi-save{background:#e0e7ff!important;color:#2563eb!important;}
   .dp-vi-save.saved{background:#2563eb!important;color:#fff!important;}
-  .dp-grammar-item{background:rgba(255,255,255,.04)!important;color:rgba(255,255,255,.7)!important;}
-  .dp-grammar-item strong{color:#93c5fd!important;}
-  .dp-keyexpr-card{background:linear-gradient(135deg,rgba(120,80,0,.25),rgba(100,60,0,.15))!important;border-color:rgba(251,191,36,.2)!important;}
-  .dp-keyexpr-item{background:rgba(255,255,255,.06)!important;border-color:rgba(251,191,36,.12)!important;}
-  .dp-keyexpr-ko{color:#fbbf24!important;}
-  .dp-keyexpr-en{color:rgba(255,255,255,.55)!important;}
-  .dp-keyexpr-star{color:#fbbf24!important;}
+  .dp-grammar-item{background:#f8fafc!important;border:1px solid #e5e7eb!important;color:#334155!important;}
+  .dp-grammar-item strong{color:#2563eb!important;}
+  .dp-keyexpr-card{background:#fffbeb!important;border:1px solid #fcd34d!important;}
+  .dp-keyexpr-item{background:#fff!important;border:1px solid #fde68a!important;}
+  .dp-keyexpr-ko{color:#92400e!important;}
+  .dp-keyexpr-en{color:#78350f!important;}
+  .dp-keyexpr-star{color:#f59e0b!important;}
 }
 
 /* ── Mobile ≤600px — stacked vocab, bigger text ── */
@@ -236,7 +275,8 @@
   .conv-page-container{padding:0 16px 60px!important;}
   .conv-tab-bar{padding:0 16px!important;}
   .conv-cards-grid{grid-template-columns:1fr!important;gap:12px!important;max-width:none!important;}
-  .detail-panel{border-radius:16px;}
+  /* Edge-to-edge on narrow screens — article-style full-page reader */
+  .detail-panel{border-radius:0!important;}
   /* Stack vocab items vertically on narrow screens */
   .dp-vocab-item{grid-template-columns:1fr!important;gap:2px!important;padding:14px 16px!important;position:relative!important;}
   .dp-vi-save{position:absolute!important;top:12px!important;right:12px!important;}
@@ -717,7 +757,9 @@ async function openDetail(idx) {
     +'</div>'
     +'<div class="dp-left">'
       +'<div class="dp-left-head">'
-        +'<button class="detail-close" onclick="closeDetail()">✕</button>'
+        +'<button class="detail-close" onclick="closeDetail()" aria-label="Back">'
+        +  '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'
+        +'</button>'
         +'<div class="dp-left-eyebrow">Conversation</div>'
         +'<div class="dp-left-title">'+escapeHtml(c.name || '')+'</div>'
         +'<div class="dp-left-sub">'+escapeHtml(c.ctx || '')+'</div>'

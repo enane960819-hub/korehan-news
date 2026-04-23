@@ -1189,8 +1189,10 @@ async function checkSession() {
     if (event === 'SIGNED_OUT') {
       supaUser = null;
       _savedWordsSet = null;
+      window._isAdmin = false;
       updateAuthUI();
       updateCommentForm();
+      window.dispatchEvent(new Event('kh-auth-signed-out'));
     } else if (event === 'SIGNED_IN') {
       supaUser = session ? session.user : null;
       _sessionWarningShown = false;
@@ -5706,8 +5708,29 @@ function initTooltips() {
 
   document.querySelectorAll('.vocab-zone').forEach(function(el){ wrapVocab(el); });
 
-  // 어드민 전용 편집 버튼 — 기사 페이지 / conversations 모달 / stories 모달 안에서만 노출
-  if (window._isAdmin) {
+  // 어드민 전용 편집 버튼 — 기사 페이지 / conversations 모달 / stories 모달 안에서만 노출.
+  // Double-check here rather than trusting window._isAdmin alone: the flag
+  // is set inside updateAuthUI() (async, after getSession resolves), but
+  // initTooltips can fire from loadVocabFromDB() on a different timing
+  // on some pages. If auth lands late, we also listen for the auth event
+  // to mount the bar after sign-in. A stale `true` flag from a prior
+  // page's state also can't slip through because we re-verify against
+  // supaUser on every mount attempt.
+  function _mountVocabAdminBarIfEligible() {
+    // Guard: bar already in DOM, skip.
+    if (document.getElementById('vocab-admin-bar')) return;
+    // Hard gate: must have an active session AND an admin email.
+    // Relying purely on window._isAdmin left a gap — if another script
+    // set it optimistically, or if it hadn't been cleared after a
+    // previous admin session, the bar could appear for non-admins.
+    var ADMIN_EMAILS = ['enane960819@gmail.com'];
+    var u = typeof supaUser !== 'undefined' ? supaUser : null;
+    var ok = !!(u && u.email && ADMIN_EMAILS.indexOf(u.email) !== -1);
+    if (!ok) return;
+    // Keep window._isAdmin in sync so other call sites see the same
+    // truth — covers the timing race where initTooltips wins against
+    // updateAuthUI.
+    window._isAdmin = true;
     var adminBar = document.createElement('div');
     adminBar.id = 'vocab-admin-bar';
     adminBar.style.cssText = 'position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 92px);right:16px;z-index:8000;background:#0b1626;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);display:none;';
@@ -5716,6 +5739,18 @@ function initTooltips() {
     document.body.appendChild(adminBar);
     _setupVocabFabVisibility();
   }
+  _mountVocabAdminBarIfEligible();
+  // If the user signs in as admin AFTER initTooltips ran, mount the
+  // bar at that point. kh-auth-signed-in is fired from updateAuthUI
+  // every time a session is established.
+  window.addEventListener('kh-auth-signed-in', _mountVocabAdminBarIfEligible);
+  // Tear the bar down on sign-out so a non-admin landing in the same
+  // tab right after doesn't see a leftover admin button.
+  window.addEventListener('kh-auth-signed-out', function() {
+    var existing = document.getElementById('vocab-admin-bar');
+    if (existing) existing.remove();
+    if (window._vocabEditMode) toggleVocabEditMode();
+  });
 
   document.addEventListener('mouseover', function(e) {
     var w = e.target.closest ? e.target.closest('.kh-word') : null;
