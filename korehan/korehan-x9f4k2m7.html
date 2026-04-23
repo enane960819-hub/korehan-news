@@ -4028,14 +4028,48 @@ async function goAICache() {
     return c.translation && c.vocab && c.grammar && c.quiz;
   }).length;
 
+  // ── 3. 최근 실패 로그 조회 (24h) ───────────────────────────────
+  // Pull the most recent N rows from article_cache_generation_log and
+  // fold them into a per-article 'recent failures' map so the UI can
+  // show an inline badge + tooltip explaining why Vocab/Grammar is
+  // empty. Silently tolerates the table not existing yet (pre-migration).
+  const recentErrors = {}; // { articleId: [{step, status, error_message, created_at}] }
+  try {
+    const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const logRows = await supaAdminGet(
+      'article_cache_generation_log?select=article_id,step,status,error_message,created_at'
+      + '&status=neq.ok&created_at=gte.' + encodeURIComponent(since)
+      + '&order=created_at.desc&limit=500'
+    );
+    if (Array.isArray(logRows)) {
+      logRows.forEach(function(r){
+        var aid = String(r.article_id);
+        if (!recentErrors[aid]) recentErrors[aid] = [];
+        // Keep at most 4 most recent per article (one per step).
+        if (recentErrors[aid].length < 4) recentErrors[aid].push(r);
+      });
+    }
+  } catch(e) {
+    console.warn('[AICache] log query failed (migration 20260423_article_cache_log.sql applied?)', e);
+  }
+  const failedArticleIds = Object.keys(recentErrors);
+
   let schemaNote = _schema
     ? '<span style="font-size:11px;padding:2px 8px;background:' + (_schema==='kv'?'#d1fae5':'#fef9c3') + ';border-radius:8px;color:#374151;font-weight:700">스키마: ' + _schema + (_actualCols.length ? ' [' + _actualCols.join(', ') + ']' : '') + '</span>'
     : '<span style="font-size:11px;padding:2px 8px;background:#fee2e2;border-radius:8px;color:#991b1b;font-weight:700">⚠️ 스키마 감지 실패' + (_schemaError ? ' — ' + _schemaError : ' — Supabase 콘솔에서 article_cache 컬럼 확인 필요') + '</span>';
 
+  const failCountNote = failedArticleIds.length
+    ? '<span style="font-size:11px;padding:2px 8px;background:#fee2e2;border-radius:8px;color:#991b1b;font-weight:700">⚠️ 최근 24h 실패 ' + failedArticleIds.length + '건</span>'
+    : '<span style="font-size:11px;padding:2px 8px;background:#dcfce7;border-radius:8px;color:#166534;font-weight:700">✓ 최근 24h 실패 없음</span>';
+
   let html = '<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
     + '<span style="font-size:13px;color:var(--gr)">발행 기사 <b>' + articles.length + '</b>개 · 캐시 완료 <b>' + cacheComplete + '</b>개</span>'
     + schemaNote
+    + failCountNote
     + '<button class="btn" style="font-size:12px;padding:6px 14px;background:#f1f5f9;color:#374151;border:1px solid var(--bo)" onclick="goAICache()">🔄 새로고침</button>'
+    + (failedArticleIds.length
+        ? '<button class="btn" style="font-size:12px;padding:6px 14px;background:#ef4444;color:#fff;border:none" onclick="retryFailedCaches(\'' + (_schema||'') + '\')">🔁 실패 재시도 (' + failedArticleIds.length + ')</button>'
+        : '')
     + '</div>';
 
   articles.forEach(function(a) {
@@ -4047,11 +4081,15 @@ async function goAICache() {
       return '<span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-right:4px;background:' + (ok?'#dcfce7':'#fee2e2') + ';color:' + (ok?'#166534':'#991b1b') + '">' + (ok?'✓':'✗') + ' ' + label + '</span>';
     }
     const exprCount = hasE && c.expressions ? (() => { try { const e = JSON.parse(c.expressions); return Array.isArray(e)?e.length:0; } catch(e){return 0;} })() : 0;
-    html += '<div id="crow-' + a.id + '" style="background:#fff;border:1px solid var(--bo);border-radius:10px;margin-bottom:8px;overflow:hidden">'
+    var articleErrs = recentErrors[String(a.id)] || [];
+    var errBadge = articleErrs.length
+      ? '<span title="' + articleErrs.map(function(r){ return r.step + ' [' + r.status + ']: ' + (r.error_message||''); }).join(' | ').replace(/"/g,'&quot;') + '" style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-right:4px;background:#fef3c7;color:#92400e;cursor:help">⚠ ' + articleErrs.length + ' 실패</span>'
+      : '';
+    html += '<div id="crow-' + a.id + '" style="background:#fff;border:1px solid var(--bo);border-radius:10px;margin-bottom:8px;overflow:hidden' + (articleErrs.length ? ';border-color:#f59e0b' : '') + '">'
       + '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;flex-wrap:wrap">'
       + '<div style="flex:1;min-width:200px"><div style="font-weight:700;font-size:14px;margin-bottom:4px">' + (a.title||'(제목없음)') + '</div>'
       + '<div style="font-size:12px;color:var(--gr)">' + (a.section||'') + ' · ' + (a.date||'') + ' · ' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level||'') + '</div></div>'
-      + '<div>' + badge(hasT,'Translation') + badge(hasV,'Vocab') + badge(hasG,'Grammar') + badge(hasQ,'Quiz') + '</div>'
+      + '<div>' + badge(hasT,'Translation') + badge(hasV,'Vocab') + badge(hasG,'Grammar') + badge(hasQ,'Quiz') + errBadge + '</div>'
       + (allDone ? '<span style="color:#166534;font-weight:700;font-size:13px">✅ Done</span>'
           : '<button class="btn btn-g" style="font-size:13px;padding:7px 16px" id="cbtn-' + a.id + '" onclick="genCache(\'' + a.id + '\',\'' + (_schema||'') + '\')">🧠 Generate</button>')
       + '<button style="padding:6px 13px;border:1.5px solid #6366f1;border-radius:8px;background:' + (hasE?'#eef2ff':'#fff') + ';color:#6366f1;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit" onclick="toggleExpressionsEditor(\'' + a.id + '\')">'
@@ -4064,6 +4102,33 @@ async function goAICache() {
       + '</div>';
   });
   wrap.innerHTML = html;
+}
+
+// Re-run genCache for every article that has a non-ok log entry in the
+// last 24h. Sequential (not parallel) — these all hit Claude and a
+// burst of 20+ concurrent calls would trip feature-level rate limits.
+// Shows a small progress toast per article.
+async function retryFailedCaches(schema) {
+  if (!schema) { toast('스키마 미감지 — 페이지 새로고침 후 재시도', true); return; }
+  var since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  var rows;
+  try {
+    rows = await supaAdminGet(
+      'article_cache_generation_log?select=article_id&status=neq.ok&created_at=gte.'
+      + encodeURIComponent(since) + '&order=created_at.desc&limit=500'
+    );
+  } catch(e) { toast('로그 조회 실패: ' + e.message, true); return; }
+  var ids = Array.from(new Set((rows || []).map(function(r){ return String(r.article_id); })));
+  if (!ids.length) { toast('재시도 대상 없음', false); return; }
+  if (!confirm(ids.length + '개 기사 캐시 재생성 — Claude 호출 ' + (ids.length * 4) + '회 예상. 진행?')) return;
+  toast('재시도 시작 (' + ids.length + '건)…');
+  for (var i = 0; i < ids.length; i++) {
+    try { await genCache(ids[i], schema, { silent: true }); }
+    catch(e) { console.warn('retry failed for', ids[i], e); }
+    if (i % 5 === 4) toast('진행 중… ' + (i + 1) + '/' + ids.length);
+  }
+  toast('✅ 재시도 완료 (' + ids.length + '건) — 페이지 새로고침해서 결과 확인', false);
+  setTimeout(function(){ goAICache(); }, 1500);
 }
 
 function renderExpressionsEditor(articleId, existingJson) {
@@ -4145,6 +4210,25 @@ async function saveExpressions(articleId) {
   }
 }
 
+// Fire-and-forget logger for each step of the cache-generation pipeline.
+// Writes go through supaAdminPost (admin-api Edge Function) so the
+// admin-panel user's JWT does the auth — no stale service-role key
+// needed. Silently swallows its own failures because we never want a
+// broken log row to nuke the cache generation it's recording.
+async function _logCacheGen(articleId, step, status, errMessage, durationMs) {
+  try {
+    await supaAdminPost('article_cache_generation_log', {
+      article_id: String(articleId),
+      step: step,
+      status: status,
+      error_message: (errMessage || '').toString().slice(0, 500) || null,
+      duration_ms: (typeof durationMs === 'number' && isFinite(durationMs)) ? Math.round(durationMs) : null,
+    });
+  } catch(e) {
+    console.warn('[cache-log] insert failed', step, e && e.message);
+  }
+}
+
 async function genCache(articleId, schema, opts) {
   opts = opts || {};
   const silent = !!opts.silent;
@@ -4176,85 +4260,131 @@ async function genCache(articleId, schema, opts) {
     throw new Error('no JSON');
   }
 
-  try {
-    if (st) st.textContent = '(1/4) 번역 중…';
-    const t = await _call('Translate each paragraph into English. Return ONLY a JSON array of strings, one per paragraph. No other text.', 800);
-    const ta = _json(t);
-    _row.translation = JSON.stringify({ texts: Array.isArray(ta) ? ta : [ta] });
-    _ok++;
-  } catch(e) { console.warn('translation failed', e.message); }
+  // Run one Claude-generated cache step end-to-end: call, parse, shape.
+  // On any failure, log the exact kind (claude_error / empty / parse_error)
+  // so the admin page can surface it later without crawling the console.
+  async function _runStep(stepName, instr, maxTok, shape) {
+    const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    let raw = '';
+    try {
+      raw = await _call(instr, maxTok);
+    } catch(e) {
+      await _logCacheGen(articleId, stepName, 'claude_error', e && e.message, (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
+      console.warn('[cache] ' + stepName + ' claude failed:', e && e.message);
+      return null;
+    }
+    if (!raw) {
+      await _logCacheGen(articleId, stepName, 'empty', 'empty response', (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
+      return null;
+    }
+    let parsed;
+    try { parsed = _json(raw); }
+    catch(e) {
+      await _logCacheGen(articleId, stepName, 'parse_error', (e && e.message) + ' :: ' + raw.slice(0, 120), (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
+      return null;
+    }
+    let shaped;
+    try { shaped = shape(parsed); }
+    catch(e) {
+      await _logCacheGen(articleId, stepName, 'parse_error', (e && e.message) + ' (shape)', (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
+      return null;
+    }
+    if (!shaped) {
+      await _logCacheGen(articleId, stepName, 'empty', 'shape returned null', (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
+      return null;
+    }
+    await _logCacheGen(articleId, stepName, 'ok', null, (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
+    return shaped;
+  }
 
-  try {
-    if (st) st.textContent = '(2/4) 단어 중…';
-    const v = await _call(window.KH_VOCAB.promptText(_level, _body), 1600);
-    const _vCleaned2 = window.KH_VOCAB.validateBest(_json(v), _body || '');
-    if (_vCleaned2 && _vCleaned2.length) { _row.vocab = JSON.stringify(_vCleaned2); _ok++; }
-  } catch(e) { console.warn('vocab failed', e.message); }
+  if (st) st.textContent = '(1/4) 번역 중…';
+  const tOut = await _runStep('translation',
+    'Translate each paragraph into English. Return ONLY a JSON array of strings, one per paragraph. No other text.',
+    800,
+    function(ta){ return JSON.stringify({ texts: Array.isArray(ta) ? ta : [ta] }); });
+  if (tOut) { _row.translation = tOut; _ok++; }
 
-  try {
-    if (st) st.textContent = '(3/4) 문법 중…';
-    const g = await _call('Find 3 grammar patterns. Return ONLY: {"patterns":[{"name":"KO+romanization","level":"Starter|Beginner|Intermediate|Advanced","exp":"explanation","ex_ko":"sentence","ex_en":"translation"}]}. No other text.', 900);
-    _row.grammar = JSON.stringify(_json(g));
-    _ok++;
-  } catch(e) { console.warn('grammar failed', e.message); }
+  if (st) st.textContent = '(2/4) 단어 중…';
+  const vOut = await _runStep('vocab',
+    window.KH_VOCAB.promptText(_level, _body),
+    1600,
+    function(v){
+      const c = window.KH_VOCAB.validateBest(v, _body || '');
+      return (c && c.length) ? JSON.stringify(c) : null;
+    });
+  if (vOut) { _row.vocab = vOut; _ok++; }
 
-  try {
-    if (st) st.textContent = '(4/4) 퀴즈 중…';
-    const q = await _call('Create 15 fill-in-the-blank questions from this article, covering different sentences and vocabulary. Return ONLY: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English with _____","blank":"correct answer word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.', 2500);
-    _row.quiz = JSON.stringify(_json(q));
-    _ok++;
-  } catch(e) { console.warn('quiz failed', e.message); }
+  if (st) st.textContent = '(3/4) 문법 중…';
+  const gOut = await _runStep('grammar',
+    'Find 3 grammar patterns. Return ONLY: {"patterns":[{"name":"KO+romanization","level":"Starter|Beginner|Intermediate|Advanced","exp":"explanation","ex_ko":"sentence","ex_en":"translation"}]}. No other text.',
+    900,
+    function(g){ return JSON.stringify(g); });
+  if (gOut) { _row.grammar = gOut; _ok++; }
 
-  // 스키마에 맞게 저장
+  if (st) st.textContent = '(4/4) 퀴즈 중…';
+  const qOut = await _runStep('quiz',
+    'Create 15 fill-in-the-blank questions from this article, covering different sentences and vocabulary. Return ONLY: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English with _____","blank":"correct answer word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.',
+    2500,
+    function(q){ return JSON.stringify(q); });
+  if (qOut) { _row.quiz = qOut; _ok++; }
+
+  // Persist whatever succeeded. Routes through the admin-api Edge
+  // Function via supaAdminPost/Patch so the logged-in admin's JWT does
+  // the auth — the old direct-fetch path used SUPA_SERVICE_KEY which
+  // is now a placeholder string, so every write returned 401 and the
+  // cache silently never populated.
   if (_ok > 0) {
-    const H = { 'apikey': SUPA_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPA_SERVICE_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' };
+    const saveT0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     let saved = 0;
+    let lastErr = '';
 
     if (schema === 'kv') {
-      // key-value 스키마: 각 키별로 upsert
       for (const k of ['translation', 'vocab', 'grammar', 'quiz']) {
         if (!_row[k]) continue;
         try {
-          const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?on_conflict=content_type,content_id,cache_key', {
-            method: 'POST', headers: H,
-            body: JSON.stringify({ content_type: 'article', content_id: String(articleId), cache_key: k, cache_value: _row[k] })
+          await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
+            content_type: 'article', content_id: String(articleId),
+            cache_key: k, cache_value: _row[k],
           });
-          if (res.ok) saved++;
-          else { const t = await res.text(); console.error('cache save kv ' + k + ':', res.status, t); }
-        } catch(e) {}
+          saved++;
+        } catch(e) {
+          lastErr = 'kv/' + k + ': ' + (e && e.message || '');
+          console.error('[cache] kv save ' + k, e);
+        }
       }
     } else if (schema === 'wide') {
-      // wide-table 스키마: article_id 기준 upsert
-      // 존재 여부 확인 후 PATCH or POST
       try {
-        const chk = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?article_id=eq.' + encodeURIComponent(articleId) + '&select=article_id', { headers: H });
-        const chkData = chk.ok ? await chk.json() : [];
+        const chk = await supaAdminGet('article_cache?article_id=eq.' + encodeURIComponent(articleId) + '&select=article_id');
+        const chkData = Array.isArray(chk) ? chk : [];
         const wideRow = { article_id: String(articleId), translation: _row.translation, vocab: _row.vocab, grammar: _row.grammar, quiz: _row.quiz };
-        if (Array.isArray(chkData) && chkData.length > 0) {
-          const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?article_id=eq.' + encodeURIComponent(articleId), {
-            method: 'PATCH', headers: H, body: JSON.stringify(wideRow)
-          });
-          if (res.ok) saved++;
-          else { const t = await res.text(); console.error('cache patch wide:', res.status, t); }
+        if (chkData.length > 0) {
+          await supaAdminPatch('article_cache?article_id=eq.' + encodeURIComponent(articleId), wideRow);
         } else {
-          const res = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache', {
-            method: 'POST', headers: H, body: JSON.stringify(wideRow)
-          });
-          if (res.ok) saved++;
-          else { const t = await res.text(); console.error('cache insert wide:', res.status, t); }
+          await supaAdminPost('article_cache', wideRow);
         }
-      } catch(e) { console.error('cache save wide error', e); }
+        saved++;
+      } catch(e) {
+        lastErr = 'wide: ' + (e && e.message || '');
+        console.error('[cache] wide save', e);
+      }
     } else {
-      if (st) st.textContent = '❌ 스키마 감지 실패 — 어드민 콘솔에서 article_cache 컬럼 확인 필요';
+      await _logCacheGen(articleId, 'save', 'db_error', 'schema undetected', 0);
+      if (st) st.textContent = '❌ 스키마 감지 실패 — article_cache 컬럼 확인 필요';
       if (btn) btn.disabled = false;
       return;
     }
 
+    const saveDur = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - saveT0;
     if (saved === 0) {
-      if (st) st.textContent = '❌ DB 저장 실패 (' + schema + ' 스키마) — 콘솔 오류 확인';
+      await _logCacheGen(articleId, 'save', 'db_error', lastErr || 'unknown', saveDur);
+      if (st) st.textContent = '❌ DB 저장 실패 (' + schema + ')';
       if (btn) btn.disabled = false;
       return;
+    } else {
+      await _logCacheGen(articleId, 'save', 'ok', null, saveDur);
     }
+  } else {
+    await _logCacheGen(articleId, 'save', 'empty', 'no steps succeeded', 0);
   }
 
   if (st) st.textContent = '✅ 완료 (' + _ok + '/4)';
