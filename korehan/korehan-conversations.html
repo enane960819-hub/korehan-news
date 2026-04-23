@@ -157,6 +157,11 @@
 .cc2-cast-avatars .kh-char-av{border:2px solid #fff;}
 .cc2-cast-avatars .kh-char-av+.kh-char-av{margin-left:-8px;}
 
+/* Tab strip is a no-op on desktop — the 2-column layout shows
+   everything at once there, so the tabs would just clutter the
+   header. Hidden by default and revealed only under 900px. */
+.dp-mobile-tabs{display:none;}
+
 /* ── Mobile ≤900px ── */
 @media(max-width:900px){
   .conv-two-col{grid-template-columns:1fr!important;}
@@ -164,10 +169,44 @@
   .conv-cards-grid{grid-template-columns:1fr!important;gap:12px!important;max-width:500px!important;}
   /* Detail overlay */
   .detail-overlay{overflow-y:auto!important;align-items:flex-start!important;padding:10px!important;}
-  .detail-panel{grid-template-columns:1fr;height:auto!important;max-height:none!important;border-radius:20px;}
+  .detail-panel{grid-template-columns:1fr;height:auto!important;max-height:none!important;border-radius:20px;position:relative;}
   .dp-left{max-height:none!important;overflow:visible!important;}
   .dp-chat-area{max-height:none!important;overflow:visible!important;min-height:auto!important;}
   .dp-right{border-left:none;border-top:none;overflow:visible!important;}
+
+  /* Mobile tab strip — sticky so it stays reachable while the user
+     scrolls through a long conversation / study list. Matches the
+     article page's .art-tabs visual language for consistency. */
+  .detail-panel .dp-mobile-tabs{
+    display:flex;
+    grid-column:1 / -1;
+    position:sticky; top:0; z-index:15;
+    background:#fff;
+    border-bottom:1px solid #e5e7eb;
+    padding:0 6px;
+  }
+  .detail-panel .dp-mobile-tab{
+    flex:1; padding:12px 2px;
+    background:transparent; border:0;
+    border-bottom:2px solid transparent;
+    color:#64748b; font-size:12px; font-weight:800;
+    cursor:pointer; font-family:inherit;
+    transition:color .15s, border-color .15s;
+  }
+  .detail-panel .dp-mobile-tab.on{
+    color:#0f172a; border-bottom-color:#2563eb;
+  }
+
+  /* Per-tab visibility rules. "read" shows only the chat column,
+     the other three each show only their matching study card(s)
+     from .dp-right so the learner focuses on one thing at a time. */
+  .detail-panel.dp-mobile-tab-read    .dp-right{display:none!important;}
+  .detail-panel.dp-mobile-tab-vocab   .dp-left,
+  .detail-panel.dp-mobile-tab-grammar .dp-left,
+  .detail-panel.dp-mobile-tab-practice .dp-left{display:none!important;}
+  .detail-panel.dp-mobile-tab-vocab    .dp-right [data-study]:not([data-study="vocab"]):not([data-study="keyexpr"]){display:none!important;}
+  .detail-panel.dp-mobile-tab-grammar  .dp-right [data-study]:not([data-study="grammar"]){display:none!important;}
+  .detail-panel.dp-mobile-tab-practice .dp-right [data-study]:not([data-study="practice"]){display:none!important;}
   /* Study panel → dark theme on mobile to match site */
   .dp-right{background:#0b1628!important;}
   .dp-right-head{background:#0b1628!important;border-bottom:1px solid rgba(255,255,255,.08)!important;}
@@ -663,8 +702,20 @@ async function openDetail(idx) {
     +'<span class="dp-pill '+(CAT_PILL[c.cat]||'dp-pill-gray')+'">'+(c.catLabel || CAT_EN[c.cat] || c.cat || '')+'</span>'
     +(c.topic ? '<span class="dp-pill dp-pill-gray">'+c.topic+'</span>' : '');
 
-  document.getElementById('detail-panel').innerHTML =
-    '<div class="dp-left">'
+  var panelEl = document.getElementById('detail-panel');
+  panelEl.innerHTML =
+    // Mobile-only tab strip. Matches the article reader's Read/Grammar/
+    // Vocab/Review pattern so the conversation feels focused on mobile:
+    // just the chat is visible by default, and the study notes move
+    // behind tabs. CSS hides this strip above 900px so desktop keeps
+    // its 2-column layout untouched.
+    '<div class="dp-mobile-tabs" role="tablist" aria-label="Conversation sections">'
+      +'<button class="dp-mobile-tab on" data-tab="read" onclick="switchConvMobileTab(\'read\')">💬 Read</button>'
+      +'<button class="dp-mobile-tab" data-tab="vocab" onclick="switchConvMobileTab(\'vocab\')">📚 Vocab</button>'
+      +'<button class="dp-mobile-tab" data-tab="grammar" onclick="switchConvMobileTab(\'grammar\')">📐 Grammar</button>'
+      +'<button class="dp-mobile-tab" data-tab="practice" onclick="switchConvMobileTab(\'practice\')">🎯 Practice</button>'
+    +'</div>'
+    +'<div class="dp-left">'
       +'<div class="dp-left-head">'
         +'<button class="detail-close" onclick="closeDetail()">✕</button>'
         +'<div class="dp-left-eyebrow">Conversation</div>'
@@ -696,12 +747,17 @@ async function openDetail(idx) {
     +'<div class="dp-right">'
       +'<div class="dp-right-head"><div class="dp-right-label">학습 노트</div><div class="dp-right-title">Conversation Breakdown</div></div>'
       +'<div class="dp-study-sections" id="dp-study-sections">'
-        +(initKeyExprCard ? initKeyExprCard : '')
-        +'<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.book+' 단어 · Vocabulary</div><div class="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
-        +(grammar ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.pen+' 문법 · Grammar</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
-        +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.target+' 연습 미션 · Practice</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
+        +(initKeyExprCard ? '<div class="dp-keyexpr-card" data-study="keyexpr"><div class="dp-study-card-title" style="color:#92400e">⭐ Key Expressions</div>'+initKeyExprs+'</div>' : '')
+        +'<div class="dp-study-card" data-study="vocab"><div class="dp-study-card-title">'+_IC.book+' 단어 · Vocabulary</div><div class="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
+        +(grammar ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' 문법 · Grammar</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
+        +(mission ? '<div class="dp-study-card" data-study="practice"><div class="dp-study-card-title">'+_IC.target+' 연습 미션 · Practice</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
       +'</div>'
     +'</div>';
+  // Default mobile view = the conversation itself (chat bubbles). CSS
+  // rules scoped to body.kh-reading-page @media(max-width:900px)
+  // hide .dp-right while this class is set.
+  panelEl.classList.remove('dp-mobile-tab-vocab', 'dp-mobile-tab-grammar', 'dp-mobile-tab-practice');
+  panelEl.classList.add('dp-mobile-tab-read');
 
   document.getElementById('detail-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
@@ -746,12 +802,35 @@ function renderStudyNotes(c) {
   }).join('') : '';
 
   el.innerHTML =
-    (keyExprHtml ? '<div class="dp-keyexpr-card"><div class="dp-study-card-title" style="color:#92400e">⭐ 중요표현 · Key Expressions</div>'+keyExprHtml+'</div>' : '')
-    +'<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.book+' 단어 · Vocabulary'+addVocabBtn+'</div><div class="dp-vocab-list" id="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
-    +(grammar||isAdm ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.pen+' 문법 · Grammar'+addGrammarBtn+'</div><div class="dp-grammar-list" id="dp-grammar-list">'+(grammar||'')+'</div></div>' : '')
-    +(mission ? '<div class="dp-study-card"><div class="dp-study-card-title">'+_IC.target+' 연습 미션 · Practice</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
-    +'<div class="dp-study-card"><div class="dp-study-card-title">🎧 듣기 퀴즈 · Listening</div><div id="dp-listening-quiz"><button onclick="startConvListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div></div>'
+    (keyExprHtml ? '<div class="dp-keyexpr-card" data-study="keyexpr"><div class="dp-study-card-title" style="color:#92400e">⭐ 중요표현 · Key Expressions</div>'+keyExprHtml+'</div>' : '')
+    +'<div class="dp-study-card" data-study="vocab"><div class="dp-study-card-title">'+_IC.book+' 단어 · Vocabulary'+addVocabBtn+'</div><div class="dp-vocab-list" id="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
+    +(grammar||isAdm ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' 문법 · Grammar'+addGrammarBtn+'</div><div class="dp-grammar-list" id="dp-grammar-list">'+(grammar||'')+'</div></div>' : '')
+    +(mission ? '<div class="dp-study-card" data-study="practice"><div class="dp-study-card-title">'+_IC.target+' 연습 미션 · Practice</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
+    +'<div class="dp-study-card" data-study="practice"><div class="dp-study-card-title">🎧 듣기 퀴즈 · Listening</div><div id="dp-listening-quiz"><button onclick="startConvListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div></div>'
     +'<div style="height:80px"></div>';
+}
+
+// Mobile-only tab switcher. Toggles dp-mobile-tab-* on the panel so
+// CSS can show the right chunk. Keeps behaviour a no-op on desktop
+// (CSS hides the tab strip above 900px so this button is never
+// tappable there, and the class on the panel has no effect).
+function switchConvMobileTab(tab) {
+  var panel = document.getElementById('detail-panel');
+  if (!panel) return;
+  panel.classList.remove('dp-mobile-tab-read', 'dp-mobile-tab-vocab', 'dp-mobile-tab-grammar', 'dp-mobile-tab-practice');
+  panel.classList.add('dp-mobile-tab-' + tab);
+  var strip = panel.querySelector('.dp-mobile-tabs');
+  if (strip) strip.querySelectorAll('.dp-mobile-tab').forEach(function(b){
+    b.classList.toggle('on', b.dataset.tab === tab);
+  });
+  // Tab change = fresh starting point. Reset the modal scroll so the
+  // learner isn't dropped into the middle of (say) a vocab list.
+  var overlay = document.getElementById('detail-overlay');
+  if (overlay) overlay.scrollTop = 0;
+  panel.scrollTop = 0;
+  // Pill visibility threshold was calibrated against the previous
+  // scroll state — re-evaluate now that content visibility changed.
+  if (typeof window._convPillSync === 'function') window._convPillSync();
 }
 
 // ── Bubble click → toggle English translation ──
@@ -973,8 +1052,17 @@ var _convSwipeValid  = false;
     if (Math.abs(dy) < 100) return;
     var panel = document.getElementById('detail-panel');
     if (!panel) return;
-    var atTop    = panel.scrollTop < 60;
-    var atBottom = (panel.scrollTop + panel.clientHeight) >= panel.scrollHeight - 120;
+    // On mobile the CSS at @media(max-width:900px) switches the
+    // scroller from #detail-panel (overflow:visible) to the outer
+    // #detail-overlay (overflow-y:auto). panel.scrollTop stays at 0
+    // regardless of where the user scrolled, so the original
+    // panel-only check silently blocked every mobile swipe. Now we
+    // pick whichever container is actually scrollable.
+    var overlay = document.getElementById('detail-overlay');
+    var scroller = panel;
+    if (overlay && overlay.scrollHeight > overlay.clientHeight + 10) scroller = overlay;
+    var atTop    = scroller.scrollTop < 60;
+    var atBottom = (scroller.scrollTop + scroller.clientHeight) >= scroller.scrollHeight - 120;
     var list = (_convFilteredList && _convFilteredList.length) ? _convFilteredList : CONVS;
     var current = CONVS[_convDetailIdx];
     var posInList = list.indexOf(current);

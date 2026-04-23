@@ -1367,8 +1367,17 @@ var _stSwipeValid  = false;
     if (Math.abs(dy) < 100) return;
     var panel = document.getElementById('st-panel');
     if (!panel) return;
-    var atTop    = panel.scrollTop < 60;
-    var atBottom = (panel.scrollTop + panel.clientHeight) >= panel.scrollHeight - 120;
+    // On mobile the panel is overflow:hidden and the actual scroll
+    // container is either #st-overlay (short viewport) or the inner
+    // .st-body-scroll column. Checking only panel.scrollTop kept
+    // atBottom permanently false there, silently blocking swipe-nav.
+    var overlay = document.getElementById('st-overlay');
+    var bodyScroll = panel.querySelector('.st-body-scroll');
+    var scroller = panel;
+    if (overlay && overlay.scrollHeight > overlay.clientHeight + 10) scroller = overlay;
+    else if (bodyScroll && bodyScroll.scrollHeight > bodyScroll.clientHeight + 10) scroller = bodyScroll;
+    var atTop    = scroller.scrollTop < 60;
+    var atBottom = (scroller.scrollTop + scroller.clientHeight) >= scroller.scrollHeight - 120;
     // Pick pool from the currently visible story cards (honors the
     // active mood/level filter). Falls back to STORIES if the card
     // grid isn't queryable.
