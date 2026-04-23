@@ -4050,65 +4050,109 @@ function _reviewVocabFromGlobal(a) {
   return out.slice(0, 5);
 }
 
-function renderReviewTF(a) {
+// True/False comprehension check.
+//
+// Previous implementation did a random 2-char Korean noun swap on
+// article sentences to manufacture "false" statements. That produced
+// unparseable sentences like "지구에서 식사 가까운 별까지..." — the
+// algorithm swapped the adverb 가장 with the noun 식사 because it
+// had no POS awareness. For a paid product, questions have to at
+// least be grammatical Korean.
+//
+// Replacement: Claude generates 2 paraphrase-of-article TRUE items
+// and 1 grammatical-but-incorrect FALSE item, cached per article in
+// article_cache under key tf_v1 so repeat visitors don't pay the
+// API cost. Same level-aware style as the Fill-in-the-Blank engine.
+async function renderReviewTF(a) {
   var el = document.getElementById('rv-tf-check');
   if (!el || !a) return;
   if (el.dataset.builtFor === String(a.id)) return;
   el.dataset.builtFor = String(a.id);
 
   var body = String((a.body || '') + '\n' + (a.full || '')).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  var sents = body.split(/(?<=[.!?。])\s+/).filter(function(s){ return s.length >= 14 && s.length <= 120 && /[가-힣]/.test(s); });
-  if (sents.length < 2) { el.innerHTML = '<div class="rv-empty" style="padding:18px 8px;text-align:center;font-size:12px;color:#64748b">This article is too short for a comprehension check.</div>'; return; }
+  if (body.length < 80) {
+    el.innerHTML = '<div class="rv-empty" style="padding:18px 8px;text-align:center;font-size:12px;color:#64748b">This article is too short for a comprehension check.</div>';
+    return;
+  }
 
-  // Pick 3 sentences (shuffle, first 3)
-  var pick = sents.slice().sort(function(){ return Math.random() - 0.5; }).slice(0, 3);
-  // For each: coin flip — keep TRUE, or swap one Korean noun with a
-  // random sitewide VOCAB noun to make FALSE. Gives a light "is this
-  // exactly what the article says?" check without an AI call.
-  var vocabPool = (typeof VOCAB === 'object' && VOCAB) ? Object.keys(VOCAB).filter(function(k){
-    return k && k.length >= 2 && !/[다요]$/.test(k);
-  }) : [];
+  // Pull from cache if we've already generated this article's set.
+  var items = null;
+  if (typeof getFromCache === 'function') {
+    try {
+      var cached = await getFromCache('article', a.id, 'tf_v1');
+      if (cached && Array.isArray(cached.items) && cached.items.length >= 2) items = cached.items;
+    } catch(_) {}
+  }
 
-  var items = pick.map(function(s, i) {
-    var isTrue = vocabPool.length === 0 || Math.random() < 0.5;
-    var shown = s, swapped = '';
-    if (!isTrue) {
-      // Find a 2-char Korean noun inside the sentence we can swap.
-      var candidates = [];
-      for (var p = 0; p < s.length - 1; p++) {
-        var ch2 = s.slice(p, p + 2);
-        if (/^[가-힣]{2}$/.test(ch2) && (p === 0 || !/[가-힣]/.test(s[p-1])) && (p+2 >= s.length || !/[가-힣]/.test(s[p+2]))) {
-          candidates.push({ at: p, word: ch2 });
-        }
-      }
-      if (candidates.length) {
-        var target = candidates[Math.floor(Math.random() * candidates.length)];
-        // Pick a replacement that's different from the target and
-        // isn't in the sentence.
-        var rep = '';
-        for (var t = 0; t < 8; t++) {
-          var cand = vocabPool[Math.floor(Math.random() * vocabPool.length)];
-          if (cand && cand !== target.word && s.indexOf(cand) === -1 && cand.length === 2) { rep = cand; break; }
-        }
-        if (rep) {
-          shown = s.slice(0, target.at) + rep + s.slice(target.at + 2);
-          swapped = rep;
-        } else {
-          isTrue = true; // couldn't make a swap — leave as true
-        }
-      } else {
-        isTrue = true;
-      }
+  if (!items) {
+    if (!supaUser) {
+      el.innerHTML = khEmptyState({
+        title: 'Sign in for comprehension check',
+        sub: 'AI-generated True/False questions need a signed-in session.',
+        action: { label: 'Sign in', onClick: "openAuthModal('signin')" },
+      });
+      return;
     }
-    return { sentence: shown, truth: isTrue, idx: i };
-  });
+    el.innerHTML = khLoadingHTML(
+      'Generating comprehension check',
+      'Writing three quick questions based on this article.'
+    );
+    try {
+      var level = a.level || 'Intermediate';
+      var prompt = [
+        'You are a Korean reading-comprehension teacher. From this article,',
+        'produce EXACTLY 3 Korean True/False questions at ' + level + ' level:',
+        '  - 2 TRUE items that faithfully paraphrase something the article states.',
+        '  - 1 FALSE item that is grammatically natural Korean, topically related,',
+        '    but contradicts or invents information not actually in the article.',
+        'Every sentence must read as natural Korean — no word-swap artifacts.',
+        'Keep each sentence between 15 and 100 characters. Avoid copying full',
+        'sentences verbatim from the article.',
+        '',
+        'Article:',
+        '"""',
+        body.slice(0, 1500),
+        '"""',
+        '',
+        'Respond with ONLY this JSON, no prose, no code fences:',
+        '{"items":[{"sentence":"...","truth":true,"why":"brief English reason"}]}',
+      ].join('\n');
+      var data = await callClaude({
+        feature: 'review-tf',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 900,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      var raw = (data.content || []).map(function(c){ return c.text || ''; }).join('');
+      var clean = raw.replace(/```json|```/g, '').trim();
+      var parsed = JSON.parse(clean);
+      items = (parsed.items || []).filter(function(x) {
+        return x && typeof x.sentence === 'string' && x.sentence.length >= 8 && typeof x.truth === 'boolean';
+      }).slice(0, 3);
+      if (items.length < 2) throw new Error('not enough valid items');
+      try { if (typeof upsertArticleCacheRow === 'function') upsertArticleCacheRow(a.id, { tf_v1: JSON.stringify({ items: items }) }); } catch(_) {}
+    } catch(e) {
+      el.dataset.builtFor = ''; // allow retry
+      el.innerHTML = khEmptyState({
+        error: true,
+        title: "Couldn't generate the check",
+        sub: 'Something went wrong while writing the questions.',
+        action: { label: 'Try again', onClick: 'renderReviewTF(window._currentArticle)' },
+      });
+      return;
+    }
+  }
+
+  // Shuffle so the 2 TRUE items don't always appear first.
+  items = items.slice().sort(function(){ return Math.random() - 0.5; });
 
   el.innerHTML = items.map(function(it, i) {
-    return '<div class="rv-tf-q" data-i="' + i + '" data-truth="' + (it.truth ? '1' : '0') + '">'
-      +   '<div class="rv-tf-text">' + it.sentence + '</div>'
+    var why = it.why || '';
+    return '<div class="rv-tf-q" data-i="' + i + '" data-truth="' + (it.truth ? '1' : '0') + '" data-why="' + _khEsc(why) + '">'
+      +   '<div class="rv-tf-text">' + _khEsc(it.sentence) + '</div>'
       +   '<div class="rv-tf-btns">'
-      +     '<button class="rv-tf-btn" data-ans="1" onclick="_reviewTFAnswer(this)">✓ True</button>'
-      +     '<button class="rv-tf-btn" data-ans="0" onclick="_reviewTFAnswer(this)">✗ False</button>'
+      +     '<button class="rv-tf-btn" data-ans="1" onclick="_reviewTFAnswer(this)">True</button>'
+      +     '<button class="rv-tf-btn" data-ans="0" onclick="_reviewTFAnswer(this)">False</button>'
       +   '</div>'
       +   '<div class="rv-tf-feedback"></div>'
       + '</div>';
@@ -4123,9 +4167,12 @@ function _reviewTFAnswer(btn) {
   q.classList.add('answered');
   q.classList.add(ans === truth ? 'correct' : 'wrong');
   var fb = q.querySelector('.rv-tf-feedback');
-  if (fb) fb.textContent = (ans === truth)
-    ? (truth ? '✓ Correct — this sentence is from the article.' : "✓ Correct — this sentence isn't in the article.")
-    : (truth ? '✗ Actually this sentence was from the article.' : "✗ Actually this sentence isn't in the article.");
+  if (!fb) return;
+  var base = (ans === truth)
+    ? (truth ? 'Correct — this matches the article.' : "Correct — this one contradicts the article.")
+    : (truth ? 'Actually, this statement is from the article.' : "Actually, this one isn't in the article.");
+  var why = q.dataset.why || '';
+  fb.textContent = why ? (base + ' ' + why) : base;
 }
 
 function openArticleStudyFromReader() {
