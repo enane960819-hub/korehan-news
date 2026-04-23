@@ -1900,12 +1900,27 @@ function khArticleHeroMedia(article) {
       return '<iframe src="' + _khEsc(src) + '" title="Article video" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>';
     }
     if (kind === 'reddit-embed') {
-      // Reddit's own embed player — carries audio reliably across every
-      // device (mobile Chrome / Samsung Internet / iOS Safari / desktop).
-      // sandbox keeps scripts inside the iframe from touching our origin;
-      // allow-scripts + allow-same-origin are Reddit's own requirements
-      // for their player to initialise; allow-popups so 'open comments'
-      // opens a new tab rather than navigating out of the article.
+      // Historically rendered as a redditmedia.com iframe — but that
+      // iframe brings the full post chrome (subreddit banner, Join
+      // button, author line, Reddit logo), crowding out the actual
+      // video. Now we route through the same resolver pipeline as
+      // reddit-hls: extract the permalink (either from article.source_url
+      // or from the stored redditmedia.com URL itself, since its path
+      // mirrors the permalink path), hand it to _khAttachHls, and play
+      // the bare video via a <video> element with synced audio.
+      // The iframe fallback is kept as data-kh-iframe-fallback so
+      // resolver/playback failure can swap back to the legacy embed
+      // rather than showing a blank slot.
+      var perma3 = (article && article.source_url) || '';
+      if (!perma3) {
+        var m = String(src || '').match(/redditmedia\.com(\/r\/[^?#]+\/comments\/[^?#]+)/i);
+        if (m) perma3 = 'https://www.reddit.com' + m[1].replace(/\/$/, '') + '/';
+      }
+      if (perma3) {
+        return '<video data-kh-hls="" data-kh-fallback="" data-kh-permalink="' + _khEsc(perma3) + '" data-kh-iframe-fallback="' + _khEsc(src || '') + '" controls playsinline preload="metadata"></video>';
+      }
+      // No permalink recoverable — fall back to the legacy iframe so
+      // at least the video is visible, even with the Reddit chrome.
       return '<iframe src="' + _khEsc(src) + '" title="Article video" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" allow="encrypted-media" referrerpolicy="no-referrer-when-downgrade" scrolling="no"></iframe>';
     }
     if (kind === 'reddit-hls') {
@@ -2041,6 +2056,7 @@ function _khAttachHls(root) {
     var staleSrc = v.getAttribute('data-kh-hls');
     var fallback = v.getAttribute('data-kh-fallback') || '';
     var permalink = v.getAttribute('data-kh-permalink') || '';
+    var iframeFallback = v.getAttribute('data-kh-iframe-fallback') || '';
     if (!staleSrc && !fallback && !permalink) return;
 
     // Resolved-URL holders. Populated by _khResolveReddit when permalink
@@ -2048,6 +2064,24 @@ function _khAttachHls(root) {
     var freshHls = '';
     var freshAudio = '';
     var freshFallback = fallback;
+
+    // Last-resort escape hatch: when nothing else is playable, swap the
+    // <video> element for the legacy iframe (redditmedia.com embed).
+    // Only triggered for reddit-embed rows where the resolver failed
+    // AND the row has no persisted HLS/fallback — without this, users
+    // would see a blank video slot on a dead resolver.
+    function swapToIframeFallback() {
+      if (!iframeFallback || !v.parentNode) return false;
+      var f = document.createElement('iframe');
+      f.src = iframeFallback;
+      f.title = 'Article video';
+      f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox');
+      f.setAttribute('allow', 'encrypted-media');
+      f.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
+      f.setAttribute('scrolling', 'no');
+      v.parentNode.replaceChild(f, v);
+      return true;
+    }
 
     // Final degrade path: video survives via silent MP4, audio is
     // attempted via the resolver's separate audio track if available.
@@ -2062,12 +2096,19 @@ function _khAttachHls(root) {
       if (fbSrc) {
         v.src = _khProxyRedditUrl(fbSrc);
         v.load();
+        // Layer audio back on so the "degraded" path keeps audio alive.
+        // Without this, every HLS failure = silent video, defeating the
+        // whole point of the resolver.
+        if (freshAudio) _khAttachAudioCompanion(v, freshAudio);
+        console.warn('[hero-video] HLS failed, using silent MP4 + audio companion:', reason || 'unknown');
+        return;
       }
-      // Layer audio back on so the "degraded" path keeps audio alive.
-      // Without this, every HLS failure = silent video, defeating the
-      // whole point of the resolver.
-      if (freshAudio) _khAttachAudioCompanion(v, freshAudio);
-      console.warn('[hero-video] HLS failed, using silent MP4 + audio companion:', reason || 'unknown');
+      // No MP4 fallback either — last-resort iframe swap.
+      if (swapToIframeFallback()) {
+        console.warn('[hero-video] HLS + resolver failed, swapped to iframe fallback:', reason || 'unknown');
+        return;
+      }
+      console.warn('[hero-video] HLS failed with no recoverable source:', reason || 'unknown');
     }
 
     function attachWithSrc(src) {
@@ -2105,10 +2146,20 @@ function _khAttachHls(root) {
 
     function startWithFreshUrls() {
       var hls = freshHls || staleSrc;
-      if (!hls && (freshFallback || fallback)) {
+      var fbSrc = freshFallback || fallback;
+      if (!hls && fbSrc) {
         // No HLS at all → straight to silent MP4 + companion audio.
-        v.src = _khProxyRedditUrl(freshFallback || fallback); v.load();
+        v.src = _khProxyRedditUrl(fbSrc); v.load();
         if (freshAudio) _khAttachAudioCompanion(v, freshAudio);
+        return;
+      }
+      if (!hls && !fbSrc) {
+        // Resolver returned nothing and we had no persisted URLs either
+        // (typical for legacy reddit-embed rows). Fall back to the
+        // original iframe embed so the video is at least visible.
+        if (!swapToIframeFallback()) {
+          console.warn('[hero-video] no playable source and no iframe fallback');
+        }
         return;
       }
       attachWithSrc(_khProxyRedditUrl(hls));
