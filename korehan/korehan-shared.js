@@ -2391,13 +2391,17 @@ function relTime(dateStr) {
 }
 
 function cardHTML(a, extraTagClass) {
-  var img = khArticleThumb(a, 600, 400);
+  // 400x260 is 2x the ~168px card CSS width — sharp on retina, 1/4 the
+  // bytes of the old 600x400 fallback. decoding='async' lets the
+  // browser decode off the main thread; fetchpriority='low' tells it
+  // these belong at the back of the queue so the hero image loads first.
+  var img = khArticleThumb(a, 400, 260);
   var tc  = extraTagClass || '';
   var levelColors = { 'Starter':'#f3e8ff;color:#6b21a8', 'Beginner':'#e8f5e9;color:#2e7d32', 'Intermediate':'#fff8e1;color:#f57f17', 'Advanced':'#fce4ec;color:#c62828' };
   var levelBadge = a.level ? '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + (levelColors[a.level] || '#f0f0f0;color:#666') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) + '</span>' : '';
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
     + '<div class="card">'
-    + '<img src="' + img + '" alt="" loading="lazy">'
+    + '<img src="' + img + '" alt="" loading="lazy" decoding="async" fetchpriority="low">'
     + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
     + '<div class="tag' + (tc ? ' ' + tc : '') + '">' + a.section + '</div>'
     + levelBadge
@@ -2421,7 +2425,7 @@ function filterByLevel(level, btn) {
 }
 
 function storyItemHTML(a) {
-  var img = khArticleThumb(a, 600, 400);
+  var img = khArticleThumb(a, 400, 260);
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;">'
     + '<div class="story-item">'
     + '<img src="' + img + '" alt="" loading="lazy">'
@@ -2432,10 +2436,12 @@ function storyItemHTML(a) {
 }
 
 function heroSideItemHTML(a) {
-  var img = khArticleThumb(a, 600, 400);
+  // Hero sidebar lists small vertical thumbnails; 480x320 covers retina
+  // at a slightly larger render width than the grid cards.
+  var img = khArticleThumb(a, 480, 320);
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;display:block;">'
     + '<div class="hero-side-item">'
-    + '<img src="' + img + '" alt="" loading="lazy">'
+    + '<img src="' + img + '" alt="" loading="lazy" decoding="async" fetchpriority="low">'
     + '<h3 class="vocab-zone" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + (a.title_en || a.title) + '</h3>'
     + '<p class="meta">' + a.section + ' · ' + relTime(a.date) + '</p>'
     + '</div></a>';
@@ -2623,7 +2629,7 @@ function renderHeroSlide(heroEl) {
           var excerpt = bodyPlain.slice(0, 110);
           if (bodyPlain.length > 110) excerpt += '…';
           return '<article class="kh-home-hero-slide" style="min-width:100%;position:relative;min-height:460px;overflow:hidden;cursor:pointer" onclick="location.href=\'' + url + '\'">'
-            + '<img src="' + featImg + '" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;pointer-events:none;">'
+            + '<img src="' + featImg + '" alt="" fetchpriority="high" decoding="async" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;pointer-events:none;">'
             + '<div style="position:absolute;left:0;right:0;top:0;height:40%;background:linear-gradient(to bottom,rgba(5,15,35,.55) 0%,rgba(5,15,35,0) 100%);pointer-events:none;"></div>'
             + '<div style="position:absolute;left:0;right:0;bottom:0;height:72%;background:linear-gradient(to top,rgba(5,15,35,.94) 0%,rgba(5,15,35,.7) 30%,rgba(5,15,35,.28) 70%,rgba(5,15,35,0) 100%);pointer-events:none;"></div>'
             + '<div class="kh-hero-top-meta" style="position:absolute;top:16px;left:18px;right:18px;z-index:2;display:flex;align-items:center;flex-wrap:wrap;gap:6px;pointer-events:none">' + catChip + lvlChip + '</div>'
@@ -2684,9 +2690,11 @@ function updateHeroSlideUI(heroEl) {
   if (sideWrap) {
     var sideItems = (window._heroStaticSide && window._heroStaticSide.length ? window._heroStaticSide : _heroSlides.filter(function(a, i){ return i !== _heroIdx; })).slice(0, 4);
     sideWrap.innerHTML = sideItems.map(function(a) {
-      var img = khArticleThumb(a, 600, 400);
+      // Side list render width is ~98px → 320x200 covers retina DPR 2
+      // at a quarter of the old 600x400 bytes.
+      var img = khArticleThumb(a, 320, 200);
       return '<a href="' + articleUrl(a.id) + '" style="display:flex;gap:12px;padding:14px 16px;text-decoration:none;color:inherit;border-bottom:1px solid #edf2f7;transition:background .15s" onmouseover="this.style.background=\'#f2f7ff\'" onmouseout="this.style.background=\'\'">'
-        + '<img src="' + img + '" alt="" style="width:98px;height:78px;object-fit:cover;border-radius:14px;flex-shrink:0;box-shadow:0 6px 18px rgba(15,23,42,.08)">'
+        + '<img src="' + img + '" alt="" loading="lazy" decoding="async" fetchpriority="low" style="width:98px;height:78px;object-fit:cover;border-radius:14px;flex-shrink:0;box-shadow:0 6px 18px rgba(15,23,42,.08)">'
         + '<div style="min-width:0;flex:1">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:800;color:#2255a4;letter-spacing:.06em;text-transform:uppercase">' + a.section + '</span><span style="font-size:10px;color:#94a3b8">' + relTime(a.date) + '</span></div>'
         + '<div data-kh-title-id="' + escapeHtml(a.id || '') + '" style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + (a.title_en || a.title) + '</div>'
@@ -2719,12 +2727,13 @@ function attachHeroInteractions(heroEl) {
 function buildArticleRowHTML(a) {
   var levelColors = {Starter:'background:#f3e8ff;color:#6b21a8',Beginner:'background:#e8f5e9;color:#2e7d32',Intermediate:'background:#fff8e1;color:#f57f17',Advanced:'background:#fce4ec;color:#c62828'};
   var lvlStyle = levelColors[a.level] || 'background:#f0f4ff;color:#1a3a6b';
-  var aImg = khArticleThumb(a, 600, 400);
+  // Row renders at 220x140 → 440x280 is the matching retina-safe size.
+  var aImg = khArticleThumb(a, 440, 280);
   var fallback = KH_IMG_PLACEHOLDER;
   var aBody = (a.body || '').replace(/<[^>]*>/g, '').slice(0, 90);
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;display:block;margin-bottom:20px;">'
     + '<div class="article-row">'
-    + '<img src="' + aImg + '" alt="" onerror="this.src=\'' + fallback + '\'" style="width:220px;height:140px;object-fit:cover;border-radius:10px;flex-shrink:0;">'
+    + '<img src="' + aImg + '" alt="" loading="lazy" decoding="async" fetchpriority="low" onerror="this.src=\'' + fallback + '\'" style="width:220px;height:140px;object-fit:cover;border-radius:10px;flex-shrink:0;">'
     + '<div class="article-info">'
     + '<span class="category-tag" style="font-size:11px;padding:2px 8px;' + lvlStyle + '">' + (a.level ? ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) : (a.section || '')) + '</span>'
     + '<h2 class="article-title vocab-zone" style="margin:8px 0 6px;font-size:18px;">' + a.title + '</h2>'
@@ -2739,7 +2748,7 @@ function buildHeroHTML(featured, rest) {
   var body = (featured.body || '').replace(/<[^>]*>/g, '').slice(0, 120);
   return '<a href="' + articleUrl(featured.id) + '" style="color:inherit;text-decoration:none;">'
     + '<div class="hero-main">'
-    + '<img src="' + img + '" alt="" onerror="this.src=\'' + fallback + '\'">'
+    + '<img src="' + img + '" alt="" fetchpriority="high" decoding="async" onerror="this.src=\'' + fallback + '\'">'
     + '<div class="overlay">'
     + '<span class="category-tag">' + (featured.section || '') + '</span>'
     + '<h1 class="vocab-zone">' + featured.title + '</h1>'
@@ -2880,9 +2889,9 @@ function _buildNewsCardHTML(a) {
   var lvl = a.level || '';
   var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : lvl === 'Starter' ? 'lvl-s' : 'lvl-b';
   var cat = (a.section || '').toLowerCase();
-  var thumbSrc = (typeof khArticleThumb === 'function') ? khArticleThumb(a, 600, 400) : (a.image || '');
+  var thumbSrc = (typeof khArticleThumb === 'function') ? khArticleThumb(a, 400, 260) : (a.image || '');
   var img = thumbSrc
-    ? '<img class="nc-img" src="' + thumbSrc + '" alt="" loading="lazy" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/\'+encodeURIComponent(this.dataset.fb||\'kh\')+\'/600/400\'" data-fb="' + escapeHtml(a.id || 'kh') + '">'
+    ? '<img class="nc-img" src="' + thumbSrc + '" alt="" loading="lazy" decoding="async" fetchpriority="low" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/\'+encodeURIComponent(this.dataset.fb||\'kh\')+\'/400/260\'" data-fb="' + escapeHtml(a.id || 'kh') + '">'
     : '<div class="nc-img nc-img-fallback"></div>';
   var dateStr = a.date ? new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
   return '<div class="nc nc-overlay" data-section="' + escapeHtml(cat) + '" data-level="' + escapeHtml(lvl) + '" onclick="location.href=\'' + articleUrl(a.id) + '\'">'
@@ -3258,7 +3267,7 @@ function renderArticlePage() {
           + related.map(function(r){
               var levelColors = {'Starter':'#f3e8ff;color:#6b21a8','Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'};
               return '<a href="' + articleUrl(r.id) + '" class="art-related-card">'
-                + '<img src="' + khArticleThumb(r, 300, 200) + '" alt="">'
+                + '<img src="' + khArticleThumb(r, 300, 200) + '" alt="" loading="lazy" decoding="async" fetchpriority="low">'
                 + '<div class="art-related-info">'
                 + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'
                 + '<span style="font-size:10px;font-weight:800;text-transform:uppercase;color:#2255a4">' + r.section + '</span>'
