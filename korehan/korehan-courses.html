@@ -560,7 +560,11 @@ function setBilling(mode, btn) {
 }
 
 function enroll(plan) {
-  alert('Payment setup coming soon! For early access, contact han@korehannews.com');
+  khAlert(
+    'Payment coming soon',
+    'Checkout isn\'t live yet. For early access or enterprise pricing, email han@korehannews.com.',
+    { okLabel: 'Got it' }
+  );
 }
 
 // Show current plan badge

@@ -240,11 +240,11 @@
     var sb = getSupa(); if (!sb || !supaUser) return;
     var res = await sb.rpc('purchase_coin_shop_item', { p_user_id: supaUser.id, p_item_id: itemId });
     if (res.error || !res.data || !res.data.ok) {
-      alert((res.data && res.data.error) || (res.error && res.error.message) || 'Purchase failed.');
+      toast((res.data && res.data.error) || (res.error && res.error.message) || 'Purchase failed', 'error');
       return;
     }
     if (typeof _fjMarkDone === 'function') _fjMarkDone('shop');
-    alert('냥으로 구매 완료!');
+    toast('Purchase complete', 'success');
     initShop();
   };
 
@@ -254,7 +254,7 @@
     var amount = Number(itemRes.data && itemRes.data.cash_price || 0);
     await sb.from('payment_orders').insert({ user_id: supaUser.id, item_id: itemId, amount: amount, currency: 'USD', status: 'pending', provider: 'manual_pending' });
     await sb.from('shop_purchases').insert({ user_id: supaUser.id, item_id: itemId, purchase_type: 'cash', cash_amount: amount, payment_status: 'pending' });
-    alert('Cash checkout is prepared. Payment gateway connection can be plugged in next.');
+    khAlert('Checkout pending', 'Your order was recorded. Card payment will be available once the gateway is connected — we\'ll contact you for early access.', { okLabel: 'OK' });
     initShop();
   };
 
@@ -373,14 +373,17 @@
     if (!item) return;
     var owned = [];
     try { owned = JSON.parse(localStorage.getItem('kh_room_owned')||'[]'); } catch(e){}
-    if (owned.indexOf(itemId) >= 0) { alert('Already owned!'); return; }
+    if (owned.indexOf(itemId) >= 0) { toast('Already owned', 'warn'); return; }
 
     if (item.price > 0) {
       var sb = getSupa();
-      if (!sb || !supaUser) { alert('Please sign in'); return; }
+      if (!sb || !supaUser) { toast('Please sign in first', 'warn'); return; }
       var statsRes = await sb.from('user_stats').select('coin_balance').eq('user_id',supaUser.id).maybeSingle();
       var bal = (statsRes.data && statsRes.data.coin_balance) || 0;
-      if (bal < item.price) { alert('Not enough nyang! (Need '+item.price+', have '+bal+')'); return; }
+      if (bal < item.price) {
+        toast('Not enough nyang — need ' + item.price + ', you have ' + bal, 'warn');
+        return;
+      }
       await sb.from('user_stats').update({coin_balance: bal - item.price}).eq('user_id',supaUser.id);
     }
 
@@ -396,7 +399,7 @@
       }
     } catch(e){}
     if (typeof _fjMarkDone === 'function') _fjMarkDone('shop');
-    alert('Purchased ' + item.name + '! Place it in My Room.');
+    toast('Purchased ' + item.name + ' — place it in My Room', 'success');
     renderRoomShop();
     initShop();
   };

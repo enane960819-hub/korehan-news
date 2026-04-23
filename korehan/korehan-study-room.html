@@ -5269,7 +5269,10 @@ function openWritingModal() {
 function canEnterWritingRoom() {
   var hasDoneStep = !!(_studyDone.topic || _studyDone.grammar || _studyDone.picture || _studyDone.sentence || _studyDone.expressions);
   if (hasDoneStep) return true;
-  alert('Please complete at least 1 learning step before entering the Express Practice.\n(Topic Writing / Grammar Focus / Picture Description / Dictation / Key Expressions)');
+  khAlert(
+    'Finish one step first',
+    'Complete at least one learning step (Topic Writing, Grammar Focus, Picture Description, Dictation, or Key Expressions) before entering Express Practice.'
+  );
   return false;
 }
 
@@ -9346,7 +9349,12 @@ async function submitAllWritingsToday() {
     showToast('Already submitted today. You can submit once per day (resets at midnight KST).');
     return;
   }
-  if (!confirm('Submit all of today\'s work as a package?\n\nYou can only submit ONCE per day (resets at midnight KST). Make sure all your writing is complete.')) return;
+  var okSubmit = await khConfirm(
+    'Submit today\'s work?',
+    'You can submit once per day (resets at midnight KST). Make sure every writing step is complete before sending.',
+    { okLabel: 'Submit' }
+  );
+  if (!okSubmit) return;
 
   var sb = getSupa(); if (!sb) return;
   var all = getAllDrafts();
@@ -11125,7 +11133,7 @@ function openWritingModalWithMode() {
   if (!ensureStudyUnlocked()) return;
   if (!canEnterWritingRoom()) return;
   if (_writingMode === 'reading' && !_selectedArticle) {
-    alert('자료를 먼저 선택해주세요 (기사 / 대화 / 스토리)');
+    khAlert('Pick something to write about', 'Choose an article, conversation, or story first.');
     return;
   }
   // markStageDone moved to actual submit/finish functions
@@ -11860,12 +11868,19 @@ function _setWritingGenre(g) {
   _renderGenreScaffold();
 }
 
-function _insertGenreTemplate() {
+async function _insertGenreTemplate() {
   var meta = WRITING_GENRES[_wmGenre];
   if (!meta || !meta.template) return;
   var ta = document.getElementById('write-area');
   if (!ta) return;
-  if (ta.value.trim() && !confirm('Replace your current writing with the ' + meta.label + ' template?')) return;
+  if (ta.value.trim()) {
+    var ok = await khConfirm(
+      'Replace your writing?',
+      'This will overwrite what you\'ve written so far with the ' + meta.label + ' template.',
+      { okLabel: 'Replace' }
+    );
+    if (!ok) return;
+  }
   ta.value = meta.template;
   if (typeof onWriteAreaInput === 'function') onWriteAreaInput();
   ta.focus();
@@ -17095,8 +17110,7 @@ function openUniverseView() {
   else if (typeof _wbAllWords !== 'undefined' && _wbAllWords && _wbAllWords.length) source = _wbAllWords;
   var words = source.slice();
   if (!words.length) {
-    if (typeof toast === 'function') toast('Save some words first to build your galaxy', true);
-    else alert('Save some words first to build your galaxy');
+    toast('Save some words first to build your galaxy', 'warn');
     return;
   }
   KHUniverse.open({ words: words, title: 'Your Vocabulary Universe' });
@@ -18284,7 +18298,7 @@ function rvClearSaved(type) {
   localStorage.removeItem(_rvSaveKey(type) + '_count');
 }
 
-function rvHandleClose() {
+async function rvHandleClose() {
   // For weekly/monthly: track close attempts
   if (_rv.type === 'weekly' || _rv.type === 'monthly') {
     // If review is finished (showing score), just close
@@ -18296,14 +18310,24 @@ function rvHandleClose() {
     var closes = parseInt(localStorage.getItem(closeKey) || '0');
     if (closes === 0) {
       // First close: offer save
-      if (confirm('임시저장하고 나가시겠습니까?\n\n• 임시저장은 1회만 가능합니다\n• 다음에 창을 닫으면 리뷰가 종료되고 미응답 문제는 0점 처리됩니다')) {
+      var ok1 = await khConfirm(
+        'Save and leave?',
+        'You can save your progress once. If you close the review again, it will end and any unanswered questions will be scored 0.',
+        { okLabel: 'Save and leave' }
+      );
+      if (ok1) {
         rvSaveProgress();
         localStorage.setItem(closeKey, '1');
         closeReviewModal();
       }
     } else {
       // 2nd close: end review, unanswered = 0
-      if (confirm('리뷰를 종료하시겠습니까?\n\n응답하지 않은 문제는 전부 0점 처리됩니다.')) {
+      var ok2 = await khConfirm(
+        'End review?',
+        'Any unanswered questions will be scored 0.',
+        { okLabel: 'End review', destructive: true }
+      );
+      if (ok2) {
         // Fill remaining with 0 scores
         while (_rv.scores.length < _rv.questions.length) {
           _rv.scores.push(0);

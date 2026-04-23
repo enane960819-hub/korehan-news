@@ -908,17 +908,19 @@ function convDelGrammar(idx) {
   var c = window._currentConv; if (!c) return;
   c.grammar.splice(idx,1); renderStudyNotes(c); _convSaveData();
 }
-function convAddVocab() {
-  var ko = prompt('Korean word:'); if (!ko) return;
-  var rom = prompt('Romanization (optional):') || '';
-  var en = prompt('English meaning:') || '';
+async function convAddVocab() {
+  var ko = await khPrompt('Add vocabulary', 'Korean word');
+  if (!ko) return;
+  var rom = await khPrompt('Add vocabulary', 'Romanization (optional)') || '';
+  var en  = await khPrompt('Add vocabulary', 'English meaning') || '';
   var c = window._currentConv; if (!c) return;
   if (!c.vocab) c.vocab = [];
   c.vocab.push({ko:ko,rom:rom,en:en}); renderStudyNotes(c); _convSaveData();
 }
-function convAddGrammar() {
-  var point = prompt('Grammar point (e.g. -(으)ㄹ까?):'); if (!point) return;
-  var ex = prompt('Explanation + example:') || '';
+async function convAddGrammar() {
+  var point = await khPrompt('Add grammar point', 'Grammar point (e.g. -(으)ㄹ까?)');
+  if (!point) return;
+  var ex = await khPrompt('Add grammar point', 'Explanation + example') || '';
   var c = window._currentConv; if (!c) return;
   if (!c.grammar) c.grammar = [];
   c.grammar.push({point:point,ex:ex}); renderStudyNotes(c); _convSaveData();
@@ -1332,10 +1334,10 @@ function startBlankQuiz() {
   var c = window._currentConv;
   if (!c) return;
   var msgs = (c.msgs || []);
-  if (!msgs.length) { alert('No dialogue content found'); return; }
+  if (!msgs.length) { toast('No dialogue content found', 'warn'); return; }
 
   var vocab = (c.vocab || []).filter(function(v){ return v.ko && v.ko.length > 1; });
-  if (!vocab.length) { alert('No vocabulary data available'); return; }
+  if (!vocab.length) { toast('No vocabulary data available', 'warn'); return; }
 
   var questions = msgs.slice(0, 6).map(function(msg) {
     var text = msg.txt || msg.text || '';
@@ -1359,7 +1361,7 @@ function startOrderQuiz() {
   var c = window._currentConv;
   if (!c) return;
   var msgs = (c.msgs || []).slice(0, 6);
-  if (msgs.length < 3) { alert('Conversation is too short for this quiz'); return; }
+  if (msgs.length < 3) { toast('Conversation is too short for this quiz', 'warn'); return; }
 
   var questions = [];
   // 3개씩 슬라이딩 윈도우로 순서 맞추기
@@ -1631,20 +1633,27 @@ function editCurrentConv() {
 
 async function deleteCurrentConv() {
   var c = window._currentConv;
-  if (!c || !c._id) { alert('No ID — only DB-loaded entries can be deleted'); return; }
-  if (!confirm('Delete "' + c.name + '"?')) return;
+  if (!c || !c._id) {
+    await khAlert('Can\'t delete', 'Only conversations loaded from the database can be deleted.');
+    return;
+  }
+  var ok = await khConfirm(
+    'Delete conversation?',
+    'This will permanently remove "' + c.name + '".',
+    { okLabel: 'Delete', destructive: true }
+  );
+  if (!ok) return;
   try {
     var sb = getSupa();
     var { error } = await sb.from('conversations_data').delete().eq('id', c._id);
     if (error) throw error;
-    // CONVS 배열에서도 제거
     var idx = CONVS.findIndex(function(x){ return x._id === c._id; });
     if (idx >= 0) CONVS.splice(idx, 1);
     closeDetail();
     renderCards(activeCat, activeLvl);
-    showConvToast('🗑 Deleted');
+    showConvToast('Deleted');
   } catch(e) {
-    alert('Delete error: ' + e.message);
+    await khAlert('Delete failed', e.message || 'Something went wrong deleting this conversation.');
   }
 }
 
@@ -1756,7 +1765,7 @@ async function uploadConvThumb(input) {
   var file = input.files && input.files[0];
   if (!file) return;
   var sb = getSupa();
-  if (!sb) { alert('Supabase not ready'); return; }
+  if (!sb) { toast('Connection not ready — please retry', 'error'); return; }
   var ext = file.name.split('.').pop().toLowerCase();
   var path = 'conversations/' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '.' + ext;
   try {
@@ -1769,7 +1778,7 @@ async function uploadConvThumb(input) {
       showConvToast('✅ Uploaded');
     }
   } catch(e) {
-    alert('Upload failed: ' + e.message);
+    khAlert('Upload failed', e.message || 'Please try again.');
   }
 }
 
@@ -1823,7 +1832,7 @@ function closeInlineEdit() { var e = document.getElementById('conv-inline-edit')
     var c = window._currentConv;
     if (!c) return;
     var msgs = (c.msgs || []).slice(0, 10);
-    if (!msgs.length) { alert('No conversation lines found.'); return; }
+    if (!msgs.length) { toast('No conversation lines found', 'warn'); return; }
     var questions = [];
     msgs.forEach(function(msg) {
       var raw = (msg.txt || msg.text || '').trim();
@@ -1833,7 +1842,7 @@ function closeInlineEdit() { var e = document.getElementById('conv-inline-edit')
       if (words.length < 2 || words.length > 6) return;
       questions.push({ sentence: sentence, words: words, who: msg.who || msg.name || '' });
     });
-    if (!questions.length) { alert('No usable sentence for word order quiz.'); return; }
+    if (!questions.length) { toast('No usable sentence for word order quiz', 'warn'); return; }
     window._orderAttempt = 0;
     showQuizModal('order', questions.slice(0, 4), c.name || '');
   };

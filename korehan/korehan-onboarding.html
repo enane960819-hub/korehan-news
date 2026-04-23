@@ -975,9 +975,10 @@ function nextTestQ() {
   else renderTestQuestion();
 }
 
-function backToLevelChoice() {
+async function backToLevelChoice() {
   if (_testIdx > 0 || state.testAnswers.length) {
-    if (!confirm('Leave the test and go back to level selection?')) return;
+    var ok = await khConfirm('Leave the test?', 'Your progress won\'t be saved.', { okLabel: 'Leave' });
+    if (!ok) return;
   }
   state.testQuestions = [];
   state.testAnswers = [];
