@@ -2206,6 +2206,32 @@ function _khLoadHlsJs() {
   });
   return _khHlsLoadPromise;
 }
+// Tag a <video> that we know has no audio with a small "Silent"
+// badge so the learner doesn't spend time fiddling with volume.
+// Fires for two cases: the Reddit post was originally silent
+// (is_gif=true, no audio track upstream) and the case where the
+// audio companion 404s because our DASH_AUDIO_128 guess was wrong
+// for that post.
+function _khMarkSilent(video) {
+  if (!video || !video.parentNode) return;
+  if (video.parentNode.querySelector('.kh-silent-badge')) return;
+  var parent = video.parentNode;
+  if (getComputedStyle(parent).position === 'static') parent.style.position = 'relative';
+  var badge = document.createElement('div');
+  badge.className = 'kh-silent-badge';
+  badge.textContent = 'Silent';
+  badge.title = 'This clip has no audio track.';
+  badge.style.cssText =
+    'position:absolute;right:12px;top:12px;z-index:5;' +
+    'background:rgba(8,16,31,.75);color:#fff;' +
+    'padding:4px 10px;border-radius:999px;' +
+    'font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;' +
+    'font-family:inherit;pointer-events:none;' +
+    'backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);' +
+    'box-shadow:0 2px 8px rgba(0,0,0,.25);';
+  parent.appendChild(badge);
+}
+
 // Cache of resolver responses keyed by permalink, scoped to the page
 // load. Multiple <video> elements pointing at the same post (rare, but
 // possible in feeds) share one fetch.
@@ -2313,11 +2339,34 @@ function _khAttachHls(root) {
     // normal image-only article and blends into the reader.
     function swapToImageFallback() {
       if (!imageFallback || !v.parentNode) return false;
+      var parent = v.parentNode;
       var img = document.createElement('img');
       img.src = imageFallback;
       img.alt = '';
       img.onerror = function(){ this.style.display = 'none'; };
-      v.parentNode.replaceChild(img, v);
+      parent.replaceChild(img, v);
+      // Add a small "video unavailable" overlay so learners whose
+      // network blocks v.redd.it (or who hit a removed Reddit post)
+      // understand the hero image is a stand-in, not the full
+      // article media. Positioned on the parent which is already a
+      // 16:9 slot with overflow:hidden.
+      if (parent && getComputedStyle(parent).position === 'static') {
+        parent.style.position = 'relative';
+      }
+      if (parent && !parent.querySelector('.kh-video-fallback-badge')) {
+        var badge = document.createElement('div');
+        badge.className = 'kh-video-fallback-badge';
+        badge.textContent = 'Video unavailable';
+        badge.style.cssText =
+          'position:absolute;left:12px;bottom:12px;z-index:5;' +
+          'background:rgba(8,16,31,.75);color:#fff;' +
+          'padding:5px 10px;border-radius:999px;' +
+          'font-size:11px;font-weight:700;letter-spacing:.02em;' +
+          'font-family:inherit;pointer-events:none;' +
+          'backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);' +
+          'box-shadow:0 2px 8px rgba(0,0,0,.25);';
+        parent.appendChild(badge);
+      }
       return true;
     }
 
@@ -2341,7 +2390,18 @@ function _khAttachHls(root) {
         // Layer audio back on so the "degraded" path keeps audio alive.
         // Without this, every HLS failure = silent video, defeating the
         // whole point of the resolver.
-        if (freshAudio) _khAttachAudioCompanion(v, freshAudio);
+        if (freshAudio) {
+          var companion = _khAttachAudioCompanion(v, freshAudio);
+          // If the audio companion itself 404s (the DASH_AUDIO_128
+          // guess was wrong for this post), surface a small "Silent"
+          // pill so learners know why the video has no sound.
+          if (companion) companion.addEventListener('error', function(){ _khMarkSilent(v); }, { once: true });
+        } else {
+          // Post genuinely has no audio track (Reddit is_gif=true) —
+          // mark the slot immediately so the learner doesn't wait for
+          // sound that's never coming.
+          _khMarkSilent(v);
+        }
         khLog('[hero-video] HLS failed, using silent MP4 + audio companion:', reason || 'unknown');
         return;
       }
