@@ -1934,16 +1934,23 @@ function khArticleHeroMedia(article) {
       // The permalink (when known) lets _khAttachHls call /api/reddit-
       // video-resolve to fetch fresh signed URLs at playback time —
       // this is what makes audio reliable even on year-old articles.
+      // iframe fallback (derived from permalink) is a *last* resort for
+      // the case where both HLS and the persisted silent MP4 URLs have
+      // expired and the resolver is unreachable.
       var fb = (article && article.video_fallback_url) || _khDeriveRedditMp4(src);
       var perma = (article && article.source_url) || '';
-      return '<video data-kh-hls="' + _khEsc(src) + '" data-kh-fallback="' + _khEsc(fb || '') + '" data-kh-permalink="' + _khEsc(perma) + '" controls playsinline preload="metadata"></video>';
+      var ifb = _khBuildRedditIframeFallback(perma);
+      return '<video data-kh-hls="' + _khEsc(src) + '" data-kh-fallback="' + _khEsc(fb || '') + '" data-kh-permalink="' + _khEsc(perma) + '" data-kh-iframe-fallback="' + _khEsc(ifb) + '" controls playsinline preload="metadata"></video>';
     }
     if (kind === 'reddit') {
       // Silent MP4 baseline. Routed through _khAttachHls so the resolver
       // can layer a synced <audio> companion on top — recovers audio on
       // legacy 'reddit' kind articles that were saved without hls_url.
+      // If both the persisted MP4 and the resolver fail (signed URL
+      // expiry + resolver outage), the derived iframe takes over.
       var perma2 = (article && article.source_url) || '';
-      return '<video data-kh-hls="" data-kh-fallback="' + _khEsc(src) + '" data-kh-permalink="' + _khEsc(perma2) + '" controls playsinline preload="metadata"></video>';
+      var ifb2 = _khBuildRedditIframeFallback(perma2);
+      return '<video data-kh-hls="" data-kh-fallback="' + _khEsc(src) + '" data-kh-permalink="' + _khEsc(perma2) + '" data-kh-iframe-fallback="' + _khEsc(ifb2) + '" controls playsinline preload="metadata"></video>';
     }
   }
   var img = khArticleThumb(article, 600, 400);
@@ -1967,6 +1974,19 @@ function _khLoadHlsJs() {
   });
   return _khHlsLoadPromise;
 }
+// Derive the redditmedia.com embed iframe URL from any reddit permalink.
+// Used as the absolute last-resort fallback for every reddit-kind hero
+// video: if the resolver + HLS + persisted silent MP4 all fail, at
+// least the iframe still renders the clip (with chrome, but visible).
+function _khBuildRedditIframeFallback(permalink) {
+  if (!permalink) return '';
+  var m = String(permalink).match(/^https?:\/\/(?:www\.|old\.|new\.)?reddit\.com(\/r\/[^?#]+\/comments\/[^?#]+)/i);
+  if (!m) return '';
+  var path = m[1];
+  if (!path.endsWith('/')) path += '/';
+  return 'https://www.redditmedia.com' + path + '?ref_source=embed&ref=share&embed=true';
+}
+
 // Cache of resolver responses keyed by permalink, scoped to the page
 // load. Multiple <video> elements pointing at the same post (rare, but
 // possible in feeds) share one fetch.
@@ -2094,6 +2114,10 @@ function _khAttachHls(root) {
       v.removeAttribute('src');
       var fbSrc = freshFallback || fallback;
       if (fbSrc) {
+        // Arm the same error-based iframe swap so a dead MP4 fallback
+        // (signed URL expired) still degrades gracefully instead of
+        // showing the broken-video icon.
+        armMp4ErrorSwap();
         v.src = _khProxyRedditUrl(fbSrc);
         v.load();
         // Layer audio back on so the "degraded" path keeps audio alive.
@@ -2144,11 +2168,26 @@ function _khAttachHls(root) {
       });
     }
 
+    // Attach a one-shot <video> error listener that swaps to the iframe
+    // fallback if the MP4 we just set as src fails to load — typically
+    // happens when both the resolver and the persisted URLs point at
+    // expired signed v.redd.it URLs. Without this, the player just
+    // shows the browser's broken-video icon.
+    function armMp4ErrorSwap() {
+      v.addEventListener('error', function onErr() {
+        v.removeEventListener('error', onErr);
+        if (!swapToIframeFallback()) {
+          console.warn('[hero-video] MP4 fallback failed and no iframe fallback available');
+        }
+      }, { once: true });
+    }
+
     function startWithFreshUrls() {
       var hls = freshHls || staleSrc;
       var fbSrc = freshFallback || fallback;
       if (!hls && fbSrc) {
         // No HLS at all → straight to silent MP4 + companion audio.
+        armMp4ErrorSwap();
         v.src = _khProxyRedditUrl(fbSrc); v.load();
         if (freshAudio) _khAttachAudioCompanion(v, freshAudio);
         return;
