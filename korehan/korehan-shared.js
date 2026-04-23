@@ -3413,7 +3413,7 @@ function renderArticlePage() {
     // Vocab 탭
     + '<div id="art-tab-vocab" style="display:none">'
     + '<div class="art-vocab-box">'
-    + '<div class="art-vocab-title">📚 Key Vocabulary</div>'
+    + '<div class="art-vocab-title">Key Vocabulary</div>'
     + '<div class="art-vocab-list" id="art-vocab-list"></div>'
     + '</div>'
     + '</div>'
@@ -3424,27 +3424,27 @@ function renderArticlePage() {
     + '<div id="art-tab-quiz" style="display:none">'
     + '<div class="rv-wrap">'
     +   '<div class="rv-intro">'
-    +     '<div class="rv-intro-title">📝 Review</div>'
+    +     '<div class="rv-intro-title">Review</div>'
     +     '<div class="rv-intro-sub">Light practice before moving on — four quick checks.</div>'
     +   '</div>'
 
     +   '<div class="rv-card">'
-    +     '<div class="rv-card-head"><span class="rv-card-icon">🧠</span><span>Vocabulary</span><span class="rv-card-hint">Multiple choice</span></div>'
+    +     '<div class="rv-card-head"><span>Vocabulary</span><span class="rv-card-hint">Multiple choice</span></div>'
     +     '<div id="rv-vocab-check" class="rv-card-body"></div>'
     +   '</div>'
 
     +   '<div class="rv-card">'
-    +     '<div class="rv-card-head"><span class="rv-card-icon">✓</span><span>Comprehension</span><span class="rv-card-hint">True or False</span></div>'
+    +     '<div class="rv-card-head"><span>Comprehension</span><span class="rv-card-hint">True or False</span></div>'
     +     '<div id="rv-tf-check" class="rv-card-body"></div>'
     +   '</div>'
 
     +   '<div class="rv-card">'
-    +     '<div class="rv-card-head"><span class="rv-card-icon">🔤</span><span>Fill in the Blank</span><span class="rv-card-hint">AI-generated</span></div>'
+    +     '<div class="rv-card-head"><span>Fill in the Blank</span><span class="rv-card-hint">AI-generated</span></div>'
     +     '<div class="rv-card-body"><div id="fill-wrap"><div id="fill-content"><div id="fill-teaser"></div></div></div></div>'
     +   '</div>'
 
     +   '<div class="rv-card">'
-    +     '<div class="rv-card-head"><span class="rv-card-icon">🎧</span><span>Listening</span><span class="rv-card-hint">Audio quiz</span></div>'
+    +     '<div class="rv-card-head"><span>Listening</span><span class="rv-card-hint">Audio quiz</span></div>'
     +     '<div class="rv-card-body"><div id="art-listening-quiz"><button onclick="startArticleListeningQuiz()" class="rv-start-btn">Start Listening Quiz</button></div></div>'
     +   '</div>'
 

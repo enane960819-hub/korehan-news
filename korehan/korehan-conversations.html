@@ -594,7 +594,7 @@ async function openDetail(idx) {
   var overlay = document.getElementById('detail-overlay');
   var panel = document.getElementById('detail-panel');
   if (!c._loaded) {
-    panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:#fff;border-radius:28px"><div style="text-align:center;padding:40px"><div style="font-size:32px;margin-bottom:12px;animation:spin 1s linear infinite">⏳</div><div style="font-size:15px;font-weight:700;color:#334155">대화 불러오는 중...</div></div></div>';
+    panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:#fff;border-radius:28px"><div style="text-align:center;padding:40px"><div style="font-size:32px;margin-bottom:12px;animation:spin 1s linear infinite">⏳</div><div style="font-size:15px;font-weight:700;color:#334155">Loading conversation…</div></div></div>';
     overlay.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     document.documentElement.style.overflow = 'hidden';
@@ -628,7 +628,7 @@ async function openDetail(idx) {
 
   if (!c.msgs || !c.msgs.length) {
     // Show a friendly message instead of alert
-    panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:#fff;border-radius:28px"><div style="text-align:center;padding:40px"><div style="font-size:32px;margin-bottom:12px">😅</div><div style="font-size:15px;font-weight:700;color:#334155;margin-bottom:6px">대화 내용을 불러올 수 없습니다</div><div style="font-size:13px;color:#64748b;margin-bottom:16px">This conversation hasn\'t been fully set up yet.</div><button onclick="closeDetail()" style="padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">← Back</button></div></div>';
+    panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:#fff;border-radius:28px"><div style="text-align:center;padding:40px"><div style="font-size:15px;font-weight:700;color:#334155;margin-bottom:6px">Conversation not available yet</div><div style="font-size:13px;color:#64748b;margin-bottom:16px">This conversation hasn\'t been fully set up. Try another one from the list.</div><button onclick="closeDetail()" style="padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">← Back to list</button></div></div>';
     overlay.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     return;
@@ -750,10 +750,10 @@ async function openDetail(idx) {
     // behind tabs. CSS hides this strip above 900px so desktop keeps
     // its 2-column layout untouched.
     '<div class="dp-mobile-tabs" role="tablist" aria-label="Conversation sections">'
-      +'<button class="dp-mobile-tab on" data-tab="read" onclick="switchConvMobileTab(\'read\')">💬 Read</button>'
-      +'<button class="dp-mobile-tab" data-tab="vocab" onclick="switchConvMobileTab(\'vocab\')">📚 Vocab</button>'
-      +'<button class="dp-mobile-tab" data-tab="grammar" onclick="switchConvMobileTab(\'grammar\')">📐 Grammar</button>'
-      +'<button class="dp-mobile-tab" data-tab="practice" onclick="switchConvMobileTab(\'practice\')">🎯 Practice</button>'
+      +'<button class="dp-mobile-tab on" data-tab="read" onclick="switchConvMobileTab(\'read\')">Read</button>'
+      +'<button class="dp-mobile-tab" data-tab="vocab" onclick="switchConvMobileTab(\'vocab\')">Vocab</button>'
+      +'<button class="dp-mobile-tab" data-tab="grammar" onclick="switchConvMobileTab(\'grammar\')">Grammar</button>'
+      +'<button class="dp-mobile-tab" data-tab="practice" onclick="switchConvMobileTab(\'practice\')">Practice</button>'
     +'</div>'
     +'<div class="dp-left">'
       +'<div class="dp-left-head">'
@@ -787,12 +787,12 @@ async function openDetail(idx) {
       +'</div>'
     +'</div>'
     +'<div class="dp-right">'
-      +'<div class="dp-right-head"><div class="dp-right-label">학습 노트</div><div class="dp-right-title">Conversation Breakdown</div></div>'
+      +'<div class="dp-right-head"><div class="dp-right-label">Study Notes</div><div class="dp-right-title">Conversation Breakdown</div></div>'
       +'<div class="dp-study-sections" id="dp-study-sections">'
-        +(initKeyExprCard ? '<div class="dp-keyexpr-card" data-study="keyexpr"><div class="dp-study-card-title" style="color:#92400e">⭐ Key Expressions</div>'+initKeyExprs+'</div>' : '')
-        +'<div class="dp-study-card" data-study="vocab"><div class="dp-study-card-title">'+_IC.book+' 단어 · Vocabulary</div><div class="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
-        +(grammar ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' 문법 · Grammar</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
-        +(mission ? '<div class="dp-study-card" data-study="practice"><div class="dp-study-card-title">'+_IC.target+' 연습 미션 · Practice</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
+        +(initKeyExprCard ? '<div class="dp-keyexpr-card" data-study="keyexpr"><div class="dp-study-card-title" style="color:#92400e">Key Expressions</div>'+initKeyExprs+'</div>' : '')
+        +'<div class="dp-study-card" data-study="vocab"><div class="dp-study-card-title">'+_IC.book+' Vocabulary</div><div class="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
+        +(grammar ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' Grammar</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
+        +(mission ? '<div class="dp-study-card" data-study="practice"><div class="dp-study-card-title">'+_IC.target+' Practice</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
       +'</div>'
     +'</div>';
   // Default mobile view = the conversation itself (chat bubbles). CSS
@@ -831,8 +831,8 @@ function renderStudyNotes(c) {
   }).join('');
   var keywords = (c.vocab||[]).map(function(v){ return '<span class="dp-keyword">'+escapeHtml(v.ko || '')+'</span>'; }).join('');
   var mission = (c.mission||[]).map(function(m){ return '<div class="dp-grammar-item">'+_IC.target+' '+escapeHtml(m.task||m||'')+'</div>'; }).join('');
-  var addVocabBtn = isAdm ? '<button class="admin-add-btn" onclick="convAddVocab()">+ 단어 추가</button>' : '';
-  var addGrammarBtn = isAdm ? '<button class="admin-add-btn" onclick="convAddGrammar()">+ 문법 추가</button>' : '';
+  var addVocabBtn = isAdm ? '<button class="admin-add-btn" onclick="convAddVocab()">+ Add vocab</button>' : '';
+  var addGrammarBtn = isAdm ? '<button class="admin-add-btn" onclick="convAddGrammar()">+ Add grammar</button>' : '';
   // Key Expressions
   var keyExprs = c.key_expressions || [];
   var keyExprHtml = keyExprs.length ? keyExprs.map(function(e){
@@ -844,11 +844,11 @@ function renderStudyNotes(c) {
   }).join('') : '';
 
   el.innerHTML =
-    (keyExprHtml ? '<div class="dp-keyexpr-card" data-study="keyexpr"><div class="dp-study-card-title" style="color:#92400e">⭐ 중요표현 · Key Expressions</div>'+keyExprHtml+'</div>' : '')
-    +'<div class="dp-study-card" data-study="vocab"><div class="dp-study-card-title">'+_IC.book+' 단어 · Vocabulary'+addVocabBtn+'</div><div class="dp-vocab-list" id="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
-    +(grammar||isAdm ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' 문법 · Grammar'+addGrammarBtn+'</div><div class="dp-grammar-list" id="dp-grammar-list">'+(grammar||'')+'</div></div>' : '')
-    +(mission ? '<div class="dp-study-card" data-study="practice"><div class="dp-study-card-title">'+_IC.target+' 연습 미션 · Practice</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
-    +'<div class="dp-study-card" data-study="practice"><div class="dp-study-card-title">🎧 듣기 퀴즈 · Listening</div><div id="dp-listening-quiz"><button onclick="startConvListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div></div>'
+    (keyExprHtml ? '<div class="dp-keyexpr-card" data-study="keyexpr"><div class="dp-study-card-title" style="color:#92400e">Key Expressions</div>'+keyExprHtml+'</div>' : '')
+    +'<div class="dp-study-card" data-study="vocab"><div class="dp-study-card-title">'+_IC.book+' Vocabulary'+addVocabBtn+'</div><div class="dp-vocab-list" id="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
+    +(grammar||isAdm ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' Grammar'+addGrammarBtn+'</div><div class="dp-grammar-list" id="dp-grammar-list">'+(grammar||'')+'</div></div>' : '')
+    +(mission ? '<div class="dp-study-card" data-study="practice"><div class="dp-study-card-title">'+_IC.target+' Practice</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
+    +'<div class="dp-study-card" data-study="practice"><div class="dp-study-card-title">Listening Quiz</div><div id="dp-listening-quiz"><button onclick="startConvListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div></div>'
     +'<div style="height:80px"></div>';
 }
 
@@ -911,14 +911,14 @@ function convDelGrammar(idx) {
 function convAddVocab() {
   var ko = prompt('Korean word:'); if (!ko) return;
   var rom = prompt('Romanization (optional):') || '';
-  var en = prompt('영어 뜻:') || '';
+  var en = prompt('English meaning:') || '';
   var c = window._currentConv; if (!c) return;
   if (!c.vocab) c.vocab = [];
   c.vocab.push({ko:ko,rom:rom,en:en}); renderStudyNotes(c); _convSaveData();
 }
 function convAddGrammar() {
   var point = prompt('Grammar point (e.g. -(으)ㄹ까?):'); if (!point) return;
-  var ex = prompt('설명 + 예문:') || '';
+  var ex = prompt('Explanation + example:') || '';
   var c = window._currentConv; if (!c) return;
   if (!c.grammar) c.grammar = [];
   c.grammar.push({point:point,ex:ex}); renderStudyNotes(c); _convSaveData();

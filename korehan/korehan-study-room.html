@@ -2515,7 +2515,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   <button class="sr-top-tab on" onclick="switchSrTab('study',this)"><i data-lucide="notebook-pen" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Study</button>
   <button class="sr-top-tab" onclick="switchSrTab('help',this)"><i data-lucide="book-marked" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Help</button>
   <button class="sr-top-tab" onclick="switchSrTab('master',this)"><i data-lucide="target" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Exercise</button>
-  <button class="sr-top-tab" onclick="switchSrTab('wordbook',this)"><i data-lucide="book-open" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> 단어장</button>
+  <button class="sr-top-tab" onclick="switchSrTab('wordbook',this)"><i data-lucide="book-open" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Word Book</button>
 </div>
 </div>
 
@@ -8267,7 +8267,7 @@ function wbPracticeExample(idx) {
     ? parsed.exKo.split(ko).join('<span style="display:inline-block;min-width:60px;border-bottom:2px solid #7dd3fc;padding:0 4px;color:#7dd3fc;font-weight:800">______</span>')
     : parsed.exKo;
   var html = '<div style="padding:20px">'
-    + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Practice · 빈칸 채우기</div>'
+    + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Practice · Fill in the Blank</div>'
     + '<div style="font-size:17px;font-weight:800;color:#fff;line-height:1.6;margin-bottom:6px">' + blanked + '</div>'
     + (parsed.exEn ? '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px">' + parsed.exEn + '</div>' : '')
     + '<input id="wb-prac-input" type="text" placeholder="한국어로 입력" style="width:100%;padding:12px;border-radius:10px;border:1.5px solid rgba(125,211,252,.4);background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:inherit;outline:none;box-sizing:border-box" autofocus>'
@@ -12925,7 +12925,7 @@ function bmRenderSnapCard() {
     + '<div class="bm-snap-en">' + (card.en || card.ko) + '</div>'
     + (card.rom ? '<div class="bm-snap-rom" style="color:rgba(20,203,176,.55);margin-top:6px">' + card.rom + '</div>' : '')
     + '<button class="bm-snap-save' + (isSaved ? ' saved' : '') + '" onclick="event.stopPropagation();bmSnapSave(' + idx + ')">'
-    + (isSaved ? '✓ Saved' : '+ Save to 단어장')
+    + (isSaved ? '✓ Saved' : '+ Save to Word Book')
     + '</button>'
     + '</div>'
     + '</div></div>'
@@ -14893,10 +14893,10 @@ function _dctSetPips(step) {
     if (el) el.className = 'dct-pip' + (step===n ? ' active' : step>n ? ' done' : '');
   });
   var labels = {
-    1: 'Step 1 of 4 — 듣기 연습',
-    2: 'Step 2 of 4 — 어절 배열하기',
-    3: 'Step 3 of 4 — 빈칸 채우기',
-    4: 'Step 4 of 4 — 맞는 문장 찾기'
+    1: 'Step 1 of 4 — Listening',
+    2: 'Step 2 of 4 — Word Order',
+    3: 'Step 3 of 4 — Fill in the Blank',
+    4: 'Step 4 of 4 — Sentence Match'
   };
   var sub = document.getElementById('dct-step-sub');
   if (sub) sub.textContent = labels[step] || '';
@@ -17060,7 +17060,7 @@ setTimeout(renderCompletedStudies, 500);
   <div style="background:#0d1b2e;border-radius:18px;max-width:620px;width:95%;margin:auto;padding:28px 24px;color:#fff;max-height:85vh;overflow-y:auto;position:relative">
     <button onclick="closeWordBankModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:rgba(255,255,255,.4);font-size:20px;cursor:pointer">✕</button>
     <div style="font-size:24px;margin-bottom:6px">📚</div>
-    <h2 style="margin:0 0 4px;font-size:18px;font-weight:900">내 단어장</h2>
+    <h2 style="margin:0 0 4px;font-size:18px;font-weight:900">My Word Book</h2>
     <p style="margin:0 0 14px;font-size:13px;color:rgba(255,255,255,.5)">Your saved words — tap any word to see its meaning</p>
     <button type="button" onclick="openUniverseView()" id="wb-universe-btn"
       style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 16px;margin-bottom:14px;border:1px solid rgba(167,139,250,.4);border-radius:14px;background:linear-gradient(135deg,rgba(124,58,237,.22),rgba(56,189,248,.14));color:#fff;font-size:13px;font-weight:900;letter-spacing:.02em;cursor:pointer;font-family:inherit;box-shadow:0 8px 24px rgba(124,58,237,.22),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .15s,box-shadow .15s,border-color .15s;position:relative;overflow:hidden">
