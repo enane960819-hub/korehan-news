@@ -797,9 +797,11 @@ async function openDetail(idx) {
     +'</div>';
   // Default mobile view = the conversation itself (chat bubbles). CSS
   // rules scoped to body.kh-reading-page @media(max-width:900px)
-  // hide .dp-right while this class is set.
+  // hide .dp-right while this class is set. _restoreConvMobileTab()
+  // swaps to the user's preferred tab if they'd picked one earlier.
   panelEl.classList.remove('dp-mobile-tab-vocab', 'dp-mobile-tab-grammar', 'dp-mobile-tab-practice');
   panelEl.classList.add('dp-mobile-tab-read');
+  if (typeof _restoreConvMobileTab === 'function') _restoreConvMobileTab();
 
   document.getElementById('detail-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
@@ -856,7 +858,14 @@ function renderStudyNotes(c) {
 // CSS can show the right chunk. Keeps behaviour a no-op on desktop
 // (CSS hides the tab strip above 900px so this button is never
 // tappable there, and the class on the panel has no effect).
-function switchConvMobileTab(tab) {
+// Remember the learner's preferred tab across conversations so
+// someone using this app for Grammar review doesn't have to click
+// Grammar every time they open a conversation. Stored globally
+// (not per-conversation) because the audit flagged it as a quality-
+// of-life miss — we chose the global scope over per-conversation
+// so the setting sticks across sessions without bloating storage.
+var _CONV_TAB_KEY = 'kh_conv_mobile_tab';
+function switchConvMobileTab(tab, opts) {
   var panel = document.getElementById('detail-panel');
   if (!panel) return;
   panel.classList.remove('dp-mobile-tab-read', 'dp-mobile-tab-vocab', 'dp-mobile-tab-grammar', 'dp-mobile-tab-practice');
@@ -865,14 +874,23 @@ function switchConvMobileTab(tab) {
   if (strip) strip.querySelectorAll('.dp-mobile-tab').forEach(function(b){
     b.classList.toggle('on', b.dataset.tab === tab);
   });
+  if (!opts || !opts.skipPersist) {
+    try { localStorage.setItem(_CONV_TAB_KEY, tab); } catch(_) {}
+  }
   // Tab change = fresh starting point. Reset the modal scroll so the
   // learner isn't dropped into the middle of (say) a vocab list.
   var overlay = document.getElementById('detail-overlay');
   if (overlay) overlay.scrollTop = 0;
   panel.scrollTop = 0;
-  // Pill visibility threshold was calibrated against the previous
-  // scroll state — re-evaluate now that content visibility changed.
   if (typeof window._convPillSync === 'function') window._convPillSync();
+}
+function _restoreConvMobileTab() {
+  var saved = null;
+  try { saved = localStorage.getItem(_CONV_TAB_KEY); } catch(_) {}
+  if (!saved || ['read','vocab','grammar','practice'].indexOf(saved) === -1) return;
+  if (saved === 'read') return; // default — no switch needed
+  // skipPersist to avoid re-writing the same value during restore.
+  switchConvMobileTab(saved, { skipPersist: true });
 }
 
 // ── Bubble click → toggle English translation ──

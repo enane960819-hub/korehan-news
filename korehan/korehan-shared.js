@@ -3734,9 +3734,9 @@ function renderArticlePage() {
     +   '</div>'
 
     +   '<div class="rv-deeper">'
-    +     '<div class="rv-deeper-title">Want to go deeper?</div>'
-    +     '<div class="rv-deeper-sub">Open this article in the Study Room for a full 5-step session: Vocab → Phrases → Read → Quiz → Writing.</div>'
-    +     '<button class="rv-deeper-btn" onclick="openArticleStudyFromReader()">📖 Open in Study Room →</button>'
+    +     '<div class="rv-deeper-title">Ready for deeper study?</div>'
+    +     '<div class="rv-deeper-sub">The Study Room takes this article into a full session — Vocab, Phrases, Read-aloud, Quiz, and Writing — on its own page.</div>'
+    +     '<button class="rv-deeper-btn" onclick="openArticleStudyFromReader()">Open Study Room →</button>'
     +   '</div>'
     + '</div>'
     + '</div>'

@@ -544,22 +544,39 @@
     })();
     </script>
 
-    <!-- Inline stats bar -->
+    <!-- Welcome banner — only appears on first-ever visit when every
+         stat is still 0. Hidden by renderTopStats as soon as any
+         activity is recorded. Keeps brand-new users from landing on
+         blank charts with no next step. -->
+    <div id="gl-welcome-banner" style="display:none;margin-bottom:14px;padding:18px 20px;border-radius:14px;background:linear-gradient(135deg,#0b1626,#1e40af);color:#fff">
+      <div style="font-size:15px;font-weight:900;margin-bottom:4px">Welcome to Growth Lab</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.75);line-height:1.55;margin-bottom:12px">Your streak, XP, and skill balance light up here as soon as you start reading. Pick something to begin.</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <a href="korehan-news.html" style="padding:8px 14px;background:#fff;color:#0b1626;text-decoration:none;border-radius:999px;font-size:12px;font-weight:800">Read a news article</a>
+        <a href="korehan-conversations.html" style="padding:8px 14px;background:rgba(255,255,255,.14);color:#fff;text-decoration:none;border-radius:999px;font-size:12px;font-weight:800;border:1px solid rgba(255,255,255,.18)">Try a conversation</a>
+        <a href="korehan-stories.html" style="padding:8px 14px;background:rgba(255,255,255,.14);color:#fff;text-decoration:none;border-radius:999px;font-size:12px;font-weight:800;border:1px solid rgba(255,255,255,.18)">Open a story</a>
+      </div>
+    </div>
+
+    <!-- Inline stats bar. The title="" attributes are a cheap desktop
+         tooltip explaining what each stat actually tracks — the audit
+         flagged that XP / Streak / Words / Articles were unexplained
+         jargon for first-time users. -->
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-      <div style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center">
-        <div style="font-size:10px;font-weight:500;color:var(--muted)">XP</div>
+      <div title="XP earned today. You gain XP for reading, quizzes, and saving words." style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:help">
+        <div style="font-size:10px;font-weight:500;color:var(--muted)">XP today</div>
         <div style="font-size:22px;font-weight:800;color:var(--text)" id="stat-xp">0</div>
       </div>
-      <div style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center">
-        <div style="font-size:10px;font-weight:500;color:var(--muted)">단어</div>
+      <div title="New words saved today. Tap any word while reading to add it to your Word Book." style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:help">
+        <div style="font-size:10px;font-weight:500;color:var(--muted)">Words today</div>
         <div style="font-size:22px;font-weight:800;color:var(--text)" id="stat-words">0</div>
       </div>
-      <div style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center">
-        <div style="font-size:10px;font-weight:500;color:var(--muted)">기사</div>
+      <div title="Articles, conversations, and stories read today." style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:help">
+        <div style="font-size:10px;font-weight:500;color:var(--muted)">Read today</div>
         <div style="font-size:22px;font-weight:800;color:var(--text)" id="stat-articles">0</div>
       </div>
-      <div style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center">
-        <div style="font-size:10px;font-weight:500;color:var(--muted)">스트릭</div>
+      <div title="Consecutive days you've studied. Breaks if you skip a day." style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:help">
+        <div style="font-size:10px;font-weight:500;color:var(--muted)">Streak</div>
         <div style="font-size:22px;font-weight:800;color:#ea580c" id="stat-streak">0</div>
       </div>
     </div>
@@ -1096,6 +1113,11 @@
     } catch(e) { console.warn('[Grammar Curriculum merge]', e.message || e); }
   }
 
+  // SKILL_META drives the Skill Balance bars. `comingSoon:true` marks
+  // axes whose scoring pipeline isn't live yet so the row gets a
+  // "Coming soon" ribbon instead of showing 0 / 100 forever and
+  // making learners think they're failing at something they can't
+  // actually practice.
   const SKILL_META = [
     { key:'reading',    label:'Reading',    color:'#2563eb',
       note:'Articles/conversations/stories read + review completion bonus (last 30 days).' },
@@ -1103,10 +1125,10 @@
       note:'Quiz accuracy (40%) + Daily/Weekly/Monthly review scores (60%). Monthly reviews count 3x.' },
     { key:'vocabulary', label:'Vocabulary', color:'#f59e0b',
       note:'Saved words (60%) + review accuracy on vocab questions (40%). 200 words = full base score.' },
-    { key:'writing',    label:'Writing',    color:'#8b5cf6',
-      note:'Review participation + accuracy. Spelling error patterns reduce score.' },
-    { key:'listening',  label:'Listening',  color:'#ef4444',
-      note:'Daily review dictation accuracy (last 30 days).' },
+    { key:'writing',    label:'Writing',    color:'#8b5cf6', comingSoon:true,
+      note:'Daily writing submission scoring is rolling out soon. Practice writing in the Study Room in the meantime.' },
+    { key:'listening',  label:'Listening',  color:'#ef4444', comingSoon:true,
+      note:'Listening dictation scoring arrives alongside the audio pipeline update.' },
   ];
 
   // ── render functions ────────────────────────────────────────
@@ -1137,6 +1159,21 @@
     countUp('stat-words',    t.words_learned || 0);
     countUp('stat-articles', total);
     countUp('stat-streak',   data.streak || 0);
+    // Brand-new account heuristic — show the welcome banner only
+    // when the user has literally never done anything. Any single
+    // saved word / read article / earned XP dismisses it for good
+    // (the banner is hidden for that session; next visit re-checks).
+    const banner = document.getElementById('gl-welcome-banner');
+    if (banner) {
+      const everActive =
+        (data.streak||0) > 0 ||
+        (t.xp_earned||0) > 0 ||
+        (t.words_learned||0) > 0 ||
+        total > 0 ||
+        (data.cumulative_articles||0) > 0 ||
+        (data.cumulative_words||0) > 0;
+      banner.style.display = everActive ? 'none' : '';
+    }
   }
 
   function weakTag(wrong, total) {
@@ -1206,15 +1243,25 @@
     const s = data.scores || {};
     const activityDays = data.activity_days || 0;
     const locked = activityDays < 10;
-    const skillsHtml = SKILL_META.map(r => `
-      <div class="skill-row">
+    const skillsHtml = SKILL_META.map(r => {
+      const score = r.comingSoon ? '—' : `${pct(s[r.key])} / 100`;
+      const barWidth = r.comingSoon ? 0 : pct(s[r.key]);
+      const barStyle = r.comingSoon
+        ? 'width:100%;background:repeating-linear-gradient(-45deg,#e5e7eb 0 6px,#f3f4f6 6px 12px);opacity:.6'
+        : `width:${barWidth}%;background:${r.color}`;
+      const soonBadge = r.comingSoon
+        ? '<span style="margin-left:6px;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#4f46e5;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;">Coming soon</span>'
+        : '';
+      return `
+      <div class="skill-row${r.comingSoon ? ' skill-coming-soon' : ''}">
         <div class="skill-top">
-          <div class="skill-name">${r.label}</div>
-          <div class="skill-score">${pct(s[r.key])} / 100</div>
+          <div class="skill-name">${r.label}${soonBadge}</div>
+          <div class="skill-score">${score}</div>
         </div>
-        <div class="skill-track"><div class="skill-bar" style="width:${pct(s[r.key])}%;background:${r.color}"></div></div>
+        <div class="skill-track"><div class="skill-bar" style="${barStyle}"></div></div>
         <div class="skill-note">${r.note}</div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     const container = document.getElementById('skills-list');
     if (locked) {
       container.innerHTML = `<div class="skill-lock" style="position:relative">
