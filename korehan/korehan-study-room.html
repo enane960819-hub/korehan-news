@@ -280,6 +280,24 @@
   .wmodal.reading-mode { grid-template-columns:1fr; }
   .wmodal.reading-mode .wm-right { display:none; }
   .wmodal.reading-mode .wm-center { grid-column:1; }
+  .wmodal .wm-left:not(.mob-on),
+  .wmodal .wm-right:not(.mob-on) { display: none !important; }
+  .wmodal .wm-mobile-tabs {
+    display: flex !important;
+    grid-column: 1 / -1;
+    background: #0d1b2e;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+    flex-shrink: 0;
+  }
+  .wmodal .wm-mobile-tab {
+    flex: 1; padding: 11px 4px; font-size: 10px; font-weight: 800;
+    color: rgba(255,255,255,.4); border: none; background: none;
+    cursor: pointer; font-family: inherit; transition: all .2s;
+    border-bottom: 2px solid transparent; text-align: center;
+    letter-spacing: .03em; text-transform: uppercase;
+  }
+  .wmodal .wm-mobile-tab.active { color: #fff; border-bottom-color: #4a9eff; }
+  .wmodal .wm-mode-toggle { display: none !important; }
 }
 
 .wm-header {
@@ -8574,12 +8592,12 @@ async function loadStudyDoneFromDB() {
 }
 
 function wmMobileInit() {
-  var isMobile = window.innerWidth <= 640;
+  // Match the 900px breakpoint where wmodal goes single-column — side panels
+  // are inaccessible in the grid at that width, so the tab switcher is the
+  // only way to reach them.
+  var isMobile = window.innerWidth <= 900;
   var tabBar = document.getElementById('wm-mobile-tabs');
   if (tabBar) tabBar.style.display = isMobile ? 'flex' : 'none';
-  // Always clear lingering mob-on / mob-hide so the write area is visible on open,
-  // regardless of viewport. (wmMobileTab early-returns on desktop, which otherwise
-  // leaves stale panel state from a previous session.)
   var left   = document.querySelector('.wm-left');
   var right  = document.querySelector('.wm-right');
   var center = document.querySelector('.wm-center');
@@ -8590,7 +8608,7 @@ function wmMobileInit() {
 }
 
 function wmMobileTab(tab) {
-  var isMobile = window.innerWidth <= 640;
+  var isMobile = window.innerWidth <= 900;
   if (!isMobile) return;
   var center = document.querySelector('.wm-center');
   var left   = document.querySelector('.wm-left');
