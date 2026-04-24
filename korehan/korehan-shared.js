@@ -1886,6 +1886,52 @@ function khShare(opts) {
   }
   return _khShareClipboard(payload);
 }
+// Service Worker registration. Gives us "you've read this before →
+// you can still read it offline" + "static shell (CSS/JS) loads
+// instantly on repeat visits" without any backend changes. The SW
+// itself lives at /korehan/sw.js and only caches same-origin assets
+// — Supabase / Anthropic / CDN fetches pass straight through.
+//
+// Skip in dev (localhost) and during the initial signed-out flash
+// guard so the onboarding redirect fires from the real server.
+(function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost') return;
+  // Wait until page load so the SW install doesn't compete with the
+  // first paint budget.
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/korehan/sw.js', { scope: '/korehan/' })
+      .catch(function(err) { khLog('[sw] register failed:', err); });
+  });
+})();
+
+// "You're offline" banner. Fires only when the browser *was* online
+// and just lost connection — we don't want to pop a banner on
+// initial load for a user who is already on a plane, since the
+// Service Worker shell will handle that experience.
+(function offlineBanner() {
+  if (typeof window === 'undefined') return;
+  function show() {
+    if (document.getElementById('kh-offline-banner')) return;
+    var b = document.createElement('div');
+    b.id = 'kh-offline-banner';
+    b.textContent = 'You\'re offline — showing cached content where available.';
+    b.style.cssText =
+      'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9998;' +
+      'background:#0b1626;color:#fff;padding:9px 16px;border-radius:999px;' +
+      'font-size:12px;font-weight:700;font-family:inherit;letter-spacing:.01em;' +
+      'box-shadow:0 6px 20px rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.15);' +
+      'max-width:92vw;text-align:center';
+    document.body.appendChild(b);
+  }
+  function hide() {
+    var b = document.getElementById('kh-offline-banner');
+    if (b) b.remove();
+  }
+  window.addEventListener('offline', show);
+  window.addEventListener('online', hide);
+})();
+
 // Lightweight active-session tracker. Records minutes the learner
 // has actually been engaged — tab visible AND they interacted
 // (scroll / keystroke / touch) within the last 60 seconds — rather
