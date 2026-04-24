@@ -44,7 +44,7 @@
 .tc-ko   { font-family:'Noto Serif KR',serif; font-size:26px; font-weight:800; color:#fff; line-height:1.35; word-break:keep-all; }
 .tc-en   { font-size:14px; font-weight:600; color:rgba(255,255,255,0.65); margin-top:5px; }
 .tc-done { font-size:11px; color:#7ab8f5; font-weight:700; white-space:nowrap; }
-.tc-change { font-size:11px; color:rgba(255,255,255,0.35); white-space:nowrap; margin-left:auto; }
+.tc-change { font-size:11px; color:rgba(255,255,255,0.6); white-space:nowrap; margin-left:auto; }
 
 /* body grid */
 .sr-body { max-width:1160px; margin:0 auto; padding:22px 20px 60px; }
@@ -154,9 +154,9 @@
 /* phrase */
 .pcard { background:linear-gradient(135deg,#0d1b2e,#1a3a6b); border:none; }
 .pcard .chd { border-color:rgba(255,255,255,0.1); }
-.pcard .ct  { color:rgba(255,255,255,0.4); }
+.pcard .ct  { color:rgba(255,255,255,0.7); }
 .pko { font-family:'Noto Serif KR',serif; font-size:24px; font-weight:900; color:#fff; line-height:1.3; word-break:keep-all; margin-bottom:5px; }
-.prom { font-size:11px; font-style:italic; color:rgba(255,255,255,0.4); margin-bottom:3px; }
+.prom { font-size:11px; font-style:italic; color:rgba(255,255,255,0.65); margin-bottom:3px; }
 .pen  { font-size:12px; font-weight:600; color:rgba(255,255,255,0.65); }
 
 /* vocab rows */
@@ -200,7 +200,7 @@
 .wchip.g { background:rgba(255,220,100,0.15); border-color:rgba(255,220,100,0.22); color:#ffe599; }
 .wc-footer { background:rgba(0,0,0,0.18); border-top:1px solid rgba(255,255,255,0.09); padding:14px 24px; display:flex; align-items:center; justify-content:space-between; }
 .wcf-text { font-size:13px; font-weight:700; color:#fff; }
-.wcf-sub  { font-size:10px; color:rgba(255,255,255,0.35); margin-top:2px; }
+.wcf-sub  { font-size:10px; color:rgba(255,255,255,0.6); margin-top:2px; }
 .wcf-btn  { background:#fff; color:var(--accent); border:none; border-radius:8px; padding:9px 20px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
 
 /* helper */
@@ -3482,6 +3482,13 @@ async function syncStudyProgress(stage) {
 // INIT
 // ═══════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async function() {
+  // Safety net: render static <i data-lucide> icons right away. updateAuthUI
+  // calls renderKhLucideIcons too, but that waits for the auth session round-
+  // trip. On a slow signed-out page load the top tabs (Study / Help / Exercise
+  // / Word Book) rendered as invisible inline stubs until auth resolved — this
+  // surfaces them immediately.
+  if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+
   // ── Mobile layout restructure ──
   // Move hero block outside tab panel so it stays visible across all tabs
   // Move tab bar between hero block and activity cards

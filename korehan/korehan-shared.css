@@ -225,7 +225,7 @@ body.kh-neon-on .kh-diff-sel option { color:var(--dark); background:#fff; }
 .tn-drop-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
 .tn-drop-label {
   padding: 8px 16px 3px; font-size: 10px; font-weight: 800;
-  text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.25);
+  text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.55);
 }
 
 /* ── GLOBAL NEON THEME ───────────────────────────────────── */
@@ -957,7 +957,7 @@ body.kh-neon-on .kh-wb-row:hover { background: rgba(0,255,214,.04) !important; }
 .footer-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .footer-links a { display:inline-flex; align-items:center; gap:6px; font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14); color: rgba(255,255,255,0.65); }
 .footer-links a:hover { background: rgba(255,255,255,0.07); color: #fff; }
-.footer-copy { text-align: center; font-size: 12px; color: rgba(255,255,255,0.3); padding: 16px 22px; border-top: 1px solid rgba(255,255,255,0.07); }
+.footer-copy { text-align: center; font-size: 12px; color: rgba(255,255,255,0.55); padding: 16px 22px; border-top: 1px solid rgba(255,255,255,0.07); }
 @media (max-width: 860px) {
   .kh-foot-inner { grid-template-columns: 1fr 1fr; gap: 28px 20px; }
 }
@@ -993,7 +993,7 @@ body.kh-neon-on .kh-wb-row:hover { background: rgba(0,255,214,.04) !important; }
 .vc-ko  { font-family:'Noto Serif KR','Playfair Display',serif; font-weight:900; font-size:28px; color:var(--accent); }
 .vocab-card.flipped .vc-ko  { color:#7ab8f5; }
 .vc-rom { font-size:11px; font-style:italic; color:var(--gray); margin-top:3px; }
-.vocab-card.flipped .vc-rom { color:rgba(255,255,255,0.45); }
+.vocab-card.flipped .vc-rom { color:rgba(255,255,255,0.7); }
 .vc-en  { font-size:13px; font-weight:700; color:var(--dark); margin-top:6px; }
 .vocab-card.flipped .vc-en  { color:#fff; }
 .sentence-box { background:var(--white); border:1px solid var(--border); border-radius:10px; padding:16px 18px; box-shadow:var(--shadow); margin-bottom:10px; }
