@@ -4734,11 +4734,16 @@ async function generateAIContent(topic) {
     + 'Level requirements: ' + levelGuide[_currentLevel] + '\n'
     + 'Writing topic: ' + topic.topic_ko + ' (' + topic.topic_en + ')\n\n'
     + 'CRITICAL: ALL vocab, grammar patterns, example sentences, and helper sentences MUST match the ' + _currentLevel + ' level exactly. Do NOT mix in easier or harder content.\n\n'
+    + 'VOCAB RULES (strict):\n'
+    + '- Every entry MUST be a concrete noun or noun phrase that appears naturally in a sentence about this exact topic.\n'
+    + '- NO verbs or adjectives (no dictionary-form words ending in ~다, ~하다, ~되다). NO particle-only items. NO standalone verb stems (e.g. 배우, 좋아, 마시).\n'
+    + '- If the topic has an established Korean loanword (블랙커피, 아메리카노, 카페라떼, 에스프레소, 디카페인 for coffee; 피자, 햄버거 for food; 스마트폰 for phone, etc.) use the loanword exactly — do NOT literal-translate English compounds (e.g. "black coffee" → 블랙커피, NEVER 검은 커피).\n'
+    + '- Skip generic filler (사람, 것, 시간) unless it is the direct subject of the topic.\n\n'
     + 'Return ONLY this JSON (no markdown, no extra text):\n'
     + '{\n'
     + '  "vocab": [\n'
-    + '    {"ko":"word","rom":"romanization","en":"meaning","level":"' + _currentLevel + '"}\n'
-    + '    // exactly ' + (_currentLevel === 'Starter' ? '7' : '5') + ' words, all at ' + _currentLevel + ' level, relevant to the topic' + (_currentLevel === 'Starter' ? '. Ultra-basic 1-2 syllable words with romanization.' : '') + '\n'
+    + '    {"ko":"noun or noun phrase","rom":"romanization","en":"meaning","level":"' + _currentLevel + '"}\n'
+    + '    // exactly ' + (_currentLevel === 'Starter' ? '7' : '5') + ' topic-specific NOUNS (no verbs/adjectives), all at ' + _currentLevel + ' level' + (_currentLevel === 'Starter' ? '. Ultra-basic 1-2 syllable nouns with romanization.' : '') + '\n'
     + '  ],\n'
     + '  "grammar": [\n'
     + '    {"level":"' + _currentLevel + '","pattern":"grammar pattern","explanation":"explanation in English","example_ko":"example using the topic","example_en":"translation"}\n'
@@ -4875,6 +4880,21 @@ var STUDY_TOPIC_PACKS = [
       {ko:'부모님과 자주 통화해요.',en:'I often call my parents.'},
       {ko:'우리 가족은 함께 저녁을 먹어요.',en:'My family eats dinner together.'},
       {ko:'가족과 함께 있을 때 가장 행복해요.',en:'I am happiest when I am with my family.'}
+    ]
+  },
+  {
+    keys: ['커피','카페','음료','마시','coffee','cafe','drink','beverage','tea','차'],
+    vocab: {
+      Starter:      [{ko:'커피',rom:'keo-pi',en:'coffee'},{ko:'물',rom:'mul',en:'water'},{ko:'우유',rom:'u-yu',en:'milk'},{ko:'차',rom:'cha',en:'tea'},{ko:'컵',rom:'keop',en:'cup'}],
+      Beginner:     [{ko:'커피',rom:'keo-pi',en:'coffee'},{ko:'블랙커피',rom:'beul-laek-keo-pi',en:'black coffee'},{ko:'카페',rom:'ka-pe',en:'cafe'},{ko:'아메리카노',rom:'a-me-ri-ka-no',en:'americano'},{ko:'카페라떼',rom:'ka-pe-ra-tte',en:'cafe latte'}],
+      Intermediate: [{ko:'에스프레소',rom:'e-seu-peu-re-so',en:'espresso'},{ko:'디카페인',rom:'di-ka-pe-in',en:'decaf'},{ko:'원두',rom:'won-du',en:'coffee beans'},{ko:'향',rom:'hyang',en:'aroma'},{ko:'한 잔',rom:'han jan',en:'one cup'}],
+      Advanced:     [{ko:'카페인',rom:'ka-pe-in',en:'caffeine'},{ko:'로스팅',rom:'ro-seu-ting',en:'roasting'},{ko:'산미',rom:'san-mi',en:'acidity (coffee)'},{ko:'바디감',rom:'ba-di-gam',en:'body (mouthfeel)'},{ko:'추출',rom:'chu-chul',en:'extraction / brewing'}]
+    },
+    helpers: [
+      {ko:'저는 커피를 자주 마셔요.',en:'I drink coffee often.'},
+      {ko:'아침에는 블랙커피를 좋아해요.',en:'In the morning I like black coffee.'},
+      {ko:'카페라떼 한 잔 주세요.',en:'One cafe latte, please.'},
+      {ko:'디카페인 커피도 있어요?',en:'Do you have decaf coffee too?'}
     ]
   },
   {
@@ -8557,6 +8577,15 @@ function wmMobileInit() {
   var isMobile = window.innerWidth <= 640;
   var tabBar = document.getElementById('wm-mobile-tabs');
   if (tabBar) tabBar.style.display = isMobile ? 'flex' : 'none';
+  // Always clear lingering mob-on / mob-hide so the write area is visible on open,
+  // regardless of viewport. (wmMobileTab early-returns on desktop, which otherwise
+  // leaves stale panel state from a previous session.)
+  var left   = document.querySelector('.wm-left');
+  var right  = document.querySelector('.wm-right');
+  var center = document.querySelector('.wm-center');
+  if (left)   left.classList.remove('mob-on');
+  if (right)  right.classList.remove('mob-on');
+  if (center) center.classList.remove('mob-hide');
   if (isMobile) wmMobileTab('write');
 }
 
@@ -12400,7 +12429,9 @@ async function generateBeginnerSentences() {
   try {
     var prompt = '다음 토픽으로 초보자용 한국어 문장 5개를 만들어줘. JSON만 출력해. 다른 말 하지 마.\n\n'
       + '토픽: ' + (topic.topic_ko || topic.topic_en) + '\n\n'
-      + '조건:\n- 각 문장은 서로 이어지는 짧은 이야기\n- 현재형(~아요/어요/이에요) 위주\n- 문장당 4-8개 어절\n- 기초 어휘만 사용\n\n'
+      + '조건:\n- 각 문장은 서로 이어지는 짧은 이야기\n- 현재형(~아요/어요/이에요) 위주\n- 문장당 4-8개 어절\n- 기초 어휘만 사용\n'
+      + '- 한국에서 통용되는 외래어/관례 표현을 그대로 써. 영어 복합어를 글자 그대로 번역하지 마.\n'
+      + '  (예: "black coffee" → "블랙커피" ✅ / "검은 커피" ❌, "ice cream" → "아이스크림" ✅, "smart phone" → "스마트폰" ✅)\n\n'
       + '형식:\n{"sentences":[{"ko":"한국어 문장","en":"English translation"}]}';
 
     var result = await callClaude({
