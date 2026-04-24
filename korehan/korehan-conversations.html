@@ -448,8 +448,14 @@ var _IC = {
 
 var CONVS = [];  // DB에서 로드
 
-const LVL_LABEL = {b:'Sprout',i:'Tree',a:'Forest'};
-const LVL_CLS   = {b:'badge-b',i:'badge-i',a:'badge-a'};
+// Starter ('s') was missing from LVL_LABEL, so Seed-level
+// conversations rendered their level pill as literally "undefined".
+// Also wrap lookups below in a safe getter so any future level code
+// we haven't mapped yet falls back to empty string rather than the
+// JS undefined keyword leaking into the UI.
+const LVL_LABEL = {s:'Seed',b:'Sprout',i:'Tree',a:'Forest'};
+const LVL_CLS   = {s:'badge-s',b:'badge-b',i:'badge-i',a:'badge-a'};
+function lvlLabel(v) { return LVL_LABEL[v] || ''; }
 const CAT_PILL  = {everyday:'dp-pill-blue',work:'dp-pill-gray',friends:'dp-pill-green',family:'dp-pill-amber',dating:'dp-pill-pink'};
 
 var _convPageSize = 12;
@@ -531,7 +537,7 @@ function _renderOneCard(c) {
         +'<div class="cc2-title">'+speakersText+'</div>'
         +(ctx ? '<div class="cc2-ctx">'+ctx+'</div>' : '')
       +'</div>'
-      +'<span class="cc2-tag '+LVL_CLS[c.lvl]+'">'+LVL_LABEL[c.lvl]+'</span>'
+      +'<span class="cc2-tag '+LVL_CLS[c.lvl]+'">'+lvlLabel(c.lvl)+'</span>'
     +'</div>'
     +bubblesHtml
     +'<div class="cc2-footer">'
@@ -738,9 +744,14 @@ async function openDetail(idx) {
   }).join('');
   var initKeyExprCard = initKeyExprs ? '<div class="dp-keyexpr-card"><div class="dp-study-card-title" style="color:#92400e">⭐ Key Expressions</div>'+initKeyExprs+'</div>' : '';
 
-  var pills = '<span class="dp-pill dp-pill-blue">'+LVL_LABEL[c.lvl]+'</span>'
-    +'<span class="dp-pill '+(CAT_PILL[c.cat]||'dp-pill-gray')+'">'+(c.catLabel || CAT_EN[c.cat] || c.cat || '')+'</span>'
-    +(c.topic ? '<span class="dp-pill dp-pill-gray">'+c.topic+'</span>' : '');
+  // Only emit a pill when we actually have something to show — empty
+  // level / category pills used to render as bare bubbles because the
+  // lookups silently returned undefined/empty.
+  var _lvlTxt = lvlLabel(c.lvl);
+  var _catTxt = c.catLabel || CAT_EN[c.cat] || c.cat || '';
+  var pills = (_lvlTxt ? '<span class="dp-pill dp-pill-blue">'+_lvlTxt+'</span>' : '')
+    + (_catTxt ? '<span class="dp-pill '+(CAT_PILL[c.cat]||'dp-pill-gray')+'">'+_catTxt+'</span>' : '')
+    + (c.topic ? '<span class="dp-pill dp-pill-gray">'+c.topic+'</span>' : '');
 
   var panelEl = document.getElementById('detail-panel');
   panelEl.innerHTML =
@@ -761,8 +772,12 @@ async function openDetail(idx) {
         +  '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'
         +'</button>'
         +'<div class="dp-left-eyebrow">Conversation</div>'
-        +'<div class="dp-left-title">'+escapeHtml(c.name || '')+'</div>'
-        +'<div class="dp-left-sub">'+escapeHtml(c.ctx || '')+'</div>'
+        // Title is the topic (c.ctx) rather than the speaker names —
+        // the two speakers get their own cards in .dp-cast-bar below,
+        // so repeating "지수, 민호" as the hero title was redundant
+        // and made the learner skim past the actual subject of the
+        // conversation. Fall back to c.name when the topic is empty.
+        +'<div class="dp-left-title">'+escapeHtml(c.ctx || c.name || '')+'</div>'
       +'</div>'
       +'<div class="dp-cast-bar">'
         +'<a class="dp-cast-link" href="'+characterProfileUrl(cast.left.slug)+'">'
