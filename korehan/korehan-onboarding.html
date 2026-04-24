@@ -995,7 +995,25 @@ function showTestResult() {
     Intermediate: state.testAnswers.filter(function(item) { return item.level === 'Intermediate' && item.correct; }).length,
     Advanced: state.testAnswers.filter(function(item) { return item.level === 'Advanced' && item.correct; }).length
   };
-  var recommended = breakdown.Advanced >= 4 ? 'Advanced' : breakdown.Intermediate >= 3 ? 'Intermediate' : breakdown.Beginner >= 3 ? 'Beginner' : breakdown.Starter >= 3 ? 'Starter' : 'Starter';
+  // Weighted recommendation. Previous heuristic (threshold per tier,
+  // short-circuit from top) could recommend Advanced on a single
+  // Advanced fluke even when Intermediate performance was weak, or
+  // under-recommend when Beginner/Intermediate were strong and
+  // Advanced was a coin flip. Scoring each correct answer by tier
+  // difficulty gives a smoother signal: a learner has to show
+  // consistent competence at the higher band to tip the result up.
+  var weighted =
+      breakdown.Starter      * 1 +
+      breakdown.Beginner     * 2 +
+      breakdown.Intermediate * 4 +
+      breakdown.Advanced     * 8;
+  // Max weighted = 5*(1+2+4+8) = 75. Bands calibrated so a learner
+  // who gets all Starter + half Beginner lands on Beginner, etc.
+  var recommended = 'Starter';
+  if (weighted >= 48)      recommended = 'Advanced';
+  else if (weighted >= 28) recommended = 'Intermediate';
+  else if (weighted >= 12) recommended = 'Beginner';
+  state.testWeighted = weighted;
   state.level = recommended;
 
   document.getElementById('ob-content').innerHTML = cardWrap(
