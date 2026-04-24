@@ -82,10 +82,16 @@
 
 /* ── WRITING MODAL — single-column layout (phone + small tablet) ── */
 @media(max-width:900px){
-  #wmodal-overlay { padding: 0; align-items: flex-end; }
-  .wmodal {
+  /* Overlay: drop padding and pin wmodal to the bottom of the viewport.
+     Note the outer overlay has id="wmodal" (class="woverlay"), so #wmodal
+     is the overlay — the inner modal is the .wmodal child. */
+  #wmodal.woverlay { padding: 0 !important; align-items: flex-end !important; }
+  #wmodal .wmodal {
     border-radius: 20px 20px 0 0 !important;
-    height: 97dvh !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100vh !important;             /* fallback for older browsers */
+    height: 100dvh !important;
     grid-template-columns: 1fr !important;
     grid-template-rows: auto auto auto 1fr auto !important;
     overflow: hidden !important;
@@ -96,10 +102,10 @@
   /* 모바일 탭 네비게이션 */
   .wmodal .wm-mobile-tabs {
     display: flex !important;
-    grid-column: 1 / -1;
-    background: #0d1b2e;
-    border-bottom: 1px solid rgba(255,255,255,.12);
-    flex-shrink: 0;
+    grid-column: 1 / -1 !important;
+    background: #0d1b2e !important;
+    border-bottom: 1px solid rgba(255,255,255,.12) !important;
+    flex-shrink: 0 !important;
     position: relative !important;
     z-index: 60 !important;
   }
@@ -112,12 +118,16 @@
   }
   .wmodal .wm-mobile-tab.active { color: #fff; border-bottom-color: #4a9eff; }
 
-  /* 패널들 — 기본 숨김, mob-on 일 때만 오버레이로 표시 */
+  /* 패널들 — 기본 숨김, mob-on 일 때만 오버레이로 표시.
+     inset:0 + explicit top/bottom forces full-cover even on engines that
+     don't honour logical shorthand consistently under grid layout. */
   .wmodal .wm-left, .wmodal .wm-right {
     display: none !important;
     position: absolute !important;
-    left: 0 !important; right: 0 !important; bottom: 0 !important;
-    top: 0 !important;
+    inset: 0 !important;
+    top: 0 !important; right: 0 !important; bottom: 0 !important; left: 0 !important;
+    width: auto !important;
+    height: auto !important;
     z-index: 50 !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
@@ -125,6 +135,7 @@
     padding: 14px 14px 80px !important;
     flex-direction: column !important;
     gap: 12px !important;
+    border: none !important;
   }
   .wmodal .wm-left.mob-on, .wmodal .wm-right.mob-on { display: flex !important; }
 
@@ -539,10 +550,12 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
   border-bottom: 1px solid rgba(255,255,255,.06);
 }
 
-/* Mobile tabs inside wmodal */
-.wmodal .wm-mobile-tabs {
-  background: rgba(0,0,0,.15);
-  border-bottom: 1px solid rgba(255,255,255,.06);
+/* Mobile tabs inside wmodal — desktop-only dim; mobile rules override below */
+@media(min-width:901px){
+  .wmodal .wm-mobile-tabs {
+    background: rgba(0,0,0,.15);
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
 }
 
 
