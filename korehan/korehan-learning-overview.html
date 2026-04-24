@@ -579,6 +579,10 @@
         <div style="font-size:10px;font-weight:500;color:var(--muted)">Streak</div>
         <div style="font-size:22px;font-weight:800;color:#ea580c" id="stat-streak">0</div>
       </div>
+      <div title="Active time spent in the app today. Counts minutes while the tab is visible and you've interacted within the last minute." style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:help">
+        <div style="font-size:10px;font-weight:500;color:var(--muted)">Time today</div>
+        <div style="font-size:22px;font-weight:800;color:var(--text)" id="stat-minutes">0m</div>
+      </div>
     </div>
 
     <!-- ═══ K-EXPRESS CURRICULUM PREVIEW ═══ -->
@@ -1159,6 +1163,16 @@
     countUp('stat-words',    t.words_learned || 0);
     countUp('stat-articles', total);
     countUp('stat-streak',   data.streak || 0);
+    // Active-session minutes come from the client tracker in
+    // korehan-shared.js (khGetSessionMinutesToday). Display formatted
+    // as "42m" or "1h 20m" so longer sessions stay scannable.
+    const minEl = document.getElementById('stat-minutes');
+    if (minEl) {
+      const mins = (typeof khGetSessionMinutesToday === 'function') ? khGetSessionMinutesToday() : 0;
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      minEl.textContent = h > 0 ? (h + 'h ' + m + 'm') : (m + 'm');
+    }
     // Brand-new account heuristic — show the welcome banner only
     // when the user has literally never done anything. Any single
     // saved word / read article / earned XP dismisses it for good

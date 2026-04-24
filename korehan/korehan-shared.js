@@ -1856,6 +1856,103 @@ function khLog() {
 }
 function khDebugEnabled() { return _khDebug; }
 
+// Small share helper. Falls back through three layers:
+//   1. Web Share API (mobile Safari/Chrome, Android) — native sheet.
+//   2. Clipboard write — desktop.
+//   3. toast() confirmation so the user knows something happened
+//      whichever path fired.
+// Usage:
+//   khShare({
+//     title: 'Today\'s Korean quiz',
+//     text:  'I scored 8/10 on a Korean reading quiz on KoreHani.',
+//     url:   'https://korehannews.com/...',
+//   });
+function khShare(opts) {
+  opts = opts || {};
+  var payload = {
+    title: opts.title || document.title || 'KoreHani',
+    text:  opts.text  || '',
+    url:   opts.url   || window.location.href,
+  };
+  if (navigator.share) {
+    return navigator.share(payload).then(function(){
+      toast('Shared', 'success');
+    }).catch(function(e) {
+      // User cancelled — not an error, stay quiet.
+      if (e && e.name === 'AbortError') return;
+      return _khShareClipboard(payload);
+    });
+  }
+  return _khShareClipboard(payload);
+}
+// Lightweight active-session tracker. Records minutes the learner
+// has actually been engaged — tab visible AND they interacted
+// (scroll / keystroke / touch) within the last 60 seconds — rather
+// than wall-clock time, which would count "left the tab open all
+// day" as 8 hours of study. Stored per-day in localStorage and
+// surfaced on Growth Lab so the learner sees their daily time
+// investment climbing. Purely client-side for now; can be synced
+// to Supabase once a study_time column is added.
+(function initSessionTracker() {
+  var IDLE_MS = 60 * 1000;
+  var TICK_MS = 5 * 1000;
+  var lastActivity = Date.now();
+  function bumpActivity() { lastActivity = Date.now(); }
+  ['pointerdown','keydown','scroll','touchstart','wheel','mousemove'].forEach(function(ev) {
+    document.addEventListener(ev, bumpActivity, { passive: true, capture: true });
+  });
+
+  function todayKey() {
+    var d = new Date();
+    var yyyy = d.getFullYear();
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    return 'kh_session_sec_' + yyyy + '-' + mm + '-' + dd;
+  }
+  function getToday() {
+    try { return parseInt(localStorage.getItem(todayKey()) || '0', 10) || 0; }
+    catch(_) { return 0; }
+  }
+  function addToday(seconds) {
+    try { localStorage.setItem(todayKey(), String(getToday() + seconds)); }
+    catch(_) {}
+  }
+  setInterval(function() {
+    if (document.hidden) return;
+    if (Date.now() - lastActivity > IDLE_MS) return;
+    addToday(Math.round(TICK_MS / 1000));
+  }, TICK_MS);
+
+  // Public read helper for Growth Lab and similar surfaces.
+  window.khGetSessionSecondsToday = getToday;
+  window.khGetSessionMinutesToday = function() { return Math.round(getToday() / 60); };
+})();
+
+function _khShareClipboard(payload) {
+  var copy = (payload.text ? payload.text + '\n' : '') + payload.url;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(copy).then(function(){
+      toast('Link copied', 'success');
+    }).catch(function() {
+      toast('Copy not available — long-press the link to copy', 'warn');
+    });
+  }
+  // Legacy browsers: fall back to a hidden textarea.
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = copy;
+    ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast(ok ? 'Link copied' : 'Copy not available', ok ? 'success' : 'warn');
+  } catch(_) {
+    toast('Copy not available', 'warn');
+  }
+  return Promise.resolve();
+}
+
 function khEmptyState(opts) {
   opts = opts || {};
   var html = '<div class="kh-empty' + (opts.error ? ' error' : '') + '">';
@@ -4016,7 +4113,10 @@ function _rvVocabQuizPaint() {
           '<div class="rv-vq-done">'
         +   '<div class="rv-vq-done-title">Nice work</div>'
         +   '<div class="rv-vq-done-score">' + s.correct + ' / ' + total + ' correct</div>'
-        +   '<button class="rv-vq-retry" onclick="_rvVocabQuizRetry()">Try again</button>'
+        +   '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
+        +     '<button class="rv-vq-retry" onclick="_rvVocabQuizRetry()">Try again</button>'
+        +     '<button class="rv-vq-retry" onclick="_rvVocabQuizShare(' + s.correct + ',' + total + ')">Share</button>'
+        +   '</div>'
         + '</div>';
     }
     return;
@@ -4095,6 +4195,16 @@ function _rvVocabQuizRetry() {
   if (el) el.dataset.builtFor = '';
   _rvVocabQuizState = null;
   renderReviewVocabCheck(a);
+}
+function _rvVocabQuizShare(correct, total) {
+  var a = window._currentArticle || {};
+  var title = a.title ? ('"' + a.title + '" — Korean vocab quiz') : 'Korean vocab quiz';
+  var text  = 'I scored ' + correct + '/' + total + ' on a Korean vocabulary quiz on KoreHani.';
+  khShare({
+    title: title,
+    text: text,
+    url: window.location.href,
+  });
 }
 
 function _reviewVocabFromGlobal(a) {
@@ -5889,12 +5999,32 @@ async function loadComments(articleId) {
 
   if (countEl) countEl.textContent = '(' + data.length + ')';
 
-  listEl.innerHTML = data.map(function(c) {
+  // Moderation controls. Owners can delete their own; admins can
+  // delete anyone's (Supabase RLS permits). Non-owners and non-admins
+  // see a "Report" button that hides the comment locally for that
+  // user (stored in localStorage) and pings a toast — a lightweight
+  // report lane that doesn't need a moderation queue table. If a
+  // server-side flag table is added later the same button can POST
+  // to it without any UI change.
+  var hidden = _khHiddenComments();
+  var visible = data.filter(function(c){ return !hidden[c.id]; });
+  var hiddenCount = data.length - visible.length;
+
+  if (countEl) countEl.textContent = '(' + data.length + ')';
+
+  var rowsHtml = visible.map(function(c) {
     var isOwn = supaUser && supaUser.id === c.user_id;
+    var isAdmin = !!window._isAdmin;
     var avatar = (c.avatar_url && isValidImageURL(c.avatar_url))
       ? '<img src="' + escapeAttr(c.avatar_url) + '" class="comment-avatar" onerror="this.style.display=\'none\'">'
       : '<div class="comment-avatar" style="background:#2255a4;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700">' + (c.user_name||'?').charAt(0) + '</div>';
     var timeStr = c.created_at ? new Date(c.created_at).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+    var actions = '';
+    if (isOwn || isAdmin) {
+      actions = '<button class="comment-del" onclick="deleteComment(\'' + escapeAttr(c.id) + '\')" title="Delete">✕</button>';
+    } else if (supaUser) {
+      actions = '<button class="comment-del" onclick="reportComment(\'' + escapeAttr(c.id) + '\')" title="Report and hide">⚑</button>';
+    }
     return '<div class="comment-row" id="comment-' + c.id + '">'
       + '<div class="comment-top">'
       + avatar
@@ -5902,11 +6032,49 @@ async function loadComments(articleId) {
       + '<span class="comment-name">' + escapeHTML(c.user_name || 'Anonymous') + '</span>'
       + '<span class="comment-date">' + timeStr + '</span>'
       + '</div>'
-      + (isOwn ? '<button class="comment-del" onclick="deleteComment(\'' + escapeAttr(c.id) + '\')" title="Delete">✕</button>' : '')
+      + actions
       + '</div>'
       + '<div class="comment-body">' + escapeHtml(c.content) + '</div>'
       + '</div>';
   }).join('');
+
+  var footer = hiddenCount > 0
+    ? '<div style="font-size:11px;color:#94a3b8;padding:10px 0;text-align:center">' + hiddenCount + ' comment' + (hiddenCount === 1 ? '' : 's') + ' hidden. <button onclick="_khShowHiddenComments()" style="background:none;border:0;color:#2563eb;font-size:11px;font-weight:700;cursor:pointer;padding:0;font-family:inherit;text-decoration:underline">Show all</button></div>'
+    : '';
+  listEl.innerHTML = (rowsHtml || '<p style="color:#aaa;font-size:13px;padding:12px 0">Be the first to comment!</p>') + footer;
+}
+
+var _KH_HIDDEN_COMMENTS_KEY = 'kh_hidden_comments';
+function _khHiddenComments() {
+  try { return JSON.parse(localStorage.getItem(_KH_HIDDEN_COMMENTS_KEY) || '{}') || {}; }
+  catch(_) { return {}; }
+}
+function _khSaveHiddenComments(h) {
+  try { localStorage.setItem(_KH_HIDDEN_COMMENTS_KEY, JSON.stringify(h || {})); } catch(_) {}
+}
+async function reportComment(commentId) {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  var ok = await khConfirm(
+    'Report this comment?',
+    "We'll hide it from your view and flag it for review.",
+    { okLabel: 'Report' }
+  );
+  if (!ok) return;
+  var h = _khHiddenComments();
+  h[commentId] = Date.now();
+  _khSaveHiddenComments(h);
+  toast('Reported. Hidden from your view.', 'success');
+  // Re-render the comments list by re-calling loadComments with the
+  // current article id.
+  var params = new URLSearchParams(window.location.search);
+  var id = params.get('id');
+  if (id) loadComments(id);
+}
+function _khShowHiddenComments() {
+  _khSaveHiddenComments({});
+  var params = new URLSearchParams(window.location.search);
+  var id = params.get('id');
+  if (id) loadComments(id);
 }
 
 // 댓글 rate limit: 유저별 마지막 작성 시간 추적
