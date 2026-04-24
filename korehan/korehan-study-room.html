@@ -52,11 +52,11 @@
 @media(max-width:1000px){ .sr-grid { grid-template-columns:1fr 1fr; } }
 @media(max-width:640px){  .sr-grid { grid-template-columns:1fr; } }
 
-/* ── MOBILE OVERRIDES ─────────────────────────────────────── */
+/* ── MOBILE OVERRIDES (phone only) ───────────────────────── */
 @media(max-width:640px){
   /* study room 전체 배경 유지 */
   body { background: linear-gradient(140deg,#0d1b2e 0%,#1a3a6b 65%,#2255a4 100%) !important; min-height:100vh; }
-  
+
   /* 카드 간격 */
   .sr-grid { gap: 14px !important; padding: 0 12px !important; }
   .card { border-radius: 14px; }
@@ -73,37 +73,47 @@
   .wc-mode-tabs { gap: 6px; margin-top: 14px; }
   .wc-mode-tab  { font-size: 12px !important; padding: 8px 10px !important; }
 
-  /* ── 모달 모바일 완전 재설계 ── */
+  /* 단어 칩 모바일 */
+  .chip { font-size: 12px !important; padding: 5px 12px !important; }
+
+  /* flashcard */
+  .fc-grid { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
+}
+
+/* ── WRITING MODAL — single-column layout (phone + small tablet) ── */
+@media(max-width:900px){
   #wmodal-overlay { padding: 0; align-items: flex-end; }
   .wmodal {
     border-radius: 20px 20px 0 0 !important;
     height: 97dvh !important;
     grid-template-columns: 1fr !important;
     grid-template-rows: auto auto auto 1fr auto !important;
-    overflow: hidden;
-    position: relative;
+    overflow: hidden !important;
+    position: relative !important;
   }
   .wmodal.reading-mode { grid-template-columns: 1fr !important; }
 
   /* 모바일 탭 네비게이션 */
-  .wm-mobile-tabs {
+  .wmodal .wm-mobile-tabs {
     display: flex !important;
     grid-column: 1 / -1;
     background: #0d1b2e;
     border-bottom: 1px solid rgba(255,255,255,.12);
     flex-shrink: 0;
+    position: relative !important;
+    z-index: 60 !important;
   }
-  .wm-mobile-tab {
+  .wmodal .wm-mobile-tab {
     flex: 1; padding: 11px 4px; font-size: 10px; font-weight: 800;
     color: rgba(255,255,255,.4); border: none; background: none;
     cursor: pointer; font-family: inherit; transition: all .2s;
     border-bottom: 2px solid transparent; text-align: center;
     letter-spacing: .03em; text-transform: uppercase;
   }
-  .wm-mobile-tab.active { color: #fff; border-bottom-color: #4a9eff; }
+  .wmodal .wm-mobile-tab.active { color: #fff; border-bottom-color: #4a9eff; }
 
-  /* 패널들 */
-  .wm-left, .wm-right {
+  /* 패널들 — 기본 숨김, mob-on 일 때만 오버레이로 표시 */
+  .wmodal .wm-left, .wmodal .wm-right {
     display: none !important;
     position: absolute !important;
     left: 0 !important; right: 0 !important; bottom: 0 !important;
@@ -116,33 +126,25 @@
     flex-direction: column !important;
     gap: 12px !important;
   }
-  .wm-left.mob-on, .wm-right.mob-on { display: flex !important; }
-  /* wmodal은 relative여야 absolute child 기준점이 됨 */
-  .wmodal { position: relative !important; overflow: hidden !important; }
-  /* 헤더와 탭은 패널 위에 뜨도록 */
-  .wm-header { position: relative !important; z-index: 60 !important; }
-  .wm-mobile-tabs { position: relative !important; z-index: 60 !important; }
+  .wmodal .wm-left.mob-on, .wmodal .wm-right.mob-on { display: flex !important; }
 
-  .wm-center {
+  /* 헤더는 패널 위에 뜨도록 */
+  .wmodal .wm-header { position: relative !important; z-index: 60 !important; }
+
+  .wmodal .wm-center {
     padding: 12px 14px !important;
     overflow-y: auto;
     grid-row: 4;
   }
-  .wm-center.mob-hide { display: none !important; }
-  .write-area { min-height: 130px !important; font-size: 15px !important; }
+  .wmodal .wm-center.mob-hide { display: none !important; }
+  .wmodal .write-area { min-height: 130px !important; font-size: 15px !important; }
   #wm-source-bar { padding: 8px 12px !important; gap: 6px; }
 
   /* 제출 버튼 */
-  .submit-btn { font-size: 15px !important; padding: 14px 0 !important; }
+  .wmodal .submit-btn { font-size: 15px !important; padding: 14px 0 !important; }
 
-  /* 단어 칩 모바일 */
-  .chip { font-size: 12px !important; padding: 5px 12px !important; }
-
-  /* 소스 탭 숨김 처리 */
-  .wm-mode-toggle { display: none !important; }
-
-  /* flashcard */
-  .fc-grid { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
+  /* 데스크탑 mode toggle 숨김 */
+  .wmodal .wm-mode-toggle { display: none !important; }
 }
 
 /* card */
@@ -275,30 +277,8 @@
 .wmodal.reading-mode .wm-center { grid-column:1; }
 .wmodal.reading-mode .wm-right { grid-column:2; }
 #wm-source-bar { grid-column:1/-1; }
-@media(max-width:900px){
-  .wmodal{ grid-template-columns:1fr; grid-template-rows:auto auto 1fr auto; }
-  .wmodal.reading-mode { grid-template-columns:1fr; }
-  .wmodal.reading-mode .wm-right { display:none; }
-  .wmodal.reading-mode .wm-center { grid-column:1; }
-  .wmodal .wm-left:not(.mob-on),
-  .wmodal .wm-right:not(.mob-on) { display: none !important; }
-  .wmodal .wm-mobile-tabs {
-    display: flex !important;
-    grid-column: 1 / -1;
-    background: #0d1b2e;
-    border-bottom: 1px solid rgba(255,255,255,.12);
-    flex-shrink: 0;
-  }
-  .wmodal .wm-mobile-tab {
-    flex: 1; padding: 11px 4px; font-size: 10px; font-weight: 800;
-    color: rgba(255,255,255,.4); border: none; background: none;
-    cursor: pointer; font-family: inherit; transition: all .2s;
-    border-bottom: 2px solid transparent; text-align: center;
-    letter-spacing: .03em; text-transform: uppercase;
-  }
-  .wmodal .wm-mobile-tab.active { color: #fff; border-bottom-color: #4a9eff; }
-  .wmodal .wm-mode-toggle { display: none !important; }
-}
+/* Single-column collapse + mobile tab system live in the earlier
+   @media(max-width:900px) block near the top of this file. */
 
 .wm-header {
   grid-column:1/-1;
