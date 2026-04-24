@@ -3857,24 +3857,24 @@ function renderArticlePage() {
     +     '<div class="rv-intro-sub">Light practice before moving on — four quick checks.</div>'
     +   '</div>'
 
-    +   '<div class="rv-card">'
-    +     '<div class="rv-card-head"><span>Vocabulary</span><span class="rv-card-hint">Multiple choice</span></div>'
-    +     '<div id="rv-vocab-check" class="rv-card-body"></div>'
+    +   '<div class="rv-check">'
+    +     '<div class="rv-check-head"><span>Vocabulary</span><span class="rv-check-hint">Multiple choice</span></div>'
+    +     '<div id="rv-vocab-check" class="rv-check-body"></div>'
     +   '</div>'
 
-    +   '<div class="rv-card">'
-    +     '<div class="rv-card-head"><span>Comprehension</span><span class="rv-card-hint">True or False</span></div>'
-    +     '<div id="rv-tf-check" class="rv-card-body"></div>'
+    +   '<div class="rv-check">'
+    +     '<div class="rv-check-head"><span>Comprehension</span><span class="rv-check-hint">True or False</span></div>'
+    +     '<div id="rv-tf-check" class="rv-check-body"></div>'
     +   '</div>'
 
-    +   '<div class="rv-card">'
-    +     '<div class="rv-card-head"><span>Fill in the Blank</span><span class="rv-card-hint">AI-generated</span></div>'
-    +     '<div class="rv-card-body"><div id="fill-wrap"><div id="fill-content"><div id="fill-teaser"></div></div></div></div>'
+    +   '<div class="rv-check">'
+    +     '<div class="rv-check-head"><span>Fill in the Blank</span><span class="rv-check-hint">AI-generated</span></div>'
+    +     '<div class="rv-check-body"><div id="fill-wrap"><div id="fill-content"><div id="fill-teaser"></div></div></div></div>'
     +   '</div>'
 
-    +   '<div class="rv-card">'
-    +     '<div class="rv-card-head"><span>Listening</span><span class="rv-card-hint">Audio quiz</span></div>'
-    +     '<div class="rv-card-body"><div id="art-listening-quiz"><button onclick="startArticleListeningQuiz()" class="rv-start-btn">Start Listening Quiz</button></div></div>'
+    +   '<div class="rv-check">'
+    +     '<div class="rv-check-head"><span>Listening</span><span class="rv-check-hint">Audio quiz</span></div>'
+    +     '<div class="rv-check-body"><div id="art-listening-quiz"><button onclick="startArticleListeningQuiz()" class="rv-start-btn">Start Listening Quiz</button></div></div>'
     +   '</div>'
 
     +   '<div class="rv-deeper">'
@@ -4401,7 +4401,7 @@ function openArticleStudyFromReader() {
 
 
 // ── Fill-in-the-Blank Teaser (기사 하단) ─────────────────────────────────────
-// Rendered inside the Review tab's .rv-card shell, so the teaser should
+// Rendered inside the Review tab's .rv-check shell, so the teaser should
 // match that card's clean "intro line + start button" pattern (same as
 // the Listening card). The previous teaser's dark navy gradient /
 // decorative emojis / bespoke pill made this one card look like it

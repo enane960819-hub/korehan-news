@@ -3637,23 +3637,29 @@ body.kh-reading-page.kh-feed-pill-on #kh-feed-next-pill {
 body.kh-reading-page #kh-feed-next-pill:hover { background: rgba(8,16,31,.95); }
 body.kh-reading-page #kh-feed-next-pill svg { opacity: .9; }
 
-/* ── Review tab (was Quiz) — light practice bundle ─────────────── */
+/* ── Review tab (was Quiz) — light practice bundle.
+   Note: "rv-check-*" rather than "rv-card-*" because Study Room
+   already ships its own .rv-card (dark gradient, white text) for
+   the Daily/Weekly/Monthly Review shortcuts. The two layouts mean
+   completely different things, so keeping them under a single class
+   name caused a cascade collision where the wrong background+text
+   colors painted on top of each other and the text disappeared. */
 .rv-wrap { display: flex; flex-direction: column; gap: 18px; padding: 6px 0; }
 .rv-intro { padding: 4px 2px 0; }
 .rv-intro-title { font-size: 17px; font-weight: 900; color: #0f172a; letter-spacing: -.01em; }
 .rv-intro-sub { font-size: 12px; color: #64748b; margin-top: 3px; }
-.rv-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; overflow: hidden; }
-.rv-card-head {
+.rv-check { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; overflow: hidden; }
+.rv-check-head {
   display: flex; align-items: center; gap: 8px;
   padding: 12px 14px; background: #f8fafc; border-bottom: 1px solid #eef2f7;
   font-size: 13px; font-weight: 800; color: #0f172a;
 }
-.rv-card-icon { font-size: 15px; }
-.rv-card-hint {
+.rv-check-icon { font-size: 15px; }
+.rv-check-hint {
   margin-left: auto; font-size: 10px; font-weight: 700;
   letter-spacing: .06em; text-transform: uppercase; color: #94a3b8;
 }
-.rv-card-body { padding: 14px; }
+.rv-check-body { padding: 14px; }
 .rv-empty { color: #94a3b8; font-size: 13px; padding: 6px 2px; }
 .rv-start-btn {
   width: 100%; padding: 12px; background: #2563eb; color: #fff;
