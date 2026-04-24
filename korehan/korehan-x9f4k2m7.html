@@ -3729,15 +3729,54 @@ function _renderHeadlinePanel() {
           + '<div style="font-size:11px;color:#94a3b8;margin-top:2px">' + metaBits.join(' · ') + ((h.summary || h.desc) ? ' · ' + esc((h.summary || h.desc).slice(0,90)) + '…' : '') + '</div>'
           + videoToggle
           + '</div>'
-          + '<select class="hl-sec" data-idx="'+i+'" style="flex-shrink:0;padding:4px 8px;border:1px solid var(--bo);border-radius:6px;font-size:12px;font-family:inherit;background:#fff">'
-          + secOptions + '</select>'
+          + '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">'
+          +   '<select class="hl-sec" data-idx="'+i+'" style="padding:4px 8px;border:1px solid var(--bo);border-radius:6px;font-size:12px;font-family:inherit;background:#fff">'
+          +     secOptions
+          +   '</select>'
+          // Per-headline difficulty picker. Defaults to whatever the
+          // global ③ Generation Settings dropdown is when the headline
+          // list is painted — admins can bulk-set first, then tweak a
+          // row or two up/down. Each row's level is read during
+          // runAutoGenerate and passed to the Claude prompt for that
+          // specific article.
+          +   '<select class="hl-lvl" data-idx="'+i+'" title="Level for this article" style="padding:4px 8px;border:1px solid var(--bo);border-radius:6px;font-size:12px;font-family:inherit;background:#fff">'
+          +     '<option value="Starter">🌱 Seed</option>'
+          +     '<option value="Beginner">🌿 Sprout</option>'
+          +     '<option value="Intermediate" selected>🌳 Tree</option>'
+          +     '<option value="Advanced">🌲 Forest</option>'
+          +   '</select>'
+          + '</div>'
           + '</div>';
       }).join('')
     + '</div>';
 
   panel.innerHTML = html;
+  // Sync per-row level dropdowns to whatever the global ③ Generation
+  // Settings difficulty is set to. The admin's usual flow is "pick a
+  // default level → fetch headlines → scan the list → bump a few rows
+  // up/down individually." Without this sync every row would reset to
+  // the HTML default (Intermediate) each refetch.
+  (function _syncHlLvls() {
+    var globalLvl = document.getElementById('auto-difficulty');
+    var lvl = (globalLvl && globalLvl.value) || 'Intermediate';
+    document.querySelectorAll('.hl-lvl').forEach(function(s){ s.value = lvl; });
+  })();
   _updateHLCount();
 }
+
+// When the global difficulty changes, propagate to any row whose
+// per-row dropdown hasn't been manually touched yet. Rows the admin
+// already customised (data-touched="1") stay put.
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.id === 'auto-difficulty') {
+    var lvl = e.target.value;
+    document.querySelectorAll('.hl-lvl').forEach(function(s) {
+      if (s.dataset.touched !== '1') s.value = lvl;
+    });
+  } else if (e.target && e.target.classList && e.target.classList.contains('hl-lvl')) {
+    e.target.dataset.touched = '1';
+  }
+}, true);
 
 function _hlSelectAll(val) {
   document.querySelectorAll('.hl-chk').forEach(function(c){ c.checked = val; });
@@ -3752,15 +3791,19 @@ function _updateHLCount() {
 // ── STEP 3: Generate adapted articles ────────────────────────
 async function runAutoGenerate(){
   const saveStatus = document.getElementById('auto-status')?.value || 'draft';
-  const difficulty = document.getElementById('auto-difficulty')?.value || 'Intermediate';
+  const globalDifficulty = document.getElementById('auto-difficulty')?.value || 'Intermediate';
 
-  // Collect selected headlines with their assigned section
+  // Collect selected headlines with their assigned section AND their
+  // per-row level. Each headline can now carry its own difficulty so
+  // one generation run can produce a mix (e.g. r/korea at Tree,
+  // BBC Tech at Forest).
   const checkedBoxes = [...document.querySelectorAll('.hl-chk:checked')];
   if (!checkedBoxes.length) { toast('기사를 하나 이상 선택하세요', true); return; }
 
   const selected = checkedBoxes.map(function(cb) {
     var idx = parseInt(cb.dataset.idx);
     var secEl = document.querySelector('.hl-sec[data-idx="'+idx+'"]');
+    var lvlEl = document.querySelector('.hl-lvl[data-idx="'+idx+'"]');
     var vidEl = document.querySelector('.hl-vid[data-idx="'+idx+'"]');
     var h = _fetchedHeadlines[idx] || {};
     var useVideo = !!(vidEl && vidEl.checked && h.video_url && h.video_kind);
@@ -3769,7 +3812,11 @@ async function runAutoGenerate(){
       desc: h.desc || h.summary || '',
       _useVideo: useVideo,
     });
-    return { headline: norm, section: secEl ? secEl.value : AUTO_SECTIONS[0].key };
+    return {
+      headline: norm,
+      section: secEl ? secEl.value : AUTO_SECTIONS[0].key,
+      level: lvlEl ? lvlEl.value : globalDifficulty,
+    };
   });
 
   const diffMap = {
@@ -3778,7 +3825,6 @@ async function runAutoGenerate(){
     'Intermediate': { ko:'중급 (TOPIK 3~4급)', vocab:'일반 뉴스 어휘, 중간 난이도 문장', level:'Intermediate' },
     'Advanced':     { ko:'고급 (TOPIK 5~6급)', vocab:'고급 한자어, 복잡한 문장 구조', level:'Advanced' },
   };
-  const diffInfo = diffMap[difficulty] || diffMap['Intermediate'];
 
   const progress = document.getElementById('auto-progress');
   progress.innerHTML = '';
@@ -3788,13 +3834,18 @@ async function runAutoGenerate(){
     var h = item.headline;
     var secKey = item.section;
     var sec = AUTO_SECTIONS.find(function(s){ return s.key === secKey; }) || AUTO_SECTIONS[0];
+    // Per-headline difficulty — falls back to global selector's value
+    // when the row selector somehow isn't present.
+    var diffInfo = diffMap[item.level] || diffMap[globalDifficulty] || diffMap['Intermediate'];
     var rowId = 'prog-' + si;
+    var levelLabels = {Starter:'🌱 Seed', Beginner:'🌿 Sprout', Intermediate:'🌳 Tree', Advanced:'🌲 Forest'};
+    var levelLabel = levelLabels[diffInfo.level] || diffInfo.level;
 
     progress.innerHTML +=
       '<div id="'+rowId+'" style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;background:#fff;border:1px solid var(--bo);border-radius:8px;margin-bottom:8px">'
       +'<span style="font-size:18px">'+sec.icon+'</span>'
       +'<div style="flex:1"><div style="font-weight:700;font-size:13px">'+esc(h.title.slice(0,60))+'…</div>'
-      +'<div style="font-size:11px;color:#94a3b8">'+esc(h.source)+' → '+secKey+'</div>'
+      +'<div style="font-size:11px;color:#94a3b8">'+esc(h.source)+' → '+secKey+' · '+levelLabel+'</div>'
       +'<div id="'+rowId+'-status" style="color:var(--gr);font-size:13px;margin-top:4px">⏳ 각색 중…</div></div>'
       +'</div>';
 
@@ -3826,7 +3877,11 @@ async function runAutoGenerate(){
         + '[금지]\n'
         + '- 실존 인물 비방, 미검증 주장 금지\n'
         + '- 원본에 없는 사실 추가 금지\n\n'
-        + '응답은 JSON만: {"title":"제목","body":"본문 (단락 구분 \\n\\n)"}';
+        + '[중요표현 / Key Expressions]\n'
+        + '- 본문에서 **자연스럽게** 나오는 관용 표현, 자주 쓰는 굳어진 구, 문법 패턴이 있으면 0~3개 추출\n'
+        + '- 각 표현은 ko(표현) + en(영어 번역 또는 풀이) 짝으로\n'
+        + '- 본문에 없는 표현 억지로 만들지 말 것. 적합한 게 없으면 빈 배열 [] 반환\n\n'
+        + '응답은 JSON만: {"title":"제목","body":"본문 (단락 구분 \\n\\n)","key_expressions":[{"ko":"...","en":"..."}]}';
 
       document.getElementById(rowId+'-status').innerHTML = '⏳ 기사 각색 중…';
       const res = await callClaude({
@@ -3938,7 +3993,23 @@ async function runAutoGenerate(){
         _ok++;
       } catch(e) { console.warn('quiz failed', e.message); }
 
-      if (_ok > 0) {
+      // Key expressions come back as part of the main article JSON
+      // (same Claude call that produced the title + body) so no extra
+      // API call. We cap at 3, drop anything that doesn't literally
+      // appear in the body, and store in the shape the frontend
+      // phrases admin expects: [{phrase, note, color}]. Empty array
+      // is valid — the prompt explicitly allows skipping when nothing
+      // natural fits.
+      try {
+        var rawKE = Array.isArray(article.key_expressions) ? article.key_expressions : [];
+        var keyExprs = rawKE
+          .filter(function(e){ return e && e.ko && _body.indexOf(e.ko) !== -1; })
+          .slice(0, 3)
+          .map(function(e){ return { phrase: String(e.ko).trim(), note: String(e.en || '').trim(), color: 'amber' }; });
+        if (keyExprs.length) _row.expressions = JSON.stringify(keyExprs);
+      } catch(e) { console.warn('key_expressions parse failed', e); }
+
+      if (_ok > 0 || _row.expressions) {
         try {
           const _cacheRes = await getSb().from('article_cache').upsert(_row, { onConflict: 'article_id' });
           if (_cacheRes.error) console.warn('cache upsert failed:', _cacheRes.error.message);

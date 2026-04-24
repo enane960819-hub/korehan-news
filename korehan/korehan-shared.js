@@ -6973,6 +6973,17 @@ function wrapVocab(el) {
   var nodes = [];
   while (walker.nextNode()) nodes.push(walker.currentNode);
 
+  // Track dictionary forms that have already been wrapped inside this
+  // zone so repeat occurrences of the same word render as plain text.
+  // The old behavior painted every instance with the dotted underline,
+  // which turned a body paragraph that used the same noun 4–5 times
+  // into a picket fence and drowned the rest of the sentence. First-
+  // mention-only keeps the "tap for definition" affordance without the
+  // visual clutter. Scoped per vocab-zone (title / body are separate
+  // zones) so a word that appears in both still gets one underline in
+  // each, not zero in the body because the title used it.
+  var seenDict = new Set();
+
   // Collect all match spans across both regexes, then resolve overlaps —
   // longer / direct matches win.
   nodes.forEach(function(node) {
@@ -7013,11 +7024,18 @@ function wrapVocab(el) {
     var last = 0;
     picked.forEach(function(s) {
       if (s.start > last) frag.appendChild(document.createTextNode(text.slice(last, s.start)));
-      var span = document.createElement('span');
-      span.className = 'kh-word';
-      span.dataset.word = s.dict; // dictionary form so tooltip lookup works
-      span.textContent = s.text;
-      frag.appendChild(span);
+      if (seenDict.has(s.dict)) {
+        // Subsequent occurrence — render as plain text so only the
+        // first mention in this zone carries the underline.
+        frag.appendChild(document.createTextNode(text.slice(s.start, s.end)));
+      } else {
+        seenDict.add(s.dict);
+        var span = document.createElement('span');
+        span.className = 'kh-word';
+        span.dataset.word = s.dict; // dictionary form so tooltip lookup works
+        span.textContent = s.text;
+        frag.appendChild(span);
+      }
       last = s.end;
     });
     if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
