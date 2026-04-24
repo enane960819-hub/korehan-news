@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Notes — KoreHani</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="korehan-shared.css">
+<style>
+body { font-family: 'Happy Monkey', 'Jua', 'Inter', 'Noto Sans KR', sans-serif; }
+
+/* Header */
+.notes-hero {
+  background: linear-gradient(135deg,#0b1626,#1a3a6b);
+  padding: 28px 20px 24px; color:#fff;
+}
+.notes-hero-inner { max-width:880px; margin:0 auto; }
+.notes-title { font-family:'Inter','Noto Sans KR',sans-serif; font-size:22px; font-weight:800; letter-spacing:-.02em; margin:0 0 4px; }
+.notes-sub { font-size:13px; color:rgba(255,255,255,.6); margin:0; }
+
+/* Tabs */
+.notes-body { max-width:880px; margin:0 auto; padding:20px 20px 60px; }
+.notes-tabs {
+  display:flex; gap:4px; padding:4px; margin-bottom:18px;
+  background:#f1f5f9; border-radius:12px;
+}
+.notes-tab {
+  flex:1; padding:10px 8px; border:0; background:transparent;
+  color:#64748b; font-size:13px; font-weight:800; font-family:inherit;
+  border-radius:8px; cursor:pointer; transition:all .15s;
+}
+.notes-tab.on { background:#fff; color:#0b1626; box-shadow:0 1px 4px rgba(15,23,42,.08); }
+
+/* Panels */
+.notes-panel { display:none; }
+.notes-panel.on { display:block; }
+
+/* Bookmark cards */
+.nt-bookmark-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
+.nt-bookmark-card {
+  display:flex; gap:12px; padding:12px;
+  border:1px solid var(--border); border-radius:14px; background:#fff;
+  text-decoration:none; color:inherit;
+  transition:transform .15s, box-shadow .15s;
+}
+.nt-bookmark-card:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(15,23,42,.08); }
+.nt-bm-thumb {
+  width:72px; height:72px; border-radius:10px; object-fit:cover;
+  background:#e2e8f0; flex-shrink:0;
+}
+.nt-bm-body { min-width:0; flex:1; }
+.nt-bm-title { font-size:13px; font-weight:800; color:#0f172a; line-height:1.35; margin:0 0 4px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.nt-bm-meta { font-size:11px; color:#94a3b8; display:flex; gap:6px; align-items:center; }
+.nt-bm-badge { padding:2px 8px; border-radius:999px; background:#eff6ff; color:#2563eb; font-size:10px; font-weight:800; letter-spacing:.03em; }
+
+/* Vocab list */
+.nt-vocab-list { display:flex; flex-direction:column; gap:8px; }
+.nt-vocab-row {
+  display:grid; grid-template-columns:1fr auto; align-items:center; gap:10px;
+  padding:12px 14px; border:1px solid var(--border); border-radius:12px; background:#fff;
+}
+.nt-v-ko { font-family:'Noto Serif KR',serif; font-size:17px; font-weight:900; color:#0b1628; }
+.nt-v-rom { font-size:12px; color:#64748b; font-style:italic; margin-left:8px; }
+.nt-v-en { font-size:13px; color:#475569; margin-top:3px; }
+.nt-v-del {
+  padding:6px 12px; border:1.5px solid #fecaca; background:#fff; color:#dc2626;
+  border-radius:999px; font-size:11px; font-weight:800; cursor:pointer; font-family:inherit;
+}
+.nt-v-del:hover { background:#fef2f2; }
+
+/* Header row with count + search */
+.nt-panel-head { display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; }
+.nt-count { font-size:12px; color:#64748b; font-weight:700; }
+.nt-search {
+  padding:8px 12px; border:1.5px solid var(--border); border-radius:999px;
+  font-size:13px; font-family:inherit; background:#fff; outline:none; min-width:180px;
+}
+.nt-search:focus { border-color:#2563eb; }
+</style>
+</head>
+<body class="kh-page">
+
+<!-- Top nav injected by shared.js -->
+<div id="kh-topbar-mount"></div>
+
+<header class="notes-hero">
+  <div class="notes-hero-inner">
+    <h1 class="notes-title">My Notes</h1>
+    <p class="notes-sub">Everything you've bookmarked and saved while studying, all in one place.</p>
+  </div>
+</header>
+
+<main class="notes-body">
+  <div class="notes-tabs" role="tablist">
+    <button class="notes-tab on" data-tab="bookmarks" onclick="switchNotesTab('bookmarks')">Bookmarked</button>
+    <button class="notes-tab" data-tab="words" onclick="switchNotesTab('words')">Saved words</button>
+  </div>
+
+  <section id="nt-panel-bookmarks" class="notes-panel on">
+    <div class="nt-panel-head">
+      <div class="nt-count" id="nt-bm-count">Loading…</div>
+    </div>
+    <div id="nt-bm-list"></div>
+  </section>
+
+  <section id="nt-panel-words" class="notes-panel">
+    <div class="nt-panel-head">
+      <div class="nt-count" id="nt-w-count">Loading…</div>
+      <input type="search" class="nt-search" id="nt-w-search" placeholder="Search words…">
+    </div>
+    <div id="nt-w-list"></div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js"></script>
+<script>
+function switchNotesTab(tab) {
+  document.querySelectorAll('.notes-tab').forEach(function(b){ b.classList.toggle('on', b.dataset.tab === tab); });
+  document.querySelectorAll('.notes-panel').forEach(function(p){ p.classList.toggle('on', p.id === 'nt-panel-' + tab); });
+  if (tab === 'bookmarks') _loadBookmarks();
+  else if (tab === 'words') _loadSavedWords();
+}
+
+var _ntBookmarksLoaded = false;
+var _ntWordsLoaded = false;
+
+async function _loadBookmarks() {
+  if (_ntBookmarksLoaded) return;
+  var listEl = document.getElementById('nt-bm-list');
+  var countEl = document.getElementById('nt-bm-count');
+  listEl.innerHTML = khLoadingHTML('Loading bookmarks', 'Pulling the articles you\'ve saved.');
+
+  if (!supaUser) {
+    listEl.innerHTML = khEmptyState({
+      title: 'Sign in to see your bookmarks',
+      sub: 'Your bookmarked articles appear here once you\'re signed in.',
+      action: { label: 'Sign in', onClick: "openAuthModal('signin')" },
+    });
+    countEl.textContent = '';
+    return;
+  }
+
+  var sb = getSupa();
+  try {
+    var bmRes = await sb.from('bookmarks').select('article_id, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false });
+    if (bmRes.error) throw bmRes.error;
+    var ids = (bmRes.data || []).map(function(r){ return r.article_id; });
+    if (!ids.length) {
+      countEl.textContent = 'No bookmarks yet';
+      listEl.innerHTML = khEmptyState({
+        title: 'No bookmarks yet',
+        sub: 'Tap the bookmark icon on any article to save it for later.',
+        action: { label: 'Browse articles', onClick: "location.href='korehan-news.html'" },
+      });
+      _ntBookmarksLoaded = true;
+      return;
+    }
+    var artRes = await sb.from('articles_data').select('id, title, section, level, image, date, body').in('id', ids);
+    if (artRes.error) throw artRes.error;
+    var articles = artRes.data || [];
+    // Preserve bookmark order (newest first).
+    var bmOrder = {}; ids.forEach(function(id, i){ bmOrder[id] = i; });
+    articles.sort(function(a, b){ return (bmOrder[a.id] || 0) - (bmOrder[b.id] || 0); });
+
+    countEl.textContent = articles.length + ' bookmark' + (articles.length === 1 ? '' : 's');
+    listEl.innerHTML = '<div class="nt-bookmark-grid">' + articles.map(function(a) {
+      var img = (typeof khArticleThumb === 'function') ? khArticleThumb(a, 240, 160) : (a.image || '');
+      var sectionLabel = (typeof sectionLabel === 'function') ? sectionLabel(a.section) : (a.section || '');
+      var levelLabel = ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level] || a.level || '');
+      return '<a class="nt-bookmark-card" href="korehan-article.html?id=' + encodeURIComponent(a.id) + '">'
+        +   '<img class="nt-bm-thumb" src="' + img + '" alt="" onerror="this.style.visibility=\'hidden\'">'
+        +   '<div class="nt-bm-body">'
+        +     '<div class="nt-bm-title">' + escapeHtml(a.title || '') + '</div>'
+        +     '<div class="nt-bm-meta">'
+        +       (levelLabel ? '<span class="nt-bm-badge">' + escapeHtml(levelLabel) + '</span>' : '')
+        +       (sectionLabel ? '<span>' + escapeHtml(sectionLabel) + '</span>' : '')
+        +     '</div>'
+        +   '</div>'
+        + '</a>';
+    }).join('') + '</div>';
+    _ntBookmarksLoaded = true;
+  } catch(e) {
+    listEl.innerHTML = khEmptyState({
+      error: true,
+      title: 'Could not load bookmarks',
+      sub: e.message || 'Please try again.',
+      action: { label: 'Retry', onClick: "_ntBookmarksLoaded=false;_loadBookmarks()" },
+    });
+    countEl.textContent = '';
+  }
+}
+
+async function _loadSavedWords() {
+  if (_ntWordsLoaded) return;
+  var listEl = document.getElementById('nt-w-list');
+  var countEl = document.getElementById('nt-w-count');
+  listEl.innerHTML = khLoadingHTML('Loading your words', 'Pulling words you\'ve saved while reading.');
+
+  if (!supaUser) {
+    listEl.innerHTML = khEmptyState({
+      title: 'Sign in to see your words',
+      sub: 'Words you tap-to-save while reading appear here.',
+      action: { label: 'Sign in', onClick: "openAuthModal('signin')" },
+    });
+    countEl.textContent = '';
+    return;
+  }
+
+  var sb = getSupa();
+  try {
+    var res = await sb.from('user_saved_words').select('*').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
+    if (res.error) throw res.error;
+    var words = (res.data || []).map(function(r){
+      return {
+        ko:  r.word_ko || r.ko || '',
+        rom: r.word_rom || r.rom || '',
+        en:  r.word_en || r.en || '',
+      };
+    }).filter(function(w){ return w.ko; });
+
+    if (!words.length) {
+      countEl.textContent = 'No saved words yet';
+      listEl.innerHTML = khEmptyState({
+        title: 'No saved words yet',
+        sub: 'Tap any underlined word while reading an article to save it.',
+        action: { label: 'Browse articles', onClick: "location.href='korehan-news.html'" },
+      });
+      _ntWordsLoaded = true;
+      return;
+    }
+
+    window._ntSavedWords = words;
+    _renderSavedWordList(words);
+    _ntWordsLoaded = true;
+
+    var search = document.getElementById('nt-w-search');
+    if (search) {
+      search.addEventListener('input', function() {
+        var q = (search.value || '').trim().toLowerCase();
+        if (!q) { _renderSavedWordList(window._ntSavedWords); return; }
+        var filtered = window._ntSavedWords.filter(function(w) {
+          return (w.ko || '').toLowerCase().indexOf(q) !== -1
+              || (w.en || '').toLowerCase().indexOf(q) !== -1
+              || (w.rom || '').toLowerCase().indexOf(q) !== -1;
+        });
+        _renderSavedWordList(filtered);
+      });
+    }
+  } catch(e) {
+    listEl.innerHTML = khEmptyState({
+      error: true,
+      title: 'Could not load saved words',
+      sub: e.message || 'Please try again.',
+      action: { label: 'Retry', onClick: "_ntWordsLoaded=false;_loadSavedWords()" },
+    });
+    countEl.textContent = '';
+  }
+}
+
+function _renderSavedWordList(words) {
+  var listEl = document.getElementById('nt-w-list');
+  var countEl = document.getElementById('nt-w-count');
+  if (countEl) countEl.textContent = words.length + ' word' + (words.length === 1 ? '' : 's');
+  if (!words.length) {
+    listEl.innerHTML = '<div class="kh-empty"><div class="kh-empty-title">No matches</div><div class="kh-empty-sub">Try a different search.</div></div>';
+    return;
+  }
+  listEl.innerHTML = '<div class="nt-vocab-list">' + words.map(function(w, i) {
+    return '<div class="nt-vocab-row" data-i="' + i + '">'
+      +   '<div>'
+      +     '<span class="nt-v-ko">' + escapeHtml(w.ko) + '</span>'
+      +     (w.rom ? '<span class="nt-v-rom">' + escapeHtml(w.rom) + '</span>' : '')
+      +     '<div class="nt-v-en">' + escapeHtml(w.en || '') + '</div>'
+      +   '</div>'
+      +   '<button class="nt-v-del" onclick="_ntUnsave(\'' + String(w.ko).replace(/'/g,"\\'") + '\',this)">Remove</button>'
+      + '</div>';
+  }).join('') + '</div>';
+}
+
+async function _ntUnsave(ko, btn) {
+  var ok = await khConfirm('Remove word?', 'Remove "' + ko + '" from your Word Book?', { okLabel: 'Remove', destructive: true });
+  if (!ok) return;
+  btn.disabled = true;
+  try {
+    if (typeof saveVocabToDB === 'function') {
+      await saveVocabToDB(ko, null, null, true);
+    } else {
+      var sb = getSupa();
+      await sb.from('user_saved_words').delete().eq('user_id', supaUser.id).or('word_ko.eq."' + ko.replace(/"/g,'\\"') + '",ko.eq."' + ko.replace(/"/g,'\\"') + '"');
+    }
+    window._ntSavedWords = (window._ntSavedWords || []).filter(function(w){ return w.ko !== ko; });
+    _renderSavedWordList(window._ntSavedWords);
+    toast('Removed', 'success');
+  } catch(e) {
+    btn.disabled = false;
+    toast('Remove failed: ' + (e.message || ''), 'error');
+  }
+}
+
+// Entry point
+document.addEventListener('DOMContentLoaded', function() {
+  _loadBookmarks();
+  // Re-render when auth lands late.
+  window.addEventListener('kh-auth-signed-in', function() {
+    _ntBookmarksLoaded = false; _ntWordsLoaded = false;
+    var active = document.querySelector('.notes-tab.on');
+    if (active) switchNotesTab(active.dataset.tab);
+  });
+});
+</script>
+</body>
+</html>

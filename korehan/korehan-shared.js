@@ -1336,6 +1336,7 @@ function updateAuthUI() {
         + '<div id="kh-user-dropdown-stats" style="margin-top:8px;font-size:12px;color:#64748b">✨ XP 0 · 🐾 냥 0</div>'
         + '</div>'
         + '<a href="korehan-mypage.html" class="kh-user-dropdown-link">' + khIcon('circle-user-round', 'My Page', 'kh-ui-icon-sm') + '</a>'
+        + '<a href="korehan-notes.html" class="kh-user-dropdown-link">' + khIcon('bookmark', 'My Notes', 'kh-ui-icon-sm') + '</a>'
         + (isAdmin ? '<a href="korehan-x9f4k2m7.html" class="kh-user-dropdown-link">' + khIcon('settings', 'Admin CMS', 'kh-ui-icon-sm') + '</a>' : '')
         + '<button type="button" class="kh-user-dropdown-link kh-user-dropdown-btn" onclick="signOut();closeTopbarUserMenu()">' + khIcon('log-out', 'Sign Out', 'kh-ui-icon-sm') + '</button>';
       (function loadDropdownStats(){
@@ -9500,6 +9501,8 @@ function updateSidebarAuth() {
       + '</div>'
       + '<a href="korehan-mypage.html" class="kh-sb-a" onclick="khSbClose()">'
       + '<span class="kh-sb-ico">&#x1F464;</span>My Page</a>'
+      + '<a href="korehan-notes.html" class="kh-sb-a" onclick="khSbClose()">'
+      + '<span class="kh-sb-ico">&#x1F4D1;</span>My Notes</a>'
       + '<button class="kh-sb-a" onclick="signOut();khSbClose()" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit">'
       + '<span class="kh-sb-ico">&#x1F6AA;</span>Sign Out</button>';
   } else {
