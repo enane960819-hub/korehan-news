@@ -489,6 +489,22 @@ body.kh-neon-on .mypage-hero {
 .room-shop-btn.remove { background:#ef4444; color:#fff; margin-top:4px; }
 .room-shop-btn.remove:hover { background:#dc2626; }
 
+/* Room edit-mode controls (flip/layer/remove/+/-). Bigger tap targets on
+   touch so nobody needs to aim at a 28px icon. */
+.room-ctrl-btn {
+  padding: 8px 14px; border: 1px solid #cbd5e1; border-radius: 10px;
+  background: #fff; cursor: pointer; font-size: 12px; font-weight: 700;
+  font-family: inherit; color: #0b1626; min-height: 36px; line-height: 1;
+}
+.room-ctrl-btn:hover { background: #f1f5f9; }
+.room-ctrl-btn.room-ctrl-icon { padding: 0; width: 36px; min-width: 36px; font-size: 18px; font-weight: 800; }
+.room-ctrl-btn.room-ctrl-danger { background: #ef4444; border-color: #dc2626; color: #fff; font-weight: 800; }
+.room-ctrl-btn.room-ctrl-danger:hover { background: #dc2626; }
+@media (pointer: coarse) {
+  .room-ctrl-btn { min-height: 44px; padding: 10px 16px; font-size: 13px; }
+  .room-ctrl-btn.room-ctrl-icon { width: 44px; min-width: 44px; font-size: 20px; }
+}
+
 /* Room badges on wall */
 .room-badge-icon {
   width:28px; height:28px; border-radius:6px; display:flex; align-items:center;
@@ -845,16 +861,16 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
     <div id="room-size-controls" style="margin-top:10px;text-align:center;display:none">
       <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:6px">선택한 아이템 크기</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap">
-        <button onclick="nudgeSelectedItemScale(-10)" style="width:28px;height:28px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-weight:800">−</button>
-        <input type="range" id="room-size-slider" min="70" max="170" step="5" value="100" style="width:170px" oninput="onRoomSizeSlider(this.value)">
-        <button onclick="nudgeSelectedItemScale(10)" style="width:28px;height:28px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-weight:800">+</button>
+        <button class="room-ctrl-btn room-ctrl-icon" onclick="nudgeSelectedItemScale(-10)" aria-label="Decrease size">−</button>
+        <input type="range" id="room-size-slider" min="70" max="170" step="5" value="100" style="width:170px;height:36px" oninput="onRoomSizeSlider(this.value)">
+        <button class="room-ctrl-btn room-ctrl-icon" onclick="nudgeSelectedItemScale(10)" aria-label="Increase size">+</button>
         <span id="room-size-value" style="font-size:12px;font-weight:800;color:#0b1626;min-width:42px;text-align:left">100%</span>
       </div>
       <div style="display:flex;gap:6px;justify-content:center;margin-top:8px;flex-wrap:wrap">
-        <button onclick="flipSelectedItem()" style="padding:4px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;cursor:pointer;font-size:11px;font-weight:700" title="Flip">↔ Flip</button>
-        <button onclick="moveSelectedLayer(1)" style="padding:4px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;cursor:pointer;font-size:11px;font-weight:700" title="Bring forward">↑ Front</button>
-        <button onclick="moveSelectedLayer(-1)" style="padding:4px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;cursor:pointer;font-size:11px;font-weight:700" title="Send back">↓ Back</button>
-        <button id="room-remove-btn" onclick="removeSelectedRoomItem()" style="padding:4px 10px;border:none;border-radius:8px;background:#ef4444;color:#fff;font-size:11px;font-weight:800;cursor:pointer;display:none">Remove</button>
+        <button class="room-ctrl-btn" onclick="flipSelectedItem()" title="Flip">↔ Flip</button>
+        <button class="room-ctrl-btn" onclick="moveSelectedLayer(1)" title="Bring forward">↑ Front</button>
+        <button class="room-ctrl-btn" onclick="moveSelectedLayer(-1)" title="Send back">↓ Back</button>
+        <button id="room-remove-btn" class="room-ctrl-btn room-ctrl-danger" onclick="removeSelectedRoomItem()" style="display:none">Remove</button>
       </div>
       <div style="font-size:10px;color:#94a3b8;margin-top:6px">클릭 → 크기/반전/앞뒤 조절 · 꾹 누르기 → 빼기</div>
     </div>
@@ -2060,11 +2076,19 @@ function roomItemThumbBgStyle(item) {
 }
 
 // ── Get item def by id ───────────────────────────────────────
+// Index cache keyed by ROOM_ITEMS reference. We rebuild whenever the array
+// identity changes (e.g. after loadRoomItemsFromDB replaces the fallback).
+var _roomItemsIndex = null;
+var _roomItemsIndexSource = null;
 function getRoomItemDef(id) {
-  for (var i = 0; i < ROOM_ITEMS.length; i++) {
-    if (ROOM_ITEMS[i].id === id) return ROOM_ITEMS[i];
+  if (_roomItemsIndexSource !== ROOM_ITEMS) {
+    _roomItemsIndex = {};
+    for (var i = 0; i < ROOM_ITEMS.length; i++) {
+      _roomItemsIndex[ROOM_ITEMS[i].id] = ROOM_ITEMS[i];
+    }
+    _roomItemsIndexSource = ROOM_ITEMS;
   }
-  return null;
+  return _roomItemsIndex[id] || null;
 }
 
 // ── Owned items helpers ──────────────────────────────────────
@@ -2072,7 +2096,8 @@ function getRoomOwned() {
   try { return JSON.parse(localStorage.getItem(K_ROOM_OWNED) || '[]'); } catch(e) { return []; }
 }
 function setRoomOwned(arr) {
-  localStorage.setItem(K_ROOM_OWNED, JSON.stringify(arr));
+  try { localStorage.setItem(K_ROOM_OWNED, JSON.stringify(arr)); }
+  catch(e) { console.warn('room owned write failed (private mode?)', e); }
   _syncRoomToServer();
 }
 function isRoomItemOwned(id) {
@@ -2084,19 +2109,36 @@ function getRoomLayout() {
   try { return JSON.parse(localStorage.getItem(K_ROOM_LAYOUT) || '[]'); } catch(e) { return []; }
 }
 function setRoomLayout(arr) {
-  localStorage.setItem(K_ROOM_LAYOUT, JSON.stringify(arr));
+  try { localStorage.setItem(K_ROOM_LAYOUT, JSON.stringify(arr)); }
+  catch(e) { console.warn('room layout write failed (private mode?)', e); }
 }
 
 // ── Supabase sync (cross-device) ─────────────────────────────
 function _roomServerKey() { return 'room_data_' + (supaUser ? supaUser.id : 'anon'); }
 
+// Debounced so rapid purchases / drags coalesce into one upsert.
+var _roomSyncTimer = null;
+var _roomSyncInFlight = false;
 function _syncRoomToServer() {
   if (!supaUser) return;
-  var sb = getSupa(); if (!sb) return;
-  var data = JSON.stringify({ room_layout: getRoomLayout(), room_owned: getRoomOwned() });
-  var key = _roomServerKey();
-  sb.from('app_settings').upsert({ key: key, value: data, updated_at: new Date().toISOString() }, { onConflict: 'key' })
-    .then(function(r){ if(r.error) console.warn('room sync error:', r.error.message); else console.log('room synced to server'); });
+  if (_roomSyncTimer) clearTimeout(_roomSyncTimer);
+  _roomSyncTimer = setTimeout(function() {
+    _roomSyncTimer = null;
+    var sb = getSupa(); if (!sb) return;
+    if (_roomSyncInFlight) { _syncRoomToServer(); return; }
+    _roomSyncInFlight = true;
+    var data = JSON.stringify({ room_layout: getRoomLayout(), room_owned: getRoomOwned() });
+    var key = _roomServerKey();
+    sb.from('app_settings')
+      .upsert({ key: key, value: data, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+      .then(function(r){
+        _roomSyncInFlight = false;
+        if (r.error) {
+          console.warn('room sync error:', r.error.message);
+          if (typeof toast === 'function') toast('Room not saved — check connection.');
+        }
+      });
+  }, 400);
 }
 
 async function _loadRoomFromServer() {
@@ -2107,8 +2149,10 @@ async function _loadRoomFromServer() {
     var r = await sb.from('app_settings').select('value').eq('key', key).maybeSingle();
     if (r.data && r.data.value) {
       var d = typeof r.data.value === 'string' ? JSON.parse(r.data.value) : r.data.value;
-      if (d && Array.isArray(d.room_layout)) localStorage.setItem(K_ROOM_LAYOUT, JSON.stringify(d.room_layout));
-      if (d && Array.isArray(d.room_owned)) localStorage.setItem(K_ROOM_OWNED, JSON.stringify(d.room_owned));
+      try {
+        if (d && Array.isArray(d.room_layout)) localStorage.setItem(K_ROOM_LAYOUT, JSON.stringify(d.room_layout));
+        if (d && Array.isArray(d.room_owned)) localStorage.setItem(K_ROOM_OWNED, JSON.stringify(d.room_owned));
+      } catch(e) { /* private mode */ }
       console.log('room loaded from server');
     }
   } catch(e) { console.warn('room load from server failed:', e); }
@@ -2121,12 +2165,43 @@ function isItemPlaced(id) {
   return false;
 }
 
+// Toggle the "your room is empty" overlay. Rendered inline once so repeated
+// calls are just a class flip — no DOM churn.
+function _updateRoomEmptyState(isEmpty) {
+  var host = document.getElementById('miniroom-container');
+  if (!host) return;
+  var overlay = document.getElementById('miniroom-empty');
+  if (isEmpty) {
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'miniroom-empty';
+      overlay.setAttribute('style',
+        'position:absolute;inset:0;display:flex;flex-direction:column;'
+        + 'align-items:center;justify-content:center;gap:10px;pointer-events:none;'
+        + 'color:rgba(255,255,255,.85);text-align:center;padding:24px;'
+        + 'font-family:inherit;z-index:5;'
+      );
+      overlay.innerHTML =
+        '<div style="font-size:42px;line-height:1">🪑</div>'
+        + '<div style="font-size:14px;font-weight:800">Your room is empty</div>'
+        + '<div style="font-size:12px;opacity:.7;max-width:260px;line-height:1.55">'
+        + 'Tap <b>My Items</b> below to place things you already own, or earn 냥 and visit the Shop.'
+        + '</div>';
+      host.appendChild(overlay);
+    }
+    overlay.style.display = '';
+  } else if (overlay) {
+    overlay.style.display = 'none';
+  }
+}
+
 // ── Render placed items in room ──────────────────────────────
 function renderRoomItems() {
   var container = document.getElementById('miniroom-items');
   if (!container) return;
   var layout = getRoomLayout();
   container.innerHTML = '';
+  _updateRoomEmptyState(layout.length === 0);
 
   layout.forEach(function(placed) {
     var def = getRoomItemDef(placed.id);
@@ -2219,6 +2294,23 @@ function renderRoomItems() {
 // Badges on wall removed
 
 // ── Load room (call on page init) ────────────────────────────
+// Hitbox ratio flips at 700px (see renderRoomItems); on rotate / split-screen
+// we need to re-render so drag math matches the new viewport. Debounce to
+// avoid thrashing during active resize animations.
+var _roomResizeTimer = null;
+var _roomResizeWasPC = null;
+window.addEventListener('resize', function() {
+  if (_roomResizeTimer) clearTimeout(_roomResizeTimer);
+  _roomResizeTimer = setTimeout(function() {
+    var isPC = window.innerWidth > 700;
+    if (_roomResizeWasPC === null) { _roomResizeWasPC = isPC; return; }
+    if (isPC !== _roomResizeWasPC) {
+      _roomResizeWasPC = isPC;
+      if (document.getElementById('miniroom-items')) renderRoomItems();
+    }
+  }, 200);
+});
+
 async function loadRoomLayout() {
   // Load room item catalog from DB (replaces hardcoded array)
   await loadRoomItemsFromDB();
@@ -2547,7 +2639,12 @@ function applySelectedItemScale(scaleValue) {
 
   layout = layout.map(function(p) {
     if (p.id !== _selectedRoomItemId) return p;
-    return { id: p.id, x: p.x, y: p.y, scale: scale };
+    // Preserve every existing field (esp. `flipped` and any future props);
+    // only the scale changes.
+    var next = {};
+    for (var k in p) if (Object.prototype.hasOwnProperty.call(p, k)) next[k] = p[k];
+    next.scale = scale;
+    return next;
   });
   setRoomLayout(layout);
 
@@ -2577,6 +2674,7 @@ async function openRoomShop(ownedOnly) {
   _mergeEarnedBadgeItems();
   var existing = document.querySelector('.room-shop-overlay');
   if (existing) existing.remove();
+  _armRoomShopEsc();
 
   var coin = _userCoin || 0;
   var owned = getRoomOwned();
@@ -2665,6 +2763,19 @@ function filterRoomShop(cat) {
 function closeRoomShop() {
   var overlay = document.querySelector('.room-shop-overlay');
   if (overlay) overlay.remove();
+  if (_roomShopEscHandler) {
+    document.removeEventListener('keydown', _roomShopEscHandler);
+    _roomShopEscHandler = null;
+  }
+}
+
+var _roomShopEscHandler = null;
+function _armRoomShopEsc() {
+  if (_roomShopEscHandler) return;
+  _roomShopEscHandler = function(e) {
+    if (e.key === 'Escape' || e.keyCode === 27) closeRoomShop();
+  };
+  document.addEventListener('keydown', _roomShopEscHandler);
 }
 
 // ── Buy item ─────────────────────────────────────────────────
@@ -2679,7 +2790,22 @@ async function buyRoomItem(itemId) {
   var sb = getSupa();
   if (sb && supaUser) {
     try {
-      await sb.from('user_stats').update({coin_balance: newCoin}).eq('user_id', supaUser.id);
+      // Guarded update: only applies if the server-side balance is still
+      // >= price. Returns the updated row so we can detect race conditions
+      // (second concurrent purchase attempt → 0 rows → abort).
+      var upd = await sb.from('user_stats')
+        .update({coin_balance: newCoin})
+        .eq('user_id', supaUser.id)
+        .gte('coin_balance', def.price)
+        .select('coin_balance');
+      if (upd.error) throw upd.error;
+      if (!upd.data || upd.data.length === 0) {
+        if (typeof toast === 'function') toast('Balance out of sync — reloading.');
+        if (typeof _reloadUserStats === 'function') _reloadUserStats();
+        return;
+      }
+      // Trust the server value we just wrote back.
+      newCoin = Number(upd.data[0].coin_balance);
       try {
         await sb.from('coin_transactions').insert({
           user_id: supaUser.id, tx_type:'spend', amount: -def.price,
@@ -2737,18 +2863,64 @@ function placeRoomItem(itemId) {
 
 // ── Remove item from room ────────────────────────────────────
 function removeRoomItem(itemId) {
-  var layout = getRoomLayout();
-  layout = layout.filter(function(p) { return p.id !== itemId; });
-  setRoomLayout(layout);
+  var prevLayout = getRoomLayout();
+  var removed = null;
+  var nextLayout = prevLayout.filter(function(p) {
+    if (p.id === itemId) { removed = p; return false; }
+    return true;
+  });
+  setRoomLayout(nextLayout);
 
   renderRoomItems();
   if (_selectedRoomItemId === itemId) _selectedRoomItemId = null;
   updateRoomSizeUI();
-  if (typeof toast === 'function') toast('Item removed from room.');
+  _showRemoveUndoToast(removed);
 
-  // Refresh shop
+  // Refresh shop so the item flips back to "Place" state.
+  var shopOpen = !!document.querySelector('.room-shop-overlay');
   closeRoomShop();
-  openRoomShop();
+  if (shopOpen) openRoomShop(true);
+}
+
+// 5-second undo window after a remove. Tapping Undo re-appends the item with
+// its original position/scale/flipped state, so nothing is lost by accident.
+function _showRemoveUndoToast(removed) {
+  var existing = document.getElementById('room-undo-toast');
+  if (existing) existing.remove();
+  if (!removed) {
+    if (typeof toast === 'function') toast('Item removed from room.');
+    return;
+  }
+  var el = document.createElement('div');
+  el.id = 'room-undo-toast';
+  el.setAttribute('style',
+    'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);'
+    + 'background:#0b1626;color:#fff;padding:10px 14px;border-radius:12px;'
+    + 'display:flex;align-items:center;gap:12px;font-family:inherit;font-size:13px;'
+    + 'font-weight:700;box-shadow:0 12px 32px rgba(0,0,0,.35);z-index:9999;'
+  );
+  var label = document.createElement('span');
+  label.textContent = 'Removed from room';
+  var btn = document.createElement('button');
+  btn.textContent = 'Undo';
+  btn.setAttribute('style',
+    'background:#fbbf24;color:#0b1626;border:none;border-radius:999px;'
+    + 'padding:5px 12px;font-weight:800;cursor:pointer;font-family:inherit;'
+  );
+  btn.addEventListener('click', function() {
+    var cur = getRoomLayout();
+    // Only restore if the item wasn't re-placed during the undo window.
+    if (!cur.some(function(p){ return p.id === removed.id; })) {
+      cur.push(removed);
+      setRoomLayout(cur);
+      renderRoomItems();
+    }
+    el.remove();
+  });
+  el.appendChild(label);
+  el.appendChild(btn);
+  document.body.appendChild(el);
+  setTimeout(function(){ if (el.parentNode) el.remove(); }, 5000);
 }
 
 // ── Saved Words modal ────────────────────────────────────────
