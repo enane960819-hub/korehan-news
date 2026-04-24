@@ -3697,6 +3697,7 @@ function _renderHeadlinePanel() {
         var metaBits = [esc(h.source)];
         if (h.published_at) metaBits.push(_fmtPubDate(h.published_at));
         var hasVideo = !!(h.video_url && h.video_kind);
+        var hasImage = !!(h.image);
         var videoBadge = hasVideo
           ? '<span title="Video available (' + esc(h.video_kind) + ')" style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;border-radius:999px;background:#fef2f2;color:#b91c1c;font-size:10px;font-weight:800;vertical-align:middle">🎬 ' + esc(h.video_kind) + '</span>'
           : '';
@@ -3705,8 +3706,24 @@ function _renderHeadlinePanel() {
               + '<input type="checkbox" class="hl-vid" data-idx="'+i+'" checked style="width:13px;height:13px"> Use video instead of image'
             + '</label>'
           : '';
+        // Tiny thumbnail column so the admin can see what was extracted
+        // at a glance. Videos get a filmstrip placeholder (real preview
+        // would need HLS decoding in the admin, too heavy); items with
+        // neither image nor video get a muted "No media" tile so the
+        // admin knows to type/upload something before publishing.
+        var thumbCell;
+        if (hasVideo) {
+          thumbCell = '<div title="Video post — no still thumbnail" style="width:56px;height:56px;flex-shrink:0;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#5b21b6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px">🎬</div>';
+        } else if (hasImage) {
+          thumbCell = '<img src="' + esc(h.image) + '" loading="lazy" decoding="async"'
+            + ' onerror="this.outerHTML=\'<div title=&quot;Image failed to load&quot; style=&quot;width:56px;height:56px;flex-shrink:0;border-radius:8px;background:#fef2f2;color:#b91c1c;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700&quot;>✕</div>\'"'
+            + ' style="width:56px;height:56px;flex-shrink:0;border-radius:8px;object-fit:cover;background:#f1f5f9">';
+        } else {
+          thumbCell = '<div title="No image or video extracted — AI will generate one, or you can upload." style="width:56px;height:56px;flex-shrink:0;border-radius:8px;background:#fef2f2;border:1px dashed #fecaca;color:#b91c1c;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;text-align:center;line-height:1.1;padding:4px">No<br>media</div>';
+        }
         return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #f0f3f9">'
-          + '<input type="checkbox" class="hl-chk" data-idx="'+i+'" checked style="margin-top:3px;width:15px;height:15px;flex-shrink:0" onchange="_updateHLCount()">'
+          + '<input type="checkbox" class="hl-chk" data-idx="'+i+'" checked style="margin-top:22px;width:15px;height:15px;flex-shrink:0" onchange="_updateHLCount()">'
+          + thumbCell
           + '<div style="flex:1;min-width:0">'
           + '<div style="font-weight:600;font-size:13px;line-height:1.4">' + esc(h.title) + videoBadge + '</div>'
           + '<div style="font-size:11px;color:#94a3b8;margin-top:2px">' + metaBits.join(' · ') + ((h.summary || h.desc) ? ' · ' + esc((h.summary || h.desc).slice(0,90)) + '…' : '') + '</div>'
