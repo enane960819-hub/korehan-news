@@ -33,14 +33,16 @@
 /* ── Card — KakaoTalk Chat Preview ── */
 .cc2{border-radius:18px;overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s;border:none;display:flex;flex-direction:column;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);}
 .cc2:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.15);}
-/* Card header: speakers + level badge */
-.cc2-head{padding:16px 16px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #f0f4fa;}
-.cc2-head-avatars{display:flex;flex-shrink:0;}
-.cc2-head-avatars .kh-char-av{border:2px solid #fff;}
-.cc2-head-avatars .kh-char-av+.kh-char-av{margin-left:-10px;}
+/* Card header: situation description + level badge.
+   Speaker names + avatars used to live here (e.g. "지수 & 민호" with two
+   round initials) but they were just decorative — the situation
+   description carries the actual signal a learner needs to pick the right
+   conversation. So the header now puts the English context up front and
+   keeps only a level pill on the right. */
+.cc2-head{padding:16px 16px 12px;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid #f0f4fa;}
 .cc2-head-info{flex:1;min-width:0;}
-.cc2-title{font-size:15px;font-weight:900;color:#0f172a;line-height:1.25;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cc2-ctx{font-size:11px;color:#64748b;margin-top:3px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.cc2-ctx{font-size:14px;color:#0f172a;font-weight:700;line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.cc2-ctx-loading{color:#94a3b8;font-weight:500;font-style:italic;}
 .cc2-tag{font-size:9px;font-weight:800;padding:3px 8px;border-radius:20px;flex-shrink:0;letter-spacing:.02em;}
 .badge-b{background:#dcfce7;color:#15803d;}
 .badge-i{background:#fef9c3;color:#92400e;}
@@ -56,13 +58,18 @@
 .cc2-study-btn{font-size:11px;font-weight:800;color:#2563eb;background:none;border:1.5px solid #bfdbfe;border-radius:20px;padding:4px 14px;cursor:pointer;font-family:inherit;transition:all .12s;}
 .cc2-study-btn:hover{background:#eff6ff;}
 
-/* ── DETAIL OVERLAY ── */
-.detail-overlay{position:fixed;inset:0;background:rgba(5,12,24,.72);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px 16px;overflow:hidden;}
+/* ── DETAIL OVERLAY ──
+   Single-column reader, mirrors the article layout: header → tabs →
+   selected section. The old 2-column desktop split (chat on left, study
+   notes on right) made the page feel like two competing columns instead
+   of one focused study flow, so we collapsed it. The mobile-only tab
+   strip became the global tab strip. */
+.detail-overlay{position:fixed;inset:0;background:rgba(5,12,24,.72);z-index:5000;display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto;}
 .detail-overlay.hidden{display:none;}
-.detail-panel{width:100%;max-width:1100px;height:90vh;background:#f8fafc;border-radius:28px;overflow:hidden;box-shadow:0 32px 80px rgba(5,12,24,.3);display:grid;grid-template-columns:1.2fr .85fr;animation:panelIn .22s cubic-bezier(.22,1,.36,1);}
+.detail-panel{width:100%;max-width:780px;background:#fff;border-radius:28px;overflow:hidden;box-shadow:0 32px 80px rgba(5,12,24,.3);display:flex;flex-direction:column;animation:panelIn .22s cubic-bezier(.22,1,.36,1);}
 @keyframes panelIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
 @keyframes spin{to{transform:rotate(360deg)}}
-.dp-left{background:#fff;display:flex;flex-direction:column;overflow:hidden;min-height:0;}
+.dp-left{background:#fff;display:flex;flex-direction:column;}
 .dp-left-head{background:linear-gradient(135deg,#1d4ed8 0%,#3b82f6 100%);padding:22px 24px 18px;position:relative;}
 .dp-left-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.7);margin-bottom:6px;}
 .dp-left-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#fff;margin:0 0 4px;}
@@ -76,7 +83,7 @@
 .dp-pill-green{background:#dcfce7;color:#15803d;}
 .dp-pill-pink{background:#fce7f3;color:#be185d;}
 .dp-pill-amber{background:#fef9c3;color:#92400e;}
-.dp-chat-area{flex:1;min-height:0;padding:20px 24px 80px;background:linear-gradient(180deg,#f8fbff 0%,#f8fafc 100%);overflow-y:auto;overscroll-behavior:contain;}
+.dp-chat-area{padding:20px 24px 24px;background:linear-gradient(180deg,#f8fbff 0%,#f8fafc 100%);}
 .dp-date-sep{text-align:center;margin-bottom:18px;}
 .dp-date-sep span{display:inline-block;padding:6px 14px;border-radius:999px;background:#e2e8f0;color:#64748b;font-size:11px;font-weight:700;}
 .dp-msg-row{display:flex;margin-bottom:12px;align-items:flex-end;gap:10px;}
@@ -109,12 +116,15 @@
 .dp-cta-secondary{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;}
 .dp-cta-secondary:hover{background:#dbeafe;}
 
-/* ── Study Panel (Breakdown) — larger text, clear sections ── */
-.dp-right{background:#f8fafc;display:flex;flex-direction:column;border-left:1px solid #e8eef7;overflow-y:auto;overscroll-behavior:contain;}
-.dp-right-head{padding:22px 24px 16px;border-bottom:1px solid #e8eef7;background:#fff;}
+/* ── Study Panel (Breakdown) ──
+   Now lives below the chat (single column), not in a side pane. We
+   keep the .dp-right wrapper class for backward compatibility but it
+   no longer has its own scroll viewport — the page itself scrolls. */
+.dp-right{background:#fff;display:flex;flex-direction:column;}
+.dp-right-head{padding:18px 24px 14px;border-bottom:1px solid #e8eef7;background:#fff;display:none;}
 .dp-right-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#2563eb;margin-bottom:6px;}
-.dp-right-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#0f172a;margin:0;}
-.dp-study-sections{padding:18px 20px 90px;display:flex;flex-direction:column;gap:18px;}
+.dp-right-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:900;color:#0f172a;margin:0;}
+.dp-study-sections{padding:18px 20px 24px;display:flex;flex-direction:column;gap:14px;}
 .dp-study-card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px;box-shadow:0 2px 6px rgba(15,23,42,.04);}
 .dp-study-card-title{font-size:15px;font-weight:800;color:#0f172a;margin:0 0 16px;display:flex;align-items:center;gap:8px;letter-spacing:-.01em;}
 .dp-study-card-title .admin-add-btn{margin-left:auto;font-size:11px;font-weight:700;color:#2563eb;background:none;border:1px solid #bfdbfe;border-radius:8px;padding:3px 10px;cursor:pointer;}
@@ -157,10 +167,40 @@
 .cc2-cast-avatars .kh-char-av{border:2px solid #fff;}
 .cc2-cast-avatars .kh-char-av+.kh-char-av{margin-left:-8px;}
 
-/* Tab strip is a no-op on desktop — the 2-column layout shows
-   everything at once there, so the tabs would just clutter the
-   header. Hidden by default and revealed only under 900px. */
-.dp-mobile-tabs{display:none;}
+/* ── Tab strip — visible at every breakpoint ──
+   Mirrors the article reader's .art-tabs so a learner gets the same
+   "Read / Vocab / Grammar / Practice" rail no matter which content
+   type they're in. Sticky so it stays reachable while scrolling
+   through long conversations or study lists. */
+.detail-panel .dp-mobile-tabs{
+  display:flex;
+  position:sticky; top:0; z-index:15;
+  background:#fff;
+  border-bottom:1px solid #e5e7eb;
+  padding:0 6px;
+}
+.detail-panel .dp-mobile-tab{
+  flex:1; padding:12px 2px;
+  background:transparent; border:0;
+  border-bottom:2px solid transparent;
+  color:#64748b; font-size:13px; font-weight:800;
+  cursor:pointer; font-family:inherit;
+  transition:color .15s, border-color .15s;
+}
+.detail-panel .dp-mobile-tab.on{
+  color:#0f172a; border-bottom-color:#2563eb;
+}
+
+/* Per-tab visibility — only the matching section is shown so the
+   learner focuses on one thing at a time. "read" → chat + cta;
+   the other tabs → just their study card. */
+.detail-panel.dp-mobile-tab-read     .dp-right{display:none!important;}
+.detail-panel.dp-mobile-tab-vocab    .dp-left,
+.detail-panel.dp-mobile-tab-grammar  .dp-left,
+.detail-panel.dp-mobile-tab-practice .dp-left{display:none!important;}
+.detail-panel.dp-mobile-tab-vocab    .dp-right [data-study]:not([data-study="vocab"]):not([data-study="keyexpr"]){display:none!important;}
+.detail-panel.dp-mobile-tab-grammar  .dp-right [data-study]:not([data-study="grammar"]){display:none!important;}
+.detail-panel.dp-mobile-tab-practice .dp-right [data-study]:not([data-study="practice"]){display:none!important;}
 
 /* ── Mobile ≤900px ── */
 @media(max-width:900px){
@@ -168,35 +208,19 @@
   #conv-sidebar{display:none!important;}
   .conv-cards-grid{grid-template-columns:1fr!important;gap:12px!important;max-width:500px!important;}
 
-  /* Article-style immersive reader on mobile. The modal chrome
-     (dark backdrop, padded card with rounded corners, shadow) felt
-     like a popup instead of the full-screen content a learner
-     expects after tapping a conversation. Here we remove the
-     backdrop, drop the border radius, and let the panel fill the
-     viewport edge-to-edge so it reads like the article page. */
+  /* Article-style immersive reader on mobile — edge-to-edge content
+     instead of a popup-feeling modal card. */
   .detail-overlay{
-    overflow-y:auto!important;
-    align-items:flex-start!important;
     padding:0!important;
     background:#fff!important;
   }
   .detail-panel{
-    grid-template-columns:1fr;
-    height:auto!important; max-height:none!important;
     border-radius:0!important;
     box-shadow:none!important;
-    background:#fff!important;
-    position:relative;
-  }
-  .dp-left{max-height:none!important;overflow:visible!important;}
-  .dp-chat-area{max-height:none!important;overflow:visible!important;min-height:auto!important;}
-  .dp-right{
-    border-left:none;border-top:none;overflow:visible!important;
-    background:#fff!important;
+    max-width:none!important;
   }
   /* Close button → article-style back arrow, top-left, pill
-     shaped with blur backdrop (matches .kh-article-back on article
-     page). */
+     shaped with blur backdrop (matches .kh-article-back). */
   .detail-close{
     position:fixed!important; top:16px; left:16px; right:auto!important;
     width:40px; height:40px;
@@ -208,66 +232,6 @@
     -webkit-backdrop-filter:blur(8px);
     z-index:20;
   }
-
-  /* Mobile tab strip — sticky so it stays reachable while the user
-     scrolls through a long conversation / study list. Matches the
-     article page's .art-tabs visual language for consistency. */
-  .detail-panel .dp-mobile-tabs{
-    display:flex;
-    grid-column:1 / -1;
-    position:sticky; top:0; z-index:15;
-    background:#fff;
-    border-bottom:1px solid #e5e7eb;
-    padding:0 6px;
-  }
-  .detail-panel .dp-mobile-tab{
-    flex:1; padding:12px 2px;
-    background:transparent; border:0;
-    border-bottom:2px solid transparent;
-    color:#64748b; font-size:12px; font-weight:800;
-    cursor:pointer; font-family:inherit;
-    transition:color .15s, border-color .15s;
-  }
-  .detail-panel .dp-mobile-tab.on{
-    color:#0f172a; border-bottom-color:#2563eb;
-  }
-
-  /* Per-tab visibility rules. "read" shows only the chat column,
-     the other three each show only their matching study card(s)
-     from .dp-right so the learner focuses on one thing at a time. */
-  .detail-panel.dp-mobile-tab-read    .dp-right{display:none!important;}
-  .detail-panel.dp-mobile-tab-vocab   .dp-left,
-  .detail-panel.dp-mobile-tab-grammar .dp-left,
-  .detail-panel.dp-mobile-tab-practice .dp-left{display:none!important;}
-  .detail-panel.dp-mobile-tab-vocab    .dp-right [data-study]:not([data-study="vocab"]):not([data-study="keyexpr"]){display:none!important;}
-  .detail-panel.dp-mobile-tab-grammar  .dp-right [data-study]:not([data-study="grammar"]){display:none!important;}
-  .detail-panel.dp-mobile-tab-practice .dp-right [data-study]:not([data-study="practice"]){display:none!important;}
-
-  /* Light-theme study cards on mobile. The previous navy-background
-     variant inherited text colors from a dark design (rgba(255,255,
-     255,.3) for romanization, .65 for English) — those became
-     invisible once the mobile layout ended up on a white panel.
-     Reset to the desktop-style light palette. */
-  .dp-right-head{background:#fff!important;border-bottom:1px solid #e5e7eb!important;}
-  .dp-right-label{color:#2563eb!important;}
-  .dp-right-title{color:#0f172a!important;}
-  .dp-study-card{background:#fff!important;border:1px solid #e5e7eb!important;}
-  .dp-study-card-title{color:#0f172a!important;}
-  .dp-study-card-title svg{stroke:#2563eb!important;}
-  .dp-vocab-item{background:#f8fafc!important;border:1px solid #e5e7eb!important;}
-  .dp-vocab-item:hover{background:#eef2f7!important;}
-  .dp-vi-ko{color:#0b1628!important;}
-  .dp-vi-rom{color:#64748b!important;}
-  .dp-vi-en{color:#334155!important;}
-  .dp-vi-save{background:#e0e7ff!important;color:#2563eb!important;}
-  .dp-vi-save.saved{background:#2563eb!important;color:#fff!important;}
-  .dp-grammar-item{background:#f8fafc!important;border:1px solid #e5e7eb!important;color:#334155!important;}
-  .dp-grammar-item strong{color:#2563eb!important;}
-  .dp-keyexpr-card{background:#fffbeb!important;border:1px solid #fcd34d!important;}
-  .dp-keyexpr-item{background:#fff!important;border:1px solid #fde68a!important;}
-  .dp-keyexpr-ko{color:#92400e!important;}
-  .dp-keyexpr-en{color:#78350f!important;}
-  .dp-keyexpr-star{color:#f59e0b!important;}
 }
 
 /* ── Mobile ≤600px — stacked vocab, bigger text ── */
@@ -492,27 +456,18 @@ var CAT_EN = {everyday:'Everyday',work:'Work',friends:'Friends',family:'Family',
 
 function _renderOneCard(c) {
   var ri = CONVS.indexOf(c);
-  var ctx = escapeHtml(c.ctx || '');
-
-  // Extract speaker names from preview data (msgs aren't loaded yet for cards)
-  var leftName = (c.preview && c.preview[0]) ? c.preview[0].who : '';
-  var rightName = (c.preview && c.preview[1]) ? c.preview[1].who : '';
-  if (!leftName && !rightName) {
-    // Fallback to conversation name
-    leftName = c.name || 'Conversation';
-    rightName = '';
-  }
-  var speakersText = rightName
-    ? escapeHtml(leftName) + ' & ' + escapeHtml(rightName)
-    : escapeHtml(leftName);
-
-  // Character avatars using initial colors from names
-  var leftColor = _charInitialColor(leftName);
-  var rightColor = _charInitialColor(rightName || 'B');
-  var leftIni = (leftName || '?').charAt(0);
-  var rightIni = (rightName || '?').charAt(0);
-  var leftAvatar = '<div class="kh-char-av" style="width:36px;height:36px;background:'+leftColor+';font-size:14px">'+leftIni+'</div>';
-  var rightAvatar = rightName ? '<div class="kh-char-av" style="width:36px;height:36px;background:'+rightColor+';font-size:14px">'+rightIni+'</div>' : '';
+  var ctxRaw = c.ctx || '';
+  // English context drives the card now (speakers + avatars are gone).
+  // _ctxEn() returns the cached English version if we have one and a
+  // marker like 'pending' otherwise — the async translator below will
+  // fill it in and re-render this card in place.
+  var ctxState = _ctxEn(c);
+  var ctxText = ctxState.text;
+  var isPending = ctxState.pending;
+  var ctxClass = 'cc2-ctx' + (isPending ? ' cc2-ctx-loading' : '');
+  var ctxHtml = ctxText
+    ? '<div class="' + ctxClass + '" data-ctx-target="' + ri + '">' + escapeHtml(ctxText) + '</div>'
+    : '<div class="cc2-ctx cc2-ctx-loading" data-ctx-target="' + ri + '">No description</div>';
 
   // Chat bubble previews (max 3 lines from preview data)
   var bubblesHtml = '';
@@ -530,12 +485,13 @@ function _renderOneCard(c) {
   var vocabCount = c._vocabCount || 0;
   var vocabLabel = vocabCount ? '📚 ' + vocabCount + ' key words' : '';
 
+  // Kick off the translation lazily (only when we don't already have it)
+  if (isPending && ctxRaw) _translateCtxAsync(c, ri);
+
   return '<div class="cc2" onclick="openDetail('+ri+')">'
     +'<div class="cc2-head">'
-      +'<div class="cc2-head-avatars">'+leftAvatar+rightAvatar+'</div>'
       +'<div class="cc2-head-info">'
-        +'<div class="cc2-title">'+speakersText+'</div>'
-        +(ctx ? '<div class="cc2-ctx">'+ctx+'</div>' : '')
+        + ctxHtml
       +'</div>'
       +'<span class="cc2-tag '+LVL_CLS[c.lvl]+'">'+lvlLabel(c.lvl)+'</span>'
     +'</div>'
@@ -545,6 +501,63 @@ function _renderOneCard(c) {
       +'<span class="cc2-study-btn">Study →</span>'
     +'</div>'
   +'</div>';
+}
+
+// ─── Context translation (Korean → English) ─────────────────────
+// We cache results in localStorage keyed by the source string so a
+// page reload doesn't re-spend Claude calls on the same descriptions.
+var _CTX_CACHE_KEY = 'kh_conv_ctx_en_v1';
+var _ctxCache = (function(){
+  try { return JSON.parse(localStorage.getItem(_CTX_CACHE_KEY) || '{}') || {}; }
+  catch(_) { return {}; }
+})();
+function _saveCtxCache() {
+  try { localStorage.setItem(_CTX_CACHE_KEY, JSON.stringify(_ctxCache)); } catch(_) {}
+}
+// Returns { text, pending } — text is what to show right now, pending
+// flags that we're translating in the background.
+function _ctxEn(c) {
+  var raw = (c && c.ctx) || '';
+  if (!raw) return { text: '', pending: false };
+  // Already English (no Korean characters) → just use as-is
+  if (!/[ㄱ-힝]/.test(raw)) return { text: raw, pending: false };
+  // Author already provided an English version
+  if (c.ctx_en) return { text: c.ctx_en, pending: false };
+  if (_ctxCache[raw]) {
+    c.ctx_en = _ctxCache[raw];
+    return { text: c.ctx_en, pending: false };
+  }
+  // Show the Korean text greyed out until the translation lands.
+  return { text: raw, pending: true };
+}
+var _ctxInflight = {};
+function _translateCtxAsync(c, idx) {
+  var raw = (c && c.ctx) || '';
+  if (!raw || _ctxCache[raw] || _ctxInflight[raw]) return;
+  _ctxInflight[raw] = true;
+  callClaude({
+    feature: 'conv-ctx-translate',
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 120,
+    messages: [{
+      role: 'user',
+      content: 'Translate this Korean situation description to natural, concise English (one sentence, no quotes, no extra commentary). Return ONLY the English translation:\n\n' + raw
+    }]
+  }).then(function(r) {
+    var en = ((r.content || []).map(function(b){return b.text||'';}).join('')).trim();
+    if (!en) return;
+    _ctxCache[raw] = en;
+    _saveCtxCache();
+    c.ctx_en = en;
+    // Patch any visible card / detail headline that's keyed to this conv
+    document.querySelectorAll('[data-ctx-target="'+idx+'"]').forEach(function(el){
+      el.classList.remove('cc2-ctx-loading');
+      el.textContent = en;
+    });
+    var detailTitle = document.querySelector('[data-ctx-detail="'+idx+'"]');
+    if (detailTitle) detailTitle.textContent = en;
+  }).catch(function(){})
+    .then(function(){ delete _ctxInflight[raw]; });
 }
 
 function _appendConvCards() {
@@ -755,11 +768,10 @@ async function openDetail(idx) {
 
   var panelEl = document.getElementById('detail-panel');
   panelEl.innerHTML =
-    // Mobile-only tab strip. Matches the article reader's Read/Grammar/
-    // Vocab/Review pattern so the conversation feels focused on mobile:
-    // just the chat is visible by default, and the study notes move
-    // behind tabs. CSS hides this strip above 900px so desktop keeps
-    // its 2-column layout untouched.
+    // Tab strip — matches the article reader's Read / Vocab / Grammar /
+    // Practice pattern. Visible at every breakpoint now (we used to
+    // hide it above 900px for the side-by-side layout, but the panel is
+    // single-column at all sizes after the article-style refactor).
     '<div class="dp-mobile-tabs" role="tablist" aria-label="Conversation sections">'
       +'<button class="dp-mobile-tab on" data-tab="read" onclick="switchConvMobileTab(\'read\')">Read</button>'
       +'<button class="dp-mobile-tab" data-tab="vocab" onclick="switchConvMobileTab(\'vocab\')">Vocab</button>'
@@ -772,12 +784,13 @@ async function openDetail(idx) {
         +  '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'
         +'</button>'
         +'<div class="dp-left-eyebrow">Conversation</div>'
-        // Title is the topic (c.ctx) rather than the speaker names —
-        // the two speakers get their own cards in .dp-cast-bar below,
-        // so repeating "지수, 민호" as the hero title was redundant
-        // and made the learner skim past the actual subject of the
-        // conversation. Fall back to c.name when the topic is empty.
-        +'<div class="dp-left-title">'+escapeHtml(c.ctx || c.name || '')+'</div>'
+        // Title is the situation description in English. The previous
+        // version used the raw c.ctx (Korean), but the cards already
+        // present this in English so the detail header should match.
+        // Fall back to c.name → c.ctx (raw) only if the English
+        // version isn't ready yet — the async translator will swap
+        // it in once Claude responds.
+        +'<div class="dp-left-title" data-ctx-detail="'+_convDetailIdx+'">'+escapeHtml(_ctxEn(c).text || c.name || '')+'</div>'
       +'</div>'
       +'<div class="dp-cast-bar">'
         +'<a class="dp-cast-link" href="'+characterProfileUrl(cast.left.slug)+'">'
@@ -802,18 +815,25 @@ async function openDetail(idx) {
       +'</div>'
     +'</div>'
     +'<div class="dp-right">'
+      // Study Notes header is hidden via CSS — the tab strip already
+      // labels which section the learner is on. Kept in the DOM in
+      // case future code references it.
       +'<div class="dp-right-head"><div class="dp-right-label">Study Notes</div><div class="dp-right-title">Conversation Breakdown</div></div>'
       +'<div class="dp-study-sections" id="dp-study-sections">'
         +(initKeyExprCard ? '<div class="dp-keyexpr-card" data-study="keyexpr"><div class="dp-study-card-title" style="color:#92400e">Key Expressions</div>'+initKeyExprs+'</div>' : '')
         +'<div class="dp-study-card" data-study="vocab"><div class="dp-study-card-title">'+_IC.book+' Vocabulary</div><div class="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
         +(grammar ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' Grammar</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
         +(mission ? '<div class="dp-study-card" data-study="practice"><div class="dp-study-card-title">'+_IC.target+' Practice</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
+        // Listening quiz lives in the Practice tab so the tab is never
+        // empty even when an author hasn't filled in mission tasks.
+        +'<div class="dp-study-card" data-study="practice"><div class="dp-study-card-title">Listening Quiz</div><div id="dp-listening-quiz"><button onclick="startConvListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div></div>'
       +'</div>'
     +'</div>';
-  // Default mobile view = the conversation itself (chat bubbles). CSS
-  // rules scoped to body.kh-reading-page @media(max-width:900px)
-  // hide .dp-right while this class is set. _restoreConvMobileTab()
-  // swaps to the user's preferred tab if they'd picked one earlier.
+  // Default view = the conversation itself (chat bubbles). The
+  // .dp-mobile-tab-* class on the panel toggles which section is
+  // visible — see the per-tab visibility CSS rules above.
+  // _restoreConvMobileTab() swaps to the user's preferred tab if
+  // they'd picked one earlier.
   panelEl.classList.remove('dp-mobile-tab-vocab', 'dp-mobile-tab-grammar', 'dp-mobile-tab-practice');
   panelEl.classList.add('dp-mobile-tab-read');
   if (typeof _restoreConvMobileTab === 'function') _restoreConvMobileTab();
