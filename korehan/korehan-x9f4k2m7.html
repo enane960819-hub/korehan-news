@@ -10990,8 +10990,9 @@ async function aseOpenEditor(artId) {
   _aseCurrentArt     = art;
   _aseCurrentContent = cont || {};
 
-  var vocab   = cont && cont.vocab   ? cont.vocab   : [];
-  var phrases = cont && cont.phrases ? cont.phrases : [];
+  var vocab         = cont && cont.vocab         ? cont.vocab         : [];
+  var phrases       = cont && cont.phrases       ? cont.phrases       : [];
+  var wrongPhrases  = cont && cont.wrong_phrases ? cont.wrong_phrases : [];
   var hlVocab   = cont && cont.custom_highlights && cont.custom_highlights.vocab   ? cont.custom_highlights.vocab.join('\n')   : '';
   var hlPhrases = cont && cont.custom_highlights && cont.custom_highlights.phrases ? cont.custom_highlights.phrases.join('\n') : '';
 
@@ -11010,7 +11011,15 @@ async function aseOpenEditor(artId) {
       + '<td><button onclick="aseRemovePhrase('+i+')" style="background:#fee2e2;color:#991b1b;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">✕</button></td>'
       + '</tr>';
   }
+  function wrongPhraseRow(p, i) {
+    return '<tr id="ase-wrow-'+i+'">'
+      + '<td style="font-family:\'Noto Serif KR\',serif"><input id="ase-wko-'+i+'" value="'+(p.ko||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:5px;border:1px solid #fca5a5;border-radius:6px;font-size:13px;background:#fff7f7"></td>'
+      + '<td><input id="ase-wen-'+i+'" value="'+(p.en||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:5px;border:1px solid #fca5a5;border-radius:6px;font-size:13px;background:#fff7f7"></td>'
+      + '<td><button onclick="aseRemoveWrongPhrase('+i+')" style="background:#fee2e2;color:#991b1b;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">✕</button></td>'
+      + '</tr>';
+  }
 
+  window._aseWrongPhrases = wrongPhrases.slice();
   window._aseVocab   = vocab.slice();
   window._asePhrases = phrases.slice();
 
@@ -11050,6 +11059,18 @@ async function aseOpenEditor(artId) {
     + '<th style="text-align:left;padding:4px 6px;width:46%">한국어 표현</th><th style="text-align:left;padding:4px 6px;width:46%">English</th><th style="width:8%"></th></tr></thead>'
     + '<tbody id="ase-ptbody">'
     + (phrases.length ? phrases.map(phraseRow).join('') : '<tr><td colspan="3" style="color:#94a3b8;font-size:12px;padding:8px">AI로 초안을 생성하거나 직접 추가하세요.</td></tr>')
+    + '</tbody></table></div>'
+
+    // Wrong phrases (used as distractors in the bonus comprehension quiz)
+    + '<div style="background:#fff7f7;border:1px solid #fecaca;border-radius:12px;padding:16px;margin-bottom:14px">'
+    + '<div style="font-weight:800;font-size:14px;margin-bottom:4px">❌ 오답용 문장 (Bonus Quiz Distractors) <span style="font-size:11px;font-weight:400;color:#64748b">2~3개 권장</span>'
+    + '<button onclick="aseAddWrongPhrase()" style="float:right;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer">+ 추가</button></div>'
+    + '<div style="font-size:11px;color:#991b1b;margin-bottom:8px">💡 문법은 자연스럽지만 <b>기사 내용과 다른</b> 문장. Bonus 퀴즈에서 오답으로 노출됩니다. 비워두면 Bonus 섹션이 숨겨져요.</div>'
+    + '<table style="width:100%;border-collapse:collapse" id="ase-wtable">'
+    + '<thead><tr style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px">'
+    + '<th style="text-align:left;padding:4px 6px;width:46%">한국어 (오답)</th><th style="text-align:left;padding:4px 6px;width:46%">English</th><th style="width:8%"></th></tr></thead>'
+    + '<tbody id="ase-wtbody">'
+    + (wrongPhrases.length ? wrongPhrases.map(wrongPhraseRow).join('') : '<tr><td colspan="3" style="color:#94a3b8;font-size:12px;padding:8px">AI로 초안을 생성하거나 직접 추가하세요. 비워두면 Bonus 퀴즈가 표시되지 않습니다.</td></tr>')
     + '</tbody></table></div>'
 
     // Highlights override
@@ -11092,6 +11113,37 @@ function aseReadPhrases() {
     i++;
   }
   return rows;
+}
+
+function aseReadWrongPhrases() {
+  var rows = [];
+  var i = 0;
+  while (document.getElementById('ase-wko-'+i) !== null) {
+    var ko = (document.getElementById('ase-wko-'+i).value || '').trim();
+    var en = (document.getElementById('ase-wen-'+i).value || '').trim();
+    if (ko || en) rows.push({ko:ko, en:en});
+    i++;
+  }
+  return rows;
+}
+
+function aseAddWrongPhrase() {
+  var idx = 0;
+  while (document.getElementById('ase-wko-'+idx) !== null) idx++;
+  var tbody = document.getElementById('ase-wtbody');
+  if (!tbody) return;
+  if (tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
+  var tr = document.createElement('tr');
+  tr.id = 'ase-wrow-'+idx;
+  tr.innerHTML = '<td><input id="ase-wko-'+idx+'" value="" style="width:100%;padding:5px;border:1px solid #fca5a5;border-radius:6px;font-size:13px;background:#fff7f7"></td>'
+    + '<td><input id="ase-wen-'+idx+'" value="" style="width:100%;padding:5px;border:1px solid #fca5a5;border-radius:6px;font-size:13px;background:#fff7f7"></td>'
+    + '<td><button onclick="aseRemoveWrongPhrase('+idx+')" style="background:#fee2e2;color:#991b1b;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">✕</button></td>';
+  tbody.appendChild(tr);
+  document.getElementById('ase-wko-'+idx).focus();
+}
+function aseRemoveWrongPhrase(i) {
+  var row = document.getElementById('ase-wrow-'+i);
+  if (row) row.remove();
 }
 
 function aseAddVocab() {
@@ -11140,7 +11192,17 @@ async function aseGenFromAI() {
   var artLevel = art.level || 'Beginner';
   var levelPrompt = (typeof getLevelPrompt === 'function') ? getLevelPrompt(artLevel) : '';
   var prompt = 'Korean news article study content for language learners.\n' + levelPrompt + '\n\nTitle: ' + art.title + '\nBody:\n' + (art.body||'').slice(0,1600)
-    + '\n\nReturn ONLY valid JSON:\n{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],"phrases":[{"ko":"sentence from article","en":"translation"}],"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\nvocab: 6 key words appropriate for the level. phrases: 5 key sentences. word_order: 3 sentences (chunks appropriate for level). questions: 3 comprehension questions (difficulty matching level).';
+    + '\n\nReturn ONLY valid JSON:\n'
+    + '{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],'
+    + '"phrases":[{"ko":"COMPLETE Korean sentence taken VERBATIM from the article body (or a faithful condensation that preserves all particles + the verb ending). Must be unambiguously TRUE per the article.","en":"translation"}],'
+    + '"wrong_phrases":[{"ko":"a grammatically VALID Korean sentence that is FALSE about this article (wrong subject / wrong action / contradicts a fact in the article). Must NOT be obvious nonsense — proper particles + verb agreement, only the meaning is wrong.","en":"translation"}],'
+    + '"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],'
+    + '"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\n'
+    + 'vocab: 6 key words appropriate for the level. '
+    + 'phrases: 3 TRUE key sentences (max 8 eojeol each, keep particles + verb endings exactly as in the article). '
+    + 'wrong_phrases: 3 PLAUSIBLE-LOOKING but FALSE sentences for distractors (grammatical Korean — subject + object + verb with correct particles; only the meaning is wrong). '
+    + 'word_order: 3 sentences (chunks appropriate for level). '
+    + 'questions: 3 comprehension questions (difficulty matching level).';
   try {
     var data = await callClaude({ feature:'article-study-admin', model:'claude-haiku-4-5-20251001', max_tokens:1500, messages:[{role:'user',content:prompt}] });
     var raw = ((data.content)||[]).map(function(c){return c.text||'';}).join('');
@@ -11161,8 +11223,9 @@ async function aseSaveContent() {
   var sb  = getSb();
   var art = _aseCurrentArt; if (!art) return;
   var msgEl = document.getElementById('ase-msg');
-  var vocab   = aseReadVocab();
-  var phrases = aseReadPhrases();
+  var vocab         = aseReadVocab();
+  var phrases       = aseReadPhrases();
+  var wrongPhrases  = aseReadWrongPhrases();
   var hlVocabRaw   = (document.getElementById('ase-hl-vocab').value   || '').trim();
   var hlPhrasesRaw = (document.getElementById('ase-hl-phrases').value || '').trim();
   var custom_highlights = {
@@ -11175,6 +11238,7 @@ async function aseSaveContent() {
     article_title:     art.title || '',
     vocab:             vocab,
     phrases:           phrases,
+    wrong_phrases:     wrongPhrases,
     word_order:        (_aseCurrentContent && _aseCurrentContent.word_order)  || [],
     questions:         (_aseCurrentContent && _aseCurrentContent.questions)   || [],
     custom_highlights: custom_highlights,

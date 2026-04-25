@@ -16132,10 +16132,11 @@ async function _asLoadContent() {
     var dr = await sb.from('article_study_content').select('*').eq('article_id', String(_asCurrentArt.id)).maybeSingle();
     if (dr.data && (dr.data.vocab && dr.data.vocab.length > 0)) {
       _asStudyContent = {
-        vocab:       dr.data.vocab       || [],
-        phrases:     dr.data.phrases     || [],
-        word_order:  dr.data.word_order  || [],
-        questions:   dr.data.questions   || [],
+        vocab:         dr.data.vocab         || [],
+        phrases:       dr.data.phrases       || [],
+        wrong_phrases: dr.data.wrong_phrases || [],
+        word_order:    dr.data.word_order    || [],
+        questions:     dr.data.questions     || [],
         custom_highlights: dr.data.custom_highlights || null
       };
       sessionStorage.setItem(key, JSON.stringify(_asStudyContent));
@@ -16145,17 +16146,28 @@ async function _asLoadContent() {
   var lm = document.getElementById('as-loading-msg');
   if (lm) lm.textContent = 'First-time setup: generating study content… (~10s)';
   var prompt = 'Korean news article study content for language learners.\nTitle: ' + (_asCurrentArt.title||'') + '\nBody:\n' + (_asCurrentArt.body||'').slice(0,1600)
-    + '\n\nReturn ONLY valid JSON:\n{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],"phrases":[{"ko":"short sentence from article (max 8 words)","en":"translation"}],"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\nvocab:6 key words from article. phrases:5 SHORT key sentences (each max 8 Korean words, pick simple ones). word_order:3 sentences split into eojeol chunks in CORRECT order (each max 5 chunks). questions:3 comprehension questions with clear correct answers.';
+    + '\n\nReturn ONLY valid JSON:\n'
+    + '{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],'
+    + '"phrases":[{"ko":"COMPLETE Korean sentence taken VERBATIM from the article body (or a faithful condensation that preserves all particles and the verb ending). Must be unambiguously TRUE per the article.","en":"translation"}],'
+    + '"wrong_phrases":[{"ko":"a grammatically VALID Korean sentence that is FALSE about this article (wrong subject / wrong action / contradicts a fact in the article). Must NOT be obvious nonsense — the verb must agree with the subject and use proper particles.","en":"translation"}],'
+    + '"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],'
+    + '"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\n'
+    + 'vocab: 6 key words from article. '
+    + 'phrases: 3 SHORT TRUE sentences (max 8 Korean eojeol each). NEVER paraphrase loosely — keep particles + verb endings exactly as in the article. '
+    + 'wrong_phrases: 3 PLAUSIBLE-LOOKING but FALSE sentences for distractors (must be grammatical Korean — subject + object + verb with correct particles; only the meaning is wrong). '
+    + 'word_order: 3 sentences split into eojeol chunks in CORRECT order (each max 5 chunks). '
+    + 'questions: 3 comprehension questions with clear correct answers.';
   try {
-    var data = await callClaude({ feature:'article-study', model:'claude-haiku-4-5-20251001', max_tokens:1500, messages:[{role:'user',content:prompt}] });
+    var data = await callClaude({ feature:'article-study', model:'claude-haiku-4-5-20251001', max_tokens:1800, messages:[{role:'user',content:prompt}] });
     var raw = (data.content||[]).map(function(c){return c.text||'';}).join('');
     var cl = raw.replace(/```json|```/g,'').trim();
     var s=cl.indexOf('{'),e=cl.lastIndexOf('}'); if(s>=0&&e>s) cl=cl.slice(s,e+1);
     _asStudyContent = JSON.parse(cl);
+    if (!Array.isArray(_asStudyContent.wrong_phrases)) _asStudyContent.wrong_phrases = [];
     sessionStorage.setItem(key, JSON.stringify(_asStudyContent));
     // Save to DB so next time it loads from DB (no AI needed)
     _asSaveContentToDB(_asCurrentArt.id, _asStudyContent);
-  } catch(err) { _asStudyContent = {vocab:[],phrases:[],word_order:[],questions:[{q:'이 기사의 내용을 잘 이해했나요?',options:['네, 잘 이해했어요','조금 이해했어요','어려웠어요','다시 읽을게요'],correct:0}]}; }
+  } catch(err) { _asStudyContent = {vocab:[],phrases:[],wrong_phrases:[],word_order:[],questions:[{q:'이 기사의 내용을 잘 이해했나요?',options:['네, 잘 이해했어요','조금 이해했어요','어려웠어요','다시 읽을게요'],correct:0}]}; }
 }
 
 async function _asSaveContentToDB(articleId, content) {
@@ -16166,6 +16178,7 @@ async function _asSaveContentToDB(articleId, content) {
       article_id: String(articleId),
       vocab: content.vocab || [],
       phrases: content.phrases || [],
+      wrong_phrases: content.wrong_phrases || [],
       word_order: content.word_order || [],
       questions: content.questions || [],
       admin_edited: false
@@ -16533,24 +16546,24 @@ function _asShowSentenceQuiz() {
   var act = document.getElementById('as-activity-area'); if (!act) return;
   var vocab = (_asStudyContent && _asStudyContent.vocab) || [];
   var phrases = (_asStudyContent && _asStudyContent.phrases) || [];
-  if (!vocab.length && !phrases.length) { _asSetNav('none',''); return; }
+  var wrongPhrases = (_asStudyContent && _asStudyContent.wrong_phrases) || [];
+  if (!phrases.length && !vocab.length) { _asSetNav('none',''); return; }
 
   // Use actual phrases from article content as correct sentences
   var correct = phrases.slice(0,2).map(function(p){ return { text: p.ko || p, isCorrect: true }; });
   if (!correct.length) {
     correct = vocab.slice(0,2).map(function(v){ return { text: v.example || (v.ko + ' — ' + v.en), isCorrect: true }; });
   }
-  // Generate plausible-looking but wrong sentences. Old version produced
-  // obviously broken Korean like "재료를 반려동물 했어요" — too easy to spot
-  // by grammar alone. Prefer reusing real-looking sentence shapes from the
-  // vocab examples but with a swapped subject so they no longer match the
-  // article content.
-  var incorrect = vocab.slice(2,4).map(function(v){
-    if (v.example && v.example.length > 6) return { text: v.example, isCorrect: false };
-    return { text: (v.ko || '') + '은(는) 기사와 관련이 없어요.', isCorrect: false };
-  });
+
+  // Wrong distractors: prefer admin/AI-curated ones from DB. Old behaviour
+  // synthesised them from vocab at runtime ('vocab.ko + 를 + vocab[0].ko +
+  // 했어요'), which produced obvious nonsense like '재료를 반려동물 했어요'.
+  // If we don't have curated ones we now SKIP the bonus instead of showing
+  // garbage — admins can fill them in via the Article Study Editor.
+  var incorrect = wrongPhrases.slice(0, 2).map(function(p){ return { text: p.ko || p, isCorrect: false }; });
   if (!incorrect.length) {
-    incorrect = [{ text: '이 문장은 기사와 관련이 없어요.', isCorrect: false }];
+    _asSetNav('none','');
+    return;
   }
 
   var all = correct.concat(incorrect).sort(function(){ return Math.random() - .5; });
