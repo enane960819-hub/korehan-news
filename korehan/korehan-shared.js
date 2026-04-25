@@ -10088,7 +10088,7 @@ function pickNextFeedArticle(currentId) {
 }
 
 function goToNextArticle(direction) {
-  if (document.body.classList.contains('kh-feed-leaving')) return;
+  if (_khFeedAnimating()) return;
   var currentId = _khCurrentArtId();
   if (!currentId) return;
   var next = pickNextFeedArticle(currentId);
@@ -10097,21 +10097,31 @@ function goToNextArticle(direction) {
   _khSpaLoadArticle(next.id, direction || 'forward');
 }
 
-// Previous-article pattern: swipe DOWN from near the top of the
-// viewport (mirrors swipe-up for next). Pops the most recent seen
-// article off the _khFeedRecentKey stack and navigates to it. The
-// intentionally-simple mental model: "recent" doubles as the
-// back-stack. No forward stack yet — if the user wants to re-see
-// the article they just came from, a swipe-up picks a fresh random
-// one (which might happen to be it, might not).
+// Previous-article pattern: swipe DOWN at the very top (mirrors swipe-up
+// for next). Pops the most recent seen article off the _khFeedRecentKey
+// stack and navigates to it. The intentionally-simple mental model:
+// "recent" doubles as the back-stack. Stash the article we're leaving
+// FIRST so a follow-up swipe-up doesn't pull the same article we just
+// left off the stack again.
 function goToPrevArticle() {
-  if (document.body.classList.contains('kh-feed-leaving')) return;
+  if (_khFeedAnimating()) return;
+  var currentId = _khCurrentArtId();
   var recent = [];
   try { recent = JSON.parse(localStorage.getItem(_khFeedRecentKey) || '[]'); } catch(e) {}
   if (!recent.length) { if (typeof toast === 'function') toast('No previous article', false); return; }
   var prevId = recent.shift();
   try { localStorage.setItem(_khFeedRecentKey, JSON.stringify(recent)); } catch(e) {}
   _khSpaLoadArticle(prevId, 'back');
+}
+
+// Any of the four transition classes mid-flight — block follow-up
+// navigations to avoid stacking animations / racing renderArticlePage.
+function _khFeedAnimating() {
+  var b = document.body;
+  return b.classList.contains('kh-feed-leaving')
+      || b.classList.contains('kh-feed-leaving-back')
+      || b.classList.contains('kh-feed-entering')
+      || b.classList.contains('kh-feed-entering-back');
 }
 
 // SPA-style swap to another article. Instead of location.href (which
@@ -10219,15 +10229,18 @@ function setupFeedNavigation() {
   }
 
   // Vertical swipe gestures for feed navigation, Reels / Shorts style:
-  //   - swipe UP   near the bottom = next article
-  //   - swipe DOWN near the top    = previous article
-  // Guards keep mid-paragraph scrolls, pinch-to-zoom on iOS Safari, and
-  // the comment drawer from accidentally triggering a navigation.
+  //   - swipe UP   AT the very bottom     = next article
+  //   - swipe DOWN AT the very top        = previous article
+  // Reading mode is the dominant flow, so the gesture is intentionally
+  // strict: we ONLY navigate when the page can't scroll any further in
+  // that direction. That eliminates the 'I scrolled to read the next
+  // paragraph and the article jumped' class of bug.
   if (!window._khFeedSwipeHooked) {
     window._khFeedSwipeHooked = true;
     var startY = 0;
     var startX = 0;
     var startT = 0;
+    var startScrollY = 0;
     var validSwipe = false;
     window.addEventListener('touchstart', function(e) {
       // Only track single-finger gestures. On iPhone, pinch-to-zoom uses
@@ -10238,44 +10251,54 @@ function setupFeedNavigation() {
       startY = e.touches[0].clientY;
       startX = e.touches[0].clientX;
       startT = Date.now();
+      startScrollY = window.scrollY || document.documentElement.scrollTop || 0;
       validSwipe = true;
     }, { passive: true });
     window.addEventListener('touchend', function(e) {
       if (!validSwipe) return;
       validSwipe = false;
       if (document.body.classList.contains('kh-cdr-open')) return;
+      // Suppress if any feed transition is mid-flight, otherwise a fast
+      // double-flick can fire two navigations against the same article.
+      if (document.body.classList.contains('kh-feed-leaving')
+          || document.body.classList.contains('kh-feed-leaving-back')
+          || document.body.classList.contains('kh-feed-entering')
+          || document.body.classList.contains('kh-feed-entering-back')) return;
       if (!e.changedTouches || !e.changedTouches.length) return;
       // Other fingers still on the screen? Mid-pinch, skip.
       if (e.touches && e.touches.length > 0) return;
+
       var dy = startY - e.changedTouches[0].clientY;
       var dx = e.changedTouches[0].clientX - startX;
       var dt = Date.now() - startT;
-      // Only honor an actual flick. Loosened thresholds vs. the original
-      // 100px / 600ms because users were reporting next-article swipes
-      // 'requiring multiple tries' — the old gates were tight enough that
-      // a normal Korean-feed-style flick fell short. New rules:
-      //   - duration   <  900ms (was 600) — easier on slow flicks
-      //   - magnitude  ≥   60px (was 100) — Reels/Shorts use 50–80px
-      //   - vertical-dominant: |dx| < |dy| * 0.6 (was 0.5)
-      //   - 'near bottom' for swipe-up = the same threshold the visible
-      //     pill uses (>80% scrolled), so any swipe after the pill shows
-      //     navigates. Old code required y > scrollHeight − 120, which
-      //     was way past the pill, so the gesture felt broken.
-      if (dt > 900) return;
-      if (Math.abs(dx) > Math.abs(dy) * 0.6) return;
-      if (Math.abs(dy) < 60) return;
-      var y = window.scrollY || document.documentElement.scrollTop || 0;
+
+      // The scroll delta during the touch tells us whether the page was
+      // actually scrolling in response to the finger. If it was, this is
+      // a normal scroll — never treat it as a swipe. (Fixes the 'reading
+      // mid-article and it jumped to the next one' bug — the user was
+      // scrolling, browser scrolled the page, the swipe handler then
+      // saw a 60px+ finger movement and fired goToNextArticle.)
+      var endScrollY  = window.scrollY || document.documentElement.scrollTop || 0;
+      var scrollDelta = Math.abs(endScrollY - startScrollY);
+      if (scrollDelta > 8) return;
+
+      if (dt > 800) return;
+      if (Math.abs(dx) > Math.abs(dy) * 0.5) return;
+      if (Math.abs(dy) < 80) return;
+
+      var y = endScrollY;
       var pageH = document.documentElement.scrollHeight || 1;
       var visibleBottom = y + window.innerHeight;
       if (dy > 0) {
-        // Upward swipe → next article. Match the pill-visible threshold
-        // (80%+) so the swipe and the on-screen affordance agree.
-        var pctVisible = visibleBottom / pageH;
-        if (pctVisible >= 0.78) goToNextArticle('forward');
+        // Upward swipe → next article. Only fire when the user is AT
+        // the bottom (page can't scroll further). 'Bottom' = within 4px
+        // of scrollHeight to forgive sub-pixel rounding on mobile.
+        if (visibleBottom >= pageH - 4) goToNextArticle('forward');
       } else {
-        // Downward swipe → previous. Slightly more generous top window
-        // (was 60px) so a casual pull-down at top works reliably.
-        if (y < 100) goToPrevArticle();
+        // Downward swipe → previous article. Symmetric — only fire at
+        // the very top (was y < 100, which let a casual pull-down mid-
+        // article eat the article).
+        if (y <= 4) goToPrevArticle();
       }
     }, { passive: true });
   }
