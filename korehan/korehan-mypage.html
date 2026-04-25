@@ -430,6 +430,14 @@ body.kh-neon-on .mypage-hero {
   outline:2px solid #facc15 !important;
   box-shadow:0 0 0 2px rgba(250,204,21,.35);
 }
+/* Visual hint while the user is holding to remove (450ms) — sprite shrinks
+   + reddens, so the gesture feels like it's "charging up" the delete. */
+.room-placed-item.room-longpressing .room-placed-sprite {
+  filter: brightness(.85) saturate(1.4) drop-shadow(0 0 6px rgba(239,68,68,.6));
+  transition: filter .15s ease, transform .45s cubic-bezier(.4,0,.2,1);
+}
+.room-placed-item.room-longpressing { transform: scale(.95); transition: transform .45s cubic-bezier(.4,0,.2,1); }
+@keyframes roomSpin { to { transform: rotate(360deg); } }
 .room-placed-sprite {
   position:absolute; inset:0;
   background-repeat:no-repeat;
@@ -1093,14 +1101,42 @@ function renderXPCard(xp) {
     + '</div></div>';
 }
 
+// Lightweight HTML escaper for any user-controlled string we splice into
+// innerHTML. Without this, a saved word like '<img src=x onerror=alert(1)>'
+// would execute when the user re-opens the saved-words modal (self-XSS,
+// but still cleanup-worthy).
+function _escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Single source of truth for the displayed nyang balance. Use this anywhere
+// the user's coin count changes (purchase, gift, nickname change). Keeps
+// the header chip (#mp-nyang-balance) and the mini-stats card in sync.
+function _setNyangBalance(newCoin) {
+  var coin = Number(newCoin || 0);
+  _userCoin = coin;
+  var balEl = document.getElementById('mp-nyang-balance');
+  if (balEl) balEl.textContent = '냥: ' + coin.toLocaleString();
+  // Re-render the mini stats coin row only — full re-render would clobber
+  // streak/articles/etc. counters that aren't updated here.
+  var statsHost = document.getElementById('mp-mini-stats');
+  if (statsHost) {
+    var coinNode = statsHost.querySelector('[data-stat="coin"] .stat-n');
+    if (coinNode) coinNode.textContent = coin.toLocaleString();
+  }
+}
+
 // ── Render stats ───────────────────────────────────────────────
 function renderMiniStats(stats) {
   var el = document.getElementById('mp-mini-stats');
   if (!el) return;
   var us = stats || {};
   var coinVal = Number(us.coin_balance || 0);
-  function row(icon, value, label, extra) {
-    return '<div class="stat-row' + (extra || '') + '">'
+  function row(icon, value, label, extra, stat) {
+    return '<div class="stat-row' + (extra || '') + '"' + (stat ? ' data-stat="' + stat + '"' : '') + '>'
       + '<div class="stat-icon">' + icon + '</div>'
       + '<div class="stat-text"><span class="stat-n">' + value + '</span><span class="stat-lbl">' + label + '</span></div>'
       + '</div>';
@@ -1111,7 +1147,7 @@ function renderMiniStats(stats) {
     + row(SVG_ICONS.articles, us.articles_read  || 0,              'articles')
     + row(SVG_ICONS.words,    '<span id="mp-real-word-count">' + (us.words_saved || 0) + '</span>', 'saved words', ' clickable" onclick="openSavedWordsModal()')
     + row(SVG_ICONS.quizzes,  us.quizzes_done   || 0,              'quizzes')
-    + row(SVG_ICONS.nyang,    coinVal.toLocaleString(),            'kimchi')
+    + row(SVG_ICONS.nyang,    coinVal.toLocaleString(),            'kimchi', '', 'coin')
     + '</div></div>';
 }
 
@@ -1610,17 +1646,30 @@ async function confirmNicknameChange() {
 
   var sb = getSupa();
   try {
-    // Deduct Coin only (XP is non-spendable progression stat)
+    // Deduct Coin only (XP is non-spendable progression stat). Guarded
+    // update so a stale client balance can't underpay.
     var newCoin = _userCoin - NICKNAME_COST;
-    await sb.from('user_stats').update({ coin_balance: newCoin, display_name: newName }).eq('user_id', supaUser.id);
+    var upd = await sb.from('user_stats')
+      .update({ coin_balance: newCoin, display_name: newName })
+      .eq('user_id', supaUser.id)
+      .gte('coin_balance', NICKNAME_COST)
+      .select('coin_balance');
+    if (upd.error) throw upd.error;
+    if (!upd.data || upd.data.length === 0) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Change — ' + NICKNAME_COST + ' nyang'; }
+      if (typeof toast === 'function') toast('Balance out of sync — please retry.');
+      if (typeof _reloadUserStats === 'function') _reloadUserStats();
+      return;
+    }
+    newCoin = Number(upd.data[0].coin_balance);
     try { await sb.from('coin_transactions').insert({ user_id: supaUser.id, tx_type:'spend', amount:-NICKNAME_COST, balance_after:newCoin, source:'nickname_change', memo:'Nickname change' }); } catch(e) {}
     // Update auth metadata
     await sb.auth.updateUser({ data: { full_name: newName } });
     // Persist locally
-    localStorage.setItem('kh_display_name', newName);
+    try { localStorage.setItem('kh_display_name', newName); } catch(e) {}
 
     // Update UI
-    _userCoin = newCoin;
+    _setNyangBalance(newCoin);
     var nameDisp = document.getElementById('pf-name-val');
     if (nameDisp) nameDisp.textContent = newName;
     var heroName = document.getElementById('mp-name');
@@ -2284,6 +2333,8 @@ function renderRoomItems() {
       + (_roomEditing ? 'outline:2px dashed rgba(255,255,255,.3);' : '')
     );
     div.title = def.name;
+    div.setAttribute('role', 'button');
+    div.setAttribute('aria-label', (def.isBadge ? 'Badge: ' : 'Item: ') + def.name);
     div.dataset.scale = String(scale);
     div.dataset.sizePct = String(sizePct);
     div.dataset.hitboxRatio = String(hitboxRatio);
@@ -2304,29 +2355,37 @@ function renderRoomItems() {
     div.addEventListener('mousedown', roomDragStart);
     div.addEventListener('touchstart', roomDragStart, {passive:false});
     div.addEventListener('click', roomSelectItem);
-    // Long-press to remove (mobile-friendly) — with movement threshold
+    // Long-press to remove (mobile-friendly) — 450ms with progress feedback.
     (function(el, id) {
       var _lp = null;
       var _lpStartX = 0, _lpStartY = 0;
+      var _clearLp = function() {
+        clearTimeout(_lp);
+        el.classList.remove('room-longpressing');
+      };
       el.addEventListener('touchstart', function(ev) {
+        if (!_roomEditing) return;
         var t = ev.touches && ev.touches[0];
         _lpStartX = t ? t.clientX : 0;
         _lpStartY = t ? t.clientY : 0;
+        el.classList.add('room-longpressing');
         _lp = setTimeout(function() {
+          el.classList.remove('room-longpressing');
           if (!_roomEditing) return;
           khConfirm('Remove from room?', 'Remove "' + (def.name||id) + '" from your room?', { okLabel: 'Remove', destructive: true }).then(function(ok) {
             if (ok) removeRoomItem(id);
           });
-        }, 600);
+        }, 450);
       }, {passive:true});
-      el.addEventListener('touchend', function() { clearTimeout(_lp); });
+      el.addEventListener('touchend', _clearLp);
+      el.addEventListener('touchcancel', _clearLp);
       el.addEventListener('touchmove', function(ev) {
         // Only cancel if moved more than 12px (prevent jitter cancellation)
         var t = ev.touches && ev.touches[0];
         if (t) {
           var dx = Math.abs(t.clientX - _lpStartX);
           var dy = Math.abs(t.clientY - _lpStartY);
-          if (dx > 12 || dy > 12) clearTimeout(_lp);
+          if (dx > 12 || dy > 12) _clearLp();
         }
       });
     })(div, placed.id);
@@ -2360,27 +2419,56 @@ window.addEventListener('resize', function() {
 });
 
 async function loadRoomLayout() {
-  // Load room item catalog from DB (replaces hardcoded array)
-  await loadRoomItemsFromDB();
-  // Try loading from server first (cross-device sync)
-  await _loadRoomFromServer();
+  _showRoomLoading(true);
+  try {
+    // Load room item catalog from DB (replaces hardcoded array)
+    await loadRoomItemsFromDB();
+    // Try loading from server first (cross-device sync)
+    await _loadRoomFromServer();
 
-  var owned = getRoomOwned();
-  var layout = getRoomLayout();
+    var owned = getRoomOwned();
+    var layout = getRoomLayout();
 
-  // First-time setup: give starter items
-  if (owned.length === 0 && layout.length === 0) {
-    var starterOwned = ['character', 'plant'];
-    var starterLayout = [
-      {id:'character', x:150, y:160, scale:100},
-      {id:'plant',     x:280, y:220, scale:100}
-    ];
-    setRoomOwned(starterOwned);
-    setRoomLayout(starterLayout);
+    // First-time setup: give starter items
+    if (owned.length === 0 && layout.length === 0) {
+      var starterOwned = ['character', 'plant'];
+      var starterLayout = [
+        {id:'character', x:150, y:160, scale:100},
+        {id:'plant',     x:280, y:220, scale:100}
+      ];
+      setRoomOwned(starterOwned);
+      setRoomLayout(starterLayout);
+    }
+
+    renderRoomItems();
+    updateRoomSizeUI();
+  } finally {
+    _showRoomLoading(false);
   }
+}
 
-  renderRoomItems();
-  updateRoomSizeUI();
+function _showRoomLoading(on) {
+  var host = document.getElementById('miniroom-container');
+  if (!host) return;
+  var sk = document.getElementById('miniroom-loading');
+  if (on) {
+    if (!sk) {
+      sk = document.createElement('div');
+      sk.id = 'miniroom-loading';
+      sk.setAttribute('style',
+        'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;'
+        + 'gap:10px;color:#fff;font-family:inherit;font-size:13px;font-weight:700;'
+        + 'background:rgba(0,0,0,.18);backdrop-filter:blur(2px);z-index:6;'
+      );
+      sk.setAttribute('role', 'status');
+      sk.setAttribute('aria-live', 'polite');
+      sk.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:roomSpin .8s linear infinite"></span><span>Loading your room…</span>';
+      host.appendChild(sk);
+    }
+    sk.style.display = '';
+  } else if (sk) {
+    sk.remove();
+  }
 }
 
 // ── Room lights toggle ──────────────────────────────────────
@@ -2480,6 +2568,27 @@ function toggleRoomEdit() {
 // ── Drag & Drop ──────────────────────────────────────────────
 var _dragStartPos = {x:0, y:0};
 var _dragMoved = false;
+// Guard so duplicate roomDragStart calls (synthesised mouse-after-touch on
+// some Android browsers) don't double-bind the document-level listeners.
+var _dragListenersBound = false;
+function _bindDragListeners() {
+  if (_dragListenersBound) return;
+  _dragListenersBound = true;
+  document.addEventListener('mousemove', roomDragMove);
+  document.addEventListener('mouseup', roomDragEnd);
+  document.addEventListener('touchmove', roomDragMove, {passive:false});
+  document.addEventListener('touchend', roomDragEnd);
+  document.addEventListener('touchcancel', roomDragEnd);
+}
+function _unbindDragListeners() {
+  if (!_dragListenersBound) return;
+  _dragListenersBound = false;
+  document.removeEventListener('mousemove', roomDragMove);
+  document.removeEventListener('mouseup', roomDragEnd);
+  document.removeEventListener('touchmove', roomDragMove);
+  document.removeEventListener('touchend', roomDragEnd);
+  document.removeEventListener('touchcancel', roomDragEnd);
+}
 
 function roomDragStart(e) {
   if (!_roomEditing) return;
@@ -2506,10 +2615,7 @@ function roomDragStart(e) {
   _dragOffset.x = clientX - elRect.left;
   _dragOffset.y = clientY - elRect.top;
 
-  document.addEventListener('mousemove', roomDragMove);
-  document.addEventListener('mouseup', roomDragEnd);
-  document.addEventListener('touchmove', roomDragMove, {passive:false});
-  document.addEventListener('touchend', roomDragEnd);
+  _bindDragListeners();
 }
 
 function roomDragMove(e) {
@@ -2558,10 +2664,7 @@ function roomDragEnd(e) {
       if (rmBtn) rmBtn.style.display = '';
     }
   }
-  document.removeEventListener('mousemove', roomDragMove);
-  document.removeEventListener('mouseup', roomDragEnd);
-  document.removeEventListener('touchmove', roomDragMove);
-  document.removeEventListener('touchend', roomDragEnd);
+  _unbindDragListeners();
 }
 
 function getPlacedState(itemId) {
@@ -2666,8 +2769,36 @@ function updateRoomSizeUI() {
   valueEl.style.opacity = _selectedRoomItemId ? '1' : '.45';
 }
 
+// Slider fires `input` at ~60Hz. Render the visual transform on every tick
+// (cheap CSS update), but coalesce the localStorage write + state mutation
+// so we don't pay the JSON.stringify on every pixel of slider movement.
+var _scaleWriteTimer = null;
 function onRoomSizeSlider(value) {
-  applySelectedItemScale(value);
+  if (!_selectedRoomItemId) return;
+  var scale = Math.max(70, Math.min(170, Number(value || 100)));
+  _applyScaleVisual(scale);
+  if (_scaleWriteTimer) clearTimeout(_scaleWriteTimer);
+  _scaleWriteTimer = setTimeout(function() {
+    _scaleWriteTimer = null;
+    applySelectedItemScale(scale);
+  }, 120);
+}
+
+// Cheap visual-only scale update — no layout write, no DOM rebuild.
+function _applyScaleVisual(scale) {
+  var selectedEl = document.querySelector('.room-placed-item.room-selected');
+  if (!selectedEl) return;
+  var hratio = Number(selectedEl.dataset.hitboxRatio || 1);
+  var compensate = 1 / hratio;
+  var spriteEl = selectedEl.querySelector('.room-placed-sprite');
+  if (!spriteEl) return;
+  var flipped = spriteEl.dataset.flipped === '1';
+  var sx = flipped ? -1 : 1;
+  var s = (scale / 100) * compensate;
+  spriteEl.style.transform = 'scale(' + (sx * s) + ',' + s + ')';
+  selectedEl.dataset.scale = String(scale);
+  var valueEl = document.getElementById('room-size-value');
+  if (valueEl) valueEl.textContent = scale + '%';
 }
 
 function nudgeSelectedItemScale(delta) {
@@ -2853,10 +2984,7 @@ async function buyRoomItem(itemId) {
           if (!body.ok) {
             if (body.error === 'INSUFFICIENT_NYANG') {
               if (typeof toast === 'function') toast('Not enough nyang!');
-              if (typeof body.current === 'number') {
-                _userCoin = Number(body.current);
-                renderMiniStats({xp: _userXP, coin_balance: _userCoin, mission_streak: 0, articles_read: 0, words_saved: 0, quizzes_done: 0});
-              }
+              if (typeof body.current === 'number') _setNyangBalance(body.current);
             } else {
               if (typeof toast === 'function') toast('Purchase failed!');
             }
@@ -2870,10 +2998,7 @@ async function buyRoomItem(itemId) {
             ownedRpc.push(itemId);
             try { localStorage.setItem(K_ROOM_OWNED, JSON.stringify(ownedRpc)); } catch(e) {}
           }
-          _userCoin = newCoin;
-          var balRpc = document.getElementById('mp-nyang-balance');
-          if (balRpc) balRpc.textContent = 'nyang: ' + newCoin.toLocaleString();
-          renderMiniStats({xp: _userXP, coin_balance: newCoin, mission_streak: 0, articles_read: 0, words_saved: 0, quizzes_done: 0});
+          _setNyangBalance(newCoin);
           if (typeof toast === 'function') toast('Purchased ' + def.name + '!');
           if (typeof _fjMarkDone === 'function') _fjMarkDone('shop');
           closeRoomShop();
@@ -2916,16 +3041,13 @@ async function buyRoomItem(itemId) {
     }
   }
 
-  _userCoin = newCoin;
   // Update owned list
   var owned = getRoomOwned();
   owned.push(itemId);
   setRoomOwned(owned);
 
-  // Update balance displays
-  var balEl = document.getElementById('mp-nyang-balance');
-  if (balEl) balEl.textContent = 'nyang: ' + newCoin.toLocaleString();
-  renderMiniStats({xp: _userXP, coin_balance: newCoin, mission_streak: 0, articles_read: 0, words_saved: 0, quizzes_done: 0});
+  // Update balance displays via the single helper (also sets _userCoin).
+  _setNyangBalance(newCoin);
 
   if (typeof toast === 'function') toast('Purchased ' + def.name + '!');
   if (typeof _fjMarkDone === 'function') _fjMarkDone('shop');
@@ -3069,10 +3191,13 @@ async function openSavedWordsModal() {
   }
 
   var listHtml = words.map(function(w) {
+    var ko = _escapeHtml(w.word_ko);
+    var rom = _escapeHtml(w.word_rom);
+    var en = _escapeHtml(w.word_en);
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f0f4f9">'
-      + '<div><div style="font-size:15px;font-weight:700;color:#0b1626">' + (w.word_ko || '') + '</div>'
-      + (w.word_rom ? '<div style="font-size:11px;color:#94a3b8">' + w.word_rom + '</div>' : '') + '</div>'
-      + '<div style="font-size:13px;color:#475569;text-align:right;max-width:180px">' + (w.word_en || '') + '</div>'
+      + '<div><div style="font-size:15px;font-weight:700;color:#0b1626">' + ko + '</div>'
+      + (rom ? '<div style="font-size:11px;color:#94a3b8">' + rom + '</div>' : '') + '</div>'
+      + '<div style="font-size:13px;color:#475569;text-align:right;max-width:180px">' + en + '</div>'
       + '</div>';
   }).join('');
 
@@ -3162,7 +3287,7 @@ function openAllBadgesModal() {
 
   var body = document.getElementById('all-badges-body');
   if (typeof renderBadgePage === 'function' && body) {
-    try { renderBadgePage(body); } catch(e) { body.innerHTML = '<div style="text-align:center;padding:20px;color:#ef4444">Failed to load: ' + (e.message||'') + '</div>'; }
+    try { renderBadgePage(body); } catch(e) { body.innerHTML = '<div style="text-align:center;padding:20px;color:#ef4444">Failed to load: ' + _escapeHtml(e && e.message) + '</div>'; }
   } else if (body) {
     body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Badge system is still loading — try again in a moment.</div>';
   }
