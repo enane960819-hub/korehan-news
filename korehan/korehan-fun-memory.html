@@ -3,152 +3,182 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Memory Match — KoreHani Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
-body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua','DM Sans','Noto Sans KR',Inter,Pretendard,sans-serif;min-height:100vh}
+/* All game classes use the .mm- prefix because korehan-shared.css already
+   defines .card / .card-grid / .card .tag for the news card grid, and
+   those rules collide with this game (forced 1-column on mobile,
+   overflow:hidden, etc). Renaming dodges the cascade entirely. */
+body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua','DM Sans','Noto Sans KR',Inter,Pretendard,sans-serif;min-height:100vh;background-image:radial-gradient(ellipse at top,#0c1a36 0%,#050b15 65%);}
 *,*::before,*::after{box-sizing:border-box}
-.wrap{max-width:860px;margin:0 auto;padding:12px 16px 40px;position:relative}
-.back{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:8px;transition:background .15s}
-.back:hover{background:rgba(255,255,255,.12)}
-.game-header{display:flex;justify-content:space-between;align-items:center;padding:8px 0 12px;flex-wrap:wrap;gap:8px}
-.game-title{font-size:20px;font-weight:900;display:flex;align-items:center;gap:8px}
-.stats-row{display:flex;gap:8px;flex-wrap:wrap}
-.stat{font-size:13px;font-weight:700;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}
-.stat-val{color:#7dd3fc}
+.mm-wrap{max-width:860px;margin:0 auto;padding:12px 16px 40px;position:relative}
+.mm-back{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:8px;transition:background .15s}
+.mm-back:hover{background:rgba(255,255,255,.12)}
+.mm-header{display:flex;justify-content:space-between;align-items:center;padding:8px 0 12px;flex-wrap:wrap;gap:8px}
+.mm-title{font-size:20px;font-weight:900;display:flex;align-items:center;gap:8px;color:#fff}
+.mm-stats{display:flex;gap:8px;flex-wrap:wrap}
+.mm-stat{font-size:13px;font-weight:700;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#cbd5e1}
+.mm-stat-val{color:#7dd3fc}
+.mm-streak{display:none;align-items:center;gap:4px;font-size:13px;font-weight:800;padding:4px 12px;border-radius:999px;background:linear-gradient(135deg,#f59e0b,#dc2626);color:#fff;box-shadow:0 0 16px rgba(245,158,11,.4)}
+.mm-streak.on{display:inline-flex;animation:streakPulse .6s ease}
+@keyframes streakPulse{0%{transform:scale(.9)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
 
-/* ── Card Grid ── */
-.card-grid{display:grid;gap:10px;justify-content:center;margin:0 auto;padding:8px 0}
-.card-grid.easy{grid-template-columns:repeat(4,1fr);max-width:480px}
-.card-grid.normal{grid-template-columns:repeat(5,1fr);max-width:560px}
-.card-grid.hard{grid-template-columns:repeat(6,1fr);max-width:660px}
+/* ── Card Grid ──
+   The desktop layout shows wider grids and the mobile layout drops
+   one column at every difficulty so the catch-22 of "fixed aspect-
+   ratio cards in a 360px viewport" doesn't blow up the card height. */
+.mm-grid{display:grid;gap:10px;justify-content:center;margin:0 auto;padding:8px 0}
+.mm-grid.easy{grid-template-columns:repeat(4,1fr);max-width:480px}
+.mm-grid.normal{grid-template-columns:repeat(5,1fr);max-width:600px}
+.mm-grid.hard{grid-template-columns:repeat(6,1fr);max-width:720px}
 
 /* ── Card ── */
-.card{-webkit-perspective:600px;perspective:600px;cursor:pointer;aspect-ratio:3/4;position:relative}
-.card-inner{width:100%;height:100%;transition:transform 0.4s cubic-bezier(.4,.0,.2,1);transform-style:preserve-3d;-webkit-transform-style:preserve-3d;position:relative}
-.card.flipped .card-inner{transform:rotateY(180deg);-webkit-transform:rotateY(180deg)}
-.card-front,.card-back{backface-visibility:hidden;-webkit-backface-visibility:hidden;position:absolute;inset:0;border-radius:12px;display:flex;align-items:center;justify-content:center;padding:6px;text-align:center;font-weight:700;border:2px solid transparent;overflow:hidden}
+.mm-card{-webkit-perspective:600px;perspective:600px;cursor:pointer;aspect-ratio:3/4;position:relative}
+.mm-card-inner{width:100%;height:100%;transition:transform .4s cubic-bezier(.4,.0,.2,1);transform-style:preserve-3d;-webkit-transform-style:preserve-3d;position:relative}
+.mm-card.flipped .mm-card-inner{transform:rotateY(180deg);-webkit-transform:rotateY(180deg)}
+.mm-card-front,.mm-card-back{backface-visibility:hidden;-webkit-backface-visibility:hidden;position:absolute;inset:0;border-radius:14px;display:flex;align-items:center;justify-content:center;padding:6px;text-align:center;font-weight:700;border:2px solid transparent;overflow:hidden}
 
-/* face-down front */
-.card-front{background:linear-gradient(145deg,#0f1e3a,#162040);border-color:rgba(125,211,252,.15);font-size:28px;color:rgba(125,211,252,.35)}
-.card-front::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(125,211,252,.03) 8px,rgba(125,211,252,.03) 16px)}
+/* face-down front — subtle pattern + numbered icon */
+.mm-card-front{background:linear-gradient(145deg,#0f1e3a 0%,#162040 100%);border-color:rgba(125,211,252,.18);font-size:24px;color:rgba(125,211,252,.4)}
+.mm-card-front::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(125,211,252,.04) 10px,rgba(125,211,252,.04) 20px);pointer-events:none}
+.mm-card-front::after{content:'';position:absolute;inset:6px;border-radius:10px;border:1px dashed rgba(125,211,252,.15);pointer-events:none}
 
 /* face-up back */
-.card-back{transform:rotateY(180deg);font-size:15px;line-height:1.3;word-break:keep-all}
-.card-back.ko{background:linear-gradient(145deg,#0c2461,#1a3a7a);border-color:rgba(59,130,246,.5);color:#bfdbfe;font-family:'Noto Sans KR','DM Sans',sans-serif;font-size:17px}
-.card-back.en{background:linear-gradient(145deg,#2d1066,#4c1d95);border-color:rgba(139,92,246,.5);color:#ddd6fe}
+.mm-card-back{transform:rotateY(180deg);font-size:15px;line-height:1.3;word-break:keep-all}
+.mm-card-back.ko{background:linear-gradient(145deg,#0c2461,#1a3a7a);border-color:rgba(59,130,246,.55);color:#dbeafe;font-family:'Noto Sans KR','DM Sans',sans-serif;font-size:18px;font-weight:800}
+.mm-card-back.en{background:linear-gradient(145deg,#2d1066,#4c1d95);border-color:rgba(139,92,246,.55);color:#ede9fe}
 
 /* Matched */
-.card.matched .card-back{border-color:rgba(34,197,94,.6);box-shadow:0 0 18px rgba(34,197,94,.25)}
-.card.matched .card-back.ko{background:linear-gradient(145deg,#064e3b,#065f46)}
-.card.matched .card-back.en{background:linear-gradient(145deg,#064e3b,#065f46)}
-.card.matched{transform:scale(.95);pointer-events:none;transition:transform .3s}
+.mm-card.matched .mm-card-back{border-color:rgba(34,197,94,.7);box-shadow:0 0 22px rgba(34,197,94,.3)}
+.mm-card.matched .mm-card-back.ko,
+.mm-card.matched .mm-card-back.en{background:linear-gradient(145deg,#064e3b,#065f46);color:#a7f3d0}
+.mm-card.matched{transform:scale(.94);pointer-events:none;transition:transform .3s}
 
 /* No-match shake */
-.card.no-match .card-back{animation:shake .4s ease}
-@keyframes shake{0%,100%{transform:rotateY(180deg) translateX(0)}25%{transform:rotateY(180deg) translateX(-4px)}50%{transform:rotateY(180deg) translateX(4px)}75%{transform:rotateY(180deg) translateX(-4px)}}
+.mm-card.no-match .mm-card-back{animation:mmShake .42s ease;border-color:rgba(239,68,68,.7);box-shadow:0 0 22px rgba(239,68,68,.3)}
+@keyframes mmShake{0%,100%{transform:rotateY(180deg) translateX(0)}25%{transform:rotateY(180deg) translateX(-5px)}50%{transform:rotateY(180deg) translateX(5px)}75%{transform:rotateY(180deg) translateX(-5px)}}
 
 /* Match flash */
-.card.match-flash .card-back{animation:matchGlow .5s ease}
-@keyframes matchGlow{0%{box-shadow:0 0 0 rgba(34,197,94,0)}50%{box-shadow:0 0 30px rgba(34,197,94,.6)}100%{box-shadow:0 0 18px rgba(34,197,94,.25)}}
+.mm-card.match-flash .mm-card-back{animation:mmGlow .55s ease}
+@keyframes mmGlow{0%{box-shadow:0 0 0 rgba(34,197,94,0)}50%{box-shadow:0 0 36px rgba(34,197,94,.7)}100%{box-shadow:0 0 22px rgba(34,197,94,.3)}}
 
 /* Hover */
-.card:not(.flipped):not(.matched):hover .card-front{border-color:rgba(125,211,252,.35);background:linear-gradient(145deg,#132744,#1c2d55)}
+.mm-card:not(.flipped):not(.matched):hover .mm-card-front{border-color:rgba(125,211,252,.4);background:linear-gradient(145deg,#132744,#1c2d55)}
 
 /* ── Screens ── */
-.overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,11,21,.94);z-index:50;padding:20px;opacity:0;transition:opacity .35s ease}
-.overlay.visible{opacity:1}
-.overlay.hidden{pointer-events:none;opacity:0}
+.mm-overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,11,21,.94);z-index:50;padding:20px;opacity:0;transition:opacity .35s ease;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.mm-overlay.visible{opacity:1}
+.mm-overlay.hidden{pointer-events:none;opacity:0}
 
-.screen-icon{font-size:64px;margin-bottom:16px}
-.screen-title{font-size:28px;font-weight:900;margin-bottom:8px}
-.screen-sub{font-size:14px;color:#94a3b8;max-width:360px;text-align:center;line-height:1.6;margin-bottom:24px}
+.mm-icon{font-size:64px;margin-bottom:16px}
+.mm-screen-title{font-size:28px;font-weight:900;margin-bottom:8px;color:#fff}
+.mm-screen-sub{font-size:14px;color:#94a3b8;max-width:360px;text-align:center;line-height:1.6;margin-bottom:24px}
 
-.diff-btns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px}
-.diff-btn{border:none;border-radius:14px;padding:18px 20px;cursor:pointer;font-family:inherit;text-align:left;transition:transform .15s,box-shadow .15s}
-.diff-btn:hover{transform:translateY(-2px)}
-.diff-btn .db-label{font-size:16px;font-weight:800;margin-bottom:4px}
-.diff-btn .db-desc{font-size:12px;opacity:.7;line-height:1.4}
+.mm-diff-btns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px}
+.mm-diff-btn{border:none;border-radius:14px;padding:18px 20px;cursor:pointer;font-family:inherit;text-align:left;transition:transform .15s,box-shadow .15s}
+.mm-diff-btn:hover{transform:translateY(-2px)}
+.mm-diff-btn .mm-db-label{font-size:16px;font-weight:800;margin-bottom:4px}
+.mm-diff-btn .mm-db-desc{font-size:12px;opacity:.75;line-height:1.4}
 
-.diff-btn.easy{background:linear-gradient(135deg,#065f46,#047857);color:#a7f3d0;box-shadow:0 8px 24px rgba(4,120,87,.3)}
-.diff-btn.easy:hover{box-shadow:0 12px 32px rgba(4,120,87,.45)}
-.diff-btn.normal{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#bfdbfe;box-shadow:0 8px 24px rgba(37,99,235,.3)}
-.diff-btn.normal:hover{box-shadow:0 12px 32px rgba(37,99,235,.45)}
-.diff-btn.hard{background:linear-gradient(135deg,#581c87,#7c3aed);color:#ddd6fe;box-shadow:0 8px 24px rgba(124,58,237,.3)}
-.diff-btn.hard:hover{box-shadow:0 12px 32px rgba(124,58,237,.45)}
+.mm-diff-btn.easy{background:linear-gradient(135deg,#065f46,#047857);color:#a7f3d0;box-shadow:0 8px 24px rgba(4,120,87,.32)}
+.mm-diff-btn.easy:hover{box-shadow:0 12px 32px rgba(4,120,87,.45)}
+.mm-diff-btn.normal{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#bfdbfe;box-shadow:0 8px 24px rgba(37,99,235,.32)}
+.mm-diff-btn.normal:hover{box-shadow:0 12px 32px rgba(37,99,235,.45)}
+.mm-diff-btn.hard{background:linear-gradient(135deg,#581c87,#7c3aed);color:#ddd6fe;box-shadow:0 8px 24px rgba(124,58,237,.32)}
+.mm-diff-btn.hard:hover{box-shadow:0 12px 32px rgba(124,58,237,.45)}
 
 /* End screen */
-.end-stars{font-size:48px;margin:12px 0 8px;letter-spacing:6px}
-.end-stat{font-size:15px;color:#94a3b8;margin:4px 0}
-.end-stat strong{color:#7dd3fc}
-.end-best{font-size:12px;color:#64748b;margin-top:8px}
-.play-btn{padding:16px 40px;border:none;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:24px;box-shadow:0 8px 32px rgba(37,99,235,.4);transition:transform .15s}
-.play-btn:hover{transform:scale(1.05)}
+.mm-end-stars{font-size:48px;margin:12px 0 8px;letter-spacing:6px}
+.mm-end-stat{font-size:15px;color:#94a3b8;margin:4px 0}
+.mm-end-stat strong{color:#7dd3fc}
+.mm-end-best{font-size:12px;color:#64748b;margin-top:8px}
+.mm-play-btn{padding:16px 40px;border:none;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:24px;box-shadow:0 8px 32px rgba(37,99,235,.4);transition:transform .15s}
+.mm-play-btn:hover{transform:scale(1.05)}
 
-/* ── Responsive ── */
+/* Combo flash */
+.mm-combo-flash{position:fixed;top:38%;left:50%;transform:translate(-50%,-50%);font-size:42px;font-weight:900;color:#fbbf24;text-shadow:0 0 40px rgba(251,191,36,.5);pointer-events:none;animation:mmCombo .8s ease forwards;z-index:60}
+@keyframes mmCombo{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}100%{opacity:0;transform:translate(-50%,-65%) scale(1)}}
+
+/* ── Responsive ──
+   Mobile drops one column per difficulty so cards stay roughly
+   square-ish (aspect-ratio 3/4 in a narrow 1-col grid would make each
+   card taller than the viewport — that's what the screenshot showed). */
 @media(max-width:600px){
-  .card-grid.easy{grid-template-columns:repeat(3,1fr);max-width:340px}
-  .card-grid.normal{grid-template-columns:repeat(4,1fr);max-width:380px}
-  .card-grid.hard{grid-template-columns:repeat(5,1fr);max-width:420px}
-  .card-back{font-size:13px}
-  .card-back.ko{font-size:14px}
-  .game-title{font-size:16px}
-  .stat{font-size:11px;padding:3px 8px}
-  .screen-title{font-size:24px}
+  .mm-grid{gap:8px}
+  .mm-grid.easy{grid-template-columns:repeat(3,1fr);max-width:100%}
+  .mm-grid.normal{grid-template-columns:repeat(4,1fr);max-width:100%}
+  .mm-grid.hard{grid-template-columns:repeat(4,1fr);max-width:100%}
+  .mm-card-back{font-size:13px}
+  .mm-card-back.ko{font-size:15px}
+  .mm-card-front{font-size:18px}
+  .mm-title{font-size:16px}
+  .mm-stat{font-size:11px;padding:3px 8px}
+  .mm-screen-title{font-size:24px}
+  .mm-combo-flash{font-size:32px}
 }
-@media(max-width:400px){
-  .card-grid.hard{grid-template-columns:repeat(5,1fr);max-width:360px;gap:6px}
-  .card{border-radius:8px}
-  .card-front,.card-back{border-radius:8px}
+@media(max-width:380px){
+  .mm-grid{gap:6px}
+  .mm-grid.easy{grid-template-columns:repeat(3,1fr)}
+  .mm-grid.normal{grid-template-columns:repeat(4,1fr)}
+  .mm-grid.hard{grid-template-columns:repeat(5,1fr)}
+  .mm-card{border-radius:8px}
+  .mm-card-front,.mm-card-back{border-radius:10px}
+  .mm-card-back.ko{font-size:13px}
+  .mm-card-back.en{font-size:11px}
 }
 #kh-daily-mission,#vocab-admin-bar,.mobile-bottom-nav,.mobile-sticky-study,#kh-header,#kh-footer{display:none!important}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <a href="korehan-fun.html" class="back">&larr; Playground</a>
-  <div class="game-header">
-    <div class="game-title">🃏 Memory Match</div>
-    <div class="stats-row">
-      <div class="stat">Flips <span class="stat-val" id="g-flips">0</span></div>
-      <div class="stat">Pairs <span class="stat-val" id="g-pairs">0/0</span></div>
-      <div class="stat">⏱ <span class="stat-val" id="g-timer">0:00</span></div>
+<div class="mm-wrap">
+  <a href="korehan-fun.html" class="mm-back">&larr; Playground</a>
+  <div class="mm-header">
+    <div class="mm-title">🃏 Memory Match</div>
+    <div class="mm-stats">
+      <div class="mm-streak" id="mm-streak">🔥 <span id="mm-streak-val">0</span></div>
+      <div class="mm-stat">Flips <span class="mm-stat-val" id="mm-flips">0</span></div>
+      <div class="mm-stat">Pairs <span class="mm-stat-val" id="mm-pairs">0/0</span></div>
+      <div class="mm-stat">⏱ <span class="mm-stat-val" id="mm-timer">0:00</span></div>
     </div>
   </div>
-  <div class="card-grid" id="card-grid"></div>
+  <div class="mm-grid" id="mm-grid"></div>
 </div>
 
 <!-- Start Screen -->
-<div class="overlay visible" id="start-screen">
-  <a href="korehan-fun.html" class="back" style="position:absolute;top:16px;left:16px">&larr; Playground</a>
-  <div class="screen-icon">🃏</div>
-  <div class="screen-title">Memory Match</div>
-  <div class="screen-sub">Match Korean words with their English meanings. Flip two cards at a time and find all pairs!</div>
-  <div class="diff-btns">
-    <button class="diff-btn easy" onclick="MEM.start('easy')">
-      <div class="db-label">Easy — 6 Pairs</div>
-      <div class="db-desc">12 cards &middot; Great for beginners</div>
+<div class="mm-overlay visible" id="mm-start-screen">
+  <a href="korehan-fun.html" class="mm-back" style="position:absolute;top:16px;left:16px">&larr; Playground</a>
+  <div class="mm-icon">🃏</div>
+  <div class="mm-screen-title">Memory Match</div>
+  <div class="mm-screen-sub">Match Korean words with their English meanings. Flip two cards at a time and find all pairs!</div>
+  <div class="mm-diff-btns">
+    <button class="mm-diff-btn easy" onclick="MEM.start('easy')">
+      <div class="mm-db-label">Easy — 6 Pairs</div>
+      <div class="mm-db-desc">12 cards · Great for beginners</div>
     </button>
-    <button class="diff-btn normal" onclick="MEM.start('normal')">
-      <div class="db-label">Normal — 10 Pairs</div>
-      <div class="db-desc">20 cards &middot; A solid challenge</div>
+    <button class="mm-diff-btn normal" onclick="MEM.start('normal')">
+      <div class="mm-db-label">Normal — 10 Pairs</div>
+      <div class="mm-db-desc">20 cards · A solid challenge</div>
     </button>
-    <button class="diff-btn hard" onclick="MEM.start('hard')">
-      <div class="db-label">Hard — 15 Pairs</div>
-      <div class="db-desc">30 cards &middot; Test your memory!</div>
+    <button class="mm-diff-btn hard" onclick="MEM.start('hard')">
+      <div class="mm-db-label">Hard — 15 Pairs</div>
+      <div class="mm-db-desc">30 cards · Test your memory!</div>
     </button>
   </div>
 </div>
 
 <!-- End Screen -->
-<div class="overlay hidden" id="end-screen">
-  <div class="screen-icon" id="end-icon">🏆</div>
-  <div class="screen-title">Well Done!</div>
-  <div class="end-stars" id="end-stars"></div>
-  <div class="end-stat">Flips: <strong id="end-flips">0</strong></div>
-  <div class="end-stat">Time: <strong id="end-time">0:00</strong></div>
-  <div class="end-stat">Pairs: <strong id="end-pairs">0</strong></div>
-  <div class="end-best" id="end-best"></div>
-  <button class="play-btn" onclick="MEM.showStart()">PLAY AGAIN</button>
+<div class="mm-overlay hidden" id="mm-end-screen">
+  <div class="mm-icon" id="mm-end-icon">🏆</div>
+  <div class="mm-screen-title">Well Done!</div>
+  <div class="mm-end-stars" id="mm-end-stars"></div>
+  <div class="mm-end-stat">Flips: <strong id="mm-end-flips">0</strong></div>
+  <div class="mm-end-stat">Time: <strong id="mm-end-time">0:00</strong></div>
+  <div class="mm-end-stat">Pairs: <strong id="mm-end-pairs">0</strong></div>
+  <div class="mm-end-best" id="mm-end-best"></div>
+  <button class="mm-play-btn" onclick="MEM.showStart()">PLAY AGAIN</button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -213,14 +243,17 @@ var MEM = (function(){
   var timerInterval = null;
   var startTime = 0;
   var elapsed = 0;
+  var streak = 0;
 
   // ── DOM refs ──
-  var grid = document.getElementById('card-grid');
-  var startScreen = document.getElementById('start-screen');
-  var endScreen = document.getElementById('end-screen');
-  var elFlips = document.getElementById('g-flips');
-  var elPairs = document.getElementById('g-pairs');
-  var elTimer = document.getElementById('g-timer');
+  var grid = document.getElementById('mm-grid');
+  var startScreen = document.getElementById('mm-start-screen');
+  var endScreen = document.getElementById('mm-end-screen');
+  var elFlips = document.getElementById('mm-flips');
+  var elPairs = document.getElementById('mm-pairs');
+  var elTimer = document.getElementById('mm-timer');
+  var elStreak = document.getElementById('mm-streak');
+  var elStreakVal = document.getElementById('mm-streak-val');
 
   // ── Helpers ──
   function shuffle(arr) {
@@ -240,6 +273,27 @@ var MEM = (function(){
   function updateStats() {
     elFlips.textContent = flips;
     elPairs.textContent = matchedPairs + '/' + totalPairs;
+  }
+
+  function updateStreakUI() {
+    if (streak >= 2) {
+      elStreak.classList.add('on');
+      elStreakVal.textContent = streak;
+      // Re-trigger animation
+      elStreak.style.animation = 'none';
+      void elStreak.offsetWidth;
+      elStreak.style.animation = '';
+    } else {
+      elStreak.classList.remove('on');
+    }
+  }
+
+  function showCombo(text) {
+    var fl = document.createElement('div');
+    fl.className = 'mm-combo-flash';
+    fl.textContent = text;
+    document.body.appendChild(fl);
+    setTimeout(function(){ fl.remove(); }, 800);
   }
 
   function startTimer() {
@@ -310,20 +364,20 @@ var MEM = (function(){
 
   function createCardEl(data, idx) {
     var card = document.createElement('div');
-    card.className = 'card';
+    card.className = 'mm-card';
     card.dataset.idx = idx;
     card.dataset.pairId = data.pairId;
     card.dataset.type = data.type;
 
     var inner = document.createElement('div');
-    inner.className = 'card-inner';
+    inner.className = 'mm-card-inner';
 
     var front = document.createElement('div');
-    front.className = 'card-front';
+    front.className = 'mm-card-front';
     front.textContent = '?';
 
     var back = document.createElement('div');
-    back.className = 'card-back ' + data.type;
+    back.className = 'mm-card-back ' + data.type;
     back.textContent = data.text;
 
     inner.appendChild(front);
@@ -368,7 +422,10 @@ var MEM = (function(){
     firstCard.classList.add('match-flash', 'matched');
     secondCard.classList.add('match-flash', 'matched');
     matchedPairs++;
+    streak++;
     updateStats();
+    updateStreakUI();
+    if (streak >= 3) showCombo('🔥 ' + streak + ' streak!');
 
     setTimeout(function() {
       firstCard.classList.remove('match-flash');
@@ -385,6 +442,8 @@ var MEM = (function(){
   function handleNoMatch() {
     firstCard.classList.add('no-match');
     secondCard.classList.add('no-match');
+    streak = 0;
+    updateStreakUI();
 
     setTimeout(function() {
       firstCard.classList.remove('flipped', 'no-match');
@@ -419,17 +478,19 @@ var MEM = (function(){
     totalPairs = cfg.pairs;
     matchedPairs = 0;
     flips = 0;
+    streak = 0;
     firstCard = null;
     secondCard = null;
     lockBoard = false;
 
     updateStats();
+    updateStreakUI();
     hideOverlay(startScreen);
     hideOverlay(endScreen);
 
     // Build grid
     grid.innerHTML = '';
-    grid.className = 'card-grid ' + cfg.cols;
+    grid.className = 'mm-grid ' + cfg.cols;
     cards = buildCards(diff);
 
     cards.forEach(function(data, idx) {
@@ -438,7 +499,7 @@ var MEM = (function(){
     });
 
     // Brief peek: show all cards for a quick moment then hide
-    var allCards = grid.querySelectorAll('.card');
+    var allCards = grid.querySelectorAll('.mm-card');
     allCards.forEach(function(c) { c.classList.add('flipped'); });
     lockBoard = true;
 
@@ -458,13 +519,13 @@ var MEM = (function(){
     var isNew = saveBest(difficulty, flips);
     var best = getBest(difficulty);
 
-    document.getElementById('end-icon').textContent = stars === 3 ? '🏆' : stars === 2 ? '🎉' : '👏';
-    document.getElementById('end-stars').textContent = renderStars(stars);
-    document.getElementById('end-flips').textContent = flips;
-    document.getElementById('end-time').textContent = fmtTime(elapsed);
-    document.getElementById('end-pairs').textContent = totalPairs;
+    document.getElementById('mm-end-icon').textContent = stars === 3 ? '🏆' : stars === 2 ? '🎉' : '👏';
+    document.getElementById('mm-end-stars').textContent = renderStars(stars);
+    document.getElementById('mm-end-flips').textContent = flips;
+    document.getElementById('mm-end-time').textContent = fmtTime(elapsed);
+    document.getElementById('mm-end-pairs').textContent = totalPairs;
 
-    var bestEl = document.getElementById('end-best');
+    var bestEl = document.getElementById('mm-end-best');
     if (isNew) {
       bestEl.textContent = '🎊 New best score!';
       bestEl.style.color = '#fbbf24';
@@ -486,6 +547,8 @@ var MEM = (function(){
     elFlips.textContent = '0';
     elPairs.textContent = '0/0';
     elTimer.textContent = '0:00';
+    streak = 0;
+    updateStreakUI();
     setTimeout(function() { showOverlay(startScreen); }, 100);
   }
 
