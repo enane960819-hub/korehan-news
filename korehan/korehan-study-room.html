@@ -12034,7 +12034,10 @@ function _updateWritingTrackerRings(text, vocabUsed, vocabTotal) {
   _wmRingVocab.setProgress(vocabPct, vocabUsed >= 2 ? 'complete' : 'normal');
   _wmRingVocab.setText(vocabUsed + '');
 
-  // Grammar ring: count grammar patterns found in text
+  // Grammar ring: count grammar patterns found in text. Target is "use any 2"
+  // — the daily content may surface 5–8 patterns for reference, but the user
+  // shouldn't feel compelled to cram all of them in (old behaviour showed
+  // "Grammar 0/8" which read like a hard requirement).
   var grammarUsed = 0;
   var grammarList = (_aiContent && _aiContent.grammar) ? _aiContent.grammar : [];
   var grammarTotal = grammarList.length;
@@ -12044,8 +12047,8 @@ function _updateWritingTrackerRings(text, vocabUsed, vocabTotal) {
       if (pattern && text.indexOf(pattern) >= 0) grammarUsed++;
     });
   }
-  var grammarTarget = Math.max(1, grammarTotal);
-  var grammarPct = grammarTotal > 0 ? Math.min(1, grammarUsed / grammarTarget) : 0;
+  var grammarTarget = Math.min(2, Math.max(1, grammarTotal));
+  var grammarPct = grammarTarget > 0 ? Math.min(1, grammarUsed / grammarTarget) : 0;
   _wmRingGrammar.setProgress(grammarPct, grammarUsed >= grammarTarget ? 'complete' : 'normal');
   _wmRingGrammar.setText(grammarUsed + '');
 
@@ -12057,7 +12060,7 @@ function _updateWritingTrackerRings(text, vocabUsed, vocabTotal) {
   var gl = document.getElementById('wm-ring-grammar-label');
   var cl = document.getElementById('wm-ring-chars-label');
   if (vl) vl.textContent = 'Vocab ' + vocabUsed + '/' + vocabTarget;
-  if (gl) gl.textContent = 'Grammar ' + grammarUsed + '/' + grammarTotal;
+  if (gl) gl.textContent = 'Grammar ' + grammarUsed + '/' + grammarTarget + (grammarTotal > grammarTarget ? ' (' + grammarTotal + ' avail)' : '');
   if (cl) cl.textContent = (text || '').length + '/' + limit.min + ' min';
 
   // Fire particle on reaching vocab goal for the first time
@@ -12673,6 +12676,19 @@ function checkBMWordOrder() {
     ? s.acceptable_orders.map(function(a){ return Array.isArray(a) ? a.join(' ') : String(a); })
     : [];
   var isCorrect = answer === correct;
+  // Korean has flexible word order — adverbs (특히, 정말, 자주, 가장 …) can sit
+  // at the start OR before the verb without changing meaning. If the user
+  // used every required word AND ended with the same verb/predicate, treat
+  // it as correct rather than failing on a strict join() match.
+  if (!isCorrect && wo.original.length >= 3) {
+    var lastOrigWord = wo.original[wo.original.length - 1];
+    var lastSelWord  = wo.selected[wo.selected.length - 1];
+    var sortedOrig = wo.original.slice().sort();
+    var sortedSel  = wo.selected.slice().sort();
+    var sameWords  = sortedOrig.length === sortedSel.length
+      && sortedOrig.every(function(w, i){ return w === sortedSel[i]; });
+    if (lastOrigWord === lastSelWord && sameWords) isCorrect = true;
+  }
   var isPartial = !isCorrect && acceptable.indexOf(answer) >= 0;
   wo.result = isCorrect ? 'correct' : isPartial ? 'partial' : 'wrong';
   _bmSaveProgress();
@@ -16524,26 +16540,45 @@ function _asShowSentenceQuiz() {
   if (!correct.length) {
     correct = vocab.slice(0,2).map(function(v){ return { text: v.example || (v.ko + ' — ' + v.en), isCorrect: true }; });
   }
-  // Generate plausible-looking but wrong sentences by scrambling
+  // Generate plausible-looking but wrong sentences. Old version produced
+  // obviously broken Korean like "재료를 반려동물 했어요" — too easy to spot
+  // by grammar alone. Prefer reusing real-looking sentence shapes from the
+  // vocab examples but with a swapped subject so they no longer match the
+  // article content.
   var incorrect = vocab.slice(2,4).map(function(v){
-    return { text: (v.ko || '') + '를 ' + (vocab[0] ? vocab[0].ko : '') + ' 했어요', isCorrect: false };
+    if (v.example && v.example.length > 6) return { text: v.example, isCorrect: false };
+    return { text: (v.ko || '') + '은(는) 기사와 관련이 없어요.', isCorrect: false };
   });
   if (!incorrect.length) {
-    incorrect = [{ text: '이 문장은 기사와 관련이 없어요', isCorrect: false }];
+    incorrect = [{ text: '이 문장은 기사와 관련이 없어요.', isCorrect: false }];
   }
 
   var all = correct.concat(incorrect).sort(function(){ return Math.random() - .5; });
-  // Store correct count for completion check
-  var _asSentCorrectCount = correct.length;
-  window._asSentState = { total: all.length, correctTotal: _asSentCorrectCount, picked: 0, correctPicked: 0 };
+  window._asSentState = { total: all.length, correctTotal: correct.length, picked: 0, correctPicked: 0 };
 
-  act.innerHTML = '<div class="su-instruction" style="font-size:14px;padding:16px 20px 8px">🔍 Bonus: 맞는 문장을 모두 골라보세요</div>'
+  // Headline reflects that there can be multiple correct answers; progress
+  // counter helps the user understand the goal ("find ALL of them") instead
+  // of stopping after the first ✅.
+  var headline = correct.length > 1
+    ? '🔍 Bonus: 맞는 문장을 <b>모두</b> 골라보세요 (' + correct.length + '개)'
+    : '🔍 Bonus: 맞는 문장을 골라보세요';
+  act.innerHTML = '<div class="su-instruction" style="font-size:14px;padding:16px 20px 8px">' + headline + '</div>'
+    + '<div id="as-sent-progress" style="padding:0 20px 8px;font-size:12px;color:#64748b;font-weight:700">0 / ' + correct.length + ' correct</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px;padding:0 20px">'
-    + all.map(function(s, i){
-      return '<button class="as-sent-btn" data-correct="' + (s.isCorrect ? '1' : '0') + '" onclick="_asCheckSentence(this)" style="padding:12px 16px;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit;transition:.2s">' + s.text + '</button>';
+    + all.map(function(s){
+      return '<button class="as-sent-btn" data-correct="' + (s.isCorrect ? '1' : '0') + '" onclick="_asCheckSentence(this)" style="padding:12px 16px;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit;transition:.2s">' + _escapeHtmlAS(s.text) + '</button>';
     }).join('')
     + '</div>'
     + '<div id="as-sent-fb" style="padding:0 20px;margin-top:10px"></div>';
+}
+
+// Local HTML escaper used by the bonus quiz so user-visible phrases can't
+// inject markup if a vocab.example ever contains '<' / '&'.
+function _escapeHtmlAS(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function _asCheckSentence(btn) {
@@ -16551,29 +16586,40 @@ function _asCheckSentence(btn) {
   var isCorrect = btn.getAttribute('data-correct') === '1';
   if (isCorrect) {
     btn.style.borderColor = '#86efac'; btn.style.background = '#f0fdf4'; btn.style.color = '#166534';
-    btn.innerHTML = '✅ ' + btn.textContent;
+    btn.innerHTML = '✅ ' + btn.innerHTML;
     if (window._asSentState) window._asSentState.correctPicked++;
   } else {
     btn.style.borderColor = '#fca5a5'; btn.style.background = '#fef2f2'; btn.style.color = '#991b1b';
-    btn.innerHTML = '❌ ' + btn.textContent;
+    btn.innerHTML = '❌ ' + btn.innerHTML;
   }
   if (window._asSentState) window._asSentState.picked++;
-  // Complete when user has picked all correct ones OR clicked all buttons
   var st = window._asSentState;
+  var prog = document.getElementById('as-sent-progress');
+  if (prog && st) prog.textContent = st.correctPicked + ' / ' + st.correctTotal + ' correct';
+
+  // Completion: all correct found, or user has tried every option.
   var remaining = document.querySelectorAll('.as-sent-btn:not([disabled])');
   if (!remaining.length || (st && st.correctPicked >= st.correctTotal)) {
-    // Disable remaining buttons and show their state
+    // Reveal any correct options the user didn't tap so they know what they
+    // missed — old behaviour silently locked the quiz with no feedback.
+    var missed = 0;
     remaining.forEach(function(b) {
       b.disabled = true;
       if (b.getAttribute('data-correct') === '1') {
-        b.style.borderColor = '#86efac'; b.style.background = '#f0fdf4'; b.style.color = '#166534';
-        b.innerHTML = '✅ ' + b.textContent;
+        b.style.borderColor = '#fbbf24'; b.style.background = '#fffbeb'; b.style.color = '#92400e';
+        b.innerHTML = '⚠️ ' + b.innerHTML + ' <span style="font-size:10px;font-weight:700">(also correct)</span>';
+        missed++;
       } else {
         b.style.opacity = '0.5';
       }
     });
     var fb = document.getElementById('as-sent-fb');
-    if (fb) fb.innerHTML = '<div style="text-align:center;padding:12px;background:#f0fdf4;border-radius:8px;color:#166534;font-weight:700;font-size:13px">🎉 Bonus complete!</div>';
+    if (fb) {
+      var allFound = st && st.correctPicked === st.correctTotal && missed === 0;
+      fb.innerHTML = '<div style="text-align:center;padding:12px;border-radius:8px;font-weight:700;font-size:13px;'
+        + (allFound ? 'background:#f0fdf4;color:#166534">🎉 Bonus complete — perfect!' : 'background:#fffbeb;color:#92400e">Bonus done — ' + (st ? st.correctPicked : 0) + ' of ' + (st ? st.correctTotal : 0) + ' correct found.')
+        + '</div>';
+    }
     _asSetNav('none','');
   }
 }
@@ -18464,8 +18510,26 @@ function startReview(title, count) {
 
   // Route to Quiz Arena if available
   if (window.KHQuizArena && _rv.questions.length) {
+    // generateReviewQuestions emits {type:'mcq'/'mcq_reverse'/'typed', prompt, answer, choices}
+    // but KHQuizArena reads 'meaning'/'typed' with word_ko/word_en/correct fields.
+    // Adapt here so the arena renders the prompt + scores answers correctly.
+    var arenaQuestions = _rv.questions.map(function(q) {
+      if (q.type === 'mcq') {
+        // Korean prompt → English answer (MCQ)
+        return { type: 'meaning', word_ko: q.prompt, word_rom: q.rom || '', choices: q.choices || [], correct: q.answer };
+      }
+      if (q.type === 'mcq_reverse') {
+        // English prompt → Korean answer (MCQ)
+        return { type: 'typed', word_en: q.prompt, word_rom: q.rom || '', choices: q.choices || [], correct: q.answer };
+      }
+      if (q.type === 'typed') {
+        // English prompt → Korean answer (typed; arena converts to MCQ with auto-distractors)
+        return { type: 'typed', word_en: q.prompt, word_rom: q.rom || '', correct: q.answer };
+      }
+      return q;
+    });
     KHQuizArena.open({
-      questions: _rv.questions,
+      questions: arenaQuestions,
       title: title,
       timer: _rv.timeLimit || 15,
       mode: _rv.type || 'weekly',
