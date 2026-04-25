@@ -10028,7 +10028,14 @@ var _FB_TYPE_LABELS = {
 // analysis) as a stack — one card per activity, plus a greyed-out
 // placeholder for any activity in _FB_DAILY_ACTIVITIES the user didn't
 // submit today. Keeps the report consistent across days.
-function _fbRenderDailyActivities(fb) {
+//
+// `row` is passed so we can read context_data.items: the submit-all
+// flow stores every saved draft there even when the AI feedback came
+// back in the OLD pre-`activities[]` schema. That lets us still show
+// student text + 'analysis pending' for legacy rows instead of marking
+// everything as Not submitted.
+function _fbRenderDailyActivities(fb, row) {
+  // AI feedback per activity (new schema)
   var byType = {};
   if (fb && Array.isArray(fb.activities)) {
     fb.activities.forEach(function(a) {
@@ -10036,28 +10043,61 @@ function _fbRenderDailyActivities(fb) {
       if (k) byType[k] = a;
     });
   }
+  // What the student actually submitted (from context_data.items, even
+  // when there's no per-activity AI feedback yet).
+  var submitted = {};
+  try {
+    var ctx = row && row.context_data
+      ? (typeof row.context_data === 'string' ? JSON.parse(row.context_data) : row.context_data)
+      : null;
+    if (ctx && Array.isArray(ctx.items)) {
+      ctx.items.forEach(function(it) {
+        var k = String(it.type || it.writing_mode || '').split(':')[0];
+        if (k) submitted[k] = it;
+      });
+    }
+  } catch(e) {}
+
   // Anything in fb.activities that isn't in our canonical list still
   // shows up (unknown / legacy types append to the end).
   var seen = {};
   _FB_DAILY_ACTIVITIES.forEach(function(s){ seen[s.type] = true; });
   var canonical = _FB_DAILY_ACTIVITIES.slice();
-  if (fb && Array.isArray(fb.activities)) {
-    fb.activities.forEach(function(a) {
-      var k = String(a.type || '').split(':')[0];
-      if (!seen[k]) { canonical.push({ type: k, label: a.activity_name || k }); seen[k] = true; }
-    });
-  }
+  Object.keys(byType).forEach(function(k) {
+    if (!seen[k]) { canonical.push({ type: k, label: byType[k].activity_name || k }); seen[k] = true; }
+  });
+  Object.keys(submitted).forEach(function(k) {
+    if (!seen[k]) { canonical.push({ type: k, label: (_FB_TYPE_LABELS[k] || k) }); seen[k] = true; }
+  });
 
   return canonical.map(function(slot, idx) {
     var a = byType[slot.type];
-    var headerLabel = (a && a.activity_name) || slot.label;
-    if (!a) {
+    var sub = submitted[slot.type];
+    if (!a && !sub) {
       return '<div style="padding:12px 16px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px;margin-bottom:10px">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
         +   '<div style="font-size:12px;font-weight:800;color:#64748b">' + slot.label + '</div>'
         +   '<div style="font-size:11px;color:#94a3b8;font-style:italic">Not submitted</div>'
         + '</div></div>';
     }
+    // Submitted but no per-activity AI analysis (legacy bundled row).
+    // Show student writing + a hint to regenerate.
+    if (!a && sub) {
+      var topic = sub.topic_ko || sub.content_title || '';
+      var text = sub.text || '';
+      return '<div style="padding:12px 14px 14px;background:#fff;border:1px solid #fde68a;border-radius:12px;margin-bottom:10px">'
+        + '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">'
+        +   '<div style="flex:1;min-width:0">'
+        +     '<div style="font-size:13px;font-weight:800;color:#0f172a">' + slot.label + '</div>'
+        +     (topic ? '<div style="font-size:12px;color:#64748b;margin-top:2px">' + topic + '</div>' : '')
+        +   '</div>'
+        +   '<div style="font-size:10px;font-weight:700;color:#a16207;background:#fef3c7;border:1px solid #fde68a;padding:3px 8px;border-radius:999px;white-space:nowrap">⚠️ Analysis pending</div>'
+        + '</div>'
+        + '<div style="font-size:13px;color:#1e293b;line-height:1.7;white-space:pre-wrap;font-family:\'Noto Sans KR\',sans-serif;background:#fafafa;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px">' + (text || '<span style="color:#94a3b8">(empty)</span>') + '</div>'
+        + '<div style="font-size:11px;color:#a16207;margin-top:6px">This row was scored under the legacy single-bundle schema. Click <b>🤖 Regenerate AI</b> below to get per-activity analysis.</div>'
+        + '</div>';
+    }
+    var headerLabel = (a && a.activity_name) || slot.label;
     return _fbRenderActivityCard(idx, a, headerLabel);
   }).join('');
 }
@@ -10202,9 +10242,25 @@ function _buildFbModalInner(groupIdx) {
     }
     m += '</div>';
 
+    // Legacy fallback: this row predates the per-activity schema. Show
+    // the bundled AI corrections / overall / encouragement (in their
+    // original language — admin can regenerate to get the new English
+    // per-activity schema). Without this the admin would see green/red
+    // banners on screen but not in the legacy box too.
+    var hasLegacyFb = fb && !Array.isArray(fb.activities) && (fb.overall || (fb.corrections && fb.corrections.length));
+    if (hasLegacyFb) {
+      m += '<div style="margin:0 20px 12px;padding:10px 12px;background:#fef9c3;border:1px solid #fde68a;border-radius:10px">'
+        + '<div style="font-size:11px;font-weight:800;color:#92400e;margin-bottom:4px">📜 Legacy AI analysis (single-bundle)</div>'
+        + (fb.overall ? '<div style="font-size:12px;color:#475569;line-height:1.55;margin-bottom:6px">' + fb.overall + '</div>' : '')
+        + (fb.corrections && fb.corrections.length
+            ? ('<div style="font-size:11px;color:#7f1d1d">' + fb.corrections.length + ' bundled corrections — click <b>🤖 Regenerate AI</b> below for per-activity feedback.</div>')
+            : '<div style="font-size:11px;color:#92400e">Click <b>🤖 Regenerate AI</b> below for per-activity feedback.</div>')
+        + '</div>';
+    }
+
     // Per-activity stack (filled + placeholders).
     m += '<div style="padding:0 20px 14px;max-height:60vh;overflow-y:auto">';
-    m += _fbRenderDailyActivities(fb);
+    m += _fbRenderDailyActivities(fb, row);
     m += '</div>';
 
     if (fb && fb.encouragement) {
@@ -10330,7 +10386,9 @@ function _buildFbModalInner(groupIdx) {
     + '<div style="flex:1"></div>'
     + '<button onclick="fbModalApprove()" style="font-size:12px;font-weight:700;padding:8px 16px;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:8px;cursor:pointer;font-family:inherit">✅ Approve</button>'
     + '<button onclick="fbModalSend()" style="font-size:12px;font-weight:700;padding:8px 16px;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit">📨 Send</button>'
-    + (row.status === 'submitted' ? '<button onclick="fbModalRetriggerAI()" style="font-size:12px;padding:8px 16px;background:#fefce8;color:#a16207;border:1px solid #fde047;border-radius:8px;cursor:pointer;font-family:inherit">🤖 Regenerate AI</button>' : '')
+    + ((row.status === 'submitted' || (isPackage && (!fb || !Array.isArray(fb.activities))))
+        ? '<button onclick="fbModalRetriggerAI()" style="font-size:12px;padding:8px 16px;background:#fefce8;color:#a16207;border:1px solid #fde047;border-radius:8px;cursor:pointer;font-family:inherit">🤖 Regenerate AI</button>'
+        : '')
     + '</div></div>';
 
   return m;
@@ -10423,9 +10481,8 @@ async function fbModalSend() {
 }
 
 async function fbModalRetriggerAI() {
-  if (!_fbModalRow || !_fbModalRow.writing_text) { toast('글 내용이 없습니다.'); return; }
-  var sb = getSb(); if (!sb) return;
-  toast('AI 피드백 생성 중…');
+  if (!_fbModalRow || !_fbModalRow.writing_text) { toast('No writing to analyse.'); return; }
+  toast('Generating AI feedback…');
   document.getElementById('fb-detail-modal').remove();
   await srRetriggerAI(_fbModalRow.id);
 }
@@ -10442,28 +10499,112 @@ async function srSendFeedback(id) {
   if (idx >= 0) openFbModal(idx);
 }
 
+// Map writing-mode strings ('express_practice:essay' etc.) back to the
+// labels the per-activity AI prompt expects.
+function _srActivityLabel(type) {
+  var t = String(type || '').split(':')[0];
+  var labels = {
+    express_practice: 'Express Practice (Topic Writing)',
+    topic_writing: 'Topic Writing',
+    writing: 'Topic Writing',
+    diary: 'Diary',
+    reading: 'Reading & Writing',
+    article_study: 'Article Study',
+    grammar: 'Grammar Focus',
+    picture_description: 'Picture Description',
+    sentence_writing: 'Sentence Writing',
+    sentence: 'Sentence Writing',
+    dictation: 'Dictation',
+    expressions: 'Key Expressions'
+  };
+  return labels[t] || (t || 'Writing');
+}
+
 async function srRetriggerAI(id) {
   var sb = getSb(); if (!sb) return;
   var row = _fbAllRows.find(function(r){ return r.id === id; });
-  if (!row || !row.writing_text) { toast('글 내용이 없습니다.'); return; }
-  toast('AI 피드백 생성 중…');
+  if (!row || !row.writing_text) { toast('No writing to analyse.'); return; }
+  toast('Generating AI feedback…');
   try {
-    var wordCount = row.writing_text.replace(/\s+/g,' ').trim().split(' ').length;
-    var isTooShort = wordCount < 8;
-    var prompt = '당신은 한국어 작문 첨삭 전문가입니다. 학생의 작문을 매우 세밀하게 분석해주세요.\n\n'
-      + '학생 작문:\n"""\n' + row.writing_text + '\n"""\n\n'
-      + (row.topic_ko ? '주제: ' + row.topic_ko + '\n\n' : '')
-      + 'JSON 형식으로 상세 피드백:\n'
-      + '{"score":0~100,"overall":"전반적 평가 2-3문장","corrected_full":"교정된 전체 문장",'
-      + '"corrections":[{"original":"원문","corrected":"수정문","reason":"이유","pattern":"SPELLING|PARTICLE|TENSE|WORD_ORDER|VOCAB|NUANCE"}],'
-      + '"spelling":[{"wrong":"","correct":"","tip":""}],'
-      + '"naturalness":{"score":0~10,"comment":"","suggestions":[""]},'
-      + '"nuance":{"comment":"","word_swaps":[{"from":"","to":"","why":""}]},'
-      + '"structure":{"comment":"","tip":""},'
-      + '"vocab_feedback":"","grammar_feedback":"","extra_content":"","encouragement":""'
-      + (isTooShort ? ',"example_answer":"예시 답변 3-5문장"' : '')
-      + '}\n한국어로 작성. JSON만 반환.';
-    var data = await callClaude({ feature:'admin_retrigger_feedback', model:'claude-sonnet-4-20250514', max_tokens:2000, messages:[{role:'user',content:prompt}] });
+    // Detect daily-package rows (either by content_type, writing_mode,
+    // or by context_data.items). For these we run the SAME per-activity
+    // English prompt the live submit flow uses (_triggerPackageFeedback
+    // in study-room.html) so the new admin viewer shows per-activity
+    // cards instead of one bundled card.
+    var ctx = null;
+    try {
+      ctx = row.context_data
+        ? (typeof row.context_data === 'string' ? JSON.parse(row.context_data) : row.context_data)
+        : null;
+    } catch(e) {}
+    var items = (ctx && Array.isArray(ctx.items)) ? ctx.items : null;
+    var isPackage = row.content_type === 'daily_package'
+      || row.writing_mode === 'daily_package'
+      || (items && items.length > 1);
+
+    var prompt;
+    if (isPackage && items && items.length) {
+      var head = 'You are a Korean writing tutor reviewing an English speaker\'s daily Korean study package.\n'
+        + 'CRITICAL LANGUAGE RULE: ALL feedback (every comment, reason, tip, encouragement, structure note, idea) MUST be in ENGLISH. '
+        + 'Korean is only allowed in "corrected_full" and the "original" / "corrected" / "wrong" / "correct" sides of corrections + spelling.\n\n'
+        + 'The student completed ' + items.length + ' separate activities. Review them INDEPENDENTLY — '
+        + 'do not mix content across activities.\n\n';
+      var blocks = items.map(function(item, i) {
+        return '=== ACTIVITY ' + (i+1) + ' ===\n'
+          + 'type: ' + (String(item.type || item.writing_mode || '').split(':')[0]) + '\n'
+          + 'activity_name: ' + _srActivityLabel(item.type || item.writing_mode) + '\n'
+          + 'topic_or_title: ' + (item.topic_ko || item.content_title || '') + '\n'
+          + 'student_text:\n' + (item.text || '') + '\n';
+      }).join('\n');
+      var schema = '\n\nReturn ONLY valid JSON with this EXACT shape:\n'
+        + '{\n'
+        + '  "overall_assessment": "2-3 sentence English summary across all activities",\n'
+        + '  "common_patterns": ["English pattern", ...],\n'
+        + '  "daily_tip": "one English actionable tip for tomorrow",\n'
+        + '  "encouragement": "short motivating English message",\n'
+        + '  "activities": [\n'
+        + '    {\n'
+        + '      "type": "express_practice|article_study|dictation|picture_description|sentence_writing|grammar|expressions|diary|reading",\n'
+        + '      "activity_name": "human-readable name",\n'
+        + '      "topic": "the topic / title shown to the student",\n'
+        + '      "student_text": "the student\'s original Korean text, copied",\n'
+        + '      "score": 0-100,\n'
+        + '      "overall": "1-2 English sentences about THIS activity only",\n'
+        + '      "corrected_full": "rewritten Korean text",\n'
+        + '      "corrections": [{"original":"Korean","corrected":"Korean","reason":"English","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB|REGISTER|NUANCE"}],\n'
+        + '      "structure": {"comment":"English","tip":"English"},\n'
+        + '      "extra_content": "English ideas",\n'
+        + '      "spelling": [{"wrong":"Korean","correct":"Korean","tip":"English"}],\n'
+        + '      "naturalness": {"score":0-10,"comment":"English","suggestions":["English"]}\n'
+        + '    }\n'
+        + '  ]\n'
+        + '}\n'
+        + 'Reminder: every English-language field MUST be in English.';
+      prompt = head + blocks + schema;
+    } else {
+      // Single submission (legacy individual writing / article_study /
+      // conversation / story rows). Same English-only directive so the
+      // viewer's existing per-row layout doesn't render Korean.
+      var wordCount = row.writing_text.replace(/\s+/g,' ').trim().split(' ').length;
+      var isTooShort = wordCount < 8;
+      prompt = 'You are a Korean writing tutor for an English-speaking learner. '
+        + 'Analyse this submission in detail. ALL feedback fields below MUST be in ENGLISH; '
+        + 'Korean is only allowed inside "corrected_full" and the "original"/"corrected"/"wrong"/"correct" sides of corrections + spelling.\n\n'
+        + 'Student writing:\n"""\n' + row.writing_text + '\n"""\n'
+        + (row.topic_ko ? 'Topic: ' + row.topic_ko + '\n' : '')
+        + '\nReturn ONLY valid JSON:\n'
+        + '{"score":0-100,"overall":"2-3 English sentences","corrected_full":"corrected Korean text",'
+        + '"corrections":[{"original":"Korean","corrected":"Korean","reason":"English","pattern":"SPELLING|PARTICLE|TENSE|WORD_ORDER|VOCAB|NUANCE"}],'
+        + '"spelling":[{"wrong":"Korean","correct":"Korean","tip":"English"}],'
+        + '"naturalness":{"score":0-10,"comment":"English","suggestions":["English"]},'
+        + '"nuance":{"comment":"English","word_swaps":[{"from":"Korean","to":"Korean","why":"English"}]},'
+        + '"structure":{"comment":"English","tip":"English"},'
+        + '"vocab_feedback":"English","grammar_feedback":"English","extra_content":"English","encouragement":"English"'
+        + (isTooShort ? ',"example_answer":"3-5 sentence Korean example answer"' : '')
+        + '}\nReminder: every English-language field MUST be in English.';
+    }
+
+    var data = await callClaude({ feature:'admin_retrigger_feedback', model:'claude-sonnet-4-20250514', max_tokens:2200, messages:[{role:'user',content:prompt}] });
     var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('');
     var clean = raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
     var ob = clean.indexOf('{'), cb = clean.lastIndexOf('}');
@@ -10473,9 +10614,9 @@ async function srRetriggerAI(id) {
       ai_feedback: parsed, ai_feedback_at: new Date().toISOString(),
       ai_model: 'claude-sonnet-4-20250514', status: 'ai_reviewed'
     }).eq('id', id);
-    toast('AI 피드백 생성 완료');
+    toast('AI feedback ready');
     await srLoadFeedbackDashboard();
-  } catch(e) { toast('AI 피드백 실패: ' + (e.message||e)); }
+  } catch(e) { toast('AI feedback failed: ' + (e.message||e)); }
 }
 
 async function srBulkApprove() {
