@@ -9742,21 +9742,87 @@ async function submitAllWritingsToday() {
 
 async function _triggerPackageFeedback(submissionId, items) {
   try {
-    var prompt = 'You are a Korean writing tutor giving CONSOLIDATED feedback on a student\'s daily study package.\n\n'
-      + 'The student completed ' + items.length + ' writing activities today. Review ALL of them together and give ONE unified feedback.\n\n';
-    items.forEach(function(item, i) {
-      prompt += '--- Activity ' + (i+1) + ': ' + (item.topic_ko || item.content_title || item.type) + ' ---\n'
-        + item.text + '\n\n';
-    });
-    prompt += 'Give feedback in ENGLISH. Return ONLY valid JSON:\n'
-      + '{"overall_assessment":"2-3 sentence summary of today\'s performance across ALL activities",'
-      + '"activity_scores":[{"activity":"activity name","score":0-100,"highlight":"best part","improvement":"one thing to improve"}],'
-      + '"common_patterns":["pattern 1 seen across writings","pattern 2"],'
-      + '"corrections":[{"original":"text","corrected":"text","reason":"why","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB"}],'
-      + '"daily_tip":"one actionable tip for tomorrow based on today\'s performance",'
-      + '"encouragement":"motivating closing message"}\nReturn JSON only.';
+    // Per-activity feedback: each draft (Topic Writing, Article Study,
+    // Dictation, Picture, Grammar, Key Expressions, …) gets its OWN
+    // section. Old behaviour bundled everything into one block, so the
+    // article-study text got reviewed against the topic-writing prompt
+    // and the AI complained the article paragraph was 'off-topic'.
+    //
+    // Output schema must match what the admin viewer renders:
+    //   - top-level: overall_assessment, common_patterns, daily_tip,
+    //     encouragement (whole-day rollup)
+    //   - activities[]: type, topic, student_text, score, overall,
+    //     corrected_full, corrections, structure, extra_content,
+    //     spelling, naturalness (per-activity analysis)
+    //
+    // English directive is intentionally repeated and explicit — Claude
+    // tends to mirror the input language otherwise (the input here is
+    // Korean), and the user is an English-speaking learner.
+    var head = 'You are a Korean writing tutor reviewing an English speaker\'s daily Korean study package.\n'
+      + 'CRITICAL LANGUAGE RULE: ALL feedback (every comment, reason, tip, encouragement, structure note, idea) MUST be in ENGLISH. '
+      + 'Even though the student writes in Korean, the FEEDBACK is in English. Do NOT respond in Korean. Korean-only fields are '
+      + '"corrected_full" and the "original" / "corrected" sides of each correction (those quote / fix the actual Korean text).\n\n'
+      + 'The student completed ' + items.length + ' separate activit' + (items.length > 1 ? 'ies' : 'y') + '. Review them INDEPENDENTLY — '
+      + 'do not mix content across activities. If activity A is about food and activity B is about a news article, do NOT tell '
+      + 'the student to "remove the news content" from activity A — they are separate prompts.\n\n';
 
-    var data = await callClaude({ feature:'daily_package_feedback', model:'claude-haiku-4-5-20251001', max_tokens:1200, messages:[{role:'user',content:prompt}] });
+    // Map mode strings (including 'express_practice:essay') back to a
+    // human-readable activity type for the AI prompt.
+    function _activityLabel(item) {
+      var t = String(item.type || item.writing_mode || '').split(':')[0];
+      var labels = {
+        express_practice: 'Express Practice (Topic Writing)',
+        topic_writing: 'Topic Writing',
+        writing: 'Topic Writing',
+        diary: 'Diary',
+        reading: 'Reading & Writing',
+        article_study: 'Article Study',
+        grammar: 'Grammar Focus',
+        picture_description: 'Picture Description',
+        sentence_writing: 'Sentence Writing',
+        sentence: 'Sentence Writing',
+        dictation: 'Dictation',
+        expressions: 'Key Expressions'
+      };
+      return labels[t] || (t || 'Writing');
+    }
+
+    var blocks = items.map(function(item, i) {
+      return '=== ACTIVITY ' + (i+1) + ' ===\n'
+        + 'type: ' + (String(item.type || item.writing_mode || '').split(':')[0]) + '\n'
+        + 'activity_name: ' + _activityLabel(item) + '\n'
+        + 'topic_or_title: ' + (item.topic_ko || item.content_title || '') + '\n'
+        + 'student_text:\n' + item.text + '\n';
+    }).join('\n');
+
+    var schema = '\n\nReturn ONLY valid JSON (no markdown, no commentary) with this EXACT shape:\n'
+      + '{\n'
+      + '  "overall_assessment": "2-3 sentence English summary of today\'s overall performance across all activities",\n'
+      + '  "common_patterns": ["pattern repeated across the day, in English", ...],\n'
+      + '  "daily_tip": "one actionable English tip for tomorrow",\n'
+      + '  "encouragement": "short motivating closing message in English",\n'
+      + '  "activities": [\n'
+      + '    {\n'
+      + '      "type": "express_practice|article_study|dictation|picture_description|sentence_writing|grammar|expressions|diary|reading",\n'
+      + '      "activity_name": "Express Practice (Topic Writing) | Article Study | …",\n'
+      + '      "topic": "the topic / title shown to the student",\n'
+      + '      "student_text": "the student\'s original Korean text, copied",\n'
+      + '      "score": 0-100,\n'
+      + '      "overall": "1-2 sentence English assessment of THIS activity only",\n'
+      + '      "corrected_full": "the full Korean text rewritten correctly (Korean OK here)",\n'
+      + '      "corrections": [{"original":"Korean snippet","corrected":"Korean snippet","reason":"English explanation","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB|REGISTER|NUANCE"}],\n'
+      + '      "structure": {"comment":"English note about sentence structure","tip":"English tip"},\n'
+      + '      "extra_content": "English ideas for additional content / things to add",\n'
+      + '      "spelling": [{"wrong":"Korean","correct":"Korean","tip":"English tip"}],\n'
+      + '      "naturalness": {"score":0-10,"comment":"English","suggestions":["English","English"]}\n'
+      + '    }\n'
+      + '  ]\n'
+      + '}\n'
+      + 'Reminder: every English-language field above MUST be in English. Korean only inside "corrected_full" and the "original" / "corrected" / "wrong" / "correct" sides of corrections / spelling.';
+
+    var prompt = head + blocks + schema;
+
+    var data = await callClaude({ feature:'daily_package_feedback', model:'claude-haiku-4-5-20251001', max_tokens:2200, messages:[{role:'user',content:prompt}] });
     var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('').replace(/```json|```/g,'').trim();
     var parsed = JSON.parse(raw);
     var sb = getSupa();

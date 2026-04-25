@@ -9838,18 +9838,36 @@ var _fbModalGroupIdx = 0;  // which tab is active
 function _buildAdminFeedbackDraft(fb) {
   if (!fb) return '';
   var lines = [];
-  if (fb.overall) lines.push(fb.overall);
-  if (fb.corrections && fb.corrections.length) {
-    lines.push('\n📌 수정 사항:');
+  if (fb.overall_assessment) lines.push(fb.overall_assessment);
+  else if (fb.overall) lines.push(fb.overall);
+
+  // Daily-package feedback: surface per-activity highlights so the admin
+  // editor's draft text matches the per-section UI above it.
+  if (Array.isArray(fb.activities) && fb.activities.length) {
+    fb.activities.forEach(function(a) {
+      var name = a.activity_name || a.type || 'Activity';
+      lines.push('\n📂 ' + name + (a.topic ? ' — ' + a.topic : ''));
+      if (a.overall) lines.push(a.overall);
+      if (a.corrections && a.corrections.length) {
+        lines.push('Corrections:');
+        a.corrections.forEach(function(c) {
+          lines.push('• ' + (c.original||'') + ' → ' + (c.corrected||'') + ' (' + (c.reason||'') + ')');
+        });
+      }
+    });
+  } else if (fb.corrections && fb.corrections.length) {
+    lines.push('\n📌 Corrections:');
     fb.corrections.forEach(function(c) {
       lines.push('• ' + (c.original||'') + ' → ' + (c.corrected||'') + ' (' + (c.reason||'') + ')');
     });
   }
+
   if (fb.naturalness && fb.naturalness.suggestions && fb.naturalness.suggestions.length) {
-    lines.push('\n💡 추천 표현:');
+    lines.push('\n💡 Suggestions:');
     fb.naturalness.suggestions.forEach(function(s) { lines.push('• ' + s); });
   }
-  if (fb.encouragement) { lines.push('\n' + fb.encouragement); }
+  if (fb.daily_tip) lines.push('\n💡 Tomorrow: ' + fb.daily_tip);
+  if (fb.encouragement) lines.push('\n' + fb.encouragement);
   return lines.join('\n');
 }
 
@@ -9860,10 +9878,10 @@ function srRenderFeedbackPage() {
   var page = _fbAllRows.slice(start, start + _fbPageSize);
   if (!page.length) { el.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:12px">제출 내역이 없습니다.</div>'; return; }
 
-  var typeIcons = {writing:'📝', article_study:'📰', conversation:'💬', story:'📖', picture:'🖼️', dictation:'🎧', grammar:'📖'};
+  var typeIcons = {writing:'📝', article_study:'📰', conversation:'💬', story:'📖', picture:'🖼️', picture_description:'🖼️', dictation:'🎧', grammar:'📚', daily_package:'🗂️', expressions:'💬', sentence_writing:'🎧'};
   var statusBg = {submitted:'#fef9c3', ai_drafted:'#eff6ff', ai_reviewed:'#eff6ff', reviewed:'#f0fdf4', admin_approved:'#f0fdf4', sent:'#dcfce7'};
   var statusColor = {submitted:'#854d0e', ai_drafted:'#1d4ed8', ai_reviewed:'#1d4ed8', reviewed:'#15803d', admin_approved:'#15803d', sent:'#166534'};
-  var statusLabel = {submitted:'⏳ 제출됨', ai_drafted:'🤖 AI 완료', ai_reviewed:'🤖 AI 완료', reviewed:'✅ 승인', admin_approved:'✅ 승인', sent:'📨 전송됨'};
+  var statusLabel = {submitted:'⏳ Submitted', ai_drafted:'🤖 AI ready', ai_reviewed:'🤖 AI ready', reviewed:'✅ Approved', admin_approved:'✅ Approved', sent:'📨 Sent'};
 
   el.innerHTML = page.map(function(row, idx) {
     var fb = null;
@@ -9932,14 +9950,14 @@ function openFbModal(idx) {
   // Header: user info + date
   m += '<div style="padding:16px 20px;border-bottom:1px solid #f0f0f0">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
-    + '<div><div style="font-size:16px;font-weight:900">📋 피드백 상세</div>'
+    + '<div><div style="font-size:16px;font-weight:900">📋 Feedback Detail</div>'
     + '<div style="font-size:12px;color:#64748b">' + (row.study_date||'') + (row.user_id ? ' · ' + row.user_id.slice(0,8) + '…' : '') + '</div></div>'
     + '<button onclick="document.getElementById(\'fb-detail-modal\').remove()" style="background:#f1f5f9;border:none;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px">✕</button></div>';
 
   // Submission tabs (one per same-user-same-day row)
   if (_fbModalGroupRows.length > 1) {
-    var typeIcons2 = {writing:'📝', article_study:'📰', conversation:'💬', story:'📖', picture:'🖼️', dictation:'🎧', grammar:'📖'};
-    var typeLabels2 = {writing:'Writing Practice', article_study:'Article Study', conversation:'Conversation', story:'Story', picture:'Picture Description', dictation:'Dictation', grammar:'Grammar Focus'};
+    var typeIcons2 = {writing:'📝', article_study:'📰', conversation:'💬', story:'📖', picture:'🖼️', dictation:'🎧', grammar:'📚', daily_package:'🗂️'};
+    var typeLabels2 = _FB_TYPE_LABELS;
     m += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
     _fbModalGroupRows.forEach(function(gr, gi) {
       var isActive = gi === _fbModalGroupIdx;
@@ -9977,13 +9995,174 @@ function switchFbTab(groupIdx) {
   });
 }
 
+// Canonical activity types for the daily package, ordered the way they
+// appear in the Study Room flow. Used to fill in placeholder sections
+// for activities the user didn't submit so the admin sees a consistent
+// daily report regardless of how much the student finished.
+var _FB_DAILY_ACTIVITIES = [
+  { type: 'express_practice',    label: 'Express Practice (Topic Writing)' },
+  { type: 'article_study',       label: 'Article Study' },
+  { type: 'grammar',             label: 'Grammar Focus' },
+  { type: 'picture_description', label: 'Picture Description' },
+  { type: 'sentence_writing',    label: 'Sentence Writing' },
+  { type: 'dictation',           label: 'Dictation' },
+  { type: 'expressions',         label: 'Key Expressions' }
+];
+
+// Singular-row labels (legacy individual submissions kept this shape).
+var _FB_TYPE_LABELS = {
+  writing: 'Writing Practice',
+  article_study: 'Article Study',
+  conversation: 'Conversation',
+  story: 'Story',
+  picture: 'Picture Description',
+  picture_description: 'Picture Description',
+  dictation: 'Dictation',
+  grammar: 'Grammar Focus',
+  expressions: 'Key Expressions',
+  sentence_writing: 'Sentence Writing',
+  daily_package: 'Daily Study Package'
+};
+
+// Render the per-activity sections (top: student text, bottom: AI
+// analysis) as a stack — one card per activity, plus a greyed-out
+// placeholder for any activity in _FB_DAILY_ACTIVITIES the user didn't
+// submit today. Keeps the report consistent across days.
+function _fbRenderDailyActivities(fb) {
+  var byType = {};
+  if (fb && Array.isArray(fb.activities)) {
+    fb.activities.forEach(function(a) {
+      var k = String(a.type || '').split(':')[0];
+      if (k) byType[k] = a;
+    });
+  }
+  // Anything in fb.activities that isn't in our canonical list still
+  // shows up (unknown / legacy types append to the end).
+  var seen = {};
+  _FB_DAILY_ACTIVITIES.forEach(function(s){ seen[s.type] = true; });
+  var canonical = _FB_DAILY_ACTIVITIES.slice();
+  if (fb && Array.isArray(fb.activities)) {
+    fb.activities.forEach(function(a) {
+      var k = String(a.type || '').split(':')[0];
+      if (!seen[k]) { canonical.push({ type: k, label: a.activity_name || k }); seen[k] = true; }
+    });
+  }
+
+  return canonical.map(function(slot, idx) {
+    var a = byType[slot.type];
+    var headerLabel = (a && a.activity_name) || slot.label;
+    if (!a) {
+      return '<div style="padding:12px 16px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px;margin-bottom:10px">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
+        +   '<div style="font-size:12px;font-weight:800;color:#64748b">' + slot.label + '</div>'
+        +   '<div style="font-size:11px;color:#94a3b8;font-style:italic">Not submitted</div>'
+        + '</div></div>';
+    }
+    return _fbRenderActivityCard(idx, a, headerLabel);
+  }).join('');
+}
+
+function _fbRenderActivityCard(idx, a, headerLabel) {
+  var sc = (a && a.score !== undefined && a.score !== null) ? Number(a.score) : null;
+  var sCol = sc !== null ? (sc >= 80 ? '#15803d' : sc >= 60 ? '#a16207' : '#dc2626') : '#64748b';
+  var sBg = sc !== null ? (sc >= 80 ? '#f0fdf4' : sc >= 60 ? '#fefce8' : '#fef2f2') : '#f8fafc';
+  var topic = a.topic || '';
+  var studentText = a.student_text || '';
+  var html = '<div data-act-idx="' + idx + '" style="padding:12px 14px 14px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:10px">'
+    + '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">'
+    +   '<div style="flex:1;min-width:0">'
+    +     '<div style="font-size:13px;font-weight:800;color:#0f172a">' + headerLabel + '</div>'
+    +     (topic ? '<div style="font-size:12px;color:#64748b;margin-top:2px">' + topic + '</div>' : '')
+    +   '</div>'
+    +   '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">'
+    +     '<div style="font-size:10px;font-weight:700;color:' + sCol + ';white-space:nowrap">Score</div>'
+    +     '<input type="number" data-fb-score-idx="' + idx + '" min="0" max="100" value="' + (sc !== null ? sc : '') + '" style="width:54px;height:42px;border-radius:50%;border:3px solid ' + sCol + ';text-align:center;font-size:16px;font-weight:900;color:' + sCol + ';background:transparent;outline:none;-moz-appearance:textfield;appearance:textfield">'
+    +   '</div>'
+    + '</div>';
+
+  // Two-column body within each activity card
+  html += '<div style="display:grid;grid-template-columns:1fr 1.2fr;gap:12px">';
+
+  // LEFT: student writing + corrected version
+  html += '<div style="min-width:0">'
+    + '<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Student writing</div>'
+    + '<div style="font-size:13px;color:#1e293b;line-height:1.7;white-space:pre-wrap;font-family:\'Noto Sans KR\',sans-serif">' + (studentText || '<span style="color:#94a3b8">(empty)</span>') + '</div>';
+  if (a.corrected_full) {
+    html += '<div style="margin-top:10px;padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px">'
+      + '<div style="font-size:10px;font-weight:700;color:#15803d;margin-bottom:3px">✅ Corrected version</div>'
+      + '<div style="font-size:13px;color:#166534;line-height:1.7;font-family:\'Noto Sans KR\',sans-serif">' + a.corrected_full + '</div></div>';
+  }
+  html += '</div>';
+
+  // RIGHT: AI analysis
+  html += '<div style="min-width:0">';
+
+  // Overall (editable)
+  html += '<div style="padding:8px 10px;background:' + sBg + ';border:1px solid ' + sCol + '33;border-radius:8px;margin-bottom:8px">'
+    + '<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:3px">Overall (editable)</div>'
+    + '<textarea data-fb-overall-idx="' + idx + '" rows="2" style="width:100%;font-size:12px;color:#475569;line-height:1.5;border:1px solid #e2e8f0;border-radius:6px;padding:5px 7px;font-family:\'Noto Sans KR\',sans-serif;resize:vertical">' + (a.overall || '') + '</textarea>'
+    + '</div>';
+
+  // Corrections
+  if (a.corrections && a.corrections.length) {
+    html += '<div style="padding:10px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin-bottom:8px">'
+      + '<div style="font-size:10px;font-weight:700;color:#dc2626;margin-bottom:6px">🔴 Corrections (' + a.corrections.length + ')</div>';
+    a.corrections.forEach(function(c) {
+      var icon = (typeof _fbPatternIconsAdmin === 'object' && _fbPatternIconsAdmin[c.pattern]) || '🔧';
+      var label = (typeof _fbPatternLabelsAdmin === 'object' && _fbPatternLabelsAdmin[c.pattern]) || c.pattern || '';
+      html += '<div style="display:flex;gap:6px;padding:5px 7px;background:#fff;border:1px solid #fde2e2;border-radius:6px;margin-bottom:3px;font-size:11px">'
+        + '<span>' + icon + '</span>'
+        + '<div style="flex:1;min-width:0"><span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#fef2f2;color:#dc2626">' + label + '</span> '
+        + '<s style="color:#dc2626">' + (c.original||'') + '</s> → <b style="color:#15803d">' + (c.corrected||'') + '</b>'
+        + '<div style="color:#64748b;font-size:11px;margin-top:2px">' + (c.reason||'') + '</div></div></div>';
+    });
+    html += '</div>';
+  }
+
+  // Spelling
+  if (a.spelling && a.spelling.length) {
+    html += '<div style="padding:8px 10px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;margin-bottom:8px">'
+      + '<div style="font-size:10px;font-weight:700;color:#a16207;margin-bottom:4px">✏️ Spelling</div>';
+    a.spelling.forEach(function(s) {
+      html += '<div style="font-size:11px;margin-bottom:2px"><s style="color:#dc2626">' + (s.wrong||'') + '</s> → <b style="color:#15803d">' + (s.correct||'') + '</b>'
+        + (s.tip ? ' <span style="color:#94a3b8;font-size:11px">(' + s.tip + ')</span>' : '') + '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Naturalness
+  if (a.naturalness && a.naturalness.comment) {
+    html += '<div style="padding:8px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:8px">'
+      + '<div style="font-size:10px;font-weight:700;color:#1d4ed8;margin-bottom:3px">🗣️ Naturalness ' + (a.naturalness.score !== undefined ? a.naturalness.score + '/10' : '') + '</div>'
+      + '<div style="font-size:11px;color:#475569;line-height:1.5">' + a.naturalness.comment + '</div>';
+    if (a.naturalness.suggestions && a.naturalness.suggestions.length) {
+      a.naturalness.suggestions.forEach(function(s) { html += '<div style="font-size:11px;color:#1d4ed8;margin-top:2px">💡 ' + s + '</div>'; });
+    }
+    html += '</div>';
+  }
+
+  // Structure
+  if (a.structure && a.structure.comment) {
+    html += '<div style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px">'
+      + '<div style="font-size:10px;font-weight:700;color:#475569;margin-bottom:2px">🏗️ Sentence structure</div>'
+      + '<div style="font-size:11px;color:#64748b;line-height:1.5">' + a.structure.comment + '</div>'
+      + (a.structure.tip ? '<div style="font-size:10px;color:#a16207;margin-top:3px">💡 ' + a.structure.tip + '</div>' : '')
+      + '</div>';
+  }
+
+  if (a.extra_content) html += '<div style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px"><div style="font-size:10px;font-weight:700;color:#475569;margin-bottom:2px">💡 Additional ideas</div><div style="font-size:11px;color:#64748b">' + a.extra_content + '</div></div>';
+
+  html += '</div></div></div>';
+  return html;
+}
+
 function _buildFbModalInner(groupIdx) {
   var row = _fbModalGroupRows[groupIdx];
   if (!row) return '';
   var fb = null;
   try { fb = typeof row.ai_feedback === 'string' ? JSON.parse(row.ai_feedback) : row.ai_feedback; } catch(e) {}
   var adminDraft = row.admin_feedback || (fb ? _buildAdminFeedbackDraft(fb) : '');
-  var typeLabels = {writing:'Writing Practice', article_study:'Article Study', conversation:'Conversation', story:'Story', picture:'Picture Description', dictation:'Dictation', grammar:'Grammar Focus'};
+  var typeLabels = _FB_TYPE_LABELS;
 
   var m = '';
 
@@ -9991,128 +10170,167 @@ function _buildFbModalInner(groupIdx) {
   m += '<div style="padding:8px 20px 0;font-size:12px;color:#64748b;border-bottom:1px solid #f8fafc">'
     + (typeLabels[row.content_type]||row.content_type) + (row.topic_ko ? ' · ' + row.topic_ko : '') + '</div>';
 
-  // Body grid: student writing (left) + AI analysis (right)
-  m += '<div style="display:grid;grid-template-columns:1fr 1.2fr;min-height:0">';
+  // Daily-package layout: per-activity stack with empty placeholders.
+  // Distinguish a package by either content_type='daily_package' or by
+  // the presence of the new `activities` array — the JS submit path
+  // also retries as content_type='writing' before the SQL migration
+  // ships, so the array is the more reliable signal.
+  var hasActivities = !!(fb && Array.isArray(fb.activities) && fb.activities.length);
+  var isPackage = row.content_type === 'daily_package' || hasActivities || row.writing_mode === 'daily_package';
 
-  // LEFT: Student writing
-  m += '<div style="padding:16px 20px;border-right:1px solid #f0f0f0;overflow-y:auto;max-height:65vh">'
-    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:8px">학생 원문</div>'
-    + '<div style="font-size:14px;color:#1e293b;line-height:1.8;white-space:pre-wrap;font-family:\'Noto Sans KR\',sans-serif">' + (row.writing_text || '(없음)') + '</div>';
-  if (fb && fb.corrected_full) {
-    m += '<div style="margin-top:16px;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px">'
-      + '<div style="font-size:10px;font-weight:700;color:#15803d;margin-bottom:4px">✅ 교정 완성본</div>'
-      + '<div style="font-size:14px;color:#166534;line-height:1.8;font-family:\'Noto Sans KR\',sans-serif">' + fb.corrected_full + '</div></div>';
-  }
-  m += '</div>';
-
-  // RIGHT: AI analysis
-  m += '<div style="padding:16px 20px;overflow-y:auto;max-height:65vh">'
-    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:10px">🤖 AI 분석 (평가 요소별)</div>';
-
-  if (fb) {
-    // Score banner — editable score + overall
-    var sc = fb.score !== undefined ? Number(fb.score) : null;
-    var sCol = sc !== null ? (sc >= 80 ? '#15803d' : sc >= 60 ? '#a16207' : '#dc2626') : '#64748b';
-    var sBg = sc !== null ? (sc >= 80 ? '#f0fdf4' : sc >= 60 ? '#fefce8' : '#fef2f2') : '#f8fafc';
-    m += '<div style="padding:12px 14px;background:' + sBg + ';border:1px solid ' + sCol + '33;border-radius:10px;margin-bottom:8px">'
-      + '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">'
-      + '<div style="display:flex;flex-direction:column;align-items:center;gap:4px">'
-      + '<div style="font-size:10px;font-weight:700;color:' + sCol + ';white-space:nowrap">종합 점수</div>'
-      + '<input type="number" id="fb-modal-ai-score" min="0" max="100" value="' + (sc !== null ? sc : '') + '" style="width:56px;height:44px;border-radius:50%;border:3px solid ' + sCol + ';text-align:center;font-size:17px;font-weight:900;color:' + sCol + ';background:transparent;outline:none;-moz-appearance:textfield;appearance:textfield">'
-      + '</div>'
-      + '<div style="flex:1">'
-      + '<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">전반적 평가 (편집 가능)</div>'
-      + '<textarea id="fb-modal-ai-overall" rows="3" style="width:100%;font-size:12px;color:#475569;line-height:1.5;border:1px solid #e2e8f0;border-radius:8px;padding:6px 8px;font-family:\'Noto Sans KR\',sans-serif;resize:vertical">' + (fb.overall||'') + '</textarea>'
-      + '</div></div>'
-      + '<div style="text-align:right">'
-      + '<button onclick="fbModalSaveAIEdits()" style="font-size:11px;font-weight:700;padding:5px 12px;background:#f0fdf4;color:#15803d;border:1px solid #86efac;border-radius:6px;cursor:pointer;font-family:inherit">💾 AI 수정 저장</button>'
-      + '</div></div>';
-
-    // Corrections banner
-    if (fb.corrections && fb.corrections.length) {
-      m += '<div style="padding:12px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;margin-bottom:8px">'
-        + '<div style="font-size:11px;font-weight:700;color:#dc2626;margin-bottom:8px">🔴 수정 사항 (' + fb.corrections.length + ')</div>';
-      fb.corrections.forEach(function(c) {
-        var icon = _fbPatternIconsAdmin[c.pattern] || '🔧';
-        var label = _fbPatternLabelsAdmin[c.pattern] || c.pattern || '';
-        m += '<div style="display:flex;gap:6px;padding:6px 8px;background:#fff;border:1px solid #fde2e2;border-radius:6px;margin-bottom:4px;font-size:12px">'
-          + '<span>' + icon + '</span>'
-          + '<div style="flex:1"><span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:#fef2f2;color:#dc2626">' + label + '</span> '
-          + '<s style="color:#dc2626">' + (c.original||'') + '</s> → <b style="color:#15803d">' + (c.corrected||'') + '</b>'
-          + '<div style="color:#64748b;font-size:11px;margin-top:2px">' + (c.reason||'') + '</div></div></div>';
-      });
-      m += '</div>';
-    }
-
-    // Spelling banner
-    if (fb.spelling && fb.spelling.length) {
-      m += '<div style="padding:12px 14px;background:#fefce8;border:1px solid #fde68a;border-radius:10px;margin-bottom:8px">'
-        + '<div style="font-size:11px;font-weight:700;color:#a16207;margin-bottom:6px">✏️ 맞춤법</div>';
-      fb.spelling.forEach(function(s) {
-        m += '<div style="font-size:12px;margin-bottom:3px"><s style="color:#dc2626">' + (s.wrong||'') + '</s> → <b style="color:#15803d">' + (s.correct||'') + '</b>'
-          + (s.tip ? ' <span style="color:#94a3b8;font-size:11px">(' + s.tip + ')</span>' : '') + '</div>';
-      });
-      m += '</div>';
-    }
-
-    // Naturalness banner
-    if (fb.naturalness && fb.naturalness.comment) {
-      m += '<div style="padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;margin-bottom:8px">'
-        + '<div style="font-size:11px;font-weight:700;color:#1d4ed8;margin-bottom:4px">🗣️ 자연스러움 ' + (fb.naturalness.score !== undefined ? fb.naturalness.score + '/10' : '') + '</div>'
-        + '<div style="font-size:12px;color:#475569;line-height:1.5">' + fb.naturalness.comment + '</div>';
-      if (fb.naturalness.suggestions && fb.naturalness.suggestions.length) {
-        m += '<div style="margin-top:6px">';
-        fb.naturalness.suggestions.forEach(function(s) { m += '<div style="font-size:12px;color:#1d4ed8;margin-top:2px">💡 ' + s + '</div>'; });
-        m += '</div>';
+  if (isPackage) {
+    // Day-level summary at the top.
+    m += '<div style="padding:14px 20px 0">';
+    if (fb) {
+      if (fb.overall_assessment) {
+        m += '<div style="padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;margin-bottom:10px">'
+          + '<div style="font-size:11px;font-weight:800;color:#1d4ed8;margin-bottom:3px">📊 Day overview</div>'
+          + '<div style="font-size:12px;color:#475569;line-height:1.55">' + fb.overall_assessment + '</div></div>';
       }
-      m += '</div>';
-    }
-
-    // Nuance banner
-    if (fb.nuance && (fb.nuance.comment || (fb.nuance.word_swaps && fb.nuance.word_swaps.length))) {
-      m += '<div style="padding:12px 14px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;margin-bottom:8px">'
-        + '<div style="font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:4px">💬 뉘앙스</div>'
-        + '<div style="font-size:12px;color:#475569;line-height:1.5">' + (fb.nuance.comment||'') + '</div>';
-      if (fb.nuance.word_swaps && fb.nuance.word_swaps.length) {
-        fb.nuance.word_swaps.forEach(function(ws) {
-          m += '<div style="font-size:12px;margin-top:3px"><span style="color:#7c3aed;font-weight:700">' + (ws.from||'') + '</span> → <span style="color:#6d28d9;font-weight:700">' + (ws.to||'') + '</span> <span style="color:#94a3b8">(' + (ws.why||'') + ')</span></div>';
-        });
+      if (fb.common_patterns && fb.common_patterns.length) {
+        m += '<div style="padding:8px 12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;margin-bottom:8px">'
+          + '<div style="font-size:11px;font-weight:800;color:#92400e;margin-bottom:3px">🔁 Recurring patterns</div>'
+          + '<ul style="margin:0;padding-left:18px;font-size:11px;color:#78350f">'
+          + fb.common_patterns.map(function(p){ return '<li>' + p + '</li>'; }).join('')
+          + '</ul></div>';
       }
-      m += '</div>';
+      if (fb.daily_tip) {
+        m += '<div style="font-size:12px;color:#475569;margin-bottom:8px">💡 <b>Tomorrow:</b> ' + fb.daily_tip + '</div>';
+      }
+    } else {
+      m += '<div style="text-align:center;color:#94a3b8;padding:24px">No AI analysis yet</div>';
     }
+    m += '</div>';
 
-    // Structure banner
-    if (fb.structure && fb.structure.comment) {
-      m += '<div style="padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px">'
-        + '<div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:3px">🏗️ 문장 구조</div>'
-        + '<div style="font-size:12px;color:#64748b;line-height:1.5">' + fb.structure.comment + '</div>'
-        + (fb.structure.tip ? '<div style="font-size:11px;color:#a16207;margin-top:3px">💡 ' + fb.structure.tip + '</div>' : '')
+    // Per-activity stack (filled + placeholders).
+    m += '<div style="padding:0 20px 14px;max-height:60vh;overflow-y:auto">';
+    m += _fbRenderDailyActivities(fb);
+    m += '</div>';
+
+    if (fb && fb.encouragement) {
+      m += '<div style="font-size:12px;color:#15803d;padding:6px 0 12px;text-align:center">💚 ' + fb.encouragement + '</div>';
+    }
+    if (fb && Array.isArray(fb.activities) && fb.activities.length) {
+      m += '<div style="padding:0 20px 12px;text-align:right">'
+        + '<button onclick="fbModalSaveActivityEdits()" style="font-size:11px;font-weight:700;padding:6px 14px;background:#f0fdf4;color:#15803d;border:1px solid #86efac;border-radius:6px;cursor:pointer;font-family:inherit">💾 Save activity edits</button>'
         + '</div>';
     }
-
-    // Extra content + Example
-    if (fb.extra_content) m += '<div style="padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:3px">💡 추가 내용 아이디어</div><div style="font-size:12px;color:#64748b">' + fb.extra_content + '</div></div>';
-    if (fb.example_answer) m += '<div style="padding:10px 14px;background:#fefce8;border:1px solid #fde68a;border-radius:10px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:#a16207;margin-bottom:3px">📝 예시 답변</div><div style="font-size:13px;color:#475569;line-height:1.6">' + fb.example_answer + '</div></div>';
-    if (fb.encouragement) m += '<div style="font-size:12px;color:#15803d;padding:6px 0;text-align:center">💚 ' + fb.encouragement + '</div>';
   } else {
-    m += '<div style="text-align:center;color:#94a3b8;padding:24px">AI 분석 없음</div>';
+    // Legacy single-row layout (writing / article_study / conversation /
+    // story rows that didn't go through the daily-package flow).
+    m += '<div style="display:grid;grid-template-columns:1fr 1.2fr;min-height:0">';
+
+    // LEFT: Student writing
+    m += '<div style="padding:16px 20px;border-right:1px solid #f0f0f0;overflow-y:auto;max-height:65vh">'
+      + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:8px">Student writing</div>'
+      + '<div style="font-size:14px;color:#1e293b;line-height:1.8;white-space:pre-wrap;font-family:\'Noto Sans KR\',sans-serif">' + (row.writing_text || '(empty)') + '</div>';
+    if (fb && fb.corrected_full) {
+      m += '<div style="margin-top:16px;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px">'
+        + '<div style="font-size:10px;font-weight:700;color:#15803d;margin-bottom:4px">✅ Corrected version</div>'
+        + '<div style="font-size:14px;color:#166534;line-height:1.8;font-family:\'Noto Sans KR\',sans-serif">' + fb.corrected_full + '</div></div>';
+    }
+    m += '</div>';
+
+    // RIGHT: AI analysis
+    m += '<div style="padding:16px 20px;overflow-y:auto;max-height:65vh">'
+      + '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:10px">🤖 AI analysis</div>';
+
+    if (fb) {
+      var sc = fb.score !== undefined ? Number(fb.score) : null;
+      var sCol = sc !== null ? (sc >= 80 ? '#15803d' : sc >= 60 ? '#a16207' : '#dc2626') : '#64748b';
+      var sBg = sc !== null ? (sc >= 80 ? '#f0fdf4' : sc >= 60 ? '#fefce8' : '#fef2f2') : '#f8fafc';
+      m += '<div style="padding:12px 14px;background:' + sBg + ';border:1px solid ' + sCol + '33;border-radius:10px;margin-bottom:8px">'
+        + '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">'
+        + '<div style="display:flex;flex-direction:column;align-items:center;gap:4px">'
+        + '<div style="font-size:10px;font-weight:700;color:' + sCol + ';white-space:nowrap">Score</div>'
+        + '<input type="number" id="fb-modal-ai-score" min="0" max="100" value="' + (sc !== null ? sc : '') + '" style="width:56px;height:44px;border-radius:50%;border:3px solid ' + sCol + ';text-align:center;font-size:17px;font-weight:900;color:' + sCol + ';background:transparent;outline:none;-moz-appearance:textfield;appearance:textfield">'
+        + '</div>'
+        + '<div style="flex:1">'
+        + '<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">Overall (editable)</div>'
+        + '<textarea id="fb-modal-ai-overall" rows="3" style="width:100%;font-size:12px;color:#475569;line-height:1.5;border:1px solid #e2e8f0;border-radius:8px;padding:6px 8px;font-family:\'Noto Sans KR\',sans-serif;resize:vertical">' + (fb.overall||'') + '</textarea>'
+        + '</div></div>'
+        + '<div style="text-align:right">'
+        + '<button onclick="fbModalSaveAIEdits()" style="font-size:11px;font-weight:700;padding:5px 12px;background:#f0fdf4;color:#15803d;border:1px solid #86efac;border-radius:6px;cursor:pointer;font-family:inherit">💾 Save AI edits</button>'
+        + '</div></div>';
+
+      if (fb.corrections && fb.corrections.length) {
+        m += '<div style="padding:12px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;margin-bottom:8px">'
+          + '<div style="font-size:11px;font-weight:700;color:#dc2626;margin-bottom:8px">🔴 Corrections (' + fb.corrections.length + ')</div>';
+        fb.corrections.forEach(function(c) {
+          var icon = _fbPatternIconsAdmin[c.pattern] || '🔧';
+          var label = _fbPatternLabelsAdmin[c.pattern] || c.pattern || '';
+          m += '<div style="display:flex;gap:6px;padding:6px 8px;background:#fff;border:1px solid #fde2e2;border-radius:6px;margin-bottom:4px;font-size:12px">'
+            + '<span>' + icon + '</span>'
+            + '<div style="flex:1"><span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:#fef2f2;color:#dc2626">' + label + '</span> '
+            + '<s style="color:#dc2626">' + (c.original||'') + '</s> → <b style="color:#15803d">' + (c.corrected||'') + '</b>'
+            + '<div style="color:#64748b;font-size:11px;margin-top:2px">' + (c.reason||'') + '</div></div></div>';
+        });
+        m += '</div>';
+      }
+
+      if (fb.spelling && fb.spelling.length) {
+        m += '<div style="padding:12px 14px;background:#fefce8;border:1px solid #fde68a;border-radius:10px;margin-bottom:8px">'
+          + '<div style="font-size:11px;font-weight:700;color:#a16207;margin-bottom:6px">✏️ Spelling</div>';
+        fb.spelling.forEach(function(s) {
+          m += '<div style="font-size:12px;margin-bottom:3px"><s style="color:#dc2626">' + (s.wrong||'') + '</s> → <b style="color:#15803d">' + (s.correct||'') + '</b>'
+            + (s.tip ? ' <span style="color:#94a3b8;font-size:11px">(' + s.tip + ')</span>' : '') + '</div>';
+        });
+        m += '</div>';
+      }
+
+      if (fb.naturalness && fb.naturalness.comment) {
+        m += '<div style="padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;margin-bottom:8px">'
+          + '<div style="font-size:11px;font-weight:700;color:#1d4ed8;margin-bottom:4px">🗣️ Naturalness ' + (fb.naturalness.score !== undefined ? fb.naturalness.score + '/10' : '') + '</div>'
+          + '<div style="font-size:12px;color:#475569;line-height:1.5">' + fb.naturalness.comment + '</div>';
+        if (fb.naturalness.suggestions && fb.naturalness.suggestions.length) {
+          fb.naturalness.suggestions.forEach(function(s) { m += '<div style="font-size:12px;color:#1d4ed8;margin-top:2px">💡 ' + s + '</div>'; });
+        }
+        m += '</div>';
+      }
+
+      if (fb.nuance && (fb.nuance.comment || (fb.nuance.word_swaps && fb.nuance.word_swaps.length))) {
+        m += '<div style="padding:12px 14px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;margin-bottom:8px">'
+          + '<div style="font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:4px">💬 Nuance</div>'
+          + '<div style="font-size:12px;color:#475569;line-height:1.5">' + (fb.nuance.comment||'') + '</div>';
+        if (fb.nuance.word_swaps && fb.nuance.word_swaps.length) {
+          fb.nuance.word_swaps.forEach(function(ws) {
+            m += '<div style="font-size:12px;margin-top:3px"><span style="color:#7c3aed;font-weight:700">' + (ws.from||'') + '</span> → <span style="color:#6d28d9;font-weight:700">' + (ws.to||'') + '</span> <span style="color:#94a3b8">(' + (ws.why||'') + ')</span></div>';
+          });
+        }
+        m += '</div>';
+      }
+
+      if (fb.structure && fb.structure.comment) {
+        m += '<div style="padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px">'
+          + '<div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:3px">🏗️ Sentence structure</div>'
+          + '<div style="font-size:12px;color:#64748b;line-height:1.5">' + fb.structure.comment + '</div>'
+          + (fb.structure.tip ? '<div style="font-size:11px;color:#a16207;margin-top:3px">💡 ' + fb.structure.tip + '</div>' : '')
+          + '</div>';
+      }
+
+      if (fb.extra_content) m += '<div style="padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:3px">💡 Additional ideas</div><div style="font-size:12px;color:#64748b">' + fb.extra_content + '</div></div>';
+      if (fb.example_answer) m += '<div style="padding:10px 14px;background:#fefce8;border:1px solid #fde68a;border-radius:10px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:#a16207;margin-bottom:3px">📝 Example answer</div><div style="font-size:13px;color:#475569;line-height:1.6">' + fb.example_answer + '</div></div>';
+      if (fb.encouragement) m += '<div style="font-size:12px;color:#15803d;padding:6px 0;text-align:center">💚 ' + fb.encouragement + '</div>';
+    } else {
+      m += '<div style="text-align:center;color:#94a3b8;padding:24px">No AI analysis</div>';
+    }
+    m += '</div></div>'; // end grid
   }
-  m += '</div></div>'; // end grid
 
   // Bottom: Admin feedback editor
   m += '<div style="padding:16px 20px;border-top:1px solid #f0f0f0;background:#fafbfc">'
     + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
-    + '<span style="font-size:12px;font-weight:800;color:#334155">어드민 피드백</span>'
-    + (fb && !row.admin_feedback ? '<button onclick="document.getElementById(\'fb-modal-admin\').value=_buildAdminFeedbackDraft(_fbModalFb())" style="font-size:11px;padding:4px 10px;border:1px solid #93c5fd;border-radius:6px;background:#eff6ff;color:#1d4ed8;cursor:pointer;font-family:inherit">📋 AI 초안 불러오기</button>' : '')
+    + '<span style="font-size:12px;font-weight:800;color:#334155">Admin feedback</span>'
+    + (fb && !row.admin_feedback ? '<button onclick="document.getElementById(\'fb-modal-admin\').value=_buildAdminFeedbackDraft(_fbModalFb())" style="font-size:11px;padding:4px 10px;border:1px solid #93c5fd;border-radius:6px;background:#eff6ff;color:#1d4ed8;cursor:pointer;font-family:inherit">📋 Load AI draft</button>' : '')
     + '</div>'
-    + '<textarea id="fb-modal-admin" rows="5" style="width:100%;font-size:13px;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-family:\'Noto Sans KR\',sans-serif;line-height:1.7;resize:vertical;margin-bottom:10px" placeholder="피드백을 작성하거나 AI 초안을 수정하세요...">' + (adminDraft||'') + '</textarea>'
+    + '<textarea id="fb-modal-admin" rows="5" style="width:100%;font-size:13px;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-family:\'Noto Sans KR\',sans-serif;line-height:1.7;resize:vertical;margin-bottom:10px" placeholder="Write feedback or edit the AI draft…">' + (adminDraft||'') + '</textarea>'
     + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-    + '<label style="font-size:12px;font-weight:700;color:#475569">점수</label>'
+    + '<label style="font-size:12px;font-weight:700;color:#475569">Score</label>'
     + '<input id="fb-modal-score" type="number" min="0" max="100" value="' + (row.score || (fb && fb.score ? fb.score : '')) + '" style="width:64px;font-size:13px;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;font-weight:700">'
     + '<div style="flex:1"></div>'
-    + '<button onclick="fbModalApprove()" style="font-size:12px;font-weight:700;padding:8px 16px;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:8px;cursor:pointer;font-family:inherit">✅ 승인</button>'
-    + '<button onclick="fbModalSend()" style="font-size:12px;font-weight:700;padding:8px 16px;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit">📨 전송</button>'
-    + (row.status === 'submitted' ? '<button onclick="fbModalRetriggerAI()" style="font-size:12px;padding:8px 16px;background:#fefce8;color:#a16207;border:1px solid #fde047;border-radius:8px;cursor:pointer;font-family:inherit">🤖 AI 재생성</button>' : '')
+    + '<button onclick="fbModalApprove()" style="font-size:12px;font-weight:700;padding:8px 16px;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:8px;cursor:pointer;font-family:inherit">✅ Approve</button>'
+    + '<button onclick="fbModalSend()" style="font-size:12px;font-weight:700;padding:8px 16px;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit">📨 Send</button>'
+    + (row.status === 'submitted' ? '<button onclick="fbModalRetriggerAI()" style="font-size:12px;padding:8px 16px;background:#fefce8;color:#a16207;border:1px solid #fde047;border-radius:8px;cursor:pointer;font-family:inherit">🤖 Regenerate AI</button>' : '')
     + '</div></div>';
 
   return m;
@@ -10128,19 +10346,49 @@ async function fbModalSaveAIEdits() {
   var sb = getSb(); if (!sb) return;
   var scoreEl = document.getElementById('fb-modal-ai-score');
   var overallEl = document.getElementById('fb-modal-ai-overall');
-  if (!scoreEl || !overallEl) { toast('편집 필드를 찾을 수 없습니다.'); return; }
+  if (!scoreEl || !overallEl) { toast('Edit fields not found.'); return; }
   var newScore = parseInt(scoreEl.value);
   var newOverall = overallEl.value.trim();
-  if (isNaN(newScore) || newScore < 0 || newScore > 100) { toast('유효한 점수(0-100)를 입력하세요.'); return; }
+  if (isNaN(newScore) || newScore < 0 || newScore > 100) { toast('Enter a valid score (0-100).'); return; }
   var existing = _fbModalFb() || {};
   var updated = Object.assign({}, existing, { score: newScore, overall: newOverall });
   var r = await sb.from('user_submissions').update({ ai_feedback: updated }).eq('id', _fbModalRow.id);
-  if (r.error) { toast('저장 실패: ' + r.error.message); return; }
+  if (r.error) { toast('Save failed: ' + r.error.message); return; }
   // Update local cache
   _fbModalRow.ai_feedback = updated;
   var allIdx = _fbAllRows.findIndex(function(r2) { return r2.id === _fbModalRow.id; });
   if (allIdx >= 0) _fbAllRows[allIdx].ai_feedback = updated;
-  toast('AI 피드백 저장 완료');
+  toast('AI feedback saved');
+}
+
+// Persist per-activity score / overall edits made on the daily-package
+// viewer. Reads every textarea / input the renderer tagged with
+// data-fb-overall-idx / data-fb-score-idx and writes them back into
+// fb.activities[i] before upserting ai_feedback.
+async function fbModalSaveActivityEdits() {
+  if (!_fbModalRow) return;
+  var sb = getSb(); if (!sb) return;
+  var existing = _fbModalFb() || {};
+  if (!Array.isArray(existing.activities)) { toast('No activity data to save.'); return; }
+  var modal = document.getElementById('fb-detail-modal');
+  if (!modal) return;
+  modal.querySelectorAll('[data-fb-overall-idx]').forEach(function(ta) {
+    var idx = Number(ta.getAttribute('data-fb-overall-idx'));
+    if (!existing.activities[idx]) return;
+    existing.activities[idx].overall = ta.value || '';
+  });
+  modal.querySelectorAll('[data-fb-score-idx]').forEach(function(inp) {
+    var idx = Number(inp.getAttribute('data-fb-score-idx'));
+    if (!existing.activities[idx]) return;
+    var v = parseInt(inp.value, 10);
+    if (!isNaN(v) && v >= 0 && v <= 100) existing.activities[idx].score = v;
+  });
+  var r = await sb.from('user_submissions').update({ ai_feedback: existing }).eq('id', _fbModalRow.id);
+  if (r.error) { toast('Save failed: ' + r.error.message); return; }
+  _fbModalRow.ai_feedback = existing;
+  var allIdx = _fbAllRows.findIndex(function(r2) { return r2.id === _fbModalRow.id; });
+  if (allIdx >= 0) _fbAllRows[allIdx].ai_feedback = existing;
+  toast('Activity edits saved');
 }
 
 async function fbModalApprove() {
