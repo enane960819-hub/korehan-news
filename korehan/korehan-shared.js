@@ -3391,7 +3391,7 @@ function buildArticleRowHTML(a) {
     + '<img src="' + aImg + '" alt="" loading="lazy" decoding="async" fetchpriority="low" onerror="this.src=\'' + fallback + '\'" style="width:220px;height:140px;object-fit:cover;border-radius:10px;flex-shrink:0;">'
     + '<div class="article-info">'
     + '<span class="category-tag" style="font-size:11px;padding:2px 8px;' + lvlStyle + '">' + (a.level ? ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) : (a.section || '')) + '</span>'
-    + '<h2 class="article-title vocab-zone" style="margin:8px 0 6px;font-size:18px;">' + a.title + '</h2>'
+    + '<h2 class="article-title vocab-zone" style="margin:8px 0 6px;font-size:18px;" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + (a.title_en || a.title) + '</h2>'
     + '<p class="article-excerpt vocab-zone" style="font-size:14px;color:#64748b;line-height:1.6">' + aBody + '</p>'
     + '<div style="font-size:12px;color:#94a3b8;margin-top:6px">' + relTime(a.date) + '</div>'
     + '</div></div></a>';
@@ -3406,7 +3406,7 @@ function buildHeroHTML(featured, rest) {
     + '<img src="' + img + '" alt="" fetchpriority="high" decoding="async" onerror="this.src=\'' + fallback + '\'">'
     + '<div class="overlay">'
     + '<span class="category-tag">' + (featured.section || '') + '</span>'
-    + '<h1 class="vocab-zone">' + featured.title + '</h1>'
+    + '<h1 class="vocab-zone" data-kh-title-id="' + escapeHtml(featured.id || '') + '">' + (featured.title_en || featured.title) + '</h1>'
     + '<p class="sub vocab-zone">' + body + '</p>'
     + '</div></div></a>'
     + '<div class="hero-side">' + rest.slice(0, 4).map(heroSideItemHTML).join('') + '</div>';
@@ -3469,6 +3469,10 @@ async function renderSectionPage(section) {
 
   articles = sortArticlesNewest(articles).slice(0, 50);
 
+  // Hydrate cached EN titles before paint so the section page never
+  // flashes Korean headlines for articles we've already translated.
+  try { _khHydrateTitlesEnFromCache(articles); } catch(e) {}
+
   var featured = articles[0];
   var rest     = articles.slice(1);
 
@@ -3491,6 +3495,8 @@ async function renderSectionPage(section) {
       listEl.innerHTML = rest.map(buildArticleRowHTML).join('');
     }
   }
+  // Async: translate any still-missing titles → updates DOM in place
+  try { _khEnsureTitlesEn(articles); } catch(e) {}
 }
 
 
@@ -3498,6 +3504,11 @@ function renderAllPage() {
   var articles = published();
   var listEl   = document.getElementById('dyn-article-list');
   if (!listEl) return;
+
+  // Hydrate cached EN titles synchronously so the first paint already
+  // shows English where we have it. Fresh translations get fetched at
+  // the bottom of renderAllList().
+  try { _khHydrateTitlesEnFromCache(articles); } catch(e) {}
 
   var params = new URLSearchParams(window.location.search);
   var searchQ = params.get('search') || '';
@@ -3611,11 +3622,14 @@ function renderAllList(listEl, articles, opts) {
         + '<div class="nr-rail-scroll">' + items.map(_buildNewsCardHTML).join('') + '</div>'
       + '</div>';
     }).join('');
+    // Fetch + cache any still-missing EN titles, then swap them into the DOM.
+    try { _khEnsureTitlesEn(articles); } catch(e) {}
     return;
   }
 
   listEl.className = 'all-card-grid';
   listEl.innerHTML = articles.map(_buildNewsCardHTML).join('');
+  try { _khEnsureTitlesEn(articles); } catch(e) {}
 }
 
 function filterAllLevel(level, btn) {

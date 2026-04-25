@@ -30,6 +30,31 @@
 .conv-search input{border:none;background:none;outline:none;font-size:13px;color:#fff;font-family:inherit;width:100%;}
 .conv-search input::placeholder{color:rgba(255,255,255,.35);}
 
+/* ── Netflix-style category rails (All filter) ──
+   When the All tab is active, conversations group into horizontally
+   scrolling rows by category — same visual rhythm as the All News
+   rails. Each rail has its own header + "See all" link that flips the
+   filter to that category. */
+.conv-rails{display:flex;flex-direction:column;gap:28px;}
+.cv-rail{min-width:0;}
+.cv-rail-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;padding:0 2px;}
+.cv-rail-title{font-size:18px;font-weight:900;color:#0f172a;letter-spacing:-.01em;display:flex;align-items:center;gap:8px;font-family:'DM Sans','Noto Sans KR',sans-serif;}
+.cv-rail-title .cv-icon{font-size:18px;}
+.cv-rail-more{font-size:12px;font-weight:700;color:#64748b;cursor:pointer;background:none;border:none;padding:4px 0;font-family:inherit;}
+.cv-rail-more:hover{color:#0f172a;}
+.cv-rail-scroll{display:flex;gap:14px;overflow-x:auto;overflow-y:hidden;padding:4px 4px 14px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}
+.cv-rail-scroll::-webkit-scrollbar{height:6px;}
+.cv-rail-scroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px;}
+/* Cards inside a rail get a fixed width so they tile neatly. */
+.cv-rail-scroll > .cc2{flex:0 0 280px;scroll-snap-align:start;}
+@media(max-width:760px){
+  .conv-rails{gap:22px;}
+  .cv-rail-head{margin-bottom:10px;}
+  .cv-rail-title{font-size:15px;}
+  .cv-rail-scroll{gap:10px;padding:2px 2px 12px;}
+  .cv-rail-scroll > .cc2{flex:0 0 240px;}
+}
+
 /* ── Card — KakaoTalk Chat Preview ── */
 .cc2{border-radius:18px;overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s;border:none;display:flex;flex-direction:column;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);}
 .cc2:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.15);}
@@ -433,16 +458,90 @@ function renderCards(catF, lvlF) {
   });
   _convShown = 0;
   grid.innerHTML = '';
+  // Old paginator from the flat-grid view — strip on every render so it
+  // doesn't dangle next to a rails layout.
+  var oldMore = document.getElementById('conv-load-more');
+  if (oldMore) oldMore.remove();
+
   if (!_convFilteredList.length) {
+    grid.classList.remove('conv-rails');
+    grid.classList.add('conv-cards-grid-flat');
     grid.innerHTML = CONVS.length === 0
       ? '<div style="grid-column:1/-1;text-align:center;padding:80px 20px"><div style="width:56px;height:56px;border-radius:16px;background:#eff6ff;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">' + _IC.book + '</div><div style="font-size:17px;font-weight:800;color:#0f172a;margin-bottom:8px">No conversations yet</div><div style="font-size:13px;color:#64748b;max-width:340px;margin:0 auto;line-height:1.65">Conversations will appear here once they\'re added. Check back soon.</div></div>'
       : '<p style="color:#64748b;font-size:14px;grid-column:1/-1;padding:20px 0">No conversations in this category.</p>';
-    // 더보기 버튼 제거
-    var oldMore = document.getElementById('conv-load-more');
-    if (oldMore) oldMore.remove();
     return;
   }
+
+  // Netflix-style rails when the All tab is active and no level filter
+  // is narrowing things down. Specific category / level filters drop
+  // back to the flat grid so the user sees everything that matches.
+  if (catF === 'all' && (lvlF === 'all' || !lvlF)) {
+    _renderConvRails(_convFilteredList);
+    return;
+  }
+  // Restore the flat grid CSS (we may have just left a rails view)
+  grid.classList.remove('conv-rails');
+  grid.style.display = '';
   _appendConvCards();
+}
+
+// Group the filtered list by category and render each as a horizontal
+// rail. Each rail's "See all" flips the top tab to that category and
+// re-renders, dropping back into the flat grid for that bucket.
+function _renderConvRails(list) {
+  var grid = document.getElementById('conv-cards-grid');
+  if (!grid) return;
+  // The flat grid uses `display:grid;grid-template-columns:repeat(3,1fr)`
+  // — that breaks the column flow we want for rails, so swap it off and
+  // back on as needed.
+  grid.classList.add('conv-rails');
+  grid.style.display = 'flex';
+
+  var byCat = {};
+  list.forEach(function(c) {
+    var k = c.cat || 'everyday';
+    (byCat[k] = byCat[k] || []).push(c);
+  });
+
+  var html = '';
+  CAT_RAIL_ORDER.forEach(function(cat) {
+    var items = byCat[cat];
+    if (!items || !items.length) return;
+    var icon = CAT_ICON[cat] || '';
+    var label = CAT_EN[cat] || cat;
+    html += '<div class="cv-rail" data-cat="' + cat + '">'
+      + '<div class="cv-rail-head">'
+      +   '<div class="cv-rail-title">' + (icon ? '<span class="cv-icon">' + icon + '</span>' : '') + escapeHtml(label) + '</div>'
+      +   '<button class="cv-rail-more" onclick="_jumpToConvCat(\'' + cat + '\')">See all &rsaquo;</button>'
+      + '</div>'
+      + '<div class="cv-rail-scroll">'
+      + items.slice(0, 12).map(_renderOneCard).join('')
+      + '</div>'
+      + '</div>';
+  });
+
+  // Anything in unexpected categories still renders so it's discoverable.
+  Object.keys(byCat).forEach(function(cat) {
+    if (CAT_RAIL_ORDER.indexOf(cat) >= 0) return;
+    var items = byCat[cat];
+    html += '<div class="cv-rail" data-cat="' + cat + '">'
+      + '<div class="cv-rail-head"><div class="cv-rail-title">' + escapeHtml(cat) + '</div></div>'
+      + '<div class="cv-rail-scroll">' + items.slice(0, 12).map(_renderOneCard).join('') + '</div>'
+      + '</div>';
+  });
+
+  grid.innerHTML = html || '<p style="color:#64748b;font-size:14px;padding:20px 0">No conversations yet.</p>';
+}
+
+// Click handler for "See all" — flip the top tab + filter set.
+function _jumpToConvCat(cat) {
+  var btn = document.querySelector('#cat-pills .cf-tab[data-cat="' + cat + '"]');
+  document.querySelectorAll('#cat-pills .cf-tab').forEach(function(b){ b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+  renderCards(cat, 'all');
+  // Scroll to the top so the user sees the filtered grid header,
+  // not the bottom of the previous rails view.
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 var CAT_GRAD = {
@@ -452,7 +551,11 @@ var CAT_GRAD = {
   family:'linear-gradient(135deg,#92400e,#f59e0b)',
   dating:'linear-gradient(135deg,#9d174d,#ec4899)'
 };
-var CAT_EN = {everyday:'Everyday',work:'Work',friends:'Friends',family:'Family',dating:'Dating'};
+var CAT_EN = {everyday:'Everyday',work:'Workplace',friends:'Friends',family:'Family',dating:'Dating'};
+// Order + emoji icon for the All-view rails. Listed in the order we
+// want rails to appear on screen.
+var CAT_RAIL_ORDER = ['everyday','work','friends','family','dating'];
+var CAT_ICON = {everyday:'☕',work:'💼',friends:'👋',family:'👨‍👩‍👧',dating:'💖'};
 
 function _renderOneCard(c) {
   var ri = CONVS.indexOf(c);
