@@ -10278,6 +10278,12 @@ function setupFeedNavigation() {
       // mid-article and it jumped to the next one' bug — the user was
       // scrolling, browser scrolled the page, the swipe handler then
       // saw a 60px+ finger movement and fired goToNextArticle.)
+      // The scrollDelta gate also makes the y / visibleBottom checks
+      // below mostly redundant — if the user wasn't at the edge, the
+      // page would have scrolled and we'd already have aborted — but
+      // they're kept so a hardware that doesn't actually scroll (e.g.
+      // an article shorter than the viewport) still requires the
+      // user to be in the right spot.
       var endScrollY  = window.scrollY || document.documentElement.scrollTop || 0;
       var scrollDelta = Math.abs(endScrollY - startScrollY);
       if (scrollDelta > 8) return;
@@ -10286,7 +10292,9 @@ function setupFeedNavigation() {
       if (Math.abs(dx) > Math.abs(dy) * 0.5) return;
       if (Math.abs(dy) < 80) return;
 
-      var y = endScrollY;
+      // Math.max guards against iOS rubber-band overscroll, which can
+      // briefly report a negative scrollY at the top of the page.
+      var y = Math.max(0, endScrollY);
       var pageH = document.documentElement.scrollHeight || 1;
       var visibleBottom = y + window.innerHeight;
       if (dy > 0) {
@@ -10295,10 +10303,13 @@ function setupFeedNavigation() {
         // of scrollHeight to forgive sub-pixel rounding on mobile.
         if (visibleBottom >= pageH - 4) goToNextArticle('forward');
       } else {
-        // Downward swipe → previous article. Symmetric — only fire at
-        // the very top (was y < 100, which let a casual pull-down mid-
-        // article eat the article).
-        if (y <= 4) goToPrevArticle();
+        // Downward swipe → previous article. Allow a small near-top
+        // window (≤80px) — the scrollDelta gate above already vetoes
+        // any swipe where the page actually scrolled, so this is the
+        // 'reader is somewhere near the top and intends to go back'
+        // case (sub-pixel rounding, slight overscroll bounce, short
+        // articles whose entire body fits in the viewport).
+        if (y <= 80) goToPrevArticle();
       }
     }, { passive: true });
   }
