@@ -183,6 +183,34 @@
 .dp-keyword{display:inline-block;padding:6px 12px;border-radius:8px;background:#f0f5ff;font-size:12px;font-weight:600;color:#2563eb;cursor:pointer;transition:all .12s;border:none;}
 .dp-keyword:hover{background:#dbeafe;}
 
+/* ── Practice tab drills ── */
+.dp-pr-sub{font-size:13px;color:#64748b;margin:-6px 0 12px;line-height:1.5;}
+.dp-pr-empty{font-size:13px;color:#94a3b8;padding:8px 0;}
+.dp-pr-progress{font-size:11px;font-weight:700;color:#64748b;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px;}
+.dp-pr-done{font-size:15px;font-weight:800;color:#15803d;margin-bottom:12px;}
+.dp-pr-start{width:100%;padding:11px 16px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .12s;}
+.dp-pr-start:hover{background:#1d4ed8;}
+/* Expression Match */
+.dp-pr-em-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px;}
+.dp-pr-em-col{display:flex;flex-direction:column;gap:8px;}
+.dp-pr-pill{padding:10px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#0f172a;cursor:pointer;font-family:inherit;text-align:left;transition:background .12s,border-color .12s,opacity .12s;line-height:1.4;font-weight:600;}
+.dp-pr-pill:hover:not(:disabled){background:#eff6ff;border-color:#bfdbfe;}
+.dp-pr-pill.sel{background:#dbeafe;border-color:#2563eb;color:#1d4ed8;}
+.dp-pr-pill.wrong{background:#fee2e2;border-color:#ef4444;color:#b91c1c;}
+.dp-pr-pill.locked{background:#dcfce7;border-color:#22c55e;color:#15803d;opacity:.55;cursor:default;}
+/* Vocab in Context + Reply Check share the option list pattern */
+.dp-pr-prompt{font-size:15px;color:#0f172a;line-height:1.65;background:#f8fbff;border:1px solid #dbeafe;border-radius:12px;padding:14px 16px;margin-bottom:14px;font-family:'Noto Sans KR',sans-serif;}
+.dp-pr-mark{background:rgba(251,191,36,.45);padding:1px 4px;border-radius:4px;font-weight:800;}
+.dp-pr-prompt-row{font-size:14px;color:#0f172a;line-height:1.6;background:#f8fbff;border:1px solid #dbeafe;border-radius:12px;padding:12px 14px;margin-bottom:8px;font-family:'Noto Sans KR',sans-serif;}
+.dp-pr-who{font-size:12px;font-weight:700;color:#2563eb;margin-right:4px;}
+.dp-pr-cue{font-size:12px;color:#64748b;margin:8px 0 10px;}
+.dp-pr-opt-list{display:flex;flex-direction:column;gap:8px;}
+.dp-pr-opt{padding:11px 14px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;text-align:left;line-height:1.5;color:#0f172a;transition:background .12s,border-color .12s;}
+.dp-pr-opt:hover:not(:disabled){background:#f8fbff;border-color:#bfdbfe;}
+.dp-pr-opt.correct{background:#dcfce7;border-color:#22c55e;color:#15803d;font-weight:700;}
+.dp-pr-opt.wrong{background:#fee2e2;border-color:#ef4444;color:#b91c1c;font-weight:700;}
+.dp-pr-opt:disabled{cursor:default;}
+
 /* ── Character Avatar ── */
 .kh-char-av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;flex-shrink:0;overflow:hidden;}
 .kh-char-av img{width:100%;height:100%;object-fit:cover;display:block;}
@@ -926,10 +954,10 @@ async function openDetail(idx) {
         +(initKeyExprCard ? '<div class="dp-keyexpr-card" data-study="keyexpr"><div class="dp-study-card-title" style="color:#92400e">Key Expressions</div>'+initKeyExprs+'</div>' : '')
         +'<div class="dp-study-card" data-study="vocab"><div class="dp-study-card-title">'+_IC.book+' Vocabulary</div><div class="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
         +(grammar ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' Grammar</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
-        +(mission ? '<div class="dp-study-card" data-study="practice"><div class="dp-study-card-title">'+_IC.target+' Practice</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
-        // Listening quiz lives in the Practice tab so the tab is never
-        // empty even when an author hasn't filled in mission tasks.
-        +'<div class="dp-study-card" data-study="practice"><div class="dp-study-card-title">Listening Quiz</div><div id="dp-listening-quiz"><button onclick="startConvListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div></div>'
+        // Practice tab — three lightweight comprehension drills focused
+        // on expressions, vocab-in-context, and dialogue flow. Speaking
+        // drills + the deeper 4-step flow live in the Study Room.
+        + _convPracticeCardsHTML(c)
       +'</div>'
     +'</div>';
   // Default view = the conversation itself (chat bubbles). The
@@ -987,8 +1015,7 @@ function renderStudyNotes(c) {
     (keyExprHtml ? '<div class="dp-keyexpr-card" data-study="keyexpr"><div class="dp-study-card-title" style="color:#92400e">Key Expressions</div>'+keyExprHtml+'</div>' : '')
     +'<div class="dp-study-card" data-study="vocab"><div class="dp-study-card-title">'+_IC.book+' Vocabulary'+addVocabBtn+'</div><div class="dp-vocab-list" id="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
     +(grammar||isAdm ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' Grammar'+addGrammarBtn+'</div><div class="dp-grammar-list" id="dp-grammar-list">'+(grammar||'')+'</div></div>' : '')
-    +(mission ? '<div class="dp-study-card" data-study="practice"><div class="dp-study-card-title">'+_IC.target+' Practice</div><div class="dp-grammar-list">'+mission+'</div></div>' : '')
-    +'<div class="dp-study-card" data-study="practice"><div class="dp-study-card-title">Listening Quiz</div><div id="dp-listening-quiz"><button onclick="startConvListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div></div>'
+    + _convPracticeCardsHTML(c)
     +'<div style="height:80px"></div>';
 }
 
@@ -1083,34 +1110,284 @@ async function convAddGrammar() {
 }
 
 // ── Listening Quiz for Conversations ──
-function startConvListeningQuiz() {
-  var c = window._currentConv;
-  if (!c || !c.vocab || !c.vocab.length) { toast('No vocab data for quiz'); return; }
-  var el = document.getElementById('dp-listening-quiz');
-  if (!el) return;
-  var items = c.vocab.slice(0,5);
-  var qi = 0;
-  function renderQ() {
-    if (qi >= items.length) {
-      el.innerHTML = '<div style="text-align:center;padding:16px"><div style="font-size:20px;font-weight:800;color:#16a34a;margin-bottom:6px">Quiz Complete!</div><div style="font-size:13px;color:#64748b">Great job practicing your listening!</div></div>';
-      return;
-    }
-    var v = items[qi];
-    var opts = items.map(function(x){return x.en;}).sort(function(){return Math.random()-.5;}).slice(0,3);
-    if (opts.indexOf(v.en)<0) opts[Math.floor(Math.random()*3)] = v.en;
-    el.innerHTML = '<div style="text-align:center;margin-bottom:12px"><div style="font-size:12px;color:#64748b;margin-bottom:8px">Listen and choose the correct meaning ('+(qi+1)+'/'+items.length+')</div>'
-      +'<button onclick="if(typeof ttsSpeak===\'function\')ttsSpeak(\''+v.ko.replace(/'/g,"\\'")+'\')" style="padding:12px 24px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;font-size:16px;cursor:pointer;font-family:inherit">🔊 Play</button></div>'
-      +'<div style="display:flex;flex-direction:column;gap:6px">'+opts.map(function(o){
-        return '<button onclick="checkListenAns(this,\''+o.replace(/'/g,"\\'")+'\',\''+v.en.replace(/'/g,"\\'")+'\','+qi+')" style="padding:10px 14px;background:#fafbfc;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;cursor:pointer;font-family:inherit;text-align:left">'+o+'</button>';
-      }).join('')+'</div>';
+// ═══════════════════════════════════════════════════════════════
+// PRACTICE TAB — three light comprehension drills
+//   1) Expression Match     — pair Korean key_expressions ↔ English
+//   2) Vocab in Context     — pick the meaning of a vocab word as it
+//                             appeared inside a real dialogue line
+//   3) Reply Check          — pick the natural reply to a given line
+// All client-side, no Claude calls. Speaking work + the 4-step deep
+// flow live in the Study Room (openConvStudy).
+// ═══════════════════════════════════════════════════════════════
+
+function _shuffle(arr) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
   }
-  window.checkListenAns = function(btn, picked, correct, idx) {
-    if (picked===correct) { btn.style.background='#dcfce7'; btn.style.borderColor='#22c55e'; btn.style.fontWeight='700'; }
-    else { btn.style.background='#fee2e2'; btn.style.borderColor='#ef4444'; }
-    qi++; setTimeout(renderQ, 800);
-  };
-  renderQ();
+  return a;
 }
+
+// Render the three Practice cards. Each card starts in a "preview"
+// state with a Start button — drills only spin up when the learner
+// actually opens that drill.
+function _convPracticeCardsHTML(c) {
+  var hasExpr  = !!(c && (c.key_expressions || []).length >= 2);
+  var hasVocab = !!(c && (c.vocab || []).filter(function(v){ return v && v.ko && v.en; }).length);
+  var hasReply = !!(c && (c.msgs || []).filter(function(m){ return m && (m.s === 'l' || m.s === 'r'); }).length >= 4);
+
+  function startBtn(label, fn) {
+    return '<button class="dp-pr-start" onclick="' + fn + '()">' + label + '</button>';
+  }
+  function emptyMsg(text) {
+    return '<div class="dp-pr-empty">' + escapeHtml(text) + '</div>';
+  }
+
+  return ''
+    + '<div class="dp-study-card" data-study="practice">'
+    +   '<div class="dp-study-card-title">🔗 Expression Match</div>'
+    +   '<div class="dp-pr-sub">Match each Korean expression to its English meaning.</div>'
+    +   '<div id="dp-pr-em">' + (hasExpr ? startBtn('Start matching', 'startExpressionMatch') : emptyMsg('No key expressions for this conversation.')) + '</div>'
+    + '</div>'
+
+    + '<div class="dp-study-card" data-study="practice">'
+    +   '<div class="dp-study-card-title">📚 Vocab in Context</div>'
+    +   '<div class="dp-pr-sub">Read the dialogue line, pick what the highlighted word means.</div>'
+    +   '<div id="dp-pr-vic">' + (hasVocab ? startBtn('Start drill', 'startVocabInContext') : emptyMsg('No vocabulary for this conversation.')) + '</div>'
+    + '</div>'
+
+    + '<div class="dp-study-card" data-study="practice">'
+    +   '<div class="dp-study-card-title">💬 Reply Check</div>'
+    +   '<div class="dp-pr-sub">Choose the natural reply to each line.</div>'
+    +   '<div id="dp-pr-rc">' + (hasReply ? startBtn('Start drill', 'startReplyCheck') : emptyMsg('Not enough dialogue lines for this drill.')) + '</div>'
+    + '</div>';
+}
+
+// ── 1) Expression Match ─────────────────────────────────────
+// Two columns of pills (Korean / English). Tap one from each side;
+// correct pair locks in green and is removed, wrong pair flashes red
+// and clears the selection. Finishes when every pair is locked.
+var _emState = null;
+function startExpressionMatch() {
+  var c = window._currentConv; if (!c) return;
+  var pairs = (c.key_expressions || []).filter(function(e){ return e && e.ko && e.en; }).slice(0, 5);
+  if (pairs.length < 2) {
+    document.getElementById('dp-pr-em').innerHTML = '<div class="dp-pr-empty">Need at least 2 key expressions.</div>';
+    return;
+  }
+  _emState = {
+    pairs: pairs,
+    leftSel: -1, rightSel: -1,
+    leftOrder: _shuffle(pairs.map(function(_, i){ return i; })),
+    rightOrder: _shuffle(pairs.map(function(_, i){ return i; })),
+    locked: {} // index → true once that pair is matched
+  };
+  _emRender();
+}
+function _emRender() {
+  var s = _emState; if (!s) return;
+  var leftHTML = s.leftOrder.map(function(i, slot) {
+    var locked = s.locked[i];
+    var sel = (s.leftSel === slot);
+    var cls = 'dp-pr-pill' + (locked ? ' locked' : sel ? ' sel' : '');
+    return '<button class="' + cls + '" data-slot="' + slot + '" data-idx="' + i + '" onclick="_emPick(\'l\',' + slot + ')"' + (locked ? ' disabled' : '') + '>'
+      + escapeHtml(s.pairs[i].ko) + '</button>';
+  }).join('');
+  var rightHTML = s.rightOrder.map(function(i, slot) {
+    var locked = s.locked[i];
+    var sel = (s.rightSel === slot);
+    var cls = 'dp-pr-pill' + (locked ? ' locked' : sel ? ' sel' : '');
+    return '<button class="' + cls + '" data-slot="' + slot + '" data-idx="' + i + '" onclick="_emPick(\'r\',' + slot + ')"' + (locked ? ' disabled' : '') + '>'
+      + escapeHtml(s.pairs[i].en) + '</button>';
+  }).join('');
+  var done = Object.keys(s.locked).length;
+  var total = s.pairs.length;
+  var doneBanner = (done === total)
+    ? '<div class="dp-pr-done">All matched! 🎉</div>'
+    : '<div class="dp-pr-progress">' + done + ' / ' + total + ' matched</div>';
+  document.getElementById('dp-pr-em').innerHTML =
+      doneBanner
+    + '<div class="dp-pr-em-grid">'
+    +   '<div class="dp-pr-em-col">' + leftHTML + '</div>'
+    +   '<div class="dp-pr-em-col">' + rightHTML + '</div>'
+    + '</div>'
+    + (done === total ? '<button class="dp-pr-start" onclick="startExpressionMatch()">Play again</button>' : '');
+}
+window._emPick = function(side, slot) {
+  var s = _emState; if (!s) return;
+  if (side === 'l') s.leftSel = (s.leftSel === slot ? -1 : slot);
+  else s.rightSel = (s.rightSel === slot ? -1 : slot);
+  if (s.leftSel >= 0 && s.rightSel >= 0) {
+    var li = s.leftOrder[s.leftSel];
+    var ri = s.rightOrder[s.rightSel];
+    if (li === ri) {
+      s.locked[li] = true;
+      s.leftSel = -1; s.rightSel = -1;
+      _emRender();
+    } else {
+      // Wrong pair → flash red briefly, then clear selections.
+      _emRender();
+      var wrongL = document.querySelector('#dp-pr-em .dp-pr-em-col:first-child .dp-pr-pill[data-slot="' + slot + '"]');
+      // We don't know the actual wrong button after re-render, just flash
+      // both selected pills via a new render with .wrong class.
+      var board = document.getElementById('dp-pr-em');
+      if (board) {
+        var pills = board.querySelectorAll('.dp-pr-pill.sel');
+        pills.forEach(function(p){ p.classList.add('wrong'); });
+      }
+      setTimeout(function(){
+        s.leftSel = -1; s.rightSel = -1;
+        _emRender();
+      }, 600);
+    }
+  } else {
+    _emRender();
+  }
+};
+
+// ── 2) Vocab in Context ─────────────────────────────────────
+// Walk through up to 5 vocab words. For each: find a real dialogue
+// line that contains the word, highlight it, ask for the meaning.
+// Distractors come from other vocab in the same conversation.
+var _vicState = null;
+function startVocabInContext() {
+  var c = window._currentConv; if (!c) return;
+  var vocab = (c.vocab || []).filter(function(v){ return v && v.ko && v.en; });
+  if (!vocab.length) {
+    document.getElementById('dp-pr-vic').innerHTML = '<div class="dp-pr-empty">No vocabulary available.</div>';
+    return;
+  }
+  // Build the round list — prefer vocab words that actually appear in
+  // the dialogue (so the highlight isn't a lie). Fallback: use the
+  // word itself as the prompt sentence.
+  var msgs = (c.msgs || []).filter(function(m){ return m && m.txt && (m.s === 'l' || m.s === 'r'); });
+  var rounds = vocab.slice(0, 8).map(function(v) {
+    var sentence = '';
+    for (var i = 0; i < msgs.length; i++) {
+      if (msgs[i].txt.indexOf(v.ko) !== -1) { sentence = msgs[i].txt; break; }
+    }
+    return { v: v, sentence: sentence };
+  }).filter(function(r){ return r.sentence; });
+  // If nothing matched, fall back to "isolated" prompts so the drill
+  // still has something to show.
+  if (!rounds.length) {
+    rounds = vocab.slice(0, 5).map(function(v){ return { v: v, sentence: v.ko }; });
+  }
+  rounds = rounds.slice(0, 5);
+  _vicState = { rounds: rounds, idx: 0, correct: 0, allEn: vocab.map(function(v){ return v.en; }) };
+  _vicRender();
+}
+function _vicRender() {
+  var s = _vicState; if (!s) return;
+  var box = document.getElementById('dp-pr-vic'); if (!box) return;
+  if (s.idx >= s.rounds.length) {
+    box.innerHTML = '<div class="dp-pr-done">Done — ' + s.correct + ' / ' + s.rounds.length + ' correct</div>'
+      + '<button class="dp-pr-start" onclick="startVocabInContext()">Try again</button>';
+    return;
+  }
+  var r = s.rounds[s.idx];
+  var sentence = escapeHtml(r.sentence).replace(
+    escapeHtml(r.v.ko),
+    '<mark class="dp-pr-mark">' + escapeHtml(r.v.ko) + '</mark>'
+  );
+  // Distractors: pick 2 other meanings, fall back to filler if fewer
+  // unique ones exist.
+  var pool = s.allEn.filter(function(en){ return en !== r.v.en; });
+  var distractors = _shuffle(pool).slice(0, 2);
+  var opts = _shuffle([r.v.en].concat(distractors));
+  var optsHTML = opts.map(function(opt) {
+    return '<button class="dp-pr-opt" onclick="_vicPick(this, ' + (opt === r.v.en ? '1' : '0') + ')">' + escapeHtml(opt) + '</button>';
+  }).join('');
+  box.innerHTML =
+      '<div class="dp-pr-progress">' + (s.idx + 1) + ' / ' + s.rounds.length + '</div>'
+    + '<div class="dp-pr-prompt">' + sentence + '</div>'
+    + '<div class="dp-pr-opt-list">' + optsHTML + '</div>';
+}
+window._vicPick = function(btn, isCorrect) {
+  var s = _vicState; if (!s) return;
+  var box = document.getElementById('dp-pr-vic');
+  if (!box) return;
+  box.querySelectorAll('.dp-pr-opt').forEach(function(b){ b.disabled = true; });
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  if (!isCorrect) {
+    // Also mark the correct one so the learner sees what it was.
+    var r = s.rounds[s.idx];
+    box.querySelectorAll('.dp-pr-opt').forEach(function(b) {
+      if (b.textContent === r.v.en) b.classList.add('correct');
+    });
+  } else {
+    s.correct++;
+  }
+  setTimeout(function() { s.idx++; _vicRender(); }, 900);
+};
+
+// ── 3) Reply Check ──────────────────────────────────────────
+// Look for L→R and R→L adjacency in msgs, build a pool of (prompt,
+// reply) pairs, then quiz up to 3 of them. Distractors come from the
+// other-side replies in the same dialogue (cheap, no Claude needed).
+var _rcState = null;
+function startReplyCheck() {
+  var c = window._currentConv; if (!c) return;
+  var msgs = (c.msgs || []).filter(function(m){ return m && m.txt && (m.s === 'l' || m.s === 'r'); });
+  // Build adjacency pairs where speaker actually changes turn.
+  var pairs = [];
+  for (var i = 0; i < msgs.length - 1; i++) {
+    if (msgs[i].s !== msgs[i+1].s) pairs.push({ prompt: msgs[i], reply: msgs[i+1] });
+  }
+  if (pairs.length < 2) {
+    document.getElementById('dp-pr-rc').innerHTML = '<div class="dp-pr-empty">Not enough dialogue turns.</div>';
+    return;
+  }
+  // Pool of all replies (used to source distractors).
+  var allReplies = msgs.map(function(m){ return m.txt; });
+  var rounds = _shuffle(pairs).slice(0, 3);
+  _rcState = { rounds: rounds, idx: 0, correct: 0, allReplies: allReplies };
+  _rcRender();
+}
+function _rcRender() {
+  var s = _rcState; if (!s) return;
+  var box = document.getElementById('dp-pr-rc'); if (!box) return;
+  if (s.idx >= s.rounds.length) {
+    box.innerHTML = '<div class="dp-pr-done">Done — ' + s.correct + ' / ' + s.rounds.length + ' correct</div>'
+      + '<button class="dp-pr-start" onclick="startReplyCheck()">Try again</button>';
+    return;
+  }
+  var r = s.rounds[s.idx];
+  var pool = s.allReplies.filter(function(t){ return t !== r.reply.txt && t !== r.prompt.txt; });
+  var distractors = _shuffle(pool).slice(0, 2);
+  // If we don't have 2 distinct distractors, pad with first-line
+  // fragments so we always show 3 options.
+  while (distractors.length < 2 && pool.length) distractors.push(pool[distractors.length % pool.length]);
+  var opts = _shuffle([r.reply.txt].concat(distractors));
+  var optsHTML = opts.map(function(opt) {
+    return '<button class="dp-pr-opt" onclick="_rcPick(this, ' + (opt === r.reply.txt ? '1' : '0') + ')">' + escapeHtml(opt) + '</button>';
+  }).join('');
+  box.innerHTML =
+      '<div class="dp-pr-progress">' + (s.idx + 1) + ' / ' + s.rounds.length + '</div>'
+    + '<div class="dp-pr-prompt-row">'
+    +   '<span class="dp-pr-who">' + escapeHtml(r.prompt.who || (r.prompt.s === 'l' ? 'A' : 'B')) + ':</span> '
+    +   '<span class="dp-pr-prompt-txt">' + escapeHtml(r.prompt.txt) + '</span>'
+    + '</div>'
+    + '<div class="dp-pr-cue">Pick the natural reply:</div>'
+    + '<div class="dp-pr-opt-list">' + optsHTML + '</div>';
+}
+window._rcPick = function(btn, isCorrect) {
+  var s = _rcState; if (!s) return;
+  var box = document.getElementById('dp-pr-rc');
+  if (!box) return;
+  box.querySelectorAll('.dp-pr-opt').forEach(function(b){ b.disabled = true; });
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  if (!isCorrect) {
+    var r = s.rounds[s.idx];
+    box.querySelectorAll('.dp-pr-opt').forEach(function(b) {
+      if (b.textContent === r.reply.txt) b.classList.add('correct');
+    });
+  } else {
+    s.correct++;
+  }
+  setTimeout(function() { s.idx++; _rcRender(); }, 1100);
+};
 
 function closeDetail() {
   document.getElementById('detail-overlay').classList.add('hidden');
