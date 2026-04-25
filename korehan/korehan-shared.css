@@ -3461,6 +3461,11 @@ body.kh-reading-page .mobile-bottom-nav { display: none !important; }
 body.kh-reading-page #kh-footer,
 body.kh-reading-page .kh-footer { display: none !important; }
 body.kh-reading-page #kh-daily-mission { display: none !important; }
+/* First Journey resume FAB — same logic as the daily mission widget:
+   should not float on top of the article reader's right-side action
+   sidebar (Save / Talk / Study). */
+body.kh-reading-page #fj-resume,
+body.kh-reading-page #fj-widget { display: none !important; }
 
 /* Top site header is redundant with the floating back button and
    eats 60–80px of precious vertical space on the reader. Hide on

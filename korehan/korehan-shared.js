@@ -5937,9 +5937,13 @@ async function toggleTranslate() {
     translateActive = true;
     _translateMarkActive(btn);
 
+    // Shared cache write-back so the next reader doesn't burn another
+    // Claude call. Original code referenced an undefined `translations`
+    // variable, so the upsert silently threw and every user re-paid for
+    // the same article. Use the parsed bodyTranslations array.
     try {
-      if (translations.length) {
-        upsertArticleCacheRow(id, { translation: JSON.stringify({ texts: translations }) });
+      if (bodyTranslations && bodyTranslations.length) {
+        upsertArticleCacheRow(id, { translation: JSON.stringify({ texts: bodyTranslations }) });
       }
     } catch(e) {}
   } catch(e) {
@@ -10129,6 +10133,24 @@ function _khSpaLoadArticle(nextId, direction) {
   var leaveClass  = direction === 'back' ? 'kh-feed-leaving-back'  : 'kh-feed-leaving';
   var enterClass  = direction === 'back' ? 'kh-feed-entering-back' : 'kh-feed-entering';
   document.body.classList.add(leaveClass);
+  // Reset the translate toggle. Without this, translateActive carries
+  // over to the new article — but its zones have no dataset.original
+  // yet, so the next click on the globe button silently fails to revert
+  // and the user is stuck on stale English. Clearing here forces a
+  // fresh "click to translate" state on the new article.
+  try {
+    if (typeof translateActive !== 'undefined') translateActive = false;
+    if (typeof translateCache !== 'undefined') {
+      // Don't drop other cached translations — only the active flag matters.
+    }
+    var tBtn = document.getElementById('translate-btn');
+    if (tBtn) {
+      tBtn.classList.remove('active');
+      tBtn.classList.remove('loading');
+      tBtn.disabled = false;
+      tBtn.title = 'Translate';
+    }
+  } catch(e) {}
   setTimeout(function() {
     var newUrl = 'korehan-article.html?id=' + encodeURIComponent(nextId);
     try { history.replaceState({ articleId: nextId }, '', newUrl); } catch(e) {}
