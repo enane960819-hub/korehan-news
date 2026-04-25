@@ -121,7 +121,7 @@
 .dp-msg-row.left .dp-bubble{background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-bottom-left-radius:6px;box-shadow:0 4px 12px rgba(15,23,42,.06);}
 .dp-msg-row.right .dp-bubble{background:#2563eb;color:#fff;border-bottom-right-radius:6px;}
 .dp-bubble-en{font-size:12px;color:#64748b;padding:4px 15px 0;line-height:1.5;display:none;}
-.dp-msg-row.right .dp-bubble-en{text-align:right;color:rgba(255,255,255,.55);}
+.dp-msg-row.right .dp-bubble-en{text-align:right;color:#64748b;}
 .dp-bubble-en.show{display:block;}
 .dp-time{font-size:10px;color:#94a3b8;margin-top:4px;padding:0 3px;}
 .dp-msg-row.right .dp-time{text-align:right;}
@@ -210,6 +210,13 @@
 .dp-pr-opt.correct{background:#dcfce7;border-color:#22c55e;color:#15803d;font-weight:700;}
 .dp-pr-opt.wrong{background:#fee2e2;border-color:#ef4444;color:#b91c1c;font-weight:700;}
 .dp-pr-opt:disabled{cursor:default;}
+/* Study Room deep-dive CTA */
+.dp-pr-deep{background:linear-gradient(135deg,#1d4ed8 0%,#3b82f6 100%)!important;border:none!important;color:#fff;}
+.dp-pr-deep .dp-pr-deep-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.7);margin-bottom:6px;}
+.dp-pr-deep .dp-pr-deep-title{font-size:17px;font-weight:900;color:#fff;margin-bottom:6px;font-family:'Playfair Display',serif;}
+.dp-pr-deep .dp-pr-deep-sub{font-size:13px;color:rgba(255,255,255,.8);line-height:1.5;margin-bottom:14px;}
+.dp-pr-deep .dp-pr-deep-btn{width:100%;padding:11px 16px;background:#fff;color:#1d4ed8;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;transition:transform .12s;}
+.dp-pr-deep .dp-pr-deep-btn:hover{transform:translateY(-1px);}
 
 /* ── Character Avatar ── */
 .kh-char-av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;flex-shrink:0;overflow:hidden;}
@@ -1161,7 +1168,26 @@ function _convPracticeCardsHTML(c) {
     +   '<div class="dp-study-card-title">💬 Reply Check</div>'
     +   '<div class="dp-pr-sub">Choose the natural reply to each line.</div>'
     +   '<div id="dp-pr-rc">' + (hasReply ? startBtn('Start drill', 'startReplyCheck') : emptyMsg('Not enough dialogue lines for this drill.')) + '</div>'
+    + '</div>'
+
+    // Deeper study CTA — mirrors the article reader's Review→Study Room
+    // pattern. Opens the conv-study modal in Study Room and auto-loads
+    // this conversation via mode=conversation&id=<id>.
+    + '<div class="dp-study-card dp-pr-deep" data-study="practice">'
+    +   '<div class="dp-pr-deep-eyebrow">Want more depth?</div>'
+    +   '<div class="dp-pr-deep-title">Study this in the Study Room</div>'
+    +   '<div class="dp-pr-deep-sub">A 4-step guided flow — dialogue + flashcards + choose-response + sentence build.</div>'
+    +   '<button class="dp-pr-deep-btn" onclick="goToStudyRoomConv()">Open in Study Room →</button>'
     + '</div>';
+}
+
+function goToStudyRoomConv() {
+  var c = window._currentConv;
+  if (!c || !c._id) {
+    if (typeof toast === 'function') toast('Conversation not loaded yet — try again in a moment.');
+    return;
+  }
+  location.href = 'korehan-study-room.html?mode=conversation&id=' + encodeURIComponent(c._id);
 }
 
 // ── 1) Expression Match ─────────────────────────────────────

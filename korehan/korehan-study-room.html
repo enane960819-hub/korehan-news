@@ -3689,6 +3689,36 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     setTimeout(waitAndOpenArticleStudy, 400);
   }
+
+  // Conversation reader → "Open in Study Room" deep-dive shortcut.
+  // mode=conversation&id=<convId> → wait for session, open conv-study
+  // modal, then auto-select the conversation once the list lands.
+  if (_urlParams.get('mode') === 'conversation' && _urlParams.get('id')) {
+    var _csTargetId = _urlParams.get('id');
+    function waitAndOpenConvStudy() {
+      if (!(window._sessionChecked || waited >= 30)) {
+        setTimeout(waitAndOpenConvStudy, 120);
+        return;
+      }
+      if (!supaUser) { openAuthModal('signin'); return; }
+      openConvStudy();
+      var listTries = 0;
+      function waitForConvListThenSelect() {
+        listTries++;
+        if (typeof _csConvs !== 'undefined' && _csConvs.length) {
+          var idx = -1;
+          for (var i = 0; i < _csConvs.length; i++) {
+            if (String(_csConvs[i].id) === String(_csTargetId)) { idx = i; break; }
+          }
+          if (idx >= 0) _csStartConv(idx);
+        } else if (listTries < 50) {
+          setTimeout(waitForConvListThenSelect, 200);
+        }
+      }
+      setTimeout(waitForConvListThenSelect, 300);
+    }
+    setTimeout(waitAndOpenConvStudy, 400);
+  }
 });
 
 function _mapPicturePrompt(x) {
