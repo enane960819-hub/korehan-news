@@ -9394,6 +9394,249 @@ function refreshSubmitBanner() {
   }
 }
 
+// ── Submit-all helpers (shared by review modal + actual submit) ──────
+// Friendly metadata so the review modal can show icons/labels and route
+// "Continue editing" back to the right activity opener.
+var _SUBMIT_TYPE_INFO = {
+  'topic_writing':       { label: 'Topic Writing',     icon: '📝', open: 'openWritingModal' },
+  'writing':             { label: 'Writing',           icon: '✍️', open: 'openWritingModal' },
+  'diary':               { label: 'Diary',             icon: '📓', open: 'openWritingModal' },
+  'reading':             { label: 'Reading & Writing', icon: '📖', open: 'openWritingModal' },
+  'grammar':             { label: 'Grammar Focus',     icon: '📚', open: 'openGrammarFocusModal' },
+  'picture_description': { label: 'Picture Desc.',     icon: '🖼️', open: 'openPictureDescription' },
+  'sentence_writing':    { label: 'Sentence Writing',  icon: '🎧', open: 'openSentenceWriting' },
+  'sentence':            { label: 'Sentence Writing',  icon: '🎧', open: 'openSentenceWriting' },
+  'dictation':           { label: 'Dictation',         icon: '🎧', open: 'openDictationModal' },
+  'article_study':       { label: 'Article Study',     icon: '📰', open: 'openArticleStudy' },
+  'expressions':         { label: 'Key Expressions',   icon: '💬', open: 'openKeyExpressionsModal' }
+};
+function _submitTypeInfo(type) { return _SUBMIT_TYPE_INFO[type] || { label: type, icon: '📄', open: null }; }
+
+// Flatten the per-type drafts dict into one list, including empties so the
+// review modal can show "blank — fill in" entries instead of silently
+// hiding them like submitAllWritingsToday used to.
+function _flattenDrafts() {
+  var all = getAllDrafts();
+  var out = [];
+  Object.keys(all).forEach(function(type) {
+    (all[type] || []).forEach(function(item, idx) {
+      out.push({
+        type: type,
+        contextKey: item.context_key || type,
+        idx: idx,
+        contentId: item.content_id || null,
+        contentTitle: item.content_title || '',
+        topicKo: item.topic_ko || '',
+        topicEn: item.topic_en || '',
+        text: item.text || '',
+        charCount: (item.text || '').trim().length,
+        writingMode: item.writing_mode || type
+      });
+    });
+  });
+  return out;
+}
+
+// Mutate one draft's text in localStorage. Used by the review modal's
+// inline textarea so users don't have to reopen the original activity
+// just to add a few characters.
+function _updateDraftText(type, contextKey, newText) {
+  try {
+    var all = JSON.parse(localStorage.getItem(_writingDraftKey()) || '{}');
+    var arr = all[type] || [];
+    for (var i = 0; i < arr.length; i++) {
+      if ((arr[i].context_key || type) === contextKey) {
+        arr[i].text = newText;
+        arr[i].savedAt = new Date().toISOString();
+        all[type] = arr;
+        localStorage.setItem(_writingDraftKey(), JSON.stringify(all));
+        return true;
+      }
+    }
+  } catch(e) { console.warn('updateDraftText failed', e); }
+  return false;
+}
+
+// Remove a single draft entry (by type + contextKey) from localStorage.
+function _removeDraft(type, contextKey) {
+  try {
+    var all = JSON.parse(localStorage.getItem(_writingDraftKey()) || '{}');
+    if (!all[type]) return;
+    all[type] = all[type].filter(function(d) { return (d.context_key || type) !== contextKey; });
+    if (!all[type].length) delete all[type];
+    localStorage.setItem(_writingDraftKey(), JSON.stringify(all));
+    refreshSubmitBanner();
+  } catch(e) { console.warn('removeDraft failed', e); }
+}
+
+// Show a review modal listing every draft with char-count status, inline
+// edit, remove, and (for too-short ones) a "Continue in activity" shortcut
+// that closes this modal and opens the source activity. Resolves true if
+// the user confirms submit, false if they cancel.
+function _showSubmitReview(limit) {
+  return new Promise(function(resolve) {
+    var existing = document.getElementById('submit-review-overlay');
+    if (existing) existing.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'submit-review-overlay';
+    overlay.setAttribute('style',
+      'position:fixed;inset:0;z-index:2400;background:rgba(5,12,28,.78);'
+      + 'display:flex;align-items:flex-end;justify-content:center;'
+      + 'animation:fadeIn .15s ease;'
+    );
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) close(false); });
+
+    var panel = document.createElement('div');
+    panel.setAttribute('style',
+      'background:linear-gradient(160deg,#0d1f4a 0%,#152d6e 100%);'
+      + 'color:#fff;width:100%;max-width:640px;max-height:92dvh;'
+      + 'border-radius:20px 20px 0 0;display:flex;flex-direction:column;'
+      + 'box-shadow:0 -16px 60px rgba(0,0,0,.5);font-family:inherit;'
+    );
+
+    function escapeText(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function render() {
+      var drafts = _flattenDrafts();
+      var min = limit.min;
+      var tooShort = drafts.filter(function(d){ return d.charCount < min; });
+      var ready = drafts.length - tooShort.length;
+
+      var rowsHtml = drafts.map(function(d, i) {
+        var info = _submitTypeInfo(d.type);
+        var shortBy = Math.max(0, min - d.charCount);
+        var ok = shortBy === 0 && d.charCount > 0;
+        var titleText = d.topicKo || d.contentTitle || info.label;
+        var statusHtml = ok
+          ? '<span style="color:#34d399;font-weight:800">✓ Ready</span>'
+          : (d.charCount === 0
+              ? '<span style="color:#f87171;font-weight:800">⚠ Empty — write at least ' + min + ' chars</span>'
+              : '<span style="color:#fbbf24;font-weight:800">⚠ ' + shortBy + ' more chars needed</span>');
+        return '<div data-row-idx="' + i + '" style="background:rgba(255,255,255,.05);border:1px solid ' + (ok ? 'rgba(52,211,153,.25)' : 'rgba(251,191,36,.3)') + ';border-radius:14px;padding:12px 14px;margin-bottom:10px">'
+          + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">'
+          +   '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">'
+          +     '<span style="font-size:18px;flex-shrink:0">' + info.icon + '</span>'
+          +     '<div style="min-width:0">'
+          +       '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.06em">' + escapeText(info.label) + '</div>'
+          +       '<div style="font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escapeText(titleText) + '</div>'
+          +     '</div>'
+          +   '</div>'
+          +   '<button data-act="remove" data-i="' + i + '" aria-label="Remove draft" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#fca5a5;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:14px;font-weight:800;flex-shrink:0;font-family:inherit">✕</button>'
+          + '</div>'
+          + '<textarea data-act="edit" data-i="' + i + '" rows="3" placeholder="Write at least ' + min + ' characters…" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);color:#fff;font-family:\'Noto Sans KR\',sans-serif;font-size:13px;line-height:1.6;resize:vertical;outline:none;box-sizing:border-box">' + escapeText(d.text) + '</textarea>'
+          + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;gap:8px;flex-wrap:wrap">'
+          +   '<div style="font-size:11px;color:rgba(255,255,255,.5)">' + d.charCount + ' / ' + min + ' chars</div>'
+          +   '<div style="font-size:11px">' + statusHtml + '</div>'
+          + '</div>'
+          + (info.open && !ok && d.charCount > 0
+              ? '<button data-act="open" data-i="' + i + '" style="margin-top:6px;width:100%;padding:8px;border-radius:8px;border:1px solid rgba(96,165,250,.3);background:rgba(37,99,235,.12);color:#93c5fd;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">↗ Continue in ' + escapeText(info.label) + '</button>'
+              : '')
+          + '</div>';
+      }).join('');
+
+      var header = '<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px;border-bottom:1px solid rgba(255,255,255,.08)">'
+        + '<div>'
+        +   '<div style="font-size:16px;font-weight:900;color:#fff">📩 Submit today\'s work</div>'
+        +   '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:2px">' + ready + ' / ' + drafts.length + ' ready · once per day · feedback within 24h</div>'
+        + '</div>'
+        + '<button data-act="cancel" aria-label="Close" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.7);width:32px;height:32px;border-radius:50%;cursor:pointer;font-family:inherit">✕</button>'
+        + '</div>';
+
+      var body = drafts.length
+        ? '<div style="overflow-y:auto;flex:1;padding:14px 18px">' + rowsHtml + '</div>'
+        : '<div style="padding:40px 20px;text-align:center;color:rgba(255,255,255,.55)"><div style="font-size:32px;margin-bottom:8px">📭</div><div style="font-size:14px;font-weight:700">No drafts saved yet.</div><div style="font-size:12px;margin-top:4px">Complete a writing activity first.</div></div>';
+
+      var blocked = tooShort.length > 0 || drafts.length === 0;
+      var footer = '<div style="display:flex;gap:10px;padding:14px 18px 18px;border-top:1px solid rgba(255,255,255,.08)">'
+        + '<button data-act="cancel" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Cancel</button>'
+        + '<button data-act="submit"' + (blocked ? ' disabled' : '') + ' style="flex:2;padding:12px;border-radius:12px;border:none;background:' + (blocked ? 'rgba(96,165,250,.25);color:rgba(255,255,255,.5);cursor:not-allowed' : '#2563eb;color:#fff;cursor:pointer') + ';font-size:14px;font-weight:800;font-family:inherit">'
+        +   (blocked
+              ? (drafts.length === 0 ? 'Nothing to submit' : 'Submit (' + tooShort.length + ' issue' + (tooShort.length > 1 ? 's' : '') + ')')
+              : 'Submit ' + drafts.length + ' entr' + (drafts.length > 1 ? 'ies' : 'y'))
+        + '</button>'
+        + '</div>';
+
+      panel.innerHTML = header + body + footer;
+    }
+
+    function close(submit) {
+      overlay.remove();
+      resolve(!!submit);
+    }
+
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+    render();
+
+    // Delegated handler — the row HTML re-renders on every edit/remove,
+    // so live event listeners on each button would be re-bound anyway.
+    panel.addEventListener('click', function(e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      var act = btn.getAttribute('data-act');
+      var idx = btn.getAttribute('data-i');
+      if (act === 'cancel') return close(false);
+      if (act === 'submit') return close(true);
+      if (idx == null) return;
+      var drafts = _flattenDrafts();
+      var d = drafts[Number(idx)]; if (!d) return;
+      if (act === 'remove') {
+        _removeDraft(d.type, d.contextKey);
+        render();
+      } else if (act === 'open') {
+        var info = _submitTypeInfo(d.type);
+        close(false);
+        if (info.open && typeof window[info.open] === 'function') {
+          setTimeout(function() { try { window[info.open](); } catch(e) {} }, 50);
+        }
+      }
+    });
+
+    // Keystroke handler on textareas — debounced write so we don't hit
+    // localStorage on every keystroke. Status badges + counters update
+    // immediately for snappy feedback.
+    var liveTimer = null;
+    panel.addEventListener('input', function(e) {
+      if (e.target.tagName !== 'TEXTAREA') return;
+      var idx = Number(e.target.getAttribute('data-i'));
+      var drafts = _flattenDrafts();
+      var d = drafts[idx]; if (!d) return;
+      var text = e.target.value;
+      if (liveTimer) clearTimeout(liveTimer);
+      liveTimer = setTimeout(function() {
+        _updateDraftText(d.type, d.contextKey, text);
+        // Re-render so status badge / submit-button enabled state catch up.
+        var scrollY = panel.querySelector('div[style*="overflow-y"]');
+        var savedScroll = scrollY ? scrollY.scrollTop : 0;
+        render();
+        var newScroll = panel.querySelector('div[style*="overflow-y"]');
+        if (newScroll) newScroll.scrollTop = savedScroll;
+        // Restore focus on the textarea the user was typing in.
+        var ta = panel.querySelector('textarea[data-i="' + idx + '"]');
+        if (ta) {
+          ta.focus();
+          var len = ta.value.length;
+          try { ta.setSelectionRange(len, len); } catch(e) {}
+        }
+      }, 200);
+    });
+
+    // ESC closes
+    var escHandler = function(e) {
+      if (e.key === 'Escape' || e.keyCode === 27) {
+        document.removeEventListener('keydown', escHandler);
+        close(false);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+  });
+}
+
 async function submitAllWritingsToday() {
   if (!supaUser) { openAuthModal('signin'); return; }
   var submitKey = 'kh_submitted_' + kstDateKey() + '_' + supaUser.id;
@@ -9401,11 +9644,8 @@ async function submitAllWritingsToday() {
     showToast('Already submitted today. You can submit once per day (resets at midnight KST).');
     return;
   }
-  var okSubmit = await khConfirm(
-    'Submit today\'s work?',
-    'You can submit once per day (resets at midnight KST). Make sure every writing step is complete before sending.',
-    { okLabel: 'Submit' }
-  );
+  var limit = getWriteCharLimit();
+  var okSubmit = await _showSubmitReview(limit);
   if (!okSubmit) return;
 
   var sb = getSupa(); if (!sb) return;
@@ -9440,11 +9680,16 @@ async function submitAllWritingsToday() {
 
   if (!packageItems.length) { showToast('No work to submit.'); return; }
 
-  // Check minimum character count per level
-  var limit = getWriteCharLimit();
+  // Defence-in-depth: the review modal already gates on this, but if a
+  // draft was edited concurrently in another tab we re-check at submit.
   var tooShort = packageItems.filter(function(p){ return p.word_count < limit.min; });
   if (tooShort.length) {
-    showToast('Writing too short. Minimum ' + limit.min + ' chars per entry. (' + tooShort[0].topic_ko + ': ' + tooShort[0].word_count + ' chars)');
+    var labels = tooShort.map(function(p){
+      var info = _submitTypeInfo(p.type);
+      var name = p.topic_ko || p.content_title || info.label;
+      return name + ' (' + p.word_count + '/' + limit.min + ')';
+    });
+    showToast('Some entries are below ' + limit.min + ' chars: ' + labels.join(' · '));
     return;
   }
 
