@@ -9711,6 +9711,18 @@ async function submitAllWritingsToday() {
       status: 'submitted'
     };
     var r = await sb.from('user_submissions').upsert(rec, {onConflict:'user_id,content_type,study_date,content_id'}).select('id');
+    // Pre-migration fallback: the original CHECK on user_submissions.content_type
+    // only allowed (writing|article_study|conversation|story). Until the
+    // 20260424_user_submissions_daily_package.sql migration lands in
+    // Supabase, 'daily_package' raises 23514 (check_violation). Retry with
+    // 'writing' so the deploy is safe in either order.
+    if (r.error && (r.error.code === '23514' || /content_type_check/.test(r.error.message || ''))) {
+      rec.content_type = 'writing';
+      rec.writing_mode = 'daily_package';
+      r = await sb.from('user_submissions')
+        .upsert(rec, {onConflict:'user_id,content_type,study_date,content_id'})
+        .select('id');
+    }
     if (r.error) throw r.error;
 
     // Trigger consolidated AI feedback for entire package
