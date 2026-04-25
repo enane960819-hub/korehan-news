@@ -3548,12 +3548,12 @@ body.kh-reading-page #kh-comment-drawer #art-comments { display: block; }
   left: 0;
   right: 0;
   bottom: 0;
-  max-height: 85vh;
-  background: #fff;
-  border-radius: 20px 20px 0 0;
+  max-height: 72vh;
+  background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
+  border-radius: 22px 22px 0 0;
   transform: translateY(100%);
   transition: transform .32s cubic-bezier(.22,1,.36,1);
-  box-shadow: 0 -20px 48px rgba(0,0,0,.25);
+  box-shadow: 0 -20px 48px rgba(15,23,42,.18);
   display: flex;
   flex-direction: column;
   pointer-events: auto;
@@ -3562,50 +3562,147 @@ body.kh-reading-page #kh-comment-drawer #art-comments { display: block; }
 #kh-comment-drawer.open .kh-cdr-scrim { background: rgba(5,12,24,.45); pointer-events: auto; }
 #kh-comment-drawer.open .kh-cdr-panel { transform: translateY(0); }
 #kh-comment-drawer .kh-cdr-handle {
-  width: 44px;
-  height: 5px;
+  width: 38px;
+  height: 4px;
   background: #cbd5e1;
   border-radius: 999px;
-  margin: 10px auto 4px;
+  margin: 8px auto 4px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 #kh-comment-drawer .kh-cdr-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 20px 10px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 8px 18px 12px;
+  flex-shrink: 0;
 }
 #kh-comment-drawer .kh-cdr-title {
-  font-size: 15px;
-  font-weight: 900;
+  font-size: 14px;
+  font-weight: 800;
   color: #0f172a;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: -.01em;
+}
+#kh-comment-drawer .kh-cdr-title .kh-cdr-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 999px;
 }
 #kh-comment-drawer .kh-cdr-close {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border: none;
-  background: #f1f5f9;
-  border-radius: 999px;
+  background: transparent;
+  color: #94a3b8;
   font-size: 22px;
   line-height: 1;
-  color: #475569;
   cursor: pointer;
   font-family: inherit;
+  border-radius: 999px;
+  transition: background .15s, color .15s;
 }
-#kh-comment-drawer .kh-cdr-close:hover { background: #e2e8f0; color: #0f172a; }
+#kh-comment-drawer .kh-cdr-close:hover { background: #f1f5f9; color: #334155; }
 #kh-comment-drawer .kh-cdr-body {
   flex: 1;
   overflow-y: auto;
-  padding: 14px 20px 28px;
+  padding: 4px 18px 20px;
   -webkit-overflow-scrolling: touch;
 }
-/* When the drawer has swallowed #art-comments, suppress the now-
-   redundant inline title inside it — the drawer header already says
-   "Comments". */
+/* Tighten the inline comment form when reparented into the drawer:
+   smaller textarea, side-by-side avatar + input, primary Post button
+   stays on the right inside the same row instead of stacked below. */
+#kh-comment-drawer #art-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 #kh-comment-drawer #art-comments .art-comments-title { display: none; }
+#kh-comment-drawer #art-comments .comment-form {
+  margin-bottom: 4px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  box-shadow: 0 1px 2px rgba(15,23,42,.04);
+  transition: border-color .15s, box-shadow .15s;
+}
+#kh-comment-drawer #art-comments .comment-form:focus-within {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(147,197,253,.25);
+}
+#kh-comment-drawer #art-comments .comment-form textarea {
+  flex: 1;
+  min-height: 36px;
+  max-height: 140px;
+  border: none;
+  outline: none;
+  background: transparent;
+  resize: none;
+  font-size: 14px;
+  line-height: 1.5;
+  font-family: inherit;
+  color: #0f172a;
+  padding: 6px 4px;
+}
+#kh-comment-drawer #art-comments .comment-form textarea::placeholder {
+  color: #94a3b8;
+}
+#kh-comment-drawer #art-comments .comment-submit-btn {
+  background: #2255a4;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+  transition: background .15s, opacity .15s, transform .1s;
+}
+#kh-comment-drawer #art-comments .comment-submit-btn:hover { background: #1e40af; }
+#kh-comment-drawer #art-comments .comment-submit-btn:active { transform: scale(.96); }
+#kh-comment-drawer #art-comments .comment-form:not(:focus-within) .comment-submit-btn { opacity: .55; }
+#kh-comment-drawer #art-comments #comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#kh-comment-drawer #art-comments #comments-list > p {
+  text-align: center;
+  font-size: 13px;
+  color: #94a3b8;
+  padding: 24px 0 8px !important;
+  margin: 0;
+}
+#kh-comment-drawer .comment-login-notice {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #475569;
+}
+#kh-comment-drawer .comment-login-notice a {
+  color: #2255a4;
+  font-weight: 700;
+}
 /* Lock body scroll while drawer is open so the sheet feels modal. */
 body.kh-cdr-open { overflow: hidden; }
+/* Hide the floating Vocab Edit Mode pill while the drawer is up — it
+   sits at left:16px / bottom:92px and was overlapping the textarea. */
+body.kh-cdr-open #vocab-admin-bar,
+body.kh-cdr-open #fj-resume,
+body.kh-cdr-open #kh-feed-next-pill { display: none !important; }
 
 /* ── Next-article feed pill + slide-out transition ──────────────── */
 body.kh-reading-page #kh-feed-next-pill {

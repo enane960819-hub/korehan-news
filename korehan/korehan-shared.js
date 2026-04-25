@@ -10022,7 +10022,7 @@ function openCommentDrawer() {
       + '<div class="kh-cdr-panel" role="dialog" aria-label="Comments">'
       +   '<div class="kh-cdr-handle" onclick="closeCommentDrawer()"></div>'
       +   '<div class="kh-cdr-header">'
-      +     '<span class="kh-cdr-title">💬 Comments</span>'
+      +     '<span class="kh-cdr-title"><span>💬 Comments</span><span class="kh-cdr-count" id="kh-cdr-count">0</span></span>'
       +     '<button class="kh-cdr-close" onclick="closeCommentDrawer()" aria-label="Close">&times;</button>'
       +   '</div>'
       +   '<div class="kh-cdr-body" id="kh-comment-drawer-body"></div>'
@@ -10035,6 +10035,27 @@ function openCommentDrawer() {
   var body = document.getElementById('kh-comment-drawer-body');
   var cmt = document.getElementById('art-comments');
   if (cmt && cmt.parentNode !== body) body.appendChild(cmt);
+  // Mirror the inline #comment-count into the drawer header pill so the
+  // user sees a count next to the title. Re-read on every open since
+  // loadComments may have updated it since the last drawer view.
+  var inlineCount = document.getElementById('comment-count');
+  var drawerCount = document.getElementById('kh-cdr-count');
+  if (drawerCount) {
+    var raw = (inlineCount && inlineCount.textContent || '').replace(/[^0-9]/g, '');
+    drawerCount.textContent = raw || '0';
+  }
+  // Auto-grow the textarea — single-line until the user types more, then
+  // expands up to the CSS max-height. Avoids the 'big empty box' look.
+  var ta = document.getElementById('comment-input');
+  if (ta && !ta.dataset.autogrowHooked) {
+    ta.dataset.autogrowHooked = '1';
+    var grow = function() {
+      ta.style.height = 'auto';
+      ta.style.height = Math.min(140, ta.scrollHeight) + 'px';
+    };
+    ta.addEventListener('input', grow);
+    requestAnimationFrame(grow);
+  }
   // rAF so the CSS transition fires from the off-screen state.
   requestAnimationFrame(function() { drawer.classList.add('open'); });
   document.body.classList.add('kh-cdr-open');
@@ -10100,17 +10121,28 @@ function goToNextArticle(direction) {
 // Previous-article pattern: swipe DOWN at the very top (mirrors swipe-up
 // for next). Pops the most recent seen article off the _khFeedRecentKey
 // stack and navigates to it. The intentionally-simple mental model:
-// "recent" doubles as the back-stack. Stash the article we're leaving
-// FIRST so a follow-up swipe-up doesn't pull the same article we just
-// left off the stack again.
+// "recent" doubles as the back-stack.
+//
+// Defensive: pop until we find an id that isn't the current article. The
+// stack can contain the current id when the user direct-navigated to it
+// (URL paste / external link) after it was added by an earlier swipe-up.
+// Without this guard goToPrevArticle would re-load the same article and
+// the user sees what looks like a no-op 'refresh' instead of a back nav.
 function goToPrevArticle() {
   if (_khFeedAnimating()) return;
   var currentId = _khCurrentArtId();
   var recent = [];
   try { recent = JSON.parse(localStorage.getItem(_khFeedRecentKey) || '[]'); } catch(e) {}
-  if (!recent.length) { if (typeof toast === 'function') toast('No previous article', false); return; }
-  var prevId = recent.shift();
+  var prevId = null;
+  while (recent.length) {
+    var candidate = recent.shift();
+    if (candidate && String(candidate) !== String(currentId)) { prevId = candidate; break; }
+  }
   try { localStorage.setItem(_khFeedRecentKey, JSON.stringify(recent)); } catch(e) {}
+  if (!prevId) {
+    if (typeof toast === 'function') toast('No previous article', false);
+    return;
+  }
   _khSpaLoadArticle(prevId, 'back');
 }
 
