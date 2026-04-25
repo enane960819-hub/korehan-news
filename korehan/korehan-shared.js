@@ -5452,6 +5452,14 @@ async function _renderPhrasesAdmin(articleId) {
   _phrasesAdminRender(el);
 }
 
+// Collapsed by default so the admin panel doesn't blow out the bottom of
+// every article during reading (it eats half a screen otherwise). Reset
+// per session.
+var _phrasesAdminExpanded = false;
+function _phraseAdminToggle() {
+  _phrasesAdminExpanded = !_phrasesAdminExpanded;
+  _phrasesAdminRender();
+}
 function _phrasesAdminRender(el) {
   if (!el) el = document.getElementById('art-phrases-admin');
   if (!el) return;
@@ -5467,14 +5475,27 @@ function _phrasesAdminRender(el) {
       + '</div>';
   }).join('');
 
-  el.innerHTML = '<div style="margin-top:20px;padding:16px;background:#fefce8;border:1px solid #fde68a;border-radius:12px">'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
-    + '<div style="font-size:13px;font-weight:800;color:#92400e">✏️ 중요표현 관리 (Admin)</div>'
-    + '<div style="display:flex;gap:6px">'
-    + '<button onclick="_phraseAdminAdd()" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer">+ 추가</button>'
-    + '<button onclick="_phraseAdminSave()" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer">저장</button>'
-    + '</div></div>'
-    + (rows || '<div style="font-size:12px;color:#a16207;padding:4px">표현이 없습니다. + 추가를 눌러주세요.</div>')
+  var headerRow = '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px">'
+    + '<button onclick="_phraseAdminToggle()" style="display:flex;align-items:center;gap:6px;background:none;border:none;color:#92400e;font-size:13px;font-weight:800;cursor:pointer;padding:0;font-family:inherit">'
+    +   '<span style="display:inline-block;transform:rotate(' + (_phrasesAdminExpanded ? '90deg' : '0deg') + ');transition:transform .15s">▶</span>'
+    +   '<span>✏️ 중요표현 관리 (Admin)</span>'
+    +   '<span style="font-size:11px;font-weight:600;color:#a16207;margin-left:4px">' + _phrasesAdminData.length + '개</span>'
+    + '</button>'
+    + (_phrasesAdminExpanded
+        ? '<div style="display:flex;gap:6px">'
+          + '<button onclick="_phraseAdminAdd()" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer">+ 추가</button>'
+          + '<button onclick="_phraseAdminSave()" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer">저장</button>'
+          + '</div>'
+        : '')
+    + '</div>';
+
+  el.innerHTML = '<div style="margin-top:20px;padding:' + (_phrasesAdminExpanded ? '14px 16px 16px' : '10px 14px') + ';background:#fefce8;border:1px solid #fde68a;border-radius:12px">'
+    + headerRow
+    + (_phrasesAdminExpanded
+        ? '<div style="margin-top:10px">'
+          + (rows || '<div style="font-size:12px;color:#a16207;padding:4px">표현이 없습니다. + 추가를 눌러주세요.</div>')
+          + '</div>'
+        : '')
     + '</div>';
 }
 
@@ -6283,7 +6304,10 @@ function initTooltips() {
     window._isAdmin = true;
     var adminBar = document.createElement('div');
     adminBar.id = 'vocab-admin-bar';
-    adminBar.style.cssText = 'position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 92px);right:16px;z-index:8000;background:#0b1626;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);display:none;';
+    // Anchored on the LEFT so it doesn't overlap the right-side action
+    // sidebar (Save / Talk / Study) on the article reader. Bottom offset
+    // matches the right-side stack so they balance visually.
+    adminBar.style.cssText = 'position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 92px);left:16px;z-index:8000;background:#0b1626;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);display:none;';
     adminBar.textContent = '✏️ Vocab Edit Mode';
     adminBar.onclick = function() { toggleVocabEditMode(); };
     document.body.appendChild(adminBar);
@@ -10204,24 +10228,32 @@ function setupFeedNavigation() {
       var dy = startY - e.changedTouches[0].clientY;
       var dx = e.changedTouches[0].clientX - startX;
       var dt = Date.now() - startT;
-      // Only honor an actual flick: fast enough (< 600ms) and clearly
-      // vertical (horizontal travel must be less than half the vertical).
-      // 100px keeps next-article swipes light; pinch-zoom and selection
-      // drags are already ruled out by the single-finger / duration /
-      // horizontal checks above.
-      if (dt > 600) return;
-      if (Math.abs(dx) > Math.abs(dy) * 0.5) return;
-      if (Math.abs(dy) < 100) return;
+      // Only honor an actual flick. Loosened thresholds vs. the original
+      // 100px / 600ms because users were reporting next-article swipes
+      // 'requiring multiple tries' — the old gates were tight enough that
+      // a normal Korean-feed-style flick fell short. New rules:
+      //   - duration   <  900ms (was 600) — easier on slow flicks
+      //   - magnitude  ≥   60px (was 100) — Reels/Shorts use 50–80px
+      //   - vertical-dominant: |dx| < |dy| * 0.6 (was 0.5)
+      //   - 'near bottom' for swipe-up = the same threshold the visible
+      //     pill uses (>80% scrolled), so any swipe after the pill shows
+      //     navigates. Old code required y > scrollHeight − 120, which
+      //     was way past the pill, so the gesture felt broken.
+      if (dt > 900) return;
+      if (Math.abs(dx) > Math.abs(dy) * 0.6) return;
+      if (Math.abs(dy) < 60) return;
       var y = window.scrollY || document.documentElement.scrollTop || 0;
+      var pageH = document.documentElement.scrollHeight || 1;
+      var visibleBottom = y + window.innerHeight;
       if (dy > 0) {
-        // Upward swipe → next. Only fire near the bottom of the
-        // article so a mid-read quick flick doesn't jump away.
-        var nearBottom = (window.innerHeight + y) >= document.documentElement.scrollHeight - 120;
-        if (nearBottom) goToNextArticle('forward');
+        // Upward swipe → next article. Match the pill-visible threshold
+        // (80%+) so the swipe and the on-screen affordance agree.
+        var pctVisible = visibleBottom / pageH;
+        if (pctVisible >= 0.78) goToNextArticle('forward');
       } else {
-        // Downward swipe → previous. Only fire near the top so a
-        // mid-read pull-down to re-read doesn't yank the article.
-        if (y < 60) goToPrevArticle();
+        // Downward swipe → previous. Slightly more generous top window
+        // (was 60px) so a casual pull-down at top works reliably.
+        if (y < 100) goToPrevArticle();
       }
     }, { passive: true });
   }
