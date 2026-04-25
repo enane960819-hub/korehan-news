@@ -35,18 +35,26 @@
    scrolling rows by category — same visual rhythm as the All News
    rails. Each rail has its own header + "See all" link that flips the
    filter to that category. */
-.conv-rails{display:flex;flex-direction:column;gap:28px;}
-.cv-rail{min-width:0;}
+/* When the page renders rails (conv-rails class on the cards grid)
+   we need every ancestor up to the rail-scroll to be width-bounded —
+   otherwise the flex-row of fixed-width cards stretches its parents
+   instead of overflowing, and the global `html, body { overflow-x:
+   hidden }` from shared.css just clips that overflow so the user sees
+   no scrollbar and can't swipe sideways. min-width:0 + explicit 100%
+   width on each container forces overflow-x:auto to actually engage. */
+.conv-rails{display:flex!important;flex-direction:column;gap:28px;width:100%;min-width:0;}
+.conv-cards-grid.conv-rails{grid-template-columns:none!important;max-width:none!important;}
+.cv-rail{min-width:0;width:100%;}
 .cv-rail-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;padding:0 2px;}
 .cv-rail-title{font-size:18px;font-weight:900;color:#0f172a;letter-spacing:-.01em;display:flex;align-items:center;gap:8px;font-family:'DM Sans','Noto Sans KR',sans-serif;}
 .cv-rail-title .cv-icon{font-size:18px;}
 .cv-rail-more{font-size:12px;font-weight:700;color:#64748b;cursor:pointer;background:none;border:none;padding:4px 0;font-family:inherit;}
 .cv-rail-more:hover{color:#0f172a;}
-.cv-rail-scroll{display:flex;gap:14px;overflow-x:auto;overflow-y:hidden;padding:4px 4px 14px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}
+.cv-rail-scroll{display:flex;gap:14px;overflow-x:auto;overflow-y:hidden;padding:4px 4px 14px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:thin;min-width:0;width:100%;touch-action:pan-x;}
 .cv-rail-scroll::-webkit-scrollbar{height:6px;}
 .cv-rail-scroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px;}
 /* Cards inside a rail get a fixed width so they tile neatly. */
-.cv-rail-scroll > .cc2{flex:0 0 280px;scroll-snap-align:start;}
+.cv-rail-scroll > .cc2{flex:0 0 280px;scroll-snap-align:start;min-width:0;}
 @media(max-width:760px){
   .conv-rails{gap:22px;}
   .cv-rail-head{margin-bottom:10px;}

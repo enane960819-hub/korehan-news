@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Hangul Tetris — KoreHani Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
 body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua','DM Sans',Inter,Pretendard,sans-serif;overflow:hidden}
@@ -98,10 +101,19 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 <script>
 (function(){
   var CHO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
-  var JUNG = ['ㅏ','ㅐ','ㅑ','ㅓ','ㅔ','ㅕ','ㅗ','ㅘ','ㅛ','ㅜ','ㅝ','ㅠ','ㅡ','ㅣ'];
-  var JONG = ['','ㄱ','ㄴ','ㄷ','ㄹ','ㅁ','ㅂ','ㅅ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
-  var JONG_MAP = {'':0,'ㄱ':1,'ㄲ':2,'ㄴ':4,'ㄷ':7,'ㄹ':8,'ㅁ':16,'ㅂ':17,'ㅅ':19,'ㅆ':20,'ㅇ':21,'ㅈ':22,'ㅊ':23,'ㅋ':24,'ㅌ':25,'ㅍ':26,'ㅎ':27};
+  // Two jung lists: SIMPLE_JUNG is what the player can catch as a falling
+  // block (no diphthongs that aren't typed as a single key), JUNG_FULL is
+  // the standard 21-slot table the unicode decomposition uses.
+  var SIMPLE_JUNG = ['ㅏ','ㅐ','ㅑ','ㅓ','ㅔ','ㅕ','ㅗ','ㅛ','ㅜ','ㅠ','ㅡ','ㅣ'];
   var JUNG_FULL = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
+  // Standard 28-slot jongseong table (index 0 = no batchim). The previous
+  // 15-slot table silently mapped every batchim to the wrong jamo — '한'
+  // (jong index 4) was asking the player to catch ㄹ instead of ㄴ.
+  var JONG = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+  // Simple jongseong only (no compounds like ㄳ, ㄵ, ㄻ, ㅄ, …) — used for
+  // both the spawn pool and to avoid picking targets we can't catch with
+  // a single block. Compounds need decomposing first.
+  var SIMPLE_JONG = ['ㄱ','ㄴ','ㄷ','ㄹ','ㅁ','ㅂ','ㅅ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
 
   function decompose(ch) {
     var code = ch.charCodeAt(0) - 0xAC00;
@@ -231,12 +243,27 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 
   function pickTarget() {
     var pool = level <= 3 ? TARGETS_EASY : level <= 7 ? TARGETS_MED : TARGETS_HARD;
-    var ch = pool[Math.floor(Math.random() * pool.length)];
-    currentTarget = ch;
-    var d = decompose(ch);
-    if (!d) { pickTarget(); return; }
-    targetParts = [d.cho, d.jung];
-    if (d.jong) targetParts.push(d.jong);
+    // Try up to 20 picks before giving up — skip syllables whose jung is a
+    // diphthong (ㅘ, ㅙ, ㅚ, ㅝ, ㅞ, ㅟ, ㅢ, ㅒ, ㅖ) or whose jong is a
+    // compound (ㄳ, ㄵ, ㄶ, ㄺ, ㄻ, ㄼ, ㄽ, ㄾ, ㄿ, ㅀ, ㅄ). Those can't be
+    // built from a single falling block of the simple jamo set, which would
+    // make the round unwinnable.
+    for (var tries = 0; tries < 20; tries++) {
+      var ch = pool[Math.floor(Math.random() * pool.length)];
+      var d = decompose(ch);
+      if (!d) continue;
+      if (SIMPLE_JUNG.indexOf(d.jung) < 0) continue;
+      if (d.jong && SIMPLE_JONG.indexOf(d.jong) < 0) continue;
+      currentTarget = ch;
+      targetParts = [d.cho, d.jung];
+      if (d.jong) targetParts.push(d.jong);
+      buildIdx = 0;
+      updateTargetUI();
+      return;
+    }
+    // Last-resort fallback so we never freeze the game.
+    currentTarget = '가';
+    targetParts = ['ㄱ', 'ㅏ'];
     buildIdx = 0;
     updateTargetUI();
   }
@@ -267,7 +294,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
     // Spawn 3-4 blocks: 1 correct + distractors
     var count = Math.min(4, 2 + Math.floor(level / 3));
     var jamos = [needed];
-    var allJamo = buildIdx === 0 ? CHO : buildIdx === 1 ? JUNG : JONG.filter(function(j){return j;});
+    var allJamo = buildIdx === 0 ? CHO : buildIdx === 1 ? SIMPLE_JUNG : SIMPLE_JONG;
     while (jamos.length < count) {
       var rj = allJamo[Math.floor(Math.random() * allJamo.length)];
       if (jamos.indexOf(rj) < 0) jamos.push(rj);
