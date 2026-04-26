@@ -3,9 +3,15 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Chosung Quiz — KoreHani Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
-body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua','DM Sans',Inter,Pretendard,sans-serif;overflow-x:hidden}
+/* Force the dark backdrop with !important + a full-viewport overlay because
+   shared.css applies its own light body background which was bleeding
+   through and turning the chosung glyphs (white) invisible on cream. */
+body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey','Jua','DM Sans','Noto Sans KR',Inter,Pretendard,sans-serif;overflow-x:hidden;background:#050b15!important;background-image:radial-gradient(ellipse at top,#0c1a36 0%,#050b15 65%)!important;min-height:100vh}
 .wrap{max-width:600px;margin:0 auto;padding:12px 16px 40px;min-height:100dvh;min-height:100vh;display:flex;flex-direction:column}
 @supports(min-height:100dvh){.wrap{min-height:100dvh}}
 .game-header{display:flex;justify-content:space-between;align-items:center;padding:10px 0;flex-shrink:0}
@@ -19,16 +25,28 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 .chosung-display{font-size:64px;font-weight:900;letter-spacing:24px;color:#fff;text-shadow:0 0 40px rgba(125,211,252,.4),0 0 80px rgba(125,211,252,.15);font-family:'Noto Sans KR',sans-serif;padding:20px;user-select:none;transition:transform .2s}
 .chosung-display.correct{animation:choPop .4s ease}
 .chosung-display.wrong{animation:choShake .4s ease}
+.chosung-display.urgent{animation:choUrgentPulse .55s ease infinite;color:#fecaca;text-shadow:0 0 40px rgba(239,68,68,.55),0 0 90px rgba(239,68,68,.25)}
 @keyframes choPop{0%{transform:scale(1)}50%{transform:scale(1.15);color:#4ade80}100%{transform:scale(1)}}
 @keyframes choShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+@keyframes choUrgentPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
 
 .hint-text{font-size:14px;color:#94a3b8;font-weight:600;margin-top:-8px}
 .hint-text em{color:#60a5fa;font-style:normal;font-weight:800}
 
-/* Timer bar */
-.timer-wrap{width:100%;max-width:360px;height:6px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden}
+/* Timer — bar + big countdown number side by side. The number turns
+   red and pulses under 4 seconds so the learner *feels* the pressure,
+   instead of only the bar quietly emptying. */
+.timer-row{width:100%;max-width:360px;display:flex;align-items:center;gap:10px}
+.timer-wrap{flex:1;height:8px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden}
 .timer-bar{height:100%;border-radius:999px;background:linear-gradient(90deg,#2563eb,#7dd3fc);transition:width .1s linear}
-.timer-bar.danger{background:linear-gradient(90deg,#ef4444,#fbbf24)}
+.timer-bar.danger{background:linear-gradient(90deg,#ef4444,#fbbf24);box-shadow:0 0 18px rgba(239,68,68,.55)}
+.timer-num{font-size:18px;font-weight:900;color:#7dd3fc;font-variant-numeric:tabular-nums;min-width:28px;text-align:center;font-family:'DM Sans',sans-serif;transition:color .15s,transform .15s}
+.timer-num.danger{color:#fca5a5;animation:timerTick .4s ease infinite}
+@keyframes timerTick{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+/* Red vignette pulse around the whole game when seconds run out */
+.danger-flash{position:fixed;inset:0;pointer-events:none;z-index:5;box-shadow:inset 0 0 80px rgba(239,68,68,.0);transition:box-shadow .3s ease}
+.danger-flash.on{box-shadow:inset 0 0 80px rgba(239,68,68,.45);animation:dangerVignette .55s ease infinite alternate}
+@keyframes dangerVignette{0%{box-shadow:inset 0 0 60px rgba(239,68,68,.25)}100%{box-shadow:inset 0 0 110px rgba(239,68,68,.55)}}
 
 /* Input */
 .input-area{width:100%;max-width:360px;display:flex;gap:8px}
@@ -79,7 +97,10 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
   <div class="game-area" id="game-area">
     <div class="chosung-display" id="chosung-display">ㅎ ㄱ</div>
     <div class="hint-text" id="hint-text">Hint: <em>Korea</em></div>
-    <div class="timer-wrap"><div class="timer-bar" id="timer-bar"></div></div>
+    <div class="timer-row">
+      <div class="timer-wrap"><div class="timer-bar" id="timer-bar"></div></div>
+      <div class="timer-num" id="timer-num">10</div>
+    </div>
     <div class="input-area">
       <input id="g-input" type="text" placeholder="한국어로 입력..." autocomplete="off" autocapitalize="none" autocorrect="off" enterkeyhint="send">
       <button onclick="submitAnswer()">확인</button>
@@ -95,6 +116,8 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
     <div style="font-size:12px;color:#64748b;margin-top:12px">20 questions · 10 seconds each</div>
     <button class="start-btn" onclick="startGame()">START</button>
   </div>
+
+  <div class="danger-flash" id="danger-flash"></div>
 
   <div class="end-screen" id="end-screen" style="display:none">
     <div style="font-size:64px;margin-bottom:16px" id="end-emoji">🏆</div>
@@ -204,19 +227,35 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
   function startTimer() {
     timerStart = Date.now();
     var bar = document.getElementById('timer-bar');
+    var num = document.getElementById('timer-num');
+    var disp = document.getElementById('chosung-display');
+    var flash = document.getElementById('danger-flash');
     bar.style.width = '100%';
     bar.className = 'timer-bar';
+    num.className = 'timer-num';
+    num.textContent = Math.ceil(timeLimit / 1000);
+    if (disp) disp.classList.remove('urgent');
+    if (flash) flash.classList.remove('on');
     if (timer) clearInterval(timer);
     timer = setInterval(function() {
       var elapsed = Date.now() - timerStart;
-      var pct = Math.max(0, 100 - (elapsed / timeLimit * 100));
+      var remaining = Math.max(0, timeLimit - elapsed);
+      var pct = (remaining / timeLimit) * 100;
       bar.style.width = pct + '%';
-      if (pct < 30) bar.className = 'timer-bar danger';
+      num.textContent = Math.ceil(remaining / 1000);
+      // Under 4 seconds: red bar, pulsing number, glyph pulse, vignette glow
+      var danger = remaining <= 4000;
+      bar.classList.toggle('danger', danger);
+      num.classList.toggle('danger', danger);
+      if (disp) disp.classList.toggle('urgent', danger);
+      if (flash) flash.classList.toggle('on', danger);
       if (elapsed >= timeLimit) {
         clearInterval(timer);
+        if (disp) disp.classList.remove('urgent');
+        if (flash) flash.classList.remove('on');
         handleTimeout();
       }
-    }, 50);
+    }, 80);
   }
 
   function handleTimeout() {
@@ -233,6 +272,12 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
     if (!ans) return;
     inp.disabled = true;
     clearInterval(timer);
+    // Clear urgency state immediately on submit so a quick correct answer
+    // doesn't leave the screen pulsing red while we move to the next round.
+    var disp = document.getElementById('chosung-display');
+    var flash = document.getElementById('danger-flash');
+    if (disp) disp.classList.remove('urgent');
+    if (flash) flash.classList.remove('on');
 
     var elapsed = Date.now() - timerStart;
     var isCorrect = ans === currentWord.ko;

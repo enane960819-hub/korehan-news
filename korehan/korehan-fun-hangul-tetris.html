@@ -17,15 +17,25 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 .stat{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}
 .stat-val{color:#7dd3fc}
 
-/* Target display */
-.target-area{display:flex;align-items:center;justify-content:center;gap:16px;padding:10px 0;flex-shrink:0}
-.target-char{font-size:52px;font-weight:900;color:#fff;text-shadow:0 0 30px rgba(125,211,252,.5),0 0 60px rgba(125,211,252,.2);font-family:'Noto Sans KR',sans-serif;transition:all .3s}
-.target-char.done{animation:targetPop .5s ease;color:#4ade80;text-shadow:0 0 30px rgba(74,222,128,.6)}
-@keyframes targetPop{0%{transform:scale(1)}50%{transform:scale(1.3)}100%{transform:scale(1)}}
+/* Target display — now shows the WHOLE WORD, with one syllable
+   highlighted as the one being built. The build-progress slots show the
+   current syllable's jamo state. */
+.target-area{display:flex;align-items:center;justify-content:center;gap:14px;padding:8px 0;flex-shrink:0;flex-wrap:wrap}
+.target-word{display:flex;flex-direction:column;align-items:center;gap:2px}
+.target-char{font-size:42px;font-weight:900;color:#fff;text-shadow:0 0 28px rgba(125,211,252,.5),0 0 56px rgba(125,211,252,.18);font-family:'Noto Sans KR',sans-serif;transition:all .3s;display:flex;gap:6px;line-height:1.05}
+.target-char.done{animation:targetPop .5s ease}
+.target-char .tg-syl{display:inline-block;transition:color .2s,text-shadow .2s,opacity .2s,transform .2s}
+.target-char .tg-syl.done{color:#4ade80;text-shadow:0 0 18px rgba(74,222,128,.55)}
+.target-char .tg-syl.current{color:#fff;text-shadow:0 0 32px rgba(125,211,252,.8),0 0 60px rgba(125,211,252,.35);transform:scale(1.04)}
+.target-char .tg-syl.pending{color:rgba(255,255,255,.32);text-shadow:none}
+.target-mean{font-size:13px;font-weight:700;color:#94a3b8;font-family:'DM Sans','Noto Sans KR',sans-serif;letter-spacing:.02em}
+@keyframes targetPop{0%{transform:scale(1)}50%{transform:scale(1.18)}100%{transform:scale(1)}}
 .build-progress{display:flex;gap:6px;align-items:center;font-size:22px;font-weight:900;font-family:'Noto Sans KR',sans-serif}
 .bp-slot{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:2px solid rgba(125,211,252,.3);color:#7dd3fc;font-size:20px;transition:all .2s}
-.bp-slot.filled{background:rgba(125,211,252,.15);border-color:#7dd3fc;color:#fff}
+.bp-slot.filled{background:rgba(125,211,252,.18);border-color:#7dd3fc;color:#fff}
 .bp-slot.empty{color:rgba(255,255,255,.2)}
+.bp-slot.empty.current{border-color:#7dd3fc;background:rgba(125,211,252,.08);animation:bpPulse 1.1s ease-in-out infinite}
+@keyframes bpPulse{0%,100%{box-shadow:0 0 0 rgba(125,211,252,0)}50%{box-shadow:0 0 16px rgba(125,211,252,.45)}}
 
 /* Canvas */
 #game-canvas{flex:1;width:100%;border-radius:12px;background:#0a1325;border:1px solid rgba(255,255,255,.06)}
@@ -45,7 +55,14 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 .combo-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:42px;font-weight:900;color:#fbbf24;text-shadow:0 0 40px rgba(251,191,36,.5);pointer-events:none;animation:comboIn .7s ease forwards;z-index:20}
 @keyframes comboIn{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
 
-@media(max-width:500px){.game-title{font-size:15px}.target-char{font-size:40px}.bp-slot{width:30px;height:30px;font-size:17px}}
+@media(max-width:500px){
+  .game-title{font-size:15px}
+  .target-char{font-size:34px}
+  .target-char .tg-syl{display:inline-block}
+  .target-mean{font-size:11px}
+  .bp-slot{width:30px;height:30px;font-size:17px}
+  .target-area{gap:10px;padding:6px 0}
+}
 #kh-daily-mission,#vocab-admin-bar,.mobile-bottom-nav,.mobile-sticky-study,#kh-header,#kh-footer{display:none!important}
 </style>
 </head>
@@ -62,7 +79,10 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
   </div>
 
   <div class="target-area">
-    <div class="target-char" id="target-char">한</div>
+    <div class="target-word">
+      <div class="target-char" id="target-char">한</div>
+      <div class="target-mean" id="target-mean"></div>
+    </div>
     <div class="build-progress" id="build-progress">
       <div class="bp-slot empty" id="bp-0">?</div>
       <div class="bp-slot empty" id="bp-1">?</div>
@@ -81,7 +101,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
     <a href="korehan-fun.html" class="back" style="position:absolute;top:16px;left:16px">&larr; Playground</a>
     <div style="font-size:64px;margin-bottom:16px">🧱</div>
     <div style="font-size:26px;font-weight:900;margin-bottom:8px">Hangul Tetris</div>
-    <div style="font-size:14px;color:#94a3b8;max-width:300px;text-align:center;line-height:1.6">자모 블록을 캐치해서 한글을 완성하세요! 초성→중성→종성 순서대로 잡아야 합니다.</div>
+    <div style="font-size:14px;color:#94a3b8;max-width:320px;text-align:center;line-height:1.6">자모 블록을 캐치해서 단어를 완성하세요! 한 글자씩 초성→중성→종성 순서대로, 단어 전체를 만들면 보너스 +점수.</div>
     <div style="font-size:12px;color:#64748b;margin-top:10px">← → or touch to move</div>
     <button class="big-btn" onclick="startGame()">START</button>
   </div>
@@ -124,13 +144,32 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
     return { cho: CHO[cho], jung: JUNG_FULL[jung], jong: JONG[jong] || '' };
   }
 
-  // Target syllables by difficulty (hardcoded fallback)
-  var _FALLBACK_EASY = ['가','나','다','마','바','사','하','고','노','두','모','소','우','주','두','기','니','비','시','히','오','요','아','야','무','수','구','누','부','로'];
-  var _FALLBACK_MED  = ['한','국','말','집','밥','물','산','강','달','별','꽃','눈','돈','문','길','손','곰','팔','발','볼','줄','솔','반','잔','전','몸','봄','놈','남','공'];
-  var _FALLBACK_HARD = ['학','읽','삶','넓','높','깊','맑','젊','삼','둘','셋','빛','꿈','값','숲','밝','흙','닭','넋','삶','옳','있','없','많','같'];
-  var TARGETS_EASY = _FALLBACK_EASY.slice();
-  var TARGETS_MED  = _FALLBACK_MED.slice();
-  var TARGETS_HARD = _FALLBACK_HARD.slice();
+  // Game now plays WORDS, not isolated syllables — the player builds an
+  // entire 2- or 3-syllable word by catching the right jamo for each
+  // syllable in turn. Each entry: {ko, en}. The fallback list is small
+  // and skews simple so any syllable is buildable from a single jamo.
+  var _FALLBACK_WORDS_EASY = [
+    {ko:'사랑',en:'love'},{ko:'바다',en:'sea'},{ko:'하루',en:'a day'},
+    {ko:'나라',en:'country'},{ko:'다리',en:'leg / bridge'},{ko:'머리',en:'head / hair'},
+    {ko:'노래',en:'song'},{ko:'고기',en:'meat'},{ko:'아기',en:'baby'},
+    {ko:'어머니',en:'mother'},{ko:'아버지',en:'father'},{ko:'친구',en:'friend'}
+  ];
+  var _FALLBACK_WORDS_MED = [
+    {ko:'한국',en:'Korea'},{ko:'학교',en:'school'},{ko:'음악',en:'music'},
+    {ko:'영화',en:'movie'},{ko:'식당',en:'restaurant'},{ko:'주말',en:'weekend'},
+    {ko:'시장',en:'market'},{ko:'공원',en:'park'},{ko:'강아지',en:'dog'},
+    {ko:'고양이',en:'cat'},{ko:'친구들',en:'friends'},{ko:'선생님',en:'teacher'}
+  ];
+  var _FALLBACK_WORDS_HARD = [
+    {ko:'도서관',en:'library'},{ko:'박물관',en:'museum'},{ko:'동물원',en:'zoo'},
+    {ko:'운동장',en:'sports field'},{ko:'경찰관',en:'police officer'},
+    {ko:'할머니',en:'grandmother'},{ko:'할아버지',en:'grandfather'},
+    {ko:'생일선물',en:'birthday gift'},{ko:'한국말',en:'Korean (language)'},
+    {ko:'겨울방학',en:'winter break'},{ko:'주말여행',en:'weekend trip'}
+  ];
+  var WORDS_EASY = _FALLBACK_WORDS_EASY.slice();
+  var WORDS_MED  = _FALLBACK_WORDS_MED.slice();
+  var WORDS_HARD = _FALLBACK_WORDS_HARD.slice();
 
   // Extract individual Hangul syllables from a Korean word string
   function _extractSyllables(word) {
@@ -140,6 +179,23 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
       if (code >= 0xAC00 && code <= 0xD7A3) syllables.push(word[i]);
     }
     return syllables;
+  }
+
+  // Skip diphthongs (ㅘ/ㅙ/ㅚ/ㅝ/ㅞ/ㅟ/ㅢ/ㅒ/ㅖ) and compound finals so we
+  // can always catch every syllable with a single falling block.
+  var _SIMPLE_JUNG_SET = {'ㅏ':1,'ㅐ':1,'ㅑ':1,'ㅓ':1,'ㅔ':1,'ㅕ':1,'ㅗ':1,'ㅛ':1,'ㅜ':1,'ㅠ':1,'ㅡ':1,'ㅣ':1};
+  var _SIMPLE_JONG_SET = {'':1,'ㄱ':1,'ㄴ':1,'ㄷ':1,'ㄹ':1,'ㅁ':1,'ㅂ':1,'ㅅ':1,'ㅇ':1,'ㅈ':1,'ㅊ':1,'ㅋ':1,'ㅌ':1,'ㅍ':1,'ㅎ':1};
+  function _wordIsBuildable(word) {
+    if (!word || !word.ko) return false;
+    var syls = _extractSyllables(word.ko);
+    if (!syls.length) return false;
+    for (var i = 0; i < syls.length; i++) {
+      var d = decompose(syls[i]);
+      if (!d) return false;
+      if (!_SIMPLE_JUNG_SET[d.jung]) return false;
+      if (!_SIMPLE_JONG_SET[d.jong || '']) return false;
+    }
+    return true;
   }
 
   // Detect whether a syllable has a 받침 (final consonant)
@@ -157,47 +213,39 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
     return !!_COMPOUND_JONG[code % 28];
   }
 
-  // Load live vocabulary from DB; silently fall back to hardcoded if unavailable
+  // Load live vocabulary as WORDS (kept whole, not split into syllables).
+  // Difficulty bucket = syllable count: 1-2 / 3 / 4+. We also drop any
+  // word that contains a syllable we can't catch with a single jamo
+  // (compound batchim or diphthong jung) so the round is always winnable.
   (async function loadTetrisVocabFromDB() {
     try {
       var sb = typeof getSupa === 'function' ? getSupa() : null;
       if (!sb) return;
       var result = await sb.from('vocabulary_bank')
-        .select('word_ko,level')
+        .select('word_ko,word_en,level')
         .eq('is_active', true)
-        .limit(200);
+        .limit(400);
       if (result.error || !result.data || !result.data.length) return;
 
+      var seenKo = {};
       var easy = [], med = [], hard = [];
       result.data.forEach(function(r) {
-        if (!r.word_ko) return;
-        var syls = _extractSyllables(r.word_ko);
-        var lv = (r.level || '').toLowerCase();
-        syls.forEach(function(s) {
-          if (lv === 'advanced') {
-            if (_hasComplexBatchim(s)) hard.push(s);
-            else if (_hasBatchim(s)) med.push(s);
-            else easy.push(s);
-          } else if (lv === 'intermediate') {
-            if (_hasBatchim(s)) med.push(s);
-            else easy.push(s);
-          } else {
-            // Starter or Beginner
-            easy.push(s);
-          }
-        });
+        if (!r.word_ko || !r.word_en) return;
+        var ko = String(r.word_ko).trim();
+        if (!ko || seenKo[ko]) return;
+        seenKo[ko] = 1;
+        var word = { ko: ko, en: String(r.word_en).trim() };
+        if (!_wordIsBuildable(word)) return;
+        var sylCount = _extractSyllables(ko).length;
+        if (sylCount === 0) return;
+        if (sylCount <= 2)      easy.push(word);
+        else if (sylCount === 3) med.push(word);
+        else                    hard.push(word);
       });
 
-      // Deduplicate helper
-      function dedup(arr) {
-        var seen = {}, out = [];
-        arr.forEach(function(s) { if (!seen[s]) { seen[s] = 1; out.push(s); } });
-        return out;
-      }
-
-      if (easy.length >= 10)  TARGETS_EASY = dedup(easy);
-      if (med.length  >= 10)  TARGETS_MED  = dedup(med);
-      if (hard.length >= 5)   TARGETS_HARD = dedup(hard);
+      if (easy.length >= 6) WORDS_EASY = easy;
+      if (med.length  >= 6) WORDS_MED  = med;
+      if (hard.length >= 4) WORDS_HARD = hard;
     } catch(e) { /* silently fall back to hardcoded */ }
   })();
 
@@ -206,8 +254,9 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
   var paddle = { x: 0, w: 80 };
   var score = 0, lives = 5, level = 1, completed = 0;
   var gameRunning = false, animFrame;
+  var currentWord = null, currentWordSyls = [], currentSylIdx = 0;
   var currentTarget = null, targetParts = [], buildIdx = 0;
-  var baseSpeed = 1.2, spawnInterval = 1800, lastSpawn = 0;
+  var baseSpeed = 1.2, spawnInterval = 1700, lastSpawn = 0;
   var bestScore = parseInt(localStorage.getItem('kh_hangul_tetris_best') || '0');
 
   function init() {
@@ -241,42 +290,82 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
     paddle.x = (rect.width - paddle.w) / 2;
   }
 
-  function pickTarget() {
-    var pool = level <= 3 ? TARGETS_EASY : level <= 7 ? TARGETS_MED : TARGETS_HARD;
-    // Try up to 20 picks before giving up — skip syllables whose jung is a
-    // diphthong (ㅘ, ㅙ, ㅚ, ㅝ, ㅞ, ㅟ, ㅢ, ㅒ, ㅖ) or whose jong is a
-    // compound (ㄳ, ㄵ, ㄶ, ㄺ, ㄻ, ㄼ, ㄽ, ㄾ, ㄿ, ㅀ, ㅄ). Those can't be
-    // built from a single falling block of the simple jamo set, which would
-    // make the round unwinnable.
-    for (var tries = 0; tries < 20; tries++) {
-      var ch = pool[Math.floor(Math.random() * pool.length)];
-      var d = decompose(ch);
-      if (!d) continue;
-      if (SIMPLE_JUNG.indexOf(d.jung) < 0) continue;
-      if (d.jong && SIMPLE_JONG.indexOf(d.jong) < 0) continue;
-      currentTarget = ch;
-      targetParts = [d.cho, d.jung];
-      if (d.jong) targetParts.push(d.jong);
-      buildIdx = 0;
-      updateTargetUI();
+  // Pick a NEW word, then start on its first syllable. Words are pulled
+  // from the bucket matching current level (easy/med/hard).
+  function pickWord() {
+    var pool = level <= 3 ? WORDS_EASY : level <= 7 ? WORDS_MED : WORDS_HARD;
+    if (!pool || !pool.length) pool = WORDS_EASY.length ? WORDS_EASY : _FALLBACK_WORDS_EASY;
+    // Avoid repeating the same word back-to-back.
+    var pick;
+    for (var t = 0; t < 8; t++) {
+      pick = pool[Math.floor(Math.random() * pool.length)];
+      if (!pick || (currentWord && currentWord.ko === pick.ko && pool.length > 1)) continue;
+      break;
+    }
+    currentWord = pick || pool[0];
+    currentWordSyls = _extractSyllables(currentWord.ko);
+    currentSylIdx = 0;
+    startSyllable();
+  }
+
+  // Start work on the syllable at currentSylIdx within currentWord. Each
+  // syllable becomes the existing build flow (cho → jung → optional jong).
+  function startSyllable() {
+    if (currentSylIdx >= currentWordSyls.length) {
+      // Word is done — handled by the caller (handleMatch).
       return;
     }
-    // Last-resort fallback so we never freeze the game.
-    currentTarget = '가';
-    targetParts = ['ㄱ', 'ㅏ'];
+    var ch = currentWordSyls[currentSylIdx];
+    var d = decompose(ch);
+    // Should never fail because pool words went through _wordIsBuildable.
+    if (!d) {
+      currentSylIdx++;
+      startSyllable();
+      return;
+    }
+    currentTarget = ch;
+    targetParts = [d.cho, d.jung];
+    if (d.jong) targetParts.push(d.jong);
     buildIdx = 0;
     updateTargetUI();
   }
 
+  // Render the *whole word* with one syllable highlighted as "currently
+  // being built" (shown as the jamo build slots). Syllables before the
+  // current one are locked in green; syllables after it are dimmed.
   function updateTargetUI() {
-    document.getElementById('target-char').textContent = currentTarget;
-    document.getElementById('target-char').className = 'target-char';
+    var targetEl = document.getElementById('target-char');
+    if (!targetEl) return;
+    targetEl.className = 'target-char';
+    if (currentWordSyls && currentWordSyls.length > 1) {
+      // Render each syllable as a span — done / current / pending state.
+      var html = '';
+      for (var s = 0; s < currentWordSyls.length; s++) {
+        var cls = 'tg-syl';
+        if (s < currentSylIdx) cls += ' done';
+        else if (s === currentSylIdx) cls += ' current';
+        else cls += ' pending';
+        html += '<span class="' + cls + '">' + currentWordSyls[s] + '</span>';
+      }
+      targetEl.innerHTML = html;
+    } else {
+      targetEl.textContent = currentTarget || '';
+    }
+    // Show the English meaning of the word as a small subtitle.
+    var meanEl = document.getElementById('target-mean');
+    if (meanEl) meanEl.textContent = (currentWord && currentWord.en) ? currentWord.en : '';
+
+    // Build slots for the current syllable.
     for (var i = 0; i < 3; i++) {
       var el = document.getElementById('bp-' + i);
+      if (!el) continue;
       if (i < targetParts.length) {
         if (i < buildIdx) {
           el.textContent = targetParts[i];
           el.className = 'bp-slot filled';
+        } else if (i === buildIdx) {
+          el.textContent = '?';
+          el.className = 'bp-slot empty current';
         } else {
           el.textContent = '?';
           el.className = 'bp-slot empty';
@@ -291,25 +380,34 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
   function spawnBlock() {
     var needed = targetParts[buildIdx];
     if (needed === undefined || needed === null) return; // No more parts to build
-    // Spawn 3-4 blocks: 1 correct + distractors
-    var count = Math.min(4, 2 + Math.floor(level / 3));
+    // Spawn 2-4 blocks: 1 correct + distractors. Number itself jitters so
+    // some waves are sparse and some are crowded — feels less metronome-y.
+    var minCount = 2 + Math.floor(level / 4);
+    var maxCount = Math.min(5, 3 + Math.floor(level / 2));
+    var count = Math.max(2, Math.min(maxCount, minCount + Math.floor(Math.random() * (maxCount - minCount + 1))));
     var jamos = [needed];
     var allJamo = buildIdx === 0 ? CHO : buildIdx === 1 ? SIMPLE_JUNG : SIMPLE_JONG;
     while (jamos.length < count) {
       var rj = allJamo[Math.floor(Math.random() * allJamo.length)];
       if (jamos.indexOf(rj) < 0) jamos.push(rj);
     }
-    // Shuffle and spawn
+    // Shuffle the order so the correct jamo isn't always at a predictable slot.
     jamos.sort(function(){ return Math.random() - .5; });
-    var spacing = canvas._w / (jamos.length + 1);
+    // Random horizontal placement: divide the canvas into N lanes, then
+    // jitter each block within its lane so positions don't line up neatly.
+    var lanes = jamos.length;
+    var laneW = canvas._w / lanes;
     jamos.forEach(function(j, i) {
+      var jitterX = (Math.random() - 0.5) * laneW * 0.5; // ±25% of lane width
+      var x = laneW * i + (laneW - 44) / 2 + jitterX;
+      x = Math.max(4, Math.min(canvas._w - 48, x));
       blocks.push({
         jamo: j,
         isCorrect: j === needed,
-        x: spacing * (i + 1) - 20,
-        y: -30 - Math.random() * 40,
+        x: x,
+        y: -30 - Math.random() * 80,           // staggered vertical entry
         w: 44, h: 44,
-        speed: baseSpeed + Math.random() * 0.4
+        speed: baseSpeed * (0.75 + Math.random() * 0.6) // ±wider speed jitter
       });
     });
   }
@@ -319,21 +417,29 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
     document.getElementById('end-screen').style.display = 'none';
     blocks = [];
     score = 0; lives = 5; level = 1; completed = 0;
-    baseSpeed = 1.2; spawnInterval = 1800; lastSpawn = 0;
+    baseSpeed = 1.2; spawnInterval = 1700; lastSpawn = 0;
     gameRunning = true;
+    currentWord = null;
     updateUI();
-    pickTarget();
+    pickWord();
     if (animFrame) cancelAnimationFrame(animFrame);
     lastSpawn = performance.now();
     loop(performance.now());
   };
 
+  // Spawn pacing now jitters by ±25% so wave timing isn't on a fixed beat.
+  function _nextSpawnDelay() {
+    return spawnInterval * (0.75 + Math.random() * 0.5);
+  }
+  var _currentSpawnDelay = 1700;
+
   function loop(now) {
     if (!gameRunning) return;
     animFrame = requestAnimationFrame(loop);
-    if (now - lastSpawn > spawnInterval && blocks.length < 8) {
+    if (now - lastSpawn > _currentSpawnDelay && blocks.length < 8) {
       spawnBlock();
       lastSpawn = now;
+      _currentSpawnDelay = _nextSpawnDelay();
     }
     update();
     render();
@@ -349,28 +455,44 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
       if (b.y + b.h >= py && b.y + b.h <= py + 20 && b.x + b.w > px && b.x < px + pw) {
         blocks.splice(i, 1);
         if (b.isCorrect) {
-          // Correct catch
+          // Correct catch — jamo locks in.
           buildIdx++;
           score += 10;
           updateTargetUI();
           if (buildIdx >= targetParts.length) {
-            // Syllable complete!
+            // Syllable complete — bonus, then move on to next syllable
+            // OR finish the whole word if this was the last syllable.
             score += 50;
             completed++;
-            document.getElementById('target-char').className = 'target-char done';
-            var fl = document.createElement('div');
-            fl.className = 'combo-flash';
-            fl.textContent = currentTarget + ' ✨';
-            document.body.appendChild(fl);
-            setTimeout(function(){ fl.remove(); }, 700);
-            blocks = [];
-            if (completed % 5 === 0) {
-              level++;
-              baseSpeed = Math.min(3, 1.2 + level * 0.2);
-              spawnInterval = Math.max(800, 1800 - level * 100);
+            var targetEl = document.getElementById('target-char');
+            if (targetEl) targetEl.className = 'target-char done';
+            currentSylIdx++;
+            var wordDone = currentSylIdx >= currentWordSyls.length;
+            if (wordDone) {
+              // Whole word completed — extra word bonus + flash the word.
+              var wordBonus = 80 + currentWordSyls.length * 30;
+              score += wordBonus;
+              var fl = document.createElement('div');
+              fl.className = 'combo-flash';
+              fl.textContent = currentWord.ko + ' ✨ +' + wordBonus;
+              document.body.appendChild(fl);
+              setTimeout(function(){ fl.remove(); }, 800);
+              blocks = [];
+              if (completed % 4 === 0) {
+                level++;
+                baseSpeed = Math.min(3, 1.2 + level * 0.2);
+                spawnInterval = Math.max(800, 1700 - level * 90);
+              }
+              updateUI();
+              setTimeout(function(){ pickWord(); }, 700);
+            } else {
+              // Mid-word — clear stale falling blocks, brief pause, then
+              // start the next syllable. Keeps the rhythm smooth without
+              // letting old jamo confuse the next round.
+              blocks = [];
+              updateUI();
+              setTimeout(function(){ startSyllable(); }, 350);
             }
-            updateUI();
-            setTimeout(function(){ pickTarget(); }, 600);
           }
         } else {
           // Wrong catch
@@ -438,7 +560,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
     var emoji = score >= 500 ? '🏆' : score >= 200 ? '⭐' : score >= 100 ? '👍' : '💪';
     document.getElementById('end-emoji').textContent = emoji;
     document.getElementById('end-score').textContent = score + ' pts';
-    document.getElementById('end-stats').textContent = completed + ' syllables completed · level ' + level;
+    document.getElementById('end-stats').textContent = completed + ' syllables · level ' + level;
     document.getElementById('end-best').textContent = 'Best: ' + bestScore + ' pts';
     document.getElementById('end-screen').style.display = 'flex';
   }

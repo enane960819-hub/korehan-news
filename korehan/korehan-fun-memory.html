@@ -202,7 +202,10 @@ var MEM = (function(){
   ];
   var WORDS = _FALLBACK_WORDS.slice();
 
-  // Load live vocabulary from DB; silently fall back to hardcoded if unavailable
+  // Load live vocabulary from DB; silently fall back to hardcoded if unavailable.
+  // Pulls a much larger window (was 60) so 'hard' difficulty (15 pairs) still
+  // has variety after dedupe + per-game shuffle, and dedupes by word_ko so the
+  // same Korean word can't show up twice in one board.
   (async function loadVocabFromDB() {
     try {
       var sb = typeof getSupa === 'function' ? getSupa() : null;
@@ -210,11 +213,20 @@ var MEM = (function(){
       var result = await sb.from('vocabulary_bank')
         .select('word_ko,word_en')
         .eq('is_active', true)
-        .limit(60);
+        .limit(400);
       if (result.error || !result.data || !result.data.length) return;
-      var mapped = result.data
-        .filter(function(r) { return r.word_ko && r.word_en; })
-        .map(function(r) { return { ko: r.word_ko, en: r.word_en }; });
+      var seenKo = {};
+      var seenEn = {};
+      var mapped = [];
+      result.data.forEach(function(r) {
+        if (!r.word_ko || !r.word_en) return;
+        var ko = String(r.word_ko).trim();
+        var en = String(r.word_en).trim().toLowerCase();
+        if (!ko || !en) return;
+        if (seenKo[ko] || seenEn[en]) return; // skip duplicates either side
+        seenKo[ko] = 1; seenEn[en] = 1;
+        mapped.push({ ko: ko, en: r.word_en.trim() });
+      });
       if (mapped.length >= 15) WORDS = mapped;
     } catch(e) { /* silently fall back to hardcoded */ }
   })();
@@ -351,9 +363,22 @@ var MEM = (function(){
   }
 
   // ── Build Cards ──
+  // Defensive dedupe at draw time too — if WORDS still has dupes (older
+  // hardcoded fallback or pathological DB row), pick unique ko+en pairs.
   function buildCards(diff) {
     var cfg = DIFFICULTY[diff];
-    var pool = shuffle(WORDS.slice()).slice(0, cfg.pairs);
+    var shuffled = shuffle(WORDS.slice());
+    var pool = [];
+    var seenKo = {}, seenEn = {};
+    for (var i = 0; i < shuffled.length && pool.length < cfg.pairs; i++) {
+      var w = shuffled[i];
+      if (!w || !w.ko || !w.en) continue;
+      var k = String(w.ko).trim();
+      var e = String(w.en).trim().toLowerCase();
+      if (seenKo[k] || seenEn[e]) continue;
+      seenKo[k] = 1; seenEn[e] = 1;
+      pool.push(w);
+    }
     var deck = [];
     pool.forEach(function(w, i) {
       deck.push({ id: i, type: 'ko', text: w.ko, pairId: i });
