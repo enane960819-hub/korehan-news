@@ -2200,7 +2200,12 @@ var _articlesCacheTime = 0;
 var CACHE_TTL = 300000; // 5분 (메모리 캐시)
 var ARTICLES_STORAGE_KEY = 'kh_articles_cache_v2';
 var ARTICLES_STORAGE_MAX_AGE = 60 * 60 * 1000; // 1시간 (localStorage — stale-while-revalidate로 항상 백그라운드 갱신)
-var HOME_ARTICLE_SELECT = '*';
+// Lightweight column set for list/feed fetches. Excludes the long `full`
+// body — cards/excerpts only need `body` (lede). On LTE this can shrink
+// the home/section payload from MBs to KBs. The full body is fetched on
+// demand by loadArticleById() when the reader actually opens an article.
+var LIST_ARTICLE_SELECT = 'id,title,title_en,title_ko,body,image,section,level,date,published_at,created_at,updated_at,status,view_count,featured,reporter_id,reporter,video_url,use_video,video_kind,video_fallback_url,source_url';
+var FULL_ARTICLE_SELECT = '*';
 
 // 이미지 없는 기사용 placeholder — SVG inline data URI (깨지지 않음)
 var KH_IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' fill='%231e293b'%3E%3Crect width='600' height='400'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.35em' font-family='sans-serif' font-size='18' fill='%2364748b'%3EKoreHani%3C/text%3E%3C/svg%3E";
@@ -2756,11 +2761,11 @@ async function loadArticlesFromDB(options) {
     // Always order by created_at descending so newest articles are fetched first.
     // Without ORDER BY the DB returns rows in an arbitrary order, meaning a
     // limit(18) could miss recently published articles entirely.
-    var query = sb.from('articles').select(HOME_ARTICLE_SELECT).order('created_at', { ascending: false });
+    var query = sb.from('articles').select(LIST_ARTICLE_SELECT).order('created_at', { ascending: false });
     if (useHomeOptimizedQuery) {
       query = query.limit(30);  // 홈에 필요한 최대: hero 7 + top 4 + grid 12 = 23
     } else {
-      query = query.limit(200);
+      query = query.limit(80);  // related/swipe context — 200 was a multi-MB payload over LTE
     }
     var res = await query;
     if (res.error) throw res.error;
@@ -2768,6 +2773,30 @@ async function loadArticlesFromDB(options) {
   } catch(e) {
     console.warn('articles load error', e);
     return getCachedArticles();
+  }
+}
+
+// Fetch one full article (with `full` body) by id and merge it into the
+// cache. Used by the reader fast-path so we don't have to wait for the
+// full 80-row list before we can render a single article on LTE.
+async function loadArticleById(id) {
+  if (!id) return null;
+  var sb = getSupa();
+  if (!sb) return null;
+  try {
+    var res = await sb.from('articles').select(FULL_ARTICLE_SELECT).eq('id', id).limit(1);
+    if (res.error) throw res.error;
+    var row = (res.data && res.data[0]) || null;
+    if (!row) return null;
+    var existing = Array.isArray(_articlesCache) ? _articlesCache.slice() : [];
+    var idx = existing.findIndex(function(x){ return String(x && x.id) === String(id); });
+    if (idx >= 0) existing[idx] = Object.assign({}, existing[idx], row);
+    else existing.push(row);
+    applyArticlesCache(existing);
+    return row;
+  } catch(e) {
+    console.warn('single article load error', e);
+    return null;
   }
 }
 
@@ -3968,6 +3997,20 @@ function renderArticlePage() {
 
   // 어드민이면 중요표현 관리 패널 표시
   if (window._isAdmin) _renderPhrasesAdmin(a.id);
+
+  // Lazy-hydrate the full body if this article was loaded via the lite
+  // list select (related-article swipe path). The lede already shows
+  // from `body`; once `full` arrives we re-render so the long body
+  // appears without blocking first paint.
+  if (a && a.id && !a.full && !a.__fullHydrating) {
+    a.__fullHydrating = true;
+    loadArticleById(a.id).then(function(row) {
+      if (!row || !row.full) return;
+      var current = (new URLSearchParams(window.location.search)).get('id');
+      if (String(current) !== String(a.id)) return;
+      try { renderArticlePage(); } catch(e) {}
+    }).catch(function(){});
+  }
 
   // 댓글 로드
   loadComments(a.id);
@@ -7855,14 +7898,35 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
   } else if (needsArticles) {
     _ldr(50);
-    // Drop force:true on the article page — the 200-row fetch was blocking
-    // first paint even when the cache was fresh. With the cache TTL still at
-    // 5 min, force refreshes happen on the home page (homeOptimized:true)
-    // and after auth, so the article reader can lean on whatever's already
-    // in memory instead of re-pulling 200 rows over LTE.
-    await Promise.all([loadArticlesFromDB(), sectionsPromise, settingsPromise]);
-    if (window._khLoaderClearAuto) window._khLoaderClearAuto();
-    _ldr(100);
+    // Article reader fast-path: fetch ONLY the requested article first
+    // (a single row with full body) so the reader can paint immediately
+    // on LTE. The 80-row context list — used for related-article cards
+    // and prev/next swipe — loads in the background and re-renders the
+    // page once it arrives.
+    var _isArticleReader = (pageBase === 'korehan-article');
+    var _articleId = _isArticleReader ? (new URLSearchParams(window.location.search)).get('id') : null;
+    var _haveCachedRequested = _articleId
+      && getCachedArticles().some(function(x){ return String(x.id) === String(_articleId) && x.full; });
+
+    if (_isArticleReader && _articleId && !_haveCachedRequested) {
+      // Race: single-article fetch (fast) + list fetch (background).
+      var singlePromise = loadArticleById(_articleId);
+      var listPromise = loadArticlesFromDB();
+      await Promise.all([singlePromise, sectionsPromise, settingsPromise]);
+      if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+      _ldr(100);
+      // Refresh the related-articles strip + swipe context once the
+      // background list lands.
+      listPromise.then(function() {
+        if (typeof renderArticlePage === 'function') {
+          try { renderArticlePage(); } catch(e) {}
+        }
+      });
+    } else {
+      await Promise.all([loadArticlesFromDB(), sectionsPromise, settingsPromise]);
+      if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+      _ldr(100);
+    }
 
     if (footerEl) footerEl.innerHTML = renderFooter();
     renderKhLucideIcons();
