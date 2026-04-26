@@ -245,18 +245,23 @@
       centers[categories[0]] = { x: 0, y: 0, z: 0 };
       return centers;
     }
-    var sphereR = 30;
+    // Pull centers in closer than the old 30-unit shell so clusters
+    // overlap instead of looking like discrete floating islands.
+    var sphereR = 18;
     // Fibonacci sphere direction
     var golden = Math.PI * (3 - Math.sqrt(5));
     for (var i = 0; i < n; i++) {
       var y = 1 - (i / (n - 1)) * 2;   // -1..1
-      y *= 0.65;                        // flatten a bit so clusters aren't too polar
+      y *= 0.55;                        // flatten more (galaxy disc, not globe)
       var r = Math.sqrt(1 - y * y);
       var t = golden * i;
+      // Slight per-cluster radial jitter so adjacent clusters aren't
+      // perfectly equidistant — more natural "scattered" feel.
+      var rJit = sphereR * (0.85 + Math.random() * 0.3);
       centers[categories[i]] = {
-        x: Math.cos(t) * r * sphereR,
+        x: Math.cos(t) * r * rJit,
         y: y * sphereR,
-        z: Math.sin(t) * r * sphereR
+        z: Math.sin(t) * r * rJit
       };
     }
     return centers;
@@ -554,8 +559,9 @@
     nebGeo.setAttribute('position', new three.BufferAttribute(nebPos, 3));
     nebGeo.setAttribute('color',    new three.BufferAttribute(nebCol, 3));
     var nebMat = new three.PointsMaterial({
-      size: 0.55, vertexColors: true, transparent: true, opacity: 0.9,
-      blending: three.AdditiveBlending, depthWrite: false, sizeAttenuation: true
+      size: 0.9, map: state.glowTex, vertexColors: true, transparent: true, opacity: 0.9,
+      blending: three.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+      alphaTest: 0.01
     });
     state.nebula = new three.Points(nebGeo, nebMat);
     scene.add(state.nebula);
@@ -664,13 +670,15 @@
       var members = byCat[cat];
       var m = members.length;
       for (var j = 0; j < m; j++) {
-        // Spread in a cloud around the cluster center; radius grows for
-        // larger clusters so dense areas don't clump tighter than sparse.
-        var dist = 3 + Math.pow(Math.random(), 0.55) * (6 + Math.min(18, m * 0.25));
+        // Spread wider so clusters bleed into each other instead of
+        // sitting as discrete islands. ~10–22 unit halo per cluster vs
+        // ~18 unit inter-cluster distance → natural overlap. Power 0.5
+        // gives a softer falloff (more outliers, less hard edge).
+        var dist = 4 + Math.pow(Math.random(), 0.5) * (10 + Math.min(22, m * 0.3));
         var theta = Math.random() * Math.PI * 2;
         var phi = (Math.random() - 0.5) * Math.PI;
         var jx = dist * Math.cos(phi) * Math.cos(theta);
-        var jy = dist * Math.sin(phi) * 0.5;
+        var jy = dist * Math.sin(phi) * 0.55;
         var jz = dist * Math.cos(phi) * Math.sin(theta);
         var px = center.x + jx;
         var py = center.y + jy;
@@ -702,13 +710,15 @@
     geom.setAttribute('position', new three.BufferAttribute(positions, 3));
     geom.setAttribute('color',    new three.BufferAttribute(colors, 3));
     var mat = new three.PointsMaterial({
-      size: 0.55,
+      size: 0.95,
+      map: state.glowTex,
       vertexColors: true,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.65,
       blending: three.AdditiveBlending,
       depthWrite: false,
-      sizeAttenuation: true
+      sizeAttenuation: true,
+      alphaTest: 0.01
     });
     state.corpus = new three.Points(geom, mat);
     state.corpus.renderOrder = -1; // behind sprites
