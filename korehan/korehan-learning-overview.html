@@ -585,25 +585,20 @@
       </div>
     </div>
 
-    <!-- ═══ K-EXPRESS CURRICULUM PREVIEW ═══ -->
-    <section id="gl-journey" style="margin-bottom:14px;padding:22px 18px 18px;border-radius:20px;background:radial-gradient(ellipse at 15% 0%,rgba(167,139,250,.16),transparent 50%),radial-gradient(ellipse at 85% 100%,rgba(244,169,60,.14),transparent 55%),linear-gradient(180deg,#0b1228 0%,#141a3a 100%);border:1px solid rgba(167,139,250,.22);box-shadow:0 12px 30px rgba(20,24,48,.22);position:relative;overflow:hidden;color:#fff">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:4px;flex-wrap:wrap">
+    <!-- ═══ CURRICULUM NETWORK — 6 lines × 50 stations each ═══ -->
+    <section id="gl-network" style="margin-bottom:14px;padding:22px 18px 18px;border-radius:20px;background:radial-gradient(ellipse at 15% 0%,rgba(167,139,250,.16),transparent 50%),radial-gradient(ellipse at 85% 100%,rgba(244,169,60,.14),transparent 55%),linear-gradient(180deg,#0b1228 0%,#141a3a 100%);border:1px solid rgba(167,139,250,.22);box-shadow:0 12px 30px rgba(20,24,48,.22);position:relative;overflow:hidden;color:#fff">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap">
         <div>
-          <div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,181,253,.75)">Your Journey</div>
-          <div style="font-family:'Playfair Display','Noto Serif KR',serif;font-size:22px;font-weight:900;letter-spacing:-.01em;line-height:1.1;margin-top:2px">K-Express · 한국어 노선도</div>
+          <div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,181,253,.75)">Curriculum Network</div>
+          <div style="font-family:'Playfair Display','Noto Serif KR',serif;font-size:22px;font-weight:900;letter-spacing:-.01em;line-height:1.1;margin-top:2px">한국어 노선도 · <span id="gl-net-line-count">6</span>호선</div>
+          <div style="font-size:11px;color:rgba(220,210,255,.6);margin-top:4px;line-height:1.5">각 호선마다 50개의 역(스킬 노드)이 있어요. 콘텐츠를 학습할수록 해당 호선의 역들이 통과 처리됩니다.</div>
         </div>
-        <div id="gl-journey-stage" style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,231,176,.85);padding:5px 12px;border-radius:999px;background:rgba(244,169,60,.15);border:1px solid rgba(244,169,60,.35)">— / 100%</div>
+        <div id="gl-net-overall" style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,231,176,.85);padding:5px 12px;border-radius:999px;background:rgba(244,169,60,.15);border:1px solid rgba(244,169,60,.35)">— / 300역</div>
       </div>
-      <div id="gl-journey-tagline" style="font-size:12px;color:rgba(220,210,255,.7);margin-bottom:14px;line-height:1.5;max-width:60ch"></div>
-      <svg id="gl-journey-svg" viewBox="0 0 920 140" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;font-family:'DM Sans','Noto Sans KR',sans-serif;overflow:visible"></svg>
-      <div id="gl-journey-next" style="margin:12px 0 0;padding:12px 14px;border-radius:12px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);font-size:12px;color:rgba(220,210,255,.85);line-height:1.55;min-height:16px"></div>
-      <button id="gl-journey-fullmap" type="button" onclick="KH_CURRICULUM_openFullMap()"
-        style="margin-top:12px;width:100%;padding:11px 14px;border:1px solid rgba(167,139,250,.35);border-radius:12px;background:linear-gradient(135deg,rgba(124,58,237,.28),rgba(56,189,248,.2));color:#fff;font-size:12px;font-weight:900;letter-spacing:.04em;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s,transform .12s">
-        <span style="font-size:14px">🗺️</span>
-        View full K-Express map · 50개 역 전체보기
-        <span style="margin-left:auto;font-size:13px">→</span>
-      </button>
-      <div id="gl-journey-tooltip" style="position:absolute;pointer-events:none;background:rgba(7,10,26,.96);color:#fff;padding:10px 14px;border-radius:10px;font-size:12px;font-weight:700;max-width:260px;box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;transition:opacity .15s;z-index:5;line-height:1.45;border:1px solid rgba(167,139,250,.3)"></div>
+      <div id="gl-net-lines"></div>
+      <div id="gl-net-empty" style="display:none;font-size:13px;color:rgba(220,210,255,.65);padding:14px;text-align:center">
+        커리큘럼 노선도가 아직 동기화되지 않았습니다. 잠시 후 다시 확인해주세요.
+      </div>
     </section>
 
     <!-- Full map modal (shell — filled by KH_CURRICULUM_openFullMap in next iteration) -->
@@ -613,6 +608,103 @@
     // ── K-Express preview — renders the 6 major stations as a horizontal
     // subway line. Full 50-station modal is opened by the CTA button.
     (function() {
+      // ── Curriculum Network: 6 lines × 50 stations ───────────────────
+      // Loads curriculum_lines, curriculum_stations and the user's
+      // station progress, then renders one progress bar per line plus
+      // a station-dot strip. Stations come from the DB seed in
+      // sql/2026-04-26-curriculum-network.sql.
+      async function loadNetwork() {
+        var wrap = document.getElementById('gl-net-lines');
+        var emptyEl = document.getElementById('gl-net-empty');
+        var overallEl = document.getElementById('gl-net-overall');
+        var lineCountEl = document.getElementById('gl-net-line-count');
+        if (!wrap) return;
+        if (typeof getSupa !== 'function') return;
+        var sb = getSupa(); if (!sb) return;
+
+        try {
+          // Refresh user station progress (no-op if signed-out)
+          if (supaUser) { try { await sb.rpc('refresh_user_station_progress'); } catch(e) {} }
+
+          var [linesRes, stationsRes, progRes] = await Promise.all([
+            sb.from('curriculum_lines').select('id,code,name_ko,name_en,color,icon,description,sort_order').eq('active', true).order('sort_order'),
+            sb.from('curriculum_stations').select('id,line_id,station_no,name_ko,name_en,level').order('line_id').order('station_no'),
+            supaUser ? sb.from('user_station_progress').select('station_id,progress,status').eq('user_id', supaUser.id) : Promise.resolve({ data: [] })
+          ]);
+
+          var lines = (linesRes && linesRes.data) || [];
+          var stations = (stationsRes && stationsRes.data) || [];
+          var progress = ((progRes && progRes.data) || []).reduce(function(m, r) { m[r.station_id] = r; return m; }, {});
+
+          if (!lines.length) {
+            if (emptyEl) emptyEl.style.display = '';
+            wrap.innerHTML = '';
+            return;
+          }
+
+          // Group stations by line
+          var stByLine = {};
+          stations.forEach(function(s) { (stByLine[s.line_id] = stByLine[s.line_id] || []).push(s); });
+
+          // Overall passed count
+          var totalStations = stations.length;
+          var passed = 0;
+          stations.forEach(function(s) { if (progress[s.id] && progress[s.id].status === 'passed') passed++; });
+          if (overallEl) overallEl.textContent = passed + ' / ' + totalStations + '역 통과';
+          if (lineCountEl) lineCountEl.textContent = lines.length;
+
+          var html = '';
+          lines.forEach(function(line) {
+            var sts = stByLine[line.id] || [];
+            var linePassed = 0, lineTransfer = 0;
+            sts.forEach(function(s) {
+              var p = progress[s.id];
+              if (p && p.status === 'passed') linePassed++;
+              else if (p && p.status === 'transferring') lineTransfer++;
+            });
+            var pct = sts.length ? Math.round(linePassed / sts.length * 100) : 0;
+
+            // Station dot strip — 50 dots, color by status
+            var dots = sts.map(function(s) {
+              var p = progress[s.id];
+              var status = p ? p.status : 'unvisited';
+              var bg = status === 'passed' ? line.color : status === 'transferring' ? 'rgba(255,255,255,.42)' : 'rgba(255,255,255,.12)';
+              var ring = status === 'passed' ? line.color : 'transparent';
+              return '<span title="' + _netEsc(s.name_ko) + ' (' + s.level + ')" style="width:8px;height:8px;border-radius:50%;background:' + bg + ';box-shadow:0 0 0 1px ' + ring + ';flex-shrink:0;cursor:pointer" onclick="_netStationClick(' + s.id + ')"></span>';
+            }).join('');
+
+            html += '<div style="margin-bottom:14px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);transition:border-color .15s" onmouseover="this.style.borderColor=\'' + line.color + '50\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,.07)\'">'
+              + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+              +   '<div style="width:34px;height:34px;border-radius:10px;background:' + line.color + '22;border:1px solid ' + line.color + '55;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">' + (line.icon || '🚇') + '</div>'
+              +   '<div style="flex:1;min-width:0">'
+              +     '<div style="font-size:13px;font-weight:900;color:#fff">' + line.id + '호선 · ' + _netEsc(line.name_ko) + ' <span style="color:rgba(220,210,255,.55);font-weight:600;font-size:11px;margin-left:4px">' + _netEsc(line.name_en) + '</span></div>'
+              +     '<div style="font-size:11px;color:rgba(220,210,255,.6);margin-top:1px;line-height:1.4">' + _netEsc(line.description || '') + '</div>'
+              +   '</div>'
+              +   '<div style="font-size:11px;font-weight:800;color:' + line.color + ';white-space:nowrap;text-align:right">' + linePassed + '/' + sts.length + '<div style="font-size:9px;color:rgba(220,210,255,.5);font-weight:700;margin-top:1px">' + pct + '%' + (lineTransfer ? ' · ' + lineTransfer + ' 환승중' : '') + '</div></div>'
+              + '</div>'
+              // Progress bar
+              + '<div style="height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-bottom:8px">'
+              +   '<div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,' + line.color + ',' + line.color + 'cc);transition:width .4s"></div>'
+              + '</div>'
+              // Station strip
+              + '<div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap;padding-top:2px">' + dots + '</div>'
+              + '</div>';
+          });
+          wrap.innerHTML = html;
+          if (emptyEl) emptyEl.style.display = 'none';
+        } catch(e) {
+          console.warn('[Network] load error', e);
+          if (emptyEl) emptyEl.style.display = '';
+        }
+      }
+      function _netEsc(s) {
+        return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+      }
+      window._netStationClick = function(stationId) {
+        // Light-weight detail tooltip — fuller modal in next iteration
+        try { console.log('[Network] station', stationId); } catch(e) {}
+      };
+
       async function loadStats() {
         if (typeof getSupa !== 'function' || !supaUser) return null;
         try {
@@ -775,10 +867,10 @@
       }
 
       async function init() {
-        if (!window.KH_CURRICULUM) return;
-        var stats = await loadStats();
-        var overall = window.KH_CURRICULUM.computeOverall(stats);
-        renderPreview(stats, overall);
+        // 6-line network is the new primary view. The old K-Express
+        // single-line preview (window.KH_CURRICULUM) is kept available
+        // only for the modal opener, which still works as a fallback.
+        await loadNetwork();
       }
 
       if (document.readyState === 'loading') {
@@ -883,6 +975,18 @@
           <span id="cal-longest-label" style="color:#a16207"></span>
         </div>
       </div>
+    </section>
+
+    <!-- ═══ MONTHLY REPORT ═══ -->
+    <section class="card" id="mr-section" style="margin-bottom:14px;padding:0;overflow:hidden;border:none;background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 60%,#3b1d6b 100%);color:#fff">
+      <div style="padding:18px 20px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.08)">
+        <div>
+          <div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,181,253,.8)">Monthly Report</div>
+          <div id="mr-title" style="font-family:'Playfair Display','Noto Serif KR',serif;font-size:22px;font-weight:900;letter-spacing:-.01em;line-height:1.15;margin-top:2px">Loading…</div>
+        </div>
+        <div id="mr-month-pick" style="display:flex;gap:6px"></div>
+      </div>
+      <div id="mr-body" style="padding:18px 20px"></div>
     </section>
 
     <!-- ═══ WRITING FEEDBACK HISTORY (moved to top) ═══ -->
@@ -1011,7 +1115,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="korehan-shared.js?v=20260426e"></script>
+  <script src="korehan-shared.js?v=20260426f-monthly"></script>
   <script src="js/kh-universe.js?v=20260426a"></script>
   <script src="js/kh-curriculum.js?v=20260420y"></script>
   <script src="learning_hub_vocab_data.js"></script>
@@ -3356,10 +3460,30 @@
             html += '<div style="font-size:12px;color:#334155;line-height:1.7;padding:8px 10px;background:#f8fafc;border-radius:6px;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + item.writing_text + '</div></div>';
           }
           // Feedback
+          // admin_feedback is saved as plain text from the admin
+          // textarea (korehan-x9f4k2m7.html). ai_feedback comes from
+          // Claude as a structured object. Old code only JSON.parse'd
+          // both, so plain-text admin notes silently dropped to null
+          // and the user saw an empty expanded row even though the
+          // status said "✅ 피드백 도착". Try JSON first; if that fails
+          // (or the field is plain prose), wrap it as { overall: text }
+          // so the renderer below has something to show.
+          function _parseFb(raw) {
+            if (raw == null) return null;
+            if (typeof raw !== 'string') return raw;
+            var s = raw.trim();
+            if (!s) return null;
+            if (s.charAt(0) === '{' || s.charAt(0) === '[') {
+              try { return JSON.parse(s); } catch(e) {}
+            }
+            return { overall: raw };
+          }
           var fbData = null;
           if (isReviewed) {
-            try { fbData = item.admin_feedback ? (typeof item.admin_feedback === 'string' ? JSON.parse(item.admin_feedback) : item.admin_feedback) : null; } catch(e) {}
-            if (!fbData) { try { fbData = item.ai_feedback ? (typeof item.ai_feedback === 'string' ? JSON.parse(item.ai_feedback) : item.ai_feedback) : null; } catch(e) {} }
+            fbData = _parseFb(item.admin_feedback) || _parseFb(item.ai_feedback);
+            // Backfill score from the row if the parsed feedback
+            // doesn't carry one (plain-text admin notes never do).
+            if (fbData && fbData.score == null && item.score != null) fbData.score = item.score;
           }
           if (fbData && fbData.overall) {
             html += '<div style="padding:8px 10px;background:#f0fdf4;border-left:3px solid #22c55e;border-radius:0 6px 6px 0;margin-bottom:6px">';
@@ -3419,11 +3543,384 @@
     if (typeof syncAllBadgesToServer === 'function') syncAllBadgesToServer();
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // MONTHLY REPORT
+  // Aggregates the calendar month into one row of user_monthly_reports
+  // (stats jsonb), renders the card, and lazily generates an AI plan
+  // via Claude when the user clicks "Generate plan". Caches the plan
+  // so subsequent visits are free.
+  // ═══════════════════════════════════════════════════════════════
+  var _mrViewMonth = null;        // YYYY-MM-01 string
+  var _mrCurrentReport = null;    // cached row
+  var MR_MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function _mrMonthStart(d) {
+    d = d || new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-01';
+  }
+  function _mrMonthEnd(monthStart) {
+    var p = monthStart.split('-');
+    var d = new Date(parseInt(p[0]), parseInt(p[1]), 1);  // first of NEXT month
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function _mrMonthLabel(monthStart) {
+    var p = monthStart.split('-');
+    return MR_MONTH_NAMES[parseInt(p[1])-1] + ' ' + p[0];
+  }
+
+  async function loadMonthlyReport() {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    var body = document.getElementById('mr-body');
+    var title = document.getElementById('mr-title');
+    if (!body || !title) return;
+    if (!supaUser) {
+      title.textContent = 'Sign in to see your monthly report';
+      body.innerHTML = '<div style="color:rgba(255,255,255,.7);font-size:13px;line-height:1.6">한 달 동안의 학습량과 약점을 한눈에, 그리고 다음 달 맞춤 계획까지. <a href="#" onclick="event.preventDefault();openAuthModal && openAuthModal(\'signin\')" style="color:#a78bfa;font-weight:800;text-decoration:underline">로그인</a> 후 확인하세요.</div>';
+      return;
+    }
+    if (!sb) return;
+
+    var month = _mrViewMonth || _mrMonthStart();
+    _mrViewMonth = month;
+    title.textContent = _mrMonthLabel(month) + ' Report';
+    body.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,.55);font-size:13px">📊 Aggregating your month…</div>';
+    _renderMonthPicker();
+
+    // Try existing row first
+    try {
+      var r = await sb.from('user_monthly_reports')
+        .select('user_id, month_start, generated_at, stats, ai_plan, ai_plan_at')
+        .eq('user_id', supaUser.id)
+        .eq('month_start', month)
+        .maybeSingle();
+      _mrCurrentReport = r.data || null;
+    } catch(e) { _mrCurrentReport = null; }
+
+    var ageMins = _mrCurrentReport && _mrCurrentReport.generated_at
+      ? (Date.now() - new Date(_mrCurrentReport.generated_at).getTime()) / 60000
+      : Infinity;
+    var isCurrentMonth = (month === _mrMonthStart());
+    // Re-aggregate if no row OR (current month AND stats older than 6 hours)
+    if (!_mrCurrentReport || (isCurrentMonth && ageMins > 360)) {
+      try {
+        var stats = await _mrAggregate(month);
+        var upRes = await sb.from('user_monthly_reports').upsert({
+          user_id: supaUser.id, month_start: month,
+          stats: stats, generated_at: new Date().toISOString(),
+          ai_plan: _mrCurrentReport && _mrCurrentReport.ai_plan ? _mrCurrentReport.ai_plan : null,
+          ai_plan_at: _mrCurrentReport && _mrCurrentReport.ai_plan_at ? _mrCurrentReport.ai_plan_at : null
+        }, { onConflict: 'user_id,month_start' }).select().maybeSingle();
+        if (!upRes.error) _mrCurrentReport = upRes.data || { stats: stats, month_start: month };
+        else _mrCurrentReport = { stats: stats, month_start: month };
+      } catch(e) {
+        body.innerHTML = '<div style="color:#fca5a5;font-size:12px;padding:10px 0">집계 오류: ' + (e.message||e) + '</div>';
+        return;
+      }
+    }
+    _renderMonthlyReport();
+  }
+
+  function _renderMonthPicker() {
+    var pick = document.getElementById('mr-month-pick');
+    if (!pick) return;
+    var now = new Date();
+    var months = [];
+    for (var i = 0; i < 3; i++) {
+      var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push(_mrMonthStart(d));
+    }
+    pick.innerHTML = months.map(function(m) {
+      var active = m === _mrViewMonth;
+      return '<button onclick="_mrSwitchMonth(\'' + m + '\')" style="padding:5px 10px;border-radius:8px;border:1px solid rgba(167,139,250,' + (active ? '.6' : '.18') + ');background:' + (active ? 'rgba(167,139,250,.25)' : 'rgba(255,255,255,.04)') + ';color:#fff;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">' + _mrMonthLabel(m).split(' ')[0] + '</button>';
+    }).join('');
+  }
+  window._mrSwitchMonth = function(month) {
+    _mrViewMonth = month;
+    _mrCurrentReport = null;
+    loadMonthlyReport();
+  };
+
+  // Aggregate the calendar month from existing tables (no new RPC).
+  async function _mrAggregate(monthStart) {
+    var sb = getSupa();
+    var startISO = monthStart + 'T00:00:00';
+    var endISO   = _mrMonthEnd(monthStart) + 'T00:00:00';
+    var stats = {
+      articles_read: 0, words_saved: 0, quizzes_done: 0,
+      writing_count: 0, writing_avg_score: null,
+      accuracy_pct: null, active_days: 0,
+      skill_reading: 0, skill_vocab: 0, skill_grammar: 0,
+      skill_writing: 0, skill_listening: 0, skill_speaking: 0,
+      weak_grammar: [], wrong_pattern_summary: {}
+    };
+
+    // Reading — user_read_history rows in month
+    try {
+      var rh = await sb.from('user_read_history')
+        .select('content_id, content_type, created_at', { count: 'exact', head: false })
+        .eq('user_id', supaUser.id)
+        .gte('created_at', startISO).lt('created_at', endISO);
+      stats.articles_read = (rh.data || []).length;
+    } catch(e) {}
+
+    // Saved words this month
+    try {
+      var sw = await sb.from('user_saved_words')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', supaUser.id)
+        .gte('created_at', startISO).lt('created_at', endISO);
+      stats.words_saved = sw.count || 0;
+    } catch(e) {}
+
+    // Quizzes + accuracy + wrong patterns aggregation
+    try {
+      var qz = await sb.from('user_quiz_results')
+        .select('score, max_score, accuracy_pct, wrong_patterns, study_date')
+        .eq('user_id', supaUser.id)
+        .gte('created_at', startISO).lt('created_at', endISO);
+      var rows = qz.data || [];
+      stats.quizzes_done = rows.length;
+      if (rows.length) {
+        var totalScore = 0, totalMax = 0, daySet = {};
+        var patternCounts = {};
+        rows.forEach(function(r) {
+          totalScore += (r.score || 0); totalMax += (r.max_score || 1);
+          if (r.study_date) daySet[r.study_date] = true;
+          var wp = r.wrong_patterns;
+          try { if (typeof wp === 'string') wp = JSON.parse(wp); } catch(e) { wp = null; }
+          if (wp && typeof wp === 'object') {
+            Object.keys(wp).forEach(function(k) {
+              patternCounts[k] = (patternCounts[k] || 0) + (Number(wp[k]) || 0);
+            });
+          }
+        });
+        stats.accuracy_pct = totalMax > 0 ? Math.round(totalScore / totalMax * 100) : null;
+        stats.active_days = Object.keys(daySet).length;
+        stats.wrong_pattern_summary = patternCounts;
+      }
+    } catch(e) {}
+
+    // Writing submissions
+    try {
+      var ws = await sb.from('user_submissions')
+        .select('score, status')
+        .eq('user_id', supaUser.id)
+        .gte('submitted_at', startISO).lt('submitted_at', endISO);
+      var ws_rows = ws.data || [];
+      stats.writing_count = ws_rows.length;
+      var scored = ws_rows.filter(function(s){ return s.score != null; });
+      if (scored.length) {
+        var sum = 0; scored.forEach(function(s){ sum += s.score; });
+        stats.writing_avg_score = Math.round(sum / scored.length);
+      }
+    } catch(e) {}
+
+    // Weak grammar — top 5 by wrong_count
+    try {
+      var wg = await sb.from('user_grammar_stats')
+        .select('grammar_point, wrong_count, correct_count')
+        .eq('user_id', supaUser.id)
+        .gt('wrong_count', 0)
+        .order('wrong_count', { ascending: false })
+        .limit(5);
+      stats.weak_grammar = (wg.data || []).map(function(r) {
+        return { grammar_point: r.grammar_point, wrong_count: r.wrong_count, correct_count: r.correct_count || 0 };
+      });
+    } catch(e) {}
+
+    // Skill scores — average of weekly snapshots that fall in month
+    try {
+      var sk = await sb.from('user_weekly_snapshot')
+        .select('week_start, skill_reading, skill_vocab, skill_grammar, skill_writing, skill_listening, skill_speaking')
+        .eq('user_id', supaUser.id)
+        .gte('week_start', monthStart).lt('week_start', _mrMonthEnd(monthStart));
+      var snaps = sk.data || [];
+      if (snaps.length) {
+        ['skill_reading','skill_vocab','skill_grammar','skill_writing','skill_listening','skill_speaking'].forEach(function(k){
+          var sum = 0, n = 0;
+          snaps.forEach(function(s){ if (s[k] != null) { sum += s[k]; n++; } });
+          stats[k] = n ? Math.round(sum / n) : 0;
+        });
+      }
+    } catch(e) {}
+
+    return stats;
+  }
+
+  function _renderMonthlyReport() {
+    var body = document.getElementById('mr-body');
+    if (!body || !_mrCurrentReport) return;
+    var s = _mrCurrentReport.stats || {};
+    var hasPlan = canAccess && typeof canAccess === 'function' ? canAccess('monthly_report') : false;
+
+    // Stats grid (always visible — even free users see their numbers)
+    var statRows = [
+      { label:'Articles', value: s.articles_read || 0, icon:'📰' },
+      { label:'Words saved', value: s.words_saved || 0, icon:'📚' },
+      { label:'Quizzes', value: s.quizzes_done || 0, icon:'🧩' },
+      { label:'Writing', value: s.writing_count || 0, icon:'✍️' },
+      { label:'Accuracy', value: s.accuracy_pct != null ? s.accuracy_pct + '%' : '—', icon:'🎯' },
+      { label:'Active days', value: s.active_days || 0, icon:'📅' }
+    ];
+    var statsHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:14px">'
+      + statRows.map(function(r){
+          return '<div style="padding:11px 12px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)">'
+            + '<div style="font-size:11px;font-weight:700;color:rgba(196,181,253,.8);margin-bottom:2px">' + r.icon + ' ' + r.label + '</div>'
+            + '<div style="font-size:20px;font-weight:900;letter-spacing:-.01em">' + r.value + '</div>'
+            + '</div>';
+        }).join('')
+      + '</div>';
+
+    // Skills (compact bars)
+    var skillKeys = [
+      ['skill_reading','Reading'],['skill_vocab','Vocab'],['skill_grammar','Grammar'],
+      ['skill_writing','Writing'],['skill_listening','Listening'],['skill_speaking','Speaking']
+    ];
+    var skillsHTML = '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:800;color:rgba(196,181,253,.85);margin-bottom:8px;letter-spacing:.06em;text-transform:uppercase">Skills (avg of month)</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px 14px">'
+      + skillKeys.map(function(k){
+          var v = Math.max(0, Math.min(100, Number(s[k[0]]) || 0));
+          return '<div style="display:flex;align-items:center;gap:8px;font-size:11px"><span style="width:64px;color:rgba(220,210,255,.8);font-weight:700">' + k[1] + '</span><div style="flex:1;height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden"><div style="width:' + v + '%;height:100%;background:linear-gradient(90deg,#a78bfa,#38bdf8);"></div></div><span style="width:30px;text-align:right;color:#fff;font-weight:800">' + v + '</span></div>';
+        }).join('')
+      + '</div></div>';
+
+    // Weak grammar
+    var weakHTML = '';
+    if (s.weak_grammar && s.weak_grammar.length) {
+      weakHTML = '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:800;color:rgba(196,181,253,.85);margin-bottom:8px;letter-spacing:.06em;text-transform:uppercase">Weak grammar</div>'
+        + '<div style="display:flex;gap:6px;flex-wrap:wrap">'
+        + s.weak_grammar.map(function(g){
+            return '<span style="padding:4px 10px;border-radius:999px;background:rgba(244,63,94,.15);border:1px solid rgba(244,63,94,.3);color:#fda4af;font-size:11px;font-weight:700">' + g.grammar_point + ' <span style="color:rgba(255,255,255,.5);font-weight:400">×' + g.wrong_count + '</span></span>';
+          }).join('')
+        + '</div></div>';
+    }
+
+    // AI plan section
+    var planHTML;
+    var plan = _mrCurrentReport.ai_plan;
+    if (plan && plan.summary) {
+      planHTML = _renderMrPlan(plan);
+    } else if (!hasPlan) {
+      planHTML = '<div style="margin-top:6px;padding:14px 16px;border-radius:12px;background:rgba(255,255,255,.04);border:1px dashed rgba(167,139,250,.3);text-align:center">'
+        + '<div style="font-size:13px;font-weight:800;margin-bottom:4px">🔒 AI Personalized Plan</div>'
+        + '<div style="font-size:12px;color:rgba(220,210,255,.65);line-height:1.55;margin-bottom:10px">Standard 플랜에서 다음 달 주차별 학습 계획을 자동 생성해드려요.</div>'
+        + '<button onclick="requirePlan && requirePlan(\'monthly_report\')" style="padding:8px 18px;background:linear-gradient(135deg,#a78bfa,#38bdf8);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">Upgrade →</button>'
+        + '</div>';
+    } else {
+      planHTML = '<div style="margin-top:6px;padding:14px 16px;border-radius:12px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.25)">'
+        + '<div style="font-size:13px;font-weight:800;margin-bottom:4px">📋 Personalized plan ready to generate</div>'
+        + '<div style="font-size:11px;color:rgba(220,210,255,.7);margin-bottom:10px;line-height:1.5">이번 달 데이터를 기반으로 다음 달 4주 계획 + 약점 보완 포커스를 AI가 제안합니다.</div>'
+        + '<button id="mr-gen-btn" onclick="_mrGeneratePlan()" style="padding:9px 22px;background:linear-gradient(135deg,#a78bfa,#38bdf8);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">Generate plan ✨</button>'
+        + '</div>';
+    }
+
+    body.innerHTML = statsHTML + skillsHTML + weakHTML + planHTML;
+  }
+
+  function _renderMrPlan(plan) {
+    var html = '<div style="margin-top:6px;padding:16px 18px;border-radius:14px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.3)">';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:800;color:#a78bfa;letter-spacing:.06em;text-transform:uppercase">📋 Next-month plan</span><span style="font-size:10px;color:rgba(220,210,255,.5)">' + (_mrCurrentReport.ai_plan_at ? new Date(_mrCurrentReport.ai_plan_at).toLocaleDateString('ko-KR') : '') + '</span></div>';
+    if (plan.summary) html += '<div style="font-size:13px;color:rgba(255,255,255,.92);line-height:1.65;margin-bottom:12px">' + _mrEsc(plan.summary) + '</div>';
+    if (plan.focus_areas && plan.focus_areas.length) {
+      html += '<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:800;color:rgba(196,181,253,.75);margin-bottom:4px;letter-spacing:.06em;text-transform:uppercase">Focus this month</div><div style="display:flex;gap:6px;flex-wrap:wrap">';
+      plan.focus_areas.forEach(function(f){ html += '<span style="padding:4px 10px;border-radius:999px;background:rgba(56,189,248,.18);border:1px solid rgba(56,189,248,.35);color:#bae6fd;font-size:11px;font-weight:700">' + _mrEsc(f) + '</span>'; });
+      html += '</div></div>';
+    }
+    if (plan.weekly_goals && plan.weekly_goals.length) {
+      html += '<div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px">';
+      plan.weekly_goals.forEach(function(w, i){
+        html += '<div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)">'
+          + '<div style="font-size:10px;font-weight:800;color:#a78bfa;margin-bottom:3px">Week ' + (w.week || (i+1)) + '</div>';
+        if (w.focus) html += '<div style="font-size:12px;font-weight:800;color:#fff;margin-bottom:5px;line-height:1.35">' + _mrEsc(w.focus) + '</div>';
+        var goals = [];
+        if (w.articles)  goals.push('📰 ' + w.articles);
+        if (w.words)     goals.push('📚 ' + w.words);
+        if (w.quizzes)   goals.push('🧩 ' + w.quizzes);
+        if (w.writing)   goals.push('✍️ ' + w.writing);
+        if (goals.length) html += '<div style="font-size:11px;color:rgba(220,210,255,.75);line-height:1.5">' + goals.join(' · ') + '</div>';
+        if (w.activity) html += '<div style="font-size:10px;color:rgba(196,181,253,.65);margin-top:4px;line-height:1.45">' + _mrEsc(w.activity) + '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    if (plan.encouragement) html += '<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(244,169,60,.1);border-left:3px solid rgba(244,169,60,.5);font-size:12px;color:rgba(255,231,176,.95);line-height:1.6;font-style:italic">' + _mrEsc(plan.encouragement) + '</div>';
+    html += '<button onclick="_mrGeneratePlan(true)" style="margin-top:10px;padding:6px 14px;background:transparent;color:rgba(196,181,253,.7);border:1px solid rgba(167,139,250,.25);border-radius:8px;font-weight:700;font-size:10px;cursor:pointer;font-family:inherit">↻ Regenerate</button>';
+    html += '</div>';
+    return html;
+  }
+  function _mrEsc(s) {
+    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  window._mrGeneratePlan = async function(force) {
+    if (typeof requirePlan === 'function' && !requirePlan('monthly_report')) return;
+    if (!_mrCurrentReport || !_mrCurrentReport.stats) return;
+    var btn = document.getElementById('mr-gen-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '✨ Generating…'; btn.style.opacity = '.7'; }
+
+    var s = _mrCurrentReport.stats;
+    var levelHint = '';
+    try { levelHint = localStorage.getItem('kh_user_level') || ''; } catch(e) {}
+    var statsBlob = {
+      articles_read: s.articles_read || 0,
+      words_saved: s.words_saved || 0,
+      quizzes_done: s.quizzes_done || 0,
+      writing_count: s.writing_count || 0,
+      writing_avg_score: s.writing_avg_score,
+      accuracy_pct: s.accuracy_pct,
+      active_days: s.active_days || 0,
+      skills: {
+        reading: s.skill_reading||0, vocab: s.skill_vocab||0,
+        grammar: s.skill_grammar||0, writing: s.skill_writing||0,
+        listening: s.skill_listening||0, speaking: s.skill_speaking||0
+      },
+      weak_grammar: (s.weak_grammar||[]).slice(0,5).map(function(g){ return g.grammar_point + ' (×' + g.wrong_count + ')'; })
+    };
+    var prompt =
+      'You are a Korean language coach reviewing one student\'s month of activity on a learning app.\n'
+      + 'Level: ' + (levelHint || 'unknown') + '\n'
+      + 'Month: ' + _mrMonthLabel(_mrViewMonth) + '\n'
+      + 'Stats:\n' + JSON.stringify(statsBlob, null, 2) + '\n\n'
+      + 'Write a personalised plan for the NEXT month. Identify the 1–2 weakest areas based on the skill scores and weak_grammar list. Set realistic but slightly ambitious weekly targets given what they did this month (don\'t prescribe 30 articles if they only read 5). Mix in concrete activity suggestions like "Drill ~았/었어요 in Weak Grammar Drill twice this week" or "Submit one Diary entry per week."\n\n'
+      + 'Respond ONLY in this exact JSON format (no markdown, no extra text):\n'
+      + '{"summary":"2 short sentences in Korean about how this month went and what to focus on next.","focus_areas":["short label","short label"],"weekly_goals":[{"week":1,"focus":"one-line focus","articles":N,"words":N,"quizzes":N,"writing":N,"activity":"one concrete activity suggestion in Korean"},{"week":2,...},{"week":3,...},{"week":4,...}],"encouragement":"1 short motivating sentence in Korean."}';
+
+    try {
+      var res = await callClaude({
+        feature: 'monthly-plan',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1400,
+        messages: [{ role:'user', content: prompt }]
+      });
+      var raw = (res.content && res.content[0] && res.content[0].text) || res.text || '';
+      var i = raw.indexOf('{'), j = raw.lastIndexOf('}');
+      if (i < 0 || j <= i) throw new Error('AI returned no JSON');
+      var plan = JSON.parse(raw.slice(i, j+1));
+      var sb = getSupa();
+      var nowIso = new Date().toISOString();
+      await sb.from('user_monthly_reports').update({ ai_plan: plan, ai_plan_at: nowIso })
+        .eq('user_id', supaUser.id).eq('month_start', _mrViewMonth);
+      _mrCurrentReport.ai_plan = plan;
+      _mrCurrentReport.ai_plan_at = nowIso;
+      _renderMonthlyReport();
+    } catch(e) {
+      if (btn) { btn.disabled = false; btn.textContent = '↻ Try again'; btn.style.opacity = ''; }
+      var body = document.getElementById('mr-body');
+      if (body) {
+        var errEl = document.createElement('div');
+        errEl.style.cssText = 'margin-top:8px;padding:8px 12px;border-radius:8px;background:rgba(244,63,94,.12);color:#fda4af;font-size:11px';
+        errEl.textContent = 'Plan 생성 실패: ' + (e.message || e);
+        body.appendChild(errEl);
+      }
+    }
+  };
+
   // ═══ Init new sections ═══
   var _hubNewSectionsLoaded = false;
   function loadNewHubSections() {
     if (_hubNewSectionsLoaded) return;
     _hubNewSectionsLoaded = true;
+    loadMonthlyReport();
     loadWeeklyComparison();
     loadWeeklyGoals();
     loadCalendarData();

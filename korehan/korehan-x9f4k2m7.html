@@ -816,6 +816,16 @@ async function dbSaveArticle(article) {
     try {
       var res = await sb.from('articles').upsert(payload, { onConflict: 'id' });
       if (res.error) throw res.error;
+      // Fire-and-forget curriculum tagging for the new/updated row so
+      // the network map keeps up. Only runs once the article has both
+      // body text and a stable id; otherwise we'd waste a Claude call.
+      try {
+        if (article && article.id && (article.body || article.full) && typeof khTagArticleObject === 'function') {
+          khTagArticleObject(article).then(function(tags) {
+            if (tags && tags.length) console.log('[dbSaveArticle] tagged to', tags.length, 'stations');
+          });
+        }
+      } catch(tagErr) { console.warn('[dbSaveArticle] tag hook', tagErr); }
       return true;
     } catch (e) {
       lastErr = e;

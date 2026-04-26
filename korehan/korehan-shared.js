@@ -7797,6 +7797,105 @@ function getApiKey() {
   return _appSettings.anthropic_key || null;
 }
 
+// ── CURRICULUM TAGGING ────────────────────────────────────────
+// Given a piece of content (article/conversation/story/etc.), ask
+// Claude which curriculum stations it belongs to, then upsert the
+// mappings into content_station_map. Used both at admin-save time
+// (new content) and via batch backfill scripts (existing content).
+//
+// Returns the array of tags written, or [] on failure. Idempotent:
+// re-running on the same content updates existing rows (via upsert
+// onConflict).
+async function khTagContent(opts) {
+  opts = opts || {};
+  var type  = opts.content_type || opts.type;
+  var id    = opts.content_id   || opts.id;
+  var text  = opts.text || '';
+  var hint  = opts.hint || '';
+  var level = opts.level || '';
+  if (!type || !id) return [];
+  var sb = getSupa();
+  if (!sb) return [];
+
+  try {
+    // Pull the line + station catalogue once. Cached in-memory across
+    // calls so a batch tag run doesn't re-query for every item.
+    if (!khTagContent._catalog) {
+      var [linesRes, stationsRes] = await Promise.all([
+        sb.from('curriculum_lines').select('id,code,name_ko,name_en,description').eq('active', true).order('sort_order'),
+        sb.from('curriculum_stations').select('id,line_id,station_no,name_ko,name_en,level').order('line_id').order('station_no')
+      ]);
+      khTagContent._catalog = {
+        lines: linesRes.data || [],
+        stations: stationsRes.data || []
+      };
+    }
+    var cat = khTagContent._catalog;
+    if (!cat.lines.length || !cat.stations.length) return [];
+
+    // Compact catalogue for the prompt — lines with their station ids.
+    var catalogStr = cat.lines.map(function(L) {
+      var sts = cat.stations.filter(function(s){ return s.line_id === L.id; });
+      var sample = sts.map(function(s){ return s.id + ':' + s.name_en + '(' + s.level + ')'; }).join(', ');
+      return L.id + '호선 ' + L.name_ko + ' [' + L.name_en + ']: ' + sample;
+    }).join('\n');
+
+    var prompt = 'You are tagging a Korean-learning content item to a 6-line curriculum network. '
+      + 'Each line covers one skill (어휘/문법/읽기/듣기/쓰기/문화). Each line has 50 stations from Starter to Fluency. '
+      + 'Pick 1–4 stations across 1–3 different lines that this content best teaches. Weight 0..1 = how core this content is to that station.\n\n'
+      + 'Content type: ' + type + (level ? '\nLevel: ' + level : '') + (hint ? '\nHint: ' + hint : '') + '\n'
+      + 'Content text (truncated):\n' + (text || '').slice(0, 1400) + '\n\n'
+      + 'Stations catalogue (id:name(level)):\n' + catalogStr + '\n\n'
+      + 'Respond ONLY in this exact JSON format:\n'
+      + '{"tags":[{"station_id":N,"weight":0.0..1.0,"reason":"short why"}]}';
+
+    var res = await callClaude({
+      feature: 'curriculum-tag',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var raw = (res.content && res.content[0] && res.content[0].text) || res.text || '';
+    var i = raw.indexOf('{'), j = raw.lastIndexOf('}');
+    if (i < 0 || j <= i) throw new Error('AI returned no JSON');
+    var parsed = JSON.parse(raw.slice(i, j + 1));
+    var tags = (parsed.tags || []).filter(function(t) {
+      return t && Number.isFinite(t.station_id) && Number(t.weight) > 0;
+    });
+    if (!tags.length) return [];
+
+    var rows = tags.map(function(t) {
+      return {
+        content_type: type,
+        content_id: String(id),
+        station_id: t.station_id,
+        weight: Math.max(0, Math.min(1, Number(t.weight) || 0)),
+        source: 'ai',
+        confidence: Number(t.weight) || null
+      };
+    });
+    var up = await sb.from('content_station_map')
+      .upsert(rows, { onConflict: 'content_type,content_id,station_id' });
+    if (up.error) { console.warn('khTagContent upsert', up.error); return []; }
+    return tags;
+  } catch(e) {
+    console.warn('[khTagContent]', e && (e.message || e));
+    return [];
+  }
+}
+
+// Convenience: tag an article object using its current fields.
+async function khTagArticleObject(article) {
+  if (!article || !article.id) return [];
+  return khTagContent({
+    content_type: 'article',
+    content_id: article.id,
+    text: (article.title || '') + '\n\n' + (article.body || '') + '\n\n' + (article.full || ''),
+    level: article.level || '',
+    hint: 'section=' + (article.section || '')
+  });
+}
+
 // ── INIT ──────────────────────────────────────────────────────
 function markShellReady() {
   if (document.body) document.body.classList.add('kh-ready');
