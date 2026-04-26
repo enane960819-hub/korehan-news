@@ -7855,7 +7855,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
   } else if (needsArticles) {
     _ldr(50);
-    await Promise.all([loadArticlesFromDB({ force: true }), sectionsPromise, settingsPromise]);
+    // Drop force:true on the article page — the 200-row fetch was blocking
+    // first paint even when the cache was fresh. With the cache TTL still at
+    // 5 min, force refreshes happen on the home page (homeOptimized:true)
+    // and after auth, so the article reader can lean on whatever's already
+    // in memory instead of re-pulling 200 rows over LTE.
+    await Promise.all([loadArticlesFromDB(), sectionsPromise, settingsPromise]);
     if (window._khLoaderClearAuto) window._khLoaderClearAuto();
     _ldr(100);
 
@@ -10259,20 +10264,25 @@ function setupFeedNavigation() {
     pill.onclick = function(e) { e.preventDefault(); goToNextArticle(); };
     document.body.appendChild(pill);
   }
-
-  // Reveal the pill after the user has scrolled past 80% of the page.
-  // With the footer + Related Articles + inline Comments now hidden
-  // on reading pages, the scrollable height is basically just the
-  // article body — a lower threshold would pop the pill mid-read.
-  if (!window._khFeedPillHooked) {
-    window._khFeedPillHooked = true;
-    window.addEventListener('scroll', function() {
-      var scrolled = (window.scrollY || document.documentElement.scrollTop) + window.innerHeight;
-      var total = document.documentElement.scrollHeight || 1;
-      var pct = scrolled / total;
-      document.body.classList.toggle('kh-feed-pill-on', pct > 0.8);
-    }, { passive: true });
+  // New: matching prev pill on the left so the learner can jump backwards
+  // without having to scroll all the way to the top first.
+  if (!document.getElementById('kh-feed-prev-pill')) {
+    var prev = document.createElement('button');
+    prev.id = 'kh-feed-prev-pill';
+    prev.type = 'button';
+    prev.setAttribute('aria-label', 'Previous article');
+    prev.innerHTML =
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'
+      + '<span>Prev</span>';
+    prev.onclick = function(e) { e.preventDefault(); goToPrevArticle(); };
+    document.body.appendChild(prev);
   }
+
+  // Pills now show as soon as the article opens — the previous "wait until
+  // 80% scrolled" rule meant short articles never revealed them and learners
+  // were forced to use the strict swipe gesture (page-bottom + 80px swipe up).
+  // The body class is added once on setup and not toggled by scroll anymore.
+  document.body.classList.add('kh-feed-pill-on');
 
   // Vertical swipe gestures for feed navigation, Reels / Shorts style:
   //   - swipe UP   AT the very bottom     = next article

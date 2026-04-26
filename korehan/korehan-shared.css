@@ -3739,6 +3739,44 @@ body.kh-reading-page.kh-feed-pill-on #kh-feed-next-pill {
 body.kh-reading-page #kh-feed-next-pill:hover { background: rgba(8,16,31,.95); }
 body.kh-reading-page #kh-feed-next-pill svg { opacity: .9; }
 
+/* Matching prev pill on the LEFT — same look, smaller padding so the
+   center of the bottom strip stays visually balanced with the next pill
+   in the middle. */
+body.kh-reading-page #kh-feed-prev-pill {
+  position: fixed;
+  left: 14px;
+  bottom: 20px;
+  transform: translateY(30px);
+  z-index: 1640;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(8,16,31,.8);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(0,0,0,.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .28s cubic-bezier(.22,1,.36,1), opacity .22s, bottom .28s cubic-bezier(.22,1,.36,1);
+}
+body.kh-reading-page.kh-feed-pill-on #kh-feed-prev-pill {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+body.kh-reading-page #kh-feed-prev-pill:hover { background: rgba(8,16,31,.95); }
+body.kh-reading-page #kh-feed-prev-pill svg { opacity: .9; }
+body.kh-cdr-open #kh-feed-prev-pill { display: none !important; }
+
 /* ── Review tab (was Quiz) — light practice bundle.
    Note: "rv-check-*" rather than "rv-card-*" because Study Room
    already ships its own .rv-card (dark gradient, white text) for
