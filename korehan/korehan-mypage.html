@@ -599,6 +599,49 @@ body.kh-neon-on .room-shop-price { color:#8ffcff !important; }
 }
 .room-placed-item.room-selected { animation:selectBounce .3s ease-out; }
 
+/* ── My Room Phase-1 polish ─────────────────────────────────────
+   - Wider on desktop (was capped at 600px even on 1920px screens)
+   - Time-of-day color overlay so morning/afternoon/evening/night look
+     different even before any wallpaper system exists
+   - SVG clock hands, window tints, rain animation
+   - Pet idle slide + click-react hop
+   - BGM toggle button + drawer
+   ────────────────────────────────────────────────────────────── */
+@media(min-width:760px){#miniroom-container{max-width:920px!important}}
+
+.room-time-overlay{position:absolute;inset:0;pointer-events:none;mix-blend-mode:multiply;transition:background 1.6s ease;background:transparent;z-index:1}
+body.room-lights-off .room-time-overlay{background:linear-gradient(180deg,rgba(8,12,28,.55),rgba(4,6,18,.7))!important}
+
+/* SVG clock hands sit on top of the wall_clock sprite */
+.room-clock-hands{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.room-clock-hands line{transition:transform .25s cubic-bezier(.4,0,.2,1)}
+.room-clock-hands line.sec{transition:none}
+
+/* Window tint overlay — color changes with time of day */
+.room-window-tint{position:absolute;inset:8%;border-radius:6%;pointer-events:none;mix-blend-mode:screen;transition:background 1.6s ease}
+.room-window-rain{position:absolute;inset:8%;border-radius:6%;pointer-events:none;background-image:repeating-linear-gradient(105deg,rgba(125,211,252,0) 0 9px,rgba(125,211,252,.22) 9px 11px);background-size:40px 80px;animation:roomRain .65s linear infinite;opacity:.85}
+@keyframes roomRain{0%{background-position:0 0}100%{background-position:-40px 80px}}
+
+/* Pet idle hop on click + heart popup */
+@keyframes roomHeartUp{0%{opacity:0;transform:translate(-50%,0) scale(.6)}30%{opacity:1;transform:translate(-50%,-10px) scale(1.15)}100%{opacity:0;transform:translate(-50%,-32px) scale(.9)}}
+.room-pet-heart{position:absolute;left:50%;top:0;transform:translate(-50%,0);font-size:18px;animation:roomHeartUp .9s ease forwards;pointer-events:none;z-index:6}
+.room-placed-item.room-pet{cursor:pointer}
+.room-placed-item.room-pet-hop{animation:roomPetHop .35s ease}
+@keyframes roomPetHop{0%{transform:translateY(0)}40%{transform:translateY(-12px)}100%{transform:translateY(0)}}
+
+/* BGM toggle button — top-right corner, twin to the light switch */
+.room-bgm-btn{position:absolute;top:10px;right:56px;width:38px;height:38px;border-radius:999px;background:rgba(15,23,42,.7);color:#fff;border:1px solid rgba(255,255,255,.18);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:11;transition:transform .15s,background .15s}
+.room-bgm-btn:hover{background:rgba(15,23,42,.9);transform:scale(1.06)}
+.room-bgm-btn.on{background:linear-gradient(135deg,#2563eb,#7c3aed);border-color:rgba(125,211,252,.6);box-shadow:0 0 14px rgba(125,211,252,.35)}
+.room-bgm-drawer{position:absolute;top:54px;right:10px;background:rgba(15,23,42,.96);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px;min-width:180px;color:#fff;font-size:13px;box-shadow:0 12px 36px rgba(0,0,0,.4);z-index:6;display:none;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.room-bgm-drawer.open{display:block}
+.room-bgm-track{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;cursor:pointer;color:#cbd5e1;font-weight:600}
+.room-bgm-track:hover{background:rgba(255,255,255,.06)}
+.room-bgm-track.active{background:rgba(125,211,252,.18);color:#fff}
+.room-bgm-track .room-bgm-emoji{font-size:16px}
+.room-bgm-vol{display:flex;align-items:center;gap:8px;padding:8px 4px 2px;border-top:1px solid rgba(255,255,255,.08);margin-top:6px}
+.room-bgm-vol input{flex:1;height:18px}
+
 /* ── #19 Section spacing + dividers ─────────────── */
 .mp-section { margin-bottom:20px; padding:18px 16px; border-radius:16px; background:#fff; border:1px solid #e8eef5; }
 body.kh-neon-on .mp-section { background:rgba(9,18,33,.7) !important; border-color:rgba(255,255,255,.06) !important; }
@@ -855,9 +898,12 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
     <h3>My Room</h3>
     <div id="miniroom-container" style="position:relative;width:100%;max-width:600px;aspect-ratio:10/9;margin:0 auto;background:url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover no-repeat;border-radius:16px;border:1px solid rgba(0,0,0,.12);overflow:hidden;touch-action:auto">
       <div id="miniroom-items"></div>
+      <div id="room-time-overlay" class="room-time-overlay" aria-hidden="true"></div>
       <div id="room-light-switch" class="room-light-switch" onclick="toggleRoomLights()"
            style="background-image:url(assets/file_000000000f1c720bbe419c8601e6fb5e-removebg-preview.png)"
            title="Toggle lights"></div>
+      <button type="button" id="room-bgm-btn" class="room-bgm-btn" onclick="toggleRoomBGMDrawer(event)" aria-label="Background music" title="Background music">🎵</button>
+      <div id="room-bgm-drawer" class="room-bgm-drawer" role="menu" aria-label="Background music tracks"></div>
     </div>
     <!-- Controls -->
     <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
@@ -2395,6 +2441,407 @@ function renderRoomItems() {
     }
 
     container.appendChild(div);
+
+    // Per-item decorators (Phase-1 polish): clock hands, window tints,
+    // pet idle slide. All are passive — they hook on top of the existing
+    // sprite without changing its sizing or drag math.
+    if (placed.id === 'wall_clock') _decorateClock(div);
+    else if (placed.id && placed.id.indexOf('window_') === 0) _decorateWindow(div, def);
+    if (def.category === 'pet') _decoratePet(div);
+  });
+  _ensureClockTicker();
+  _updateRoomTimeOfDay();
+  _ensureTimeOfDayTicker();
+}
+
+// ── Phase-1 decorators ──────────────────────────────────────────
+
+// Wall clock: SVG hands overlayed on the sprite. Updated once a second
+// by _ensureClockTicker. Ignores a clock sprite that already has hands
+// painted on the PNG — we just add ours on top.
+function _decorateClock(div) {
+  if (div.querySelector('.room-clock-hands')) return;
+  var ns = 'http://www.w3.org/2000/svg';
+  var svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('class', 'room-clock-hands');
+  svg.setAttribute('viewBox', '0 0 100 100');
+  function mkHand(y2, w, color, cls) {
+    var l = document.createElementNS(ns, 'line');
+    l.setAttribute('x1', '50'); l.setAttribute('y1', '50');
+    l.setAttribute('x2', '50'); l.setAttribute('y2', String(y2));
+    l.setAttribute('stroke', color);
+    l.setAttribute('stroke-width', String(w));
+    l.setAttribute('stroke-linecap', 'round');
+    l.style.transformOrigin = '50px 50px';
+    if (cls) l.setAttribute('class', cls);
+    return l;
+  }
+  var hour = mkHand(32, 3.4, '#0f172a');
+  var min  = mkHand(22, 2.4, '#0f172a');
+  var sec  = mkHand(18, 1.2, '#dc2626', 'sec');
+  var pin  = document.createElementNS(ns, 'circle');
+  pin.setAttribute('cx', '50'); pin.setAttribute('cy', '50'); pin.setAttribute('r', '2.6');
+  pin.setAttribute('fill', '#0f172a');
+  svg.appendChild(hour); svg.appendChild(min); svg.appendChild(sec); svg.appendChild(pin);
+  div.appendChild(svg);
+  div._clockHands = { hour: hour, min: min, sec: sec };
+}
+
+var _clockTickerStarted = false;
+function _ensureClockTicker() {
+  if (_clockTickerStarted) return;
+  _clockTickerStarted = true;
+  setInterval(function() {
+    var now = new Date();
+    var h = now.getHours() % 12;
+    var m = now.getMinutes();
+    var s = now.getSeconds();
+    var hAng = (h + m / 60) * 30;
+    var mAng = (m + s / 60) * 6;
+    var sAng = s * 6;
+    document.querySelectorAll('.room-placed-item[data-item-id="wall_clock"]').forEach(function(div) {
+      if (!div._clockHands) return;
+      div._clockHands.hour.style.transform = 'rotate(' + hAng + 'deg)';
+      div._clockHands.min.style.transform  = 'rotate(' + mAng + 'deg)';
+      div._clockHands.sec.style.transform  = 'rotate(' + sAng + 'deg)';
+    });
+  }, 1000);
+}
+
+// Window: a tint layer that slides between morning / day / dusk / night
+// colors driven by _updateRoomTimeOfDay. Rainy window also gets an
+// animated streak overlay.
+function _decorateWindow(div, def) {
+  if (div.querySelector('.room-window-tint')) {
+    return;
+  }
+  var tint = document.createElement('div');
+  tint.className = 'room-window-tint';
+  div.appendChild(tint);
+  if (def && def.id === 'window_rain') {
+    var rain = document.createElement('div');
+    rain.className = 'room-window-rain';
+    div.appendChild(rain);
+  }
+}
+
+// Time of day → page-wide color overlay + per-window tint. Runs once on
+// render and then every minute (set by _ensureTimeOfDayTicker).
+function _updateRoomTimeOfDay() {
+  var h = new Date().getHours();
+  var bg, windowTint;
+  if (h < 6) {
+    bg = 'linear-gradient(180deg,rgba(20,30,80,.55),rgba(8,12,40,.65))';
+    windowTint = 'linear-gradient(180deg,rgba(40,60,140,.55),rgba(15,20,60,.65))';
+  } else if (h < 9) {
+    bg = 'linear-gradient(180deg,rgba(255,200,150,.18),rgba(255,180,120,.10))';
+    windowTint = 'linear-gradient(180deg,rgba(255,210,160,.5),rgba(255,170,140,.35))';
+  } else if (h < 17) {
+    bg = 'transparent';
+    windowTint = 'linear-gradient(180deg,rgba(180,220,255,.35),rgba(200,230,255,.2))';
+  } else if (h < 20) {
+    bg = 'linear-gradient(180deg,rgba(255,140,80,.25),rgba(255,90,60,.2))';
+    windowTint = 'linear-gradient(180deg,rgba(255,140,90,.55),rgba(255,80,90,.45))';
+  } else if (h < 23) {
+    bg = 'linear-gradient(180deg,rgba(60,40,120,.40),rgba(20,20,80,.50))';
+    windowTint = 'linear-gradient(180deg,rgba(70,50,130,.6),rgba(20,20,80,.7))';
+  } else {
+    bg = 'linear-gradient(180deg,rgba(20,30,80,.55),rgba(8,12,40,.65))';
+    windowTint = 'linear-gradient(180deg,rgba(40,60,140,.55),rgba(15,20,60,.65))';
+  }
+  var overlay = document.getElementById('room-time-overlay');
+  if (overlay) overlay.style.background = bg;
+  document.querySelectorAll('.room-window-tint').forEach(function(el) {
+    el.style.background = windowTint;
+  });
+}
+
+var _todTickerStarted = false;
+function _ensureTimeOfDayTicker() {
+  if (_todTickerStarted) return;
+  _todTickerStarted = true;
+  setInterval(_updateRoomTimeOfDay, 60000);
+}
+
+// ── Room BGM (Web Audio, generative — no audio files) ──────────
+// Browsers block autoplay until a gesture, which is fine here because
+// the user clicks the 🎵 button to open the drawer and pick a track.
+// We synthesize three flavors:
+//   • brown  — deep, soft white-noise filtered low (good background hum)
+//   • rain   — pink-ish noise filtered + amplitude jitter (rainfall)
+//   • cafe   — brown noise base + occasional voice-like burble bursts
+// All loop indefinitely until the user picks 'off' or navigates away.
+var _bgm = null;
+var _BGM_KEY = 'kh_room_bgm_v1';
+var BGM_TRACKS = [
+  { id: 'off',   label: 'Off',         emoji: '🚫' },
+  { id: 'brown', label: 'White noise', emoji: '🌫' },
+  { id: 'rain',  label: 'Rain',        emoji: '🌧' },
+  { id: 'cafe',  label: 'Cafe hum',    emoji: '☕' },
+  { id: 'lofi',  label: 'Lo-fi pulse', emoji: '🎧' }
+];
+
+function _bgmGetSavedState() {
+  try { return JSON.parse(localStorage.getItem(_BGM_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+function _bgmSaveState(state) {
+  try { localStorage.setItem(_BGM_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+function _bgmEnsureCtx() {
+  if (_bgm && _bgm.ctx) return _bgm;
+  var Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return null;
+  var ctx = new Ctx();
+  var master = ctx.createGain();
+  master.gain.value = 0;
+  master.connect(ctx.destination);
+  _bgm = { ctx: ctx, master: master, nodes: [], track: 'off', volume: 0.4 };
+  return _bgm;
+}
+function _bgmStopCurrent() {
+  if (!_bgm) return;
+  _bgm.nodes.forEach(function(n) { try { n.stop && n.stop(); } catch(e) {} try { n.disconnect && n.disconnect(); } catch(e) {} });
+  _bgm.nodes = [];
+}
+
+// Helper: looping noise buffer source.
+function _bgmNoiseSource(ctx, color) {
+  var buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  var data = buf.getChannelData(0);
+  if (color === 'pink') {
+    var b0=0,b1=0,b2=0;
+    for (var i = 0; i < data.length; i++) {
+      var w = Math.random() * 2 - 1;
+      b0 = 0.99765 * b0 + w * 0.0990460;
+      b1 = 0.96300 * b1 + w * 0.2965164;
+      b2 = 0.57000 * b2 + w * 1.0526913;
+      data[i] = (b0 + b1 + b2 + w * 0.1848) * 0.11;
+    }
+  } else if (color === 'brown') {
+    var last = 0;
+    for (var j = 0; j < data.length; j++) {
+      var w2 = Math.random() * 2 - 1;
+      last = (last + 0.02 * w2) / 1.02;
+      data[j] = last * 3.5;
+    }
+  } else { // white
+    for (var k = 0; k < data.length; k++) data[k] = Math.random() * 2 - 1;
+  }
+  var src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.loop = true;
+  return src;
+}
+
+function _bgmPlay(trackId) {
+  var ctx_ = _bgmEnsureCtx();
+  if (!ctx_) return;
+  // Resume context (browsers suspend until first gesture)
+  if (ctx_.ctx.state === 'suspended') ctx_.ctx.resume();
+  _bgmStopCurrent();
+  _bgm.track = trackId;
+  var ctx = ctx_.ctx;
+  var master = ctx_.master;
+
+  if (trackId === 'off') {
+    master.gain.cancelScheduledValues(ctx.currentTime);
+    master.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.4);
+    return;
+  }
+
+  if (trackId === 'brown') {
+    var src = _bgmNoiseSource(ctx, 'brown');
+    var lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 380; lp.Q.value = 0.6;
+    src.connect(lp); lp.connect(master);
+    src.start();
+    _bgm.nodes.push(src);
+  } else if (trackId === 'rain') {
+    var src1 = _bgmNoiseSource(ctx, 'pink');
+    var hp = ctx.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 600;
+    var lp2 = ctx.createBiquadFilter();
+    lp2.type = 'lowpass'; lp2.frequency.value = 4500;
+    src1.connect(hp); hp.connect(lp2); lp2.connect(master);
+    src1.start();
+    _bgm.nodes.push(src1);
+    // Distant rumble layer for depth
+    var rumble = _bgmNoiseSource(ctx, 'brown');
+    var lp3 = ctx.createBiquadFilter();
+    lp3.type = 'lowpass'; lp3.frequency.value = 220;
+    var rg = ctx.createGain(); rg.gain.value = 0.45;
+    rumble.connect(lp3); lp3.connect(rg); rg.connect(master);
+    rumble.start();
+    _bgm.nodes.push(rumble);
+  } else if (trackId === 'cafe') {
+    // Brown noise base + occasional resonant blips simulating chatter.
+    var bn = _bgmNoiseSource(ctx, 'brown');
+    var lpA = ctx.createBiquadFilter();
+    lpA.type = 'lowpass'; lpA.frequency.value = 700;
+    var bg = ctx.createGain(); bg.gain.value = 0.85;
+    bn.connect(lpA); lpA.connect(bg); bg.connect(master);
+    bn.start();
+    _bgm.nodes.push(bn);
+    // Periodic gentle blip to suggest chatter rhythm
+    var blipTimer = setInterval(function() {
+      if (_bgm.track !== 'cafe') { clearInterval(blipTimer); return; }
+      var t = ctx.currentTime;
+      var osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = 200 + Math.random() * 300;
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.05 + Math.random() * 0.05, t + 0.08);
+      g.gain.linearRampToValueAtTime(0, t + 0.55);
+      osc.connect(g); g.connect(master);
+      osc.start(t); osc.stop(t + 0.6);
+    }, 850);
+    _bgm.nodes.push({ stop: function(){ clearInterval(blipTimer); }, disconnect: function(){} });
+  } else if (trackId === 'lofi') {
+    // Tiny lo-fi feel: brown noise hiss + slow arpeggio of sine pads.
+    var bnL = _bgmNoiseSource(ctx, 'brown');
+    var lpL = ctx.createBiquadFilter();
+    lpL.type = 'lowpass'; lpL.frequency.value = 900;
+    var bgL = ctx.createGain(); bgL.gain.value = 0.4;
+    bnL.connect(lpL); lpL.connect(bgL); bgL.connect(master);
+    bnL.start();
+    _bgm.nodes.push(bnL);
+    // Slow chord arpeggio (Cmaj7 / Am7 / Fmaj7 / G7 — 4 chords, 2s each)
+    var chords = [
+      [261.63, 329.63, 392.00, 493.88], // C E G B
+      [220.00, 261.63, 329.63, 392.00], // A C E G
+      [174.61, 220.00, 261.63, 329.63], // F A C E
+      [196.00, 246.94, 293.66, 392.00]  // G B D G
+    ];
+    var step = 0;
+    var arpTimer = setInterval(function() {
+      if (_bgm.track !== 'lofi') { clearInterval(arpTimer); return; }
+      var chord = chords[step % chords.length];
+      step++;
+      chord.forEach(function(freq, i) {
+        var t = ctx.currentTime + i * 0.45;
+        var osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        var g = ctx.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.06, t + 0.25);
+        g.gain.linearRampToValueAtTime(0, t + 1.6);
+        osc.connect(g); g.connect(master);
+        osc.start(t); osc.stop(t + 1.7);
+      });
+    }, 2200);
+    _bgm.nodes.push({ stop: function(){ clearInterval(arpTimer); }, disconnect: function(){} });
+  }
+  // Fade in master to set volume
+  master.gain.cancelScheduledValues(ctx.currentTime);
+  master.gain.linearRampToValueAtTime(_bgm.volume, ctx.currentTime + 0.6);
+}
+
+function _bgmSetVolume(v) {
+  if (!_bgm) return;
+  _bgm.volume = Math.max(0, Math.min(1, Number(v) || 0));
+  var t = _bgm.ctx.currentTime;
+  _bgm.master.gain.cancelScheduledValues(t);
+  _bgm.master.gain.linearRampToValueAtTime(_bgm.volume, t + 0.2);
+  var st = _bgmGetSavedState(); st.volume = _bgm.volume; _bgmSaveState(st);
+}
+
+function _bgmRenderDrawer() {
+  var d = document.getElementById('room-bgm-drawer');
+  if (!d) return;
+  var current = (_bgm && _bgm.track) || 'off';
+  var vol = (_bgm && typeof _bgm.volume === 'number') ? _bgm.volume : 0.4;
+  d.innerHTML = BGM_TRACKS.map(function(t) {
+    var on = t.id === current ? ' active' : '';
+    return '<div class="room-bgm-track' + on + '" role="menuitem" data-track="' + t.id + '">'
+      + '<span class="room-bgm-emoji">' + t.emoji + '</span>'
+      + '<span>' + t.label + '</span>'
+      + '</div>';
+  }).join('')
+  + '<div class="room-bgm-vol"><span style="font-size:14px">🔉</span>'
+  + '<input type="range" min="0" max="1" step="0.05" value="' + vol + '">'
+  + '</div>';
+  d.querySelectorAll('.room-bgm-track').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var tid = el.getAttribute('data-track');
+      _bgmPlay(tid);
+      var st = _bgmGetSavedState(); st.track = tid; _bgmSaveState(st);
+      var btn = document.getElementById('room-bgm-btn');
+      if (btn) btn.classList.toggle('on', tid !== 'off');
+      _bgmRenderDrawer();
+    });
+  });
+  var rng = d.querySelector('input[type=range]');
+  if (rng) rng.addEventListener('input', function() { _bgmSetVolume(rng.value); });
+}
+
+function toggleRoomBGMDrawer(ev) {
+  if (ev) { ev.stopPropagation(); }
+  var d = document.getElementById('room-bgm-drawer');
+  if (!d) return;
+  // Lazy-init audio context on first interaction.
+  if (!_bgm) {
+    _bgmEnsureCtx();
+    var saved = _bgmGetSavedState();
+    if (saved && typeof saved.volume === 'number') _bgm.volume = saved.volume;
+  }
+  var open = d.classList.toggle('open');
+  if (open) {
+    _bgmRenderDrawer();
+    // Click-outside to close
+    setTimeout(function() {
+      function offClick(e) {
+        if (d.contains(e.target) || (e.target && e.target.id === 'room-bgm-btn')) return;
+        d.classList.remove('open');
+        document.removeEventListener('click', offClick);
+      }
+      document.addEventListener('click', offClick);
+    }, 0);
+  }
+}
+window.toggleRoomBGMDrawer = toggleRoomBGMDrawer;
+
+// Pets: gentle left-right slide using transform translateX so the saved
+// position (placed.x) is untouched. Click triggers a hop + a heart popup
+// (only when not in edit mode — edit mode keeps the existing select/drag
+// behavior). Affinity tracking can hook in later via the 'click' event.
+function _decoratePet(div) {
+  div.classList.add('room-pet');
+  if (div._petAnim) return;
+  var phase = Math.random() * Math.PI * 2;
+  var range = 22; // px swing
+  var period = 5 + Math.random() * 3; // seconds per full sway
+  var t0 = Date.now();
+  function tick() {
+    if (!div.isConnected) { div._petAnim = null; return; }
+    if (_roomEditing) {
+      // Pause sliding while editing so dragging feels accurate.
+      div.style.transform = '';
+    } else {
+      var t = (Date.now() - t0) / 1000;
+      var x = Math.sin((t / period) * Math.PI * 2 + phase) * range;
+      div.style.transform = 'translateX(' + x.toFixed(2) + 'px)';
+    }
+    div._petAnim = requestAnimationFrame(tick);
+  }
+  div._petAnim = requestAnimationFrame(tick);
+
+  div.addEventListener('click', function(e) {
+    if (_roomEditing) return; // edit mode owns clicks (selection)
+    // Hop animation — re-trigger by toggling class
+    div.classList.remove('room-pet-hop');
+    void div.offsetWidth;
+    div.classList.add('room-pet-hop');
+    setTimeout(function() { div.classList.remove('room-pet-hop'); }, 360);
+    // Heart popup
+    var heart = document.createElement('div');
+    heart.className = 'room-pet-heart';
+    heart.textContent = ['❤️','💕','💖','✨'][Math.floor(Math.random()*4)];
+    div.appendChild(heart);
+    setTimeout(function() { heart.remove(); }, 900);
   });
 }
 
