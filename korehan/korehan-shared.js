@@ -8107,8 +8107,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     if (_isArticleReader && _articleId && !_haveCachedRequested) {
       // Race: single-article fetch (fast) + list fetch (background).
+      // force:true so the swipe pool always has the full 80-row list,
+      // not whatever 30-row homeOptimized cache the home page seeded
+      // (was the root cause of the "same articles repeat after a few
+      // swipes" complaint).
       var singlePromise = loadArticleById(_articleId);
-      var listPromise = loadArticlesFromDB();
+      var listPromise = loadArticlesFromDB({ force: true });
       await Promise.all([singlePromise, sectionsPromise, settingsPromise]);
       if (window._khLoaderClearAuto) window._khLoaderClearAuto();
       _ldr(100);
@@ -8120,7 +8124,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
       });
     } else {
-      await Promise.all([loadArticlesFromDB(), sectionsPromise, settingsPromise]);
+      await Promise.all([loadArticlesFromDB({ force: _isArticleReader }), sectionsPromise, settingsPromise]);
       if (window._khLoaderClearAuto) window._khLoaderClearAuto();
       _ldr(100);
     }
@@ -10358,7 +10362,10 @@ function closeCommentDrawer() {
 // Picks a random published article the user hasn't just seen, then
 // animates the current page out before changing window.location.
 var _khFeedRecentKey = 'kh_feed_recent_seen';
-var _khFeedRecentMax = 20;
+// Bumped from 20 → 60 so a normal browse session (often 30+ swipes)
+// doesn't start cycling old articles. Matches the swipe stack max
+// (80) more closely while still letting articles eventually re-surface.
+var _khFeedRecentMax = 60;
 
 // ── Per-session navigation stack ─────────────────────────────────
 // Holds the ordered list of articles the user has visited via
