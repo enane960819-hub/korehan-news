@@ -5968,10 +5968,18 @@ async function toggleTranslate() {
   btn.disabled = true;
   btn.title = 'Translating…';
 
+  // Save originals up-front for EVERY visible zone (and the title) so
+  // the user can always toggle back to Korean — previously this only
+  // happened on the Claude path, so a shared-cache or in-memory cache
+  // hit would translate but leave nothing to restore. That's why some
+  // users saw "translation toggle works once, second click does
+  // nothing".
+  if (titleEl && !titleEl.dataset.original) titleEl.dataset.original = titleEl.innerHTML;
+  zones.forEach(function(z) { if (!z.dataset.original) z.dataset.original = z.innerHTML; });
+
   // Swap the title to English up-front — doesn't require the Claude call
   // since title_en is stored per-article. If it's missing we leave the
   // Korean title in place.
-  if (titleEl && !titleEl.dataset.original) titleEl.dataset.original = titleEl.innerHTML;
   var titleEn = titleEl ? titleEl.getAttribute('data-kh-title-en') : '';
   if (titleEl && titleEn) {
     var ttsSafe = (titleEn || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -6019,7 +6027,6 @@ async function toggleTranslate() {
     if (tkt) { texts.push(tkt); titleIdx = 0; }
   }
   zones.forEach(function(z) {
-    if (!z.dataset.original) z.dataset.original = z.innerHTML;
     var clone = z.cloneNode(true);
     clone.querySelectorAll('.kh-hover-word,.kh-word').forEach(function(s){ s.replaceWith(s.textContent); });
     texts.push(clone.textContent.trim());
@@ -6046,7 +6053,11 @@ async function toggleTranslate() {
     + 'No preamble, no commentary, no code fences — just the marked blocks.\n\n'
     + joined;
 
-  try {
+  // One automatic retry on failure or partial parse. Most translate
+  // failures on mobile are transient (LTE timeout, half-baked response
+  // mid-stream). Retrying once with a small backoff lifts the success
+  // rate noticeably without overrunning the user.
+  async function _khAttemptTranslate() {
     var res = await callClaude({
       feature: 'translate',
       model: 'claude-haiku-4-5-20251001',
@@ -6059,7 +6070,6 @@ async function toggleTranslate() {
     if (data.content && data.content[0] && data.content[0].text) raw = data.content[0].text;
     else if (data.text) raw = data.text;
     else if (typeof data === 'string') raw = data;
-
     if (!raw) throw new Error('empty response');
 
     // Parse the marker-delimited response. Regex uses /s (dotAll) so the
@@ -6073,6 +6083,26 @@ async function toggleTranslate() {
       if (idx >= 0 && body) allSegs[idx] = body;
     }
     if (!allSegs.length) throw new Error('no segments in response');
+    // Detect a truncated/partial response — Claude sometimes returns
+    // only the first 1–2 segments on flaky LTE. Retry once when this
+    // happens so the user doesn't see half a translated article.
+    if (allSegs.filter(Boolean).length < Math.ceil(texts.length * 0.7)) {
+      throw new Error('partial response');
+    }
+    return allSegs;
+  }
+
+  try {
+    var allSegs;
+    try {
+      allSegs = await _khAttemptTranslate();
+    } catch (firstErr) {
+      // Ignore auth/sign-in errors — those can't recover via retry.
+      if (firstErr && (firstErr.message === 'unauthorized' || firstErr.message === 'Not signed in')) throw firstErr;
+      // Brief backoff then second attempt.
+      await new Promise(function(r){ setTimeout(r, 1500); });
+      allSegs = await _khAttemptTranslate();
+    }
 
     // Split title off from the body translations if we put it up-front.
     var bodyTranslations;
