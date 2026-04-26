@@ -220,10 +220,23 @@
 
   async function ensureDefaultShopItems(sb) {
     try {
-      var countRes = await sb.from('shop_items').select('id', { count:'exact', head:true });
-      var itemCount = Number((countRes && countRes.count) || 0);
-      if (itemCount > 0) return true;
-      var seedRes = await sb.from('shop_items').upsert(DEFAULT_SHOP_ITEMS, { onConflict:'id' });
+      // Incremental seed: only insert DEFAULT_SHOP_ITEMS rows whose `id`
+      // doesn't already exist in `shop_items`. The previous logic bailed
+      // out on `count > 0`, which meant adding new items to
+      // DEFAULT_SHOP_ITEMS never reached the DB after the very first seed.
+      var existingRes = await sb.from('shop_items').select('id');
+      if (existingRes && existingRes.error) {
+        if (isShopTableMissingErr(existingRes.error)) {
+          await setLocalShopItems(sb, DEFAULT_SHOP_ITEMS);
+          return false;
+        }
+        return false;
+      }
+      var existingIds = {};
+      (existingRes && existingRes.data ? existingRes.data : []).forEach(function(r) { existingIds[r.id] = true; });
+      var missing = DEFAULT_SHOP_ITEMS.filter(function(it) { return !existingIds[it.id]; });
+      if (!missing.length) return true;
+      var seedRes = await sb.from('shop_items').upsert(missing, { onConflict:'id' });
       if (!seedRes.error) return true;
       if (isShopTableMissingErr(seedRes.error)) {
         await setLocalShopItems(sb, DEFAULT_SHOP_ITEMS);
