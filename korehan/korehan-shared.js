@@ -3910,22 +3910,22 @@ function renderArticlePage() {
     +     '<div class="rv-intro-sub">Light practice before moving on — four quick checks.</div>'
     +   '</div>'
 
-    +   '<div class="rv-check">'
+    +   '<div class="rv-check" data-step="0">'
     +     '<div class="rv-check-head"><span>Vocabulary</span><span class="rv-check-hint">Multiple choice</span></div>'
     +     '<div id="rv-vocab-check" class="rv-check-body"></div>'
     +   '</div>'
 
-    +   '<div class="rv-check">'
+    +   '<div class="rv-check" data-step="1">'
     +     '<div class="rv-check-head"><span>Comprehension</span><span class="rv-check-hint">True or False</span></div>'
     +     '<div id="rv-tf-check" class="rv-check-body"></div>'
     +   '</div>'
 
-    +   '<div class="rv-check">'
+    +   '<div class="rv-check" data-step="2">'
     +     '<div class="rv-check-head"><span>Fill in the Blank</span><span class="rv-check-hint">AI-generated</span></div>'
     +     '<div class="rv-check-body"><div id="fill-wrap"><div id="fill-content"><div id="fill-teaser"></div></div></div></div>'
     +   '</div>'
 
-    +   '<div class="rv-check">'
+    +   '<div class="rv-check" data-step="3">'
     +     '<div class="rv-check-head"><span>Listening</span><span class="rv-check-hint">Audio quiz</span></div>'
     +     '<div class="rv-check-body"><div id="art-listening-quiz"><button onclick="startArticleListeningQuiz()" class="rv-start-btn">Start Listening Quiz</button></div></div>'
     +   '</div>'
@@ -4156,7 +4156,33 @@ function switchArtTab(tab, btn) {
     if (teaser && !teaser.innerHTML) initFillTeaser(window._currentArticle);
     renderReviewVocabCheck(window._currentArticle);
     renderReviewTF(window._currentArticle);
+    _reviewFlowInit();
   }
+}
+
+var _reviewFlow = null;
+
+function _reviewFlowInit() {
+  _reviewFlow = { step: 0, done: { 0:false, 1:false, 2:false, 3:false } };
+  _reviewFlowApply();
+}
+
+function _reviewFlowApply() {
+  var checks = document.querySelectorAll('#art-tab-quiz .rv-check[data-step]');
+  if (!checks || !checks.length || !_reviewFlow) return;
+  checks.forEach(function(card) {
+    var step = parseInt(card.getAttribute('data-step') || '0', 10);
+    card.style.display = step === _reviewFlow.step ? '' : 'none';
+  });
+}
+
+function _reviewFlowAdvance(stepDone) {
+  if (!_reviewFlow) _reviewFlowInit();
+  _reviewFlow.done[stepDone] = true;
+  _reviewFlow.step = Math.min(stepDone + 1, 3);
+  _reviewFlowApply();
+  var active = document.querySelector('#art-tab-quiz .rv-check[data-step="' + _reviewFlow.step + '"]');
+  if (active) active.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // ── Review tab mini-activities ──────────────────────────────────
@@ -4232,6 +4258,7 @@ function _rvVocabQuizPaint() {
         +     '<button class="rv-vq-retry" onclick="_rvVocabQuizShare(' + s.correct + ',' + total + ')">Share</button>'
         +   '</div>'
         + '</div>';
+      _reviewFlowAdvance(0);
     }
     return;
   }
@@ -4294,6 +4321,7 @@ function _rvVocabQuizPick(btn) {
   }
   var next = document.getElementById('rv-vq-next');
   if (next) next.style.display = '';
+  setTimeout(_rvVocabQuizNext, 650);
 }
 
 function _rvVocabQuizNext() {
@@ -4457,6 +4485,15 @@ function _reviewTFAnswer(btn) {
     : (truth ? 'Actually, this statement is from the article.' : "Actually, this one isn't in the article.");
   var why = q.dataset.why || '';
   fb.textContent = why ? (base + ' ' + why) : base;
+
+  var box = document.getElementById('rv-tf-check');
+  if (box) {
+    var total = box.querySelectorAll('.rv-tf-q').length;
+    var answered = box.querySelectorAll('.rv-tf-q.answered').length;
+    if (total > 0 && answered === total) {
+      setTimeout(function(){ _reviewFlowAdvance(1); }, 500);
+    }
+  }
 }
 
 function openArticleStudyFromReader() {
@@ -4520,6 +4557,7 @@ function startArticleListeningQuiz() {
   function renderQ() {
     if (qi >= items.length) {
       el.innerHTML='<div style="text-align:center;padding:16px"><div style="font-size:18px;font-weight:800;color:#16a34a;margin-bottom:4px">Quiz Complete!</div><div style="font-size:13px;color:#64748b">Great listening practice!</div></div>';
+      _reviewFlowAdvance(3);
       return;
     }
     var v = items[qi];
@@ -4811,10 +4849,9 @@ function checkFillAnswer(qIdx, selected, isTyped) {
   if (!q || _fillState[qIdx].selected !== null) return; // 이미 답한 문제
 
   var correct = q.blank;
-  // 타이핑 모드는 부분 매칭 허용 (공백/조사 차이 무시)
-  var isCorrect = isTyped
-    ? (selected === correct || selected.replace(/\s/g,'') === correct.replace(/\s/g,''))
-    : (selected === correct);
+  // 정답 판정: 과도한 부분 매칭 제거(오답이 정답으로 처리되는 이슈 방지)
+  var normalize = function(v){ return String(v||'').trim().toLowerCase().replace(/\s+/g,' '); };
+  var isCorrect = normalize(selected) === normalize(correct);
 
   _fillState[qIdx].selected = selected;
   _fillState[qIdx].correct  = isCorrect;
@@ -4938,6 +4975,7 @@ async function showFillResult() {
   // 퀴즈 완료 뱃지/XP
   if (typeof trackActivityOnQuizComplete === 'function') trackActivityOnQuizComplete(pct);
   await dmTrackFill();
+  _reviewFlowAdvance(2);
 }
 
 function resetFill() {
@@ -11165,4 +11203,3 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }, 1500);
 });
-
