@@ -10342,11 +10342,24 @@ function setupFeedNavigation() {
       // user to be in the right spot.
       var endScrollY  = window.scrollY || document.documentElement.scrollTop || 0;
       var scrollDelta = Math.abs(endScrollY - startScrollY);
-      if (scrollDelta > 8) return;
 
       if (dt > 800) return;
       if (Math.abs(dx) > Math.abs(dy) * 0.5) return;
-      if (Math.abs(dy) < 80) return;
+      if (Math.abs(dy) < 60) return;
+
+      // ── TikTok-style flick override ────────────────────────────
+      // A fast, decisive swipe with little/no concurrent page scroll =
+      // the learner is intentionally trying to navigate. Bypasses the
+      // strict "must be at top/bottom of the page" rule below so swipes
+      // mid-article go to the next/prev article like Reels & Shorts.
+      // Threshold tuned so normal reading-scroll (≤1.0 px/ms) never
+      // qualifies, but a quick finger-flick (~1.5–3 px/ms) does.
+      var velocity = Math.abs(dy) / dt;
+      var isFlick  = velocity > 1.2 && scrollDelta < 30;
+
+      // Outside flick mode, keep the strict rule: any active scroll
+      // means this was a scroll gesture, not a navigation gesture.
+      if (!isFlick && scrollDelta > 8) return;
 
       // Math.max guards against iOS rubber-band overscroll, which can
       // briefly report a negative scrollY at the top of the page.
@@ -10354,18 +10367,13 @@ function setupFeedNavigation() {
       var pageH = document.documentElement.scrollHeight || 1;
       var visibleBottom = y + window.innerHeight;
       if (dy > 0) {
-        // Upward swipe → next article. Only fire when the user is AT
-        // the bottom (page can't scroll further). 'Bottom' = within 4px
-        // of scrollHeight to forgive sub-pixel rounding on mobile.
-        if (visibleBottom >= pageH - 4) goToNextArticle('forward');
+        // Upward swipe → next article. Flick wins anywhere; otherwise
+        // the strict rule (must be within 4px of page bottom) applies.
+        if (isFlick || visibleBottom >= pageH - 4) goToNextArticle('forward');
       } else {
-        // Downward swipe → previous article. Allow a small near-top
-        // window (≤80px) — the scrollDelta gate above already vetoes
-        // any swipe where the page actually scrolled, so this is the
-        // 'reader is somewhere near the top and intends to go back'
-        // case (sub-pixel rounding, slight overscroll bounce, short
-        // articles whose entire body fits in the viewport).
-        if (y <= 80) goToPrevArticle();
+        // Downward swipe → previous article. Flick wins anywhere;
+        // otherwise reader must be near the top (≤80px) — see below.
+        if (isFlick || y <= 80) goToPrevArticle();
       }
     }, { passive: true });
   }
