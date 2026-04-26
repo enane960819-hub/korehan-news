@@ -3930,7 +3930,7 @@ function renderArticlePage() {
     +     '<div class="rv-check-body"><div id="art-listening-quiz"><button onclick="startArticleListeningQuiz()" class="rv-start-btn">Start Listening Quiz</button></div></div>'
     +   '</div>'
 
-    +   '<div class="rv-deeper">'
+    +   '<div class="rv-deeper" data-step="4" style="display:none">'
     +     '<div class="rv-deeper-title">Ready for deeper study?</div>'
     +     '<div class="rv-deeper-sub">The Study Room takes this article into a full session — Vocab, Phrases, Read-aloud, Quiz, and Writing — on its own page.</div>'
     +     '<button class="rv-deeper-btn" onclick="openArticleStudyFromReader()">Open Study Room →</button>'
@@ -4167,22 +4167,47 @@ function _reviewFlowInit() {
   _reviewFlowApply();
 }
 
+// Step 0–3 are the four practice cards; step 4 is the Ready-for-deeper-
+// study CTA. Only the current step is visible — step 4 only reveals
+// once all four practice cards have been completed.
 function _reviewFlowApply() {
-  var checks = document.querySelectorAll('#art-tab-quiz .rv-check[data-step]');
-  if (!checks || !checks.length || !_reviewFlow) return;
-  checks.forEach(function(card) {
+  var nodes = document.querySelectorAll('#art-tab-quiz [data-step]');
+  if (!nodes || !nodes.length || !_reviewFlow) return;
+  var current = _reviewFlow.step;
+  var prev = null;
+  nodes.forEach(function(card) {
     var step = parseInt(card.getAttribute('data-step') || '0', 10);
-    card.style.display = step === _reviewFlow.step ? '' : 'none';
+    var visible = step === current;
+    if (visible && card.style.display === 'none' && card.dataset.rvFaded !== '1') {
+      // Smooth fade-in on first reveal so the new card doesn't pop.
+      card.dataset.rvFaded = '1';
+      card.style.display = '';
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(14px)';
+      card.style.transition = 'opacity .45s ease, transform .45s cubic-bezier(.22,1,.36,1)';
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          card.style.opacity = '1';
+          card.style.transform = 'translateY(0)';
+        });
+      });
+    } else {
+      card.style.display = visible ? '' : 'none';
+    }
   });
 }
 
 function _reviewFlowAdvance(stepDone) {
   if (!_reviewFlow) _reviewFlowInit();
   _reviewFlow.done[stepDone] = true;
-  _reviewFlow.step = Math.min(stepDone + 1, 3);
+  // Cap at 4 so finishing Listening (step 3) reveals the Deeper Study
+  // CTA (step 4). Earlier code capped at 3, leaving the CTA gated
+  // forever via no-data-step and shown from page load — we now own
+  // the CTA's visibility through the flow state.
+  _reviewFlow.step = Math.min(stepDone + 1, 4);
   _reviewFlowApply();
-  var active = document.querySelector('#art-tab-quiz .rv-check[data-step="' + _reviewFlow.step + '"]');
-  if (active) active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  var active = document.querySelector('#art-tab-quiz [data-step="' + _reviewFlow.step + '"]');
+  if (active) setTimeout(function(){ try { active.scrollIntoView({ behavior:'smooth', block:'center' }); } catch(e) {} }, 250);
 }
 
 // ── Review tab mini-activities ──────────────────────────────────
