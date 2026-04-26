@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../services/supabase_service.dart';
 import '../../models/article.dart';
 import '../../theme/kh_theme.dart';
@@ -122,7 +123,15 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               height: 52,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  // TODO: navigate to study room with article
+                  final uri = Uri(
+                    path: '/article-review',
+                    queryParameters: {
+                      'articleId': widget.articleId,
+                      'title': a.title,
+                      'body': bodyText,
+                    },
+                  );
+                  context.go(uri.toString());
                 },
                 icon: const Icon(Icons.menu_book),
                 label: const Text('Study this article'),

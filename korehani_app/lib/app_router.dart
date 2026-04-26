@@ -9,6 +9,7 @@ import 'screens/news/article_detail_screen.dart';
 import 'screens/conversations/conversations_screen.dart';
 import 'screens/stories/stories_screen.dart';
 import 'screens/study/study_room_screen.dart';
+import 'screens/study/article_review_screen.dart';
 import 'screens/learn/learn_screen.dart';
 import 'screens/growth_lab/growth_lab_screen.dart';
 import 'screens/mypage/mypage_screen.dart';
@@ -72,6 +73,15 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/learn',
           builder: (context, state) => const LearnScreen(),
+        ),
+
+        GoRoute(
+          path: '/article-review',
+          builder: (context, state) => ArticleReviewScreen(
+            articleId: state.uri.queryParameters['articleId'] ?? '',
+            title: state.uri.queryParameters['title'] ?? 'Article Review',
+            bodyText: state.uri.queryParameters['body'] ?? '',
+          ),
         ),
         GoRoute(
           path: '/growth-lab',
