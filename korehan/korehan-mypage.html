@@ -694,6 +694,30 @@ body.room-lights-off .room-time-overlay{background:linear-gradient(180deg,rgba(8
 .room-pet-badge.bump{animation:petBadgeBump .35s ease}
 @keyframes petBadgeBump{0%{transform:translateX(-50%) scale(1)}40%{transform:translateX(-50%) scale(1.18)}100%{transform:translateX(-50%) scale(1)}}
 
+/* ── My Room Phase-3 — Theme (wallpaper + floor) ──
+   Pure-CSS swatches mean we can ship wallpaper/floor variety today
+   without any illustration work. When real artwork lands later, the
+   catalog entries just swap their `bg` value to a url(...).
+   ────────────────────────────────────────────────────────────── */
+.room-theme-btn{position:absolute;top:10px;right:102px;width:38px;height:38px;border-radius:999px;background:rgba(15,23,42,.7);color:#fff;border:1px solid rgba(255,255,255,.18);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:11;transition:transform .15s,background .15s}
+.room-theme-btn:hover{background:rgba(15,23,42,.9);transform:scale(1.06)}
+.room-theme-btn.on{background:linear-gradient(135deg,#0ea5e9,#22d3ee);border-color:rgba(125,211,252,.6);box-shadow:0 0 14px rgba(125,211,252,.35)}
+.room-theme-drawer{position:absolute;top:54px;right:10px;background:rgba(15,23,42,.96);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px;min-width:240px;color:#fff;font-size:13px;box-shadow:0 12px 36px rgba(0,0,0,.4);z-index:6;display:none;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.room-theme-drawer.open{display:block}
+.room-theme-tabs{display:flex;gap:4px;margin-bottom:10px;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:8px}
+.room-theme-tab{flex:1;padding:6px 10px;background:none;border:0;color:#94a3b8;font-size:12px;font-weight:800;letter-spacing:.04em;border-radius:8px;cursor:pointer;font-family:inherit;text-transform:uppercase}
+.room-theme-tab.active{background:rgba(125,211,252,.18);color:#fff}
+.room-theme-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.room-theme-swatch{aspect-ratio:1;border-radius:10px;cursor:pointer;border:2px solid transparent;position:relative;overflow:hidden;background-size:cover;background-position:center;transition:transform .12s,border-color .15s}
+.room-theme-swatch:hover{transform:scale(1.05);border-color:rgba(125,211,252,.4)}
+.room-theme-swatch.active{border-color:#7dd3fc;box-shadow:0 0 12px rgba(125,211,252,.4)}
+.room-theme-swatch::after{content:attr(data-name);position:absolute;left:0;right:0;bottom:0;font-size:9px;font-weight:700;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.65));padding:8px 4px 3px;text-align:center;letter-spacing:.02em}
+
+/* The floor layer sits above the room background but below items.
+   Items still snap to the same grid coordinates — the floor is a
+   non-interactive cosmetic strip across the bottom 32% of the room. */
+.room-floor-layer{position:absolute;left:0;right:0;bottom:0;height:32%;pointer-events:none;z-index:2;background-size:cover;background-position:center bottom;transition:opacity .35s ease,background .4s ease}
+
 /* ── #19 Section spacing + dividers ─────────────── */
 .mp-section { margin-bottom:20px; padding:18px 16px; border-radius:16px; background:#fff; border:1px solid #e8eef5; }
 body.kh-neon-on .mp-section { background:rgba(9,18,33,.7) !important; border-color:rgba(255,255,255,.06) !important; }
@@ -950,12 +974,15 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
     <h3>My Room</h3>
     <div id="miniroom-container" style="position:relative;width:100%;max-width:600px;aspect-ratio:10/9;margin:0 auto;background:url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover no-repeat;border-radius:16px;border:1px solid rgba(0,0,0,.12);overflow:hidden;touch-action:auto">
       <div id="miniroom-items"></div>
+      <div id="room-floor-layer" class="room-floor-layer" aria-hidden="true"></div>
       <div id="room-time-overlay" class="room-time-overlay" aria-hidden="true"></div>
       <div id="room-light-switch" class="room-light-switch" onclick="toggleRoomLights()"
            style="background-image:url(assets/file_000000000f1c720bbe419c8601e6fb5e-removebg-preview.png)"
            title="Toggle lights"></div>
       <button type="button" id="room-bgm-btn" class="room-bgm-btn" onclick="toggleRoomBGMDrawer(event)" aria-label="Background music" title="Background music">🎵</button>
       <div id="room-bgm-drawer" class="room-bgm-drawer" role="menu" aria-label="Background music tracks"></div>
+      <button type="button" id="room-theme-btn" class="room-theme-btn" onclick="toggleRoomThemeDrawer(event)" aria-label="Wallpaper and floor" title="Wallpaper &amp; floor">🖼</button>
+      <div id="room-theme-drawer" class="room-theme-drawer" role="menu" aria-label="Wallpaper and floor"></div>
     </div>
     <!-- Controls -->
     <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
@@ -2508,6 +2535,7 @@ function renderRoomItems() {
   _updateRoomTimeOfDay();
   _ensureTimeOfDayTicker();
   _ensureSeasonalParticles();
+  _applyRoomTheme();
 }
 
 // ── Phase-2: Hub actions ──────────────────────────────────────
@@ -2610,6 +2638,111 @@ function _petLevelEmoji(count) {
   if (count >= 10)  return '❤';
   return '🤍';
 }
+// ── Phase-3: Wallpaper + Floor (theme system) ─────────────────
+// All swatches are CSS gradients today so we ship variety without
+// waiting on illustrations. Swap any entry's `bg` to `url(...)` later
+// to use real artwork — the apply path is identical.
+var WALLPAPERS = [
+  { id: 'default', name: 'Default', bg: 'url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover no-repeat' },
+  { id: 'hanji',   name: 'Hanji',   bg: 'linear-gradient(180deg,#f5e8d0 0%,#e6d2a4 70%,#d8be8a 100%)' },
+  { id: 'modern',  name: 'Modern',  bg: 'linear-gradient(180deg,#f8fafc 0%,#dbe2eb 100%)' },
+  { id: 'brick',   name: 'Brick',   bg: 'repeating-linear-gradient(0deg,#9b6a4a 0 30px,#7a5236 30px 33px),repeating-linear-gradient(90deg,transparent 0 60px,#7a5236 60px 63px)' },
+  { id: 'starry',  name: 'Starry',  bg: 'radial-gradient(circle at 18% 24%,#fff 0 1.4px,transparent 1.8px),radial-gradient(circle at 72% 18%,#fff 0 1.2px,transparent 1.6px),radial-gradient(circle at 38% 78%,#fff 0 1.1px,transparent 1.4px),radial-gradient(circle at 88% 62%,#fff 0 1.4px,transparent 1.8px),linear-gradient(180deg,#0c1633,#1a2654)' },
+  { id: 'sunset',  name: 'Sunset',  bg: 'linear-gradient(180deg,#fb923c 0%,#ec4899 55%,#7c3aed 100%)' },
+  { id: 'forest',  name: 'Forest',  bg: 'linear-gradient(180deg,#16a34a 0%,#065f46 100%)' },
+  { id: 'pastel',  name: 'Pastel',  bg: 'linear-gradient(135deg,#fbcfe8 0%,#e0e7ff 50%,#bae6fd 100%)' },
+  { id: 'neon',    name: 'Neon',    bg: 'radial-gradient(ellipse at 28% 20%,rgba(125,211,252,.45) 0%,transparent 55%),radial-gradient(ellipse at 70% 80%,rgba(244,114,182,.45) 0%,transparent 55%),#0c1633' }
+];
+var FLOORS = [
+  { id: 'none',   name: 'None',   bg: 'transparent' },
+  { id: 'wood',   name: 'Wood',   bg: 'repeating-linear-gradient(90deg,#a16842 0 60px,#8b5a36 60px 62px,#a16842 62px 122px,#8b5a36 122px 124px),linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.18) 100%)' },
+  { id: 'carpet', name: 'Carpet', bg: 'radial-gradient(circle at 50% 70%,#dc2626 0%,#991b1b 55%,#7f1d1d 100%)' },
+  { id: 'hanji',  name: 'Hanji',  bg: 'linear-gradient(180deg,#e6cfa3,#c9a874)' },
+  { id: 'marble', name: 'Marble', bg: 'linear-gradient(135deg,#f1f5f9 0%,#cbd5e1 60%,#94a3b8 100%)' },
+  { id: 'tile',   name: 'Tile',   bg: 'repeating-linear-gradient(0deg,#e2e8f0 0 30px,#cbd5e1 30px 32px),repeating-linear-gradient(90deg,#e2e8f0 0 30px,#cbd5e1 30px 32px)' }
+];
+var _ROOM_THEME_KEY = 'kh_room_theme_v1';
+function _getRoomTheme() {
+  try { return JSON.parse(localStorage.getItem(_ROOM_THEME_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+function _saveRoomTheme(t) {
+  try { localStorage.setItem(_ROOM_THEME_KEY, JSON.stringify(t)); } catch(e) {}
+}
+function _applyRoomTheme() {
+  var theme = _getRoomTheme();
+  var wpId = theme.wallpaper || 'default';
+  var flId = theme.floor || 'none';
+  var wp = WALLPAPERS.filter(function(w){ return w.id === wpId; })[0] || WALLPAPERS[0];
+  var fl = FLOORS.filter(function(f){ return f.id === flId; })[0] || FLOORS[0];
+  var room = document.getElementById('miniroom-container');
+  if (room) room.style.background = wp.bg;
+  var floor = document.getElementById('room-floor-layer');
+  if (floor) {
+    floor.style.background = fl.bg;
+    floor.style.opacity = (flId === 'none') ? '0' : '1';
+  }
+  var btn = document.getElementById('room-theme-btn');
+  if (btn) btn.classList.toggle('on', wpId !== 'default' || flId !== 'none');
+}
+function _renderThemeDrawer() {
+  var d = document.getElementById('room-theme-drawer');
+  if (!d) return;
+  var theme = _getRoomTheme();
+  var activeTab = d.dataset.tab || 'wallpaper';
+  var list = activeTab === 'floor' ? FLOORS : WALLPAPERS;
+  var activeId = (activeTab === 'floor' ? (theme.floor || 'none') : (theme.wallpaper || 'default'));
+  d.innerHTML =
+    '<div class="room-theme-tabs">'
+    + '<button class="room-theme-tab' + (activeTab === 'wallpaper' ? ' active' : '') + '" data-tab="wallpaper" type="button">Wallpaper</button>'
+    + '<button class="room-theme-tab' + (activeTab === 'floor'     ? ' active' : '') + '" data-tab="floor" type="button">Floor</button>'
+    + '</div>'
+    + '<div class="room-theme-grid">'
+    + list.map(function(it) {
+        var on = it.id === activeId ? ' active' : '';
+        var bg = it.bg.replace(/"/g, '&quot;');
+        return '<div class="room-theme-swatch' + on + '" data-id="' + it.id + '" data-name="' + it.name + '" style="background:' + bg + '"></div>';
+      }).join('')
+    + '</div>';
+  d.querySelectorAll('.room-theme-tab').forEach(function(b) {
+    b.addEventListener('click', function(e) {
+      e.stopPropagation();
+      d.dataset.tab = b.dataset.tab;
+      _renderThemeDrawer();
+    });
+  });
+  d.querySelectorAll('.room-theme-swatch').forEach(function(s) {
+    s.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var theme = _getRoomTheme();
+      if (activeTab === 'floor') theme.floor = s.dataset.id;
+      else theme.wallpaper = s.dataset.id;
+      _saveRoomTheme(theme);
+      _applyRoomTheme();
+      _renderThemeDrawer();
+    });
+  });
+}
+function toggleRoomThemeDrawer(ev) {
+  if (ev) ev.stopPropagation();
+  var d = document.getElementById('room-theme-drawer');
+  if (!d) return;
+  var open = d.classList.toggle('open');
+  if (open) {
+    d.dataset.tab = d.dataset.tab || 'wallpaper';
+    _renderThemeDrawer();
+    setTimeout(function() {
+      function offClick(e) {
+        if (d.contains(e.target) || (e.target && e.target.id === 'room-theme-btn')) return;
+        d.classList.remove('open');
+        document.removeEventListener('click', offClick);
+      }
+      document.addEventListener('click', offClick);
+    }, 0);
+  }
+}
+window.toggleRoomThemeDrawer = toggleRoomThemeDrawer;
+
 function _renderPetBadge(div, count, animate) {
   var b = div.querySelector('.room-pet-badge');
   if (!b) {
