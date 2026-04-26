@@ -5037,6 +5037,31 @@ function renderGrammarGuideHTML(el, guides) {
   // "Grammar patterns found in this article" prose was redundant
   // chrome the user asked us to drop.
   el.innerHTML = guides.map(function(g, i){ return renderGrammarGuideCard(g, i); }).join('');
+  // Auto-register encountered grammar points into the user's stats so
+  // the article-derived grammar shows up alongside quiz-derived weak
+  // grammar in Growth Lab / Study Room. No-op when signed out.
+  _autoTrackArticleGrammar(guides);
+}
+
+// Register article grammar names into user_grammar_stats (counts stay
+// at 0/0 — actual quiz outcomes update them via log_quiz_result). Uses
+// upsert with ignoreDuplicates so an existing row's correct/wrong stays
+// untouched.
+function _autoTrackArticleGrammar(guides) {
+  if (!supaUser || !Array.isArray(guides) || !guides.length) return;
+  var sb = getSupa();
+  if (!sb) return;
+  var rows = guides.map(function(g) {
+    var name = (g && g.name) ? String(g.name).trim() : '';
+    if (!name) return null;
+    return { user_id: supaUser.id, grammar_point: name, wrong_count: 0, correct_count: 0 };
+  }).filter(Boolean);
+  if (!rows.length) return;
+  try {
+    sb.from('user_grammar_stats')
+      .upsert(rows, { onConflict: 'user_id,grammar_point', ignoreDuplicates: true })
+      .then(function(){}, function(err){ console.warn('grammar autotrack', err); });
+  } catch(e) { console.warn('grammar autotrack', e); }
 }
 
 function renderGrammarGuideCard(g, idx) {
@@ -5060,7 +5085,7 @@ function renderGrammarGuideCard(g, idx) {
     + '<p class="ge-en">' + (g.ex_en || '') + '</p>'
     + '</div>'
     + '<div class="gp-footer">'
-    + '<a href="korehan-study-room.html?focus=' + focus + '&source=grammar-guide" class="gp-study-btn">Study this grammar →</a>'
+    + '<a href="korehan-study-room.html?focus=' + focus + '&source=home-weak-grammar" class="gp-study-btn">Drill this grammar →</a>'
     + '</div>'
     + '</div>';
 }
