@@ -10917,25 +10917,9 @@ function enhanceStoriesMobile() {
 }
 
 function enhanceCollectionPagesMobile() {
-  if (!isMobileRedesign()) return;
-  var p = pageName();
-  if (['korehan-world','korehan-society','korehan-culture','korehan-korea','korehan-section'].indexOf(p) >= 0) {
-    var list = document.getElementById('dyn-article-list');
-    if (list && !document.querySelector('.mobile-section-shell[data-mobile="news"]')) {
-      var shell = document.createElement('section');
-      shell.className = 'mobile-section-shell';
-      shell.setAttribute('data-mobile','news');
-      shell.innerHTML = ''
-        + '<div class="mobile-eyebrow">News study</div>'
-        + '<h2 class="mobile-quick-title" style="font-size:28px">Read one article at your level, not ten at once.</h2>'
-        + '<p class="mobile-quick-sub">The goal on mobile is quick entry: pick a category, open one article, then move into vocab or quiz.</p>'
-        + '<div class="mobile-action-row">'
-        + '<a class="mobile-primary-btn" href="korehan-study-room.html">' + khIcon('notebook-pen', 'Start Learning', 'kh-ui-icon-sm') + '</a>'
-        + '<a class="mobile-secondary-btn" href="korehan-learn.html">' + khIcon('book-marked', 'Review vocab', 'kh-ui-icon-sm') + '</a>'
-        + '</div>';
-      list.insertAdjacentElement('beforebegin', shell);
-    }
-  }
+  // News-category intro banner removed — was duplicate noise above each
+  // category list. Articles speak for themselves; no banner needed.
+  return;
 }
 
 // ── Study continuity helpers ───────────────────────────────────────────────
