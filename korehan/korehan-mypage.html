@@ -718,6 +718,43 @@ body.room-lights-off .room-time-overlay{background:linear-gradient(180deg,rgba(8
    non-interactive cosmetic strip across the bottom 32% of the room. */
 .room-floor-layer{position:absolute;left:0;right:0;bottom:0;height:32%;pointer-events:none;z-index:2;background-size:cover;background-position:center bottom;transition:opacity .35s ease,background .4s ease}
 
+/* ── Progress section: Up Next badges + activity heatmap ── */
+.mp-up-next-title{font-size:11px;font-weight:800;color:#64748b;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
+.mp-up-next-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+.mp-up-next-row:last-child{border-bottom:0}
+.mp-up-next-icon{flex-shrink:0;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#fff7ed;border:1px solid #fed7aa}
+.mp-up-next-icon svg{width:24px;height:24px}
+.mp-up-next-body{flex:1;min-width:0}
+.mp-up-next-name{font-size:13px;font-weight:800;color:#0b1626;margin-bottom:5px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.mp-up-next-name .mp-up-next-meta{font-size:11px;font-weight:700;color:#64748b}
+.mp-up-next-desc{font-size:11px;color:#94a3b8;margin-bottom:5px;font-weight:600}
+.mp-up-next-bar{height:6px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+.mp-up-next-fill{height:100%;background:linear-gradient(90deg,#7dd3fc,#2563eb);border-radius:999px;transition:width .35s ease}
+body.kh-neon-on .mp-up-next-row{border-bottom-color:rgba(255,255,255,.05) !important}
+body.kh-neon-on .mp-up-next-name{color:#e4f9ff !important}
+body.kh-neon-on .mp-up-next-desc,
+body.kh-neon-on .mp-up-next-name .mp-up-next-meta{color:rgba(228,249,255,.55) !important}
+body.kh-neon-on .mp-up-next-bar{background:rgba(255,255,255,.08) !important}
+body.kh-neon-on .mp-up-next-icon{background:rgba(255,255,255,.05) !important;border-color:rgba(255,255,255,.1) !important}
+
+.mp-heatmap-title{font-size:11px;font-weight:800;color:#64748b;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.mp-heatmap-grid{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,11px);gap:3px;overflow-x:auto;padding-bottom:4px}
+.mp-hm-cell{width:11px;height:11px;border-radius:2px;background:#eef2f7;transition:transform .12s}
+.mp-hm-cell:hover{transform:scale(1.5);outline:1px solid #2563eb}
+.mp-hm-cell.empty{background:transparent;pointer-events:none}
+.mp-hm-cell.lvl-1{background:#bbf7d0}
+.mp-hm-cell.lvl-2{background:#86efac}
+.mp-hm-cell.lvl-3{background:#22c55e}
+.mp-hm-cell.lvl-4{background:#15803d}
+.mp-heatmap-legend{display:flex;align-items:center;gap:3px;margin-top:10px;font-size:10px;color:#94a3b8;font-weight:600}
+.mp-heatmap-legend .mp-hm-cell{cursor:default}
+.mp-heatmap-legend .mp-hm-cell:hover{transform:none;outline:none}
+body.kh-neon-on .mp-hm-cell{background:rgba(255,255,255,.05)}
+body.kh-neon-on .mp-hm-cell.lvl-1{background:#0e4d2c}
+body.kh-neon-on .mp-hm-cell.lvl-2{background:#15803d}
+body.kh-neon-on .mp-hm-cell.lvl-3{background:#22c55e}
+body.kh-neon-on .mp-hm-cell.lvl-4{background:#86efac}
+
 /* ── #19 Section spacing + dividers ─────────────── */
 .mp-section { margin-bottom:20px; padding:18px 16px; border-radius:16px; background:#fff; border:1px solid #e8eef5; }
 body.kh-neon-on .mp-section { background:rgba(9,18,33,.7) !important; border-color:rgba(255,255,255,.06) !important; }
@@ -968,6 +1005,13 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 
   <!-- XP Card -->
   <div id="mp-xp-card"></div>
+
+  <!-- Progress (Up Next badges + activity heatmap) -->
+  <div class="mp-section" id="mp-progress-section">
+    <h3>Progress</h3>
+    <div id="mp-up-next-pane"><div style="font-size:12px;color:#94a3b8">Loading…</div></div>
+    <div id="mp-heatmap-pane" style="margin-top:18px"></div>
+  </div>
 
   <!-- Mini Room -->
   <div class="mp-section" id="mp-miniroom-section">
@@ -1995,6 +2039,7 @@ async function initMyPage() {
   renderOwnedAndGiftSections(coin, invRes);
   renderFriendsList();
   renderMyPageBadges();
+  renderMyPageProgress();
 }
 
 async function dbGetOwnedAndGifts() {
@@ -3967,6 +4012,143 @@ async function openSavedWordsModal() {
 }
 
 // ── Badges rendering on mypage ──────────────────────────────
+// ── Progress section ──────────────────────────────────────────
+// Two panes:
+//  1) "Up Next" — the three closest unearned badges with progress bars.
+//  2) Activity heatmap — 12-week GitHub-style grid driven by the same
+//     kh_study_log dictionary that drives the streak count, so what the
+//     learner sees on this card is exactly what their streak/badge
+//     checks see internally.
+function renderMyPageProgress() {
+  if (typeof BADGE_DEFS === 'undefined' || typeof getEarnedBadges !== 'function') {
+    var pane = document.getElementById('mp-up-next-pane');
+    if (pane) pane.innerHTML = '<div style="font-size:12px;color:#94a3b8">Badge system loading…</div>';
+    return;
+  }
+  _renderUpNextBadges();
+  _renderActivityHeatmap();
+}
+
+// Auto-derive (current, target) for a badge from its id pattern. Avoids
+// having to maintain a parallel progress map alongside BADGE_DEFS' check
+// functions — the id already encodes the threshold.
+function _badgeProgress(b) {
+  if (!b || !b.id) return null;
+  var id = b.id, m;
+  function safeGet(fn, dflt) { try { return fn(); } catch(e) { return dflt; } }
+  if ((m = /^streak_(\d+)$/.exec(id))) {
+    return { current: safeGet(getCurrentStreak, 0), target: +m[1] };
+  }
+  if ((m = /^read_(\d+)$/.exec(id))) {
+    return { current: safeGet(getTotalArticlesRead, 0), target: +m[1] };
+  }
+  if ((m = /^word_(\d+)$/.exec(id))) {
+    var saved = (typeof lsGet === 'function' && typeof K_SAVED !== 'undefined') ? lsGet(K_SAVED, []).length : 0;
+    return { current: saved, target: +m[1] };
+  }
+  if ((m = /^xp_(\d+)$/.exec(id))) {
+    return { current: safeGet(getXP, 0), target: +m[1] };
+  }
+  if ((m = /^sec_(\w+)$/.exec(id))) {
+    var secMap = { society:'사회', world:'국제', culture:'문화', sports:'스포츠', korea:'Korea', beauty:'beauty', travel:'travel', opinion:'오피니언' };
+    var sec = secMap[m[1]];
+    if (!sec) return null;
+    var counts = safeGet(getSectionReadCounts, {});
+    var t = m[1] === 'opinion' ? 10 : 20;
+    return { current: counts[sec] || 0, target: t };
+  }
+  return null;
+}
+
+function _renderUpNextBadges() {
+  var pane = document.getElementById('mp-up-next-pane');
+  if (!pane) return;
+  var earned = getEarnedBadges();
+  var withProgress = [];
+  BADGE_DEFS.forEach(function(b) {
+    if (earned[b.id]) return; // already earned
+    var p = _badgeProgress(b);
+    if (!p || !p.target) return;
+    var pct = Math.min(99, Math.round((p.current / p.target) * 100));
+    if (pct < 1) return; // zero-progress badges aren't 'up next' yet
+    withProgress.push({ b: b, current: p.current, target: p.target, pct: pct });
+  });
+  withProgress.sort(function(a, b){ return b.pct - a.pct; });
+  var top = withProgress.slice(0, 3);
+
+  if (!top.length) {
+    pane.innerHTML = '<div class="mp-up-next-title">Up Next</div>'
+      + '<div style="font-size:12px;color:#94a3b8">Read an article, save a word, or do a quiz to start your next badge.</div>';
+    return;
+  }
+  pane.innerHTML =
+      '<div class="mp-up-next-title">Up Next</div>'
+    + top.map(function(t) {
+        return '<div class="mp-up-next-row">'
+          + '<div class="mp-up-next-icon">' + (t.b.icon || '🏅') + '</div>'
+          + '<div class="mp-up-next-body">'
+            + '<div class="mp-up-next-name"><span>' + _escapeHtml(t.b.name) + '</span><span class="mp-up-next-meta">' + t.current + ' / ' + t.target + '</span></div>'
+            + '<div class="mp-up-next-desc">' + _escapeHtml(t.b.desc || '') + '</div>'
+            + '<div class="mp-up-next-bar"><div class="mp-up-next-fill" style="width:' + t.pct + '%"></div></div>'
+          + '</div>'
+        + '</div>';
+      }).join('');
+}
+
+// Activity-per-day heatmap — last 12 weeks. Each cell counts
+// articles + words + quiz from kh_study_log. Future days inside the
+// current week stay empty so the trailing column doesn't lie.
+function _renderActivityHeatmap() {
+  var pane = document.getElementById('mp-heatmap-pane');
+  if (!pane || typeof lsGet !== 'function') return;
+  var log = lsGet('kh_study_log', {}) || {};
+  var weeks = 12;
+  var today = new Date();
+  today.setHours(0, 0, 0, 0);
+  var todayDow = today.getDay(); // 0 (Sun) .. 6 (Sat)
+  // Anchor the rightmost column to "this week" — start from Sunday of
+  // the (weeks-1) weeks ago.
+  var firstSunday = new Date(today);
+  firstSunday.setDate(today.getDate() - todayDow - (weeks - 1) * 7);
+
+  var totalThisPeriod = 0;
+  var cellsHTML = '';
+  for (var w = 0; w < weeks; w++) {
+    for (var d = 0; d < 7; d++) {
+      var date = new Date(firstSunday);
+      date.setDate(firstSunday.getDate() + (w * 7) + d);
+      if (date > today) {
+        cellsHTML += '<div class="mp-hm-cell empty"></div>';
+        continue;
+      }
+      var key = _ymd(date);
+      var entry = log[key] || {};
+      var total = (entry.articles||0) + (entry.words||0) + (entry.quiz||0);
+      totalThisPeriod += total;
+      var lvl = total === 0 ? 0 : total < 3 ? 1 : total < 8 ? 2 : total < 15 ? 3 : 4;
+      cellsHTML += '<div class="mp-hm-cell lvl-' + lvl + '" title="' + key + ' · ' + total + ' activities"></div>';
+    }
+  }
+  pane.innerHTML =
+      '<div class="mp-heatmap-title"><span>Last ' + weeks + ' weeks</span><span style="font-weight:700;color:#0b1626">' + totalThisPeriod + ' activities</span></div>'
+    + '<div class="mp-heatmap-grid">' + cellsHTML + '</div>'
+    + '<div class="mp-heatmap-legend">'
+      + '<span>Less</span>'
+      + '<div class="mp-hm-cell lvl-0"></div>'
+      + '<div class="mp-hm-cell lvl-1"></div>'
+      + '<div class="mp-hm-cell lvl-2"></div>'
+      + '<div class="mp-hm-cell lvl-3"></div>'
+      + '<div class="mp-hm-cell lvl-4"></div>'
+      + '<span>More</span>'
+    + '</div>';
+}
+
+function _ymd(d) {
+  var m = d.getMonth() + 1;
+  var day = d.getDate();
+  return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+}
+
 function renderMyPageBadges() {
   var el = document.getElementById('mp-badges-content');
   if (!el) return;
