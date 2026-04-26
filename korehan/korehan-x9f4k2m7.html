@@ -10132,7 +10132,12 @@ function _fbRenderDailyActivities(fb, row) {
 }
 
 function _fbRenderActivityCard(idx, a, headerLabel) {
-  var sc = (a && a.score !== undefined && a.score !== null) ? Number(a.score) : null;
+  // Every field on this card is now path-based and editable inline.
+  // _fbCollectEdits() walks every [data-fb-path] on Save and writes
+  // the whole ai_feedback object back at once.
+  a = a || {};
+  var prefix = 'activities.' + idx + '.';
+  var sc = (a.score != null) ? Number(a.score) : null;
   var sCol = sc !== null ? (sc >= 80 ? '#15803d' : sc >= 60 ? '#a16207' : '#dc2626') : '#64748b';
   var sBg = sc !== null ? (sc >= 80 ? '#f0fdf4' : sc >= 60 ? '#fefce8' : '#fef2f2') : '#f8fafc';
   var topic = a.topic || '';
@@ -10141,88 +10146,127 @@ function _fbRenderActivityCard(idx, a, headerLabel) {
     + '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">'
     +   '<div style="flex:1;min-width:0">'
     +     '<div style="font-size:13px;font-weight:800;color:#0f172a">' + headerLabel + '</div>'
-    +     (topic ? '<div style="font-size:12px;color:#64748b;margin-top:2px">' + topic + '</div>' : '')
+    +     (topic ? '<div style="font-size:12px;color:#64748b;margin-top:2px">' + _fbAttr(topic) + '</div>' : '')
     +   '</div>'
     +   '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">'
     +     '<div style="font-size:10px;font-weight:700;color:' + sCol + ';white-space:nowrap">Score</div>'
-    +     '<input type="number" data-fb-score-idx="' + idx + '" min="0" max="100" value="' + (sc !== null ? sc : '') + '" style="width:54px;height:42px;border-radius:50%;border:3px solid ' + sCol + ';text-align:center;font-size:16px;font-weight:900;color:' + sCol + ';background:transparent;outline:none;-moz-appearance:textfield;appearance:textfield">'
+    +     '<input type="number" data-fb-path="' + prefix + 'score" data-fb-num="1" min="0" max="100" value="' + (sc !== null ? sc : '') + '" style="width:54px;height:42px;border-radius:50%;border:3px solid ' + sCol + ';text-align:center;font-size:16px;font-weight:900;color:' + sCol + ';background:transparent;outline:none;-moz-appearance:textfield;appearance:textfield">'
     +   '</div>'
     + '</div>';
 
   // Two-column body within each activity card
   html += '<div style="display:grid;grid-template-columns:1fr 1.2fr;gap:12px">';
 
-  // LEFT: student writing + corrected version
+  // ── LEFT: student writing (read-only) + corrected version (editable)
   html += '<div style="min-width:0">'
     + '<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Student writing</div>'
-    + '<div style="font-size:13px;color:#1e293b;line-height:1.7;white-space:pre-wrap;font-family:\'Noto Sans KR\',sans-serif">' + (studentText || '<span style="color:#94a3b8">(empty)</span>') + '</div>';
-  if (a.corrected_full) {
-    html += '<div style="margin-top:10px;padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px">'
-      + '<div style="font-size:10px;font-weight:700;color:#15803d;margin-bottom:3px">✅ Corrected version</div>'
-      + '<div style="font-size:13px;color:#166534;line-height:1.7;font-family:\'Noto Sans KR\',sans-serif">' + a.corrected_full + '</div></div>';
+    + '<div style="font-size:13px;color:#1e293b;line-height:1.7;white-space:pre-wrap;font-family:\'Noto Sans KR\',sans-serif">' + (studentText || '<span style="color:#94a3b8">(empty)</span>') + '</div>'
+    + '<div style="margin-top:10px;padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px">'
+    +   '<div style="font-size:10px;font-weight:700;color:#15803d;margin-bottom:3px">✅ Corrected version <span style="font-weight:500;color:#64748b">(editable)</span></div>'
+    +   '<textarea data-fb-path="' + prefix + 'corrected_full" rows="3" style="width:100%;font-size:13px;color:#166534;line-height:1.7;border:1px solid #bbf7d0;border-radius:6px;padding:6px 8px;font-family:\'Noto Sans KR\',sans-serif;resize:vertical;background:#fff">' + _fbAttr(a.corrected_full || '') + '</textarea>'
+    + '</div>'
+    + '</div>';
+
+  // ── RIGHT: editable AI analysis
+  html += '<div style="min-width:0">';
+
+  // Overall
+  html += '<div style="padding:8px 10px;background:' + sBg + ';border:1px solid ' + sCol + '33;border-radius:8px;margin-bottom:8px">'
+    + '<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:3px">Overall (editable)</div>'
+    + '<textarea data-fb-path="' + prefix + 'overall" rows="2" style="width:100%;font-size:12px;color:#475569;line-height:1.5;border:1px solid #e2e8f0;border-radius:6px;padding:5px 7px;font-family:\'Noto Sans KR\',sans-serif;resize:vertical">' + _fbAttr(a.overall || '') + '</textarea>'
+    + '</div>';
+
+  // Corrections (editable + add/delete)
+  var corrections = Array.isArray(a.corrections) ? a.corrections : [];
+  html += '<div style="padding:10px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin-bottom:8px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+    +   '<div style="font-size:10px;font-weight:700;color:#dc2626">🔴 Corrections (' + corrections.length + ')</div>'
+    +   '<button onclick="_fbAddCorrection(' + idx + ')" style="font-size:10px;font-weight:700;padding:3px 8px;border:1px solid #fecaca;border-radius:5px;background:#fff;color:#dc2626;cursor:pointer;font-family:inherit">+ Add</button>'
+    + '</div>';
+  corrections.forEach(function(c, ci) {
+    var cPath = prefix + 'corrections.' + ci + '.';
+    html += '<div style="padding:6px 8px;background:#fff;border:1px solid #fde2e2;border-radius:6px;margin-bottom:4px">'
+      + '<div style="display:flex;gap:5px;margin-bottom:3px;align-items:center">'
+      +   '<input type="text" data-fb-path="' + cPath + 'pattern" placeholder="pattern" value="' + _fbAttr(c.pattern || '') + '" style="width:100px;font-size:10px;border:1px solid #fde2e2;border-radius:4px;padding:3px 6px;background:#fef2f2;color:#dc2626;font-family:inherit">'
+      +   '<button onclick="_fbDelCorrection(' + idx + ',' + ci + ')" title="Delete correction" style="margin-left:auto;width:22px;height:22px;border:1px solid #fde2e2;border-radius:5px;background:#fff;color:#dc2626;cursor:pointer;font-family:inherit;font-size:10px">✕</button>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:3px">'
+      +   '<input type="text" data-fb-path="' + cPath + 'original" placeholder="원문" value="' + _fbAttr(c.original || '') + '" style="font-size:11px;border:1px solid #fde2e2;border-radius:4px;padding:3px 6px;color:#dc2626;font-family:inherit;background:#fff;text-decoration:line-through">'
+      +   '<input type="text" data-fb-path="' + cPath + 'corrected" placeholder="수정" value="' + _fbAttr(c.corrected || '') + '" style="font-size:11px;border:1px solid #bbf7d0;border-radius:4px;padding:3px 6px;color:#15803d;font-weight:700;font-family:inherit;background:#fff">'
+      + '</div>'
+      + '<input type="text" data-fb-path="' + cPath + 'reason" placeholder="reason" value="' + _fbAttr(c.reason || '') + '" style="width:100%;font-size:11px;border:1px solid #e2e8f0;border-radius:4px;padding:3px 6px;color:#64748b;font-family:inherit;background:#fff">'
+      + '</div>';
+  });
+  if (!corrections.length) html += '<div style="font-size:11px;color:#dc2626;font-style:italic">No corrections — click + Add</div>';
+  html += '</div>';
+
+  // Spelling (editable + add/delete)
+  var spelling = Array.isArray(a.spelling) ? a.spelling : [];
+  html += '<div style="padding:8px 10px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;margin-bottom:8px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">'
+    +   '<div style="font-size:10px;font-weight:700;color:#a16207">✏️ Spelling (' + spelling.length + ')</div>'
+    +   '<button onclick="_fbAddSpelling(' + idx + ')" style="font-size:10px;font-weight:700;padding:3px 8px;border:1px solid #fde68a;border-radius:5px;background:#fff;color:#a16207;cursor:pointer;font-family:inherit">+ Add</button>'
+    + '</div>';
+  spelling.forEach(function(s, si) {
+    var sPath = prefix + 'spelling.' + si + '.';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 22px;gap:4px;margin-bottom:3px;align-items:center">'
+      + '<input type="text" data-fb-path="' + sPath + 'wrong" placeholder="wrong" value="' + _fbAttr(s.wrong || '') + '" style="font-size:11px;border:1px solid #fde68a;border-radius:4px;padding:3px 6px;color:#dc2626;font-family:inherit;background:#fff">'
+      + '<input type="text" data-fb-path="' + sPath + 'correct" placeholder="correct" value="' + _fbAttr(s.correct || '') + '" style="font-size:11px;border:1px solid #bbf7d0;border-radius:4px;padding:3px 6px;color:#15803d;font-weight:700;font-family:inherit;background:#fff">'
+      + '<input type="text" data-fb-path="' + sPath + 'tip" placeholder="tip" value="' + _fbAttr(s.tip || '') + '" style="font-size:11px;border:1px solid #e2e8f0;border-radius:4px;padding:3px 6px;color:#64748b;font-family:inherit;background:#fff">'
+      + '<button onclick="_fbDelSpelling(' + idx + ',' + si + ')" title="Delete" style="width:22px;height:22px;border:1px solid #fde68a;border-radius:5px;background:#fff;color:#dc2626;cursor:pointer;font-family:inherit;font-size:10px">✕</button>'
+      + '</div>';
+  });
+  if (!spelling.length) html += '<div style="font-size:11px;color:#a16207;font-style:italic">No spelling notes — click + Add</div>';
+  html += '</div>';
+
+  // Naturalness (always editable)
+  var n = a.naturalness || {};
+  html += '<div style="padding:8px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:8px">'
+    + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
+    +   '<div style="font-size:10px;font-weight:700;color:#1d4ed8">🗣️ Naturalness</div>'
+    +   '<input type="number" data-fb-path="' + prefix + 'naturalness.score" data-fb-num="1" min="0" max="10" value="' + (n.score != null ? n.score : '') + '" placeholder="0-10" style="width:46px;font-size:11px;border:1px solid #bfdbfe;border-radius:4px;padding:2px 4px;text-align:center;font-family:inherit;background:#fff;color:#1d4ed8;font-weight:700">'
+    +   '<span style="font-size:10px;color:#64748b">/10</span>'
+    + '</div>'
+    + '<textarea data-fb-path="' + prefix + 'naturalness.comment" rows="2" placeholder="Natural-sounding comment…" style="width:100%;font-size:11px;color:#1e293b;line-height:1.55;border:1px solid #bfdbfe;border-radius:6px;padding:5px 7px;font-family:inherit;resize:vertical;background:#fff">' + _fbAttr(n.comment || '') + '</textarea>';
+  var suggestions = Array.isArray(n.suggestions) ? n.suggestions : [];
+  if (suggestions.length || true) {
+    html += '<div style="margin-top:5px">';
+    suggestions.forEach(function(s, si) {
+      html += '<div style="display:flex;gap:4px;margin-top:3px">'
+        + '<span style="font-size:11px;color:#1d4ed8">💡</span>'
+        + '<input type="text" data-fb-path="' + prefix + 'naturalness.suggestions.' + si + '" value="' + _fbAttr(s) + '" style="flex:1;font-size:11px;border:1px solid #bfdbfe;border-radius:4px;padding:3px 6px;color:#1d4ed8;font-family:inherit;background:#fff">'
+        + '<button onclick="_fbDelSuggestion(' + idx + ',' + si + ')" title="Delete" style="width:22px;height:22px;border:1px solid #bfdbfe;border-radius:5px;background:#fff;color:#dc2626;cursor:pointer;font-family:inherit;font-size:10px">✕</button>'
+        + '</div>';
+    });
+    html += '<button onclick="_fbAddSuggestion(' + idx + ')" style="margin-top:4px;font-size:10px;font-weight:700;padding:3px 8px;border:1px solid #bfdbfe;border-radius:5px;background:#fff;color:#1d4ed8;cursor:pointer;font-family:inherit">+ Suggestion</button>';
+    html += '</div>';
   }
   html += '</div>';
 
-  // RIGHT: AI analysis
-  html += '<div style="min-width:0">';
-
-  // Overall (editable)
-  html += '<div style="padding:8px 10px;background:' + sBg + ';border:1px solid ' + sCol + '33;border-radius:8px;margin-bottom:8px">'
-    + '<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:3px">Overall (editable)</div>'
-    + '<textarea data-fb-overall-idx="' + idx + '" rows="2" style="width:100%;font-size:12px;color:#475569;line-height:1.5;border:1px solid #e2e8f0;border-radius:6px;padding:5px 7px;font-family:\'Noto Sans KR\',sans-serif;resize:vertical">' + (a.overall || '') + '</textarea>'
+  // Sentence structure (editable)
+  var st = a.structure || {};
+  html += '<div style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px">'
+    + '<div style="font-size:10px;font-weight:700;color:#475569;margin-bottom:4px">🏗️ Sentence structure</div>'
+    + '<textarea data-fb-path="' + prefix + 'structure.comment" rows="2" placeholder="Comment…" style="width:100%;font-size:11px;color:#475569;line-height:1.55;border:1px solid #e2e8f0;border-radius:6px;padding:5px 7px;font-family:inherit;resize:vertical;background:#fff;margin-bottom:4px">' + _fbAttr(st.comment || '') + '</textarea>'
+    + '<input type="text" data-fb-path="' + prefix + 'structure.tip" placeholder="💡 Tip" value="' + _fbAttr(st.tip || '') + '" style="width:100%;font-size:11px;color:#a16207;border:1px solid #fde68a;border-radius:4px;padding:4px 7px;font-family:inherit;background:#fffbeb">'
     + '</div>';
 
-  // Corrections
-  if (a.corrections && a.corrections.length) {
-    html += '<div style="padding:10px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin-bottom:8px">'
-      + '<div style="font-size:10px;font-weight:700;color:#dc2626;margin-bottom:6px">🔴 Corrections (' + a.corrections.length + ')</div>';
-    a.corrections.forEach(function(c) {
-      var icon = (typeof _fbPatternIconsAdmin === 'object' && _fbPatternIconsAdmin[c.pattern]) || '🔧';
-      var label = (typeof _fbPatternLabelsAdmin === 'object' && _fbPatternLabelsAdmin[c.pattern]) || c.pattern || '';
-      html += '<div style="display:flex;gap:6px;padding:5px 7px;background:#fff;border:1px solid #fde2e2;border-radius:6px;margin-bottom:3px;font-size:11px">'
-        + '<span>' + icon + '</span>'
-        + '<div style="flex:1;min-width:0"><span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#fef2f2;color:#dc2626">' + label + '</span> '
-        + '<s style="color:#dc2626">' + (c.original||'') + '</s> → <b style="color:#15803d">' + (c.corrected||'') + '</b>'
-        + '<div style="color:#64748b;font-size:11px;margin-top:2px">' + (c.reason||'') + '</div></div></div>';
-    });
-    html += '</div>';
-  }
-
-  // Spelling
-  if (a.spelling && a.spelling.length) {
-    html += '<div style="padding:8px 10px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;margin-bottom:8px">'
-      + '<div style="font-size:10px;font-weight:700;color:#a16207;margin-bottom:4px">✏️ Spelling</div>';
-    a.spelling.forEach(function(s) {
-      html += '<div style="font-size:11px;margin-bottom:2px"><s style="color:#dc2626">' + (s.wrong||'') + '</s> → <b style="color:#15803d">' + (s.correct||'') + '</b>'
-        + (s.tip ? ' <span style="color:#94a3b8;font-size:11px">(' + s.tip + ')</span>' : '') + '</div>';
-    });
-    html += '</div>';
-  }
-
-  // Naturalness
-  if (a.naturalness && a.naturalness.comment) {
-    html += '<div style="padding:8px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:8px">'
-      + '<div style="font-size:10px;font-weight:700;color:#1d4ed8;margin-bottom:3px">🗣️ Naturalness ' + (a.naturalness.score !== undefined ? a.naturalness.score + '/10' : '') + '</div>'
-      + '<div style="font-size:11px;color:#475569;line-height:1.5">' + a.naturalness.comment + '</div>';
-    if (a.naturalness.suggestions && a.naturalness.suggestions.length) {
-      a.naturalness.suggestions.forEach(function(s) { html += '<div style="font-size:11px;color:#1d4ed8;margin-top:2px">💡 ' + s + '</div>'; });
-    }
-    html += '</div>';
-  }
-
-  // Structure
-  if (a.structure && a.structure.comment) {
-    html += '<div style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px">'
-      + '<div style="font-size:10px;font-weight:700;color:#475569;margin-bottom:2px">🏗️ Sentence structure</div>'
-      + '<div style="font-size:11px;color:#64748b;line-height:1.5">' + a.structure.comment + '</div>'
-      + (a.structure.tip ? '<div style="font-size:10px;color:#a16207;margin-top:3px">💡 ' + a.structure.tip + '</div>' : '')
-      + '</div>';
-  }
-
-  if (a.extra_content) html += '<div style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px"><div style="font-size:10px;font-weight:700;color:#475569;margin-bottom:2px">💡 Additional ideas</div><div style="font-size:11px;color:#64748b">' + a.extra_content + '</div></div>';
+  // Extra content (editable)
+  html += '<div style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px">'
+    + '<div style="font-size:10px;font-weight:700;color:#475569;margin-bottom:4px">💡 Additional ideas</div>'
+    + '<textarea data-fb-path="' + prefix + 'extra_content" rows="2" placeholder="Optional…" style="width:100%;font-size:11px;color:#64748b;line-height:1.55;border:1px solid #e2e8f0;border-radius:6px;padding:5px 7px;font-family:inherit;resize:vertical;background:#fff">' + _fbAttr(a.extra_content || '') + '</textarea>'
+    + '</div>';
 
   html += '</div></div></div>';
   return html;
+}
+
+// Escape only what HTML attributes need; keep original unicode (Korean,
+// emoji) intact so admin sees the same characters they typed.
+function _fbAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function _buildFbModalInner(groupIdx) {
@@ -10248,24 +10292,38 @@ function _buildFbModalInner(groupIdx) {
   var isPackage = row.content_type === 'daily_package' || hasActivities || row.writing_mode === 'daily_package';
 
   if (isPackage) {
-    // Day-level summary at the top.
+    // Day-level summary at the top — every field is now inline-editable.
+    // path syntax: "overall_assessment", "daily_tip", "common_patterns.0".
+    // _fbCollectEdits() walks every [data-fb-path] on Save.
     m += '<div style="padding:14px 20px 0">';
     if (fb) {
-      if (fb.overall_assessment) {
-        m += '<div style="padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;margin-bottom:10px">'
-          + '<div style="font-size:11px;font-weight:800;color:#1d4ed8;margin-bottom:3px">📊 Day overview</div>'
-          + '<div style="font-size:12px;color:#475569;line-height:1.55">' + fb.overall_assessment + '</div></div>';
+      m += '<div style="padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;margin-bottom:10px">'
+        + '<div style="font-size:11px;font-weight:800;color:#1d4ed8;margin-bottom:4px">📊 Day overview <span style="font-weight:500;color:#64748b;font-size:10px">(editable)</span></div>'
+        + '<textarea data-fb-path="overall_assessment" rows="2" style="width:100%;font-size:12px;color:#475569;line-height:1.55;border:1px solid #bfdbfe;border-radius:6px;padding:5px 7px;font-family:inherit;resize:vertical;background:#fff">' + _fbAttr(fb.overall_assessment || '') + '</textarea>'
+        + '</div>';
+
+      var patterns = Array.isArray(fb.common_patterns) ? fb.common_patterns : [];
+      m += '<div style="padding:8px 12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;margin-bottom:8px">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">'
+        +   '<div style="font-size:11px;font-weight:800;color:#92400e">🔁 Recurring patterns <span style="font-weight:500;color:#a16207;font-size:10px">(editable)</span></div>'
+        +   '<button onclick="_fbAddDayPattern()" style="font-size:10px;font-weight:700;padding:3px 8px;border:1px solid #fcd34d;border-radius:5px;background:#fff;color:#a16207;cursor:pointer;font-family:inherit">+ Add</button>'
+        + '</div>';
+      if (patterns.length) {
+        patterns.forEach(function(p, i){
+          m += '<div style="display:flex;gap:5px;margin-bottom:3px;align-items:center">'
+            + '<input type="text" data-fb-path="common_patterns.' + i + '" value="' + _fbAttr(p) + '" style="flex:1;font-size:11px;border:1px solid #fde68a;border-radius:5px;padding:4px 7px;font-family:inherit;background:#fff;color:#78350f">'
+            + '<button onclick="_fbDelDayPattern(' + i + ')" title="Delete" style="width:22px;height:22px;border:1px solid #fde68a;border-radius:5px;background:#fff;color:#dc2626;cursor:pointer;font-family:inherit;font-size:10px;flex-shrink:0">✕</button>'
+            + '</div>';
+        });
+      } else {
+        m += '<div style="font-size:11px;color:#a16207;font-style:italic">No patterns yet — click + Add</div>';
       }
-      if (fb.common_patterns && fb.common_patterns.length) {
-        m += '<div style="padding:8px 12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;margin-bottom:8px">'
-          + '<div style="font-size:11px;font-weight:800;color:#92400e;margin-bottom:3px">🔁 Recurring patterns</div>'
-          + '<ul style="margin:0;padding-left:18px;font-size:11px;color:#78350f">'
-          + fb.common_patterns.map(function(p){ return '<li>' + p + '</li>'; }).join('')
-          + '</ul></div>';
-      }
-      if (fb.daily_tip) {
-        m += '<div style="font-size:12px;color:#475569;margin-bottom:8px">💡 <b>Tomorrow:</b> ' + fb.daily_tip + '</div>';
-      }
+      m += '</div>';
+
+      m += '<div style="padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:8px">'
+        + '<div style="font-size:11px;font-weight:800;color:#15803d;margin-bottom:4px">💡 Tomorrow tip <span style="font-weight:500;color:#64748b;font-size:10px">(editable)</span></div>'
+        + '<textarea data-fb-path="daily_tip" rows="2" style="width:100%;font-size:12px;color:#166534;line-height:1.55;border:1px solid #bbf7d0;border-radius:6px;padding:5px 7px;font-family:inherit;resize:vertical;background:#fff">' + _fbAttr(fb.daily_tip || '') + '</textarea>'
+        + '</div>';
     } else {
       m += '<div style="text-align:center;color:#94a3b8;padding:24px">No AI analysis yet</div>';
     }
@@ -10295,9 +10353,9 @@ function _buildFbModalInner(groupIdx) {
     if (fb && fb.encouragement) {
       m += '<div style="font-size:12px;color:#15803d;padding:6px 0 12px;text-align:center">💚 ' + fb.encouragement + '</div>';
     }
-    if (fb && Array.isArray(fb.activities) && fb.activities.length) {
-      m += '<div style="padding:0 20px 12px;text-align:right">'
-        + '<button onclick="fbModalSaveActivityEdits()" style="font-size:11px;font-weight:700;padding:6px 14px;background:#f0fdf4;color:#15803d;border:1px solid #86efac;border-radius:6px;cursor:pointer;font-family:inherit">💾 Save activity edits</button>'
+    if (fb) {
+      m += '<div style="padding:0 20px 12px;display:flex;justify-content:flex-end;gap:8px">'
+        + '<button onclick="fbModalSaveAllEdits()" style="font-size:12px;font-weight:800;padding:8px 18px;background:linear-gradient(135deg,#15803d,#16a34a);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(22,163,74,.3)">💾 Save all AI edits</button>'
         + '</div>';
     }
   } else {
@@ -10448,34 +10506,131 @@ async function fbModalSaveAIEdits() {
   toast('AI feedback saved');
 }
 
-// Persist per-activity score / overall edits made on the daily-package
-// viewer. Reads every textarea / input the renderer tagged with
-// data-fb-overall-idx / data-fb-score-idx and writes them back into
-// fb.activities[i] before upserting ai_feedback.
-async function fbModalSaveActivityEdits() {
+// ── Path-based ai_feedback editor ──────────────────────────────
+// Every editable control on the daily-package modal carries a
+// data-fb-path attribute (e.g. "activities.0.naturalness.comment"
+// or "common_patterns.2"). _fbCollectEdits walks the modal and
+// returns a fully-merged ai_feedback object; fbModalSaveAllEdits
+// upserts it. Add/Delete helpers mutate the in-memory object then
+// re-render the modal inner without losing scroll/focus context.
+
+function _fbSetByPath(obj, path, value) {
+  if (!obj || !path) return;
+  var parts = path.split('.');
+  var cur = obj;
+  for (var i = 0; i < parts.length - 1; i++) {
+    var k = parts[i];
+    var nextK = parts[i + 1];
+    var nextIsIdx = /^\d+$/.test(nextK);
+    if (cur[k] == null) cur[k] = nextIsIdx ? [] : {};
+    cur = cur[k];
+  }
+  var last = parts[parts.length - 1];
+  cur[last] = value;
+}
+
+function _fbCollectEdits() {
+  var existing = _fbModalFb() || {};
+  // Deep-clone so we don't mutate the cached row mid-write
+  var draft = JSON.parse(JSON.stringify(existing));
+  var modal = document.getElementById('fb-detail-modal');
+  if (!modal) return draft;
+  modal.querySelectorAll('[data-fb-path]').forEach(function(el) {
+    var path = el.getAttribute('data-fb-path');
+    var raw = (el.value != null) ? el.value : '';
+    var isNum = el.getAttribute('data-fb-num') === '1';
+    var val;
+    if (isNum) {
+      var n = parseFloat(raw);
+      val = isNaN(n) ? null : n;
+    } else {
+      val = String(raw);
+    }
+    _fbSetByPath(draft, path, val);
+  });
+  return draft;
+}
+
+async function fbModalSaveAllEdits() {
   if (!_fbModalRow) return;
   var sb = getSb(); if (!sb) return;
-  var existing = _fbModalFb() || {};
-  if (!Array.isArray(existing.activities)) { toast('No activity data to save.'); return; }
-  var modal = document.getElementById('fb-detail-modal');
-  if (!modal) return;
-  modal.querySelectorAll('[data-fb-overall-idx]').forEach(function(ta) {
-    var idx = Number(ta.getAttribute('data-fb-overall-idx'));
-    if (!existing.activities[idx]) return;
-    existing.activities[idx].overall = ta.value || '';
-  });
-  modal.querySelectorAll('[data-fb-score-idx]').forEach(function(inp) {
-    var idx = Number(inp.getAttribute('data-fb-score-idx'));
-    if (!existing.activities[idx]) return;
-    var v = parseInt(inp.value, 10);
-    if (!isNaN(v) && v >= 0 && v <= 100) existing.activities[idx].score = v;
-  });
-  var r = await sb.from('user_submissions').update({ ai_feedback: existing }).eq('id', _fbModalRow.id);
+  var draft = _fbCollectEdits();
+  var r = await sb.from('user_submissions').update({ ai_feedback: draft }).eq('id', _fbModalRow.id);
   if (r.error) { toast('Save failed: ' + r.error.message); return; }
-  _fbModalRow.ai_feedback = existing;
+  _fbModalRow.ai_feedback = draft;
   var allIdx = _fbAllRows.findIndex(function(r2) { return r2.id === _fbModalRow.id; });
-  if (allIdx >= 0) _fbAllRows[allIdx].ai_feedback = existing;
-  toast('Activity edits saved');
+  if (allIdx >= 0) _fbAllRows[allIdx].ai_feedback = draft;
+  toast('✓ Saved');
+}
+
+// Backwards compat (older onclicks elsewhere may still reference it)
+async function fbModalSaveActivityEdits() { return fbModalSaveAllEdits(); }
+
+// ── Inline array mutators ──────────────────────────────────────
+// Each mutator captures pending edits first (so the user doesn't
+// lose what they typed in other fields), splices the array, then
+// re-renders the modal inner.
+
+function _fbStashAndRerender(mutate) {
+  var draft = _fbCollectEdits();
+  if (typeof mutate === 'function') mutate(draft);
+  // Push the staged draft back so the renderer sees the new shape
+  _fbModalRow.ai_feedback = draft;
+  var inner = document.getElementById('fb-modal-inner');
+  if (inner) inner.innerHTML = _buildFbModalInner(_fbModalGroupIdx);
+}
+
+function _fbAddDayPattern() {
+  _fbStashAndRerender(function(d) {
+    if (!Array.isArray(d.common_patterns)) d.common_patterns = [];
+    d.common_patterns.push('');
+  });
+}
+function _fbDelDayPattern(i) {
+  _fbStashAndRerender(function(d) {
+    if (!Array.isArray(d.common_patterns)) return;
+    d.common_patterns.splice(i, 1);
+  });
+}
+function _fbAddCorrection(actIdx) {
+  _fbStashAndRerender(function(d) {
+    var a = d.activities && d.activities[actIdx]; if (!a) return;
+    if (!Array.isArray(a.corrections)) a.corrections = [];
+    a.corrections.push({ pattern: '', original: '', corrected: '', reason: '' });
+  });
+}
+function _fbDelCorrection(actIdx, ci) {
+  _fbStashAndRerender(function(d) {
+    var a = d.activities && d.activities[actIdx]; if (!a || !Array.isArray(a.corrections)) return;
+    a.corrections.splice(ci, 1);
+  });
+}
+function _fbAddSpelling(actIdx) {
+  _fbStashAndRerender(function(d) {
+    var a = d.activities && d.activities[actIdx]; if (!a) return;
+    if (!Array.isArray(a.spelling)) a.spelling = [];
+    a.spelling.push({ wrong: '', correct: '', tip: '' });
+  });
+}
+function _fbDelSpelling(actIdx, si) {
+  _fbStashAndRerender(function(d) {
+    var a = d.activities && d.activities[actIdx]; if (!a || !Array.isArray(a.spelling)) return;
+    a.spelling.splice(si, 1);
+  });
+}
+function _fbAddSuggestion(actIdx) {
+  _fbStashAndRerender(function(d) {
+    var a = d.activities && d.activities[actIdx]; if (!a) return;
+    if (!a.naturalness) a.naturalness = {};
+    if (!Array.isArray(a.naturalness.suggestions)) a.naturalness.suggestions = [];
+    a.naturalness.suggestions.push('');
+  });
+}
+function _fbDelSuggestion(actIdx, si) {
+  _fbStashAndRerender(function(d) {
+    var a = d.activities && d.activities[actIdx]; if (!a || !a.naturalness || !Array.isArray(a.naturalness.suggestions)) return;
+    a.naturalness.suggestions.splice(si, 1);
+  });
 }
 
 async function fbModalApprove() {
