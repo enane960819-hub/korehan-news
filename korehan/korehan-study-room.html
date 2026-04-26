@@ -1948,6 +1948,17 @@ body.kh-neon-on .su-mcq-opt.selected .su-mcq-num { background:#00ffd5;color:#000
 .as-article-card .asc-cat   { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:4px; }
 .as-article-card .asc-title { font-size:14px; font-weight:700; color:var(--dark); line-height:1.4; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
 .as-article-card .asc-meta  { font-size:10px; color:var(--gray); margin-top:6px; }
+/* Mobile: single column with horizontal card layout — vertical cards
+   stretched full-width on phones wasted screen space, so on ≤640px we
+   put the thumbnail on the left and the text on the right. */
+@media(max-width:640px) {
+  .as-article-grid { grid-template-columns:1fr; gap:8px; }
+  .as-article-card { flex-direction:row; }
+  .as-article-card img,
+  .as-article-card .asc-img-ph { width:110px; height:84px; flex-shrink:0; }
+  .as-article-card .asc-body { padding:10px 12px; }
+  .as-article-card .asc-title { font-size:13px; -webkit-line-clamp:2; }
+}
 /* Step pips */
 .as-pip { flex:1; height:6px; border-radius:3px; background:#f1f5f9; transition:background .2s; }
 .as-pip.done   { background:#22c55e; }
@@ -16501,7 +16512,14 @@ async function _asLoadArticles() {
         _asArticles = [];
         return;
       }
-      var bm = await sb.from('bookmarks').select('article_id').eq('user_id', supaUser.id);
+      // Pull bookmarks newest-first so the picker shows recently saved
+      // articles at the top. .in() doesn't preserve order, so we re-sort
+      // the fetched articles using a position map keyed off the bookmark
+      // ids array. Same pattern as korehan-notes.html._loadBookmarks.
+      var bm = await sb.from('bookmarks')
+        .select('article_id, created_at')
+        .eq('user_id', supaUser.id)
+        .order('created_at', { ascending:false });
       if (bm.error) throw bm.error;
       var ids = (bm.data || []).map(function(b){ return b.article_id; }).filter(Boolean);
       if (!ids.length) {
@@ -16511,7 +16529,10 @@ async function _asLoadArticles() {
       }
       var r2 = await sb.from('articles').select('id,title,section,level,image,body').in('id', ids).limit(60);
       if (r2.error) throw r2.error;
-      _asArticles = (r2.data||[]).filter(function(a){ return a.title; });
+      var bmOrder = {}; ids.forEach(function(id, i){ bmOrder[String(id)] = i; });
+      _asArticles = (r2.data||[])
+        .filter(function(a){ return a.title; })
+        .sort(function(a, b){ return (bmOrder[String(a.id)] || 0) - (bmOrder[String(b.id)] || 0); });
       _asRenderGrid();
       return;
     }

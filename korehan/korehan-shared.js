@@ -6259,14 +6259,21 @@ async function toggleBookmark(articleId, btn) {
   var sb = getSupa();
   if (!sb) return;
 
+  // Previously the insert/delete results were awaited but never checked,
+  // so a failed save (e.g. RLS denial, network blip) would still flip the
+  // button to "Bookmarked ✓" — silent data loss from the user's POV.
+  // Now we check .error and only update UI / toast when the DB actually
+  // accepted the change.
   var isBookmarked = btn.classList.contains('active');
   if (isBookmarked) {
-    await sb.from('bookmarks').delete().eq('user_id', supaUser.id).eq('article_id', articleId);
+    var del = await sb.from('bookmarks').delete().eq('user_id', supaUser.id).eq('article_id', articleId);
+    if (del.error) { toast('Could not remove bookmark'); return; }
     btn.classList.remove('active');
     btn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
     toast('Bookmark removed');
   } else {
-    await sb.from('bookmarks').insert({ user_id: supaUser.id, article_id: articleId });
+    var ins = await sb.from('bookmarks').insert({ user_id: supaUser.id, article_id: articleId });
+    if (ins.error) { toast('Could not save bookmark'); return; }
     btn.classList.add('active');
     btn.innerHTML = '<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 0-2-2h10a2 2 0 0 0 2 2z"/></svg>';
     toast('Bookmarked ✓');
