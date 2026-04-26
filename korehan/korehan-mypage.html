@@ -2199,7 +2199,52 @@ var ROOM_ITEMS_FALLBACK = [
   {id:'char_hanbok',      name:'Hanbok Doll',         price:40,  img:'assets/room/char-hanbok.png',      size:180, category:'character'},
   {id:'char_scholar',     name:'Joseon Scholar',      price:55,  img:'assets/room/char-scholar.png',     size:190, category:'character'},
   {id:'char_tiger',       name:'Korean Tiger',        price:65,  img:'assets/room/char-tiger.png',       size:180, category:'character'},
-  {id:'char_dokkaebi',    name:'Dokkaebi (도깨비)',   price:70,  img:'assets/room/char-dokkaebi.png',    size:190, category:'character'}
+  {id:'char_dokkaebi',    name:'Dokkaebi (도깨비)',   price:70,  img:'assets/room/char-dokkaebi.png',    size:190, category:'character'},
+  // ── NEW · Furniture (8) ──
+  {id:'modern_desk',      name:'Modern White Desk',   price:42,  img:'assets/room/modern-desk.png',      size:160, category:'furniture'},
+  {id:'standing_desk',    name:'Standing Desk',       price:55,  img:'assets/room/standing-desk.png',    size:170, category:'furniture'},
+  {id:'gaming_desk',      name:'RGB Gaming Desk',     price:80,  img:'assets/room/gaming-desk.png',      size:170, category:'furniture'},
+  {id:'sofa_2seat',       name:'Two-Seat Sofa',       price:60,  img:'assets/room/sofa-2seat.png',       size:180, category:'furniture'},
+  {id:'recliner',         name:'Recliner Chair',      price:48,  img:'assets/room/recliner.png',         size:140, category:'furniture'},
+  {id:'bean_bag',         name:'Bean Bag',            price:22,  img:'assets/room/bean-bag.png',         size:120, category:'furniture'},
+  {id:'kotatsu',          name:'Korean Kotatsu',      price:65,  img:'assets/room/kotatsu.png',          size:160, category:'furniture'},
+  {id:'vanity_desk',      name:'Vanity Mirror Desk',  price:50,  img:'assets/room/vanity-desk.png',      size:150, category:'furniture'},
+  // ── NEW · Deco (12) ──
+  {id:'espresso_machine', name:'Espresso Machine',    price:32,  img:'assets/room/espresso-machine.png', size:110, category:'deco'},
+  {id:'vinyl_player',     name:'Vinyl Player',        price:38,  img:'assets/room/vinyl-player.png',     size:120, category:'deco'},
+  {id:'lava_lamp',        name:'Lava Lamp',           price:18,  img:'assets/room/lava-lamp.png',        size:90,  category:'deco', effect:'glow_warm'},
+  {id:'moon_lamp',        name:'Moon Lamp',           price:24,  img:'assets/room/moon-lamp.png',        size:100, category:'deco', effect:'glow_warm'},
+  {id:'floor_lamp',       name:'Floor Lamp',          price:26,  img:'assets/room/floor-lamp.png',       size:170, category:'deco', effect:'glow_warm'},
+  {id:'aroma_diffuser',   name:'Aroma Diffuser',      price:16,  img:'assets/room/aroma-diffuser.png',   size:80,  category:'deco'},
+  {id:'humidifier',       name:'Humidifier',          price:20,  img:'assets/room/humidifier.png',       size:100, category:'deco'},
+  {id:'wall_mirror',      name:'Round Wall Mirror',   price:28,  img:'assets/room/wall-mirror.png',      size:120, category:'deco'},
+  {id:'whiteboard',       name:'Study Whiteboard',    price:24,  img:'assets/room/whiteboard.png',       size:160, category:'deco'},
+  {id:'cork_board',       name:'Cork Pin Board',      price:18,  img:'assets/room/cork-board.png',       size:130, category:'deco'},
+  {id:'map_korea',        name:'Map of Korea',        price:20,  img:'assets/room/map-korea.png',        size:150, category:'deco'},
+  {id:'string_lights',    name:'String Lights',       price:22,  img:'assets/room/string-lights.png',    size:200, category:'deco', effect:'sparkle'},
+  // ── NEW · Korean Traditional (6) ──
+  {id:'byobu',            name:'Folding Screen 병풍', price:55,  img:'assets/room/byobu.png',            size:200, category:'deco'},
+  {id:'norigae',          name:'Norigae 노리개',      price:18,  img:'assets/room/norigae.png',          size:90,  category:'deco'},
+  {id:'jangdok',          name:'Korean Jar 장독',     price:25,  img:'assets/room/jangdok.png',          size:120, category:'deco'},
+  {id:'celadon_vase',     name:'Celadon 청자',        price:48,  img:'assets/room/celadon-vase.png',     size:110, category:'deco'},
+  {id:'white_porcelain',  name:'Joseon Porcelain 백자', price:45, img:'assets/room/white-porcelain.png', size:110, category:'deco'},
+  {id:'maedeup',          name:'Korean Knot 매듭',    price:20,  img:'assets/room/maedeup.png',          size:100, category:'deco'},
+  // ── NEW · Pets (4) ──
+  {id:'cat_white',        name:'White Cat',           price:32,  img:'assets/room/cat-white.png',        size:120, category:'pet'},
+  {id:'cat_black',        name:'Black Cat',           price:32,  img:'assets/room/cat-black.png',        size:120, category:'pet'},
+  {id:'corgi_dog',        name:'Pet Corgi',           price:38,  img:'assets/room/corgi-dog.png',        size:130, category:'pet'},
+  {id:'koi_pond',         name:'Koi Pond',            price:52,  img:'assets/room/koi-pond.png',         size:160, category:'pet'},
+  // ── NEW · Plants (5) ──
+  {id:'plant_pothos',     name:'Pothos Vine',         price:14,  img:'assets/room/plant-pothos.png',     size:120, category:'deco'},
+  {id:'plant_aloe',       name:'Aloe Vera',           price:12,  img:'assets/room/plant-aloe.png',       size:90,  category:'deco'},
+  {id:'plant_orchid',     name:'Orchid Pot',          price:24,  img:'assets/room/plant-orchid.png',     size:110, category:'deco'},
+  {id:'plant_snake',      name:'Snake Plant',         price:18,  img:'assets/room/plant-snake.png',      size:130, category:'deco'},
+  {id:'plant_lucky_bamboo', name:'Lucky Bamboo',      price:16,  img:'assets/room/plant-lucky-bamboo.png', size:110, category:'deco'},
+  // ── NEW · Seasonal (4) ──
+  {id:'xmas_tree',        name:'Christmas Tree',      price:50,  img:'assets/room/xmas-tree.png',        size:200, category:'deco', effect:'sparkle'},
+  {id:'xmas_wreath',      name:'Christmas Wreath',    price:18,  img:'assets/room/xmas-wreath.png',      size:100, category:'deco'},
+  {id:'jack_pumpkin',     name:'Jack O\'Lantern',     price:14,  img:'assets/room/jack-pumpkin.png',     size:90,  category:'deco', effect:'glow_warm'},
+  {id:'chuseok_lantern',  name:'Chuseok Lantern',     price:24,  img:'assets/room/chuseok-lantern.png',  size:100, category:'deco', effect:'glow_warm'}
 ];
 var ROOM_ITEMS = ROOM_ITEMS_FALLBACK.slice(); // will be replaced by DB data
 var _roomItemsLoaded = false;
