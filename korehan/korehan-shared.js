@@ -2757,23 +2757,33 @@ async function loadArticlesFromDB(options) {
   if (!shouldForceRefresh && _articlesCache && (Date.now() - _articlesCacheTime) < CACHE_TTL) {
     return _articlesCache;
   }
-  try {
-    // Always order by created_at descending so newest articles are fetched first.
-    // Without ORDER BY the DB returns rows in an arbitrary order, meaning a
-    // limit(18) could miss recently published articles entirely.
-    var query = sb.from('articles').select(LIST_ARTICLE_SELECT).order('created_at', { ascending: false });
-    if (useHomeOptimizedQuery) {
-      query = query.limit(30);  // 홈에 필요한 최대: hero 7 + top 4 + grid 12 = 23
-    } else {
-      query = query.limit(80);  // related/swipe context — 200 was a multi-MB payload over LTE
+  var lim = useHomeOptimizedQuery ? 30 : 80;
+  // Try the lite column list first; fall back to '*' if PostgREST
+  // rejects an unknown column (production schemas can lag behind the
+  // codebase). Without this fallback any missing column on the lite
+  // list (e.g. video_kind, source_url) would drop the home page to
+  // an empty hero and leave "Loading today's articles…" forever.
+  var selects = [LIST_ARTICLE_SELECT, FULL_ARTICLE_SELECT];
+  for (var i = 0; i < selects.length; i++) {
+    try {
+      var res = await sb.from('articles').select(selects[i])
+        .order('created_at', { ascending: false }).limit(lim);
+      if (res.error) {
+        var msg = String(res.error.message || '');
+        // PostgREST returns "column ... does not exist" or similar
+        if (i < selects.length - 1 && /column|does not exist|could not find/i.test(msg)) {
+          console.warn('articles select retry — dropping to *:', msg);
+          continue;
+        }
+        throw res.error;
+      }
+      return applyArticlesCache(normalizeArticles(res.data || []));
+    } catch(e) {
+      console.warn('articles load error', e);
+      if (i >= selects.length - 1) return getCachedArticles();
     }
-    var res = await query;
-    if (res.error) throw res.error;
-    return applyArticlesCache(normalizeArticles(res.data || []));
-  } catch(e) {
-    console.warn('articles load error', e);
-    return getCachedArticles();
   }
+  return getCachedArticles();
 }
 
 // Fetch one full article (with `full` body) by id and merge it into the
