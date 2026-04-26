@@ -642,6 +642,58 @@ body.room-lights-off .room-time-overlay{background:linear-gradient(180deg,rgba(8
 .room-bgm-vol{display:flex;align-items:center;gap:8px;padding:8px 4px 2px;border-top:1px solid rgba(255,255,255,.08);margin-top:6px}
 .room-bgm-vol input{flex:1;height:18px}
 
+/* ── My Room Phase-2 ──
+   - Hub-ified furniture (desk/bookshelf/TV/etc become shortcuts to
+     the matching learning area)
+   - Seasonal particle layer (snow / blossoms / leaves)
+   - Pet affinity badge
+   ────────────────────────────────────────────────────────────── */
+
+/* Furniture clickable in non-edit mode → tooltip + cursor + soft glow on hover */
+.room-placed-item.room-hub:not(.room-pet){cursor:pointer}
+.room-placed-item.room-hub::after{
+  content:attr(data-hub-label);
+  position:absolute;bottom:100%;left:50%;
+  transform:translate(-50%,-2px);
+  background:rgba(15,23,42,.92);color:#fff;
+  font-size:11px;font-weight:700;letter-spacing:.02em;
+  padding:5px 10px;border-radius:8px;white-space:nowrap;
+  opacity:0;pointer-events:none;
+  transition:opacity .15s,transform .15s;
+  z-index:9;font-family:'DM Sans','Noto Sans KR',sans-serif;
+}
+.room-placed-item.room-hub:hover::after{opacity:1;transform:translate(-50%,-8px)}
+.room-placed-item.room-hub:not(.room-pet):hover .room-placed-sprite{filter:drop-shadow(0 0 8px rgba(125,211,252,.55))}
+.room-placed-item.room-hub-pulse .room-placed-sprite{animation:roomHubPulse .35s ease}
+@keyframes roomHubPulse{0%{transform:scale(var(--hub-sx,1),var(--hub-s,1))}50%{transform:scale(calc(var(--hub-sx,1) * 1.06),calc(var(--hub-s,1) * 1.06))}100%{transform:scale(var(--hub-sx,1),var(--hub-s,1))}}
+
+/* Seasonal particles — floats over everything but light/clock UI */
+.room-season-layer{position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden}
+.room-season-flake{position:absolute;top:-24px;animation:roomSeasonFall linear infinite;will-change:transform;text-shadow:0 1px 4px rgba(0,0,0,.25)}
+@keyframes roomSeasonFall{
+  0%{transform:translate3d(0,-30px,0) rotate(0deg);opacity:0}
+  10%{opacity:1}
+  90%{opacity:1}
+  100%{transform:translate3d(40px,440px,0) rotate(360deg);opacity:0}
+}
+
+/* Pet affinity badge — small heart + count under each pet */
+.room-pet-badge{
+  position:absolute;bottom:-2px;left:50%;
+  transform:translateX(-50%);
+  background:rgba(15,23,42,.88);color:#fff;
+  font-size:10px;font-weight:800;letter-spacing:.04em;
+  padding:1px 7px;border-radius:10px;
+  pointer-events:none;
+  font-family:'DM Sans',sans-serif;
+  white-space:nowrap;
+  z-index:6;
+  box-shadow:0 2px 6px rgba(0,0,0,.25);
+  opacity:.9;
+}
+.room-pet-badge.bump{animation:petBadgeBump .35s ease}
+@keyframes petBadgeBump{0%{transform:translateX(-50%) scale(1)}40%{transform:translateX(-50%) scale(1.18)}100%{transform:translateX(-50%) scale(1)}}
+
 /* ── #19 Section spacing + dividers ─────────────── */
 .mp-section { margin-bottom:20px; padding:18px 16px; border-radius:16px; background:#fff; border:1px solid #e8eef5; }
 body.kh-neon-on .mp-section { background:rgba(9,18,33,.7) !important; border-color:rgba(255,255,255,.06) !important; }
@@ -2448,10 +2500,129 @@ function renderRoomItems() {
     if (placed.id === 'wall_clock') _decorateClock(div);
     else if (placed.id && placed.id.indexOf('window_') === 0) _decorateWindow(div, def);
     if (def.category === 'pet') _decoratePet(div);
+    // Phase-2: hub-ify learning-related furniture (desk → study room,
+    // bookshelf → vocab, TV → conversations, etc).
+    _decorateHub(div, placed.id);
   });
   _ensureClockTicker();
   _updateRoomTimeOfDay();
   _ensureTimeOfDayTicker();
+  _ensureSeasonalParticles();
+}
+
+// ── Phase-2: Hub actions ──────────────────────────────────────
+// Maps furniture IDs to learning destinations. Tap (in non-edit mode)
+// → navigate to the matching learning area, with a hover label that
+// hints what the click does.
+var ROOM_HUB_ACTIONS = {
+  // Study desks
+  'desk':         { url: 'korehan-study-room.html', emoji: '📚', label: 'Open Study Room' },
+  'wooden_desk':  { url: 'korehan-study-room.html', emoji: '📚', label: 'Open Study Room' },
+  'modern_desk':  { url: 'korehan-study-room.html', emoji: '📚', label: 'Open Study Room' },
+  'pencil_holder':{ url: 'korehan-study-room.html', emoji: '📚', label: 'Open Study Room' },
+  'backpack':     { url: 'korehan-study-room.html', emoji: '📚', label: 'Open Study Room' },
+  // Bookshelves / books → vocab
+  'bookshelf':    { url: 'korehan-mypage.html#vocab', emoji: '📔', label: 'My Vocab' },
+  'books_stack':  { url: 'korehan-mypage.html#vocab', emoji: '📔', label: 'My Vocab' },
+  // Screens / posters → conversations
+  'tv_unit':      { url: 'korehan-conversations.html', emoji: '💬', label: 'Conversations' },
+  'poster_kpop':  { url: 'korehan-conversations.html', emoji: '💬', label: 'Conversations' },
+  // Calligraphy / Korean culture → stories
+  'calligraphy':  { url: 'korehan-stories.html', emoji: '📖', label: 'Stories' },
+  'poster_hangul':{ url: 'korehan-stories.html', emoji: '📖', label: 'Stories' },
+  // Music / fun
+  'piano':        { url: 'korehan-fun.html',     emoji: '🎮', label: 'Playground' },
+  'guitar':       { url: 'korehan-fun.html',     emoji: '🎮', label: 'Playground' },
+  'radio':        { url: 'korehan-fun.html',     emoji: '🎮', label: 'Playground' },
+  'light_stick':  { url: 'korehan-fun.html',     emoji: '🎮', label: 'Playground' },
+  // Globe → news (world section)
+  'globe':        { url: 'korehan-news.html',    emoji: '🌐', label: 'Latest News' },
+  // Camera → news again (kind of like 'fresh stories')
+  'camera':       { url: 'korehan-news.html',    emoji: '🌐', label: 'Latest News' }
+};
+function _decorateHub(div, itemId) {
+  var action = ROOM_HUB_ACTIONS[itemId];
+  if (!action) return;
+  div.classList.add('room-hub');
+  div.dataset.hubLabel = action.emoji + '  ' + action.label;
+  div.addEventListener('click', function(e) {
+    if (_roomEditing) return; // edit mode owns clicks (selection)
+    // Tap-flash, then navigate.
+    div.classList.add('room-hub-pulse');
+    setTimeout(function() { div.classList.remove('room-hub-pulse'); }, 360);
+    setTimeout(function() { location.href = action.url; }, 220);
+  });
+}
+
+// ── Phase-2: Seasonal particle layer ──────────────────────────
+// Auto-pick by month. Snow Dec/Jan/Feb, blossoms Mar/Apr, leaves
+// Oct/Nov, nothing the rest of the year. Pure DOM particles — cheap,
+// CSS animation handles the movement.
+var _seasonalStarted = false;
+function _ensureSeasonalParticles() {
+  if (_seasonalStarted) return;
+  var month = new Date().getMonth() + 1;
+  var glyph = null, count = 0;
+  if (month === 12 || month === 1 || month === 2) { glyph = '❄'; count = 14; }
+  else if (month === 3 || month === 4)            { glyph = '🌸'; count = 12; }
+  else if (month === 10 || month === 11)          { glyph = '🍁'; count = 10; }
+  if (!glyph) return;
+  var host = document.getElementById('miniroom-container');
+  if (!host) return;
+  // Don't double-mount across re-renders.
+  var existing = host.querySelector('.room-season-layer');
+  if (existing) existing.remove();
+  var layer = document.createElement('div');
+  layer.className = 'room-season-layer';
+  for (var i = 0; i < count; i++) {
+    var p = document.createElement('span');
+    p.className = 'room-season-flake';
+    p.textContent = glyph;
+    p.style.left = (Math.random() * 95) + '%';
+    p.style.fontSize = (10 + Math.random() * 14) + 'px';
+    p.style.animationDuration = (10 + Math.random() * 10) + 's';
+    p.style.animationDelay = (-Math.random() * 18) + 's';
+    layer.appendChild(p);
+  }
+  host.appendChild(layer);
+  _seasonalStarted = true;
+}
+
+// ── Phase-2: Pet affinity ─────────────────────────────────────
+// Click a pet → bump its affinity counter (saved in localStorage).
+// A small heart+count badge appears under the pet, level emoji
+// upgrades at 10 / 30 / 100 clicks. No leaderboard, no DB hit —
+// just a personal "loved this pet N times" stat.
+var _PET_AFF_KEY = 'kh_room_pet_affinity_v1';
+function _getPetAffinity() {
+  try { return JSON.parse(localStorage.getItem(_PET_AFF_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+function _bumpPetAffinity(petId) {
+  var aff = _getPetAffinity();
+  aff[petId] = (aff[petId] || 0) + 1;
+  try { localStorage.setItem(_PET_AFF_KEY, JSON.stringify(aff)); } catch(e) {}
+  return aff[petId];
+}
+function _petLevelEmoji(count) {
+  if (count >= 100) return '👑';
+  if (count >= 30)  return '⭐';
+  if (count >= 10)  return '❤';
+  return '🤍';
+}
+function _renderPetBadge(div, count, animate) {
+  var b = div.querySelector('.room-pet-badge');
+  if (!b) {
+    b = document.createElement('div');
+    b.className = 'room-pet-badge';
+    div.appendChild(b);
+  }
+  b.textContent = _petLevelEmoji(count) + ' ' + count;
+  if (animate) {
+    b.classList.remove('bump');
+    void b.offsetWidth;
+    b.classList.add('bump');
+  }
 }
 
 // ── Phase-1 decorators ──────────────────────────────────────────
@@ -2810,6 +2981,12 @@ window.toggleRoomBGMDrawer = toggleRoomBGMDrawer;
 // behavior). Affinity tracking can hook in later via the 'click' event.
 function _decoratePet(div) {
   div.classList.add('room-pet');
+  // Render existing affinity badge (if any) on first paint so a returning
+  // user sees their pet's stat immediately.
+  var pid = div.dataset.itemId;
+  var existingCount = (_getPetAffinity())[pid] || 0;
+  if (existingCount > 0) _renderPetBadge(div, existingCount, false);
+
   if (div._petAnim) return;
   var phase = Math.random() * Math.PI * 2;
   var range = 22; // px swing
@@ -2842,6 +3019,9 @@ function _decoratePet(div) {
     heart.textContent = ['❤️','💕','💖','✨'][Math.floor(Math.random()*4)];
     div.appendChild(heart);
     setTimeout(function() { heart.remove(); }, 900);
+    // Affinity++ + badge update
+    var newCount = _bumpPetAffinity(pid);
+    _renderPetBadge(div, newCount, true);
   });
 }
 
