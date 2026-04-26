@@ -4834,7 +4834,7 @@ async function generateAIContent(topic) {
 // generic actor/singer).
 var STUDY_TOPIC_PACKS = [
   {
-    keys: ['시간','하루','아침','점심','저녁','오전','오후','밤','새벽','time of day','time','morning','evening','afternoon','night'],
+    keys: ['시간','하루','아침','점심','저녁','오전','오후','새벽','time of day','morning','evening','afternoon','dawn','dusk'],
     vocab: {
       Starter:      [{ko:'아침',rom:'a-chim',en:'morning'},{ko:'점심',rom:'jeom-sim',en:'lunch / noon'},{ko:'저녁',rom:'jeo-nyeok',en:'evening'},{ko:'시간',rom:'si-gan',en:'time'},{ko:'하루',rom:'ha-ru',en:'a day'}],
       Beginner:     [{ko:'아침',rom:'a-chim',en:'morning'},{ko:'저녁',rom:'jeo-nyeok',en:'evening'},{ko:'오전',rom:'o-jeon',en:'a.m.'},{ko:'오후',rom:'o-hu',en:'p.m.'},{ko:'가장',rom:'ga-jang',en:'the most'}],
@@ -4894,7 +4894,7 @@ var STUDY_TOPIC_PACKS = [
     ]
   },
   {
-    keys: ['계절','봄','여름','가을','겨울','season','spring','summer','autumn','fall','winter','weather','날씨'],
+    keys: ['계절','봄','여름','가을','겨울','season','spring','summer','autumn','winter','weather','날씨'],
     vocab: {
       Starter:      [{ko:'봄',rom:'bom',en:'spring'},{ko:'여름',rom:'yeo-reum',en:'summer'},{ko:'가을',rom:'ga-eul',en:'autumn'},{ko:'겨울',rom:'gyeo-ul',en:'winter'},{ko:'날씨',rom:'nal-ssi',en:'weather'}],
       Beginner:     [{ko:'계절',rom:'gye-jeol',en:'season'},{ko:'덥다',rom:'deop-da',en:'to be hot'},{ko:'춥다',rom:'chup-da',en:'to be cold'},{ko:'따뜻하다',rom:'tta-tteut-ha-da',en:'to be warm'},{ko:'시원하다',rom:'si-won-ha-da',en:'to be cool'}],
@@ -4956,11 +4956,30 @@ var STUDY_TOPIC_PACKS = [
 ];
 
 function _matchTopicPack(topicKo, topicEn) {
-  var hay = ((topicKo || '') + ' ' + (topicEn || '')).toLowerCase();
+  var ko = (topicKo || '').toLowerCase();
+  var en = (topicEn || '').toLowerCase();
+  // Korean keys: substring match (Korean has no word-boundary issue for our
+  // current key list — every Korean key here is 2+ jamo and unique enough).
+  // English keys: strict word-boundary match against punctuation/whitespace.
+  // The previous substring match silently routed every "late-night" topic
+  // (e.g. "야식을 자주 먹어요? Do you often eat late-night snacks?") into the
+  // time-of-day pack because 'night' lives inside 'late-night', so the
+  // learner saw morning/evening vocab on a snacks topic.
+  function asciiOnly(s) { return /^[\x00-\x7f]+$/.test(s); }
   for (var i = 0; i < STUDY_TOPIC_PACKS.length; i++) {
     var pack = STUDY_TOPIC_PACKS[i];
     for (var j = 0; j < pack.keys.length; j++) {
-      if (hay.indexOf(String(pack.keys[j]).toLowerCase()) !== -1) return pack;
+      var key = String(pack.keys[j]).toLowerCase();
+      if (asciiOnly(key)) {
+        // (^|[\s.,!?]) … ($|[\s.,!?]) — '-' is treated as a word char here so
+        // 'late-night' won't match 'night'. Spaces inside the key (e.g.
+        // 'time of day') are matched literally.
+        var safe = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        var re = new RegExp('(^|[\\s.,!?])' + safe + '($|[\\s.,!?])', 'i');
+        if (re.test(en)) return pack;
+      } else {
+        if (ko.indexOf(key) !== -1) return pack;
+      }
     }
   }
   return null;
