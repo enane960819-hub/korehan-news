@@ -2478,6 +2478,42 @@ function _khAttachHls(root) {
     var freshHls = '';
     var freshAudio = '';
     var freshFallback = fallback;
+    var retryAttempted = false;
+
+    // ── Loading overlay ──────────────────────────────────────────
+    // Shown immediately while we resolve URLs / probe the first frame.
+    // Removed when the video starts playing OR when we end up swapping
+    // to the image fallback. Without this, the user stared at a black
+    // <video> element with a play button that did nothing — many
+    // assumed the video was broken before it even tried.
+    var loadingOverlay = null;
+    function ensureLoadingOverlay() {
+      if (loadingOverlay || !v.parentNode) return;
+      var parent = v.parentNode;
+      if (getComputedStyle(parent).position === 'static') parent.style.position = 'relative';
+      loadingOverlay = document.createElement('div');
+      loadingOverlay.className = 'kh-video-loading';
+      loadingOverlay.innerHTML = '<div style="display:flex;align-items:center;gap:8px;color:#fff;font-size:12px;font-weight:700"><span style="width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:khVidSpin .9s linear infinite"></span>Loading video…</div>';
+      loadingOverlay.style.cssText = 'position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;background:rgba(8,16,31,.55);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);transition:opacity .25s';
+      parent.appendChild(loadingOverlay);
+      if (!document.getElementById('kh-video-spin-style')) {
+        var s = document.createElement('style');
+        s.id = 'kh-video-spin-style';
+        s.textContent = '@keyframes khVidSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}';
+        document.head.appendChild(s);
+      }
+    }
+    function clearLoadingOverlay() {
+      if (!loadingOverlay) return;
+      loadingOverlay.style.opacity = '0';
+      var el = loadingOverlay;
+      loadingOverlay = null;
+      setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 280);
+    }
+    ensureLoadingOverlay();
+    v.addEventListener('loadeddata', clearLoadingOverlay, { once: true });
+    v.addEventListener('canplay',    clearLoadingOverlay, { once: true });
+    v.addEventListener('playing',    clearLoadingOverlay, { once: true });
 
     // Last-resort escape hatch: when nothing else is playable, swap the
     // <video> element for the article's thumbnail image. We used to
@@ -2488,6 +2524,9 @@ function _khAttachHls(root) {
     // normal image-only article and blends into the reader.
     function swapToImageFallback() {
       if (!imageFallback || !v.parentNode) return false;
+      // Clear any spinner so the unavailable badge is the only chrome
+      // visible on the still image.
+      clearLoadingOverlay();
       var parent = v.parentNode;
       var img = document.createElement('img');
       img.src = imageFallback;
@@ -2523,8 +2562,33 @@ function _khAttachHls(root) {
     // attempted via the resolver's separate audio track if available.
     // This is the *last* layer of the playback funnel: HLS resolve →
     // HLS playback → degrade(silent MP4 + companion audio).
+    //
+    // First failure now triggers ONE full retry through the resolver
+    // before degrading. Reddit's fragment CDN occasionally 503s the
+    // first hit and the URL is genuinely fresh on retry — without this
+    // the user saw "Video unavailable" briefly and then on a manual
+    // refresh the same video played fine.
     function degrade(reason) {
       if (v.dataset.khHlsDegraded === '1') return;
+      if (!retryAttempted && permalink) {
+        retryAttempted = true;
+        khLog('[hero-video] first attempt failed, re-resolving:', reason || 'unknown');
+        try { if (window._khHlsInstances && window._khHlsInstances.get(v)) { window._khHlsInstances.get(v).destroy(); window._khHlsInstances.delete(v); } } catch(e) {}
+        v.removeAttribute('src');
+        ensureLoadingOverlay();
+        // Re-resolve and try again. If the retry also fails, the
+        // second degrade() call falls through to the silent-MP4 /
+        // image-fallback path below.
+        _khResolveReddit(permalink).then(function(r) {
+          if (r) {
+            freshHls      = r.hls_url      || freshHls;
+            freshAudio    = r.audio_url    || freshAudio;
+            freshFallback = r.video_url    || freshFallback;
+          }
+          startWithFreshUrls();
+        }).catch(function(){ degrade(reason + ':retry-failed'); });
+        return;
+      }
       v.dataset.khHlsDegraded = '1';
       try { if (window._khHlsInstances && window._khHlsInstances.get(v)) { window._khHlsInstances.get(v).destroy(); window._khHlsInstances.delete(v); } } catch(e) {}
       v.removeAttribute('src');
