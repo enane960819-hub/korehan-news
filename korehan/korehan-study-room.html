@@ -3800,6 +3800,7 @@ async function loadDBHelpers(level) {
     var box = document.getElementById('helper-box');
     if (box) box.innerHTML = hhtml;
     _dbHelpersLoaded = true;
+    if (typeof _mirrorHelpTabContent === 'function') _mirrorHelpTabContent();
     return true;
   } catch(e) { return false; }
 }
@@ -3827,6 +3828,7 @@ async function loadDBGrammar(level) {
     var box = document.getElementById('grammar-box');
     if (box) box.innerHTML = ghtml;
     _dbGrammarLoaded = true;
+    if (typeof _mirrorHelpTabContent === 'function') _mirrorHelpTabContent();
     return true;
   } catch(e) { return false; }
 }
@@ -4247,6 +4249,9 @@ function clearAIContentUI() {
     if (id === 'wcard-chips') el.innerHTML = '';
     else el.innerHTML = '<div style="color:#8ea0b8;font-size:12px">Loading…</div>';
   });
+  // Keep the Help tab in sync — without this, switching level while on
+  // the Help tab kept the previous topic's Vocab + Quick Help on screen.
+  if (typeof _mirrorHelpTabContent === 'function') _mirrorHelpTabContent();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4332,13 +4337,46 @@ async function loadDailyContent() {
   var lsCacheKey = 'sr_daily_' + today + '_' + _currentLevel;
   var sessionCheckKey = 'sr_daily_checked_' + today + '_' + _currentLevel;
   var alreadyCheckedThisSession = sessionStorage.getItem(sessionCheckKey) === '1';
+  // Stale-while-revalidate. The cache key embeds today's date, so any
+  // entry we find is by definition for today. If we have one, paint the
+  // UI from it immediately (zero network) and either return — when the
+  // session has already validated this level — or kick off a silent
+  // background DB check that overwrites the cache only if the server
+  // has a newer/different record. Previously we required the session
+  // check to have already happened before touching the cache, which
+  // meant every first level switch hit the DB and felt slow.
   try {
     var lsCached = localStorage.getItem(lsCacheKey);
-    if (lsCached && alreadyCheckedThisSession) {
+    if (lsCached) {
       var cachedRec = JSON.parse(lsCached);
       if (cachedRec && cachedRec.topic_ko && cachedRec.vocab && cachedRec.vocab.length > 0) {
-        khLog('[loadDailyContent] instant load from cache (checked this session)');
+        if (alreadyCheckedThisSession) {
+          khLog('[loadDailyContent] instant cache load (already validated this session)');
+          _applyDailyContent(cachedRec);
+          return;
+        }
+        khLog('[loadDailyContent] instant cache load + background revalidate');
         _applyDailyContent(cachedRec);
+        // Fire-and-forget background validation. Same query as the
+        // foreground path below, but it never blocks the UI and only
+        // re-applies content when the server actually has something
+        // different (e.g. admin edited the day's vocab/grammar).
+        (function(t, lvl){
+          try {
+            var sb = getSupa();
+            if (!sb || !supaUser) return;
+            sb.from('study_daily_content').select('*').eq('scheduled_date', t).eq('level', lvl).maybeSingle()
+              .then(function(r){
+                if (r.error || !r.data) return;
+                var newJson = JSON.stringify(r.data);
+                if (newJson === lsCached) return;
+                khLog('[loadDailyContent] background revalidate found newer content, updating');
+                if (_currentLevel === lvl) _applyDailyContent(r.data);
+                else { try { localStorage.setItem('sr_daily_' + t + '_' + lvl, newJson); } catch(e){} }
+                try { sessionStorage.setItem('sr_daily_checked_' + t + '_' + lvl, '1'); } catch(e){}
+              });
+          } catch(e) {}
+        })(today, _currentLevel);
         return;
       }
     }
@@ -5319,6 +5357,11 @@ function renderAIContent() {
 
   // Sentence Builder for Beginner
   if (typeof initSentenceBuilder === 'function') initSentenceBuilder();
+
+  // Push the freshly-rendered source boxes into the Help tab twins.
+  // Without this, learners on the Help tab when topic/level changed
+  // kept seeing the previous topic's Must-know Vocab and Quick Help.
+  if (typeof _mirrorHelpTabContent === 'function') _mirrorHelpTabContent();
 }
 
 function renderModalContent() {
@@ -8135,6 +8178,27 @@ function pcProgressClick(e) {
 // Init phone calls load
 setTimeout(loadPhoneCalls, 1500);
 
+// Mirror sidebar source boxes (vocab / grammar / helpers / phrases /
+// flashcards) into their Help-tab twin elements. Was previously inlined
+// inside switchSrTab and only ran on Help-tab click — so changing level
+// or topic while already on Help left the learner with stale Vocab +
+// Quick Help. clearAIContentUI() and renderAIContent() now also call
+// this so the Help tab stays in sync with whatever the source boxes
+// currently show.
+function _mirrorHelpTabContent() {
+  ['phrase-box-left','vocab-box-left','fc-grid-left','helper-box','grammar-box'].forEach(function(srcId) {
+    var src = document.getElementById(srcId);
+    var dstId;
+    if (srcId === 'fc-grid-left')         dstId = 'fc-grid-help';
+    else if (srcId === 'phrase-box-left') dstId = 'phrase-box-help';
+    else if (srcId === 'vocab-box-left')  dstId = 'vocab-box-help';
+    else if (srcId === 'helper-box')      dstId = 'helper-box-help';
+    else if (srcId === 'grammar-box')     dstId = 'grammar-box-help';
+    var dst = document.getElementById(dstId);
+    if (src && dst) dst.innerHTML = src.innerHTML;
+  });
+}
+
 // ── Study Room Tab Switching ──
 function switchSrTab(tab, btn) {
   document.querySelectorAll('.sr-top-tab').forEach(function(b){ b.classList.remove('on'); });
@@ -8146,20 +8210,7 @@ function switchSrTab(tab, btn) {
   // Show level bar only on Study tab (desktop only — on mobile it stays visible with hero)
   var lvBar = document.getElementById('sr-level-bar');
   if (lvBar && window.innerWidth > 860) lvBar.style.display = (tab === 'study') ? '' : 'none';
-  // Mirror sidebar content to Help tab for mobile
-  if (tab === 'help') {
-    ['phrase-box-left','vocab-box-left','fc-grid-left','helper-box','grammar-box'].forEach(function(srcId) {
-      var src = document.getElementById(srcId);
-      var dstId = srcId.replace('-left','').replace('-box','-box-help').replace('helper-box','helper-box-help').replace('grammar-box','grammar-box-help');
-      if (srcId === 'fc-grid-left') dstId = 'fc-grid-help';
-      if (srcId === 'phrase-box-left') dstId = 'phrase-box-help';
-      if (srcId === 'vocab-box-left') dstId = 'vocab-box-help';
-      if (srcId === 'helper-box') dstId = 'helper-box-help';
-      if (srcId === 'grammar-box') dstId = 'grammar-box-help';
-      var dst = document.getElementById(dstId);
-      if (src && dst) dst.innerHTML = src.innerHTML;
-    });
-  }
+  if (tab === 'help') _mirrorHelpTabContent();
 }
 
 // ── Word Book (단어장) ──
