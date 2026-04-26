@@ -4314,7 +4314,6 @@ function renderReviewVocabCheck(a) {
       +   '<div class="rv-vq-prompt">Choose the correct meaning</div>'
       +   '<div class="rv-vq-options" id="rv-vq-options"></div>'
       +   '<div class="rv-vq-feedback" id="rv-vq-feedback"></div>'
-      +   '<button class="rv-vq-next" id="rv-vq-next" style="display:none" onclick="_rvVocabQuizNext()">Next →</button>'
       + '</div>';
     _rvVocabQuizPaint();
   }
@@ -4377,11 +4376,9 @@ function _rvVocabQuizPaint() {
   var romEl = document.getElementById('rv-vq-rom');
   var optsEl = document.getElementById('rv-vq-options');
   var fbEl   = document.getElementById('rv-vq-feedback');
-  var nextEl = document.getElementById('rv-vq-next');
   if (koEl)  koEl.textContent = ko;
   if (romEl) romEl.textContent = rom;
   if (fbEl)  { fbEl.textContent = ''; fbEl.className = 'rv-vq-feedback'; }
-  if (nextEl) nextEl.style.display = 'none';
   if (optsEl) {
     optsEl.innerHTML = choices.map(function(c){
       var isCorrect = c === correct ? '1' : '0';
@@ -4408,8 +4405,6 @@ function _rvVocabQuizPick(btn) {
     fb.textContent = correct ? '✓ Correct' : '✗ Not quite';
     fb.className = 'rv-vq-feedback ' + (correct ? 'ok' : 'no');
   }
-  var next = document.getElementById('rv-vq-next');
-  if (next) next.style.display = '';
   setTimeout(_rvVocabQuizNext, 650);
 }
 
