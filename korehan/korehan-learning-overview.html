@@ -653,6 +653,9 @@
           if (overallEl) overallEl.textContent = passed + ' / ' + totalStations + '역 통과';
           if (lineCountEl) lineCountEl.textContent = lines.length;
 
+          // Stash so the line modal can render without re-querying
+          window._netCache = { lines: lines, stByLine: stByLine, progress: progress };
+
           var html = '';
           lines.forEach(function(line) {
             var sts = stByLine[line.id] || [];
@@ -670,10 +673,10 @@
               var status = p ? p.status : 'unvisited';
               var bg = status === 'passed' ? line.color : status === 'transferring' ? 'rgba(255,255,255,.42)' : 'rgba(255,255,255,.12)';
               var ring = status === 'passed' ? line.color : 'transparent';
-              return '<span title="' + _netEsc(s.name_ko) + ' (' + s.level + ')" style="width:8px;height:8px;border-radius:50%;background:' + bg + ';box-shadow:0 0 0 1px ' + ring + ';flex-shrink:0;cursor:pointer" onclick="_netStationClick(' + s.id + ')"></span>';
+              return '<span title="' + _netEsc(s.name_ko) + ' (' + s.level + ')" style="width:8px;height:8px;border-radius:50%;background:' + bg + ';box-shadow:0 0 0 1px ' + ring + ';flex-shrink:0;cursor:pointer" onclick="event.stopPropagation();_netOpenLine(' + line.id + ',' + s.station_no + ')"></span>';
             }).join('');
 
-            html += '<div style="margin-bottom:14px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);transition:border-color .15s" onmouseover="this.style.borderColor=\'' + line.color + '50\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,.07)\'">'
+            html += '<div onclick="_netOpenLine(' + line.id + ')" style="margin-bottom:14px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);transition:border-color .15s,transform .15s;cursor:pointer" onmouseover="this.style.borderColor=\'' + line.color + '50\';this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,.07)\';this.style.transform=\'translateY(0)\'">'
               + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
               +   '<div style="width:34px;height:34px;border-radius:10px;background:' + line.color + '22;border:1px solid ' + line.color + '55;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">' + (line.icon || '🚇') + '</div>'
               +   '<div style="flex:1;min-width:0">'
@@ -700,9 +703,99 @@
       function _netEsc(s) {
         return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
       }
+      // Open the per-line detail modal (Phase 2d). Lists every
+      // station on the line with its level + status. Phase 3 will
+      // expand each station with can-do statements + linked content
+      // thumbnails. Optional `focusStationNo` scrolls the modal so
+      // a station you tapped on the strip ends up highlighted.
+      window._netOpenLine = function(lineId, focusStationNo) {
+        var cache = window._netCache;
+        if (!cache) return;
+        var line = cache.lines.find(function(l){ return l.id === lineId; });
+        if (!line) return;
+        var sts = (cache.stByLine[lineId] || []).slice().sort(function(a,b){ return a.station_no - b.station_no; });
+        var prog = cache.progress || {};
+        var passed = 0, transfer = 0;
+        sts.forEach(function(s){
+          var p = prog[s.id];
+          if (p && p.status === 'passed') passed++;
+          else if (p && p.status === 'transferring') transfer++;
+        });
+
+        var existing = document.getElementById('net-line-modal');
+        if (existing) existing.remove();
+
+        var levelLabel = { Starter:'씨앗', Beginner:'새싹', Intermediate:'나무', Advanced:'숲', Fluency:'정상' };
+        var levelColor = { Starter:'#a78bfa', Beginner:'#34d399', Intermediate:'#f59e0b', Advanced:'#fb7185', Fluency:'#fbbf24' };
+
+        var rows = sts.map(function(s) {
+          var p = prog[s.id];
+          var status = p ? p.status : 'unvisited';
+          var statusBg = status === 'passed' ? line.color + '22' : status === 'transferring' ? 'rgba(255,255,255,.06)' : 'transparent';
+          var statusBorder = status === 'passed' ? line.color + '66' : status === 'transferring' ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.06)';
+          var statusText = status === 'passed' ? '✓ 통과' : status === 'transferring' ? '환승중 ' + Math.round((p.progress||0)*100) + '%' : '미방문';
+          var statusColor = status === 'passed' ? line.color : status === 'transferring' ? 'rgba(255,255,255,.72)' : 'rgba(255,255,255,.32)';
+          var lvCol = levelColor[s.level] || '#94a3b8';
+          var lvLabel = levelLabel[s.level] || s.level;
+          return '<div data-station-no="' + s.station_no + '" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:' + statusBg + ';border:1px solid ' + statusBorder + ';margin-bottom:5px">'
+            + '<div style="width:30px;height:30px;border-radius:50%;background:' + (status === 'passed' ? line.color : 'rgba(255,255,255,.05)') + ';border:1.5px solid ' + (status === 'passed' ? line.color : 'rgba(255,255,255,.18)') + ';color:' + (status === 'passed' ? '#0b1228' : 'rgba(220,210,255,.7)') + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">' + s.station_no + '</div>'
+            + '<div style="flex:1;min-width:0">'
+            +   '<div style="font-size:13px;font-weight:800;color:#fff;line-height:1.3">' + _netEsc(s.name_ko) + '</div>'
+            +   '<div style="font-size:10px;color:rgba(220,210,255,.5);margin-top:1px">' + _netEsc(s.name_en) + '</div>'
+            + '</div>'
+            + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">'
+            +   '<span style="font-size:9px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + lvCol + '22;border:1px solid ' + lvCol + '55;color:' + lvCol + ';letter-spacing:.04em">' + lvLabel + '</span>'
+            +   '<span style="font-size:10px;font-weight:700;color:' + statusColor + '">' + statusText + '</span>'
+            + '</div>'
+            + '</div>';
+        }).join('');
+
+        var pct = sts.length ? Math.round(passed / sts.length * 100) : 0;
+        var modal = document.createElement('div');
+        modal.id = 'net-line-modal';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(7,10,26,.86);display:flex;align-items:center;justify-content:center;padding:16px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)';
+        modal.onclick = function(e){ if(e.target === modal) modal.remove(); };
+        modal.innerHTML =
+          '<div style="background:linear-gradient(180deg,#0b1228 0%,#141a3a 100%);border:1px solid ' + line.color + '50;border-radius:18px;width:min(560px,100%);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.5);color:#fff">'
+          +   '<div style="padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08)">'
+          +     '<div style="display:flex;align-items:flex-start;gap:12px">'
+          +       '<div style="width:42px;height:42px;border-radius:12px;background:' + line.color + '22;border:1px solid ' + line.color + '55;display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0">' + (line.icon || '🚇') + '</div>'
+          +       '<div style="flex:1;min-width:0">'
+          +         '<div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:' + line.color + '">' + line.id + '호선 · ' + _netEsc(line.name_en) + '</div>'
+          +         '<div style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:20px;font-weight:900;line-height:1.15;margin-top:2px">' + _netEsc(line.name_ko) + '</div>'
+          +         '<div style="font-size:11px;color:rgba(220,210,255,.6);margin-top:5px;line-height:1.45">' + _netEsc(line.description || '') + '</div>'
+          +       '</div>'
+          +       '<button onclick="document.getElementById(\'net-line-modal\').remove()" style="background:rgba(255,255,255,.08);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer;flex-shrink:0">✕</button>'
+          +     '</div>'
+          +     '<div style="display:flex;gap:10px;align-items:center;margin-top:12px">'
+          +       '<div style="flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,' + line.color + ',' + line.color + 'cc)"></div></div>'
+          +       '<div style="font-size:11px;font-weight:800;color:' + line.color + ';white-space:nowrap">' + passed + '/' + sts.length + ' · ' + pct + '%' + (transfer ? ' · ' + transfer + '환승' : '') + '</div>'
+          +     '</div>'
+          +   '</div>'
+          +   '<div id="net-line-modal-body" style="overflow-y:auto;padding:14px 16px 18px">' + rows + '</div>'
+          + '</div>';
+        document.body.appendChild(modal);
+
+        if (focusStationNo) {
+          setTimeout(function() {
+            var target = modal.querySelector('[data-station-no="' + focusStationNo + '"]');
+            if (target) {
+              target.scrollIntoView({ behavior:'smooth', block:'center' });
+              target.style.transition = 'box-shadow .25s';
+              target.style.boxShadow = '0 0 0 2px ' + line.color;
+              setTimeout(function(){ target.style.boxShadow = 'none'; }, 1400);
+            }
+          }, 50);
+        }
+      };
+      // Backwards-compat alias for the old per-station handler
       window._netStationClick = function(stationId) {
-        // Light-weight detail tooltip — fuller modal in next iteration
-        try { console.log('[Network] station', stationId); } catch(e) {}
+        var cache = window._netCache;
+        if (!cache) return;
+        for (var lid in cache.stByLine) {
+          var hit = (cache.stByLine[lid] || []).find(function(s){ return s.id === stationId; });
+          if (hit) { window._netOpenLine(Number(lid), hit.station_no); return; }
+        }
       };
 
       async function loadStats() {
