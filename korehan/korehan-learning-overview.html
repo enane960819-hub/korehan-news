@@ -1115,7 +1115,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="korehan-shared.js?v=20260426f-monthly"></script>
+  <script src="korehan-shared.js?v=20260426g-fbview"></script>
   <script src="js/kh-universe.js?v=20260426a"></script>
   <script src="js/kh-curriculum.js?v=20260420y"></script>
   <script src="learning_hub_vocab_data.js"></script>
@@ -3377,7 +3377,215 @@
 
   // ═══════════════════════════════════════════════════════════════
   // WRITING FEEDBACK HISTORY
+  //
+  // Render strategy mirrors the admin's Feedback Detail modal:
+  // - daily_package (fb.activities[]) → per-activity stack with student
+  //   text + corrected version + per-activity overall + corrections +
+  //   spelling + naturalness + structure + extra ideas; plus a day
+  //   summary header (overall_assessment, common_patterns, daily_tip).
+  // - single submission → flat overall + corrected + corrections.
+  // - admin_feedback plain-text → blue-bordered overlay note above the
+  //   AI breakdown so the admin's manual review is always visible.
   // ═══════════════════════════════════════════════════════════════
+  function _glEsc(s) {
+    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function _glParseFbObject(raw) {
+    if (raw == null) return null;
+    if (typeof raw !== 'string') return raw;
+    var s = raw.trim();
+    if (!s) return null;
+    if (s.charAt(0) === '{' || s.charAt(0) === '[') {
+      try { return JSON.parse(s); } catch(e) {}
+    }
+    return null; // plain text → caller falls back to _glAdminText
+  }
+  function _glAdminText(raw) {
+    if (raw == null) return '';
+    if (typeof raw === 'object') {
+      // Object-shaped admin_feedback (rare); pull a meaningful note.
+      return raw.overall || raw.note || '';
+    }
+    var s = String(raw).trim();
+    if (!s) return '';
+    // If it parses as JSON, the rich AI renderer handles it; admin
+    // text overlay is only for actual prose.
+    if ((s.charAt(0) === '{' || s.charAt(0) === '[')) {
+      try { JSON.parse(s); return ''; } catch(e) {}
+    }
+    return s;
+  }
+  // Build the flat-overall fallback shape from the row when the AI
+  // payload is absent but the admin saved a plain-text note.
+  function _glRenderFeedbackBody(opts) {
+    var ai = opts.ai || null;
+    var adminText = opts.adminText || '';
+    var row = opts.row || {};
+    var html = '';
+
+    // Admin overlay note FIRST — this is the human reviewer's voice.
+    if (adminText) {
+      html += '<div style="padding:10px 12px;background:#eff6ff;border-left:3px solid #2563eb;border-radius:0 8px 8px 0;margin-bottom:10px">'
+        + '<div style="font-size:9px;font-weight:800;color:#1d4ed8;margin-bottom:4px;letter-spacing:.06em;text-transform:uppercase">📝 Admin note</div>'
+        + '<div style="font-size:12px;color:#1e293b;line-height:1.65;white-space:pre-wrap">' + _glEsc(adminText) + '</div>'
+        + '</div>';
+    }
+
+    if (!ai) {
+      // No structured AI payload — score backfill if available
+      if (row.score != null) {
+        html += '<div style="font-size:11px;color:#64748b;margin-top:4px">Score: <b style="color:#2563eb">' + row.score + '</b>/100</div>';
+      }
+      return html || '<div style="text-align:center;padding:10px;font-size:12px;color:#94a3b8">(empty feedback)</div>';
+    }
+
+    // Daily-package layout
+    var hasActivities = Array.isArray(ai.activities) && ai.activities.length;
+    var isPackage = row.content_type === 'daily_package'
+      || row.writing_mode === 'daily_package'
+      || hasActivities;
+
+    if (isPackage) {
+      html += _glRenderDailySummary(ai);
+      html += _glRenderActivities(ai, row);
+      return html;
+    }
+
+    // Single submission (flat schema)
+    var score = (ai.score != null) ? ai.score : row.score;
+    if (ai.overall || score != null) {
+      html += '<div style="padding:10px 12px;background:#f0fdf4;border-left:3px solid #22c55e;border-radius:0 8px 8px 0;margin-bottom:8px">'
+        + '<div style="font-size:9px;font-weight:800;color:#16a34a;margin-bottom:3px;letter-spacing:.06em;text-transform:uppercase">Overall</div>'
+        + (score != null ? '<div style="font-size:12px;font-weight:800;color:#16a34a;margin-bottom:4px">Score: ' + score + '/100</div>' : '')
+        + (ai.overall ? '<div style="font-size:12px;color:#1e293b;line-height:1.6;white-space:pre-wrap">' + _glEsc(ai.overall) + '</div>' : '')
+        + '</div>';
+    }
+    if (ai.corrected_full) {
+      html += '<div style="padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:8px">'
+        + '<div style="font-size:9px;font-weight:800;color:#15803d;margin-bottom:3px;letter-spacing:.06em;text-transform:uppercase">✅ Corrected version</div>'
+        + '<div style="font-size:13px;color:#166534;line-height:1.7;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + _glEsc(ai.corrected_full) + '</div>'
+        + '</div>';
+    }
+    if (ai.corrections && ai.corrections.length) {
+      html += _glRenderCorrections(ai.corrections);
+    }
+    if (ai.spelling && ai.spelling.length)         html += _glRenderSpelling(ai.spelling);
+    if (ai.naturalness && ai.naturalness.comment)  html += _glRenderNaturalness(ai.naturalness);
+    if (ai.structure && ai.structure.comment)      html += _glRenderStructure(ai.structure);
+    if (ai.extra_content)                          html += _glRenderExtra(ai.extra_content);
+
+    return html;
+  }
+
+  function _glRenderDailySummary(ai) {
+    var html = '';
+    if (ai.overall_assessment) {
+      html += '<div style="padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;margin-bottom:8px">'
+        + '<div style="font-size:10px;font-weight:800;color:#1d4ed8;margin-bottom:3px">📊 Day overview</div>'
+        + '<div style="font-size:12px;color:#1e293b;line-height:1.6">' + _glEsc(ai.overall_assessment) + '</div></div>';
+    }
+    if (ai.common_patterns && ai.common_patterns.length) {
+      html += '<div style="padding:8px 12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;margin-bottom:8px">'
+        + '<div style="font-size:10px;font-weight:800;color:#92400e;margin-bottom:3px">🔁 Recurring patterns</div>'
+        + '<ul style="margin:0;padding-left:18px;font-size:11px;color:#78350f">'
+        + ai.common_patterns.map(function(p){ return '<li>' + _glEsc(p) + '</li>'; }).join('')
+        + '</ul></div>';
+    }
+    if (ai.daily_tip) {
+      html += '<div style="font-size:12px;color:#475569;margin:6px 2px 12px;line-height:1.6">💡 <b>Tomorrow:</b> ' + _glEsc(ai.daily_tip) + '</div>';
+    }
+    return html;
+  }
+
+  function _glRenderActivities(ai, row) {
+    if (!ai || !Array.isArray(ai.activities) || !ai.activities.length) return '';
+    return ai.activities.map(function(a, idx) {
+      var sc = (a.score != null) ? Number(a.score) : null;
+      var sCol = sc !== null ? (sc >= 80 ? '#15803d' : sc >= 60 ? '#a16207' : '#dc2626') : '#64748b';
+      var sBg = sc !== null ? (sc >= 80 ? '#f0fdf4' : sc >= 60 ? '#fefce8' : '#fef2f2') : '#f8fafc';
+      var label = a.activity_name || ('Activity ' + (idx+1));
+      var topic = a.topic || '';
+      var html = '<div style="padding:12px 14px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:10px">'
+        + '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">'
+        +   '<div style="flex:1;min-width:0">'
+        +     '<div style="font-size:13px;font-weight:800;color:#0f172a">' + _glEsc(label) + '</div>'
+        +     (topic ? '<div style="font-size:11px;color:#64748b;margin-top:2px">' + _glEsc(topic) + '</div>' : '')
+        +   '</div>'
+        +   (sc !== null ? '<div style="text-align:center;flex-shrink:0"><div style="font-size:9px;color:' + sCol + ';font-weight:700">Score</div><div style="font-size:18px;font-weight:900;color:' + sCol + '">' + sc + '</div></div>' : '')
+        + '</div>';
+
+      if (a.student_text) {
+        html += '<div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">My writing</div>'
+          + '<div style="font-size:12px;color:#1e293b;line-height:1.7;white-space:pre-wrap;font-family:\'Noto Sans KR\',sans-serif;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px">' + _glEsc(a.student_text) + '</div></div>';
+      }
+      if (a.corrected_full) {
+        html += '<div style="padding:8px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:8px">'
+          + '<div style="font-size:9px;font-weight:800;color:#15803d;margin-bottom:3px">✅ Corrected version</div>'
+          + '<div style="font-size:12px;color:#166534;line-height:1.7;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + _glEsc(a.corrected_full) + '</div></div>';
+      }
+      if (a.overall) {
+        html += '<div style="padding:8px 10px;background:' + sBg + ';border:1px solid ' + sCol + '33;border-radius:8px;margin-bottom:8px">'
+          + '<div style="font-size:9px;font-weight:700;color:#64748b;margin-bottom:3px">Overall</div>'
+          + '<div style="font-size:12px;color:#1e293b;line-height:1.55;white-space:pre-wrap">' + _glEsc(a.overall) + '</div></div>';
+      }
+      if (a.corrections && a.corrections.length)    html += _glRenderCorrections(a.corrections);
+      if (a.spelling && a.spelling.length)          html += _glRenderSpelling(a.spelling);
+      if (a.naturalness && a.naturalness.comment)   html += _glRenderNaturalness(a.naturalness);
+      if (a.structure && a.structure.comment)       html += _glRenderStructure(a.structure);
+      if (a.extra_content)                          html += _glRenderExtra(a.extra_content);
+      html += '</div>';
+      return html;
+    }).join('');
+  }
+
+  function _glRenderCorrections(arr) {
+    var h = '<div style="padding:9px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin-bottom:8px">'
+      + '<div style="font-size:10px;font-weight:800;color:#dc2626;margin-bottom:6px">🔴 Corrections (' + arr.length + ')</div>';
+    arr.forEach(function(c) {
+      h += '<div style="display:flex;gap:6px;padding:5px 7px;background:#fff;border:1px solid #fde2e2;border-radius:6px;margin-bottom:3px;font-size:11px">'
+        + '<div style="flex:1;min-width:0">'
+        + (c.pattern ? '<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#fef2f2;color:#dc2626;margin-right:5px">' + _glEsc(c.pattern) + '</span>' : '')
+        + '<s style="color:#dc2626">' + _glEsc(c.original||'') + '</s> → <b style="color:#15803d">' + _glEsc(c.corrected||'') + '</b>'
+        + (c.reason ? '<div style="color:#64748b;font-size:11px;margin-top:2px">' + _glEsc(c.reason) + '</div>' : '')
+        + '</div></div>';
+    });
+    h += '</div>';
+    return h;
+  }
+  function _glRenderSpelling(arr) {
+    var h = '<div style="padding:8px 10px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;margin-bottom:8px">'
+      + '<div style="font-size:10px;font-weight:800;color:#a16207;margin-bottom:4px">✏️ Spelling</div>';
+    arr.forEach(function(s) {
+      h += '<div style="font-size:11px;margin-bottom:2px"><s style="color:#dc2626">' + _glEsc(s.wrong||'') + '</s> → <b style="color:#15803d">' + _glEsc(s.correct||'') + '</b>'
+        + (s.tip ? ' <span style="color:#94a3b8">(' + _glEsc(s.tip) + ')</span>' : '') + '</div>';
+    });
+    h += '</div>';
+    return h;
+  }
+  function _glRenderNaturalness(n) {
+    var h = '<div style="padding:8px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:8px">'
+      + '<div style="font-size:10px;font-weight:800;color:#1d4ed8;margin-bottom:3px">🗣️ Naturalness' + (n.score != null ? ' ' + n.score + '/10' : '') + '</div>'
+      + '<div style="font-size:11px;color:#1e293b;line-height:1.55">' + _glEsc(n.comment||'') + '</div>';
+    if (n.suggestions && n.suggestions.length) {
+      n.suggestions.forEach(function(s){ h += '<div style="font-size:11px;color:#1d4ed8;margin-top:3px">💡 ' + _glEsc(s) + '</div>'; });
+    }
+    h += '</div>';
+    return h;
+  }
+  function _glRenderStructure(s) {
+    return '<div style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px">'
+      + '<div style="font-size:10px;font-weight:800;color:#475569;margin-bottom:3px">🏗️ Sentence structure</div>'
+      + '<div style="font-size:11px;color:#475569;line-height:1.55">' + _glEsc(s.comment||'') + '</div>'
+      + (s.tip ? '<div style="font-size:11px;color:#a16207;margin-top:3px">💡 ' + _glEsc(s.tip) + '</div>' : '')
+      + '</div>';
+  }
+  function _glRenderExtra(text) {
+    return '<div style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px">'
+      + '<div style="font-size:10px;font-weight:800;color:#475569;margin-bottom:3px">💡 Additional ideas</div>'
+      + '<div style="font-size:11px;color:#64748b;line-height:1.55;white-space:pre-wrap">' + _glEsc(text) + '</div>'
+      + '</div>';
+  }
+
   async function loadFeedbackHistory() {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
     if (!sb || !supaUser) return;
@@ -3386,7 +3594,7 @@
     if (!el) return;
     try {
       var res = await sb.from('user_submissions')
-        .select('id, study_date, status, admin_feedback, ai_feedback, writing_text, topic_ko, content_type, score, submitted_at')
+        .select('id, study_date, status, admin_feedback, ai_feedback, writing_text, topic_ko, content_type, score, submitted_at, context_data, writing_mode')
         .eq('user_id', supaUser.id)
         .order('submitted_at', { ascending: false })
         .limit(20);
@@ -3459,52 +3667,26 @@
             html += '<div style="margin-bottom:10px"><div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">My Writing</div>';
             html += '<div style="font-size:12px;color:#334155;line-height:1.7;padding:8px 10px;background:#f8fafc;border-radius:6px;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + item.writing_text + '</div></div>';
           }
-          // Feedback
-          // admin_feedback is saved as plain text from the admin
-          // textarea (korehan-x9f4k2m7.html). ai_feedback comes from
-          // Claude as a structured object. Old code only JSON.parse'd
-          // both, so plain-text admin notes silently dropped to null
-          // and the user saw an empty expanded row even though the
-          // status said "✅ 피드백 도착". Try JSON first; if that fails
-          // (or the field is plain prose), wrap it as { overall: text }
-          // so the renderer below has something to show.
-          function _parseFb(raw) {
-            if (raw == null) return null;
-            if (typeof raw !== 'string') return raw;
-            var s = raw.trim();
-            if (!s) return null;
-            if (s.charAt(0) === '{' || s.charAt(0) === '[') {
-              try { return JSON.parse(s); } catch(e) {}
-            }
-            return { overall: raw };
-          }
-          var fbData = null;
-          if (isReviewed) {
-            fbData = _parseFb(item.admin_feedback) || _parseFb(item.ai_feedback);
-            // Backfill score from the row if the parsed feedback
-            // doesn't carry one (plain-text admin notes never do).
-            if (fbData && fbData.score == null && item.score != null) fbData.score = item.score;
-          }
-          if (fbData && fbData.overall) {
-            html += '<div style="padding:8px 10px;background:#f0fdf4;border-left:3px solid #22c55e;border-radius:0 6px 6px 0;margin-bottom:6px">';
-            html += '<div style="font-size:9px;font-weight:700;color:#16a34a;margin-bottom:3px">FEEDBACK</div>';
-            if (fbData.score != null) html += '<div style="font-size:12px;font-weight:800;color:#16a34a;margin-bottom:4px">Score: ' + fbData.score + '/100</div>';
-            html += '<div style="font-size:12px;color:#334155;line-height:1.6;white-space:pre-wrap">' + (fbData.overall || '') + '</div>';
-            html += '</div>';
-            if (fbData.corrected_full) {
-              html += '<div style="padding:8px 10px;background:#eff6ff;border-left:3px solid #3b82f6;border-radius:0 6px 6px 0;margin-bottom:6px">';
-              html += '<div style="font-size:9px;font-weight:700;color:#2563eb;margin-bottom:3px">CORRECTED</div>';
-              html += '<div style="font-size:12px;color:#334155;line-height:1.7;font-family:\'Noto Sans KR\',sans-serif">' + fbData.corrected_full + '</div></div>';
-            }
-            if (fbData.corrections && fbData.corrections.length) {
-              html += '<div style="margin-top:6px">';
-              fbData.corrections.forEach(function(c) {
-                html += '<div style="font-size:11px;padding:4px 0;color:#475569"><span style="text-decoration:line-through;color:#ef4444">' + (c.original||'') + '</span> → <span style="color:#16a34a;font-weight:700">' + (c.corrected||'') + '</span> <span style="color:#94a3b8">(' + (c.reason||'') + ')</span></div>';
-              });
-              html += '</div>';
-            }
+          // Feedback — mirror the admin Feedback Detail modal exactly.
+          // ai_feedback is the rich Claude object (activities, overall_
+          // assessment, common_patterns, daily_tip; per-activity:
+          // corrections, spelling, naturalness, structure). admin_feedback
+          // is plain text the admin typed as an overlay note. Render
+          // BOTH so the user sees the full AI breakdown plus the admin
+          // overlay — previously we collapsed both into a flat one-line
+          // overall and lost almost all of the admin's actual feedback.
+          var fbAi = _glParseFbObject(item.ai_feedback);
+          var fbAdminText = _glAdminText(item.admin_feedback);
+          if (isReviewed && (fbAi || fbAdminText)) {
+            html += _glRenderFeedbackBody({
+              ai: fbAi,
+              adminText: fbAdminText,
+              row: item
+            });
           } else if (!isReviewed) {
             html += '<div style="text-align:center;padding:12px;font-size:12px;color:#94a3b8">' + (item.status === 'ai_reviewed' ? '⏳ 검토 중 — 24시간 내 피드백 도착' : '📨 제출 완료 — 처리 중') + '</div>';
+          } else {
+            html += '<div style="text-align:center;padding:12px;font-size:12px;color:#94a3b8">피드백이 곧 도착해요.</div>';
           }
           html += '</div></div>';
         });
