@@ -130,7 +130,70 @@
 
     // Gifting (nyang / supporter only — can't gift learning perks)
     _mk({ id:'cash_gift_nyang_500',   name:'Gift · 500 냥 to Friend', description:'Send 500 냥 directly to a friend\'s account.',                  item_type:'gift_token', coin_price:0, cash_price:2.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:190 }),
-    _mk({ id:'cash_gift_supporter',   name:'Gift · Supporter 1mo',  description:'Gift a friend one month of Supporter cosmetic perks.',            item_type:'gift_token', coin_price:0, cash_price:4.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:191 })
+    _mk({ id:'cash_gift_supporter',   name:'Gift · Supporter 1mo',  description:'Gift a friend one month of Supporter cosmetic perks.',            item_type:'gift_token', coin_price:0, cash_price:4.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:191 }),
+
+    // ── Coin badges (learning achievement themed) ─────────────
+    _mk({ id:'badge_streak_warrior', name:'Streak Warrior',       description:'For learners with a long-running daily streak.',           item_type:'profile_badge', coin_price:140, sort_order:200 }),
+    _mk({ id:'badge_word_hunter',    name:'Word Hunter',          description:'Show off your growing vocabulary collection.',             item_type:'profile_badge', coin_price:120, sort_order:201 }),
+    _mk({ id:'badge_quiz_champion',  name:'Quiz Champion',        description:'For perfect scorers and quiz devotees.',                   item_type:'profile_badge', coin_price:160, sort_order:202 }),
+    _mk({ id:'badge_news_junkie',    name:'News Junkie',          description:'Read 100+ articles? Wear it loud.',                        item_type:'profile_badge', coin_price:140, sort_order:203 }),
+    _mk({ id:'badge_kdrama_fan',     name:'K-Drama Fan',          description:'For fans of Korean shows & cinema.',                       item_type:'profile_badge', coin_price:100, sort_order:204 }),
+    _mk({ id:'badge_kpop_stan',      name:'K-Pop Stan',           description:'Show your K-pop fan loyalty.',                             item_type:'profile_badge', coin_price:100, sort_order:205 }),
+    _mk({ id:'badge_topik_chaser',   name:'TOPIK Chaser',         description:'For learners aiming at TOPIK certification.',              item_type:'profile_badge', coin_price:200, sort_order:206 }),
+    _mk({ id:'badge_explorer',       name:'Section Explorer',     description:'For readers who roam every news section.',                 item_type:'profile_badge', coin_price:130, sort_order:207 }),
+
+    // ── Coin titles (display next to your name) ───────────────
+    // New item_type 'profile_title'. The display hook lives in shared.js
+    // formatDisplayName() — a missing/inactive title just renders the
+    // username as before.
+    _mk({ id:'title_seed',           name:'Title · 새싹',          description:'A friendly title showing you\'re just starting out.',       item_type:'profile_title', coin_price:60,  sort_order:220 }),
+    _mk({ id:'title_sprout',         name:'Title · 떡잎',          description:'Tiny sprout title for early learners.',                    item_type:'profile_title', coin_price:80,  sort_order:221 }),
+    _mk({ id:'title_tree',           name:'Title · 나무',          description:'For solid intermediate learners.',                         item_type:'profile_title', coin_price:120, sort_order:222 }),
+    _mk({ id:'title_forest',         name:'Title · 숲',            description:'Advanced learner — you ARE the forest.',                  item_type:'profile_title', coin_price:180, sort_order:223 }),
+    _mk({ id:'title_scholar',        name:'Title · 학자',          description:'For serious students of Korean.',                          item_type:'profile_title', coin_price:160, sort_order:224 }),
+    _mk({ id:'title_word_master',    name:'Title · 단어 마스터',   description:'Vocabulary champion title.',                              item_type:'profile_title', coin_price:140, sort_order:225 }),
+    _mk({ id:'title_news_addict',    name:'Title · 뉴스 중독자',   description:'Title for the daily news binger.',                        item_type:'profile_title', coin_price:120, sort_order:226 }),
+    _mk({ id:'title_night_owl',      name:'Title · 야행성',        description:'For learners who study after midnight.',                  item_type:'profile_title', coin_price:100, sort_order:227 }),
+    _mk({ id:'title_early_bird',     name:'Title · 아침형 인간',   description:'For learners who study at dawn.',                          item_type:'profile_title', coin_price:100, sort_order:228 }),
+    _mk({ id:'title_polyglot',       name:'Title · Polyglot',      description:'You speak more than one non-native language.',            item_type:'profile_title', coin_price:140, sort_order:229 }),
+    _mk({ id:'title_kimchi_lover',   name:'Title · 김치 러버',     description:'A fun title for Korean food fans.',                       item_type:'profile_title', coin_price:90,  sort_order:230 }),
+    _mk({ id:'title_seoulite',       name:'Title · 서울러',        description:'For lovers of Seoul.',                                    item_type:'profile_title', coin_price:90,  sort_order:231 }),
+
+    // ── Coin frames (more variety so coin spend has somewhere to go) ──
+    _mk({ id:'cosmetic_aurora_frame',  name:'Aurora Frame',        description:'Northern-lights gradient profile frame.',                  item_type:'profile_cosmetic', coin_price:200, sort_order:240 }),
+    _mk({ id:'cosmetic_mint_frame',    name:'Mint Frame',          description:'Cool mint gradient frame.',                                item_type:'profile_cosmetic', coin_price:140, sort_order:241 }),
+    _mk({ id:'cosmetic_coral_frame',   name:'Coral Frame',         description:'Warm coral pink frame.',                                   item_type:'profile_cosmetic', coin_price:140, sort_order:242 }),
+    _mk({ id:'cosmetic_royal_frame',   name:'Royal Purple Frame',  description:'Regal purple frame for serious learners.',                 item_type:'profile_cosmetic', coin_price:220, sort_order:243 }),
+    _mk({ id:'cosmetic_chuseok_frame', name:'Chuseok Frame',       description:'Harvest moon frame for fall — limited season.',            item_type:'profile_cosmetic', coin_price:180, sort_order:244 }),
+    _mk({ id:'cosmetic_seollal_frame', name:'Seollal Frame',       description:'Lunar New Year frame with traditional motifs.',            item_type:'profile_cosmetic', coin_price:180, sort_order:245 }),
+
+    // ── Coin themes (lighter weight than cash themes) ─────────
+    _mk({ id:'cosmetic_forest_theme',  name:'Forest Theme',        description:'Calm green forest UI theme.',                              item_type:'profile_cosmetic', coin_price:240, sort_order:250 }),
+    _mk({ id:'cosmetic_ocean_theme',   name:'Ocean Theme',         description:'Deep blue ocean UI theme.',                                item_type:'profile_cosmetic', coin_price:240, sort_order:251 }),
+    _mk({ id:'cosmetic_paper_theme',   name:'Vintage Paper Theme', description:'Hand-bound book aesthetic for the UI.',                    item_type:'profile_cosmetic', coin_price:260, sort_order:252 }),
+
+    // ── Reporter gifts — Korean food themed (coin, repeatable) ──
+    _mk({ id:'reporter_tteokbokki',  name:'Tteokbokki',           description:'Spicy rice cake — newsroom favorite.',                     item_type:'reporter_item', coin_price:65,  is_repeatable:true, sort_order:260 }),
+    _mk({ id:'reporter_hotteok',     name:'Hotteok',              description:'Sweet pancake snack for chilly news days.',                item_type:'reporter_item', coin_price:55,  is_repeatable:true, sort_order:261 }),
+    _mk({ id:'reporter_mandu',       name:'Mandu Plate',          description:'Hand-folded dumplings for the editor.',                    item_type:'reporter_item', coin_price:70,  is_repeatable:true, sort_order:262 }),
+    _mk({ id:'reporter_chimaek',     name:'Chimaek Combo',        description:'Chicken + beer — the after-work classic.',                 item_type:'reporter_item', coin_price:130, is_repeatable:true, sort_order:263 }),
+    _mk({ id:'reporter_kimchi_jeon', name:'Kimchi Pancake',       description:'Crispy kimchi pancake for rainy days.',                    item_type:'reporter_item', coin_price:75,  is_repeatable:true, sort_order:264 }),
+    _mk({ id:'reporter_korean_tea',  name:'Korean Tea Set',       description:'Yuja, omija, citron — pick a tea, send warmth.',           item_type:'reporter_item', coin_price:90,  is_repeatable:true, sort_order:265 }),
+    _mk({ id:'reporter_postcard',    name:'Handwritten Postcard', description:'Send a real handwritten thanks note.',                     item_type:'reporter_item', coin_price:120, is_repeatable:true, sort_order:266 }),
+    _mk({ id:'reporter_polaroid',    name:'Polaroid Photo Pack',  description:'Send a polaroid photo collage to your favorite reporter.', item_type:'reporter_item', coin_price:160, is_repeatable:true, sort_order:267 }),
+
+    // ── Coin pets / room items (low-tier, accessible) ─────────
+    _mk({ id:'coin_pet_kitten',      name:'Stripe Kitten',         description:'A small stripe kitten that wanders your room.',           item_type:'room_item',  coin_price:90,  sort_order:280 }),
+    _mk({ id:'coin_pet_goldfish',    name:'Goldfish Bowl',         description:'A simple goldfish bowl with one swimming fish.',          item_type:'room_item',  coin_price:70,  sort_order:281 }),
+    _mk({ id:'coin_pet_owl',         name:'Bookshop Owl',          description:'A studious owl perched on your bookshelf.',               item_type:'room_item',  coin_price:120, sort_order:282 }),
+    _mk({ id:'coin_room_telescope',  name:'Stargazer Telescope',   description:'Lean it against the window for late-night vibes.',        item_type:'room_item',  coin_price:160, sort_order:283 }),
+    _mk({ id:'coin_room_oldradio',   name:'Vintage Radio',         description:'Tunes a fictional 90s K-pop station. Decorative.',        item_type:'room_item',  coin_price:100, sort_order:284 }),
+    _mk({ id:'coin_room_easel',      name:'Painting Easel',        description:'A blank canvas easel — for your inner artist.',           item_type:'room_item',  coin_price:130, sort_order:285 }),
+
+    // ── Coin sticker / emoji packs ────────────────────────────
+    _mk({ id:'stickers_koreanfood',  name:'Korean Food Stickers',  description:'Bibimbap, kimchi, ramen — coin sticker set.',             item_type:'sticker_pack', coin_price:120, is_repeatable:false, sort_order:300 }),
+    _mk({ id:'stickers_studyvibes',  name:'Study Vibes Stickers',  description:'Cute study-mood stickers (hwaiting / focus / coffee).',   item_type:'sticker_pack', coin_price:120, is_repeatable:false, sort_order:301 }),
+    _mk({ id:'stickers_seoulscape',  name:'Seoul Stickers',        description:'Namsan tower, Han river, Gyeongbokgung sticker set.',     item_type:'sticker_pack', coin_price:140, is_repeatable:false, sort_order:302 })
   ];
   function isShopTableMissingErr(err) {
     var msg = (err && err.message) ? String(err.message) : '';

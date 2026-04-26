@@ -1006,13 +1006,6 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
   <!-- XP Card -->
   <div id="mp-xp-card"></div>
 
-  <!-- Progress (Up Next badges + activity heatmap) -->
-  <div class="mp-section" id="mp-progress-section">
-    <h3>Progress</h3>
-    <div id="mp-up-next-pane"><div style="font-size:12px;color:#94a3b8">Loading…</div></div>
-    <div id="mp-heatmap-pane" style="margin-top:18px"></div>
-  </div>
-
   <!-- Mini Room -->
   <div class="mp-section" id="mp-miniroom-section">
     <h3>My Room</h3>
@@ -2039,7 +2032,6 @@ async function initMyPage() {
   renderOwnedAndGiftSections(coin, invRes);
   renderFriendsList();
   renderMyPageBadges();
-  renderMyPageProgress();
 }
 
 async function dbGetOwnedAndGifts() {

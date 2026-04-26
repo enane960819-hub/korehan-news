@@ -4833,6 +4833,84 @@ async function generateAIContent(topic) {
 // at least in the same thematic ballpark (time-of-day topic → time vocab, not
 // generic actor/singer).
 var STUDY_TOPIC_PACKS = [
+  // ── Specific food sub-topics — listed BEFORE the broad '음식' pack so a
+  //    yasik / dessert / dating-food topic doesn't fall back to generic
+  //    restaurant vocab (which made '야식을 자주 먹어요?' look unrelated).
+  {
+    keys: ['야식','라면','치킨','떡볶이','배달','피자','족발','보쌈','분식','late-night','midnight snack','delivery','fried chicken','tteokbokki'],
+    vocab: {
+      Starter:      [{ko:'야식',rom:'ya-sik',en:'late-night snack'},{ko:'라면',rom:'ra-myeon',en:'ramen'},{ko:'치킨',rom:'chi-kin',en:'fried chicken'},{ko:'먹어요',rom:'meo-geo-yo',en:'I eat'},{ko:'배고파요',rom:'bae-go-pa-yo',en:'I am hungry'}],
+      Beginner:     [{ko:'야식',rom:'ya-sik',en:'late-night snack'},{ko:'배달',rom:'bae-dal',en:'food delivery'},{ko:'떡볶이',rom:'tteok-bok-ki',en:'spicy rice cakes'},{ko:'시키다',rom:'si-ki-da',en:'to order (food)'},{ko:'새벽',rom:'sae-byeok',en:'dawn / late night'}],
+      Intermediate: [{ko:'야식 문화',rom:'ya-sik mun-hwa',en:'late-night snack culture'},{ko:'주문하다',rom:'ju-mun-ha-da',en:'to place an order'},{ko:'배달비',rom:'bae-dal-bi',en:'delivery fee'},{ko:'살이 찌다',rom:'sa-ri jji-da',en:'to gain weight'},{ko:'끊다',rom:'kkeun-ta',en:'to quit / cut off (a habit)'}],
+      Advanced:     [{ko:'식습관',rom:'sik-seup-gwan',en:'eating habits'},{ko:'폭식',rom:'pok-sik',en:'binge eating'},{ko:'배달 앱',rom:'bae-dal aep',en:'delivery app'},{ko:'야식 증후군',rom:'ya-sik jeung-hu-gun',en:'night-eating syndrome'},{ko:'유혹',rom:'yu-hok',en:'temptation'}]
+    },
+    helpers: [
+      {ko:'저는 일주일에 두 번 정도 야식을 먹어요.',en:'I eat late-night snacks about twice a week.'},
+      {ko:'야식으로 라면이 제일 맛있어요.',en:'Ramen is the best as a late-night snack.'},
+      {ko:'요즘은 야식을 끊으려고 노력 중이에요.',en:'I\'m trying to quit late-night snacking these days.'},
+      {ko:'배달 앱으로 자주 치킨을 시켜 먹어요.',en:'I often order fried chicken through the delivery app.'}
+    ]
+  },
+  {
+    keys: ['디저트','케이크','빙수','마카롱','쿠키','아이스크림','dessert','cake','bingsu','ice cream','sweets','sweet'],
+    vocab: {
+      Starter:      [{ko:'디저트',rom:'di-jeo-teu',en:'dessert'},{ko:'케이크',rom:'ke-i-keu',en:'cake'},{ko:'달다',rom:'dal-da',en:'to be sweet'},{ko:'좋아해요',rom:'jo-a-hae-yo',en:'I like'},{ko:'먹어요',rom:'meo-geo-yo',en:'I eat'}],
+      Beginner:     [{ko:'디저트',rom:'di-jeo-teu',en:'dessert'},{ko:'빙수',rom:'bing-su',en:'shaved ice'},{ko:'아이스크림',rom:'a-i-seu-keu-rim',en:'ice cream'},{ko:'달콤하다',rom:'dal-kom-ha-da',en:'to be sweet'},{ko:'추천하다',rom:'chu-cheon-ha-da',en:'to recommend'}],
+      Intermediate: [{ko:'식후',rom:'sik-hu',en:'after a meal'},{ko:'단맛',rom:'dan-mat',en:'sweetness'},{ko:'감미롭다',rom:'gam-mi-rop-da',en:'to be sweet / mellow'},{ko:'한 입',rom:'han ip',en:'a bite'},{ko:'녹다',rom:'nok-da',en:'to melt'}],
+      Advanced:     [{ko:'당분',rom:'dang-bun',en:'sugar / sweetness'},{ko:'풍미',rom:'pung-mi',en:'flavor / aroma'},{ko:'식감',rom:'sik-gam',en:'mouthfeel'},{ko:'장인 정신',rom:'jang-in jeong-sin',en:'craftsmanship'},{ko:'무가당',rom:'mu-ga-dang',en:'sugar-free'}]
+    },
+    helpers: [
+      {ko:'저는 식사 후에 디저트를 꼭 먹어요.',en:'I always eat dessert after a meal.'},
+      {ko:'여름엔 빙수가 제일 맛있어요.',en:'Bingsu is the best in summer.'},
+      {ko:'이 케이크는 너무 달지 않아서 좋아요.',en:'This cake is good because it\'s not too sweet.'},
+      {ko:'아이스크림 한 입에 기분이 풀려요.',en:'One bite of ice cream lifts my mood.'}
+    ]
+  },
+  {
+    keys: ['데이트','연애','사귀','첫 데이트','커플','date','dating','couple','romance','first date'],
+    vocab: {
+      Starter:      [{ko:'데이트',rom:'de-i-teu',en:'a date'},{ko:'좋아해요',rom:'jo-a-hae-yo',en:'I like'},{ko:'친구',rom:'chin-gu',en:'friend'},{ko:'함께',rom:'ham-kke',en:'together'},{ko:'재미있어요',rom:'jae-mi-i-sseo-yo',en:'fun'}],
+      Beginner:     [{ko:'데이트',rom:'de-i-teu',en:'a date'},{ko:'사귀다',rom:'sa-gwi-da',en:'to date / go out with'},{ko:'커플',rom:'keo-peul',en:'couple'},{ko:'설레다',rom:'seol-le-da',en:'to feel butterflies'},{ko:'약속',rom:'yak-sok',en:'plans / appointment'}],
+      Intermediate: [{ko:'고백하다',rom:'go-baek-ha-da',en:'to confess (feelings)'},{ko:'연애',rom:'yeon-ae',en:'romantic relationship'},{ko:'분위기',rom:'bun-wi-gi',en:'mood / vibe'},{ko:'어색하다',rom:'eo-saek-ha-da',en:'to feel awkward'},{ko:'다정하다',rom:'da-jeong-ha-da',en:'to be affectionate'}],
+      Advanced:     [{ko:'밀당',rom:'mil-dang',en:'push-pull (dating game)'},{ko:'썸',rom:'sseom',en:'pre-dating phase'},{ko:'기념일',rom:'gi-nyeom-il',en:'anniversary'},{ko:'장거리 연애',rom:'jang-geo-ri yeon-ae',en:'long-distance relationship'},{ko:'권태기',rom:'gwon-tae-gi',en:'relationship rut'}]
+    },
+    helpers: [
+      {ko:'첫 데이트는 영화관에서 했어요.',en:'I had my first date at a movie theater.'},
+      {ko:'우리는 일 년 동안 사귀고 있어요.',en:'We\'ve been dating for a year.'},
+      {ko:'이번 주말에 데이트 약속이 있어요.',en:'I have a date this weekend.'},
+      {ko:'사귀기 전에 좀 어색했어요.',en:'It was a little awkward before we started dating.'}
+    ]
+  },
+  {
+    keys: ['k-pop','kpop','케이팝','아이돌','가수','콘서트','idol','concert','album','fandom','팬','팬덤'],
+    vocab: {
+      Starter:      [{ko:'K팝',rom:'kei-pap',en:'K-pop'},{ko:'가수',rom:'ga-su',en:'singer'},{ko:'노래',rom:'no-rae',en:'song'},{ko:'좋아해요',rom:'jo-a-hae-yo',en:'I like'},{ko:'팬',rom:'paen',en:'fan'}],
+      Beginner:     [{ko:'아이돌',rom:'a-i-dol',en:'idol'},{ko:'콘서트',rom:'kon-seo-teu',en:'concert'},{ko:'앨범',rom:'ael-beom',en:'album'},{ko:'팬덤',rom:'paen-deom',en:'fandom'},{ko:'응원하다',rom:'eung-won-ha-da',en:'to cheer / support'}],
+      Intermediate: [{ko:'데뷔',rom:'de-bwi',en:'debut'},{ko:'활동',rom:'hwal-dong',en:'(promotional) activities'},{ko:'안무',rom:'an-mu',en:'choreography'},{ko:'무대',rom:'mu-dae',en:'stage'},{ko:'컴백',rom:'keom-baek',en:'comeback'}],
+      Advanced:     [{ko:'한류',rom:'hal-lyu',en:'Korean Wave'},{ko:'팬 사인회',rom:'paen sa-in-hoe',en:'fan signing event'},{ko:'음원 차트',rom:'eum-won cha-teu',en:'music chart'},{ko:'서사',rom:'seo-sa',en:'narrative (within group concept)'},{ko:'세계관',rom:'se-gye-gwan',en:'lore / worldview'}]
+    },
+    helpers: [
+      {ko:'제가 좋아하는 가수의 콘서트에 갔어요.',en:'I went to my favorite singer\'s concert.'},
+      {ko:'이번 앨범은 정말 명반이에요.',en:'This album is really a classic.'},
+      {ko:'그 아이돌은 노래도 잘하고 춤도 잘 춰요.',en:'That idol sings well and dances well.'},
+      {ko:'팬으로서 항상 응원하고 있어요.',en:'As a fan, I\'m always cheering them on.'}
+    ]
+  },
+  {
+    keys: ['운동','헬스','다이어트','조깅','요가','workout','exercise','diet','fitness','jogging','yoga','gym'],
+    vocab: {
+      Starter:      [{ko:'운동',rom:'un-dong',en:'exercise'},{ko:'걷다',rom:'geot-da',en:'to walk'},{ko:'뛰다',rom:'ttwi-da',en:'to run'},{ko:'좋아요',rom:'jo-a-yo',en:'I like'},{ko:'매일',rom:'mae-il',en:'every day'}],
+      Beginner:     [{ko:'운동',rom:'un-dong',en:'exercise'},{ko:'헬스장',rom:'hel-seu-jang',en:'gym'},{ko:'다이어트',rom:'da-i-eo-teu',en:'diet'},{ko:'땀',rom:'ttam',en:'sweat'},{ko:'근육',rom:'geun-yuk',en:'muscle'}],
+      Intermediate: [{ko:'유산소',rom:'yu-san-so',en:'cardio'},{ko:'무산소',rom:'mu-san-so',en:'anaerobic / strength training'},{ko:'스트레칭',rom:'seu-teu-re-ching',en:'stretching'},{ko:'체중',rom:'che-jung',en:'body weight'},{ko:'자세',rom:'ja-se',en:'posture'}],
+      Advanced:     [{ko:'근력 운동',rom:'geul-lyeok un-dong',en:'strength training'},{ko:'기초 대사량',rom:'gi-cho dae-sa-ryang',en:'basal metabolism'},{ko:'체지방률',rom:'che-ji-bang-nyul',en:'body fat percentage'},{ko:'재활 운동',rom:'jae-hwal un-dong',en:'rehab exercise'},{ko:'꾸준함',rom:'kku-jun-ham',en:'consistency'}]
+    },
+    helpers: [
+      {ko:'저는 일주일에 세 번 헬스장에 가요.',en:'I go to the gym three times a week.'},
+      {ko:'아침마다 30분씩 조깅을 해요.',en:'I jog for 30 minutes every morning.'},
+      {ko:'다이어트 중이라서 야식은 안 먹어요.',en:'I don\'t eat late-night snacks because I\'m on a diet.'},
+      {ko:'운동을 꾸준히 하면 기분이 좋아져요.',en:'Exercising consistently makes me feel better.'}
+    ]
+  },
   {
     keys: ['시간','하루','아침','점심','저녁','오전','오후','새벽','time of day','morning','evening','afternoon','dawn','dusk'],
     vocab: {
