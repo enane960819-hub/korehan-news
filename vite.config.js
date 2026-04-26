@@ -27,6 +27,9 @@ function copyStaticPlugin() {
       // Copy _headers for Cloudflare
       if (existsSync(resolve(src, '_headers')))
         copyFileSync(resolve(src, '_headers'), resolve(dist, '_headers'));
+      // Copy robots.txt (bot blocking policy)
+      if (existsSync(resolve(src, 'robots.txt')))
+        copyFileSync(resolve(src, 'robots.txt'), resolve(dist, 'robots.txt'));
       // Copy assets directory — use cpSync with recursive so subdirectories
       // (e.g. assets/room/, assets/shop/) copy cleanly. copyFileSync would
       // throw EISDIR the moment anyone adds a subfolder.
