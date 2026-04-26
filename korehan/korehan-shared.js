@@ -6055,13 +6055,14 @@ async function toggleTranslate() {
 
   // One automatic retry on failure or partial parse. Most translate
   // failures on mobile are transient (LTE timeout, half-baked response
-  // mid-stream). Retrying once with a small backoff lifts the success
-  // rate noticeably without overrunning the user.
+  // mid-stream). Two retries with growing backoff (2s → 4s) catches
+  // the vast majority. max_tokens trimmed from 8192 → 4096 so Claude
+  // streams faster on bad LTE — full articles still fit.
   async function _khAttemptTranslate() {
     var res = await callClaude({
       feature: 'translate',
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 8192,
+      max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }]
     });
     var data = res;
@@ -6083,10 +6084,10 @@ async function toggleTranslate() {
       if (idx >= 0 && body) allSegs[idx] = body;
     }
     if (!allSegs.length) throw new Error('no segments in response');
-    // Detect a truncated/partial response — Claude sometimes returns
-    // only the first 1–2 segments on flaky LTE. Retry once when this
-    // happens so the user doesn't see half a translated article.
-    if (allSegs.filter(Boolean).length < Math.ceil(texts.length * 0.7)) {
+    // Detect a partial response. Threshold loosened from 70% → 50%
+    // so a short article that only had 2–3 segments isn't constantly
+    // marked partial. Anything below 50% is genuinely truncated.
+    if (allSegs.filter(Boolean).length < Math.ceil(texts.length * 0.5)) {
       throw new Error('partial response');
     }
     return allSegs;
@@ -6094,15 +6095,23 @@ async function toggleTranslate() {
 
   try {
     var allSegs;
-    try {
-      allSegs = await _khAttemptTranslate();
-    } catch (firstErr) {
-      // Ignore auth/sign-in errors — those can't recover via retry.
-      if (firstErr && (firstErr.message === 'unauthorized' || firstErr.message === 'Not signed in')) throw firstErr;
-      // Brief backoff then second attempt.
-      await new Promise(function(r){ setTimeout(r, 1500); });
-      allSegs = await _khAttemptTranslate();
+    var attempts = 0;
+    var lastErr = null;
+    var backoffs = [0, 2000, 4000]; // immediate, then 2s, then 4s
+    while (attempts < 3) {
+      try {
+        if (backoffs[attempts]) await new Promise(function(r){ setTimeout(r, backoffs[attempts]); });
+        allSegs = await _khAttemptTranslate();
+        lastErr = null;
+        break;
+      } catch (err) {
+        lastErr = err;
+        // Auth errors can't recover — surface immediately.
+        if (err && (err.message === 'unauthorized' || err.message === 'Not signed in')) throw err;
+        attempts++;
+      }
     }
+    if (lastErr) throw lastErr;
 
     // Split title off from the body translations if we put it up-front.
     var bodyTranslations;
@@ -8902,17 +8911,43 @@ var _ttsCurrent = null;
 function ttsInit() {
   if (!window.speechSynthesis) return;
   function load() {
-    _ttsVoices = window.speechSynthesis.getVoices().filter(function(v){ return v.lang.startsWith('ko'); });
+    var all = window.speechSynthesis.getVoices() || [];
+    // Generous matcher — some Android/iOS engines tag Korean voices
+    // as 'ko-KR', some as 'ko_KR', some leave lang blank but name the
+    // voice 'Yuna' / '한국어' / 'Korean'. Strict 'ko-' filter was the
+    // root cause of "TTS never works" on those phones.
+    _ttsVoices = all.filter(function(v) {
+      var lang = (v.lang || '').toLowerCase();
+      var name = (v.name || '').toLowerCase();
+      return lang.indexOf('ko') === 0
+          || lang.indexOf('ko_') === 0
+          || lang === 'ko'
+          || /korean|한국|yuna|sora|jihun|jiyoon|injeong/.test(name);
+    });
+    // If still empty, fall back to anything — system default voice
+    // can still pronounce Korean OK on most modern devices.
+    if (!_ttsVoices.length && all.length) _ttsVoices = all.slice(0, 1);
   }
   load();
   if (window.speechSynthesis.onvoiceschanged !== undefined) {
     window.speechSynthesis.onvoiceschanged = load;
   }
-  setTimeout(load, 400);
+  // Android/iOS quirk: getVoices() returns [] until the engine warms
+  // up. Three retries at growing delays fixes the cold-start race
+  // without spamming the API.
+  setTimeout(load, 200);
+  setTimeout(load, 800);
+  setTimeout(load, 2000);
 }
 
 function ttsSpeak(text, btnEl) {
-  if (!window.speechSynthesis) return;
+  if (!window.speechSynthesis) {
+    if (typeof toast === 'function') toast('이 브라우저는 음성 재생을 지원하지 않습니다.', true);
+    return;
+  }
+  // Some mobile browsers leave the engine in a paused state after
+  // tab switches; resume() is safe even when not paused.
+  try { window.speechSynthesis.resume(); } catch(e) {}
   var synth = window.speechSynthesis;
 
   // 같은 버튼 다시 누르면 중지
@@ -8924,6 +8959,21 @@ function ttsSpeak(text, btnEl) {
 
   synth.cancel();
   _ttsReset();
+
+  // Voices may not be loaded yet on first invocation — try a quick
+  // fetch right before speaking. Prevents the "first click does
+  // nothing, second click works" pattern on mobile.
+  if (!_ttsVoices.length) {
+    var fresh = synth.getVoices() || [];
+    if (fresh.length) {
+      _ttsVoices = fresh.filter(function(v){
+        var l = (v.lang||'').toLowerCase();
+        var n = (v.name||'').toLowerCase();
+        return l.indexOf('ko') === 0 || /korean|한국/.test(n);
+      });
+      if (!_ttsVoices.length) _ttsVoices = fresh.slice(0, 1);
+    }
+  }
 
   var utter = new SpeechSynthesisUtterance(text);
   utter.lang  = 'ko-KR';
@@ -8937,8 +8987,24 @@ function ttsSpeak(text, btnEl) {
     btnEl.textContent = '■';
   }
 
-  utter.onend   = _ttsReset;
-  utter.onerror = _ttsReset;
+  utter.onend = _ttsReset;
+  utter.onerror = function(ev) {
+    console.warn('[TTS] error', ev && ev.error);
+    _ttsReset();
+    if (typeof toast === 'function') toast('음성 재생 실패 — 휴대폰 설정에서 한국어 TTS를 활성화했는지 확인해주세요.', true);
+  };
+  // Fallback — Chrome/Edge bug where speak() silently fails after
+  // ~15s of utterance time. We don't fight that here, but we DO
+  // detect the case where speak() never fires onstart at all
+  // (engine in unrecoverable state) and reset the button.
+  var startGuard = setTimeout(function() {
+    if (_ttsCurrent === btnEl && synth.speaking === false && synth.pending === false) {
+      _ttsReset();
+      if (typeof toast === 'function') toast('음성 엔진이 응답하지 않습니다. 잠시 후 다시 시도해주세요.', true);
+    }
+  }, 1500);
+  utter.onstart = function() { clearTimeout(startGuard); };
+
   synth.speak(utter);
 }
 
