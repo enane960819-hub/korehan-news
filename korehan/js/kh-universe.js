@@ -332,9 +332,63 @@
     } catch (e) { return []; }
   }
 
+  // localStorage cache so we don't re-ask Claude for the same word's
+  // category on every Universe rebuild.
+  var _CAT_CACHE_KEY = 'kh_universe_cat_cache_v1';
+  function _readCatCache() {
+    try { return JSON.parse(localStorage.getItem(_CAT_CACHE_KEY) || '{}'); }
+    catch(_) { return {}; }
+  }
+  function _writeCatCache(map) {
+    try { localStorage.setItem(_CAT_CACHE_KEY, JSON.stringify(map)); } catch(_) {}
+  }
+
+  // Ask Claude haiku to bucket each word into one of our category tags.
+  // Used as a fallback when vocabulary_bank.interest_tag is empty (which
+  // is why so many user-saved words were ending up in MISC).
+  async function _aiCategorize(words) {
+    if (!Array.isArray(words) || !words.length) return {};
+    if (typeof callClaude !== 'function') return {};
+    var cache = _readCatCache();
+    var stillUnknown = words.filter(function(k){ return !cache[k]; });
+    if (!stillUnknown.length) return cache;
+    // Cap chunks at 30 — keep prompts short so haiku stays fast/cheap.
+    for (var off = 0; off < stillUnknown.length; off += 30) {
+      var chunk = stillUnknown.slice(off, off + 30);
+      var prompt = 'Categorize each Korean word into ONE of these tags:\n'
+        + 'everyday, food, travel, work, kpop, music, news, politics, economy, '
+        + 'culture, society, tech, sports, health, nature, drama, movie, '
+        + 'entertainment, family, friends, dating, study, education, misc.\n\n'
+        + 'Words (one per line):\n' + chunk.join('\n')
+        + '\n\nReturn ONLY a JSON array of tags in the same order as the input. '
+        + 'Example: ["food","everyday","misc"]. No explanations.';
+      try {
+        var res = await callClaude({
+          feature: 'universe-categorize',
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 600,
+          messages: [{ role: 'user', content: prompt }]
+        });
+        var txt = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+        var ai = txt.indexOf('['), bi = txt.lastIndexOf(']');
+        if (ai >= 0 && bi > ai) txt = txt.slice(ai, bi + 1);
+        var tags = JSON.parse(txt);
+        if (Array.isArray(tags)) {
+          chunk.forEach(function(ko, i) {
+            var t = String(tags[i] || 'misc').toLowerCase().trim();
+            cache[ko] = t;
+          });
+        }
+      } catch(_) { /* keep going; remaining words fall back to misc */ }
+    }
+    _writeCatCache(cache);
+    return cache;
+  }
+
   // For each input word, look up its interest_tag in vocabulary_bank.
-  // Missing words default to 'misc'. Results are merged back onto the
-  // original word objects so subsequent rebuilds stay category-aware.
+  // Missing words fall through to a Claude-powered categorizer (cached
+  // in localStorage). Final fallback: 'misc'. Results are merged back
+  // onto the word objects so subsequent rebuilds stay category-aware.
   async function enrichWithCategories(words) {
     if (!Array.isArray(words) || !words.length) return;
     // Skip if already enriched
@@ -363,13 +417,21 @@
           .in('word_ko', chunk);
         if (r && r.data) {
           r.data.forEach(function(row) {
-            if (row && row.word_ko) found[row.word_ko] = row.interest_tag || 'misc';
+            if (row && row.word_ko && row.interest_tag) found[row.word_ko] = row.interest_tag;
           });
         }
       }
+      // Anything still missing → ask Claude (cached). This is what
+      // rescues user-saved words that bypassed vocabulary_bank or that
+      // exist there with an empty interest_tag — previously they all
+      // collapsed into a giant MISC blob.
+      var missing = needsLookup.map(function(w){ return w.word_ko || w.ko; })
+        .filter(function(ko){ return ko && !found[ko]; });
+      var aiCache = missing.length ? await _aiCategorize(missing) : {};
       needsLookup.forEach(function(w) {
         var ko = w.word_ko || w.ko;
-        w._cat = normCategory(found[ko] || 'misc');
+        var tag = found[ko] || aiCache[ko] || 'misc';
+        w._cat = normCategory(tag);
       });
     } catch(_) {
       needsLookup.forEach(function(w){ w._cat = 'misc'; });

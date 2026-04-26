@@ -3348,7 +3348,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260426b"></script>
+<script src="korehan-shared.js?v=20260426c"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
 <script src="js/kh-quiz-arena.js?v=20260416"></script>
 <script src="js/kh-flashcards.js?v=20260416"></script>
@@ -16497,11 +16497,46 @@ function _nqNext() {
   _nqRender();
 }
 
+var _asFilter = 'latest'; // 'latest' | 'saved'
+function _asSetFilter(mode) {
+  _asFilter = mode;
+  document.querySelectorAll('.as-filter-pill').forEach(function(b) {
+    var on = b.getAttribute('data-as-filter') === mode;
+    b.classList.toggle('active', on);
+    b.style.background = on ? '#0b1626' : '#fff';
+    b.style.color      = on ? '#fff' : '#475569';
+  });
+  _asLoadArticles();
+}
+
 async function _asLoadArticles() {
   var sb = getSupa(); if (!sb) return;
   var g = document.getElementById('as-article-grid'); if (!g) return;
   g.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Loading article…</div></div>';
   try {
+    if (_asFilter === 'saved') {
+      // Saved mode: pull the user's bookmarks first, then fetch the
+      // articles for those ids. If the user has none yet we show a
+      // friendly empty state instead of the spinner forever.
+      if (!supaUser) {
+        g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center">Sign in to see your saved articles.</div>';
+        _asArticles = [];
+        return;
+      }
+      var bm = await sb.from('bookmarks').select('article_id').eq('user_id', supaUser.id);
+      if (bm.error) throw bm.error;
+      var ids = (bm.data || []).map(function(b){ return b.article_id; }).filter(Boolean);
+      if (!ids.length) {
+        g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:24px;text-align:center;line-height:1.6">No saved articles yet.<br><span style="font-size:11px;color:#cbd5e1">Tap the bookmark icon on any article to save it for later.</span></div>';
+        _asArticles = [];
+        return;
+      }
+      var r2 = await sb.from('articles').select('id,title,section,level,image,body').in('id', ids).limit(60);
+      if (r2.error) throw r2.error;
+      _asArticles = (r2.data||[]).filter(function(a){ return a.title; });
+      _asRenderGrid();
+      return;
+    }
     var r = await sb.from('articles').select('id,title,section,level,image,body')
       .eq('status','published').order('date',{ascending:false}).limit(24);
     if (r.error) throw r.error;
@@ -18356,6 +18391,14 @@ function _csBuildCheck() {
         <button class="su-close" onclick="closeArticleStudy()">&#10005;</button>
       </div>
       <div style="padding:16px;overflow-y:auto;flex:1">
+        <!-- Saved-only toggle: when 'Saved' is active, the picker shows
+             only articles the learner bookmarked (from the bookmarks
+             table). Default stays on 'Latest' so existing behavior is
+             preserved when the user hasn't picked anything. -->
+        <div id="as-filter-row" style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+          <button class="as-filter-pill active" data-as-filter="latest" onclick="_asSetFilter('latest')" style="padding:6px 14px;border-radius:999px;border:1px solid #cbd5e1;background:#0b1626;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.02em">📰 Latest</button>
+          <button class="as-filter-pill" data-as-filter="saved" onclick="_asSetFilter('saved')" style="padding:6px 14px;border-radius:999px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.02em">⭐ Saved</button>
+        </div>
         <div id="as-article-grid" class="as-article-grid">
           <div class="as-loading"><div class="as-spinner"></div><div>Loading article…</div></div>
         </div>

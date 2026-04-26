@@ -10099,6 +10099,51 @@ function closeCommentDrawer() {
 var _khFeedRecentKey = 'kh_feed_recent_seen';
 var _khFeedRecentMax = 20;
 
+// ── Per-session navigation stack ─────────────────────────────────
+// Holds the ordered list of articles the user has visited via
+// next/prev (or by direct URL), plus the current index inside it.
+// Goal: if the user goes prev → then forward, they should land on the
+// same next-article they saw before, not a fresh random pick. Persists
+// in sessionStorage so the order survives reloads but resets when the
+// browser tab closes.
+var _KH_FEED_STACK_KEY = 'kh_feed_stack_v1';
+var _KH_FEED_STACK_MAX = 80;
+function _khFeedStack() {
+  try {
+    var raw = sessionStorage.getItem(_KH_FEED_STACK_KEY);
+    var s = raw ? JSON.parse(raw) : null;
+    if (!s || !Array.isArray(s.ids)) return { ids: [], i: -1 };
+    if (typeof s.i !== 'number') s.i = s.ids.length - 1;
+    return s;
+  } catch(e) { return { ids: [], i: -1 }; }
+}
+function _khFeedStackSave(s) {
+  try { sessionStorage.setItem(_KH_FEED_STACK_KEY, JSON.stringify(s)); } catch(e) {}
+}
+// Make sure the stack reflects whatever article is on screen right now.
+// Called on page load and at the start of every nav.
+function _khFeedSyncCurrent(id) {
+  if (!id) return;
+  var s = _khFeedStack();
+  // No-op: stack already points at this article.
+  if (s.i >= 0 && s.i < s.ids.length && String(s.ids[s.i]) === String(id)) return;
+  // Article already exists somewhere in the stack — jump i to it.
+  for (var k = 0; k < s.ids.length; k++) {
+    if (String(s.ids[k]) === String(id)) {
+      s.i = k;
+      _khFeedStackSave(s);
+      return;
+    }
+  }
+  // New article — drop anything past current i (forward history is
+  // wiped, like a browser address bar entry), then append.
+  s.ids = s.ids.slice(0, s.i + 1);
+  s.ids.push(id);
+  while (s.ids.length > _KH_FEED_STACK_MAX) { s.ids.shift(); s.i = Math.max(-1, s.i - 1); }
+  s.i = s.ids.length - 1;
+  _khFeedStackSave(s);
+}
+
 function _khFeedRememberSeen(id) {
   try {
     var arr = JSON.parse(localStorage.getItem(_khFeedRecentKey) || '[]');
@@ -10120,6 +10165,10 @@ function pickNextFeedArticle(currentId) {
   if (!pool.length) return null;
   var recent = _khFeedRecentSet();
   recent.add(String(currentId));
+  // Also avoid anything already in the stack so a fresh pick doesn't
+  // accidentally repeat a recent visit.
+  var s = _khFeedStack();
+  s.ids.forEach(function(id){ recent.add(String(id)); });
   var fresh = pool.filter(function(a){ return !recent.has(String(a.id)); });
   // If everything's been seen recently, fall back to the full pool
   // rather than getting stuck.
@@ -10131,37 +10180,43 @@ function goToNextArticle(direction) {
   if (_khFeedAnimating()) return;
   var currentId = _khCurrentArtId();
   if (!currentId) return;
+  _khFeedSyncCurrent(currentId);
+  var s = _khFeedStack();
+  // We have a forward entry from a previous visit — return there.
+  if (s.i + 1 < s.ids.length) {
+    var nextId = s.ids[s.i + 1];
+    s.i = s.i + 1;
+    _khFeedStackSave(s);
+    _khFeedRememberSeen(currentId);
+    _khSpaLoadArticle(nextId, direction || 'forward');
+    return;
+  }
+  // End of stack — pick a fresh article and push it on.
   var next = pickNextFeedArticle(currentId);
   if (!next) { if (typeof toast === 'function') toast('No more articles to show', false); return; }
+  s.ids.push(next.id);
+  while (s.ids.length > _KH_FEED_STACK_MAX) { s.ids.shift(); s.i = Math.max(-1, s.i - 1); }
+  s.i = s.ids.length - 1;
+  _khFeedStackSave(s);
   _khFeedRememberSeen(currentId);
   _khSpaLoadArticle(next.id, direction || 'forward');
 }
 
-// Previous-article pattern: swipe DOWN at the very top (mirrors swipe-up
-// for next). Pops the most recent seen article off the _khFeedRecentKey
-// stack and navigates to it. The intentionally-simple mental model:
-// "recent" doubles as the back-stack.
-//
-// Defensive: pop until we find an id that isn't the current article. The
-// stack can contain the current id when the user direct-navigated to it
-// (URL paste / external link) after it was added by an earlier swipe-up.
-// Without this guard goToPrevArticle would re-load the same article and
-// the user sees what looks like a no-op 'refresh' instead of a back nav.
+// Previous-article: walk one step back in the session navigation stack.
+// Doesn't mutate forward history — going back then next returns to the
+// same article the user was just on, which is the whole point of #1.
 function goToPrevArticle() {
   if (_khFeedAnimating()) return;
   var currentId = _khCurrentArtId();
-  var recent = [];
-  try { recent = JSON.parse(localStorage.getItem(_khFeedRecentKey) || '[]'); } catch(e) {}
-  var prevId = null;
-  while (recent.length) {
-    var candidate = recent.shift();
-    if (candidate && String(candidate) !== String(currentId)) { prevId = candidate; break; }
-  }
-  try { localStorage.setItem(_khFeedRecentKey, JSON.stringify(recent)); } catch(e) {}
-  if (!prevId) {
+  _khFeedSyncCurrent(currentId);
+  var s = _khFeedStack();
+  if (s.i <= 0) {
     if (typeof toast === 'function') toast('No previous article', false);
     return;
   }
+  var prevId = s.ids[s.i - 1];
+  s.i = s.i - 1;
+  _khFeedStackSave(s);
   _khSpaLoadArticle(prevId, 'back');
 }
 
@@ -10252,6 +10307,11 @@ function setupFeedNavigation() {
   if (pageName() !== 'korehan-article') return;
   var currentId = (new URLSearchParams(window.location.search)).get('id');
   if (!currentId) return;
+  // Make sure the per-session stack reflects the article that just loaded
+  // (handles page reloads, direct URL paste, and links from elsewhere on
+  // the site). Without this, the stack drifts away from what's on screen
+  // and the next/prev pills feel random.
+  _khFeedSyncCurrent(currentId);
 
   if (!document.getElementById('kh-feed-next-pill')) {
     var pill = document.createElement('button');
