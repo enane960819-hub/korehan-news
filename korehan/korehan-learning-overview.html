@@ -628,7 +628,7 @@
 
           var [linesRes, stationsRes, progRes] = await Promise.all([
             sb.from('curriculum_lines').select('id,code,name_ko,name_en,color,icon,description,sort_order').eq('active', true).order('sort_order'),
-            sb.from('curriculum_stations').select('id,line_id,station_no,name_ko,name_en,level').order('line_id').order('station_no'),
+            sb.from('curriculum_stations').select('id,line_id,station_no,name_ko,name_en,level,can_do').order('line_id').order('station_no'),
             supaUser ? sb.from('user_station_progress').select('station_id,progress,status').eq('user_id', supaUser.id) : Promise.resolve({ data: [] })
           ]);
 
@@ -737,15 +737,25 @@
           var statusColor = status === 'passed' ? line.color : status === 'transferring' ? 'rgba(255,255,255,.72)' : 'rgba(255,255,255,.32)';
           var lvCol = levelColor[s.level] || '#94a3b8';
           var lvLabel = levelLabel[s.level] || s.level;
-          return '<div data-station-no="' + s.station_no + '" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:' + statusBg + ';border:1px solid ' + statusBorder + ';margin-bottom:5px">'
-            + '<div style="width:30px;height:30px;border-radius:50%;background:' + (status === 'passed' ? line.color : 'rgba(255,255,255,.05)') + ';border:1.5px solid ' + (status === 'passed' ? line.color : 'rgba(255,255,255,.18)') + ';color:' + (status === 'passed' ? '#0b1228' : 'rgba(220,210,255,.7)') + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">' + s.station_no + '</div>'
-            + '<div style="flex:1;min-width:0">'
-            +   '<div style="font-size:13px;font-weight:800;color:#fff;line-height:1.3">' + _netEsc(s.name_ko) + '</div>'
-            +   '<div style="font-size:10px;color:rgba(220,210,255,.5);margin-top:1px">' + _netEsc(s.name_en) + '</div>'
+          var canDo = s.can_do ? _netEsc(s.can_do) : '<span style="color:rgba(220,210,255,.35);font-style:italic">학습 목표가 아직 등록되지 않았습니다.</span>';
+          return '<div data-station-no="' + s.station_no + '" style="margin-bottom:5px;border-radius:10px;background:' + statusBg + ';border:1px solid ' + statusBorder + ';overflow:hidden">'
+            + '<div onclick="_netToggleStation(' + line.id + ',' + s.station_no + ')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;transition:background .12s" onmouseover="this.style.background=\'rgba(255,255,255,.04)\'" onmouseout="this.style.background=\'transparent\'">'
+            +   '<div style="width:30px;height:30px;border-radius:50%;background:' + (status === 'passed' ? line.color : 'rgba(255,255,255,.05)') + ';border:1.5px solid ' + (status === 'passed' ? line.color : 'rgba(255,255,255,.18)') + ';color:' + (status === 'passed' ? '#0b1228' : 'rgba(220,210,255,.7)') + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">' + s.station_no + '</div>'
+            +   '<div style="flex:1;min-width:0">'
+            +     '<div style="font-size:13px;font-weight:800;color:#fff;line-height:1.3">' + _netEsc(s.name_ko) + '</div>'
+            +     '<div style="font-size:10px;color:rgba(220,210,255,.5);margin-top:1px">' + _netEsc(s.name_en) + '</div>'
+            +   '</div>'
+            +   '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">'
+            +     '<span style="font-size:9px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + lvCol + '22;border:1px solid ' + lvCol + '55;color:' + lvCol + ';letter-spacing:.04em">' + lvLabel + '</span>'
+            +     '<span style="font-size:10px;font-weight:700;color:' + statusColor + '">' + statusText + '</span>'
+            +   '</div>'
+            +   '<span class="net-st-arrow" style="font-size:10px;color:rgba(220,210,255,.4);margin-left:4px;flex-shrink:0">▼</span>'
             + '</div>'
-            + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">'
-            +   '<span style="font-size:9px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + lvCol + '22;border:1px solid ' + lvCol + '55;color:' + lvCol + ';letter-spacing:.04em">' + lvLabel + '</span>'
-            +   '<span style="font-size:10px;font-weight:700;color:' + statusColor + '">' + statusText + '</span>'
+            // Inline expansion: can-do statement (Phase 3a). Phase 3b
+            // will fill the panel with linked content thumbnails.
+            + '<div class="net-st-body" style="display:none;padding:10px 14px 12px;border-top:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.18)">'
+            +   '<div style="font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:' + line.color + ';margin-bottom:5px">Can-do</div>'
+            +   '<div style="font-size:12px;color:rgba(220,210,255,.85);line-height:1.6">' + canDo + '</div>'
             + '</div>'
             + '</div>';
         }).join('');
@@ -787,6 +797,27 @@
             }
           }, 50);
         }
+      };
+      // Toggle a station row's inline body (Phase 3a — can-do text;
+      // Phase 3b will append linked content thumbnails to the same
+      // panel). Closes any other open row so only one is expanded.
+      window._netToggleStation = function(lineId, stationNo) {
+        var modal = document.getElementById('net-line-modal');
+        if (!modal) return;
+        var rows = modal.querySelectorAll('[data-station-no]');
+        rows.forEach(function(row) {
+          var body = row.querySelector('.net-st-body');
+          var arrow = row.querySelector('.net-st-arrow');
+          if (!body) return;
+          if (Number(row.getAttribute('data-station-no')) === stationNo) {
+            var open = body.style.display !== 'none';
+            body.style.display = open ? 'none' : 'block';
+            if (arrow) arrow.textContent = open ? '▼' : '▲';
+          } else {
+            body.style.display = 'none';
+            if (arrow) arrow.textContent = '▼';
+          }
+        });
       };
       // Backwards-compat alias for the old per-station handler
       window._netStationClick = function(stationId) {
