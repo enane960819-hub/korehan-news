@@ -289,7 +289,11 @@ async function _ntUnsave(ko, btn) {
       await saveVocabToDB(ko, null, null, true);
     } else {
       var sb = getSupa();
-      await sb.from('user_saved_words').delete().eq('user_id', supaUser.id).or('word_ko.eq."' + ko.replace(/"/g,'\\"') + '",ko.eq."' + ko.replace(/"/g,'\\"') + '"');
+      // Supabase doesn't throw on RLS denial / constraint failure —
+      // it returns an { error } object. Without checking it, the UI
+      // would mark the word removed locally while it stayed in the DB.
+      var del = await sb.from('user_saved_words').delete().eq('user_id', supaUser.id).or('word_ko.eq."' + ko.replace(/"/g,'\\"') + '",ko.eq."' + ko.replace(/"/g,'\\"') + '"');
+      if (del && del.error) throw del.error;
     }
     window._ntSavedWords = (window._ntSavedWords || []).filter(function(w){ return w.ko !== ko; });
     _renderSavedWordList(window._ntSavedWords);

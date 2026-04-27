@@ -2,6 +2,156 @@
    KoreHani — Shared JS
    ============================================================ */
 
+// ── Analytics + error monitoring ─────────────────────────────────
+// Loads Plausible Analytics (cookieless by design — Plausible itself
+// doesn't need a consent banner) and Sentry error monitoring. Both
+// are gated behind config flags — set them on window before this file
+// loads, or paste them here and redeploy. Without DSN/domain set the
+// loaders no-op, so this is safe to ship empty until accounts are
+// created.
+//
+//   <script>
+//     window.KH_PLAUSIBLE_DOMAIN = 'korehannews.com';
+//     window.KH_SENTRY_DSN = 'https://xxxx@oXXX.ingest.sentry.io/YYY';
+//   </script>
+//
+// We still gate analytics behind the user's cookie-consent choice
+// (see kh_cookie_consent below) because Korean PIPA / GDPR treat any
+// non-essential measurement as requiring opt-in even when the tool
+// itself is cookie-free. Plausible loads only after consent === 'all'.
+//
+// After Plausible loads, `window.plausible('event-name', { props: {...} })`
+// works. We expose `khTrack(name, props)` as a thin wrapper that
+// silently no-ops when Plausible hasn't loaded — so call sites don't
+// need to defensive-check.
+function _khConsent() {
+  try { return localStorage.getItem('kh_cookie_consent') || ''; } catch(_) { return ''; }
+}
+function _khLoadAnalytics() {
+  if (window._khAnalyticsLoaded) return;
+  window._khAnalyticsLoaded = true;
+  var PLAUSIBLE_DOMAIN = (typeof window !== 'undefined' && window.KH_PLAUSIBLE_DOMAIN) || '';
+  var SENTRY_DSN       = (typeof window !== 'undefined' && window.KH_SENTRY_DSN) || '';
+
+  if (PLAUSIBLE_DOMAIN) {
+    try {
+      var s = document.createElement('script');
+      s.defer = true;
+      s.setAttribute('data-domain', PLAUSIBLE_DOMAIN);
+      s.src = 'https://plausible.io/js/script.outbound-links.js';
+      document.head.appendChild(s);
+      window.plausible = window.plausible || function(){
+        (window.plausible.q = window.plausible.q || []).push(arguments);
+      };
+    } catch(_) {}
+  }
+
+  if (SENTRY_DSN) {
+    try {
+      var s2 = document.createElement('script');
+      s2.src = 'https://browser.sentry-cdn.com/7.119.0/bundle.min.js';
+      s2.crossOrigin = 'anonymous';
+      s2.onload = function() {
+        try {
+          if (window.Sentry) window.Sentry.init({
+            dsn: SENTRY_DSN,
+            tracesSampleRate: 0.1,
+            beforeSend: function(event) {
+              if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return null;
+              return event;
+            }
+          });
+        } catch(_) {}
+      };
+      document.head.appendChild(s2);
+    } catch(_) {}
+  }
+}
+(function bootstrapAnalytics() {
+  if (_khConsent() === 'all') _khLoadAnalytics();
+})();
+
+// Cookie / tracking consent banner. Shown once until the user picks
+// "Accept all" or "Essential only". Stored in localStorage so the
+// choice persists. Korean PIPA + GDPR require affirmative opt-in for
+// non-essential measurement; this banner satisfies both regimes
+// without geo-detection by being shown to everyone.
+function _khShowCookieBanner() {
+  if (_khConsent()) return;                          // already chose
+  if (document.getElementById('kh-cookie-banner')) return;
+
+  var el = document.createElement('div');
+  el.id = 'kh-cookie-banner';
+  el.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2000;'
+    + 'max-width:min(720px,calc(100vw - 24px));width:auto;'
+    + 'background:#0b1626;color:#fff;border:1px solid rgba(125,211,252,.25);'
+    + 'border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.45);'
+    + 'padding:16px 18px;display:flex;align-items:center;gap:14px;'
+    + 'font-family:inherit;flex-wrap:wrap;animation:khNudgeIn .3s ease-out';
+  // Avoid colliding with mobile bottom nav.
+  if (window.innerWidth <= 860) el.style.bottom = '76px';
+
+  el.innerHTML = ''
+    + '<div style="flex:1;min-width:240px">'
+    + '<div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:4px">Cookies &amp; Privacy</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.7);line-height:1.5">'
+    +   'We use essential cookies to keep you signed in and remember your progress. '
+    +   'With your consent we also load privacy-friendly analytics to understand which lessons help. '
+    +   '<a href="privacy-policy.html" style="color:#7dd3fc;text-decoration:underline">Privacy policy</a>'
+    + '</div></div>'
+    + '<div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">'
+    + '<button id="kh-cookie-essential" style="padding:9px 14px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.85);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Essential only</button>'
+    + '<button id="kh-cookie-all" style="padding:9px 16px;border-radius:10px;background:linear-gradient(135deg,#38bdf8,#2563eb);border:none;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap">Accept all</button>'
+    + '</div>';
+
+  if (!document.getElementById('kh-nudge-style')) {
+    var style = document.createElement('style');
+    style.id = 'kh-nudge-style';
+    style.textContent = '@keyframes khNudgeIn{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}';
+    document.head.appendChild(style);
+  }
+
+  document.body.appendChild(el);
+
+  function pick(choice) {
+    try { localStorage.setItem('kh_cookie_consent', choice); } catch(_) {}
+    el.remove();
+    if (choice === 'all') _khLoadAnalytics();
+  }
+  document.getElementById('kh-cookie-all').onclick       = function(){ pick('all'); };
+  document.getElementById('kh-cookie-essential').onclick = function(){ pick('essential'); };
+}
+// Don't show on legal pages (the user is already reading our policy
+// — interrupting with a banner is rude) or admin pages.
+(function() {
+  function init() {
+    var path = (location.pathname || '').toLowerCase();
+    if (path.indexOf('privacy-policy') !== -1) return;
+    if (path.indexOf('terms-of-service') !== -1) return;
+    if (path.indexOf('refund-policy')   !== -1) return;
+    if (path.indexOf('korehan-x9f4k2m7') !== -1) return;
+    if (path.indexOf('korehan-onboarding') !== -1) return;
+    // Defer slightly so it doesn't fight with onboarding redirects /
+    // welcome banner mounting.
+    setTimeout(_khShowCookieBanner, 1200);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+
+// Convenience tracker. Call sites use khTrack('signup_started') etc.
+// without worrying about whether Plausible has loaded yet.
+function khTrack(eventName, props) {
+  try {
+    if (typeof window !== 'undefined' && typeof window.plausible === 'function') {
+      window.plausible(eventName, props ? { props: props } : undefined);
+    }
+  } catch(_) {}
+}
+
 // ── Neon/dark mode + auth flash prevention: apply IMMEDIATELY ──
 (function() {
   try {
@@ -1039,7 +1189,7 @@ function _injectAuthModal() {
       </div>
 
       <!-- 구글 로그인 -->
-      <button onclick="closeAuthModal();signInWithGoogle()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:11px;background:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s" onmouseover="this.style.background='#f8faff';this.style.borderColor='#c7d7f0'" onmouseout="this.style.background='#fff';this.style.borderColor='#e2e8f0'">
+      <button onclick="signInWithGoogle();closeAuthModal()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:11px;background:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s" onmouseover="this.style.background='#f8faff';this.style.borderColor='#c7d7f0'" onmouseout="this.style.background='#fff';this.style.borderColor='#e2e8f0'">
         <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         Continue with Google
       </button>
@@ -1373,6 +1523,84 @@ function updateAuthUI() {
   injectMobileBottomNav();
   setupImmersiveReading();
   renderKhLucideIcons();
+  scheduleSignupNudge();
+}
+
+// Sticky sign-up nudge for unauthenticated visitors. Shows 30s after
+// a session-confirmed-anonymous load, on public content pages where a
+// sign-up CTA would actually pay off (news / learn / stories /
+// conversations / article / section list pages). Skipped on auth-only
+// flows (study room login wall, onboarding) and on legal/admin pages.
+// Dismiss state is stored in sessionStorage so the same browsing
+// session doesn't re-show, but a return visitor sees it again.
+var _khSignupNudgeArmed = false;
+function scheduleSignupNudge() {
+  if (_khSignupNudgeArmed) return;
+  if (supaUser) return;
+  if (!window._sessionChecked) {
+    // Wait for session check, then re-evaluate.
+    setTimeout(scheduleSignupNudge, 800);
+    return;
+  }
+  if (supaUser) return; // logged in by the time the timeout fired
+  var p = pageName();
+  var publicPages = [
+    'index', 'korehan-news', 'korehan-learn', 'korehan-stories',
+    'korehan-conversations', 'korehan-article', 'korehan-section',
+    'korehan-world', 'korehan-society', 'korehan-culture', 'korehan-korea',
+    'korehan-courses', 'korehan-fun', 'beginner-guide'
+  ];
+  if (publicPages.indexOf(p) === -1) return;
+  try { if (sessionStorage.getItem('kh_signup_nudge_dismissed') === '1') return; } catch(_) {}
+  _khSignupNudgeArmed = true;
+  setTimeout(showSignupNudge, 30_000);
+}
+function showSignupNudge() {
+  if (supaUser) return;
+  if (document.getElementById('kh-signup-nudge')) return;
+  try { if (sessionStorage.getItem('kh_signup_nudge_dismissed') === '1') return; } catch(_) {}
+
+  var el = document.createElement('div');
+  el.id = 'kh-signup-nudge';
+  el.style.cssText = 'position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:1500;'
+    + 'max-width:min(560px,calc(100vw - 24px));width:auto;'
+    + 'background:linear-gradient(135deg,#0f2342,#1e3a5f);color:#fff;'
+    + 'border:1px solid rgba(125,211,252,.35);border-radius:16px;'
+    + 'box-shadow:0 12px 36px rgba(0,0,0,.35);padding:14px 16px;'
+    + 'display:flex;align-items:center;gap:12px;'
+    + 'font-family:inherit;animation:khNudgeIn .3s ease-out';
+  // Mobile bottom-nav is ~64px tall, so we sit above it.
+  if (window.innerWidth <= 860) el.style.bottom = '88px';
+
+  el.innerHTML = ''
+    + '<div style="font-size:22px;flex-shrink:0">📚</div>'
+    + '<div style="flex:1;min-width:0">'
+    + '<div style="font-size:13px;font-weight:800;line-height:1.3;color:#fff;margin-bottom:2px">Save your progress for free</div>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.6);line-height:1.4">Sign up to track streaks, save words, and get personalized lessons.</div>'
+    + '</div>'
+    + '<button id="kh-signup-nudge-cta" style="flex-shrink:0;padding:9px 14px;border-radius:10px;background:linear-gradient(135deg,#38bdf8,#2563eb);border:none;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap">Sign up</button>'
+    + '<button id="kh-signup-nudge-close" aria-label="Dismiss" style="flex-shrink:0;width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.55);font-size:16px;cursor:pointer;font-family:inherit;line-height:1">×</button>';
+
+  if (!document.getElementById('kh-nudge-style')) {
+    var style = document.createElement('style');
+    style.id = 'kh-nudge-style';
+    style.textContent = '@keyframes khNudgeIn{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}';
+    document.head.appendChild(style);
+  }
+  document.body.appendChild(el);
+
+  document.getElementById('kh-signup-nudge-cta').onclick = function() {
+    try { sessionStorage.setItem('kh_signup_nudge_dismissed', '1'); } catch(_) {}
+    if (typeof openAuthModal === 'function') openAuthModal('signup');
+    el.remove();
+    if (typeof khTrack === 'function') khTrack('signup_nudge_clicked');
+  };
+  document.getElementById('kh-signup-nudge-close').onclick = function() {
+    try { sessionStorage.setItem('kh_signup_nudge_dismissed', '1'); } catch(_) {}
+    el.remove();
+    if (typeof khTrack === 'function') khTrack('signup_nudge_dismissed');
+  };
+  if (typeof khTrack === 'function') khTrack('signup_nudge_shown', { page: pageName() });
 }
 
 function toggleTopbarUserMenu(evt) {
@@ -1855,7 +2083,36 @@ function khLog() {
   if (!_khDebug) return;
   try { console.log.apply(console, arguments); } catch (_) {}
 }
+function khWarn() {
+  if (!_khDebug) return;
+  try { console.warn.apply(console, arguments); } catch (_) {}
+}
+function khErr() {
+  if (!_khDebug) return;
+  try { console.error.apply(console, arguments); } catch (_) {}
+}
 function khDebugEnabled() { return _khDebug; }
+
+// Production console hygiene. Hundreds of console.warn / console.error
+// calls across the codebase leak internal state (user ids, topic ids,
+// AI response excerpts, Supabase error objects) into the visible
+// DevTools console of every visitor. Silence them unless `kh_debug=1`
+// is set in localStorage. Real errors still reach window.onerror /
+// any installed error monitor (Sentry etc.) — only the console
+// surface is muted. console.log was already gated via khLog so it's
+// not touched here.
+(function muteConsoleInProduction(){
+  if (_khDebug) return;
+  if (typeof console === 'undefined') return;
+  try {
+    var origWarn = console.warn.bind(console);
+    var origErr  = console.error.bind(console);
+    console.warn  = function(){};
+    console.error = function(){};
+    // Re-expose originals on the kh object for in-app use if ever needed.
+    window.__kh_origConsole = { warn: origWarn, error: origErr };
+  } catch(_) {}
+})();
 
 // Small share helper. Falls back through three layers:
 //   1. Web Share API (mobile Safari/Chrome, Android) — native sheet.
@@ -4314,7 +4571,6 @@ function renderReviewVocabCheck(a) {
       +   '<div class="rv-vq-prompt">Choose the correct meaning</div>'
       +   '<div class="rv-vq-options" id="rv-vq-options"></div>'
       +   '<div class="rv-vq-feedback" id="rv-vq-feedback"></div>'
-      +   '<button class="rv-vq-next" id="rv-vq-next" style="display:none" onclick="_rvVocabQuizNext()">Next →</button>'
       + '</div>';
     _rvVocabQuizPaint();
   }
@@ -4377,11 +4633,9 @@ function _rvVocabQuizPaint() {
   var romEl = document.getElementById('rv-vq-rom');
   var optsEl = document.getElementById('rv-vq-options');
   var fbEl   = document.getElementById('rv-vq-feedback');
-  var nextEl = document.getElementById('rv-vq-next');
   if (koEl)  koEl.textContent = ko;
   if (romEl) romEl.textContent = rom;
   if (fbEl)  { fbEl.textContent = ''; fbEl.className = 'rv-vq-feedback'; }
-  if (nextEl) nextEl.style.display = 'none';
   if (optsEl) {
     optsEl.innerHTML = choices.map(function(c){
       var isCorrect = c === correct ? '1' : '0';
@@ -4408,8 +4662,6 @@ function _rvVocabQuizPick(btn) {
     fb.textContent = correct ? '✓ Correct' : '✗ Not quite';
     fb.className = 'rv-vq-feedback ' + (correct ? 'ok' : 'no');
   }
-  var next = document.getElementById('rv-vq-next');
-  if (next) next.style.display = '';
   setTimeout(_rvVocabQuizNext, 650);
 }
 
@@ -6264,14 +6516,21 @@ async function toggleBookmark(articleId, btn) {
   var sb = getSupa();
   if (!sb) return;
 
+  // Previously the insert/delete results were awaited but never checked,
+  // so a failed save (e.g. RLS denial, network blip) would still flip the
+  // button to "Bookmarked ✓" — silent data loss from the user's POV.
+  // Now we check .error and only update UI / toast when the DB actually
+  // accepted the change.
   var isBookmarked = btn.classList.contains('active');
   if (isBookmarked) {
-    await sb.from('bookmarks').delete().eq('user_id', supaUser.id).eq('article_id', articleId);
+    var del = await sb.from('bookmarks').delete().eq('user_id', supaUser.id).eq('article_id', articleId);
+    if (del.error) { toast('Could not remove bookmark'); return; }
     btn.classList.remove('active');
     btn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
     toast('Bookmark removed');
   } else {
-    await sb.from('bookmarks').insert({ user_id: supaUser.id, article_id: articleId });
+    var ins = await sb.from('bookmarks').insert({ user_id: supaUser.id, article_id: articleId });
+    if (ins.error) { toast('Could not save bookmark'); return; }
     btn.classList.add('active');
     btn.innerHTML = '<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 0-2-2h10a2 2 0 0 0 2 2z"/></svg>';
     toast('Bookmarked ✓');
@@ -10917,25 +11176,9 @@ function enhanceStoriesMobile() {
 }
 
 function enhanceCollectionPagesMobile() {
-  if (!isMobileRedesign()) return;
-  var p = pageName();
-  if (['korehan-world','korehan-society','korehan-culture','korehan-korea','korehan-section'].indexOf(p) >= 0) {
-    var list = document.getElementById('dyn-article-list');
-    if (list && !document.querySelector('.mobile-section-shell[data-mobile="news"]')) {
-      var shell = document.createElement('section');
-      shell.className = 'mobile-section-shell';
-      shell.setAttribute('data-mobile','news');
-      shell.innerHTML = ''
-        + '<div class="mobile-eyebrow">News study</div>'
-        + '<h2 class="mobile-quick-title" style="font-size:28px">Read one article at your level, not ten at once.</h2>'
-        + '<p class="mobile-quick-sub">The goal on mobile is quick entry: pick a category, open one article, then move into vocab or quiz.</p>'
-        + '<div class="mobile-action-row">'
-        + '<a class="mobile-primary-btn" href="korehan-study-room.html">' + khIcon('notebook-pen', 'Start Learning', 'kh-ui-icon-sm') + '</a>'
-        + '<a class="mobile-secondary-btn" href="korehan-learn.html">' + khIcon('book-marked', 'Review vocab', 'kh-ui-icon-sm') + '</a>'
-        + '</div>';
-      list.insertAdjacentElement('beforebegin', shell);
-    }
-  }
+  // News-category intro banner removed — was duplicate noise above each
+  // category list. Articles speak for themselves; no banner needed.
+  return;
 }
 
 // ── Study continuity helpers ───────────────────────────────────────────────

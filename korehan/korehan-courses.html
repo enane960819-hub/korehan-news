@@ -1,9 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko-KR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Courses — KoreHani</title>
+<title>Courses — KoreHani | 한국어 학습 코스</title>
+<meta name="description" content="KoreHani의 학습 플랜과 코스. 무료부터 Pro까지 — 매일 작문 피드백, 발음 연습, 슬랭/문법 마스터 클래스.">
+<link rel="canonical" href="https://korehannews.com/korehan-courses.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="KoreHani">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="Courses — KoreHani">
+<meta property="og:description" content="KoreHani의 학습 플랜과 코스 — 무료부터 Pro까지.">
+<meta property="og:image" content="https://korehannews.com/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://korehannews.com/og-default.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css">
 <style>
@@ -154,6 +164,18 @@
 .cert-badge-ico{font-size:34px;}
 .cert-badge-txt{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(0,0,0,.45);margin-top:3px;}
 
+/* FAQ */
+.faq-list{display:flex;flex-direction:column;gap:8px;}
+.faq-item{background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:0;transition:border-color .15s;}
+.faq-item:hover{border-color:#bcd0f4;}
+.faq-item[open]{border-color:var(--bright);box-shadow:0 4px 14px rgba(34,85,164,.07);}
+.faq-item summary{font-size:14px;font-weight:700;color:var(--dark);padding:16px 20px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;font-family:inherit;}
+.faq-item summary::-webkit-details-marker{display:none;}
+.faq-item summary::after{content:"+";font-size:20px;font-weight:400;color:var(--bright);transition:transform .15s;line-height:1;}
+.faq-item[open] summary::after{content:"\2212";}
+.faq-item p{font-size:13px;color:var(--gray);line-height:1.65;padding:0 20px 16px;margin:0;}
+.faq-item p a{color:var(--bright);text-decoration:underline;}
+
 /* CTA */
 .cta-section{text-align:center;padding:64px 24px;background:var(--white);border-top:1px solid var(--border);}
 .cta-section h2{font-family:'Playfair Display',serif;font-size:clamp(24px,4vw,40px);font-weight:900;color:var(--dark);margin-bottom:10px;}
@@ -185,15 +207,15 @@
 <!-- HERO -->
 <div class="course-hero">
   <div class="course-hero-inner">
-    <div class="hero-pill"><span class="hero-dot"></span> Now Enrolling &middot; 2026</div>
+    <div class="hero-pill"><span class="hero-dot"></span> Now Open</div>
     <h1>Write Better Korean.<br><em>Get Real Feedback.</em></h1>
-    <p>Not grammar drills. Not AI only. Real assignments from real Korean news &mdash; with human-reviewed feedback that actually explains why.</p>
+    <p>Not grammar drills. Real assignments from real Korean news &mdash; with feedback that actually explains why.</p>
 
     <!-- BILLING TOGGLE -->
     <div class="billing-toggle">
       <button class="bt-btn active" onclick="setBilling('monthly',this)">Monthly</button>
-      <button class="bt-btn" onclick="setBilling('6month',this)">6 Months<span class="bt-badge">Save 10%</span></button>
-      <button class="bt-btn" onclick="setBilling('annual',this)">Annual<span class="bt-badge">Save 18%</span></button>
+      <button class="bt-btn" onclick="setBilling('6month',this)">6 Months<span class="bt-badge">Save 17%</span></button>
+      <button class="bt-btn" onclick="setBilling('annual',this)">Annual<span class="bt-badge">Save 33%</span></button>
     </div>
 
     <!-- PRICING CARDS -->
@@ -208,13 +230,13 @@
           </div>
           <div class="plan-original" id="std-original">&nbsp;</div>
           <div class="plan-saving" id="std-saving">&nbsp;</div>
-          <div class="plan-desc">Full self-study access with AI-powered feedback on your writing.</div>
+          <div class="plan-desc">Full self-study access with detailed feedback on your writing.</div>
           <ul class="plan-features">
             <li>Article Study &mdash; 5 interactive steps</li>
             <li>Conversation &amp; Story Study</li>
             <li>Full Slang library + Quiz</li>
             <li>Weekly &amp; Monthly Review</li>
-            <li>AI Writing Feedback (daily)</li>
+            <li>Writing Feedback (daily)</li>
             <li>Listening Quiz</li>
             <li>Word Book SRS review</li>
             <li>Growth Lab + Monthly Report</li>
@@ -242,7 +264,7 @@
             <li>Speaking recording + human feedback (5x/week)</li>
             <li>Priority feedback (6h vs 24h)</li>
             <li>Personalized study recommendations</li>
-            <li>Unlimited AI feedback submissions</li>
+            <li>Full writing archive + monthly progress report</li>
           </ul>
           <button class="plan-cta primary" onclick="enroll('pro')">Get Pro &rarr;</button>
         </div>
@@ -252,11 +274,11 @@
   </div>
 </div>
 
-<!-- FREE vs PAID -->
+<!-- STANDARD vs PRO COMPARE -->
 <div class="course-section">
   <div class="sec-eyebrow">Comparison</div>
-  <div class="sec-title">Free vs. Paid</div>
-  <div class="sec-sub">Exactly what changes when you subscribe.</div>
+  <div class="sec-title">Standard vs. Pro</div>
+  <div class="sec-sub">Exactly what you get at each tier.</div>
   <div class="compare-table">
     <div class="ct-h">Feature</div>
     <div class="ct-h std">Standard &middot; $8.99</div>
@@ -270,9 +292,9 @@
     <div class="ct-cell std-col"><span class="ct-hi">&#10003;</span></div>
     <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
 
-    <div class="ct-cell feat">AI Writing Feedback<small>AI + human review</small></div>
+    <div class="ct-cell feat">Daily Topic Writing<small>One prompt per day, with feedback</small></div>
     <div class="ct-cell std-col"><span class="ct-hi">1x / day</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">Unlimited</span></div>
+    <div class="ct-cell essay-col"><span class="ct-hi">1x / day</span></div>
 
     <div class="ct-cell feat">Fast Track + Phone Call<small>Real-life scenarios</small></div>
     <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
@@ -290,7 +312,7 @@
     <div class="ct-cell std-col"><span class="ct-hi">Unlimited + export</span></div>
     <div class="ct-cell essay-col"><span class="ct-hi">Unlimited + export</span></div>
 
-    <div class="ct-cell feat">AI writing feedback<small>Weekly short assignments</small></div>
+    <div class="ct-cell feat">Weekly Assignment Program<small>Themed prompts tied to articles</small></div>
     <div class="ct-cell std-col"><span class="ct-hi">&times; 4 / month</span></div>
     <div class="ct-cell essay-col"><span class="ct-hi">&times; 4 / month</span></div>
 
@@ -298,7 +320,7 @@
     <div class="ct-cell std-col"><span class="ct-hi">All patterns</span></div>
     <div class="ct-cell essay-col"><span class="ct-hi">All patterns</span></div>
 
-    <div class="ct-cell feat">Monthly essay &mdash; human reviewed<small>AI 1st pass + Han personally reads</small></div>
+    <div class="ct-cell feat">Monthly essay &mdash; human reviewed<small>Initial review + Han personally reads</small></div>
     <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
     <div class="ct-cell essay-col"><span class="ct-hi">&#10003; Once / month</span></div>
 
@@ -327,18 +349,18 @@
 <!-- FEATURES -->
 <div class="course-section" style="padding-top:0;">
   <div class="sec-eyebrow">Features</div>
-  <div class="sec-title">What&rsquo;s in the Essay Plan</div>
-  <div class="sec-sub">Eight ways your Korean actually improves.</div>
+  <div class="sec-title">What you actually get</div>
+  <div class="sec-sub">Six ways your Korean actually improves.</div>
   <div class="features-grid">
     <div class="feat-card">
       <span class="feat-ico">&#9997;&#65039;</span>
-      <h3>4 AI-Reviewed Assignments / Month</h3>
-      <p>Weekly short writing based on real KoreHani articles. Instant AI feedback with explanations &mdash; not just corrections.</p>
+      <h3>4 Reviewed Assignments / Month</h3>
+      <p>Weekly short writing based on real KoreHani articles. Instant feedback with explanations &mdash; not just corrections.</p>
     </div>
     <div class="feat-card c-green">
       <span class="feat-ico">&#129489;&#8205;&#127979;</span>
       <h3>Human Essay Review</h3>
-      <p>Once a month, Han personally reads your essay. AI does the first pass &mdash; Han adds what AI misses: nuance, tone, naturalness.</p>
+      <p>Once a month, Han personally reads your essay. Initial review surfaces structural issues &mdash; Han adds what only a native teacher catches: nuance, tone, naturalness.</p>
     </div>
     <div class="feat-card c-amber">
       <span class="feat-ico">&#127909;</span>
@@ -369,8 +391,8 @@
 <!-- HOW IT WORKS -->
 <div class="how-section">
   <div class="how-inner">
-    <div class="sec-eyebrow">Process</div>
-    <div class="sec-title">How It Works</div>
+    <div class="sec-eyebrow">Pro Process</div>
+    <div class="sec-title">How Pro Works</div>
     <p class="sec-sub">No video lectures. No live sessions. Just writing and real feedback.</p>
     <div class="steps-grid">
       <div class="step">
@@ -385,7 +407,7 @@
       </div>
       <div class="step">
         <div class="step-num">3</div>
-        <h4>AI feedback instantly</h4>
+        <h4>Instant feedback</h4>
         <p>Grammar, vocab, structure &mdash; corrected immediately with clear explanations.</p>
       </div>
       <div class="step">
@@ -452,21 +474,21 @@
         <div class="archive-item">
           <div class="ai-date">Feb 28</div>
           <div>
-            <div class="ai-title">Summary: BTS &#ucef4;&#ubc31; &#uae30;&#uc0ac; &#uc694;&#uc57d;</div>
+            <div class="ai-title">Summary: BTS 컴백 기사 요약</div>
             <span class="ai-score good">&#10003; 88/100</span><span class="ai-chip fb">Feedback</span>
           </div>
         </div>
         <div class="archive-item">
           <div class="ai-date">Feb 21</div>
           <div>
-            <div class="ai-title">Compare: &#ud55c;&#uad6d; vs &#uc6b0;&#ub9ac;&#ub098;&#ub77c; &#uad50;&#uc721; &#uc81c;&#ub3c4;</div>
+            <div class="ai-title">Compare: 한국 vs 우리나라 교육 제도</div>
             <span class="ai-score ok">&#8599; 74/100</span><span class="ai-chip rev">Revised &times;2</span>
           </div>
         </div>
         <div class="archive-item">
           <div class="ai-date">Feb 14</div>
           <div>
-            <div class="ai-title">Free: &#45236;&#44032; &#51556;&#50500;&#ud558;&#45716; &#54620;&#44397; &#51020;&#49885;</div>
+            <div class="ai-title">Free: 내가 좋아하는 한국 음식</div>
             <span class="ai-score good">&#10003; 81/100</span><span class="ai-chip fb">Feedback</span>
           </div>
         </div>
@@ -515,11 +537,52 @@
   </div>
 </div>
 
+<!-- FAQ -->
+<div class="course-section">
+  <div class="sec-eyebrow">FAQ</div>
+  <div class="sec-title">Quick Answers</div>
+  <div class="sec-sub" style="margin-bottom:28px;">The questions everyone asks before subscribing.</div>
+  <div class="faq-list">
+    <details class="faq-item" open>
+      <summary>Can I cancel anytime?</summary>
+      <p>Yes. Cancel from your account page in one click. You keep access until the end of the current billing period.</p>
+    </details>
+    <details class="faq-item">
+      <summary>What's your refund policy?</summary>
+      <p>Annual and 6-month plans are pro-rated for unused months within the first 30 days. Monthly plans are non-refundable but you can cancel before the next charge. Full details in the <a href="refund-policy.html">Refund Policy</a>.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Is there a free trial?</summary>
+      <p>The Free tier gives you ongoing access to read articles, conversations, and stories. Subscribe whenever you're ready for daily writing feedback and the full study program.</p>
+    </details>
+    <details class="faq-item">
+      <summary>What happens to my data if I cancel?</summary>
+      <p>Your saved words, writing history, and progress stay in your account. You can export or delete everything anytime from <a href="korehan-mypage.html">My Page</a>.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Can I switch between Standard and Pro?</summary>
+      <p>Yes, anytime. Upgrades take effect immediately (pro-rated). Downgrades apply from the next billing period.</p>
+    </details>
+    <details class="faq-item">
+      <summary>How long does Han take to review my essay?</summary>
+      <p>Pro plan: 24h standard, 6h with priority feedback. Han reviews each Pro essay personally &mdash; not outsourced.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Does it work on my phone?</summary>
+      <p>Yes. KoreHani is mobile-first &mdash; designed for studying on a phone during commutes or breaks. Works in any modern browser.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Do I need to know Korean already?</summary>
+      <p>No. Content is leveled from Seed (TOPIK 0) through Forest (TOPIK 5-6). Pick your level during onboarding and adjust anytime.</p>
+    </details>
+  </div>
+</div>
+
 <!-- CTA -->
 <div class="cta-section">
   <h2>Ready to actually write Korean?</h2>
-  <p>Start with Standard at $9, or go straight to Essay at $29. Cancel anytime.</p>
-  <button class="cta-btn" onclick="enroll('essay')">Enroll Now &rarr;</button>
+  <p>Start with Standard at $8.99, or go straight to Pro at $24.99. Cancel anytime.</p>
+  <button class="cta-btn" onclick="enroll('pro')">Enroll Now &rarr;</button>
   <div class="cta-note">Payment setup coming soon &middot; Questions? han@korehannews.com</div>
 </div>
 

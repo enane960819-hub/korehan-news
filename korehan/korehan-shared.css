@@ -3879,12 +3879,6 @@ body.kh-cdr-open #kh-feed-prev-pill { display: none !important; }
 .rv-vq-feedback { font-size: 13px; font-weight: 800; min-height: 18px; }
 .rv-vq-feedback.ok { color: #16a34a; }
 .rv-vq-feedback.no { color: #dc2626; }
-.rv-vq-next {
-  align-self: flex-end; padding: 8px 18px; border: none;
-  background: #0f172a; color: #fff; border-radius: 999px;
-  font-size: 12px; font-weight: 800; cursor: pointer; font-family: inherit;
-}
-.rv-vq-next:hover { background: #1e293b; }
 .rv-vq-done { text-align: center; padding: 8px 0; }
 .rv-vq-done-title { font-size: 15px; font-weight: 900; color: #0f172a; }
 .rv-vq-done-score { font-size: 13px; color: #475569; margin: 6px 0 14px; }

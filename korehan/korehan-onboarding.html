@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <!-- sync marker -->
-<html lang="en">
+<html lang="ko-KR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KoreHani — Getting Started</title>
+<title>KoreHani — Getting Started | 시작하기</title>
+<meta name="description" content="KoreHani 시작하기 — 본인의 한국어 레벨과 학습 목표를 설정하고 맞춤 학습을 받아보세요.">
+<meta name="robots" content="noindex">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
@@ -1147,7 +1149,10 @@ async function finishOnboarding() {
   }
   saveOnboardingLocal(true);
   await persistOnboardingState();
-  window.location.href = 'index.html?welcome=1';
+  // Land directly on the study room — that's the activation moment.
+  // Sending users back to home meant they had to find the Study button
+  // before doing anything meaningful.
+  window.location.href = 'korehan-study-room.html?welcome=1';
 }
 
 async function skipOnboarding() {
@@ -1162,7 +1167,10 @@ async function skipOnboarding() {
       }, { onConflict: 'user_id' });
     } catch(e) {}
   }
-  window.location.href = 'index.html?welcome=1';
+  // Even on skip, drop the user into the study room rather than home —
+  // the home page mostly mirrors what's already in the bottom nav, so
+  // skip → home is just an extra click before any actual learning.
+  window.location.href = 'korehan-study-room.html?welcome=1';
 }
 
 function startOnboarding() {

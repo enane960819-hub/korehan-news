@@ -1,11 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko-KR">
 <head>
 <meta charset="UTF-8">
 <meta name="color-scheme" content="light">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Study Room — KoreHani</title>
+<title>Study Room — KoreHani | 매일 한국어 작문 연습</title>
+<meta name="description" content="TOPIK 레벨별 맞춤 한국어 작문 연습. 매일 새로운 토픽, AI 피드백, 단어·문법 학습까지. Daily Korean writing practice with AI feedback for all TOPIK levels.">
+<link rel="canonical" href="https://korehannews.com/korehan-study-room.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="KoreHani">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="Study Room — KoreHani | 매일 한국어 작문 연습">
+<meta property="og:description" content="TOPIK 레벨별 맞춤 한국어 작문 연습. 매일 새로운 토픽 + AI 피드백.">
+<meta property="og:image" content="https://korehannews.com/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://korehannews.com/og-default.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20260420x">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260416">
@@ -1948,6 +1958,17 @@ body.kh-neon-on .su-mcq-opt.selected .su-mcq-num { background:#00ffd5;color:#000
 .as-article-card .asc-cat   { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:4px; }
 .as-article-card .asc-title { font-size:14px; font-weight:700; color:var(--dark); line-height:1.4; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
 .as-article-card .asc-meta  { font-size:10px; color:var(--gray); margin-top:6px; }
+/* Mobile: single column with horizontal card layout — vertical cards
+   stretched full-width on phones wasted screen space, so on ≤640px we
+   put the thumbnail on the left and the text on the right. */
+@media(max-width:640px) {
+  .as-article-grid { grid-template-columns:1fr; gap:8px; }
+  .as-article-card { flex-direction:row; }
+  .as-article-card img,
+  .as-article-card .asc-img-ph { width:110px; height:84px; flex-shrink:0; }
+  .as-article-card .asc-body { padding:10px 12px; }
+  .as-article-card .asc-title { font-size:13px; -webkit-line-clamp:2; }
+}
 /* Step pips */
 .as-pip { flex:1; height:6px; border-radius:3px; background:#f1f5f9; transition:background .2s; }
 .as-pip.done   { background:#22c55e; }
@@ -2306,14 +2327,8 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 .lv-pill.lv-b.on { background:#15803d; }
 .lv-pill.lv-i.on { background:#0369a1; }
 .lv-pill.lv-a.on { background:#b91c1c; }
-/* ─── Mobile study aids (inside topic card) ─── */
-.sr-mobile-aids { display:none; }
 .sr-quest-ring-mob { display:none !important; }
 @media(max-width:860px) { .sr-quest-ring-mob { display:block !important; } }
-.sr-mob-aid { display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);cursor:pointer;transition:background .15s;white-space:nowrap; }
-.sr-mob-aid:active { background:rgba(255,255,255,.14); }
-.sr-mob-aid-icon { font-size:13px;flex-shrink:0; }
-.sr-mob-aid-title { font-size:11px;font-weight:700;color:rgba(255,255,255,.7); }
 
 /* ─── DESKTOP (861px+) ─── */
 @media(min-width:861px) {
@@ -2355,7 +2370,6 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 /* ─── MOBILE (≤640px): tabs above activity cards, not sticky ─── */
 @media(max-width:640px) {
   #wcard-chips { display:none; }
-  .sr-mobile-aids { display:flex;flex-direction:row;gap:6px;margin-top:6px;flex-wrap:wrap; }
   .sr-topic-q { font-size:clamp(26px,5.5vw,34px); }
   .sr-top-tabs-wrap { position:static;padding:0;margin-bottom:10px;border-bottom:none;background:transparent;border-radius:0;box-shadow:none; }
   .sr-top-tabs { gap:4px;background:rgba(255,255,255,.04);border-radius:10px;padding:3px; }
@@ -2641,8 +2655,6 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
           <div id="hero-topic-done" style="display:none;font-size:11px;color:#7ab8f5;font-weight:700;margin-bottom:8px">✅ Done today</div>
           <!-- vocab + grammar chips (desktop only) -->
           <div class="sr-chip-row wc-chips" id="wcard-chips"></div>
-          <!-- mobile study aids (replaces chips on mobile) -->
-          <div class="sr-mobile-aids" id="sr-mobile-aids"></div>
         </div>
 
         <!-- START button with ripple canvas -->
@@ -3798,6 +3810,7 @@ async function loadDBHelpers(level) {
     var box = document.getElementById('helper-box');
     if (box) box.innerHTML = hhtml;
     _dbHelpersLoaded = true;
+    if (typeof _mirrorHelpTabContent === 'function') _mirrorHelpTabContent();
     return true;
   } catch(e) { return false; }
 }
@@ -3825,6 +3838,7 @@ async function loadDBGrammar(level) {
     var box = document.getElementById('grammar-box');
     if (box) box.innerHTML = ghtml;
     _dbGrammarLoaded = true;
+    if (typeof _mirrorHelpTabContent === 'function') _mirrorHelpTabContent();
     return true;
   } catch(e) { return false; }
 }
@@ -4245,6 +4259,9 @@ function clearAIContentUI() {
     if (id === 'wcard-chips') el.innerHTML = '';
     else el.innerHTML = '<div style="color:#8ea0b8;font-size:12px">Loading…</div>';
   });
+  // Keep the Help tab in sync — without this, switching level while on
+  // the Help tab kept the previous topic's Vocab + Quick Help on screen.
+  if (typeof _mirrorHelpTabContent === 'function') _mirrorHelpTabContent();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4330,13 +4347,46 @@ async function loadDailyContent() {
   var lsCacheKey = 'sr_daily_' + today + '_' + _currentLevel;
   var sessionCheckKey = 'sr_daily_checked_' + today + '_' + _currentLevel;
   var alreadyCheckedThisSession = sessionStorage.getItem(sessionCheckKey) === '1';
+  // Stale-while-revalidate. The cache key embeds today's date, so any
+  // entry we find is by definition for today. If we have one, paint the
+  // UI from it immediately (zero network) and either return — when the
+  // session has already validated this level — or kick off a silent
+  // background DB check that overwrites the cache only if the server
+  // has a newer/different record. Previously we required the session
+  // check to have already happened before touching the cache, which
+  // meant every first level switch hit the DB and felt slow.
   try {
     var lsCached = localStorage.getItem(lsCacheKey);
-    if (lsCached && alreadyCheckedThisSession) {
+    if (lsCached) {
       var cachedRec = JSON.parse(lsCached);
       if (cachedRec && cachedRec.topic_ko && cachedRec.vocab && cachedRec.vocab.length > 0) {
-        khLog('[loadDailyContent] instant load from cache (checked this session)');
+        if (alreadyCheckedThisSession) {
+          khLog('[loadDailyContent] instant cache load (already validated this session)');
+          _applyDailyContent(cachedRec);
+          return;
+        }
+        khLog('[loadDailyContent] instant cache load + background revalidate');
         _applyDailyContent(cachedRec);
+        // Fire-and-forget background validation. Same query as the
+        // foreground path below, but it never blocks the UI and only
+        // re-applies content when the server actually has something
+        // different (e.g. admin edited the day's vocab/grammar).
+        (function(t, lvl){
+          try {
+            var sb = getSupa();
+            if (!sb || !supaUser) return;
+            sb.from('study_daily_content').select('*').eq('scheduled_date', t).eq('level', lvl).maybeSingle()
+              .then(function(r){
+                if (r.error || !r.data) return;
+                var newJson = JSON.stringify(r.data);
+                if (newJson === lsCached) return;
+                khLog('[loadDailyContent] background revalidate found newer content, updating');
+                if (_currentLevel === lvl) _applyDailyContent(r.data);
+                else { try { localStorage.setItem('sr_daily_' + t + '_' + lvl, newJson); } catch(e){} }
+                try { sessionStorage.setItem('sr_daily_checked_' + t + '_' + lvl, '1'); } catch(e){}
+              });
+          } catch(e) {}
+        })(today, _currentLevel);
         return;
       }
     }
@@ -4447,16 +4497,50 @@ function _pregenTomorrow() {
 function _applyFallbackTopic(date) {
   hideAILoading();
   try {
-    // Pick a topic from built-in categories based on date
-    var cats = [
-      { ko:'나의 하루', en:'My Daily Routine' },
-      { ko:'좋아하는 음식', en:'My Favorite Food' },
-      { ko:'주말 계획', en:'Weekend Plans' },
-      { ko:'한국 여행', en:'Traveling in Korea' },
-      { ko:'좋아하는 계절', en:'My Favorite Season' },
-      { ko:'가족 소개', en:'Introducing My Family' },
-      { ko:'취미 생활', en:'My Hobbies' }
-    ];
+    // Level-aware fallback topic pools. The original implementation used
+    // a single beginner-style list ("나의 하루", "좋아하는 음식"…) for
+    // every level, so Advanced learners hit the offline fallback and
+    // were handed a kindergarten prompt. Each level now has its own
+    // pool tuned to the level's writing complexity.
+    var poolByLevel = {
+      Starter: [
+        { ko:'나의 하루', en:'My Daily Routine' },
+        { ko:'좋아하는 음식', en:'My Favorite Food' },
+        { ko:'좋아하는 색깔', en:'My Favorite Color' },
+        { ko:'우리 가족', en:'My Family' },
+        { ko:'오늘 날씨', en:'Today\'s Weather' },
+        { ko:'좋아하는 동물', en:'My Favorite Animal' },
+        { ko:'주말 계획', en:'Weekend Plans' }
+      ],
+      Beginner: [
+        { ko:'나의 하루', en:'My Daily Routine' },
+        { ko:'좋아하는 음식', en:'My Favorite Food' },
+        { ko:'주말 계획', en:'Weekend Plans' },
+        { ko:'한국 여행', en:'Traveling in Korea' },
+        { ko:'좋아하는 계절', en:'My Favorite Season' },
+        { ko:'가족 소개', en:'Introducing My Family' },
+        { ko:'취미 생활', en:'My Hobbies' }
+      ],
+      Intermediate: [
+        { ko:'한국어를 공부하는 이유', en:'Why I Study Korean' },
+        { ko:'최근에 본 드라마나 영화', en:'A Drama or Movie I Watched Recently' },
+        { ko:'서울에서 꼭 가봐야 할 곳', en:'Must-visit Places in Seoul' },
+        { ko:'스트레스를 푸는 방법', en:'How I Relieve Stress' },
+        { ko:'기억에 남는 여행', en:'A Memorable Trip' },
+        { ko:'한국 음식과 우리나라 음식 비교', en:'Comparing Korean and My Country\'s Food' },
+        { ko:'10년 후의 나의 모습', en:'My Life Ten Years from Now' }
+      ],
+      Advanced: [
+        { ko:'한국 문화에서 가장 인상적인 점', en:'What Impresses Me Most About Korean Culture' },
+        { ko:'글로벌 시대에 언어 공부의 중요성', en:'The Importance of Language Learning in a Global Era' },
+        { ko:'SNS가 인간관계에 미치는 영향', en:'How Social Media Affects Human Relationships' },
+        { ko:'AI 기술과 노동 시장의 미래', en:'AI Technology and the Future of the Labor Market' },
+        { ko:'전통과 현대 사이의 균형', en:'Balancing Tradition and Modernity' },
+        { ko:'한국 사회의 빠른 변화에 대한 생각', en:'Thoughts on the Rapid Changes in Korean Society' },
+        { ko:'환경 문제와 개인의 책임', en:'Environmental Issues and Personal Responsibility' }
+      ]
+    };
+    var cats = poolByLevel[_currentLevel] || poolByLevel.Beginner;
     var dateHash = date.split('-').reduce(function(a,b){ return a + parseInt(b); }, 0);
     var topic = cats[dateHash % cats.length];
     var fb = buildStudyRoomFallbackContent({ topic_ko: topic.ko, topic_en: topic.en }, _currentLevel);
@@ -5300,18 +5384,6 @@ function renderAIContent() {
   (_aiContent.grammar || []).slice(0,2).forEach(function(g){ chips += '<span class="wchip g">' + g.pattern + '</span>'; });
   document.getElementById('wcard-chips').innerHTML = chips;
 
-  // MOBILE STUDY AIDS (replaces chips on mobile)
-  var maEl = document.getElementById('sr-mobile-aids');
-  if (maEl) {
-    maEl.innerHTML =
-      '<div class="sr-mob-aid" onclick="switchSrTab(\'help\',null);setTimeout(function(){var e=document.getElementById(\'vocab-box-help\');if(e)e.scrollIntoView({behavior:\'smooth\',block:\'center\'})},200)">'
-      + '<span class="sr-mob-aid-icon">📌</span><span class="sr-mob-aid-title">Vocab</span></div>'
-      + '<div class="sr-mob-aid" onclick="switchSrTab(\'help\',null);setTimeout(function(){var e=document.getElementById(\'grammar-box-help\');if(e)e.scrollIntoView({behavior:\'smooth\',block:\'center\'})},200)">'
-      + '<span class="sr-mob-aid-icon">📝</span><span class="sr-mob-aid-title">Grammar</span></div>'
-      + '<div class="sr-mob-aid" onclick="switchSrTab(\'help\',null);setTimeout(function(){var e=document.getElementById(\'helper-box-help\');if(e)e.scrollIntoView({behavior:\'smooth\',block:\'center\'})},200)">'
-      + '<span class="sr-mob-aid-icon">💡</span><span class="sr-mob-aid-title">Quick Help</span></div>';
-  }
-
   // HELPER BOX — always render from _aiContent
   {
     var hhtml = '';
@@ -5329,6 +5401,11 @@ function renderAIContent() {
 
   // Sentence Builder for Beginner
   if (typeof initSentenceBuilder === 'function') initSentenceBuilder();
+
+  // Push the freshly-rendered source boxes into the Help tab twins.
+  // Without this, learners on the Help tab when topic/level changed
+  // kept seeing the previous topic's Must-know Vocab and Quick Help.
+  if (typeof _mirrorHelpTabContent === 'function') _mirrorHelpTabContent();
 }
 
 function renderModalContent() {
@@ -8145,6 +8222,27 @@ function pcProgressClick(e) {
 // Init phone calls load
 setTimeout(loadPhoneCalls, 1500);
 
+// Mirror sidebar source boxes (vocab / grammar / helpers / phrases /
+// flashcards) into their Help-tab twin elements. Was previously inlined
+// inside switchSrTab and only ran on Help-tab click — so changing level
+// or topic while already on Help left the learner with stale Vocab +
+// Quick Help. clearAIContentUI() and renderAIContent() now also call
+// this so the Help tab stays in sync with whatever the source boxes
+// currently show.
+function _mirrorHelpTabContent() {
+  ['phrase-box-left','vocab-box-left','fc-grid-left','helper-box','grammar-box'].forEach(function(srcId) {
+    var src = document.getElementById(srcId);
+    var dstId;
+    if (srcId === 'fc-grid-left')         dstId = 'fc-grid-help';
+    else if (srcId === 'phrase-box-left') dstId = 'phrase-box-help';
+    else if (srcId === 'vocab-box-left')  dstId = 'vocab-box-help';
+    else if (srcId === 'helper-box')      dstId = 'helper-box-help';
+    else if (srcId === 'grammar-box')     dstId = 'grammar-box-help';
+    var dst = document.getElementById(dstId);
+    if (src && dst) dst.innerHTML = src.innerHTML;
+  });
+}
+
 // ── Study Room Tab Switching ──
 function switchSrTab(tab, btn) {
   document.querySelectorAll('.sr-top-tab').forEach(function(b){ b.classList.remove('on'); });
@@ -8156,20 +8254,7 @@ function switchSrTab(tab, btn) {
   // Show level bar only on Study tab (desktop only — on mobile it stays visible with hero)
   var lvBar = document.getElementById('sr-level-bar');
   if (lvBar && window.innerWidth > 860) lvBar.style.display = (tab === 'study') ? '' : 'none';
-  // Mirror sidebar content to Help tab for mobile
-  if (tab === 'help') {
-    ['phrase-box-left','vocab-box-left','fc-grid-left','helper-box','grammar-box'].forEach(function(srcId) {
-      var src = document.getElementById(srcId);
-      var dstId = srcId.replace('-left','').replace('-box','-box-help').replace('helper-box','helper-box-help').replace('grammar-box','grammar-box-help');
-      if (srcId === 'fc-grid-left') dstId = 'fc-grid-help';
-      if (srcId === 'phrase-box-left') dstId = 'phrase-box-help';
-      if (srcId === 'vocab-box-left') dstId = 'vocab-box-help';
-      if (srcId === 'helper-box') dstId = 'helper-box-help';
-      if (srcId === 'grammar-box') dstId = 'grammar-box-help';
-      var dst = document.getElementById(dstId);
-      if (src && dst) dst.innerHTML = src.innerHTML;
-    });
-  }
+  if (tab === 'help') _mirrorHelpTabContent();
 }
 
 // ── Word Book (단어장) ──
@@ -16522,7 +16607,14 @@ async function _asLoadArticles() {
         _asArticles = [];
         return;
       }
-      var bm = await sb.from('bookmarks').select('article_id').eq('user_id', supaUser.id);
+      // Pull bookmarks newest-first so the picker shows recently saved
+      // articles at the top. .in() doesn't preserve order, so we re-sort
+      // the fetched articles using a position map keyed off the bookmark
+      // ids array. Same pattern as korehan-notes.html._loadBookmarks.
+      var bm = await sb.from('bookmarks')
+        .select('article_id, created_at')
+        .eq('user_id', supaUser.id)
+        .order('created_at', { ascending:false });
       if (bm.error) throw bm.error;
       var ids = (bm.data || []).map(function(b){ return b.article_id; }).filter(Boolean);
       if (!ids.length) {
@@ -16532,7 +16624,10 @@ async function _asLoadArticles() {
       }
       var r2 = await sb.from('articles').select('id,title,section,level,image,body').in('id', ids).limit(60);
       if (r2.error) throw r2.error;
-      _asArticles = (r2.data||[]).filter(function(a){ return a.title; });
+      var bmOrder = {}; ids.forEach(function(id, i){ bmOrder[String(id)] = i; });
+      _asArticles = (r2.data||[])
+        .filter(function(a){ return a.title; })
+        .sort(function(a, b){ return (bmOrder[String(a.id)] || 0) - (bmOrder[String(b.id)] || 0); });
       _asRenderGrid();
       return;
     }
