@@ -30,6 +30,9 @@ function copyStaticPlugin() {
       // Copy robots.txt (bot blocking policy)
       if (existsSync(resolve(src, 'robots.txt')))
         copyFileSync(resolve(src, 'robots.txt'), resolve(dist, 'robots.txt'));
+      // Copy sitemap.xml (search-engine discovery)
+      if (existsSync(resolve(src, 'sitemap.xml')))
+        copyFileSync(resolve(src, 'sitemap.xml'), resolve(dist, 'sitemap.xml'));
       // Copy assets directory — use cpSync with recursive so subdirectories
       // (e.g. assets/room/, assets/shop/) copy cleanly. copyFileSync would
       // throw EISDIR the moment anyone adds a subfolder.
@@ -66,7 +69,7 @@ export default defineConfig({
     },
     // Don't hash JS/CSS filenames — keep original names for cache busting via ?v= params
     assetsDir: 'assets',
-    minify: false,
+    minify: true,
     sourcemap: false,
   },
   server: {

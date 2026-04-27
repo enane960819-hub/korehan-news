@@ -1,11 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko-KR">
 <head>
 <meta charset="UTF-8">
 <meta name="color-scheme" content="light">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Study Room — KoreHani</title>
+<title>Study Room — KoreHani | 매일 한국어 작문 연습</title>
+<meta name="description" content="TOPIK 레벨별 맞춤 한국어 작문 연습. 매일 새로운 토픽, AI 피드백, 단어·문법 학습까지. Daily Korean writing practice with AI feedback for all TOPIK levels.">
+<link rel="canonical" href="https://korehannews.com/korehan-study-room.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="KoreHani">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="Study Room — KoreHani | 매일 한국어 작문 연습">
+<meta property="og:description" content="TOPIK 레벨별 맞춤 한국어 작문 연습. 매일 새로운 토픽 + AI 피드백.">
+<meta property="og:image" content="https://korehannews.com/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://korehannews.com/og-default.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20260420x">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260416">
@@ -4487,16 +4497,50 @@ function _pregenTomorrow() {
 function _applyFallbackTopic(date) {
   hideAILoading();
   try {
-    // Pick a topic from built-in categories based on date
-    var cats = [
-      { ko:'나의 하루', en:'My Daily Routine' },
-      { ko:'좋아하는 음식', en:'My Favorite Food' },
-      { ko:'주말 계획', en:'Weekend Plans' },
-      { ko:'한국 여행', en:'Traveling in Korea' },
-      { ko:'좋아하는 계절', en:'My Favorite Season' },
-      { ko:'가족 소개', en:'Introducing My Family' },
-      { ko:'취미 생활', en:'My Hobbies' }
-    ];
+    // Level-aware fallback topic pools. The original implementation used
+    // a single beginner-style list ("나의 하루", "좋아하는 음식"…) for
+    // every level, so Advanced learners hit the offline fallback and
+    // were handed a kindergarten prompt. Each level now has its own
+    // pool tuned to the level's writing complexity.
+    var poolByLevel = {
+      Starter: [
+        { ko:'나의 하루', en:'My Daily Routine' },
+        { ko:'좋아하는 음식', en:'My Favorite Food' },
+        { ko:'좋아하는 색깔', en:'My Favorite Color' },
+        { ko:'우리 가족', en:'My Family' },
+        { ko:'오늘 날씨', en:'Today\'s Weather' },
+        { ko:'좋아하는 동물', en:'My Favorite Animal' },
+        { ko:'주말 계획', en:'Weekend Plans' }
+      ],
+      Beginner: [
+        { ko:'나의 하루', en:'My Daily Routine' },
+        { ko:'좋아하는 음식', en:'My Favorite Food' },
+        { ko:'주말 계획', en:'Weekend Plans' },
+        { ko:'한국 여행', en:'Traveling in Korea' },
+        { ko:'좋아하는 계절', en:'My Favorite Season' },
+        { ko:'가족 소개', en:'Introducing My Family' },
+        { ko:'취미 생활', en:'My Hobbies' }
+      ],
+      Intermediate: [
+        { ko:'한국어를 공부하는 이유', en:'Why I Study Korean' },
+        { ko:'최근에 본 드라마나 영화', en:'A Drama or Movie I Watched Recently' },
+        { ko:'서울에서 꼭 가봐야 할 곳', en:'Must-visit Places in Seoul' },
+        { ko:'스트레스를 푸는 방법', en:'How I Relieve Stress' },
+        { ko:'기억에 남는 여행', en:'A Memorable Trip' },
+        { ko:'한국 음식과 우리나라 음식 비교', en:'Comparing Korean and My Country\'s Food' },
+        { ko:'10년 후의 나의 모습', en:'My Life Ten Years from Now' }
+      ],
+      Advanced: [
+        { ko:'한국 문화에서 가장 인상적인 점', en:'What Impresses Me Most About Korean Culture' },
+        { ko:'글로벌 시대에 언어 공부의 중요성', en:'The Importance of Language Learning in a Global Era' },
+        { ko:'SNS가 인간관계에 미치는 영향', en:'How Social Media Affects Human Relationships' },
+        { ko:'AI 기술과 노동 시장의 미래', en:'AI Technology and the Future of the Labor Market' },
+        { ko:'전통과 현대 사이의 균형', en:'Balancing Tradition and Modernity' },
+        { ko:'한국 사회의 빠른 변화에 대한 생각', en:'Thoughts on the Rapid Changes in Korean Society' },
+        { ko:'환경 문제와 개인의 책임', en:'Environmental Issues and Personal Responsibility' }
+      ]
+    };
+    var cats = poolByLevel[_currentLevel] || poolByLevel.Beginner;
     var dateHash = date.split('-').reduce(function(a,b){ return a + parseInt(b); }, 0);
     var topic = cats[dateHash % cats.length];
     var fb = buildStudyRoomFallbackContent({ topic_ko: topic.ko, topic_en: topic.en }, _currentLevel);

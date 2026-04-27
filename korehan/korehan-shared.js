@@ -2,6 +2,73 @@
    KoreHani — Shared JS
    ============================================================ */
 
+// ── Analytics + error monitoring ─────────────────────────────────
+// Loads Plausible Analytics (no cookies, no consent banner needed in
+// most jurisdictions) and Sentry error monitoring. Both are gated
+// behind config flags — set them on window before this file loads,
+// or paste them here and redeploy. Without DSN/domain set the loaders
+// no-op, so this is safe to ship empty until accounts are created.
+//
+//   <script>
+//     window.KH_PLAUSIBLE_DOMAIN = 'korehannews.com';
+//     window.KH_SENTRY_DSN = 'https://xxxx@oXXX.ingest.sentry.io/YYY';
+//   </script>
+//
+// After Plausible loads, `window.plausible('event-name', { props: {...} })`
+// works. We also expose `khTrack(name, props)` as a thin wrapper that
+// silently no-ops when Plausible hasn't loaded — so call sites don't
+// need to defensive-check.
+(function bootstrapAnalytics() {
+  var PLAUSIBLE_DOMAIN = (typeof window !== 'undefined' && window.KH_PLAUSIBLE_DOMAIN) || '';
+  var SENTRY_DSN       = (typeof window !== 'undefined' && window.KH_SENTRY_DSN) || '';
+
+  if (PLAUSIBLE_DOMAIN) {
+    try {
+      var s = document.createElement('script');
+      s.defer = true;
+      s.setAttribute('data-domain', PLAUSIBLE_DOMAIN);
+      s.src = 'https://plausible.io/js/script.outbound-links.js';
+      document.head.appendChild(s);
+      // Bridge for queued events while the script is loading.
+      window.plausible = window.plausible || function(){
+        (window.plausible.q = window.plausible.q || []).push(arguments);
+      };
+    } catch(_) {}
+  }
+
+  if (SENTRY_DSN) {
+    try {
+      var s2 = document.createElement('script');
+      s2.src = 'https://browser.sentry-cdn.com/7.119.0/bundle.min.js';
+      s2.crossOrigin = 'anonymous';
+      s2.onload = function() {
+        try {
+          if (window.Sentry) window.Sentry.init({
+            dsn: SENTRY_DSN,
+            tracesSampleRate: 0.1,
+            // Don't pollute Sentry with localhost / preview traffic.
+            beforeSend: function(event) {
+              if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return null;
+              return event;
+            }
+          });
+        } catch(_) {}
+      };
+      document.head.appendChild(s2);
+    } catch(_) {}
+  }
+})();
+
+// Convenience tracker. Call sites use khTrack('signup_started') etc.
+// without worrying about whether Plausible has loaded yet.
+function khTrack(eventName, props) {
+  try {
+    if (typeof window !== 'undefined' && typeof window.plausible === 'function') {
+      window.plausible(eventName, props ? { props: props } : undefined);
+    }
+  } catch(_) {}
+}
+
 // ── Neon/dark mode + auth flash prevention: apply IMMEDIATELY ──
 (function() {
   try {
@@ -1039,7 +1106,7 @@ function _injectAuthModal() {
       </div>
 
       <!-- 구글 로그인 -->
-      <button onclick="closeAuthModal();signInWithGoogle()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:11px;background:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s" onmouseover="this.style.background='#f8faff';this.style.borderColor='#c7d7f0'" onmouseout="this.style.background='#fff';this.style.borderColor='#e2e8f0'">
+      <button onclick="signInWithGoogle();closeAuthModal()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:11px;background:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s" onmouseover="this.style.background='#f8faff';this.style.borderColor='#c7d7f0'" onmouseout="this.style.background='#fff';this.style.borderColor='#e2e8f0'">
         <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         Continue with Google
       </button>
@@ -1855,7 +1922,36 @@ function khLog() {
   if (!_khDebug) return;
   try { console.log.apply(console, arguments); } catch (_) {}
 }
+function khWarn() {
+  if (!_khDebug) return;
+  try { console.warn.apply(console, arguments); } catch (_) {}
+}
+function khErr() {
+  if (!_khDebug) return;
+  try { console.error.apply(console, arguments); } catch (_) {}
+}
 function khDebugEnabled() { return _khDebug; }
+
+// Production console hygiene. Hundreds of console.warn / console.error
+// calls across the codebase leak internal state (user ids, topic ids,
+// AI response excerpts, Supabase error objects) into the visible
+// DevTools console of every visitor. Silence them unless `kh_debug=1`
+// is set in localStorage. Real errors still reach window.onerror /
+// any installed error monitor (Sentry etc.) — only the console
+// surface is muted. console.log was already gated via khLog so it's
+// not touched here.
+(function muteConsoleInProduction(){
+  if (_khDebug) return;
+  if (typeof console === 'undefined') return;
+  try {
+    var origWarn = console.warn.bind(console);
+    var origErr  = console.error.bind(console);
+    console.warn  = function(){};
+    console.error = function(){};
+    // Re-expose originals on the kh object for in-app use if ever needed.
+    window.__kh_origConsole = { warn: origWarn, error: origErr };
+  } catch(_) {}
+})();
 
 // Small share helper. Falls back through three layers:
 //   1. Web Share API (mobile Safari/Chrome, Android) — native sheet.
