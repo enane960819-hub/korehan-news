@@ -4025,10 +4025,13 @@ async function openSavedWordsModal() {
     modal.innerHTML = '<h3>Saved Words</h3>'
       + '<div style="text-align:center;padding:28px 0">'
       + '<div style="font-size:32px;margin-bottom:10px">📚</div>'
-      + '<div style="font-size:14px;color:#64748b">No saved words yet.</div>'
-      + '<div style="font-size:12px;color:#94a3b8;margin-top:6px">Hover over Korean words in articles and save them!</div>'
+      + '<div style="font-size:14px;color:#0f172a;font-weight:700;margin-bottom:6px">No saved words yet</div>'
+      + '<div style="font-size:12px;color:#64748b;line-height:1.6;max-width:240px;margin:0 auto">Tap or hover any Korean word while reading an article — it saves to your Word Book and shows up here for review.</div>'
       + '</div>'
-      + '<button class="nn-btn-cancel" style="width:100%;margin-top:12px" onclick="this.closest(\'.nn-overlay\').remove()">Close</button>';
+      + '<div style="display:flex;gap:8px;margin-top:12px">'
+      +   '<a href="korehan-news.html" style="flex:1;padding:11px;border-radius:10px;background:#2255a4;color:#fff;font-size:13px;font-weight:800;text-align:center;text-decoration:none">Browse articles →</a>'
+      +   '<button class="nn-btn-cancel" style="flex:1" onclick="this.closest(\'.nn-overlay\').remove()">Close</button>'
+      + '</div>';
     return;
   }
 

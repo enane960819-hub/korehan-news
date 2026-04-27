@@ -1012,7 +1012,16 @@ function srsIntervalLabel(interval, easeFactor, grade) {
 }
 
 async function srsLoadDueWords() {
-  if (!supaUser) return;
+  // The banner has three states for signed-in users — words due today
+  // (the original happy path), no words due but some saved (caught-up
+  // celebration), and no saved words at all (onboarding nudge so the
+  // page doesn't look empty for first-day visitors). Signed-out users
+  // see nothing here so the existing public surface (Phrase of Day,
+  // Hangul, Vocabulary tabs) takes over.
+  var banner = document.getElementById('srs-banner');
+  var badge  = document.getElementById('srs-due-count');
+  if (!supaUser || !banner) return;
+
   var today = new Date().toISOString().slice(0, 10);
   var sb = getSupa();
   var { data, error } = await sb.from('saved_words')
@@ -1023,11 +1032,36 @@ async function srsLoadDueWords() {
     .limit(50);
   if (error) return;
   _srsDueWords = (data || []).filter(function(w){ return w.word_ko; });
-  var banner = document.getElementById('srs-banner');
-  var badge  = document.getElementById('srs-due-count');
-  if (banner && _srsDueWords.length > 0) {
+
+  if (_srsDueWords.length > 0) {
     banner.style.display = 'flex';
     if (badge) badge.textContent = _srsDueWords.length;
+    return;
+  }
+
+  // No words due today — figure out whether the user has any saved
+  // words at all so we can render a suitable empty state instead of
+  // hiding the whole banner.
+  var totalRes = await sb.from('saved_words').select('word_ko', { count: 'exact', head: true }).eq('user_id', supaUser.id);
+  var totalCount = totalRes && typeof totalRes.count === 'number' ? totalRes.count : 0;
+
+  banner.style.display = 'flex';
+  if (totalCount === 0) {
+    banner.innerHTML = ''
+      + '<div class="srs-banner-icon">📚</div>'
+      + '<div class="srs-banner-text">'
+      +   '<h3>Start your word collection</h3>'
+      +   '<p>Tap any Korean word while reading articles to save it. Words you save show up here for spaced-repetition review.</p>'
+      + '</div>'
+      + '<a href="korehan-news.html" class="srs-start-btn" style="text-decoration:none;display:inline-block">Browse articles →</a>';
+  } else {
+    banner.innerHTML = ''
+      + '<div class="srs-banner-icon">✨</div>'
+      + '<div class="srs-banner-text">'
+      +   '<h3>All caught up!</h3>'
+      +   '<p>No words due for review today. Great pace — keep saving new words while reading.</p>'
+      + '</div>'
+      + '<a href="korehan-news.html" class="srs-start-btn" style="text-decoration:none;display:inline-block">Find more words →</a>';
   }
 }
 

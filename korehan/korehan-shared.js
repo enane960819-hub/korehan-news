@@ -3,22 +3,33 @@
    ============================================================ */
 
 // ── Analytics + error monitoring ─────────────────────────────────
-// Loads Plausible Analytics (no cookies, no consent banner needed in
-// most jurisdictions) and Sentry error monitoring. Both are gated
-// behind config flags — set them on window before this file loads,
-// or paste them here and redeploy. Without DSN/domain set the loaders
-// no-op, so this is safe to ship empty until accounts are created.
+// Loads Plausible Analytics (cookieless by design — Plausible itself
+// doesn't need a consent banner) and Sentry error monitoring. Both
+// are gated behind config flags — set them on window before this file
+// loads, or paste them here and redeploy. Without DSN/domain set the
+// loaders no-op, so this is safe to ship empty until accounts are
+// created.
 //
 //   <script>
 //     window.KH_PLAUSIBLE_DOMAIN = 'korehannews.com';
 //     window.KH_SENTRY_DSN = 'https://xxxx@oXXX.ingest.sentry.io/YYY';
 //   </script>
 //
+// We still gate analytics behind the user's cookie-consent choice
+// (see kh_cookie_consent below) because Korean PIPA / GDPR treat any
+// non-essential measurement as requiring opt-in even when the tool
+// itself is cookie-free. Plausible loads only after consent === 'all'.
+//
 // After Plausible loads, `window.plausible('event-name', { props: {...} })`
-// works. We also expose `khTrack(name, props)` as a thin wrapper that
+// works. We expose `khTrack(name, props)` as a thin wrapper that
 // silently no-ops when Plausible hasn't loaded — so call sites don't
 // need to defensive-check.
-(function bootstrapAnalytics() {
+function _khConsent() {
+  try { return localStorage.getItem('kh_cookie_consent') || ''; } catch(_) { return ''; }
+}
+function _khLoadAnalytics() {
+  if (window._khAnalyticsLoaded) return;
+  window._khAnalyticsLoaded = true;
   var PLAUSIBLE_DOMAIN = (typeof window !== 'undefined' && window.KH_PLAUSIBLE_DOMAIN) || '';
   var SENTRY_DSN       = (typeof window !== 'undefined' && window.KH_SENTRY_DSN) || '';
 
@@ -29,7 +40,6 @@
       s.setAttribute('data-domain', PLAUSIBLE_DOMAIN);
       s.src = 'https://plausible.io/js/script.outbound-links.js';
       document.head.appendChild(s);
-      // Bridge for queued events while the script is loading.
       window.plausible = window.plausible || function(){
         (window.plausible.q = window.plausible.q || []).push(arguments);
       };
@@ -46,7 +56,6 @@
           if (window.Sentry) window.Sentry.init({
             dsn: SENTRY_DSN,
             tracesSampleRate: 0.1,
-            // Don't pollute Sentry with localhost / preview traffic.
             beforeSend: function(event) {
               if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return null;
               return event;
@@ -56,6 +65,80 @@
       };
       document.head.appendChild(s2);
     } catch(_) {}
+  }
+}
+(function bootstrapAnalytics() {
+  if (_khConsent() === 'all') _khLoadAnalytics();
+})();
+
+// Cookie / tracking consent banner. Shown once until the user picks
+// "Accept all" or "Essential only". Stored in localStorage so the
+// choice persists. Korean PIPA + GDPR require affirmative opt-in for
+// non-essential measurement; this banner satisfies both regimes
+// without geo-detection by being shown to everyone.
+function _khShowCookieBanner() {
+  if (_khConsent()) return;                          // already chose
+  if (document.getElementById('kh-cookie-banner')) return;
+
+  var el = document.createElement('div');
+  el.id = 'kh-cookie-banner';
+  el.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2000;'
+    + 'max-width:min(720px,calc(100vw - 24px));width:auto;'
+    + 'background:#0b1626;color:#fff;border:1px solid rgba(125,211,252,.25);'
+    + 'border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.45);'
+    + 'padding:16px 18px;display:flex;align-items:center;gap:14px;'
+    + 'font-family:inherit;flex-wrap:wrap;animation:khNudgeIn .3s ease-out';
+  // Avoid colliding with mobile bottom nav.
+  if (window.innerWidth <= 860) el.style.bottom = '76px';
+
+  el.innerHTML = ''
+    + '<div style="flex:1;min-width:240px">'
+    + '<div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:4px">Cookies &amp; Privacy</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.7);line-height:1.5">'
+    +   'We use essential cookies to keep you signed in and remember your progress. '
+    +   'With your consent we also load privacy-friendly analytics to understand which lessons help. '
+    +   '<a href="privacy-policy.html" style="color:#7dd3fc;text-decoration:underline">Privacy policy</a>'
+    + '</div></div>'
+    + '<div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">'
+    + '<button id="kh-cookie-essential" style="padding:9px 14px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.85);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Essential only</button>'
+    + '<button id="kh-cookie-all" style="padding:9px 16px;border-radius:10px;background:linear-gradient(135deg,#38bdf8,#2563eb);border:none;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap">Accept all</button>'
+    + '</div>';
+
+  if (!document.getElementById('kh-nudge-style')) {
+    var style = document.createElement('style');
+    style.id = 'kh-nudge-style';
+    style.textContent = '@keyframes khNudgeIn{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}';
+    document.head.appendChild(style);
+  }
+
+  document.body.appendChild(el);
+
+  function pick(choice) {
+    try { localStorage.setItem('kh_cookie_consent', choice); } catch(_) {}
+    el.remove();
+    if (choice === 'all') _khLoadAnalytics();
+  }
+  document.getElementById('kh-cookie-all').onclick       = function(){ pick('all'); };
+  document.getElementById('kh-cookie-essential').onclick = function(){ pick('essential'); };
+}
+// Don't show on legal pages (the user is already reading our policy
+// — interrupting with a banner is rude) or admin pages.
+(function() {
+  function init() {
+    var path = (location.pathname || '').toLowerCase();
+    if (path.indexOf('privacy-policy') !== -1) return;
+    if (path.indexOf('terms-of-service') !== -1) return;
+    if (path.indexOf('refund-policy')   !== -1) return;
+    if (path.indexOf('korehan-x9f4k2m7') !== -1) return;
+    if (path.indexOf('korehan-onboarding') !== -1) return;
+    // Defer slightly so it doesn't fight with onboarding redirects /
+    // welcome banner mounting.
+    setTimeout(_khShowCookieBanner, 1200);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
   }
 })();
 
@@ -1440,6 +1523,84 @@ function updateAuthUI() {
   injectMobileBottomNav();
   setupImmersiveReading();
   renderKhLucideIcons();
+  scheduleSignupNudge();
+}
+
+// Sticky sign-up nudge for unauthenticated visitors. Shows 30s after
+// a session-confirmed-anonymous load, on public content pages where a
+// sign-up CTA would actually pay off (news / learn / stories /
+// conversations / article / section list pages). Skipped on auth-only
+// flows (study room login wall, onboarding) and on legal/admin pages.
+// Dismiss state is stored in sessionStorage so the same browsing
+// session doesn't re-show, but a return visitor sees it again.
+var _khSignupNudgeArmed = false;
+function scheduleSignupNudge() {
+  if (_khSignupNudgeArmed) return;
+  if (supaUser) return;
+  if (!window._sessionChecked) {
+    // Wait for session check, then re-evaluate.
+    setTimeout(scheduleSignupNudge, 800);
+    return;
+  }
+  if (supaUser) return; // logged in by the time the timeout fired
+  var p = pageName();
+  var publicPages = [
+    'index', 'korehan-news', 'korehan-learn', 'korehan-stories',
+    'korehan-conversations', 'korehan-article', 'korehan-section',
+    'korehan-world', 'korehan-society', 'korehan-culture', 'korehan-korea',
+    'korehan-courses', 'korehan-fun', 'beginner-guide'
+  ];
+  if (publicPages.indexOf(p) === -1) return;
+  try { if (sessionStorage.getItem('kh_signup_nudge_dismissed') === '1') return; } catch(_) {}
+  _khSignupNudgeArmed = true;
+  setTimeout(showSignupNudge, 30_000);
+}
+function showSignupNudge() {
+  if (supaUser) return;
+  if (document.getElementById('kh-signup-nudge')) return;
+  try { if (sessionStorage.getItem('kh_signup_nudge_dismissed') === '1') return; } catch(_) {}
+
+  var el = document.createElement('div');
+  el.id = 'kh-signup-nudge';
+  el.style.cssText = 'position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:1500;'
+    + 'max-width:min(560px,calc(100vw - 24px));width:auto;'
+    + 'background:linear-gradient(135deg,#0f2342,#1e3a5f);color:#fff;'
+    + 'border:1px solid rgba(125,211,252,.35);border-radius:16px;'
+    + 'box-shadow:0 12px 36px rgba(0,0,0,.35);padding:14px 16px;'
+    + 'display:flex;align-items:center;gap:12px;'
+    + 'font-family:inherit;animation:khNudgeIn .3s ease-out';
+  // Mobile bottom-nav is ~64px tall, so we sit above it.
+  if (window.innerWidth <= 860) el.style.bottom = '88px';
+
+  el.innerHTML = ''
+    + '<div style="font-size:22px;flex-shrink:0">📚</div>'
+    + '<div style="flex:1;min-width:0">'
+    + '<div style="font-size:13px;font-weight:800;line-height:1.3;color:#fff;margin-bottom:2px">Save your progress for free</div>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.6);line-height:1.4">Sign up to track streaks, save words, and get personalized lessons.</div>'
+    + '</div>'
+    + '<button id="kh-signup-nudge-cta" style="flex-shrink:0;padding:9px 14px;border-radius:10px;background:linear-gradient(135deg,#38bdf8,#2563eb);border:none;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap">Sign up</button>'
+    + '<button id="kh-signup-nudge-close" aria-label="Dismiss" style="flex-shrink:0;width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.55);font-size:16px;cursor:pointer;font-family:inherit;line-height:1">×</button>';
+
+  if (!document.getElementById('kh-nudge-style')) {
+    var style = document.createElement('style');
+    style.id = 'kh-nudge-style';
+    style.textContent = '@keyframes khNudgeIn{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}';
+    document.head.appendChild(style);
+  }
+  document.body.appendChild(el);
+
+  document.getElementById('kh-signup-nudge-cta').onclick = function() {
+    try { sessionStorage.setItem('kh_signup_nudge_dismissed', '1'); } catch(_) {}
+    if (typeof openAuthModal === 'function') openAuthModal('signup');
+    el.remove();
+    if (typeof khTrack === 'function') khTrack('signup_nudge_clicked');
+  };
+  document.getElementById('kh-signup-nudge-close').onclick = function() {
+    try { sessionStorage.setItem('kh_signup_nudge_dismissed', '1'); } catch(_) {}
+    el.remove();
+    if (typeof khTrack === 'function') khTrack('signup_nudge_dismissed');
+  };
+  if (typeof khTrack === 'function') khTrack('signup_nudge_shown', { page: pageName() });
 }
 
 function toggleTopbarUserMenu(evt) {
