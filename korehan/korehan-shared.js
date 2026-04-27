@@ -1006,9 +1006,53 @@ function _authSwitchTab(tab) {
   [signinTab, signupTab].forEach(function(t){ if(t) t.classList.remove('on'); });
   [signinForm, signupForm, resetForm].forEach(function(f){ if(f) f.style.display='none'; });
   if (tab === 'signin')  { if(signinTab) signinTab.classList.add('on'); if(signinForm) signinForm.style.display='block'; }
-  if (tab === 'signup')  { if(signupTab) signupTab.classList.add('on'); if(signupForm) signupForm.style.display='block'; }
+  if (tab === 'signup')  { if(signupTab) signupTab.classList.add('on'); if(signupForm) signupForm.style.display='block'; _khMountTurnstile(); }
   if (tab === 'reset')   { if(resetForm) resetForm.style.display='block'; }
   _authClearErrors();
+}
+
+// Cloudflare Turnstile bootstrap. The script + widget only load
+// when the founder has set window.KH_TURNSTILE_SITEKEY (paste it
+// into a <script> tag before korehan-shared.js, or hard-code here
+// after creating the site at https://dash.cloudflare.com → Turnstile).
+// Without the key set, signup still works — Supabase native captcha
+// is just disabled and the disposable-email block + email
+// verification gate carry the load alone.
+function _khMountTurnstile() {
+  var sitekey = window.KH_TURNSTILE_SITEKEY;
+  if (!sitekey) return;
+  var slot = document.getElementById('kh-turnstile-signup');
+  if (!slot || slot.dataset.widgetId) return; // already mounted
+
+  function render() {
+    if (!window.turnstile || !window.turnstile.render) return false;
+    try {
+      var id = window.turnstile.render(slot, {
+        sitekey: sitekey,
+        theme: 'auto',
+        size: 'flexible'
+      });
+      slot.dataset.widgetId = id;
+      return true;
+    } catch (_) { return false; }
+  }
+  if (render()) return;
+
+  if (!document.getElementById('kh-turnstile-script')) {
+    var s = document.createElement('script');
+    s.id = 'kh-turnstile-script';
+    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    s.async = true;
+    s.defer = true;
+    s.onload = render;
+    document.head.appendChild(s);
+  } else {
+    // Script already loading — poll briefly.
+    var tries = 0;
+    var iv = setInterval(function(){
+      if (render() || ++tries > 40) clearInterval(iv);
+    }, 100);
+  }
 }
 
 function _authClearErrors() {
@@ -1069,10 +1113,42 @@ async function authSignIn() {
   toast('Welcome back! 👋');
 }
 
+// Disposable / throwaway email domains. The list is curated rather
+// than the full 4000-domain GitHub blocklist — keeping the bundle
+// small. Misses are caught by the email-verification gate in
+// claude-proxy: a disposable inbox the user can't actually receive
+// at means no AI access either way. Add domains as new abuse
+// patterns emerge (or swap in the full list later).
+var _KH_DISPOSABLE_DOMAINS = {
+  'mailinator.com':1, 'guerrillamail.com':1, 'guerrillamail.net':1,
+  '10minutemail.com':1, '10minutemail.net':1, '20minutemail.com':1,
+  'tempmail.com':1, 'temp-mail.org':1, 'tempr.email':1, 'tmail.io':1,
+  'throwawaymail.com':1, 'getnada.com':1, 'maildrop.cc':1,
+  'yopmail.com':1, 'yopmail.fr':1, 'yopmail.net':1,
+  'sharklasers.com':1, 'grr.la':1, 'guerrillamailblock.com':1,
+  'fakeinbox.com':1, 'spambox.us':1, 'mailcatch.com':1,
+  'trashmail.com':1, 'trashmail.net':1, 'dispostable.com':1,
+  'mintemail.com':1, 'mailnesia.com':1, 'jetable.org':1,
+  'mytemp.email':1, 'emailondeck.com':1, 'mohmal.com':1,
+  'discard.email':1, 'getairmail.com':1, 'fakemailgenerator.com':1,
+  'inboxbear.com':1, 'mailpoof.com':1, 'mvrht.com':1,
+  'vomoto.com':1, 'meltmail.com':1, 'tempmailaddress.com':1,
+  'tempinbox.com':1, 'spamgourmet.com':1, 'ezztt.com':1,
+  'emailfake.com':1, 'fakemail.net':1, 'temporary-mail.net':1,
+  'generator.email':1, 'mailbox.org':1
+};
+function _khIsDisposableEmail(email) {
+  var at = email.lastIndexOf('@');
+  if (at < 0) return false;
+  var domain = email.slice(at + 1).toLowerCase().trim();
+  if (!domain) return false;
+  return !!_KH_DISPOSABLE_DOMAINS[domain];
+}
+
 // ── 이메일 회원가입 ───────────────────────────────────────────
 async function authSignUp() {
   var name  = (document.getElementById('kh-auth-name')  || {}).value.trim();
-  var email = (document.getElementById('kh-auth-email2') || {}).value.trim();
+  var email = (document.getElementById('kh-auth-email2') || {}).value.trim().toLowerCase();
   var pw    = (document.getElementById('kh-auth-pw2')   || {}).value;
   var pw2   = (document.getElementById('kh-auth-pw3')   || {}).value;
   var btn   = document.getElementById('kh-signup-btn');
@@ -1080,6 +1156,10 @@ async function authSignUp() {
 
   if (!name)  { _authShowError('Please enter your name.'); return; }
   if (!email || !email.includes('@')) { _authShowError('Please enter a valid email address.'); return; }
+  if (_khIsDisposableEmail(email)) {
+    _authShowError('Please use a permanent email address. Disposable / throwaway emails aren\'t supported.');
+    return;
+  }
   if (!pw || pw.length < 8) { _authShowError('Password must be at least 8 characters.'); return; }
   if (pw !== pw2) { _authShowError('Passwords do not match.'); return; }
   // 비밀번호 강도 체크
@@ -1087,33 +1167,71 @@ async function authSignUp() {
     _authShowError('Password must contain letters and numbers.'); return;
   }
 
+  // Cloudflare Turnstile token (if widget mounted). When the site key
+  // hasn't been configured yet (window.KH_TURNSTILE_SITEKEY not set)
+  // the widget never mounts and we just skip — Supabase signup still
+  // runs, with the disposable-email block + email verification gate
+  // doing the work alone.
+  var captchaToken;
+  try {
+    if (window.turnstile && window.KH_TURNSTILE_SITEKEY) {
+      var widgetEl = document.getElementById('kh-turnstile-signup');
+      if (widgetEl && widgetEl.dataset.widgetId) {
+        captchaToken = window.turnstile.getResponse(widgetEl.dataset.widgetId);
+      }
+      if (!captchaToken) {
+        _authShowError('Please complete the bot check before signing up.');
+        return;
+      }
+    }
+  } catch (_) {}
+
   _authSetLoading(btn, true);
   var sb = getSupa();
+  var signUpOptions = {
+    data: { full_name: name },
+    emailRedirectTo: window.location.origin + '/index.html'
+  };
+  if (captchaToken) signUpOptions.captchaToken = captchaToken;
   var { data, error } = await sb.auth.signUp({
     email: email,
     password: pw,
-    options: {
-      data: { full_name: name },
-      emailRedirectTo: window.location.origin + '/index.html'
-    }
+    options: signUpOptions
   });
   _authSetLoading(btn, false);
+
+  // Turnstile tokens are single-use. Reset the widget on any signup
+  // outcome so a user who got a "password too short" error or whose
+  // captchaToken expired before submission can retry without
+  // refreshing the page.
+  function _resetTurnstile() {
+    try {
+      var slot = document.getElementById('kh-turnstile-signup');
+      if (slot && slot.dataset.widgetId && window.turnstile) {
+        window.turnstile.reset(slot.dataset.widgetId);
+      }
+    } catch (_) {}
+  }
 
   if (error) {
     var msg = error.message;
     if (msg.includes('already registered')) msg = 'This email is already registered. Try signing in.';
+    if (msg.toLowerCase().indexOf('captcha') !== -1) msg = 'Bot check failed. Please complete the verification and try again.';
     _authShowError(msg);
+    _resetTurnstile();
     return;
   }
 
   // Supabase는 중복 이메일도 success 반환 — identities 배열이 비어있으면 기존 계정
   if (data && data.user && (!data.user.identities || data.user.identities.length === 0)) {
     _authShowError('This email is already registered. Please sign in instead.');
+    _resetTurnstile();
     return;
   }
 
   _authShowOk('Account created! We sent a confirmation email. Please check your inbox (including spam).');
   document.getElementById('kh-signup-form').querySelectorAll('input').forEach(function(i){ i.value=''; });
+  _resetTurnstile();
 }
 
 // ── 비밀번호 재설정 ───────────────────────────────────────────
@@ -1234,6 +1352,7 @@ function _injectAuthModal() {
           style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s"
           onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
       </div>
+      <div id="kh-turnstile-signup" style="margin-bottom:14px;min-height:0"></div>
       <button id="kh-signup-btn" onclick="authSignUp()" style="display:block;width:100%;padding:13px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 6px 20px rgba(45,107,228,.35);transition:all .2s;margin-bottom:16px">Create Account →</button>
 
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
