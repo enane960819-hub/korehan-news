@@ -22,23 +22,45 @@ function getCorsHeaders(req: Request) {
   }
 }
 
-// Admins bypass all quotas + rate limits.
+// Admins bypass all quotas + email verification.
 const ADMIN_EMAILS = ['enane960819@gmail.com']
 
-// Default free-tier daily limits. user_quota_overrides can raise these
-// for paid users / specific accounts.
-const FREE_DAILY_CALLS = 50
-const FREE_DAILY_TOKENS = 200_000
+// ── Tier defaults ───────────────────────────────────────────────
+// Both checks must pass — daily count protects against burst /
+// dictionary-attack patterns, monthly USD protects against the
+// long-tail "drip" attack where a bot stays just under the daily
+// cap for weeks. A normal power user (every feature daily, every
+// day) burns ~$5/month, so the $10 free cap leaves 2x headroom.
+const FREE_DAILY_CALLS    = 50
+const FREE_MONTHLY_USD    = 10
+const STANDARD_DAILY_CALLS  = 200
+const STANDARD_MONTHLY_USD  = 30
+// Pro: bypass cost ceiling, keep a generous burst limit so a single
+// runaway script can't drain the account.
+const PRO_DAILY_CALLS     = 1000
+const PRO_MONTHLY_USD     = 500
 
-// Hard upper bound on a single Claude call. Stops a single request from
-// blowing the budget (default Claude max_tokens for haiku/sonnet is 4k,
-// for opus 8k). Anything higher than this gets clamped.
+// Anthropic published prices in USD per 1M tokens.
+// Unknown models default to Sonnet pricing — conservative over-count
+// is preferred over an under-charge that hides budget burn.
+const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  'claude-opus-4-7':                 { input: 15.00, output: 75.00 },
+  'claude-sonnet-4-20250514':        { input:  3.00, output: 15.00 },
+  'claude-sonnet-4-6':               { input:  3.00, output: 15.00 },
+  'claude-3-sonnet-20240229':        { input:  3.00, output: 15.00 },
+  'claude-haiku-4-5-20251001':       { input:  0.80, output:  4.00 },
+  'claude-haiku-4-5':                { input:  0.80, output:  4.00 },
+}
+const DEFAULT_PRICING = { input: 3.00, output: 15.00 }
+
+// Per-call max output. A buggy/hostile client can't request a 200K
+// completion in one shot — saves more than the per-month cap by
+// itself in the worst case.
 const MAX_TOKENS_PER_CALL = 4096
 
-// Anthropic call timeout. Beyond this the connection is aborted so the
-// caller doesn't hang forever and we don't keep paying for a request
-// the user gave up on. Long enough for the slowest legitimate Claude
-// generation, short enough to surface real outages.
+// Anthropic call timeout. Above this we abort the connection so the
+// client doesn't hang on a stalled upstream and we don't keep the
+// function billed alive.
 const ANTHROPIC_TIMEOUT_MS = 45_000
 
 function jsonResponse(body: unknown, status: number, cors: Record<string, string>) {
@@ -46,6 +68,11 @@ function jsonResponse(body: unknown, status: number, cors: Record<string, string
     status,
     headers: { ...cors, 'Content-Type': 'application/json' },
   })
+}
+
+function priceUsd(model: string | null | undefined, inputTokens: number, outputTokens: number) {
+  const p = (model && MODEL_PRICING[model]) || DEFAULT_PRICING
+  return (inputTokens / 1_000_000) * p.input + (outputTokens / 1_000_000) * p.output
 }
 
 Deno.serve(async (req) => {
@@ -72,12 +99,20 @@ Deno.serve(async (req) => {
     const userId: string = userData.id
     const isAdmin = !!(userData.email && ADMIN_EMAILS.includes(userData.email))
 
-    // ── 2. API key (with error check) ───────────────────────────
-    // Previously the destructured error was discarded, so a missing
-    // app_settings row or an RLS denial returned `setting === null`
-    // and the proxy tripped on `setting?.value` with a misleading "No
-    // API key configured" — same surface for "DB unreachable" and
-    // "key genuinely not set". We now distinguish them.
+    // ── 2. Email verification gate ───────────────────────────────
+    // A bot that gets past Turnstile + disposable-email-block can
+    // still create an account, but it can't AI-spend until it
+    // actually owns the inbox. This single check kills almost every
+    // automated-signup abuse pattern at the source — the cost cap
+    // below is just defense-in-depth for whatever sneaks past.
+    if (!isAdmin && !userData.email_confirmed_at) {
+      return jsonResponse({
+        error: 'Please verify your email before using AI features.',
+        code: 'email_unverified',
+      }, 403, cors)
+    }
+
+    // ── 3. Anthropic API key ─────────────────────────────────────
     const sb = createClient(supabaseUrl, supabaseServiceKey)
     const { data: setting, error: settingErr } = await sb
       .from('app_settings')
@@ -91,88 +126,99 @@ Deno.serve(async (req) => {
     const apiKey = setting?.value
     if (!apiKey) return jsonResponse({ error: 'No API key configured' }, 500, cors)
 
-    // ── 3. Per-user daily quota ─────────────────────────────────
-    // Skip for admins. For everyone else, count today's rows in
-    // claude_api_usage and reject if over the daily call limit.
-    // user_quota_overrides can raise the cap for paid plans.
+    // ── 4. Quota: daily call count + monthly USD spend ───────────
     if (!isAdmin) {
+      // Plan resolution. The user's plan is stored in profiles.plan
+      // (free / standard / pro). Override row in user_quota_overrides
+      // wins over plan defaults if set.
+      let dailyCallLimit  = FREE_DAILY_CALLS
+      let monthlyUsdLimit = FREE_MONTHLY_USD
+      try {
+        const { data: profile } = await sb
+          .from('profiles')
+          .select('plan')
+          .eq('id', userId)
+          .maybeSingle()
+        const plan = profile?.plan || 'free'
+        if (plan === 'standard') {
+          dailyCallLimit  = STANDARD_DAILY_CALLS
+          monthlyUsdLimit = STANDARD_MONTHLY_USD
+        } else if (plan === 'pro') {
+          dailyCallLimit  = PRO_DAILY_CALLS
+          monthlyUsdLimit = PRO_MONTHLY_USD
+        }
+      } catch (_) { /* profile table may not exist yet — keep free defaults */ }
+
+      const { data: override } = await sb
+        .from('user_quota_overrides')
+        .select('daily_call_limit, monthly_cost_limit_usd')
+        .eq('user_id', userId)
+        .maybeSingle()
+      if (override?.daily_call_limit) dailyCallLimit = override.daily_call_limit
+      if (override?.monthly_cost_limit_usd != null) monthlyUsdLimit = Number(override.monthly_cost_limit_usd)
+
+      // Day window (UTC). KST date matters less than just having a
+      // consistent rolling 24h budget — UTC midnight is fine.
       const dayStart = new Date()
       dayStart.setUTCHours(0, 0, 0, 0)
 
-      // Pull the user's override (if any). Free users have no row.
-      const { data: override } = await sb
-        .from('user_quota_overrides')
-        .select('daily_call_limit, daily_token_limit')
-        .eq('user_id', userId)
-        .maybeSingle()
+      // Month window (UTC) — first day of the current calendar month.
+      const monthStart = new Date()
+      monthStart.setUTCDate(1)
+      monthStart.setUTCHours(0, 0, 0, 0)
 
-      const callLimit  = override?.daily_call_limit  ?? FREE_DAILY_CALLS
-      const tokenLimit = override?.daily_token_limit ?? FREE_DAILY_TOKENS
-
+      // One round-trip pulls both windows. We fetch tokens + model so
+      // we can compute exact cost rather than estimate.
       const { data: usage, error: usageErr } = await sb
         .from('claude_api_usage')
-        .select('input_tokens, output_tokens')
+        .select('input_tokens, output_tokens, model, created_at')
         .eq('user_id', userId)
-        .gte('created_at', dayStart.toISOString())
+        .gte('created_at', monthStart.toISOString())
 
       if (usageErr) {
-        // Don't fail-open here — if we can't read usage we can't
-        // protect the budget. Better to surface a transient error than
-        // bypass the quota silently.
         console.error('[claude-proxy] usage query failed:', usageErr.message)
         return jsonResponse({ error: 'Quota check failed, please retry' }, 503, cors)
       }
 
-      const callsToday = usage?.length ?? 0
-      const tokensToday = (usage ?? []).reduce(
-        (acc: number, row: { input_tokens?: number; output_tokens?: number }) =>
-          acc + (row.input_tokens ?? 0) + (row.output_tokens ?? 0),
-        0,
-      )
-
-      if (callsToday >= callLimit) {
-        return jsonResponse(
-          {
-            error: 'Daily AI usage limit reached',
-            detail: `Limit: ${callLimit} calls per day. Try again tomorrow or upgrade for higher limits.`,
-            quota: { callsToday, callLimit, tokensToday, tokenLimit },
-          },
-          429,
-          cors,
-        )
+      let callsToday = 0
+      let monthlyUsd = 0
+      const dayStartIso = dayStart.toISOString()
+      for (const row of (usage || [])) {
+        if (row.created_at >= dayStartIso) callsToday += 1
+        monthlyUsd += priceUsd(row.model, row.input_tokens || 0, row.output_tokens || 0)
       }
-      if (tokensToday >= tokenLimit) {
-        return jsonResponse(
-          {
-            error: 'Daily AI token limit reached',
-            detail: `Limit: ${tokenLimit} tokens per day. Try again tomorrow or upgrade.`,
-            quota: { callsToday, callLimit, tokensToday, tokenLimit },
-          },
-          429,
-          cors,
-        )
+
+      if (callsToday >= dailyCallLimit) {
+        return jsonResponse({
+          error: 'Daily AI limit reached',
+          detail: `Daily limit ${dailyCallLimit} calls. Resets at UTC midnight.`,
+          quota: { callsToday, dailyCallLimit, monthlyUsd: Math.round(monthlyUsd * 100) / 100, monthlyUsdLimit },
+          code: 'daily_call_limit',
+        }, 429, cors)
+      }
+      if (monthlyUsd >= monthlyUsdLimit) {
+        return jsonResponse({
+          error: 'Monthly AI usage limit reached',
+          detail: `You've used $${monthlyUsd.toFixed(2)} of your $${monthlyUsdLimit} monthly AI budget. Upgrade for higher limits.`,
+          quota: { callsToday, dailyCallLimit, monthlyUsd: Math.round(monthlyUsd * 100) / 100, monthlyUsdLimit },
+          code: 'monthly_cost_limit',
+        }, 429, cors)
       }
     }
 
-    // ── 4. Body + parameter sanitization ─────────────────────────
-    let body: any
+    // ── 5. Body + parameter sanitization ─────────────────────────
+    let body: Record<string, unknown>
     try {
       body = await req.json()
     } catch {
       return jsonResponse({ error: 'Invalid JSON body' }, 400, cors)
     }
     const { feature, ...claudeBody } = body
-    // Clamp max_tokens — without this, a buggy or hostile client
-    // could request a 200k-token completion and burn the budget on
-    // a single call.
     if (typeof claudeBody.max_tokens === 'number' && claudeBody.max_tokens > MAX_TOKENS_PER_CALL) {
       claudeBody.max_tokens = MAX_TOKENS_PER_CALL
     }
 
-    // ── 5. Anthropic call with timeout ───────────────────────────
-    // The previous proxy awaited fetch() with no AbortController, so a
-    // stalled Anthropic CDN connection would hang the function until
-    // the platform-level kill timeout (~150s). We bound it explicitly.
+    // ── 6. Anthropic call with timeout ───────────────────────────
     const ctrl = new AbortController()
     const timeoutId = setTimeout(() => ctrl.abort(), ANTHROPIC_TIMEOUT_MS)
     let response: Response
@@ -199,21 +245,20 @@ Deno.serve(async (req) => {
     }
     clearTimeout(timeoutId)
 
-    let data: any
+    let data: { usage?: { input_tokens?: number; output_tokens?: number } } & Record<string, unknown>
     try {
       data = await response.json()
     } catch {
       return jsonResponse({ error: 'Bad response from AI service' }, 502, cors)
     }
 
-    // ── 6. Log usage (fire-and-forget; don't block the response) ─
-    // Token counts come straight from Anthropic's usage object so we
-    // bill exactly what was consumed, not what we estimated.
+    // ── 7. Log usage (fire-and-forget) ───────────────────────────
     if (response.ok && data?.usage) {
       sb.from('claude_api_usage').insert({
         user_id: userId,
         feature: feature || null,
-        input_tokens: data.usage.input_tokens ?? 0,
+        model: typeof claudeBody.model === 'string' ? claudeBody.model : null,
+        input_tokens:  data.usage.input_tokens ?? 0,
         output_tokens: data.usage.output_tokens ?? 0,
       }).then(({ error }: { error: { message: string } | null }) => {
         if (error) console.error('[claude-proxy] usage insert failed:', error.message)
