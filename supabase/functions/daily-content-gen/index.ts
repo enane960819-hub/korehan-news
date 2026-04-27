@@ -2,23 +2,18 @@
 // Generates study_daily_content for all 4 levels × today + tomorrow
 // Triggered by: pg_cron → pg_net HTTP call, or manual invoke
 //
-// Deploy: supabase functions deploy daily-content-gen
-// Cron setup (run in Supabase SQL Editor):
-//   select cron.schedule('daily-content-gen', '0 0,15 * * *',
-//     $$select net.http_post(
-//       url := 'https://samghztrdvtxmrmawneu.supabase.co/functions/v1/daily-content-gen',
-//       headers := jsonb_build_object(
-//         'Content-Type','application/json',
-//         'Authorization','Bearer ' || current_setting('app.settings.service_role_key')
-//       ),
-//       body := '{}'::jsonb
-//     )$$
-//   );
+// Auth accepts any of:
+//   - SUPABASE_SERVICE_ROLE_KEY env var (default Supabase admin)
+//   - CRON_SECRET env var (custom secret we set ourselves; preferred
+//     for cron because it's stable across service-role rotations)
+//   - A signed-in admin user JWT matching ADMIN_EMAIL
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const ALL_LEVELS = ['Starter', 'Beginner', 'Intermediate', 'Advanced'] as const
 type Level = typeof ALL_LEVELS[number]
+
+const ADMIN_EMAIL = 'enane960819@gmail.com'
 
 // KST date helpers
 function kstToday(): string {
@@ -94,15 +89,25 @@ async function callAnthropic(apiKey: string, prompt: string): Promise<Record<str
 
 Deno.serve(async (req) => {
   try {
-    // Auth: only allow service_role key (cron) or admin
+    // ── Auth ───────────────────────────────────────────────────
+    // Three ways in (any one passes):
+    //   1. service_role bearer (Supabase auto-injected env var)
+    //   2. CRON_SECRET bearer (custom env var we control — used by
+    //      pg_cron via vault.decrypted_secrets, stable across
+    //      service_role rotation)
+    //   3. Admin user JWT (manual invocation from the dashboard /
+    //      browser session of the founder account)
     const authHeader = req.headers.get('Authorization') || ''
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const cronSecret = Deno.env.get('CRON_SECRET') || ''
 
-    // Verify: must be service_role bearer token
-    const token = authHeader.replace('Bearer ', '')
-    if (token !== serviceKey) {
-      // Check if it's an admin user
+    const token = authHeader.replace('Bearer ', '').trim()
+    const tokenMatchesService = token && token === serviceKey
+    const tokenMatchesCron    = cronSecret && token === cronSecret
+
+    if (!tokenMatchesService && !tokenMatchesCron) {
+      // Fall back to admin user check
       const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || serviceKey
       const check = await fetch(`${supabaseUrl}/auth/v1/user`, {
         headers: { Authorization: authHeader, apikey: anonKey },
@@ -111,7 +116,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
       }
       const user = await check.json()
-      if (!user?.email || user.email !== 'enane960819@gmail.com') {
+      if (!user?.email || user.email !== ADMIN_EMAIL) {
         return new Response(JSON.stringify({ error: 'Admin only' }), { status: 403 })
       }
     }
