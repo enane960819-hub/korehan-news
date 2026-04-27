@@ -13,8 +13,8 @@ create table if not exists claude_api_usage (
   created_at  timestamptz not null default now()
 );
 
-create index if not exists claude_api_usage_user_day_idx
-  on claude_api_usage (user_id, (created_at::date));
+create index if not exists claude_api_usage_user_created_idx
+  on claude_api_usage (user_id, created_at desc);
 
 create index if not exists claude_api_usage_created_idx
   on claude_api_usage (created_at desc);

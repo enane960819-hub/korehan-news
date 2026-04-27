@@ -16,8 +16,11 @@
 alter table if exists claude_api_usage
   add column if not exists model text;
 
-create index if not exists claude_api_usage_user_month_idx
-  on claude_api_usage (user_id, (date_trunc('month', created_at)));
+-- The proxy filters by (user_id, created_at >= monthStart). The
+-- composite index from the base migration (claude_api_usage_user_created_idx)
+-- already covers that query — no separate monthly index needed.
+-- A functional index on date_trunc('month', created_at) would have
+-- worked too but adds maintenance cost for no query benefit.
 
 -- 2. Per-user monthly USD cap override. NULL → tier default in proxy.
 alter table if exists user_quota_overrides
