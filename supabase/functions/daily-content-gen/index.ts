@@ -195,67 +195,71 @@ Deno.serve(async (req) => {
 
     const results: Array<{ date: string; level: string; status: string }> = []
 
-    for (const item of missing) {
-      try {
-        // Pick topic from writing_topics
-        let topicHint = ''
-        let forceTopic: { ko: string; en: string } | null = null
-        const { data: topics } = await sb
-          .from('writing_topics')
-          .select('topic_ko,topic_en,category')
-          .eq('level', item.level)
-          .eq('active', true)
-          .order('sort_order')
-          .order('created_at')
+    // Generate all missing items in parallel. The previous sequential
+    // for-loop with 2s gaps blew past Supabase's wall-clock kill timer
+    // — 8 items × ~10-30s each + waits = 100s+ which exceeded the
+    // function's hard limit, so only 2-3 items would land before the
+    // runtime killed it. Anthropic Haiku tolerates this many concurrent
+    // calls fine, and the worst-case wall time drops from O(n) to O(1).
+    const settled = await Promise.allSettled(missing.map(async (item) => {
+      let topicHint = ''
+      let forceTopic: { ko: string; en: string } | null = null
+      const { data: topics } = await sb
+        .from('writing_topics')
+        .select('topic_ko,topic_en,category')
+        .eq('level', item.level)
+        .eq('active', true)
+        .order('sort_order')
+        .order('created_at')
 
-        const allTopics = topics || []
-        if (allTopics.length) {
-          const epoch = new Date('2026-04-15T00:00:00+09:00').getTime()
-          const now = new Date(item.date + 'T00:00:00+09:00').getTime()
-          const idx = Math.max(0, Math.floor((now - epoch) / 86400_000)) % allTopics.length
-          const t = allTopics[idx]
-          topicHint = `Use EXACTLY this topic: "${t.topic_ko}" (${t.topic_en}). Category: ${t.category || ''}.`
-          forceTopic = { ko: t.topic_ko, en: t.topic_en }
-        } else {
-          const cats = ['daily life', 'food & cooking', 'K-pop & music', 'travel in Korea', 'Korean seasons', 'school & studying', 'hobbies', 'Korean culture']
-          const h = item.date.split('-').reduce((a, b) => a + parseInt(b), 0)
-          topicHint = `Pick a specific topic within: "${cats[h % cats.length]}"`
-        }
-
-        const prompt = buildPrompt(item.level, topicHint)
-        const parsed = await callAnthropic(apiKey, prompt)
-
-        const rec = {
-          scheduled_date: item.date,
-          level: item.level,
-          topic_ko: forceTopic?.ko || (parsed.topic_ko as string) || '',
-          topic_en: forceTopic?.en || (parsed.topic_en as string) || '',
-          vocab: parsed.vocab || [],
-          grammar: parsed.grammar || [],
-          helpers: parsed.helpers || [],
-          dictation_sentences: parsed.dictation_sentences || [],
-          dictation_questions: parsed.dictation_questions || [],
-          confusing_grammar: parsed.confusing_grammar || [],
-          formality_exercise: parsed.formality_exercise || null,
-          culture_note: (parsed.culture_note as string) || '',
-          status: 'approved',
-          admin_edited: false,
-          updated_at: new Date().toISOString(),
-        }
-
-        const { error } = await sb.from('study_daily_content').upsert(rec, { onConflict: 'scheduled_date,level' })
-        if (error) throw new Error(error.message)
-
-        results.push({ date: item.date, level: item.level, status: 'ok' })
-
-        // Rate limit: 2s between API calls
-        if (missing.indexOf(item) < missing.length - 1) {
-          await new Promise(r => setTimeout(r, 2000))
-        }
-      } catch (e) {
-        results.push({ date: item.date, level: item.level, status: `error: ${(e as Error).message}` })
+      const allTopics = topics || []
+      if (allTopics.length) {
+        const epoch = new Date('2026-04-15T00:00:00+09:00').getTime()
+        const now = new Date(item.date + 'T00:00:00+09:00').getTime()
+        const idx = Math.max(0, Math.floor((now - epoch) / 86400_000)) % allTopics.length
+        const t = allTopics[idx]
+        topicHint = `Use EXACTLY this topic: "${t.topic_ko}" (${t.topic_en}). Category: ${t.category || ''}.`
+        forceTopic = { ko: t.topic_ko, en: t.topic_en }
+      } else {
+        const cats = ['daily life', 'food & cooking', 'K-pop & music', 'travel in Korea', 'Korean seasons', 'school & studying', 'hobbies', 'Korean culture']
+        const h = item.date.split('-').reduce((a, b) => a + parseInt(b), 0)
+        topicHint = `Pick a specific topic within: "${cats[h % cats.length]}"`
       }
-    }
+
+      const prompt = buildPrompt(item.level, topicHint)
+      const parsed = await callAnthropic(apiKey, prompt)
+
+      const rec = {
+        scheduled_date: item.date,
+        level: item.level,
+        topic_ko: forceTopic?.ko || (parsed.topic_ko as string) || '',
+        topic_en: forceTopic?.en || (parsed.topic_en as string) || '',
+        vocab: parsed.vocab || [],
+        grammar: parsed.grammar || [],
+        helpers: parsed.helpers || [],
+        dictation_sentences: parsed.dictation_sentences || [],
+        dictation_questions: parsed.dictation_questions || [],
+        confusing_grammar: parsed.confusing_grammar || [],
+        formality_exercise: parsed.formality_exercise || null,
+        culture_note: (parsed.culture_note as string) || '',
+        status: 'approved',
+        admin_edited: false,
+        updated_at: new Date().toISOString(),
+      }
+
+      const { error } = await sb.from('study_daily_content').upsert(rec, { onConflict: 'scheduled_date,level' })
+      if (error) throw new Error(error.message)
+      return { date: item.date, level: item.level }
+    }))
+
+    settled.forEach((r, i) => {
+      const item = missing[i]
+      if (r.status === 'fulfilled') {
+        results.push({ date: item.date, level: item.level, status: 'ok' })
+      } else {
+        results.push({ date: item.date, level: item.level, status: `error: ${(r.reason as Error)?.message || 'unknown'}` })
+      }
+    })
 
     return new Response(JSON.stringify({ ok: true, dates, generated: results }), {
       headers: { 'Content-Type': 'application/json' },
