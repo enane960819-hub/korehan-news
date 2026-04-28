@@ -83,7 +83,48 @@
 .st-pill-pink{background:#fce7f3;color:#be185d;}
 .st-pill-red{background:#fee2e2;color:#b91c1c;}
 .st-body-scroll{flex:1;padding:0 24px 16px;overflow-y:auto;max-height:460px;}
-.st-body-text{font-family:'Noto Sans KR',sans-serif;font-size:14px;line-height:1.9;color:#1e293b;white-space:pre-line;}
+.st-body-text{font-family:'Noto Sans KR',sans-serif;font-size:var(--st-body-fs,14px);line-height:var(--st-body-lh,1.9);color:#1e293b;white-space:pre-line;}
+
+/* ── Paragraph-by-paragraph reading: each Korean paragraph is its
+   own tappable card, English translation slides in below on tap.
+   Lets learners try to understand each chunk in Korean first, then
+   uncover the answer one paragraph at a time instead of either
+   reading along with English or going entirely without. */
+.st-paras{display:flex;flex-direction:column;gap:14px;white-space:normal;}
+.st-para{background:rgba(241,245,249,.55);border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;cursor:pointer;transition:background .18s,border-color .18s;}
+.st-para:hover{background:rgba(238,242,255,.85);border-color:#c7d2fe;}
+.st-para-ko{font-family:'Noto Sans KR',sans-serif;font-size:var(--st-body-fs,14px);line-height:var(--st-body-lh,1.9);color:#1e293b;white-space:pre-line;}
+.st-para-en{margin-top:10px;padding-top:10px;border-top:1px dashed #cbd5e1;font-size:13px;line-height:1.65;color:#475569;white-space:pre-line;display:none;}
+.st-para.is-open .st-para-en{display:block;animation:stParaReveal .25s ease-out;}
+.st-para .st-para-tap-hint{display:block;font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:.06em;text-transform:uppercase;margin-top:8px;}
+.st-para.is-open .st-para-tap-hint{color:#64748b;}
+@keyframes stParaReveal{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Reading settings popover (font size + line height + theme).
+   Sits over the body scroll area top-right, toggled via gear btn.
+   Settings persist via localStorage and re-apply on every story
+   open. */
+.st-settings-wrap{position:relative;display:inline-flex;align-items:center;gap:6px;}
+.st-settings-btn{padding:6px 12px;border-radius:999px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;line-height:1;}
+.st-settings-btn:hover{border-color:#cbd5e1;color:#475569;}
+.st-settings-pop{position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 16px 40px rgba(15,23,42,.18);padding:14px 16px;min-width:240px;z-index:50;}
+.st-settings-pop[hidden]{display:none;}
+.st-settings-pop h4{margin:0 0 10px;font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.08em;text-transform:uppercase;}
+.st-settings-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;}
+.st-settings-row:last-child{margin-bottom:0;}
+.st-settings-row > span{font-size:12px;font-weight:700;color:#334155;}
+.st-settings-pop button{flex:0 0 auto;padding:5px 10px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;}
+.st-settings-pop button.on{border-color:#7c3aed;background:#7c3aed;color:#fff;}
+.st-settings-group{display:flex;gap:4px;}
+
+/* Theme variations applied on the panel root via .st-theme-* class. */
+.st-theme-light .st-body-scroll{background:#fff;}
+.st-theme-light .st-para{background:#f8fafc;border-color:#e2e8f0;}
+.st-theme-sepia .st-body-scroll{background:#f4ecd8;}
+.st-theme-sepia .st-para{background:#f0e4c8;border-color:#d6c89c;}
+.st-theme-sepia .st-para-ko,
+.st-theme-sepia .st-body-text{color:#5b4636;}
+.st-theme-sepia .st-para-en{color:#7a6240;border-top-color:#d6c89c;}
 .st-cta-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 24px 20px;border-top:1px solid #f0f4fa;}
 .st-cta-btn{padding:12px;border-radius:14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;transition:all .15s;}
 .st-cta-pri{background:#7c3aed;color:#fff;}
@@ -1177,8 +1218,35 @@ function openStory(id) {
         + '<button class="st-tab-btn" data-tab="learn" onclick="stSwitchTab(\'learn\')">📚 Learn</button>'
       + '</div>'
       + '<div class="st-body-scroll st-container">'
-        + (hasEnBody ? '<div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px"><button id="st-body-lang-ko" onclick="stToggleBodyLang(\'ko\')" style="padding:6px 14px;border-radius:999px;border:1.5px solid #2255a4;background:#2255a4;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🇰🇷 한국어</button><button id="st-body-lang-en" onclick="stToggleBodyLang(\'en\')" style="padding:6px 14px;border-radius:999px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🇺🇸 English</button></div>' : '')
-        + '<div class="st-body-text" id="st-body-ko" data-hover-scan="1">' + escapeHtml(s.body || '') + '</div>'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
+          + '<div style="font-size:11px;color:#94a3b8;font-weight:700;letter-spacing:.04em">Tap any paragraph to reveal English ↓</div>'
+          + '<div class="st-settings-wrap">'
+            + (hasEnBody ? '<button id="st-body-lang-ko" onclick="stToggleBodyLang(\'ko\')" style="padding:6px 12px;border-radius:999px;border:1.5px solid #2255a4;background:#2255a4;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🇰🇷 KO</button><button id="st-body-lang-en" onclick="stToggleBodyLang(\'en\')" style="padding:6px 12px;border-radius:999px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🇺🇸 EN</button>' : '')
+            + '<button class="st-settings-btn" onclick="stToggleSettings(event)" aria-label="Reading settings">⚙️</button>'
+            + '<div class="st-settings-pop" id="st-settings-pop" hidden>'
+              + '<h4>Font size</h4>'
+              + '<div class="st-settings-group" id="st-set-fs">'
+                + '<button data-fs="13px">A−</button>'
+                + '<button data-fs="14px" class="on">A</button>'
+                + '<button data-fs="16px">A+</button>'
+                + '<button data-fs="18px">A++</button>'
+              + '</div>'
+              + '<h4 style="margin-top:12px">Line height</h4>'
+              + '<div class="st-settings-group" id="st-set-lh">'
+                + '<button data-lh="1.6">Tight</button>'
+                + '<button data-lh="1.9" class="on">Normal</button>'
+                + '<button data-lh="2.2">Loose</button>'
+              + '</div>'
+              + '<h4 style="margin-top:12px">Theme</h4>'
+              + '<div class="st-settings-group" id="st-set-theme">'
+                + '<button data-theme="default" class="on">Default</button>'
+                + '<button data-theme="light">Light</button>'
+                + '<button data-theme="sepia">Sepia</button>'
+              + '</div>'
+            + '</div>'
+          + '</div>'
+        + '</div>'
+        + '<div class="st-body-text st-paras" id="st-body-ko" data-hover-scan="1">' + stRenderParagraphCards(s.body || '', enBody, hasEnBody) + '</div>'
         + (hasEnBody ? '<div class="st-body-text" id="st-body-en" style="display:none;white-space:pre-line;color:#334155">' + escapeHtml(enBody) + '</div>' : '')
       + '</div>'
       + '<div class="st-cta-row">'
@@ -1200,6 +1268,9 @@ function openStory(id) {
 
   document.getElementById('st-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
+  // Apply persisted reader settings (font size / line height / theme)
+  // before vocab hover scan so any layout shift settles first.
+  stApplySettings();
   // Jump to the top of the freshly-rendered story. Critical for
   // feed-style swipe nav: without this the user lands wherever
   // they released their finger on the previous story (usually the
@@ -1242,6 +1313,111 @@ function openStory(id) {
     setTimeout(window.korehanHoverRefresh, 80);
   }
 }
+
+// ── Paragraph-card rendering: split body on blank-line boundaries
+//    so a learner can read one Korean chunk, guess at meaning, then
+//    tap to reveal the matching English. Korean and English bodies
+//    paragraph-align by index — if counts differ (older stories
+//    where translation wasn't run paragraph-by-paragraph) we fall
+//    back to whatever EN we have for that index, or none.
+function stRenderParagraphCards(koBody, enBody, hasEn) {
+  var splitParas = function (s) {
+    return String(s || '').split(/\n\s*\n/).map(function (p) { return p.trim(); }).filter(Boolean);
+  };
+  var koParas = splitParas(koBody);
+  var enParas = hasEn ? splitParas(enBody) : [];
+  if (!koParas.length) return '';
+  return koParas.map(function (ko, i) {
+    var en = enParas[i] || '';
+    var hint = en
+      ? '<span class="st-para-tap-hint">Tap to reveal translation ↓</span>'
+      : '';
+    return '<div class="st-para" '
+      + (en ? 'onclick="stTogglePara(this)" role="button" tabindex="0" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();stTogglePara(this);}"' : '')
+      + '>'
+      + '<div class="st-para-ko">' + escapeHtml(ko) + '</div>'
+      + (en ? '<div class="st-para-en">' + escapeHtml(en) + '</div>' : '')
+      + hint
+      + '</div>';
+  }).join('');
+}
+
+function stTogglePara(el) {
+  if (!el) return;
+  el.classList.toggle('is-open');
+  // Update tap-hint copy so it reads "Hide" / "Reveal" depending
+  // on the current state — much clearer than just flipping classes.
+  var hint = el.querySelector('.st-para-tap-hint');
+  if (hint) hint.textContent = el.classList.contains('is-open')
+    ? 'Tap to hide translation ↑'
+    : 'Tap to reveal translation ↓';
+}
+
+// ── Reading settings (font size / line height / theme).
+//    Persists in localStorage so the same preferences come back
+//    on every story open. Theme is applied as a class on the panel
+//    so individual tweaks (sepia background etc) hit only this view.
+var _ST_SETTINGS_KEY = 'kh_story_read_settings_v1';
+function _stReadSettings() {
+  try { return JSON.parse(localStorage.getItem(_ST_SETTINGS_KEY) || '{}') || {}; } catch (_) { return {}; }
+}
+function _stSaveSettings(s) {
+  try { localStorage.setItem(_ST_SETTINGS_KEY, JSON.stringify(s)); } catch (_) {}
+}
+function stApplySettings() {
+  var s = _stReadSettings();
+  var panel = document.getElementById('st-panel');
+  if (!panel) return;
+  var fs = s.fs || '14px';
+  var lh = s.lh || '1.9';
+  var theme = s.theme || 'default';
+  panel.style.setProperty('--st-body-fs', fs);
+  panel.style.setProperty('--st-body-lh', lh);
+  panel.classList.remove('st-theme-default', 'st-theme-light', 'st-theme-sepia');
+  panel.classList.add('st-theme-' + theme);
+  // Sync the popover toggle highlights.
+  ['fs','lh','theme'].forEach(function (key) {
+    var group = document.getElementById('st-set-' + key);
+    if (!group) return;
+    var attr = 'data-' + key;
+    var val = key === 'fs' ? fs : key === 'lh' ? lh : theme;
+    group.querySelectorAll('button').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute(attr) === val);
+    });
+  });
+}
+function stToggleSettings(ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  var pop = document.getElementById('st-settings-pop');
+  if (!pop) return;
+  var was = pop.hasAttribute('hidden');
+  pop.toggleAttribute('hidden');
+  if (was) {
+    stApplySettings();
+    // Click-anywhere-else-to-close handler. Re-attach each open so
+    // we don't accumulate listeners.
+    setTimeout(function () {
+      function off(e) {
+        if (pop.contains(e.target) || (e.target && e.target.classList && e.target.classList.contains('st-settings-btn'))) return;
+        pop.setAttribute('hidden', '');
+        document.removeEventListener('click', off, true);
+      }
+      document.addEventListener('click', off, true);
+    }, 0);
+  }
+}
+// Delegated change listener — every popover button has data-fs/lh/theme
+// so one document-level handler covers all of them.
+document.addEventListener('click', function (e) {
+  var b = e.target && e.target.closest && e.target.closest('#st-settings-pop button');
+  if (!b) return;
+  var s = _stReadSettings();
+  if (b.dataset.fs)    s.fs = b.dataset.fs;
+  if (b.dataset.lh)    s.lh = b.dataset.lh;
+  if (b.dataset.theme) s.theme = b.dataset.theme;
+  _stSaveSettings(s);
+  stApplySettings();
+});
 
 function stToggleBodyLang(lang) {
   var ko = document.getElementById('st-body-ko');
