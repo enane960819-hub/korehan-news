@@ -7144,6 +7144,78 @@ function openVocabEditModal(word) {
   modal.querySelector('#ve-cancel').onclick = function() { modal.remove(); };
   modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
 
+  // ── Auto-fill rom + en when admin types Korean (Add-mode only).
+  // Lookup order: hover_vocab_master → vocabulary_bank → Claude Haiku.
+  // Never overwrites a field the admin already typed into.
+  if (isNew) {
+    var _veFillTimer = null;
+    var _veLastQ = '';
+    var wordEl = modal.querySelector('#ve-word');
+    var romEl  = modal.querySelector('#ve-rom');
+    var enEl   = modal.querySelector('#ve-en');
+    if (wordEl) {
+      wordEl.addEventListener('input', function() {
+        if (_veFillTimer) clearTimeout(_veFillTimer);
+        var w = wordEl.value.trim();
+        _veFillTimer = setTimeout(function(){ _veAutoFill(w); }, 600);
+      });
+    }
+    async function _veAutoFill(word) {
+      if (!word || word === _veLastQ) return;
+      if (!/[가-힣]/.test(word)) return;
+      _veLastQ = word;
+      var needRom = !romEl.value.trim();
+      var needEn  = !enEl.value.trim();
+      if (!needRom && !needEn) return;
+
+      var sb = (typeof getSupa === 'function') ? getSupa() : null;
+      // 1) hover_vocab_master
+      if (sb) {
+        try {
+          var r1 = await sb.from('hover_vocab_master')
+            .select('reading,meaning_en')
+            .eq('word_ko', word).maybeSingle();
+          if (r1.data && (r1.data.reading || r1.data.meaning_en)) {
+            if (needRom && r1.data.reading)    romEl.value = r1.data.reading;
+            if (needEn  && r1.data.meaning_en) enEl.value  = r1.data.meaning_en;
+            return;
+          }
+        } catch(_) {}
+        // 2) vocabulary_bank
+        try {
+          var r2 = await sb.from('vocabulary_bank')
+            .select('word_rom,word_en')
+            .eq('word_ko', word).maybeSingle();
+          if (r2.data && (r2.data.word_rom || r2.data.word_en)) {
+            if (needRom && r2.data.word_rom) romEl.value = r2.data.word_rom;
+            if (needEn  && r2.data.word_en)  enEl.value  = r2.data.word_en;
+            return;
+          }
+        } catch(_) {}
+      }
+      // 3) Claude AI fallback
+      try {
+        var resp = await callClaude({
+          feature: 'inline-vocab-autofill',
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 200,
+          messages: [{
+            role: 'user',
+            content: 'Korean word: "' + word + '"\n\n'
+              + 'Return ONLY JSON, no markdown:\n'
+              + '{"reading":"Revised romanization with hyphens between syllables (e.g. gam-gi, an-nyeong-ha-se-yo)","meaning":"Concise English gloss, 1-5 words, no parentheses"}'
+          }]
+        });
+        var raw = (resp.content || []).map(function(c){ return c.text || ''; }).join('');
+        var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+        if (s < 0 || e <= s) return;
+        var parsed = JSON.parse(raw.slice(s, e + 1));
+        if (needRom && parsed.reading && !romEl.value.trim()) romEl.value = parsed.reading;
+        if (needEn  && parsed.meaning && !enEl.value.trim())  enEl.value  = parsed.meaning;
+      } catch(_) { /* silent — admin can still type manually */ }
+    }
+  }
+
   var delBtn = modal.querySelector('#ve-del');
   if (delBtn) {
     delBtn.onclick = async function() {

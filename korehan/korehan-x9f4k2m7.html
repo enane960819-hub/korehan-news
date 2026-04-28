@@ -8652,8 +8652,12 @@ function srTopicsFormHTML() {
     + '</div>'
     + '<div class="fg"><label>주제 (한국어)</label><input id="srt-topic-ko" placeholder="예: 한국 음식"></div>'
     + '<div class="fg"><label>주제 (English)</label><input id="srt-topic-en" placeholder="e.g. Korean food"></div>'
-    + '<div class="fg"><label>Must Know Vocabulary <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|rom|en (5개)</span></label>'
-    + '<textarea id="srt-vocab" rows="5" style="width:100%;font-family:monospace;font-size:12px" placeholder="음식|eum-sik|food\n맛있다|mas-it-da|delicious"></textarea></div>'
+    + '<div class="fg"><label style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
+    + '<span>Must Know Vocabulary <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = ko|rom|en (5개) — ko 만 적어도 OK</span></span>'
+    + '<button type="button" onclick="srAutoFillSrtVocab()" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 빈칸 채우기</button>'
+    + '</label>'
+    + '<textarea id="srt-vocab" rows="5" style="width:100%;font-family:monospace;font-size:12px" placeholder="음식|eum-sik|food\n맛있다|mas-it-da|delicious"></textarea>'
+    + '<div id="srt-vocab-msg" style="font-size:11px;color:#475569;margin-top:3px"></div></div>'
     + '<div class="fg"><label style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
     + '<span>문법 설명 Grammar <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = pattern|explanation|example_ko|example_en (3개)</span></span>'
     + '<button type="button" onclick="srGenGrammar()" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 문법 생성</button>'
@@ -9089,6 +9093,111 @@ async function _srGenerateContent(level, topicHint, forceTopicKo, forceTopicEn) 
     }
   }
   throw new Error('AI generation failed after 3 attempts');
+}
+
+// ── Vocab textarea 빈칸 자동 채우기 (Study Room: ko|rom|en) ──
+// 줄마다 한국어만 적어도 rom + en 을 채워줌. 이미 채워진 칸은 건드리지 않음.
+async function srAutoFillSrtVocab() {
+  await _srAutoFillVocabTextarea('srt-vocab', 'srt-vocab-msg', /*hasRom*/ true);
+}
+
+// Picture admin (ko|en — rom 없음)
+async function srAutoFillSrpVocab() {
+  await _srAutoFillVocabTextarea('srp-vocab', 'srp-vocab-msg', /*hasRom*/ false);
+}
+
+async function _srAutoFillVocabTextarea(textareaId, msgId, hasRom) {
+  var ta = document.getElementById(textareaId);
+  var msgEl = document.getElementById(msgId);
+  if (!ta) return;
+  var raw = (ta.value || '').trim();
+  var lines = raw ? raw.split('\n') : [];
+  if (!lines.length) {
+    if (msgEl) msgEl.textContent = '먼저 한국어 단어를 한 줄씩 입력하세요.';
+    return;
+  }
+  var sb = getSb();
+  if (msgEl) msgEl.textContent = '🔍 빈칸 채우는 중... (0/' + lines.length + ')';
+
+  // Parse each line into [ko, rom, en] (rom slot omitted if hasRom=false).
+  var parsed = lines.map(function(line) {
+    var parts = line.split('|');
+    var ko = (parts[0] || '').trim();
+    if (hasRom) return { ko: ko, rom: (parts[1] || '').trim(), en: (parts[2] || '').trim() };
+    return { ko: ko, en: (parts[1] || '').trim() };
+  });
+
+  var filled = 0, skipped = 0, failed = 0;
+  for (var i = 0; i < parsed.length; i++) {
+    var row = parsed[i];
+    if (!row.ko || !/[가-힣]/.test(row.ko)) { skipped++; continue; }
+    var needRom = hasRom && !row.rom;
+    var needEn  = !row.en;
+    if (!needRom && !needEn) { skipped++; continue; }
+
+    // 1) hover_vocab_master
+    var hit = null;
+    try {
+      var r1 = await sb.from('hover_vocab_master')
+        .select('reading,meaning_en')
+        .eq('word_ko', row.ko).maybeSingle();
+      if (r1.data && (r1.data.reading || r1.data.meaning_en)) {
+        hit = { rom: r1.data.reading || '', en: r1.data.meaning_en || '' };
+      }
+    } catch(_) {}
+    // 2) vocabulary_bank
+    if (!hit) {
+      try {
+        var r2 = await sb.from('vocabulary_bank')
+          .select('word_rom,word_en')
+          .eq('word_ko', row.ko).maybeSingle();
+        if (r2.data && (r2.data.word_rom || r2.data.word_en)) {
+          hit = { rom: r2.data.word_rom || '', en: r2.data.word_en || '' };
+        }
+      } catch(_) {}
+    }
+    // 3) Claude AI
+    if (!hit) {
+      try {
+        var resp = await callClaude({
+          feature: 'vocab-textarea-autofill',
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 200,
+          messages: [{
+            role: 'user',
+            content: 'Korean word: "' + row.ko + '"\n\n'
+              + 'Return ONLY JSON, no markdown:\n'
+              + '{"reading":"Revised romanization with hyphens between syllables","meaning":"Concise English gloss, 1-5 words"}'
+          }]
+        });
+        var rawTxt = (resp.content || []).map(function(c){ return c.text || ''; }).join('');
+        var s = rawTxt.indexOf('{'), e = rawTxt.lastIndexOf('}');
+        if (s >= 0 && e > s) {
+          var parsedJson = JSON.parse(rawTxt.slice(s, e + 1));
+          hit = { rom: parsedJson.reading || '', en: parsedJson.meaning || '' };
+        }
+      } catch(eAI) {
+        console.warn('[autofill]', row.ko, 'failed:', eAI);
+      }
+    }
+
+    if (hit) {
+      if (needRom && hit.rom) row.rom = hit.rom;
+      if (needEn  && hit.en)  row.en  = hit.en;
+      filled++;
+    } else {
+      failed++;
+    }
+    if (msgEl) msgEl.textContent = '🔍 빈칸 채우는 중... (' + (i+1) + '/' + parsed.length + ')';
+  }
+
+  // Write back to textarea.
+  ta.value = parsed.map(function(r) {
+    if (hasRom) return r.ko + '|' + (r.rom || '') + '|' + (r.en || '');
+    return r.ko + '|' + (r.en || '');
+  }).join('\n');
+
+  if (msgEl) msgEl.textContent = '✅ ' + filled + '개 채움' + (skipped ? (' · ' + skipped + '개 스킵(이미 채워짐)') : '') + (failed ? (' · ' + failed + '개 실패') : '');
 }
 
 // ── 문법 설명만 독립 생성 ────────────────────────────────────
@@ -11083,8 +11192,11 @@ function srPictureFormHTML() {
     + '<div id="srp-img-preview" style="margin-top:8px"></div>'
     + '<div style="font-size:12px;color:#94a3b8;margin-top:4px">또는 직접 URL 입력:</div>'
     + '<input id="srp-image" placeholder="https://..." style="margin-top:4px"></div>'
-    + '<div class="fg"><label style="display:flex;align-items:center;justify-content:space-between"><span>Step 1 — 어휘 (줄마다: 한국어|English)</span>'
-    + '<button type="button" onclick="srAIGenPictureField(\'vocab\')" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 어휘 생성</button></label>'
+    + '<div class="fg"><label style="display:flex;align-items:center;justify-content:space-between;gap:6px"><span>Step 1 — 어휘 <span style="font-weight:400;font-size:11px;color:#94a3b8">한 줄 = 한국어|English — ko 만 적어도 OK</span></span>'
+    + '<span style="display:flex;gap:4px">'
+    +   '<button type="button" onclick="srAutoFillSrpVocab()" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 빈칸 채우기</button>'
+    +   '<button type="button" onclick="srAIGenPictureField(\'vocab\')" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;cursor:pointer;white-space:nowrap;font-family:inherit">🤖 어휘 생성</button>'
+    + '</span></label>'
     + '<textarea id="srp-vocab" style="min-height:90px;font-family:monospace" placeholder="한강|Han River&#10;자전거|Bicycle&#10;공원|Park"></textarea>'
     + '<div id="srp-vocab-msg" style="font-size:11px;color:#475569;margin-top:3px">각 줄 형식: 한국어|English (탭하면 뜻 공개)</div></div>'
     + '<div class="fg"><label style="display:flex;align-items:center;justify-content:space-between"><span>Step 2 — 어절 순서맞추기 (줄바꿈으로 구분, 입력 순서 = 정답)</span>'
