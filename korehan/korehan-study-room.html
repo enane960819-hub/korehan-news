@@ -1186,8 +1186,8 @@ body { background: #0b1626 !important; }
   background: radial-gradient(ellipse at 50% 30%,#132848 0%,#0a1628 60%,#060e1c 100%);
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 22px;
-  padding: 22px 16px 18px;
-  max-width: 420px;
+  padding: 24px 18px 20px;
+  max-width: 500px;
   width: 100%;
   max-height: 92vh;
   overflow-y: auto;
@@ -1209,8 +1209,12 @@ body { background: #0b1626 !important; }
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1.05;
-  max-width: 380px;
-  margin: 0 auto 12px;
+  /* Bumped from 380px so the pentagon nodes get real breathing room
+     instead of huddling next to the centre orb. Canvas line coords
+     are viewBox-based (380×399) and auto-scale to whatever pixel
+     size the container ends up at, so this is a pure CSS change. */
+  max-width: 460px;
+  margin: 0 auto 14px;
 }
 /* lines rendered via canvas */
 
@@ -1220,7 +1224,7 @@ body { background: #0b1626 !important; }
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   z-index: 10;
-  width: 120px; height: 120px;
+  width: 140px; height: 140px;
   --ls-progress: 0;
 }
 .ls-orb-wrap::before {
@@ -1254,7 +1258,7 @@ body { background: #0b1626 !important; }
   50%     { opacity:.75; transform:scale(1.04); }
 }
 .ls-orb {
-  width: 120px; height: 120px;
+  width: 140px; height: 140px;
   border-radius: 50%;
   position: relative;
   cursor: pointer;
@@ -1268,31 +1272,31 @@ body { background: #0b1626 !important; }
   text-shadow: 0 2px 8px rgba(0,0,0,.9);
   pointer-events: none;
 }
-.ls-orb-count { font-size: 30px; font-weight: 900; color: #fff; line-height: 1; letter-spacing: -.5px; }
-.ls-orb-total { font-size: 10px; color: rgba(255,255,255,.55); margin-top: 3px; letter-spacing: .3px; }
+.ls-orb-count { font-size: 36px; font-weight: 900; color: #fff; line-height: 1; letter-spacing: -.5px; }
+.ls-orb-total { font-size: 11px; color: rgba(255,255,255,.55); margin-top: 4px; letter-spacing: .3px; }
 .ls-orb-pts {
-  font-size: 9px; color: #fde68a; margin-top: 6px; font-weight: 900;
+  font-size: 10px; color: #fde68a; margin-top: 8px; font-weight: 900;
   background: linear-gradient(135deg, rgba(251,191,36,.25), rgba(245,158,11,.15));
   border: 1px solid rgba(251,191,36,.35);
-  padding: 2px 8px; border-radius: 999px;
+  padding: 3px 10px; border-radius: 999px;
   letter-spacing: .3px;
 }
 
 /* ── Activity Nodes ── */
 .ls-node {
   position: absolute; z-index: 5;
-  width: 86px;
+  width: 110px;
   display: flex; flex-direction: column; align-items: center;
   text-align: center; cursor: pointer;
   transition: transform .18s, filter .18s;
 }
 .ls-node:active { transform: scale(.93); }
 .ls-node-circle {
-  width: 60px; height: 60px; border-radius: 50%;
+  width: 84px; height: 84px; border-radius: 50%;
   background: radial-gradient(circle at 30% 30%, rgba(124,58,237,.22), rgba(15,23,42,.55) 72%);
   border: 2px solid rgba(168,139,250,.32);
   display: flex; align-items: center; justify-content: center;
-  font-size: 24px;
+  font-size: 32px;
   transition: all .3s;
   position: relative;
   box-shadow: 0 4px 14px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.05);
@@ -1371,13 +1375,15 @@ body { background: #0b1626 !important; }
   100% { transform: scale(1); }
 }
 
-.ls-node-name { font-size: 10px; font-weight: 800; color: rgba(255,255,255,.82); margin-top: 7px; line-height: 1.2; }
-/* node positions (pentagon around center) */
-.ls-node[data-pos="top"]    { top: 2%;  left: 50%; transform: translateX(-50%); }
-.ls-node[data-pos="tr"]     { top: 22%; right: 2%; }
-.ls-node[data-pos="br"]     { bottom: 12%; right: 6%; }
-.ls-node[data-pos="bl"]     { bottom: 12%; left: 6%; }
-.ls-node[data-pos="tl"]     { top: 22%; left: 2%; }
+.ls-node-name { font-size: 12px; font-weight: 800; color: rgba(255,255,255,.85); margin-top: 8px; line-height: 1.25; }
+/* node positions (pentagon around center) — pulled outward to use
+   the bigger mindmap real estate so nodes feel spread out, not
+   huddled around the orb. */
+.ls-node[data-pos="top"]    { top:  0%;  left: 50%; transform: translateX(-50%); }
+.ls-node[data-pos="tr"]     { top: 24%; right: 0%; }
+.ls-node[data-pos="br"]     { bottom: 8%; right: 4%; }
+.ls-node[data-pos="bl"]     { bottom: 8%; left: 4%; }
+.ls-node[data-pos="tl"]     { top: 24%; left: 0%; }
 
 /* ── Divider & Writing Practice ── */
 .ls-divider { border: none; border-top: 1px solid rgba(255,255,255,.08); margin: 8px 0 10px; }
