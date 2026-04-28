@@ -116,6 +116,90 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
   .sidebar{height:auto}
   .student-list{max-height:280px}
 }
+
+/* Sidebar tools */
+.sb-tools{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.sb-tools label{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.sb-tools input[type=checkbox]{accent-color:var(--bright)}
+
+/* Detail panel — profile */
+.profile-head{
+  display:flex;align-items:center;gap:14px;padding-bottom:18px;
+  border-bottom:1px solid var(--border);margin-bottom:18px
+}
+.profile-head .avatar-lg{
+  width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--blue));
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:22px;flex-shrink:0
+}
+.profile-head .who-info{flex:1;min-width:0}
+.profile-head .who-info h2{margin:0;font-size:20px;font-weight:800}
+.profile-head .who-info .sub{font-size:13px;color:var(--muted);margin-top:4px}
+.profile-head .head-actions{display:flex;gap:8px;flex-shrink:0}
+
+.section-title{
+  font-size:11px;font-weight:800;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;margin:18px 0 10px
+}
+
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field.full{grid-column:1 / -1}
+.field label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.field input,.field select,.field textarea{
+  width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;
+  background:#fff;font:inherit;color:var(--text);transition:border-color .15s
+}
+.field input:focus,.field select:focus,.field textarea:focus{
+  outline:none;border-color:var(--bright);box-shadow:0 0 0 3px rgba(34,85,164,.12)
+}
+.field textarea{resize:vertical;min-height:80px;line-height:1.6}
+
+.profile-actions{
+  display:flex;gap:10px;justify-content:space-between;align-items:center;
+  margin-top:24px;padding-top:18px;border-top:1px solid var(--border)
+}
+.profile-actions .right{display:flex;gap:8px}
+
+/* Modal */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(15,23,42,.55);
+  display:flex;align-items:center;justify-content:center;
+  z-index:90;padding:20px;backdrop-filter:blur(4px)
+}
+.modal{
+  background:#fff;border-radius:18px;box-shadow:0 24px 60px rgba(15,23,42,.2);
+  max-width:520px;width:100%;max-height:90vh;overflow-y:auto
+}
+.modal-head{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-head h2{margin:0;font-size:18px;font-weight:800}
+.modal-close{
+  background:transparent;border:none;font-size:22px;color:var(--muted);
+  cursor:pointer;padding:4px 10px;border-radius:8px;line-height:1
+}
+.modal-close:hover{background:var(--soft);color:var(--text)}
+.modal-body{padding:20px 24px}
+.modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--navy);color:#fff;padding:11px 18px;border-radius:10px;
+  font-size:14px;font-weight:600;z-index:200;box-shadow:0 12px 30px rgba(15,23,42,.3);
+  opacity:0;transition:opacity .2s,transform .2s;pointer-events:none
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(-4px)}
+.toast.err{background:var(--danger)}
+.toast.ok{background:var(--ok)}
+
+/* Pill / level chip */
+.chip{
+  display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;
+  background:var(--soft);color:var(--bright);font-size:11px;font-weight:800;
+  letter-spacing:.04em
+}
+.chip.archived{background:#f1f5f9;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -140,14 +224,14 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
     <aside class="sidebar">
       <div class="sb-head">
         <h2>Students</h2>
-        <button class="btn primary" id="btn-new-student" disabled title="Coming in phase 3">+ New</button>
+        <button class="btn primary" id="btn-new-student">+ New</button>
       </div>
-      <input class="search" id="student-search" placeholder="Search students…" disabled>
+      <input class="search" id="student-search" placeholder="Search students…">
+      <div class="sb-tools">
+        <label><input type="checkbox" id="show-archived"> Show archived</label>
+      </div>
       <div class="student-list" id="student-list">
-        <div class="empty-mini">
-          Student list will appear here.<br>
-          <span style="opacity:.7">(CRUD lands in phase&nbsp;3.)</span>
-        </div>
+        <div class="empty-mini">Loading…</div>
       </div>
     </aside>
 
@@ -160,6 +244,55 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
     </section>
   </main>
 </div>
+
+<!-- New / edit student modal -->
+<div id="student-modal" class="modal-bg" style="display:none" role="dialog" aria-label="Student form">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h2 id="student-modal-title">New student</h2>
+      <button class="modal-close" id="student-modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-grid">
+        <div class="field full">
+          <label>Name *</label>
+          <input id="m-name" placeholder="e.g. Mina Park">
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input id="m-email" type="email" placeholder="optional">
+        </div>
+        <div class="field">
+          <label>Preply handle</label>
+          <input id="m-preply" placeholder="@username (optional)">
+        </div>
+        <div class="field">
+          <label>Level</label>
+          <select id="m-level">
+            <option value="">—</option>
+            <option>A1</option><option>A2</option>
+            <option>B1</option><option>B2</option>
+            <option>C1</option><option>C2</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Goal</label>
+          <input id="m-goal" placeholder="e.g. business English">
+        </div>
+        <div class="field full">
+          <label>Notes</label>
+          <textarea id="m-notes" placeholder="Background, learning style, anything to remember…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="student-modal-cancel">Cancel</button>
+      <button class="btn primary" id="student-modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="kh-toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js?v=20260428a-tutor"></script>
@@ -180,6 +313,10 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
     var app  = document.getElementById('kh-tutor-app');
     if (gate) gate.style.display = 'none';
     if (app)  app.style.display  = '';
+    if (!window._tutorAppBooted) {
+      window._tutorAppBooted = true;
+      try { initTutorApp(); } catch(e) { console.error('initTutorApp', e); }
+    }
   }
   function showGate() {
     var gate = document.getElementById('kh-tutor-gate');
@@ -268,6 +405,304 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
   window.addEventListener('kh-auth-signed-in',  checkAccess);
   window.addEventListener('kh-auth-signed-out', checkAccess);
   document.addEventListener('DOMContentLoaded', checkAccess);
+
+  // ── App state ──────────────────────────────────────────────
+  var state = {
+    students: [],            // full list (active + archived) loaded from DB
+    selectedId: null,
+    showArchived: false,
+    search: '',
+    editingId: null,         // null = new, uuid = editing existing (for the modal)
+    me: null                 // current auth user (for owner_id tagging)
+  };
+
+  function toast(msg, kind) {
+    var el = document.getElementById('kh-toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'toast on' + (kind ? ' ' + kind : '');
+    clearTimeout(el._t);
+    el._t = setTimeout(function(){ el.className = 'toast' + (kind ? ' ' + kind : ''); }, 2400);
+  }
+
+  function initials(name) {
+    var s = String(name || '').trim();
+    if (!s) return '?';
+    var parts = s.split(/\s+/);
+    return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+  }
+
+  // ── Boot ───────────────────────────────────────────────────
+  async function initTutorApp() {
+    var sb = getSupa();
+    var sess = await sb.auth.getSession();
+    state.me = sess && sess.data && sess.data.session && sess.data.session.user;
+
+    // Wire UI events.
+    document.getElementById('btn-new-student').onclick = openNewStudentModal;
+    document.getElementById('student-search').oninput = function(e){
+      state.search = (e.target.value || '').toLowerCase().trim();
+      renderStudentList();
+    };
+    document.getElementById('show-archived').onchange = function(e){
+      state.showArchived = !!e.target.checked;
+      renderStudentList();
+    };
+    document.getElementById('student-modal-close').onclick  = closeStudentModal;
+    document.getElementById('student-modal-cancel').onclick = closeStudentModal;
+    document.getElementById('student-modal-save').onclick   = saveStudentFromModal;
+    document.getElementById('student-modal').onclick = function(e){
+      if (e.target.id === 'student-modal') closeStudentModal();
+    };
+    document.addEventListener('keydown', function(e){
+      if (e.key === 'Escape') {
+        var m = document.getElementById('student-modal');
+        if (m && m.style.display !== 'none') closeStudentModal();
+      }
+    });
+
+    await loadStudents();
+  }
+
+  // ── Data layer ─────────────────────────────────────────────
+  async function loadStudents() {
+    var sb = getSupa();
+    var listEl = document.getElementById('student-list');
+    listEl.innerHTML = '<div class="empty-mini">Loading…</div>';
+
+    var { data, error } = await sb
+      .from('tutor_students')
+      .select('*')
+      .order('archived', { ascending: true })
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error(error);
+      listEl.innerHTML = '<div class="empty-mini" style="color:var(--danger)">Failed to load students.<br>' + escapeHtmlSafe(error.message) + '</div>';
+      return;
+    }
+    state.students = data || [];
+    renderStudentList();
+
+    if (state.selectedId) {
+      var s = state.students.find(function(x){ return x.id === state.selectedId; });
+      if (s) renderDetail(s);
+      else { state.selectedId = null; renderEmptyDetail(); }
+    }
+  }
+
+  async function insertStudent(payload) {
+    var sb = getSupa();
+    payload.owner_id = state.me ? state.me.id : null;
+    var { data, error } = await sb.from('tutor_students').insert(payload).select().single();
+    if (error) throw error;
+    return data;
+  }
+  async function updateStudent(id, payload) {
+    var sb = getSupa();
+    var { data, error } = await sb.from('tutor_students').update(payload).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  }
+  async function setArchived(id, archived) {
+    return updateStudent(id, { archived: !!archived });
+  }
+
+  // ── Sidebar render ─────────────────────────────────────────
+  function renderStudentList() {
+    var listEl = document.getElementById('student-list');
+    var rows = state.students.filter(function(s){
+      if (!state.showArchived && s.archived) return false;
+      if (state.search) {
+        var hay = (s.name + ' ' + (s.email || '') + ' ' + (s.preply_handle || '') + ' ' + (s.goal || '')).toLowerCase();
+        if (hay.indexOf(state.search) === -1) return false;
+      }
+      return true;
+    });
+
+    if (!rows.length) {
+      listEl.innerHTML = '<div class="empty-mini">'
+        + (state.students.length === 0
+            ? 'No students yet.<br>Click <b>+ New</b> to add one.'
+            : 'No matches.')
+        + '</div>';
+      return;
+    }
+
+    listEl.innerHTML = rows.map(function(s){
+      var active = s.id === state.selectedId ? ' active' : '';
+      var sub = [s.level || '', s.goal || ''].filter(Boolean).join(' · ');
+      if (s.archived) sub = (sub ? sub + ' · ' : '') + 'archived';
+      return '<div class="student-row' + active + '" data-id="' + s.id + '">'
+        +   '<div class="avatar">' + escapeHtmlSafe(initials(s.name)) + '</div>'
+        +   '<div class="meta">'
+        +     '<div class="nm">' + escapeHtmlSafe(s.name) + '</div>'
+        +     '<div class="sub">' + escapeHtmlSafe(sub || '—') + '</div>'
+        +   '</div>'
+        + '</div>';
+    }).join('');
+
+    Array.prototype.forEach.call(listEl.querySelectorAll('.student-row'), function(el){
+      el.onclick = function(){
+        state.selectedId = el.getAttribute('data-id');
+        var s = state.students.find(function(x){ return x.id === state.selectedId; });
+        renderStudentList();
+        if (s) renderDetail(s);
+      };
+    });
+  }
+
+  // ── Detail panel ───────────────────────────────────────────
+  function renderEmptyDetail() {
+    document.getElementById('detail-panel').innerHTML =
+      '<div class="empty">'
+      + '<div class="icon">📘</div>'
+      + '<h3>No student selected</h3>'
+      + '<p>Add a student from the left panel,<br>then pick one to manage lessons, feedback, and progress.</p>'
+      + '</div>';
+  }
+
+  function renderDetail(s) {
+    var html =
+      '<div class="profile-head">'
+      +   '<div class="avatar-lg">' + escapeHtmlSafe(initials(s.name)) + '</div>'
+      +   '<div class="who-info">'
+      +     '<h2>' + escapeHtmlSafe(s.name) + '</h2>'
+      +     '<div class="sub">'
+      +       (s.level ? '<span class="chip">' + escapeHtmlSafe(s.level) + '</span> ' : '')
+      +       (s.archived ? '<span class="chip archived">Archived</span> ' : '')
+      +       escapeHtmlSafe(s.email || s.preply_handle || '')
+      +     '</div>'
+      +   '</div>'
+      +   '<div class="head-actions">'
+      +     '<button class="btn soft" id="btn-edit-student">Edit profile</button>'
+      +   '</div>'
+      + '</div>'
+
+      + '<div class="section-title">Profile</div>'
+      + '<div class="field-grid">'
+      +   field('Name',         escapeHtmlSafe(s.name))
+      +   field('Level',        escapeHtmlSafe(s.level || '—'))
+      +   field('Email',        escapeHtmlSafe(s.email || '—'))
+      +   field('Preply handle',escapeHtmlSafe(s.preply_handle || '—'))
+      +   field('Goal',         escapeHtmlSafe(s.goal || '—'), true)
+      +   field('Notes',        escapeHtmlSafe(s.notes || '—').replace(/\n/g, '<br>'), true)
+      + '</div>'
+
+      + '<div class="profile-actions">'
+      +   '<div class="left">'
+      +     (s.archived
+          ? '<button class="btn soft" id="btn-unarchive">Restore</button>'
+          : '<button class="btn ghost" id="btn-archive">Archive</button>')
+      +   '</div>'
+      +   '<div class="right">'
+      +     '<span style="font-size:11px;color:var(--muted)">Lessons & progress in phase 4–6</span>'
+      +   '</div>'
+      + '</div>';
+
+    document.getElementById('detail-panel').innerHTML = html;
+    document.getElementById('btn-edit-student').onclick = function(){ openEditStudentModal(s); };
+    var arch = document.getElementById('btn-archive');
+    if (arch) arch.onclick = function(){ archiveStudent(s.id); };
+    var unarch = document.getElementById('btn-unarchive');
+    if (unarch) unarch.onclick = function(){ unarchiveStudent(s.id); };
+  }
+
+  function field(label, value, full) {
+    return '<div class="field' + (full ? ' full' : '') + '">'
+      + '<label>' + escapeHtmlSafe(label) + '</label>'
+      + '<div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#fafbfd;font-size:14px;color:var(--text);min-height:40px;line-height:1.5">' + (value || '—') + '</div>'
+      + '</div>';
+  }
+
+  // ── Modal ──────────────────────────────────────────────────
+  function openNewStudentModal() {
+    state.editingId = null;
+    document.getElementById('student-modal-title').textContent = 'New student';
+    setModalValues({ name:'', email:'', preply_handle:'', level:'', goal:'', notes:'' });
+    showModal();
+  }
+  function openEditStudentModal(s) {
+    state.editingId = s.id;
+    document.getElementById('student-modal-title').textContent = 'Edit student';
+    setModalValues(s);
+    showModal();
+  }
+  function setModalValues(s) {
+    document.getElementById('m-name').value   = s.name || '';
+    document.getElementById('m-email').value  = s.email || '';
+    document.getElementById('m-preply').value = s.preply_handle || '';
+    document.getElementById('m-level').value  = s.level || '';
+    document.getElementById('m-goal').value   = s.goal || '';
+    document.getElementById('m-notes').value  = s.notes || '';
+  }
+  function showModal() {
+    document.getElementById('student-modal').style.display = '';
+    setTimeout(function(){ document.getElementById('m-name').focus(); }, 50);
+  }
+  function closeStudentModal() {
+    document.getElementById('student-modal').style.display = 'none';
+    state.editingId = null;
+  }
+  async function saveStudentFromModal() {
+    var name = document.getElementById('m-name').value.trim();
+    if (!name) { toast('Name is required', 'err'); return; }
+    var payload = {
+      name: name,
+      email: document.getElementById('m-email').value.trim() || null,
+      preply_handle: document.getElementById('m-preply').value.trim() || null,
+      level: document.getElementById('m-level').value || null,
+      goal: document.getElementById('m-goal').value.trim() || null,
+      notes: document.getElementById('m-notes').value.trim() || null
+    };
+    var saveBtn = document.getElementById('student-modal-save');
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+    try {
+      var saved;
+      if (state.editingId) {
+        saved = await updateStudent(state.editingId, payload);
+        toast('Saved', 'ok');
+      } else {
+        saved = await insertStudent(payload);
+        state.selectedId = saved.id;
+        toast('Student added', 'ok');
+      }
+      closeStudentModal();
+      await loadStudents();
+    } catch (e) {
+      console.error(e);
+      toast('Save failed: ' + (e.message || e), 'err');
+    } finally {
+      saveBtn.disabled = false; saveBtn.textContent = 'Save';
+    }
+  }
+
+  async function archiveStudent(id) {
+    if (!confirm('Archive this student? They\'ll be hidden from the list (you can restore them later).')) return;
+    try {
+      await setArchived(id, true);
+      toast('Archived', 'ok');
+      await loadStudents();
+    } catch (e) {
+      toast('Failed: ' + (e.message || e), 'err');
+    }
+  }
+  async function unarchiveStudent(id) {
+    try {
+      await setArchived(id, false);
+      toast('Restored', 'ok');
+      await loadStudents();
+    } catch (e) {
+      toast('Failed: ' + (e.message || e), 'err');
+    }
+  }
+
+  // Expose for inline handlers / future phases.
+  window.tutorApp = {
+    state: state,
+    reload: loadStudents,
+    toast: toast
+  };
 })();
 </script>
 </body>
