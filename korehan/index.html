@@ -328,10 +328,10 @@
   scroll-snap-align: start;
 }
 
-/* Conv card — fixed width in carousel */
+/* Conv card — match news width exactly */
 .home-conv-grid-wrap .hconv-card {
-  flex: 0 0 290px;
-  min-width: 290px;
+  flex: 0 0 280px;
+  min-width: 280px;
   scroll-snap-align: start;
   display: flex;
   flex-direction: column;
@@ -348,18 +348,18 @@
 }
 .home-conv-grid-wrap .hconv-foot { margin-top: auto; }
 
-/* Story card — fixed width in carousel */
+/* Story card — match news width exactly */
 .home-story-grid .story-card {
-  flex: 0 0 240px;
-  min-width: 240px;
+  flex: 0 0 280px;
+  min-width: 280px;
   scroll-snap-align: start;
 }
 
-/* Slightly larger cards on desktop */
+/* Slightly larger cards on desktop — keep all three identical */
 @media (min-width: 1100px) {
   .home-news-grid .nc { flex: 0 0 300px; min-width: 300px; }
-  .home-conv-grid-wrap .hconv-card { flex: 0 0 310px; min-width: 310px; }
-  .home-story-grid .story-card { flex: 0 0 260px; min-width: 260px; }
+  .home-conv-grid-wrap .hconv-card { flex: 0 0 300px; min-width: 300px; }
+  .home-story-grid .story-card { flex: 0 0 300px; min-width: 300px; }
 }
 
 /* Full-image overlay card (news-style) for home stories */
@@ -372,7 +372,6 @@
   transition: transform .18s, box-shadow .18s;
   box-shadow: 0 8px 24px rgba(13,27,46,.1);
   aspect-ratio: 1/1;
-  min-height: 220px;
 }
 .story-card:hover { transform: translateY(-3px); box-shadow: 0 18px 40px rgba(13,27,46,.18); }
 .story-cover {
@@ -457,11 +456,11 @@
   .kh-hero-nav { display: none !important; }
   #dyn-hero > aside { display: none !important; }
   #dyn-hero { grid-template-columns: 1fr !important; }
-  /* News cards: 정사각형에 가깝게 */
+  /* News / Conv / Story 카드 — 모바일에서 모두 동일한 정사각형 썸네일 */
   .home-news-grid .nc { flex: 0 0 210px; min-width: 210px; }
   .home-news-grid .nc.nc-overlay { min-height: 0 !important; aspect-ratio: 1/1; }
   .home-news-grid .nc.nc-overlay .nc-title { font-size: 14px !important; }
-  .home-conv-grid-wrap .hconv-card { flex: 0 0 220px; min-width: 220px; aspect-ratio: 1/1 !important; }
+  .home-conv-grid-wrap .hconv-card { flex: 0 0 210px; min-width: 210px; aspect-ratio: 1/1 !important; }
   .home-story-grid .story-card { flex: 0 0 210px; min-width: 210px; }
   .home-hero-loading { min-height: 300px !important; grid-template-columns: 1fr !important; }
   .home-hero-skeleton-main { min-height: 300px !important; }
