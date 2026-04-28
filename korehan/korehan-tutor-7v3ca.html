@@ -68,6 +68,15 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
 .student-row .meta{min-width:0;flex:1}
 .student-row .meta .nm{font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .student-row .meta .sub{font-size:11px;color:var(--muted);margin-top:2px}
+.student-row .avg-pill{
+  flex-shrink:0;font-size:11px;font-weight:800;
+  background:#f1f5f9;color:var(--muted);padding:3px 8px;border-radius:999px;
+  font-variant-numeric:tabular-nums;min-width:32px;text-align:center
+}
+.student-row .avg-pill.weak       {background:#fee2e2;color:#dc2626}
+.student-row .avg-pill.developing {background:#fef3c7;color:#d97706}
+.student-row .avg-pill.solid      {background:#dbeafe;color:#1e40af}
+.student-row .avg-pill.strong     {background:#dcfce7;color:#166534}
 
 .detail{padding:24px;min-height:480px}
 .detail .empty{
@@ -79,6 +88,32 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
 .detail .empty p{margin:0;font-size:14px;line-height:1.6}
 
 .empty-mini{font-size:13px;color:var(--muted);text-align:center;padding:24px 8px;line-height:1.6}
+
+/* Empty detail panel — upcoming widget */
+.upcoming-widget{padding:8px 0 0;max-width:540px;margin:0 auto;width:100%}
+.upcoming-widget .uw-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)
+}
+.upcoming-widget .uw-head h3{margin:0;font-size:18px;font-weight:800}
+.upcoming-widget .uw-head .uw-sub{font-size:12px;color:var(--muted)}
+.upcoming-row{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  border:1px solid var(--border);border-radius:12px;margin-bottom:8px;
+  background:#fafbfd;cursor:pointer;transition:background .12s,border-color .12s
+}
+.upcoming-row:hover{background:var(--soft);border-color:#c7d7f0}
+.upcoming-row .uw-when{
+  flex-shrink:0;text-align:center;min-width:64px;
+  background:#fff;border:1px solid var(--border);border-radius:10px;padding:6px 8px
+}
+.upcoming-row .uw-when .uw-dow{font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.upcoming-row .uw-when .uw-day{font-size:18px;font-weight:800;color:var(--blue);line-height:1}
+.upcoming-row .uw-when .uw-mon{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-top:2px}
+.upcoming-row .uw-info{flex:1;min-width:0}
+.upcoming-row .uw-info .nm{font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.upcoming-row .uw-info .meta{font-size:12px;color:var(--muted);margin-top:2px}
+.upcoming-row .uw-time{font-size:13px;font-weight:600;color:var(--bright);flex-shrink:0;font-variant-numeric:tabular-nums}
 
 /* Auth gate */
 .gate{
@@ -115,6 +150,15 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
   .layout{grid-template-columns:1fr;padding:14px;gap:14px}
   .sidebar{height:auto}
   .student-list{max-height:280px}
+  .detail{padding:18px}
+  .field-grid{grid-template-columns:1fr}
+  .profile-head{flex-wrap:wrap}
+  .profile-head .head-actions{width:100%;margin-top:8px}
+  .modal{border-radius:14px}
+  .modal-head,.modal-body,.modal-foot{padding-left:18px;padding-right:18px}
+  .topbar{padding:0 14px}
+  .topbar .brand{font-size:14px}
+  .upcoming-row{padding:10px 12px;gap:10px}
 }
 
 /* Sidebar tools */
@@ -650,6 +694,8 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
       var s = state.students.find(function(x){ return x.id === state.selectedId; });
       if (s) renderDetail(s);
       else { state.selectedId = null; renderEmptyDetail(); }
+    } else {
+      renderEmptyDetail();
     }
   }
 
@@ -695,12 +741,18 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
       var active = s.id === state.selectedId ? ' active' : '';
       var sub = [s.level || '', s.goal || ''].filter(Boolean).join(' · ');
       if (s.archived) sub = (sub ? sub + ' · ' : '') + 'archived';
+      var avg = avgSkill(s);
+      var hasScores = SKILL_AXES.some(function(a){ return (s[a.key] || 0) > 0; });
+      var pill = hasScores
+        ? '<div class="avg-pill ' + skillTier(avg) + '" title="Overall skill score">' + avg + '</div>'
+        : '';
       return '<div class="student-row' + active + '" data-id="' + s.id + '">'
         +   '<div class="avatar">' + escapeHtmlSafe(initials(s.name)) + '</div>'
         +   '<div class="meta">'
         +     '<div class="nm">' + escapeHtmlSafe(s.name) + '</div>'
         +     '<div class="sub">' + escapeHtmlSafe(sub || '—') + '</div>'
         +   '</div>'
+        +   pill
         + '</div>';
     }).join('');
 
@@ -715,13 +767,98 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
   }
 
   // ── Detail panel ───────────────────────────────────────────
-  function renderEmptyDetail() {
-    document.getElementById('detail-panel').innerHTML =
-      '<div class="empty">'
-      + '<div class="icon">📘</div>'
-      + '<h3>No student selected</h3>'
-      + '<p>Add a student from the left panel,<br>then pick one to manage lessons, feedback, and progress.</p>'
+  async function renderEmptyDetail() {
+    var panel = document.getElementById('detail-panel');
+    panel.innerHTML =
+      '<div class="upcoming-widget">'
+      + '<div class="uw-head"><h3>Upcoming lessons</h3><span class="uw-sub">across all students</span></div>'
+      + '<div id="uw-list"><div class="empty-mini">Loading…</div></div>'
       + '</div>';
+
+    var sb = getSupa();
+    try {
+      var nowIso = new Date(Date.now() - 30*60*1000).toISOString();
+      var { data, error } = await sb
+        .from('tutor_lessons')
+        .select('id, scheduled_at, status, topic, duration_minutes, student_id, tutor_students(name, level, archived)')
+        .eq('status', 'scheduled')
+        .gte('scheduled_at', nowIso)
+        .order('scheduled_at', { ascending: true })
+        .limit(8);
+      if (error) throw error;
+      var rows = (data || []).filter(function(l){
+        return l.tutor_students && !l.tutor_students.archived;
+      });
+      renderUpcomingList(rows);
+    } catch (e) {
+      console.error(e);
+      var box = document.getElementById('uw-list');
+      if (box) box.innerHTML = '<div class="empty-mini" style="color:var(--danger)">Failed to load upcoming lessons.<br>' + escapeHtmlSafe(e.message || e) + '</div>';
+    }
+  }
+
+  function renderUpcomingList(rows) {
+    var box = document.getElementById('uw-list');
+    if (!box) return;
+    if (!rows.length) {
+      // Tailor the empty copy based on whether there are any students yet.
+      var html;
+      if (!state.students.length) {
+        html = '<div class="empty">'
+          + '<div class="icon">📘</div>'
+          + '<h3>Welcome to your tutor dashboard</h3>'
+          + '<p>Add your first student with the <b>+ New</b> button on the left,<br>then start scheduling lessons and tracking progress.</p>'
+          + '</div>';
+      } else {
+        html = '<div class="empty">'
+          + '<div class="icon">🗓️</div>'
+          + '<h3>No upcoming lessons</h3>'
+          + '<p>Pick a student on the left and click <b>+ New lesson</b> to schedule one.</p>'
+          + '</div>';
+      }
+      box.innerHTML = html;
+      return;
+    }
+
+    var dowFmt  = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
+    var monFmt  = new Intl.DateTimeFormat(undefined, { month: 'short' });
+    var timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+
+    box.innerHTML = rows.map(function(l){
+      var d = new Date(l.scheduled_at);
+      var dow = dowFmt.format(d);
+      var day = d.getDate();
+      var mon = monFmt.format(d);
+      var time = timeFmt.format(d);
+      var s = l.tutor_students || {};
+      var meta = [
+        s.level || '',
+        l.topic || '',
+        relativeWhen(l.scheduled_at)
+      ].filter(Boolean).join(' · ');
+      return '<div class="upcoming-row" data-pick-student="' + l.student_id + '">'
+        + '<div class="uw-when">'
+        +   '<div class="uw-dow">' + escapeHtmlSafe(dow) + '</div>'
+        +   '<div class="uw-day">' + day + '</div>'
+        +   '<div class="uw-mon">' + escapeHtmlSafe(mon) + '</div>'
+        + '</div>'
+        + '<div class="uw-info">'
+        +   '<div class="nm">' + escapeHtmlSafe(s.name || '—') + '</div>'
+        +   '<div class="meta">' + escapeHtmlSafe(meta) + '</div>'
+        + '</div>'
+        + '<div class="uw-time">' + escapeHtmlSafe(time) + '</div>'
+        + '</div>';
+    }).join('');
+
+    Array.prototype.forEach.call(box.querySelectorAll('[data-pick-student]'), function(el){
+      el.onclick = function(){
+        var id = el.getAttribute('data-pick-student');
+        state.selectedId = id;
+        var s = state.students.find(function(x){ return x.id === id; });
+        renderStudentList();
+        if (s) renderDetail(s);
+      };
+    });
   }
 
   function renderDetail(s) {
