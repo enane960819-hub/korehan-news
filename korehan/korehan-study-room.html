@@ -2556,6 +2556,45 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   .ls-cosmos { aspect-ratio: 1 / 1.05; max-height: 520px; }
 }
 .ls-cosmos.is-ready .ls-cosmos-fallback { display: none; }
+.ls-cosmos.is-ready .ls-cosmos-loading { display: none; }
+
+/* Loading indicator — visible from page load until the WebGL scene
+   is up. Three pulsing dots over the centre. Far less alarming than
+   a black square. */
+.ls-cosmos-loading {
+  position: absolute;
+  top: 38%; left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: 6px;
+  flex-direction: column;
+  z-index: 5;
+  pointer-events: none;
+}
+.ls-cosmos-loading > div:not(.ls-cosmos-loading-text) {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: rgba(196, 181, 253, .85);
+  animation: lsCosmosLoadingDot 1.2s ease-in-out infinite;
+}
+.ls-cosmos-loading-dot:nth-child(1) { animation-delay: 0s; }
+.ls-cosmos-loading-dot:nth-child(2) { animation-delay: .15s; }
+.ls-cosmos-loading-dot:nth-child(3) { animation-delay: .3s; }
+@keyframes lsCosmosLoadingDot {
+  0%, 80%, 100% { transform: scale(0.6); opacity: .4; }
+  40%           { transform: scale(1.2); opacity: 1; }
+}
+.ls-cosmos-loading-text {
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  background: none !important;
+  border-radius: 0 !important;
+  margin-top: 6px;
+  font-size: 11px; font-weight: 700;
+  color: rgba(196, 181, 253, .65);
+  letter-spacing: .08em; text-transform: uppercase;
+  animation: none !important;
+}
 .ls-cosmos-canvas,
 .ls-cosmos #ls-cosmos-canvas {
   position: absolute; inset: 0;
@@ -2681,9 +2720,10 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
 <!-- es-module-shims polyfills the importmap below for browsers that
      don't yet ship native importmap support (older Samsung Internet,
-     iOS < 16.4, etc). Loaded async; the type=importmap tag is read
-     either by the browser natively or by the shim — whichever wins. -->
-<script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+     iOS < 16.4, etc). Loaded synchronously (no async/defer) so the
+     polyfill is fully parsed before the type=importmap tag is read
+     and before any later <script type="module"> tag runs. -->
+<script src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
 
 <!-- Three.js (importmap so the constellation module can pull
      UnrealBloomPass + EffectComposer from the same versioned bundle).
@@ -2846,6 +2886,15 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
         <div class="sr-topic-right" style="width:100%;margin-top:8px">
           <div id="ls-cosmos-mount" class="ls-cosmos">
             <canvas id="ls-cosmos-canvas"></canvas>
+            <!-- Loading indicator visible from page load. Replaced by
+                 the cosmos scene as soon as Three.js is ready, or by
+                 a more permanent error message if init fails. -->
+            <div id="ls-cosmos-loading" class="ls-cosmos-loading">
+              <div class="ls-cosmos-loading-dot"></div>
+              <div class="ls-cosmos-loading-dot"></div>
+              <div class="ls-cosmos-loading-dot"></div>
+              <div class="ls-cosmos-loading-text">Cosmos loading…</div>
+            </div>
             <!-- Tap-target overlays (DOM elements positioned over each
                  3D node) so click events go through the normal HTML
                  click pipeline instead of needing a raycaster on every
@@ -19950,16 +19999,19 @@ function hasWebGL() {
   } catch (_) { return false; }
 }
 
-// Surface the failure reason as a tiny dim string at the bottom of
-// the cosmos slot. Helps when the user can't open devtools to read
-// the console. The fallback START button stays usable above it.
+// Surface the failure reason as a clearly-visible card on the cosmos
+// slot. Helps when the user can't open devtools to read the console.
+// The fallback START button stays usable above it.
 function showCosmosError(msg) {
   if (!mount) return;
+  // Hide the loading dots so we don't claim to still be loading.
+  const ld = document.getElementById('ls-cosmos-loading');
+  if (ld) ld.style.display = 'none';
   let el = document.getElementById('ls-cosmos-err');
   if (!el) {
     el = document.createElement('div');
     el.id = 'ls-cosmos-err';
-    el.style.cssText = 'position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:10px;font-weight:700;color:rgba(248,113,113,.85);z-index:10;letter-spacing:.04em;pointer-events:none;font-family:ui-monospace,monospace';
+    el.style.cssText = 'position:absolute;left:14px;right:14px;bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(127,29,29,.65);border:1px solid rgba(248,113,113,.45);text-align:center;font-size:11px;font-weight:700;color:#fecaca;z-index:10;letter-spacing:.02em;pointer-events:none;font-family:ui-monospace,SFMono-Regular,monospace;line-height:1.4';
     mount.appendChild(el);
   }
   el.textContent = '⚠ ' + msg;
@@ -20331,7 +20383,8 @@ if (document.readyState === 'loading') {
 <!-- External watchdog — non-module so it runs even if the module
      script above never executes (importmap unsupported, CDN refused,
      CSP block, etc). Surfaces a visible diagnostic so the user knows
-     why the constellation didn't appear. -->
+     why the constellation didn't appear. Trips at 5s — long enough
+     for slow networks but short enough to give quick feedback. -->
 <script>
 setTimeout(function () {
   var m = document.getElementById('ls-cosmos-mount');
@@ -20339,13 +20392,16 @@ setTimeout(function () {
   if (m.classList.contains('is-ready')) return;
   if (window._lsCosmos && window._lsCosmos.ready) return;
   if (document.getElementById('ls-cosmos-err')) return;
+  // Hide the loading dots — claiming to still load isn't honest.
+  var ld = document.getElementById('ls-cosmos-loading');
+  if (ld) ld.style.display = 'none';
   var err = document.createElement('div');
   err.id = 'ls-cosmos-err';
-  err.style.cssText = 'position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:10px;font-weight:700;color:rgba(248,113,113,.85);z-index:10;letter-spacing:.04em;pointer-events:none;font-family:ui-monospace,monospace';
-  err.textContent = '⚠ Cosmos timed out — module may not have loaded. START button still works.';
+  err.style.cssText = 'position:absolute;left:14px;right:14px;bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(127,29,29,.65);border:1px solid rgba(248,113,113,.45);text-align:center;font-size:11px;font-weight:700;color:#fecaca;z-index:10;letter-spacing:.02em;pointer-events:none;font-family:ui-monospace,SFMono-Regular,monospace;line-height:1.4';
+  err.textContent = '⚠ Cosmos timed out — Three.js module never executed. Browser may not support importmap or WebGL. START button still works.';
   m.appendChild(err);
   console.warn('[ls-cosmos] external watchdog triggered — module never reached ready state');
-}, 8000);
+}, 5000);
 </script>
 </body>
 </html>
