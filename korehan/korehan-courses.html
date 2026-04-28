@@ -24,48 +24,48 @@
   --bg:#f6f8fc;--white:#fff;--border:#e2e8f0;--gray:#64748b;--dark:#0d1b2e;
 }
 
-/* HERO */
-.course-hero{background:linear-gradient(150deg,#0b1626 0%,#1a3a6b 60%,#0d2b0d 100%);padding:72px 24px 64px;text-align:center;position:relative;overflow:hidden;}
-.course-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 70% at 15% 50%,rgba(34,85,164,.2) 0%,transparent 65%),radial-gradient(ellipse 50% 50% at 85% 30%,rgba(20,120,60,.15) 0%,transparent 65%);pointer-events:none;}
+/* HERO — light cream theme matching the rest of the site */
+.course-hero{background:linear-gradient(160deg,#fff7eb 0%,#fdf3df 55%,#f5e6c8 100%);padding:72px 24px 64px;text-align:center;position:relative;overflow:hidden;border-bottom:1px solid rgba(11,22,38,.06);}
+.course-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 70% at 15% 50%,rgba(34,85,164,.06) 0%,transparent 65%),radial-gradient(ellipse 50% 50% at 85% 30%,rgba(20,120,60,.05) 0%,transparent 65%);pointer-events:none;}
 .course-hero-inner{position:relative;max-width:780px;margin:0 auto;}
-.hero-pill{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:6px 18px;font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.75);margin-bottom:28px;}
-.hero-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;animation:pulse 2s ease-in-out infinite;}
+.hero-pill{display:inline-flex;align-items:center;gap:8px;background:rgba(11,22,38,.06);border:1px solid rgba(11,22,38,.1);border-radius:999px;padding:6px 18px;font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#475569;margin-bottom:28px;}
+.hero-dot{width:7px;height:7px;border-radius:50%;background:#16a34a;animation:pulse 2s ease-in-out infinite;}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
-.course-hero h1{font-family:'Playfair Display','Noto Serif KR',serif;font-size:clamp(32px,5.5vw,58px);font-weight:900;color:#fff;margin:0 0 16px;line-height:1.15;}
-.course-hero h1 em{font-style:italic;color:var(--sky);}
-.course-hero>div>p{font-size:16px;color:rgba(255,255,255,.65);line-height:1.7;margin:0 auto 36px;max-width:520px;}
+.course-hero h1{font-family:'Playfair Display','Noto Serif KR',serif;font-size:clamp(32px,5.5vw,58px);font-weight:900;color:#0b1626;margin:0 0 16px;line-height:1.15;}
+.course-hero h1 em{font-style:italic;color:#1d4ed8;}
+.course-hero>div>p{font-size:16px;color:#475569;line-height:1.7;margin:0 auto 36px;max-width:520px;}
 
 /* BILLING TOGGLE */
-.billing-toggle{display:inline-flex;align-items:center;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:4px;margin-bottom:36px;}
-.bt-btn{padding:8px 20px;border-radius:999px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;background:transparent;color:rgba(255,255,255,.5);transition:all .2s;white-space:nowrap;position:relative;}
-.bt-btn.active{background:var(--white);color:var(--dark);}
+.billing-toggle{display:inline-flex;align-items:center;background:rgba(11,22,38,.05);border:1px solid rgba(11,22,38,.1);border-radius:999px;padding:4px;margin-bottom:36px;}
+.bt-btn{padding:8px 20px;border-radius:999px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;background:transparent;color:#64748b;transition:all .2s;white-space:nowrap;position:relative;}
+.bt-btn.active{background:#fff;color:#0b1626;box-shadow:0 1px 3px rgba(0,0,0,.08);}
 .bt-badge{position:absolute;top:-8px;right:-2px;background:var(--green);color:#fff;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 6px;border-radius:999px;text-transform:uppercase;white-space:nowrap;}
 
 /* PLAN CARDS */
 .pricing-wrap{max-width:800px;margin:0 auto;}
 .pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:14px;}
-.plan-card{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);border-radius:20px;padding:32px 28px;text-align:left;transition:border-color .2s,transform .2s;position:relative;overflow:hidden;}
-.plan-card:hover{border-color:rgba(255,255,255,.25);transform:translateY(-2px);}
-.plan-card.featured{background:rgba(255,255,255,.1);border-color:var(--sky);box-shadow:0 0 0 1px rgba(122,184,245,.3),0 16px 48px rgba(0,0,0,.3);}
-.plan-badge{position:absolute;top:16px;right:16px;background:var(--sky);color:var(--navy);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;padding:3px 10px;border-radius:999px;}
-.plan-name{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.45);margin-bottom:10px;}
+.plan-card{background:#fff;border:1.5px solid rgba(11,22,38,.1);border-radius:20px;padding:32px 28px;text-align:left;transition:border-color .2s,transform .2s,box-shadow .2s;position:relative;overflow:hidden;box-shadow:0 4px 16px rgba(11,22,38,.06);}
+.plan-card:hover{border-color:rgba(11,22,38,.2);transform:translateY(-2px);box-shadow:0 12px 32px rgba(11,22,38,.1);}
+.plan-card.featured{background:#fff;border-color:#1d4ed8;box-shadow:0 0 0 1px rgba(29,78,216,.2),0 16px 48px rgba(11,22,38,.12);}
+.plan-badge{position:absolute;top:16px;right:16px;background:#1d4ed8;color:#fff;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;padding:3px 10px;border-radius:999px;}
+.plan-name{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:#64748b;margin-bottom:10px;}
 .plan-price-row{display:flex;align-items:baseline;gap:4px;margin-bottom:4px;}
-.plan-price{font-size:48px;font-weight:900;color:#fff;line-height:1;}
-.plan-per{font-size:14px;color:rgba(255,255,255,.4);font-weight:500;}
-.plan-original{font-size:13px;color:rgba(255,255,255,.3);text-decoration:line-through;min-height:20px;}
+.plan-price{font-size:48px;font-weight:900;color:#0b1626;line-height:1;}
+.plan-per{font-size:14px;color:#94a3b8;font-weight:500;}
+.plan-original{font-size:13px;color:#94a3b8;text-decoration:line-through;min-height:20px;}
 .plan-saving{font-size:12px;font-weight:700;color:var(--green);min-height:18px;margin-bottom:14px;}
-.plan-desc{font-size:13px;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:18px;}
+.plan-desc{font-size:13px;color:#475569;line-height:1.6;margin-bottom:18px;}
 .plan-features{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:24px;}
-.plan-features li{font-size:13px;color:rgba(255,255,255,.75);display:flex;align-items:flex-start;gap:8px;line-height:1.4;}
+.plan-features li{font-size:13px;color:#334155;display:flex;align-items:flex-start;gap:8px;line-height:1.4;}
 .plan-features li::before{content:"✓";color:var(--green);font-weight:800;flex-shrink:0;margin-top:1px;}
-.plan-features li.dim{color:rgba(255,255,255,.28);}
-.plan-features li.dim::before{content:"—";color:rgba(255,255,255,.18);}
+.plan-features li.dim{color:#cbd5e1;}
+.plan-features li.dim::before{content:"—";color:#cbd5e1;}
 .plan-cta{display:block;width:100%;padding:13px 20px;border-radius:999px;border:none;cursor:pointer;font-size:14px;font-weight:800;font-family:inherit;text-align:center;transition:all .2s;}
-.plan-cta.primary{background:var(--bright);color:#fff;box-shadow:0 6px 20px rgba(34,85,164,.4);}
-.plan-cta.primary:hover{background:#1a3f7a;transform:translateY(-1px);}
-.plan-cta.secondary{background:rgba(255,255,255,.1);color:#fff;border:1.5px solid rgba(255,255,255,.2);}
-.plan-cta.secondary:hover{background:rgba(255,255,255,.18);}
-.pricing-note{font-size:12px;color:rgba(255,255,255,.28);text-align:center;}
+.plan-cta.primary{background:#1d4ed8;color:#fff;box-shadow:0 6px 20px rgba(29,78,216,.3);}
+.plan-cta.primary:hover{background:#1e40af;transform:translateY(-1px);}
+.plan-cta.secondary{background:#fff;color:#0b1626;border:1.5px solid rgba(11,22,38,.15);}
+.plan-cta.secondary:hover{background:#f1f5f9;border-color:rgba(11,22,38,.25);}
+.pricing-note{font-size:12px;color:#94a3b8;text-align:center;}
 
 /* SECTION */
 .course-section{max-width:960px;margin:0 auto;padding:64px 24px;}
@@ -208,8 +208,8 @@
 <div class="course-hero">
   <div class="course-hero-inner">
     <div class="hero-pill"><span class="hero-dot"></span> Now Open</div>
-    <h1>Write Better Korean.<br><em>Get Real Feedback.</em></h1>
-    <p>Not grammar drills. Real assignments from real Korean news &mdash; with feedback that actually explains why.</p>
+    <h1>Real Korean.<br><em>Real Practice. Real Growth.</em></h1>
+    <p>Read real Korean news, conversations, and stories &mdash; then track every word, grammar pattern, and reading habit in your Growth Lab.</p>
 
     <!-- BILLING TOGGLE -->
     <div class="billing-toggle">
@@ -230,19 +230,18 @@
           </div>
           <div class="plan-original" id="std-original">&nbsp;</div>
           <div class="plan-saving" id="std-saving">&nbsp;</div>
-          <div class="plan-desc">Full self-study access with detailed feedback on your writing.</div>
+          <div class="plan-desc">Full self-study access with the complete Growth Lab analytics suite.</div>
           <ul class="plan-features">
             <li>Article Study &mdash; 5 interactive steps</li>
             <li>Conversation &amp; Story Study</li>
             <li>Full Slang library + Quiz</li>
+            <li>Daily Topic Writing with AI feedback</li>
             <li>Weekly &amp; Monthly Review</li>
-            <li>Writing Feedback (daily)</li>
             <li>Listening Quiz</li>
-            <li>Word Book SRS review</li>
-            <li>Growth Lab + Monthly Report</li>
+            <li>Word Book + SRS review</li>
+            <li>Growth Lab &mdash; full skill tracking</li>
             <li class="dim">Fast Track scenarios</li>
             <li class="dim">Phone Call Practice</li>
-            <li class="dim">Speaking feedback (human)</li>
           </ul>
           <button class="plan-cta secondary" onclick="enroll('standard')">Get Standard &rarr;</button>
         </div>
@@ -256,15 +255,14 @@
           </div>
           <div class="plan-original" id="essay-original">&nbsp;</div>
           <div class="plan-saving" id="essay-saving">&nbsp;</div>
-          <div class="plan-desc">Everything in Standard, plus human coaching and premium features.</div>
+          <div class="plan-desc">Everything in Standard, plus practice scenarios and personalized coaching.</div>
           <ul class="plan-features">
             <li>Everything in Standard</li>
             <li>Fast Track &mdash; real-life scenarios</li>
             <li>Phone Call Practice</li>
-            <li>Speaking recording + human feedback (5x/week)</li>
-            <li>Priority feedback (6h vs 24h)</li>
             <li>Personalized study recommendations</li>
-            <li>Full writing archive + monthly progress report</li>
+            <li>Vocabulary Universe &mdash; constellation view</li>
+            <li>Extended Growth Lab history</li>
           </ul>
           <button class="plan-cta primary" onclick="enroll('pro')">Get Pro &rarr;</button>
         </div>
@@ -300,45 +298,25 @@
     <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
     <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
 
-    <div class="ct-cell feat">Speaking Feedback<small>Record + human review (5x/week)</small></div>
-    <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
-
-    <div class="ct-cell feat">Priority Feedback<small>6h instead of 24h</small></div>
-    <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
-
     <div class="ct-cell feat">Word saves<small>Personal vocabulary list</small></div>
     <div class="ct-cell std-col"><span class="ct-hi">Unlimited + export</span></div>
     <div class="ct-cell essay-col"><span class="ct-hi">Unlimited + export</span></div>
-
-    <div class="ct-cell feat">Weekly Assignment Program<small>Themed prompts tied to articles</small></div>
-    <div class="ct-cell std-col"><span class="ct-hi">&times; 4 / month</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">&times; 4 / month</span></div>
 
     <div class="ct-cell feat">Grammar guides<small>Per-article deep dives</small></div>
     <div class="ct-cell std-col"><span class="ct-hi">All patterns</span></div>
     <div class="ct-cell essay-col"><span class="ct-hi">All patterns</span></div>
 
-    <div class="ct-cell feat">Monthly essay &mdash; human reviewed<small>Initial review + Han personally reads</small></div>
-    <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">&#10003; Once / month</span></div>
+    <div class="ct-cell feat">Growth Lab analytics<small>Reading / Grammar / Vocabulary skill scores, streak, XP</small></div>
+    <div class="ct-cell std-col"><span class="ct-hi">&#10003;</span></div>
+    <div class="ct-cell essay-col"><span class="ct-hi">&#10003; + extended history</span></div>
 
-    <div class="ct-cell feat">Video feedback<small>&sim;1 min personal video from Han</small></div>
-    <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">&#10003; Each essay</span></div>
-
-    <div class="ct-cell feat">Follow-up question<small>Ask Han one question per essay</small></div>
+    <div class="ct-cell feat">Vocabulary Universe<small>Saved words rendered as a constellation you can orbit</small></div>
     <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
     <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
 
-    <div class="ct-cell feat">Monthly progress report<small>Error patterns + growth tracking</small></div>
+    <div class="ct-cell feat">Personalized study recommendations<small>Weekly grammar focus tied to your weakest areas</small></div>
     <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
     <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
-
-    <div class="ct-cell feat">Writing archive<small>All past submissions + feedback</small></div>
-    <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">&#10003; Full history</span></div>
 
     <div class="ct-cell feat">Completion certificate<small>3 &middot; 6 &middot; 12 month milestones</small></div>
     <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
@@ -353,31 +331,31 @@
   <div class="sec-sub">Six ways your Korean actually improves.</div>
   <div class="features-grid">
     <div class="feat-card">
-      <span class="feat-ico">&#9997;&#65039;</span>
-      <h3>4 Reviewed Assignments / Month</h3>
-      <p>Weekly short writing based on real KoreHani articles. Instant feedback with explanations &mdash; not just corrections.</p>
+      <span class="feat-ico">&#128240;</span>
+      <h3>Real Korean Articles, Daily</h3>
+      <p>News, opinion, culture, K-pop &mdash; sourced and leveled (Seed/Sprout/Tree/Forest) so you can actually read at your level.</p>
     </div>
     <div class="feat-card c-green">
-      <span class="feat-ico">&#129489;&#8205;&#127979;</span>
-      <h3>Human Essay Review</h3>
-      <p>Once a month, Han personally reads your essay. Initial review surfaces structural issues &mdash; Han adds what only a native teacher catches: nuance, tone, naturalness.</p>
+      <span class="feat-ico">&#9997;&#65039;</span>
+      <h3>Daily Topic Writing</h3>
+      <p>One Korean writing prompt every day. Type your answer in the Study Room and get instant grammar / vocab / structure feedback.</p>
     </div>
     <div class="feat-card c-amber">
-      <span class="feat-ico">&#127909;</span>
-      <h3>&sim;1 Min Video Feedback</h3>
-      <p>Han records a short personal video for your essay. Hear exactly what to focus on &mdash; in a way text alone can&rsquo;t deliver.</p>
+      <span class="feat-ico">&#128172;</span>
+      <h3>Conversations &amp; Stories</h3>
+      <p>KakaoTalk-style dialogues and short stories (Fun, Touching, Scary, Shocking). Each one comes with vocab, grammar, and comprehension study.</p>
     </div>
     <div class="feat-card c-sky">
-      <span class="feat-new">New</span>
+      <span class="feat-new">Live</span>
       <span class="feat-ico">&#128202;</span>
-      <h3>Monthly Progress Report</h3>
-      <p>Grammar accuracy, vocabulary range, sentence structure &mdash; tracked every month so you know exactly where you&rsquo;re improving.</p>
+      <h3>Growth Lab</h3>
+      <p>Reading, Grammar, and Vocabulary scored from your actual activity. Streak, XP, and a 5-axis skill radar update every time you study.</p>
     </div>
     <div class="feat-card c-purple">
-      <span class="feat-new">New</span>
-      <span class="feat-ico">&#128172;</span>
-      <h3>Full Conversations &amp; Stories</h3>
-      <p>Unlimited access to KakaoTalk-style dialogs and short stories (Fun, Touching, Scary, Shocking) with vocab study.</p>
+      <span class="feat-new">Pro</span>
+      <span class="feat-ico">&#127756;</span>
+      <h3>Vocabulary Universe</h3>
+      <p>Every saved word becomes a star in your personal galaxy. Orbit it to see neighbors and rediscover words you&rsquo;ve forgotten.</p>
     </div>
     <div class="feat-card c-gold">
       <span class="feat-new">New</span>
@@ -391,125 +369,87 @@
 <!-- HOW IT WORKS -->
 <div class="how-section">
   <div class="how-inner">
-    <div class="sec-eyebrow">Pro Process</div>
-    <div class="sec-title">How Pro Works</div>
-    <p class="sec-sub">No video lectures. No live sessions. Just writing and real feedback.</p>
+    <div class="sec-eyebrow">Daily Loop</div>
+    <div class="sec-title">How a Study Day Works</div>
+    <p class="sec-sub">Read &rarr; Save &rarr; Study &rarr; Track. Same loop every day.</p>
     <div class="steps-grid">
       <div class="step">
         <div class="step-num">1</div>
-        <h4>Get your prompt</h4>
-        <p>Every week a new assignment drops &mdash; tied to a real KoreHani article.</p>
+        <h4>Read</h4>
+        <p>Pick today&rsquo;s article, a conversation, or a story at your level (Seed / Sprout / Tree / Forest).</p>
       </div>
       <div class="step">
         <div class="step-num">2</div>
-        <h4>Write on-site</h4>
-        <p>Type in the Study Room. No emails, no PDFs. Deadline is 5 days per assignment.</p>
+        <h4>Save words</h4>
+        <p>Tap any unfamiliar word to save it. Hover tooltips give you the meaning on the spot.</p>
       </div>
       <div class="step">
         <div class="step-num">3</div>
-        <h4>Instant feedback</h4>
-        <p>Grammar, vocab, structure &mdash; corrected immediately with clear explanations.</p>
+        <h4>Study Room</h4>
+        <p>Open the 5-step study flow: vocab, grammar, dictation, photo description, daily writing prompt with feedback.</p>
       </div>
       <div class="step">
         <div class="step-num">4</div>
-        <h4>Han&rsquo;s monthly review</h4>
-        <p>Once a month your essay gets Han&rsquo;s personal review + video. Revise and ask one follow-up.</p>
+        <h4>Growth Lab</h4>
+        <p>Your reading, grammar quiz, and vocabulary stats update in real time. Watch your skill radar fill in.</p>
       </div>
     </div>
   </div>
 </div>
 
-<!-- MONTHLY SCHEDULE -->
-<div class="course-section">
-  <div class="sec-eyebrow">Monthly Structure</div>
-  <div class="sec-title">A Typical Month</div>
-  <div class="sec-sub" style="margin-bottom:28px;">Four assignments, one theme, four angles.</div>
-  <div class="sched-grid">
-    <div class="sched-card">
-      <div class="sched-week">Week 1</div>
-      <div class="sched-ico">&#128221;</div>
-      <div class="sched-title">Summarize It</div>
-      <div class="sched-desc">5-sentence summary of a news article in your own words.</div>
-    </div>
-    <div class="sched-card">
-      <div class="sched-week">Week 2</div>
-      <div class="sched-ico">&#128173;</div>
-      <div class="sched-title">Your Opinion</div>
-      <div class="sched-desc">7&ndash;10 sentences sharing your view on a current Korean topic.</div>
-    </div>
-    <div class="sched-card">
-      <div class="sched-week">Week 3</div>
-      <div class="sched-ico">&#9878;&#65039;</div>
-      <div class="sched-title">Compare &amp; Contrast</div>
-      <div class="sched-desc">Compare the article situation with your own country or experience.</div>
-    </div>
-    <div class="sched-card">
-      <div class="sched-week">Week 4</div>
-      <div class="sched-ico">&#10024;</div>
-      <div class="sched-title">Free Writing</div>
-      <div class="sched-desc">Write anything related to the month&rsquo;s theme. No constraints.</div>
-    </div>
-  </div>
-</div>
-
-<!-- DASHBOARD PREVIEW -->
+<!-- GROWTH LAB PREVIEW -->
 <div class="course-section" style="padding-top:0;">
-  <div class="sec-eyebrow">Member Dashboard</div>
-  <div class="sec-title">Your Writing History</div>
-  <div class="sec-sub" style="margin-bottom:28px;">Track every submission, correction, and improvement over time.</div>
+  <div class="sec-eyebrow">Growth Lab</div>
+  <div class="sec-title">Your Real Progress, Live</div>
+  <div class="sec-sub" style="margin-bottom:28px;">A peek at the dashboard you actually get &mdash; numbers come from your real activity on the site.</div>
   <div class="preview-grid">
     <div class="pv-card">
       <div class="pv-head">
-        <div class="pv-head-title">&#128194; Writing Archive</div>
-        <div class="pv-head-sub">All submissions &middot; 3 months</div>
+        <div class="pv-head-title">&#128202; 5-Axis Skill Radar</div>
+        <div class="pv-head-sub">Reading &middot; Grammar &middot; Vocabulary live &middot; Writing &middot; Listening rolling out</div>
       </div>
       <div class="pv-body">
-        <div class="archive-item">
-          <div class="ai-date">Mar 7</div>
-          <div>
-            <div class="ai-title">Opinion: &#51800;&#52636;&#49373; &#47928;&#51228;&#50640; &#45824;&#54620; &#49373;&#44033;</div>
-            <span class="ai-score good">&#10003; 92/100</span><span class="ai-chip rev">Revised</span><span class="ai-chip fb">Feedback</span>
-          </div>
+        <div class="prog-rows">
+          <div class="prog-row"><div class="prog-lbl">Reading</div><div class="prog-bg"><div class="prog-bar" style="width:72%;background:#2563eb;"></div></div><div class="prog-val" style="color:#2563eb;">72</div></div>
+          <div class="prog-row"><div class="prog-lbl">Grammar</div><div class="prog-bg"><div class="prog-bar" style="width:64%;background:#60a5fa;"></div></div><div class="prog-val" style="color:#60a5fa;">64</div></div>
+          <div class="prog-row"><div class="prog-lbl">Vocabulary</div><div class="prog-bg"><div class="prog-bar" style="width:58%;background:#f59e0b;"></div></div><div class="prog-val" style="color:#f59e0b;">58</div></div>
+          <div class="prog-row"><div class="prog-lbl">Writing</div><div class="prog-bg"><div class="prog-bar" style="width:18%;background:#cbd5e1;"></div></div><div class="prog-val" style="color:#94a3b8;font-size:11px">soon</div></div>
+          <div class="prog-row"><div class="prog-lbl">Listening</div><div class="prog-bg"><div class="prog-bar" style="width:18%;background:#cbd5e1;"></div></div><div class="prog-val" style="color:#94a3b8;font-size:11px">soon</div></div>
         </div>
-        <div class="archive-item">
-          <div class="ai-date">Feb 28</div>
-          <div>
-            <div class="ai-title">Summary: BTS 컴백 기사 요약</div>
-            <span class="ai-score good">&#10003; 88/100</span><span class="ai-chip fb">Feedback</span>
-          </div>
-        </div>
-        <div class="archive-item">
-          <div class="ai-date">Feb 21</div>
-          <div>
-            <div class="ai-title">Compare: 한국 vs 우리나라 교육 제도</div>
-            <span class="ai-score ok">&#8599; 74/100</span><span class="ai-chip rev">Revised &times;2</span>
-          </div>
-        </div>
-        <div class="archive-item">
-          <div class="ai-date">Feb 14</div>
-          <div>
-            <div class="ai-title">Free: 내가 좋아하는 한국 음식</div>
-            <span class="ai-score good">&#10003; 81/100</span><span class="ai-chip fb">Feedback</span>
-          </div>
+        <div class="prog-tip">
+          <div>&#128161;</div>
+          <div class="prog-tip-txt"><strong>This week&rsquo;s focus:</strong> Particle confusion (&#51060;/&#44032; vs &#51008;/&#45716;). Pulled from your last 30 days of grammar quiz misses.</div>
         </div>
       </div>
     </div>
     <div class="pv-card">
       <div class="pv-head">
-        <div class="pv-head-title">&#128202; Monthly Progress Report</div>
-        <div class="pv-head-sub">March 2026 &middot; 4 submissions</div>
+        <div class="pv-head-title">&#127756; Vocabulary Universe</div>
+        <div class="pv-head-sub">Every saved word becomes a star</div>
       </div>
       <div class="pv-body">
-        <div class="prog-rows">
-          <div class="prog-row"><div class="prog-lbl">Grammar accuracy</div><div class="prog-bg"><div class="prog-bar" style="width:82%;background:#22c55e;"></div></div><div class="prog-val" style="color:#22c55e;">82%</div></div>
-          <div class="prog-row"><div class="prog-lbl">Vocabulary range</div><div class="prog-bg"><div class="prog-bar" style="width:68%;"></div></div><div class="prog-val">68%</div></div>
-          <div class="prog-row"><div class="prog-lbl">Sentence structure</div><div class="prog-bg"><div class="prog-bar" style="width:75%;"></div></div><div class="prog-val">75%</div></div>
-          <div class="prog-row"><div class="prog-lbl">Natural expression</div><div class="prog-bg"><div class="prog-bar" style="width:59%;background:#f59e0b;"></div></div><div class="prog-val" style="color:#f59e0b;">59%</div></div>
-          <div class="prog-row"><div class="prog-lbl">Consistency</div><div class="prog-bg"><div class="prog-bar" style="width:100%;background:#22c55e;"></div></div><div class="prog-val" style="color:#22c55e;">4/4 &#10003;</div></div>
+        <div style="position:relative;background:linear-gradient(135deg,#0b1228 0%,#141a40 60%,#1e1848 100%);border-radius:14px;padding:20px;min-height:180px;overflow:hidden;">
+          <!-- Faux constellation: scatter dots like the real canvas -->
+          <div style="position:absolute;top:18%;left:22%;width:5px;height:5px;background:#fbbf24;border-radius:50%;box-shadow:0 0 10px rgba(251,191,36,.7);"></div>
+          <div style="position:absolute;top:34%;left:48%;width:4px;height:4px;background:#a78bfa;border-radius:50%;box-shadow:0 0 8px rgba(167,139,250,.7);"></div>
+          <div style="position:absolute;top:60%;left:30%;width:6px;height:6px;background:#fff2c0;border-radius:50%;box-shadow:0 0 12px rgba(255,242,192,.7);"></div>
+          <div style="position:absolute;top:25%;left:72%;width:3px;height:3px;background:#7dd3fc;border-radius:50%;box-shadow:0 0 6px rgba(125,211,252,.6);"></div>
+          <div style="position:absolute;top:72%;left:62%;width:4px;height:4px;background:#fbbf24;border-radius:50%;box-shadow:0 0 8px rgba(251,191,36,.6);"></div>
+          <div style="position:absolute;top:48%;left:80%;width:5px;height:5px;background:#a78bfa;border-radius:50%;box-shadow:0 0 10px rgba(167,139,250,.6);"></div>
+          <div style="position:absolute;top:80%;left:18%;width:3px;height:3px;background:#fff2c0;border-radius:50%;box-shadow:0 0 6px rgba(255,242,192,.5);"></div>
+          <div style="position:relative;z-index:2">
+            <div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,181,253,.72);margin-bottom:4px">Vocabulary</div>
+            <div style="font-family:'Playfair Display','Noto Serif KR',serif;font-size:22px;font-weight:900;color:#fff;line-height:1.15;margin-bottom:4px;">Your Universe</div>
+            <div style="font-size:11px;color:rgba(220,210,255,.72);max-width:32ch;line-height:1.5;">Tap to orbit. Each star is a word you saved &mdash; the brighter, the more you&rsquo;ve reviewed.</div>
+          </div>
+          <div style="position:absolute;bottom:14px;right:18px;text-align:right;">
+            <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:900;background:linear-gradient(135deg,#fff2c0 0%,#fbbf24 70%);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1;">218</div>
+            <div style="font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(220,210,255,.55);margin-top:2px;">stars</div>
+          </div>
         </div>
-        <div class="prog-tip">
-          <div>&#128161;</div>
-          <div class="prog-tip-txt"><strong>Focus for April:</strong> Natural connectors (~&#45716;&#45936;, ~&#51648;&#47564;) &mdash; grammar is solid but sentences still feel a bit choppy.</div>
+        <div class="prog-tip" style="margin-top:14px;">
+          <div>&#128293;</div>
+          <div class="prog-tip-txt"><strong>Streak: 12 days</strong> &middot; XP today: 240 / 300. Hit your daily goal to keep your streak alive.</div>
         </div>
       </div>
     </div>
@@ -557,15 +497,15 @@
     </details>
     <details class="faq-item">
       <summary>What happens to my data if I cancel?</summary>
-      <p>Your saved words, writing history, and progress stay in your account. You can export or delete everything anytime from <a href="korehan-mypage.html">My Page</a>.</p>
+      <p>Your saved words, study history, and Growth Lab stats stay in your account. You can export or delete everything anytime from <a href="korehan-mypage.html">My Page</a>.</p>
     </details>
     <details class="faq-item">
       <summary>Can I switch between Standard and Pro?</summary>
       <p>Yes, anytime. Upgrades take effect immediately (pro-rated). Downgrades apply from the next billing period.</p>
     </details>
     <details class="faq-item">
-      <summary>How long does Han take to review my essay?</summary>
-      <p>Pro plan: 24h standard, 6h with priority feedback. Han reviews each Pro essay personally &mdash; not outsourced.</p>
+      <summary>How does the writing feedback work?</summary>
+      <p>Daily Topic Writing in the Study Room is AI-graded the moment you submit &mdash; grammar, vocab, structure, and naturalness, with line-by-line corrections and explanations. No waiting.</p>
     </details>
     <details class="faq-item">
       <summary>Does it work on my phone?</summary>
