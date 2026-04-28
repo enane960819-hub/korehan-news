@@ -182,6 +182,103 @@ function previewHover() {
   });
 });
 
+// ── Auto-fill romanization + English meaning when admin types a
+// Korean word. Lookup order: hover_vocab_master → vocabulary_bank →
+// Claude. Only writes into fields the admin left empty so manual
+// edits are never overwritten.
+let _hvAutoFillTimer = null;
+let _hvLastQueriedWord = '';
+
+document.getElementById('hv-word').addEventListener('input', function(e){
+  if (_hvAutoFillTimer) clearTimeout(_hvAutoFillTimer);
+  const v = (e.target.value || '').trim();
+  _hvAutoFillTimer = setTimeout(function(){ hvAutoFill(v); }, 600);
+});
+
+async function hvAutoFill(word) {
+  if (!word || word === _hvLastQueriedWord) return;
+  if (!/[가-힣]/.test(word)) return; // skip if no Hangul
+  _hvLastQueriedWord = word;
+
+  const readingEl = document.getElementById('hv-reading');
+  const meaningEl = document.getElementById('hv-meaning');
+  const needReading = !readingEl.value.trim();
+  const needMeaning = !meaningEl.value.trim();
+  if (!needReading && !needMeaning) return;
+
+  status('🔍 사전 조회 중...');
+
+  // 1) Existing hover_vocab_master row
+  try {
+    const r1 = await sb.from('hover_vocab_master')
+      .select('reading,meaning_en')
+      .eq('word_ko', word).maybeSingle();
+    if (r1.data && (r1.data.reading || r1.data.meaning_en)) {
+      if (needReading && r1.data.reading)    readingEl.value = r1.data.reading;
+      if (needMeaning && r1.data.meaning_en) meaningEl.value = r1.data.meaning_en;
+      previewHover();
+      status('✓ hover_vocab_master 에서 채움');
+      return;
+    }
+  } catch(_) { /* fall through */ }
+
+  // 2) vocabulary_bank pool
+  try {
+    const r2 = await sb.from('vocabulary_bank')
+      .select('word_rom,word_en')
+      .eq('word_ko', word).maybeSingle();
+    if (r2.data && (r2.data.word_rom || r2.data.word_en)) {
+      if (needReading && r2.data.word_rom) readingEl.value = r2.data.word_rom;
+      if (needMeaning && r2.data.word_en)  meaningEl.value = r2.data.word_en;
+      previewHover();
+      status('✓ vocabulary_bank 에서 채움');
+      return;
+    }
+  } catch(_) { /* fall through */ }
+
+  // 3) Claude AI fallback
+  status('✨ AI 제안 생성 중...');
+  try {
+    const sess = await sb.auth.getSession();
+    const token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+    if (!token) { status('로그인이 필요합니다.', true); return; }
+
+    const resp = await fetch(SUPA_URL + '/functions/v1/claude-proxy', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPA_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        feature: 'hover-vocab-autofill',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 200,
+        messages: [{
+          role: 'user',
+          content:
+            'Korean word: "' + word + '"\n\n'
+            + 'Return ONLY JSON, no markdown:\n'
+            + '{"reading":"Revised romanization with hyphens between syllables (e.g. gam-gi, an-nyeong-ha-se-yo)","meaning":"Concise English gloss, 1-5 words, no parentheses or article"}'
+        }]
+      })
+    });
+    const j = await resp.json().catch(function(){ return {}; });
+    if (!resp.ok) throw new Error(j.error || ('AI ' + resp.status));
+    const raw = (j.content || []).map(function(c){ return c.text || ''; }).join('');
+    const s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+    if (s < 0 || e <= s) throw new Error('No JSON in response');
+    const parsed = JSON.parse(raw.slice(s, e + 1));
+    let filled = false;
+    if (needReading && parsed.reading) { readingEl.value = parsed.reading; filled = true; }
+    if (needMeaning && parsed.meaning) { meaningEl.value = parsed.meaning; filled = true; }
+    previewHover();
+    status(filled ? '✨ AI 제안으로 채움 (확인 후 Save)' : 'AI 응답이 비어 있음');
+  } catch(err) {
+    status('AI 자동완성 실패: ' + (err.message || err), true);
+  }
+}
+
 function formValue(id){ return document.getElementById(id).value.trim(); }
 
 function resetHoverForm() {
