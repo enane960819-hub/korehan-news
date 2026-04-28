@@ -379,6 +379,83 @@ body{padding-bottom:0 !important}
 .modal-body{padding:20px 24px}
 .modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
 
+/* Import modal */
+.import-tabs{display:flex;gap:6px;margin-bottom:14px;background:#f1f5f9;padding:4px;border-radius:12px}
+.import-tabs button{
+  flex:1;padding:8px 12px;font-size:13px;font-weight:700;
+  border:none;border-radius:9px;cursor:pointer;
+  background:transparent;color:var(--muted);transition:all .15s
+}
+.import-tabs button.on{background:#fff;color:var(--bright);box-shadow:0 2px 6px rgba(15,23,42,.06)}
+
+.drop-zone{
+  border:2px dashed var(--border);border-radius:14px;
+  padding:28px 16px;text-align:center;cursor:pointer;
+  background:#fafbfd;transition:all .15s
+}
+.drop-zone:hover{border-color:var(--bright);background:var(--soft)}
+.drop-zone.dragover{border-color:var(--bright);background:var(--soft);border-style:solid}
+.drop-zone .dz-icon{
+  width:44px;height:44px;border-radius:12px;margin:0 auto 10px;
+  background:var(--soft);color:var(--bright);
+  display:flex;align-items:center;justify-content:center
+}
+.drop-zone .dz-icon svg{width:22px;height:22px}
+.drop-zone .dz-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px}
+.drop-zone .dz-sub{font-size:12px;color:var(--muted)}
+.drop-zone input[type=file]{display:none}
+
+.import-preview-img{
+  position:relative;margin-top:12px;border-radius:12px;overflow:hidden;
+  border:1px solid var(--border);max-height:280px;background:#000
+}
+.import-preview-img img{width:100%;height:auto;max-height:280px;object-fit:contain;display:block}
+.import-preview-img .ip-clear{
+  position:absolute;top:8px;right:8px;
+  background:rgba(15,23,42,.7);color:#fff;border:none;
+  width:30px;height:30px;border-radius:50%;font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center
+}
+
+.import-results{margin-top:14px}
+.import-results .ir-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px
+}
+.import-results .ir-head h3{margin:0;font-size:14px;font-weight:800}
+.import-results .ir-head .ir-counts{font-size:12px;color:var(--muted)}
+.import-results .ir-toolbar{display:flex;gap:6px;margin-bottom:8px}
+.import-results .ir-toolbar button{
+  padding:5px 10px;font-size:11px;font-weight:700;
+  border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--muted);cursor:pointer
+}
+.import-row{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:10px 12px;border:1px solid var(--border);border-radius:10px;
+  margin-bottom:6px;background:#fff;transition:background .12s
+}
+.import-row:hover{background:#fafbfd}
+.import-row.skip{opacity:.45}
+.import-row input[type=checkbox]{
+  margin-top:2px;width:16px;height:16px;flex-shrink:0;
+  accent-color:var(--bright);cursor:pointer
+}
+.import-row .ir-info{flex:1;min-width:0}
+.import-row .ir-info .ir-title{font-weight:700;font-size:13.5px;color:var(--text);line-height:1.3}
+.import-row .ir-info .ir-meta{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.4}
+.import-row .ir-warn{font-size:11px;color:var(--danger);font-weight:600;margin-top:4px}
+.import-row .ir-chip{
+  display:inline-block;font-size:10px;font-weight:800;letter-spacing:.04em;
+  padding:1px 6px;border-radius:999px;background:var(--soft);color:var(--bright);margin-right:4px
+}
+
+.import-status{
+  padding:14px;border-radius:12px;background:var(--soft);color:var(--bright);
+  display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;margin-top:12px
+}
+.import-status.error{background:#fee2e2;color:var(--danger)}
+.import-status .ai-pulse{margin:0}
+
 /* Toast */
 .toast{
   position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
@@ -559,8 +636,12 @@ body{padding-bottom:0 !important}
         <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="search" id="student-search" placeholder="Search students…">
       </div>
-      <div class="sb-tools">
+      <div class="sb-tools" style="justify-content:space-between">
         <label><input type="checkbox" id="show-archived"> Show archived</label>
+        <button type="button" id="btn-import" class="btn ghost" style="padding:5px 10px;font-size:11px" aria-label="Import from Preply screenshot">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+          <span>Import</span>
+        </button>
       </div>
       <div class="student-list" id="student-list">
         <div class="empty-mini">Loading…</div>
@@ -667,6 +748,53 @@ body{padding-bottom:0 !important}
       <button class="btn danger" id="lesson-modal-delete" style="margin-right:auto;display:none">Delete</button>
       <button class="btn ghost" id="lesson-modal-cancel">Cancel</button>
       <button class="btn primary" id="lesson-modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Preply screenshot import modal -->
+<div id="import-modal" class="modal-bg" style="display:none" role="dialog" aria-label="Import from Preply screenshot">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:560px">
+    <div class="modal-head">
+      <h2>📸 Preply 스크린샷 가져오기</h2>
+      <button class="modal-close" id="import-modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="import-tabs" role="tablist">
+        <button type="button" data-import-type="students" class="on" role="tab">Students · 학생</button>
+        <button type="button" data-import-type="lessons" role="tab">Lessons · 수업</button>
+      </div>
+      <p style="margin:0 0 12px;font-size:12px;color:var(--muted);line-height:1.6">
+        Paste (Ctrl/⌘+V) or upload a screenshot from your Preply dashboard.
+        AI will extract <span data-import-hint>students</span> for you to review before saving.
+      </p>
+
+      <label class="drop-zone" id="drop-zone">
+        <input type="file" id="import-file" accept="image/*">
+        <div class="dz-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <div class="dz-title">Drop image, click to upload, or paste</div>
+        <div class="dz-sub">PNG / JPG · max ~5 MB after auto-resize</div>
+      </label>
+
+      <div id="import-preview" style="display:none">
+        <div class="import-preview-img">
+          <img id="import-preview-img-el" alt="Uploaded screenshot">
+          <button type="button" class="ip-clear" id="import-clear" aria-label="Clear image">×</button>
+        </div>
+      </div>
+
+      <div id="import-status" style="display:none"></div>
+      <div id="import-results" style="display:none"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="import-modal-cancel">Cancel</button>
+      <button class="btn primary" id="import-extract" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        <span>Extract</span>
+      </button>
+      <button class="btn primary" id="import-save" style="display:none">Import selected</button>
     </div>
   </div>
 </div>
@@ -884,11 +1012,15 @@ body{padding-bottom:0 !important}
       if (e.target.id === 'lesson-modal') closeLessonModal();
     };
 
+    setupImportModal();
+
     document.addEventListener('keydown', function(e){
       if (e.key === 'Escape') {
         var sm = document.getElementById('student-modal');
         var lm = document.getElementById('lesson-modal');
-        if (lm && lm.style.display !== 'none') closeLessonModal();
+        var im = document.getElementById('import-modal');
+        if (im && im.style.display !== 'none') closeImportModal();
+        else if (lm && lm.style.display !== 'none') closeLessonModal();
         else if (sm && sm.style.display !== 'none') closeStudentModal();
       }
     });
@@ -1845,12 +1977,412 @@ body{padding-bottom:0 !important}
     }
   }
 
+  // ── Preply screenshot import ────────────────────────────────
+  // Tutors can paste/upload a screenshot from their Preply dashboard;
+  // Claude vision extracts the visible students or lessons into a
+  // preview list of checkboxes that the tutor reviews before saving.
+  // We never store the image — only the parsed text the tutor confirms.
+  var importState = {
+    type: 'students',     // 'students' | 'lessons'
+    imageDataUrl: null,   // resized data: URL for preview + Claude
+    imageMime: null,      // 'image/jpeg' or 'image/png'
+    imageBase64: null,    // raw base64 (data URL stripped) for the API
+    extracted: [],        // raw items from AI, each with a `.include` flag
+    busy: false
+  };
+
+  function setupImportModal() {
+    var btn = document.getElementById('btn-import');
+    if (btn) btn.onclick = openImportModal;
+
+    var modal  = document.getElementById('import-modal');
+    var close  = document.getElementById('import-modal-close');
+    var cancel = document.getElementById('import-modal-cancel');
+    if (close)  close.onclick  = closeImportModal;
+    if (cancel) cancel.onclick = closeImportModal;
+    if (modal) modal.onclick = function(e){
+      if (e.target.id === 'import-modal') closeImportModal();
+    };
+
+    var tabs = document.querySelectorAll('.import-tabs button[data-import-type]');
+    Array.prototype.forEach.call(tabs, function(t){
+      t.onclick = function(){
+        Array.prototype.forEach.call(tabs, function(x){ x.classList.remove('on'); });
+        t.classList.add('on');
+        importState.type = t.getAttribute('data-import-type');
+        var hint = document.querySelector('[data-import-hint]');
+        if (hint) hint.textContent = importState.type === 'lessons' ? 'lessons' : 'students';
+        // Reset extraction whenever the type changes.
+        clearImportResults();
+      };
+    });
+
+    var dz = document.getElementById('drop-zone');
+    var fi = document.getElementById('import-file');
+    if (fi) fi.onchange = function(e){
+      var f = e.target.files && e.target.files[0];
+      if (f) handleImportFile(f);
+      e.target.value = '';
+    };
+    if (dz) {
+      dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('dragover'); });
+      dz.addEventListener('dragleave', function(){ dz.classList.remove('dragover'); });
+      dz.addEventListener('drop', function(e){
+        e.preventDefault(); dz.classList.remove('dragover');
+        var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) handleImportFile(f);
+      });
+    }
+
+    var clearBtn = document.getElementById('import-clear');
+    if (clearBtn) clearBtn.onclick = function(e){ e.stopPropagation(); clearImportImage(); };
+
+    var extractBtn = document.getElementById('import-extract');
+    if (extractBtn) extractBtn.onclick = runExtraction;
+
+    var saveBtn = document.getElementById('import-save');
+    if (saveBtn) saveBtn.onclick = saveImportSelected;
+
+    // Paste handler: only active while the import modal is open.
+    document.addEventListener('paste', function(e){
+      var modal = document.getElementById('import-modal');
+      if (!modal || modal.style.display === 'none') return;
+      var items = (e.clipboardData || {}).items || [];
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].type && items[i].type.indexOf('image/') === 0) {
+          var f = items[i].getAsFile();
+          if (f) { e.preventDefault(); handleImportFile(f); break; }
+        }
+      }
+    });
+  }
+
+  function openImportModal() {
+    document.getElementById('import-modal').style.display = '';
+  }
+  function closeImportModal() {
+    if (importState.busy) return;
+    document.getElementById('import-modal').style.display = 'none';
+    clearImportImage();
+    clearImportResults();
+  }
+
+  function clearImportImage() {
+    importState.imageDataUrl = null;
+    importState.imageMime = null;
+    importState.imageBase64 = null;
+    var prev = document.getElementById('import-preview');
+    var img  = document.getElementById('import-preview-img-el');
+    if (prev) prev.style.display = 'none';
+    if (img)  img.src = '';
+    document.getElementById('import-extract').disabled = true;
+  }
+  function clearImportResults() {
+    importState.extracted = [];
+    var box = document.getElementById('import-results');
+    if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+    var status = document.getElementById('import-status');
+    if (status) { status.style.display = 'none'; status.innerHTML = ''; }
+    document.getElementById('import-save').style.display = 'none';
+  }
+
+  // Resize a File/Blob to fit within MAX_DIM on its longest side and
+  // re-encode as JPEG to keep base64 payload < ~3 MB. Anthropic charges
+  // by image-token count and rejects very large images, so this is both
+  // a cost guard and a reliability guard.
+  function resizeImageFile(file, MAX_DIM) {
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onload = function(){
+        var img = new Image();
+        img.onload = function(){
+          var w = img.width, h = img.height;
+          var scale = Math.min(1, MAX_DIM / Math.max(w, h));
+          var nw = Math.round(w * scale), nh = Math.round(h * scale);
+          var canvas = document.createElement('canvas');
+          canvas.width = nw; canvas.height = nh;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, nw, nh);
+          var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          resolve({ dataUrl: dataUrl, mime: 'image/jpeg' });
+        };
+        img.onerror = function(){ reject(new Error('Could not read image')); };
+        img.src = reader.result;
+      };
+      reader.onerror = function(){ reject(new Error('Could not read file')); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleImportFile(file) {
+    if (!file.type || file.type.indexOf('image/') !== 0) {
+      toast('Please select an image file', 'err');
+      return;
+    }
+    try {
+      var resized = await resizeImageFile(file, 1600);
+      importState.imageDataUrl = resized.dataUrl;
+      importState.imageMime    = resized.mime;
+      importState.imageBase64  = resized.dataUrl.split(',')[1] || '';
+      var prev = document.getElementById('import-preview');
+      var img  = document.getElementById('import-preview-img-el');
+      img.src = resized.dataUrl;
+      prev.style.display = '';
+      document.getElementById('import-extract').disabled = false;
+      clearImportResults();
+    } catch (e) {
+      toast('Could not load image: ' + (e.message || e), 'err');
+    }
+  }
+
+  function buildExtractPrompt(type) {
+    if (type === 'lessons') {
+      return 'You are a data-extraction assistant. The image is a screenshot of a Preply tutor dashboard showing scheduled lessons.\n'
+        + 'Extract every distinct lesson visible.\n\n'
+        + 'Return ONLY valid JSON in this exact shape (no markdown, no commentary):\n'
+        + '{"lessons":[{"student_name":"string","date":"YYYY-MM-DD or null","time":"HH:MM 24h or null","duration_minutes":number or null,"topic":"string or null"}]}\n\n'
+        + 'Rules:\n'
+        + '- student_name is required; everything else may be null if not visible.\n'
+        + '- Use 24h time. If only a relative time is shown ("Tomorrow 3 PM"), translate to absolute YYYY-MM-DD using today as the reference, in the same timezone the screenshot uses.\n'
+        + '- Do not invent lessons that are not actually rendered.\n'
+        + '- If you find none, return {"lessons":[]}.';
+    }
+    return 'You are a data-extraction assistant. The image is a screenshot of a Preply tutor dashboard showing a student list / student profiles.\n'
+      + 'Extract every distinct student visible.\n\n'
+      + 'Return ONLY valid JSON in this exact shape (no markdown, no commentary):\n'
+      + '{"students":[{"name":"string","level":"A1|A2|B1|B2|C1|C2 or null","country":"string or null","goal":"string or null","notes":"string or null"}]}\n\n'
+      + 'Rules:\n'
+      + '- name is required; map any "Beginner" to A1, "Pre-Intermediate" to A2, "Intermediate" to B1, "Upper-Intermediate" to B2, "Advanced" to C1, "Proficient" to C2.\n'
+      + '- Put country / nationality in the country field. Put learning goal/topic in goal.\n'
+      + '- Do not invent students.\n'
+      + '- If you find none, return {"students":[]}.';
+  }
+
+  function setImportStatus(msg, kind) {
+    var s = document.getElementById('import-status');
+    if (!s) return;
+    if (!msg) { s.style.display = 'none'; s.innerHTML = ''; return; }
+    s.className = 'import-status' + (kind === 'error' ? ' error' : '');
+    s.style.display = '';
+    s.innerHTML = (kind === 'error'
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+        : '<span class="ai-pulse"></span>')
+      + '<span>' + escapeHtmlSafe(msg) + '</span>';
+  }
+
+  async function runExtraction() {
+    if (!importState.imageBase64) { toast('Add an image first', 'err'); return; }
+    if (typeof callClaude !== 'function') { toast('AI proxy unavailable', 'err'); return; }
+    importState.busy = true;
+    var btn = document.getElementById('import-extract');
+    btn.disabled = true; btn.innerHTML = '<span class="ai-pulse"></span><span>Extracting…</span>';
+    setImportStatus('Reading the screenshot…');
+    clearImportResults();
+    setImportStatus('Reading the screenshot…');
+
+    try {
+      var prompt = buildExtractPrompt(importState.type);
+      var res = await callClaude({
+        feature: 'tutor-import-' + importState.type,
+        model: 'claude-sonnet-4-6',
+        max_tokens: 2400,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: importState.imageMime, data: importState.imageBase64 } },
+            { type: 'text',  text: prompt }
+          ]
+        }]
+      });
+      var raw = (res.content && res.content[0] && res.content[0].text) || res.text || '';
+      raw = String(raw || '').trim().replace(/^```json\n?/, '').replace(/\n?```$/, '');
+      raw = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+      if (!raw) throw new Error('Empty AI response');
+      var parsed = JSON.parse(raw);
+      var items = (importState.type === 'lessons' ? parsed.lessons : parsed.students) || [];
+      if (!items.length) {
+        setImportStatus('No ' + importState.type + ' detected. Try a clearer screenshot.', 'error');
+        return;
+      }
+      // Decorate items with default include=true.
+      importState.extracted = items.map(function(it){ return Object.assign({}, it, { _include: true }); });
+      setImportStatus('');
+      renderImportResults();
+    } catch (e) {
+      console.error(e);
+      setImportStatus('Failed: ' + (e.message || e), 'error');
+    } finally {
+      importState.busy = false;
+      btn.disabled = false;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg><span>Extract</span>';
+    }
+  }
+
+  function renderImportResults() {
+    var box = document.getElementById('import-results');
+    if (!box) return;
+    var items = importState.extracted;
+    var existingByName = {};
+    state.students.forEach(function(s){
+      existingByName[(s.name || '').toLowerCase().trim()] = s;
+    });
+
+    var rows = items.map(function(it, idx){
+      var warn = '';
+      var info, title;
+      if (importState.type === 'lessons') {
+        title = it.student_name || 'Unknown student';
+        var match = existingByName[(it.student_name || '').toLowerCase().trim()];
+        var dt = (it.date || '—') + (it.time ? ' · ' + it.time : '');
+        var meta = [
+          dt,
+          it.duration_minutes ? it.duration_minutes + ' min' : '',
+          it.topic || ''
+        ].filter(Boolean).join(' · ');
+        info = '<div class="ir-meta">' + escapeHtmlSafe(meta || '—') + '</div>';
+        if (!match) {
+          warn = '<div class="ir-warn">⚠ No matching student in your list — will be skipped. Add the student first.</div>';
+        }
+      } else {
+        title = it.name || 'Unnamed student';
+        var bits = [];
+        if (it.level)   bits.push('<span class="ir-chip">' + escapeHtmlSafe(it.level) + '</span>');
+        if (it.country) bits.push(escapeHtmlSafe(it.country));
+        if (it.goal)    bits.push(escapeHtmlSafe(it.goal));
+        info = '<div class="ir-meta">' + (bits.join(' · ') || '—') + '</div>';
+        if (existingByName[(it.name || '').toLowerCase().trim()]) {
+          warn = '<div class="ir-warn">⚠ A student with this name already exists — will be skipped.</div>';
+        }
+      }
+      var disabled = !!warn;
+      if (disabled) it._include = false;
+      return '<label class="import-row' + (disabled ? ' skip' : '') + '">'
+        + '<input type="checkbox" data-import-idx="' + idx + '" ' + (it._include ? 'checked' : '') + (disabled ? ' disabled' : '') + '>'
+        + '<div class="ir-info">'
+        +   '<div class="ir-title">' + escapeHtmlSafe(title) + '</div>'
+        +   info
+        +   warn
+        + '</div>'
+        + '</label>';
+    }).join('');
+
+    box.innerHTML =
+      '<div class="ir-head">'
+      +   '<h3>Found ' + items.length + ' ' + (importState.type === 'lessons' ? 'lessons' : 'students') + '</h3>'
+      +   '<span class="ir-counts" id="ir-counts">' + items.filter(function(x){return x._include;}).length + ' selected</span>'
+      + '</div>'
+      + '<div class="ir-toolbar">'
+      +   '<button type="button" id="ir-all">Select all</button>'
+      +   '<button type="button" id="ir-none">Clear</button>'
+      + '</div>'
+      + rows;
+    box.style.display = '';
+    document.getElementById('import-save').style.display = '';
+
+    Array.prototype.forEach.call(box.querySelectorAll('[data-import-idx]'), function(cb){
+      cb.onchange = function(){
+        var i = parseInt(cb.getAttribute('data-import-idx'), 10);
+        if (importState.extracted[i]) {
+          importState.extracted[i]._include = !!cb.checked;
+          updateImportCount();
+        }
+      };
+    });
+    document.getElementById('ir-all').onclick = function(){
+      Array.prototype.forEach.call(box.querySelectorAll('[data-import-idx]'), function(cb){
+        if (!cb.disabled) { cb.checked = true; importState.extracted[parseInt(cb.getAttribute('data-import-idx'),10)]._include = true; }
+      });
+      updateImportCount();
+    };
+    document.getElementById('ir-none').onclick = function(){
+      Array.prototype.forEach.call(box.querySelectorAll('[data-import-idx]'), function(cb){
+        if (!cb.disabled) { cb.checked = false; importState.extracted[parseInt(cb.getAttribute('data-import-idx'),10)]._include = false; }
+      });
+      updateImportCount();
+    };
+  }
+
+  function updateImportCount() {
+    var n = importState.extracted.filter(function(x){return x._include;}).length;
+    var el = document.getElementById('ir-counts');
+    if (el) el.textContent = n + ' selected';
+    var save = document.getElementById('import-save');
+    if (save) {
+      save.disabled = n === 0;
+      save.textContent = n === 0 ? 'Import selected' : ('Import ' + n + ' selected');
+    }
+  }
+
+  async function saveImportSelected() {
+    var picks = importState.extracted.filter(function(x){ return x._include; });
+    if (!picks.length) return;
+    var sb = getSupa();
+    var saveBtn = document.getElementById('import-save');
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+    try {
+      if (importState.type === 'students') {
+        var rows = picks.map(function(p){
+          return {
+            name: p.name,
+            level: p.level || null,
+            goal: p.goal || null,
+            notes: [p.country ? 'Country: ' + p.country : '', p.notes || ''].filter(Boolean).join('\n').trim() || null,
+            owner_id: state.me ? state.me.id : null
+          };
+        });
+        var { error } = await sb.from('tutor_students').insert(rows);
+        if (error) throw error;
+        toast('Imported ' + rows.length + ' students', 'ok');
+      } else {
+        // Lessons — match student by name to existing record.
+        var byName = {};
+        state.students.forEach(function(s){ byName[(s.name||'').toLowerCase().trim()] = s; });
+        var lessonRows = [];
+        picks.forEach(function(p){
+          var s = byName[(p.student_name||'').toLowerCase().trim()];
+          if (!s) return;
+          var iso = null;
+          if (p.date) {
+            try {
+              var dt = new Date(p.date + 'T' + (p.time || '00:00') + ':00');
+              if (!isNaN(dt.getTime())) iso = dt.toISOString();
+            } catch(_){}
+          }
+          lessonRows.push({
+            student_id: s.id,
+            owner_id: state.me ? state.me.id : null,
+            scheduled_at: iso,
+            duration_minutes: p.duration_minutes || 60,
+            status: 'scheduled',
+            topic: p.topic || null
+          });
+        });
+        if (!lessonRows.length) { toast('No matching students for these lessons', 'err'); saveBtn.disabled = false; saveBtn.textContent = 'Import selected'; return; }
+        var { error: lErr } = await sb.from('tutor_lessons').insert(lessonRows);
+        if (lErr) throw lErr;
+        toast('Imported ' + lessonRows.length + ' lessons', 'ok');
+      }
+      closeImportModal();
+      await loadStudents();
+      // If a student detail is open, reload its lessons list too.
+      if (state.selectedId) await loadLessons(state.selectedId);
+    } catch (e) {
+      console.error(e);
+      toast('Import failed: ' + (e.message || e), 'err');
+      saveBtn.disabled = false;
+    } finally {
+      var n = importState.extracted.filter(function(x){return x._include;}).length;
+      saveBtn.textContent = n ? ('Import ' + n + ' selected') : 'Import selected';
+    }
+  }
+
   // Expose for inline handlers / future phases.
   window.tutorApp = {
     state: state,
     reload: loadStudents,
     reloadLessons: function(){ return loadLessons(state.selectedId); },
-    toast: toast
+    toast: toast,
+    openImport: openImportModal
   };
 })();
 </script>
