@@ -2537,22 +2537,76 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 .pc-empty-icon { font-size:48px;margin-bottom:12px; }
 .pc-empty-title { font-size:16px;font-weight:700;color:#fff;margin-bottom:8px; }
 
-/* ── Inline Cosmos (study room landing constellation) ────────────
-   Container holds the WebGL canvas + DOM overlays for taps and
-   labels. The canvas itself renders with alpha:true so the body's
-   deep-space backdrop bleeds straight through — no boxed-in look.
-   The fallback START button is shown until the 3D scene reports
-   it's ready (or shown permanently when WebGL/reduced-motion
-   conditions don't allow it). */
-.ls-cosmos {
+/* ── Cosmos hero ────────────────────────────────────────────────
+   Full-bleed entry block. On mobile we escape the page's content
+   padding to span the entire viewport width — the body backdrop
+   (page-wide deep space) extends the cosmos in every direction so
+   the orb feels like it's floating in the same space the rest of
+   the page sits in, not pasted into a box. */
+.sr-cosmos-hero {
   position: relative;
+  width: 100vw;
+  /* Negative margins escape any container padding so the hero
+     reaches both edges of the viewport. Caller doesn't need to
+     change layout; this is a self-contained breakout. */
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  height: 70vh;
+  min-height: 480px;
+  max-height: 720px;
+  margin-bottom: 18px;
+}
+@media (min-width: 1024px) {
+  /* On desktop the page already has a constrained content width;
+     keep the hero contained so it doesn't fight the side panels. */
+  .sr-cosmos-hero {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    height: 560px;
+    border-radius: 22px;
+    overflow: hidden;
+  }
+}
+
+/* Topic header floating inside the cosmos. Sits at top-left,
+   pointer-events: none so taps pass through to the orb hit buttons
+   below. Children that need clicks (chip row) flip pointer-events
+   back on. Strong text-shadow keeps it legible over any star. */
+.sr-cosmos-topic-overlay {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  right: 24px;
+  z-index: 7;
+  pointer-events: none;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, .85), 0 0 24px rgba(99, 102, 241, .25);
+  color: #fff;
+}
+.sr-cosmos-topic-overlay .sr-topic-lbl,
+.sr-cosmos-topic-overlay .sr-topic-q,
+.sr-cosmos-topic-overlay .sr-topic-en2 {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+}
+.sr-cosmos-topic-overlay .sr-chip-row { pointer-events: auto; margin-top: 10px; }
+@media (max-width: 480px) {
+  .sr-cosmos-topic-overlay { top: 16px; left: 18px; right: 18px; }
+}
+
+/* ── Inline Cosmos canvas slot ──────────────────────────────────
+   Now lives inside .sr-cosmos-hero, fills it entirely. The canvas
+   itself renders with alpha:true so the body's deep-space backdrop
+   bleeds straight through — no boxed-in look. The fallback START
+   button is shown until the 3D scene reports it's ready (or shown
+   permanently when WebGL/reduced-motion conditions don't allow it). */
+.ls-cosmos {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  aspect-ratio: 1 / 1;
-  max-height: 560px;
-  border-radius: 18px;
+  height: 100%;
   overflow: hidden;
-  /* No box-shadow / no inset border / no solid bg — the WebGL scene
-     renders transparently over whatever the parent shows. */
   background: transparent;
 }
 @media (max-width: 480px) {
@@ -2707,7 +2761,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
    keyboard / screen-reader users always have a non-spatial path. */
 @media (prefers-reduced-motion: reduce) {
   .ls-cosmos.is-ready .ls-cosmos-fallback { display: flex; margin-top: 12px; }
-  .ls-cosmos { max-height: 360px; aspect-ratio: 1 / .65; }
+  .sr-cosmos-hero { height: 480px; min-height: 360px; max-height: 520px; }
 }
 
 /* Fallback button keeps its existing sr-start-btn styling but stacks
@@ -2842,72 +2896,56 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
       </div>
     </div>
 
-    <!-- Credit / access banner -->
-    <!-- TODAY'S TOPIC CARD -->
-    <div class="sr-topic-card2">
-      <div class="sr-topic-inner">
-
-        <!-- LEFT: topic info + secondary actions -->
-        <div class="sr-topic-left">
-          <div style="display:flex;align-items:center;gap:8px">
-            <div class="sr-topic-lbl" style="margin-bottom:0">TODAY'S WRITING TOPIC</div>
-            <canvas id="sr-quest-ring-mobile" width="40" height="40" class="sr-quest-ring-mob" style="display:none;width:20px;height:20px;flex-shrink:0"></canvas>
-          </div>
-          <div class="sr-topic-q" id="hero-topic-ko">Loading…</div>
-          <div class="sr-topic-en2" id="hero-topic-en"></div>
-          <div id="hero-topic-done" style="display:none;font-size:11px;color:#7ab8f5;font-weight:700;margin-bottom:8px">✅ Done today</div>
-          <!-- vocab + grammar chips (desktop only) -->
-          <div class="sr-chip-row wc-chips" id="wcard-chips"></div>
+    <!-- ── COSMOS HERO ─────────────────────────────────────────────
+         Full-bleed entry to the study room. The whole region is
+         space — the topic header floats inside it as light text,
+         the orb and nodes sit on top of the body's deep-space
+         backdrop. No card chrome, no borders, no nesting. -->
+    <div class="sr-cosmos-hero">
+      <!-- Topic header floats as text over the cosmos. pointer-events
+           is none on the wrapper so taps pass through to the orb
+           buttons underneath; chip row re-enables clicks. -->
+      <div class="sr-cosmos-topic-overlay">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="sr-topic-lbl" style="margin-bottom:0">TODAY'S WRITING TOPIC</div>
+          <canvas id="sr-quest-ring-mobile" width="40" height="40" class="sr-quest-ring-mob" style="display:none;width:20px;height:20px;flex-shrink:0"></canvas>
         </div>
+        <div class="sr-topic-q" id="hero-topic-ko">Loading…</div>
+        <div class="sr-topic-en2" id="hero-topic-en"></div>
+        <div id="hero-topic-done" style="display:none;font-size:11px;color:#7ab8f5;font-weight:700;margin-top:6px">✅ Done today</div>
+        <div class="sr-chip-row wc-chips" id="wcard-chips"></div>
+      </div>
 
-        <!-- ── Inline Cosmos (replaces the START button + Learning
-             Selector modal). Rendered with Three.js + UnrealBloomPass,
-             populated from window.lsCosmosInit() defined below.
-             Falls back to a plain START button if WebGL2 is missing
-             or prefers-reduced-motion is set. -->
-        <div class="sr-topic-right" style="width:100%;margin-top:8px">
-          <div id="ls-cosmos-mount" class="ls-cosmos">
-            <canvas id="ls-cosmos-canvas"></canvas>
-            <!-- Loading indicator visible from page load. Replaced by
-                 the cosmos scene as soon as Three.js is ready, or by
-                 a more permanent error message if init fails. -->
-            <div id="ls-cosmos-loading" class="ls-cosmos-loading">
-              <div class="ls-cosmos-loading-dot"></div>
-              <div class="ls-cosmos-loading-dot"></div>
-              <div class="ls-cosmos-loading-dot"></div>
-              <div class="ls-cosmos-loading-text">Cosmos loading…</div>
-            </div>
-            <!-- Tap-target overlays (DOM elements positioned over each
-                 3D node) so click events go through the normal HTML
-                 click pipeline instead of needing a raycaster on every
-                 input. The 3D scene drives their position. -->
-            <div class="ls-cosmos-overlay" id="ls-cosmos-overlay">
-              <button type="button" class="ls-cosmos-hit ls-cosmos-hit-orb" data-ls="orb"  aria-label="Start today's writing"></button>
-              <button type="button" class="ls-cosmos-hit" data-ls="topic"        aria-label="Open Topic Writing"></button>
-              <button type="button" class="ls-cosmos-hit" data-ls="grammar"      aria-label="Open Grammar Focus"></button>
-              <button type="button" class="ls-cosmos-hit" data-ls="picture"      aria-label="Open Photo Description"></button>
-              <button type="button" class="ls-cosmos-hit" data-ls="sentence"     aria-label="Open Dictation"></button>
-              <button type="button" class="ls-cosmos-hit" data-ls="expressions"  aria-label="Open Key Expressions"></button>
-            </div>
-            <!-- Center label sitting over the orb. Updated as topic
-                 writing completion progresses. -->
-            <div class="ls-cosmos-center" id="ls-cosmos-center">
-              <div class="ls-cosmos-count" id="ls-cosmos-count">0</div>
-              <div class="ls-cosmos-total">/ 5 완료</div>
-              <div class="ls-cosmos-pts" id="ls-cosmos-pts">0 냥</div>
-            </div>
-            <!-- Floating labels for each node — positioned by JS in the
-                 RAF tick so they track the 3D node positions. -->
-            <div class="ls-cosmos-labels" id="ls-cosmos-labels"></div>
-            <!-- Plain-text fallback. JS hides this once the WebGL
-                 scene is up. -->
-            <button class="sr-start-btn ls-cosmos-fallback" onclick="_startBtnRipple(event);lsStartWriting()">
-              <span class="sr-start-btn-label" style="position:relative;z-index:1">START</span>
-              <span class="sr-start-btn-sub" style="position:relative;z-index:1">Start today's lesson →</span>
-            </button>
-          </div>
+      <!-- Cosmos canvas + DOM overlays. Three.js renders an alpha
+           canvas so the body backdrop bleeds through. Click goes
+           via DOM hit-buttons (positioned by the RAF tick) into the
+           existing lsStart() / lsStartWriting() flow. -->
+      <div id="ls-cosmos-mount" class="ls-cosmos">
+        <canvas id="ls-cosmos-canvas"></canvas>
+        <div id="ls-cosmos-loading" class="ls-cosmos-loading">
+          <div class="ls-cosmos-loading-dot"></div>
+          <div class="ls-cosmos-loading-dot"></div>
+          <div class="ls-cosmos-loading-dot"></div>
+          <div class="ls-cosmos-loading-text">Cosmos loading…</div>
         </div>
-
+        <div class="ls-cosmos-overlay" id="ls-cosmos-overlay">
+          <button type="button" class="ls-cosmos-hit ls-cosmos-hit-orb" data-ls="orb"  aria-label="Start today's writing"></button>
+          <button type="button" class="ls-cosmos-hit" data-ls="topic"        aria-label="Open Topic Writing"></button>
+          <button type="button" class="ls-cosmos-hit" data-ls="grammar"      aria-label="Open Grammar Focus"></button>
+          <button type="button" class="ls-cosmos-hit" data-ls="picture"      aria-label="Open Photo Description"></button>
+          <button type="button" class="ls-cosmos-hit" data-ls="sentence"     aria-label="Open Dictation"></button>
+          <button type="button" class="ls-cosmos-hit" data-ls="expressions"  aria-label="Open Key Expressions"></button>
+        </div>
+        <div class="ls-cosmos-center" id="ls-cosmos-center">
+          <div class="ls-cosmos-count" id="ls-cosmos-count">0</div>
+          <div class="ls-cosmos-total">/ 5 완료</div>
+          <div class="ls-cosmos-pts" id="ls-cosmos-pts">0 냥</div>
+        </div>
+        <div class="ls-cosmos-labels" id="ls-cosmos-labels"></div>
+        <button class="sr-start-btn ls-cosmos-fallback" onclick="_startBtnRipple(event);lsStartWriting()">
+          <span class="sr-start-btn-label" style="position:relative;z-index:1">START</span>
+          <span class="sr-start-btn-sub" style="position:relative;z-index:1">Start today's lesson →</span>
+        </button>
       </div>
     </div>
 
